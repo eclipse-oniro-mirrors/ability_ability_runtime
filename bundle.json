@@ -156,7 +156,7 @@
           "//foundation/ability/ability_runtime/service_router_framework:srms_target",
           "//foundation/ability/ability_runtime/service_router_framework:jsapi_target"
         ],
-        "inner_api": [
+        "inner_kits": [
           {
             "header": {
               "header_base": "//foundation/ability/ability_runtime/interfaces/inner_api/deps_wrapper/include",
