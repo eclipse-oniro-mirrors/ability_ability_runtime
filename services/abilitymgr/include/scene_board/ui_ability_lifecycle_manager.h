@@ -551,7 +551,7 @@ public:
     ErrCode IsUIAbilityAlreadyExist(const Want &want, const std::string &specifiedFlag,
         int32_t appIndex, const std::string &instanceKey, AppExecFwk::LaunchMode launchMode);
 
-    void HandleUIAbilityDiedByPid(int32_t pid);
+    void HandleUIAbilityDiedByPid(pid_t pid);
 
 private:
     /**
@@ -911,10 +911,10 @@ private:
      * @param callerAbility The caller ability
      * @return ERR_OK if successful, error code otherwise
      */
-    int32_t StartAbilityBySpecifed(const SpecifiedRequest &specifiedRequest,
+    int32_t StartAbilityBySpecified(const SpecifiedRequest &specifiedRequest,
         UIAbilityRecordPtr callerAbility);
     
-    int32_t StartAbilityBySpecified(const AbilityRequest &abilityRequest, int32_t requestId);
+    int32_t StartSpecifiedAbilityDirectlyWithFlag(const AbilityRequest &abilityRequest, int32_t requestId);
 
     /**
      * @brief Set last exit reason for ability

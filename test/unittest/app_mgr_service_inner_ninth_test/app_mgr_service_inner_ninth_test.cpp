@@ -119,7 +119,7 @@ public:
         AAFwk::MyStatus::GetInstance().notifyStartResidentProcessCalled_ = true;
     }
     void NotifyStartKeepAliveProcess(std::vector<AppExecFwk::BundleInfo> &bundleInfos,
-        int32_t diedPid) override
+        pid_t diedPid) override
     {
         AAFwk::MyStatus::GetInstance().notifyStartKeepAliveProcessCalled_ = true;
     }

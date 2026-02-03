@@ -683,7 +683,7 @@ int UIAbilityLifecycleManager::NotifySCBToStartUIAbility(AbilityRequest &ability
             AddSpecifiedRequest(specifiedRequest);
             return ERR_OK;
         }
-        return StartAbilityBySpecified(abilityRequest, requestId);
+        return StartSpecifiedAbilityDirectlyWithFlag(abilityRequest, requestId);
     }
 
     if (IsHookModule(abilityRequest)) {
@@ -2549,7 +2549,7 @@ void UIAbilityLifecycleManager::HandleLegacyAcceptWantDone(SpecifiedRequest &spe
             return;
         }
     }
-    StartAbilityBySpecifed(specifiedRequest, callerAbility);
+    StartAbilityBySpecified(specifiedRequest, callerAbility);
 }
 
 void UIAbilityLifecycleManager::OnStartSpecifiedAbilityTimeoutResponse(int32_t requestId)
@@ -2828,7 +2828,7 @@ int UIAbilityLifecycleManager::SendSessionInfoToSCBInSplitMode(int primaryWindow
     return ERR_OK;
 }
 
-int32_t UIAbilityLifecycleManager::StartAbilityBySpecifed(const SpecifiedRequest &specifiedRequest,
+int32_t UIAbilityLifecycleManager::StartAbilityBySpecified(const SpecifiedRequest &specifiedRequest,
     UIAbilityRecordPtr callerAbility)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "call");
@@ -2850,7 +2850,8 @@ int32_t UIAbilityLifecycleManager::StartAbilityBySpecifed(const SpecifiedRequest
     return ERR_OK;
 }
 
-int32_t UIAbilityLifecycleManager::StartAbilityBySpecified(const AbilityRequest &abilityRequest, int32_t requestId)
+int32_t UIAbilityLifecycleManager::StartSpecifiedAbilityDirectlyWithFlag(const AbilityRequest &abilityRequest,
+    int32_t requestId)
 {
     auto sessionInfo = CreateSessionInfo(abilityRequest, requestId);
     sessionInfo->requestCode = abilityRequest.requestCode;
@@ -4462,13 +4463,12 @@ void UIAbilityLifecycleManager::SendAbilityEvent(const AppExecFwk::AbilityInfo &
         }, ffrt::task_attr().timeout(AbilityRuntime::GlobalConstant::FFRT_TASK_TIMEOUT));
 }
 
-void UIAbilityLifecycleManager::HandleUIAbilityDiedByPid(int32_t pid)
+void UIAbilityLifecycleManager::HandleUIAbilityDiedByPid(pid_t pid)
 {
     std::lock_guard<ffrt::mutex> guard(sessionLock_);
     for (const auto &[key, abilityRecord] : sessionAbilityMap_) {
         if (abilityRecord && pid == abilityRecord->GetPid()) {
-            abilityRecord->SetIsKeepAliveDied(true);
-            abilityRecord->OnProcessDied();
+            abilityRecord->OnProcessDied(true);
         }
     }
 }

@@ -135,7 +135,7 @@ void AppScheduler::NotifyStartResidentProcess(std::vector<AppExecFwk::BundleInfo
 }
 
 void AppScheduler::NotifyStartKeepAliveProcess(std::vector<AppExecFwk::BundleInfo>& bundleInfos,
-    int32_t diedPid)
+    pid_t diedPid)
 {
     TAG_LOGI(AAFwkTag::TEST, "Test AppScheduler::NotifyStartKeepAliveProcess()");
 }

@@ -42,7 +42,7 @@ void AppStateCallbackProxy::NotifyStartResidentProcess(std::vector<AppExecFwk::B
 {}
 
 void AppStateCallbackProxy::NotifyStartKeepAliveProcess(std::vector<AppExecFwk::BundleInfo> &bundleInfos,
-    int32_t diedPid)
+    pid_t diedPid)
 {}
 
 void AppStateCallbackProxy::RecordAppExitSignalReason(int32_t pid, int32_t uid, int32_t signal,

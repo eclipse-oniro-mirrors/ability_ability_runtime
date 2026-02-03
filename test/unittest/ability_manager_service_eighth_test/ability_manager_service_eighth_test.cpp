@@ -257,7 +257,7 @@ HWTEST_F(AbilityManagerServiceEighthTest, LogoutUser_004, TestSize.Level1)
     abilityMs->abilityAutoStartupService_->AddHandledAutoStartupUsers(userId);
     EXPECT_EQ(abilityMs->LogoutUser(userId, callback1), ERR_OK);
     bool isHandled = abilityMs->abilityAutoStartupService_->FindHandledAutoStartupUsers(userId);
-    EXPECT_TRUE(isHandled);
+    EXPECT_FALSE(isHandled);
     system::SetBoolParameter(PRODUCT_APPBOOT_SETTING_ENABLED, true);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest LogoutUser_004 end");
 }
@@ -650,6 +650,66 @@ HWTEST_F(AbilityManagerServiceEighthTest, OnAppStateChanged_001, TestSize.Level1
     abilityMs_->OnAppStateChanged(info);
     EXPECT_FALSE(system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false));
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest OnAppStateChanged_001 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceEighthTest_NotifyStartKeepAliveProcess_0300
+ * @tc.desc: not support enterprise feature setting enabled.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceEighthTest, NotifyStartKeepAliveProcess_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest NotifyStartKeepAliveProcess_0300 start");
+    std::vector<AppExecFwk::BundleInfo> bundleInfos;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs, nullptr);
+    bool beforeValue = system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false);
+    system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false);
+    EXPECT_EQ(system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false), false);
+    pid_t diedPid = 1;
+    abilityMs->NotifyStartKeepAliveProcess(bundleInfos, diedPid);
+    system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, beforeValue);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest NotifyStartKeepAliveProcess_0300 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceEighthTest_NotifyStartKeepAliveProcess_0400
+ * @tc.desc: diedPid not INVALID_PID.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceEighthTest, NotifyStartKeepAliveProcess_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest NotifyStartKeepAliveProcess_0400 start");
+    std::vector<AppExecFwk::BundleInfo> bundleInfos;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs, nullptr);
+    bool beforeValue = system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false);
+    system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, true);
+    EXPECT_EQ(system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false), true);
+    pid_t diedPid = 1;
+    abilityMs->NotifyStartKeepAliveProcess(bundleInfos, diedPid);
+    system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, beforeValue);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest NotifyStartKeepAliveProcess_0400 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceEighthTest_NotifyStartKeepAliveProcess_0500
+ * @tc.desc: diedPid is INVALID_PID.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceEighthTest, NotifyStartKeepAliveProcess_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest NotifyStartKeepAliveProcess_0500 start");
+    std::vector<AppExecFwk::BundleInfo> bundleInfos;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs, nullptr);
+    bool beforeValue = system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false);
+    system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, true);
+    EXPECT_EQ(system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false), true);
+    pid_t diedPid = -1;
+    abilityMs->NotifyStartKeepAliveProcess(bundleInfos, diedPid);
+    system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, beforeValue);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest NotifyStartKeepAliveProcess_0500 end");
 }
 
 /*

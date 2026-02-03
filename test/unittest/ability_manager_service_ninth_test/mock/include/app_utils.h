@@ -29,6 +29,7 @@ public:
     bool IsStartOptionsWithAnimation();
     bool IsPrepareTerminateEnabled();
     bool IsStartOptionsWithProcessOptions();
+    bool IsProductAppbootSettingEnabled();
 
 private:
     AppUtils();

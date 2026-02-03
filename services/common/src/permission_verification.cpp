@@ -408,9 +408,8 @@ int PermissionVerification::JudgeInvisibleAndBackground(const VerificationInfo &
     bool isCallByShortcut) const
 {
     uint32_t specifyTokenId = verificationInfo.specifyTokenId;
-    bool isProcessInStatusBar = verificationInfo.isProcessInStatusBar;
-    TAG_LOGD(AAFwkTag::DEFAULT, "specifyTokenId: %{public}u, isCallByShortcut %{public}d,"
-        " isProcessInStatusBar: %{public}d", specifyTokenId, isCallByShortcut, isProcessInStatusBar);
+    TAG_LOGD(AAFwkTag::DEFAULT, "specifyTokenId: %{public}u, isCallByShortcut %{public}d",
+        specifyTokenId, isCallByShortcut);
     if (specifyTokenId == 0 &&
         SupportSystemAbilityPermission::IsSupportSaCallPermission()) {
         TAG_LOGD(AAFwkTag::DEFAULT, "Support SA call");
@@ -422,7 +421,7 @@ int PermissionVerification::JudgeInvisibleAndBackground(const VerificationInfo &
         TAG_LOGE(AAFwkTag::DEFAULT, "caller INVISIBLE permission invalid");
         return ABILITY_VISIBLE_FALSE_DENY_REQUEST;
     }
-    if (!isProcessInStatusBar && !JudgeStartAbilityFromBackground(verificationInfo.isBackgroundCall)) {
+    if (!JudgeStartAbilityFromBackground(verificationInfo.isBackgroundCall)) {
         TAG_LOGE(AAFwkTag::DEFAULT, "caller START_ABILITIES_FROM_BACKGROUND permission invalid");
         return CHECK_PERMISSION_FAILED;
     }

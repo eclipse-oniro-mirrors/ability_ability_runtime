@@ -242,7 +242,7 @@ void AppScheduler::NotifyStartResidentProcess(std::vector<AppExecFwk::BundleInfo
 }
 
 void AppScheduler::NotifyStartKeepAliveProcess(std::vector<AppExecFwk::BundleInfo> &bundleInfos,
-    int32_t diedPid)
+    pid_t diedPid)
 {
     auto callback = callback_.lock();
     CHECK_POINTER(callback);

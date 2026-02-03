@@ -1036,7 +1036,7 @@ void AbilityRecord::OnSchedulerDied(const wptr<IRemoteObject> &remote)
 {
 }
 
-void AbilityRecord::OnProcessDied()
+void AbilityRecord::OnProcessDied(bool isKeepAliveDied)
 {
 }
 

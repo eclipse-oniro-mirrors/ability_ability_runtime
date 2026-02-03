@@ -2938,27 +2938,27 @@ HWTEST_F(UIAbilityLifecycleManagerTest, SendSessionInfoToSCBInSplitMode_0100, Te
 }
 
 /**
- * @tc.name: UIAbilityLifecycleManager_StartAbilityBySpecifed_0100
- * @tc.desc: StartAbilityBySpecifed
+ * @tc.name: UIAbilityLifecycleManager_StartAbilityBySpecified_0100
+ * @tc.desc: StartAbilityBySpecified
  * @tc.type: FUNC
  */
-HWTEST_F(UIAbilityLifecycleManagerTest, StartAbilityBySpecifed_001, TestSize.Level1)
+HWTEST_F(UIAbilityLifecycleManagerTest, StartAbilityBySpecified_001, TestSize.Level1)
 {
     auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
     EXPECT_NE(uiAbilityLifecycleManager, nullptr);
     AbilityRequest request;
     SpecifiedRequest specifiedRequest(0, request);
     UIAbilityRecordPtr callerAbility = nullptr;
-    uiAbilityLifecycleManager->StartAbilityBySpecifed(specifiedRequest, callerAbility);
+    uiAbilityLifecycleManager->StartAbilityBySpecified(specifiedRequest, callerAbility);
     uiAbilityLifecycleManager.reset();
 }
 
 /**
- * @tc.name: UIAbilityLifecycleManager_StartAbilityBySpecifed_0200
- * @tc.desc: StartAbilityBySpecifed
+ * @tc.name: UIAbilityLifecycleManager_StartAbilityBySpecified_0200
+ * @tc.desc: StartAbilityBySpecified
  * @tc.type: FUNC
  */
-HWTEST_F(UIAbilityLifecycleManagerTest, StartAbilityBySpecifed_0200, TestSize.Level1)
+HWTEST_F(UIAbilityLifecycleManagerTest, StartAbilityBySpecified_0200, TestSize.Level1)
 {
     auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
     EXPECT_NE(uiAbilityLifecycleManager, nullptr);
@@ -2966,7 +2966,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartAbilityBySpecifed_0200, TestSize.Le
     SpecifiedRequest specifiedRequest(0, request);
     specifiedRequest.requestListId = 0;
     UIAbilityRecordPtr callerAbility = nullptr;
-    uiAbilityLifecycleManager->StartAbilityBySpecifed(specifiedRequest, callerAbility);
+    uiAbilityLifecycleManager->StartAbilityBySpecified(specifiedRequest, callerAbility);
     uiAbilityLifecycleManager.reset();
 }
 
@@ -7441,7 +7441,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, HandleUIAbilityDiedByPid_0001, TestSize.
     record->pid_ = 1;
     mgr->sessionAbilityMap_.emplace(111, record);
     mgr->sessionAbilityMap_.emplace(112, nullptr);
-    int32_t pid = 1;
+    pid_t pid = 1;
     mgr->HandleUIAbilityDiedByPid(pid);
     EXPECT_NE(mgr->sessionAbilityMap_[111], nullptr);
     EXPECT_EQ(mgr->sessionAbilityMap_[112], nullptr);
@@ -7464,7 +7464,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, HandleUIAbilityDiedByPid_0002, TestSize.
     record->pid_ = 2;
     mgr->sessionAbilityMap_.emplace(111, record);
     mgr->sessionAbilityMap_.emplace(112, nullptr);
-    int32_t pid = 1;
+    pid_t pid = 1;
     mgr->HandleUIAbilityDiedByPid(pid);
     EXPECT_NE(mgr->sessionAbilityMap_[111], nullptr);
     EXPECT_EQ(mgr->sessionAbilityMap_[112], nullptr);

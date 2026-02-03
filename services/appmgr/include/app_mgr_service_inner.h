@@ -2151,7 +2151,7 @@ private:
         sptr<IRemoteObject> token);
     void NotifyStartResidentProcess(std::vector<AppExecFwk::BundleInfo> &bundleInfos);
     void NotifyStartKeepAliveProcess(std::vector<AppExecFwk::BundleInfo> &bundleInfos,
-        int32_t diedPid = INVALID_DIED_PID);
+        pid_t diedPid = INVALID_DIED_PID);
     void RemoveUIExtensionLauncherItem(std::shared_ptr<AppRunningRecord> appRecord, sptr<IRemoteObject> token);
     bool IsSceneBoardCall();
     void CheckCleanAbilityByUserRequest(const std::shared_ptr<AppRunningRecord> &appRecord,

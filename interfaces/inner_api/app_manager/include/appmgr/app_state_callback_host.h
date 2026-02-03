@@ -68,7 +68,7 @@ public:
      * @param bundleInfos resident process bundle infos.
      */
     virtual void NotifyStartKeepAliveProcess(std::vector<AppExecFwk::BundleInfo> &bundleInfos,
-        int32_t diedPid = INVALID_DIED_PID) override;
+        pid_t diedPid = INVALID_DIED_PID) override;
 
     /**
      * @brief Notify abilityms app process OnRemoteDied

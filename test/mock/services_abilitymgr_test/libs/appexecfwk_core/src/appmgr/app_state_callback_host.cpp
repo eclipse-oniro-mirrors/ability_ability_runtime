@@ -50,7 +50,7 @@ void AppStateCallbackHost::NotifyStartResidentProcess(std::vector<AppExecFwk::Bu
 }
 
 void AppStateCallbackHost::NotifyStartKeepAliveProcess(std::vector<AppExecFwk::BundleInfo> &bundleInfos,
-    int32_t diedPid)
+    pid_t diedPid)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");
 }

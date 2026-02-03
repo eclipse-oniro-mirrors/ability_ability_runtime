@@ -36,7 +36,6 @@ public:
     void AddEvent(int32_t userId, const std::string &event);
     void RemoveUser(int32_t userId);
     bool CheckAllUnlocked(int32_t userId);
-    void ClearAllEvents();
 
 private:
     AbilityEventMapManager();

@@ -33,7 +33,7 @@ public:
     MOCK_METHOD2(OnAbilityRequestDone, void(const sptr<IRemoteObject>&, const int32_t));
     MOCK_METHOD1(OnAppStateChanged, void(const AppInfo& info));
     MOCK_METHOD1(NotifyStartResidentProcess, void(std::vector<AppExecFwk::BundleInfo>&));
-    MOCK_METHOD2(NotifyStartKeepAliveProcess, void(std::vector<AppExecFwk::BundleInfo>&, int32_t));
+    MOCK_METHOD2(NotifyStartKeepAliveProcess, void(std::vector<AppExecFwk::BundleInfo>&, pid_t));
     MOCK_METHOD2(NotifyAppPreCache, void(int32_t, int32_t));
     MOCK_METHOD4(RecordAppExitSignalReason, void(int32_t, int32_t, int32_t, std::string&));
 };

@@ -138,7 +138,7 @@ void AppStateCallbackProxy::NotifyStartResidentProcess(std::vector<AppExecFwk::B
 }
 
 void AppStateCallbackProxy::NotifyStartKeepAliveProcess(std::vector<AppExecFwk::BundleInfo> &bundleInfos,
-    int32_t diedPid)
+    pid_t diedPid)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -159,7 +159,7 @@ void AppStateCallbackProxy::NotifyStartKeepAliveProcess(std::vector<AppExecFwk::
             return;
         }
     }
-    if (!data.WriteInt32(diedPid)) {
+    if (!data.WriteInt32(static_cast<int32_t>(diedPid))) {
         TAG_LOGE(AAFwkTag::APPMGR, "write diedPid failed.");
         return;
     }

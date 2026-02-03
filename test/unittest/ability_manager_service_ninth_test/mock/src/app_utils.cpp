@@ -46,5 +46,10 @@ bool AppUtils::IsStartOptionsWithProcessOptions()
 {
     return true;
 }
+
+bool AppUtils::IsProductAppbootSettingEnabled()
+{
+    return true;
+}
 }  // namespace AAFwk
 }  // namespace OHOS

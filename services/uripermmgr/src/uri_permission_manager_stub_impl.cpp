@@ -1159,6 +1159,7 @@ int32_t UriPermissionManagerStubImpl::CheckUriPermission(BatchUri &batchUri, uin
     }
     permissionedUriCount = batchUri.GetPermissionedUriCount();
     if (targetTokenId != 0 && permissionedUriCount != batchUri.totalUriCount) {
+        TAG_LOGW(AAFwkTag::URIPERMMGR, "total permissioned uris:%{public}d", permissionedUriCount);
         FUDUtils::SendShareUnPrivilegeUriEvent(callerTokenId, targetTokenId);
     }
     if (permissionedUriCount == 0) {
