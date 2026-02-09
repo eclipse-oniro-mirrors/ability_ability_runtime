@@ -29,6 +29,7 @@ ohos_unittest("AppSpawnClientTest") {
   configs = [ "${ability_runtime_services_path}/appmgr:appmgr_config" ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
     "${ability_runtime_services_path}/appmgr:libappms",
     "${ability_runtime_services_path}/common:perm_verification",
   ]
@@ -57,6 +58,10 @@ ohos_unittest("AppSpawnClientTest") {
 
   if (ability_runtime_graphics) {
     external_deps += [ "window_manager:libwm" ]
+  }
+
+  if (os_account_part_enabled) {
+    external_deps += [ "os_account:os_account_innerkits" ]
   }
 }
 

@@ -18,6 +18,7 @@
 #define private public
 #include "app_spawn_client.h"
 #undef private
+#include "mock_my_status.h"
 using namespace testing;
 using namespace testing::ext;
 
@@ -683,6 +684,69 @@ HWTEST_F(AppSpawnClientSecondTest, GetRenderProcessTerminationStatus_002, TestSi
     startMsg.procName = "testProcName";
     int ret = asc->GetRenderProcessTerminationStatus(startMsg, status);
     EXPECT_EQ(ret, ERR_OK);
+}
+
+// Scenario1: Test when uid is negative.
+HWTEST_F(AppSpawnClientSecondTest, SetUserIdInfo_001, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "SetUserIdInfo_001 start";
+    AppSpawnClient appSpawnClient;
+    AppSpawnStartMsg startMsg;
+    startMsg.uid = -1;
+    AppSpawnReqMsgHandle reqHandle = nullptr;
+    auto ret = appSpawnClient.SetUserIdInfo(startMsg, reqHandle);
+    EXPECT_NE(ret, ERR_OK);
+    GTEST_LOG_(INFO) << "SetUserIdInfo_001 end";
+}
+
+// Scenario2: Test when getUserIdFromUid failed.
+HWTEST_F(AppSpawnClientSecondTest, SetUserIdInfo_002, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "SetUserIdInfo_002 start";
+    AppSpawnClient appSpawnClient;
+    AppSpawnStartMsg startMsg;
+    startMsg.uid = 10000;
+    AppSpawnReqMsgHandle reqHandle = nullptr;
+    AAFwk::MyStatus::GetInstance().getOsAccountRet_ = 1;
+    auto ret = appSpawnClient.SetUserIdInfo(startMsg, reqHandle);
+    EXPECT_NE(ret, ERR_OK);
+    AAFwk::MyStatus::GetInstance().getOsAccountRet_ = 0;
+    GTEST_LOG_(INFO) << "SetUserIdInfo_002 end";
+}
+
+// Scenario3: Test when reqHandle is nullptr.
+HWTEST_F(AppSpawnClientSecondTest, SetUserIdInfo_003, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "SetUserIdInfo_003 start";
+    AppSpawnClient appSpawnClient;
+    AppSpawnStartMsg startMsg;
+    startMsg.uid = 10000;
+    AppSpawnReqMsgHandle reqHandle = nullptr;
+    AAFwk::MyStatus::GetInstance().getOsAccountRet_ = 0;
+    auto ret = appSpawnClient.SetUserIdInfo(startMsg, reqHandle);
+    EXPECT_NE(ret, ERR_OK);
+    GTEST_LOG_(INFO) << "SetUserIdInfo_003 end";
+}
+
+// Scenario5: Test when reqHandle is not nullptr.
+HWTEST_F(AppSpawnClientSecondTest, SetUserIdInfo_004, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "SetUserIdInfo_004 start";
+    AppSpawnClient appSpawnClient;
+    AppSpawnStartMsg startMsg;
+    startMsg.uid = 10000;
+    startMsg.code = MSG_APP_SPAWN;
+    startMsg.procName = "testProcName";
+    AppSpawnReqMsgHandle reqHandle = nullptr;
+    auto ret = AppSpawnReqMsgCreate(static_cast<AppSpawnMsgType>(startMsg.code), startMsg.procName.c_str(), &reqHandle);
+    ASSERT_EQ(ret, ERR_OK);
+
+    AAFwk::MyStatus::GetInstance().getOsAccountRet_ = ERR_OK;
+    ret = appSpawnClient.SetUserIdInfo(startMsg, reqHandle);
+    EXPECT_EQ(ret, ERR_OK);
+
+    AppSpawnReqMsgFree(reqHandle);
+    GTEST_LOG_(INFO) << "SetUserIdInfo_004 end";
 }
 } // namespace AppExecFwk
 } // namespace OHOS
