@@ -40,6 +40,7 @@ public:
         static ExitInfoDataManager instance;
         return instance;
     }
+
     virtual ~ExitInfoDataManager() = default;
 
     bool AddExitInfo(uint32_t accessTokenId, ExitCacheInfo &cacheInfo);
@@ -53,13 +54,13 @@ public:
     bool IsExitInfoExist(uint32_t accessTokenId);
 
 private:
+    std::mutex mutex_;
     ExitInfoDataManager() = default;
     DISALLOW_COPY_AND_MOVE(ExitInfoDataManager);
 
 private:
-    std::mutex mutex_;
     std::map<uint32_t, ExitCacheInfo> exitCacheInfos_;
 };
-}  // namespace AbilityRuntime
-}  // namespace OHOS
-#endif  // OHOS_ABILITY_RUNTIME_EXIT_INFO_DATA_MANAGER_H
+} // namespace AbilityRuntime
+} // namespace OHOS
+#endif // OHOS_ABILITY_RUNTIME_EXIT_INFO_DATA_MANAGER_H

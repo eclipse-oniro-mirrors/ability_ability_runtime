@@ -231,6 +231,7 @@ public:
     *
     * @param want Indicates the want containing information about the ability to connect
     * @param connectCallback Indicates the callback object when the target ability is connected.
+    * @param extensionType Indicates the extensionType about the ability to connect
     * @return True means success and false means failure
     */
     virtual ErrCode ConnectExtensionAbilityWithExtensionType(const AAFwk::Want& want,

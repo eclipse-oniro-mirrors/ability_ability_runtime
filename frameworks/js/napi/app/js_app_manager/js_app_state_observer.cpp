@@ -90,7 +90,7 @@ void JSAppStateObserver::OnAbilityStateChanged(const AbilityStateData &abilitySt
         return;
     }
     if (abilityStateData.isInnerNotify) {
-        TAG_LOGE(AAFwkTag::APPMGR, "uiExt not notify");
+        TAG_LOGD(AAFwkTag::APPMGR, "inner notify");
         return;
     }
     wptr<JSAppStateObserver> jsObserver = this;

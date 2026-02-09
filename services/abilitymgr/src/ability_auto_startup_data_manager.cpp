@@ -496,7 +496,8 @@ void AbilityAutoStartupDataManager::ConvertAutoStartupStatusFromValue(
         startupStatus.setterUserId = jsonObject.at(JSON_KEY_SETTER_USERID).get<int32_t>();
     }
     if (jsonObject.contains(JSON_KEY_SETTER_TYPE) && jsonObject[JSON_KEY_SETTER_TYPE].is_number()) {
-        startupStatus.setterType = jsonObject.at(JSON_KEY_SETTER_TYPE).get<AutoStartupSetterType>();
+        startupStatus.setterType =
+            static_cast<AutoStartupSetterType>(jsonObject.at(JSON_KEY_SETTER_TYPE).get<int32_t>());
     }
 }
 

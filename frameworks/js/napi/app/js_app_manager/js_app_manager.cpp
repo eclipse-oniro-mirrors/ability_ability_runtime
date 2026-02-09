@@ -210,6 +210,7 @@ public:
     {
         GET_CB_INFO_AND_CALL(env, info, JsAppManager, OnGetKeepAliveAppServiceExtensions);
     }
+
 #ifdef SUPPORT_SCREEN
     static bool CheckCallerIsSystemApp()
     {
@@ -655,7 +656,7 @@ private:
             return CreateJsUndefined(env);
         }
         if (argc < ARGC_ONE) {
-            TAG_LOGE(AAFwkTag::APPMGR, "invalid argc");
+            TAG_LOGE(AAFwkTag::APPMGR, "Not enough params when off.");
             ThrowTooFewParametersError(env);
             return CreateJsUndefined(env);
         }
@@ -663,7 +664,7 @@ private:
             observerForeground_->RemoveAllJsObserverObjects();
         } else if (argc == ARGC_TWO) {
             if (!AppExecFwk::IsTypeForNapiValue(env, argv[INDEX_ONE], napi_object)) {
-                TAG_LOGE(AAFwkTag::APPMGR, "Invalid param");
+                TAG_LOGE(AAFwkTag::APPMGR, "Invalid param.");
                 ThrowInvalidParamError(env, "Parse param observer failed, must be a AppForegroundStateObserver.");
                 return CreateJsUndefined(env);
             }

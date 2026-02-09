@@ -23,6 +23,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "resource_config_helper.h"
 #include "ability_manager_client.h"
 #include "constants.h"
 #include "ability_delegator.h"
@@ -68,7 +69,6 @@
 #include "freeze_util.h"
 #include "hilog_tag_wrapper.h"
 #include "load_ability_callback_manager.h"
-#include "resource_config_helper.h"
 #ifdef SUPPORT_SCREEN
 #include "locale_config_ext.h"
 #include "ace_forward_compatibility.h"
@@ -1814,7 +1814,6 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
             return;
         }
         runtimeUpdateParam_.option = options;
-
         if (appInfo.debug && appLaunchData.GetDebugApp()) {
             wptr<MainThread> weak = this;
             auto cb = [weak]() {
@@ -1828,7 +1827,6 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
             runtime->SetDeviceDisconnectCallback(cb);
         }
         auto perfCmd = appLaunchData.GetPerfCmd();
-
         int32_t pid = -1;
         std::string processName = "";
         if (processInfo_ != nullptr) {

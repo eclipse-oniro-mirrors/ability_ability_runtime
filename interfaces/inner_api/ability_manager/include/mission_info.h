@@ -40,12 +40,12 @@ struct MissionInfo : public Parcelable {
     virtual bool Marshalling(Parcel &parcel) const override;
     static MissionInfo *Unmarshalling(Parcel &parcel);
 
-    bool lockedState = false;
-    bool continuable = false;
-    bool unclearable = false;
     ContinueState continueState = ContinueState::CONTINUESTATE_ACTIVE;
     int32_t id = -1;
     int32_t runningState = -1;
+    bool lockedState = false;
+    bool continuable = false;
+    bool unclearable = false;
     int32_t abilityState = -1;
     std::string time;
     std::string label;
