@@ -715,6 +715,15 @@ public:
         return isPluginAbility_;
     }
 
+    // Host-Plugin relationship management
+    void AddPluginAbility(std::shared_ptr<AbilityRecord> pluginAbility);
+    void RemovePluginAbility(std::shared_ptr<AbilityRecord> pluginAbility);
+    std::vector<std::shared_ptr<AbilityRecord>> GetPluginAbilities();
+    std::shared_ptr<AbilityRecord> GetHostAbility() const;
+    void SetHostAbility(const std::shared_ptr<AbilityRecord> &hostAbility);
+    void ClearPluginAbilities();
+    void InitPluginAbility(const AbilityRequest &abilityRequest);
+
     void NotifyAbilityRequestFailure(const std::string &requestId, const AppExecFwk::ElementName &element,
         const std::string &message, int32_t resultCode = 0);
 
@@ -937,6 +946,11 @@ protected:
     bool isPluginAbility_ = false;
     bool isPrelaunch_ = false;
     bool isHook_ = false;
+
+    // Host-Plugin relationship management
+    std::weak_ptr<AbilityRecord> hostAbilityRecord_;
+    std::list<std::weak_ptr<AbilityRecord>> pluginAbilityList_;
+    mutable std::mutex pluginMutex_;
 
     int32_t uiExtensionAbilityId_ = 0;                // uiextension ability id
     int32_t uid_ = 0;

@@ -2079,6 +2079,17 @@ int UIAbilityLifecycleManager::CloseUIAbility(const UIAbilityRecordPtr &abilityR
         TAG_LOGI(AAFwkTag::ABILITYMGR, "ability on terminating");
         return ERR_OK;
     }
+
+    // If this is a host ability, terminate all associated plugin abilities first
+    if (!abilityRecord->IsPluginAbility()) {
+        auto pluginAbilities = abilityRecord->GetPluginAbilities();
+        for (const auto& plugin : pluginAbilities) {
+            TerminateSession(plugin);
+        }
+        // Clear plugin list
+        abilityRecord->ClearPluginAbilities();
+    }
+
     PrepareCloseUIAbility(abilityRecord, resultCode, resultWant, isClearSession);
     if (abilityRecord->GetAbilityState() == AbilityState::INITIAL) {
         if (abilityRecord->GetScheduler() == nullptr) {
@@ -2169,6 +2180,18 @@ void UIAbilityLifecycleManager::CompleteTerminate(const UIAbilityRecordPtr &abil
         TAG_LOGE(AAFwkTag::ABILITYMGR, "failed, %{public}s, ability not terminating", __func__);
         return;
     }
+
+    // If this is a plugin ability, remove it from host's plugin list
+    if (abilityRecord->IsPluginAbility()) {
+        auto hostAbility = abilityRecord->GetHostAbility();
+        if (hostAbility) {
+            hostAbility->RemovePluginAbility(abilityRecord);
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "Plugin %{public}s removed from host %{public}s",
+                abilityRecord->GetAbilityInfo().name.c_str(),
+                hostAbility->GetAbilityInfo().name.c_str());
+        }
+    }
+
     abilityRecord->RemoveAbilityDeathRecipient();
     auto ret = abilityRecord->TerminateAbility();
     // notify AppMS terminate
