@@ -13,7 +13,9 @@
  * limitations under the License.
  */
 
+#include <limits>
 #include <optional>
+#include <random>
 
 #include "ability_window_configuration.h"
 #include "app_running_record.h"
@@ -76,6 +78,7 @@ AppRunningRecord::AppRunningRecord(
     t.tv_nsec = 0;
     clock_gettime(CLOCK_MONOTONIC, &t);
     startTimeMillis_ = static_cast<int64_t>(((t.tv_sec) * NANOSECONDS + t.tv_nsec) / MICROSECONDS);
+    appRunningUniqueId_ = GenerateRunningId();
 }
 
 void AppRunningRecord::SetApplicationClient(const sptr<IAppScheduler> &thread)
@@ -383,7 +386,7 @@ void AppRunningRecord::LaunchApplication(const Configuration &config)
     launchData.SetMultiThread(isMultiThread_);
     launchData.SetJITEnabled(jitEnabled_);
     launchData.SetNativeStart(isNativeStart_);
-    launchData.SetAppRunningUniqueId(std::to_string(startTimeMillis_));
+    launchData.SetAppRunningUniqueId(std::to_string(appRunningUniqueId_));
     launchData.SetIsNeedPreloadModule(isNeedPreloadModule_);
     launchData.SetAppPreloadMode(preloadMode_);
     launchData.SetNWebPreload(isAllowedNWebPreload_);
@@ -2174,6 +2177,22 @@ bool AppRunningRecord::GetFocusFlag() const
 int64_t AppRunningRecord::GetAppStartTime() const
 {
     return startTimeMillis_;
+}
+
+uint64_t AppRunningRecord::GetAppRunningUniqueId() const
+{
+    return appRunningUniqueId_;
+}
+
+uint64_t AppRunningRecord::GenerateRunningId()
+{
+    std::random_device rd;
+    std::mt19937_64 engine(rd());
+    std::uniform_int_distribution<uint64_t> dist(
+        std::numeric_limits<uint64_t>::min(),
+        std::numeric_limits<uint64_t>::max()
+    );
+    return dist(engine);
 }
 
 void AppRunningRecord::SetRequestProcCode(int32_t requestProcCode)

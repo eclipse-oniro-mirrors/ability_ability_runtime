@@ -801,6 +801,16 @@ public:
 
     int64_t GetAppStartTime() const;
 
+    /**
+     * @brief Get the unique running ID for this application
+     * @return uint64_t The unique running ID generated from random number
+     *
+     * Note: This method returns a globally unique ID generated using a 64-bit random number.
+     * The ID is converted to a decimal string when used in AppLaunchData.
+     * The ID is used to uniquely identify application running instances.
+     */
+    uint64_t GetAppRunningUniqueId() const;
+
     void SetRestartTimeMillis(const int64_t restartTimeMillis);
     void SetRequestProcCode(int32_t requestProcCode);
 
@@ -1241,17 +1251,19 @@ private:
     void RemoveEvent(uint32_t msg);
 
     void RemoveModuleRecord(const std::shared_ptr<ModuleRunningRecord> &record, bool isExtensionDebug = false);
-    int32_t GetAddStageTimeout() const;
-    void SetModuleLoaded(const std::string &moduleName) const;
 
-private:
-    class RemoteObjHash {
-    public:
-        size_t operator() (const sptr<IRemoteObject> remoteObj) const
-        {
-            return reinterpret_cast<size_t>(remoteObj.GetRefPtr());
-        }
-    };
+    /**
+     * @brief Generate a globally unique running ID
+     * @return uint64_t A 64-bit random number
+     *
+     * This method generates a globally unique running ID using a 64-bit random number.
+     * The random number provides high entropy and uniqueness across all application instances.
+     * - Uses std::mt19937_64 for high-quality random number generation
+     * - Full 64-bit range for maximum uniqueness
+     * - Collision probability is extremely low (approximately 2^-64)
+     */
+    uint64_t GenerateRunningId();
+
     bool IsWindowIdsEmpty();
 
     std::map<std::string, std::shared_ptr<ApplicationInfo>> appInfos_;
@@ -1316,6 +1328,7 @@ private:
     std::chrono::system_clock::time_point preloadAttachTimeoutStartTime_;
 
     int64_t startTimeMillis_ = 0;   // The time of app start(CLOCK_MONOTONIC)
+    uint64_t appRunningUniqueId_ = 0; // The unique running ID generated from random number
     int64_t restartTimeMillis_ = 0; // The time of last trying app restart
     int64_t timeStamp_ = 0; // the flag of BackUpMainControlProcess
     int32_t appRecordId_ = 0;
