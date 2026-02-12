@@ -1251,6 +1251,17 @@ private:
     void RemoveEvent(uint32_t msg);
 
     void RemoveModuleRecord(const std::shared_ptr<ModuleRunningRecord> &record, bool isExtensionDebug = false);
+    int32_t GetAddStageTimeout() const;
+    void SetModuleLoaded(const std::string &moduleName) const;
+
+private:
+    class RemoteObjHash {
+    public:
+        size_t operator() (const sptr<IRemoteObject> remoteObj) const
+        {
+            return reinterpret_cast<size_t>(remoteObj.GetRefPtr());
+        }
+    };
 
     /**
      * @brief Generate a globally unique running ID
