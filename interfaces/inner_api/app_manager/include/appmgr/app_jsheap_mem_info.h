@@ -26,6 +26,7 @@ struct JsHeapDumpInfo : public Parcelable {
     bool needSnapshot = false;
     bool needLeakobj = false;
     bool needBinary = false;
+    bool needClearNodeIdCache = false;
     uint32_t pid = 0;
     uint32_t tid = 0;
     virtual bool Marshalling(Parcel &parcel) const override;
