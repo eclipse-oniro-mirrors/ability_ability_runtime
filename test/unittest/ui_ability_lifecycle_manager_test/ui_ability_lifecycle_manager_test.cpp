@@ -7875,6 +7875,190 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_Preload_001, TestSize.Lev
 }
 
 /**
+ * @tc.name: StartUIAbility_CallerTypeForAnco_ADD_001
+ * @tc.desc: Test StartUIAbility with CallerTypeForAnco::ADD
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_CallerTypeForAnco_ADD_001, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 1;
+    sessionInfo->callerTypeForAnco = static_cast<int32_t>(CallerTypeForAnco::ADD);
+    sessionInfo->callingTokenId = 12345;
+    abilityRequest.want.SetParam("testKey", std::string("testValue"));
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = true;
+
+    auto result = mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart);
+    EXPECT_EQ(result, ERR_OK);
+
+    // Verify callerInfoMap_ contains the entry
+    EXPECT_FALSE(mgr->callerInfoMap_.empty());
+
+    // Verify PARAM_DIALOG_SESSION_ID was set in the want
+    auto sessionId = abilityRequest.want.GetStringParam("ohos.ability.param.sessionId");
+    EXPECT_FALSE(sessionId.empty());
+}
+
+/**
+ * @tc.name: StartUIAbility_CallerTypeForAnco_ADD_002
+ * @tc.desc: Test StartUIAbility with CallerTypeForAnco::ADD and existing ability record
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_CallerTypeForAnco_ADD_002, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 1;
+    sessionInfo->callerTypeForAnco = static_cast<int32_t>(CallerTypeForAnco::ADD);
+    sessionInfo->callingTokenId = 67890;
+    abilityRequest.want.SetParam("key1", std::string("value1"));
+    abilityRequest.want.SetParam("key2", 100);
+    abilityRequest.sessionInfo = sessionInfo;
+
+    // Pre-populate sessionAbilityMap_
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    mgr->sessionAbilityMap_.emplace(sessionInfo->persistentId, abilityRecord);
+
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    auto result = mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart);
+    EXPECT_EQ(result, ERR_OK);
+
+    // Verify callerInfoMap_ contains the entry
+    EXPECT_FALSE(mgr->callerInfoMap_.empty());
+
+    // Verify callerInfo contains correct data
+    if (!mgr->callerInfoMap_.empty()) {
+        auto& callerInfo = mgr->callerInfoMap_.begin()->second;
+        EXPECT_EQ(callerInfo.callerTokenId, 67890);
+        EXPECT_EQ(callerInfo.targetWant.GetStringParam("key1"), "value1");
+    }
+}
+
+/**
+ * @tc.name: StartUIAbility_CallerTypeForAnco_QUERY_001
+ * @tc.desc: Test StartUIAbility with CallerTypeForAnco::QUERY
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_CallerTypeForAnco_QUERY_001, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 1;
+    sessionInfo->callerTypeForAnco = static_cast<int32_t>(CallerTypeForAnco::QUERY);
+
+    // Set up callerInfoMap_ with test data
+    const std::string testSessionId = "test_session_id_12345";
+    UIAbilityLifecycleManager::CallerInfo testCallerInfo;
+    testCallerInfo.callerTokenId = 99999;
+    testCallerInfo.targetWant.SetParam(Want::PARAM_RESV_CALLER_TOKEN, 11111);
+    testCallerInfo.targetWant.SetParam(Want::PARAM_RESV_CALLER_UID, 22222);
+    testCallerInfo.targetWant.SetParam(Want::PARAM_RESV_CALLER_PID, 33333);
+    testCallerInfo.targetWant.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, std::string("com.test.bundle"));
+    testCallerInfo.targetWant.SetParam(Want::PARAM_RESV_CALLER_ABILITY_NAME, std::string("TestAbility"));
+    mgr->callerInfoMap_.emplace(testSessionId, testCallerInfo);
+
+    // Set the session ID in the want
+    abilityRequest.want.SetParam("ohos.ability.param.sessionId", testSessionId);
+    abilityRequest.sessionInfo = sessionInfo;
+
+    // Pre-populate sessionAbilityMap_
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    mgr->sessionAbilityMap_.emplace(sessionInfo->persistentId, abilityRecord);
+
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    auto result = mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart);
+    EXPECT_EQ(result, ERR_OK);
+
+    // Verify callerInfoMap_ was cleared (the entry should have been removed)
+    EXPECT_TRUE(mgr->callerInfoMap_.empty());
+}
+
+/**
+ * @tc.name: StartUIAbility_CallerTypeForAnco_QUERY_002
+ * @tc.desc: Test StartUIAbility with CallerTypeForAnco::QUERY and cold start
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_CallerTypeForAnco_QUERY_002, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 1;
+    sessionInfo->callerTypeForAnco = static_cast<int32_t>(CallerTypeForAnco::QUERY);
+
+    // Set up callerInfoMap_ with test data
+    const std::string testSessionId = "cold_start_session_id";
+    UIAbilityLifecycleManager::CallerInfo testCallerInfo;
+    testCallerInfo.callerTokenId = 55555;
+    testCallerInfo.targetWant.SetParam(Want::PARAM_RESV_CALLER_TOKEN, 66666);
+    testCallerInfo.targetWant.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, std::string("com.coldstart.test"));
+    testCallerInfo.targetWant.SetParam(Want::PARAM_RESV_CALLER_ABILITY_NAME, std::string("ColdStartAbility"));
+    mgr->callerInfoMap_.emplace(testSessionId, testCallerInfo);
+
+    // Set the session ID in the want
+    abilityRequest.want.SetParam("ohos.ability.param.sessionId", testSessionId);
+
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = true;
+
+    auto result = mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart);
+    EXPECT_EQ(result, ERR_OK);
+
+    // Verify callerInfoMap_ was cleared
+    EXPECT_TRUE(mgr->callerInfoMap_.empty());
+}
+
+/**
+ * @tc.name: StartUIAbility_CallerTypeForAnco_QUERY_003
+ * @tc.desc: Test StartUIAbility with CallerTypeForAnco::QUERY and non-existent session ID
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_CallerTypeForAnco_QUERY_003, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 1;
+    sessionInfo->callerTypeForAnco = static_cast<int32_t>(CallerTypeForAnco::QUERY);
+
+    // Use a non-existent session ID
+    const std::string nonExistentSessionId = "non_existent_session_id";
+    abilityRequest.want.SetParam("ohos.ability.param.sessionId", nonExistentSessionId);
+    abilityRequest.sessionInfo = sessionInfo;
+
+    // Pre-populate sessionAbilityMap_
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    mgr->sessionAbilityMap_.emplace(sessionInfo->persistentId, abilityRecord);
+
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    // Should not fail even if session ID is not found (UpdateTokenIdAndWantWithRealCallerInfo
+    // will handle this case gracefully with a warning log)
+    auto result = mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
  * @tc.name: CloseUIAbility_Various_001
  * @tc.desc: CloseUIAbility various branches
  * @tc.type: FUNC
