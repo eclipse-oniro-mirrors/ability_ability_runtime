@@ -1617,7 +1617,7 @@ HWTEST_F(AppRunningRecordTest, AppRunningRecord_GenerateRunningUniqueId_Uniquene
         std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
         std::string processName;
         auto appRecord = std::make_shared<AppRunningRecord>(appInfo, RECORD_ID, processName);
-        ASSERT ASSERT_NE(appRecord, nullptr);
+        ASSERT_NE(appRecord, nullptr);
         
         uint64_t uniqueId = appRecord->GetAppRunningUniqueId();
         uniqueIds.insert(uniqueId);
