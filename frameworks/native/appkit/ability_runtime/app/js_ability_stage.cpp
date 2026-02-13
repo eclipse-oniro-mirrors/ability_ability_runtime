@@ -402,7 +402,7 @@ bool JsAbilityStage::CallOnPrepareTerminateAsync(napi_env env,
 std::string JsAbilityStage::OnAcceptWant(const AAFwk::Want &want,
     AppExecFwk::AbilityTransactionCallbackInfo<std::string> *callbackInfo, bool &isAsync)
 {
-    TAG_LOGI(AAFwkTag::APPKIT, "OnAcceptWant called");
+    TAG_LOGD(AAFwkTag::APPKIT, "OnAcceptWant called");
     AbilityStage::OnAcceptWant(want, callbackInfo, isAsync);
 
     HandleScope handleScope(jsRuntime_);

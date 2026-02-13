@@ -1153,12 +1153,14 @@ bool OHOSApplication::isUpdateFontSize(Configuration &config, AbilityRuntime::Se
 
     auto preLevle = ApplicationConfigurationManager::GetInstance().GetFontSetLevel();
     if (level < preLevle) {
+        TAG_LOGW(AAFwkTag::APPKIT, "low level");
         config.RemoveItem(AAFwk::GlobalConfigurationKey::SYSTEM_FONT_SIZE_SCALE);
         return false;
     }
 
     std::string globalFontFollowSysteme = configuration_->GetItem(AAFwk::GlobalConfigurationKey::APP_FONT_SIZE_SCALE);
     if (level == preLevle && !globalFontFollowSysteme.empty()) {
+        TAG_LOGW(AAFwkTag::APPKIT, "same level");
         if (globalFontFollowSysteme.compare(ConfigurationInner::IS_APP_FONT_FOLLOW_SYSTEM) == 0) {
             return true;
         }
@@ -1167,6 +1169,7 @@ bool OHOSApplication::isUpdateFontSize(Configuration &config, AbilityRuntime::Se
     }
 
     // level > preLevle
+    TAG_LOGW(AAFwkTag::APPKIT, "high level");
     configuration_->RemoveItem(AAFwk::GlobalConfigurationKey::APP_FONT_SIZE_SCALE);
     ApplicationConfigurationManager::GetInstance().SetfontSetLevel(level);
     return true;
