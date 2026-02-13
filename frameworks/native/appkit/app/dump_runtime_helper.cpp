@@ -239,7 +239,7 @@ void DumpRuntimeHelper::DumpJsHeap(const OHOS::AppExecFwk::JsHeapDumpInfo &info)
     }
 
     if (info.needSnapshot == true) {
-        runtime->DumpHeapSnapshot(info.tid, info.needGc, info.needBinary);
+        runtime->DumpHeapSnapshot(info.tid, info.needGc, info.needBinary, info.needClearNodeIdCache);
     } else {
         if (info.needGc == true) {
             runtime->ForceFullGC(info.tid);
