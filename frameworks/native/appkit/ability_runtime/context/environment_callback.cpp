@@ -61,20 +61,17 @@ void JsEnvironmentCallback::CallConfigurationUpdatedInner(const std::string &met
 void JsEnvironmentCallback::OnConfigurationUpdated(const AppExecFwk::Configuration &config)
 {
     std::weak_ptr<JsEnvironmentCallback> thisWeakPtr(shared_from_this());
-    std::unique_ptr<NapiAsyncTask::CompleteCallback> complete = std::make_unique<NapiAsyncTask::CompleteCallback>(
-        [thisWeakPtr, config, callbacks = callbacks_, callbacksSync = callbacksSync_]
-        (napi_env env, NapiAsyncTask &task, int32_t status) {
-            std::shared_ptr<JsEnvironmentCallback> jsEnvCallback = thisWeakPtr.lock();
-            if (jsEnvCallback) {
-                jsEnvCallback->CallConfigurationUpdatedInner("onConfigurationUpdated", config, callbacks);
-                jsEnvCallback->CallConfigurationUpdatedInner("onConfigurationUpdated", config, callbacksSync);
-            }
+    auto callbacks = callbacks_;
+    auto callbacksSync = callbacksSync_;
+    // When vsync_first is enabled, events marked with napi_barrier_need are
+    // treated as barriers and will execute *before* the next vsync.
+    napi_send_event(env_, [thisWeakPtr, config, callbacks, callbacksSync]() {
+        std::shared_ptr<JsEnvironmentCallback> jsEnvCallback = thisWeakPtr.lock();
+        if (jsEnvCallback) {
+            jsEnvCallback->CallConfigurationUpdatedInner("onConfigurationUpdated", config, callbacks);
+            jsEnvCallback->CallConfigurationUpdatedInner("onConfigurationUpdated", config, callbacksSync);
         }
-    );
-    napi_ref callback = nullptr;
-    std::unique_ptr<NapiAsyncTask::ExecuteCallback> execute = nullptr;
-    NapiAsyncTask::ScheduleLowQos("JsEnvironmentCallback::OnConfigurationUpdated",
-        env_, std::make_unique<NapiAsyncTask>(callback, std::move(execute), std::move(complete)));
+    }, napi_eprio_low, "JsEnvironmentCallback::OnConfigurationUpdated", napi_barrier_need);
 }
 
 void JsEnvironmentCallback::CallMemoryLevelInner(const std::string &methodName, const int level,

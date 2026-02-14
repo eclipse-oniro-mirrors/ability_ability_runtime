@@ -1270,6 +1270,61 @@ ohos_unittest("startup_manager_mock_test") {
   ]
 }
 
+ohos_unittest("js_environment_callback_test") {
+  module_out_path = module_output_path
+
+  include_dirs = [
+    "${ability_runtime_services_path}/common/include",
+    "${ability_runtime_test_path}/mock/common/include",
+  ]
+
+  sources = [
+    "js_environment_callback_test.cpp",
+  ]
+
+  configs = [ ":module_private_config" ]
+
+  deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
+    "${ability_runtime_native_path}/ability/native:ability_thread",
+    "${ability_runtime_native_path}/ability/native:abilitykit_native",
+    "${ability_runtime_native_path}/ability/native:abilitykit_utils",
+    "${ability_runtime_native_path}/ability/native:configuration_helper",
+    "${ability_runtime_native_path}/ability/native:uiabilitykit_native",
+    "${ability_runtime_native_path}/appkit:app_context",
+    "${ability_runtime_native_path}/appkit:appkit_manager_helper",
+    "${ability_runtime_native_path}/appkit:appkit_native",
+    "${ability_runtime_path}/js_environment/frameworks/js_environment:js_environment",
+  ]
+
+  external_deps = [
+    "ability_base:base",
+    "ability_base:configuration",
+    "ability_base:extractortool",
+    "ability_base:want",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "eventhandler:libeventhandler",
+    "ffrt:libffrt",
+    "form_fwk:fmskit_native",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "hitrace:hitrace_meter",
+    "init:libbegetutil",
+    "ipc:ipc_core",
+    "napi:ace_napi",
+    "resource_management:global_resmgr",
+    "resource_management:librawfile",
+    "samgr:samgr_proxy",
+    "runtime_core:ani",
+  ]
+}
+
 ###############################################################################
 
 group("unittest") {
@@ -1297,6 +1352,7 @@ group("unittest") {
     ":extension_plugin_info_test",
     ":form_extension_context_test",
     ":idle_time_test",
+    ":js_environment_callback_test",
     ":native_lib_util_test",
     ":overlay_event_subscriber_test",
     ":startup_manager_mock_test",
