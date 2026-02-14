@@ -11686,9 +11686,12 @@ int AbilityManagerService::CheckCallAutoFillExtensionPermission(const AbilityReq
     std::string callerName;
     int32_t uid = 0;
     auto callerPid = IPCSkeleton::GetCallingPid();
+    auto callerUid = IPCSkeleton::GetCallingUid();
     DelayedSingleton<AppScheduler>::GetInstance()->GetBundleNameByPid(callerPid, callerName, uid);
-    if (viewData.bundleName != callerName) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "Not %{public}s called, no allowed", viewData.bundleName.c_str());
+    if (viewData.bundleName != callerName || uid != callerUid) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "BundleName or uid mismatch, no allowed. "
+            "viewData bundle: %{public}s, caller bundle: %{public}s, caller uid: %{public}d, expected uid: %{public}d",
+            viewData.bundleName.c_str(), callerName.c_str(), uid, callerUid);
         return ERR_WRONG_INTERFACE_CALL;
     }
     return ERR_OK;
