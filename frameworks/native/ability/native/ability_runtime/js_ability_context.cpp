@@ -585,7 +585,7 @@ std::pair<OnAtomicRequestSuccess, OnAtomicRequestFailure> JsAbilityContext::Crea
         napi_status status = napi_call_function(
             env, completionHandlerForAtomicService, onRequestSuccFunc, ARGC_ONE, argv, nullptr);
         if (status != napi_ok) {
-            TAG_LOGE(AAFwkTag::CONTEXT, "call onRequestSuccess, failed: %{public}d", status);
+            TAG_LOGE(AAFwkTag::UI_EXT, "call onRequestSuccess, failed: %{public}d", status);
         }
     };
     OnAtomicRequestFailure onRequestFail = [env, atomicServiceRef, onRequestFailRef](
@@ -607,7 +607,7 @@ std::pair<OnAtomicRequestSuccess, OnAtomicRequestFailure> JsAbilityContext::Crea
         napi_status status = napi_call_function(
             env, completionHandlerForAtomicService, onRequestFailFunc, ARGC_THREE, argv, nullptr);
         if (status != napi_ok) {
-            TAG_LOGE(AAFwkTag::CONTEXT, "call onRequestFailure, failed: %{public}d", status);
+            TAG_LOGE(AAFwkTag::UI_EXT, "call onRequestFailure, failed: %{public}d", status);
         }
     };
     return std::make_pair(onRequestSucc, onRequestFail);
@@ -622,7 +622,7 @@ void JsAbilityContext::UnWrapCompletionHandlerForAtomicService(
         TAG_LOGE(AAFwkTag::CONTEXT, "create reference failed");
         return;
     }
-    TAG_LOGI(AAFwkTag::CONTEXT, "completionHandlerForAtomicService exists");
+    TAG_LOGI(AAFwkTag::UI_EXT, "completionHandlerForAtomicService exists");
     std::shared_ptr<NativeReference> onRequestSuccRef = AppExecFwk::CreateNativeRef(
         env, atomicServiceRef->GetNapiValue(), "onAtomicServiceRequestSuccess", napi_function);
     std::shared_ptr<NativeReference> onRequestFailRef = AppExecFwk::CreateNativeRef(
@@ -678,7 +678,7 @@ napi_value JsAbilityContext::OnStartAbility(napi_env env, NapiCallbackInfo& info
     }
 
     AAFwk::Want want;
-    AppExecFwk::UnwrapWant(env, info.argv[INDEX_ZERO], want);
+    OHOS::AppExecFwk::UnwrapWant(env, info.argv[INDEX_ZERO], want);
     InheritWindowMode(want);
     decltype(info.argc) unwrapArgc = ARGC_ONE;
     TAG_LOGD(AAFwkTag::CONTEXT, "ability:%{public}s", want.GetElement().GetAbilityName().c_str());
@@ -945,12 +945,12 @@ napi_value JsAbilityContext::OnDisconnectUIServiceExtension(napi_env env, NapiCa
     NapiAsyncTask::ExecuteCallback execute = [weak = context_, want, connection, innerErrCode]() {
         auto context = weak.lock();
         if (!context) {
-            TAG_LOGW(AAFwkTag::UISERVC_EXT, "null context");
+            TAG_LOGW(AAFwkTag::UISERVC_EXT, "onDisconnectUIServiceExtension context is released");
             *innerErrCode = static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT);
             return;
         }
         if (!connection) {
-            TAG_LOGW(AAFwkTag::UISERVC_EXT, "null connection");
+            TAG_LOGW(AAFwkTag::UISERVC_EXT, "onDisconnectUIServiceExtension connection nullptr");
             *innerErrCode = static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER);
             return;
         }
@@ -1141,7 +1141,7 @@ napi_value JsAbilityContext::OnStartAbilityAsCallerInner(napi_env env, NapiCallb
     NapiAsyncTask::ExecuteCallback execute = [weak = context_, want, startOptions, unwrapArgc, innerErrCode]() {
         auto context = weak.lock();
         if (!context) {
-            TAG_LOGW(AAFwkTag::CONTEXT, "null context");
+            TAG_LOGW(AAFwkTag::CONTEXT, "context is released");
             *innerErrCode = static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT);
             return;
         }
@@ -1949,7 +1949,7 @@ napi_value JsAbilityContext::OnConnectAbilityWithAccount(napi_env env, NapiCallb
         [weak = context_, want, accountId, connection, connectId, innerErrCode]() {
             auto context = weak.lock();
             if (!context) {
-                TAG_LOGE(AAFwkTag::CONTEXT, "null context");
+                TAG_LOGE(AAFwkTag::CONTEXT, "context is released");
                 *innerErrCode = static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT);
                 return;
             }

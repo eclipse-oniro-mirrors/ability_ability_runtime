@@ -605,7 +605,7 @@ bool JsAbility::OnBackPress()
 bool JsAbility::OnPrepareTerminate()
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    TAG_LOGD(AAFwkTag::ABILITY, "call, ability: %{public}s", GetAbilityName().c_str());
+    TAG_LOGI(AAFwkTag::ABILITY, "prepare terminate call, ability: %{public}s", GetAbilityName().c_str());
     Ability::OnPrepareTerminate();
     HandleScope handleScope(jsRuntime_);
     auto env = jsRuntime_.GetNapiEnv();

@@ -1036,6 +1036,58 @@ bool EtsServiceExtensionContext::UnwrapWantList(ani_env *env, ani_object wantLis
     return true;
 }
 
+void EtsServiceExtensionContext::OnStartUIAbilities(ani_env *env, ani_object aniObj, ani_object wantListObj,
+    ani_object callback)
+{
+    TAG_LOGD(AAFwkTag::SERVICE_EXT, "OnStartUIAbilities");
+
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "null env");
+        AppExecFwk::AsyncCallback(env, callback,
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER), nullptr);
+        return;
+    }
+    ani_vm *etsVm = nullptr;
+    ani_status status = ANI_ERROR;
+    if ((status = env->GetVM(&etsVm)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "status : %{public}d", status);
+        return;
+    }
+
+    ErrCode innerErrCode = ERR_OK;
+    std::vector<AAFwk::Want> wantList;
+    std::string requestKey = std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count());
+    if (!EtsServiceExtensionContext::UnwrapWantList(env, wantListObj, wantList)) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "Unwrap wantList param failed.");
+        ani_object aniObject = EtsErrorUtil::CreateInvalidParamError(env, "UnwrapWant filed");
+        AppExecFwk::AsyncCallback(env, callback, aniObject, nullptr);
+        return;
+    }
+    TAG_LOGD(AAFwkTag::SERVICE_EXT, "startUIAbilities wantListLength: %{public}zu", wantList.size());
+    EtsStartAbilitiesObserver::GetInstance().SetEtsVm(etsVm);
+    EtsStartAbilitiesObserver::GetInstance().AddObserver(env, requestKey, callback);
+
+    auto context = context_.lock();
+    if (!context) {
+        TAG_LOGW(AAFwkTag::SERVICE_EXT, "null context");
+        innerErrCode = static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT);
+        ani_object aniObject = EtsErrorUtil::CreateError(env, static_cast<AbilityErrorCode>(innerErrCode));
+        AppExecFwk::AsyncCallback(env, callback, aniObject, nullptr);
+        return;
+    }
+    innerErrCode = context->StartUIAbilities(wantList, requestKey);
+
+    TAG_LOGD(AAFwkTag::SERVICE_EXT, "startUIAbilities complete innerErrCode: %{public}d", innerErrCode);
+    if (innerErrCode == AAFwk::START_UI_ABILITIES_WAITING_SPECIFIED_CODE) {
+        TAG_LOGI(AAFwkTag::SERVICE_EXT, "startUIAbilities waiting specified.");
+        ani_object aniObject = EtsErrorUtil::CreateErrorByNativeErr(env, innerErrCode);
+        AppExecFwk::AsyncCallback(env, callback, aniObject, nullptr);
+        return;
+    }
+    EtsStartAbilitiesObserver::HandleFinished(requestKey, innerErrCode);
+}
+
 void EtsServiceExtensionContext::ClearFailedCallConnection(
     std::shared_ptr<ServiceExtensionContext> context, const std::shared_ptr<CallerCallBack> &callback)
 {
@@ -1308,59 +1360,6 @@ void ETSServiceExtensionConnection::OnAbilityDisconnectDone(const AppExecFwk::El
     }
     AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);
 }
-
-void EtsServiceExtensionContext::OnStartUIAbilities(ani_env *env, ani_object aniObj, ani_object wantListObj,
-    ani_object callback)
-{
-    TAG_LOGD(AAFwkTag::SERVICE_EXT, "OnStartUIAbilities");
-
-    if (env == nullptr) {
-        TAG_LOGE(AAFwkTag::SERVICE_EXT, "null env");
-        AppExecFwk::AsyncCallback(env, callback,
-            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER), nullptr);
-        return;
-    }
-    ani_vm *etsVm = nullptr;
-    ani_status status = ANI_ERROR;
-    if ((status = env->GetVM(&etsVm)) != ANI_OK) {
-        TAG_LOGE(AAFwkTag::SERVICE_EXT, "status : %{public}d", status);
-        return;
-    }
-
-    ErrCode innerErrCode = ERR_OK;
-    std::vector<AAFwk::Want> wantList;
-    std::string requestKey = std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(
-        std::chrono::system_clock::now().time_since_epoch()).count());
-    if (!EtsServiceExtensionContext::UnwrapWantList(env, wantListObj, wantList)) {
-        TAG_LOGE(AAFwkTag::SERVICE_EXT, "Unwrap wantList param failed.");
-        ani_object aniObject = EtsErrorUtil::CreateInvalidParamError(env, "UnwrapWant filed");
-        AppExecFwk::AsyncCallback(env, callback, aniObject, nullptr);
-        return;
-    }
-    TAG_LOGD(AAFwkTag::SERVICE_EXT, "startUIAbilities wantListLength: %{public}zu", wantList.size());
-    EtsStartAbilitiesObserver::GetInstance().SetEtsVm(etsVm);
-    EtsStartAbilitiesObserver::GetInstance().AddObserver(env, requestKey, callback);
-
-    auto context = context_.lock();
-    if (!context) {
-        TAG_LOGW(AAFwkTag::SERVICE_EXT, "null context");
-        innerErrCode = static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT);
-        ani_object aniObject = EtsErrorUtil::CreateError(env, static_cast<AbilityErrorCode>(innerErrCode));
-        AppExecFwk::AsyncCallback(env, callback, aniObject, nullptr);
-        return;
-    }
-    innerErrCode = context->StartUIAbilities(wantList, requestKey);
-
-    TAG_LOGD(AAFwkTag::SERVICE_EXT, "startUIAbilities complete innerErrCode: %{public}d", innerErrCode);
-    if (innerErrCode == AAFwk::START_UI_ABILITIES_WAITING_SPECIFIED_CODE) {
-        TAG_LOGI(AAFwkTag::SERVICE_EXT, "startUIAbilities waiting specified.");
-        ani_object aniObject = EtsErrorUtil::CreateErrorByNativeErr(env, innerErrCode);
-        AppExecFwk::AsyncCallback(env, callback, aniObject, nullptr);
-        return;
-    }
-    EtsStartAbilitiesObserver::HandleFinished(requestKey, innerErrCode);
-}
-
 
 void EtsServiceExtensionContext::CreateOnAtomicRequestSuccessResultCallback(ani_env *env, ani_ref refCompletionHandler,
     OnAtomicRequestSuccess &onRequestCallback, const char *callbackName)

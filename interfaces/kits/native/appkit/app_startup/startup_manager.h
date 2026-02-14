@@ -22,12 +22,11 @@
 #include <string>
 #include <vector>
 
-#include "app_launch_data.h"
 #include "app_startup_task.h"
 #include "app_startup_task_matcher.h"
 #include "bundle_info.h"
+#include "app_launch_data.h"
 #include "native_startup_task.h"
-#include "nlohmann/json.hpp"
 #include "preload_so_startup_task.h"
 #include "singleton.h"
 #include "startup_config.h"

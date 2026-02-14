@@ -399,7 +399,7 @@ ErrCode AbilityContextImpl::TerminateAbilityWithResult(const AAFwk::Want& want, 
     }
 #else
     ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->TerminateAbility(token_, resultCode, &want);
-    TAG_LOGI(AAFwkTag::CONTEXT, "ret=%{public}d", err);
+    TAG_LOGI(AAFwkTag::CONTEXT, "TerminateAbilityWithResult. ret=%{public}d", err);
     return err;
 #endif
 }
@@ -741,7 +741,7 @@ ErrCode AbilityContextImpl::TerminateSelf()
     AAFwk::Want resultWant;
     ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->TerminateAbility(token_, -1, &resultWant);
     if (err != ERR_OK) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "failed %{public}d", err);
+        TAG_LOGE(AAFwkTag::CONTEXT, "AbilityContextImpl::TerminateSelf is failed %{public}d", err);
     }
     return err;
 #endif

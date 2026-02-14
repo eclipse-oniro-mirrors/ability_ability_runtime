@@ -1372,6 +1372,24 @@ public:
     virtual int PrepareTerminateAbility(const sptr<IRemoteObject> &token,
         sptr<IPrepareTerminateCallback> &callback) override;
 
+    /**
+     * PrepareTerminateAbilityDone, called when PrepareTerminateAbility call is done.
+     *
+     * @param token, the token of the ability to terminate.
+     * @param callback callback.
+     */
+    virtual void PrepareTerminateAbilityDone(const sptr<IRemoteObject> &token, bool isTerminate) override;
+
+    /**
+     * KillProcessWithPrepareTerminateDone, called when KillProcessWithPrepareTerminate call is done.
+     *
+     * @param moduleName, the module name of the application.
+     * @param prepareTermination, the result of prepareTermination call of the module.
+     * @param isExist, whether the prepareTerminate functions are implemented.
+     */
+    virtual void KillProcessWithPrepareTerminateDone(const std::string &moduleName,
+        int32_t prepareTermination, bool isExist) override;
+
     void HandleFocused(const sptr<OHOS::Rosen::FocusChangeInfo> &focusChangeInfo);
 
     void HandleUnfocused(const sptr<OHOS::Rosen::FocusChangeInfo> &focusChangeInfo);
@@ -2127,14 +2145,6 @@ public:
         bool isCallByShortcut = false);
 
     /**
-     * PrepareTerminateAbilityDone, called when PrepareTerminateAbility call is done.
-     *
-     * @param token, the token of the ability to terminate.
-     * @param callback callback.
-     */
-    virtual void PrepareTerminateAbilityDone(const sptr<IRemoteObject> &token, bool isTerminate) override;
-
-    /**
      * KillProcessForPermissionUpdate, call KillProcessForPermissionUpdate() through proxy object,
      * force kill the application by accessTokenId, notify exception to SCB.
      *
@@ -2143,15 +2153,6 @@ public:
      */
     virtual int32_t KillProcessForPermissionUpdate(uint32_t accessTokenId) override;
 
-    /**
-     * KillProcessWithPrepareTerminateDone, called when KillProcessWithPrepareTerminate call is done.
-     *
-     * @param moduleName, the module name of the application.
-     * @param prepareTermination, the result of prepareTermination call of the module.
-     * @param isExist, whether the prepareTerminate functions are implemented.
-     */
-    virtual void KillProcessWithPrepareTerminateDone(const std::string &moduleName,
-        int32_t prepareTermination, bool isExist) override;
     std::shared_ptr<AppExitReasonHelper> GetAppExitReasonHelper()
     {
         return appExitReasonHelper_;
@@ -2198,15 +2199,6 @@ public:
     virtual int32_t SetOnNewWantSkipScenarios(sptr<IRemoteObject> callerToken, int32_t scenarios) override;
 
     /**
-     * StartAbilityWithWait, send want and abilityStartWithWaitObserver to abms.
-     *
-     * @param want Ability want.
-     * @param observer ability foreground notify observer for aa tool.
-     * @return Returns ERR_OK on success, others on failure.
-     */
-    virtual int32_t StartAbilityWithWait(Want &want, sptr<IAbilityStartWithWaitObserver> &observer) override;
-
-    /**
      * Get all insight intent infos.
      * @param flag, the get type.
      * @param infos, the insight intent infos.
@@ -2247,6 +2239,15 @@ public:
         InsightIntentInfoForQuery &info,
         int32_t userId = DEFAULT_INVAL_VALUE) override;
 
+   /**
+     * StartAbilityWithWait, send want and abilityStartWithWaitObserver to abms.
+     *
+     * @param want Ability want.
+     * @param observer ability foreground notify observer for aa tool.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t StartAbilityWithWait(Want &want, sptr<IAbilityStartWithWaitObserver> &observer) override;
+
     int32_t UpdateKioskApplicationList(const std::vector<std::string> &appList) override;
 
     int32_t EnterKioskMode(sptr<IRemoteObject> callerToken) override;
@@ -2256,13 +2257,6 @@ public:
     int32_t GetKioskStatus(AAFwk::KioskStatus &kioskStatus) override;
 
     std::shared_ptr<AbilityInterceptorExecuter> GetAbilityInterceptorExecuter();
-
-    /**
-     * Register sa interceptor.
-     * @param interceptor, The sa interceptor.
-     * @return Returns ERR_OK on success, others on failure.
-     */
-    virtual int32_t RegisterSAInterceptor(sptr<AbilityRuntime::ISAInterceptor> interceptor) override;
 
      /**
      * Set keep-alive flag for app service extension under u1 user.
@@ -2278,6 +2272,13 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int32_t QueryKeepAliveAppServiceExtensions(std::vector<KeepAliveInfo> &list) override;
+
+    /**
+     * Register sa interceptor.
+     * @param interceptor, The sa interceptor.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t RegisterSAInterceptor(sptr<AbilityRuntime::ISAInterceptor> interceptor) override;
 
     virtual int32_t NotifyStartupExceptionBySCB(int32_t requestId) override;
 

@@ -44,7 +44,7 @@ public:
      * @param userId userId.
      * @param errcode errcode.
      */
-    virtual void OnLogoutUserDone(int userId, int errcode) {}
+    virtual void OnLogoutUserDone(int userId, int errcode) {};
 
     enum UserCallbackCmd {
         // ipc id for OnStopUserDone
