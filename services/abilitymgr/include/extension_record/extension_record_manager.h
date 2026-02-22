@@ -150,6 +150,11 @@ public:
     void UnRegisterPreloadUIExtensionHostClient(
         int32_t key, const sptr<IRemoteObject::DeathRecipient> &deathRecipient);
 
+    // AgentUI extension launch limit management
+    int32_t CheckAgentUILaunchLimit(int32_t callerUid, const std::string &bundleName);
+    void AddAgentUILaunchRecord(int32_t callerUid, const std::string &bundleName, int32_t extensionAbilityId);
+    void RemoveAgentUILaunchRecord(int32_t callerUid, const std::string &bundleName, int32_t extensionAbilityId);
+
 private:
     inline std::shared_ptr<ExtensionRecord> GetExtensionRecordById(int32_t extensionRecordId);
 
@@ -164,6 +169,11 @@ private:
     ExtensionAbilityRecordMap terminateRecords_;
     PreLoadUIExtensionMapType preloadUIExtensionMap_;
     std::map<int32_t, sptr<IRemoteObject>> preloadUIExtensionHostClientCallerTokens_;
+
+    // AgentUI extension launch record management
+    // Structure: callerUid -> { bundleName -> [extensionAbilityId1, extensionAbilityId2, ...] }
+    std::map<int32_t, std::map<std::string, std::set<int32_t>>> agentUIExtensionRecords_;
+    std::mutex agentUIExtensionMutex_;
 
     void SetCachedFocusedCallerToken(int32_t extensionRecordId, sptr<IRemoteObject> &focusedCallerToken);
     sptr<IRemoteObject> GetCachedFocusedCallerToken(int32_t extensionRecordId) const;

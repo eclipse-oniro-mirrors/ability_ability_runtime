@@ -193,6 +193,11 @@ ErrCode ServiceRouterMgrService::QueryPurposeInfos(const Want& want, const std::
     std::vector<PurposeInfo>& purposeInfos, int32_t& funcResult)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "coldStart");
+    if (!VerifySystemApp()) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "verify system app failed");
+        funcResult = ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+        return funcResult;
+    }
     DelayUnloadTask();
     funcResult = ServiceRouterDataMgr::GetInstance().QueryPurposeInfos(want, purposeName, purposeInfos);
     return ERR_OK;

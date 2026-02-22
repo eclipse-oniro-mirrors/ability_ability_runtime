@@ -22,11 +22,10 @@
 
 namespace OHOS {
 namespace AgentManagerEts {
-ani_object CreateEtsProvider(ani_env *env, const AgentRuntime::Provider &provider);
-ani_object CreateEtsCapabilities(ani_env *env, const AgentRuntime::Capabilities &capabilities);
-ani_object CreateEtsAuthentication(ani_env *env, const AgentRuntime::Authentication &authentication);
-ani_object CreateEtsSkill(ani_env *env, const AgentRuntime::Skill &skill);
-ani_object CreateEtsSkillArray(ani_env *env, const std::vector<std::shared_ptr<AgentRuntime::Skill>> &skills);
+ani_object CreateEtsAgentProvider(ani_env *env, const AgentRuntime::AgentProvider &provider);
+ani_object CreateEtsAgentCapabilities(ani_env *env, const AgentRuntime::AgentCapabilities &capabilities);
+ani_object CreateEtsAgentSkill(ani_env *env, const AgentRuntime::AgentSkill &skill);
+ani_object CreateEtsAgentSkillArray(ani_env *env, const std::vector<std::shared_ptr<AgentRuntime::AgentSkill>> &skills);
 ani_object CreateEtsAgentCard(ani_env *env, const AgentRuntime::AgentCard &card);
 ani_object CreateEtsAgentCardArray(ani_env *env, const std::vector<AgentRuntime::AgentCard> &cards);
 } // namespace AgentManagerEts

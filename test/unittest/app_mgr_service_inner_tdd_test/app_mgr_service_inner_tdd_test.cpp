@@ -942,6 +942,31 @@ HWTEST_F(AppMgrServiceInnerTest, NotifyAppFaultBySA_001, TestSize.Level1)
 }
 
 /**
+ * @tc.name: SubmitDfxFaultTask_001
+ * @tc.desc: Verify that the SubmitDfxFaultTask interface calls normally
+ * @tc.type: FUNC
+ * @tc.Function: SubmitDfxFaultTask
+ * @tc.SubFunction: NA
+ * @tc.EnvConditions: NA
+ */
+HWTEST_F(AppMgrServiceInnerTest, SubmitDfxFaultTask_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SubmitDfxFaultTask start");
+    FaultData faultData;
+    std::string bundleName = "SubmitDfxFaultTask_001";
+    int32_t recordId = 100;
+    std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
+    std::string processName = "SubmitDfxFaultTask_001";
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, recordId, processName);
+    int32_t pid = getpid();
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    appMgrServiceInner->Init();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    appMgrServiceInner->SubmitDfxFaultTask(faultData, bundleName, appRecord, pid);
+    TAG_LOGI(AAFwkTag::TEST, "SubmitDfxFaultTask end");
+}
+
+/**
  * @tc.name: FaultTypeToString_001
  * @tc.desc: Verify that the FaultTypeToString interface calls normally
  * @tc.type: FUNC

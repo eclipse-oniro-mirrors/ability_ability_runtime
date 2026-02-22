@@ -70,10 +70,17 @@ int32_t AgentCardMgr::HandleBundleInstall(const std::string &bundleName, int32_t
                 return -1;
             }
             for (auto cardStr : j["agentCards"]) {
-                AgentCard card = AgentCard::FromJson(cardStr);
-                card.bundleName = bundleName;
-                card.moduleName = extensionInfo.moduleName;
-                card.abilityName = extensionInfo.name;
+                AgentCard card;
+                if (!AgentCard::FromJson(cardStr, card)) {
+                    TAG_LOGE(AAFwkTag::SER_ROUTER, "FromJson failed");
+                    continue;
+                }
+                if (card.appInfo == nullptr) {
+                    card.appInfo = std::make_shared<AgentAppInfo>();
+                }
+                card.appInfo->bundleName = bundleName;
+                card.appInfo->moduleName = extensionInfo.moduleName;
+                card.appInfo->abilityName = extensionInfo.name;
                 cards.push_back(card);
             }
         }

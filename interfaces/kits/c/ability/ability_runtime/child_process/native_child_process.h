@@ -494,6 +494,7 @@ Ability_NativeChildProcess_ErrCode OH_Ability_UnregisterNativeChildProcessExitCa
  *
  * @param pid Process ID of the target child process to terminate.
  * @return Returns {@link NCP_NO_ERROR} if the operation succeeds.
+ *         Returns {@link NCP_ERR_SERVICE_ERROR} if system service error occurs.
  *         Returns {@link NCP_ERR_INVALID_PID} if:
  *           - The specified PID does not exist
  *           - The PID is not a child process of the current process

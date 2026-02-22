@@ -36,6 +36,7 @@ ohos_unittest("app_exit_reason_helper_fourth_test") {
     "mock/include",
     "${ability_runtime_services_path}/abilitymgr/include",
     "${ability_runtime_path}/interfaces/inner_api/app_manager/include/appmgr",
+    "${ability_runtime_services_path}/common/include/user_controller",
   ]
 
   sources = [

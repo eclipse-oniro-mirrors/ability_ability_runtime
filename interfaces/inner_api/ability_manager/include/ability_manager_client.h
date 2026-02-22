@@ -1497,6 +1497,34 @@ public:
     ErrCode RecordProcessExitReason(int32_t pid, int32_t uid, const ExitReason &exitReason);
 
     /**
+     * kill app reason.
+     * @param pid The process id.
+     * @param exitReason The reason of kill app.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode KillAppWithReason(int32_t pid, const ExitReasonCompability &exitReason);
+
+    /**
+     * Force bundle exit and record exit reason.
+     * @param bundleName Bundle name of kill app.
+     * @param appIndex The app index of app clone.
+     * @param userId User ID.
+     * @param exitReason The reason of app exit.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode KillBundleWithReason(
+        const std::string &bundleName, int32_t userId, int32_t appIndex, const ExitReasonCompability &exitReason);
+
+    /**
+     * Record app exit reason.
+     * @param pid The process id.
+     * @param uid The process uid.
+     * @param exitReason The reason of app exit.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode RecordAppWithReason(int32_t pid, int32_t uid, const ExitReasonCompability &exitReason);
+
+    /**
      * Set rootSceneSession by SCB.
      *
      * @param rootSceneSession Indicates root scene session of SCB.

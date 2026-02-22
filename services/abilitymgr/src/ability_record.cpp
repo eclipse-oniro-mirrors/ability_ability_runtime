@@ -113,7 +113,6 @@ const int32_t SHELL_ASSISTANT_DIETYPE = 0;
 std::atomic<int64_t> AbilityRecord::abilityRecordId = 0;
 const int32_t DEFAULT_USER_ID = 0;
 const int32_t SEND_RESULT_CANCELED = -1;
-const int32_t DEFAULT_REQUEST_CODE = -1;
 const int VECTOR_SIZE = 2;
 const int LOAD_TIMEOUT_ASANENABLED = 150;
 const int TERMINATE_TIMEOUT_ASANENABLED = 150;
@@ -1319,10 +1318,6 @@ void AbilityRecord::SendResultByBackToCaller(const std::shared_ptr<AbilityResult
     CHECK_POINTER(scheduler_);
     CHECK_POINTER(result);
     scheduler_->SendResult(result->requestCode_, result->resultCode_, result->resultWant_);
-    if (GetCallerInfo() != nullptr) {
-        DelayedSingleton<ForegroundAppConnectionManager>::GetInstance()->AbilityRemovePidConnection(
-            GetCallerInfo()->callerPid, GetPid(), GetAbilityRecordId());
-    }
 }
 
 void AbilityRecord::SendSandboxSavefileResult(const Want &want, int resultCode, int requestCode)
@@ -1551,16 +1546,26 @@ void AbilityRecord::RemoveCallerRequestCode(std::shared_ptr<AbilityRecord> calle
         TAG_LOGI(AAFwkTag::ABILITYMGR, "null record");
         return;
     }
-    std::lock_guard guard(callerListLock_);
-    for (auto it = callerList_.begin(); it != callerList_.end(); it++) {
-        if ((*it)->GetCaller() == callerAbilityRecord) {
-            (*it)->RemoveHistoryRequestCode(requestCode);
-            if ((*it)->GetRequestCodeSet().empty()) {
-                callerList_.erase(it);
-                TAG_LOGI(AAFwkTag::ABILITYMGR, "remove callerRecord");
+    bool removePidConnection = false;
+    {
+        std::lock_guard guard(callerListLock_);
+        for (auto it = callerList_.begin(); it != callerList_.end(); it++) {
+            if ((*it) != nullptr && (*it)->GetCaller() == callerAbilityRecord) {
+                (*it)->RemoveHistoryRequestCode(requestCode);
+                if (!(*it)->HasForResultRequestCode()) {
+                    removePidConnection = true;
+                }
+                if ((*it)->GetRequestCodeSet().empty()) {
+                    callerList_.erase(it);
+                    TAG_LOGI(AAFwkTag::ABILITYMGR, "remove callerRecord");
+                }
+                break;
             }
-            return;
         }
+    }
+    if (removePidConnection) {
+        DelayedSingleton<ForegroundAppConnectionManager>::GetInstance()->AbilityRemovePidConnection(
+            callerAbilityRecord->GetPid(), GetPid(), GetAbilityRecordId());
     }
 }
 

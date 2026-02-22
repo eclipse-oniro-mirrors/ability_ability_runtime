@@ -169,6 +169,48 @@ HWTEST_F(AbilityManagerClientTest, AbilityManagerClient_RecordProcessExitReason_
 }
 
 /**
+ * @tc.name: AbilityManagerClient_KillAppWithReason_0100
+ * @tc.desc: KillAppWithReason
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientTest, AbilityManagerClient_KillAppWithReason_0100, TestSize.Level1)
+{
+    int32_t pid = 0;
+    ExitReasonCompability exitReason;
+    auto result = AbilityManagerClient::GetInstance()->KillAppWithReason(pid, exitReason);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+ * @tc.name: AbilityManagerClient_KillBundleWithReason_0100
+ * @tc.desc: KillBundleWithReason
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientTest, AbilityManagerClient_KillBundleWithReason_0100, TestSize.Level1)
+{
+    std::string bundleName = "test.bundle.name";
+    int32_t userId = 0;
+    int32_t appIndex = 0;
+    ExitReasonCompability exitReason;
+    auto result = AbilityManagerClient::GetInstance()->KillBundleWithReason(bundleName, userId, appIndex, exitReason);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+ * @tc.name: AbilityManagerClient_RecordAppWithReason_0100
+ * @tc.desc: RecordAppWithReason
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientTest, AbilityManagerClient_RecordAppWithReason_0100, TestSize.Level1)
+{
+    int32_t pid = 0;
+    int32_t uid = 0;
+    ExitReasonCompability exitReason;
+    auto result = AbilityManagerClient::GetInstance()->RecordAppWithReason(pid, uid, exitReason);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
  * @tc.name: AbilityManagerClient_RegisterStatusBarDelegate_0100
  * @tc.desc: RegisterStatusBarDelegate
  * @tc.type: FUNC

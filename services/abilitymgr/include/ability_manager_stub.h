@@ -262,6 +262,9 @@ private:
     int32_t RecordAppExitReasonInner(MessageParcel &data, MessageParcel &reply);
     int32_t RecordProcessExitReasonInner(MessageParcel &data, MessageParcel &reply);
     int32_t RecordProcessExitReasonPlusInner(MessageParcel &data, MessageParcel &reply);
+    int32_t KillAppWithReasonInner(MessageParcel &data, MessageParcel &reply);
+    int32_t KillBundleWithReasonInner(MessageParcel &data, MessageParcel &reply);
+    int32_t RecordAppWithReasonInner(MessageParcel &data, MessageParcel &reply);
     int32_t SetResidentProcessEnableInner(MessageParcel &data, MessageParcel &reply);
 
     int SetRootSceneSessionInner(MessageParcel &data, MessageParcel &reply);

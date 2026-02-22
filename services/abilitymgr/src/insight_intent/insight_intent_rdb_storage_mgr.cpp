@@ -120,9 +120,11 @@ int32_t InsightRdbStorageMgr::LoadInsightIntentInfo(const std::string &bundleNam
     std::string key = std::to_string(userId).append("/").append(bundleName).append("/")
         .append(moduleName).append("/").append(intentName);
     bool result = DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance()->QueryDataBeginWithKey(key, value);
-    if (!result || value.size() == 0) {
+    if (!result) {
         TAG_LOGW(AAFwkTag::INTENT, "get entries error");
         return ERR_INVALID_VALUE;
+    } else if (value.size() == 0) {
+        return ERR_OK;
     }
     ExtractInsightIntentProfileInfoVec profileInfos;
     //only one intent
@@ -146,9 +148,11 @@ int32_t InsightRdbStorageMgr::LoadConfigInsightIntentInfo(const std::string &bun
     std::string key = std::to_string(userId).append("/").append(bundleName).append("/")
         .append(moduleName).append("/").append(intentName);
     bool result = DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance()->QueryDataBeginWithKey(key, value);
-    if (!result || value.size() == 0) {
+    if (!result) {
         TAG_LOGW(AAFwkTag::INTENT, "get entries error");
         return ERR_INVALID_VALUE;
+    } else if (value.size() == 0) {
+        return ERR_OK;
     }
     std::vector<InsightIntentInfo> configIntentInfos;
     //only one intent

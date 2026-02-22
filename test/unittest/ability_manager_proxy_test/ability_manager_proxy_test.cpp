@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -2474,6 +2474,48 @@ HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_ForceExitApp_001, TestSize
 
 /*
  * Feature: AbilityManagerService
+ * Function: KillAppWithReason
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService KillAppWithReason
+ * EnvConditions: NA
+ * CaseDescription: Verify the normal process of KillAppWithReason
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_KillAppWithReason_001, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
+    int32_t pid = 0;
+    ExitReasonCompability exitReason = { REASON_JS_ERROR, "Js Error." };
+    auto res = proxy_->KillAppWithReason(pid, exitReason);
+    EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::KILL_APP_WITH_REASON), mock_->code_);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: KillBundleWithReason
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService KillBundleWithReason
+ * EnvConditions: NA
+ * CaseDescription: Verify the normal process of KillBundleWithReason
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_KillBundleWithReason_001, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
+    std::string bundleName = "test";
+    int32_t userId = 0;
+    int32_t appIndex = 0;
+    ExitReasonCompability exitReason = { REASON_JS_ERROR, "Js Error." };
+    auto res = proxy_->KillBundleWithReason(bundleName, userId, appIndex, exitReason);
+    EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::KILL_BUNDLE_WITH_REASON), mock_->code_);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: RecordAppExitReason
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService RecordAppExitReason
@@ -2488,6 +2530,27 @@ HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_RecordAppExitReason_001, T
     ExitReason exitReason = { REASON_JS_ERROR, "Js Error." };
     auto res = proxy_->RecordAppExitReason(exitReason);
     EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::RECORD_APP_EXIT_REASON), mock_->code_);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RecordAppWithReason
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService RecordAppWithReason
+ * EnvConditions: NA
+ * CaseDescription: Verify the normal process of RecordAppWithReason
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_RecordAppWithReason_001, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
+    int32_t pid = 0;
+    int32_t uid = 0;
+    ExitReasonCompability exitReason = { REASON_JS_ERROR, "Js Error." };
+    auto res = proxy_->RecordAppWithReason(pid, uid, exitReason);
+    EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::RECORD_APP_WITH_REASON), mock_->code_);
     EXPECT_EQ(res, NO_ERROR);
 }
 

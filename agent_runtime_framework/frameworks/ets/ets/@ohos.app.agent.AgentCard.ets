@@ -13,39 +13,49 @@
  * limitations under the License.
  */
 
-export interface Provider {
+export interface AgentProvider {
   organization: string;
   url: string;
 }
 
-class ProviderImpl implements Provider {
+class AgentProviderImpl implements AgentProvider {
   public organization: string = '';
   public url: string = '';
 }
 
-export interface Capabilities {
+export interface AgentAppInfo {
+  bundleName?: string;
+  moduleName?: string;
+  abilityName?: string;
+  deviceTypes?: string;
+  minAppVersion?: string;
+}
+
+class AgentAppInfoImpl implements AgentAppInfo {
+  public bundleName?: string;
+  public moduleName?: string;
+  public abilityName?: string;
+  public deviceTypes?: string;
+  public minAppVersion?: string;
+}
+
+export interface AgentCapabilities {
   streaming: boolean;
   pushNotifications?: boolean;
   stateTransitionHistory?: boolean;
+  extension?: string;
+  extendedAgentCard?: boolean;
 }
 
-class CapabilitiesImpl implements Capabilities {
+class AgentCapabilitiesImpl implements AgentCapabilities {
   public streaming: boolean;
   public pushNotifications?: boolean;
   public stateTransitionHistory?: boolean;
+  public extension?: string;
+  public extendedAgentCard?: boolean;
 }
 
-export interface Authentication {
-  schemes: Array<string>;
-  credentials?: string;
-}
-
-class AuthenticationImpl implements Authentication {
-  public schemes: Array<string> = {};
-  public credentials?: string;
-}
-
-export interface Skill {
+export interface AgentSkill {
   id: string;
   name: string;
   description: string;
@@ -53,9 +63,10 @@ export interface Skill {
   examples?: Array<string>;
   inputModes?: Array<string>;
   outputModes?: Array<string>;
+  extension?: string;
 }
 
-class SkillImpl implements Skill {
+class AgentSkillImpl implements AgentSkill {
   public id: string = '';
   public name: string = '';
   public description: string = '';
@@ -63,42 +74,41 @@ class SkillImpl implements Skill {
   public examples?: Array<string>;
   public inputModes?: Array<string>;
   public outputModes?: Array<string>;
+  public extension?: string;
 }
 
 export interface AgentCard {
   agentId: string;
-  bundleName: string;
-  moduleName: string;
-  abilityName: string;
   appIndex: int;
   name: string;
   description: string;
-  url: string;
-  provider?: Provider;
+  provider?: AgentProvider;
   version: string;
   documentationUrl?: string;
-  capabilities: Capabilities;
-  authentication?: Authentication;
+  capabilities: AgentCapabilities;
   defaultInputModes?: Array<string>;
   defaultOutputModes?: Array<string>;
-  skills?: Array<Skill>;
+  skills?: Array<AgentSkill>;
+  extension?: string;
+  category?: string;
+  iconUrl?: string;
+  appInfo?: AgentAppInfo;
 }
 
 class AgentCardImpl implements AgentCard {
   public agentId: string = '';
-  public bundleName: string = '';
-  public moduleName: string = '';
-  public abilityName: string = '';
   public appIndex: int;
   public name: string = '';
   public description: string = '';
-  public url: string = '';
-  public provider?: Provider;
+  public provider?: AgentProvider;
   public version: string = '';
   public documentationUrl?: string;
-  public capabilities: Capabilities = new CapabilitiesImpl() as Capabilities;
-  public authentication?: Authentication;
+  public capabilities: AgentCapabilities = new AgentCapabilitiesImpl() as AgentCapabilities;
   public defaultInputModes?: Array<string>;
   public defaultOutputModes?: Array<string>;
-  public skills?: Array<Skill>;
+  public skills?: Array<AgentSkill>;
+  public extension?: string;
+  public category?: string;
+  public iconUrl?: string;
+  public appInfo?: AgentAppInfo;
 }

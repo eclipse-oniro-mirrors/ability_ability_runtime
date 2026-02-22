@@ -42,10 +42,11 @@ bool IsWindowExtension(const AppExecFwk::ExtensionAbilityType type);
 
 bool IsProcessUdkeyExtension(const AppExecFwk::ExtensionAbilityType type);
 
+bool IsAgentUIExtension(const AppExecFwk::ExtensionAbilityType type);
+
 std::unordered_set<AppExecFwk::ExtensionAbilityType> GetUiExtensionSet();
 } // namespace UIExtensionWrapper
 } // namespace AAFwk
 } // namespace OHOS
 
 #endif // OHOS_ABILITY_RUNTIME_UI_EXTENSION_WRAPPER_H
-

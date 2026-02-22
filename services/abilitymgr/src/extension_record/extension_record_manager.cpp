@@ -32,7 +32,7 @@ const std::string IS_PRELOAD_UIEXTENSION_ABILITY = "ability.want.params.is_prelo
 constexpr const char* UIEXTENSION_TYPE_KEY = "ability.want.params.uiExtensionType";
 constexpr size_t HOST_PID_INDEX = 3;
 constexpr const char* AGENT_EXTENSION_TYPE = "agent";
-
+constexpr int32_t AGENT_UI_MAX_COUNT = 5;
 int32_t GetAppIndexByRecord(std::shared_ptr<AAFwk::AbilityRecord> abilityRecord,
     std::shared_ptr<AAFwk::AbilityRecord> callerRecord, const AAFwk::AbilityRequest &abilityRequest)
 {
@@ -183,6 +183,18 @@ int32_t ExtensionRecordManager::GetOrCreateExtensionRecord(const AAFwk::AbilityR
         isLoaded = true;
         return ERR_OK;
     }
+
+    // Check AGENT_UI launch limit before creating new record
+    bool isAgentUI = AAFwk::UIExtensionWrapper::IsAgentUIExtension(abilityRequest.abilityInfo.extensionAbilityType);
+    int32_t callerUid = IPCSkeleton::GetCallingUid();
+    if (isAgentUI) {
+        auto ret = CheckAgentUILaunchLimit(callerUid, abilityRequest.abilityInfo.bundleName);
+        if (ret != ERR_OK) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "agentUI launch limit check failed, ret:%{public}d", ret);
+            return ret;
+        }
+    }
+
     std::shared_ptr<ExtensionRecord> extensionRecord = nullptr;
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Check Preload Extension Record.");
     auto hostPid = IPCSkeleton::GetCallingPid();
@@ -199,6 +211,11 @@ int32_t ExtensionRecordManager::GetOrCreateExtensionRecord(const AAFwk::AbilityR
         if (ret != ERR_OK) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "GetOrCreateExtensionRecordInner error");
             return ret;
+        }
+        // Add AGENT_UI launch record after new record created
+        if (isAgentUI && extensionRecord != nullptr && !isLoaded) {
+            AddAgentUILaunchRecord(callerUid, abilityRequest.abilityInfo.bundleName,
+                extensionRecord->extensionRecordId_);
         }
     }
     if (extensionRecord != nullptr) {
@@ -1124,6 +1141,95 @@ void ExtensionRecordManager::UnRegisterPreloadUIExtensionHostClient(
     if (it != preloadUIExtensionHostClientCallerTokens_.end() && it->second != nullptr) {
         it->second->RemoveDeathRecipient(deathRecipient);
         preloadUIExtensionHostClientCallerTokens_.erase(it);
+    }
+}
+
+int32_t ExtensionRecordManager::CheckAgentUILaunchLimit(int32_t callerUid, const std::string &bundleName)
+{
+    std::lock_guard<std::mutex> lock(agentUIExtensionMutex_);
+    auto callerIt = agentUIExtensionRecords_.find(callerUid);
+    if (callerIt == agentUIExtensionRecords_.end()) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "agentUI launch allowed");
+        return ERR_OK;
+    }
+    auto& bundleMap = callerIt->second;
+    auto bundleIt = bundleMap.find(bundleName);
+    if (bundleIt == bundleMap.end()) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "agentUI launch allowed");
+        return ERR_OK;
+    }
+    auto& extensionSet = bundleIt->second;
+
+    if (extensionSet.size() >= AGENT_UI_MAX_COUNT) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR,
+            "agentUI reach limit, callerUid:%{public}d, bundle:%{public}s, count:%{public}zu",
+            callerUid, bundleName.c_str(), extensionSet.size());
+        return ERR_OVERFLOW;
+    }
+
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "agentUI launch allowed");
+    return ERR_OK;
+}
+
+void ExtensionRecordManager::AddAgentUILaunchRecord(int32_t callerUid, const std::string &bundleName,
+    int32_t extensionAbilityId)
+{
+    std::lock_guard<std::mutex> lock(agentUIExtensionMutex_);
+    auto callerIt = agentUIExtensionRecords_.find(callerUid);
+    if (callerIt == agentUIExtensionRecords_.end()) {
+        auto& bundleMap = agentUIExtensionRecords_[callerUid];
+        auto& extensionSet = bundleMap[bundleName];
+        extensionSet.insert(extensionAbilityId);
+        TAG_LOGI(AAFwkTag::ABILITYMGR,
+            "agentUI added, callerUid:%{public}d, bundle:%{public}s, id:%{public}d, count:%{public}zu",
+            callerUid, bundleName.c_str(), extensionAbilityId, extensionSet.size());
+        return;
+    }
+    auto& bundleMap = callerIt->second;
+    auto bundleIt = bundleMap.find(bundleName);
+    if (bundleIt == bundleMap.end()) {
+        auto& extensionSet = bundleMap[bundleName];
+        extensionSet.insert(extensionAbilityId);
+        TAG_LOGI(AAFwkTag::ABILITYMGR,
+            "agentUI added, callerUid:%{public}d, bundle:%{public}s, id:%{public}d, count:%{public}zu",
+            callerUid, bundleName.c_str(), extensionAbilityId, extensionSet.size());
+        return;
+    }
+    auto& extensionSet = bundleIt->second;
+    if (extensionSet.find(extensionAbilityId) == extensionSet.end()) {
+        extensionSet.insert(extensionAbilityId);
+        TAG_LOGI(AAFwkTag::ABILITYMGR,
+            "agentUI added, callerUid:%{public}d, bundle:%{public}s, id:%{public}d, count:%{public}zu",
+            callerUid, bundleName.c_str(), extensionAbilityId, extensionSet.size());
+    }
+}
+
+void ExtensionRecordManager::RemoveAgentUILaunchRecord(int32_t callerUid, const std::string &bundleName,
+    int32_t extensionAbilityId)
+{
+    std::lock_guard<std::mutex> lock(agentUIExtensionMutex_);
+    auto callerIt = agentUIExtensionRecords_.find(callerUid);
+    if (callerIt == agentUIExtensionRecords_.end()) {
+        return;
+    }
+    auto& bundleMap = callerIt->second;
+    auto bundleIt = bundleMap.find(bundleName);
+    if (bundleIt == bundleMap.end()) {
+        return;
+    }
+    auto& extensionSet = bundleIt->second;
+    auto extIt = extensionSet.find(extensionAbilityId);
+    if (extIt != extensionSet.end()) {
+        extensionSet.erase(extIt);
+        TAG_LOGI(AAFwkTag::ABILITYMGR,
+            "agentUI removed, callerUid:%{public}d, bundle:%{public}s, id:%{public}d, count:%{public}zu",
+            callerUid, bundleName.c_str(), extensionAbilityId, extensionSet.size());
+    }
+    if (extensionSet.empty()) {
+        bundleMap.erase(bundleIt);
+    }
+    if (bundleMap.empty()) {
+        agentUIExtensionRecords_.erase(callerIt);
     }
 }
 } // namespace AbilityRuntime

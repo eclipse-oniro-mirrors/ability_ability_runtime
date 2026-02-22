@@ -61,6 +61,11 @@ bool IsProcessUdkeyExtension(const AppExecFwk::ExtensionAbilityType type)
     return OHOS::AAFwk::UIExtensionUtils::IsProcessUdkeyExtension(type);
 }
 
+bool IsAgentUIExtension(const AppExecFwk::ExtensionAbilityType type)
+{
+    return OHOS::AAFwk::UIExtensionUtils::IsAgentUIExtension(type);
+}
+
 std::unordered_set<AppExecFwk::ExtensionAbilityType> GetUiExtensionSet()
 {
     return OHOS::AAFwk::UIExtensionUtils::GetUiExtensionSet();

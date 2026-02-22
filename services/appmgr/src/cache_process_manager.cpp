@@ -409,6 +409,9 @@ bool CacheProcessManager::IsAppShouldCache(const std::shared_ptr<AppRunningRecor
     if (appRecord == nullptr) {
         return false;
     }
+    if (appRecord->IsTerminating()) {
+        return false;
+    }
     if (!QueryEnableProcessCache()) {
         return false;
     }

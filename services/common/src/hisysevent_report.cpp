@@ -213,7 +213,7 @@ void HisyseventReport::InsertParam(const char* name, char* value)
     paramBuffers_.emplace_back(std::move(buffer));
 }
 
-void HisyseventReport::InsertParam(const char* name, std::vector<int32_t> value)
+void HisyseventReport::InsertParam(const char* name, const std::vector<int32_t> &value)
 {
     if (length_ <= pos_) {
         TAG_LOGE(AAFwkTag::DEFAULT, "param is full");
@@ -233,7 +233,7 @@ void HisyseventReport::InsertParam(const char* name, std::vector<int32_t> value)
     params_[pos_++] = param;
 }
 
-void HisyseventReport::InsertParam(const char* name, std::vector<uint64_t> value)
+void HisyseventReport::InsertParam(const char* name, const std::vector<uint64_t> &value)
 {
     if (length_ <= pos_) {
         TAG_LOGE(AAFwkTag::DEFAULT, "param is full");

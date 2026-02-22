@@ -45,6 +45,8 @@ constexpr uint32_t CHECK_INTERVAL_TIME = 3000;
 #ifdef APP_NO_RESPONSE_DIALOG_WEARABLE
 constexpr uint32_t WEARABLE_CHECK_INTERVAL_TIME = 5000;
 #endif
+
+constexpr uint32_t BACKGROUND_INTERVAL_TIME = 20000;
 }
 std::shared_ptr<EventHandler> Watchdog::appMainHandler_ = nullptr;
 
@@ -172,6 +174,10 @@ void Watchdog::SetBundleInfo(const std::string& bundleName, const std::string& b
         ChangeTimeOut(bundleName);
     }
 #endif
+    {
+        std::unique_lock<std::mutex> lock(cvMutex_);
+        bundleName_ = bundleName;
+    }
 }
 
 void Watchdog::SetBackgroundStatus(const bool isInBackground)
@@ -284,12 +290,20 @@ void Watchdog::ReportEvent()
     }
 
     if (isInBackground_ && backgroundReportCount_.load() < BACKGROUND_REPORT_COUNT_MAX) {
-        backgroundReportCount_++;
-        TAG_LOGI(AAFwkTag::APPDFR, "In Background, thread may be blocked in, not report time"
-            "currTime: %{public}" PRIu64 ", lastTime: %{public}" PRIu64 ", count: %{public}d",
-            static_cast<uint64_t>(now), static_cast<uint64_t>(lastWatchTime_), backgroundReportCount_.load());
+        bool enableCheck = std::find(std::begin(CHECK_BACKGROUND_THREAD), std::end(CHECK_BACKGROUND_THREAD),
+            bundleName_) != std::end(CHECK_BACKGROUND_THREAD);
+        if (enableCheck) {
+            backgroundReportCount_++;
+        }
+        if ((now - lastBackGroundWatchTime_) < 0 || (now - lastBackGroundWatchTime_) >= (BACKGROUND_INTERVAL_TIME)) {
+            TAG_LOGW(AAFwkTag::APPDFR, "In Background, thread may be blocked in, not report time"
+                "currTime: %{public}" PRIu64 ", lastTime: %{public}" PRIu64 ", enableCheck: %{public}d",
+                static_cast<uint64_t>(now), static_cast<uint64_t>(lastWatchTime_), enableCheck);
+            lastBackGroundWatchTime_ = now;
+        }
         return;
     }
+
     backgroundReportCount_++;
 
     if (!needReport_) {

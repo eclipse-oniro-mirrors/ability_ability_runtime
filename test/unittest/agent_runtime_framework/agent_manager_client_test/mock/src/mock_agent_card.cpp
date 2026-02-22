@@ -22,67 +22,51 @@ namespace AgentRuntime {
 int MyFlag::retToAgentCardVec = 0;
 std::vector<AgentCard> MyFlag::convertedCards;
 
-bool Provider::ReadFromParcel(Parcel &parcel)
+bool AgentProvider::ReadFromParcel(Parcel &parcel)
 {
     return true;
 }
 
-bool Provider::Marshalling(Parcel &parcel) const
+bool AgentProvider::Marshalling(Parcel &parcel) const
 {
     return true;
 }
 
-Provider *Provider::Unmarshalling(Parcel &parcel)
+AgentProvider *AgentProvider::Unmarshalling(Parcel &parcel)
 {
-    Provider *provider = new (std::nothrow) Provider();
+    AgentProvider *provider = new (std::nothrow) AgentProvider();
     return provider;
 }
 
-bool Capabilities::ReadFromParcel(Parcel &parcel)
+bool AgentCapabilities::ReadFromParcel(Parcel &parcel)
 {
     return true;
 }
 
-bool Capabilities::Marshalling(Parcel &parcel) const
+bool AgentCapabilities::Marshalling(Parcel &parcel) const
 {
     return true;
 }
 
-Capabilities *Capabilities::Unmarshalling(Parcel &parcel)
+AgentCapabilities *AgentCapabilities::Unmarshalling(Parcel &parcel)
 {
-    Capabilities *capabilities = new (std::nothrow) Capabilities();
+    AgentCapabilities *capabilities = new (std::nothrow) AgentCapabilities();
     return capabilities;
 }
 
-bool Authentication::ReadFromParcel(Parcel &parcel)
+bool AgentSkill::ReadFromParcel(Parcel &parcel)
 {
     return true;
 }
 
-bool Authentication::Marshalling(Parcel &parcel) const
+bool AgentSkill::Marshalling(Parcel &parcel) const
 {
     return true;
 }
 
-Authentication *Authentication::Unmarshalling(Parcel &parcel)
+AgentSkill *AgentSkill::Unmarshalling(Parcel &parcel)
 {
-    Authentication *authentication = new (std::nothrow) Authentication();
-    return authentication;
-}
-
-bool Skill::ReadFromParcel(Parcel &parcel)
-{
-    return true;
-}
-
-bool Skill::Marshalling(Parcel &parcel) const
-{
-    return true;
-}
-
-Skill *Skill::Unmarshalling(Parcel &parcel)
-{
-    Skill *skill = new (std::nothrow) Skill();
+    AgentSkill *skill = new (std::nothrow) AgentSkill();
     return skill;
 }
 
@@ -108,10 +92,36 @@ nlohmann::json AgentCard::ToJson() const
     return jsonObject;
 }
 
-AgentCard AgentCard::FromJson(nlohmann::json jsonObject)
+bool AgentCard::FromJson(nlohmann::json jsonObject, AgentCard &agentCard)
 {
-    AgentCard agentCard;
-    return agentCard;
+    return true;
+}
+
+bool AgentAppInfo::ReadFromParcel(Parcel &parcel)
+{
+    return true;
+}
+
+bool AgentAppInfo::Marshalling(Parcel &parcel) const
+{
+    return true;
+}
+
+AgentAppInfo *AgentAppInfo::Unmarshalling(Parcel &parcel)
+{
+    AgentAppInfo *appInfo = new (std::nothrow) AgentAppInfo();
+    return appInfo;
+}
+
+nlohmann::json AgentAppInfo::ToJson()
+{
+    nlohmann::json jsonObject;
+    return jsonObject;
+}
+
+bool AgentAppInfo::FromJson(const nlohmann::json &jsonObject, AgentAppInfo &appInfo)
+{
+    return true;
 }
 
 int32_t AgentCardsRawData::RawDataCpy(const void *readdata)

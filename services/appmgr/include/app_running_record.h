@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -964,6 +964,15 @@ public:
     void SetExitMsg(const std::string &exitMsg);
     std::string GetExitMsg() const;
 
+    void SetKillId(int32_t killId);
+    int32_t GetKillId() const;
+
+    void SetKillMsg(const std::string &killMsg);
+    std::string GetKillMsg() const;
+
+    void SetInnerMsg(const std::string &innerMsg);
+    std::string GetInnerMsg() const;
+
     bool SetSupportedProcessCache(bool isSupport);
     SupportProcessCacheState GetSupportProcessCacheState();
     void SetAttachedToStatusBar(bool isAttached);
@@ -1352,6 +1361,7 @@ private:
     int32_t pssValue_ = 0;
     int32_t requestProcCode_ = 0; // render record
     int32_t rssValue_ = 0;
+    int32_t killId_ = -1;
     int restartResidentProcCount_ = 0;
     pid_t gpuPid_ = 0;
 
@@ -1369,6 +1379,8 @@ private:
     std::string exitMsg_ = "";
     std::string instanceKey_; // render record
     std::string killReason_ = "";
+    std::string killMsg_ = "";
+    std::string innerMsg_ = "";
 
     bool isLauncherApp_;
     bool isAllowedNWebPreload_ = false;

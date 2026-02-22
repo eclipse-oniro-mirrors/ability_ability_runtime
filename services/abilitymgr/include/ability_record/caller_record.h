@@ -26,6 +26,9 @@
 namespace OHOS {
 namespace AAFwk {
 class AbilityRecord;
+namespace {
+constexpr int32_t DEFAULT_REQUEST_CODE = -1;
+}
 
 /**
  * @struct CallerAbilityInfo
@@ -143,6 +146,11 @@ public:
     std::set<int32_t> GetRequestCodeSet()
     {
         return requestCodeSet_;
+    }
+    bool HasForResultRequestCode()
+    {
+        return std::any_of(requestCodeSet_.begin(), requestCodeSet_.end(),
+            [](int32_t requestCode) { return requestCode != DEFAULT_REQUEST_CODE; });
     }
 
 private:

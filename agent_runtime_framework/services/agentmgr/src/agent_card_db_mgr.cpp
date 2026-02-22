@@ -184,7 +184,12 @@ int32_t AgentCardDbMgr::QueryData(const std::string &bundleName, int32_t userId,
     }
     nlohmann::json jsonArray = nlohmann::json::parse(value.ToString(), nullptr, false);
     for (const auto &item : jsonArray) {
-        cards.push_back(AgentCard::FromJson(item));
+        AgentCard card;
+        if (!AgentCard::FromJson(item, card)) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "FromJson failed");
+            continue;
+        }
+        cards.push_back(card);
     }
     return ERR_OK;
 }
@@ -209,7 +214,12 @@ int32_t AgentCardDbMgr::QueryAllData(std::vector<AgentCard> &cards)
         }
         nlohmann::json jsonArray = nlohmann::json::parse(item.value.ToString(), nullptr, false);
         for (const auto &item : jsonArray) {
-            cards.push_back(AgentCard::FromJson(item));
+            AgentCard card;
+            if (!AgentCard::FromJson(item, card)) {
+                TAG_LOGE(AAFwkTag::SER_ROUTER, "FromJson failed");
+                continue;
+            }
+            cards.push_back(card);
         }
     }
     return ERR_OK;

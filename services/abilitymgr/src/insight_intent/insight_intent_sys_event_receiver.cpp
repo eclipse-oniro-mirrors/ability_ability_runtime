@@ -112,9 +112,9 @@ void InsightIntentSysEventReceiver::LoadInsightIntentInfos(int32_t userId)
     }
 
     std::vector<AppExecFwk::BundleInfo> bundleInfos {};
-    if (!IN_PROCESS_CALL(bundleMgrHelper->GetBundleInfosV9(
+    if (IN_PROCESS_CALL(bundleMgrHelper->GetBundleInfosV9(
         static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_HAP_MODULE),
-        bundleInfos, userId))) {
+        bundleInfos, userId)) != ERR_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "get bundle info failed");
         return;
     }

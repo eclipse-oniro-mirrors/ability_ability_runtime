@@ -110,6 +110,7 @@ CpuDataProcessor AppfreezeCpuFreqManager::GetCpuDetailInfo(int32_t pid)
 {
     std::vector<std::vector<CpuFreqData>> cpuDetailInfo{};
     std::vector<TotalTime> totalTimeCpuLists{};
+
     for (int32_t i = 0; i < cpuCount_; ++i) {
         std::vector<CpuFreqData> datas{};
         TotalTime totalCpuTime{};
@@ -119,11 +120,11 @@ CpuDataProcessor AppfreezeCpuFreqManager::GetCpuDetailInfo(int32_t pid)
         }
     }
     CpuConsumeTime cpuConsumeTime = {
-        .optimalCpuTime = GetOptimalCpuTime(pid),
         .cpuFaultTime = AppfreezeUtil::GetMilliseconds(),
         .processCpuTime = GetProcessCpuTime(pid),
         .deviceRunTime = GetDeviceRuntime(),
         .cpuTime = GetAppCpuTime(pid),
+        .optimalCpuTime = GetOptimalCpuTime(pid),
     };
     CpuDataProcessor data(cpuDetailInfo, totalTimeCpuLists, cpuConsumeTime, pid);
     return data;

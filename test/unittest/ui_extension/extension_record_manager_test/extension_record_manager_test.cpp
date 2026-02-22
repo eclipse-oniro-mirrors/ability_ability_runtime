@@ -1427,5 +1427,292 @@ HWTEST_F(ExtensionRecordManagerTest, UpdateProcessName_0900, TestSize.Level1)
     result = extRecordMgr->UpdateProcessName(abilityRequest, extRecord);
     EXPECT_NE(result, ERR_OK);
 }
+
+/**
+ * @tc.name: CheckAgentUILaunchLimit_0100
+ * @tc.desc: Test CheckAgentUILaunchLimit when no record exists.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ExtensionRecordManagerTest, CheckAgentUILaunchLimit_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckAgentUILaunchLimit_0100 start");
+    auto extRecordMgr = std::make_shared<ExtensionRecordManager>(0);
+    ASSERT_NE(extRecordMgr, nullptr);
+
+    int32_t callerUid = 1001;
+    std::string bundleName = "com.test.agentui";
+
+    // No record exists, should return ERR_OK
+    auto ret = extRecordMgr->CheckAgentUILaunchLimit(callerUid, bundleName);
+    EXPECT_EQ(ret, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "CheckAgentUILaunchLimit_0100 end");
+}
+
+/**
+ * @tc.name: CheckAgentUILaunchLimit_0200
+ * @tc.desc: Test CheckAgentUILaunchLimit when callerUid exists but bundleName not exists.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ExtensionRecordManagerTest, CheckAgentUILaunchLimit_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckAgentUILaunchLimit_0200 start");
+    auto extRecordMgr = std::make_shared<ExtensionRecordManager>(0);
+    ASSERT_NE(extRecordMgr, nullptr);
+
+    int32_t callerUid = 1002;
+    std::string bundleName1 = "com.test.bundle1";
+    std::string bundleName2 = "com.test.bundle2";
+
+    // Add record for bundle1
+    extRecordMgr->AddAgentUILaunchRecord(callerUid, bundleName1, 1);
+
+    // Check for bundle2 (not exists), should return ERR_OK
+    auto ret = extRecordMgr->CheckAgentUILaunchLimit(callerUid, bundleName2);
+    EXPECT_EQ(ret, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "CheckAgentUILaunchLimit_0200 end");
+}
+
+/**
+ * @tc.name: CheckAgentUILaunchLimit_0300
+ * @tc.desc: Test CheckAgentUILaunchLimit when record exists and under limit.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ExtensionRecordManagerTest, CheckAgentUILaunchLimit_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckAgentUILaunchLimit_0300 start");
+    auto extRecordMgr = std::make_shared<ExtensionRecordManager>(0);
+    ASSERT_NE(extRecordMgr, nullptr);
+
+    int32_t callerUid = 1003;
+    std::string bundleName = "com.test.bundle";
+
+    // Add one record
+    extRecordMgr->AddAgentUILaunchRecord(callerUid, bundleName, 1);
+
+    // Should return ERR_OK (under limit)
+    auto ret = extRecordMgr->CheckAgentUILaunchLimit(callerUid, bundleName);
+    EXPECT_EQ(ret, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "CheckAgentUILaunchLimit_0300 end");
+}
+
+/**
+ * @tc.name: AddAgentUILaunchRecord_0100
+ * @tc.desc: Test AddAgentUILaunchRecord add first record for new callerUid.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ExtensionRecordManagerTest, AddAgentUILaunchRecord_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AddAgentUILaunchRecord_0100 start");
+    auto extRecordMgr = std::make_shared<ExtensionRecordManager>(0);
+    ASSERT_NE(extRecordMgr, nullptr);
+
+    int32_t callerUid = 2001;
+    std::string bundleName = "com.test.add";
+    int32_t extensionAbilityId = 100;
+
+    // Add first record
+    extRecordMgr->AddAgentUILaunchRecord(callerUid, bundleName, extensionAbilityId);
+
+    // Verify record was added
+    auto ret = extRecordMgr->CheckAgentUILaunchLimit(callerUid, bundleName);
+    EXPECT_EQ(ret, ERR_OK);
+
+    // Check internal map size
+    EXPECT_EQ(extRecordMgr->agentUIExtensionRecords_.size(), 1);
+    TAG_LOGI(AAFwkTag::TEST, "AddAgentUILaunchRecord_0100 end");
+}
+
+/**
+ * @tc.name: AddAgentUILaunchRecord_0200
+ * @tc.desc: Test AddAgentUILaunchRecord add multiple records for same callerUid and bundleName.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ExtensionRecordManagerTest, AddAgentUILaunchRecord_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AddAgentUILaunchRecord_0200 start");
+    auto extRecordMgr = std::make_shared<ExtensionRecordManager>(0);
+    ASSERT_NE(extRecordMgr, nullptr);
+
+    int32_t callerUid = 2002;
+    std::string bundleName = "com.test.multi";
+
+    // Add multiple records
+    extRecordMgr->AddAgentUILaunchRecord(callerUid, bundleName, 1);
+    extRecordMgr->AddAgentUILaunchRecord(callerUid, bundleName, 2);
+    extRecordMgr->AddAgentUILaunchRecord(callerUid, bundleName, 3);
+
+    // Verify all records were added
+    EXPECT_EQ(extRecordMgr->agentUIExtensionRecords_[callerUid][bundleName].size(), 3);
+
+    TAG_LOGI(AAFwkTag::TEST, "AddAgentUILaunchRecord_0200 end");
+}
+
+/**
+ * @tc.name: AddAgentUILaunchRecord_0300
+ * @tc.desc: Test AddAgentUILaunchRecord add duplicate record (same extensionAbilityId).
+ * @tc.type: FUNC
+ */
+HWTEST_F(ExtensionRecordManagerTest, AddAgentUILaunchRecord_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AddAgentUILaunchRecord_0300 start");
+    auto extRecordMgr = std::make_shared<ExtensionRecordManager>(0);
+    ASSERT_NE(extRecordMgr, nullptr);
+
+    int32_t callerUid = 2003;
+    std::string bundleName = "com.test.dup";
+    int32_t extensionAbilityId = 100;
+
+    // Add same record twice
+    extRecordMgr->AddAgentUILaunchRecord(callerUid, bundleName, extensionAbilityId);
+    extRecordMgr->AddAgentUILaunchRecord(callerUid, bundleName, extensionAbilityId);
+
+    // Should only have one record (duplicate ignored)
+    EXPECT_EQ(extRecordMgr->agentUIExtensionRecords_[callerUid][bundleName].size(), 1);
+
+    TAG_LOGI(AAFwkTag::TEST, "AddAgentUILaunchRecord_0300 end");
+}
+
+/**
+ * @tc.name: RemoveAgentUILaunchRecord_0100
+ * @tc.desc: Test RemoveAgentUILaunchRecord when callerUid not exists.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ExtensionRecordManagerTest, RemoveAgentUILaunchRecord_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RemoveAgentUILaunchRecord_0100 start");
+    auto extRecordMgr = std::make_shared<ExtensionRecordManager>(0);
+    ASSERT_NE(extRecordMgr, nullptr);
+
+    int32_t callerUid = 3001;
+    std::string bundleName = "com.test.remove";
+    int32_t extensionAbilityId = 100;
+
+    // Remove from empty map, should not crash
+    extRecordMgr->RemoveAgentUILaunchRecord(callerUid, bundleName, extensionAbilityId);
+
+    // Map should still be empty
+    EXPECT_EQ(extRecordMgr->agentUIExtensionRecords_.size(), 0);
+
+    TAG_LOGI(AAFwkTag::TEST, "RemoveAgentUILaunchRecord_0100 end");
+}
+
+/**
+ * @tc.name: RemoveAgentUILaunchRecord_0200
+ * @tc.desc: Test RemoveAgentUILaunchRecord when bundleName not exists.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ExtensionRecordManagerTest, RemoveAgentUILaunchRecord_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RemoveAgentUILaunchRecord_0200 start");
+    auto extRecordMgr = std::make_shared<ExtensionRecordManager>(0);
+    ASSERT_NE(extRecordMgr, nullptr);
+
+    int32_t callerUid = 3002;
+    std::string bundleName1 = "com.test.bundle1";
+    std::string bundleName2 = "com.test.bundle2";
+    int32_t extensionAbilityId = 100;
+
+    // Add record for bundle1
+    extRecordMgr->AddAgentUILaunchRecord(callerUid, bundleName1, extensionAbilityId);
+
+    // Remove from bundle2 (not exists), should not crash
+    extRecordMgr->RemoveAgentUILaunchRecord(callerUid, bundleName2, extensionAbilityId);
+
+    // bundle1 record should still exist
+    EXPECT_EQ(extRecordMgr->agentUIExtensionRecords_[callerUid][bundleName1].size(), 1);
+
+    TAG_LOGI(AAFwkTag::TEST, "RemoveAgentUILaunchRecord_0200 end");
+}
+
+/**
+ * @tc.name: RemoveAgentUILaunchRecord_0300
+ * @tc.desc: Test RemoveAgentUILaunchRecord remove existing record.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ExtensionRecordManagerTest, RemoveAgentUILaunchRecord_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RemoveAgentUILaunchRecord_0300 start");
+    auto extRecordMgr = std::make_shared<ExtensionRecordManager>(0);
+    ASSERT_NE(extRecordMgr, nullptr);
+
+    int32_t callerUid = 3003;
+    std::string bundleName = "com.test.remove";
+    int32_t extensionAbilityId = 100;
+
+    // Add record
+    extRecordMgr->AddAgentUILaunchRecord(callerUid, bundleName, extensionAbilityId);
+    EXPECT_EQ(extRecordMgr->agentUIExtensionRecords_[callerUid][bundleName].size(), 1);
+
+    // Remove record
+    extRecordMgr->RemoveAgentUILaunchRecord(callerUid, bundleName, extensionAbilityId);
+
+    // Record should be removed, and map entries should be cleaned up
+    EXPECT_EQ(extRecordMgr->agentUIExtensionRecords_.count(callerUid), 0);
+
+    TAG_LOGI(AAFwkTag::TEST, "RemoveAgentUILaunchRecord_0300 end");
+}
+
+/**
+ * @tc.name: RemoveAgentUILaunchRecord_0400
+ * @tc.desc: Test RemoveAgentUILaunchRecord remove one of multiple records.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ExtensionRecordManagerTest, RemoveAgentUILaunchRecord_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RemoveAgentUILaunchRecord_0400 start");
+    auto extRecordMgr = std::make_shared<ExtensionRecordManager>(0);
+    ASSERT_NE(extRecordMgr, nullptr);
+
+    int32_t callerUid = 3004;
+    std::string bundleName = "com.test.multi";
+
+    // Add multiple records
+    extRecordMgr->AddAgentUILaunchRecord(callerUid, bundleName, 1);
+    extRecordMgr->AddAgentUILaunchRecord(callerUid, bundleName, 2);
+    extRecordMgr->AddAgentUILaunchRecord(callerUid, bundleName, 3);
+    EXPECT_EQ(extRecordMgr->agentUIExtensionRecords_[callerUid][bundleName].size(), 3);
+
+    // Remove one record
+    extRecordMgr->RemoveAgentUILaunchRecord(callerUid, bundleName, 2);
+    EXPECT_EQ(extRecordMgr->agentUIExtensionRecords_[callerUid][bundleName].size(), 2);
+
+    // Verify the correct record was removed
+    auto& recordSet = extRecordMgr->agentUIExtensionRecords_[callerUid][bundleName];
+    EXPECT_EQ(recordSet.count(1), 1);
+    EXPECT_EQ(recordSet.count(2), 0);
+    EXPECT_EQ(recordSet.count(3), 1);
+
+    TAG_LOGI(AAFwkTag::TEST, "RemoveAgentUILaunchRecord_0400 end");
+}
+
+/**
+ * @tc.name: RemoveAgentUILaunchRecord_0500
+ * @tc.desc: Test RemoveAgentUILaunchRecord remove non-existent extensionAbilityId.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ExtensionRecordManagerTest, RemoveAgentUILaunchRecord_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RemoveAgentUILaunchRecord_0500 start");
+    auto extRecordMgr = std::make_shared<ExtensionRecordManager>(0);
+    ASSERT_NE(extRecordMgr, nullptr);
+
+    int32_t callerUid = 3005;
+    std::string bundleName = "com.test.remove";
+    int32_t extensionAbilityId = 100;
+
+    // Add record
+    extRecordMgr->AddAgentUILaunchRecord(callerUid, bundleName, extensionAbilityId);
+
+    // Remove non-existent extensionAbilityId
+    extRecordMgr->RemoveAgentUILaunchRecord(callerUid, bundleName, 999);
+
+    // Original record should still exist
+    EXPECT_EQ(extRecordMgr->agentUIExtensionRecords_[callerUid][bundleName].size(), 1);
+
+    TAG_LOGI(AAFwkTag::TEST, "RemoveAgentUILaunchRecord_0500 end");
+}
 } // namespace AbilityRuntime
 } // namespace OHOS

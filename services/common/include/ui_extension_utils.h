@@ -178,6 +178,11 @@ inline bool IsProcessUdkeyExtension(const AppExecFwk::ExtensionAbilityType type)
     };
     return processUdkeyExtensionSet.find(type) != processUdkeyExtensionSet.end();
 }
+
+inline bool IsAgentUIExtension(const AppExecFwk::ExtensionAbilityType type)
+{
+    return type == AppExecFwk::ExtensionAbilityType::AGENT_UI;
+}
 } // namespace UIExtensionUtils
 } // namespace AAFwk
 } // namespace OHOS

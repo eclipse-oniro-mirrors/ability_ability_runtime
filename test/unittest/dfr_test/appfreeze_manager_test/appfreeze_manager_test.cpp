@@ -122,6 +122,9 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_002, TestSize.Level1)
     faultData.errorObject.name = AppFreezeType::LIFECYCLE_HALF_TIMEOUT;
     ret = appfreezeManager->AppfreezeHandleWithStack(faultData, appInfo);
     EXPECT_EQ(ret, 0);
+    faultData.isInForeground = false;
+    ret = appfreezeManager->AppfreezeHandleWithStack(faultData, appInfo);
+    EXPECT_EQ(ret, 0);
 }
 
 /**
@@ -674,6 +677,58 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_CheckNeedRecordAppRunningUnq
     EXPECT_EQ(result, true);
     result = appfreezeManager->CheckNeedRecordAppRunningUnquieId("TEST");
     EXPECT_EQ(result, false);
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest CheckAppfreezeHappend Test
+ * @tc.desc: add testcase
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_CheckAppfreezeHappend_Test002, TestSize.Level1)
+{
+    int pid = getpid();
+    int uid = getuid();
+    std::string testValue = "AppfreezeManagerTest_CheckAppfreezeHappend_Test002";
+    std::string key = std::to_string(pid) + "_" + std::to_string(uid) + "_" + testValue;
+    bool ret = appfreezeManager->CheckAppfreezeHappend(key, "THREAD_BLOCK_3S");
+    EXPECT_EQ(ret, false);
+    ret = appfreezeManager->CheckAppfreezeHappend(key, "BUSSINESS_THREAD_BLOCK_3S");
+    EXPECT_EQ(ret, false);
+    ret = appfreezeManager->CheckAppfreezeHappend(key, "THREAD_BLOCK_6S");
+    EXPECT_EQ(ret, false);
+    ret = appfreezeManager->CheckAppfreezeHappend(key, "LIFECYCLE_TIMEOUT");
+    EXPECT_EQ(ret, true);
+    ret = appfreezeManager->CheckAppfreezeHappend(key, "THREAD_BLOCK_3S");
+    EXPECT_EQ(ret, true);
+    ret = appfreezeManager->CheckAppfreezeHappend(key, "APP_INPUT_BLOCK");
+    EXPECT_EQ(ret, true);
+    std::string halfWarning = "LIFECYCLE_HALF_TIMEOUT_WARNING";
+    std::string timeoutWarning = "LIFECYCLE_TIMEOUT_WARNING";
+    ret = appfreezeManager->CheckAppfreezeHappend(halfWarning, "LIFECYCLE_HALF_TIMEOUT_WARNING");
+    EXPECT_EQ(ret, false);
+    ret = appfreezeManager->CheckAppfreezeHappend(halfWarning, "LIFECYCLE_HALF_TIMEOUT_WARNING");
+    EXPECT_EQ(ret, true);
+    ret = appfreezeManager->CheckAppfreezeHappend(timeoutWarning, "LIFECYCLE_TIMEOUT_WARNING");
+    EXPECT_EQ(ret, false);
+    ret = appfreezeManager->CheckAppfreezeHappend(timeoutWarning, "LIFECYCLE_TIMEOUT_WARNING");
+    EXPECT_EQ(ret, true);
+    int64_t testTime = appfreezeManager->GetFreezeCurrentTime() + 600000; // test value
+    appfreezeManager->appfreezeInfo_[key].occurTime = testTime;
+    appfreezeManager->appfreezeInfo_[halfWarning].occurTime = testTime;
+    ret = appfreezeManager->CheckAppfreezeHappend(halfWarning, "LIFECYCLE_HALF_TIMEOUT_WARNING");
+    EXPECT_EQ(ret, false);
+    ret = appfreezeManager->CheckAppfreezeHappend(halfWarning, "LIFECYCLE_HALF_TIMEOUT_WARNING");
+    EXPECT_EQ(ret, true);
+    ret = appfreezeManager->CheckAppfreezeHappend(key, "THREAD_BLOCK_3S");
+    EXPECT_EQ(ret, false);
+    ret = appfreezeManager->CheckAppfreezeHappend(key, "THREAD_BLOCK_6S");
+    EXPECT_EQ(ret, false);
+    ret = appfreezeManager->CheckAppfreezeHappend(key, "LIFECYCLE_TIMEOUT");
+    EXPECT_EQ(ret, true);
+    ret = appfreezeManager->CheckAppfreezeHappend(key, "THREAD_BLOCK_3S");
+    EXPECT_EQ(ret, true);
+    ret = appfreezeManager->CheckAppfreezeHappend(key, "APP_INPUT_BLOCK");
+    EXPECT_EQ(ret, true);
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

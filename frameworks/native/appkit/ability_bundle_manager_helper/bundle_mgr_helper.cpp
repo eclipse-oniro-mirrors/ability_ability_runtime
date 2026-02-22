@@ -624,7 +624,7 @@ ErrCode BundleMgrHelper::GetBundleInfosV9(int32_t flags,
     }
 
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    return bundleMgr->GetBundleInfos(flags, bundleInfos, userId);
+    return bundleMgr->GetBundleInfosV9(flags, bundleInfos, userId);
 }
 
 bool BundleMgrHelper::GetApplicationInfo(

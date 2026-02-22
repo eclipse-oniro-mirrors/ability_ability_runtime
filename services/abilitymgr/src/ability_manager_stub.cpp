@@ -480,6 +480,15 @@ int AbilityManagerStub::OnRemoteRequestInnerEleventh(uint32_t code, MessageParce
     if (interfaceCode == AbilityManagerInterfaceCode::RECORD_PROCESS_EXIT_REASON_PLUS) {
         return RecordProcessExitReasonPlusInner(data, reply);
     }
+    if (interfaceCode == AbilityManagerInterfaceCode::KILL_APP_WITH_REASON) {
+        return KillAppWithReasonInner(data, reply);
+    }
+    if (interfaceCode == AbilityManagerInterfaceCode::KILL_BUNDLE_WITH_REASON) {
+        return KillBundleWithReasonInner(data, reply);
+    }
+    if (interfaceCode == AbilityManagerInterfaceCode::RECORD_APP_WITH_REASON) {
+        return RecordAppWithReasonInner(data, reply);
+    }
     if (interfaceCode == AbilityManagerInterfaceCode::IS_RESTART_APP_LIMIT) {
         return IsRestartAppLimitInner(data, reply);
     }
@@ -3657,6 +3666,57 @@ int32_t AbilityManagerStub::RecordProcessExitReasonPlusInner(MessageParcel &data
         return ERR_READ_EXIT_REASON_FAILED;
     }
     int32_t result = RecordProcessExitReason(pid, uid, *exitReason);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write result fail");
+        return ERR_WRITE_RESULT_CODE_FAILED;
+    }
+    return NO_ERROR;
+}
+
+int32_t AbilityManagerStub::KillAppWithReasonInner(MessageParcel &data, MessageParcel &reply)
+{
+    int32_t pid = data.ReadInt32();
+    std::unique_ptr<ExitReasonCompability> exitReason(data.ReadParcelable<ExitReasonCompability>());
+    if (!exitReason) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "exitReasonCompability null");
+        return ERR_INVALID_VALUE;
+    }
+    int32_t result = KillAppWithReason(pid, *exitReason);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write result fail");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int32_t AbilityManagerStub::KillBundleWithReasonInner(MessageParcel &data, MessageParcel &reply)
+{
+    std::string bundleName = data.ReadString();
+    int32_t userId = data.ReadInt32();
+    int32_t appIndex = data.ReadInt32();
+    std::unique_ptr<ExitReasonCompability> exitReason(data.ReadParcelable<ExitReasonCompability>());
+    if (!exitReason) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "exitReasonCompability null");
+        return ERR_INVALID_VALUE;
+    }
+    int32_t result = KillBundleWithReason(bundleName, userId, appIndex, *exitReason);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write result fail");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int32_t AbilityManagerStub::RecordAppWithReasonInner(MessageParcel &data, MessageParcel &reply)
+{
+    int32_t pid = data.ReadInt32();
+    int32_t uid = data.ReadInt32();
+    std::unique_ptr<ExitReasonCompability> exitReason(data.ReadParcelable<ExitReasonCompability>());
+    if (!exitReason) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "exitReason null");
+        return ERR_READ_EXIT_REASON_FAILED;
+    }
+    int32_t result = RecordAppWithReason(pid, uid, *exitReason);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write result fail");
         return ERR_WRITE_RESULT_CODE_FAILED;

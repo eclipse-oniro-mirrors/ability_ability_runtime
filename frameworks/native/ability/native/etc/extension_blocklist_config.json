@@ -854,6 +854,30 @@
             "wifiext",
             "wifiManager",
             "wifiManagerExt"
+        ],
+        "PartnerAgentExtension": [
+            "backgroundTaskManager",
+            "connectedTag",
+            "contact",
+            "resourceschedule.backgroundTaskManager",
+            "geolocation",
+            "geoLocationManager",
+            "multimedia.audio",
+            "multimedia.camera",
+            "multimedia.cameraPicker",
+            "multimedia.media",
+            "multimedia.mediaLibrary",
+            "multimedia.movingphotoview",
+            "nfc.cardEmulation",
+            "nfc.controller",
+            "nfc.tag",
+            "tagSession",
+            "telephony.call",
+            "telephony.sim",
+            "telephony.sms",
+            "wifiext",
+            "wifiManager",
+            "wifiManagerExt"
         ]
     }
 }

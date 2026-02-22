@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -37,6 +37,24 @@ struct ExitReason : public Parcelable {
     bool ReadFromParcel(Parcel &parcel);
     virtual bool Marshalling(Parcel &parcel) const override;
     static ExitReason *Unmarshalling(Parcel &parcel);
+};
+
+struct ExitReasonCompability : public Parcelable {
+    ExitReasonCompability() = default;
+    ExitReasonCompability(const Reason reason, const std::string &exitMsg);
+    ExitReasonCompability(const Reason &reason, int32_t subReason, const std::string &exitMsg);
+
+    Reason reason = Reason::REASON_UNKNOWN;
+    std::string exitMsg = "";
+    int32_t subReason = -1;
+
+    int32_t killId = -1;
+    std::string killMsg = "";
+    std::string innerMsg = "";
+
+    bool ReadFromParcel(Parcel &parcel);
+    virtual bool Marshalling(Parcel &parcel) const override;
+    static ExitReasonCompability *Unmarshalling(Parcel &parcel);
 };
 }  // namespace AAFwk
 }  // namespace OHOS

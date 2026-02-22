@@ -26,14 +26,14 @@ namespace OHOS {
 namespace AgentManagerEts {
 namespace {
 constexpr const char *CLASSNAME_ARRAY = "std.core.Array";
-constexpr const char *PROVIDER_IMPL_CLASS_NAME = "@ohos.app.agent.AgentCard.ProviderImpl";
-constexpr const char *CAPABILITIES_IMPL_CLASS_NAME = "@ohos.app.agent.AgentCard.CapabilitiesImpl";
-constexpr const char *AUTHENTICATION_IMPL_CLASS_NAME = "@ohos.app.agent.AgentCard.AuthenticationImpl";
-constexpr const char *SKILL_IMPL_CLASS_NAME = "@ohos.app.agent.AgentCard.SkillImpl";
+constexpr const char *AGENT_PROVIDER_IMPL_CLASS_NAME = "@ohos.app.agent.AgentCard.AgentProviderImpl";
+constexpr const char *AGENT_APP_INFO_IMPL_CLASS_NAME = "@ohos.app.agent.AgentCard.AgentAppInfoImpl";
+constexpr const char *AGENT_CAPABILITIES_IMPL_CLASS_NAME = "@ohos.app.agent.AgentCard.AgentCapabilitiesImpl";
+constexpr const char *AGENT_SKILL_IMPL_CLASS_NAME = "@ohos.app.agent.AgentCard.AgentSkillImpl";
 constexpr const char *AGENT_CARD_IMPL_CLASS_NAME = "@ohos.app.agent.AgentCard.AgentCardImpl";
 }  // namespace
 
-ani_object CreateEtsProvider(ani_env *env, const Provider &provider)
+ani_object CreateEtsAgentProvider(ani_env *env, const AgentProvider &provider)
 {
     ani_class cls = nullptr;
     ani_status status = ANI_ERROR;
@@ -43,8 +43,8 @@ ani_object CreateEtsProvider(ani_env *env, const Provider &provider)
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null env");
         return nullptr;
     }
-    if ((status = env->FindClass(PROVIDER_IMPL_CLASS_NAME, &cls)) != ANI_OK || cls == nullptr) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "find clss %{public}s failed: %{public}d", PROVIDER_IMPL_CLASS_NAME, status);
+    if ((status = env->FindClass(AGENT_PROVIDER_IMPL_CLASS_NAME, &cls)) != ANI_OK || cls == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "find clss %{public}s failed: %{public}d", AGENT_PROVIDER_IMPL_CLASS_NAME, status);
         return nullptr;
     }
     if ((status = env->Class_FindMethod(cls, "<ctor>", ":", &method)) != ANI_OK || method == nullptr) {
@@ -69,7 +69,7 @@ ani_object CreateEtsProvider(ani_env *env, const Provider &provider)
     return object;
 }
 
-ani_object CreateEtsCapabilities(ani_env *env, const Capabilities &capabilities)
+ani_object CreateEtsAgentCapabilities(ani_env *env, const AgentCapabilities &capabilities)
 {
     ani_class cls = nullptr;
     ani_status status = ANI_ERROR;
@@ -79,9 +79,9 @@ ani_object CreateEtsCapabilities(ani_env *env, const Capabilities &capabilities)
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null env");
         return nullptr;
     }
-    if ((status = env->FindClass(CAPABILITIES_IMPL_CLASS_NAME, &cls)) != ANI_OK || cls == nullptr) {
+    if ((status = env->FindClass(AGENT_CAPABILITIES_IMPL_CLASS_NAME, &cls)) != ANI_OK || cls == nullptr) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "find clss %{public}s failed: %{public}d",
-            CAPABILITIES_IMPL_CLASS_NAME, status);
+            AGENT_CAPABILITIES_IMPL_CLASS_NAME, status);
         return nullptr;
     }
     if ((status = env->Class_FindMethod(cls, "<ctor>", ":", &method)) != ANI_OK || method == nullptr) {
@@ -109,10 +109,23 @@ ani_object CreateEtsCapabilities(ani_env *env, const Capabilities &capabilities)
         TAG_LOGE(AAFwkTag::SER_ROUTER, "failed status:%{public}d", status);
         return nullptr;
     }
+    if (!capabilities.extension.empty()) {
+        status = env->Object_SetPropertyByName_Ref(object, "extension", GetAniString(env, capabilities.extension));
+        if (status != ANI_OK) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "set extension failed: %{public}d", status);
+            return nullptr;
+        }
+    }
+    status = env->Object_SetPropertyByName_Ref(object, "extendedAgentCard",
+        CreateBoolean(env, static_cast<ani_boolean>(capabilities.extendedAgentCard)));
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "set extendedAgentCard failed: %{public}d", status);
+        return nullptr;
+    }
     return object;
 }
 
-ani_object CreateEtsAuthentication(ani_env *env, const Authentication &authentication)
+ani_object CreateEtsAgentAppInfo(ani_env *env, const AgentAppInfo &appInfo)
 {
     ani_class cls = nullptr;
     ani_status status = ANI_ERROR;
@@ -122,9 +135,9 @@ ani_object CreateEtsAuthentication(ani_env *env, const Authentication &authentic
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null env");
         return nullptr;
     }
-    if ((status = env->FindClass(AUTHENTICATION_IMPL_CLASS_NAME, &cls)) != ANI_OK || cls == nullptr) {
+    if ((status = env->FindClass(AGENT_APP_INFO_IMPL_CLASS_NAME, &cls)) != ANI_OK || cls == nullptr) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "find clss %{public}s failed: %{public}d",
-            AUTHENTICATION_IMPL_CLASS_NAME, status);
+            AGENT_APP_INFO_IMPL_CLASS_NAME, status);
         return nullptr;
     }
     if ((status = env->Class_FindMethod(cls, "<ctor>", ":", &method)) != ANI_OK || method == nullptr) {
@@ -135,19 +148,45 @@ ani_object CreateEtsAuthentication(ani_env *env, const Authentication &authentic
         TAG_LOGE(AAFwkTag::SER_ROUTER, "new object failed: %{public}d", status);
         return nullptr;
     }
-    if (authentication.schemes.size() > 0 && !SetStringArrayProperty(env, object, "schemes", authentication.schemes)) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "set schemes failed");
-        return nullptr;
+    if (!appInfo.bundleName.empty()) {
+        status = env->Object_SetPropertyByName_Ref(object, "bundleName", GetAniString(env, appInfo.bundleName));
+        if (status != ANI_OK) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "set bundleName failed: %{public}d", status);
+            return nullptr;
+        }
     }
-    status = env->Object_SetPropertyByName_Ref(object, "credentials", GetAniString(env, authentication.credentials));
-    if (status != ANI_OK) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "failed status:%{public}d", status);
-        return nullptr;
+    if (!appInfo.moduleName.empty()) {
+        status = env->Object_SetPropertyByName_Ref(object, "moduleName", GetAniString(env, appInfo.moduleName));
+        if (status != ANI_OK) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "set moduleName failed: %{public}d", status);
+            return nullptr;
+        }
+    }
+    if (!appInfo.abilityName.empty()) {
+        status = env->Object_SetPropertyByName_Ref(object, "abilityName", GetAniString(env, appInfo.abilityName));
+        if (status != ANI_OK) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "set abilityName failed: %{public}d", status);
+            return nullptr;
+        }
+    }
+    if (!appInfo.deviceTypes.empty()) {
+        status = env->Object_SetPropertyByName_Ref(object, "deviceTypes", GetAniString(env, appInfo.deviceTypes));
+        if (status != ANI_OK) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "set deviceTypes failed: %{public}d", status);
+            return nullptr;
+        }
+    }
+    if (!appInfo.minAppVersion.empty()) {
+        status = env->Object_SetPropertyByName_Ref(object, "minAppVersion", GetAniString(env, appInfo.minAppVersion));
+        if (status != ANI_OK) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "set minAppVersion failed: %{public}d", status);
+            return nullptr;
+        }
     }
     return object;
 }
 
-ani_object CreateEtsSkill(ani_env *env, const Skill &skill)
+ani_object CreateEtsAgentSkill(ani_env *env, const AgentSkill &skill)
 {
     ani_class cls = nullptr;
     ani_status status = ANI_ERROR;
@@ -157,8 +196,8 @@ ani_object CreateEtsSkill(ani_env *env, const Skill &skill)
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null env");
         return nullptr;
     }
-    if ((status = env->FindClass(SKILL_IMPL_CLASS_NAME, &cls)) != ANI_OK || cls == nullptr) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "find clss %{public}s failed: %{public}d", SKILL_IMPL_CLASS_NAME, status);
+    if ((status = env->FindClass(AGENT_SKILL_IMPL_CLASS_NAME, &cls)) != ANI_OK || cls == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "find clss %{public}s failed: %{public}d", AGENT_SKILL_IMPL_CLASS_NAME, status);
         return nullptr;
     }
     if ((status = env->Class_FindMethod(cls, "<ctor>", ":", &method)) != ANI_OK || method == nullptr) {
@@ -200,10 +239,17 @@ ani_object CreateEtsSkill(ani_env *env, const Skill &skill)
         TAG_LOGE(AAFwkTag::SER_ROUTER, "set outputModes failed");
         return nullptr;
     }
+    if (!skill.extension.empty()) {
+        status = env->Object_SetPropertyByName_Ref(object, "extension", GetAniString(env, skill.extension));
+        if (status != ANI_OK) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "set extension failed: %{public}d", status);
+            return nullptr;
+        }
+    }
     return object;
 }
 
-ani_object CreateEtsSkillArray(ani_env *env, const std::vector<std::shared_ptr<Skill>> &skills)
+ani_object CreateEtsAgentSkillArray(ani_env *env, const std::vector<std::shared_ptr<AgentSkill>> &skills)
 {
     if (env == nullptr) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null env");
@@ -233,7 +279,7 @@ ani_object CreateEtsSkillArray(ani_env *env, const std::vector<std::shared_ptr<S
         if (skill == nullptr) {
             continue;
         }
-        ani_object aniSkill = CreateEtsSkill(env, *skill);
+        ani_object aniSkill = CreateEtsAgentSkill(env, *skill);
         if (aniSkill == nullptr) {
             TAG_LOGW(AAFwkTag::SER_ROUTER, "null aniSkill");
             break;
@@ -270,21 +316,6 @@ ani_object CreateEtsAgentCard(ani_env *env, const AgentCard &card)
         TAG_LOGE(AAFwkTag::SER_ROUTER, "new object failed: %{public}d", status);
         return nullptr;
     }
-    status = env->Object_SetPropertyByName_Ref(object, "bundleName", GetAniString(env, card.bundleName));
-    if (status != ANI_OK) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "failed status:%{public}d", status);
-        return nullptr;
-    }
-    status = env->Object_SetPropertyByName_Ref(object, "moduleName", GetAniString(env, card.moduleName));
-    if (status != ANI_OK) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "failed status:%{public}d", status);
-        return nullptr;
-    }
-    status = env->Object_SetPropertyByName_Ref(object, "abilityName", GetAniString(env, card.abilityName));
-    if (status != ANI_OK) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "failed status:%{public}d", status);
-        return nullptr;
-    }
     status = env->Object_SetPropertyByName_Ref(object, "name", GetAniString(env, card.name));
     if (status != ANI_OK) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "failed status:%{public}d", status);
@@ -300,11 +331,6 @@ ani_object CreateEtsAgentCard(ani_env *env, const AgentCard &card)
         TAG_LOGE(AAFwkTag::SER_ROUTER, "failed status:%{public}d", status);
         return nullptr;
     }
-    status = env->Object_SetPropertyByName_Ref(object, "url", GetAniString(env, card.url));
-    if (status != ANI_OK) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "failed status:%{public}d", status);
-        return nullptr;
-    }
     status = env->Object_SetPropertyByName_Ref(object, "version", GetAniString(env, card.version));
     if (status != ANI_OK) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "failed status:%{public}d", status);
@@ -316,7 +342,7 @@ ani_object CreateEtsAgentCard(ani_env *env, const AgentCard &card)
         return nullptr;
     }
     if (card.provider) {
-        status = env->Object_SetPropertyByName_Ref(object, "provider", CreateEtsProvider(env, *(card.provider)));
+        status = env->Object_SetPropertyByName_Ref(object, "provider", CreateEtsAgentProvider(env, *(card.provider)));
         if (status != ANI_OK) {
             TAG_LOGE(AAFwkTag::SER_ROUTER, "set provider failed:%{public}d", status);
             return nullptr;
@@ -324,15 +350,7 @@ ani_object CreateEtsAgentCard(ani_env *env, const AgentCard &card)
     }
     if (card.capabilities) {
         status = env->Object_SetPropertyByName_Ref(object, "capabilities",
-            CreateEtsCapabilities(env, *(card.capabilities)));
-        if (status != ANI_OK) {
-            TAG_LOGE(AAFwkTag::SER_ROUTER, "failed status:%{public}d", status);
-            return nullptr;
-        }
-    }
-    if (card.authentication) {
-        status = env->Object_SetPropertyByName_Ref(object, "authentication",
-            CreateEtsAuthentication(env, *(card.authentication)));
+            CreateEtsAgentCapabilities(env, *(card.capabilities)));
         if (status != ANI_OK) {
             TAG_LOGE(AAFwkTag::SER_ROUTER, "failed status:%{public}d", status);
             return nullptr;
@@ -349,9 +367,37 @@ ani_object CreateEtsAgentCard(ani_env *env, const AgentCard &card)
         return nullptr;
     }
     if (card.skills.size() > 0) {
-        status = env->Object_SetPropertyByName_Ref(object, "skills", CreateEtsSkillArray(env, card.skills));
+        status = env->Object_SetPropertyByName_Ref(object, "skills", CreateEtsAgentSkillArray(env, card.skills));
         if (status != ANI_OK) {
             TAG_LOGE(AAFwkTag::SER_ROUTER, "failed status:%{public}d", status);
+            return nullptr;
+        }
+    }
+    if (!card.extension.empty()) {
+        status = env->Object_SetPropertyByName_Ref(object, "extension", GetAniString(env, card.extension));
+        if (status != ANI_OK) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "set extension failed: %{public}d", status);
+            return nullptr;
+        }
+    }
+    if (!card.category.empty()) {
+        status = env->Object_SetPropertyByName_Ref(object, "category", GetAniString(env, card.category));
+        if (status != ANI_OK) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "set category failed: %{public}d", status);
+            return nullptr;
+        }
+    }
+    if (!card.iconUrl.empty()) {
+        status = env->Object_SetPropertyByName_Ref(object, "iconUrl", GetAniString(env, card.iconUrl));
+        if (status != ANI_OK) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "set iconUrl failed: %{public}d", status);
+            return nullptr;
+        }
+    }
+    if (card.appInfo) {
+        status = env->Object_SetPropertyByName_Ref(object, "appInfo", CreateEtsAgentAppInfo(env, *(card.appInfo)));
+        if (status != ANI_OK) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "set appInfo failed: %{public}d", status);
             return nullptr;
         }
     }

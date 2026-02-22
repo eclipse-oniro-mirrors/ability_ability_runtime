@@ -25,45 +25,37 @@
 
 namespace OHOS {
 namespace AgentRuntime {
-struct Provider : public Parcelable {
+struct AgentProvider : public Parcelable {
     std::string organization;
     std::string url;
 
     bool ReadFromParcel(Parcel &parcel);
     virtual bool Marshalling(Parcel &parcel) const override;
-    static Provider *Unmarshalling(Parcel &parcel);
+    static AgentProvider *Unmarshalling(Parcel &parcel);
     nlohmann::json ToJson();
-    static Provider FromJson(const nlohmann::json &jsonObject);
+    static bool FromJson(const nlohmann::json &jsonObject, AgentProvider &provider);
 };
 
-struct Capabilities : public Parcelable {
+struct AgentCapabilities : public Parcelable {
     // optional param
     bool streaming;
     // optional param
     bool pushNotifications;
     // optional param
     bool stateTransitionHistory;
-
-    bool ReadFromParcel(Parcel &parcel);
-    virtual bool Marshalling(Parcel &parcel) const override;
-    static Capabilities *Unmarshalling(Parcel &parcel);
-    nlohmann::json ToJson();
-    static Capabilities FromJson(const nlohmann::json &jsonObject);
-};
-
-struct Authentication : public Parcelable {
-    std::vector<std::string> schemes;
     // optional param
-    std::string credentials;
+    std::string extension;
+    // optional param
+    bool extendedAgentCard = false;
 
     bool ReadFromParcel(Parcel &parcel);
     virtual bool Marshalling(Parcel &parcel) const override;
-    static Authentication *Unmarshalling(Parcel &parcel);
+    static AgentCapabilities *Unmarshalling(Parcel &parcel);
     nlohmann::json ToJson();
-    static Authentication FromJson(const nlohmann::json &jsonObject);
+    static AgentCapabilities FromJson(const nlohmann::json &jsonObject);
 };
 
-struct Skill : public Parcelable {
+struct AgentSkill : public Parcelable {
     std::string id;
     std::string name;
     std::string description;
@@ -74,37 +66,55 @@ struct Skill : public Parcelable {
     std::vector<std::string> inputModes;
     // optional param
     std::vector<std::string> outputModes;
+    // optional param
+    std::string extension;
 
     bool ReadFromParcel(Parcel &parcel);
     virtual bool Marshalling(Parcel &parcel) const override;
-    static Skill *Unmarshalling(Parcel &parcel);
+    static AgentSkill *Unmarshalling(Parcel &parcel);
     nlohmann::json ToJson();
-    static Skill FromJson(const nlohmann::json &jsonObject);
+    static bool FromJson(const nlohmann::json &jsonObject, AgentSkill &skill);
 };
 
-struct AgentCard : public Parcelable {
+struct AgentAppInfo : public Parcelable {
     std::string bundleName;
     std::string moduleName;
     std::string abilityName;
+    std::string deviceTypes;
+    std::string minAppVersion;
+    bool ReadFromParcel(Parcel &parcel);
+    virtual bool Marshalling(Parcel &parcel) const override;
+    static AgentAppInfo *Unmarshalling(Parcel &parcel);
+    nlohmann::json ToJson();
+    static bool FromJson(const nlohmann::json &jsonObject, AgentAppInfo &appInfo);
+};
+
+struct AgentCard : public Parcelable {
     std::string agentId;
     std::string name;
     std::string description;
-    std::string url;
     // optional param
-    std::shared_ptr<Provider> provider = nullptr;
+    std::shared_ptr<AgentProvider> provider = nullptr;
     std::string version;
     // optional param
     std::string documentationUrl;
-    std::shared_ptr<Capabilities> capabilities = nullptr;
-    std::shared_ptr<Authentication> authentication = nullptr;
+    std::shared_ptr<AgentCapabilities> capabilities = nullptr;
     std::vector<std::string> defaultInputModes;
     std::vector<std::string> defaultOutputModes;
-    std::vector<std::shared_ptr<Skill>> skills;
+    std::vector<std::shared_ptr<AgentSkill>> skills;
+    // optional param
+    std::string iconUrl;
+    // optional param
+    std::string extension;
+    // required param
+    std::string category;
+    // optional param
+    std::shared_ptr<AgentAppInfo> appInfo = nullptr;
 
     bool ReadFromParcel(Parcel &parcel);
     virtual bool Marshalling(Parcel &parcel) const override;
     nlohmann::json ToJson() const;
-    static AgentCard FromJson(nlohmann::json jsonObject);
+    static bool FromJson(nlohmann::json jsonObject, AgentCard &agentCard);
     static AgentCard *Unmarshalling(Parcel &parcel);
 };
 

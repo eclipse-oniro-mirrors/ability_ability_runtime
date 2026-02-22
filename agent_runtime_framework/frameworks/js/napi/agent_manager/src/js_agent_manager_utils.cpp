@@ -24,7 +24,7 @@ using namespace OHOS::AbilityRuntime;
 
 namespace OHOS {
 namespace AgentRuntime {
-napi_value CreateJsProvider(napi_env env, const Provider &provider)
+napi_value CreateJsAgentProvider(napi_env env, const AgentProvider &provider)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "create provider");
     napi_value object = nullptr;
@@ -39,7 +39,35 @@ napi_value CreateJsProvider(napi_env env, const Provider &provider)
     return object;
 }
 
-napi_value CreateJsCapabilities(napi_env env, const Capabilities &capabilities)
+napi_value CreateJsAgentAppInfo(napi_env env, const AgentAppInfo &appInfo)
+{
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "create appInfo");
+    napi_value object = nullptr;
+    napi_status status = napi_create_object(env, &object);
+    if (status != napi_ok || object == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null obj");
+        return nullptr;
+    }
+    if (!appInfo.bundleName.empty()) {
+        napi_set_named_property(env, object, "bundleName", CreateJsValue(env, appInfo.bundleName));
+    }
+    if (!appInfo.moduleName.empty()) {
+        napi_set_named_property(env, object, "moduleName", CreateJsValue(env, appInfo.moduleName));
+    }
+    if (!appInfo.abilityName.empty()) {
+        napi_set_named_property(env, object, "abilityName", CreateJsValue(env, appInfo.abilityName));
+    }
+    if (!appInfo.deviceTypes.empty()) {
+        napi_set_named_property(env, object, "deviceTypes", CreateJsValue(env, appInfo.deviceTypes));
+    }
+    if (!appInfo.minAppVersion.empty()) {
+        napi_set_named_property(env, object, "minAppVersion", CreateJsValue(env, appInfo.minAppVersion));
+    }
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "end");
+    return object;
+}
+
+napi_value CreateJsAgentCapabilities(napi_env env, const AgentCapabilities &capabilities)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "create capabilities");
     napi_value object = nullptr;
@@ -52,26 +80,15 @@ napi_value CreateJsCapabilities(napi_env env, const Capabilities &capabilities)
     napi_set_named_property(env, object, "pushNotifications", CreateJsValue(env, capabilities.pushNotifications));
     napi_set_named_property(env, object, "stateTransitionHistory",
         CreateJsValue(env, capabilities.stateTransitionHistory));
-    TAG_LOGD(AAFwkTag::SER_ROUTER, "end");
-    return object;
-}
-
-napi_value CreateJsAuthentication(napi_env env, const Authentication &authentication)
-{
-    TAG_LOGD(AAFwkTag::SER_ROUTER, "create authentication");
-    napi_value object = nullptr;
-    napi_status status = napi_create_object(env, &object);
-    if (status != napi_ok || object == nullptr) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "null obj");
-        return nullptr;
+    if (!capabilities.extension.empty()) {
+        napi_set_named_property(env, object, "extension", CreateJsValue(env, capabilities.extension));
     }
-    napi_set_named_property(env, object, "schemes", CreateNativeArray(env, authentication.schemes));
-    napi_set_named_property(env, object, "credentials", CreateJsValue(env, authentication.credentials));
+    napi_set_named_property(env, object, "extendedAgentCard", CreateJsValue(env, capabilities.extendedAgentCard));
     TAG_LOGD(AAFwkTag::SER_ROUTER, "end");
     return object;
 }
 
-napi_value CreateJsSkill(napi_env env, const Skill &skill)
+napi_value CreateJsAgentSkill(napi_env env, const AgentSkill &skill)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "create skill");
     napi_value object = nullptr;
@@ -87,11 +104,12 @@ napi_value CreateJsSkill(napi_env env, const Skill &skill)
     napi_set_named_property(env, object, "examples", CreateNativeArray(env, skill.examples));
     napi_set_named_property(env, object, "inputModes", CreateNativeArray(env, skill.inputModes));
     napi_set_named_property(env, object, "outputModes", CreateNativeArray(env, skill.outputModes));
+    napi_set_named_property(env, object, "extension", CreateJsValue(env, skill.extension));
     TAG_LOGD(AAFwkTag::SER_ROUTER, "end");
     return object;
 }
 
-napi_value CreateJsSkillArray(napi_env env, const std::vector<std::shared_ptr<Skill>> &skills)
+napi_value CreateJsAgentSkillArray(napi_env env, const std::vector<std::shared_ptr<AgentSkill>> &skills)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "create skill array");
     napi_value object = nullptr;
@@ -104,7 +122,7 @@ napi_value CreateJsSkillArray(napi_env env, const std::vector<std::shared_ptr<Sk
     uint32_t index = 0;
     for (auto skill : skills) {
         if (skill) {
-            napi_set_element(env, object, index++, CreateJsSkill(env, *skill));
+            napi_set_element(env, object, index++, CreateJsAgentSkill(env, *skill));
         }
     }
     TAG_LOGD(AAFwkTag::SER_ROUTER, "end");
@@ -121,26 +139,31 @@ napi_value CreateJsAgentCard(napi_env env, const AgentCard &card)
         return nullptr;
     }
     napi_set_named_property(env, object, "agentId", CreateJsValue(env, card.agentId));
-    napi_set_named_property(env, object, "bundleName", CreateJsValue(env, card.bundleName));
-    napi_set_named_property(env, object, "moduleName", CreateJsValue(env, card.moduleName));
-    napi_set_named_property(env, object, "abilityName", CreateJsValue(env, card.abilityName));
     napi_set_named_property(env, object, "name", CreateJsValue(env, card.name));
     napi_set_named_property(env, object, "description", CreateJsValue(env, card.description));
-    napi_set_named_property(env, object, "url", CreateJsValue(env, card.url));
     napi_set_named_property(env, object, "version", CreateJsValue(env, card.version));
     napi_set_named_property(env, object, "documentationUrl", CreateJsValue(env, card.documentationUrl));
     napi_set_named_property(env, object, "defaultInputModes", CreateNativeArray(env, card.defaultInputModes));
     napi_set_named_property(env, object, "defaultOutputModes", CreateNativeArray(env, card.defaultOutputModes));
     if (card.provider) {
-        napi_set_named_property(env, object, "provider", CreateJsProvider(env, *(card.provider)));
+        napi_set_named_property(env, object, "provider", CreateJsAgentProvider(env, *(card.provider)));
     }
     if (card.capabilities) {
-        napi_set_named_property(env, object, "capabilities", CreateJsCapabilities(env, *(card.capabilities)));
+        napi_set_named_property(env, object, "capabilities", CreateJsAgentCapabilities(env, *(card.capabilities)));
     }
-    if (card.authentication) {
-        napi_set_named_property(env, object, "authentication", CreateJsAuthentication(env, *(card.authentication)));
+    napi_set_named_property(env, object, "skills", CreateJsAgentSkillArray(env, card.skills));
+    if (!card.extension.empty()) {
+        napi_set_named_property(env, object, "extension", CreateJsValue(env, card.extension));
     }
-    napi_set_named_property(env, object, "skills", CreateJsSkillArray(env, card.skills));
+    if (!card.category.empty()) {
+        napi_set_named_property(env, object, "category", CreateJsValue(env, card.category));
+    }
+    if (!card.iconUrl.empty()) {
+        napi_set_named_property(env, object, "iconUrl", CreateJsValue(env, card.iconUrl));
+    }
+    if (card.appInfo) {
+        napi_set_named_property(env, object, "appInfo", CreateJsAgentAppInfo(env, *(card.appInfo)));
+    }
     TAG_LOGD(AAFwkTag::SER_ROUTER, "end");
     return object;
 }

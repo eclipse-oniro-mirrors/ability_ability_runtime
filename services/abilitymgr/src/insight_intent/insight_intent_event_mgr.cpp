@@ -74,8 +74,9 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
             return;
         }
         AppExecFwk::BundleInfo bundleInfo;
-        if (!IN_PROCESS_CALL(bundleMgrHelper->GetBundleInfoV9(bundleName,
-            static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_DEFAULT), bundleInfo, userId))) {
+        if (IN_PROCESS_CALL(bundleMgrHelper->GetBundleInfoV9(bundleName,
+            static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_DEFAULT),
+            bundleInfo, userId)) != ERR_OK) {
             TAG_LOGE(AAFwkTag::INTENT, "get bundle info failed");
             return;
         }

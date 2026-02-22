@@ -169,6 +169,34 @@ HWTEST_F(WatchdogTest, AppExecFwk_watchdog_ReportEvent_0004, Function | MediumTe
 }
 
 /**
+ * @tc.number: AppExecFwk_watchdog_ReportEvent_0005
+ * @tc.name: ReportEvent
+ * @tc.desc: Test ReportEvent.
+ */
+HWTEST_F(WatchdogTest, AppExecFwk_watchdog_ReportEvent_0005, Function | MediumTest | Level3)
+{
+    EXPECT_EQ(watchdog_->backgroundReportCount_, 0);
+    watchdog_->lastWatchTime_ = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::
+        system_clock::now().time_since_epoch()).count() - TEST_INTERVAL_TIME;
+    watchdog_->isBgWorkingThread_.store(false);
+    watchdog_->isInBackground_.store(false);
+    watchdog_->bundleName_ = "AppExecFwk_watchdog_ReportEvent_0005";
+    watchdog_->ReportEvent();
+    watchdog_->isInBackground_.store(true);
+    watchdog_->bundleName_ = "AppExecFwk_watchdog_ReportEvent_0005";
+    watchdog_->backgroundReportCount_.store(0);
+    watchdog_->ReportEvent();
+    watchdog_->isInBackground_.store(true);
+    watchdog_->bundleName_ = "com.ohos.sceneboard";
+    watchdog_->ReportEvent();
+    watchdog_->lastBackGroundWatchTime_ = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count() + TEST_INTERVAL_TIME;
+    watchdog_->ReportEvent();
+    watchdog_->backgroundReportCount_.store(5);
+    watchdog_->ReportEvent();
+}
+
+/**
  * @tc.number: WatchdogTest_Init_001
  * @tc.name: Init
  * @tc.desc: Verify that function Init.
@@ -539,6 +567,7 @@ HWTEST_F(WatchdogTest, WatchdogTest_SetHiTraceChainId_001, TestSize.Level1)
 HWTEST_F(WatchdogTest, WatchdogTest_CheckBgThread_000, TestSize.Level1)
 {
     watchdog_->isInBackground_.store(true);
+    watchdog_->bundleName_ = "com.ohos.sceneboard";
     watchdog_->lastWatchTime_ = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::
         system_clock::now().time_since_epoch()).count() - 3000; // 3000: test value
     int count = 5; // 5: test value

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1260,6 +1260,36 @@ void AppRunningRecord::SetIsUnSetPermission(bool isUnSetPermission)
 bool AppRunningRecord::IsUnSetPermission()
 {
     return isUnSetPermission_;
+}
+
+void AppRunningRecord::SetKillId(int32_t killId)
+{
+    killId_ = killId;
+}
+
+int32_t AppRunningRecord::GetKillId() const
+{
+    return killId_;
+}
+
+void AppRunningRecord::SetKillMsg(const std::string &killMsg)
+{
+    killMsg_ = killMsg;
+}
+
+std::string AppRunningRecord::GetKillMsg() const
+{
+    return killMsg_;
+}
+
+void AppRunningRecord::SetInnerMsg(const std::string &innerMsg)
+{
+    innerMsg_ = innerMsg;
+}
+
+std::string AppRunningRecord::GetInnerMsg() const
+{
+    return innerMsg_;
 }
 
 bool AppRunningRecord::GetNeedLimitPrio()

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -312,6 +312,17 @@ public:
     virtual int32_t NotifyAppMgrRecordExitReason(int32_t pid, int32_t reason, const std::string &exitMsg) = 0;
 
     /**
+     * Record process exit reason to appRunningRecord.
+     * @param pid Pid.
+     * @param killId Kill reason enum.
+     * @param killMsg Kill message.
+     * @param innerMsg Inner message.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t NotifyAppMgrRecordExitReasonCompability(
+        int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg) = 0;
+
+    /**
      * Set enable start process flag by userId
      * @param userId the user id.
      * @param enableStartProcess enable start process.
@@ -591,6 +602,7 @@ public:
         CHECK_PRELOAD_APP_RECORD_EXIST,
         VERIFY_KILL_PROCESS_PERMISSION,
         NOTIFY_LOAD_ABILITY_FINISHED,
+        NOTIFY_APP_MGR_RECORD_EXIT_REASON_COMPABILITY,
         // Add enumeration values above
         END
     };

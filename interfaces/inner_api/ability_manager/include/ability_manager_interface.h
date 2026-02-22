@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1595,6 +1595,31 @@ public:
     }
 
     /**
+     * Force app exit and record exit reason.
+     * @param pid The process id.
+     * @param exitReason The reason of kill app.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t KillAppWithReason(const int32_t pid, const ExitReasonCompability &exitReasonCompability)
+    {
+        return 0;
+    }
+
+    /**
+     * Force bundle exit and record exit reason.
+     * @param bundleName Bundle name of kill app.
+     * @param appIndex The app index of app clone.
+     * @param userId User ID.
+     * @param exitReason The reason of app exit.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t KillBundleWithReason(
+        const std::string &bundleName, int32_t userId, int32_t appIndex, const ExitReasonCompability &exitReason)
+    {
+        return 0;
+    }
+
+    /**
      * Record app exit reason.
      * @param exitReason The reason of app exit.
      * @return Returns ERR_OK on success, others on failure.
@@ -1611,6 +1636,18 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int32_t RecordProcessExitReason(const int32_t pid, const ExitReason &exitReason)
+    {
+        return 0;
+    }
+
+    /**
+     * Record app exit reason.
+     * @param pid The process id.
+     * @param uid The process uid.
+     * @param exitReason The reason of app exit.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual ErrCode RecordAppWithReason(int32_t pid, int32_t uid, const ExitReasonCompability &exitReason)
     {
         return 0;
     }

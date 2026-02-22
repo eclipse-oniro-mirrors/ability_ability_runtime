@@ -15,6 +15,7 @@
 
 #include "ui_extension_ability_manager.h"
 
+#include <algorithm>
 #include "ability_manager_service.h"
 #include "ability_manager_constants.h"
 #include "ability_permission_util.h"
@@ -56,6 +57,7 @@ const std::string UIEXTENSION_NOTIFY_BIND = "ohos.uiextension.params.notifyProce
 const std::string IS_PRELOAD_UIEXTENSION_ABILITY = "ability.want.params.is_preload_uiextension_ability";
 const std::string SEPARATOR = ":";
 const int DEFAULT_INVAL_VALUE = -1;
+const int MAX_AGENT_UI_LIMIT = 5;
 constexpr const char* PARAM_SPECIFIED_PROCESS_FLAG = "ohoSpecifiedProcessFlag";
 #ifdef SUPPORT_ASAN
 const int LOAD_TIMEOUT_MULTIPLE = 150;
@@ -799,6 +801,12 @@ void UIExtensionAbilityManager::RemoveUIExtensionAbilityRecord(
     CHECK_POINTER(uiExtensionAbilityRecordMgr_);
     if (abilityRecord->GetWant().GetBoolParam(IS_PRELOAD_UIEXTENSION_ABILITY, false)) {
         ClearPreloadUIExtensionRecord(abilityRecord);
+    }
+    if (UIExtensionWrapper::IsAgentUIExtension(abilityRecord->GetAbilityInfo().extensionAbilityType)) {
+        uiExtensionAbilityRecordMgr_->RemoveAgentUILaunchRecord(
+            IPCSkeleton::GetCallingUid(),
+            abilityRecord->GetAbilityInfo().bundleName,
+            abilityRecord->GetUIExtensionAbilityId());
     }
     uiExtensionAbilityRecordMgr_->RemoveExtensionRecord(abilityRecord->GetUIExtensionAbilityId());
 }

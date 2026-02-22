@@ -85,5 +85,26 @@ HWTEST_F(ExitReasonTest, Unmarshalling_001, TestSize.Level1)
     TAG_LOGD(AAFwkTag::TEST, "Unmarshalling_001 called. end");
 }
 
+/*
+ * Feature: ExitReasonTest
+ * Function: Marshalling
+ * SubFunction: NA
+ * FunctionPoints: Marshalling
+ * EnvConditions:NA
+ * CaseDescription: Verify the normal process of Marshalling
+ */
+HWTEST_F(ExitReasonTest, Marshalling_001, TestSize.Level1)
+{
+    Reason reason = Reason::REASON_JS_ERROR;
+    std::string exitMsg = "JsError";
+    ExitReasonCompability info(reason, exitMsg);
+    Parcel parcel;
+    bool ret = info.Marshalling(parcel);
+    EXPECT_TRUE(ret);
+    ExitReasonCompability *res = info.Unmarshalling(parcel);
+    EXPECT_NE(res, nullptr);
+    EXPECT_EQ(res->reason, reason);
+    EXPECT_EQ(res->exitMsg, exitMsg);
+}
 }  // namespace AAFwk
 }  // namespace OHOS

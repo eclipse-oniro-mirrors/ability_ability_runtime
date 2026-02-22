@@ -262,8 +262,13 @@ napi_value JsBaseContext::CreateJsModuleContext(napi_env env, const std::shared_
         return CreateJsUndefined(env);
     }
     auto workContext = new (std::nothrow) std::weak_ptr<Context>(moduleContext);
-    napi_coerce_to_native_binding_object(
+    auto status = napi_coerce_to_native_binding_object(
         env, object, DetachNewBaseContext, AttachBaseContext, workContext, nullptr);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::APPKIT, "coerce context failed: %{public}d", status);
+        delete workContext;
+        return CreateJsUndefined(env);
+    }
     napi_add_detached_finalizer(env, object, DetachFinalizeBaseContext, nullptr);
     auto res = napi_wrap(env, object, workContext,
         [](napi_env, void *data, void *) {

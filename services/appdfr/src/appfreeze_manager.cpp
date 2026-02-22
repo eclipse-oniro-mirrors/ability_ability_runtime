@@ -254,8 +254,9 @@ void AppfreezeManager::RecordAppFreezeBehavior(FaultData& faultData, uint64_t du
 int AppfreezeManager::AppfreezeHandleWithStack(const FaultData& faultData, const AppfreezeManager::AppInfo& appInfo)
 {
     TAG_LOGW(AAFwkTag::APPDFR, "NotifyAppFaultTask called, eventName:%{public}s, bundleName:%{public}s, "
-        "name_:%{public}s, currentTime:%{public}s", faultData.errorObject.name.c_str(), appInfo.bundleName.c_str(),
-        name_.c_str(), AbilityRuntime::TimeUtil::DefaultCurrentTimeStr().c_str());
+        "name_:%{public}s, currentTime:%{public}s, isInForeground:%{public}d",
+        faultData.errorObject.name.c_str(), appInfo.bundleName.c_str(),
+        name_.c_str(), AbilityRuntime::TimeUtil::DefaultCurrentTimeStr().c_str(), faultData.isInForeground);
     if (!IsHandleAppfreeze(appInfo.bundleName)) {
         return -1;
     }
@@ -907,13 +908,12 @@ bool AppfreezeManager::IsNeedIgnoreFreezeEvent(const std::string& key, const std
     if (state == AppFreezeState::APPFREEZE_STATE_FREEZE) {
         auto diff = GetFreezeCurrentTime() - GetLastOccurTime(key);
         int reportTimes = GetReportTimes(key);
-        if (diff >= FREEZE_TIME_LIMIT || reportTimes <= maxReportTimes) {
-            TAG_LOGW(AAFwkTag::APPDFR, "durationTime: %{public}" PRId64 " eventName: %{public}s "
-                "reportTimes: %{public}d key: %{public}s",
-                diff, eventName.c_str(), reportTimes, key.c_str());
-            return false;
+        TAG_LOGW(AAFwkTag::APPDFR, "durationTime: %{public}" PRId64 " eventName: %{public}s "
+            "reportTimes: %{public}d key: %{public}s",
+            diff, eventName.c_str(), reportTimes, key.c_str());
+        if (diff >= 0 && diff <= FREEZE_TIME_LIMIT) {
+            return reportTimes > maxReportTimes;
         }
-        return true;
     }
     SetFreezeState(key, AppFreezeState::APPFREEZE_STATE_FREEZE, eventName);
     TAG_LOGI(AAFwkTag::APPDFR, "Set freeze info, eventName: %{public}s key: %{public}s",

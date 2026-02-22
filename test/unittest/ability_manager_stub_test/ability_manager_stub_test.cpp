@@ -3338,6 +3338,72 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_RecordProcessExitReasonInner
 
 /*
  * Feature: AbilityManagerService
+ * Function: KillAppWithReasonInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService KillAppWithReasonInner
+ * EnvConditions: NA
+ * CaseDescription: Verify the function KillAppWithReasonInner is normal flow.
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_KillAppWithReasonInner_001, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    auto res = stub_->KillAppWithReasonInner(data, reply);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+    ExitReasonCompability exitReason;
+    data.WriteInt32(1);
+    data.WriteParcelable(&exitReason);
+    res = stub_->KillAppWithReasonInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: KillBundleWithReasonInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService KillBundleWithReasonInner
+ * EnvConditions: NA
+ * CaseDescription: Verify the function KillBundleWithReasonInner is normal flow.
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_KillBundleWithReasonInner_001, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    auto res = stub_->KillBundleWithReasonInner(data, reply);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+    ExitReasonCompability exitReason;
+    data.WriteString("test");
+    data.WriteInt32(1);
+    data.WriteInt32(1);
+    data.WriteParcelable(&exitReason);
+    res = stub_->KillBundleWithReasonInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RecordAppWithReasonInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService RecordAppWithReasonInner
+ * EnvConditions: NA
+ * CaseDescription: Verify the function RecordAppWithReasonInner is normal flow.
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_RecordAppWithReasonInner_001, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    auto res = stub_->RecordAppWithReasonInner(data, reply);
+    EXPECT_EQ(res, ERR_READ_EXIT_REASON_FAILED);
+    ExitReasonCompability exitReason;
+    data.WriteInt32(1);
+    data.WriteInt32(1);
+    data.WriteParcelable(&exitReason);
+    res = stub_->RecordAppWithReasonInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: SetRootSceneSessionInner
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService SetRootSceneSessionInner
