@@ -1661,7 +1661,10 @@ HWTEST_F(AppRunningRecordTest, AppRunningRecord_UniqueId_DifferentFromStartTime_
     uint64_t uniqueId = appRecord->GetAppRunningUniqueId();
     int64_t startTime = appRecord->GetAppStartTime();
     
-    EXPECT_NE(static_cast<int64_t>(uniqueId), startTime);
+    // Verify uniqueId is not accidentally equal to startTime
+    // If uniqueId <= INT64_MAX and equals startTime, it indicates a problem with implementation
+    EXPECT_TRUE(uniqueId > static_cast<uint64_t>(std::numeric_limits<int64_t>::max()) ||
+                static_cast<int64_t>(uniqueId) != startTime);
     TAG_LOGI(AAFwkTag::TEST, "AppRunningRecord_UniqueId_DifferentFromStartTime_0100 end.");
 }
 
