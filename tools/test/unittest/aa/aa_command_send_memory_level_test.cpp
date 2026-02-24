@@ -379,14 +379,14 @@ HWTEST_F(AaCommandSendMemoryLevelTest, RunAsSendMemoryLevelCommand_0400, TestSiz
 HWTEST_F(AaCommandSendMemoryLevelTest, RunAsSendMemoryLevelCommand_0500, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "Aa_Command_RunAsSendMemoryLevelCommand_0500";
-
+    std::string invalidLevel = "7";
     char* argv[] = {
         (char*)TOOL_NAME.c_str(),
         (char*)sendMemoryLevelCmd_.c_str(),
         (char*)"-p",
         (char*)STRING_VALID_PID.c_str(),
         (char*)"-l",
-        (char*)STRING_INVALID_LEVEL.c_str(),
+        (char*)invalidLevel.c_str(),
         (char*)"",
     };
     int32_t argc = sizeof(argv) / sizeof(argv[0]) - 1;

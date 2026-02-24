@@ -3075,9 +3075,8 @@ int32_t AppMgrServiceInner::NotifyMemoryLevel(int32_t level)
         TAG_LOGE(AAFwkTag::APPMGR, "callerToken not %{public}s", MEMMGR_PROC_NAME);
         return ERR_INVALID_VALUE;
     }
-    if (!(level == OHOS::AppExecFwk::MemoryLevel::MEMORY_LEVEL_MODERATE ||
-        level == OHOS::AppExecFwk::MemoryLevel::MEMORY_LEVEL_CRITICAL ||
-        level == OHOS::AppExecFwk::MemoryLevel::MEMORY_LEVEL_LOW)) {
+    if (!(level >= OHOS::AppExecFwk::MemoryLevel::MEMORY_LEVEL_MODERATE &&
+        level <= OHOS::AppExecFwk::MemoryLevel::MEMORY_LEVEL_BACKGROUND_CRITICAL)) {
         TAG_LOGE(AAFwkTag::APPMGR, "level value error");
         return ERR_INVALID_VALUE;
     }
@@ -3106,8 +3105,8 @@ int32_t AppMgrServiceInner::NotifyProcMemoryLevel(const std::map<pid_t, MemoryLe
         TAG_LOGE(AAFwkTag::APPMGR, "appRunningManager null");
         return ERR_INVALID_VALUE;
     }
-
-    return appRunningManager_->NotifyProcMemoryLevel(procLevelMap);
+    TAG_LOGD(AAFwkTag::APPMGR, "isShellCall %{public}d", isShellCall);
+    return appRunningManager_->NotifyProcMemoryLevel(procLevelMap, isShellCall);
 }
 
 int32_t AppMgrServiceInner::DumpHeapMemory(const int32_t pid, OHOS::AppExecFwk::MallocInfo &mallocInfo)

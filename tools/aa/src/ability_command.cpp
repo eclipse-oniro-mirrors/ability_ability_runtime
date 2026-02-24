@@ -132,7 +132,7 @@ const std::string ERR_INVALID_VALUE_SOLUTION_ONE =
 const std::string ERR_INVALID_PID_VALUE_SOLUTION_ONE =
     "Check if the pid specified by the application exists.";
 const std::string ERR_INVALID_LEVEL_VALUE_SOLUTION_ONE =
-    "Check if the value range of level is [0, 1, 2].";
+    "Check if the value range of level is [0, 1, 2, 3, 4, 5, 6].";
 const std::string BLACK_ACTION_SELECT_DATA = "ohos.want.action.select";
 
 constexpr struct option LONG_OPTIONS[] = {
@@ -1040,10 +1040,9 @@ ErrCode AbilityManagerShellCommand::RunAsSendMemoryLevelCommand()
         return ERR_INVALID_VALUE;
     }
 
-    if (!(inputLevel == OHOS::AppExecFwk::MemoryLevel::MEMORY_LEVEL_MODERATE ||
-        inputLevel == OHOS::AppExecFwk::MemoryLevel::MEMORY_LEVEL_CRITICAL ||
-        inputLevel == OHOS::AppExecFwk::MemoryLevel::MEMORY_LEVEL_LOW)) {
-        TAG_LOGE(AAFwkTag::APPMGR, "level value error. Valid values: 0-2 (0: Moderate, 1: Low, 2: Critical)");
+    if (!(inputLevel >= OHOS::AppExecFwk::MemoryLevel::MEMORY_LEVEL_MODERATE &&
+        inputLevel <= OHOS::AppExecFwk::MemoryLevel::MEMORY_LEVEL_BACKGROUND_CRITICAL)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "level value error. Valid values: 0-6");
         resultReceiver_.append(STRING_SEND_MEMORY_LEVEL_NG + "\n");
         resultReceiver_.append(GetMessageFromCode(INVALID_LEVEL));
         return ERR_INVALID_VALUE;

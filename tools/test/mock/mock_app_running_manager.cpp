@@ -262,7 +262,7 @@ int32_t AppRunningManager::NotifyMemoryLevel(int32_t level)
     return ERR_OK;
 }
 
-int32_t AppRunningManager::NotifyProcMemoryLevel(const std::map<pid_t, MemoryLevel> &procLevelMap)
+int32_t AppRunningManager::NotifyProcMemoryLevel(const std::map<pid_t, MemoryLevel> &procLevelMap, bool isShellCall)
 {
     return ERR_OK;
 }

@@ -53,7 +53,7 @@ public:
     {}
     void ScheduleLowMemory() override
     {}
-    void ScheduleMemoryLevel(const int) override
+    void ScheduleMemoryLevel(const int, bool) override
     {}
     void ScheduleHeapMemory(const int, OHOS::AppExecFwk::MallocInfo&) override
     {}

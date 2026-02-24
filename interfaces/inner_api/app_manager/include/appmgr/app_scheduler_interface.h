@@ -82,7 +82,7 @@ public:
      *
      * @return
      */
-    virtual void ScheduleMemoryLevel(int32_t level) = 0;
+    virtual void ScheduleMemoryLevel(int32_t level, bool isShellCall = false) = 0;
 
     /**
      * ScheduleHeapMemory, call ScheduleHeapMemory() through proxy project,

@@ -599,7 +599,7 @@ HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_NotifyMemory
     TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_NotifyMemoryLevel_0100 start");
     MyFlag::flag_ = MyFlag::IS_SA_CALL;
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
-    auto ret = appMgrServiceInner->NotifyMemoryLevel(4); // 4 means invalid level
+    auto ret = appMgrServiceInner->NotifyMemoryLevel(-1); // -1 means invalid level
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
     TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_NotifyMemoryLevel_0200 end");
 }
@@ -621,6 +621,46 @@ HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_NotifyMemory
     ret = appMgrServiceInner->NotifyMemoryLevel(2);
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_NotifyMemoryLevel_0300 end");
+}
+
+/**
+ * @tc.name: AppMgrServiceInnerSecondTest_NotifyMemoryLevel_0400
+ * @tc.desc: Test NotifyMemoryLevel
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_NotifyMemoryLevel_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_NotifyMemoryLevel_0400 start");
+    MyFlag::flag_ = MyFlag::IS_SA_CALL;
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto ret = appMgrServiceInner->NotifyMemoryLevel(3);
+    EXPECT_EQ(ret, ERR_OK);
+    ret = appMgrServiceInner->NotifyMemoryLevel(4);
+    EXPECT_EQ(ret, ERR_OK);
+    ret = appMgrServiceInner->NotifyMemoryLevel(5);
+    EXPECT_EQ(ret, ERR_OK);
+    ret = appMgrServiceInner->NotifyMemoryLevel(6);
+    EXPECT_EQ(ret, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_NotifyMemoryLevel_0400 end");
+}
+
+/**
+ * @tc.name: AppMgrServiceInnerSecondTest_NotifyMemoryLevel_0500
+ * @tc.desc: Test NotifyMemoryLevel
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_NotifyMemoryLevel_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_NotifyMemoryLevel_0500 start");
+    MyFlag::flag_ = MyFlag::IS_SA_CALL;
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto ret = appMgrServiceInner->NotifyMemoryLevel(7); // 7 means invalid level
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+
+    appMgrServiceInner->appRunningManager_ = nullptr;
+    ret = appMgrServiceInner->NotifyMemoryLevel(3);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_NotifyMemoryLevel_0500 end");
 }
 
 /**

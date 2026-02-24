@@ -263,7 +263,7 @@ void AppRunningRecord::ScheduleTrimMemory()
 {
 }
 
-void AppRunningRecord::ScheduleMemoryLevel(int32_t level)
+void AppRunningRecord::ScheduleMemoryLevel(int32_t level, bool isShellCall)
 {
 }
 
