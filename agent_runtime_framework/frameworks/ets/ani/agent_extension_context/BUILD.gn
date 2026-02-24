@@ -1,0 +1,65 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/ability/ability_runtime/ability_runtime.gni")
+
+ohos_shared_library("ets_agent_extension_context") {
+  branch_protector_ret = "pac_ret"
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    debug = false
+  }
+
+  defines = [ "AMS_LOG_TAG = \"Agent\"" ]
+  defines += [ "AMS_LOG_DOMAIN = 0xD001353" ]
+
+  include_dirs = [
+    "${agent_runtime_framework_path}/frameworks/ets/ani/agent_extension_context/include",
+    "${agent_runtime_framework_path}/frameworks/native/agent_extension/include",
+    "${agent_runtime_framework_path}/frameworks/native/agent_extension_context/include",
+    "${ability_runtime_path}/frameworks/ets/ani/ani_common/include",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native",
+    "${ability_runtime_path}/interfaces/kits/native/appkit/ability_runtime",
+  ]
+
+  sources = [
+    "${agent_runtime_framework_path}/frameworks/ets/ani/agent_extension_context/src/ets_agent_extension_context.cpp",
+  ]
+
+  deps = [
+    "${agent_runtime_framework_path}/frameworks/native/agent_extension_context:agent_extension_context",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
+    "${ability_runtime_napi_path}/inner/napi_common:napi_common",
+    "${ability_runtime_native_path}/ability:ability_context_native",
+    "${ability_runtime_native_path}/ability/native:abilitykit_native",
+    "${ability_runtime_native_path}/ability/native:extensionkit_native",
+    "${ability_runtime_native_path}/appkit:app_context",
+    "${ability_runtime_path}/frameworks/ets/ani/ani_common:ani_common",
+  ]
+
+  external_deps = [
+    "ability_base:base",
+    "c_utils:utils",
+    "ets_runtime:libark_jsruntime",
+    "hilog:libhilog",
+    "napi:ace_napi",
+    "runtime_core:ani",
+  ]
+
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
