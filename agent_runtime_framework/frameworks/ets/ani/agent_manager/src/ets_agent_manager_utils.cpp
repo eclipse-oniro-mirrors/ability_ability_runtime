@@ -26,11 +26,11 @@ namespace OHOS {
 namespace AgentManagerEts {
 namespace {
 constexpr const char *CLASSNAME_ARRAY = "std.core.Array";
-constexpr const char *AGENT_PROVIDER_IMPL_CLASS_NAME = "@ohos.app.agent.AgentCard.AgentProviderImpl";
-constexpr const char *AGENT_APP_INFO_IMPL_CLASS_NAME = "@ohos.app.agent.AgentCard.AgentAppInfoImpl";
-constexpr const char *AGENT_CAPABILITIES_IMPL_CLASS_NAME = "@ohos.app.agent.AgentCard.AgentCapabilitiesImpl";
-constexpr const char *AGENT_SKILL_IMPL_CLASS_NAME = "@ohos.app.agent.AgentCard.AgentSkillImpl";
-constexpr const char *AGENT_CARD_IMPL_CLASS_NAME = "@ohos.app.agent.AgentCard.AgentCardImpl";
+constexpr const char *AGENT_PROVIDER_IMPL_CLASS_NAME = "application.AgentCard.AgentProviderImpl";
+constexpr const char *AGENT_APP_INFO_IMPL_CLASS_NAME = "application.AgentCard.AgentAppInfoImpl";
+constexpr const char *AGENT_CAPABILITIES_IMPL_CLASS_NAME = "application.AgentCard.AgentCapabilitiesImpl";
+constexpr const char *AGENT_SKILL_IMPL_CLASS_NAME = "application.AgentCard.AgentSkillImpl";
+constexpr const char *AGENT_CARD_IMPL_CLASS_NAME = "application.AgentCard.AgentCardImpl";
 }  // namespace
 
 ani_object CreateEtsAgentProvider(ani_env *env, const AgentProvider &provider)
@@ -92,7 +92,8 @@ ani_object CreateEtsAgentCapabilities(ani_env *env, const AgentCapabilities &cap
         TAG_LOGE(AAFwkTag::SER_ROUTER, "new object failed: %{public}d", status);
         return nullptr;
     }
-    status = env->Object_SetPropertyByName_Boolean(object, "streaming", capabilities.streaming);
+    status = env->Object_SetPropertyByName_Ref(object, "streaming",
+        CreateBoolean(env, static_cast<ani_boolean>(capabilities.streaming)));
     if (status != ANI_OK) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "failed status:%{public}d", status);
         return nullptr;

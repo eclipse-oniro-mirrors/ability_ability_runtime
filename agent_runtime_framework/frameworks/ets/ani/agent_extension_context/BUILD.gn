@@ -41,7 +41,6 @@ ohos_shared_library("ets_agent_extension_context") {
   ]
 
   deps = [
-    "${agent_runtime_framework_path}/frameworks/native/agent_extension_context:agent_extension_context",
     "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_napi_path}/inner/napi_common:napi_common",
     "${ability_runtime_native_path}/ability:ability_context_native",
@@ -49,6 +48,7 @@ ohos_shared_library("ets_agent_extension_context") {
     "${ability_runtime_native_path}/ability/native:extensionkit_native",
     "${ability_runtime_native_path}/appkit:app_context",
     "${ability_runtime_path}/frameworks/ets/ani/ani_common:ani_common",
+    "${agent_runtime_framework_path}/frameworks/native/agent_extension_context:agent_extension_context",
   ]
 
   external_deps = [

@@ -15,37 +15,117 @@ import("//build/config/components/ets_frontend/ets2abc_config.gni")
 import("//build/ohos.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
-generate_static_abc("ability_runtime_agent_manager_abc") {
+generate_static_abc("agent_runtime_agent_manager_abc") {
   base_url = "./"
   files = [ "./@ohos.app.agent.agentManager.ets" ]
 
   is_boot_abc = "True"
-  device_dst_file = "/system/framework/ability_runtime_agent_manager_abc.abc"
+  device_dst_file = "/system/framework/agent_runtime_agent_manager_abc.abc"
 }
 
-ohos_prebuilt_etc("ability_runtime_agent_manager_abc_etc") {
-  source = "$target_out_dir/ability_runtime_agent_manager_abc.abc"
+ohos_prebuilt_etc("agent_runtime_agent_manager_abc_etc") {
+  source = "$target_out_dir/agent_runtime_agent_manager_abc.abc"
   module_install_dir = "framework"
   subsystem_name = "ability"
   part_name = "ability_runtime"
-  deps = [ ":ability_runtime_agent_manager_abc" ]
+  deps = [ ":agent_runtime_agent_manager_abc" ]
 }
 
-generate_static_abc("ability_runtime_agent_card_abc") {
+generate_static_abc("agent_runtime_agent_extension_abc") {
   base_url = "./"
-  files = [ "./@ohos.app.agent.AgentCard.ets" ]
+  files = [ "./@ohos.app.agent.AgentExtensionAbility.ets" ]
+
+  is_boot_abc = "True"
+  device_dst_file = "/system/framework/agent_runtime_agent_extension_abc.abc"
+}
+
+ohos_prebuilt_etc("agent_runtime_agent_extension_abc_etc") {
+  source = "$target_out_dir/agent_runtime_agent_extension_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":agent_runtime_agent_extension_abc" ]
+}
+
+generate_static_abc("agent_runtime_agent_card_abc") {
+  base_url = "./"
+  files = [ "./application/AgentCard.ets" ]
 
   is_boot_abc = "True"
   device_dst_file =
-      "/system/framework/ability_runtime_agent_card_abc.abc"
+      "/system/framework/agent_runtime_agent_card_abc.abc"
 }
 
-ohos_prebuilt_etc("ability_runtime_agent_card_abc_etc") {
-  source = "$target_out_dir/ability_runtime_agent_card_abc.abc"
+ohos_prebuilt_etc("agent_runtime_agent_card_abc_etc") {
+  source = "$target_out_dir/agent_runtime_agent_card_abc.abc"
   module_install_dir = "framework"
   subsystem_name = "ability"
   part_name = "ability_runtime"
-  deps = [ ":ability_runtime_agent_card_abc" ]
+  deps = [ ":agent_runtime_agent_card_abc" ]
+}
+
+generate_static_abc("agent_runtime_agent_proxy_abc") {
+  base_url = "./"
+  files = [ "./application/AgentProxy.ets" ]
+
+  is_boot_abc = "True"
+  device_dst_file = "/system/framework/agent_runtime_agent_proxy_abc.abc"
+}
+
+ohos_prebuilt_etc("agent_runtime_agent_proxy_abc_etc") {
+  source = "$target_out_dir/agent_runtime_agent_proxy_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":agent_runtime_agent_proxy_abc" ]
+}
+
+generate_static_abc("agent_runtime_agent_host_proxy_abc") {
+  base_url = "./"
+  files = [ "./application/AgentHostProxy.ets" ]
+
+  is_boot_abc = "True"
+  device_dst_file = "/system/framework/agent_runtime_agent_host_proxy_abc.abc"
+}
+
+ohos_prebuilt_etc("agent_runtime_agent_host_proxy_abc_etc") {
+  source = "$target_out_dir/agent_runtime_agent_host_proxy_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":agent_runtime_agent_host_proxy_abc" ]
+}
+
+generate_static_abc("agent_runtime_agent_extension_connect_callback_abc") {
+  base_url = "./"
+  files = [ "./application/AgentExtensionConnectCallback.ets" ]
+
+  is_boot_abc = "True"
+  device_dst_file = "/system/framework/agent_runtime_agent_extension_connect_callback_abc.abc"
+}
+
+ohos_prebuilt_etc("agent_runtime_agent_extension_connect_callback_abc_etc") {
+  source = "$target_out_dir/agent_runtime_agent_extension_connect_callback_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":agent_runtime_agent_extension_connect_callback_abc" ]
+}
+
+generate_static_abc("agent_runtime_agent_utils_abc") {
+  base_url = "./"
+  files = [ "./utils/AgentUtils.ets" ]
+
+  is_boot_abc = "True"
+  device_dst_file = "/system/framework/agent_runtime_agent_utils_abc.abc"
+}
+
+ohos_prebuilt_etc("agent_runtime_agent_utils_abc_etc") {
+  source = "$target_out_dir/agent_runtime_agent_utils_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":agent_runtime_agent_utils_abc" ]
 }
 
 generate_static_abc("agent_runtime_agent_ui_extension_ability_abc") {
@@ -67,8 +147,13 @@ ohos_prebuilt_etc("agent_runtime_agent_ui_extension_ability_abc_etc") {
 
 group("agent_runtime_ets_packages") {
   deps = [
-    ":ability_runtime_agent_card_abc_etc",
-    ":ability_runtime_agent_manager_abc_etc",
+    ":agent_runtime_agent_card_abc_etc",
+    ":agent_runtime_agent_extension_abc_etc",
+    ":agent_runtime_agent_extension_connect_callback_abc_etc",
+    ":agent_runtime_agent_host_proxy_abc_etc",
+    ":agent_runtime_agent_manager_abc_etc",
+    ":agent_runtime_agent_proxy_abc_etc",
     ":agent_runtime_agent_ui_extension_ability_abc_etc",
+    ":agent_runtime_agent_utils_abc_etc",
   ]
 }

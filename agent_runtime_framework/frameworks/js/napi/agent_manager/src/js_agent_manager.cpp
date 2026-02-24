@@ -28,6 +28,7 @@
 #include "napi/native_api.h"
 #include "napi_common_util.h"
 #include "napi_common_want.h"
+#include "tokenid_kit.h"
 
 using namespace OHOS::AbilityRuntime;
 
@@ -127,9 +128,24 @@ napi_value JsAgentManager::ConnectAgentExtensionAbility(napi_env env, napi_callb
     GET_CB_INFO_AND_CALL(env, info, JsAgentManager, OnConnectAgentExtensionAbility);
 }
 
+bool JsAgentManager::CheckCallerIsSystemApp()
+{
+    auto selfToken = IPCSkeleton::GetSelfTokenID();
+    if (!Security::AccessToken::TokenIdKit::IsSystemAppByFullTokenID(selfToken)) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "not system app");
+        return false;
+    }
+    return true;
+}
+
 // JsAgentManager instance methods
 napi_value JsAgentManager::OnGetAllAgentCards(napi_env env, size_t argc, napi_value *argv)
 {
+    if (!CheckCallerIsSystemApp()) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "not system app");
+        ThrowError(env, AbilityErrorCode::ERROR_CODE_NOT_SYSTEM_APP);
+        return CreateJsUndefined(env);
+    }
     auto innerErrorCode = std::make_shared<int32_t>(ERR_OK);
     auto cards = std::make_shared<std::vector<AgentCard>>();
     NapiAsyncTask::ExecuteCallback execute = [innerErrorCode, cards]() {
@@ -155,6 +171,11 @@ napi_value JsAgentManager::OnGetAllAgentCards(napi_env env, size_t argc, napi_va
 
 napi_value JsAgentManager::OnGetAgentCardsByBundleName(napi_env env, size_t argc, napi_value *argv)
 {
+    if (!CheckCallerIsSystemApp()) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "not system app");
+        ThrowError(env, AbilityErrorCode::ERROR_CODE_NOT_SYSTEM_APP);
+        return CreateJsUndefined(env);
+    }
     if (argc < ARGC_ONE) {
         ThrowTooFewParametersError(env);
         return CreateJsUndefined(env);
@@ -192,6 +213,11 @@ napi_value JsAgentManager::OnGetAgentCardsByBundleName(napi_env env, size_t argc
 
 napi_value JsAgentManager::OnGetAgentCardByAgentId(napi_env env, size_t argc, napi_value *argv)
 {
+    if (!CheckCallerIsSystemApp()) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "not system app");
+        ThrowError(env, AbilityErrorCode::ERROR_CODE_NOT_SYSTEM_APP);
+        return CreateJsUndefined(env);
+    }
     if (argc < ARGC_TWO) {
         ThrowTooFewParametersError(env);
         return CreateJsUndefined(env);
@@ -235,7 +261,11 @@ napi_value JsAgentManager::OnGetAgentCardByAgentId(napi_env env, size_t argc, na
 
 napi_value JsAgentManager::OnConnectAgentExtensionAbility(napi_env env, size_t argc, napi_value *argv)
 {
-    TAG_LOGI(AAFwkTag::SER_ROUTER, "OnConnectAgentExtensionAbility called");
+    if (!CheckCallerIsSystemApp()) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "not system app");
+        ThrowError(env, AbilityErrorCode::ERROR_CODE_NOT_SYSTEM_APP);
+        return CreateJsUndefined(env);
+    }
 
     // 1. Validate parameters and extract want, agentId, callback
     AAFwk::Want want;
@@ -262,7 +292,6 @@ napi_value JsAgentManager::OnConnectAgentExtensionAbility(napi_env env, size_t a
 
     // 4. Schedule async connection
     result = ScheduleAgentConnection(env, want, agentId, connection);
-    TAG_LOGD(AAFwkTag::SER_ROUTER, "OnConnectAgentExtensionAbility end");
     return result;
 }
 
@@ -377,7 +406,11 @@ napi_value JsAgentManager::DisconnectAgentExtensionAbility(napi_env env, napi_ca
 
 napi_value JsAgentManager::OnDisconnectAgentExtensionAbility(napi_env env, size_t argc, napi_value *argv)
 {
-    TAG_LOGI(AAFwkTag::SER_ROUTER, "OnDisconnectAgentExtensionAbility called");
+    if (!CheckCallerIsSystemApp()) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "not system app");
+        ThrowError(env, AbilityErrorCode::ERROR_CODE_NOT_SYSTEM_APP);
+        return CreateJsUndefined(env);
+    }
 
     if (argc < ARGC_ONE) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "Too few parameters");
@@ -427,7 +460,6 @@ napi_value JsAgentManager::OnDisconnectAgentExtensionAbility(napi_env env, size_
     napi_value result = nullptr;
     NapiAsyncTask::Schedule("JsAgentManager::OnDisconnectAgentExtensionAbility",
         env, CreateAsyncTaskWithLastParam(env, nullptr, std::move(execute), std::move(complete), &result));
-
     return result;
 }
 

@@ -27,10 +27,13 @@ ohos_shared_library("agentmanager_ani") {
 
   include_dirs = [
     "./include",
-    "${ability_runtime_services_path}/common/include",
     "${ability_runtime_path}/frameworks/ets/ani/ani_common/include",
+    "${ability_runtime_path}/interfaces/kits/native/ability/ability_runtime",
     "${ability_runtime_path}/interfaces/kits/native/ability/native",
     "${ability_runtime_path}/interfaces/inner_api/runtime/include",
+    "${ability_runtime_services_path}/common/include",
+    "${agent_runtime_framework_path}/frameworks/ets/ani/agent_extension_ability/include/connection",
+    "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
   ]
 
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
@@ -51,11 +54,18 @@ ohos_shared_library("agentmanager_ani") {
     "${ability_runtime_native_path}/ability/native:ability_business_error",
     "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_path}/frameworks/ets/ani/ani_common:ani_common",
+    "${agent_runtime_framework_path}/frameworks/ets/ani/agent_extension_ability:ets_agent_connection",
+    "${agent_runtime_framework_path}/interfaces/inner_api:agent_connection_manager",
     "${agent_runtime_framework_path}/interfaces/inner_api:agent_fwk",
     "${agent_runtime_framework_path}/interfaces/inner_api:agent_manager",
+    "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection:agent_extension_connection",
   ]
 
   external_deps = [
+    "ability_base:base",
+    "ability_base:session_info",
+    "ability_base:want",
+    "access_token:libtokenid_sdk",
     "c_utils:utils",
     "eventhandler:libeventhandler",
     "hilog:libhilog",
@@ -66,7 +76,6 @@ ohos_shared_library("agentmanager_ani") {
     "samgr:samgr_proxy",
   ]
 
-  innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
 }
