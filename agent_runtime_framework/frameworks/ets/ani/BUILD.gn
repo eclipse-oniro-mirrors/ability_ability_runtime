@@ -17,5 +17,6 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 group("agent_runtime_ani_packages") {
   deps = [
     "${agent_runtime_framework_path}/frameworks/ets/ani/agent_manager:agentmanager_ani",
+    "${agent_runtime_framework_path}/frameworks/ets/ani/agent_ui_extension_ability:agent_ui_extension_ability_ani",
   ]
 }
