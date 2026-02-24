@@ -13,17 +13,18 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_ABILITY_RUNTIME_ETS_AGENT_UI_EXTENSION_ABILITY_INSTANCE_H
-#define OHOS_ABILITY_RUNTIME_ETS_AGENT_UI_EXTENSION_ABILITY_INSTANCE_H
+#ifndef OHOS_AGENT_RUNTIME_ETS_AGENT_UI_EXTENSION_INSTANCE_H
+#define OHOS_AGENT_RUNTIME_ETS_AGENT_UI_EXTENSION_INSTANCE_H
 
-#include "agent_ui_extension_ability.h"
+#include "agent_ui_extension.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
-class AgentUIExtensionAbility;
 class Runtime;
-
-AgentUIExtensionAbility *CreateETSAgentUIExtensionAbility(const std::unique_ptr<Runtime> &runtime);
 } // namespace AbilityRuntime
+
+namespace AgentRuntime {
+AgentUIExtension *CreateETSAgentUIExtension(const std::unique_ptr<AbilityRuntime::Runtime> &runtime);
+} // namespace AgentRuntime
 } // namespace OHOS
-#endif // OHOS_ABILITY_RUNTIME_ETS_AGENT_UI_EXTENSION_ABILITY_INSTANCE_H
+#endif // OHOS_AGENT_RUNTIME_ETS_AGENT_UI_EXTENSION_INSTANCE_H

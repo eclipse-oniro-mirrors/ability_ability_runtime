@@ -13,25 +13,27 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_ABILITY_RUNTIME_ETS_AGENT_UI_EXTENSION_ABILITY_H
-#define OHOS_ABILITY_RUNTIME_ETS_AGENT_UI_EXTENSION_ABILITY_H
+#ifndef OHOS_AGENT_RUNTIME_ETS_AGENT_UI_EXTENSION_H
+#define OHOS_AGENT_RUNTIME_ETS_AGENT_UI_EXTENSION_H
 
-#include "agent_ui_extension_ability.h"
+#include "agent_ui_extension.h"
 #include "configuration.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
-class AgentUIExtensionAbility;
+class Runtime;
 class EtsUIExtensionBase;
-
-class EtsAgentUIExtensionAbility : public AgentRuntime::AgentUIExtensionAbility,
-                                    public std::enable_shared_from_this<EtsAgentUIExtensionAbility> {
-public:
-    explicit EtsAgentUIExtensionAbility(const std::unique_ptr<Runtime> &runtime);
-    virtual ~EtsAgentUIExtensionAbility() override;
-
-    static EtsAgentUIExtensionAbility *Create(const std::unique_ptr<Runtime> &runtime);
-};
 } // namespace AbilityRuntime
+
+namespace AgentRuntime {
+class EtsAgentUIExtension : public AgentRuntime::AgentUIExtension,
+                                    public std::enable_shared_from_this<EtsAgentUIExtension> {
+public:
+    explicit EtsAgentUIExtension(const std::unique_ptr<AbilityRuntime::Runtime> &runtime);
+    virtual ~EtsAgentUIExtension() override;
+
+    static EtsAgentUIExtension *Create(const std::unique_ptr<AbilityRuntime::Runtime> &runtime);
+};
+} // namespace AgentRuntime
 } // namespace OHOS
-#endif // OHOS_ABILITY_RUNTIME_ETS_AGENT_UI_EXTENSION_ABILITY_H
+#endif // OHOS_AGENT_RUNTIME_ETS_AGENT_UI_EXTENSION_H

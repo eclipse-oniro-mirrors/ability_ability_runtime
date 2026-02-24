@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ets_agent_ui_extension_ability_instance.h"
+#include "ets_agent_ui_extension_instance.h"
 
 #include <cstddef>
 #include <dlfcn.h>
@@ -23,15 +23,15 @@
 #include "string_wrapper.h"
 
 namespace OHOS {
-namespace AbilityRuntime {
+namespace AgentRuntime {
 namespace {
-constexpr const char *ETS_ANI_LIBNAME = "libagent_ui_extension_ability_ani.z.so";
-constexpr const char *ETS_ANI_CREATE_FUNC = "OHOS_ETS_AGENT_UI_EXTENSION_Ability_Create";
-using CreateETSAgentUIExtensionAbilityFunc = AgentUIExtensionAbility*(*)(const std::unique_ptr<Runtime>&);
-CreateETSAgentUIExtensionAbilityFunc g_etsCreateFunc = nullptr;
+constexpr const char *ETS_ANI_LIBNAME = "libagent_ui_extension_ani.z.so";
+constexpr const char *ETS_ANI_CREATE_FUNC = "OHOS_ETS_AGENT_UI_EXTENSION_Create";
+using CreateETSAgentUIExtensionFunc = AgentUIExtension*(*)(const std::unique_ptr<AbilityRuntime::Runtime>&);
+CreateETSAgentUIExtensionFunc g_etsCreateFunc = nullptr;
 }
 
-AgentUIExtensionAbility *CreateETSAgentUIExtensionAbility(const std::unique_ptr<Runtime> &runtime)
+AgentUIExtension *CreateETSAgentUIExtension(const std::unique_ptr<AbilityRuntime::Runtime> &runtime)
 {
     if (g_etsCreateFunc != nullptr) {
         return g_etsCreateFunc(runtime);
@@ -47,8 +47,8 @@ AgentUIExtensionAbility *CreateETSAgentUIExtensionAbility(const std::unique_ptr<
         dlclose(handle);
         return nullptr;
     }
-    g_etsCreateFunc = reinterpret_cast<CreateETSAgentUIExtensionAbilityFunc>(symbol);
+    g_etsCreateFunc = reinterpret_cast<CreateETSAgentUIExtensionFunc>(symbol);
     return g_etsCreateFunc(runtime);
 }
-} // namespace AbilityRuntime
+} // namespace AgentRuntime
 } // namespace OHOS

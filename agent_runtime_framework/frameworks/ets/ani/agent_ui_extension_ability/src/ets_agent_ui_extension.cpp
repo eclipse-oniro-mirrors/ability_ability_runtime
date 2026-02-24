@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ets_agent_ui_extension_ability.h"
+#include "ets_agent_ui_extension.h"
 
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
@@ -26,27 +26,28 @@
 #endif
 
 namespace OHOS {
-namespace AbilityRuntime {
-EtsAgentUIExtensionAbility *EtsAgentUIExtensionAbility::Create(const std::unique_ptr<Runtime> &runtime)
+namespace AgentRuntime {
+EtsAgentUIExtension *EtsAgentUIExtension::Create(const std::unique_ptr<AbilityRuntime::Runtime> &runtime)
 {
-    return new (std::nothrow) EtsAgentUIExtensionAbility(runtime);
+    return new (std::nothrow) EtsAgentUIExtension(runtime);
 }
 
-EtsAgentUIExtensionAbility::EtsAgentUIExtensionAbility(const std::unique_ptr<Runtime> &runtime)
+EtsAgentUIExtension::EtsAgentUIExtension(const std::unique_ptr<AbilityRuntime::Runtime> &runtime)
 {
-    std::shared_ptr<UIExtensionBaseImpl> uiExtensionBaseImpl = std::make_shared<EtsUIExtensionBase>(runtime);
+    std::shared_ptr<AbilityRuntime::UIExtensionBaseImpl> uiExtensionBaseImpl =
+        std::make_shared<AbilityRuntime::EtsUIExtensionBase>(runtime);
     SetUIExtensionBaseImpl(uiExtensionBaseImpl);
 }
 
-EtsAgentUIExtensionAbility::~EtsAgentUIExtensionAbility()
+EtsAgentUIExtension::~EtsAgentUIExtension()
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "destructor");
 }
-} // namespace AbilityRuntime
+} // namespace AgentRuntime
 } // namespace OHOS
 
-ETS_EXPORT extern "C" OHOS::AbilityRuntime::AgentUIExtensionAbility *OHOS_ETS_AGENT_UI_EXTENSION_Ability_Create(
+ETS_EXPORT extern "C" OHOS::AgentRuntime::AgentUIExtension *OHOS_ETS_AGENT_UI_EXTENSION_Create(
     const std::unique_ptr<OHOS::AbilityRuntime::Runtime> &runtime)
 {
-    return OHOS::AbilityRuntime::EtsAgentUIExtensionAbility::Create(runtime);
+    return OHOS::AgentRuntime::EtsAgentUIExtension::Create(runtime);
 }

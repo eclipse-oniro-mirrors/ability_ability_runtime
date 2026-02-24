@@ -15,7 +15,7 @@ import("//build/config/components/ets_frontend/ets2abc_config.gni")
 import("//build/ohos.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
-ohos_shared_library("agent_ui_extension_ability_ani") {
+ohos_shared_library("agent_ui_extension_ani") {
   branch_protector_ret = "pac_ret"
   sanitize = {
     cfi = true
@@ -44,7 +44,7 @@ ohos_shared_library("agent_ui_extension_ability_ani") {
 
   public_configs = []
 
-  sources = [ "./src/ets_agent_ui_extension_ability.cpp" ]
+  sources = [ "./src/ets_agent_ui_extension.cpp" ]
 
   cflags = []
   if (target_cpu == "arm") {
