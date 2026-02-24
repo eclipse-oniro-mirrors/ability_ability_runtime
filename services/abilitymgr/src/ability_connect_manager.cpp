@@ -2281,6 +2281,7 @@ void AbilityConnectManager::HandleAfterServiceRemoved(const std::shared_ptr<Base
     } else {
         HandleNotifyAssertFaultDialogDied(abilityRecord);
     }
+    TAG_LOGI(AAFwkTag::EXT, "HandleAbilityDiedTask end");
 }
 
 void AbilityConnectManager::HandleConnectRecordOnAbilityDied(const std::shared_ptr<BaseExtensionRecord> &abilityRecord)

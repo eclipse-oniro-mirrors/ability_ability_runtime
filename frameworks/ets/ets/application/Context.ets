@@ -42,8 +42,8 @@ export default class Context extends BaseContext {
   static {
     loadLibraryWithPermissionCheck("context_ani_kit.z", "application.Context");
   }
-
   nativePtr: long = 0;
+  
   etsContextPtr: long = 0;
   private cleaner: Cleaner | null = null;
   filesDir: string = "";

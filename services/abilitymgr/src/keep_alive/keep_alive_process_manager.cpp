@@ -154,7 +154,6 @@ void KeepAliveProcessManager::AfterStartKeepAliveApp(const std::string &bundleNa
         TAG_LOGI(AAFwkTag::KEEP_ALIVE, "not support statusBar, don't need check when keep alive");
         return;
     }
-
     auto task = [bundleName, accessTokenId, uid, userId, isMultiInstance]() {
         bool isStatusBarCreated =
             DelayedSingleton<AbilityManagerService>::GetInstance()->IsInStatusBar(accessTokenId, uid, isMultiInstance);

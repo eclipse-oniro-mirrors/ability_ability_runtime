@@ -35,6 +35,14 @@ export default namespace insightIntentDriver {
     flags?: int;
     userId?: int;
   }
+
+  interface InsightIntentInfoFilter {
+    intentFlags: int;
+    bundleName?: string;
+    moduleName?: string;
+    intentName?: string;
+    userId?: int;
+  }
   enum InsightIntentType {
     LINK = '@InsightIntentLink',
     PAGE = '@InsightIntentPage',
@@ -209,14 +217,6 @@ export default namespace insightIntentDriver {
     readonly entityCategory: string;
     readonly parameters: Record<string, RecordData>;
     readonly parentClassName: string;
-  }
-
-  interface InsightIntentInfoFilter {
-    intentFlags: int;
-    bundleName?: string;
-    moduleName?: string;
-    intentName?: string;
-    userId?: int;
   }
 
   export native function nativeExecuteSync(param: ExecuteParam,

@@ -321,7 +321,7 @@ private:
             errCode = ERR_NOT_OK;
         } else {
             if (!ConvertFromJsValue(env, argv[INDEX_ZERO], bundleName)) {
-                TAG_LOGE(AAFwkTag::APPMGR, "get bundleName failed");
+                TAG_LOGE(AAFwkTag::APPMGR, "get bundleName failed!");
                 errCode = ERR_NOT_OK;
             }
         }

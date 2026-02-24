@@ -67,12 +67,6 @@ constexpr char MERGE_ABC_PATH[] = "/ets/modules_static.abc";
 const char *ETS_ENV_LIBNAME = "libets_environment.z.so";
 const char *ETS_ENV_REGISTER_FUNCS = "OHOS_ETS_ENV_RegisterFuncs";
 
-static void HandleOhmUrlBase(std::string &base)
-{
-    // <dir1>/<dir2>/  =>  <dir1>.<dir2>.
-    std::replace(base.begin(), base.end(), '/', '.');
-}
-
 ETSEnvFuncs *g_etsEnvFuncs = nullptr;
 
 bool RegisterETSEnvFuncs()
@@ -281,6 +275,7 @@ void ETSRuntime::SetAppLibPath(const AppLibPathMap& appLibPaths,
     };
     g_etsEnvFuncs->SetAppLibPath(abcPathsToBundleModuleNameMap, cb);
 }
+
 void ETSRuntime::SetExtensionApiCheckCallback(
     std::function<bool(const std::string &className, const std::string &fileName)> &cb)
 {
@@ -519,11 +514,29 @@ void ETSRuntime::PreloadSystemModule(const std::string &moduleName)
     }
 }
 
+bool ETSRuntime::PreloadSystemClass(const char *className)
+{
+    TAG_LOGD(AAFwkTag::ETSRUNTIME, "PreloadSystemClass called");
+    if (g_etsEnvFuncs == nullptr ||
+        g_etsEnvFuncs->PreloadSystemClass == nullptr) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "null g_etsEnvFuncs or PreloadSystemClass");
+        return false;
+    }
+    g_etsEnvFuncs->PreloadSystemClass(className);
+    return true;
+}
+
 void ETSRuntime::SetModuleLoadChecker(const std::shared_ptr<ModuleCheckerDelegate> moduleCheckerDelegate) const
 {
     if (jsRuntime_ != nullptr) {
         jsRuntime_->SetModuleLoadChecker(moduleCheckerDelegate);
     }
+}
+
+static void HandleOhmUrlBase(std::string &base)
+{
+    // <dir1>/<dir2>/  =>  <dir1>.<dir2>.
+    std::replace(base.begin(), base.end(), '/', '.');
 }
 
 std::string ETSRuntime::HandleOhmUrlSrcEntry(const std::string &srcEntry)
@@ -552,18 +565,6 @@ void ETSRuntime::HandleOhmUrlFileName(std::string &fileName)
         // <fileName>  =>  <fileName>.<fileName>
         fileName = fileName + "." + fileName;
     }
-}
-
-bool ETSRuntime::PreloadSystemClass(const char *className)
-{
-    TAG_LOGD(AAFwkTag::ETSRUNTIME, "PreloadSystemClass called");
-    if (g_etsEnvFuncs == nullptr ||
-        g_etsEnvFuncs->PreloadSystemClass == nullptr) {
-        TAG_LOGE(AAFwkTag::ETSRUNTIME, "null g_etsEnvFuncs or PreloadSystemClass");
-        return false;
-    }
-    g_etsEnvFuncs->PreloadSystemClass(className);
-    return true;
 }
 
 void ETSRuntime::StartDebugMode(const DebugOption dOption)

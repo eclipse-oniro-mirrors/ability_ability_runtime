@@ -90,8 +90,8 @@ void InitWorkerFunc(NativeEngine* nativeEngine)
     }
 
     OHOS::Global::I18n::ReplaceIntlModule(reinterpret_cast<napi_env>(nativeEngine));
-    OHOS::JsSysModule::Console::InitConsoleModule(reinterpret_cast<napi_env>(nativeEngine));
     InitSyscapModule(reinterpret_cast<napi_env>(nativeEngine));
+    OHOS::JsSysModule::Console::InitConsoleModule(reinterpret_cast<napi_env>(nativeEngine));
 #ifdef SUPPORT_SCREEN
     OHOS::Ace::DeclarativeModulePreloader::PreloadWorker(*nativeEngine);
 #endif

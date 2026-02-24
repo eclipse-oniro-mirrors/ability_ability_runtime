@@ -28,7 +28,6 @@
 #include <sys/epoll.h>
 #include <unistd.h>
 
-#include "file_ex.h"
 #include "accesstoken_kit.h"
 #include "config_policy_utils.h"
 #include "constants.h"
@@ -753,7 +752,7 @@ bool JsRuntime::Initialize(const Options& options)
             bundleName_ = options.bundleName;
             codePath_ = options.codePath;
             panda::JSNApi::SetSearchHapPathTracker(
-                vm, [options](const std::string moduleName, std::string &hapPath) -> bool {
+                vm, [options](const std::string moduleName, std::string& hapPath) -> bool {
                     if (options.hapModulePath.find(moduleName) == options.hapModulePath.end()) {
                         return false;
                     }

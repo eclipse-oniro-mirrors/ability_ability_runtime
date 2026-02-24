@@ -1435,7 +1435,7 @@ ErrCode AbilityManagerClient::SetMissionContinueState(sptr<IRemoteObject> token,
     const AAFwk::ContinueState &state, sptr<IRemoteObject> sessionToken)
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR,
-        "called state:%{public}d", state);
+        "called state: %{public}d", state);
 #ifdef SUPPORT_SCREEN
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled() && sessionToken) {
         auto sceneSessionManager = SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();

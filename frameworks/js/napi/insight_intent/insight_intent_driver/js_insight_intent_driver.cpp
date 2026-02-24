@@ -500,7 +500,7 @@ napi_value JsInsightIntentDriverInit(napi_env env, napi_value exportObj)
     napi_value getInsightIntentFlag = InitGetInsightIntentFlagObject(env);
     NAPI_ASSERT(env, getInsightIntentFlag != nullptr, "failed to create getInsightIntent flag object");
     napi_value insightIntentType = InitInsightIntentTypeObject(env);
-    NAPI_ASSERT(env, insightIntentType != nullptr, "failed to create insightIntent type object");
+    NAPI_ASSERT(env, insightIntentType != nullptr, "failed to create insightIntent type flag object");
     napi_value intentDevelopType = InitIntentDevelopTypeObject(env);
     NAPI_ASSERT(env, intentDevelopType != nullptr, "failed to create develop type object");
 

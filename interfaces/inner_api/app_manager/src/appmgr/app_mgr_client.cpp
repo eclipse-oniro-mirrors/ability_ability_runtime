@@ -407,7 +407,7 @@ void AppMgrClient::NotifyUninstallOrUpgradeAppEnd(int32_t uid)
 {
     sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
     if (service == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "Service is nullptr");
+        TAG_LOGE(AAFwkTag::APPMGR, "service is nullptr");
         return;
     }
     sptr<IAmsMgr> amsService = service->GetAmsMgr();

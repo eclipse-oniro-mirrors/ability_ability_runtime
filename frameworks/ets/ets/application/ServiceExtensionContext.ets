@@ -105,7 +105,6 @@ export default class ServiceExtensionContext extends ExtensionContext {
 
   native nativeWantCheck(want: Want): void;
   native nativeStartUIAbilities(wantList: Array<Want>, callback: AsyncCallbackWrapper<void>): void;
-
   native nativeOpenAtomicService(appId: string, callback: AsyncCallbackWrapper<void>, options?: AtomicServiceOptions): void;
 
   native nativePreStartMission(bundleName: string, moduleName: string, abilityName: string, startTime: string, callback: AsyncCallbackWrapper<void>): void;
@@ -291,6 +290,20 @@ export default class ServiceExtensionContext extends ExtensionContext {
     });
   }
 
+ startUIAbilities(wantList: Array<Want>): Promise<void> {
+    return new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
+      let myCall = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+        if (err == null || err.code == 0) {
+          resolve(undefined);
+        } else {
+          reject(err);
+        }
+      });
+      taskpool.execute((): void => {
+        this.nativeStartUIAbilities(wantList, myCall);
+      });
+    });
+  }
   preStartMission(bundleName: string, moduleName: string, abilityName: string, startTime: string): Promise<void> {
     return new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
         let myCall = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
@@ -527,20 +540,5 @@ export default class ServiceExtensionContext extends ExtensionContext {
           reject(err as BusinessError);
         });
       });
-  }
-
-  startUIAbilities(wantList: Array<Want>): Promise<void> {
-    return new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
-      let myCall = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
-        if (err == null || err.code == 0) {
-          resolve(undefined);
-        } else {
-          reject(err);
-        }
-      });
-      taskpool.execute((): void => {
-        this.nativeStartUIAbilities(wantList, myCall);
-      });
-    });
   }
 }

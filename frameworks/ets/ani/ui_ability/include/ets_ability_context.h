@@ -92,6 +92,10 @@ public:
         ani_env *env, ani_object aniObj, ani_string aniType, ani_ref aniWantParam, ani_object startCallback);
     static void OpenAtomicService(
         ani_env *env, ani_object aniObj, ani_string aniAppId, ani_object callbackObj, ani_object optionsObj);
+    static void StartSelfUIAbilityInCurrentProcess(
+        ani_env *env, ani_object aniObj, ani_object wantObj, ani_string aniSpecifiedFlag, ani_object call);
+    static void StartSelfUIAbilityInCurrentProcessWithOptions(ani_env *env, ani_object aniObj,
+        ani_object wantObj, ani_string aniSpecifiedFlag, ani_object opt, ani_object call);
     static void ConnectUIServiceExtension(ani_env *env, ani_object aniObj, ani_object wantObj,
         ani_object uiServiceExtConCallbackObj, ani_object callback);
     static void StartUIServiceExtension(ani_env *env, ani_object aniObj,
@@ -102,10 +106,6 @@ public:
     static void DisconnectUIServiceExtensionCheck(ani_env *env, ani_object aniObj, ani_object proxyObj);
     static void RequestDialogService(ani_env *env, ani_object aniObj, ani_object wantObj, ani_object call);
     static ani_object WrapRequestDialogResult(ani_env *env, int32_t resultCode, const AAFwk::Want &want);
-    static void StartSelfUIAbilityInCurrentProcess(
-        ani_env *env, ani_object aniObj, ani_object wantObj, ani_string aniSpecifiedFlag, ani_object call);
-    static void StartSelfUIAbilityInCurrentProcessWithOptions(ani_env *env, ani_object aniObj,
-        ani_object wantObj, ani_string aniSpecifiedFlag, ani_object opt, ani_object call);
     static void RevokeDelegator(ani_env *env, ani_object aniObj, ani_object callback);
     static ani_long ConnectAppServiceExtensionAbility(ani_env *env, ani_object aniObj, ani_object wantObj,
         ani_object connectOptionsObj);

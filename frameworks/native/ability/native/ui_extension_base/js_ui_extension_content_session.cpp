@@ -901,6 +901,8 @@ napi_value JsUIExtensionContentSession::OnSetWindowPrivacyMode(napi_env env, Nap
 
 napi_value JsUIExtensionContentSession::OnStartAbilityByType(napi_env env, NapiCallbackInfo& info)
 {
+    TAG_LOGI(AAFwkTag::UI_EXT, "called");
+
     std::string type;
     AAFwk::WantParams wantParam;
     if (!CheckStartAbilityByTypeParam(env, info, type, wantParam)) {

@@ -32,7 +32,6 @@ namespace OHOS {
 namespace AbilityRuntime {
 namespace {
 constexpr size_t ARGC_ONE = 1;
-} // namespace
 
 void* DetachNewApplicationContext(napi_env, void* nativeObject, void*)
 {
@@ -105,7 +104,7 @@ void DetachFinalizeAbilityContext(void* detachedObject, void*)
     TAG_LOGD(AAFwkTag::APPKIT, "Finalizer detached ability context");
     delete static_cast<std::weak_ptr<AbilityContext> *>(detachedObject);
 }
-
+} // namespace
 class JsContext {
 public:
     explicit JsContext(std::weak_ptr<Context>&& context) : context_(std::move(context)) {}

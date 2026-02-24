@@ -411,6 +411,21 @@ void UIExtensionContext::SetAbilityColorMode(int32_t colorMode)
     abilityConfigUpdateCallback_(config);
 }
 
+void UIExtensionContext::RequestComponentTerminate()
+{
+    TAG_LOGD(AAFwkTag::CONTEXT, "RequestComponentTerminate called");
+    if (!window_) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null window_");
+        return;
+    }
+    AAFwk::WantParams params;
+    params.SetParam(REQUEST_COMPONENT_TERMINATE_KEY, AAFwk::Boolean::Box(true));
+    auto ret = window_->TransferExtensionData(params);
+    if (ret != Rosen::WMError::WM_OK) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "transfer extension data failed, ret:%{public}d", ret);
+    }
+}
+
 bool UIExtensionContext::IsTerminating()
 {
     return isTerminating_;
@@ -463,21 +478,6 @@ ErrCode UIExtensionContext::StartAbilityByType(const std::string &type,
     uiExtensionCallbacks->SetUIContent(uiContent);
     uiExtensionCallbacks->SetSessionId(sessionId);
     return ERR_OK;
-}
-
-void UIExtensionContext::RequestComponentTerminate()
-{
-    TAG_LOGD(AAFwkTag::CONTEXT, "RequestComponentTerminate called");
-    if (!window_) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "null window_");
-        return;
-    }
-    AAFwk::WantParams params;
-    params.SetParam(REQUEST_COMPONENT_TERMINATE_KEY, AAFwk::Boolean::Box(true));
-    auto ret = window_->TransferExtensionData(params);
-    if (ret != Rosen::WMError::WM_OK) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "transfer extension data failed, ret:%{public}d", ret);
-    }
 }
 
 ErrCode UIExtensionContext::AddCompletionHandlerForAtomicService(const std::string &requestId,

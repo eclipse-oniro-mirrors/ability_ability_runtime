@@ -106,6 +106,7 @@ constexpr int32_t ARGC_TWO = 2;
 constexpr int32_t ARGC_THREE = 3;
 constexpr const char* SIGNATURE_RESTORE_WINDOW_STAGE = "C{arkui.stateManagement.storage.localStorage.LocalStorage}:";
 constexpr const char* KEY_REQUEST_ID = "com.ohos.param.requestId";
+
 int64_t RequestCodeFromStringToInt64(const std::string &requestCode)
 {
     if (requestCode.size() > MAX_REQUEST_CODE_LENGTH) {
@@ -569,6 +570,32 @@ void EtsAbilityContext::OpenAtomicService(
         return;
     }
     etsContext->OnOpenAtomicService(env, aniObj, aniAppId, callbackObj, optionsObj);
+}
+
+void EtsAbilityContext::StartSelfUIAbilityInCurrentProcess(
+    ani_env *env, ani_object aniObj, ani_object wantObj, ani_string aniSpecifiedFlag, ani_object call)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::CONTEXT, "StartSelfUIAbilityInCurrentProcess called");
+    auto etsContext = GetEtsAbilityContext(env, aniObj);
+    if (etsContext == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null etsContext");
+        return;
+    }
+    etsContext->OnStartSelfUIAbilityInCurrentProcess(env, aniObj, wantObj, aniSpecifiedFlag, nullptr, call);
+}
+
+void EtsAbilityContext::StartSelfUIAbilityInCurrentProcessWithOptions(
+    ani_env *env, ani_object aniObj, ani_object wantObj, ani_string aniSpecifiedFlag, ani_object opt, ani_object call)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::CONTEXT, "StartSelfUIAbilityInCurrentProcessWithOptions called");
+    auto etsContext = GetEtsAbilityContext(env, aniObj);
+    if (etsContext == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null etsContext");
+        return;
+    }
+    etsContext->OnStartSelfUIAbilityInCurrentProcess(env, aniObj, wantObj, aniSpecifiedFlag, opt, call);
 }
 
 void EtsAbilityContext::OpenAtomicServiceCheck(ani_env *env, ani_object aniObj)
@@ -2362,32 +2389,6 @@ ani_object EtsAbilityContext::WrapRequestDialogResult(ani_env *env, int32_t resu
     env->Object_SetPropertyByName_Ref(object, "result", resultItem);
     env->Object_SetPropertyByName_Ref(object, "want", AppExecFwk::WrapWant(env, want));
     return object;
-}
-
-void EtsAbilityContext::StartSelfUIAbilityInCurrentProcess(
-    ani_env *env, ani_object aniObj, ani_object wantObj, ani_string aniSpecifiedFlag, ani_object call)
-{
-    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    TAG_LOGD(AAFwkTag::CONTEXT, "StartSelfUIAbilityInCurrentProcess called");
-    auto etsContext = GetEtsAbilityContext(env, aniObj);
-    if (etsContext == nullptr) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "null etsContext");
-        return;
-    }
-    etsContext->OnStartSelfUIAbilityInCurrentProcess(env, aniObj, wantObj, aniSpecifiedFlag, nullptr, call);
-}
-
-void EtsAbilityContext::StartSelfUIAbilityInCurrentProcessWithOptions(
-    ani_env *env, ani_object aniObj, ani_object wantObj, ani_string aniSpecifiedFlag, ani_object opt, ani_object call)
-{
-    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    TAG_LOGD(AAFwkTag::CONTEXT, "StartSelfUIAbilityInCurrentProcessWithOptions called");
-    auto etsContext = GetEtsAbilityContext(env, aniObj);
-    if (etsContext == nullptr) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "null etsContext");
-        return;
-    }
-    etsContext->OnStartSelfUIAbilityInCurrentProcess(env, aniObj, wantObj, aniSpecifiedFlag, opt, call);
 }
 
 void EtsAbilityContext::OnRequestDialogService(ani_env *env, ani_object aniObj, ani_object wantObj, ani_object call)
