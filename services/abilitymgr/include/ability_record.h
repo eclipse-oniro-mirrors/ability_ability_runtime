@@ -718,11 +718,10 @@ public:
     // Host-Plugin relationship management
     void AddPluginAbility(std::shared_ptr<AbilityRecord> pluginAbility);
     void RemovePluginAbility(std::shared_ptr<AbilityRecord> pluginAbility);
-    std::vector<std::shared_ptr<AbilityRecord>> GetPluginAbilities();
-    std::shared_ptr<AbilityRecord> GetHostAbility() const;
-    void SetHostAbility(const std::shared_ptr<AbilityRecord> &hostAbility);
+    std::vector<std::shared_ptr<AbilityRecord>> GetPluginAbilities() const;
     void ClearPluginAbilities();
     void InitPluginAbility(const AbilityRequest &abilityRequest);
+    void PluginCompleteTerminate();
 
     void NotifyAbilityRequestFailure(const std::string &requestId, const AppExecFwk::ElementName &element,
         const std::string &message, int32_t resultCode = 0);
@@ -947,11 +946,6 @@ protected:
     bool isPrelaunch_ = false;
     bool isHook_ = false;
 
-    // Host-Plugin relationship management
-    std::weak_ptr<AbilityRecord> hostAbilityRecord_;
-    std::list<std::weak_ptr<AbilityRecord>> pluginAbilityList_;
-    mutable std::mutex pluginMutex_;
-
     int32_t uiExtensionAbilityId_ = 0;                // uiextension ability id
     int32_t uid_ = 0;
     pid_t pid_ = 0;
@@ -1030,6 +1024,10 @@ protected:
     std::mutex collaborateWantLock_;
     std::mutex isPrepareTerminateAbilityMutex_;
     std::condition_variable isPrepareTerminateAbilityCv_;
+
+    // Host-Plugin relationship management
+    mutable std::mutex pluginMutex_;
+    std::list<std::weak_ptr<AbilityRecord>> pluginAbilityList_;
 
     bool isKillForPermissionUpdate_ = false;
     mutable bool isDumpTimeout_ = false;

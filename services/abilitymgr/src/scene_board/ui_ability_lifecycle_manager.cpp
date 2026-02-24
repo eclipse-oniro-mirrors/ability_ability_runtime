@@ -2081,13 +2081,10 @@ int UIAbilityLifecycleManager::CloseUIAbility(const UIAbilityRecordPtr &abilityR
     }
 
     // If this is a host ability, terminate all associated plugin abilities first
-    if (!abilityRecord->IsPluginAbility()) {
-        auto pluginAbilities = abilityRecord->GetPluginAbilities();
-        for (const auto& plugin : pluginAbilities) {
-            TerminateSession(plugin);
-        }
-        // Clear plugin list
-        abilityRecord->ClearPluginAbilities();
+    auto pluginAbilities = abilityRecord->GetPluginAbilities();
+    abilityRecord->ClearPluginAbilities();
+    for (const auto& plugin : pluginAbilities) {
+        TerminateSession(plugin);
     }
 
     PrepareCloseUIAbility(abilityRecord, resultCode, resultWant, isClearSession);
@@ -2182,15 +2179,7 @@ void UIAbilityLifecycleManager::CompleteTerminate(const UIAbilityRecordPtr &abil
     }
 
     // If this is a plugin ability, remove it from host's plugin list
-    if (abilityRecord->IsPluginAbility()) {
-        auto hostAbility = abilityRecord->GetHostAbility();
-        if (hostAbility) {
-            hostAbility->RemovePluginAbility(abilityRecord);
-            TAG_LOGI(AAFwkTag::ABILITYMGR, "Plugin %{public}s removed from host %{public}s",
-                abilityRecord->GetAbilityInfo().name.c_str(),
-                hostAbility->GetAbilityInfo().name.c_str());
-        }
-    }
+    abilityRecord->PluginCompleteTerminate();
 
     abilityRecord->RemoveAbilityDeathRecipient();
     auto ret = abilityRecord->TerminateAbility();
