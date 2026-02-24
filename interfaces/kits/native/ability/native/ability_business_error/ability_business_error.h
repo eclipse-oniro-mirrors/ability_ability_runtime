@@ -215,6 +215,9 @@ enum class AbilityErrorCode {
     // The caller is not an atomic service.
     ERROR_CODE_CALLER_NOT_ATOMIC_SERVICE = 16000090,
 
+    // The specified agentId does not exist.
+    ERROR_CODE_AGENT_ID_NOT_EXIST = 16000154,
+
     // invalid caller.
     ERROR_CODE_INVALID_CALLER = 16200001,
 

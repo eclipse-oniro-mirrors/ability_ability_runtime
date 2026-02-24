@@ -241,7 +241,7 @@ HWTEST_F(AgentManagerServiceTest, GetAgentCardsByBundleName_001, TestSize.Level1
 {
     std::string bundleName = "bundle";
     std::vector<AgentCard> cards;
-    EXPECT_NE(AgentManagerService::GetInstance()->GetAgentCardsByBundleName(bundleName, cards), ERR_OK);
+    EXPECT_EQ(AgentManagerService::GetInstance()->GetAgentCardsByBundleName(bundleName, cards), ERR_OK);
 }
 
 /**
@@ -323,7 +323,7 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_003, TestSize.Lev
     sptr<MockAbilityConnection> connection = new MockAbilityConnection();
     // GetAgentCardByAgentId will fail since no such card exists
     EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, connection),
-        ERR_INVALID_VALUE);
+        ERR_INVALILD_AGENT_CARD_ID);
 }
 
 /**
@@ -338,9 +338,9 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_004, TestSize.Lev
     want.SetParam(AGENTID_KEY, std::string("testAgent"));
     want.SetBundle("test.bundle");
     sptr<AAFwk::IAbilityConnection> connection = nullptr;
-    // Connection is null, so it should return ERR_INVALID_VALUE
+    // Connection is null, so it should return ERR_INVALILD_AGENT_CARD_ID
     EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, connection),
-        ERR_INVALID_VALUE);
+        ERR_INVALILD_AGENT_CARD_ID);
 }
 
 /**
@@ -360,8 +360,8 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_005, TestSize.Lev
     // For the test to pass, we would need to mock GetAgentCardByAgentId
     // or ensure a valid agent card is in the database
     int32_t result = AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, connection);
-    // Since GetAgentCardByAgentId will fail, result should be ERR_INVALID_VALUE
-    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    // Since GetAgentCardByAgentId will fail, result should be ERR_INVALILD_AGENT_CARD_ID
+    EXPECT_EQ(result, ERR_INVALILD_AGENT_CARD_ID);
 }
 
 /**
@@ -380,8 +380,8 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_006, TestSize.Lev
     sptr<MockAbilityConnection> connection = new MockAbilityConnection();
     // Note: This test will fail at the agent card check since no card exists
     int32_t result = AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, connection);
-    // Since GetAgentCardByAgentId will fail, result should be ERR_INVALID_VALUE
-    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    // Since GetAgentCardByAgentId will fail, result should be ERR_INVALILD_AGENT_CARD_ID
+    EXPECT_EQ(result, ERR_INVALILD_AGENT_CARD_ID);
     MyFlag::retConnectAbilityWithExtensionType = ERR_OK;
 }
 

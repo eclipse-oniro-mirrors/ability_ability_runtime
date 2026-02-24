@@ -176,8 +176,12 @@ int32_t AgentCardDbMgr::QueryData(const std::string &bundleName, int32_t userId,
     DistributedKv::Status status = kvStorePtr_->Get(key, value);
     if (status != DistributedKv::Status::SUCCESS) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "QueryData error: %{public}d", status);
+        if (status == DistributedKv::Status::KEY_NOT_FOUND) {
+            TAG_LOGW(AAFwkTag::SER_ROUTER, "key not found");
+            return ERR_NAME_NOT_FOUND;
+        }
         RestoreKvStore(status);
-        return ERR_INVALID_OPERATION;
+        return status;
     }
     if (!nlohmann::json::accept(value.ToString())) {
         return AAFwk::INNER_ERR;
@@ -205,7 +209,7 @@ int32_t AgentCardDbMgr::QueryAllData(std::vector<AgentCard> &cards)
     DistributedKv::Status status = kvStorePtr_->GetEntries(nullptr, allEntries);
     if (status != DistributedKv::Status::SUCCESS) {
         status = RestoreKvStore(status);
-        return ERR_INVALID_OPERATION;
+        return status;
     }
 
     for (const auto &item : allEntries) {

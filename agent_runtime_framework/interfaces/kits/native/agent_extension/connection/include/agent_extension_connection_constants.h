@@ -22,13 +22,19 @@ namespace AgentRuntime {
  * Key for storing the agent extension host proxy in Want parameters.
  * Used for bidirectional communication between host and agent extension.
  */
-constexpr const char *AGENTEXTENSIONHOSTPROXY_KEY = "ohos.aafwk.params.AgentExtensionHostProxy";
+constexpr const char *AGENTEXTENSIONHOSTPROXY_KEY = "ohos.agentruntime.params.AgentExtensionHostProxy";
 
 /**
  * Key for storing the agent identifier in Want parameters.
  * Used to identify the target agent extension.
  */
-constexpr const char *AGENTID_KEY = "ohos.aafwk.params.AgentId";
+constexpr const char *AGENTID_KEY = "ohos.agentruntime.params.AgentId";
+
+/**
+ * Signature for agent async callback wrapper.
+ * Used to identify the AsyncCallbackWrapper class in utils.AgentUtils.
+ */
+constexpr const char *SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER = "utils.AgentUtils.AsyncCallbackWrapper";
 
 } // namespace AgentRuntime
 } // namespace OHOS

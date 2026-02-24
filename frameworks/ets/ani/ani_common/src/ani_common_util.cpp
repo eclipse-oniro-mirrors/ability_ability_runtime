@@ -597,6 +597,40 @@ bool AsyncCallback(ani_env *env, ani_object call, ani_object error, ani_object r
     return true;
 }
 
+bool AsyncCallback(ani_env *env, const char *signature, ani_object call, ani_object error, ani_object result)
+{
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "null env");
+        return false;
+    }
+    ani_class clsCall = nullptr;
+    ani_status status = env->FindClass(signature, &clsCall);
+    if (status!= ANI_OK || clsCall == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "FindClass status: %{public}d, or null clsCall", status);
+        return false;
+    }
+    ani_method method = nullptr;
+    if ((status = env->Class_FindMethod(clsCall, "invoke", nullptr, &method)) != ANI_OK || method == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "Class_FindMethod status: %{public}d, or null method", status);
+        return false;
+    }
+    if (error == nullptr) {
+        ani_ref nullRef = nullptr;
+        env->GetNull(&nullRef);
+        error = reinterpret_cast<ani_object>(nullRef);
+    }
+    if (result == nullptr) {
+        ani_ref undefinedRef = nullptr;
+        env->GetUndefined(&undefinedRef);
+        result = reinterpret_cast<ani_object>(undefinedRef);
+    }
+    if ((status = env->Object_CallMethod_Void(call, method, error, result)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "Object_CallMethod_Void status: %{public}d", status);
+        return false;
+    }
+    return true;
+}
+
 bool GetDoubleOrUndefined(ani_env *env, ani_object param, const char *name, ani_double &value)
 {
     ani_ref obj = nullptr;
