@@ -45,7 +45,6 @@ ani_object NativeCreateSystemHspModuleResourceManager(ani_env *env, ani_object a
     ani_string bundleNameObj, ani_string moduleNameObj);
 ani_object CreateContextObject(ani_env* env, ani_class contextClass, std::shared_ptr<Context> nativeContext);
 void SetEventHubContext(ani_env *aniEnv, ani_ref eventHubRef, ani_long nativeContextLong);
-}
 
 class EtsBaseContext final {
 public:
@@ -60,6 +59,7 @@ public:
 private:
     std::shared_ptr<Context> context_;
 };
+}
 } // namespace AbilityRuntime
 } // namespace OHOS
 #endif // OHOS_ABILITY_RUNTIME_ETS_CONTEXT_UTILS_H

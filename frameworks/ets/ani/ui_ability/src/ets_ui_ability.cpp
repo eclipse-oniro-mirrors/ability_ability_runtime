@@ -582,6 +582,24 @@ void EtsUIAbility::OnStartInner(ani_env *env, const Want &want, sptr<AAFwk::Sess
     TAG_LOGD(AAFwkTag::UIABILITY, "OnStart end");
 }
 
+int32_t EtsUIAbility::OnShare(WantParams &wantParam)
+{
+    TAG_LOGD(AAFwkTag::UIABILITY, "OnShare called");
+    auto env = etsRuntime_.GetAniEnv();
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "null env");
+        return ERR_INVALID_VALUE;
+    }
+    ani_ref wantParamRef = AppExecFwk::WrapWantParams(env, wantParam);
+    if (wantParamRef == nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "null wantParamRef");
+        return ERR_INVALID_VALUE;
+    }
+    CallObjectMethod(false, "onShare", ON_SHARE_SIGNATURE, wantParamRef);
+    AppExecFwk::UnwrapWantParams(env, wantParamRef, wantParam);
+    return ERR_OK;
+}
+
 void EtsUIAbility::SetSelfSpecifiedId(ani_env *env, sptr<AAFwk::SessionInfo> sessionInfo)
 {
     TAG_LOGD(AAFwkTag::UIABILITY, "SetSelfSpecifiedId called");
@@ -605,24 +623,6 @@ void EtsUIAbility::SetSelfSpecifiedId(ani_env *env, sptr<AAFwk::SessionInfo> ses
             return;
         }
     }
-}
-
-int32_t EtsUIAbility::OnShare(WantParams &wantParam)
-{
-    TAG_LOGD(AAFwkTag::UIABILITY, "OnShare called");
-    auto env = etsRuntime_.GetAniEnv();
-    if (env == nullptr) {
-        TAG_LOGE(AAFwkTag::UIABILITY, "null env");
-        return ERR_INVALID_VALUE;
-    }
-    ani_ref wantParamRef = AppExecFwk::WrapWantParams(env, wantParam);
-    if (wantParamRef == nullptr) {
-        TAG_LOGE(AAFwkTag::UIABILITY, "null wantParamRef");
-        return ERR_INVALID_VALUE;
-    }
-    CallObjectMethod(false, "onShare", ON_SHARE_SIGNATURE, wantParamRef);
-    AppExecFwk::UnwrapWantParams(env, wantParamRef, wantParam);
-    return ERR_OK;
 }
 
 void EtsUIAbility::OnStop()

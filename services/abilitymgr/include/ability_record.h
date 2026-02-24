@@ -816,7 +816,7 @@ public:
     bool GetPromotePriority();
 
     bool PromotePriority();
-    
+
     std::string GetFirstCallerBundleName()
     {
         return firstCallerBundleName_;
@@ -934,9 +934,9 @@ protected:
     bool isRestartApp_ = false; // Only app calling RestartApp can be set to true
     bool isLaunching_ = true;
     bool securityFlag_ = false;
+    bool isHook_ = false;
     bool isPluginAbility_ = false;
     bool isPrelaunch_ = false;
-    bool isHook_ = false;
 
     int32_t uiExtensionAbilityId_ = 0;                // uiextension ability id
     int32_t uid_ = 0;

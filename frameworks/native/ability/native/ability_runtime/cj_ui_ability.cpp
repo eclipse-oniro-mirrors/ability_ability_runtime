@@ -371,7 +371,7 @@ void CJUIAbility::OnSceneWillDestroy()
         return;
     }
     if (!cjWindowStage_) {
-        TAG_LOGE(AAFwkTag::UIABILITY, "null cjWindowStage");
+        TAG_LOGE(AAFwkTag::UIABILITY, "null CJWindowStage object");
         return;
     }
     cjAbilityObj_->OnSceneWillDestroy(cjWindowStage_.GetRefPtr());
@@ -1042,7 +1042,7 @@ bool CJUIAbility::CheckSatisfyTargetAPIVersion(int32_t version)
 {
     auto applicationInfo = GetApplicationInfo();
     if (!applicationInfo) {
-        TAG_LOGE(AAFwkTag::UIABILITY, "null applicationInfo");
+        TAG_LOGE(AAFwkTag::UIABILITY, "null targetAPIVersion");
         return false;
     }
     TAG_LOGD(AAFwkTag::UIABILITY, "targetAPIVersion: %{public}d", applicationInfo->apiTargetVersion);

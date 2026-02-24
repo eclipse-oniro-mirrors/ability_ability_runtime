@@ -84,6 +84,7 @@ private:
     ConnectServerManager(ConnectServerManager&&) = delete;
     ConnectServerManager& operator=(const ConnectServerManager&) = delete;
     ConnectServerManager& operator=(ConnectServerManager&&) = delete;
+
     void SendInstanceMessageCallback(const int32_t instanceId);
     void AddInstanceCallback(const int32_t instanceId);
 };

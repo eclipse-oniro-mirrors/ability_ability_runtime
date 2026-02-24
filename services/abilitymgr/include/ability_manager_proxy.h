@@ -1340,13 +1340,13 @@ public:
     */
     virtual int32_t UnregisterIAbilityManagerCollaborator(int32_t type) override;
 
-    virtual int32_t RegisterStatusBarDelegate(sptr<AbilityRuntime::IStatusBarDelegate> delegate) override;
-
     /**
      * @brief get ability manager collaborator.
      * @return Returns object pointer on success, others on null.
      */
     virtual sptr<IAbilityManagerCollaborator> GetAbilityManagerCollaborator() override;
+
+    virtual int32_t RegisterStatusBarDelegate(sptr<AbilityRuntime::IStatusBarDelegate> delegate) override;
 
     virtual int32_t KillProcessWithPrepareTerminate(const std::vector<int32_t> &pids, bool clear) override;
 
@@ -1843,15 +1843,6 @@ public:
     virtual int32_t RevokeDelegator(sptr<IRemoteObject> token) override;
 
     /**
-     * StartAbilityWithWait, send want and abilityStartWithWaitObserver to abms.
-     *
-     * @param want Ability want.
-     * @param observer ability foreground notify observer for aa tool.
-     * @return Returns ERR_OK on success, others on failure.
-     */
-    int32_t StartAbilityWithWait(Want &want, sptr<IAbilityStartWithWaitObserver> &observer) override;
-
-    /**
      * Get all insight intent infos.
      * @param flag, the get type.
      * @param infos, the insight intent infos.
@@ -1892,20 +1883,14 @@ public:
         InsightIntentInfoForQuery &info,
         int32_t userId = DEFAULT_INVAL_VALUE) override;
 
-    int32_t UpdateKioskApplicationList(const std::vector<std::string> &appList) override;
-
-    int32_t EnterKioskMode(sptr<IRemoteObject> callerToken) override;
-
-    int32_t ExitKioskMode(sptr<IRemoteObject> callerToken) override;
-
-    int32_t GetKioskStatus(AAFwk::KioskStatus &kioskStatus) override;
-
     /**
-     * Register sa interceptor.
-     * @param interceptor, The sa interceptor.
+     * StartAbilityWithWait, send want and abilityStartWithWaitObserver to abms.
+     *
+     * @param want Ability want.
+     * @param observer ability foreground notify observer for aa tool.
      * @return Returns ERR_OK on success, others on failure.
      */
-    virtual ErrCode RegisterSAInterceptor(sptr<AbilityRuntime::ISAInterceptor> interceptor) override;
+    int32_t StartAbilityWithWait(Want &want, sptr<IAbilityStartWithWaitObserver> &observer) override;
 
     /**
      * Set keep-alive flag for app service extension under u1 user.
@@ -1921,6 +1906,21 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int32_t QueryKeepAliveAppServiceExtensions(std::vector<KeepAliveInfo> &list) override;
+
+    int32_t UpdateKioskApplicationList(const std::vector<std::string> &appList) override;
+
+    int32_t EnterKioskMode(sptr<IRemoteObject> callerToken) override;
+
+    int32_t ExitKioskMode(sptr<IRemoteObject> callerToken) override;
+
+    int32_t GetKioskStatus(AAFwk::KioskStatus &kioskStatus) override;
+
+    /**
+     * Register sa interceptor.
+     * @param interceptor, The sa interceptor.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual ErrCode RegisterSAInterceptor(sptr<AbilityRuntime::ISAInterceptor> interceptor) override;
 
     /**
      * SuspendExtensionAbility, suspend session with service ability.

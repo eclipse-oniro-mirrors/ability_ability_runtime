@@ -38,6 +38,7 @@ public:
     static bool IsCJAbility(const std::string& info);
     static void SetAppVersion(std::string& version);
     static void SetSanitizerVersion(SanitizerKind kind);
+    static bool RegisterCangjieCallback();
     static void SetPackageName(std::string srcEntryName);
     ~CJRuntime() override = default;
 
@@ -78,7 +79,6 @@ public:
     void AllowCrossThreadExecution() override {};
     void GetHeapPrepare() override {};
     void RegisterUncaughtExceptionHandler(const CJUncaughtExceptionInfo& uncaughtExceptionInfo);
-    static bool RegisterCangjieCallback();
 
 private:
     bool StartDebugger();

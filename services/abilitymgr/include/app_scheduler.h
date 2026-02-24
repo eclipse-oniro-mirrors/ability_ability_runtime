@@ -637,8 +637,8 @@ public:
     virtual bool IsMemorySizeSufficient() const;
 
     /**
-     * whether or not requier a big memory
-     * @return Returens true is no big memory, others return false.
+     * whether or not require a big memory
+     * @return Return true is no big memory, others return false.
      */
     virtual bool IsNoRequireBigMemory() const;
 
@@ -741,13 +741,6 @@ protected:
     virtual void OnStartProcessFailed(const std::vector<sptr<IRemoteObject>> &abilityTokens) override;
 
     /**
-     * @brief Notify abilityms app process pre cache
-     * @param pid process pid.
-     * @param userId userId Designation User ID.
-     */
-    virtual void NotifyAppPreCache(int32_t pid, int32_t userId) override;
-
-    /**
      * @brief Notify abilityms exit info
      * @param accessTokenId accessTokenId.
      * @param exitInfo exit info before app died.
@@ -758,6 +751,13 @@ protected:
     virtual void OnCacheExitInfo(uint32_t accessTokenId, const AppExecFwk::RunningProcessInfo &exitInfo,
         const std::string &bundleName, const std::vector<std::string> &abilityNames,
         const std::vector<std::string> &uiExtensionNames) override;
+
+    /**
+     * @brief Notify abilityms app process pre cache
+     * @param pid process pid.
+     * @param userId userId Designation User ID.
+     */
+    virtual void NotifyAppPreCache(int32_t pid, int32_t userId) override;
 
     /**
      * @brief Record the signal reason when an application process exits.
