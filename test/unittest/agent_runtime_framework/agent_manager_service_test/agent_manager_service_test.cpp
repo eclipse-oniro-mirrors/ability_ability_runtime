@@ -323,7 +323,7 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_003, TestSize.Lev
     sptr<MockAbilityConnection> connection = new MockAbilityConnection();
     // GetAgentCardByAgentId will fail since no such card exists
     EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, connection),
-        ERR_INVALILD_AGENT_CARD_ID);
+        ERR_INVALID_AGENT_CARD_ID);
 }
 
 /**
@@ -338,9 +338,9 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_004, TestSize.Lev
     want.SetParam(AGENTID_KEY, std::string("testAgent"));
     want.SetBundle("test.bundle");
     sptr<AAFwk::IAbilityConnection> connection = nullptr;
-    // Connection is null, so it should return ERR_INVALILD_AGENT_CARD_ID
+    // Connection is null, so it should return ERR_INVALID_AGENT_CARD_ID
     EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, connection),
-        ERR_INVALILD_AGENT_CARD_ID);
+        ERR_INVALID_AGENT_CARD_ID);
 }
 
 /**
@@ -360,8 +360,8 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_005, TestSize.Lev
     // For the test to pass, we would need to mock GetAgentCardByAgentId
     // or ensure a valid agent card is in the database
     int32_t result = AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, connection);
-    // Since GetAgentCardByAgentId will fail, result should be ERR_INVALILD_AGENT_CARD_ID
-    EXPECT_EQ(result, ERR_INVALILD_AGENT_CARD_ID);
+    // Since GetAgentCardByAgentId will fail, result should be ERR_INVALID_AGENT_CARD_ID
+    EXPECT_EQ(result, ERR_INVALID_AGENT_CARD_ID);
 }
 
 /**
@@ -380,8 +380,8 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_006, TestSize.Lev
     sptr<MockAbilityConnection> connection = new MockAbilityConnection();
     // Note: This test will fail at the agent card check since no card exists
     int32_t result = AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, connection);
-    // Since GetAgentCardByAgentId will fail, result should be ERR_INVALILD_AGENT_CARD_ID
-    EXPECT_EQ(result, ERR_INVALILD_AGENT_CARD_ID);
+    // Since GetAgentCardByAgentId will fail, result should be ERR_INVALID_AGENT_CARD_ID
+    EXPECT_EQ(result, ERR_INVALID_AGENT_CARD_ID);
     MyFlag::retConnectAbilityWithExtensionType = ERR_OK;
 }
 

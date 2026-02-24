@@ -1108,7 +1108,7 @@ enum {
     ERR_AGENT_CARD_LIST_OUT_OF_RANGE = 2099212,
 
     // Result (2099213) for agent card id does not exist.
-    ERR_INVALILD_AGENT_CARD_ID = 2099213,
+    ERR_INVALID_AGENT_CARD_ID = 2099213,
 
     /**
      * Native error(3000000) for target bundle not exist.
