@@ -3364,6 +3364,7 @@ void AbilityRecord::RemovePluginAbility(std::shared_ptr<AbilityRecord> pluginAbi
         if (plugin == pluginAbility) {
             TAG_LOGI(AAFwkTag::ABILITYMGR, "Remove plugin success");
             pluginAbilityList_.erase(it);
+            break;
         }
     }
 }
