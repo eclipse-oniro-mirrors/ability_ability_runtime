@@ -1263,10 +1263,8 @@ void AppMgrServiceInner::AfterLoadAbility(std::shared_ptr<AppRunningRecord> appR
                 timeOut = AbilityRuntime::GlobalConstant::GetLoadAndInactiveTimeout() *
                     AAFwk::AppUtils::GetInstance().GetTimeoutUnitTimeRatio();
             }
-            auto stage = appRecord->GetPreloadMode() == PreloadMode::PRE_LAUNCH ?
-                AAFwk::LoadingStage::PRE_LAUNCH_BEGIN : AAFwk::LoadingStage::LOAD_BEGIN;
             TAG_LOGD(AAFwkTag::APPMGR, "report load,timeout:%{public}d", timeOut);
-            AAFwk::ResSchedUtil::GetInstance().ReportLoadingEventToRss(stage,
+            AAFwk::ResSchedUtil::GetInstance().ReportLoadingEventToRss(AAFwk::LoadingStage::LOAD_BEGIN,
                 priorityObj->GetPid(), appRecord->GetUid(), timeOut, static_cast<int64_t>(abilityRecordId));
         }
     };
