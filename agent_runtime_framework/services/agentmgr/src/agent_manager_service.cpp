@@ -131,7 +131,7 @@ int32_t AgentManagerService::GetAgentCardByAgentId(const std::string &bundleName
     auto ret = AgentCardMgr::GetInstance().GetAgentCardByAgentId(bundleName, agentId, card);
     if (ret == ERR_NAME_NOT_FOUND) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "no agent card of agentId %{public}s", agentId.c_str());
-        return AAFwk::ERR_INVALILD_AGENT_CARD_ID;
+        return AAFwk::ERR_INVALID_AGENT_CARD_ID;
     }
     return ret;
 }
@@ -157,7 +157,7 @@ int32_t AgentManagerService::ConnectAgentExtensionAbility(const AAFwk::Want &wan
     AgentCard card;
     if (GetAgentCardByAgentId(want.GetBundle(), agentId, card) != ERR_OK || agentId != card.agentId) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "no such card");
-        return AAFwk::ERR_INVALILD_AGENT_CARD_ID;
+        return AAFwk::ERR_INVALID_AGENT_CARD_ID;
     }
 
     // Validate connection object
