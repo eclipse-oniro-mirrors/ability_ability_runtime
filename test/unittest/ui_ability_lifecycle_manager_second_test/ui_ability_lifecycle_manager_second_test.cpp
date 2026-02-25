@@ -1201,5 +1201,269 @@ HWTEST_F(UIAbilityLifecycleManagerSecondTest, BackToCallerAbilityWithResultLocke
     auto ret = mgr->BackToCallerAbilityWithResultLocked(currentSessionInfo, callerAbilityRecord);
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
 }
+
+/**
+ * @tc.name: QueryCallerTokenIdForAnco_001
+ * @tc.desc: Test QueryCallerTokenIdForAnco with empty callerInfoMap_
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, QueryCallerTokenIdForAnco_001, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    const std::string sessionId = "non_existent_session_id";
+    uint32_t callerTokenId = 0;
+
+    auto ret = mgr->QueryCallerTokenIdForAnco(sessionId, callerTokenId);
+
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: QueryCallerTokenIdForAnco_002
+ * @tc.desc: Test QueryCallerTokenIdForAnco with non-existent session ID
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, QueryCallerTokenIdForAnco_002, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+
+    // Populate callerInfoMap_ with test data
+    UIAbilityLifecycleManager::CallerInfo callerInfo;
+    callerInfo.callerTokenId = 12345;
+    callerInfo.targetWant.SetParam("testKey", std::string("testValue"));
+    mgr->callerInfoMap_["existing_session_id"] = callerInfo;
+
+    const std::string nonExistentSessionId = "non_existent_session_id";
+    uint32_t callerTokenId = 0;
+
+    auto ret = mgr->QueryCallerTokenIdForAnco(nonExistentSessionId, callerTokenId);
+
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: QueryCallerTokenIdForAnco_003
+ * @tc.desc: Test QueryCallerTokenIdForAnco successfully
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, QueryCallerTokenIdForAnco_003, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+
+    // Populate callerInfoMap_ with test data
+    const std::string sessionId = "test_session_id";
+    UIAbilityLifecycleManager::CallerInfo callerInfo;
+    callerInfo.callerTokenId = 67890;
+    callerInfo.targetWant.SetParam(Want::PARAM_RESV_CALLER_TOKEN, 11111);
+    callerInfo.targetWant.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, std::string("com.test.bundle"));
+    mgr->callerInfoMap_[sessionId] = callerInfo;
+
+    uint32_t callerTokenId = 0;
+
+    auto ret = mgr->QueryCallerTokenIdForAnco(sessionId, callerTokenId);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(callerTokenId, 67890);
+}
+
+/**
+ * @tc.name: QueryCallerTokenIdForAnco_004
+ * @tc.desc: Test QueryCallerTokenIdForAnco with multiple entries in callerInfoMap_
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, QueryCallerTokenIdForAnco_004, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+
+    // Populate callerInfoMap_ with multiple entries
+    UIAbilityLifecycleManager::CallerInfo callerInfo1;
+    callerInfo1.callerTokenId = 11111;
+    mgr->callerInfoMap_["session_id_1"] = callerInfo1;
+
+    UIAbilityLifecycleManager::CallerInfo callerInfo2;
+    callerInfo2.callerTokenId = 22222;
+    mgr->callerInfoMap_["session_id_2"] = callerInfo2;
+
+    UIAbilityLifecycleManager::CallerInfo callerInfo3;
+    callerInfo3.callerTokenId = 33333;
+    mgr->callerInfoMap_["session_id_3"] = callerInfo3;
+
+    uint32_t callerTokenId = 0;
+
+    // Query the second entry
+    auto ret = mgr->QueryCallerTokenIdForAnco("session_id_2", callerTokenId);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(callerTokenId, 22222);
+}
+
+/**
+ * @tc.name: UpdateTokenIdAndWantWithRealCallerInfo_001
+ * @tc.desc: Test UpdateTokenIdAndWantWithRealCallerInfo with empty session ID in want
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, UpdateTokenIdAndWantWithRealCallerInfo_001, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+
+    Want want;
+    uint32_t realCallerTokenId = 0;
+
+    mgr->UpdateTokenIdAndWantWithRealCallerInfo(want, realCallerTokenId);
+
+    // Should return early without updating anything
+    EXPECT_EQ(realCallerTokenId, 0);
+}
+
+/**
+ * @tc.name: UpdateTokenIdAndWantWithRealCallerInfo_002
+ * @tc.desc: Test UpdateTokenIdAndWantWithRealCallerInfo with non-existent session ID
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, UpdateTokenIdAndWantWithRealCallerInfo_002, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+
+    const std::string nonExistentSessionId = "non_existent_session_id";
+    Want want;
+    want.SetParam("ohos.ability.param.sessionId", nonExistentSessionId);
+
+    uint32_t realCallerTokenId = 0;
+
+    mgr->UpdateTokenIdAndWantWithRealCallerInfo(want, realCallerTokenId);
+
+    // Should return early without updating anything
+    EXPECT_EQ(realCallerTokenId, 0);
+}
+
+/**
+ * @tc.name: UpdateTokenIdAndWantWithRealCallerInfo_003
+ * @tc.desc: Test UpdateTokenIdAndWantWithRealCallerInfo successfully
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, UpdateTokenIdAndWantWithRealCallerInfo_003, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+
+    // Populate callerInfoMap_ with test data
+    const std::string sessionId = "test_update_session_id";
+    UIAbilityLifecycleManager::CallerInfo callerInfo;
+    callerInfo.callerTokenId = 99999;
+    callerInfo.targetWant.SetParam(Want::PARAM_RESV_CALLER_TOKEN, 11111);
+    callerInfo.targetWant.SetParam(Want::PARAM_RESV_CALLER_UID, 22222);
+    callerInfo.targetWant.SetParam(Want::PARAM_RESV_CALLER_PID, 33333);
+    callerInfo.targetWant.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, std::string("com.update.test"));
+    callerInfo.targetWant.SetParam(Want::PARAM_RESV_CALLER_ABILITY_NAME, std::string("UpdateAbility"));
+    callerInfo.targetWant.SetParam(Want::PARAM_RESV_CALLER_APP_CLONE_INDEX, 44444);
+    callerInfo.targetWant.SetParam(Want::PARAM_RESV_CALLER_NATIVE_NAME, std::string("nativeName"));
+    callerInfo.targetWant.SetParam(Want::PARAM_RESV_CALLER_APP_ID, std::string("appId"));
+    callerInfo.targetWant.SetParam(Want::PARAM_RESV_CALLER_APP_IDENTIFIER, std::string("appIdentifier"));
+    mgr->callerInfoMap_[sessionId] = callerInfo;
+
+    Want want;
+    want.SetParam("ohos.ability.param.sessionId", sessionId);
+
+    uint32_t realCallerTokenId = 0;
+
+    mgr->UpdateTokenIdAndWantWithRealCallerInfo(want, realCallerTokenId);
+
+    // Verify realCallerTokenId was updated
+    EXPECT_EQ(realCallerTokenId, 99999);
+
+    // Verify want parameters were updated
+    EXPECT_EQ(want.GetIntParam(Want::PARAM_RESV_CALLER_TOKEN, 0), 11111);
+    EXPECT_EQ(want.GetIntParam(Want::PARAM_RESV_CALLER_UID, 0), 22222);
+    EXPECT_EQ(want.GetIntParam(Want::PARAM_RESV_CALLER_PID, 0), 33333);
+    EXPECT_EQ(want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME), "com.update.test");
+    EXPECT_EQ(want.GetStringParam(Want::PARAM_RESV_CALLER_ABILITY_NAME), "UpdateAbility");
+    EXPECT_EQ(want.GetIntParam(Want::PARAM_RESV_CALLER_APP_CLONE_INDEX, 0), 44444);
+    EXPECT_EQ(want.GetStringParam(Want::PARAM_RESV_CALLER_NATIVE_NAME), "nativeName");
+    EXPECT_EQ(want.GetStringParam(Want::PARAM_RESV_CALLER_APP_ID), "appId");
+    EXPECT_EQ(want.GetStringParam(Want::PARAM_RESV_CALLER_APP_IDENTIFIER), "appIdentifier");
+
+    // Verify the entry was removed from callerInfoMap_
+    EXPECT_TRUE(mgr->callerInfoMap_.empty());
+}
+
+/**
+ * @tc.name: UpdateTokenIdAndWantWithRealCallerInfo_004
+ * @tc.desc: Test UpdateTokenIdAndWantWithRealCallerInfo with partial caller info
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, UpdateTokenIdAndWantWithRealCallerInfo_004, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+
+    // Populate callerInfoMap_ with partial data
+    const std::string sessionId = "partial_session_id";
+    UIAbilityLifecycleManager::CallerInfo callerInfo;
+    callerInfo.callerTokenId = 55555;
+    callerInfo.targetWant.SetParam(Want::PARAM_RESV_CALLER_TOKEN, 66666);
+    // Only set some parameters
+    callerInfo.targetWant.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, std::string("com.partial.test"));
+    mgr->callerInfoMap_[sessionId] = callerInfo;
+
+    Want want;
+    want.SetParam("ohos.ability.param.sessionId", sessionId);
+
+    uint32_t realCallerTokenId = 0;
+
+    mgr->UpdateTokenIdAndWantWithRealCallerInfo(want, realCallerTokenId);
+
+    // Verify realCallerTokenId was updated
+    EXPECT_EQ(realCallerTokenId, 55555);
+
+    // Verify set parameters were updated
+    EXPECT_EQ(want.GetIntParam(Want::PARAM_RESV_CALLER_TOKEN, 0), 66666);
+    EXPECT_EQ(want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME), "com.partial.test");
+
+    // Verify unset parameters use default values
+    EXPECT_EQ(want.GetIntParam(Want::PARAM_RESV_CALLER_UID, 0), 0);
+    EXPECT_EQ(want.GetIntParam(Want::PARAM_RESV_CALLER_PID, 0), 0);
+
+    // Verify the entry was removed from callerInfoMap_
+    EXPECT_TRUE(mgr->callerInfoMap_.empty());
+}
+
+/**
+ * @tc.name: UpdateTokenIdAndWantWithRealCallerInfo_005
+ * @tc.desc: Test UpdateTokenIdAndWantWithRealCallerInfo with multiple entries
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, UpdateTokenIdAndWantWithRealCallerInfo_005, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+
+    // Populate callerInfoMap_ with multiple entries
+    UIAbilityLifecycleManager::CallerInfo callerInfo1;
+    callerInfo1.callerTokenId = 11111;
+    mgr->callerInfoMap_["session_1"] = callerInfo1;
+
+    UIAbilityLifecycleManager::CallerInfo callerInfo2;
+    callerInfo2.callerTokenId = 22222;
+    callerInfo2.targetWant.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, std::string("com.session2.test"));
+    mgr->callerInfoMap_["session_2"] = callerInfo2;
+
+    UIAbilityLifecycleManager::CallerInfo callerInfo3;
+    callerInfo3.callerTokenId = 33333;
+    mgr->callerInfoMap_["session_3"] = callerInfo3;
+
+    Want want;
+    want.SetParam("ohos.ability.param.sessionId", std::string("session_2"));
+
+    uint32_t realCallerTokenId = 0;
+
+    mgr->UpdateTokenIdAndWantWithRealCallerInfo(want, realCallerTokenId);
+
+    // Verify correct entry was processed
+    EXPECT_EQ(realCallerTokenId, 22222);
+    EXPECT_EQ(want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME), "com.session2.test");
+
+    // Verify only one entry was removed
+    EXPECT_EQ(mgr->callerInfoMap_.size(), 2);
+    EXPECT_TRUE(mgr->callerInfoMap_.find("session_1") != mgr->callerInfoMap_.end());
+    EXPECT_TRUE(mgr->callerInfoMap_.find("session_3") != mgr->callerInfoMap_.end());
+    EXPECT_TRUE(mgr->callerInfoMap_.find("session_2") == mgr->callerInfoMap_.end());
+}
 }  // namespace AAFwk
 }  // namespace OHOS
