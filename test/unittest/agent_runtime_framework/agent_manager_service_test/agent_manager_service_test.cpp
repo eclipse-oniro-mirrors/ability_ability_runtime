@@ -228,8 +228,22 @@ HWTEST_F(AgentManagerServiceTest, RegisterBundleEventCallback_003, TestSize.Leve
 */
 HWTEST_F(AgentManagerServiceTest, GetAllAgentCards_001, TestSize.Level1)
 {
+    MyFlag::retVerifyCallingPermission = true;
     AgentCardsRawData rawData;
     EXPECT_EQ(AgentManagerService::GetInstance()->GetAllAgentCards(rawData), ERR_OK);
+}
+
+/**
+* @tc.name  : GetAllAgentCards_002
+* @tc.number: GetAllAgentCards_002
+* @tc.desc  : Test GetAllAgentCards when permission verification fails
+*/
+HWTEST_F(AgentManagerServiceTest, GetAllAgentCards_002, TestSize.Level1)
+{
+    MyFlag::retVerifyCallingPermission = false;
+    AgentCardsRawData rawData;
+    EXPECT_EQ(AgentManagerService::GetInstance()->GetAllAgentCards(rawData), ERR_PERMISSION_DENIED);
+    MyFlag::retVerifyCallingPermission = true;
 }
 
 /**
@@ -239,9 +253,74 @@ HWTEST_F(AgentManagerServiceTest, GetAllAgentCards_001, TestSize.Level1)
 */
 HWTEST_F(AgentManagerServiceTest, GetAgentCardsByBundleName_001, TestSize.Level1)
 {
+    MyFlag::retVerifyCallingPermission = true;
+    MyFlag::retGetAgentCardsByBundleName = ERR_NAME_NOT_FOUND;
+    MyFlag::retGetApplicationInfo = true;
     std::string bundleName = "bundle";
     std::vector<AgentCard> cards;
     EXPECT_EQ(AgentManagerService::GetInstance()->GetAgentCardsByBundleName(bundleName, cards), ERR_OK);
+    MyFlag::retGetAgentCardsByBundleName = ERR_OK;
+}
+
+/**
+* @tc.name  : GetAgentCardsByBundleName_002
+* @tc.number: GetAgentCardsByBundleName_002
+* @tc.desc  : Test GetAgentCardsByBundleName when permission verification fails
+*/
+HWTEST_F(AgentManagerServiceTest, GetAgentCardsByBundleName_002, TestSize.Level1)
+{
+    MyFlag::retVerifyCallingPermission = false;
+    std::string bundleName = "bundle";
+    std::vector<AgentCard> cards;
+    EXPECT_EQ(AgentManagerService::GetInstance()->GetAgentCardsByBundleName(bundleName, cards), ERR_PERMISSION_DENIED);
+    MyFlag::retVerifyCallingPermission = true;
+}
+
+/**
+* @tc.name  : GetAgentCardsByBundleName_003
+* @tc.number: GetAgentCardsByBundleName_003
+* @tc.desc  : Test GetAgentCardsByBundleName when GetAgentCardsByBundleName returns error
+*/
+HWTEST_F(AgentManagerServiceTest, GetAgentCardsByBundleName_003, TestSize.Level1)
+{
+    MyFlag::retVerifyCallingPermission = true;
+    MyFlag::retGetAgentCardsByBundleName = ERR_INVALID_VALUE;
+    std::string bundleName = "bundle";
+    std::vector<AgentCard> cards;
+    EXPECT_EQ(AgentManagerService::GetInstance()->GetAgentCardsByBundleName(bundleName, cards), ERR_INVALID_VALUE);
+    MyFlag::retGetAgentCardsByBundleName = ERR_OK;
+}
+
+/**
+* @tc.name  : GetAgentCardsByBundleName_004
+* @tc.number: GetAgentCardsByBundleName_004
+* @tc.desc  : Test GetAgentCardsByBundleName success case
+*/
+HWTEST_F(AgentManagerServiceTest, GetAgentCardsByBundleName_004, TestSize.Level1)
+{
+    MyFlag::retVerifyCallingPermission = true;
+    MyFlag::retGetAgentCardsByBundleName = ERR_OK;
+    std::string bundleName = "bundle";
+    std::vector<AgentCard> cards;
+    EXPECT_EQ(AgentManagerService::GetInstance()->GetAgentCardsByBundleName(bundleName, cards), ERR_OK);
+}
+
+/**
+* @tc.name  : GetAgentCardsByBundleName_005
+* @tc.number: GetAgentCardsByBundleName_005
+* @tc.desc  : Test GetAgentCardsByBundleName when GetApplicationInfo returns false (bundle doesn't exist)
+*/
+HWTEST_F(AgentManagerServiceTest, GetAgentCardsByBundleName_005, TestSize.Level1)
+{
+    MyFlag::retVerifyCallingPermission = true;
+    MyFlag::retGetAgentCardsByBundleName = ERR_NAME_NOT_FOUND;
+    MyFlag::retGetApplicationInfo = false;
+    std::string bundleName = "bundle";
+    std::vector<AgentCard> cards;
+    EXPECT_EQ(AgentManagerService::GetInstance()->GetAgentCardsByBundleName(bundleName, cards),
+        AAFwk::ERR_BUNDLE_NOT_EXIST);
+    MyFlag::retGetAgentCardsByBundleName = ERR_OK;
+    MyFlag::retGetApplicationInfo = true;
 }
 
 /**
@@ -251,10 +330,81 @@ HWTEST_F(AgentManagerServiceTest, GetAgentCardsByBundleName_001, TestSize.Level1
 */
 HWTEST_F(AgentManagerServiceTest, GetAgentCardByAgentId_001, TestSize.Level1)
 {
+    MyFlag::retVerifyCallingPermission = true;
+    MyFlag::retGetAgentCardByAgentId = ERR_NAME_NOT_FOUND;
+    MyFlag::retGetApplicationInfo = true;
     std::string bundleName = "bundle";
     std::string agentId = "agentId";
     AgentCard card;
-    EXPECT_NE(AgentManagerService::GetInstance()->GetAgentCardByAgentId(bundleName, agentId, card), ERR_OK);
+    EXPECT_EQ(AgentManagerService::GetInstance()->GetAgentCardByAgentId(bundleName, agentId, card),
+        AAFwk::ERR_INVALID_AGENT_CARD_ID);
+    MyFlag::retGetAgentCardByAgentId = ERR_OK;
+}
+
+/**
+* @tc.name  : GetAgentCardByAgentId_002
+* @tc.number: GetAgentCardByAgentId_002
+* @tc.desc  : Test GetAgentCardByAgentId when permission verification fails
+*/
+HWTEST_F(AgentManagerServiceTest, GetAgentCardByAgentId_002, TestSize.Level1)
+{
+    MyFlag::retVerifyCallingPermission = false;
+    std::string bundleName = "bundle";
+    std::string agentId = "agentId";
+    AgentCard card;
+    EXPECT_EQ(AgentManagerService::GetInstance()->GetAgentCardByAgentId(bundleName, agentId, card),
+        ERR_PERMISSION_DENIED);
+    MyFlag::retVerifyCallingPermission = true;
+}
+
+/**
+* @tc.name  : GetAgentCardByAgentId_003
+* @tc.number: GetAgentCardByAgentId_003
+* @tc.desc  : Test GetAgentCardByAgentId when GetAgentCardByAgentId returns error
+*/
+HWTEST_F(AgentManagerServiceTest, GetAgentCardByAgentId_003, TestSize.Level1)
+{
+    MyFlag::retVerifyCallingPermission = true;
+    MyFlag::retGetAgentCardByAgentId = ERR_INVALID_VALUE;
+    std::string bundleName = "bundle";
+    std::string agentId = "agentId";
+    AgentCard card;
+    EXPECT_EQ(AgentManagerService::GetInstance()->GetAgentCardByAgentId(bundleName, agentId, card), ERR_INVALID_VALUE);
+    MyFlag::retGetAgentCardByAgentId = ERR_OK;
+}
+
+/**
+* @tc.name  : GetAgentCardByAgentId_004
+* @tc.number: GetAgentCardByAgentId_004
+* @tc.desc  : Test GetAgentCardByAgentId success case
+*/
+HWTEST_F(AgentManagerServiceTest, GetAgentCardByAgentId_004, TestSize.Level1)
+{
+    MyFlag::retVerifyCallingPermission = true;
+    MyFlag::retGetAgentCardByAgentId = ERR_OK;
+    std::string bundleName = "bundle";
+    std::string agentId = "agentId";
+    AgentCard card;
+    EXPECT_EQ(AgentManagerService::GetInstance()->GetAgentCardByAgentId(bundleName, agentId, card), ERR_OK);
+}
+
+/**
+* @tc.name  : GetAgentCardByAgentId_005
+* @tc.number: GetAgentCardByAgentId_005
+* @tc.desc  : Test GetAgentCardByAgentId when GetApplicationInfo returns false (bundle doesn't exist)
+*/
+HWTEST_F(AgentManagerServiceTest, GetAgentCardByAgentId_005, TestSize.Level1)
+{
+    MyFlag::retVerifyCallingPermission = true;
+    MyFlag::retGetAgentCardByAgentId = ERR_NAME_NOT_FOUND;
+    MyFlag::retGetApplicationInfo = false;
+    std::string bundleName = "bundle";
+    std::string agentId = "agentId";
+    AgentCard card;
+    EXPECT_EQ(AgentManagerService::GetInstance()->GetAgentCardByAgentId(bundleName, agentId, card),
+        AAFwk::ERR_BUNDLE_NOT_EXIST);
+    MyFlag::retGetAgentCardByAgentId = ERR_OK;
+    MyFlag::retGetApplicationInfo = true;
 }
 
 namespace {
