@@ -1085,6 +1085,7 @@ ohos_shared_library("uiabilitykit_native") {
     "common_event_service:cesfwk_innerkits",
     "ets_runtime:libark_jsruntime",
     "eventhandler:libeventhandler",
+    "hicollie:libhicollie",
     "hilog:libhilog",
     "hilog:libsandboxlog",
     "hisysevent:libhisysevent",

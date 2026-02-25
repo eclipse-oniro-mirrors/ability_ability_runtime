@@ -440,6 +440,48 @@ HWTEST_F(AppMgrServiceInnerSixthTest, KillFaultApp_003, TestSize.Level1)
 }
 
 /**
+ * @tc.name: KillFaultApp_004
+ * @tc.type: FUNC
+ * @tc.Function: KillFaultApp
+ * @tc.SubFunction: NA
+ * @tc.EnvConditions: NA
+ */
+HWTEST_F(AppMgrServiceInnerSixthTest, KillFaultApp_004, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "KillFaultApp_004 start";
+    pid_t childPid = fork();
+    if (childPid < 0) {
+        printf("failed to fork process.\n");
+    } else if (childPid == 0) {
+        auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+        EXPECT_NE(appMgrServiceInner, nullptr);
+        auto taskHandlerWrapTest = std::make_shared<TaskHandlerWrapTest>("");
+        EXPECT_NE(taskHandlerWrapTest, nullptr);
+        appMgrServiceInner->taskHandler_ = taskHandlerWrapTest;
+        EXPECT_NE(appMgrServiceInner->taskHandler_, nullptr);
+
+        int pid = 0;
+        std::string bundleName = "KillFaultAppTest";
+        bool isNeedExit = true;
+        FaultData faultData;
+        faultData.forceExit = true;
+        faultData.waitSaveState = false;
+        int32_t result = appMgrServiceInner->KillFaultApp(pid, bundleName, faultData, isNeedExit);
+        EXPECT_EQ(result, 0);
+        int sleepCount = 10;
+        while (sleepCount > 0) {
+            sleepCount = sleep(sleepCount);
+        }
+    } else {
+        if (waitpid(childPid, nullptr, 0) != childPid) {
+            printf("failed to wait process.\n");
+        }
+        printf("waitpid process success.\n");
+    }
+    GTEST_LOG_(INFO) << "KillFaultApp_004 end";
+}
+
+/**
  * @tc.name: SetAppFreezeFilter_004
  * @tc.type: FUNC
  * @tc.Function: SetAppFreezeFilter

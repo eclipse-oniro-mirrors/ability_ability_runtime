@@ -16,12 +16,10 @@
 
 #include <sys/time.h>
 
-#include "ability_manager_client.h"
 #include "ability_state.h"
 #include "appfreeze_manager.h"
 #include "app_recovery.h"
 #include "backtrace_local.h"
-#include "exit_reason.h"
 #include "file_ex.h"
 #include "ffrt.h"
 #include "freeze_util.h"
@@ -283,10 +281,6 @@ void AppfreezeInner::ChangeFaultDateInfo(FaultData& faultData, const std::string
     if (isExit) {
         faultData.forceExit = true;
         faultData.waitSaveState = AppRecovery::GetInstance().IsEnabled();
-        std::string reason = isInBackGround ? AppFreezeType::BG_FREEZE_WARNING : faultData.errorObject.name;
-        AAFwk::ExitReason exitReason = {isInBackGround ? REASON_PERFORMANCE_CONTROL : REASON_APP_FREEZE,
-            "Kill Reason:" + reason};
-        AbilityManagerClient::GetInstance()->RecordAppExitReason(exitReason);
     }
     NotifyANR(faultData);
     if (isExit) {

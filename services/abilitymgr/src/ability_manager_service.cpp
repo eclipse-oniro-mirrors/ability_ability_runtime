@@ -14281,6 +14281,18 @@ int32_t AbilityManagerService::GetUIExtensionSessionInfo(const sptr<IRemoteObjec
     return ERR_OK;
 }
 
+void AbilityManagerService::RecordRecoveryExitReason(bool isAppRecovery, int32_t callerPid, int32_t callerUid)
+{
+    if (!isAppRecovery) {
+        return;
+    }
+    int32_t killId = HiviewDFX::ProcessKillReason::REASON_RESTART;
+    std::string killReason = HiviewDFX::ProcessKillReason::GetKillReason(killId);
+    AAFwk::ExitReasonCompability exitReason = {REASON_JS_ERROR, "Kill Reason:" + killReason};
+    exitReason.killId = killId;
+    RecordAppWithReason(callerPid, callerUid, exitReason);
+}
+
 int32_t AbilityManagerService::RestartApp(const AAFwk::Want &want, bool isAppRecovery)
 {
     XCOLLIE_TIMER_LESS(__PRETTY_FUNCTION__);
@@ -14308,6 +14320,7 @@ int32_t AbilityManagerService::RestartApp(const AAFwk::Want &want, bool isAppRec
 
     SignRestartAppFlagParam param =
         { userId, callerUid, processInfo.instanceKey, processInfo.appMode, isAppRecovery, false };
+    RecordRecoveryExitReason(isAppRecovery, callerPid, callerUid);
     result = SignRestartAppFlag(param);
     if (!isAppRecovery && result != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "signRestartAppFlag error");

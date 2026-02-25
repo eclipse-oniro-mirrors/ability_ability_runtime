@@ -109,6 +109,8 @@ public:
     void InsertKillThread(int32_t state, int32_t pid, int32_t uid, const std::string& bundleName);
     bool IsSkipDetect(int32_t pid, int32_t uid, const std::string& bundleName,
         const std::string& eventName);
+    std::string GetExitReasonByKillId(int32_t killId);
+    std::string GetExitKernelReason(int32_t pid);
 
 private:
     struct PeerBinderInfo {

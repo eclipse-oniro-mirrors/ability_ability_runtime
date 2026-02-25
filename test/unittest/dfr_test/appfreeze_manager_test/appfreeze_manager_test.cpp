@@ -27,6 +27,7 @@
 #include "hitrace/hitracechain.h"
 #endif
 #include "appfreeze_util.h"
+#include "xcollie/process_kill_reason.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -729,6 +730,46 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_CheckAppfreezeHappend_Test00
     EXPECT_EQ(ret, true);
     ret = appfreezeManager->CheckAppfreezeHappend(key, "APP_INPUT_BLOCK");
     EXPECT_EQ(ret, true);
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest GetExitReasonByKillId Test
+ * @tc.desc: add testcase
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_GetExitReasonByKillId_Test001, TestSize.Level1)
+{
+    int32_t killId = HiviewDFX::ProcessKillReason::REASON_NORMAL;
+    std::string result = appfreezeManager->GetExitReasonByKillId(killId);
+    EXPECT_EQ(result, "Normal");
+    killId = HiviewDFX::ProcessKillReason::REASON_CPP_CRASH;
+    result = appfreezeManager->GetExitReasonByKillId(killId);
+    EXPECT_EQ(result, "CppCrash");
+    killId = HiviewDFX::ProcessKillReason::REASON_JS_ERROR;
+    result = appfreezeManager->GetExitReasonByKillId(killId);
+    EXPECT_EQ(result, "JsError");
+    killId = HiviewDFX::ProcessKillReason::REASON_APP_FREEZE;
+    result = appfreezeManager->GetExitReasonByKillId(killId);
+    EXPECT_EQ(result, "Appfreeze");
+    killId = HiviewDFX::ProcessKillReason::REASON_RESOURCE_LEAK_CES;
+    result = appfreezeManager->GetExitReasonByKillId(killId);
+    EXPECT_EQ(result, "ResourceLeak(CES)");
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest GetExitKernelReason Test
+ * @tc.desc: add testcase
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_GetExitKernelReason_Test001, TestSize.Level1)
+{
+    EXPECT_NE(appfreezeManager, nullptr);
+    int32_t pid = getpid();
+    std::string result = appfreezeManager->GetExitKernelReason(pid);
+    pid = 0;
+    result = appfreezeManager->GetExitKernelReason(pid);
+    pid = 1;
+    result = appfreezeManager->GetExitKernelReason(pid);
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS
