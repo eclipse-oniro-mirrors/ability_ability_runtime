@@ -296,6 +296,7 @@ HWTEST_F(EtsEnvironmentTest, LoadAbcLinker_0200, TestSize.Level0)
     etsEnv->vmEntry_.abcLinkerRef_ = reinterpret_cast<ani_ref>(0x123);
 
     OHOS::AbilityRuntime::CommonHspBundleInfo info;
+    info.versionCode = 0;
     info.bundleName = "bundle";
     info.moduleName = "module";
     info.hapPath = "/data/app/el1/bundle/public/hsp/test.hsp";
@@ -599,6 +600,7 @@ HWTEST_F(EtsEnvironmentTest, SetHspAbcFiles_0300, TestSize.Level0)
     ASSERT_NE(etsEnv, nullptr);
 
     OHOS::AbilityRuntime::CommonHspBundleInfo info;
+    info.versionCode = 0;
     info.bundleName = "bundle";
     info.moduleName = "module";
     info.hapPath = "/data/app/el1/bundle/public/hsp/test.hsp";
@@ -630,6 +632,7 @@ HWTEST_F(EtsEnvironmentTest, SetHspAbcFiles_0400, TestSize.Level0)
     ASSERT_NE(etsEnv, nullptr);
 
     OHOS::AbilityRuntime::CommonHspBundleInfo info;
+    info.versionCode = 0;
     info.bundleName = "bundle";
     info.moduleName = "module";
     info.hapPath = "/data/app/el1/bundle/public/hsp/test.hsp";
@@ -656,6 +659,7 @@ HWTEST_F(EtsEnvironmentTest, SetHspAbcFiles_0500, TestSize.Level0)
     ASSERT_NE(etsEnv, nullptr);
 
     OHOS::AbilityRuntime::CommonHspBundleInfo info;
+    info.versionCode = 0;
     info.bundleName = "bundle";
     info.moduleName = "module";
     info.hapPath = "/data/app/el1/bundle/public/hsp/test.hsp";
@@ -682,6 +686,7 @@ HWTEST_F(EtsEnvironmentTest, SetHspAbcFiles_0600, TestSize.Level0)
     ASSERT_NE(etsEnv, nullptr);
 
     OHOS::AbilityRuntime::CommonHspBundleInfo info;
+    info.versionCode = 0;
     info.bundleName = "bundle";
     info.moduleName = "module";
     info.hapPath = "/data/app/el1/bundle/public/hsp/test.hsp";

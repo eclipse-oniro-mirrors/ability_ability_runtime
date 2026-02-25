@@ -28,6 +28,7 @@ class EventRunner;
 } // namespace AppExecFwk
 namespace AbilityRuntime {
 struct CommonHspBundleInfo {
+    uint32_t versionCode;
     std::string bundleName;
     std::string moduleName;
     std::string hapPath;
