@@ -17,7 +17,6 @@
 #define OHOS_AGENT_RUNTIME_ETS_AGENT_UI_EXTENSION_H
 
 #include "agent_ui_extension.h"
-#include "configuration.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -31,8 +30,6 @@ class EtsAgentUIExtension : public AgentRuntime::AgentUIExtension,
 public:
     explicit EtsAgentUIExtension(const std::unique_ptr<AbilityRuntime::Runtime> &runtime);
     virtual ~EtsAgentUIExtension() override;
-
-    static EtsAgentUIExtension *Create(const std::unique_ptr<AbilityRuntime::Runtime> &runtime);
 };
 } // namespace AgentRuntime
 } // namespace OHOS

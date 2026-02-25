@@ -17,7 +17,7 @@
  * @file
  * @kit AbilityKit
  */
-import UIExtensionAbility from './@ohos.app.ability.UIExtensionAbility';
+import UIExtensionAbility from '@ohos.app.ability.UIExtensionAbility';
 
 /**
  * The class of agent UI extension ability.

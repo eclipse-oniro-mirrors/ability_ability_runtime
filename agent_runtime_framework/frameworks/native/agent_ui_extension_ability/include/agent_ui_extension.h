@@ -51,6 +51,14 @@ private:
      * @return The agent ui extension instance.
      */
     static AgentUIExtension* CreateJsAgentUIExtension(const std::unique_ptr<AbilityRuntime::Runtime>& runtime);
+
+    /**
+     * @brief Create ets agent ui extension.
+     *
+     * @param runtime The runtime.
+     * @return The agent ui extension instance.
+     */
+    static AgentUIExtension* CreateETSAgentUIExtension(const std::unique_ptr<AbilityRuntime::Runtime>& runtime);
 };
 } // namespace AgentRuntime
 } // namespace OHOS
