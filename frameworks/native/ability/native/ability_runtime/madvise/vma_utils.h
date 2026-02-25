@@ -40,7 +40,6 @@ std::vector<VMARegion> GetFileVmas(const char* filename);
 
 std::vector<VMARegion> GetFileVmas(const std::vector<std::string>& filenames);
 
-int GetFileVmaPss(const char* filename, unsigned long* pssKb);
 
 } // namespace VmaUtil
 } // namespace AbilityRuntime

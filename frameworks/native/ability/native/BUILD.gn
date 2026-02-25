@@ -1021,6 +1021,7 @@ ohos_shared_library("ui_ability_ani") {
 
   subsystem_name = "ability"
   innerapi_tags = [ "platformsdk" ]
+
   part_name = "ability_runtime"
 }
 
@@ -1067,7 +1068,6 @@ ohos_shared_library("uiabilitykit_native") {
     "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_napi_path}/inner/napi_common:napi_common",
     "${ability_runtime_native_path}/ability:ability_context_native",
-    "${ability_runtime_native_path}/ability/native/ability_runtime/madvise:ability_madvise",
     "${ability_runtime_native_path}/ability/native:insight_intent_executor",
     "${ability_runtime_native_path}/appkit:app_context",
     "${ability_runtime_native_path}/appkit:appkit_delegator",
@@ -1076,6 +1076,10 @@ ohos_shared_library("uiabilitykit_native") {
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
     "${ability_runtime_services_path}/common:app_util",
   ]
+
+  if (target_cpu == "arm64") {
+    deps += [ "${ability_runtime_native_path}/ability/native/ability_runtime/madvise:ability_madvise" ]
+  }
 
   external_deps = [
     "ability_base:base",
@@ -1111,6 +1115,9 @@ ohos_shared_library("uiabilitykit_native") {
   }
 
   defines = []
+  if (target_cpu == "arm64") {
+    defines += [ "ENABLE_ABILITY_MADVISE" ]
+  }
 
   if (hiappevent_part_enabled) {
     defines += [ "NO_RUNTIME_EMULATOR" ]

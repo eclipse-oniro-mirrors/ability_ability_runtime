@@ -237,43 +237,6 @@ std::vector<VMARegion> GetFileVmas(const std::vector<std::string>& filenames)
     return vmaList;
 }
 
-int GetFileVmaPss(const char* filename, unsigned long* pssKb)
-{
-    if (!filename || !pssKb) {
-        return -1;
-    }
-    const char* smapsPath = "/proc/self/smaps";
-    FILE* fp = fopen(smapsPath, "r");
-    if (!fp) {
-        TAG_LOGE(AAFwkTag::ABILITY, "Failed to open %{public}s: %{public}d", smapsPath, errno);
-        return -1;
-    }
-    char line[LINE_BUFFER_SIZE];
-    unsigned long totalPss = 0;
-    bool inTarget = false;
-    while (fgets(line, sizeof(line), fp) != nullptr) {
-        if (strchr(line, '-') && strchr(line, 'r')) {
-            char pathname[VMA_MAX_PATH_NAME];
-            int parsed = sscanf(line, "%*lx-%*lx %*4s %*lx %*s %*lu %255s", pathname);
-            if (parsed >= 1) {
-                inTarget = IsFilenameMatch(pathname, filename);
-            }
-        } else if (inTarget && strncmp(line, "Pss:", PSS_PREFIX_LEN) == 0) {
-            unsigned long pss = 0;
-            int parsed = sscanf(line, "Pss: %lu kB", &pss);
-            if (parsed == 1) {
-                totalPss += pss;
-            }
-        }
-    }
-    if (fclose(fp) != 0) {
-        TAG_LOGE(AAFwkTag::ABILITY, "Failed to close file: %{public}d", errno);
-    }
-    *pssKb = totalPss;
-    TAG_LOGI(AAFwkTag::UIABILITY, "Total PSS for %{public}s: %{public}lu kB", filename, totalPss);
-    return 0;
-}
-
 } // namespace VmaUtil
 } // namespace AbilityRuntime
 } // namespace OHOS

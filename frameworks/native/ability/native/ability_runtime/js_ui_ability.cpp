@@ -57,6 +57,9 @@
 #include "system_ability_definition.h"
 #include "time_util.h"
 #include "madvise/madvise_utils.h"
+#ifdef ENABLE_ABILITY_MADVISE
+#include "system_parameter.h"
+#endif
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -946,11 +949,16 @@ void JsUIAbility::OnBackground()
         HandleCollaboration(*want);
     }
     // Apply madvise optimization based on config file (only once per process)
+#ifdef ENABLE_ABILITY_MADVISE
     static bool madviseApplied = false;
     if (!madviseApplied && abilityInfo_ != nullptr) {
-        MadviseUtil::MadviseWithConfigFile(abilityInfo_->bundleName.c_str());
+        bool enableMadvise = OHOS::system::GetBoolParameter("persist.sys.abilityms.enable_madvise", false);
+        if (enableMadvise) {
+            MadviseUtil::MadviseWithConfigFile(abilityInfo_->bundleName.c_str());
+        }
         madviseApplied = true;
     }
+#endif
     TAG_LOGD(AAFwkTag::UIABILITY, "end");
 }
 

@@ -47,3 +47,4 @@ const.sys.abilityms.cache_extension = foundation:foundation:0755
 const.max_native_child_process = foundation:foundation:0755
 const.sys.abilityms.allow_child_process_in_multi_process_feature_app = foundation:foundation:0755
 const.sys.abilityms.max_multi_process_feature_child_process = foundation:foundation:0755
+persist.sys.abilityms.enable_madvise = foundation:foundation:0755
