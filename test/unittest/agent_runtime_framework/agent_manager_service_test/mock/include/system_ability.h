@@ -22,10 +22,6 @@
 #include "refbase.h"
 
 namespace OHOS {
-enum {
-    AGENT_MGR_SERVICE_ID = 185,
-};
-
 #define DECLEAR_SYSTEM_ABILITY(className) \
 public: \
 std::string GetClassName() { \

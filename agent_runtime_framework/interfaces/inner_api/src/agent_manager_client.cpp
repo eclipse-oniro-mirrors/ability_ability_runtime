@@ -29,7 +29,6 @@ namespace OHOS {
 namespace AgentRuntime {
 namespace {
 const int LOAD_SA_TIMEOUT_MS = 4 * 1000;
-const int32_t AGENT_MGR_SERVICE_ID = 185;
 } // namespace
 AgentManagerClient &AgentManagerClient::GetInstance()
 {
