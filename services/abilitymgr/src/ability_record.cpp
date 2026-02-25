@@ -212,9 +212,8 @@ void AbilityRecord::Init(const AbilityRequest &abilityRequest)
         TAG_LOGD(AAFwkTag::ABILITYMGR, "abilityRequest.callType is CALL_REQUEST_TYPE.");
         SetStartedByCall(true);
     }
-    if (AbilityRuntime::StartupUtil::IsStartPlugin(abilityRequest.want)) {
-        isPluginAbility_ = true;
-    }
+    // Initialize plugin ability relationship
+    InitPluginAbility(abilityRequest);
     collaboratorType_ = abilityRequest.collaboratorType;
     missionAffinity_ = abilityRequest.want.GetStringParam(PARAM_MISSION_AFFINITY_KEY);
 
@@ -3339,6 +3338,99 @@ bool AbilityRecord::PromotePriority()
         return true;
     }
     return false;
+}
+
+void AbilityRecord::AddPluginAbility(std::shared_ptr<AbilityRecord> pluginAbility)
+{
+    if (!pluginAbility) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "pluginAbility is null");
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(pluginMutex_);
+
+    // Check if already exists
+    for (const auto weakPlugin : pluginAbilityList_) {
+        auto plugin = weakPlugin.lock();
+        if (plugin == pluginAbility) {
+            TAG_LOGW(AAFwkTag::ABILITYMGR, "Plugin %{public}s already exists in list",
+                plugin->GetAbilityInfo().name.c_str());
+            return;
+        }
+    }
+
+    pluginAbilityList_.push_back(pluginAbility);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "Add plugin: %{public}s to host: %{public}s",
+        pluginAbility->GetAbilityInfo().name.c_str(), abilityInfo_.name.c_str());
+}
+
+void AbilityRecord::RemovePluginAbility(std::shared_ptr<AbilityRecord> pluginAbility)
+{
+    std::lock_guard<std::mutex> lock(pluginMutex_);
+
+    for (auto it = pluginAbilityList_.begin(); it != pluginAbilityList_.end(); ++it) {
+        auto plugin = it->lock();
+        if (plugin == pluginAbility) {
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "Remove plugin success");
+            pluginAbilityList_.erase(it);
+            break;
+        }
+    }
+}
+
+std::vector<std::shared_ptr<AbilityRecord>> AbilityRecord::GetPluginAbilities() const
+{
+    std::vector<std::shared_ptr<AbilityRecord>> validPlugins;
+    std::lock_guard<std::mutex> lock(pluginMutex_);
+    for (const auto weakPlugin : pluginAbilityList_) {
+        auto plugin = weakPlugin.lock();
+        if (plugin && plugin->GetAbilityState() != AbilityState::TERMINATING) {
+            validPlugins.push_back(plugin);
+        }
+    }
+
+    return validPlugins;
+}
+
+void AbilityRecord::ClearPluginAbilities()
+{
+    std::lock_guard<std::mutex> lock(pluginMutex_);
+    pluginAbilityList_.clear();
+}
+
+void AbilityRecord::InitPluginAbility(const AbilityRequest &abilityRequest)
+{
+    if (!AbilityRuntime::StartupUtil::IsStartPlugin(abilityRequest.want)) {
+        return;
+    }
+
+    isPluginAbility_ = true;
+
+    auto hostAbility = Token::GetAbilityRecordByToken(abilityRequest.callerToken);
+    if (hostAbility == nullptr) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "Plugin %{public}s: cannot find host by callerToken",
+            abilityInfo_.name.c_str());
+        return;
+    }
+
+    hostAbility->AddPluginAbility(shared_from_this());
+
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "Plugin initialized: host=%{public}s, plugin=%{public}s",
+        hostAbility->GetAbilityInfo().name.c_str(), abilityInfo_.name.c_str());
+}
+
+void AbilityRecord::PluginCompleteTerminate()
+{
+    if (!IsPluginAbility()) {
+        return;
+    }
+    auto hostAbility = GetCallerRecord();
+    if (hostAbility) {
+        hostAbility->RemovePluginAbility(shared_from_this());
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "Plugin %{public}s removed from host %{public}s",
+            GetAbilityInfo().name.c_str(),
+            hostAbility->GetAbilityInfo().name.c_str());
+    }
 }
 }  // namespace AAFwk
 }  // namespace OHOS

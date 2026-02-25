@@ -75,6 +75,7 @@ public:
     void TearDown();
     std::shared_ptr<AbilityRecord> GetAbilityRecord();
     AbilityRequest CreateValidAbilityRequest();
+    std::shared_ptr<AbilityRecord> CreateAbilityRecord();
 
     std::shared_ptr<AbilityRecord> abilityRecord_{ nullptr };
     std::shared_ptr<AbilityResult> abilityResult_{ nullptr };
@@ -124,6 +125,11 @@ AbilityRequest AbilityRecordTest::CreateValidAbilityRequest()
     request.abilityInfo.name = "TestAbility";
     request.appInfo.name = "TestApp";
     return request;
+}
+
+std::shared_ptr<AbilityRecord> AbilityRecordTest::CreateAbilityRecord()
+{
+    return AbilityRecord::CreateAbilityRecord(CreateValidAbilityRequest());
 }
 
 bool IsTestAbilityExist(const std::string& data)
@@ -3078,6 +3084,300 @@ HWTEST_F(AbilityRecordTest, GetFirstCallerBundleName_001, TestSize.Level1)
     abilityRecord_->firstCallerBundleName_ = callerBundleName;
     EXPECT_EQ(abilityRecord_->GetFirstCallerBundleName(), callerBundleName);
     GTEST_LOG_(INFO) << "GetFirstCallerBundleName_001 end";
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: Host-Plugin relationship management
+ * SubFunction: AddPluginAbility, RemovePluginAbility, GetPluginAbilities
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify AddPluginAbility adds plugin to host's list
+ */
+HWTEST_F(AbilityRecordTest, AddPluginAbility_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AddPluginAbility_001 start";
+    auto hostRecord = GetAbilityRecord();
+    auto pluginRecord = GetAbilityRecord();
+
+    // Add plugin to host
+    hostRecord->AddPluginAbility(pluginRecord);
+
+    // Verify plugin is in host's list
+    auto plugins = hostRecord->GetPluginAbilities();
+    EXPECT_EQ(plugins.size(), 1u);
+    EXPECT_EQ(plugins[0], pluginRecord);
+
+    GTEST_LOG_(INFO) << "AddPluginAbility_001 end";
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: Host-Plugin relationship management
+ * SubFunction: AddPluginAbility
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify AddPluginAbility does not add duplicate plugin
+ */
+HWTEST_F(AbilityRecordTest, AddPluginAbility_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AddPluginAbility_002 start";
+    auto hostRecord = GetAbilityRecord();
+    auto pluginRecord = GetAbilityRecord();
+
+    // Add same plugin twice
+    hostRecord->AddPluginAbility(pluginRecord);
+    hostRecord->AddPluginAbility(pluginRecord);
+
+    // Verify plugin is only added once
+    auto plugins = hostRecord->GetPluginAbilities();
+    EXPECT_EQ(plugins.size(), 1u);
+
+    GTEST_LOG_(INFO) << "AddPluginAbility_002 end";
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: Host-Plugin relationship management
+ * SubFunction: AddPluginAbility
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify AddPluginAbility handles null plugin gracefully
+ */
+HWTEST_F(AbilityRecordTest, AddPluginAbility_003, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AddPluginAbility_003 start";
+    auto hostRecord = GetAbilityRecord();
+
+    // Try to add null plugin
+    hostRecord->AddPluginAbility(nullptr);
+
+    // Verify no crash and empty list
+    auto plugins = hostRecord->GetPluginAbilities();
+    EXPECT_EQ(plugins.size(), 0u);
+
+    GTEST_LOG_(INFO) << "AddPluginAbility_003 end";
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: Host-Plugin relationship management
+ * SubFunction: RemovePluginAbility
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify RemovePluginAbility removes plugin from host's list
+ */
+HWTEST_F(AbilityRecordTest, RemovePluginAbility_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RemovePluginAbility_001 start";
+    auto hostRecord = GetAbilityRecord();
+    auto pluginRecord = GetAbilityRecord();
+    auto pluginRecord2 = GetAbilityRecord();
+
+    // Add plugin to host
+    hostRecord->AddPluginAbility(pluginRecord);
+    EXPECT_EQ(hostRecord->GetPluginAbilities().size(), 1u);
+
+    // Remove plugin from host
+    hostRecord->RemovePluginAbility(pluginRecord);
+
+    // Verify plugin is removed
+    EXPECT_EQ(hostRecord->GetPluginAbilities().size(), 0u);
+
+    // Add plugin to host
+    hostRecord->AddPluginAbility(pluginRecord2);
+    EXPECT_EQ(hostRecord->GetPluginAbilities().size(), 1u);
+
+    hostRecord->RemovePluginAbility(pluginRecord);
+    EXPECT_EQ(hostRecord->GetPluginAbilities().size(), 1u);
+
+    GTEST_LOG_(INFO) << "RemovePluginAbility_001 end";
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: Host-Plugin relationship management
+ * SubFunction: GetPluginAbilities
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify GetPluginAbilities returns only active plugins
+ */
+HWTEST_F(AbilityRecordTest, GetPluginAbilities_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetPluginAbilities_001 start";
+    auto hostRecord = GetAbilityRecord();
+    auto pluginRecord1 = GetAbilityRecord();
+    auto pluginRecord2 = GetAbilityRecord();
+
+    // Add plugins to host
+    hostRecord->AddPluginAbility(pluginRecord1);
+    hostRecord->AddPluginAbility(pluginRecord2);
+
+    // Set one plugin to TERMINATING state
+    pluginRecord2->SetAbilityState(AbilityState::TERMINATING);
+
+    // GetPluginAbilities should only return active plugins
+    auto plugins = hostRecord->GetPluginAbilities();
+    EXPECT_EQ(plugins.size(), 1u);
+    EXPECT_EQ(plugins[0], pluginRecord1);
+
+    GTEST_LOG_(INFO) << "GetPluginAbilities_001 end";
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: Host-Plugin relationship management
+ * SubFunction: GetPluginAbilities
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify GetPluginAbilities cleans up expired weak_ptr
+ */
+HWTEST_F(AbilityRecordTest, GetPluginAbilities_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetPluginAbilities_002 start";
+    auto hostRecord = GetAbilityRecord();
+
+    // Create plugin and add to host
+    {
+        auto pluginRecord = GetAbilityRecord();
+        hostRecord->AddPluginAbility(pluginRecord);
+    }
+    // pluginRecord is destroyed here, weak_ptr should expire
+
+    // GetPluginAbilities should clean up expired weak_ptr
+    auto plugins = hostRecord->GetPluginAbilities();
+    EXPECT_EQ(plugins.size(), 0u);
+
+    GTEST_LOG_(INFO) << "GetPluginAbilities_002 end";
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: Host-Plugin relationship management
+ * SubFunction: ClearPluginAbilities
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify ClearPluginAbilities clears all plugins
+ */
+HWTEST_F(AbilityRecordTest, ClearPluginAbilities_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ClearPluginAbilities_001 start";
+    auto hostRecord = GetAbilityRecord();
+    auto pluginRecord1 = GetAbilityRecord();
+    auto pluginRecord2 = GetAbilityRecord();
+
+    // Add plugins to host
+    hostRecord->AddPluginAbility(pluginRecord1);
+    hostRecord->AddPluginAbility(pluginRecord2);
+    EXPECT_EQ(hostRecord->GetPluginAbilities().size(), 2u);
+
+    // Clear all plugins
+    hostRecord->ClearPluginAbilities();
+
+    // Verify all plugins are cleared
+    auto plugins = hostRecord->GetPluginAbilities();
+    EXPECT_EQ(plugins.size(), 0u);
+
+    GTEST_LOG_(INFO) << "ClearPluginAbilities_001 end";
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: InitPluginAbility
+ * SubFunction: InitPluginAbility
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify InitPluginAbility establishes host-plugin relationship
+ */
+HWTEST_F(AbilityRecordTest, InitPluginAbility_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "InitPluginAbility_001 start";
+    auto hostRecord = CreateAbilityRecord();
+    auto pluginRecord = GetAbilityRecord();
+
+    // Create ability request with plugin flag and callerToken
+    AbilityRequest request;
+    request.want.SetParam(AAFwk::Want::DESTINATION_PLUGIN_ABILITY, true);
+    request.callerToken = hostRecord->GetToken();
+
+    // Initialize plugin ability
+    pluginRecord->InitPluginAbility(request);
+
+    // Verify plugin is marked as plugin
+    EXPECT_TRUE(pluginRecord->IsPluginAbility());
+
+    auto plugins = hostRecord->GetPluginAbilities();
+    EXPECT_EQ(plugins.size(), 1u);
+    EXPECT_EQ(plugins[0], pluginRecord);
+
+    GTEST_LOG_(INFO) << "InitPluginAbility_001 end";
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: InitPluginAbility
+ * SubFunction: InitPluginAbility
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify InitPluginAbility does nothing for non-plugin ability
+ */
+HWTEST_F(AbilityRecordTest, InitPluginAbility_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "InitPluginAbility_002 start";
+    auto normalRecord = GetAbilityRecord();
+
+    EXPECT_NE(normalRecord, nullptr);
+
+    // Create ability request without plugin flag
+    AbilityRequest request;
+
+    // Initialize normal ability
+    normalRecord->InitPluginAbility(request);
+
+    // Verify not marked as plugin
+    EXPECT_FALSE(normalRecord->IsPluginAbility());
+
+    request.want.SetParam(AAFwk::Want::DESTINATION_PLUGIN_ABILITY, true);
+    normalRecord->InitPluginAbility(request);
+    EXPECT_TRUE(normalRecord->IsPluginAbility());
+
+    GTEST_LOG_(INFO) << "InitPluginAbility_002 end";
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: PluginCompleteTerminate
+ * SubFunction: PluginCompleteTerminate
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify PluginCompleteTerminate
+ */
+HWTEST_F(AbilityRecordTest, PluginCompleteTerminate_001, TestSize.Level1)
+{
+    auto hostRecord = CreateAbilityRecord();
+    auto pluginRecord = GetAbilityRecord();
+
+    // Create ability request with plugin flag and callerToken
+    AbilityRequest request;
+    request.callerToken = hostRecord->GetToken();
+    pluginRecord->InitPluginAbility(request);
+    EXPECT_FALSE(pluginRecord->IsPluginAbility());
+    pluginRecord->PluginCompleteTerminate();
+
+    request.want.SetParam(AAFwk::Want::DESTINATION_PLUGIN_ABILITY, true);
+    pluginRecord->InitPluginAbility(request);
+    // Verify plugin is marked as plugin
+    EXPECT_TRUE(pluginRecord->IsPluginAbility());
+    pluginRecord->PluginCompleteTerminate();
+
+    auto plugins = hostRecord->GetPluginAbilities();
+    EXPECT_EQ(plugins.size(), 1u);
+    EXPECT_EQ(plugins[0], pluginRecord);
+
+    pluginRecord->AddCallerRecord(request.callerToken, 0, request.want);
+    pluginRecord->PluginCompleteTerminate();
+    plugins = hostRecord->GetPluginAbilities();
+    EXPECT_TRUE(plugins.empty());
 }
 }  // namespace AAFwk
 }  // namespace OHOS

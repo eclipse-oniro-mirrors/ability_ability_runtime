@@ -715,6 +715,14 @@ public:
         return isPluginAbility_;
     }
 
+    // Host-Plugin relationship management
+    void AddPluginAbility(std::shared_ptr<AbilityRecord> pluginAbility);
+    void RemovePluginAbility(std::shared_ptr<AbilityRecord> pluginAbility);
+    std::vector<std::shared_ptr<AbilityRecord>> GetPluginAbilities() const;
+    void ClearPluginAbilities();
+    void InitPluginAbility(const AbilityRequest &abilityRequest);
+    void PluginCompleteTerminate();
+
     void NotifyAbilityRequestFailure(const std::string &requestId, const AppExecFwk::ElementName &element,
         const std::string &message, int32_t resultCode = 0);
 
@@ -1016,6 +1024,10 @@ protected:
     std::mutex collaborateWantLock_;
     std::mutex isPrepareTerminateAbilityMutex_;
     std::condition_variable isPrepareTerminateAbilityCv_;
+
+    // Host-Plugin relationship management
+    mutable std::mutex pluginMutex_;
+    std::list<std::weak_ptr<AbilityRecord>> pluginAbilityList_;
 
     bool isKillForPermissionUpdate_ = false;
     mutable bool isDumpTimeout_ = false;
