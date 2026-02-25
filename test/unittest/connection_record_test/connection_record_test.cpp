@@ -555,7 +555,7 @@ HWTEST_F(ConnectionRecordTest, ConnectionRecord_DisconnectAbility_008, TestSize.
 {
     // Create service with UI_SERVICE extension type
     Want want;
-    want.SetParam("ohos.aafwk.params.AgentId", std::string("testAgent"));
+    want.SetParam("ohos.agentruntime.params.AgentId", std::string("testAgent"));
     want.SetElementName(std::string("device"), std::string("com.test.bundle"), std::string("testModule"),
         std::string("TestAbility"));
 
@@ -597,7 +597,7 @@ HWTEST_F(ConnectionRecordTest, ConnectionRecord_DisconnectAbility_009, TestSize.
 {
     // Create service with AGENT extension type
     Want want;
-    want.SetParam("ohos.aafwk.params.AgentId", std::string("testAgent"));
+    want.SetParam("ohos.agentruntime.params.AgentId", std::string("testAgent"));
     want.SetElementName(std::string("device"), std::string("com.test.bundle"), std::string("testModule"),
         std::string("TestAbility"));
 

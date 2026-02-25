@@ -452,8 +452,8 @@ bool AgentCard::ReadFromParcel(Parcel &parcel)
         std::shared_ptr<AgentSkill> skill(parcel.ReadParcelable<AgentSkill>());
         skills.push_back(skill);
     }
-    extension = parcel.ReadString();
     iconUrl = parcel.ReadString();
+    extension = parcel.ReadString();
     appInfo.reset(parcel.ReadParcelable<AgentAppInfo>());
     return true;
 }
@@ -484,6 +484,10 @@ bool AgentCard::Marshalling(Parcel &parcel) const
         TAG_LOGE(AAFwkTag::SER_ROUTER, "write documentationUrl failed");
         return false;
     }
+    if (!parcel.WriteString(category)) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "write category failed");
+        return false;
+    }
     if (!parcel.WriteParcelable(capabilities.get())) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "Write capabilities failed.");
         return false;
@@ -512,10 +516,6 @@ bool AgentCard::Marshalling(Parcel &parcel) const
     }
     if (!parcel.WriteString(extension)) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "write extension failed");
-        return false;
-    }
-    if (!parcel.WriteString(category)) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "write category failed");
         return false;
     }
     if (!parcel.WriteParcelable(appInfo.get())) {
@@ -693,6 +693,15 @@ bool AgentCard::FromJson(nlohmann::json jsonObject, AgentCard &agentCard)
         }
     }
 
+    // Optional iconUrl field
+    if (jsonObject.contains("iconUrl") && jsonObject["iconUrl"].is_string()) {
+        agentCard.iconUrl = jsonObject["iconUrl"];
+        if (agentCard.iconUrl.length() < 1 || agentCard.iconUrl.length() > LENGTH_512) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "iconUrl length is invalid");
+            agentCard.iconUrl = "";
+        }
+    }
+
     // Optional extension field
     if (jsonObject.contains("extension") && jsonObject["extension"].is_string()) {
         agentCard.extension = jsonObject["extension"];
@@ -738,8 +747,8 @@ int32_t AgentCardsRawData::ToAgentCardVec(const AgentCardsRawData &rawData, std:
     uint32_t ssLength = static_cast<uint32_t>(ss.str().length());
     uint32_t count = 0;
     ss.read(reinterpret_cast<char *>(&count), sizeof(count));
-    if (count == 0 || count > MAX_AGENT_CARD_COUNT) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "cards empty or exceed maxSize %{public}d, count: %{public}d",
+    if (count > MAX_AGENT_CARD_COUNT) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "cards exceed maxSize %{public}d, count: %{public}d",
             MAX_AGENT_CARD_COUNT, count);
         return ERR_AGENT_CARD_LIST_OUT_OF_RANGE;
     }

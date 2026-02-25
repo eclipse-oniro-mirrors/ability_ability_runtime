@@ -1069,9 +1069,9 @@ HWTEST_F(AbilityRecordSecondTest, AbilityRecord_SetWant_009, TestSize.Level1)
     std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
     abilityRecord->isLaunching_ = false;
     Want want;
-    want.SetParam("ohos.aafwk.params.AgentExtensionHostProxy", true);
+    want.SetParam("ohos.agentruntime.params.AgentExtensionHostProxy", true);
     abilityRecord->SetWant(want);
-    EXPECT_FALSE(abilityRecord->want_.HasParameter("ohos.aafwk.params.AgentExtensionHostProxy"));
+    EXPECT_FALSE(abilityRecord->want_.HasParameter("ohos.agentruntime.params.AgentExtensionHostProxy"));
 }
 
 /*
