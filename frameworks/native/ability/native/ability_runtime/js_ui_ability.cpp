@@ -49,10 +49,12 @@
 #include "scene_board_judgement.h"
 #endif
 #include "ohos_application.h"
+#include "madvise/madvise_utils.h"
 #include "napi_common_configuration.h"
 #include "napi_common_want.h"
 #include "napi_remote_object.h"
 #include "page_switch_log.h"
+#include "parameters.h"
 #include "string_wrapper.h"
 #include "system_ability_definition.h"
 #include "time_util.h"
@@ -943,6 +945,15 @@ void JsUIAbility::OnBackground()
     auto want = GetWant();
     if (want != nullptr) {
         HandleCollaboration(*want);
+    }
+    // Apply madvise optimization based on config file (only once per process)
+    static bool madviseApplied = false;
+    if (!madviseApplied && abilityInfo_ != nullptr) {
+        bool enableMadvise = OHOS::system::GetBoolParameter("persist.sys.abilityms.enable_madvise", false);
+        if (enableMadvise) {
+            MadviseUtil::MadviseWithConfigFile(abilityInfo_->bundleName.c_str());
+        }
+        madviseApplied = true;
     }
     TAG_LOGD(AAFwkTag::UIABILITY, "end");
 }

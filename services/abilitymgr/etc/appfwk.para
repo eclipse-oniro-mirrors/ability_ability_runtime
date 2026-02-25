@@ -46,3 +46,4 @@ const.sys.abilityms.cache_extension = 260
 const.max_native_child_process = 0
 const.sys.abilityms.allow_child_process_in_multi_process_feature_app = false
 const.sys.abilityms.max_multi_process_feature_child_process = 0
+persist.sys.abilityms.enable_madvise = false
