@@ -35,17 +35,12 @@
 #include "vma_utils.h"
 
 namespace {
-constexpr const char* MADVISE_CONFIG_DEFAULT_FILE_PATH = "/system/etc/ams_madvise_config.json";
-constexpr const char* MADVISE_CONFIG_FILE_PATH = "/etc/ams_madvise_config.json";
+constexpr const char* MADVISE_CONFIG_DEFAULT_FILE_PATH = "/system/etc/madvise_config.json";
+constexpr const char* MADVISE_CONFIG_FILE_PATH = "/etc/madvise_config.json";
 constexpr int PERMS_INDEX_0 = 0;
 constexpr int PERMS_INDEX_1 = 1;
 constexpr int PERMS_INDEX_2 = 2;
 constexpr int PERMS_INDEX_3 = 3;
-constexpr size_t SO_SUFFIX_LEN = 3;
-constexpr size_t LINE_BUFFER_SIZE = 1024;
-constexpr size_t PATH_BUFFER_SIZE = 256;
-constexpr int PARSED_MIN_FIELDS = 6;
-constexpr size_t TOP_FILE_COUNT = 30;
 
 enum class LibraryType {
     UNKNOWN = 0,
@@ -226,13 +221,6 @@ struct MadviseData {
     const char* targetLibName;
 };
 
-struct MadviseDataMultiple {
-    int successCount;
-    int failCount;
-    std::unordered_set<std::string>* targetLibNames;
-    std::unordered_set<std::string> processedLibs;
-};
-
 static int MadvisePhdrCallback(struct dl_phdr_info *info, size_t size, void *data)
 {
     MadviseData* madviseData = static_cast<MadviseData*>(data);
@@ -289,77 +277,6 @@ static int MadvisePhdrCallback(struct dl_phdr_info *info, size_t size, void *dat
     return 0;
 }
 
-static int MadvisePhdrCallbackMultiple(struct dl_phdr_info *info, size_t size, void *data)
-{
-    MadviseDataMultiple* madviseData = static_cast<MadviseDataMultiple*>(data);
-    const char* currentLibName = info->dlpi_name;
-    if (!currentLibName || strlen(currentLibName) == 0) {
-        return 0;
-    }
-    const char* baseName = strrchr(currentLibName, '/');
-    baseName = (baseName == nullptr) ? currentLibName : (baseName + 1);
-    if (madviseData->targetLibNames->find(baseName) == madviseData->targetLibNames->end()) {
-        return 0;
-    }
-    if (madviseData->processedLibs.find(baseName) != madviseData->processedLibs.end()) {
-        return 0;
-    }
-    madviseData->processedLibs.insert(baseName);
-    TAG_LOGI(AAFwkTag::UIABILITY, "Processing target library: %{public}s", currentLibName);
-    int libSuccessCount = 0;
-    int libFailCount = 0;
-    for (int i = 0; i < info->dlpi_phnum; i++) {
-        const ElfW(Phdr) *phdr = &info->dlpi_phdr[i];
-        if (phdr->p_type != PT_LOAD) {
-            continue;
-        }
-        bool isReadable = (phdr->p_flags & PF_R);
-        bool isWritable = (phdr->p_flags & PF_W);
-        if (!isReadable || isWritable) {
-            continue;
-        }
-        void* startAddr = reinterpret_cast<void*>(info->dlpi_addr + phdr->p_vaddr);
-        size_t len = phdr->p_memsz;
-        size_t pageSize = getpagesize();
-        void* alignedStart = reinterpret_cast<void*>(
-            reinterpret_cast<uintptr_t>(startAddr) & ~(pageSize - 1));
-        size_t alignedLen = (reinterpret_cast<uintptr_t>(startAddr) + len + pageSize - 1) & ~(pageSize - 1);
-        alignedLen -= reinterpret_cast<uintptr_t>(alignedStart);
-        char perms[4] = "---";
-        if (phdr->p_flags & PF_R) {
-            perms[PERMS_INDEX_0] = 'r';
-        }
-        if (phdr->p_flags & PF_W) {
-            perms[PERMS_INDEX_1] = 'w';
-        }
-        if (phdr->p_flags & PF_X) {
-            perms[PERMS_INDEX_2] = 'x';
-        }
-        perms[PERMS_INDEX_3] = '\0';
-        TAG_LOGI(AAFwkTag::UIABILITY,
-            "madvise: lib=%{public}s, perms=%{public}s, addr=%{public}p, len=%{public}zu, alignedLen=%{public}zu",
-            info->dlpi_name ? info->dlpi_name : "unknown", perms, startAddr, len, alignedLen);
-        int result = madvise(alignedStart, alignedLen, MADV_DONTNEED);
-        if (result == 0) {
-            TAG_LOGI(AAFwkTag::UIABILITY, "madvise success: addr=%{public}p, len=%{public}zu", alignedStart, alignedLen);
-            libSuccessCount++;
-        } else {
-            TAG_LOGE(AAFwkTag::ABILITY, "madvise failed: addr=%{public}p, len=%{public}zu, errno=%{public}d",
-                alignedStart, alignedLen, errno);
-            libFailCount++;
-        }
-    }
-    if (libSuccessCount > 0) {
-        madviseData->successCount++;
-        TAG_LOGI(AAFwkTag::UIABILITY, "Library %{public}s optimization completed: %{public}d segments succeeded",
-            baseName, libSuccessCount);
-    } else {
-        madviseData->failCount++;
-        TAG_LOGE(AAFwkTag::ABILITY, "Library %{public}s optimization failed", baseName);
-    }
-    return 0;
-}
-
 namespace OHOS {
 namespace AbilityRuntime {
 namespace MadviseUtil {
@@ -377,21 +294,6 @@ bool MadviseSingleLibrary(const char* libName)
         "madvise completed for lib=%{public}s: successCount=%{public}d, failCount=%{public}d",
         libName, madviseData.successCount, madviseData.failCount);
     return (madviseData.successCount > 0);
-}
-
-int MadviseMultipleLibraries(const std::vector<std::string>& libNames)
-{
-    if (libNames.empty()) {
-        TAG_LOGE(AAFwkTag::ABILITY, "Library name list is empty");
-        return 0;
-    }
-    TAG_LOGI(AAFwkTag::UIABILITY, "MadviseMultipleLibraries called for %{public}zu libraries", libNames.size());
-    std::unordered_set<std::string> targetLibSet(libNames.begin(), libNames.end());
-    MadviseDataMultiple madviseData = {0, 0, &targetLibSet, {}};
-    dl_iterate_phdr(MadvisePhdrCallbackMultiple, &madviseData);
-    TAG_LOGI(AAFwkTag::UIABILITY, "MadviseMultipleLibraries completed: %{public}d succeeded, %{public}d failed",
-        madviseData.successCount, madviseData.failCount);
-    return madviseData.successCount;
 }
 
 static int ApplyMadviseToRegion(const OHOS::AbilityRuntime::VmaUtil::VMARegion& region, size_t pageSize,
@@ -483,121 +385,6 @@ int MadviseWithConfigFile(const char* packageName)
         return -1;
     }
     return ApplyMadviseWithConfig(packageName, config);
-}
-
-struct FilePageStats {
-    std::string filename;
-    size_t pageCount;
-    bool operator>(const FilePageStats& other) const
-    {
-        return pageCount > other.pageCount;
-    }
-};
-
-static inline bool IsSoFile(const char* filename)
-{
-    if (!filename) {
-        return false;
-    }
-    size_t len = strlen(filename);
-    return len > SO_SUFFIX_LEN && strcmp(filename + len - SO_SUFFIX_LEN, ".so") == 0;
-}
-
-static std::vector<FilePageStats> CollectFilePageStats()
-{
-    std::vector<FilePageStats> stats;
-    FILE* fp = fopen("/proc/self/maps", "r");
-    if (!fp) {
-        TAG_LOGE(AAFwkTag::ABILITY, "Failed to open /proc/self/maps");
-        return stats;
-    }
-    char line[LINE_BUFFER_SIZE];
-    size_t pageSize = getpagesize();
-    while (fgets(line, sizeof(line), fp) != nullptr) {
-        unsigned long start = 0;
-        unsigned long end = 0;
-        char perms[5] = {0};
-        unsigned long offset = 0;
-        unsigned long inode = 0;
-        char pathname[PATH_BUFFER_SIZE] = {0};
-        int parsed = sscanf(line, "%lx-%lx %4s %lx %*x:%*x %lu %255s",
-            &start, &end, perms, &offset, &inode, pathname);
-        if (parsed < PARSED_MIN_FIELDS || strlen(pathname) == 0 || pathname[0] != '/') {
-            continue;
-        }
-        if (strstr(pathname, "[heap]") || strstr(pathname, "[stack]") ||
-            strstr(pathname, "[vvar]") || strstr(pathname, "[vdso]") ||
-            strstr(pathname, "(deleted)")) {
-            continue;
-        }
-        bool isReadable = (perms[PERMS_INDEX_0] == 'r');
-        bool isWritable = (perms[PERMS_INDEX_1] == 'w');
-        if (!isReadable || isWritable) {
-            continue;
-        }
-        size_t size = end - start;
-        if (pageSize == 0) {
-            TAG_LOGE(AAFwkTag::ABILITY, "Page size is zero");
-            continue;
-        }
-        size_t pages = (size + pageSize - 1) / pageSize;
-        bool found = false;
-        for (auto& stat : stats) {
-            if (stat.filename == pathname) {
-                stat.pageCount += pages;
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            stats.push_back({pathname, pages});
-        }
-    }
-    if (fclose(fp) != 0) {
-        TAG_LOGE(AAFwkTag::ABILITY, "Failed to close file");
-    }
-    return stats;
-}
-
-int MadviseTopFiles()
-{
-    auto startTime = std::chrono::high_resolution_clock::now();
-    std::vector<FilePageStats> stats = CollectFilePageStats();
-    if (stats.empty()) {
-        TAG_LOGE(AAFwkTag::ABILITY, "No file stats collected");
-        return 0;
-    }
-    std::sort(stats.begin(), stats.end(), std::greater<FilePageStats>());
-    size_t topN = (stats.size() < TOP_FILE_COUNT) ? stats.size() : TOP_FILE_COUNT;
-    std::vector<std::string> topSoFiles;
-    std::vector<std::string> topVmaFiles;
-    for (size_t i = 0; i < topN; i++) {
-        const std::string& filename = stats[i].filename;
-        TAG_LOGI(AAFwkTag::ABILITY, "Top %{public}zu: %{public}s (%{public}zu pages)",
-            i + 1, filename.c_str(), stats[i].pageCount);
-        if (IsSoFile(filename.c_str())) {
-            topSoFiles.push_back(filename);
-        } else {
-            topVmaFiles.push_back(filename);
-        }
-    }
-    int soSuccess = 0;
-    if (!topSoFiles.empty()) {
-        for (const auto& soFile : topSoFiles) {
-            const char* baseName = strrchr(soFile.c_str(), '/');
-            const char* libName = (baseName != nullptr) ? (baseName + 1) : soFile.c_str();
-            if (MadviseSingleLibrary(libName)) {
-                soSuccess++;
-            }
-        }
-    }
-    int vmaSuccess = MadviseGeneralFiles(topVmaFiles);
-    auto endTime = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
-    TAG_LOGI(AAFwkTag::ABILITY,
-        "Madvise top files: %{public}d .so files, %{public}d other files optimized, time cost: %{public}lld ms",
-        soSuccess, vmaSuccess, static_cast<long long>(duration.count()));
-    return soSuccess + vmaSuccess;
 }
 
 std::string GetConfigPath()

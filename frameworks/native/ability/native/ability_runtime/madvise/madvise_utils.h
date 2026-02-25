@@ -25,15 +25,11 @@ namespace AbilityRuntime {
 namespace MadviseUtil {
 bool MadviseSingleLibrary(const char* libName);
 
-int MadviseMultipleLibraries(const std::vector<std::string>& libNames);
-
 bool MadviseGeneralFile(const char* filename);
 
 int MadviseGeneralFiles(const std::vector<std::string>& filenames);
 
 int MadviseWithConfigFile(const char* packageName);
-
-int MadviseTopFiles();
 
 std::string GetConfigPath();
 
