@@ -86,6 +86,7 @@ constexpr const char* FORBID_START = "persist.sys.abilityms.forbid_start";
 constexpr const char* ALLOW_DEBUG_PERMISSION = "persist.sys.abilityms.allow_debug_permission";
 constexpr const char* START_ABILITY_IN_CURRENT_PROCESS = "persist.sys.abilityms.start_ability_in_current_process";
 constexpr const char* RESTART_APP_WITH_WINDOW = "persist.sys.abilityms.restart_app_with_window";
+constexpr const char* PRODUCT_APPBOOT_SETTING_ENABLED = "const.product.appboot.setting.enabled";
 // Support prepare terminate
 constexpr int32_t PREPARE_TERMINATE_ENABLE_SIZE = 6;
 constexpr const char* PREPARE_TERMINATE_ENABLE_PARAMETER = "persist.sys.prepare_terminate";
@@ -880,6 +881,16 @@ bool AppUtils::IsStartUIAbilityInCurrentProcess()
     }
     TAG_LOGD(AAFwkTag::DEFAULT, "startAbilityInCurrentProcess: %{public}d", isStartUIAbilityInCurrentProcess_.value);
     return isStartUIAbilityInCurrentProcess_.value;
+}
+
+bool AppUtils::IsProductAppbootSettingEnabled()
+{
+    if (!isProductAppbootSettingEnabled_.isLoaded) {
+        isProductAppbootSettingEnabled_.value = system::GetBoolParameter(PRODUCT_APPBOOT_SETTING_ENABLED, false);
+        isProductAppbootSettingEnabled_.isLoaded = true;
+    }
+    TAG_LOGD(AAFwkTag::DEFAULT, "ProductAppbootSettingEnabled: %{public}d", isProductAppbootSettingEnabled_.value);
+    return isProductAppbootSettingEnabled_.value;
 }
 
 void AppUtils::LoadAppTransferList()

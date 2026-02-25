@@ -33,7 +33,7 @@ namespace AppExecFwk {
 namespace OHOS {
 namespace AppExecFwk {
 namespace {
-    constexpr int32_t INVALID_DIED_PID = -1;
+constexpr pid_t INVALID_DIED_PID = -1;
 }
 class IAppStateCallback : public IRemoteBroker {
 public:
@@ -72,7 +72,7 @@ public:
      * @param bundleInfos resident process bundle infos.
      */
     virtual void NotifyStartKeepAliveProcess(std::vector<AppExecFwk::BundleInfo> &bundleInfos,
-        int32_t diedPid = INVALID_DIED_PID) {}
+        pid_t diedPid = INVALID_DIED_PID) {}
 
     /**
      * @brief Notify abilityms app process OnRemoteDied

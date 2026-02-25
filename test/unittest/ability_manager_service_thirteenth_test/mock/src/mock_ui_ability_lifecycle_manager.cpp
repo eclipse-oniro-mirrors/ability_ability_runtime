@@ -437,7 +437,7 @@ int UIAbilityLifecycleManager::SendSessionInfoToSCB(UIAbilityRecordPtr &callerAb
     return ERR_OK;
 }
 
-int UIAbilityLifecycleManager::StartAbilityBySpecifed(const SpecifiedRequest &specifiedRequest,
+int UIAbilityLifecycleManager::StartAbilityBySpecified(const SpecifiedRequest &specifiedRequest,
     UIAbilityRecordPtr callerAbility)
 {
     return ERR_OK;
@@ -771,7 +771,7 @@ ErrCode UIAbilityLifecycleManager::IsUIAbilityAlreadyExist(const Want &want,
     return ERR_OK;
 }
 
-void UIAbilityLifecycleManager::HandleUIAbilityDiedByPid(int32_t pid)
+void UIAbilityLifecycleManager::HandleUIAbilityDiedByPid(pid_t pid)
 {
     return;
 }

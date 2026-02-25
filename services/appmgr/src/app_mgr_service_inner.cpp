@@ -10014,7 +10014,7 @@ void AppMgrServiceInner::NotifyStartResidentProcess(std::vector<AppExecFwk::Bund
     }
 }
 
-void AppMgrServiceInner::NotifyStartKeepAliveProcess(std::vector<AppExecFwk::BundleInfo> &bundleInfos, int32_t diedPid)
+void AppMgrServiceInner::NotifyStartKeepAliveProcess(std::vector<AppExecFwk::BundleInfo> &bundleInfos, pid_t diedPid)
 {
     std::lock_guard lock(appStateCallbacksLock_);
     for (const auto &item : appStateCallbacks_) {

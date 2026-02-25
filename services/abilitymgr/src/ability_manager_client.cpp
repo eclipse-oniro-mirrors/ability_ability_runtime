@@ -147,8 +147,9 @@ ErrCode AbilityManagerClient::StartAbility(const Want &want, int requestCode, in
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "StartAbility %{public}s/%{public}s, userId:%{public}d, "
-        "appCloneIndex:%{public}d, specifiedFullTokenId:%{public}" PRIu64 "", want.GetElement().GetBundleName().c_str(),
-        want.GetElement().GetAbilityName().c_str(), userId, want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1),
+        "appCloneIndex:%{public}d, requestCode:%{public}d, specifiedFullTokenId:%{public}" PRIu64 "",
+        want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(),
+        userId, want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1), requestCode,
         specifiedFullTokenId);
 
     HandleDlpApp(const_cast<Want &>(want));
@@ -174,8 +175,9 @@ ErrCode AbilityManagerClient::StartAbility(
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "StartAbility ability:%{public}s/%{public}s, userId:%{public}d, "
-        "appCloneIndex:%{public}d, specifiedFullTokenId:%{public}" PRIu64 "", want.GetElement().GetBundleName().c_str(),
-        want.GetElement().GetAbilityName().c_str(), userId, want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1),
+        "appCloneIndex:%{public}d, requestCode:%{public}d, specifiedFullTokenId:%{public}" PRIu64 "",
+        want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(),
+        userId, want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1), requestCode,
         specifiedFullTokenId);
     HandleDlpApp(const_cast<Want &>(want));
     return abms->StartAbility(want, callerToken, userId, requestCode, specifiedFullTokenId);
@@ -200,8 +202,9 @@ ErrCode AbilityManagerClient::StartAbility(const Want &want, const AbilityStartS
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "StartAbility ability:%{public}s/%{public}s, userId:%{public}d, "
-        "appCloneIndex:%{public}d", want.GetElement().GetBundleName().c_str(),
-        want.GetElement().GetAbilityName().c_str(), userId, want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1));
+        "appCloneIndex:%{public}d, requestCode:%{public}d", want.GetElement().GetBundleName().c_str(),
+        want.GetElement().GetAbilityName().c_str(), userId, want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1),
+        requestCode);
     HandleDlpApp(const_cast<Want &>(want));
     return abms->StartAbility(want, abilityStartSetting, callerToken, userId, requestCode);
 }
@@ -213,8 +216,9 @@ ErrCode AbilityManagerClient::StartAbility(const Want &want, const StartOptions 
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "StartAbility ability:%{public}s/%{public}s, userId:%{public}d, "
-        "appCloneIndex:%{public}d", want.GetElement().GetBundleName().c_str(),
-        want.GetElement().GetAbilityName().c_str(), userId, want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1));
+        "appCloneIndex:%{public}d, requestCode:%{public}d", want.GetElement().GetBundleName().c_str(),
+        want.GetElement().GetAbilityName().c_str(), userId, want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1),
+        requestCode);
     HandleDlpApp(const_cast<Want &>(want));
     return abms->StartAbility(want, startOptions, callerToken, userId, requestCode);
 }
@@ -412,10 +416,11 @@ ErrCode AbilityManagerClient::StartUIAbilityBySCB(sptr<SessionInfo> sessionInfo,
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "scb call, StartUIAbilityBySCB target: %{public}s/%{public}s, "
-        "persistentId: %{public}d, appIndex: %{public}d, pageConfigSize:%{public}zu",
+        "persistentId: %{public}d, appIndex: %{public}d, pageConfigSize:%{public}zu, requestCode:%{public}d",
         sessionInfo->want.GetElement().GetBundleName().c_str(),
         sessionInfo->want.GetElement().GetAbilityName().c_str(), sessionInfo->persistentId,
-        sessionInfo->want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1), params.pageConfig.size());
+        sessionInfo->want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1), params.pageConfig.size(),
+        sessionInfo->requestCode);
     return abms->StartUIAbilityBySCB(sessionInfo, params, isColdStart);
 }
 

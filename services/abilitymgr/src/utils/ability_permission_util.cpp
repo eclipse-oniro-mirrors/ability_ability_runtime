@@ -398,17 +398,16 @@ bool AbilityPermissionUtil::NeedCheckStatusBar(std::shared_ptr<AbilityRecord> ab
         TAG_LOGW(AAFwkTag::ABILITYMGR, "abilityRecord is nullptr");
         return false;
     }
-    int32_t callerUid = abilityRecord->GetUid();
+    if (abilityRequest.abilityInfo.type != AppExecFwk::AbilityType::PAGE ||
+        abilityRequest.abilityInfo.uid != abilityRecord->GetUid()) {
+            TAG_LOGD(AAFwkTag::ABILITYMGR, "not uiAbility or not the same uid.");
+            return false;
+    }
     bool isMultiInstance =
         abilityRequest.appInfo.multiAppMode.multiAppModeType == AppExecFwk::MultiAppModeType::MULTI_INSTANCE;
     auto callerInstanceKey = abilityRecord->GetInstanceKey();
     // if not creating new instance, requestInstanceKey should be updated by CheckMultiInstanceAndAppClone.
     auto requestInstanceKey = abilityRequest.want.GetStringParam(Want::APP_INSTANCE_KEY);
-    if (abilityRequest.abilityInfo.type != AppExecFwk::AbilityType::PAGE ||
-        abilityRequest.abilityInfo.uid != callerUid) {
-            TAG_LOGD(AAFwkTag::ABILITYMGR, "not uiAbility or not the same uid.");
-            return false;
-    }
     if (isMultiInstance && callerInstanceKey != requestInstanceKey) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "is multiInstance but not the same instanceKey.");
         return false;

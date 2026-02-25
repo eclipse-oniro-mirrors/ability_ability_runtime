@@ -2330,10 +2330,12 @@ HWTEST_F(AbilityManagerServiceFirstTest, RecordAppExitSignalReason_0100, TestSiz
  */
 HWTEST_F(AbilityManagerServiceFirstTest, NotifyStartKeepAliveProcess_0100, TestSize.Level1)
 {
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest NotifyStartKeepAliveProcess_0100 start");
     std::vector<AppExecFwk::BundleInfo> bundleInfos;
     auto abilityMs = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs, nullptr);
     abilityMs->NotifyStartKeepAliveProcess(bundleInfos);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest NotifyStartKeepAliveProcess_0100 end");
 }
 
 /**
@@ -2343,11 +2345,13 @@ HWTEST_F(AbilityManagerServiceFirstTest, NotifyStartKeepAliveProcess_0100, TestS
  */
 HWTEST_F(AbilityManagerServiceFirstTest, NotifyStartKeepAliveProcess_0200, TestSize.Level1)
 {
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest NotifyStartKeepAliveProcess_0200 start");
     std::vector<AppExecFwk::BundleInfo> bundleInfos;
     auto abilityMs = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs, nullptr);
-    int32_t diedPid = 1;
+    pid_t diedPid = 1;
     abilityMs->NotifyStartKeepAliveProcess(bundleInfos, diedPid);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest NotifyStartKeepAliveProcess_0200 end");
 }
 
 /**

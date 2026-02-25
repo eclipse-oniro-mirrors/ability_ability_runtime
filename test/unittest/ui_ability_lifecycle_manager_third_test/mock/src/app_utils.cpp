@@ -55,5 +55,10 @@ bool AppUtils::InOnNewProcessEnableList(const std::string &bundleName)
 {
     return isInOnNewProcessEnableList_;
 }
+
+bool AppUtils::IsProductAppbootSettingEnabled()
+{
+    return true;
+}
 }  // namespace AAFwk
 }  // namespace OHOS

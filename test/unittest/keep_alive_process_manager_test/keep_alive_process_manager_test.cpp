@@ -2301,6 +2301,190 @@ HWTEST_F(KeepAliveProcessManagerTest, CheckNeedRestartAfterUpgrade_002, TestSize
 
 /*
  * Feature:  KeepAliveProcessManager
+ * Function: Run
+ * SubFunction: NA
+ * FunctionPoints:SaveKeepAliveAppRestartAfterUpgrade
+ * EnvConditions: NA
+ * CaseDescription: not keep-alive bundle
+ */
+HWTEST_F(KeepAliveProcessManagerTest, SaveKeepAliveAppRestartAfterUpgrade_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SaveKeepAliveAppRestartAfterUpgrade_001 start";
+    int32_t uid = 1;
+    std::string bundleName = "testBundleName";
+    bool beforeValue = system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false);
+    system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, true);
+    EXPECT_EQ(system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false), true);
+    auto keepAliveProcessManager = std::make_shared<KeepAliveProcessManager>();
+    EXPECT_NE(keepAliveProcessManager, nullptr);
+    AbilityKeepAliveService::callIsKeepAliveResult = false;
+    AppMgrClient::isAppRunningReturnCode = ERR_OK;
+    AppMgrClient::isAppRunningReturnValue = false;
+    keepAliveProcessManager->SaveKeepAliveAppRestartAfterUpgrade(bundleName, uid);
+    auto ret = keepAliveProcessManager->KeepAliveIsRestartAfterUpdate(uid);
+    EXPECT_FALSE(ret);
+    system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, beforeValue);
+    GTEST_LOG_(INFO) << "SaveKeepAliveAppRestartAfterUpgrade_001 end";
+}
+
+/*
+ * Feature:  KeepAliveProcessManager
+ * Function: Run
+ * SubFunction: NA
+ * FunctionPoints:SaveKeepAliveAppRestartAfterUpgrade
+ * EnvConditions: NA
+ * CaseDescription: is keep-alive bundle, not running
+ */
+HWTEST_F(KeepAliveProcessManagerTest, SaveKeepAliveAppRestartAfterUpgrade_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SaveKeepAliveAppRestartAfterUpgrade_002 start";
+    int32_t uid = 1;
+    std::string bundleName = "testBundleName";
+    bool beforeValue = system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false);
+    system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, true);
+    EXPECT_EQ(system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false), true);
+    auto keepAliveProcessManager = std::make_shared<KeepAliveProcessManager>();
+    EXPECT_NE(keepAliveProcessManager, nullptr);
+    AbilityKeepAliveService::callIsKeepAliveResult = true;
+    AppMgrClient::isAppRunningReturnCode = ERR_OK;
+    AppMgrClient::isAppRunningReturnValue = false;
+    keepAliveProcessManager->SaveKeepAliveAppRestartAfterUpgrade(bundleName, uid);
+    auto ret = keepAliveProcessManager->KeepAliveIsRestartAfterUpdate(uid);
+    EXPECT_FALSE(ret);
+    system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, beforeValue);
+    GTEST_LOG_(INFO) << "SaveKeepAliveAppRestartAfterUpgrade_002 end";
+}
+
+/*
+ * Feature:  KeepAliveProcessManager
+ * Function: Run
+ * SubFunction: NA
+ * FunctionPoints:SaveKeepAliveAppRestartAfterUpgrade
+ * EnvConditions: NA
+ * CaseDescription: is keep-alive bundle, failed to get running status
+ */
+HWTEST_F(KeepAliveProcessManagerTest, SaveKeepAliveAppRestartAfterUpgrade_003, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SaveKeepAliveAppRestartAfterUpgrade_003 start";
+    int32_t uid = 1;
+    std::string bundleName = "testBundleName";
+    bool beforeValue = system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false);
+    system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, true);
+    EXPECT_EQ(system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false), true);
+    auto keepAliveProcessManager = std::make_shared<KeepAliveProcessManager>();
+    EXPECT_NE(keepAliveProcessManager, nullptr);
+    AbilityKeepAliveService::callIsKeepAliveResult = true;
+    AppMgrClient::isAppRunningReturnCode = -1;
+    AppMgrClient::isAppRunningReturnValue = false;
+    keepAliveProcessManager->SaveKeepAliveAppRestartAfterUpgrade(bundleName, uid);
+    auto ret = keepAliveProcessManager->KeepAliveIsRestartAfterUpdate(uid);
+    EXPECT_FALSE(ret);
+    ret = keepAliveProcessManager->KeepAliveCheckNeedRestartAfterUpgrade(uid);
+    EXPECT_FALSE(ret);
+    system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, beforeValue);
+    GTEST_LOG_(INFO) << "SaveKeepAliveAppRestartAfterUpgrade_003 end";
+}
+
+/*
+ * Feature:  KeepAliveProcessManager
+ * Function: Run
+ * SubFunction: NA
+ * FunctionPoints:SaveKeepAliveAppRestartAfterUpgrade
+ * EnvConditions: NA
+ * CaseDescription: is keep-alive bundle, is running
+ */
+HWTEST_F(KeepAliveProcessManagerTest, SaveKeepAliveAppRestartAfterUpgrade_004, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SaveKeepAliveAppRestartAfterUpgrade_004 start";
+    int32_t uid = 1;
+    std::string bundleName = "testBundleName";
+    bool beforeValue = system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false);
+    system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, true);
+    EXPECT_EQ(system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false), true);
+    auto keepAliveProcessManager = std::make_shared<KeepAliveProcessManager>();
+    EXPECT_NE(keepAliveProcessManager, nullptr);
+    AbilityKeepAliveService::callIsKeepAliveResult = true;
+    AppMgrClient::isAppRunningReturnCode = ERR_OK;
+    AppMgrClient::isAppRunningReturnValue = true;
+    keepAliveProcessManager->SaveKeepAliveAppRestartAfterUpgrade(bundleName, uid);
+    auto ret = keepAliveProcessManager->KeepAliveIsRestartAfterUpdate(uid);
+    EXPECT_TRUE(ret);
+    ret = keepAliveProcessManager->KeepAliveCheckNeedRestartAfterUpgrade(uid);
+    EXPECT_TRUE(ret);
+    system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, beforeValue);
+    GTEST_LOG_(INFO) << "SaveKeepAliveAppRestartAfterUpgrade_004 end";
+}
+
+/*
+ * Feature:  KeepAliveProcessManager
+ * Function: Run
+ * SubFunction: NA
+ * FunctionPoints:StartKeepAliveAfterAppUpgrade
+ * EnvConditions: NA
+ * CaseDescription: need to start
+ */
+HWTEST_F(KeepAliveProcessManagerTest, StartKeepAliveAfterAppUpgrade_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "StartKeepAliveAfterAppUpgrade_001 start";
+    int32_t uid = 1;
+    std::string bundleName = "testBundleName";
+    AppExecFwk::BundleInfo bundleInfo;
+    std::vector<AppExecFwk::BundleInfo> bundleInfos;
+    bundleInfos.emplace_back(bundleInfo);
+    bool beforeValue = system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false);
+    system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, true);
+    EXPECT_EQ(system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false), true);
+    auto keepAliveProcessManager = std::make_shared<KeepAliveProcessManager>();
+    EXPECT_NE(keepAliveProcessManager, nullptr);
+    AbilityKeepAliveService::callIsKeepAliveResult = true;
+    AppMgrClient::isAppRunningReturnCode = ERR_OK;
+    AppMgrClient::isAppRunningReturnValue = true;
+    keepAliveProcessManager->SaveKeepAliveAppRestartAfterUpgrade(bundleName, uid);
+    auto ret = keepAliveProcessManager->KeepAliveIsRestartAfterUpdate(uid);
+    EXPECT_TRUE(ret);
+    keepAliveProcessManager->StartKeepAliveAfterAppUpgrade(bundleInfos, uid);
+    ret = keepAliveProcessManager->KeepAliveIsRestartAfterUpdate(uid);
+    EXPECT_FALSE(ret);
+    system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, beforeValue);
+    GTEST_LOG_(INFO) << "StartKeepAliveAfterAppUpgrade_001 end";
+}
+
+/*
+ * Feature:  KeepAliveProcessManager
+ * Function: Run
+ * SubFunction: NA
+ * FunctionPoints:StartKeepAliveAfterAppUpgrade
+ * EnvConditions: NA
+ * CaseDescription: no need to start
+ */
+HWTEST_F(KeepAliveProcessManagerTest, StartKeepAliveAfterAppUpgrade_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "StartKeepAliveAfterAppUpgrade_002 start";
+    int32_t uid = 1;
+    std::string bundleName = "testBundleName";
+    AppExecFwk::BundleInfo bundleInfo;
+    std::vector<AppExecFwk::BundleInfo> bundleInfos;
+    bundleInfos.emplace_back(bundleInfo);
+    bool beforeValue = system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false);
+    system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, true);
+    EXPECT_EQ(system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false), true);
+    auto keepAliveProcessManager = std::make_shared<KeepAliveProcessManager>();
+    EXPECT_NE(keepAliveProcessManager, nullptr);
+    AbilityKeepAliveService::callIsKeepAliveResult = true;
+    AppMgrClient::isAppRunningReturnCode = ERR_OK;
+    AppMgrClient::isAppRunningReturnValue = false;
+    keepAliveProcessManager->SaveKeepAliveAppRestartAfterUpgrade(bundleName, uid);
+    auto ret = keepAliveProcessManager->KeepAliveIsRestartAfterUpdate(uid);
+    EXPECT_FALSE(ret);
+    keepAliveProcessManager->StartKeepAliveAfterAppUpgrade(bundleInfos, uid);
+    ret = keepAliveProcessManager->KeepAliveIsRestartAfterUpdate(uid);
+    EXPECT_FALSE(ret);
+    system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, beforeValue);
+    GTEST_LOG_(INFO) << "StartKeepAliveAfterAppUpgrade_002 end";
+}
+
+/*
+ * Feature:  KeepAliveProcessManager
  * Function: StartKeepAliveAppServiceExtension
  * SubFunction: NA
  * FunctionPoints:StartKeepAliveAppServiceExtension

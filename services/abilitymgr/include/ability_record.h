@@ -532,10 +532,7 @@ public:
     {
         return keepAliveBundle_;
     }
-    void SetIsKeepAliveDied(bool value)
-    {
-        isKeepAliveDied_ = value;
-    }
+    bool IsAbilityDiedHandled();
     void SetLoading(bool status);
     bool IsLoading() const;
     int64_t GetRestartTime();
@@ -640,7 +637,7 @@ public:
     void SetUIExtensionAbilityId(const int32_t uiExtensionAbilityId);
     int32_t GetUIExtensionAbilityId() const;
 
-    void OnProcessDied();
+    void OnProcessDied(bool isKeepAliveDied = false);
 
     void SetProcessName(const std::string &process);
 
@@ -918,7 +915,7 @@ protected:
     bool minimizeReason_ = false;           // new version
     bool clearMissionFlag_ = false;
     bool keepAliveBundle_ = false;
-    bool isKeepAliveDied_ = false;
+    bool handledAbilityDied_ = false;
     bool lockedState_ = false;
     bool isAttachDebug_ = false;
     bool isAssertDebug_ = false;

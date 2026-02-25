@@ -2813,6 +2813,7 @@ HWTEST_F(AbilityRecordTest, AbilityRecord_ConnectionReported_001, TestSize.Level
  */
 HWTEST_F(AbilityRecordTest, ReportAbilityConnectionRelations_001, TestSize.Level1)
 {
+    GTEST_LOG_(INFO) << "ReportAbilityConnectionRelations_001 start";
     EXPECT_NE(abilityRecord_, nullptr);
     abilityRecord_->abilityInfo_.type = AbilityType::DATA;
     abilityRecord_->abilityInfo_.applicationInfo.name = "app";
@@ -2866,6 +2867,7 @@ HWTEST_F(AbilityRecordTest, ReportAbilityConnectionRelations_001, TestSize.Level
     auto callerRecord_4 = std::make_shared<CallerRecord>(requestCode, callerAbilityRecord);
     abilityRecord_->callerList_.push_back(callerRecord_4);
     EXPECT_EQ(abilityRecord_->ReportAbilityConnectionRelations(), false);
+    GTEST_LOG_(INFO) << "ReportAbilityConnectionRelations_001 end";
 }
 
 /*
@@ -2878,6 +2880,7 @@ HWTEST_F(AbilityRecordTest, ReportAbilityConnectionRelations_001, TestSize.Level
  */
 HWTEST_F(AbilityRecordTest, ReportAbilityConnectionRelations_002, TestSize.Level1)
 {
+    GTEST_LOG_(INFO) << "ReportAbilityConnectionRelations_002 start";
     EXPECT_NE(abilityRecord_, nullptr);
     abilityRecord_->abilityInfo_.type = AbilityType::DATA;
     abilityRecord_->abilityInfo_.applicationInfo.name = "app";
@@ -2904,6 +2907,39 @@ HWTEST_F(AbilityRecordTest, ReportAbilityConnectionRelations_002, TestSize.Level
     auto callerRecord_6 = std::make_shared<CallerRecord>(requestCode, callerAbilityRecord);
     abilityRecord_->callerList_.push_back(callerRecord_6);
     EXPECT_EQ(abilityRecord_->ReportAbilityConnectionRelations(), false);
+    GTEST_LOG_(INFO) << "ReportAbilityConnectionRelations_002 end";
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: ReportAbilityConnectionForResultTerminate
+ * SubFunction: ReportAbilityConnectionForResultTerminate
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify AbilityRecord ReportAbilityConnectionForResultTerminate
+ */
+HWTEST_F(AbilityRecordTest, ReportAbilityConnectionForResultTerminate_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ReportAbilityConnectionForResultTerminate_001 start";
+    EXPECT_NE(abilityRecord_, nullptr);
+    int32_t requestCode = 0;
+    std::set<int32_t> requestCodeSetWithForResult = {-1, 1, 2, 3};
+    std::set<int32_t> requestCodeSetNoForResult = {-1, -1, -1, -1};
+    std::shared_ptr<AbilityRecord> caller = GetAbilityRecord();
+    auto callerRecord = std::make_shared<CallerRecord>(requestCode, caller);
+    // callerRecord1 nullptr
+    abilityRecord_->callerList_.push_back(nullptr);
+    // callerRecord2 without forResult
+    auto callerRecord2 = std::make_shared<CallerRecord>(requestCode, caller);
+    callerRecord2->SetRequestCodeSet(requestCodeSetNoForResult);
+    abilityRecord_->callerList_.push_back(callerRecord2);
+    // callerRecord3 with forResult
+    auto callerRecord3 = std::make_shared<CallerRecord>(requestCode, caller);
+    callerRecord3->SetRequestCodeSet(requestCodeSetWithForResult);
+    abilityRecord_->callerList_.push_back(callerRecord3);
+
+    abilityRecord_->ReportAbilityConnectionForResultTerminate();
+    GTEST_LOG_(INFO) << "ReportAbilityConnectionForResultTerminate_001 end";
 }
 
 /*

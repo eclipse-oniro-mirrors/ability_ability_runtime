@@ -209,7 +209,6 @@ constexpr char SHARE_PICKER_DIALOG_DEFAULY_ABILITY_NAME[] = "PickerDialog";
 constexpr char TOKEN_KEY[] = "ohos.ability.params.token";
 // Developer mode param
 constexpr char DEVELOPER_MODE_STATE[] = "const.security.developermode.state";
-constexpr char PRODUCT_APPBOOT_SETTING_ENABLED[] = "const.product.appboot.setting.enabled";
 // Broker params key
 constexpr const char* KEY_VISIBLE_ID = "ohos.anco.param.visible";
 constexpr const char* START_ABILITY_TYPE = "ABILITY_INNER_START_WITH_ACCOUNT";
@@ -9621,7 +9620,7 @@ int AbilityManagerService::StartUser(int userId, uint64_t displayId, sptr<IUserC
         return ERR_ALL_APP_START_BLOCKED;
     }
     // Lister screen unlock for auto startup apps.
-    if (system::GetBoolParameter(PRODUCT_APPBOOT_SETTING_ENABLED, false) && abilityAutoStartupService_ &&
+    if (AppUtils::GetInstance().IsProductAppbootSettingEnabled() && abilityAutoStartupService_ &&
         !abilityAutoStartupService_->FindHandledAutoStartupUsers(userId)) {
         InitInterceptorForScreenUnlock();
         SubscribeScreenUnlockedEvent();
@@ -9670,17 +9669,19 @@ int AbilityManagerService::StopUser(int userId, const sptr<IUserCallback> &callb
         TAG_LOGE(AAFwkTag::ABILITYMGR, "stopUser callback is nullptr");
         return INVALID_PARAMETERS_ERR;
     }
-    // clear userInfo for autoStartup
-    if (system::GetBoolParameter(PRODUCT_APPBOOT_SETTING_ENABLED, false) && abilityAutoStartupService_) {
-        abilityAutoStartupService_->RemoveHandledAutoStartupUsers(userId);
-    }
-    AbilityRuntime::AbilityEventMapManager::GetInstance().RemoveUser(userId);
 
     auto checkRet = AbilityRuntime::UserController::GetInstance().CheckStopUserParam(userId);
     if (checkRet != ERR_OK) {
         callback->OnStopUserDone(userId, checkRet);
         return checkRet;
     }
+
+    // clear userInfo for autoStartup
+    if (AppUtils::GetInstance().IsProductAppbootSettingEnabled() && abilityAutoStartupService_) {
+        abilityAutoStartupService_->RemoveHandledAutoStartupUsers(userId);
+    }
+    AbilityRuntime::AbilityEventMapManager::GetInstance().RemoveUser(userId);
+
     if (AbilityRuntime::UserController::GetInstance().IsForegroundUser(userId)) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "user current:%{public}d", userId);
         callback->OnStopUserDone(userId, ERR_OK);
@@ -9741,7 +9742,7 @@ int AbilityManagerService::LogoutUser(int32_t userId, sptr<IUserCallback> callba
         return checkRet;
     }
     // clear userInfo for autoStartup
-    if (system::GetBoolParameter(PRODUCT_APPBOOT_SETTING_ENABLED, false) && abilityAutoStartupService_) {
+    if (AppUtils::GetInstance().IsProductAppbootSettingEnabled() && abilityAutoStartupService_) {
         InitInterceptorForScreenUnlock();
         abilityAutoStartupService_->RemoveHandledAutoStartupUsers(userId);
     }
@@ -12173,7 +12174,10 @@ int AbilityManagerService::CheckCallAbilityPermission(const AbilityRequest &abil
         int32_t callerUid = callerAbilityRecord->GetUid();
         bool isMultiInstance =
             abilityRequest.appInfo.multiAppMode.multiAppModeType == AppExecFwk::MultiAppModeType::MULTI_INSTANCE;
-        verificationInfo.isProcessInStatusBar = IsInStatusBar(accessTokenId, callerUid, isMultiInstance);
+        if (IsInStatusBar(accessTokenId, callerUid, isMultiInstance)) {
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "process in statusbar, calling UIAbility");
+            return ERR_OK;
+        }
     }
     if (isFreeInstallFromService || (callerAbilityRecord != nullptr &&
         callerAbilityRecord->GetAbilityInfo().extensionAbilityType == AppExecFwk::ExtensionAbilityType::APP_SERVICE)) {
@@ -13663,7 +13667,7 @@ void AbilityManagerService::NotifyStartResidentProcess(std::vector<AppExecFwk::B
 }
 
 void AbilityManagerService::NotifyStartKeepAliveProcess(std::vector<AppExecFwk::BundleInfo> &bundleInfos,
-    int32_t diedPid)
+    pid_t diedPid)
 {
     if (!system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false)) {
         return;
@@ -13709,7 +13713,7 @@ void AbilityManagerService::NotifyStartKeepAliveProcess(std::vector<AppExecFwk::
     }
 }
 
-void AbilityManagerService::TimeSequenceKeepAliveRestart(int32_t userId, int32_t pid,
+void AbilityManagerService::TimeSequenceKeepAliveRestart(int32_t userId, pid_t pid,
     std::map<int32_t, std::vector<AppExecFwk::BundleInfo>> &bundleInfosMap,
     std::vector<AppExecFwk::BundleInfo> &bundleInfosForU1)
 {
@@ -15327,7 +15331,7 @@ ErrCode AbilityManagerService::OpenLinkInner(const Want& want, sptr<IRemoteObjec
     }
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     XCOLLIE_TIMER_LESS(__PRETTY_FUNCTION__);
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "call OpenLink");
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "call OpenLink, requestCode:%{public}d", requestCode);
     AbilityUtil::RemoveInstanceKey(const_cast<Want &>(want));
     std::string callerBundleName = want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME);
     Want convertedWant = want;

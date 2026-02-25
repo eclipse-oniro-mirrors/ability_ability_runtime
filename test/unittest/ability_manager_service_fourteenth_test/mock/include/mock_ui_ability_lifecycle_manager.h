@@ -400,7 +400,7 @@ public:
 
     ErrCode IsUIAbilityAlreadyExist(const Want &want, const std::string &specifiedFlag,
         int32_t appIndex, const std::string &instanceKey, AppExecFwk::LaunchMode launchMode);
-    void HandleUIAbilityDiedByPid(int32_t pid);
+    void HandleUIAbilityDiedByPid(pid_t pid);
 
 private:
     void AddStartingPid(pid_t pid);
@@ -459,7 +459,7 @@ private:
     int MoveAbilityToFront(const SpecifiedRequest &specifiedRequest,
         const std::shared_ptr<AbilityRecord> abilityRecord, std::shared_ptr<AbilityRecord> callerAbility);
     int SendSessionInfoToSCB(std::shared_ptr<AbilityRecord> &callerAbility, sptr<SessionInfo> &sessionInfo);
-    int StartAbilityBySpecifed(const SpecifiedRequest &specifiedRequest,
+    int StartAbilityBySpecified(const SpecifiedRequest &specifiedRequest,
         std::shared_ptr<AbilityRecord> callerAbility);
 
     void SetLastExitReason(std::shared_ptr<AbilityRecord> &abilityRecord) const;

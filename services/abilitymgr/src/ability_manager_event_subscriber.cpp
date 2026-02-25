@@ -22,7 +22,7 @@
 namespace OHOS {
 namespace AbilityRuntime {
 namespace {
-    constexpr int32_t INVALID_USERID = -1;
+constexpr int32_t INVALID_USERID = -1;
 }
 AbilityEventMapManager &AbilityEventMapManager::GetInstance()
 {
@@ -67,13 +67,6 @@ bool AbilityEventMapManager::CheckAllUnlocked(int32_t userId)
         return iter->second.userUnlock_ && iter->second.screenUnlock_;
     }
     return false;
-}
-
-void AbilityEventMapManager::ClearAllEvents()
-{
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "ClearAllEvents");
-    std::lock_guard<std::mutex> lock(mutex_);
-    eventMap_.clear();
 }
 
 AbilityScreenUnlockEventSubscriber::AbilityScreenUnlockEventSubscriber(

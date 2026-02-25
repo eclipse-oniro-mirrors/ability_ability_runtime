@@ -1846,8 +1846,11 @@ void AbilityRecord::RemoveAbilityDeathRecipient() const
 
 void AbilityRecord::OnSchedulerDied(const wptr<IRemoteObject> &remote)
 {
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "called");
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "OnSchedulerDied called");
     std::lock_guard<ffrt::mutex> guard(lock_);
+    if (IsAbilityDiedHandled()) {
+        return;
+    }
     CHECK_POINTER(scheduler_);
 
     auto object = remote.promote();
@@ -1895,13 +1898,35 @@ void AbilityRecord::OnSchedulerDied(const wptr<IRemoteObject> &remote)
     NotifyRemoveShellProcess(CollaboratorType::OTHERS_TYPE);
 }
 
-void AbilityRecord::OnProcessDied()
+bool AbilityRecord::IsAbilityDiedHandled()
+{
+    if (handledAbilityDied_) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "abilityDied already handled");
+        return handledAbilityDied_;
+    }
+    handledAbilityDied_ = true;
+    return false;
+}
+
+void AbilityRecord::OnProcessDied(bool isKeepAliveDied)
 {
     CancelPrepareTerminate();
     std::lock_guard<ffrt::mutex> guard(lock_);
-    if (!IsSceneBoard() && scheduler_ != nullptr && !isKeepAliveDied_) {
+    if (!IsSceneBoard() && scheduler_ != nullptr && !isKeepAliveDied) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "OnProcessDied: '%{public}s', attached.", abilityInfo_.name.c_str());
         return;
+    }
+    if (IsAbilityDiedHandled()) {
+        return;
+    }
+    if (scheduler_ != nullptr && schedulerDeathRecipient_ != nullptr) {
+        auto schedulerObject = scheduler_->AsObject();
+        if (schedulerObject != nullptr) {
+            schedulerObject->RemoveDeathRecipient(schedulerDeathRecipient_);
+        }
+    }
+    if (lifecycleDeal_ != nullptr) {
+        lifecycleDeal_->SetScheduler(nullptr);
     }
     isWindowAttached_ = false;
 

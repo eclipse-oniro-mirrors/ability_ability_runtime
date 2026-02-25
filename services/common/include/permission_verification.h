@@ -29,7 +29,6 @@ struct VerificationInfo {
     bool isBackgroundCall = true;
     bool associatedWakeUp = false;
     bool withContinuousTask = false;
-    bool isProcessInStatusBar = false;
     uint32_t accessTokenId = 0;
     int32_t apiTargetVersion = 0;
     uint32_t specifyTokenId = 0;

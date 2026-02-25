@@ -17,6 +17,7 @@
 
 #include "ability_auto_startup_data_manager.h"
 #include "ability_auto_startup_service.h"
+#include "app_utils.h"
 #include "auto_startup_callback_stub.h"
 #include "auto_startup_callback_proxy.h"
 #include "mock_bundle_mgr_helper.h"
@@ -289,7 +290,11 @@ HWTEST_F(AbilityAutoStartupServiceSecondTest, CheckPermissionForSystem_001, Test
     MyFlag::flag_ = 0;
     system::SetBoolParameter("", false);
     int32_t result = abilityAutoStartupService->CheckPermissionForSystem();
-    ASSERT_EQ(result, ERR_NOT_SUPPORTED_PRODUCT_TYPE);
+    if (AAFwk::AppUtils::GetInstance().IsProductAppbootSettingEnabled()) {
+        ASSERT_EQ(result, ERR_NOT_SYSTEM_APP);
+    } else {
+        ASSERT_EQ(result, ERR_NOT_SUPPORTED_PRODUCT_TYPE);
+    }
     GTEST_LOG_(INFO) << "CheckPermissionForSystem_001 end";
 }
 
@@ -307,7 +312,11 @@ HWTEST_F(AbilityAutoStartupServiceSecondTest, CheckPermissionForSystem_002, Test
     MyFlag::flag_ = 0;
     system::SetBoolParameter("", true);
     int32_t result = abilityAutoStartupService->CheckPermissionForSystem();
-    ASSERT_EQ(result, ERR_NOT_SYSTEM_APP);
+    if (AAFwk::AppUtils::GetInstance().IsProductAppbootSettingEnabled()) {
+        ASSERT_EQ(result, ERR_NOT_SYSTEM_APP);
+    } else {
+        ASSERT_EQ(result, ERR_NOT_SUPPORTED_PRODUCT_TYPE);
+    }
     GTEST_LOG_(INFO) << "CheckPermissionForSystem_002 end";
 }
 
@@ -325,7 +334,11 @@ HWTEST_F(AbilityAutoStartupServiceSecondTest, CheckPermissionForSystem_003, Test
     MyFlag::flag_ = 1;
     system::SetBoolParameter("", true);
     int32_t result = abilityAutoStartupService->CheckPermissionForSystem();
-    ASSERT_EQ(result, ERR_OK);
+    if (AAFwk::AppUtils::GetInstance().IsProductAppbootSettingEnabled()) {
+        ASSERT_EQ(result, ERR_OK);
+    } else {
+        ASSERT_EQ(result, ERR_NOT_SUPPORTED_PRODUCT_TYPE);
+    }
     GTEST_LOG_(INFO) << "CheckPermissionForSystem_003 end";
 }
 
@@ -609,7 +622,11 @@ HWTEST_F(AbilityAutoStartupServiceSecondTest, CheckPermissionForSelf_001, TestSi
     system::SetBoolParameter("", false);
     std::string bundleName = "";
     int32_t result = abilityAutoStartupService->CheckPermissionForSelf(bundleName);
-    ASSERT_EQ(result, ERR_NOT_SUPPORTED_PRODUCT_TYPE);
+    if (AAFwk::AppUtils::GetInstance().IsProductAppbootSettingEnabled()) {
+        ASSERT_EQ(result, ERR_OK);
+    } else {
+        ASSERT_EQ(result, ERR_NOT_SUPPORTED_PRODUCT_TYPE);
+    }
     GTEST_LOG_(INFO) << "CheckPermissionForSelf_001 end";
 }
 
@@ -627,7 +644,11 @@ HWTEST_F(AbilityAutoStartupServiceSecondTest, CheckPermissionForSelf_002, TestSi
     system::SetBoolParameter("const.product.appboot.setting.enabled", true);
     std::string bundleName = "com.example.test";
     int32_t result = abilityAutoStartupService->CheckPermissionForSelf(bundleName);
-    ASSERT_EQ(result, ERR_NOT_SELF_APPLICATION);
+    if (AAFwk::AppUtils::GetInstance().IsProductAppbootSettingEnabled()) {
+        ASSERT_EQ(result, ERR_NOT_SELF_APPLICATION);
+    } else {
+        ASSERT_EQ(result, ERR_NOT_SUPPORTED_PRODUCT_TYPE);
+    }
     GTEST_LOG_(INFO) << "CheckPermissionForSelf_002 end";
 }
 
