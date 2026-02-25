@@ -104,6 +104,9 @@ static bool ParseMapsLine(const char* line, size_t lineLen, OHOS::AbilityRuntime
     region->size = region->end - region->start;
     ptr = space + 1;
     ptr = SkipWhitespace(ptr);
+    if (strlen(ptr) < PERMS_LEN) {
+        return false;
+    }
     if (ptr[PERMS_INDEX_0] == '\0' || ptr[PERMS_INDEX_1] == '\0' ||
         ptr[PERMS_INDEX_2] == '\0' || ptr[PERMS_INDEX_3] == '\0') {
         return false;
