@@ -25,6 +25,7 @@
 #include <string>
 
 #include "hilog_tag_wrapper.h"
+#include "securec.h"
 
 namespace {
 typedef int (*VmaCallback)(const OHOS::AbilityRuntime::VmaUtil::VMARegion* region, void* userdata);
@@ -36,7 +37,6 @@ constexpr int PERMS_INDEX_1 = 1;
 constexpr int PERMS_INDEX_2 = 2;
 constexpr int PERMS_INDEX_3 = 3;
 constexpr int PERMS_LEN = 4;
-constexpr int PSS_PREFIX_LEN = 4;
 constexpr size_t LINE_BUFFER_SIZE = 1024;
 
 static constexpr uintptr_t HexToUintptr(const char* str, size_t len)
