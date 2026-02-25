@@ -334,7 +334,7 @@ void EtsAgentExtension::HandleAuthorize(sptr<IRemoteObject> hostProxy, const std
     AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);
 }
 
-ani_ref EtsAgentExtension::CallObjectMethod(const char *name, const char *signature, ...)
+void EtsAgentExtension::CallObjectMethod(const char *name, const char *signature, ...)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "CallObjectMethod: %{public}s", name);
     ani_status status = ANI_ERROR;
@@ -342,15 +342,15 @@ ani_ref EtsAgentExtension::CallObjectMethod(const char *name, const char *signat
     auto env = etsRuntime_.GetAniEnv();
     if (env == nullptr) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null env");
-        return nullptr;
+        return;
     }
     if ((status = env->Class_FindMethod(etsObj_->aniCls, name, signature, &method)) != ANI_OK) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "Class_FindMethod failed for %{public}s, status: %{public}d", name, status);
-        return nullptr;
+        return;
     }
     if (method == nullptr) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "method is null for %{public}s", name);
-        return nullptr;
+        return;
     }
     va_list args;
     va_start(args, signature);
@@ -358,7 +358,7 @@ ani_ref EtsAgentExtension::CallObjectMethod(const char *name, const char *signat
         TAG_LOGE(AAFwkTag::SER_ROUTER, "status : %{public}d", status);
     }
     va_end(args);
-    return nullptr;
+    return;
 }
 
 ani_object EtsAgentExtension::CreateETSContext(ani_env *env, std::shared_ptr<AgentExtensionContext> context)

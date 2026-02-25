@@ -106,7 +106,7 @@ public:
     int32_t OnAuthorize(const sptr<IRemoteObject> &hostProxy, const std::string &data);
 
 private:
-    ani_ref CallObjectMethod(const char *name, const char *signature, ...);
+    void CallObjectMethod(const char *name, const char *signature, ...);
 
     void BindContext(ani_env *env);
 
