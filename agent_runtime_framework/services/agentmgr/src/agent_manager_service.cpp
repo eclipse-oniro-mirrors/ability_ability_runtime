@@ -32,10 +32,6 @@
 
 namespace OHOS {
 namespace AgentRuntime {
-namespace {
-const int32_t AGENT_MGR_SERVICE_ID = 185;
-}
-
 std::mutex g_mutex;
 sptr<AgentManagerService> AgentManagerService::instance_ = nullptr;
 const bool REGISTER_RESULT = SystemAbility::MakeAndRegisterAbility(AgentManagerService::GetInstance());

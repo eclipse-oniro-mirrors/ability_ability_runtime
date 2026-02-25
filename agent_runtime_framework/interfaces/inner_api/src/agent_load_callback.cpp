@@ -21,10 +21,6 @@
 
 namespace OHOS {
 namespace AgentRuntime {
-namespace {
-const int32_t AGENT_MGR_SERVICE_ID = 185;
-}
-
 void AgentLoadCallback::OnLoadSystemAbilitySuccess(int32_t systemAbilityId, const sptr<IRemoteObject> &remoteObject)
 {
     if (systemAbilityId != AGENT_MGR_SERVICE_ID) {
