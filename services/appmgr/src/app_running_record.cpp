@@ -2184,7 +2184,8 @@ uint64_t AppRunningRecord::GetAppRunningUniqueId() const
     return appRunningUniqueId_;
 }
 
-uint64_t AppRunningRecord::GenerateRunningId() {
+uint64_t AppRunningRecord::GenerateRunningId()
+{
     thread_local std::mt19937_64 engine(std::random_device{}());
     thread_local std::uniform_int_distribution<uint64_t> dist;
     return dist(engine);
