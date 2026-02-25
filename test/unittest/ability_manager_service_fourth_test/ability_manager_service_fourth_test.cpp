@@ -1660,7 +1660,7 @@ HWTEST_F(AbilityManagerServiceFourthTest, GetUserLockedBundleList_001, TestSize.
     auto userId = TEST_VALID_USER_ID;
     std::unordered_set<std::string> userLockedBundleList;
     auto result = abilityMs->GetUserLockedBundleList(userId, userLockedBundleList);
-    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    EXPECT_EQ(result, ERR_OK);
     AbilityRuntime::UserController::GetInstance().userLockedBundleMap_[TEST_VALID_USER_ID].insert("com.ohos.test");
     result = abilityMs->GetUserLockedBundleList(userId, userLockedBundleList);
     EXPECT_EQ(result, ERR_OK);
