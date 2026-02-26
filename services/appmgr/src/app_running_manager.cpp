@@ -1955,7 +1955,7 @@ int32_t AppRunningManager::GetAppRunningUniqueIdByPid(pid_t pid, std::string &ap
         TAG_LOGE(AAFwkTag::APPMGR, "null appRecord");
         return ERR_INVALID_VALUE;
     }
-    appRunningUniqueId = std::to_string(appRecord->GetAppStartTime());
+    appRunningUniqueId = std::to_string(appRecord->GetAppRunningUniqueId());
     TAG_LOGD(AAFwkTag::APPMGR, "appRunningUniqueId = %{public}s.", appRunningUniqueId.c_str());
     return ERR_OK;
 }

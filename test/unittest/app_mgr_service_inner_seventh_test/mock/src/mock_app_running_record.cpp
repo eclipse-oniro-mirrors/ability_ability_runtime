@@ -834,6 +834,11 @@ int64_t AppRunningRecord::GetAppStartTime() const
     return startTimeMillis_;
 }
 
+uint64_t AppRunningRecord::GetAppRunningUniqueId() const
+{
+    return appRunningUniqueId_;
+}
+
 void AppRunningRecord::SetRequestProcCode(int32_t requestProcCode)
 {
     requestProcCode_ = requestProcCode;

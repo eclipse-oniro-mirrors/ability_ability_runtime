@@ -14,6 +14,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <set>
 
 #define private public
 #define protected public
@@ -1559,6 +1560,112 @@ HWTEST_F(AppRunningRecordTest, AppRunningRecord_ShouldSkipTimeout_0400, TestSize
     auto ret = appRecord->ShouldSkipTimeout();
     EXPECT_EQ(ret, false);
     TAG_LOGI(AAFwkTag::TEST, "AppRunningRecord_ShouldSkipTimeout_0400 end.");
+}
+
+/**
+ * @tc.name: AppRunningRecord_GetAppRunningUniqueId_0100
+ * @tc.desc: Test GetAppRunningUniqueId returns non-zero value.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningRecordTest, AppRunningRecord_GetAppRunningUniqueId_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppRunningRecord_GetAppRunningUniqueId_0100 start.");
+    std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
+    std::string processName;
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, RECORD_ID, processName);
+    ASSERT_NE(appRecord, nullptr);
+    
+    uint64_t uniqueId = appRecord->GetAppRunningUniqueId();
+    EXPECT_NE(uniqueId, 0);
+    TAG_LOGI(AAFwkTag::TEST, "AppRunningRecord_GetAppRunningUniqueId_0100 end.");
+}
+
+/**
+ * @tc.name: AppRunningRecord_GetAppRunningUniqueId_0200
+ * @tc.desc: Test GetAppRunningUniqueId returns consistent value.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningRecordTest, AppRunningRecord_GetAppRunningUniqueId_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppRunningRecord_GetAppRunningUniqueId_0200 start.");
+    std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
+    std::string processName;
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, RECORD_ID, processName);
+    ASSERT_NE(appRecord, nullptr);
+    
+    uint64_t firstCall = appRecord->GetAppRunningUniqueId();
+    uint64_t secondCall = appRecord->GetAppRunningUniqueId();
+    uint64_t thirdCall = appRecord->GetAppRunningUniqueId();
+    
+    EXPECT_EQ(firstCall, secondCall);
+    EXPECT_EQ(secondCall, thirdCall);
+    TAG_LOGI(AAFwkTag::TEST, "AppRunningRecord_GetAppRunningUniqueId_0200 end.");
+}
+
+/**
+ * @tc.name: AppRunningRecord_GenerateRunningUniqueId_Uniqueness_0100
+ * @tc.desc: Test generated unique IDs are unique.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningRecordTest, AppRunningRecord_GenerateRunningUniqueId_Uniqueness_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppRunningRecord_GenerateRunningUniqueId_Uniqueness_0100 start.");
+    std::set<uint64_t> uniqueIds;
+    const int iterationCount = 100;
+    
+    for (int i = 0; i < iterationCount; i++) {
+        std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
+        std::string processName;
+        auto appRecord = std::make_shared<AppRunningRecord>(appInfo, RECORD_ID, processName);
+        ASSERT_NE(appRecord, nullptr);
+        
+        uint64_t uniqueId = appRecord->GetAppRunningUniqueId();
+        uniqueIds.insert(uniqueId);
+    }
+    
+    EXPECT_EQ(uniqueIds.size(), iterationCount);
+    TAG_LOGI(AAFwkTag::TEST, "AppRunningRecord_GenerateRunningUniqueId_Uniqueness_0100 end.");
+}
+
+/**
+ * @tc.name: AppRunningRecord_GetAppStartTime_Unchanged_0100
+ * @tc.desc: Test GetAppStartTime still works correctly.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningRecordTest, AppRunningRecord_GetAppStartTime_Unchanged_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppRunningRecord_GetAppStartTime_Unchanged_0100 start.");
+    std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
+    std::string processName;
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, RECORD_ID, processName);
+    ASSERT_NE(appRecord, nullptr);
+    
+    int64_t startTime = appRecord->GetAppStartTime();
+    EXPECT_GT(startTime, 0);
+    TAG_LOGI(AAFwkTag::TEST, "AppRunningRecord_GetAppStartTime_Unchanged_0100 end.");
+}
+
+/**
+ * @tc.name: AppRunningRecord_UniqueId_DifferentFromStartTime_0100
+ * @tc.desc: Test unique ID is different from start time.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningRecordTest, AppRunningRecord_UniqueId_DifferentFromStartTime_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppRunningRecord_UniqueId_DifferentFromStartTime_0100 start.");
+    std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
+    std::string processName;
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, RECORD_ID, processName);
+    ASSERT_NE(appRecord, nullptr);
+    
+    uint64_t uniqueId = appRecord->GetAppRunningUniqueId();
+    int64_t startTime = appRecord->GetAppStartTime();
+    
+    // Verify uniqueId is not accidentally equal to startTime
+    // If uniqueId <= INT64_MAX and equals startTime, it indicates a problem with implementation
+    EXPECT_TRUE(uniqueId > static_cast<uint64_t>(std::numeric_limits<int64_t>::max()) ||
+                static_cast<int64_t>(uniqueId) != startTime);
+    TAG_LOGI(AAFwkTag::TEST, "AppRunningRecord_UniqueId_DifferentFromStartTime_0100 end.");
 }
 
 /**
