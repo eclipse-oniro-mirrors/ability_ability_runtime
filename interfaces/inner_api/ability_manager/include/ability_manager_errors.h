@@ -705,11 +705,6 @@ enum {
     ERR_NO_APP_RECORD = 2097304,
 
     /*
-     * Result(2097305) for extension starting ability controlled
-     */
-    ERR_EXTENSION_START_ABILITY_CONTROLEED = 2097305,
-
-    /*
      * Result (2097306) for get connectManager by userId failed.
      */
     CONNECT_MAMAGER_NOT_FIND_BY_USERID = 2097306,
@@ -738,15 +733,6 @@ enum {
      * Result (2097311) for get Local deviceId failed.
      */
     GET_LOCAL_DEVICE_ID_FAILED = 2097311,
-
-    /*
-    * Result (2097318 - 2097328) for login and logout user.
-    */
-    ERR_LOGOUT_USER_TASK_HANDLE_NULL = 2097318,
-
-    ERR_LOGOUT_USER_APP_MANAGER_NULL = 2097319,
-
-    ERR_LOGOUT_USER_KILL_PROCESS_TIMEOUT = 2097320,
 
     /**
      * Result (2097312) for interceptor executer is nullptr.
@@ -777,15 +763,32 @@ enum {
      * Result (2097317) for session info is nullptr.
      */
     ERR_NULL_SESSION_INFO = 2097317,
+
+    /**
+     * Result (2097305) for extension starting ability controlled
+     */
+    ERR_EXTENSION_START_ABILITY_CONTROLEED = 2097305,
+
+    /**
+     * Result (2097318 - 2097328) for login and logout user.
+     */
+    ERR_LOGOUT_USER_TASK_HANDLE_NULL = 2097318,
+
+    ERR_LOGOUT_USER_APP_MANAGER_NULL = 2097319,
+
+    ERR_LOGOUT_USER_KILL_PROCESS_TIMEOUT = 2097320,
+
     ERR_NOT_HOOK = 2097321,
     ERR_FROM_WINDOW = 2097322,
     ERR_INVALID_CONTEXT = 2097323,
+
     INTENT_NOT_EXIST = 2097329,
     INTENT_STATE_NOT_EXECUTING = 2097330,
 
     /**
      * Native error(2097331) for kill app while starting.
      */
+
     ERR_KILL_APP_WHILE_STARTING = 2097331,
     
     /**
@@ -876,39 +879,39 @@ enum {
     ERR_WRITE_KIOSK_STATUS_FAILED = 2097356,
 
     /**
-     * Result (2097355) for sa interceptor executer is nullptr.
+     * Result (2097357) for sa interceptor executer is nullptr.
      */
-    ERR_NULL_SA_INTERCEPTOR_EXECUTER = 2097355,
+    ERR_NULL_SA_INTERCEPTOR_EXECUTER = 2097357,
 
     /**
-     * Result (2097356) for sa interceptor write rule falied.
+     * Result (2097358) for sa interceptor write rule falied.
      */
-    ERR_SA_INTERCEPTOR_WRITE_RULE_FAILED = 2097356,
+    ERR_SA_INTERCEPTOR_WRITE_RULE_FAILED = 2097358,
 
     /**
-     * Result (2097357) for sa interceptor descriptor mismatch.
+     * Result (2097359) for sa interceptor descriptor mismatch.
      */
-    ERR_SA_INTERCEPTOR_DESCRIPTOR_MISMATCH = 2097357,
+    ERR_SA_INTERCEPTOR_DESCRIPTOR_MISMATCH = 2097359,
 
     /**
-     * Result (2097358) for sa interceptor write ipc params failed.
+     * Result (2097360) for sa interceptor write ipc params failed.
      */
-    ERR_SA_INTERCEPTOR_WRITE_PARAMS_FAILED = 2097358,
+    ERR_SA_INTERCEPTOR_WRITE_PARAMS_FAILED = 2097360,
 
     /*
-     * Result(2097359) for ipc remote null.
+     * Result(2097361) for ipc remote null.
      */
-    ERR_NULL_IPC_REMOTE = 2097359,
+    ERR_NULL_IPC_REMOTE = 2097361,
 
     /*
-     * Result(2097360) for ipc send request failed.
+     * Result(2097362) for ipc send request failed.
      */
-    ERR_NULL_IPC_SEND_REQUST_FAILED = 2097360,
+    ERR_NULL_IPC_SEND_REQUST_FAILED = 2097362,
 
     /*
-     * Result(2097361) for sa interceptor read ipc params failed.
+     * Result(2097363) for sa interceptor read ipc params failed.
      */
-    ERR_SA_INTERCEPTOR_READ_PARAMS_FAILED = 2097361,
+    ERR_SA_INTERCEPTOR_READ_PARAMS_FAILED = 2097363,
 
     /*
      * Result(2097364) Current process is not running a component configured with "isolationProcess".
