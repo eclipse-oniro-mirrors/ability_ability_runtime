@@ -27,7 +27,7 @@
 namespace OHOS {
 namespace AbilityRuntime {
 
-constexpr double DPI_BASE = 160.0;  // convert density to the base of dpi
+constexpr double DPI_BASE = 160.0;
 
 Global::Resource::ColorMode ConvertColorMode(const std::string &colormode);
 Global::Resource::Direction ConvertDirection(const std::string &direction);
