@@ -890,8 +890,8 @@ public:
     bool IsMemorySizeSufficient() const;
 
     /**
-     * whether or not requier a big memory
-     * @return Returens true is no big memory, others return false.
+     * whether or not require a big memory
+     * @return Return true if no big memory required, otherwise return false.
      */
     bool IsNoRequireBigMemory() const;
 

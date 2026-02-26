@@ -111,7 +111,6 @@ public:
      *
      * @param userId, the user id.
      * @param isNeedSendAppSpawnMsg, true send appSpawn message otherwise not send.
-     * @param callback, callback function for logout user.
      * @return
      */
     virtual void KillProcessesByUserId(int32_t userId, bool isNeedSendAppSpawnMsg = false,

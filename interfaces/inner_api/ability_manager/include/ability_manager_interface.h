@@ -2366,18 +2366,6 @@ public:
     }
 
     /**
-     * StartAbilityWithWait, send want and abilityStartWithWaitObserver to abms.
-     *
-     * @param want Ability want.
-     * @param observer ability foreground notify observer for aa tool.
-     * @return Returns ERR_OK on success, others on failure.
-     */
-    virtual int32_t StartAbilityWithWait(Want &want, sptr<IAbilityStartWithWaitObserver> &observer)
-    {
-        return 0;
-    }
-
-    /**
      * Get all insight intent infos.
      * @param flag, the get type.
      * @param infos, the insight intent infos.
@@ -2427,7 +2415,40 @@ public:
         return 0;
     }
 
+    /**
+     * StartAbilityWithWait, send want and abilityStartWithWaitObserver to abms.
+     *
+     * @param want Ability want.
+     * @param observer ability foreground notify observer for aa tool.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t StartAbilityWithWait(Want &want, sptr<IAbilityStartWithWaitObserver> &observer)
+    {
+        return 0;
+    }
+
+    /**
+     * Set keep-alive flag for app service extension under u1 user.
+     * @param bundleName Bundle name.
+     * @param flag Keep-alive flag.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t SetAppServiceExtensionKeepAlive(const std::string &bundleName, bool flag)
+    {
+        return 0;
+    }
+
     virtual int32_t UpdateKioskApplicationList(const std::vector<std::string> &appList)
+    {
+        return 0;
+    }
+
+    /**
+     * Get keep-alive app service extensions.
+     * @param list List of Keep-alive information.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t QueryKeepAliveAppServiceExtensions(std::vector<KeepAliveInfo> &list)
     {
         return 0;
     }
@@ -2453,27 +2474,6 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int32_t RegisterSAInterceptor(sptr<AbilityRuntime::ISAInterceptor> interceptor)
-    {
-        return 0;
-    }
-
-    /**
-     * Set keep-alive flag for app service extension under u1 user.
-     * @param bundleName Bundle name.
-     * @param flag Keep-alive flag.
-     * @return Returns ERR_OK on success, others on failure.
-     */
-    virtual int32_t SetAppServiceExtensionKeepAlive(const std::string &bundleName, bool flag)
-    {
-        return 0;
-    }
-
-    /**
-     * Get keep-alive app service extensions.
-     * @param list List of Keep-alive information.
-     * @return Returns ERR_OK on success, others on failure.
-     */
-    virtual int32_t QueryKeepAliveAppServiceExtensions(std::vector<KeepAliveInfo> &list)
     {
         return 0;
     }
