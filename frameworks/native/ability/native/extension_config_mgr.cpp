@@ -31,6 +31,10 @@ namespace {
 void ExtensionConfigMgr::LoadExtensionBlockList(const std::string &extensionName, int32_t type)
 {
     extensionType_ = type;
+    if (hasUpdatedChecker_) {
+        TAG_LOGD(AAFwkTag::EXT, "extensionType: %{public}d has updated", extensionType_);
+        return;
+    }
     {
         std::lock_guard<std::mutex> lock(extensionBlockListMutex_);
         auto iter = extensionBlocklist_.find(extensionType_);
@@ -95,9 +99,12 @@ void ExtensionConfigMgr::UpdateRuntimeModuleChecker(const std::unique_ptr<Abilit
     }
 
     std::unordered_map<int32_t, std::unordered_set<std::string>> localBlocklist;
-    {
-        std::lock_guard<std::mutex> lock(extensionBlockListMutex_);
-        localBlocklist = extensionBlocklist_;
+    if (!hasUpdatedChecker_) {
+        {
+            std::lock_guard<std::mutex> lock(extensionBlockListMutex_);
+            localBlocklist = extensionBlocklist_;
+        }
+        hasUpdatedChecker_ = true;
     }
 
     auto moduleChecker = std::make_shared<AppModuleChecker>(extensionType_, localBlocklist);
