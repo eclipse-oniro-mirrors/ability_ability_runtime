@@ -19,6 +19,7 @@
 
 namespace OHOS {
 bool AgentRuntime::MyFlag::retRegisterBundleEventCallback = false;
+bool AgentRuntime::MyFlag::retGetApplicationInfo = false;
 bool AgentRuntime::MyFlag::isRegisterBundleEventCallbackCalled = false;
 
 namespace AppExecFwk {
@@ -32,6 +33,12 @@ bool BundleMgrHelper::RegisterBundleEventCallback(const sptr<IBundleEventCallbac
 {
     AgentRuntime::MyFlag::isRegisterBundleEventCallbackCalled = true;
     return AgentRuntime::MyFlag::retRegisterBundleEventCallback;
+}
+
+bool BundleMgrHelper::GetApplicationInfo(const std::string &appName, const ApplicationFlag flag, const int32_t userId,
+    ApplicationInfo &appInfo)
+{
+    return AgentRuntime::MyFlag::retGetApplicationInfo;
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

@@ -120,10 +120,21 @@ int32_t AgentCardMgr::GetAgentCardByAgentId(const std::string &bundleName, const
 {
     std::vector<AgentCard> cards;
     int32_t resultCode = GetAgentCardsByBundleName(bundleName, cards);
+    if (resultCode != ERR_OK) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "failed: %{public}d", resultCode);
+        return resultCode;
+    }
+    bool found = false;
     for (const AgentCard &agentCard : cards) {
         if (agentCard.agentId == agentId) {
             card = agentCard;
+            found = true;
+            break;
         }
+    }
+    if (!found) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "not found");
+        return ERR_NAME_NOT_FOUND;
     }
     return resultCode;
 }

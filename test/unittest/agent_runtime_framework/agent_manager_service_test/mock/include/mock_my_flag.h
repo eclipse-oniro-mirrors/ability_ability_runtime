@@ -26,11 +26,15 @@ public:
     static sptr<IRemoteObject> systemAbility;
     static bool retPublish;
     static bool retRegisterBundleEventCallback;
+    static bool retGetApplicationInfo;
     static bool isRegisterBundleEventCallbackCalled;
     static bool isAddSystemAbilityListenerCalled;
     static bool retVerifyCallingPermission;
     static int32_t retConnectAbilityWithExtensionType;
     static int32_t retDisconnectAbility;
+    static int32_t retGetAllAgentCards;
+    static int32_t retGetAgentCardsByBundleName;
+    static int32_t retGetAgentCardByAgentId;
 };
 }  // namespace AgentRuntime
 }  // namespace OHOS

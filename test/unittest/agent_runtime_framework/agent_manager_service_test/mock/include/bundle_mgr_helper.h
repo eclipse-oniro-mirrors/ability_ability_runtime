@@ -31,6 +31,9 @@ public:
 
     bool RegisterBundleEventCallback(const sptr<IBundleEventCallback> &bundleEventCallback);
 
+    bool GetApplicationInfo(const std::string &appName, const ApplicationFlag flag, const int32_t userId,
+        ApplicationInfo &appInfo);
+
 private:
     DECLARE_DELAYED_SINGLETON(BundleMgrHelper)
 };
