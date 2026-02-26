@@ -107,6 +107,7 @@ private:
     std::unique_ptr<AppExecFwk::ETSNativeReference> LoadEtsModule(const std::string &moduleName,
         const std::string &fileName, const std::string &hapPath, const std::string &srcEntrance);
     bool PostFork(const Options &options, std::unique_ptr<Runtime> &jsRuntime, bool isMove = true);
+    std::string GetAotPath(const Options &options);
     std::string HandleOhmUrlSrcEntry(const std::string &srcEntry);
     void HandleOhmUrlFileName(std::string &fileName);
     static void PreloadLibrary();

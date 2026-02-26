@@ -1801,7 +1801,8 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
             }
         }
         for (const auto &hsp : hspList) {
-            options.commonHspBundleInfos.push_back({hsp.bundleName, hsp.moduleName, hsp.hapPath, hsp.moduleArkTSMode});
+            options.commonHspBundleInfos.push_back({hsp.versionCode, hsp.bundleName, hsp.moduleName,
+                                                    hsp.hapPath, hsp.moduleArkTSMode});
         }
         options.enableWarmStartupSmartGC =
             (appLaunchData.GetAppPreloadMode() == AppExecFwk::PreloadMode::PRE_MAKE ||

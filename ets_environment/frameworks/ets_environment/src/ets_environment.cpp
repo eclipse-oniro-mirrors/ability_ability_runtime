@@ -626,7 +626,7 @@ bool ETSEnvironment::PostFork(void *napiEnv, const std::string &aotPath,
     std::vector<ani_option> options;
     std::string aotPathString = "";
     if (!aotPath.empty()) {
-        aotPathString = "--ext:--aot-file=" + aotPath;
+        aotPathString = "--ext:--aot-files=" + aotPath;
         options.push_back(ani_option { aotPathString.data(), nullptr });
         options.push_back(ani_option { "--ext:--enable-an", nullptr });
         TAG_LOGD(AAFwkTag::ETSRUNTIME, "aotPathString: %{public}s", aotPathString.c_str());
