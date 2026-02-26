@@ -13,22 +13,7 @@
  * limitations under the License.
  */
 
-/**
- * @file
- * @kit AbilityKit
- */
 import UIExtensionAbility from '@ohos.app.ability.UIExtensionAbility';
 
-/**
- * The class of agent UI extension ability.
- *
- * @extends AgentUIExtensionAbility
- * @syscap SystemCapability.Ability.AgentRuntime.Core
- * @stagemodelonly
- * @atomicservice
- * @since 24 dynamic&static
- */
-declare class AgentUIExtensionAbility extends UIExtensionAbility {
+export default class AgentUIExtensionAbility extends UIExtensionAbility {
 }
-
-export default AgentUIExtensionAbility;

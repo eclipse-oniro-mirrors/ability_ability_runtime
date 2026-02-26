@@ -15,9 +15,9 @@
 
 #include "ets_agent_ui_extension.h"
 
+#include "ets_ui_extension_base.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
-#include "ets_ui_extension_base.h"
 
 #ifdef WINDOWS_PLATFORM
 #define ETS_EXPORT __declspec(dllexport)

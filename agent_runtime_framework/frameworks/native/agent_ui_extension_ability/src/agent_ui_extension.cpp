@@ -18,9 +18,9 @@
 #include <dlfcn.h>
 #include <mutex>
 
+#include "ets_agent_ui_extension.h"
 #include "hilog_tag_wrapper.h"
 #include "js_agent_ui_extension.h"
-#include "ets_agent_ui_extension.h"
 #include "runtime.h"
 #include "ui_extension_context.h"
 

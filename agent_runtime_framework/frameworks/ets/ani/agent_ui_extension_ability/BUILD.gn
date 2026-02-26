@@ -11,7 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("//build/config/components/ets_frontend/ets2abc_config.gni")
 import("//build/ohos.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
@@ -25,18 +24,18 @@ ohos_shared_library("agent_ui_extension_ani") {
   }
   include_dirs = [
     "./include",
-    "${agent_runtime_framework_path}/frameworks/ets/ani/agent_ui_extension_ability/include",
+    "${ability_runtime_path}/frameworks/ets/ani/ani_common/include",
     "${ability_runtime_path}/frameworks/ets/ani/ui_extension_ability/include",
     "${ability_runtime_path}/frameworks/ets/ani/ui_extension_base/include",
+    "${ability_runtime_path}/interfaces/kits/native/ability/ability_runtime",
     "${ability_runtime_path}/interfaces/kits/native/ability/native",
-    "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_extension_ability",
-    "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_extension_base",
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ability_business_error",
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ability_runtime",
-    "${ability_runtime_path}/interfaces/kits/native/ability/ability_runtime",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_extension_ability",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_extension_base",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_runtime",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_runtime/context",
-    "${ability_runtime_path}/frameworks/ets/ani/ani_common/include",
+    "${agent_runtime_framework_path}/frameworks/ets/ani/agent_ui_extension_ability/include",
     "${agent_runtime_framework_path}/frameworks/native/agent_ui_extension_ability/include",
   ]
 
@@ -52,9 +51,6 @@ ohos_shared_library("agent_ui_extension_ani") {
   }
 
   deps = [
-    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
-    "${ability_runtime_innerkits_path}/ability_manager:ability_start_options",
-    "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_native_path}/ability:ability_context_native",
     "${ability_runtime_native_path}/ability/native:ability_business_error",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
