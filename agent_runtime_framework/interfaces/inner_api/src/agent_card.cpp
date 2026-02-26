@@ -325,7 +325,7 @@ bool AgentSkill::FromJson(const nlohmann::json &jsonObject, AgentSkill &skill)
                 continue;
             }
             std::string inputModeStr = element.get<std::string>();
-            if (inputModeStr.length() <= LENGTH_64 && inputModeStr.length() > 0) {
+            if (inputModeStr.length() <= LENGTH_32 && inputModeStr.length() > 0) {
                 skill.inputModes.push_back(inputModeStr);
             }
         }
@@ -336,7 +336,7 @@ bool AgentSkill::FromJson(const nlohmann::json &jsonObject, AgentSkill &skill)
                 continue;
             }
             std::string outputModeStr = element.get<std::string>();
-            if (outputModeStr.length() <= LENGTH_64 && outputModeStr.length() > 0) {
+            if (outputModeStr.length() <= LENGTH_32 && outputModeStr.length() > 0) {
                 skill.outputModes.push_back(outputModeStr);
             }
         }
