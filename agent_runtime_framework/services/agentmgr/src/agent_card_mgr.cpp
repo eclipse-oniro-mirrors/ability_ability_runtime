@@ -54,7 +54,7 @@ int32_t AgentCardMgr::HandleBundleInstall(const std::string &bundleName, int32_t
         TAG_LOGE(AAFwkTag::SER_ROUTER, "Get Bundle Info fail");
         return -1;
     }
-    std::vector<AgentCard> cards;
+    std::map<std::string, AgentCard> cards;
     for (auto const &extensionInfo : bundleInfo.extensionInfos) {
         if (extensionInfo.type != ExtensionAbilityType::AGENT) {
             continue;
@@ -81,11 +81,15 @@ int32_t AgentCardMgr::HandleBundleInstall(const std::string &bundleName, int32_t
                 card.appInfo->bundleName = bundleName;
                 card.appInfo->moduleName = extensionInfo.moduleName;
                 card.appInfo->abilityName = extensionInfo.name;
-                cards.push_back(card);
+                cards[card.agentId] = card;
             }
         }
     }
-    return AgentCardDbMgr::GetInstance().InsertData(bundleName, userId, cards);
+    std::vector<AgentCard> cardVec;
+    for (const auto& [key, value] : cards) {
+        cardVec.push_back(value);
+    }
+    return AgentCardDbMgr::GetInstance().InsertData(bundleName, userId, cardVec);
 }
 
 int32_t AgentCardMgr::HandleBundleUpdate(const std::string &bundleName, int32_t userId)

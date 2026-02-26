@@ -80,7 +80,7 @@ struct AgentAppInfo : public Parcelable {
     std::string bundleName;
     std::string moduleName;
     std::string abilityName;
-    std::string deviceTypes;
+    std::vector<std::string> deviceTypes;
     std::string minAppVersion;
     bool ReadFromParcel(Parcel &parcel);
     virtual bool Marshalling(Parcel &parcel) const override;

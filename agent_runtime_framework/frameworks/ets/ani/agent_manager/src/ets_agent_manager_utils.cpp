@@ -169,12 +169,9 @@ ani_object CreateEtsAgentAppInfo(ani_env *env, const AgentAppInfo &appInfo)
             return nullptr;
         }
     }
-    if (!appInfo.deviceTypes.empty()) {
-        status = env->Object_SetPropertyByName_Ref(object, "deviceTypes", GetAniString(env, appInfo.deviceTypes));
-        if (status != ANI_OK) {
-            TAG_LOGE(AAFwkTag::SER_ROUTER, "set deviceTypes failed: %{public}d", status);
-            return nullptr;
-        }
+    if (appInfo.deviceTypes.size() > 0 && !SetStringArrayProperty(env, object, "deviceTypes", appInfo.deviceTypes)) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "set deviceTypes failed");
+        return nullptr;
     }
     if (!appInfo.minAppVersion.empty()) {
         status = env->Object_SetPropertyByName_Ref(object, "minAppVersion", GetAniString(env, appInfo.minAppVersion));

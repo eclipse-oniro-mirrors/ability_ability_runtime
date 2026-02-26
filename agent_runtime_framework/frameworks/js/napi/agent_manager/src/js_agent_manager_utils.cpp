@@ -58,7 +58,7 @@ napi_value CreateJsAgentAppInfo(napi_env env, const AgentAppInfo &appInfo)
         napi_set_named_property(env, object, "abilityName", CreateJsValue(env, appInfo.abilityName));
     }
     if (!appInfo.deviceTypes.empty()) {
-        napi_set_named_property(env, object, "deviceTypes", CreateJsValue(env, appInfo.deviceTypes));
+        napi_set_named_property(env, object, "deviceTypes", CreateNativeArray(env, appInfo.deviceTypes));
     }
     if (!appInfo.minAppVersion.empty()) {
         napi_set_named_property(env, object, "minAppVersion", CreateJsValue(env, appInfo.minAppVersion));
