@@ -75,6 +75,10 @@ ohos_shared_library("napi_ability_common") {
       "SUPPORT_GRAPHICS",
       "SUPPORT_SCREEN",
     ]
+    external_deps += [
+      "form_fwk:form_render_info",
+      "form_fwk:form_common_info",
+    ]
     public_external_deps += [
       "form_fwk:fmskit_provider_client",
       "form_fwk:form_manager",

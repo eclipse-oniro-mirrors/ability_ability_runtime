@@ -25,7 +25,11 @@ ohos_shared_library("napi_base_context") {
 
   public_configs = [ ":napi_context_base_public_config" ]
 
-  external_deps = [ "napi:ace_napi" ]
+  external_deps = [
+    "napi:ace_napi",
+    "form_fwk:form_render_info",
+    "form_fwk:form_common_info",
+  ]
 
   public_external_deps = [
     "form_fwk:form_manager",
