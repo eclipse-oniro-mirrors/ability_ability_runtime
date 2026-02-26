@@ -79,7 +79,7 @@ ani_object CreateEtsAgentExtensionContext(ani_env *env, std::shared_ptr<AgentExt
     ani_method method = nullptr;
     ani_object contextObj = nullptr;
 
-    if ((env->FindClass(CONTEXT_CLASS_NAME, &cls)) != ANI_OK || cls == nullptr) {
+    if ((status = env->FindClass(CONTEXT_CLASS_NAME, &cls)) != ANI_OK || cls == nullptr) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "Failed to find class, status : %{public}d", status);
         return nullptr;
     }
@@ -89,21 +89,24 @@ ani_object CreateEtsAgentExtensionContext(ani_env *env, std::shared_ptr<AgentExt
         return nullptr;
     }
 
-    std::unique_ptr<EtsAgentExtensionContext> workContext =
+    std::unique_ptr<EtsAgentExtensionContext> etsContext =
         std::make_unique<EtsAgentExtensionContext>(context);
-    if (workContext == nullptr) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "Failed to create etsAgentExtensionContext");
-        return nullptr;
-    }
 
     if ((status = env->Object_New(cls, method, &contextObj,
-        (ani_long)workContext.release())) != ANI_OK || contextObj == nullptr) {
+        (ani_long)etsContext.release())) != ANI_OK || contextObj == nullptr) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "Failed to create object, status : %{public}d", status);
         return nullptr;
     }
 
-    if (!ContextUtil::SetNativeContextLong(env, contextObj, (ani_long)(context.get()))) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "Failed to SetNativeContextLong");
+    auto workContext = new (std::nothrow)std::weak_ptr<AgentExtensionContext>(context);
+    if (workContext == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null workContext");
+        return nullptr;
+    }
+
+    if (!ContextUtil::SetNativeContextLong(env, contextObj, (ani_long)(workContext))) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "Failed to SetNativeContextLong");
+        delete workContext;
         return nullptr;
     }
 
