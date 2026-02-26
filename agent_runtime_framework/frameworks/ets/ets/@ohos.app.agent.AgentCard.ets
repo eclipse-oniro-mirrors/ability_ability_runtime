@@ -27,7 +27,7 @@ export interface AgentAppInfo {
   bundleName?: string;
   moduleName?: string;
   abilityName?: string;
-  deviceTypes?: string;
+  deviceTypes?: Array<string>;
   minAppVersion?: string;
 }
 
@@ -35,7 +35,7 @@ class AgentAppInfoImpl implements AgentAppInfo {
   public bundleName?: string;
   public moduleName?: string;
   public abilityName?: string;
-  public deviceTypes?: string;
+  public deviceTypes?: Array<string>;
   public minAppVersion?: string;
 }
 
