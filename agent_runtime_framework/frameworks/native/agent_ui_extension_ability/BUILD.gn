@@ -102,6 +102,7 @@ ohos_shared_library("agent_ui_extension") {
   include_dirs = [
     "include",
     "${agent_runtime_framework_path}/frameworks/js/napi/agent_ui_extension_ability/include",
+    "${agent_runtime_framework_path}/frameworks/ets/ani/agent_ui_extension_ability/include",
   ]
 
   sources = [
