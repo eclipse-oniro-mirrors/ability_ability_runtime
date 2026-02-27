@@ -16,8 +16,13 @@
 
 #include "ability_info.h"
 #include "extension_ability_info.h"
+#include "mock_my_flag.h"
 
 namespace OHOS {
+bool AgentRuntime::MyFlag::retGetBundleInfo = true;
+bool AgentRuntime::MyFlag::retGetResConfigFile = true;
+bool AgentRuntime::MyFlag::retFromJson = true;
+
 namespace AppExecFwk {
 BundleMgrClient::BundleMgrClient() {}
 
@@ -26,16 +31,13 @@ BundleMgrClient::~BundleMgrClient() {}
 bool BundleMgrClient::GetBundleInfo(const std::string &bundleName, const BundleFlag flag, BundleInfo &bundleInfo,
     int32_t userId)
 {
-    if (bundleName == "test") {
-        return false;
-    }
-    return true;
+    return AgentRuntime::MyFlag::retGetBundleInfo;
 }
 
 bool BundleMgrClient::GetResConfigFile(const ExtensionAbilityInfo &extensionInfo, const std::string &metadataName,
     std::vector<std::string> &profileInfos, bool includeSysRes) const
 {
-    return true;
+    return AgentRuntime::MyFlag::retGetResConfigFile;
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

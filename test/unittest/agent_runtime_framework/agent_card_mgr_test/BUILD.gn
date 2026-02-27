@@ -28,7 +28,8 @@ ohos_unittest("agent_card_mgr_test") {
   sources = [
     "agent_card_mgr_test.cpp",
     "mock/src/bundle_mgr_client.cpp",
-    "${agent_runtime_framework_path}/services/agentmgr/src/agent_card_db_mgr.cpp",
+    "mock/src/mock_agent_card_db_mgr.cpp",
+    "mock/src/mock_agent_card.cpp",
     "${agent_runtime_framework_path}/services/agentmgr/src/agent_card_mgr.cpp",
   ]
 
@@ -40,9 +41,7 @@ ohos_unittest("agent_card_mgr_test") {
     "${agent_runtime_framework_path}/services/agentmgr/include",
   ]
 
-  deps = [
-    "${agent_runtime_framework_path}/interfaces/inner_api:agent_fwk",
-  ]
+  deps = []
 
   external_deps = [
     "bundle_framework:appexecfwk_base",
