@@ -689,6 +689,7 @@ void EtsUIAbility::OnStop(AppExecFwk::AbilityTransactionCallbackInfo<> *callback
         TAG_LOGE(AAFwkTag::UIABILITY, "Object_SetFieldByName_Long status: %{public}d", status);
         return;
     }
+    WriteLifecycleSwitchLog("onDestroy");
     isAsyncCallback = CallObjectMethod(true, "callOnDestroy", ":z");
     TAG_LOGD(AAFwkTag::UIABILITY, "callOnDestroy isAsyncCallback: %{public}d", isAsyncCallback);
     if (!isAsyncCallback) {
