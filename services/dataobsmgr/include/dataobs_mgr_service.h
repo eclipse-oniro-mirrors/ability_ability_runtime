@@ -107,7 +107,7 @@ private:
     static bool IsCallingPermissionValid(DataObsOption &opt, int32_t userId, int32_t callingUserId);
     static bool IsCallingPermissionValid(DataObsOption &opt);
     static bool IsDataMgrService(uint32_t tokenId, int32_t uid);
-    static void ReportSystemPermissionCheckResult(uint32_t callerTokenId, uint64_t fullTokenId,
+    static bool IsSystemAppWithAllowedProvider(uint32_t callerTokenId, uint64_t fullTokenId,
         const std::string &callingFunc, const Uri &uri, bool isExtension);
     int32_t RegisterObserverInner(const Uri &uri, sptr<IDataAbilityObserver> dataObserver, int32_t userId,
         DataObsOption opt, bool isExtension);

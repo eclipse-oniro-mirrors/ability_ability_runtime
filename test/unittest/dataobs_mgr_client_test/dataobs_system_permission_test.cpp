@@ -18,6 +18,7 @@
 #include "common_utils.h"
 #include "dataobs_mgr_proxy.h"
 #include "dataobs_mgr_client.h"
+#include "dataobs_mgr_errors.h"
 #include "datashare_errno.h"
 #include "data_ability_observer_stub.h"
 #include "hap_token_info.h"
@@ -136,11 +137,12 @@ HapPolicyParams GetNormalPolicy()
 
 /**
  * @tc.name: RegisterObserverSystemPermissionTest_0100
- * @tc.desc: Test RegisterObserver with normal permission
+ * @tc.desc: Test RegisterObserver with system permission where uri is in allowlist
  * @tc.type: FUNC
  * @tc.require:
  * @tc.precon:
-    1. process is equivalent to a normal app
+    1. process is equivalent to system ability
+    2. uri is in allowlist
  * @tc.step:
     1. Define a test Uri and an observer
     2. Get a DataObsMgrClient instance
@@ -168,12 +170,47 @@ HWTEST_F(DataObsSystemPermissionTest, RegisterObserverSystemPermissionTest_0100,
 }
 
 /**
+ * @tc.name: RegisterObserverSystemPermissionTest_0200
+ * @tc.desc: Test RegisterObserver with system permission and uri not in allowlist
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.precon:
+    1. process is equivalent to a system ability
+    2. uri is not in allowlist
+ * @tc.step:
+    1. Define a test Uri and an observer
+    2. Get a DataObsMgrClient instance
+    3. Call RegisterObserver using DataObsMgrClient
+ * @tc.expect:
+    1. RegisterObserver return E_NOT_SYSTEM_APP
+ */
+HWTEST_F(DataObsSystemPermissionTest, RegisterObserverSystemPermissionTest_0200, TestSize.Level0)
+{
+    TAG_LOGI(AAFwkTag::DBOBSMGR, "RegisterObserverSystemPermissionTest_0200 start");
+
+    auto obsMgrClient = OHOS::AAFwk::DataObsMgrClient::GetInstance();
+    EXPECT_NE(obsMgrClient, nullptr);
+
+    sptr dataObserver = sptr(new (std::nothrow) MyDataAbilityObserver());
+    EXPECT_NE(dataObserver, nullptr);
+
+    Uri uri = Uri("datashare:///com.ohos.globalparamsability");
+    // obsOption(false, true) means not from datashare arkts kit, and calling path is from datashare
+    ErrCode ret = obsMgrClient->RegisterObserver(Uri(uri), dataObserver,
+        DataObsManagerProxy::DATAOBS_DEFAULT_CURRENT_USER, AAFwk::DataObsOption(false, true));
+    EXPECT_EQ(ret, DATAOBS_PERMISSION_DENY);
+
+    TAG_LOGI(AAFwkTag::DBOBSMGR, "RegisterObserverSystemPermissionTest_0200 end");
+}
+
+/**
  * @tc.name: RegisterObserverExtSystemPermissionTest_0100
- * @tc.desc: Test RegisterObserverExt with system permission
+ * @tc.desc: Test RegisterObserverExt with system permission with uri in allowlist
  * @tc.type: FUNC
  * @tc.require:
  * @tc.precon:
     1. process is equivalent to a system app
+    2. uri in allowlist
  * @tc.step:
     1. Define a test Uri and an observer
     2. Get a DataObsMgrClient instance
@@ -222,11 +259,12 @@ HWTEST_F(DataObsSystemPermissionTest, RegisterObserverExtSystemPermissionTest_01
 
 /**
  * @tc.name: RegisterObserverExtSystemPermissionTest_0200
- * @tc.desc: Test RegisterObserverExt with normal permission
+ * @tc.desc: Test RegisterObserverExt with normal permission with uri in allowlist
  * @tc.type: FUNC
  * @tc.require:
  * @tc.precon:
     1. process is equivalent to a normal app
+    2. uri is in allowlist
  * @tc.step:
     1. Define a test Uri and an observer
     2. Get a DataObsMgrClient instance
@@ -273,6 +311,60 @@ HWTEST_F(DataObsSystemPermissionTest, RegisterObserverExtSystemPermissionTest_02
     TAG_LOGI(AAFwkTag::DBOBSMGR, "RegisterObserverExtSystemPermissionTest_0200 end");
 }
 
+/**
+ * @tc.name: RegisterObserverExtSystemPermissionTest_0300
+ * @tc.desc: Test RegisterObserverExt with normal permission while uri not in allowlist
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.precon:
+    1. process is equivalent to a normal app
+    2. uri not in allowlist
+ * @tc.step:
+    1. Define a test Uri and an observer
+    2. Get a DataObsMgrClient instance
+    3. Call RegisterObserverExt using DataObsMgrClient
+ * @tc.expect:
+    1. RegisterObserverExt return E_OK
+ */
+HWTEST_F(DataObsSystemPermissionTest, RegisterObserverExtSystemPermissionTest_0300, TestSize.Level0)
+{
+    TAG_LOGI(AAFwkTag::DBOBSMGR, "RegisterObserverExtSystemPermissionTest_0300 start");
+    // mock normal app
+    MockToken::SetTestEnvironment();
+
+    HapInfoParams info = {
+        .userID = 100,
+        .bundleName = "ohos.datashareclienttest.demo",
+        .instIndex = 0,
+        .isSystemApp = false,
+        .appIDDesc = "ohos.datashareclienttest.demo"
+    };
+    auto policy = GetNormalPolicy();
+    AccessTokenIDEx tokenIdEx = MockToken::AllocTestHapToken(info, policy);
+    uint64_t token = tokenIdEx.tokenIdExStruct.tokenID;
+    EXPECT_NE(token, INVALID_TOKENID);
+    auto originalToken = GetSelfTokenID();
+    int setRet = SetSelfTokenID(token);
+    EXPECT_EQ(setRet, DataShare::E_OK);
+
+    auto obsMgrClient = OHOS::AAFwk::DataObsMgrClient::GetInstance();
+    EXPECT_NE(obsMgrClient, nullptr);
+
+    sptr dataObserver = sptr(new (std::nothrow) MyDataAbilityObserver());
+    EXPECT_NE(dataObserver, nullptr);
+
+    // obsOption(false, true) means not from datashare arkts kit, and calling path is from datashare
+    bool isDescendants = true;
+    // use telephony uri as test sample
+    Uri uri = Uri("datashare:///com.ohos.globalparamsability");
+    ErrCode ret = obsMgrClient->RegisterObserverExt(uri, dataObserver, isDescendants,
+        AAFwk::DataObsOption(false, true));
+    EXPECT_EQ(ret, DATAOBS_NOT_SYSTEM_APP);
+    SetSelfTokenID(originalToken);
+    MockToken::ResetTestEnvironment();
+
+    TAG_LOGI(AAFwkTag::DBOBSMGR, "RegisterObserverExtSystemPermissionTest_0300 end");
+}
 
 /**
  * @tc.name: NotifyChangeSystemPermissionTest_0100
@@ -420,8 +512,7 @@ HWTEST_F(DataObsSystemPermissionTest, NotifyChangeExtSystemPermissionTest_0100, 
     EXPECT_NE(dataObserver, nullptr);
 
     Uri uri = Uri("datashare:///com.ohos.contactsdataability");
-    bool isDescendants = true;
-    ErrCode ret = obsMgrClient->RegisterObserverExt(uri, dataObserver, isDescendants,
+    ErrCode ret = obsMgrClient->NotifyChangeExt({ ChangeInfo::ChangeType::INSERT, { uri } },
         AAFwk::DataObsOption(false, true));
     EXPECT_EQ(ret, DataShare::E_OK);
     SetSelfTokenID(originalToken);
@@ -472,8 +563,7 @@ HWTEST_F(DataObsSystemPermissionTest, NotifyChangeExtSystemPermissionTest_0200, 
     EXPECT_NE(dataObserver, nullptr);
 
     Uri uri = Uri("datashare:///com.ohos.contactsdataability");
-    bool isDescendants = true;
-    ErrCode ret = obsMgrClient->RegisterObserverExt(uri, dataObserver, isDescendants,
+    ErrCode ret = obsMgrClient->NotifyChangeExt({ ChangeInfo::ChangeType::INSERT, { uri } },
         AAFwk::DataObsOption(false, true));
     EXPECT_EQ(ret, DataShare::E_OK);
     SetSelfTokenID(originalToken);

@@ -936,6 +936,7 @@ HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_GetFocusedWindowInfo
  * @tc.require:
  * @tc.precon:
     1. process is equivalent to shell calling
+    2. uri is in allowed provider list
  * @tc.step:
     1. Define a test Uri and an observer
     2. Get a DataObsMgrService instance
@@ -965,6 +966,7 @@ HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_RegisterObserver_050
  * @tc.require:
  * @tc.precon:
     1. process is equivalent to a system ability
+    2. uri is in allowed provider list
  * @tc.step:
     1. Define a test Uri and an observer
     2. Get a DataObsMgrService instance
@@ -991,7 +993,6 @@ HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_RegisterObserver_051
 
     EXPECT_EQ(testVal, dataObsMgrServer->RegisterObserver(*uri, dataobsAbility, -1, DataObsOption(false, true)));
 
-    testing::Mock::AllowLeak(dataobsAbility);
     SetSelfTokenID(originalToken);
     TAG_LOGI(AAFwkTag::DBOBSMGR, "AaFwk_DataObsMgrServiceTest_RegisterObserver_0510 end");
 }

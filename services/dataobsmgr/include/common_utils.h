@@ -43,6 +43,9 @@ public:
     // Using alternate interval no more than 3 for uri is recommended
     static std::string AlternateMask(const std::string &name, size_t interval = 1)
     {
+        if (name.empty() || interval == 0) {
+            return name;
+        }
         std::string result = name;
         for (size_t i = interval; i < result.length(); i += interval + 1) {
             result[i] = '*';
