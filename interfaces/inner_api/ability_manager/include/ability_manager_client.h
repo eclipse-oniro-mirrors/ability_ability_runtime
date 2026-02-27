@@ -1547,6 +1547,12 @@ public:
     ErrCode UnregisterIAbilityManagerCollaborator(int32_t type);
 
     /**
+     * @brief get ability manager collaborator.
+     * @return Returns object pointer on success, others on null.
+     */
+    sptr<IAbilityManagerCollaborator> GetAbilityManagerCollaborator();
+
+    /**
      * @brief Register session handler.
      * @param object The handler.
      *
@@ -1567,12 +1573,6 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     ErrCode UnregisterAppDebugListener(sptr<AppExecFwk::IAppDebugListener> listener);
-
-    /**
-     * @brief get ability manager collaborator.
-     * @return Returns object pointer on success, others on null.
-     */
-    sptr<IAbilityManagerCollaborator> GetAbilityManagerCollaborator();
 
     /**
      * @brief Attach app debug.
