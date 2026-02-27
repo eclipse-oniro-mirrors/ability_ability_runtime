@@ -1,0 +1,150 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/ability/ability_runtime/ability_runtime.gni")
+
+ohos_shared_library("ets_agent_connection") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    integer_overflow = true
+    ubsan = true
+    boundary_sanitize = true
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    debug = false
+  }
+
+  configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
+  defines = [ "AMS_LOG_TAG = \"AgentExtension\"" ]
+  defines += [ "AMS_LOG_DOMAIN = 0xD001353" ]
+  include_dirs = [
+    "include/connection",
+    "${ability_runtime_services_path}/common/include",
+    "${ability_runtime_path}/frameworks/ets/ani/ani_common/include",
+    "${ability_runtime_services_path}/common/include",
+    "${agent_runtime_framework_path}/frameworks/native/agent_extension/include",
+    "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
+  ]
+
+
+  sources = [
+    "./src/connection/ets_agent_connection.cpp",
+    "./src/connection/ets_agent_connector_proxy.cpp",
+    "./src/connection/ets_agent_connector_stub_impl.cpp",
+    "./src/connection/ets_agent_receiver_proxy.cpp",
+  ]
+
+  cflags = []
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
+
+  deps = [
+    "${ability_runtime_innerkits_path}/runtime:runtime",
+    "${ability_runtime_native_path}/ability/native:ability_business_error",
+    "${ability_runtime_native_path}/ability/native:abilitykit_native",
+    "${ability_runtime_path}/frameworks/ets/ani/ani_common:ani_common",
+    "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection:agent_extension_connection",
+  ]
+
+  external_deps = [
+    "ability_base:base",
+    "ability_base:configuration",
+    "ability_base:want",
+    "c_utils:utils",
+    "eventhandler:libeventhandler",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+    "runtime_core:ani",
+    "samgr:samgr_proxy",
+  ]
+
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
+ohos_shared_library("ets_agent_extension") {
+  sanitize = {
+    integer_overflow = true
+    ubsan = true
+    boundary_sanitize = true
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    debug = false
+  }
+  branch_protector_ret = "pac_ret"
+
+  include_dirs = [
+    "./include",
+    "./include/connection",
+    "${ability_runtime_innerkits_path}/ability_manager/include",
+    "${ability_runtime_path}/frameworks/ets/ani/ani_common/include",
+    "${ability_runtime_services_path}/common/include",
+    "${agent_runtime_framework_path}/frameworks/ets/ani/agent_extension_context/include",
+    "${agent_runtime_framework_path}/frameworks/native/agent_extension/include",
+    "${agent_runtime_framework_path}/frameworks/native/agent_extension_context/include",
+    "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
+  ]
+
+  configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
+
+  public_configs = []
+
+  sources = [
+    "./src/ets_agent_extension_stub_impl.cpp",
+    "./src/ets_agent_extension.cpp",
+  ]
+
+  cflags = []
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
+
+  deps = [
+    ":ets_agent_connection",
+    "${ability_runtime_native_path}/ability/native:abilitykit_native",
+    "${ability_runtime_native_path}/ability/native:abilitykit_utils",
+    "${ability_runtime_native_path}/ability/native:extensionkit_native",
+    "${ability_runtime_innerkits_path}/ability_manager:ability_connect_callback_stub",
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
+    "${ability_runtime_native_path}/ability:ability_context_native",
+    "${ability_runtime_native_path}/ability/native:ability_business_error",
+    "${ability_runtime_native_path}/appkit:app_context",
+    "${ability_runtime_native_path}/appkit:app_context_utils",
+    "${ability_runtime_path}/frameworks/ets/ani/ani_common:ani_common",
+    "${agent_runtime_framework_path}/frameworks/ets/ani/agent_extension_context:ets_agent_extension_context",
+    "${agent_runtime_framework_path}/frameworks/native/agent_extension:agent_extension",
+    "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection:agent_extension_connection",
+  ]
+
+  external_deps = [
+    "ability_base:base",
+    "ability_base:configuration",
+    "ability_base:want",
+    "c_utils:utils",
+    "eventhandler:libeventhandler",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+    "ipc:ipc_napi",
+    "runtime_core:ani",
+    "samgr:samgr_proxy",
+  ]
+
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}

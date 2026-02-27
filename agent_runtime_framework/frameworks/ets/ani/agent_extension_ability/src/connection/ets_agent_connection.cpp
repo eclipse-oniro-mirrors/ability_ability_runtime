@@ -73,6 +73,7 @@ int64_t InsertAgentConnection(sptr<EtsAgentConnection> connection, const AAFwk::
     ConnectionKey key;
     key.id = g_agentSerialNumber;
     key.want = want;
+    connection->SetConnectionId(connectId);
     g_agentConnects.emplace(key, connection);
     if (g_agentSerialNumber < INT64_MAX) {
         g_agentSerialNumber++;
@@ -284,7 +285,8 @@ void EtsAgentConnection::SetProxyObject(ani_object proxy)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "SetProxyObject");
     if (proxy == nullptr) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "proxy is null");
+        TAG_LOGI(AAFwkTag::SER_ROUTER, "unset proxy");
+        serviceProxyObject_ = nullptr;
         return;
     }
     if (etsVm_ == nullptr) {

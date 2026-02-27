@@ -40,7 +40,7 @@ class AgentAppInfoImpl implements AgentAppInfo {
 }
 
 export interface AgentCapabilities {
-  streaming: boolean;
+  streaming?: boolean;
   pushNotifications?: boolean;
   stateTransitionHistory?: boolean;
   extension?: string;
@@ -48,7 +48,7 @@ export interface AgentCapabilities {
 }
 
 class AgentCapabilitiesImpl implements AgentCapabilities {
-  public streaming: boolean;
+  public streaming?: boolean;
   public pushNotifications?: boolean;
   public stateTransitionHistory?: boolean;
   public extension?: string;
@@ -79,7 +79,6 @@ class AgentSkillImpl implements AgentSkill {
 
 export interface AgentCard {
   agentId: string;
-  appIndex: int;
   name: string;
   description: string;
   provider?: AgentProvider;
@@ -97,7 +96,6 @@ export interface AgentCard {
 
 class AgentCardImpl implements AgentCard {
   public agentId: string = '';
-  public appIndex: int;
   public name: string = '';
   public description: string = '';
   public provider?: AgentProvider;

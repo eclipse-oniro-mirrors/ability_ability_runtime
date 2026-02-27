@@ -252,6 +252,11 @@ public:
      */
     void ReleaseObjectReference(ani_env *env, ani_ref etsObjRef);
 
+    void SetConnectionId(int32_t id) { connectionId_ = id; }
+
+    int32_t GetConnectionId() { return connectionId_; }
+
+private:
     /**
      * Call an object method in ETS.
      *
@@ -261,7 +266,6 @@ public:
      */
     void CallObjectMethod(ani_env *env, const char *methodName, const char *signature, ...);
 
-private:
     /**
      * Called when agent extension connection succeeds.
      * Implements ETSAbilityConnection interface.

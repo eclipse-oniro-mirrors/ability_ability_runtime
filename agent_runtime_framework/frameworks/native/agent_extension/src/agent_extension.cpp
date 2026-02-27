@@ -30,7 +30,7 @@ using Runtime = OHOS::AbilityRuntime::Runtime;
 
 namespace {
 const char* JS_AGENT_EXTENSION_LIBNAME = "libjs_agent_extension.z.so";
-const char* ETS_AGENT_EXTENSION_LIBNAME = "libani_agent_extension.z.so";
+const char* ETS_AGENT_EXTENSION_LIBNAME = "libets_agent_extension.z.so";
 const char* CREATE_ETS_AGENT_EXTENSION_FUNC = "OHOS_CreateEtsAgentExtension";
 const char* CREATE_JS_AGENT_EXTENSION_FUNC = "OHOS_CreateJsAgentExtension";
 

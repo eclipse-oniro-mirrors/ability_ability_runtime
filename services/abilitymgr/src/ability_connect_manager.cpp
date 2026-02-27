@@ -958,14 +958,8 @@ int AbilityConnectManager::CleanupConnectionAndTerminateIfNeeded(std::shared_ptr
         return ERR_OK;
     }
 
-    auto extAbilityType = abilityRecord->GetAbilityInfo().extensionAbilityType;
-    bool isPerConnectionType = (extAbilityType == AppExecFwk::ExtensionAbilityType::UI_SERVICE ||
-        extAbilityType == AppExecFwk::ExtensionAbilityType::AGENT);
-
-    if (isPerConnectionType) {
-        const char *extName = (extAbilityType == AppExecFwk::ExtensionAbilityType::UI_SERVICE) ?
-            "uiservice" : "agent";
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "don't terminate %{public}s", extName);
+    if (abilityRecord->GetAbilityInfo().extensionAbilityType == AppExecFwk::ExtensionAbilityType::UI_SERVICE) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "don't terminate uiservice");
     } else {
         TAG_LOGI(AAFwkTag::EXT, "terminate or cache");
         TerminateOrCacheAbility(abilityRecord);
