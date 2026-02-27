@@ -1289,15 +1289,15 @@ int AbilityManagerProxy::CloseUIAbilityBySCB(const sptr<SessionInfo> &sessionInf
             return INNER_ERR;
         }
     }
+    if (!data.WriteBool(isUserRequestedExit)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "isUserRequestedExit write fail");
+        return ERR_IPC_PROXY_WRITE_FAILED;
+    }
     if (!data.WriteUint32(sceneFlag)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "sceneFlag write fail");
         return INNER_ERR;
     }
 
-    if (!data.WriteBool(isUserRequestedExit)) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "isUserRequestedExit write fail");
-        return ERR_IPC_PROXY_WRITE_FAILED;
-    }
     error = SendRequest(AbilityManagerInterfaceCode::CLOSE_UI_ABILITY_BY_SCB, data, reply, option);
     if (error != NO_ERROR) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "request error:%{public}d", error);
@@ -6206,13 +6206,13 @@ int AbilityManagerProxy::CleanUIAbilityBySCB(const sptr<SessionInfo> &sessionInf
             return INNER_ERR;
         }
     }
-    if (!data.WriteUint32(sceneFlag)) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "sceneFlag write fail");
-        return INNER_ERR;
-    }
     if (!data.WriteBool(isUserRequestedExit)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write isUserRequestedExit fail");
         return ERR_IPC_PROXY_WRITE_FAILED;
+    }
+    if (!data.WriteUint32(sceneFlag)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "sceneFlag write fail");
+        return INNER_ERR;
     }
 
     error = SendRequest(AbilityManagerInterfaceCode::CLEAN_UI_ABILITY_BY_SCB, data, reply, option);
@@ -6964,33 +6964,6 @@ int32_t AbilityManagerProxy::RevokeDelegator(sptr<IRemoteObject> token)
     return reply.ReadInt32();
 }
 
-int32_t AbilityManagerProxy::StartAbilityWithWait(Want &want, sptr<IAbilityStartWithWaitObserver> &observer)
-{
-    if (AppUtils::GetInstance().IsForbidStart()) {
-        TAG_LOGW(AAFwkTag::ABILITYMGR, "forbid start: %{public}s", want.GetElement().GetBundleName().c_str());
-        return INNER_ERR;
-    }
-    CHECK_POINTER_AND_RETURN_LOG(observer, ERR_NULL_OBJECT, "null observer");
-
-    MessageParcel data;
-    MessageParcel reply;
-    MessageOption option;
-
-    if (!WriteInterfaceToken(data)) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "writeInterfaceToken failed");
-        return INNER_ERR;
-    }
-
-    PROXY_WRITE_PARCEL_AND_RETURN_IF_FAIL(data, Parcelable, &want);
-    PROXY_WRITE_PARCEL_AND_RETURN_IF_FAIL(data, RemoteObject, observer->AsObject());
-    int32_t error = SendRequest(AbilityManagerInterfaceCode::START_ABILITY_WITH_WAIT, data, reply, option);
-    if (error != NO_ERROR) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "send err:%{public}d", error);
-        return error;
-    }
-    return reply.ReadInt32();
-}
-
 int32_t AbilityManagerProxy::GetAllInsightIntentInfo(
     AbilityRuntime::GetInsightIntentFlag flag,
     std::vector<InsightIntentInfoForQuery> &infos,
@@ -7148,6 +7121,32 @@ int32_t AbilityManagerProxy::GetInsightIntentInfoByIntentName(
     return reply.ReadInt32();
 }
 
+int32_t AbilityManagerProxy::StartAbilityWithWait(Want &want, sptr<IAbilityStartWithWaitObserver> &observer)
+{
+    if (AppUtils::GetInstance().IsForbidStart()) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "forbid start: %{public}s", want.GetElement().GetBundleName().c_str());
+        return INNER_ERR;
+    }
+    CHECK_POINTER_AND_RETURN_LOG(observer, ERR_NULL_OBJECT, "null observer");
+
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "writeInterfaceToken failed");
+        return INNER_ERR;
+    }
+
+    PROXY_WRITE_PARCEL_AND_RETURN_IF_FAIL(data, Parcelable, &want);
+    PROXY_WRITE_PARCEL_AND_RETURN_IF_FAIL(data, RemoteObject, observer->AsObject());
+    int32_t error = SendRequest(AbilityManagerInterfaceCode::START_ABILITY_WITH_WAIT, data, reply, option);
+    if (error != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "send err:%{public}d", error);
+        return error;
+    }
+    return reply.ReadInt32();
+}
 
 int32_t AbilityManagerProxy::SuspendExtensionAbility(sptr<IAbilityConnection> connect)
 {
@@ -7223,6 +7222,35 @@ int32_t AbilityManagerProxy::RestartSelfAtomicService(sptr<IRemoteObject> caller
     if (error != NO_ERROR) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "request error:%{public}d", error);
         return error;
+    }
+    return reply.ReadInt32();
+}
+
+int32_t AbilityManagerProxy::SetAppServiceExtensionKeepAlive(const std::string &bundleName, bool flag)
+{
+    MessageParcel data;
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "writeInterfaceToken fail");
+        return INNER_ERR;
+    }
+
+    if (!data.WriteString(bundleName)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "failed to write bundleName");
+        return ERR_INVALID_VALUE;
+    }
+
+    if (!data.WriteBool(flag)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "failed to write flag");
+        return ERR_INVALID_VALUE;
+    }
+
+    MessageParcel reply;
+    MessageOption option;
+    auto ret = SendRequest(AbilityManagerInterfaceCode::SET_APP_SERVICE_EXTENSION_KEEP_ALIVE,
+        data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "request error: %{public}d", ret);
+        return ret;
     }
     return reply.ReadInt32();
 }
@@ -7368,35 +7396,6 @@ ErrCode AbilityManagerProxy::RegisterSAInterceptor(sptr<AbilityRuntime::ISAInter
     if (error != NO_ERROR) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Send request error: %{public}d", error);
         return error;
-    }
-    return reply.ReadInt32();
-}
-
-int32_t AbilityManagerProxy::SetAppServiceExtensionKeepAlive(const std::string &bundleName, bool flag)
-{
-    MessageParcel data;
-    if (!WriteInterfaceToken(data)) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "writeInterfaceToken fail");
-        return INNER_ERR;
-    }
-
-    if (!data.WriteString(bundleName)) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "failed to write bundleName");
-        return ERR_INVALID_VALUE;
-    }
-
-    if (!data.WriteBool(flag)) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "failed to write flag");
-        return ERR_INVALID_VALUE;
-    }
-
-    MessageParcel reply;
-    MessageOption option;
-    auto ret = SendRequest(AbilityManagerInterfaceCode::SET_APP_SERVICE_EXTENSION_KEEP_ALIVE,
-        data, reply, option);
-    if (ret != NO_ERROR) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "request error: %{public}d", ret);
-        return ret;
     }
     return reply.ReadInt32();
 }
