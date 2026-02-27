@@ -19,9 +19,15 @@ module_output_path = "ability_runtime/ability_runtime/appmgrservice"
 ohos_unittest("AppSpawnClientSecondTest") {
   module_out_path = module_output_path
 
-  include_dirs = [ "${ability_runtime_test_path}/mock/common/include" ]
+  include_dirs = [
+    "${ability_runtime_test_path}/mock/common/include",
+    "mock/include",
+  ]
 
-  sources = [ "app_spawn_client_second_test.cpp" ]
+  sources = [
+    "app_spawn_client_second_test.cpp",
+    "mock/src/mock_os_account_manager_wrapper.cpp",
+  ]
 
   configs = [ "${ability_runtime_services_path}/appmgr:appmgr_config" ]
 
@@ -52,6 +58,10 @@ ohos_unittest("AppSpawnClientSecondTest") {
   }
   if (ability_runtime_graphics) {
     external_deps += [ "window_manager:libwm" ]
+  }
+
+  if (os_account_part_enabled) {
+    external_deps += [ "os_account:os_account_innerkits" ]
   }
 }
 

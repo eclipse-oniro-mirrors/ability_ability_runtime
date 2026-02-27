@@ -288,6 +288,8 @@ private:
     int32_t SetIsolationModeFlag(const AppSpawnStartMsg &startMsg, const AppSpawnReqMsgHandle &reqHandle);
 
     int32_t SetStrictMode(const AppSpawnStartMsg &startMsg, const AppSpawnReqMsgHandle &reqHandle);
+
+    int32_t SetUserIdInfo(const AppSpawnStartMsg &startMsg, AppSpawnReqMsgHandle &reqHandle);
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

@@ -20,7 +20,9 @@
 #include "hitrace_meter.h"
 #include "hilog_tag_wrapper.h"
 #include "nlohmann/json.hpp"
+#include "os_account_manager_wrapper.h"
 #include "securec.h"
+#include "singleton.h"
 #include "time_util.h"
 
 namespace OHOS {
@@ -449,8 +451,41 @@ int32_t AppSpawnClient::AppspawnSetExtMsgMore(const AppSpawnStartMsg &startMsg, 
     return AppspawnSetExtMsgSec(startMsg, reqHandle);
 }
 
+int32_t AppSpawnClient::SetUserIdInfo(const AppSpawnStartMsg &startMsg, AppSpawnReqMsgHandle &reqHandle)
+{
+    if (startMsg.uid < 0) {
+        return ERR_INVALID_VALUE;
+    }
+    auto osAccountMgr = DelayedSingleton<OsAccountManagerWrapper>::GetInstance();
+    if (osAccountMgr == nullptr) {
+        TAG_LOGW(AAFwkTag::APPMGR, "osAccountMgr is nullptr");
+        return ERR_NULL_OBJECT;
+    }
+
+    int32_t userId = -1;
+    auto errCode = osAccountMgr->GetOsAccountLocalIdFromUid(startMsg.uid, userId);
+    if (errCode != ERR_OK) {
+        TAG_LOGW(AAFwkTag::APPMGR, "GetOsAccountLocalIdFromUid failed, uid=%{public}d, errcode=%{public}d",
+            startMsg.uid, errCode);
+        return errCode;
+    }
+
+    std::string userIdStr = std::to_string(userId);
+    int32_t ret = AppSpawnReqMsgAddStringInfo(reqHandle, MSG_EXT_NAME_USERID, userIdStr.c_str());
+    if (ret != ERR_OK) {
+        TAG_LOGW(AAFwkTag::APPMGR, "Set userId failed, uid=%{public}d, userId=%{public}d, ret=%{public}d",
+            startMsg.uid, userId, ret);
+        return ret;
+    }
+
+    TAG_LOGD(AAFwkTag::APPMGR, "Send userId=%{public}s to AppSpawn", userIdStr.c_str());
+    return ERR_OK;
+}
+
 int32_t AppSpawnClient::AppspawnSetExtMsgSec(const AppSpawnStartMsg &startMsg, AppSpawnReqMsgHandle reqHandle)
 {
+    SetUserIdInfo(startMsg, reqHandle);
+
     int32_t ret = 0;
     if (startMsg.hostProcessUid != 0) {
         ret = AppSpawnReqMsgAddStringInfo(reqHandle, MSG_EXT_NAME_PARENT_UID,
