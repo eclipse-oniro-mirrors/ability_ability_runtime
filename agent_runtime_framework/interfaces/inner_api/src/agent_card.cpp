@@ -173,6 +173,9 @@ AgentCapabilities AgentCapabilities::FromJson(const nlohmann::json &jsonObject)
         if (capabilities.extension.length() < 1 || capabilities.extension.length() > LENGTH_1024) {
             TAG_LOGE(AAFwkTag::SER_ROUTER, "extension length is invalid");
             capabilities.extension = "";
+        } else if (!nlohmann::json::accept(capabilities.extension)) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "extension is not valid json format");
+            capabilities.extension = "";
         }
     }
     if (jsonObject.contains("extendedAgentCard") && jsonObject["extendedAgentCard"].is_boolean()) {
@@ -346,6 +349,9 @@ bool AgentSkill::FromJson(const nlohmann::json &jsonObject, AgentSkill &skill)
         skill.extension = jsonObject["extension"];
         if (skill.extension.length() < 1 || skill.extension.length() > LENGTH_1024) {
             TAG_LOGE(AAFwkTag::SER_ROUTER, "extension length is invalid");
+            skill.extension = "";
+        } else if (!nlohmann::json::accept(skill.extension)) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "extension is not valid json format");
             skill.extension = "";
         }
     }
@@ -757,6 +763,9 @@ bool AgentCard::FromJson(nlohmann::json jsonObject, AgentCard &agentCard)
         agentCard.extension = jsonObject["extension"];
         if (agentCard.extension.length() < 1 || agentCard.extension.length() > LENGTH_5120) {
             TAG_LOGE(AAFwkTag::SER_ROUTER, "extension length is invalid");
+            agentCard.extension = "";
+        } else if (!nlohmann::json::accept(agentCard.extension)) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "extension is not valid json format");
             agentCard.extension = "";
         }
     }
