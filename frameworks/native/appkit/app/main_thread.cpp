@@ -600,7 +600,7 @@ void MainThread::ScheduleShrinkMemory(const int level)
  *
  * @param level Indicates the memory trim level, which shows the current memory usage status.
  */
-void MainThread::ScheduleMemoryLevel(const int level)
+void MainThread::ScheduleMemoryLevel(const int level, bool isShellCall)
 {
     TAG_LOGD(AAFwkTag::APPKIT, "level: %{public}d", level);
     wptr<MainThread> weak = this;

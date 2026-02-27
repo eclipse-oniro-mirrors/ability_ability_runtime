@@ -657,7 +657,7 @@ HWTEST_F(AmsAppRunningRecordTest, ScheduleProcessSecurityExit_001, TestSize.Leve
 HWTEST_F(AmsAppRunningRecordTest, ScheduleMemoryLevel_001, TestSize.Level1)
 {
     auto record = GetTestAppRunningRecord();
-    EXPECT_CALL(*mockAppSchedulerClient_, ScheduleMemoryLevel(_)).Times(1);
+    EXPECT_CALL(*mockAppSchedulerClient_, ScheduleMemoryLevel(_, _)).Times(1);
     record->ScheduleMemoryLevel(1);
 
     record->appLifeCycleDeal_ = nullptr;

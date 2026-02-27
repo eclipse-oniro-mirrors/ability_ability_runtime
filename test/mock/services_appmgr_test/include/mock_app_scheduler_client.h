@@ -43,7 +43,7 @@ public:
     MOCK_METHOD0(ScheduleProcessSecurityExit, void());
     MOCK_METHOD1(ScheduleAbilityStage, void(const HapModuleInfo&));
     MOCK_METHOD2(ScheduleUpdateApplicationInfoInstalled, void(const ApplicationInfo&, const std::string&));
-    MOCK_METHOD1(ScheduleMemoryLevel, void(int32_t level));
+    MOCK_METHOD2(ScheduleMemoryLevel, void(int32_t level, bool isShellCall));
     MOCK_METHOD2(ScheduleHeapMemory, void(const int32_t pid, OHOS::AppExecFwk::MallocInfo &mallocInfo));
     MOCK_METHOD2(ScheduleAcceptWant, void(const AAFwk::Want& want, const std::string& moduleName));
     MOCK_METHOD1(SchedulePrepareTerminate, void(const std::string &moduleName));

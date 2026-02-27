@@ -76,6 +76,10 @@ bool MemoryLevelInfo::ReadFromParcel(Parcel &parcel)
             case MEMORY_LEVEL_MODERATE:
             case MEMORY_LEVEL_LOW:
             case MEMORY_LEVEL_CRITICAL:
+            case MEMORY_LEVEL_UI_HIDDEN:
+            case MEMORY_LEVEL_BACKGROUND_MODERATE:
+            case MEMORY_LEVEL_BACKGROUND_LOW:
+            case MEMORY_LEVEL_BACKGROUND_CRITICAL:
                 level = static_cast<MemoryLevel>(tempLevel);
                 break;
             default:

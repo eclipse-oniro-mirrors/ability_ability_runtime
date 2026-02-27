@@ -26,6 +26,10 @@ enum class MemoryLevel {
     MEMORY_LEVEL_MODERATE = 0,
     MEMORY_LEVEL_LOW = 1,
     MEMORY_LEVEL_CRITICAL = 2,
+    MEMORY_LEVEL_UI_HIDDEN = 3,
+    MEMORY_LEVEL_BACKGROUND_MODERATE = 4,
+    MEMORY_LEVEL_BACKGROUND_LOW = 5,
+    MEMORY_LEVEL_BACKGROUND_CRITICAL = 6,
 };
 
 static napi_status SetEnumItem(napi_env env, napi_value object, const char* name, int32_t value)
@@ -139,6 +143,14 @@ static napi_value InitMemoryLevelObject(napi_env env)
         static_cast<int>(MemoryLevel::MEMORY_LEVEL_LOW)));
     NAPI_CALL(env, SetEnumItem(env, object, "MEMORY_LEVEL_CRITICAL",
         static_cast<int>(MemoryLevel::MEMORY_LEVEL_CRITICAL)));
+    NAPI_CALL(env, SetEnumItem(env, object, "MEMORY_LEVEL_UI_HIDDEN",
+        static_cast<int>(MemoryLevel::MEMORY_LEVEL_UI_HIDDEN)));
+    NAPI_CALL(env, SetEnumItem(env, object, "MEMORY_LEVEL_BACKGROUND_MODERATE",
+        static_cast<int>(MemoryLevel::MEMORY_LEVEL_BACKGROUND_MODERATE)));
+    NAPI_CALL(env, SetEnumItem(env, object, "MEMORY_LEVEL_BACKGROUND_LOW",
+        static_cast<int>(MemoryLevel::MEMORY_LEVEL_BACKGROUND_LOW)));
+    NAPI_CALL(env, SetEnumItem(env, object, "MEMORY_LEVEL_BACKGROUND_CRITICAL",
+        static_cast<int>(MemoryLevel::MEMORY_LEVEL_BACKGROUND_CRITICAL)));
 
     return object;
 }

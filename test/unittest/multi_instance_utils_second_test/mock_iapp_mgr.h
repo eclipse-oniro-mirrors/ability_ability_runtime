@@ -141,7 +141,8 @@ public:
         return 0;
     }
 
-    virtual int32_t NotifyProcMemoryLevel(const std::map<pid_t, MemoryLevel>& procLevelMap)
+    virtual int32_t NotifyProcMemoryLevel(const std::map<pid_t, MemoryLevel>& procLevelMap,
+        bool isShellCall = false)
     {
         return 0;
     }
