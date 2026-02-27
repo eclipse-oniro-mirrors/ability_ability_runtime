@@ -670,6 +670,35 @@ HWTEST_F(DataObsMgrInnerExtTest, DataObsMgrInnerExt_RegisterAndUnRegister_0200, 
 
 /*
  * Feature: DataObsMgrInnerExt
+ * Function: Register and UnRegister test
+ * SubFunction: 0300
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription:Register and UnRegister when uri path size over limit
+ */
+HWTEST_F(DataObsMgrInnerExtTest, DataObsMgrInnerExt_RegisterAndUnRegister_0300, TestSize.Level1)
+{
+    TAG_LOGE(AAFwkTag::DBOBSMGR, "DataObsMgrInnerExt_RegisterAndUnRegister_0300::Start");
+    std::shared_ptr<DataObsMgrInnerExt> dataObsMgrInnerExt = std::make_shared<DataObsMgrInnerExt>();
+    std::string uriBase = "datashare://Authority/com.domainname.dataability.persondata";
+    // make a long uri path, which is over limit MAX_URI_PATH_SIZE
+    for (uint32_t i = 0; i < DataObsMgrInnerExt::MAX_URI_PATH_SIZE; i++) {
+        uriBase += "/test";
+    }
+    Uri uri1(uriBase);
+    ObserverInfo info(0, 0, 0, USER_TEST, false);
+    sptr<MockDataAbilityObserverStub> observer1(new (std::nothrow) MockDataAbilityObserverStub());
+
+    int res = dataObsMgrInnerExt->HandleRegisterObserver(uri1, observer1, info, true);
+    EXPECT_EQ(res, DATAOBS_INVALID_URI);
+
+    res = dataObsMgrInnerExt->HandleUnregisterObserver(uri1, observer1);
+    EXPECT_EQ(res, DATAOBS_INVALID_URI);
+    TAG_LOGE(AAFwkTag::DBOBSMGR, "DataObsMgrInnerExt_RegisterAndUnRegister_0300::Start");
+}
+
+/*
+ * Feature: DataObsMgrInnerExt
  * Function: HandleUnregisterObserver no uri
  * SubFunction: 0100
  * FunctionPoints: NA

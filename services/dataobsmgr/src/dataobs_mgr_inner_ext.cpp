@@ -43,6 +43,10 @@ Status DataObsMgrInnerExt::HandleRegisterObserver(Uri &uri, sptr<IDataAbilityObs
 
     std::vector<std::string> path = { uri.GetScheme(), uri.GetAuthority() };
     uri.GetPathSegments(path);
+    if (path.size() >= MAX_URI_PATH_SIZE) {
+        TAG_LOGE(AAFwkTag::DBOBSMGR, "path size:%{public}zu invalid", path.size());
+        return DATAOBS_INVALID_URI;
+    }
     Entry entry = Entry(dataObserver, info.userId, info.tokenId, deathRecipientRef, isDescendants);
     entry.pid = info.pid;
     if (root_ != nullptr && !root_->AddObserver(path, 0, entry)) {
@@ -67,6 +71,10 @@ Status DataObsMgrInnerExt::HandleUnregisterObserver(Uri &uri, sptr<IDataAbilityO
     std::lock_guard<ffrt::mutex> lock(nodeMutex_);
     std::vector<std::string> path = { uri.GetScheme(), uri.GetAuthority() };
     uri.GetPathSegments(path);
+    if (path.size() >= MAX_URI_PATH_SIZE) {
+        TAG_LOGE(AAFwkTag::DBOBSMGR, "path size:%{public}zu invalid", path.size());
+        return DATAOBS_INVALID_URI;
+    }
     if (root_ != nullptr) {
         root_->RemoveObserver(path, 0, dataObserver);
     }

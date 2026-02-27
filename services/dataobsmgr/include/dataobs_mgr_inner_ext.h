@@ -112,6 +112,7 @@ private:
 
     static constexpr uint32_t OBS_NUM_MAX = 50;
     static constexpr uint32_t OBS_ALL_NUM_MAX = OBS_NUM_MAX * OBS_NUM_MAX;
+    static constexpr uint32_t MAX_URI_PATH_SIZE = 25;
 
     ffrt::mutex nodeMutex_;
     std::shared_ptr<Node> root_;
