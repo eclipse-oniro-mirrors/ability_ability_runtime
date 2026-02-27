@@ -14,7 +14,8 @@
  */
 
 #include "agent_card.h"
- 
+
+#include <map>
 #include <sstream>
 
 #include "ability_manager_errors.h"
@@ -722,13 +723,19 @@ bool AgentCard::FromJson(nlohmann::json jsonObject, AgentCard &agentCard)
 
     // Skills array
     if (jsonObject.contains("skills") && jsonObject["skills"].is_array()) {
+        std::map<std::string, std::shared_ptr<AgentSkill>> skillMap;
         for (const auto& skillJson : jsonObject["skills"]) {
             if (skillJson.is_object()) {
                 auto skill = std::make_shared<AgentSkill>();
                 if (AgentSkill::FromJson(skillJson, *skill)) {
-                    agentCard.skills.push_back(skill);
+                    // Later skills with same id will overwrite earlier ones
+                    skillMap[skill->id] = skill;
                 }
             }
+        }
+        // Convert map to vector
+        for (const auto& [id, skill] : skillMap) {
+            agentCard.skills.push_back(skill);
         }
     }
     if (agentCard.skills.size() == 0) {
