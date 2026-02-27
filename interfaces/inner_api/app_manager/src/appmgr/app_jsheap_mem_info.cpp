@@ -22,7 +22,8 @@ bool JsHeapDumpInfo::Marshalling(Parcel &parcel) const
 {
     return (parcel.WriteUint32(pid) && parcel.WriteUint32(tid)
         && parcel.WriteBool(needGc) && parcel.WriteBool(needSnapshot)
-        && parcel.WriteBool(needLeakobj) && parcel.WriteBool(needBinary));
+        && parcel.WriteBool(needLeakobj) && parcel.WriteBool(needBinary)
+        && parcel.WriteBool(needClearNodeIdCache));
 }
 
 JsHeapDumpInfo *JsHeapDumpInfo::Unmarshalling(Parcel &parcel)
@@ -38,6 +39,7 @@ JsHeapDumpInfo *JsHeapDumpInfo::Unmarshalling(Parcel &parcel)
     info->needSnapshot = parcel.ReadBool();
     info->needLeakobj = parcel.ReadBool();
     info->needBinary = parcel.ReadBool();
+    info->needClearNodeIdCache = parcel.ReadBool();
     return info;
 }
 } // namespace AppExecFwk

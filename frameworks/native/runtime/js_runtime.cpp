@@ -1358,6 +1358,11 @@ void JsRuntime::DumpHeapSnapshot(bool isPrivate)
 
 void JsRuntime::DumpHeapSnapshot(uint32_t tid, bool isFullGC, bool isBinary)
 {
+    DumpHeapSnapshot(tid, isFullGC, isBinary, false);
+}
+
+void JsRuntime::DumpHeapSnapshot(uint32_t tid, bool isFullGC, bool isBinary, bool isClearNodeIdCache)
+{
     auto vm = GetEcmaVm();
     CHECK_POINTER(vm);
     panda::ecmascript::DumpSnapShotOption dumpOption;
@@ -1371,6 +1376,7 @@ void JsRuntime::DumpHeapSnapshot(uint32_t tid, bool isFullGC, bool isBinary)
     dumpOption.captureNumericValue = true;
     dumpOption.isFullGC = isFullGC;
     dumpOption.isSync = false;
+    dumpOption.isClearNodeIdCache = isClearNodeIdCache;
     DFXJSNApi::DumpHeapSnapshot(vm, dumpOption, tid);
 }
 
