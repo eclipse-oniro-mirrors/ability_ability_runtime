@@ -161,6 +161,7 @@ ohos_shared_library("app_manager") {
     "faultloggerd:libdfx_dumpcatcher",
     "faultloggerd:libfaultloggerd",
     "ffrt:libffrt",
+    "hicollie:libhicollie",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",

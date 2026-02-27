@@ -82,6 +82,7 @@ ohos_unittest("appfreeze_manager_test") {
     "ffrt:libffrt",
     "googletest:gmock_main",
     "googletest:gtest_main",
+    "hicollie:libhicollie",
     "hilog:libhilog",
     "init:libbeget_proxy",
     "ipc:ipc_core",

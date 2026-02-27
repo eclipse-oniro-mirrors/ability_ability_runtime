@@ -3355,6 +3355,7 @@ private:
 
     bool IsAllowAttachOrDetachAppDebug(AppExecFwk::ApplicationInfo &appInfo);
     bool IsExitReasonValid(const ExitReasonCompability &reason);
+    void RecordRecoveryExitReason(bool isAppRecovery, int32_t callerPid, int32_t callerUid);
 #ifdef BGTASKMGR_CONTINUOUS_TASK_ENABLE
     std::shared_ptr<BackgroundTaskObserver> bgtaskObserver_;
 #endif

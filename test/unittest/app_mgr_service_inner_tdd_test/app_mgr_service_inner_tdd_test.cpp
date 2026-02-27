@@ -865,6 +865,41 @@ HWTEST_F(AppMgrServiceInnerTest, SendProcessKillEvent_002, TestSize.Level1)
 }
 
 /**
+ * @tc.name: SendProcessKillEvent_003
+ * @tc.desc: Test SendProcessKillEvent
+ * @tc.type: FUNC
+ * @tc.Function: SendProcessKillEvent
+ * @tc.SubFunction: NA
+ * @tc.EnvConditions: NA
+ */
+HWTEST_F(AppMgrServiceInnerTest, SendProcessKillEvent_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SendProcessKillEvent_003 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    appMgrServiceInner->Init();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    appMgrServiceInner->SendProcessKillEvent(nullptr);
+    BundleInfo bundleInfo;
+    std::string processName = "AppMgrServiceInnerTest";
+    std::shared_ptr<AppRunningRecord> appRecord =
+        appMgrServiceInner->appRunningManager_->CreateAppRunningRecord(applicationInfo_, processName, bundleInfo, "");
+    EXPECT_NE(appRecord, nullptr);
+    appMgrServiceInner->SendProcessKillEvent(appRecord);
+    std::string reason = "test";
+    int pid = getpid();
+    int killId = 0;
+    appMgrServiceInner->NotifyAppMgrRecordExitReasonCompability(pid, killId, reason, reason);
+    appMgrServiceInner->SendProcessKillEvent(appRecord);
+    killId = -1;
+    appMgrServiceInner->NotifyAppMgrRecordExitReasonCompability(pid, killId, reason, reason);
+    appMgrServiceInner->SendProcessKillEvent(appRecord);
+    killId = -2;
+    appMgrServiceInner->NotifyAppMgrRecordExitReasonCompability(pid, killId, reason, reason);
+    appMgrServiceInner->SendProcessKillEvent(appRecord);
+    TAG_LOGI(AAFwkTag::TEST, "SendProcessKillEvent_003 end");
+}
+
+/**
  * @tc.name: CheckIsolationMode_001
  * @tc.desc: CheckIsolationMode
  * @tc.type: FUNC

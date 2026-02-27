@@ -507,5 +507,25 @@ HWTEST_F(AbilityManagerServiceNinthTest, ExecuteIntentWithServiceMatch_002, Test
     EXPECT_NE(result, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceNinthTest ExecuteIntentWithServiceMatch_002 end");
 }
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RecordRecoveryExitReason
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService RecordRecoveryExitReason
+ */
+HWTEST_F(AbilityManagerServiceNinthTest, RecordRecoveryExitReason_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest RecordRecoveryExitReason_001 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs_, nullptr);
+    bool isAppRecovery = false;
+    int32_t callerPid = getpid();
+    int32_t callerUid = getuid();
+    abilityMs_->RecordRecoveryExitReason(isAppRecovery, callerPid, callerUid);
+    isAppRecovery = true;
+    abilityMs_->RecordRecoveryExitReason(isAppRecovery, callerPid, callerUid);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest RecordRecoveryExitReason_001 end");
+}
 }  // namespace AAFwk
 }  // namespace OHOS

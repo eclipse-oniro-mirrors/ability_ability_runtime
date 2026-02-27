@@ -128,6 +128,7 @@
 #include <dirent.h>
 #include <dlfcn.h>
 #endif
+#include "xcollie/process_kill_reason.h"
 namespace OHOS {
 using AbilityRuntime::FreezeUtil;
 namespace AppExecFwk {
@@ -2141,25 +2142,12 @@ void MainThread::InitUncatchableTask(JsEnv::UncatchableTask &uncatchableTask, co
  */
 void MainThread::ProcessExit(const ProcessExitInfo& info)
 {
-    AAFwk::ExitReason exitReason = { REASON_JS_ERROR, info.errorObjectName };
-    AbilityManagerClient::GetInstance()->RecordAppExitReason(exitReason);
-
     // if app's callback has been registered, let app decide whether exit or not.
     TAG_LOGE(AAFwkTag::APPKIT, "\n%{public}s is about to exit due to RuntimeError\nError type:%{public}s\n"
         "%{public}s", info.bundleName.c_str(), info.errorObjectName.c_str(), info.summary.c_str());
-    std::string eventKeyReason = "JsError";
-    auto hisyseventReport = std::make_shared<HisyseventReport>(12);
-    hisyseventReport->InsertParam("PID", info.pid);
-    hisyseventReport->InsertParam("PROCESS_NAME", info.processName);
-    hisyseventReport->InsertParam(EVENT_KEY_APP_RUNNING_UNIQUE_ID, info.appRunningId);
-    hisyseventReport->InsertParam(EVENT_KEY_REASON, eventKeyReason);
-    hisyseventReport->InsertParam("MSG", KILL_REASON);
-    hisyseventReport->InsertParam("FOREGROUND", info.foreground);
-    hisyseventReport->InsertParam("IS_UNCATCHABLE", info.isUncatchable);
-    int result = hisyseventReport->Report("FRAMEWORK", "PROCESS_KILL", HISYSEVENT_FAULT);
-    TAG_LOGW(AAFwkTag::APPKIT, "hisysevent write result=%{public}d, send event [FRAMEWORK,PROCESS_KILL],"
-        " pid=%{public}d, processName=%{public}s, msg=%{public}s, foreground=%{public}d, isUncatchable=%{public}d",
-        result, info.pid, info.processName.c_str(), KILL_REASON, info.foreground, info.isUncatchable);
+    AAFwk::ExitReasonCompability exitReason = { REASON_JS_ERROR, info.errorObjectName };
+    exitReason.killId = HiviewDFX::ProcessKillReason::REASON_JS_ERROR;
+    AbilityManagerClient::GetInstance()->RecordAppWithReason(info.pid, getuid(), exitReason);
     _exit(JS_ERROR_EXIT);
 }
 
