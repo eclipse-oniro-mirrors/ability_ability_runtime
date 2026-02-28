@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_EXTENSION_CONFIG_HANDLER_H
 #define OHOS_ABILITY_RUNTIME_EXTENSION_CONFIG_HANDLER_H
 
+#include <atomic>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -99,7 +100,7 @@ private:
     int32_t extensionType_ = EXTENSION_TYPE_UNKNOWN;
 
     /// Flag to track if UpdateRuntimeModuleChecker has been called
-    bool hasUpdatedChecker_ = false;
+    std::atomic<bool> hasUpdatedChecker_ = false;
 };
 } // namespace OHOS::AbilityRuntime
 
