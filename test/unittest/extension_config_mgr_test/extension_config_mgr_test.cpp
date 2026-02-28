@@ -18,6 +18,7 @@
 #define private public
 #define protected public
 #include "extension_config_mgr.h"
+#include "app_module_checker.h"
 #include "mock/mock_runtime.h"
 #undef private
 #undef protected
@@ -622,6 +623,45 @@ HWTEST_F(ExtensionConfigMgrTest, GetStringAfterRemovePreFix_ShouldReturnOriginal
     input = "@";
     expectOutput = "@";
     EXPECT_EQ(mgr.GetStringAfterRemovePreFix(input), expectOutput);
+}
+
+/**
+ * @tc.name: UpdateRuntimeModuleChecker_ShouldPassEmptyBlocklist_WhenCalledSecondTime
+ * @tc.desc: func should pass empty localBlocklist to AppModuleChecker when called second time.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ExtensionConfigMgrTest, UpdateRuntimeModuleChecker_ShouldPassEmptyBlocklist_WhenCalledSecondTime,
+    TestSize.Level1)
+{
+    ExtensionConfigMgr mgr;
+    mgr.LoadExtensionBlockList(BLOCK_LIST_ITEM_FORM_EXTENSION, EXTENSION_TYPE_FORM);
+    mgr.extensionType_ = EXTENSION_TYPE_FORM;
+
+    auto mockRuntimePtr = std::make_unique<MockRuntime>();
+    mockRuntimePtr->SetLanguage(Runtime::Language::JS);
+    std::unique_ptr<Runtime> runtime = std::move(mockRuntimePtr);
+
+    mgr.UpdateRuntimeModuleChecker(runtime);
+    MockRuntime &mockRuntime = static_cast<MockRuntime&>(*runtime);
+    EXPECT_TRUE(mockRuntime.loadCheckerFlag_);
+
+    auto firstChecker = mockRuntime.GetModuleChecker();
+    EXPECT_NE(firstChecker, nullptr);
+
+    std::unique_ptr<ApiAllowListChecker> apiAllowListChecker;
+    bool firstCheckResult = firstChecker->CheckModuleLoadable("multimedia.camera", apiAllowListChecker, false);
+    EXPECT_FALSE(firstCheckResult);
+
+    mockRuntime.ClearModuleChecker();
+    mgr.UpdateRuntimeModuleChecker(runtime);
+
+    auto secondChecker = mockRuntime.GetModuleChecker();
+    EXPECT_NE(secondChecker, nullptr);
+    EXPECT_TRUE(mockRuntime.loadCheckerFlag_);
+
+    std::unique_ptr<ApiAllowListChecker> apiAllowListChecker2;
+    bool secondCheckResult = secondChecker->CheckModuleLoadable("multimedia.camera", apiAllowListChecker2, false);
+    EXPECT_TRUE(secondCheckResult);
 }
 }  // namespace AbilityRuntime
 }  // namespace OHOS

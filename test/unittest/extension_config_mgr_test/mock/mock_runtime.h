@@ -60,6 +60,7 @@ public:
     void SetModuleLoadChecker(const std::shared_ptr<ModuleCheckerDelegate> moduleCheckerDelegate) const override
     {
         loadCheckerFlag_ = true;
+        moduleChecker_ = moduleCheckerDelegate;
     }
     void SetExtensionApiCheckCallback(
         std::function<bool(const std::string &className, const std::string &fileName)> &cb) override
@@ -75,11 +76,22 @@ public:
     {
         return checkLibraryPermissionCallback_;
     }
+
+    std::shared_ptr<ModuleCheckerDelegate> GetModuleChecker() const
+    {
+        return moduleChecker_;
+    }
+
+    void ClearModuleChecker()
+    {
+        moduleChecker_ = nullptr;
+    }
 private:
     Runtime::Language language_ = Runtime::Language::ETS;
     ExtensionApiCheckCallback checkLibraryPermissionCallback_ {nullptr};
     mutable bool loadCheckerFlag_ = false;
     bool extensionApiCheckerFlag_ = false;
+    mutable std::shared_ptr<ModuleCheckerDelegate> moduleChecker_ = nullptr;
 };
 }  // namespace AbilityRuntime
 }  // namespace OHOS

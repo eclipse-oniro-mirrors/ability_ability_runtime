@@ -97,6 +97,9 @@ private:
 
     /// Current process extension type
     int32_t extensionType_ = EXTENSION_TYPE_UNKNOWN;
+
+    /// Flag to track if UpdateRuntimeModuleChecker has been called
+    bool hasUpdatedChecker_ = false;
 };
 } // namespace OHOS::AbilityRuntime
 
