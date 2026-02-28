@@ -1795,11 +1795,11 @@ HWTEST_F(AgentCardTest, SkillFromJson_028, TestSize.Level1)
         { "name", "test" },
         { "description", "test" },
         { "tags", nlohmann::json::array({ "test" }) },
-        { "extension", "valid extension data" },
+        { "extension", R"({"key":"value"})" },
     };
     AgentSkill skill;
     EXPECT_TRUE(AgentSkill::FromJson(jsonObject, skill));
-    EXPECT_EQ(skill.extension, "valid extension data");
+    EXPECT_EQ(skill.extension, R"({"key":"value"})");
 }
 
 /**
@@ -1810,7 +1810,10 @@ HWTEST_F(AgentCardTest, SkillFromJson_028, TestSize.Level1)
  */
 HWTEST_F(AgentCardTest, SkillFromJson_029, TestSize.Level1)
 {
-    std::string validExtension(1024, 'a');
+    // Create a valid JSON string with exactly 1024 characters
+    std::string innerValue(1022, 'a');
+    std::string validExtension = "\"" + innerValue + "\"";  // " + 1022 chars + " = 1024
+
     nlohmann::json jsonObject = nlohmann::json {
         { "id", "test" },
         { "name", "test" },
@@ -1831,7 +1834,10 @@ HWTEST_F(AgentCardTest, SkillFromJson_029, TestSize.Level1)
  */
 HWTEST_F(AgentCardTest, SkillFromJson_030, TestSize.Level1)
 {
-    std::string longExtension(1025, 'a');
+    // Create a valid JSON string with 1025 characters (exceeds limit)
+    std::string innerValue(1023, 'a');
+    std::string longExtension = "\"" + innerValue + "\"";  // " + 1023 chars + " = 1025
+
     nlohmann::json jsonObject = nlohmann::json {
         { "id", "test" },
         { "name", "test" },
@@ -2952,11 +2958,11 @@ HWTEST_F(AgentCardTest, AgentCardFromJson_025, TestSize.Level1)
                 { "tags", nlohmann::json::array({ "test" }) }
             }
         })},
-        { "extension", "valid extension data" },
+        { "extension", R"({"key":"value"})" },
     };
     AgentCard agentCard;
     EXPECT_TRUE(AgentCard::FromJson(jsonObject, agentCard));
-    EXPECT_EQ(agentCard.extension, "valid extension data");
+    EXPECT_EQ(agentCard.extension, R"({"key":"value"})");
 }
 
 /**
@@ -2967,7 +2973,10 @@ HWTEST_F(AgentCardTest, AgentCardFromJson_025, TestSize.Level1)
  */
 HWTEST_F(AgentCardTest, AgentCardFromJson_026, TestSize.Level1)
 {
-    std::string validExtension(5120, 'a');
+    // Create a valid JSON string with exactly 5120 characters
+    std::string innerValue(5118, 'a');
+    std::string validExtension = "\"" + innerValue + "\"";  // " + 5118 chars + " = 5120
+
     nlohmann::json jsonObject = nlohmann::json {
         { "agentId", "1" },
         { "name", "test" },
@@ -2999,7 +3008,10 @@ HWTEST_F(AgentCardTest, AgentCardFromJson_026, TestSize.Level1)
  */
 HWTEST_F(AgentCardTest, AgentCardFromJson_027, TestSize.Level1)
 {
-    std::string longExtension(5121, 'a');
+    // Create a valid JSON string with 5121 characters (exceeds limit)
+    std::string innerValue(5119, 'a');
+    std::string longExtension = "\"" + innerValue + "\"";  // " + 5119 chars + " = 5121
+
     nlohmann::json jsonObject = nlohmann::json {
         { "agentId", "1" },
         { "name", "test" },
@@ -3606,12 +3618,12 @@ HWTEST_F(AgentCardTest, CapabilitiesFromJson_009, TestSize.Level1)
 {
     nlohmann::json jsonObject = nlohmann::json {
         { "streaming", true },
-        { "extension", "test extension data" },
+        { "extension", R"({"key":"value"})" },
         { "extendedAgentCard", true },
     };
     AgentCapabilities capabilities = AgentCapabilities::FromJson(jsonObject);
     EXPECT_TRUE(capabilities.streaming);
-    EXPECT_EQ(capabilities.extension, "test extension data");
+    EXPECT_EQ(capabilities.extension, R"({"key":"value"})");
     EXPECT_TRUE(capabilities.extendedAgentCard);
 }
 
@@ -3623,7 +3635,10 @@ HWTEST_F(AgentCardTest, CapabilitiesFromJson_009, TestSize.Level1)
  */
 HWTEST_F(AgentCardTest, CapabilitiesFromJson_010, TestSize.Level1)
 {
-    std::string longExtension(1025, 'a');
+    // Create a valid JSON string with 1025 characters (exceeds limit)
+    std::string innerValue(1023, 'a');
+    std::string longExtension = "\"" + innerValue + "\"";  // " + 1023 chars + " = 1025
+
     nlohmann::json jsonObject = nlohmann::json {
         { "streaming", true },
         { "extension", longExtension },

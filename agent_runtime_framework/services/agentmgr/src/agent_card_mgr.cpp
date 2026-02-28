@@ -15,6 +15,7 @@
 
 #include "agent_card_mgr.h"
 
+#include <algorithm>
 #include <unistd.h>
 
 #include "agent_card.h"
@@ -59,6 +60,16 @@ int32_t AgentCardMgr::HandleBundleInstall(const std::string &bundleName, int32_t
         if (extensionInfo.type != ExtensionAbilityType::AGENT) {
             continue;
         }
+
+        // Find hapModuleInfo's deviceTypes for this extension once
+        std::vector<std::string> hapDeviceTypes;
+        for (const auto& hapModuleInfo : bundleInfo.hapModuleInfos) {
+            if (hapModuleInfo.moduleName == extensionInfo.moduleName) {
+                hapDeviceTypes = hapModuleInfo.deviceTypes;
+                break;
+            }
+        }
+
         std::vector<std::string> profileInfos{};
         bundleMgrClient_.GetResConfigFile(extensionInfo, AGENT_CONFIG, profileInfos);
         for (const std::string &profileInfo : profileInfos) {
@@ -81,6 +92,23 @@ int32_t AgentCardMgr::HandleBundleInstall(const std::string &bundleName, int32_t
                 card.appInfo->bundleName = bundleName;
                 card.appInfo->moduleName = extensionInfo.moduleName;
                 card.appInfo->abilityName = extensionInfo.name;
+
+                if (!card.appInfo->deviceTypes.empty()) {
+                    // Take intersection: only keep deviceTypes that exist in hapModuleInfo
+                    std::vector<std::string> filteredDeviceTypes;
+                    for (const auto& deviceType : card.appInfo->deviceTypes) {
+                        if (std::find(hapDeviceTypes.begin(), hapDeviceTypes.end(),
+                            deviceType) != hapDeviceTypes.end()) {
+                            filteredDeviceTypes.push_back(deviceType);
+                        }
+                    }
+                    card.appInfo->deviceTypes = filteredDeviceTypes;
+                }
+                if (card.appInfo->deviceTypes.empty()) {
+                    // If deviceTypes is empty, use hapModuleInfo's deviceTypes
+                    card.appInfo->deviceTypes = hapDeviceTypes;
+                }
+
                 cards[card.agentId] = card;
             }
         }
