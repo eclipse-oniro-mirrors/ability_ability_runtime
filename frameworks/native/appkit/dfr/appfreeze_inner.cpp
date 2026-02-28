@@ -419,7 +419,7 @@ int AppfreezeInner::AcquireStack(const FaultData& info, bool onlyMainThread)
     TAG_LOGW(AAFwkTag::APPDFR, "get mainhandler dump, eventName:%{public}s, endTime:%{public}s, "
         "interval:%{public}lld ms", info.errorObject.name.c_str(),
         AbilityRuntime::TimeUtil::DefaultCurrentTimeStr().c_str(),
-        AbilityRuntime::TimeUtil::CurrentTimeMillis() - startTime);
+        static_cast<long long>(AbilityRuntime::TimeUtil::CurrentTimeMillis() - startTime));
 
     std::lock_guard<std::mutex> lock(handlingMutex_);
     for (auto it = handlinglist_.begin(); it != handlinglist_.end(); it = handlinglist_.erase(it)) {

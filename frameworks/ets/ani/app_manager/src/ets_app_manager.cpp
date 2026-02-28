@@ -15,6 +15,8 @@
 
 #include "ets_app_manager.h"
 
+#include <cinttypes>
+
 #include "ability_manager_client.h"
 #include "ability_manager_interface.h"
 #include "ani_common_util.h"
@@ -1000,7 +1002,8 @@ void EtsAppManager::NativeIsSharedBundleRunning(ani_env *env, ani_string aniBund
             AppExecFwk::CreateBoolean(env, false));
         return;
     }
-    TAG_LOGD(AAFwkTag::APPMGR, "NativeGetProcessMemoryByPid pid:%{public}lld", aniVersionCode);
+    TAG_LOGD(AAFwkTag::APPMGR, "NativeGetProcessMemoryByPid pid:%{public}" PRId64,
+        static_cast<int64_t>(aniVersionCode));
     uint32_t versionCode = static_cast<uint32_t>(aniVersionCode);
 
     std::string bundleName;
