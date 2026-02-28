@@ -7974,7 +7974,7 @@ int32_t AppMgrServiceInner::TransformedNotifyAppFault(const AppFaultDataBySA &fa
         transformedFaultData.timeoutMarkers = "notifyFault:" + transformedFaultData.errorObject.name +
             std::to_string(pid) + "-" + std::to_string(SystemTimeMillisecond());
     }
-    const int64_t timeout = 1000;
+    const int64_t timeout = 3000; // ipc tiomeout 3000ms
     if (faultData.faultType == FaultDataType::APP_FREEZE) {
         if (!AppExecFwk::AppfreezeManager::GetInstance()->IsHandleAppfreeze(bundleName) || record->IsDebugging()) {
             return ERR_OK;
