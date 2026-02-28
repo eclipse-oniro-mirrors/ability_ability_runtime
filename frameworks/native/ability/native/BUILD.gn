@@ -205,6 +205,8 @@ ohos_shared_library("abilitykit_utils") {
     external_deps += [
       "ability_base:session_info",
       "window_manager:libwm",
+      "form_fwk:form_render_info",
+      "form_fwk:form_common_info",
     ]
     public_external_deps += [
       "graphic_2d:color_manager",
@@ -466,6 +468,8 @@ ohos_shared_library("abilitykit_native") {
       "input:libmmi-client",
       "window_manager:libwm",
       "window_manager:libwsutils",
+      "form_fwk:form_render_info",
+      "form_fwk:form_common_info",
     ]
 
     public_external_deps += [ "window_manager:libdm" ]
@@ -514,6 +518,8 @@ ohos_shared_library("cj_abilitykit_native_ffi") {
     "ace_engine:ace_uicontent",
     "eventhandler:libeventhandler",
     "form_fwk:form_manager",
+    "form_fwk:form_render_info",
+    "form_fwk:form_common_info",
     "ipc:cj_ipc_ffi",
     "ipc:ipc_core",
     "ipc:ipc_napi",
@@ -621,7 +627,11 @@ ohos_shared_library("extensionkit_native") {
   ]
 
   if (ability_runtime_graphics) {
-    external_deps += [ "ability_base:session_info" ]
+    external_deps += [
+      "ability_base:session_info",
+      "form_fwk:form_render_info",
+      "form_fwk:form_common_info",
+    ]
     public_external_deps += [
       "graphic_2d:color_manager",
       "image_framework:image_native",
@@ -1145,6 +1155,8 @@ ohos_shared_library("uiabilitykit_native") {
       "icu:shared_icuuc",
       "window_manager:libwsutils",
       "window_manager:windowstage_kit",
+      "form_fwk:form_render_info",
+      "form_fwk:form_common_info",
     ]
     public_external_deps += [
       "graphic_2d:color_manager",
@@ -1287,6 +1299,8 @@ ohos_shared_library("ets_form_extension") {
         "form_fwk:fmskit_native",
         "form_fwk:fmskit_provider_client",
         "form_fwk:form_manager",
+        "form_fwk:form_render_info",
+        "form_fwk:form_common_info",
         "form_fwk:formutil_napi",
       ]
     }
@@ -1348,6 +1362,8 @@ ohos_shared_library("form_extension") {
         "form_fwk:fmskit_native",
         "form_fwk:fmskit_provider_client",
         "form_fwk:form_manager",
+        "form_fwk:form_render_info",
+        "form_fwk:form_common_info",
         "form_fwk:formutil_napi",
       ]
     }
@@ -1413,6 +1429,8 @@ ohos_shared_library("cj_form_extension") {
         "form_fwk:fmskit_native",
         "form_fwk:fmskit_provider_client",
         "form_fwk:form_manager",
+        "form_fwk:form_render_info",
+        "form_fwk:form_common_info",
         "form_fwk:formutil_napi",
       ]
     }
@@ -1452,6 +1470,8 @@ ohos_shared_library("form_extension_module") {
     "json:nlohmann_json_static",
     "napi:ace_napi",
     "window_manager:libwm",
+    "form_fwk:form_render_info",
+    "form_fwk:form_common_info",
   ]
 
   if (ability_runtime_graphics) {
@@ -2177,6 +2197,8 @@ ohos_shared_library("data_ability_helper") {
     "relational_store:native_dataability",
     "relational_store:rdb_data_ability_adapter",
     "window_manager:libwm",
+    "form_fwk:form_render_info",
+    "form_fwk:form_common_info",
   ]
   if (!(host_os == "linux" && host_cpu == "arm64")) {
     external_deps += [ "relational_store:native_rdb" ]
@@ -2230,6 +2252,8 @@ ohos_shared_library("service_extension_module") {
     external_deps += [
       "image_framework:image",
       "window_manager:libwm",
+      "form_fwk:form_render_info",
+      "form_fwk:form_common_info",
     ]
     public_external_deps = [
       "form_fwk:fmskit_provider_client",
@@ -2739,7 +2763,10 @@ ohos_shared_library("ui_extension_module") {
     "window_manager:libwm",
   ]
   if (ability_runtime_graphics) {
-    external_deps += []
+    external_deps += [
+      "form_fwk:form_render_info",
+      "form_fwk:form_common_info",
+    ]
   }
 
   relative_install_dir = "extensionability/"
@@ -2998,7 +3025,11 @@ ohos_shared_library("share_extension_module") {
   ]
 
   if (ability_runtime_graphics) {
-    external_deps += [ "window_manager:libwm" ]
+    external_deps += [
+      "window_manager:libwm",
+      "form_fwk:form_render_info",
+      "form_fwk:form_common_info",
+    ]
   }
 
   relative_install_dir = "extensionability/"
@@ -3062,7 +3093,11 @@ ohos_shared_library("action_extension_module") {
   ]
 
   if (ability_runtime_graphics) {
-    external_deps += [ "window_manager:libwm" ]
+    external_deps += [
+      "window_manager:libwm",
+      "form_fwk:form_render_info",
+      "form_fwk:form_common_info",
+    ]
   }
 
   relative_install_dir = "extensionability/"
@@ -3506,7 +3541,10 @@ ohos_shared_library("auto_fill_extension_module") {
     deps += [ ":auto_fill_extension" ]
   }
   if (ability_runtime_graphics) {
-    external_deps += []
+    external_deps += [
+      "form_fwk:form_render_info",
+      "form_fwk:form_common_info",
+    ]
   }
 
   relative_install_dir = "extensionability/"

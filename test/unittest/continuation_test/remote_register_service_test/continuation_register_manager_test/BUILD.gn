@@ -106,7 +106,11 @@ ohos_unittest("continuation_register_manager_test") {
   }
 
   if (ability_runtime_graphics) {
-    external_deps += [ "form_fwk:form_manager" ]
+    external_deps += [
+      "form_fwk:form_manager",
+      "form_fwk:form_render_info",
+      "form_fwk:form_common_info",
+    ]
   }
 }
 

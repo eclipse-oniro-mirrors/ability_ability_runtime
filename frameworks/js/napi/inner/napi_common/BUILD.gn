@@ -86,6 +86,10 @@ ohos_shared_library("napi_common") {
       "SUPPORT_GRAPHICS",
       "SUPPORT_SCREEN",
     ]
+    external_deps += [
+      "form_fwk:form_render_info",
+      "form_fwk:form_common_info",
+    ]
     public_external_deps += [
       "form_fwk:form_manager",
       "graphic_2d:EGL",
