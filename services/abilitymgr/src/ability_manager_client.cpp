@@ -15,12 +15,15 @@
 
 #include "ability_manager_client.h"
 
+#include <future>
 #ifdef WITH_DLP
 #include "dlp_file_kits.h"
 #endif // WITH_DLP
 #include "freeze_util.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
+#include "insight_intent_callback_interface.h"
+#include "insight_intent_host_client.h"
 #include "iservice_registry.h"
 #ifdef SUPPORT_SCREEN
 #include "scene_board_judgement.h"
@@ -2162,6 +2165,59 @@ ErrCode AbilityManagerClient::QueryEntityInfo(uint64_t key, sptr<IRemoteObject> 
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     return abms->QueryEntityInfo(key, callerToken, param);
+}
+
+namespace {
+constexpr int32_t INSIGHT_INTENT_EXECUTE_TIMEOUT = AbilityRuntime::INSIGHT_INTENT_EXECUTE_REPLY_FAILED;
+
+class SyncInsightIntentCallback : public AbilityRuntime::InsightIntentExecuteCallbackInterface {
+public:
+    explicit SyncInsightIntentCallback(std::shared_ptr<std::promise<AppExecFwk::InsightIntentExecuteResult>> promise)
+        : promise_(promise) {}
+
+    void ProcessInsightIntentExecute(int32_t resultCode,
+        AppExecFwk::InsightIntentExecuteResult executeResult) override
+    {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "ProcessInsightIntentExecute called, resultCode: %{public}d", resultCode);
+        executeResult.innerErr = resultCode;
+        if (promise_ != nullptr) {
+            promise_->set_value(executeResult);
+        }
+    }
+
+private:
+    std::shared_ptr<std::promise<AppExecFwk::InsightIntentExecuteResult>> promise_;
+};
+} // namespace
+
+ErrCode AbilityManagerClient::ExecuteIntentWithResult(
+    const InsightIntentExecuteParam &param, InsightIntentExecuteResult &result, int32_t timeoutMs)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "called, timeout: %{public}d ms", timeoutMs);
+
+    auto promise1 = std::make_shared<std::promise<AppExecFwk::InsightIntentExecuteResult>>();
+    auto future = promise1->get_future();
+
+    auto syncCallback = std::make_shared<SyncInsightIntentCallback>(promise1);
+    uint64_t key = AbilityRuntime::InsightIntentHostClient::GetInstance()->AddInsightIntentExecute(syncCallback);
+
+    ErrCode err = ExecuteIntent(key, AbilityRuntime::InsightIntentHostClient::GetInstance(), param);
+    if (err != ERR_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "ExecuteIntent failed, err: %{public}d", err);
+        AbilityRuntime::InsightIntentHostClient::GetInstance()->RemoveInsightIntentExecute(key);
+        return err;
+    }
+
+    std::future_status status = future.wait_for(std::chrono::milliseconds(timeoutMs));
+    if (status == std::future_status::timeout) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "ExecuteIntent timeout");
+        AbilityRuntime::InsightIntentHostClient::GetInstance()->RemoveInsightIntentExecute(key);
+        return INSIGHT_INTENT_EXECUTE_TIMEOUT;
+    }
+
+    result = future.get();
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "ExecuteIntentWithResult done, innerErr: %{public}d", result.innerErr);
+    return ERR_OK;
 }
 
 bool AbilityManagerClient::IsAbilityControllerStart(const Want &want)

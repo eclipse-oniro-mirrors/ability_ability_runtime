@@ -435,6 +435,10 @@ int PermissionVerification::JudgeInvisibleAndBackground(const VerificationInfo &
         TAG_LOGD(AAFwkTag::DEFAULT, "Support SA call");
         return ERR_OK;
     }
+    if (IsShellCall()) {
+        TAG_LOGD(AAFwkTag::DEFAULT, "Shell caller, skip visibility check");
+        return ERR_OK;
+    }
     if (!isCallByShortcut &&
         !JudgeStartInvisibleAbility(verificationInfo.accessTokenId, verificationInfo.visible,
         specifyTokenId)) {

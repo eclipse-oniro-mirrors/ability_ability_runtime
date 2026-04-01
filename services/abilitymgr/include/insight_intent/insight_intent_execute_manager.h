@@ -110,9 +110,14 @@ public:
 
     bool CheckIntentIsExemption(int32_t uid);
 
-    static int32_t CheckCallerPermission(uint64_t specifiedFullTokenId = 0);
+    static int32_t CheckCallerPermission(uint64_t specifiedFullTokenId = 0,
+        const std::string &callerBundleName = "",
+        const std::string &targetBundleName = "");
 
-    static int32_t CheckGetInsightIntenInfoPermission();
+    static int32_t CheckGetInsightIntenInfoPermission(
+        const std::string &targetBundleName = "");
+
+    static std::string GetCallerBundleNameByUid();
 
     void OnInsightAppDied(const std::string &bundleName);
 
