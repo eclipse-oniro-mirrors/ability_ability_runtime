@@ -50,6 +50,10 @@ public:
     pid_t GetHostPid() const;
     void SetUid(int32_t uid);
     int32_t GetUid() const;
+    void SetHostUid(const int32_t hostUid);
+    int32_t GetHostUid() const;
+    void SetHostBundleName(const std::string &hostBundleName);
+    std::string GetHostBundleName() const;
     std::string GetProcessName() const;
     std::string GetSrcEntry() const;
     std::string GetEntryFunc() const;
@@ -89,6 +93,8 @@ private:
     std::string processName_;
     std::string entryFunc_;
     std::string entryParams_;
+    int32_t hostUid_ = 0;
+    std::string hostBundleName_;
     std::chrono::system_clock::time_point attachTimeoutStartTime_;
 };
 }  // namespace AppExecFwk

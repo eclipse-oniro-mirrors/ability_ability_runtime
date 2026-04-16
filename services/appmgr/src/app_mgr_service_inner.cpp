@@ -7127,16 +7127,34 @@ void AppMgrServiceInner::AttachRenderProcess(const pid_t pid, const sptr<IRender
         return;
     }
 
+    std::shared_ptr<RenderRecord> renderRecord;
     auto appRecord = appRunningManager_->GetAppRunningRecordByRenderPid(pid);
     if (!appRecord) {
         TAG_LOGE(AAFwkTag::APPMGR, "no appRecord, pid:%{public}d", pid);
+        {
+            std::lock_guard<ffrt::mutex> lock(pendingRenderRecordMapLock_);
+            auto it = pendingRenderRecordMap_.find(pid);
+            if (it != pendingRenderRecordMap_.end()) {
+                renderRecord = it->second;
+                pendingRenderRecordMap_.erase(it);
+            }
+        }
+        if (renderRecord) {
+            TAG_LOGI(AAFwkTag::APPMGR, "found renderRecord in pending map, kill process, pid:%{public}d", pid);
+            KillProcessByPid(pid, "AttachRenderProcessFailed");
+            OnRenderProcessDied(renderRecord);
+        }
         return;
     }
 
-    auto renderRecord = appRecord->GetRenderRecordByPid(pid);
+    renderRecord = appRecord->GetRenderRecordByPid(pid);
     if (!renderRecord) {
         TAG_LOGE(AAFwkTag::APPMGR, "no renderRecord, pid:%{public}d", pid);
         return;
+    }
+    {
+        std::lock_guard<ffrt::mutex> lock(pendingRenderRecordMapLock_);
+        pendingRenderRecordMap_.erase(pid);
     }
     CheckRenderAttachTimeout(renderRecord);
 
@@ -7289,6 +7307,10 @@ int AppMgrServiceInner::StartRenderProcessImpl(const std::shared_ptr<RenderRecor
         isPreload);
     DelayedSingleton<AppStateObserverManager>::GetInstance()->OnRenderProcessCreated(renderRecord, isPreload);
     PostRenderAttachTimeoutTask(renderRecord);
+    {
+        std::lock_guard<ffrt::mutex> lock(pendingRenderRecordMapLock_);
+        pendingRenderRecordMap_.emplace(pid, renderRecord);
+    }
     return 0;
 }
 
@@ -11608,6 +11630,10 @@ void AppMgrServiceInner::HandleRenderAttachTimeout(int64_t pid)
     CHECK_POINTER_AND_RETURN_LOG(renderRecord, "renderRecord is null");
     AppMgrEventUtil::SendRenderProcessStartFailedEvent(renderRecord,
         ProcessStartFailedReason::ATTACH_TIMEOUT, ATTACH_TIMEOUT_SUB_REASON_TIMEOUT);
+    {
+        std::lock_guard<ffrt::mutex> lock(pendingRenderRecordMapLock_);
+        pendingRenderRecordMap_.erase(pid);
+    }
 }
 
 void AppMgrServiceInner::HandlePreloadAttachTimeout(int64_t pid)

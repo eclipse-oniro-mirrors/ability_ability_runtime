@@ -35,6 +35,8 @@ ChildProcessRecord::ChildProcessRecord(pid_t hostPid, const ChildProcessRequest 
         }
     }
     MakeProcessName(hostRecord, request.options.customProcessName);
+    SetHostUid(hostRecord->GetUid());
+    SetHostBundleName(hostRecord->GetBundleName());
 }
 
 ChildProcessRecord::ChildProcessRecord(pid_t hostPid, const std::string &libName,
@@ -45,6 +47,8 @@ ChildProcessRecord::ChildProcessRecord(pid_t hostPid, const std::string &libName
     srcEntry_(libName)
 {
     MakeProcessName(hostRecord, customProcessName);
+    SetHostUid(hostRecord->GetUid());
+    SetHostBundleName(hostRecord->GetBundleName());
 }
 
 ChildProcessRecord::~ChildProcessRecord()
@@ -248,6 +252,26 @@ void ChildProcessRecord::SetAttachTimeoutStartTime(const std::chrono::system_clo
 std::chrono::system_clock::time_point ChildProcessRecord::GetAttachTimeoutStartTime() const
 {
     return attachTimeoutStartTime_;
+}
+
+void ChildProcessRecord::SetHostUid(const int32_t hostUid)
+{
+    hostUid_ = hostUid;
+}
+
+int32_t ChildProcessRecord::GetHostUid() const
+{
+    return hostUid_;
+}
+
+void ChildProcessRecord::SetHostBundleName(const std::string &hostBundleName)
+{
+    hostBundleName_ = hostBundleName;
+}
+
+std::string ChildProcessRecord::GetHostBundleName() const
+{
+    return hostBundleName_;
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

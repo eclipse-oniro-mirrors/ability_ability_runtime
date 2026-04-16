@@ -2292,6 +2292,7 @@ private:
     std::unordered_set<int32_t> childProcessIsolationUidSet_;
     std::unordered_set<int32_t> uninstallOrUpgradeUidSet_ {};
     std::unordered_set<std::string> nwebPreloadSet_ {};
+    std::unordered_map<pid_t, std::shared_ptr<RenderRecord>> pendingRenderRecordMap_;
 
     std::vector<AppStateCallbackWithUserId> appStateCallbacks_;
     std::vector<ConfigurationObserverWithUserId> configurationObservers_;
@@ -2324,6 +2325,7 @@ private:
     std::mutex uiExtensionBindReleationsLock_;
     ffrt::mutex uninstallOrUpgradeUidSetLock_;
     ffrt::mutex exitMasterProcessRoleLock_;
+    ffrt::mutex pendingRenderRecordMapLock_;
     std::shared_mutex startProcessLock_;
     bool isInitAppWaitingDebugListExecuted_ = false;
 };
