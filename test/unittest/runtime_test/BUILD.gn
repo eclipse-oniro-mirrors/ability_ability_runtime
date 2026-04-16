@@ -114,6 +114,7 @@ ohos_unittest("js_runtime_test") {
   configs = [ "${ability_runtime_services_path}/abilitymgr:abilityms_config" ]
 
   external_deps = [
+    "ability_base:extractortool",
     "ability_runtime:js_environment",
     "ability_runtime:runtime",
     "bundle_framework:appexecfwk_base",

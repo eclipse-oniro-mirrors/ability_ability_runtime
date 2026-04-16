@@ -1,3 +1,490 @@
 {
-    "ams_extension_config": []
+    "ams_extension_config": [
+        {
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "workScheduler",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "inputMethod",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "service",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "accessibility",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "dataShare",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "fileShare",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "staticSubscriber",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "wallpaper",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "backup",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "window",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "enterpriseAdmin",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "fileAccess",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "print",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "share",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "driver",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "action",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "adsService",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "embeddedUI",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "vpn",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "appService",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "distributed",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "fence",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "photoEditor",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "uiService",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "formEdit",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "liveForm",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "webNativeMessaging",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "faultLog",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "notificationSubscriber",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "partnerAgent",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "push",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "thumbnail",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "preview",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "ui",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "sys/commonUI",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "sysDialog/userAuth",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "sysDialog/common",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "sysDialog/power",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "sysDialog/print",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "sysDialog/atomicServicePanel",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "sysPicker/mediaControl",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "sysPicker/share",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "sysPicker/photoPicker",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "sysPicker/camera",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "sysPicker/navigation",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "sysPicker/appSelector",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "sysPicker/filePicker",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "sysPicker/audioPicker",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "sysPicker/photoEditor",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "sys/visualExtension",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "autoFill/password",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "autoFill/smart",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "selection",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "statusBarView",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "insightIntentUI",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "appAccountAuthorization",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "remoteNotification",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "remoteLocation",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "voip",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "accountLogout",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "liveViewLockScreen",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "hms/account",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "ads",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "sysDialog/meetimeCall",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "sysDialog/meetimeContact",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "sysDialog/meetimeMessage",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "sysPicker/meetimeContact",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "sysPicker/meetimeCallLog",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "callerInfoQuery",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "recentPhoto",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "assetAcceleration",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "crypto",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "assetCache",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "awc/webpage",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "awc/newsfeed",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "contentEmbed",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "agent",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "agentUI",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "modularObject",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
+            "extension_type_name": "embeddedCashier",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        }
+    ]
 }

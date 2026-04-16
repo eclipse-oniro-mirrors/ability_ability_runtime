@@ -26,17 +26,27 @@
 
 namespace OHOS {
 namespace AgentRuntime {
+enum class AgentCardUpdateSource : int32_t {
+    BUNDLE = 0,
+    API = 1,
+};
+
+struct StoredAgentCardEntry {
+    AgentCard card;
+    AgentCardUpdateSource source = AgentCardUpdateSource::BUNDLE;
+};
+
 class AgentCardDbMgr {
 public:
     static AgentCardDbMgr &GetInstance();
 
-    int32_t InsertData(const std::string &bundleName, int32_t userId, const std::vector<AgentCard> &cards);
+    int32_t InsertData(const std::string &bundleName, int32_t userId, const std::vector<StoredAgentCardEntry> &cards);
 
     int32_t DeleteData(const std::string &bundleName, int32_t userId);
 
-    int32_t QueryData(const std::string &bundleName, int32_t userId, std::vector<AgentCard> &cards);
+    int32_t QueryData(const std::string &bundleName, int32_t userId, std::vector<StoredAgentCardEntry> &cards);
 
-    int32_t QueryAllData(std::vector<AgentCard> &cards);
+    int32_t QueryAllData(std::vector<StoredAgentCardEntry> &cards);
 
 private:
     AgentCardDbMgr();
@@ -46,7 +56,7 @@ private:
     DistributedKv::Status RestoreKvStore(DistributedKv::Status status);
     DistributedKv::Status GetKvStore();
     bool CheckKvStore();
-    DistributedKv::Value ConvertValue(const std::vector<AgentCard> &cards);
+    DistributedKv::Value ConvertValue(const std::vector<StoredAgentCardEntry> &cards);
     DistributedKv::Key ConvertKey(const std::string &bundleName, int32_t userId);
 
     static const DistributedKv::AppId APP_ID;

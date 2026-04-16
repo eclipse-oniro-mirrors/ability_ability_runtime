@@ -128,7 +128,8 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     freeInstallManager->NotifyDmsCallback(*want, intParam);
     freeInstallManager->NotifyFreeInstallResult(*want, intParam);
     freeInstallManager->FreeInstallAbilityFromRemote(*want, token, int32Param, intParam);
-    freeInstallManager->ConnectFreeInstall(*want, int32Param, token, stringParam);
+    freeInstallManager->ConnectFreeInstall(
+        *want, int32Param, token, stringParam, AppExecFwk::ExtensionAbilityType::SERVICE);
     freeInstallManager->OnInstallFinished(intParam, *want, int32Param, int64Param);
     freeInstallManager->OnRemoteInstallFinished(intParam, *want, int32Param);
 

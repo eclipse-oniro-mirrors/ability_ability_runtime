@@ -558,6 +558,20 @@ int32_t AppSpawnClient::AppspawnCreateDefaultMsg(const AppSpawnStartMsg &startMs
             TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
             break;
         }
+        if (startMsg.code == MSG_SPAWN_WORKER_PROCESS) {
+            ret = AppSpawnReqMsgSetCheckpointInfo(reqHandle, startMsg.imagePid, startMsg.checkpointId);
+            if (ret != ERR_OK) {
+                TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
+                break;
+            }
+        }
+        if (startMsg.code == MSG_SPAWN_IMAGE_PROCESS) {
+            ret = AppSpawnReqMsgSetCheckpointInfo(reqHandle, startMsg.templatePid, 0);
+            if (ret != ERR_OK) {
+                TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
+                break;
+            }
+        }
         ret = AppspawnSetExtMsg(startMsg, reqHandle);
         if (ret != ERR_OK) {
             TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
@@ -605,6 +619,20 @@ bool AppSpawnClient::VerifyMsg(const AppSpawnStartMsg &startMsg)
     } else if (startMsg.code == MSG_GET_RENDER_TERMINATION_STATUS) {
         if (startMsg.pid < 0) {
             TAG_LOGE(AAFwkTag::APPMGR, "invalid pid");
+            return false;
+        }
+    } else if (startMsg.code == MSG_SPAWN_WORKER_PROCESS) {
+        if (startMsg.imagePid < 0) {
+            TAG_LOGE(AAFwkTag::APPMGR, "invalid imagePid");
+            return false;
+        }
+        if (startMsg.checkpointId == 0) {
+            TAG_LOGE(AAFwkTag::APPMGR, "invalid checkpointId");
+            return false;
+        }
+    } else if (startMsg.code == MSG_SPAWN_IMAGE_PROCESS) {
+        if (startMsg.templatePid < 0) {
+            TAG_LOGE(AAFwkTag::APPMGR, "invalid templatePid");
             return false;
         }
     } else {
@@ -665,11 +693,62 @@ int32_t AppSpawnClient::StartProcess(const AppSpawnStartMsg &startMsg, pid_t &pi
     }
     if (result.pid <= 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "pid invalid, result is %{public}d", result.result);
-        return AAFwk::ERR_PROCESS_START_INVALID_PID;
+        if (startMsg.code != static_cast<int32_t>(MSG_SPAWN_WORKER_PROCESS)) {
+            return AAFwk::ERR_PROCESS_START_INVALID_PID;
+        }
     } else {
         pid = result.pid;
     }
     TAG_LOGI(AAFwkTag::APPMGR, "pid%{public}d", pid);
+    return result.result;
+}
+
+int32_t AppSpawnClient::StartImageProcess(const AppSpawnStartMsg &startMsg, pid_t &pid, uint64_t &checkpointId)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "StartImageProcess");
+    HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
+    if (!VerifyMsg(startMsg)) {
+        return ERR_INVALID_VALUE;
+    }
+
+    int32_t ret = 0;
+    AppSpawnReqMsgHandle reqHandle = nullptr;
+    int64_t startTime = AbilityRuntime::TimeUtil::SystemTimeMillisecond();
+
+    ret = OpenConnection();
+    if (ret != 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "OpenConnection fail");
+        return ret;
+    }
+
+    ret = AppSpawnReqMsgCreate(static_cast<AppSpawnMsgType>(startMsg.code), startMsg.procName.c_str(), &reqHandle);
+    if (ret != 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "AppSpawnReqMsgCreate fail");
+        return ret;
+    }
+
+    ret = AppspawnCreateDefaultMsg(startMsg, reqHandle);
+    if (ret != 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "AppspawnCreateDefaultMsg fail");
+        return ret; // create msg failed
+    }
+
+    TAG_LOGD(AAFwkTag::APPMGR, "AppspawnSendMsg");
+    AppSpawnResult result = {0};
+    ret = AppSpawnClientSendMsg(handle_, reqHandle, &result);
+
+    int64_t costTime = AbilityRuntime::TimeUtil::SystemTimeMillisecond() - startTime;
+    if (costTime > MAX_COST_TIME) {
+        TAG_LOGE(AAFwkTag::APPMGR, "StartImageProcess cost %{public}" PRId64 "ms!", costTime);
+    }
+    if (ret != 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "appspawn send msg fail");
+        return ret;
+    }
+
+    pid = result.pid;
+    checkpointId = result.checkPointId;
+    TAG_LOGI(AAFwkTag::APPMGR, "pid:%{public}d, checkpointId:%{public}" PRIu64"", pid, checkpointId);
     return result.result;
 }
 

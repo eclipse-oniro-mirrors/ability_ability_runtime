@@ -197,6 +197,23 @@ ohos_prebuilt_etc("ability_runtime_extension_context_abc_etc") {
   deps = [ ":ability_runtime_extension_context_abc" ]
 }
 
+generate_static_abc("ability_runtime_child_process_abc") {
+  base_url = "./"
+  files = [ "./@ohos.app.ability.ChildProcess.ets" ]
+
+  is_boot_abc = "True"
+  device_dst_file =
+      "/system/framework/ability_runtime_child_process_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_child_process_abc_etc") {
+  source = "$target_out_dir/ability_runtime_child_process_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_child_process_abc" ]
+}
+
 generate_static_abc("ability_runtime_child_process_args_abc") {
   base_url = "./"
   files = [ "./@ohos.app.ability.ChildProcessArgs.ets" ]
@@ -2121,6 +2138,7 @@ group("ets_packages") {
     ":ability_runtime_auto_startup_manager_abc_etc",
     ":ability_runtime_base_context_abc_etc",
     ":ability_runtime_caller_callee_abc_etc",
+    ":ability_runtime_child_process_abc_etc",
     ":ability_runtime_child_process_args_abc_etc",
     ":ability_runtime_child_process_manager_abc_etc",
     ":ability_runtime_child_process_options_abc_etc",

@@ -24,6 +24,8 @@ namespace OHOS {
 namespace AgentRuntime {
 using namespace OHOS::AbilityRuntime;
 napi_value CreateJsAgentExtensionContext(napi_env env, std::shared_ptr<AgentExtensionContext> context);
+bool UnwrapJsAgentExtensionContext(
+    napi_env env, napi_value value, std::shared_ptr<AgentExtensionContext> &context);
 }  // namespace AbilityRuntime
 }  // namespace OHOS
 #endif  // OHOS_ABILITY_RUNTIME_JS_APP_SERVICE_EXTENSION_CONTEXT_H

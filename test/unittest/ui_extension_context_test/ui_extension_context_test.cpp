@@ -1313,5 +1313,230 @@ HWTEST_F(UIExtensionContextTest, GetFailureInfoByMessage_0100, Function | Medium
     EXPECT_EQ(faileCode, 0);
     EXPECT_EQ(failReason, "A system error occurred");
 }
+
+/**
+ * @tc.number: SetAbilityFontSize_0100
+ * @tc.name: SetAbilityFontSize
+ * @tc.desc: Test SetAbilityFontSize with negative fontSize value.
+ */
+HWTEST_F(UIExtensionContextTest, SetAbilityFontSize_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetAbilityFontSize_0100 start");
+
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    // 注册回调以便检测是否被调用
+    bool callbackInvoked = false;
+    auto abilityConfigCallback = [&callbackInvoked](const AppExecFwk::Configuration &config) {
+        callbackInvoked = true;
+    };
+    context->RegisterAbilityConfigUpdateCallback(abilityConfigCallback);
+
+    // 测试负值字体大小（应该直接返回，不调用回调）
+    double negativeFontSize = -1.0;
+    context->SetAbilityFontSize(negativeFontSize);
+    EXPECT_FALSE(callbackInvoked);
+
+    TAG_LOGI(AAFwkTag::TEST, "SetAbilityFontSize_0100 end");
+}
+
+/**
+ * @tc.number: SetAbilityFontSize_0200
+ * @tc.name: SetAbilityFontSize
+ * @tc.desc: Test SetAbilityFontSize with valid fontSize value and callback registered.
+ */
+HWTEST_F(UIExtensionContextTest, SetAbilityFontSize_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetAbilityFontSize_0200 start");
+
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    // 注册回调
+    bool callbackInvoked = false;
+    double receivedFontSize = 0.0;
+    auto abilityConfigCallback = [&callbackInvoked, &receivedFontSize](const AppExecFwk::Configuration &config) {
+        callbackInvoked = true;
+        // 验证配置中包含正确的字体大小值
+        std::string fontSizeStr = config.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_FONT_SIZE_SCALE);
+        receivedFontSize = std::stod(fontSizeStr);
+    };
+    context->RegisterAbilityConfigUpdateCallback(abilityConfigCallback);
+
+    // 测试正常字体大小值
+    double validFontSize = 1.5;
+    context->SetAbilityFontSize(validFontSize);
+    EXPECT_TRUE(callbackInvoked);
+    EXPECT_DOUBLE_EQ(receivedFontSize, validFontSize);
+
+    TAG_LOGI(AAFwkTag::TEST, "SetAbilityFontSize_0200 end");
+}
+
+/**
+ * @tc.number: SetAbilityFontSize_0300
+ * @tc.name: SetAbilityFontSize
+ * @tc.desc: Test SetAbilityFontSize with zero fontSize value.
+ */
+HWTEST_F(UIExtensionContextTest, SetAbilityFontSize_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetAbilityFontSize_0300 start");
+
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    // 注册回调
+    bool callbackInvoked = false;
+    double receivedFontSize = 0.0;
+    auto abilityConfigCallback = [&callbackInvoked, &receivedFontSize](const AppExecFwk::Configuration &config) {
+        callbackInvoked = true;
+        std::string fontSizeStr = config.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_FONT_SIZE_SCALE);
+        receivedFontSize = std::stod(fontSizeStr);
+    };
+    context->RegisterAbilityConfigUpdateCallback(abilityConfigCallback);
+
+    // 测试零值字体大小（应该正常执行）
+    double zeroFontSize = 0.1;
+    context->SetAbilityFontSize(zeroFontSize);
+    EXPECT_TRUE(callbackInvoked);
+    EXPECT_DOUBLE_EQ(receivedFontSize, zeroFontSize);
+
+    TAG_LOGI(AAFwkTag::TEST, "SetAbilityFontSize_0300 end");
+}
+
+/**
+ * @tc.number: SetAbilityFontSize_0400
+ * @tc.name: SetAbilityFontSize
+ * @tc.desc: Test SetAbilityFontSize when callback is not registered.
+ */
+HWTEST_F(UIExtensionContextTest, SetAbilityFontSize_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetAbilityFontSize_0400 start");
+
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    // 不注册回调（abilityConfigUpdateCallback_ 为 nullptr）
+    double validFontSize = 2.0;
+    // 即使字体大小有效，没有回调也不应该崩溃或出现异常
+    context->SetAbilityFontSize(validFontSize);
+    EXPECT_EQ(context->abilityConfigUpdateCallback_, nullptr);
+
+    TAG_LOGI(AAFwkTag::TEST, "SetAbilityFontSize_0400 end");
+}
+
+/**
+ * @tc.number: SetAbilityFontSize_0500
+ * @tc.name: SetAbilityFontSize
+ * @tc.desc: Test SetAbilityFontSize with various valid fontSize values.
+ */
+HWTEST_F(UIExtensionContextTest, SetAbilityFontSize_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetAbilityFontSize_0500 start");
+
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    // 注册回调
+    std::vector<double> receivedFontSizes;
+    auto abilityConfigCallback = [&receivedFontSizes](const AppExecFwk::Configuration &config) {
+        std::string fontSizeStr = config.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_FONT_SIZE_SCALE);
+        receivedFontSizes.push_back(std::stod(fontSizeStr));
+    };
+    context->RegisterAbilityConfigUpdateCallback(abilityConfigCallback);
+
+    // 测试多个不同的字体大小值
+    std::vector<double> testFontSizes = {0.5, 1.0, 1.5, 2.0, 3.0};
+    for (double fontSize : testFontSizes) {
+        context->SetAbilityFontSize(fontSize);
+    }
+
+    // 验证所有值都被正确处理
+    EXPECT_EQ(receivedFontSizes.size(), testFontSizes.size());
+    for (size_t i = 0; i < testFontSizes.size(); ++i) {
+        EXPECT_DOUBLE_EQ(receivedFontSizes[i], testFontSizes[i]);
+    }
+
+    TAG_LOGI(AAFwkTag::TEST, "SetAbilityFontSize_0500 end");
+}
+
+/**
+ * @tc.number: SetAbilityConfiguration_0300
+ * @tc.name: SetAbilityConfiguration
+ * @tc.desc: Test SetAbilityConfiguration when abilityConfiguration_ is null and fullConfig is null.
+ */
+HWTEST_F(UIExtensionContextTest, SetAbilityConfiguration_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetAbilityConfiguration_0300 start");
+
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    ASSERT_EQ(context->abilityConfiguration_, nullptr);
+
+    AppExecFwk::Configuration config;
+    context->SetAbilityConfiguration(config);
+
+    // 验证 abilityConfiguration_ 被正确创建
+    EXPECT_NE(context->abilityConfiguration_, nullptr);
+
+    TAG_LOGI(AAFwkTag::TEST, "SetAbilityConfiguration_0300 end");
+}
+
+/**
+ * @tc.number: SetAbilityConfiguration_0400
+ * @tc.name: SetAbilityConfiguration
+ * @tc.desc: Test SetAbilityConfiguration with multiple configuration updates.
+ */
+HWTEST_F(UIExtensionContextTest, SetAbilityConfiguration_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetAbilityConfiguration_0400 start");
+
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    // 设置初始配置
+    AppExecFwk::Configuration config1;
+    std::string language1 = "zh-CN";
+    config1.AddItem(1001, AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE, language1);
+    context->SetAbilityConfiguration(config1);
+
+    EXPECT_NE(context->abilityConfiguration_, nullptr);
+    std::string result1 = context->abilityConfiguration_->GetItem(1001, AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE);
+    EXPECT_EQ(result1, language1);
+
+    // 更新配置（添加新的配置项）
+    AppExecFwk::Configuration config2;
+    std::string language2 = "en-US";
+    config2.AddItem(1002, AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE, language2);
+    context->SetAbilityConfiguration(config2);
+
+    // 验证配置被正确合并
+    std::string result2 = context->abilityConfiguration_->GetItem(1002, AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE);
+    EXPECT_EQ(result2, language2);
+
+    TAG_LOGI(AAFwkTag::TEST, "SetAbilityConfiguration_0400 end");
+}
+
+/**
+ * @tc.number: SetAbilityConfiguration_0500
+ * @tc.name: SetAbilityConfiguration
+ * @tc.desc: Test SetAbilityConfiguration when abilityConfiguration_ is null and fullConfig is null.
+ */
+HWTEST_F(UIExtensionContextTest, SetAbilityConfiguration_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetAbilityConfiguration_0500 start");
+
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    ASSERT_EQ(context->abilityConfiguration_, nullptr);
+
+    AppExecFwk::Configuration config;
+    context->SetAbilityConfiguration(config);
+
+    // 验证 abilityConfiguration_ 被正确创建
+    EXPECT_NE(context->abilityConfiguration_, nullptr);
+
+    TAG_LOGI(AAFwkTag::TEST, "SetAbilityConfiguration_0500 end");
+}
 } // namespace AbilityRuntime
 } // namespace OHOS

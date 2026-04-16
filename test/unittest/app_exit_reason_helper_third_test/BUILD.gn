@@ -50,6 +50,7 @@ ohos_unittest("app_exit_reason_helper_third_test") {
     "${ability_runtime_services_path}/abilitymgr/src/utils/oe_extension_utils.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/timeout_state_utils.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/request_id_util.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/utils/dms_util.cpp",
     "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/appexecfwk_core/src/appmgr/mock_app_scheduler.cpp",
     "app_exit_reason_helper_third_test.cpp",
   ]

@@ -26,6 +26,12 @@ using namespace OHOS::AppExecFwk;
 using namespace OHOS::AbilityRuntime;
 namespace OHOS {
 namespace AAFwk {
+namespace {
+constexpr int32_t BUNDLE_TYPE_APP_PLUGIN = 4;
+constexpr int32_t TEST_UID = 1000;
+constexpr const char* TEST_BUNDLE_NAME = "com.test.plugin";
+constexpr const char* TEST_MODULE_NAME = "entry";
+}
 class AbilityBundleEventCallbackTest : public testing::Test {
 public:
     static void SetUpTestCase(void);
@@ -155,6 +161,64 @@ HWTEST_F(AbilityBundleEventCallbackTest, OnReceiveEvent_0400, TestSize.Level1)
     EXPECT_TRUE(mockHandler->taskCount >= 1);
 
     GTEST_LOG_(INFO) << "OnReceiveEvent_0400 end";
+}
+
+/**
+ * @tc.name: AbilityBundleEventCallbackTest_OnReceiveEvent_0500
+ * @tc.desc: Test OnReceiveEvent with APP_PLUGIN + COMMON_EVENT_PACKAGE_ADDED
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityBundleEventCallbackTest, OnReceiveEvent_0500, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "OnReceiveEvent_0500 start";
+
+    sptr<AbilityBundleEventCallback> abilityBundleEventCallback_ =
+        new (std::nothrow) AbilityBundleEventCallback(nullptr, nullptr);
+    EXPECT_NE(abilityBundleEventCallback_, nullptr);
+
+    auto mockHandler = std::make_shared<MockTaskHandlerWrap>();
+    abilityBundleEventCallback_->taskHandler_ = mockHandler;
+    EventFwk::CommonEventData eventData;
+    Want want;
+    want.SetElementName("", TEST_BUNDLE_NAME, "", TEST_MODULE_NAME);
+    want.SetAction(EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_ADDED);
+    want.SetParam("bundleType", BUNDLE_TYPE_APP_PLUGIN);
+    want.SetParam("uid", TEST_UID);
+    eventData.SetWant(want);
+
+    abilityBundleEventCallback_->OnReceiveEvent(eventData);
+    EXPECT_TRUE(mockHandler->taskCount >= 1);
+
+    GTEST_LOG_(INFO) << "OnReceiveEvent_0500 end";
+}
+
+/**
+ * @tc.name: AbilityBundleEventCallbackTest_OnReceiveEvent_0600
+ * @tc.desc: Test OnReceiveEvent with APP_PLUGIN + COMMON_EVENT_PACKAGE_CHANGED
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityBundleEventCallbackTest, OnReceiveEvent_0600, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "OnReceiveEvent_0600 start";
+
+    sptr<AbilityBundleEventCallback> abilityBundleEventCallback_ =
+        new (std::nothrow) AbilityBundleEventCallback(nullptr, nullptr);
+    EXPECT_NE(abilityBundleEventCallback_, nullptr);
+
+    auto mockHandler = std::make_shared<MockTaskHandlerWrap>();
+    abilityBundleEventCallback_->taskHandler_ = mockHandler;
+    EventFwk::CommonEventData eventData;
+    Want want;
+    want.SetElementName("", TEST_BUNDLE_NAME, "", TEST_MODULE_NAME);
+    want.SetAction(EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_CHANGED);
+    want.SetParam("bundleType", BUNDLE_TYPE_APP_PLUGIN);
+    want.SetParam("uid", TEST_UID);
+    eventData.SetWant(want);
+
+    abilityBundleEventCallback_->OnReceiveEvent(eventData);
+    EXPECT_TRUE(mockHandler->taskCount >= 1);
+
+    GTEST_LOG_(INFO) << "OnReceiveEvent_0600 end";
 }
 } // namespace AAFwk
 } // namespace OHOS

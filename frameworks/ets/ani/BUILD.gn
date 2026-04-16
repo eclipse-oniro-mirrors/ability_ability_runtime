@@ -37,6 +37,7 @@ group("ani_packages") {
     "${ability_runtime_path}/frameworks/ets/ani/app/ui_extension_content_session:ui_extension_content_session_ani_kit",
     "${ability_runtime_path}/frameworks/ets/ani/app/ui_extension_context:ui_extension_context_ani_kit",
     "${ability_runtime_path}/frameworks/ets/ani/app/ui_service_extension_context:ui_service_extension_context_ani_kit",
+    "${ability_runtime_path}/frameworks/ets/ani/app/form_extension_context:form_extension_context_ani_kit",
     "${ability_runtime_path}/frameworks/ets/ani/app_manager:app_manager_ani",
     "${ability_runtime_path}/frameworks/ets/ani/app_startup/startup_manager:startup_manager_ani_kit",
     "${ability_runtime_path}/frameworks/ets/ani/application:application_ani",

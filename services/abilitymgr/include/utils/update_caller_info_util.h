@@ -17,6 +17,7 @@
 #define OHOS_ABILITY_RUNTIME_UPDATE_CALLER_INFO_UTIL_H
 
 #include <string>
+#include "caller_info.h"
 #include "want.h"
 
 namespace OHOS {
@@ -27,7 +28,10 @@ public:
     ~UpdateCallerInfoUtil() = default;
 
     void UpdateAsCallerSourceInfo(Want& want, sptr<IRemoteObject> asCallerSourceToken, sptr<IRemoteObject> callerToken);
-    void UpdateCallerInfo(Want& want, const sptr<IRemoteObject> &callerToken);
+    void UpdateByIndirectCallerInfo(std::shared_ptr<IndirectCallerInfo> indirectCallerInfo, int32_t &tokenId,
+        int32_t &callerUid, int32_t &callerPid);
+    void UpdateCallerInfo(Want& want, const sptr<IRemoteObject> &callerToken,
+        std::shared_ptr<IndirectCallerInfo> indirectCallerInfo = nullptr);
     void UpdateBackToCallerFlag(const sptr<IRemoteObject> &callerToken, Want &want, int32_t requestCode, bool backFlag);
     void UpdateCallerInfoFromToken(Want& want, const sptr<IRemoteObject> &token);
     void UpdateDmsCallerInfo(Want& want, const sptr<IRemoteObject> &callerToken);

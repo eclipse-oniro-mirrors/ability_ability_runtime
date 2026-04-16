@@ -134,6 +134,7 @@ int32_t StartupManager::PreloadAppHintStartup(const AppExecFwk::BundleInfo& bund
             TAG_LOGE(AAFwkTag::STARTUP, "self is null");
             return;
         }
+        TAG_LOGD(AAFwkTag::STARTUP, "setpriority:%{public}d", PRIORITY_PRELOAD_SO);
         auto ret = setpriority(PRIO_PROCESS, gettid(), PRIORITY_PRELOAD_SO);
         if (ret != ERR_OK) {
             TAG_LOGW(AAFwkTag::STARTUP, "setpriority fail, ret:%{public}d, err:%{public}d", ret, errno);
@@ -190,7 +191,9 @@ int32_t StartupManager::BuildAutoAppStartupTaskManager(std::shared_ptr<AAFwk::Wa
     TAG_LOGD(AAFwkTag::STARTUP, "autoStartupTasksManager build, id: %{public}u, tasks num: %{public}zu",
         startupTaskManagerId, autoStartupTasks.size());
     startupTaskManager = std::make_shared<StartupTaskManager>(startupTaskManagerId, autoStartupTasks);
-    startupTaskManager->SetConfig(startupConfig);
+    if (startupConfig != nullptr) {
+        startupTaskManager->SetConfig(startupConfig);
+    }
     startupTaskManagerMap_.emplace(startupTaskManagerId, startupTaskManager);
     startupTaskManagerId++;
     return ERR_OK;
@@ -288,7 +291,9 @@ int32_t StartupManager::BuildAppStartupTaskManager(const std::vector<std::string
     TAG_LOGD(AAFwkTag::STARTUP, "startupTasksManager build, id: %{public}u, tasks num: %{public}zu",
         startupTaskManagerId, currentStartupTasks.size());
     startupTaskManager = std::make_shared<StartupTaskManager>(startupTaskManagerId, currentStartupTasks);
-    startupTaskManager->SetConfig(defaultConfig_);
+    if (defaultConfig_ != nullptr) {
+        startupTaskManager->SetConfig(defaultConfig_);
+    }
     startupTaskManagerMap_.emplace(startupTaskManagerId, startupTaskManager);
     startupTaskManagerId++;
     return ERR_OK;

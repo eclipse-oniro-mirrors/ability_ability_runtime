@@ -87,6 +87,12 @@ public:
     virtual void OnStartProcessFailed(const std::vector<sptr<IRemoteObject>> &abilityTokens) {}
 
     /**
+     * @brief Notify abilityms one ability is being terminated.
+     * @param token ability token.
+     */
+    virtual void NotifyTerminateAbility(const sptr<IRemoteObject> &token) {}
+
+    /**
      * @brief Notify abilityms app process pre cache
      * @param pid process pid.
      * @param userId userId Designation User ID.
@@ -126,6 +132,7 @@ public:
         TRANSACT_ON_START_PROCESS_FAILED,
         TRANSACT_ON_CACHE_EXIT_INFO,
         TRANSACT_ON_RECORD_APP_EXIT_SIGNAL_REASON,
+        TRANSACT_ON_NOTIFY_TERMINATE_ABILITY,
     };
 };
 }  // namespace AppExecFwk

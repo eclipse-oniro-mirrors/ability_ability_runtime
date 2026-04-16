@@ -220,7 +220,23 @@ UIAbilityRecordPtr UIAbilityLifecycleManager::GetUIAbilityRecordBySessionInfo(
     return nullptr;
 }
 
-int32_t UIAbilityLifecycleManager::NotifySCBToMinimizeUIAbility(const sptr<IRemoteObject> token)
+int32_t UIAbilityLifecycleManager::NotifySCBToMinimizeUIAbility(const sptr<IRemoteObject> token,
+    bool shouldBackToCaller, int32_t notifyScbBackgroundReason)
+{
+    return 0;
+}
+
+int32_t UIAbilityLifecycleManager::SetGamePreLaunchCompleteTime(int64_t completeTime)
+{
+    return 0;
+}
+
+int32_t UIAbilityLifecycleManager::NotifyCancelGamePreLaunch(const sptr<IRemoteObject> callerToken)
+{
+    return 0;
+}
+
+int32_t UIAbilityLifecycleManager::NotifyCompleteGamePreLaunch(const sptr<IRemoteObject> callerToken)
 {
     return 0;
 }

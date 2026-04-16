@@ -131,6 +131,14 @@ public:
     {
         return target_->RemoveDeathRecipient(recipient);
     }
+    bool AddRefreshRecipient(const sptr<RefreshRecipient> &recipient) override
+    {
+        return true;
+    }
+    bool RemoveRefreshRecipient(const sptr<RefreshRecipient> &recipient) override
+    {
+        return true;
+    }
     bool IsProxyObject() const override
     {
         return target_->IsProxyObject();

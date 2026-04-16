@@ -28,10 +28,11 @@ export default namespace errorManager {
     native function notifyUnhandledRejectionHandler(reason: Error | Any, promise: Promise<Any>): void;
     native function onUnhandledRejectionInner(observer: UnhandledRejectionObserver): void;
     export function onUnhandledRejection(observer: UnhandledRejectionObserver): void {
-        StdProcess.on('unhandledPromiseRejection', (reason: Object, obj: Object): void => {
-            notifyUnhandledRejectionHandler(reason as Error, obj as Promise<Any>);
+        StdProcess.on('unhandledPromiseRejection', (reason: Error, obj: Object): void => {
+            notifyUnhandledRejectionHandler(reason, obj as Promise<Any>);
         });
         onUnhandledRejectionInner(observer);
     };
     export native function offUnhandledRejection(observer?: UnhandledRejectionObserver): void;
+    export native function setDefaultFreezeObserver(defaultObserver?: FreezeObserver) : FreezeObserver;
 }

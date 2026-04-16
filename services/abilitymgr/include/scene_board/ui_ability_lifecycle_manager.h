@@ -43,6 +43,11 @@ enum class SpecifiedProcessState: u_int8_t {
     STATE_ABILITY = 2
 };
 
+enum class NotifyScbBackgroundReason: int32_t {
+    DEFAULT = 0,
+    GAME_PRELAUNCH_BACKGROUND = 6,
+};
+
 struct SpecifiedRequest {
     int32_t requestId = 0;
     AbilityRequest abilityRequest;
@@ -134,11 +139,22 @@ public:
     bool IsContainsAbility(const sptr<IRemoteObject> &token) const;
 
     /**
+     * SetGamePreLaunchCompleteTime, set the complete time (in milliseconds) for the game pre-launch.
+     *
+     * @param completeTime The complete time (in milliseconds) for the game pre-launch.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t SetGamePreLaunchCompleteTime(int64_t completeTime);
+
+    /**
      * Notify SCB to minimize UIAbility
      *
      * @param token ability's token
+     * @param shouldBackToCaller, SCB param.
+     * @param notifyScbBackgroundReason, the reason for notification SCB moving to the background.
      */
-    int32_t NotifySCBToMinimizeUIAbility(const sptr<IRemoteObject> token);
+    int32_t NotifySCBToMinimizeUIAbility(const sptr<IRemoteObject> token, bool shouldBackToCaller = true,
+        int32_t notifyScbBackgroundReason = 0);
 
     /**
      * MinimizeUIAbility, minimize the special ability by scb.
@@ -549,6 +565,20 @@ public:
      * @return ERR_OK if successful, error code otherwise
      */
     int32_t NotifyStartupExceptionBySCB(int32_t requestId, const std::string &reason);
+
+    /**
+     * @brief Cancel game prelaunch and kill the game process.
+     * @param callerToken Token of the caller ability.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t NotifyCancelGamePreLaunch(const sptr<IRemoteObject> callerToken);
+
+    /**
+     * @brief Complete game SA prelaunch by clearing flag and killing process
+     * @param callerToken Token of the game SA prelaunch ability
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t NotifyCompleteGamePreLaunch(const sptr<IRemoteObject> callerToken);
 
     ErrCode IsUIAbilityAlreadyExist(const Want &want, const std::string &specifiedFlag,
         int32_t appIndex, const std::string &instanceKey, AppExecFwk::LaunchMode launchMode);
@@ -1270,6 +1300,7 @@ private:
         Want targetWant;
     };
     int32_t userId_ = -1;
+    int64_t gamePreLaunchCompleteTime_ = 30 * 1000 * 1000; // 30s
     mutable ffrt::mutex sessionLock_;
     std::unordered_map<int32_t, UIAbilityRecordPtr> sessionAbilityMap_;
     std::unordered_map<int32_t, UIAbilityRecordPtr> lowMemKillAbilityMap_;

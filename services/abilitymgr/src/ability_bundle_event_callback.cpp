@@ -66,8 +66,10 @@ void AbilityBundleEventCallback::OnReceiveEvent(const EventFwk::CommonEventData 
     }
     TAG_LOGD(AAFwkTag::ABILITYMGR, "OnReceiveEvent, action:%{public}s.", action.c_str());
     if (bundleType == static_cast<int32_t>(AppExecFwk::BundleType::APP_PLUGIN)) {
-        if (action == EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_ADDED) {
-            TAG_LOGI(AAFwkTag::ABILITYMGR, "plugin add:%{public}s", bundleName.c_str());
+        if (action == EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_ADDED ||
+            action == EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_CHANGED) {
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "plugin action: %{public}s, bundleName: %{public}s",
+                action.c_str(), bundleName.c_str());
             HandleUpdatedModuleInfo(bundleName, uid, moduleName, true);
         }
         return;

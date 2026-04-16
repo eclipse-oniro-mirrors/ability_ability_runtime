@@ -37,13 +37,17 @@ ohos_unittest("ability_madvise_utils_test") {
     "madvise_utils_test.cpp",
   ]
 
+  deps = [
+    "${ability_runtime_services_path}/common:app_util",
+  ]
+
   external_deps = [
-    "cJSON:cjson",
     "c_utils:utils",
     "config_policy:configpolicy_util",
     "googletest:gmock_main",
     "googletest:gtest_main",
     "hilog:libhilog",
+    "json:nlohmann_json_static",
   ]
 }
 

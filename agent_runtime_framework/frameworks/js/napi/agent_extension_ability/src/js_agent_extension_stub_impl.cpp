@@ -35,18 +35,27 @@ JsAgentExtensionStubImpl::~JsAgentExtensionStubImpl()
 
 int32_t JsAgentExtensionStubImpl::SendData(const sptr<IRemoteObject> &hostProxy, const std::string &data)
 {
-    auto sptr = extension_.lock();
-    if (sptr) {
-        return sptr->OnSendData(hostProxy, data);
+    auto extension = extension_.lock();
+    if (extension) {
+        return extension->OnSendData(hostProxy, data);
     }
     return static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER);
 }
 
 int32_t JsAgentExtensionStubImpl::Authorize(const sptr<IRemoteObject> &hostProxy, const std::string &data)
 {
-    auto sptr = extension_.lock();
-    if (sptr) {
-        return sptr->OnAuthorize(hostProxy, data);
+    auto extension = extension_.lock();
+    if (extension) {
+        return extension->OnAuthorize(hostProxy, data);
+    }
+    return static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER);
+}
+
+int32_t JsAgentExtensionStubImpl::AgentInvoked(const std::string &agentId)
+{
+    auto extension = extension_.lock();
+    if (extension) {
+        return extension->OnAgentInvoked(agentId);
     }
     return static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER);
 }

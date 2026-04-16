@@ -84,20 +84,6 @@ void FindAgentConnection(int64_t connectId, sptr<EtsAgentConnection> &connection
  */
 void FindAgentConnection(ani_env *env, AAFwk::Want &want, ani_object callback,
     sptr<EtsAgentConnection> &connection);
-
-/**
- * Get the current count of active agent connections.
- *
- * @return Returns the number of active connections.
- */
-size_t GetAgentConnectionCount();
-
-/**
- * Check if the maximum number of connections has been reached.
- *
- * @return Returns true if max connections reached, false otherwise.
- */
-bool IsMaxConnectionsReached();
 }
 
 class EtsAgentConnectorStubImpl;

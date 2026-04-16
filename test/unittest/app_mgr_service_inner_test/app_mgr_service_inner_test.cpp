@@ -485,6 +485,79 @@ HWTEST_F(AppMgrServiceInnerTest, HandleExistingAppRecordAfterFound_003, TestSize
 }
 
 /**
+ * @tc.name: HandleExistingAppRecordAfterFound_004
+ * @tc.desc: verify preload-by-phase state is preserved when loadParam is preload start
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, HandleExistingAppRecordAfterFound_004, TestSize.Level1)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    HapModuleInfo hapModuleInfo;
+    auto want = std::make_shared<AAFwk::Want>();
+    BundleInfo info;
+    std::string processName = "test_processName";
+    std::shared_ptr<AppRunningRecord> appRecord =
+        appMgrServiceInner->appRunningManager_->CreateAppRunningRecord(applicationInfo_, processName, info, "");
+
+    appRecord->SetPreloadMode(PreloadMode::PRELOAD_BY_PHASE);
+    appRecord->SetPreloadPhase(PreloadPhase::WINDOW_STAGE_CREATED);
+    appRecord->SetPreloadState(PreloadState::PRELOADED);
+
+    AbilityRuntime::LoadParam loadParam;
+    loadParam.isPreloadStart = true;
+
+    appMgrServiceInner->HandleExistingAppRecordAfterFound(appRecord, abilityInfo_, hapModuleInfo, want, false,
+        std::make_shared<AbilityRuntime::LoadParam>(loadParam));
+
+    EXPECT_EQ(appRecord->GetPreloadMode(), PreloadMode::PRELOAD_BY_PHASE);
+    EXPECT_EQ(appRecord->GetPreloadPhase(), PreloadPhase::WINDOW_STAGE_CREATED);
+}
+
+/**
+ * @tc.name: HandleExistingAppRecordAfterFound_005
+ * @tc.desc: verify preload state is cleared only when reused preload process already contains multiple abilities
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, HandleExistingAppRecordAfterFound_005, TestSize.Level1)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    HapModuleInfo hapModuleInfo;
+    auto want = std::make_shared<AAFwk::Want>();
+    BundleInfo info;
+    std::string processName = "test_processName";
+    std::shared_ptr<AppRunningRecord> appRecord =
+        appMgrServiceInner->appRunningManager_->CreateAppRunningRecord(applicationInfo_, processName, info, "");
+    ASSERT_NE(appRecord, nullptr);
+
+    auto moduleRecord = std::make_shared<ModuleRunningRecord>(applicationInfo_, nullptr);
+    ASSERT_NE(moduleRecord, nullptr);
+    auto firstAbilityInfo = std::make_shared<AbilityInfo>(*abilityInfo_);
+    auto secondAbilityInfo = std::make_shared<AbilityInfo>(*abilityInfo_);
+    sptr<IRemoteObject> firstToken = new (std::nothrow) MockAbilityToken();
+    sptr<IRemoteObject> secondToken = new (std::nothrow) MockAbilityToken();
+    ASSERT_NE(firstToken, nullptr);
+    ASSERT_NE(secondToken, nullptr);
+    ASSERT_NE(moduleRecord->AddAbility(firstToken, firstAbilityInfo, nullptr, recordId_), nullptr);
+    ASSERT_NE(moduleRecord->AddAbility(secondToken, secondAbilityInfo, nullptr, recordId_ + 1), nullptr);
+    appRecord->hapModules_[applicationInfo_->bundleName].emplace_back(moduleRecord);
+
+    appRecord->SetPreloadMode(PreloadMode::PRELOAD_BY_PHASE);
+    appRecord->SetPreloadPhase(PreloadPhase::WINDOW_STAGE_CREATED);
+    appRecord->SetPreloadState(PreloadState::PRELOADED);
+
+    AbilityRuntime::LoadParam loadParam;
+    appMgrServiceInner->HandleExistingAppRecordAfterFound(appRecord, abilityInfo_, hapModuleInfo, want, false,
+        std::make_shared<AbilityRuntime::LoadParam>(loadParam));
+
+    EXPECT_EQ(appRecord->GetAbilities().size(), 2);
+    EXPECT_EQ(appRecord->GetPreloadMode(), PreloadMode::PRELOAD_NONE);
+}
+
+/**
  * @tc.name: PreStartNWebSpawnProcess_002
  * @tc.desc: prestart nwebspawn process.
  * @tc.type: FUNC
@@ -596,6 +669,53 @@ HWTEST_F(AppMgrServiceInnerTest, UpdateUIExtensionPreloadState_001, TestSize.Lev
     appMgrServiceInner->UpdateUIExtensionPreloadState(appRecord, true);
     EXPECT_TRUE(appRecord->GetUIExtensionPreloadState());
     TAG_LOGI(AAFwkTag::TEST, "UpdateUIExtensionPreloadState_001 end");
+}
+
+/**
+ * @tc.name: UpdataWindowStageCreatPreloadState_001
+ * @tc.desc: test UpdateWindowStageCreatedPreloadState function with valid appRecord
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, UpdataWindowStageCreatPreloadState_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "UpdataWindowStageCreatPreloadState_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    BundleInfo bundleInfo;
+    std::string processName = "test_processName";
+    std::shared_ptr<AppRunningRecord> appRecord =
+        appMgrServiceInner->appRunningManager_->CreateAppRunningRecord(
+            applicationInfo_, processName, bundleInfo, "");
+    ASSERT_NE(appRecord, nullptr);
+    appRecord->SetPreloadMode(AppExecFwk::PreloadMode::PRELOAD_NONE);
+    appRecord->SetPreloadPhase(AppExecFwk::PreloadPhase::UNSPECIFIED);
+    appRecord->SetPreloadState(AppExecFwk::PreloadState::NONE);
+    appMgrServiceInner->UpdateWindowStageCreatedPreloadState(appRecord);
+    EXPECT_EQ(appRecord->GetPreloadMode(), AppExecFwk::PreloadMode::PRELOAD_BY_PHASE);
+    EXPECT_EQ(appRecord->GetPreloadPhase(), AppExecFwk::PreloadPhase::WINDOW_STAGE_CREATED);
+    TAG_LOGI(AAFwkTag::TEST, "UpdataWindowStageCreatPreloadState_001 end");
+}
+
+/**
+ * @tc.name: UpdataWindowStageCreatPreloadState_002
+ * @tc.desc: test UpdateWindowStageCreatedPreloadState also sets preload state to PRELOADING
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, UpdataWindowStageCreatPreloadState_002, TestSize.Level1)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    BundleInfo bundleInfo;
+    std::string processName = "test_processName";
+    std::shared_ptr<AppRunningRecord> appRecord =
+        appMgrServiceInner->appRunningManager_->CreateAppRunningRecord(applicationInfo_, processName, bundleInfo, "");
+    ASSERT_NE(appRecord, nullptr);
+
+    appRecord->SetPreloadState(AppExecFwk::PreloadState::NONE);
+    appMgrServiceInner->UpdateWindowStageCreatedPreloadState(appRecord);
+
+    EXPECT_EQ(appRecord->GetPreloadMode(), AppExecFwk::PreloadMode::PRELOAD_BY_PHASE);
+    EXPECT_EQ(appRecord->GetPreloadPhase(), AppExecFwk::PreloadPhase::WINDOW_STAGE_CREATED);
 }
 
 /**
@@ -2260,10 +2380,10 @@ HWTEST_F(AppMgrServiceInnerTest, HandleTimeOut_001, TestSize.Level2)
     EXPECT_NE(appMgrServiceInner, nullptr);
 
     AAFwk::EventWrap innerEvent(0);
-    appMgrServiceInner->HandleTimeOut(innerEvent);
+    appMgrServiceInner->HandleTimeOutInner(innerEvent);
 
     appMgrServiceInner->appRunningManager_ = nullptr;
-    appMgrServiceInner->HandleTimeOut(innerEvent);
+    appMgrServiceInner->HandleTimeOutInner(innerEvent);
 
     TAG_LOGI(AAFwkTag::TEST, "HandleTimeOut_001 end");
 }
@@ -4712,8 +4832,8 @@ HWTEST_F(AppMgrServiceInnerTest, AppRecoveryNotifyApp_001, TestSize.Level1)
     EXPECT_NE(appMgrServiceInner, nullptr);
     int32_t pid = 0;
     std::string bundleName = "com.is.hiserice";
-    appMgrServiceInner->AppRecoveryNotifyApp(pid, bundleName, FaultDataType::RESOURCE_CONTROL, "appRecovery");
-    appMgrServiceInner->AppRecoveryNotifyApp(pid, bundleName, FaultDataType::APP_FREEZE, "recovery");
+    appMgrServiceInner->AppRecoveryNotifyApp(pid, bundleName, FaultDataType::RESOURCE_CONTROL, "appRecovery", -1);
+    appMgrServiceInner->AppRecoveryNotifyApp(pid, bundleName, FaultDataType::APP_FREEZE, "recovery", -1);
     TAG_LOGI(AAFwkTag::TEST, "AppRecoveryNotifyApp_001 end");
 }
 
@@ -4754,7 +4874,7 @@ HWTEST_F(AppMgrServiceInnerTest, TimeoutNotifyApp_001, TestSize.Level1)
     FaultData faultData;
     faultData.errorObject.name = "1234";
     faultData.faultType = FaultDataType::APP_FREEZE;
-    appMgrServiceInner->TimeoutNotifyApp(pid, uid, bundleName, processName, faultData);
+    appMgrServiceInner->TimeoutNotifyApp(pid, uid, bundleName, processName, faultData, -1);
     EXPECT_NE(taskHandler, nullptr);
     TAG_LOGI(AAFwkTag::TEST, "TimeoutNotifyApp_001 end");
 }
@@ -6456,6 +6576,116 @@ HWTEST_F(AppMgrServiceInnerTest, AfterLoadAbility_0001, TestSize.Level1)
 }
 
 /**
+ * @tc.name: SetGameSAPrelaunch_001
+ * @tc.desc: SetGameSAPrelaunch with null token.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, SetGameSAPrelaunch_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetGameSAPrelaunch_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+
+    sptr<IRemoteObject> token = nullptr;
+    bool isGameSAPrelaunch = true;
+    auto result = appMgrServiceInner->SetGameSAPrelaunch(token, isGameSAPrelaunch);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "SetGameSAPrelaunch_001 end");
+}
+
+/**
+ * @tc.name: SetGameSAPrelaunch_002
+ * @tc.desc: SetGameSAPrelaunch with token not found in app records.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, SetGameSAPrelaunch_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetGameSAPrelaunch_002 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+
+    sptr<IRemoteObject> token = new (std::nothrow) MockAbilityToken();
+    EXPECT_NE(token, nullptr);
+    bool isGameSAPrelaunch = true;
+    auto result = appMgrServiceInner->SetGameSAPrelaunch(token, isGameSAPrelaunch);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "SetGameSAPrelaunch_002 end");
+}
+
+/**
+ * @tc.name: SetGameSAPrelaunch_003
+ * @tc.desc: SetGameSAPrelaunch with valid token and isGameSAPrelaunch true.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, SetGameSAPrelaunch_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetGameSAPrelaunch_003 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+
+    // Create app running record with token
+    std::string processName = "testProcess";
+    BundleInfo info;
+    info.name = "com.test.bundle";
+    HapModuleInfo hapModuleInfo;
+    std::shared_ptr<AAFwk::Want> want;
+    auto loadParam = std::make_shared<AbilityRuntime::LoadParam>();
+    sptr<IRemoteObject> token = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    EXPECT_NE(token, nullptr);
+    loadParam->token = token;
+
+    std::shared_ptr<AppRunningRecord> appRecord = appMgrServiceInner->CreateAppRunningRecord(loadParam,
+        applicationInfo_, abilityInfo_, processName, info, hapModuleInfo, want);
+    EXPECT_NE(appRecord, nullptr);
+
+    // Register token by updating ability state
+    appMgrServiceInner->UpdateAbilityState(token, AbilityState::ABILITY_STATE_CREATE);
+
+    bool isGameSAPrelaunch = true;
+    auto result = appMgrServiceInner->SetGameSAPrelaunch(token, isGameSAPrelaunch);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(appRecord->GetPreloadMode(), PreloadMode::GAME_PRELAUNCH);
+    TAG_LOGI(AAFwkTag::TEST, "SetGameSAPrelaunch_003 end");
+}
+
+/**
+ * @tc.name: SetGameSAPrelaunch_004
+ * @tc.desc: SetGameSAPrelaunch with valid token and isGameSAPrelaunch false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, SetGameSAPrelaunch_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetGameSAPrelaunch_004 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+
+    // Create app running record with token
+    // Create app running record with token
+    std::string processName = "testProcess";
+    BundleInfo info;
+    info.name = "com.test.bundle";
+    HapModuleInfo hapModuleInfo;
+    std::shared_ptr<AAFwk::Want> want;
+    auto loadParam = std::make_shared<AbilityRuntime::LoadParam>();
+    sptr<IRemoteObject> token = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    EXPECT_NE(token, nullptr);
+    loadParam->token = token;
+
+    std::shared_ptr<AppRunningRecord> appRecord = appMgrServiceInner->CreateAppRunningRecord(loadParam,
+        applicationInfo_, abilityInfo_, processName, info, hapModuleInfo, want);
+    EXPECT_NE(appRecord, nullptr);
+
+    // Register token by updating ability state
+    appMgrServiceInner->UpdateAbilityState(token, AbilityState::ABILITY_STATE_CREATE);
+
+    bool isGameSAPrelaunch = false;
+    auto result = appMgrServiceInner->SetGameSAPrelaunch(token, isGameSAPrelaunch);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(appRecord->GetPreloadMode(), PreloadMode::PRELOAD_NONE);
+    TAG_LOGI(AAFwkTag::TEST, "SetGameSAPrelaunch_004 end");
+}
+
+/**
  * @tc.name: UpdateConfigurationByUserIds_0001
  * @tc.desc: UpdateConfigurationByUserIds
  * @tc.type: FUNC
@@ -6489,6 +6719,61 @@ HWTEST_F(AppMgrServiceInnerTest, UpdateConfigurationByUserIds_0002, TestSize.Lev
     auto res = appMgrServiceInner->UpdateConfigurationByUserIds(changeConfig, userIds);
     EXPECT_EQ(res, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "UpdateConfigurationByUserIds_0002 end");
+}
+
+/**
+ * @tc.name: GetAllAbilityInfos_0001
+ * @tc.desc: GetAllAbilityInfos when appRunningManager is null
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, GetAllAbilityInfos_0001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetAllAbilityInfos_0001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    appMgrServiceInner->appRunningManager_ = nullptr;
+
+    std::vector<AppExecFwk::AbilityStateData> infos;
+    auto ret = appMgrServiceInner->GetAllAbilityInfos(-1, infos);
+    EXPECT_EQ(ret, ERR_NO_INIT);
+    TAG_LOGI(AAFwkTag::TEST, "GetAllAbilityInfos_0001 end");
+}
+
+/**
+ * @tc.name: GetAllAbilityInfos_0002
+ * @tc.desc: GetAllAbilityInfos with valid appRunningManager
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, GetAllAbilityInfos_0002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetAllAbilityInfos_0002 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
+
+    std::vector<AppExecFwk::AbilityStateData> infos;
+    auto ret = appMgrServiceInner->GetAllAbilityInfos(-1, infos);
+    EXPECT_EQ(ret, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "GetAllAbilityInfos_0002 end");
+}
+
+/**
+ * @tc.name: GetAllAbilityInfos_0003
+ * @tc.desc: GetAllAbilityInfos with valid appRunningManager
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, GetAllAbilityInfos_0003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetAllAbilityInfos_0003 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
+
+    std::vector<AppExecFwk::AbilityStateData> infos;
+    int32_t pid = 1001;
+    auto ret = appMgrServiceInner->GetAllAbilityInfos(pid, infos);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "GetAllAbilityInfos_0003 end");
 }
 } // namespace AppExecFwk
 } // namespace OHOS

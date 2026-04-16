@@ -21,9 +21,11 @@ ohos_unittest("application_context_test") {
   include_dirs = [
     "${ability_runtime_test_path}/mock/frameworks_kits_ability_native_test/include",
     "${ability_runtime_test_path}/mock/frameworks_kits_appkit_native_test/include",
+    "${ability_runtime_native_path}/appkit/app/",
   ]
 
   sources = [
+    "${ability_runtime_native_path}/appkit/app/app_image_observer_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/exit_reason.cpp",
     "${ability_runtime_test_path}/unittest/application_context_test/mock_context_impl.cpp",
     "application_context_test.cpp",

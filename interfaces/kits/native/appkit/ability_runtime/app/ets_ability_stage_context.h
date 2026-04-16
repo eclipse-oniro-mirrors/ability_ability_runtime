@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -44,6 +44,8 @@ public:
     static ani_object CreateEtsAbilityStageContext(ani_env *env, std::shared_ptr<Context> context);
 private:
     static void SetConfiguration(ani_env *env, ani_class stageCls, ani_object stageCtxObj,
+        std::shared_ptr<Context> &context);
+    static void SetLaunchElement(ani_env *env, ani_class stageCls, ani_object stageCtxObj,
         std::shared_ptr<Context> &context);
     static ani_object CreateHapModuleInfo(ani_env* env, const std::shared_ptr<Context> &context);
 private:

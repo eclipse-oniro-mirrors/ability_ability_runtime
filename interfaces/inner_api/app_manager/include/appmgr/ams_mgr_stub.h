@@ -51,6 +51,7 @@ private:
     int32_t HandleRegisterAppStateCallback(MessageParcel &data, MessageParcel &reply);
     int32_t HandleReset(MessageParcel &data, MessageParcel &reply);
     int32_t HandleKillProcessByAbilityToken(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleSetGameSAPrelaunch(MessageParcel &data, MessageParcel &reply);
     int32_t HandleKillProcessesByUserId(MessageParcel &data, MessageParcel &reply);
     int32_t HandleKillProcessesByPids(MessageParcel &data, MessageParcel &reply);
     int32_t HandleAttachPidToParent(MessageParcel &data, MessageParcel &reply);

@@ -270,7 +270,7 @@ HWTEST_F(JsUiAbilityTest, JSUIAbility_OnNewWant_0100, TestSize.Level1)
     std::string navDestinationInfo = "testNavDestinationInfo";
     want.SetParam(Want::ATOMIC_SERVICE_SHARE_ROUTER, navDestinationInfo);
     ability->OnNewWant(want);
-    EXPECT_NE(want.GetStringParam(Want::ATOMIC_SERVICE_SHARE_ROUTER), navDestinationInfo);
+    EXPECT_EQ(want.GetStringParam(Want::ATOMIC_SERVICE_SHARE_ROUTER), navDestinationInfo);
     GTEST_LOG_(INFO) << "JSUIAbility_OnNewWant_0100 end";
 }
 

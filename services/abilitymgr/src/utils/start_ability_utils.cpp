@@ -23,6 +23,9 @@
 #include "global_constant.h"
 #include "hitrace_meter.h"
 #include "startup_util.h"
+#include "permission_verification.h"
+#include "permission_constants.h"
+#include "ipc_skeleton.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -297,6 +300,7 @@ std::shared_ptr<StartAbilityInfo> StartAbilityInfo::CreateStartAbilityInfo(const
             return request;
         }
         request->extensionProcessMode = extensionInfo.extensionProcessMode;
+        request->skipAbilityStageLifecycle = extensionInfo.skipAbilityStageLifecycle;
         // For compatibility translates to AbilityInfo
         AbilityRuntime::StartupUtil::InitAbilityInfoFromExtension(extensionInfo, request->abilityInfo);
     }
@@ -371,6 +375,7 @@ void StartAbilityInfo::FindExtensionInfo(const Want &want, int32_t flags, int32_
         return;
     }
     abilityInfo->customProcess = extensionInfo.customProcess;
+    abilityInfo->skipAbilityStageLifecycle = extensionInfo.skipAbilityStageLifecycle;
     TAG_LOGD(AAFwkTag::ABILITYMGR, "extensionInfo customProcess: %{public}s", abilityInfo->customProcess.c_str());
     if (AbilityRuntime::StartupUtil::IsSupportAppClone(extensionInfo.type)) {
         abilityInfo->extensionProcessMode = extensionInfo.extensionProcessMode;
@@ -472,6 +477,30 @@ std::string StartAbilityUtils::GenerateAsCallerForAncoSessionId()
     int randomDigit = uni(rng);
     std::string asCallerForAncoSessionId = std::to_string(time) + "_" + std::to_string(randomDigit);
     return asCallerForAncoSessionId;
+}
+
+void StartAbilityUtils::RemoveAtomicServiceShareRouterIfNeeded(Want &want,
+    const AppExecFwk::AbilityInfo &targetAbilityInfo)
+{
+    if (!want.HasParameter(Want::ATOMIC_SERVICE_SHARE_ROUTER)) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "No ATOMIC_SERVICE_SHARE_ROUTER parameter, skip check");
+        return;
+    }
+
+    bool isAtomicService = (targetAbilityInfo.applicationInfo.bundleType ==
+        AppExecFwk::BundleType::ATOMIC_SERVICE);
+    if (isAtomicService) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "Keep ATOMIC_SERVICE_SHARE_ROUTER");
+        return;
+    }
+
+    bool hasStartAbilityToPagePermission = PermissionVerification::GetInstance()->VerifyCallingPermission(
+        PermissionConstants::PERMISSION_START_ABILITY_TO_PAGE);
+    if (!hasStartAbilityToPagePermission) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "Remove ATOMIC_SERVICE_SHARE_ROUTER: hasPermission=%{public}d",
+            hasStartAbilityToPagePermission);
+        want.RemoveParam(Want::ATOMIC_SERVICE_SHARE_ROUTER);
+    }
 }
 }
 }

@@ -56,6 +56,8 @@ constexpr size_t ARGC_FOUR = 4;
 constexpr const char* ATOMIC_SERVICE_PREFIX = "com.atomicservice.";
 const std::string JSON_KEY_ERR_MSG = "errMsg";
 const std::string KEY_REQUEST_ID = "com.ohos.param.requestId";
+constexpr const int32_t API26 = 26;
+constexpr const int32_t API_VERSION_MOD = 100;
 
 class StartAbilityByCallParameters {
 public:
@@ -140,6 +142,24 @@ public:
         GET_NAPI_INFO_AND_CALL(env, info, JsServiceExtensionContext, OnConnectAbilityWithAccount);
     }
 
+    static napi_value ConnectAbilityWithAccountRestricted(napi_env env, napi_callback_info info)
+    {
+        NapiCallbackInfo napiInfo;
+        JsServiceExtensionContext* jsContext = static_cast<JsServiceExtensionContext*>(
+            GetNapiCallbackInfoAndThis(env, info, napiInfo, nullptr));
+        if (jsContext == nullptr) {
+            return CreateJsUndefined(env);
+        }
+        if (CheckSatisfyTargetAPIVersion(jsContext->context_, API26)) {
+            TAG_LOGE(AAFwkTag::SERVICE_EXT, "connectAbilityWithAccount is not supported for API 26+");
+            ThrowInvalidParamError(env, "connectAbilityWithAccount is not supported for API 26+, "
+                "please use connectServiceExtensionAbilityWithAccount instead.");
+            return CreateJsUndefined(env);
+        }
+
+        GET_NAPI_INFO_AND_CALL(env, info, JsServiceExtensionContext, OnConnectAbilityWithAccount);
+    }
+
     static napi_value TerminateAbility(napi_env env, napi_callback_info info)
     {
         GET_NAPI_INFO_AND_CALL(env, info, JsServiceExtensionContext, OnTerminateAbility);
@@ -152,6 +172,24 @@ public:
 
     static napi_value DisconnectAbility(napi_env env, napi_callback_info info)
     {
+        GET_NAPI_INFO_AND_CALL(env, info, JsServiceExtensionContext, OnDisconnectAbility);
+    }
+
+    static napi_value DisconnectAbilityRestricted(napi_env env, napi_callback_info info)
+    {
+        NapiCallbackInfo napiInfo;
+        JsServiceExtensionContext* jsContext = static_cast<JsServiceExtensionContext*>(
+            GetNapiCallbackInfoAndThis(env, info, napiInfo, nullptr));
+        if (jsContext == nullptr) {
+            return CreateJsUndefined(env);
+        }
+        if (CheckSatisfyTargetAPIVersion(jsContext->context_, API26)) {
+            TAG_LOGE(AAFwkTag::SERVICE_EXT, "disconnectAbility is not supported for API 26+");
+            ThrowInvalidParamError(env, "disconnectAbility is not supported for API 26+, "
+                "please use disconnectServiceExtensionAbility instead.");
+            return CreateJsUndefined(env);
+        }
+
         GET_NAPI_INFO_AND_CALL(env, info, JsServiceExtensionContext, OnDisconnectAbility);
     }
 
@@ -196,6 +234,8 @@ public:
     }
 
 private:
+    static bool CheckSatisfyTargetAPIVersion(
+        const std::weak_ptr<ServiceExtensionContext>& context, int32_t version);
     std::weak_ptr<ServiceExtensionContext> context_;
     sptr<JsFreeInstallObserver> freeInstallObserver_ = nullptr;
     static void ClearFailedCallConnection(
@@ -1632,7 +1672,7 @@ napi_value CreateJsServiceExtensionContext(napi_env env, std::shared_ptr<Service
     BindNativeFunction(
         env, object, "connectServiceExtensionAbility", moduleName, JsServiceExtensionContext::ConnectAbility);
     BindNativeFunction(env, object, "disconnectAbility",
-        moduleName, JsServiceExtensionContext::DisconnectAbility);
+        moduleName, JsServiceExtensionContext::DisconnectAbilityRestricted);
     BindNativeFunction(env, object, "disconnectServiceExtensionAbility",
         moduleName, JsServiceExtensionContext::DisconnectAbility);
     BindNativeFunction(env, object, "startAbilityWithAccount",
@@ -1640,8 +1680,8 @@ napi_value CreateJsServiceExtensionContext(napi_env env, std::shared_ptr<Service
     BindNativeFunction(env, object, "startUIAbilities", moduleName, JsServiceExtensionContext::StartUIAbilities);
     BindNativeFunction(env, object, "startAbilityByCall",
         moduleName, JsServiceExtensionContext::StartAbilityByCall);
-    BindNativeFunction(
-        env, object, "connectAbilityWithAccount", moduleName, JsServiceExtensionContext::ConnectAbilityWithAccount);
+    BindNativeFunction(env, object, "connectAbilityWithAccount", moduleName,
+        JsServiceExtensionContext::ConnectAbilityWithAccountRestricted);
     BindNativeFunction(env, object,
         "connectServiceExtensionAbilityWithAccount", moduleName, JsServiceExtensionContext::ConnectAbilityWithAccount);
     BindNativeFunction(env, object, "startServiceExtensionAbility", moduleName,
@@ -1875,6 +1915,25 @@ void JSServiceExtensionConnection::CallJsFailed(int32_t errorCode)
     napi_value argv[] = {CreateJsValue(env_, errorCode)};
     napi_call_function(env_, obj, method, ARGC_ONE, argv, nullptr);
     TAG_LOGD(AAFwkTag::SERVICE_EXT, "end");
+}
+
+bool JsServiceExtensionContext::CheckSatisfyTargetAPIVersion(
+    const std::weak_ptr<ServiceExtensionContext>& context, int32_t version)
+{
+    auto extensionContext = context.lock();
+    if (!extensionContext) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "null context when check api version");
+        return false;
+    }
+
+    auto applicationInfo = extensionContext->GetApplicationInfo();
+    if (!applicationInfo) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "null applicationInfo");
+        return false;
+    }
+
+    TAG_LOGD(AAFwkTag::SERVICE_EXT, "targetAPIVersion: %{public}d", applicationInfo->apiTargetVersion);
+    return applicationInfo->apiTargetVersion % API_VERSION_MOD >= version;
 }
 }  // namespace AbilityRuntime
 }  // namespace OHOS

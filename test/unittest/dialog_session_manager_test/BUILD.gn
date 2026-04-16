@@ -53,11 +53,13 @@ ohos_unittest("dialog_session_manager_test") {
     "${ability_runtime_path}/utils/server/startup:startup_util",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
     "${ability_runtime_services_path}/common:app_util",
+    "${ability_runtime_services_path}/common:perm_verification",
     "${ability_runtime_services_path}/common:task_handler_wrap",
   ]
 
   external_deps = [
     "ability_base:base",
+    "ability_base:session_info",
     "ability_base:want",
     "ability_base:zuri",
     "bundle_framework:appexecfwk_core",

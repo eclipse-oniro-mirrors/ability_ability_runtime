@@ -455,6 +455,47 @@ HWTEST_F(UpdateCallerInfoUtilTest, UpdateDmsCallerInfo_0001, TestSize.Level1)
 }
 
 /**
+ * @tc.name: UpdateCallerInfoUtilTest_UpdateByIndirectCallerInfo_0001
+ * @tc.desc: Test UpdateByIndirectCallerInfo with nullptr indirectCallerInfo (should not modify parameters)
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, UpdateByIndirectCallerInfo_0001, TestSize.Level1)
+{
+    auto updateCallerUtil = std::make_shared<UpdateCallerInfoUtil>();
+    int32_t tokenId = 123;
+    int32_t callerUid = 456;
+    int32_t callerPid = 789;
+
+    updateCallerUtil->UpdateByIndirectCallerInfo(nullptr, tokenId, callerUid, callerPid);
+    EXPECT_EQ(tokenId, 123);
+    EXPECT_EQ(callerUid, 456);
+    EXPECT_EQ(callerPid, 789);
+}
+
+/**
+ * @tc.name: UpdateCallerInfoUtilTest_UpdateByIndirectCallerInfo_0002
+ * @tc.desc: Test UpdateByIndirectCallerInfo with valid indirectCallerInfo (should update parameters)
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, UpdateByIndirectCallerInfo_0002, TestSize.Level1)
+{
+    auto updateCallerUtil = std::make_shared<UpdateCallerInfoUtil>();
+    int32_t tokenId = 123;
+    int32_t callerUid = 456;
+    int32_t callerPid = 789;
+
+    auto info = std::make_shared<IndirectCallerInfo>();
+    info->tokenId = 111;
+    info->callerUid = 222;
+    info->callerPid = 333;
+
+    updateCallerUtil->UpdateByIndirectCallerInfo(info, tokenId, callerUid, callerPid);
+    EXPECT_EQ(tokenId, 111);
+    EXPECT_EQ(callerUid, 222);
+    EXPECT_EQ(callerPid, 333);
+}
+
+/**
  * @tc.name: UpdateCallerInfoUtilTest_UpdateCallerInfo_0001
  * @tc.desc: Test UpdateCallerInfo with valid callerToken
  * @tc.type: FUNC

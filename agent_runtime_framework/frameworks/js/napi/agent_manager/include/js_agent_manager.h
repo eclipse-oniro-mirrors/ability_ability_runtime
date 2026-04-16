@@ -79,6 +79,12 @@ public:
      */
     static napi_value GetAgentCardByAgentId(napi_env env, napi_callback_info info);
 
+    static napi_value RegisterAgentCard(napi_env env, napi_callback_info info);
+
+    static napi_value UpdateAgentCard(napi_env env, napi_callback_info info);
+
+    static napi_value DeleteAgentCard(napi_env env, napi_callback_info info);
+
     /**
      * @brief Native method for connecting to an agent extension.
      *
@@ -96,6 +102,12 @@ public:
      * @return Returns the N-API value.
      */
     static napi_value DisconnectAgentExtensionAbility(napi_env env, napi_callback_info info);
+
+    static napi_value ConnectServiceExtensionAbility(napi_env env, napi_callback_info info);
+
+    static napi_value DisconnectServiceExtensionAbility(napi_env env, napi_callback_info info);
+
+    static napi_value NotifyLowCodeAgentComplete(napi_env env, napi_callback_info info);
 
 private:
     /**
@@ -128,6 +140,12 @@ private:
      */
     napi_value OnGetAgentCardByAgentId(napi_env env, size_t argc, napi_value *argv);
 
+    napi_value OnRegisterAgentCard(napi_env env, size_t argc, napi_value *argv);
+
+    napi_value OnUpdateAgentCard(napi_env env, size_t argc, napi_value *argv);
+
+    napi_value OnDeleteAgentCard(napi_env env, size_t argc, napi_value *argv);
+
     /**
      * @brief Implementation for connecting to an agent extension.
      *
@@ -147,6 +165,12 @@ private:
      * @return Returns the N-API value.
      */
     napi_value OnDisconnectAgentExtensionAbility(napi_env env, size_t argc, napi_value *argv);
+
+    napi_value OnConnectServiceExtensionAbility(napi_env env, size_t argc, napi_value *argv);
+
+    napi_value OnDisconnectServiceExtensionAbility(napi_env env, size_t argc, napi_value *argv);
+
+    napi_value OnNotifyLowCodeAgentComplete(napi_env env, size_t argc, napi_value *argv);
 
     /**
      * @brief Validate connection parameters.
@@ -185,8 +209,6 @@ private:
      */
     napi_value ScheduleAgentConnection(napi_env env, const AAFwk::Want &want,
         const std::string &agentId, sptr<JSAgentConnection> connection);
-
-    static bool CheckCallerIsSystemApp();
 };
 
 /**

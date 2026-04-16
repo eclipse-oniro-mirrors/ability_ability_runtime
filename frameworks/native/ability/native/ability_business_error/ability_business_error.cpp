@@ -113,8 +113,17 @@ constexpr const char* ERROR_MSG_CALLER_NOT_ATOMIC_SERVICE =
     "The caller is not an atomic service.";
 constexpr const char* ERROR_MSG_AGENT_ID_NOT_EXIST =
     "The specified agentId does not exist.";
+constexpr const char* ERROR_MSG_AGENT_CARD_VERSION_TOO_OLD =
+    "The specified agent card version is older than the current version.";
+constexpr const char* ERROR_MSG_AGENT_CARD_VERSION_INVALID =
+    "The specified agent card version is invalid.";
+constexpr const char* ERROR_MSG_AGENT_CARD_DUPLICATE_REGISTER =
+    "The specified agent card has already been registered. Use updateAgentCard instead.";
 constexpr const char* ERROR_MSG_MAX_CONNECTIONS_REACHED =
-    "Maximum connections from the same caller have been reached. Please disconnect at least one agent extension beforehand.";
+    "Maximum connections from the same caller have been reached. "
+    "Please disconnect at least one agent extension beforehand.";
+constexpr const char* ERROR_MSG_LOW_CODE_AGENT_ALREADY_ACTIVE =
+    "The specified LOW_CODE agent is already active and is not yet completed.";
 constexpr const char* ERROR_MSG_NOT_UI_ABILITY_CONTEXT =
     "The context is not UIAbilityContext.";
 constexpr const char* ERROR_MSG_INVALID_MAIN_ELEMENT_TYPE = "Invalid main element type.";
@@ -160,6 +169,7 @@ constexpr const char* ERROR_MSG_UIABILITY_IS_ALREADY_EXIST =
     "The UIAbility already exists.";
 constexpr const char* ERROR_MSG_SELF_REDIRECTION_DISALLOWED =
     "The UIAbility is prohibited from launching itself via App Linking.";
+constexpr const char* ERROR_MSG_SEND_REQUEST_TO_SYSTEM_FAIL = "Failed to send request to system service.";
 
 // follow ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST of appexecfwk_errors.h in bundle_framework
 constexpr int32_t ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST = 8521220;
@@ -240,7 +250,11 @@ static std::unordered_map<AbilityErrorCode, const char*> ERR_CODE_MAP = {
     { AbilityErrorCode::ERROR_CODE_TARGET_NOT_STARTED, ERROR_TARGET_NOT_STARTED},
     { AbilityErrorCode::ERROR_CODE_CALLER_NOT_ATOMIC_SERVICE, ERROR_MSG_CALLER_NOT_ATOMIC_SERVICE},
     { AbilityErrorCode::ERROR_CODE_AGENT_ID_NOT_EXIST, ERROR_MSG_AGENT_ID_NOT_EXIST},
+    { AbilityErrorCode::ERROR_CODE_AGENT_CARD_VERSION_TOO_OLD, ERROR_MSG_AGENT_CARD_VERSION_TOO_OLD},
+    { AbilityErrorCode::ERROR_CODE_AGENT_CARD_VERSION_INVALID, ERROR_MSG_AGENT_CARD_VERSION_INVALID},
+    { AbilityErrorCode::ERROR_CODE_AGENT_CARD_DUPLICATE_REGISTER, ERROR_MSG_AGENT_CARD_DUPLICATE_REGISTER},
     { AbilityErrorCode::ERROR_CODE_MAX_CONNECTIONS_REACHED, ERROR_MSG_MAX_CONNECTIONS_REACHED },
+    { AbilityErrorCode::ERROR_CODE_LOW_CODE_AGENT_ALREADY_ACTIVE, ERROR_MSG_LOW_CODE_AGENT_ALREADY_ACTIVE },
     { AbilityErrorCode::ERROR_CODE_NOT_UI_ABILITY_CONTEXT, ERROR_MSG_NOT_UI_ABILITY_CONTEXT},
     { AbilityErrorCode::ERROR_CODE_INVALID_MAIN_ELEMENT_TYPE, ERROR_MSG_INVALID_MAIN_ELEMENT_TYPE},
     { AbilityErrorCode::ERROR_CODE_CHANGE_KEEP_ALIVE, ERROR_MSG_CHANGE_KEEP_ALIVE},
@@ -269,6 +283,7 @@ static std::unordered_map<AbilityErrorCode, const char*> ERR_CODE_MAP = {
     { AbilityErrorCode::ERROR_CODE_UIABILITY_NOT_BELONG_TO_CALLER, ERROR_MSG_UIABILITY_NOT_BELONG_TO_CALLER },
     { AbilityErrorCode::ERROR_CODE_UIABILITY_IS_ALREADY_EXIST, ERROR_MSG_UIABILITY_IS_ALREADY_EXIST },
     { AbilityErrorCode::ERROR_CODE_SELF_REDIRECTION_DISALLOWED, ERROR_MSG_SELF_REDIRECTION_DISALLOWED },
+    { AbilityErrorCode::ERROR_CODE_SEND_REQUEST_TO_SYSTEM_FAIL, ERROR_MSG_SEND_REQUEST_TO_SYSTEM_FAIL },
 };
 
 static std::unordered_map<int32_t, AbilityErrorCode> INNER_TO_JS_ERROR_CODE_MAP {
@@ -355,6 +370,11 @@ static std::unordered_map<int32_t, AbilityErrorCode> INNER_TO_JS_ERROR_CODE_MAP 
     {ERR_TARGET_NOT_STARTED, AbilityErrorCode::ERROR_CODE_TARGET_NOT_STARTED},
     {ERR_CALLER_NOT_ATOMIC_SERVICE, AbilityErrorCode::ERROR_CODE_CALLER_NOT_ATOMIC_SERVICE},
     {ERR_INVALID_AGENT_CARD_ID, AbilityErrorCode::ERROR_CODE_AGENT_ID_NOT_EXIST},
+    {ERR_MAX_AGENT_CONNECTIONS_REACHED, AbilityErrorCode::ERROR_CODE_MAX_CONNECTIONS_REACHED},
+    {ERR_AGENT_CARD_VERSION_TOO_OLD, AbilityErrorCode::ERROR_CODE_AGENT_CARD_VERSION_TOO_OLD},
+    {ERR_INVALID_AGENT_CARD_VERSION, AbilityErrorCode::ERROR_CODE_AGENT_CARD_VERSION_INVALID},
+    {ERR_AGENT_CARD_DUPLICATE_REGISTER, AbilityErrorCode::ERROR_CODE_AGENT_CARD_DUPLICATE_REGISTER},
+    {ERR_LOW_CODE_AGENT_ALREADY_ACTIVE, AbilityErrorCode::ERROR_CODE_LOW_CODE_AGENT_ALREADY_ACTIVE},
     {ERR_INVALID_MAIN_ELEMENT_TYPE, AbilityErrorCode::ERROR_CODE_INVALID_MAIN_ELEMENT_TYPE},
     {ERR_CHANGE_KEEP_ALIVE, AbilityErrorCode::ERROR_CODE_CHANGE_KEEP_ALIVE},
     {ERR_NO_U1, AbilityErrorCode::ERROR_CODE_NO_U1},

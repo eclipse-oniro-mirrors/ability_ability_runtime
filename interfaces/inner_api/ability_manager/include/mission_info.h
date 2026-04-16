@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -51,6 +51,19 @@ struct MissionInfo : public Parcelable {
     std::string label;
     std::string iconPath;
     Want want;
+};
+
+/**
+ * @struct DisplayInfo
+ * DisplayInfo is used to save display information about mission information.
+ */
+struct DisplayInfo : public Parcelable {
+    bool ReadFromParcel(Parcel &parcel);
+    virtual bool Marshalling(Parcel &parcel) const override;
+    static DisplayInfo *Unmarshalling(Parcel &parcel);
+
+    int32_t id = -1;
+    std::string displayName;
 };
 
 /**

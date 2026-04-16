@@ -48,6 +48,7 @@ ohos_unittest("js_insight_intent_entry_second_test") {
   ]
 
   external_deps = [
+    "ability_base:extractortool",
     "ability_base:base",
     "ability_base:want",
     "ability_base:zuri",

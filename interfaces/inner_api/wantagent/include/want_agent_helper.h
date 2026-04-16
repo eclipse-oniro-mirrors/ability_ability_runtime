@@ -164,6 +164,14 @@ public:
     static ErrCode GetWant(const std::shared_ptr<WantAgent> &agent, std::shared_ptr<AAFwk::Want> &want);
 
     /**
+     * Obtains the Want WantAgent from proxy.
+     *
+     * @param agent Indicates the WantAgent whose Want is to be obtained.
+     * @return Returns the Want of the WantAgent.
+     */
+    static std::shared_ptr<AAFwk::Want> GetWantFromProxy(const std::shared_ptr<WantAgent> &agent);
+
+    /**
      * Register Cancel function Listener.
      *
      * @param cancelListener Register listener object.

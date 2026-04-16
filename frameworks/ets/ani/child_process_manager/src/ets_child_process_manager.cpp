@@ -27,16 +27,27 @@ namespace OHOS {
 namespace ChildProcessManagerEts {
 namespace {
 constexpr const char* CHILD_PROCESS_MANAGER_NAME_SPACE = "@ohos.app.ability.childProcessManager.childProcessManager";
+constexpr size_t ETS_SUFFIX_LEN = 4;
 enum {
     MODE_SELF_FORK = 0,
     MODE_APP_SPAWN_FORK = 1,
 };
 struct ChildProcessAniParam {
     std::string srcEntry;
+    bool isStaticChildProcess = false;
     AppExecFwk::ChildProcessArgs args;
     AppExecFwk::ChildProcessOptions options;
     int32_t childProcessType;
 };
+
+void ProcessSrcEntry(std::string &srcEntry, bool &isStaticChildProcess)
+{
+    if (srcEntry.size() >= ETS_SUFFIX_LEN && srcEntry.substr(srcEntry.size() - ETS_SUFFIX_LEN) != ".ets") {
+        isStaticChildProcess = true;
+    } else {
+        isStaticChildProcess = false;
+    }
+}
 }
 
 class EtsChildProcessManager {
@@ -118,7 +129,10 @@ private:
                 "Parse param srcEntry failed, must be a valid string.");
             return;
         }
-        TAG_LOGD(AAFwkTag::PROCESSMGR, "srcEntry %{public}s", srcEntry.c_str());
+        bool isStaticChildProcess = false;
+        ProcessSrcEntry(srcEntry, isStaticChildProcess);
+        TAG_LOGD(AAFwkTag::PROCESSMGR, "srcEntry %{public}s, isStaticChildProcess %{public}d", srcEntry.c_str(),
+            isStaticChildProcess);
         int32_t startMode;
         if (!AAFwk::AniEnumConvertUtil::EnumConvert_EtsToNative(env, etsStartMode, startMode)) {
             TAG_LOGE(AAFwkTag::PROCESSMGR, "Parse startMode failed");
@@ -134,13 +148,14 @@ private:
             return;
         }
         if (startMode == MODE_SELF_FORK) {
-            StartChildProcessSelfForkTask(env, srcEntry, callback);
+            StartChildProcessSelfForkTask(env, srcEntry, callback, isStaticChildProcess);
         } else {
-            StartChildProcessAppSpawnForkTask(env, srcEntry, callback);
+            StartChildProcessAppSpawnForkTask(env, srcEntry, callback, isStaticChildProcess);
         }
     }
 
-    void StartChildProcessSelfForkTask(ani_env *env, std::string &etsSrcEntry, ani_object callback)
+    void StartChildProcessSelfForkTask(ani_env *env, std::string &etsSrcEntry, ani_object callback,
+        bool isStaticChildProcess)
     {
         ani_status status = ANI_ERROR;
         ani_vm *aniVM = nullptr;
@@ -155,7 +170,7 @@ private:
             AbilityRuntime::EtsErrorUtil::ThrowInvalidParamError(env, "GlobalReference_Create failed.");
             return;
         }
-        auto task = [aniVM, etsSrcEntry, callbackRef]() {
+        auto task = [aniVM, etsSrcEntry, isStaticChildProcess, callbackRef]() {
             if (aniVM == nullptr || callbackRef == nullptr) {
                 TAG_LOGE(AAFwkTag::PROCESSMGR, "aniVM or callbackRef is null");
                 return;
@@ -167,8 +182,8 @@ private:
                 return;
             }
             pid_t pid = 0;
-            AbilityRuntime::ChildProcessManagerErrorCode errorCode =
-                AbilityRuntime::ChildProcessManager::GetInstance().StartChildProcessBySelfFork(etsSrcEntry, pid);
+            auto errorCode = AbilityRuntime::ChildProcessManager::GetInstance().StartChildProcessBySelfFork(
+                etsSrcEntry, pid, isStaticChildProcess);
             TAG_LOGD(AAFwkTag::PROCESSMGR, "StartChildProcessBySelfFork errorCode: %{public}d, pid: %{public}d",
                 errorCode, pid);
             if (errorCode != AbilityRuntime::ChildProcessManagerErrorCode::ERR_OK) {
@@ -192,11 +207,13 @@ private:
         }
     }
 
-    void StartChildProcessAppSpawnForkTask(ani_env *env, std::string &etsSrcEntry, ani_object callback)
+    void StartChildProcessAppSpawnForkTask(ani_env *env, std::string &etsSrcEntry, ani_object callback,
+        bool isStaticChildProcess)
     {
         pid_t pid = ERR_INVALID_VALUE;
         AbilityRuntime::ChildProcessManagerErrorCode innerErrorCode =
-            AbilityRuntime::ChildProcessManager::GetInstance().StartChildProcessByAppSpawnFork(etsSrcEntry, pid);
+            AbilityRuntime::ChildProcessManager::GetInstance().StartChildProcessByAppSpawnFork(etsSrcEntry, pid,
+            isStaticChildProcess);
         TAG_LOGD(AAFwkTag::PROCESSMGR, "StartChildProcessByAppSpawnFork innerErrorCode: %{public}d, pid: %{public}d",
             innerErrorCode, pid);
         if (innerErrorCode != AbilityRuntime::ChildProcessManagerErrorCode::ERR_OK) {
@@ -238,7 +255,10 @@ private:
                 "Param srcEntry cannot be empty.");
             return;
         }
-        TAG_LOGD(AAFwkTag::PROCESSMGR, "srcEntry: %{public}s", srcEntry.c_str());
+        bool isStaticChildProcess = false;
+        ProcessSrcEntry(srcEntry, isStaticChildProcess);
+        TAG_LOGD(AAFwkTag::PROCESSMGR, "srcEntry: %{public}s, isStaticChildProcess: %{public}d", srcEntry.c_str(),
+            isStaticChildProcess);
         AppExecFwk::ChildProcessArgs args;
         AppExecFwk::ChildProcessOptions options;
         if (!ParseArgsAndOptions(env, childProcessArgs, childProcessOptions, args, options)) {
@@ -246,6 +266,7 @@ private:
         }
         ChildProcessAniParam param;
         param.srcEntry = srcEntry;
+        param.isStaticChildProcess = isStaticChildProcess;
         param.args = args;
         param.options = options;
         param.childProcessType = AppExecFwk::CHILD_PROCESS_TYPE_ARK;
@@ -325,13 +346,14 @@ private:
     {
         pid_t pid = 0;
         TAG_LOGD(AAFwkTag::PROCESSMGR,
-            "StartChildProcessWithArgs, childProcessType:%{public}d, srcEntry:%{private}s, "
-            "args.entryParams size:%{public}zu, args.fds size:%{public}zu, options.isolationMode:%{public}d",
-            param.childProcessType, param.srcEntry.c_str(), param.args.entryParams.length(),
-            param.args.fds.size(), param.options.isolationMode);
+            "StartChildProcessWithArgs, childProcessType:%{public}d, srcEntry:%{private}s,"
+            "isStaticChildProcess:%{public}d, args.entryParams size:%{public}zu, args.fds size:%{public}zu, "
+            "options.isolationMode:%{public}d", param.childProcessType, param.srcEntry.c_str(),
+            param.isStaticChildProcess, param.args.entryParams.length(), param.args.fds.size(),
+            param.options.isolationMode);
         AbilityRuntime::ChildProcessManagerErrorCode errorCode =
             AbilityRuntime::ChildProcessManager::GetInstance().StartChildProcessWithArgs(
-                param.srcEntry, pid, param.childProcessType, param.args, param.options);
+                param.srcEntry, pid, param.childProcessType, param.args, param.options, param.isStaticChildProcess);
         if (errorCode != AbilityRuntime::ChildProcessManagerErrorCode::ERR_OK) {
             TAG_LOGE(AAFwkTag::PROCESSMGR, "StartChildProcessWithArgs failed, errorCode: %{public}d", errorCode);
             AppExecFwk::AsyncCallback(env, callback, AbilityRuntime::EtsErrorUtil::CreateError(env,

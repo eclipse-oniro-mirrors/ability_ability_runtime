@@ -197,6 +197,31 @@ void AppSchedulerProxy::ScheduleCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &i
     }
 }
 
+void AppSchedulerProxy::ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "AppSchedulerProxy::ScheduleMem start");
+    uint32_t operation = static_cast<uint32_t>(IAppScheduler::Message::SCHEDULE_MEM_APPLICATION_TRANSACTION);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(info.isSync ? MessageOption::TF_SYNC : MessageOption::TF_ASYNC);
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "AppSchedulerProxy !WriteInterfaceToken.");
+        return;
+    }
+    if (!data.WriteParcelable(&info)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write pid failed");
+        return;
+    }
+    int32_t ret = SendTransactCmd(operation, data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::APPMGR, "SendRequest is failed, error code: %{public}d", ret);
+        return;
+    }
+    if (info.isSync) {
+        dumpResult = reply.ReadString();
+    }
+}
+
 void AppSchedulerProxy::ScheduleShrinkMemory(const int32_t level)
 {
     uint32_t operation = static_cast<uint32_t>(IAppScheduler::Message::SCHEDULE_SHRINK_MEMORY_APPLICATION_TRANSACTION);
@@ -235,7 +260,7 @@ void AppSchedulerProxy::ScheduleMemoryCommon(const int32_t level, const uint32_t
 }
 
 void AppSchedulerProxy::ScheduleLaunchAbility(const AbilityInfo &info, const sptr<IRemoteObject> &token,
-    const std::shared_ptr<AAFwk::Want> &want, int32_t abilityRecordId)
+    const std::shared_ptr<AAFwk::Want> &want, int32_t abilityRecordId, const std::shared_ptr<AppUpdateInfo> updateInfo)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -270,12 +295,42 @@ void AppSchedulerProxy::ScheduleLaunchAbility(const AbilityInfo &info, const spt
         TAG_LOGE(AAFwkTag::APPMGR, "write ability record id fail.");
         return;
     }
+    if (updateInfo) {
+        if (!data.WriteBool(true) || !data.WriteParcelable(updateInfo.get())) {
+            TAG_LOGE(AAFwkTag::APPMGR, "Failed to write flag and updateInfo");
+            return;
+        }
+    } else {
+        if (!data.WriteBool(false)) {
+            TAG_LOGE(AAFwkTag::APPMGR, "Failed to write flag");
+            return;
+        }
+    }
     int32_t ret = SendTransactCmd(
         static_cast<uint32_t>(IAppScheduler::Message::SCHEDULE_LAUNCH_ABILITY_TRANSACTION), data, reply, option);
     if (ret != NO_ERROR) {
         TAG_LOGW(AAFwkTag::APPMGR, "SendRequest is failed, error code: %{public}d", ret);
         AbilityRuntime::FreezeUtil::GetInstance().AppendLifecycleEvent(token,
             "AppLifeCycleDeal::LaunchAbility; ipc error " + std::to_string(ret));
+    }
+}
+
+void AppSchedulerProxy::ScheduleUpdateWorkProcessInfo(const std::shared_ptr<AppUpdateInfo> updateInfo)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_ASYNC);
+    if (!WriteInterfaceToken(data)) {
+        return;
+    }
+    if (!data.WriteParcelable(updateInfo.get())) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write updateInfo fail.");
+        return;
+    }
+    int32_t ret = SendTransactCmd(
+        static_cast<uint32_t>(IAppScheduler::Message::SCHEDULE_UPDATE_WORK_PROCESS_INFO), data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGW(AAFwkTag::APPMGR, "SendRequest is failed, error code: %{public}d", ret);
     }
 }
 

@@ -96,7 +96,7 @@ HWTEST_F(RemoteOnListenerStubTest, RemoteOnListenerStubTest_OnRemoteRequest_003,
     MessageParcel reply;
     MessageOption option;
     WriteInterfaceToken(data);
-    EXPECT_CALL(*stub_, OnCallback(_, _, _, _, _)).Times(1).WillOnce(Return());
+    EXPECT_CALL(*stub_, OnCallback(_)).Times(1).WillOnce(Return());
     int res = stub_->OnRemoteRequest(IRemoteOnListener::ON_CALLBACK, data, reply, option);
     EXPECT_EQ(res, NO_ERROR);
 }
@@ -113,7 +113,7 @@ HWTEST_F(RemoteOnListenerStubTest, RemoteOnListenerStubTest_OnCallbackInner_001,
 {
     MessageParcel data;
     MessageParcel reply;
-    EXPECT_CALL(*stub_, OnCallback(_, _, _, _, _)).Times(1).WillOnce(Return());
+    EXPECT_CALL(*stub_, OnCallback(_)).Times(1).WillOnce(Return());
     int res = stub_->OnCallbackInner(data, reply);
     EXPECT_EQ(res, NO_ERROR);
 }

@@ -115,7 +115,8 @@ int FreeInstallManager::FreeInstallAbilityFromRemote(const Want &want, sptr<IRem
 }
 
 int FreeInstallManager::ConnectFreeInstall(const Want &want, int32_t userId,
-    sptr<IRemoteObject> callerToken, const std::string &localDeviceId)
+    sptr<IRemoteObject> callerToken, const std::string &localDeviceId,
+    AppExecFwk::ExtensionAbilityType extensionType)
 {
     return ERR_OK;
 }

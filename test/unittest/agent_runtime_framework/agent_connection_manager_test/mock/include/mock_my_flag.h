@@ -24,6 +24,8 @@ class MyFlag {
 public:
     static int32_t retConnectAgentExtensionAbility;
     static int32_t retDisconnectAgentExtensionAbility;
+    static int32_t retConnectServiceExtensionAbility;
+    static int32_t retDisconnectServiceExtensionAbility;
     static bool isOnAbilityConnectDoneCalled;
     static bool isOnAbilityDisconnectDoneCalled;
 };

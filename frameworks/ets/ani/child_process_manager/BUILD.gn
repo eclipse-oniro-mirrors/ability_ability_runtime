@@ -16,11 +16,11 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 ohos_shared_library("ability_child_process_manager_ani_kit") {
   branch_protector_ret = "pac_ret"
-  shlib_type = "ani"
   sanitize = {
     cfi = true
     cfi_cross_dso = true
     cfi_vcall_icall_only = true
+    cfi_policy = "adaptive"
     debug = false
   }
 
@@ -58,7 +58,10 @@ ohos_shared_library("ability_child_process_manager_ani_kit") {
   ]
 
   if (ability_runtime_child_process) {
-    sources += [ "./src/ets_child_process_manager.cpp" ]
+    sources += [
+      "./src/ets_child_process.cpp",
+      "./src/ets_child_process_manager.cpp",
+    ]
     deps += [ "${ability_runtime_innerkits_path}/child_process_manager:child_process_manager" ]
     external_deps += [ "ipc:ipc_single" ]
   }

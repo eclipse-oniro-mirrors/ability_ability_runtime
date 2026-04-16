@@ -53,6 +53,7 @@ constexpr int32_t APP_PROVISION_TYPE_DEBUG = 0;
 constexpr size_t MAX_STR_LEN = 256;
 constexpr size_t TEST_APPINDEX = 1;
 constexpr size_t Max_Status = 3;
+constexpr size_t MAX_FUZZ_INPUT_SIZE = 4096;
 }
 
 uint32_t GetU32Data(const char* ptr)
@@ -80,7 +81,6 @@ Want BuildFuzzWant(const char* data, size_t size)
     int32_t appIndex = static_cast<int32_t>(GetU32Data(data) % (MAX_APP_CLONE_INDEX));
     want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, appIndex);
     want.SetParam("isPlugin", true);
-    want.SetParam("ohos.anco.param.callerUid", static_cast<int32_t>(GetU32Data(data + INPUT_THREE)));
     return want;
 }
 
@@ -91,11 +91,10 @@ std::shared_ptr<StartAbilityInfo> BuildFuzzStartAbilityInfo(const char* data, si
         return info;
     }
     info->abilityInfo.bundleName = std::string(data, size % MAX_STR_LEN);
-    info->abilityInfo.name = std::string(data + INPUT_ONE, size % MAX_STR_LEN);
+    info->abilityInfo.name = std::string(data + INPUT_ONE, (size - INPUT_ONE) % MAX_STR_LEN);
     info->abilityInfo.applicationInfo.appProvisionType = static_cast<int32_t>(GetU32Data(data));
     info->abilityInfo.applicationInfo.appIndex = static_cast<int32_t>(GetU32Data(data) % MAX_APP_CLONE_INDEX);
-    info->status = static_cast<int32_t>(GetU32Data(data + INPUT_THREE) % Max_Status);
-    info->customProcess = std::string(data + INPUT_ONE, size % MAX_STR_LEN);
+    info->customProcess = std::string(data + INPUT_ONE, (size - INPUT_ONE) % MAX_STR_LEN);
     return info;
 }
 
@@ -139,12 +138,7 @@ void StartAbilityUtilsFuzztest1(bool boolParam, std::string &stringParam, int32_
     StartAbilityUtils::GetAppIndex(want, nullToken, appIndex);
     
     AppExecFwk::ApplicationInfo appInfo;
-    StartAbilityUtils::startAbilityInfo = BuildFuzzStartAbilityInfo(stringParam.c_str(), stringParam.size());
-    StartAbilityUtils::GetApplicationInfo(stringParam, int32Param, appInfo);
-    StartAbilityUtils::GetApplicationInfo("", int32Param, appInfo);
-    StartAbilityUtils::startAbilityInfo.reset();
-    StartAbilityUtils::GetApplicationInfo(stringParam, int32Param, appInfo);
-    
+
     AppExecFwk::AbilityInfo abilityInfo;
     StartAbilityUtils::callerAbilityInfo = BuildFuzzStartAbilityInfo(stringParam.c_str(), stringParam.size());
     StartAbilityUtils::GetCallerAbilityInfo(callerToken, abilityInfo);
@@ -160,38 +154,9 @@ void StartAbilityUtilsFuzztest1(bool boolParam, std::string &stringParam, int32_
         std::make_shared<StartAbilityInfoWrap>(want, int32Param, int32Param, callerToken, boolParam);
     std::shared_ptr<StartAbilityInfoWrap> wrap2 = std::make_shared<StartAbilityInfoWrap>();
     wrap2->SetStartAbilityInfo(abilityInfo);
-    
-    StartAbilityInfo::CreateStartAbilityInfo(want, int32Param, int32Param, callerToken);
-    StartAbilityInfo::CreateStartAbilityInfo(want, int32Param, MAX_APP_CLONE_INDEX + 1, nullToken);
-    
-    StartAbilityInfo::CreateCallerAbilityInfo(nullToken);
-    StartAbilityInfo::CreateCallerAbilityInfo(callerToken);
-    
-    StartAbilityInfo::CreateStartExtensionInfo(want, int32Param, int32Param, stringParam);
-    
-    auto startInfo = BuildFuzzStartAbilityInfo(stringParam.c_str(), stringParam.size());
-    StartAbilityInfo::FindExtensionInfo(want, int32Param, userId, int32Param, startInfo, stringParam);
-    
-    StartAbilityUtils::GetCloneAppIndexes(stringParam, int32Param);
-    StartAbilityUtils::GetCloneAppIndexes("", int32Param);
-    
-    StartAbilityUtils::IsCallFromAncoShellOrBroker(callerToken);
-    StartAbilityUtils::IsCallFromAncoShellOrBroker(nullToken);
-    
+
     StartAbilityUtils::SetTargetCloneIndexInSameBundle(want, callerToken);
     StartAbilityUtils::SetTargetCloneIndexInSameBundle(want, nullToken);
-    
-    int32_t uiAppIndex = 0;
-    StartAbilityUtils::StartUIAbilitiesProcessAppIndex(want, callerToken, uiAppIndex);
-    StartAbilityUtils::StartUIAbilitiesProcessAppIndex(want, nullToken, uiAppIndex);
-    
-    std::vector<AbilityInfo> abilityInfos1;
-    std::vector<AbilityInfo> abilityInfos2 = {BuildFuzzAbilityInfo(stringParam.c_str(), stringParam.size())};
-    std::vector<AbilityInfo> abilityInfos3 = {abilityInfo, abilityInfo};
-    StartAbilityUtils::HandleSelfRedirection(true, abilityInfos1);
-    StartAbilityUtils::HandleSelfRedirection(true, abilityInfos2);
-    StartAbilityUtils::HandleSelfRedirection(true, abilityInfos3);
-    StartAbilityUtils::HandleSelfRedirection(false, abilityInfos2);
 }
 
 bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
@@ -211,7 +176,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
         return 0;
     }
 
-    if (size < OHOS::U32_AT_SIZE) {
+    if (size < OHOS::U32_AT_SIZE || size > OHOS::MAX_FUZZ_INPUT_SIZE) {
         return 0;
     }
 

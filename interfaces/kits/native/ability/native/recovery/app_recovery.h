@@ -30,6 +30,7 @@
 #include "ui_ability.h"
 #include "want.h"
 #include "want_params.h"
+#include "js_runtime.h"
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -71,7 +72,9 @@ private:
     bool GetMissionIds(std::string path, std::vector<int32_t> &missionIds);
     bool ExecuteFreezeCallbackWithVMSafety(const std::shared_ptr<OHOS::AbilityRuntime::UIAbility>& abilityPtr);
     bool IsEtsAPP();
-    
+    panda::ecmascript::EcmaVM* GetVMFromAbility(const std::shared_ptr<AbilityRuntime::UIAbility>& abilityPtr);
+    void DisallowCrossThreadExecutionInRecovery();
+
     bool isEnable_;
     uint16_t restartFlag_;
     uint16_t saveOccasion_;

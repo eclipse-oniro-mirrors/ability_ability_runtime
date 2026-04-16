@@ -48,6 +48,7 @@
 #include "js_window_stage.h"
 #include "scene_board_judgement.h"
 #endif
+#include "global_constant.h"
 #include "ohos_application.h"
 #include "madvise/madvise_utils.h"
 #include "napi_common_configuration.h"
@@ -492,6 +493,10 @@ void JsUIAbility::OnStart(const Want &want, sptr<AAFwk::SessionInfo> sessionInfo
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::UIABILITY, "ability: %{public}s", GetAbilityName().c_str());
     UIAbility::OnStart(want, sessionInfo);
+    if (want.GetBoolParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH, false)) {
+        TAG_LOGI(AAFwkTag::UIABILITY, "OnStart: Set game prelaunch flag from want");
+        isGamePreLaunch_ = true;
+    }
 
     CHECK_POINTER(abilityInfo_);
     if (!jsAbilityObj_) {
@@ -987,7 +992,13 @@ void JsUIAbility::OnDidForeground()
     AddLifecycleEventAfterJSCall(FreezeUtil::TimeoutState::FOREGROUND, methodName);
 
     if (scene_ != nullptr) {
-        scene_->GoResume();
+        bool isGamePreLaunch = (goResumeCalledFlag_ == 0) ? isGamePreLaunch_ : false;
+        scene_->GoResume(isGamePreLaunch);
+        if (isGamePreLaunch) {
+            scene_->GoPause();
+        }
+        goResumeCalledFlag_ = 1;
+        isGamePreLaunch_ = false;
     }
     TAG_LOGD(AAFwkTag::UIABILITY, "end");
 }
@@ -1197,10 +1208,12 @@ void JsUIAbility::DoOnForeground(const Want &want)
 
     OnWillForeground();
 
-    TAG_LOGD(AAFwkTag::UIABILITY, "move scene to foreground, sceneFlag_: %{public}d", UIAbility::sceneFlag_);
+    TAG_LOGD(AAFwkTag::UIABILITY, "move scene to foreground, sceneFlag_: %{public}d, isGamePreLaunch_: %{public}d",
+        UIAbility::sceneFlag_, isGamePreLaunch_);
     AddLifecycleEventBeforeJSCall(FreezeUtil::TimeoutState::FOREGROUND, METHOD_NAME);
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, "scene_->GoForeground");
-    scene_->GoForeground(UIAbility::sceneFlag_);
+
+    scene_->GoForeground(UIAbility::sceneFlag_, isGamePreLaunch_);
     TAG_LOGD(AAFwkTag::UIABILITY, "end");
 }
 
@@ -1229,7 +1242,6 @@ void JsUIAbility::DoOnForegroundForSceneIsNull(const Want &want)
         abilityContext_->SetWeakSessionToken(sessionToken);
         ret = scene_->Init(displayId, abilityContext_, sceneListener_, option, sessionToken, identityToken,
             reusingWindow_);
-        RemoveShareRouterByBundleType(want);
         std::string navDestinationInfo = want.GetStringParam(Want::ATOMIC_SERVICE_SHARE_ROUTER);
         if (!navDestinationInfo.empty()) {
             TAG_LOGD(AAFwkTag::UIABILITY, "SetNavDestinationInfo :%{public}s", navDestinationInfo.c_str());
@@ -1907,17 +1919,6 @@ void JsUIAbility::UpdateContextConfiguration()
     abilityContext_->NotifyBindingObjectConfigUpdate();
 }
 
-void JsUIAbility::RemoveShareRouterByBundleType(const Want &want)
-{
-    auto abilityInfo = abilityContext_ ? abilityContext_->GetAbilityInfo() : nullptr;
-    if (abilityInfo == nullptr ||
-        abilityInfo->applicationInfo.bundleType != OHOS::AppExecFwk::BundleType::ATOMIC_SERVICE) {
-        TAG_LOGD(AAFwkTag::UIABILITY, "not atomicService");
-        const_cast<Want &>(want).RemoveParam(Want::ATOMIC_SERVICE_SHARE_ROUTER);
-    }
-    return;
-}
-
 void JsUIAbility::OnNewWant(const Want &want)
 {
     TAG_LOGD(AAFwkTag::UIABILITY, "called");
@@ -1925,7 +1926,6 @@ void JsUIAbility::OnNewWant(const Want &want)
 
 #ifdef SUPPORT_SCREEN
     if (scene_) {
-        RemoveShareRouterByBundleType(want);
         scene_->OnNewWant(want);
     }
     HandleCollaboration(want);

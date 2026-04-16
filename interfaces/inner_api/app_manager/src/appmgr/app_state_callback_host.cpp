@@ -60,6 +60,8 @@ int AppStateCallbackHost::OnRemoteRequest(
             return HandleNotifyStartKeepAliveProcess(data, reply);
         case static_cast<uint32_t>(IAppStateCallback::Message::TRANSACT_ON_START_PROCESS_FAILED):
             return HandleOnStartProcessFailed(data, reply);
+        case static_cast<uint32_t>(IAppStateCallback::Message::TRANSACT_ON_NOTIFY_TERMINATE_ABILITY):
+            return HandleNotifyTerminateAbility(data, reply);
         case static_cast<uint32_t>(IAppStateCallback::Message::TRANSACT_ON_CACHE_EXIT_INFO):
             return HandleOnCacheExitInfo(data, reply);
         case static_cast<uint32_t>(IAppStateCallback::Message::TRANSACT_ON_RECORD_APP_EXIT_SIGNAL_REASON):
@@ -106,6 +108,11 @@ void AppStateCallbackHost::OnAppRemoteDied(const std::vector<sptr<IRemoteObject>
 }
 
 void AppStateCallbackHost::OnStartProcessFailed(const std::vector<sptr<IRemoteObject>> &abilityTokens)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+}
+
+void AppStateCallbackHost::NotifyTerminateAbility(const sptr<IRemoteObject> &token)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");
 }
@@ -237,6 +244,18 @@ int32_t AppStateCallbackHost::HandleOnStartProcessFailed(MessageParcel &data, Me
         abilityTokens.emplace_back(obj);
     }
     OnStartProcessFailed(abilityTokens);
+    return NO_ERROR;
+}
+
+int32_t AppStateCallbackHost::HandleNotifyTerminateAbility(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    sptr<IRemoteObject> token = data.ReadRemoteObject();
+    if (!token) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Read token failed.");
+        return ERR_INVALID_VALUE;
+    }
+    NotifyTerminateAbility(token);
     return NO_ERROR;
 }
 

@@ -26,6 +26,7 @@
 
 #include "ability_cache_manager.h"
 #include "ability_connect_callback_interface.h"
+#include "caller_info.h"
 #include "task_handler_wrap.h"
 #include "event_handler_wrap.h"
 #include "base_extension_record.h"
@@ -98,10 +99,12 @@ public:
      * @param connect, Callback used to notify caller the result of connecting or disconnecting.
      * @param callerToken, caller ability token.
      * @param sessionInfo the extension session info of the ability to connect.
+     * @param indirectCallerInfo, Indirect caller information.
      * @return Returns ERR_OK on success, others on failure.
      */
     int32_t ConnectAbilityLocked(const AbilityRequest &abilityRequest, const sptr<IAbilityConnection> &connect,
-        const sptr<IRemoteObject> &callerToken, sptr<SessionInfo> sessionInfo = nullptr);
+        const sptr<IRemoteObject> &callerToken, sptr<SessionInfo> sessionInfo = nullptr,
+        std::shared_ptr<IndirectCallerInfo> indirectCallerInfo = nullptr);
 
     /**
      * DisconnectAbilityLocked, disconnect session with callback.

@@ -28,6 +28,7 @@ public:
     virtual ~JsAgentExtensionStubImpl();
     virtual int32_t SendData(const sptr<IRemoteObject> &hostProxy, const std::string &data) override;
     virtual int32_t Authorize(const sptr<IRemoteObject> &hostProxy, const std::string &data) override;
+    virtual int32_t AgentInvoked(const std::string &agentId) override;
 
 protected:
     std::weak_ptr<JsAgentExtension> extension_;

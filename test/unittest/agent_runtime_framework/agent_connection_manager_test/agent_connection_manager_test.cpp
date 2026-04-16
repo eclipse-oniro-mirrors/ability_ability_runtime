@@ -13,16 +13,18 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #define private public
 #include "agent_connection_manager.h"
 #undef private
 #include "ability_connect_callback.h"
+#include "ability_connect_callback_interface.h"
 #include "ability_manager_errors.h"
 #include "agent_extension_connection_constants.h"
 #include "hilog_tag_wrapper.h"
+#include "ipc_object_stub.h"
 #include "iremote_object.h"
 #include "mock_i_remote_object.h"
 #include "mock_my_flag.h"
@@ -42,6 +44,25 @@ class MockAbilityConnectCallback : public AbilityConnectCallback {
 public:
     MockAbilityConnectCallback() = default;
     ~MockAbilityConnectCallback() override = default;
+
+    void OnAbilityConnectDone(
+        const AppExecFwk::ElementName &element,
+        const sptr<IRemoteObject> &remoteObject,
+        int resultCode) override
+    {
+        MyFlag::isOnAbilityConnectDoneCalled = true;
+    }
+
+    void OnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int resultCode) override
+    {
+        MyFlag::isOnAbilityDisconnectDoneCalled = true;
+    }
+};
+
+class MockAbilityConnection : public IRemoteStub<AAFwk::IAbilityConnection> {
+public:
+    MockAbilityConnection() = default;
+    ~MockAbilityConnection() override = default;
 
     void OnAbilityConnectDone(
         const AppExecFwk::ElementName &element,
@@ -79,6 +100,8 @@ void AgentConnectionManagerTest::SetUp(void)
     AgentConnectionManager::GetInstance().agentConnections_.clear();
     MyFlag::retConnectAgentExtensionAbility = ERR_OK;
     MyFlag::retDisconnectAgentExtensionAbility = ERR_OK;
+    MyFlag::retConnectServiceExtensionAbility = ERR_OK;
+    MyFlag::retDisconnectServiceExtensionAbility = ERR_OK;
     MyFlag::isOnAbilityConnectDoneCalled = false;
     MyFlag::isOnAbilityDisconnectDoneCalled = false;
 }
@@ -189,13 +212,13 @@ HWTEST_F(AgentConnectionManagerTest, ConnectAgentExtensionAbility_004, TestSize.
 /**
 * @tc.name  : DisconnectAgentExtensionAbility_ShouldReturnError_WhenCallbackIsNull
 * @tc.number: DisconnectAgentExtensionAbility_001
-* @tc.desc  : Test DisconnectAgentExtensionAbility returns ERR_INVALID_VALUE when callback is null
+* @tc.desc  : Test DisconnectAgentExtensionAbility returns INVALID_PARAMETERS_ERR when callback is null
 */
 HWTEST_F(AgentConnectionManagerTest, DisconnectAgentExtensionAbility_001, TestSize.Level1)
 {
     sptr<AbilityConnectCallback> callback = nullptr;
     auto result = AgentConnectionManager::GetInstance().DisconnectAgentExtensionAbility(callback);
-    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    EXPECT_EQ(result, AAFwk::INVALID_PARAMETERS_ERR);
 }
 
 /**
@@ -268,6 +291,60 @@ HWTEST_F(AgentConnectionManagerTest, DisconnectAgentExtensionAbility_005, TestSi
     AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want, callback2);
 
     auto result = AgentConnectionManager::GetInstance().DisconnectAgentExtensionAbility(callback1);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+* @tc.name  : ConnectServiceExtensionAbility_001
+* @tc.number: ConnectServiceExtensionAbility_001
+* @tc.desc  : Test ConnectServiceExtensionAbility rejects null caller token
+*/
+HWTEST_F(AgentConnectionManagerTest, ConnectServiceExtensionAbility_001, TestSize.Level1)
+{
+    Want want;
+    sptr<AAFwk::IAbilityConnection> connection = sptr<MockAbilityConnection>::MakeSptr();
+    auto result = AgentConnectionManager::GetInstance().ConnectServiceExtensionAbility(nullptr, want, connection);
+    EXPECT_EQ(result, AAFwk::INVALID_PARAMETERS_ERR);
+}
+
+/**
+* @tc.name  : ConnectServiceExtensionAbility_002
+* @tc.number: ConnectServiceExtensionAbility_002
+* @tc.desc  : Test ConnectServiceExtensionAbility propagates client error
+*/
+HWTEST_F(AgentConnectionManagerTest, ConnectServiceExtensionAbility_002, TestSize.Level1)
+{
+    Want want;
+    sptr<IRemoteObject> callerToken = new MockIRemoteObject();
+    sptr<AAFwk::IAbilityConnection> connection = sptr<MockAbilityConnection>::MakeSptr();
+    MyFlag::retConnectServiceExtensionAbility = ERR_INVALID_VALUE;
+    auto result = AgentConnectionManager::GetInstance().ConnectServiceExtensionAbility(callerToken, want, connection);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+}
+
+/**
+* @tc.name  : DisconnectServiceExtensionAbility_001
+* @tc.number: DisconnectServiceExtensionAbility_001
+* @tc.desc  : Test DisconnectServiceExtensionAbility rejects null callback
+*/
+HWTEST_F(AgentConnectionManagerTest, DisconnectServiceExtensionAbility_001, TestSize.Level1)
+{
+    auto callerToken = sptr<IRemoteObject>(new IPCObjectStub(u"caller.token"));
+    auto result = AgentConnectionManager::GetInstance().DisconnectServiceExtensionAbility(callerToken, nullptr);
+    EXPECT_EQ(result, AAFwk::INVALID_PARAMETERS_ERR);
+}
+
+/**
+* @tc.name  : DisconnectServiceExtensionAbility_002
+* @tc.number: DisconnectServiceExtensionAbility_002
+* @tc.desc  : Test DisconnectServiceExtensionAbility propagates client result
+*/
+HWTEST_F(AgentConnectionManagerTest, DisconnectServiceExtensionAbility_002, TestSize.Level1)
+{
+    auto callerToken = sptr<IRemoteObject>(new IPCObjectStub(u"caller.token"));
+    sptr<AAFwk::IAbilityConnection> connection = sptr<MockAbilityConnection>::MakeSptr();
+    MyFlag::retDisconnectServiceExtensionAbility = ERR_OK;
+    auto result = AgentConnectionManager::GetInstance().DisconnectServiceExtensionAbility(callerToken, connection);
     EXPECT_EQ(result, ERR_OK);
 }
 

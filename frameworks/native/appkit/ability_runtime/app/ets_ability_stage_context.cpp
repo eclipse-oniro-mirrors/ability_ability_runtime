@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,11 +16,13 @@
 
 #include "ability_runtime/context/context.h"
 #include "ani_common_configuration.h"
+#include "ani_common_want.h"
 #include "configuration_convertor.h"
 #include "ets_context_utils.h"
 #include "ets_runtime.h"
 #include "hilog_tag_wrapper.h"
 #include "ohos_application.h"
+#include "want.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -68,6 +70,7 @@ ani_object ETSAbilityStageContext::CreateEtsAbilityStageContext(ani_env *env, st
 
     ContextUtil::CreateEtsBaseContext(env, abilityStageCtxCls, obj, context);
     SetConfiguration(env, abilityStageCtxCls, obj, context);
+    SetLaunchElement(env, abilityStageCtxCls, obj, context);
     ani_ref *contextGlobalRef = new (std::nothrow) ani_ref;
     if (contextGlobalRef == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITY, "new contextGlobalRef failed");
@@ -101,6 +104,39 @@ void ETSAbilityStageContext::SetConfiguration(ani_env *env, ani_class stageCls, 
     status = env->Object_SetFieldByName_Ref(stageCtxObj, "config", configObj);
     if (status != ANI_OK) {
         TAG_LOGE(AAFwkTag::APPKIT, "Object_SetPropertyByName_Ref failed, status: %{public}d", status);
+    }
+}
+
+void ETSAbilityStageContext::SetLaunchElement(ani_env *env, ani_class stageCls, ani_object stageCtxObj,
+    std::shared_ptr<Context> &context)
+{
+    // Convert to AbilityStageContext to access launchElement
+    auto abilityStageContext = Context::ConvertTo<AbilityStageContext>(context);
+    if (abilityStageContext == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITY, "abilityStageContext null ptr");
+        return;
+    }
+
+    const auto &elementName = abilityStageContext->GetLaunchElement();
+
+    // Optional parameter: only set launchElement if it has valid values
+    if (elementName.GetBundleName().empty() && elementName.GetAbilityName().empty()) {
+        TAG_LOGD(AAFwkTag::ABILITY, "launchElement is empty, not setting property");
+        return;
+    }
+
+    ani_object elementNameObj = AppExecFwk::WrapElementName(env, elementName);
+    if (elementNameObj == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITY, "elementNameObj null ptr");
+        return;
+    }
+
+    ani_status status = ANI_OK;
+    status = env->Object_SetFieldByName_Ref(stageCtxObj, "launchElement", elementNameObj);
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPKIT, "Object_SetFieldByName_Ref launchElement failed, status: %{public}d", status);
+    } else {
+        TAG_LOGD(AAFwkTag::APPKIT, "launchElement property set successfully");
     }
 }
 

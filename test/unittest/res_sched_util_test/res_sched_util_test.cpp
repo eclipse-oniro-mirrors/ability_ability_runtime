@@ -169,5 +169,26 @@ HWTEST_F(ResSchedUtilTest, PromotePriorityToRSS_0100, TestSize.Level2)
     EXPECT_EQ(targetPid, 20001);
     TAG_LOGI(AAFwkTag::TEST, "PromotePriorityToRSS_0100 end");
 }
+
+/**
+ * @tc.number: ReportForkAllEventToRSS_0100
+ * @tc.desc: Test ReportForkAllEventToRSS works
+ * @tc.type: FUNC
+ */
+HWTEST_F(ResSchedUtilTest, ReportForkAllEventToRSS_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ReportForkAllEventToRSS_0100 start");
+    std::string testName = "ReportForkAllEventToRSS";
+    int32_t imagePid = 100;
+    int32_t originPid = 200;
+    int32_t forkAllState = 0;
+    AAFwk::ResSchedUtil::GetInstance().ReportForkAllEventToRSS(imagePid, originPid, nullptr, forkAllState);
+    std::shared_ptr<AbilityInfo> abilityInfo = std::make_shared<AbilityInfo>();
+    AAFwk::ResSchedUtil::GetInstance().ReportForkAllEventToRSS(imagePid, originPid, abilityInfo, forkAllState);
+    EXPECT_EQ(imagePid, 100);
+    EXPECT_EQ(originPid, 200);
+    EXPECT_EQ(forkAllState, 0);
+    TAG_LOGI(AAFwkTag::TEST, "ReportForkAllEventToRSS_0100 end");
+}
 }  // namespace AbilityRuntime
 }  // namespace OHOS

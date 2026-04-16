@@ -56,17 +56,21 @@ bool JsModuleReader::operator()(const std::string& inputPath, uint8_t **buff,
     }
 
     bool needFindPluginHsp = true;
-    auto realHapPath = GetAppHspPath(inputPath, needFindPluginHsp);
+    auto realHapPath = GetAppHspPath(inputPath, needFindPluginHsp, errorMsg);
+    TAG_LOGD(AAFwkTag::JSRUNTIME, "GetAppHspPath: %{public}d, inputPath: %{private}s, appHspPath: %{private}s",
+        !needFindPluginHsp, inputPath.c_str(), realHapPath.c_str());
     if (realHapPath.empty()) {
-        TAG_LOGE(AAFwkTag::JSRUNTIME, "empty realHapPath");
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "empty appHspPath");
         return false;
     }
 
     if (needFindPluginHsp) {
-        // find plugin
         realHapPath = GetPluginHspPath(inputPath);
         if (realHapPath.empty()) {
-            TAG_LOGE(AAFwkTag::JSRUNTIME, "empty realHapPath");
+            if (errorMsg.empty()) {
+                errorMsg = "get plugin hspPath failed, please check the module is correct";
+            }
+            TAG_LOGE(AAFwkTag::JSRUNTIME, "empty pluginHspPath");
             return false;
         }
     }
@@ -74,13 +78,14 @@ bool JsModuleReader::operator()(const std::string& inputPath, uint8_t **buff,
     bool newCreate = false;
     std::shared_ptr<Extractor> extractor = ExtractorUtil::GetExtractor(realHapPath, newCreate);
     if (extractor == nullptr) {
-        errorMsg = "hap path error: " + realHapPath;
+        errorMsg = "GetExtractor failed, please check " + realHapPath;
         TAG_LOGE(AAFwkTag::JSRUNTIME, "realHapPath %{private}s GetExtractor failed", realHapPath.c_str());
         return false;
     }
 
     auto data = extractor->GetSafeData(MERGE_ABC_PATH);
     if (!data) {
+        errorMsg = "getData failed, please check " + realHapPath;
         TAG_LOGE(AAFwkTag::JSRUNTIME, "null data");
         return false;
     }
@@ -132,15 +137,17 @@ std::string JsModuleReader::GetPluginHspPath(const std::string& inputPath) const
     return presetAppHapPath;
 }
 
-std::string JsModuleReader::GetAppHspPath(const std::string& inputPath, bool& needFindPluginHsp) const
+std::string JsModuleReader::GetAppHspPath(const std::string& inputPath,
+    bool& needFindPluginHsp, std::string& errorMsg) const
 {
     if (isFormRender_) {
-        return GetFormAppHspPath(inputPath, needFindPluginHsp);
+        return GetFormAppHspPath(inputPath, needFindPluginHsp, errorMsg);
     }
-    return GetCommonAppHspPath(inputPath, needFindPluginHsp);
+    return GetCommonAppHspPath(inputPath, needFindPluginHsp, errorMsg);
 }
 
-std::string JsModuleReader::GetFormAppHspPath(const std::string& inputPath, bool& needFindPluginHsp) const
+std::string JsModuleReader::GetFormAppHspPath(const std::string& inputPath,
+    bool& needFindPluginHsp, std::string& errorMsg) const
 {
     std::string realHapPath;
     std::string suffix = std::string(SHARED_FILE_SUFFIX);
@@ -153,6 +160,7 @@ std::string JsModuleReader::GetFormAppHspPath(const std::string& inputPath, bool
     if (realHapPath.empty() ||
         realHapPath.length() < suffix.length() ||
         realHapPath.compare(realHapPath.length() - suffix.length(), suffix.length(), suffix) != 0) {
+        errorMsg = "Get form HspPath failed: invalid path or suffix";
         TAG_LOGE(AAFwkTag::JSRUNTIME, "obtain realHapPath failed");
         return realHapPath;
     }
@@ -165,10 +173,18 @@ std::string JsModuleReader::GetModuleName(const std::string& inputPath) const
     return inputPath.substr(inputPath.find_last_of("/") + 1);
 }
 
-std::string JsModuleReader::GetCommonAppHspPath(const std::string& inputPath, bool& needFindPluginHsp) const
+std::string JsModuleReader::GetCommonAppHspPath(const std::string& inputPath,
+    bool& needFindPluginHsp, std::string& errorMsg) const
 {
     std::string suffix = std::string(SHARED_FILE_SUFFIX);
-    std::string realHapPath = GetPresetAppHapPath(inputPath, bundleName_, needFindPluginHsp);
+    std::string realHapPath = GetPresetAppHapPath(inputPath, bundleName_, needFindPluginHsp, errorMsg);
+    if (needFindPluginHsp && errorMsg.empty()) {
+        if (inputPath.find_first_of("/") == inputPath.find_last_of("/")) {
+            errorMsg = "Get in-app HspPath failed, please check the module is correct";
+        } else {
+            errorMsg = "Get shared HspPath failed, please check the module is correct";
+        }
+    }
     if ((realHapPath.find(ABS_DATA_CODE_PATH) == 0) || (realHapPath == inputPath)) {
         realHapPath = std::string(ABS_CODE_PATH) + inputPath + suffix;
     }
@@ -177,6 +193,7 @@ std::string JsModuleReader::GetCommonAppHspPath(const std::string& inputPath, bo
     if (realHapPath.empty() ||
         realHapPath.length() < suffix.length() ||
         realHapPath.compare(realHapPath.length() - suffix.length(), suffix.length(), suffix) != 0) {
+        errorMsg = "Get HspPath failed: invalid path or suffix";
         TAG_LOGE(AAFwkTag::JSRUNTIME, "obtain realHapPath failed");
         return realHapPath;
     }
@@ -184,7 +201,7 @@ std::string JsModuleReader::GetCommonAppHspPath(const std::string& inputPath, bo
 }
 
 std::string JsModuleReader::GetOtherHspPath(const std::string& bundleName, const std::string& moduleName,
-    const std::string& inputPath, bool& needFindPluginHsp)
+    const std::string& inputPath, bool& needFindPluginHsp, std::string& errorMsg)
 {
     std::string presetAppHapPath = inputPath;
 
@@ -226,7 +243,7 @@ std::string JsModuleReader::GetOtherHspPath(const std::string& bundleName, const
 }
 
 std::string JsModuleReader::GetPresetAppHapPath(const std::string& inputPath, const std::string& bundleName,
-    bool& needFindPluginHsp)
+    bool& needFindPluginHsp, std::string& errorMsg)
 {
     std::string presetAppHapPath = inputPath;
     std::string moduleName = inputPath.substr(inputPath.find_last_of("/") + 1);
@@ -255,7 +272,7 @@ std::string JsModuleReader::GetPresetAppHapPath(const std::string& inputPath, co
             }
         }
     } else {
-        presetAppHapPath = GetOtherHspPath(bundleName, moduleName, presetAppHapPath, needFindPluginHsp);
+        presetAppHapPath = GetOtherHspPath(bundleName, moduleName, presetAppHapPath, needFindPluginHsp, errorMsg);
     }
     return presetAppHapPath;
 }

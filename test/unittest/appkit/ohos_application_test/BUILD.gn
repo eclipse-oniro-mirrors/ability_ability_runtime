@@ -32,6 +32,7 @@ ohos_unittest("ohos_application_test") {
     "${ability_runtime_path}/interfaces/kits/native/ability/native",
     "${ability_runtime_test_path}/mock/frameworks_kits_runtime_test/",
     "${ability_runtime_test_path}/mock/frameworks_kits_appkit_native_test/include",
+    "${ability_runtime_test_path}/unittest/runtime_test/",
   ]
 
   sources = [ "ohos_application_test.cpp" ]

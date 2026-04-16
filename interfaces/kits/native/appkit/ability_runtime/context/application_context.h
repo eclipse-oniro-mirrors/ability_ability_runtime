@@ -21,6 +21,7 @@
 
 #include "ability_lifecycle_callback.h"
 #include "application_state_change_callback.h"
+#include "application_update_callback.h"
 #include "context.h"
 #include "context_impl.h"
 #include "environment_callback.h"
@@ -50,6 +51,8 @@ public:
     void UnregisterEnvironmentCallback(const std::shared_ptr<EnvironmentCallback> &environmentCallback);
     void RegisterApplicationStateChangeCallback(
         const std::weak_ptr<ApplicationStateChangeCallback> &applicationStateChangeCallback);
+    void RegisterApplicationUpdateCallback(
+        const std::weak_ptr<ApplicationUpdateCallback> &applicationUpdateCallback);
     void DispatchOnAbilityCreate(const AbilityLifecycleCallbackArgs &ability);
     void DispatchOnAbilityCreate(std::shared_ptr<InteropObject> ability);
     void DispatchOnWindowStageCreate(const AbilityLifecycleCallbackArgs &ability,
@@ -195,6 +198,9 @@ public:
     void SetCurrentAppMode(int32_t appIndex);
     void ProcessSecurityExit(const AAFwk::ExitReason &exitReason);
     napi_env GetMainNapiEnv() const;
+
+    int32_t GetImageProcessType() const;
+    bool IsAbilityCreated() const;
 
     using SelfType = ApplicationContext;
     static const size_t CONTEXT_TYPE_ID;

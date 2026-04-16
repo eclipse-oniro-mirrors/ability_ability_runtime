@@ -208,7 +208,7 @@ void PreloadUIExtensionHostClient::OnDestroyDone(int32_t extensionAbilityId)
 {
     std::vector<std::shared_ptr<PreloadUIExtensionCallbackInterface>> callbacksToInvoke;
     {
-        std::lock_guard<std::mutex> lock(preloadUIExtensionLoadedCallbackMutex_);
+        std::lock_guard<std::mutex> lock(preloadUIExtensionDestroyCallbackMutex_);
         for (auto &callbackPair : destroyCallbackMap_) {
             if (callbackPair.second != nullptr) {
                 callbacksToInvoke.push_back(callbackPair.second);

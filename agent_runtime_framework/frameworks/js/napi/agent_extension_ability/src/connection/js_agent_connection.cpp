@@ -28,8 +28,6 @@ namespace OHOS {
 namespace AgentRuntime {
 namespace {
 constexpr int32_t ARGC_ONE = 1;
-// Maximum number of agent connections allowed
-constexpr size_t MAX_AGENT_CONNECTIONS = 5;
 // Registry for agent connections
 static std::map<ConnectionKey, sptr<JSAgentConnection>, KeyCompare> g_agentConnects;
 static std::recursive_mutex g_agentConnectsLock_;
@@ -116,21 +114,6 @@ void FindAgentConnection(napi_env env, AAFwk::Want &want, napi_value callback,
     }
     connection = item->second;
     TAG_LOGD(AAFwkTag::SER_ROUTER, "Found connection");
-}
-
-size_t GetAgentConnectionCount()
-{
-    std::lock_guard<std::recursive_mutex> lock(g_agentConnectsLock_);
-    size_t count = g_agentConnects.size();
-    TAG_LOGI(AAFwkTag::SER_ROUTER, "Current connection count: %{public}zu", count);
-    return count;
-}
-
-bool IsMaxConnectionsReached()
-{
-    size_t currentCount = GetAgentConnectionCount();
-    bool reached = currentCount >= MAX_AGENT_CONNECTIONS;
-    return reached;
 }
 } // namespace AgentConnectionUtils
 

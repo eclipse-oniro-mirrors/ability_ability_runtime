@@ -95,6 +95,7 @@ ohos_shared_library("ability_manager") {
     "${ability_runtime_services_path}/abilitymgr/src/launch_param.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/lifecycle_state_info.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/mission/mission_listener_stub.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/modular_object_extension_info.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/open_link/open_link_options.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/prepare_terminate_callback_proxy.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/prepare_terminate_callback_stub.cpp",
@@ -220,6 +221,7 @@ ohos_shared_library("ability_start_options") {
     cfi = true
     cfi_cross_dso = true
     cfi_vcall_icall_only = true
+    cfi_policy = "adaptive"
     debug = false
   }
   branch_protector_ret = "pac_ret"
@@ -341,6 +343,7 @@ ohos_shared_library("process_options") {
     cfi = true
     cfi_cross_dso = true
     cfi_vcall_icall_only = true
+    cfi_policy = "adaptive"
     debug = false
   }
   branch_protector_ret = "pac_ret"
@@ -372,6 +375,7 @@ ohos_shared_library("start_window_option") {
     cfi = true
     cfi_cross_dso = true
     cfi_vcall_icall_only = true
+    cfi_policy = "adaptive"
     debug = false
   }
   branch_protector_ret = "pac_ret"

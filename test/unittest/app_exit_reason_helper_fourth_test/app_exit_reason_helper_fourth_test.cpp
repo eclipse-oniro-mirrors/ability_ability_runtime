@@ -371,12 +371,12 @@ HWTEST_F(AppExitReasonHelperTest, RecordAppWithReason_0100, TestSize.Level1)
     auto currentUIAbilityManager = std::make_shared<UIAbilityLifecycleManager>(0);
     EXPECT_NE(currentUIAbilityManager, nullptr);
     result = appExitReasonHelper->RecordAppWithReason(pid, uid, exitReason);
-    EXPECT_EQ(result, ERR_NULL_OBJECT);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
 
     int32_t userId = AbilityRuntime::UserController::GetInstance().GetForegroundUserId(0);
     appExitReasonHelper->subManagersHelper_->uiAbilityManagers_[userId] = currentUIAbilityManager;
     result = appExitReasonHelper->RecordAppWithReason(pid, uid, exitReason);
-    EXPECT_EQ(result, ERR_GET_ACTIVE_ABILITY_LIST_EMPTY);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
 
     Want want;
     AppExecFwk::AbilityInfo abilityInfo;
@@ -415,7 +415,7 @@ HWTEST_F(AppExitReasonHelperTest, AddAppExitReason_0100, TestSize.Level1)
     EXPECT_EQ(result, MOCK_ERROR);
     MyStatus::GetInstance().getOsAccountRet_ = 0;
     result = appExitReasonHelper->AddAppExitReason(bundleName, pid, uid, appIndex, exitReason);
-    EXPECT_EQ(result, ERR_GET_ACTIVE_ABILITY_LIST_EMPTY);
+    EXPECT_EQ(result, ERR_NULL_OBJECT);
 }
 
 /**

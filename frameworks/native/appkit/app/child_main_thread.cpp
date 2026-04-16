@@ -29,11 +29,14 @@
 #include "native_lib_util.h"
 #include "sys_mgr_client.h"
 #include "system_ability_definition.h"
+#include "parameters.h"
 
 namespace OHOS {
 namespace AppExecFwk {
 using namespace OHOS::AbilityBase::Constants;
 using OHOS::AbilityRuntime::ChildProcessManager;
+constexpr const char* PLUGIN_DEFAULT_NAMESPACE_LDDICTIONARY =
+    "persist.sys.abilityms.plugin_default_namespace_lddictionary";
 ChildMainThread::ChildMainThread()
 {
     processArgs_ = std::make_shared<ChildProcessArgs>();
@@ -42,6 +45,11 @@ ChildMainThread::ChildMainThread()
 ChildMainThread::~ChildMainThread()
 {
     TAG_LOGD(AAFwkTag::APPKIT, "ChildMainThread deconstructor called");
+}
+
+extern "C" void ChildMainThreadStart(const std::map<std::string, int32_t> &fds)
+{
+    ChildMainThread::Start(fds);
 }
 
 void ChildMainThread::Start(const std::map<std::string, int32_t> &fds)
@@ -130,6 +138,13 @@ bool ChildMainThread::Init(const std::shared_ptr<EventRunner> &runner, const Chi
         return false;
     }
     InitNativeLib(*bundleInfo_, processInfo.hspList);
+    if (!IsEtsAPP(*processInfo_)) {
+        auto lddictionaries = ParsePluginDefaultNamespaceLdDictionary();
+        if (!lddictionaries.empty()) {
+            AbilityRuntime::JsRuntime::CreatePluginDefaultNamespace(lddictionaries);
+        }
+    }
+    
     return true;
 }
 
@@ -204,7 +219,8 @@ void ChildMainThread::HandleLoadJs()
         return;
     }
 
-    runtime_ = childProcessManager.CreateRuntime(bundleInfoCopy, hapModuleInfo, true, processInfo_->jitEnabled);
+    runtime_ = childProcessManager.CreateRuntime(bundleInfoCopy, hapModuleInfo, true, processInfo_->jitEnabled,
+        processInfo_->isStaticChildProcess);
     if (!runtime_) {
         TAG_LOGE(AAFwkTag::APPKIT, "null runtime");
         return;
@@ -217,7 +233,17 @@ void ChildMainThread::HandleLoadJs()
     runtime_->StartDebugMode(debugOption);
     std::string srcPath;
     srcPath.append(hapModuleInfo.moduleName).append("/").append(processInfo_->srcEntry);
-    childProcessManager.LoadJsFile(srcPath, hapModuleInfo, runtime_);
+
+    if (processInfo_->isStaticChildProcess) {
+        auto pos = processInfo_->srcEntry.find('/');
+        std::string prefix = (pos != std::string::npos) ?
+            processInfo_->srcEntry.substr(0, pos) : processInfo_->srcEntry;
+        if (prefix == "entry") {
+            childProcessManager.LoadJsFile(processInfo_->srcEntry, hapModuleInfo, runtime_);
+        }
+    } else {
+        childProcessManager.LoadJsFile(srcPath, hapModuleInfo, runtime_);
+    }
     ExitProcessSafely();
 }
 
@@ -245,7 +271,8 @@ void ChildMainThread::HandleLoadArkTs()
         return;
     }
 
-    runtime_ = childProcessManager.CreateRuntime(*bundleInfo_, hapModuleInfo, true, processInfo_->jitEnabled);
+    runtime_ = childProcessManager.CreateRuntime(*bundleInfo_, hapModuleInfo, true, processInfo_->jitEnabled,
+        processInfo_->isStaticChildProcess);
     if (!runtime_) {
         TAG_LOGE(AAFwkTag::APPKIT, "null runtime");
         return;
@@ -449,6 +476,23 @@ void ChildMainThread::GetNativeLibPath(const BundleInfo &bundleInfo, const HspLi
 void ChildMainThread::OnLoadAbilityFinished(uint64_t callbackId, int32_t pid)
 {
     LoadAbilityCallbackManager::GetInstance().OnLoadAbilityFinished(callbackId, pid);
+}
+
+std::string ChildMainThread::ParsePluginDefaultNamespaceLdDictionary()
+{
+    pluginDefaultNamespaceLdDictionary_ = system::GetParameter(PLUGIN_DEFAULT_NAMESPACE_LDDICTIONARY, "");
+    TAG_LOGD(AAFwkTag::APPKIT, "plugin_default_namespace_lddictionary: %{private}s",
+        pluginDefaultNamespaceLdDictionary_.c_str());
+    return pluginDefaultNamespaceLdDictionary_;
+}
+
+bool ChildMainThread::IsEtsAPP(const ChildProcessInfo &processInfo)
+{
+    if (processInfo.bundleInfo == nullptr) {
+        return false;
+    }
+    return processInfo.bundleInfo->applicationInfo.arkTSMode == AbilityRuntime::CODE_LANGUAGE_ARKTS_1_2 ||
+        processInfo.bundleInfo->applicationInfo.arkTSMode == AbilityRuntime::CODE_LANGUAGE_ARKTS_HYBRID;
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

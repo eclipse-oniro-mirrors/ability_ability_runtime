@@ -27,6 +27,7 @@
 #include "app_malloc_info.h"
 #include "app_jsheap_mem_info.h"
 #include "app_cjheap_mem_info.h"
+#include "app_mem_dump_info.h"
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -116,6 +117,17 @@ public:
     virtual void ScheduleCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info) = 0;
 
     /**
+     * ScheduleMem, call ScheduleMem() through proxy project,
+     * triggerGC and dump application's memory info.
+     *
+     * @param info, pid, tid, needGc, needSnapshot
+     * @param dumpResult The dump result string
+     *
+     * @return
+     */
+    virtual void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult) = 0;
+
+    /**
      * ScheduleLaunchApplication, call ScheduleLaunchApplication() through proxy project,
      * Notify application to launch application.
      *
@@ -154,7 +166,8 @@ public:
      * @param token The ability token.
      */
     virtual void ScheduleLaunchAbility(const AbilityInfo &, const sptr<IRemoteObject> &,
-        const std::shared_ptr<AAFwk::Want> &want, int32_t abilityRecordId) = 0;
+        const std::shared_ptr<AAFwk::Want> &want, int32_t abilityRecordId,
+        std::shared_ptr<AppUpdateInfo> updateInfo = nullptr) = 0;
 
     /**
      * ScheduleCleanAbility, call ScheduleCleanAbility() through proxy project,
@@ -349,6 +362,8 @@ public:
      */
     virtual void OnLoadAbilityFinished(uint64_t callbackId, int32_t pid) = 0;
 
+    virtual void ScheduleUpdateWorkProcessInfo(std::shared_ptr<AppUpdateInfo> updateInfo) {}
+
     enum class Message {
         SCHEDULE_FOREGROUND_APPLICATION_TRANSACTION = 0,
         SCHEDULE_BACKGROUND_APPLICATION_TRANSACTION,
@@ -386,6 +401,8 @@ public:
         SCHEDULE_CJHEAP_MEMORY_APPLICATION_TRANSACTION,
         ON_LOAD_ABILITY_FINISHED,
         SCHEDULE_DUMP_ARKWEB,
+        SCHEDULE_UPDATE_WORK_PROCESS_INFO,
+        SCHEDULE_MEM_APPLICATION_TRANSACTION,
     };
 };
 }  // namespace AppExecFwk

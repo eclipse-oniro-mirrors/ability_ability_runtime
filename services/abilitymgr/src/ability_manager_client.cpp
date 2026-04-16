@@ -183,6 +183,16 @@ ErrCode AbilityManagerClient::StartAbility(
     return abms->StartAbility(want, callerToken, userId, requestCode, specifiedFullTokenId);
 }
 
+ErrCode AbilityManagerClient::LaunchGameCustomized(const std::string &bundleName, int32_t userId, int32_t appIndex)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "LaunchGameCustomized call, bundleName:%{public}s, userId:%{public}d, "
+        "appIndex:%{public}d", bundleName.c_str(), userId, appIndex);
+    return abms->LaunchGameCustomized(bundleName, userId, appIndex);
+}
+
 ErrCode AbilityManagerClient::StartAbilityByInsightIntent(
     const Want &want, sptr<IRemoteObject> callerToken, uint64_t intentId, int32_t userId)
 {
@@ -628,6 +638,19 @@ ErrCode AbilityManagerClient::ConnectAbility(
         false, specifiedFullTokenId);
 }
 
+ErrCode AbilityManagerClient::ConnectAbilityWithIndirectCallerInfo(const Want &want, sptr<IAbilityConnection> connect,
+    sptr<IRemoteObject> callerToken, int32_t userId, AppExecFwk::ExtensionAbilityType extensionType,
+    std::shared_ptr<IndirectCallerInfo> indirectCallerInfo)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    TAG_LOGI(AAFwkTag::SERVICE_EXT, "name:%{public}s %{public}s, userId:%{public}d",
+        want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(), userId);
+    return abms->ConnectAbilityCommon(want, connect, callerToken, extensionType, userId, false, 0, 0,
+        indirectCallerInfo);
+}
+
 ErrCode AbilityManagerClient::ConnectAbilityWithExtensionType(
     const Want &want, sptr<IAbilityConnection> connect, sptr<IRemoteObject> callerToken, int32_t userId,
     AppExecFwk::ExtensionAbilityType extensionType)
@@ -1051,6 +1074,26 @@ ErrCode AbilityManagerClient::GetMissionInfo(const std::string& deviceId, int32_
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     return abms->GetMissionInfo(deviceId, missionId, missionInfo);
+}
+
+ErrCode AbilityManagerClient::GetMissionInfo(const std::string& deviceId, int32_t missionId,
+    MissionInfo &missionInfo, DisplayInfo &displayInfo)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+#ifdef SUPPORT_SCREEN
+    if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
+        auto sceneSessionManager = SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+        CHECK_POINTER_RETURN_INVALID_VALUE(sceneSessionManager);
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "scb call, GetMissionInfo");
+        auto err = sceneSessionManager->GetSessionInfo(deviceId, missionId, missionInfo, displayInfo);
+        if (SCB_TO_MISSION_ERROR_CODE_MAP.count(err)) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "scb call, GetMissionInfo err");
+            return SCB_TO_MISSION_ERROR_CODE_MAP[err];
+        }
+        return static_cast<int>(err);
+    }
+#endif //SUPPORT_SCREEN
+    return ERR_CAPABILITY_NOT_SUPPORT;
 }
 
 ErrCode AbilityManagerClient::CleanMission(int32_t missionId)
@@ -2546,6 +2589,37 @@ ErrCode AbilityManagerClient::StartSelfUIAbilityInCurrentProcess(const Want &wan
     return abms->StartSelfUIAbilityInCurrentProcess(want, specifiedFlag, options, hasOptions, callerToken);
 }
 
+ErrCode AbilityManagerClient::NotifyCancelGamePreLaunch(const sptr<IRemoteObject> callerToken)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "NotifyCancelGamePreLaunch called");
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    return abms->NotifyCancelGamePreLaunch(callerToken);
+}
+
+ErrCode AbilityManagerClient::NotifyCompleteGamePreLaunch(const sptr<IRemoteObject> callerToken)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "NotifyCompleteGamePreLaunch called");
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    return abms->NotifyCompleteGamePreLaunch(callerToken);
+}
+
+ErrCode AbilityManagerClient::SetGamePreLaunchCompleteTime(int32_t userId, int64_t completeTime)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "SetGamePreLaunchCompleteTime called");
+    if (completeTime < 0) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid complete time");
+        return ERR_INVALID_VALUE;
+    }
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    return abms->SetGamePreLaunchCompleteTime(userId, completeTime);
+}
+
 bool AbilityManagerClient::IsRestartAppLimit()
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
@@ -2583,6 +2657,14 @@ ErrCode AbilityManagerClient::UnRegisterPreloadUIExtensionHostClient(int32_t cal
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     return abms->UnRegisterPreloadUIExtensionHostClient(callerPid);
+}
+
+ErrCode AbilityManagerClient::QuerySelfModularObjectExtensionInfos(
+    std::vector<ModularObjectExtensionInfo> &extensionInfos)
+{
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    return abms->QuerySelfModularObjectExtensionInfos(extensionInfos);
 }
 
 ErrCode AbilityManagerClient::GetUserLockedBundleList(int32_t userId,

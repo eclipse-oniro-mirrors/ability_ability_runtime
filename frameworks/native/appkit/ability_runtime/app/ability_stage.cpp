@@ -147,5 +147,25 @@ int32_t AbilityStage::RunAutoStartupTask(const std::function<void()> &callback, 
     isAsyncCallback = false;
     return ERR_OK;
 }
+
+bool AbilityStage::IsAbilityCreated() const
+{
+    return isAbilityCreate_;
+}
+
+void AbilityStage::MarkAbilityCreated()
+{
+    isAbilityCreate_ = true;
+}
+
+void AbilityStage::SetSkipAbilityStageLifecycle(bool skipAbilityStageLifecycle)
+{
+    skipAbilityStageLifecycle_ = skipAbilityStageLifecycle;
+}
+
+bool AbilityStage::IsSkipAbilityStageLifecycle() const
+{
+    return skipAbilityStageLifecycle_;
+}
 }  // namespace AbilityRuntime
 }  // namespace OHOS

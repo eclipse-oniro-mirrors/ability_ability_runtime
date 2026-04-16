@@ -53,7 +53,7 @@ HWTEST_F(BatchUriTest, BatchUri_Branch_01, Function | MediumTest | Level1)
 /**
  * @tc.number: BatchUri_Branch_02
  * @tc.name: Init_SpecialSchemes
- * @tc.desc: Coverage: 1. CONTENT_SCHEME; 2. MEDIA_AUTHORITY.
+ * @tc.desc: Coverage: 1. ANCO_SCHEME; 2. MEDIA_AUTHORITY.
  */
 HWTEST_F(BatchUriTest, BatchUri_Branch_02, Function | MediumTest | Level1)
 {
@@ -373,6 +373,174 @@ HWTEST_F(BatchUriTest, BatchUri_Branch_22, Function | MediumTest | Level1)
     batchUri.checkResult[1].result = true;
     std::vector<PolicyInfo> d, b;
     EXPECT_EQ(batchUri.GetUriToGrantByPolicy(d, b), 2);
+}
+
+/**
+ * @tc.number: BatchUri_Branch_23
+ * @tc.name: SetCheckProxyByContentUriResult_Mismatch
+ * @tc.desc: Coverage: SetCheckProxyByContentUriResult size mismatch.
+ */
+HWTEST_F(BatchUriTest, BatchUri_Branch_23, Function | MediumTest | Level1)
+{
+    BatchUri batchUri;
+    batchUri.Init({"content://test/1.txt"});
+    std::vector<bool> contentUriResult = {true, false}; // Size mismatch
+    EXPECT_FALSE(batchUri.SetCheckProxyByContentUriResult(contentUriResult));
+}
+
+/**
+ * @tc.number: BatchUri_Branch_24
+ * @tc.name: SetCheckProxyByContentUriResult_Success
+ * @tc.desc: Coverage: SetCheckProxyByContentUriResult success path.
+ */
+HWTEST_F(BatchUriTest, BatchUri_Branch_24, Function | MediumTest | Level1)
+{
+    BatchUri batchUri;
+    batchUri.Init({"content://test/1.txt", "content://test/2.txt"});
+    std::vector<bool> contentUriResult = {true, false};
+    EXPECT_TRUE(batchUri.SetCheckProxyByContentUriResult(contentUriResult));
+    EXPECT_TRUE(batchUri.checkResult[0].result);
+    EXPECT_FALSE(batchUri.checkResult[1].result);
+    EXPECT_EQ(batchUri.checkResult[0].permissionType, static_cast<int32_t>(PolicyType::AUTHORIZATION_PATH));
+}
+
+/**
+ * @tc.number: BatchUri_Branch_25
+ * @tc.name: SetCheckProxyByContentUriResult_AllTrue
+ * @tc.desc: Coverage: SetCheckProxyByContentUriResult all true.
+ */
+HWTEST_F(BatchUriTest, BatchUri_Branch_25, Function | MediumTest | Level1)
+{
+    BatchUri batchUri;
+    batchUri.Init({"content://test/1.txt", "content://test/2.txt"});
+    std::vector<bool> contentUriResult = {true, true};
+    EXPECT_TRUE(batchUri.SetCheckProxyByContentUriResult(contentUriResult));
+    EXPECT_TRUE(batchUri.IsAllUriPermissioned());
+}
+
+/**
+ * @tc.number: BatchUri_Branch_26
+ * @tc.name: IsAllUriValid_Partial
+ * @tc.desc: Coverage: IsAllUriValid with some invalid URIs.
+ */
+HWTEST_F(BatchUriTest, BatchUri_Branch_26, Function | MediumTest | Level1)
+{
+    BatchUri batchUri;
+    batchUri.Init({"file://valid/1.txt", "ftp://invalid/2.txt", "file://valid/3.txt"});
+    EXPECT_FALSE(batchUri.IsAllUriValid());
+    EXPECT_EQ(batchUri.validUriCount, 2);
+    EXPECT_EQ(batchUri.totalUriCount, 3);
+}
+
+/**
+ * @tc.number: BatchUri_Branch_27
+ * @tc.name: IsAllUriValid_AllValid
+ * @tc.desc: Coverage: IsAllUriValid all URIs valid.
+ */
+HWTEST_F(BatchUriTest, BatchUri_Branch_27, Function | MediumTest | Level1)
+{
+    BatchUri batchUri;
+    batchUri.Init({"file://valid/1.txt", "file://valid/2.txt"});
+    EXPECT_TRUE(batchUri.IsAllUriValid());
+}
+
+/**
+ * @tc.number: BatchUri_Branch_28
+ * @tc.name: GetPermissionedUriCount_All
+ * @tc.desc: Coverage: GetPermissionedUriCount all permissioned.
+ */
+HWTEST_F(BatchUriTest, BatchUri_Branch_28, Function | MediumTest | Level1)
+{
+    BatchUri batchUri;
+    batchUri.Init({"file://1.txt", "file://2.txt", "file://3.txt"});
+    batchUri.otherPolicyInfos.emplace_back(PolicyInfo{});
+    batchUri.otherPolicyInfos.emplace_back(PolicyInfo{});
+    batchUri.otherPolicyInfos.emplace_back(PolicyInfo{});
+    batchUri.checkResult[0].result = true;
+    batchUri.checkResult[1].result = true;
+    batchUri.checkResult[2].result = true;
+    EXPECT_EQ(batchUri.GetPermissionedUriCount(), 3);
+}
+
+/**
+ * @tc.number: BatchUri_Branch_29
+ * @tc.name: GetPermissionedUriCount_None
+ * @tc.desc: Coverage: GetPermissionedUriCount none permissioned.
+ */
+HWTEST_F(BatchUriTest, BatchUri_Branch_29, Function | MediumTest | Level1)
+{
+    BatchUri batchUri;
+    batchUri.Init({"file://1.txt", "file://2.txt"});
+    batchUri.otherPolicyInfos.emplace_back(PolicyInfo{});
+    batchUri.otherPolicyInfos.emplace_back(PolicyInfo{});
+    EXPECT_EQ(batchUri.GetPermissionedUriCount(), 0);
+}
+
+/**
+ * @tc.number: BatchUri_Branch_30
+ * @tc.name: Init_ContentUri_Mixed
+ * @tc.desc: Coverage: Init with content URIs mixed with file URIs.
+ */
+HWTEST_F(BatchUriTest, BatchUri_Branch_30, Function | MediumTest | Level1)
+{
+    BatchUri batchUri;
+    std::vector<std::string> uris = {
+        "content://test/1.txt",
+        "file://media/2.txt",
+        "content://test/3.txt",
+        "file://docs/4.txt"
+    };
+    EXPECT_EQ(batchUri.Init(uris), 4);
+    EXPECT_EQ(batchUri.contentUris.size(), 2);
+    EXPECT_EQ(batchUri.mediaUris.size(), 1);
+    EXPECT_EQ(batchUri.otherUris.size(), 1);
+}
+
+/**
+ * @tc.number: BatchUri_Branch_31
+ * @tc.name: SetCheckProxyByPolicyResult_TargetBundleTrue
+ * @tc.desc: Coverage: SetCheckProxyByPolicyResult with target bundle true.
+ */
+HWTEST_F(BatchUriTest, BatchUri_Branch_31, Function | MediumTest | Level1)
+{
+    BatchUri batchUri;
+    batchUri.Init({"file://target/1.txt"}, 0, "", "target", false);
+    batchUri.otherPolicyInfos.emplace_back(PolicyInfo{});
+    std::vector<PolicyInfo> proxyUris;
+    batchUri.GetNeedCheckProxyPermissionURI(proxyUris);
+    EXPECT_TRUE(batchUri.SetCheckProxyByPolicyResult({true}));
+    EXPECT_EQ(batchUri.targetBundleUriCount, 1);
+}
+
+/**
+ * @tc.number: BatchUri_Branch_32
+ * @tc.name: GetUriToGrantByPolicy2_EmptySelfBundle
+ * @tc.desc: Coverage: GetUriToGrantByPolicy2 with empty selfBundlePolicyInfos.
+ */
+HWTEST_F(BatchUriTest, BatchUri_Branch_32, Function | MediumTest | Level1)
+{
+    BatchUri batchUri;
+    batchUri.Init({"file://docs/1.txt"});
+    batchUri.otherPolicyInfos.emplace_back(PolicyInfo{});
+    batchUri.checkResult[0].result = true;
+    std::vector<PolicyInfo> policyVec;
+    EXPECT_TRUE(batchUri.GetUriToGrantByPolicy(policyVec));
+    EXPECT_EQ(policyVec.size(), 1);
+}
+
+/**
+ * @tc.number: BatchUri_Branch_33
+ * @tc.name: GetUriToGrantByPolicy2_OnlySelfBundle
+ * @tc.desc: Coverage: GetUriToGrantByPolicy2 with only self bundle URIs.
+ */
+HWTEST_F(BatchUriTest, BatchUri_Branch_33, Function | MediumTest | Level1)
+{
+    BatchUri batchUri;
+    batchUri.Init({"file://caller/1.txt"}, 1, "caller", "", false);
+    batchUri.checkResult[0].result = true;
+    std::vector<PolicyInfo> policyVec;
+    EXPECT_TRUE(batchUri.GetUriToGrantByPolicy(policyVec));
+    EXPECT_EQ(policyVec.size(), 1);
 }
 
 } // AAFwk

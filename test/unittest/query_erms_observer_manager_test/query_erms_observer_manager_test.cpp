@@ -57,6 +57,14 @@ public:
     {
         return true;
     }
+    bool AddRefreshRecipient(const sptr<RefreshRecipient> &recipient) override
+    {
+        return true;
+    }
+    bool RemoveRefreshRecipient(const sptr<RefreshRecipient> &recipient) override
+    {
+        return true;
+    }
     bool Marshalling(Parcel &parcel) const override
     {
         return true;

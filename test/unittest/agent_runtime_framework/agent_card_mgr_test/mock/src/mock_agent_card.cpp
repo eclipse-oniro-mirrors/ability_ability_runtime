@@ -14,7 +14,6 @@
  */
 
 #include "agent_card.h"
-
 #include "mock_my_flag.h"
 
 namespace OHOS {
@@ -143,6 +142,20 @@ bool AgentCard::FromJson(nlohmann::json jsonObject, AgentCard &agentCard)
 {
     if (!MyFlag::retFromJson) {
         return false;
+    }
+    if (jsonObject.contains("type")) {
+        if (jsonObject["type"].is_number_integer()) {
+            agentCard.type = static_cast<AgentCardType>(jsonObject["type"].get<int32_t>());
+        } else if (jsonObject["type"].is_string()) {
+            std::string typeName = jsonObject["type"].get<std::string>();
+            if (typeName == "APP") {
+                agentCard.type = AgentCardType::APP;
+            } else if (typeName == "LOW_CODE") {
+                agentCard.type = AgentCardType::LOW_CODE;
+            } else if (typeName == "ATOMIC_SERVICE") {
+                agentCard.type = AgentCardType::ATOMIC_SERVICE;
+            }
+        }
     }
     if (jsonObject.contains("agentId") && jsonObject["agentId"].is_string()) {
         agentCard.agentId = jsonObject["agentId"].get<std::string>();

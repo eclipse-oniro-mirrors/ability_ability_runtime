@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,6 +17,7 @@
 #define OHOS_ABILITY_RUNTIME_ABILITY_STAGE_CONTEXT_H
 
 #include "context.h"
+#include "want.h"
 #include "context_impl.h"
 
 namespace OHOS {
@@ -88,6 +89,9 @@ public:
     std::string GetProcessName() override;
     void SetProcessName(const std::string &processName);
 
+    void SetLaunchElement(const AppExecFwk::ElementName &elementName);
+    const AppExecFwk::ElementName &GetLaunchElement() const;
+
     Global::Resource::DeviceType GetDeviceType() const override;
 
     using SelfType = AbilityStageContext;
@@ -101,6 +105,7 @@ protected:
 
 private:
     std::shared_ptr<ContextImpl> contextImpl_;
+    AppExecFwk::ElementName launchElement_;
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

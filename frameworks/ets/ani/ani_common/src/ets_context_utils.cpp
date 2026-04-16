@@ -295,6 +295,9 @@ void BindNativeFunction(ani_env *aniEnv)
             ani_native_function {"nativeCreateSystemHspModuleResourceManager", "C{std.core.String}C{std.core.String}"
                 ":C{@ohos.resourceManager.resourceManager.ResourceManager}",
                 reinterpret_cast<void *>(ContextUtil::NativeCreateSystemHspModuleResourceManager)},
+            ani_native_function {"nativeContextType",
+                "C{@ohos.app.ability.contextConstant.contextConstant.ContextType}:z",
+                reinterpret_cast<void *>(ContextUtil::ContextType)},
         };
         status = aniEnv->Class_BindNativeMethods(contextCls, contextFunctions.data(),
             contextFunctions.size());
@@ -752,6 +755,55 @@ ani_string GetLogFileDir(ani_env *env, ani_object obj)
     }
     auto logFileDir = context->GetLogFileDir();
     return AppExecFwk::GetAniString(env, logFileDir);
+}
+
+ani_boolean ContextType(ani_env *aniEnv, ani_object self, ani_object contextTypeObj)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "ContextType called");
+    if (aniEnv == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null aniEnv");
+        return ANI_FALSE;
+    }
+
+    int contextTypeValue = 0;
+    if (!AAFwk::AniEnumConvertUtil::EnumConvert_EtsToNative(aniEnv, contextTypeObj, contextTypeValue)) {
+        TAG_LOGE(AAFwkTag::APPKIT, "param contextType err");
+        return ANI_FALSE;
+    }
+    TAG_LOGD(AAFwkTag::APPKIT, "ContextType contextType: %{public}d", contextTypeValue);
+
+    static const std::unordered_map<int, std::string> contextTypeMap = {
+        {0, "ApplicationContext"},
+        {1, "AbilityStageContext"},
+        {2, "UIAbilityContext"},
+        {3, "FormExtensionContext"},
+        {4, "AppServiceExtensionContext"},
+        {5, "ServiceExtensionContext"},
+        {6, "UIServiceExtensionContext"},
+        {7, "AutoFillExtensionContext"}
+    };
+
+    auto it = contextTypeMap.find(contextTypeValue);
+    if (it == contextTypeMap.end()) {
+        TAG_LOGE(AAFwkTag::APPKIT, "invalid contextType: %{public}d", contextTypeValue);
+        return ANI_FALSE;
+    }
+    const std::string &expectedType = it->second;
+
+    ani_type type = nullptr;
+    ani_status status = aniEnv->Object_GetType(self, &type);
+    if (status != ANI_OK || type == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "Object_GetType failed, status: %{public}d", status);
+        return ANI_FALSE;
+    }
+
+    std::string actualType;
+    if (!AppExecFwk::GetStaticFieldString(aniEnv, static_cast<ani_class>(type), "contextType", actualType)) {
+        TAG_LOGE(AAFwkTag::APPKIT, "get context type failed");
+        return ANI_FALSE;
+    }
+
+    return (actualType == expectedType) ? ANI_TRUE : ANI_FALSE;
 }
 }
 } // namespace AbilityRuntime

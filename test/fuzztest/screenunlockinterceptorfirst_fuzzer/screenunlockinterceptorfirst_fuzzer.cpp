@@ -134,7 +134,6 @@ bool DoSomethingInterestingWithMyAPI(const char *data, size_t size)
     
     (void)screenUnlockInterceptor->DoProcess(param);
     (void)screenUnlockInterceptor->QueryTargetAbilityInfo(param, targetAbilityInfo);
-    (void)screenUnlockInterceptor->RecordExtensionEventWhenScreenUnlock(param, targetAbilityInfo);
 
     return true;
 }

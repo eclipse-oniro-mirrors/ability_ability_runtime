@@ -662,7 +662,7 @@ HWTEST_F(PendingWantTest, PendingWant_3400, Function | MediumTest | Level1)
 HWTEST_F(PendingWantTest, PendingWant_3500, Function | MediumTest | Level1)
 {
     PendingWant pendingWant(nullptr);
-    auto want = pendingWant.GetWant(nullptr);
+    auto want = pendingWant.GetWantFromProxy(nullptr);
     EXPECT_EQ(want, nullptr);
 }
 

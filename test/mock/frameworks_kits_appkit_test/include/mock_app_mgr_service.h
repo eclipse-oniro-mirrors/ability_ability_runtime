@@ -299,10 +299,10 @@ public:
     }
 
     void ScheduleLaunchAbility(const AbilityInfo& abilityinf, const sptr<IRemoteObject>& token,
-        const std::shared_ptr<AAFwk::Want>& want)
+        const std::shared_ptr<AAFwk::Want>& want, std::shared_ptr<AppUpdateInfo> updateInfo = nullptr)
     {
         if (Appthread_ != nullptr) {
-            Appthread_->ScheduleLaunchAbility(abilityinf, token, want, 0);
+            Appthread_->ScheduleLaunchAbility(abilityinf, token, want, 0, updateInfo);
         }
     }
 
@@ -368,6 +368,11 @@ public:
         return true;
     }
 
+    int32_t DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
+    {
+        return 0;
+    }
+    
     int32_t DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info)
     {
         return 0;

@@ -394,8 +394,18 @@ void ConnectionRecord::Dump(std::vector<std::string> &info) const
                       ConvertConnectionState(GetConnectState()));
 }
 
-void ConnectionRecord::AttachCallerInfo()
+void ConnectionRecord::AttachCallerInfo(std::shared_ptr<IndirectCallerInfo> indirectCallerInfo)
 {
+    if (indirectCallerInfo != nullptr) {
+        callerTokenId_ = indirectCallerInfo->tokenId;
+        callerUid_ = indirectCallerInfo->callerUid;
+        callerPid_ = indirectCallerInfo->callerPid;
+        callerName_ = ConnectionStateManager::GetProcessNameByPid(callerPid_);
+        TAG_LOGD(AAFwkTag::CONNECTION, "callerTokenId_:%{public}u, callerUid_:%{public}d, callerPid_:%{public}d, "
+            "callerName_:%{public}s", callerTokenId_, callerUid_, callerPid_, callerName_.c_str());
+        return;
+    }
+    
     callerTokenId_ = IPCSkeleton::GetCallingTokenID(); // tokenId identifies the real caller
     auto targetRecord = Token::GetAbilityRecordByToken(callerToken_);
     if (targetRecord) {

@@ -29,6 +29,7 @@ ohos_shared_library("ets_environment") {
   sanitize = {
     cfi = true
     cfi_cross_dso = true
+    cfi_policy = "adaptive"
     debug = false
   }
 

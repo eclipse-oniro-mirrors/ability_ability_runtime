@@ -70,17 +70,19 @@ Configuration ConfigurationUtils::UpdateGlobalConfig(const Configuration &config
         TAG_LOGE(AAFwkTag::ABILITY, "Input invalid");
         return Configuration();
     }
-    std::vector<std::string> changeKeyV;
-    contextConfig->CompareDifferent(changeKeyV, configuration);
-    if (!changeKeyV.empty()) {
-        TAG_LOGD(AAFwkTag::ABILITY, "There's changed config");
-        contextConfig->Merge(changeKeyV, configuration);
-    }
 
     auto newConfig = Configuration(configuration);
     if (abilityConfig != nullptr) {
         newConfig.FilterDuplicates(*abilityConfig);
     }
+
+    std::vector<std::string> changeKeyV;
+    contextConfig->CompareDifferent(changeKeyV, newConfig);
+    if (!changeKeyV.empty()) {
+        TAG_LOGD(AAFwkTag::ABILITY, "There's changed config");
+        contextConfig->Merge(changeKeyV, newConfig);
+    }
+
     TAG_LOGI(AAFwkTag::UIABILITY, "UpdateGlobalConfig newConfig: %{public}s", newConfig.GetName().c_str());
     ResourceConfigHelper resourceConfig;
     GetGlobalConfig(newConfig, resourceConfig);
@@ -113,6 +115,7 @@ void ConfigurationUtils::GetGlobalConfig(const Configuration &configuration,
     resourceConfig.SetMnc(configuration.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_MNC));
     resourceConfig.SetThemeId(configuration.GetItem(AAFwk::GlobalConfigurationKey::THEME_ID));
     resourceConfig.SetThemeIcon(configuration.GetItem(AAFwk::GlobalConfigurationKey::THEME_ICON));
+    resourceConfig.SetThemeSkin(configuration.GetItem(AAFwk::GlobalConfigurationKey::THEME_SKIN));
 }
 
 #ifdef SUPPORT_GRAPHICS

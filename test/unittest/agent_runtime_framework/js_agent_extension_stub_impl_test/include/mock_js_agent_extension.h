@@ -40,6 +40,11 @@ public:
     {
         return static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_OK);
     }
+
+    int32_t OnAgentInvoked(const std::string& agentId) override
+    {
+        return static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_OK);
+    }
 };
 } // namespace AgentRuntime
 } // namespace OHOS

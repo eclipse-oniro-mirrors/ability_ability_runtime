@@ -293,6 +293,66 @@ void JsAbilityStage::OnDestroy() const
     napi_call_function(env, obj, methodOnDestroy, 0, nullptr, nullptr);
 }
 
+void JsAbilityStage::OnLaunchFromHyperSnap()
+{
+    AbilityStage::OnLaunchFromHyperSnap();
+
+    if (!jsAbilityStageObj_) {
+        TAG_LOGW(AAFwkTag::APPKIT, "Not found AbilityStage.js");
+        return;
+    }
+
+    HandleScope handleScope(jsRuntime_);
+    auto env = jsRuntime_.GetNapiEnv();
+
+    napi_value obj = jsAbilityStageObj_->GetNapiValue();
+    if (!CheckTypeForNapiValue(env, obj, napi_object)) {
+        TAG_LOGE(AAFwkTag::APPKIT, "get object failed");
+        return;
+    }
+
+    napi_value methodOnLaunchFromHyperSnap = nullptr;
+    napi_get_named_property(env, obj, "onLaunchFromHyperSnap", &methodOnLaunchFromHyperSnap);
+    if (methodOnLaunchFromHyperSnap == nullptr) {
+        TAG_LOGI(AAFwkTag::APPKIT, "null methodOnLaunchFromHyperSnap");
+        return;
+    }
+    FreezeUtil::GetInstance().AddAppLifecycleEvent(0, "JsAbilityStage::OnLaunchFromHyperSnap begin");
+    HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
+    napi_call_function(env, obj, methodOnLaunchFromHyperSnap, 0, nullptr, nullptr);
+    FreezeUtil::GetInstance().AddAppLifecycleEvent(0, "JsAbilityStage::OnLaunchFromHyperSnap end");
+}
+
+void JsAbilityStage::OnAboutToCreateAbility()
+{
+    AbilityStage::OnAboutToCreateAbility();
+
+    if (!jsAbilityStageObj_) {
+        TAG_LOGW(AAFwkTag::APPKIT, "Not found AbilityStage.js");
+        return;
+    }
+
+    HandleScope handleScope(jsRuntime_);
+    auto env = jsRuntime_.GetNapiEnv();
+
+    napi_value obj = jsAbilityStageObj_->GetNapiValue();
+    if (!CheckTypeForNapiValue(env, obj, napi_object)) {
+        TAG_LOGE(AAFwkTag::APPKIT, "get object failed");
+        return;
+    }
+
+    napi_value methodOnAboutToCreateAbility = nullptr;
+    napi_get_named_property(env, obj, "onAboutToCreateAbility", &methodOnAboutToCreateAbility);
+    if (methodOnAboutToCreateAbility == nullptr) {
+        TAG_LOGI(AAFwkTag::APPKIT, "null methodOnAboutToCreateAbility");
+        return;
+    }
+    FreezeUtil::GetInstance().AddAppLifecycleEvent(0, "JsAbilityStage::OnAboutToCreateAbility begin");
+    HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
+    napi_call_function(env, obj, methodOnAboutToCreateAbility, 0, nullptr, nullptr);
+    FreezeUtil::GetInstance().AddAppLifecycleEvent(0, "JsAbilityStage::OnAboutToCreateAbility end");
+}
+
 bool JsAbilityStage::OnPrepareTerminate(
     AppExecFwk::AbilityTransactionCallbackInfo<AppExecFwk::OnPrepareTerminationResult> *callbackInfo,
     bool &isAsync) const

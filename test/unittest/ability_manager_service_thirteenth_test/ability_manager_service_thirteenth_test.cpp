@@ -13,14 +13,15 @@
  * limitations under the License.
  */
 #include <gtest/gtest.h>
-#include "mock_my_status.h"
 
 #include "ability_manager_service.h"
+#include "global_constant.h"
 #include "hilog_tag_wrapper.h"
 #include "insight_intent_db_cache.h"
-#include "sub_managers_helper.h"
+#include "insight_intent_execute_manager.h"
 #include "mission_list_manager.h"
-#include "global_constant.h"
+#include "mock_my_status.h"
+#include "sub_managers_helper.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -88,6 +89,45 @@ sptr<Token> AbilityManagerServiceThirteenthTest::MockToken(AbilityType abilityTy
     }
     return abilityRecord->GetToken();
 }
+
+#ifdef SUPPORT_RECORDER_DSOFTBUS
+/*
+ * Feature: AbilityManagerService
+ * Name: ConnectAbilityCommon_001
+ * Function: ConnectAbilityCommon
+ * SubFunction: NA
+ * FunctionPoints: Verify ConnectAbilityCommon forwards AGENT extension type to ConnectFreeInstall
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, ConnectAbilityCommon_001, TestSize.Level1)
+{
+    auto &status = MyStatus::GetInstance();
+    status.fimConnectFreeInstallCalled_ = false;
+    status.fimConnectFreeInstall_ = CHECK_PERMISSION_FAILED;
+    status.fimConnectExtensionType_ = -1;
+    status.fimConnectLocalDeviceId_.clear();
+    status.softbusGetLocalNodeDeviceInfo_ = ERR_OK;
+
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    abilityMs->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    abilityMs->freeInstallManager_ = std::make_shared<FreeInstallManager>();
+    ASSERT_NE(abilityMs->freeInstallManager_, nullptr);
+
+    Want want;
+    ElementName element("", "com.test.demo", "MainAbility");
+    want.SetElement(element);
+    want.AddFlags(Want::FLAG_INSTALL_ON_DEMAND);
+    auto connect = sptr<InsightIntentExecuteConnection>::MakeSptr();
+    auto callerToken = MockToken(AbilityType::PAGE);
+
+    auto ret = abilityMs->ConnectAbilityCommon(
+        want, connect, callerToken, ExtensionAbilityType::AGENT, DEFAULT_INVAL_VALUE, false);
+    EXPECT_EQ(ret, CHECK_PERMISSION_FAILED);
+    EXPECT_TRUE(status.fimConnectFreeInstallCalled_);
+    EXPECT_EQ(status.fimConnectExtensionType_, static_cast<int32_t>(ExtensionAbilityType::AGENT));
+    EXPECT_EQ(status.fimConnectLocalDeviceId_, "0");
+}
+#endif // SUPPORT_RECORDER_DSOFTBUS
 
 /*
  * Feature: AbilityManagerService
@@ -3266,7 +3306,7 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, KillAppWithReason_0100, TestSize.L
     auto abilityMs = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs, nullptr);
     int32_t pid = -1;
-    MyStatus::GetInstance().permPermission_ = 1;
+    MyStatus::GetInstance().permPermission_ = 2;
     abilityMs->appExitReasonHelper_ = std::make_shared<AppExitReasonHelper>(nullptr);
     ExitReasonCompability exitReason{};
     exitReason.reason = Reason::REASON_JS_ERROR;
@@ -3290,7 +3330,7 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, KillAppWithReason_0200, TestSize.L
     auto abilityMs = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs, nullptr);
     int32_t pid = 12345;
-    MyStatus::GetInstance().permPermission_ = 1;
+    MyStatus::GetInstance().permPermission_ = 2;
     abilityMs->appExitReasonHelper_ = std::make_shared<AppExitReasonHelper>(nullptr);
     ExitReasonCompability exitReason{};
     exitReason.reason = Reason::REASON_JS_ERROR;
@@ -3314,7 +3354,7 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, KillAppWithReason_0300, TestSize.L
     auto abilityMs = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs, nullptr);
     int32_t pid = 654321;
-    MyStatus::GetInstance().permPermission_ = 1;
+    MyStatus::GetInstance().permPermission_ = 2;
     abilityMs->appExitReasonHelper_ = std::make_shared<AppExitReasonHelper>(nullptr);
     ExitReasonCompability exitReason{};
     exitReason.reason = Reason::REASON_JS_ERROR;

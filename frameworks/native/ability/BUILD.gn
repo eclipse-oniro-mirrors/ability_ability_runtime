@@ -129,6 +129,7 @@ ohos_shared_library("cj_ability_context_native") {
     cfi = true
     cfi_cross_dso = true
     cfi_vcall_icall_only = true
+    cfi_policy = "adaptive"
     debug = false
   }
   branch_protector_ret = "pac_ret"

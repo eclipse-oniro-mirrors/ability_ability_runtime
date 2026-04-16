@@ -23,6 +23,7 @@
 #include "hitrace_meter.h"
 #include "in_process_call_wrapper.h"
 #include "modal_system_ui_extension.h"
+#include "process_options.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -36,6 +37,7 @@ constexpr const char* INTERCEPT_BUNDLE_NAME = "intercept_bundleName";
 constexpr const char* INTERCEPT_ABILITY_NAME = "intercept_abilityName";
 constexpr const char* INTERCEPT_MODULE_NAME = "intercept_moduleName";
 constexpr const char* IS_FROM_PARENTCONTROL = "ohos.ability.isFromParentControl";
+constexpr const char* SKIP_DISPOSE_RULE_NAME = "7007";
 }
 
 ErrCode DisposedRuleInterceptor::DoProcess(AbilityInterceptorParam param)
@@ -43,14 +45,16 @@ ErrCode DisposedRuleInterceptor::DoProcess(AbilityInterceptorParam param)
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Call");
     AppExecFwk::DisposedRule disposedRule;
     if (CheckControl(param.want, param.userId, disposedRule, param.appIndex)) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR,
-            "disposedType: %{public}d, controlType: %{public}d, "
-            "componentType: %{public}d", disposedRule.disposedType, disposedRule.controlType,
-            disposedRule.componentType);
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "disposedType: %{public}d, controlType: %{public}d, componentType: %{public}d",
+            disposedRule.disposedType, disposedRule.controlType, disposedRule.componentType);
 #ifdef SUPPORT_GRAPHICS
         if (!param.isWithUI || disposedRule.want == nullptr
             || disposedRule.disposedType == AppExecFwk::DisposedType::NON_BLOCK) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "no dispose want");
+            return AbilityUtil::EdmErrorType(disposedRule.isEdm);
+        }
+        if (IsSkipDisposeRule(disposedRule.callerName, param)) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "skip dispose rule");
             return AbilityUtil::EdmErrorType(disposedRule.isEdm);
         }
         if (disposedRule.want->GetBundle() == param.want.GetBundle()) {
@@ -269,6 +273,16 @@ void DisposedRuleInterceptor::SetInterceptInfo(const Want &want, AppExecFwk::Dis
         disposedRule.want->SetParam(INTERCEPT_ABILITY_NAME, want.GetElement().GetAbilityName());
         disposedRule.want->SetParam(INTERCEPT_MODULE_NAME, want.GetElement().GetModuleName());
     }
+}
+
+bool DisposedRuleInterceptor::IsSkipDisposeRule(const std::string &callerName, const AbilityInterceptorParam &param)
+{
+    if (param.startOptions == nullptr || param.startOptions->processOptions == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "null startOptions or processOptions");
+        return false;
+    }
+    return callerName == SKIP_DISPOSE_RULE_NAME &&
+        param.startOptions->processOptions->startupVisibility == StartupVisibility::STARTUP_HIDE;
 }
 } // namespace AAFwk
 } // namespace OHOS

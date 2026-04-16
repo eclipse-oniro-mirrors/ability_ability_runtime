@@ -539,11 +539,12 @@ HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_HandleUserRequestClean_0
     sptr<Token> token = nullptr;
     pid_t targetPid = 0;
     int32_t targetUid = 0;
-    auto ret = appRunningManager_->HandleUserRequestClean(token, targetPid, targetUid);
+    int32_t recordIdRet = -1;
+    auto ret = appRunningManager_->HandleUserRequestClean(token, targetPid, targetUid, recordIdRet);
     EXPECT_EQ(ret, false);
 
     token = GetTestAbilityToken();
-    ret = appRunningManager_->HandleUserRequestClean(token, targetPid, targetUid);
+    ret = appRunningManager_->HandleUserRequestClean(token, targetPid, targetUid, recordIdRet);
     EXPECT_EQ(ret, false);
 
     std::shared_ptr<AppRunningRecord> appRunningRecord =
@@ -556,11 +557,11 @@ HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_HandleUserRequestClean_0
     appRunningRecord->hapModules_.emplace(BUNDLE_NAME, moduleRunningRecords);
     auto recordId = AppRecordId::Create();
     appRunningManager_->appRunningRecordMap_.emplace(recordId, appRunningRecord);
-    ret = appRunningManager_->HandleUserRequestClean(token, targetPid, targetUid);
+    ret = appRunningManager_->HandleUserRequestClean(token, targetPid, targetUid, recordId);
     EXPECT_EQ(ret, true);
 
     appRunningRecord->procCacheSupportState_ = SupportProcessCacheState::SUPPORT;
-    ret = appRunningManager_->HandleUserRequestClean(token, targetPid, targetUid);
+    ret = appRunningManager_->HandleUserRequestClean(token, targetPid, targetUid, recordId);
     EXPECT_EQ(ret, false);
 
     appRunningRecord->procCacheSupportState_ = SupportProcessCacheState::UNSPECIFIED;
@@ -569,14 +570,14 @@ HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_HandleUserRequestClean_0
     appRunningRecord->isKeepAliveBundle_= true;
     appRunningRecord->isKeepAliveRdb_= true;
     appRunningRecord->mainUid_ = TEST_BASE_USER_RANGE;
-    ret = appRunningManager_->HandleUserRequestClean(token, targetPid, targetUid);
+    ret = appRunningManager_->HandleUserRequestClean(token, targetPid, targetUid, recordId);
     EXPECT_EQ(ret, false);
 
     auto priorityObject = std::make_shared<PriorityObject>();
     appRunningRecord->isUserRequestCleaning_= true;
     appRunningRecord->isMainProcess_= false;
     appRunningRecord->priorityObject_ = nullptr;
-    ret = appRunningManager_->HandleUserRequestClean(token, targetPid, targetUid);
+    ret = appRunningManager_->HandleUserRequestClean(token, targetPid, targetUid, recordId);
     EXPECT_EQ(ret, true);
     TAG_LOGI(AAFwkTag::TEST, "AppRunningManager_HandleUserRequestClean_0100 end");
 }

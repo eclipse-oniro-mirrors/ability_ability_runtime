@@ -123,7 +123,30 @@ public:
      *
      * @param token ability's token
      */
-    int32_t NotifySCBToMinimizeUIAbility(const sptr<IRemoteObject> token);
+    int32_t NotifySCBToMinimizeUIAbility(const sptr<IRemoteObject> token, bool shouldBackToCaller = true,
+        int32_t notifyScbBackgroundReason = 0);
+    
+    /**
+     * SetGamePreLaunchCompleteTime, set the complete time (in milliseconds) for the game pre-launch.
+     *
+     * @param completeTime The complete time (in milliseconds) for the game pre-launch.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t SetGamePreLaunchCompleteTime(int64_t completeTime);
+    
+    /**
+     * @brief Cancel game prelaunch and kill the game process.
+     * @param callerToken Token of the caller ability.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t NotifyCancelGamePreLaunch(const sptr<IRemoteObject> callerToken);
+
+    /**
+     * @brief Complete game SA prelaunch by clearing flag and killing process
+     * @param callerToken Token of the game SA prelaunch ability
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t NotifyCompleteGamePreLaunch(const sptr<IRemoteObject> callerToken);
 
     /**
      * MinimizeUIAbility, minimize the special ability by scb.

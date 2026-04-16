@@ -28,6 +28,7 @@ public:
     ~PermissionVerification() override = default;
 
     bool VerifyCallingPermission(const std::string &permissionName, const uint32_t specifyTokenId = 0) const;
+    bool JudgeCallerIsAllowedToUseSystemAPI() const;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -1479,5 +1479,87 @@ HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_6300, TestSize.Level1)
     auto it2 = pendingManager_->wantAgentCount_.find(key2->GetBundleName());
     EXPECT_EQ(it->second.currentNumber, 9);
 }
+
+/*
+ * @tc.number    : PendingWantManagerTest_6400
+ * @tc.name      : PendingWantManager GetPendingRequestWantFromProxy
+ * @tc.desc      : 1.GetPendingRequestWantFromProxy, target is nullptr
+ */
+HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_6400, TestSize.Level1)
+{
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    EXPECT_NE(pendingManager_, nullptr);
+    std::shared_ptr<Want> getWantInfo = std::make_shared<Want>();
+    EXPECT_EQ(pendingManager_->GetPendingRequestWantFromProxy(nullptr, getWantInfo), ERR_INVALID_VALUE);
+}
+
+/*
+ * @tc.number    : PendingWantManagerTest_6500
+ * @tc.name      : PendingWantManager GetPendingRequestWantFromProxy
+ * @tc.desc      : 1.GetPendingRequestWantFromProxy, want is nullptr
+ */
+HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_6500, TestSize.Level1)
+{
+    Want want;
+    ElementName element("device", "bundleName", "abilityName");
+    want.SetElement(element);
+    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 0);
+    EXPECT_FALSE(((unsigned int)wantSenderInfo.flags & (unsigned int)Flags::NO_BUILD_FLAG) != 0);
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    EXPECT_NE(pendingManager_, nullptr);
+    auto pendingRecord = iface_cast<PendingWantRecord>(
+        pendingManager_->GetWantSenderLocked(1, 1, wantSenderInfo.userId, wantSenderInfo, nullptr)->AsObject());
+    EXPECT_NE(pendingRecord, nullptr);
+    std::shared_ptr<Want> getWantInfo;
+    EXPECT_EQ(pendingManager_->GetPendingRequestWantFromProxy(pendingRecord, getWantInfo), ERR_INVALID_VALUE);
+}
+
+/*
+ * @tc.number    : PendingWantManagerTest_6600
+ * @tc.name      : PendingWantManager GetPendingRequestWantFromProxy
+ * @tc.desc      : 1.GetPendingRequestWantFromProxy, normal scenario
+ */
+HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_6600, TestSize.Level1)
+{
+    Want want;
+    ElementName element("device", "bundleName", "abilityName");
+    want.SetElement(element);
+    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 0);
+    EXPECT_FALSE(((unsigned int)wantSenderInfo.flags & (unsigned int)Flags::NO_BUILD_FLAG) != 0);
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    EXPECT_NE(pendingManager_, nullptr);
+    auto pendingRecord = iface_cast<PendingWantRecord>(
+        pendingManager_->GetWantSenderLocked(1, 1, wantSenderInfo.userId, wantSenderInfo, nullptr)->AsObject());
+    EXPECT_NE(pendingRecord, nullptr);
+    std::shared_ptr<Want> getWantInfo = std::make_shared<Want>();
+    EXPECT_EQ(pendingManager_->GetPendingRequestWantFromProxy(pendingRecord, getWantInfo), NO_ERROR);
+    EXPECT_EQ(getWantInfo->GetElement().GetBundleName(), "bundleName");
+    EXPECT_EQ(getWantInfo->GetElement().GetAbilityName(), "abilityName");
+}
+
+/*
+ * @tc.number    : PendingWantManagerTest_6700
+ * @tc.name      : PendingWantManager GetPendingRequestWantFromProxy
+ * @tc.desc      : 1.GetPendingRequestWantFromProxy, with parameters in want
+ */
+HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_6700, TestSize.Level1)
+{
+    Want want;
+    ElementName element("device", "bundleName", "abilityName");
+    want.SetElement(element);
+    want.SetParam("test_key", std::string("test_value"));
+    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 0);
+    EXPECT_FALSE(((unsigned int)wantSenderInfo.flags & (unsigned int)Flags::NO_BUILD_FLAG) != 0);
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    EXPECT_NE(pendingManager_, nullptr);
+    auto pendingRecord = iface_cast<PendingWantRecord>(
+        pendingManager_->GetWantSenderLocked(1, 1, wantSenderInfo.userId, wantSenderInfo, nullptr)->AsObject());
+    EXPECT_NE(pendingRecord, nullptr);
+    std::shared_ptr<Want> getWantInfo = std::make_shared<Want>();
+    EXPECT_EQ(pendingManager_->GetPendingRequestWantFromProxy(pendingRecord, getWantInfo), NO_ERROR);
+    EXPECT_EQ(getWantInfo->GetElement().GetBundleName(), "bundleName");
+    EXPECT_EQ(getWantInfo->GetElement().GetAbilityName(), "abilityName");
+    EXPECT_EQ(getWantInfo->GetParams().GetStringParam("test_key"), "test_value");
+}
 }  // namespace AAFwk
 }  // namespace OHOS

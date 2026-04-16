@@ -79,6 +79,9 @@ private:
     int32_t HandleGetProcessRunningInformation(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetAllRenderProcesses(MessageParcel &data, MessageParcel &reply);
     int32_t HandlePreloadModuleFinished(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleMakeImage(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleDestroyImage(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleNotifyTemplateProcessDeepFrozen(MessageParcel &data, MessageParcel &reply);
 #ifdef SUPPORT_CHILD_PROCESS
     int32_t HandleGetAllChildrenProcesses(MessageParcel &data, MessageParcel &reply);
 #endif  // SUPPORT_CHILD_PROCESS
@@ -90,6 +93,8 @@ private:
     int32_t HandleStartupResidentProcess(MessageParcel &data, MessageParcel &reply);
     int32_t HandleRegisterApplicationStateObserver(MessageParcel &data, MessageParcel &reply);
     int32_t HandleUnregisterApplicationStateObserver(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleRegisterImageProcessStateObserver(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleUnregisterImageProcessStateObserver(MessageParcel &data, MessageParcel &reply);
     int32_t HandleRegisterAbilityForegroundStateObserver(MessageParcel &data, MessageParcel &reply);
     int32_t HandleUnregisterAbilityForegroundStateObserver(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetForegroundApplications(MessageParcel &data, MessageParcel &reply);
@@ -113,6 +118,7 @@ private:
     int32_t HandleDumpHeapMemory(MessageParcel &data, MessageParcel &reply);
     int32_t HandleDumpJsHeapMemory(MessageParcel &data, MessageParcel &reply);
     int32_t HandleDumpCjHeapMemory(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleDumpMem(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetRunningMultiAppInfoByBundleName(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetAllRunningInstanceKeysBySelf(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetAllRunningInstanceKeysByBundleName(MessageParcel &data, MessageParcel &reply);
@@ -211,6 +217,7 @@ private:
     int32_t HandleKillChildProcessByPid(MessageParcel &data, MessageParcel &reply);
     int32_t HandlePreloadExtension(MessageParcel &data, MessageParcel &reply);
     int32_t HandleSetProcessPrepareExit(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleGetAllAbilityInfos(MessageParcel &data, MessageParcel &reply);
     DISALLOW_COPY_AND_MOVE(AppMgrStub);
 };
 }  // namespace AppExecFwk

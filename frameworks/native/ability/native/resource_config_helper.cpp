@@ -81,6 +81,10 @@ void ResourceConfigHelper::SetThemeIcon(std::string themeIcon)
 {
     themeIcon_ = themeIcon;
 }
+void ResourceConfigHelper::SetThemeSkin(std::string themeSkin)
+{
+    themeSkin_ = themeSkin;
+}
 
 void ResourceConfigHelper::SetISAbilityColor(bool isSetColorMode)
 {
@@ -171,6 +175,12 @@ void ResourceConfigHelper::UpdateResConfig(std::unique_ptr<Global::Resource::Res
         if (ConvertStringToUint32(themeIcon_, themeIcon)) {
             resConfig->SetThemeIcon(themeIcon);
             TAG_LOGD(AAFwkTag::ABILITY, "set themeIcon: %{public}u", themeIcon);
+        }
+    }
+    if (!themeSkin_.empty()) {
+        uint32_t themeSkin = 0;
+        if (ConvertStringToUint32(themeSkin_, themeSkin)) {
+            resConfig->SetThemeSkin(themeSkin);
         }
     }
 }

@@ -23,6 +23,7 @@
 #include "ability_manager_interface.h"
 #include "ability_scheduler_interface.h"
 #include "auto_startup_info.h"
+#include "caller_info.h"
 #include "iremote_object.h"
 #include "mission_info.h"
 #include "system_memory_attr.h"
@@ -642,6 +643,24 @@ public:
         sptr<IRemoteObject> callerToken,
         int32_t userId = DEFAULT_INVAL_VALUE,
         uint64_t specifiedFullTokenId = 0);
+
+    /**
+     * ConnectAbilityWithIndirectCallerInfo, connect session with service ability.
+     *
+     * @param want, Special want for service type's ability.
+     * @param connect, Callback used to notify caller the result of connecting or disconnecting.
+     * @param callerToken, caller ability token.
+     * @param extensionType If an ExtensionAbilityType is set, only extension of that type can be connected.
+     * @param indirectCallerInfo, Indirect caller information.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode ConnectAbilityWithIndirectCallerInfo(
+        const Want &want,
+        sptr<IAbilityConnection> connect,
+        sptr<IRemoteObject> callerToken,
+        int32_t userId = DEFAULT_INVAL_VALUE,
+        AppExecFwk::ExtensionAbilityType extensionType = AppExecFwk::ExtensionAbilityType::UNSPECIFIED,
+        std::shared_ptr<IndirectCallerInfo> indirectCallerInfo = nullptr);
     
     /**
      * ConnectAbilityWithExtensionType, connect session with specified extentionType ability.
@@ -942,6 +961,18 @@ public:
     ErrCode GetMissionInfo(const std::string &deviceId, int32_t missionId, MissionInfo &missionInfo);
 
     /**
+     * @brief Get mission info by id.
+     * @param deviceId local or remote deviceId.
+     * @param missionId Id of target mission.
+     * @param missionInfo mission info of target mission.
+     * @param displayInfo display info of target mission.
+     *
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode GetMissionInfo(const std::string& deviceId, int32_t missionId, MissionInfo &missionInfo,
+        DisplayInfo &displayInfo);
+
+    /**
      * @brief Get the Mission Snapshot Info object
      * @param deviceId local or remote deviceId.
      * @param missionId Id of target mission.
@@ -1234,6 +1265,24 @@ public:
      */
     ErrCode QueryCallerTokenIdForAnco(int32_t userId, const std::string &asCallerForAncoSessionId,
         uint32_t &callerTokenId);
+
+    /**
+     * @brief Launch game customized with game SA verification.
+     * @param bundleName Name of the game application.
+     * @param userId Indicates the user ID.
+     * @param appIndex app clone index. Currently, only appIndex = 0 is supported.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode LaunchGameCustomized(const std::string &bundleName, int32_t userId, int32_t appIndex = 0);
+    
+    /**
+     * SetGamePreLaunchCompleteTime, set the complete time (in milliseconds) for the game pre-launch.
+     *
+     * @param userId Indicates the user ID.
+     * @param completeTime The complete time (in milliseconds) for the game pre-launch.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode SetGamePreLaunchCompleteTime(int32_t userId, int64_t completeTime);
 
     /**
      * PrepareTerminateAbilityBySCB, prepare to terminate ability by scb.
@@ -2066,6 +2115,20 @@ public:
         const AAFwk::StartOptions &startOptions, bool hasOptions, sptr<IRemoteObject> callerToken);
 
     /**
+     * @brief Notify cancel game prelaunch and kill the process.
+     * @param callerToken Indicates the caller ability token.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode NotifyCancelGamePreLaunch(const sptr<IRemoteObject> callerToken);
+
+    /**
+     * @brief Notify complete game prelaunch and clear the flag.
+     * @param callerToken Indicates the caller ability token.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode NotifyCompleteGamePreLaunch(const sptr<IRemoteObject> callerToken);
+
+    /**
      * Check if the app is restart-limited.
      * @return Returns true on being limited.
      */
@@ -2102,6 +2165,14 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     ErrCode UnRegisterPreloadUIExtensionHostClient(int32_t callerPid = DEFAULT_INVAL_VALUE);
+
+    /**
+ 	 * @brief Queries self modular object extension information.
+     * @param extensionInfos get the queried extensionInfos.
+     *
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode QuerySelfModularObjectExtensionInfos(std::vector<ModularObjectExtensionInfo> &extensionInfos);
 
     /**
      * @brief Get list of applications launched before the first unlock.

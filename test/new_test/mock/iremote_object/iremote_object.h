@@ -45,6 +45,11 @@ public:
         virtual void OnRemoteDied(const wptr<IRemoteObject> &object) {}
     };
 
+    class RefreshRecipient : public virtual RefBase {
+    public:
+        virtual void OnRemoteRefreshed(const wptr<IRemoteObject> &object) {};
+    };
+
     virtual std::u16string GetInterfaceDescriptor()
     {
         return u"";
@@ -54,6 +59,16 @@ public:
     OH_MOCK_METHOD_WITH_DECORATOR(virtual, bool, IRemoteObject, AddDeathRecipient, const sptr<DeathRecipient> &);
 
     virtual bool RemoveDeathRecipient(const sptr<DeathRecipient> &recipient)
+    {
+        return false;
+    }
+
+    virtual bool AddRefreshRecipient(const sptr<RefreshRecipient> &recipient)
+    {
+        return false;
+    }
+
+    virtual bool RemoveRefreshRecipient(const sptr<RefreshRecipient> &recipient)
     {
         return false;
     }

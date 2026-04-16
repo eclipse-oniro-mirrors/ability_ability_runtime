@@ -60,6 +60,13 @@ public:
      */
     virtual void PreloadModuleFinished(const int32_t recordId) override;
 
+    virtual int32_t MakeImage(const AAFwk::Want &want, int32_t userId, AppExecFwk::PreloadMode preloadMode,
+        int32_t appIndex = 0, sptr<IImageErrorHandler> errorHandler = nullptr) override;
+
+    virtual int32_t DestroyImage(uint64_t checkpointId, sptr<IImageErrorHandler> errorHandler = nullptr) override;
+
+    virtual int32_t NotifyTemplateProcessDeepFrozen(int32_t pid) override;
+
     /**
      * ApplicationForegrounded, call ApplicationForegrounded() through proxy object,
      * set the application to Foreground State.
@@ -267,6 +274,16 @@ public:
     virtual int32_t DumpCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info) override;
 
     /**
+     * DumpMem, call DumpMem() through proxy project.
+     * triggerGC and dump application's memory info.
+     *
+     * @param info, pid tid needGc needSnapshot
+     * @param dumpResult The dump result string
+     * @return ERR_OK ,return back success, others fail.
+     */
+    virtual int32_t DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult) override;
+
+    /**
      * Notify that the ability stage has been updated
      * @param recordId, the app record.
      */
@@ -291,6 +308,10 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int32_t UnregisterApplicationStateObserver(const sptr<IApplicationStateObserver> &observer) override;
+
+    int32_t RegisterImageProcessStateObserver(const sptr<IImageProcessStateObserver> &observer) override;
+
+    int32_t UnregisterImageProcessStateObserver(const sptr<IImageProcessStateObserver> &observer) override;
 
     /**
      * Register application or process state observer.
@@ -919,6 +940,15 @@ public:
     virtual int32_t PreloadExtension(const AAFwk::Want &want, int32_t appIndex, int32_t userId) override;
 
     void SetProcessPrepareExit(int32_t pid) override;
+
+    /**
+     * Get all ability infos
+     *
+     * @param pid if pid is -1, query all ability infos, otherwise query ability infos for this pid
+     * @param infos ability infos
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t GetAllAbilityInfos(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos) override;
 private:
     bool SendTransactCmd(AppMgrInterfaceCode code, MessageParcel &data, MessageParcel &reply);
     bool WriteInterfaceToken(MessageParcel &data);

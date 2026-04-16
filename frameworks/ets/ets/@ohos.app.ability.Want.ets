@@ -83,7 +83,7 @@ class RecordWriter {
     } else if (obj instanceof Object) {
       const objCls = Class.of(obj);
       if (objCls.isFixedArray()) {
-        this.writeBuildArray(RecordWriter.asFixedArray(obj));
+        this.writeBuildArray(RecordWriter.asFixedArray<Any>(obj));
       }
     } else {
         this.buffer.append('null');

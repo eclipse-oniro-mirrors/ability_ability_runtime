@@ -102,6 +102,11 @@ int32_t AppSpawnClient::StartProcess(const AppSpawnStartMsg &startMsg, pid_t &pi
     return AAFwk::MyStatus::GetInstance().startProcess_;
 }
 
+int32_t AppSpawnClient::StartImageProcess(const AppSpawnStartMsg &startMsg, pid_t &pid, uint64_t &checkpointId)
+{
+    return 0;
+}
+
 int32_t AppSpawnClient::SendAppSpawnUninstallDebugHapMsg(int32_t userId)
 {
     return 0;

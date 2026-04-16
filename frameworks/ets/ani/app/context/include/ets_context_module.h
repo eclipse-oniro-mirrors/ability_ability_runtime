@@ -37,6 +37,7 @@ public:
 
     static ani_object NativeTransferStatic(ani_env *env, ani_object aniObj, ani_object input, ani_object type);
     static ani_object NativeTransferDynamic(ani_env *env, ani_class aniCls, ani_object input);
+    static ani_boolean ContextType(ani_env *env, ani_object self, ani_int contextType);
     static napi_value GetOrCreateDynamicObject(napi_env napiEnv, std::shared_ptr<Context> context);
 
 private:

@@ -18,6 +18,8 @@
 #include "ability_manager_errors.h"
 #include "bundle_mgr_helper.h"
 #include "hilog_tag_wrapper.h"
+#include "process_options.h"
+#include "start_options.h"
 #define private public
 #define protected public
 #include "interceptor/disposed_rule_interceptor.h"
@@ -958,6 +960,29 @@ HWTEST_F(DisposedRuleInterceptorTest, DoProcess_009, TestSize.Level1)
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_009 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_IsSkipDisposeRule_001
+ * @tc.desc: IsSkipDisposeRule with null startOptions
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, IsSkipDisposeRule_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_001 start");
+    DisposedRuleInterceptor interceptor;
+    Want want;
+    int requestCode = 123;
+    int32_t userId = 1001;
+    bool isWithUI = true;
+    sptr<IRemoteObject> callerToken = nullptr;
+    std::function<bool(void)> shouldDisposedRuleFunc = nullptr;
+    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, callerToken, shouldDisposedRuleFunc);
+    std::string callerName = "7007";
+    auto ret = interceptor.IsSkipDisposeRule(callerName, param);
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_001 end");
 }
 #endif
 } // namespace AAFwk

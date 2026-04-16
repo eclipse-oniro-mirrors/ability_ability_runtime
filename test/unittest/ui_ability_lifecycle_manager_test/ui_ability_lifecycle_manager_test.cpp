@@ -8209,5 +8209,149 @@ HWTEST_F(UIAbilityLifecycleManagerTest, BatchNotifySCBPendingActivations_Various
     auto result = mgr->BatchNotifySCBPendingActivations(abilitiesRequest);
     EXPECT_EQ(result, ERR_INVALID_VALUE);
 }
+
+/**
+ * @tc.name: NotifyCancelGamePreLaunch_001
+ * @tc.desc: Test NotifyCancelGamePreLaunch with null token.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCancelGamePreLaunch_001, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    sptr<IRemoteObject> callerToken = nullptr;
+    auto result = mgr->NotifyCancelGamePreLaunch(callerToken);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: NotifyCancelGamePreLaunch_002
+ * @tc.desc: Test NotifyCancelGamePreLaunch with valid token but not game SA prelaunch.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCancelGamePreLaunch_002, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest request;
+    request.appInfo.bundleName = "com.example.unittest";
+    request.abilityInfo.name = "MainAbility";
+    request.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    auto record = UIAbilityRecord::CreateAbilityRecord(request);
+    ASSERT_NE(record, nullptr);
+    record->SetGameSAPreLaunch(false);
+    auto result = mgr->NotifyCancelGamePreLaunch(record->GetToken());
+    EXPECT_EQ(result, ERR_NOT_GAME_PRELOAD_STATE);
+}
+
+/**
+ * @tc.name: NotifyCancelGamePreLaunch_003
+ * @tc.desc: Test NotifyCancelGamePreLaunch with valid token and game SA prelaunch.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCancelGamePreLaunch_003, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest request;
+    request.appInfo.bundleName = "com.example.unittest";
+    request.abilityInfo.name = "MainAbility";
+    request.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    auto record = UIAbilityRecord::CreateAbilityRecord(request);
+    ASSERT_NE(record, nullptr);
+    record->SetGameSAPreLaunch(true);
+    record->SetPid(12345);
+    auto result = mgr->NotifyCancelGamePreLaunch(record->GetToken());
+    // MockAbilityToken has incorrect interface descriptor, so Token::GetAbilityRecordByToken returns nullptr
+    EXPECT_NE(result, ERR_OK);
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunch_001
+ * @tc.desc: Test NotifyCompleteGamePreLaunch with null token.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunch_001, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    sptr<IRemoteObject> callerToken = nullptr;
+    auto result = mgr->NotifyCompleteGamePreLaunch(callerToken);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunch_002
+ * @tc.desc: Test NotifyCompleteGamePreLaunch with valid token but not game SA prelaunch.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunch_002, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest request;
+    request.appInfo.bundleName = "com.example.unittest";
+    request.abilityInfo.name = "MainAbility";
+    request.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    auto record = UIAbilityRecord::CreateAbilityRecord(request);
+    ASSERT_NE(record, nullptr);
+    record->SetGameSAPreLaunch(false);
+    auto result = mgr->NotifyCompleteGamePreLaunch(record->GetToken());
+    EXPECT_EQ(result, ERR_NOT_GAME_PRELOAD_STATE);
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunch_003
+ * @tc.desc: Test NotifyCompleteGamePreLaunch with valid token and game SA prelaunch.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunch_003, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest request;
+    request.appInfo.bundleName = "com.example.unittest";
+    request.abilityInfo.name = "MainAbility";
+    request.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    auto record = UIAbilityRecord::CreateAbilityRecord(request);
+    ASSERT_NE(record, nullptr);
+    record->SetGameSAPreLaunch(true);
+    auto result = mgr->NotifyCompleteGamePreLaunch(record->GetToken());
+    // MockAbilityToken has incorrect interface descriptor, so Token::GetAbilityRecordByToken returns nullptr
+    EXPECT_NE(result, ERR_OK);
+}
+
+/**
+ * @tc.name: SetGamePreLaunchCompleteTime_001
+ * @tc.desc: Test SetGamePreLaunchCompleteTime with valid completeTime.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, SetGamePreLaunchCompleteTime_001, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    int64_t completeTime = 5000;
+    auto result = mgr->SetGamePreLaunchCompleteTime(completeTime);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+ * @tc.name: SetGamePreLaunchCompleteTime_002
+ * @tc.desc: Test SetGamePreLaunchCompleteTime with zero completeTime.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, SetGamePreLaunchCompleteTime_002, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    int64_t completeTime = 0;
+    auto result = mgr->SetGamePreLaunchCompleteTime(completeTime);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+ * @tc.name: SetGamePreLaunchCompleteTime_003
+ * @tc.desc: Test SetGamePreLaunchCompleteTime with negative completeTime.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, SetGamePreLaunchCompleteTime_003, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    int64_t completeTime = -1000;
+    auto result = mgr->SetGamePreLaunchCompleteTime(completeTime);
+    EXPECT_EQ(result, ERR_OK);
+}
 }  // namespace AAFwk
 }  // namespace OHOS

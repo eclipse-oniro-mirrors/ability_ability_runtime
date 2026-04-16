@@ -18,12 +18,17 @@
 
 #include "app_jsheap_mem_info.h"
 #include "app_cjheap_mem_info.h"
+#include "app_mem_dump_info.h"
 #include "napi_common_want.h"
 #include "ohos_application.h"
 #include "runtime.h"
+#include <dlfcn.h>
+#include <inttypes.h>
 
 namespace OHOS {
 namespace AppExecFwk {
+using GetMemLeakStringFunc = bool (*)(int, char **, size_t);
+
 class DumpRuntimeHelper : public std::enable_shared_from_this<DumpRuntimeHelper> {
 public:
     explicit DumpRuntimeHelper(const std::shared_ptr<OHOSApplication> &application);
@@ -33,6 +38,7 @@ public:
     void SetAppFreezeFilterCallback();
     void DumpJsHeap(const OHOS::AppExecFwk::JsHeapDumpInfo &info);
     void DumpCjHeap(const OHOS::AppExecFwk::CjHeapDumpInfo &info);
+    void DumpMem(const OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult);
 private:
     std::shared_ptr<OHOSApplication> application_ = nullptr;
     std::shared_ptr<ApplicationInfo> appInfo_ = nullptr;
@@ -40,6 +46,7 @@ private:
     static bool Check2DOOMDumpOpt();
     void GetCheckList(const std::unique_ptr<AbilityRuntime::Runtime> &runtime, std::string &checkList);
     void WriteCheckList(const std::string &checkList);
+    void DumpNativeHeap(const OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult);
     napi_value GetJsLeakModule(napi_env env, napi_value global);
     napi_value GetMethodCheck(napi_env env, napi_value requireValue, napi_value global);
     static bool Init2DOOMDumpQuota(const std::string &path, uint32_t oomDumpProcessMaxQuota);
@@ -57,10 +64,14 @@ private:
     static bool IsFileExists(const std::string &file);
     static bool CreateDir(const std::string &path);
     static void CreateDirDelay(const std::string &path);
+    static void WriteRunningId();
     static bool CheckOomdumpSwitch();
     static bool Check2CQuota();
     static bool Check2DQuota(bool needDecreaseQuota);
     static bool SafeStoll(const std::string &str, long long &value);
+    static GetMemLeakStringFunc LoadMemLeakFunc();
+    static bool GetDumpResult(std::string &dumpResult);
+    static bool GetSnapshot(int fd);
     static int GetCompressQuota (const std::vector<int64_t> &quotas);
     static bool SplitPropertyByComma(const std::string &property, std::string &runningId, std::string &value);
     static std::string GetEventConfig(const std::string &key);

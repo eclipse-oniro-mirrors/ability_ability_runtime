@@ -403,7 +403,8 @@ HWTEST_F(MainThreadTest, GetMainHandler_0100, TestSize.Level1)
     AbilityInfo info;
     sptr<IRemoteObject> Token = nullptr;
     std::shared_ptr<AAFwk::Want> want = std::make_shared<AAFwk::Want>();
-    mainThread_->ScheduleLaunchAbility(info, Token, want, 0);
+    std::shared_ptr<AppUpdateInfo> updateInfo = std::make_shared<AppUpdateInfo>();
+    mainThread_->ScheduleLaunchAbility(info, Token, want, 0, updateInfo);
     mainThread_->ScheduleCleanAbility(Token);
     Profile profile;
     mainThread_->ScheduleProfileChanged(profile);
@@ -1019,7 +1020,7 @@ HWTEST_F(MainThreadTest, HandleLaunchAbility_0100, TestSize.Level1)
     TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
     auto abilityRecord = std::make_shared<AbilityLocalRecord>(nullptr, nullptr, nullptr, 0);
     ASSERT_NE(abilityRecord, nullptr);
-    mainThread_->HandleLaunchAbility(abilityRecord);
+    mainThread_->HandleLaunchAbility(abilityRecord, nullptr);
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
 }
 
@@ -1870,7 +1871,7 @@ HWTEST_F(MainThreadTest, PostTask_0100, TestSize.Level1)
     AbilityInfo abilityInfo = {};
     sptr<IRemoteObject> token = nullptr;
     std::shared_ptr<AAFwk::Want> want = std::make_shared<AAFwk::Want>();
-    mainThread_->ScheduleLaunchAbility(abilityInfo, token, want, 0);
+    mainThread_->ScheduleLaunchAbility(abilityInfo, token, want, 0, nullptr);
     mainThread_->ScheduleCleanAbility(token);
     Profile profile = {};
     mainThread_->ScheduleProfileChanged(profile);
@@ -1919,23 +1920,23 @@ HWTEST_F(MainThreadTest, HandleLaunchAbility_0200, TestSize.Level1)
     AAFwk::Want want = {};
     want.SetParam("debugApp", false);
     EXPECT_TRUE(abilityRecord1 == nullptr);
-    mainThread_->HandleLaunchAbility(abilityRecord1);
+    mainThread_->HandleLaunchAbility(abilityRecord1, nullptr);
 
     mainThread_->applicationImpl_ = std::make_shared<ApplicationImpl>();
-    mainThread_->HandleLaunchAbility(abilityRecord1);
+    mainThread_->HandleLaunchAbility(abilityRecord1, nullptr);
 
     mainThread_->abilityRecordMgr_ = std::make_shared<AbilityRecordMgr>();
-    mainThread_->HandleLaunchAbility(abilityRecord1);
+    mainThread_->HandleLaunchAbility(abilityRecord1, nullptr);
 
     const std::shared_ptr<AbilityInfo> info1 = nullptr;
     const sptr<IRemoteObject> token = nullptr;
     const auto abilityRecord2 = std::make_shared<AbilityLocalRecord>(info1, token, nullptr, 0);
-    mainThread_->HandleLaunchAbility(abilityRecord2);
+    mainThread_->HandleLaunchAbility(abilityRecord2, nullptr);
 
     const std::shared_ptr<AbilityInfo> info2 = std::make_shared<AbilityInfo>();
     const auto abilityRecord3 = std::make_shared<AbilityLocalRecord>(info2, token, nullptr, 0);
     mainThread_->application_ = std::make_shared<OHOSApplication>();
-    mainThread_->HandleLaunchAbility(abilityRecord3);
+    mainThread_->HandleLaunchAbility(abilityRecord3, nullptr);
 
     abilityRecord3->token_ = mainThread_;
     abilityRecord3->abilityInfo_ = nullptr;
@@ -1947,7 +1948,7 @@ HWTEST_F(MainThreadTest, HandleLaunchAbility_0200, TestSize.Level1)
     appInfo->debug = true;
     contextDeal->SetApplicationInfo(appInfo);
     mainThread_->application_->AttachBaseContext(contextDeal);
-    mainThread_->HandleLaunchAbility(abilityRecord3);
+    mainThread_->HandleLaunchAbility(abilityRecord3, nullptr);
 }
 
 /**

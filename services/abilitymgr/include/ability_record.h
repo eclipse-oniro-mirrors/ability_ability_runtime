@@ -715,6 +715,16 @@ public:
         return isPluginAbility_;
     }
 
+    bool IsGameSAPreLaunch() const
+    {
+        return isGameSAPreLaunch_;
+    }
+
+    void SetGameSAPreLaunch(bool isGameSAPreLaunch)
+    {
+        isGameSAPreLaunch_ = isGameSAPreLaunch;
+    }
+
     // Host-Plugin relationship management
     void AddPluginAbility(std::shared_ptr<AbilityRecord> pluginAbility);
     void RemovePluginAbility(std::shared_ptr<AbilityRecord> pluginAbility);
@@ -952,6 +962,7 @@ protected:
     bool isHook_ = false;
     bool isPluginAbility_ = false;
     bool isPrelaunch_ = false;
+    std::atomic<bool> isGameSAPreLaunch_ = false;
 
     int32_t uiExtensionAbilityId_ = 0;                // uiextension ability id
     int32_t uid_ = 0;

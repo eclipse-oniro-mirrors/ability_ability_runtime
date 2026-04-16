@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -434,6 +434,105 @@ HWTEST_F(AbilityStageContextTest, AbilityStageContext_CreateModuleOrPluginContex
 
     auto context = abilityStageContext->CreateModuleOrPluginContext(bundleName, moduleName);
     EXPECT_EQ(context, nullptr);
+}
+
+/**
+ * @tc.number: AbilityStageContext_LaunchElement_001
+ * @tc.name: SetLaunchElement and GetLaunchElement
+ * @tc.desc: Test SetLaunchElement and GetLaunchElement with valid ElementName.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(AbilityStageContextTest, AbilityStageContext_LaunchElement_001, TestSize.Level1)
+{
+    auto abilityStageContext = std::make_shared<AbilityStageContext>();
+    ASSERT_NE(abilityStageContext, nullptr);
+
+    AppExecFwk::ElementName elementName;
+    elementName.SetBundleName("com.example.test");
+    elementName.SetAbilityName("TestAbility");
+    elementName.SetModuleName("entry");
+
+    abilityStageContext->SetLaunchElement(elementName);
+
+    auto result = abilityStageContext->GetLaunchElement();
+    EXPECT_EQ(result.GetBundleName(), "com.example.test");
+    EXPECT_EQ(result.GetAbilityName(), "TestAbility");
+    EXPECT_EQ(result.GetModuleName(), "entry");
+}
+
+/**
+ * @tc.number: AbilityStageContext_LaunchElement_002
+ * @tc.name: GetLaunchElement with default value
+ * @tc.desc: Test GetLaunchElement returns empty ElementName when not set.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(AbilityStageContextTest, AbilityStageContext_LaunchElement_002, TestSize.Level1)
+{
+    auto abilityStageContext = std::make_shared<AbilityStageContext>();
+    ASSERT_NE(abilityStageContext, nullptr);
+
+    auto result = abilityStageContext->GetLaunchElement();
+    EXPECT_EQ(result.GetBundleName(), "");
+    EXPECT_EQ(result.GetAbilityName(), "");
+    EXPECT_EQ(result.GetModuleName(), "");
+}
+
+/**
+ * @tc.number: AbilityStageContext_LaunchElement_003
+ * @tc.name: SetLaunchElement multiple times
+ * @tc.desc: Test SetLaunchElement can be called multiple times to update the value.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(AbilityStageContextTest, AbilityStageContext_LaunchElement_003, TestSize.Level1)
+{
+    auto abilityStageContext = std::make_shared<AbilityStageContext>();
+    ASSERT_NE(abilityStageContext, nullptr);
+
+    AppExecFwk::ElementName elementName1;
+    elementName1.SetBundleName("com.example.first");
+    elementName1.SetAbilityName("FirstAbility");
+
+    AppExecFwk::ElementName elementName2;
+    elementName2.SetBundleName("com.example.second");
+    elementName2.SetAbilityName("SecondAbility");
+
+    abilityStageContext->SetLaunchElement(elementName1);
+    auto result1 = abilityStageContext->GetLaunchElement();
+    EXPECT_EQ(result1.GetBundleName(), "com.example.first");
+    EXPECT_EQ(result1.GetAbilityName(), "FirstAbility");
+
+    abilityStageContext->SetLaunchElement(elementName2);
+    auto result2 = abilityStageContext->GetLaunchElement();
+    EXPECT_EQ(result2.GetBundleName(), "com.example.second");
+    EXPECT_EQ(result2.GetAbilityName(), "SecondAbility");
+}
+
+/**
+ * @tc.number: AbilityStageContext_LaunchElement_004
+ * @tc.name: GetLaunchElement returns const reference
+ * @tc.desc: Test GetLaunchElement returns a const reference that can be read but not modified through the interface.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(AbilityStageContextTest, AbilityStageContext_LaunchElement_004, TestSize.Level1)
+{
+    auto abilityStageContext = std::make_shared<AbilityStageContext>();
+    ASSERT_NE(abilityStageContext, nullptr);
+
+    AppExecFwk::ElementName elementName;
+    elementName.SetBundleName("com.example.test");
+    elementName.SetAbilityName("TestAbility");
+    elementName.SetDeviceID("testDevice");
+
+    abilityStageContext->SetLaunchElement(elementName);
+
+    const auto &result = abilityStageContext->GetLaunchElement();
+    EXPECT_EQ(result.GetBundleName(), "com.example.test");
+    EXPECT_EQ(result.GetAbilityName(), "TestAbility");
+    EXPECT_EQ(result.GetDeviceID(), "testDevice");
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

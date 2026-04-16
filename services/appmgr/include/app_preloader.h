@@ -34,6 +34,7 @@ struct PreloadRequest {
     BundleInfo bundleInfo;
     HapModuleInfo hapModuleInfo;
     PreloadPhase preloadPhase = PreloadPhase::UNSPECIFIED;
+    bool needMakeImage = false;
 };
 
 class AppPreloader {

@@ -38,7 +38,8 @@ ChildProcessManager::~ChildProcessManager()
 {
 }
 
-ChildProcessManagerErrorCode ChildProcessManager::StartChildProcessBySelfFork(const std::string &srcEntry, pid_t &pid)
+ChildProcessManagerErrorCode ChildProcessManager::StartChildProcessBySelfFork(
+    const std::string &srcEntry, pid_t &pid, bool isStaticChildProcess)
 {
     return ChildProcessManagerErrorCode::ERR_OK;
 }
@@ -49,14 +50,14 @@ bool ChildProcessManager::IsMultiProcessFeatureApp(const AppExecFwk::BundleInfo 
 }
 
 ChildProcessManagerErrorCode ChildProcessManager::StartChildProcessByAppSpawnFork(
-    const std::string &srcEntry, pid_t &pid)
+    const std::string &srcEntry, pid_t &pid, bool isStaticChildProcess)
 {
     return ChildProcessManagerErrorCode::ERR_ALREADY_IN_CHILD_PROCESS;
 }
 
 ChildProcessManagerErrorCode ChildProcessManager::StartChildProcessWithArgs(
     const std::string &srcEntry, pid_t &pid, int32_t childProcessType, const AppExecFwk::ChildProcessArgs &args,
-    const AppExecFwk::ChildProcessOptions &options)
+    const AppExecFwk::ChildProcessOptions &options, bool isStaticChildProcess)
 {
     return startErrorCode_;
 }
@@ -102,12 +103,12 @@ bool ChildProcessManager::IsChildProcessBySelfFork()
 }
 
 void ChildProcessManager::HandleChildProcessBySelfFork(const std::string &srcEntry,
-    const AppExecFwk::BundleInfo &bundleInfo)
+    const AppExecFwk::BundleInfo &bundleInfo, bool isStaticChildProcess)
 {
 }
 
 bool ChildProcessManager::LoadJsFile(const std::string &srcEntry, const AppExecFwk::HapModuleInfo &hapModuleInfo,
-    std::unique_ptr<AbilityRuntime::Runtime> &runtime, std::shared_ptr<AppExecFwk::ChildProcessArgs> args)
+    const std::unique_ptr<AbilityRuntime::Runtime> &runtime, std::shared_ptr<AppExecFwk::ChildProcessArgs> args)
 {
     return true;
 }
@@ -125,7 +126,8 @@ bool ChildProcessManager::LoadNativeLibWithArgs(const std::string &moduleName, c
 }
 
 std::unique_ptr<AbilityRuntime::Runtime> ChildProcessManager::CreateRuntime(const AppExecFwk::BundleInfo &bundleInfo,
-    const AppExecFwk::HapModuleInfo &hapModuleInfo, const bool fromAppSpawn, const bool jitEnabled)
+    const AppExecFwk::HapModuleInfo &hapModuleInfo, const bool fromAppSpawn, const bool jitEnabled,
+    bool isStaticChildProcess)
 {
     return nullptr;
 }

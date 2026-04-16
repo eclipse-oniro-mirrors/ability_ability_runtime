@@ -39,6 +39,7 @@
 #include "errors.h"
 #include "hap_module_info.h"
 #include "hilog_tag_wrapper.h"
+#include "ohos_application.h"
 #include "parameters.h"
 #include "runtime.h"
 #include "sys_mgr_client.h"
@@ -70,7 +71,8 @@ ChildProcessManager::~ChildProcessManager()
     TAG_LOGD(AAFwkTag::PROCESSMGR, "called");
 }
 
-ChildProcessManagerErrorCode ChildProcessManager::StartChildProcessBySelfFork(const std::string &srcEntry, pid_t &pid)
+ChildProcessManagerErrorCode ChildProcessManager::StartChildProcessBySelfFork(
+    const std::string &srcEntry, pid_t &pid, bool isStaticChildProcess)
 {
     TAG_LOGI(AAFwkTag::PROCESSMGR, "called");
     ChildProcessManagerErrorCode errorCode = PreCheckSelfFork();
@@ -101,7 +103,7 @@ ChildProcessManagerErrorCode ChildProcessManager::StartChildProcessBySelfFork(co
         if (prctl(PR_SET_NAME, processName) < 0) {
             TAG_LOGW(AAFwkTag::PROCESSMGR, "set process name failed %{public}d", errno);
         }
-        HandleChildProcessBySelfFork(srcEntry, bundleInfo);
+        HandleChildProcessBySelfFork(srcEntry, bundleInfo, isStaticChildProcess);
     }
     return ChildProcessManagerErrorCode::ERR_OK;
 }
@@ -124,16 +126,17 @@ bool ChildProcessManager::IsMultiProcessFeatureApp(const AppExecFwk::BundleInfo 
 }
 
 ChildProcessManagerErrorCode ChildProcessManager::StartChildProcessByAppSpawnFork(
-    const std::string &srcEntry, pid_t &pid)
+    const std::string &srcEntry, pid_t &pid, bool isStaticChildProcess)
 {
     AppExecFwk::ChildProcessArgs args;
     AppExecFwk::ChildProcessOptions options;
-    return StartChildProcessWithArgs(srcEntry, pid, AppExecFwk::CHILD_PROCESS_TYPE_JS, args, options);
+    return StartChildProcessWithArgs(srcEntry, pid, AppExecFwk::CHILD_PROCESS_TYPE_JS, args, options,
+        isStaticChildProcess);
 }
 
 ChildProcessManagerErrorCode ChildProcessManager::StartChildProcessWithArgs(
     const std::string &srcEntry, pid_t &pid, int32_t childProcessType, const AppExecFwk::ChildProcessArgs &args,
-    const AppExecFwk::ChildProcessOptions &options)
+    const AppExecFwk::ChildProcessOptions &options, bool isStaticChildProcess)
 {
     TAG_LOGI(AAFwkTag::PROCESSMGR, "StartChildProcessWithArgs, childProcessType:%{public}d, startWitDebug: %{public}d,"
         "processName:%{public}s, native:%{public}d, entryParams size:%{public}zu, fdsSize:%{public}zu, "
@@ -154,6 +157,7 @@ ChildProcessManagerErrorCode ChildProcessManager::StartChildProcessWithArgs(
     request.srcEntry = srcEntry;
     request.childProcessType = childProcessType;
     request.isStartWithDebug = g_debugOption.isStartWithDebug;
+    request.isStaticChildProcess = isStaticChildProcess;
     request.args = args;
     request.options = options;
     request.childProcessCount = childProcessCount_.fetch_add(1);
@@ -271,8 +275,37 @@ bool ChildProcessManager::IsChildProcessBySelfFork()
     return isChildProcessBySelfFork_;
 }
 
+bool ChildProcessManager::LoadFromAppRuntime(const std::string &srcEntry,
+    const AppExecFwk::HapModuleInfo &hapModuleInfo)
+{
+    std::shared_ptr<AppExecFwk::OHOSApplication> application;
+    {
+        std::lock_guard<std::mutex> lock(appMutex_);
+        application = application_.lock();
+    }
+    if (application == nullptr) {
+        TAG_LOGE(AAFwkTag::PROCESSMGR, "null application");
+        return false;
+    }
+    auto &appRuntime = application->GetRuntime();
+    if (appRuntime == nullptr) {
+        TAG_LOGE(AAFwkTag::PROCESSMGR, "null appRuntime");
+        return false;
+    }
+    if (appRuntime->GetLanguage() == AbilityRuntime::Runtime::Language::ETS) {
+        TAG_LOGD(AAFwkTag::PROCESSMGR, "Reuse main process runtime");
+        TAG_LOGD(AAFwkTag::PROCESSMGR, "StartDebugMode, isStartWithDebug: %{public}d, processName: %{public}s, "
+            "isDebugApp: %{public}d, isStartWithNative: %{public}d", g_debugOption.isStartWithDebug,
+            g_debugOption.processName.c_str(), g_debugOption.isDebugApp, g_debugOption.isStartWithNative);
+        appRuntime->StartDebugMode(g_debugOption);
+        LoadJsFile(srcEntry, hapModuleInfo, appRuntime);
+        return true;
+    }
+    return false;
+}
+
 void ChildProcessManager::HandleChildProcessBySelfFork(const std::string &srcEntry,
-    const AppExecFwk::BundleInfo &bundleInfo)
+    const AppExecFwk::BundleInfo &bundleInfo, bool isStaticChildProcess)
 {
     TAG_LOGD(AAFwkTag::PROCESSMGR, "start");
     isChildProcessBySelfFork_ = true;
@@ -289,24 +322,37 @@ void ChildProcessManager::HandleChildProcessBySelfFork(const std::string &srcEnt
         return;
     }
 
-    auto runtime = CreateRuntime(bundleInfo, hapModuleInfo, false, g_jitEnabled);
+    if (isStaticChildProcess) {
+        auto pos = srcEntry.find('/');
+        std::string prefix = (pos != std::string::npos) ? srcEntry.substr(0, pos) : srcEntry;
+        if (prefix != "entry") {
+            TAG_LOGE(AAFwkTag::PROCESSMGR, "srcEntry prefix is not entry, prefix: %{public}s", prefix.c_str());
+            exit(0);
+        }
+    }
+
+    if (isStaticChildProcess && LoadFromAppRuntime(srcEntry, hapModuleInfo)) {
+        TAG_LOGD(AAFwkTag::PROCESSMGR, "end");
+        exit(0);
+    }
+
+    auto runtime = CreateRuntime(bundleInfo, hapModuleInfo, false, g_jitEnabled, isStaticChildProcess);
     if (!runtime) {
         TAG_LOGE(AAFwkTag::PROCESSMGR, "Create runtime failed");
         return;
     }
+    std::string srcPath = isStaticChildProcess ? srcEntry : hapModuleInfo.moduleName + "/" + srcEntry;
     TAG_LOGD(AAFwkTag::PROCESSMGR, "StartDebugMode, isStartWithDebug: %{public}d, processName: %{public}s, "
         "isDebugApp: %{public}d, isStartWithNative: %{public}d", g_debugOption.isStartWithDebug,
         g_debugOption.processName.c_str(), g_debugOption.isDebugApp, g_debugOption.isStartWithNative);
     runtime->StartDebugMode(g_debugOption);
-    std::string srcPath;
-    srcPath.append(hapModuleInfo.moduleName).append("/").append(srcEntry);
     LoadJsFile(srcPath, hapModuleInfo, runtime);
     TAG_LOGD(AAFwkTag::PROCESSMGR, "end");
     exit(0);
 }
 
 bool ChildProcessManager::LoadJsFile(const std::string &srcEntry, const AppExecFwk::HapModuleInfo &hapModuleInfo,
-    std::unique_ptr<AbilityRuntime::Runtime> &runtime, std::shared_ptr<AppExecFwk::ChildProcessArgs> args)
+    const std::unique_ptr<AbilityRuntime::Runtime> &runtime, std::shared_ptr<AppExecFwk::ChildProcessArgs> args)
 {
     std::shared_ptr<ChildProcessStartInfo> processStartInfo = std::make_shared<ChildProcessStartInfo>();
     std::string filename = std::filesystem::path(srcEntry).stem();
@@ -384,8 +430,9 @@ bool ChildProcessManager::LoadNativeLibWithArgs(const std::string &moduleName, c
     return true;
 }
 
-std::unique_ptr<AbilityRuntime::Runtime> ChildProcessManager::CreateRuntime(const AppExecFwk::BundleInfo &bundleInfo,
-    const AppExecFwk::HapModuleInfo &hapModuleInfo, const bool fromAppSpawn, const bool jitEnabled)
+std::unique_ptr<AbilityRuntime::Runtime> ChildProcessManager::CreateRuntime(
+    const AppExecFwk::BundleInfo &bundleInfo, const AppExecFwk::HapModuleInfo &hapModuleInfo,
+    const bool fromAppSpawn, const bool jitEnabled, bool isStaticChildProcess)
 {
     AppExecFwk::ApplicationInfo applicationInfo = bundleInfo.applicationInfo;
     AbilityRuntime::Runtime::Options options;
@@ -400,6 +447,8 @@ std::unique_ptr<AbilityRuntime::Runtime> ChildProcessManager::CreateRuntime(cons
     options.apiTargetVersion = applicationInfo.apiTargetVersion;
     options.loadAce = true;
     options.jitEnabled = jitEnabled;
+    options.lang = isStaticChildProcess ? AbilityRuntime::Runtime::Language::ETS :
+        AbilityRuntime::Runtime::Language::JS;
 
     for (auto &moduleItem : bundleInfo.hapModuleInfos) {
         options.pkgContextInfoJsonStringMap[moduleItem.moduleName] = moduleItem.hapPath;
@@ -557,6 +606,11 @@ std::string ChildProcessManager::GetModuleNameFromSrcEntry(const std::string &sr
         return "";
     }
     return moduleName;
+}
+
+void ChildProcessManager::SetApplication(std::shared_ptr<AppExecFwk::OHOSApplication> application)
+{
+    application_ = application;
 }
 
 ChildProcessManagerErrorCode ChildProcessManager::KillChildProcessByPid(int32_t pid)

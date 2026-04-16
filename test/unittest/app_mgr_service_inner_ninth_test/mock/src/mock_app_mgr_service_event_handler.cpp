@@ -40,7 +40,7 @@ void AMSEventHandler::ProcessEvent(const AAFwk::EventWrap &event)
         TAG_LOGE(AAFwkTag::APPMGR, "null appManager");
         return;
     }
-    appManager->HandleTimeOut(event);
+    appManager->HandleTimeOutInner(event);
 }
 
 AppEventUtil &AppEventUtil::GetInstance()

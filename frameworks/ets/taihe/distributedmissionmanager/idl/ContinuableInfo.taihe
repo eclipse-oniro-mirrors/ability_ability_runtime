@@ -19,4 +19,5 @@ struct ContinuableInfo {
   bundleName: String;
   srcBundleName: Optional<String>;
   continueType: Optional<String>;
+  appIdentifiers: Optional<Array<String>>;
 }

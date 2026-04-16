@@ -72,6 +72,11 @@ void AppDeathRecipient::SetIsChildProcess(bool isChildProcess)
     isChildProcess_ = isChildProcess;
 }
 
+void AppDeathRecipient::SetIsImageProcess(bool isImageProcess)
+{
+    isImageProcess_ = isImageProcess;
+}
+
 AppStateCallbackDeathRecipient::AppStateCallbackDeathRecipient(std::weak_ptr<AppMgrServiceInner> appMgrServiceInner)
     : appMgrServiceInner_(appMgrServiceInner) {}
 

@@ -34,6 +34,7 @@ ohos_unittest("screen_unlock_interceptor_test") {
     "${ability_runtime_services_path}/abilitymgr/src/utils/start_ability_utils.cpp",
     "${ability_runtime_services_path}/common/src/event_report.cpp",
     "screen_unlock_interceptor_test.cpp",
+    "screen_unlock_interceptor_coverage_test.cpp",
     "mock/src/screenlock_manager.cpp"
   ]
 

@@ -148,6 +148,16 @@ public:
         return true;
     }
 
+    bool AddRefreshRecipient(const sptr<RefreshRecipient> &recipient)
+    {
+        return true;
+    }
+
+    bool RemoveRefreshRecipient(const sptr<RefreshRecipient> &recipient)
+    {
+        return true;
+    }
+
     sptr<IRemoteBroker> AsInterface()
     {
         return nullptr;
@@ -960,6 +970,7 @@ HWTEST_F(AbilityManagerServiceFourthTest, CheckAbilityCallPermission_001, TestSi
 {
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest CheckAbilityCallPermission_001 start");
     AbilityRequest abilityRequest;
+    abilityRequest.isStartByOEExt = false;
     AppExecFwk::AbilityInfo abilityInfo;
     uint32_t specifyTokenId{0};
     MyFlag::errCode_ = ERR_INVALID_MISSION_ID;
@@ -969,6 +980,25 @@ HWTEST_F(AbilityManagerServiceFourthTest, CheckAbilityCallPermission_001, TestSi
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
     MyFlag::flag_ = 1;
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest CheckAbilityCallPermission_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: CheckAbilityCallPermission
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService CheckAbilityCallPermission
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, CheckAbilityCallPermission_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest CheckAbilityCallPermission_002 start");
+    AbilityRequest abilityRequest;
+    abilityRequest.isStartByOEExt = true;
+    AppExecFwk::AbilityInfo abilityInfo;
+    uint32_t specifyTokenId{0};
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    auto ret = abilityMs_->CheckAbilityCallPermission(abilityRequest, abilityInfo, specifyTokenId, false);
+    EXPECT_EQ(ret, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest CheckAbilityCallPermission_002 end");
 }
 
 /*

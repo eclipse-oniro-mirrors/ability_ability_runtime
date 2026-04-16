@@ -31,6 +31,7 @@
 #include "ability_state_data.h"
 #include "app_debug_listener_interface.h"
 #include "auto_startup_info.h"
+#include "caller_info.h"
 #include "dms_continueInfo.h"
 #include "exit_reason.h"
 #include "extension_running_info.h"
@@ -44,6 +45,7 @@
 #include "iprepare_terminate_callback_interface.h"
 #include "keep_alive_info.h"
 #include "mission_info.h"
+#include "modular_object_extension_info.h"
 #include "query_erms_observer_interface.h"
 #include "remote_mission_listener_interface.h"
 #include "remote_on_listener_interface.h"
@@ -756,6 +758,7 @@ public:
      * @param userId, the service user ID.
      * @param specifiedFullTokenId, The specified full token ID.
      * @param loadTimeout, timeout multiply for ability loading stage, range 1-30, not work on asan.
+     * @param indirectCallerInfo, Indirect caller information.
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int32_t ConnectAbilityCommon(
@@ -766,7 +769,8 @@ public:
         int32_t userId = DEFAULT_INVAL_VALUE,
         bool isQueryExtensionOnly = false,
         uint64_t specifiedFullTokenId = 0,
-        int32_t loadTimeout = 0)
+        int32_t loadTimeout = 0,
+        std::shared_ptr<IndirectCallerInfo> indirectCallerInfo = nullptr)
     {
         return 0;
     }
@@ -1010,6 +1014,11 @@ public:
     virtual void UnregisterCancelListener(const sptr<IWantSender> &sender, const sptr<IWantReceiver> &receiver) = 0;
 
     virtual int GetPendingRequestWant(const sptr<IWantSender> &target, std::shared_ptr<Want> &want) = 0;
+
+    virtual int GetPendingRequestWantFromProxy(const sptr<IWantSender> &target, std::shared_ptr<Want> &want)
+    {
+        return 0;
+    }
 
     virtual int GetWantSenderInfo(const sptr<IWantSender> &target, std::shared_ptr<WantSenderInfo> &info) = 0;
 
@@ -1882,6 +1891,29 @@ public:
     }
 
     /**
+     * @brief Launch game customized with game SA verification.
+     * @param bundleName Name of the game application.
+     * @param userId Indicates the user ID.
+     * @param appIndex app clone index. Currently, only appIndex = 0 is supported.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t LaunchGameCustomized(const std::string &bundleName, int32_t userId, int32_t appIndex = 0)
+    {
+        return 0;
+    }
+
+    /**
+     * @brief Set game prelaunch complete time.
+     * @param userId Indicates the user ID.
+     * @param completeTime The complete time for game prelaunch.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual ErrCode SetGamePreLaunchCompleteTime(int32_t userId, int64_t completeTime)
+    {
+        return ERR_OK;
+    }
+
+    /**
      * PrepareTerminateAbilityBySCB, prepare to terminate ability by scb.
      *
      * @param sessionInfo the session info of the ability to start.
@@ -2554,6 +2586,26 @@ public:
     }
 
     /**
+     * @brief Notify cancel game prelaunch and kill the process.
+     * @param callerToken Indicates the caller ability token.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t NotifyCancelGamePreLaunch(const sptr<IRemoteObject> callerToken)
+    {
+        return ERR_OK;
+    }
+
+    /**
+     * @brief Notify complete game prelaunch and clear the flag.
+     * @param callerToken Indicates the caller ability token.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t NotifyCompleteGamePreLaunch(const sptr<IRemoteObject> callerToken)
+    {
+        return ERR_OK;
+    }
+
+    /**
      * Check if the app is restart-limited.
      * @return Returns true on being limited.
      */
@@ -2605,6 +2657,17 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int32_t UnRegisterPreloadUIExtensionHostClient(int32_t callerPid = DEFAULT_INVAL_VALUE)
+    {
+        return 0;
+    }
+
+    /**
+ 	 * @brief Queries self modular object extension information.
+     * @param extensionInfos get the queried extensionInfos.
+     *
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t QuerySelfModularObjectExtensionInfos(std::vector<ModularObjectExtensionInfo> &extensionInfos)
     {
         return 0;
     }

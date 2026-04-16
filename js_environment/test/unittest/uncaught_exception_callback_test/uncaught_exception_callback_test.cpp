@@ -441,5 +441,69 @@ HWTEST_F(NapiUncaughtExceptionCallbackTest, GetCurrentUIStackInfo_0100, TestSize
     GTEST_LOG_(INFO) << "GetCurrentUIStackInfo_0100 end";
 }
 #endif // SUPPORT_GRAPHICS
+
+
+/**
+ * @tc.name: AppendModuleStack_0100
+ * @tc.desc: Test AppendModuleStack with moduleImportStack larger than 64KB.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiUncaughtExceptionCallbackTest, AppendModuleStack_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppendModuleStack_0100 start";
+    
+    // Setup environment
+    AbilityRuntime::Runtime::Options options{.preload = false};
+    auto jsRuntime = AbilityRuntime::JsRuntime::Create(options);
+    ASSERT_NE(jsRuntime, nullptr);
+    auto env = jsRuntime->GetNapiEnv();
+    EXPECT_NE(env, nullptr);
+
+    // Create large module stack (1600 lines, > 64KB)
+    const int nums = 1600;
+    std::string largeModuleStack;
+    for (int i = 0; i < nums; i++) {
+        largeModuleStack += "Module_" + std::to_string(i) + " at /path/to/module_" + std::to_string(i) + ".js:10:5\n";
+    }
+    ASSERT_GT(largeModuleStack.size(), 64 * 1024);
+
+    // Create error object with all properties
+    napi_value errorObj = nullptr;
+    napi_create_object(env, &errorObj);
+    ASSERT_NE(errorObj, nullptr);
+
+    // Add moduleImportStack and standard error properties
+    napi_value moduleImportStackValue = nullptr;
+    napi_create_string_utf8(env, largeModuleStack.c_str(), largeModuleStack.length(), &moduleImportStackValue);
+    napi_set_named_property(env, errorObj, "moduleImportStack", moduleImportStackValue);
+
+    std::map<std::string, std::string> errorProperties = {
+        {"message", "Test error message"}, {"name", "TestError"},
+        {"stack", "Error: Test error\n    at test.js:10:5"}
+    };
+    for (const auto& [key, value] : errorProperties) {
+        napi_value propValue = nullptr;
+        napi_create_string_utf8(env, value.c_str(), value.length(), &propValue);
+        napi_set_named_property(env, errorObj, key.c_str(), propValue);
+    }
+
+    // Create and invoke callback
+    std::string capturedSummary;
+    auto task = [&capturedSummary](std::string summary, const JsEnv::ErrorObject errorObj, napi_env env,
+        napi_value exception) { capturedSummary = summary; };
+    NapiUncaughtExceptionCallback callback(task, nullptr, env);
+    callback(errorObj);
+
+    // Verify all module lines are present
+    ASSERT_FALSE(capturedSummary.empty());
+    for (int i = 0; i < nums; i++) {
+        std::string moduleLine = "Module_" + std::to_string(i) +
+                " at /path/to/module_" + std::to_string(i) + ".js:10:5";
+        ASSERT_NE(capturedSummary.find(moduleLine), std::string::npos) << "Missing module line: " << moduleLine;
+    }
+    
+    EXPECT_GE(capturedSummary.size(), largeModuleStack.size());
+    GTEST_LOG_(INFO) << "AppendModuleStack_0100 end";
+}
 } // namespace AppExecFwk
 } // namespace OHOS

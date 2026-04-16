@@ -30,6 +30,7 @@
 #include "mock_jsnapi.h"
 #include "hilog_tag_wrapper.h"
 #include "js_runtime_lite.h"
+#include "file_mapper.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -1376,7 +1377,7 @@ HWTEST_F(JsRuntimeTest, DumpHeapSnapshot_0200, TestSize.Level1)
 
 /**
  * @tc.name: DumpHeapSnapshot_0400
- * @tc.desc: JsRuntime test for DumpHeapSnapshot.
+ * @tc.desc: JsRuntime test for DumpHeapSnapshot with JsHeapDumpParam.
  * @tc.type: FUNC
  */
 HWTEST_F(JsRuntimeTest, DumpHeapSnapshot_0400, TestSize.Level1)
@@ -1384,10 +1385,48 @@ HWTEST_F(JsRuntimeTest, DumpHeapSnapshot_0400, TestSize.Level1)
     TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_0400 start");
     auto jsRuntime = std::make_unique<JsRuntime>();
     uint32_t tid = 1;
-    bool isFullGC = false;
-    bool isBinary = false;
-    bool isClearNodeIdCache = true;
-    jsRuntime->DumpHeapSnapshot(tid, isFullGC, isBinary, isClearNodeIdCache);
+    OHOS::AbilityRuntime::Runtime::JsHeapDumpParam param;
+    param.isFullGC = false;
+    param.isBinary = false;
+    param.isClearNodeIdCache = true;
+    param.isProcDump = false;
+    jsRuntime->DumpHeapSnapshot(tid, param);
+    EXPECT_TRUE(jsRuntime != nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot end");
+}
+
+/**
+ * @tc.name: DumpHeapSnapshot_0500
+ * @tc.desc: JsRuntime test for DumpHeapSnapshot with JsHeapDumpParam isMergeBinary true.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, DumpHeapSnapshot_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_0500 start");
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    uint32_t tid = 1;
+    OHOS::AbilityRuntime::Runtime::JsHeapDumpParam param;
+    param.isFullGC = true;
+    param.isBinary = true;
+    param.isClearNodeIdCache = true;
+    param.isProcDump = true;
+    jsRuntime->DumpHeapSnapshot(tid, param);
+    EXPECT_TRUE(jsRuntime != nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot end");
+}
+
+/**
+ * @tc.name: DumpHeapSnapshot_0600
+ * @tc.desc: JsRuntime test for DumpHeapSnapshot with default JsHeapDumpParam.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, DumpHeapSnapshot_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_0600 start");
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    uint32_t tid = 1;
+    OHOS::AbilityRuntime::Runtime::JsHeapDumpParam param;
+    jsRuntime->DumpHeapSnapshot(tid, param);
     EXPECT_TRUE(jsRuntime != nullptr);
     TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot end");
 }
@@ -1929,7 +1968,7 @@ HWTEST_F(JsRuntimeTest, ExecuteSecureWithOhmUrl_0100, TestSize.Level1)
     std::string hapPath = "hapPath";
     std::string srcEntrance = "srcEntrance";
     auto ret = jsRuntime->ExecuteSecureWithOhmUrl(moduleName, hapPath, srcEntrance);
-    EXPECT_EQ(ret, false);
+    EXPECT_EQ(ret, nullptr);
 
     std::string key = "key";
     auto retVal = jsRuntime->GetExportObjectFromOhmUrl(srcEntrance, key);
@@ -1955,6 +1994,27 @@ HWTEST_F(JsRuntimeTest, RegisterUncatchableExceptionHandler_0100, TestSize.Level
     jsRuntime->RegisterUncatchableExceptionHandler(nullptr);
     EXPECT_NE(jsRuntime, nullptr);
     TAG_LOGI(AAFwkTag::TEST, "RegisterUncatchableExceptionHandler_0100 end");
+}
+
+/**
+ * @tc.name: JsRuntimeTestSetOrUpdateLibPath_0100
+ * @tc.desc: JsRuntime Test for SetOrUpdateLibPath
+ * @tc.type: FUNC
+ * @tc.require: issueI581RO
+ */
+HWTEST_F(JsRuntimeTest, JsRuntimeTestSetOrUpdateLibPath_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetOrUpdateLibPath_0100 start");
+    std::string appLibPathKey = TEST_BUNDLE_NAME + TEST_MODULE_NAME;
+    std::string libPath = TEST_LIB_PATH;
+
+    AppLibPathMap appLibPaths {};
+    JsRuntime::SetOrUpdateLibPath(appLibPaths);
+
+    appLibPaths[appLibPathKey].emplace_back(libPath);
+    JsRuntime::SetOrUpdateLibPath(appLibPaths);
+    EXPECT_NE(appLibPaths.size(), 0);
+    TAG_LOGI(AAFwkTag::TEST, "SetOrUpdateLibPath_0100 end");
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

@@ -166,6 +166,7 @@ public:
     MOCK_METHOD1(UnregisterAppRunningStatusListener, int32_t(const sptr<IRemoteObject> &));
     MOCK_METHOD1(DumpJsHeapMemory, int32_t(JsHeapDumpInfo &));
     MOCK_METHOD1(DumpCjHeapMemory, int32_t(CjHeapDumpInfo &));
+    MOCK_METHOD2(DumpMem, int32_t(MemDumpInfo &info, std::string &dumpResult));
     MOCK_METHOD2(GetRunningMultiAppInfoByBundleName, int32_t(const std::string &, RunningMultiAppInfo &));
 
     MOCK_METHOD1(SignRestartProcess, int32_t(int32_t));

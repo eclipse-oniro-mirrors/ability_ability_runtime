@@ -48,6 +48,7 @@ struct StartAbilityInfo {
     int32_t status = ERR_OK;
     AppExecFwk::ExtensionProcessMode extensionProcessMode = AppExecFwk::ExtensionProcessMode::UNDEFINED;
     bool isTargetPlugin = false;
+    bool skipAbilityStageLifecycle = false;
 };
 
 struct StartAbilityUtils {
@@ -66,6 +67,7 @@ struct StartAbilityUtils {
     static int32_t HandleSelfRedirection(bool isFromOpenLink,
         const std::vector<AppExecFwk::AbilityInfo> &abilityInfos);
     static std::string GenerateAsCallerForAncoSessionId();
+    static void RemoveAtomicServiceShareRouterIfNeeded(Want &want, const AppExecFwk::AbilityInfo &targetAbilityInfo);
 
     static thread_local std::shared_ptr<StartAbilityInfo> startAbilityInfo;
     static thread_local std::shared_ptr<StartAbilityInfo> callerAbilityInfo;
@@ -109,6 +111,7 @@ struct StartAbilityWrapParam {
     std::string hostBundleName;
     bool isStartByOEExt = false;
     std::string specifiedFlag;
+    bool isGamePrelaunch = false;
 };
 }
 }

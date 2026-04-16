@@ -94,17 +94,24 @@ bool MissionObserver::IsCallbackListEmpty()
     return callbackList_.size() == 0;
 }
 
-void MissionObserver::OnCallback(const uint32_t continueState, const std::string &srcDeviceId,
-    const std::string &bundleName, const std::string &continueType,
-    const std::string &srcBundleName)
+void MissionObserver::OnCallback(const AAFwk::OnCallbackInfo &info)
 {
     TAG_LOGI(AAFwkTag::MISSION, "MissionObserver::OnCallback");
-    auto taiheState = ohos::distributedmissionmanager::ContinueState::from_value(continueState);
+    auto taiheState = ohos::distributedmissionmanager::ContinueState::from_value(info.continueState);
     ::ContinuableInfo::ContinuableInfo taiheInfo = {};
-    taiheInfo.srcDeviceId = srcDeviceId;
-    taiheInfo.bundleName = bundleName;
-    taiheInfo.srcBundleName = ::taihe::optional<::taihe::string>::make(srcBundleName);
-    taiheInfo.continueType = ::taihe::optional<::taihe::string>::make(continueType);
+    taiheInfo.srcDeviceId = info.srcDeviceId;
+    taiheInfo.bundleName = info.bundleName;
+    taiheInfo.srcBundleName = ::taihe::optional<::taihe::string>::make(info.srcBundleName);
+    taiheInfo.continueType = ::taihe::optional<::taihe::string>::make(info.continueType);
+
+    // Convert appIdentifiers vector to taihe array
+    std::vector<::taihe::string> appIdentifiersVector;
+    for (const auto &appIdentifier : info.appIdentifiers) {
+        appIdentifiersVector.push_back(::taihe::string(appIdentifier));
+    }
+    ::taihe::array<::taihe::string> appIdentifiersArray(appIdentifiersVector);
+    taiheInfo.appIdentifiers = ::taihe::optional<::taihe::array<::taihe::string>>::make(appIdentifiersArray);
+
     ::ohos::distributedmissionmanager::ContinueCallbackInfo callbackInfo = { .state = taiheState, .info = taiheInfo };
 
     wptr<MissionObserver> weakthis = this;

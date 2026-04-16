@@ -97,6 +97,12 @@ int32_t ETSStartupConfig::Init(ani_object config)
         TAG_LOGE(AAFwkTag::STARTUP, "null config");
         return ERR_STARTUP_INTERNAL_ERROR;
     }
+    ani_boolean isUndefined = ANI_TRUE;
+    env->Reference_IsUndefined(reinterpret_cast<ani_ref>(config), &isUndefined);
+    if (isUndefined) {
+        TAG_LOGE(AAFwkTag::STARTUP, "undefined config");
+        return ERR_STARTUP_INTERNAL_ERROR;
+    }
 
     InitAwaitTimeout(env, config);
     InitListener(env, config);
@@ -139,6 +145,10 @@ bool ETSStartupConfig::GetTimeoutMs(ani_env *env, ani_object config, int32_t &ti
     ani_class cls = nullptr;
     if (env == nullptr) {
         TAG_LOGE(AAFwkTag::STARTUP, "null env");
+        return false;
+    }
+    if (config == nullptr) {
+        TAG_LOGE(AAFwkTag::STARTUP, "null config");
         return false;
     }
     ani_status status = env->FindClass("@ohos.app.appstartup.StartupConfig.StartupConfig", &cls);

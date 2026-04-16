@@ -32,6 +32,7 @@ ohos_shared_library("dataobs_manager") {
   sanitize = {
     cfi = true
     cfi_cross_dso = true
+    cfi_policy = "adaptive"
     debug = false
   }
   sources = [

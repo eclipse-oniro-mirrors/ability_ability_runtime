@@ -101,9 +101,7 @@ class NAPIRemoteOnListener : public AAFwk::RemoteOnListenerStub {
 public:
     virtual ~NAPIRemoteOnListener() {};
 
-    void OnCallback(const uint32_t continueState, const std::string &srcDeviceId,
-        const std::string &bundleName, const std::string &continueType = "",
-        const std::string &srcBundleName = "") override;
+    void OnCallback(const AAFwk::OnCallbackInfo &info) override;
     void SetEnv(const napi_env &env);
     void SetOnCallbackCBRef(std::shared_ptr<NativeReference> &ref);
     std::vector<std::shared_ptr<NativeReference>> GetOnCallbackCBRef();
@@ -161,6 +159,7 @@ struct OnCB {
     std::string bundleName;
     std::string continueType;
     std::string srcBundleName;
+    std::vector<std::string> appIdentifiers;
     OnCallbackCB onCallbackCB;
     int result = 0;
     napi_ref callbackRef;

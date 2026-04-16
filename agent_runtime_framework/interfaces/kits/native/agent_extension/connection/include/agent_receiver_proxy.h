@@ -58,6 +58,14 @@ public:
      */
     virtual int32_t Authorize(const sptr<IRemoteObject> &connectorProxy, const std::string &data) override;
 
+    /**
+     * Notify the extension that a LOW_CODE agent has been invoked.
+     *
+     * @param agentId The invoked LOW_CODE agent id.
+     * @return Returns 0 on success, error code otherwise.
+     */
+    virtual int32_t AgentInvoked(const std::string &agentId) override;
+
 private:
     static inline BrokerDelegator<AgentReceiverProxy> delegator_;
 };

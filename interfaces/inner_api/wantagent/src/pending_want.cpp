@@ -433,6 +433,14 @@ std::shared_ptr<Want> PendingWant::GetWant(const sptr<AAFwk::IWantSender> &targe
     return ret ? nullptr : want;
 }
 
+std::shared_ptr<Want> PendingWant::GetWantFromProxy(const sptr<AAFwk::IWantSender> &target)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    std::shared_ptr<Want> want = std::make_shared<Want>();
+    int ret = WantAgentClient::GetInstance().GetPendingRequestWantFromProxy(target, want);
+    return ret ? nullptr : want;
+}
+
 bool PendingWant::Marshalling(Parcel &parcel) const
 {
     if (target_ == nullptr || !(static_cast<MessageParcel*>(&parcel))->WriteRemoteObject(target_->AsObject())) {

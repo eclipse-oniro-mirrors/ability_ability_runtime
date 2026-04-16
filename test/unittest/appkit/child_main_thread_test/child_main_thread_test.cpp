@@ -26,6 +26,7 @@
 #include "mock_bundle_manager.h"
 #include "sys_mgr_client.h"
 #include "system_ability_definition.h"
+#include "parameters.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -79,6 +80,82 @@ HWTEST_F(ChildMainThreadTest, Init_0100, TestSize.Level0)
     info.bundleInfo = std::make_shared<BundleInfo>();
     auto ret = thread->Init(runner, info);
     EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.number: Init_0200
+ * @tc.desc: Test Init works
+ * @tc.type: FUNC
+ */
+HWTEST_F(ChildMainThreadTest, Init_0200, TestSize.Level0)
+{
+    TAG_LOGD(AAFwkTag::TEST, "Init_0200 called.");
+    sptr<ChildMainThread> thread = sptr<ChildMainThread>(new (std::nothrow) ChildMainThread());
+    ASSERT_NE(thread, nullptr);
+
+    std::shared_ptr<EventRunner> runner = EventRunner::GetMainEventRunner();
+    ChildProcessInfo info;
+    info.bundleInfo = std::make_shared<BundleInfo>();
+    info.bundleInfo->applicationInfo.arkTSMode = AbilityRuntime::CODE_LANGUAGE_ARKTS_1_2;
+    auto ret = thread->Init(runner, info);
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.number: Init_0300
+ * @tc.desc: Test Init works
+ * @tc.type: FUNC
+ */
+HWTEST_F(ChildMainThreadTest, Init_0300, TestSize.Level0)
+{
+    TAG_LOGD(AAFwkTag::TEST, "Init_0300 called.");
+    sptr<ChildMainThread> thread = sptr<ChildMainThread>(new (std::nothrow) ChildMainThread());
+    ASSERT_NE(thread, nullptr);
+
+    std::shared_ptr<EventRunner> runner = EventRunner::GetMainEventRunner();
+    ChildProcessInfo info;
+    info.bundleInfo = std::make_shared<BundleInfo>();
+    info.bundleInfo->applicationInfo.arkTSMode = AbilityRuntime::CODE_LANGUAGE_ARKTS_HYBRID;
+    auto ret = thread->Init(runner, info);
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.number: Init_0400
+ * @tc.desc: Test Init works
+ * @tc.type: FUNC
+ */
+HWTEST_F(ChildMainThreadTest, Init_0400, TestSize.Level0)
+{
+    TAG_LOGD(AAFwkTag::TEST, "Init_0400 called.");
+    sptr<ChildMainThread> thread = sptr<ChildMainThread>(new (std::nothrow) ChildMainThread());
+    ASSERT_NE(thread, nullptr);
+
+    std::shared_ptr<EventRunner> runner = EventRunner::GetMainEventRunner();
+    ChildProcessInfo info;
+    info.bundleInfo = std::make_shared<BundleInfo>();
+    info.bundleInfo->applicationInfo.arkTSMode = AbilityRuntime::CODE_LANGUAGE_ARKTS_1_0;
+    auto oldParam = system::GetParameter("persist.sys.abilityms.plugin_default_namespace_lddictionary", "");
+    system::SetParameter("persist.sys.abilityms.plugin_default_namespace_lddictionary", "/test/lib");
+    auto ret = thread->Init(runner, info);
+    system::SetParameter("persist.sys.abilityms.plugin_default_namespace_lddictionary", oldParam);
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.number: IsEtsAPP_0100
+ * @tc.desc: Test IsEtsAPP works
+ * @tc.type: FUNC
+ */
+HWTEST_F(ChildMainThreadTest, IsEtsAPP_0100, TestSize.Level1)
+{
+    TAG_LOGD(AAFwkTag::TEST, "IsEtsAPP_0100 called.");
+    sptr<ChildMainThread> thread = sptr<ChildMainThread>(new (std::nothrow) ChildMainThread());
+    ASSERT_NE(thread, nullptr);
+
+    ChildProcessInfo processInfo;
+    auto ret = thread->IsEtsAPP(processInfo);
+    EXPECT_FALSE(ret);
 }
 
 /**

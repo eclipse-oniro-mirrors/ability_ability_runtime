@@ -37,6 +37,7 @@ ohos_shared_library("foreground_app_obs_manager") {
   sanitize = {
     cfi = true
     cfi_cross_dso = true
+    cfi_policy = "adaptive"
     debug = false
   }
 

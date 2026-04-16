@@ -484,6 +484,16 @@ public:
     void ScheduleCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info);
 
     /**
+     * ScheduleMem, triggerGC and dump application's memory info.
+     *
+     * @param info, pid, tid, needGc, needSnapshot
+     * @param dumpResult The dump result string
+     *
+     * @return
+     */
+    void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult);
+
+    /**
      * GetAbilityRunningRecordByToken, Obtaining the ability record through token.
      *
      * @param token, the unique identification to the ability.
@@ -542,6 +552,8 @@ public:
      * @param appDeathRecipient, application death recipient instance.
      */
     void SetAppDeathRecipient(const sptr<AppDeathRecipient> &appDeathRecipient);
+
+    sptr<AppDeathRecipient> GetAppDeathRecipient() const;
 
     /**
      * @brief Obtains application priority info.
@@ -719,6 +731,8 @@ public:
      * Called when one specified request is finished to clear the request
      */
     void ResetSpecifiedRequest();
+
+    void TryToUpdateWorkProcessInfo();
 
     void SchedulePrepareTerminate(const std::string &moduleName);
 
@@ -916,6 +930,24 @@ public:
 
     bool IsPreloaded() const;
 
+    void SetMakeImageState(MakeImageState state);
+
+    MakeImageState GetMakeImageState() const;
+
+    void SetIsCreateFromImage(bool flag);
+
+    bool GetIsCreateFromImage() const;
+
+    void SetImageProcessType(ImageProcessType type);
+
+    ImageProcessType GetImageProcessType() const;
+
+    void SetNeedRemoveDeathRecipient(bool flag);
+
+    bool GetNeedRemoveDeathRecipient() const;
+
+    void SetNeedUpdate(bool needUpdate);
+
     void SetPreloadMode(PreloadMode mode);
 
     PreloadMode GetPreloadMode();
@@ -1075,6 +1107,8 @@ public:
      * @return
      */
     void SetWatchdogBackgroundStatusRunning(bool status);
+
+    void GetAllAbilityInfos(std::vector<AppExecFwk::AbilityStateData> &infos);
 
     void SetUserRequestCleaning();
     bool IsUserRequestCleaning() const;
@@ -1237,6 +1271,8 @@ public:
         return isAllowScbProcessMoveToBackground_.load();
     }
 
+    bool IsLastAgentExtensionAbility(const sptr<IRemoteObject> &token);
+
 private:
     /**
      * SearchTheModuleInfoNeedToUpdated, Get an uninitialized abilityStage data.
@@ -1295,6 +1331,8 @@ private:
      * - Collision probability is extremely low (approximately 2^-64)
      */
     uint64_t GenerateRunningId();
+
+    bool HasOnlyOneExtensionType();
 
     bool IsWindowIdsEmpty();
 
@@ -1358,6 +1396,12 @@ private:
     WatchdogVisibilityState watchdogVisibilityState_ = WatchdogVisibilityState::WATCHDOG_STATE_READY;
     ProcessChangeReason processChangeReason_ = ProcessChangeReason::REASON_NONE; // render record
     std::chrono::system_clock::time_point preloadAttachTimeoutStartTime_;
+
+    MakeImageState makeImageState_ = MakeImageState::NONE;
+    bool isCreateFromImage_ = false;
+    ImageProcessType imageProcessType_ = ImageProcessType::UNSPECIFIED;
+    bool needRemoveDeathRecipient_ = true;
+    bool needUpdate_ = false;
 
     int64_t startTimeMillis_ = 0;   // The time of app start(CLOCK_MONOTONIC)
     uint64_t appRunningUniqueId_ = 0; // The unique running ID generated from random number

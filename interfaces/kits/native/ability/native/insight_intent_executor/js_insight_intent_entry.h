@@ -18,6 +18,7 @@
 
 #include "insight_intent_executor.h"
 
+#include "file_mapper.h"
 #include "insight_intent_execute_result.h"
 #include "js_insight_intent_utils.h"
 #include "js_runtime.h"
@@ -66,7 +67,7 @@ public:
         bool& isAsync) override;
 
 private:
-    static std::unique_ptr<NativeReference> LoadJsCode(
+    std::unique_ptr<NativeReference> LoadJsCode(
         const InsightIntentExecutorInfo& insightIntentInfo,
         JsRuntime& runtime);
 
@@ -103,6 +104,7 @@ private:
     std::unique_ptr<NativeReference> contextObj_ = nullptr;
     std::unique_ptr<InsightIntentExecutorAsyncCallback> callback_;
     bool isAsync_ = false;
+    std::unique_ptr<AbilityBase::FileMapper> safeData_ = nullptr;
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

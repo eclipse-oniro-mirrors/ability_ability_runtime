@@ -81,13 +81,13 @@ private:
     void OnCheckConnectionAbility(ani_env *env, ani_object aniObj);
 };
 
-struct ConnectionKey {
+struct EtsConnectionKey {
     AAFwk::Want want;
     int64_t id;
 };
 
-struct key_compare {
-    bool operator()(const ConnectionKey &key1, const ConnectionKey &key2) const
+struct ets_key_compare {
+    bool operator()(const EtsConnectionKey &key1, const EtsConnectionKey &key2) const
     {
         if (key1.id < key2.id) {
             return true;

@@ -75,6 +75,7 @@ ohos_unittest("ability_manager_service_mock_test") {
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
     "${ability_runtime_native_path}/ability/native:auto_startup_callback",
+    "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
     "${ability_runtime_path}/utils/server/startup:startup_util",
     "${ability_runtime_services_path}/abilitymgr:abilityms",

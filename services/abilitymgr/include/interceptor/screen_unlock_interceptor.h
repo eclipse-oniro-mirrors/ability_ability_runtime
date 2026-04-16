@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -30,9 +30,20 @@ public:
         return;
     };
 private:
+    bool GetTargetAbilityInfo(const AbilityInterceptorParam &param, AppExecFwk::AbilityInfo &targetAbilityInfo);
     void QueryTargetAbilityInfo(const AbilityInterceptorParam &param, AppExecFwk::AbilityInfo &targetAbilityInfo);
-    void RecordExtensionEventWhenScreenUnlock(const AbilityInterceptorParam &param,
-        const AppExecFwk::AbilityInfo &targetAbilityInfo);
+    ErrCode ProcessSystemApp(const AppExecFwk::AbilityInfo &targetAbilityInfo);
+    ErrCode ProcessNonSystemApp(const AppExecFwk::AbilityInfo &targetAbilityInfo);
+    void ReportSystemAppUIAbilityEvent(const AppExecFwk::AbilityInfo &targetAbilityInfo);
+    ErrCode CheckExtensionInterception(const std::string &extensionTypeName,
+        const std::string &bundleName, bool isSystemApp);
+    ErrCode CheckSystemAppExtensionInterception(const std::string &extensionTypeName,
+        const std::string &bundleName);
+    ErrCode CheckThirdPartyExtensionInterception(const std::string &extensionTypeName,
+        const std::string &bundleName);
+    ErrCode CheckInterceptionByConfig(const std::string &extensionTypeName,
+        const std::string &appIdentifier, bool interception, bool isSystemApp);
+    std::string GetAppIdentifier(const std::string &bundleName);
 };
 } // namespace AAFwk
 } // namespace OHOS

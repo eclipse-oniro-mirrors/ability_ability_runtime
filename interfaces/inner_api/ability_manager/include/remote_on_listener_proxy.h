@@ -32,10 +32,9 @@ public:
     /**
      * @brief When the remote device mission changed, AbilityMs notify the listener.
      *
-     * @param deviceId, remote device Id.
+     * @param info, callback information containing continue state, device info, etc.
      */
-    virtual void OnCallback(const uint32_t continueState, const std::string &srcDeviceId,
-        const std::string &bundleName, const std::string &continueType, const std::string &srcBundleName) override;
+    virtual void OnCallback(const OnCallbackInfo &info) override;
 private:
     static inline BrokerDelegator<RemoteOnListenerProxy> delegator_;
 };

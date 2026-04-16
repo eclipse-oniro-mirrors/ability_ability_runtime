@@ -80,6 +80,7 @@ ohos_unittest("watchdog_test") {
     "googletest:gtest_main",
     "hilog:libhilog",
     "image_framework:image_native",
+    "init:libbegetutil",
     "ipc:ipc_core",
     "json:nlohmann_json_static",
     "napi:ace_napi",

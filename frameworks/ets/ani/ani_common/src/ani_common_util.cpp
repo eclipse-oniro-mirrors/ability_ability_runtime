@@ -12,14 +12,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <cstring>
-
 #include "ani_common_util.h"
 
+#include <cstring>
+
 #include "ani_enum_convert.h"
-#include "running_process_info.h"
 #include "hilog_tag_wrapper.h"
 #include "ipc_skeleton.h"
+#include "running_process_info.h"
 #include "securec.h"
 #include "tokenid_kit.h"
 
@@ -1090,7 +1090,7 @@ bool GetStringArrayProperty(ani_env *env, ani_object param, const char *name, st
     ani_ref arrayObj = nullptr;
     ani_boolean isUndefined = true;
     ani_status status = ANI_ERROR;
-    ani_double length = 0.0;
+    ani_int length = 0;
     std::string str;
 
     if ((status = env->Object_GetPropertyByName_Ref(param, name, &arrayObj)) != ANI_OK) {
@@ -1106,13 +1106,13 @@ bool GetStringArrayProperty(ani_env *env, ani_object param, const char *name, st
         return false;
     }
 
-    status = env->Object_GetPropertyByName_Double(reinterpret_cast<ani_object>(arrayObj), "length", &length);
+    status = env->Object_GetPropertyByName_Int(reinterpret_cast<ani_object>(arrayObj), "length", &length);
     if (status != ANI_OK) {
         TAG_LOGE(AAFwkTag::ANI, "status: %{public}d", status);
         return false;
     }
 
-    for (int i = 0; i < static_cast<int>(length); i++) {
+    for (int i = 0; i < length; i++) {
         ani_ref stringEntryRef;
         status = env->Object_CallMethodByName_Ref(reinterpret_cast<ani_object>(arrayObj),
             "$_get", "i:Y", &stringEntryRef, (ani_int)i);

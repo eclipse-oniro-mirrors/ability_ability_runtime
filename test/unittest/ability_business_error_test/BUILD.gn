@@ -23,6 +23,8 @@ ohos_unittest("ability_business_error_test") {
 
   configs = []
 
+  include_dirs = [ "${ability_runtime_innerkits_path}/ability_manager/include" ]
+
   deps =
       [ "${ability_runtime_native_path}/ability/native:ability_business_error" ]
 

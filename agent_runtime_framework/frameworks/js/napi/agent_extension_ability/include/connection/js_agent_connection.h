@@ -86,20 +86,6 @@ void FindAgentConnection(int64_t connectId, sptr<JSAgentConnection> &connection)
  */
 void FindAgentConnection(napi_env env, AAFwk::Want &want, napi_value callback,
     sptr<JSAgentConnection> &connection);
-
-/**
- * Get the current count of active agent connections.
- *
- * @return Returns the number of active connections.
- */
-size_t GetAgentConnectionCount();
-
-/**
- * Check if the maximum number of connections has been reached.
- *
- * @return Returns true if max connections reached, false otherwise.
- */
-bool IsMaxConnectionsReached();
 }
 
 class JsAgentConnectorStubImpl;

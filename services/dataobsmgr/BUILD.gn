@@ -35,6 +35,7 @@ ohos_shared_library("dataobsms") {
   sanitize = {
     cfi = true
     cfi_cross_dso = true
+    cfi_policy = "adaptive"
     debug = false
   }
   shlib_type = "sa"
@@ -90,6 +91,7 @@ ohos_static_library("dataobsms_static") {
   sanitize = {
     cfi = true
     cfi_cross_dso = true
+    cfi_policy = "adaptive"
     debug = false
   }
   sources = dataobsms_files

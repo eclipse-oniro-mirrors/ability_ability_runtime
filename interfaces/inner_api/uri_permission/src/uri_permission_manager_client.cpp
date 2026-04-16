@@ -447,7 +447,7 @@ bool UriPermissionManagerClient::IsUriPermServiceStarted()
     return isUriPermServiceStarted_.load();
 }
 
-int32_t UriPermissionManagerClient::ClearPermissionTokenByMap(uint32_t tokenId, uint64_t timeNow)
+int32_t UriPermissionManagerClient::ClearPermissionTokenByMap(uint32_t tokenId)
 {
     if (!IsUriPermServiceStarted()) {
         TAG_LOGD(AAFwkTag::URIPERMMGR, "upms is not started");
@@ -459,7 +459,7 @@ int32_t UriPermissionManagerClient::ClearPermissionTokenByMap(uint32_t tokenId, 
         return INNER_ERR;
     }
     int32_t funcResult = INNER_ERR;
-    auto res = uriPermMgr->ClearPermissionTokenByMap(tokenId, timeNow, funcResult);
+    auto res = uriPermMgr->ClearPermissionTokenByMap(tokenId, funcResult);
     if (res != ERR_OK) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "IPC failed, error:%{public}d", res);
         return INNER_ERR;

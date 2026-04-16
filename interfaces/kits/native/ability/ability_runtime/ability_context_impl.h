@@ -404,6 +404,8 @@ public:
         const sptr<AbilityConnectCallback>& connectCallback, AppExecFwk::ExtensionAbilityType extensionType) override;
     ErrCode SetOnNewWantSkipScenarios(int32_t scenarios) override;
     ErrCode RestartAppWithWindow(const Want &want) override;
+    ErrCode NotifyCancelGamePreLaunch() override;
+    ErrCode NotifyCompleteGamePreLaunch() override;
 
     ErrCode AddCompletionHandlerForAtomicService(const std::string &requestId, OnAtomicRequestSuccess onRequestSucc,
         OnAtomicRequestFailure onRequestFail, const std::string &appId) override;

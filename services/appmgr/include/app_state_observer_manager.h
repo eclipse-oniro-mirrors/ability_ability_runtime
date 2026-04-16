@@ -29,6 +29,9 @@
 #include "cpp/mutex.h"
 #include "iapp_state_callback.h"
 #include "iapplication_state_observer.h"
+#include "image_error_handler_interface.h"
+#include "image_process_state_observer_interface.h"
+#include "fork_image_info.h"
 #include "page_state_data.h"
 #include "permission_constants.h"
 #include "permission_verification.h"
@@ -49,11 +52,13 @@ struct AppStateObserverInfo {
 using AppStateObserverMap = std::map<sptr<IApplicationStateObserver>, AppStateObserverInfo>;
 using AppForegroundStateObserverMap = std::map<sptr<IAppForegroundStateObserver>, int32_t>;
 using AbilityForegroundObserverMap = std::map<sptr<IAbilityForegroundStateObserver>, int32_t>;
+using ImageProcessObserverMap = std::map<sptr<IImageProcessStateObserver>, int32_t>;
 
 enum class ObserverType {
     APPLICATION_STATE_OBSERVER,
     APP_FOREGROUND_STATE_OBSERVER,
     ABILITY_FOREGROUND_STATE_OBSERVER,
+    IMAGE_PROCESS_STATE_OBSERVER
 };
 class AppStateObserverManager : public std::enable_shared_from_this<AppStateObserverManager> {
     DECLARE_DELAYED_SINGLETON(AppStateObserverManager)
@@ -66,6 +71,8 @@ public:
     int32_t UnregisterAppForegroundStateObserver(const sptr<IAppForegroundStateObserver> &observer);
     int32_t RegisterAbilityForegroundStateObserver(const sptr<IAbilityForegroundStateObserver> &observer);
     int32_t UnregisterAbilityForegroundStateObserver(const sptr<IAbilityForegroundStateObserver> &observer);
+    int32_t RegisterImageProcessStateObserver(const sptr<IImageProcessStateObserver> &observer);
+    int32_t UnregisterImageProcessStateObserver(const sptr<IImageProcessStateObserver> &observer);
     void StateChangedNotifyObserver(const AbilityStateData abilityStateData, bool isAbility,
         bool isFromWindowFocusChanged, BundleType bundleType = BundleType::APP);
     void OnAppStateChanged(const std::shared_ptr<AppRunningRecord> &appRecord, const ApplicationState state,
@@ -95,6 +102,9 @@ public:
     void OnKeepAliveStateChanged(const std::shared_ptr<AppRunningRecord> &appRecord);
     void OnProcessPreForegroundChanged(std::shared_ptr<AppRunningRecord> appRecord);
     void OnProcessTypeChanged(const std::shared_ptr<AppRunningRecord> &appRecord);
+    void OnImageProcessStateChanged(std::shared_ptr<ForkImageInfo> imageInfo, ImageProcessState state);
+    void OnForkAllWorkProcessFailed(std::shared_ptr<ForkImageInfo> imageInfo, int32_t errCode);
+    void OnPreForkAllWorkProcess(std::shared_ptr<ForkImageInfo> imageInfo);
 
 private:
     void HandleOnWindowShow(const std::shared_ptr<AppRunningRecord> &appRecord);
@@ -118,15 +128,19 @@ private:
     bool ObserverExist(const sptr<IRemoteBroker> &observer);
     bool IsAppForegroundObserverExist(const sptr<IRemoteBroker> &observer);
     bool IsAbilityForegroundObserverExist(const sptr<IRemoteBroker> &observer);
+    bool IsImageProcessObserverExist(const sptr<IRemoteBroker> &observer);
     void AddObserverDeathRecipient(const sptr<IRemoteBroker> &observer, const ObserverType &type);
     void RemoveObserverDeathRecipient(const sptr<IRemoteBroker> &observer);
     AppStateObserverMap GetAppStateObserverMapCopy();
     AppForegroundStateObserverMap GetAppForegroundStateObserverMapCopy();
     AbilityForegroundObserverMap GetAbilityForegroundObserverMapCopy();
+    ImageProcessObserverMap GetImageProcessObserverMapCopy();
     ProcessData WrapProcessData(
         const std::shared_ptr<AppRunningRecord> &appRecord, bool isFromWindowFocusChanged = false);
     ProcessData WrapRenderProcessData(const std::shared_ptr<RenderRecord> &renderRecord);
     ProcessBindData WrapProcessBindData(const UIExtensionProcessBindInfo &bindInfo, int32_t bindingRelation);
+    std::shared_ptr<ImageProcessStateData> WrapImageProcessStateData(
+        std::shared_ptr<ForkImageInfo> imageInfo, ImageProcessState state);
 #ifdef SUPPORT_CHILD_PROCESS
     int32_t WrapChildProcessData(ProcessData &processData, std::shared_ptr<ChildProcessRecord> childRecord);
 #endif // SUPPORT_CHILD_PROCESS
@@ -149,6 +163,9 @@ private:
     void HandleOnProcessPreForegroundChanged(std::shared_ptr<AppRunningRecord> appRecord);
     void HandleOnProcessTypeChanged(const std::shared_ptr<AppRunningRecord> &appRecord);
     bool PreventNotify(ApplicationState state, int32_t observerUid, bool isByCall);
+    void HandleOnImageProcessStateChanged(std::shared_ptr<ImageProcessStateData> data);
+    void HandleOnForkAllWorkProcessFailed(std::shared_ptr<ImageProcessStateData> data, int32_t errCode);
+    void HandleOnPreForkAllWorkProcess(std::shared_ptr<ImageProcessStateData> data);
 
 private:
     std::shared_ptr<AAFwk::TaskHandlerWrap> handler_;
@@ -163,6 +180,9 @@ private:
     ffrt::mutex abilityForegroundObserverLock_;
     ffrt::mutex recipientMapMutex_;
     ffrt::mutex observerCountMapMutex_;
+
+    ffrt::mutex imageProcessObserverLock_;
+    ImageProcessObserverMap imageProcessStateObserverMap_;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

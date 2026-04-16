@@ -15,7 +15,6 @@
 
 #include "madvise_utils.h"
 
-#include "cJSON.h"
 #include <algorithm>
 #include <chrono>
 #include <libgen.h>
@@ -30,17 +29,14 @@
 #include <string>
 #include <vector>
 
-#include "config_policy_utils.h"
 #include "hilog_tag_wrapper.h"
+#include "json_utils.h"
+#include "nlohmann/json.hpp"
 #include "vma_utils.h"
 
 namespace {
 constexpr const char* MADVISE_CONFIG_DEFAULT_FILE_PATH = "/system/etc/madvise_config.json";
 constexpr const char* MADVISE_CONFIG_FILE_PATH = "/etc/madvise_config.json";
-constexpr int32_t PERMS_INDEX_0 = 0;
-constexpr int32_t PERMS_INDEX_1 = 1;
-constexpr int32_t PERMS_INDEX_2 = 2;
-constexpr int32_t PERMS_INDEX_3 = 3;
 constexpr int32_t PERMS_LEN = 4;
 
 enum class LibraryType {
@@ -95,91 +91,44 @@ LibraryType ParseLibraryType(const std::string& typeStr)
 MadviseConfig LoadConfigFromFile()
 {
     MadviseConfig config;
-    std::string configPath = OHOS::AbilityRuntime::MadviseUtil::GetConfigPath();
-    char resolvedPath[PATH_MAX] = {0};
-    if (realpath(configPath.c_str(), resolvedPath) == nullptr) {
-        TAG_LOGE(AAFwkTag::ABILITY, "realpath error, errno: %{public}d", errno);
+    nlohmann::json object;
+    if (!OHOS::AAFwk::JsonUtils::GetInstance().LoadConfiguration(
+        MADVISE_CONFIG_FILE_PATH, object, MADVISE_CONFIG_DEFAULT_FILE_PATH)) {
+        TAG_LOGE(AAFwkTag::ABILITY, "load madvise config failed");
         return config;
     }
-    FILE* file = fopen(resolvedPath, "r");
-    if (!file) {
-        TAG_LOGE(AAFwkTag::ABILITY, "Failed to open config file");
+    if (!object.contains("apps") || !object.at("apps").is_array()) {
+        TAG_LOGE(AAFwkTag::ABILITY, "parse apps invalid");
         return config;
     }
-    if (fseek(file, 0, SEEK_END) != 0) {
-        TAG_LOGE(AAFwkTag::ABILITY, "Failed to seek file end");
-        if (fclose(file) != 0) {
-            TAG_LOGE(AAFwkTag::ABILITY, "Failed to close file");
-        }
-        return config;
-    }
-    long fileSize = ftell(file);
-    if (fileSize <= 0) {
-        TAG_LOGE(AAFwkTag::ABILITY, "Config file is empty");
-        if (fclose(file) != 0) {
-            TAG_LOGE(AAFwkTag::ABILITY, "Failed to close file");
-        }
-        return config;
-    }
-    if (fseek(file, 0, SEEK_SET) != 0) {
-        TAG_LOGE(AAFwkTag::ABILITY, "Failed to seek file begin");
-        if (fclose(file) != 0) {
-            TAG_LOGE(AAFwkTag::ABILITY, "Failed to close file");
-        }
-        return config;
-    }
-    std::string content;
-    content.resize(fileSize);
-    size_t readSize = fread(&content[0], 1, fileSize, file);
-    if (fclose(file) != 0) {
-        TAG_LOGE(AAFwkTag::ABILITY, "Failed to close file");
-    }
-    if (readSize != static_cast<size_t>(fileSize)) {
-        TAG_LOGE(AAFwkTag::ABILITY, "Failed to read config file");
-        return config;
-    }
-    cJSON* root = cJSON_Parse(content.c_str());
-    if (!root) {
-        TAG_LOGE(AAFwkTag::ABILITY, "Failed to parse JSON config");
-        return config;
-    }
-    cJSON* appsArray = cJSON_GetObjectItemCaseSensitive(root, "apps");
-    if (!cJSON_IsArray(appsArray)) {
-        TAG_LOGE(AAFwkTag::ABILITY, "Invalid config format: 'apps' not found or not an array");
-        cJSON_Delete(root);
-        return config;
-    }
-    cJSON* appItem = nullptr;
-    cJSON_ArrayForEach(appItem, appsArray) {
-        AppConfig appConfig;
-        cJSON* bundleNameItem = cJSON_GetObjectItemCaseSensitive(appItem, "bundle_name");
-        if (!bundleNameItem || !cJSON_IsString(bundleNameItem) || !bundleNameItem->valuestring) {
+
+    for (auto &item : object.at("apps").items()) {
+        const nlohmann::json& appJson = item.value();
+        if (!appJson.contains("bundle_name") || !appJson.at("bundle_name").is_string()) {
             continue;
         }
-        appConfig.bundleName = bundleNameItem->valuestring;
+        AppConfig appConfig;
+        appConfig.bundleName = appJson.at("bundle_name").get<std::string>();
         if (appConfig.bundleName.empty()) {
             continue;
         }
-        cJSON* libsArray = cJSON_GetObjectItemCaseSensitive(appItem, "libraries");
-        if (!cJSON_IsArray(libsArray)) {
+        if (!appJson.contains("libraries") || !appJson.at("libraries").is_array()) {
             continue;
         }
-        cJSON* libItem = nullptr;
-        cJSON_ArrayForEach(libItem, libsArray) {
+        for (auto &libItem : appJson.at("libraries").items()) {
+            const nlohmann::json& libJson = libItem.value();
             LibraryConfig libConfig;
-            cJSON* nameItem = cJSON_GetObjectItemCaseSensitive(libItem, "name");
-            if (!nameItem || !cJSON_IsString(nameItem) || !nameItem->valuestring) {
+            if (!libJson.contains("name") || !libJson.at("name").is_string()) {
                 continue;
             }
-            libConfig.name = nameItem->valuestring;
+            libConfig.name = libJson.at("name").get<std::string>();
             if (libConfig.name.empty()) {
                 continue;
             }
-            cJSON* typeItem = cJSON_GetObjectItemCaseSensitive(libItem, "type");
-            if (!typeItem || !cJSON_IsString(typeItem) || !typeItem->valuestring) {
+            if (!libJson.contains("type") || !libJson.at("type").is_string()) {
                 continue;
             }
-            libConfig.type = ParseLibraryType(typeItem->valuestring);
+            libConfig.type = ParseLibraryType(libJson.at("type").get<std::string>());
             if (libConfig.type == LibraryType::UNKNOWN) {
                 continue;
             }
@@ -189,7 +138,6 @@ MadviseConfig LoadConfigFromFile()
             config.apps.push_back(appConfig);
         }
     }
-    cJSON_Delete(root);
     TAG_LOGD(AAFwkTag::ABILITY, "Loaded madvise config: %{public}zu apps", config.apps.size());
     return config;
 }
@@ -243,7 +191,7 @@ struct MadviseData {
 
 static int32_t MadvisePhdrCallback(struct dl_phdr_info *info, size_t size, void *data)
 {
-    if (!info || !data) {
+    if (!info || !data || !info->dlpi_phdr) {
         return 0;
     }
     MadviseData* madviseData = static_cast<MadviseData*>(data);
@@ -257,9 +205,12 @@ static int32_t MadvisePhdrCallback(struct dl_phdr_info *info, size_t size, void 
     if (strstr(currentLibName, madviseData->targetLibName) == nullptr) {
         return 0;
     }
-    TAG_LOGD(AAFwkTag::ABILITY, "Found target library: %{public}s", currentLibName);
+    TAG_LOGD(AAFwkTag::ABILITY, "Found target library: %{private}s", currentLibName);
     for (int32_t i = 0; i < info->dlpi_phnum; i++) {
         const ElfW(Phdr) *phdr = &info->dlpi_phdr[i];
+        if (!phdr) {
+            continue;
+        }
         if (phdr->p_type != PT_LOAD) {
             continue;
         }
@@ -268,27 +219,15 @@ static int32_t MadvisePhdrCallback(struct dl_phdr_info *info, size_t size, void 
         if (!isReadable || isWritable) {
             continue;
         }
-        void* startAddr = reinterpret_cast<void*>(info->dlpi_addr + phdr->p_vaddr);
+        uintptr_t startAddr = info->dlpi_addr + phdr->p_vaddr;
         size_t len = phdr->p_memsz;
         size_t pageSize = static_cast<size_t>(getpagesize());
-        void* alignedStart = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(startAddr) & ~(pageSize - 1));
-        size_t alignedLen = (reinterpret_cast<uintptr_t>(startAddr) + len + pageSize - 1) & ~(pageSize - 1);
-        alignedLen -= reinterpret_cast<uintptr_t>(alignedStart);
-        char perms[4] = "---";
-        if (phdr->p_flags & PF_R) {
-            perms[PERMS_INDEX_0] = 'r';
-        }
-        if (phdr->p_flags & PF_W) {
-            perms[PERMS_INDEX_1] = 'w';
-        }
-        if (phdr->p_flags & PF_X) {
-            perms[PERMS_INDEX_2] = 'x';
-        }
-        perms[PERMS_INDEX_3] = '\0';
-        TAG_LOGD(AAFwkTag::ABILITY,
-            "madvise: lib=%{public}s, perms=%{public}s, len=%{public}zu, alignedLen=%{public}zu",
-            info->dlpi_name ? info->dlpi_name : "unknown", perms, len, alignedLen);
-        int32_t result = madvise(alignedStart, alignedLen, MADV_DONTNEED);
+        uintptr_t alignedStart = startAddr & ~(pageSize - 1);
+        uintptr_t alignedEnd = (startAddr + len + pageSize - 1) & ~(pageSize - 1);
+        size_t alignedLen = alignedEnd - alignedStart;
+        TAG_LOGD(AAFwkTag::ABILITY, "madvise: lib=%{private}s, len=%{public}zu, alignedLen=%{public}zu",
+            info->dlpi_name ? info->dlpi_name : "unknown", len, alignedLen);
+        int32_t result = madvise(reinterpret_cast<void*>(alignedStart), alignedLen, MADV_DONTNEED);
         if (result == 0) {
             TAG_LOGD(AAFwkTag::ABILITY, "madvise success: len=%{public}zu", alignedLen);
             madviseData->successCount++;
@@ -330,15 +269,13 @@ static bool ApplyMadviseToRegion(const OHOS::AbilityRuntime::VmaUtil::VMARegion&
         return false;
     }
     size_t pageSize = static_cast<size_t>(getpagesize());
-    void* startAddr = reinterpret_cast<void*>(region.start);
-    void* alignedStart = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(startAddr) & ~(pageSize - 1));
-    void* endAddr = reinterpret_cast<void*>(region.end);
-    size_t alignedLen = (reinterpret_cast<uintptr_t>(endAddr) + pageSize - 1) & ~(pageSize - 1);
-    alignedLen -= reinterpret_cast<uintptr_t>(alignedStart);
+    uintptr_t alignedStart = region.start & ~(pageSize - 1);
+    uintptr_t alignedEnd = (region.end + pageSize - 1) & ~(pageSize - 1);
+    size_t alignedLen = alignedEnd - alignedStart;
     TAG_LOGD(AAFwkTag::ABILITY,
         "madvise: file=%{private}s, perms=%{public}s, len=%{public}zu, alignedLen=%{public}zu",
         filename ? filename : "unknown", region.perms, region.size, alignedLen);
-    int32_t result = madvise(alignedStart, alignedLen, MADV_DONTNEED);
+    int32_t result = madvise(reinterpret_cast<void*>(alignedStart), alignedLen, MADV_DONTNEED);
     if (result == 0) {
         TAG_LOGD(AAFwkTag::ABILITY, "madvise success: len=%{public}zu", alignedLen);
         return true;
@@ -395,16 +332,6 @@ int32_t MadviseWithConfigFile(const char* bundleName)
         return -1;
     }
     return ApplyMadviseWithConfig(bundleName, config);
-}
-
-std::string GetConfigPath()
-{
-    char buf[MAX_PATH_LEN] = { 0 };
-    char *configPath = GetOneCfgFile(MADVISE_CONFIG_FILE_PATH, buf, MAX_PATH_LEN);
-    if (configPath == nullptr || configPath[0] == '\0' || strlen(configPath) > MAX_PATH_LEN) {
-        return MADVISE_CONFIG_DEFAULT_FILE_PATH;
-    }
-    return configPath;
 }
 } // namespace MadviseUtil
 } // namespace AbilityRuntime

@@ -23,6 +23,7 @@ public:
         IS_SA_CALL = 1,
         IS_SHELL_CALL,
         IS_SA_AND_SHELL_CALL,
+        IS_PRELOAD_APPLICATION_PERMISSION,
     };
     static int flag_;
     static bool perm;

@@ -288,6 +288,7 @@ public:
     MOCK_METHOD2(UnregisterCancelListener, void(const sptr<IWantSender>& sender,
         const sptr<IWantReceiver>& receiver));
     MOCK_METHOD2(GetPendingRequestWant, int(const sptr<IWantSender>& target, std::shared_ptr<Want>& want));
+    MOCK_METHOD2(GetPendingRequestWantFromProxy, int(const sptr<IWantSender>& target, std::shared_ptr<Want>& want));
     MOCK_METHOD3(StartContinuation, int(const Want& want, const sptr<IRemoteObject>& abilityToken, int32_t status));
     MOCK_METHOD2(NotifyContinuationResult, int(int32_t missionId, int32_t result));
     MOCK_METHOD5(ContinueMission, int(const std::string& srcDeviceId, const std::string& dstDeviceId,
@@ -401,9 +402,9 @@ public:
         const InsightIntentExecuteParam &param));
     MOCK_METHOD3(ExecuteInsightIntentDone, int32_t(const sptr<IRemoteObject> &token, uint64_t intentId,
         const InsightIntentExecuteResult &result));
+    MOCK_METHOD4(StartAbilityByOEExt, int32_t(const Want&, sptr<IRemoteObject>, int32_t, const std::string&));
     MOCK_METHOD5(StartAbilityWithSpecifyTokenId, int(const Want& want, const sptr<IRemoteObject>& callerToken,
         uint32_t specifyTokenId, int32_t userId, int requestCode));
-    MOCK_METHOD4(StartAbilityByOEExt, int32_t(const Want&, sptr<IRemoteObject>, int32_t, const std::string&));
 
     MOCK_METHOD(int, StartAbility, (const Want &want, const AbilityStartSetting &abilityStartSetting,
         const sptr<IRemoteObject> &callerToken, int32_t userId, int requestCode), (override));

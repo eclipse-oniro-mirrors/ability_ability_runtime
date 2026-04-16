@@ -95,6 +95,15 @@ public:
         return true;
     }
 
+    bool AddRefreshRecipient(const sptr<RefreshRecipient> &recipient)
+    {
+        return true;
+    }
+    bool RemoveRefreshRecipient(const sptr<RefreshRecipient> &recipient)
+    {
+        return true;
+    }
+
     sptr<IRemoteBroker> AsInterface()
     {
         return nullptr;

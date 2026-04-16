@@ -29,6 +29,7 @@
 #include "configuration_convertor.h"
 #include "connection_state_manager.h"
 #include "common_event_manager.h"
+#include "dms_util.h"
 #include "error_msg_util.h"
 #include "foreground_app_connection_manager.h"
 #include "freeze_util.h"
@@ -56,6 +57,7 @@
 #include "uri_utils.h"
 #include "user_controller/user_controller.h"
 #include "utils/state_utils.h"
+#include "utils/ability_event_util.h"
 #ifdef SUPPORT_GRAPHICS
 #include "image_source.h"
 #endif
@@ -225,6 +227,11 @@ void AbilityRecord::Init(const AbilityRequest &abilityRequest)
             abilityRequest.abilityInfo.bundleName, abilityRequest.abilityInfo.name, userId)) {
         keepAliveBundle_ = true;
     }
+
+    if (abilityRequest.want.GetBoolParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH, false)) {
+        TAG_LOGD(AAFwkTag::UIABILITY, "abilityRecord: Set game prelaunch flag from want");
+        SetGameSAPreLaunch(true);
+    }
 }
 
 AbilityRecordType AbilityRecord::GetAbilityRecordType()
@@ -339,6 +346,17 @@ int AbilityRecord::LoadAbility(bool isShellCall, bool isStartupHide, pid_t calli
     if (result == ERR_OK) {
         AbilityRuntime::UserController::GetInstance().AddToUserLockedBundleList(abilityInfo_.bundleName, userId);
     }
+
+    // Handle bundle first launch event via posttask
+    if (abilityInfo_.type == AppExecFwk::AbilityType::PAGE &&
+        !abilityInfo_.applicationInfo.isBundleFirstLaunched) {
+        auto userId = abilityInfo_.uid / BASE_USER_RANGE;
+        std::string callerBundleName = firstCallerBundleName_.empty() ? "_system" : firstCallerBundleName_;
+        ffrt::submit([this, appInfo = abilityInfo_.applicationInfo, userId, callerBundleName]() {
+                AbilityEventUtil::HandleBundleFirstLaunch(appInfo, userId, callerBundleName);
+            }, ffrt::task_attr().name("HandleBundleFirstLaunch"));
+    }
+
     return result;
 }
 
@@ -405,6 +423,7 @@ void AbilityRecord::ForegroundAbility(uint32_t sceneFlag, bool hasLastWant)
         want.SetParam(SPECIFIED_ABILITY_FLAG, GetSpecifiedFlag());
     }
     lifecycleDeal_->ForegroundNew(want, lifeCycleStateInfo_, GetSessionInfo());
+    want.RemoveParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH);
     SetIsNewWant(false);
     if (!Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
         lifeCycleStateInfo_.sceneFlag = 0;
@@ -1477,7 +1496,7 @@ void SystemAbilityCallerRecord::SetResultToSystemAbility(
         return;
     }
     std::string srcDeviceId = data[0];
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "Get srcDeviceId = %{public}s", srcDeviceId.c_str());
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "Get srcDeviceId = %{public}s", DmsUtil::AnonymizeDeviceId(srcDeviceId).c_str());
     int missionId = atoi(data[1].c_str());
     TAG_LOGI(AAFwkTag::ABILITYMGR, "get missionId: %{public}d", missionId);
     resultWant.SetParam(DMS_SRC_NETWORK_ID, srcDeviceId);
@@ -1904,8 +1923,9 @@ void AbilityRecord::OnSchedulerDied(const wptr<IRemoteObject> &remote)
         CHECK_POINTER_LOG(ability, "ability nullptr");
         DelayedSingleton<AbilityManagerService>::GetInstance()->OnAbilityDied(ability);
     };
+    std::string typeName = abilityInfo_.type == AppExecFwk::AbilityType::PAGE ? "(uiability)" : "(extension)";
     handler->SubmitTask(task, AAFwk::TaskAttribute{
-        .taskName_ = "OnSchedulerDied",
+        .taskName_ = "OnSchedulerDied" + typeName,
         .timeoutMillis_ = SCHEDULER_DIED_TIMEOUT
     });
     auto resultTask = [want = GetWant(), ability = shared_from_this()]() {

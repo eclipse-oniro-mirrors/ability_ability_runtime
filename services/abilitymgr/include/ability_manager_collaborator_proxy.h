@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -166,6 +166,17 @@ public:
      * @return 0 when on success or else failed.
      */
     virtual int32_t RevokeUriPermission(uint32_t tokenId) override;
+
+    /**
+     * @brief verify uri permission
+     * @param uriVec The uri list to verify permission.
+     * @param flag Want::FLAG_AUTH_READ_URI_PERMISSION or Want::FLAG_AUTH_WRITE_URI_PERMISSION.
+     * @param tokenId the tokenId of caller application.
+     * @param checkResults The result of verify uri permission.
+     * @return 0 when on success or else failed.
+     */
+    virtual int32_t VerifyUriPermission(const std::vector<std::string> &uriVec, uint32_t flag, uint32_t tokenId,
+        std::vector<bool> &checkResults) override;
 
     virtual void NotifyMissionBindPid(int32_t missionId, int32_t pid, int32_t userId = CURRENT_USER_ID) override;
 

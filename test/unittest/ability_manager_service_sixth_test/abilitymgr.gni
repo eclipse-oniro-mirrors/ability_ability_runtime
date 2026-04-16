@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Copyright (c) 2025-2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -43,6 +43,7 @@ abilityms_files = [
   "${ability_runtime_services_path}/abilitymgr/src/extension_running_info.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/extension_record/base_extension_record.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/extension_record/extension_record_manager.cpp",
+  "${ability_runtime_services_path}/abilitymgr/src/extension_running_timeout_monitor.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/extension_record/extension_record.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/extension_record/extension_record_factory.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/foreground_app_connection_manager/foreground_app_connection_manager.cpp",

@@ -56,7 +56,7 @@ public:
     void ReportAbilityAssociatedStartInfoToRSS(
         const AbilityInfo &abilityInfo, int64_t resSchedType, int32_t callerUid, int32_t callerPid);
     void ReportEventToRSS(const int32_t uid, const std::string &bundleName, const std::string &reason,
-        const int32_t pid = -1, const int32_t callerPid = -1);
+        const int32_t pid = -1, const int32_t callerPid = -1, bool isCreateFromImage = false);
     void ReportUIExtensionProcColdStartToRss(
         int32_t extensionAbilityType, int hostPid, const std::string& hostBundleName, const std::string& bundleName,
         const std::string& abilityName, const std::string& moduleName, bool isPreloadUIExtension);
@@ -73,6 +73,8 @@ public:
     std::unordered_set<std::string> GetNWebPreloadSet() const;
     void ReportAbilityIntentExemptionInfoToRSS(int32_t callerUid, int32_t callerPid);
     void ReportSubHealtyPerfInfoToRSS();
+    void ReportForkAllEventToRSS(int32_t imagePid, int32_t orginalPid,
+        std::shared_ptr<AbilityInfo> abilityInfo, int32_t forkAllState);
 private:
     ResSchedUtil() = default;
     ~ResSchedUtil() = default;

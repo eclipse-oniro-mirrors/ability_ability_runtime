@@ -357,5 +357,19 @@ HWTEST_F(ApplicationImplTest, AppExecFwk_ApplicationImpl_SetApplication_0100, Fu
     EXPECT_EQ(applicationImpl_->application_, nullptr);
     GTEST_LOG_(INFO) << "AppExecFwk_ApplicationImpl_SetApplication_0100 end";
 }
+
+/**
+ * @tc.number: AppExecFwk_ApplicationImpl_MarkUpdated_0100
+ * @tc.name: MarkUpdated
+ * @tc.desc: Test MarkUpdated.
+ */
+HWTEST_F(ApplicationImplTest, AppExecFwk_ApplicationImpl_MarkUpdated_0100, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_ApplicationImpl_MarkUpdated_0100 start";
+    EXPECT_FALSE(applicationImpl_->IsUpdated());
+    applicationImpl_->MarkUpdated();
+    EXPECT_TRUE(applicationImpl_->IsUpdated());
+    GTEST_LOG_(INFO) << "AppExecFwk_ApplicationImpl_MarkUpdated_0100 end";
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

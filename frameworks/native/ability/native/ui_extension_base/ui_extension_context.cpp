@@ -21,6 +21,7 @@
 #include "configuration.h"
 #include "configuration_convertor.h"
 #include "connection_manager.h"
+#include "event_handler.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
 #include "string_wrapper.h"
@@ -33,6 +34,15 @@ int UIExtensionContext::ILLEGAL_REQUEST_CODE(-1);
 constexpr const char* REQUEST_COMPONENT_TERMINATE_KEY = "ohos.param.key.requestComponentTerminate";
 constexpr const char* UIEXTENSION_TARGET_TYPE_KEY = "ability.want.params.uiExtensionTargetType";
 constexpr const char* FLAG_AUTH_READ_URI_PERMISSION = "ability.want.params.uriPermissionFlag";
+constexpr int32_t TERMINATE_SELF_ANIMATION_TIMEOUT_MS = 2000;
+
+namespace {
+bool IsEmbeddableStart(int32_t screenMode)
+{
+    return screenMode == AAFwk::EMBEDDED_FULL_SCREEN_MODE ||
+        screenMode == AAFwk::EMBEDDED_HALF_SCREEN_MODE;
+}
+}
 
 ErrCode UIExtensionContext::StartAbility(const AAFwk::Want &want) const
 {
@@ -92,6 +102,110 @@ ErrCode UIExtensionContext::StartUIServiceExtension(const AAFwk::Want& want, int
     return err;
 }
 
+bool UIExtensionContext::TryGetAnimationCallback(TerminateSelfWithAnimationCallback &callback)
+{
+    std::lock_guard<std::mutex> lock(terminateSelfMutex_);
+    if (terminateSelfWithAnimationCallback_ != nullptr) {
+        callback = terminateSelfWithAnimationCallback_;
+        return true;
+    }
+    return false;
+}
+
+ErrCode UIExtensionContext::GetOrCreateEventHandler(std::shared_ptr<AppExecFwk::EventHandler> &handler)
+{
+    std::lock_guard<std::mutex> lock(terminateSelfMutex_);
+    if (eventHandler_ == nullptr) {
+        auto runner = AppExecFwk::EventRunner::Create("UIExtensionTerminateRunner");
+        if (runner == nullptr) {
+            TAG_LOGW(AAFwkTag::UI_EXT, "Failed to create EventRunner, fallback without timeout");
+            return ERR_INVALID_VALUE;
+        }
+        eventHandler_ = std::make_shared<AppExecFwk::EventHandler>(runner);
+        TAG_LOGI(AAFwkTag::UI_EXT, "Created independent EventRunner for timeout task");
+    }
+    handler = eventHandler_;
+    return ERR_OK;
+}
+
+void UIExtensionContext::ExecuteTerminationWithTimeout(const sptr<IRemoteObject> &token, int32_t terminateRequestId)
+{
+    TAG_LOGI(AAFwkTag::UI_EXT, "Animation timeout, terminateRequestId=%{public}d", terminateRequestId);
+
+    // Check if this request has already been handled, and get request in one lock
+    PendingTerminateRequest request;
+    {
+        std::lock_guard<std::mutex> lock(pendingRequestsMutex_);
+        auto it = pendingTerminateRequests_.find(terminateRequestId);
+        if (it == pendingTerminateRequests_.end()) {
+            TAG_LOGW(AAFwkTag::UI_EXT, "Request not found, already processed: %{public}d", terminateRequestId);
+            return;
+        }
+        if (it->second.handled) {
+            TAG_LOGW(AAFwkTag::UI_EXT, "Request already handled: %{public}d", terminateRequestId);
+            return;
+        }
+        // Mark as handled and remove request in one operation
+        it->second.handled = true;
+        request = std::move(it->second);
+        pendingTerminateRequests_.erase(it);
+    }
+
+    // Transfer result if needed
+    if (request.hasResult) {
+        ErrCode transferErr = TransferAbilityResultToWindow(request.resultCode, request.want);
+        if (transferErr != ERR_OK) {
+            if (request.callback) request.callback(transferErr);
+            return;
+        }
+    }
+
+    // Execute termination
+    ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->TerminateAbility(token, -1, nullptr);
+
+    // Notify callback
+    if (request.callback) {
+        request.callback(err);
+    }
+}
+
+ErrCode UIExtensionContext::HandleTerminateWithAnimation(int32_t terminateRequestId)
+{
+    TAG_LOGI(AAFwkTag::UI_EXT, "HandleTerminateWithAnimation begin, terminateRequestId=%{public}d", terminateRequestId);
+
+    // Get animation callback
+    TerminateSelfWithAnimationCallback callback;
+    if (!TryGetAnimationCallback(callback)) {
+        TAG_LOGW(AAFwkTag::UI_EXT, "No animation callback, fallback to normal terminate");
+        return TerminateSelfInner(terminateRequestId);
+    }
+
+    // Create timeout task (lambda captures terminateRequestId)
+    std::shared_ptr<AppExecFwk::EventHandler> localHandler;
+    if (GetOrCreateEventHandler(localHandler) != ERR_OK) {
+        return TerminateSelfInner(terminateRequestId);
+    }
+
+    auto timeoutTask = [weakContext = weak_from_this(), token = token_, terminateRequestId]() {
+        auto context = std::static_pointer_cast<UIExtensionContext>(weakContext.lock());
+        if (context != nullptr) {
+            context->ExecuteTerminationWithTimeout(token, terminateRequestId);
+        }
+    };
+
+    // Generate task name with requestId for proper cleanup
+    std::string taskName = "UIExtensionTerminateTimeout_" + std::to_string(terminateRequestId);
+    if (!localHandler->PostTask(timeoutTask, taskName,
+        TERMINATE_SELF_ANIMATION_TIMEOUT_MS)) {
+        return TerminateSelfInner(terminateRequestId);
+    }
+
+    // Call ArkUI callback, pass terminateRequestId
+    callback(terminateRequestId);
+    TAG_LOGI(AAFwkTag::UI_EXT, "Callback executed, waiting for ArkUI");
+    return ERR_OK;
+}
+
 ErrCode UIExtensionContext::TerminateSelf()
 {
     TAG_LOGD(AAFwkTag::UI_EXT, "begin");
@@ -101,6 +215,187 @@ ErrCode UIExtensionContext::TerminateSelf()
     }
     TAG_LOGD(AAFwkTag::UI_EXT, "TerminateSelf end");
     return err;
+}
+
+ErrCode UIExtensionContext::TransferAbilityResultToWindow(int32_t resultCode, const AAFwk::Want &want)
+{
+    auto token = GetToken();
+    ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->TransferAbilityResultForExtension(
+        token, resultCode, want);
+    if (err != ERR_OK) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "TransferAbilityResultForExtension failed, err = %{public}d", err);
+        return err;
+    }
+
+#ifdef SUPPORT_SCREEN
+    sptr<Rosen::Window> uiWindow = GetWindow();
+    if (!uiWindow) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null uiWindow");
+        return AAFwk::INVALID_PARAMETERS_ERR;
+    }
+    auto ret = uiWindow->TransferAbilityResult(resultCode, want);
+    if (ret != Rosen::WMError::WM_OK) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "TransferAbilityResult to window failed, ret = %{public}d", ret);
+        return AAFwk::INVALID_PARAMETERS_ERR;
+    }
+#endif // SUPPORT_SCREEN
+
+    return ERR_OK;
+}
+
+void UIExtensionContext::CleanupAnimationResources(int32_t terminateRequestId)
+{
+    // Generate task name with requestId for proper cleanup
+    std::string taskName = "UIExtensionTerminateTimeout_" + std::to_string(terminateRequestId);
+    std::lock_guard<std::mutex> lock(terminateSelfMutex_);
+    if (eventHandler_ != nullptr) {
+        eventHandler_->RemoveTask(taskName);
+    }
+    // Note: terminateSelfWithAnimationCallback_ is retained for reuse (allows repeated calls)
+}
+
+int32_t UIExtensionContext::GenerateTerminateRequestId()
+{
+    return ++curTerminateRequestId_;
+}
+
+ErrCode UIExtensionContext::TerminateSelfWithAnimation(TerminateSelfResultCallback callback)
+{
+    TAG_LOGD(AAFwkTag::UI_EXT, "TerminateSelfWithAnimation (embeddable)");
+
+    // Generate terminateRequestId and register request
+    int32_t terminateRequestId = GenerateTerminateRequestId();
+    TAG_LOGI(AAFwkTag::UI_EXT, "Generated terminateRequestId=%{public}d", terminateRequestId);
+
+    {
+        std::lock_guard<std::mutex> lock(pendingRequestsMutex_);
+        pendingTerminateRequests_[terminateRequestId] = {
+            .resultCode = 0,
+            .want = {},
+            .callback = std::move(callback),
+            .hasResult = false
+        };
+    }
+
+    ErrCode err = HandleTerminateWithAnimation(terminateRequestId);
+    if (err != ERR_OK) {
+        // Cleanup on failure
+        std::lock_guard<std::mutex> lock(pendingRequestsMutex_);
+        auto it = pendingTerminateRequests_.find(terminateRequestId);
+        if (it != pendingTerminateRequests_.end() && it->second.callback) {
+            it->second.callback(err);
+        }
+        pendingTerminateRequests_.erase(terminateRequestId);
+    }
+
+    return err;  // Return animation trigger result, actual result passed through callback
+}
+
+void UIExtensionContext::TerminateSelfWithResultAndAnimation(int32_t resultCode, const AAFwk::Want &want,
+    TerminateSelfResultCallback callback)
+{
+    TAG_LOGD(AAFwkTag::UI_EXT, "TerminateSelfWithResultAndAnimation (embeddable)");
+
+    int32_t terminateRequestId = GenerateTerminateRequestId();
+    TAG_LOGI(AAFwkTag::UI_EXT, "Generated terminateRequestId=%{public}d", terminateRequestId);
+
+    {
+        std::lock_guard<std::mutex> lock(pendingRequestsMutex_);
+        pendingTerminateRequests_[terminateRequestId] = {
+            .resultCode = resultCode,
+            .want = want,
+            .callback = std::move(callback),
+            .hasResult = true
+        };
+    }
+
+    ErrCode err = HandleTerminateWithAnimation(terminateRequestId);
+    if (err != ERR_OK) {
+        // Cleanup on failure
+        std::lock_guard<std::mutex> lock(pendingRequestsMutex_);
+        auto it = pendingTerminateRequests_.find(terminateRequestId);
+        if (it != pendingTerminateRequests_.end() && it->second.callback) {
+            it->second.callback(err);
+        }
+        pendingTerminateRequests_.erase(terminateRequestId);
+    }
+}
+
+ErrCode UIExtensionContext::TerminateSelfInner(int32_t terminateRequestId)
+{
+    TAG_LOGD(AAFwkTag::UI_EXT, "TerminateSelfInner (embeddable), terminateRequestId=%{public}d", terminateRequestId);
+
+    // Check if this request has already been handled, and get request in one lock
+    PendingTerminateRequest request;
+    {
+        std::lock_guard<std::mutex> lock(pendingRequestsMutex_);
+        auto it = pendingTerminateRequests_.find(terminateRequestId);
+        if (it == pendingTerminateRequests_.end()) {
+            TAG_LOGW(AAFwkTag::UI_EXT, "Request not found, may already be processed: %{public}d", terminateRequestId);
+            return ERR_OK;
+        }
+        if (it->second.handled) {
+            TAG_LOGI(AAFwkTag::UI_EXT, "Request already handled (likely by timeout): %{public}d", terminateRequestId);
+            return ERR_OK;
+        }
+        // Mark as handled and remove request in one operation
+        it->second.handled = true;
+        request = std::move(it->second);
+        pendingTerminateRequests_.erase(it);
+        TAG_LOGI(AAFwkTag::UI_EXT, "Found request: hasResult=%{public}d", request.hasResult);
+    }
+
+    // Cleanup animation resources (uses separate lock: terminateSelfMutex_)
+    CleanupAnimationResources(terminateRequestId);
+
+    // Transfer result if needed
+    if (request.hasResult) {
+        ErrCode transferErr = TransferAbilityResultToWindow(request.resultCode, request.want);
+        if (transferErr != ERR_OK) {
+            TAG_LOGE(AAFwkTag::UI_EXT, "Transfer failed, err=%{public}d", transferErr);
+            if (request.callback) request.callback(transferErr);
+            return transferErr;
+        }
+    }
+
+    // Execute termination
+    ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->TerminateAbility(token_, -1, nullptr);
+
+    // Notify callback: pass actual termination result
+    if (request.callback) {
+        request.callback(err);
+    }
+
+    TAG_LOGD(AAFwkTag::UI_EXT, "TerminateSelfInner end, err=%{public}d", err);
+    return err;
+}
+
+ErrCode UIExtensionContext::RegisterTerminateSelfWithAnimation(
+    TerminateSelfWithAnimationCallback &&callback)
+{
+    TAG_LOGD(AAFwkTag::UI_EXT, "RegisterTerminateSelfWithAnimation called");
+
+    if (!IsEmbeddableStart(screenMode_)) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "Not embeddable mode, registration not allowed");
+        return ERR_INVALID_OPERATION;
+    }
+
+    if (callback == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "Callback is null");
+        return ERR_INVALID_VALUE;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(terminateSelfMutex_);
+        if (terminateSelfWithAnimationCallback_ != nullptr) {
+            TAG_LOGE(AAFwkTag::UI_EXT, "Callback already registered, duplicate registration not allowed");
+            return ERR_INVALID_OPERATION;
+        }
+
+        terminateSelfWithAnimationCallback_ = std::move(callback);
+    }
+    TAG_LOGD(AAFwkTag::UI_EXT, "RegisterTerminateSelfWithAnimation success");
+    return ERR_OK;
 }
 
 ErrCode UIExtensionContext::ConnectAbility(
@@ -390,6 +685,34 @@ void UIExtensionContext::SetAbilityConfiguration(const AppExecFwk::Configuration
         abilityConfiguration_->Merge(changeKeyV, config);
     }
     TAG_LOGI(AAFwkTag::CONTEXT, "abilityConfiguration: %{public}s", abilityConfiguration_->GetName().c_str());
+
+    auto fullConfig = GetConfiguration();
+    if (fullConfig == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "fullConfig is null");
+        return ;
+    }
+    changeKeyV.clear();
+    fullConfig->CompareDifferent(changeKeyV, config);
+    if (!changeKeyV.empty()) {
+        fullConfig->Merge(changeKeyV, config);
+    }
+}
+
+void UIExtensionContext::SetAbilityFontSize(double fontSize)
+{
+    TAG_LOGI(AAFwkTag::CONTEXT, "SetAbilityFontSize size: %{public}lf", fontSize);
+    if (fontSize < 0.0) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "fontSize error");
+        return;
+    }
+    AppExecFwk::Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::SYSTEM_FONT_SIZE_SCALE, std::to_string(fontSize));
+
+    if (!abilityConfigUpdateCallback_) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "abilityConfigUpdateCallback_ nullptr");
+        return;
+    }
+    abilityConfigUpdateCallback_(config);
 }
 
 void UIExtensionContext::SetAbilityColorMode(int32_t colorMode)

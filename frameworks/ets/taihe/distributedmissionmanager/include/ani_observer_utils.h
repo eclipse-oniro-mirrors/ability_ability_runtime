@@ -51,9 +51,7 @@ public:
     void DeleteCallback(::taihe::optional_view<JsOnCallbackType> optCallback);
     bool IsCallbackListEmpty();
 
-    void OnCallback(const uint32_t continueState, const std::string &srcDeviceId,
-        const std::string &bundleName, const std::string &continueType = "",
-        const std::string &srcBundleName = "") override;
+    void OnCallback(const AAFwk::OnCallbackInfo &info) override;
     void OnCallbackInMainThread(const ::ohos::distributedmissionmanager::ContinueCallbackInfo& info);
 
 protected:

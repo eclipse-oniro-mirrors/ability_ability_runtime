@@ -16,6 +16,7 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 group("agent_runtime_napi_packages") {
   deps = [
+    "${agent_runtime_framework_path}/frameworks/js/napi/agent_constant:agentconstant_napi",
     "${agent_runtime_framework_path}/frameworks/js/napi/agent_extension_ability:agentextensionability",
     "${agent_runtime_framework_path}/frameworks/js/napi/agent_extension_ability:js_agent_extension",
     "${agent_runtime_framework_path}/frameworks/js/napi/agent_extension_context:agentextensioncontext_napi",

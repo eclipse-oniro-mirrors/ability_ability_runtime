@@ -23,12 +23,23 @@
 
 #include "ierror_observer.h"
 #include "nocopyable.h"
+#include "fault_data.h"
 
 namespace OHOS {
 namespace AppExecFwk {
+struct RegisterResourceParams {
+    uint64_t appTelemetryLeakType { 0 };
+    int thresholdPss { INT_MAX };
+    int thresholdGpu { INT_MAX };
+    int thresholdFd { INT_MAX };
+    int thresholdRAT { INT_MAX };  // rss_ark_ts
+    int thresholdRNH { INT_MAX };  // rss_native_heap
+};
 typedef void (*EtsErrorCallback)(const AppExecFwk::ErrorObject &errorObj);
 class ApplicationDataManager {
 using LeakObserverFunction = std::function<bool(const LeakObject &obj)>;
+using HasOnErrorCallback = std::function<bool()>;
+using ResourceOverlimitCB = std::function<void(const AppTelemetryObject& atObj)>;
 public:
     struct ExceptionParams {
         napi_env env;
@@ -52,22 +63,30 @@ public:
     void SetIsUncatchable(bool isUncatchable);
     bool GetIsUncatchable();
     static bool NotifyUncaughtException(const ExceptionParams &params, const AppExecFwk::ErrorObject &errorObj);
-    bool NotifyLeakObject(const LeakObject &leakObj);
     void SetLeakObserver(LeakObserverFunction leakCallback);
-
+    bool RegisterResourceObserver(RegisterResourceParams params, ResourceOverlimitCB cb);
     void SetErrorHandlerCallback(EtsErrorCallback errorCallback);
     bool NotifyETSErrorObject(const AppExecFwk::ErrorObject &errorObj);
-
+    void RegisterHasOnErrorCallback(HasOnErrorCallback hasOnErrorCallback);
+    bool GetHasOnErrorCallback();
+    void NotifyAppFault(const FaultData &faultData);
 private:
     ApplicationDataManager();
     ~ApplicationDataManager();
     static std::string GetFuncNameFromError(napi_env env, napi_value error);
     DISALLOW_COPY_AND_MOVE(ApplicationDataManager);
+    bool WriteSandBoxXattr(RegisterResourceParams params);
+    void NotifyAppTelemetry(AppTelemetryLeakType atLeakType);
+    bool NotifyLeakObject(const LeakObject &leakObj);
     std::shared_ptr<IErrorObserver> errorObserver_;
     std::atomic_bool isUncatchable_;
     LeakObserverFunction leakObserver_ = nullptr;
     std::mutex leakObserverMutex_;
-    EtsErrorCallback errorCallback_;
+    std::mutex hasOnErrorCallbackMutex_;
+    EtsErrorCallback errorCallback_ = nullptr;
+    HasOnErrorCallback hasOnErrorCallback_ = nullptr;
+    ResourceOverlimitCB resourceOverlimitCB_ = nullptr;
+    std::mutex resourceMutex_;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

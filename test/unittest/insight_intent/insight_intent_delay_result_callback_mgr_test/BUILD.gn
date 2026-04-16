@@ -48,6 +48,7 @@ ohos_unittest("insight_intent_delay_result_callback_mgr_test") {
 
   external_deps = [
     "ability_base:base",
+    "ability_base:extractortool",
     "ability_base:want",
     "ability_base:zuri",
     "ability_runtime:ability_deps_wrapper",

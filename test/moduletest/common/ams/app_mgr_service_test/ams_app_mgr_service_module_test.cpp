@@ -60,7 +60,7 @@ public:
     void ScheduleLaunchApplication(const AppLaunchData&, const Configuration&) override
     {}
     void ScheduleLaunchAbility(const AbilityInfo&, const sptr<IRemoteObject>&,
-        const std::shared_ptr<AAFwk::Want>&, int32_t) override
+        const std::shared_ptr<AAFwk::Want>&, int32_t, std::shared_ptr<AppUpdateInfo> updateInfo = nullptr) override
     {}
     void ScheduleCleanAbility(const sptr<IRemoteObject>&, bool isCacheProcess) override
     {}
@@ -117,6 +117,9 @@ public:
     void ScheduleCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info) override
     {}
 
+    void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpresult) override
+    {}
+    
     int32_t ScheduleDumpIpcStart(std::string& result) override
     {
         return 0;

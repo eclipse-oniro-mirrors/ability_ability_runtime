@@ -42,6 +42,7 @@ config("abilityms_config") {
     "include/foreground_app_connection_manager",
     "include/insight_intent",
     "include/mission/",
+    "include/modular_object/",
     "include/rdb/",
     "include/resident_process/",
     "include/keep_alive/",
@@ -119,6 +120,7 @@ ohos_shared_library("abilityms") {
   sanitize = {
     cfi = true
     cfi_cross_dso = true
+    cfi_policy = "adaptive"
     debug = false
   }
   branch_protector_ret = "pac_ret"
@@ -137,6 +139,7 @@ ohos_shared_library("abilityms") {
     "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
   ]
   deps = [
+    ":modular_object",
     ":wantagent_manager",
     "${ability_runtime_innerkits_path}/ability_manager:ability_connect_callback_stub",
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
@@ -314,6 +317,7 @@ ohos_static_library("abilityms_static") {
   sanitize = {
     cfi = true
     cfi_cross_dso = true
+    cfi_policy = "adaptive"
     debug = false
   }
   branch_protector_ret = "pac_ret"
@@ -553,6 +557,52 @@ ohos_shared_library("wantagent_manager") {
   part_name = "ability_runtime"
 }
 
+ohos_shared_library("modular_object") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  branch_protector_ret = "pac_ret"
+  configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
+  include_dirs = [
+    "${ability_runtime_innerkits_path}/ability_manager/include",
+    "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
+    "${ability_runtime_services_path}/abilitymgr/include/modular_object",
+    "${ability_runtime_services_path}/abilitymgr/include/utils",
+    "${ability_runtime_services_path}/abilitymgr/include",
+    "${ability_runtime_services_path}/common/include",
+  ]
+
+  sources = [
+    "${ability_runtime_services_path}/abilitymgr/src/modular_object/modular_object_event_mgr.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/modular_object/modular_object_event_receiver.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/modular_object/modular_object_manager.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/modular_object/modular_object_rdb_data_mgr.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/modular_object/modular_object_rdb_storage_mgr.cpp",
+  ]
+  deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
+    "${ability_runtime_native_path}/appkit:appkit_manager_helper",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "ffrt:libffrt",
+    "hilog:libhilog",
+    "hitrace:hitrace_meter",
+    "ipc:ipc_core",
+    "samgr:samgr_proxy",
+  ]
+
+  innerapi_tags = [ "platformsdk_indirect" ]
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
 ohos_prebuilt_etc("ams_service_config.json") {
   source = "resource/ams_service_config.json"
   subsystem_name = "ability"
@@ -591,6 +641,7 @@ ohos_shared_library("mission_list") {
     cfi = true
     cfi_cross_dso = true
     cfi_vcall_icall_only = true
+    cfi_policy = "adaptive"
     debug = false
   }
   branch_protector_ret = "pac_ret"
@@ -642,6 +693,7 @@ ohos_shared_library("mission_list") {
     "src/mission/mission_list.cpp",
     "src/mission/mission_list_manager.cpp",
     "src/task_data_persistence_mgr.cpp",
+    "src/utils/dms_util.cpp",
   ]
 
   deps = [
@@ -752,5 +804,6 @@ group("ams_service_config") {
     ":deeplink_reserve_config.json",
     ":start_ability_without_caller_token.json",
     ":uiextension_picker_config.json",
+    ":ams_extension_config.json",
   ]
 }

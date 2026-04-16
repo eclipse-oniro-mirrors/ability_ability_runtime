@@ -31,6 +31,22 @@ ohos_prebuilt_etc("agent_runtime_agent_manager_abc_etc") {
   deps = [ ":agent_runtime_agent_manager_abc" ]
 }
 
+generate_static_abc("agent_runtime_agent_constant_abc") {
+  base_url = "./"
+  files = [ "./@ohos.app.agent.agentConstant.ets" ]
+
+  is_boot_abc = "True"
+  device_dst_file = "/system/framework/agent_runtime_agent_constant_abc.abc"
+}
+
+ohos_prebuilt_etc("agent_runtime_agent_constant_abc_etc") {
+  source = "$target_out_dir/agent_runtime_agent_constant_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":agent_runtime_agent_constant_abc" ]
+}
+
 generate_static_abc("agent_runtime_agent_extension_abc") {
   base_url = "./"
   files = [ "./@ohos.app.agent.AgentExtensionAbility.ets" ]
@@ -165,9 +181,10 @@ ohos_prebuilt_etc("agent_runtime_agent_extension_context_abc_etc") {
 group("agent_runtime_ets_packages") {
   deps = [
     ":agent_runtime_agent_card_abc_etc",
+    ":agent_runtime_agent_constant_abc_etc",
     ":agent_runtime_agent_extension_abc_etc",
-    ":agent_runtime_agent_extension_context_abc_etc",
     ":agent_runtime_agent_extension_connect_callback_abc_etc",
+    ":agent_runtime_agent_extension_context_abc_etc",
     ":agent_runtime_agent_host_proxy_abc_etc",
     ":agent_runtime_agent_manager_abc_etc",
     ":agent_runtime_agent_proxy_abc_etc",

@@ -111,6 +111,8 @@ private:
     void Timer();
     void ReportEvent();
     void SetMainThreadSample();
+    float getRatioValue();
+    bool IsNumeric(const std::string &str);
     void SetReportLifeCycleAsAppfreeze();
 #ifdef ABILITY_RUNTIME_HITRACE_ENABLE
     void SetHiTraceChainId();

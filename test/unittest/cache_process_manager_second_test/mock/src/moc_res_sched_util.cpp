@@ -65,7 +65,7 @@ void ResSchedUtil::ReportAbilityIntentExemptionInfoToRSS(int32_t callerUid, int3
 }
 
 void ResSchedUtil::ReportEventToRSS(const int32_t uid, const std::string &bundleName, const std::string &reason,
-    const int32_t pid, const int32_t callerPid)
+    const int32_t pid, const int32_t callerPid, bool isCreateFormImage)
 {
 }
 

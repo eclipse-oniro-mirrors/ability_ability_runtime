@@ -427,6 +427,9 @@ enum class AbilityManagerInterfaceCode {
 
     START_UI_ABILITIES_IN_SPLIT_WINDOW_MODE = 1074,
 
+    // ipc id for get want from proxy
+    GET_PENDING_REQUEST_WANT_FROM_PROXY = 1075,
+
     // ipc id for continue ability(1101)
     START_CONTINUATION = 1101,
 
@@ -571,6 +574,10 @@ enum class AbilityManagerInterfaceCode {
     MANUAL_START_AUTO_STARTUP_APPS = 6107,
     // ipc id for query the caller's token id for anco
     QUERY_CALLER_TOKEN_ID_FOR_ANCO = 6108,
+    // ipc id for launch game customized
+    LAUNCH_GAME_CUSTOMIZED = 6109,
+    // ipc id for set game prelaunch complete time
+    SET_GAME_PRELAUNCH_COMPLETE_TIME = 6110,
 
     // ipc id for on auto starup on
     ON_AUTO_STARTUP_ON = 6111,
@@ -718,6 +725,15 @@ enum class AbilityManagerInterfaceCode {
 
     // start ability by oe extension
     START_ABILITY_BY_OE_EXT = 6161,
+
+    // query self modular object Extension infos
+    QUERY_SELF_MODULAR_OBJECT_EXTENSION_INFOS = 6162,
+
+    // cancel game prelaunch
+    CANCEL_GAME_PRELAUNCH = 6163,
+
+    // complete game prelaunch
+    COMPLETE_GAME_PRELAUNCH = 6164,
 };
 }  // namespace AAFwk
 }  // namespace OHOS

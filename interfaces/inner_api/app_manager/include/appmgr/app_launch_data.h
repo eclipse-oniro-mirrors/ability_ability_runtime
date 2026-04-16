@@ -51,6 +51,15 @@ struct StartupTaskData : public Parcelable {
     static StartupTaskData *Unmarshalling(Parcel &parcel);
 };
 
+struct AppUpdateInfo : public Parcelable {
+    int32_t appRecordId = -1;
+    std::string appRunningUniqueId;
+
+    bool ReadFromParcel(Parcel &parcel);
+    virtual bool Marshalling(Parcel &parcel) const override;
+    static AppUpdateInfo *Unmarshalling(Parcel &parcel);
+};
+
 class AppLaunchData : public Parcelable {
 public:
     /**
@@ -252,6 +261,16 @@ public:
         return startupTaskData_;
     }
 
+    void SetImageProcessType(int32_t imageProcessType)
+    {
+        imageProcessType_ = imageProcessType;
+    }
+
+    int32_t GetImageProcessType() const
+    {
+        return imageProcessType_;
+    }
+
     /**
      * @brief read this Sequenceable object from a Parcel.
      *
@@ -361,6 +380,7 @@ private:
     int32_t recordId_ = 0;
     int32_t uId_ = 0;
     int32_t appIndex_ = 0;
+    int32_t imageProcessType_ = 0;
     std::shared_ptr<UserTestRecord> userTestRecord_ = nullptr;
     ApplicationInfo applicationInfo_;
     Profile profile_;

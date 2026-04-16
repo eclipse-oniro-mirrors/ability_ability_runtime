@@ -25,6 +25,10 @@ bool IsRefUndefined(ani_env *env, ani_ref ref);
 bool IsNull(ani_env *env, ani_ref ref);
 ani_env* GetAniEnv(ani_vm *vm);
 ani_vm* GetAniVm(ani_env *env);
+ani_object CreateErrorObject(ani_env *env, const std::string &name,
+    const std::string &message, const std::string &stack);
+bool SetPropertyByName(ani_env *env, ani_object &error, const std::string &value,
+    const char *name);
 } // namespace AbilityRuntime
 } // namespace OHOS
 #endif  // OHOS_ABILITY_RUNTIME_ERROR_MANAGER_UTIL_H

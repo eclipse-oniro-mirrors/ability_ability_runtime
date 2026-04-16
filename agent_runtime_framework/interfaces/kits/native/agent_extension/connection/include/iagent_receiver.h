@@ -50,6 +50,14 @@ public:
      */
     virtual int32_t Authorize(const sptr<IRemoteObject> &connectorProxy, const std::string &data) = 0;
 
+    /**
+     * Notify the connected agent extension that a LOW_CODE agent has been invoked.
+     *
+     * @param agentId The invoked LOW_CODE agent id.
+     * @return Returns 0 on success, error code otherwise.
+     */
+    virtual int32_t AgentInvoked(const std::string &agentId) = 0;
+
     enum {
         /**
          * Command code for SendData.
@@ -60,6 +68,11 @@ public:
          * Command code for Authorize.
          */
         AUTHORIZE = 2,
+
+        /**
+         * Command code for AgentInvoked.
+         */
+        AGENT_INVOKED = 3,
     };
 };
 

@@ -21,6 +21,7 @@ ohos_unittest("disposed_rule_interceptor_test") {
   cflags_cc = []
   include_dirs = [
     "mock/include",
+    "${ability_runtime_path}/interfaces/inner_api/ability_manager/include",
     "${ability_runtime_path}/services/abilitymgr/include",
     "${ability_runtime_path}/services/common/include",
     "${ability_runtime_services_path}/abilitymgr/include/utils",

@@ -19,6 +19,7 @@
 #include <mutex>
 #include "ability_connect_callback_interface.h"
 #include "base_extension_record.h"
+#include "caller_info.h"
 #include "extension_config.h"
 #include "nocopyable.h"
 
@@ -162,7 +163,7 @@ public:
 
     void Dump(std::vector<std::string> &info) const;
 
-    void AttachCallerInfo();
+    void AttachCallerInfo(std::shared_ptr<IndirectCallerInfo> indirectCallerInfo = nullptr);
     int32_t GetCallerUid() const;
     int32_t GetCallerPid() const;
     uint32_t GetCallerTokenId() const;

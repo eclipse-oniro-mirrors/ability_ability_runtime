@@ -223,7 +223,7 @@ void DataObsMgrInner::RemoveObs(sptr<IRemoteObject> dataObserver)
         auto &obsList = iter->second;
         for (auto it = obsList.begin(); it != obsList.end(); it++) {
             if ((*it).observer_->AsObject() == dataObserver) {
-                TAG_LOGD(AAFwkTag::DBOBSMGR, "erase");
+                TAG_LOGI(AAFwkTag::DBOBSMGR, "rm p:%{public}d", (*it).pid_);
                 obsList.erase(it);
                 break;
             }

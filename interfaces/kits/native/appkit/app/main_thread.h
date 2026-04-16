@@ -232,6 +232,15 @@ public:
 
     /**
      *
+     * @brief triggerGC and dump application's memory info.
+     *
+     * @param info, pid, tid, needGc, needSnapshot.
+     * @param dumpResult The dump result string
+     */
+    void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult) override;
+
+    /**
+     *
      * @brief Low the memory which used by application.
      *
      */
@@ -263,7 +272,8 @@ public:
     void ScheduleAbilityStage(const HapModuleInfo &abilityStage) override;
 
     void ScheduleLaunchAbility(const AbilityInfo &info, const sptr<IRemoteObject> &token,
-        const std::shared_ptr<AAFwk::Want> &want, int32_t abilityRecordId) override;
+        const std::shared_ptr<AAFwk::Want> &want, int32_t abilityRecordId,
+        std::shared_ptr<AppUpdateInfo> updateInfo) override;
 
     /**
      *
@@ -430,6 +440,8 @@ private:
 
     void HandleCjHeapMemory(const OHOS::AppExecFwk::CjHeapDumpInfo &info);
 
+    void HandleMem(const OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult);
+
     void HandleSchedulePrepareTerminate(const std::string &moduleName);
 
     void PreloadModule(const AppExecFwk::HapModuleInfo &entryHapModuleInfo,
@@ -507,7 +519,8 @@ private:
      * @param abilityRecord The abilityRecord which belongs to the ability launched.
      *
      */
-    void HandleLaunchAbility(const std::shared_ptr<AbilityLocalRecord> &abilityRecord);
+    void HandleLaunchAbility(const std::shared_ptr<AbilityLocalRecord> &abilityRecord,
+        std::shared_ptr<AppUpdateInfo> updateInfo);
 
     /**
      *
@@ -670,6 +683,10 @@ private:
      * @param runtime runtime the ability runtime
      */
     void UpdateRuntimeModuleChecker(const std::unique_ptr<AbilityRuntime::Runtime> &runtime);
+
+    void UpdateWorkProcessInfo(std::shared_ptr<AppUpdateInfo> updateInfo);
+
+    void ScheduleUpdateWorkProcessInfo(std::shared_ptr<AppUpdateInfo> updateInfo) override;
 
     static void HandleDumpHeapPrepare();
     static void HandleDumpHeap(bool isPrivate);
@@ -836,10 +853,13 @@ private:
         AppLibPathMap &appLibPaths);
     void SetRuntimeLang(ApplicationInfo &appInfo, AbilityRuntime::Runtime::Options &options);
     bool IsEtsAPP(const ApplicationInfo &appInfo);
+    void RegisterHybridException(const std::unique_ptr<AbilityRuntime::Runtime> &runtime,
+        const ApplicationInfo &appInfo, const std::string &hapPath, const UncatchableTaskInfo &uncatchableTaskInfo);
     void SetJsIdleCallback(const std::weak_ptr<OHOSApplication> &wpApplication,
         const std::unique_ptr<AbilityRuntime::Runtime> &runtime);
     void PreloadAppStartup(const BundleInfo &bundleInfo, const AppLaunchData &appLaunchData) const;
     void RunNativeStartupTask(const BundleInfo &bundleInfo, const AppLaunchData &appLaunchData);
+    void LoadExtStartupTasks();
     bool GetTestRunnerTypeAndPath(const std::string bundleName, const std::string moduleName,
         AppExecFwk::ModuleTestRunner &tsTestRunner);
     bool CheckAndUpdateRuntime(const std::shared_ptr<AbilityLocalRecord> &abilityRecord);

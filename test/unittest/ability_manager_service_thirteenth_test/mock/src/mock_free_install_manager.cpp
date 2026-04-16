@@ -14,6 +14,7 @@
  */
 
 #include "mock_free_install_manager.h"
+
 #include "mock_my_status.h"
 
 namespace OHOS {
@@ -104,9 +105,14 @@ int FreeInstallManager::FreeInstallAbilityFromRemote(const Want &want, sptr<IRem
 }
 
 int FreeInstallManager::ConnectFreeInstall(const Want &want, int32_t userId,
-    sptr<IRemoteObject> callerToken, const std::string &localDeviceId)
+    sptr<IRemoteObject> callerToken, const std::string &localDeviceId,
+    AppExecFwk::ExtensionAbilityType extensionType)
 {
-    return ERR_OK;
+    auto &status = MyStatus::GetInstance();
+    status.fimConnectFreeInstallCalled_ = true;
+    status.fimConnectExtensionType_ = static_cast<int32_t>(extensionType);
+    status.fimConnectLocalDeviceId_ = localDeviceId;
+    return status.fimConnectFreeInstall_;
 }
 
 void FreeInstallManager::OnInstallFinished(int32_t recordId, int resultCode, const Want &want,

@@ -24,10 +24,16 @@ namespace OHOS {
 namespace AgentManagerEts {
 ani_object CreateEtsAgentProvider(ani_env *env, const AgentRuntime::AgentProvider &provider);
 ani_object CreateEtsAgentCapabilities(ani_env *env, const AgentRuntime::AgentCapabilities &capabilities);
+ani_object CreateEtsAgentAppInfo(ani_env *env, const AgentRuntime::AgentAppInfo &appInfo);
 ani_object CreateEtsAgentSkill(ani_env *env, const AgentRuntime::AgentSkill &skill);
 ani_object CreateEtsAgentSkillArray(ani_env *env, const std::vector<std::shared_ptr<AgentRuntime::AgentSkill>> &skills);
 ani_object CreateEtsAgentCard(ani_env *env, const AgentRuntime::AgentCard &card);
 ani_object CreateEtsAgentCardArray(ani_env *env, const std::vector<AgentRuntime::AgentCard> &cards);
+bool ParseEtsAgentProvider(ani_env *env, ani_object object, AgentRuntime::AgentProvider &provider);
+bool ParseEtsAgentCapabilities(ani_env *env, ani_object object, AgentRuntime::AgentCapabilities &capabilities);
+bool ParseEtsAgentAppInfo(ani_env *env, ani_object object, AgentRuntime::AgentAppInfo &appInfo);
+bool ParseEtsAgentSkill(ani_env *env, ani_object object, AgentRuntime::AgentSkill &skill);
+bool ParseEtsAgentCard(ani_env *env, ani_object object, AgentRuntime::AgentCard &card);
 } // namespace AgentManagerEts
 } // namespace OHOS
 #endif // OHOS_AGENT_RUNTIME_ETS_AGENT_MANAGER_UTILS_H

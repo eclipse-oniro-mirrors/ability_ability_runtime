@@ -116,6 +116,10 @@ public:
      */
     int GetRecordId() const;
 
+    bool IsUpdated() const;
+
+    void MarkUpdated();
+
     /**
      * @brief System determines to trim the memory.
      *
@@ -144,6 +148,7 @@ private:
     int curState_;
     int recordId_;
     std::shared_ptr<OHOSApplication> application_ = nullptr;
+    bool isUpdated_ = false;
 
     DISALLOW_COPY_AND_MOVE(ApplicationImpl);
 };

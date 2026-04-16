@@ -406,6 +406,97 @@ HWTEST_F(AmsMgrStubTest, HandleCheckPreloadAppRecordExist_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: HandleStartSpecifiedAbility_0100
+ * @tc.desc: HandleStartSpecifiedAbility forwards requestId, customProcess and isWindowStagePreload.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrStubTest, HandleStartSpecifiedAbility_0100, TestSize.Level1)
+{
+    EXPECT_NE(mockAmsMgrScheduler_, nullptr);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_ASYNC);
+    WriteInterfaceToken(data);
+
+    AAFwk::Want want;
+    AbilityInfo abilityInfo;
+    abilityInfo.bundleName = "com.example.bundle";
+    abilityInfo.name = "EntryAbility";
+    int32_t requestId = 1001;
+    std::string customProcess = "com.example.process";
+    bool isWindowStagePreload = true;
+
+    data.WriteParcelable(&want);
+    data.WriteParcelable(&abilityInfo);
+    data.WriteInt32(requestId);
+    data.WriteString(customProcess);
+    data.WriteBool(isWindowStagePreload);
+
+    EXPECT_CALL(*mockAmsMgrScheduler_, StartSpecifiedAbility(_, _, requestId, customProcess, true)).Times(1);
+    auto result = mockAmsMgrScheduler_->OnRemoteRequest(
+        static_cast<uint32_t>(IAmsMgr::Message::START_SPECIFIED_ABILITY), data, reply, option);
+    EXPECT_EQ(result, NO_ERROR);
+}
+
+/**
+ * @tc.name: HandleStartSpecifiedAbility_0200
+ * @tc.desc: HandleStartSpecifiedAbility returns invalid value when want is null.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrStubTest, HandleStartSpecifiedAbility_0200, TestSize.Level1)
+{
+    EXPECT_NE(mockAmsMgrScheduler_, nullptr);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_ASYNC);
+    WriteInterfaceToken(data);
+
+    AbilityInfo abilityInfo;
+    abilityInfo.bundleName = "com.example.bundle";
+    abilityInfo.name = "EntryAbility";
+    int32_t requestId = 1001;
+    std::string customProcess = "com.example.process";
+
+    data.WriteInt32(requestId);
+    data.WriteString(customProcess);
+    data.WriteBool(true);
+    data.WriteParcelable(&abilityInfo);
+
+    EXPECT_CALL(*mockAmsMgrScheduler_, StartSpecifiedAbility(_, _, _, _, _)).Times(0);
+    auto result = mockAmsMgrScheduler_->OnRemoteRequest(
+        static_cast<uint32_t>(IAmsMgr::Message::START_SPECIFIED_ABILITY), data, reply, option);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: HandleStartSpecifiedAbility_0300
+ * @tc.desc: HandleStartSpecifiedAbility returns invalid value when abilityInfo is null.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrStubTest, HandleStartSpecifiedAbility_0300, TestSize.Level1)
+{
+    EXPECT_NE(mockAmsMgrScheduler_, nullptr);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_ASYNC);
+    WriteInterfaceToken(data);
+
+    AAFwk::Want want;
+    int32_t requestId = 1001;
+    std::string customProcess = "com.example.process";
+
+    data.WriteParcelable(&want);
+    data.WriteInt32(requestId);
+    data.WriteString(customProcess);
+    data.WriteBool(true);
+
+    EXPECT_CALL(*mockAmsMgrScheduler_, StartSpecifiedAbility(_, _, _, _, _)).Times(0);
+    auto result = mockAmsMgrScheduler_->OnRemoteRequest(
+        static_cast<uint32_t>(IAmsMgr::Message::START_SPECIFIED_ABILITY), data, reply, option);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+}
+
+/**
  * @tc.name: HandleCheckPreloadAppRecordExist_0200
  * @tc.desc: HandleCheckPreloadAppRecordExist.
  * @tc.type: FUNC
@@ -433,6 +524,125 @@ HWTEST_F(AmsMgrStubTest, HandleCheckPreloadAppRecordExist_0200, TestSize.Level1)
         static_cast<uint32_t>(IAmsMgr::Message::CHECK_PRELOAD_APP_RECORD_EXIST), data, reply, option);
     EXPECT_EQ(result, NO_ERROR);
     TAG_LOGI(AAFwkTag::TEST, "HandleCheckPreloadAppRecordExist_0200 end.");
+}
+
+/**
+ * @tc.name: HandleSetGameSAPrelaunch_001
+ * @tc.desc: HandleSetGameSAPrelaunch with valid token and isGameSAPrelaunch true.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrStubTest, HandleSetGameSAPrelaunch_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleSetGameSAPrelaunch_001 start.");
+    EXPECT_NE(mockAmsMgrScheduler_, nullptr);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    WriteInterfaceToken(data);
+
+    sptr<IRemoteObject> token = new (std::nothrow) MockAbilityToken();
+    EXPECT_NE(token, nullptr);
+    data.WriteRemoteObject(token);
+
+    bool isGameSAPrelaunch = true;
+    data.WriteBool(isGameSAPrelaunch);
+
+    EXPECT_CALL(*mockAmsMgrScheduler_, SetGameSAPrelaunch(_, _))
+        .Times(1)
+        .WillOnce(Return(NO_ERROR));
+    auto result = mockAmsMgrScheduler_->OnRemoteRequest(
+        static_cast<uint32_t>(IAmsMgr::Message::SET_GAME_SA_PRELAUNCH), data, reply, option);
+    EXPECT_EQ(result, NO_ERROR);
+    TAG_LOGI(AAFwkTag::TEST, "HandleSetGameSAPrelaunch_001 end.");
+}
+
+/**
+ * @tc.name: HandleSetGameSAPrelaunch_002
+ * @tc.desc: HandleSetGameSAPrelaunch with valid token and isGameSAPrelaunch false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrStubTest, HandleSetGameSAPrelaunch_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleSetGameSAPrelaunch_002 start.");
+    EXPECT_NE(mockAmsMgrScheduler_, nullptr);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    WriteInterfaceToken(data);
+
+    sptr<IRemoteObject> token = new (std::nothrow) MockAbilityToken();
+    EXPECT_NE(token, nullptr);
+    data.WriteRemoteObject(token);
+
+    bool isGameSAPrelaunch = false;
+    data.WriteBool(isGameSAPrelaunch);
+
+    EXPECT_CALL(*mockAmsMgrScheduler_, SetGameSAPrelaunch(_, _))
+        .Times(1)
+        .WillOnce(Return(NO_ERROR));
+    auto result = mockAmsMgrScheduler_->OnRemoteRequest(
+        static_cast<uint32_t>(IAmsMgr::Message::SET_GAME_SA_PRELAUNCH), data, reply, option);
+    EXPECT_EQ(result, NO_ERROR);
+    TAG_LOGI(AAFwkTag::TEST, "HandleSetGameSAPrelaunch_002 end.");
+}
+
+/**
+ * @tc.name: HandleSetGameSAPrelaunch_003
+ * @tc.desc: HandleSetGameSAPrelaunch with null token.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrStubTest, HandleSetGameSAPrelaunch_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleSetGameSAPrelaunch_003 start.");
+    EXPECT_NE(mockAmsMgrScheduler_, nullptr);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    WriteInterfaceToken(data);
+
+    sptr<IRemoteObject> token = nullptr;
+    data.WriteRemoteObject(token);
+
+    bool isGameSAPrelaunch = true;
+    data.WriteBool(isGameSAPrelaunch);
+
+    EXPECT_CALL(*mockAmsMgrScheduler_, SetGameSAPrelaunch(_, _))
+        .Times(1)
+        .WillOnce(Return(ERR_INVALID_VALUE));
+    auto result = mockAmsMgrScheduler_->OnRemoteRequest(
+        static_cast<uint32_t>(IAmsMgr::Message::SET_GAME_SA_PRELAUNCH), data, reply, option);
+    EXPECT_EQ(result, NO_ERROR);
+    TAG_LOGI(AAFwkTag::TEST, "HandleSetGameSAPrelaunch_003 end.");
+}
+
+/**
+ * @tc.name: HandleSetGameSAPrelaunch_004
+ * @tc.desc: HandleSetGameSAPrelaunch with SetGameSAPrelaunch returning error.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrStubTest, HandleSetGameSAPrelaunch_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleSetGameSAPrelaunch_004 start.");
+    EXPECT_NE(mockAmsMgrScheduler_, nullptr);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    WriteInterfaceToken(data);
+
+    sptr<IRemoteObject> token = new (std::nothrow) MockAbilityToken();
+    EXPECT_NE(token, nullptr);
+    data.WriteRemoteObject(token);
+
+    bool isGameSAPrelaunch = true;
+    data.WriteBool(isGameSAPrelaunch);
+
+    EXPECT_CALL(*mockAmsMgrScheduler_, SetGameSAPrelaunch(_, _))
+        .Times(1)
+        .WillOnce(Return(ERR_INVALID_VALUE));
+    auto result = mockAmsMgrScheduler_->OnRemoteRequest(
+        static_cast<uint32_t>(IAmsMgr::Message::SET_GAME_SA_PRELAUNCH), data, reply, option);
+    EXPECT_EQ(result, NO_ERROR);
+    TAG_LOGI(AAFwkTag::TEST, "HandleSetGameSAPrelaunch_004 end.");
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

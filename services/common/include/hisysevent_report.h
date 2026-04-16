@@ -33,6 +33,9 @@ public:
             return;
         }
         this->params_ = new (std::nothrow) HiSysEventParam[SYSTEM_PARAM_MAX_LEN];
+        if (this->params_ == nullptr) {
+            length_ = 0;
+        }
     }
     ~HisyseventReport()
     {
@@ -56,13 +59,15 @@ public:
     void InsertParam(const char* name, const std::vector<int32_t> &value);
     void InsertParam(const char* name, std::vector<char*> &value);
     void InsertParam(const char* name, const std::vector<uint64_t> &value);
+    void InsertParam(const char* name, const std::vector<bool> &value);
+    void InsertParam(const char* name, const std::vector<int64_t> &value);
     int32_t Report(const char* domain, const char* event, HiSysEventEventType type);
 
 private:
     void SetParamName(HiSysEventParam& param, const char* name);
 
     std::vector<std::unique_ptr<char[]>> paramBuffers_;
-    HiSysEventParam* params_;
+    HiSysEventParam* params_ = nullptr;
     int32_t length_ = SYSTEM_PARAM_MAX_LEN;
     int32_t pos_ = 0;
 };

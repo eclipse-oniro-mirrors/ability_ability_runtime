@@ -62,8 +62,7 @@ public:
 class MockIRemoteOnListener : public IRemoteOnListener {
 public:
     virtual ~MockIRemoteOnListener() {}
-    void OnCallback(const uint32_t ContinueState, const std::string& srcDeviceId, const std::string& bundleName,
-        const std::string& continueType, const std::string& srcBundleName) override
+    void OnCallback(const OnCallbackInfo &info) override
     {}
     sptr<IRemoteObject> AsObject() override
     {

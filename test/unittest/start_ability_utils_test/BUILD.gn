@@ -37,6 +37,8 @@ ohos_unittest("start_ability_utils_test") {
     "mock/src/mock_app_scheduler.cpp",
     "mock/src/mock_bundle_mgr_helper.cpp",
     "mock/src/mock_my_status.cpp",
+    "mock/src/mock_my_flag.cpp",
+    "mock/src/mock_accesstoken_kit.cpp",
     "start_ability_utils_test.cpp",
   ]
 
@@ -54,6 +56,7 @@ ohos_unittest("start_ability_utils_test") {
     "${ability_runtime_path}/utils/server/startup:startup_util",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
     "${ability_runtime_services_path}/common:app_util",
+    "${ability_runtime_services_path}/common:perm_verification",
   ]
 
   external_deps = [

@@ -219,7 +219,7 @@ HWTEST_F(AppkitNativeModuleTestSecond, App_LaunchAblity_0100, Function | MediumT
 
     AbilityInfo abilityinf;
     sptr<IRemoteObject> token = new (std::nothrow) MockAbilityToken();
-    mockAppMgr->ScheduleLaunchAbility(abilityinf, token, nullptr, 0);
+    mockAppMgr->ScheduleLaunchAbility(abilityinf, token, nullptr, 0, nullptr);
 
     runner_->Stop();
     OHOS::DelayedSingleton<SysMrgClient>::GetInstance()->UnregisterSystemAbility(APP_MGR_SERVICE_ID);
@@ -243,7 +243,7 @@ HWTEST_F(AppkitNativeModuleTestSecond, App_LaunchAblity_0200, Function | MediumT
 
     AbilityInfo abilityinf;
     sptr<IRemoteObject> token = new (std::nothrow) MockAbilityToken();
-    mockAppMgr->ScheduleLaunchAbility(abilityinf, token, nullptr, 0);
+    mockAppMgr->ScheduleLaunchAbility(abilityinf, token, nullptr, 0, nullptr);
 
     runner_->Stop();
     OHOS::DelayedSingleton<SysMrgClient>::GetInstance()->UnregisterSystemAbility(APP_MGR_SERVICE_ID);
@@ -279,7 +279,7 @@ HWTEST_F(AppkitNativeModuleTestSecond, App_LaunchAblity_0300, Function | MediumT
     usleep(USleepTime);
 
     AbilityInfo abilityinf;
-    mockAppMgr->ScheduleLaunchAbility(abilityinf, nullptr, nullptr, 0);
+    mockAppMgr->ScheduleLaunchAbility(abilityinf, nullptr, nullptr, 0, nullptr);
 
     runner_->Stop();
     OHOS::DelayedSingleton<SysMrgClient>::GetInstance()->UnregisterSystemAbility(APP_MGR_SERVICE_ID);

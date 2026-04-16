@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -537,6 +537,32 @@ int32_t UriPermissionManagerStubImpl::RevokeContentUriPermission(uint32_t tokenI
     return ret;
 }
 
+int32_t UriPermissionManagerStubImpl::VerifyContentUriPermission(const std::vector<std::string> &contentUris,
+    uint32_t flag, uint32_t tokenId, std::vector<bool> &checkResults)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (contentUris.empty()) {
+        return ERR_OK;
+    }
+    TAG_LOGI(AAFwkTag::URIPERMMGR, "VerifyContentUriPermission, contentUris: %{public}zu", contentUris.size());
+    auto abilityClient = AAFwk::AbilityManagerClient::GetInstance();
+    if (abilityClient == nullptr) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "abilityClient null");
+        return INNER_ERR;
+    }
+    auto collaborator = IN_PROCESS_CALL(abilityClient->GetAbilityManagerCollaborator());
+    if (collaborator == nullptr) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "collaborator null");
+        return INNER_ERR;
+    }
+    auto ret = collaborator->VerifyUriPermission(contentUris, flag, tokenId, checkResults);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "VerifyUriPermission failed:%{public}d", ret);
+        return ret;
+    }
+    return ERR_OK;
+}
+
 bool UriPermissionManagerStubImpl::IsContentUriGranted(uint32_t tokenId)
 {
     std::lock_guard<std::mutex> lock(contentTokenIdSetMutex_);
@@ -788,7 +814,7 @@ int32_t UriPermissionManagerStubImpl::GrantUriPermissionPrivilegedInner(const st
         }
         validUriCount++;
         // content and distributed docs uri
-        if (uriInner.GetScheme() == FUDConstants::CONTENT_SCHEME) {
+        if (uriInner.GetScheme() == FUDConstants::ANCO_SCHEME) {
             batchUris.contentUris.emplace_back(uriInner.ToString());
             continue;
         }
@@ -1185,6 +1211,15 @@ int32_t UriPermissionManagerStubImpl::CheckProxyUriPermission(BatchUri &batchUri
         auto proxyResultByPolicy = VerifyUriPermissionByPolicy(proxyUrisByPolicy, flag, callerTokenId);
         batchUri.SetCheckProxyByPolicyResult(proxyResultByPolicy);
     }
+    if (!batchUri.contentUris.empty()) {
+        std::vector<bool> contentUriResults;
+        auto ret = VerifyContentUriPermission(batchUri.contentUris, flag, callerTokenId, contentUriResults);
+        if (ret == ERR_OK) {
+            batchUri.SetCheckProxyByContentUriResult(contentUriResults);
+        } else {
+            TAG_LOGW(AAFwkTag::URIPERMMGR, "VerifyContentUriPermission failed");
+        }
+    }
     return ERR_OK;
 }
 
@@ -1541,8 +1576,7 @@ int32_t UriPermissionManagerStubImpl::CheckCalledBySandBox()
     return ERR_OK;
 }
 
-ErrCode UriPermissionManagerStubImpl::ClearPermissionTokenByMap(uint32_t tokenId, uint64_t timeNow,
-    int32_t& funcResult)
+ErrCode UriPermissionManagerStubImpl::ClearPermissionTokenByMap(uint32_t tokenId, int32_t& funcResult)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::URIPERMMGR, "call");
@@ -1551,11 +1585,11 @@ ErrCode UriPermissionManagerStubImpl::ClearPermissionTokenByMap(uint32_t tokenId
         return WrapErrorCode(ERR_PERMISSION_DENIED, funcResult);
     }
     RevokeContentUriPermission(tokenId);
-    RevokeFileUriPermission(tokenId, timeNow, funcResult);
+    RevokeFileUriPermission(tokenId, funcResult);
     return WrapErrorCode(ERR_OK, funcResult);
 }
 
-int32_t UriPermissionManagerStubImpl::RevokeFileUriPermission(uint32_t tokenId, uint64_t timeNow, int32_t& funcResult)
+int32_t UriPermissionManagerStubImpl::RevokeFileUriPermission(uint32_t tokenId, int32_t& funcResult)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     std::lock_guard<std::mutex> lock(ptMapMutex_);
@@ -1563,11 +1597,13 @@ int32_t UriPermissionManagerStubImpl::RevokeFileUriPermission(uint32_t tokenId, 
         TAG_LOGD(AAFwkTag::URIPERMMGR, "permissionTokenMap_ empty");
         return ERR_OK;
     }
-    TAG_LOGI(AAFwkTag::URIPERMMGR, "clear permission, tokenId: %{public}d, timeNow: %{public}" PRIu64 "",
-        tokenId, timeNow);
     RevokeMapUriPermission(tokenId);
 #ifdef ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER
     RevokePolicyUriPermission(tokenId);
+    uint64_t timeNow = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::high_resolution_clock::now().time_since_epoch()).count());
+    TAG_LOGI(AAFwkTag::URIPERMMGR, "clear permission, tokenId: %{public}d, timeNow: %{public}" PRIu64 "",
+        tokenId, timeNow);
     auto ret = SandboxManagerKit::UnSetAllPolicyByToken(tokenId, timeNow);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "UnsetAllPolicyByToken failed, ret: %{public}d", ret);

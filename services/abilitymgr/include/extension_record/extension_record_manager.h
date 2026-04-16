@@ -25,6 +25,7 @@
 
 #include "base_extension_record.h"
 #include "extension_record.h"
+#include "extension_running_timeout_monitor.h"
 #include "preload_ui_extension_execute_callback_interface.h"
 #include "ui_extension/ui_extension_host_info.h"
 #include "ui_extension/ui_extension_session_info.h"

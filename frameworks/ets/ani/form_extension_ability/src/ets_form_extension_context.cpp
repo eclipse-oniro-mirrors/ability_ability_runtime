@@ -43,7 +43,7 @@ constexpr const char *SIGNATURE_CHECK_CONNECTION = ":";
 constexpr int32_t ARGC_ONE = 1;
 constexpr int32_t ARGC_TWO = 2;
 
-std::map<ConnectionKey, sptr<ETSFormExtensionConnection>, key_compare> g_connects;
+std::map<EtsConnectionKey, sptr<ETSFormExtensionConnection>, ets_key_compare> g_connects;
 std::mutex g_connectsMutex_;
 int64_t g_serialNumber = 0;
 
@@ -87,7 +87,7 @@ bool CheckConnectionParam(ani_object connectOptionsObj,
     sptr<ETSFormExtensionConnection>& connection, AAFwk::Want& want)
 {
     connection->SetConnectionRef(connectOptionsObj);
-    ConnectionKey key;
+    EtsConnectionKey key;
     key.id = g_serialNumber;
     key.want = want;
     connection->SetConnectionId(key.id);

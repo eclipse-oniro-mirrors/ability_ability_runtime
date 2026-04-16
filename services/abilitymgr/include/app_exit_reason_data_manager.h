@@ -23,6 +23,7 @@
 #include "ability_util.h"
 #include "database_write_counter.h"
 #include "distributed_kv_data_manager.h"
+#include "ffrt.h"
 #include "exit_reason.h"
 #include "singleton.h"
 
@@ -113,7 +114,7 @@ private:
     const DistributedKv::StoreId storeId_ { "app_exit_reason_infos" };
     DistributedKv::DistributedKvDataManager dataManager_;
     std::shared_ptr<DistributedKv::SingleKvStore> kvStorePtr_;
-    mutable std::mutex kvStorePtrMutex_;
+    mutable ffrt::mutex kvStorePtrMutex_;
     DatabaseWriteCounter dbWriteCounter_;
 };
 } // namespace AbilityRuntime

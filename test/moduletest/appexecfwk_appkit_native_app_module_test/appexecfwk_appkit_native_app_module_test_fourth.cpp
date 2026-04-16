@@ -138,7 +138,7 @@ HWTEST_F(AppkitNativeModuleTestThird, App_CleanAbility_0100, Function | MediumTe
 
     AbilityInfo abilityinf;
     sptr<IRemoteObject> token = new (std::nothrow) MockAbilityToken();
-    mockAppMgr->ScheduleLaunchAbility(abilityinf, token, nullptr, 0);
+    mockAppMgr->ScheduleLaunchAbility(abilityinf, token, nullptr, 0, nullptr);
     WaitUntilTaskDone(mockHandler_);
 
     mockAppMgr->ScheduleCleanAbility(token);
@@ -236,7 +236,7 @@ HWTEST_F(AppkitNativeModuleTestThird, App_CleanAbility_0400, Function | MediumTe
 
     AbilityInfo abilityinf;
     sptr<IRemoteObject> token = new (std::nothrow) MockAbilityToken();
-    mockAppMgr->ScheduleLaunchAbility(abilityinf, token, nullptr, 0);
+    mockAppMgr->ScheduleLaunchAbility(abilityinf, token, nullptr, 0, nullptr);
     WaitUntilTaskDone(mockHandler_);
 
     mockAppMgr->ScheduleCleanAbility(nullptr);
@@ -275,7 +275,7 @@ HWTEST_F(AppkitNativeModuleTestThird, App_CleanAbility_0500, Function | MediumTe
 
     AbilityInfo abilityinf;
     sptr<IRemoteObject> token = new (std::nothrow) MockAbilityToken();
-    mockAppMgr->ScheduleLaunchAbility(abilityinf, token, nullptr, 0);
+    mockAppMgr->ScheduleLaunchAbility(abilityinf, token, nullptr, 0, nullptr);
     WaitUntilTaskDone(mockHandler_);
     sptr<IRemoteObject> tokenOhter = new (std::nothrow) MockAbilityToken();
     mockAppMgr->ScheduleCleanAbility(tokenOhter);

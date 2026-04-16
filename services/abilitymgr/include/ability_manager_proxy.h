@@ -18,6 +18,7 @@
 
 #include "ability_manager_interface.h"
 #include "auto_startup_info.h"
+#include "caller_info.h"
 #include "iremote_proxy.h"
 #include "mission_info.h"
 #include "intent_exemption_info.h"
@@ -563,7 +564,8 @@ public:
         int32_t userId = DEFAULT_INVAL_VALUE,
         bool isQueryExtensionOnly = false,
         uint64_t specifiedFullTokenId = 0,
-        int32_t loadTimeout = 0) override;
+        int32_t loadTimeout = 0,
+        std::shared_ptr<IndirectCallerInfo> indirectCallerInfo = nullptr) override;
 
     virtual int ConnectUIExtensionAbility(
         const Want &want,
@@ -777,6 +779,8 @@ public:
         const sptr<IWantSender> &sender, const sptr<IWantReceiver> &receiver) override;
 
     virtual int GetPendingRequestWant(const sptr<IWantSender> &target, std::shared_ptr<Want> &want) override;
+
+    virtual int GetPendingRequestWantFromProxy(const sptr<IWantSender> &target, std::shared_ptr<Want> &want) override;
 
     virtual int GetWantSenderInfo(const sptr<IWantSender> &target, std::shared_ptr<WantSenderInfo> &info) override;
 
@@ -1442,6 +1446,15 @@ public:
         uint32_t &callerTokenId) override;
 
     /**
+     * @brief Launch game customized with game SA verification.
+     * @param bundleName Name of the game application.
+     * @param userId Indicates the user ID.
+     * @param appIndex app clone index. Currently, only appIndex = 0 is supported.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t LaunchGameCustomized(const std::string &bundleName, int32_t userId, int32_t appIndex = 0) override;
+
+    /**
      * PrepareTerminateAbilityBySCB, prepare to terminate ability by scb.
      *
      * @param sessionInfo the session info of the ability to start.
@@ -1989,6 +2002,29 @@ public:
         const AAFwk::StartOptions &startOptions, bool hasOptions, sptr<IRemoteObject> callerToken) override;
 
     /**
+     * @brief Notify cancel game prelaunch and kill the process.
+     * @param callerToken Indicates the caller ability token.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t NotifyCancelGamePreLaunch(const sptr<IRemoteObject> callerToken) override;
+
+    /**
+     * @brief Notify complete game prelaunch and clear the flag.
+     * @param callerToken Indicates the caller ability token.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t NotifyCompleteGamePreLaunch(const sptr<IRemoteObject> callerToken) override;
+
+    /**
+     * @brief Set game prelaunch complete time.
+     *
+     * @param userId Indicates the user ID.
+     * @param completeTime The complete time for game prelaunch.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t SetGamePreLaunchCompleteTime(int32_t userId, int64_t completeTime) override;
+
+    /**
      * Check if the app is restart-limited.
      * @return Returns true on being limited.
      */
@@ -2028,6 +2064,15 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int32_t UnRegisterPreloadUIExtensionHostClient(int32_t callerPid = DEFAULT_INVAL_VALUE) override;
+
+    /**
+ 	 * @brief Queries self modular object extension information.
+     * @param extensionInfos get the queried extensionInfos.
+     *
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t QuerySelfModularObjectExtensionInfos(
+        std::vector<ModularObjectExtensionInfo> &extensionInfos) override;
 
     /**
      * @brief Get list of applications launched before the first unlock.

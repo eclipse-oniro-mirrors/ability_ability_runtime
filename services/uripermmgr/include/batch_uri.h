@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+* Copyright (c) 2024-2026 Huawei Device Co., Ltd.
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -57,6 +57,8 @@ public:
 
     bool SetCheckProxyByPolicyResult(const std::vector<bool> &proxyResultByPolicy);
 
+    bool SetCheckProxyByContentUriResult(const std::vector<bool> &contentUriResult);
+
     int32_t GetUriToGrantByMap(std::vector<std::string> &uriVec);
 
     void SelectPermissionedUri(std::vector<Uri> &uris, std::vector<int32_t> &indexs, std::vector<std::string> &uriVec);
@@ -88,6 +90,7 @@ public:
 
     // content uri
     std::vector<std::string> contentUris;
+    std::vector<int32_t> contentIndexes;
 
     // caller's uri
     std::vector<PolicyInfo> selfBundlePolicyInfos;

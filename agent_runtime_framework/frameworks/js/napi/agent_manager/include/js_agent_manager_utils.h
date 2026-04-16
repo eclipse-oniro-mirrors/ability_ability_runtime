@@ -30,6 +30,12 @@ JS_AGENT_MANAGER_UTILS_EXPORT napi_value CreateJsAgentSkillArray(
     napi_env env, const std::vector<std::shared_ptr<AgentSkill>> &skills);
 JS_AGENT_MANAGER_UTILS_EXPORT napi_value CreateJsAgentCard(napi_env env, const AgentCard &card);
 JS_AGENT_MANAGER_UTILS_EXPORT napi_value CreateJsAgentCardArray(napi_env env, const std::vector<AgentCard> &cards);
+JS_AGENT_MANAGER_UTILS_EXPORT bool ParseJsAgentProvider(napi_env env, napi_value value, AgentProvider &provider);
+JS_AGENT_MANAGER_UTILS_EXPORT bool ParseJsAgentCapabilities(
+    napi_env env, napi_value value, AgentCapabilities &capabilities);
+JS_AGENT_MANAGER_UTILS_EXPORT bool ParseJsAgentSkill(napi_env env, napi_value value, AgentSkill &skill);
+JS_AGENT_MANAGER_UTILS_EXPORT bool ParseJsAgentAppInfo(napi_env env, napi_value value, AgentAppInfo &appInfo);
+JS_AGENT_MANAGER_UTILS_EXPORT bool ParseJsAgentCard(napi_env env, napi_value value, AgentCard &card);
 }  // namespace AgentRuntime
 }  // namespace OHOS
 #endif // OHOS_AGENT_RUNTIME_JS_AGENT_MANAGER_UTILS_H

@@ -55,6 +55,7 @@ constexpr const char* TASK_BLOCK_PROCESS_CACHE_BY_PIDS = "BlockProcessCacheByPid
 constexpr const char* POWER_OFF_ABILITY = "PoweroffAbility";
 constexpr int32_t SCENE_BOARD_ATTACH_TIMEOUT_TASK_TIME = 1000;
 constexpr int32_t LOAD_TASK_TIMEOUT = 60000; // ms
+constexpr int32_t FOUNDATION_UID = 5523;
 };  // namespace
 
 AmsMgrScheduler::AmsMgrScheduler(
@@ -234,6 +235,21 @@ void AmsMgrScheduler::KillProcessByAbilityToken(const sptr<IRemoteObject> &token
         amsMgrServiceInner->KillProcessByAbilityToken(token);
     };
     amsHandler_->SubmitTask(killProcessByAbilityTokenFunc, TASK_KILL_PROCESS_BY_ABILITY_TOKEN);
+}
+
+int32_t AmsMgrScheduler::SetGameSAPrelaunch(const sptr<IRemoteObject> &token, bool isGameSAPrelaunch)
+{
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "AmsMgrScheduler is not ready");
+        return ERR_INVALID_VALUE;
+    }
+    if (IPCSkeleton::GetCallingUid() != FOUNDATION_UID) {
+        TAG_LOGE(AAFwkTag::APPMGR, "SetGameSAPrelaunch: not foundation call, uid: %{public}d",
+            IPCSkeleton::GetCallingUid());
+        return ERR_PERMISSION_DENIED;
+    }
+
+    return amsMgrServiceInner_->SetGameSAPrelaunch(token, isGameSAPrelaunch);
 }
 
 void AmsMgrScheduler::KillProcessesByUserId(int32_t userId, bool isNeedSendAppSpawnMsg,
@@ -497,7 +513,7 @@ void AmsMgrScheduler::SetAbilityForegroundingFlagToAppRecord(const pid_t pid)
 }
 
 void AmsMgrScheduler::StartSpecifiedAbility(const AAFwk::Want &want, const AppExecFwk::AbilityInfo &abilityInfo,
-    int32_t requestId, const std::string &customProcess)
+    int32_t requestId, const std::string &customProcess, bool isWindowStagePreload)
 {
     if (!IsReady()) {
         return;
@@ -507,7 +523,9 @@ void AmsMgrScheduler::StartSpecifiedAbility(const AAFwk::Want &want, const AppEx
         TAG_LOGE(AAFwkTag::APPMGR, "verification failed");
         return;
     }
-    auto task = [=]() { amsMgrServiceInner_->StartSpecifiedAbility(want, abilityInfo, requestId, customProcess); };
+    auto task = [=]() {
+        amsMgrServiceInner_->StartSpecifiedAbility(want, abilityInfo, requestId, customProcess, isWindowStagePreload);
+    };
     amsHandler_->SubmitTask(task, {
         .taskName_ = "StartSpecifiedAbility",
         .taskQos_ = AAFwk::TaskQoS::USER_INTERACTIVE

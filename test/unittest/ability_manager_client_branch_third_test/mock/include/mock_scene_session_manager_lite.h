@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -42,7 +42,7 @@ public:
     MOCK_METHOD(WSError, PendingSessionToForeground,
         (const sptr<IRemoteObject>& token, int32_t windowMode), (override));
     MOCK_METHOD(WSError, PendingSessionToBackgroundForDelegator,
-        (const sptr<IRemoteObject>& token, bool shouldBackToCaller), (override));
+        (const sptr<IRemoteObject>& token, bool shouldBackToCaller, int32_t reason), (override));
     MOCK_METHOD(WSError, MoveSessionsToForeground,
         (const std::vector<std::int32_t>& sessionIds, int32_t topSessionId), (override));
     MOCK_METHOD(WSError, MoveSessionsToBackground,
@@ -64,6 +64,9 @@ public:
         (const std::string& deviceId, int32_t numMax, std::vector<SessionInfoBean>& sessionInfos), (override));
     MOCK_METHOD(WSError, GetSessionInfo,
         (const std::string& deviceId, int32_t persistentId, SessionInfoBean& sessionInfo), (override));
+    MOCK_METHOD(WSError, GetSessionInfo,
+        (const std::string& deviceId, int32_t persistentId, SessionInfoBean& sessionInfo,
+        AAFwk::DisplayInfo& displayInfo), (override));
     MOCK_METHOD(WSError, GetSessionInfoByContinueSessionId,
         (const std::string& continueSessionId, SessionInfoBean& sessionInfo), (override));
     MOCK_METHOD(WSError, SetSessionContinueState,

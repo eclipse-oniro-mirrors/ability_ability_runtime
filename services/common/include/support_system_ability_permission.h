@@ -43,12 +43,23 @@ constexpr std::array SUPPORTED_UIDS{1002, 1003, 1004, 1007, 1010, 1013, 1014,
         7748, 7777, 7778, 7779, 7780, 7789, 7799, 7811, 7812, 7851, 7878, 7886, 7890,
         7958, 7992, 7993, 7994, 7995, 7999, 8000, 8002, 8020, 8030, 8050, 8064, 8100, 8666, 8668,
         8866, 8879, 8888, 9998, 10000};
+constexpr std::array SUPPORTED_KILL_UIDS{1111, 1096, 1003, 5523, 7345};
+
 inline bool IsSupportSaCallPermission()
 {
     TAG_LOGD(AAFwkTag::DEFAULT, "call IsSupportSaCallPermission, CallingUid: %{public}d", IPCSkeleton::GetCallingUid());
     bool hasSaCallPermission =
         std::find(SUPPORTED_UIDS.begin(), SUPPORTED_UIDS.end(), IPCSkeleton::GetCallingUid()) != SUPPORTED_UIDS.end();
     return hasSaCallPermission;
+}
+
+inline bool IsSupportSaKillPermission()
+{
+    TAG_LOGD(AAFwkTag::DEFAULT, "call IsSupportSaKillPermission, CallingUid: %{public}d", IPCSkeleton::GetCallingUid());
+    bool hasSaKillPermission =
+        std::find(SUPPORTED_KILL_UIDS.begin(), SUPPORTED_KILL_UIDS.end(), IPCSkeleton::GetCallingUid()) !=
+        SUPPORTED_KILL_UIDS.end();
+    return hasSaKillPermission;
 }
 }  // namespace SupportSystemAbilityPermission
 }  // namespace AAFwk

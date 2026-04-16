@@ -75,6 +75,14 @@ void GetHspNativeLibPath(const BaseSharedBundleInfo &hspInfo, AppLibPathMap &app
     TAG_LOGD(
         AAFwkTag::APPKIT, "appLibPathKey: %{private}s, libPath: %{private}s", appLibPathKey.c_str(), libPath.c_str());
     appLibPaths[appLibPathKey].emplace_back(libPath);
+
+    if (!hspInfo.librarySupportDirectory.empty()) {
+        for (const auto &dir : hspInfo.librarySupportDirectory) {
+            std::string supportLibPath = libPath + "/" + dir;
+            TAG_LOGD(AAFwkTag::APPKIT, "supportLibPath: %{public}s", supportLibPath.c_str());
+            appLibPaths["default"].emplace_back(supportLibPath);
+        }
+    }
 }
 
 void GetPatchNativeLibPath(const HapModuleInfo &hapInfo, std::string &patchNativeLibraryPath,
@@ -101,6 +109,25 @@ void GetPatchNativeLibPath(const HapModuleInfo &hapInfo, std::string &patchNativ
     TAG_LOGD(AAFwkTag::APPKIT, "appLibPathKey: %{public}s, patch lib path: %{private}s", appLibPathKey.c_str(),
         patchLibPath.c_str());
     appLibPaths[appLibPathKey].emplace_back(patchLibPath);
+}
+
+void GetLibrarySupportDirectory(
+    const std::vector<HapModuleInfo> &hapModuleInfos,
+    const std::string nativeLibraryPath,
+    AppLibPathMap &appLibPaths)
+{
+    std::string libPath = AbilityBase::Constants::LOCAL_CODE_PATH;
+    libPath += (libPath.back() == '/') ? nativeLibraryPath : "/" + nativeLibraryPath;
+    for (auto &hapInfo : hapModuleInfos) {
+        if (hapInfo.librarySupportDirectory.empty()) {
+            continue;
+        }
+        for (const auto &dir : hapInfo.librarySupportDirectory) {
+            std::string supportLibPath = libPath + "/" + dir;
+            TAG_LOGD(AAFwkTag::APPKIT, "supportLibPath: %{public}s", supportLibPath.c_str());
+            appLibPaths["default"].emplace_back(supportLibPath);
+        }
+    }
 }
 } // AppExecFwk
 } // namespace OHOS

@@ -334,6 +334,7 @@ ErrCode WantAgentClient::GetPendingRequestWant(const sptr<IWantSender> &target, 
     MessageParcel reply;
     MessageOption option;
     if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "Input data target is invalid");
         return ERR_ABILITY_RUNTIME_EXTERNAL_INVALID_PARAMETER;
     }
 
@@ -353,6 +354,51 @@ ErrCode WantAgentClient::GetPendingRequestWant(const sptr<IWantSender> &target, 
     }
     auto error = abms->SendRequest(static_cast<int32_t>(AbilityManagerInterfaceCode::GET_PENDING_REQUEST_WANT),
         data, reply, option);
+    if (error != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "Send request error: %{public}d", error);
+        return ERR_ABILITY_RUNTIME_EXTERNAL_SERVICE_TIMEOUT;
+    }
+    std::unique_ptr<Want> wantInfo(reply.ReadParcelable<Want>());
+    if (!wantInfo) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "ReadParcelable failed");
+        return ERR_ABILITY_RUNTIME_EXTERNAL_INVALID_PARAMETER;
+    }
+    want = std::move(wantInfo);
+
+    return NO_ERROR;
+}
+
+ErrCode WantAgentClient::GetPendingRequestWantFromProxy(const sptr<IWantSender> &target, std::shared_ptr<Want> &want)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    CHECK_POINTER_AND_RETURN(target, ERR_ABILITY_RUNTIME_EXTERNAL_INVALID_WANTAGENT);
+    CHECK_POINTER_AND_RETURN(want, INVALID_PARAMETERS_ERR);
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_AND_RETURN(abms, ERR_ABILITY_RUNTIME_EXTERNAL_SERVICE_BUSY);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "Input data target is invalid");
+        return ERR_ABILITY_RUNTIME_EXTERNAL_INVALID_PARAMETER;
+    }
+
+    sptr<IRemoteObject> obj = target->AsObject();
+    if (obj == nullptr) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "Input Param target is invalid");
+        return ERR_ABILITY_RUNTIME_EXTERNAL_INVALID_PARAMETER;
+    }
+
+    if (!data.WriteRemoteObject(obj)) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "target write failed");
+        return ERR_ABILITY_RUNTIME_EXTERNAL_INVALID_PARAMETER;
+    }
+    if (!data.WriteParcelable(want.get())) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "want write failed");
+        return ERR_ABILITY_RUNTIME_EXTERNAL_INVALID_PARAMETER;
+    }
+    auto error = abms->SendRequest(static_cast<int32_t>(AbilityManagerInterfaceCode::
+        GET_PENDING_REQUEST_WANT_FROM_PROXY), data, reply, option);
     if (error != NO_ERROR) {
         TAG_LOGE(AAFwkTag::WANTAGENT, "Send request error: %{public}d", error);
         return ERR_ABILITY_RUNTIME_EXTERNAL_SERVICE_TIMEOUT;

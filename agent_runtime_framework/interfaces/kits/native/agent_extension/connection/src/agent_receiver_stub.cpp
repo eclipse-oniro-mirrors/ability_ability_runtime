@@ -45,6 +45,8 @@ int AgentReceiverStub::OnRemoteRequest(uint32_t code, MessageParcel &data, Messa
             return OnSendData(data, reply);
         case IAgentReceiver::AUTHORIZE:
             return OnAuthorize(data, reply);
+        case IAgentReceiver::AGENT_INVOKED:
+            return OnAgentInvoked(data, reply);
         default:
             TAG_LOGW(AAFwkTag::SER_ROUTER, "Unknown code: %{public}u", code);
             return IPCObjectStub::OnRemoteRequest(code, data, reply, option);
@@ -79,6 +81,20 @@ int32_t AgentReceiverStub::OnAuthorize(MessageParcel &data, MessageParcel &reply
     TAG_LOGD(AAFwkTag::SER_ROUTER, "OnAuthorize, auth length: %{public}zu", authStr.length());
 
     int32_t result = Authorize(connectorProxy, authStr);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "Failed to write result to reply parcel");
+        return IPC_STUB_ERR;
+    }
+
+    return NO_ERROR;
+}
+
+int32_t AgentReceiverStub::OnAgentInvoked(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "OnAgentInvoked called");
+
+    std::string agentId = data.ReadString();
+    int32_t result = AgentInvoked(agentId);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "Failed to write result to reply parcel");
         return IPC_STUB_ERR;

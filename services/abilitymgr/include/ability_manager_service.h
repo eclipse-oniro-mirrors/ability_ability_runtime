@@ -49,6 +49,7 @@
 #endif
 #include "bundle_constants.h"
 #include "bundle_mgr_helper.h"
+#include "caller_info.h"
 #include "data_ability_manager.h"
 #include "deeplink_reserve/deeplink_reserve_config.h"
 #include "event_report.h"
@@ -60,6 +61,8 @@
 #include "iremote_object.h"
 #include "kiosk_manager.h"
 #include "mission_list_manager_interface.h"
+#include "modular_object_event_mgr.h"
+#include "modular_object_manager.h"
 #include "parameter.h"
 #include "pending_want_manager.h"
 #include "permission_verification.h"
@@ -738,7 +741,8 @@ public:
         int32_t userId = DEFAULT_INVAL_VALUE,
         bool isQueryExtensionOnly = false,
         uint64_t specifiedFullTokenId = 0,
-        int32_t loadTimeout = 0) override;
+        int32_t loadTimeout = 0,
+        std::shared_ptr<IndirectCallerInfo> indirectCallerInfo = nullptr) override;
 
     virtual int ConnectUIExtensionAbility(
         const Want &want,
@@ -1120,6 +1124,14 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int GetPendingRequestWant(const sptr<IWantSender> &target, std::shared_ptr<Want> &want) override;
+
+    /**
+     * @brief Get the pending want from a want sender from want.
+     * @param target The target want sender.
+     * @param want The output pending want.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int GetPendingRequestWantFromProxy(const sptr<IWantSender> &target, std::shared_ptr<Want> &want) override;
 
     /**
      * @brief Get the want sender information.
@@ -2051,6 +2063,38 @@ public:
         uint32_t &callerTokenId) override;
 
     /**
+     * @brief Launch game customized with game SA verification.
+     * @param bundleName Name of the game application.
+     * @param userId Indicates the user ID.
+     * @param appIndex app clone index. Currently, only appIndex = 0 is supported.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t LaunchGameCustomized(const std::string &bundleName, int32_t userId, int32_t appIndex = 0) override;
+
+    /**
+     * @brief Cancel game prelaunch and kill the game process.
+     * @param callerToken Token of the caller ability.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t NotifyCancelGamePreLaunch(const sptr<IRemoteObject> callerToken) override;
+
+    /**
+     * @brief Complete game prelaunch and clear the flag.
+     * @param callerToken Token of the caller ability.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t NotifyCompleteGamePreLaunch(const sptr<IRemoteObject> callerToken) override;
+
+    /**
+     * @brief Set game prelaunch complete time.
+     *
+     * @param userId Indicates the user ID.
+     * @param completeTime The complete time for game prelaunch.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t SetGamePreLaunchCompleteTime(int32_t userId, int64_t completeTime) override;
+
+    /**
      * PrepareTerminateAbilityBySCB, prepare to terminate ability by scb.
      *
      * @param sessionInfo the session info of the ability to start.
@@ -2623,6 +2667,12 @@ protected:
     void OnStartProcessFailed(const std::vector<sptr<IRemoteObject>> &abilityTokens) override;
 
     /**
+     * @brief Notify one ability is being terminated.
+     * @param token ability token.
+     */
+    void NotifyTerminateAbility(const sptr<IRemoteObject> &token) override;
+
+    /**
      * @brief Notify abilityms process info when an app dies
      * @param accessTokenId app accessTokenId.
      * @param exitInfo process running info.
@@ -2699,6 +2749,15 @@ protected:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int32_t UnRegisterPreloadUIExtensionHostClient(int32_t callerPid = DEFAULT_INVAL_VALUE) override;
+    
+    /**
+ 	 * @brief Queries self modular object extension information.
+     * @param extensionInfos get the queried extensionInfos.
+     *
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t QuerySelfModularObjectExtensionInfos(
+        std::vector<ModularObjectExtensionInfo> &extensionInfos) override;
 
     /**
      * @brief Get list of applications launched before the first unlock.
@@ -2714,6 +2773,14 @@ private:
     int GetTopAbilityInner(sptr<IRemoteObject> &token, uint64_t displayId = 0);
     int TerminateAbilityWithFlag(const sptr<IRemoteObject> &token, int resultCode = DEFAULT_INVAL_VALUE,
         const Want *resultWant = nullptr, bool flag = true);
+
+    /**
+     * @brief Parse and validate userId from want parameters.
+     * @param want The want containing userId parameter.
+     * @param userId Output userId after parsing and validation.
+     * @return Returns ERR_OK on success, error code on failure.
+     */
+    int ParseAndValidateUserId(const Want &want, int32_t &userId);
 
     /**
      * @brief Checks and submits hidden auto-startup status bar check task.
@@ -2774,7 +2841,8 @@ private:
         bool isQueryExtensionOnly = false,
         sptr<UIExtensionAbilityConnectInfo> connectInfo = nullptr,
         uint64_t specifiedFullTokenId = 0,
-        int32_t loadTimeout = 0);
+        int32_t loadTimeout = 0,
+        std::shared_ptr<IndirectCallerInfo> indirectCallerInfo = nullptr);
 
     int DisconnectLocalAbility(const sptr<IAbilityConnection> &connect);
     int32_t HandleExtensionConnectionByUserId(sptr<IAbilityConnection> connect, int32_t userId,
@@ -2961,7 +3029,7 @@ private:
 
     void UnsubscribeBundleEventCallback();
 
-    void ReportAbilityStartInfoToRSS(const AppExecFwk::AbilityInfo &abilityInfo);
+    void ReportAbilityStartInfoToRSS(const AppExecFwk::AbilityInfo &abilityInfo, bool gamePrelaunchFlag = false);
 
     void ReportAbilityAssociatedStartInfoToRSS(const AppExecFwk::AbilityInfo &abilityInfo, int64_t type,
         const sptr<IRemoteObject> &callerToken);
@@ -3347,6 +3415,8 @@ private:
 
     std::shared_ptr<AbilityRuntime::InsightIntentEventMgr> insightIntentEventMgr_;
 
+    std::shared_ptr<AbilityRuntime::ModularObjectExtensionEventMgr> modularObjectExtensionEventMgr_;
+
     bool ShouldPreventStartAbility(const AbilityRequest &abilityRequest);
 
     void PrintStartAbilityInfo(AppExecFwk::AbilityInfo callerInfo, AppExecFwk::AbilityInfo calledInfo);
@@ -3361,6 +3431,8 @@ private:
     bool ConvertFullPath(const std::string& partialPath, std::string& fullPath);
 
     bool ParseJsonFromBoot(const std::string &relativePath);
+
+    bool CheckSupportVpn(const AppExecFwk::AbilityInfo& abilityInfo);
 
     void SetReserveInfo(const std::string &linkString, AbilityRequest& abilityRequest);
     void CloseAssertDialog(const std::string &assertSessionId, int32_t userId);

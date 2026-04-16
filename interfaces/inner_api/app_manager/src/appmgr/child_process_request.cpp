@@ -30,6 +30,7 @@ bool ChildProcessRequest::ReadFromParcel(Parcel &parcel)
     READ_PARCEL_AND_RETURN_FALSE_IF_FAIL(Int32, parcel, childProcessType);
     READ_PARCEL_AND_RETURN_FALSE_IF_FAIL(Int32, parcel, childProcessCount);
     READ_PARCEL_AND_RETURN_FALSE_IF_FAIL(Bool, parcel, isStartWithDebug);
+    READ_PARCEL_AND_RETURN_FALSE_IF_FAIL(Bool, parcel, isStaticChildProcess);
 
     std::unique_ptr<ChildProcessArgs> argsRead(parcel.ReadParcelable<ChildProcessArgs>());
     if (!argsRead) {
@@ -65,6 +66,7 @@ bool ChildProcessRequest::Marshalling(Parcel &parcel) const
     WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(Int32, parcel, static_cast<int32_t>(childProcessType));
     WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(Int32, parcel, static_cast<int32_t>(childProcessCount));
     WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(Bool, parcel, isStartWithDebug);
+    WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(Bool, parcel, isStaticChildProcess);
     WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(Parcelable, parcel, &args);
     WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(Parcelable, parcel, &options);
     return true;

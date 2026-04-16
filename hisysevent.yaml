@@ -512,3 +512,12 @@ USER_DATA_SIZE:
    REMAIN_PARTITION_SIZE: {type: UINT64, desc: Remaining size of the partition}
    FILE_OR_FOLDER_PATH: {type: STRING, arrsize: 100, desc: File or folder path}
    FILE_OR_FOLDER_SIZE: {type: UINT64, arrsize: 100, desc: File or folder size}
+
+EXTENSION_RUNNING_TIMEOUT:
+  __BASE: {type: STATISTIC, level: CRITICAL, desc: extension ability running timeout}
+  EXTENSION_TYPE: {type: STRING, arrsize: 5, desc: extension type name list}
+  BUNDLE_NAME: {type: STRING, arrsize: 5, desc: bundle name list}
+  ABILITY_NAME: {type: STRING, arrsize: 5, desc: ability name list}
+  RUNNING_DURATION: {type: INT64, arrsize: 5, desc: running duration list in seconds}
+  STILL_ALIVE: {type: BOOL, arrsize: 5, desc: still alive flag list}
+  CNT: {type: INT32, arrsize: 5, desc: occurrence count list}

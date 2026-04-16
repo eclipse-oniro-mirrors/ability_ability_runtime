@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,6 +17,7 @@
 
 #include "ability_runtime/context/context.h"
 #include "ability_stage_context.h"
+#include "napi_common_want.h"
 #include "hilog_tag_wrapper.h"
 #include "js_context_utils.h"
 #include "js_data_struct_converter.h"
@@ -88,6 +89,18 @@ napi_value CreateJsAbilityStageContext(napi_env env, std::shared_ptr<AbilityRunt
 
     std::string type = "AbilityStageContext";
     napi_set_named_property(env, objValue, "contextType", CreateJsValue(env, type));
+
+    // Set launchElement property
+    auto stageContext = AbilityRuntime::Context::ConvertTo<AbilityStageContext>(context);
+    if (stageContext != nullptr) {
+        const auto &elementName = stageContext->GetLaunchElement();
+        if (!elementName.GetBundleName().empty() || !elementName.GetAbilityName().empty()) {
+            napi_value jsElementName = AppExecFwk::WrapElementName(env, elementName);
+            if (jsElementName != nullptr) {
+                napi_set_named_property(env, objValue, "launchElement", jsElementName);
+            }
+        }
+    }
 
     return handle.Escape(objValue);
 }

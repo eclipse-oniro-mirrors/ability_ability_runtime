@@ -17,6 +17,7 @@
 
 #include "ability_util.h"
 #include "app_utils.h"
+#include "extension_running_timeout_monitor.h"
 #include "preload_ui_extension_execute_callback_proxy.h"
 #include "preload_ui_extension_host_client.h"
 #include "ui_extension_record.h"
@@ -89,6 +90,18 @@ void ExtensionRecordManager::AddExtensionRecord(const int32_t extensionRecordId,
     TAG_LOGD(AAFwkTag::ABILITYMGR, "extensionRecordId %{public}d.", extensionRecordId);
     std::lock_guard<std::mutex> lock(mutex_);
     extensionRecords_.emplace(extensionRecordId, record);
+
+    // Notify running timeout monitor about extension start
+    if (record != nullptr && record->abilityRecord_ != nullptr) {
+        auto &abilityInfo = record->abilityRecord_->GetAbilityInfo();
+        auto monitor = DelayedSingleton<AAFwk::ExtensionRunningTimeoutMonitor>::GetInstance();
+        if (monitor != nullptr) {
+            monitor->OnExtensionStarted(extensionRecordId,
+                abilityInfo.extensionTypeName,
+                abilityInfo.bundleName,
+                abilityInfo.name);
+        }
+    }
 }
 
 void ExtensionRecordManager::RemoveExtensionRecord(const int32_t extensionRecordId)
@@ -97,6 +110,12 @@ void ExtensionRecordManager::RemoveExtensionRecord(const int32_t extensionRecord
     std::lock_guard<std::mutex> lock(mutex_);
     extensionRecords_.erase(extensionRecordId);
     terminateRecords_.erase(extensionRecordId);
+
+    // Notify running timeout monitor about extension termination
+    auto monitor = DelayedSingleton<AAFwk::ExtensionRunningTimeoutMonitor>::GetInstance();
+    if (monitor != nullptr) {
+        monitor->OnExtensionTerminated(extensionRecordId);
+    }
 }
 
 void ExtensionRecordManager::AddExtensionRecordToTerminatedList(const int32_t extensionRecordId)

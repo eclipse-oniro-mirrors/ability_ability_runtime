@@ -89,6 +89,8 @@ public:
     MOCK_METHOD2(RegisterCancelListener, void(const sptr<IWantSender>& sender, const sptr<IWantReceiver>& receiver));
     MOCK_METHOD2(UnregisterCancelListener, void(const sptr<IWantSender>& sender, const sptr<IWantReceiver>& receiver));
     MOCK_METHOD2(GetPendingRequestWant, int(const sptr<IWantSender>& target, std::shared_ptr<Want>& want));
+    MOCK_METHOD2(GetPendingRequestWantFromProxy, int(const sptr<IWantSender>& target, std::shared_ptr<Want>& want));
+
     MOCK_METHOD1(LockMission, int(int));
     MOCK_METHOD1(UnlockMission, int(int));
     MOCK_METHOD0(GetMissionLockModeState, int());
@@ -273,6 +275,8 @@ public:
     MOCK_METHOD2(RegisterCancelListener, void(const sptr<IWantSender>& sender, const sptr<IWantReceiver>& receiver));
     MOCK_METHOD2(UnregisterCancelListener, void(const sptr<IWantSender>& sender, const sptr<IWantReceiver>& receiver));
     MOCK_METHOD2(GetPendingRequestWant, int(const sptr<IWantSender>& target, std::shared_ptr<Want>& want));
+    MOCK_METHOD2(GetPendingRequestWantFromProxy, int(const sptr<IWantSender>& target, std::shared_ptr<Want>& want));
+
     MOCK_METHOD1(LockMission, int(int));
     MOCK_METHOD1(UnlockMission, int(int));
     MOCK_METHOD0(GetMissionLockModeState, int());

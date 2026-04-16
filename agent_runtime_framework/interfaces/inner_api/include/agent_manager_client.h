@@ -32,17 +32,44 @@ public:
     virtual ~AgentManagerClient() = default;
     static AgentManagerClient &GetInstance();
 
+    /**
+     * @brief Completes asynchronous service-loading and installs the remote agent manager proxy.
+     */
     void OnLoadSystemAbilitySuccess(const sptr<IRemoteObject> &remoteObject);
+    /**
+     * @brief Wakes blocked callers when the agent manager service cannot be loaded.
+     */
     void OnLoadSystemAbilityFail();
 
     int32_t GetAllAgentCards(std::vector<AgentCard> &cards);
     int32_t GetAgentCardsByBundleName(const std::string &bundleName, std::vector<AgentCard> &cards);
     int32_t GetAgentCardByAgentId(const std::string &bundleName, const std::string &agentId, AgentCard &card);
+    int32_t GetCallerAgentCardByAgentId(const std::string &agentId, AgentCard &card);
+    int32_t RegisterAgentCard(const AgentCard &card);
+    int32_t UpdateAgentCard(const AgentCard &card);
+    int32_t DeleteAgentCard(const std::string &bundleName, const std::string &agentId);
 
     int32_t ConnectAgentExtensionAbility(const AAFwk::Want &want,
         const sptr<AAFwk::IAbilityConnection> &connection);
 
     int32_t DisconnectAgentExtensionAbility(const sptr<AAFwk::IAbilityConnection> &connection);
+
+    /**
+     * @brief Connects a service extension ability on behalf of the given caller token.
+     */
+    int32_t ConnectServiceExtensionAbility(const sptr<IRemoteObject> &callerToken, const AAFwk::Want &want,
+        const sptr<AAFwk::IAbilityConnection> &connection);
+
+    /**
+     * @brief Disconnects a previously connected service extension ability for the given caller token.
+     */
+    int32_t DisconnectServiceExtensionAbility(const sptr<IRemoteObject> &callerToken,
+        const sptr<AAFwk::IAbilityConnection> &connection);
+
+    /**
+     * @brief Releases the active LOW_CODE agent marker once the caller reports completion.
+     */
+    int32_t NotifyLowCodeAgentComplete(const std::string &agentId);
 
 private:
     sptr<IAgentManager> GetAgentMgrProxy();

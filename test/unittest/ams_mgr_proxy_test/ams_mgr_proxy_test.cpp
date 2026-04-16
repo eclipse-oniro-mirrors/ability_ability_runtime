@@ -314,5 +314,71 @@ HWTEST_F(AmsMgrProxyTest, CheckPreloadAppRecordExist_0200, TestSize.Level1)
     EXPECT_EQ(result, ERR_OK);
     GTEST_LOG_(INFO) << "CheckPreloadAppRecordExist_0200 end";
 }
+
+/**
+ * @tc.name: SetGameSAPrelaunch_001
+ * @tc.desc: SetGameSAPrelaunch with valid parameters and isGameSAPrelaunch true.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrProxyTest, SetGameSAPrelaunch_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SetGameSAPrelaunch_001 start";
+    ASSERT_NE(amsMgrProxy_, nullptr);
+
+    sptr<IRemoteObject> token = new (std::nothrow) MockAbilityToken();
+    ASSERT_NE(token, nullptr);
+
+    EXPECT_CALL(*mockAmsMgrScheduler_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(ERR_OK));
+
+    bool isGameSAPrelaunch = true;
+    auto result = amsMgrProxy_->SetGameSAPrelaunch(token, isGameSAPrelaunch);
+    EXPECT_EQ(result, ERR_OK);
+    GTEST_LOG_(INFO) << "SetGameSAPrelaunch_001 end";
+}
+
+/**
+ * @tc.name: SetGameSAPrelaunch_002
+ * @tc.desc: SetGameSAPrelaunch with valid parameters and isGameSAPrelaunch false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrProxyTest, SetGameSAPrelaunch_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SetGameSAPrelaunch_002 start";
+    ASSERT_NE(amsMgrProxy_, nullptr);
+
+    sptr<IRemoteObject> token = new (std::nothrow) MockAbilityToken();
+    ASSERT_NE(token, nullptr);
+
+    EXPECT_CALL(*mockAmsMgrScheduler_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(ERR_OK));
+
+    bool isGameSAPrelaunch = false;
+    auto result = amsMgrProxy_->SetGameSAPrelaunch(token, isGameSAPrelaunch);
+    EXPECT_EQ(result, ERR_OK);
+    GTEST_LOG_(INFO) << "SetGameSAPrelaunch_002 end";
+}
+
+/**
+ * @tc.name: SetGameSAPrelaunch_003
+ * @tc.desc: SetGameSAPrelaunch with null token.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrProxyTest, SetGameSAPrelaunch_003, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SetGameSAPrelaunch_003 start";
+    ASSERT_NE(amsMgrProxy_, nullptr);
+
+    sptr<IRemoteObject> token = nullptr;
+
+    EXPECT_CALL(*mockAmsMgrScheduler_, SendRequest(_, _, _, _)).Times(0);
+
+    bool isGameSAPrelaunch = true;
+    auto result = amsMgrProxy_->SetGameSAPrelaunch(token, isGameSAPrelaunch);
+    EXPECT_EQ(result, ERR_INVALID_DATA);
+    GTEST_LOG_(INFO) << "SetGameSAPrelaunch_003 end";
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

@@ -113,6 +113,7 @@ enum class PreloadMode {
     PRELOAD_MODULE = 2,
     PRELOAD_BY_PHASE = 3,
     PRE_LAUNCH = 4,
+    GAME_PRELAUNCH = 5,
 };
 
 enum class PreloadPhase {
@@ -120,6 +121,28 @@ enum class PreloadPhase {
     PROCESS_CREATED = 1,
     ABILITY_STAGE_CREATED = 2,
     WINDOW_STAGE_CREATED = 3
+};
+
+enum class MakeImageState {
+    NONE = 0,
+    MAKE_PRELOAD_START = 1,
+    MAKE_PRELOAD_FINISH = 2,
+    MAKE_IMAGE_START,
+    MAKE_IMAGE_FINISH,
+    DESTROY_START,
+    DESTROY_FINISH
+};
+
+enum class ImageProcessState {
+    UNSPECIFIED = -1,
+    IMAGE_PROCESS_CREATE = 0,
+    IMAGE_PROCESS_TERMINATED = 1
+};
+
+enum class ImageProcessType {
+    UNSPECIFIED = 0,
+    TEMPLATE = 1,
+    WORK = 2
 };
 
 enum class AppStartReason {
@@ -132,6 +155,7 @@ enum class AppStartReason {
     PRELOAD_BY_PHASE_ABILITY_STAGE_CREATED = 6,
     STARTUP_HIDE = 7,
     PRE_LAUNCH = 8,
+    FORK_ALL = 9
 };
 
 enum class PreloadState {

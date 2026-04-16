@@ -145,6 +145,8 @@ int32_t AppSchedulerHost::OnRemoteRequestInnerThird(uint32_t code, MessageParcel
             return HandleScheduleJsHeapMemory(data, reply);
         case static_cast<uint32_t>(IAppScheduler::Message::SCHEDULE_CJHEAP_MEMORY_APPLICATION_TRANSACTION):
             return HandleScheduleCjHeapMemory(data, reply);
+        case static_cast<uint32_t>(IAppScheduler::Message::SCHEDULE_MEM_APPLICATION_TRANSACTION):
+            return HandleScheduleMem(data, reply);
         case static_cast<uint32_t>(IAppScheduler::Message::SCHEDULE_DUMP_IPC_START):
             return HandleScheduleDumpIpcStart(data, reply);
         case static_cast<uint32_t>(IAppScheduler::Message::SCHEDULE_DUMP_IPC_STOP):
@@ -161,6 +163,8 @@ int32_t AppSchedulerHost::OnRemoteRequestInnerThird(uint32_t code, MessageParcel
             return HandleSetWatchdogBackgroundStatus(data, reply);
         case static_cast<uint32_t>(IAppScheduler::Message::ON_LOAD_ABILITY_FINISHED):
             return HandleOnLoadAbilityFinished(data, reply);
+        case static_cast<uint32_t>(IAppScheduler::Message::SCHEDULE_UPDATE_WORK_PROCESS_INFO):
+            return HandleScheduleUpdateWorkProcessInfo(data, reply);
     }
     return INVALID_FD;
 }
@@ -241,6 +245,25 @@ int32_t AppSchedulerHost::HandleScheduleCjHeapMemory(MessageParcel &data, Messag
     return NO_ERROR;
 }
 
+int32_t AppSchedulerHost::HandleScheduleMem(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::unique_ptr<MemDumpInfo> info(data.ReadParcelable<MemDumpInfo>());
+    if (!info) {
+        TAG_LOGE(AAFwkTag::APPMGR, "ReadParcelable<MemDumpInfo> failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    std::string dumpResult;
+    ScheduleMem(*info, dumpResult);
+    if (info->isSync) {
+        if (!reply.WriteString(dumpResult)) {
+            TAG_LOGE(AAFwkTag::APPMGR, "write dumpResult failed");
+            return ERR_APPEXECFWK_PARCEL_ERROR;
+        }
+    }
+    return NO_ERROR;
+}
+
 int32_t AppSchedulerHost::HandleScheduleLaunchAbility(MessageParcel &data, MessageParcel &reply)
 {
     HITRACE_METER(HITRACE_TAG_APP);
@@ -257,7 +280,11 @@ int32_t AppSchedulerHost::HandleScheduleLaunchAbility(MessageParcel &data, Messa
 
     std::shared_ptr<AAFwk::Want> want(data.ReadParcelable<AAFwk::Want>());
     auto abilityRecordId = data.ReadInt32();
-    ScheduleLaunchAbility(*abilityInfo, token, want, abilityRecordId);
+    std::shared_ptr<AppUpdateInfo> updateInfo;
+    if (data.ReadBool()) {
+        updateInfo.reset(data.ReadParcelable<AppUpdateInfo>());
+    }
+    ScheduleLaunchAbility(*abilityInfo, token, want, abilityRecordId, updateInfo);
     return NO_ERROR;
 }
 
@@ -557,6 +584,14 @@ int32_t AppSchedulerHost::HandleOnLoadAbilityFinished(MessageParcel &data, Messa
     uint64_t callbackId = data.ReadUint64();
     int32_t pid = data.ReadInt32();
     OnLoadAbilityFinished(callbackId, pid);
+    return NO_ERROR;
+}
+
+int32_t AppSchedulerHost::HandleScheduleUpdateWorkProcessInfo(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    auto updateInfo = std::shared_ptr<AppUpdateInfo>(data.ReadParcelable<AppUpdateInfo>());
+    ScheduleUpdateWorkProcessInfo(updateInfo);
     return NO_ERROR;
 }
 }  // namespace AppExecFwk

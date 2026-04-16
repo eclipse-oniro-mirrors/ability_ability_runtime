@@ -18,9 +18,13 @@
 #define private public
 #include "application_context.h"
 #undef private
+#define private public
+#include "app_image_observer_manager.h"
+#undef private
 #include "js_ability_lifecycle_callback.h"
 #include "mock_ability_token.h"
 #include "mock_application_state_change_callback.h"
+#include "mock_application_update_callback.h"
 #include "mock_context_impl.h"
 #include "mock_interop_ability_lifecycle_callback.h"
 #include "running_process_info.h"
@@ -2118,6 +2122,90 @@ HWTEST_F(ApplicationContextTest, RegisterSystemConfigurationUpdatedCallback_0300
     context_->RegisterSystemConfigurationUpdatedCallback(weakCallback2);
     EXPECT_EQ(context_->systemConfigurationUpdatedCallbacks_.size(), 2);
     GTEST_LOG_(INFO) << "RegisterSystemConfigurationUpdatedCallback_0300 end";
+}
+
+/**
+ * @tc.number: RegisterApplicationUpdateCallback_0100
+ * @tc.name: RegisterApplicationUpdateCallback
+ * @tc.desc: Register ApplicationUpdateCallback with nullptr
+ */
+HWTEST_F(ApplicationContextTest, RegisterApplicationUpdateCallback_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RegisterApplicationUpdateCallback_0100 start";
+    std::weak_ptr<ApplicationUpdateCallback> applicationUpdateCallback = {};
+    context_->RegisterApplicationUpdateCallback(applicationUpdateCallback);
+    GTEST_LOG_(INFO) << "RegisterApplicationUpdateCallback_0100 end";
+}
+
+/**
+ * @tc.number: RegisterApplicationUpdateCallback_0200
+ * @tc.name: RegisterApplicationUpdateCallback
+ * @tc.desc: Register ApplicationUpdateCallback with valid callback
+ */
+HWTEST_F(ApplicationContextTest, RegisterApplicationUpdateCallback_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RegisterApplicationUpdateCallback_0200 start";
+    auto callback = std::make_shared<MockApplicationUpdateCallback>();
+    std::weak_ptr<ApplicationUpdateCallback> weakCallback = callback;
+    context_->RegisterApplicationUpdateCallback(weakCallback);
+    GTEST_LOG_(INFO) << "RegisterApplicationUpdateCallback_0200 end";
+}
+
+/**
+ * @tc.number: GetImageProcessType_0100
+ * @tc.name: GetImageProcessType
+ * @tc.desc: Get ImageProcessType with default value
+ */
+HWTEST_F(ApplicationContextTest, GetImageProcessType_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetImageProcessType_0100 start";
+    auto ret = context_->GetImageProcessType();
+    EXPECT_EQ(ret, 0);
+    GTEST_LOG_(INFO) << "GetImageProcessType_0100 end";
+}
+
+/**
+ * @tc.number: GetImageProcessType_0200
+ * @tc.name: GetImageProcessType
+ * @tc.desc: Get ImageProcessType after setting value
+ */
+HWTEST_F(ApplicationContextTest, GetImageProcessType_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetImageProcessType_0200 start";
+    AppExecFwk::AppImageObserverManager::GetInstance().SetImageProcessType(1);
+    auto ret = context_->GetImageProcessType();
+    EXPECT_EQ(ret, 1);
+    AppExecFwk::AppImageObserverManager::GetInstance().SetImageProcessType(0);
+    GTEST_LOG_(INFO) << "GetImageProcessType_0200 end";
+}
+
+/**
+ * @tc.number: IsAbilityCreated_0100
+ * @tc.name: IsAbilityCreated
+ * @tc.desc: IsAbilityCreated with default value
+ */
+HWTEST_F(ApplicationContextTest, IsAbilityCreated_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "IsAbilityCreated_0100 start";
+    AppExecFwk::AppImageObserverManager::GetInstance().SetAbilityCreated(false);
+    auto ret = context_->IsAbilityCreated();
+    EXPECT_FALSE(ret);
+    GTEST_LOG_(INFO) << "IsAbilityCreated_0100 end";
+}
+
+/**
+ * @tc.number: IsAbilityCreated_0200
+ * @tc.name: IsAbilityCreated
+ * @tc.desc: IsAbilityCreated after setting value to true
+ */
+HWTEST_F(ApplicationContextTest, IsAbilityCreated_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "IsAbilityCreated_0200 start";
+    AppExecFwk::AppImageObserverManager::GetInstance().SetAbilityCreated(true);
+    auto ret = context_->IsAbilityCreated();
+    EXPECT_TRUE(ret);
+    AppExecFwk::AppImageObserverManager::GetInstance().SetAbilityCreated(false);
+    GTEST_LOG_(INFO) << "IsAbilityCreated_0200 end";
 }
 }  // namespace AbilityRuntime
 }  // namespace OHOS

@@ -194,5 +194,72 @@ HWTEST_F(UriUtilsSecondTest, IsSandboxApp_002, TestSize.Level1)
     bool ret = UriUtils::GetInstance().IsSandboxApp(tokenId);
     EXPECT_TRUE(ret);
 }
+
+/*
+ * Feature: UriUtils
+ * Function: IsSandboxApp
+ * SubFunction: NA
+ * FunctionPoints: UriUtils IsSandboxApp with hap token.
+ */
+HWTEST_F(UriUtilsSecondTest, IsSandboxApp_003, TestSize.Level1)
+{
+    MyFlag::flag_ = 1;
+    MyFlag::bundleName_ = "bundleName";
+    uint32_t tokenId = 1001;
+    bool ret = UriUtils::GetInstance().IsSandboxApp(tokenId);
+    EXPECT_FALSE(ret);
+}
+
+/*
+ * Feature: UriUtils
+ * Function: PublishFileOpenEvent
+ * SubFunction: NA
+ * FunctionPoints: PublishFileOpenEvent with non-file scheme.
+ */
+HWTEST_F(UriUtilsSecondTest, PublishFileOpenEvent_004, TestSize.Level1)
+{
+    Want want;
+    want.SetUri("content://test/file.txt");
+    GrantUriPermissionInfo grantInfo;
+    grantInfo.targetBundleName = "com.example.test";
+    grantInfo.targetAbilityName = "MainAbility";
+    grantInfo.userId = 100;
+    grantInfo.callerUid = 20010080;
+
+    UriUtils::GetInstance().PublishFileOpenEvent(want, grantInfo);
+    // Should not publish event for non-file scheme
+    // Verify the URI is set correctly and scheme is content (not file)
+    std::string uri = want.GetUri().ToString();
+    EXPECT_FALSE(uri.empty());
+    EXPECT_NE(uri.find("content://"), std::string::npos);
+}
+
+/*
+ * Feature: UriUtils
+ * Function: IsDmsCall
+ * SubFunction: NA
+ * FunctionPoints: IsDmsCall with non-native token.
+ */
+HWTEST_F(UriUtilsSecondTest, IsDmsCall_005, TestSize.Level1)
+{
+    MyFlag::flag_ = 2; // HAP type
+    uint32_t fromTokenId = TOKEN_ID;
+    bool ret = UriUtils::GetInstance().IsDmsCall(fromTokenId);
+    EXPECT_FALSE(ret);
+}
+
+/*
+ * Feature: UriUtils
+ * Function: IsDmsCall
+ * SubFunction: NA
+ * FunctionPoints: IsDmsCall with get native info failed.
+ */
+HWTEST_F(UriUtilsSecondTest, IsDmsCall_006, TestSize.Level1)
+{
+    MyFlag::flag_ = 3; // Native type but get info fails
+    uint32_t fromTokenId = TOKEN_ID;
+    bool ret = UriUtils::GetInstance().IsDmsCall(fromTokenId);
+    EXPECT_FALSE(ret);
+}
 }
 }

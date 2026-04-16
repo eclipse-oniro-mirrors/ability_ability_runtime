@@ -17,6 +17,10 @@
 #define MOCK_AGENT_RUNTIME_MY_FLAG_H
 
 #include <string>
+#include <vector>
+#include "ability_connect_callback_interface.h"
+#include "hap_module_info.h"
+#include "want.h"
 #include "iremote_object.h"
 #include "running_process_info.h"
 #include "extension_ability_info.h"
@@ -30,22 +34,47 @@ public:
     static bool retPublish;
     static bool retRegisterBundleEventCallback;
     static bool retGetApplicationInfo;
+    static bool retGetBundleInfo;
+    static bool retGetResConfigFile;
     static bool isRegisterBundleEventCallbackCalled;
     static bool isAddSystemAbilityListenerCalled;
     static bool retVerifyCallingPermission;
     static bool retVerifyConnectAgentPermission;
     static bool retVerifyGetAgentCardPermission;
+    static bool retJudgeCallerIsAllowedToUseSystemAPI;
+    static bool retVerifyModifyAgentCardPermission;
+    static int32_t retRegisterAgentCard;
+    static int32_t retUpdateAgentCard;
+    static int32_t retDeleteAgentCard;
     static int32_t retConnectAbilityWithExtensionType;
     static int32_t retDisconnectAbility;
     static int32_t retGetAllAgentCards;
     static int32_t retGetAgentCardsByBundleName;
     static int32_t retGetAgentCardByAgentId;
     static std::string agentCardAgentId;
+    static std::string agentCardBundleName;
+    static std::string agentCardModuleName;
+    static std::string agentCardAbilityName;
+    static bool shouldCreateAgentCardAppInfo;
+    static int32_t agentCardType;
     static bool retQueryExtensionAbilityInfos;
+    static bool shouldFillExtensionAbilityInfos;
     static AppExecFwk::ExtensionAbilityType extensionAbilityType;
+    static bool mockApplicationInfoIsSystemApp;
+    static std::vector<AppExecFwk::ExtensionAbilityInfo> mockExtensionInfos;
+    static std::vector<AppExecFwk::HapModuleInfo> mockHapModuleInfos;
+    static std::vector<std::string> mockProfileInfos;
+    static int32_t extensionAbilityUid;
     static int32_t retGetProcessRunningInfoByPid;
     static AppExecFwk::AppProcessState processState;
     static int32_t retGetBundleNameByPid;
+    static AAFwk::Want lastConnectAbilityWant;
+    static sptr<AAFwk::IAbilityConnection> lastConnectAbilityConnection;
+    static sptr<IRemoteObject> lastConnectAbilityCallerToken;
+    static AppExecFwk::ExtensionAbilityType lastConnectAbilityExtensionType;
+    static sptr<AAFwk::IAbilityConnection> lastDisconnectAbilityConnection;
+    static int32_t connectAbilityWithExtensionTypeCallCount;
+    static int32_t disconnectAbilityCallCount;
 };
 }  // namespace AgentRuntime
 }  // namespace OHOS

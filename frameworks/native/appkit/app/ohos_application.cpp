@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -24,6 +24,7 @@
 #include "ability.h"
 #include "ability_record_mgr.h"
 #include "ability_thread.h"
+#include "app_image_observer_manager.h"
 #include "app_loader.h"
 #include "application_context.h"
 #include "application_cleaner.h"
@@ -43,6 +44,7 @@
 #include "syspara/parameter.h"
 #include "ui_ability.h"
 #include "application_configuration_manager.h"
+#include "js_leak_watcher_ts.h"
 #ifdef SUPPORT_GRAPHICS
 #include "display_manager.h"
 #include "window.h"
@@ -309,7 +311,7 @@ void OHOSApplication::OnConfigurationUpdated(
     }
     for (auto it = abilityStages_.begin(); it != abilityStages_.end(); it++) {
         auto abilityStage = it->second;
-        if (abilityStage) {
+        if (abilityStage && !abilityStage->IsSkipAbilityStageLifecycle()) {
             abilityStage->OnConfigurationUpdated(config);
         }
     }
@@ -368,7 +370,7 @@ void OHOSApplication::OnMemoryLevel(int32_t level)
     TAG_LOGD(AAFwkTag::APPKIT, "Number of abilityStage to be notified : [%{public}zu]", abilityStages_.size());
     for (auto it = abilityStages_.begin(); it != abilityStages_.end(); it++) {
         auto abilityStage = it->second;
-        if (abilityStage) {
+        if (abilityStage && !abilityStage->IsSkipAbilityStageLifecycle()) {
             abilityStage->OnMemoryLevel(level);
         }
     }
@@ -391,6 +393,43 @@ void OHOSApplication::OnStart()
  */
 void OHOSApplication::OnTerminate()
 {}
+
+void OHOSApplication::OnHyperSnapUpdate()
+{
+    TAG_LOGI(AAFwkTag::APPKIT, "OnHyperSnapUpdate");
+    AppExecFwk::AppImageObserverManager::GetInstance().NotifyApplicationUpdate();
+    for (auto& item : abilityStages_) {
+        if (item.second && !item.second->IsSkipAbilityStageLifecycle()) {
+            item.second->OnLaunchFromHyperSnap();
+        }
+    }
+}
+
+void OHOSApplication::AddAbility(std::shared_ptr<AbilityRuntime::AbilityStage> abilityStage,
+    const sptr<IRemoteObject> &token,
+    const std::shared_ptr<AppExecFwk::AbilityLocalRecord> &abilityRecord)
+{
+    if (abilityStage == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null abilityStage");
+        return;
+    }
+    if (token == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null token");
+        return;
+    }
+    if (abilityRecord == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null abilityRecord");
+        return;
+    }
+    if (!abilityStage->IsAbilityCreated()) {
+        if (!abilityStage->IsSkipAbilityStageLifecycle()) {
+            TAG_LOGI(AAFwkTag::APPKIT, "OnAboutToCreateAbility");
+            abilityStage->OnAboutToCreateAbility();
+        }
+        abilityStage->MarkAbilityCreated();
+    }
+    abilityStage->AddAbility(token, abilityRecord);
+}
 
 void OHOSApplication::SetAppEnv(const std::vector<AppEnvironment>& appEnvironments)
 {
@@ -493,7 +532,19 @@ std::shared_ptr<AbilityRuntime::Context> OHOSApplication::AddAbilityStage(
         }
         auto application = std::static_pointer_cast<OHOSApplication>(shared_from_this());
         std::weak_ptr<OHOSApplication> weak = application;
+
+        // Set launchElement
+        Want want;
+        if (abilityRecord->GetWant()) {
+            want = *(abilityRecord->GetWant());
+            auto elementName = want.GetElement();
+            TAG_LOGD(AAFwkTag::APPKIT, "Set launchElement to stageContext: %{public}s/%{public}s",
+                elementName.GetBundleName().c_str(), elementName.GetAbilityName().c_str());
+            stageContext->SetLaunchElement(elementName);
+        }
+
         abilityStage->Init(stageContext, weak);
+        abilityStage->SetSkipAbilityStageLifecycle(abilityRecord->IsSkipAbilityStageLifecycle());
         auto firstCallback = CreateFirstStartupCallbackForRecord(abilityStage, abilityRecord, *hapModuleInfo,
             callback);
         if (firstCallback != nullptr) {
@@ -518,12 +569,9 @@ std::shared_ptr<AbilityRuntime::Context> OHOSApplication::AddAbilityStage(
         }
 
         TAG_LOGD(AAFwkTag::APPKIT, "no wait startup second");
-        Want want;
-        if (abilityRecord->GetWant()) {
-            TAG_LOGD(AAFwkTag::APPKIT, "want is ok, transport to abilityStage");
-            want = *(abilityRecord->GetWant());
+        if (!abilityStage->IsSkipAbilityStageLifecycle()) {
+            abilityStage->OnCreate(want);
         }
-        abilityStage->OnCreate(want);
         abilityStages_[moduleName] = abilityStage;
     } else {
         abilityStage = iterator->second;
@@ -533,7 +581,7 @@ std::shared_ptr<AbilityRuntime::Context> OHOSApplication::AddAbilityStage(
         TAG_LOGE(AAFwkTag::APPKIT, "null token");
         return nullptr;
     }
-    abilityStage->AddAbility(token, abilityRecord);
+    AddAbility(abilityStage, token, abilityRecord);
     return abilityStage->GetContext();
 }
 
@@ -713,7 +761,7 @@ void OHOSApplication::AutoStartupDone(const std::shared_ptr<AbilityLocalRecord> 
         TAG_LOGE(AAFwkTag::APPKIT, "null token");
         return;
     }
-    abilityStage->AddAbility(token, abilityRecord);
+    AddAbility(abilityStage, token, abilityRecord);
 }
 
 void OHOSApplication::AutoStartupDone(
@@ -843,7 +891,9 @@ void OHOSApplication::CleanAbilityStage(const sptr<IRemoteObject> &token,
         }
         abilityStage->RemoveAbility(token);
         if (!abilityStage->ContainsAbility() && !isCacheProcess) {
-            abilityStage->OnDestroy();
+            if (!abilityStage->IsSkipAbilityStageLifecycle()) {
+                abilityStage->OnDestroy();
+            }
             abilityStages_.erase(moduleName);
         }
     }
@@ -932,7 +982,7 @@ void OHOSApplication::SchedulePrepareTerminate(const std::string &moduleName,
         return;
     }
     callbackInfo->Push(callback);
-    if (!iter->second->OnPrepareTerminate(callbackInfo, isAsync)) {
+    if (iter->second->IsSkipAbilityStageLifecycle() || !iter->second->OnPrepareTerminate(callbackInfo, isAsync)) {
         TAG_LOGI(AAFwkTag::APPKIT, "not exist");
         AppExecFwk::OnPrepareTerminationResult result = { 0, false };
         callbackInfo->Call(result);
@@ -1070,7 +1120,9 @@ void OHOSApplication::CleanEmptyAbilityStage()
             continue;
         }
         if (!abilityStage->ContainsAbility()) {
-            abilityStage->OnDestroy();
+            if (!abilityStage->IsSkipAbilityStageLifecycle()) {
+                abilityStage->OnDestroy();
+            }
             it = abilityStages_.erase(it);
         } else {
             containsNonEmpty = true;
@@ -1290,6 +1342,21 @@ bool OHOSApplication::UpdateETSRuntime(AbilityRuntime::Runtime::Options &option)
         runtime_ = std::move(etsRuntime);
     }
     return true;
+}
+
+void OHOSApplication::InitJSLeakWatcher(const std::string &bundleName)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "InitJSLeakWatcher call");
+    if (runtime_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null runtime");
+        return;
+    }
+    if (runtime_->GetLanguage() != AbilityRuntime::Runtime::Language::JS) {
+        return;
+    }
+    auto env = (static_cast<AbilityRuntime::JsRuntime&>(*runtime_)).GetNapiEnv();
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    JSLeakWatcherEarlyInit(env, bundleName);
 }
 
 #ifdef SUPPORT_SCREEN

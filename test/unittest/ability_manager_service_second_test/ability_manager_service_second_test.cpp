@@ -2086,5 +2086,37 @@ HWTEST_F(AbilityManagerServiceSecondTest, GetConfiguration_001, TestSize.Level1)
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSecondTest GetConfiguration_001 end.");
 }
+
+/*
+ * @tc.number    : AbilityManagerServiceSecondTest_GetPendingRequestWantFromProxy_001
+ * @tc.desc      : 1.GetPendingRequestWantFromProxy with null target
+ */
+HWTEST_F(AbilityManagerServiceSecondTest, GetPendingRequestWantFromProxy_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetPendingRequestWantFromProxy_001 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    abilityMs_->Init();
+    sptr<IWantSender> target = nullptr;
+    std::shared_ptr<Want> want = std::make_shared<Want>();
+    auto res = abilityMs_->GetPendingRequestWantFromProxy(target, want);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "GetPendingRequestWantFromProxy_001 end");
+}
+
+/*
+ * @tc.number    : AbilityManagerServiceSecondTest_GetPendingRequestWantFromProxy_002
+ * @tc.desc      : 1.GetPendingRequestWantFromProxy with null want
+ */
+HWTEST_F(AbilityManagerServiceSecondTest, GetPendingRequestWantFromProxy_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetPendingRequestWantFromProxy_002 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    abilityMs_->Init();
+    sptr<IWantSender> target = nullptr;
+    std::shared_ptr<Want> want = nullptr;
+    auto res = abilityMs_->GetPendingRequestWantFromProxy(target, want);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "GetPendingRequestWantFromProxy_002 end");
+}
 }  // namespace AAFwk
 }  // namespace OHOS

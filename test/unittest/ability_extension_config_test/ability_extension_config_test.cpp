@@ -1488,30 +1488,6 @@ HWTEST_F(AbilityExtensionConfigTest, IsScreenUnlockIntercept_007, TestSize.Level
 }
 
 /*
- * @tc.number    : IsScreenUnlockIntercept_008
- * @tc.name      : AbilityExtensionConfigTest
- * @tc.desc      : Test Function IsScreenUnlockIntercept
- */
-HWTEST_F(AbilityExtensionConfigTest, IsScreenUnlockIntercept_008, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "IsScreenUnlockIntercept_008 start.");
-    const std::string configStr = R"({
-        "ams_extension_config": [{
-            "name": "FormExtension",
-            "extension_type_name": "form",
-            "screen_unlock_access": {
-                "blocklist" : ["com.example.test"]
-            }
-        }]
-    })";
-    ASSERT_NE(extensionConfig_, nullptr);
-    LoadTestConfig(configStr);
-    bool flag = extensionConfig_->IsScreenUnlockIntercept("form", false, "com.example.test");
-    EXPECT_TRUE(flag);
-    TAG_LOGI(AAFwkTag::TEST, "IsScreenUnlockIntercept_008 end.");
-}
-
-/*
  * @tc.number    : IsScreenUnlockIntercept_009
  * @tc.name      : AbilityExtensionConfigTest
  * @tc.desc      : Test Function IsScreenUnlockIntercept
@@ -1533,31 +1509,6 @@ HWTEST_F(AbilityExtensionConfigTest, IsScreenUnlockIntercept_009, TestSize.Level
     bool flag = extensionConfig_->IsScreenUnlockIntercept("form", false, "com.example.test2");
     EXPECT_FALSE(flag);
     TAG_LOGI(AAFwkTag::TEST, "IsScreenUnlockIntercept_009 end.");
-}
-
-/*
- * @tc.number    : IsScreenUnlockIntercept_010
- * @tc.name      : AbilityExtensionConfigTest
- * @tc.desc      : Test Function IsScreenUnlockIntercept
- */
-HWTEST_F(AbilityExtensionConfigTest, IsScreenUnlockIntercept_010, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "IsScreenUnlockIntercept_010 start.");
-    const std::string configStr = R"({
-        "ams_extension_config": [{
-            "name": "FormExtension",
-            "extension_type_name": "form",
-            "screen_unlock_access": {
-                "blocklist" : ["com.example.test"],
-                "intercept" : true
-            }
-        }]
-    })";
-    ASSERT_NE(extensionConfig_, nullptr);
-    LoadTestConfig(configStr);
-    bool flag = extensionConfig_->IsScreenUnlockIntercept("form", false, "com.example.test2");
-    EXPECT_FALSE(flag);
-    TAG_LOGI(AAFwkTag::TEST, "IsScreenUnlockIntercept_010 end.");
 }
 
 /*
@@ -1676,16 +1627,755 @@ HWTEST_F(AbilityExtensionConfigTest, IsScreenUnlockAllowAbility_ShouldReturnTrue
             "name": "ServiceExtension",
             "extension_type_name": "service",
             "screen_unlock_access": {
-                "allowlist": ["com.example.test/testAbility"],
+                "allowlist": [{"appIdentifier": "123456", "bundleName": "com.example.test"}],
                 "intercept": true
             }
         }]
     })";
     ASSERT_NE(extensionConfig_, nullptr);
     LoadTestConfig(configStr);
-    bool flag = extensionConfig_->IsScreenUnlockAllowAbility("service", "com.example.test", "testAbility");
+    bool flag = extensionConfig_->IsInScreenUnlockAccessAllowList("service", "123456");
     EXPECT_TRUE(flag);
     TAG_LOGI(AAFwkTag::TEST, "IsScreenUnlockAllowAbility_ShouldReturnTrue_WhenBundleAndAbilityInAllowlist end.");
+}
+
+/*
+ * @tc.number    : HasDefaultInterception_ShouldReturnTrueWhenDefaultInterceptionIsTrue
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function HasDefaultInterception
+ */
+HWTEST_F(AbilityExtensionConfigTest, HasDefaultInterception_ShouldReturnTrueWhenDefaultInterceptionIsTrue,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HasDefaultInterception_ShouldReturnTrueWhenDefaultInterceptionIsTrue start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "defaultInterception": true
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->HasScreenUnlockDefaultInterception("form");
+    EXPECT_TRUE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "HasDefaultInterception_ShouldReturnTrueWhenDefaultInterceptionIsTrue end.");
+}
+
+/*
+ * @tc.number    : HasDefaultInterception_ShouldReturnFalseWhenHaveNoExtensionType
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function HasDefaultInterception
+ */
+HWTEST_F(AbilityExtensionConfigTest, HasDefaultInterception_ShouldReturnFalseWhenHaveNoExtensionType,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HasDefaultInterception_ShouldReturnFalseWhenHaveNoExtensionType start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "defaultInterception": true
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->HasScreenUnlockDefaultInterception("service");
+    EXPECT_FALSE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "HasDefaultInterception_ShouldReturnFalseWhenHaveNoExtensionType end.");
+}
+
+/*
+ * @tc.number    : HasDefaultInterception_ShouldReturnFalseWhenHaveNoDefaultInterception
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function HasDefaultInterception
+ */
+HWTEST_F(AbilityExtensionConfigTest, HasDefaultInterception_ShouldReturnFalseWhenHaveNoDefaultInterception,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HasDefaultInterception_ShouldReturnFalseWhenHaveNoDefaultInterception start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "intercept": true
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->HasScreenUnlockDefaultInterception("form");
+    EXPECT_FALSE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "HasDefaultInterception_ShouldReturnFalseWhenHaveNoDefaultInterception end.");
+}
+
+/*
+ * @tc.number    : HasSystemAppInterception_ShouldReturnTrueWhenSystemAppInterceptionIsTrue
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function HasSystemAppInterception
+ */
+HWTEST_F(AbilityExtensionConfigTest, HasSystemAppInterception_ShouldReturnTrueWhenSystemAppInterceptionIsTrue,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HasSystemAppInterception_ShouldReturnTrueWhenSystemAppInterceptionIsTrue start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "systemAppInterception": true
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->HasScreenUnlockSystemAppInterception("form");
+    EXPECT_TRUE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "HasSystemAppInterception_ShouldReturnTrueWhenSystemAppInterceptionIsTrue end.");
+}
+
+/*
+ * @tc.number    : HasSystemAppInterception_ShouldReturnTrueWhenSystemAppInterceptionIsFalse
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function HasSystemAppInterception
+ */
+HWTEST_F(AbilityExtensionConfigTest, HasSystemAppInterception_ShouldReturnTrueWhenSystemAppInterceptionIsFalse,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HasSystemAppInterception_ShouldReturnTrueWhenSystemAppInterceptionIsFalse start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "systemAppInterception": false
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->HasScreenUnlockSystemAppInterception("form");
+    EXPECT_TRUE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "HasSystemAppInterception_ShouldReturnTrueWhenSystemAppInterceptionIsFalse end.");
+}
+
+/*
+ * @tc.number    : HasSystemAppInterception_ShouldReturnFalseWhenHaveNoExtensionType
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function HasSystemAppInterception
+ */
+HWTEST_F(AbilityExtensionConfigTest, HasSystemAppInterception_ShouldReturnFalseWhenHaveNoExtensionType,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HasSystemAppInterception_ShouldReturnFalseWhenHaveNoExtensionType start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "systemAppInterception": true
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->HasScreenUnlockSystemAppInterception("service");
+    EXPECT_FALSE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "HasSystemAppInterception_ShouldReturnFalseWhenHaveNoExtensionType end.");
+}
+
+/*
+ * @tc.number    : HasSystemAppInterception_ShouldReturnFalseWhenHaveNoSystemAppInterception
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function HasSystemAppInterception
+ */
+HWTEST_F(AbilityExtensionConfigTest, HasSystemAppInterception_ShouldReturnFalseWhenHaveNoSystemAppInterception,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HasSystemAppInterception_ShouldReturnFalseWhenHaveNoSystemAppInterception start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "defaultInterception": true
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->HasScreenUnlockSystemAppInterception("form");
+    EXPECT_FALSE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "HasSystemAppInterception_ShouldReturnFalseWhenHaveNoSystemAppInterception end.");
+}
+
+/*
+ * @tc.number    : GetDefaultInterception_ShouldReturnTrueWhenNoExtensionType
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function GetDefaultInterception
+ */
+HWTEST_F(AbilityExtensionConfigTest, GetDefaultInterception_ShouldReturnTrueWhenNoExtensionType, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetDefaultInterception_ShouldReturnTrueWhenNoExtensionType start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "defaultInterception": true
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->GetScreenUnlockDefaultInterception("service");
+    EXPECT_TRUE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "GetDefaultInterception_ShouldReturnTrueWhenNoExtensionType end.");
+}
+
+/*
+ * @tc.number    : GetDefaultInterception_ShouldReturnTrueWhenNoDefaultInterception
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function GetDefaultInterception
+ */
+HWTEST_F(AbilityExtensionConfigTest, GetDefaultInterception_ShouldReturnTrueWhenNoDefaultInterception,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetDefaultInterception_ShouldReturnTrueWhenNoDefaultInterception start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "systemAppInterception": true
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->GetScreenUnlockDefaultInterception("form");
+    EXPECT_TRUE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "GetDefaultInterception_ShouldReturnTrueWhenNoDefaultInterception end.");
+}
+
+/*
+ * @tc.number    : GetDefaultInterception_ShouldReturnTrueWhenDefaultInterceptionIsTrue
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function GetDefaultInterception
+ */
+HWTEST_F(AbilityExtensionConfigTest, GetDefaultInterception_ShouldReturnTrueWhenDefaultInterceptionIsTrue,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetDefaultInterception_ShouldReturnTrueWhenDefaultInterceptionIsTrue start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "defaultInterception": true
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->GetScreenUnlockDefaultInterception("form");
+    EXPECT_TRUE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "GetDefaultInterception_ShouldReturnTrueWhenDefaultInterceptionIsTrue end.");
+}
+
+/*
+ * @tc.number    : GetDefaultInterception_ShouldReturnFalseWhenDefaultInterceptionIsFalse
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function GetDefaultInterception
+ */
+HWTEST_F(AbilityExtensionConfigTest, GetDefaultInterception_ShouldReturnFalseWhenDefaultInterceptionIsFalse,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetDefaultInterception_ShouldReturnFalseWhenDefaultInterceptionIsFalse start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->GetScreenUnlockDefaultInterception("form");
+    EXPECT_FALSE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "GetDefaultInterception_ShouldReturnFalseWhenDefaultInterceptionIsFalse end.");
+}
+
+/*
+ * @tc.number    : GetSystemAppInterception_ShouldReturnTrueWhenNoExtensionType
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function GetSystemAppInterception
+ */
+HWTEST_F(AbilityExtensionConfigTest, GetSystemAppInterception_ShouldReturnTrueWhenNoExtensionType, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetSystemAppInterception_ShouldReturnTrueWhenNoExtensionType start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "systemAppInterception": true
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->GetScreenUnlockSystemAppInterception("service");
+    EXPECT_TRUE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "GetSystemAppInterception_ShouldReturnTrueWhenNoExtensionType end.");
+}
+
+/*
+ * @tc.number    : GetSystemAppInterception_ShouldReturnTrueWhenNoSystemAppInterception
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function GetSystemAppInterception
+ */
+HWTEST_F(AbilityExtensionConfigTest, GetSystemAppInterception_ShouldReturnTrueWhenNoSystemAppInterception,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetSystemAppInterception_ShouldReturnTrueWhenNoSystemAppInterception start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "defaultInterception": true
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->GetScreenUnlockSystemAppInterception("form");
+    EXPECT_TRUE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "GetSystemAppInterception_ShouldReturnTrueWhenNoSystemAppInterception end.");
+}
+
+/*
+ * @tc.number    : GetSystemAppInterception_ShouldReturnTrueWhenSystemAppInterceptionIsTrue
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function GetSystemAppInterception
+ */
+HWTEST_F(AbilityExtensionConfigTest, GetSystemAppInterception_ShouldReturnTrueWhenSystemAppInterceptionIsTrue,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetSystemAppInterception_ShouldReturnTrueWhenSystemAppInterceptionIsTrue start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "systemAppInterception": true
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->GetScreenUnlockSystemAppInterception("form");
+    EXPECT_TRUE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "GetSystemAppInterception_ShouldReturnTrueWhenSystemAppInterceptionIsTrue end.");
+}
+
+/*
+ * @tc.number    : GetSystemAppInterception_ShouldReturnFalseWhenSystemAppInterceptionIsFalse
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function GetSystemAppInterception
+ */
+HWTEST_F(AbilityExtensionConfigTest, GetSystemAppInterception_ShouldReturnFalseWhenSystemAppInterceptionIsFalse,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetSystemAppInterception_ShouldReturnFalseWhenSystemAppInterceptionIsFalse start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "systemAppInterception": false
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->GetScreenUnlockSystemAppInterception("form");
+    EXPECT_FALSE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "GetSystemAppInterception_ShouldReturnFalseWhenSystemAppInterceptionIsFalse end.");
+}
+
+/*
+ * @tc.number    : IsInAllowList_ShouldReturnFalseWhenHaveNoExtensionType
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function IsInAllowList
+ */
+HWTEST_F(AbilityExtensionConfigTest, IsInAllowList_ShouldReturnFalseWhenHaveNoExtensionType,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsInAllowList_ShouldReturnFalseWhenHaveNoExtensionType start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "allowlist": [
+                    {"appIdentifier": "123456", "bundleName": "com.example.test"},
+                    {"appIdentifier": "789012", "bundleName": "com.example.test2"}
+                ]
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->IsInScreenUnlockAccessAllowList("service", "123456");
+    EXPECT_FALSE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "IsInAllowList_ShouldReturnFalseWhenHaveNoExtensionType end.");
+}
+
+/*
+ * @tc.number    : IsInAllowList_ShouldReturnPointStateWhenGiven
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function IsInAllowList
+ */
+HWTEST_F(AbilityExtensionConfigTest, IsInAllowList_ShouldReturnPointStateWhenGiven, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsInAllowList_ShouldReturnPointStateWhenGiven start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "allowlist": [
+                    {"appIdentifier": "123456", "bundleName": "com.example.test"},
+                    {"appIdentifier": "789012", "bundleName": "com.example.test2"}
+                ]
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->IsInScreenUnlockAccessAllowList("form", "123456");
+    EXPECT_TRUE(flag);
+    flag = extensionConfig_->IsInScreenUnlockAccessAllowList("form", "789012");
+    EXPECT_TRUE(flag);
+    flag = extensionConfig_->IsInScreenUnlockAccessAllowList("form", "999999");
+    EXPECT_FALSE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "IsInAllowList_ShouldReturnPointStateWhenGiven end.");
+}
+
+/*
+ * @tc.number    : IsInBlockList_ShouldReturnFalseWhenHaveNoExtensionType
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function IsInBlockList
+ */
+HWTEST_F(AbilityExtensionConfigTest, IsInBlockList_ShouldReturnFalseWhenHaveNoExtensionType,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsInBlockList_ShouldReturnFalseWhenHaveNoExtensionType start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "blocklist": [
+                    {"appIdentifier": "123456", "bundleName": "com.example.test"},
+                    {"appIdentifier": "789012", "bundleName": "com.example.test2"}
+                ]
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->IsInScreenUnlockAccessBlockList("service", "123456");
+    EXPECT_FALSE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "IsInBlockList_ShouldReturnFalseWhenHaveNoExtensionType end.");
+}
+
+/*
+ * @tc.number    : IsInBlockList_ShouldReturnPointStateWhenGiven
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function IsInBlockList
+ */
+HWTEST_F(AbilityExtensionConfigTest, IsInBlockList_ShouldReturnPointStateWhenGiven, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsInBlockList_ShouldReturnPointStateWhenGiven start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "blocklist": [
+                    {"appIdentifier": "123456", "bundleName": "com.example.test"},
+                    {"appIdentifier": "789012", "bundleName": "com.example.test2"}
+                ]
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->IsInScreenUnlockAccessBlockList("form", "123456");
+    EXPECT_TRUE(flag);
+    flag = extensionConfig_->IsInScreenUnlockAccessBlockList("form", "789012");
+    EXPECT_TRUE(flag);
+    flag = extensionConfig_->IsInScreenUnlockAccessBlockList("form", "999999");
+    EXPECT_FALSE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "IsInBlockList_ShouldReturnPointStateWhenGiven end.");
+}
+
+/*
+ * @tc.number    : HasScreenUnlockAccessConfig_ShouldReturnTrueWhenHaveDefaultInterception
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function HasScreenUnlockAccessConfig
+ */
+HWTEST_F(AbilityExtensionConfigTest, HasScreenUnlockAccessConfig_ShouldReturnTrueWhenHaveDefaultInterception,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HasScreenUnlockAccessConfig_ShouldReturnTrueWhenHaveDefaultInterception start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "defaultInterception": true
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->HasScreenUnlockAccessConfig("form");
+    EXPECT_TRUE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "HasScreenUnlockAccessConfig_ShouldReturnTrueWhenHaveDefaultInterception end.");
+}
+
+/*
+ * @tc.number    : HasScreenUnlockAccessConfig_ShouldReturnTrueWhenHaveSystemAppInterception
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function HasScreenUnlockAccessConfig
+ */
+HWTEST_F(AbilityExtensionConfigTest, HasScreenUnlockAccessConfig_ShouldReturnTrueWhenHaveSystemAppInterception,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HasScreenUnlockAccessConfig_ShouldReturnTrueWhenHaveSystemAppInterception start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "systemAppInterception": true
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->HasScreenUnlockAccessConfig("form");
+    EXPECT_TRUE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "HasScreenUnlockAccessConfig_ShouldReturnTrueWhenHaveSystemAppInterception end.");
+}
+
+/*
+ * @tc.number    : HasScreenUnlockAccessConfig_ShouldReturnTrueWhenHaveAllowlist
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function HasScreenUnlockAccessConfig
+ */
+HWTEST_F(AbilityExtensionConfigTest, HasScreenUnlockAccessConfig_ShouldReturnTrueWhenHaveAllowlist,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HasScreenUnlockAccessConfig_ShouldReturnTrueWhenHaveAllowlist start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "allowlist": [
+                    {"appIdentifier": "123456", "bundleName": "com.example.test"},
+                    {"appIdentifier": "789012", "bundleName": "com.example.test2"}
+                ]
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->HasScreenUnlockAccessConfig("form");
+    EXPECT_TRUE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "HasScreenUnlockAccessConfig_ShouldReturnTrueWhenHaveAllowlist end.");
+}
+
+/*
+ * @tc.number    : HasScreenUnlockAccessConfig_ShouldReturnTrueWhenHaveBlocklist
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function HasScreenUnlockAccessConfig
+ */
+HWTEST_F(AbilityExtensionConfigTest, HasScreenUnlockAccessConfig_ShouldReturnTrueWhenHaveBlocklist,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HasScreenUnlockAccessConfig_ShouldReturnTrueWhenHaveAllowlist start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "blocklist": [
+                    {"appIdentifier": "123456", "bundleName": "com.example.test"},
+                    {"appIdentifier": "789012", "bundleName": "com.example.test2"}
+                ]
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->HasScreenUnlockAccessConfig("form");
+    EXPECT_TRUE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "HasScreenUnlockAccessConfig_ShouldReturnTrueWhenHaveBlocklist end.");
+}
+
+/*
+ * @tc.number    : HasScreenUnlockAccessConfig_ShouldReturnFalseWhenHaveNoScreenUnlockAccess
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function HasScreenUnlockAccessConfig
+ */
+HWTEST_F(AbilityExtensionConfigTest, HasScreenUnlockAccessConfig_ShouldReturnFalseWhenHaveNoScreenUnlockAccess,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HasScreenUnlockAccessConfig_ShouldReturnFalseWhenHaveNoScreenUnlockAccess start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form"
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->HasScreenUnlockAccessConfig("form");
+    EXPECT_FALSE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "HasScreenUnlockAccessConfig_ShouldReturnFalseWhenHaveNoScreenUnlockAccess end.");
+}
+
+/*
+ * @tc.number    : HasScreenUnlockAccessAllowList_ShouldReturnTrueWhenHaveAllowlist
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function HasScreenUnlockAccessAllowList
+ */
+HWTEST_F(AbilityExtensionConfigTest, HasScreenUnlockAccessAllowList_ShouldReturnTrueWhenHaveAllowlist,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HasScreenUnlockAccessAllowList_ShouldReturnTrueWhenHaveAllowlist start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "defaultInterception": true,
+                "allowlist": [
+                    {"appIdentifier": "123456", "bundleName": "com.example.test"}
+                ]
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->HasScreenUnlockAccessAllowList("form");
+    EXPECT_TRUE(flag);
+    // blocklist is empty
+    flag = extensionConfig_->HasScreenUnlockAccessBlockList("form");
+    EXPECT_FALSE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "HasScreenUnlockAccessAllowList_ShouldReturnTrueWhenHaveAllowlist end.");
+}
+
+/*
+ * @tc.number    : HasScreenUnlockAccessBlockList_ShouldReturnTrueWhenHaveBlocklist
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function HasScreenUnlockAccessBlockList
+ */
+HWTEST_F(AbilityExtensionConfigTest, HasScreenUnlockAccessBlockList_ShouldReturnTrueWhenHaveBlocklist,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HasScreenUnlockAccessBlockList_ShouldReturnTrueWhenHaveBlocklist start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "defaultInterception": false,
+                "blocklist": [
+                    {"appIdentifier": "123456", "bundleName": "com.example.test"}
+                ]
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->HasScreenUnlockAccessBlockList("form");
+    EXPECT_TRUE(flag);
+    // allowlist is empty
+    flag = extensionConfig_->HasScreenUnlockAccessAllowList("form");
+    EXPECT_FALSE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "HasScreenUnlockAccessBlockList_ShouldReturnTrueWhenHaveBlocklist end.");
+}
+
+/*
+ * @tc.number    : HasScreenUnlockAccessAllowList_ShouldReturnFalseWhenNoList
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function HasScreenUnlockAccessAllowList/BlockList when no lists configured
+ */
+HWTEST_F(AbilityExtensionConfigTest, HasScreenUnlockAccessAllowList_ShouldReturnFalseWhenNoList,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HasScreenUnlockAccessAllowList_ShouldReturnFalseWhenNoList start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "defaultInterception": true,
+                "systemAppInterception": false
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->HasScreenUnlockAccessAllowList("form");
+    EXPECT_FALSE(flag);
+    flag = extensionConfig_->HasScreenUnlockAccessBlockList("form");
+    EXPECT_FALSE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "HasScreenUnlockAccessAllowList_ShouldReturnFalseWhenNoList end.");
+}
+
+/*
+ * @tc.number    : HasScreenUnlockAccessAllowList_ShouldReturnFalseWhenUnknownType
+ * @tc.name      : AbilityExtensionConfigTest
+ * @tc.desc      : Test Function HasScreenUnlockAccessAllowList/BlockList for unknown extension type
+ */
+HWTEST_F(AbilityExtensionConfigTest, HasScreenUnlockAccessAllowList_ShouldReturnFalseWhenUnknownType,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HasScreenUnlockAccessAllowList_ShouldReturnFalseWhenUnknownType start.");
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "name": "FormExtension",
+            "extension_type_name": "form",
+            "screen_unlock_access": {
+                "defaultInterception": true,
+                "allowlist": [
+                    {"appIdentifier": "123456", "bundleName": "com.example.test"}
+                ]
+            }
+        }]
+    })";
+    ASSERT_NE(extensionConfig_, nullptr);
+    LoadTestConfig(configStr);
+    bool flag = extensionConfig_->HasScreenUnlockAccessAllowList("service");
+    EXPECT_FALSE(flag);
+    flag = extensionConfig_->HasScreenUnlockAccessBlockList("service");
+    EXPECT_FALSE(flag);
+    TAG_LOGI(AAFwkTag::TEST, "HasScreenUnlockAccessAllowList_ShouldReturnFalseWhenUnknownType end.");
 }
 }
 }

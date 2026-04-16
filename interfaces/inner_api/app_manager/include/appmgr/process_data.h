@@ -74,6 +74,8 @@ struct ProcessData : public Parcelable {
     std::string killReason;
     bool isFromWindowFocusChanged = false;
     int32_t preloadMode = -1;
+    int32_t imageProcessType = 0;
+    bool isPreloadUIExtension = false;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

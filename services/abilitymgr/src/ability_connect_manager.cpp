@@ -29,6 +29,7 @@
 #include "cache_extension_utils.h"
 #include "datetime_ex.h"
 #include "extension_ability_info.h"
+#include "extension_running_timeout_monitor.h"
 #include "foreground_app_connection_manager.h"
 #include "global_constant.h"
 #include "hitrace_meter.h"
@@ -283,6 +284,14 @@ int AbilityConnectManager::StopServiceAbilityLocked(const AbilityRequest &abilit
 void AbilityConnectManager::RemoveServiceFromMapSafe(const std::string &serviceKey)
 {
     std::lock_guard lock(serviceMapMutex_);
+    auto it = serviceMap_.find(serviceKey);
+    if (it != serviceMap_.end() && it->second != nullptr) {
+        auto recordId = it->second->GetRecordId();
+        auto monitor = DelayedSingleton<AAFwk::ExtensionRunningTimeoutMonitor>::GetInstance();
+        if (monitor != nullptr) {
+            monitor->OnExtensionTerminated(recordId);
+        }
+    }
     serviceMap_.erase(serviceKey);
     TAG_LOGD(AAFwkTag::EXT, "ServiceMap remove, size:%{public}zu", serviceMap_.size());
 }
@@ -319,7 +328,8 @@ void AbilityConnectManager::ReportEventToRSS(const AppExecFwk::AbilityInfo &abil
 }
 
 int AbilityConnectManager::ConnectAbilityLocked(const AbilityRequest &abilityRequest,
-    const sptr<IAbilityConnection> &connect, const sptr<IRemoteObject> &callerToken, sptr<SessionInfo> sessionInfo)
+    const sptr<IAbilityConnection> &connect, const sptr<IRemoteObject> &callerToken, sptr<SessionInfo> sessionInfo,
+    std::shared_ptr<IndirectCallerInfo> indirectCallerInfo)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     CHECK_POINTER_AND_RETURN(connect, ERR_INVALID_VALUE);
@@ -373,7 +383,7 @@ int AbilityConnectManager::ConnectAbilityLocked(const AbilityRequest &abilityReq
     auto connectRecord = ConnectionRecord::CreateConnectionRecord(
         callerToken, targetService, connect, shared_from_this());
     CHECK_POINTER_AND_RETURN(connectRecord, ERR_INVALID_VALUE);
-    connectRecord->AttachCallerInfo();
+    connectRecord->AttachCallerInfo(indirectCallerInfo);
     connectRecord->SetConnectState(ConnectionState::CONNECTING);
     if (targetService->GetAbilityInfo().extensionAbilityType == AppExecFwk::ExtensionAbilityType::UI_SERVICE ||
         targetService->GetAbilityInfo().extensionAbilityType == AppExecFwk::ExtensionAbilityType::AGENT) {
@@ -3245,6 +3255,17 @@ void AbilityConnectManager::GetOrCreateServiceRecord(const AbilityRequest &abili
         SetServiceAfterNewCreate(abilityRequest, *targetService);
         AddToServiceMap(serviceKey, targetService);
         isLoadedAbility = false;
+
+        // Notify running timeout monitor about service extension start
+        auto &newAbilityInfo = abilityRequest.abilityInfo;
+        auto recordId = targetService->GetRecordId();
+        auto monitor = DelayedSingleton<AAFwk::ExtensionRunningTimeoutMonitor>::GetInstance();
+        if (monitor != nullptr) {
+            monitor->OnExtensionStarted(recordId,
+                newAbilityInfo.extensionTypeName,
+                newAbilityInfo.bundleName,
+                newAbilityInfo.name);
+        }
     }
     TAG_LOGD(AAFwkTag::EXT, "service map add, serviceKey: %{public}s", serviceKey.c_str());
 }

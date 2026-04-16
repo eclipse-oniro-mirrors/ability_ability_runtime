@@ -19,6 +19,7 @@
 #include <memory>
 #include <singleton.h>
 
+#include "start_ability_utils.h"
 #include "start_options.h"
 #include "want.h"
 
@@ -47,6 +48,7 @@ public:
      */
     int32_t StartAbility(const Want &want, const StartOptions &startOptions,
         sptr<IRemoteObject> callerToken, int32_t userId = -1, int requestCode = -1);
+    int StartAbilityInner(StartAbilityWrapParam &param);
 };
 }  // namespace AAFwk
 }  // namespace OHOS

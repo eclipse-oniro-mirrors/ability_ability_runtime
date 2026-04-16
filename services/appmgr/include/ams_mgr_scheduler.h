@@ -108,6 +108,15 @@ public:
     virtual void KillProcessByAbilityToken(const sptr<IRemoteObject> &token) override;
 
     /**
+     * SetGameSAPrelaunch, set game SA prelaunch flag through proxy object.
+     *
+     * @param token, the unique identification to the ability.
+     * @param isGameSAPrelaunch, the game SA prelaunch flag to set.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t SetGameSAPrelaunch(const sptr<IRemoteObject> &token, bool isGameSAPrelaunch) override;
+
+    /**
      * KillProcessesByUserId, call KillProcessesByUserId() through proxy object,
      * kill the processes by userId.
      * Send appSpawn uninstall debug hap message.
@@ -296,7 +305,7 @@ public:
      */
     virtual void StartSpecifiedAbility(
         const AAFwk::Want &want, const AppExecFwk::AbilityInfo &abilityInfo, int32_t requestId = 0,
-        const std::string &customProcess = "") override;
+        const std::string &customProcess = "", bool isWindowStagePreload = false) override;
 
     /**
      * Register response of start specified ability.

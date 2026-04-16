@@ -55,6 +55,7 @@ bool ChildProcessInfo::ReadFromParcel(Parcel &parcel)
     isDebugApp = parcel.ReadBool();
     isStartWithDebug = parcel.ReadBool();
     isStartWithNative = parcel.ReadBool();
+    isStaticChildProcess = parcel.ReadBool();
     bool hasBundleInfo = parcel.ReadBool();
     if (hasBundleInfo) {
         bundleInfo.reset(parcel.ReadParcelable<BundleInfo>());
@@ -103,6 +104,7 @@ bool ChildProcessInfo::Marshalling(Parcel &parcel) const
     WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(Bool, parcel, isDebugApp);
     WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(Bool, parcel, isStartWithDebug);
     WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(Bool, parcel, isStartWithNative);
+    WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(Bool, parcel, isStaticChildProcess);
     bool hasBundleInfo = bundleInfo != nullptr;
     WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(Bool, parcel, hasBundleInfo);
     if (hasBundleInfo) {

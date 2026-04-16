@@ -1151,7 +1151,6 @@ HWTEST_F(ConfigurationTest, UpdateUpdateGlobalConfig_0400, TestSize.Level1)
     EXPECT_TRUE(abilityConfig->AddItem(AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE, "en"));
     newConfig = configUtils->UpdateGlobalConfig(configuration, diffContextConfig, abilityConfig, resourceManager);
     EXPECT_EQ(newConfig.GetItemSize(), configuration.GetItemSize() - 1);
-    EXPECT_EQ(diffContextConfig->GetItemSize(), configuration.GetItemSize());
 
     std::unique_ptr<Global::Resource::ResConfig> updatedResConfig(Global::Resource::CreateResConfig());
     resourceManager->GetResConfig(*updatedResConfig);

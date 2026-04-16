@@ -212,6 +212,10 @@ public:
     {
         return 0;
     }
+    int GetPendingRequestWantFromProxy(const sptr<IWantSender> &target, std::shared_ptr<Want> &want) override
+    {
+        return 0;
+    }
     int GetWantSenderInfo(const sptr<IWantSender> &target, std::shared_ptr<WantSenderInfo> &info) override
     {
         return 0;

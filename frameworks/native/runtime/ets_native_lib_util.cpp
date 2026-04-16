@@ -83,6 +83,13 @@ void GetEtsHspNativeLibPath(const BaseSharedBundleInfo &hspInfo, AppLibPathMap &
     TAG_LOGD(
         AAFwkTag::APPKIT, "appLibPathKey: %{private}s, libPath: %{private}s", appLibPathKey.c_str(), libPath.c_str());
     appLibPaths[appLibPathKey].emplace_back(libPath);
+    if (!hspInfo.librarySupportDirectory.empty()) {
+        for (const auto &dir : hspInfo.librarySupportDirectory) {
+            std::string supportLibPath = libPath + "/" + dir;
+            TAG_LOGD(AAFwkTag::APPKIT, "supportLibPath: %{public}s", supportLibPath.c_str());
+            appLibPaths["default"].emplace_back(supportLibPath);
+        }
+    }
 
     if (!appBundleName.empty()) {
         const bool isInternalHsp = (hspInfo.bundleName == appBundleName);
@@ -142,6 +149,7 @@ void GetEtsNativeLibPath(const BundleInfo &bundleInfo, const std::vector<BaseSha
         libPath += (libPath.back() == '/') ? nativeLibraryPath : "/" + nativeLibraryPath;
         TAG_LOGD(AAFwkTag::APPKIT, "lib path = %{private}s", libPath.c_str());
         appLibPaths["default"].emplace_back(libPath);
+        GetLibrarySupportDirectory(bundleInfo.hapModuleInfos, nativeLibraryPath, appLibPaths);
     } else {
         TAG_LOGI(AAFwkTag::APPKIT, "nativeLibraryPath is empty");
     }
@@ -160,6 +168,25 @@ void GetEtsNativeLibPath(const BundleInfo &bundleInfo, const std::vector<BaseSha
             hspInfo.moduleName.c_str(), hspInfo.nativeLibraryPath.c_str());
         GetEtsHspNativeLibPath(hspInfo, appLibPaths, hspInfo.hapPath.find(AbilityBase::Constants::ABS_CODE_PATH) != 0u,
             bundleInfo.applicationInfo.bundleName, abcPathsToBundleModuleNameMap);
+    }
+}
+
+void GetLibrarySupportDirectory(
+    const std::vector<HapModuleInfo> &hapModuleInfos,
+    const std::string nativeLibraryPath,
+    AppLibPathMap &appLibPaths)
+{
+    std::string libPath = AbilityBase::Constants::LOCAL_CODE_PATH;
+    libPath += (libPath.back() == '/') ? nativeLibraryPath : "/" + nativeLibraryPath;
+    for (auto &hapInfo : hapModuleInfos) {
+        if (hapInfo.librarySupportDirectory.empty()) {
+            continue;
+        }
+        for (const auto &dir : hapInfo.librarySupportDirectory) {
+            std::string supportLibPath = libPath + "/" + dir;
+            TAG_LOGD(AAFwkTag::APPKIT, "supportLibPath: %{public}s", supportLibPath.c_str());
+            appLibPaths["default"].emplace_back(supportLibPath);
+        }
     }
 }
 } // AppExecFwk

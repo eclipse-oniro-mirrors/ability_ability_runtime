@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -178,6 +178,9 @@ private:
 
     int32_t RevokeContentUriPermission(uint32_t tokenId);
 
+    int32_t VerifyContentUriPermission(const std::vector<std::string> &contentUris, uint32_t flag,
+        uint32_t tokenId, std::vector<bool> &checkResults);
+
     bool IsContentUriGranted(uint32_t tokenId);
 
     void AddContentTokenIdRecord(uint32_t tokenId);
@@ -203,7 +206,7 @@ private:
 
     void RevokePolicyUriPermission(uint32_t tokenId);
 
-    int32_t RevokeFileUriPermission(uint32_t tokenId, uint64_t timeNow, int32_t& funcResult);
+    int32_t RevokeFileUriPermission(uint32_t tokenId, int32_t& funcResult);
 
     int32_t RevokeAllMapUriPermissions(uint32_t tokenId);
 
@@ -225,7 +228,7 @@ private:
 
     bool IsDistributedSubDirUri(const std::string &inputUri, const std::string &cachedUri);
 
-    ErrCode ClearPermissionTokenByMap(uint32_t tokenId, uint64_t timeNow, int32_t& funcResult) override;
+    ErrCode ClearPermissionTokenByMap(uint32_t tokenId, int32_t& funcResult) override;
 
     void BoolVecToCharVec(const std::vector<bool>& boolVector, std::vector<char>& charVector);
 

@@ -78,6 +78,7 @@ ohos_shared_library("app_manager") {
     "src/appmgr/app_debug_listener_stub.cpp",
     "src/appmgr/app_foreground_state_observer_proxy.cpp",
     "src/appmgr/app_foreground_state_observer_stub.cpp",
+    "src/appmgr/app_mem_dump_info.cpp",
     "src/appmgr/app_jsheap_mem_info.cpp",
     "src/appmgr/app_launch_data.cpp",
     "src/appmgr/app_malloc_info.cpp",
@@ -105,6 +106,11 @@ ohos_shared_library("app_manager") {
     "src/appmgr/configuration_observer_stub.cpp",
     "src/appmgr/configuration_policy.cpp",
     "src/appmgr/fault_data.cpp",
+    "src/appmgr/image_process_state_data.cpp",
+    "src/appmgr/image_error_handler_proxy.cpp",
+    "src/appmgr/image_error_handler_stub.cpp",
+    "src/appmgr/image_process_state_observer_proxy.cpp",
+    "src/appmgr/image_process_state_observer_stub.cpp",
     "src/appmgr/kia_interceptor_proxy.cpp",
     "src/appmgr/kia_interceptor_stub.cpp",
     "src/appmgr/load_ability_callback_manager.cpp",
@@ -213,6 +219,7 @@ ohos_shared_library("app_state_data") {
     cfi = true
     cfi_cross_dso = true
     cfi_vcall_icall_only = true
+    cfi_policy = "adaptive"
     debug = false
   }
   branch_protector_ret = "pac_ret"

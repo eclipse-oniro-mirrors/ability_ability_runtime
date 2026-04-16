@@ -33,8 +33,8 @@ public:
     MOCK_METHOD0(ScheduleBackgroundApplication, void());
     MOCK_METHOD1(ScheduleTerminateApplication, void(bool));
     MOCK_METHOD2(ScheduleLaunchApplication, void(const AppLaunchData&, const Configuration& config));
-    MOCK_METHOD4(ScheduleLaunchAbility, void(const AbilityInfo&, const sptr<IRemoteObject>&,
-        const std::shared_ptr<AAFwk::Want>&, int32_t));
+    MOCK_METHOD5(ScheduleLaunchAbility, void(const AbilityInfo&, const sptr<IRemoteObject>&,
+        const std::shared_ptr<AAFwk::Want>&, int32_t, std::shared_ptr<AppUpdateInfo>));
     MOCK_METHOD2(ScheduleCleanAbility, void(const sptr<IRemoteObject>&, bool));
     MOCK_METHOD1(ScheduleProfileChanged, void(const Profile&));
     MOCK_METHOD2(ScheduleConfigurationUpdated, void(const Configuration& config, ConfigUpdateReason));
@@ -74,6 +74,7 @@ public:
     MOCK_METHOD1(VerifyKillProcessPermission, int32_t(const std::string &bundleName));
     MOCK_METHOD0(ScheduleCacheProcess, void());
     MOCK_METHOD1(ScheduleCjHeapMemory, void(OHOS::AppExecFwk::CjHeapDumpInfo &info));
+    MOCK_METHOD2(ScheduleMem, void(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpresult));
     MOCK_METHOD2(OnLoadAbilityFinished, void(uint64_t, int32_t));
 
     bool AddDeathRecipient(const sptr<DeathRecipient> &recipient) override

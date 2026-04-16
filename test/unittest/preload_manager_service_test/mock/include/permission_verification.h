@@ -29,6 +29,7 @@ public:
     ~PermissionVerification() = default;
 
     bool VerifyPreloadApplicationPermission() const;
+    bool IsShellCall() const;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

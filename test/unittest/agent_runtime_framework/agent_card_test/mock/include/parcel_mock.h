@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,32 +16,15 @@
 #ifndef OHOS_AGENT_RUNTIME_PARCEL_MOCK_H
 #define OHOS_AGENT_RUNTIME_PARCEL_MOCK_H
 
-#include <string>
-#include <vector>
+#include <cstddef>
+#include <cstdint>
 
 namespace OHOS {
-class Parcel {
-public:
-    bool WriteInt32(int32_t value);
-    bool WriteUint32(uint32_t value);
-    bool WriteString(const std::string& value);
-    bool WriteParcelable(const Parcelable* parcelable);
-    int32_t ReadInt32();
-    uint32_t ReadUint32();
-    const std::string ReadString();
-
-    template <typename T>
-    T* ReadParcelable() const
-    {
-        return nullptr;
-    }
-
-    // Additional methods needed for testing
-    bool WriteBool(bool value);
-    bool WriteStringVector(const std::vector<std::string>& value);
-    bool ReadBool();
-    bool ReadStringVector(std::vector<std::string>* value);
-};
+namespace ParcelMock {
+void Reset();
+void SetReadableBytes(size_t readableBytes);
+void SetReadInt32Value(int32_t readInt32Value);
+} // namespace ParcelMock
 } // namespace OHOS
 
 #endif // OHOS_AGENT_RUNTIME_PARCEL_MOCK_H

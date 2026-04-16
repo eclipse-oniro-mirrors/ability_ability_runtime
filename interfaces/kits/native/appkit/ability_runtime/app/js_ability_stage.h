@@ -60,6 +60,10 @@ public:
     std::string OnNewProcessRequest(const AAFwk::Want &want,
         AppExecFwk::AbilityTransactionCallbackInfo<std::string> *callbackInfo, bool &isAsync) override;
 
+    void OnLaunchFromHyperSnap() override;
+
+    void OnAboutToCreateAbility() override;
+
     void OnConfigurationUpdated(const AppExecFwk::Configuration& configuration) override;
 
     void OnMemoryLevel(int32_t level) override;

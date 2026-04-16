@@ -19,6 +19,7 @@
 
 #include "ability_manager_errors.h"
 #include "ability_util.h"
+#include "app_image_observer_manager.h"
 #include "configuration_convertor.h"
 #include "exit_reason.h"
 #include "hilog_tag_wrapper.h"
@@ -147,6 +148,13 @@ void ApplicationContext::RegisterSystemConfigurationUpdatedCallback(
 {
     std::lock_guard lock(systemConfigurationUpdatedCallbackLock_);
     systemConfigurationUpdatedCallbacks_.push_back(callback);
+}
+
+void ApplicationContext::RegisterApplicationUpdateCallback(
+    const std::weak_ptr<ApplicationUpdateCallback> &applicationUpdateCallback)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "register update callback");
+    AppExecFwk::AppImageObserverManager::GetInstance().RegisterImageLifecycleCallback(applicationUpdateCallback);
 }
 
 void ApplicationContext::DispatchOnAbilityCreate(const AbilityLifecycleCallbackArgs &ability)
@@ -1244,6 +1252,16 @@ napi_env ApplicationContext::GetMainNapiEnv() const
     }
     napi_env env = static_cast<JsRuntime&>(*runtime).GetNapiEnv();
     return env;
+}
+
+int32_t ApplicationContext::GetImageProcessType() const
+{
+    return AppExecFwk::AppImageObserverManager::GetInstance().GetImageProcessType();
+}
+
+bool ApplicationContext::IsAbilityCreated() const
+{
+    return AppExecFwk::AppImageObserverManager::GetInstance().IsAbilityCreated();
 }
 
 std::string ApplicationContext::GetDataDir()

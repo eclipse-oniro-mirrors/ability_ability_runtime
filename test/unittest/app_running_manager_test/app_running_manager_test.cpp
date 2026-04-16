@@ -1048,5 +1048,84 @@ HWTEST_F(AppRunningManagerTest, AppRunningManager_ProcessExitByBundleNameAndUid_
     bool result = appRunningManager->ProcessExitByBundleNameAndUid(bundleName, uid, pids, config);
     EXPECT_EQ(result, false);
 }
+
+/**
+ * @tc.name: GetAllAbilityInfos_0100
+ * @tc.desc: Test GetAllAbilityInfos with empty map
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerTest, GetAllAbilityInfos_0100, TestSize.Level1)
+{
+    auto appRunningManager = std::make_shared<AppRunningManager>();
+    EXPECT_NE(appRunningManager, nullptr);
+
+    std::vector<AppExecFwk::AbilityStateData> infos;
+    auto ret = appRunningManager->GetAllAbilityInfos(-1, infos);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(infos.empty());
+}
+
+/**
+ * @tc.name: GetAllAbilityInfos_0200
+ * @tc.desc: Test GetAllAbilityInfos with specific pid not found
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerTest, GetAllAbilityInfos_0200, TestSize.Level1)
+{
+    auto appRunningManager = std::make_shared<AppRunningManager>();
+    EXPECT_NE(appRunningManager, nullptr);
+
+    std::vector<AppExecFwk::AbilityStateData> infos;
+    int32_t pid = 1001;
+    auto ret = appRunningManager->GetAllAbilityInfos(pid, infos);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: GetAllAbilityInfos_0300
+ * @tc.desc: Test GetAllAbilityInfos with specific pid found
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerTest, GetAllAbilityInfos_0300, TestSize.Level1)
+{
+    auto appRunningManager = std::make_shared<AppRunningManager>();
+    EXPECT_NE(appRunningManager, nullptr);
+
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->name = "test.app";
+    int32_t recordId = RECORD_ID;
+    std::string processName = "test.app";
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, recordId, processName);
+    appRecord->GetPriorityObject()->SetPid(1001);
+    appRunningManager->appRunningRecordMap_.emplace(recordId, appRecord);
+
+    std::vector<AppExecFwk::AbilityStateData> infos;
+    int32_t pid = 1001;
+    auto ret = appRunningManager->GetAllAbilityInfos(pid, infos);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: GetAllAbilityInfos_0400
+ * @tc.desc: Test GetAllAbilityInfos with pid=-1 to get all
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerTest, GetAllAbilityInfos_0400, TestSize.Level1)
+{
+    auto appRunningManager = std::make_shared<AppRunningManager>();
+    EXPECT_NE(appRunningManager, nullptr);
+
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->name = "test.app";
+    int32_t recordId = RECORD_ID;
+    std::string processName = "test.app";
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, recordId, processName);
+    appRecord->GetPriorityObject()->SetPid(1001);
+    appRunningManager->appRunningRecordMap_.emplace(recordId, appRecord);
+
+    std::vector<AppExecFwk::AbilityStateData> infos;
+    auto ret = appRunningManager->GetAllAbilityInfos(-1, infos);
+    EXPECT_EQ(ret, ERR_OK);
+}
 } // namespace AppExecFwk
 } // namespace OHOS

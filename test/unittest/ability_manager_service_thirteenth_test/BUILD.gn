@@ -123,6 +123,7 @@ ohos_unittest("ability_manager_service_thirteenth_test") {
     "${ability_runtime_services_path}/abilitymgr/src/extension_record/extension_record.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/extension_record/extension_record_factory.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/extension_record/extension_record_manager.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/extension_running_timeout_monitor.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/extension_running_info.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/foreground_app_connection_manager/foreground_app_connection_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/free_install_observer_manager.cpp",
@@ -236,6 +237,7 @@ ohos_unittest("ability_manager_service_thirteenth_test") {
     "mock/src/mock_parameters.cpp",
     "mock/src/mock_permission_verification.cpp",
     "mock/src/mock_scene_board_judgement.cpp",
+    "mock/src/mock_softbus_bus_center.cpp",
     "mock/src/mock_sub_managers_helper.cpp",
     "mock/src/mock_ui_ability_lifecycle_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/kiosk_status.cpp",
@@ -270,6 +272,7 @@ ohos_unittest("ability_manager_service_thirteenth_test") {
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
     "${ability_runtime_path}/utils/server/startup:startup_util",
     "${ability_runtime_services_path}/abilitymgr:mission_list",
+    "${ability_runtime_services_path}/abilitymgr:modular_object",
     "${ability_runtime_services_path}/common:app_util",
     "${ability_runtime_services_path}/common:hisysevent_report",
     "${ability_runtime_services_path}/common:perm_verification",
@@ -395,6 +398,10 @@ config("abilityms_config") {
     defines += [
       "ABILITY_RUNTIME_SCREENLOCK_ENABLE"
     ]
+  }
+
+  if (ability_runtime_dsoftbus_enable) {
+    defines += [ "SUPPORT_RECORDER_DSOFTBUS" ]
   }
 
   if (background_task_mgr_continuous_task_enable) {

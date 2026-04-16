@@ -29,6 +29,7 @@
 namespace OHOS {
 namespace AAFwk {
 constexpr static int32_t DEFAULT_EXTENSION_AUTO_DISCONNECT_TIME = -1;
+constexpr static int32_t DEFAULT_EXTENSION_RUNNING_TIMEOUT_TIME = -1;
 constexpr static bool EXTENSION_NETWORK_ENABLE_FLAG_DEFAULT = true;
 constexpr static bool EXTENSION_SA_ENABLE_FLAG_DEFAULT = true;
 constexpr static bool EXTENSION_THIRD_PARTY_APP_ENABLE_FLAG_DEFAULT = true;
@@ -45,8 +46,10 @@ struct AbilityAccessItem {
 struct ScreenUnlockAccessItem {
     bool intercept = false;
     bool interceptExcludeSystemApp = false;
-    std::unordered_set<std::string> blockList;
-    std::unordered_set<std::string> allowList;
+    std::optional<bool> defaultInterception = std::nullopt;
+    std::optional<bool> systemAppInterception = std::nullopt;
+    std::unordered_set<std::string> allowList;  // Store appIdentifier
+    std::unordered_set<std::string> blockList;  // Store appIdentifier
 };
 
 struct ExtensionConfigItem {
@@ -55,6 +58,7 @@ struct ExtensionConfigItem {
     bool thirdPartyAppEnableFlag = EXTENSION_THIRD_PARTY_APP_ENABLE_FLAG_DEFAULT;
     bool serviceEnableFlag = EXTENSION_START_SERVICE_ENABLE_FLAG_DEFAULT;
     int32_t extensionAutoDisconnectTime = DEFAULT_EXTENSION_AUTO_DISCONNECT_TIME;
+    int32_t extensionRunningTimeoutTime = DEFAULT_EXTENSION_RUNNING_TIMEOUT_TIME;
     std::unordered_set<std::string> serviceBlockedList;
     ScreenUnlockAccessItem screenUnlockAccess;
     AbilityAccessItem abilityAccess;
@@ -67,6 +71,7 @@ public:
     virtual ~ExtensionConfig() = default;
     void LoadExtensionConfiguration();
     int32_t GetExtensionAutoDisconnectTime(const std::string &extensionTypeName);
+    int32_t GetExtensionRunningTimeoutTime(const std::string &extensionTypeName);
     bool IsExtensionStartThirdPartyAppEnable(const std::string &extensionTypeName);
     bool IsExtensionStartServiceEnable(const std::string &extensionTypeName, const std::string &targetUri);
     bool HasAbilityAccess(const std::string &extensionTypeName);
@@ -82,12 +87,22 @@ public:
         const std::string &bundleName);
     bool IsScreenUnlockAllowAbility(const std::string &extensionTypeName, const std::string &bundleName,
         const std::string &abilityName);
+    bool HasScreenUnlockDefaultInterception(const std::string &extensionTypeName);
+    bool HasScreenUnlockSystemAppInterception(const std::string &extensionTypeName);
+    bool GetScreenUnlockDefaultInterception(const std::string &extensionTypeName);
+    bool GetScreenUnlockSystemAppInterception(const std::string &extensionTypeName);
+    bool IsInScreenUnlockAccessAllowList(const std::string &extensionTypeName, const std::string &appIdentifier);
+    bool IsInScreenUnlockAccessBlockList(const std::string &extensionTypeName, const std::string &appIdentifier);
+    bool HasScreenUnlockAccessConfig(const std::string &extensionTypeName);
+    bool HasScreenUnlockAccessAllowList(const std::string &extensionTypeName);
+    bool HasScreenUnlockAccessBlockList(const std::string &extensionTypeName);
 private:
     void LoadExtensionConfig(const nlohmann::json &object);
     bool ReadFileInfoJson(const std::string &filePath, nlohmann::json &jsonBuf);
 
     std::string GetExtensionConfigPath() const;
     void LoadExtensionAutoDisconnectTime(const nlohmann::json &object, const std::string &extensionTypeName);
+    void LoadExtensionRunningTimeoutTime(const nlohmann::json &object, const std::string &extensionTypeName);
     void LoadExtensionThirdPartyAppBlockedList(const nlohmann::json &object, std::string extensionTypeName);
     void LoadExtensionServiceBlockedList(const nlohmann::json &object, std::string extensionTypeNameobject);
     void LoadExtensionNetworkEnable(const nlohmann::json &object, const std::string &extensionTypeName);
@@ -96,6 +111,8 @@ private:
     void LoadExtensionAllowOrBlockedList(const nlohmann::json &object, const std::string &key,
         std::unordered_set<std::string> &list);
     void LoadScreenUnlockAccess(const nlohmann::json &object, const std::string &extensionTypeName);
+    void LoadScreenUnlockAppIdentifierList(const nlohmann::json &object, const std::string &key,
+        std::unordered_set<std::string> &list);
 
     std::optional<bool> GetSingleAccessFlag(const std::string &extensionTypeName,
         std::function<std::optional<bool>(const AbilityAccessItem&)> getAccessFlag);

@@ -34,6 +34,12 @@ public:
         const sptr<AAFwk::IAbilityConnection> &connection);
 
     int32_t DisconnectAgentExtensionAbility(const sptr<AAFwk::IAbilityConnection> &connection);
+
+    int32_t ConnectServiceExtensionAbility(const sptr<IRemoteObject> &callerToken, const AAFwk::Want &want,
+        const sptr<AAFwk::IAbilityConnection> &connection);
+
+    int32_t DisconnectServiceExtensionAbility(const sptr<IRemoteObject> &callerToken,
+        const sptr<AAFwk::IAbilityConnection> &connection);
 };
 } // namespace AgentRuntime
 } // namespace OHOS

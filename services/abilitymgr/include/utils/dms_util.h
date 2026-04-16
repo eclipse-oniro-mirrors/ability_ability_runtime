@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -26,6 +26,13 @@ public:
     static DmsUtil &GetInstance();
 
     void UpdateFlagForCollaboration(const Want &want);
+
+    /**
+     * Anonymize device ID for logging (show first 6 chars + 6 asterisks).
+     * @param deviceId The original device ID.
+     * @return Anonymized device ID string.
+     */
+    static std::string AnonymizeDeviceId(const std::string& deviceId);
 
 private:
     DmsUtil() = default;

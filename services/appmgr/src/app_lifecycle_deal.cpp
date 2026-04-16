@@ -30,6 +30,7 @@ namespace AppExecFwk {
 namespace {
 constexpr const char* REUSING_WINDOW = "ohos.ability_runtime.reusing_window";
 constexpr const char* IS_HOOK = "ohos.ability_runtime.is_hook";
+constexpr const char* KEY_SKIP_ABILITY_STAGE_LIFECYCLE = "ohos.ability.param.skipAbilityStageLifecycle";
 }
 AppLifeCycleDeal::AppLifeCycleDeal()
 {}
@@ -71,7 +72,8 @@ void AppLifeCycleDeal::AddAbilityStage(const HapModuleInfo &abilityStage)
     appThread->ScheduleAbilityStage(abilityStage);
 }
 
-void AppLifeCycleDeal::LaunchAbility(const std::shared_ptr<AbilityRunningRecord> &ability)
+void AppLifeCycleDeal::LaunchAbility(const std::shared_ptr<AbilityRunningRecord> &ability,
+    std::shared_ptr<AppUpdateInfo> updateInfo)
 {
     auto appThread = GetApplicationClient();
     if (appThread && ability) {
@@ -106,14 +108,26 @@ void AppLifeCycleDeal::LaunchAbility(const std::shared_ptr<AbilityRunningRecord>
             }
         }
         appThread->ScheduleLaunchAbility(*abilityInfo, ability->GetToken(),
-            ability->GetWant(), ability->GetAbilityRecordId());
+            ability->GetWant(), ability->GetAbilityRecordId(), updateInfo);
         if (ability->GetWant() != nullptr) {
             ability->GetWant()->RemoveParam(REUSING_WINDOW);
             ability->GetWant()->RemoveParam(IS_HOOK);
+            ability->GetWant()->RemoveParam(KEY_SKIP_ABILITY_STAGE_LIFECYCLE);
         }
     } else {
         TAG_LOGW(AAFwkTag::APPMGR, "null appThread or ability");
     }
+}
+
+void AppLifeCycleDeal::ScheduleUpdateWorkProcessInfo(std::shared_ptr<AppUpdateInfo> updateInfo)
+{
+    auto appThread = GetApplicationClient();
+    if (!appThread) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null appThread");
+        return;
+    }
+
+    appThread->ScheduleUpdateWorkProcessInfo(updateInfo);
 }
 
 void AppLifeCycleDeal::ScheduleTerminate(bool isLastProcess)
@@ -203,6 +217,17 @@ void AppLifeCycleDeal::ScheduleCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &in
     }
 
     appThread->ScheduleCjHeapMemory(info);
+}
+
+void AppLifeCycleDeal::ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
+{
+    auto appThread = GetApplicationClient();
+    if (!appThread) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null appThread");
+        return;
+    }
+
+    appThread->ScheduleMem(info, dumpResult);
 }
 
 void AppLifeCycleDeal::LowMemoryWarning()

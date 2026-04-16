@@ -361,6 +361,8 @@ public:
 
     bool IsStartUIAbilityInCurrentProcess();
 
+    bool IsSupportModularObjectExtension();
+
     bool IsProductAppbootSettingEnabled();
 
     void LoadAppTransferList();
@@ -456,6 +458,7 @@ private:
     volatile DeviceConfiguration<bool> isSupportRestartAppWithWindow_ = {false, false};
     volatile DeviceConfiguration<bool> isSupportAllowDebugPermission_ = {false, false};
     volatile DeviceConfiguration<bool> isStartUIAbilityInCurrentProcess_ = {false, false};
+    volatile DeviceConfiguration<bool> isSupportModularObjectExtension_ = {false, false};
     volatile DeviceConfiguration<bool> isProductAppbootSettingEnabled_ = {false, false};
     volatile DeviceConfiguration<bool> isHybridSpawnUnified_ = {false, false};
     DeviceConfiguration<std::vector<std::pair<std::string, std::string>>>
@@ -467,6 +470,7 @@ private:
     std::mutex requireBigMemoryAppMutex_;
     DeviceConfiguration<std::vector<std::string>>
         allowStartNativeProcessApps_ = {false, {}};
+    std::mutex allowStartNativeProcessAppsMutex_;
     volatile DeviceConfiguration<int32_t> limitMaximumExtensionsPerProc_ = {false, DEFAULT_MAX_EXT_PER_PROC};
     volatile DeviceConfiguration<int32_t> limitMaximumExtensionsPerDevice_ = {false, DEFAULT_MAX_EXT_PER_DEV};
     DeviceConfiguration<std::vector<std::pair<std::string, std::string>>>

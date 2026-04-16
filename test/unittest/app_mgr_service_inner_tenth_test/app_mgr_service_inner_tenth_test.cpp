@@ -478,7 +478,7 @@ HWTEST_F(AppMgrServiceInnerTenthTest, HandleTimeOut_001, TestSize.Level2)
     AAFwk::EventWrap innerEvent(AppExecFwk::AMSEventHandler::TERMINATE_APPLICATION_TIMEOUT_MSG);
     AAFwk::MyStatus::GetInstance().resetRunningRecordFunctionFlag();
     EXPECT_FALSE(AAFwk::MyStatus::GetInstance().setStateCalled_);
-    appMgrServiceInner->HandleTimeOut(innerEvent);
+    appMgrServiceInner->HandleTimeOutInner(innerEvent);
     EXPECT_TRUE(AAFwk::MyStatus::GetInstance().setStateCalled_);
     TAG_LOGI(AAFwkTag::TEST, "HandleTimeOut_001 end");
 }
@@ -502,7 +502,7 @@ HWTEST_F(AppMgrServiceInnerTenthTest, HandleTimeOut_002, TestSize.Level2)
     AAFwk::MyStatus::GetInstance().resetRunningRecordFunctionFlag();
     EXPECT_EQ(AAFwk::MyStatus::GetInstance().resetNewProcessRequestCall_, 0);
     AAFwk::EventWrap innerEvent(AMSEventHandler::START_SPECIFIED_PROCESS_TIMEOUT_MSG);
-    appMgrServiceInner->HandleTimeOut(innerEvent);
+    appMgrServiceInner->HandleTimeOutInner(innerEvent);
     EXPECT_EQ(AAFwk::MyStatus::GetInstance().resetNewProcessRequestCall_, 1);
     TAG_LOGI(AAFwkTag::TEST, "HandleTimeOut_002 end");
 }
@@ -526,7 +526,7 @@ HWTEST_F(AppMgrServiceInnerTenthTest, HandleTimeOut_003, TestSize.Level2)
     AAFwk::MyStatus::GetInstance().resetRunningRecordFunctionFlag();
     AAFwk::EventWrap innerEvent(AMSEventHandler::START_PROCESS_SPECIFIED_ABILITY_TIMEOUT_MSG);
     EXPECT_EQ(AAFwk::MyStatus::GetInstance().resetSpecifiedRequestCall_, 0);
-    appMgrServiceInner->HandleTimeOut(innerEvent);
+    appMgrServiceInner->HandleTimeOutInner(innerEvent);
     EXPECT_EQ(AAFwk::MyStatus::GetInstance().resetSpecifiedRequestCall_, 1);
     TAG_LOGI(AAFwkTag::TEST, "HandleTimeOut_003 end");
 }
@@ -550,7 +550,7 @@ HWTEST_F(AppMgrServiceInnerTenthTest, HandleTimeOut_004, TestSize.Level2)
     AAFwk::MyStatus::GetInstance().resetRunningRecordFunctionFlag();
     AAFwk::EventWrap innerEvent(AMSEventHandler::START_SPECIFIED_ABILITY_TIMEOUT_MSG);
     EXPECT_EQ(AAFwk::MyStatus::GetInstance().resetSpecifiedRequestCall_, 0);
-    appMgrServiceInner->HandleTimeOut(innerEvent);
+    appMgrServiceInner->HandleTimeOutInner(innerEvent);
     EXPECT_EQ(AAFwk::MyStatus::GetInstance().resetSpecifiedRequestCall_, 1);
     TAG_LOGI(AAFwkTag::TEST, "HandleTimeOut_004 end");
 }
@@ -2103,9 +2103,11 @@ HWTEST_F(AppMgrServiceInnerTenthTest, NotifyPreloadAbilityStateChanged_004, Test
     auto appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
     AAFwk::MyStatus::GetInstance().getAppRunningByToken_ = appRecord;
     appRecord->SetPreForeground(true);
+    appRecord->SetPreloadMode(PreloadMode::PRELOAD_BY_PHASE);
     sptr<IRemoteObject> token = new MockAppScheduler();
     auto ret = appMgrServiceInner->NotifyPreloadAbilityStateChanged(token, false);
     EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(appRecord->GetPreloadMode(), PreloadMode::PRELOAD_NONE);
 
     AAFwk::MyStatus::GetInstance().getAppRunningByToken_ = nullptr;
     TAG_LOGI(AAFwkTag::TEST, "NotifyPreloadAbilityStateChanged_004 end");

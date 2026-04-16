@@ -57,6 +57,8 @@ constexpr size_t INDEX_TWO = 2;
 constexpr int32_t ERROR_CODE_ONE = 1;
 constexpr double FOUNT_SIZE = 0.0;
 const char* MD_NAME = "JsApplicationContextUtils";
+constexpr const int32_t API26 = 26;
+constexpr const int32_t API_VERSION_MOD = 100;
 }  // namespace
 
 napi_value JsApplicationContextUtils::CreateBundleContext(napi_env env, napi_callback_info info)
@@ -1277,6 +1279,10 @@ napi_value JsApplicationContextUtils::OnRegisterAbilityLifecycleCallback(
         TAG_LOGE(AAFwkTag::APPKIT, "null applicationContext");
         return CreateJsUndefined(env);
     }
+    if (applicationContext->GetApplicationInfo()->apiTargetVersion % API_VERSION_MOD >= API26) {
+        TAG_LOGE(AAFwkTag::APPKIT, "reject registerAbilityLifecycleCallback");
+        return CreateJsUndefined(env);
+    }
     if (callback_ != nullptr) {
         TAG_LOGD(AAFwkTag::APPKIT, "callback_ is not nullptr");
         return CreateJsValue(env, callback_->Register(info.argv[0]));
@@ -1296,6 +1302,10 @@ napi_value JsApplicationContextUtils::OnUnregisterAbilityLifecycleCallback(
     if (applicationContext == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "null ApplicationContext");
         errCode = ERROR_CODE_ONE;
+    }
+    if (applicationContext->GetApplicationInfo()->apiTargetVersion % API_VERSION_MOD >= API26) {
+        TAG_LOGE(AAFwkTag::APPKIT, "reject unregisterAbilityLifecycleCallback");
+        return CreateJsUndefined(env);
     }
     int32_t callbackId = -1;
     if (info.argc != ARGC_ONE && info.argc != ARGC_TWO) {
@@ -1365,6 +1375,10 @@ napi_value JsApplicationContextUtils::OnRegisterEnvironmentCallback(
         TAG_LOGE(AAFwkTag::APPKIT, "null applicationContext");
         return CreateJsUndefined(env);
     }
+    if (applicationContext->GetApplicationInfo()->apiTargetVersion % API_VERSION_MOD >= API26) {
+        TAG_LOGE(AAFwkTag::APPKIT, "reject registerEnvironmentCallback");
+        return CreateJsUndefined(env);
+    }
     if (envCallback_ != nullptr) {
         TAG_LOGD(AAFwkTag::APPKIT, "envCallback_ is not nullptr");
         return CreateJsValue(env, envCallback_->Register(info.argv[0]));
@@ -1383,6 +1397,10 @@ napi_value JsApplicationContextUtils::OnUnregisterEnvironmentCallback(
     if (applicationContext == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "null applicationContext");
         errCode = ERROR_CODE_ONE;
+    }
+    if (applicationContext->GetApplicationInfo()->apiTargetVersion % API_VERSION_MOD >= API26) {
+        TAG_LOGE(AAFwkTag::APPKIT, "reject unregisterEnvironmentCallback");
+        return CreateJsUndefined(env);
     }
     int32_t callbackId = -1;
     if (info.argc != ARGC_ONE && info.argc != ARGC_TWO) {

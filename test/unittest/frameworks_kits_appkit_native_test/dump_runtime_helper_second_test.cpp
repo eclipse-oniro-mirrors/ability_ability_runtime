@@ -238,5 +238,95 @@ HWTEST_F(DumpRuntimeHelperTestSecond, WriteCheckList_0900, TestSize.Level1)
     helper->WriteCheckList(checkList);
     EXPECT_NE(checkList, "");
 }
+
+/**
+ * @tc.number: DumpJsHeap_0500
+ * @tc.name: DumpJsHeap with needProcDump
+ * @tc.desc: Test DumpJsHeap when needProcDump is set to true.
+ */
+HWTEST_F(DumpRuntimeHelperTestSecond, DumpJsHeap_0500, TestSize.Level1)
+{
+    std::shared_ptr<OHOSApplication> application = std::shared_ptr<OHOSApplication>(
+        ApplicationLoader::GetInstance().GetApplicationByName());
+    std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
+    auto helper = std::make_shared<DumpRuntimeHelper>(application, appInfo);
+    OHOS::AppExecFwk::JsHeapDumpInfo info;
+    info.tid = 1;
+    info.needSnapshot = true;
+    info.needProcDump = true;
+    info.needBinary = true;
+    helper->DumpJsHeap(info);
+    EXPECT_NE(application, nullptr);
+
+    AbilityRuntime::Runtime::Options options;
+    options.lang = AbilityRuntime::Runtime::Language::JS;
+    auto runtime = AbilityRuntime::Runtime::Create(options);
+    application->SetRuntime(std::move(runtime));
+    helper = std::make_shared<DumpRuntimeHelper>(application);
+    helper->DumpJsHeap(info);
+    EXPECT_NE(application, nullptr);
+}
+
+/**
+ * @tc.number: DumpJsHeap_0600
+ * @tc.name: DumpJsHeap with needProcDump false
+ * @tc.desc: Test DumpJsHeap when needProcDump is set to false.
+ */
+HWTEST_F(DumpRuntimeHelperTestSecond, DumpJsHeap_0600, TestSize.Level1)
+{
+    std::shared_ptr<OHOSApplication> application = std::shared_ptr<OHOSApplication>(
+        ApplicationLoader::GetInstance().GetApplicationByName());
+    std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
+    auto helper = std::make_shared<DumpRuntimeHelper>(application, appInfo);
+    OHOS::AppExecFwk::JsHeapDumpInfo info;
+    info.tid = 1;
+    info.needSnapshot = true;
+    info.needProcDump = false;
+    info.needBinary = false;
+    info.needGc = false;
+    info.needClearNodeIdCache = false;
+    helper->DumpJsHeap(info);
+    EXPECT_NE(application, nullptr);
+
+    AbilityRuntime::Runtime::Options options;
+    options.lang = AbilityRuntime::Runtime::Language::JS;
+    auto runtime = AbilityRuntime::Runtime::Create(options);
+    application->SetRuntime(std::move(runtime));
+    helper = std::make_shared<DumpRuntimeHelper>(application);
+    helper->DumpJsHeap(info);
+    EXPECT_NE(application, nullptr);
+}
+
+/**
+ * @tc.number: DumpJsHeap_0700
+ * @tc.name: DumpJsHeap with all params set
+ * @tc.desc: Test DumpJsHeap when all JsHeapDumpInfo params are set.
+ */
+HWTEST_F(DumpRuntimeHelperTestSecond, DumpJsHeap_0700, TestSize.Level1)
+{
+    std::shared_ptr<OHOSApplication> application = std::shared_ptr<OHOSApplication>(
+        ApplicationLoader::GetInstance().GetApplicationByName());
+    std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
+    auto helper = std::make_shared<DumpRuntimeHelper>(application, appInfo);
+    OHOS::AppExecFwk::JsHeapDumpInfo info;
+    info.tid = 1;
+    info.pid = 1;
+    info.needSnapshot = true;
+    info.needProcDump = true;
+    info.needBinary = true;
+    info.needGc = true;
+    info.needClearNodeIdCache = true;
+    info.needLeakobj = false;
+    helper->DumpJsHeap(info);
+    EXPECT_NE(application, nullptr);
+
+    AbilityRuntime::Runtime::Options options;
+    options.lang = AbilityRuntime::Runtime::Language::JS;
+    auto runtime = AbilityRuntime::Runtime::Create(options);
+    application->SetRuntime(std::move(runtime));
+    helper = std::make_shared<DumpRuntimeHelper>(application);
+    helper->DumpJsHeap(info);
+    EXPECT_NE(application, nullptr);
+}
 }
 }

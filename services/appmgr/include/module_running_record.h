@@ -105,7 +105,8 @@ public:
      *
      * @return
      */
-    void LaunchAbility(const std::shared_ptr<AbilityRunningRecord> &ability);
+    void LaunchAbility(const std::shared_ptr<AbilityRunningRecord> &ability,
+        std::shared_ptr<AppUpdateInfo> updateInfo = nullptr);
 
     /**
      * LaunchPendingAbilities, Launch Pending Abilities.

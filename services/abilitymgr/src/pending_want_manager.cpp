@@ -704,6 +704,35 @@ int32_t PendingWantManager::GetPendingRequestWant(const sptr<IWantSender> &targe
     return NO_ERROR;
 }
 
+int32_t PendingWantManager::GetPendingRequestWantFromProxy(const sptr<IWantSender> &target, std::shared_ptr<Want> &want)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::WANTAGENT, "begin");
+    if (target == nullptr) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "null target");
+        return ERR_INVALID_VALUE;
+    }
+    sptr<IRemoteObject> obj = target->AsObject();
+    if (obj == nullptr || obj->IsProxyObject()) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "target obj null or a proxy object");
+        return ERR_INVALID_VALUE;
+    }
+
+    if (want == nullptr) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "null want");
+        return ERR_INVALID_VALUE;
+    }
+    sptr<PendingWantRecord> targetRecord = static_cast<PendingWantRecord*>(target.GetRefPtr());
+
+    if (targetRecord == nullptr) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "null targetRecord");
+        return ERR_INVALID_VALUE;
+    }
+
+    want.reset(new (std::nothrow) Want(targetRecord->GetKey()->GetRequestWant()));
+    return NO_ERROR;
+}
+
 int32_t PendingWantManager::GetWantSenderInfo(const sptr<IWantSender> &target, std::shared_ptr<WantSenderInfo> &info)
 {
     TAG_LOGD(AAFwkTag::WANTAGENT, "begin");
@@ -732,6 +761,7 @@ int32_t PendingWantManager::GetWantSenderInfo(const sptr<IWantSender> &target, s
     wantSenderInfo.flags = (uint32_t)(record->GetKey()->GetFlags());
     wantSenderInfo.allWants = record->GetKey()->GetAllWantsInfos();
     wantSenderInfo.appIndex = record->GetKey()->GetAppIndex();
+    wantSenderInfo.userId = record->GetKey()->GetUserId();
     info.reset(new (std::nothrow) WantSenderInfo(wantSenderInfo));
     return NO_ERROR;
 }

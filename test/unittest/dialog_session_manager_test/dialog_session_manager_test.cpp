@@ -168,6 +168,34 @@ HWTEST_F(DialogSessionManagerTest, SendDialogResultTest_0300, TestSize.Level1)
 }
 
 /**
+ * @tc.name: SendDialogResultTest_0400
+ * @tc.desc: Test SendDialogResult
+ * @tc.type: FUNC
+ */
+HWTEST_F(DialogSessionManagerTest, SendDialogResultTest_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SendDialogResultTest_0400 start";
+    AbilityRequest abilityRequest;
+    DialogSessionManager dialogSessionManager;
+    Want want;
+    bool isAllowed = false;
+    sptr<DialogSessionInfo> dialogSessionInfo = nullptr;
+    std::shared_ptr<DialogCallerInfo> dialogCallerInfo = std::make_shared<DialogCallerInfo>();
+    dialogSessionManager.SetDialogSessionInfo(TEST_DIALOG_SESSION_ID, dialogSessionInfo, dialogCallerInfo);
+    int32_t ret = dialogSessionManager.SendDialogResult(want, TEST_DIALOG_SESSION_ID, isAllowed);
+    EXPECT_EQ(ret, ERR_OK);
+
+    dialogCallerInfo->sessionToken = sptr<AppExecFwk::MockAbilityToken>::MakeSptr();
+    dialogSessionManager.SetDialogSessionInfo(TEST_DIALOG_SESSION_ID, dialogSessionInfo, dialogCallerInfo);
+    ret = dialogSessionManager.SendDialogResult(want, TEST_DIALOG_SESSION_ID, isAllowed);
+    EXPECT_EQ(ret, ERR_OK);
+    bool cleared = dialogSessionManager.dialogSessionInfoMap_.find(TEST_DIALOG_SESSION_ID) ==
+        dialogSessionManager.dialogSessionInfoMap_.end();
+    EXPECT_TRUE(cleared);
+    GTEST_LOG_(INFO) << "SendDialogResultTest_0400 end";
+}
+
+/**
  * @tc.name: NotifySCBToRecoveryAfterInterceptionTest_0100
  * @tc.desc: Test NotifySCBToRecoveryAfterInterception
  * @tc.type: FUNC
@@ -395,6 +423,28 @@ HWTEST_F(DialogSessionManagerTest, OnlySetDialogCallerInfo_0100, TestSize.Level1
     dialogSessionManager.OnlySetDialogCallerInfo(abilityRequest, TEST_USER_ID, type, TEST_DIALOG_SESSION_ID, false);
     EXPECT_NE(dialogSessionManager.GetDialogCallerInfo(TEST_DIALOG_SESSION_ID), nullptr);
     GTEST_LOG_(INFO) << "OnlySetDialogCallerInfo_0100 end";
+}
+
+/**
+ * @tc.name: OnlySetDialogCallerInfo_0200
+ * @tc.desc: OnlySetDialogCallerInfo
+ * @tc.type: FUNC
+ */
+HWTEST_F(DialogSessionManagerTest, OnlySetDialogCallerInfo_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "OnlySetDialogCallerInfo_0200 start";
+    SelectorType type = SelectorType::INTERCEPTOR_SELECTOR;
+    AbilityRequest abilityRequest;
+    abilityRequest.sessionInfo = sptr<SessionInfo>::MakeSptr();
+    sptr<IRemoteObject> sessionToken = sptr<AppExecFwk::MockAbilityToken>::MakeSptr();
+    abilityRequest.sessionInfo->sessionToken = sessionToken;
+
+    DialogSessionManager dialogSessionManager;
+    dialogSessionManager.OnlySetDialogCallerInfo(abilityRequest, TEST_USER_ID, type, TEST_DIALOG_SESSION_ID, false);
+    auto info = dialogSessionManager.GetDialogCallerInfo(TEST_DIALOG_SESSION_ID);
+    EXPECT_NE(info, nullptr);
+    EXPECT_EQ(info->sessionToken, sessionToken);
+    GTEST_LOG_(INFO) << "OnlySetDialogCallerInfo_0200 end";
 }
 
 /**

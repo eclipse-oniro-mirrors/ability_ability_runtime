@@ -46,6 +46,7 @@ struct DialogCallerInfo {
     SelectorType type = SelectorType::WITHOUT_SELECTOR;
     // for app gallery selector
     bool needGrantUriPermission = false;
+    sptr<IRemoteObject> sessionToken = nullptr;
 };
 
 struct StartupSessionInfo {
@@ -182,6 +183,9 @@ private:
     bool NotifyQueryERMSFinished(const std::string &dialogSessionId, bool isAllowed);
 
     void NotifyAbilityRequestFailure(const std::string &dialogSessionId, const Want &want);
+
+    void HandleUserRejected(const std::string &dialogSessionId, const Want &want,
+        const std::shared_ptr<DialogCallerInfo> &dialogCallerInfo);
 
     mutable ffrt::mutex dialogSessionRecordLock_;
     std::unordered_map<std::string, sptr<DialogSessionInfo>> dialogSessionInfoMap_;

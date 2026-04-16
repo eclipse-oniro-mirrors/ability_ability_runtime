@@ -1113,6 +1113,31 @@ enum {
     // Result (2099213) for agent card id does not exist.
     ERR_INVALID_AGENT_CARD_ID = 2099213,
 
+    // Result (2099214) for agent connections from the same caller reach the limit.
+    ERR_MAX_AGENT_CONNECTIONS_REACHED = 2099214,
+
+    // Result (2099215) for agent card version is older than stored version.
+    ERR_AGENT_CARD_VERSION_TOO_OLD = 2099215,
+
+    // Result (2099216) for invalid agent card version.
+    ERR_INVALID_AGENT_CARD_VERSION = 2099216,
+
+    // Result (2099217) for duplicate register of an existing agent card.
+    ERR_AGENT_CARD_DUPLICATE_REGISTER = 2099217,
+
+    // Result (2099218) for duplicate active LOW_CODE agent invocation.
+    ERR_LOW_CODE_AGENT_ALREADY_ACTIVE = 2099218,
+
+    /**
+     * Result (2099220) for pid has been reused.
+     */
+    ERR_PID_HAS_BEEN_REUSED = 2099220,
+
+    /**
+     * Result (2099411) for not support screen.
+     */
+    ERR_NOT_SUPPORT_SCREEN = 2099411,
+
     /**
      * Native error(3000000) for target bundle not exist.
      */
@@ -1379,6 +1404,11 @@ enum NativeFreeInstallError {
      * Result (29360226) Invalid pid.
      */
     ERR_INVALID_PID = 29360226,
+
+    /*
+     * Result (29360227) The current application is not in a game preloading state.
+     */
+    ERR_NOT_GAME_PRELOAD_STATE = 29360227,
 
     /**
      * Undefine error code.

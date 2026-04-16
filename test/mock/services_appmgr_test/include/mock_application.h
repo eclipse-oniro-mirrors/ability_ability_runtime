@@ -32,8 +32,8 @@ public:
     MOCK_METHOD2(ScheduleMemoryLevel, void(int32_t level, bool isShellCall));
     MOCK_METHOD2(ScheduleHeapMemory, void(const int32_t pid, OHOS::AppExecFwk::MallocInfo &mallocInfo));
     MOCK_METHOD2(ScheduleLaunchApplication, void(const AppLaunchData&, const Configuration& config));
-    MOCK_METHOD4(ScheduleLaunchAbility, void(const AbilityInfo&, const sptr<IRemoteObject>&,
-        const std::shared_ptr<AAFwk::Want>&, int32_t));
+    MOCK_METHOD5(ScheduleLaunchAbility, void(const AbilityInfo&, const sptr<IRemoteObject>&,
+        const std::shared_ptr<AAFwk::Want>&, int32_t, std::shared_ptr<AppUpdateInfo>));
     MOCK_METHOD2(ScheduleCleanAbility, void(const sptr<IRemoteObject>&, bool));
     MOCK_METHOD1(ScheduleProfileChanged, void(const Profile&));
     MOCK_METHOD2(ScheduleConfigurationUpdated, void(const Configuration&, ConfigUpdateReason));
@@ -62,6 +62,7 @@ public:
     MOCK_METHOD0(IsMemorySizeSufficient, bool());
     MOCK_METHOD1(ScheduleJsHeapMemory, void(OHOS::AppExecFwk::JsHeapDumpInfo &info));
     MOCK_METHOD1(ScheduleCjHeapMemory, void(OHOS::AppExecFwk::CjHeapDumpInfo &info));
+    MOCK_METHOD2(ScheduleMem, void(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpresult));
     MOCK_METHOD1(ScheduleDumpFfrt, int32_t(std::string& result));
     MOCK_METHOD2(ScheduleDumpArkWeb, int32_t(const std::string &customArgs, std::string &result));
     MOCK_METHOD1(SetWatchdogBackgroundStatus, void(bool status));

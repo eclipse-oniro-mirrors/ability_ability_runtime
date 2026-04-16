@@ -37,6 +37,16 @@ struct CallerInfo : public Parcelable {
     virtual bool Marshalling(Parcel &parcel) const override;
     static CallerInfo *Unmarshalling(Parcel &parcel);
 };
+
+struct IndirectCallerInfo : public Parcelable {
+    uint32_t tokenId = 0;
+    int32_t callerUid = 0;
+    int32_t callerPid = 0;
+
+    bool ReadFromParcel(Parcel &parcel);
+    virtual bool Marshalling(Parcel &parcel) const override;
+    static IndirectCallerInfo *Unmarshalling(Parcel &parcel);
+};
 }  // namespace AAFwk
 }  // namespace OHOS
 #endif  // OHOS_ABILITY_RUNTIME_CALLER_INFO_H

@@ -133,6 +133,16 @@ public:
         ModuleTestRunner &testRunner);
     ErrCode GetPluginExtensionInfo(const std::string &hostBundleName, const Want &want,
         int32_t userId, ExtensionAbilityInfo &pluginExtensionInfo);
+    /**
+     * @brief Sets whether the bundle is first launch.
+     * @param bundleName Indicates the bundle name.
+     * @param userId Indicates the user id.
+     * @param appIndex Indicates the app index, 0 for normal app, > 0 for clone app.
+     * @param isBundleFirstLaunched Specifies whether the bundle is first launch.
+     * @return Returns ERR_OK if successful; returns error code otherwise.
+     */
+    ErrCode SetBundleFirstLaunch(const std::string &bundleName, int32_t userId, int32_t appIndex,
+        bool isBundleFirstLaunched);
 
 private:
     sptr<IBundleMgr> Connect();

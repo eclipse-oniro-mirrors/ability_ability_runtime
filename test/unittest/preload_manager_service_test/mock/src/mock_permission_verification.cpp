@@ -22,5 +22,10 @@ bool PermissionVerification::VerifyPreloadApplicationPermission() const
 {
     return MyStatus::GetInstance().retVerifyPreloadApplicationPermission_;
 }
+
+bool PermissionVerification::IsShellCall() const
+{
+    return true;
+}
 } // namespace AAFwk
 } // namespace OHOS

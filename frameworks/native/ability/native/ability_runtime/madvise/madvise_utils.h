@@ -29,8 +29,6 @@ int32_t MadviseGeneralFiles(const std::vector<std::string>& filenames);
 
 int32_t MadviseWithConfigFile(const char* bundleName);
 
-std::string GetConfigPath();
-
 } // namespace MadviseUtil
 } // namespace AbilityRuntime
 } // namespace OHOS

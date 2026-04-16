@@ -25,6 +25,12 @@
 
 namespace OHOS {
 namespace AgentRuntime {
+enum class AgentCardType: int32_t {
+    APP = 0,
+    ATOMIC_SERVICE = 1,
+    LOW_CODE = 2,
+};
+
 struct AgentProvider : public Parcelable {
     std::string organization;
     std::string url;
@@ -91,6 +97,7 @@ struct AgentAppInfo : public Parcelable {
 
 struct AgentCard : public Parcelable {
     std::string agentId;
+    AgentCardType type = AgentCardType::APP;
     std::string name;
     std::string description;
     // optional param

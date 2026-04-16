@@ -53,6 +53,7 @@ ohos_unittest("ui_ability_lifecycle_manager_third_test") {
     "${ability_runtime_services_path}/abilitymgr/src/utils/oe_extension_utils.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/timeout_state_utils.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/request_id_util.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/utils/dms_util.cpp",
     "${ability_runtime_services_path}/common/src/event_report.cpp",
     "mock/src/app_utils.cpp",
     "mock/src/mock_my_flag.cpp",

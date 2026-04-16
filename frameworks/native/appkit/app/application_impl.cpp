@@ -217,5 +217,15 @@ int ApplicationImpl::GetRecordId() const
 {
     return recordId_;
 }
+
+bool ApplicationImpl::IsUpdated() const
+{
+    return isUpdated_;
+}
+
+void ApplicationImpl::MarkUpdated()
+{
+    isUpdated_ = true;
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

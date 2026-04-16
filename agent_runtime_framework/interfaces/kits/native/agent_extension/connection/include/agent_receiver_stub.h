@@ -66,6 +66,15 @@ public:
      * @return Returns ERR_OK on success, error code otherwise.
      */
     int32_t OnAuthorize(MessageParcel &data, MessageParcel &reply);
+
+    /**
+     * Handle AgentInvoked request from host application.
+     *
+     * @param data The request data parcel containing the LOW_CODE agent id.
+     * @param reply The reply parcel.
+     * @return Returns ERR_OK on success, error code otherwise.
+     */
+    int32_t OnAgentInvoked(MessageParcel &data, MessageParcel &reply);
 };
 
 } // namespace AgentRuntime

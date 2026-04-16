@@ -83,6 +83,12 @@ public:
     virtual void OnStartProcessFailed(const std::vector<sptr<IRemoteObject>> &abilityTokens) override;
 
     /**
+     * @brief Notify abilityms one ability is being terminated.
+     * @param token ability token.
+     */
+    virtual void NotifyTerminateAbility(const sptr<IRemoteObject> &token) override;
+
+    /**
      * @brief Notify abilityms app process pre cache
      * @param pid process pid.
      * @param userId userId Designation User ID.
@@ -119,6 +125,7 @@ private:
     int32_t HandleNotifyStartKeepAliveProcess(MessageParcel &data, MessageParcel &reply);
     int32_t HandleOnAppRemoteDied(MessageParcel &data, MessageParcel &reply);
     int32_t HandleOnStartProcessFailed(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleNotifyTerminateAbility(MessageParcel &data, MessageParcel &reply);
     int32_t HandleOnCacheExitInfo(MessageParcel &data, MessageParcel &reply);
     int32_t HandleNotifyAppPreCache(MessageParcel &data, MessageParcel &reply);
     int32_t HandleRecordAppExitSignalReason(MessageParcel &data, MessageParcel &reply);

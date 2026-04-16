@@ -260,6 +260,11 @@ public:
         return 0;
     }
 
+    int32_t DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
+    {
+        return 0;
+    }
+    
     int32_t DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info)
     {
         return 0;

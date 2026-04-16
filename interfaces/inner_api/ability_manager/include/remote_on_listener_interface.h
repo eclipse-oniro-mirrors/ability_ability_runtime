@@ -16,10 +16,24 @@
 #ifndef OHOS_ABILITY_RUNTIME_REMOTE_ON_LISTENER_INTERFACE_H
 #define OHOS_ABILITY_RUNTIME_REMOTE_ON_LISTENER_INTERFACE_H
 
+#include <vector>
 #include "iremote_broker.h"
 
 namespace OHOS {
 namespace AAFwk {
+/**
+ * @struct OnCallbackInfo
+ * Structure to hold the callback information for remote on listener.
+ */
+struct OnCallbackInfo {
+    uint32_t continueState = 0;
+    std::string srcDeviceId;
+    std::string bundleName;
+    std::string continueType;
+    std::string srcBundleName;
+    std::vector<std::string> appIdentifiers;
+};
+
 /**
  * @class IRemoteOnListener
  * IRemoteOnListener is used to notify caller that remote device mission is changed.
@@ -31,10 +45,9 @@ public:
     /**
      * @brief When the remote device mission changed, AbilityMs notify the listener.
      *
-     * @param deviceId, remote device Id.
+     * @param info, callback information containing continue state, device info, etc.
      */
-    virtual void OnCallback(const uint32_t ContinueState, const std::string &srcDeviceId,
-        const std::string &bundleName, const std::string &continueType, const std::string &srcBundleName) = 0;
+    virtual void OnCallback(const OnCallbackInfo &info) = 0;
 
     enum {
         // ipc id for OnCallback

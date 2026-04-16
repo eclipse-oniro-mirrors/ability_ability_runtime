@@ -417,6 +417,39 @@ void EtsContextModule::SaveStaticBindingObject(ani_env *aniEnv, ani_object input
     context->Bind<ani_ref>(contextGlobalRef);
 }
 
+ani_object ContextStaticObjectCreator(ani_env *aniEnv, std::shared_ptr<Context> context)
+{
+    ani_class cls {};
+    ani_status status = ANI_ERROR;
+    if ((status = aniEnv->FindClass("application.Context.Context", &cls)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "status: %{public}d", status);
+        return nullptr;
+    }
+    return ContextUtil::CreateContextObject(aniEnv, cls, context);
+}
+
+napi_value ContextDynamicObjectCreator(napi_env napiEnv, std::shared_ptr<Context> context)
+{
+    auto object = EtsContextModule::GetOrCreateDynamicObject(napiEnv, context);
+    if (object == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "get or create object failed");
+        return nullptr;
+    }
+    return object;
+}
+
+void RegisterContextCreators()
+{
+    ContextTransfer::GetInstance().RegisterStaticObjectCreator("Context",
+        [](ani_env *aniEnv, std::shared_ptr<Context> context) -> ani_object {
+            return ContextStaticObjectCreator(aniEnv, context);
+        });
+    ContextTransfer::GetInstance().RegisterDynamicObjectCreator("Context",
+        [](napi_env napiEnv, std::shared_ptr<Context> context) -> napi_value {
+            return ContextDynamicObjectCreator(napiEnv, context);
+        });
+}
+
 void EtsContextModuleInit(ani_env *aniEnv)
 {
     TAG_LOGD(AAFwkTag::CONTEXT, "Init Context kit");
@@ -444,27 +477,7 @@ void EtsContextModuleInit(ani_env *aniEnv)
         return;
     }
 
-    ContextTransfer::GetInstance().RegisterStaticObjectCreator("Context",
-        [](ani_env *aniEnv, std::shared_ptr<Context> context) -> ani_object {
-            ani_class cls {};
-            ani_status status = ANI_ERROR;
-            if ((status = aniEnv->FindClass("application.Context.Context", &cls)) != ANI_OK) {
-                TAG_LOGE(AAFwkTag::CONTEXT, "status: %{public}d", status);
-                return nullptr;
-            }
-            return ContextUtil::CreateContextObject(aniEnv, cls, context);
-    });
-
-    ContextTransfer::GetInstance().RegisterDynamicObjectCreator("Context",
-        [](napi_env napiEnv, std::shared_ptr<Context> context) -> napi_value {
-            auto object = EtsContextModule::GetOrCreateDynamicObject(napiEnv, context);
-            if (object == nullptr) {
-            TAG_LOGE(AAFwkTag::CONTEXT, "get or create object failed");
-                return nullptr;
-            }
-            return object;
-    });
-
+    RegisterContextCreators();
     TAG_LOGD(AAFwkTag::CONTEXT, "Init Context kit end");
 }
 

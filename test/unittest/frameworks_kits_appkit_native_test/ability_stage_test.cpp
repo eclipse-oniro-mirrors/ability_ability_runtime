@@ -65,6 +65,16 @@ public:
         return true;
     }
 
+    bool AddRefreshRecipient(const sptr<RefreshRecipient> &recipient) override
+    {
+        return true;
+    }
+
+    bool RemoveRefreshRecipient(const sptr<RefreshRecipient> &recipient) override
+    {
+        return true;
+    }
+
     int Dump(int fd, const std::vector<std::u16string>& args) override
     {
         return 0;
@@ -257,6 +267,8 @@ HWTEST_F(AbilityStageTest, AppExecFwk_AbilityStage_OnAcceptWant_001, Function | 
 {
     GTEST_LOG_(INFO) << "AppExecFwk_AbilityStage_OnAcceptWant_001 start";
     AAFwk::Want want;
+    abilityStage_->OnLaunchFromHyperSnap();
+    abilityStage_->OnAboutToCreateAbility();
     EXPECT_TRUE(abilityStage_->OnAcceptWant(want).empty());
     bool isAsync = false;
     EXPECT_TRUE(abilityStage_->OnAcceptWant(want, nullptr, isAsync).empty());
@@ -350,6 +362,22 @@ HWTEST_F(AbilityStageTest, AppExecFwk_AbilityStage_RunAutoStartupTask_001, Funct
     std::shared_ptr<AbilityRuntime::Context> context = abilityStage_->GetContext();
     EXPECT_TRUE(abilityStage_->RunAutoStartupTask(callback, nullptr, isAsyncCallback, context, false) == ERR_OK);
     GTEST_LOG_(INFO) << "AppExecFwk_AbilityStage_RunAutoStartupTask_001 end";
+}
+
+/**
+ * @tc.number: AppExecFwk_AbilityStage_MarkAbilityCreated_001
+ * @tc.name: MarkAbilityCreated
+ * @tc.desc: Test whether MarkAbilityCreated is called normally.
+ * @tc.type: FUNC
+ * @tc.require: AR000GJ719
+ */
+HWTEST_F(AbilityStageTest, AppExecFwk_AbilityStage_MarkAbilityCreated_001, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_AbilityStage_MarkAbilityCreated_001 start";
+    EXPECT_FALSE(abilityStage_->IsAbilityCreated());
+    abilityStage_->MarkAbilityCreated();
+    EXPECT_TRUE(abilityStage_->IsAbilityCreated());
+    GTEST_LOG_(INFO) << "AppExecFwk_AbilityStage_MarkAbilityCreated_001 end";
 }
 
 /**

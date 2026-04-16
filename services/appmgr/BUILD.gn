@@ -36,6 +36,7 @@ ohos_shared_library("libappms") {
   sanitize = {
     cfi = true
     cfi_cross_dso = true
+    cfi_policy = "adaptive"
     debug = false
   }
   branch_protector_ret = "pac_ret"
@@ -58,6 +59,7 @@ ohos_shared_library("libappms") {
     "src/app_mgr_service_inner.cpp",
     "src/app_native_spawn_manager.cpp",
     "src/app_preloader.cpp",
+    "src/app_refresh_recipient.cpp",
     "src/app_running_manager.cpp",
     "src/app_running_record.cpp",
     "src/app_running_status_module.cpp",
@@ -65,6 +67,7 @@ ohos_shared_library("libappms") {
     "src/app_state_observer_manager.cpp",
     "src/cache_process_manager.cpp",
     "src/exit_resident_process_manager.cpp",
+    "src/fork_image_info.cpp",
     "src/killing_process_manager.cpp",
     "src/modal_system_app_freeze_uiextension.cpp",
     "src/module_running_record.cpp",

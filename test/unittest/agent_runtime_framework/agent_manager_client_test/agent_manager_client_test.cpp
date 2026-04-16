@@ -13,17 +13,19 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "ability_connect_callback_interface.h"
 #include "agent_card.h"
+
 #define private public
 #include "ability_manager_errors.h"
 #include "agent_manager_client.h"
 #include "agent_load_callback.h"
-#include "hilog_tag_wrapper.h"
 #undef private
+#include "hilog_tag_wrapper.h"
+#include "ipc_object_stub.h"
 #include "iremote_object.h"
 #include "mock_agent_manager_service.h"
 #include "mock_my_flag.h"
@@ -52,7 +54,21 @@ void AgentManagerClientTest::TearDownTestCase(void)
 {}
 
 void AgentManagerClientTest::SetUp(void)
-{}
+{
+    MyFlag::retGetAllAgentCards = ERR_OK;
+    MyFlag::retGetAgentCardsByBundleName = ERR_OK;
+    MyFlag::retGetAgentCardByAgentId = ERR_OK;
+    MyFlag::retGetCallerAgentCardByAgentId = ERR_OK;
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+    MyFlag::retDisconnectAgentExtensionAbility = ERR_OK;
+    MyFlag::retConnectServiceExtensionAbility = ERR_OK;
+    MyFlag::retDisconnectServiceExtensionAbility = ERR_OK;
+    MyFlag::retNotifyLowCodeAgentComplete = ERR_OK;
+    MyFlag::nullSystemAbility = false;
+    MyFlag::retRegisterAgentCard = ERR_OK;
+    MyFlag::retUpdateAgentCard = ERR_OK;
+    MyFlag::retDeleteAgentCard = ERR_OK;
+}
 
 void AgentManagerClientTest::TearDown(void)
 {}
@@ -236,6 +252,209 @@ HWTEST_F(AgentManagerClientTest, GetAgentCardByAgentId_003, TestSize.Level1)
     std::string bundleName = "bundle";
     std::string agentId = "agentId";
     int32_t result = client.GetAgentCardByAgentId(bundleName, agentId, card);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+* @tc.name  : GetCallerAgentCardByAgentId_ShouldReturnError_WhenProxyIsNull
+* @tc.number: GetCallerAgentCardByAgentId_001
+ * @tc.desc : Test that GetCallerAgentCardByAgentId returns ERR_NULL_AGENT_MGR_PROXY when the agent manager proxy is
+ * null.
+*/
+HWTEST_F(AgentManagerClientTest, GetCallerAgentCardByAgentId_001, TestSize.Level1)
+{
+    AgentManagerClient client;
+    MyFlag::nullSystemAbility = true;
+
+    AgentCard card;
+    std::string agentId = "agentId";
+    int32_t result = client.GetCallerAgentCardByAgentId(agentId, card);
+    EXPECT_EQ(result, ERR_NULL_AGENT_MGR_PROXY);
+}
+
+/**
+* @tc.name  : GetCallerAgentCardByAgentId_ShouldReturnError_WhenRetrievalFails
+* @tc.number: GetCallerAgentCardByAgentId_002
+* @tc.desc  : Test that GetCallerAgentCardByAgentId returns the error code when agent card retrieval fails.
+*/
+HWTEST_F(AgentManagerClientTest, GetCallerAgentCardByAgentId_002, TestSize.Level1)
+{
+    AgentManagerClient client;
+    auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
+    client.agentMgr_ = mockAgentMgr;
+    MyFlag::retGetCallerAgentCardByAgentId = -1;
+
+    AgentCard card;
+    std::string agentId = "agentId";
+    int32_t result = client.GetCallerAgentCardByAgentId(agentId, card);
+    EXPECT_EQ(result, -1);
+}
+
+/**
+* @tc.name  : GetCallerAgentCardByAgentId_ShouldReturnSuccess_WhenAllOperationsSucceed
+* @tc.number: GetCallerAgentCardByAgentId_003
+* @tc.desc  : Test that GetCallerAgentCardByAgentId returns ERR_OK when all operations succeed.
+*/
+HWTEST_F(AgentManagerClientTest, GetCallerAgentCardByAgentId_003, TestSize.Level1)
+{
+    AgentManagerClient client;
+    auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
+    client.agentMgr_ = mockAgentMgr;
+    MyFlag::retGetCallerAgentCardByAgentId = ERR_OK;
+
+    AgentCard card;
+    std::string agentId = "agentId";
+    int32_t result = client.GetCallerAgentCardByAgentId(agentId, card);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+* @tc.name  : UpdateAgentCard_001
+* @tc.number: UpdateAgentCard_001
+* @tc.desc  : Test UpdateAgentCard returns ERR_NULL_AGENT_MGR_PROXY when proxy is null
+*/
+HWTEST_F(AgentManagerClientTest, UpdateAgentCard_001, TestSize.Level1)
+{
+    AgentManagerClient client;
+    MyFlag::nullSystemAbility = true;
+
+    AgentCard card;
+    int32_t result = client.UpdateAgentCard(card);
+    EXPECT_EQ(result, ERR_NULL_AGENT_MGR_PROXY);
+}
+
+/**
+* @tc.name  : UpdateAgentCard_002
+* @tc.number: UpdateAgentCard_002
+* @tc.desc  : Test UpdateAgentCard returns service error when agent mgr call fails
+*/
+HWTEST_F(AgentManagerClientTest, UpdateAgentCard_002, TestSize.Level1)
+{
+    AgentManagerClient client;
+    MyFlag::nullSystemAbility = false;
+    auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
+    client.agentMgr_ = mockAgentMgr;
+    MyFlag::retUpdateAgentCard = AAFwk::ERR_AGENT_CARD_VERSION_TOO_OLD;
+
+    AgentCard card;
+    int32_t result = client.UpdateAgentCard(card);
+    EXPECT_EQ(result, AAFwk::ERR_AGENT_CARD_VERSION_TOO_OLD);
+}
+
+/**
+* @tc.name  : UpdateAgentCard_003
+* @tc.number: UpdateAgentCard_003
+* @tc.desc  : Test UpdateAgentCard returns ERR_OK when all operations succeed
+*/
+HWTEST_F(AgentManagerClientTest, UpdateAgentCard_003, TestSize.Level1)
+{
+    AgentManagerClient client;
+    MyFlag::nullSystemAbility = false;
+    auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
+    client.agentMgr_ = mockAgentMgr;
+    MyFlag::retUpdateAgentCard = ERR_OK;
+
+    AgentCard card;
+    int32_t result = client.UpdateAgentCard(card);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+* @tc.name  : RegisterAgentCard_001
+* @tc.number: RegisterAgentCard_001
+* @tc.desc  : Test RegisterAgentCard returns ERR_NULL_AGENT_MGR_PROXY when proxy is null
+*/
+HWTEST_F(AgentManagerClientTest, RegisterAgentCard_001, TestSize.Level1)
+{
+    AgentManagerClient client;
+    MyFlag::nullSystemAbility = true;
+
+    AgentCard card;
+    int32_t result = client.RegisterAgentCard(card);
+    EXPECT_EQ(result, ERR_NULL_AGENT_MGR_PROXY);
+}
+
+/**
+* @tc.name  : RegisterAgentCard_002
+* @tc.number: RegisterAgentCard_002
+* @tc.desc  : Test RegisterAgentCard returns service error when agent mgr call fails
+*/
+HWTEST_F(AgentManagerClientTest, RegisterAgentCard_002, TestSize.Level1)
+{
+    AgentManagerClient client;
+    MyFlag::nullSystemAbility = false;
+    auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
+    client.agentMgr_ = mockAgentMgr;
+    MyFlag::retRegisterAgentCard = AAFwk::ERR_AGENT_CARD_DUPLICATE_REGISTER;
+
+    AgentCard card;
+    int32_t result = client.RegisterAgentCard(card);
+    EXPECT_EQ(result, AAFwk::ERR_AGENT_CARD_DUPLICATE_REGISTER);
+}
+
+/**
+* @tc.name  : RegisterAgentCard_003
+* @tc.number: RegisterAgentCard_003
+* @tc.desc  : Test RegisterAgentCard returns ERR_OK when all operations succeed
+*/
+HWTEST_F(AgentManagerClientTest, RegisterAgentCard_003, TestSize.Level1)
+{
+    AgentManagerClient client;
+    MyFlag::nullSystemAbility = false;
+    auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
+    client.agentMgr_ = mockAgentMgr;
+    MyFlag::retRegisterAgentCard = ERR_OK;
+
+    AgentCard card;
+    int32_t result = client.RegisterAgentCard(card);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+* @tc.name  : DeleteAgentCard_001
+* @tc.number: DeleteAgentCard_001
+* @tc.desc  : Test DeleteAgentCard returns ERR_NULL_AGENT_MGR_PROXY when proxy is null
+*/
+HWTEST_F(AgentManagerClientTest, DeleteAgentCard_001, TestSize.Level1)
+{
+    AgentManagerClient client;
+    MyFlag::nullSystemAbility = true;
+
+    int32_t result = client.DeleteAgentCard("bundle", "agentId");
+    EXPECT_EQ(result, ERR_NULL_AGENT_MGR_PROXY);
+}
+
+/**
+* @tc.name  : DeleteAgentCard_002
+* @tc.number: DeleteAgentCard_002
+* @tc.desc  : Test DeleteAgentCard returns service error when agent mgr call fails
+*/
+HWTEST_F(AgentManagerClientTest, DeleteAgentCard_002, TestSize.Level1)
+{
+    AgentManagerClient client;
+    MyFlag::nullSystemAbility = false;
+    auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
+    client.agentMgr_ = mockAgentMgr;
+    MyFlag::retDeleteAgentCard = AAFwk::ERR_INVALID_AGENT_CARD_ID;
+
+    int32_t result = client.DeleteAgentCard("bundle", "agentId");
+    EXPECT_EQ(result, AAFwk::ERR_INVALID_AGENT_CARD_ID);
+}
+
+/**
+* @tc.name  : DeleteAgentCard_003
+* @tc.number: DeleteAgentCard_003
+* @tc.desc  : Test DeleteAgentCard returns ERR_OK when all operations succeed
+*/
+HWTEST_F(AgentManagerClientTest, DeleteAgentCard_003, TestSize.Level1)
+{
+    AgentManagerClient client;
+    MyFlag::nullSystemAbility = false;
+    auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
+    client.agentMgr_ = mockAgentMgr;
+    MyFlag::retDeleteAgentCard = ERR_OK;
+
+    int32_t result = client.DeleteAgentCard("bundle", "agentId");
     EXPECT_EQ(result, ERR_OK);
 }
 
@@ -640,6 +859,165 @@ HWTEST_F(AgentManagerClientTest, DisconnectAgentExtensionAbility_003, TestSize.L
 
     sptr<MockAbilityConnection> connection = new MockAbilityConnection();
     int32_t result = client.DisconnectAgentExtensionAbility(connection);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+* @tc.name  : ConnectServiceExtensionAbility_001
+* @tc.number: ConnectServiceExtensionAbility_001
+* @tc.desc  : Test ConnectServiceExtensionAbility returns ERR_NULL_AGENT_MGR_PROXY when proxy is null
+*/
+HWTEST_F(AgentManagerClientTest, ConnectServiceExtensionAbility_001, TestSize.Level1)
+{
+    AgentManagerClient client;
+    MyFlag::nullSystemAbility = true;
+
+    AAFwk::Want want;
+    sptr<IRemoteObject> callerToken = new IPCObjectStub(u"caller.token");
+    sptr<MockAbilityConnection> connection = new MockAbilityConnection();
+    int32_t result = client.ConnectServiceExtensionAbility(callerToken, want, connection);
+    EXPECT_EQ(result, ERR_NULL_AGENT_MGR_PROXY);
+}
+
+/**
+* @tc.name  : ConnectServiceExtensionAbility_002
+* @tc.number: ConnectServiceExtensionAbility_002
+* @tc.desc  : Test ConnectServiceExtensionAbility returns error when agent mgr call fails
+*/
+HWTEST_F(AgentManagerClientTest, ConnectServiceExtensionAbility_002, TestSize.Level1)
+{
+    AgentManagerClient client;
+    MyFlag::nullSystemAbility = false;
+    auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
+    client.agentMgr_ = mockAgentMgr;
+    MyFlag::retConnectServiceExtensionAbility = -1;
+
+    AAFwk::Want want;
+    sptr<IRemoteObject> callerToken = new IPCObjectStub(u"caller.token");
+    sptr<MockAbilityConnection> connection = new MockAbilityConnection();
+    int32_t result = client.ConnectServiceExtensionAbility(callerToken, want, connection);
+    EXPECT_EQ(result, -1);
+}
+
+/**
+* @tc.name  : ConnectServiceExtensionAbility_003
+* @tc.number: ConnectServiceExtensionAbility_003
+* @tc.desc  : Test ConnectServiceExtensionAbility returns ERR_OK when all operations succeed
+*/
+HWTEST_F(AgentManagerClientTest, ConnectServiceExtensionAbility_003, TestSize.Level1)
+{
+    AgentManagerClient client;
+    MyFlag::nullSystemAbility = false;
+    auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
+    client.agentMgr_ = mockAgentMgr;
+    MyFlag::retConnectServiceExtensionAbility = ERR_OK;
+
+    AAFwk::Want want;
+    sptr<IRemoteObject> callerToken = new IPCObjectStub(u"caller.token");
+    sptr<MockAbilityConnection> connection = new MockAbilityConnection();
+    int32_t result = client.ConnectServiceExtensionAbility(callerToken, want, connection);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+* @tc.name  : DisconnectServiceExtensionAbility_001
+* @tc.number: DisconnectServiceExtensionAbility_001
+* @tc.desc  : Test DisconnectServiceExtensionAbility returns ERR_NULL_AGENT_MGR_PROXY when proxy is null
+*/
+HWTEST_F(AgentManagerClientTest, DisconnectServiceExtensionAbility_001, TestSize.Level1)
+{
+    AgentManagerClient client;
+    MyFlag::nullSystemAbility = true;
+
+    auto callerToken = sptr<IRemoteObject>(new IPCObjectStub(u"caller.token"));
+    sptr<MockAbilityConnection> connection = new MockAbilityConnection();
+    int32_t result = client.DisconnectServiceExtensionAbility(callerToken, connection);
+    EXPECT_EQ(result, ERR_NULL_AGENT_MGR_PROXY);
+}
+
+/**
+* @tc.name  : DisconnectServiceExtensionAbility_002
+* @tc.number: DisconnectServiceExtensionAbility_002
+* @tc.desc  : Test DisconnectServiceExtensionAbility returns error when agent mgr call fails
+*/
+HWTEST_F(AgentManagerClientTest, DisconnectServiceExtensionAbility_002, TestSize.Level1)
+{
+    AgentManagerClient client;
+    MyFlag::nullSystemAbility = false;
+    auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
+    client.agentMgr_ = mockAgentMgr;
+    MyFlag::retDisconnectServiceExtensionAbility = -1;
+
+    auto callerToken = sptr<IRemoteObject>(new IPCObjectStub(u"caller.token"));
+    sptr<MockAbilityConnection> connection = new MockAbilityConnection();
+    int32_t result = client.DisconnectServiceExtensionAbility(callerToken, connection);
+    EXPECT_EQ(result, -1);
+}
+
+/**
+* @tc.name  : DisconnectServiceExtensionAbility_003
+* @tc.number: DisconnectServiceExtensionAbility_003
+* @tc.desc  : Test DisconnectServiceExtensionAbility returns ERR_OK when all operations succeed
+*/
+HWTEST_F(AgentManagerClientTest, DisconnectServiceExtensionAbility_003, TestSize.Level1)
+{
+    AgentManagerClient client;
+    MyFlag::nullSystemAbility = false;
+    auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
+    client.agentMgr_ = mockAgentMgr;
+    MyFlag::retDisconnectServiceExtensionAbility = ERR_OK;
+
+    auto callerToken = sptr<IRemoteObject>(new IPCObjectStub(u"caller.token"));
+    sptr<MockAbilityConnection> connection = new MockAbilityConnection();
+    int32_t result = client.DisconnectServiceExtensionAbility(callerToken, connection);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+* @tc.name  : NotifyLowCodeAgentComplete_001
+* @tc.number: NotifyLowCodeAgentComplete_001
+* @tc.desc  : Test NotifyLowCodeAgentComplete returns ERR_NULL_AGENT_MGR_PROXY when proxy is null
+*/
+HWTEST_F(AgentManagerClientTest, NotifyLowCodeAgentComplete_001, TestSize.Level1)
+{
+    AgentManagerClient client;
+    MyFlag::nullSystemAbility = true;
+
+    int32_t result = client.NotifyLowCodeAgentComplete("agentA");
+    EXPECT_EQ(result, ERR_NULL_AGENT_MGR_PROXY);
+}
+
+/**
+* @tc.name  : NotifyLowCodeAgentComplete_002
+* @tc.number: NotifyLowCodeAgentComplete_002
+* @tc.desc  : Test NotifyLowCodeAgentComplete returns error when agent mgr call fails
+*/
+HWTEST_F(AgentManagerClientTest, NotifyLowCodeAgentComplete_002, TestSize.Level1)
+{
+    AgentManagerClient client;
+    MyFlag::nullSystemAbility = false;
+    auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
+    client.agentMgr_ = mockAgentMgr;
+    MyFlag::retNotifyLowCodeAgentComplete = -1;
+
+    int32_t result = client.NotifyLowCodeAgentComplete("agentA");
+    EXPECT_EQ(result, -1);
+}
+
+/**
+* @tc.name  : NotifyLowCodeAgentComplete_003
+* @tc.number: NotifyLowCodeAgentComplete_003
+* @tc.desc  : Test NotifyLowCodeAgentComplete returns ERR_OK when all operations succeed
+*/
+HWTEST_F(AgentManagerClientTest, NotifyLowCodeAgentComplete_003, TestSize.Level1)
+{
+    AgentManagerClient client;
+    MyFlag::nullSystemAbility = false;
+    auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
+    client.agentMgr_ = mockAgentMgr;
+    MyFlag::retNotifyLowCodeAgentComplete = ERR_OK;
+
+    int32_t result = client.NotifyLowCodeAgentComplete("agentA");
     EXPECT_EQ(result, ERR_OK);
 }
 } // namespace AgentRuntime

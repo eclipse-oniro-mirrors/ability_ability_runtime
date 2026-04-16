@@ -41,6 +41,7 @@ ohos_shared_library("uri_permission_mgr") {
   sanitize = {
     cfi = true
     cfi_cross_dso = true
+    cfi_policy = "adaptive"
     debug = false
   }
   branch_protector_ret = "pac_ret"

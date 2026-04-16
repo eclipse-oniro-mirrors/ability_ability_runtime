@@ -59,6 +59,7 @@ void InsightIntentSysEventReceiver::SaveInsightIntentInfos(const std::string &bu
             moduleNameLocal, profile, userId));
         if (ret != ERR_OK) {
             TAG_LOGE(AAFwkTag::INTENT, "GetJsonProfile failed, code: %{public}d", ret);
+            DeleteInsightIntent(bundleName, moduleNameLocal, userId);
             continue;
         }
 
@@ -69,7 +70,10 @@ void InsightIntentSysEventReceiver::SaveInsightIntentInfos(const std::string &bu
             !AbilityRuntime::InsightIntentProfile::TransformTo(profile, configIntentInfos) ||
             configIntentInfos.size() == 0);
         if (isTransformExtractIntent && isTransformConfigIntent) {
-            TAG_LOGD(AAFwkTag::INTENT, "transform profile failed, profile:%{public}s", profile.c_str());
+            TAG_LOGW(AAFwkTag::INTENT,
+                "transform profile failed, deleting config, bundle:%{public}s module:%{public}s",
+                bundleName.c_str(), moduleNameLocal.c_str());
+            DeleteInsightIntent(bundleName, moduleNameLocal, userId);
             continue;
         }
 
@@ -84,6 +88,23 @@ void InsightIntentSysEventReceiver::SaveInsightIntentInfos(const std::string &bu
 
         TAG_LOGI(AAFwkTag::INTENT, "save intent info success, bundleName: %{public}s, moduleName: %{public}s, "
             "userId: %{public}d", bundleName.c_str(), moduleNameLocal.c_str(), userId);
+    }
+}
+
+void InsightIntentSysEventReceiver::DeleteInsightIntent(const std::string &bundleName,
+    const std::string &moduleName, int32_t userId)
+{
+    std::vector<ExtractInsightIntentInfo> intentInfos;
+    std::vector<InsightIntentInfo> configIntentInfos;
+    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentInfoByName(
+        bundleName, userId, intentInfos);
+    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetConfigInsightIntentInfoByName(
+        bundleName, userId, configIntentInfos);
+    if (!intentInfos.empty() || !configIntentInfos.empty()) {
+        TAG_LOGI(AAFwkTag::INTENT, "update bundleName: %{public}s to no insight intent",
+            bundleName.c_str());
+        DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(
+            bundleName, moduleName, userId);
     }
 }
 
@@ -127,9 +148,6 @@ void InsightIntentSysEventReceiver::LoadInsightIntentInfos(int32_t userId)
             continue;
         }
         for (const auto &hapInfo : bundleInfo.hapModuleInfos) {
-            if (!hapInfo.hasIntent) {
-                continue;
-            }
             SaveInsightIntentInfos(bundleInfo.name, hapInfo.moduleName, bundleInfo.versionCode, userId);
             hasNewIntent = true;
         }

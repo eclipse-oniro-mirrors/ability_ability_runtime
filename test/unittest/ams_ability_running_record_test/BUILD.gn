@@ -17,6 +17,7 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 module_output_path = "ability_runtime/ability_runtime/appmgrservice"
 
 ohos_unittest("AmsAbilityRunningRecordTest") {
+  use_exceptions = true
   module_out_path = module_output_path
   cflags_cc = []
   include_dirs = [
@@ -36,12 +37,14 @@ ohos_unittest("AmsAbilityRunningRecordTest") {
     "${ability_runtime_services_path}/appmgr/src/app_mgr_service_inner.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_native_spawn_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_preloader.cpp",
+    "${ability_runtime_services_path}/appmgr/src/app_refresh_recipient.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_running_record.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_running_status_module.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_spawn_client.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_state_observer_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/cache_process_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/exit_resident_process_manager.cpp",
+    "${ability_runtime_services_path}/appmgr/src/fork_image_info.cpp",
     "${ability_runtime_services_path}/appmgr/src/killing_process_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/multi_user_config_mgr.cpp",
     "${ability_runtime_services_path}/appmgr/src/render_state_observer_manager.cpp",

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -91,6 +91,35 @@ bool MissionInfo::Marshalling(Parcel &parcel) const
     }
 
     if (!parcel.WriteInt32(static_cast<int32_t>(continueState))) {
+        return false;
+    }
+    return true;
+}
+
+bool DisplayInfo::ReadFromParcel(Parcel &parcel)
+{
+    id = parcel.ReadInt32();
+    displayName = Str16ToStr8(parcel.ReadString16());
+    return true;
+}
+
+DisplayInfo *DisplayInfo::Unmarshalling(Parcel &parcel)
+{
+    DisplayInfo *info = new DisplayInfo();
+    if (!info->ReadFromParcel(parcel)) {
+        delete info;
+        info = nullptr;
+    }
+    return info;
+}
+
+bool DisplayInfo::Marshalling(Parcel &parcel) const
+{
+    if (!parcel.WriteInt32(id)) {
+        return false;
+    }
+
+    if (!parcel.WriteString16(Str8ToStr16(displayName))) {
         return false;
     }
     return true;

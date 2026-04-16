@@ -50,6 +50,9 @@ JsInsightIntentFunc::JsInsightIntentFunc(JsRuntime& runtime) : runtime_(runtime)
 JsInsightIntentFunc::~JsInsightIntentFunc()
 {
     state_ = State::DESTROYED;
+    if (safeData_ != nullptr) {
+        safeData_->SetAutoReleaseMem(true);
+    }
     TAG_LOGI(AAFwkTag::INTENT, "destructor");
 }
 
@@ -105,7 +108,8 @@ bool JsInsightIntentFunc::LoadJsCode(const InsightIntentExecutorInfo& info, JsRu
     TAG_LOGD(AAFwkTag::INTENT, "moduleName %{public}s, hapPath %{private}s, srcEntrance %{private}s",
         moduleName.c_str(), hapPath.c_str(), srcEntrance.c_str());
 
-    return runtime.ExecuteSecureWithOhmUrl(moduleName, hapPath, srcEntrance);
+    safeData_ = runtime.ExecuteSecureWithOhmUrl(moduleName, hapPath, srcEntrance);
+    return safeData_ != nullptr;
 }
 
 void JsInsightIntentFunc::ReplyFailedInner(InsightIntentInnerErr innerErr)

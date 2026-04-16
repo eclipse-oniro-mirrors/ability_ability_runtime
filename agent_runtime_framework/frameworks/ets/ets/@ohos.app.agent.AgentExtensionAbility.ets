@@ -39,4 +39,7 @@ export default class AgentExtensionAbility extends ExtensionAbility {
 
   onDisconnect(want: Want, proxy: AgentHostProxy): void{
   }
+
+  onAgentInvoked(agentId: string): void {
+  }
 }

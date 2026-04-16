@@ -807,12 +807,21 @@ void AppfreezeManager::FindStackByPid(std::string& msg, int pid) const
     }
 }
 
+bool AppfreezeManager::IsHalfTimeout(const std::string& faultType) const
+{
+    if (faultType == AppFreezeType::THREAD_BLOCK_3S ||
+        faultType == AppFreezeType::LIFECYCLE_HALF_TIMEOUT) {
+            return true;
+    }
+    return false;
+}
+
 std::pair<std::string, std::string> AppfreezeManager::CatchJsonStacktrace(int pid, const std::string& faultType) const
 {
     HITRACE_METER_FMT(HITRACE_TAG_APP, "CatchJsonStacktrace pid:%{public}d", pid);
     HiviewDFX::DfxDumpCatcher dumplog;
     std::string msg;
-    int timeout = 3000;
+    int timeout = IsHalfTimeout(faultType) ? 5000 : 3000;
     int tid = 0;
     std::pair<int, std::string> dumpResult = dumplog.DumpCatchWithTimeout(pid, msg, timeout, tid, true);
     if (dumpResult.first == DUMP_STACK_FAILED) {

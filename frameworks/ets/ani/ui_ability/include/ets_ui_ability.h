@@ -348,7 +348,6 @@ private:
         const std::string &moduleName, const std::string &srcPath);
     void CreateEtsContext(int32_t screenMode);
     bool BindNativeMethods();
-    void RemoveShareRouterByBundleType(const Want &want);
     bool CheckSatisfyTargetAPIVersion(int32_t targetAPIVersion);
     bool BackPressDefaultValue();
     void WriteLifecycleSwitchLog(const std::string lifecycleName);

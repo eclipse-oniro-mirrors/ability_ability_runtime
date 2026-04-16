@@ -77,6 +77,12 @@ public:
     virtual void OnStartProcessFailed(const std::vector<sptr<IRemoteObject>> &abilityTokens) override;
 
     /**
+     * @brief Notify abilityms one ability is being terminated.
+     * @param token ability token.
+     */
+    virtual void NotifyTerminateAbility(const sptr<IRemoteObject> &token) override;
+
+    /**
      * @brief Notify abilityms app process pre cache
      * @param pid process pid.
      * @param userId userId Designation User ID.

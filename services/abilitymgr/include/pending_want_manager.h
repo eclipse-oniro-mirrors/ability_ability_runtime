@@ -165,6 +165,7 @@ public:
     void RegisterCancelListener(const sptr<IWantSender> &sender, const sptr<IWantReceiver> &recevier);
     void UnregisterCancelListener(const sptr<IWantSender> &sender, const sptr<IWantReceiver> &recevier);
     int32_t GetPendingRequestWant(const sptr<IWantSender> &target, std::shared_ptr<Want> &want);
+    int32_t GetPendingRequestWantFromProxy(const sptr<IWantSender> &target, std::shared_ptr<Want> &want);
     int32_t GetWantSenderInfo(const sptr<IWantSender> &target, std::shared_ptr<WantSenderInfo> &info);
 
     void CancelWantSenderLocked(PendingWantRecord &record, bool cleanAbility);

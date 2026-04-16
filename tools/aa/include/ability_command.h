@@ -78,6 +78,7 @@ const std::string HELP_MSG_START =
     "  [--wt <window-top>] "
     "  [--wh <window-height>] "
     "  [--ww <window-width>] "
+    "  [-u <user-id>] "
     "  start ability with an element name\n";
 
 const std::string HELP_MSG_STOP_SERVICE =
@@ -130,6 +131,7 @@ const std::string HELP_MSG_TEST =
     "                  [-s timeout <test-timeout>]\n"
     "                  [-s <any-key> <any-value>]\n"
     "                  [-w <wait-time>]\n"
+    "                  [-u <userId>]                          user id for running test\n"
     "                  [-D]\n";
 
 const std::string HELP_MSG_SEND_MEMORY_LEVEL =
@@ -137,6 +139,15 @@ const std::string HELP_MSG_SEND_MEMORY_LEVEL =
     "Mandatory Options:\n"
     "  -p, --pid <PID>         Target process ID (integer)\n"
     "  -l, --level <0|1|2>     Memory level (0: Moderate, 1: Low, 2: Critical)\n\n"
+    "Optional:\n"
+    "  -h, --help              Show this help message\n";
+
+const std::string HELP_MSG_PRESTART =
+    "Usage: aa pre-start -m <MODE> -b <BUNDLE-NAME> -u <USER-ID>\n"
+    "Mandatory Options:\n"
+    "  -m, --mode <MODE>           Prestart mode (currently only supports 1 for Specific stage prelaunch)\n"
+    "  -b, --bundle <BUNDLE>   Bundle name of the application\n"
+    "  -u, --user <USER-ID>    User ID (integer)\n\n"
     "Optional:\n"
     "  -h, --help              Show this help message\n";
 
@@ -187,6 +198,9 @@ const std::string STRING_DETACH_APP_DEBUG_NG = "error: failed to detach app debu
 
 const std::string STRING_SEND_MEMORY_LEVEL_OK = "send memory level successfully.";
 const std::string STRING_SEND_MEMORY_LEVEL_NG = "error: failed to send memory level.";
+
+const std::string STRING_PRESTART_OK = "prestart successfully.";
+const std::string STRING_PRESTART_NG = "error: failed to prestart.";
 
 const std::string STRING_START_USER_TEST_NG = "error: failed to start user test.";
 const std::string STRING_USER_TEST_STARTED = "user test started.";
@@ -250,6 +264,8 @@ private:
     ErrCode RunAsAttachDebugCommand();
     ErrCode RunAsDetachDebugCommand();
     ErrCode RunAsSendMemoryLevelCommand();
+    ErrCode RunAsPreStartCommand();
+    ErrCode ParsePreStartOptions(int32_t& mode, std::string& bundleName, int32_t& userId);
     ErrCode ParsePidMemoryLevel(std::string& pidParse, std::string& memoryLevelParse);
     bool IsLongStartOption(const std::string &argv);
     bool IsShortStartOption(const std::string &argv);
@@ -272,15 +288,17 @@ private:
 #endif
     sptr<IAbilityManager> GetAbilityManagerService();
 
+    ErrCode MakeWantFromCmd(Want& want, std::string& windowMode, int32_t& userId);
     ErrCode MakeWantFromCmd(Want& want, std::string& windowMode);
     ErrCode MakeWantFromCmdForStopService(Want& want);
     ErrCode MakeWantForProcess(Want& want);
     ErrCode RunAsTestCommand();
     ErrCode TestCommandError(const std::string& info);
+    ErrCode ParseTestCommandOption(const std::string &opt, int &i, std::map<std::string, std::string> &params);
     bool MatchOrderString(const std::regex &r, const std::string &orderCmd);
     bool CheckPerfCmdString(const char* optarg, const size_t paramLength, std::string &perfCmd);
     void ParseBundleName(std::string &bundleName);
-    ErrCode StartAbilityWithWait(Want& want);
+    ErrCode StartAbilityWithWait(Want& want, int32_t userId = DEFAULT_INVAL_VALUE);
     void FormatOutputForWithWait(const Want &want, const AbilityStartWithWaitObserverData& data);
     bool IsImplicitStartAction(const Want &want);
     bool startAbilityWithWaitFlag_ = false;

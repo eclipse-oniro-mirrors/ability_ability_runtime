@@ -41,6 +41,11 @@ public:
         std::unique_ptr<JsAgentExtensionContext>(static_cast<JsAgentExtensionContext*>(data));
     }
 
+    std::shared_ptr<AgentExtensionContext> GetContext() const
+    {
+        return context_.lock();
+    }
+
 private:
     std::weak_ptr<AgentExtensionContext> context_;
 };
@@ -65,6 +70,24 @@ napi_value CreateJsAgentExtensionContext(napi_env env, std::shared_ptr<AgentExte
     napi_set_named_property(env, object, "agentCard", CreateJsAgentCard(env, *agentCard));
     TAG_LOGD(AAFwkTag::SER_ROUTER, "end");
     return object;
+}
+
+bool UnwrapJsAgentExtensionContext(napi_env env, napi_value value, std::shared_ptr<AgentExtensionContext> &context)
+{
+    context = nullptr;
+    if (env == nullptr || value == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null env or value");
+        return false;
+    }
+
+    JsAgentExtensionContext *jsContext = nullptr;
+    napi_status status = napi_unwrap(env, value, reinterpret_cast<void **>(&jsContext));
+    if (status != napi_ok || jsContext == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "unwrap JsAgentExtensionContext failed");
+        return false;
+    }
+    context = jsContext->GetContext();
+    return true;
 }
 }
 }

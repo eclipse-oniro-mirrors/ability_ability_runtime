@@ -62,5 +62,15 @@ bool AbilityLocalRecord::IsHook() const
 {
     return want_ && want_->GetBoolParam(IS_HOOK, false);
 }
+
+void AbilityLocalRecord::SetSkipAbilityStageLifecycle(bool skipAbilityStageLifecycle)
+{
+    skipAbilityStageLifecycle_ = skipAbilityStageLifecycle;
+}
+
+bool AbilityLocalRecord::IsSkipAbilityStageLifecycle() const
+{
+    return skipAbilityStageLifecycle_;
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

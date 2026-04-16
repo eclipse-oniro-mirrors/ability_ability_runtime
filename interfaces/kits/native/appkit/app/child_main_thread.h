@@ -60,6 +60,8 @@ private:
     void GetNativeLibPath(const BundleInfo &bundleInfo, const HspList &hspList, AppLibPathMap &appLibPaths);
     void HandleRunNativeProc(const sptr<IRemoteObject> &mainProcessCb);
     void UpdateNativeChildLibModuleName(const AppLibPathMap &appLibPaths, bool isSystemApp);
+    std::string ParsePluginDefaultNamespaceLdDictionary();
+    bool IsEtsAPP(const ChildProcessInfo &processInfo);
 
     sptr<IAppMgr> appMgr_ = nullptr;
     std::shared_ptr<EventHandler> mainHandler_ = nullptr;
@@ -67,6 +69,7 @@ private:
     std::shared_ptr<ChildProcessInfo> processInfo_ = nullptr;
     std::unique_ptr<AbilityRuntime::Runtime> runtime_ = nullptr;
     std::string nativeLibModuleName_;
+    std::string pluginDefaultNamespaceLdDictionary_ = "";
 #ifdef SUPPORT_CHILD_PROCESS
     std::shared_ptr<ChildProcessArgs> processArgs_ = nullptr;
 #endif // SUPPORT_CHILD_PROCESS

@@ -437,7 +437,6 @@ private:
         const std::string &moduleName, const std::string &srcPath);
     void ReleaseOnContinueAsset(const napi_env env, napi_value &promise,
         napi_ref &jsWantParamsRef, AppExecFwk::AbilityTransactionCallbackInfo<int32_t> *callbackInfo);
-    void RemoveShareRouterByBundleType(const Want &want);
     void WriteLifecycleSwitchLog(const std::string lifecycleName);
     void HandleAbilityDelegatorStart();
 
@@ -446,6 +445,8 @@ private:
     std::shared_ptr<NativeReference> jsAbilityObj_;
     sptr<IRemoteObject> remoteCallee_;
     bool reusingWindow_ = false;
+    bool isGamePreLaunch_  = false;
+    int32_t goResumeCalledFlag_ = 0;
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

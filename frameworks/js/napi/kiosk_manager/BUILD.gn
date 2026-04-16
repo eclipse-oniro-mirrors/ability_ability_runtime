@@ -19,6 +19,7 @@ template("kioskmanager") {
     sanitize = {
       cfi = true
       cfi_cross_dso = true
+      cfi_policy = "adaptive"
       debug = false
     }
     forward_variables_from(invoker, [ "relative_install_dir" ])

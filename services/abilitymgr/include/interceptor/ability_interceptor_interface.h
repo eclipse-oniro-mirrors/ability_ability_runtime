@@ -18,8 +18,9 @@
 
 #include "ability_info.h"
 #include "ability_manager_errors.h"
-#include "want.h"
+#include "start_options.h"
 #include "task_handler_wrap.h"
+#include "want.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -30,9 +31,9 @@ struct AbilityInterceptorParam {
         isWithUI(isWithUI), callerToken(callerToken), shouldBlockAllAppStartFunc_(shouldBlockAllAppStartFunc){};
     AbilityInterceptorParam(const Want &want, int requestCode, int32_t userId, bool isWithUI,
         const sptr<IRemoteObject> &callerToken, const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo,
-        bool isStartAsCaller = false, int32_t appIndex = 0) : want(want),
+        bool isStartAsCaller = false, int32_t appIndex = 0, const StartOptions* startOptions = nullptr) : want(want),
         requestCode(requestCode), userId(userId), isWithUI(isWithUI), callerToken(callerToken),
-        abilityInfo(abilityInfo), isStartAsCaller(isStartAsCaller), appIndex(appIndex){};
+        abilityInfo(abilityInfo), isStartAsCaller(isStartAsCaller), appIndex(appIndex), startOptions(startOptions){};
     const Want &want;
     int32_t requestCode;
     int32_t userId;
@@ -44,6 +45,7 @@ struct AbilityInterceptorParam {
     std::function<bool(void)> shouldBlockAllAppStartFunc_;
     bool isTargetPlugin = false; //Is it pulling up a plugin
     std::string hostBundleName;
+    const StartOptions* startOptions = nullptr;
 };
 
 /**

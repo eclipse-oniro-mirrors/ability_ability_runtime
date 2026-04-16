@@ -33,6 +33,7 @@
 #include "tokenid_kit.h"
 #include "ui_extension_wrapper.h"
 #ifdef SUPPORT_UPMS
+#include "fud_constants.h"
 #include "uri_permission_manager_client.h"
 #endif // SUPPORT_UPMS
 
@@ -312,7 +313,8 @@ bool UriUtils::GrantShellUriPermission(const std::vector<std::string> &strUriVec
     for (auto&& str : strUriVec) {
         Uri uri(str);
         auto&& scheme = uri.GetScheme();
-        if (scheme != "content") {
+        if (scheme != FUDConstants::ANCO_SCHEME) {
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "Non-anco uri found in broker call: %{public}s", scheme.c_str());
             return false;
         }
         uriVec.emplace_back(uri);
@@ -428,12 +430,27 @@ bool UriUtils::GrantUriPermission(Want &want, const GrantUriPermissionInfo &gran
         TAG_LOGI(AAFwkTag::ABILITYMGR, "permission to shell");
         return true;
     }
-    if (!GrantUriPermissionInner(uriVec, grantInfo, want)) {
+    if (!GrantUriPermissionInner(uriVec, grantInfo, want, isBrokerCall)) {
         return false;
     }
     // report open file event
     PublishFileOpenEvent(want, grantInfo);
     return true;
+}
+
+void UriUtils::MarkContentUriAuthorizedForBroker(const std::vector<std::string> &uriVec,
+    std::vector<CheckResult> &checkResults, bool isBrokerCall)
+{
+    if (!isBrokerCall) {
+        return;
+    }
+    for (size_t i = 0; i < uriVec.size(); i++) {
+        Uri uri(uriVec[i]);
+        if (uri.GetScheme() == FUDConstants::ANCO_SCHEME) {
+            checkResults[i].result = true;
+            checkResults[i].permissionType = 0;
+        }
+    }
 }
 
 void UriUtils::ProcessUDMFKey(Want &want)
@@ -445,12 +462,13 @@ void UriUtils::ProcessUDMFKey(Want &want)
 }
 
 bool UriUtils::GrantUriPermissionInner(const std::vector<std::string> &uriVec,
-    const GrantUriPermissionInfo &grantInfo, Want &want)
+    const GrantUriPermissionInfo &grantInfo, Want &want, bool isBrokerCall)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     NotifyGrantUriPermissionStart(grantInfo.isNotifyCollaborator, uriVec, grantInfo.flag, grantInfo.userId);
     auto checkResults = IN_PROCESS_CALL(UriPermissionManagerClient::GetInstance().CheckUriAuthorizationWithType(
         uriVec, grantInfo.flag, grantInfo.callerTokenId));
+    MarkContentUriAuthorizedForBroker(uriVec, checkResults, isBrokerCall);
     auto permissionUris = GetPermissionedUriList(uriVec, checkResults, grantInfo.callerTokenId,
         grantInfo.targetBundleName, want);
     std::vector<bool> boolResults(checkResults.size(), false);

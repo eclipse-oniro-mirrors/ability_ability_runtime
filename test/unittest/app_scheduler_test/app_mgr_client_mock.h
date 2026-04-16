@@ -45,8 +45,8 @@ public:
         AppMgrResultCode(const std::string &bundleName, const int uid, const std::string&));
     MOCK_METHOD3(ClearUpApplicationData, AppMgrResultCode(const std::string&, int32_t appCloneIndex, int32_t userId));
     MOCK_METHOD1(StartupResidentProcess, void(const std::vector<AppExecFwk::BundleInfo> &bundleInfos));
-    MOCK_METHOD4(StartSpecifiedAbility, void(const AAFwk::Want&, const AppExecFwk::AbilityInfo&, int32_t,
-        const std::string&));
+    MOCK_METHOD5(StartSpecifiedAbility, void(const AAFwk::Want&, const AppExecFwk::AbilityInfo&, int32_t,
+        const std::string&, bool));
     MOCK_METHOD1(GetAllRunningProcesses, AppMgrResultCode(std::vector<RunningProcessInfo> &info));
     MOCK_METHOD1(GetAllRenderProcesses, AppMgrResultCode(std::vector<RenderProcessInfo> &info));
     MOCK_METHOD1(GetAllChildrenProcesses, AppMgrResultCode(std::vector<ChildProcessInfo> &info));
@@ -60,6 +60,7 @@ public:
     MOCK_METHOD1(GetConfiguration, AppMgrResultCode(Configuration& config));
     MOCK_METHOD2(GetAbilityRecordsByProcessID, int(
         const int pid, std::vector<sptr<IRemoteObject>> &tokens));
+    MOCK_METHOD2(SetGameSAPrelaunch, AppMgrResultCode(const sptr<IRemoteObject> &token, bool isGameSAPrelaunch));
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

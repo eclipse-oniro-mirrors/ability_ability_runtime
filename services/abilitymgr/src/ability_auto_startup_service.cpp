@@ -543,7 +543,7 @@ bool AbilityAutoStartupService::IsTargetExtension(const AutoStartupInfo &info,
 std::string AbilityAutoStartupService::GetAbilityTypeName(const AppExecFwk::AbilityInfo &abilityInfo)
 {
     if (abilityInfo.type == AppExecFwk::AbilityType::PAGE) {
-        return "UIAbility";
+        return ABILITY_TYPE_UI_ABILITY;
     }
     return "";
 }
@@ -555,7 +555,7 @@ std::string AbilityAutoStartupService::GetExtensionTypeName(
         case AppExecFwk::ExtensionAbilityType::APP_SERVICE:
             return EXTENSION_TYPE_APP_SERVICE;
         case AppExecFwk::ExtensionAbilityType::SERVICE:
-            return "ServiceExtension";
+            return EXTENSION_TYPE_SERVICE_EXTENSION;
         default:
             return "";
     }

@@ -247,7 +247,7 @@ HWTEST_F(AppLifecycleDealTest, LaunchAbility_001, TestSize.Level1)
     sptr<IRemoteObject> token = new MockAbilityToken();
     int32_t abilityRecordId = 1;
     auto ability = std::make_shared<AbilityRunningRecord>(abilityInfo, token, abilityRecordId);
-    EXPECT_CALL(*mockAppScheduler, ScheduleLaunchAbility(_, _, _, _)).Times(1);
+    EXPECT_CALL(*mockAppScheduler, ScheduleLaunchAbility(_, _, _, _, _)).Times(1);
     appLifeCycle->LaunchAbility(ability);
 }
 
@@ -270,7 +270,7 @@ HWTEST_F(AppLifecycleDealTest, LaunchAbility_002, TestSize.Level1)
     auto ability = std::make_shared<AbilityRunningRecord>(abilityInfo, token, abilityRecordId);
     const std::shared_ptr<AAFwk::Want> want = std::make_shared<AAFwk::Want>();
     ability->SetWant(want);
-    EXPECT_CALL(*mockAppScheduler, ScheduleLaunchAbility(_, _, _, _)).Times(1);
+    EXPECT_CALL(*mockAppScheduler, ScheduleLaunchAbility(_, _, _, _, _)).Times(1);
     appLifeCycle->LaunchAbility(ability);
 }
 
@@ -293,7 +293,7 @@ HWTEST_F(AppLifecycleDealTest, LaunchAbility_003, TestSize.Level1)
     auto ability = std::make_shared<AbilityRunningRecord>(abilityInfo, token, abilityRecordId);
     const std::shared_ptr<AAFwk::Want> want = std::make_shared<AAFwk::Want>();
     ability->SetWant(want);
-    EXPECT_CALL(*mockAppScheduler, ScheduleLaunchAbility(_, _, _, _)).Times(1);
+    EXPECT_CALL(*mockAppScheduler, ScheduleLaunchAbility(_, _, _, _, _)).Times(1);
     appLifeCycle->LaunchAbility(ability);
 }
 

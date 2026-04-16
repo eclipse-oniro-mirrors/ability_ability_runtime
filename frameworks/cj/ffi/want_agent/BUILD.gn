@@ -48,6 +48,7 @@ ohos_shared_library("cj_want_agent_ffi") {
   sanitize = {
     cfi = true
     cfi_cross_dso = true
+    cfi_policy = "adaptive"
     debug = false
   }
 

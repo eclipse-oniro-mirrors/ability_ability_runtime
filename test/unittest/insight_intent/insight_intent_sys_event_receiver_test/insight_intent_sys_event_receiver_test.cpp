@@ -104,28 +104,28 @@ HWTEST_F(InsightIntentSysEventReceiverTest, OnReceiveEvent_0001, TestSize.Level1
  */
 HWTEST_F(InsightIntentSysEventReceiverTest, SaveInsightIntentInfos_0002, TestSize.Level1)
 {
-    // 局部变量定义
+    // Local variable definitions
     EventFwk::CommonEventSubscribeInfo subscribeInfo;
     uint32_t ver = 0;
     auto sysEventReceiver = std::make_shared<AbilityRuntime::InsightIntentSysEventReceiver>(subscribeInfo);
-    
-    // 测试1: 无效bundle名称
+
+    // Test 1: Invalid bundle name
     sysEventReceiver->SaveInsightIntentInfos(INVALID_BUNDLE_NAME, TEST_MODULE_NAME, ver, MAIN_USER_ID);
-    EXPECT_EQ(sysEventReceiver->lastUserId_, 0); // 验证对象状态正常，未被异常影响
-    
-    // 测试2: 空模块名称
+    EXPECT_EQ(sysEventReceiver->lastUserId_, 0); // Verify object state is normal and not affected by exceptions
+
+    // Test 2: Empty module name
     sysEventReceiver->SaveInsightIntentInfos(TEST_BUNDLE_NAME, EMPTY_MODULE_NAME, ver, MAIN_USER_ID);
     EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
-    
-    // 测试3: 多模块名称
+
+    // Test 3: Multiple module names
     sysEventReceiver->SaveInsightIntentInfos(TEST_BUNDLE_NAME, MULTI_MODULE_NAME, ver, MAIN_USER_ID);
     EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
-    
-    // 测试4: 无效用户ID
+
+    // Test 4: Invalid user ID
     sysEventReceiver->SaveInsightIntentInfos(TEST_BUNDLE_NAME, TEST_MODULE_NAME, ver, INVALID_USER_ID);
     EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
-    
-    // 测试5: 合法参数
+
+    // Test 5: Valid parameters
     sysEventReceiver->SaveInsightIntentInfos(TEST_BUNDLE_NAME, TEST_MODULE_NAME, ver, MAIN_USER_ID);
     EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
 }
@@ -137,23 +137,23 @@ HWTEST_F(InsightIntentSysEventReceiverTest, SaveInsightIntentInfos_0002, TestSiz
  */
 HWTEST_F(InsightIntentSysEventReceiverTest, LoadInsightIntentInfos_0003, TestSize.Level1)
 {
-    // 局部变量定义
+    // Local variable definitions
     EventFwk::CommonEventSubscribeInfo subscribeInfo;
     auto sysEventReceiver = std::make_shared<AbilityRuntime::InsightIntentSysEventReceiver>(subscribeInfo);
-    
-    // 测试1: userId = -1
+
+    // Test 1: userId = -1
     sysEventReceiver->LoadInsightIntentInfos(INVALID_USER_ID);
     EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
-    
-    // 测试2: userId = 0
+
+    // Test 2: userId = 0
     sysEventReceiver->LoadInsightIntentInfos(ZERO_USER_ID);
     EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
-    
-    // 测试3: 有效用户ID
+
+    // Test 3: Valid user ID
     sysEventReceiver->LoadInsightIntentInfos(MAIN_USER_ID);
     EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
-    
-    // 测试4: 其他用户ID
+
+    // Test 4: Other user ID
     sysEventReceiver->LoadInsightIntentInfos(OTHER_USER_ID);
     EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
 }
@@ -165,29 +165,29 @@ HWTEST_F(InsightIntentSysEventReceiverTest, LoadInsightIntentInfos_0003, TestSiz
  */
 HWTEST_F(InsightIntentSysEventReceiverTest, HandleUserSwitched_0004, TestSize.Level1)
 {
-    // 所有变量均为局部变量
+    // All variables are local
     EventFwk::CommonEventSubscribeInfo subscribeInfo;
     auto sysEventReceiver = std::make_shared<AbilityRuntime::InsightIntentSysEventReceiver>(subscribeInfo);
     EventFwk::CommonEventData data;
-    
-    // 测试1: 无效userId (< 0)
+
+    // Test 1: Invalid userId (< 0)
     data.SetCode(INVALID_USER_ID);
     data.want_.operation_.action_ = EventFwk::CommonEventSupport::COMMON_EVENT_USER_SWITCHED;
     sysEventReceiver->OnReceiveEvent(data);
     EXPECT_EQ(sysEventReceiver->lastUserId_, -1);
-    
-    // 测试2: 相同userId
+
+    // Test 2: Same userId
     sysEventReceiver->lastUserId_ = MAIN_USER_ID;
     data.SetCode(MAIN_USER_ID);
     sysEventReceiver->OnReceiveEvent(data);
     EXPECT_EQ(sysEventReceiver->lastUserId_, 100);
-    
-    // 测试3: 0用户ID
+
+    // Test 3: Zero user ID
     data.SetCode(ZERO_USER_ID);
     sysEventReceiver->OnReceiveEvent(data);
     EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
-    
-    // 测试4: 有效新用户ID
+
+    // Test 4: Valid new user ID
     data.SetCode(OTHER_USER_ID);
     sysEventReceiver->OnReceiveEvent(data);
     EXPECT_EQ(sysEventReceiver->lastUserId_, 101);
@@ -272,6 +272,91 @@ HWTEST_F(InsightIntentSysEventReceiverTest, DeleteInsightIntentInfoByUserId_0007
 
     sysEventReceiver->DeleteInsightIntentInfoByUserId(OTHER_USER_ID);
     EXPECT_EQ(sysEventReceiver->lastUserId_, 100);
+}
+
+/**
+ * @tc.name: InsightIntentSysEventReceiverTest_DeleteInsightIntent_0008
+ * @tc.desc: Test DeleteInsightIntent triggered when SaveInsightIntentInfos fails
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentSysEventReceiverTest, DeleteInsightIntent_0008, TestSize.Level1)
+{
+    EventFwk::CommonEventSubscribeInfo subscribeInfo;
+    uint32_t ver = 100;
+    auto sysEventReceiver = std::make_shared<AbilityRuntime::InsightIntentSysEventReceiver>(subscribeInfo);
+
+    // Test scenario 1: SaveInsightIntentInfos failure triggers DeleteInsightIntent
+    // When bundleName or moduleName is invalid, system should handle gracefully without crashing
+    sysEventReceiver->SaveInsightIntentInfos("", TEST_MODULE_NAME, ver, MAIN_USER_ID);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
+
+    sysEventReceiver->SaveInsightIntentInfos(TEST_BUNDLE_NAME, "", ver, MAIN_USER_ID);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
+
+    // Test scenario 2: Use invalid userId
+    sysEventReceiver->SaveInsightIntentInfos(TEST_BUNDLE_NAME, TEST_MODULE_NAME, ver, INVALID_USER_ID);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
+
+    // Test scenario 3: Use non-existent bundle (GetJsonProfile will fail, triggering DeleteInsightIntent)
+    sysEventReceiver->SaveInsightIntentInfos("com.nonexistent.bundle", TEST_MODULE_NAME, ver, MAIN_USER_ID);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
+
+    // Test scenario 4: Multi-module scenario with partial failures
+    sysEventReceiver->SaveInsightIntentInfos(TEST_BUNDLE_NAME, MULTI_MODULE_NAME, ver, MAIN_USER_ID);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
+}
+
+/**
+ * @tc.name: InsightIntentSysEventReceiverTest_SaveInsightIntentInfos_EdgeCases_0009
+ * @tc.desc: Test SaveInsightIntentInfos edge cases that trigger DeleteInsightIntent
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentSysEventReceiverTest, SaveInsightIntentInfos_EdgeCases_0009, TestSize.Level1)
+{
+    EventFwk::CommonEventSubscribeInfo subscribeInfo;
+    uint32_t ver = 0;
+    auto sysEventReceiver = std::make_shared<AbilityRuntime::InsightIntentSysEventReceiver>(subscribeInfo);
+
+    // Test boundary condition: versionCode is 0
+    sysEventReceiver->SaveInsightIntentInfos(TEST_BUNDLE_NAME, TEST_MODULE_NAME, ver, MAIN_USER_ID);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
+
+    // Test boundary condition: versionCode is maximum value
+    uint32_t maxVer = UINT32_MAX;
+    sysEventReceiver->SaveInsightIntentInfos(TEST_BUNDLE_NAME, TEST_MODULE_NAME, maxVer, MAIN_USER_ID);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
+
+    // Test module name with special characters
+    sysEventReceiver->SaveInsightIntentInfos(TEST_BUNDLE_NAME, "module@#$%", ver, MAIN_USER_ID);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
+
+    // Test extra long module name
+    std::string longModuleName(1000, 'a');
+    sysEventReceiver->SaveInsightIntentInfos(TEST_BUNDLE_NAME, longModuleName, ver, MAIN_USER_ID);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
+}
+
+/**
+ * @tc.name: InsightIntentSysEventReceiverTest_DeleteInsightIntent_MultiUser_0010
+ * @tc.desc: Test DeleteInsightIntent with multiple user scenarios
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentSysEventReceiverTest, DeleteInsightIntent_MultiUser_0010, TestSize.Level1)
+{
+    EventFwk::CommonEventSubscribeInfo subscribeInfo;
+    uint32_t ver = 100;
+    auto sysEventReceiver = std::make_shared<AbilityRuntime::InsightIntentSysEventReceiver>(subscribeInfo);
+
+    // Test DeleteInsightIntent behavior in multi-user scenarios
+    sysEventReceiver->SaveInsightIntentInfos(TEST_BUNDLE_NAME, TEST_MODULE_NAME, ver, MAIN_USER_ID);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
+
+    sysEventReceiver->SaveInsightIntentInfos(TEST_BUNDLE_NAME, TEST_MODULE_NAME, ver, OTHER_USER_ID);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
+
+    // Test case when userId is 0
+    sysEventReceiver->SaveInsightIntentInfos(TEST_BUNDLE_NAME, TEST_MODULE_NAME, ver, ZERO_USER_ID);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

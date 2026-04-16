@@ -71,6 +71,7 @@ private:
     int NotifyANR(const FaultData& faultData);
     bool IsExitApp(const std::string& name);
     bool IsAppFreeze(const std::string& name);
+    bool IsAppFreezeWarning(const std::string& name);
     bool IsHandleAppfreeze();
     std::string GetProcStatm(int32_t pid);
     bool GetAppInForeground();

@@ -53,6 +53,7 @@ struct FreeInstallInfo {
 struct FreeInstallParams {
     bool isAsync = false;
     bool isOpenAtomicServiceShortUrl = false;
+    bool skipStartFreeInstallPermissionCheck = false;
     uint32_t specifyTokenId = 0;
     std::shared_ptr<Want> originalWant = nullptr;
     std::shared_ptr<StartOptions> startOptions = nullptr;
@@ -133,7 +134,7 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     int ConnectFreeInstall(const Want &want, int32_t userId, sptr<IRemoteObject> callerToken,
-        const std::string &localDeviceId);
+        const std::string &localDeviceId, AppExecFwk::ExtensionAbilityType extensionType);
 
     /**
      * Add an observer from application into freeInstallObserverManager.

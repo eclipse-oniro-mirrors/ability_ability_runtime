@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import agentConstant from '@ohos.app.agent.agentConstant';
+
 export interface AgentProvider {
   organization: string;
   url: string;
@@ -79,6 +81,7 @@ class AgentSkillImpl implements AgentSkill {
 
 export interface AgentCard {
   agentId: string;
+  type?: agentConstant.AgentCardType;
   name: string;
   description: string;
   provider?: AgentProvider;
@@ -90,12 +93,13 @@ export interface AgentCard {
   skills?: Array<AgentSkill>;
   extension?: string;
   category?: string;
-  iconUrl?: string;
+  iconUrl: string;
   appInfo?: AgentAppInfo;
 }
 
 export class AgentCardImpl implements AgentCard {
   public agentId: string = '';
+  public type?: agentConstant.AgentCardType = agentConstant.AgentCardType.APP;
   public name: string = '';
   public description: string = '';
   public provider?: AgentProvider;
@@ -107,6 +111,6 @@ export class AgentCardImpl implements AgentCard {
   public skills?: Array<AgentSkill>;
   public extension?: string;
   public category?: string;
-  public iconUrl?: string;
+  public iconUrl: string = '';
   public appInfo?: AgentAppInfo;
 }

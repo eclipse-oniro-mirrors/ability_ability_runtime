@@ -16,6 +16,8 @@
 #ifndef MOCK_MY_STATUS_H
 #define MOCK_MY_STATUS_H
 
+#include <string>
+
 #include "scene_board/ui_ability_record.h"
 #include "base_extension_record.h"
 
@@ -56,6 +58,11 @@ public:
     bool isSupportStartAbilities_ = true;
     bool isSupportMultiInstance_ = true;
     bool isSystemAppCall_ = true;
+    bool fimConnectFreeInstallCalled_ = false;
+    int32_t fimConnectFreeInstall_ = ERR_OK;
+    int32_t fimConnectExtensionType_ = -1;
+    std::string fimConnectLocalDeviceId_;
+    int32_t softbusGetLocalNodeDeviceInfo_ = ERR_OK;
 };
 } // namespace AAFwk
 } // namespace OHOS

@@ -88,7 +88,7 @@ private:
     std::vector<AppExecFwk::RunningProcessInfo> GetRunningProcessInfos(int32_t userId, const std::string &bundleName);
 
     int32_t RecordAppWithReasonInner(const AppReasonInfo &appInfo, const ExitReasonCompability &exitReasonCompability,
-        const AppExecFwk::RunningProcessInfo &processInfo, const std::vector<std::string> &abilityList);
+        const AppExecFwk::RunningProcessInfo &processInfo);
 
     std::shared_ptr<SubManagersHelper> subManagersHelper_;
 };

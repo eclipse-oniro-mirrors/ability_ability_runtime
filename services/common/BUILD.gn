@@ -229,6 +229,7 @@ ohos_shared_library("hisysevent_report") {
     boundary_sanitize = true
     cfi = true
     cfi_cross_dso = true
+    cfi_policy = "adaptive"
     debug = false
   }
   include_dirs = [ "include" ]
@@ -414,6 +415,7 @@ ohos_shared_library("user_controller") {
     boundary_sanitize = true
     cfi = true
     cfi_cross_dso = true
+    cfi_policy = "adaptive"
     debug = false
   }
   branch_protector_ret = "pac_ret"

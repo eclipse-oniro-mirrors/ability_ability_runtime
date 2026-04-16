@@ -15,6 +15,8 @@
 
 #include "application_data_manager.h"
 
+#include <dfx_signal_handler.h>
+#include <sys/xattr.h>
 #include "app_recovery.h"
 #include "hilog_tag_wrapper.h"
 #include "native_engine.h"
@@ -25,6 +27,13 @@ namespace {
     constexpr size_t STACK_MAX_SZIE = 1024;
     constexpr size_t AT_SKIP_SZIE = 3;
     constexpr const char* TASK_POOL_THREAD = "Taskpool Thread";
+    constexpr const char *RSRC_OBSV_PATH = "/data/storage/el2/base/cache/rawheap";
+    constexpr const char *RSRC_OBSV_XATTR = "user.resource_observer";
+    constexpr const char *RSRC_OBSV_TRSHD_XATTR_PSS = "user.resource_observer_threshold.pss";
+    constexpr const char *RSRC_OBSV_TRSHD_XATTR_GPU = "user.resource_observer_threshold.gpu";
+    constexpr const char *RSRC_OBSV_TRSHD_XATTR_FD = "user.resource_observer_threshold.fd";
+    constexpr const char *RSRC_OBSV_TRSHD_XATTR_RAT = "user.resource_observer_threshold.rss_ark_ts";
+    constexpr const char *RSRC_OBSV_TRSHD_XATTR_RNH = "user.resource_observer_threshold.rss_native_heap";
     enum class InstanceType {
         DEFAULT_TYPE = -1,
         WORKER_THREAD_TYPE = 1,
@@ -256,5 +265,103 @@ void ApplicationDataManager::SetLeakObserver(LeakObserverFunction leakCallback)
     leakObserver_ = leakCallback;
 }
 
+void ApplicationDataManager::RegisterHasOnErrorCallback(HasOnErrorCallback hasOnErrorCallback)
+{
+    std::lock_guard<std::mutex> lock(hasOnErrorCallbackMutex_);
+    hasOnErrorCallback_ = hasOnErrorCallback;
+}
+
+
+bool ApplicationDataManager::GetHasOnErrorCallback()
+{
+    std::lock_guard<std::mutex> lock(hasOnErrorCallbackMutex_);
+    if (hasOnErrorCallback_) {
+        return hasOnErrorCallback_();
+    }
+    return false;
+}
+
+bool ApplicationDataManager::RegisterResourceObserver(RegisterResourceParams params, ResourceOverlimitCB cb)
+{
+    std::lock_guard<std::mutex> lock(resourceMutex_);
+    if (cb == nullptr || params.appTelemetryLeakType == 0) {
+        cb = nullptr;
+        params.appTelemetryLeakType = 0;
+        TAG_LOGI(AAFwkTag::APPKIT, "will unregister");
+    }
+
+    resourceOverlimitCB_ = cb;
+    bool ret = WriteSandBoxXattr(params);
+    TAG_LOGI(AAFwkTag::APPKIT, "RegisterResourceObserver execute result: %{public}d", ret);
+    return ret;
+}
+
+bool ApplicationDataManager::WriteSandBoxXattr(RegisterResourceParams params)
+{
+    std::string xattrValue = DFX_GetAppRunningUniqueId();
+    xattrValue += "," + std::to_string(params.appTelemetryLeakType);
+    bool ret = (setxattr(RSRC_OBSV_PATH, RSRC_OBSV_XATTR, xattrValue.c_str(), strlen(xattrValue.c_str()), 0) == 0);
+    if (!ret) {
+        TAG_LOGE(AAFwkTag::APPKIT, "failed write atlt, path: %{public}s, xattr: %{public}s, err: %{public}s",
+                 RSRC_OBSV_PATH, RSRC_OBSV_XATTR, strerror(errno));
+        return false;
+    }
+    string threshold = std::to_string(params.thresholdPss);
+    ret = (setxattr(RSRC_OBSV_PATH, RSRC_OBSV_TRSHD_XATTR_PSS, threshold.c_str(), threshold.length(), 0) == 0);
+    threshold = std::to_string(params.thresholdGpu);
+    ret = ret && (setxattr(RSRC_OBSV_PATH, RSRC_OBSV_TRSHD_XATTR_GPU, threshold.c_str(), threshold.length(), 0) == 0);
+    threshold = std::to_string(params.thresholdFd);
+    ret = ret && (setxattr(RSRC_OBSV_PATH, RSRC_OBSV_TRSHD_XATTR_FD, threshold.c_str(), threshold.length(), 0) == 0);
+    threshold = std::to_string(params.thresholdRAT);
+    ret = ret && (setxattr(RSRC_OBSV_PATH, RSRC_OBSV_TRSHD_XATTR_RAT, threshold.c_str(), threshold.length(), 0) == 0);
+    threshold = std::to_string(params.thresholdRNH);
+    ret = ret && (setxattr(RSRC_OBSV_PATH, RSRC_OBSV_TRSHD_XATTR_RNH, threshold.c_str(), threshold.length(), 0) == 0);
+    if (!ret) {
+        TAG_LOGE(AAFwkTag::APPKIT, "failed write threshold, path: %{public}s, err: %{public}s",
+                 RSRC_OBSV_PATH, strerror(errno));
+    }
+    return ret;
+}
+ 
+void ApplicationDataManager::NotifyAppTelemetry(AppTelemetryLeakType atLeakType)
+{
+    std::lock_guard<std::mutex> lock(resourceMutex_);
+    if (resourceOverlimitCB_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "resourceOverlimitCB_ is nullptr");
+        return;
+    }
+    AppTelemetryObject atObj {
+        .atLeakType = atLeakType,
+        .runningId = DFX_GetAppRunningUniqueId(),
+    };
+    TAG_LOGI(AAFwkTag::APPKIT, "start callback resource overlimit");
+    resourceOverlimitCB_(atObj);
+}
+
+void ApplicationDataManager::NotifyAppFault(const FaultData &faultData)
+{
+    if (!faultData.notifyApp) {
+        return;
+    }
+    if (faultData.faultType == FaultDataType::APP_TELEMETRY) {
+        NotifyAppTelemetry(faultData.atLeakType);
+        return;
+    }
+    if (faultData.faultType == FaultDataType::RESOURCE_CONTROL) {
+        LeakObject leakObj = {
+            .leakType = faultData.leakObject.leakType,
+            .leakSize = faultData.leakObject.leakSize,
+            .detailInfo = faultData.leakObject.detailInfo,
+        };
+        NotifyLeakObject(leakObj);
+        return;
+    }
+    ErrorObject faultErrorObj = {
+        .name = faultData.errorObject.name,
+        .message = faultData.errorObject.message,
+        .stack = faultData.errorObject.stack
+    };
+    NotifyExceptionObject(faultErrorObj);
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

@@ -128,6 +128,7 @@ ohos_unittest("uri_permission_manager_stub_impl_test") {
     "mock/src/mock_file_uri_distribution_utils.cpp",
     "mock/src/mock_my_flag.cpp",
     "mock/src/mock_iability_manager_collaborator.cpp",
+    "mock/src/mock_permission_verification.cpp",
     "uri_permission_manager_stub_impl_test.cpp",
   ]
 

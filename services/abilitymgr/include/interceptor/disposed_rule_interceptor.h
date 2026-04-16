@@ -46,6 +46,7 @@ private:
     ErrCode StartNonBlockRule(const Want &want, AppExecFwk::DisposedRule &disposedRule, int32_t uid);
     ErrCode CreateModalUIExtension(const Want &want, const sptr<IRemoteObject> &callerToken);
     void SetInterceptInfo(const Want &want, AppExecFwk::DisposedRule &disposedRule);
+    bool IsSkipDisposeRule(const std::string &callerName, const AbilityInterceptorParam &param);
 private:
     std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler_;
     std::map<int32_t, sptr<DisposedObserver>> disposedObserverMap_;

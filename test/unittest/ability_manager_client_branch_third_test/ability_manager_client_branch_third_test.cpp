@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -84,6 +84,16 @@ public:
     }
 
     bool RemoveDeathRecipient(const sptr<DeathRecipient>& recipient)
+    {
+        return true;
+    }
+
+    bool AddRefreshRecipient(const sptr<RefreshRecipient> &recipient)
+    {
+        return true;
+    }
+
+    bool RemoveRefreshRecipient(const sptr<RefreshRecipient> &recipient)
     {
         return true;
     }
@@ -591,6 +601,23 @@ HWTEST_F(AbilityManagerClientBranchThirdTest, GetMissionInfo_0300, TestSize.Leve
         .Times(1).WillOnce(Return(WSError::WS_OK));
     auto result = client_->GetMissionInfo(deviceId, 0, missionInfo);
     EXPECT_EQ(result, static_cast<ErrCode>(WSError::WS_OK));
+}
+
+/**
+ * @tc.name: AbilityManagerClient_GetMissionInfo_0400
+ * @tc.desc: GetMissionInfo with displayInfo
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, GetMissionInfo_0400, TestSize.Level1)
+{
+    ErrorTestBoardDisable();
+    std::string deviceId = "test_deviceId";
+    int32_t missionId = -1;
+    MissionInfo missionInfo;
+    DisplayInfo displayInfo;
+    auto result = client_->GetMissionInfo(deviceId, missionId, missionInfo, displayInfo);
+    EXPECT_NE(result, ERR_OK);
+    EXPECT_EQ(displayInfo.displayName.empty(), true);
 }
 
 /**
@@ -1295,6 +1322,27 @@ HWTEST_F(AbilityManagerClientBranchThirdTest, StartAbilityByOEExt_0300, TestSize
     EXPECT_CALL(*mock_, StartAbilityByOEExt(_, _, _, _)).Times(1).WillOnce(Return(ERR_INVALID_VALUE));
     auto result = client_->StartAbilityByOEExt(want, nullptr, hostPid, specifiedFlag);
     EXPECT_EQ(result, ERR_INVALID_VALUE);
+}
+
+
+/**
+ * @tc.name: MissionInfoTest_0100
+ * @tc.desc: MissionInfoTest_0100
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, MissionInfoTest_0100, TestSize.Level1)
+{
+    MissionInfo missionInfo;
+    missionInfo.id = 1;
+    missionInfo.runningState = 1;
+    missionInfo.time = "test";
+    Parcel parcel;
+    missionInfo.Marshalling(parcel);
+    MissionInfo* newMissionInfo = MissionInfo::Unmarshalling(parcel);
+    EXPECT_EQ(missionInfo.id, newMissionInfo->id);
+    EXPECT_EQ(missionInfo.runningState, newMissionInfo->runningState);
+    EXPECT_EQ(missionInfo.time, newMissionInfo->time);
+    delete newMissionInfo;
 }
 }  // namespace AAFwk
 }  // namespace OHOS

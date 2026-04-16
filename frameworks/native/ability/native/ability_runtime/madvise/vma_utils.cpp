@@ -28,8 +28,6 @@
 #include "securec.h"
 
 namespace {
-typedef int32_t (*VmaCallback)(const OHOS::AbilityRuntime::VmaUtil::VMARegion* region, void* userdata);
-
 constexpr int32_t HEX_BASE = 16;
 
 constexpr int32_t PERMS_INDEX_0 = 0;
@@ -147,7 +145,8 @@ static bool ParseMapsLine(const char* line, size_t lineLen, OHOS::AbilityRuntime
     return true;
 }
 
-static int32_t IterateMapsInternal(const std::vector<std::string>& filenames, VmaCallback callback, void* userdata)
+static int32_t IterateMapsInternal(const std::vector<std::string>& filenames,
+    std::vector<OHOS::AbilityRuntime::VmaUtil::VMARegion>& vmaList)
 {
     const char* mapsPath = "/proc/self/maps";
     FILE* fp = fopen(mapsPath, "r");
@@ -174,9 +173,7 @@ static int32_t IterateMapsInternal(const std::vector<std::string>& filenames, Vm
             continue;
         }
         if (targetSet.find(basename) != targetSet.end()) {
-            if (callback && callback(&region, userdata) != 0) {
-                break;
-            }
+            vmaList.push_back(region);
             count++;
         }
     }
@@ -198,15 +195,7 @@ std::vector<VMARegion> GetFileVmas(const std::vector<std::string>& filenames)
     }
     TAG_LOGD(AAFwkTag::ABILITY, "GetFileVmas: searching for %{public}zu files", filenames.size());
     std::vector<VMARegion> vmaList;
-    auto collectCallback = [](const VMARegion* region, void* userdata) -> int32_t {
-        if (!region || !userdata) {
-            return 0;
-        }
-        std::vector<VMARegion>* list = static_cast<std::vector<VMARegion>*>(userdata);
-        list->push_back(*region);
-        return 0;
-    };
-    IterateMapsInternal(filenames, collectCallback, &vmaList);
+    IterateMapsInternal(filenames, vmaList);
     TAG_LOGD(AAFwkTag::ABILITY, "GetFileVmas: found %{public}zu VMAs for %{public}zu files",
         vmaList.size(), filenames.size());
     return vmaList;

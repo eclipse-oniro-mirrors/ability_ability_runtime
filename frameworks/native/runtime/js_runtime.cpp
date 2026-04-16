@@ -920,6 +920,31 @@ void JsRuntime::SetAppLibPath(const AppLibPathMap& appLibPaths, const bool& isSy
     }
 }
 
+void JsRuntime::SetOrUpdateLibPath(const AppLibPathMap& appLibPaths, const bool& isSystemApp)
+{
+    TAG_LOGD(AAFwkTag::JSRUNTIME, "SetOrUpdate library path");
+
+    if (appLibPaths.size() == 0) {
+        TAG_LOGW(AAFwkTag::JSRUNTIME, "no lib path to set");
+        return;
+    }
+
+    auto moduleManager = NativeModuleManager::GetInstance();
+    if (moduleManager == nullptr) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "null moduleManager");
+        return;
+    }
+
+    for (const auto &appLibPath : appLibPaths) {
+        std::string pluginNamespace;
+        if (moduleManager->GetLdNamespaceName(appLibPath.first, pluginNamespace)) {
+            moduleManager->UpdateNamespaceLibPath(appLibPath.first, appLibPath.second);
+        } else {
+            moduleManager->SetAppLibPath(appLibPath.first, appLibPath.second, isSystemApp);
+        }
+    }
+}
+
 void JsRuntime::InheritPluginNamespace(const std::vector<std::string> &moduleNames)
 {
     auto moduleManager = NativeModuleManager::GetInstance();
@@ -1192,33 +1217,34 @@ napi_value JsRuntime::GetExportObjectFromOhmUrl(const std::string &srcEntrance, 
     return ArkNativeEngine::ArkValueToNapiValue(env, exportObj);
 }
 
-bool JsRuntime::ExecuteSecureWithOhmUrl(const std::string &moduleName, const std::string &hapPath,
-    const std::string &srcEntrance)
+std::unique_ptr<AbilityBase::FileMapper> JsRuntime::ExecuteSecureWithOhmUrl(const std::string &moduleName,
+    const std::string &hapPath, const std::string &srcEntrance)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::JSRUNTIME, "moduleName %{public}s, hapPath %{private}s, execute %{private}s",
         moduleName.c_str(), hapPath.c_str(), srcEntrance.c_str());
     auto vm = GetEcmaVm();
-    CHECK_POINTER_AND_RETURN(vm, false);
+    CHECK_POINTER_AND_RETURN(vm, nullptr);
     auto ohmUrl = panda::JSNApi::IsOhmUrl(srcEntrance);
     if (!ohmUrl) {
         TAG_LOGW(AAFwkTag::JSRUNTIME, "srcEntrance %{private}s not ohmurl", srcEntrance.c_str());
-        return false;
+        return nullptr;
     }
 
     bool newCreate = false;
     std::string loadPath = ExtractorUtil::GetLoadFilePath(hapPath);
-    std::shared_ptr<Extractor> extractor = ExtractorUtil::GetExtractor(loadPath, newCreate, true);
+    auto extractor = ExtractorUtil::GetExtractor(loadPath, newCreate, true);
     if (extractor == nullptr) {
         TAG_LOGE(AAFwkTag::JSRUNTIME, "get hapPath %{private}s extractor failed", hapPath.c_str());
-        return false;
+        return nullptr;
     }
+    extractor->SetAutoCloseFd(true);
 
     std::string srcFileName = BUNDLE_INSTALL_PATH + moduleName + MERGE_ABC_PATH;
     auto safeData = extractor->GetSafeData(srcFileName);
     if (safeData == nullptr) {
         TAG_LOGE(AAFwkTag::JSRUNTIME, "null safeData srcFileName %{private}s", srcFileName.c_str());
-        return false;
+        return nullptr;
     }
 
     auto start = std::chrono::high_resolution_clock::now();
@@ -1227,7 +1253,11 @@ bool JsRuntime::ExecuteSecureWithOhmUrl(const std::string &moduleName, const std
     auto end = std::chrono::high_resolution_clock::now();
     auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     TAG_LOGI(AAFwkTag::JSRUNTIME, "srcEntrance %{public}s timing %{public}lld", srcEntrance.c_str(), duration_ms);
-    return ret;
+    if (!ret) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "ExecuteSecureWithOhmUrl failed");
+        return nullptr;
+    }
+    return safeData;
 }
 
 bool JsRuntime::RunScript(const std::string& srcPath, const std::string& hapPath, bool useCommonChunk,
@@ -1359,15 +1389,18 @@ void JsRuntime::DumpHeapSnapshot(bool isPrivate)
 
 void JsRuntime::DumpHeapSnapshot(uint32_t tid, bool isFullGC, bool isBinary)
 {
-    DumpHeapSnapshot(tid, isFullGC, isBinary, false);
+    OHOS::AbilityRuntime::Runtime::JsHeapDumpParam param;
+    param.isFullGC = isFullGC;
+    param.isBinary = isBinary;
+    DumpHeapSnapshot(tid, param);
 }
 
-void JsRuntime::DumpHeapSnapshot(uint32_t tid, bool isFullGC, bool isBinary, bool isClearNodeIdCache)
+void JsRuntime::DumpHeapSnapshot(uint32_t tid, const OHOS::AbilityRuntime::Runtime::JsHeapDumpParam &param)
 {
     auto vm = GetEcmaVm();
     CHECK_POINTER(vm);
     panda::ecmascript::DumpSnapShotOption dumpOption;
-    if (isBinary) {
+    if (param.isBinary) {
         dumpOption.dumpFormat = panda::ecmascript::DumpFormat::BINARY;
     } else {
         dumpOption.dumpFormat = panda::ecmascript::DumpFormat::JSON;
@@ -1375,9 +1408,10 @@ void JsRuntime::DumpHeapSnapshot(uint32_t tid, bool isFullGC, bool isBinary, boo
     dumpOption.isVmMode = true;
     dumpOption.isPrivate = false;
     dumpOption.captureNumericValue = true;
-    dumpOption.isFullGC = isFullGC;
+    dumpOption.isFullGC = param.isFullGC;
     dumpOption.isSync = false;
-    dumpOption.isClearNodeIdCache = isClearNodeIdCache;
+    dumpOption.isClearNodeIdCache = param.isClearNodeIdCache;
+    dumpOption.isProcDump = param.isProcDump;
     DFXJSNApi::DumpHeapSnapshot(vm, dumpOption, tid);
 }
 

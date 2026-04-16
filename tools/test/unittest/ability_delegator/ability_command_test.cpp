@@ -938,3 +938,381 @@ HWTEST_F(AbilityCommandTest, Ability_Command_Test_3800, Function | MediumTest | 
     EXPECT_TRUE(result);
     EXPECT_EQ(perfCmd, "  baseLineProfile  ");
 }
+
+/**
+ * @tc.number: Ability_Command_Test_3900
+ * @tc.name: ParsePreStartOptions
+ * @tc.desc: Verify ParsePreStartOptions with all valid options.
+ */
+HWTEST_F(AbilityCommandTest, Ability_Command_Test_3900, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ability_Command_Test_3900 is called");
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)"pre-start",
+        (char*)"-m",
+        (char*)"1",
+        (char*)"-b",
+        (char*)"com.example.game",
+        (char*)"-u",
+        (char*)"100",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]);
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    int32_t mode = -1;
+    std::string bundleName = "";
+    int32_t userId = -1;
+
+    ErrCode result = cmd.ParsePreStartOptions(mode, bundleName, userId);
+    EXPECT_EQ(result, OHOS::ERR_OK);
+    EXPECT_EQ(mode, 1);
+    EXPECT_EQ(bundleName, "com.example.game");
+    EXPECT_EQ(userId, 100);
+}
+
+/**
+ * @tc.number: Ability_Command_Test_3910
+ * @tc.name: ParsePreStartOptions
+ * @tc.desc: Verify ParsePreStartOptions with missing mode option.
+ */
+HWTEST_F(AbilityCommandTest, Ability_Command_Test_3910, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ability_Command_Test_3910 is called");
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)"pre-start",
+        (char*)"-b",
+        (char*)"com.example.game",
+        (char*)"-u",
+        (char*)"100",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]);
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    int32_t mode = -1;
+    std::string bundleName = "";
+    int32_t userId = -1;
+
+    ErrCode result = cmd.ParsePreStartOptions(mode, bundleName, userId);
+    EXPECT_EQ(result, OHOS::ERR_OK);
+    EXPECT_EQ(bundleName, "com.example.game");
+    EXPECT_EQ(userId, 100);
+}
+
+/**
+ * @tc.number: Ability_Command_Test_3920
+ * @tc.name: ParsePreStartOptions
+ * @tc.desc: Verify ParsePreStartOptions with missing userId option.
+ */
+HWTEST_F(AbilityCommandTest, Ability_Command_Test_3920, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ability_Command_Test_3920 is called");
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)"pre-start",
+        (char*)"-m",
+        (char*)"1",
+        (char*)"-b",
+        (char*)"com.example.game",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]);
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    int32_t mode = -1;
+    std::string bundleName = "";
+    int32_t userId = -1;
+
+    ErrCode result = cmd.ParsePreStartOptions(mode, bundleName, userId);
+    EXPECT_EQ(result, OHOS::ERR_OK);
+    EXPECT_EQ(mode, 1);
+    EXPECT_EQ(bundleName, "com.example.game");
+}
+
+/**
+ * @tc.number: Ability_Command_Test_3930
+ * @tc.name: ParsePreStartOptions
+ * @tc.desc: Verify ParsePreStartOptions with help option.
+ */
+HWTEST_F(AbilityCommandTest, Ability_Command_Test_3930, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ability_Command_Test_3930 is called");
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)"pre-start",
+        (char*)"-h",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]);
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    int32_t mode = -1;
+    std::string bundleName = "";
+    int32_t userId = -1;
+
+    ErrCode result = cmd.ParsePreStartOptions(mode, bundleName, userId);
+    EXPECT_EQ(result, OHOS::ERR_OK);
+}
+
+/**
+ * @tc.number: Ability_Command_Test_3940
+ * @tc.name: ParsePreStartOptions
+ * @tc.desc: Verify ParsePreStartOptions with no options.
+ */
+HWTEST_F(AbilityCommandTest, Ability_Command_Test_3940, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ability_Command_Test_3940 is called");
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)"pre-start",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]);
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    int32_t mode = -1;
+    std::string bundleName = "";
+    int32_t userId = -1;
+
+    ErrCode result = cmd.ParsePreStartOptions(mode, bundleName, userId);
+    EXPECT_EQ(result, OHOS::ERR_OK);
+}
+
+/**
+ * @tc.number: Ability_Command_Test_3950
+ * @tc.name: ParsePreStartOptions
+ * @tc.desc: Verify ParsePreStartOptions with invalid mode format.
+ */
+HWTEST_F(AbilityCommandTest, Ability_Command_Test_3950, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ability_Command_Test_3950 is called");
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)"pre-start",
+        (char*)"-m",
+        (char*)"invalid",
+        (char*)"-b",
+        (char*)"com.example.game",
+        (char*)"-u",
+        (char*)"100",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]);
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    int32_t mode = -1;
+    std::string bundleName = "";
+    int32_t userId = -1;
+
+    ErrCode result = cmd.ParsePreStartOptions(mode, bundleName, userId);
+    EXPECT_EQ(result, OHOS::ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.number: Ability_Command_Test_3960
+ * @tc.name: ParsePreStartOptions
+ * @tc.desc: Verify ParsePreStartOptions with invalid userId format.
+ */
+HWTEST_F(AbilityCommandTest, Ability_Command_Test_3960, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ability_Command_Test_3960 is called");
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)"pre-start",
+        (char*)"-m",
+        (char*)"1",
+        (char*)"-b",
+        (char*)"com.example.game",
+        (char*)"-u",
+        (char*)"invalid",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]);
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    int32_t mode = -1;
+    std::string bundleName = "";
+    int32_t userId = -1;
+
+    ErrCode result = cmd.ParsePreStartOptions(mode, bundleName, userId);
+    EXPECT_EQ(result, OHOS::ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.number: Ability_Command_Test_3970
+ * @tc.name: RunAsPreStartCommand
+ * @tc.desc: Verify RunAsPreStartCommand with all valid parameters.
+ */
+HWTEST_F(AbilityCommandTest, Ability_Command_Test_3970, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ability_Command_Test_3970 is called");
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)"pre-start",
+        (char*)"-m",
+        (char*)"1",
+        (char*)"-b",
+        (char*)"com.example.game",
+        (char*)"-u",
+        (char*)"100",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]);
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    ErrCode result = cmd.RunAsPreStartCommand();
+    EXPECT_EQ(result, OHOS::ERR_OK);
+}
+
+/**
+ * @tc.number: Ability_Command_Test_3980
+ * @tc.name: RunAsPreStartCommand
+ * @tc.desc: Verify RunAsPreStartCommand with missing mode parameter.
+ */
+HWTEST_F(AbilityCommandTest, Ability_Command_Test_3980, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ability_Command_Test_3980 is called");
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)"pre-start",
+        (char*)"-b",
+        (char*)"com.example.game",
+        (char*)"-u",
+        (char*)"100",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]);
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    ErrCode result = cmd.RunAsPreStartCommand();
+    EXPECT_EQ(result, OHOS::ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.number: Ability_Command_Test_3990
+ * @tc.name: RunAsPreStartCommand
+ * @tc.desc: Verify RunAsPreStartCommand with missing bundle parameter.
+ */
+HWTEST_F(AbilityCommandTest, Ability_Command_Test_3990, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ability_Command_Test_3990 is called");
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)"pre-start",
+        (char*)"-m",
+        (char*)"1",
+        (char*)"-u",
+        (char*)"100",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]);
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    ErrCode result = cmd.RunAsPreStartCommand();
+    EXPECT_EQ(result, OHOS::ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.number: Ability_Command_Test_4000
+ * @tc.name: RunAsPreStartCommand
+ * @tc.desc: Verify RunAsPreStartCommand with missing userId parameter.
+ */
+HWTEST_F(AbilityCommandTest, Ability_Command_Test_4000, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ability_Command_Test_4000 is called");
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)"pre-start",
+        (char*)"-m",
+        (char*)"1",
+        (char*)"-b",
+        (char*)"com.example.game",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]);
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    ErrCode result = cmd.RunAsPreStartCommand();
+    EXPECT_EQ(result, OHOS::ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.number: Ability_Command_Test_4010
+ * @tc.name: RunAsPreStartCommand
+ * @tc.desc: Verify RunAsPreStartCommand with invalid mode (not 1).
+ */
+HWTEST_F(AbilityCommandTest, Ability_Command_Test_4010, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ability_Command_Test_4010 is called");
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)"pre-start",
+        (char*)"-m",
+        (char*)"2",
+        (char*)"-b",
+        (char*)"com.example.game",
+        (char*)"-u",
+        (char*)"100",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]);
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    ErrCode result = cmd.RunAsPreStartCommand();
+    EXPECT_EQ(result, OHOS::ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.number: Ability_Command_Test_4020
+ * @tc.name: RunAsPreStartCommand
+ * @tc.desc: Verify RunAsPreStartCommand with invalid userId (negative).
+ */
+HWTEST_F(AbilityCommandTest, Ability_Command_Test_4020, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ability_Command_Test_4020 is called");
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)"pre-start",
+        (char*)"-m",
+        (char*)"1",
+        (char*)"-b",
+        (char*)"com.example.game",
+        (char*)"-u",
+        (char*)"-1",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]);
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    ErrCode result = cmd.RunAsPreStartCommand();
+    EXPECT_EQ(result, OHOS::ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.number: Ability_Command_Test_4030
+ * @tc.name: RunAsPreStartCommand
+ * @tc.desc: Verify RunAsPreStartCommand with help option.
+ */
+HWTEST_F(AbilityCommandTest, Ability_Command_Test_4030, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ability_Command_Test_4030 is called");
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)"pre-start",
+        (char*)"-h",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]);
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    ErrCode result = cmd.RunAsPreStartCommand();
+    EXPECT_EQ(result, OHOS::ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.number: Ability_Command_Test_4040
+ * @tc.name: RunAsPreStartCommand
+ * @tc.desc: Verify RunAsPreStartCommand with no parameters.
+ */
+HWTEST_F(AbilityCommandTest, Ability_Command_Test_4040, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ability_Command_Test_4040 is called");
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)"pre-start",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]);
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    ErrCode result = cmd.RunAsPreStartCommand();
+    EXPECT_EQ(result, OHOS::ERR_INVALID_VALUE);
+}

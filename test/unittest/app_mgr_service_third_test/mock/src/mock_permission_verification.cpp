@@ -39,5 +39,10 @@ bool PermissionVerification::IsSACall() const
 {
     return (MyFlag::flag_ & MyFlag::FLAG::IS_SA_CALL);
 }
+
+bool PermissionVerification::VerifyPreloadApplicationPermission() const
+{
+    return (MyFlag::flag_ & MyFlag::FLAG::IS_PRELOAD_APPLICATION_PERMISSION);
+}
 }  // namespace AAFwk
 }  // namespace OHOS

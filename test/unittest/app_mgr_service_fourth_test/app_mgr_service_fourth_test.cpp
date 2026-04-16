@@ -39,6 +39,7 @@ namespace {
 const std::string BUNDLE_NAME = "com.example.test";
 constexpr int UID = 1000;
 constexpr pid_t PID = 1000;
+constexpr pid_t RSS_UID = 1096;
 }
 
 class MockTaskHandlerWrap : public TaskHandlerWrap {
@@ -324,6 +325,39 @@ HWTEST_F(AppMgrServiceFourthTest, StartUserTestProcess_0100, TestSize.Level1)
     int32_t result = appMgrService_->StartUserTestProcess(want, observer, bundleInfo, 0);
     EXPECT_EQ(result, ERR_INVALID_OPERATION);
     TAG_LOGI(AAFwkTag::TEST, "StartUserTestProcess_0100 end");
+}
+
+/**
+ * @tc.name: GetAllAbilityInfos_001
+ * @tc.desc: verify GetAllAbilityInfos works when inner service is null
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceFourthTest, GetAllAbilityInfos_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetAllAbilityInfos_001 start");
+    appMgrService_->appMgrServiceInner_ = nullptr;
+    AAFwk::MyStatus::GetInstance().isCheckSpecificSystemAbilityAccessPermission_ = true;
+    IPCSkeleton::SetCallingUid(RSS_UID);
+    std::vector<AppExecFwk::AbilityStateData> infos;
+    int32_t result = appMgrService_->GetAllAbilityInfos(-1, infos);
+    EXPECT_EQ(result, AAFwk::ERR_APP_MGR_SERVICE_NOT_READY);
+    AAFwk::MyStatus::GetInstance().isCheckSpecificSystemAbilityAccessPermission_ = false;
+    appMgrService_->appMgrServiceInner_ = mockAppMgrServiceInner_;
+    TAG_LOGI(AAFwkTag::TEST, "GetAllAbilityInfos_001 end");
+}
+
+/**
+ * @tc.name: GetAllAbilityInfos_002
+ * @tc.desc: verify GetAllAbilityInfos works when permission denied
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceFourthTest, GetAllAbilityInfos_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetAllAbilityInfos_002 start");
+    std::vector<AppExecFwk::AbilityStateData> infos;
+    int32_t result = appMgrService_->GetAllAbilityInfos(-1, infos);
+    EXPECT_EQ(result, ERR_PERMISSION_DENIED);
+    TAG_LOGI(AAFwkTag::TEST, "GetAllAbilityInfos_002 end");
 }
 } // namespace AppExecFwk
 } // namespace OHOS

@@ -143,6 +143,7 @@ class LastExitDetailInfoImpl implements AbilityConstant.LastExitDetailInfo {
   pss: int = 0;
   timestamp: long = 0;
   processState?: appManager.ProcessState = appManager.ProcessState.STATE_CREATE;
+  killReason?: string | undefined;
 }
 
 export default AbilityConstant;

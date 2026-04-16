@@ -32,9 +32,9 @@ int32_t EtsAgentExtensionStubImpl::SendData(const sptr<IRemoteObject> &hostProxy
     const std::string &data)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "SendData called, data length: %{public}zu", data.length());
-    auto sptr = extension_.lock();
-    if (sptr) {
-        return sptr->OnSendData(hostProxy, data);
+    auto extension = extension_.lock();
+    if (extension) {
+        return extension->OnSendData(hostProxy, data);
     }
     TAG_LOGE(AAFwkTag::SER_ROUTER, "extension lock failed");
     return static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);
@@ -44,9 +44,20 @@ int32_t EtsAgentExtensionStubImpl::Authorize(const sptr<IRemoteObject> &hostProx
     const std::string &data)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "Authorize called, data length: %{public}zu", data.length());
-    auto sptr = extension_.lock();
-    if (sptr) {
-        return sptr->OnAuthorize(hostProxy, data);
+    auto extension = extension_.lock();
+    if (extension) {
+        return extension->OnAuthorize(hostProxy, data);
+    }
+    TAG_LOGE(AAFwkTag::SER_ROUTER, "extension lock failed");
+    return static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);
+}
+
+int32_t EtsAgentExtensionStubImpl::AgentInvoked(const std::string &agentId)
+{
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "AgentInvoked called, agentId: %{public}s", agentId.c_str());
+    auto extension = extension_.lock();
+    if (extension) {
+        return extension->OnAgentInvoked(agentId);
     }
     TAG_LOGE(AAFwkTag::SER_ROUTER, "extension lock failed");
     return static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);

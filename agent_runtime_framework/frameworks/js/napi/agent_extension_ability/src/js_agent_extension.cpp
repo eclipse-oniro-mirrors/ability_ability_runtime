@@ -17,8 +17,8 @@
 
 #include "ability_business_error.h"
 #include "agent_extension.h"
-#include "agent_extension_context.h"
 #include "agent_extension_connection_constants.h"
+#include "agent_extension_context.h"
 #include "agent_manager_client.h"
 #include "configuration_utils.h"
 #include "connection_manager.h"
@@ -314,6 +314,31 @@ int32_t JsAgentExtension::OnAuthorize(const sptr<IRemoteObject> &hostProxy, cons
     return static_cast<int32_t>(AbilityErrorCode::ERROR_OK);
 }
 
+int32_t JsAgentExtension::OnAgentInvoked(const std::string &agentId)
+{
+    napi_env env = jsRuntime_.GetNapiEnv();
+    std::unique_ptr<NapiAsyncTask::CompleteCallback> complete = std::make_unique<NapiAsyncTask::CompleteCallback>
+        ([weak = weak_from_this(), agentIdParam = agentId](napi_env env, NapiAsyncTask &task, int32_t status) {
+            auto extensionSptr = weak.lock();
+            if (!extensionSptr) {
+                TAG_LOGE(AAFwkTag::SER_ROUTER, "null extensionSptr");
+                return;
+            }
+            auto sptrThis = std::static_pointer_cast<JsAgentExtension>(extensionSptr);
+            if (!sptrThis) {
+                TAG_LOGE(AAFwkTag::SER_ROUTER, "null sptrThis");
+                return;
+            }
+            sptrThis->HandleAgentInvoked(agentIdParam);
+        });
+
+    napi_ref callback = nullptr;
+    std::unique_ptr<NapiAsyncTask::ExecuteCallback> execute = nullptr;
+    NapiAsyncTask::Schedule("JsAgentExtension::AgentInvoked",
+        env, std::make_unique<NapiAsyncTask>(callback, std::move(execute), std::move(complete)));
+    return static_cast<int32_t>(AbilityErrorCode::ERROR_OK);
+}
+
 void JsAgentExtension::HandleSendData(sptr<IRemoteObject> hostProxy, const std::string &data)
 {
     if (hostProxy == nullptr) {
@@ -360,6 +385,13 @@ void JsAgentExtension::HandleAuthorize(sptr<IRemoteObject> hostProxy, const std:
     napi_env env = jsRuntime_.GetNapiEnv();
     napi_value argv[] = {jsHostProxy, AbilityRuntime::CreateJsValue(env, data)};
     CallObjectMethod("onAuth", argv, ARGC_TWO);
+}
+
+void JsAgentExtension::HandleAgentInvoked(const std::string &agentId)
+{
+    napi_env env = jsRuntime_.GetNapiEnv();
+    napi_value argv[] = { AbilityRuntime::CreateJsValue(env, agentId) };
+    CallObjectMethod("onAgentInvoked", argv, ARGC_ONE);
 }
 
 napi_value JsAgentExtension::CallObjectMethod(const char* name, napi_value const* argv, size_t argc)
@@ -429,10 +461,9 @@ void JsAgentExtension::BindContext(napi_env env, napi_value obj, std::shared_ptr
     }
     std::string agentId = want->GetStringParam(AGENTID_KEY);
     std::shared_ptr<AgentCard> agentCard = std::make_shared<AgentCard>();
-    auto innerErrorCode = AgentManagerClient::GetInstance().GetAgentCardByAgentId(
-        want->GetElement().GetBundleName(), agentId, *agentCard);
+    auto innerErrorCode = AgentManagerClient::GetInstance().GetCallerAgentCardByAgentId(agentId, *agentCard);
     if (innerErrorCode != ERR_OK) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "GetAgentCardByAgentId error: %{public}d", innerErrorCode);
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "GetCallerAgentCardByAgentId error: %{public}d", innerErrorCode);
         return;
     }
     context->SetAgentCard(agentCard);

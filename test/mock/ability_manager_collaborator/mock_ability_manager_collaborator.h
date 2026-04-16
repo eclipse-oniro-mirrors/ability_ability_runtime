@@ -38,6 +38,10 @@ public:
     MOCK_METHOD2(NotifyClearMission, int32_t(int32_t missionId, int32_t userId));
     MOCK_METHOD3(NotifyRemoveShellProcess, int32_t(int32_t pid, int32_t type, const std::string &reason));
     MOCK_METHOD1(UpdateMissionInfo, void(sptr<SessionInfo> &sessionInfo));
+    MOCK_METHOD3(NotifyGrantUriPermissionStart, int32_t(const std::vector<std::string> &uris, uint32_t flag,
+        int32_t userId));
+    MOCK_METHOD4(NotifyGrantUriPermissionEnd, int32_t(const std::vector<std::string> &uris, uint32_t flag,
+        int32_t userId, const std::vector<bool> &checkResults));
     sptr<IRemoteObject> AsObject() override
     {
         return {};

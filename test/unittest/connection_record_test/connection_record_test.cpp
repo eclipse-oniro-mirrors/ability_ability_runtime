@@ -1038,5 +1038,82 @@ HWTEST_F(ConnectionRecordTest, ConnectionRecord_CallOnAbilityConnectDone_002, Te
     auto result = ConnectionRecord::CallOnAbilityConnectDone(callback_, element, remoteObject, ERR_OK);
     EXPECT_EQ(result, ERR_OK);
 }
+
+/*
+ * Feature: ConnectionRecord
+ * Function: AttachCallerInfo
+ * SubFunction: NA
+ * FunctionPoints: AttachCallerInfo when callerToken valid
+ * EnvConditions: NA
+ * CaseDescription: Verify AttachCallerInfo retrieves caller info from ability record when callerToken is valid.
+ */
+HWTEST_F(ConnectionRecordTest, ConnectionRecord_AttachCallerInfo_001, TestSize.Level1)
+{
+    AbilityRequest callerRequest;
+    callerRequest.appInfo.uid = 12345;
+    callerRequest.appInfo.name = "CallerApp";
+    callerRequest.abilityInfo.bundleName = "com.test.caller";
+    callerRequest.abilityInfo.name = "CallerAbility";
+    callerRequest.abilityInfo.type = AbilityType::PAGE;
+    callerRequest.want.SetElement(ElementName("device", callerRequest.abilityInfo.bundleName,
+        callerRequest.abilityInfo.name));
+    auto callerRecord = BaseExtensionRecord::CreateBaseExtensionRecord(callerRequest);
+    ASSERT_NE(callerRecord, nullptr);
+    auto callerToken = callerRecord->GetToken();
+    ASSERT_NE(callerToken, nullptr);
+
+    auto connRecord = std::make_shared<ConnectionRecord>(callerToken, nullptr, nullptr, nullptr);
+    connRecord->AttachCallerInfo();
+
+    EXPECT_EQ(connRecord->GetCallerUid(), callerRecord->GetUid());
+    EXPECT_EQ(connRecord->GetCallerPid(), callerRecord->GetPid());
+    EXPECT_EQ(connRecord->GetCallerName(), callerRecord->GetAbilityInfo().bundleName);
+    EXPECT_NE(connRecord->GetCallerTokenId(), 0);
+}
+
+/*
+ * Feature: ConnectionRecord
+ * Function: AttachCallerInfo
+ * SubFunction: NA
+ * FunctionPoints: AttachCallerInfo when callerToken null
+ * EnvConditions: NA
+ * CaseDescription: Verify AttachCallerInfo falls back to IPC skeleton info when callerToken is null.
+ */
+HWTEST_F(ConnectionRecordTest, ConnectionRecord_AttachCallerInfo_002, TestSize.Level1)
+{
+    auto connRecord = std::make_shared<ConnectionRecord>(nullptr, nullptr, nullptr, nullptr);
+    connRecord->AttachCallerInfo();
+
+    int32_t expectedUid = static_cast<int32_t>(IPCSkeleton::GetCallingUid());
+    int32_t expectedPid = static_cast<int32_t>(IPCSkeleton::GetCallingPid());
+    uint32_t expectedTokenId = IPCSkeleton::GetCallingTokenID();
+
+    EXPECT_EQ(connRecord->GetCallerUid(), expectedUid);
+    EXPECT_EQ(connRecord->GetCallerPid(), expectedPid);
+    EXPECT_EQ(connRecord->GetCallerTokenId(), expectedTokenId);
+}
+
+/*
+ * Feature: ConnectionRecord
+ * Function: AttachCallerInfo
+ * SubFunction: NA
+ * FunctionPoints: AttachCallerInfo with indirectCallerInfo
+ * EnvConditions: NA
+ * CaseDescription: Verify AttachCallerInfo uses indirectCallerInfo when provided, overriding default values.
+ */
+HWTEST_F(ConnectionRecordTest, ConnectionRecord_AttachCallerInfo_003, TestSize.Level1)
+{
+    auto info = std::make_shared<IndirectCallerInfo>();
+    info->tokenId = 9876;
+    info->callerUid = 54321;
+    info->callerPid = 1234;
+
+    auto connRecord = std::make_shared<ConnectionRecord>(nullptr, nullptr, nullptr, nullptr);
+    connRecord->AttachCallerInfo(info);
+
+    EXPECT_EQ(connRecord->GetCallerUid(), info->callerUid);
+    EXPECT_EQ(connRecord->GetCallerPid(), info->callerPid);
+    EXPECT_EQ(connRecord->GetCallerTokenId(), info->tokenId);
+}
 }  // namespace AAFwk
 }  // namespace OHOS

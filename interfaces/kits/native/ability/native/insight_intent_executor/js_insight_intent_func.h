@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_JS_INSIGHT_INTENT_FUNC_H
 #define OHOS_ABILITY_RUNTIME_JS_INSIGHT_INTENT_FUNC_H
 
+#include "file_mapper.h"
 #include "insight_intent_execute_result.h"
 #include "insight_intent_executor.h"
 #include "js_insight_intent_utils.h"
@@ -90,6 +91,7 @@ private:
     JsRuntime& runtime_;
     State state_ = State::CREATED;
     std::unique_ptr<InsightIntentExecutorAsyncCallback> callback_;
+    std::unique_ptr<AbilityBase::FileMapper> safeData_ = nullptr;
     bool isAsync_ = false;
 };
 } // namespace AbilityRuntime

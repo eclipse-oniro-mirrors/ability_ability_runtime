@@ -151,6 +151,11 @@ void AppScheduler::OnStartProcessFailed(const std::vector<sptr<IRemoteObject>> &
     TAG_LOGI(AAFwkTag::TEST, "Test AppScheduler::OnStartProcessFailed()");
 }
 
+void AppScheduler::NotifyTerminateAbility(const sptr<IRemoteObject> &token)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Test AppScheduler::NotifyTerminateAbility()");
+}
+
 void AppScheduler::NotifyAppPreCache(int32_t pid, int32_t userId)
 {
     TAG_LOGI(AAFwkTag::TEST, "Test AppScheduler::NotifyAppPreCache()");
@@ -209,7 +214,7 @@ int32_t AppScheduler::VerifyKillProcessPermission(const std::string &bundleName)
 }
 
 void AppScheduler::StartSpecifiedAbility(const AAFwk::Want&, const AppExecFwk::AbilityInfo&, int32_t,
-    const std::string&) {}
+    const std::string&, bool) {}
 
 int AppScheduler::StartUserTest(
     const Want& want, const sptr<IRemoteObject>& observer, const AppExecFwk::BundleInfo& bundleInfo, int32_t userId)

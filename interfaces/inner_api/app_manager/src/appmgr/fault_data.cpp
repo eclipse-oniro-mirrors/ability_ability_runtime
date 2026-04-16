@@ -141,6 +141,12 @@ bool FaultData::ReadLeakContent(Parcel &parcel)
         TAG_LOGE(AAFwkTag::APPMGR, "callback log read string failed.");
         return false;
     }
+    callbackLog = strValue;
+
+    uint64_t atltValue = 0;
+    RETURN_FALSE_AND_WRITE_LOG_IF_TRUE(!parcel.ReadUint64(atltValue), "atLeakType read uint64 failed.");
+    atLeakType = static_cast<AppTelemetryLeakType>(atltValue);
+
     return true;
 }
 
@@ -197,6 +203,11 @@ bool FaultData::WriteLeakContent(Parcel &parcel) const
     
     RETURN_FALSE_AND_WRITE_LOG_WITH_ONE_ARG_IF_TRUE(!parcel.WriteString(callbackLog),
         "CallbackLog [%{public}s] write int32 failed.", callbackLog.c_str()
+    );
+
+    uint64_t atltValue = static_cast<uint64_t>(atLeakType);
+    RETURN_FALSE_AND_WRITE_LOG_WITH_ONE_ARG_IF_TRUE(!parcel.WriteUint64(atltValue),
+        "LeakDetailInfo atltValue [%{public}" PRIu64 "] write uint64 failed.", atltValue
     );
     return true;
 }
@@ -437,6 +448,10 @@ bool AppFaultDataBySA::ReadLeakContent(Parcel &parcel)
 
     RETURN_FALSE_AND_WRITE_LOG_IF_TRUE(!parcel.ReadUint64(sizeValue), "LeakDetailInfo otherSize read uint64 failed.");
     leakObject.detailInfo.otherSize = sizeValue;
+
+    RETURN_FALSE_AND_WRITE_LOG_IF_TRUE(!parcel.ReadUint64(sizeValue), "LeakDetailInfo otherSize read uint64 failed.");
+    atLeakType = static_cast<AppTelemetryLeakType>(sizeValue);
+
     return true;
 }
 
@@ -490,6 +505,12 @@ bool AppFaultDataBySA::WriteLeakContent(Parcel &parcel) const
     RETURN_FALSE_AND_WRITE_LOG_WITH_ONE_ARG_IF_TRUE(!parcel.WriteUint64(otherSize),
         "LeakDetailInfo otherSize [%{public}" PRIu64 "] write uint64 failed.", otherSize
     );
+
+    uint64_t atltValue = static_cast<uint64_t>(atLeakType);
+    RETURN_FALSE_AND_WRITE_LOG_WITH_ONE_ARG_IF_TRUE(!parcel.WriteUint64(atltValue),
+        "atltValue [%{public}" PRIu64 "] write uint64 failed.", atltValue
+    );
+
     return true;
 }
 

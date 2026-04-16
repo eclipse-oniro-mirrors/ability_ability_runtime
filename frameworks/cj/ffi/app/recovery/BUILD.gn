@@ -20,6 +20,7 @@ ohos_shared_library("cj_app_recovery_ffi") {
   sanitize = {
     cfi = true
     cfi_cross_dso = true
+    cfi_policy = "adaptive"
     debug = false
   }
 

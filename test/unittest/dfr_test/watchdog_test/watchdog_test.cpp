@@ -16,6 +16,8 @@
 #include <gtest/gtest.h>
 #include <thread>
 
+#include "parameter.h"
+#include "parameters.h"
 #define private public
 #define protected public
 #include "watchdog.h"
@@ -35,6 +37,7 @@ using namespace OHOS::AppExecFwk;
 namespace OHOS {
 namespace AppExecFwk {
 constexpr int64_t TEST_INTERVAL_TIME = 5000;
+constexpr float FLOAT_EPSILON = 0.01f;
 class WatchdogTest : public testing::Test {
 public:
     WatchdogTest()
@@ -575,6 +578,112 @@ HWTEST_F(WatchdogTest, WatchdogTest_CheckBgThread_000, TestSize.Level1)
         watchdog_->ReportEvent();
     }
     EXPECT_TRUE(watchdog_->backgroundReportCount_.load() >= count);
+}
+
+/**
+ * @tc.number: WatchdogTest_IsNumeric_001
+ * @tc.desc: add testcase codecoverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(WatchdogTest, WatchdogTest_IsNumeric_001, TestSize.Level1)
+{
+    bool ret = watchdog_->IsNumeric("1500");
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.number: WatchdogTest_IsNumeric_002
+ * @tc.desc: add testcase codecoverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(WatchdogTest, WatchdogTest_IsNumeric_002, TestSize.Level1)
+{
+    bool ret = watchdog_->IsNumeric("1a2b");
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.number: WatchdogTest_IsNumeric_003
+ * @tc.desc: add testcase codecoverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(WatchdogTest, WatchdogTest_IsNumeric_003, TestSize.Level1)
+{
+    bool ret = watchdog_->IsNumeric("abc");
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.number: WatchdogTest_IsNumeric_004
+ * @tc.desc: add testcase codecoverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(WatchdogTest, WatchdogTest_IsNumeric_004, TestSize.Level1)
+{
+    bool ret = watchdog_->IsNumeric("");
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.number: WatchdogTest_getRatioValue_001
+ * @tc.desc: Test getRatioValue.
+ * @tc.type: FUNC
+ */
+HWTEST_F(WatchdogTest, WatchdogTest_getRatioValue_001, TestSize.Level1)
+{
+    float result = watchdog_->getRatioValue();
+    EXPECT_TRUE(std::abs(result - 1.0f) < FLOAT_EPSILON);
+    OHOS::system::SetParameter("const.sys.dfx.appfreeze.timeout_unit_time_ratio", "");
+    result = watchdog_->getRatioValue();
+    EXPECT_TRUE(std::abs(result - 1.0f) < FLOAT_EPSILON);
+}
+
+/**
+ * @tc.number: WatchdogTest_getRatioValue_002
+ * @tc.desc: Test getRatioValue.
+ * @tc.type: FUNC
+ */
+HWTEST_F(WatchdogTest, WatchdogTest_getRatioValue_002, TestSize.Level1)
+{
+    OHOS::system::SetParameter("const.sys.dfx.appfreeze.timeout_unit_time_ratio", "1500");
+    float result = watchdog_->getRatioValue();
+    EXPECT_TRUE(std::abs(result - 1.5f) < FLOAT_EPSILON);
+}
+
+/**
+ * @tc.number: WatchdogTest_getRatioValue_003
+ * @tc.desc: Test getRatioValue.
+ * @tc.type: FUNC
+ */
+HWTEST_F(WatchdogTest, WatchdogTest_getRatioValue_003, TestSize.Level1)
+{
+    OHOS::system::SetParameter("const.sys.dfx.appfreeze.timeout_unit_time_ratio", "1");
+    float result = watchdog_->getRatioValue();
+    EXPECT_TRUE(std::abs(result - 1.0f) < FLOAT_EPSILON);
+}
+
+/**
+ * @tc.number: WatchdogTest_getRatioValue_004
+ * @tc.desc: Test getRatioValue.
+ * @tc.type: FUNC
+ */
+HWTEST_F(WatchdogTest, WatchdogTest_getRatioValue_004, TestSize.Level1)
+{
+    OHOS::system::SetParameter("const.sys.dfx.appfreeze.timeout_unit_time_ratio", "1a2");
+    float result = watchdog_->getRatioValue();
+    EXPECT_TRUE(std::abs(result - 1.0f) < FLOAT_EPSILON);
+}
+
+/**
+ * @tc.number: WatchdogTest_getRatioValue_005
+ * @tc.desc: Test getRatioValue.
+ * @tc.type: FUNC
+ */
+HWTEST_F(WatchdogTest, WatchdogTest_getRatioValue_005, TestSize.Level1)
+{
+    OHOS::system::SetParameter("const.sys.dfx.appfreeze.timeout_unit_time_ratio", "123456");
+    float result = watchdog_->getRatioValue();
+    EXPECT_TRUE(std::abs(result - 1.0f) < FLOAT_EPSILON);
 }
 
 /**

@@ -70,8 +70,35 @@ struct EventInfo {
     int32_t preloadMode = 0;
     int32_t appIndex = -1;
     int32_t persistentId = 0;
+    int32_t calleeId = -1;
     bool isPreload = false;
     bool shouldKillForeground = true;
+};
+
+struct SnapshotInfo {
+    int32_t uid = -1;
+    std::string bundleName = "";
+    std::string snapshotCond = ""; // 事件触发场景(例如xxx事件触发了镜像制作，目前几个打点不涉及，后续新增打点会使用)
+    std::string snapshotEvent = ""; // 镜像相关事件,例如镜像制作，镜像启动等
+    int32_t snapshotResult = 0; // 结果返回值
+    std::string snapshotReason = ""; // 对返回值原因的说明
+};
+
+enum class CalleeId {
+    START_ABILITY = 0,
+    START_ABILITY_DETAILS,
+    START_ABILITY_BY_FREE_INSTALL,
+    START_ABILITY_WITH_SPECIFY_TOKEN_ID_INNER,
+    START_ABILITY_BY_OE_EXT,
+    START_ABILITY_ONLY_UI_ABILITY,
+    START_ABILITY_AS_CALLER_DETAILS,
+    START_UI_ABILITY_BY_SCB_DEFAULT,
+    START_UI_EXTENSION_ABILITY,
+    START_ABILITY_FOR_OPTION_INNER,
+    START_ABILITY_WITH_SERVICE_MATCH,
+    START_ABILITY_WITH_INSIGHT,
+    PRE_START_INNER,
+    IMPLICIT_START_PROCESSOR_CALL_START_ABILITY_INNER,
 };
 
 enum class EventName {
@@ -137,7 +164,10 @@ enum class EventName {
     WANTAGENT_NUMBER,
 
     // report data
-    USER_DATA_SIZE
+    USER_DATA_SIZE,
+
+    // report snapshot info
+    SNAPSHOT_REPORT
 };
 
 typedef enum {
@@ -174,6 +204,7 @@ public:
         const EventInfo &eventInfo);
     static void SendAppStartupErrorEvent(
         const EventName &eventName, HiSysEventEventType type, const EventInfo &eventInfo);
+    static void SendSnapshotEvent(const EventName &eventName, const SnapshotInfo &snapshotInfo);
 
 private:
     static std::string ConvertEventName(const EventName &eventName);

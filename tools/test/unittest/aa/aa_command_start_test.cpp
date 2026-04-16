@@ -1570,3 +1570,213 @@ HWTEST_F(AaCommandStartTest, IsStartOption_0050, Function | MediumTest | Level1)
     AbilityManagerShellCommand cmd(argc, argv);
     EXPECT_FALSE(cmd.IsStartOption("100"));
 }
+
+/**
+ * @tc.number: Aa_Command_Start_5100
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify the "aa start -u" command without argument.
+ */
+HWTEST_F(AaCommandStartTest, Aa_Command_Start_5100, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Aa_Command_Start_5100");
+
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)cmd_.c_str(),
+        (char*)"-a",
+        (char*)STRING_ABILITY_NAME.c_str(),
+        (char*)"-b",
+        (char*)STRING_BUNDLE_NAME.c_str(),
+        (char*)"-u",
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    EXPECT_EQ(cmd.ExecCommand(), "error: option requires a value.\n" + HELP_MSG_START);
+}
+
+/**
+ * @tc.number: Aa_Command_Start_5200
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify the "aa start -a <ability> -b <bundle> -u <invalid>" command with non-numeric userId.
+ */
+HWTEST_F(AaCommandStartTest, Aa_Command_Start_5200, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Aa_Command_Start_5200");
+
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)cmd_.c_str(),
+        (char*)"-a",
+        (char*)STRING_ABILITY_NAME.c_str(),
+        (char*)"-b",
+        (char*)STRING_BUNDLE_NAME.c_str(),
+        (char*)"-u",
+        (char*)"xxx",
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    EXPECT_EQ(cmd.ExecCommand(), "error: invalid user id: xxx\n" + HELP_MSG_START);
+}
+
+/**
+ * @tc.number: Aa_Command_Start_5300
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify the "aa start -a <ability> -b <bundle> -u <negative>" command with negative userId.
+ */
+HWTEST_F(AaCommandStartTest, Aa_Command_Start_5300, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Aa_Command_Start_5300");
+
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)cmd_.c_str(),
+        (char*)"-a",
+        (char*)STRING_ABILITY_NAME.c_str(),
+        (char*)"-b",
+        (char*)STRING_BUNDLE_NAME.c_str(),
+        (char*)"-u",
+        (char*)"-1",
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    EXPECT_EQ(cmd.ExecCommand(), "error: invalid user id: -1\n" + HELP_MSG_START);
+}
+
+/**
+ * @tc.number: Aa_Command_Start_5400
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify the "aa start -a <ability> -b <bundle> -u <valid>" command with valid userId.
+ */
+HWTEST_F(AaCommandStartTest, Aa_Command_Start_5400, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Aa_Command_Start_5400");
+
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)cmd_.c_str(),
+        (char*)"-a",
+        (char*)STRING_ABILITY_NAME.c_str(),
+        (char*)"-b",
+        (char*)STRING_BUNDLE_NAME.c_str(),
+        (char*)"-u",
+        (char*)"100",
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    EXPECT_EQ(cmd.ExecCommand(), STRING_START_ABILITY_OK + "\n");
+}
+
+/**
+ * @tc.number: Aa_Command_Start_5500
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify the "aa start -a <ability> -b <bundle> -u 0" command with userId = 0.
+ */
+HWTEST_F(AaCommandStartTest, Aa_Command_Start_5500, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Aa_Command_Start_5500");
+
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)cmd_.c_str(),
+        (char*)"-a",
+        (char*)STRING_ABILITY_NAME.c_str(),
+        (char*)"-b",
+        (char*)STRING_BUNDLE_NAME.c_str(),
+        (char*)"-u",
+        (char*)"0",
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    EXPECT_EQ(cmd.ExecCommand(), STRING_START_ABILITY_OK + "\n");
+}
+
+/**
+ * @tc.number: Aa_Command_Start_5600
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify the "aa start -a <ability> -b <bundle> -u <userId> -W" command where userId is ignored with -W option.
+ */
+HWTEST_F(AaCommandStartTest, Aa_Command_Start_5600, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Aa_Command_Start_5600");
+
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)cmd_.c_str(),
+        (char*)"-a",
+        (char*)STRING_ABILITY_NAME.c_str(),
+        (char*)"-b",
+        (char*)STRING_BUNDLE_NAME.c_str(),
+        (char*)"-u",
+        (char*)"100",
+        (char*)"-W",
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    // userId should be ignored when using -W option, a warning will be logged
+    std::string result = cmd.ExecCommand();
+    EXPECT_TRUE(result.find(STRING_START_ABILITY_OK) != std::string::npos);
+}
+
+/**
+ * @tc.number: Aa_Command_Start_5700
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify the "aa start -a <ability> -b <bundle> -s <windowMode>" command with windowMode option.
+ */
+HWTEST_F(AaCommandStartTest, Aa_Command_Start_5700, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Aa_Command_Start_5700");
+
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)cmd_.c_str(),
+        (char*)"-a",
+        (char*)STRING_ABILITY_NAME.c_str(),
+        (char*)"-b",
+        (char*)STRING_BUNDLE_NAME.c_str(),
+        (char*)"-s",
+        (char*)"102",
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    EXPECT_EQ(cmd.ExecCommand(), STRING_START_ABILITY_OK + "\n");
+}
+
+/**
+ * @tc.number: Aa_Command_Start_5800
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify the "aa start -a <ability> -b <bundle> -W" command with wait option.
+ */
+HWTEST_F(AaCommandStartTest, Aa_Command_Start_5800, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Aa_Command_Start_5800");
+
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)cmd_.c_str(),
+        (char*)"-a",
+        (char*)STRING_ABILITY_NAME.c_str(),
+        (char*)"-b",
+        (char*)STRING_BUNDLE_NAME.c_str(),
+        (char*)"-W",
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    std::string result = cmd.ExecCommand();
+    EXPECT_TRUE(result.find(STRING_START_ABILITY_OK) != std::string::npos);
+}

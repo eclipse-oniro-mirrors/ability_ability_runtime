@@ -22,6 +22,9 @@ const int32_t CREATE_VALUE_ONE = 1;
 const int32_t CREATE_VALUE_TWO = 2;
 const int32_t CREATE_VALUE_THREE = 3;
 const int32_t CREATE_VALUE_FOUR = 4;
+const int32_t CREATE_VALUE_FIVE = 5;
+const int32_t CREATE_VALUE_SIX = 6;
+const int32_t CREATE_VALUE_SEVEN = 7;
 static napi_status SetEnumItem(napi_env env, napi_value object, const char* name, int32_t value)
 {
     napi_status status;
@@ -84,6 +87,23 @@ static napi_value InitScenariosObject(napi_env env)
     return object;
 }
 
+static napi_value InitContextTypeObject(napi_env env)
+{
+    napi_value object = nullptr;
+    NAPI_CALL(env, napi_create_object(env, &object));
+
+    NAPI_CALL(env, SetEnumItem(env, object, "APPLICATION_CONTEXT", CREATE_VALUE_ZERO));
+    NAPI_CALL(env, SetEnumItem(env, object, "ABILITY_STAGE_CONTEXT", CREATE_VALUE_ONE));
+    NAPI_CALL(env, SetEnumItem(env, object, "UIABILITY_CONTEXT", CREATE_VALUE_TWO));
+    NAPI_CALL(env, SetEnumItem(env, object, "FORM_EXTENSION_CONTEXT", CREATE_VALUE_THREE));
+    NAPI_CALL(env, SetEnumItem(env, object, "APP_SERVICE_EXTENSION_CONTEXT", CREATE_VALUE_FOUR));
+    NAPI_CALL(env, SetEnumItem(env, object, "SERVICE_EXTENSION_CONTEXT", CREATE_VALUE_FIVE));
+    NAPI_CALL(env, SetEnumItem(env, object, "UI_SERVICE_EXTENSION_CONTEXT", CREATE_VALUE_SIX));
+    NAPI_CALL(env, SetEnumItem(env, object, "AUTO_FILL_EXTENSION_CONTEXT", CREATE_VALUE_SEVEN));
+
+    return object;
+}
+
 /*
  * The module initialization.
  */
@@ -97,12 +117,15 @@ static napi_value ApplicationContextConstantInit(napi_env env, napi_value export
     NAPI_ASSERT(env, startupVisibility != nullptr, "failed to create StartupVisibility object");
     napi_value scenarios = InitScenariosObject(env);
     NAPI_ASSERT(env, scenarios != nullptr, "failed to create scenarios object");
+    napi_value contextType = InitContextTypeObject(env);
+    NAPI_ASSERT(env, contextType != nullptr, "failed to create ContextType object");
 
     napi_property_descriptor exportObjs[] = {
         DECLARE_NAPI_PROPERTY("AreaMode", areaMode),
         DECLARE_NAPI_PROPERTY("ProcessMode", processMode),
         DECLARE_NAPI_PROPERTY("StartupVisibility", startupVisibility),
         DECLARE_NAPI_PROPERTY("Scenarios", scenarios),
+        DECLARE_NAPI_PROPERTY("ContextType", contextType),
     };
 
     napi_status status = napi_define_properties(env, exports, sizeof(exportObjs) / sizeof(exportObjs[0]), exportObjs);

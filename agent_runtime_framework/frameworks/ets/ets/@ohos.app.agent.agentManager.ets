@@ -13,9 +13,11 @@
  * limitations under the License.
  */
 import Want from '@ohos.app.ability.Want';
+import AgentExtensionContext from 'application.AgentExtensionContext';
 import { AgentCard } from 'application.AgentCard';
 import { AgentProxy } from 'application.AgentProxy';
 import { AgentExtensionConnectCallback } from 'application.AgentExtensionConnectCallback';
+import { ConnectOptions } from 'ability.connectOptions';
 import { AsyncCallbackWrapper } from './utils/AgentUtils';
 import { BusinessError } from '@ohos.base';
 
@@ -25,9 +27,18 @@ export default namespace agentManager {
   export native function nativeGetAllAgentCards(asyncCallback: AsyncCallbackWrapper<Array<AgentCard>>): void;
   export native function nativeGetAgentCardsByBundleName(bundleName: string, asyncCallback: AsyncCallbackWrapper<Array<AgentCard>>): void;
   export native function nativeGetAgentCardByAgentId(bundleName: string, agentId: string, asyncCallback: AsyncCallbackWrapper<AgentCard>): void;
+  export native function nativeRegisterAgentCard(card: AgentCard, asyncCallback: AsyncCallbackWrapper<void>): void;
+  export native function nativeUpdateAgentCard(card: AgentCard, asyncCallback: AsyncCallbackWrapper<void>): void;
+  export native function nativeDeleteAgentCard(bundleName: string, agentId: string, asyncCallback: AsyncCallbackWrapper<void>): void;
   export native function nativeConnectAgentExtensionAbility(want: Want, agentId: string,
     connectCallback: AgentExtensionConnectCallback, asyncCallback: AsyncCallbackWrapper<AgentProxy>): void;
   export native function nativeDisconnectAgentExtensionAbility(proxy: AgentProxy,
+    asyncCallback: AsyncCallbackWrapper<void>): void;
+  export native function nativeConnectServiceExtensionAbility(context: AgentExtensionContext, want: Want,
+    options: ConnectOptions): long;
+  export native function nativeDisconnectServiceExtensionAbility(context: AgentExtensionContext, connectId: long,
+    asyncCallback: AsyncCallbackWrapper<void>): void;
+  export native function nativeNotifyLowCodeAgentComplete(agentId: string,
     asyncCallback: AsyncCallbackWrapper<void>): void;
 
   export function getAllAgentCards(): Promise<Array<AgentCard>> {
@@ -84,6 +95,57 @@ export default namespace agentManager {
     return p;
   }
 
+  export function registerAgentCard(card: AgentCard): Promise<void> {
+    let p: Promise<void> = new Promise<void>(
+      (res: (data: undefined) => void, rej: (error: BusinessError) => void): void => {
+      let asyncCallbackWrapper = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+        if (err == null || err.code == 0) {
+          res(undefined);
+        } else {
+          rej(err);
+        }
+      });
+      taskpool.execute((): void => {
+        agentManager.nativeRegisterAgentCard(card, asyncCallbackWrapper);
+      });
+    });
+    return p;
+  }
+
+  export function updateAgentCard(card: AgentCard): Promise<void> {
+    let p: Promise<void> = new Promise<void>(
+      (res: (data: undefined) => void, rej: (error: BusinessError) => void): void => {
+      let asyncCallbackWrapper = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+        if (err == null || err.code == 0) {
+          res(undefined);
+        } else {
+          rej(err);
+        }
+      });
+      taskpool.execute((): void => {
+        agentManager.nativeUpdateAgentCard(card, asyncCallbackWrapper);
+      });
+    });
+    return p;
+  }
+
+  export function deleteAgentCard(bundleName: string, agentId: string): Promise<void> {
+    let p: Promise<void> = new Promise<void>(
+      (res: (data: undefined) => void, rej: (error: BusinessError) => void): void => {
+      let asyncCallbackWrapper = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+        if (err == null || err.code == 0) {
+          res(undefined);
+        } else {
+          rej(err);
+        }
+      });
+      taskpool.execute((): void => {
+        agentManager.nativeDeleteAgentCard(bundleName, agentId, asyncCallbackWrapper);
+      });
+    });
+    return p;
+  }
+
   export function connectAgentExtensionAbility(want: Want, agentId: string,
     connectCallback: AgentExtensionConnectCallback): Promise<AgentProxy> {
     let p: Promise<AgentProxy> = new Promise<AgentProxy>(
@@ -115,6 +177,45 @@ export default namespace agentManager {
       });
       taskpool.execute((): void => {
         agentManager.nativeDisconnectAgentExtensionAbility(proxy, asyncCallbackWrapper);
+      });
+    });
+    return p;
+  }
+
+  export function connectServiceExtensionAbility(context: AgentExtensionContext, want: Want,
+    options: ConnectOptions): long {
+    return agentManager.nativeConnectServiceExtensionAbility(context, want, options);
+  }
+
+  export function disconnectServiceExtensionAbility(context: AgentExtensionContext, connectId: long): Promise<void> {
+    let p: Promise<void> = new Promise<void>(
+      (res: (data: undefined) => void, rej: (error: BusinessError) => void): void => {
+      let asyncCallbackWrapper = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+        if (err == null || err.code == 0) {
+          res(undefined);
+        } else {
+          rej(err);
+        }
+      });
+      taskpool.execute((): void => {
+        agentManager.nativeDisconnectServiceExtensionAbility(context, connectId, asyncCallbackWrapper);
+      });
+    });
+    return p;
+  }
+
+  export function notifyLowCodeAgentComplete(agentId: string): Promise<void> {
+    let p: Promise<void> = new Promise<void>(
+      (res: (data: undefined) => void, rej: (error: BusinessError) => void): void => {
+      let asyncCallbackWrapper = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+        if (err == null || err.code == 0) {
+          res(undefined);
+        } else {
+          rej(err);
+        }
+      });
+      taskpool.execute((): void => {
+        agentManager.nativeNotifyLowCodeAgentComplete(agentId, asyncCallbackWrapper);
       });
     });
     return p;

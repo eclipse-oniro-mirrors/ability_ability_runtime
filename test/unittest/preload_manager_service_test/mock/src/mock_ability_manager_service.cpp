@@ -40,5 +40,10 @@ int32_t AbilityManagerService::StartAbility(const Want &want, const StartOptions
 {
     return MyStatus::GetInstance().retStartAbility_;
 }
+
+int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
+{
+    return 0;
+}
 }  // namespace AAFwk
 }  // namespace OHOS

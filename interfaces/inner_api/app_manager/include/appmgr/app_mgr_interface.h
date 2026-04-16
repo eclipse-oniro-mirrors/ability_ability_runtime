@@ -21,6 +21,7 @@
 #include "ams_mgr_interface.h"
 #include "app_foreground_state_observer_interface.h"
 #include "app_malloc_info.h"
+#include "app_mem_dump_info.h"
 #include "app_mgr_ipc_interface_code.h"
 #include "app_record_id.h"
 #include "application_info.h"
@@ -37,6 +38,8 @@
 #include "iapp_state_callback.h"
 #include "iapplication_state_observer.h"
 #include "iconfiguration_observer.h"
+#include "image_error_handler_interface.h"
+#include "image_process_state_observer_interface.h"
 #include "iquick_fix_callback.h"
 #include "iremote_broker.h"
 #include "iremote_object.h"
@@ -90,6 +93,22 @@ public:
     virtual void PreloadModuleFinished(const int32_t recordId)
     {
         return;
+    }
+
+    virtual int32_t MakeImage(const AAFwk::Want &want, int32_t userId,
+        AppExecFwk::PreloadMode preloadMode, int32_t appIndex = 0, sptr<IImageErrorHandler> errorHandler = nullptr)
+    {
+        return 0;
+    }
+
+    virtual int32_t DestroyImage(uint64_t checkpointId, sptr<IImageErrorHandler> errorHandler = nullptr)
+    {
+        return 0;
+    }
+
+    virtual int32_t NotifyTemplateProcessDeepFrozen(int32_t pid)
+    {
+        return 0;
     }
 
     /**
@@ -323,6 +342,16 @@ public:
     virtual int DumpCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info) = 0;
 
     /**
+     * DumpMem, call DumpMem() through proxy project.
+     * triggerGC and dump application's memory info.
+     *
+     * @param info The information to be dumped
+     * @param dumpResult The dump result string
+     * @return ERR_OK ,return back success, others fail.
+     */
+    virtual int DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult) = 0;
+
+    /**
      * Start a resident process
      */
     virtual void StartupResidentProcess(const std::vector<AppExecFwk::BundleInfo> &bundleInfos) = 0;
@@ -343,6 +372,16 @@ public:
     virtual int32_t RegisterApplicationStateObserverWithFilter(sptr<IApplicationStateObserver> observer,
         const std::vector<std::string> &bundleNameList = {}, const AppStateFilter &appStateFilter = AppStateFilter(),
         bool isUsingFilter = false)
+    {
+        return 0;
+    }
+
+    virtual int32_t RegisterImageProcessStateObserver(const sptr<IImageProcessStateObserver> &observer)
+    {
+        return 0;
+    }
+
+    virtual int32_t UnregisterImageProcessStateObserver(const sptr<IImageProcessStateObserver> &observer)
     {
         return 0;
     }
@@ -1126,6 +1165,18 @@ public:
     }
 
     virtual void SetProcessPrepareExit(int32_t pid) {}
+
+    /**
+     * Get all ability infos
+     *
+     * @param pid if pid is -1, query all ability infos, otherwise query ability infos for this pid
+     * @param infos ability infos
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t GetAllAbilityInfos(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos)
+    {
+        return 0;
+    }
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

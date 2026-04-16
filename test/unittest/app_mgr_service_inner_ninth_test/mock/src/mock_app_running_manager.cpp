@@ -55,6 +55,12 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::CreateAppRunningRecord(
     return AAFwk::MyStatus::GetInstance().createAppRunning_;
 }
 
+bool AppRunningManager::CheckAppProcessNameIsSame(const std::shared_ptr<AppRunningRecord> &appRecord,
+    const std::string &processName, bool isFromPreload)
+{
+    return false;
+}
+
 std::shared_ptr<AppRunningRecord> AppRunningManager::CheckAppRunningRecordIsExist(const std::string &appName,
     const std::string &processName, const int uid, const BundleInfo &bundleInfo,
     const std::string &specifiedProcessFlag, bool *isProCache, const std::string &instanceKey,
@@ -476,10 +482,12 @@ int32_t AppRunningManager::DumpArkWeb(const std::vector<int32_t> &pids, const st
     return AAFwk::MyStatus::GetInstance().dumpArkWeb_;
 }
 
-bool AppRunningManager::HandleUserRequestClean(const sptr<IRemoteObject> &abilityToken, pid_t &pid, int32_t &uid)
+bool AppRunningManager::HandleUserRequestClean(const sptr<IRemoteObject> &abilityToken, pid_t &pid, int32_t &uid,
+    int32_t &recordId)
 {
     pid = AAFwk::MyStatus::GetInstance().handleUserRequestCleanPid_;
     uid = AAFwk::MyStatus::GetInstance().handleUserRequestCleanUid_;
+    recordId = -1;
     return AAFwk::MyStatus::GetInstance().handleUserRequestClean_;
 }
 
@@ -535,6 +543,11 @@ int32_t AppRunningManager::DumpCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &in
     return ERR_OK;
 }
 
+int32_t AppRunningManager::DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
+{
+    return ERR_OK;
+}
+
 void AppRunningManager::HandleChildRelation(
     std::shared_ptr<ChildProcessRecord> childRecord, std::shared_ptr<AppRunningRecord> appRecord)
 {
@@ -565,6 +578,11 @@ bool AppRunningManager::ProcessExitByPid(int32_t, const KillProcessConfig &)
 int32_t AppRunningManager::SignRestartProcess(int32_t)
 {
     return AAFwk::MyStatus::GetInstance().signRestartProcessStatus_;
+}
+
+int32_t AppRunningManager::GetAllAbilityInfos(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos)
+{
+    return ERR_OK;
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

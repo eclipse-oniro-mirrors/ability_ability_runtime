@@ -55,6 +55,12 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::CreateAppRunningRecord(
     return AAFwk::MyStatus::GetInstance().createAppRunning_;
 }
 
+bool AppRunningManager::CheckAppProcessNameIsSame(const std::shared_ptr<AppRunningRecord> &appRecord,
+    const std::string &processName, bool isFromPreload)
+{
+    return false;
+}
+
 std::shared_ptr<AppRunningRecord> AppRunningManager::CheckAppRunningRecordIsExist(const std::string &appName,
     const std::string &processName, const int uid, const BundleInfo &bundleInfo,
     const std::string &specifiedProcessFlag, bool *isProCache, const std::string &instanceKey,
@@ -452,7 +458,8 @@ int AppRunningManager::DumpFfrt(const std::vector<int32_t>& pids, std::string& r
     return 0;
 }
 
-bool AppRunningManager::HandleUserRequestClean(const sptr<IRemoteObject> &abilityToken, pid_t &pid, int32_t &uid)
+bool AppRunningManager::HandleUserRequestClean(const sptr<IRemoteObject> &abilityToken, pid_t &pid, int32_t &uid,
+    int32_t &recordId)
 {
     return true;
 }
@@ -476,6 +483,11 @@ int32_t AppRunningManager::CheckIsKiaProcess(pid_t pid, bool &isKia)
 bool AppRunningManager::CheckAppRunningRecordIsLast(const std::shared_ptr<AppRunningRecord> &appRecord)
 {
     return true;
+}
+
+int32_t AppRunningManager::GetAllAbilityInfos(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos)
+{
+    return ERR_OK;
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

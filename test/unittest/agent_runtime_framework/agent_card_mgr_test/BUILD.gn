@@ -41,7 +41,10 @@ ohos_unittest("agent_card_mgr_test") {
     "${agent_runtime_framework_path}/services/agentmgr/include",
   ]
 
-  deps = []
+  deps = [
+    "${agent_runtime_framework_path}/services/common:agent_card_utils",
+    "${agent_runtime_framework_path}/services/common:agent_semver",
+  ]
 
   external_deps = [
     "bundle_framework:appexecfwk_base",

@@ -33,10 +33,26 @@ public:
     virtual int32_t GetAgentCardByAgentId(const std::string &bundleName,
         const std::string &agentId, AgentCard &card) override;
 
+    virtual int32_t GetCallerAgentCardByAgentId(const std::string &agentId, AgentCard &card) override;
+
+    virtual int32_t RegisterAgentCard(const AgentCard &card) override;
+
+    virtual int32_t UpdateAgentCard(const AgentCard &card) override;
+
+    virtual int32_t DeleteAgentCard(const std::string &bundleName, const std::string &agentId) override;
+
     virtual int32_t ConnectAgentExtensionAbility(const AAFwk::Want &want,
         const sptr<AAFwk::IAbilityConnection> &connection) override;
 
     virtual int32_t DisconnectAgentExtensionAbility(const sptr<AAFwk::IAbilityConnection> &connection) override;
+
+    virtual int32_t ConnectServiceExtensionAbility(const sptr<IRemoteObject> &callerToken, const AAFwk::Want &want,
+        const sptr<AAFwk::IAbilityConnection> &connection) override;
+
+    virtual int32_t DisconnectServiceExtensionAbility(const sptr<IRemoteObject> &callerToken,
+        const sptr<AAFwk::IAbilityConnection> &connection) override;
+
+    virtual int32_t NotifyLowCodeAgentComplete(const std::string &agentId) override;
 };
 }  // namespace AgentRuntime
 }  // namespace OHOS

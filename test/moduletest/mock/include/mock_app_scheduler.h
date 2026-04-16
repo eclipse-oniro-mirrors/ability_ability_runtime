@@ -35,8 +35,8 @@ public:
     MOCK_METHOD0(ScheduleBackgroundApplication, void());
     MOCK_METHOD1(ScheduleTerminateApplication, void(bool));
     MOCK_METHOD2(ScheduleLaunchApplication, void(const AppExecFwk::AppLaunchData&, const Configuration& config));
-    MOCK_METHOD4(ScheduleLaunchAbility, void(const AppExecFwk::AbilityInfo&, const sptr<IRemoteObject>&,
-        const std::shared_ptr<AAFwk::Want>&, int32_t));
+    MOCK_METHOD5(ScheduleLaunchAbility, void(const AppExecFwk::AbilityInfo&, const sptr<IRemoteObject>&,
+        const std::shared_ptr<AAFwk::Want>&, int32_t, std::shared_ptr<AppUpdateInfo>));
     MOCK_METHOD2(ScheduleCleanAbility, void(const sptr<IRemoteObject>&, bool));
     MOCK_METHOD1(ScheduleProfileChanged, void(const AppExecFwk::Profile&));
     MOCK_METHOD1(ScheduleConfigurationUpdated, void(const AppExecFwk::Configuration& config));
@@ -53,6 +53,7 @@ public:
     MOCK_METHOD1(RegisterAbilityDebugResponse, int32_t(const sptr<AppExecFwk::IAbilityDebugResponse> &response));
     MOCK_METHOD1(ScheduleJsHeapMemory, void(OHOS::AppExecFwk::JsHeapDumpInfo &info));
     MOCK_METHOD1(ScheduleCjHeapMemory, void(OHOS::AppExecFwk::CjHeapDumpInfo &info));
+    MOCK_METHOD2(ScheduleMem, void(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpresult));
     MOCK_METHOD1(SetWatchdogBackgroundStatus, void(bool status));
     MOCK_METHOD2(OnLoadAbilityFinished, void(uint64_t, int32_t));
 };

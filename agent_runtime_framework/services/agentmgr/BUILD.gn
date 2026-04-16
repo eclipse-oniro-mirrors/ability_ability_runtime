@@ -23,24 +23,29 @@ ohos_shared_library("agentmgr") {
 
   include_dirs = [
     "include",
+    "${ability_runtime_innerkits_path}/ability_manager/include",
     "${ability_runtime_innerkits_path}/app_manager/include/appmgr",
     "${ability_runtime_path}/interfaces/kits/native/ability/native",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
     "${ability_runtime_path}/utils/global/constant",
     "${ability_runtime_services_path}/common/include",
     "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
+    "${agent_runtime_framework_path}/services/common/include",
   ]
   sources = [
     "src/agent_bundle_event_callback.cpp",
     "src/agent_card_db_mgr.cpp",
     "src/agent_card_mgr.cpp",
     "src/agent_event_handler.cpp",
+    "src/agent_host_connection.cpp",
     "src/agent_manager_service.cpp",
+    "src/agent_service_connection.cpp",
   ]
 
   public_configs = []
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_connect_callback_stub",
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
@@ -48,6 +53,9 @@ ohos_shared_library("agentmgr") {
     "${ability_runtime_services_path}/common:task_handler_wrap",
     "${agent_runtime_framework_path}/interfaces/inner_api:agent_fwk",
     "${agent_runtime_framework_path}/interfaces/inner_api:agent_manager",
+    "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection:agent_extension_connection",
+    "${agent_runtime_framework_path}/services/common:agent_card_utils",
+    "${agent_runtime_framework_path}/services/common:agent_semver",
   ]
 
   external_deps = [

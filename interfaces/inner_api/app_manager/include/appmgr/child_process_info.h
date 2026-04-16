@@ -36,6 +36,7 @@ struct ChildProcessInfo : public Parcelable {
     bool isDebugApp = true;
     bool isStartWithDebug = false;
     bool isStartWithNative = false;
+    bool isStaticChildProcess = false;
     int32_t pid = 0;
     int32_t hostPid = 0;
     int32_t uid = -1;

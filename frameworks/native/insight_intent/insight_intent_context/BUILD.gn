@@ -65,6 +65,7 @@ ohos_shared_library("cj_insightintentcontext") {
     cfi = true
     cfi_cross_dso = true
     cfi_vcall_icall_only = true
+    cfi_policy = "adaptive"
     debug = false
   }
   sources = [

@@ -18,6 +18,7 @@ ohos_shared_library("completionhandlerforabilitystartcallback") {
   sanitize = {
     cfi = true
     cfi_cross_dso = true
+    cfi_policy = "adaptive"
     debug = false
   }
   include_dirs = [

@@ -21,6 +21,7 @@ ohos_shared_library("ui_extension_content_session_ani_kit") {
     cfi = true
     cfi_cross_dso = true
     cfi_vcall_icall_only = true
+    cfi_policy = "adaptive"
     debug = false
   }
 

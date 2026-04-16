@@ -316,6 +316,25 @@ HWTEST_F(UIAbilityLifecycleManagerSecondTest, ProcessColdStartBranch_002, TestSi
 }
 
 /**
+ * @tc.name: UIAbilityLifecycleManager_ProcessColdStartBranch_003
+ * @tc.desc: ProcessColdStartBranch with preload start process options
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, ProcessColdStartBranch_003, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.processOptions = std::make_shared<ProcessOptions>();
+    abilityRequest.processOptions->isPreloadStart = true;
+    bool isColdStart = false;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    auto sessionInfo = sptr<SessionInfo>(new SessionInfo());
+    auto ret = uiAbilityLifecycleManager->ProcessColdStartBranch(abilityRequest, sessionInfo,
+        abilityRecord, isColdStart);
+    EXPECT_TRUE(ret);
+}
+
+/**
  * @tc.name: UIAbilityLifecycleManager_TryProcessHookModule_001
  * @tc.desc: TryProcessHookModule
  * @tc.type: FUNC

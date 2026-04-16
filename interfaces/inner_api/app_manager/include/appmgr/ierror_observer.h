@@ -34,6 +34,16 @@ enum class LeakType {
     GPU_MEMORY = 4,
     FD = 5,
     THREAD = 6,
+    RSS_ARK_TS = 7,
+    RSS_NATIVE_HEAP = 8,
+};
+ 
+enum AppTelemetryLeakType {
+    ATLT_PSS = 1 << static_cast<int>(LeakType::PSS_MEMORY),
+    ATLT_GPU = 1 << static_cast<int>(LeakType::GPU_MEMORY),
+    ATLT_FD = 1 << static_cast<int>(LeakType::FD),
+    ATLT_RSS_ARK_TS = 1 << static_cast<int>(LeakType::RSS_ARK_TS),
+    ATLT_RSS_NATIVE_HEAP = 1 << static_cast<int>(LeakType::RSS_NATIVE_HEAP),
 };
 
 struct LeakDetailInfo {
@@ -49,6 +59,11 @@ struct LeakObject {
     LeakType leakType;
     unsigned long leakSize = 0;
     LeakDetailInfo detailInfo;
+};
+
+struct AppTelemetryObject {
+    AppTelemetryLeakType atLeakType;
+    std::string runningId;
 };
 
 class IErrorObserver {

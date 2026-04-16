@@ -299,6 +299,12 @@ public:
     {
         return ERR_OK;
     }
+
+    ErrCode SetBundleFirstLaunch(const std::string &bundleName, int32_t userId, int32_t appIndex,
+        bool isBundleFirstLaunched) override
+    {
+        return ERR_OK;
+    }
 };
 
 class BundleMgrStub : public IRemoteStub<IBundleMgr> {
@@ -346,6 +352,13 @@ public:
     {
         return ERR_OK;
     }
+
+    ErrCode SetBundleFirstLaunch(const std::string &bundleName, int32_t userId, int32_t appIndex,
+        bool isBundleFirstLaunched) override
+    {
+        return ERR_OK;
+    }
+
 public:
     using QueryAbilityInfoFunType =
         std::function<bool(std::string bundleName, AbilityInfo& abilityInfo, ElementName& elementTemp)>;

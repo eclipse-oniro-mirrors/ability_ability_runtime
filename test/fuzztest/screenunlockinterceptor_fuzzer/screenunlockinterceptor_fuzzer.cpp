@@ -78,7 +78,6 @@ bool DoSomethingInterestingWithMyAPI(const char *data, size_t size)
     AbilityInfo targetAbilityInfo;
     screenUnlockInterceptor->DoProcess(param);
     screenUnlockInterceptor->QueryTargetAbilityInfo(param, targetAbilityInfo);
-    screenUnlockInterceptor->RecordExtensionEventWhenScreenUnlock(param, targetAbilityInfo);
     return true;
 }
 } // namespace OHOS

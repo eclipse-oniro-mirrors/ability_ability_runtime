@@ -43,7 +43,7 @@ export default class Context extends BaseContext {
     loadLibraryWithPermissionCheck("context_ani_kit.z", "application.Context");
   }
   nativePtr: long = 0;
-  
+
   etsContextPtr: long = 0;
   private cleaner: Cleaner | null = null;
   filesDir: string = "";
@@ -86,6 +86,8 @@ export default class Context extends BaseContext {
     destroyRegister.unregister(unregisterToken);
   }
 
+  public native nativeContextType(contextType: contextConstant.ContextType): boolean;
+
   public native getApplicationContextSync(): ApplicationContext;
   public native createModuleResourceManagerSync(bundleName: string, moduleName: string): resmgr.ResourceManager;
   private native switchArea(mode: contextConstant.AreaMode): void;
@@ -94,7 +96,8 @@ export default class Context extends BaseContext {
   public native nativeGetGroupDir(dataGroupID: string, callback: AsyncCallbackWrapper<string>): void;
   public native nativeCreateDisplayContext(displayId: long): Context;
   public native nativeCreateAreaModeContext(areaMode: contextConstant.AreaMode): Context;
-  public native nativeCreateSystemHspModuleResourceManager(bundleName: string, moduleName: string): resmgr.ResourceManager;
+  public native nativeCreateSystemHspModuleResourceManager(
+    bundleName: string, moduleName: string): resmgr.ResourceManager;
   private static native nativeTransferStatic(input: ESValue, type: string): Object;
   private static native nativeTransferDynamic(input: Object): ESValue;
   private static contextType: string = 'Context';
@@ -139,6 +142,10 @@ export default class Context extends BaseContext {
         this.nativeGetGroupDir(dataGroupID, myCall);
       });
     });
+  }
+
+  contextType(contextType: contextConstant.ContextType): boolean {
+    return this.nativeContextType(contextType);
   }
 
   createDisplayContext(displayId: long): Context {

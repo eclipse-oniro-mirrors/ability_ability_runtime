@@ -48,6 +48,12 @@ ohos_unittest("extension_record_manager_second_test") {
     "${ability_runtime_services_path}/abilitymgr/src/extension_record/extension_record.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/extension_record/extension_record_factory.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/extension_record/extension_record_manager.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/extension_running_timeout_monitor.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/extension_config.cpp",
+    "${ability_runtime_services_path}/common/src/ffrt_task_handler_wrap.cpp",
+    "${ability_runtime_services_path}/common/src/hisysevent_report.cpp",
+    "${ability_runtime_services_path}/common/src/queue_task_handler_wrap.cpp",
+    "${ability_runtime_services_path}/common/src/task_handler_wrap.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/ui_extension/preload_uiext_state_observer.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/ui_extension_record/ui_extension_record.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/ui_extension_record/ui_extension_record_factory.cpp",
@@ -73,6 +79,7 @@ ohos_unittest("extension_record_manager_second_test") {
     "${ability_runtime_path}/utils/global/common:runtime_utils",
     "${ability_runtime_path}/utils/server/startup:startup_util",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
+    "${ability_runtime_services_path}/common:task_handler_wrap",
   ]
 
   external_deps = [

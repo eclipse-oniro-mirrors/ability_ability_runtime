@@ -40,6 +40,7 @@ ohos_moduletest("ability_timeout_module_test") {
     "${ability_runtime_services_path}/abilitymgr/src/sub_managers_helper.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/ability_event_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/timeout_state_utils.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/utils/dms_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/window_focus_changed_listener.cpp",
     "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/sa_mgr/src/sa_mgr_client_mock.cpp",
     "${ability_runtime_test_path}/moduletest/mock/src/mock_app_mgr_client.cpp",

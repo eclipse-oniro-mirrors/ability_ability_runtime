@@ -15,6 +15,7 @@
 
 #include "watchdog.h"
 
+#include <charconv>
 #include <parameter.h>
 #include <unistd.h>
 
@@ -24,6 +25,7 @@
 #include "hisysevent.h"
 #include "hilog_tag_wrapper.h"
 #include "xcollie/watchdog.h"
+#include "parameters.h"
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -41,7 +43,10 @@ constexpr uint32_t CHECK_INTERVAL_TIME = 45000;
 #else
 constexpr uint32_t CHECK_INTERVAL_TIME = 3000;
 #endif
-
+static uint32_t checkIntervalTime_ = 3000;
+constexpr float FLOAT_EPSILON = 0.01f;
+constexpr int32_t TIME_CONVERT_RATIO = 1000;
+constexpr int32_t MAX_RATIO_SIZE = 4;
 #ifdef APP_NO_RESPONSE_DIALOG_WEARABLE
 constexpr uint32_t WEARABLE_CHECK_INTERVAL_TIME = 5000;
 #endif
@@ -59,7 +64,9 @@ static constexpr const char* const CHECK_BACKGROUND_THREAD[] = {
 };
 
 Watchdog::Watchdog()
-{}
+{
+    checkIntervalTime_ = CHECK_INTERVAL_TIME * getRatioValue();
+}
 
 Watchdog::~Watchdog()
 {
@@ -68,6 +75,34 @@ Watchdog::~Watchdog()
         OHOS::HiviewDFX::Watchdog::GetInstance().StopWatchdog();
     }
 }
+
+float Watchdog::getRatioValue()
+{
+    float defaultRatio = 1.0f;
+    std::string ratioStr = OHOS::system::GetParameter("const.sys.dfx.appfreeze.timeout_unit_time_ratio", "1000");
+    if (ratioStr.empty() || !IsNumeric(ratioStr)) {
+        return defaultRatio;
+    }
+
+    if (ratioStr.size() > MAX_RATIO_SIZE) {
+        return defaultRatio;
+    }
+
+    uint64_t ratioVal = 0;
+    auto [ptr, ec] = std::from_chars(ratioStr.data(), ratioStr.data() + ratioStr.size(), ratioVal);
+    if (ec != std::errc()) {
+        return defaultRatio;
+    }
+
+    float result = (ratioVal * 1.0) / TIME_CONVERT_RATIO;
+    return (result < FLOAT_EPSILON) ? defaultRatio : result;
+}
+
+bool Watchdog::IsNumeric(const std::string &str)
+{
+    return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit);
+}
+
 void Watchdog::Init(const std::shared_ptr<EventHandler> mainHandler)
 {
     std::unique_lock<std::mutex> lock(cvMutex_);
@@ -86,7 +121,7 @@ void Watchdog::Init(const std::shared_ptr<EventHandler> mainHandler)
         WEARABLE_CHECK_INTERVAL_TIME, INI_TIMER_FIRST_SECOND);
 #else
     OHOS::HiviewDFX::Watchdog::GetInstance().RunPeriodicalTask("AppkitWatchdog", watchdogTask,
-        CHECK_INTERVAL_TIME, INI_TIMER_FIRST_SECOND);
+        checkIntervalTime_, INI_TIMER_FIRST_SECOND);
 #endif
     SetMainThreadSample();
     SetReportLifeCycleAsAppfreeze();
@@ -273,7 +308,7 @@ void Watchdog::Timer()
 #ifdef APP_NO_RESPONSE_DIALOG_WEARABLE
     if ((now - lastWatchTime_) < 0 || (now - lastWatchTime_) >= (WEARABLE_CHECK_INTERVAL_TIME / RESET_RATIO)) {
 #else
-    if ((now - lastWatchTime_) < 0 || (now - lastWatchTime_) >= (CHECK_INTERVAL_TIME / RESET_RATIO)) {
+    if ((now - lastWatchTime_) < 0 || (now - lastWatchTime_) >= (checkIntervalTime_ / RESET_RATIO)) {
 #endif
         lastWatchTime_ = now;
     }
@@ -291,8 +326,8 @@ void Watchdog::ReportEvent()
     if ((now - lastWatchTime_) > (RESET_RATIO * WEARABLE_CHECK_INTERVAL_TIME) ||
         (now - lastWatchTime_) < (WEARABLE_CHECK_INTERVAL_TIME / RESET_RATIO)) {
 #else
-    if ((now - lastWatchTime_) > (RESET_RATIO * CHECK_INTERVAL_TIME) ||
-        (now - lastWatchTime_) < (CHECK_INTERVAL_TIME / RESET_RATIO)) {
+    if ((now - lastWatchTime_) > (RESET_RATIO * checkIntervalTime_) ||
+        (now - lastWatchTime_) < (checkIntervalTime_ / RESET_RATIO)) {
 #endif
         TAG_LOGI(AAFwkTag::APPDFR,
             "Thread may be blocked, not report time. currTime: %{public}llu, lastTime: %{public}llu",

@@ -121,5 +121,37 @@ int32_t AgentReceiverProxy::Authorize(const sptr<IRemoteObject> &connectorProxy,
     return ERR_OK;
 }
 
+int32_t AgentReceiverProxy::AgentInvoked(const std::string &agentId)
+{
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "AgentInvoked called, agentId: %{public}s", agentId.c_str());
+
+    MessageParcel parcelData;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_ASYNC);
+
+    if (!parcelData.WriteInterfaceToken(AgentReceiverProxy::GetDescriptor())) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "write interface token failed");
+        return static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);
+    }
+    if (!parcelData.WriteString(agentId)) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "write agentId failed");
+        return static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);
+    }
+
+    sptr<IRemoteObject> remoteObject = Remote();
+    if (remoteObject == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null remoteObject");
+        return static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);
+    }
+
+    auto error = remoteObject->SendRequest(static_cast<uint32_t>(IAgentReceiver::AGENT_INVOKED),
+        parcelData, reply, option);
+    if (error != ERR_OK) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "SendRequest error %{public}d", error);
+        return static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);
+    }
+    return ERR_OK;
+}
+
 } // namespace AgentRuntime
 } // namespace OHOS

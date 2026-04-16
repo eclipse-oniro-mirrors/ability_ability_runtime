@@ -365,6 +365,9 @@ napi_value CreateJsFormExtensionContext(napi_env env, std::shared_ptr<FormExtens
     std::unique_ptr<JsFormExtensionContext> jsContext = std::make_unique<JsFormExtensionContext>(context);
     napi_wrap(env, object, jsContext.release(), JsFormExtensionContext::Finalizer, nullptr, nullptr);
 
+    std::string type = "FormExtensionContext";
+    napi_set_named_property(env, object, "contextType", CreateJsValue(env, type));
+
     const char *moduleName = "JsFormExtensionContext";
     BindNativeFunction(env, object, "updateForm", moduleName, JsFormExtensionContext::UpdateForm);
     BindNativeFunction(env, object, "startAbility", moduleName, JsFormExtensionContext::StartAbility);

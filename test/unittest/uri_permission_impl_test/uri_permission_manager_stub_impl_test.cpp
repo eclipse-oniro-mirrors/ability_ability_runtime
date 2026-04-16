@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,6 +17,7 @@
 
 #include "ability_manager_client.h"
 #include "mock_my_flag.h"
+#include "batch_uri.h"
 
 #define private public
 #define protected public
@@ -47,7 +48,11 @@ void UriPermissionManagerStubImplTest::SetUpTestCase() {}
 
 void UriPermissionManagerStubImplTest::TearDownTestCase() {}
 
-void UriPermissionManagerStubImplTest::SetUp() {}
+void UriPermissionManagerStubImplTest::SetUp()
+{
+    MyFlag::Init();
+    IAbilityManagerCollaborator::verifyResult = 0;
+}
 
 void UriPermissionManagerStubImplTest::TearDown() {}
 
@@ -596,8 +601,7 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_ClearPermissionTokenByMap_001, 
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
     uint32_t tokenId = 0;
     int32_t funcResult = 0;
-    uint64_t timeNow = 0;
-    auto result = upmsi->ClearPermissionTokenByMap(tokenId, timeNow, funcResult);
+    auto result = upmsi->ClearPermissionTokenByMap(tokenId, funcResult);
     EXPECT_EQ(funcResult, ERR_PERMISSION_DENIED);
     EXPECT_EQ(result, ERR_OK);
 }
@@ -700,5 +704,79 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RawDataToPolicyInfo_001, TestSi
     EXPECT_EQ(result, INVALID_PARAMETERS_ERR);
 #endif
 }
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: VerifyContentUriPermission
+ * SubFunction: NA
+ * FunctionPoints: VerifyContentUriPermission with empty contentUris
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, VerifyContentUriPermission_001, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    std::vector<std::string> contentUris; // Empty
+    uint32_t flag = 1;
+    uint32_t tokenId = 1;
+    std::vector<bool> checkResults;
+    auto result = upmsi->VerifyContentUriPermission(contentUris, flag, tokenId, checkResults);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: CheckProxyUriPermission
+ * SubFunction: NA
+ * FunctionPoints: CheckProxyUriPermission without proxy authorization permission
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, CheckProxyUriPermission_001, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionProxyAuthorization_ = false;
+    BatchUri batchUri;
+    batchUri.Init({"file://test/file.txt"});
+    batchUri.otherPolicyInfos.emplace_back(PolicyInfo{});
+    uint32_t callerTokenId = 1;
+    uint32_t flag = 1;
+    auto result = upmsi->CheckProxyUriPermission(batchUri, callerTokenId, flag);
+    EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: CheckProxyUriPermission
+ * SubFunction: NA
+ * FunctionPoints: CheckProxyUriPermission with empty proxyUrisByPolicy and empty contentUris
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, CheckProxyUriPermission_002, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionProxyAuthorization_ = true;
+    BatchUri batchUri;
+    batchUri.Init({"file://caller/file.txt"}, 0, "caller", "", false);
+    uint32_t callerTokenId = 1;
+    uint32_t flag = 1;
+    auto result = upmsi->CheckProxyUriPermission(batchUri, callerTokenId, flag);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: CheckProxyUriPermission
+ * SubFunction: NA
+ * FunctionPoints: CheckProxyUriPermission with proxyUrisByPolicy
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, CheckProxyUriPermission_003, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionProxyAuthorization_ = true;
+    BatchUri batchUri;
+    batchUri.Init({"file://docs/file.txt"}, 0, "", "target", false);
+    batchUri.otherPolicyInfos.emplace_back(PolicyInfo{});
+    uint32_t callerTokenId = 1;
+    uint32_t flag = 1;
+    auto result = upmsi->CheckProxyUriPermission(batchUri, callerTokenId, flag);
+    EXPECT_EQ(result, ERR_OK);
+}
+
 }  // namespace AAFwk
 }  // namespace OHOS

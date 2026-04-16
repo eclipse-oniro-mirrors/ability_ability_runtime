@@ -26,11 +26,13 @@ ohos_shared_library("agentmanager_ani") {
   include_dirs = [
     "include",
     "${ability_runtime_path}/frameworks/ets/ani/ani_common/include",
+    "${ability_runtime_path}/frameworks/ets/ani/enum_convert",
+    "${ability_runtime_path}/interfaces/inner_api/runtime/include",
     "${ability_runtime_path}/interfaces/kits/native/ability/ability_runtime",
     "${ability_runtime_path}/interfaces/kits/native/ability/native",
-    "${ability_runtime_path}/interfaces/inner_api/runtime/include",
     "${ability_runtime_services_path}/common/include",
     "${agent_runtime_framework_path}/frameworks/ets/ani/agent_extension_ability/include/connection",
+    "${agent_runtime_framework_path}/frameworks/native/agent_extension_context/include",
     "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
   ]
 
@@ -47,10 +49,15 @@ ohos_shared_library("agentmanager_ani") {
   }
 
   deps = [
-    "${ability_runtime_native_path}/ability/native:ability_business_error",
+    "${ability_runtime_innerkits_path}/ability_manager:ability_connect_callback_stub",
     "${ability_runtime_innerkits_path}/runtime:runtime",
+    "${ability_runtime_native_path}/ability/native:ability_business_error",
+    "${ability_runtime_native_path}/ability/native:abilitykit_native",
+    "${ability_runtime_native_path}/ability/native:extensionkit_native",
+    "${ability_runtime_native_path}/ability:ability_context_native",
     "${ability_runtime_path}/frameworks/ets/ani/ani_common:ani_common",
     "${agent_runtime_framework_path}/frameworks/ets/ani/agent_extension_ability:ets_agent_connection",
+    "${agent_runtime_framework_path}/frameworks/native/agent_extension_context:agent_extension_context",
     "${agent_runtime_framework_path}/interfaces/inner_api:agent_connection_manager",
     "${agent_runtime_framework_path}/interfaces/inner_api:agent_fwk",
     "${agent_runtime_framework_path}/interfaces/inner_api:agent_manager",
@@ -66,6 +73,7 @@ ohos_shared_library("agentmanager_ani") {
     "eventhandler:libeventhandler",
     "hilog:libhilog",
     "ipc:ipc_core",
+    "ipc:rpc_taihe",
     "json:nlohmann_json_static",
     "napi:ace_napi",
     "runtime_core:ani",

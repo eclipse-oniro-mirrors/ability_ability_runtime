@@ -332,7 +332,7 @@ bool FUDUtils::IsSandboxApp(uint32_t tokenId)
 bool FUDUtils::CheckUriTypeIsValid(Uri &uri)
 {
     auto &&scheme = uri.GetScheme();
-    if (scheme != FUDConstants::FILE_SCHEME && scheme != FUDConstants::CONTENT_SCHEME) {
+    if (scheme != FUDConstants::FILE_SCHEME && scheme != FUDConstants::ANCO_SCHEME) {
         TAG_LOGW(AAFwkTag::URIPERMMGR, "uri invalid: %{public}s-%{private}s", scheme.c_str(), uri.ToString().c_str());
         return false;
     }

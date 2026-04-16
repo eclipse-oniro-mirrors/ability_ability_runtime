@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 Huawei Device Co., Ltd.
+# Copyright (c) 2022-2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -230,6 +230,7 @@ group("unittest") {
       "app_foreground_state_observer_proxy_test:unittest",
       "app_foreground_state_observer_stub_test:unittest",
       "app_hybrid_spawn_manager_test:unittest",
+      "app_image_observer_manager_test:unittest",
       "app_launch_data_test:unittest",
       "app_lifecycle_deal_test:unittest",
       "app_mgr_client_first_test:unittest",
@@ -281,6 +282,7 @@ group("unittest") {
       "app_state_observer_manager_test:unittest",
       "app_state_observer_manager_test_second:unittest",
       "app_utils_test:unittest",
+      "app_state_observer_manager_third_test:unittest",
       "appkit:unittest",
       "application_cleaner_second_test:unittest",
       "application_context_second_test:unittest",
@@ -301,6 +303,7 @@ group("unittest") {
       "cache_process_manager_second_test:unittest",
       "cache_process_manager_test:unittest",
       "call_record_test:unittest",
+      "caller_info_test:unittest",
       "capi_ability_runtime_application_context_test:unittest",
       "capi_ability_runtime_context_test:unittest",
       "child_process_record_first_test:unittest",
@@ -397,6 +400,10 @@ group("unittest") {
       "hidden_start_utils_test:unittest",
       "hisysevent_report_test:unittest",
       "hitrace_chain_utils_test:unittest",
+      "image_error_handler_proxy_test:unittest",
+      "image_error_handler_stub_test:unittest",
+      "image_process_state_observer_proxy_test:unittest",
+      "image_process_state_observer_stub_test:unittest",
       "implicit_start_processor_test:unittest",
       "insight_intent:unittest",
       "insight_intent_db_cache_test:unittest",
@@ -404,6 +411,7 @@ group("unittest") {
       "insight_intent_rdb_data_manager_test:unittest",
       "insight_intent_rdb_storage_mgr_test:unittest",
       "js_ability_context_test:unittest",
+      "js_ability_stage_context_test:unittest",
       "js_app_service_extension_test:unittest",
       "js_runtime_common_test:unittest",
       "js_service_extension_test:unittest",
@@ -436,6 +444,8 @@ group("unittest") {
       "mission_manager_client_test:unittest",
       "modal_system_app_freeze_uiextension_test:unittest",
       "modal_system_dialog_util_test:unittest",
+      "modular_object_extension_manager_test:unittest",
+      "modular_object_rdb_data_mgr_test:unittest",
       "multi_app_utils_test:unittest",
       "multi_instance_utils_second_test",
       "multi_instance_utils_test:unittest",

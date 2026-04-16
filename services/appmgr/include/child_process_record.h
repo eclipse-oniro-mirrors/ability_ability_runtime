@@ -74,11 +74,13 @@ public:
     bool IsNativeSpawnStarted() const;
     void SetAttachTimeoutStartTime(const std::chrono::system_clock::time_point &time);
     std::chrono::system_clock::time_point GetAttachTimeoutStartTime() const;
+    bool IsStatic() const;
 
 private:
     void MakeProcessName(const std::shared_ptr<AppRunningRecord> hostRecord, const std::string &customProcessName);
 
     bool isStartWithDebug_;
+    bool isStaticChildProcess_ = false;
     pid_t hostPid_ = 0;
     int32_t childProcessCount_ = 0;
     int32_t childProcessType_ = CHILD_PROCESS_TYPE_JS;

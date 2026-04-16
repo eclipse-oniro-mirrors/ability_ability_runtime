@@ -693,6 +693,124 @@ HWTEST_F(AbilityManagerClientTest, ManualStartAutoStartupApps_0100, TestSize.Lev
 }
 
 /**
+ * @tc.name: LaunchGameCustomized_001
+ * @tc.desc: LaunchGameCustomized with valid parameters.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientTest, LaunchGameCustomized_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "LaunchGameCustomized_001 start");
+    std::string bundleName = "com.test.game";
+    int32_t userId = 100;
+    int32_t appIndex = 0;
+    auto result = AbilityManagerClient::GetInstance()->LaunchGameCustomized(bundleName, userId, appIndex);
+    EXPECT_EQ(result, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "LaunchGameCustomized_001 end");
+}
+
+/**
+ * @tc.name: LaunchGameCustomized_002
+ * @tc.desc: LaunchGameCustomized with empty bundleName.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientTest, LaunchGameCustomized_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "LaunchGameCustomized_002 start");
+    std::string bundleName = "";
+    int32_t userId = 100;
+    int32_t appIndex = 0;
+    auto result = AbilityManagerClient::GetInstance()->LaunchGameCustomized(bundleName, userId, appIndex);
+    EXPECT_EQ(result, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "LaunchGameCustomized_002 end");
+}
+
+/**
+ * @tc.name: SetGamePreLaunchCompleteTime_001
+ * @tc.desc: SetGamePreLaunchCompleteTime with negative completeTime.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientTest, SetGamePreLaunchCompleteTime_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetGamePreLaunchCompleteTime_001 start");
+    int32_t userId = 100;
+    int64_t completeTime = -1;
+    auto result = AbilityManagerClient::GetInstance()->SetGamePreLaunchCompleteTime(userId, completeTime);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "SetGamePreLaunchCompleteTime_001 end");
+}
+
+/**
+ * @tc.name: SetGamePreLaunchCompleteTime_002
+ * @tc.desc: SetGamePreLaunchCompleteTime with valid parameters.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientTest, SetGamePreLaunchCompleteTime_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetGamePreLaunchCompleteTime_002 start");
+    int32_t userId = 100;
+    int64_t completeTime = 1000;
+    auto result = AbilityManagerClient::GetInstance()->SetGamePreLaunchCompleteTime(userId, completeTime);
+    EXPECT_EQ(result, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "SetGamePreLaunchCompleteTime_002 end");
+}
+
+/**
+ * @tc.name: NotifyCancelGamePreLaunch_001
+ * @tc.desc: NotifyCancelGamePreLaunch with null callerToken.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientTest, NotifyCancelGamePreLaunch_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyCancelGamePreLaunch_001 start");
+    sptr<IRemoteObject> callerToken = nullptr;
+    auto result = AbilityManagerClient::GetInstance()->NotifyCancelGamePreLaunch(callerToken);
+    EXPECT_EQ(result, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "NotifyCancelGamePreLaunch_001 end");
+}
+
+/**
+ * @tc.name: NotifyCancelGamePreLaunch_002
+ * @tc.desc: NotifyCancelGamePreLaunch with valid callerToken.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientTest, NotifyCancelGamePreLaunch_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyCancelGamePreLaunch_002 start");
+    sptr<IRemoteObject> callerToken(new IPCObjectStub());
+    auto result = AbilityManagerClient::GetInstance()->NotifyCancelGamePreLaunch(callerToken);
+    EXPECT_EQ(result, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "NotifyCancelGamePreLaunch_002 end");
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunch_001
+ * @tc.desc: NotifyCompleteGamePreLaunch with null callerToken.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientTest, NotifyCompleteGamePreLaunch_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyCompleteGamePreLaunch_001 start");
+    sptr<IRemoteObject> callerToken = nullptr;
+    auto result = AbilityManagerClient::GetInstance()->NotifyCompleteGamePreLaunch(callerToken);
+    EXPECT_EQ(result, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "NotifyCompleteGamePreLaunch_001 end");
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunch_002
+ * @tc.desc: NotifyCompleteGamePreLaunch with valid callerToken.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientTest, NotifyCompleteGamePreLaunch_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyCompleteGamePreLaunch_002 start");
+    sptr<IRemoteObject> callerToken(new IPCObjectStub());
+    auto result = AbilityManagerClient::GetInstance()->NotifyCompleteGamePreLaunch(callerToken);
+    EXPECT_EQ(result, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "NotifyCompleteGamePreLaunch_002 end");
+}
+
+/**
  * @tc.name: QueryCallerTokenIdForAnco_0100
  * @tc.desc: QueryCallerTokenIdForAnco with valid dialogSessionId
  * @tc.type: FUNC
@@ -724,6 +842,34 @@ HWTEST_F(AbilityManagerClientTest, QueryCallerTokenIdForAnco_0200, TestSize.Leve
         callerTokenId);
     EXPECT_EQ(result, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "QueryCallerTokenIdForAnco_0200 end");
+}
+
+/**
+ * @tc.number: AbilityManagerClient_ConnectAbilityWithIndirectCallerInfo_0100
+ * @tc.name: ConnectAbilityWithIndirectCallerInfo_0100
+ * @tc.desc: Test ConnectAbilityWithIndirectCallerInfo method, passing valid parameters and simulate success return
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientTest, AbilityManagerClient_ConnectAbilityWithIndirectCallerInfo_0100,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerClient_ConnectAbilityWithIndirectCallerInfo_0100 start");
+
+    Want want;
+    want.SetElementName("com.example.bundle", "com.example.service");
+    sptr<IAbilityConnection> connect = sptr<MockIAbilityConnection>::MakeSptr();
+    sptr<IRemoteObject> callerToken = nullptr;
+    int32_t userId = 100;
+    auto info = std::make_shared<IndirectCallerInfo>();
+    info->tokenId = 12345;
+    info->callerUid = 10086;
+    info->callerPid = 5678;
+
+    auto result = AbilityManagerClient::GetInstance()->ConnectAbilityWithIndirectCallerInfo(want, connect, callerToken,
+        userId, AppExecFwk::ExtensionAbilityType::UNSPECIFIED, info);
+    EXPECT_EQ(result, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerClient_ConnectAbilityWithIndirectCallerInfo_0100 end");
 }
 }  // namespace AAFwk
 }  // namespace OHOS

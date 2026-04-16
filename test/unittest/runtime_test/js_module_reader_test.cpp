@@ -90,7 +90,8 @@ HWTEST_F(JsModuleReaderTest, GetPresetAppHapPathTest_0100, TestSize.Level2)
 {
     JsModuleReader jsModuleReader("JsModuleReader", "");
     bool needFindPluginHsp = true;
-    std::string hapPath = jsModuleReader.GetPresetAppHapPath("", "", needFindPluginHsp);
+    std::string errorMsg = "";
+    std::string hapPath = jsModuleReader.GetPresetAppHapPath("", "", needFindPluginHsp, errorMsg);
     EXPECT_TRUE(hapPath.empty());
 }
 
@@ -103,7 +104,8 @@ HWTEST_F(JsModuleReaderTest, GetPresetAppHapPathTest_0200, TestSize.Level2)
 {
     JsModuleReader jsModuleReader("JsModuleReader", "/data/storage/el1/test.hsp");
     bool needFindPluginHsp = true;
-    std::string hapPath = jsModuleReader.GetPresetAppHapPath("", "", needFindPluginHsp);
+    std::string errorMsg = "";
+    std::string hapPath = jsModuleReader.GetPresetAppHapPath("", "", needFindPluginHsp, errorMsg);
     EXPECT_TRUE(hapPath.empty());
 }
 
@@ -115,8 +117,9 @@ HWTEST_F(JsModuleReaderTest, GetPresetAppHapPathTest_0200, TestSize.Level2)
 HWTEST_F(JsModuleReaderTest, GetFormAppHspPathTest_0100, TestSize.Level2)
 {
     JsModuleReader jsModuleReader("JsModuleReader", "");
-    bool needPlugin = false;
-    auto realHapPath = jsModuleReader.GetFormAppHspPath("inputPath", needPlugin);
+    bool needFindPluginHsp = false;
+    std::string errorMsg = "";
+    auto realHapPath = jsModuleReader.GetFormAppHspPath("inputPath", needFindPluginHsp, errorMsg);
     EXPECT_EQ(realHapPath, "/data/bundles/JsModuleReader/inputPath.hsp");
 }
 
@@ -131,7 +134,8 @@ HWTEST_F(JsModuleReaderTest, GetPresetAppHapPath_0100, TestSize.Level2)
     std::string inputPath = "inputPath/inputPath2";
     std::string bundleName = "bundleName";
     bool needFindPluginHsp = true;
-    auto realHapPath = jsModuleReader.GetPresetAppHapPath(inputPath, bundleName, needFindPluginHsp);
+    std::string errorMsg = "";
+    auto realHapPath = jsModuleReader.GetPresetAppHapPath(inputPath, bundleName, needFindPluginHsp, errorMsg);
     EXPECT_EQ(realHapPath, "inputPath/inputPath2");
 }
 }  // namespace AAFwk

@@ -47,7 +47,7 @@ void JsRuntime::ForceFullGC(uint32_t tid)
 void JsRuntime::DumpHeapSnapshot(uint32_t tid, bool isFullGC, bool isBinary)
 {}
 
-void JsRuntime::DumpHeapSnapshot(uint32_t tid, bool isFullGC, bool isBinary, bool isClearNodeIdCache)
+void JsRuntime::DumpHeapSnapshot(uint32_t tid, const OHOS::AbilityRuntime::Runtime::JsHeapDumpParam &param)
 {}
 
 void JsRuntime::AllowCrossThreadExecution()

@@ -169,6 +169,15 @@ public:
         return true;
     }
 
+    bool AddRefreshRecipient(const sptr<RefreshRecipient> &recipient) override
+    {
+        return true;
+    }
+    bool RemoveRefreshRecipient(const sptr<RefreshRecipient> &recipient) override
+    {
+        return true;
+    }
+
     bool Marshalling(Parcel &parcel) const override
     {
         return true;
@@ -1689,6 +1698,73 @@ HWTEST_F(UIAbilityLifecycleManagerThirdTest, HandleAbilityRecordReused_005, Test
 
     EXPECT_CALL(*appmgr, LaunchAbility).Times(1).WillOnce(Return(-1));
     EXPECT_EQ(mgr->HandleAbilityRecordReused(abilityRecord, sessionInfo, abilityRequest), nullptr);
+
+    AppMgrUtil::appMgr_ = originAppMgr;
+}
+
+/**
+ * @tc.name: HandleAbilityRecordReused_006
+ * @tc.desc: HandleAbilityRecordReused with GameSAPrelaunch flag but SetGameSAPrelaunch fails
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, HandleAbilityRecordReused_006, TestSize.Level2)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    SessionInfo sessionInfo;
+    auto session = sptr<Rosen::Session>::MakeSptr(Rosen::SessionInfo());
+    sessionInfo.sessionToken = session->AsObject();
+    sessionInfo.persistentId = 1;
+    sessionInfo.reuseDelegatorWindow = false;
+
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    abilityRecord->SetGameSAPreLaunch(true);
+
+    auto originAppMgr = AppMgrUtil::appMgr_;
+    auto appmgr = sptr<AppExecFwk::MockAppMgrService>::MakeSptr();
+    // SetGameSAPrelaunch will fail before reaching LaunchAbility, so LaunchAbility won't be called
+    EXPECT_CALL(*appmgr, LaunchAbility).Times(0);
+    AppMgrUtil::appMgr_ = appmgr;
+
+    auto result = mgr->HandleAbilityRecordReused(abilityRecord, sessionInfo, abilityRequest);
+
+    EXPECT_EQ(result, nullptr);
+
+    AppMgrUtil::appMgr_ = originAppMgr;
+}
+
+/**
+ * @tc.name: HandleAbilityRecordReused_007
+ * @tc.desc: HandleAbilityRecordReused without GameSAPrelaunch flag
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, HandleAbilityRecordReused_007, TestSize.Level2)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    SessionInfo sessionInfo;
+    auto session = sptr<Rosen::Session>::MakeSptr(Rosen::SessionInfo());
+    sessionInfo.sessionToken = session->AsObject();
+    sessionInfo.persistentId = 1;
+    sessionInfo.reuseDelegatorWindow = false;
+
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    abilityRecord->SetGameSAPreLaunch(false);
+
+    auto originAppMgr = AppMgrUtil::appMgr_;
+    auto appmgr = sptr<AppExecFwk::MockAppMgrService>::MakeSptr();
+    // reuseDelegatorWindow = false, so LaunchAbility will not be called
+    EXPECT_CALL(*appmgr, LaunchAbility).Times(0);
+    AppMgrUtil::appMgr_ = appmgr;
+
+    auto result = mgr->HandleAbilityRecordReused(abilityRecord, sessionInfo, abilityRequest);
+
+    EXPECT_EQ(result, nullptr);
+    EXPECT_FALSE(abilityRecord->IsGameSAPreLaunch());
 
     AppMgrUtil::appMgr_ = originAppMgr;
 }

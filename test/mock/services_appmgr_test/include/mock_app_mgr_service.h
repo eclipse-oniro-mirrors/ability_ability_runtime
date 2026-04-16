@@ -139,6 +139,12 @@ public:
     MOCK_METHOD2(CheckIsKiaProcess, int32_t(pid_t pid, bool &isKia));
     MOCK_METHOD2(QueryRunningSharedBundles, int32_t(pid_t pid, std::map<std::string, uint32_t> &sharedBundles));
     MOCK_METHOD1(SetProcessPrepareExit, void(int32_t));
+    MOCK_METHOD5(MakeImage, int32_t(const AAFwk::Want &want, int32_t userId, AppExecFwk::PreloadMode preloadMode,
+        int32_t appIndex, sptr<IImageErrorHandler>));
+    MOCK_METHOD2(DestroyImage, int32_t(uint64_t checkpointId, sptr<IImageErrorHandler>));
+    MOCK_METHOD1(RegisterImageProcessStateObserver, int32_t(const sptr<IImageProcessStateObserver> &observer));
+    MOCK_METHOD1(UnregisterImageProcessStateObserver, int32_t(const sptr<IImageProcessStateObserver> &observer));
+    MOCK_METHOD2(GetAllAbilityInfos, int32_t(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos));
     virtual int StartUserTestProcess(
         const AAFwk::Want &want, const sptr<IRemoteObject> &observer, const BundleInfo &bundleInfo, int32_t userId)
     {
@@ -272,6 +278,11 @@ public:
         return 0;
     }
 
+    int32_t DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
+    {
+        return 0;
+    }
+    
     int32_t DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info)
     {
         return 0;

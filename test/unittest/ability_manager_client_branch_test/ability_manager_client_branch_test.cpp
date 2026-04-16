@@ -1063,6 +1063,55 @@ HWTEST_F(AbilityManagerClientBranchTest, FinishUserTest_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: FinishUserTest_0200
+ * @tc.desc: FinishUserTest with nullptr proxy (GetAbilityManager will reconnect)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, FinishUserTest_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "FinishUserTest_0200 start";
+    std::string msg = "msg";
+    int64_t resultCode = 0;
+    std::string bundleName = "bundleName_test";
+    auto result = client_->FinishUserTest(msg, resultCode, bundleName);
+
+    EXPECT_EQ(result, ERR_OK);
+    GTEST_LOG_(INFO) << "FinishUserTest_0200 end";
+}
+
+/**
+ * @tc.name: RecordAppWithReasonByUserId_0100
+ * @tc.desc: RecordAppWithReasonByUserId with valid proxy
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, RecordAppWithReasonByUserId_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RecordAppWithReasonByUserId_0100 start";
+    int32_t userId = 100;
+    ExitReasonCompability exitReason(1);
+    auto result = client_->RecordAppWithReasonByUserId(userId, exitReason);
+
+    EXPECT_EQ(result, ERR_OK);
+    GTEST_LOG_(INFO) << "RecordAppWithReasonByUserId_0100 end";
+}
+
+/**
+ * @tc.name: RecordAppWithReasonByUserId_0200
+ * @tc.desc: RecordAppWithReasonByUserId with nullptr proxy (GetAbilityManager will reconnect)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, RecordAppWithReasonByUserId_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RecordAppWithReasonByUserId_0200 start";
+    int32_t userId = 100;
+    ExitReasonCompability exitReason(1);
+    auto result = client_->RecordAppWithReasonByUserId(userId, exitReason);
+
+    EXPECT_EQ(result, ERR_OK);
+    GTEST_LOG_(INFO) << "RecordAppWithReasonByUserId_0200 end";
+}
+
+/**
  * @tc.name: AbilityManagerClient_DoAbilityForeground_0100
  * @tc.desc: DoAbilityForeground
  * @tc.type: FUNC
@@ -2765,6 +2814,17 @@ HWTEST_F(AbilityManagerClientBranchTest, StartSelfUIAbilityInCurrentProcess_0100
     std::string specifiedFlag;
     StartOptions startOptions;
     EXPECT_EQ(client_->StartSelfUIAbilityInCurrentProcess(want, specifiedFlag, startOptions, false, nullptr), ERR_OK);
+}
+
+/**
+ * @tc.name: QuerySelfModularObjectExtensionInfos_0100
+ * @tc.desc: QuerySelfModularObjectExtensionInfos
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, QuerySelfModularObjectExtensionInfos_0100, TestSize.Level1)
+{
+    std::vector<ModularObjectExtensionInfo> infos;
+    EXPECT_EQ(client_->QuerySelfModularObjectExtensionInfos(infos), ERR_OK);
 }
 
 /*

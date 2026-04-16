@@ -33,8 +33,8 @@ public:
     MOCK_METHOD2(ScheduleMemoryLevel, void(int32_t level, bool isShellCall));
     MOCK_METHOD2(ScheduleHeapMemory, void(const int32_t pid, OHOS::AppExecFwk::MallocInfo &mallocInfo));
     MOCK_METHOD2(ScheduleLaunchApplication, void(const AppLaunchData&, const Configuration& config));
-    MOCK_METHOD4(ScheduleLaunchAbility, void(const AbilityInfo&, const sptr<IRemoteObject>&,
-        const std::shared_ptr<AAFwk::Want>&, int32_t));
+    MOCK_METHOD5(ScheduleLaunchAbility, void(const AbilityInfo&, const sptr<IRemoteObject>&,
+        const std::shared_ptr<AAFwk::Want>&, int32_t, std::shared_ptr<AppUpdateInfo>));
     MOCK_METHOD2(ScheduleCleanAbility, void(const sptr<IRemoteObject>&, bool));
     MOCK_METHOD1(ScheduleProfileChanged, void(const Profile&));
     MOCK_METHOD2(ScheduleConfigurationUpdated, void(const Configuration&, ConfigUpdateReason));

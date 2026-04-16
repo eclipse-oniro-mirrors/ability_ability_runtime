@@ -93,6 +93,7 @@ ohos_unittest("ability_manager_service_third_test") {
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
     "${ability_runtime_path}/utils/server/startup:startup_util",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
+    "${ability_runtime_services_path}/abilitymgr:modular_object",
     "${ability_runtime_services_path}/abilitymgr:wantagent_manager",
     "${ability_runtime_services_path}/common:app_util",
     "${ability_runtime_services_path}/common:hisysevent_report",

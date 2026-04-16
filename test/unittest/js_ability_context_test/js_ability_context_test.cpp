@@ -15,6 +15,7 @@
 
 #include <gtest/gtest.h>
 #include <singleton.h>
+#include <cstring>
 #include <uv.h>
 #include "ability_context.h"
 #include "ability_context_impl.h"
@@ -435,6 +436,169 @@ HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_OnStartUIServiceExten
     jsAbilityContext_->OnStartUIServiceExtension(env, info);
 
     JsRuntimeLite::GetInstance().RemoveJsEnv(reinterpret_cast<napi_env>(jsEnv->GetNativeEngine()));
+}
+
+const char* GetExpectedContextType(int32_t inputType)
+{
+    static const char* contextTypeMap[] = {
+        "ApplicationContext",
+        "AbilityStageContext",
+        "UIAbilityContext",
+        "FormExtensionContext",
+        "AppServiceExtensionContext",
+        "ServiceExtensionContext",
+        "UIServiceExtensionContext",
+        "AutoFillExtensionContext",
+    };
+    if (inputType < 0 || inputType >= static_cast<int32_t>(sizeof(contextTypeMap) / sizeof(contextTypeMap[0]))) {
+        return nullptr;
+    }
+    return contextTypeMap[inputType];
+}
+
+napi_value ContextTypeFunc(napi_env env, napi_callback_info info)
+{
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_value thisArg;
+    napi_get_cb_info(env, info, &argc, argv, &thisArg, nullptr);
+
+    napi_valuetype valueType;
+    napi_typeof(env, argv[0], &valueType);
+    if (valueType != napi_number) {
+        napi_value result = nullptr;
+        napi_get_boolean(env, false, &result);
+        return result;
+    }
+
+    int32_t inputType = 0;
+    napi_get_value_int32(env, argv[0], &inputType);
+    const char* expectedType = GetExpectedContextType(inputType);
+    if (expectedType == nullptr) {
+        napi_value result = nullptr;
+        napi_get_boolean(env, false, &result);
+        return result;
+    }
+
+    napi_value contextImpl = nullptr;
+    napi_get_named_property(env, thisArg, "__context_impl__", &contextImpl);
+    napi_value actualTypeValue = nullptr;
+    napi_get_named_property(env, contextImpl, "contextType", &actualTypeValue);
+    char actualTypeBuffer[64] = {0};
+    size_t copied = 0;
+    napi_get_value_string_utf8(env, actualTypeValue, actualTypeBuffer, sizeof(actualTypeBuffer), &copied);
+
+    bool match = (strcmp(actualTypeBuffer, expectedType) == 0);
+    napi_value resultValue = nullptr;
+    napi_get_boolean(env, match, &resultValue);
+    return resultValue;
+}
+
+void CreateContextTypeTestEnv(napi_env env, const char* typeStr, napi_value &contextObj, napi_value &contextTypeArg)
+{
+    napi_value contextImpl = nullptr;
+    napi_create_object(env, &contextImpl);
+    napi_value contextTypeValue = nullptr;
+    napi_create_string_utf8(env, typeStr, NAPI_AUTO_LENGTH, &contextTypeValue);
+    napi_set_named_property(env, contextImpl, "contextType", contextTypeValue);
+    napi_create_object(env, &contextObj);
+    napi_set_named_property(env, contextObj, "__context_impl__", contextImpl);
+    contextTypeArg = nullptr;
+}
+
+void CallContextTypeAndCheck(napi_env env, napi_value contextObj, napi_value contextTypeArg, bool expected)
+{
+    napi_value funcValue = nullptr;
+    napi_create_function(env, "contextType", NAPI_AUTO_LENGTH, ContextTypeFunc, nullptr, &funcValue);
+    napi_value result = nullptr;
+    napi_call_function(env, contextObj, funcValue, 1, &contextTypeArg, &result);
+    bool boolResult = false;
+    napi_get_value_bool(env, result, &boolResult);
+    if (expected) {
+        EXPECT_TRUE(boolResult);
+    } else {
+        EXPECT_FALSE(boolResult);
+    }
+}
+
+/**
+ * @tc.number: AbilityRuntime_AbilityContext_ContextType_0100
+ * @tc.name: contextType with valid UIAbilityContext type
+ * @tc.desc: Test contextType method with valid context type int (2 for UIAbilityContext)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_ContextType_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_AbilityContext_ContextType_0100 start";
+    HandleScope handleScope(env_);
+
+    napi_value contextObj = nullptr;
+    napi_value contextTypeArg = nullptr;
+    CreateContextTypeTestEnv(env_, "UIAbilityContext", contextObj, contextTypeArg);
+    napi_create_int32(env_, 2, &contextTypeArg);
+    CallContextTypeAndCheck(env_, contextObj, contextTypeArg, true);
+
+    GTEST_LOG_(INFO) << "AbilityRuntime_AbilityContext_ContextType_0100 end";
+}
+
+/**
+ * @tc.number: AbilityRuntime_AbilityContext_ContextType_0200
+ * @tc.name: contextType with invalid type
+ * @tc.desc: Test contextType method with invalid context type int (999)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_ContextType_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_AbilityContext_ContextType_0200 start";
+    HandleScope handleScope(env_);
+
+    napi_value contextObj = nullptr;
+    napi_value contextTypeArg = nullptr;
+    CreateContextTypeTestEnv(env_, "UIAbilityContext", contextObj, contextTypeArg);
+    napi_create_int32(env_, 999, &contextTypeArg);
+    CallContextTypeAndCheck(env_, contextObj, contextTypeArg, false);
+
+    GTEST_LOG_(INFO) << "AbilityRuntime_AbilityContext_ContextType_0200 end";
+}
+
+/**
+ * @tc.number: AbilityRuntime_AbilityContext_ContextType_0300
+ * @tc.name: contextType with non-number input
+ * @tc.desc: Test contextType method with string input instead of number
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_ContextType_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_AbilityContext_ContextType_0300 start";
+    HandleScope handleScope(env_);
+
+    napi_value contextObj = nullptr;
+    napi_value contextTypeArg = nullptr;
+    CreateContextTypeTestEnv(env_, "UIAbilityContext", contextObj, contextTypeArg);
+    napi_create_string_utf8(env_, "invalid", NAPI_AUTO_LENGTH, &contextTypeArg);
+    CallContextTypeAndCheck(env_, contextObj, contextTypeArg, false);
+
+    GTEST_LOG_(INFO) << "AbilityRuntime_AbilityContext_ContextType_0300 end";
+}
+
+/**
+ * @tc.number: AbilityRuntime_AbilityContext_ContextType_0400
+ * @tc.name: contextType with mismatched type
+ * @tc.desc: Test contextType method when actual type doesn't match expected type
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_ContextType_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_AbilityContext_ContextType_0400 start";
+    HandleScope handleScope(env_);
+
+    napi_value contextObj = nullptr;
+    napi_value contextTypeArg = nullptr;
+    CreateContextTypeTestEnv(env_, "UIAbilityContext", contextObj, contextTypeArg);
+    napi_create_int32(env_, 0, &contextTypeArg);
+    CallContextTypeAndCheck(env_, contextObj, contextTypeArg, false);
+
+    GTEST_LOG_(INFO) << "AbilityRuntime_AbilityContext_ContextType_0400 end";
 }
 
 }  // namespace AAFwk

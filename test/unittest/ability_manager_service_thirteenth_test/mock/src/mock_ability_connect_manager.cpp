@@ -96,7 +96,8 @@ void AbilityConnectManager::ReportEventToRSS(const AppExecFwk::AbilityInfo &abil
 }
 
 int AbilityConnectManager::ConnectAbilityLocked(const AbilityRequest &abilityRequest,
-    const sptr<IAbilityConnection> &connect, const sptr<IRemoteObject> &callerToken, sptr<SessionInfo> sessionInfo)
+    const sptr<IAbilityConnection> &connect, const sptr<IRemoteObject> &callerToken, sptr<SessionInfo> sessionInfo,
+    std::shared_ptr<IndirectCallerInfo> indirectCallerInfo)
 {
     return ERR_OK;
 }

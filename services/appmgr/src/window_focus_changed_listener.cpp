@@ -64,7 +64,11 @@ void WindowFocusChangedListener::OnUnfocused(const sptr<FocusChangeInfo> &focusC
             }
             owner->HandleUnfocused(focusChangeInfo);
         };
-        taskHandler_->SubmitTask(task, "WindowFocusChangedListener::OnUnfocused");
+        AAFwk::TaskAttribute attr = {
+            .taskName_ = "WindowFocusChangedListener::OnUnfocused",
+            .taskQos_ = AAFwk::TaskQoS::USER_INTERACTIVE
+        };
+        taskHandler_->SubmitTask(task, attr);
     }
 }
 #endif // SUPPORT_SCREEN

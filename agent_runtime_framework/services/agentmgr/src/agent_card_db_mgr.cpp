@@ -28,8 +28,74 @@ constexpr int32_t CHECK_INTERVAL = 100000; // 100ms
 constexpr int32_t MAX_TIMES = 5;           // 5 * 100ms = 500ms
 constexpr const char *KEEP_ALIVE_STORAGE_DIR = "/data/service/el1/public/database/ability_manager_service";
 const std::string JSON_KEY_BUNDLE_NAME = "bundleName";
+const std::string JSON_KEY_CARD = "card";
+const std::string JSON_KEY_CARDS = "cards";
+const std::string JSON_KEY_LAST_UPDATE_SOURCE = "lastUpdateSource";
 const std::string JSON_KEY_USER_ID = "userId";
-const std::string JSON_KEY_URL = "url";
+
+std::string UpdateSourceToString(AgentCardUpdateSource source)
+{
+    return source == AgentCardUpdateSource::API ? "api" : "bundle";
+}
+
+AgentCardUpdateSource ParseUpdateSource(const nlohmann::json &jsonValue)
+{
+    if (!jsonValue.is_string()) {
+        return AgentCardUpdateSource::BUNDLE;
+    }
+    return jsonValue.get<std::string>() == "api" ? AgentCardUpdateSource::API : AgentCardUpdateSource::BUNDLE;
+}
+
+bool ParseStoredEntry(const nlohmann::json &item, StoredAgentCardEntry &entry)
+{
+    if (item.is_object() && item.contains(JSON_KEY_CARD)) {
+        if (!AgentCard::FromJson(item.at(JSON_KEY_CARD), entry.card)) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "FromJson failed");
+            return false;
+        }
+        if (item.contains(JSON_KEY_LAST_UPDATE_SOURCE)) {
+            entry.source = ParseUpdateSource(item.at(JSON_KEY_LAST_UPDATE_SOURCE));
+        }
+        return true;
+    }
+
+    if (!AgentCard::FromJson(item, entry.card)) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "FromJson failed");
+        return false;
+    }
+    entry.source = AgentCardUpdateSource::BUNDLE;
+    return true;
+}
+
+int32_t ParseStoredEntries(const std::string &rawValue, std::vector<StoredAgentCardEntry> &cards)
+{
+    if (!nlohmann::json::accept(rawValue, true)) {
+        return AAFwk::INNER_ERR;
+    }
+
+    nlohmann::json root = nlohmann::json::parse(rawValue, nullptr, false, true);
+    if (root.is_discarded()) {
+        return AAFwk::INNER_ERR;
+    }
+
+    nlohmann::json items = root;
+    if (root.is_object()) {
+        if (!root.contains(JSON_KEY_CARDS) || !root.at(JSON_KEY_CARDS).is_array()) {
+            return AAFwk::INNER_ERR;
+        }
+        items = root.at(JSON_KEY_CARDS);
+    } else if (!root.is_array()) {
+        return AAFwk::INNER_ERR;
+    }
+
+    for (const auto &item : items) {
+        StoredAgentCardEntry entry;
+        if (ParseStoredEntry(item, entry)) {
+            cards.emplace_back(std::move(entry));
+        }
+    }
+    return ERR_OK;
+}
 } // namespace
 
 const DistributedKv::AppId AgentCardDbMgr::APP_ID = { "agent_db" };
@@ -65,7 +131,7 @@ DistributedKv::Options AgentCardDbMgr::CreateKvStoreOptions()
     };
 }
 
-DistributedKv::Status AgentCardDbMgr::RestoreCorruptedKvStore(const DistributedKv::Options& options)
+DistributedKv::Status AgentCardDbMgr::RestoreCorruptedKvStore(const DistributedKv::Options &options)
 {
     TAG_LOGE(AAFwkTag::SER_ROUTER, "corrupted, deleting db");
     dataManager_.DeleteKvStore(APP_ID, STORE_ID, options.baseDir);
@@ -126,7 +192,8 @@ bool AgentCardDbMgr::CheckKvStore()
     return kvStorePtr_ != nullptr;
 }
 
-int32_t AgentCardDbMgr::InsertData(const std::string &bundleName, int32_t userId, const std::vector<AgentCard> &cards)
+int32_t AgentCardDbMgr::InsertData(const std::string &bundleName, int32_t userId,
+    const std::vector<StoredAgentCardEntry> &cards)
 {
     std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
     if (!CheckKvStore()) {
@@ -164,7 +231,8 @@ int32_t AgentCardDbMgr::DeleteData(const std::string &bundleName, int32_t userId
     return ERR_OK;
 }
 
-int32_t AgentCardDbMgr::QueryData(const std::string &bundleName, int32_t userId, std::vector<AgentCard> &cards)
+int32_t AgentCardDbMgr::QueryData(const std::string &bundleName, int32_t userId,
+    std::vector<StoredAgentCardEntry> &cards)
 {
     std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
     if (!CheckKvStore()) {
@@ -183,22 +251,10 @@ int32_t AgentCardDbMgr::QueryData(const std::string &bundleName, int32_t userId,
         RestoreKvStore(status);
         return status;
     }
-    if (!nlohmann::json::accept(value.ToString(), true)) {
-        return AAFwk::INNER_ERR;
-    }
-    nlohmann::json jsonArray = nlohmann::json::parse(value.ToString(), nullptr, false, true);
-    for (const auto &item : jsonArray) {
-        AgentCard card;
-        if (!AgentCard::FromJson(item, card)) {
-            TAG_LOGE(AAFwkTag::SER_ROUTER, "FromJson failed");
-            continue;
-        }
-        cards.push_back(card);
-    }
-    return ERR_OK;
+    return ParseStoredEntries(value.ToString(), cards);
 }
 
-int32_t AgentCardDbMgr::QueryAllData(std::vector<AgentCard> &cards)
+int32_t AgentCardDbMgr::QueryAllData(std::vector<StoredAgentCardEntry> &cards)
 {
     std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
     if (!CheckKvStore()) {
@@ -213,29 +269,27 @@ int32_t AgentCardDbMgr::QueryAllData(std::vector<AgentCard> &cards)
     }
 
     for (const auto &item : allEntries) {
-        if (!nlohmann::json::accept(item.value.ToString(), true)) {
-            return AAFwk::INNER_ERR;
-        }
-        nlohmann::json jsonArray = nlohmann::json::parse(item.value.ToString(), nullptr, false, true);
-        for (const auto &item : jsonArray) {
-            AgentCard card;
-            if (!AgentCard::FromJson(item, card)) {
-                TAG_LOGE(AAFwkTag::SER_ROUTER, "FromJson failed");
-                continue;
-            }
-            cards.push_back(card);
+        int32_t ret = ParseStoredEntries(item.value.ToString(), cards);
+        if (ret != ERR_OK) {
+            return ret;
         }
     }
     return ERR_OK;
 }
 
-DistributedKv::Value AgentCardDbMgr::ConvertValue(const std::vector<AgentCard> &cards)
+DistributedKv::Value AgentCardDbMgr::ConvertValue(const std::vector<StoredAgentCardEntry> &cards)
 {
     nlohmann::json jsonArray = nlohmann::json::array();
     for (const auto &item : cards) {
-        jsonArray.push_back(item.ToJson());
+        jsonArray.push_back({
+            { JSON_KEY_CARD, item.card.ToJson() },
+            { JSON_KEY_LAST_UPDATE_SOURCE, UpdateSourceToString(item.source) },
+        });
     }
-    DistributedKv::Value value(jsonArray.dump());
+    nlohmann::json root = {
+        { JSON_KEY_CARDS, jsonArray },
+    };
+    DistributedKv::Value value(root.dump());
     TAG_LOGD(AAFwkTag::SER_ROUTER, "value: %{public}s", value.ToString().c_str());
     return value;
 }

@@ -26,6 +26,7 @@
 #include "scene_board_judgement.h"
 #include "session_manager_lite.h"
 #endif
+#include "session/host/include/zidl/session_interface.h"
 #include "start_ability_utils.h"
 #include "string_wrapper.h"
 #include "want.h"
@@ -275,17 +276,16 @@ int DialogSessionManager::SendDialogResult(const Want &want, const std::string &
         ClearDialogContext(dialogSessionId);
         return ERR_OK;
     }
+    std::shared_ptr<DialogCallerInfo> dialogCallerInfo = GetDialogCallerInfo(dialogSessionId);
     if (!isAllowed) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "user refuse to jump");
-        NotifyAbilityRequestFailure(dialogSessionId, want);
-        ClearDialogContext(dialogSessionId);
+        HandleUserRejected(dialogSessionId, want, dialogCallerInfo);
         return ERR_OK;
     }
     std::shared_ptr<StartupSessionInfo> startupSessionInfo = GetStartupSessionInfo(dialogSessionId);
     if (startupSessionInfo != nullptr) {
         return NotifySCBToRecoveryAfterInterception(dialogSessionId, startupSessionInfo->abilityRequest);
     }
-    std::shared_ptr<DialogCallerInfo> dialogCallerInfo = GetDialogCallerInfo(dialogSessionId);
     if (dialogCallerInfo == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "dialogCallerInfo null");
         ClearDialogContext(dialogSessionId);
@@ -319,6 +319,23 @@ int DialogSessionManager::SendDialogResult(const Want &want, const std::string &
         abilityMgr->RemoveSelectorIdentity(dialogCallerInfo->targetWant.GetIntParam(Want::PARAM_RESV_CALLER_TOKEN, 0));
     }
     return ret;
+}
+
+void DialogSessionManager::HandleUserRejected(const std::string &dialogSessionId, const Want &want,
+    const std::shared_ptr<DialogCallerInfo> &dialogCallerInfo)
+{
+    NotifyAbilityRequestFailure(dialogSessionId, want);
+    if (dialogCallerInfo != nullptr && dialogCallerInfo->sessionToken != nullptr) {
+        auto session = iface_cast<Rosen::ISession>(dialogCallerInfo->sessionToken);
+        if (session != nullptr) {
+            sptr<SessionInfo> sessionInfo = sptr<SessionInfo>::MakeSptr();
+            sessionInfo->errorCode = static_cast<int32_t>(ErrorLifecycleState::ABILITY_STATE_INTERCEPTOR_REJECT);
+            sessionInfo->errorReason = "userReject";
+            Rosen::ExceptionInfo exceptionInfo;
+            session->NotifySessionException(sessionInfo, exceptionInfo);
+        }
+    }
+    ClearDialogContext(dialogSessionId);
 }
 
 int32_t DialogSessionManager::NotifySCBToRecoveryAfterInterception(const std::string &dialogSessionId,
@@ -610,6 +627,9 @@ void DialogSessionManager::OnlySetDialogCallerInfo(AbilityRequest &abilityReques
     std::lock_guard<ffrt::mutex> guard(dialogSessionRecordLock_);
     std::shared_ptr<DialogCallerInfo> dialogCallerInfo = std::make_shared<DialogCallerInfo>();
     GenerateDialogCallerInfo(abilityRequest, userId, dialogCallerInfo, type, needGrantUriPermission);
+    if (abilityRequest.sessionInfo != nullptr) {
+        dialogCallerInfo->sessionToken = abilityRequest.sessionInfo->sessionToken;
+    }
     dialogCallerInfoMap_[dialogSessionId] = dialogCallerInfo;
 }
 }  // namespace AAFwk

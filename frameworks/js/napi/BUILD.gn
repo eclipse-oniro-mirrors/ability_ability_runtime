@@ -41,6 +41,7 @@ group("napi_packages") {
     "${ability_runtime_napi_path}/app/environment_callback:environmentcallback",
     "${ability_runtime_napi_path}/app/error_manager:errormanager",
     "${ability_runtime_napi_path}/app/error_manager:errormanager_napi",
+    "${ability_runtime_napi_path}/app/hyper_snap_manager:hypersnapmanager_napi",
     "${ability_runtime_napi_path}/app/js_app_manager:appmanager",
     "${ability_runtime_napi_path}/app/recovery:apprecovery_napi",
     "${ability_runtime_napi_path}/app/sendable_context_manager:sendablecontextmanager_napi",

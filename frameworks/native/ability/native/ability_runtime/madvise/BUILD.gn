@@ -46,11 +46,15 @@ ohos_shared_library("ability_madvise") {
 
   public_configs = [ ":madvise_public_config" ]
 
+  deps = [
+    "${ability_runtime_services_path}/common:app_util",
+  ]
+
   external_deps = [
-    "cJSON:cjson",
     "config_policy:configpolicy_util",
     "c_utils:utils",
     "hilog:libhilog",
+    "json:nlohmann_json_static",
   ]
 
   subsystem_name = "ability"

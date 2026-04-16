@@ -44,6 +44,26 @@ public:
         return 0;
     }
 
+    virtual int32_t GetCallerAgentCardByAgentId(const std::string &agentId, AgentCard &card)
+    {
+        return 0;
+    }
+
+    virtual int32_t RegisterAgentCard(const AgentCard &card)
+    {
+        return 0;
+    }
+
+    virtual int32_t UpdateAgentCard(const AgentCard &card)
+    {
+        return 0;
+    }
+
+    virtual int32_t DeleteAgentCard(const std::string &bundleName, const std::string &agentId)
+    {
+        return 0;
+    }
+
     virtual int32_t ConnectAgentExtensionAbility(
         const AAFwk::Want &want, const sptr<AAFwk::IAbilityConnection> &connection)
     {
@@ -54,8 +74,26 @@ public:
     {
         return 0;
     }
+
+    virtual int32_t ConnectServiceExtensionAbility(const sptr<IRemoteObject> &callerToken, const AAFwk::Want &want,
+        const sptr<AAFwk::IAbilityConnection> &connection)
+    {
+        return 0;
+    }
+
+    virtual int32_t DisconnectServiceExtensionAbility(const sptr<IRemoteObject> &callerToken,
+        const sptr<AAFwk::IAbilityConnection> &connection)
+    {
+        (void)callerToken;
+        (void)connection;
+        return 0;
+    }
+
+    virtual int32_t NotifyLowCodeAgentComplete(const std::string &agentId)
+    {
+        return 0;
+    }
 };
 }  // namespace AgentRuntime
 }  // namespace OHOS
 #endif  // OHOS_AGENT_RUNTIME_AGENT_MANAGER_INTERFACE_H
- 

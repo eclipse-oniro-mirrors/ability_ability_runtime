@@ -125,6 +125,34 @@ int32_t PendingWantRecord::SenderInner(SenderInfo &senderInfo)
     return res;
 }
 
+bool PendingWantRecord::IsBundleNotExistForUser0(const Want &want)
+{
+    if (key_ == nullptr || key_->GetUserId() != 0) {
+        return false;
+    }
+    auto bundleName = want.GetElement().GetBundleName();
+    if (bundleName.empty()) {
+        bundleName = want.GetBundle();
+    }
+    if (bundleName.empty()) {
+        return false;
+    }
+    auto bms = AbilityUtil::GetBundleManagerHelper();
+    if (bms == nullptr) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "bms is nullptr");
+        return false;
+    }
+    AppExecFwk::BundleInfo bundleInfo;
+    bool exist = IN_PROCESS_CALL(bms->GetBundleInfo(
+        bundleName, AppExecFwk::BundleFlag::GET_BUNDLE_DEFAULT, bundleInfo, 0));
+    if (!exist) {
+        TAG_LOGI(AAFwkTag::WANTAGENT,
+            "bundle %{public}s not installed under user 0, will retry with userId -1",
+            bundleName.c_str());
+    }
+    return !exist;
+}
+
 int32_t PendingWantRecord::ExecuteOperation(
     std::shared_ptr<PendingWantManager> pendingWantManager, SenderInfo &senderInfo, Want &want)
 {
@@ -135,17 +163,28 @@ int32_t PendingWantRecord::ExecuteOperation(
         case static_cast<int32_t>(OperationType::START_ABILITY):
             res = pendingWantManager->PendingWantStartAbility(want, senderInfo.startOptions,
                 senderInfo.callerToken, -1, callerUid_, callerTokenId_, key_->GetUserId());
+            if (res != NO_ERROR && IsBundleNotExistForUser0(want)) {
+                res = pendingWantManager->PendingWantStartAbility(want, senderInfo.startOptions,
+                    senderInfo.callerToken, -1, callerUid_, callerTokenId_, -1);
+            }
             if (res != NO_ERROR) {
                 SendTriggerFailedEvent(want, key_->GetAppIndex(), callerUid_, res, "Trigger Failed");
             }
             break;
         case static_cast<int32_t>(OperationType::START_ABILITIES): {
             std::vector<WantsInfo> allWantsInfos = key_->GetAllWantsInfos();
-            allWantsInfos.back().want = want;
-            res = pendingWantManager->PendingWantStartAbilitys(allWantsInfos, senderInfo.startOptions,
-                senderInfo.callerToken, -1, callerUid_, callerTokenId_, key_->GetUserId());
-            if (res != NO_ERROR) {
-                SendTriggerFailedEvent(want, key_->GetAppIndex(), callerUid_, res, "Trigger Failed");
+            if (allWantsInfos.empty()) {
+                TAG_LOGE(AAFwkTag::WANTAGENT, "allWantsInfos is empty for START_ABILITIES operation");
+                SendTriggerFailedEvent(want, key_->GetAppIndex(), callerUid_, ERR_INVALID_VALUE,
+                    "Empty wants infos");
+                res = ERR_INVALID_VALUE;
+            } else {
+                allWantsInfos.back().want = want;
+                res = pendingWantManager->PendingWantStartAbilitys(allWantsInfos, senderInfo.startOptions,
+                    senderInfo.callerToken, -1, callerUid_, callerTokenId_, key_->GetUserId());
+                if (res != NO_ERROR) {
+                    SendTriggerFailedEvent(want, key_->GetAppIndex(), callerUid_, res, "Trigger Failed");
+                }
             }
             break;
         }
@@ -153,6 +192,10 @@ int32_t PendingWantRecord::ExecuteOperation(
         case static_cast<int32_t>(OperationType::START_FOREGROUND_SERVICE):
             res = pendingWantManager->PendingWantStartAbility(want, nullptr, senderInfo.callerToken,
                 -1, callerUid_, callerTokenId_, key_->GetUserId());
+            if (res != NO_ERROR && IsBundleNotExistForUser0(want)) {
+                res = pendingWantManager->PendingWantStartAbility(want, nullptr, senderInfo.callerToken,
+                    -1, callerUid_, callerTokenId_, -1);
+            }
             if (res != NO_ERROR) {
                 SendTriggerFailedEvent(want, key_->GetAppIndex(), callerUid_, res, "Trigger Failed");
             }

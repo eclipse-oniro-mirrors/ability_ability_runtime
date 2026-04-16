@@ -46,9 +46,12 @@ public:
 
     void SetIsChildProcess(bool isChildProcess);
 
+    void SetIsImageProcess(bool isImageProcess);
+
 private:
     bool isRenderProcess_ = false;
     bool isChildProcess_ = false;
+    bool isImageProcess_ = false;
     std::weak_ptr<AAFwk::TaskHandlerWrap> handler_;
     std::weak_ptr<AppMgrServiceInner> appMgrServiceInner_;
 };

@@ -224,11 +224,6 @@ void CallEcologicalRuleFunctions(
     AtomicServiceStartupRule rule;
     sptr<Want> replaceWant = new Want(want);
 
-    (void)executer->DoProcess(param);
-    
-    Want wantCopy = want;
-    (void)executer->DoProcess(wantCopy, userId);
-    
     (void)executer->GetEcologicalTargetInfo(want, abilityInfo, callerInfo);
     
     (void)executer->GetEcologicalCallerInfo(want, callerInfo, userId, token);

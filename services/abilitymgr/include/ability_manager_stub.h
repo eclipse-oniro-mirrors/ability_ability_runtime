@@ -145,6 +145,7 @@ private:
     int UnregisterCancelListenerInner(MessageParcel &data, MessageParcel &reply);
 
     int GetPendingRequestWantInner(MessageParcel &data, MessageParcel &reply);
+    int GetPendingRequestWantFromProxyInner(MessageParcel &data, MessageParcel &reply);
     int GetWantSenderInfoInner(MessageParcel &data, MessageParcel &reply);
 
     int GetAppMemorySizeInner(MessageParcel &data, MessageParcel &reply);
@@ -291,6 +292,10 @@ private:
     int32_t GetAutoStartupStatusForSelfInner(MessageParcel &data, MessageParcel &reply);
     int32_t ManualStartAutoStartupAppsInner(MessageParcel &data, MessageParcel &reply);
     int32_t QueryCallerTokenIdForAncoInner(MessageParcel &data, MessageParcel &reply);
+    int32_t LaunchGameCustomizedInner(MessageParcel &data, MessageParcel &reply);
+    int32_t NotifyCancelGamePreLaunchInner(MessageParcel &data, MessageParcel &reply);
+    int32_t NotifyCompleteGamePreLaunchInner(MessageParcel &data, MessageParcel &reply);
+    int32_t SetGamePreLaunchCompleteTimeInner(MessageParcel &data, MessageParcel &reply);
 
     int PrepareTerminateAbilityBySCBInner(MessageParcel &data, MessageParcel &reply);
     int RegisterSessionHandlerInner(MessageParcel &data, MessageParcel &reply);
@@ -430,6 +435,7 @@ private:
     int32_t GetKioskStatusInner(MessageParcel &data, MessageParcel &reply);
     int32_t StartSelfUIAbilityInCurrentProcessInner(MessageParcel &data, MessageParcel &reply);
     int32_t IsRestartAppLimitInner(MessageParcel &data, MessageParcel &reply);
+    int32_t QuerySelfModularObjectExtensionInfosInner(MessageParcel &data, MessageParcel &reply);
     int32_t GetUserLockedBundleListInner(MessageParcel &data, MessageParcel &reply);
 };
 }  // namespace AAFwk

@@ -823,6 +823,7 @@ int ImplicitStartProcessor::CallStartAbilityInner(int32_t userId,
     eventInfo.abilityName = want.GetElement().GetAbilityName();
 
     if (callType == AbilityCallType::INVALID_TYPE) {
+        eventInfo.calleeId = static_cast<int32_t>(CalleeId::IMPLICIT_START_PROCESSOR_CALL_START_ABILITY_INNER);
         SendAbilityEvent(EventName::START_ABILITY, HISYSEVENT_BEHAVIOR, eventInfo);
     }
 

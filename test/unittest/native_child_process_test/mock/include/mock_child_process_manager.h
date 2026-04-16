@@ -40,11 +40,13 @@ public:
     static void HandleSigChild(int32_t signo);
     bool IsChildProcess();
     bool IsChildProcessBySelfFork();
-    ChildProcessManagerErrorCode StartChildProcessBySelfFork(const std::string &srcEntry, pid_t &pid);
-    ChildProcessManagerErrorCode StartChildProcessByAppSpawnFork(const std::string &srcEntry, pid_t &pid);
+    ChildProcessManagerErrorCode StartChildProcessBySelfFork(const std::string &srcEntry, pid_t &pid,
+        bool isStaticChildProcess = false);
+    ChildProcessManagerErrorCode StartChildProcessByAppSpawnFork(const std::string &srcEntry, pid_t &pid,
+        bool isStaticChildProcess = false);
     ChildProcessManagerErrorCode StartChildProcessWithArgs(const std::string &srcEntry, pid_t &pid,
         int32_t childProcessType, const AppExecFwk::ChildProcessArgs &args,
-        const AppExecFwk::ChildProcessOptions &options);
+        const AppExecFwk::ChildProcessOptions &options, bool isStaticChildProcess = false);
     ChildProcessManagerErrorCode CreateNativeChildProcessByAppSpawnFork(
         const std::string &libName, const sptr<IRemoteObject> &callbackStub, const std::string &customProcessName = "",
         const bool isolationMode = false, const bool isIsolationUid = false);
@@ -53,9 +55,10 @@ public:
     bool GetHapModuleInfo(const AppExecFwk::BundleInfo &bundleInfo, const std::string &moduleName,
         AppExecFwk::HapModuleInfo &hapModuleInfo);
     std::unique_ptr<AbilityRuntime::Runtime> CreateRuntime(const AppExecFwk::BundleInfo &bundleInfo,
-        const AppExecFwk::HapModuleInfo &hapModuleInfo, const bool fromAppSpawn, const bool jitEnabled);
+        const AppExecFwk::HapModuleInfo &hapModuleInfo, const bool fromAppSpawn, const bool jitEnabled,
+        bool isStaticChildProcess = false);
     bool LoadJsFile(const std::string &srcEntry, const AppExecFwk::HapModuleInfo &hapModuleInfo,
-        std::unique_ptr<AbilityRuntime::Runtime> &runtime,
+        const std::unique_ptr<AbilityRuntime::Runtime> &runtime,
         std::shared_ptr<AppExecFwk::ChildProcessArgs> args = nullptr);
     bool LoadNativeLib(const std::string &moduleName, const std::string &libPath,
         const sptr<IRemoteObject> &mainProcessCb);
@@ -77,7 +80,8 @@ private:
     ChildProcessManagerErrorCode PreCheckSelfFork();
     ChildProcessManagerErrorCode PreCheck(int32_t childProcessType);
     void RegisterSignal();
-    void HandleChildProcessBySelfFork(const std::string &srcEntry, const AppExecFwk::BundleInfo &bundleInfo);
+    void HandleChildProcessBySelfFork(const std::string &srcEntry, const AppExecFwk::BundleInfo &bundleInfo,
+        bool isStaticChildProcess = false);
     bool HasChildProcessRecord();
     sptr<AppExecFwk::IAppMgr> GetAppMgr();
     void MakeProcessName(const std::string &srcEntry);

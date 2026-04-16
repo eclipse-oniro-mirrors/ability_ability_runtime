@@ -163,5 +163,28 @@ HWTEST_F(AppLaunchDataTest, GetAppPreloadMode_0100, TestSize.Level1)
     launchData_->SetAppPreloadMode(PreloadMode::PRELOAD_MODULE);
     EXPECT_NE(premakeMode, launchData_->GetAppPreloadMode());
 }
+
+/**
+ * @tc.name: AppUpdateInfo_Marshalling_0100
+ * @tc.desc: test AppUpdateInfo::Marshalling AppUpdateInfo::Unmarshalling and AppUpdateInfo::ReadFromParcel.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppLaunchDataTest, AppUpdateInfo_Marshalling_0100, TestSize.Level1)
+{
+    AppUpdateInfo oriData;
+    oriData.appRecordId = 10;
+    oriData.appRunningUniqueId = "12345";
+    Parcel parcel;
+    EXPECT_TRUE(oriData.Marshalling(parcel));
+
+    AppUpdateInfo *newAppInfo = AppUpdateInfo::Unmarshalling(parcel);
+
+    EXPECT_NE(newAppInfo, nullptr);
+    EXPECT_EQ(oriData.appRecordId, newAppInfo->appRecordId);
+    EXPECT_EQ(oriData.appRunningUniqueId, newAppInfo->appRunningUniqueId);
+    if (newAppInfo != nullptr) {
+        delete newAppInfo;
+    }
+}
 } // namespace AppExecFwk
 } // namespace OHOS

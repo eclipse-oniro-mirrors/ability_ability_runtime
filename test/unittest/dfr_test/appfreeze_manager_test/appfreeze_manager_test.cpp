@@ -253,6 +253,39 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_007, TestSize.Level1)
 }
 
 /**
+ * @tc.number: AppfreezeManagerTest_IsHalfTimeout_001
+ * @tc.desc: add testcase codecoverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_IsHalfTimeout_001, TestSize.Level1)
+{
+    bool ret = appfreezeManager->IsHalfTimeout("THREAD_BLOCK_3S");
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest_IsHalfTimeout_002
+ * @tc.desc: add testcase codecoverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_IsHalfTimeout_002, TestSize.Level1)
+{
+    bool ret = appfreezeManager->IsHalfTimeout("LIFECYCLE_HALF_TIMEOUT");
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest_IsHalfTimeout_003
+ * @tc.desc: add testcase codecoverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_IsHalfTimeout_003, TestSize.Level1)
+{
+    bool ret = appfreezeManager->IsHalfTimeout("APP_INPUT_BLOCK");
+    EXPECT_FALSE(ret);
+}
+
+/**
  * @tc.number: AppfreezeManagerTest_AppFreezeFilter_001
  * @tc.desc: add testcase codecoverage
  * @tc.type: FUNC

@@ -1736,5 +1736,27 @@ ErrCode AbilityContextImpl::StartSelfUIAbilityInCurrentProcess(const AAFwk::Want
     }
     return err;
 }
+
+ErrCode AbilityContextImpl::NotifyCancelGamePreLaunch()
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGI(AAFwkTag::CONTEXT, "NotifyCancelGamePreLaunch called");
+    ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->NotifyCancelGamePreLaunch(token_);
+    if (err != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "NotifyCancelGamePreLaunch failed, ret=%{public}d", err);
+    }
+    return err;
+}
+
+ErrCode AbilityContextImpl::NotifyCompleteGamePreLaunch()
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGI(AAFwkTag::CONTEXT, "NotifyCompleteGamePreLaunch called");
+    ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->NotifyCompleteGamePreLaunch(token_);
+    if (err != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "NotifyCompleteGamePreLaunch failed, ret=%{public}d", err);
+    }
+    return err;
+}
 } // namespace AbilityRuntime
 } // namespace OHOS

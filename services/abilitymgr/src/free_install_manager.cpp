@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -121,7 +121,8 @@ int FreeInstallManager::StartFreeInstall(const Want &want, int32_t userId, int r
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGI(AAFwkTag::FREE_INSTALL, "StartFreeInstall:%{public}s", want.GetElement().GetBundleName().c_str());
-    if (!VerifyStartFreeInstallPermission(callerToken)) {
+    bool skipPermissionCheck = param != nullptr ? param->skipStartFreeInstallPermissionCheck : false;
+    if (!skipPermissionCheck && !VerifyStartFreeInstallPermission(callerToken)) {
         TAG_LOGE(AAFwkTag::FREE_INSTALL, "permission denied");
         return NOT_TOP_ABILITY;
     }
@@ -558,7 +559,8 @@ int FreeInstallManager::FreeInstallAbilityFromRemote(const Want &want, sptr<IRem
 }
 
 int FreeInstallManager::ConnectFreeInstall(const Want &want, int32_t userId,
-    sptr<IRemoteObject> callerToken, const std::string &localDeviceId)
+    sptr<IRemoteObject> callerToken, const std::string &localDeviceId,
+    AppExecFwk::ExtensionAbilityType extensionType)
 {
     auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
     CHECK_POINTER_AND_RETURN(bundleMgrHelper, GET_ABILITY_SERVICE_FAILED);
@@ -569,6 +571,7 @@ int FreeInstallManager::ConnectFreeInstall(const Want &want, int32_t userId,
     }
 
     auto isSaCall = AAFwk::PermissionVerification::GetInstance()->IsSACall();
+    bool isAgentConnect = extensionType == AppExecFwk::ExtensionAbilityType::AGENT;
     if (!isSaCall) {
         std::string wantAbilityName = want.GetElement().GetAbilityName();
         std::string wantBundleName = want.GetElement().GetBundleName();
@@ -579,7 +582,10 @@ int FreeInstallManager::ConnectFreeInstall(const Want &want, int32_t userId,
         int callerUid = IPCSkeleton::GetCallingUid();
         std::string localBundleName;
         auto res = IN_PROCESS_CALL(bundleMgrHelper->GetNameForUid(callerUid, localBundleName));
-        if (res != ERR_OK || localBundleName != wantBundleName) {
+        bool allowCrossBundleAgentConnect = isAgentConnect &&
+            AAFwk::PermissionVerification::GetInstance()->VerifyCallingPermission(
+                PermissionConstants::PERMISSION_CONNECT_AGENT);
+        if (res != ERR_OK || (localBundleName != wantBundleName && !allowCrossBundleAgentConnect)) {
             TAG_LOGE(AAFwkTag::FREE_INSTALL, "not local BundleName");
             return INVALID_PARAMETERS_ERR;
         }
@@ -596,7 +602,9 @@ int FreeInstallManager::ConnectFreeInstall(const Want &want, int32_t userId,
         !IN_PROCESS_CALL(bundleMgrHelper->QueryExtensionAbilityInfos(
             want, AppExecFwk::AbilityInfoFlag::GET_ABILITY_INFO_WITH_APPLICATION, userId, extensionInfos))) {
         TAG_LOGI(AAFwkTag::FREE_INSTALL, "try to StartFreeInstall");
-        int result = StartFreeInstall(want, userId, DEFAULT_INVAL_VALUE, callerToken);
+        auto param = std::make_shared<FreeInstallParams>();
+        param->skipStartFreeInstallPermissionCheck = isAgentConnect;
+        int result = StartFreeInstall(want, userId, DEFAULT_INVAL_VALUE, callerToken, param);
         if (result) {
             TAG_LOGE(AAFwkTag::FREE_INSTALL, "startFreeInstall error");
             return result;
