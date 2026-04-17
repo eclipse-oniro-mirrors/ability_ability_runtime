@@ -368,6 +368,9 @@ public:
      */
     bool GetDebugFromLocal() const;
 
+    void SetMainProcess(bool isMainProcess);
+    bool GetMainProcess() const;
+
 private:
     bool debugApp_ = false;
     bool jitEnabled_ = false;
@@ -390,6 +393,7 @@ private:
     std::string instanceKey_;
     std::string preloadModuleName_;
     bool isDebugFromLocal_;
+    bool isMainProcess_ = true;
     std::shared_ptr<StartupTaskData> startupTaskData_ = nullptr;
 };
 }  // namespace AppExecFwk

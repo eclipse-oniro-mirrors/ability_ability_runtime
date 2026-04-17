@@ -1819,6 +1819,7 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
             options.isErrorInfoEnhance = appLaunchData.GetErrorInfoEnhance();
         }
         options.jitEnabled = appLaunchData.IsJITEnabled();
+        options.isMainProcess = appLaunchData.GetMainProcess();
 #ifdef SUPPORT_CHILD_PROCESS
         AbilityRuntime::ChildProcessManager::GetInstance().SetForkProcessJITEnabled(appLaunchData.IsJITEnabled());
         TAG_LOGD(AAFwkTag::APPKIT, "isStartWithDebug:%{public}d, debug:%{public}d, isNativeStart:%{public}d",
