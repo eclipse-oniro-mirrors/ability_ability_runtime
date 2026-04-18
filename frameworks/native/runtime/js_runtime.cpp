@@ -1534,6 +1534,7 @@ bool JsRuntime::PopPreloadObj(const std::string& key, std::unique_ptr<NativeRefe
     if (preloadList_[key] != nullptr) {
         obj = std::move(preloadList_[key]);
         preloadList_.erase(key);
+        TAG_LOGD(AAFwkTag::JSRUNTIME, "PopPreloadObj key: %{public}s", key.c_str());
         return true;
     }
     preloadList_.erase(key);

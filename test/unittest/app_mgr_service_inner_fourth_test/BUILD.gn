@@ -39,6 +39,7 @@ ohos_unittest("AppMgrServiceInnerFourthTest") {
     "app_mgr_service_inner_fourth_test.cpp",
     "mock/src/app_utils.cpp",
     "mock/src/bundle_mgr_helper.cpp",
+    "mock/src/fork_image_info.cpp",
     "mock/src/mock_ipc_skeleton.cpp",
     "mock/src/mock_my_flag.cpp",
     "mock/src/mock_permission_verification.cpp",
