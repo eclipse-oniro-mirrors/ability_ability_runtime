@@ -371,12 +371,18 @@ public:
         return true;
     }
 
-    int32_t DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
+    int32_t DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback)
     {
         return 0;
     }
     
     int32_t DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info)
+    {
+        return 0;
+    }
+
+    int32_t ReportDumpMemResult(sptr<IMemDumpCallback> callback,
+        const std::string &dumpResult)
     {
         return 0;
     }

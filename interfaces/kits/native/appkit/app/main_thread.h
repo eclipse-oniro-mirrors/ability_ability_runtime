@@ -35,6 +35,7 @@
 #include "inner_event.h"
 #include "ipc_singleton.h"
 #include "js_runtime.h"
+#include "mem_dump_callback_interface.h"
 #include "native_engine/native_engine.h"
 #include "overlay_event_subscriber.h"
 #include "resource_manager.h"
@@ -235,9 +236,9 @@ public:
      * @brief triggerGC and dump application's memory info.
      *
      * @param info, pid, tid, needGc, needSnapshot.
-     * @param dumpResult The dump result string
+     * @param callback The callback to receive dump result
      */
-    void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult) override;
+    void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback) override;
 
     /**
      *

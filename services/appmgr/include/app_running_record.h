@@ -52,6 +52,7 @@
 #include "app_jsheap_mem_info.h"
 #include "app_cjheap_mem_info.h"
 #include "simple_process_info.h"
+#include "mem_dump_callback_interface.h"
 
 namespace OHOS {
 namespace Rosen {
@@ -494,11 +495,11 @@ public:
      * ScheduleMem, triggerGC and dump application's memory info.
      *
      * @param info, pid, tid, needGc, needSnapshot
-     * @param dumpResult The dump result string
+     * @param callback The callback to receive dump result
      *
      * @return
      */
-    void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult);
+    void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback);
 
     /**
      * GetAbilityRunningRecordByToken, Obtaining the ability record through token.

@@ -476,9 +476,9 @@ HWTEST_F(AppRunningManagerThirdTest, AppRunningManager_DumpMem_0100, TestSize.Le
     auto appRunningManager = std::make_shared<AppRunningManager>();
     EXPECT_NE(appRunningManager, nullptr);
     OHOS::AppExecFwk::MemDumpInfo info;
-    std::string dumpResult;
+    sptr<IMemDumpCallback> callback = nullptr;
     info.pid = 0;
-    auto ret = appRunningManager->DumpMem(info, dumpResult);
+    auto ret = appRunningManager->DumpMem(info, callback);
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
 
     info.pid = 1;
@@ -488,7 +488,7 @@ HWTEST_F(AppRunningManagerThirdTest, AppRunningManager_DumpMem_0100, TestSize.Le
     record->priorityObject_ = std::make_shared<PriorityObject>();
     record->priorityObject_->pid_ = 1;
     appRunningManager->appRunningRecordMap_.emplace(recordId, record);
-    ret = appRunningManager->DumpMem(info, dumpResult);
+    ret = appRunningManager->DumpMem(info, callback);
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "AppRunningManager_DumpMem_0100 end");
 }

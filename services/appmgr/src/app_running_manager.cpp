@@ -1449,14 +1449,14 @@ int32_t AppRunningManager::DumpCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &in
     return ERR_OK;
 }
 
-int32_t AppRunningManager::DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
+int32_t AppRunningManager::DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback)
 {
     auto appRecord = GetAppRunningRecordByPid(info.pid);
     if (appRecord == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "null appRecord");
         return ERR_INVALID_VALUE;
     }
-    appRecord->ScheduleMem(info, dumpResult);
+    appRecord->ScheduleMem(info, callback);
     return ERR_OK;
 }
 

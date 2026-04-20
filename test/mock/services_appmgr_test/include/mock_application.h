@@ -62,7 +62,7 @@ public:
     MOCK_METHOD0(IsMemorySizeSufficient, bool());
     MOCK_METHOD1(ScheduleJsHeapMemory, void(OHOS::AppExecFwk::JsHeapDumpInfo &info));
     MOCK_METHOD1(ScheduleCjHeapMemory, void(OHOS::AppExecFwk::CjHeapDumpInfo &info));
-    MOCK_METHOD2(ScheduleMem, void(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpresult));
+    MOCK_METHOD2(ScheduleMem, void(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback));
     MOCK_METHOD1(ScheduleDumpFfrt, int32_t(std::string& result));
     MOCK_METHOD2(ScheduleDumpArkWeb, int32_t(const std::string &customArgs, std::string &result));
     MOCK_METHOD1(SetWatchdogBackgroundStatus, void(bool status));

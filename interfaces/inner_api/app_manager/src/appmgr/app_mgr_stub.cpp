@@ -34,6 +34,7 @@
 #include "ipc_skeleton.h"
 #include "ipc_types.h"
 #include "iremote_object.h"
+#include "mem_dump_callback_interface.h"
 #include "memory_level_info.h"
 #include "running_process_info.h"
 #include "want.h"
@@ -194,6 +195,8 @@ int32_t AppMgrStub::OnRemoteRequestInnerSecond(uint32_t code, MessageParcel &dat
             return HandleDumpCjHeapMemory(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::DUMP_MEM_PROCESS):
             return HandleDumpMem(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::REPORT_DUMP_MEM_RESULT):
+            return HandleReportDumpMemResult(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::GET_RUNNING_MULTIAPP_INFO_BY_BUNDLENAME):
             return HandleGetRunningMultiAppInfoByBundleName(data, reply);
     }
@@ -915,12 +918,26 @@ int32_t AppMgrStub::HandleDumpMem(MessageParcel &data, MessageParcel &reply)
         TAG_LOGE(AAFwkTag::APPMGR, "AppMgrStub read configuration error");
         return ERR_INVALID_VALUE;
     }
-    std::string dumpResult;
-    auto result = DumpMem(*info, dumpResult);
-    if (!reply.WriteString(dumpResult)) {
-        TAG_LOGE(AAFwkTag::APPMGR, "write dumpResult error");
+    bool hasCallback = data.ReadBool();
+    sptr<IMemDumpCallback> callback = nullptr;
+    if (hasCallback) {
+        sptr<IRemoteObject> remoteCallback = data.ReadRemoteObject();
+        callback = iface_cast<IMemDumpCallback>(remoteCallback);
+    }
+    auto result = DumpMem(*info, callback);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write result error");
         return ERR_INVALID_VALUE;
     }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleReportDumpMemResult(MessageParcel &data, MessageParcel &reply)
+{
+    sptr<IRemoteObject> remoteCallback = data.ReadRemoteObject();
+    sptr<IMemDumpCallback> callback = iface_cast<IMemDumpCallback>(remoteCallback);
+    std::string dumpResult = data.ReadString();
+    auto result = ReportDumpMemResult(callback, dumpResult);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::APPMGR, "write result error");
         return ERR_INVALID_VALUE;

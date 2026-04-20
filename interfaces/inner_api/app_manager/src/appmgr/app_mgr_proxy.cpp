@@ -583,7 +583,7 @@ int32_t AppMgrProxy::DumpCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info)
     return reply.ReadInt32();
 }
 
-int32_t AppMgrProxy::DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
+int32_t AppMgrProxy::DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "AppMgrProxy::DumpMem.");
     MessageParcel data;
@@ -593,9 +593,54 @@ int32_t AppMgrProxy::DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &d
         return ERR_FLATTEN_OBJECT;
     }
     PARCEL_UTIL_WRITE_RET_INT(data, Parcelable, &info);
+    if (callback != nullptr) {
+        if (!data.WriteBool(true) || !data.WriteRemoteObject(callback->AsObject())) {
+            TAG_LOGE(AAFwkTag::APPMGR, "write callback failed");
+            return ERR_INVALID_VALUE;
+        }
+    } else {
+        if (!data.WriteBool(false)) {
+            TAG_LOGE(AAFwkTag::APPMGR, "write callback flag failed");
+            return ERR_INVALID_VALUE;
+        }
+    }
+    int32_t ret = SendRequest(AppMgrInterfaceCode::DUMP_MEM_PROCESS, data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::APPMGR, "SendRequest failed: %{public}d", ret);
+        return ret;
+    }
+    return reply.ReadInt32();
+}
 
-    PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::DUMP_MEM_PROCESS, data, reply, option);
-    dumpResult = reply.ReadString();
+int32_t AppMgrProxy::ReportDumpMemResult(sptr<IMemDumpCallback> callback,
+    const std::string &dumpResult)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    if (!WriteInterfaceToken(data)) {
+        return ERR_FLATTEN_OBJECT;
+    }
+    if (callback != nullptr) {
+        if (!data.WriteRemoteObject(callback->AsObject())) {
+            TAG_LOGE(AAFwkTag::APPMGR, "write callback failed");
+            return ERR_INVALID_VALUE;
+        }
+    } else {
+        if (!data.WriteRemoteObject(nullptr)) {
+            TAG_LOGE(AAFwkTag::APPMGR, "write null callback failed");
+            return ERR_INVALID_VALUE;
+        }
+    }
+    if (!data.WriteString(dumpResult)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write dumpResult failed");
+        return ERR_INVALID_VALUE;
+    }
+    int32_t ret = SendRequest(AppMgrInterfaceCode::REPORT_DUMP_MEM_RESULT, data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::APPMGR, "SendRequest failed: %{public}d", ret);
+        return ret;
+    }
     return reply.ReadInt32();
 }
 
