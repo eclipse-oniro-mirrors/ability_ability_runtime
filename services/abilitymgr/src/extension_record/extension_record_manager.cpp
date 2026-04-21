@@ -385,6 +385,13 @@ int32_t ExtensionRecordManager::UpdateProcessName(const AAFwk::AbilityRequest &a
             abilityRecord->SetProcessName(process);
             break;
         }
+        case PROCESS_MODE_CALLER_INSTANCE: {
+            std::string process = abilityRequest.abilityInfo.bundleName + SEPARATOR + abilityRequest.abilityInfo.name
+                + SEPARATOR + std::to_string(callerRecord->GetPid());
+            appendAppIndex(process);
+            abilityRecord->SetProcessName(process);
+            break;
+        }
         default: // AppExecFwk::ExtensionProcessMode::UNDEFINED or AppExecFwk::ExtensionProcessMode::BUNDLE
             // no need to update
             if (!abilityRequest.moduleProcess.empty()) {
