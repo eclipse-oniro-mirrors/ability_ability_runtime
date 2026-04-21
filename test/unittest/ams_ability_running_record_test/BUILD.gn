@@ -17,6 +17,7 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 module_output_path = "ability_runtime/ability_runtime/appmgrservice"
 
 ohos_unittest("AmsAbilityRunningRecordTest") {
+  use_exceptions = true
   module_out_path = module_output_path
   cflags_cc = []
   include_dirs = [

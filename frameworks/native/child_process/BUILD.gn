@@ -24,6 +24,7 @@ config("child_process_ndk_config") {
 }
 
 ohos_shared_library("child_process") {
+  use_exceptions = true
   sanitize = {
     integer_overflow = true
     ubsan = true

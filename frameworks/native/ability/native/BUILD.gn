@@ -219,6 +219,10 @@ ohos_shared_library("abilitykit_utils") {
   part_name = "ability_runtime"
 }
 
+config("configuration_helper_exceptions") {
+  cflags_cc = [ "-fexceptions" ]
+}
+
 ohos_shared_library("configuration_helper") {
   sanitize = {
     integer_overflow = true
@@ -249,6 +253,8 @@ ohos_shared_library("configuration_helper") {
   ]
 
   deps = []
+
+  configs = [ ":configuration_helper_exceptions" ]
 
   external_deps = [
     "ability_base:configuration",
