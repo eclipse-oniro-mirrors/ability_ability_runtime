@@ -418,6 +418,8 @@ public:
     ErrCode StartSelfUIAbilityInCurrentProcess(const AAFwk::Want &want, const std::string &specifiedFlag,
         const AAFwk::StartOptions &startOptions, bool hasOptions) override;
 
+    ErrCode StartSelfUIAbilityInChildProcess(const AAFwk::Want &want, const std::string &specifiedFlag) override;
+
 private:
     sptr<IRemoteObject> token_ = nullptr;
     std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo_ = nullptr;

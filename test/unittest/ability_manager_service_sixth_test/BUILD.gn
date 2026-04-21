@@ -46,6 +46,8 @@ ohos_unittest("ability_manager_service_sixth_test") {
     "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/aakit/include",
     "${ability_runtime_test_path}/unittest/app_debug_listener_stub_test",
     "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
+    "${ability_runtime_services_path}/common/include/user_controller",
+    "${ability_runtime_path}/utils/server/constant",
     "mock/include",
   ]
 

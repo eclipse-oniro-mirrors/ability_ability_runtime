@@ -2740,6 +2740,15 @@ ErrCode AbilityManagerClient::SetGamePreLaunchCompleteTime(int32_t userId, int64
     return abms->SetGamePreLaunchCompleteTime(userId, completeTime);
 }
 
+ErrCode AbilityManagerClient::StartSelfUIAbilityInChildProcess(const Want &want, const std::string &specifiedFlag,
+    sptr<IRemoteObject> callerToken)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    return abms->StartSelfUIAbilityInChildProcess(want, specifiedFlag, callerToken);
+}
+
 bool AbilityManagerClient::IsRestartAppLimit()
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);

@@ -549,6 +549,11 @@ public:
      */
     virtual ErrCode NotifyCompleteGamePreLaunch() = 0;
 
+    virtual ErrCode StartSelfUIAbilityInChildProcess(const AAFwk::Want &want, const std::string &specifiedFlag)
+    {
+        return ERR_INVALID_VALUE;
+    }
+
 protected:
     bool IsContext(size_t contextTypeId) override
     {

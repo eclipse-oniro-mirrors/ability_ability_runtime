@@ -767,6 +767,9 @@ enum class AbilityManagerInterfaceCode {
 
     // execute in-app skill with explicit caller tokenId
     EXECUTE_IN_APP_SKILL_WITH_TOKEN_ID = 6173,
+
+    // start self uiability in child process
+    START_SELF_UI_ABILITY_IN_CHILD_PROCESS = 6174,
 };
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -2718,6 +2718,19 @@ public:
     }
 
     /**
+     * Start self UIAbility in child process.
+     * @param want Ability want.
+     * @param specifiedFlag specified flag.
+     * @param callerToken The caller ability token.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual ErrCode StartSelfUIAbilityInChildProcess(
+        const Want &want, const std::string &specifiedFlag, sptr<IRemoteObject> callerToken)
+    {
+        return ERR_OK;
+    }
+
+    /**
      * Check if the app is restart-limited.
      * @return Returns true on being limited.
      */

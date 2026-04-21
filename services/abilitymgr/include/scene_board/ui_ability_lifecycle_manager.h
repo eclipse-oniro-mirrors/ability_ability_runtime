@@ -585,6 +585,9 @@ public:
     ErrCode IsUIAbilityAlreadyExist(const Want &want, const std::string &specifiedFlag,
         int32_t appIndex, const std::string &instanceKey, AppExecFwk::LaunchMode launchMode);
 
+    ErrCode IsSpecifiedUIAbilityAlreadyExist(const Want &want, const std::string &specifiedFlag,
+        int32_t appIndex, const std::string &instanceKey);
+
     void HandleUIAbilityDiedByPid(pid_t pid);
 
     /**
