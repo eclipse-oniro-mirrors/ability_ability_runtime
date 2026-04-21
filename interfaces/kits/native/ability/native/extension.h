@@ -267,6 +267,8 @@ public:
     virtual void OnExtensionAbilityRequestSuccess(const std::string &requestId, const AppExecFwk::ElementName &element,
         const std::string &message);
 
+    virtual bool HandleExecuteSkill(const AAFwk::Want &want);
+
     std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo_ = nullptr;
 protected:
     std::shared_ptr<AppExecFwk::AbilityHandler> handler_ = nullptr;

@@ -140,6 +140,13 @@ public:
      */
     bool HandleInsightIntent(const Want &want);
 
+    /**
+     * @brief Handle skill execution.
+     *
+     * @param want The Want object with skill execute params to handle.
+     */
+    bool HandleExecuteSkill(const Want &want);
+
     void CommandExtensionWindow(const Want &want, const sptr<AAFwk::SessionInfo> &sessionInfo,
         AAFwk::WindowCommand winCmd);
 

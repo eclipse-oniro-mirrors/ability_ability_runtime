@@ -325,6 +325,8 @@ public:
 
     void OnExecuteIntent(const Want &want) override;
 
+    void ExecuteSkill(const Want &want) override;
+
     /**
      * @brief Update sessionToken.
      * @param sessionToken The token of session.

@@ -52,6 +52,7 @@
 #include "ohos_application.h"
 #include "madvise/madvise_utils.h"
 #include "napi_common_configuration.h"
+#include "napi_common_util.h"
 #include "napi_common_want.h"
 #include "napi_remote_object.h"
 #include "page_switch_log.h"
@@ -59,6 +60,8 @@
 #include "string_wrapper.h"
 #include "system_ability_definition.h"
 #include "time_util.h"
+#include "skill/skill_execute_param.h"
+#include "skill/skill_execute_result.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -2508,6 +2511,99 @@ void JsUIAbility::NotifyWindowDestroy()
     if (ret != Rosen::WMError::WM_OK) {
         TAG_LOGW(AAFwkTag::UIABILITY, "scene return error.");
     }
+}
+
+napi_value JsUIAbility::LoadSkillFunction(
+    const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param, napi_value &outJsObj)
+{
+    napi_env env = jsRuntime_.GetNapiEnv();
+    std::unique_ptr<NativeReference> moduleRef = nullptr;
+    napi_value method = nullptr;
+    for (const auto &srcEntry : param->srcEntries_) {
+        std::string srcPath(param->moduleName_ + "/" + srcEntry);
+        auto pos = srcPath.rfind('.');
+        if (pos == std::string::npos) {
+            TAG_LOGW(AAFwkTag::UIABILITY, "skip srcEntry, no extension:%{public}s", srcEntry.c_str());
+            continue;
+        }
+        srcPath.erase(pos);
+        srcPath.append(".abc");
+        moduleRef = jsRuntime_.LoadModule(param->moduleName_, srcPath, param->hapPath_, true);
+        if (moduleRef == nullptr) {
+            TAG_LOGW(AAFwkTag::UIABILITY, "LoadModule failed, path:%{public}s", srcPath.c_str());
+            continue;
+        }
+        outJsObj = moduleRef->GetNapiValue();
+        method = AppExecFwk::GetPropertyValueByPropertyName(
+            env, outJsObj, param->funcName_.c_str(), napi_valuetype::napi_function);
+        if (method != nullptr) {
+            TAG_LOGI(AAFwkTag::UIABILITY, "func found in srcEntry:%{public}s", srcEntry.c_str());
+            break;
+        }
+        TAG_LOGW(AAFwkTag::UIABILITY, "func not found:%{public}s in srcEntry:%{public}s",
+            param->funcName_.c_str(), srcEntry.c_str());
+    }
+    return method;
+}
+
+std::vector<napi_value> JsUIAbility::BuildSkillCallArgs(napi_env env,
+    const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param)
+{
+    napi_value info = nullptr;
+    napi_create_object(env, &info);
+    napi_value requestCodeVal = nullptr;
+    napi_create_string_utf8(env, param->requestCode_.c_str(), param->requestCode_.length(), &requestCodeVal);
+    napi_set_named_property(env, info, "requestCode", requestCodeVal);
+    napi_value contextObj = nullptr;
+    if (shellContextRef_ != nullptr) {
+        contextObj = shellContextRef_->GetNapiValue();
+    }
+    napi_set_named_property(env, info, "context", contextObj);
+
+    std::vector<napi_value> args;
+    args.push_back(info);
+    if (param->skillArgs_ != nullptr && !param->skillArgs_->GetParams().empty()) {
+        napi_value wrappedObj = AppExecFwk::WrapWantParams(env, *param->skillArgs_);
+        for (const auto &[key, value] : param->skillArgs_->GetParams()) {
+            napi_value val = nullptr;
+            napi_get_named_property(env, wrappedObj, key.c_str(), &val);
+            args.push_back(val);
+        }
+    }
+    return args;
+}
+
+void JsUIAbility::ExecuteSkill(const AAFwk::Want &want,
+    const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param)
+{
+    TAG_LOGD(AAFwkTag::UIABILITY, "ExecuteSkill requestCode:%{public}s",
+        param != nullptr ? param->requestCode_.c_str() : "");
+    if (param == nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "null param");
+        return;
+    }
+    napi_env env = jsRuntime_.GetNapiEnv();
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "null napi env, skill will time out");
+        return;
+    }
+    napi_value jsObj = nullptr;
+    napi_value method = LoadSkillFunction(param, jsObj);
+    if (method == nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "func not found in any srcEntry:%{public}s", param->funcName_.c_str());
+        return;
+    }
+    auto args = BuildSkillCallArgs(env, param);
+    napi_value result = nullptr;
+    napi_status status = napi_call_function(env, jsObj, method, args.size(), args.data(), &result);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "napi_call_function failed, status:%{public}d func:%{public}s",
+            status, param->funcName_.c_str());
+        return;
+    }
+    TAG_LOGD(AAFwkTag::UIABILITY,
+        "ExecuteSkill dispatched, waiting completeArkTSScriptInApp, requestCode:%{public}s",
+        param->requestCode_.c_str());
 }
 
 void JsUIAbility::RegisterDelayResultCallback(const std::shared_ptr<InsightIntentExecuteParam> &executeParam)

@@ -15,7 +15,6 @@
 
 #include "js_cli_manager.h"
 
-#include <map>
 #include <string>
 
 #include "cli_error_code.h"

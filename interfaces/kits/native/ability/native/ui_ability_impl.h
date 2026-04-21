@@ -18,6 +18,7 @@
 
 #include "insight_intent_execute_result.h"
 #include "native_ability_util.h"
+#include "skill/skill_execute_param.h"
 #include "ui_ability.h"
 
 namespace OHOS {
@@ -176,6 +177,8 @@ public:
      * @return return true if the lifecycle background successfully, otherwise return false.
      */
     bool HandleExecuteInsightIntentBackground(const AAFwk::Want &want, bool onlyExecuteIntent = false);
+
+    bool HandleExecuteSkill(const AAFwk::Want &want, bool onlyExecuteSkill = false);
 
     void SetAbilityRecordId(int32_t abilityRecordId)
     {
