@@ -3942,6 +3942,7 @@ ohos_shared_library("modular_object_extension") {
   sources = [
     "${ability_runtime_native_path}/ability/native/modular_object_extension/modular_object_extension.cpp",
     "${ability_runtime_native_path}/ability/native/modular_object_extension/modular_object_extension_context_impl.cpp",
+    "${ability_runtime_native_path}/ability/native/modular_object_worker_manager.cpp",
   ]
 
   deps = [

@@ -13,25 +13,42 @@
  * limitations under the License.
  */
 
-#ifndef MOCK_ABILITY_HANDLER_H
-#define MOCK_ABILITY_HANDLER_H
+#ifndef OHOS_ABILITY_RUNTIME_ABILITY_HANDLER_H
+#define OHOS_ABILITY_RUNTIME_ABILITY_HANDLER_H
 
 #include <memory>
+#include <string>
 
 namespace OHOS {
 namespace AppExecFwk {
-class EventHandler : public std::enable_shared_from_this<EventHandler> {
-public:
-    virtual ~EventHandler() = default;
-};
-} // namespace AppExecFwk
 
-namespace AbilityRuntime {
-class AbilityHandler : public AppExecFwk::EventHandler {
+class EventRunner {
 public:
-    ~AbilityHandler() override = default;
+    static std::shared_ptr<EventRunner> Create(const std::string &name)
+    {
+        return std::make_shared<EventRunner>();
+    }
 };
-} // namespace AbilityRuntime
+
+class EventHandler {
+public:
+    EventHandler() = default;
+    explicit EventHandler(const std::shared_ptr<EventRunner> &) {}
+};
+
+class AbilityHandler : public EventHandler {
+public:
+    AbilityHandler() = default;
+    explicit AbilityHandler(const std::shared_ptr<EventRunner> &runner) : EventHandler(runner) {}
+    std::shared_ptr<EventRunner> GetEventRunner() const { return nullptr; }
+};
+
+class InnerEvent {
+public:
+    class Pointer {};
+};
+
+} // namespace AppExecFwk
 } // namespace OHOS
 
-#endif // MOCK_ABILITY_HANDLER_H
+#endif // OHOS_ABILITY_RUNTIME_ABILITY_HANDLER_H

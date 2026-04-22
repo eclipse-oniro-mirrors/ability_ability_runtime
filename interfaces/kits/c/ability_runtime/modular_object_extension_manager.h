@@ -276,8 +276,8 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetModObjExtensionInfoByIndex(
  *          {@link ABILITY_RUNTIME_ERROR_CODE_UPPER_RATE_LIMIT} The API call frequency is too high and
  *          exceeds 20 times per second.
  *          {@link ABILITY_RUNTIME_ERROR_CODE_UPPER_CONNECTION_NUMBER_LIMIT} The number of connections exceeds five.
- *          {@link ABILITY_RUNTIME_ERROR_CODE_INVALID_DISTRIBUTION_TYPE} The distribution type of
- *          application is invalid.
+ *          {@link ABILITY_RUNTIME_ERROR_CODE_CROSS_APP_IN_PROCESS} Caller and target are not in the
+ *          same application for IN_PROCESS mode.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_ConnectModularObjectExtensionAbility(AbilityBase_Want *want,

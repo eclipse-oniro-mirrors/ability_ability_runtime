@@ -45,22 +45,16 @@ struct ModularObjectConnectionInfo {
 
     bool operator<(const ModularObjectConnectionInfo &that) const
     {
-        if (abilityConnection < that.abilityConnection) {
-            return true;
+        if (abilityConnection != that.abilityConnection) {
+            return abilityConnection < that.abilityConnection;
         }
-        if (connectReceiver.GetBundleName() < that.connectReceiver.GetBundleName()) {
-            return true;
+        if (connectReceiver.GetBundleName() != that.connectReceiver.GetBundleName()) {
+            return connectReceiver.GetBundleName() < that.connectReceiver.GetBundleName();
         }
-        if (connectReceiver.GetBundleName() == that.connectReceiver.GetBundleName() &&
-            connectReceiver.GetModuleName() < that.connectReceiver.GetModuleName()) {
-            return true;
+        if (connectReceiver.GetModuleName() != that.connectReceiver.GetModuleName()) {
+            return connectReceiver.GetModuleName() < that.connectReceiver.GetModuleName();
         }
-        if (connectReceiver.GetBundleName() == that.connectReceiver.GetBundleName() &&
-            connectReceiver.GetModuleName() == that.connectReceiver.GetModuleName() &&
-            connectReceiver.GetAbilityName() < that.connectReceiver.GetAbilityName()) {
-            return true;
-        }
-        return false;
+        return connectReceiver.GetAbilityName() < that.connectReceiver.GetAbilityName();
     }
 };
 

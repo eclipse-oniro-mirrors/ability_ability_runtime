@@ -17,7 +17,11 @@
 #define MOCK_FLAG_H
 
 #include <stdint.h>
+#include <string>
+#include <vector>
 #include <sys/types.h>
+
+#include "modular_object_extension_info.h"
 
 class MockFlag {
 public:
@@ -32,6 +36,7 @@ public:
     static int32_t getRunningProcessInfoRet;
     static int32_t processState;
     static bool isPreForeground;
+    static std::string processName;
 
     // system::GetBoolParameter
     static bool isDeveloperMode;
@@ -40,12 +45,14 @@ public:
     static int32_t queryDataRet;
     static bool extensionFound;
     static bool extensionDisabled;
+    static OHOS::AAFwk::MoeLaunchMode launchMode;
 
     // BundleMgrHelper
     static bool bundleMgrHelperNull;
     static int32_t getNameAndIndexRet;
     static int32_t getOsAccountRet;
     static bool getApplicationInfoRet;
+    static std::string callerBundleName;
 
     // AbilityManagerService
     static bool amsNull;
@@ -66,6 +73,10 @@ public:
 
     // RateLimiter
     static bool modularObjectLimited;
+
+    // ModularObjectManager
+    static int32_t querySelfModularObjectRet;
+    static std::vector<OHOS::AAFwk::ModularObjectExtensionInfo> modularObjectInfos;
 };
 
 #endif // MOCK_FLAG_H

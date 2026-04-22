@@ -67,13 +67,106 @@ public:
     void SetUp() override
     {
         AAFwk::AbilityManagerClient::Reset();
-        // Clean up any leftover state by disconnecting
         auto &mgr = ModularObjectConnectionManager::GetInstance();
         auto cb1 = sptr<MockConnectCallback>::MakeSptr();
         mgr.DisconnectModularObjectExtension(cb1);
     }
     void TearDown() override {}
 };
+
+// ==================== ModularObjectConnectionInfo::operator< ====================
+
+HWTEST_F(ModularObjectConnectionManagerTest, OperatorLess_SameConnectionSameReceiver, TestSize.Level1)
+{
+    auto conn = sptr<ModularObjectAbilityConnection>::MakeSptr();
+    auto want = BuildWant("bundle", "module", "Ability");
+    ModularObjectConnectionInfo infoA(conn, want.GetOperation());
+    ModularObjectConnectionInfo infoB(conn, want.GetOperation());
+    EXPECT_FALSE(infoA < infoB);
+    EXPECT_FALSE(infoB < infoA);
+}
+
+HWTEST_F(ModularObjectConnectionManagerTest, OperatorLess_SameConnectionDifferentBundle, TestSize.Level1)
+{
+    auto conn = sptr<ModularObjectAbilityConnection>::MakeSptr();
+    ModularObjectConnectionInfo infoA(conn, BuildWant("bundleA", "module", "Ability").GetOperation());
+    ModularObjectConnectionInfo infoB(conn, BuildWant("bundleB", "module", "Ability").GetOperation());
+    EXPECT_TRUE(infoA < infoB);
+    EXPECT_FALSE(infoB < infoA);
+}
+
+HWTEST_F(ModularObjectConnectionManagerTest, OperatorLess_SameConnectionDifferentModule, TestSize.Level1)
+{
+    auto conn = sptr<ModularObjectAbilityConnection>::MakeSptr();
+    ModularObjectConnectionInfo infoA(conn, BuildWant("bundle", "moduleA", "Ability").GetOperation());
+    ModularObjectConnectionInfo infoB(conn, BuildWant("bundle", "moduleB", "Ability").GetOperation());
+    EXPECT_TRUE(infoA < infoB);
+    EXPECT_FALSE(infoB < infoA);
+}
+
+HWTEST_F(ModularObjectConnectionManagerTest, OperatorLess_SameConnectionDifferentAbility, TestSize.Level1)
+{
+    auto conn = sptr<ModularObjectAbilityConnection>::MakeSptr();
+    ModularObjectConnectionInfo infoA(conn, BuildWant("bundle", "module", "AbilityA").GetOperation());
+    ModularObjectConnectionInfo infoB(conn, BuildWant("bundle", "module", "AbilityB").GetOperation());
+    EXPECT_TRUE(infoA < infoB);
+    EXPECT_FALSE(infoB < infoA);
+}
+
+HWTEST_F(ModularObjectConnectionManagerTest, OperatorLess_DifferentConnectionSameReceiver, TestSize.Level1)
+{
+    auto connA = sptr<ModularObjectAbilityConnection>::MakeSptr();
+    auto connB = sptr<ModularObjectAbilityConnection>::MakeSptr();
+    auto op = BuildWant("bundle", "module", "Ability").GetOperation();
+    ModularObjectConnectionInfo infoA(connA, op);
+    ModularObjectConnectionInfo infoB(connB, op);
+    // Different pointers, same receiver — order determined by pointer alone
+    if (connA.GetRefPtr() < connB.GetRefPtr()) {
+        EXPECT_TRUE(infoA < infoB);
+        EXPECT_FALSE(infoB < infoA);
+    } else {
+        EXPECT_TRUE(infoB < infoA);
+        EXPECT_FALSE(infoA < infoB);
+    }
+}
+
+HWTEST_F(ModularObjectConnectionManagerTest, OperatorLess_MixedConnAndAbilityNoViolation, TestSize.Level1)
+{
+    // This was the bug: conn and abilityName have conflicting ordering
+    // e.g. conn_A < conn_B but abilityB < abilityA
+    auto connA = sptr<ModularObjectAbilityConnection>::MakeSptr();
+    auto connB = sptr<ModularObjectAbilityConnection>::MakeSptr();
+
+    // Ensure connA < connB by pointer value
+    auto ptrA = reinterpret_cast<uintptr_t>(connA.GetRefPtr());
+    auto ptrB = reinterpret_cast<uintptr_t>(connB.GetRefPtr());
+    auto lowConn = (ptrA < ptrB) ? connA : connB;
+    auto highConn = (ptrA < ptrB) ? connB : connA;
+
+    // lowConn has lower pointer, but higher abilityName ("AbilityB")
+    // highConn has higher pointer, but lower abilityName ("AbilityA")
+    ModularObjectConnectionInfo infoLow(lowConn, BuildWant("bundle", "module", "AbilityB").GetOperation());
+    ModularObjectConnectionInfo infoHigh(highConn, BuildWant("bundle", "module", "AbilityA").GetOperation());
+
+    // Must NOT have both a < b AND b < a
+    bool lowLT = infoLow < infoHigh;
+    bool highLT = infoHigh < infoLow;
+    EXPECT_FALSE(lowLT && highLT);
+}
+
+HWTEST_F(ModularObjectConnectionManagerTest, OperatorLess_Transitivity, TestSize.Level1)
+{
+    auto conn = sptr<ModularObjectAbilityConnection>::MakeSptr();
+    ModularObjectConnectionInfo infoA(conn, BuildWant("bundle", "module", "A").GetOperation());
+    ModularObjectConnectionInfo infoB(conn, BuildWant("bundle", "module", "B").GetOperation());
+    ModularObjectConnectionInfo infoC(conn, BuildWant("bundle", "module", "C").GetOperation());
+    EXPECT_TRUE(infoA < infoB);
+    EXPECT_TRUE(infoB < infoC);
+    EXPECT_TRUE(infoA < infoC);
+    EXPECT_FALSE(infoC < infoA);
+    EXPECT_FALSE(infoC < infoB);
+    EXPECT_FALSE(infoB < infoA);
+}
 
 // ==================== ConnectModularObjectExtension ====================
 

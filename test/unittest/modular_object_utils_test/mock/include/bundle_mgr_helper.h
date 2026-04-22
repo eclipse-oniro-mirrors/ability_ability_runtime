@@ -32,7 +32,7 @@ public:
         if (MockFlag::getNameAndIndexRet != 0) {
             return MockFlag::getNameAndIndexRet;
         }
-        bundleName = "com.caller.bundle";
+        bundleName = MockFlag::callerBundleName;
         appIndex = 0;
         return 0;
     }
