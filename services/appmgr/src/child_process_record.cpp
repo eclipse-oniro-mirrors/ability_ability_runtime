@@ -36,6 +36,10 @@ ChildProcessRecord::ChildProcessRecord(pid_t hostPid, const ChildProcessRequest 
         }
     }
     MakeProcessName(hostRecord, request.options.customProcessName);
+    if (!hostRecord) {
+        TAG_LOGW(AAFwkTag::APPMGR, "hostRecord empty");
+        return;
+    }
     SetHostUid(hostRecord->GetUid());
     SetHostBundleName(hostRecord->GetBundleName());
 }
@@ -48,6 +52,10 @@ ChildProcessRecord::ChildProcessRecord(pid_t hostPid, const std::string &libName
     srcEntry_(libName)
 {
     MakeProcessName(hostRecord, customProcessName);
+    if (!hostRecord) {
+        TAG_LOGW(AAFwkTag::APPMGR, "hostRecord empty");
+        return;
+    }
     SetHostUid(hostRecord->GetUid());
     SetHostBundleName(hostRecord->GetBundleName());
 }
