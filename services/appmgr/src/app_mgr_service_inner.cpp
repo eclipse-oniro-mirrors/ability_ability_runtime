@@ -2140,7 +2140,7 @@ void AppMgrServiceInner::AfterLoadAbility(std::shared_ptr<AppRunningRecord> appR
 
     auto reportLoadTask = [appRecord, abilityRecordId = loadParam->abilityRecordId,
         loadTimeout = loadParam->loadTimeout, extensionType = abilityInfo->extensionAbilityType,
-        isProcessReuse]() {
+        isProcessReuse, isStartupHide = loadParam->isStartupHide, isStartedByCall = (loadParam->byCallStatus != 0)]() {
         auto priorityObj = appRecord->GetPriorityObject();
         if (priorityObj) {
             auto timeOut = AppMgrServiceInner::GetLoadTimeout(loadTimeout);
@@ -2152,6 +2152,9 @@ void AppMgrServiceInner::AfterLoadAbility(std::shared_ptr<AppRunningRecord> appR
             std::unordered_map<std::string, std::string> eventParams;
             eventParams["extensionType"] = std::to_string(static_cast<int32_t>(extensionType));
             eventParams["isProcessReuse"] = std::to_string(isProcessReuse);
+            bool isStartVisibleUIAbility = isProcessReuse && !isStartupHide && !isStartedByCall &&
+                (extensionType == ExtensionAbilityType::UNSPECIFIED || static_cast<int32_t>(extensionType) < 0);
+            eventParams["isStartVisibleUIAbility"] = std::to_string(isStartVisibleUIAbility);
             AAFwk::ResSchedUtil::GetInstance().ReportLoadingEventToRss(AAFwk::LoadingStage::LOAD_BEGIN,
                 priorityObj->GetPid(), appRecord->GetUid(), timeOut, static_cast<int64_t>(abilityRecordId),
                 eventParams);
