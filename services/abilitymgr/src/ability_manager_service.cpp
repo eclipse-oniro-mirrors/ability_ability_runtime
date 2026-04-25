@@ -5041,6 +5041,8 @@ int AbilityManagerService::StartSelf(sptr<IRemoteObject> token)
 {
     XCOLLIE_TIMER_LESS(__PRETTY_FUNCTION__);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "StartSelf called");
+    CHECK_TRUE_RETURN_RET(!AppUtils::GetInstance().IsSupportNativeUIAbility(),
+        ERR_CAPABILITY_NOT_SUPPORT, "device type not allowd");
 
     auto abilityRecord = Token::GetAbilityRecordByToken(token);
     if (!abilityRecord) {
