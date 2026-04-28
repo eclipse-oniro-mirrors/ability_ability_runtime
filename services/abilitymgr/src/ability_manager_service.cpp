@@ -4338,10 +4338,17 @@ int32_t AbilityManagerService::StartExtensionAbilityInner(const Want &want, cons
     }
 
     if (!JudgeMultiUserConcurrency(validUserId)) {
-        TAG_LOGE(AAFwkTag::SERVICE_EXT, "multi-user non-concurrent unsatisfied");
-        eventInfo.errCode = ERR_CROSS_USER;
-        EventReport::SendExtensionEvent(EventName::START_EXTENSION_ERROR, HISYSEVENT_FAULT, eventInfo);
-        return ERR_CROSS_USER;
+        bool isSaCaller = SupportSystemAbilityPermission::IsSupportSaCallPermission();
+        bool isServiceOrDataShare = extensionType == AppExecFwk::ExtensionAbilityType::SERVICE ||
+            extensionType == AppExecFwk::ExtensionAbilityType::DATASHARE;
+        if (!(isSaCaller && isServiceOrDataShare)) {
+            TAG_LOGE(AAFwkTag::SERVICE_EXT, "multi-user non-concurrent unsatisfied");
+            eventInfo.errCode = ERR_CROSS_USER;
+            EventReport::SendExtensionEvent(EventName::START_EXTENSION_ERROR, HISYSEVENT_FAULT, eventInfo);
+            return ERR_CROSS_USER;
+        }
+        TAG_LOGI(AAFwkTag::SERVICE_EXT, "SA caller start %{public}d extension for background user %{public}d",
+            static_cast<int32_t>(extensionType), validUserId);
     }
 
     AbilityRequest abilityRequest;
@@ -16639,9 +16646,12 @@ bool AbilityManagerService::CheckCrossUser(const int32_t userId, AppExecFwk::Ext
     if (AAFwk::UIExtensionWrapper::IsEnterpriseAdmin(extensionType) || JudgeMultiUserConcurrency(userId)) {
         return true;
     }
-    if (AppUtils::GetInstance().IsConnectSupportCrossUser() && (extensionType == AppExecFwk::ExtensionAbilityType::DATASHARE
-        || extensionType == AppExecFwk::ExtensionAbilityType::SERVICE)) {
-        return true;
+    if (extensionType == AppExecFwk::ExtensionAbilityType::DATASHARE
+        || extensionType == AppExecFwk::ExtensionAbilityType::SERVICE) {
+        if (AppUtils::GetInstance().IsConnectSupportCrossUser() ||
+            SupportSystemAbilityPermission::IsSupportSaCallPermission()) {
+            return true;
+        }
     }
     return false;
 }
