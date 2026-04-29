@@ -60,6 +60,7 @@ ohos_shared_library("cj_environment") {
 
   external_deps = [
     "hilog:libhilog",
+    "napi:cj_backtrace",
   ]
 
   if (current_os == "ohos") {

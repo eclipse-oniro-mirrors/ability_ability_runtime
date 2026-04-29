@@ -78,6 +78,7 @@ ohos_unittest("cj_environment_other_test") {
     "resource_management:global_resmgr",
     "resource_management:librawfile",
     "samgr:samgr_proxy",
+    "napi:cj_backtrace",
   ]
 
   if (ability_runtime_graphics) {

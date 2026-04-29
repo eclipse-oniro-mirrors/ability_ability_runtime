@@ -505,5 +505,50 @@ HWTEST_F(NapiUncaughtExceptionCallbackTest, AppendModuleStack_0100, TestSize.Lev
     EXPECT_GE(capturedSummary.size(), largeModuleStack.size());
     GTEST_LOG_(INFO) << "AppendModuleStack_0100 end";
 }
+
+/**
+ * @tc.name: CangjieHybridStack
+ * @tc.type: FUNC
+ * @tc.desc: Test NapiUncaughtExceptionCallback operator().
+ * @tc.require: #I6T4K1
+ */
+HWTEST_F(NapiUncaughtExceptionCallbackTest, CangjieHybridStack, TestSize.Level1)
+{
+    AbilityRuntime::Runtime::Options options;
+    options.preload = false;
+    auto jsRuntime = AbilityRuntime::JsRuntime::Create(options);
+    ASSERT_NE(jsRuntime, nullptr);
+    auto env = jsRuntime->GetNapiEnv();
+    EXPECT_NE(env, nullptr);
+    // Test with null object
+    auto task = [](std::string summary, const JsEnv::ErrorObject errorObj, napi_env env, napi_value exception) {
+        summary += "test";
+    };
+
+    // Test with cangjie error object, and 'isCangjieErrorObject' is true
+    napi_value object = nullptr;
+    napi_create_object(env, &object);
+
+    std::string errorMsg = "This is an error message.";
+    std::string errorName = "TypeError";
+    std::string errorStack = "TypeError: This is a stack trace.";
+    napi_value nativeErrorMsg = nullptr;
+    napi_value nativeErrorName = nullptr;
+    napi_value nativeErrorStack = nullptr;
+    napi_create_string_utf8(env, errorMsg.c_str(), errorMsg.length(), &nativeErrorMsg);
+    napi_create_string_utf8(env, errorName.c_str(), errorName.length(), &nativeErrorName);
+    napi_create_string_utf8(env, errorStack.c_str(), errorStack.length(), &nativeErrorStack);
+
+    napi_set_named_property(env, object, "message", nativeErrorMsg);
+    napi_set_named_property(env, object, "name", nativeErrorName);
+    napi_set_named_property(env, object, "stack", nativeErrorStack);
+
+    napi_value isCangjieError = nullptr;
+    napi_get_boolean(env, true, &isCangjieError);
+    napi_set_named_property(env, object, "isCangjieErrorObject", isCangjieError);
+
+    NapiUncaughtExceptionCallback callback1(task, nullptr, env);
+    callback1(object);
+}
 } // namespace AppExecFwk
 } // namespace OHOS

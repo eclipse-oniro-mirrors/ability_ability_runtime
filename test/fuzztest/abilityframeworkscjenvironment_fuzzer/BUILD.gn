@@ -89,6 +89,7 @@ ohos_fuzztest("AbilityFrameworksCjEnvironmentFuzzTest") {
     "hitrace:hitrace_meter",
     "ipc:ipc_core",
     "napi:ace_napi",
+    "napi:cj_backtrace",
   ]
 
   if (ability_runtime_dsoftbus_enable) {
