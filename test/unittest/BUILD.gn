@@ -456,6 +456,7 @@ group("unittest") {
       "modal_system_app_freeze_uiextension_test:unittest",
       "modal_system_dialog_util_test:unittest",
       "modular_object_extension_manager_test:unittest",
+      "mo_dispatcher_complex_type_manager_test:unittest",
       "modular_object_rdb_data_mgr_test:unittest",
       "multi_app_utils_test:unittest",
       "multi_instance_utils_second_test",
