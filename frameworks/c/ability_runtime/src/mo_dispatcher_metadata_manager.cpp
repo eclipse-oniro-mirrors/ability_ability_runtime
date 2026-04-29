@@ -63,11 +63,11 @@ void InsertIdMap(std::unordered_map<uint32_t, std::string>& map, uint32_t key, c
 
 uint32_t GetMemberId(const Json& obj)
 {
-    if (!obj.is_object() || !obj.contains("memberID")) {
+    if (!obj.is_object() || !obj.contains("memberId")) {
         return 0;
     }
-    if (obj["memberID"].is_number_unsigned()) {
-        uint32_t memId = obj["memberID"].get<uint32_t>();
+    if (obj["memberId"].is_number_unsigned()) {
+        uint32_t memId = obj["memberId"].get<uint32_t>();
         if (memId > 0) {
             return memId;
         }
@@ -456,7 +456,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::ParseMetadata(const std::s
                 return ABILITY_RUNTIME_ERROR_CODE_TLB_METADATA_INVALID;
             }
             if (usedIds.count(meta.memberId) > 0) {
-                TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: enum '%{public}s' duplicate memberID=%{public}u",
+                TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: enum '%{public}s' duplicate memberId=%{public}u",
                     meta.name.c_str(), meta.memberId);
                 return ABILITY_RUNTIME_ERROR_CODE_TLB_METADATA_INVALID;
             }
