@@ -3513,6 +3513,9 @@ private:
     void ReportPreventStartAbilityResult(const AppExecFwk::AbilityInfo &callerAbilityInfo,
         const AppExecFwk::AbilityInfo &abilityInfo);
 
+    void ReportBgUserExtensionEvent(const sptr<IRemoteObject> &callerToken,
+        const AppExecFwk::AbilityInfo &calleeAbilityInfo, int32_t targetUserId);
+
     void SetAbilityRequestSessionInfo(AbilityRequest &abilityRequest, AppExecFwk::ExtensionAbilityType extensionType);
 
     bool ShouldBlockAllAppStart();

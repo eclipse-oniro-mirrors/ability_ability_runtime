@@ -49,6 +49,7 @@ abilityms_files = [
   "src/extension_record/base_extension_record.cpp",
   "src/extension_record/extension_record_manager.cpp",
   "src/extension_running_timeout_monitor.cpp",
+  "src/bg_user_extension_monitor.cpp",
   "src/extension_record/extension_record.cpp",
   "src/extension_record/extension_record_factory.cpp",
   "src/foreground_app_connection_manager/foreground_app_connection_manager.cpp",

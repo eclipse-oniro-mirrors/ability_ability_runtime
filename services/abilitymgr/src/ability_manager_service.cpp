@@ -55,6 +55,7 @@
 #include "hitrace_meter.h"
 #include "hisysevent_report.h"
 #include "extension_running_timeout_monitor.h"
+#include "bg_user_extension_monitor.h"
 #include "insight_intent_execute_manager.h"
 #include "insight_intent_db_cache.h"
 #include "insight_intent_utils.h"
@@ -474,6 +475,7 @@ bool AbilityManagerService::Init()
     modularObjectExtensionEventMgr_->SubscribeSysEventReceiver();
     ReportDataPartitionUsageManager::SendReportDataPartitionUsageEvent();
     DelayedSingleton<AAFwk::ExtensionRunningTimeoutMonitor>::GetInstance()->StartMonitor();
+    DelayedSingleton<AAFwk::BgUserExtensionMonitor>::GetInstance()->StartMonitor();
 #ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
     ResourceSchedule::ResSchedClient::GetInstance().InitKillReasonListener();
 #endif
@@ -4394,6 +4396,7 @@ int32_t AbilityManagerService::StartExtensionAbilityInner(const Want &want, cons
     validUserId = abilityInfo.applicationInfo.uid / BASE_USER_RANGE;
     TAG_LOGD(AAFwkTag::SERVICE_EXT, "userId is : %{public}d, singleton is : %{public}d",
         validUserId, static_cast<int>(abilityInfo.applicationInfo.singleton));
+    ReportBgUserExtensionEvent(callerToken, abilityInfo, validUserId);
 
     result = isDlp ? IN_PROCESS_CALL(
         CheckOptExtensionAbility(want, abilityRequest, validUserId, extensionType, isImplicit, isStartAsCaller)) :
@@ -6020,6 +6023,7 @@ int32_t AbilityManagerService::ConnectLocalAbility(const Want &want, const int32
 
     auto abilityInfo = abilityRequest.abilityInfo;
     threadLocalInfo.SetStartAbilityInfo(abilityInfo);
+    ReportBgUserExtensionEvent(callerToken, abilityInfo, userId);
     if (abilityInfo.isStageBasedModel) {
         bool isService = (abilityInfo.extensionAbilityType == AppExecFwk::ExtensionAbilityType::SERVICE);
         if (isService && extensionType != AppExecFwk::ExtensionAbilityType::SERVICE) {
@@ -15502,6 +15506,49 @@ void AbilityManagerService::ReportPreventStartAbilityResult(const AppExecFwk::Ab
     hisyseventReport->InsertParam("EXTENSION_ABILITY_TYPE", extensionAbilityType);
     hisyseventReport->InsertParam("ABILITY_NAME", abilityInfo.name);
     hisyseventReport->Report("AAFWK", "PREVENT_START_ABILITY", HISYSEVENT_BEHAVIOR);
+}
+
+void AbilityManagerService::ReportBgUserExtensionEvent(const sptr<IRemoteObject> &callerToken,
+    const AppExecFwk::AbilityInfo &calleeAbilityInfo, int32_t targetUserId)
+{
+    if (JudgeMultiUserConcurrency(targetUserId)) {
+        return;
+    }
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "report bg user extension event, targetUserId:%{public}d", targetUserId);
+
+    int32_t callerUid = IPCSkeleton::GetCallingUid();
+    int32_t callerUserId = callerUid / BASE_USER_RANGE;
+    std::string callerBundleName;
+    std::string callerProcessName;
+
+    auto abilityRecord = Token::GetAbilityRecordByToken(callerToken);
+    if (abilityRecord != nullptr) {
+        auto callerAbilityInfo = abilityRecord->GetAbilityInfo();
+        callerBundleName = callerAbilityInfo.bundleName;
+        callerProcessName = callerAbilityInfo.process;
+    } else {
+        auto bms = AbilityUtil::GetBundleManagerHelper();
+        if (bms != nullptr) {
+            IN_PROCESS_CALL(bms->GetNameForUid(callerUid, callerBundleName));
+        }
+        if (callerBundleName.empty()) {
+            Security::AccessToken::NativeTokenInfo nativeTokenInfo;
+            auto tokenId = IPCSkeleton::GetCallingTokenID();
+            int32_t result = Security::AccessToken::AccessTokenKit::GetNativeTokenInfo(tokenId, nativeTokenInfo);
+            if (result == ERR_OK) {
+                callerProcessName = nativeTokenInfo.processName;
+            }
+        } else {
+            callerProcessName = callerBundleName;
+        }
+    }
+
+    auto monitor = DelayedSingleton<AAFwk::BgUserExtensionMonitor>::GetInstance();
+    if (monitor != nullptr) {
+        monitor->OnBgUserExtensionStarted(callerUid, callerUserId, callerProcessName, callerBundleName,
+            calleeAbilityInfo.bundleName, calleeAbilityInfo.process,
+            calleeAbilityInfo.extensionTypeName, calleeAbilityInfo.name);
+    }
 }
 
 bool AbilityManagerService::IsInWhiteList(const std::string &callerBundleName, const std::string &calleeBundleName,
