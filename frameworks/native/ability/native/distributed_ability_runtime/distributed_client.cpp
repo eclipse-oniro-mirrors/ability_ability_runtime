@@ -585,6 +585,7 @@ int32_t DistributedClient::StartRemoteIntent(const OHOS::AAFwk::Want& want,
         return ERR_FLATTEN_OBJECT;
     }
     PARCEL_WRITE_HELPER(data, Parcelable, &want);
+    PARCEL_WRITE_HELPER(data, String, want.GetElement().GetModuleName());
     PARCEL_WRITE_HELPER(data, Int32, callerInfo.callerUid);
     PARCEL_WRITE_HELPER(data, Uint64, callerInfo.requestCode);
     PARCEL_WRITE_HELPER(data, Uint32, callerInfo.accessToken);

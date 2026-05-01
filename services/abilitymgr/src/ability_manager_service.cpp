@@ -92,6 +92,7 @@
 #include "rate_limiter.h"
 #include "recovery_info_timer.h"
 #include "recovery_param.h"
+#include "remote_intent_result_callback.h"
 #include "report_data_partition_usage_manager.h"
 #include "res_sched_util.h"
 #include "restart_app_manager.h"
@@ -292,7 +293,9 @@ constexpr const char* UI_EXTENSION_TARGET_USER_ID = "ohos.ability.params.uiExten
 constexpr int32_t INSTALL_TYPE_UPGRADE = 2;
 constexpr int64_t CLEAR_USER_LOCKED_BUNDLE_LIST_KEY_DELAY_TIME = 60 * 1000; // 60s
 constexpr const char* VPN_PERMISSION_IF = "libnet_vpn_permission_if.z.so";
-using RequestVpnPermission = int32_t(*)(int32_t, const std::string&, const std::string&,bool &);
+constexpr const char* INTENT_USER_ID = "ohos.insightIntent.userId";
+
+using RequestVpnPermission = int32_t (*)(int32_t, const std::string &, const std::string &, bool &);
 
 void SendAbilityEvent(const EventName &eventName, HiSysEventEventType type, const EventInfo &eventInfo)
 {
@@ -759,8 +762,8 @@ int AbilityManagerService::StartAbility(const Want &want, const sptr<IRemoteObje
         .requestCode = requestCode,
         .userId = userId,
         .specifiedFullTokenId = specifiedFullTokenId,
-        .removeInsightIntentFlag = true,
     };
+    param.removeInsightIntentFlag = true;
     return StartAbilityWithRemoveIntentFlag(param);
 }
 
@@ -9837,18 +9840,22 @@ int AbilityManagerService::ReleaseRemoteAbility(const sptr<IRemoteObject> &conne
 }
 
 int AbilityManagerService::StartAbilityByCall(const Want &want, const sptr<IAbilityConnection> &connect,
-    const sptr<IRemoteObject> &callerToken, int32_t accountId, bool isSilent, bool promotePriority,
-    bool isVisible)
+    const sptr<IRemoteObject> &callerToken, int32_t accountId,
+    bool isSilent, bool promotePriority, bool isVisible, uint64_t specifiedFullTokenId)
 {
     std::string errMsg;
     return StartAbilityByCallWithErrMsg(want, connect, callerToken, accountId, errMsg, isSilent, promotePriority,
-        isVisible);
+        isVisible, specifiedFullTokenId);
 }
 
 int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const sptr<IAbilityConnection> &connect,
     const sptr<IRemoteObject> &callerToken, int32_t accountId, std::string &errMsg, bool isSilent,
-    bool promotePriority, bool isVisible)
+    bool promotePriority, bool isVisible, uint64_t specifiedFullTokenId)
 {
+    if (specifiedFullTokenId != 0 && IPCSkeleton::GetCallingUid() != DMS_UID) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "specifiedFullTokenId only support for DMS");
+        specifiedFullTokenId = 0;
+    }
     if (AppUtils::GetInstance().IsForbidStart()) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "forbid start: %{public}s", want.GetElement().GetBundleName().c_str());
         return INNER_ERR;
@@ -9924,6 +9931,7 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
     abilityRequest.callerToken = callerToken;
     abilityRequest.want = want;
     abilityRequest.connect = connect;
+    abilityRequest.specifiedFullTokenId = specifiedFullTokenId;
     abilityRequest.promotePriority = PermissionVerification::GetInstance()->IsSACall() && promotePriority;
     result = GenerateAbilityRequest(want, -1, abilityRequest, callerToken, oriValidUserId);
     if (result != ERR_OK) {
@@ -12399,7 +12407,9 @@ int AbilityManagerService::CheckCallServiceExtensionPermission(const AbilityRequ
     verificationInfo.visible = abilityRequest.abilityInfo.visible;
     verificationInfo.withContinuousTask = IsBackgroundTaskUid(IPCSkeleton::GetCallingUid());
     verificationInfo.isBackgroundCall = false;
-    verificationInfo.specifyTokenId = static_cast<uint32_t>(abilityRequest.specifyTokenId);
+    verificationInfo.specifyTokenId = (abilityRequest.specifiedFullTokenId != 0) ?
+        static_cast<uint32_t>(abilityRequest.specifiedFullTokenId) :
+        static_cast<uint32_t>(abilityRequest.specifyTokenId);
     if (isParamStartAbilityEnable_) {
         bool stopContinuousTaskFlag = ShouldPreventStartAbility(abilityRequest);
         if (stopContinuousTaskFlag) {
@@ -12846,6 +12856,8 @@ int AbilityManagerService::CheckStartByCallPermission(const AbilityRequest &abil
     verificationInfo.accessTokenId = abilityRequest.appInfo.accessTokenId;
     verificationInfo.visible = abilityRequest.abilityInfo.visible;
     verificationInfo.withContinuousTask = IsBackgroundTaskUid(IPCSkeleton::GetCallingUid());
+    verificationInfo.specifiedFullTokenId = static_cast<uint32_t>(abilityRequest.specifiedFullTokenId);
+
     if (IsCallFromBackground(abilityRequest, verificationInfo.isBackgroundCall, false) != ERR_OK) {
         return ERR_INVALID_VALUE;
     }
@@ -14004,6 +14016,9 @@ int32_t AbilityManagerService::ExecuteIntentForDistributed(const Want &want, con
         TAG_LOGE(AAFwkTag::INTENT, "GenerateFromWant failed, not a valid insight intent");
         return ERR_INVALID_VALUE;
     }
+    int32_t userId = want.GetIntParam(AbilityRuntime::INTENT_USER_ID, -1);
+    param.userId_ = userId;
+    
     auto paramCopy = std::make_shared<InsightIntentExecuteParam>(param);
     
     uint64_t key = requestCode;
@@ -14019,7 +14034,92 @@ int32_t AbilityManagerService::ExecuteIntentForDistributed(const Want &want, con
         (infos.decoratorType == AbilityRuntime::INSIGHT_INTENTS_DECORATOR_TYPE_PAGE) ||
         (infos.decoratorType == AbilityRuntime::INSIGHT_INTENTS_DECORATOR_TYPE_FUNCTION);
  
-    return ERR_OK;
+    AbilityRuntime::ExecuteIntentCommonOptions options(ignoreAbilityName, infos, key);
+    options.srcDeviceId = srcDeviceId;
+    options.requestCode = requestCode;
+    options.specifiedFullTokenId = specifiedFullTokenId;
+    return ExecuteIntentCommon(nullptr, paramCopy, callerBundlename, options);
+}
+
+int32_t AbilityManagerService::ExecuteIntentCommon(const sptr<IRemoteObject> &callerToken,
+    const std::shared_ptr<InsightIntentExecuteParam> &param, const std::string &callerBundleName,
+    const AbilityRuntime::ExecuteIntentCommonOptions &options)
+{
+    bool openLinkExecuteFlag = options.infos.decoratorType == AbilityRuntime::INSIGHT_INTENTS_DECORATOR_TYPE_LINK;
+    bool isDistributed = !options.srcDeviceId.empty();
+
+    int32_t ret = DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->CheckAndUpdateParam(
+        options.key, callerToken, param, callerBundleName, options.ignoreAbilityName, isDistributed,
+        options.srcDeviceId, options.requestCode, options.specifiedFullTokenId);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::INTENT, "CheckAndUpdateParam failed: %{public}d", ret);
+        return ret;
+    }
+
+    TAG_LOGI(AAFwkTag::INTENT, "execute insight intent, bundleName: %{public}s, moduleName: %{public}s, "
+        "intentName: %{public}s, intentId:%{public}" PRIu64 ", openLinkExecuteFlag: %{public}d, "
+        "executeMode: %{public}d, userId: %{public}d, isDistributed: %{public}d",
+        param->bundleName_.c_str(), param->moduleName_.c_str(), param->insightIntentName_.c_str(),
+        param->insightIntentId_, openLinkExecuteFlag, param->executeMode_, param->userId_, isDistributed);
+    
+    if (openLinkExecuteFlag) {
+        auto info = options.infos;
+        return IntentOpenLinkInner(param, info, param->userId_);
+    }
+    Want want;
+    ret = InsightIntentExecuteManager::GenerateWant(param, options.infos, want);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::INTENT, "GenerateWant failed: %{public}d", ret);
+        DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->RemoveExecuteIntent(param->insightIntentId_);
+        return ret;
+    }
+
+    int32_t callerUserId = AbilityRuntime::UserController::GetInstance().GetCallerUserId();
+    EventInfo eventInfo = BuildEventInfo(want, callerUserId);
+    switch (param->executeMode_) {
+        case AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND:
+            TAG_LOGI(AAFwkTag::INTENT, "ExecuteMode UI_ABILITY_FOREGROUND.");
+            ret = StartAbilityWithInsightIntent(
+                want, param->userId_, DEFAULT_INVAL_VALUE, options.specifiedFullTokenId);
+            if (ret != ERR_OK) {
+                eventInfo.errReason = "StartAbilityWithInsightIntent error";
+                SendIntentReport(eventInfo, ret, param->insightIntentName_);
+            }
+            break;
+        case AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND: {
+            TAG_LOGI(AAFwkTag::INTENT, "ExecuteMode UI_ABILITY_BACKGROUND.");
+            ret = StartAbilityByCallWithInsightIntent(
+                want, callerToken, *param, param->userId_, options.specifiedFullTokenId);
+            if (ret != ERR_OK) {
+                eventInfo.errReason = "StartAbilityByCallWithInsightIntent error";
+                SendIntentReport(eventInfo, ret, param->insightIntentName_);
+            }
+            break;
+        }
+        case AppExecFwk::ExecuteMode::UI_EXTENSION_ABILITY:
+            TAG_LOGE(AAFwkTag::INTENT, "executeMode UI_EXTENSION_ABILITY not supported");
+            ret = ERR_INVALID_OPERATION;
+            break;
+        case AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY:
+            TAG_LOGI(AAFwkTag::INTENT, "ExecuteMode SERVICE_EXTENSION_ABILITY.");
+            ret = StartExtensionAbilityWithInsightIntent(
+                want, AppExecFwk::ExtensionAbilityType::SERVICE, param->userId_);
+            if (ret != ERR_OK) {
+                eventInfo.errReason = "StartExtensionAbilityWithInsightIntent error";
+                SendIntentReport(eventInfo, ret, param->insightIntentName_);
+            }
+            break;
+        default:
+            TAG_LOGE(AAFwkTag::INTENT, "ExecuteMode invalid: %{public}d", param->executeMode_);
+            ret = ERR_INVALID_VALUE;
+            break;
+    }
+
+    if (ret != ERR_OK) {
+        DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->RemoveExecuteIntent(param->insightIntentId_);
+    }
+    TAG_LOGI(AAFwkTag::INTENT, "ExecuteIntentCommon done, ret: %{public}d.", ret);
+    return ret;
 }
 
 int32_t AbilityManagerService::ExecuteIntent(uint64_t key, const sptr<IRemoteObject> &callerToken,
@@ -14029,6 +14129,7 @@ int32_t AbilityManagerService::ExecuteIntent(uint64_t key, const sptr<IRemoteObj
     if (param.isServiceMatch_) {
         return StartAbilityWithServiceMatch(param);
     }
+    
     auto callerBundlename = InsightIntentGetcallerBundleName();
     if (callerBundlename.empty()) {
         TAG_LOGD(AAFwkTag::INTENT, "callerBundlename is null");
@@ -14049,74 +14150,56 @@ int32_t AbilityManagerService::ExecuteIntent(uint64_t key, const sptr<IRemoteObj
     bool openLinkExecuteFlag = infos.decoratorType == AbilityRuntime::INSIGHT_INTENTS_DECORATOR_TYPE_LINK;
     bool ignoreAbilityName = openLinkExecuteFlag ||
         (infos.decoratorType == AbilityRuntime::INSIGHT_INTENTS_DECORATOR_TYPE_PAGE) ||
-        (infos.decoratorType == AbilityRuntime::INSIGHT_INTENTS_DECORATOR_TYPE_FUNCTION);
+        (infos.decoratorType == AbilityRuntime::INSIGHT_INTENTS_DECORATOR_TYPE_FUNCTION) ||
+        !param.deviceId_.empty();
+
     auto paramPtr = std::make_shared<InsightIntentExecuteParam>(param);
-    int32_t ret = DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->CheckAndUpdateParam(key, callerToken,
-        paramPtr, callerBundlename, ignoreAbilityName);
+    
+    int32_t ret = DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->CheckAndUpdateParam(
+        key, callerToken, paramPtr, callerBundlename, ignoreAbilityName);
     if (ret != ERR_OK) {
         return ret;
     }
+
     TAG_LOGI(AAFwkTag::INTENT, "execute insight intent, bundleName: %{public}s, moduleName: %{public}s, "
-        "intentName: %{public}s, intentId:%{public}" PRIu64", openLinkExecuteFlag: %{public}d, executeMode: %{public}d, "
-        "userId: %{public}d",
-        param.bundleName_.c_str(), param.moduleName_.c_str(), param.insightIntentName_.c_str(), param.insightIntentId_,
-        openLinkExecuteFlag, param.executeMode_, param.userId_);
+        "intentName: %{public}s, intentId:%{public}" PRIu64 ", openLinkExecuteFlag: %{public}d, "
+        "executeMode: %{public}d, userId: %{public}d, deviceId: %{public}s",
+        param.bundleName_.c_str(), param.moduleName_.c_str(), param.insightIntentName_.c_str(),
+        paramPtr->insightIntentId_, openLinkExecuteFlag, param.executeMode_, param.userId_, param.deviceId_.c_str());
 
-    if (openLinkExecuteFlag) {
-        return IntentOpenLinkInner(paramPtr, infos, param.userId_);
-    }
+    if (!param.deviceId_.empty()) {
+ 	    bool hasDistributedPermission = PermissionVerification::GetInstance()->VerifyCallingPermission(
+ 	        PermissionConstants::PERMISSION_EXECUTE_DISTRIBUTED_INTENT);
+ 	    if (!hasDistributedPermission) {
+ 	        TAG_LOGE(AAFwkTag::INTENT, "distributed intent permission denied");
+ 	        return CHECK_PERMISSION_FAILED;
+ 	    }
+ 	    Want want;
+ 	    auto ret = InsightIntentExecuteManager::GenerateWant(paramPtr, infos, want);
+        auto element = want.GetElement();
+ 	    if (ret != ERR_OK) {
+ 	        TAG_LOGE(AAFwkTag::INTENT, "GenerateWant failed: %{public}d", ret);
+ 	        DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->RemoveExecuteIntent(paramPtr->insightIntentId_);
+ 	        return ret;
+ 	    }
+        TAG_LOGI(AAFwkTag::INTENT, "GenerateWant success");
+        IntentCallerInfo callerInfo;
+        callerInfo.callerUid = IPCSkeleton::GetCallingUid();
+        callerInfo.requestCode = paramPtr->insightIntentId_;
+        callerInfo.accessToken = IPCSkeleton::GetCallingTokenID();
+        sptr<IRemoteObject> callback = new (std::nothrow) AAFwk::RemoteIntentResultCallback();
+ 	    DistributedClient dmsClient;
+ 	    if (dmsClient.StartRemoteIntent(want, callerInfo, callback) != ERR_OK) {
+ 	        TAG_LOGE(AAFwkTag::INTENT, "StartRemoteIntent failed");
+ 	        DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->RemoveExecuteIntent(
+                paramPtr->insightIntentId_);
+ 	        return ERR_INTENT_CONNECTION_FAILED;
+ 	    }
+        return ERR_OK;
+ 	}
 
-    Want want;
-    ret = InsightIntentExecuteManager::GenerateWant(paramPtr, infos, want);
-    if (ret != ERR_OK) {
-        return ret;
-    }
-    int32_t callerUserId = AbilityRuntime::UserController::GetInstance().GetCallerUserId();
-    EventInfo eventInfo = BuildEventInfo(want, callerUserId);
-    switch (param.executeMode_) {
-        case AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND:
-            TAG_LOGI(AAFwkTag::INTENT, "ExecuteMode UI_ABILITY_FOREGROUND.");
-            ret = StartAbilityWithInsightIntent(want, param.userId_);
-            if (ret != ERR_OK) {
-                eventInfo.errReason = "StartAbilityWithInsightIntent error";
-                SendIntentReport(eventInfo, ret, param.insightIntentName_);
-            }
-            break;
-        case AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND: {
-            TAG_LOGI(AAFwkTag::INTENT, "ExecuteMode UI_ABILITY_BACKGROUND.");
-            ret = StartAbilityByCallWithInsightIntent(want, callerToken, param, param.userId_);
-            if (ret != ERR_OK) {
-                eventInfo.errReason = "StartAbilityByCallWithInsightIntent error";
-                SendIntentReport(eventInfo, ret, param.insightIntentName_);
-            }
-            break;
-        }
-        case AppExecFwk::ExecuteMode::UI_EXTENSION_ABILITY:
-            TAG_LOGE(AAFwkTag::INTENT, "executeMode UI_EXTENSION_ABILITY not supported");
-            ret = ERR_INVALID_OPERATION;
-            break;
-        case AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY:
-            TAG_LOGI(AAFwkTag::INTENT, "ExecuteMode SERVICE_EXTENSION_ABILITY.");
-            ret = StartExtensionAbilityWithInsightIntent(want, AppExecFwk::ExtensionAbilityType::SERVICE, param.userId_);
-            if (ret != ERR_OK) {
-                eventInfo.errReason = "StartExtensionAbilityWithInsightIntent error";
-                SendIntentReport(eventInfo, ret, param.insightIntentName_);
-            }
-            break;
-        default:
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid executeMode");
-            ret = ERR_INVALID_OPERATION;
-            break;
-    }
-    if (ret == START_ABILITY_WAITING) {
-        TAG_LOGI(AAFwkTag::INTENT, "Top ability is foregrounding. The intent will be queued for execution");
-        ret = ERR_OK;
-    }
-    if (ret != ERR_OK) {
-        DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->RemoveExecuteIntent(paramPtr->insightIntentId_);
-    }
-    TAG_LOGI(AAFwkTag::INTENT, "ExecuteIntent done, ret: %{public}d.", ret);
-    return ret;
+    AbilityRuntime::ExecuteIntentCommonOptions options(ignoreAbilityName, infos, key);
+    return ExecuteIntentCommon(callerToken, paramPtr, callerBundlename, options);
 }
 
 ErrCode AbilityManagerService::QueryEntityInfo(uint64_t key, sptr<IRemoteObject> callerToken,
@@ -14204,7 +14287,8 @@ int32_t AbilityManagerService::OnExecuteIntent(AbilityRequest &abilityRequest,
     return ERR_OK;
 }
 
-int32_t AbilityManagerService::StartAbilityWithInsightIntent(const Want &want, int32_t userId, int requestCode)
+int32_t AbilityManagerService::StartAbilityWithInsightIntent(const Want &want, int32_t userId, int requestCode,
+    uint64_t specifiedFullTokenId)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     bool startWithAccount = want.GetBoolParam(START_ABILITY_TYPE, false);
@@ -14220,7 +14304,8 @@ int32_t AbilityManagerService::StartAbilityWithInsightIntent(const Want &want, i
     StartAbilityWrapParam startAbilityWrapParam = {
         .want = want,
         .requestCode = requestCode,
-        .userId = userId
+        .userId = userId,
+        .specifiedFullTokenId = specifiedFullTokenId,
     };
     int32_t ret = StartAbilityWrap(startAbilityWrapParam);
     if (ret != ERR_OK) {
@@ -14237,7 +14322,8 @@ int32_t AbilityManagerService::StartExtensionAbilityWithInsightIntent(const Want
 }
 
 int32_t AbilityManagerService::StartAbilityByCallWithInsightIntent(const Want &want,
-    const sptr<IRemoteObject> &callerToken, const InsightIntentExecuteParam &param, int32_t userId)
+    const sptr<IRemoteObject> &callerToken,
+    const InsightIntentExecuteParam &param, int32_t userId, uint64_t specifiedFullTokenId)
 {
     TAG_LOGI(AAFwkTag::INTENT, "called");
     sptr<IAbilityConnection> connect = sptr<AbilityBackgroundConnection>::MakeSptr();
@@ -14255,6 +14341,7 @@ int32_t AbilityManagerService::StartAbilityByCallWithInsightIntent(const Want &w
     abilityRequest.startSetting = nullptr;
     abilityRequest.want = want;
     abilityRequest.connect = connect;
+    abilityRequest.specifiedFullTokenId = specifiedFullTokenId;
     int32_t result = GenerateAbilityRequest(want, -1, abilityRequest, callerToken, GetValidUserId(userId));
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "generate ability request error");
@@ -14268,7 +14355,8 @@ int32_t AbilityManagerService::StartAbilityByCallWithInsightIntent(const Want &w
         UpdateCallerInfoUtil::GetInstance().UpdateCallerInfo(abilityRequest.want, callerToken);
         result = OnExecuteIntent(abilityRequest, targetRecord);
     }  else {
-        result = StartAbilityByCall(want, connect, callerToken, oriValidUserId);
+        result = StartAbilityByCall(want, connect, callerToken, oriValidUserId,
+            false, false, false, specifiedFullTokenId);
     }
     ResSchedUtil::GetInstance().ReportAbilityIntentExemptionInfoToRSS(abilityRequest.uid, 0);
     DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->SetIntentExemptionInfo(
@@ -14330,9 +14418,10 @@ int32_t AbilityManagerService::ExecuteInsightIntentDone(const sptr<IRemoteObject
         abilityRecord->GrantUriPermission(result.uris, result.flags, callerBundleName, initiatorTokenId);
     }
 #endif // SUPPORT_UPMS
-
+    int32_t callerUid = IPCSkeleton::GetCallingUid();
+    uint32_t accessToken = IPCSkeleton::GetCallingTokenID();
     ret = DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->ExecuteIntentDone(
-        intentId, result.innerErr, result);
+        intentId, result.innerErr, result, callerUid, accessToken);
     FreezeUtil::GetInstance().AddLifecycleEvent(token, "ExecuteInsightIntentDone end");
     return ret;
 }
