@@ -19,29 +19,19 @@
 #include <functional>
 #include <string>
 
-#include "iapplication_state_observer.h"
+#include "application_state_observer_stub.h"
 
 namespace OHOS {
 namespace CliTool {
 
-class CliToolAppStateObserver : public AppExecFwk::IApplicationStateObserver {
+class CliToolAppStateObserver : public AppExecFwk::ApplicationStateObserverStub {
 public:
     using ProcessDiedCallback = std::function<void(const std::string&, pid_t)>;
 
     explicit CliToolAppStateObserver(const std::string &bundleName, ProcessDiedCallback callback);
-    ~CliToolAppStateObserver() override;
+    ~CliToolAppStateObserver() override = default;
 
-    void OnForegroundApplicationChanged(const AppExecFwk::AppStateData &appStateData) override;
-    void OnAbilityStateChanged(const AppExecFwk::AbilityStateData &abilityStateData) override;
-    void OnExtensionStateChanged(const AppExecFwk::AbilityStateData &abilityStateData) override;
-    void OnProcessCreated(const AppExecFwk::ProcessData &processData) override;
-    void OnProcessStateChanged(const AppExecFwk::ProcessData &processData) override;
     void OnProcessDied(const AppExecFwk::ProcessData &processData) override;
-    void OnApplicationStateChanged(const AppExecFwk::AppStateData &appStateData) override;
-    void OnAppStateChanged(const AppExecFwk::AppStateData &appStateData) override;
-    void OnAppStarted(const AppExecFwk::AppStateData &appStateData) override;
-    void OnAppStopped(const AppExecFwk::AppStateData &appStateData) override;
-    sptr<IRemoteObject> AsObject() override;
 
 private:
     std::string bundleName_;

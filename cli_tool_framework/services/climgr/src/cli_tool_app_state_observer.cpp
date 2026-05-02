@@ -24,24 +24,6 @@ CliToolAppStateObserver::CliToolAppStateObserver(const std::string &bundleName, 
     : bundleName_(bundleName), processDiedCallback_(callback)
 {}
 
-CliToolAppStateObserver::~CliToolAppStateObserver()
-{}
-
-void CliToolAppStateObserver::OnForegroundApplicationChanged(const AppExecFwk::AppStateData &appStateData)
-{}
-
-void CliToolAppStateObserver::OnAbilityStateChanged(const AppExecFwk::AbilityStateData &abilityStateData)
-{}
-
-void CliToolAppStateObserver::OnExtensionStateChanged(const AppExecFwk::AbilityStateData &abilityStateData)
-{}
-
-void CliToolAppStateObserver::OnProcessCreated(const AppExecFwk::ProcessData &processData)
-{}
-
-void CliToolAppStateObserver::OnProcessStateChanged(const AppExecFwk::ProcessData &processData)
-{}
-
 void CliToolAppStateObserver::OnProcessDied(const AppExecFwk::ProcessData &processData)
 {
     TAG_LOGI(AAFwkTag::CLI_TOOL, "Process died: bundleName=%{public}s, pid=%{public}d",
@@ -50,23 +32,6 @@ void CliToolAppStateObserver::OnProcessDied(const AppExecFwk::ProcessData &proce
     if (processDiedCallback_) {
         processDiedCallback_(bundleName_, processData.pid);
     }
-}
-
-void CliToolAppStateObserver::OnApplicationStateChanged(const AppExecFwk::AppStateData &appStateData)
-{}
-
-void CliToolAppStateObserver::OnAppStateChanged(const AppExecFwk::AppStateData &appStateData)
-{}
-
-void CliToolAppStateObserver::OnAppStarted(const AppExecFwk::AppStateData &appStateData)
-{}
-
-void CliToolAppStateObserver::OnAppStopped(const AppExecFwk::AppStateData &appStateData)
-{}
-
-sptr<IRemoteObject> CliToolAppStateObserver::AsObject()
-{
-    return nullptr;
 }
 
 } // namespace CliTool

@@ -13,14 +13,15 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #define private public
 #include "cli_tool_manager_service.h"
 #undef private
 
 #include "cli_error_code.h"
+#include "cli_tool_app_state_observer.h"
 #include "exec_options.h"
 #include "tool_info.h"
 
@@ -268,6 +269,49 @@ HWTEST_F(CliToolManagerServiceTest, QueryPermission_Required_0100, TestSize.Leve
     // If caller lacks permission: returns ERR_PERMISSION_DENIED
 
     GTEST_LOG_(INFO) << "CliToolManagerService_QueryPermission_Required_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_AppStateObserver_0100
+ * @tc.desc: Test app state observer exposes a valid remote object
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, AppStateObserver_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_AppStateObserver_0100 start";
+
+    sptr<CliToolAppStateObserver> observer = new CliToolAppStateObserver("test.bundle", nullptr);
+
+    EXPECT_NE(observer->AsObject(), nullptr);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_AppStateObserver_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_AppStateObserver_0200
+ * @tc.desc: Test app state observer forwards process died callback
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, AppStateObserver_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_AppStateObserver_0200 start";
+
+    std::string diedBundleName;
+    pid_t diedPid = 0;
+    sptr<CliToolAppStateObserver> observer = new CliToolAppStateObserver(
+        "test.bundle", [&diedBundleName, &diedPid](const std::string &bundleName, pid_t pid) {
+            diedBundleName = bundleName;
+            diedPid = pid;
+        });
+    AppExecFwk::ProcessData processData;
+    processData.pid = 1001;
+
+    observer->OnProcessDied(processData);
+
+    EXPECT_EQ(diedBundleName, "test.bundle");
+    EXPECT_EQ(diedPid, 1001);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_AppStateObserver_0200 end";
 }
 
 } // namespace CliTool
