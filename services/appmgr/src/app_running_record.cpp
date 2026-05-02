@@ -1177,7 +1177,9 @@ void AppRunningRecord::AbilityTerminated(const sptr<IRemoteObject> &token)
     auto abilityRecord = moduleRecord->GetAbilityByTerminateLists(token);
     if (abilityRecord != nullptr && abilityRecord->GetAbilityInfo() != nullptr) {
         isExtensionDebug = (abilityRecord->GetAbilityInfo()->type == AppExecFwk::AbilityType::EXTENSION) &&
-                           (isAttachDebug_ || isDebugApp_);
+            abilityRecord->GetAbilityInfo()->extensionAbilityType != AppExecFwk::ExtensionAbilityType::AGENT &&
+            abilityRecord->GetAbilityInfo()->extensionAbilityType != AppExecFwk::ExtensionAbilityType::AGENT_UI &&
+            (isAttachDebug_ || isDebugApp_);
     }
     TAG_LOGD(AAFwkTag::APPMGR, "Extension debug is [%{public}s]", isExtensionDebug ? "true" : "false");
 
