@@ -44,6 +44,7 @@ constexpr int32_t QUERY_SUCCESS = 0;
 constexpr int32_t QUERY_COMMAND_NOT_EXIST = 1;
 constexpr int32_t QUERY_DB_ERROR = 2;
 constexpr int32_t MAX_QUERY_CMDS_SIZE = 100;
+constexpr int32_t ACTIVE_TIME = 30 * 1000; // 30s
 } // namespace
 
 std::mutex g_mutex;
@@ -244,7 +245,10 @@ void CliToolManagerService::OnStart()
 
     if (!Publish(cliService)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Publish failed");
+        return;
     }
+    DelayUnloadTask();
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "climgr start success");
 }
 
 void CliToolManagerService::OnStop()
@@ -278,11 +282,28 @@ void CliToolManagerService::OnStop()
     }
 }
 
+int32_t CliToolManagerService::OnIdle(const SystemAbilityOnDemandReason &idlReason)
+{
+    int32_t sessionSize = 0;
+    {
+        std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
+        sessionSize = sessionRecords_.size();
+    }
+    int32_t calledCount = interfaceCalledCount_.load();
+    if (calledCount != 0 && sessionSize != 0) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "exist ipc");
+        if (!CancelIdle()) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "Fail to cancel idle");
+        }
+        return -1;
+    }
+    return 0;
+}
+
 void CliToolManagerService::AddSessionRecord(const std::shared_ptr<SessionRecord> &record)
 {
     std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
     sessionRecords_[record->sessionId] = record;
-    activeSessionCount_.fetch_add(1, std::memory_order_relaxed);
 }
 
 std::shared_ptr<SessionRecord> CliToolManagerService::GetSessionRecord(const std::string &sessionId)
@@ -295,7 +316,6 @@ std::shared_ptr<SessionRecord> CliToolManagerService::GetSessionRecord(const std
     }
     if (it->second == nullptr) {
         sessionRecords_.erase(it); // for leak
-        activeSessionCount_.fetch_sub(1, std::memory_order_relaxed);
     }
     return it->second;
 }
@@ -304,7 +324,38 @@ void CliToolManagerService::RemoveSessionRecord(const std::string &sessionId)
 {
     std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
     sessionRecords_.erase(sessionId);
-    activeSessionCount_.fetch_sub(1, std::memory_order_relaxed);
+}
+
+void CliToolManagerService::DelayUnloadTask()
+{
+    auto task = []() {
+        int32_t sessionSize = 0;
+        {
+            std::lock_guard<ffrt::mutex> guard(CliToolManagerService::GetInstance()->sessionsMutex_);
+            sessionSize = CliToolManagerService::GetInstance()->sessionRecords_.size();
+        }
+        int32_t calledCount = CliToolManagerService::GetInstance()->interfaceCalledCount_.load();
+        if (calledCount == 0 && sessionSize == 0) {
+            TAG_LOGI(AAFwkTag::CLI_TOOL, "UnloadSA start");
+            sptr<ISystemAbilityManager> saManager =
+                OHOS::SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+            if (saManager == nullptr) {
+                TAG_LOGE(AAFwkTag::CLI_TOOL, "null saManager");
+                return;
+            }
+            int32_t result = saManager->UnloadSystemAbility(CLI_TOOL_MGR_SERVICE_ID);
+            if (result != ERR_OK) {
+                TAG_LOGE(AAFwkTag::CLI_TOOL, "UnloadSystemAbility ret: %{public}d", result);
+                return;
+            }
+            TAG_LOGI(AAFwkTag::CLI_TOOL, "UnloadSA success");
+        } else {
+            TAG_LOGI(AAFwkTag::CLI_TOOL, "Service still busy (calledCount=%{public}d, sessionSize=%{public}d), "
+                "reschedule delay unload task", calledCount, sessionSize);
+            CliToolManagerService::GetInstance()->DelayUnloadTask();
+        }
+    };
+    ffrt::submit(std::move(task), ffrt::task_attr().delay(ACTIVE_TIME * COEFFICIENT));
 }
 
 bool CliToolManagerService::RegisterSessionWithMonitors(const std::shared_ptr<SessionRecord> &record,
@@ -339,7 +390,7 @@ void CliToolManagerService::UnregisterSessionWithMonitors(const std::string &ses
 int32_t CliToolManagerService::GetAllToolInfos(std::vector<ToolInfo> &tools)
 {
     TAG_LOGI(AAFwkTag::CLI_TOOL, "GetAllToolInfos called");
-
+    InterfaceCallCounter counter(interfaceCalledCount_);
     auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
     if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllToolInfos: Not system app");
@@ -358,7 +409,7 @@ int32_t CliToolManagerService::GetAllToolInfos(std::vector<ToolInfo> &tools)
 int32_t CliToolManagerService::GetAllToolSummaries(std::vector<ToolSummary> &summaries)
 {
     TAG_LOGI(AAFwkTag::CLI_TOOL, "GetAllToolSummaries called");
-
+    InterfaceCallCounter counter(interfaceCalledCount_);
     auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
     if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllToolSummaries: Not system app");
@@ -377,7 +428,7 @@ int32_t CliToolManagerService::GetAllToolSummaries(std::vector<ToolSummary> &sum
 int32_t CliToolManagerService::GetToolInfoByName(const std::string &name, ToolInfo &tool)
 {
     TAG_LOGI(AAFwkTag::CLI_TOOL, "GetToolInfoByName called, name='%{public}s'", name.c_str());
-
+    InterfaceCallCounter counter(interfaceCalledCount_);
     auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
     if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "GetToolInfoByName: Not system app");
@@ -417,7 +468,8 @@ int32_t CliToolManagerService::ValidateExecToolPermissions()
 int32_t CliToolManagerService::ValidateSessionLimit()
 {
     auto cliQuantity = CcmUtil::GetInstance().GetCliConcurrencyLimit();
-    if (activeSessionCount_.load() >= cliQuantity) {
+    std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
+    if (static_cast<int32_t>(sessionRecords_.size()) >= cliQuantity) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Session limit exceeded: %{public}d", cliQuantity);
         return ERR_SESSION_LIMIT_EXCEEDED;
     }
@@ -532,7 +584,6 @@ void CliToolManagerService::WaitPid(pid_t pid, int32_t status, int32_t sig)
         for (auto iter = sessionRecords_.begin(); iter != sessionRecords_.end();) {
             if (iter->second == nullptr) {
                 iter = sessionRecords_.erase(iter);
-                activeSessionCount_.fetch_sub(1, std::memory_order_relaxed);
                 TAG_LOGW(AAFwkTag::CLI_TOOL, "delete leak sessionId:%{public}s", iter->first.c_str());
                 continue;
             }
@@ -576,7 +627,6 @@ void CliToolManagerService::OnProcessDied(const std::string &bundleName, pid_t d
         auto sessionRecord = iter->second;
         if (sessionRecord == nullptr) {
             iter = sessionRecords_.erase(iter);
-            activeSessionCount_.fetch_sub(1, std::memory_order_relaxed);
             TAG_LOGW(AAFwkTag::CLI_TOOL, "delete leak sessionId:%{public}s", iter->first.c_str());
             continue;
         }
@@ -592,7 +642,6 @@ void CliToolManagerService::OnProcessDied(const std::string &bundleName, pid_t d
 
         // Clean up session
         iter = sessionRecords_.erase(iter);
-        activeSessionCount_.fetch_sub(1, std::memory_order_relaxed);
     }
 }
 
@@ -658,6 +707,7 @@ std::shared_ptr<SessionRecord> CliToolManagerService::CreateSessionRecord(const 
 
 int32_t CliToolManagerService::ClearSession(const std::string &sessionId)
 {
+    InterfaceCallCounter counter(interfaceCalledCount_);
     auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
     if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Not system app");
@@ -691,6 +741,7 @@ int32_t CliToolManagerService::ClearSession(const std::string &sessionId)
 
 int32_t CliToolManagerService::SubscribeSession(const std::string &sessionId, const std::string &subscriptionId)
 {
+    InterfaceCallCounter counter(interfaceCalledCount_);
     auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
     if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Not system app");
@@ -723,6 +774,7 @@ int32_t CliToolManagerService::SubscribeSession(const std::string &sessionId, co
 
 int32_t CliToolManagerService::UnsubscribeSession(const std::string &sessionId, const std::string &subscriptionId)
 {
+    InterfaceCallCounter counter(interfaceCalledCount_);
     auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
     if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Not system app");
@@ -743,6 +795,7 @@ int32_t CliToolManagerService::UnsubscribeSession(const std::string &sessionId, 
 
 int32_t CliToolManagerService::QuerySession(const std::string &sessionId, CliSessionInfo &session)
 {
+    InterfaceCallCounter counter(interfaceCalledCount_);
     auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
     if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Not system app");
@@ -766,6 +819,7 @@ int32_t CliToolManagerService::QuerySession(const std::string &sessionId, CliSes
 int32_t CliToolManagerService::SendMessage(const std::string &sessionId,
     const std::string &inputText, const std::string &eventId)
 {
+    InterfaceCallCounter counter(interfaceCalledCount_);
     auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
     if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Not system app");
@@ -802,6 +856,7 @@ int32_t CliToolManagerService::BatchQueryPermissionBySubCommand(const std::vecto
     std::vector<CommandPermission> &cmdPermissions)
 {
     TAG_LOGI(AAFwkTag::CLI_TOOL, "BatchQueryPermissionBySubCommand called, count=%{public}zu", cmds.size());
+    InterfaceCallCounter counter(interfaceCalledCount_);
     if (cmds.empty() || cmds.size() >= MAX_QUERY_CMDS_SIZE) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Commands is empty or reach limit");
         return ERR_INVALID_PARAM;

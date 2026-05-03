@@ -95,13 +95,30 @@ public:
 protected:
     void OnStart() override;
     void OnStop() override;
+    int32_t OnIdle(const SystemAbilityOnDemandReason &idlReason) override;
 
 private:
     CliToolManagerService() : SystemAbility(CLI_TOOL_MGR_SERVICE_ID, false) {};
 
+    // RAII wrapper for interface call counter
+    class InterfaceCallCounter {
+    public:
+        explicit InterfaceCallCounter(std::atomic<int32_t>& counter) : counter_(counter) {
+            counter_.fetch_add(1, std::memory_order_relaxed);
+        }
+        ~InterfaceCallCounter() {
+            counter_.fetch_sub(1, std::memory_order_relaxed);
+        }
+        InterfaceCallCounter(const InterfaceCallCounter&) = delete;
+        InterfaceCallCounter& operator=(const InterfaceCallCounter&) = delete;
+    private:
+        std::atomic<int32_t>& counter_;
+    };
+
     enum class ServiceRunningState { STATE_NOT_START, STATE_RUNNING };
 
     void Init();
+    void DelayUnloadTask();
 
     std::shared_ptr<SessionRecord> CreateSessionRecord(const ExecToolParam &param, const std::string &eventId);
     void AddSessionRecord(const std::shared_ptr<SessionRecord> &record);
@@ -156,7 +173,7 @@ private:
     int32_t QuerySubCommandPermission(const std::string &toolName, const std::string &subCommand,
         std::vector<std::string> &permissions);
 
-    std::atomic<int32_t> activeSessionCount_ = 0;
+    std::atomic<int32_t> interfaceCalledCount_ = 0;
     ffrt::mutex sessionsMutex_;
     std::unordered_map<std::string, std::shared_ptr<SessionRecord>> sessionRecords_;
     std::unordered_map<std::string, sptr<AppExecFwk::IApplicationStateObserver>> bundleObservers_;
