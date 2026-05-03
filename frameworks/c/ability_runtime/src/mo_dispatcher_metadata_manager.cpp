@@ -433,9 +433,6 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::ParseMetadata(const std::s
     memberIdToMethod_.clear();
     mainServiceInterface_.clear();
 
-    if (root.contains("bundle") && root["bundle"].is_string()) {
-        bundleName_ = root["bundle"].get<std::string>();
-    }
     if (root.contains("version") && root["version"].is_string()) {
         version_ = root["version"].get<std::string>();
     }
@@ -731,19 +728,6 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetMethodMeta(uint32_t mem
         return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
     }
     *methodMeta = it->second;
-    return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
-}
-
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetBundle(std::string* bundleName) const
-{
-    if (bundleName == nullptr) {
-        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
-    }
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (!loaded_) {
-        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
-    }
-    *bundleName = bundleName_;
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 

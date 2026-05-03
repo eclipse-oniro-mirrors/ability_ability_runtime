@@ -22,20 +22,24 @@
 namespace OHOS::AbilityRuntime {
 class MoDispatcherParamCodec {
 public:
-    static AbilityRuntime_ErrorCode ValidateInputParams(const MoMethodMeta& methodMeta,
-        const OH_AbilityRuntime_MoDispatcher_InputParams* inputParams);
-
-    static AbilityRuntime_ErrorCode MarshalCallRequest(uint32_t memberId,
+    static AbilityRuntime_ErrorCode MarshalCallRequest(const MoMethodMeta& methodMeta,
         const OH_AbilityRuntime_MoDispatcher_InputParams* inputParams, MessageParcel& dataParcel);
 
-    static AbilityRuntime_ErrorCode UnmarshalCallResult(MessageParcel& replyParcel,
-        OH_AbilityRuntime_MoDispatcher_Variant* result);
+    static AbilityRuntime_ErrorCode UnmarshalCallResult(const MoMethodMeta& methodMeta,
+        MessageParcel& replyParcel, OH_AbilityRuntime_MoDispatcher_Variant* result);
 
     static AbilityRuntime_ErrorCode WriteVariant(MessageParcel& parcel,
         const OH_AbilityRuntime_MoDispatcher_Variant* value);
 
     static AbilityRuntime_ErrorCode ReadVariant(MessageParcel& parcel,
         OH_AbilityRuntime_MoDispatcher_Variant* value);
+
+private:
+    static AbilityRuntime_ErrorCode WriteRawValue(MessageParcel& parcel,
+        const std::shared_ptr<MoTypeInfo>& typeInfo, const OH_AbilityRuntime_MoDispatcher_Variant* value);
+
+    static AbilityRuntime_ErrorCode ReadRawValue(MessageParcel& parcel,
+        const std::shared_ptr<MoTypeInfo>& typeInfo, OH_AbilityRuntime_MoDispatcher_Variant* value);
 };
 } // namespace OHOS::AbilityRuntime
 

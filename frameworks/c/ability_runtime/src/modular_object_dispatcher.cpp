@@ -138,13 +138,6 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_CallMethod(
         TAG_LOGE(AAFwkTag::EXT, "CallMethod: GetMethodMeta failed, memID=%{public}u, ret=%{public}d", memID, ret);
         return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
     }
-    ret = MoDispatcherParamCodec::ValidateInputParams(methodMeta, pInputParams);
-    if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
-        TAG_LOGE(AAFwkTag::EXT, "CallMethod: ValidateInputParams failed, memID=%{public}u, ret=%{public}d",
-            memID, ret);
-        return ret;
-    }
-
     MessageParcel dataParcel;
     MessageParcel replyParcel;
 
@@ -160,7 +153,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_CallMethod(
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
 
-    ret = MoDispatcherParamCodec::MarshalCallRequest(memID, pInputParams, dataParcel);
+    ret = MoDispatcherParamCodec::MarshalCallRequest(methodMeta, pInputParams, dataParcel);
     if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
         TAG_LOGE(AAFwkTag::EXT, "CallMethod: MarshalCallRequest failed, memID=%{public}u, ret=%{public}d",
             memID, ret);
@@ -176,7 +169,10 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_CallMethod(
         return ABILITY_RUNTIME_ERROR_CODE_SEND_REQUEST_FAILED;
     }
 
-    ret = MoDispatcherParamCodec::UnmarshalCallResult(replyParcel, pResult);
+    if (methodMeta.oneway) {
+        return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
+    }
+    ret = MoDispatcherParamCodec::UnmarshalCallResult(methodMeta, replyParcel, pResult);
     if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
         TAG_LOGE(AAFwkTag::EXT, "CallMethod: UnmarshalCallResult failed, memID=%{public}u, ret=%{public}d",
             memID, ret);
@@ -201,20 +197,6 @@ void OH_AbilityRuntime_TypeDescriptor_Release(OH_AbilityRuntime_MoDispatcher_Typ
     }
     delete *pTypeDescriptor;
     *pTypeDescriptor = nullptr;
-}
-
-AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetBundle(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor, char* pbstrBundle, uint32_t cMaxBundle)
-{
-    if (pTypeDescriptor == nullptr || pbstrBundle == nullptr || cMaxBundle == 0) {
-        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
-    }
-    std::string bundle;
-    auto ret = pTypeDescriptor->metadataManager->GetBundle(&bundle);
-    if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
-        return ret;
-    }
-    return CopyStringToBuffer(bundle, pbstrBundle, cMaxBundle);
 }
 
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetVersion(

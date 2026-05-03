@@ -907,15 +907,6 @@ HWTEST_F(TypeDescriptorNullTest, Release_NullSafe_001, TestSize.Level1)
     SUCCEED();
 }
 
-HWTEST_F(TypeDescriptorNullTest, GetBundle_NullParams_001, TestSize.Level1)
-{
-    char buf[64] = {0};
-    EXPECT_EQ(OH_AbilityRuntime_TypeDescriptor_GetBundle(nullptr, buf, sizeof(buf)),
-        ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
-    EXPECT_EQ(OH_AbilityRuntime_TypeDescriptor_GetBundle(nullptr, nullptr, 0),
-        ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
-}
-
 HWTEST_F(TypeDescriptorNullTest, GetInterfaceCount_NullParams_001, TestSize.Level1)
 {
     uint32_t count = 0;

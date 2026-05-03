@@ -497,20 +497,6 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_CallMethod(
 void OH_AbilityRuntime_TypeDescriptor_Release(OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle *pTypeDescriptor);
 
 /**
- * @brief Get bundle name.
- *
- * @param pTypeDescriptor Indicates TypeDescriptor handle.
- * @param pbstrBundle Indicates a buffer to receive package name.
- * @param cMaxBundle Indicates size of buffer.
- * @return Returns error code.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrBundle is null, or cMaxBundle is 0.
- * @since 26.0.0
- */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetBundle(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor, char* pbstrBundle, uint32_t cMaxBundle);
-
-/**
  * @brief Get version.
  *
  * @param pTypeDescriptor Indicates TypeDescriptor handle.

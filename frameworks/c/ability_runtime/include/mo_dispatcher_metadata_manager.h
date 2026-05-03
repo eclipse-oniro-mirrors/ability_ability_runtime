@@ -39,7 +39,6 @@ public:
 
     AbilityRuntime_ErrorCode GetMethodMeta(uint32_t memberId, MoMethodMeta* methodMeta) const;
 
-    AbilityRuntime_ErrorCode GetBundle(std::string* bundleName) const;
     AbilityRuntime_ErrorCode GetVersion(std::string* version) const;
     AbilityRuntime_ErrorCode GetMainServiceInterfaceName(std::string* interfaceName) const;
 
@@ -95,7 +94,6 @@ private:
     AbilityRuntime_ErrorCode RequestMetadataJson(OHOS::IRemoteObject* proxy, std::string* jsonText);
 
     bool loaded_ = false;
-    std::string bundleName_;
     std::string version_;
     std::string mainServiceInterface_;
 
