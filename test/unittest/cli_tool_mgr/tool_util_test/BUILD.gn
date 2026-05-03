@@ -20,15 +20,17 @@ ohos_unittest("tool_util_test") {
   module_out_path = module_output_path
 
   include_dirs = [
-    "${ability_runtime_path}/cli_tool_framework/services/climgr/include",
     "${ability_runtime_path}/cli_tool_framework/interfaces/cli_tool/include",
+    "${ability_runtime_path}/cli_tool_framework/services/climgr/include",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
     "${ability_runtime_services_path}/common/include",
+    "${cli_tool_framework_path}/services/common/include",
   ]
 
   sources = [
     "tool_util_test.cpp",
     "${cli_tool_framework_path}/services/climgr/src/tool_util.cpp",
+    "${cli_tool_framework_path}/services/common/src/permission_util.cpp",
   ]
 
   cflags = []
@@ -38,11 +40,12 @@ ohos_unittest("tool_util_test") {
 
   deps = [
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
-    "${ability_runtime_path}/cli_tool_framework/services/climgr:climgr",
     "${ability_runtime_path}/cli_tool_framework/interfaces/cli_tool:cli_tool_client",
+    "${ability_runtime_path}/cli_tool_framework/services/climgr:climgr",
   ]
 
   external_deps = [
+    "ability_base:want",
     "access_token:libaccesstoken_sdk",
     "access_token:libtokenid_sdk",
     "bundle_framework:appexecfwk_base",

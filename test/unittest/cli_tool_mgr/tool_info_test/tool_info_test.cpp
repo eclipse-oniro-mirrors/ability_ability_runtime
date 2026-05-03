@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 #include <parcel.h>
 
 #include "tool_info.h"
 
+using namespace nlohmann::literals;
 using namespace testing::ext;
 
 namespace OHOS {
@@ -91,6 +92,8 @@ HWTEST_F(ToolInfoTest, ToolInfo_Marshalling_0200, TestSize.Level1)
     tool.hasSubCommand = true;
     SubCommandInfo subCmd;
     subCmd.description = "sub1";
+    subCmd.inputSchema = "{}";
+    subCmd.outputSchema = "{}";
     tool.subcommands["sub1"] = subCmd;
 
     Parcel parcel;
@@ -123,6 +126,8 @@ HWTEST_F(ToolInfoTest, ToolInfo_Unmarshalling_0100, TestSize.Level1)
     original.hasSubCommand = true;
     SubCommandInfo buildSubCmd;
     buildSubCmd.description = "Build subcommand";
+    buildSubCmd.inputSchema = "{}";
+    buildSubCmd.outputSchema = "{}";
     original.subcommands["build"] = buildSubCmd;
 
     Parcel parcel;
@@ -232,16 +237,18 @@ HWTEST_F(ToolInfoTest, ToolInfo_Unmarshalling_0400, TestSize.Level1)
     EXPECT_EQ(result->name, "tool_with_full_subcommands");
     EXPECT_TRUE(result->hasSubCommand);
     EXPECT_EQ(result->subcommands.size(), 1u);
-    EXPECT_TRUE(result->subcommands.contains("run"));
+    EXPECT_TRUE(result->subcommands.find("run") != result->subcommands.end());
 
     const auto &resultSubCmd = result->subcommands["run"];
     EXPECT_EQ(resultSubCmd.description, "Full subcommand");
     EXPECT_EQ(resultSubCmd.requirePermissions.size(), 1u);
     EXPECT_EQ(resultSubCmd.requirePermissions[0], "ohos.permission.INTERNET");
-    EXPECT_EQ(resultSubCmd.inputSchema, R"({"type": "object", "properties": {"arg": {"type": "string"}}})");
-    EXPECT_EQ(resultSubCmd.outputSchema, R"({"type": "string"})");
+    EXPECT_EQ(nlohmann::json::parse(resultSubCmd.inputSchema),
+        nlohmann::json::parse(R"({"type": "object", "properties": {"arg": {"type": "string"}}})"));
+    EXPECT_EQ(nlohmann::json::parse(resultSubCmd.outputSchema), nlohmann::json::parse(R"({"type": "string"})"));
     EXPECT_EQ(resultSubCmd.eventTypes.size(), 2u);
-    EXPECT_EQ(resultSubCmd.eventSchemas, R"({"stdout": {"type": "string"}})");
+    EXPECT_EQ(nlohmann::json::parse(resultSubCmd.eventSchemas),
+        nlohmann::json::parse(R"({"stdout": {"type": "string"}})"));
 
     delete result;
 
@@ -476,15 +483,19 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_0200, TestSize.Level1)
         "description": "Tool with subcommands",
         "executablePath": "/bin/tool",
         "requirePermissions": ["ohos.permission.INTERNET"],
+        "inputSchema": {},
+        "outputSchema": {},
         "hasSubCommand": true,
         "subcommands": {
             "build": {
                 "description": "Build the project",
+                "requirePermissions": [],
                 "inputSchema": {"type": "object"},
                 "outputSchema": {"type": "string"}
             },
             "run": {
                 "description": "Run the project",
+                "requirePermissions": [],
                 "inputSchema": {"type": "object"},
                 "outputSchema": {"type": "string"}
             }
@@ -494,7 +505,7 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_0200, TestSize.Level1)
     ToolInfo tool;
     bool result = ToolInfo::ParseFromJson(json, tool);
 
-    EXPECT_TRUE(result);
+    ASSERT_TRUE(result);
     EXPECT_EQ(tool.name, "hms-tool_with_sub");
     EXPECT_TRUE(tool.hasSubCommand);
     EXPECT_EQ(tool.subcommands.size(), 2u);
@@ -548,6 +559,7 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_ParseToJson_RoundTrip_0100, TestSi
         "subcommands": {
             "sub1": {
                 "description": "Sub 1",
+                "requirePermissions": [],
                 "inputSchema": {"type": "object"},
                 "outputSchema": {"type": "string"}
             }
@@ -556,7 +568,7 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_ParseToJson_RoundTrip_0100, TestSi
 
     ToolInfo tool;
     bool result = ToolInfo::ParseFromJson(originalJson, tool);
-    EXPECT_TRUE(result);
+    ASSERT_TRUE(result);
     nlohmann::json resultJson = tool.ParseToJson();
 
     EXPECT_EQ(resultJson["name"], originalJson["name"]);
@@ -1245,6 +1257,9 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_EventTypes_0100, TestSize.Level1)
         "version": "1.0.0",
         "description": "Test tool",
         "executablePath": "/bin/test",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
         "eventTypes": ["stdout", "stdout"]
     })"_json;
 
@@ -1252,7 +1267,7 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_EventTypes_0100, TestSize.Level1)
     bool result = ToolInfo::ParseFromJson(json, tool);
 
     // After removing ValidateEventTypes call, duplicate eventTypes are now allowed
-    EXPECT_TRUE(result);
+    ASSERT_TRUE(result);
     EXPECT_EQ(tool.eventTypes.size(), 2u);
 
     GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_EventTypes_0100 end";
@@ -1272,13 +1287,16 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_EventTypes_0200, TestSize.Level1)
         "version": "1.0.0",
         "description": "Test tool",
         "executablePath": "/bin/test",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
         "eventTypes": ["stdout", "stderr", "exit"]
     })"_json;
 
     ToolInfo tool;
     bool result = ToolInfo::ParseFromJson(json, tool);
 
-    EXPECT_TRUE(result);
+    ASSERT_TRUE(result);
     EXPECT_EQ(tool.eventTypes.size(), 3u);
 
     GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_EventTypes_0200 end";
@@ -1298,13 +1316,16 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_EventTypes_0300, TestSize.Level1)
         "version": "1.0.0",
         "description": "Test tool",
         "executablePath": "/bin/test",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
         "eventTypes": []
     })"_json;
 
     ToolInfo tool;
     bool result = ToolInfo::ParseFromJson(json, tool);
 
-    EXPECT_TRUE(result);
+    ASSERT_TRUE(result);
     EXPECT_TRUE(tool.eventTypes.empty());
 
     GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_EventTypes_0300 end";
@@ -1324,13 +1345,16 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_EventTypes_0400, TestSize.Level1)
         "version": "1.0.0",
         "description": "Test tool",
         "executablePath": "/bin/test",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
         "eventTypes": ["", "stdout", ""]
     })"_json;
 
     ToolInfo tool;
     bool result = ToolInfo::ParseFromJson(json, tool);
 
-    EXPECT_TRUE(result);
+    ASSERT_TRUE(result);
     EXPECT_EQ(tool.eventTypes.size(), 1u);
     EXPECT_EQ(tool.eventTypes[0], "stdout");
 
@@ -1353,14 +1377,16 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_RequirePermissions_0100, TestSize.
         "version": "1.0.0",
         "description": "Test tool",
         "executablePath": "/bin/test",
-        "requirePermissions": ["ohos.permission.INTERNET", "ohos.permission.INTERNET"]
+        "requirePermissions": ["ohos.permission.INTERNET", "ohos.permission.INTERNET"],
+        "inputSchema": {},
+        "outputSchema": {}
     })"_json;
 
     ToolInfo tool;
     bool result = ToolInfo::ParseFromJson(json, tool);
 
     // After removing ValidateRequirePermissions call, duplicate permissions are now allowed
-    EXPECT_TRUE(result);
+    ASSERT_TRUE(result);
     EXPECT_EQ(tool.requirePermissions.size(), 2u);
 
     GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_RequirePermissions_0100 end";
@@ -1380,13 +1406,15 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_RequirePermissions_0200, TestSize.
         "version": "1.0.0",
         "description": "Test tool",
         "executablePath": "/bin/test",
-        "requirePermissions": ["ohos.permission.INTERNET", "ohos.permission.CAMERA"]
+        "requirePermissions": ["ohos.permission.INTERNET", "ohos.permission.CAMERA"],
+        "inputSchema": {},
+        "outputSchema": {}
     })"_json;
 
     ToolInfo tool;
     bool result = ToolInfo::ParseFromJson(json, tool);
 
-    EXPECT_TRUE(result);
+    ASSERT_TRUE(result);
     EXPECT_EQ(tool.requirePermissions.size(), 2u);
 
     GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_RequirePermissions_0200 end";
@@ -1434,13 +1462,15 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_RequirePermissions_0400, TestSize.
         "version": "1.0.0",
         "description": "Test tool",
         "executablePath": "/bin/test",
-        "requirePermissions": ["", "ohos.permission.INTERNET", ""]
+        "requirePermissions": ["", "ohos.permission.INTERNET", ""],
+        "inputSchema": {},
+        "outputSchema": {}
     })"_json;
 
     ToolInfo tool;
     bool result = ToolInfo::ParseFromJson(json, tool);
 
-    EXPECT_TRUE(result);
+    ASSERT_TRUE(result);
     EXPECT_EQ(tool.requirePermissions.size(), 1u);
     EXPECT_EQ(tool.requirePermissions[0], "ohos.permission.INTERNET");
 
@@ -2811,6 +2841,7 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_HasSubCommand_0500, TestSize.Level
         "subcommands": {
             "build": {
                 "description": "Build subcommand",
+                "requirePermissions": [],
                 "inputSchema": {},
                 "outputSchema": {}
             }
@@ -2823,7 +2854,7 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_HasSubCommand_0500, TestSize.Level
     EXPECT_TRUE(result);
     EXPECT_TRUE(tool.hasSubCommand);
     EXPECT_EQ(tool.subcommands.size(), 1u);
-    EXPECT_TRUE(tool.subcommands.contains("build"));
+    EXPECT_TRUE(tool.subcommands.find("build") != tool.subcommands.end());
 
     GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_HasSubCommand_0500 end";
 }

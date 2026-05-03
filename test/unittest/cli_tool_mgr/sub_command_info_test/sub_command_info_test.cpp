@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <parcel.h>
 
 #include "sub_command_info.h"
@@ -389,10 +389,13 @@ HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseToJson_0100, TestSize.Level1)
 
     EXPECT_EQ(json["description"], "Test to JSON");
     EXPECT_EQ(json["requirePermissions"].size(), 1u);
-    EXPECT_EQ(json["inputSchema"], R"({"type": "object"})");
-    EXPECT_EQ(json["outputSchema"], R"({"type": "string"})");
+    EXPECT_TRUE(json["inputSchema"].is_object());
+    EXPECT_EQ(json["inputSchema"]["type"], "object");
+    EXPECT_TRUE(json["outputSchema"].is_object());
+    EXPECT_EQ(json["outputSchema"]["type"], "string");
     EXPECT_EQ(json["eventTypes"].size(), 1u);
-    EXPECT_EQ(json["eventSchemas"], R"({"event1": {"type": "object"}})");
+    EXPECT_TRUE(json["eventSchemas"].is_object());
+    EXPECT_EQ(json["eventSchemas"]["event1"]["type"], "object");
 
     GTEST_LOG_(INFO) << "SubCommandInfo_ParseToJson_0100 end";
 }
@@ -440,15 +443,12 @@ HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseToJson_0300, TestSize.Level1)
     EXPECT_TRUE(json.contains("requirePermissions"));
     EXPECT_TRUE(json["requirePermissions"].is_array());
     EXPECT_TRUE(json["requirePermissions"].empty());
-    EXPECT_TRUE(json.contains("inputSchema"));
-    EXPECT_TRUE(json["inputSchema"].is_string());
-    EXPECT_TRUE(json.contains("outputSchema"));
-    EXPECT_TRUE(json["outputSchema"].is_string());
+    EXPECT_FALSE(json.contains("inputSchema"));
+    EXPECT_FALSE(json.contains("outputSchema"));
     EXPECT_TRUE(json.contains("eventTypes"));
     EXPECT_TRUE(json["eventTypes"].is_array());
     EXPECT_TRUE(json["eventTypes"].empty());
-    EXPECT_TRUE(json.contains("eventSchemas"));
-    EXPECT_TRUE(json["eventSchemas"].is_string());
+    EXPECT_FALSE(json.contains("eventSchemas"));
 
     GTEST_LOG_(INFO) << "SubCommandInfo_ParseToJson_0300 end";
 }
@@ -506,7 +506,8 @@ HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseToJson_0400, TestSize.Level1)
     EXPECT_TRUE(json.contains("inputSchema"));
     EXPECT_EQ(json["inputSchema"], "invalid json string");
     EXPECT_TRUE(json.contains("outputSchema"));
-    EXPECT_EQ(json["outputSchema"], R"({"type": "string"})");
+    EXPECT_TRUE(json["outputSchema"].is_object());
+    EXPECT_EQ(json["outputSchema"]["type"], "string");
     EXPECT_TRUE(json.contains("eventSchemas"));
 
     GTEST_LOG_(INFO) << "SubCommandInfo_ParseToJson_0400 end";
@@ -531,7 +532,8 @@ HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseToJson_0500, TestSize.Level1)
 
     EXPECT_EQ(json["description"], "Invalid outputSchema test");
     EXPECT_TRUE(json.contains("inputSchema"));
-    EXPECT_EQ(json["inputSchema"], R"({"type": "object"})");
+    EXPECT_TRUE(json["inputSchema"].is_object());
+    EXPECT_EQ(json["inputSchema"]["type"], "object");
     EXPECT_TRUE(json.contains("outputSchema"));
     EXPECT_EQ(json["outputSchema"], "{invalid json}");
 
@@ -997,6 +999,7 @@ HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseFromJson_Validation_1000, TestS
 
     nlohmann::json json = R"({
         "description": "Duplicate eventTypes",
+        "requirePermissions": [],
         "inputSchema": {"type": "object"},
         "outputSchema": {"type": "string"},
         "eventTypes": ["stdout", "stdout"]
@@ -1045,6 +1048,7 @@ HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseFromJson_Validation_1101, TestS
 
     nlohmann::json json = R"({
         "description": "Empty string eventType",
+        "requirePermissions": [],
         "inputSchema": {"type": "object"},
         "outputSchema": {"type": "string"},
         "eventTypes": ["stdout", "", "stderr"]
@@ -1053,7 +1057,7 @@ HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseFromJson_Validation_1101, TestS
     SubCommandInfo subCmd;
     bool result = SubCommandInfo::ParseFromJson(json, subCmd);
 
-    EXPECT_TRUE(result);  // empty strings are skipped
+    ASSERT_TRUE(result);  // empty strings are skipped
     EXPECT_EQ(subCmd.eventTypes.size(), 2u);  // only non-empty eventTypes stored
     EXPECT_EQ(subCmd.eventTypes[0], "stdout");
     EXPECT_EQ(subCmd.eventTypes[1], "stderr");
@@ -1221,6 +1225,7 @@ HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseFromJson_Validation_1600, TestS
 
     nlohmann::json json = R"({
         "description": "Unique eventTypes",
+        "requirePermissions": [],
         "inputSchema": {"type": "object"},
         "outputSchema": {"type": "string"},
         "eventTypes": ["stdout", "stderr", "exit"]
@@ -1246,6 +1251,7 @@ HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseFromJson_Validation_1700, TestS
 
     nlohmann::json json = R"({
         "description": "Valid eventSchemas",
+        "requirePermissions": [],
         "inputSchema": {"type": "object"},
         "outputSchema": {"type": "string"},
         "eventSchemas": {"stdout": {"type": "string"}, "exit": {"type": "number"}}

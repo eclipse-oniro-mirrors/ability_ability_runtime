@@ -17,13 +17,13 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 group("unittest") {
   testonly = true
   deps = [
+    "cli_tool_data_manager_test:cli_tool_data_manager_test",
     "cli_tool_mgr_client_test:cli_tool_mgr_client_test",
     "cli_tool_mgr_service_test:cli_tool_mgr_service_test",
-    "cli_tool_data_manager_test:cli_tool_data_manager_test",
     "process_manager_test:process_manager_test",
     "sub_command_info_test:sub_command_info_test",
-    "tool_summary_test:tool_summary_test",
     "tool_info_test:tool_info_test",
+    "tool_summary_test:tool_summary_test",
     "tool_util_test:tool_util_test",
   ]
 }

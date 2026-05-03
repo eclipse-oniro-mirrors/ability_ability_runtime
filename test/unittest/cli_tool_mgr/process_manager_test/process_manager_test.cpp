@@ -13,12 +13,13 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
-#include "process_manager.h"
 #include "cli_error_code.h"
 #include "exec_tool_param.h"
+#include "process_manager.h"
+#include "tool_info.h"
 
 using namespace testing::ext;
 using namespace OHOS::CliTool;
@@ -33,7 +34,8 @@ public:
     void SetUp();
     void TearDown();
 
-    ExecToolParam CreateTestParam(const std::string& toolName, const std::string& subcommand = "");
+    ExecToolParam CreateTestParam(const std::string &toolName, const std::string &subcommand = "");
+    ToolInfo CreateTestToolInfo(const std::string &toolName);
 };
 
 void ProcessManagerTest::SetUpTestCase(void)
@@ -56,13 +58,21 @@ void ProcessManagerTest::TearDown()
     // Cleanup after each test
 }
 
-ExecToolParam ProcessManagerTest::CreateTestParam(const std::string& toolName, const std::string& subcommand)
+ExecToolParam ProcessManagerTest::CreateTestParam(const std::string &toolName, const std::string &subcommand)
 {
     ExecToolParam param;
     param.toolName = toolName;
     param.subcommand = subcommand;
     param.challenge = "test_challenge";
     return param;
+}
+
+ToolInfo ProcessManagerTest::CreateTestToolInfo(const std::string &toolName)
+{
+    ToolInfo toolInfo;
+    toolInfo.name = toolName;
+    toolInfo.executablePath = "/system/bin/" + toolName;
+    return toolInfo;
 }
 
 /**
@@ -95,13 +105,13 @@ HWTEST_F(ProcessManagerTest, CreateChildProcess_0100, TestSize.Level1)
 
     ExecToolParam param = CreateTestParam("test_tool");
     std::string sandboxConfig = "/etc/claw/test_config.json";
-    std::map<std::string, std::string> args;
+    ToolInfo toolInfo = CreateTestToolInfo("test_tool");
 
     auto record = std::make_shared<SessionRecord>();
     EXPECT_NE(record, nullptr);
     record->sessionId = "test_tool";
     record->toolName = "test_tool";
-    int32_t result = manager.CreateChildProcess(param, sandboxConfig, args, record);
+    int32_t result = manager.CreateChildProcess(param, sandboxConfig, toolInfo, record);
 
     // In test environment, fork will succeed and create a child process
     // The child process will then execvp which may fail if claw_sandbox doesn't exist
@@ -124,13 +134,13 @@ HWTEST_F(ProcessManagerTest, CreateChildProcess_0200, TestSize.Level1)
 
     ExecToolParam param = CreateTestParam("test_tool", "build");
     std::string sandboxConfig = "/etc/claw/test_config.json";
-    std::map<std::string, std::string> args;
+    ToolInfo toolInfo = CreateTestToolInfo("test_tool");
 
     auto record = std::make_shared<SessionRecord>();
     EXPECT_NE(record, nullptr);
     record->sessionId = "test_tool";
     record->toolName = "test_tool";
-    int32_t result = manager.CreateChildProcess(param, sandboxConfig, args, record);
+    int32_t result = manager.CreateChildProcess(param, sandboxConfig, toolInfo, record);
 
     EXPECT_EQ(result, ERR_OK);
 
@@ -150,15 +160,13 @@ HWTEST_F(ProcessManagerTest, CreateChildProcess_0300, TestSize.Level1)
 
     ExecToolParam param = CreateTestParam("test_tool", "run");
     std::string sandboxConfig = "/etc/claw/test_config.json";
-    std::map<std::string, std::string> args;
-    args["--verbose"] = "true";
-    args["--output"] = "/tmp/output.txt";
+    ToolInfo toolInfo = CreateTestToolInfo("test_tool");
 
     auto record = std::make_shared<SessionRecord>();
     EXPECT_NE(record, nullptr);
     record->sessionId = "test_tool";
     record->toolName = "test_tool";
-    int32_t result = manager.CreateChildProcess(param, sandboxConfig, args, record);
+    int32_t result = manager.CreateChildProcess(param, sandboxConfig, toolInfo, record);
 
     EXPECT_EQ(result, ERR_OK);
 
@@ -178,13 +186,13 @@ HWTEST_F(ProcessManagerTest, CreateChildProcess_0400, TestSize.Level1)
 
     ExecToolParam param = CreateTestParam("");
     std::string sandboxConfig = "/etc/claw/test_config.json";
-    std::map<std::string, std::string> args;
+    ToolInfo toolInfo = CreateTestToolInfo("");
 
     auto record = std::make_shared<SessionRecord>();
     EXPECT_NE(record, nullptr);
     record->sessionId = "test_tool";
     record->toolName = "test_tool";
-    int32_t result = manager.CreateChildProcess(param, sandboxConfig, args, record);
+    int32_t result = manager.CreateChildProcess(param, sandboxConfig, toolInfo, record);
 
     // Empty tool name should still work (will just execute claw_sandbox with empty cmd)
     EXPECT_EQ(result, ERR_OK);
@@ -205,17 +213,13 @@ HWTEST_F(ProcessManagerTest, CreateChildProcess_0500, TestSize.Level1)
 
     ExecToolParam param = CreateTestParam("complex_tool", "deploy");
     std::string sandboxConfig = "/etc/claw/complex_config.json";
-    std::map<std::string, std::string> args;
-    args["--env"] = "production";
-    args["--region"] = "us-west-2";
-    args["--instances"] = "3";
-    args["--force"] = "true";
+    ToolInfo toolInfo = CreateTestToolInfo("complex_tool");
 
     auto record = std::make_shared<SessionRecord>();
     EXPECT_NE(record, nullptr);
     record->sessionId = "complex_tool";
     record->toolName = "complex_tool";
-    int32_t result = manager.CreateChildProcess(param, sandboxConfig, args, record);
+    int32_t result = manager.CreateChildProcess(param, sandboxConfig, toolInfo, record);
 
     EXPECT_EQ(result, ERR_OK);
 
@@ -235,13 +239,13 @@ HWTEST_F(ProcessManagerTest, CreateChildProcess_0600, TestSize.Level1)
 
     ExecToolParam param = CreateTestParam("test_tool");
     std::string sandboxConfig = "";
-    std::map<std::string, std::string> args;
+    ToolInfo toolInfo = CreateTestToolInfo("test_tool");
 
     auto record = std::make_shared<SessionRecord>();
     EXPECT_NE(record, nullptr);
     record->sessionId = "test_tool";
     record->toolName = "test_tool";
-    int32_t result = manager.CreateChildProcess(param, sandboxConfig, args, record);
+    int32_t result = manager.CreateChildProcess(param, sandboxConfig, toolInfo, record);
 
     EXPECT_EQ(result, ERR_OK);
 
@@ -261,13 +265,13 @@ HWTEST_F(ProcessManagerTest, CreateChildProcess_0700, TestSize.Level1)
 
     ExecToolParam param = CreateTestParam("simple_tool");
     std::string sandboxConfig = "/etc/claw/simple_config.json";
-    std::map<std::string, std::string> args;
+    ToolInfo toolInfo = CreateTestToolInfo("simple_tool");
 
     auto record = std::make_shared<SessionRecord>();
     EXPECT_NE(record, nullptr);
     record->sessionId = "simple_tool";
     record->toolName = "simple_tool";
-    int32_t result = manager.CreateChildProcess(param, sandboxConfig, args, record);
+    int32_t result = manager.CreateChildProcess(param, sandboxConfig, toolInfo, record);
 
     EXPECT_EQ(result, ERR_OK);
 
@@ -307,9 +311,7 @@ HWTEST_F(ProcessManagerTest, CommandLineConstruction_0100, TestSize.Level1)
 
     ExecToolParam param = CreateTestParam("my_tool", "subcommand1");
     std::string sandboxConfig = "/etc/claw/config.json";
-    std::map<std::string, std::string> args;
-    args["arg1"] = "value1";
-    args["arg2"] = "value2";
+    ToolInfo toolInfo = CreateTestToolInfo("my_tool");
 
     auto record = std::make_shared<SessionRecord>();
     EXPECT_NE(record, nullptr);
@@ -317,7 +319,7 @@ HWTEST_F(ProcessManagerTest, CommandLineConstruction_0100, TestSize.Level1)
     record->toolName = "my_tool";
     // The command line should be: "my_tool subcommand1 arg1 value1 arg2 value2"
     // We can't directly verify this without fork/exec, but we can verify the call succeeds
-    int32_t result = manager.CreateChildProcess(param, sandboxConfig, args, record);
+    int32_t result = manager.CreateChildProcess(param, sandboxConfig, toolInfo, record);
 
     EXPECT_EQ(result, ERR_OK);
 
@@ -337,17 +339,13 @@ HWTEST_F(ProcessManagerTest, ArgumentOrder_0100, TestSize.Level1)
 
     ExecToolParam param = CreateTestParam("ordered_tool");
     std::string sandboxConfig = "/etc/claw/config.json";
-    std::map<std::string, std::string> args;
-    // Note: std::map maintains sorted order, not insertion order
-    args["z-last"] = "last_value";
-    args["a-first"] = "first_value";
-    args["m-middle"] = "middle_value";
+    ToolInfo toolInfo = CreateTestToolInfo("ordered_tool");
 
     auto record = std::make_shared<SessionRecord>();
     EXPECT_NE(record, nullptr);
     record->sessionId = "ordered_tool";
     record->toolName = "ordered_tool";
-    int32_t result = manager.CreateChildProcess(param, sandboxConfig, args, record);
+    int32_t result = manager.CreateChildProcess(param, sandboxConfig, toolInfo, record);
 
     EXPECT_EQ(result, ERR_OK);
 
@@ -367,14 +365,14 @@ HWTEST_F(ProcessManagerTest, ConstCorrectness_0100, TestSize.Level1)
 
     ExecToolParam param = CreateTestParam("const_test_tool");
     std::string sandboxConfig = "/etc/claw/const_config.json";
-    std::map<std::string, std::string> args;
+    ToolInfo toolInfo = CreateTestToolInfo("const_test_tool");
 
     auto record = std::make_shared<SessionRecord>();
     EXPECT_NE(record, nullptr);
     record->sessionId = "const_test_tool";
     record->toolName = "const_test_tool";
     // This should compile and work because CreateChildProcess is const
-    int32_t result = manager.CreateChildProcess(param, sandboxConfig, args, record);
+    int32_t result = manager.CreateChildProcess(param, sandboxConfig, toolInfo, record);
 
     EXPECT_EQ(result, ERR_OK);
 

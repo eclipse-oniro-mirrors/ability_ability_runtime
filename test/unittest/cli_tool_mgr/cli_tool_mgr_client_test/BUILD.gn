@@ -31,6 +31,7 @@ ohos_unittest("cli_tool_mgr_client_test") {
   deps = [ "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client" ]
 
   external_deps = [
+    "ability_base:want",
     "c_utils:utils",
     "googletest:gmock_main",
     "googletest:gtest_main",
