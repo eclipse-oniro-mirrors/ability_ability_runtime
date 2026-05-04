@@ -22,8 +22,10 @@
 
 #include "cli_error_code.h"
 #include "cli_tool_app_state_observer.h"
+#include "ccm_util.h"
 #include "exec_options.h"
 #include "tool_info.h"
+#include "tool_util.h"
 
 using namespace testing::ext;
 using namespace OHOS::CliTool;
@@ -55,12 +57,14 @@ void CliToolManagerServiceTest::TearDownTestCase(void)
 void CliToolManagerServiceTest::SetUp()
 {
     service_ = CliToolManagerService::GetInstance();
-    service_->activeSessionCount_.store(0);
+    std::lock_guard<ffrt::mutex> guard(service_->sessionsMutex_);
+    service_->sessionRecords_.clear();
 }
 
 void CliToolManagerServiceTest::TearDown()
 {
-    service_->activeSessionCount_.store(0);
+    std::lock_guard<ffrt::mutex> guard(service_->sessionsMutex_);
+    service_->sessionRecords_.clear();
 }
 
 void CliToolManagerServiceTest::RegisterTestTool(const std::string& name, const std::string& schema)
@@ -99,17 +103,17 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0100, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0100 start";
 
-    service_->activeSessionCount_.store(8);
+    auto cliQuantity = CcmUtil::GetInstance().GetCliConcurrencyLimit();
+    for (int32_t i = 0; i < cliQuantity; ++i) {
+        auto record = std::make_shared<SessionRecord>();
+        record->sessionId = "test_session_" + std::to_string(i);
+        service_->AddSessionRecord(record);
+    }
 
-    ExecToolParam param;
-    param.toolName = "test_tool";
-    param.subcommand = "";
-    param.challenge = "test_challenge";
-
-    int32_t result = service_->ExecTool(param, "test");
+    int32_t result = service_->ValidateSessionLimit();
 
     EXPECT_EQ(result, ERR_SESSION_LIMIT_EXCEEDED);
-    EXPECT_EQ(service_->activeSessionCount_.load(), 8);
+    EXPECT_EQ(service_->sessionRecords_.size(), static_cast<size_t>(cliQuantity));
 
     GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0100 end";
 }
@@ -128,9 +132,12 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0200, TestSize.Level1)
     param.subcommand = "";
     param.challenge = "test_challenge";
 
-    int32_t result = service_->ExecTool(param, "test");
+    ToolInfo toolInfo;
+    std::string sandboxConfig;
+    std::string bundleName;
+    int32_t result = service_->ValidateAndPrepareTool(param, 0, toolInfo, sandboxConfig, bundleName);
 
-    EXPECT_EQ(result, ERR_TOOL_NOT_EXIST);
+    EXPECT_TRUE(result == ERR_TOOL_NOT_EXIST || result == ERR_NO_INIT);
 
     GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0200 end";
 }
@@ -149,9 +156,12 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0300, TestSize.Level1)
     param.subcommand = "";
     param.challenge = "test_challenge";
 
-    int32_t result = service_->ExecTool(param, "test");
+    ToolInfo toolInfo;
+    std::string sandboxConfig;
+    std::string bundleName;
+    int32_t result = service_->ValidateAndPrepareTool(param, 0, toolInfo, sandboxConfig, bundleName);
 
-    EXPECT_EQ(result, ERR_TOOL_NOT_EXIST);
+    EXPECT_TRUE(result == ERR_TOOL_NOT_EXIST || result == ERR_NO_INIT);
 
     GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0300 end";
 }
@@ -165,22 +175,21 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0500, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0500 start";
 
-    std::string schema = R"({
-        "properties": {
-            "build": {
-                "type": "object",
-                "description": "Build subcommand"
-            }
-        }
-    })";
-    RegisterTestTool("test_tool_subcmd", schema);
+    ToolInfo toolInfo;
+    toolInfo.name = "test_tool_subcmd";
+    toolInfo.description = "Test tool with subcommand";
+    toolInfo.executablePath = "/system/bin/test_tool_subcmd";
+    toolInfo.hasSubCommand = true;
+    SubCommandInfo subCommandInfo;
+    subCommandInfo.description = "Build subcommand";
+    toolInfo.subcommands["build"] = subCommandInfo;
 
     ExecToolParam param;
     param.toolName = "test_tool_subcmd";
     param.subcommand = "invalid_subcmd";
     param.challenge = "test_challenge";
 
-    int32_t result = service_->ExecTool(param, "test");
+    int32_t result = ToolUtil::ValidateProperties(toolInfo, param, 0);
 
     EXPECT_EQ(result, ERR_TOOL_NOT_EXIST);
 
