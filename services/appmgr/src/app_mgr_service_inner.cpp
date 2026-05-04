@@ -4528,6 +4528,13 @@ std::shared_ptr<AppRunningRecord> AppMgrServiceInner::CreateAppRunningRecord(
         appRecord->SetNativeStart(want->GetBoolParam("native", false));
         appRecord->SetDebugFromLocal(want->GetBoolParam(DEBUG_FROM, false));
     }
+    if (abilityInfo != nullptr && abilityInfo->extensionAbilityType == AppExecFwk::ExtensionAbilityType::AGENT &&
+        appInfo != nullptr && appInfo->appProvisionType == AppExecFwk::Constants::APP_PROVISION_TYPE_DEBUG) {
+            auto mainAppRecord = appRunningManager_->FindMainProcessAppRunningRecord(appInfo->uid);
+            if (mainAppRecord && mainAppRecord->IsDebug()) {
+                appRecord->SetDebugApp(true);
+            }
+        }
     return appRecord;
 }
 

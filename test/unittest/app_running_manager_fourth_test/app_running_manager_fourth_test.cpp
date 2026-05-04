@@ -1555,6 +1555,137 @@ HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_FindMasterProcessAppRunn
 }
 
 /**
+ * @tc.name: AppRunningManager_FindMainProcessAppRunningRecord_0100
+ * @tc.desc: Find main process record successfully when one record is main process
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_FindMainProcessAppRunningRecord_0100, TestSize.Level1)
+{
+    int uid = 100;
+    BundleInfo bundleInfo;
+    std::shared_ptr<AppRunningRecord> recordOne =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(recordOne, nullptr);
+    std::shared_ptr<AppRunningRecord> recordTwo =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(recordTwo, nullptr);
+    std::shared_ptr<AppRunningRecord> recordThree =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(recordThree, nullptr);
+
+    recordOne->processType_ = ProcessType::NORMAL;
+    recordOne->SetMainProcess(true);
+    recordOne->SetUid(uid);
+    recordTwo->processType_ = ProcessType::NORMAL;
+    recordTwo->SetMainProcess(false);
+    recordTwo->SetUid(uid);
+    recordThree->processType_ = ProcessType::EXTENSION;
+    recordThree->SetMainProcess(false);
+    recordThree->SetUid(uid);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, recordOne));
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(TWO, recordTwo));
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(THREE, recordThree));
+    auto ret = appRunningManager_->FindMainProcessAppRunningRecord(uid);
+    EXPECT_EQ(ret, recordOne);
+}
+
+/**
+ * @tc.name: AppRunningManager_FindMainProcessAppRunningRecord_0200
+ * @tc.desc: Return nullptr when no record is main process
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_FindMainProcessAppRunningRecord_0200, TestSize.Level1)
+{
+    int uid = 100;
+    BundleInfo bundleInfo;
+    std::shared_ptr<AppRunningRecord> recordOne =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(recordOne, nullptr);
+    std::shared_ptr<AppRunningRecord> recordTwo =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(recordTwo, nullptr);
+
+    recordOne->processType_ = ProcessType::NORMAL;
+    recordOne->SetMainProcess(false);
+    recordOne->SetUid(uid);
+    recordTwo->processType_ = ProcessType::EXTENSION;
+    recordTwo->SetMainProcess(false);
+    recordTwo->SetUid(uid);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, recordOne));
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(TWO, recordTwo));
+    auto ret = appRunningManager_->FindMainProcessAppRunningRecord(uid);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: AppRunningManager_FindMainProcessAppRunningRecord_0300
+ * @tc.desc: Return nullptr when map is empty
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_FindMainProcessAppRunningRecord_0300, TestSize.Level1)
+{
+    int uid = 100;
+    appRunningManager_->appRunningRecordMap_.clear();
+    auto ret = appRunningManager_->FindMainProcessAppRunningRecord(uid);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: AppRunningManager_FindMainProcessAppRunningRecord_0400
+ * @tc.desc: Return nullptr when uid does not match any record
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_FindMainProcessAppRunningRecord_0400, TestSize.Level1)
+{
+    int uid = 100;
+    int otherUid = 200;
+    BundleInfo bundleInfo;
+    std::shared_ptr<AppRunningRecord> recordOne =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(recordOne, nullptr);
+
+    recordOne->processType_ = ProcessType::NORMAL;
+    recordOne->SetMainProcess(true);
+    recordOne->SetUid(otherUid);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, recordOne));
+    auto ret = appRunningManager_->FindMainProcessAppRunningRecord(uid);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: AppRunningManager_FindMainProcessAppRunningRecord_0500
+ * @tc.desc: Skip terminating records and find the next valid main process
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_FindMainProcessAppRunningRecord_0500, TestSize.Level1)
+{
+    int uid = 100;
+    BundleInfo bundleInfo;
+    std::shared_ptr<AppRunningRecord> recordOne =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(recordOne, nullptr);
+    std::shared_ptr<AppRunningRecord> recordTwo =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(recordTwo, nullptr);
+
+    recordOne->processType_ = ProcessType::NORMAL;
+    recordOne->SetMainProcess(true);
+    recordOne->SetUid(uid);
+    recordOne->SetTerminating();
+    recordTwo->processType_ = ProcessType::NORMAL;
+    recordTwo->SetMainProcess(true);
+    recordTwo->SetUid(uid);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, recordOne));
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(TWO, recordTwo));
+    auto ret = appRunningManager_->FindMainProcessAppRunningRecord(uid);
+    EXPECT_EQ(ret, recordTwo);
+}
+
+/**
  * @tc.name: AppRunningManager_IsAppRunningRecordValid_0100
  * @tc.desc: NA
  * @tc.type: FUNC
