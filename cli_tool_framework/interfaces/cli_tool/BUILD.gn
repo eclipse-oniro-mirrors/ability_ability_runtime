@@ -21,7 +21,7 @@ idl_gen_interface("cli_tool_manager_interface") {
     "ICliToolManagerScheduler.idl",
   ]
 
-  sources_common = [ "ICliToolCmd.idl" ]
+  sources_common = [ "ICliToolData.idl" ]
   hitrace = "HITRACE_TAG_ABILITY_MANAGER"
   log_domainid = "0xD001365"
   log_tag = "CliToolManager"
@@ -52,13 +52,11 @@ ohos_shared_library("cli_tool_client") {
   sources = [
     "src/cli_mgr_load_callback.cpp",
     "src/cli_event_reply_manager.cpp",
-    "src/cli_session_info.cpp",
     "src/cli_session_subscription_manager.cpp",
     "src/cli_tool_event.cpp",
     "src/cli_tool_mgr_client.cpp",
     "src/cli_tool_mgr_scheduler_recipient.cpp",
     "src/exec_options.cpp",
-    "src/exec_result.cpp",
     "src/exec_tool_param.cpp",
     "src/sub_command_info.cpp",
     "src/tool_info.cpp",

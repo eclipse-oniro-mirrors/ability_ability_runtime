@@ -281,7 +281,7 @@ void CliToolMGRClient::ClearProxy()
 void CliToolMGRClient::CliMgrDeathRecipient::OnRemoteDied(const wptr<IRemoteObject> &remote)
 {
     if (callback_ != nullptr) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "cli tool manager service died");
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "cli tool manager service died");
         callback_(remote);
     }
 }

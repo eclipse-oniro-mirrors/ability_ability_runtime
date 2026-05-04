@@ -20,9 +20,9 @@
 
 #include "cli_error_code.h"
 #include "cli_manager_error_utils.h"
-#include "cli_session_info.h"
 #include "cli_tool_mgr_client.h"
 #include "hilog_tag_wrapper.h"
+#include "icli_tool_data.h"
 #include "js_cli_manager_utils.h"
 #include "js_error_utils.h"
 #include "napi_common_util.h"

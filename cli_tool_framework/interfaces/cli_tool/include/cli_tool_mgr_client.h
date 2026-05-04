@@ -20,9 +20,9 @@
 #include <functional>
 #include <mutex>
 
-#include "cli_session_info.h"
 #include "cli_tool_event.h"
 #include "exec_options.h"
+#include "icli_tool_data.h"
 #include "icli_tool_manager.h"
 #include "iremote_object.h"
 

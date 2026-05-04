@@ -178,7 +178,7 @@ bool ToolUtil::GenerateSandboxConfig(const ExecToolParam &param, AccessToken::Ac
     config["subCliName"] = param.subcommand;
     sandboxConfig = config.dump();
     bundleName = bundleInfo.name;
-    TAG_LOGE(AAFwkTag::CLI_TOOL, "sandboxConfig: %{public}s", sandboxConfig.c_str());
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "sandboxConfig: %{public}s", sandboxConfig.c_str());
     return true;
 }
 
