@@ -43,5 +43,5 @@ struct CliSessionInfo
     String sessionId;
     String toolName;
     String status;
-    sharedptr<ExecResult> result;
+    ExecResult result;
 };

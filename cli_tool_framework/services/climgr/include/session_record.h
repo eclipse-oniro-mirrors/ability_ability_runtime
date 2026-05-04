@@ -84,7 +84,7 @@ public:
 private:
     void TrimBufferedOutput(std::string &buffer);
 
-    std::shared_ptr<ExecResult> BuildExecResult() const;
+    ExecResult &BuildExecResult() const;
 
 private:
     std::atomic<SessionState> state_ {SessionState::SPAWNING};

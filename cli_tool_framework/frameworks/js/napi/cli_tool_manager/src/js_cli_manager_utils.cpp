@@ -223,33 +223,33 @@ napi_value CreateJsCliSessionInfo(napi_env env, const CliSessionInfo &session)
     napi_set_named_property(env, jsObj, "status", AppExecFwk::WrapStringToJS(env, session.status));
 
     // Set result if present
-    if (session.result != nullptr) {
+    if (session.status != "running") {
         napi_value jsResult = nullptr;
         status = napi_create_object(env, &jsResult);
         if (status != napi_ok) {
             TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create JS ExecResult");
             return nullptr;
         }
-        if (!session.result->timedOut) {
-            napi_value jsExitCode = AppExecFwk::WrapInt32ToJS(env, session.result->exitCode);
+        if (!session.result.timedOut) {
+            napi_value jsExitCode = AppExecFwk::WrapInt32ToJS(env, session.result.exitCode);
             napi_set_named_property(env, jsResult, "exitCode", jsExitCode);
         }
-        if (!session.result->outputText.empty()) {
-            napi_value jsOutputText = AppExecFwk::WrapStringToJS(env, session.result->outputText);
+        if (!session.result.outputText.empty()) {
+            napi_value jsOutputText = AppExecFwk::WrapStringToJS(env, session.result.outputText);
             napi_set_named_property(env, jsResult, "outputText", jsOutputText);
         }
-        if (!session.result->errorText.empty()) {
-            napi_value jsErrorText = AppExecFwk::WrapStringToJS(env, session.result->errorText);
+        if (!session.result.errorText.empty()) {
+            napi_value jsErrorText = AppExecFwk::WrapStringToJS(env, session.result.errorText);
             napi_set_named_property(env, jsResult, "errorText", jsErrorText);
         }
-        if (session.result->signalNumber != 0) {
-            napi_value jsSignalNumber = AppExecFwk::WrapInt32ToJS(env, session.result->signalNumber);
+        if (session.result.signalNumber != 0) {
+            napi_value jsSignalNumber = AppExecFwk::WrapInt32ToJS(env, session.result.signalNumber);
             napi_set_named_property(env, jsResult, "signalNumber", jsSignalNumber);
         }
         // Set timedOut
-        napi_set_named_property(env, jsResult, "timedOut", AppExecFwk::WrapBoolToJS(env, session.result->timedOut));
+        napi_set_named_property(env, jsResult, "timedOut", AppExecFwk::WrapBoolToJS(env, session.result.timedOut));
         // Set executionTime
-        napi_value jsExecutionTime = AppExecFwk::WrapInt64ToJS(env, session.result->executionTime);
+        napi_value jsExecutionTime = AppExecFwk::WrapInt64ToJS(env, session.result.executionTime);
         napi_set_named_property(env, jsResult, "executionTime", jsExecutionTime);
         napi_set_named_property(env, jsObj, "result", jsResult);
     }
