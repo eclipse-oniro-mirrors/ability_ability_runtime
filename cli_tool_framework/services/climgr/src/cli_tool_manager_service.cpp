@@ -99,7 +99,6 @@ void CliToolManagerService::HandleProcessTimeout(const std::string &sessionId)
 
     EventDispatcher::GetInstance().DispatchErrorEvent(sessionId, "session timed out");
     ProcessManager::GetInstance().Killpg(record->processId);
-    RemoveSessionRecord(sessionId);
 }
 
 void CliToolManagerService::HandleProcessYieldTimeout(const std::string &sessionId)
