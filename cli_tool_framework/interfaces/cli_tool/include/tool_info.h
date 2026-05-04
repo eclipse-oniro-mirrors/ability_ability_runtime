@@ -28,8 +28,6 @@
 #include <string>
 #include <vector>
 
-#include "exec_result.h"
-
 namespace OHOS {
 namespace CliTool {
 

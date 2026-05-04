@@ -128,7 +128,8 @@ int32_t ProcessManager::CreateChildProcess(const ExecToolParam &param, const std
         execArgs.push_back(nullptr);
         TAG_LOGI(AAFwkTag::CLI_TOOL, "Before execvp");
         execvp(execArgs[0], execArgs.data());
-        _exit(0);
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "execvp failed:%{public}d", errno);
+        _exit(EXIT_FAILURE);
     }
 
     // Parent process: close write ends of pipes

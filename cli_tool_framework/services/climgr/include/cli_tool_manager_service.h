@@ -103,11 +103,13 @@ private:
     // RAII wrapper for interface call counter
     class InterfaceCallCounter {
     public:
-        explicit InterfaceCallCounter(std::atomic<int32_t>& counter) : counter_(counter) {
-            counter_.fetch_add(1, std::memory_order_relaxed);
+        explicit InterfaceCallCounter(std::atomic<int32_t>& counter) : counter_(counter)
+        {
+            counter_.fetch_add(1, std::memory_order_acq_rel);
         }
-        ~InterfaceCallCounter() {
-            counter_.fetch_sub(1, std::memory_order_relaxed);
+        ~InterfaceCallCounter()
+        {
+            counter_.fetch_sub(1, std::memory_order_acq_rel);
         }
         InterfaceCallCounter(const InterfaceCallCounter&) = delete;
         InterfaceCallCounter& operator=(const InterfaceCallCounter&) = delete;

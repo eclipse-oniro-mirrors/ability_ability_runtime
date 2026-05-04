@@ -287,7 +287,7 @@ int32_t CliToolManagerService::OnIdle(const SystemAbilityOnDemandReason &idlReas
     int32_t sessionSize = 0;
     {
         std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
-        sessionSize = sessionRecords_.size();
+        sessionSize = static_cast<int32_t>(sessionRecords_.size());
     }
     int32_t calledCount = interfaceCalledCount_.load();
     if (calledCount != 0 && sessionSize != 0) {
@@ -332,7 +332,7 @@ void CliToolManagerService::DelayUnloadTask()
         int32_t sessionSize = 0;
         {
             std::lock_guard<ffrt::mutex> guard(CliToolManagerService::GetInstance()->sessionsMutex_);
-            sessionSize = CliToolManagerService::GetInstance()->sessionRecords_.size();
+            sessionSize = static_cast<int32_t>(CliToolManagerService::GetInstance()->sessionRecords_.size());
         }
         int32_t calledCount = CliToolManagerService::GetInstance()->interfaceCalledCount_.load();
         if (calledCount == 0 && sessionSize == 0) {

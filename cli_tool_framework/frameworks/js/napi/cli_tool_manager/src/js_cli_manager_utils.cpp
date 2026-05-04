@@ -17,10 +17,10 @@
 
 #include <nlohmann/json.hpp>
 
-#include "cli_session_info.h"
 #include "cli_tool_event.h"
 #include "exec_options.h"
 #include "hilog_tag_wrapper.h"
+#include "icli_tool_data.h"
 #include "napi_common_util.h"
 
 using namespace OHOS::AbilityRuntime;
@@ -230,7 +230,7 @@ napi_value CreateJsCliSessionInfo(napi_env env, const CliSessionInfo &session)
             TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create JS ExecResult");
             return nullptr;
         }
-        if (session.result->exitCode != 1) {
+        if (!session.result->timedOut) {
             napi_value jsExitCode = AppExecFwk::WrapInt32ToJS(env, session.result->exitCode);
             napi_set_named_property(env, jsResult, "exitCode", jsExitCode);
         }
