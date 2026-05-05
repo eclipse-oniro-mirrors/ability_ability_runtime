@@ -49,7 +49,7 @@ public:
     /**
      * @brief Query all available tools
      */
-    int32_t GetAllToolInfos(std::vector<ToolInfo> &tools) override;
+    int32_t GetAllToolInfos(ToolsRawData &tools) override;
 
     /**
      * @brief Query tool summaries (lightweight for listing)

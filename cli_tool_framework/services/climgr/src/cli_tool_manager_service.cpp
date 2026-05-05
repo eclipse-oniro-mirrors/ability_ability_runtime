@@ -386,7 +386,7 @@ void CliToolManagerService::UnregisterSessionWithMonitors(const std::string &ses
     }
 }
 
-int32_t CliToolManagerService::GetAllToolInfos(std::vector<ToolInfo> &tools)
+int32_t CliToolManagerService::GetAllToolInfos(ToolsRawData &tools)
 {
     TAG_LOGI(AAFwkTag::CLI_TOOL, "GetAllToolInfos called");
     InterfaceCallCounter counter(interfaceCalledCount_);
@@ -402,7 +402,7 @@ int32_t CliToolManagerService::GetAllToolInfos(std::vector<ToolInfo> &tools)
         return ERR_PERMISSION_DENIED;
     }
 
-    return CliToolDataManager::GetInstance().GetAllTools(tools);
+    return CliToolDataManager::GetInstance().GetAllToolsRawData(tools);
 }
 
 int32_t CliToolManagerService::GetAllToolSummaries(std::vector<ToolSummary> &summaries)

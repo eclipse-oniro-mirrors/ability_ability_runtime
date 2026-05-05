@@ -258,97 +258,226 @@ HWTEST_F(ToolInfoTest, ToolInfo_Unmarshalling_0400, TestSize.Level1)
 // ==================== ToolsRawData Tests ====================
 
 /**
- * @tc.name: ToolsRawData_Marshalling_0100
- * @tc.desc: Test ToolsRawData Marshalling success
+ * @tc.name: ToolsRawData_FromToolInfoVec_0100
+ * @tc.desc: Test ToolsRawData FromToolInfoVec and ToToolInfoVec round trip
  * @tc.type: FUNC
  */
-HWTEST_F(ToolInfoTest, ToolsRawData_Marshalling_0100, TestSize.Level1)
+HWTEST_F(ToolInfoTest, ToolsRawData_FromToolInfoVec_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ToolsRawData_Marshalling_0100 start";
+    GTEST_LOG_(INFO) << "ToolsRawData_FromToolInfoVec_0100 start";
+
+    std::vector<ToolInfo> tools;
+    ToolInfo tool1;
+    tool1.name = "ohos-test1";
+    tool1.version = "1.0.0";
+    tool1.description = "Test tool 1";
+    tool1.executablePath = "/bin/test1";
+    tool1.requirePermissions = {"ohos.permission.INTERNET"};
+    tool1.inputSchema = R"({"type": "object"})";
+    tool1.outputSchema = R"({"type": "string"})";
+    tools.push_back(tool1);
+
+    ToolInfo tool2;
+    tool2.name = "ohos-test2";
+    tool2.version = "2.0.0";
+    tool2.description = "Test tool 2";
+    tool2.executablePath = "/bin/test2";
+    tool2.requirePermissions = {};
+    tool2.inputSchema = "{}";
+    tool2.outputSchema = "{}";
+    tool2.hasSubCommand = true;
+    SubCommandInfo subCmd;
+    subCmd.description = "Sub command";
+    subCmd.inputSchema = "{}";
+    subCmd.outputSchema = "{}";
+    tool2.subcommands["sub1"] = subCmd;
+    tools.push_back(tool2);
 
     ToolsRawData rawData;
-    rawData.data = {1, 2, 3, 4, 5};
+    ToolsRawData::FromToolInfoVec(tools, rawData);
 
-    Parcel parcel;
-    bool ret = rawData.Marshalling(parcel);
+    EXPECT_NE(rawData.data, nullptr);
+    EXPECT_GT(rawData.size, 0u);
+    EXPECT_EQ(rawData.ownedData.size(), rawData.size);
 
-    EXPECT_TRUE(ret);
+    std::vector<ToolInfo> parsedTools;
+    int32_t ret = ToolsRawData::ToToolInfoVec(rawData, parsedTools);
 
-    GTEST_LOG_(INFO) << "ToolsRawData_Marshalling_0100 end";
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(parsedTools.size(), 2u);
+    EXPECT_EQ(parsedTools[0].name, "ohos-test1");
+    EXPECT_EQ(parsedTools[0].version, "1.0.0");
+    EXPECT_EQ(parsedTools[1].name, "ohos-test2");
+    EXPECT_EQ(parsedTools[1].subcommands.size(), 1u);
+
+    GTEST_LOG_(INFO) << "ToolsRawData_FromToolInfoVec_0100 end";
 }
 
 /**
- * @tc.name: ToolsRawData_Marshalling_0200
- * @tc.desc: Test ToolsRawData Marshalling with empty data
+ * @tc.name: ToolsRawData_FromToolInfoVec_0200
+ * @tc.desc: Test ToolsRawData with empty vector
  * @tc.type: FUNC
  */
-HWTEST_F(ToolInfoTest, ToolsRawData_Marshalling_0200, TestSize.Level1)
+HWTEST_F(ToolInfoTest, ToolsRawData_FromToolInfoVec_0200, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ToolsRawData_Marshalling_0200 start";
+    GTEST_LOG_(INFO) << "ToolsRawData_FromToolInfoVec_0200 start";
+
+    std::vector<ToolInfo> tools;
+    ToolsRawData rawData;
+    ToolsRawData::FromToolInfoVec(tools, rawData);
+
+    EXPECT_NE(rawData.data, nullptr);
+    EXPECT_GT(rawData.size, 0u);
+
+    std::vector<ToolInfo> parsedTools;
+    int32_t ret = ToolsRawData::ToToolInfoVec(rawData, parsedTools);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(parsedTools.size(), 0u);
+
+    GTEST_LOG_(INFO) << "ToolsRawData_FromToolInfoVec_0200 end";
+}
+
+/**
+ * @tc.name: ToolsRawData_RawDataCpy_0100
+ * @tc.desc: Test ToolsRawData RawDataCpy
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolsRawData_RawDataCpy_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolsRawData_RawDataCpy_0100 start";
+
+    std::string testData = "test data for copy";
+    ToolsRawData rawData;
+    rawData.size = testData.size();
+
+    int32_t ret = rawData.RawDataCpy(testData.data());
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_NE(rawData.data, nullptr);
+    EXPECT_TRUE(rawData.isMalloc);
+
+    // Verify data content
+    std::string copiedData(reinterpret_cast<const char*>(rawData.data), rawData.size);
+    EXPECT_EQ(copiedData, testData);
+
+    GTEST_LOG_(INFO) << "ToolsRawData_RawDataCpy_0100 end";
+}
+
+/**
+ * @tc.name: ToolsRawData_RawDataCpy_0200
+ * @tc.desc: Test ToolsRawData RawDataCpy with null data
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolsRawData_RawDataCpy_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolsRawData_RawDataCpy_0200 start";
 
     ToolsRawData rawData;
-    rawData.data = {};
+    rawData.size = 10;
 
-    Parcel parcel;
-    bool ret = rawData.Marshalling(parcel);
+    int32_t ret = rawData.RawDataCpy(nullptr);
 
-    EXPECT_TRUE(ret);
+    EXPECT_NE(ret, ERR_OK);
 
-    GTEST_LOG_(INFO) << "ToolsRawData_Marshalling_0200 end";
+    GTEST_LOG_(INFO) << "ToolsRawData_RawDataCpy_0200 end";
 }
 
 /**
- * @tc.name: ToolsRawData_Unmarshalling_0100
- * @tc.desc: Test ToolsRawData Unmarshalling success
+ * @tc.name: ToolsRawData_Destructor_0100
+ * @tc.desc: Test ToolsRawData destructor properly frees memory
  * @tc.type: FUNC
  */
-HWTEST_F(ToolInfoTest, ToolsRawData_Unmarshalling_0100, TestSize.Level1)
+HWTEST_F(ToolInfoTest, ToolsRawData_Destructor_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ToolsRawData_Unmarshalling_0100 start";
+    GTEST_LOG_(INFO) << "ToolsRawData_Destructor_0100 start";
 
-    ToolsRawData original;
-    original.data = {10, 20, 30, 40, 50, 60};
+    {
+        ToolsRawData rawData;
+        std::string testData = "test data";
+        rawData.size = testData.size();
+        rawData.RawDataCpy(testData.data());
+        EXPECT_TRUE(rawData.isMalloc);
+        // Destructor should free the memory
+    }
 
-    Parcel parcel;
-    ASSERT_TRUE(original.Marshalling(parcel));
+    // If we reach here without crash, the test passes
+    EXPECT_TRUE(true);
 
-    parcel.RewindRead(0);
-    ToolsRawData *result = ToolsRawData::Unmarshalling(parcel);
-
-    ASSERT_NE(result, nullptr);
-    EXPECT_EQ(result->data.size(), 6u);
-    EXPECT_EQ(result->data[0], 10u);
-    EXPECT_EQ(result->data[5], 60u);
-
-    delete result;
-
-    GTEST_LOG_(INFO) << "ToolsRawData_Unmarshalling_0100 end";
+    GTEST_LOG_(INFO) << "ToolsRawData_Destructor_0100 end";
 }
 
 /**
- * @tc.name: ToolsRawData_Unmarshalling_0200
- * @tc.desc: Test ToolsRawData Unmarshalling with empty data
+ * @tc.name: ToolsRawData_RawDataCpy_0300
+ * @tc.desc: Test ToolsRawData RawDataCpy after FromToolInfoVec (isMalloc=false)
  * @tc.type: FUNC
  */
-HWTEST_F(ToolInfoTest, ToolsRawData_Unmarshalling_0200, TestSize.Level1)
+HWTEST_F(ToolInfoTest, ToolsRawData_RawDataCpy_0300, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ToolsRawData_Unmarshalling_0200 start";
+    GTEST_LOG_(INFO) << "ToolsRawData_RawDataCpy_0300 start";
 
-    ToolsRawData original;
-    original.data = {};
+    // First, use FromToolInfoVec which sets isMalloc=false
+    std::vector<ToolInfo> tools;
+    ToolInfo tool;
+    tool.name = "ohos-test";
+    tool.version = "1.0.0";
+    tool.description = "Test tool";
+    tool.executablePath = "/bin/test";
+    tool.inputSchema = "{}";
+    tool.outputSchema = "{}";
+    tools.push_back(tool);
 
-    Parcel parcel;
-    ASSERT_TRUE(original.Marshalling(parcel));
+    ToolsRawData rawData;
+    ToolsRawData::FromToolInfoVec(tools, rawData);
+    EXPECT_FALSE(rawData.isMalloc);
+    EXPECT_NE(rawData.data, nullptr);
 
-    parcel.RewindRead(0);
-    ToolsRawData *result = ToolsRawData::Unmarshalling(parcel);
+    // Then call RawDataCpy, which should not free ownedData's internal buffer
+    std::string newData = "new test data for copy";
+    rawData.size = newData.size();
+    int32_t ret = rawData.RawDataCpy(newData.data());
 
-    ASSERT_NE(result, nullptr);
-    EXPECT_EQ(result->data.size(), 0u);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(rawData.isMalloc);
+    EXPECT_NE(rawData.data, nullptr);
 
-    delete result;
+    // Verify new data content
+    std::string copiedData(reinterpret_cast<const char*>(rawData.data), rawData.size);
+    EXPECT_EQ(copiedData, newData);
 
-    GTEST_LOG_(INFO) << "ToolsRawData_Unmarshalling_0200 end";
+    GTEST_LOG_(INFO) << "ToolsRawData_RawDataCpy_0300 end";
+}
+
+/**
+ * @tc.name: ToolsRawData_RawDataCpy_0400
+ * @tc.desc: Test ToolsRawData RawDataCpy replaces previous malloc data
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolsRawData_RawDataCpy_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolsRawData_RawDataCpy_0400 start";
+
+    ToolsRawData rawData;
+
+    // First allocation
+    std::string testData1 = "first data";
+    rawData.size = testData1.size();
+    rawData.RawDataCpy(testData1.data());
+    EXPECT_TRUE(rawData.isMalloc);
+
+    // Second allocation should free the first
+    std::string testData2 = "second data that is longer";
+    rawData.size = testData2.size();
+    int32_t ret = rawData.RawDataCpy(testData2.data());
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(rawData.isMalloc);
+
+    // Verify new data content
+    std::string copiedData(reinterpret_cast<const char*>(rawData.data), rawData.size);
+    EXPECT_EQ(copiedData, testData2);
+
+    GTEST_LOG_(INFO) << "ToolsRawData_RawDataCpy_0400 end";
 }
 
 // ==================== ToolInfo ParseToJson Tests ====================
