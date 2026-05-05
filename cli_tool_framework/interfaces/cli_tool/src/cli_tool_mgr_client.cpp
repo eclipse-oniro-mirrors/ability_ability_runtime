@@ -196,7 +196,7 @@ sptr<ICliToolManager> CliToolMGRClient::GetCliToolMgrProxy()
 
     const auto &onClearProxyCallback = [](const wptr<IRemoteObject> &remote) {
         auto &instance = GetInstance();
-        if (instance.cliToolMgr_ == remote) {
+        if (instance.cliToolMgr_->AsObject() == remote) {
             instance.ClearProxy();
         }
     };
