@@ -606,6 +606,7 @@ void AbilityManagerService::InitStartupFlag()
 void AbilityManagerService::OnStop()
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "stop");
+    DelayedSingleton<AAFwk::BgUserExtensionMonitor>::GetInstance()->StopMonitor();
 #ifdef BGTASKMGR_CONTINUOUS_TASK_ENABLE
     std::unique_lock<ffrt::mutex> lock(bgtaskObserverMutex_);
     if (bgtaskObserver_) {
@@ -4396,7 +4397,6 @@ int32_t AbilityManagerService::StartExtensionAbilityInner(const Want &want, cons
     validUserId = abilityInfo.applicationInfo.uid / BASE_USER_RANGE;
     TAG_LOGD(AAFwkTag::SERVICE_EXT, "userId is : %{public}d, singleton is : %{public}d",
         validUserId, static_cast<int>(abilityInfo.applicationInfo.singleton));
-    ReportBgUserExtensionEvent(callerToken, abilityInfo, validUserId);
 
     result = isDlp ? IN_PROCESS_CALL(
         CheckOptExtensionAbility(want, abilityRequest, validUserId, extensionType, isImplicit, isStartAsCaller)) :
@@ -4459,6 +4459,9 @@ int32_t AbilityManagerService::StartExtensionAbilityInner(const Want &want, cons
         } else {
             EventReport::SendExtensionEvent(EventName::START_EXTENSION_ERROR, HISYSEVENT_FAULT, eventInfo);
         }
+    }
+    if (eventInfo.errCode == ERR_OK) {
+        ReportBgUserExtensionEvent(callerToken, abilityInfo, validUserId);
     }
     ReportAbilityAssociatedStartInfoToRSS(abilityRequest.abilityInfo, RES_TYPE_EXTENSION_START_ABILITY, callerToken);
     return eventInfo.errCode;
@@ -5775,6 +5778,8 @@ int32_t AbilityManagerService::ConnectAbilityCommon(
     }
 
     if (CheckIfOperateRemote(abilityWant)) {
+        // Remote extension connections are handled by DMS and the extension runs on another device.
+        // Background user monitoring is not applicable for remote extensions, skip reporting.
         TAG_LOGD(AAFwkTag::SERVICE_EXT, "AbilityManagerService::ConnectAbility. try to ConnectRemoteAbility");
         eventInfo.errCode = ConnectRemoteAbility(abilityWant, callerToken, connect->AsObject());
         if (eventInfo.errCode != ERR_OK) {
@@ -6023,7 +6028,6 @@ int32_t AbilityManagerService::ConnectLocalAbility(const Want &want, const int32
 
     auto abilityInfo = abilityRequest.abilityInfo;
     threadLocalInfo.SetStartAbilityInfo(abilityInfo);
-    ReportBgUserExtensionEvent(callerToken, abilityInfo, userId);
     if (abilityInfo.isStageBasedModel) {
         bool isService = (abilityInfo.extensionAbilityType == AppExecFwk::ExtensionAbilityType::SERVICE);
         if (isService && extensionType != AppExecFwk::ExtensionAbilityType::SERVICE) {
@@ -6150,6 +6154,9 @@ int32_t AbilityManagerService::ConnectLocalAbility(const Want &want, const int32
     }else{
         ret = connectManager->ConnectAbilityLocked(abilityRequest, connect, callerToken, sessionInfo,
             indirectCallerInfo);
+    }
+    if (ret == ERR_OK) {
+        ReportBgUserExtensionEvent(callerToken, abilityInfo, userId);
     }
     return ret;
 }
@@ -15545,7 +15552,12 @@ void AbilityManagerService::ReportBgUserExtensionEvent(const sptr<IRemoteObject>
 
     auto monitor = DelayedSingleton<AAFwk::BgUserExtensionMonitor>::GetInstance();
     if (monitor != nullptr) {
-        monitor->OnBgUserExtensionStarted(callerUid, callerUserId, callerProcessName, callerBundleName,
+        AAFwk::BgUserExtensionCallerInfo callerInfo;
+        callerInfo.callerUid = callerUid;
+        callerInfo.callerUserId = callerUserId;
+        callerInfo.callerProcessName = callerProcessName;
+        callerInfo.callerBundleName = callerBundleName;
+        monitor->OnBgUserExtensionStarted(callerInfo,
             calleeAbilityInfo.bundleName, calleeAbilityInfo.process,
             calleeAbilityInfo.extensionTypeName, calleeAbilityInfo.name);
     }

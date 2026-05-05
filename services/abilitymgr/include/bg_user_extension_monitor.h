@@ -25,6 +25,13 @@
 namespace OHOS {
 namespace AAFwk {
 
+struct BgUserExtensionCallerInfo {
+    int32_t callerUid = 0;
+    int32_t callerUserId = 0;
+    std::string callerProcessName;
+    std::string callerBundleName;
+};
+
 struct BgUserExtensionEvent {
     std::string extensionTypeName;
     std::string packedInfo;
@@ -38,8 +45,7 @@ public:
     void StartMonitor();
     void StopMonitor();
 
-    void OnBgUserExtensionStarted(int32_t callerUid, int32_t callerUserId,
-        const std::string &callerProcessName, const std::string &callerBundleName,
+    void OnBgUserExtensionStarted(const BgUserExtensionCallerInfo &callerInfo,
         const std::string &calleeBundleName, const std::string &calleeProcessName,
         const std::string &extensionTypeName, const std::string &abilityName);
 

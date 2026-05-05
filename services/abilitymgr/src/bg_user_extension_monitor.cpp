@@ -54,16 +54,15 @@ bool CopyStringParam(const std::string &str, std::vector<std::unique_ptr<char[]>
     return true;
 }
 
-std::string BuildPackedInfo(int32_t callerUid, int32_t callerUserId,
-    const std::string &callerProcessName, const std::string &callerBundleName,
+std::string BuildPackedInfo(const BgUserExtensionCallerInfo &callerInfo,
     const std::string &calleeBundleName, const std::string &calleeProcessName)
 {
     return std::string(CALLEE_BUNDLE_NAME_KEY) + "=" + calleeBundleName +
         ";" + CALLEE_PROCESS_NAME_KEY + "=" + calleeProcessName +
-        ";" + CALLER_UID_KEY + "=" + std::to_string(callerUid) +
-        ";" + CALLER_USERID_KEY + "=" + std::to_string(callerUserId) +
-        ";" + CALLER_PROCESS_NAME_KEY + "=" + callerProcessName +
-        ";" + CALLER_BUNDLE_NAME_KEY + "=" + callerBundleName;
+        ";" + CALLER_UID_KEY + "=" + std::to_string(callerInfo.callerUid) +
+        ";" + CALLER_USERID_KEY + "=" + std::to_string(callerInfo.callerUserId) +
+        ";" + CALLER_PROCESS_NAME_KEY + "=" + callerInfo.callerProcessName +
+        ";" + CALLER_BUNDLE_NAME_KEY + "=" + callerInfo.callerBundleName;
 }
 }
 
@@ -86,21 +85,19 @@ void BgUserExtensionMonitor::StopMonitor()
     }
 }
 
-void BgUserExtensionMonitor::OnBgUserExtensionStarted(int32_t callerUid, int32_t callerUserId,
-    const std::string &callerProcessName, const std::string &callerBundleName,
+void BgUserExtensionMonitor::OnBgUserExtensionStarted(const BgUserExtensionCallerInfo &callerInfo,
     const std::string &calleeBundleName, const std::string &calleeProcessName,
     const std::string &extensionTypeName, const std::string &abilityName)
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR,
         "bg user extension started, type:%{public}s, callerUid:%{public}d, callerBundle:%{public}s, "
         "calleeBundle:%{public}s, ability:%{public}s",
-        extensionTypeName.c_str(), callerUid, callerBundleName.c_str(),
+        extensionTypeName.c_str(), callerInfo.callerUid, callerInfo.callerBundleName.c_str(),
         calleeBundleName.c_str(), abilityName.c_str());
 
     BgUserExtensionEvent event;
     event.extensionTypeName = extensionTypeName;
-    event.packedInfo = BuildPackedInfo(callerUid, callerUserId, callerProcessName,
-        callerBundleName, calleeBundleName, calleeProcessName);
+    event.packedInfo = BuildPackedInfo(callerInfo, calleeBundleName, calleeProcessName);
     event.abilityName = abilityName;
     event.cnt = 1;
 
