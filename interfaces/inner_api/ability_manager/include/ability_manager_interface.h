@@ -41,6 +41,10 @@
 #include "iacquire_share_data_callback_interface.h"
 #include "insight_intent/insight_intent_execute_param.h"
 #include "insight_intent/insight_intent_execute_result.h"
+#include "skill/skill_execute_param.h"
+#include "skill/skill_execute_result.h"
+#include "skill/skill_execute_callback_interface.h"
+
 #include "insight_intent/insight_intent_info_for_query.h"
 #include "insight_intent/insight_intent_query_param.h"
 #include "iprepare_terminate_callback_interface.h"
@@ -93,6 +97,7 @@ using AutoStartupInfo = AbilityRuntime::AutoStartupInfo;
 using InsightIntentExecuteParam = AppExecFwk::InsightIntentExecuteParam;
 using InsightIntentExecuteResult = AppExecFwk::InsightIntentExecuteResult;
 using InsightIntentQueryParam = AppExecFwk::InsightIntentQueryParam;
+using SkillExecuteParam = AppExecFwk::SkillExecuteParam;
 using UIExtensionAbilityConnectInfo = AbilityRuntime::UIExtensionAbilityConnectInfo;
 using UIExtensionHostInfo = AbilityRuntime::UIExtensionHostInfo;
 using UIExtensionSessionInfo = AbilityRuntime::UIExtensionSessionInfo;
@@ -2788,6 +2793,45 @@ public:
     virtual int32_t SetAppRecoveryFlag(const sptr<IRemoteObject>& token, int flag)
     {
         return 0;
+    }
+
+    /**
+     * @brief Start skill by HDC, launch target ability.
+     * @param bundleName The target bundle name.
+     * @param moduleName The target module name.
+     * @param skillName The skill name to execute.
+     * @param arkTSPath The target ArkTS file path.
+     * @param funcName The target function name.
+     * @param argv The arguments for skill execution.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t ExecuteInAppSkill(const std::string &bundleName, const std::string &moduleName,
+        const std::string &skillName, const std::string &arkTSPath = "",
+        const std::string &funcName = "",
+        const std::shared_ptr<AAFwk::WantParams> &skillArgs = nullptr,
+        const sptr<ISkillExecuteCallback> &callback = nullptr)
+    {
+        return ERR_OK;
+    }
+
+    /**
+     * @brief Query the type of a skill (independent or in-app).
+     * @param bundleName The bundle name of the target application.
+     * @param moduleName The module name of the target application.
+     * @param skillName The skill name identifier.
+     * @param skillType Output the skill type.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t QuerySkillType(const std::string &bundleName, const std::string &moduleName,
+        const std::string &skillName, int32_t &skillType)
+    {
+        return ERR_OK;
+    }
+
+    virtual int32_t ExecuteSkillDone(const sptr<IRemoteObject> &token, const std::string &requestCode,
+        int32_t resultCode, const AppExecFwk::SkillExecuteResult &result)
+    {
+        return ERR_OK;
     }
 };
 }  // namespace AAFwk

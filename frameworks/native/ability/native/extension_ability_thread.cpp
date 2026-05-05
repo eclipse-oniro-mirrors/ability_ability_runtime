@@ -25,6 +25,7 @@
 #include "js_start_abilities_observer.h"
 #include "ui_extension_wrapper.h"
 #include "start_abilities_observer.h"
+#include "skill/skill_execute_param.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -413,6 +414,22 @@ void ExtensionAbilityThread::HandleInsightIntent(const Want &want)
     TAG_LOGD(AAFwkTag::EXT, "End");
 }
 
+void ExtensionAbilityThread::HandleExecuteSkill(const Want &want)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::EXT, "Begin");
+    if (extensionImpl_ == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "null extensionImpl_");
+        return;
+    }
+    auto ret = extensionImpl_->HandleExecuteSkill(want);
+    if (!ret) {
+        TAG_LOGE(AAFwkTag::EXT, "HandleExecuteSkill failed");
+        return;
+    }
+    TAG_LOGD(AAFwkTag::EXT, "End");
+}
+
 void ExtensionAbilityThread::HandleCommandExtensionWindow(
     const Want &want, const sptr<AAFwk::SessionInfo> &sessionInfo, AAFwk::WindowCommand winCmd)
 {
@@ -532,6 +549,8 @@ void ExtensionAbilityThread::ScheduleCommandAbility(const Want &want, bool resta
     ScheduleCommandAbilityInner(want, restart, startId);
     if (AppExecFwk::InsightIntentExecuteParam::IsInsightIntentExecute(want)) {
         ScheduleInsightIntentInner(want);
+    } else if (AppExecFwk::SkillExecuteParam::IsSkillExecute(want)) {
+        ScheduleSkillExecuteInner(want);
     }
     TAG_LOGD(AAFwkTag::EXT, "End");
 }
@@ -568,6 +587,29 @@ void ExtensionAbilityThread::ScheduleInsightIntentInner(const Want &want)
     if (!ret) {
         TAG_LOGE(AAFwkTag::EXT, "PostTask error");
     }
+}
+
+void ExtensionAbilityThread::ScheduleSkillExecuteInner(const Want &want)
+{
+    wptr<ExtensionAbilityThread> weak = this;
+    auto task = [weak, want]() {
+        auto abilityThread = weak.promote();
+        if (abilityThread == nullptr) {
+            TAG_LOGE(AAFwkTag::EXT, "null AbilityThread");
+            return;
+        }
+        abilityThread->HandleExecuteSkill(want);
+    };
+    bool ret = abilityHandler_->PostTask(task, AppExecFwk::EventQueue::Priority::HIGH);
+    if (!ret) {
+        TAG_LOGE(AAFwkTag::EXT, "PostTask error");
+    }
+}
+
+void ExtensionAbilityThread::ExecuteSkill(const Want &want)
+{
+    TAG_LOGD(AAFwkTag::EXT, "ExecuteSkill called");
+    ScheduleSkillExecuteInner(want);
 }
 
 void ExtensionAbilityThread::ScheduleCommandAbilityWindow(
