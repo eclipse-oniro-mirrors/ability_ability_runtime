@@ -16905,9 +16905,12 @@ bool AbilityManagerService::CheckCrossUser(const int32_t userId, AppExecFwk::Ext
     if (AAFwk::UIExtensionWrapper::IsEnterpriseAdmin(extensionType) || JudgeMultiUserConcurrency(userId)) {
         return true;
     }
-    if (AppUtils::GetInstance().IsConnectSupportCrossUser() && (extensionType == AppExecFwk::ExtensionAbilityType::DATASHARE
-        || extensionType == AppExecFwk::ExtensionAbilityType::SERVICE)) {
-        return true;
+    if (extensionType == AppExecFwk::ExtensionAbilityType::DATASHARE
+        || extensionType == AppExecFwk::ExtensionAbilityType::SERVICE) {
+        if (AppUtils::GetInstance().IsConnectSupportCrossUser() ||
+            AAFwk::PermissionVerification::GetInstance()->IsSACall()) {
+            return true;
+        }
     }
     return false;
 }
