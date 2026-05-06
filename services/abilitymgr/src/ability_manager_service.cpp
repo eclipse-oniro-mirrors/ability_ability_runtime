@@ -4338,17 +4338,10 @@ int32_t AbilityManagerService::StartExtensionAbilityInner(const Want &want, cons
     }
 
     if (!JudgeMultiUserConcurrency(validUserId)) {
-        bool isSaCaller = AAFwk::PermissionVerification::GetInstance()->IsSACall();
-        bool isServiceOrDataShare = extensionType == AppExecFwk::ExtensionAbilityType::SERVICE ||
-            extensionType == AppExecFwk::ExtensionAbilityType::DATASHARE;
-        if (!(isSaCaller && isServiceOrDataShare)) {
-            TAG_LOGE(AAFwkTag::SERVICE_EXT, "multi-user non-concurrent unsatisfied");
-            eventInfo.errCode = ERR_CROSS_USER;
-            EventReport::SendExtensionEvent(EventName::START_EXTENSION_ERROR, HISYSEVENT_FAULT, eventInfo);
-            return ERR_CROSS_USER;
-        }
-        TAG_LOGI(AAFwkTag::SERVICE_EXT, "SA caller start %{public}d extension for background user %{public}d",
-            static_cast<int32_t>(extensionType), validUserId);
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "multi-user non-concurrent unsatisfied");
+        eventInfo.errCode = ERR_CROSS_USER;
+        EventReport::SendExtensionEvent(EventName::START_EXTENSION_ERROR, HISYSEVENT_FAULT, eventInfo);
+        return ERR_CROSS_USER;
     }
 
     AbilityRequest abilityRequest;
