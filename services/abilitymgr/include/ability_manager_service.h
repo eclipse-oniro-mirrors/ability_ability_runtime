@@ -83,6 +83,7 @@ namespace AbilityRuntime {
 class IStatusBarDelegate;
 struct ExtractInsightIntentGenericInfo;
 struct LinkIntentParamMapping;
+struct ExecuteIntentCommonOptions;
 }
 namespace Rosen {
 class FocusChangeInfo;
@@ -1350,8 +1351,8 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int StartAbilityByCall(const Want &want, const sptr<IAbilityConnection> &connect,
-        const sptr<IRemoteObject> &callerToken, int32_t accountId = DEFAULT_INVAL_VALUE,
-        bool isSilent = false, bool promotePriority = false, bool isVisible = false) override;
+        const sptr<IRemoteObject> &callerToken, int32_t accountId = DEFAULT_INVAL_VALUE, bool isSilent = false,
+        bool promotePriority = false, bool isVisible = false, uint64_t specifiedFullTokenId = 0) override;
 
     /**
      * Start Ability, connect session with common ability.
@@ -1368,7 +1369,8 @@ public:
      */
     virtual int StartAbilityByCallWithErrMsg(const Want &want, const sptr<IAbilityConnection> &connect,
         const sptr<IRemoteObject> &callerToken, int32_t accountId, std::string &errMsg,
-        bool isSilent = false, bool promotePriority = false, bool isVisible = false) override;
+        bool isSilent = false, bool promotePriority = false,
+        bool isVisible = false, uint64_t specifiedFullTokenId = 0) override;
 
     /**
      * Start Ability for prelauch.
@@ -2177,10 +2179,11 @@ public:
     int32_t OnExecuteIntent(AbilityRequest &abilityRequest, std::shared_ptr<AbilityRecord> &targetRecord);
 
     int32_t StartAbilityWithInsightIntent(const Want &want, int32_t userId = DEFAULT_INVAL_VALUE,
-        int requestCode = DEFAULT_INVAL_VALUE);
+        int requestCode = DEFAULT_INVAL_VALUE, uint64_t specifiedFullTokenId = 0);
 
-    int32_t StartAbilityByCallWithInsightIntent(const Want &want, const sptr<IRemoteObject> &callerToken,
-        const InsightIntentExecuteParam &param, int32_t userId = DEFAULT_INVAL_VALUE);
+    int32_t StartAbilityByCallWithInsightIntent(const Want &want,
+        const sptr<IRemoteObject> &callerToken, const InsightIntentExecuteParam &param,
+        int32_t userId = DEFAULT_INVAL_VALUE, uint64_t specifiedFullTokenId = 0);
     int32_t ExecuteIntentForDistributed(const Want &want, const std::string &srcDeviceId,
         uint64_t requestCode, uint64_t specifiedFullTokenId = 0) override;
 
@@ -3568,6 +3571,10 @@ private:
     void HandleRecoveryRecipient(const std::shared_ptr<AbilityRecord>& abilityRecord,
         const sptr<IRemoteObject>& token);
     int32_t SetAppRecoveryFlag(const sptr<IRemoteObject>& token, int flag) override;
+    int32_t ExecuteIntentCommon(const sptr<IRemoteObject> &callerToken,
+        const std::shared_ptr<InsightIntentExecuteParam> &param, const std::string &callerBundleName,
+        const AbilityRuntime::ExecuteIntentCommonOptions &infos);
+
 #ifdef BGTASKMGR_CONTINUOUS_TASK_ENABLE
     std::shared_ptr<BackgroundTaskObserver> bgtaskObserver_;
 #endif

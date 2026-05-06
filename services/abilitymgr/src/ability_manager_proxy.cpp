@@ -4037,16 +4037,17 @@ int AbilityManagerProxy::UnRegisterMissionListener(const std::string &deviceId,
 }
 
 int AbilityManagerProxy::StartAbilityByCall(const Want &want, const sptr<IAbilityConnection> &connect,
-    const sptr<IRemoteObject> &callerToken, int32_t accountId, bool isSilent, bool promotePriority, bool isVisible)
+    const sptr<IRemoteObject> &callerToken, int32_t accountId,
+    bool isSilent, bool promotePriority, bool isVisible, uint64_t specifiedFullTokenId)
 {
     std::string errMsg;
     return StartAbilityByCallWithErrMsg(want, connect, callerToken, accountId, errMsg, isSilent, promotePriority,
-        isVisible);
+        isVisible, specifiedFullTokenId);
 }
 
 int AbilityManagerProxy::StartAbilityByCallWithErrMsg(const Want &want, const sptr<IAbilityConnection> &connect,
     const sptr<IRemoteObject> &callerToken, int32_t accountId, std::string &errMsg, bool isSilent,
-    bool promotePriority, bool isVisible)
+    bool promotePriority, bool isVisible, uint64_t specifiedFullTokenId)
 {
     if (AppUtils::GetInstance().IsForbidStart()) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "forbid start: %{public}s", want.GetElement().GetBundleName().c_str());

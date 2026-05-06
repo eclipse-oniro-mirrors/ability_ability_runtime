@@ -170,6 +170,10 @@ constexpr const char* ERROR_MSG_UIABILITY_IS_ALREADY_EXIST =
 constexpr const char* ERROR_MSG_SELF_REDIRECTION_DISALLOWED =
     "The UIAbility is prohibited from launching itself via App Linking.";
 constexpr const char* ERROR_MSG_SEND_REQUEST_TO_SYSTEM_FAIL = "Failed to send request to system service.";
+constexpr const char* ERROR_MSG_INTENT_CONNECTION_FAILED =
+    "Cross-device execution intent connection failed.";
+constexpr const char* ERROR_MSG_INTENT_DEVICE_DISCONNECTED =
+    "Device disconnected during cross-device intent execution.";
 
 // follow ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST of appexecfwk_errors.h in bundle_framework
 constexpr int32_t ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST = 8521220;
@@ -284,6 +288,8 @@ static std::unordered_map<AbilityErrorCode, const char*> ERR_CODE_MAP = {
     { AbilityErrorCode::ERROR_CODE_UIABILITY_IS_ALREADY_EXIST, ERROR_MSG_UIABILITY_IS_ALREADY_EXIST },
     { AbilityErrorCode::ERROR_CODE_SELF_REDIRECTION_DISALLOWED, ERROR_MSG_SELF_REDIRECTION_DISALLOWED },
     { AbilityErrorCode::ERROR_CODE_SEND_REQUEST_TO_SYSTEM_FAIL, ERROR_MSG_SEND_REQUEST_TO_SYSTEM_FAIL },
+    { AbilityErrorCode::ERROR_CODE_INTENT_CONNECTION_FAILED, ERROR_MSG_INTENT_CONNECTION_FAILED },
+    { AbilityErrorCode::ERROR_CODE_INTENT_DEVICE_DISCONNECTED, ERROR_MSG_INTENT_DEVICE_DISCONNECTED }
 };
 
 static std::unordered_map<int32_t, AbilityErrorCode> INNER_TO_JS_ERROR_CODE_MAP {
@@ -404,6 +410,8 @@ static std::unordered_map<int32_t, AbilityErrorCode> INNER_TO_JS_ERROR_CODE_MAP 
     {ERROR_UIABILITY_IS_ALREADY_EXIST, AbilityErrorCode::ERROR_CODE_UIABILITY_IS_ALREADY_EXIST},
     {ERR_CODE_INVALID_ID, AbilityErrorCode::ERROR_CODE_INVALID_ID},
     {ERR_SELF_REDIRECTION_DISALLOWED, AbilityErrorCode::ERROR_CODE_SELF_REDIRECTION_DISALLOWED },
+    {ERR_INTENT_CONNECTION_FAILED, AbilityErrorCode::ERROR_CODE_INTENT_CONNECTION_FAILED},
+    {ERR_INTENT_DEVICE_DISCONNECTED, AbilityErrorCode::ERROR_CODE_INTENT_DEVICE_DISCONNECTED},
 };
 }
 

@@ -160,6 +160,7 @@ bool InsightIntentExecuteParam::ReadFromParcel(Parcel &parcel)
     navigationId_ = Str16ToStr8(parcel.ReadString16());
     navDestinationName_ = Str16ToStr8(parcel.ReadString16());
     isServiceMatch_ = parcel.ReadBool();
+    deviceId_ = Str16ToStr8(parcel.ReadString16());
     return true;
 }
 
@@ -200,6 +201,7 @@ bool InsightIntentExecuteParam::Marshalling(Parcel &parcel) const
     parcel.WriteString16(Str8ToStr16(navigationId_));
     parcel.WriteString16(Str8ToStr16(navDestinationName_));
     parcel.WriteBool(isServiceMatch_);
+    parcel.WriteString16(Str8ToStr16(deviceId_));
     return true;
 }
 
@@ -266,6 +268,7 @@ bool InsightIntentExecuteParam::GenerateFromWant(const AAFwk::Want &want,
     executeParam.navDestinationName_ = wantParams.GetStringParam(INSIGHT_INTENT_PAGE_PARAM_NAVDESTINATIONNAME);
     executeParam.queryEntityClassName_ = wantParams.GetStringParam(INSIGHT_INTENT_QUERY_ENTITY_CLASS_NAME);
     executeParam.queryType_ = wantParams.GetStringParam(INSIGHT_INTENT_QUERY_TYPE);
+    executeParam.userId_ = wantParams.GetIntParam(INSIGHT_INTENT_PARAM_USER_ID, -1);
     auto queryParams = wantParams.GetWantParams(INSIGHT_INTENT_QUERY_ENTITY_PARAM_PARAM);
     executeParam.queryParams_ = std::make_shared<WantParams>(queryParams);
     return true;

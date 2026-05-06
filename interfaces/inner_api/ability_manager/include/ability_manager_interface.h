@@ -1226,7 +1226,7 @@ public:
      */
     virtual int StartAbilityByCall(const Want &want, const sptr<IAbilityConnection> &connect,
         const sptr<IRemoteObject> &callerToken, int32_t accountId = DEFAULT_INVAL_VALUE, bool isSilent = false,
-        bool promotePriority = false, bool isVisible = false) = 0;
+        bool promotePriority = false, bool isVisible = false, uint64_t specifiedFullTokenId = 0) = 0;
 
     /**
      * Start Ability, connect session with common ability.
@@ -1242,8 +1242,9 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int StartAbilityByCallWithErrMsg(const Want &want, const sptr<IAbilityConnection> &connect,
-        const sptr<IRemoteObject> &callerToken, int32_t accountId, std::string &errMsg, bool isSilent = false,
-        bool promotePriority = false, bool isVisible = false)
+        const sptr<IRemoteObject> &callerToken, int32_t accountId, std::string &errMsg,
+        bool isSilent = false, bool promotePriority = false,
+        bool isVisible = false, uint64_t specifiedFullTokenId = 0)
     {
         return 0;
     };

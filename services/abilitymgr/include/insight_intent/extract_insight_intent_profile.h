@@ -223,6 +223,17 @@ struct ExtractInsightIntentProfileInfoVec {
     std::vector<ExtractInsightIntentProfileInfo> insightIntents {};
 };
 
+struct ExecuteIntentCommonOptions {
+    bool ignoreAbilityName;
+    ExtractInsightIntentGenericInfo infos;
+    uint64_t key;
+    std::string srcDeviceId;
+    uint64_t requestCode;
+    uint64_t specifiedFullTokenId;
+    ExecuteIntentCommonOptions(bool ignoreAbilityName, const ExtractInsightIntentGenericInfo &infos,
+        uint64_t key): ignoreAbilityName(ignoreAbilityName), infos(infos), key(key){};
+};
+
 class ExtractInsightIntentProfile {
 public:
     static bool TransformTo(const std::string &profileStr, ExtractInsightIntentProfileInfoVec &infos);

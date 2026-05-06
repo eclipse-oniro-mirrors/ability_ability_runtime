@@ -346,8 +346,8 @@ int AbilityManagerStub::OnRemoteRequestInnerSeventh(uint32_t code, MessageParcel
         return StartSelfUIAbilityInCurrentProcessInner(data, reply);
     }
     if (interfaceCode == AbilityManagerInterfaceCode::EXECUTE_INTENT_FOR_DISTRIBUTED) {
- 	    return ExecuteIntentForDistributedInner(data, reply);
- 	}
+        return ExecuteIntentForDistributedInner(data, reply);
+    }
     return ERR_CODE_NOT_EXIST;
 }
 

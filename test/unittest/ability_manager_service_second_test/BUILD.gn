@@ -178,6 +178,8 @@ ohos_unittest("ability_manager_service_second_test") {
     "${ability_runtime_services_path}/abilitymgr/src/rdb/parser_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/rdb/rdb_data_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/recovery_info_timer.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/remote_intent_result_callback_stub.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/remote_intent_result_callback.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/remote_mission_listener_proxy.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/report_data_partition_usage_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/resident_process/resident_process_manager.cpp",

@@ -68,7 +68,7 @@ public:
 
     int StartAbilityByCall(const Want& want, const sptr<IAbilityConnection>& connect,
         const sptr<IRemoteObject>& callerToken, int32_t accountId = DEFAULT_INVAL_VALUE, bool isSilent = false,
-        bool promotePriority = false, bool isVisible = false);
+        bool promotePriority = false, bool isVisible = false, uint64_t specifiedFullTokenId = 0) override;
     int StartAbilityForPrelaunch(const Want &want, const int32_t frameNum);
     int TerminateAbility(
         const sptr<IRemoteObject>& token, int resultCode = -1, const Want* resultWant = nullptr) override;

@@ -26,12 +26,27 @@ void RemoteIntentResultCallback::OnIntentResult(uint64_t requestCode, int32_t re
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR,
         "OnIntentResult requestCode=%{public}" PRIu64 ", resultCode=%{public}d", requestCode, resultCode);
+    if (resultMsg.empty()) {
+        AppExecFwk::InsightIntentExecuteResult errorResult{};
+        errorResult.innerErr = AbilityRuntime::InsightIntentInnerErr::INSIGHT_INTENT_EXECUTE_REPLY_FAILED;
+        DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->ExecuteIntentDone(
+            requestCode, resultCode, errorResult);
+    } else {
+        AppExecFwk::InsightIntentExecuteResult result;
+        result.FromJsonString(resultMsg);
+        DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->ExecuteIntentDone(
+            requestCode, resultCode, result);
+    }
 }
 
 void RemoteIntentResultCallback::OnLinkDisconnected(uint64_t requestCode, int32_t reason)
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR,
         "OnLinkDisconnected requestCode=%{public}" PRIu64 ", reason=%{public}d", requestCode, reason);
+    AppExecFwk::InsightIntentExecuteResult errorResult{};
+        errorResult.innerErr = AbilityRuntime::InsightIntentInnerErr::INSIGHT_INTENT_EXECUTE_REPLY_FAILED;
+    DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->ExecuteIntentDone(
+        requestCode, ERR_INTENT_DEVICE_DISCONNECTED, errorResult);
 }
 }  // namespace AAFwk
 }  // namespace OHOS

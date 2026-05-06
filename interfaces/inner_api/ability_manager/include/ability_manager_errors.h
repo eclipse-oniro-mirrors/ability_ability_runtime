@@ -1144,6 +1144,12 @@ enum {
     
     ERR_INVALID_DISTRIBUTION_TYPE = 2099414,
 
+    // Result (2099420) for Cross-device execution intent connection failed.
+    ERR_INTENT_CONNECTION_FAILED = 2099420,
+
+    // Result (2099421) for Device disconnected during cross-device intent execution.
+    ERR_INTENT_DEVICE_DISCONNECTED = 2099421,
+
     /**
      * Native error(3000000) for target bundle not exist.
      */
