@@ -504,7 +504,8 @@ AbilityRuntime_ErrorCode MoDispatcherParamCodec::WriteRawValue(MessageParcel& pa
         case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_F64:
             return CheckWrite(parcel.WriteDouble(value->u.f64Val));
         case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_STRING:
-            return CheckWrite(parcel.WriteString(value->u.bstrVal == nullptr ? "" : value->u.bstrVal));
+            std::string strVal(value->u.bstrVal != nullptr ? value->u.bstrVal : "");
+            return CheckWrite(parcel.WriteString(strVal));
         case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_ENUM:
             return CheckWrite(parcel.WriteInt32(value->u.enumVal));
         default:
