@@ -1439,7 +1439,7 @@ void AppMgrServiceInner::MarkTemplateProcess(int32_t templatePid, std::string bu
         .pid = templatePid,
         .type = CHECKPOINT_MONITOR_APP_TYPE
     };
-    int32_t beginIndex = bundleName.size() - (CHECKPOINT_NAME_LEN - 1);
+    int32_t beginIndex = static_cast<int32_t>(bundleName.size() - (CHECKPOINT_NAME_LEN - 1));
     beginIndex = beginIndex > 0 ? beginIndex : 0;
     std::size_t length = bundleName.copy(mark.name, CHECKPOINT_NAME_LEN - 1, beginIndex);
     mark.name[length] = '\0';
