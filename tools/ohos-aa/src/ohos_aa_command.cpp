@@ -293,7 +293,7 @@ ErrCode ClawAaShellCommand::RunAsHelpCommand()
         };
         PrintError(errorInfo);
     } else {
-        PrintSuccess(HELP_MSG);
+        std::cout << HELP_MSG << std::endl;
     }
     return ERR_OK;
 }
@@ -323,7 +323,7 @@ ErrCode ClawAaShellCommand::RunAsStartAbility()
             PrintError(errorInfo);
         }
     } else if (result == START_HELP_CODE) {
-        PrintSuccess(HELP_MSG_START);
+        std::cout << HELP_MSG_START << std::endl;
     } else {
         std::string message = "Invalid options or parameters for start command.";
         if (resultReceiver_ == "") {
@@ -369,7 +369,7 @@ ErrCode ClawAaShellCommand::RunAsForceStop()
         }
         return result;
     } else if (argList_.size() == 1 && argList_[0] == "--help") {
-        PrintSuccess(HELP_MSG_FORCE_STOP);
+        std::cout << HELP_MSG_FORCE_STOP << std::endl;
         return OHOS::ERR_OK;
     }
 
@@ -675,7 +675,7 @@ ErrCode ClawAaShellCommand::MakeWantFromCmd(Want& want, int32_t& userId)
                     result = OHOS::ERR_INVALID_VALUE;
                     break;
                 }
-                case OPIION_ABILITY_NAME: {
+                case OPTION_ABILITY_NAME: {
                     // 'aa start -a' with no argument
                     // 'aa stop-service -a' with no argument
                     TAG_LOGI(AAFwkTag::AA_TOOL, "'ohos-aa %{public}s --abilityname' no arg", cmd_.c_str());
@@ -686,7 +686,7 @@ ErrCode ClawAaShellCommand::MakeWantFromCmd(Want& want, int32_t& userId)
                     result = OHOS::ERR_INVALID_VALUE;
                     break;
                 }
-                case OPIION_BUNDLE_NAME: {
+                case OPTION_BUNDLE_NAME: {
                     // 'aa start -b' with no argument
                     // 'aa stop-service -b' with no argument
                     TAG_LOGI(AAFwkTag::AA_TOOL, "'ohos-aa %{public}s --bundlename' no arg", cmd_.c_str());
@@ -717,7 +717,7 @@ ErrCode ClawAaShellCommand::MakeWantFromCmd(Want& want, int32_t& userId)
                     result = OHOS::ERR_INVALID_VALUE;
                     break;
                 }
-                case OPIION_MODULE_NAME: {
+                case OPTION_MODULE_NAME: {
                     // 'aa start -m' with no argument
                     // 'aa stop-service -m' with no argument
                     TAG_LOGI(AAFwkTag::AA_TOOL, "'ohos-aa %{public}s --modulename' no arg", cmd_.c_str());
@@ -850,7 +850,7 @@ ErrCode ClawAaShellCommand::MakeWantFromCmd(Want& want, int32_t& userId)
                 }
                 break;
             }
-            case OPIION_ABILITY_NAME: {
+            case OPTION_ABILITY_NAME: {
                 // 'aa start -a xxx'
                 // 'aa stop-service -a xxx'
 
@@ -858,7 +858,7 @@ ErrCode ClawAaShellCommand::MakeWantFromCmd(Want& want, int32_t& userId)
                 abilityName = optarg;
                 break;
             }
-            case OPIION_BUNDLE_NAME: {
+            case OPTION_BUNDLE_NAME: {
                 // 'aa start -b xxx'
                 // 'aa stop-service -b xxx'
 
@@ -880,7 +880,7 @@ ErrCode ClawAaShellCommand::MakeWantFromCmd(Want& want, int32_t& userId)
                 typeVal = optarg;
                 break;
             }
-            case OPIION_MODULE_NAME: {
+            case OPTION_MODULE_NAME: {
                 // 'aa start -m xxx'
                 // 'aa stop-service -m xxx'
 
