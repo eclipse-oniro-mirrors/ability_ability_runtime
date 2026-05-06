@@ -33,7 +33,16 @@ constexpr int32_t INDEX_TWO = 2;
 constexpr int32_t INDEX_THREE = 3;
 constexpr int32_t ERR_CONTEXT_NOT_ABILITY = 16000020;
 
-bool VerifyAbilityContext(napi_env env, napi_value value)
+bool HasPropertyOfType(napi_env env, napi_value obj, const char *prop)
+{
+    napi_value value = nullptr;
+    napi_get_named_property(env, obj, prop, &value);
+    napi_valuetype type = napi_undefined;
+    napi_typeof(env, value, &type);
+    return type == napi_object;
+}
+
+bool VerifyContext(napi_env env, napi_value value)
 {
     if (value == nullptr) {
         return false;
@@ -43,16 +52,14 @@ bool VerifyAbilityContext(napi_env env, napi_value value)
     if (valueType != napi_object) {
         return false;
     }
-    napi_value abilityInfo = nullptr;
-    napi_get_named_property(env, value, "abilityInfo", &abilityInfo);
-    napi_valuetype infoType = napi_undefined;
-    napi_typeof(env, abilityInfo, &infoType);
-    return infoType == napi_object;
+    return HasPropertyOfType(env, value, "abilityInfo") ||
+        HasPropertyOfType(env, value, "extensionInfo");
 }
 
-void ThrowContextNotAbilityError(napi_env env)
+void ThrowContextNotValidError(napi_env env)
 {
-    ThrowError(env, ERR_CONTEXT_NOT_ABILITY, "The context is not ability context.");
+    ThrowError(env, ERR_CONTEXT_NOT_ABILITY,
+        "The context is not a valid ability or extension context.");
 }
 
 std::string ParseRequestCode(napi_env env, napi_value value)
@@ -104,8 +111,8 @@ napi_value JSScriptManager::OnCompleteArkTSScriptInApp(napi_env env, size_t argc
         ThrowTooFewParametersError(env);
         return CreateJsUndefined(env);
     }
-    if (!VerifyAbilityContext(env, argv[INDEX_ZERO])) {
-        ThrowContextNotAbilityError(env);
+    if (!VerifyContext(env, argv[INDEX_ZERO])) {
+        ThrowContextNotValidError(env);
         return CreateJsUndefined(env);
     }
     auto context = GetStageModeContext(env, argv[INDEX_ZERO]);
