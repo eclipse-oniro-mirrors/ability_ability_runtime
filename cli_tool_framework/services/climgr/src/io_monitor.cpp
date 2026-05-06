@@ -15,11 +15,15 @@
 
 #include "io_monitor.h"
 
-#include <cstring>
+#include <algorithm>
 #include <cerrno>
+#include <chrono>
+#include <cstring>
 #include <fcntl.h>
+#include <poll.h>
 #include <sys/epoll.h>
 #include <unistd.h>
+#include <utility>
 #include <vector>
 
 #include "ffrt.h"
@@ -33,8 +37,10 @@ namespace CliTool {
 namespace {
 constexpr int32_t MAX_EVENTS = 16;
 constexpr int32_t EPOLL_WAIT_MS = 100;
-constexpr int32_t MAX_RETRIES = 10;
-constexpr int32_t RETRY_DELAY_MS = 10;
+constexpr int32_t INPUT_WRITE_POLL_MS = 1000;
+constexpr int32_t INPUT_WRITE_TIMEOUT_MS = 30 * 1000;
+constexpr size_t MAX_PENDING_INPUT_BYTES = 4 * 1024 * 1024;
+constexpr size_t MAX_PENDING_INPUT_MESSAGES = 4096;
 }
 
 std::shared_ptr<IOMonitor> IOMonitor::Create()
@@ -75,11 +81,27 @@ void IOMonitor::Stop()
         monitorThread_.join();
     }
 
-    std::lock_guard<std::mutex> lock(fdMutex_);
-    for (const auto &[fd, info] : fdMap_) {
-        close(fd);
+    std::vector<std::pair<std::string, PendingInput>> failedInputs;
+    {
+        std::lock_guard<std::mutex> lock(fdMutex_);
+        for (const auto &[fd, info] : fdMap_) {
+            close(fd);
+        }
+        fdMap_.clear();
+        for (auto &[sessionId, queue] : inputQueues_) {
+            while (!queue.pendingInputs.empty()) {
+                failedInputs.emplace_back(sessionId, std::move(queue.pendingInputs.front()));
+                queue.pendingInputs.pop_front();
+            }
+            queue.pendingBytes = 0;
+            queue.writeTaskRunning = false;
+        }
+        inputQueues_.clear();
     }
-    fdMap_.clear();
+
+    for (const auto &[sessionId, input] : failedInputs) {
+        NotifyInputReply(sessionId, input.eventId, false);
+    }
 }
 
 bool IOMonitor::RegisterSession(const std::string &sessionId, int stdoutFd, int stderrFd, int stdinFd)
@@ -129,6 +151,7 @@ bool IOMonitor::RegisterSession(const std::string &sessionId, int stdoutFd, int 
 void IOMonitor::UnregisterSession(const std::string &sessionId)
 {
     std::vector<std::pair<int, FdInfo>> fdsToClose;
+    std::vector<PendingInput> failedInputs;
     {
         std::lock_guard<std::mutex> lock(fdMutex_);
         for (auto it = fdMap_.begin(); it != fdMap_.end();) {
@@ -139,6 +162,14 @@ void IOMonitor::UnregisterSession(const std::string &sessionId)
             }
             ++it;
         }
+        auto queueIt = inputQueues_.find(sessionId);
+        if (queueIt != inputQueues_.end()) {
+            while (!queueIt->second.pendingInputs.empty()) {
+                failedInputs.emplace_back(std::move(queueIt->second.pendingInputs.front()));
+                queueIt->second.pendingInputs.pop_front();
+            }
+            inputQueues_.erase(queueIt);
+        }
     }
 
     for (const auto &[fd, info] : fdsToClose) {
@@ -146,6 +177,9 @@ void IOMonitor::UnregisterSession(const std::string &sessionId)
             epoll_ctl(epollFd_, EPOLL_CTL_DEL, fd, nullptr);
         }
         close(fd);
+    }
+    for (const auto &input : failedInputs) {
+        NotifyInputReply(sessionId, input.eventId, false);
     }
 }
 
@@ -172,6 +206,11 @@ void IOMonitor::SetSessionDrainedCallback(SessionDrainedCallback callback)
 int IOMonitor::GetStdinFd(const std::string &sessionId)
 {
     std::lock_guard<std::mutex> lock(fdMutex_);
+    return GetStdinFdLocked(sessionId);
+}
+
+int IOMonitor::GetStdinFdLocked(const std::string &sessionId) const
+{
     auto it = fdMap_.begin();
     while (it != fdMap_.end()) {
         if (it->second.sessionId == sessionId && it->second.isStdin) {
@@ -188,52 +227,77 @@ int IOMonitor::GetStdinFd(const std::string &sessionId)
     return it->first;
 }
 
-void IOMonitor::WriteTask(const std::string &sessionId, const std::string &message, const std::string &eventId)
+bool IOMonitor::WriteMessage(int fd, const std::string &sessionId, const std::string &message)
 {
-    int fd = GetStdinFd(sessionId);
-    if (fd < 0) {
-        if (inputReplyCallback_) {
-            inputReplyCallback_(sessionId, eventId, false);
-        }
-        return;
+    if (message.empty()) {
+        return true;
     }
-    bool result = true;
     const char* data = message.c_str();
     size_t totalBytes = message.size();
     size_t bytesWritten = 0;
-    int retryCount = 0;
-    while (bytesWritten < totalBytes && retryCount < MAX_RETRIES) {
+    auto beginTime = std::chrono::steady_clock::now();
+    while (bytesWritten < totalBytes) {
         ssize_t writeResult = write(fd, data + bytesWritten, totalBytes - bytesWritten);
         if (writeResult == -1) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(RETRY_DELAY_MS));
-                retryCount++;
+            if (errno == EINTR) {
                 continue;
-            } else {
-                TAG_LOGE(AAFwkTag::CLI_TOOL,
-                    "WriteTask failed: write error=%{public}s for sessionId=%{public}s",
-                    strerror(errno), sessionId.c_str());
-                result = false;
-                break;
             }
-        } else if (writeResult == 0) {
+            if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                TAG_LOGE(AAFwkTag::CLI_TOOL,
+                    "WriteMessage failed: write error=%{public}s for sessionId=%{public}s",
+                    strerror(errno), sessionId.c_str());
+                return false;
+            }
+
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - beginTime).count();
+            if (elapsed >= INPUT_WRITE_TIMEOUT_MS) {
+                TAG_LOGE(AAFwkTag::CLI_TOOL,
+                    "WriteMessage failed: wait writable timeout for sessionId=%{public}s, "
+                    "wrote=%{public}zu/%{public}zu",
+                    sessionId.c_str(), bytesWritten, totalBytes);
+                return false;
+            }
+
+            pollfd pollFd {};
+            pollFd.fd = fd;
+            pollFd.events = POLLOUT;
+            int32_t pollTimeout = std::min<int64_t>(INPUT_WRITE_POLL_MS, INPUT_WRITE_TIMEOUT_MS - elapsed);
+            int32_t pollResult = poll(&pollFd, 1, pollTimeout);
+            if (pollResult < 0) {
+                if (errno == EINTR) {
+                    continue;
+                }
+                TAG_LOGE(AAFwkTag::CLI_TOOL,
+                    "WriteMessage failed: poll error=%{public}s for sessionId=%{public}s",
+                    strerror(errno), sessionId.c_str());
+                return false;
+            }
+            if (pollResult == 0) {
+                continue;
+            }
+            if ((pollFd.revents & (POLLERR | POLLHUP | POLLNVAL)) != 0) {
+                TAG_LOGE(AAFwkTag::CLI_TOOL,
+                    "WriteMessage failed: poll revents=%{public}d for sessionId=%{public}s",
+                    pollFd.revents, sessionId.c_str());
+                return false;
+            }
+            continue;
+        }
+        if (writeResult == 0) {
             TAG_LOGE(AAFwkTag::CLI_TOOL,
-                "WriteTask failed: pipe closed for sessionId=%{public}s",
+                "WriteMessage failed: pipe closed for sessionId=%{public}s",
                 sessionId.c_str());
-            result = false;
-            break;
+            return false;
         }
 
         bytesWritten += writeResult;
-        retryCount = 0;
     }
-    if (bytesWritten < totalBytes) {
-        result = false;
-    }
-    if (result == false) {
-        TAG_LOGW(AAFwkTag::CLI_TOOL, "WriteTask: partial write for sessionId=%{public}s, "
-            "wrote=%{public}zu/%{public}zu", sessionId.c_str(), bytesWritten, totalBytes);
-    }
+    return true;
+}
+
+void IOMonitor::NotifyInputReply(const std::string &sessionId, const std::string &eventId, bool result)
+{
     if (inputReplyCallback_) {
         inputReplyCallback_(sessionId, eventId, result);
     }
@@ -241,13 +305,95 @@ void IOMonitor::WriteTask(const std::string &sessionId, const std::string &messa
 
 void IOMonitor::SendMessage(const std::string &sessionId, const std::string &message, const std::string &eventId)
 {
-    auto writeTask = [weak = weak_from_this(), sessionId, message, eventId]() {
+    bool shouldSubmit = false;
+    bool rejected = false;
+    {
+        std::lock_guard<std::mutex> lock(fdMutex_);
+        if (GetStdinFdLocked(sessionId) < 0) {
+            rejected = true;
+        } else {
+            auto &queue = inputQueues_[sessionId];
+            if (queue.pendingBytes + message.size() > MAX_PENDING_INPUT_BYTES ||
+                queue.pendingInputs.size() >= MAX_PENDING_INPUT_MESSAGES) {
+                TAG_LOGW(AAFwkTag::CLI_TOOL,
+                    "SendMessage failed: input queue full for sessionId=%{public}s, pendingBytes=%{public}zu, "
+                    "pendingMessages=%{public}zu",
+                    sessionId.c_str(), queue.pendingBytes, queue.pendingInputs.size());
+                rejected = true;
+            } else {
+                queue.pendingInputs.emplace_back(PendingInput {message, eventId});
+                queue.pendingBytes += message.size();
+                if (!queue.writeTaskRunning) {
+                    queue.writeTaskRunning = true;
+                    shouldSubmit = true;
+                }
+            }
+        }
+    }
+
+    if (rejected) {
+        NotifyInputReply(sessionId, eventId, false);
+        return;
+    }
+
+    if (!shouldSubmit) {
+        return;
+    }
+
+    auto writeTask = [weak = weak_from_this(), sessionId]() {
         auto sharedThis = weak.lock();
         if (sharedThis) {
-            sharedThis->WriteTask(sessionId, message, eventId);
+            sharedThis->ProcessWriteQueue(sessionId);
         }
     };
     ffrt::submit(std::move(writeTask));
+}
+
+void IOMonitor::ProcessWriteQueue(const std::string &sessionId)
+{
+    while (true) {
+        PendingInput input;
+        int fd = -1;
+        {
+            std::lock_guard<std::mutex> lock(fdMutex_);
+            auto queueIt = inputQueues_.find(sessionId);
+            if (queueIt == inputQueues_.end() || queueIt->second.pendingInputs.empty()) {
+                if (queueIt != inputQueues_.end()) {
+                    queueIt->second.writeTaskRunning = false;
+                    if (queueIt->second.pendingBytes == 0) {
+                        inputQueues_.erase(queueIt);
+                    }
+                }
+                return;
+            }
+
+            input = std::move(queueIt->second.pendingInputs.front());
+            queueIt->second.pendingInputs.pop_front();
+            queueIt->second.pendingBytes -= input.message.size();
+            fd = GetStdinFdLocked(sessionId);
+        }
+
+        bool result = fd >= 0 && WriteMessage(fd, sessionId, input.message);
+        NotifyInputReply(sessionId, input.eventId, result);
+        if (!result) {
+            std::vector<PendingInput> failedInputs;
+            {
+                std::lock_guard<std::mutex> lock(fdMutex_);
+                auto queueIt = inputQueues_.find(sessionId);
+                if (queueIt != inputQueues_.end()) {
+                    while (!queueIt->second.pendingInputs.empty()) {
+                        failedInputs.emplace_back(std::move(queueIt->second.pendingInputs.front()));
+                        queueIt->second.pendingInputs.pop_front();
+                    }
+                    inputQueues_.erase(queueIt);
+                }
+            }
+            for (const auto &failedInput : failedInputs) {
+                NotifyInputReply(sessionId, failedInput.eventId, false);
+            }
+            return;
+        }
+    }
 }
 
 void IOMonitor::MonitorLoop()
