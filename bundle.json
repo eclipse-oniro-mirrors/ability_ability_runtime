@@ -879,6 +879,7 @@
           }
         ],
         "test": [
+          "//foundation/ability/ability_runtime/cli_tool_framework/test/unittest:unittest",
           "//foundation/ability/ability_runtime/test/moduletest:moduletest",
           "//foundation/ability/ability_runtime/test/fuzztest:fuzztest",
           "//foundation/ability/ability_runtime/test/unittest:unittest",
