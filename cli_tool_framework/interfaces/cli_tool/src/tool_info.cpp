@@ -17,11 +17,17 @@
 
 #include <nlohmann/json.hpp>
 #include <set>
+#include <sstream>
 
 #include "hilog_tag_wrapper.h"
+#include "securec.h"
 
 namespace OHOS {
 namespace CliTool {
+
+namespace {
+constexpr uint32_t MAX_TOOL_INFO_COUNT = 200000;
+} // namespace
 
 // ToolInfo implementation
 bool ToolInfo::Marshalling(Parcel &parcel) const
@@ -423,6 +429,95 @@ bool ToolInfo::Validate(const ToolInfo &tool)
     }
 
     return true;
+}
+
+ToolsRawData::~ToolsRawData()
+{
+    if (data != nullptr && isMalloc) {
+        free(const_cast<void*>(data));
+        isMalloc = false;
+        data = nullptr;
+    }
+}
+
+int32_t ToolsRawData::RawDataCpy(const void *readdata)
+{
+    if (readdata == nullptr || size == 0) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "null data or zero size");
+        return ERR_INVALID_VALUE;
+    }
+    void* newData = malloc(size);
+    if (newData == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "malloc failed");
+        return ERR_INVALID_VALUE;
+    }
+    if (memcpy_s(newData, size, readdata, size) != EOK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "memcpy_s failed");
+        free(newData);
+        return ERR_INVALID_VALUE;
+    }
+    if (data != nullptr && isMalloc) {
+        free(const_cast<void*>(data));
+        data = nullptr;
+    }
+    data = newData;
+    isMalloc = true;
+    return ERR_OK;
+}
+
+void ToolsRawData::FromToolInfoVec(const std::vector<ToolInfo> &tools, ToolsRawData &rawData)
+{
+    std::stringstream ss;
+    uint32_t count = tools.size();
+    ss.write(reinterpret_cast<const char*>(&count), sizeof(count));
+
+    for (uint32_t i = 0; i < count; ++i) {
+        std::string dumped = tools[i].ParseToJson().dump();
+        uint32_t strLen = dumped.length();
+        ss.write(reinterpret_cast<const char*>(&strLen), sizeof(strLen));
+        ss.write(dumped.c_str(), strLen);
+    }
+    std::string result = ss.str();
+    rawData.ownedData = std::move(result);
+    rawData.data = rawData.ownedData.data();
+    rawData.size = rawData.ownedData.size();
+    rawData.isMalloc = false;
+}
+
+int32_t ToolsRawData::ToToolInfoVec(const ToolsRawData &rawData, std::vector<ToolInfo> &tools)
+{
+    std::stringstream ss;
+    ss.write(reinterpret_cast<const char *>(rawData.data), rawData.size);
+    ss.seekg(0, std::ios::beg);
+    uint32_t ssLength = static_cast<uint32_t>(ss.str().length());
+    uint32_t count = 0;
+    ss.read(reinterpret_cast<char *>(&count), sizeof(count));
+    if (count > MAX_TOOL_INFO_COUNT) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "tools exceed maxSize %{public}d, count: %{public}d",
+            MAX_TOOL_INFO_COUNT, count);
+        return ERR_INVALID_VALUE;
+    }
+    tools.resize(count);
+    for (uint32_t i = 0; i < count; ++i) {
+        uint32_t toolSize = 0;
+        ss.read(reinterpret_cast<char *>(&toolSize), sizeof(toolSize));
+        if (toolSize > ssLength - static_cast<uint32_t>(ss.tellg())) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "toolSize:%{public}u is invalid", toolSize);
+            return ERR_INVALID_VALUE;
+        }
+        std::string toolStr(toolSize, '\0');
+        ss.read(toolStr.data(), toolSize);
+        nlohmann::json jsonObject = nlohmann::json::parse(toolStr, nullptr, false, true);
+        if (jsonObject.is_discarded()) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "json parse failed, index: %{public}u", i);
+            return ERR_INVALID_VALUE;
+        }
+        if (!ToolInfo::ParseFromJson(jsonObject, tools[i])) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed, index: %{public}u", i);
+            return ERR_INVALID_VALUE;
+        }
+    }
+    return ERR_OK;
 }
 
 } // namespace CliTool

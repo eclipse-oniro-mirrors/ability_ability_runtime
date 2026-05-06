@@ -43,6 +43,13 @@ public:
     int32_t GetAllTools(std::vector<ToolInfo> &tools);
 
     /**
+     * @brief Get all tools as raw data (shared memory optimization)
+     * @param rawData Output ToolsRawData
+     * @return int32_t ERR_OK on success, error code otherwise
+     */
+    int32_t GetAllToolsRawData(ToolsRawData &rawData);
+
+    /**
      * @brief Get tool by name from KVStore
      * @param name Tool name
      * @param tool Output ToolInfo

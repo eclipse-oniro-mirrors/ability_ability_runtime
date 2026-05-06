@@ -209,8 +209,8 @@ HWTEST_F(CliToolManagerServiceTest, GetAllToolInfos_Permission_0100, TestSize.Le
 
     // Note: In unit test environment, the caller is typically a system app with permissions
     // This test verifies the method completes successfully when permissions are granted
-    std::vector<ToolInfo> tools;
-    int32_t result = service_->GetAllToolInfos(tools);
+    ToolsRawData toolsRawData;
+    int32_t result = service_->GetAllToolInfos(toolsRawData);
 
     // In test environment, should succeed or return appropriate error
     EXPECT_TRUE(result == ERR_OK || result == ERR_NOT_SYSTEM_APP || result == ERR_PERMISSION_DENIED);

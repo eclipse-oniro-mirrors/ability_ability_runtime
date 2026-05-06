@@ -130,7 +130,13 @@ ErrCode CliToolMGRClient::GetAllToolInfos(std::vector<ToolInfo> &tools)
         TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
         return GET_CLI_TOOL_MGR_SERVICE_FAILED;
     }
-    return proxy->GetAllToolInfos(tools);
+    ToolsRawData rawData;
+    auto ret = proxy->GetAllToolInfos(rawData);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllToolInfos failed: %{public}d", ret);
+        return ret;
+    }
+    return ToolsRawData::ToToolInfoVec(rawData, tools);
 }
 
 ErrCode CliToolMGRClient::RegisterTool(const ToolInfo &tool)

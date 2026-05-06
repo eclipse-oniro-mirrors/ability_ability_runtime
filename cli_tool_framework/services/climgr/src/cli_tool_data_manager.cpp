@@ -294,6 +294,17 @@ int32_t CliToolDataManager::GetAllTools(std::vector<ToolInfo> &tools)
     return ERR_OK;
 }
 
+int32_t CliToolDataManager::GetAllToolsRawData(ToolsRawData &rawData)
+{
+    std::vector<ToolInfo> tools;
+    int32_t ret = GetAllTools(tools);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    ToolsRawData::FromToolInfoVec(tools, rawData);
+    return ERR_OK;
+}
+
 int32_t CliToolDataManager::GetToolByName(const std::string &name, ToolInfo &tool)
 {
     TAG_LOGI(AAFwkTag::CLI_TOOL, "GetToolByName called: %{public}s", name.c_str());
