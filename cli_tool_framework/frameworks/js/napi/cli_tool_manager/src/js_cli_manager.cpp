@@ -454,7 +454,7 @@ napi_value JSCliManagerInit(napi_env env, napi_value exportObj)
     BindNativeFunction(env, exportObj, "subscribeSession", moduleName, JSCliManager::SubscribeSession);
     BindNativeFunction(env, exportObj, "clearSession", moduleName, JSCliManager::ClearSession);
     BindNativeFunction(env, exportObj, "querySession", moduleName, JSCliManager::QuerySession);
-    BindNativeFunction(env, exportObj, "sendMsg", moduleName, JSCliManager::SendMessage);
+    BindNativeFunction(env, exportObj, "sendMessage", moduleName, JSCliManager::SendMessage);
     BindNativeFunction(env, exportObj, "getToolInfoByName", moduleName, JSCliManager::GetToolInfoByName);
     BindNativeFunction(env, exportObj, "queryToolSummaries", moduleName, JSCliManager::QueryToolSummaries);
     BindNativeFunction(env, exportObj, "queryTools", moduleName, JSCliManager::QueryTools);
