@@ -97,15 +97,8 @@ MemDumpInfo *MemDumpInfo::Unmarshalling(Parcel &parcel)
         delete info;
         return nullptr;
     }
-    if (!parcel.ReadBool(info->mayReportToOEM)) {
-        delete info;
-        return nullptr;
-    }
-    if (!parcel.ReadBool(info->needDump)) {
-        delete info;
-        return nullptr;
-    }
-    if (!parcel.ReadBool(info->needGc)) {
+    if (!parcel.ReadBool(info->mayReportToOEM) || !parcel.ReadBool(info->needDump) ||
+        !parcel.ReadBool(info->needGc)) {
         delete info;
         return nullptr;
     }
