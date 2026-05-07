@@ -680,14 +680,19 @@ AbilityRuntime_ErrorCode MoDispatcherParamCodec::ReadRawValue(MessageParcel& par
             value->u.f64Val = parcel.ReadDouble();
             return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
         case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_STRING: {
-            std::string text = parcel.ReadString();
-            const auto len = text.size();
+            const char* text = parcel.ReadCString();
+            if (text == nullptr) {
+                TAG_LOGE(AAFwkTag::EXT, "ReadRawValue: ReadCString returned nullptr");
+                value->u.bstrVal = nullptr;
+                return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+            }
+            const auto len = std::strlen(text);
             auto* mem = static_cast<char*>(std::malloc(len + 1));
             if (mem == nullptr) {
                 TAG_LOGE(AAFwkTag::EXT, "ReadRawValue: malloc failed for string, len=%{public}zu", len);
                 return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
             }
-            if (strcpy_s(mem, len + 1, text.c_str()) != EOK) {
+            if (strcpy_s(mem, len + 1, text) != EOK) {
                 TAG_LOGE(AAFwkTag::EXT, "ReadRawValue: strcpy_s failed for string");
                 std::free(mem);
                 return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
