@@ -53,7 +53,7 @@ bool VerifyContext(napi_env env, napi_value value)
         return false;
     }
     return HasPropertyOfType(env, value, "abilityInfo") ||
-        HasPropertyOfType(env, value, "extensionInfo");
+        HasPropertyOfType(env, value, "extensionAbilityInfo");
 }
 
 void ThrowContextNotValidError(napi_env env)

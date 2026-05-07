@@ -29,6 +29,7 @@ enum class SkillExecuteState {
     EXECUTING,
     EXECUTE_DONE,
     REMOTE_DIED,
+    TIMED_OUT,
 };
 
 struct SkillExecuteRecord {
@@ -38,6 +39,7 @@ struct SkillExecuteRecord {
     std::string targetBundleName;
     std::string callerBundleName;
     uint32_t callerTokenId = 0;
+    uint64_t requestCodeSeq = 0;
     SkillExecuteState state = SkillExecuteState::UNKNOWN;
     sptr<ISkillExecuteCallback> callback = nullptr;
 };
