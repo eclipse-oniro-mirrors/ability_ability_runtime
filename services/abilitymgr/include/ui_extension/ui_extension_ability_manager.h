@@ -116,6 +116,13 @@ public:
      */
     int32_t GetActiveUIExtensionList(const std::string &bundleName, std::vector<std::string> &extensionList);
 
+    /**
+     * @brief Get extensionList by uid.
+     * @param uid The application uid.
+     * @param extensionList UIExtensionAbility name list.
+     */
+    int32_t GetActiveUIExtensionListByUid(int32_t uid, std::vector<std::string> &extensionList);
+
     void BackgroundAbilityWindowLocked(const std::shared_ptr<BaseExtensionRecord> &abilityRecord,
         const sptr<SessionInfo> &sessionInfo);
 

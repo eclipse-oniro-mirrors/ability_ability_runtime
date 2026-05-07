@@ -128,6 +128,9 @@ export default class UIAbilityContext extends Context {
 
   private native nativeRequestModalUIExtension(pickerWant: Want, callback: AsyncCallbackWrapper<void>): void;
 
+  private native nativeRequestModalUIExtensionWithAccount(
+    pickerWant: Want, accountId: int, callback: AsyncCallbackWrapper<void>): void;
+
   private native nativeBackToCallerAbilityWithResult(abilityResult: AbilityResult, requestCode: string, callback: AsyncCallbackWrapper<void>): void;
 
   private native nativeSetMissionLabel(label: string, callback: AsyncCallbackWrapper<void>): void;
@@ -439,6 +442,21 @@ export default class UIAbilityContext extends Context {
       });
       taskpool.execute(() => {
         this.nativeRequestModalUIExtension(pickerWant, syncCall);
+      });
+    });
+  }
+
+  requestModalUIExtensionWithAccount(pickerWant: Want, accountId: int): Promise<void> {
+    return new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
+      let syncCall = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+        if (err == null || err.code == 0) {
+          resolve(undefined);
+        } else {
+          reject(err);
+        }
+      });
+      taskpool.execute(() => {
+        this.nativeRequestModalUIExtensionWithAccount(pickerWant, accountId, syncCall);
       });
     });
   }

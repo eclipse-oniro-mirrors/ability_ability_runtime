@@ -104,6 +104,7 @@ ohos_unittest("AmsServiceLoadAbilityProcessTest") {
     "init:libbeget_proxy",
     "init:libbegetutil",
     "ipc:ipc_core",
+    "ipc:ipc_single",
     "kv_store:distributeddata_inner",
     "kv_store:distributeddata_mgr",
     "memmgr:memmgrclient",

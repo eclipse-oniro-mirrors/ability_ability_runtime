@@ -318,6 +318,12 @@ public:
     virtual void ScheduleAbilitiesRequestDone(const std::string &requestKey,
         int32_t resultCode) = 0;
 
+    /**
+     * @brief Called when a skill needs to be executed on an already-started ability.
+     * @param want The Want containing skill execution parameters.
+     */
+    virtual void ExecuteSkill(const Want &want) {}
+
     enum {
         // ipc id for scheduling ability to a state of life cycle
         SCHEDULE_ABILITY_TRANSACTION = 0,
@@ -410,6 +416,8 @@ public:
         SCHEDULE_ABILITY_PREPARE_TERMINATE,
 
         SCHEDULE_ONEXECUTE_INTENT,
+
+        SCHEDULE_EXECUTE_SKILL,
 
         CREATE_MODAL_UI_EXTENSION,
 

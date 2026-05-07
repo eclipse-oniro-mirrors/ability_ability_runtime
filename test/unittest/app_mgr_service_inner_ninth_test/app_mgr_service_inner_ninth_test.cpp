@@ -2343,6 +2343,26 @@ HWTEST_F(AppMgrServiceInnerNinthTest, SetProcessPrepareExit_0100, TestSize.Level
 }
 
 /**
+ * @tc.name: SetTerminateTimeOutFlag_0100
+ * @tc.desc: Test SetTerminateTimeOutFlag
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerNinthTest, SetTerminateTimeOutFlag_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetTerminateTimeOutFlag_0100 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
+
+    auto appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
+    AAFwk::MyStatus::GetInstance().getAppRunningByToken_ = appRecord;
+    sptr<IRemoteObject> token = new MockAppScheduler();
+    appMgrServiceInner->SetTerminateTimeOutFlag(token);
+    EXPECT_TRUE(appRecord->GetProcessCacheBlocked());
+    AAFwk::MyStatus::GetInstance().getAppRunningByToken_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "SetTerminateTimeOutFlag_0100 end");
+}
+
+/**
  * @tc.name: KillChildProcessByPid_0100
  * @tc.desc: Test KillChildProcessByPid
  * @tc.type: FUNC

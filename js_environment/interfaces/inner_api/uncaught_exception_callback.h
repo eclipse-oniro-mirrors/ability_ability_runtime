@@ -42,8 +42,8 @@ public:
     NapiUncaughtExceptionCallback(
         std::function<void(const std::string summary, const JsEnv::ErrorObject errorObj, napi_env env,
             napi_value exception)> uncaughtTask,
-        std::shared_ptr<SourceMapOperator> sourceMapOperator, napi_env env)
-        : uncaughtTask_(uncaughtTask), sourceMapOperator_(sourceMapOperator), env_(env)
+        std::shared_ptr<SourceMapOperator> sourceMapOperator, napi_env env, bool isStatic = false)
+        : uncaughtTask_(uncaughtTask), sourceMapOperator_(sourceMapOperator), env_(env), isStatic_(isStatic)
     {}
 
     ~NapiUncaughtExceptionCallback() = default;
@@ -71,6 +71,7 @@ private:
         napi_value exception)> uncaughtTask_;
     std::shared_ptr<SourceMapOperator> sourceMapOperator_ = nullptr;
     napi_env env_ = nullptr;
+    bool isStatic_;
 
     void AppendStackTrace(const std::string& errorStack, std::string& summary);
 

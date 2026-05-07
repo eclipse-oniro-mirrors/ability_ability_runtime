@@ -18,12 +18,15 @@
 
 #include <vector>
 #include <shared_mutex>
+#include <unordered_map>
+#include <mutex>
 
 #include "ability_lifecycle_callback.h"
 #include "application_state_change_callback.h"
 #include "application_update_callback.h"
 #include "context.h"
 #include "context_impl.h"
+#include "ability_native_thread.h"
 #include "environment_callback.h"
 #include "interop_ability_lifecycle_callback.h"
 #include "system_configuration_updated_callback.h"
@@ -97,6 +100,17 @@ public:
     void DispatchOnAbilityWillDestroy(const AbilityLifecycleCallbackArgs &ability);
     void DispatchOnAbilityWillForeground(const AbilityLifecycleCallbackArgs &ability);
     void DispatchOnAbilityWillBackground(const AbilityLifecycleCallbackArgs &ability);
+
+    // Native Module related methods
+    bool CreateNativeThread(const AAFwk::NativeAbilityMetaData &metaData, const std::string &bundleName,
+        const std::string &moduleName);
+    std::shared_ptr<AppExecFwk::AbilityNativeThread> GetNativeThread();
+    void AddNativeAbility(const std::string &instanceId, std::shared_ptr<NativeAbilityWrapper> wrapper);
+    std::shared_ptr<NativeAbilityWrapper> GetNativeAbility(const std::string &instanceId);
+    void RemoveNativeAbility(const std::string &instanceId);
+    void PostAbility(const std::string &instanceId, std::shared_ptr<NativeAbilityWrapper> wrapper);
+    void DestroyAbility(const std::string &instanceId);
+    void NotifyProcessExit();
 
     std::string GetBundleName() const override;
     std::shared_ptr<Context> CreateBundleContext(const std::string &bundleName) override;
@@ -244,6 +258,11 @@ private:
     std::string dataDir_;
     std::mutex dataDirMutex_;
     std::mutex systemConfigurationUpdatedCallbackLock_;
+
+    // Native Module related members
+    std::shared_ptr<AppExecFwk::AbilityNativeThread> abilityNativeThread_;
+    std::unordered_map<std::string, std::shared_ptr<NativeAbilityWrapper>> nativeAbilities_;
+    std::mutex nativeMutex_;
 };
 }  // namespace AbilityRuntime
 }  // namespace OHOS

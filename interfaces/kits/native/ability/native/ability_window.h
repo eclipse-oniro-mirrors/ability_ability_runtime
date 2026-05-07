@@ -94,7 +94,7 @@ public:
      * @return Returns ERR_OK if success.
      */
     virtual ErrCode SetMissionIcon(const std::shared_ptr<OHOS::Media::PixelMap> &icon);
-    void SetSessionToken(sptr<IRemoteObject> sessionToken);
+    void SetSessionToken(sptr<IRemoteObject> sessionToken, sptr<IRemoteObject> renderSession);
 #endif
 
 private:
@@ -109,6 +109,7 @@ private:
     bool isWindowAttached = false;
     std::mutex sessionTokenMutex_;
     sptr<IRemoteObject> sessionToken_ = nullptr;
+    sptr<IRemoteObject> renderSession_ = nullptr;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

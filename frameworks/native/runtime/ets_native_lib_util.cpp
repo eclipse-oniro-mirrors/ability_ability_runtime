@@ -53,6 +53,9 @@ void GetEtsHapSoPath(const HapModuleInfo &hapInfo, AppLibPathMap &appLibPaths, b
     TAG_LOGD(
         AAFwkTag::APPKIT, "appLibPathKey: %{private}s, lib path: %{private}s", appLibPathKey.c_str(), libPath.c_str());
     appLibPaths[appLibPathKey].emplace_back(libPath);
+    if (!hapInfo.librarySupportDirectory.empty()) {
+        TraverseLibrarySupportDirectory(hapInfo.librarySupportDirectory, libPath, appLibPathKey, appLibPaths);
+    }
 
     std::string appLibAbcPathKey = APP_ABC_LIB_PATH_KEY_PREFIX + hapInfo.moduleName + APP_ABC_LIB_PATH_KEY_SUFFIX;
     abcPathsToBundleModuleNameMap[appLibAbcPathKey] = appLibPathKey;
@@ -84,11 +87,7 @@ void GetEtsHspNativeLibPath(const BaseSharedBundleInfo &hspInfo, AppLibPathMap &
         AAFwkTag::APPKIT, "appLibPathKey: %{private}s, libPath: %{private}s", appLibPathKey.c_str(), libPath.c_str());
     appLibPaths[appLibPathKey].emplace_back(libPath);
     if (!hspInfo.librarySupportDirectory.empty()) {
-        for (const auto &dir : hspInfo.librarySupportDirectory) {
-            std::string supportLibPath = libPath + "/" + dir;
-            TAG_LOGD(AAFwkTag::APPKIT, "supportLibPath: %{public}s", supportLibPath.c_str());
-            appLibPaths["default"].emplace_back(supportLibPath);
-        }
+        TraverseLibrarySupportDirectory(hspInfo.librarySupportDirectory, libPath, appLibPathKey, appLibPaths);
     }
 
     if (!appBundleName.empty()) {
@@ -123,6 +122,9 @@ void GetEtsPatchNativeLibPath(const HapModuleInfo &hapInfo, std::string &patchNa
     TAG_LOGD(AAFwkTag::APPKIT, "appLibPathKey: %{public}s, patch lib path: %{private}s", appLibPathKey.c_str(),
         patchLibPath.c_str());
     appLibPaths[appLibPathKey].emplace_back(patchLibPath);
+    if (!hapInfo.librarySupportDirectory.empty()) {
+        TraverseLibrarySupportDirectory(hapInfo.librarySupportDirectory, patchLibPath, appLibPathKey, appLibPaths);
+    }
     std::string appLibAbcPathKey = APP_ABC_LIB_PATH_KEY_PREFIX + hapInfo.moduleName + APP_ABC_LIB_PATH_KEY_SUFFIX;
     abcPathsToBundleModuleNameMap[appLibAbcPathKey] = appLibPathKey;
 }
@@ -173,20 +175,29 @@ void GetEtsNativeLibPath(const BundleInfo &bundleInfo, const std::vector<BaseSha
 
 void GetLibrarySupportDirectory(
     const std::vector<HapModuleInfo> &hapModuleInfos,
-    const std::string nativeLibraryPath,
+    const std::string &nativeLibraryPath,
     AppLibPathMap &appLibPaths)
 {
     std::string libPath = AbilityBase::Constants::LOCAL_CODE_PATH;
     libPath += (libPath.back() == '/') ? nativeLibraryPath : "/" + nativeLibraryPath;
     for (auto &hapInfo : hapModuleInfos) {
-        if (hapInfo.librarySupportDirectory.empty()) {
+        if (hapInfo.librarySupportDirectory.empty() || hapInfo.isLibIsolated) {
             continue;
         }
-        for (const auto &dir : hapInfo.librarySupportDirectory) {
-            std::string supportLibPath = libPath + "/" + dir;
-            TAG_LOGD(AAFwkTag::APPKIT, "supportLibPath: %{public}s", supportLibPath.c_str());
-            appLibPaths["default"].emplace_back(supportLibPath);
-        }
+        TraverseLibrarySupportDirectory(hapInfo.librarySupportDirectory, libPath, "default", appLibPaths);
+    }
+}
+
+void TraverseLibrarySupportDirectory(
+    const std::vector<std::string> &librarySupportDirectory,
+    const std::string &prefixPath,
+    const std::string &appLibPathKey,
+    AppLibPathMap &appLibPaths)
+{
+    for (const auto &dir : librarySupportDirectory) {
+        std::string supportLibPath = prefixPath + "/" + dir;
+        TAG_LOGD(AAFwkTag::APPKIT, "supportLibPath: %{public}s", supportLibPath.c_str());
+        appLibPaths[appLibPathKey].emplace_back(supportLibPath);
     }
 }
 } // AppExecFwk

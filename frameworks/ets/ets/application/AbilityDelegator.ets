@@ -14,6 +14,7 @@
  */
 
 import { AbilityMonitor } from 'application.AbilityMonitor';
+import { InteropAbilityMonitor } from 'application.InteropAbilityMonitor';
 import Want from '@ohos.app.ability.Want';
 import Context from 'application.Context';
 import { BusinessError, AsyncCallback } from '@ohos.base';
@@ -97,6 +98,10 @@ export interface AbilityDelegator {
   getCurrentTopAbility(callback: AsyncCallback<UIAbility>);
 
   getCurrentTopAbility(): Promise<UIAbility>;
+
+  addInteropAbilityMonitorSync(monitor: InteropAbilityMonitor): void;
+
+  removeInteropAbilityMonitorSync(monitor: InteropAbilityMonitor): void;
 }
 
 class AbilityDelegatorInner implements AbilityDelegator {
@@ -153,6 +158,10 @@ class AbilityDelegatorInner implements AbilityDelegator {
   public native setMockList(mockList: Record<string, string>): void;
 
   public native getAbilityState(ability: UIAbility): int;
+
+  public native addInteropAbilityMonitorSync(monitor: InteropAbilityMonitor): void;
+
+  public native removeInteropAbilityMonitorSync(monitor: InteropAbilityMonitor): void;
 
   public native nativeStartAbility(want: Want, callback: AsyncCallbackWrapper<void>): void;
 
@@ -509,4 +518,5 @@ class AbilityDelegatorInner implements AbilityDelegator {
     });
     return p;
   }
+
 }

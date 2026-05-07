@@ -3877,5 +3877,33 @@ HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_QueryEntityInfo_002, TestS
 
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerProxy_QueryEntityInfo_002 end");
 }
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RequestModalUIExtensionWithAccount
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerProxy RequestModalUIExtensionWithAccount
+ * EnvConditions: NA
+ * CaseDescription: Verify RequestModalUIExtensionWithAccount with empty Want
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_RequestModalUIExtensionWithAccount_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerProxy_RequestModalUIExtensionWithAccount_001 start");
+
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
+
+    Want want;  // Empty want
+    int32_t accountId = 100;
+
+    auto res = proxy_->RequestModalUIExtensionWithAccount(want, accountId);
+
+    EXPECT_EQ(static_cast<uint32_t>(
+        AbilityManagerInterfaceCode::REQUEST_MODAL_UI_EXTENSION_WITH_ACCOUNT), mock_->code_);
+    EXPECT_EQ(res, NO_ERROR);
+
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerProxy_RequestModalUIExtensionWithAccount_001 end");
+}
 } // namespace AAFwk
 } // namespace OHOS

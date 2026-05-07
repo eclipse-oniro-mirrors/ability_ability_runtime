@@ -21,6 +21,8 @@
 #include "js_runtime_utils.h"
 #include "ani_common_want.h"
 #include "want.h"
+#include "ability_manager_client.h"
+#include "exit_reason.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -28,6 +30,9 @@ namespace {
 constexpr int RESTART_FLAG_INDEX = 0; // 0:RestartFlag
 constexpr int OCCASION_FLAG_INDEX = 1; // 1:SaveOccasionFlag
 constexpr int MODE_FLAG_INDEX = 2; // 2:SaveModeFlag
+constexpr int RESTART_APP_ID = 3;
+constexpr const char *const  RESTART_APP_REASON = "RestartApp";
+constexpr const char *const  RESTART_REASON = "Restart";
 }
 using namespace OHOS::AppExecFwk;
 
@@ -130,6 +135,15 @@ static ani_boolean SaveAppState(ani_env *env, ani_object context)
 static ani_object RestartApp(ani_env *env)
 {
     ani_object resultsObj{};
+    AAFwk::ExitReasonCompability exitReason = { REASON_NORMAL, "" };
+    exitReason.killId = RESTART_APP_ID;
+    exitReason.killMsg = RESTART_REASON;
+    exitReason.innerMsg = RESTART_APP_REASON;
+    int32_t pid = IPCSkeleton::GetCallingPid();
+    int32_t uid = IPCSkeleton::GetCallingUid();
+    auto result = AbilityManagerClient::GetInstance()->RecordAppWithReason(pid, uid, exitReason);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "Record recovery restart result=%{public}d, "
+        "pid=%{public}d, uid=%{public}d, killId=%{public}d", result, pid, uid, exitReason.killId);
     AppRecovery::GetInstance().ScheduleRecoverApp(StateReason::DEVELOPER_REQUEST);
     return resultsObj;
 }

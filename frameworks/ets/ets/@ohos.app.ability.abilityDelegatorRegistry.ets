@@ -18,6 +18,7 @@ import { AbilityDelegatorArgs as _AbilityDelegatorArgs } from 'application.abili
 import { AbilityMonitor as _AbilityMonitor } from 'application.AbilityMonitor';
 import { AbilityStageMonitor as _AbilityStageMonitor } from 'application.AbilityStageMonitor';
 import { ShellCmdResult as _ShellCmdResult } from 'application.shellCmdResult';
+import { InteropAbilityMonitor as _InteropAbilityMonitor} from 'application.InteropAbilityMonitor';
 
 export default namespace abilityDelegatorRegistry {
   loadLibraryWithPermissionCheck("ability_delegator_registry_ani_kit.z", "@ohos.app.ability.abilityDelegatorRegistry")
@@ -38,4 +39,5 @@ export default namespace abilityDelegatorRegistry {
   export type AbilityMonitor = _AbilityMonitor;
   export type ShellCmdResult = _ShellCmdResult;
   export type AbilityStageMonitor = _AbilityStageMonitor;
+  export type InteropAbilityMonitor = _InteropAbilityMonitor;
 }

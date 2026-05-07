@@ -107,31 +107,45 @@ public:
     void OnAbilityConnectDone(
         const AppExecFwk::ElementName &element, const sptr<IRemoteObject> &remoteObject, int resultCode) override
     {
-        ani_env *env = GetEnv();
+        bool isAttachThread = false;
+        ani_env *env = AttachEnv(isAttachThread);
         if (env == nullptr || etsConnectionObject_ == nullptr) {
+            if (env != nullptr) {
+                AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);
+            }
             return;
         }
         HandleOnAbilityConnectDone(env, element, remoteObject, resultCode);
+        AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);
     }
 
     void OnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int resultCode) override
     {
-        ani_env *env = GetEnv();
+        bool isAttachThread = false;
+        ani_env *env = AttachEnv(isAttachThread);
         if (env == nullptr) {
             RemoveConnectionObject();
             return;
         }
         HandleOnAbilityDisconnectDone(env, element, resultCode);
+        AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);
     }
 
     void CallEtsFailed(int32_t errorCode)
     {
-        ani_env *env = GetEnv();
+        bool isAttachThread = false;
+        ani_env *env = AttachEnv(isAttachThread);
         if (env == nullptr || etsConnectionObject_ == nullptr) {
+            if (env != nullptr) {
+                AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);
+            }
+            RemoveConnectionObject();
             return;
         }
         ani_object object = reinterpret_cast<ani_object>(etsConnectionObject_);
         if (object == nullptr) {
+            AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);
+            RemoveConnectionObject();
             return;
         }
         ani_status status = ANI_ERROR;
@@ -146,20 +160,17 @@ public:
                 TAG_LOGE(AAFwkTag::SER_ROUTER, "Failed to call onFailed, status: %{public}d", status);
             }
         }
+        AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);
         RemoveConnectionObject();
     }
 
 private:
-    ani_env *GetEnv() const
+    ani_env *AttachEnv(bool &isAttachThread) const
     {
         if (etsVm_ == nullptr) {
             return nullptr;
         }
-        ani_env *env = nullptr;
-        if (etsVm_->GetEnv(ANI_VERSION_1, &env) != ANI_OK) {
-            return nullptr;
-        }
-        return env;
+        return AppExecFwk::AttachAniEnv(etsVm_, isAttachThread);
     }
 
     void HandleOnAbilityConnectDone(ani_env *env, const AppExecFwk::ElementName &element,
@@ -222,10 +233,14 @@ private:
                 g_serviceConnections.erase(connectionId_);
             }
         }
-        ani_env *env = GetEnv();
+        bool isAttachThread = false;
+        ani_env *env = AttachEnv(isAttachThread);
         if (env != nullptr && etsConnectionObject_ != nullptr) {
             env->GlobalReference_Delete(etsConnectionObject_);
             etsConnectionObject_ = nullptr;
+        }
+        if (env != nullptr) {
+            AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);
         }
         connectionId_ = INVALID_CONNECT_ID;
     }

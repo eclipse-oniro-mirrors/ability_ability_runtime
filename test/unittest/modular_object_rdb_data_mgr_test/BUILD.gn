@@ -24,6 +24,7 @@ ohos_unittest("modular_object_rdb_data_mgr_test") {
 
   sources = [
     "${ability_runtime_services_path}/abilitymgr/src/modular_object/modular_object_rdb_data_mgr.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/modular_object/modular_object_rdb_storage_mgr.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/hmsf_utils.cpp",
     "modular_object_rdb_data_mgr_test.cpp",
   ]

@@ -17,6 +17,8 @@
 #define OHOS_ABILITY_RUNTIME_UI_ABILITY_IMPL_H
 
 #include "insight_intent_execute_result.h"
+#include "native_ability_util.h"
+#include "skill/skill_execute_param.h"
 #include "ui_ability.h"
 
 namespace OHOS {
@@ -28,6 +30,14 @@ class OHOSApplication;
 } // namespace AppExecFwk
 namespace AbilityRuntime {
 class UIAbility;
+
+enum class LocalNativeState : uint8_t {
+    NONE,
+    INIT_PRE_WINDOW,
+    INIT_PRE_FOREGROUND,
+    HALF_FOREGROUND
+};
+
 class UIAbilityImpl : public std::enable_shared_from_this<UIAbilityImpl> {
 public:
     UIAbilityImpl() = default;
@@ -168,12 +178,17 @@ public:
      */
     bool HandleExecuteInsightIntentBackground(const AAFwk::Want &want, bool onlyExecuteIntent = false);
 
+    bool HandleExecuteSkill(const AAFwk::Want &want, bool onlyExecuteSkill = false);
+
     void SetAbilityRecordId(int32_t abilityRecordId)
     {
         if (ability_ != nullptr) {
             ability_->SetAbilityRecordId(abilityRecordId);
         }
     }
+
+    // Native Module related methods
+    void SetNativeModuleMetaData(const AAFwk::NativeAbilityMetaData& metaData);
 
     void ScheduleCollaborate(const Want &want);
 
@@ -251,6 +266,8 @@ private:
     bool hasSaveData_ = false;
     bool needSaveDate_ = false;
     AppExecFwk::PacMap restoreData_;
+    AAFwk::NativeAbilityMetaData nativeModuleMetaData_;
+    LocalNativeState localNativeState_ = LocalNativeState::NONE;
 
 #ifdef SUPPORT_SCREEN
 private:

@@ -22,6 +22,7 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <map>
 
 #include "resource_config_helper.h"
 #include "ability_manager_client.h"
@@ -253,10 +254,10 @@ void MainThread::GetNativeLibPath(const BundleInfo &bundleInfo, const HspList &h
         libPath += (libPath.back() == '/') ? nativeLibraryPath : "/" + nativeLibraryPath;
         TAG_LOGD(AAFwkTag::APPKIT, "lib path = %{private}s", libPath.c_str());
         appLibPaths["default"].emplace_back(libPath);
+        GetLibrarySupportDirectory(bundleInfo.hapModuleInfos, nativeLibraryPath, appLibPaths);
     } else {
         TAG_LOGI(AAFwkTag::APPKIT, "NativeLibPath empty");
     }
-    GetLibrarySupportDirectory(bundleInfo.hapModuleInfos, nativeLibraryPath, appLibPaths);
 
     for (auto &hapInfo : bundleInfo.hapModuleInfos) {
         TAG_LOGD(AAFwkTag::APPKIT,
@@ -1484,6 +1485,44 @@ CJUncaughtExceptionInfo MainThread::CreateCjExceptionInfo(const std::string &bun
         };
     return uncaughtExceptionInfo;
 }
+
+CJEventReportInfo MainThread::CreateCjEventReportInfo(const std::string &bundleName,
+    uint32_t versionCode, const std::string &hapPath, std::string &appRunningId)
+{
+    CJEventReportInfo reportInfo;
+    wptr<MainThread> weak_this = this;
+    reportInfo.hapPath = hapPath.c_str();
+    std::string processName = processInfo_ != nullptr ? processInfo_->GetProcessName() : "unknown";
+    reportInfo.reportInfoTask = [weak_this, bundleName, versionCode, processName, appRunningId =
+        std::move(appRunningId)](const char* domain,
+        const char* event, size_t hiSysEventType, const std::map<std::string, std::string>& params) {
+            auto shared_this = weak_this.promote();
+            if (shared_this == nullptr) {
+                return;
+            }
+            time_t timet;
+            time(&timet);
+            auto hisyseventReport = std::make_shared<HisyseventReport>(10);
+            hisyseventReport->InsertParam("PID", std::to_string(getpid()));
+            hisyseventReport->InsertParam("TID", std::to_string(gettid()));
+            hisyseventReport->InsertParam("PROCESS_NAME", processName);
+            hisyseventReport->InsertParam("APP_RUNNING_UNIQUE_ID", appRunningId);
+            for (const auto& [key, value] : params) {
+                hisyseventReport->InsertParam(key.c_str(), value);
+            }
+            int32_t ret = hisyseventReport->Report(domain, event, static_cast<HiSysEventEventType>(hiSysEventType));
+            auto it = params.find("DUMP_LOG_PATH");
+            if (it != params.end() && it->second == "EMPTY") {
+                TAG_LOGI(AAFwkTag::APPKIT, "DUMP_LOG_PATH is EMPTY, trigger CJ heap dump");
+                OHOS::AppExecFwk::CjHeapDumpInfo cjHeapInfo;
+                cjHeapInfo.needSnapshot = true;
+                cjHeapInfo.needGc = false;
+                cjHeapInfo.pid = getpid();
+                shared_this->HandleCjHeapMemory(cjHeapInfo);
+            }
+        };
+    return reportInfo;
+}
 #endif
 
 bool MainThread::GetBundleAndHspListForUpdateRuntime(BundleInfo &bundleInfo, std::string bundleName, HspList &hspList)
@@ -1827,6 +1866,10 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
         AbilityRuntime::ChildProcessManager::GetInstance().SetForkProcessDebugOption(appInfo.bundleName,
             appLaunchData.GetDebugApp(), appInfo.debug, appLaunchData.isNativeStart());
         AbilityRuntime::ChildProcessManager::GetInstance().SetApplication(application_);
+        AbilityRuntime::ChildProcessManager::GetInstance().SetArkChildProcessSupported(
+            appLaunchData.IsArkChildProcessSupported());
+        AbilityRuntime::ChildProcessManager::GetInstance().SetNativeChildProcessSupported(
+            appLaunchData.IsNativeChildProcessSupported());
 #endif // SUPPORT_CHILD_PROCESS
         if (!pluginBundleInfos.empty()) {
             for (auto &pluginBundleInfo : pluginBundleInfos) {
@@ -1956,6 +1999,8 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
         } else {
             auto expectionInfo = CreateCjExceptionInfo(bundleName, versionCode, hapPath);
             (static_cast<AbilityRuntime::CJRuntime&>(*runtime)).RegisterUncaughtExceptionHandler(expectionInfo);
+            auto reportInfo = CreateCjEventReportInfo(bundleName, versionCode, hapPath, appRunningId);
+            (static_cast<AbilityRuntime::CJRuntime&>(*runtime)).RegisterEventHandler(reportInfo);
         }
 #endif
         wptr<MainThread> weak = this;
@@ -2179,7 +2224,15 @@ void MainThread::InitUncatchableTask(JsEnv::UncatchableTask &uncatchableTask, co
         ProcessExit(info);
 
         ErrorObject appExecErrorObj = { errorObject.name, errorObject.message, errorObject.stack};
-        auto mainEnv = (static_cast<AbilityRuntime::JsRuntime&>(*appThread->application_->GetRuntime())).GetNapiEnv();
+        napi_env mainEnv = nullptr;
+        auto &runtime = appThread->application_->GetRuntime();
+        if (runtime->GetLanguage() == AbilityRuntime::Runtime::Language::ETS) {
+            auto& etsRuntime = static_cast<AbilityRuntime::ETSRuntime&>(*runtime);
+            auto& jsRuntime = static_cast<AbilityRuntime::JsRuntime&>(*etsRuntime.GetJsRuntime());
+            mainEnv = jsRuntime.GetNapiEnv();
+        } else {
+            mainEnv = (static_cast<AbilityRuntime::JsRuntime&>(*runtime)).GetNapiEnv();
+        }
         ApplicationDataManager::ExceptionParams params = {env, mainEnv, exception, summary, isUncatchable};
         if (ApplicationDataManager::NotifyUncaughtException(params, appExecErrorObj)) {
             return;
@@ -2220,6 +2273,13 @@ void MainThread::ProcessExit(const ProcessExitInfo& info)
 }
 
 #if defined(NWEB) && defined(NWEB_GRAPHIC)
+class CustomizedBufferConsumerListener : public IBufferConsumerListener {
+public:
+    CustomizedBufferConsumerListener() {}
+    ~CustomizedBufferConsumerListener() {}
+
+    void OnBufferAvailable() override {}
+};
 void MainThread::HandleNWebPreload()
 {
     if (!mainHandler_) {
@@ -2232,21 +2292,21 @@ void MainThread::HandleNWebPreload()
             TAG_LOGE(AAFwkTag::APPKIT, "init NWebEngine failed");
             return;
         }
-        Rosen::RSSurfaceNodeConfig config;
-        config.SurfaceNodeName = NWEB_SURFACE_NODE_NAME;
-        preloadSurfaceNode_ = Rosen::RSSurfaceNode::Create(config, false);
-        if (!preloadSurfaceNode_) {
-            TAG_LOGE(AAFwkTag::APPKIT, "preload surface node is nullptr");
+        cSurface_ = IConsumerSurface::Create(NWEB_SURFACE_NODE_NAME);
+        if (cSurface_ == nullptr) {
+            TAG_LOGE(AAFwkTag::APPKIT, "create cSurface failed");
             return;
         }
-        auto surface = preloadSurfaceNode_->GetSurface();
-        if (!surface) {
-            TAG_LOGE(AAFwkTag::APPKIT, "preload surface is nullptr");
-            preloadSurfaceNode_ = nullptr;
+        auto producer = cSurface_->GetProducer();
+        pSurface_ = Surface::CreateSurfaceAsProducer(producer);
+        if (pSurface_ == nullptr) {
+            TAG_LOGE(AAFwkTag::APPKIT, "create pSurface failed");
             return;
         }
+        sptr<IBufferConsumerListener> listener = sptr<CustomizedBufferConsumerListener>::MakeSptr();
+        cSurface_->RegisterConsumerListener(listener);
         auto initArgs = std::make_shared<NWeb::NWebEngineInitArgsImpl>();
-        preloadNWeb_ = NWeb::NWebAdapterHelper::Instance().CreateNWeb(surface, initArgs,
+        preloadNWeb_ = NWeb::NWebAdapterHelper::Instance().CreateNWeb(pSurface_, initArgs,
             NWEB_SURFACE_SIZE, NWEB_SURFACE_SIZE, false);
         if (!preloadNWeb_) {
             TAG_LOGE(AAFwkTag::APPKIT, "create preLoadNWeb failed");
@@ -2651,8 +2711,44 @@ bool MainThread::PrepareAbilityDelegator(const std::shared_ptr<UserTestRecord> &
         auto delegator = IAbilityDelegator::Create(application_->GetRuntime(), application_->GetAppContext(),
             std::move(testRunner), record->observer);
         AbilityDelegatorRegistry::RegisterInstance(delegator, args, application_->GetRuntime()->GetLanguage());
+        {
+            void *napiEnvVoid = nullptr;
+            void *aniVmVoid = nullptr;
+            auto &curRuntime = application_->GetRuntime();
+            bool isHybrid = applicationInfo_ &&
+                applicationInfo_->arkTSMode == AbilityRuntime::CODE_LANGUAGE_ARKTS_HYBRID;
+            if (isHybrid && curRuntime->GetLanguage() == AbilityRuntime::Runtime::Language::ETS) {
+                auto &etsRuntime = static_cast<AbilityRuntime::ETSRuntime &>(*curRuntime);
+                auto aniEnv = etsRuntime.GetAniEnv();
+                if (aniEnv != nullptr) {
+                    aniVmVoid = reinterpret_cast<void *>(aniEnv);
+                }
+                const auto &jsRuntime = etsRuntime.GetJsRuntime();
+                if (jsRuntime) {
+                    napiEnvVoid = reinterpret_cast<void *>(
+                        static_cast<AbilityRuntime::JsRuntime &>(*jsRuntime).GetNapiEnv());
+                }
+            } else if (isHybrid && curRuntime->GetLanguage() == AbilityRuntime::Runtime::Language::JS) {
+                napiEnvVoid = reinterpret_cast<void *>(
+                    static_cast<AbilityRuntime::JsRuntime &>(*curRuntime).GetNapiEnv());
+            }
+            AbilityDelegatorRegistry::SetRuntimeEnvs(napiEnvVoid, aniVmVoid);
+        }
         delegator->SetApiTargetVersion(targetVersion);
         delegator->Prepare();
+        if (applicationInfo_ && applicationInfo_->arkTSMode == AbilityRuntime::CODE_LANGUAGE_ARKTS_HYBRID) {
+            auto currentLanguage = application_->GetRuntime()->GetLanguage();
+            auto targetLanguage = AbilityRuntime::Runtime::Language::JS;
+            if (currentLanguage == AbilityRuntime::Runtime::Language::JS) {
+                targetLanguage = AbilityRuntime::Runtime::Language::ETS;
+            }
+            auto interopTestRunner = TestRunner::Create(application_->GetRuntime(), args, false);
+            auto interopDelegator = IAbilityDelegator::Create(application_->GetRuntime(),
+                application_->GetAppContext(), std::move(interopTestRunner), record->observer);
+            AbilityDelegatorRegistry::RegisterInstance(interopDelegator, args, targetLanguage);
+            interopDelegator->SetApiTargetVersion(targetVersion);
+            interopDelegator->Prepare();
+        }
     } else { // FA model
         TAG_LOGD(AAFwkTag::APPKIT, "FA model");
         AbilityRuntime::Runtime::Options options;
@@ -3085,7 +3181,12 @@ void MainThread::Init(const std::shared_ptr<EventRunner> &runner)
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::APPKIT, "Start");
     mainHandler_ = std::make_shared<MainHandler>(runner, this);
-    watchdog_ = std::make_shared<Watchdog>();
+    bool isRescueMode = (system::GetParameter("soc.boot.mode", "") == "rescue");
+    if (!isRescueMode) {
+        TAG_LOGE(AAFwkTag::APPKIT, "is not in rescue mode");
+        watchdog_ = std::make_shared<Watchdog>();
+    }
+
     extensionConfigMgr_ = std::make_shared<AbilityRuntime::ExtensionConfigMgr>();
     wptr<MainThread> weak = this;
     auto task = [weak]() {
@@ -3101,7 +3202,11 @@ void MainThread::Init(const std::shared_ptr<EventRunner> &runner)
     }
     TaskTimeoutDetected(runner);
 
-    watchdog_->Init(mainHandler_);
+    if (!isRescueMode) {
+        TAG_LOGE(AAFwkTag::APPKIT, "is not in rescue mode");
+        watchdog_->Init(mainHandler_);
+    }
+
     AppExecFwk::AppfreezeInner::GetInstance()->SetMainHandler(mainHandler_);
 }
 
@@ -4461,11 +4566,11 @@ void MainThread::RegisterHybridException(const std::unique_ptr<AbilityRuntime::R
 
             InitUncatchableTask(uncaughtExceptionInfo.uncaughtTask, uncatchableTaskInfo);
             (static_cast<AbilityRuntime::JsRuntime&>(*jsRuntime)).RegisterUncaughtExceptionHandler(
-                uncaughtExceptionInfo);
+                uncaughtExceptionInfo, true);
             JsEnv::UncatchableTask uncatchableTask;
             InitUncatchableTask(uncatchableTask, uncatchableTaskInfo, true);
             (static_cast<AbilityRuntime::JsRuntime&>(*jsRuntime)).RegisterUncatchableExceptionHandler(
-                uncatchableTask);
+                uncatchableTask, true);
         }
     }
 }

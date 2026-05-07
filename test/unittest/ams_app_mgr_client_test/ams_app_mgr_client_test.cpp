@@ -210,7 +210,8 @@ HWTEST_F(AmsAppMgrClientTest, AppMgrClient_005, TestSize.Level1)
     EXPECT_EQ(AppMgrResultCode::RESULT_OK, client_->ConnectAppMgrService());
 
     sptr<IAmsMgr> amsMgrScheduler(new MockAmsMgrScheduler());
-    EXPECT_CALL(*(static_cast<MockAmsMgrScheduler*>(amsMgrScheduler.GetRefPtr())), UpdateAbilityState(_, _)).Times(1);
+    EXPECT_CALL(*(static_cast<MockAmsMgrScheduler*>(amsMgrScheduler.GetRefPtr())),
+        UpdateAbilityState(_, _, _)).Times(1);
     EXPECT_CALL(*(static_cast<MockAppMgrService*>((iface_cast<IAppMgr>(client_->GetRemoteObject())).GetRefPtr())),
         GetAmsMgr())
         .Times(1)

@@ -90,10 +90,10 @@ void ModularObjectEventReceiver::LoadModularObjectExtensionInfos(int32_t userId)
             DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->QueryVersion(key, versionCode);
         GetModularObjectExtensionInfos(bundleInfo, infos);
         if (hasRecord && bundleInfo.versionCode != versionCode) {
-            DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->InsertData(
+            DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->InsertOrUpdateData(
                 key, infos, bundleInfo.versionCode);
         } else if (!hasRecord && !infos.empty()) {
-            DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->InsertData(
+            DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->InsertOrUpdateData(
                 key, infos, bundleInfo.versionCode);
         }
         infos.clear();
@@ -122,7 +122,7 @@ void ModularObjectEventReceiver::HandleEventUserSwitched(const EventFwk::CommonE
 
 void ModularObjectEventReceiver::HandleBundleScanFinished(const EventFwk::CommonEventData &data)
 {
-    uint32_t userId = AppExecFwk::OsAccountManagerWrapper::GetCurrentActiveAccountId();
+    int32_t userId = AppExecFwk::OsAccountManagerWrapper::GetCurrentActiveAccountId();
     if (userId == 0) {
         TAG_LOGI(AAFwkTag::EXT, "use MAIN_USER_ID(%{public}d) instead of current userId: (%{public}d)",
             MAIN_USER_ID, userId);
@@ -219,7 +219,7 @@ void ModularObjectEventReceiver::InsertModularObjectExtensionInfo(
         return;
     }
     std::string key = GenerateModularObjectKey(userId, bundleName, appIndex);
-    DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->InsertData(
+    DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->InsertOrUpdateData(
         key, infos, bundleInfo.versionCode);
 }
 
@@ -246,7 +246,7 @@ void ModularObjectEventReceiver::UpdateModularObjectExtensionInfos(const std::st
         DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->DeleteData(key);
         return;
     }
-    DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->UpdateData(
+    DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->InsertOrUpdateData(
         key, infos, bundleInfo.versionCode);
 }
 

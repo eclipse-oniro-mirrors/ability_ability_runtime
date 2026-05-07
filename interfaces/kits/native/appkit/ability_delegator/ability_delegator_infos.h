@@ -19,6 +19,7 @@
 #include <string>
 #include "ability_lifecycle_executor.h"
 #include "iremote_object.h"
+#include "runtime.h"
 
 class NativeReference;
 
@@ -36,6 +37,8 @@ struct BaseDelegatorAbilityProperty {
     std::string fullName_;
     // lifecycle state of ability
     AbilityLifecycleExecutor::LifecycleState lifecycleState_ {AbilityLifecycleExecutor::LifecycleState::UNINITIALIZED};
+    // runtime language source of ability
+    AbilityRuntime::Runtime::Language language_ {AbilityRuntime::Runtime::Language::JS};
 };
 struct ADelegatorAbilityProperty : public BaseDelegatorAbilityProperty {
     std::weak_ptr<NativeReference> object_;

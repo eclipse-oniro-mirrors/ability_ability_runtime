@@ -90,7 +90,8 @@ namespace AbilityConstant {
     WINDOW_MODE_FULLSCREEN = 1,
     WINDOW_MODE_SPLIT_PRIMARY = 100,
     WINDOW_MODE_SPLIT_SECONDARY = 101,
-    WINDOW_MODE_FLOATING = 102
+    WINDOW_MODE_FLOATING = 102,
+    WINDOW_MODE_SPLIT = 103
   }
 
   export enum OnSaveResult {

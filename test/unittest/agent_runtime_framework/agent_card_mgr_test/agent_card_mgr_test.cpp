@@ -68,6 +68,14 @@ AppExecFwk::ExtensionAbilityInfo BuildAgentExtensionInfo(const std::string &bund
     extensionInfo.type = AppExecFwk::ExtensionAbilityType::AGENT;
     return extensionInfo;
 }
+
+AppExecFwk::HapModuleInfo BuildHapModuleInfo(const AppExecFwk::ExtensionAbilityInfo &extensionInfo)
+{
+    AppExecFwk::HapModuleInfo hapModuleInfo;
+    hapModuleInfo.moduleName = extensionInfo.moduleName;
+    hapModuleInfo.extensionInfos.push_back(extensionInfo);
+    return hapModuleInfo;
+}
 }
 
 class AgentCardMgrTest : public testing::Test {
@@ -249,12 +257,7 @@ HWTEST_F(AgentCardMgrTest, HandleBundleInstallTest_007, TestSize.Level1)
 {
     AgentCardMgr agentCardMgr;
 
-    AppExecFwk::ExtensionAbilityInfo extensionInfo;
-    extensionInfo.bundleName = "test.bundle";
-    extensionInfo.moduleName = "testModule";
-    extensionInfo.name = "TestAgent";
-    extensionInfo.type = AppExecFwk::ExtensionAbilityType::AGENT;
-    MyFlag::mockExtensionInfos.push_back(extensionInfo);
+    MyFlag::mockHapModuleInfos.push_back(BuildHapModuleInfo(BuildAgentExtensionInfo()));
 
     MyFlag::retGetResConfigFile = false;
     int ret = agentCardMgr.HandleBundleInstall("test.bundle", 100);
@@ -778,7 +781,7 @@ HWTEST_F(AgentCardMgrTest, HandleBundleInstallTest_017, TestSize.Level1)
 
 /**
  * @tc.name: HandleBundleInstallTest_0171
- * @tc.desc: HandleBundleInstall keeps stored API-originated card on equal version
+ * @tc.desc: HandleBundleInstall keeps stored API-originated card payload on equal version but updates type
  * @tc.type: FUNC
  */
 HWTEST_F(AgentCardMgrTest, HandleBundleInstallTest_0171, TestSize.Level1)
@@ -788,6 +791,7 @@ HWTEST_F(AgentCardMgrTest, HandleBundleInstallTest_0171, TestSize.Level1)
     MyFlag::mockProfileInfoContent = R"({
         "agentCards": [{
             "agentId": "testAgent",
+            "type": "LOW_CODE",
             "name": "Incoming Agent",
             "description": "Incoming Description",
             "version": "2.0.0",
@@ -806,6 +810,7 @@ HWTEST_F(AgentCardMgrTest, HandleBundleInstallTest_0171, TestSize.Level1)
     EXPECT_EQ(ret, ERR_OK);
     ASSERT_EQ(MyFlag::insertedEntries.size(), 1);
     EXPECT_EQ(MyFlag::insertedEntries[0].card.description, "stored api payload");
+    EXPECT_EQ(MyFlag::insertedEntries[0].card.type, AgentCardType::LOW_CODE);
     EXPECT_EQ(MyFlag::insertedEntries[0].source, AgentCardUpdateSource::API);
 }
 
@@ -1204,7 +1209,7 @@ HWTEST_F(AgentCardMgrTest, UpdateAgentCard_0042, TestSize.Level1)
 
 /**
  * @tc.name: UpdateAgentCard_0043
- * @tc.desc: UpdateAgentCard rejects low-code cards for non-system target apps using stored card type
+ * @tc.desc: UpdateAgentCard validates system-app requirement using incoming card type
  * @tc.type: FUNC
  */
 HWTEST_F(AgentCardMgrTest, UpdateAgentCard_0043, TestSize.Level1)
@@ -1217,7 +1222,9 @@ HWTEST_F(AgentCardMgrTest, UpdateAgentCard_0043, TestSize.Level1)
         AgentCardType::LOW_CODE) };
     AgentCard card = BuildCard("testAgent", "1.0.0");
 
-    EXPECT_EQ(agentCardMgr.UpdateAgentCard(card), AAFwk::ERR_NOT_SYSTEM_APP);
+    EXPECT_EQ(agentCardMgr.UpdateAgentCard(card), ERR_OK);
+    ASSERT_EQ(MyFlag::insertedCards.size(), 1);
+    EXPECT_EQ(MyFlag::insertedCards[0].type, AgentCardType::APP);
 }
 
 /**
@@ -1286,6 +1293,26 @@ HWTEST_F(AgentCardMgrTest, UpdateAgentCard_006, TestSize.Level1)
     EXPECT_EQ(ret, ERR_OK);
     ASSERT_EQ(MyFlag::insertedCards.size(), 1);
     EXPECT_EQ(MyFlag::insertedCards[0].description, "updated");
+}
+
+/**
+ * @tc.name: UpdateAgentCard_0061
+ * @tc.desc: UpdateAgentCard persists incoming type instead of keeping stored type
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardMgrTest, UpdateAgentCard_0061, TestSize.Level1)
+{
+    AgentCardMgr agentCardMgr;
+    MyFlag::mockExtensionInfos.push_back(BuildAgentExtensionInfo());
+    MyFlag::retQueryData = ERR_OK;
+    MyFlag::queryDataCards = { BuildCard("testAgent", "2.0.0", "test.bundle", "TestAgent",
+        AgentCardType::LOW_CODE) };
+    AgentCard card = BuildCard("testAgent", "2.0.0");
+
+    int ret = agentCardMgr.UpdateAgentCard(card);
+    EXPECT_EQ(ret, ERR_OK);
+    ASSERT_EQ(MyFlag::insertedCards.size(), 1);
+    EXPECT_EQ(MyFlag::insertedCards[0].type, AgentCardType::APP);
 }
 
 /**

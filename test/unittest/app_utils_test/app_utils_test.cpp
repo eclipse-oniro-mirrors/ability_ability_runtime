@@ -1066,5 +1066,33 @@ HWTEST_F(AppUtilsTest, IsSupportAllowDebugPermission_0200, TestSize.Level2)
     appUtils.isSupportAllowDebugPermission_.value = true;
     EXPECT_TRUE(appUtils.IsSupportAllowDebugPermission());
 }
+
+/**
+ * @tc.number: IsSupportNativeUIAbility_0100
+ * @tc.desc: Test IsSupportNativeUIAbility works
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppUtilsTest, IsSupportNativeUIAbility_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsSupportNativeUIAbility_0100 called.");
+    auto &appUtils = AAFwk::AppUtils::GetInstance();
+    appUtils.isSupportNativeUIAbility_.isLoaded = false;
+    appUtils.IsSupportNativeUIAbility();
+    EXPECT_TRUE(appUtils.isSupportNativeUIAbility_.isLoaded);
+}
+
+/**
+ * @tc.number: IsSupportNativeUIAbility_0200
+ * @tc.desc: Test IsSupportNativeUIAbility works
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppUtilsTest, IsSupportNativeUIAbility_0200, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsSupportNativeUIAbility_0200 called.");
+    auto &appUtils = AAFwk::AppUtils::GetInstance();
+    appUtils.isSupportNativeUIAbility_.isLoaded = true;
+    appUtils.isSupportNativeUIAbility_.value = true;
+    EXPECT_TRUE(appUtils.IsSupportNativeUIAbility());
+}
 }  // namespace AbilityRuntime
 }  // namespace OHOS

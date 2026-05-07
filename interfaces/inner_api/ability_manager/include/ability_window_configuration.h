@@ -41,7 +41,11 @@ enum AbilityWindowConfiguration {
     /**
      * Indicates that the Page ability is in floating window display mode.
      */
-    MULTI_WINDOW_DISPLAY_FLOATING = 102
+    MULTI_WINDOW_DISPLAY_FLOATING = 102,
+    /**
+     * Indicates that the Page ability is displayed in split-screen mode.
+     */
+    MULTI_WINDOW_DISPLAY_SPLIT = 103
 };
 }  // namespace AAFwk
 }  // namespace OHOS

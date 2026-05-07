@@ -15,11 +15,24 @@
 
 #include "ability_runtime/modular_object_extension_manager.h"
 
+#include "modular_object_extension_manager.h"
+
+#include <cinttypes>
+#include <new>
+#include <string>
+
 #include "ability_business_error_utils.h"
 #include "ability_manager_client.h"
 #include "ability_manager/include/modular_object_extension_info.h"
+#include "connect_options_impl.h"
+#include "c_modular_object_connection_callback.h"
+#include "c_modular_object_utils.h"
 #include "hilog_tag_wrapper.h"
-#include "want_manager.h"
+#include "modular_object_connection_manager.h"
+
+using namespace OHOS;
+using namespace OHOS::AAFwk;
+using namespace OHOS::AbilityRuntime;
 
 struct OH_AbilityRuntime_AllModularObjectExtensionInfos {
     std::vector<OHOS::AAFwk::ModularObjectExtensionInfo> allMoeInfos;
@@ -29,11 +42,73 @@ struct OH_AbilityRuntime_AllModularObjectExtensionInfos {
 extern "C" {
 #endif
 
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ConnectModularObjectExtensionAbility(AbilityBase_Want *want,
+    OH_AbilityRuntime_ConnectOptions *connectOptions, int64_t *connectionId)
+{
+    TAG_LOGD(AAFwkTag::EXT, "Connect Moe");
+    if (connectOptions == nullptr || connectionId == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "invalid params");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    if (connectOptions->state == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "null connectOptions state");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    {
+        std::lock_guard<std::mutex> guard(connectOptions->state->mutex);
+        if (!connectOptions->state->alive) {
+            TAG_LOGE(AAFwkTag::EXT, "connect options already destroyed");
+            return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+        }
+    }
+
+    Want abilityWant;
+    auto ret = CModularObjectUtils::TransformWant(want, abilityWant);
+    if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+        return ret;
+    }
+
+    auto callback = sptr<CModularObjectConnectionCallback>::MakeSptr(connectOptions->state);
+    if (callback == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "Failed to create connect callback");
+        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+    }
+
+    int64_t newConnectionId = CModularObjectConnectionUtils::InsertConnection(callback);
+    if (newConnectionId < 0) {
+        TAG_LOGE(AAFwkTag::EXT, "Failed to insert connection");
+        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+    }
+
+    int32_t innerRet = ModularObjectConnectionManager::GetInstance().ConnectModularObjectExtension(
+        abilityWant, callback);
+    if (innerRet != ERR_OK) {
+        CModularObjectConnectionUtils::RemoveConnectionCallback(newConnectionId);
+        return CModularObjectUtils::ConvertConnectBusinessErrorCode(innerRet);
+    }
+
+    *connectionId = newConnectionId;
+    return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
+}
+
+AbilityRuntime_ErrorCode OH_AbilityRuntime_DisconnectModularObjectExtensionAbility(int64_t connectionId)
+{
+    TAG_LOGD(AAFwkTag::EXT, "Disonnect Moe");
+    sptr<CModularObjectConnectionCallback> callback;
+    CModularObjectConnectionUtils::FindConnection(connectionId, callback);
+    if (callback == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "Connection not found, id: %{public}" PRId64, connectionId);
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    int32_t innerRet = ModularObjectConnectionManager::GetInstance().DisconnectModularObjectExtension(callback);
+    return CModularObjectUtils::ConvertConnectBusinessErrorCode(innerRet);
+}
+
 AbilityRuntime_ErrorCode OH_AbilityRuntime_ReleaseAllExtensionInfos(
     OH_AbilityRuntime_AllModObjExtensionInfosHandle *allExtensionInfos)
 {
     if (!allExtensionInfos || !*allExtensionInfos) {
-        TAG_LOGD(AAFwkTag::APPKIT, "null parameter");
+        TAG_LOGD(AAFwkTag::EXT, "null parameter");
         return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
     }
     delete *allExtensionInfos;
@@ -45,7 +120,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetModularObjectExtensionInfoLaunchMo
     OH_AbilityRuntime_ModObjExtensionInfoHandle extensionInfo, OH_AbilityRuntime_LaunchMode *launchMode)
 {
     if (!extensionInfo || !launchMode) {
-        TAG_LOGE(AAFwkTag::APPKIT, "null parameter");
+        TAG_LOGE(AAFwkTag::EXT, "null parameter");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto info = reinterpret_cast<OHOS::AAFwk::ModularObjectExtensionInfo*>(extensionInfo);
@@ -57,7 +132,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetModularObjectExtensionInfoProcessM
     OH_AbilityRuntime_ModObjExtensionInfoHandle extensionInfo, OH_AbilityRuntime_ProcessMode *processMode)
 {
     if (!extensionInfo || !processMode) {
-        TAG_LOGE(AAFwkTag::APPKIT, "null parameter");
+        TAG_LOGE(AAFwkTag::EXT, "null parameter");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto info = reinterpret_cast<OHOS::AAFwk::ModularObjectExtensionInfo*>(extensionInfo);
@@ -69,7 +144,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetModularObjectExtensionInfoThreadMo
     OH_AbilityRuntime_ModObjExtensionInfoHandle extensionInfo, OH_AbilityRuntime_ThreadMode *threadMode)
 {
     if (!extensionInfo || !threadMode) {
-        TAG_LOGE(AAFwkTag::APPKIT, "null parameter");
+        TAG_LOGE(AAFwkTag::EXT, "null parameter");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto info = reinterpret_cast<OHOS::AAFwk::ModularObjectExtensionInfo*>(extensionInfo);
@@ -81,21 +156,21 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetModularObjectExtensionInfoElementN
     OH_AbilityRuntime_ModObjExtensionInfoHandle extensionInfo, AbilityBase_Element *element)
 {
     if (!extensionInfo || !element) {
-        TAG_LOGE(AAFwkTag::APPKIT, "null parameter");
+        TAG_LOGE(AAFwkTag::EXT, "null parameter");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto info = reinterpret_cast<OHOS::AAFwk::ModularObjectExtensionInfo*>(extensionInfo);
 
     char* newBundleName = strdup(info->bundleName.c_str());
     if (!newBundleName) {
-        TAG_LOGE(AAFwkTag::APPKIT, "strdup bundleName failed");
+        TAG_LOGE(AAFwkTag::EXT, "strdup bundleName failed");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
 
     char* newModuleName = strdup(info->moduleName.c_str());
     if (!newModuleName) {
         free(newBundleName);
-        TAG_LOGE(AAFwkTag::APPKIT, "strdup moduleName failed");
+        TAG_LOGE(AAFwkTag::EXT, "strdup moduleName failed");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
 
@@ -103,7 +178,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetModularObjectExtensionInfoElementN
     if (!newAbilityName) {
         free(newBundleName);
         free(newModuleName);
-        TAG_LOGE(AAFwkTag::APPKIT, "strdup abilityName failed");
+        TAG_LOGE(AAFwkTag::EXT, "strdup abilityName failed");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
 
@@ -117,7 +192,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetModularObjectExtensionInfoDisableS
     OH_AbilityRuntime_ModObjExtensionInfoHandle extensionInfo, bool *isDisabled)
 {
     if (!extensionInfo || !isDisabled) {
-        TAG_LOGE(AAFwkTag::APPKIT, "null parameter");
+        TAG_LOGE(AAFwkTag::EXT, "null parameter");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto info = reinterpret_cast<OHOS::AAFwk::ModularObjectExtensionInfo*>(extensionInfo);
@@ -129,7 +204,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_AcquireSelfModularObjectExtensionInfo
     OH_AbilityRuntime_AllModObjExtensionInfosHandle *outOwnedAllExtensionInfos)
 {
     if (!outOwnedAllExtensionInfos) {
-        TAG_LOGE(AAFwkTag::APPKIT, "null parameter");
+        TAG_LOGE(AAFwkTag::EXT, "null parameter");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
 
@@ -138,7 +213,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_AcquireSelfModularObjectExtensionInfo
     std::vector<OHOS::AAFwk::ModularObjectExtensionInfo> dataList;
     auto ret = OHOS::AAFwk::AbilityManagerClient::GetInstance()->QuerySelfModularObjectExtensionInfos(dataList);
     if (ret != OHOS::ERR_OK) {
-        TAG_LOGE(AAFwkTag::APPKIT, "get modular object extension info inner error: %{public}d", ret);
+        TAG_LOGE(AAFwkTag::EXT, "get modular object extension info inner error: %{public}d", ret);
         return ConvertToCommonBusinessErrorCode(ret);
     }
     infos->allMoeInfos = dataList;
@@ -150,7 +225,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetCountFromAllModObjExtensionInfos(
     OH_AbilityRuntime_AllModObjExtensionInfosHandle allExtensionInfos, size_t *count)
 {
     if (!allExtensionInfos || !count) {
-        TAG_LOGE(AAFwkTag::APPKIT, "null parameter");
+        TAG_LOGE(AAFwkTag::EXT, "null parameter");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     *count = allExtensionInfos->allMoeInfos.size();
@@ -162,17 +237,17 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetModObjExtensionInfoByIndex(
     OH_AbilityRuntime_ModObjExtensionInfoHandle *extensionInfo)
 {
     if (!allExtensionInfos || !extensionInfo) {
-        TAG_LOGE(AAFwkTag::APPKIT, "null parameter");
+        TAG_LOGE(AAFwkTag::EXT, "null parameter");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     if (index >= allExtensionInfos->allMoeInfos.size()) {
-        TAG_LOGE(AAFwkTag::APPKIT, "index out of range");
+        TAG_LOGE(AAFwkTag::EXT, "index out of range");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     *extensionInfo =
         reinterpret_cast<OH_AbilityRuntime_ModObjExtensionInfoHandle>(&(allExtensionInfos->allMoeInfos[index]));
     if (*extensionInfo == nullptr) {
-        TAG_LOGE(AAFwkTag::APPKIT, "Failed to get extension info for index %zu", index);
+        TAG_LOGE(AAFwkTag::EXT, "Failed to get extension info for index %zu", index);
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;

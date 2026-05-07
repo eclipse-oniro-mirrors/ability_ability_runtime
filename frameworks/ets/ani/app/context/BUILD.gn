@@ -63,6 +63,7 @@ ohos_shared_library("context_ani_kit") {
     "c_utils:utils",
     "hilog:libhilog",
     "ipc:ipc_single",
+    "graphic_2d:color_manager",
     "hitrace:hitrace_meter",
     "napi:ace_napi",
     "runtime_core:ani",

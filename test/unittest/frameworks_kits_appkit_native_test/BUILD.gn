@@ -103,16 +103,16 @@ ohos_unittest("application_test") {
     "ffrt:libffrt",
     "form_fwk:fmskit_native",
     "googletest:gtest_main",
-    "hilog:libhilog",
     "hichecker:libhichecker",
+    "hilog:libhilog",
     "hitrace:hitrace_meter",
     "init:libbegetutil",
     "ipc:ipc_core",
     "napi:ace_napi",
     "resource_management:global_resmgr",
     "resource_management:librawfile",
-    "samgr:samgr_proxy",
     "runtime_core:ani",
+    "samgr:samgr_proxy",
   ]
 
   if (ability_runtime_graphics) {
@@ -177,8 +177,8 @@ ohos_unittest("context_impl_test") {
     "ffrt:libffrt",
     "form_fwk:fmskit_native",
     "googletest:gtest_main",
-    "hilog:libhilog",
     "hichecker:libhichecker",
+    "hilog:libhilog",
     "hitrace:hitrace_meter",
     "init:libbegetutil",
     "ipc:ipc_core",
@@ -187,7 +187,6 @@ ohos_unittest("context_impl_test") {
     "resource_management:librawfile",
     "runtime_core:ani",
     "samgr:samgr_proxy",
-    "runtime_core:ani",
   ]
 
   if (ability_runtime_graphics) {
@@ -242,15 +241,15 @@ ohos_unittest("context_impl_second_test") {
     "ffrt:libffrt",
     "form_fwk:fmskit_native",
     "googletest:gtest_main",
-    "hilog:libhilog",
     "hichecker:libhichecker",
+    "hilog:libhilog",
     "hitrace:hitrace_meter",
     "init:libbegetutil",
     "ipc:ipc_core",
     "napi:ace_napi",
     "resource_management:global_resmgr",
-    "samgr:samgr_proxy",
     "runtime_core:ani",
+    "samgr:samgr_proxy",
   ]
 
   if (ability_runtime_graphics) {
@@ -306,16 +305,16 @@ ohos_unittest("context_impl_third_test") {
     "ffrt:libffrt",
     "form_fwk:fmskit_native",
     "googletest:gtest_main",
-    "hilog:libhilog",
     "hichecker:libhichecker",
+    "hilog:libhilog",
     "hitrace:hitrace_meter",
     "init:libbegetutil",
     "ipc:ipc_core",
     "napi:ace_napi",
     "resource_management:global_resmgr",
     "resource_management:librawfile",
-    "samgr:samgr_proxy",
     "runtime_core:ani",
+    "samgr:samgr_proxy",
   ]
 
   if (ability_runtime_graphics) {
@@ -363,14 +362,14 @@ ohos_unittest("context_container_test") {
     "ffrt:libffrt",
     "form_fwk:fmskit_native",
     "googletest:gtest_main",
-    "hilog:libhilog",
     "hichecker:libhichecker",
+    "hilog:libhilog",
     "hitrace:hitrace_meter",
     "init:libbegetutil",
     "ipc:ipc_core",
     "napi:ace_napi",
-    "samgr:samgr_proxy",
     "runtime_core:ani",
+    "samgr:samgr_proxy",
   ]
 
   if (ability_runtime_graphics) {
@@ -547,8 +546,8 @@ ohos_unittest("context_deal_test") {
     "${ability_runtime_native_path}/ability/native:ability_thread",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_native_path}/ability/native:abilitykit_utils",
-    "${ability_runtime_native_path}/ability/native:extensionkit_native",
     "${ability_runtime_native_path}/ability/native:configuration_helper",
+    "${ability_runtime_native_path}/ability/native:extensionkit_native",
     "${ability_runtime_native_path}/appkit:app_context",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_native_path}/appkit:appkit_native",
@@ -566,20 +565,20 @@ ohos_unittest("context_deal_test") {
     "common_event_service:cesfwk_innerkits",
     "eventhandler:libeventhandler",
     "ffrt:libffrt",
+    "form_fwk:form_common_info",
     "form_fwk:form_manager",
     "form_fwk:form_render_info",
-    "form_fwk:form_common_info",
     "googletest:gmock_main",
     "googletest:gtest_main",
-    "hilog:libhilog",
     "hichecker:libhichecker",
+    "hilog:libhilog",
     "hitrace:hitrace_meter",
     "init:libbegetutil",
     "ipc:ipc_core",
     "napi:ace_napi",
     "resource_management:global_resmgr",
-    "samgr:samgr_proxy",
     "runtime_core:ani",
+    "samgr:samgr_proxy",
   ]
 
   if (ability_runtime_graphics) {
@@ -590,9 +589,8 @@ ohos_unittest("context_deal_test") {
 ohos_unittest("application_impl_test") {
   module_out_path = module_output_path
 
-  include_dirs = [
-    "${ability_runtime_innerkits_path}/app_manager/include/appmgr",
-  ]
+  include_dirs =
+      [ "${ability_runtime_innerkits_path}/app_manager/include/appmgr" ]
 
   sources = [
     "${ability_runtime_native_path}/appkit/app/app_context.cpp",
@@ -637,14 +635,14 @@ ohos_unittest("application_impl_test") {
     "ffrt:libffrt",
     "form_fwk:fmskit_native",
     "googletest:gtest_main",
-    "hilog:libhilog",
     "hichecker:libhichecker",
+    "hilog:libhilog",
     "hitrace:hitrace_meter",
     "init:libbegetutil",
     "ipc:ipc_core",
     "napi:ace_napi",
-    "samgr:samgr_proxy",
     "runtime_core:ani",
+    "samgr:samgr_proxy",
   ]
 
   if (ability_runtime_graphics) {
@@ -786,19 +784,19 @@ ohos_unittest("form_extension_context_test") {
     "eventhandler:libeventhandler",
     "ffrt:libffrt",
     "form_fwk:fmskit_native",
+    "form_fwk:form_common_info",
     "form_fwk:form_manager",
     "form_fwk:form_render_info",
-    "form_fwk:form_common_info",
     "googletest:gmock_main",
     "googletest:gtest_main",
-    "hilog:libhilog",
     "hichecker:libhichecker",
+    "hilog:libhilog",
     "hitrace:hitrace_meter",
     "init:libbegetutil",
     "ipc:ipc_core",
     "napi:ace_napi",
-    "samgr:samgr_proxy",
     "runtime_core:ani",
+    "samgr:samgr_proxy",
   ]
 
   if (ability_runtime_graphics) {
@@ -964,9 +962,8 @@ ohos_unittest("dump_ipc_helper_test") {
 }
 
 ohos_unittest("dump_runtime_helper_test") {
-  include_dirs = [
-    "${ability_runtime_path}/cj_environment/interfaces/inner_api",
-  ]
+  include_dirs =
+      [ "${ability_runtime_path}/cj_environment/interfaces/inner_api" ]
   module_out_path = module_output_path
   sources = [
     "${ability_runtime_native_path}/appkit/app/dump_runtime_helper.cpp",
@@ -990,12 +987,13 @@ ohos_unittest("dump_runtime_helper_test") {
     "c_utils:utils",
     "faultloggerd:dfx_signalhandler",
     "faultloggerd:libfaultloggerd",
+    "ffrt:libffrt",
     "googletest:gtest_main",
     "hilog:libhilog",
+    "hiprofiler:hidebug_dump",
     "init:libbegetutil",
     "ipc:ipc_core",
     "napi:ace_napi",
-    "ffrt:libffrt",
     "storage_service:storage_manager_acl",
   ]
 }
@@ -1089,14 +1087,15 @@ ohos_unittest("dump_runtime_helper_second_test") {
     "ets_runtime:libark_jsruntime",
     "faultloggerd:dfx_signalhandler",
     "faultloggerd:libfaultloggerd",
+    "ffrt:libffrt",
     "googletest:gtest_main",
     "hilog:libhilog",
+    "hiprofiler:hidebug_dump",
     "init:libbegetutil",
     "ipc:ipc_core",
     "napi:ace_napi",
-    "ffrt:libffrt",
-    "storage_service:storage_manager_acl",
     "runtime_core:ani",
+    "storage_service:storage_manager_acl",
   ]
 }
 
@@ -1335,9 +1334,7 @@ ohos_unittest("js_environment_callback_test") {
     "${ability_runtime_test_path}/mock/common/include",
   ]
 
-  sources = [
-    "js_environment_callback_test.cpp",
-  ]
+  sources = [ "js_environment_callback_test.cpp" ]
 
   configs = [ ":module_private_config" ]
 
@@ -1377,8 +1374,8 @@ ohos_unittest("js_environment_callback_test") {
     "napi:ace_napi",
     "resource_management:global_resmgr",
     "resource_management:librawfile",
-    "samgr:samgr_proxy",
     "runtime_core:ani",
+    "samgr:samgr_proxy",
   ]
 }
 

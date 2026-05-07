@@ -117,6 +117,8 @@ public:
     std::shared_ptr<AppRunningRecord> FindMasterProcessAppRunningRecord(const std::string &appName,
         const AppExecFwk::AbilityInfo &abilityInfo, const int uid);
 
+    std::shared_ptr<AppRunningRecord> FindMainProcessAppRunningRecord(const int uid);
+
     bool CheckMasterProcessAppRunningRecordIsExist(const std::string &appName,
         const AppExecFwk::AbilityInfo &abilityInfo, const int uid);
 

@@ -1321,6 +1321,44 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartAbilityByUIContentSessi
 
 /*
  * Feature: AbilityManagerService
+ * Function: OnRemoteRequest
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService OnRemoteRequest
+ * EnvConditions: code is START_UI_ABILITY_WITH_CALLBACK
+ * CaseDescription: Verify that sending request of StartUIAbilityWithCallback
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartUIAbilityWithCallbackInner_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    data.WriteParcelable(nullptr);
+    int res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::START_UI_ABILITY_WITH_CALLBACK),
+        data, reply, option);
+    EXPECT_EQ(res, ERR_READ_WANT);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartUIAbilityWithCallbackInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService StartUIAbilityWithCallbackInner
+ * EnvConditions: NA
+ * CaseDescription: Verify the function StartUIAbilityWithCallbackInner is normal flow.
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartUIAbilityWithCallbackInner_0200, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    auto res = stub_->StartUIAbilityWithCallbackInner(data, reply);
+    EXPECT_EQ(res, ERR_READ_WANT);
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: StartExtensionAbilityInner
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService StartExtensionAbilityInner
@@ -1349,6 +1387,30 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_RequestModalUIExtensionInner
     MessageParcel reply;
     auto res = stub_->RequestModalUIExtensionInner(data, reply);
     EXPECT_EQ(res, ERR_INVALID_VALUE);
+}
+
+/*
+ * Feature: AbilityManagerStub
+ * Function: RequestModalUIExtensionWithAccountInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub RequestModalUIExtensionWithAccountInner
+ * EnvConditions: NA
+ * CaseDescription: Verify RequestModalUIExtensionWithAccountInner with null Want
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_RequestModalUIExtensionWithAccountInner_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerStub_RequestModalUIExtensionWithAccountInner_001 start");
+
+    MessageParcel data;
+    MessageParcel reply;
+
+    // Write accountId (but no Want)
+    data.WriteInt32(100);
+
+    auto res = stub_->RequestModalUIExtensionWithAccountInner(data, reply);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerStub_RequestModalUIExtensionWithAccountInner_001 end");
 }
 
 /*
@@ -5161,6 +5223,162 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_SetGamePreLaunchCompleteTime
     // Verify the result was written to reply
     int32_t result = reply.ReadInt32();
     EXPECT_EQ(result, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: OnRemoteRequest
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService OnRemoteRequest
+ * EnvConditions: code is START_SELF_UI_ABILITY_WITH_TOKEN
+ * CaseDescription: Verify that starting a self UI ability with token succeeds
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSelfUIAbilityWithToken_OnRemote_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    Want want;
+    data.WriteParcelable(&want);
+    data.WriteBool(true);
+    sptr<AppExecFwk::MockAbilityToken> callerToken = new (std::nothrow) AppExecFwk::MockAbilityToken();
+    data.WriteRemoteObject(callerToken);
+
+    int res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::START_SELF_UI_ABILITY_WITH_TOKEN),
+        data, reply, option);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: OnRemoteRequest
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService OnRemoteRequest
+ * EnvConditions: code is START_SELF_UI_ABILITY_WITH_OPTIONS_AND_TOKEN
+ * CaseDescription: Verify that starting a self UI ability with start options and token succeeds
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSelfUIAbilityWithStartOptionsAndToken_OnRemote_0100,
+    TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    Want want;
+    StartOptions startOptions;
+    data.WriteParcelable(&want);
+    data.WriteParcelable(&startOptions);
+    data.WriteBool(true);
+    sptr<AppExecFwk::MockAbilityToken> callerToken = new (std::nothrow) AppExecFwk::MockAbilityToken();
+    data.WriteRemoteObject(callerToken);
+
+    int res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::START_SELF_UI_ABILITY_WITH_OPTIONS_AND_TOKEN),
+        data, reply, option);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartSelfUIAbilityWithTokenInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub StartSelfUIAbilityWithTokenInner
+ * EnvConditions: NA
+ * CaseDescription: Verify the normal and invalid behavior of StartSelfUIAbilityWithTokenInner
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSelfUIAbilityWithTokenInner_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    ASSERT_TRUE(data.WriteInterfaceToken(AbilityManagerStub::GetDescriptor()));
+    Want want;
+    ASSERT_TRUE(data.WriteParcelable(&want));
+    ASSERT_TRUE(data.WriteBool(true));
+    sptr<AppExecFwk::MockAbilityToken> callerToken = new (std::nothrow) AppExecFwk::MockAbilityToken();
+    data.WriteRemoteObject(callerToken);
+    auto result = stub_->StartSelfUIAbilityWithTokenInner(data, reply);
+    EXPECT_EQ(result, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartSelfUIAbilityWithTokenInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub StartSelfUIAbilityWithTokenInner
+ * EnvConditions: NA
+ * CaseDescription: Verify StartSelfUIAbilityWithTokenInner with empty parcel
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSelfUIAbilityWithTokenInner_0200, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    auto result = stub_->StartSelfUIAbilityWithTokenInner(data, reply);
+    EXPECT_EQ(result, ERR_READ_WANT);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartSelfUIAbilityWithStartOptionsAndTokenInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub StartSelfUIAbilityWithStartOptionsAndTokenInner
+ * EnvConditions: NA
+ * CaseDescription: Verify the normal behavior of StartSelfUIAbilityWithStartOptionsAndTokenInner
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSelfUIAbilityWithStartOptionsAndTokenInner_0100,
+    TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    ASSERT_TRUE(data.WriteInterfaceToken(AbilityManagerStub::GetDescriptor()));
+    Want want;
+    ASSERT_TRUE(data.WriteParcelable(&want));
+    StartOptions startOptions;
+    ASSERT_TRUE(data.WriteParcelable(&startOptions));
+    ASSERT_TRUE(data.WriteBool(true));
+    sptr<AppExecFwk::MockAbilityToken> callerToken = new (std::nothrow) AppExecFwk::MockAbilityToken();
+    data.WriteRemoteObject(callerToken);
+    auto result = stub_->StartSelfUIAbilityWithStartOptionsAndTokenInner(data, reply);
+    EXPECT_EQ(result, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartSelfUIAbilityWithStartOptionsAndTokenInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub StartSelfUIAbilityWithStartOptionsAndTokenInner
+ * EnvConditions: NA
+ * CaseDescription: Verify StartSelfUIAbilityWithStartOptionsAndTokenInner with empty parcel
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSelfUIAbilityWithStartOptionsAndTokenInner_0200,
+    TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    auto result = stub_->StartSelfUIAbilityWithStartOptionsAndTokenInner(data, reply);
+    EXPECT_EQ(result, ERR_READ_WANT);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartSelfUIAbilityWithStartOptionsAndTokenInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub StartSelfUIAbilityWithStartOptionsAndTokenInner
+ * EnvConditions: NA
+ * CaseDescription: Verify StartSelfUIAbilityWithStartOptionsAndTokenInner with null options
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSelfUIAbilityWithStartOptionsAndTokenInner_0300,
+    TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    Want want;
+    ASSERT_TRUE(data.WriteParcelable(&want));
+    auto result = stub_->StartSelfUIAbilityWithStartOptionsAndTokenInner(data, reply);
+    EXPECT_EQ(result, ERR_READ_START_OPTIONS);
 }
 } // namespace AAFwk
 } // namespace OHOS

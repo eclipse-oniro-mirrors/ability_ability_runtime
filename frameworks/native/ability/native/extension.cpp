@@ -199,6 +199,12 @@ bool Extension::HandleInsightIntent(const AAFwk::Want &want)
     return true;
 }
 
+bool Extension::HandleExecuteSkill(const AAFwk::Want &want)
+{
+    TAG_LOGD(AAFwkTag::EXT, "call");
+    return true;
+}
+
 bool Extension::OnInsightIntentExecuteDone(uint64_t intentId, const AppExecFwk::InsightIntentExecuteResult &result)
 {
     return true;

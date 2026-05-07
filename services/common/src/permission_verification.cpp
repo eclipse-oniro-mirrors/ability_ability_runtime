@@ -335,7 +335,8 @@ int PermissionVerification::CheckStartByCallPermission(const VerificationInfo &v
         return CHECK_PERMISSION_FAILED;
     }
     // Different APP call, check permissions
-    if (!VerifyCallingPermission(PermissionConstants::PERMISSION_ABILITY_BACKGROUND_COMMUNICATION)) {
+    if (!VerifyCallingPermission(
+        PermissionConstants::PERMISSION_ABILITY_BACKGROUND_COMMUNICATION, verificationInfo.specifiedFullTokenId)) {
         TAG_LOGE(AAFwkTag::DEFAULT, "Permission denied");
         return CHECK_PERMISSION_FAILED;
     }
@@ -348,6 +349,16 @@ int PermissionVerification::CheckStartByCallPermission(const VerificationInfo &v
         return CHECK_PERMISSION_FAILED;
     }
 
+    return ERR_OK;
+}
+
+int PermissionVerification::CheckCallModularObjectExtensionPermission(
+    const VerificationInfo &verificationInfo) const
+{
+    if (!JudgeStartInvisibleAbility(verificationInfo.accessTokenId, verificationInfo.visible)) {
+        TAG_LOGE(AAFwkTag::DEFAULT, "caller INVISIBLE permission invalid");
+        return ABILITY_VISIBLE_FALSE_DENY_REQUEST;
+    }
     return ERR_OK;
 }
 

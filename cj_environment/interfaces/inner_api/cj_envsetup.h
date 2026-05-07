@@ -18,7 +18,7 @@
 
 #include <string>
 #include <functional>
-
+#include <map>
 namespace OHOS {
 using UpdateStackInfoFuncType = void(*)(unsigned long long, void *, unsigned int);
 
@@ -31,6 +31,12 @@ struct CJErrorObject {
 struct CJUncaughtExceptionInfo {
     const char* hapPath;
     std::function<void(const char* summary, const CJErrorObject errorObj)> uncaughtTask;
+};
+
+struct CJEventReportInfo {
+    const char* hapPath;
+    std::function<void(const char* domain, const char* event, size_t hiSysEventType,
+            const std::map<std::string, std::string>& params)> reportInfoTask;
 };
 
 enum SanitizerKind {
@@ -60,6 +66,7 @@ struct CJEnvMethods {
     void (*setAppVersion)(std::string& version) = nullptr;
     void (*dumpHeapSnapshot) (int fd) = nullptr;
     void (*forceFullGC) () = nullptr;
+    void (*registerEventHandler)(const CJEventReportInfo& reportInfo) = nullptr;
 };
 
 class CJEnv {

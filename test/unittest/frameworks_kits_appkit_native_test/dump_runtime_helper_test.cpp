@@ -129,6 +129,66 @@ HWTEST_F(DumpRuntimeHelperTest, DumpCjHeap_0300, Function | MediumTest | Level1)
 }
 
 /**
+ * @tc.number: DumpMem_0100
+ * @tc.name: DumpMem
+ * @tc.desc: Test whether DumpMem and are called normally.
+ */
+HWTEST_F(DumpRuntimeHelperTest, DumpMem_0100, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpMem_0100 start";
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    EXPECT_NE(application, nullptr);
+    OHOS::AppExecFwk::MemDumpInfo info;
+    info.pid = 1;
+    info.needLeakobj = false;
+    info.dumpType = MemDumpType::KMP_KOTLIN;
+    std::string dumpResult;
+    auto helper = std::make_shared<DumpRuntimeHelper>(application);
+    helper->DumpMem(info, dumpResult);
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpMem_0100 end";
+}
+
+/**
+ * @tc.number: DumpMem_0200
+ * @tc.name: DumpMem
+ * @tc.desc: Test whether DumpMem and are called normally.
+ */
+HWTEST_F(DumpRuntimeHelperTest, DumpMem_0200, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpMem_0200 start";
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    EXPECT_NE(application, nullptr);
+    OHOS::AppExecFwk::MemDumpInfo info;
+    info.pid = 1;
+    info.needLeakobj = false;
+    info.dumpType = MemDumpType::NATIVE;
+    std::string dumpResult;
+    auto helper = std::make_shared<DumpRuntimeHelper>(application);
+    helper->DumpMem(info, dumpResult);
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpMem_0200 end";
+}
+
+/**
+ * @tc.number: DumpMem_0300
+ * @tc.name: DumpMem
+ * @tc.desc: Test whether DumpMem and are called normally.
+ */
+HWTEST_F(DumpRuntimeHelperTest, DumpMem_0300, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpMem_0300 start";
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    EXPECT_NE(application, nullptr);
+    OHOS::AppExecFwk::MemDumpInfo info;
+    info.pid = 1;
+    info.needLeakobj = false;
+    info.dumpType = MemDumpType::JSVM;
+    std::string dumpResult;
+    auto helper = std::make_shared<DumpRuntimeHelper>(application);
+    helper->DumpMem(info, dumpResult);
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpMem_0300 end";
+}
+
+/**
  * @tc.number: CheckOomdumpSwitch_0100
  * @tc.name: CheckOomdumpSwitch
  * @tc.desc: Test the function of CheckOomdumpSwitch.

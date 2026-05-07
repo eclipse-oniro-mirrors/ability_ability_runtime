@@ -574,6 +574,7 @@ public:
     void NotifyCallersOnTerminate();
     bool IsStartedByCall() const;
     void SetStartedByCall(const bool isFlag);
+    int32_t GetByCallStatus() const;
     void CallRequest();
     bool CallRequestDone(const sptr<IRemoteObject> &callStub) const;
     bool IsStartToBackground() const;
@@ -586,6 +587,8 @@ public:
     void UpdateSessionInfo(sptr<IRemoteObject> sessionToken);
     void SetMinimizeReason(bool fromUser);
     void SetSceneFlag(uint32_t sceneFlag);
+    void SetIsFromScreenOffBackground(bool isFromScreenOffBackground);
+    bool IsFromScreenOffBackground() const;
     bool IsMinimizeFromUser() const;
     void SetClearMissionFlag(bool clearMissionFlag);
     bool IsClearMissionFlag();
@@ -595,6 +598,7 @@ public:
     void SetWindowMode(int32_t windowMode);
     void RemoveWindowMode();
     LifeCycleStateInfo lifeCycleStateInfo_;                // target life state info
+    bool isFromScreenOffBackground_ = false;              // mark if background caused by screen off
 
     bool CanRestartRootLauncher();
 
@@ -1008,7 +1012,7 @@ protected:
     LaunchDebugInfo launchDebugInfo_;
     WindowConfig windowConfig_;
 
-    int64_t startTime_ = 0;                           // records first time of ability start
+    std::atomic_int64_t startTime_ = 0;                           // records first time of ability start
     int64_t restartTime_ = 0;                         // the time of last trying restart
     std::atomic<AbilityState> pendingState_ = AbilityState::INITIAL;    // pending life state
     std::atomic<AbilityVisibilityState> abilityVisibilityState_ = AbilityVisibilityState::INITIAL;

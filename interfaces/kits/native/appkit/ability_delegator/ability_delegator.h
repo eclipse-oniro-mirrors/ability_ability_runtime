@@ -33,6 +33,7 @@
 #include "context.h"
 #include "delegator_thread.h"
 #include "iability_monitor.h"
+#include "iinterop_ability_monitor.h"
 #include "iability_stage_monitor.h"
 #include "shell_cmd_result.h"
 #include "test_runner.h"
@@ -98,6 +99,13 @@ public:
     void AddAbilityMonitor(const std::shared_ptr<IAbilityMonitor> &monitor);
 
     /**
+     * Adds interop monitor for monitoring the lifecycle state changes of the ability.
+     *
+     * @param monitor, Indicates the interop monitor object.
+     */
+    void AddInteropAbilityMonitor(const std::shared_ptr<IInteropAbilityMonitor> &monitor);
+
+    /**
      * Adds monitor for monitoring the lifecycle state changes of the abilityStage.
      *
      * @param monitor, Indicates the stage monitor object.
@@ -110,6 +118,13 @@ public:
      * @param monitor, Indicates the specified monitor object.
      */
     void RemoveAbilityMonitor(const std::shared_ptr<IAbilityMonitor> &monitor);
+
+    /**
+     * Removes interop ability monitor.
+     *
+     * @param monitor, Indicates the specified interop monitor object.
+     */
+    void RemoveInteropAbilityMonitor(const std::shared_ptr<IInteropAbilityMonitor> &monitor);
 
     /**
      * Removes abilityStage monitor.
@@ -333,6 +348,8 @@ private:
     std::shared_ptr<BaseDelegatorAbilityProperty> FindPropertyByToken(const sptr<IRemoteObject> &token);
     std::shared_ptr<BaseDelegatorAbilityProperty> FindPropertyByName(const std::string &name);
     inline void CallClearFunc(const std::shared_ptr<BaseDelegatorAbilityProperty> &ability);
+    bool IsFromOtherRuntime(const std::shared_ptr<IInteropAbilityMonitor> &monitor,
+        const std::shared_ptr<BaseDelegatorAbilityProperty> &ability);
 
 private:
     static constexpr size_t INFORMATION_MAX_LENGTH {1000};
@@ -347,6 +364,7 @@ private:
     std::unique_ptr<DelegatorThread> delegatorThread_;
     std::list<std::shared_ptr<BaseDelegatorAbilityProperty>> abilityProperties_;
     std::vector<std::shared_ptr<IAbilityMonitor>> abilityMonitors_;
+    std::vector<std::shared_ptr<IInteropAbilityMonitor>> interopAbilityMonitors_;
     std::vector<std::shared_ptr<IAbilityStageMonitor>> abilityStageMonitors_;
 
     ClearFunc clearFunc_;

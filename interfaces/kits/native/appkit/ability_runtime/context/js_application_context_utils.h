@@ -105,7 +105,7 @@ public:
     napi_value OnGetAllRunningInstanceKeys(napi_env env, NapiCallbackInfo& info);
     napi_value OnSetFontSizeScale(napi_env env, NapiCallbackInfo& info);
     napi_value OnGetAllWindowStages(napi_env env, NapiCallbackInfo& info);
-
+    napi_value OnGetUIAbilityByInstanceId(napi_env env, NapiCallbackInfo& info);
     static napi_value GetCacheDir(napi_env env, napi_callback_info info);
     static napi_value GetTempDir(napi_env env, napi_callback_info info);
     static napi_value GetResourceDir(napi_env env, napi_callback_info info);
@@ -136,7 +136,7 @@ public:
     static napi_value CreateAreaModeContext(napi_env env, napi_callback_info info);
     static napi_value CreateDisplayContext(napi_env env, napi_callback_info info);
     static napi_value GetAllWindowStages(napi_env env, napi_callback_info info);
-
+    static napi_value GetUIAbilityByInstanceId(napi_env env, napi_callback_info info);
 protected:
     std::weak_ptr<ApplicationContext> applicationContext_;
 

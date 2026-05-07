@@ -85,7 +85,10 @@ void NapiUncaughtExceptionCallback::operator()(panda::TryCatch& trycatch)
 
 void NapiUncaughtExceptionCallback::CallbackTask(napi_value& obj)
 {
-    HandleAndLogIfNotJsError(obj);
+    // Static objects cannot be dynamically serialized.
+    if (!isStatic_) {
+        HandleAndLogIfNotJsError(obj);
+    }
     std::string errorMsg = GetNativeStrFromJsTaggedObj(obj, "message");
     AppendExtraInfo(errorMsg);
     std::string errorName = GetNativeStrFromJsTaggedObj(obj, "name");

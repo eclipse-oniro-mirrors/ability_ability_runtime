@@ -31,6 +31,7 @@
 #include "ffrt.h"
 #include "directory_ex.h"
 #include "storage_acl.h"
+#include "hidebug_dump.h"
 #ifdef CJ_FRONTEND
 #include "cj_runtime.h"
 #endif
@@ -68,6 +69,8 @@ static constexpr uint32_t BUF_SIZE_256 = 256;
 static constexpr int DECIMAL_BASE = 10;
 static constexpr int KB_PER_MB = 1024;
 static constexpr size_t MEM_LEAK_MAX_SIZE = 100;
+static constexpr int JSVM_SNAPSHOT = 0;
+static constexpr int JSVM_RAW = 1;
 
 enum {
     INDEX_DELIVERY_TS = 0,
@@ -345,6 +348,12 @@ void DumpRuntimeHelper::DumpMem(const OHOS::AppExecFwk::MemDumpInfo &info, std::
     if (info.dumpType == MemDumpType::NATIVE) {
         DumpNativeHeap(info, dumpResult);
     }
+    if (info.dumpType == MemDumpType::KMP_KOTLIN) {
+        DumpKmpKotlinHeap(info);
+    }
+    if (info.dumpType == MemDumpType::JSVM) {
+        DumpJsvmHeap(info);
+    }
 }
 
 void DumpRuntimeHelper::DumpNativeHeap(const OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
@@ -429,6 +438,49 @@ bool DumpRuntimeHelper::GetSnapshot(int fd)
     }
     free(buf);
     return ret;
+}
+
+void DumpRuntimeHelper::DumpKmpKotlinHeap(const OHOS::AppExecFwk::MemDumpInfo &info)
+{
+    int32_t fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::KMP_HEAP_SNAPSHOT));
+    if (fd < 0) {
+        TAG_LOGE(AAFwkTag::APPKIT, "RequestFileDescriptor failed");
+        return;
+    }
+    auto& dumpListener = OHOS::HiviewDFX::HidebugMemDumpListener::GetInstance();
+    bool ret = dumpListener.TriggerListener("KMP", fd,
+        OH_HiDebug_MemListenerType::OH_HIDEBUG_DUMP_SNAPSHOT, info.mayReportToOEM, nullptr);
+    if (!ret) {
+        TAG_LOGE(AAFwkTag::APPKIT, "TriggerListener failed");
+        close(fd);
+        return;
+    }
+    close(fd);
+}
+
+void DumpRuntimeHelper::DumpJsvmHeap(const OHOS::AppExecFwk::MemDumpInfo &info)
+{
+    TAG_LOGI(AAFwkTag::APPKIT, "dump jsvm heaps, tid:%{public}d, needRaw:%{public}d", info.tid, info.needRaw);
+    void* jsvmHandle = dlopen("libjsvm.so", RTLD_LAZY);
+    if (jsvmHandle == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "jsvm dlopen failed");
+        return;
+    }
+    using jsvmFunc = int (*)(uint32_t, int);
+    auto jsvmDump = reinterpret_cast<jsvmFunc>(dlsym(jsvmHandle, "jsvm_dump_heapsnapshot"));
+    if (jsvmDump == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "jsvm dlsym failed");
+        dlclose(jsvmHandle);
+        return;
+    }
+    int dumpType = info.needRaw ? JSVM_RAW : JSVM_SNAPSHOT;
+    int ret = jsvmDump(info.tid, dumpType);
+    if (ret != 0) {
+        TAG_LOGE(AAFwkTag::APPKIT, "jsvm dump failed");
+        dlclose(jsvmHandle);
+        return;
+    }
+    dlclose(jsvmHandle);
 }
 
 void DumpRuntimeHelper::GetCheckList(const std::unique_ptr<AbilityRuntime::Runtime> &runtime, std::string &checkList)

@@ -179,12 +179,12 @@ ohos_shared_library("appkit_native") {
     "${ability_runtime_native_path}/ability/native:uiabilitykit_native",
     "${ability_runtime_native_path}/appkit:app_context",
     "${ability_runtime_native_path}/appkit:app_context_utils",
-    "${ability_runtime_native_path}/appkit:application_image_observer_manager",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
+    "${ability_runtime_native_path}/appkit:application_image_observer_manager",
     "${ability_runtime_path}/js_environment/frameworks/js_environment:js_environment",
+    "${ability_runtime_path}/utils/global/common:runtime_utils",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
     "${ability_runtime_services_path}/common:app_util",
-    "${ability_runtime_path}/utils/global/common:runtime_utils",
     "${ability_runtime_services_path}/common:hisysevent_report",
     "${ability_runtime_services_path}/common:task_handler_wrap",
   ]
@@ -212,9 +212,10 @@ ohos_shared_library("appkit_native") {
     "graphic_2d:EGL",
     "graphic_2d:libcomposer",
     "graphic_2d:librender_service_base",
+    "hichecker:libhichecker",
     "hicollie:libhicollie",
     "hilog:libhilog",
-    "hichecker:libhichecker",
+    "hiprofiler:hidebug_dump",
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
     "i18n:preferred_language",
@@ -480,6 +481,7 @@ ohos_shared_library("app_context") {
     "${ability_runtime_native_path}/appkit/ability_runtime/context/interop_object_instance.cpp",
     "${ability_runtime_native_path}/appkit/ability_runtime/context/js_ability_lifecycle_callback.cpp",
     "${ability_runtime_native_path}/appkit/ability_runtime/context/js_system_configuration_updated_callback.cpp",
+    "${ability_runtime_native_path}/appkit/ability_runtime/context/ability_native_thread.cpp",
     "${ability_runtime_native_path}/appkit/app/overlay_event_subscriber.cpp",
     "${ability_runtime_native_path}/appkit/app/sys_mgr_client.cpp",
   ]
@@ -493,8 +495,8 @@ ohos_shared_library("app_context") {
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
     "${ability_runtime_innerkits_path}/runtime:runtime",
-    "${ability_runtime_native_path}/appkit:application_image_observer_manager",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
+    "${ability_runtime_native_path}/appkit:application_image_observer_manager",
   ]
 
   external_deps = [
@@ -627,6 +629,7 @@ ohos_shared_library("appkit_delegator") {
     "${ability_runtime_native_path}/appkit/ability_delegator/delegator_thread.cpp",
     "${ability_runtime_native_path}/appkit/ability_delegator/iability_delegator.cpp",
     "${ability_runtime_native_path}/appkit/ability_delegator/iability_monitor.cpp",
+    "${ability_runtime_native_path}/appkit/ability_delegator/iinterop_ability_monitor.cpp",
     "${ability_runtime_native_path}/appkit/ability_delegator/iability_stage_monitor.cpp",
     "${ability_runtime_native_path}/appkit/ability_delegator/runner_runtime/ets_test_runner_instance.cpp",
     "${ability_runtime_native_path}/appkit/ability_delegator/runner_runtime/js_test_runner.cpp",
@@ -865,16 +868,16 @@ ohos_shared_library("application_image_observer_manager") {
 
   public_configs = [ ":image_observer_manager_public_config" ]
 
-  sources = [ "${ability_runtime_native_path}/appkit/app/app_image_observer_manager.cpp" ]
+  sources = [
+    "${ability_runtime_native_path}/appkit/app/app_image_observer_manager.cpp",
+  ]
 
   cflags = []
   if (target_cpu == "arm") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
 
-  external_deps = [
-    "hilog:libhilog",
-  ]
+  external_deps = [ "hilog:libhilog" ]
 
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
@@ -884,104 +887,99 @@ ohos_shared_library("application_image_observer_manager") {
 # Build appkit_child.so - child process thread library
 ohos_shared_library("appkit_child") {
   branch_protector_ret = "pac_ret"
- 
+
   sanitize = {
     cfi = true
     cfi_cross_dso = true
     cfi_vcall_icall_only = true
     debug = false
   }
- 
+
   include_dirs = []
- 
+
   configs = [
     ":appkit_config",
     ":appkit_exception_config",
     "${ability_runtime_services_path}/common:optimize_config",
   ]
- 
+
   public_configs = [ ":appkit_public_config" ]
- 
+
   sources = [
     "${ability_runtime_native_path}/appkit/app/child_main_thread.cpp",
-    "${ability_runtime_native_path}/appkit/app/native_lib_util.cpp"
+    "${ability_runtime_native_path}/appkit/app/native_lib_util.cpp",
   ]
- 
+
   cflags = []
   if (target_cpu == "arm") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
- 
+
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_innerkits_path}/child_process_manager:child_process_manager",
     "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_native_path}/appkit:app_context",
-    "${ability_runtime_innerkits_path}/child_process_manager:child_process_manager",
   ]
- 
+
   external_deps = [
     "ability_base:extractortool",
     "c_utils:utils",
     "eventhandler:libeventhandler",
-    "hilog:libhilog",
-    "napi:ace_napi",
     "ffrt:libffrt",
+    "hilog:libhilog",
     "ipc:ipc_capi",
     "ipc:ipc_single",
+    "napi:ace_napi",
   ]
- 
+
   defines = [ "SUPPORT_CHILD_PROCESS" ]
- 
+
   version_script = "libappkit_child.map"
- 
+
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
 }
- 
+
 # Build appkit_child_entry.so - child process entry API library
 ohos_shared_library("appkit_child_entry") {
   branch_protector_ret = "pac_ret"
- 
+
   sanitize = {
     cfi = true
     cfi_cross_dso = true
     cfi_vcall_icall_only = true
     debug = false
   }
- 
+
   include_dirs = []
- 
+
   configs = [
     ":appkit_config",
     ":appkit_exception_config",
     "${ability_runtime_services_path}/common:optimize_config",
   ]
- 
+
   public_configs = [ ":appkit_public_config" ]
- 
-  sources = [
-    "${ability_runtime_native_path}/appkit/app/child_process_api.cpp",
-  ]
- 
+
+  sources =
+      [ "${ability_runtime_native_path}/appkit/app/child_process_api.cpp" ]
+
   cflags = []
   if (target_cpu == "arm") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
- 
-  deps = [
-    "${ability_runtime_innerkits_path}/runtime:runtime",
-  ]
- 
-  external_deps = [
-    "hilog:libhilog",
-  ]
- 
+
+  deps = [ "${ability_runtime_innerkits_path}/runtime:runtime" ]
+
+  external_deps = [ "hilog:libhilog" ]
+
   defines = [ "SUPPORT_CHILD_PROCESS" ]
- 
+
   version_script = "libappkit_child_entry.map"
- 
+
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"

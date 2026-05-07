@@ -21,7 +21,7 @@ import { ChildProcessOptions } from '@ohos.app.ability.ChildProcessOptions';
 namespace childProcessManager {
   loadLibraryWithPermissionCheck("ability_child_process_manager_ani_kit.z", "@ohos.app.ability.childProcessManager");
 
-  export const enum StartMode {
+  export enum StartMode {
     SELF_FORK = 0,
     APP_SPAWN_FORK = 1,
   }
@@ -31,6 +31,8 @@ namespace childProcessManager {
   export native function nativeStartArkChildProcess(srcEntry: string, args: ChildProcessArgs, options: ChildProcessOptions, callback: AsyncCallbackWrapper<int>): void;
   export native function nativeStartNativeChildProcess(entryPoint: string, args: ChildProcessArgs, callback: AsyncCallbackWrapper<int>): void;
   export native function nativeStartNativeChildProcess(entryPoint: string, args: ChildProcessArgs, options: ChildProcessOptions, callback: AsyncCallbackWrapper<int>): void;
+  export native function isArkChildProcessSupported(): boolean;
+  export native function isNativeChildProcessSupported(): boolean;
 
   export native function nativeStartChildProcessCheck(srcEntry: string, startMode: StartMode): void;
   export native function nativeStartArkChildProcessCheck(srcEntry: string, args: ChildProcessArgs, options?: ChildProcessOptions): void;

@@ -71,6 +71,9 @@ std::pair<bool, AppExecFwk::SupportWindowMode> WindowOptionsUtils::WindowModeMap
     } else if (windowMode == MULTI_WINDOW_DISPLAY_SECONDARY) {
         result.first = true;
         result.second = AppExecFwk::SupportWindowMode::SPLIT;
+    } else if (windowMode == MULTI_WINDOW_DISPLAY_SPLIT) {
+        result.first = true;
+        result.second = AppExecFwk::SupportWindowMode::SPLIT;
     } else if (windowMode == MULTI_WINDOW_DISPLAY_FLOATING) {
         result.first = true;
         result.second = AppExecFwk::SupportWindowMode::FLOATING;

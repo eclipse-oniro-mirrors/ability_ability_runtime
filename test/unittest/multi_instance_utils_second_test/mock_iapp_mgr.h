@@ -131,6 +131,12 @@ public:
         return 0;
     }
 
+    virtual int32_t GetProcessRunningInfosByAccessTokenId(uint32_t accessTokenId,
+        std::vector<RunningProcessInfo>& info)
+    {
+        return 0;
+    }
+
     virtual int32_t GetProcessRunningInformation(RunningProcessInfo& info)
     {
         return 0;
@@ -284,6 +290,11 @@ public:
     virtual bool SetAppFreezeFilter(int32_t pid)
     {
         return false;
+    }
+
+    virtual void UpdateFreezeExcludedPid(bool isAdd, int32_t targetPid, int32_t profilerPid)
+    {
+        return;
     }
 
 #ifdef BGTASKMGR_CONTINUOUS_TASK_ENABLE

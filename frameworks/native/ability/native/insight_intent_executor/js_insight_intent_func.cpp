@@ -37,6 +37,7 @@
 
 namespace OHOS {
 namespace AbilityRuntime {
+
 std::shared_ptr<JsInsightIntentFunc> JsInsightIntentFunc::Create(JsRuntime& runtime)
 {
     return std::make_shared<JsInsightIntentFunc>(runtime);
@@ -218,6 +219,17 @@ bool JsInsightIntentFunc::ExecuteIntentCheckError()
     STATE_PATTERN_NAIVE_STATE_SET_AND_RETURN(State::INVALID, false);
 }
 
+void JsInsightIntentFunc::PrepareMethodParams(std::shared_ptr<InsightIntentExecuteParam> executeParam,
+    std::unordered_map<std::string, size_t> &paramMap)
+{
+    for (size_t i = 0; i < executeParam->methodParams_.size(); i++) {
+        auto methodParamName = AppExecFwk::GetMethodParamName(executeParam->methodParams_[i]);
+        if (!methodParamName.empty()) {
+            paramMap[methodParamName] = i;
+        }
+    }
+}
+
 bool JsInsightIntentFunc::ExecuteInsightIntent(std::shared_ptr<InsightIntentExecuteParam> executeParam)
 {
     if (executeParam == nullptr || executeParam->insightIntentParam_ == nullptr) {
@@ -238,11 +250,8 @@ bool JsInsightIntentFunc::ExecuteInsightIntent(std::shared_ptr<InsightIntentExec
     std::string srcEntrance = executeParam->srcEntrance_;
     std::string className = executeParam->className_;
     std::string methodName = executeParam->methodName_;
-    std::vector<std::string> methodParams = executeParam->methodParams_;
     std::unordered_map<std::string, size_t> paramMap;
-    for (size_t i = 0; i < methodParams.size(); i++) {
-        paramMap[methodParams[i]] = i;
-    }
+    PrepareMethodParams(executeParam, paramMap);
 
     size_t argc = 0;
     std::vector<napi_value> argv(1);

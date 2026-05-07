@@ -263,6 +263,10 @@ int32_t AgentManagerService::GetCallerAgentCardByAgentId(const std::string &agen
 
 int32_t AgentManagerService::RegisterAgentCard(const AgentCard &card)
 {
+    if (!AAFwk::PermissionVerification::GetInstance()->JudgeCallerIsAllowedToUseSystemAPI()) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "caller no system-app, can not use system-api");
+        return AAFwk::ERR_NOT_SYSTEM_APP;
+    }
     if (!AAFwk::PermissionVerification::GetInstance()->VerifyCallingPermission(
         AAFwk::PermissionConstants::PERMISSION_MODIFY_AGENT_CARD)) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "Permission verification failed");
@@ -273,6 +277,10 @@ int32_t AgentManagerService::RegisterAgentCard(const AgentCard &card)
 
 int32_t AgentManagerService::UpdateAgentCard(const AgentCard &card)
 {
+    if (!AAFwk::PermissionVerification::GetInstance()->JudgeCallerIsAllowedToUseSystemAPI()) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "caller no system-app, can not use system-api");
+        return AAFwk::ERR_NOT_SYSTEM_APP;
+    }
     if (!AAFwk::PermissionVerification::GetInstance()->VerifyCallingPermission(
         AAFwk::PermissionConstants::PERMISSION_MODIFY_AGENT_CARD)) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "Permission verification failed");
@@ -283,6 +291,10 @@ int32_t AgentManagerService::UpdateAgentCard(const AgentCard &card)
 
 int32_t AgentManagerService::DeleteAgentCard(const std::string &bundleName, const std::string &agentId)
 {
+    if (!AAFwk::PermissionVerification::GetInstance()->JudgeCallerIsAllowedToUseSystemAPI()) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "caller no system-app, can not use system-api");
+        return AAFwk::ERR_NOT_SYSTEM_APP;
+    }
     if (!AAFwk::PermissionVerification::GetInstance()->VerifyCallingPermission(
         AAFwk::PermissionConstants::PERMISSION_MODIFY_AGENT_CARD)) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "Permission verification failed");

@@ -2503,5 +2503,20 @@ HWTEST_F(AbilityManagerServiceSixthTest, UnRegisterPreloadUIExtensionHostClient_
     auto ret = abilityMs->UnRegisterPreloadUIExtensionHostClient(DEFAULT_INVALID_USER_ID);
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
 }
+
+/*
+ * Feature: AbilityManagerService
+ * Function: AtomicServicePreprocess
+ * FunctionPoints: AbilityManagerService AtomicServicePreprocess
+ */
+HWTEST_F(AbilityManagerServiceSixthTest, AtomicServicePreprocess_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest AtomicServicePreprocess_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    Want want;
+    EXPECT_EQ(abilityMs->AtomicServicePreprocess(want), 0);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest AtomicServicePreprocess_001 end");
+}
 }  // namespace AAFwk
 }  // namespace OHOS

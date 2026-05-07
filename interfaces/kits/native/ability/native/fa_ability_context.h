@@ -197,6 +197,7 @@ protected:
     int32_t abilityRecordId_ = 0;
     sptr<IRemoteObject> token_;
     sptr<IRemoteObject> sessionToken_;
+    sptr<IRemoteObject> renderSession_;
     std::string callingDeviceId_;
     std::string callingBundleName_;
     std::string callingAbilityName_;

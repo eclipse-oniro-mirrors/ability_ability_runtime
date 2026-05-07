@@ -25,6 +25,34 @@
 namespace OHOS {
 namespace AppExecFwk {
 using WantParams = OHOS::AAFwk::WantParams;
+
+/**
+ * @enum ParamType
+ * ParamType defines the parameter type for function intent validation.
+ */
+enum class ParamType : uint8_t {
+    STRING = 0,
+    NUMBER = 1,
+    BOOLEAN = 2,
+    OBJECT = 3,
+    ARRAY = 4,
+    INTEGER = 5,
+    UNKNOWN = 255
+};
+
+/**
+ * @struct InsightIntentParam
+ * InsightIntentParam defines the parameter info for function intent.
+ */
+struct InsightIntentParam {
+    std::string paramName;
+    std::string paramSchema;
+    ParamType type = ParamType::UNKNOWN;
+    bool isRequired = false;
+
+    InsightIntentParam() = default;
+};
+
 /**
  * @enum ExecuteMode
  * ExecuteMode defines the supported execute mode.
@@ -50,6 +78,7 @@ constexpr char INSIGHT_INTENT_SRC_ENTRANCE[] = "ohos.insightIntent.srcEntrance";
 constexpr char INSIGHT_INTENT_FUNC_PARAM_CLASSNAME[] = "ohos.insightIntent.funcParam.className";
 constexpr char INSIGHT_INTENT_FUNC_PARAM_METHODNAME[] = "ohos.insightIntent.funcParam.methodName";
 constexpr char INSIGHT_INTENT_FUNC_PARAM_METHODPARAMS[] = "ohos.insightIntent.funcParam.methodParams";
+constexpr char INSIGHT_INTENT_FUNC_PARAM_RETURNTYPE[] = "ohos.insightIntent.funcParam.returnType";
 constexpr char INSIGHT_INTENT_PAGE_PARAM_PAGEPATH[] = "ohos.insightIntent.pageParam.pagePath";
 constexpr char INSIGHT_INTENT_PAGE_PARAM_NAVIGATIONID[] = "ohos.insightIntent.pageParam.navigationId";
 constexpr char INSIGHT_INTENT_PAGE_PARAM_NAVDESTINATIONNAME[] = "ohos.insightIntent.pageParam.navDestinationName";
@@ -57,8 +86,17 @@ constexpr char INSIGHT_INTENT_DECORATOR_CLASS[] = "ohos.insightIntent.decoratorC
 constexpr char INSIGHT_INTENT_QUERY_ENTITY_CLASS_NAME[] = "ohos.insightIntent.queryEntity.className";
 constexpr char INSIGHT_INTENT_QUERY_TYPE[] = "ohos.insightIntent.queryEntity.queryType";
 constexpr char INSIGHT_INTENT_QUERY_ENTITY_PARAM_PARAM[] = "ohos.insightIntent.queryEntity.param";
+constexpr char INSIGHT_INTENT_PARAM_USER_ID[] = "ohos.insightIntent.param.userId";
+constexpr char INSIGHT_INTENT_DISTRIBUTED_CALLBACK_KEY[] = "ohos.insightIntent.distributed.callbackKey";
+constexpr char INSIGHT_INTENT_DISTRIBUTED_SRC_DEVICE_ID[] = "ohos.insightIntent.distributed.srcDeviceId";
+constexpr char INSIGHT_INTENT_DISTRIBUTED_REQUEST_CODE[] = "ohos.insightIntent.distributed.requestCode";
 
 constexpr int32_t INVALID_DISPLAY_ID = -1;
+constexpr char METHOD_PARAM_SEPARATOR = '\x1f';
+
+std::string EncodeMethodParam(const InsightIntentParam &param);
+bool DecodeMethodParam(const std::string &encodedParam, InsightIntentParam &param);
+std::string GetMethodParamName(const std::string &encodedMethodParam);
 
 class InsightIntentExecuteParam : public Parcelable {
     const int32_t DEFAULT_INVAL_VALUE = -1;
@@ -93,6 +131,7 @@ public:
     // params below belongs to InsightIntentFunc
     std::string className_;
     std::string methodName_;
+    std::string methodReturnType_;
     std::vector<std::string> methodParams_;
 
     // params below belongs to InsightIntentPage
@@ -104,6 +143,9 @@ public:
     std::string queryType_;
     std::string queryEntityClassName_;
     std::shared_ptr<WantParams> queryParams_;
+     
+    // distributed intent params
+    std::string deviceId_;
 };
 } // namespace AppExecFwk
 } // namespace OHOS

@@ -38,6 +38,11 @@ enum class TransitionReason : uint32_t {
     BACKGROUND_TRANSITION,
 };
 
+enum BackgroundReason : int32_t {
+    BACKGROUND_REASON_UNKNOWN = 0,
+    BACKGROUND_REASON_SCREEN_OFF = 3, //WMS already has enumeration values for screen_off
+};
+
 struct AbilityTransitionInfo : public Parcelable {
     bool isShowWhenLocked_ = false;
     bool isRecent_ = false;

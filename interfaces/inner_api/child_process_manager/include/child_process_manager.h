@@ -44,6 +44,10 @@ public:
     static void HandleSigChild(int32_t signo);
     bool IsChildProcess();
     bool IsChildProcessBySelfFork();
+    bool IsArkChildProcessSupported();
+    bool IsNativeChildProcessSupported();
+    void SetArkChildProcessSupported(bool supported);
+    void SetNativeChildProcessSupported(bool supported);
     ChildProcessManagerErrorCode StartChildProcessBySelfFork(const std::string &srcEntry, pid_t &pid,
         bool isStaticChildProcess = false);
     ChildProcessManagerErrorCode StartChildProcessByAppSpawnFork(const std::string &srcEntry, pid_t &pid,
@@ -96,6 +100,8 @@ private:
     static bool signalRegistered_;
     bool isChildProcessBySelfFork_ = false;
     std::atomic<int32_t> childProcessCount_ = 0;
+    bool isArkChildProcessSupported_ = false;
+    bool isNativeChildProcessSupported_ = false;
     mutable std::mutex appMutex_;
     std::weak_ptr<AppExecFwk::OHOSApplication> application_;
 

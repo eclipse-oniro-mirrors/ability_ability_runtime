@@ -116,7 +116,8 @@
             "webview",
             "window_manager",
             "zlib",
-            "hiperf"
+            "hiperf",
+            "hiprofiler"
   ],
           "third_party": [
             "libjpeg-turbo"
@@ -126,6 +127,9 @@
         "sub_component": [
           "//foundation/ability/ability_runtime/agent_runtime_framework/interfaces/inner_api:agent_fwk",
           "//foundation/ability/ability_runtime/agent_runtime_framework/services:agent_services_target",
+          "//foundation/ability/ability_runtime/cli_tool_framework/etc/profile:aimgr_cfg",
+          "//foundation/ability/ability_runtime/cli_tool_framework/etc/profile:aimgr_trust",
+          "//foundation/ability/ability_runtime/cli_tool_framework/frameworks:cli_tool_framework_packages",
           "//foundation/ability/ability_runtime/cli_tool_framework/interfaces/cli_tool:cli_tool_client",
           "//foundation/ability/ability_runtime/cli_tool_framework/services/climgr:climgr",
           "//foundation/ability/ability_runtime/services:ams_target",
@@ -863,6 +867,15 @@
               ]
             },
             "name": "//foundation/ability/ability_runtime/agent_runtime_framework/interfaces/kits/native/agent_extension/connection:agent_extension_connection"
+          },
+          {
+            "header": {
+              "header_base": "//foundation/ability/ability_runtime/cli_tool_framework/interfaces/cli_tool/include",
+              "header_files": [
+                "cli_tool_mgr_client.h"
+              ]
+            },
+            "name": "//foundation/ability/ability_runtime/cli_tool_framework/interfaces/cli_tool:cli_tool_client"
           }
         ],
         "test": [

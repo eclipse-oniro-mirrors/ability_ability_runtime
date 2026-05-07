@@ -38,6 +38,9 @@
 #include "reverse_continuation_scheduler_primary_stage.h"
 #include "runtime.h"
 #include "resource_config_helper.h"
+#include <random>
+#include <sstream>
+#include <iomanip>
 #ifdef WITH_DLP
 #include "set_dlp_config.h"
 #endif // WITH_DLP
@@ -61,6 +64,32 @@ constexpr char SHOW_ON_LOCK_SCREEN[] = "ShowOnLockScreen";
 constexpr char DLP_PARAMS_SECURITY_FLAG[] = "ohos.dlp.params.securityFlag";
 #endif // WITH_DLP
 constexpr char COMPONENT_STARTUP_NEW_RULES[] = "component.startup.newRules";
+
+std::string GenerateInstanceId()
+{
+    std::random_device rd;
+    std::mt19937_64 gen(rd());
+    std::uniform_int_distribution<uint64_t> dist(0, UINT64_MAX);
+    uint64_t high = dist(gen);
+    uint64_t low = dist(gen);
+    high = (high & 0xFFFFFFFFFFFF0FFFULL) | 0x0000000000004000ULL;
+    low = (low & 0x3FFFFFFFFFFFFFFFULL) | 0x8000000000000000ULL;
+    std::ostringstream oss;
+    constexpr int32_t digSize = 4;
+    constexpr uint8_t bitMoveSize1 = 48;
+    constexpr uint8_t bitMoveSize2 = 32;
+    constexpr uint8_t bitMoveSize3 = 16;
+    oss << std::hex << std::setfill('0') <<
+        std::setw(digSize) << ((high >> bitMoveSize1) & 0xFFFF) << "-" <<
+        std::setw(digSize) << ((high >> bitMoveSize2) & 0xFFFF) << "-" <<
+        std::setw(digSize) << ((high >> bitMoveSize3) & 0xFFFF) << "-" <<
+        std::setw(digSize) << (high & 0xFFFF) << "-" <<
+        std::setw(digSize) << ((low >> bitMoveSize1) & 0xFFFF) <<
+        std::setw(digSize) << ((low >> bitMoveSize2) & 0xFFFF) <<
+        std::setw(digSize) << ((low >> bitMoveSize3) & 0xFFFF) <<
+        std::setw(digSize) << (low & 0xFFFF);
+    return oss.str();
+}
 #ifdef SUPPORT_SCREEN
 constexpr int32_t ERR_INVALID_VALUE = -1;
 constexpr const char* IS_CALLING_FROM_DMS = "supportCollaborativeCallingFromDmsInAAFwk";
@@ -98,6 +127,8 @@ void UIAbility::Init(std::shared_ptr<AppExecFwk::AbilityLocalRecord> record,
         TAG_LOGE(AAFwkTag::UIABILITY, "null record");
         return;
     }
+    instanceId_ = GenerateInstanceId();
+    TAG_LOGI(AAFwkTag::UIABILITY, "instanceId: %{public}s", instanceId_.c_str());
     application_ = application;
     abilityInfo_ = record->GetAbilityInfo();
     handler_ = handler;
@@ -259,7 +290,7 @@ void UIAbility::OnStart(const AAFwk::Want &want, sptr<AAFwk::SessionInfo> sessio
     TAG_LOGD(AAFwkTag::UIABILITY, "ability: %{public}s", abilityInfo_->name.c_str());
 #ifdef SUPPORT_SCREEN
     if (sessionInfo != nullptr) {
-        SetSessionToken(sessionInfo->sessionToken);
+        SetSessionToken(sessionInfo->sessionToken, sessionInfo->renderSession);
         SetIdentityToken(sessionInfo->identityToken);
     }
     OnStartForSupportGraphics(want);
@@ -521,6 +552,11 @@ std::string UIAbility::GetModuleName()
     }
 
     return abilityInfo_->moduleName;
+}
+
+std::string UIAbility::GetInstanceId() const
+{
+    return instanceId_;
 }
 
 void UIAbility::OnAbilityResult(int requestCode, int resultCode, const AAFwk::Want &want)
@@ -1498,10 +1534,11 @@ int UIAbility::CreateModalUIExtension(const AAFwk::Want &want)
     return ERR_OK;
 }
 
-void UIAbility::SetSessionToken(sptr<IRemoteObject> sessionToken)
+void UIAbility::SetSessionToken(sptr<IRemoteObject> sessionToken, sptr<IRemoteObject> renderSession)
 {
     std::lock_guard lock(sessionTokenMutex_);
     sessionToken_ = sessionToken;
+    renderSession_ = renderSession;
     auto abilityContextImpl = GetAbilityContext();
     if (abilityContextImpl == nullptr) {
         TAG_LOGE(AAFwkTag::UIABILITY, "null abilityContext");
@@ -1512,7 +1549,7 @@ void UIAbility::SetSessionToken(sptr<IRemoteObject> sessionToken)
 
 void UIAbility::UpdateSessionToken(sptr<IRemoteObject> sessionToken)
 {
-    SetSessionToken(sessionToken);
+    SetSessionToken(sessionToken, nullptr);
 }
 
 void UIAbility::EraseUIExtension(int32_t sessionId)

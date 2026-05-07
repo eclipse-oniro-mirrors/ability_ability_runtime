@@ -39,6 +39,7 @@ persist.sys.abilityms.inherit_plugin_namespace = false
 persist.sys.abilityms.plugin_default_namespace_lddictionary =
 persist.sys.abilityms.allow_debug_permission = false
 persist.sys.abilityms.restart_app_with_window = false
+persist.sys.abilityms.support_native_ui_ability = false
 const.abilityms.launch_embeded_ui_ability = false
 const.sys.abilityms.limit_maximum_extensions_of_per_process = 10
 const.sys.abilityms.limit_maximum_extensions_of_per_device = 100

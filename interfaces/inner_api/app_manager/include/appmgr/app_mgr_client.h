@@ -93,9 +93,11 @@ public:
      *
      * @param token Ability identify.
      * @param state Ability running state.
+     * @param isFromScreenOffBackground Whether from screen off background.
      * @return Returns RESULT_OK on success, others on failure.
      */
-    virtual AppMgrResultCode UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state);
+    virtual AppMgrResultCode UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state,
+        bool isFromScreenOffBackground = false);
 
     /**
      * UpdateExtensionState, call UpdateExtensionState() through the proxy object, update the extension status.
@@ -291,6 +293,18 @@ public:
      * @return ERR_OK ,return back success，others fail.
      */
     virtual AppMgrResultCode GetProcessRunningInfosByUserId(std::vector<RunningProcessInfo> &info, int32_t userId);
+
+     /**
+     * GetProcessRunningInfosByAccessTokenId, call GetProcessRunningInfosByAccessTokenId()
+     * through proxy project. Obtains information about application processes that are
+     * running on the device by accessTokenId.
+     *
+     * @param accessTokenId, accessTokenId.
+     * @param info, Running process information list.
+     * @return ERR_OK ,return back success，others fail.
+     */
+    virtual AppMgrResultCode GetProcessRunningInfosByAccessTokenId(uint32_t accessTokenId,
+        std::vector<RunningProcessInfo> &info);
 
      /**
      * GetProcessRunningInformation, call GetProcessRunningInformation() through proxy project.
@@ -668,6 +682,14 @@ public:
      * @return Returns true on success, others on failure.
      */
     bool SetAppFreezeFilter(int32_t pid);
+
+    /**
+     * @brief Update freeze excluded pid set.
+     * @param isAdd true to add pid, false to remove pid.
+     * @param targetPid The target process id to be added or removed.
+     * @param profilerPid The profiler process id.
+     */
+    void UpdateFreezeExcludedPid(bool isAdd, int32_t targetPid, int32_t profilerPid);
 
     /**
      * Set AbilityForegroundingFlag of an app-record to true.

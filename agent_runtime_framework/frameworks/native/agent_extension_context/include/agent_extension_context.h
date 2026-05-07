@@ -46,6 +46,15 @@ public:
      */
     std::shared_ptr<AgentCard> GetAgentCard();
 
+    using SelfType = AgentExtensionContext;
+    static const size_t CONTEXT_TYPE_ID;
+
+protected:
+    bool IsContext(size_t contextTypeId) override
+    {
+        return contextTypeId == CONTEXT_TYPE_ID;
+    }
+
 private:
     std::shared_ptr<AgentCard> agentCard_;
 };

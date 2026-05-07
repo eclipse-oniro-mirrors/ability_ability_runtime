@@ -1,0 +1,114 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/ability/ability_runtime/ability_runtime.gni")
+
+ohos_source_set("cli_manager_error_utils_src") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  include_dirs = [
+    "include",
+    "${cli_tool_framework_path}/interfaces/cli_tool/include",
+    "${ability_runtime_services_path}/common/include",
+  ]
+
+  sources = [ "src/cli_manager_error_utils.cpp" ]
+
+  deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/error_utils:ability_runtime_error_util",
+    "${ability_runtime_napi_path}/inner/napi_common:napi_common",
+    "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",
+  ]
+
+  external_deps = [
+    "hilog:libhilog",
+    "napi:ace_napi",
+  ]
+
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
+ohos_source_set("js_cli_event_handler_manager_src") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  include_dirs = [
+    "include",
+    "${ability_runtime_services_path}/common/include",
+  ]
+
+  sources = [ "src/js_cli_event_handler_manager.cpp" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "eventhandler:libeventhandler",
+    "hilog:libhilog",
+  ]
+
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
+ohos_shared_library("climanager_napi") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  include_dirs = [
+    "include",
+    "${ability_runtime_path}/interfaces/kits/native/ability/ability_runtime",
+    "${cli_tool_framework_path}/interfaces/cli_tool/include",
+  ]
+
+  sources = [
+    "src/cli_tool_manager_module.cpp",
+    "src/js_cli_manager.cpp",
+    "src/js_cli_manager_utils.cpp",
+    "src/js_cli_session_event_callback.cpp",
+  ]
+
+  deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/error_utils:ability_runtime_error_util",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
+    "${ability_runtime_napi_path}/inner/napi_common:napi_common",
+    "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",
+    ":cli_manager_error_utils_src",
+    ":js_cli_event_handler_manager_src",
+  ]
+
+  external_deps = [
+    "ability_base:base",
+    "c_utils:utils",
+    "eventhandler:libeventhandler",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "napi:ace_napi",
+  ]
+
+  relative_install_dir = "module/app/cli"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}

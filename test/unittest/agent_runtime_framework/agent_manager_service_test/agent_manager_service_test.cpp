@@ -601,6 +601,18 @@ HWTEST_F(AgentManagerServiceTest, GetCallerAgentCardByAgentId_005, TestSize.Leve
 }
 
 /**
+ * @tc.name  : UpdateAgentCard_004
+ * @tc.number: UpdateAgentCard_004
+ * @tc.desc  : Test UpdateAgentCard when caller is not allowed to use system API
+*/
+HWTEST_F(AgentManagerServiceTest, UpdateAgentCard_004, TestSize.Level1)
+{
+    MyFlag::retJudgeCallerIsAllowedToUseSystemAPI = false;
+    AgentCard card;
+    EXPECT_EQ(AgentManagerService::GetInstance()->UpdateAgentCard(card), ERR_NOT_SYSTEM_APP);
+}
+
+/**
 * @tc.name  : UpdateAgentCard_001
 * @tc.number: UpdateAgentCard_001
 * @tc.desc  : Test UpdateAgentCard when permission verification fails
@@ -611,6 +623,18 @@ HWTEST_F(AgentManagerServiceTest, UpdateAgentCard_001, TestSize.Level1)
     AgentCard card;
     EXPECT_EQ(AgentManagerService::GetInstance()->UpdateAgentCard(card), ERR_PERMISSION_DENIED);
     MyFlag::retVerifyModifyAgentCardPermission = true;
+}
+
+/**
+ * @tc.name  : RegisterAgentCard_004
+ * @tc.number: RegisterAgentCard_004
+ * @tc.desc  : Test RegisterAgentCard when caller is not allowed to use system API
+*/
+HWTEST_F(AgentManagerServiceTest, RegisterAgentCard_004, TestSize.Level1)
+{
+    MyFlag::retJudgeCallerIsAllowedToUseSystemAPI = false;
+    AgentCard card;
+    EXPECT_EQ(AgentManagerService::GetInstance()->RegisterAgentCard(card), ERR_NOT_SYSTEM_APP);
 }
 
 /**
@@ -674,6 +698,17 @@ HWTEST_F(AgentManagerServiceTest, UpdateAgentCard_003, TestSize.Level1)
     MyFlag::retUpdateAgentCard = ERR_OK;
     AgentCard card;
     EXPECT_EQ(AgentManagerService::GetInstance()->UpdateAgentCard(card), ERR_OK);
+}
+
+/**
+ * @tc.name  : DeleteAgentCard_004
+ * @tc.number: DeleteAgentCard_004
+ * @tc.desc  : Test DeleteAgentCard when caller is not allowed to use system API
+*/
+HWTEST_F(AgentManagerServiceTest, DeleteAgentCard_004, TestSize.Level1)
+{
+    MyFlag::retJudgeCallerIsAllowedToUseSystemAPI = false;
+    EXPECT_EQ(AgentManagerService::GetInstance()->DeleteAgentCard("bundle", "agentId"), ERR_NOT_SYSTEM_APP);
 }
 
 /**

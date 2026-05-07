@@ -353,6 +353,8 @@ public:
 #ifdef CJ_FRONTEND
     CJUncaughtExceptionInfo CreateCjExceptionInfo(const std::string &bundleName, uint32_t versionCode,
         const std::string &hapPath);
+    CJEventReportInfo CreateCjEventReportInfo(const std::string &bundleName, uint32_t versionCode,
+        const std::string &hapPath, std::string &appRunningId);
 #endif
     EtsEnv::ETSUncaughtExceptionInfo CreateEtsExceptionInfo(const std::string &bundleName, uint32_t versionCode,
         const std::string &hapPath, std::string &appRunningId, int32_t pid, std::string &processName);
@@ -787,7 +789,8 @@ private:
     std::string pluginDefaultNamespaceLdDictionary_ = "";
     RuntimeUpdateParam runtimeUpdateParam_;
 #if defined(NWEB) && defined(NWEB_GRAPHIC)
-    Rosen::RSSurfaceNode::SharedPtr preloadSurfaceNode_ = nullptr;
+    sptr<OHOS::IConsumerSurface> cSurface_ = nullptr;
+    sptr<OHOS::Surface> pSurface_ = nullptr;
     std::shared_ptr<NWeb::NWeb> preloadNWeb_ = nullptr;
 #endif
 

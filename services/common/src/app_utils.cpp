@@ -87,6 +87,7 @@ constexpr const char* ALLOW_DEBUG_PERMISSION = "persist.sys.abilityms.allow_debu
 constexpr const char* START_ABILITY_IN_CURRENT_PROCESS = "persist.sys.abilityms.start_ability_in_current_process";
 constexpr const char* SUPPORT_MODULAR_OBJECT_EXTENSION = "const.abilityms.support_modular_object_extension";
 constexpr const char* RESTART_APP_WITH_WINDOW = "persist.sys.abilityms.restart_app_with_window";
+constexpr const char* SUPPORT_NATIVE_UI_ABILITY = "persist.sys.abilityms.support_native_ui_ability";
 constexpr const char* PRODUCT_APPBOOT_SETTING_ENABLED = "const.product.appboot.setting.enabled";
 // Support prepare terminate
 constexpr int32_t PREPARE_TERMINATE_ENABLE_SIZE = 6;
@@ -950,6 +951,16 @@ bool AppUtils::IsHybridSpawnUnified()
     }
     TAG_LOGD(AAFwkTag::DEFAULT, "IsHybridSpawnUnified: %{public}d", isHybridSpawnUnified_.value);
     return isHybridSpawnUnified_.value;
+}
+
+bool AppUtils::IsSupportNativeUIAbility()
+{
+    if (!isSupportNativeUIAbility_.isLoaded) {
+        isSupportNativeUIAbility_.value = system::GetBoolParameter(SUPPORT_NATIVE_UI_ABILITY, false);
+        isSupportNativeUIAbility_.isLoaded = true;
+    }
+    TAG_LOGD(AAFwkTag::DEFAULT, "IsSupportNativeUIAbility: %{public}d", isSupportNativeUIAbility_.value);
+    return isSupportNativeUIAbility_.value;
 }
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -360,6 +360,26 @@ HWTEST_F(AgentManagerClientTest, UpdateAgentCard_003, TestSize.Level1)
 }
 
 /**
+* @tc.name  : UpdateAgentCard_004
+* @tc.number: UpdateAgentCard_004
+* @tc.desc  : Test UpdateAgentCard forwards card type unchanged
+*/
+HWTEST_F(AgentManagerClientTest, UpdateAgentCard_004, TestSize.Level1)
+{
+    AgentManagerClient client;
+    MyFlag::nullSystemAbility = false;
+    auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
+    client.agentMgr_ = mockAgentMgr;
+    MyFlag::retUpdateAgentCard = ERR_OK;
+
+    AgentCard card;
+    card.type = AgentCardType::LOW_CODE;
+    int32_t result = client.UpdateAgentCard(card);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(MyFlag::lastUpdateCard.type, AgentCardType::LOW_CODE);
+}
+
+/**
 * @tc.name  : RegisterAgentCard_001
 * @tc.number: RegisterAgentCard_001
 * @tc.desc  : Test RegisterAgentCard returns ERR_NULL_AGENT_MGR_PROXY when proxy is null

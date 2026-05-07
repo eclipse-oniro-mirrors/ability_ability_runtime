@@ -45,6 +45,8 @@ public:
     bool ReadFromParcel(Parcel &parcel);
     bool Marshalling(Parcel &parcel) const override;
     static InsightIntentExecuteResult *Unmarshalling(Parcel &parcel);
+    void FromJsonString(const std::string &jsonStr);
+    std::string ToJsonString() const;
     // Check result returned by intent executor
     static bool CheckResult(std::shared_ptr<const WantParams> result);
 };

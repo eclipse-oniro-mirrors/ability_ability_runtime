@@ -110,12 +110,15 @@ class JsParcelable implements rpc.Parcelable {
         ESValue.wrap(transfer.transferDynamic(dataOut, 'rpc.MessageSequence')));
       return ret.toBoolean();
     }
-    let job = EAWorker.postToMain<boolean>((): boolean => {
+    let p = EAWorker.postToMain<boolean>((): boolean => {
       let ret = this.esObj.invokeMethod('marshalling',
         ESValue.wrap(transfer.transferDynamic(dataOut, 'rpc.MessageSequence')));
       return ret.toBoolean();
     });
-    return job.Await();
+    // awaitSync will block current thread, its' not recommended to use it.
+    // here we can guarantee that promise will be resolved in other thread.
+    let res = p.awaitSync();
+    return res;
   }
   unmarshalling(dataIn: rpc.MessageSequence): boolean {
     if (CoroutineExtras.isMainWorker()) {
@@ -123,12 +126,15 @@ class JsParcelable implements rpc.Parcelable {
         ESValue.wrap(transfer.transferDynamic(dataIn, 'rpc.MessageSequence')));
       return ret.toBoolean();
     }
-    let job = EAWorker.postToMain<boolean>((): boolean => {
+    let p = EAWorker.postToMain<boolean>((): boolean => {
       let ret = this.esObj.invokeMethod('unmarshalling',
         ESValue.wrap(transfer.transferDynamic(dataIn, 'rpc.MessageSequence')));
       return ret.toBoolean();
     });
-    return job.Await();
+    // awaitSync will block current thread, its' not recommended to use it.
+    // here we can guarantee that promise will be resolved in other thread.
+    let res = p.awaitSync();
+    return res;
   }
 }
 
@@ -146,14 +152,18 @@ class CalleeFromEts {
         }
         return new JsParcelable(retData);
       }
-      let job = EAWorker.postToMain<rpc.Parcelable>((): rpc.Parcelable => {
+      let p = EAWorker.postToMain<rpc.Parcelable>((): rpc.Parcelable => {
         let retData = callback(transfer.transferDynamic(indata, 'rpc.MessageSequence'));
         if (retData instanceof rpc.Parcelable) {
           return retData;
         }
         return new JsParcelable(retData);
       });
-      return job.Await();
+
+      // awaitSync will block current thread, its' not recommended to use it.
+      // here we can guarantee that promise will be resolved in other thread.
+      let res = p.awaitSync();
+      return res;
     });
   }
 

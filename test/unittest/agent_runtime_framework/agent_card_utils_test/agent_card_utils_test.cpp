@@ -61,6 +61,14 @@ AppExecFwk::ExtensionAbilityInfo BuildExtensionInfo(AppExecFwk::ExtensionAbility
     info.type = type;
     return info;
 }
+
+AppExecFwk::HapModuleInfo BuildHapModuleInfo(AppExecFwk::ExtensionAbilityType type)
+{
+    AppExecFwk::HapModuleInfo hapModuleInfo;
+    hapModuleInfo.moduleName = "testModule";
+    hapModuleInfo.extensionInfos.push_back(BuildExtensionInfo(type));
+    return hapModuleInfo;
+}
 }
 
 class AgentCardUtilsTest : public testing::Test {
@@ -91,13 +99,13 @@ HWTEST_F(AgentCardUtilsTest, ValidateBundleAbility_002, TestSize.Level1)
 
 HWTEST_F(AgentCardUtilsTest, ValidateBundleAbility_003, TestSize.Level1)
 {
-    MyFlag::mockExtensionInfos.push_back(BuildExtensionInfo(AppExecFwk::ExtensionAbilityType::SERVICE));
+    MyFlag::mockHapModuleInfos.push_back(BuildHapModuleInfo(AppExecFwk::ExtensionAbilityType::SERVICE));
     EXPECT_EQ(AgentCardUtils::ValidateBundleAbility("test.bundle", "TestAgent", 100), AAFwk::ERR_WRONG_INTERFACE_CALL);
 }
 
 HWTEST_F(AgentCardUtilsTest, ValidateBundleAbility_004, TestSize.Level1)
 {
-    MyFlag::mockExtensionInfos.push_back(BuildExtensionInfo(AppExecFwk::ExtensionAbilityType::AGENT));
+    MyFlag::mockHapModuleInfos.push_back(BuildHapModuleInfo(AppExecFwk::ExtensionAbilityType::AGENT));
     EXPECT_EQ(AgentCardUtils::ValidateBundleAbility("test.bundle", "TestAgent", 100), ERR_OK);
 }
 

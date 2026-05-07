@@ -18,6 +18,8 @@
 
 namespace OHOS {
 namespace AgentRuntime {
+const size_t AgentExtensionContext::CONTEXT_TYPE_ID(std::hash<const char*> {} ("AgentExtensionContext"));
+
 void AgentExtensionContext::SetAgentCard(const std::shared_ptr<AgentCard> &agentCard)
 {
     agentCard_ = agentCard;

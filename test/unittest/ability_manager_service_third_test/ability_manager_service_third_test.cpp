@@ -790,6 +790,10 @@ HWTEST_F(AbilityManagerServiceThirdTest, CheckWindowMode_001, TestSize.Level1)
 
     windowMode = AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_FULLSCREEN;
     EXPECT_FALSE(abilityMs_->CheckWindowMode(windowMode, windowModes));
+
+    windowModes.emplace_back(AppExecFwk::SupportWindowMode::SPLIT);
+    windowMode = AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_SPLIT;
+    EXPECT_TRUE(abilityMs_->CheckWindowMode(windowMode, windowModes));
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirdTest CheckWindowMode_001 end");
 }
 
@@ -3349,7 +3353,7 @@ HWTEST_F(AbilityManagerServiceThirdTest, CheckSupportVpn_001, TestSize.Level1)
     AppExecFwk::AbilityInfo abilityInfo;
     abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::VPN;
     auto result = abilityMs_->CheckSupportVpn(abilityInfo);
-    EXPECT_TRUE(result);
+    EXPECT_FALSE(result);
 }
 
 /**
@@ -3364,7 +3368,7 @@ HWTEST_F(AbilityManagerServiceThirdTest, CheckSupportVpn_002, TestSize.Level1)
     AppExecFwk::AbilityInfo abilityInfo;
     abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::SERVICE;
     auto result = abilityMs_->CheckSupportVpn(abilityInfo);
-    EXPECT_FALSE(result);
+    EXPECT_TRUE(result);
 }
 }  // namespace AAFwk
 }  // namespace OHOS

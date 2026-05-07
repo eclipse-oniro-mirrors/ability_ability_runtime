@@ -86,7 +86,7 @@ export default class Context extends BaseContext {
     destroyRegister.unregister(unregisterToken);
   }
 
-  public native nativeContextType(contextType: contextConstant.ContextType): boolean;
+  public native nativeIsContextOf(contextType: contextConstant.ContextType): boolean;
 
   public native getApplicationContextSync(): ApplicationContext;
   public native createModuleResourceManagerSync(bundleName: string, moduleName: string): resmgr.ResourceManager;
@@ -144,8 +144,8 @@ export default class Context extends BaseContext {
     });
   }
 
-  contextType(contextType: contextConstant.ContextType): boolean {
-    return this.nativeContextType(contextType);
+  isContextOf(contextType: contextConstant.ContextType): boolean {
+    return this.nativeIsContextOf(contextType);
   }
 
   createDisplayContext(displayId: long): Context {

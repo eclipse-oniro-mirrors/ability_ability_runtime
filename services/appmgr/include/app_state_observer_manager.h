@@ -81,7 +81,7 @@ public:
     void OnAppStopped(const std::shared_ptr<AppRunningRecord> &appRecord);
     void OnProcessCreated(const std::shared_ptr<AppRunningRecord> &appRecord, bool isPreload);
     void OnProcessStateChanged(const std::shared_ptr<AppRunningRecord> &appRecord,
-        bool isFromWindowFocusChanged = false, bool isByCall = false);
+        bool isFromWindowFocusChanged = false, bool isByCall = false, bool isFromScreenOffBackground = false);
     void OnProcessBindingRelationChanged(const std::shared_ptr<AppRunningRecord> &appRecord,
         const UIExtensionProcessBindInfo &bindInfo, int32_t bindingRelation);
     void OnWindowShow(const std::shared_ptr<AppRunningRecord> &appRecord);
@@ -136,7 +136,8 @@ private:
     AbilityForegroundObserverMap GetAbilityForegroundObserverMapCopy();
     ImageProcessObserverMap GetImageProcessObserverMapCopy();
     ProcessData WrapProcessData(
-        const std::shared_ptr<AppRunningRecord> &appRecord, bool isFromWindowFocusChanged = false);
+        const std::shared_ptr<AppRunningRecord> &appRecord, bool isFromWindowFocusChanged = false,
+        bool isFromScreenOffBackground = false);
     ProcessData WrapRenderProcessData(const std::shared_ptr<RenderRecord> &renderRecord);
     ProcessBindData WrapProcessBindData(const UIExtensionProcessBindInfo &bindInfo, int32_t bindingRelation);
     std::shared_ptr<ImageProcessStateData> WrapImageProcessStateData(
@@ -149,7 +150,7 @@ private:
         const ApplicationState state, bool isFromWindowFocusChanged = false);
     void HandleOnProcessCreated(const ProcessData &data, BundleType bundleType = BundleType::APP);
     void HandleOnProcessStateChanged(const std::shared_ptr<AppRunningRecord> &appRecord,
-        bool isFromWindowFocusChanged = false, bool isByCall = false);
+        bool isFromWindowFocusChanged = false, bool isByCall = false, bool isFromScreenOffBackground = false);
     void HandleOnProcessDied(const ProcessData &data, BundleType bundleType = BundleType::APP);
     void HandleOnProcessResued(const std::shared_ptr<AppRunningRecord> &appRecord);
     void HandleOnPageShow(const PageStateData pageStateData);

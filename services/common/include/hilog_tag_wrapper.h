@@ -87,6 +87,7 @@ enum class AAFwkLogTag : uint32_t {
     AUTOFILLMGR,
     EXTMGR,
     SER_ROUTER,
+    CLI_TOOL = SER_ROUTER,
     AUTO_STARTUP,
     STARTUP,
     RECOVERY,
@@ -102,7 +103,6 @@ enum class AAFwkLogTag : uint32_t {
     APP_SERVICE_EXT,
     VERTICAL_PANEL,
     USER_CONTROLLER,
-    CLI_TOOL,
 
     END = 256,               // N.B. never use it
 };

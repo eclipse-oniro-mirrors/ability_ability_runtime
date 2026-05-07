@@ -682,5 +682,63 @@ HWTEST_F(ChildProcessManagerTest, LoadFromAppRuntime_0300, TestSize.Level2)
     auto ret = ChildProcessManager::GetInstance().LoadFromAppRuntime("./ets/process/FeatureProcess.ts", hapModuleInfo);
     EXPECT_FALSE(ret);
 }
+
+/**
+ * @tc.number: IsArkChildProcessSupported_0100
+ * @tc.desc: Test IsArkChildProcessSupported when supported is set to true
+ * @tc.type: FUNC
+ */
+HWTEST_F(ChildProcessManagerTest, IsArkChildProcessSupported_0100, TestSize.Level1)
+{
+    TAG_LOGD(AAFwkTag::TEST, "IsArkChildProcessSupported_0100 called.");
+    auto &cpm = ChildProcessManager::GetInstance();
+    cpm.SetArkChildProcessSupported(true);
+    bool result = cpm.IsArkChildProcessSupported();
+    EXPECT_TRUE(result);
+    cpm.SetArkChildProcessSupported(false);
+}
+
+/**
+ * @tc.number: IsArkChildProcessSupported_0200
+ * @tc.desc: Test IsArkChildProcessSupported when supported is set to false
+ * @tc.type: FUNC
+ */
+HWTEST_F(ChildProcessManagerTest, IsArkChildProcessSupported_0200, TestSize.Level1)
+{
+    TAG_LOGD(AAFwkTag::TEST, "IsArkChildProcessSupported_0200 called.");
+    auto &cpm = ChildProcessManager::GetInstance();
+    cpm.SetArkChildProcessSupported(false);
+    bool result = cpm.IsArkChildProcessSupported();
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.number: IsNativeChildProcessSupported_0100
+ * @tc.desc: Test IsNativeChildProcessSupported when supported is set to true
+ * @tc.type: FUNC
+ */
+HWTEST_F(ChildProcessManagerTest, IsNativeChildProcessSupported_0100, TestSize.Level1)
+{
+    TAG_LOGD(AAFwkTag::TEST, "IsNativeChildProcessSupported_0100 called.");
+    auto &cpm = ChildProcessManager::GetInstance();
+    cpm.SetNativeChildProcessSupported(true);
+    bool result = cpm.IsNativeChildProcessSupported();
+    EXPECT_TRUE(result);
+    cpm.SetNativeChildProcessSupported(false);
+}
+
+/**
+ * @tc.number: IsNativeChildProcessSupported_0200
+ * @tc.desc: Test IsNativeChildProcessSupported when supported is set to false
+ * @tc.type: FUNC
+ */
+HWTEST_F(ChildProcessManagerTest, IsNativeChildProcessSupported_0200, TestSize.Level1)
+{
+    TAG_LOGD(AAFwkTag::TEST, "IsNativeChildProcessSupported_0200 called.");
+    auto &cpm = ChildProcessManager::GetInstance();
+    cpm.SetNativeChildProcessSupported(false);
+    bool result = cpm.IsNativeChildProcessSupported();
+    EXPECT_FALSE(result);
+}
 }  // namespace AbilityRuntime
 }  // namespace OHOS

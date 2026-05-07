@@ -371,6 +371,26 @@ public:
     void SetMainProcess(bool isMainProcess);
     bool GetMainProcess() const;
 
+    inline void SetArkChildProcessSupported(bool supported)
+    {
+        isArkChildProcessSupported_ = supported;
+    }
+
+    inline bool IsArkChildProcessSupported() const
+    {
+        return isArkChildProcessSupported_;
+    }
+
+    inline void SetNativeChildProcessSupported(bool supported)
+    {
+        isNativeChildProcessSupported_ = supported;
+    }
+
+    inline bool IsNativeChildProcessSupported() const
+    {
+        return isNativeChildProcessSupported_;
+    }
+
 private:
     bool debugApp_ = false;
     bool jitEnabled_ = false;
@@ -395,6 +415,8 @@ private:
     bool isDebugFromLocal_;
     bool isMainProcess_ = true;
     std::shared_ptr<StartupTaskData> startupTaskData_ = nullptr;
+    bool isArkChildProcessSupported_ = false;
+    bool isNativeChildProcessSupported_ = false;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

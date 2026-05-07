@@ -628,5 +628,25 @@ ChildProcessManagerErrorCode ChildProcessManager::KillChildProcessByPid(int32_t 
     }
     return ChildProcessManagerErrorCode::ERR_OK;
 }
+
+void ChildProcessManager::SetArkChildProcessSupported(bool supported)
+{
+    isArkChildProcessSupported_ = supported;
+}
+
+void ChildProcessManager::SetNativeChildProcessSupported(bool supported)
+{
+    isNativeChildProcessSupported_ = supported;
+}
+
+bool ChildProcessManager::IsArkChildProcessSupported()
+{
+    return isArkChildProcessSupported_;
+}
+
+bool ChildProcessManager::IsNativeChildProcessSupported()
+{
+    return isNativeChildProcessSupported_;
+}
 }  // namespace AbilityRuntime
 }  // namespace OHOS

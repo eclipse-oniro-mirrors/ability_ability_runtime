@@ -357,7 +357,7 @@ HWTEST_F(AppExitReasonHelperTest, RecordAppWithReason_0100, TestSize.Level1)
     int32_t pid = 1;
     int32_t uid = 1;
     int32_t result = appExitReasonHelper->RecordAppWithReason(pid, uid, exitReason);
-    EXPECT_EQ(result, MOCK_ERROR);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
 
     AbilityUtil::GetBundleManagerHelper()->getNameAndIndexForUid_ = true;
     MyStatus::GetInstance().getOsAccountRet_ = MOCK_ERROR;
@@ -366,7 +366,7 @@ HWTEST_F(AppExitReasonHelperTest, RecordAppWithReason_0100, TestSize.Level1)
     EXPECT_NE(subManagersHelper, nullptr);
     appExitReasonHelper->subManagersHelper_ = subManagersHelper;
     result = appExitReasonHelper->RecordAppWithReason(pid, uid, exitReason);
-    EXPECT_EQ(result, MOCK_ERROR);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
     MyStatus::GetInstance().getOsAccountRet_ = 0;
     auto currentUIAbilityManager = std::make_shared<UIAbilityLifecycleManager>(0);
     EXPECT_NE(currentUIAbilityManager, nullptr);

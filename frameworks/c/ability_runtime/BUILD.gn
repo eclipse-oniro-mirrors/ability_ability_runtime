@@ -42,8 +42,9 @@ ohos_shared_library("ability_runtime") {
 
   include_dirs = [
     "include",
-    "${ability_runtime_path}/interfaces/inner_api/",
-    "${ability_runtime_path}/interfaces/kits/native/appkit/ability_runtime/",
+    "${ability_runtime_path}/interfaces/inner_api",
+    "${ability_runtime_path}/interfaces/kits/native/appkit/ability_runtime",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native/modular_object_extension",
   ]
 
   configs = [
@@ -55,21 +56,32 @@ ohos_shared_library("ability_runtime") {
   sources = [
     "src/ability_business_error_utils.cpp",
     "src/application_context.cpp",
+    "src/connect_options.cpp",
     "src/context.cpp",
     "src/load_ability_callback_impl.cpp",
+    "src/modular_object_extension_ability.cpp",
+    "src/modular_object_extension_context.cpp",
+    "src/c_modular_object_connection_callback.cpp",
     "src/modular_object_extension_manager.cpp",
+    "src/modular_object_connection_manager.cpp",
+    "src/modular_object_ability_connection.cpp",
+    "src/c_modular_object_utils.cpp",
+    "src/native_ability_wrapper.cpp",
     "src/start_options.cpp",
     "src/start_options_impl.cpp",
     "src/want_utils.cpp",
   ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_connect_callback_stub",
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/ability_manager:ability_start_options",
     "${ability_runtime_innerkits_path}/ability_manager:process_options",
     "${ability_runtime_innerkits_path}/ability_manager:start_window_option",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_innerkits_path}/page_config_manager:page_config_manager",
+    "${ability_runtime_native_path}/ability:ability_context_native",
+    "${ability_runtime_native_path}/ability/native:modular_object_extension",
     "${ability_runtime_native_path}/appkit:app_context",
   ]
 
@@ -83,6 +95,7 @@ ohos_shared_library("ability_runtime") {
     "image_framework:pixelmap",
     "ipc:ipc_capi",
     "ipc:ipc_core",
+    "ipc:ipc_napi",
     "napi:ace_napi",
     "samgr:samgr_proxy",
   ]
@@ -91,6 +104,7 @@ ohos_shared_library("ability_runtime") {
     external_deps += [
       "graphic_2d:color_manager",
       "image_framework:image",
+      "window_manager:libwm",
       "window_manager:window_animation_utils",
     ]
     defines = [

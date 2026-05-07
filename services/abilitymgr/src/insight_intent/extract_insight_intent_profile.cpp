@@ -15,6 +15,8 @@
 
 #include "extract_insight_intent_profile.h"
 
+#include <algorithm>
+
 #include "hilog_tag_wrapper.h"
 #include "json_util.h"
 
@@ -52,6 +54,7 @@ const std::string INSIGHT_INTENT_NAVIGATION_ID = "navigationId";
 const std::string INSIGHT_INTENT_NAV_DESTINATION_NAME = "navDestinationName";
 const std::string INSIGHT_INTENT_ABILITY_NAME = "abilityName";
 const std::string INSIGHT_INTENT_FUNCTION_NAME = "functionName";
+const std::string INSIGHT_INTENT_FUNCTION_RETURN_TYPE = "functionReturnType";
 const std::string INSIGHT_INTENT_FUNCTION_PARAMS = "functionParamList";
 const std::string INSIGHT_INTENT_PARAM_NAME = "paramName";
 const std::string INSIGHT_INTENT_PARAM_MAPPING_NAME = "paramMappingName";
@@ -67,7 +70,7 @@ const std::string INSIGHT_INTENT_ENTITY_ID = "entityId";
 const std::string INSIGHT_INTENT_ENTITY_CATEGORY = "entityCategory";
 const std::string INSIGHT_INTENT_ENTITY_PARENT_CLASS_NAME = "parentClassName";
 const std::string INSIGHT_INTENT_ENTITY_PARAMETERS = "parameters";
-const std::string INSIGHT_INTENT_ARKTS_MODE = "arkTsMode";
+const std::string INSIGHT_INTENT_ARKTS_MODE = "arkTSMode";
 const std::string INSIGHT_INTENT_ENTITY_SUPPORTED_QUERY_PROPERTIES = "supportedQueryProperties";
 
 enum DecoratorType {
@@ -337,6 +340,12 @@ void from_json(const nlohmann::json &jsonObject, ExtractInsightIntentProfileInfo
         insightIntentInfo.functionName,
         false,
         g_extraParseResult);
+    AppExecFwk::BMSJsonUtil::GetStrValueIfFindKey(jsonObject,
+        jsonObjectEnd,
+        INSIGHT_INTENT_FUNCTION_RETURN_TYPE,
+        insightIntentInfo.functionReturnType,
+        false,
+        g_extraParseResult);
     AppExecFwk::GetValueIfFindKey<std::vector<std::string>>(jsonObject,
         jsonObjectEnd,
         INSIGHT_INTENT_FUNCTION_PARAMS,
@@ -461,6 +470,7 @@ void to_json(nlohmann::json& jsonObject, const ExtractInsightIntentProfileInfo& 
         {INSIGHT_INTENT_ABILITY_NAME, info.abilityName},
         {INSIGHT_INTENT_EXECUTE_MODE, info.executeMode},
         {INSIGHT_INTENT_FUNCTION_NAME, info.functionName},
+        {INSIGHT_INTENT_FUNCTION_RETURN_TYPE, info.functionReturnType},
         {INSIGHT_INTENT_FUNCTION_PARAMS, info.functionParams},
         {INSIGHT_INTENT_FORM_NAME, info.formName},
         {INSIGHT_INTENT_ENTITES, info.entities},
@@ -557,7 +567,7 @@ bool CheckProfileInfo(const ExtractInsightIntentProfileInfo &insightIntent)
     }
 
     for (const auto &entity: insightIntent.entities) {
-        if (entity.className.empty() || entity.entityId.empty()) {
+        if (entity.className.empty() || (entity.entityId.empty() && !entity.isQueryable())) {
             TAG_LOGE(AAFwkTag::INTENT, "entity exist empty param, intentName: %{public}s, "
                 "className: %{public}s, entityId: %{public}s",
                 insightIntent.intentName.c_str(), entity.className.c_str(), entity.entityId.c_str());
@@ -628,6 +638,8 @@ bool TransformToFunctionInfo(const ExtractInsightIntentProfileInfo &insightInten
 {
     info.functionName = insightIntent.functionName;
     TAG_LOGD(AAFwkTag::INTENT, "functionName: %{public}s", info.functionName.c_str());
+    info.functionReturnType = insightIntent.functionReturnType;
+    TAG_LOGD(AAFwkTag::INTENT, "functionReturnType: %{public}s", info.functionReturnType.c_str());
     info.functionParams.assign(insightIntent.functionParams.begin(), insightIntent.functionParams.end());
     for (size_t i = 0; i < info.functionParams.size(); i++) {
         TAG_LOGD(AAFwkTag::INTENT, "functionParams[%{public}zu]: %{public}s", i, info.functionParams[i].c_str());

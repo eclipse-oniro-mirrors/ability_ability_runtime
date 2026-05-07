@@ -23,19 +23,21 @@ namespace OHOS {
 namespace AppExecFwk {
 bool ProcessData::Marshalling(Parcel &parcel) const
 {
-    return (parcel.WriteString(bundleName) && parcel.WriteInt32(pid) &&
+    return parcel.WriteString(bundleName) && parcel.WriteInt32(pid) &&
         parcel.WriteInt32(uid) && parcel.WriteInt32(hostPid) && parcel.WriteInt32(gpuPid) &&
         parcel.WriteInt32(static_cast<int32_t>(state)) && parcel.WriteBool(isContinuousTask) &&
         parcel.WriteBool(isKeepAlive) && parcel.WriteBool(isFocused) && parcel.WriteInt32(requestProcCode) &&
         parcel.WriteInt32(processChangeReason) && parcel.WriteString(processName) &&
-        parcel.WriteInt32(static_cast<int32_t>(processType)) && parcel.WriteInt32(static_cast<int32_t>(extensionType))
-        && parcel.WriteInt32(renderUid) && parcel.WriteUint32(accessTokenId) &&
+        parcel.WriteInt32(static_cast<int32_t>(processType)) &&
+        parcel.WriteInt32(static_cast<int32_t>(extensionType)) &&
+        parcel.WriteInt32(renderUid) && parcel.WriteUint32(accessTokenId) &&
         parcel.WriteBool(isTestMode) && parcel.WriteInt32(exitReason) && parcel.WriteString16(Str8ToStr16(exitMsg)) &&
         parcel.WriteInt32(childUid) && parcel.WriteBool(isPreload)  && parcel.WriteBool(isPreloadModule) &&
         parcel.WriteInt32(callerPid) && parcel.WriteInt32(callerUid) &&
         parcel.WriteString(killReason) && parcel.WriteBool(isFromWindowFocusChanged) &&
         parcel.WriteInt32(preloadMode) && parcel.WriteInt32(imageProcessType) &&
-        parcel.WriteBool(isPreloadUIExtension));
+        parcel.WriteBool(isPreloadUIExtension) && parcel.WriteBool(isFromScreenOffBackground) &&
+        parcel.WriteInt32(byCallStatus);
 }
 
 bool ProcessData::ReadFromParcel(Parcel &parcel)
@@ -69,6 +71,8 @@ bool ProcessData::ReadFromParcel(Parcel &parcel)
     preloadMode = parcel.ReadInt32();
     imageProcessType = parcel.ReadInt32();
     isPreloadUIExtension = parcel.ReadBool();
+    isFromScreenOffBackground = parcel.ReadBool();
+    byCallStatus = parcel.ReadInt32();
     return true;
 }
 

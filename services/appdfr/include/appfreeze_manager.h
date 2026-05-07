@@ -23,6 +23,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "cpp/mutex.h"
@@ -127,6 +128,8 @@ public:
     AppfreezeManager::ProcessKillInfo GetProcessKillReason(int32_t killId, int32_t pid, const std::string& killMsg);
     void GetExitKernelReason(int32_t pid, ProcessKillInfo& killInfo);
     int GetFreezeExitReason(const std::string& eventName);
+    void UpdateFreezeExcludedPid(bool isAdd, int32_t targetPid, int32_t profilerPid);
+    bool IsFreezeExcludedPid(int32_t targetPid);
 
 private:
     struct PeerBinderInfo {
@@ -154,6 +157,12 @@ private:
         int reportTimes = DEFAULT_APPFREEZE_REPORT_TIMES;
         int state = 0;
         bool isRepeatKilledThread = false;
+    };
+
+    struct FreezeExcludedPidInfo {
+        int32_t targetPid = 0;
+        int32_t profilerPid = 0;
+        int64_t timestamp = 0;
     };
 
     AppfreezeManager& operator=(const AppfreezeManager&) = delete;
@@ -199,6 +208,12 @@ private:
     int64_t GetLastOccurTime(const std::string& key);
     bool ClearOldInfo(std::map<std::string, AppFreezeInfo>& infoMap, size_t maxSize, int64_t maxTimelimit);
     bool IsHalfTimeout(const std::string& faultType) const;
+    void CleanOldFreezeExcludedPids();
+    bool IsNativeDaemonProcess(int32_t profilerPid) const;
+
+    static constexpr size_t FREEZE_EXCLUDED_PID_MAX_SIZE = 100;
+    static constexpr size_t FREEZE_EXCLUDED_PID_CLEAN_COUNT = 30;
+    static constexpr const char* const NATIVE_DAEMON_PROCESS_NAME = "native_daemon";
 
     static const inline std::string LOGGER_DEBUG_PROC_PATH = "/proc/transaction_proc";
     std::string name_;
@@ -217,6 +232,8 @@ private:
     std::map<int32_t, std::map<std::string, AppfreezeEventRecord>> freezeEventMap_;
     std::mutex freezeKillThreadMutex_;
     std::map<std::string, AppFreezeInfo> freezeKillThreadMap_;
+    mutable ffrt::mutex freezeExcludedPidMutex_;
+    std::unordered_map<int32_t, FreezeExcludedPidInfo> freezeExcludedPidMap_;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

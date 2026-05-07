@@ -535,7 +535,13 @@ bool JsAutoFillExtension::HandleAutoFillCreate(const AAFwk::Want &want, const sp
         sptr<Rosen::Window> uiWindow;
         {
             HITRACE_METER_NAME(HITRACE_TAG_APP, "Rosen::Window::Create");
-            uiWindow = Rosen::Window::Create(option, GetContext(), sessionInfo->sessionToken);
+            uiWindow = Rosen::Window::Create(option,
+                GetContext(),
+                sessionInfo->sessionToken,
+                Rosen::DefaultCreateErrCode,
+                "",
+                false,
+                sessionInfo->renderSession);
         }
         if (uiWindow == nullptr) {
             TAG_LOGE(AAFwkTag::AUTOFILL_EXT, "null uiWindow");

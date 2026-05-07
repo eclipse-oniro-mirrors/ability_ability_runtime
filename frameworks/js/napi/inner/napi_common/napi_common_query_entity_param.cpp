@@ -118,7 +118,6 @@ bool UnwrapQueryEntityParam(napi_env env, napi_value param, InsightIntentQueryPa
         int32_t userId = DEFAULT_INVAL_VALUE;
         if (!UnwrapInt32ByPropertyName(env, param, "userId", userId)) {
             TAG_LOGE(AAFwkTag::JSNAPI, "Wrong argument userId fail");
-            return false;
         }
         queryParam.userId_ = userId;
     }

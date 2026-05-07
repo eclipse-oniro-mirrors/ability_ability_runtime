@@ -79,6 +79,8 @@ public:
     static void MoveAbilityToBackground(ani_env *env, ani_object aniObj, ani_object callbackobj);
     static void RequestModalUIExtension(ani_env *env, ani_object aniObj, ani_object pickerWantObj,
         ani_object callbackobj);
+    static void RequestModalUIExtensionWithAccount(ani_env *env, ani_object aniObj, ani_object pickerWantObj,
+        ani_int accountId, ani_object callbackobj);
     static void BackToCallerAbilityWithResult(ani_env *env, ani_object aniObj,
         ani_object abilityResultObj, ani_string requestCodeObj, ani_object callBackObj);
     static void SetMissionLabel(ani_env *env, ani_object aniObj, ani_string labelObj,
@@ -199,6 +201,8 @@ private:
     void OnMoveAbilityToBackground(ani_env *env, ani_object aniObj, ani_object callback);
     void OnRequestModalUIExtension(ani_env *env, ani_object aniObj, ani_object pickerWantObj,
         ani_object callbackObj);
+    void OnRequestModalUIExtensionWithAccount(ani_env *env, ani_object aniObj, ani_object pickerWantObj,
+        ani_int accountId, ani_object callbackObj);
     void OnBackToCallerAbilityWithResult(ani_env *env, ani_object aniObj,
         ani_object abilityResultObj, ani_string requestCodeObj, ani_object callBackObj);
     void OnSetMissionLabel(ani_env *env, ani_object aniObj, ani_string labelObj, ani_object callbackObj);

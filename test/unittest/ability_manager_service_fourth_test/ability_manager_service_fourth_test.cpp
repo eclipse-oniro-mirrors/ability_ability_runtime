@@ -32,6 +32,7 @@
 #include "hilog_tag_wrapper.h"
 #include "mock_ability_token.h"
 #include "ability_bundle_event_callback.h"
+#include "request_start_ability_callback_stub.h"
 #include "session/host/include/session.h"
 #include "start_ability_utils.h"
 #include "start_params_by_SCB.h"
@@ -170,6 +171,18 @@ public:
 
 public:
     bool isSuccess_ = false;
+};
+
+class RequestAbilityImplCallback : public AAFwk::RequestStartAbilityCallbackStub {
+public:
+    void OnRequestStartAbilityResult(bool result) override
+    {
+        TAG_LOGI(AAFwkTag::TEST, "start request result: %{public}s",
+            result ? "success" : "failed");
+        result_ = result;
+    }
+
+bool result_ = false;
 };
 
 /*
@@ -1676,6 +1689,52 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartUIExtensionAbilityTset_001, TestS
 
 /*
  * Feature: AbilityManagerService
+ * Function: StartUIAbilityWithCallback
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService StartUIAbilityWithCallback with SA check failed
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityWithCallback_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartUIAbilityWithCallback_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    sptr<RequestAbilityImplCallback> callback = new RequestAbilityImplCallback();
+    MyFlag::flag_ = 0;
+    auto result = abilityMs->StartUIAbilityWithCallback(want, nullptr, callback);
+    EXPECT_NE(result, ERR_OK);
+    EXPECT_EQ(callback->result_, false);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartUIAbilityWithCallback_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartUIAbilityWithCallback
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService StartUIAbilityWithCallback with SA check passed but ability not exist
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityWithCallback_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartUIAbilityWithCallback_002 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "NonExistAbility");
+    sptr<IRemoteObject> callerToken = MockToken(AbilityType::PAGE);
+    sptr<RequestAbilityImplCallback> callback = new RequestAbilityImplCallback();
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID);
+    MyFlag::flag_ = 1;
+    auto result = abilityMs->StartUIAbilityWithCallback(want, callerToken, callback);
+    EXPECT_NE(result, ERR_OK);
+    result = abilityMs->StartUIAbilityWithCallback(want, callerToken, nullptr);
+    EXPECT_NE(result, ERR_OK);
+    EXPECT_EQ(callback->result_, false);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartUIAbilityWithCallback_002 end");
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: GetUserLockedBundleList
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService GetUserLockedBundleList
@@ -1739,6 +1798,95 @@ HWTEST_F(AbilityManagerServiceFourthTest, AddToUserLockedBundleList_001, TestSiz
         AbilityRuntime::UserController::UserLockStatus::USER_LOCKED);
     AbilityRuntime::UserController::GetInstance().DeleteUserLockedBundleListByUserId(userId);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest AddToUserLockedBundleList_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartSelf
+ * FunctionPoints: AbilityManagerService StartSelf
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, StartSelf_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartSelf_001 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    // token is nullptr, should return ERR_INVALID_VALUE
+    sptr<IRemoteObject> token = nullptr;
+    auto ret = abilityMs_->StartSelf(token);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartSelf_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartSelf
+ * FunctionPoints: AbilityManagerService StartSelf with invalid token
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, StartSelf_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartSelf_002 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    // Use a non-ability token (plain IRemoteObject mock), should return ERR_INVALID_VALUE
+    sptr<IRemoteObject> invalidToken = new IRemoteObjectMocker();
+    auto ret = abilityMs_->StartSelf(invalidToken);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartSelf_002 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartSelf
+ * FunctionPoints: AbilityManagerService StartSelf with non-UI_ABILITY type record
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, StartSelf_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartSelf_003 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    // MockToken creates an AbilityRecord with type BASE_ABILITY (not UI_ABILITY)
+    // This should hit the "not supported for type" branch
+    auto callerToken = MockToken(AbilityType::PAGE);
+    ASSERT_NE(callerToken, nullptr);
+    auto ret = abilityMs_->StartSelf(callerToken);
+    // AbilityRecord::GetAbilityRecordType() returns BASE_ABILITY, not UI_ABILITY
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartSelf_003 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartSelf
+ * FunctionPoints: AbilityManagerService StartSelf with UI_ABILITY record but no manager
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, StartSelf_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartSelf_004 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    // Use a real ability token, but subManagersHelper_ is not set
+    // Even if the record type check passes, GetUIAbilityManagerByUserId will fail
+    auto callerToken = MockToken(AbilityType::PAGE);
+    ASSERT_NE(callerToken, nullptr);
+    // subManagersHelper_ is nullptr, manager lookup fails
+    auto ret = abilityMs_->StartSelf(callerToken);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartSelf_004 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartSelf
+ * FunctionPoints: AbilityManagerService StartSelf with manager set but null currentUIAbilityManager
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, StartSelf_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartSelf_005 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    // Set subManagersHelper_ but without a real UIAbilityManager
+    abilityMs_->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    auto callerToken = MockToken(AbilityType::PAGE);
+    ASSERT_NE(callerToken, nullptr);
+    auto ret = abilityMs_->StartSelf(callerToken);
+    // With BASE_ABILITY type, still falls to "not supported" branch
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartSelf_005 end");
 }
 } // namespace AAFwk
 } // namespace OHOS

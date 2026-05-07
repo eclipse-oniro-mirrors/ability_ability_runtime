@@ -74,9 +74,11 @@ public:
 
     void RemoveTask(const std::string& name);
 
-    void RegisterUncaughtExceptionHandler(const JsEnv::UncaughtExceptionInfo& uncaughtExceptionInfo);
+    void RegisterUncaughtExceptionHandler(const JsEnv::UncaughtExceptionInfo& uncaughtExceptionInfo,
+        bool isStatic = false);
 
-    void RegisterUncatchableExceptionHandler(const JsEnv::UncatchableTask& uncatchableTask);
+    void RegisterUncatchableExceptionHandler(const JsEnv::UncatchableTask& uncatchableTask,
+        bool isStatic = false);
 
     bool LoadScript(const std::string& path, std::vector<uint8_t>* buffer = nullptr, bool isBundle = false);
 

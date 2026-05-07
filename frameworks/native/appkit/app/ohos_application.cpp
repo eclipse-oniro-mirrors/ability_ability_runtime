@@ -392,7 +392,11 @@ void OHOSApplication::OnStart()
  * @brief Will be called the application ends
  */
 void OHOSApplication::OnTerminate()
-{}
+{
+    if (abilityRuntimeContext_ != nullptr) {
+        abilityRuntimeContext_->NotifyProcessExit();
+    }
+}
 
 void OHOSApplication::OnHyperSnapUpdate()
 {
@@ -823,6 +827,7 @@ bool OHOSApplication::AddAbilityStage(
     stageContext->SetParentContext(abilityRuntimeContext_);
     stageContext->InitHapModuleInfo(hapModuleInfo);
     stageContext->SetConfiguration(GetConfiguration());
+    stageContext->SetProcessName(GetProcessName());
     auto moduleInfo = stageContext->GetHapModuleInfo();
     if (moduleInfo == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "null moduleInfo");
@@ -1001,6 +1006,8 @@ void OHOSApplication::ScheduleNewProcessRequest(const AAFwk::Want &want, const s
 
     if (abilityStages_.empty()) {
         TAG_LOGE(AAFwkTag::APPKIT, "abilityStages_ empty");
+        std::string flag;
+        callback(flag);
         return;
     }
     auto iter = abilityStages_.find(moduleName);

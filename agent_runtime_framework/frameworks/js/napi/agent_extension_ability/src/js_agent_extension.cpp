@@ -53,9 +53,14 @@ napi_value AttachAgentExtensionContext(napi_env env, void *value, void *)
         TAG_LOGW(AAFwkTag::SER_ROUTER, "null value");
         return nullptr;
     }
-    auto ptr = reinterpret_cast<std::weak_ptr<AgentExtensionContext> *>(value)->lock();
-    if (ptr == nullptr) {
+    auto context = reinterpret_cast<std::weak_ptr<Context> *>(value)->lock();
+    if (context == nullptr) {
         TAG_LOGW(AAFwkTag::SER_ROUTER, "null ptr");
+        return nullptr;
+    }
+    auto ptr = Context::ConvertTo<AgentExtensionContext>(context);
+    if (ptr == nullptr) {
+        TAG_LOGW(AAFwkTag::SER_ROUTER, "context is not AgentExtensionContext");
         return nullptr;
     }
     napi_value object = CreateJsAgentExtensionContext(env, ptr);
@@ -68,11 +73,12 @@ napi_value AttachAgentExtensionContext(napi_env env, void *value, void *)
     auto contextObj = sysModule->GetNapiValue();
     napi_coerce_to_native_binding_object(
         env, contextObj, DetachCallbackFunc, AttachAgentExtensionContext, value, nullptr);
-    auto workContext = new (std::nothrow) std::weak_ptr<AgentExtensionContext>(ptr);
+    SetJsAgentExtensionContext(env, contextObj, ptr);
+    auto workContext = new (std::nothrow) std::weak_ptr<Context>(context);
     auto res = napi_wrap(env, contextObj, workContext,
         [](napi_env, void *data, void *) {
             TAG_LOGD(AAFwkTag::SER_ROUTER, "Finalizer for weak_ptr app service extension context is called");
-            delete static_cast<std::weak_ptr<AgentExtensionContext> *>(data);
+            delete static_cast<std::weak_ptr<Context> *>(data);
         },
         nullptr, nullptr);
     if (res != napi_ok && workContext != nullptr) {
@@ -479,16 +485,17 @@ void JsAgentExtension::BindContext(napi_env env, napi_value obj, std::shared_ptr
         TAG_LOGE(AAFwkTag::SER_ROUTER, "get context native obj failed");
         return;
     }
-    auto workContext = new (std::nothrow) std::weak_ptr<AgentExtensionContext>(context);
+    auto workContext = new (std::nothrow) std::weak_ptr<Context>(std::static_pointer_cast<Context>(context));
     napi_coerce_to_native_binding_object(
         env, contextObj, DetachCallbackFunc, AttachAgentExtensionContext, workContext, nullptr);
+    SetJsAgentExtensionContext(env, contextObj, context);
     TAG_LOGD(AAFwkTag::SER_ROUTER, "Bind");
     context->Bind(jsRuntime_, shellContextRef_.get());
     napi_set_named_property(env, obj, "context", contextObj);
 
     auto res = napi_wrap(env, contextObj, workContext,
         [](napi_env, void* data, void*) {
-            delete static_cast<std::weak_ptr<AgentExtensionContext>*>(data);
+            delete static_cast<std::weak_ptr<Context>*>(data);
         },
         nullptr, nullptr);
     if (res != napi_ok && workContext != nullptr) {

@@ -25,6 +25,7 @@ public:
         IS_SA_AND_SHELL_CALL,
     };
     static int flag_;
+    static bool isWithNative_;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

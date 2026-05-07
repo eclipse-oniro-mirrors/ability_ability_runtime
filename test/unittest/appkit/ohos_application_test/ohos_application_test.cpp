@@ -917,6 +917,36 @@ HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_AddAbilityStage_012
 }
 
 /*
+* @tc.number: AppExecFwk_OHOSApplicationTest_AddAbilityStage_01300
+* @tc.name: AddAbilityStage
+* @tc.desc: Verify function AddAbilityStage sets process name correctly in AbilityStageContext
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_AddAbilityStage_01300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_01300 start.";
+    HapModuleInfo hapModuleInfo;
+    auto callback = []() {};
+    bool isAsyncCallback = false;
+    ohosApplication_->runtime_ = std::make_unique<AbilityRuntime::MockRuntime>();
+    ohosApplication_->abilityRuntimeContext_ = std::make_shared<AbilityRuntime::ApplicationContext>();
+    std::string testProcessName = "com.example.test_process";
+    auto processInfo = std::make_shared<ProcessInfo>(testProcessName, 1234);
+    ohosApplication_->SetProcessInfo(processInfo);
+    EXPECT_TRUE(ohosApplication_->abilityStages_.empty());
+    ohosApplication_->abilityRuntimeContext_ = std::make_shared<AbilityRuntime::ApplicationContext>();
+    ohosApplication_->AddAbilityStage(hapModuleInfo, callback, isAsyncCallback);
+    auto contextImpl = std::make_shared<AbilityRuntime::ContextImpl>();
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->multiProjects = false;
+    contextImpl->SetApplicationInfo(appInfo);
+    ohosApplication_->abilityRuntimeContext_->AttachContextImpl(contextImpl);
+    ohosApplication_->AddAbilityStage(hapModuleInfo, callback, isAsyncCallback);
+    EXPECT_FALSE(ohosApplication_->abilityStages_.empty());
+    EXPECT_EQ(ohosApplication_->GetProcessName(), testProcessName);
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_01300 end.";
+}
+
+/*
 * @tc.number: AppExecFwk_OHOSApplicationTest_CleanAbilityStage_0100
 * @tc.name: CleanAbilityStage
 * @tc.desc: Verify function CleanAbilityStage pointer abilityInfo empty

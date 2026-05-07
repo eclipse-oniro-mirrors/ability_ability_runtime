@@ -1586,18 +1586,19 @@ void JsRuntime::UpdateModuleNameAndAssetPath(const std::string& moduleName)
     panda::JSNApi::SetModuleName(vm, moduleName_);
 }
 
-void JsRuntime::RegisterUncaughtExceptionHandler(const JsEnv::UncaughtExceptionInfo& uncaughtExceptionInfo)
+void JsRuntime::RegisterUncaughtExceptionHandler(const JsEnv::UncaughtExceptionInfo& uncaughtExceptionInfo,
+                                                 bool isStatic)
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     CHECK_POINTER(jsEnv_);
-    jsEnv_->RegisterUncaughtExceptionHandler(uncaughtExceptionInfo);
+    jsEnv_->RegisterUncaughtExceptionHandler(uncaughtExceptionInfo, isStatic);
 }
 
-void JsRuntime::RegisterUncatchableExceptionHandler(const JsEnv::UncatchableTask& uncatchableTask)
+void JsRuntime::RegisterUncatchableExceptionHandler(const JsEnv::UncatchableTask& uncatchableTask, bool isStatic)
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     CHECK_POINTER(jsEnv_);
-    jsEnv_->RegisterUncatchableExceptionHandler(uncatchableTask);
+    jsEnv_->RegisterUncatchableExceptionHandler(uncatchableTask, isStatic);
 }
 
 void JsRuntime::RegisterQuickFixQueryFunc(const std::map<std::string, std::string>& moduleAndPath)

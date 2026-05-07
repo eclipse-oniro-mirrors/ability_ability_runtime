@@ -151,6 +151,7 @@ static napi_value InitWindowModeObject(napi_env env)
     NAPI_CALL(env, SetEnumItem(env, object, "WINDOW_MODE_SPLIT_PRIMARY", MULTI_WINDOW_DISPLAY_PRIMARY));
     NAPI_CALL(env, SetEnumItem(env, object, "WINDOW_MODE_SPLIT_SECONDARY", MULTI_WINDOW_DISPLAY_SECONDARY));
     NAPI_CALL(env, SetEnumItem(env, object, "WINDOW_MODE_FLOATING", MULTI_WINDOW_DISPLAY_FLOATING));
+    NAPI_CALL(env, SetEnumItem(env, object, "WINDOW_MODE_SPLIT", MULTI_WINDOW_DISPLAY_SPLIT));
 
     return handleEscape.Escape(object);
 }

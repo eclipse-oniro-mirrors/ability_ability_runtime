@@ -15,5 +15,11 @@ import("//build/ohos.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 group("tools_target") {
-  deps = [ "aa:tools_aa" ]
+  deps = [
+    "aa:tools_aa",
+    "ohos-example:ohos-example",
+    "ohos-simple:ohos-simple",
+    "ohos-timer:ohos-timer",
+    "ohos-aa:tools_ohos_aa"
+  ]
 }
