@@ -105,7 +105,7 @@ bool ToolInfo::ValidateName(const std::string &name)
     // Must start with "ohos-" or "hms-"
     const std::string OHOS_PREFIX = "ohos-";
     const std::string HMS_PREFIX = "hms-";
-    const size_t MAX_SUFFIX_LENGTH = 16;
+    const size_t MAX_SUFFIX_LENGTH = 32;
 
     bool hasValidPrefix = false;
     size_t suffixStart = 0;
@@ -122,7 +122,7 @@ bool ToolInfo::ValidateName(const std::string &name)
         return false;
     }
 
-    // Suffix must not exceed 16 characters
+    // Suffix must not exceed 32 characters
     std::string suffix = name.substr(suffixStart);
     if (suffix.empty() || suffix.size() > MAX_SUFFIX_LENGTH) {
         return false;

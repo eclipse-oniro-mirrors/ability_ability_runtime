@@ -1056,6 +1056,7 @@ HWTEST_F(ToolInfoTest, ToolInfo_ValidateName_0100, TestSize.Level1)
     EXPECT_TRUE(ToolInfo::ValidateName("ohos-test"));
     EXPECT_TRUE(ToolInfo::ValidateName("ohos-abc"));
     EXPECT_TRUE(ToolInfo::ValidateName("ohos-1234567890123456"));  // 16 chars suffix
+    EXPECT_TRUE(ToolInfo::ValidateName("ohos-12345678901234567890123456789012"));  // 32 chars suffix
 
     GTEST_LOG_(INFO) << "ToolInfo_ValidateName_0100 end";
 }
@@ -1073,6 +1074,7 @@ HWTEST_F(ToolInfoTest, ToolInfo_ValidateName_0200, TestSize.Level1)
     EXPECT_TRUE(ToolInfo::ValidateName("hms-test"));
     EXPECT_TRUE(ToolInfo::ValidateName("hms-abc"));
     EXPECT_TRUE(ToolInfo::ValidateName("hms-1234567890123456"));  // 16 chars suffix
+    EXPECT_TRUE(ToolInfo::ValidateName("hms-12345678901234567890123456789012"));  // 32 chars suffix
 
     GTEST_LOG_(INFO) << "ToolInfo_ValidateName_0200 end";
 }
@@ -1100,16 +1102,16 @@ HWTEST_F(ToolInfoTest, ToolInfo_ValidateName_0300, TestSize.Level1)
 
 /**
  * @tc.name: ToolInfo_ValidateName_0400
- * @tc.desc: Test ToolInfo ValidateName with suffix exceeding 16 chars
+ * @tc.desc: Test ToolInfo ValidateName with suffix exceeding 32 chars
  * @tc.type: FUNC
  */
 HWTEST_F(ToolInfoTest, ToolInfo_ValidateName_0400, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "ToolInfo_ValidateName_0400 start";
 
-    EXPECT_FALSE(ToolInfo::ValidateName("ohos-12345678901234567"));  // 17 chars suffix
-    EXPECT_FALSE(ToolInfo::ValidateName("hms-abcdefghijklmnopq"));  // 17 chars suffix
-    EXPECT_FALSE(ToolInfo::ValidateName("ohos-thisisaverylongname"));  // long suffix
+    EXPECT_FALSE(ToolInfo::ValidateName("ohos-123456789012345678901234567890123"));  // 33 chars suffix
+    EXPECT_FALSE(ToolInfo::ValidateName("hms-abcdefghijklmnopabcdefghijklmnopq"));  // 33 chars suffix
+    EXPECT_FALSE(ToolInfo::ValidateName("ohos-thisisaverylongtoolnameexceedinglimit"));  // long suffix
 
     GTEST_LOG_(INFO) << "ToolInfo_ValidateName_0400 end";
 }
@@ -1144,9 +1146,11 @@ HWTEST_F(ToolInfoTest, ToolInfo_ValidateName_0600, TestSize.Level1)
     EXPECT_TRUE(ToolInfo::ValidateName("hms-x"));  // 1 char suffix
     EXPECT_TRUE(ToolInfo::ValidateName("ohos-1234567890abcdef"));  // exactly 16 chars
     EXPECT_TRUE(ToolInfo::ValidateName("hms-abcdefghijklmnop"));  // exactly 16 chars
+    EXPECT_TRUE(ToolInfo::ValidateName("ohos-12345678901234567890123456789012"));  // exactly 32 chars
+    EXPECT_TRUE(ToolInfo::ValidateName("hms-abcdefghijklmnopabcdefghijklmnop"));  // exactly 32 chars
 
     // Invalid edge cases
-    EXPECT_FALSE(ToolInfo::ValidateName("ohos-1234567890abcdefg"));  // 17 chars
+    EXPECT_FALSE(ToolInfo::ValidateName("ohos-123456789012345678901234567890123"));  // 33 chars
     EXPECT_FALSE(ToolInfo::ValidateName("ohos-"));  // 0 chars suffix
 
     GTEST_LOG_(INFO) << "ToolInfo_ValidateName_0600 end";
@@ -2046,7 +2050,7 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_NameValidation_0100, TestSize.Leve
 
 /**
  * @tc.name: ToolInfo_ParseFromJson_NameValidation_0200
- * @tc.desc: Test ToolInfo ParseFromJson with invalid name (suffix too long)
+ * @tc.desc: Test ToolInfo ParseFromJson with invalid name (suffix too long - exceeds 32 chars)
  * @tc.type: FUNC
  */
 HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_NameValidation_0200, TestSize.Level1)
@@ -2054,7 +2058,7 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_NameValidation_0200, TestSize.Leve
     GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_NameValidation_0200 start";
 
     nlohmann::json json = R"({
-        "name": "ohos-thisisaverylongtoolname",
+        "name": "ohos-thisisaverylongtoolnameexceedinglimit",
         "version": "1.0.0"
     })"_json;
 
