@@ -3370,5 +3370,6 @@ HWTEST_F(AbilityManagerServiceThirdTest, CheckSupportVpn_002, TestSize.Level1)
     auto result = abilityMs_->CheckSupportVpn(abilityInfo);
     EXPECT_TRUE(result);
 }
+
 }  // namespace AAFwk
 }  // namespace OHOS
