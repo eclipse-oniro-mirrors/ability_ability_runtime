@@ -35,6 +35,9 @@
 #ifdef CJ_FRONTEND
 #include "cj_runtime.h"
 #endif
+#if defined(NWEB)
+#include "nweb_helper.h"
+#endif
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -488,22 +491,22 @@ void DumpRuntimeHelper::DumpJsvmHeap(const OHOS::AppExecFwk::MemDumpInfo &info)
 
 void DumpRuntimeHelper::DumpArkwebJsHeap(const OHOS::AppExecFwk::MemDumpInfo &info)
 {
-    TAG_LOGI(AAFwkTag::APPKIT, "dump arkweb v8 heaps, renderPid:%{public}u, tid:%{public}d, needRaw:%{public}d",
-        info.renderPid, info.tid, info.needRaw);
-    int32_t fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::ARKWEB_JS_HEAP_SNAPSHOT));
-    if (fd < 0) {
-        TAG_LOGE(AAFwkTag::APPKIT, "RequestFileDescriptor failed");
-        return;
+#if defined(NWEB)
+    TAG_LOGI(AAFwkTag::APPKIT, "dump arkweb js heaps, renderPid:%{public}u, needDump:%{public}d, needGc:%{public}d, needRaw:%{public}d",
+        info.renderPid, info.needDump, info.needGc, info.needRaw);
+    int32_t fd = -1;
+    if (info.needDump) {
+        struct FaultLoggerdRequest request{};
+        request.type = info.needRaw ? static_cast<int32_t>(FaultLoggerType::ARKWEB_JS_RAW_SNAPSHOT) :
+                                      static_cast<int32_t>(FaultLoggerType::ARKWEB_JS_HEAP_SNAPSHOT);
+        request.pid = info.pid;
+        request.tid = info.renderPid;
+        request.time = GetCurrentTimestamp();
+        fd = RequestFileDescriptorEx(&request);
     }
-    auto& dumpListener = OHOS::HiviewDFX::HidebugMemDumpListener::GetInstance();
-    bool ret = dumpListener.TriggerListener("ARKWEB_V8", fd,
-        OH_HiDebug_MemListenerType::OH_HIDEBUG_DUMP_SNAPSHOT, info.mayReportToOEM, nullptr);
-    if (!ret) {
-        TAG_LOGE(AAFwkTag::APPKIT, "TriggerListener failed");
-        close(fd);
-        return;
-    }
-    close(fd);
+    OHOS::NWeb::NWebHelper &nWebHelper = OHOS::NWeb::NWebHelper::Instance();
+    nWebHelper.DumpArkWebJSHeap(fd, info.renderPid, info.needDump, info.needGc, info.needRaw);
+#endif
 }
 
 void DumpRuntimeHelper::GetCheckList(const std::unique_ptr<AbilityRuntime::Runtime> &runtime, std::string &checkList)
