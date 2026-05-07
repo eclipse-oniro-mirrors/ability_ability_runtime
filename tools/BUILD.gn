@@ -20,6 +20,7 @@ group("tools_target") {
     "ohos-example:ohos-example",
     "ohos-simple:ohos-simple",
     "ohos-timer:ohos-timer",
-    "ohos-aa:tools_ohos_aa"
+    "ohos-aa:tools_ohos_aa",
+    "ohos-arktsScript:ohos-arktsScript"
   ]
 }
