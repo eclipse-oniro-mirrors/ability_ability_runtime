@@ -16,6 +16,10 @@
 #ifndef MOCK_IPC_CPARCEL_H
 #define MOCK_IPC_CPARCEL_H
 
+struct OHIPCParcel {
+    int dummy;
+};
+
 struct OHIPCRemoteStub {
     int dummy;
 };

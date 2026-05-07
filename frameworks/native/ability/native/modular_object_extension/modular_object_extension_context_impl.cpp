@@ -24,6 +24,17 @@ namespace AbilityRuntime {
 const size_t ModularObjectExtensionContext::CONTEXT_TYPE_ID(
     std::hash<const char*> {} ("ModularObjectExtensionContext"));
 
+void ModularObjectExtensionContext::SetEventHandler(
+    const std::shared_ptr<AppExecFwk::EventHandler> &handler)
+{
+    handler_ = handler;
+}
+
+std::shared_ptr<AppExecFwk::EventHandler> ModularObjectExtensionContext::GetEventHandler() const
+{
+    return handler_.lock();
+}
+
 ErrCode ModularObjectExtensionContext::StartSelfUIAbility(const AAFwk::Want &want) const
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);

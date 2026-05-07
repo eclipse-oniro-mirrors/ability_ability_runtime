@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <string>
+#include "ability_handler.h"
 #include "mock_types.h"
 #include "refbase.h"
 #include "iremote_object.h"
@@ -27,7 +28,6 @@ namespace AbilityRuntime {
 
 class AbilityLocalRecord {};
 class OHOSApplication {};
-class AbilityHandler {};
 
 struct AbilityInfo {
     std::string srcEntrance;

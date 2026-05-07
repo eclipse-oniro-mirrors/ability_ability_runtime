@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,32 +13,21 @@
  * limitations under the License.
  */
 
-#ifndef MOCK_TYPES_H
-#define MOCK_TYPES_H
+#ifndef OHOS_AAFWK_HILOG_TAG_WRAPPER_H
+#define OHOS_AAFWK_HILOG_TAG_WRAPPER_H
 
-#include <functional>
-#include <memory>
-
-namespace OHOS {
-namespace AAFwk {
-class Want {};
-class StartOptions {};
-} // namespace AAFwk
-
-namespace AppExecFwk {
-class EventHandler {
-public:
-    bool PostSyncTask(const std::function<void()> &task, const char *name)
-    {
-        (void)name;
-        if (!task) {
-            return false;
-        }
-        task();
-        return true;
-    }
+namespace OHOS::AAFwk {
+enum class AAFwkLogTag : uint32_t {
+    DEFAULT = 0xD001300,
 };
-} // namespace AppExecFwk
-} // namespace OHOS
+}
 
-#endif // MOCK_TYPES_H
+using AAFwkTag = OHOS::AAFwk::AAFwkLogTag;
+
+#define TAG_LOGD(tag, fmt, ...) ((void)0)
+#define TAG_LOGI(tag, fmt, ...) ((void)0)
+#define TAG_LOGW(tag, fmt, ...) ((void)0)
+#define TAG_LOGE(tag, fmt, ...) ((void)0)
+#define TAG_LOGF(tag, fmt, ...) ((void)0)
+
+#endif
