@@ -18,6 +18,7 @@
 
 #include "ani.h"
 #include "ability_manager_client.h"
+#include "ability_native_thread.h"
 #include "ani_common_util.h"
 #include "ani_common_want.h"
 #include "application_context.h"
@@ -72,6 +73,7 @@ public:
     static void NativeOffEnvironmentSync(ani_env *env, ani_object aniObj, ani_int callbackId, ani_object callback);
     static void NativeOffEnvironmentCheck(ani_env *env, ani_object aniObj);
     static ani_int NativeOnEnvironmentSync(ani_env *env, ani_object aniObj, ani_object envCallback);
+    static ani_object GetUIAbilityByInstanceId(ani_env *env, ani_object aniObj, ani_string instanceId);
 protected:
     std::weak_ptr<ApplicationContext> applicationContext_;
 private:
@@ -99,6 +101,7 @@ private:
     void OnNativeSystemConfigurationUpdatedSync(ani_env *env, ani_object aniObj, ani_object callback);
     void OffNativeSystemConfigurationUpdatedSync(ani_env *env, ani_object aniObj, ani_object callback);
     ani_int OnNativeOnEnvironmentSync(ani_env *env, ani_object aniObj, ani_object envCallback);
+    ani_object OnGetUIAbilityByInstanceId(ani_env *env, ani_string instanceId);
     static void SetEventHubContextIsApplicationContext(ani_env *aniEnv, ani_ref eventHubRef);
     ani_object CreateWindowStageArray(ani_env *env, std::vector<std::shared_ptr<UIAbility>> uiAbility);
     std::shared_ptr<EtsEnviromentCallback> etsEnviromentCallback_;

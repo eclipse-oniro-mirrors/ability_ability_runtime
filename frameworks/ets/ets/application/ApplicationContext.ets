@@ -26,6 +26,7 @@ import EnvironmentCallback from '@ohos.app.ability.EnvironmentCallback';
 import type ApplicationStateChangeCallback from '@ohos.app.ability.ApplicationStateChangeCallback';
 import { AbilityUtils } from '../utils/AbilityUtils';
 import systemConfiguration from '../@ohos.app.ability.systemConfiguration';
+import UIAbility from '@ohos.app.ability.UIAbility';
 
 export class Cleaner {
   public ptr: long = 0;
@@ -93,6 +94,7 @@ export default class ApplicationContext extends Context {
   public native nativeOffApplicationStateChangeSync(callback?: ApplicationStateChangeCallback): void;
   public native nativegetCurrentAppCloneIndex(): int;
   public native nativegetCurrentInstanceKey(): string;
+  private native nativeGetUIAbilityByInstanceId(instanceId: string): UIAbility;
   private static native nativeTransferStatic(input: ESValue, type: string): Object;
   private static native nativeTransferDynamic(input: Object): ESValue;
   private static contextType: string = 'ApplicationContext';
@@ -341,6 +343,10 @@ export default class ApplicationContext extends Context {
 
   getCurrentAppCloneIndex(): int {
     return this.nativegetCurrentAppCloneIndex();
+  }
+
+  getUIAbilityByInstanceId(instanceId: string): UIAbility {
+    return this.nativeGetUIAbilityByInstanceId(instanceId);
   }
 
   static transferStatic(input: Any): Object {

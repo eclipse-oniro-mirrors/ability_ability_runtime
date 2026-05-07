@@ -100,6 +100,44 @@ ani_int EtsApplicationContextUtils::OnNativeOnEnvironmentSync(ani_env *env, ani_
     return callbackId;
 }
 
+ani_object EtsApplicationContextUtils::OnGetUIAbilityByInstanceId(ani_env *env, ani_string instanceId)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "OnGetUIAbilityByInstanceId called");
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null env");
+        return nullptr;
+    }
+    auto applicationContext = applicationContext_.lock();
+    if (applicationContext == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null applicationContext");
+        EtsErrorUtil::ThrowRuntimeError(env, ERR_ABILITY_RUNTIME_EXTERNAL_CONTEXT_NOT_EXIST);
+        return nullptr;
+    }
+
+    std::string instanceIdStr;
+    if (!AppExecFwk::GetStdString(env, instanceId, instanceIdStr)) {
+        TAG_LOGE(AAFwkTag::APPKIT, "Parse instanceId failed");
+        EtsErrorUtil::ThrowInvalidParamError(env, "Parse param instanceId failed, instanceId must be string.");
+        return nullptr;
+    }
+
+    auto nativeAbility = applicationContext->GetNativeAbility(instanceIdStr);
+    if (nativeAbility == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "NativeAbility not found for instanceId: %{public}s", instanceIdStr.c_str());
+        EtsErrorUtil::ThrowRuntimeError(env, ERR_ABILITY_RUNTIME_EXTERNAL_NO_SUCH_ID);
+        return nullptr;
+    }
+
+    if (nativeAbility->etsAbilityObj == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "etsAbilityObj is null for instanceId: %{public}s", instanceIdStr.c_str());
+        EtsErrorUtil::ThrowRuntimeError(env, ERR_ABILITY_RUNTIME_EXTERNAL_INTERNAL_ERROR);
+        return nullptr;
+    }
+
+    TAG_LOGD(AAFwkTag::APPKIT, "Get UIAbility for instanceId: %{public}s", instanceIdStr.c_str());
+    return nativeAbility->etsAbilityObj;
+}
+
 void EtsApplicationContextUtils::OnNativeOffEnvironmentSync(ani_env *env, ani_object aniObj,
     ani_int callbackId, ani_object callback)
 {
@@ -1030,6 +1068,19 @@ ani_int EtsApplicationContextUtils::NativeOnEnvironmentSync(ani_env *env, ani_ob
     return etsContext->OnNativeOnEnvironmentSync(env, aniObj, envCallback);
 }
 
+ani_object EtsApplicationContextUtils::GetUIAbilityByInstanceId(
+    ani_env *env, ani_object aniObj, ani_string instanceId)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "GetUIAbilityByInstanceId called");
+    auto etsContext = GeApplicationContext(env, aniObj);
+    if (etsContext == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null etsContext");
+        EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT);
+        return nullptr;
+    }
+    return etsContext->OnGetUIAbilityByInstanceId(env, instanceId);
+}
+
 void EtsApplicationContextUtils::NativeOffEnvironmentCheck(ani_env *env, ani_object aniObj)
 {
     TAG_LOGD(AAFwkTag::APPKIT, "NativeOffEnvironmentCheck Call");
@@ -1288,6 +1339,9 @@ void EtsApplicationContextUtils::BindApplicationContextFunc(ani_env *aniEnv)
             ani_native_function {"nativeOffSystemConfigurationUpdatedSync",
                 "C{@ohos.app.ability.systemConfiguration.systemConfiguration.UpdatedCallback}:",
                 reinterpret_cast<void*>(EtsApplicationContextUtils::NativeOffSystemConfigurationUpdatedSync)},
+            ani_native_function {"nativeGetUIAbilityByInstanceId",
+                "C{std.core.String}:C{@ohos.app.ability.UIAbility.UIAbility}",
+                reinterpret_cast<void*>(EtsApplicationContextUtils::GetUIAbilityByInstanceId)},
         };
         if ((status = aniEnv->Class_BindNativeMethods(contextClass, applicationContextFunctions.data(),
             applicationContextFunctions.size())) != ANI_OK) {
