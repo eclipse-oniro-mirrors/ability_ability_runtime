@@ -724,6 +724,8 @@ private:
     */
     void GetOrCreateServiceRecord(const AbilityRequest &abilityRequest, const bool isCreatedByConnect,
         std::shared_ptr<BaseExtensionRecord> &targetAbilityRecord, bool &isLoadedAbility);
+    int32_t HandleExtensionSetup(const AbilityRequest &abilityRequest,
+        std::shared_ptr<BaseExtensionRecord> &targetService, const std::string &serviceKey);
     void SetServiceAfterNewCreate(const AbilityRequest &abilityRequest, BaseExtensionRecord &targetService);
 
     /**

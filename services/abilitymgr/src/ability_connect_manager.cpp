@@ -3290,11 +3290,15 @@ void AbilityConnectManager::GetOrCreateServiceRecord(const AbilityRequest &abili
             targetService->SetCreateByConnectMode();
         }
         SetServiceAfterNewCreate(abilityRequest, *targetService);
-        AddToServiceMap(serviceKey, targetService);
         isLoadedAbility = false;
 
-        // ModularObject: set processName and requestId for newly created record
-        ModularObjectUtils::SetupNewRecord(abilityRequest, targetService, serviceKey);
+        auto setupRet = HandleExtensionSetup(abilityRequest, targetService, serviceKey);
+        if (setupRet != ERR_OK) {
+            targetService = nullptr;
+            return;
+        }
+
+        AddToServiceMap(serviceKey, targetService);
 
         // Notify running timeout monitor about service extension start
         auto &newAbilityInfo = abilityRequest.abilityInfo;
@@ -3308,6 +3312,16 @@ void AbilityConnectManager::GetOrCreateServiceRecord(const AbilityRequest &abili
         }
     }
     TAG_LOGD(AAFwkTag::EXT, "service map add, serviceKey: %{public}s", serviceKey.c_str());
+}
+
+int32_t AbilityConnectManager::HandleExtensionSetup(const AbilityRequest &abilityRequest,
+    std::shared_ptr<BaseExtensionRecord> &targetService, const std::string &serviceKey)
+{
+    if (abilityRequest.abilityInfo.extensionAbilityType !=
+        AppExecFwk::ExtensionAbilityType::MODULAR_OBJECT) {
+        return ERR_OK;
+    }
+    return ModularObjectUtils::SetupNewRecord(abilityRequest, targetService, serviceKey);
 }
 
 void AbilityConnectManager::SetServiceAfterNewCreate(const AbilityRequest &abilityRequest,

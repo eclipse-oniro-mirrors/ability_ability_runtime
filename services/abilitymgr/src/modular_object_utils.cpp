@@ -96,7 +96,7 @@ int32_t ModularObjectUtils::CheckPermission(const AbilityRequest &abilityRequest
     if (ret != ERR_OK) {
         return ret;
     }
-    ret = CheckInProcessLaunchMode(targetExtensionInfo.launchMode, bundleName);
+    ret = CheckInProcessLaunchMode(targetExtensionInfo.launchMode, abilityRequest.uid);
     if (ret != ERR_OK) {
         return ret;
     }
@@ -128,26 +128,15 @@ int32_t ModularObjectUtils::CheckExtensionEnabled(const ModularObjectExtensionIn
     return ERR_OK;
 }
 
-int32_t ModularObjectUtils::CheckInProcessLaunchMode(MoeLaunchMode launchMode, const std::string &targetBundleName)
+int32_t ModularObjectUtils::CheckInProcessLaunchMode(MoeLaunchMode launchMode, int32_t targetUid)
 {
     if (launchMode != MoeLaunchMode::IN_PROCESS) {
         return ERR_OK;
     }
     int32_t callingUid = IPCSkeleton::GetCallingUid();
-    auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
-    CHECK_POINTER_AND_RETURN(bundleMgrHelper, INNER_ERR);
-    std::string callerBundleName;
-    int32_t callerAppIndex = 0;
-    auto ret = IN_PROCESS_CALL(
-        bundleMgrHelper->GetNameAndIndexForUid(callingUid, callerBundleName, callerAppIndex));
-    if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::EXT, "Get caller bundleName failed, callingUid: %{public}d, ret: %{public}d",
-            callingUid, ret);
-        return INNER_ERR;
-    }
-    if (callerBundleName != targetBundleName) {
-        TAG_LOGE(AAFwkTag::EXT, "IN_PROCESS not support cross-app connect, caller: %{public}s, target: %{public}s",
-            callerBundleName.c_str(), targetBundleName.c_str());
+    if (callingUid != targetUid) {
+        TAG_LOGE(AAFwkTag::EXT, "IN_PROCESS not support cross-app, callerUid: %{public}d, targetUid: %{public}d",
+            callingUid, targetUid);
         return ERR_MOE_CROSS_APP_IN_PROCESS;
     }
     return ERR_OK;
@@ -347,16 +336,16 @@ std::shared_ptr<ModularObjectExtensionInfo> ModularObjectUtils::QueryConfig(cons
     return nullptr;
 }
 
-void ModularObjectUtils::SetupNewRecord(const AbilityRequest &abilityRequest,
+int32_t ModularObjectUtils::SetupNewRecord(const AbilityRequest &abilityRequest,
     std::shared_ptr<BaseExtensionRecord> &targetService, const std::string &serviceKey)
 {
     if (targetService == nullptr) {
         TAG_LOGE(AAFwkTag::EXT, "targetService is null");
-        return;
+        return ERR_INVALID_VALUE;
     }
     auto config = QueryConfig(abilityRequest);
     if (config == nullptr) {
-        return;
+        return ERR_INVALID_VALUE;
     }
     // Determine processName
     std::string process;
@@ -366,13 +355,11 @@ void ModularObjectUtils::SetupNewRecord(const AbilityRequest &abilityRequest,
         auto procRet = IN_PROCESS_CALL(
             DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance()->GetRunningProcessInfoByPid(
                 callingPid, processInfo));
-        if (procRet == ERR_OK && !processInfo.processName_.empty()) {
-            process = processInfo.processName_;
-        } else if (!abilityRequest.appInfo.process.empty()) {
-            process = abilityRequest.appInfo.process;
-        } else {
-            process = abilityRequest.abilityInfo.bundleName;
+        if (procRet != ERR_OK || processInfo.processName_.empty()) {
+            TAG_LOGE(AAFwkTag::EXT, "GetRunningProcessInfoByPid failed in IN_PROCESS mode, ret:%{public}d", procRet);
+            return INNER_ERR;
         }
+        process = processInfo.processName_;
     } else {
         switch (config->processMode) {
             case MoeProcessMode::BUNDLE:
@@ -391,6 +378,10 @@ void ModularObjectUtils::SetupNewRecord(const AbilityRequest &abilityRequest,
             default:
                 break;
         }
+        int32_t appCloneIndex = abilityRequest.appInfo.appIndex;
+        if (appCloneIndex > 0) {
+            process = process + ":" + std::to_string(appCloneIndex);
+        }
     }
     if (!process.empty()) {
         targetService->SetProcessName(process);
@@ -401,6 +392,7 @@ void ModularObjectUtils::SetupNewRecord(const AbilityRequest &abilityRequest,
     if (pos != std::string::npos) {
         targetService->SetRequestId(serviceKey.substr(pos + 1));
     }
+    return ERR_OK;
 }
 
 int32_t ModularObjectUtils::CheckLimits(int32_t instanceCount, int32_t connectionCount)

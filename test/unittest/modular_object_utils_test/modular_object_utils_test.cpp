@@ -646,14 +646,14 @@ HWTEST_F(ModularObjectUtilsTest, GetPidToCheckByCallerToken_006, TestSize.Level1
 
 /**
  * @tc.name: CheckPermission_ShouldReturnErrorWhenInProcessCrossApp
- * @tc.desc: IN_PROCESS with different caller bundleName returns ERR_MOE_CROSS_APP_IN_PROCESS
+ * @tc.desc: IN_PROCESS with different uid returns ERR_MOE_CROSS_APP_IN_PROCESS
  */
 HWTEST_F(ModularObjectUtilsTest,
     CheckPermission_ShouldReturnErrorWhenInProcessCrossApp, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "CheckPermission_ShouldReturnErrorWhenInProcessCrossApp start";
     MockFlag::launchMode = MoeLaunchMode::IN_PROCESS;
-    // Default callerBundleName is "com.caller.bundle", target is "com.test.bundle"
+    // callingUid is 1000 (from ResetFlags), request.uid is 100 (different)
     AbilityRequest request;
     request.uid = 100;
     request.want.SetElement(ElementName("", "com.test.bundle", "TestAbility"));
@@ -663,41 +663,23 @@ HWTEST_F(ModularObjectUtilsTest,
 }
 
 /**
- * @tc.name: CheckPermission_ShouldReturnErrorWhenInProcessGetNameFail
- * @tc.desc: IN_PROCESS with GetNameAndIndexForUid failure returns INNER_ERR
+ * @tc.name: CheckPermission_ShouldReturnOkWhenInProcessSameUid
+ * @tc.desc: IN_PROCESS with same uid passes and reaches foreground check
  */
 HWTEST_F(ModularObjectUtilsTest,
-    CheckPermission_ShouldReturnErrorWhenInProcessGetNameFail, TestSize.Level1)
+    CheckPermission_ShouldReturnOkWhenInProcessSameUid, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CheckPermission_ShouldReturnErrorWhenInProcessGetNameFail start";
+    GTEST_LOG_(INFO) << "CheckPermission_ShouldReturnOkWhenInProcessSameUid start";
     MockFlag::launchMode = MoeLaunchMode::IN_PROCESS;
-    MockFlag::getNameAndIndexRet = -1;
+    // callingUid is 1000, set request.uid to match
     AbilityRequest request;
-    request.uid = 100;
-    request.want.SetElement(ElementName("", "com.test.bundle", "TestAbility"));
-    auto ret = ModularObjectUtils::CheckPermission(request);
-    EXPECT_EQ(ret, INNER_ERR);
-    GTEST_LOG_(INFO) << "CheckPermission_ShouldReturnErrorWhenInProcessGetNameFail end";
-}
-
-/**
- * @tc.name: CheckPermission_ShouldReturnOkWhenInProcessSameBundle
- * @tc.desc: IN_PROCESS with same caller bundleName passes and reaches foreground check
- */
-HWTEST_F(ModularObjectUtilsTest,
-    CheckPermission_ShouldReturnOkWhenInProcessSameBundle, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "CheckPermission_ShouldReturnOkWhenInProcessSameBundle start";
-    MockFlag::launchMode = MoeLaunchMode::IN_PROCESS;
-    MockFlag::callerBundleName = "com.test.bundle";
-    AbilityRequest request;
-    request.uid = 100;
+    request.uid = 1000;
     request.want.SetElement(ElementName("", "com.test.bundle", "TestAbility"));
     // Will fail at CheckCallerForeground, but passes IN_PROCESS check
     MockFlag::getRunningProcessInfoRet = -1;
     auto ret = ModularObjectUtils::CheckPermission(request);
     EXPECT_EQ(ret, -1);
-    GTEST_LOG_(INFO) << "CheckPermission_ShouldReturnOkWhenInProcessSameBundle end";
+    GTEST_LOG_(INFO) << "CheckPermission_ShouldReturnOkWhenInProcessSameUid end";
 }
 
 /**
@@ -726,41 +708,27 @@ HWTEST_F(ModularObjectUtilsTest,
  * @tc.desc: GetNameAndIndexForUid fails returns INNER_ERR
  */
 HWTEST_F(ModularObjectUtilsTest,
-    CheckInProcessLaunchMode_ShouldReturnErrorWhenGetNameFail, TestSize.Level1)
+    CheckInProcessLaunchMode_ShouldReturnErrorWhenCallerUidDiffersFromTarget, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CheckInProcessLaunchMode_ShouldReturnErrorWhenGetNameFail start";
-    MockFlag::getNameAndIndexRet = -1;
-    auto ret = ModularObjectUtils::CheckInProcessLaunchMode(MoeLaunchMode::IN_PROCESS, "com.test.bundle");
-    EXPECT_EQ(ret, INNER_ERR);
-    GTEST_LOG_(INFO) << "CheckInProcessLaunchMode_ShouldReturnErrorWhenGetNameFail end";
-}
-
-/**
- * @tc.name: CheckInProcessLaunchMode_ShouldReturnErrorWhenCallerDiffersFromTarget
- * @tc.desc: Caller bundleName differs from target returns ERR_MOE_CROSS_APP_IN_PROCESS
- */
-HWTEST_F(ModularObjectUtilsTest,
-    CheckInProcessLaunchMode_ShouldReturnErrorWhenCallerDiffersFromTarget, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "CheckInProcessLaunchMode_ShouldReturnErrorWhenCallerDiffersFromTarget start";
-    // Default callerBundleName is "com.caller.bundle"
-    auto ret = ModularObjectUtils::CheckInProcessLaunchMode(MoeLaunchMode::IN_PROCESS, "com.test.bundle");
+    GTEST_LOG_(INFO) << "CheckInProcessLaunchMode_ShouldReturnErrorWhenCallerUidDiffersFromTarget start";
+    // callingUid is 1000 (from ResetFlags), targetUid is different
+    auto ret = ModularObjectUtils::CheckInProcessLaunchMode(MoeLaunchMode::IN_PROCESS, 2000);
     EXPECT_EQ(ret, ERR_MOE_CROSS_APP_IN_PROCESS);
-    GTEST_LOG_(INFO) << "CheckInProcessLaunchMode_ShouldReturnErrorWhenCallerDiffersFromTarget end";
+    GTEST_LOG_(INFO) << "CheckInProcessLaunchMode_ShouldReturnErrorWhenCallerUidDiffersFromTarget end";
 }
 
 /**
- * @tc.name: CheckInProcessLaunchMode_ShouldReturnOkWhenCallerMatchesTarget
- * @tc.desc: Caller bundleName matches target returns ERR_OK
+ * @tc.name: CheckInProcessLaunchMode_ShouldReturnOkWhenCallerUidMatchesTarget
+ * @tc.desc: Caller uid matches target uid returns ERR_OK
  */
 HWTEST_F(ModularObjectUtilsTest,
-    CheckInProcessLaunchMode_ShouldReturnOkWhenCallerMatchesTarget, TestSize.Level1)
+    CheckInProcessLaunchMode_ShouldReturnOkWhenCallerUidMatchesTarget, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CheckInProcessLaunchMode_ShouldReturnOkWhenCallerMatchesTarget start";
-    MockFlag::callerBundleName = "com.test.bundle";
-    auto ret = ModularObjectUtils::CheckInProcessLaunchMode(MoeLaunchMode::IN_PROCESS, "com.test.bundle");
+    GTEST_LOG_(INFO) << "CheckInProcessLaunchMode_ShouldReturnOkWhenCallerUidMatchesTarget start";
+    // callingUid is 1000 (from ResetFlags)
+    auto ret = ModularObjectUtils::CheckInProcessLaunchMode(MoeLaunchMode::IN_PROCESS, 1000);
     EXPECT_EQ(ret, ERR_OK);
-    GTEST_LOG_(INFO) << "CheckInProcessLaunchMode_ShouldReturnOkWhenCallerMatchesTarget end";
+    GTEST_LOG_(INFO) << "CheckInProcessLaunchMode_ShouldReturnOkWhenCallerUidMatchesTarget end";
 }
 
 /**
@@ -771,8 +739,8 @@ HWTEST_F(ModularObjectUtilsTest,
     CheckInProcessLaunchMode_ShouldReturnOkWhenCrossProcessMode, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "CheckInProcessLaunchMode_ShouldReturnOkWhenCrossProcessMode start";
-    // callerBundleName differs from target, but CROSS_PROCESS mode skips check
-    auto ret = ModularObjectUtils::CheckInProcessLaunchMode(MoeLaunchMode::CROSS_PROCESS, "com.test.bundle");
+    // CROSS_PROCESS mode skips check regardless of uid
+    auto ret = ModularObjectUtils::CheckInProcessLaunchMode(MoeLaunchMode::CROSS_PROCESS, 9999);
     EXPECT_EQ(ret, ERR_OK);
     GTEST_LOG_(INFO) << "CheckInProcessLaunchMode_ShouldReturnOkWhenCrossProcessMode end";
 }
@@ -917,45 +885,6 @@ HWTEST_F(ModularObjectUtilsTest, SetupNewRecord_ShouldUseProcessNameWhenInProces
     ModularObjectUtils::SetupNewRecord(request, service, "key_456");
     EXPECT_EQ(AbilityRecord::processName_, "com.test.process");
     GTEST_LOG_(INFO) << "SetupNewRecord_ShouldUseProcessNameWhenInProcessMode end";
-}
-
-HWTEST_F(ModularObjectUtilsTest, SetupNewRecord_ShouldFallbackToAppProcessWhenAppMgrClientFails, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "SetupNewRecord_ShouldFallbackToAppProcessWhenAppMgrClientFails start";
-    ModularObjectExtensionInfo info;
-    info.bundleName = "com.test.bundle";
-    info.abilityName = "TestAbility";
-    info.launchMode = MoeLaunchMode::IN_PROCESS;
-    MockFlag::modularObjectInfos = {info};
-    MockFlag::getRunningProcessInfoRet = -1;
-    AbilityRequest request;
-    request.abilityInfo.bundleName = "com.test.bundle";
-    request.abilityInfo.name = "TestAbility";
-    request.appInfo.process = "com.test.appprocess";
-    auto service = std::make_shared<BaseExtensionRecord>();
-    AbilityRecord::processName_ = "";
-    ModularObjectUtils::SetupNewRecord(request, service, "key_789");
-    EXPECT_EQ(AbilityRecord::processName_, "com.test.appprocess");
-    GTEST_LOG_(INFO) << "SetupNewRecord_ShouldFallbackToAppProcessWhenAppMgrClientFails end";
-}
-
-HWTEST_F(ModularObjectUtilsTest, SetupNewRecord_ShouldFallbackToBundleNameWhenNoProcessInfo, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "SetupNewRecord_ShouldFallbackToBundleNameWhenNoProcessInfo start";
-    ModularObjectExtensionInfo info;
-    info.bundleName = "com.test.bundle";
-    info.abilityName = "TestAbility";
-    info.launchMode = MoeLaunchMode::IN_PROCESS;
-    MockFlag::modularObjectInfos = {info};
-    MockFlag::processName = "";
-    AbilityRequest request;
-    request.abilityInfo.bundleName = "com.test.bundle";
-    request.abilityInfo.name = "TestAbility";
-    auto service = std::make_shared<BaseExtensionRecord>();
-    AbilityRecord::processName_ = "";
-    ModularObjectUtils::SetupNewRecord(request, service, "key_101");
-    EXPECT_EQ(AbilityRecord::processName_, "com.test.bundle");
-    GTEST_LOG_(INFO) << "SetupNewRecord_ShouldFallbackToBundleNameWhenNoProcessInfo end";
 }
 
 HWTEST_F(ModularObjectUtilsTest, SetupNewRecord_ShouldUseBundleProcessModeWhenCrossProcessBundle, TestSize.Level1)
@@ -1115,4 +1044,94 @@ HWTEST_F(ModularObjectUtilsTest, SetupNewRecord_ShouldNotSetProcessNameWhenInval
     ModularObjectUtils::SetupNewRecord(request, service, "key_123");
     EXPECT_EQ(AbilityRecord::processName_, "");
     GTEST_LOG_(INFO) << "SetupNewRecord_ShouldNotSetProcessNameWhenInvalidProcessMode end";
+}
+
+HWTEST_F(ModularObjectUtilsTest,
+    SetupNewRecord_ShouldAppendAppCloneIndexWhenCrossProcessBundleWithClone, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SetupNewRecord_ShouldAppendAppCloneIndexWhenCrossProcessBundleWithClone start";
+    // CROSS_PROCESS + BUNDLE mode + appCloneIndex > 0
+    ModularObjectExtensionInfo info;
+    info.bundleName = "com.test.bundle";
+    info.abilityName = "TestAbility";
+    info.launchMode = MoeLaunchMode::CROSS_PROCESS;
+    info.processMode = MoeProcessMode::BUNDLE;
+    MockFlag::modularObjectInfos = {info};
+    AbilityRequest request;
+    request.abilityInfo.bundleName = "com.test.bundle";
+    request.abilityInfo.name = "TestAbility";
+    request.abilityInfo.extensionTypeName = "modularObject";
+    request.appInfo.appIndex = 2;
+    auto service = std::make_shared<BaseExtensionRecord>();
+    AbilityRecord::processName_ = "";
+    ModularObjectUtils::SetupNewRecord(request, service, "key_500");
+    EXPECT_EQ(AbilityRecord::processName_, "com.test.bundle:modularObject:2");
+    GTEST_LOG_(INFO) << "SetupNewRecord_ShouldAppendAppCloneIndexWhenCrossProcessBundleWithClone end";
+}
+
+HWTEST_F(ModularObjectUtilsTest,
+    SetupNewRecord_ShouldAppendAppCloneIndexWhenCrossProcessTypeWithClone, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SetupNewRecord_ShouldAppendAppCloneIndexWhenCrossProcessTypeWithClone start";
+    // CROSS_PROCESS + TYPE mode + appCloneIndex > 0
+    ModularObjectExtensionInfo info;
+    info.bundleName = "com.test.bundle";
+    info.abilityName = "TestAbility";
+    info.launchMode = MoeLaunchMode::CROSS_PROCESS;
+    info.processMode = MoeProcessMode::TYPE;
+    MockFlag::modularObjectInfos = {info};
+    AbilityRequest request;
+    request.abilityInfo.bundleName = "com.test.bundle";
+    request.abilityInfo.name = "TestAbility";
+    request.appInfo.appIndex = 3;
+    auto service = std::make_shared<BaseExtensionRecord>();
+    AbilityRecord::processName_ = "";
+    ModularObjectUtils::SetupNewRecord(request, service, "key_600");
+    EXPECT_EQ(AbilityRecord::processName_, "com.test.bundle:TestAbility:3");
+    GTEST_LOG_(INFO) << "SetupNewRecord_ShouldAppendAppCloneIndexWhenCrossProcessTypeWithClone end";
+}
+
+HWTEST_F(ModularObjectUtilsTest,
+    SetupNewRecord_ShouldNotAppendAppCloneIndexWhenInProcessWithClone, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SetupNewRecord_ShouldNotAppendAppCloneIndexWhenInProcessWithClone start";
+    // IN_PROCESS mode + appCloneIndex > 0 → should NOT append
+    ModularObjectExtensionInfo info;
+    info.bundleName = "com.test.bundle";
+    info.abilityName = "TestAbility";
+    info.launchMode = MoeLaunchMode::IN_PROCESS;
+    MockFlag::modularObjectInfos = {info};
+    MockFlag::processName = "com.test.process";
+    AbilityRequest request;
+    request.abilityInfo.bundleName = "com.test.bundle";
+    request.abilityInfo.name = "TestAbility";
+    request.appInfo.appIndex = 2;
+    auto service = std::make_shared<BaseExtensionRecord>();
+    AbilityRecord::processName_ = "";
+    ModularObjectUtils::SetupNewRecord(request, service, "key_700");
+    EXPECT_EQ(AbilityRecord::processName_, "com.test.process");
+    GTEST_LOG_(INFO) << "SetupNewRecord_ShouldNotAppendAppCloneIndexWhenInProcessWithClone end";
+}
+
+HWTEST_F(ModularObjectUtilsTest,
+    SetupNewRecord_ShouldReturnErrorWhenInProcessGetProcessInfoFailed, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SetupNewRecord_ShouldReturnErrorWhenInProcessGetProcessInfoFailed start";
+    // IN_PROCESS + GetRunningProcessInfoByPid fails → return error
+    ModularObjectExtensionInfo info;
+    info.bundleName = "com.test.bundle";
+    info.abilityName = "TestAbility";
+    info.launchMode = MoeLaunchMode::IN_PROCESS;
+    MockFlag::modularObjectInfos = {info};
+    MockFlag::getRunningProcessInfoRet = -1;
+    AbilityRequest request;
+    request.abilityInfo.bundleName = "com.test.bundle";
+    request.abilityInfo.name = "TestAbility";
+    request.appInfo.appIndex = 2;
+    auto service = std::make_shared<BaseExtensionRecord>();
+    AbilityRecord::processName_ = "";
+    auto ret = ModularObjectUtils::SetupNewRecord(request, service, "key_800");
+    EXPECT_NE(ret, ERR_OK);
+    MockFlag::getRunningProcessInfoRet = 0;
+    GTEST_LOG_(INFO) << "SetupNewRecord_ShouldReturnErrorWhenInProcessGetProcessInfoFailed end";
 }

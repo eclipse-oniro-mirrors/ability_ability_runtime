@@ -37,13 +37,13 @@ public:
 
     // Connect management helpers
     static std::shared_ptr<ModularObjectExtensionInfo> QueryConfig(const AbilityRequest &abilityRequest);
-    static void SetupNewRecord(const AbilityRequest &abilityRequest,
+    static int32_t SetupNewRecord(const AbilityRequest &abilityRequest,
         std::shared_ptr<BaseExtensionRecord> &targetService, const std::string &serviceKey);
     static int32_t CheckLimits(int32_t instanceCount, int32_t connectionCount);
 
 private:
     static int32_t CheckExtensionEnabled(const ModularObjectExtensionInfo &info, const AbilityRequest &abilityRequest);
-    static int32_t CheckInProcessLaunchMode(MoeLaunchMode launchMode, const std::string &targetBundleName);
+    static int32_t CheckInProcessLaunchMode(MoeLaunchMode launchMode, int32_t targetUid);
     static int32_t CheckCallerForeground();
     static int32_t CheckAppDistributionType(const std::string &callerAppDistributionType,
         const std::string &targetAppDistributionType);
