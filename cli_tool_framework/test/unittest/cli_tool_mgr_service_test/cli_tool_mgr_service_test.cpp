@@ -13,17 +13,28 @@
  * limitations under the License.
  */
 
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <mutex>
+#include <thread>
+#include <unistd.h>
 
+#define protected public
 #define private public
 #include "cli_tool_manager_service.h"
 #undef private
+#undef protected
 
 #include "cli_error_code.h"
 #include "cli_tool_app_state_observer.h"
 #include "ccm_util.h"
+#include "event_dispatcher.h"
 #include "exec_options.h"
+#include "nativetoken_kit.h"
+#include "token_setproc.h"
 #include "tool_info.h"
 #include "tool_util.h"
 
@@ -32,6 +43,12 @@ using namespace OHOS::CliTool;
 
 namespace OHOS {
 namespace CliTool {
+namespace {
+const char *CLI_TOOL_PERMS[] = {
+    "ohos.permission.EXEC_CLI_TOOL",
+};
+}
+
 class CliToolManagerServiceTest : public testing::Test {
 public:
     static void SetUpTestCase(void);
@@ -46,7 +63,18 @@ public:
 
 void CliToolManagerServiceTest::SetUpTestCase(void)
 {
-    // Initialize test environment
+    NativeTokenInfoParams infoInstance = {
+        .dcapsNum = 0,
+        .permsNum = static_cast<int32_t>(sizeof(CLI_TOOL_PERMS) / sizeof(CLI_TOOL_PERMS[0])),
+        .aclsNum = 0,
+        .dcaps = nullptr,
+        .perms = CLI_TOOL_PERMS,
+        .acls = nullptr,
+        .aplStr = "system_core",
+    };
+    infoInstance.processName = "CliToolManagerServiceTest";
+    auto tokenId = GetAccessTokenId(&infoInstance);
+    SetSelfTokenID(tokenId);
 }
 
 void CliToolManagerServiceTest::TearDownTestCase(void)
@@ -57,12 +85,16 @@ void CliToolManagerServiceTest::TearDownTestCase(void)
 void CliToolManagerServiceTest::SetUp()
 {
     service_ = CliToolManagerService::GetInstance();
+    service_->interfaceCalledCount_.store(0);
+    EventDispatcher::GetInstance().ClearAll();
     std::lock_guard<ffrt::mutex> guard(service_->sessionsMutex_);
     service_->sessionRecords_.clear();
 }
 
 void CliToolManagerServiceTest::TearDown()
 {
+    service_->interfaceCalledCount_.store(0);
+    EventDispatcher::GetInstance().ClearAll();
     std::lock_guard<ffrt::mutex> guard(service_->sessionsMutex_);
     service_->sessionRecords_.clear();
 }
@@ -92,6 +124,138 @@ HWTEST_F(CliToolManagerServiceTest, GetInstance_0100, TestSize.Level1)
     EXPECT_EQ(instance1.GetRefPtr(), instance2.GetRefPtr());
 
     GTEST_LOG_(INFO) << "CliToolManagerService_GetInstance_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_OnIdle_0100
+ * @tc.desc: Test OnIdle blocks unload when IPC or session is active
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, OnIdle_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_OnIdle_0100 start";
+
+    SystemAbilityOnDemandReason idleReason;
+
+    EXPECT_EQ(service_->OnIdle(idleReason), 0);
+
+    service_->interfaceCalledCount_.store(1);
+    EXPECT_EQ(service_->OnIdle(idleReason), -1);
+
+    service_->interfaceCalledCount_.store(0);
+    auto record = std::make_shared<SessionRecord>();
+    record->sessionId = "test_session";
+    service_->AddSessionRecord(record);
+    EXPECT_EQ(service_->OnIdle(idleReason), -1);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_OnIdle_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_IOMonitorSendMessage_0100
+ * @tc.desc: Test IOMonitor serializes high volume input writes without random pipe backpressure failure
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, IOMonitorSendMessage_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_IOMonitorSendMessage_0100 start";
+
+    constexpr int32_t sendCount = 1200;
+    constexpr const char* sessionId = "test_session";
+    const std::string message(128, 'x');
+    int stdinPipe[2] = {-1, -1};
+    ASSERT_EQ(pipe(stdinPipe), 0);
+
+    auto monitor = IOMonitor::Create();
+    ASSERT_NE(monitor, nullptr);
+    ASSERT_TRUE(monitor->Start());
+    ASSERT_TRUE(monitor->RegisterSession(sessionId, -1, -1, stdinPipe[1]));
+
+    std::atomic<int32_t> replyCount = 0;
+    std::atomic<int32_t> failedCount = 0;
+    std::mutex replyMutex;
+    std::condition_variable replyCv;
+    monitor->SetInputReplyCallback([&](const std::string &, const std::string &, bool result) {
+        if (!result) {
+            failedCount.fetch_add(1);
+        }
+        if (replyCount.fetch_add(1) + 1 == sendCount) {
+            std::lock_guard<std::mutex> lock(replyMutex);
+            replyCv.notify_one();
+        }
+    });
+
+    std::atomic<size_t> readBytes = 0;
+    std::thread reader([&]() {
+        char buffer[256] = {};
+        const size_t expectedBytes = sendCount * message.size();
+        while (readBytes.load() < expectedBytes) {
+            ssize_t readResult = read(stdinPipe[0], buffer, sizeof(buffer));
+            if (readResult > 0) {
+                readBytes.fetch_add(static_cast<size_t>(readResult));
+            } else {
+                break;
+            }
+        }
+    });
+
+    for (int32_t i = 0; i < sendCount; ++i) {
+        monitor->SendMessage(sessionId, message, "event_" + std::to_string(i));
+    }
+
+    std::unique_lock<std::mutex> lock(replyMutex);
+    EXPECT_TRUE(replyCv.wait_for(lock, std::chrono::seconds(5), [&]() {
+        return replyCount.load() == sendCount;
+    }));
+    EXPECT_EQ(failedCount.load(), 0);
+
+    monitor->UnregisterSession(sessionId);
+    monitor->Stop();
+    if (reader.joinable()) {
+        reader.join();
+    }
+    close(stdinPipe[0]);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_IOMonitorSendMessage_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_SubscribeSession_0100
+ * @tc.desc: Test SubscribeSession rejects non-running sessions
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, SubscribeSession_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_SubscribeSession_0100 start";
+
+    auto runningRecord = std::make_shared<SessionRecord>();
+    runningRecord->sessionId = "running_session";
+    service_->AddSessionRecord(runningRecord);
+    int32_t runningRet = service_->SubscribeSession(runningRecord->sessionId, "running_subscription");
+    EXPECT_TRUE(runningRet == ERR_NO_INIT || runningRet == ERR_NOT_SYSTEM_APP || runningRet == ERR_PERMISSION_DENIED);
+    if (runningRet != ERR_NO_INIT) {
+        GTEST_LOG_(INFO) << "CliToolManagerService_SubscribeSession_0100 skipped status gate checks";
+        return;
+    }
+
+    auto completedRecord = std::make_shared<SessionRecord>();
+    completedRecord->sessionId = "completed_session";
+    completedRecord->SetTerminalResult(0, 0);
+    completedRecord->MarkStdoutClosed();
+    completedRecord->MarkStderrClosed();
+    service_->AddSessionRecord(completedRecord);
+    EXPECT_EQ(service_->SubscribeSession(completedRecord->sessionId, "completed_subscription"),
+        ERR_CLI_SESSION_NOT_FOUND);
+
+    auto failedRecord = std::make_shared<SessionRecord>();
+    failedRecord->sessionId = "failed_session";
+    failedRecord->SetTerminalResult(1, 0);
+    failedRecord->MarkStdoutClosed();
+    failedRecord->MarkStderrClosed();
+    service_->AddSessionRecord(failedRecord);
+    EXPECT_EQ(service_->SubscribeSession(failedRecord->sessionId, "failed_subscription"), ERR_CLI_SESSION_NOT_FOUND);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_SubscribeSession_0100 end";
 }
 
 /**
