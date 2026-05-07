@@ -20,7 +20,6 @@
 #include "ability_event_handler.h"
 #include "ability_manager_errors.h"
 #include "ability_manager_service.h"
-#include "ams_configuration_parameter.h"
 #include "bundle_mgr_helper.h"
 #include "hilog_tag_wrapper.h"
 #include "in_process_call_wrapper.h"
