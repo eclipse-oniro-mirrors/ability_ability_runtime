@@ -1493,14 +1493,16 @@ public:
         int requestCode = DEFAULT_INVAL_VALUE,
         bool isImplicit = false,
         bool isAppCloneSelector = false,
-        uint32_t callerAccessTokenId = 0);
+        uint32_t callerAccessTokenId = 0,
+        sptr<IRequestStartAbilityCallback> callback = nullptr);
 
     int ImplicitStartAbilityAsCaller(
         const Want &want,
         const sptr<IRemoteObject> &callerToken,
         sptr<IRemoteObject> asCallerSourceToken,
         int32_t userId = DEFAULT_INVAL_VALUE,
-        int requestCode = DEFAULT_INVAL_VALUE);
+        int requestCode = DEFAULT_INVAL_VALUE,
+        sptr<IRequestStartAbilityCallback> callback = nullptr);
 
     /**
      * @brief called when the module's onAcceptWant done to notify ability mgr to continue
