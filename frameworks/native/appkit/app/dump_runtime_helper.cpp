@@ -354,6 +354,9 @@ void DumpRuntimeHelper::DumpMem(const OHOS::AppExecFwk::MemDumpInfo &info, std::
     if (info.dumpType == MemDumpType::JSVM) {
         DumpJsvmHeap(info);
     }
+    if (info.dumpType == MemDumpType::ARKWEB_JS) {
+        DumpArkwebJsHeap(info);
+    }
 }
 
 void DumpRuntimeHelper::DumpNativeHeap(const OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
@@ -481,6 +484,26 @@ void DumpRuntimeHelper::DumpJsvmHeap(const OHOS::AppExecFwk::MemDumpInfo &info)
         return;
     }
     dlclose(jsvmHandle);
+}
+
+void DumpRuntimeHelper::DumpArkwebJsHeap(const OHOS::AppExecFwk::MemDumpInfo &info)
+{
+    TAG_LOGI(AAFwkTag::APPKIT, "dump arkweb v8 heaps, renderPid:%{public}u, tid:%{public}d, needRaw:%{public}d",
+        info.renderPid, info.tid, info.needRaw);
+    int32_t fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::ARKWEB_JS_HEAP_SNAPSHOT));
+    if (fd < 0) {
+        TAG_LOGE(AAFwkTag::APPKIT, "RequestFileDescriptor failed");
+        return;
+    }
+    auto& dumpListener = OHOS::HiviewDFX::HidebugMemDumpListener::GetInstance();
+    bool ret = dumpListener.TriggerListener("ARKWEB_V8", fd,
+        OH_HiDebug_MemListenerType::OH_HIDEBUG_DUMP_SNAPSHOT, info.mayReportToOEM, nullptr);
+    if (!ret) {
+        TAG_LOGE(AAFwkTag::APPKIT, "TriggerListener failed");
+        close(fd);
+        return;
+    }
+    close(fd);
 }
 
 void DumpRuntimeHelper::GetCheckList(const std::unique_ptr<AbilityRuntime::Runtime> &runtime, std::string &checkList)
