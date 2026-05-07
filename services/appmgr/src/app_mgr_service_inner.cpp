@@ -12783,5 +12783,55 @@ int32_t AppMgrServiceInner::GetAllAbilityInfos(const int32_t pid, std::vector<Ap
     }
     return appRunningManager_->GetAllAbilityInfos(pid, infos);
 }
+
+int32_t AppMgrServiceInner::EnableDelayedProcessExit(int32_t pid, bool enabled)
+{
+    if (!AAFwk::AppUtils::GetInstance().IsSupportDelayedProcessExit()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "device not supported");
+        return AAFwk::ERR_CAPABILITY_NOT_SUPPORT;
+    }
+    auto appRecord = GetAppRunningRecordByPid(pid);
+    if (appRecord == nullptr) {
+        return ERR_INVALID_VALUE;
+    }
+    auto hasUIAbility = false;
+    const auto abilityRecordList = appRecord->GetAbilities();
+    for (const auto &item : abilityRecordList) {
+        if (item.second == nullptr) {
+            continue;
+        }
+        const auto abilityInfo = item.second->GetAbilityInfo();
+        if (abilityInfo != nullptr && abilityInfo->type == AppExecFwk::AbilityType::PAGE) {
+            TAG_LOGD(AAFwkTag::APPMGR, "current process has UIAbility, pid:%{public}d", pid);
+            hasUIAbility = true;
+            break;
+        }
+    }
+    if (!hasUIAbility) {
+        TAG_LOGE(AAFwkTag::APPMGR, "current process has no UIAbility, pid:%{public}d", pid);
+        return AAFwk::ERR_DELAYED_PROCESS_EXIT_NO_UIABILITY;
+    }
+
+    appRecord->EnableDelayedProcessExit(enabled);
+    if (!enabled && taskHandler_ != nullptr) {
+        taskHandler_->CancelTask("DELAY_EXIT_UI_PROCESS_" + std::to_string(appRecord->GetRecordId()));
+    }
+    return ERR_OK;
+}
+
+void AppMgrServiceInner::CancelDelayedExitTask(int32_t pid)
+{
+    auto appRecord = GetAppRunningRecordByPid(pid);
+    if (appRecord == nullptr) {
+        TAG_LOGW(AAFwkTag::APPMGR, "CancelDelayedExitTask appRecord null: %{public}d", pid);
+        return;
+    }
+    TAG_LOGD(AAFwkTag::APPMGR, "CancelDelayedExitTask, pid:%{public}d", pid);
+    if (appRecord->IsDelayedProcessExitEnabled()) {
+        if (taskHandler_ != nullptr) {
+            taskHandler_->CancelTask("DELAY_EXIT_UI_PROCESS_" + std::to_string(appRecord->GetRecordId()));
+        }
+    }
+}
 } // namespace AppExecFwk
 }  // namespace OHOS

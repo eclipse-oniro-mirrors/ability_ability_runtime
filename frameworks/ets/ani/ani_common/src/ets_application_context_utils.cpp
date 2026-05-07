@@ -589,6 +589,82 @@ void EtsApplicationContextUtils::OnRestartApp(ani_env *env, ani_object aniObj, a
     TAG_LOGD(AAFwkTag::APPKIT, "RestartApp errCode is %{public}d", errCode);
 }
 
+void EtsApplicationContextUtils::OnEnableDelayedProcessExit(ani_env *env, ani_object aniObj, ani_object callback)
+{
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null env");
+        return;
+    }
+    auto applicationContext = applicationContext_.lock();
+    if (applicationContext == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null applicationContext");
+        AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateError(env,
+            (ani_int)AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT,
+            "applicationContext is already released."), nullptr);
+        return;
+    }
+    auto errCode = applicationContext->EnableDelayedProcessExit();
+    if (errCode == ERR_OK) {
+        AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_OK), nullptr);
+    } else {
+        TAG_LOGE(AAFwkTag::APPKIT, "EnableDelayedProcessExit failed %{public}d", errCode);
+        AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateErrorByNativeErr(env, errCode), nullptr);
+    }
+}
+
+void EtsApplicationContextUtils::OnDisableDelayedProcessExit(ani_env *env, ani_object aniObj, ani_object callback)
+{
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null env");
+        return;
+    }
+    auto applicationContext = applicationContext_.lock();
+    if (applicationContext == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null applicationContext");
+        AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateError(env,
+            (ani_int)AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT,
+            "applicationContext is already released."), nullptr);
+        return;
+    }
+    auto errCode = applicationContext->DisableDelayedProcessExit();
+    if (errCode == ERR_OK) {
+        AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_OK), nullptr);
+    } else {
+        TAG_LOGE(AAFwkTag::APPKIT, "DisableDelayedProcessExit failed %{public}d", errCode);
+        AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateErrorByNativeErr(env, errCode), nullptr);
+    }
+}
+
+void EtsApplicationContextUtils::OnStartSelfUIAbility(ani_env *env,
+    ani_object aniObj, ani_object wantObj, ani_object callback)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "StartSelfUIAbility Call");
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null env");
+        return;
+    }
+    AAFwk::Want want;
+    if (!OHOS::AppExecFwk::UnwrapWant(env, wantObj, want)) {
+        TAG_LOGE(AAFwkTag::APPKIT, "Parse want failed");
+        AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateInvalidParamError(env,
+            "Parse param want failed, want must be Want."), nullptr);
+        return;
+    }
+    auto context = applicationContext_.lock();
+    if (!context) {
+        AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateErrorByNativeErr(env,
+            (int32_t)AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT), nullptr);
+        return;
+    }
+    auto errCode = context->StartSelfUIAbility(want);
+    if (errCode == ERR_OK) {
+        AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_OK), nullptr);
+    } else {
+        TAG_LOGE(AAFwkTag::APPKIT, "StartSelfUIAbility failed %{public}d", errCode);
+        AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateErrorByNativeErr(env, errCode), nullptr);
+    }
+}
+
 void EtsApplicationContextUtils::OnSetFont(ani_env *env, ani_object aniObj, ani_string font)
 {
     if (env == nullptr) {
@@ -810,6 +886,40 @@ void EtsApplicationContextUtils::RestartApp(ani_env *env, ani_object aniObj, ani
         return;
     }
     etsContext->OnRestartApp(env, aniObj, wantObj);
+}
+
+void EtsApplicationContextUtils::EnableDelayedProcessExit(ani_env *env, ani_object aniObj, ani_object callback)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "EnableDelayedProcessExit Call");
+    auto etsContext = GeApplicationContext(env, aniObj);
+    if (etsContext == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null etsContext");
+        return;
+    }
+    etsContext->OnEnableDelayedProcessExit(env, aniObj, callback);
+}
+
+void EtsApplicationContextUtils::DisableDelayedProcessExit(ani_env *env, ani_object aniObj, ani_object callback)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "DisableDelayedProcessExit Call");
+    auto etsContext = GeApplicationContext(env, aniObj);
+    if (etsContext == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null etsContext");
+        return;
+    }
+    etsContext->OnDisableDelayedProcessExit(env, aniObj, callback);
+}
+
+void EtsApplicationContextUtils::StartSelfUIAbility(ani_env *env, ani_object aniObj,
+    ani_object wantObj, ani_object callback)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "StartSelfUIAbility Call");
+    auto etsContext = GeApplicationContext(env, aniObj);
+    if (etsContext == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null etsContext");
+        return;
+    }
+    etsContext->OnStartSelfUIAbility(env, aniObj, wantObj, callback);
 }
 
 void EtsApplicationContextUtils::SetFont(ani_env *env, ani_object aniObj, ani_string font)
@@ -1306,6 +1416,15 @@ void EtsApplicationContextUtils::BindApplicationContextFunc(ani_env *aniEnv)
                 reinterpret_cast<void *>(EtsApplicationContextUtils::SetFont)},
             ani_native_function {"nativerestartApp", "C{@ohos.app.ability.Want.Want}:",
                 reinterpret_cast<void *>(EtsApplicationContextUtils::RestartApp)},
+            ani_native_function {"nativeEnableDelayedProcessExitSync",
+                "C{utils.AbilityUtils.AsyncCallbackWrapper}:",
+                reinterpret_cast<void *>(EtsApplicationContextUtils::EnableDelayedProcessExit)},
+            ani_native_function {"nativeDisableDelayedProcessExitSync",
+                "C{utils.AbilityUtils.AsyncCallbackWrapper}:",
+                reinterpret_cast<void *>(EtsApplicationContextUtils::DisableDelayedProcessExit)},
+            ani_native_function {"nativeStartSelfUIAbilitySync",
+                "C{@ohos.app.ability.Want.Want}C{utils.AbilityUtils.AsyncCallbackWrapper}:",
+                reinterpret_cast<void *>(EtsApplicationContextUtils::StartSelfUIAbility)},
             ani_native_function {"nativeOnEnvironmentSync",
                 "C{@ohos.app.ability.EnvironmentCallback.EnvironmentCallback}:i",
                 reinterpret_cast<void *>(EtsApplicationContextUtils::NativeOnEnvironmentSync)},

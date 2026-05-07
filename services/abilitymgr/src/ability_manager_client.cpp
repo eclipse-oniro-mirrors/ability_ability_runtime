@@ -2781,5 +2781,13 @@ ErrCode AbilityManagerClient::QuerySkillType(const std::string &bundleName, cons
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     return abms->QuerySkillType(bundleName, moduleName, skillName, skillType);
 }
+
+ErrCode AbilityManagerClient::StartSelfUIAbilityByAppContext(const Want &want)
+{
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    HandleDlpApp(const_cast<Want &>(want));
+    return abms->StartSelfUIAbilityByAppContext(want);
+}
 } // namespace AAFwk
 } // namespace OHOS

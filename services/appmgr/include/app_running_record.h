@@ -435,6 +435,13 @@ public:
     void ScheduleTerminate();
 
     /**
+     * ScheduleTerminateByDelayed, Notify application to terminate by delayed.
+     *
+     * @return
+     */
+    void ScheduleTerminateByDelayed(bool isLastUIAbility);
+
+    /**
      * ScheduleTerminate, Notify application process exit safely.
      *
      * @return
@@ -1321,6 +1328,16 @@ public:
 
     bool IsLastAgentExtensionAbility(const sptr<IRemoteObject> &token);
 
+    inline void EnableDelayedProcessExit(bool enabled)
+    {
+        delayedProcessExitEnabled_ = enabled;
+    }
+
+    inline bool IsDelayedProcessExitEnabled() const
+    {
+        return delayedProcessExitEnabled_;
+    }
+
 private:
     /**
      * SearchTheModuleInfoNeedToUpdated, Get an uninitialized abilityStage data.
@@ -1518,6 +1535,7 @@ private:
     bool isNativeStart_ = false;
     bool isNeedLimitPrio_ = false;
     bool isNeedPreloadModule_ = false;
+    bool delayedProcessExitEnabled_ = false;
     bool isPrepareExit_ = false;
     bool isRestartApp_ = false; // Only app calling RestartApp can be set to true
     bool isSingleton_ = false;

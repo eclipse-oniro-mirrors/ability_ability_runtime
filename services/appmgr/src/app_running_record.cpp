@@ -34,6 +34,7 @@
 #include "app_mgr_service_const.h"
 #include "app_mgr_service_dump_error_code.h"
 #include "cache_process_manager.h"
+#include "global_constant.h"
 #include "hisysevent_report.h"
 #ifdef SUPPORT_SCREEN
 #include "window_visibility_info.h"
@@ -1207,14 +1208,33 @@ void AppRunningRecord::AbilityTerminated(const sptr<IRemoteObject> &token)
         || !ExitResidentProcessManager::GetInstance().IsMemorySizeSufficient()) && !needCache) {
         RemoveModuleRecord(moduleRecord, isExtensionDebug);
     }
-
+    bool isLastUIAbility = (abilityRecord != nullptr && abilityRecord->GetAbilityInfo() != nullptr &&
+        abilityRecord->GetAbilityInfo()->type == AppExecFwk::AbilityType::PAGE);
     auto moduleRecordList = GetAllModuleRecord();
     if (moduleRecordList.empty() && (!IsKeepAliveApp()
         || AAFwk::UIExtensionWrapper::IsUIExtension(GetExtensionType())
         || !ExitResidentProcessManager::GetInstance().IsMemorySizeSufficient()) && !isExtensionDebug
         && !needCache) {
-        ScheduleTerminate();
+        ScheduleTerminateByDelayed(isLastUIAbility);
     }
+}
+
+void AppRunningRecord::ScheduleTerminateByDelayed(bool isLastUIAbility)
+{
+    if (IsDelayedProcessExitEnabled() && isLastUIAbility) {
+        TAG_LOGD(AAFwkTag::APPMGR, "ScheduleTerminateByDelayed");
+        auto delayedExitTime = AbilityRuntime::GlobalConstant::PREPARE_TERMINATE_TIMEOUT_TIME;
+        std::string taskName = std::string("DELAY_EXIT_UI_PROCESS_") + std::to_string(GetRecordId());
+        auto terminateTask = [weakThis = weak_from_this()]() {
+            auto self = weakThis.lock();
+            if (self) {
+                self->ScheduleTerminate();
+            }
+        };
+        PostTask(taskName, delayedExitTime, terminateTask);
+        return;
+    }
+    ScheduleTerminate();
 }
 
 std::list<std::shared_ptr<ModuleRunningRecord>> AppRunningRecord::GetAllModuleRecord() const

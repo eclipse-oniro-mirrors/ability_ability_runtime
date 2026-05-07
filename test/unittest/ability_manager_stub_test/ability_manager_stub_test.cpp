@@ -5380,5 +5380,62 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSelfUIAbilityWithStartO
     auto result = stub_->StartSelfUIAbilityWithStartOptionsAndTokenInner(data, reply);
     EXPECT_EQ(result, ERR_READ_START_OPTIONS);
 }
+
+/*
+ * Feature: AbilityManagerService
+ * Function: OnRemoteRequest
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub StartSelfUIAbilityByAppContextInner
+ * EnvConditions: NA
+ * CaseDescription: Verify the normal behavior of StartSelfUIAbilityByAppContextInner
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSelfUIAbilityByAppContextInner_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    ASSERT_TRUE(data.WriteInterfaceToken(AbilityManagerStub::GetDescriptor()));
+    Want want;
+    ASSERT_TRUE(data.WriteParcelable(&want));
+    auto result = stub_->StartSelfUIAbilityByAppContextInner(data, reply);
+    EXPECT_EQ(result, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: OnRemoteRequest
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub StartSelfUIAbilityByAppContextInner
+ * EnvConditions: NA
+ * CaseDescription: Verify StartSelfUIAbilityByAppContextInner with null want
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSelfUIAbilityByAppContextInner_0200, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    auto res = stub_->StartSelfUIAbilityByAppContextInner(data, reply);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: OnRemoteRequest
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub StartSelfUIAbilityByAppContextInner via OnRemoteRequest
+ * EnvConditions: NA
+ * CaseDescription: Verify dispatching START_SELF_UI_ABILITY_BY_APP_CONTEXT through OnRemoteRequest
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSelfUIAbilityByAppContext_OnRemote_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    ASSERT_TRUE(data.WriteInterfaceToken(AbilityManagerStub::GetDescriptor()));
+    Want want;
+    ASSERT_TRUE(data.WriteParcelable(&want));
+    auto result = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::START_SELF_UI_ABILITY_BY_APP_CONTEXT),
+        data, reply, option);
+    EXPECT_EQ(result, NO_ERROR);
+}
 } // namespace AAFwk
 } // namespace OHOS

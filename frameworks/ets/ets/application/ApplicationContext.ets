@@ -94,6 +94,9 @@ export default class ApplicationContext extends Context {
   public native nativeOffApplicationStateChangeSync(callback?: ApplicationStateChangeCallback): void;
   public native nativegetCurrentAppCloneIndex(): int;
   public native nativegetCurrentInstanceKey(): string;
+  public native nativeEnableDelayedProcessExitSync(callback: AsyncCallbackWrapper<void>): void;
+  public native nativeDisableDelayedProcessExitSync(callback: AsyncCallbackWrapper<void>): void;
+  public native nativeStartSelfUIAbilitySync(want: Want, callback: AsyncCallbackWrapper<void>): void;
   private native nativeGetUIAbilityByInstanceId(instanceId: string): UIAbility;
   private static native nativeTransferStatic(input: ESValue, type: string): Object;
   private static native nativeTransferDynamic(input: Object): ESValue;
@@ -227,6 +230,57 @@ export default class ApplicationContext extends Context {
 
   restartApp(want: Want): void {
     this.nativerestartApp(want);
+  }
+
+  enableDelayedProcessExit(): Promise<void> {
+    let p =
+      new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
+        let asyncCbWrapper = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+          if (err == null || err.code == 0) {
+            resolve(undefined);
+          } else {
+            reject(err);
+          }
+        });
+        taskpool.execute((): void => {
+          this.nativeEnableDelayedProcessExitSync(asyncCbWrapper);
+        });
+      });
+    return p;
+  }
+
+  disableDelayedProcessExit(): Promise<void> {
+    let p =
+      new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
+        let asyncCbWrapper = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+          if (err == null || err.code == 0) {
+            resolve(undefined);
+          } else {
+            reject(err);
+          }
+        });
+        taskpool.execute((): void => {
+          this.nativeDisableDelayedProcessExitSync(asyncCbWrapper);
+        });
+      });
+    return p;
+  }
+
+  startSelfUIAbility(want: Want): Promise<void> {
+    let p =
+      new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
+        let asyncCbWrapper = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+          if (err == null || err.code == 0) {
+            resolve(undefined);
+          } else {
+            reject(err);
+          }
+        });
+        taskpool.execute((): void => {
+          this.nativeStartSelfUIAbilitySync(want, asyncCbWrapper);
+        });
+      });
+    return p;
   }
 
   getAllRunningInstanceKeys(): Promise<Array<string>> {

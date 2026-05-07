@@ -3125,5 +3125,94 @@ HWTEST_F(ApplicationContextTest, AbilityNativeThread_Destructor_0200, TestSize.L
     }
     GTEST_LOG_(INFO) << "AbilityNativeThread_Destructor_0200 end";
 }
+
+/**
+ * @tc.number: IsDelayedProcessExitPending_0100
+ * @tc.name: IsDelayedProcessExitPending
+ * @tc.desc: Test IsDelayedProcessExitPending returns false by default
+ */
+HWTEST_F(ApplicationContextTest, IsDelayedProcessExitPending_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "IsDelayedProcessExitPending_0100 start";
+    context_->delayedProcessExitEnabled_ = false;
+    EXPECT_FALSE(context_->IsDelayedProcessExitPending());
+    GTEST_LOG_(INFO) << "IsDelayedProcessExitPending_0100 end";
+}
+
+/**
+ * @tc.number: IsDelayedProcessExitPending_0200
+ * @tc.name: IsDelayedProcessExitPending
+ * @tc.desc: Test IsDelayedProcessExitPending returns true when enabled
+ */
+HWTEST_F(ApplicationContextTest, IsDelayedProcessExitPending_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "IsDelayedProcessExitPending_0200 start";
+    context_->delayedProcessExitEnabled_ = true;
+    EXPECT_TRUE(context_->IsDelayedProcessExitPending());
+    GTEST_LOG_(INFO) << "IsDelayedProcessExitPending_0200 end";
+}
+
+/**
+ * @tc.number: StartSelfUIAbility_0100
+ * @tc.name: StartSelfUIAbility
+ * @tc.desc: Test StartSelfUIAbility when delayed process exit is not pending
+ */
+HWTEST_F(ApplicationContextTest, StartSelfUIAbility_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "StartSelfUIAbility_0100 start";
+    context_->delayedProcessExitEnabled_ = false;
+    AAFwk::Want want;
+    auto ret = context_->StartSelfUIAbility(want);
+    EXPECT_EQ(ret, AAFwk::ERR_DELAYED_PROCESS_EXIT_NOT_PENDING);
+    GTEST_LOG_(INFO) << "StartSelfUIAbility_0100 end";
+}
+
+/**
+ * @tc.number: StartSelfUIAbility_0200
+ * @tc.name: StartSelfUIAbility
+ * @tc.desc: Test StartSelfUIAbility when delayed process exit is pending
+ */
+HWTEST_F(ApplicationContextTest, StartSelfUIAbility_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "StartSelfUIAbility_0200 start";
+    context_->delayedProcessExitEnabled_ = true;
+    AAFwk::Want want;
+    want.SetElementName("com.example.bundle", "com.example.ability");
+    auto ret = context_->StartSelfUIAbility(want);
+    EXPECT_NE(ret, AAFwk::ERR_DELAYED_PROCESS_EXIT_NOT_PENDING);
+    GTEST_LOG_(INFO) << "StartSelfUIAbility_0200 end";
+}
+
+/**
+ * @tc.number: EnableDelayedProcessExit_0100
+ * @tc.name: EnableDelayedProcessExit
+ * @tc.desc: Test EnableDelayedProcessExit calls service (service returns non-OK in test env)
+ */
+HWTEST_F(ApplicationContextTest, EnableDelayedProcessExit_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "EnableDelayedProcessExit_0100 start";
+    context_->delayedProcessExitEnabled_ = false;
+    auto ret = context_->EnableDelayedProcessExit();
+    EXPECT_NE(ret, ERR_OK);
+
+    EXPECT_FALSE(context_->delayedProcessExitEnabled_);
+    GTEST_LOG_(INFO) << "EnableDelayedProcessExit_0100 end";
+}
+
+/**
+ * @tc.number: DisableDelayedProcessExit_0100
+ * @tc.name: DisableDelayedProcessExit
+ * @tc.desc: Test DisableDelayedProcessExit calls service (service returns non-OK in test env)
+ */
+HWTEST_F(ApplicationContextTest, DisableDelayedProcessExit_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "DisableDelayedProcessExit_0100 start";
+    context_->delayedProcessExitEnabled_ = true;
+    auto ret = context_->DisableDelayedProcessExit();
+    EXPECT_NE(ret, ERR_OK);
+
+    EXPECT_TRUE(context_->delayedProcessExitEnabled_);
+    GTEST_LOG_(INFO) << "DisableDelayedProcessExit_0100 end";
+}
 }  // namespace AbilityRuntime
 }  // namespace OHOS
