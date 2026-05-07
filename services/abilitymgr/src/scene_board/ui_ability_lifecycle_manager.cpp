@@ -85,6 +85,7 @@ constexpr const char* IS_CALLING_FROM_DMS = "supportCollaborativeCallingFromDmsI
 constexpr int REMOVE_STARTING_BUNDLE_TIMEOUT_MICRO_SECONDS = 5000000; // 5s
 constexpr int32_t BY_CALL_TIMEOUT = 10 * 1000 * 1000; // 10s
 constexpr int32_t START_SELF_TIMEOUT = 10 * 1000 * 1000; // 10s
+constexpr int32_t START_SELF_TIMEOUT_KILL_DELAY = 3 * 1000 * 1000; // 3s
 constexpr int32_t SCENE_FLAG_BYCALL = 4;
 
 auto g_deleteLifecycleEventTask = [](const sptr<Token> &token) {
@@ -1088,10 +1089,8 @@ int UIAbilityLifecycleManager::DispatchForeground(const UIAbilityRecordPtr &abil
         abilityRecord->SetNativeState(AbilityNativeState::CREATED);
         auto timeoutTask = [wThis = weak_from_this(), abilityRecord]() {
             auto pThis = wThis.lock();
-            if (pThis != nullptr && abilityRecord->GetNativeState() == AbilityNativeState::CREATED) {
-                TAG_LOGW(AAFwkTag::ABILITYMGR, "Start self Timeout");
-                std::lock_guard guard(pThis->sessionLock_);
-                pThis->HandleForegroundTimeout(abilityRecord);
+            if (pThis != nullptr) {
+                pThis->HandleStartSelfTimeout(abilityRecord);
             }
         };
         ffrt::submit(std::move(timeoutTask), ffrt::task_attr().delay(START_SELF_TIMEOUT));
@@ -2730,6 +2729,25 @@ void UIAbilityLifecycleManager::HandleForegroundTimeout(const UIAbilityRecordPtr
     NotifySCBToHandleException(abilityRecord,
         static_cast<int32_t>(ErrorLifecycleState::ABILITY_STATE_FOREGROUND_TIMEOUT), "handleForegroundTimeout");
     DelayedSingleton<AppScheduler>::GetInstance()->AttachTimeOut(abilityRecord->GetToken());
+}
+
+void UIAbilityLifecycleManager::HandleStartSelfTimeout(const UIAbilityRecordPtr &abilityRecord)
+{
+    if (abilityRecord == nullptr || abilityRecord->GetNativeState() != AbilityNativeState::CREATED) {
+        return;
+    }
+    TAG_LOGW(AAFwkTag::ABILITYMGR, "Start self Timeout");
+    std::lock_guard guard(sessionLock_);
+    HandleForegroundTimeout(abilityRecord);
+    auto pid = abilityRecord->GetPid();
+    auto killTask = [pid]() {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "Kill process %{public}d for StartSelfTimeout", pid);
+        auto appMgr = AppMgrUtil::GetAppMgr();
+        if (appMgr != nullptr) {
+            appMgr->KillProcessByPidForExit(pid, "StartSelfTimeout");
+        }
+    };
+    ffrt::submit(std::move(killTask), ffrt::task_attr().delay(START_SELF_TIMEOUT_KILL_DELAY));
 }
 
 void UIAbilityLifecycleManager::OnAbilityDied(UIAbilityRecordPtr abilityRecord)
