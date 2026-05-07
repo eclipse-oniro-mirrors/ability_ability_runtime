@@ -25,7 +25,7 @@
 #include <sys/wait.h>
 #include <condition_variable>
 
-#include "icli_tool_data.h"
+#include "cli_session_info.h"
 
 namespace OHOS {
 namespace CliTool {
@@ -84,7 +84,7 @@ public:
 private:
     void TrimBufferedOutput(std::string &buffer);
 
-    ExecResult &BuildExecResult() const;
+    std::shared_ptr<ExecResult> BuildExecResult() const;
 
 private:
     std::atomic<SessionState> state_ {SessionState::SPAWNING};

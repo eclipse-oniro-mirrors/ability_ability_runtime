@@ -27,21 +27,3 @@ struct CommandPermission
     List<String> permissions;
     int queryRet;
 };
-
-struct ExecResult
-{
-    int exitCode;
-    String outputText;
-    String errorText;
-    int signalNumber;
-    boolean timedOut;
-    long executionTime;
-};
-
-struct CliSessionInfo
-{
-    String sessionId;
-    String toolName;
-    String status;
-    ExecResult result;
-};

@@ -17,6 +17,7 @@ package OHOS.CliTool;
 
 import ICliToolData;
 import ICliToolManagerScheduler;
+sequenceable CliSessionInfo..OHOS.CliTool.CliSessionInfo;
 sequenceable ExecToolParam..OHOS.CliTool.ExecToolParam;
 sequenceable OHOS.CliTool.ToolSummary;
 sequenceable ToolInfo..OHOS.CliTool.ToolInfo;
