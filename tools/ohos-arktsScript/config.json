@@ -6,7 +6,13 @@
   "requirePermissions": [],
   "inputSchema": {
     "type": "object",
+    "description": "Tool input parameters",
     "properties": {
+      "help": {
+        "type": "boolean",
+        "description": "Display this help message",
+        "default": false
+      },
       "abcPath": {
         "type": "string",
         "description": "ABC file path"
