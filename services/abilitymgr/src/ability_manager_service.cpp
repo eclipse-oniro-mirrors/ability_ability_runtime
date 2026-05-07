@@ -9115,6 +9115,15 @@ void AbilityManagerService::HandleShareDataTimeOut(int64_t uniqueId)
     }
 }
 
+void AbilityManagerService::HandleSkillExecuteTimeOut(int64_t requestCodeSeq)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "called, seq:%{public}" PRId64, requestCodeSeq);
+    auto skillExecuteManager = DelayedSingleton<SkillExecuteManager>::GetInstance();
+    if (skillExecuteManager != nullptr) {
+        skillExecuteManager->OnTimeout(requestCodeSeq);
+    }
+}
+
 int32_t AbilityManagerService::GetShareDataPairAndReturnData(std::shared_ptr<AbilityRecord> abilityRecord,
     const int32_t &resultCode, const int32_t &uniqueId, WantParams &wantParam)
 {

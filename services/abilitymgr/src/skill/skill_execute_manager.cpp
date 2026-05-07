@@ -15,7 +15,12 @@
 
 #include "skill_execute_manager.h"
 
+#include <cinttypes>
+
+#include "ability_event_handler.h"
 #include "ability_manager_errors.h"
+#include "ability_manager_service.h"
+#include "ams_configuration_parameter.h"
 #include "bundle_mgr_helper.h"
 #include "hilog_tag_wrapper.h"
 #include "in_process_call_wrapper.h"
@@ -141,6 +146,7 @@ std::string SkillExecuteManager::CreateExecuteRecord(const sptr<IRemoteObject> &
     record->targetBundleName = targetBundleName;
     record->callerBundleName = callerBundleName;
     record->callerTokenId = callerTokenId;
+    record->requestCodeSeq = requestCodeSeq_;
     record->state = SkillExecuteState::EXECUTING;
     record->callback = callback;
 
@@ -152,6 +158,7 @@ std::string SkillExecuteManager::CreateExecuteRecord(const sptr<IRemoteObject> &
     }
 
     records_[requestCode] = record;
+    PostSkillExecuteTimeout(requestCode, requestCodeSeq_);
     TAG_LOGD(AAFwkTag::ABILITYMGR,
         "create execute record, requestCode:%{public}s", requestCode.c_str());
     return requestCode;
@@ -197,6 +204,7 @@ int32_t SkillExecuteManager::ExecuteSkillDone(const std::string &requestCode, in
     }
 #endif
 
+    RemoveSkillExecuteTimeoutLocked(record->requestCodeSeq);
     record->state = SkillExecuteState::EXECUTE_DONE;
     if (record->callback != nullptr) {
         record->callback->OnExecuteDone(requestCode, resultCode, result);
@@ -224,6 +232,7 @@ void SkillExecuteManager::OnCallerDied(const std::string &requestCode)
     std::lock_guard<ffrt::mutex> lock(mutex_);
     auto it = records_.find(requestCode);
     if (it != records_.end()) {
+        RemoveSkillExecuteTimeoutLocked(it->second->requestCodeSeq);
         it->second->state = SkillExecuteState::REMOTE_DIED;
         RemoveRecord(requestCode);
     }
@@ -296,6 +305,66 @@ AppExecFwk::ExtensionAbilityType SkillExecuteManager::ResolveTargetType(const st
     TAG_LOGD(AAFwkTag::ABILITYMGR,
         "abilityName:%{public}s is not extension, default to UIAbility", abilityName.c_str());
     return AppExecFwk::ExtensionAbilityType::UNSPECIFIED;
+}
+
+void SkillExecuteManager::PostSkillExecuteTimeout(
+    const std::string &requestCode, uint64_t requestCodeSeq)
+{
+    auto handler = DelayedSingleton<AbilityManagerService>::GetInstance()->GetEventHandler();
+    if (handler == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "null event handler");
+        return;
+    }
+    uint32_t timeout = static_cast<uint32_t>(
+        AmsConfigurationParameter::GetInstance().GetAppStartTimeoutTime()) *
+        static_cast<uint32_t>(GlobalConstant::SKILL_EXECUTE_TIMEOUT_MULTIPLE);
+    seqToRequestCodeMap_[requestCodeSeq] = requestCode;
+    auto event = EventWrap(AbilityManagerService::SKILL_EXECUTE_TIMEOUT_MSG,
+        static_cast<int64_t>(requestCodeSeq));
+    event.SetTimeout(timeout);
+    handler->SendEvent(event, timeout, false);
+}
+
+void SkillExecuteManager::RemoveSkillExecuteTimeoutLocked(uint64_t requestCodeSeq)
+{
+    auto handler = DelayedSingleton<AbilityManagerService>::GetInstance()->GetEventHandler();
+    if (handler != nullptr) {
+        handler->RemoveEvent(AbilityManagerService::SKILL_EXECUTE_TIMEOUT_MSG,
+            static_cast<int64_t>(requestCodeSeq));
+    }
+    seqToRequestCodeMap_.erase(requestCodeSeq);
+}
+
+void SkillExecuteManager::OnTimeout(int64_t requestCodeSeq)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "called, seq:%{public}" PRId64, requestCodeSeq);
+    std::string requestCode;
+    {
+        std::lock_guard<ffrt::mutex> lock(mutex_);
+        auto seqIt = seqToRequestCodeMap_.find(requestCodeSeq);
+        if (seqIt == seqToRequestCodeMap_.end()) {
+            TAG_LOGW(AAFwkTag::ABILITYMGR, "seq not found");
+            return;
+        }
+        requestCode = seqIt->second;
+        seqToRequestCodeMap_.erase(seqIt);
+    }
+    std::lock_guard<ffrt::mutex> lock(mutex_);
+    auto it = records_.find(requestCode);
+    if (it == records_.end()) {
+        return;
+    }
+    auto record = it->second;
+    if (record->state != SkillExecuteState::EXECUTING) {
+        return;
+    }
+    TAG_LOGW(AAFwkTag::ABILITYMGR, "skill execute timed out, req:%{public}s", requestCode.c_str());
+    record->state = SkillExecuteState::TIMED_OUT;
+    if (record->callback != nullptr) {
+        AppExecFwk::SkillExecuteResult emptyResult;
+        record->callback->OnExecuteDone(requestCode, ERR_TIMED_OUT, emptyResult);
+    }
+    RemoveRecord(requestCode);
 }
 
 } // namespace AAFwk
