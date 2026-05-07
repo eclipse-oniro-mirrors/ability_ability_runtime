@@ -1914,6 +1914,26 @@ int32_t AppMgrService::IsProcessCacheSupported(int32_t pid, bool &isSupported)
     return appMgrServiceInner_->IsProcessCacheSupported(pid, isSupported);
 }
 
+int32_t AppMgrService::IsArkChildProcessSupported(pid_t pid, bool &isSupported)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "IsArkChildProcessSupported called");
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "not ready");
+        return ERR_INVALID_OPERATION;
+    }
+    return appMgrServiceInner_->IsArkChildProcessSupported(pid, isSupported);
+}
+
+int32_t AppMgrService::IsNativeChildProcessSupported(pid_t pid, bool &isSupported)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "IsNativeChildProcessSupported called");
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "not ready");
+        return ERR_INVALID_OPERATION;
+    }
+    return appMgrServiceInner_->IsNativeChildProcessSupported(pid, isSupported);
+}
+
 int32_t AppMgrService::SetProcessCacheEnable(int32_t pid, bool enable)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "set enable process cache");

@@ -441,6 +441,18 @@ int32_t AppMgrStub::OnRemoteRequestInnerEighth(uint32_t code, MessageParcel &dat
             return HandleNotifyTemplateProcessDeepFrozen(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_IMAGE_PROCESS_STATE_OBSERVER):
             return HandleRegisterImageProcessStateObserver(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::IS_ARK_CHILD_PROCESS_SUPPORTED):
+            return HandleIsArkChildProcessSupported(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::IS_NATIVE_CHILD_PROCESS_SUPPORTED):
+            return HandleIsNativeChildProcessSupported(data, reply);
+    }
+    return INVALID_FD;
+}
+
+int32_t AppMgrStub::OnRemoteRequestInnerNinth(uint32_t code, MessageParcel &data,
+    MessageParcel &reply, MessageOption &option)
+{
+    switch (static_cast<uint32_t>(code)) {
         case static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_IMAGE_PROCESS_STATE_OBSERVER):
             return HandleUnregisterImageProcessStateObserver(data, reply);
     }
@@ -1986,6 +1998,40 @@ int32_t AppMgrStub::HandleIsProcessCacheSupported(MessageParcel &data, MessagePa
     int32_t pid = data.ReadInt32();
     bool isSupported = false;
     auto ret = IsProcessCacheSupported(pid, isSupported);
+    if (!reply.WriteBool(isSupported)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write isSupported error.");
+        return AAFwk::ERR_WRITE_BOOL_FAILED;
+    }
+    if (!reply.WriteInt32(ret)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write ret error.");
+        return AAFwk::ERR_WRITE_RESULT_CODE_FAILED;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleIsArkChildProcessSupported(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "HandleIsArkChildProcessSupported called");
+    pid_t pid = data.ReadInt32();
+    bool isSupported = false;
+    auto ret = IsArkChildProcessSupported(pid, isSupported);
+    if (!reply.WriteBool(isSupported)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write isSupported error.");
+        return AAFwk::ERR_WRITE_BOOL_FAILED;
+    }
+    if (!reply.WriteInt32(ret)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write ret error.");
+        return AAFwk::ERR_WRITE_RESULT_CODE_FAILED;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleIsNativeChildProcessSupported(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "HandleIsNativeChildProcessSupported called");
+    pid_t pid = data.ReadInt32();
+    bool isSupported = false;
+    auto ret = IsNativeChildProcessSupported(pid, isSupported);
     if (!reply.WriteBool(isSupported)) {
         TAG_LOGE(AAFwkTag::APPMGR, "Write isSupported error.");
         return AAFwk::ERR_WRITE_BOOL_FAILED;

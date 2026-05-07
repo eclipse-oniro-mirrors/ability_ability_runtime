@@ -26,6 +26,7 @@
 #include "app_utils.h"
 #include "application_info.h"
 #include "app_mgr_interface.h"
+#include "app_mgr_client.h"
 #include "bundle_info.h"
 #include "bundle_mgr_interface.h"
 #include "child_process.h"
@@ -627,6 +628,30 @@ ChildProcessManagerErrorCode ChildProcessManager::KillChildProcessByPid(int32_t 
         return ChildProcessManagerErrorUtil::GetChildProcessManagerErrorCode(ret);
     }
     return ChildProcessManagerErrorCode::ERR_OK;
+}
+
+bool ChildProcessManager::IsArkChildProcessSupported()
+{
+    TAG_LOGD(AAFwkTag::PROCESSMGR, "called");
+    bool isSupported = false;
+    auto client = std::make_unique<AppExecFwk::AppMgrClient>();
+    if (client->IsArkChildProcessSupported(isSupported) != ERR_OK) {
+        TAG_LOGE(AAFwkTag::PROCESSMGR, "ipc query failed");
+        return false;
+    }
+    return isSupported;
+}
+
+bool ChildProcessManager::IsNativeChildProcessSupported()
+{
+    TAG_LOGD(AAFwkTag::PROCESSMGR, "called");
+    bool isSupported = false;
+    auto client = std::make_unique<AppExecFwk::AppMgrClient>();
+    if (client->IsNativeChildProcessSupported(isSupported) != ERR_OK) {
+        TAG_LOGE(AAFwkTag::PROCESSMGR, "ipc query failed");
+        return false;
+    }
+    return isSupported;
 }
 }  // namespace AbilityRuntime
 }  // namespace OHOS

@@ -814,6 +814,10 @@ public:
 
     int32_t IsProcessCacheSupported(int32_t pid, bool &isSupported) override;
 
+    int32_t IsArkChildProcessSupported(pid_t pid, bool &isSupported) override;
+    
+    int32_t IsNativeChildProcessSupported(pid_t pid, bool &isSupported) override;
+
     int32_t SetProcessCacheEnable(int32_t pid, bool enable) override;
 
     int32_t LockProcessCache(int32_t pid, bool isLock) override;

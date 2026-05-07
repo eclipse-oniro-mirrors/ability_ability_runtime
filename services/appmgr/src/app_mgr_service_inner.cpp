@@ -10299,19 +10299,21 @@ int32_t AppMgrServiceInner::StartChildProcessPreCheck(pid_t callingPid, int32_t 
     }
     auto hostRecord = GetAppRunningRecordByPid(callingPid);
     CHECK_POINTER_AND_RETURN_VALUE(hostRecord, ERR_NULL_OBJECT);
-    if (!AAFwk::AppUtils::GetInstance().IsMultiProcessModel() &&
-        !AllowNativeChildProcess(childProcessType, hostRecord->GetAppIdentifier()) &&
-        !AllowChildProcessInMultiProcessFeatureApp(hostRecord)) {
+    bool isSupported = false;
+    if (childProcessType == AppExecFwk::CHILD_PROCESS_TYPE_ARK ||
+        childProcessType == AppExecFwk::CHILD_PROCESS_TYPE_JS) {
+        isSupported = hostRecord->IsArkChildProcessSupported();
+    } else {
+        isSupported = hostRecord->IsNativeChildProcessSupported();
+    }
+    if (!isSupported) {
         TAG_LOGE(AAFwkTag::APPMGR, "not support child process.");
         return AAFwk::ERR_NOT_SUPPORT_CHILD_PROCESS;
     }
     auto applicationInfo = hostRecord->GetApplicationInfo();
     CHECK_POINTER_AND_RETURN_VALUE(applicationInfo, ERR_NULL_OBJECT);
-    bool useMultiFeatureMaxCount = false;
-    if (!AAFwk::AppUtils::GetInstance().IsMultiProcessModel() &&
-        AllowChildProcessInMultiProcessFeatureApp(hostRecord)) {
-        useMultiFeatureMaxCount = true;
-    }
+    bool useMultiFeatureMaxCount = !AAFwk::AppUtils::GetInstance().IsMultiProcessModel() &&
+        hostRecord->IsArkChildProcessSupported();
     if (appRunningManager_->IsChildProcessReachLimit(applicationInfo->accessTokenId, useMultiFeatureMaxCount)) {
         TAG_LOGE(AAFwkTag::APPMGR, "child process count reach limit.");
         return AAFwk::ERR_CHILD_PROCESS_REACH_LIMIT;
@@ -11476,6 +11478,30 @@ int32_t AppMgrServiceInner::IsProcessCacheSupported(int32_t pid, bool &isSupport
         return AAFwk::ERR_CAPABILITY_NOT_SUPPORT;
     }
     isSupported = (appRecord->GetSupportProcessCacheState() == SupportProcessCacheState::SUPPORT);
+    return ERR_OK;
+}
+
+int32_t AppMgrServiceInner::IsArkChildProcessSupported(pid_t pid, bool &isSupported)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "IsArkChildProcessSupported called, pid:%{public}d", pid);
+    auto appRecord = GetAppRunningRecordByPid(pid);
+    if (!appRecord) {
+        TAG_LOGE(AAFwkTag::APPMGR, "no such appRecord, pid:%{public}d", pid);
+        return AAFwk::ERR_NO_APP_RECORD;
+    }
+    isSupported = appRecord->IsArkChildProcessSupported();
+    return ERR_OK;
+}
+
+int32_t AppMgrServiceInner::IsNativeChildProcessSupported(pid_t pid, bool &isSupported)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "IsNativeChildProcessSupported called, pid:%{public}d", pid);
+    auto appRecord = GetAppRunningRecordByPid(pid);
+    if (!appRecord) {
+        TAG_LOGE(AAFwkTag::APPMGR, "no such appRecord, pid:%{public}d", pid);
+        return AAFwk::ERR_NO_APP_RECORD;
+    }
+    isSupported = appRecord->IsNativeChildProcessSupported();
     return ERR_OK;
 }
 

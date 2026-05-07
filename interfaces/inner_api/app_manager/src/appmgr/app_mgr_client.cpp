@@ -1601,6 +1601,36 @@ int32_t AppMgrClient::IsProcessCacheSupported(int32_t pid, bool &isSupported)
     return service->IsProcessCacheSupported(pid, isSupported);
 }
 
+int32_t AppMgrClient::IsArkChildProcessSupported(bool &isSupported)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "IsArkChildProcessSupported called");
+    if (mgrHolder_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "mgrHolder_ is nullptr.");
+        return AppMgrResultCode::ERROR_SERVICE_NOT_READY;
+    }
+    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
+    if (service == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Service is nullptr.");
+        return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
+    }
+    return service->IsArkChildProcessSupported(getpid(), isSupported);
+}
+
+int32_t AppMgrClient::IsNativeChildProcessSupported(bool &isSupported)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "IsNativeChildProcessSupported called");
+    if (mgrHolder_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "mgrHolder_ is nullptr.");
+        return AppMgrResultCode::ERROR_SERVICE_NOT_READY;
+    }
+    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
+    if (service == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Service is nullptr.");
+        return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
+    }
+    return service->IsNativeChildProcessSupported(getpid(), isSupported);
+}
+
 int32_t AppMgrClient::SetProcessCacheEnable(int32_t pid, bool enable)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "SetProcessCacheEnable called");

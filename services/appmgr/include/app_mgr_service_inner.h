@@ -1614,6 +1614,10 @@ public:
       */
     int32_t IsProcessCacheSupported(int32_t pid, bool &isSupported);
 
+    int32_t IsArkChildProcessSupported(pid_t pid, bool &isSupported);
+    
+    int32_t IsNativeChildProcessSupported(pid_t pid, bool &isSupported);
+
     int32_t SetProcessCacheEnable(int32_t pid, bool enable);
 
     int32_t LockProcessCache(int32_t pid, bool isLock);
