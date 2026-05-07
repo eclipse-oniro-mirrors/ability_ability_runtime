@@ -25,9 +25,9 @@
 
 namespace OHOS {
 namespace CliTool {
+class CliSessionInfo;
 class CliToolEvent;
 class ExecOptions;
-struct CliSessionInfo;
 
 /**
  * @brief Unwrap a string map from JavaScript object.

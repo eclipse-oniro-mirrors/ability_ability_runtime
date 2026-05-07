@@ -24,7 +24,7 @@
 #include <vector>
 #include <optional>
 
-#include "icli_tool_data.h"
+#include "cli_session_info.h"
 
 namespace OHOS {
 namespace CliTool {

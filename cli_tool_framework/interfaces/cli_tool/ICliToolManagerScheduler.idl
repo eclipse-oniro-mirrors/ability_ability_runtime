@@ -15,7 +15,7 @@
 
 package OHOS.CliTool;
 
-import ICliToolData;
+sequenceable CliSessionInfo..OHOS.CliTool.CliSessionInfo;
 sequenceable CliToolEvent..OHOS.CliTool.CliToolEvent;
 
 interface ICliToolManagerScheduler {

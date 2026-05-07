@@ -124,7 +124,8 @@ void SessionRecord::BuildSessionInfo(CliSessionInfo &session) const
         session.status = "running";
     } else {
         session.result = BuildExecResult();
-        session.status = (session.result.timedOut || session.result.exitCode != 0) ? "failed" : "completed";
+        session.status =
+            (!session.result || session.result->timedOut || session.result->exitCode != 0) ? "failed" : "completed";
     }
 }
 
@@ -136,20 +137,20 @@ void SessionRecord::TrimBufferedOutput(std::string &buffer)
     buffer.erase(0, buffer.size() - MAX_BUFFERED_OUTPUT_BYTES);
 }
 
-ExecResult &SessionRecord::BuildExecResult() const
+std::shared_ptr<ExecResult> SessionRecord::BuildExecResult() const
 {
-    ExecResult result;
+    auto result = std::make_shared<ExecResult>();
     std::lock_guard<std::mutex> lock(resultMutex_);
     if (timedOut_) {
-        result.executionTime = timeoutMs;
+        result->executionTime = timeoutMs;
     } else {
-        result.exitCode = terminalStatus_;
-        result.executionTime = (endTimeMs_ > startTime) ? (endTimeMs_ - startTime) : 0;
+        result->exitCode = terminalStatus_;
+        result->executionTime = (endTimeMs_ > startTime) ? (endTimeMs_ - startTime) : 0;
     }
-    result.outputText = stdoutText_;
-    result.errorText = stderrText_;
-    result.signalNumber = signalNumber_;
-    result.timedOut = timedOut_;
+    result->outputText = stdoutText_;
+    result->errorText = stderrText_;
+    result->signalNumber = signalNumber_;
+    result->timedOut = timedOut_;
     return result;
 }
 
