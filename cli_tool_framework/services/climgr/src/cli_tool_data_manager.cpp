@@ -59,6 +59,7 @@ CliToolDataManager::CliToolDataManager()
 CliToolDataManager::~CliToolDataManager()
 {
     TAG_LOGI(AAFwkTag::CLI_TOOL, "CliToolDataManager destructor called");
+    std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
     if (kvStorePtr_ != nullptr) {
         dataManager_.CloseKvStore(APP_ID, kvStorePtr_);
     }
