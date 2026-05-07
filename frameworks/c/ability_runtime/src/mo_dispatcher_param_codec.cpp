@@ -712,6 +712,7 @@ AbilityRuntime_ErrorCode MoDispatcherParamCodec::ReadRawValue(MessageParcel& par
             TAG_LOGE(AAFwkTag::EXT, "ReadRawValue: array size is negative, size=%{public}d", size);
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
+        TAG_LOGI(AAFwkTag::EXT, "arraySize=%{public}d", size);
         OH_AbilityRuntime_MoDispatcher_TypeInfo elemTypeInfo;
         std::memset(&elemTypeInfo, 0, sizeof(elemTypeInfo));
         if (typeInfo->pElementType) {
@@ -738,6 +739,7 @@ AbilityRuntime_ErrorCode MoDispatcherParamCodec::ReadRawValue(MessageParcel& par
             TAG_LOGE(AAFwkTag::EXT, "ReadRawValue: vector size is negative, size=%{public}d", size);
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
+        TAG_LOGI(AAFwkTag::EXT, "vectorSize=%{public}d", size);
         OH_AbilityRuntime_MoDispatcher_TypeInfo elemTypeInfo;
         std::memset(&elemTypeInfo, 0, sizeof(elemTypeInfo));
         if (typeInfo->pElementType) {
@@ -763,6 +765,7 @@ AbilityRuntime_ErrorCode MoDispatcherParamCodec::ReadRawValue(MessageParcel& par
             TAG_LOGE(AAFwkTag::EXT, "ReadRawValue: set size is negative, size=%{public}d", size);
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
+        TAG_LOGI(AAFwkTag::EXT, "setSize=%{public}d", size);
         OH_AbilityRuntime_MoDispatcher_TypeInfo elemTypeInfo;
         std::memset(&elemTypeInfo, 0, sizeof(elemTypeInfo));
         if (typeInfo->pElementType) {
@@ -788,6 +791,7 @@ AbilityRuntime_ErrorCode MoDispatcherParamCodec::ReadRawValue(MessageParcel& par
             TAG_LOGE(AAFwkTag::EXT, "ReadRawValue: map size is negative, size=%{public}d", size);
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
+        TAG_LOGI(AAFwkTag::EXT, "mapSize=%{public}d", size);
         OH_AbilityRuntime_MoDispatcher_TypeInfo valueTypeInfo;
         std::memset(&valueTypeInfo, 0, sizeof(valueTypeInfo));
         if (typeInfo->pMapValueType) {
