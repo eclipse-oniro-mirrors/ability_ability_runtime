@@ -102,7 +102,7 @@ private:
     void Init();
     void RegisterBundleEventCallback();
     /**
-     * @brief Validates caller permission and reserves one slot from the per-caller connection quota.
+     * @brief Validates caller permission and foreground state before classifying the agent connect request.
      */
     int32_t ValidateConnectAgentRequest(const sptr<AAFwk::IAbilityConnection> &connection, int32_t &callerUid);
     /**
@@ -153,6 +153,8 @@ private:
     bool ReleaseCallerConnectionCountLocked(const sptr<IRemoteObject> &callerRemote);
     void ReleaseTrackedConnection(const sptr<AAFwk::IAbilityConnection> &connection);
     void ReleaseTrackedConnectionByRemoteLocked(const sptr<IRemoteObject> &callerRemote);
+    void TransferLowCodeCallerLimitLocked(const std::shared_ptr<AgentHostSession> &session,
+        const sptr<IRemoteObject> &callerRemote);
     void HandleCallerConnectionDied(const wptr<IRemoteObject> &remote);
     void HandleCallerConnectionDied(const sptr<IRemoteObject> &remote);
     /**
