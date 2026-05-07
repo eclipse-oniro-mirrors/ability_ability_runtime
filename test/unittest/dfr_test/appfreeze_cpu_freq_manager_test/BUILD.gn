@@ -29,12 +29,12 @@ ohos_unittest("appfreeze_cpu_freq_manager_test") {
   sources = [ "appfreeze_cpu_freq_manager_test.cpp" ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
   ]
 
   external_deps = [
-    "ability_runtime:app_manager",
     "ffrt:libffrt",
     "googletest:gmock_main",
     "googletest:gtest_main",

@@ -88,6 +88,7 @@
             "ipc",
             "json",
             "kv_store",
+            "libjpeg-turbo",
             "libuv",
             "libxml2",
             "media_library",
@@ -118,9 +119,6 @@
             "zlib",
             "hiperf",
             "hiprofiler"
-  ],
-          "third_party": [
-            "libjpeg-turbo"
           ]
       },
       "build": {
