@@ -492,8 +492,8 @@ void DumpRuntimeHelper::DumpJsvmHeap(const OHOS::AppExecFwk::MemDumpInfo &info)
 void DumpRuntimeHelper::DumpArkwebJsHeap(const OHOS::AppExecFwk::MemDumpInfo &info)
 {
 #if defined(NWEB)
-    TAG_LOGI(AAFwkTag::APPKIT, "dump arkweb js heaps, renderPid:%{public}u, needDump:%{public}d, needGc:%{public}d, needRaw:%{public}d",
-        info.renderPid, info.needDump, info.needGc, info.needRaw);
+    TAG_LOGI(AAFwkTag::APPKIT, "dump arkwebjs heaps, renderPid:%{public}u, needDump:%{public}d, "
+        "needGc:%{public}d, needRaw:%{public}d", info.renderPid, info.needDump, info.needGc, info.needRaw);
     int32_t fd = -1;
     if (info.needDump) {
         struct FaultLoggerdRequest request{};
