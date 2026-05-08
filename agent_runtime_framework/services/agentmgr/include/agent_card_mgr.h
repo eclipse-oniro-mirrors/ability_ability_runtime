@@ -49,6 +49,7 @@ public:
 
 private:
     OHOS::AppExecFwk::BundleMgrClient bundleMgrClient_;
+    mutable std::mutex cardDataMutex_;
     AgentCardMgr();
     ~AgentCardMgr();
 };
