@@ -2349,7 +2349,7 @@ HWTEST_F(ApplicationContextTest, AddNativeAbility_0100, TestSize.Level1)
     GTEST_LOG_(INFO) << "AddNativeAbility_0100 start";
     ASSERT_NE(context_, nullptr);
     context_->nativeAbilities_.clear();
-    auto wrapper = std::make_shared<NativeAbilityWrapper>();
+    auto wrapper = std::make_shared<AbilityRuntime_NativeAbilityWrapper>();
     wrapper->instanceId = "100";
     wrapper->abilityName = "TestAbility";
     context_->AddNativeAbility("100", wrapper);
@@ -2370,10 +2370,10 @@ HWTEST_F(ApplicationContextTest, AddNativeAbility_0200, TestSize.Level1)
     GTEST_LOG_(INFO) << "AddNativeAbility_0200 start";
     ASSERT_NE(context_, nullptr);
     context_->nativeAbilities_.clear();
-    auto wrapper1 = std::make_shared<NativeAbilityWrapper>();
+    auto wrapper1 = std::make_shared<AbilityRuntime_NativeAbilityWrapper>();
     wrapper1->instanceId = "1";
     wrapper1->abilityName = "Ability1";
-    auto wrapper2 = std::make_shared<NativeAbilityWrapper>();
+    auto wrapper2 = std::make_shared<AbilityRuntime_NativeAbilityWrapper>();
     wrapper2->instanceId = "2";
     wrapper2->abilityName = "Ability2";
     context_->AddNativeAbility("1", wrapper1);
@@ -2394,10 +2394,10 @@ HWTEST_F(ApplicationContextTest, AddNativeAbility_0300, TestSize.Level1)
     GTEST_LOG_(INFO) << "AddNativeAbility_0300 start";
     ASSERT_NE(context_, nullptr);
     context_->nativeAbilities_.clear();
-    auto wrapper1 = std::make_shared<NativeAbilityWrapper>();
+    auto wrapper1 = std::make_shared<AbilityRuntime_NativeAbilityWrapper>();
     wrapper1->instanceId = "1";
     wrapper1->abilityName = "Ability1";
-    auto wrapper2 = std::make_shared<NativeAbilityWrapper>();
+    auto wrapper2 = std::make_shared<AbilityRuntime_NativeAbilityWrapper>();
     wrapper2->instanceId = "1";
     wrapper2->abilityName = "AbilityOverwritten";
     context_->AddNativeAbility("1", wrapper1);
@@ -2434,7 +2434,7 @@ HWTEST_F(ApplicationContextTest, GetNativeAbility_0200, TestSize.Level1)
     GTEST_LOG_(INFO) << "GetNativeAbility_0200 start";
     ASSERT_NE(context_, nullptr);
     context_->nativeAbilities_.clear();
-    auto wrapper = std::make_shared<NativeAbilityWrapper>();
+    auto wrapper = std::make_shared<AbilityRuntime_NativeAbilityWrapper>();
     wrapper->instanceId = "42";
     wrapper->abilityName = "TestAbility";
     context_->nativeAbilities_["42"] = wrapper;
@@ -2457,7 +2457,7 @@ HWTEST_F(ApplicationContextTest, GetNativeAbility_0300, TestSize.Level1)
     GTEST_LOG_(INFO) << "GetNativeAbility_0300 start";
     ASSERT_NE(context_, nullptr);
     context_->nativeAbilities_.clear();
-    auto wrapper = std::make_shared<NativeAbilityWrapper>();
+    auto wrapper = std::make_shared<AbilityRuntime_NativeAbilityWrapper>();
     wrapper->instanceId = "1";
     context_->nativeAbilities_["1"] = wrapper;
     auto ret = context_->GetNativeAbility("999");
@@ -2477,7 +2477,7 @@ HWTEST_F(ApplicationContextTest, RemoveNativeAbility_0100, TestSize.Level1)
     GTEST_LOG_(INFO) << "RemoveNativeAbility_0100 start";
     ASSERT_NE(context_, nullptr);
     context_->nativeAbilities_.clear();
-    auto wrapper = std::make_shared<NativeAbilityWrapper>();
+    auto wrapper = std::make_shared<AbilityRuntime_NativeAbilityWrapper>();
     wrapper->instanceId = "42";
     context_->nativeAbilities_["42"] = wrapper;
     EXPECT_EQ(context_->nativeAbilities_.size(), 1u);
@@ -2517,7 +2517,7 @@ HWTEST_F(ApplicationContextTest, AddGetRemoveNativeAbility_0100, TestSize.Level1
     context_->nativeAbilities_.clear();
 
     // Add
-    auto wrapper = std::make_shared<NativeAbilityWrapper>();
+    auto wrapper = std::make_shared<AbilityRuntime_NativeAbilityWrapper>();
     wrapper->instanceId = "100";
     wrapper->abilityName = "IntegrationTestAbility";
     wrapper->env = reinterpret_cast<napi_env>(0x1234);
@@ -2540,8 +2540,8 @@ HWTEST_F(ApplicationContextTest, AddGetRemoveNativeAbility_0100, TestSize.Level1
 }
 
 namespace {
-const NativeAbilityWrapper* receivedWrapper = nullptr;
-void MockPostAbility(const NativeAbilityWrapper* wrapper)
+const AbilityRuntime_NativeAbilityWrapper* receivedWrapper = nullptr;
+void MockPostAbility(const AbilityRuntime_NativeAbilityWrapper* wrapper)
 {
     receivedWrapper = wrapper;
 }
@@ -2575,7 +2575,7 @@ HWTEST_F(ApplicationContextTest, ApplicationContext_PostAbility_0200, TestSize.L
     ASSERT_NE(context_, nullptr);
     context_->nativeAbilities_.clear();
 
-    auto wrapper = std::make_shared<NativeAbilityWrapper>();
+    auto wrapper = std::make_shared<AbilityRuntime_NativeAbilityWrapper>();
     wrapper->instanceId = "42";
     wrapper->abilityName = "TestAbility";
 
@@ -2600,7 +2600,7 @@ HWTEST_F(ApplicationContextTest, ApplicationContext_PostAbility_0300, TestSize.L
     ASSERT_NE(context_, nullptr);
     context_->nativeAbilities_.clear();
 
-    auto wrapper = std::make_shared<NativeAbilityWrapper>();
+    auto wrapper = std::make_shared<AbilityRuntime_NativeAbilityWrapper>();
     wrapper->instanceId = "100";
     wrapper->abilityName = "TestPostAbilityIntegration";
 
@@ -2635,7 +2635,7 @@ HWTEST_F(ApplicationContextTest, ApplicationContext_DestroyAbility_0100, TestSiz
     ASSERT_NE(context_, nullptr);
     context_->nativeAbilities_.clear();
 
-    auto wrapper = std::make_shared<NativeAbilityWrapper>();
+    auto wrapper = std::make_shared<AbilityRuntime_NativeAbilityWrapper>();
     wrapper->instanceId = "42";
     wrapper->abilityName = "TestAbility";
     context_->AddNativeAbility("42", wrapper);
@@ -2661,14 +2661,15 @@ HWTEST_F(ApplicationContextTest, ApplicationContext_DestroyAbility_0200, TestSiz
     ASSERT_NE(context_, nullptr);
     context_->nativeAbilities_.clear();
 
-    auto wrapper = std::make_shared<NativeAbilityWrapper>();
+    auto wrapper = std::make_shared<AbilityRuntime_NativeAbilityWrapper>();
     wrapper->instanceId = "100";
     wrapper->abilityName = "TestDestroyAbility";
     context_->AddNativeAbility("100", wrapper);
 
     auto thread = std::make_shared<AppExecFwk::AbilityNativeThread>();
     std::string receivedInstanceId;
-    thread->destroyAbilityFunc_ = [&receivedInstanceId](const NativeAbilityWrapper* nativeAbilityWrapper) {
+    thread->destroyAbilityFunc_ = [&receivedInstanceId](
+                                      const AbilityRuntime_NativeAbilityWrapper *nativeAbilityWrapper) {
         receivedInstanceId = nativeAbilityWrapper->instanceId;
     };
     context_->abilityNativeThread_ = thread;
@@ -2941,7 +2942,7 @@ HWTEST_F(ApplicationContextTest, AbilityNativeThread_PostAbility_0200, TestSize.
     GTEST_LOG_(INFO) << "AbilityNativeThread_PostAbility_0200 start";
     auto thread = std::make_shared<AppExecFwk::AbilityNativeThread>();
     thread->postAbilityFunc_ = nullptr;
-    NativeAbilityWrapper wrapper;
+    AbilityRuntime_NativeAbilityWrapper wrapper;
     wrapper.instanceId = "1";
     wrapper.abilityName = "Test";
     thread->PostAbility(&wrapper);
@@ -2961,7 +2962,7 @@ HWTEST_F(ApplicationContextTest, AbilityNativeThread_PostAbility_0300, TestSize.
 
     thread->postAbilityFunc_ = MockPostAbility;
 
-    NativeAbilityWrapper wrapper;
+    AbilityRuntime_NativeAbilityWrapper wrapper;
     wrapper.instanceId = "42";
     wrapper.abilityName = "TestPostAbility";
     wrapper.env = reinterpret_cast<napi_env>(0x1234);
@@ -2987,7 +2988,7 @@ HWTEST_F(ApplicationContextTest, AbilityNativeThread_DestroyAbility_0100, TestSi
 {
     GTEST_LOG_(INFO) << "AbilityNativeThread_DestroyAbility_0100 start";
     auto thread = std::make_shared<AppExecFwk::AbilityNativeThread>();
-    NativeAbilityWrapper wrapper;
+    AbilityRuntime_NativeAbilityWrapper wrapper;
     wrapper.instanceId = "1";
     wrapper.abilityName = "Test";
     thread->DestroyAbility(&wrapper);
@@ -3005,7 +3006,8 @@ HWTEST_F(ApplicationContextTest, AbilityNativeThread_DestroyAbility_0200, TestSi
     GTEST_LOG_(INFO) << "AbilityNativeThread_DestroyAbility_0200 start";
     auto thread = std::make_shared<AppExecFwk::AbilityNativeThread>();
     std::string receivedInstanceId;
-    thread->destroyAbilityFunc_ = [&receivedInstanceId](const NativeAbilityWrapper* nativeAbilityWrapper) {
+    thread->destroyAbilityFunc_ = [&receivedInstanceId](
+                                      const AbilityRuntime_NativeAbilityWrapper *nativeAbilityWrapper) {
         receivedInstanceId = nativeAbilityWrapper->instanceId;
     };
     thread->DestroyAbility(nullptr);
@@ -3024,12 +3026,12 @@ HWTEST_F(ApplicationContextTest, AbilityNativeThread_DestroyAbility_0300, TestSi
     GTEST_LOG_(INFO) << "AbilityNativeThread_DestroyAbility_0300 start";
     auto thread = std::make_shared<AppExecFwk::AbilityNativeThread>();
 
-    const NativeAbilityWrapper* receivedWrapper = nullptr;
-    thread->destroyAbilityFunc_ = [&receivedWrapper](const NativeAbilityWrapper* nativeAbilityWrapper) {
+    const AbilityRuntime_NativeAbilityWrapper* receivedWrapper = nullptr;
+    thread->destroyAbilityFunc_ = [&receivedWrapper](const AbilityRuntime_NativeAbilityWrapper* nativeAbilityWrapper) {
         receivedWrapper = nativeAbilityWrapper;
     };
 
-    NativeAbilityWrapper wrapper;
+    AbilityRuntime_NativeAbilityWrapper wrapper;
     wrapper.instanceId = "42";
     wrapper.abilityName = "TestDestroyAbility";
 

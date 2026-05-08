@@ -213,6 +213,12 @@ typedef enum {
      * @since 26.0.0
      */
     ABILITY_RUNTIME_ERROR_CODE_INVALID_DISTRIBUTION_TYPE = 16000176,
+    /**
+     * The native ability wrapper is invalid or incomplete.
+     *
+     * @since 26.0.0
+     */
+    ABILITY_RUNTIME_ERROR_CODE_ABILITY_WRAPPER_INVALID = 16000177,
 } AbilityRuntime_ErrorCode;
 
 #ifdef __cplusplus

@@ -76,14 +76,15 @@ bool AbilityNativeThread::LoadNativeModule(const AAFwk::NativeAbilityMetaData& m
     TAG_LOGI(AAFwkTag::ABILITY, "OHMain function found: %{public}s", metaData.nativeModuleFunc.c_str());
 
     // Find the PostAbility function (optional but recommended)
-    auto rawPostAbility = reinterpret_cast<void(*)(const NativeAbilityWrapper*)>(dlsym(moduleHandle_, "PostAbility"));
+    auto rawPostAbility =
+        reinterpret_cast<void (*)(const AbilityRuntime_NativeAbilityWrapper *)>(dlsym(moduleHandle_, "PostAbility"));
     if (rawPostAbility != nullptr) {
         postAbilityFunc_ = rawPostAbility;
         TAG_LOGI(AAFwkTag::ABILITY, "PostAbility function found");
     }
 
     // Find the DestroyAbility function (optional)
-    auto rawDestroyAbility = reinterpret_cast<void(*)(const NativeAbilityWrapper*)>(
+    auto rawDestroyAbility = reinterpret_cast<void(*)(const AbilityRuntime_NativeAbilityWrapper*)>(
         dlsym(moduleHandle_, "DestroyAbility"));
     if (rawDestroyAbility != nullptr) {
         destroyAbilityFunc_ = rawDestroyAbility;
@@ -126,7 +127,7 @@ void AbilityNativeThread::RunMain()
     TAG_LOGI(AAFwkTag::ABILITY, "Native thread created");
 }
 
-void AbilityNativeThread::PostAbility(const NativeAbilityWrapper* nativeAbilityWrapper)
+void AbilityNativeThread::PostAbility(const AbilityRuntime_NativeAbilityWrapper* nativeAbilityWrapper)
 {
     if (nativeAbilityWrapper == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITY, "NativeAbilityWrapper is null");
@@ -145,7 +146,7 @@ void AbilityNativeThread::PostAbility(const NativeAbilityWrapper* nativeAbilityW
     postAbilityFunc_(nativeAbilityWrapper);
 }
 
-void AbilityNativeThread::DestroyAbility(const NativeAbilityWrapper* nativeAbilityWrapper)
+void AbilityNativeThread::DestroyAbility(const AbilityRuntime_NativeAbilityWrapper* nativeAbilityWrapper)
 {
     if (destroyAbilityFunc_ == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITY, "DestroyAbility function is null");
