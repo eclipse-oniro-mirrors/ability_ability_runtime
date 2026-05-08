@@ -89,6 +89,7 @@ constexpr const char* SUPPORT_MODULAR_OBJECT_EXTENSION = "const.abilityms.suppor
 constexpr const char* RESTART_APP_WITH_WINDOW = "persist.sys.abilityms.restart_app_with_window";
 constexpr const char* SUPPORT_NATIVE_UI_ABILITY = "persist.sys.abilityms.support_native_ui_ability";
 constexpr const char* PRODUCT_APPBOOT_SETTING_ENABLED = "const.product.appboot.setting.enabled";
+constexpr const char* SUPPORT_DELAYED_PROCESS_EXIT = "const.abilityms.support_delayed_process_exit";
 // Support prepare terminate
 constexpr int32_t PREPARE_TERMINATE_ENABLE_SIZE = 6;
 constexpr const char* PREPARE_TERMINATE_ENABLE_PARAMETER = "persist.sys.prepare_terminate";
@@ -894,6 +895,16 @@ bool AppUtils::IsSupportModularObjectExtension()
     }
     TAG_LOGD(AAFwkTag::DEFAULT, "supportModularObjectExtension: %{public}d", isSupportModularObjectExtension_.value);
     return isSupportModularObjectExtension_.value;
+}
+
+bool AppUtils::IsSupportDelayedProcessExit()
+{
+    if (!isSupportDelayedProcessExit_.isLoaded) {
+        isSupportDelayedProcessExit_.value = system::GetBoolParameter(SUPPORT_DELAYED_PROCESS_EXIT, false);
+        isSupportDelayedProcessExit_.isLoaded = true;
+    }
+    TAG_LOGD(AAFwkTag::DEFAULT, "supportDelayedProcessExit: %{public}d", isSupportDelayedProcessExit_.value);
+    return isSupportDelayedProcessExit_.value;
 }
 
 bool AppUtils::IsProductAppbootSettingEnabled()

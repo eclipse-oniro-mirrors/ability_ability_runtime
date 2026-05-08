@@ -1094,5 +1094,47 @@ HWTEST_F(AppUtilsTest, IsSupportNativeUIAbility_0200, TestSize.Level2)
     appUtils.isSupportNativeUIAbility_.value = true;
     EXPECT_TRUE(appUtils.IsSupportNativeUIAbility());
 }
+
+/**
+ * @tc.number: IsSupportDelayedProcessExit_0100
+ * @tc.desc: Test IsSupportDelayedProcessExit when not loaded
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppUtilsTest, IsSupportDelayedProcessExit_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsSupportDelayedProcessExit_0100 called.");
+    auto &appUtils = AAFwk::AppUtils::GetInstance();
+    appUtils.isSupportDelayedProcessExit_.isLoaded = false;
+    appUtils.IsSupportDelayedProcessExit();
+    EXPECT_TRUE(appUtils.isSupportDelayedProcessExit_.isLoaded);
+}
+
+/**
+ * @tc.number: IsSupportDelayedProcessExit_0200
+ * @tc.desc: Test IsSupportDelayedProcessExit when already loaded with true
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppUtilsTest, IsSupportDelayedProcessExit_0200, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsSupportDelayedProcessExit_0200 called.");
+    auto &appUtils = AAFwk::AppUtils::GetInstance();
+    appUtils.isSupportDelayedProcessExit_.isLoaded = true;
+    appUtils.isSupportDelayedProcessExit_.value = true;
+    EXPECT_TRUE(appUtils.IsSupportDelayedProcessExit());
+}
+
+/**
+ * @tc.number: IsSupportDelayedProcessExit_0300
+ * @tc.desc: Test IsSupportDelayedProcessExit when already loaded with false
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppUtilsTest, IsSupportDelayedProcessExit_0300, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsSupportDelayedProcessExit_0300 called.");
+    auto &appUtils = AAFwk::AppUtils::GetInstance();
+    appUtils.isSupportDelayedProcessExit_.isLoaded = true;
+    appUtils.isSupportDelayedProcessExit_.value = false;
+    EXPECT_FALSE(appUtils.IsSupportDelayedProcessExit());
+}
 }  // namespace AbilityRuntime
 }  // namespace OHOS

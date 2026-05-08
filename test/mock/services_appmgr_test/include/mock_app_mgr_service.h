@@ -148,6 +148,8 @@ public:
     MOCK_METHOD1(RegisterImageProcessStateObserver, int32_t(const sptr<IImageProcessStateObserver> &observer));
     MOCK_METHOD1(UnregisterImageProcessStateObserver, int32_t(const sptr<IImageProcessStateObserver> &observer));
     MOCK_METHOD2(GetAllAbilityInfos, int32_t(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos));
+    MOCK_METHOD2(EnableDelayedProcessExit, int32_t(int32_t pid, bool enabled));
+    MOCK_METHOD1(CancelDelayedExitTask, void(int32_t pid));
     virtual int StartUserTestProcess(
         const AAFwk::Want &want, const sptr<IRemoteObject> &observer, const BundleInfo &bundleInfo, int32_t userId)
     {

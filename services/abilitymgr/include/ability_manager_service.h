@@ -1444,7 +1444,7 @@ public:
     int StartAbilityForOptionWrap(const Want &want, const StartOptions &startOptions,
         const sptr<IRemoteObject> &callerToken, bool isPendingWantCaller, int32_t userId = DEFAULT_INVAL_VALUE,
         int requestCode = DEFAULT_INVAL_VALUE, bool isStartAsCaller = false, uint32_t callerTokenId = 0,
-        bool isImplicit = false, bool isCallByShortcut = false);
+        bool isImplicit = false, bool isCallByShortcut = false, bool isCallByDelayed = false);
 
     int StartAbilityForOptionInner(
         const Want &want,
@@ -1456,7 +1456,8 @@ public:
         bool isStartAsCaller = false,
         uint32_t specifyTokenId = 0,
         bool isImplicit = false,
-        bool isCallByShortcut = false);
+        bool isCallByShortcut = false,
+        bool isCallByDelayed = false);
 
     int ImplicitStartAbility(
         const Want &want,
@@ -2493,7 +2494,7 @@ public:
 
     int StartUIAbilityForOptionWrap(const Want &want, const StartOptions &options, sptr<IRemoteObject> callerToken,
         bool isPendingWantCaller, int32_t userId, int requestCode, uint32_t callerTokenId = 0, bool isImplicit = false,
-        bool isCallByShortcut = false);
+        bool isCallByShortcut = false, bool isCallByDelayed = false);
 
     /**
      * KillProcessForPermissionUpdate, call KillProcessForPermissionUpdate() through proxy object,
@@ -2837,6 +2838,13 @@ protected:
     virtual int32_t GetUserLockedBundleList(int32_t userId,
         std::unordered_set<std::string> &userLockedBundleList) override;
 
+    /**
+     * StartSelfUIAbility from ApplicationContext and force launch in current process.
+     *
+     * @param want, the want of the ability to start.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int StartSelfUIAbilityByAppContext(const Want &want) override;
 private:
     int GetTopAbilityInner(sptr<IRemoteObject> &token, uint64_t displayId = 0);
 
@@ -3456,6 +3464,13 @@ private:
     bool HandleExecuteSAInterceptor(const Want &want, sptr<IRemoteObject> callerToken,
         AbilityRequest &abilityRequest, int32_t &result);
 
+    int StartAbilityDelayed(StartAbilityWrapParam &param);
+
+    int CheckDelayedStartBelongToCaller(const Want &want, const AppExecFwk::RunningProcessInfo &processInfo);
+
+    int StartAbilityDelayedInner(const Want &want, const AppExecFwk::RunningProcessInfo &processInfo,
+        int32_t callingPid);
+
     bool controllerIsAStabilityTest_ = false;
     bool isParamStartAbilityEnable_ = false;
     // Component StartUp rule switch
@@ -3616,6 +3631,8 @@ private:
     ffrt::mutex shouldBlockAllAppStartMutex_;
     mutable ffrt::mutex timeoutMapLock_;
     std::mutex whiteListMutex_;
+    ffrt::mutex delayedStartPidsLock_;
+    std::unordered_set<int32_t> delayedStartPids_;
 
     std::mutex prepareTermiationCallbackMutex_;
     std::map<std::string, sptr<IPrepareTerminateCallback>> prepareTermiationCallbacks_;

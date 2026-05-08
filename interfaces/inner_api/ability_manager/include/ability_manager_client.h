@@ -56,6 +56,14 @@ public:
     ErrCode StartSelfUIAbility(const Want &want);
 
     /**
+     * StartSelfUIAbility from ApplicationContext and force launch in current process.
+     *
+     * @param want, the want of the ability to start.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode StartSelfUIAbilityByAppContext(const Want &want);
+
+    /**
      * StartSelfUIAbility with want and startOptions, start self uiability only on 2-in-1 devices.
      *
      * @param want, the want of the ability to start.

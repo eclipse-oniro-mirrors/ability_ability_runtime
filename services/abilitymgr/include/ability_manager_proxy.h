@@ -2153,6 +2153,14 @@ public:
         std::unordered_set<std::string> &userLockedBundleList) override;
 
     virtual int32_t SetAppRecoveryFlag(const sptr<IRemoteObject>& token, int flag)override;
+
+    /**
+     * StartSelfUIAbility from ApplicationContext and force launch in current process.
+     *
+     * @param want, the want of the ability to start.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int StartSelfUIAbilityByAppContext(const Want &want) override;
 private:
     template <typename T>
     int GetParcelableInfos(MessageParcel &reply, std::vector<T> &parcelableInfos);

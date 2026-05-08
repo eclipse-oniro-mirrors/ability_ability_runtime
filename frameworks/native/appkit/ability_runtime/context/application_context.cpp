@@ -16,9 +16,13 @@
 #include "application_context.h"
 
 #include <algorithm>
+#include <memory>
+#include <unistd.h>
 
+#include "ability_manager_client.h"
 #include "ability_manager_errors.h"
 #include "ability_util.h"
+#include "app_mgr_client.h"
 #include "app_image_observer_manager.h"
 #include "configuration_convertor.h"
 #include "exit_reason.h"
@@ -933,6 +937,59 @@ int32_t ApplicationContext::RestartApp(const AAFwk::Want& want)
     std::string bundleName = GetBundleName();
     const_cast<AAFwk::Want &>(want).SetBundle(bundleName);
     return (contextImpl_ != nullptr) ? contextImpl_->RestartApp(want) : ERR_INVALID_VALUE;
+}
+
+int32_t ApplicationContext::EnableDelayedProcessExit()
+{
+    auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+    if (appMgrClient == nullptr) {
+        return ERR_INVALID_VALUE;
+    }
+    auto ret = appMgrClient->EnableDelayedProcessExit(getpid(), true);
+    if (ret == ERR_OK) {
+        std::lock_guard<std::mutex> lock(delayedProcessExitStateLock_);
+        delayedProcessExitEnabled_ = true;
+    }
+    return ret;
+}
+
+int32_t ApplicationContext::DisableDelayedProcessExit()
+{
+    auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+    if (appMgrClient == nullptr) {
+        return ERR_INVALID_VALUE;
+    }
+
+    auto ret = appMgrClient->EnableDelayedProcessExit(getpid(), false);
+    if (ret == ERR_OK) {
+        std::lock_guard<std::mutex> lock(delayedProcessExitStateLock_);
+        delayedProcessExitEnabled_ = false;
+    }
+    return ret;
+}
+
+int32_t ApplicationContext::StartSelfUIAbility(const AAFwk::Want &want)
+{
+    if (!IsDelayedProcessExitPending()) {
+        TAG_LOGE(AAFwkTag::APPKIT, "delayed process exit is not pending");
+        return AAFwk::ERR_DELAYED_PROCESS_EXIT_NOT_PENDING;
+    }
+    auto abilityMgrClient = AAFwk::AbilityManagerClient::GetInstance();
+    if (abilityMgrClient == nullptr) {
+        return ERR_INVALID_VALUE;
+    }
+    auto errCode = abilityMgrClient->StartSelfUIAbilityByAppContext(want);
+    if (errCode != ERR_OK) {
+        TAG_LOGE(AAFwkTag::APPKIT, "StartSelfUIAbility failed, errCode:%{public}d", errCode);
+        return errCode;
+    }
+    return ERR_OK;
+}
+
+bool ApplicationContext::IsDelayedProcessExitPending()
+{
+    std::lock_guard<std::mutex> lock(delayedProcessExitStateLock_);
+    return delayedProcessExitEnabled_;
 }
 
 std::string ApplicationContext::GetDistributedFilesDir()

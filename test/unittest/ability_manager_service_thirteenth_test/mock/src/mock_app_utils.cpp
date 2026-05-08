@@ -257,5 +257,15 @@ bool AppUtils::IsPreloadApplicationEnabled()
 {
     return false;
 }
+
+bool AppUtils::IsForbidStart()
+{
+    return false;
+}
+
+bool AppUtils::IsSupportDelayedProcessExit()
+{
+    return MyStatus::GetInstance().auIsSupportDelayedProcessExit_;
+}
 }  // namespace AAFwk
 }  // namespace OHOS

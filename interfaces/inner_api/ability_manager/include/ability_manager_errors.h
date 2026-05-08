@@ -1422,6 +1422,22 @@ enum NativeFreeInstallError {
      */
     ERR_NOT_GAME_PRELOAD_STATE = 29360227,
 
+    /* codes 29360270 - 29360280 are reserved for StartSelfUIAbility by delayed process exit */
+    /*
+     * Result (29360270) The current process has no UIAbility, cannot be called.
+     */
+    ERR_DELAYED_PROCESS_EXIT_NO_UIABILITY = 29360270,
+
+    /*
+     * Result (29360271) Delayed process exit is not pending in the current process, cannot be called.
+     */
+    ERR_DELAYED_PROCESS_EXIT_NOT_PENDING = 29360271,
+    
+    /*
+     * Result (29360272) The current process still has another UIAbility.
+     */
+    ERR_DELAYED_PROCESS_EXIT_HAS_OTHER_UIABILITY = 29360272,
+
     /**
      * Undefine error code.
      */

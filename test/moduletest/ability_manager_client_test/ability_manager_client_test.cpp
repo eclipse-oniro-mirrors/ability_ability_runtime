@@ -871,5 +871,23 @@ HWTEST_F(AbilityManagerClientTest, AbilityManagerClient_ConnectAbilityWithIndire
 
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerClient_ConnectAbilityWithIndirectCallerInfo_0100 end");
 }
+
+/**
+ * @tc.number: AbilityManagerClient_StartSelfUIAbilityByAppContext_0100
+ * @tc.name: StartSelfUIAbilityByAppContext
+ * @tc.desc: Test StartSelfUIAbilityByAppContext with valid parameters
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientTest, AbilityManagerClient_StartSelfUIAbilityByAppContext_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerClient_StartSelfUIAbilityByAppContext_0100 start");
+
+    Want want;
+    want.SetElementName("com.example.bundle", "com.example.ability");
+    auto result = AbilityManagerClient::GetInstance()->StartSelfUIAbilityByAppContext(want);
+    EXPECT_EQ(result, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerClient_StartSelfUIAbilityByAppContext_0100 end");
+}
 }  // namespace AAFwk
 }  // namespace OHOS

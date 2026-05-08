@@ -2074,7 +2074,7 @@ int AbilityManagerService::ImplicitStartAbility(const Want &want, const StartOpt
 int AbilityManagerService::StartUIAbilityForOptionWrap(const Want &want, const StartOptions &options,
     sptr<IRemoteObject> callerToken, bool isPendingWantCaller, int32_t userId,
     int requestCode, uint32_t callerTokenId, bool isImplicit,
-    bool isCallByShortcut)
+    bool isCallByShortcut, bool isCallByDelayed)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     int32_t ret = ERR_OK;
@@ -2083,7 +2083,7 @@ int AbilityManagerService::StartUIAbilityForOptionWrap(const Want &want, const S
         return ret;
     }
     return StartAbilityForOptionWrap(want, options, callerToken, isPendingWantCaller, userId, requestCode, false,
-        callerTokenId, isImplicit, isCallByShortcut);
+        callerTokenId, isImplicit, isCallByShortcut, isCallByDelayed);
 }
 
 int AbilityManagerService::StartAbilityAsCaller(const Want &want, const StartOptions &startOptions,
@@ -2162,7 +2162,7 @@ int AbilityManagerService::StartAbilityForResultAsCaller(const Want &want, const
 
 int AbilityManagerService::StartAbilityForOptionWrap(const Want &want, const StartOptions &startOptions,
     const sptr<IRemoteObject> &callerToken, bool isPendingWantCaller, int32_t userId, int requestCode,
-    bool isStartAsCaller, uint32_t callerTokenId, bool isImplicit, bool isCallByShortcut)
+    bool isStartAsCaller, uint32_t callerTokenId, bool isImplicit, bool isCallByShortcut, bool isCallByDelayed)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     StartAbilityParams startParams(const_cast<Want &>(want));
@@ -2179,18 +2179,18 @@ int AbilityManagerService::StartAbilityForOptionWrap(const Want &want, const Sta
     }
 
     return StartAbilityForOptionInner(want, startOptions, callerToken, isPendingWantCaller, userId, requestCode,
-        isStartAsCaller, callerTokenId, isImplicit, isCallByShortcut);
+        isStartAsCaller, callerTokenId, isImplicit, isCallByShortcut, isCallByDelayed);
 }
 
 int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const StartOptions &startOptions,
     const sptr<IRemoteObject> &callerToken, bool isPendingWantCaller, int32_t userId, int requestCode,
-    bool isStartAsCaller, uint32_t specifyTokenId, bool isImplicit, bool isCallByShortcut)
+    bool isStartAsCaller, uint32_t specifyTokenId, bool isImplicit, bool isCallByShortcut, bool isCallByDelayed)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     EventInfo eventInfo = BuildEventInfo(want, userId);
     // prevent the app from dominating the screen
     if (callerToken == nullptr && !IsCallerSceneBoard() && !isCallByShortcut &&
-        AbilityPermissionUtil::GetInstance().IsDominateScreen(want, isPendingWantCaller)) {
+        AbilityPermissionUtil::GetInstance().IsDominateScreen(want, isPendingWantCaller) && !isCallByDelayed) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "caller invalid");
         AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, ERR_INVALID_CALLER, "caller invalid");
         return ERR_INVALID_CALLER;
@@ -2413,7 +2413,7 @@ int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const St
     result = StartAbilityUtils::IsCallFromAncoShellOrBroker(callerToken) ?
         CheckBrokerCallPermission(abilityRequest, abilityInfo) :
         CheckCallAbilityPermission(abilityRequest, false, 0, isCallByShortcut);
-    if (result != ERR_OK) {
+    if (result != ERR_OK && !isCallByDelayed) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startoption permission error:%{public}d", result);
         AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, result, "CheckCallAbilityPermission error");
         return AbilityErrorUtil::ConvertToOriginErrorCode(result);
@@ -16837,6 +16837,145 @@ int AbilityManagerService::StartSelfUIAbility(const Want &want)
     StartSelfUIAbilityParam param;
     param.want = want;
     return StartSelfUIAbilityInner(param);
+}
+
+int AbilityManagerService::StartAbilityDelayed(StartAbilityWrapParam &param)
+{
+    auto callingPid = IPCSkeleton::GetCallingPid();
+    {
+        std::lock_guard<ffrt::mutex> lock(delayedStartPidsLock_);
+        if (delayedStartPids_.count(callingPid) > 0) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "StartAbilityDelayed already in progress for pid:%{public}d", callingPid);
+            return ERR_DELAYED_PROCESS_EXIT_HAS_OTHER_UIABILITY;
+        }
+        delayedStartPids_.insert(callingPid);
+    }
+    auto removeDelayedPid = [this, callingPid]() {
+        std::lock_guard<ffrt::mutex> lock(delayedStartPidsLock_);
+        delayedStartPids_.erase(callingPid);
+    };    
+    std::vector<sptr<IRemoteObject>> tokens;
+    IN_PROCESS_CALL_WITHOUT_RET(DelayedSingleton<AppScheduler>::GetInstance()->GetAbilityRecordsByProcessID(
+        callingPid, tokens));
+    AppExecFwk::RunningProcessInfo processInfo;
+    DelayedSingleton<AppScheduler>::GetInstance()->GetRunningProcessInfoByChildProcessPid(callingPid, processInfo);
+    auto targetBundleName = param.want.GetBundle();
+    auto iter = std::find(processInfo.bundleNames.begin(), processInfo.bundleNames.end(), targetBundleName);
+    if (iter == processInfo.bundleNames.end()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "The specified ability does not exist.");
+        removeDelayedPid();
+        return TARGET_BUNDLE_NOT_EXIST;
+    }
+    for (const auto &token : tokens) {
+        auto abilityRecord = Token::GetAbilityRecordByToken(token);
+        if (abilityRecord && abilityRecord->GetAbilityInfo().type == AppExecFwk::AbilityType::PAGE &&
+            !abilityRecord->IsTerminating()) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "current process still has UIAbility");
+            removeDelayedPid();
+            return ERR_DELAYED_PROCESS_EXIT_HAS_OTHER_UIABILITY;
+        }
+    }
+
+    auto result = StartAbilityDelayedInner(param.want, processInfo, callingPid);
+    if (result != ERR_OK) {
+        removeDelayedPid();
+    }
+    return result;
+}
+
+int AbilityManagerService::CheckDelayedStartBelongToCaller(const Want &want,
+    const AppExecFwk::RunningProcessInfo &processInfo)
+{
+    auto appIndex = want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1);
+    if (processInfo.appMode == AppExecFwk::MultiAppModeType::APP_CLONE && 
+        appIndex >= 0 && appIndex != processInfo.appCloneIndex) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "The UIAbility not belog to caller");
+        return ERROR_UIABILITY_NOT_BELONG_TO_CALLER;
+    }
+    auto instanceKey = want.GetStringParam(Want::APP_INSTANCE_KEY);
+    auto isCreating = want.GetBoolParam(Want::CREATE_APP_INSTANCE_KEY, false);
+    if ((!instanceKey.empty() && instanceKey != processInfo.instanceKey) || isCreating) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "multi instance scene");
+        return ERROR_UIABILITY_NOT_BELONG_TO_CALLER;
+    }
+    std::string targetBundleName = want.GetBundle();
+    auto iter = std::find(processInfo.bundleNames.begin(), processInfo.bundleNames.end(), targetBundleName);
+    CHECK_TRUE_RETURN_RET(iter == processInfo.bundleNames.end(), ERROR_UIABILITY_NOT_BELONG_TO_CALLER,
+        "The UIAbility not belog to caller");
+    return ERR_OK;
+}
+
+int AbilityManagerService::StartAbilityDelayedInner(const Want &want,
+    const AppExecFwk::RunningProcessInfo &processInfo, int32_t callingPid)
+{
+    auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
+    CHECK_POINTER_AND_RETURN(bundleMgrHelper, INNER_ERR);
+    AppExecFwk::AbilityInfo abilityInfo;
+    auto callerUserId = AbilityRuntime::UserController::GetInstance().GetCallerUserId();
+    CHECK_TRUE_RETURN_RET(!IN_PROCESS_CALL(bundleMgrHelper->QueryAbilityInfo(want,
+        AppExecFwk::AbilityInfoFlag::GET_ABILITY_INFO_WITH_APPLICATION, callerUserId, abilityInfo)),
+        TARGET_BUNDLE_NOT_EXIST, "bundle or ability not exist");
+    if (abilityInfo.type != AppExecFwk::AbilityType::PAGE) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "target is not UIAbility, type:%{public}d",
+            static_cast<int32_t>(abilityInfo.type));
+        return ERROR_UIABILITY_NOT_BELONG_TO_CALLER;
+    }
+    auto result = CheckDelayedStartBelongToCaller(want, processInfo);
+    if (result != ERR_OK) {
+        return result;
+    }
+    StartOptions startOptions;
+    startOptions.SetCurrentProcessName(processInfo.processName_);
+    startOptions.processOptions = std::make_shared<ProcessOptions>();
+    StartSelfUIAbilityRecordGuard guard(callingPid, abilityInfo.applicationInfo.accessTokenId);
+    startOptions.processOptions->selfPid = callingPid;
+    AbilityUtil::RemoveShowModeKey(const_cast<Want &>(want));
+#ifdef SUPPORT_SCREEN
+    DmsUtil::GetInstance().UpdateFlagForCollaboration(want);
+#endif
+    result = StartUIAbilityForOptionWrap(want, startOptions, nullptr, false,
+        DEFAULT_INVAL_VALUE, DEFAULT_INVAL_VALUE, 0, false, false, true);
+    if (result != ERR_OK) {
+        if (result == ERR_NULL_INTERCEPTOR_EXECUTER || result == ERR_NULL_AFTER_CHECK_EXECUTER) {
+            return START_UI_ABILITIES_INTERCEPTOR_CHECK_FAILED;
+        }
+        return result;
+    }
+    auto appMgr = AppMgrUtil::GetAppMgr();
+    if (appMgr != nullptr) {
+        appMgr->CancelDelayedExitTask(callingPid);
+    }
+    return result;
+}
+
+int AbilityManagerService::StartSelfUIAbilityByAppContext(const Want &want)
+{
+    if (!AppUtils::GetInstance().IsSupportDelayedProcessExit()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "device not supported");
+        return ERR_CAPABILITY_NOT_SUPPORT;
+    }
+    if (AppUtils::GetInstance().IsForbidStart()) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "forbid start: %{public}s", want.GetElement().GetBundleName().c_str());
+        return INNER_ERR;
+    }
+    if (CheckIfOperateRemote(want)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "StartUIAbilities not support StartRemoteAbility");
+        return START_UI_ABILITIES_NOT_SUPPORT_OPERATE_REMOTE;
+    }
+    if (AbilityRuntime::StartupUtil::IsStartPlugin(want)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "StartUIAbilities not support StartPlugin");
+        return START_UI_ABILITIES_NOT_SUPPORT_START_PLUGIN;
+    }
+#ifdef SUPPORT_SCREEN
+    if (ImplicitStartProcessor::IsImplicitStartAction(want)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "StartUIAbilities not support implicit start");
+        return START_UI_ABILITIES_NOT_SUPPORT_IMPLICIT_START;
+    }
+#endif
+    XCOLLIE_TIMER_LESS(__PRETTY_FUNCTION__);
+    StartAbilityWrapParam param;
+    param.want = want;
+    return StartAbilityDelayed(param);
 }
 
 int AbilityManagerService::StartSelfUIAbilityWithStartOptions(const Want &want, const StartOptions &options)
