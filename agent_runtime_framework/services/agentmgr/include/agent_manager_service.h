@@ -55,7 +55,7 @@ public:
 
     int32_t GetAllAgentCards(AgentCardsRawData &cards) override;
 
-    int32_t GetAgentCardsByBundleName(const std::string &bundleName, std::vector<AgentCard> &cards) override;
+    int32_t GetAgentCardsByBundleName(const std::string &bundleName, AgentCardsRawData &cards) override;
 
     int32_t GetAgentCardByAgentId(const std::string &bundleName, const std::string &agentId, AgentCard &card) override;
 

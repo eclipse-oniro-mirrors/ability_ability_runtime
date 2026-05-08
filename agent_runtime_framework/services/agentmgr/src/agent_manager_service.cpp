@@ -175,7 +175,7 @@ int32_t AgentManagerService::GetAllAgentCards(AgentCardsRawData &cards)
     return AgentCardMgr::GetInstance().GetAllAgentCards(cards);
 }
 
-int32_t AgentManagerService::GetAgentCardsByBundleName(const std::string &bundleName, std::vector<AgentCard> &cards)
+int32_t AgentManagerService::GetAgentCardsByBundleName(const std::string &bundleName, AgentCardsRawData &cards)
 {
     if (!AAFwk::PermissionVerification::GetInstance()->JudgeCallerIsAllowedToUseSystemAPI()) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "caller no system-app, can not use system-api");
@@ -186,7 +186,8 @@ int32_t AgentManagerService::GetAgentCardsByBundleName(const std::string &bundle
         TAG_LOGE(AAFwkTag::SER_ROUTER, "Permission verification failed");
         return ERR_PERMISSION_DENIED;
     }
-    auto ret = AgentCardMgr::GetInstance().GetAgentCardsByBundleName(bundleName, cards);
+    std::vector<AgentCard> cardVec;
+    auto ret = AgentCardMgr::GetInstance().GetAgentCardsByBundleName(bundleName, cardVec);
     if (ret == ERR_NAME_NOT_FOUND) {
         TAG_LOGW(AAFwkTag::SER_ROUTER, "no agent cards of bundle %{public}s", bundleName.c_str());
         int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
@@ -198,7 +199,11 @@ int32_t AgentManagerService::GetAgentCardsByBundleName(const std::string &bundle
             TAG_LOGE(AAFwkTag::SER_ROUTER, "bundle unexist");
             return AAFwk::ERR_BUNDLE_NOT_EXIST;
         }
+        AgentCardsRawData::FromAgentCardVec({}, cards);
         return ERR_OK;
+    }
+    if (ret == ERR_OK) {
+        AgentCardsRawData::FromAgentCardVec(cardVec, cards);
     }
     return ret;
 }

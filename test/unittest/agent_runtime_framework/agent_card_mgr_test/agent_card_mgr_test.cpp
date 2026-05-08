@@ -15,6 +15,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <thread>
 
 #define private public
 #define protected public
@@ -104,6 +105,7 @@ void AgentCardMgrTest::SetUp(void)
     MyFlag::queryDataCards.clear();
     MyFlag::queryAllDataEntries.clear();
     MyFlag::queryAllDataCards.clear();
+    MyFlag::syncQueryDataWithInsert = false;
     MyFlag::retGetBundleInfo = true;
     MyFlag::retGetResConfigFile = true;
     MyFlag::retFromJson = true;
@@ -1127,6 +1129,43 @@ HWTEST_F(AgentCardMgrTest, RegisterAgentCard_010, TestSize.Level1)
     AgentCard card = BuildCard("workflowAgent", "1.0.0", "test.bundle", "TestAgent", AgentCardType::LOW_CODE);
 
     EXPECT_EQ(agentCardMgr.RegisterAgentCard(card), AAFwk::ERR_NOT_SYSTEM_APP);
+}
+
+/**
+ * @tc.name: RegisterAgentCard_011
+ * @tc.desc: RegisterAgentCard persists concurrent registrations with distinct agentIds
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardMgrTest, RegisterAgentCard_011, TestSize.Level1)
+{
+    AgentCardMgr agentCardMgr;
+    MyFlag::mockExtensionInfos.push_back(BuildAgentExtensionInfo());
+    MyFlag::retQueryData = ERR_NAME_NOT_FOUND;
+    MyFlag::syncQueryDataWithInsert = true;
+
+    constexpr int32_t cardCount = 10;
+    std::vector<std::thread> threads;
+    std::vector<int32_t> results(cardCount, ERR_INVALID_VALUE);
+    threads.reserve(cardCount);
+    for (int32_t i = 0; i < cardCount; ++i) {
+        threads.emplace_back([&agentCardMgr, &results, i]() {
+            AgentCard card = BuildCard("testAgent" + std::to_string(i), "1.0.0");
+            results[i] = agentCardMgr.RegisterAgentCard(card);
+        });
+    }
+    for (auto &thread : threads) {
+        thread.join();
+    }
+
+    for (int32_t result : results) {
+        EXPECT_EQ(result, ERR_OK);
+    }
+    ASSERT_EQ(MyFlag::insertedCards.size(), static_cast<size_t>(cardCount));
+    for (int32_t i = 0; i < cardCount; ++i) {
+        auto it = std::find_if(MyFlag::insertedCards.begin(), MyFlag::insertedCards.end(),
+            [i](const AgentCard &card) { return card.agentId == "testAgent" + std::to_string(i); });
+        EXPECT_NE(it, MyFlag::insertedCards.end());
+    }
 }
 
 /**

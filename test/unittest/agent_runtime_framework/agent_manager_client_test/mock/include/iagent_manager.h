@@ -34,7 +34,7 @@ public:
         return 0;
     }
 
-    virtual int32_t GetAgentCardsByBundleName(const std::string &bundleName, std::vector<AgentCard> &cards)
+    virtual int32_t GetAgentCardsByBundleName(const std::string &bundleName, AgentCardsRawData &rawData)
     {
         return 0;
     }

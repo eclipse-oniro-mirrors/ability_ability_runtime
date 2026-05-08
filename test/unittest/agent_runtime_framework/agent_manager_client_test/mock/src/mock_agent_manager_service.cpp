@@ -45,8 +45,7 @@ int32_t MockAgentManagerService::GetAllAgentCards(AgentCardsRawData &rawData)
     return MyFlag::retGetAllAgentCards;
 }
 
-int32_t MockAgentManagerService::GetAgentCardsByBundleName(const std::string &bundleName,
-    std::vector<AgentCard> &cards)
+int32_t MockAgentManagerService::GetAgentCardsByBundleName(const std::string &bundleName, AgentCardsRawData &rawData)
 {
     return MyFlag::retGetAgentCardsByBundleName;
 }
