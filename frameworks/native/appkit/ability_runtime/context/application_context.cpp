@@ -1382,13 +1382,14 @@ std::shared_ptr<AppExecFwk::AbilityNativeThread> ApplicationContext::GetNativeTh
     return abilityNativeThread_;
 }
 
-void ApplicationContext::AddNativeAbility(const std::string &instanceId, std::shared_ptr<NativeAbilityWrapper> wrapper)
+void ApplicationContext::AddNativeAbility(
+    const std::string &instanceId, std::shared_ptr<AbilityRuntime_NativeAbilityWrapper> wrapper)
 {
     std::lock_guard<std::mutex> lock(nativeMutex_);
     nativeAbilities_[instanceId] = wrapper;
 }
 
-std::shared_ptr<NativeAbilityWrapper> ApplicationContext::GetNativeAbility(const std::string &instanceId)
+std::shared_ptr<AbilityRuntime_NativeAbilityWrapper> ApplicationContext::GetNativeAbility(const std::string &instanceId)
 {
     std::lock_guard<std::mutex> lock(nativeMutex_);
     auto it = nativeAbilities_.find(instanceId);
@@ -1404,7 +1405,8 @@ void ApplicationContext::RemoveNativeAbility(const std::string &instanceId)
     nativeAbilities_.erase(instanceId);
 }
 
-void ApplicationContext::PostAbility(const std::string &instanceId, std::shared_ptr<NativeAbilityWrapper> wrapper)
+void ApplicationContext::PostAbility(
+    const std::string &instanceId, std::shared_ptr<AbilityRuntime_NativeAbilityWrapper> wrapper)
 {
     if (wrapper == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITY, "NativeAbilityWrapper is null");
