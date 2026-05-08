@@ -159,22 +159,6 @@ private:
     bool initialized_ = false;
     std::shared_ptr<IOMonitor> ioMonitor_ = nullptr;
 
-    /**
-     * @brief Execute single command permission query.
-     */
-    int32_t DoQueryPermission(const Command &cmd, std::vector<std::string> &permissions);
-
-    /**
-     * @brief Query main command permissions.
-     */
-    int32_t QueryMainCommandPermission(const std::string &toolName, std::vector<std::string> &permissions);
-
-    /**
-     * @brief Query subcommand permissions.
-     */
-    int32_t QuerySubCommandPermission(const std::string &toolName, const std::string &subCommand,
-        std::vector<std::string> &permissions);
-
     std::atomic<int32_t> interfaceCalledCount_ = 0;
     ffrt::mutex sessionsMutex_;
     std::unordered_map<std::string, std::shared_ptr<SessionRecord>> sessionRecords_;
