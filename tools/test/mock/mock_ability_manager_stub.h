@@ -282,6 +282,14 @@ public:
         const InsightIntentExecuteParam &param));
     MOCK_METHOD3(ExecuteInsightIntentDone, int32_t(const sptr<IRemoteObject> &token, uint64_t intentId,
         const InsightIntentExecuteResult &result));
+    MOCK_METHOD3(GetAllInsightIntentInfo, int32_t(AbilityRuntime::GetInsightIntentFlag flag,
+        std::vector<AbilityRuntime::InsightIntentInfoForQuery> &infos, int32_t userId));
+    MOCK_METHOD4(GetInsightIntentInfoByBundleName, int32_t(AbilityRuntime::GetInsightIntentFlag flag,
+        const std::string &bundleName, std::vector<AbilityRuntime::InsightIntentInfoForQuery> &infos,
+        int32_t userId));
+    MOCK_METHOD6(GetInsightIntentInfoByIntentName, int32_t(AbilityRuntime::GetInsightIntentFlag flag,
+        const std::string &bundleName, const std::string &moduleName, const std::string &intentName,
+        AbilityRuntime::InsightIntentInfoForQuery &info, int32_t userId));
     MOCK_METHOD5(StartAbilityWithSpecifyTokenId, int(const Want& want, const sptr<IRemoteObject>& callerToken,
         uint32_t specifyTokenId, int32_t userId, int requestCode));
 public:

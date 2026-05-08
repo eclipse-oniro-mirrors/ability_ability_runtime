@@ -34,6 +34,7 @@ config("common_config") {
     "${ability_runtime_path}/frameworks/simulator/ability_simulator/*",
     "${ability_runtime_path}/tools/aa/*",
     "${ability_runtime_path}/tools/ohos-aa/*",
+    "${ability_runtime_path}/tools/cc/*",
     "${ability_runtime_services_path}/common/*",
     "${ability_runtime_services_path}/quickfixmgr/*",
     "${ability_runtime_services_path}/uripermmgr/*",

@@ -1790,6 +1790,17 @@ public:
      */
     ErrCode QueryEntityInfo(uint64_t key, sptr<IRemoteObject> callerToken,
         const InsightIntentQueryParam &param);
+     
+    /**
+     * @brief Execute intent with result synchronously.
+     * @param callerToken Caller ability token.
+     * @param param The Intent execute param.
+     * @param result The Intent execute result output.
+     * @param timeoutMs Timeout in milliseconds, default 30000ms.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode ExecuteIntentWithResult(const InsightIntentExecuteParam &param, InsightIntentExecuteResult &result,
+        int32_t timeoutMs = 30000);
 
     /**
      * @brief Called when insight intent execute finished.
