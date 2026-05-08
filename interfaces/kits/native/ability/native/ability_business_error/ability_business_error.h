@@ -218,6 +218,9 @@ enum class AbilityErrorCode {
     // The specified agentId does not exist.
     ERROR_CODE_AGENT_ID_NOT_EXIST = 35600001,
 
+    // The number of agent cards under one bundle exceeds the upper limit.
+    ERROR_CODE_AGENT_CARD_LIST_OUT_OF_RANGE = 35600008,
+
     // Maximum connections from the same caller have been reached. Please disconnect at least one agent extension
     // beforehand.
     ERROR_CODE_MAX_CONNECTIONS_REACHED = 35600003,

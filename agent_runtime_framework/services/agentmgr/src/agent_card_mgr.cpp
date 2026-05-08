@@ -292,6 +292,10 @@ int32_t AgentCardMgr::RegisterAgentCard(const AgentCard &card)
         TAG_LOGE(AAFwkTag::SER_ROUTER, "agent card already registered");
         return AAFwk::ERR_AGENT_CARD_DUPLICATE_REGISTER;
     }
+    if (entries.size() >= MAX_AGENT_CARD_SIZE) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "agent card count reached max size %{public}d", MAX_AGENT_CARD_SIZE);
+        return AAFwk::ERR_AGENT_CARD_LIST_OUT_OF_RANGE;
+    }
 
     entries.push_back({registerCard, AgentCardUpdateSource::API});
     return AgentCardDbMgr::GetInstance().InsertData(registerCard.appInfo->bundleName, userId, entries);
