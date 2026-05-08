@@ -560,6 +560,11 @@ public:
     {
         return E_OK;
     }
+
+    virtual int32_t GetPartitionTable(const std::string &diskId, PartitionTableInfo &partitionTableInfo)
+    {
+        return E_OK;
+    }
 };
 
 bool StorageManagerServiceMock::isZero = true;
