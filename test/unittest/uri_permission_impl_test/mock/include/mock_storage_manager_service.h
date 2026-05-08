@@ -480,11 +480,6 @@ public:
         return E_OK;
     }
 
-    virtual int32_t ClearSecondMountPoint(uint32_t userId, const std::string &bundleName) override
-    {
-        return E_OK;
-    }
-
     virtual int32_t Encrypt(const std::string &volumeId, const std::string &password) override
     {
         return E_OK;
