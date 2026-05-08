@@ -13,27 +13,9 @@
  * limitations under the License.
  */
 
-#ifndef MOCK_MODULAR_OBJECT_EXTENSION_CONTEXT_IMPL_H
-#define MOCK_MODULAR_OBJECT_EXTENSION_CONTEXT_IMPL_H
+#ifndef MOCK_IPC_ERROR_CODE_H
+#define MOCK_IPC_ERROR_CODE_H
 
-#include "native_extension/context_impl.h"
-#include "errors.h"
-#include "mock_types.h"
+constexpr int OH_IPC_INNER_ERROR = -1;
 
-namespace OHOS {
-namespace AbilityRuntime {
-
-class ModularObjectExtensionContext : public Context {
-public:
-    ModularObjectExtensionContext() = default;
-
-    void SetEventHandler(const std::shared_ptr<AppExecFwk::EventHandler> &handler)
-    {
-        (void)handler;
-    }
-};
-
-} // namespace AbilityRuntime
-} // namespace OHOS
-
-#endif // MOCK_MODULAR_OBJECT_EXTENSION_CONTEXT_IMPL_H
+#endif // MOCK_IPC_ERROR_CODE_H

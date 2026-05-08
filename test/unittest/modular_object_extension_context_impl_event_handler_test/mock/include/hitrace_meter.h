@@ -13,27 +13,10 @@
  * limitations under the License.
  */
 
-#ifndef MOCK_MODULAR_OBJECT_EXTENSION_CONTEXT_IMPL_H
-#define MOCK_MODULAR_OBJECT_EXTENSION_CONTEXT_IMPL_H
+#ifndef MOCK_HITRACE_METER_H
+#define MOCK_HITRACE_METER_H
 
-#include "native_extension/context_impl.h"
-#include "errors.h"
-#include "mock_types.h"
+#define HITRACE_METER_NAME(tag, name)
+#define HITRACE_TAG_ABILITY_MANAGER 0
 
-namespace OHOS {
-namespace AbilityRuntime {
-
-class ModularObjectExtensionContext : public Context {
-public:
-    ModularObjectExtensionContext() = default;
-
-    void SetEventHandler(const std::shared_ptr<AppExecFwk::EventHandler> &handler)
-    {
-        (void)handler;
-    }
-};
-
-} // namespace AbilityRuntime
-} // namespace OHOS
-
-#endif // MOCK_MODULAR_OBJECT_EXTENSION_CONTEXT_IMPL_H
+#endif // MOCK_HITRACE_METER_H

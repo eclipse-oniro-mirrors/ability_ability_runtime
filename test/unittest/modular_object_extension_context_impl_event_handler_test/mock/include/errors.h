@@ -13,27 +13,11 @@
  * limitations under the License.
  */
 
-#ifndef MOCK_MODULAR_OBJECT_EXTENSION_CONTEXT_IMPL_H
-#define MOCK_MODULAR_OBJECT_EXTENSION_CONTEXT_IMPL_H
+#ifndef MOCK_ERRORS_H
+#define MOCK_ERRORS_H
 
-#include "native_extension/context_impl.h"
-#include "errors.h"
-#include "mock_types.h"
+#include <cstdint>
+using ErrCode = int32_t;
+constexpr ErrCode ERR_OK = 0;
 
-namespace OHOS {
-namespace AbilityRuntime {
-
-class ModularObjectExtensionContext : public Context {
-public:
-    ModularObjectExtensionContext() = default;
-
-    void SetEventHandler(const std::shared_ptr<AppExecFwk::EventHandler> &handler)
-    {
-        (void)handler;
-    }
-};
-
-} // namespace AbilityRuntime
-} // namespace OHOS
-
-#endif // MOCK_MODULAR_OBJECT_EXTENSION_CONTEXT_IMPL_H
+#endif // MOCK_ERRORS_H

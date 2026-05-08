@@ -17,6 +17,7 @@
 #define MOCK_MODULAR_OBJECT_EXTENSION_CONTEXT_H
 
 #include "ability_runtime_common.h"
+#include "ipc_cremote_object.h"
 
 struct AbilityBase_Want;
 typedef struct AbilityBase_Want AbilityBase_Want;
@@ -41,6 +42,13 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjExtensionContext_StartSelfUIAbi
 
 AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjExtensionContext_TerminateSelf(
     OH_AbilityRuntime_ModObjExtensionContextHandle context);
+
+OHIPCRemoteStub* OH_AbilityRuntime_ModObjExtensionContext_CreateIPCRemoteStub(
+    OH_AbilityRuntime_ModObjExtensionContextHandle context, const char *descriptor,
+    OH_OnRemoteRequestCallback requestCallback, OH_OnRemoteDestroyCallback destroyCallback, void *userData);
+
+void OH_AbilityRuntime_ModObjExtensionContext_DestroyIPCRemoteStub(
+    OH_AbilityRuntime_ModObjExtensionContextHandle context, OHIPCRemoteStub *stub);
 
 #ifdef __cplusplus
 }

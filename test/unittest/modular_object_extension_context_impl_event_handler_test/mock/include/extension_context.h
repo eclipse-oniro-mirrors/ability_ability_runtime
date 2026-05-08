@@ -58,7 +58,18 @@ public:
         return g_startSelfUIAbilityResult;
     }
 
+    ErrCode StartSelfUIAbilityWithToken(const Want &want, const sptr<IRemoteObject> &token)
+    {
+        return g_startSelfUIAbilityResult;
+    }
+
     ErrCode StartSelfUIAbilityWithStartOptions(const Want &want, const StartOptions &options)
+    {
+        return g_startSelfUIAbilityWithStartOptionsResult;
+    }
+
+    ErrCode StartSelfUIAbilityWithStartOptionsAndToken(
+        const Want &want, const StartOptions &options, const sptr<IRemoteObject> &token)
     {
         return g_startSelfUIAbilityWithStartOptionsResult;
     }
@@ -93,13 +104,6 @@ namespace AbilityRuntime {
 class ExtensionContext : public Context {
 public:
     sptr<IRemoteObject> token_;
-
-protected:
-    virtual bool IsContext(size_t contextTypeId)
-    {
-        (void)contextTypeId;
-        return false;
-    }
 };
 
 } // namespace AbilityRuntime

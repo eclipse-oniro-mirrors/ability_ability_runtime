@@ -17,6 +17,7 @@
 
 #include <new>
 
+#include "ability_handler.h"
 #include "hilog_tag_wrapper.h"
 #include "ipc_inner_object.h"
 #include "native_runtime.h"
@@ -53,6 +54,7 @@ void ModularObjectExtension::Init(const std::shared_ptr<AbilityLocalRecord> &rec
     moeContext_->type = AppExecFwk::ExtensionAbilityType::MODULAR_OBJECT;
     auto context = GetContext();
     if (context != nullptr) {
+        context->SetEventHandler(std::static_pointer_cast<AppExecFwk::EventHandler>(handler));
         moeContext_->context = context->weak_from_this();
     }
     moeInstance_->context = moeContext_;

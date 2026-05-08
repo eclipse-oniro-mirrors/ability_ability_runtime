@@ -16,21 +16,35 @@
 #ifndef MOCK_MODULAR_OBJECT_EXTENSION_CONTEXT_IMPL_H
 #define MOCK_MODULAR_OBJECT_EXTENSION_CONTEXT_IMPL_H
 
-#include "native_extension/context_impl.h"
-#include "errors.h"
-#include "mock_types.h"
+#include <cstddef>
+#include <memory>
+
+#include "extension_context.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
 
-class ModularObjectExtensionContext : public Context {
+class ModularObjectExtensionContext : public ExtensionContext {
 public:
-    ModularObjectExtensionContext() = default;
+    static const size_t CONTEXT_TYPE_ID;
 
-    void SetEventHandler(const std::shared_ptr<AppExecFwk::EventHandler> &handler)
-    {
-        (void)handler;
-    }
+    // Pure declarations — definitions come from real .cpp (linked via BUILD.gn)
+    void SetEventHandler(const std::shared_ptr<AppExecFwk::EventHandler> &handler);
+
+    std::shared_ptr<AppExecFwk::EventHandler> GetEventHandler() const;
+
+    // Pure declarations — definitions come from real .cpp (linked via BUILD.gn)
+    ErrCode StartSelfUIAbility(const AAFwk::Want &want) const;
+
+    ErrCode StartSelfUIAbilityWithStartOptions(const AAFwk::Want &want,
+        const AAFwk::StartOptions &startOptions) const;
+
+    ErrCode TerminateSelf();
+
+    bool IsContext(size_t contextTypeId) { return contextTypeId == CONTEXT_TYPE_ID; }
+
+private:
+    std::weak_ptr<AppExecFwk::EventHandler> handler_;
 };
 
 } // namespace AbilityRuntime
