@@ -280,6 +280,8 @@ constexpr int32_t START_AUTO_START_APP_DELAY_TIME = 200;
 constexpr int32_t START_AUTO_START_APP_RETRY_MAX_TIMES = 5;
 constexpr int32_t RETRY_COUNT = 20;
 constexpr int32_t BROKER_UID = 5557;
+constexpr int64_t FLOOD_ATTACK_INTERVAL_MAX = 1000;
+constexpr size_t FLOOD_ATTACK_NUMBER_MAX = 10;
 
 const std::unordered_set<std::string> COMMON_PICKER_TYPE = {
     "share", "action", "navigation", "mail", "finance", "flight", "express", "photoEditor"
@@ -14175,11 +14177,18 @@ int32_t AbilityManagerService::ExecuteIntent(uint64_t key, const sptr<IRemoteObj
 
     TAG_LOGI(AAFwkTag::INTENT, "execute insight intent, bundleName: %{public}s, moduleName: %{public}s, "
         "intentName: %{public}s, intentId:%{public}" PRIu64 ", openLinkExecuteFlag: %{public}d, "
-        "executeMode: %{public}d, userId: %{public}d, deviceId: %{public}s",
+        "executeMode: %{public}d, userId: %{public}d, deviceId: %{private}s",
         param.bundleName_.c_str(), param.moduleName_.c_str(), param.insightIntentName_.c_str(),
         paramPtr->insightIntentId_, openLinkExecuteFlag, param.executeMode_, param.userId_, param.deviceId_.c_str());
 
     if (!param.deviceId_.empty()) {
+        if (IsFloodAttackByCallerUid(IPCSkeleton::GetCallingUid())) {
+            TAG_LOGW(AAFwkTag::INTENT, "distributed intent flood attack");
+            DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->RemoveExecuteIntent(
+                paramPtr->insightIntentId_);
+            return INNER_ERR;
+        }
+
  	    bool hasDistributedPermission = PermissionVerification::GetInstance()->VerifyCallingPermission(
  	        PermissionConstants::PERMISSION_EXECUTE_DISTRIBUTED_INTENT);
  	    if (!hasDistributedPermission) {
@@ -14201,6 +14210,7 @@ int32_t AbilityManagerService::ExecuteIntent(uint64_t key, const sptr<IRemoteObj
         callerInfo.accessToken = IPCSkeleton::GetCallingTokenID();
         sptr<IRemoteObject> callback = new (std::nothrow) AAFwk::RemoteIntentResultCallback();
  	    DistributedClient dmsClient;
+        want.SetDeviceId(param.deviceId_);
  	    if (dmsClient.StartRemoteIntent(want, callerInfo, callback) != ERR_OK) {
  	        TAG_LOGE(AAFwkTag::INTENT, "StartRemoteIntent failed");
  	        DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->RemoveExecuteIntent(
@@ -14212,6 +14222,23 @@ int32_t AbilityManagerService::ExecuteIntent(uint64_t key, const sptr<IRemoteObj
 
     AbilityRuntime::ExecuteIntentCommonOptions options(ignoreAbilityName, infos, key);
     return ExecuteIntentCommon(callerToken, paramPtr, callerBundlename, options);
+}
+
+bool AbilityManagerService::IsFloodAttackByCallerUid(int32_t callerUid)
+{
+    int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+    std::lock_guard<std::mutex> lock(floodAttackMutex_);
+    auto &records = floodAttackStatistics_[callerUid];
+    while (!records.empty() && (now - records.front() > FLOOD_ATTACK_INTERVAL_MAX)) {
+        records.pop_front();
+    }
+    TAG_LOGD(AAFwkTag::INTENT, "records size is :%{public}zu", records.size());
+    if (records.size() >= FLOOD_ATTACK_NUMBER_MAX) {
+        return true;
+    }
+    records.emplace_back(now);
+    return false;
 }
 
 ErrCode AbilityManagerService::QueryEntityInfo(uint64_t key, sptr<IRemoteObject> callerToken,
@@ -16350,8 +16377,11 @@ ErrCode AbilityManagerService::IntentOpenLinkInner(const std::shared_ptr<AppExec
     if (resultCode == ERR_OK || resultCode == ERR_OPEN_LINK_START_ABILITY_DEFAULT_OK) {
         TAG_LOGD(AAFwkTag::INTENT, "Intent OpenLink success");
         InsightIntentExecuteResult result;
+        int32_t callerUid = 0;
+        uint32_t accessToken = 0;
+        GetCallerUidAndToken(param->bundleName_, userId, callerUid, accessToken);
         DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->ExecuteIntentDone(
-            param->insightIntentId_, result.innerErr, result);
+            param->insightIntentId_, result.innerErr, result, callerUid, accessToken);
         return ERR_OK;
     }
     //mapping error code 16000019->16000050
@@ -16360,6 +16390,21 @@ ErrCode AbilityManagerService::IntentOpenLinkInner(const std::shared_ptr<AppExec
     }
     TAG_LOGD(AAFwkTag::INTENT, "Intent OpenLink failed:%{public}d", resultCode);
     return resultCode;
+}
+
+void AbilityManagerService::GetCallerUidAndToken(const std::string &bundleName, int32_t userId,
+    int32_t &callerUid, uint32_t &accessToken)
+{
+    AppExecFwk::BundleInfo bundleInfo;
+    auto bms = AbilityUtil::GetBundleManagerHelper();
+    bool ret = IN_PROCESS_CALL(
+        bms->GetBundleInfo(bundleName, AppExecFwk::BundleFlag::GET_BUNDLE_WITH_ABILITIES, bundleInfo, userId));
+    if (!ret) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "get bundleInfo preloading failed, userId:%{public}d", userId);
+        return;
+    }
+    callerUid = bundleInfo.uid;
+    accessToken = IPCSkeleton::GetCallingTokenID();
 }
 
 ErrCode AbilityManagerService::OpenLink(const Want& want, sptr<IRemoteObject> callerToken,

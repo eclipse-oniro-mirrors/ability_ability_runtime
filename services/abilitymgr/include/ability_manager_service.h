@@ -2890,6 +2890,14 @@ private:
      * @return Returns ERR_OK on success, error code on failure.
      */
     int32_t CheckAndSubmitAutoStartupStatusBarTask(std::shared_ptr<AbilityRecord> abilityRecord);
+
+    /**
+     * @brief Check whether caller triggers distributed intent flood attack.
+     * @param callerUid Calling uid.
+     * @return Returns true if flood attack detected.
+     */
+    bool IsFloodAttackByCallerUid(int32_t callerUid);
+
     /**
      * initialization of ability manager service.
      *
@@ -3591,6 +3599,8 @@ private:
     int32_t ExecuteIntentCommon(const sptr<IRemoteObject> &callerToken,
         const std::shared_ptr<InsightIntentExecuteParam> &param, const std::string &callerBundleName,
         const AbilityRuntime::ExecuteIntentCommonOptions &infos);
+    void GetCallerUidAndToken(const std::string &bundleName, int32_t userId,
+        int32_t &callerUid, uint32_t &accessToken);
 
 #ifdef BGTASKMGR_CONTINUOUS_TASK_ENABLE
     std::shared_ptr<BackgroundTaskObserver> bgtaskObserver_;
@@ -3633,6 +3643,8 @@ private:
     std::mutex whiteListMutex_;
     ffrt::mutex delayedStartPidsLock_;
     std::unordered_set<int32_t> delayedStartPids_;
+    std::mutex floodAttackMutex_;
+    std::unordered_map<int32_t, std::deque<int64_t>> floodAttackStatistics_;
 
     std::mutex prepareTermiationCallbackMutex_;
     std::map<std::string, sptr<IPrepareTerminateCallback>> prepareTermiationCallbacks_;
