@@ -33,13 +33,7 @@ constexpr const char *ABILITY_NAME_KEY = "ABILITY_NAME";
 constexpr const char *RUNNING_DURATION_KEY = "RUNNING_DURATION";
 constexpr const char *STILL_ALIVE_KEY = "STILL_ALIVE";
 constexpr const char *CNT_KEY = "CNT";
-
-constexpr const char *CALLER_UID_KEY = "callerUid";
-constexpr const char *CALLER_USERID_KEY = "callerUserId";
-constexpr const char *CALLER_PROCESS_NAME_KEY = "callerProcName";
-constexpr const char *CALLER_BUNDLE_NAME_KEY = "callerBundleName";
-constexpr const char *CALLEE_BUNDLE_NAME_KEY = "calleeBundleName";
-constexpr const char *CALLEE_PROCESS_NAME_KEY = "calleeProcName";
+constexpr const char *BG_START_EVENT_VALUE = "BG_START_EVENT";
 
 bool CopyStringParam(const std::string &str, std::vector<std::unique_ptr<char[]>> &buffers,
     std::vector<char*> &ptrs)
@@ -54,15 +48,16 @@ bool CopyStringParam(const std::string &str, std::vector<std::unique_ptr<char[]>
     return true;
 }
 
-std::string BuildPackedInfo(const BgUserExtensionCallerInfo &callerInfo,
-    const std::string &calleeBundleName, const std::string &calleeProcessName)
+std::string BuildJsonInfo(const BgUserExtensionEvent &event)
 {
-    return std::string(CALLEE_BUNDLE_NAME_KEY) + "=" + calleeBundleName +
-        ";" + CALLEE_PROCESS_NAME_KEY + "=" + calleeProcessName +
-        ";" + CALLER_UID_KEY + "=" + std::to_string(callerInfo.callerUid) +
-        ";" + CALLER_USERID_KEY + "=" + std::to_string(callerInfo.callerUserId) +
-        ";" + CALLER_PROCESS_NAME_KEY + "=" + callerInfo.callerProcessName +
-        ";" + CALLER_BUNDLE_NAME_KEY + "=" + callerInfo.callerBundleName;
+    return std::string("{\"callerUid\":") + std::to_string(event.callerUid) +
+        ",\"callerBundleName\":\"" + event.callerBundleName + "\"" +
+        ",\"calleeBundleName\":\"" + event.calleeBundleName + "\"" +
+        ",\"calleeAbilityName\":\"" + event.calleeAbilityName + "\"" +
+        ",\"calleeExtensionTypeName\":\"" + event.calleeExtensionTypeName + "\"" +
+        ",\"calleeUid\":" + std::to_string(event.calleeUid) +
+        ",\"cnt\":" + std::to_string(event.cnt) +
+        "}";
 }
 }
 
@@ -87,18 +82,22 @@ void BgUserExtensionMonitor::StopMonitor()
 
 void BgUserExtensionMonitor::OnBgUserExtensionStarted(const BgUserExtensionCallerInfo &callerInfo,
     const std::string &calleeBundleName, const std::string &calleeProcessName,
-    const std::string &extensionTypeName, const std::string &abilityName)
+    const std::string &extensionTypeName, const std::string &abilityName,
+    int32_t calleeUid)
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR,
         "bg user extension started, type:%{public}s, callerUid:%{public}d, callerBundle:%{public}s, "
-        "calleeBundle:%{public}s, ability:%{public}s",
+        "calleeBundle:%{public}s, ability:%{public}s, calleeUid:%{public}d",
         extensionTypeName.c_str(), callerInfo.callerUid, callerInfo.callerBundleName.c_str(),
-        calleeBundleName.c_str(), abilityName.c_str());
+        calleeBundleName.c_str(), abilityName.c_str(), calleeUid);
 
     BgUserExtensionEvent event;
-    event.extensionTypeName = extensionTypeName;
-    event.packedInfo = BuildPackedInfo(callerInfo, calleeBundleName, calleeProcessName);
-    event.abilityName = abilityName;
+    event.callerUid = callerInfo.callerUid;
+    event.callerBundleName = callerInfo.callerBundleName;
+    event.calleeBundleName = calleeBundleName;
+    event.calleeAbilityName = abilityName;
+    event.calleeExtensionTypeName = extensionTypeName;
+    event.calleeUid = calleeUid;
     event.cnt = 1;
 
     std::lock_guard<std::mutex> lock(cacheMutex_);
@@ -138,24 +137,22 @@ void BgUserExtensionMonitor::ReportCachedEvents()
     std::vector<std::unique_ptr<char[]>> stringBuffers;
     std::vector<char*> extensionTypePtrs;
     std::vector<char*> bundleNamePtrs;
-    std::vector<char*> abilityNamePtrs;
-    std::vector<int64_t> runningDurations;
-    std::vector<bool> stillAliveFlags;
-    std::vector<int32_t> cnts;
 
-    for (const auto &event : eventsToReport) {
-        if (!CopyStringParam(event.extensionTypeName, stringBuffers, extensionTypePtrs) ||
-            !CopyStringParam(event.packedInfo, stringBuffers, bundleNamePtrs) ||
-            !CopyStringParam(event.abilityName, stringBuffers, abilityNamePtrs)) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "strcpy_s failed for event string");
-            continue;
-        }
-        runningDurations.push_back(0);
-        stillAliveFlags.push_back(false);
-        cnts.push_back(event.cnt);
+    // EXTENSION_TYPE is fixed to "BG_START_EVENT" with length 1
+    if (!CopyStringParam(BG_START_EVENT_VALUE, stringBuffers, extensionTypePtrs)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "strcpy_s failed for BG_START_EVENT");
+        return;
     }
 
-    if (extensionTypePtrs.empty()) {
+    for (const auto &event : eventsToReport) {
+        std::string jsonInfo = BuildJsonInfo(event);
+        if (!CopyStringParam(jsonInfo, stringBuffers, bundleNamePtrs)) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "strcpy_s failed for event json");
+            continue;
+        }
+    }
+
+    if (bundleNamePtrs.empty()) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "no valid events to report after buffer preparation");
         return;
     }
@@ -163,10 +160,14 @@ void BgUserExtensionMonitor::ReportCachedEvents()
     HisyseventReport report(HISEVENT_PARAM_COUNT);
     report.InsertParam(EXTENSION_TYPE_KEY, extensionTypePtrs);
     report.InsertParam(BUNDLE_NAME_KEY, bundleNamePtrs);
-    report.InsertParam(ABILITY_NAME_KEY, abilityNamePtrs);
-    report.InsertParam(RUNNING_DURATION_KEY, runningDurations);
-    report.InsertParam(STILL_ALIVE_KEY, stillAliveFlags);
-    report.InsertParam(CNT_KEY, cnts);
+    std::vector<char*> emptyStringArray;
+    std::vector<int64_t> emptyInt64Array;
+    std::vector<bool> emptyBoolArray;
+    std::vector<int32_t> emptyInt32Array;
+    report.InsertParam(ABILITY_NAME_KEY, emptyStringArray);
+    report.InsertParam(RUNNING_DURATION_KEY, emptyInt64Array);
+    report.InsertParam(STILL_ALIVE_KEY, emptyBoolArray);
+    report.InsertParam(CNT_KEY, emptyInt32Array);
     int32_t ret = report.Report(DOMAIN, EVENT_NAME, HISYSEVENT_STATISTIC);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "reported %{public}zu bg user extension events, ret: %{public}d",
         eventsToReport.size(), ret);
@@ -176,8 +177,8 @@ bool BgUserExtensionMonitor::IsDuplicateEvent(const BgUserExtensionEvent &event,
     std::list<BgUserExtensionEvent>::iterator &dupIter)
 {
     for (auto it = cachedEvents_.begin(); it != cachedEvents_.end(); ++it) {
-        if (it->extensionTypeName == event.extensionTypeName &&
-            it->abilityName == event.abilityName) {
+        if (it->calleeExtensionTypeName == event.calleeExtensionTypeName &&
+            it->calleeAbilityName == event.calleeAbilityName) {
             dupIter = it;
             return true;
         }
@@ -190,24 +191,27 @@ void BgUserExtensionMonitor::AddOrUpdateEvent(const BgUserExtensionEvent &event)
     std::list<BgUserExtensionEvent>::iterator dupIter;
     if (IsDuplicateEvent(event, dupIter)) {
         dupIter->cnt++;
-        dupIter->packedInfo = event.packedInfo;
+        dupIter->callerUid = event.callerUid;
+        dupIter->callerBundleName = event.callerBundleName;
+        dupIter->calleeBundleName = event.calleeBundleName;
+        dupIter->calleeUid = event.calleeUid;
         TAG_LOGD(AAFwkTag::ABILITYMGR,
             "updated existing bg user extension event for %{public}s, cnt: %{public}d",
-            event.abilityName.c_str(), dupIter->cnt);
+            event.calleeAbilityName.c_str(), dupIter->cnt);
         return;
     }
 
     if (static_cast<int32_t>(cachedEvents_.size()) >= MAX_CACHED_EVENTS) {
         TAG_LOGW(AAFwkTag::ABILITYMGR,
             "cache full (%{public}d), discarding event for %{public}s",
-            MAX_CACHED_EVENTS, event.abilityName.c_str());
+            MAX_CACHED_EVENTS, event.calleeAbilityName.c_str());
         return;
     }
 
     cachedEvents_.push_back(event);
     TAG_LOGD(AAFwkTag::ABILITYMGR,
         "added new bg user extension event for %{public}s, cache size: %{public}zu",
-        event.abilityName.c_str(), cachedEvents_.size());
+        event.calleeAbilityName.c_str(), cachedEvents_.size());
 }
 
 } // namespace AAFwk

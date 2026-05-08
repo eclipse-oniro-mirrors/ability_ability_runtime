@@ -15559,7 +15559,8 @@ void AbilityManagerService::ReportBgUserExtensionEvent(const sptr<IRemoteObject>
         callerInfo.callerBundleName = callerBundleName;
         monitor->OnBgUserExtensionStarted(callerInfo,
             calleeAbilityInfo.bundleName, calleeAbilityInfo.process,
-            calleeAbilityInfo.extensionTypeName, calleeAbilityInfo.name);
+            calleeAbilityInfo.extensionTypeName, calleeAbilityInfo.name,
+            calleeAbilityInfo.applicationInfo.uid);
     }
 }
 

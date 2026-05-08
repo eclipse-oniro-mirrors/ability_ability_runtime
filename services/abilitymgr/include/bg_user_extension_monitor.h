@@ -33,9 +33,15 @@ struct BgUserExtensionCallerInfo {
 };
 
 struct BgUserExtensionEvent {
-    std::string extensionTypeName;
-    std::string packedInfo;
-    std::string abilityName;
+    // Caller info
+    int32_t callerUid = 0;
+    std::string callerBundleName;
+    // Callee info
+    std::string calleeBundleName;
+    std::string calleeAbilityName;
+    std::string calleeExtensionTypeName;
+    int32_t calleeUid = 0;
+    // Count
     int32_t cnt = 1;
 };
 
@@ -47,7 +53,8 @@ public:
 
     void OnBgUserExtensionStarted(const BgUserExtensionCallerInfo &callerInfo,
         const std::string &calleeBundleName, const std::string &calleeProcessName,
-        const std::string &extensionTypeName, const std::string &abilityName);
+        const std::string &extensionTypeName, const std::string &abilityName,
+        int32_t calleeUid);
 
     void ReportCachedEvents();
 
