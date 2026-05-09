@@ -30,6 +30,7 @@
 namespace OHOS {
 namespace AbilityRuntime {
 enum class SchedulerPhase {
+    None,
     PostLaunchApplication,
 };
 class ExtNativeStartupManager : public NoCopyable {
@@ -54,6 +55,7 @@ private:
     ~ExtNativeStartupManager() override;
 
     std::mutex mutex_;
+    SchedulerPhase phaseFlag_ = SchedulerPhase::None;
     std::unordered_map<SchedulerPhase, std::vector<std::shared_ptr<ExtNativeStartupTask>>> extNativeStartupTasks_;
 };
 } // namespace AbilityRuntime
