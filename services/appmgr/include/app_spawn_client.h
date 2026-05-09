@@ -63,6 +63,7 @@ struct AppSpawnStartMsg {
     std::string processType = "";
     std::string extensionTypeName;
     std::string appSignType;
+    std::string imageName;
     HspList hspList; // list of harmony shared package
     std::set<std::string> permissions;
     std::map<std::string, std::string> appEnv; // environment variable to be set to the process
@@ -121,7 +122,6 @@ struct StartFlags {
     static const int DLP_MANAGER_FULL_CONTROL = 37;
     static const int DLP_MANAGER_READ_ONLY = 38;
     static const int CLOUD_FILE_SYNC_ENABLED = 39;
-    static const int SPAWN_IMAGE_PROCESS = 41;
 };
 
 struct CreateStartMsgParam {
