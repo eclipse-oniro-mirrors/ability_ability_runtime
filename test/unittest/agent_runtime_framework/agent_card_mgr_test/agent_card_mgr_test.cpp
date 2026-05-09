@@ -1169,6 +1169,49 @@ HWTEST_F(AgentCardMgrTest, RegisterAgentCard_011, TestSize.Level1)
 }
 
 /**
+ * @tc.name: RegisterAgentCard_012
+ * @tc.desc: RegisterAgentCard rejects new cards when the bundle has reached the max card count
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardMgrTest, RegisterAgentCard_012, TestSize.Level1)
+{
+    AgentCardMgr agentCardMgr;
+    MyFlag::mockExtensionInfos.push_back(BuildAgentExtensionInfo());
+    MyFlag::retQueryData = ERR_OK;
+    constexpr int32_t maxAgentCardSize = 1000;
+    MyFlag::queryDataCards.reserve(maxAgentCardSize);
+    for (int32_t i = 0; i < maxAgentCardSize; ++i) {
+        MyFlag::queryDataCards.emplace_back(BuildCard("storedAgent" + std::to_string(i), "1.0.0"));
+    }
+
+    AgentCard card = BuildCard("newAgent", "1.0.0");
+    EXPECT_EQ(agentCardMgr.RegisterAgentCard(card), AAFwk::ERR_AGENT_CARD_LIST_OUT_OF_RANGE);
+    EXPECT_TRUE(MyFlag::insertedCards.empty());
+}
+
+/**
+ * @tc.name: RegisterAgentCard_013
+ * @tc.desc: RegisterAgentCard allows adding the card that reaches the max card count
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardMgrTest, RegisterAgentCard_013, TestSize.Level1)
+{
+    AgentCardMgr agentCardMgr;
+    MyFlag::mockExtensionInfos.push_back(BuildAgentExtensionInfo());
+    MyFlag::retQueryData = ERR_OK;
+    constexpr int32_t maxAgentCardSize = 1000;
+    MyFlag::queryDataCards.reserve(maxAgentCardSize - 1);
+    for (int32_t i = 0; i < maxAgentCardSize - 1; ++i) {
+        MyFlag::queryDataCards.emplace_back(BuildCard("storedAgent" + std::to_string(i), "1.0.0"));
+    }
+
+    AgentCard card = BuildCard("newAgent", "1.0.0");
+    EXPECT_EQ(agentCardMgr.RegisterAgentCard(card), ERR_OK);
+    ASSERT_EQ(MyFlag::insertedCards.size(), static_cast<size_t>(maxAgentCardSize));
+    EXPECT_EQ(MyFlag::insertedCards.back().agentId, "newAgent");
+}
+
+/**
  * @tc.name: UpdateAgentCard_002
  * @tc.desc: UpdateAgentCard returns ERR_INVALID_AGENT_CARD_VERSION when semver is invalid
  * @tc.type: FUNC

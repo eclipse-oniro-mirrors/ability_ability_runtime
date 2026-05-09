@@ -113,6 +113,8 @@ constexpr const char* ERROR_MSG_CALLER_NOT_ATOMIC_SERVICE =
     "The caller is not an atomic service.";
 constexpr const char* ERROR_MSG_AGENT_ID_NOT_EXIST =
     "The specified agentId does not exist.";
+constexpr const char* ERROR_MSG_AGENT_CARD_LIST_OUT_OF_RANGE =
+    "The number of agent cards under one bundle exceeds the upper limit.";
 constexpr const char* ERROR_MSG_AGENT_CARD_VERSION_TOO_OLD =
     "The specified agent card version is older than the current version.";
 constexpr const char* ERROR_MSG_AGENT_CARD_VERSION_INVALID =
@@ -260,6 +262,7 @@ static std::unordered_map<AbilityErrorCode, const char*> ERR_CODE_MAP = {
     { AbilityErrorCode::ERROR_CODE_TARGET_NOT_STARTED, ERROR_TARGET_NOT_STARTED},
     { AbilityErrorCode::ERROR_CODE_CALLER_NOT_ATOMIC_SERVICE, ERROR_MSG_CALLER_NOT_ATOMIC_SERVICE},
     { AbilityErrorCode::ERROR_CODE_AGENT_ID_NOT_EXIST, ERROR_MSG_AGENT_ID_NOT_EXIST},
+    { AbilityErrorCode::ERROR_CODE_AGENT_CARD_LIST_OUT_OF_RANGE, ERROR_MSG_AGENT_CARD_LIST_OUT_OF_RANGE},
     { AbilityErrorCode::ERROR_CODE_AGENT_CARD_VERSION_TOO_OLD, ERROR_MSG_AGENT_CARD_VERSION_TOO_OLD},
     { AbilityErrorCode::ERROR_CODE_AGENT_CARD_VERSION_INVALID, ERROR_MSG_AGENT_CARD_VERSION_INVALID},
     { AbilityErrorCode::ERROR_CODE_AGENT_CARD_DUPLICATE_REGISTER, ERROR_MSG_AGENT_CARD_DUPLICATE_REGISTER},
@@ -386,6 +389,7 @@ static std::unordered_map<int32_t, AbilityErrorCode> INNER_TO_JS_ERROR_CODE_MAP 
     {ERR_TARGET_NOT_STARTED, AbilityErrorCode::ERROR_CODE_TARGET_NOT_STARTED},
     {ERR_CALLER_NOT_ATOMIC_SERVICE, AbilityErrorCode::ERROR_CODE_CALLER_NOT_ATOMIC_SERVICE},
     {ERR_INVALID_AGENT_CARD_ID, AbilityErrorCode::ERROR_CODE_AGENT_ID_NOT_EXIST},
+    {ERR_AGENT_CARD_LIST_OUT_OF_RANGE, AbilityErrorCode::ERROR_CODE_AGENT_CARD_LIST_OUT_OF_RANGE},
     {ERR_MAX_AGENT_CONNECTIONS_REACHED, AbilityErrorCode::ERROR_CODE_MAX_CONNECTIONS_REACHED},
     {ERR_AGENT_CARD_VERSION_TOO_OLD, AbilityErrorCode::ERROR_CODE_AGENT_CARD_VERSION_TOO_OLD},
     {ERR_INVALID_AGENT_CARD_VERSION, AbilityErrorCode::ERROR_CODE_AGENT_CARD_VERSION_INVALID},
