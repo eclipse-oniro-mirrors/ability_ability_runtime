@@ -245,12 +245,17 @@ void DialogSessionManager::GenerateDialogCallerInfo(AbilityRequest &abilityReque
     dialogCallerInfo->userId = userId;
     dialogCallerInfo->needGrantUriPermission = needGrantUriPermission;
     dialogCallerInfo->callerAccessTokenId = abilityRequest.callerAccessTokenId;
+    dialogCallerInfo->requestCallback = abilityRequest.requestCallback;
 }
 
 void DialogSessionManager::NotifyAbilityRequestFailure(const std::string &dialogSessionId, const Want &want)
 {
     auto callerInfo = GetDialogCallerInfo(dialogSessionId);
     CHECK_POINTER(callerInfo);
+    if (callerInfo->requestCallback != nullptr) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "callback request ability");
+        callerInfo->requestCallback->OnRequestStartAbilityResult(false);
+    }
     auto requestId = callerInfo->targetWant.GetStringParam(KEY_REQUEST_ID);
     if (requestId.empty() || callerInfo->callerToken == nullptr) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "no need to handle ability request");
@@ -320,7 +325,7 @@ int DialogSessionManager::SendDialogResult(const Want &want, const std::string &
     } else {
         ret = abilityMgr->StartAbilityAsCallerDetails(targetWant, callerToken, callerToken, dialogCallerInfo->userId,
             dialogCallerInfo->requestCode, false, dialogCallerInfo->type == SelectorType::APP_CLONE_SELECTOR,
-            dialogCallerInfo->callerAccessTokenId);
+            dialogCallerInfo->callerAccessTokenId, dialogCallerInfo->requestCallback);
     }
     if (ret == ERR_OK) {
         ClearDialogContext(dialogSessionId);
