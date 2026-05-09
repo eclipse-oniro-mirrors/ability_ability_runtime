@@ -98,6 +98,9 @@ bool BindNativeMethods(ani_env *env, ani_class &cls)
         ani_native_function { "nativeRequestModalUIExtension",
             "C{@ohos.app.ability.Want.Want}C{utils.AbilityUtils.AsyncCallbackWrapper}:",
             reinterpret_cast<void *>(EtsServiceExtensionContext::RequestModalUIExtension) },
+        ani_native_function { "nativeRequestModalUIExtensionWithAccount",
+            "C{@ohos.app.ability.Want.Want}iC{utils.AbilityUtils.AsyncCallbackWrapper}:",
+            reinterpret_cast<void *>(EtsServiceExtensionContext::RequestModalUIExtensionWithAccount) },
         ani_native_function { "nativeConnectServiceExtensionAbilityWithAccount",
             SIGNATURE_CONNECT_SERVICE_EXTENSION_WITH_ACCOUNT,
             reinterpret_cast<void *>(EtsServiceExtensionContext::ConnectServiceExtensionAbilityWithAccount) },
@@ -502,6 +505,22 @@ void EtsServiceExtensionContext::RequestModalUIExtension(ani_env *env, ani_objec
         return;
     }
     etsServiceExtensionContext->OnRequestModalUIExtension(env, aniObj, wantObj, callbackobj);
+}
+
+void EtsServiceExtensionContext::RequestModalUIExtensionWithAccount(ani_env *env, ani_object aniObj, ani_object wantObj,
+    ani_int accountId, ani_object callbackobj)
+{
+    TAG_LOGD(AAFwkTag::SERVICE_EXT, "RequestModalUIExtensionWithAccount");
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "null env");
+        return;
+    }
+    auto etsServiceExtensionContext = EtsServiceExtensionContext::GetEtsAbilityContext(env, aniObj);
+    if (etsServiceExtensionContext == nullptr) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "null etsServiceExtensionContext");
+        return;
+    }
+    etsServiceExtensionContext->OnRequestModalUIExtensionWithAccount(env, aniObj, wantObj, accountId, callbackobj);
 }
 
 void EtsServiceExtensionContext::OnStartUIServiceExtension(ani_env *env, ani_object wantObj, ani_object callback)
@@ -1628,6 +1647,30 @@ void EtsServiceExtensionContext::OnRequestModalUIExtension(ani_env *env, ani_obj
         return;
     }
     auto innerErrCode = AAFwk::AbilityManagerClient::GetInstance()->RequestModalUIExtension(want);
+    aniObject = EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(innerErrCode));
+    AppExecFwk::AsyncCallback(env, callbackobj, aniObject, nullptr);
+}
+
+void EtsServiceExtensionContext::OnRequestModalUIExtensionWithAccount(
+    ani_env *env, ani_object aniObj, ani_object wantObj, ani_int accountId, ani_object callbackobj)
+{
+    TAG_LOGD(AAFwkTag::SERVICE_EXT, "OnRequestModalUIExtensionWithAccount");
+    ani_object aniObject = nullptr;
+    AAFwk::Want want;
+    if (!AppExecFwk::UnwrapWant(env, wantObj, want)) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "parse want failed");
+        aniObject = EtsErrorUtil::CreateInvalidParamError(env, "Parse param want failed, must be a Want.");
+        AppExecFwk::AsyncCallback(env, callbackobj, aniObject, nullptr);
+        return;
+    }
+    auto context = context_.lock();
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "context is nullptr");
+        aniObject = EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        AppExecFwk::AsyncCallback(env, callbackobj, aniObject, nullptr);
+        return;
+    }
+    auto innerErrCode = AAFwk::AbilityManagerClient::GetInstance()->RequestModalUIExtensionWithAccount(want, accountId);
     aniObject = EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(innerErrCode));
     AppExecFwk::AsyncCallback(env, callbackobj, aniObject, nullptr);
 }

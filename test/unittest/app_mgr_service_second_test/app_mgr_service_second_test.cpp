@@ -555,5 +555,22 @@ HWTEST_F(AppMgrServiceSecondTest, LockProcessCache_002, TestSize.Level1)
     ret = appMgrService->LockProcessCache(pid, isLock);
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
 }
+
+/**
+ * @tc.name: UpdateFreezeExcludedPid_0100
+ * @tc.desc: NA
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceSecondTest, UpdateFreezeExcludedPid_0100, TestSize.Level2)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    EXPECT_NE(appMgrService, nullptr);
+
+    int32_t pid = 1;
+    int32_t profilerPid = 2;
+    constexpr int32_t HIPROFILER_UID = 3063;
+    IPCSkeleton::uid_ = HIPROFILER_UID;
+    appMgrService->UpdateFreezeExcludedPid(true, pid, profilerPid);
+}
 } // namespace AppExecFwk
 } // namespace OHOS

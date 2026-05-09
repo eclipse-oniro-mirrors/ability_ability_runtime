@@ -316,6 +316,13 @@ int32_t UIExtensionAbilityManager::GetActiveUIExtensionList(
     return uiExtensionAbilityRecordMgr_->GetActiveUIExtensionList(bundleName, extensionList);
 }
 
+int32_t UIExtensionAbilityManager::GetActiveUIExtensionListByUid(
+    int32_t uid, std::vector<std::string> &extensionList)
+{
+    CHECK_POINTER_AND_RETURN(uiExtensionAbilityRecordMgr_, ERR_NULL_OBJECT);
+    return uiExtensionAbilityRecordMgr_->GetActiveUIExtensionListByUid(uid, extensionList);
+}
+
 bool UIExtensionAbilityManager::IsUIExtensionFocused(uint32_t uiExtensionTokenId, const sptr<IRemoteObject>& focusToken)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "called");

@@ -21,11 +21,14 @@
 #include "ability_context_impl.h"
 #include "js_ui_ability.h"
 #include "mock_scene_board_judgement.h"
+#include "application_context.h"
+#include "context.h"
 #undef private
 #undef protected
 #include "js_runtime_utils.h"
 #include "ability_stage_context.h"
 #include "napi_common_want.h"
+#include "native_ability_util.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -688,5 +691,241 @@ HWTEST_F(JsUiAbilityTest, JSUIAbility_GetWindowStage_0600, TestSize.Level1)
     ASSERT_EQ(windowStage, nullptr);
     GTEST_LOG_(INFO) << "JSUIAbility_GetWindowStage_0600 end";
 }
+/**
+ * @tc.name: JSUIAbility_HandleNativeModule_0100
+ * @tc.desc: HandleNativeModule test
+ * @tc.desc: withNative_ is false, should return early.
+ */
+HWTEST_F(JsUiAbilityTest, JSUIAbility_HandleNativeModule_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "JSUIAbility_HandleNativeModule_0100 start";
+    AbilityRuntime::Runtime::Options options;
+    options.lang = AbilityRuntime::Runtime::Language::JS;
+    auto runtime = AbilityRuntime::Runtime::Create(options);
+    auto jsRuntime = static_cast<AbilityRuntime::JsRuntime*>(runtime.get());
+    auto ability = std::make_shared<AbilityRuntime::JsUIAbility>(*jsRuntime);
+    ASSERT_NE(ability, nullptr);
+
+    // withNative_ defaults to false, HandleNativeModule should return early
+    ability->withNative_ = false;
+    auto env = jsRuntime->GetNapiEnv();
+    ASSERT_NE(env, nullptr);
+    ability->HandleNativeModule(env);
+    // No crash, early return path
+    GTEST_LOG_(INFO) << "JSUIAbility_HandleNativeModule_0100 end";
+}
+
+/**
+ * @tc.name: JSUIAbility_HandleNativeModule_0200
+ * @tc.desc: HandleNativeModule test
+ * @tc.desc: withNative_ is true but jsAbilityObj_ is null, should return early.
+ */
+HWTEST_F(JsUiAbilityTest, JSUIAbility_HandleNativeModule_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "JSUIAbility_HandleNativeModule_0200 start";
+    AbilityRuntime::Runtime::Options options;
+    options.lang = AbilityRuntime::Runtime::Language::JS;
+    auto runtime = AbilityRuntime::Runtime::Create(options);
+    auto jsRuntime = static_cast<AbilityRuntime::JsRuntime*>(runtime.get());
+    auto ability = std::make_shared<AbilityRuntime::JsUIAbility>(*jsRuntime);
+    ASSERT_NE(ability, nullptr);
+
+    ability->withNative_ = true;
+    ability->jsAbilityObj_ = nullptr;
+    auto env = jsRuntime->GetNapiEnv();
+    ASSERT_NE(env, nullptr);
+    ability->HandleNativeModule(env);
+    // No crash, jsAbilityObj_ null path
+    GTEST_LOG_(INFO) << "JSUIAbility_HandleNativeModule_0200 end";
+}
+
+/**
+ * @tc.name: JSUIAbility_HandleNativeModule_0300
+ * @tc.desc: HandleNativeModule test
+ * @tc.desc: withNative_ is true, jsAbilityObj_ not null but ApplicationContext is null.
+ */
+HWTEST_F(JsUiAbilityTest, JSUIAbility_HandleNativeModule_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "JSUIAbility_HandleNativeModule_0300 start";
+    AbilityRuntime::Runtime::Options options;
+    options.lang = AbilityRuntime::Runtime::Language::JS;
+    auto runtime = AbilityRuntime::Runtime::Create(options);
+    auto jsRuntime = static_cast<AbilityRuntime::JsRuntime*>(runtime.get());
+    auto ability = std::make_shared<AbilityRuntime::JsUIAbility>(*jsRuntime);
+    ASSERT_NE(ability, nullptr);
+    auto env = jsRuntime->GetNapiEnv();
+    ASSERT_NE(env, nullptr);
+
+    ability->withNative_ = true;
+
+    // Create a valid napi object as jsAbilityObj_
+    napi_value jsObj = nullptr;
+    napi_create_object(env, &jsObj);
+    ASSERT_NE(jsObj, nullptr);
+    napi_ref ref = nullptr;
+    napi_create_reference(env, jsObj, 1, &ref);
+    ability->jsAbilityObj_ = std::unique_ptr<NativeReference>(
+        reinterpret_cast<NativeReference *>(ref));
+    ASSERT_NE(ability->jsAbilityObj_, nullptr);
+
+    // Ensure ApplicationContext is null
+    AbilityRuntime::Context::applicationContext_ = nullptr;
+
+    ability->HandleNativeModule(env);
+    // No crash, ApplicationContext is null, should log error and return
+    GTEST_LOG_(INFO) << "JSUIAbility_HandleNativeModule_0300 end";
+}
+
+/**
+ * @tc.name: JSUIAbility_HandleNativeModule_0400
+ * @tc.desc: HandleNativeModule test
+ * @tc.desc: withNative_ is true, valid jsAbilityObj_, verify wrapper stores shared_ptr<NativeReference>.
+ */
+HWTEST_F(JsUiAbilityTest, JSUIAbility_HandleNativeModule_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "JSUIAbility_HandleNativeModule_0400 start";
+    AbilityRuntime::Runtime::Options options;
+    options.lang = AbilityRuntime::Runtime::Language::JS;
+    auto runtime = AbilityRuntime::Runtime::Create(options);
+    auto jsRuntime = static_cast<AbilityRuntime::JsRuntime*>(runtime.get());
+    auto ability = std::make_shared<AbilityRuntime::JsUIAbility>(*jsRuntime);
+    ASSERT_NE(ability, nullptr);
+    auto env = jsRuntime->GetNapiEnv();
+    ASSERT_NE(env, nullptr);
+
+    ability->withNative_ = true;
+
+    // Create a valid napi object as jsAbilityObj_
+    napi_value jsObj = nullptr;
+    napi_create_object(env, &jsObj);
+    ASSERT_NE(jsObj, nullptr);
+    napi_ref ref = nullptr;
+    napi_create_reference(env, jsObj, 1, &ref);
+    ability->jsAbilityObj_ = std::unique_ptr<NativeReference>(
+        reinterpret_cast<NativeReference *>(ref));
+    ASSERT_NE(ability->jsAbilityObj_, nullptr);
+
+    // Set up ApplicationContext
+    auto appContext = std::make_shared<AbilityRuntime::ApplicationContext>();
+    ASSERT_NE(appContext, nullptr);
+    AbilityRuntime::Context::applicationContext_ = appContext;
+
+    ability->HandleNativeModule(env);
+
+    // Verify wrapper was added and jsAbilityObj is stored as shared_ptr<NativeReference>
+    EXPECT_FALSE(appContext->nativeAbilities_.empty());
+    auto it = appContext->nativeAbilities_.begin();
+    ASSERT_NE(it->second, nullptr);
+    EXPECT_NE(it->second->jsAbilityObj, nullptr);
+    // Verify GetNapiValue() returns a valid napi_value
+    napi_value retrievedObj = it->second->jsAbilityObj->GetNapiValue();
+    EXPECT_NE(retrievedObj, nullptr);
+
+    // Cleanup
+    AbilityRuntime::Context::applicationContext_ = nullptr;
+    GTEST_LOG_(INFO) << "JSUIAbility_HandleNativeModule_0400 end";
+}
+
+/**
+ * @tc.name: JSUIAbility_HandleNativeModule_0500
+ * @tc.desc: HandleNativeModule test
+ * @tc.desc: withNative_ is true, valid jsAbilityObj_, ApplicationContext exists but GetNativeThread is null.
+ */
+HWTEST_F(JsUiAbilityTest, JSUIAbility_HandleNativeModule_0500, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "JSUIAbility_HandleNativeModule_0500 start";
+    AbilityRuntime::Runtime::Options options;
+    options.lang = AbilityRuntime::Runtime::Language::JS;
+    auto runtime = AbilityRuntime::Runtime::Create(options);
+    auto jsRuntime = static_cast<AbilityRuntime::JsRuntime*>(runtime.get());
+    auto ability = std::make_shared<AbilityRuntime::JsUIAbility>(*jsRuntime);
+    ASSERT_NE(ability, nullptr);
+    auto env = jsRuntime->GetNapiEnv();
+    ASSERT_NE(env, nullptr);
+
+    ability->withNative_ = true;
+
+    // Create a valid napi object as jsAbilityObj_
+    napi_value jsObj = nullptr;
+    napi_create_object(env, &jsObj);
+    ASSERT_NE(jsObj, nullptr);
+    napi_ref ref = nullptr;
+    napi_create_reference(env, jsObj, 1, &ref);
+    ability->jsAbilityObj_ = std::unique_ptr<NativeReference>(
+        reinterpret_cast<NativeReference *>(ref));
+    ASSERT_NE(ability->jsAbilityObj_, nullptr);
+
+    // Set up ApplicationContext with no native thread
+    auto appContext = std::make_shared<AbilityRuntime::ApplicationContext>();
+    ASSERT_NE(appContext, nullptr);
+    AbilityRuntime::Context::applicationContext_ = appContext;
+
+    ability->HandleNativeModule(env);
+    // No crash, GetNativeThread returns nullptr
+    // The wrapper should have been added to nativeAbilities_ though
+    EXPECT_EQ(appContext->nativeAbilities_.size(), 1u);
+
+    // Cleanup
+    AbilityRuntime::Context::applicationContext_ = nullptr;
+    GTEST_LOG_(INFO) << "JSUIAbility_HandleNativeModule_0500 end";
+}
+
+/**
+ * @tc.name: JSUIAbility_HandleNativeModule_0600
+ * @tc.desc: HandleNativeModule test
+ * @tc.desc: Full path: withNative_ true, valid jsAbilityObj_, ApplicationContext with valid abilityInfo.
+ */
+HWTEST_F(JsUiAbilityTest, JSUIAbility_HandleNativeModule_0600, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "JSUIAbility_HandleNativeModule_0600 start";
+    AbilityRuntime::Runtime::Options options;
+    options.lang = AbilityRuntime::Runtime::Language::JS;
+    auto runtime = AbilityRuntime::Runtime::Create(options);
+    auto jsRuntime = static_cast<AbilityRuntime::JsRuntime*>(runtime.get());
+    auto ability = std::make_shared<AbilityRuntime::JsUIAbility>(*jsRuntime);
+    ASSERT_NE(ability, nullptr);
+    auto env = jsRuntime->GetNapiEnv();
+    ASSERT_NE(env, nullptr);
+
+    ability->withNative_ = true;
+
+    // Set up abilityInfo_ so GetAbilityName() returns a valid name
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->name = "TestAbility";
+    ability->abilityInfo_ = abilityInfo;
+
+    // Create a valid napi object as jsAbilityObj_
+    napi_value jsObj = nullptr;
+    napi_create_object(env, &jsObj);
+    ASSERT_NE(jsObj, nullptr);
+    napi_ref ref = nullptr;
+    napi_create_reference(env, jsObj, 1, &ref);
+    ability->jsAbilityObj_ = std::unique_ptr<NativeReference>(
+        reinterpret_cast<NativeReference *>(ref));
+    ASSERT_NE(ability->jsAbilityObj_, nullptr);
+
+    // Set up ApplicationContext
+    auto appContext = std::make_shared<AbilityRuntime::ApplicationContext>();
+    ASSERT_NE(appContext, nullptr);
+    AbilityRuntime::Context::applicationContext_ = appContext;
+
+    ability->HandleNativeModule(env);
+
+    // Verify wrapper was added to ApplicationContext
+    EXPECT_FALSE(appContext->nativeAbilities_.empty());
+    auto it = appContext->nativeAbilities_.begin();
+    ASSERT_NE(it->second, nullptr);
+    EXPECT_EQ(it->second->abilityName, "TestAbility");
+    EXPECT_EQ(it->second->env, env);
+    // Verify jsAbilityObj is stored as shared_ptr<NativeReference> and GetNapiValue() works
+    EXPECT_NE(it->second->jsAbilityObj, nullptr);
+    napi_value retrievedObj = it->second->jsAbilityObj->GetNapiValue();
+    EXPECT_NE(retrievedObj, nullptr);
+
+    // Cleanup
+    AbilityRuntime::Context::applicationContext_ = nullptr;
+    GTEST_LOG_(INFO) << "JSUIAbility_HandleNativeModule_0600 end";
+}
+
 } // namespace AbilityRuntime
 } // namespace OHOS

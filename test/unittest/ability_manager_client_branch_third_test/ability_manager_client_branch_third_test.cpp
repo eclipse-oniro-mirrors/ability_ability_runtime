@@ -1326,6 +1326,64 @@ HWTEST_F(AbilityManagerClientBranchThirdTest, StartAbilityByOEExt_0300, TestSize
 
 
 /**
+ * @tc.name: AbilityManagerClient_StartSelfUIAbilityWithToken_0100
+ * @tc.desc: StartSelfUIAbilityWithToken with proxy null
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, StartSelfUIAbilityWithToken_0100, TestSize.Level1)
+{
+    ErrorTestBoardDisable();
+    Want want;
+    sptr<IRemoteObject> callerToken = new IRemoteObjectMocker();
+    auto result = client_->StartSelfUIAbilityWithToken(want, callerToken);
+    EXPECT_EQ(result, ABILITY_SERVICE_NOT_CONNECTED);
+}
+
+/**
+ * @tc.name: AbilityManagerClient_StartSelfUIAbilityWithToken_0200
+ * @tc.desc: StartSelfUIAbilityWithToken normal case
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, StartSelfUIAbilityWithToken_0200, TestSize.Level1)
+{
+    NormalTestBoardDisable();
+    Want want;
+    sptr<IRemoteObject> callerToken = new IRemoteObjectMocker();
+    auto result = client_->StartSelfUIAbilityWithToken(want, callerToken);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+ * @tc.name: AbilityManagerClient_StartSelfUIAbilityWithStartOptionsAndToken_0100
+ * @tc.desc: StartSelfUIAbilityWithStartOptionsAndToken with proxy null
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, StartSelfUIAbilityWithStartOptionsAndToken_0100, TestSize.Level1)
+{
+    ErrorTestBoardDisable();
+    Want want;
+    StartOptions options;
+    sptr<IRemoteObject> callerToken = new IRemoteObjectMocker();
+    auto result = client_->StartSelfUIAbilityWithStartOptionsAndToken(want, options, callerToken);
+    EXPECT_EQ(result, ABILITY_SERVICE_NOT_CONNECTED);
+}
+
+/**
+ * @tc.name: AbilityManagerClient_StartSelfUIAbilityWithStartOptionsAndToken_0200
+ * @tc.desc: StartSelfUIAbilityWithStartOptionsAndToken normal case
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, StartSelfUIAbilityWithStartOptionsAndToken_0200, TestSize.Level1)
+{
+    NormalTestBoardDisable();
+    Want want;
+    StartOptions options;
+    sptr<IRemoteObject> callerToken = new IRemoteObjectMocker();
+    auto result = client_->StartSelfUIAbilityWithStartOptionsAndToken(want, options, callerToken);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
  * @tc.name: MissionInfoTest_0100
  * @tc.desc: MissionInfoTest_0100
  * @tc.type: FUNC
@@ -1343,6 +1401,25 @@ HWTEST_F(AbilityManagerClientBranchThirdTest, MissionInfoTest_0100, TestSize.Lev
     EXPECT_EQ(missionInfo.runningState, newMissionInfo->runningState);
     EXPECT_EQ(missionInfo.time, newMissionInfo->time);
     delete newMissionInfo;
+}
+
+/**
+ * @tc.name: DisplayInfoTest_0100
+ * @tc.desc: DisplayInfoTest_0100
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, DisplayInfoTest_0100, TestSize.Level1)
+{
+    DisplayInfo displayInfo;
+    displayInfo.id = 1;
+    displayInfo.displayName = "test";
+    Parcel parcel;
+    displayInfo.Marshalling(parcel);
+    DisplayInfo* newDisplayInfo = DisplayInfo::Unmarshalling(parcel);
+    EXPECT_NE(newDisplayInfo, nullptr);
+    EXPECT_EQ(displayInfo.id, newDisplayInfo->id);
+    EXPECT_EQ(displayInfo.displayName, newDisplayInfo->displayName);
+    delete newDisplayInfo;
 }
 }  // namespace AAFwk
 }  // namespace OHOS

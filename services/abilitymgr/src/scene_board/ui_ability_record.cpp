@@ -16,6 +16,7 @@
 #include "ui_ability_record.h"
 
 #include "ability_util.h"
+#include "native_ability_util.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -28,6 +29,16 @@ std::shared_ptr<UIAbilityRecord> UIAbilityRecord::CreateAbilityRecord(const Abil
     auto abilityRecord = std::make_shared<UIAbilityRecord>(
         abilityRequest.want, abilityRequest.abilityInfo, abilityRequest.appInfo, abilityRequest.requestCode);
     abilityRecord->Init(abilityRequest);
+    NativeAbilityMetaData metaData;
+    NativeAbilityMetaData::InitData(abilityRecord->abilityInfo_, metaData);
+    if (metaData.withNativeModule) {
+        if (metaData.startupPhase == AAFwk::StartupPhase::PRE_WINDOW ||
+            metaData.startupPhase == AAFwk::StartupPhase::PRE_FOREGROUND) {
+            abilityRecord->abilityNativeState_ = AbilityNativeState::INIT;
+        } else {
+            abilityRecord->abilityNativeState_ = AbilityNativeState::NORMAL;
+        }
+    }
     return abilityRecord;
 }
 
@@ -41,6 +52,13 @@ void UIAbilityRecord::ScheduleCollaborate(const Want &want)
     std::lock_guard guard(collaborateWantLock_);
     CHECK_POINTER(lifecycleDeal_);
     lifecycleDeal_->ScheduleCollaborate(want);
+}
+
+void UIAbilityRecord::AttachNative()
+{
+    if (GetNativeState() == AbilityNativeState::INIT) {
+        SetNativeState(AbilityNativeState::ATTACHED);
+    }
 }
 }  // namespace AAFwk
 }  // namespace OHOS

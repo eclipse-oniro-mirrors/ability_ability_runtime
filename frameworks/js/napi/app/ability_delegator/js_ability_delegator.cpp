@@ -53,6 +53,7 @@ std::map<std::shared_ptr<NativeReference>, std::shared_ptr<AbilityStageMonitor>>
 std::map<std::weak_ptr<NativeReference>, sptr<IRemoteObject>, std::owner_less<>> g_abilityRecord;
 std::mutex g_mutexAbilityRecord;
 std::mutex g_mtxStageMonitorRecord;
+std::map<std::shared_ptr<NativeReference>, std::shared_ptr<InteropAbilityMonitor>> g_interopMonitorRecord;
 
 enum ERROR_CODE {
     INCORRECT_PARAMETERS    = 401,
@@ -260,6 +261,16 @@ napi_value JSAbilityDelegator::FinishTest(napi_env env, napi_callback_info info)
 napi_value JSAbilityDelegator::SetMockList(napi_env env, napi_callback_info info)
 {
     GET_NAPI_INFO_AND_CALL(env, info, JSAbilityDelegator, OnSetMockList);
+}
+
+napi_value JSAbilityDelegator::AddInteropAbilityMonitorSync(napi_env env, napi_callback_info info)
+{
+    GET_NAPI_INFO_AND_CALL(env, info, JSAbilityDelegator, OnAddInteropAbilityMonitorSync);
+}
+
+napi_value JSAbilityDelegator::RemoveInteropAbilityMonitorSync(napi_env env, napi_callback_info info)
+{
+    GET_NAPI_INFO_AND_CALL(env, info, JSAbilityDelegator, OnRemoveInteropAbilityMonitorSync);
 }
 
 napi_value JSAbilityDelegator::OnAddAbilityMonitor(napi_env env, NapiCallbackInfo& info)
@@ -1557,6 +1568,112 @@ void JSAbilityDelegator::RemoveStageMonitorRecord(napi_env env, napi_value value
             break;
         }
     }
+}
+
+napi_value JSAbilityDelegator::OnAddInteropAbilityMonitorSync(napi_env env, NapiCallbackInfo& info)
+{
+    TAG_LOGI(AAFwkTag::DELEGATOR, "argc: %{public}d", static_cast<int32_t>(info.argc));
+    HandleScope handleScope(env);
+    if (info.argc < ARGC_ONE) {
+        TAG_LOGE(AAFwkTag::DELEGATOR, "invalid argc");
+        return ThrowJsError(env, INCORRECT_PARAMETERS,
+            "Parse param monitor failed, monitor must be InteropAbilityMonitor.");
+    }
+    std::shared_ptr<InteropAbilityMonitor> monitor = nullptr;
+    if (!ParseInteropMonitorPara(env, info.argv[INDEX_ZERO], monitor)) {
+        TAG_LOGE(AAFwkTag::DELEGATOR, "invalid params");
+        return ThrowJsError(env, INCORRECT_PARAMETERS,
+            "Parse param monitor failed, monitor must be InteropAbilityMonitor.");
+    }
+    auto delegator = AbilityDelegatorRegistry::GetAbilityDelegator(AbilityRuntime::Runtime::Language::JS);
+    if (delegator) {
+        monitor->SetLanguage(AbilityRuntime::Runtime::Language::JS);
+        delegator->AddInteropAbilityMonitor(monitor);
+    } else {
+        ThrowError(env, COMMON_FAILED, "Calling AddInteropAbilityMonitorSync failed.");
+    }
+    return CreateJsUndefined(env);
+}
+
+napi_value JSAbilityDelegator::OnRemoveInteropAbilityMonitorSync(napi_env env, NapiCallbackInfo& info)
+{
+    TAG_LOGI(AAFwkTag::DELEGATOR, "argc: %{public}d", static_cast<int32_t>(info.argc));
+    HandleScope handleScope(env);
+    if (info.argc < ARGC_ONE) {
+        TAG_LOGE(AAFwkTag::DELEGATOR, "invalid argc");
+        return ThrowJsError(env, INCORRECT_PARAMETERS,
+            "Parse monitor failed, removeInteropAbilityMonitorSync must be InteropAbilityMonitor.");
+    }
+    auto delegator = AbilityDelegatorRegistry::GetAbilityDelegator(AbilityRuntime::Runtime::Language::JS);
+    if (!delegator) {
+        ThrowError(env, COMMON_FAILED, "Calling RemoveInteropAbilityMonitorSync failed.");
+        return CreateJsUndefined(env);
+    }
+    for (auto iter = g_interopMonitorRecord.begin(); iter != g_interopMonitorRecord.end(); ++iter) {
+        std::shared_ptr<NativeReference> jsMonitor = iter->first;
+        bool isEquals = false;
+        napi_strict_equals(env, info.argv[INDEX_ZERO], jsMonitor->GetNapiValue(), &isEquals);
+        if (isEquals) {
+            delegator->RemoveInteropAbilityMonitor(iter->second);
+            g_interopMonitorRecord.erase(iter);
+            break;
+        }
+    }
+    return CreateJsUndefined(env);
+}
+
+napi_value JSAbilityDelegator::ParseInteropMonitorPara(napi_env env, napi_value value,
+    std::shared_ptr<InteropAbilityMonitor> &monitor)
+{
+    TAG_LOGI(AAFwkTag::DELEGATOR, "interopMonitorRecord size: %{public}zu", g_interopMonitorRecord.size());
+
+    HandleScope handleScope(env);
+    for (auto iter = g_interopMonitorRecord.begin(); iter != g_interopMonitorRecord.end(); ++iter) {
+        std::shared_ptr<NativeReference> jsMonitor = iter->first;
+        bool isEquals = false;
+        napi_strict_equals(env, value, jsMonitor->GetNapiValue(), &isEquals);
+        if (isEquals) {
+            TAG_LOGW(AAFwkTag::DELEGATOR, "interop monitor exist");
+            monitor = iter->second;
+            return monitor ? CreateJsNull(env) : nullptr;
+        }
+    }
+
+    napi_value abilityNameValue = nullptr;
+    napi_get_named_property(env, value, "abilityName", &abilityNameValue);
+    if (abilityNameValue == nullptr) {
+        TAG_LOGE(AAFwkTag::DELEGATOR, "null abilityNameValue");
+        return nullptr;
+    }
+
+    std::string abilityName;
+    if (!ConvertFromJsValue(env, abilityNameValue, abilityName)) {
+        return nullptr;
+    }
+
+    std::string moduleName = "";
+    napi_value moduleNameValue = nullptr;
+    napi_get_named_property(env, value, "moduleName", &moduleNameValue);
+    if (moduleNameValue != nullptr && !ConvertFromJsValue(env, moduleNameValue, moduleName)) {
+        TAG_LOGW(AAFwkTag::DELEGATOR, "get property moduleName failed");
+        moduleName = "";
+    }
+
+    auto jsInteropMonitor = std::make_shared<JsInteropAbilityMonitor>(abilityName, moduleName);
+    jsInteropMonitor->SetJsInteropAbilityMonitor(env, value);
+    auto *aniEnvVoid = AppExecFwk::AbilityDelegatorRegistry::GetAniEnv();
+    if (aniEnvVoid != nullptr) {
+        jsInteropMonitor->SetAniEnv(aniEnvVoid);
+    }
+    monitor = std::make_shared<InteropAbilityMonitor>(abilityName, moduleName, jsInteropMonitor);
+
+    std::shared_ptr<NativeReference> reference = nullptr;
+    napi_ref ref = nullptr;
+    napi_create_reference(env, value, 1, &ref);
+    reference.reset(reinterpret_cast<NativeReference*>(ref));
+    g_interopMonitorRecord.emplace(reference, monitor);
+
+    return CreateJsNull(env);
 }
 }  // namespace AbilityDelegatorJs
 }  // namespace OHOS

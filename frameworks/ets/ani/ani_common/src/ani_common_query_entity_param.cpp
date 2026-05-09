@@ -156,7 +156,6 @@ bool UnwrapQueryEntityParam(ani_env *env, ani_object param, InsightIntentQueryPa
         ani_int userId = DEFAULT_INVAL_VALUE;
         if (!GetIntPropertyObject(env, param, "userId", userId)) {
             TAG_LOGE(AAFwkTag::INTENT, "Wrong argument type userId");
-            return false;
         }
         queryParam.userId_ = static_cast<int32_t>(userId);
     }

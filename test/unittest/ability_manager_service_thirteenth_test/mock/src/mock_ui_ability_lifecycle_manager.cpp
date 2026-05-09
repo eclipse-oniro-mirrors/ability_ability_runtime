@@ -242,7 +242,7 @@ int32_t UIAbilityLifecycleManager::NotifyCompleteGamePreLaunch(const sptr<IRemot
 }
 
 int UIAbilityLifecycleManager::MinimizeUIAbility(const UIAbilityRecordPtr &abilityRecord, bool fromUser,
-    uint32_t sceneFlag)
+    uint32_t sceneFlag, int32_t backgroundReason)
 {
     return ERR_OK;
 }
@@ -794,6 +794,11 @@ void UIAbilityLifecycleManager::HandleUIAbilityDiedByPid(pid_t pid)
 
 ErrCode UIAbilityLifecycleManager::QueryCallerTokenIdForAnco(const std::string &asCallerForAncoSessionId,
     uint32_t &callerTokenId)
+{
+    return ERR_OK;
+}
+
+int32_t UIAbilityLifecycleManager::StartSelf(const UIAbilityRecordPtr &abilityRecord)
 {
     return ERR_OK;
 }

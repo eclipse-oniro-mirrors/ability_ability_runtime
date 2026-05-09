@@ -61,6 +61,7 @@ ohos_shared_library("ani_common") {
     "src/ani_common_execute_param.cpp",
     "src/ani_common_execute_result.cpp",
     "src/ani_common_intent_info_filter.cpp",
+    "src/ani_common_json_util.cpp",
     "src/ani_common_start_options.cpp",
     "src/ani_common_query_entity_param.cpp",
     "src/ani_common_util.cpp",

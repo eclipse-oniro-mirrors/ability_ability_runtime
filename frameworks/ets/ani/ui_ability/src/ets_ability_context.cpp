@@ -476,6 +476,18 @@ void EtsAbilityContext::RequestModalUIExtension(ani_env *env, ani_object aniObj,
     etsContext->OnRequestModalUIExtension(env, aniObj, pickerWantObj, callbackobj);
 }
 
+void EtsAbilityContext::RequestModalUIExtensionWithAccount(ani_env *env, ani_object aniObj, ani_object pickerWantObj,
+    ani_int accountId, ani_object callbackobj)
+{
+    TAG_LOGD(AAFwkTag::CONTEXT, "RequestModalUIExtensionWithAccount called");
+    auto etsContext = GetEtsAbilityContext(env, aniObj);
+    if (etsContext == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null etsContext");
+        return;
+    }
+    etsContext->OnRequestModalUIExtensionWithAccount(env, aniObj, pickerWantObj, accountId, callbackobj);
+}
+
 void EtsAbilityContext::SetMissionWindowIcon(ani_env *env, ani_object aniObj, ani_object pixelMapObj,
     ani_object callbackobj)
 {
@@ -876,6 +888,17 @@ void EtsAbilityContext::SetOnNewWantSkipScenarios(ani_env *env, ani_object aniOb
     etsContext->OnSetOnNewWantSkipScenarios(env, aniObj, etsScenarios, callback);
 }
 
+void EtsAbilityContext::StartSelf(ani_env *env, ani_object aniObj, ani_object callback)
+{
+    TAG_LOGD(AAFwkTag::CONTEXT, "StartSelf called");
+    auto etsContext = GetEtsAbilityContext(env, aniObj);
+    if (etsContext == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null etsContext");
+        return;
+    }
+    etsContext->OnStartSelf(env, callback);
+}
+
 int32_t EtsAbilityContext::GenerateRequestCode()
 {
     static int32_t curRequestCode_ = 0;
@@ -897,7 +920,8 @@ void EtsAbilityContext::InheritWindowMode(AAFwk::Want &want)
     auto windowMode = context->GetCurrentWindowMode();
     if (AAFwk::AppUtils::GetInstance().IsInheritWindowSplitScreenMode() &&
         (windowMode == AAFwk::AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_PRIMARY ||
-            windowMode == AAFwk::AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_SECONDARY)) {
+            windowMode == AAFwk::AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_SECONDARY ||
+            windowMode == AAFwk::AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_SPLIT)) {
         want.SetParam(AAFwk::Want::PARAM_RESV_WINDOW_MODE, windowMode);
     }
     TAG_LOGD(AAFwkTag::CONTEXT, "window mode is %{public}d", windowMode);
@@ -1382,6 +1406,31 @@ void EtsAbilityContext::OnRequestModalUIExtension(ani_env *env, ani_object aniOb
 
     ErrCode ret = ERR_OK;
     ret = AAFwk::AbilityManagerClient::GetInstance()->RequestModalUIExtension(want);
+    errorObject = EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(ret));
+    AppExecFwk::AsyncCallback(env, callbackObj, errorObject, nullptr);
+}
+
+void EtsAbilityContext::OnRequestModalUIExtensionWithAccount(ani_env *env, ani_object aniObj, ani_object pickerWantObj,
+    ani_int accountId, ani_object callbackObj)
+{
+    ani_object errorObject = nullptr;
+    AAFwk::Want want;
+    if (!AppExecFwk::UnwrapWant(env, pickerWantObj, want)) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "parse want failed");
+        EtsErrorUtil::ThrowInvalidParamError(env, "Parse param want failed, want must be Want.");
+        return;
+    }
+    auto context = context_.lock();
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null context");
+        errorObject = EtsErrorUtil::CreateErrorByNativeErr(env,
+            static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT));
+        AppExecFwk::AsyncCallback(env, callbackObj, errorObject, nullptr);
+        return;
+    }
+
+    ErrCode ret = ERR_OK;
+    ret = AAFwk::AbilityManagerClient::GetInstance()->RequestModalUIExtensionWithAccount(want, accountId);
     errorObject = EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(ret));
     AppExecFwk::AsyncCallback(env, callbackObj, errorObject, nullptr);
 }
@@ -2952,6 +3001,24 @@ void EtsAbilityContext::OnSetOnNewWantSkipScenarios(ani_env *env, ani_object ani
     AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateErrorByNativeErr(env, ERR_OK), nullptr);
 }
 
+void EtsAbilityContext::OnStartSelf(ani_env *env, ani_object callback)
+{
+    TAG_LOGD(AAFwkTag::CONTEXT, "OnStartSelf called");
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null env");
+        return;
+    }
+    auto context = context_.lock();
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null context");
+        EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT);
+        return;
+    }
+    ErrCode innerErrCode = context->StartSelf();
+    AppExecFwk::AsyncCallback(
+        env, callback, EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(innerErrCode)), nullptr);
+}
+
 namespace {
 bool BindNativeMethods(ani_env *env, ani_class &cls)
 {
@@ -3003,6 +3070,9 @@ bool BindNativeMethods(ani_env *env, ani_class &cls)
             ani_native_function { "nativeRequestModalUIExtension",
                 "C{@ohos.app.ability.Want.Want}C{utils.AbilityUtils.AsyncCallbackWrapper}:",
                 reinterpret_cast<void*>(EtsAbilityContext::RequestModalUIExtension) },
+            ani_native_function { "nativeRequestModalUIExtensionWithAccount",
+                "C{@ohos.app.ability.Want.Want}iC{utils.AbilityUtils.AsyncCallbackWrapper}:",
+                reinterpret_cast<void*>(EtsAbilityContext::RequestModalUIExtensionWithAccount) },
             ani_native_function { "nativeBackToCallerAbilityWithResult",
                 "C{ability.abilityResult.AbilityResult}C{std.core.String}C{utils.AbilityUtils.AsyncCallbackWrapper}:",
                 reinterpret_cast<void*>(EtsAbilityContext::BackToCallerAbilityWithResult) },
@@ -3118,6 +3188,9 @@ bool BindNativeMethods(ani_env *env, ani_class &cls)
             ani_native_function { "nativeSetOnNewWantSkipScenarios",
                 "iC{utils.AbilityUtils.AsyncCallbackWrapper}:",
                 reinterpret_cast<void*>(EtsAbilityContext::SetOnNewWantSkipScenarios) },
+            ani_native_function { "nativeStartSelf",
+                "C{utils.AbilityUtils.AsyncCallbackWrapper}:",
+                reinterpret_cast<void*>(EtsAbilityContext::StartSelf) },
         };
         if ((status = env->Class_BindNativeMethods(cls, functions.data(), functions.size())) != ANI_OK) {
             TAG_LOGE(AAFwkTag::CONTEXT, "Class_BindNativeMethods failed status: %{public}d", status);

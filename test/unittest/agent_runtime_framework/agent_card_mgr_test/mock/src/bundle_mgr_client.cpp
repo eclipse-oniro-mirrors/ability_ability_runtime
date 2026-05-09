@@ -33,18 +33,6 @@ BundleMgrClient::BundleMgrClient() {}
 
 BundleMgrClient::~BundleMgrClient() {}
 
-bool BundleMgrClient::GetBundleInfo(const std::string &bundleName, const BundleFlag flag, BundleInfo &bundleInfo,
-    int32_t userId)
-{
-    if (!AgentRuntime::MyFlag::retGetBundleInfo) {
-        return false;
-    }
-    bundleInfo.extensionInfos = AgentRuntime::MyFlag::mockExtensionInfos;
-    bundleInfo.hapModuleInfos = AgentRuntime::MyFlag::mockHapModuleInfos;
-    bundleInfo.applicationInfo.isSystemApp = AgentRuntime::MyFlag::mockApplicationInfoIsSystemApp;
-    return true;
-}
-
 bool BundleMgrClient::GetResConfigFile(const ExtensionAbilityInfo &extensionInfo, const std::string &metadataName,
     std::vector<std::string> &profileInfos, bool includeSysRes) const
 {

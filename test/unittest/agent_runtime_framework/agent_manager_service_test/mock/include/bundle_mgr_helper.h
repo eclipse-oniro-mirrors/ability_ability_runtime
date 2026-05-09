@@ -34,6 +34,8 @@ public:
     bool GetApplicationInfo(const std::string &appName, const ApplicationFlag flag, const int32_t userId,
         ApplicationInfo &appInfo);
 
+    ErrCode GetBundleInfoV9(const std::string &bundleName, int32_t flags, BundleInfo &bundleInfo, int32_t userId);
+
     bool QueryExtensionAbilityInfos(const AAFwk::Want &want, const int32_t &flag, const int32_t &userId,
         std::vector<ExtensionAbilityInfo> &extensionInfos);
 

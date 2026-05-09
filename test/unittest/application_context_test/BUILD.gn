@@ -22,6 +22,7 @@ ohos_unittest("application_context_test") {
     "${ability_runtime_test_path}/mock/frameworks_kits_ability_native_test/include",
     "${ability_runtime_test_path}/mock/frameworks_kits_appkit_native_test/include",
     "${ability_runtime_native_path}/appkit/app/",
+    "${ability_runtime_path}/interfaces/inner_api/ability_manager/include",
   ]
 
   sources = [

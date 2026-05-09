@@ -39,6 +39,8 @@ public:
     static int retDisconnectServiceExtensionAbility;
     static int retNotifyLowCodeAgentComplete;
     static std::vector<AgentCard> convertedCards;
+    static AgentCard lastRegisterCard;
+    static AgentCard lastUpdateCard;
     static bool nullSystemAbility;
     static int retLoadSystemAbility;
     static bool shouldCallback;

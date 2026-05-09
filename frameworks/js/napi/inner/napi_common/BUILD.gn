@@ -43,6 +43,7 @@ ohos_shared_library("napi_common") {
     "napi_common_util.cpp",
     "napi_common_want.cpp",
     "napi_common_query_entity_param.cpp",
+    "napi_common_skill_execute.cpp",
     "open_link/napi_common_open_link_options.cpp",
   ]
 

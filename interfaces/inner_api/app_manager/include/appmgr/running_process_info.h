@@ -65,6 +65,7 @@ struct RunningProcessInfo : public Parcelable {
     bool isPreload = false;
     std::int32_t pid_;
     std::int32_t uid_;
+    std::uint32_t accessTokenId_ = 0;
     std::int32_t bundleType = 0;
     std::int32_t appCloneIndex = -1;
     std::int32_t rssValue = 0;

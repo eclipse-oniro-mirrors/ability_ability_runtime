@@ -26,6 +26,7 @@ class Runtime;
 InsightIntentExecutor *CreateETSInsightIntentExecutor(Runtime &runtime);
 InsightIntentExecutor *CreateETSInsightIntentEntry(Runtime &runtime);
 InsightIntentExecutor *CreateETSInsightIntentFunc(Runtime &runtime);
+InsightIntentExecutor *CreateETSInsightIntentPage(Runtime &runtime);
 InsightIntentExecutor *CreateETSInsightIntentQueryEntity(Runtime &runtime);
 } // namespace AbilityRuntime
 } // namespace OHOS

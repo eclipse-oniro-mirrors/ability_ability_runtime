@@ -88,6 +88,9 @@ private:
 
     napi_value GetTargetMethod(napi_env env, napi_value constructor, const std::string &methodName);
 
+    void PrepareMethodParams(std::shared_ptr<InsightIntentExecuteParam> executeParam,
+        std::unordered_map<std::string, size_t> &paramMap);
+
     JsRuntime& runtime_;
     State state_ = State::CREATED;
     std::unique_ptr<InsightIntentExecutorAsyncCallback> callback_;

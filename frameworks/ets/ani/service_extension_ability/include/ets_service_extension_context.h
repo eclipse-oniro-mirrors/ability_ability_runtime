@@ -78,6 +78,8 @@ public:
         ani_string aniAbilityName, ani_string aniStartTime, ani_object callbackobj);
     static void RequestModalUIExtension(ani_env *env, ani_object obj, ani_object wantObj,
         ani_object callbackobj);
+    static void RequestModalUIExtensionWithAccount(ani_env *env, ani_object obj, ani_object wantObj,
+        ani_int accountId, ani_object callbackobj);
     static ani_long ConnectServiceExtensionAbilityWithAccount(ani_env *env, ani_object obj, ani_object wantObj,
         ani_int accountId, ani_object connectOptionsObj);
     static void StopServiceExtensionAbilityWithAccount(ani_env *env, ani_object obj, ani_object wantObj,
@@ -125,6 +127,8 @@ private:
     void OnPreStartMission(ani_env *env, ani_object aniObj, ani_string aniBundleName, ani_string aniModuleName,
         ani_string aniAbilityName, ani_string aniStartTime, ani_object callbackobj);
     void OnRequestModalUIExtension(ani_env *env, ani_object obj, ani_object wantObj, ani_object callbackobj);
+    void OnRequestModalUIExtensionWithAccount(
+        ani_env *env, ani_object obj, ani_object wantObj, ani_int accountId, ani_object callbackobj);
     ani_long OnConnectServiceExtensionAbilityWithAccount(ani_env *env, ani_object obj, ani_object wantObj,
         ani_int accountId, ani_object connectOptionsObj);
     void OnStopServiceExtensionAbilityWithAccount(ani_env *env, ani_object obj, ani_object wantObj,

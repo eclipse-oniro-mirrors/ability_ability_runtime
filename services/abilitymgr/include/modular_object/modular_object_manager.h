@@ -18,6 +18,7 @@
 
 #include <singleton.h>
 #include "modular_object_extension_info.h"
+#include "want.h"
 
 namespace OHOS {
 namespace AbilityRuntime {

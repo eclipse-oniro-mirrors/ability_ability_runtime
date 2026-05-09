@@ -190,7 +190,7 @@ public:
 
     virtual int StartAbilityByCall(const Want& want, const sptr<IAbilityConnection>& connect,
         const sptr<IRemoteObject>& callerToken, int32_t userId = DEFAULT_INVAL_VALUE, bool isSilent = false,
-        bool promotePriority = false, bool isVisible = false)
+        bool promotePriority = false, bool isVisible = false, uint64_t specifiedFullTokenId = 0)
     {
         return 0;
     }
@@ -282,6 +282,14 @@ public:
         const InsightIntentExecuteParam &param));
     MOCK_METHOD3(ExecuteInsightIntentDone, int32_t(const sptr<IRemoteObject> &token, uint64_t intentId,
         const InsightIntentExecuteResult &result));
+    MOCK_METHOD3(GetAllInsightIntentInfo, int32_t(AbilityRuntime::GetInsightIntentFlag flag,
+        std::vector<AbilityRuntime::InsightIntentInfoForQuery> &infos, int32_t userId));
+    MOCK_METHOD4(GetInsightIntentInfoByBundleName, int32_t(AbilityRuntime::GetInsightIntentFlag flag,
+        const std::string &bundleName, std::vector<AbilityRuntime::InsightIntentInfoForQuery> &infos,
+        int32_t userId));
+    MOCK_METHOD6(GetInsightIntentInfoByIntentName, int32_t(AbilityRuntime::GetInsightIntentFlag flag,
+        const std::string &bundleName, const std::string &moduleName, const std::string &intentName,
+        AbilityRuntime::InsightIntentInfoForQuery &info, int32_t userId));
     MOCK_METHOD5(StartAbilityWithSpecifyTokenId, int(const Want& want, const sptr<IRemoteObject>& callerToken,
         uint32_t specifyTokenId, int32_t userId, int requestCode));
 public:

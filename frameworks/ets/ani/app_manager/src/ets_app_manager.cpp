@@ -1002,7 +1002,7 @@ void EtsAppManager::NativeIsSharedBundleRunning(ani_env *env, ani_string aniBund
             AppExecFwk::CreateBoolean(env, false));
         return;
     }
-    TAG_LOGD(AAFwkTag::APPMGR, "NativeGetProcessMemoryByPid pid:%{public}lld", aniVersionCode);
+    TAG_LOGD(AAFwkTag::APPMGR, "NativeGetProcessMemoryByPid pid:%{public}" PRId64, aniVersionCode);
     uint32_t versionCode = static_cast<uint32_t>(aniVersionCode);
 
     std::string bundleName;

@@ -83,10 +83,37 @@ public:
     {
         return isLastWantBackgroundDriven_.load();
     }
+
+    inline void SetNativeState(AbilityNativeState newState)
+    {
+        abilityNativeState_ = newState;
+    }
+
+    inline AbilityNativeState GetNativeState() const
+    {
+        return abilityNativeState_;
+    }
+
+    void AttachNative();
+
+    inline bool CheckStartPendingState(int32_t requestId) const
+    {
+        auto pendingState = GetPendingState();
+        return pendingState == AbilityState::INITIAL || (pendingState == AbilityState::FOREGROUND &&
+            GetNativeState() == AbilityNativeState::ON_FOREGROUND && requestId == startSelfRequestId_);
+    }
+
+    inline void SetStartSelfRequestId(int32_t startSelfRequestId)
+    {
+        startSelfRequestId_ = startSelfRequestId;
+    }
+
 private:
     bool exitReasonLoaded_ = false;
     bool hookOff_ = false;
+    int32_t startSelfRequestId_ = 0;
     std::atomic_bool isKillPrecedeStart_ = false;
+    std::atomic<AbilityNativeState> abilityNativeState_ = AbilityNativeState::NONE;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

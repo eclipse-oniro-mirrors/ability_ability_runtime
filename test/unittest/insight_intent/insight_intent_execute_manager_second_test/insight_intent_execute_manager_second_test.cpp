@@ -1442,7 +1442,7 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckAndUpdateQueryEntityParam_0
     std::string callerBundleName = "com.bundlename.test";
 
     auto ret = manager->CheckAndUpdateQueryEntityParam(key, callerToken, paramPtr, callerBundleName);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(ret, ERR_OK);
 
     TAG_LOGI(AAFwkTag::TEST, "CheckAndUpdateQueryEntityParam_0300 end.");
 }
@@ -1473,7 +1473,7 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckAndUpdateQueryEntityParam_0
     std::string callerBundleName = "com.bundlename.test";
 
     auto ret = manager->CheckAndUpdateQueryEntityParam(key, callerToken, paramPtr, callerBundleName);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(ret, ERR_OK);
 
     TAG_LOGI(AAFwkTag::TEST, "CheckAndUpdateQueryEntityParam_0400 end.");
 }
@@ -1504,7 +1504,7 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckAndUpdateQueryEntityParam_0
     std::string callerBundleName = "com.bundlename.test";
 
     auto ret = manager->CheckAndUpdateQueryEntityParam(key, callerToken, paramPtr, callerBundleName);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(ret, ERR_OK);
 
     TAG_LOGI(AAFwkTag::TEST, "CheckAndUpdateQueryEntityParam_0500 end.");
 }
@@ -1535,7 +1535,7 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckAndUpdateQueryEntityParam_0
     std::string callerBundleName = "com.bundlename.test";
 
     auto ret = manager->CheckAndUpdateQueryEntityParam(key, callerToken, paramPtr, callerBundleName);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(ret, ERR_OK);
 
     TAG_LOGI(AAFwkTag::TEST, "CheckAndUpdateQueryEntityParam_0600 end.");
 }

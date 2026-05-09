@@ -27,14 +27,17 @@ template("delegator") {
       "${ability_runtime_path}/interfaces/kits/native/appkit/ability_delegator/",
       "${ability_runtime_path}/interfaces/kits/native/ability/native",
       "${ability_runtime_path}/tools/aa/include",
+      "${ability_runtime_path}/frameworks/ets/ani/ani_common/include",
     ]
 
     sources = [
       "ability_monitor.cpp",
+      "interop_ability_monitor.cpp",
       "js_ability_delegator.cpp",
       "js_ability_delegator_registry.cpp",
       "js_ability_delegator_utils.cpp",
       "js_ability_monitor.cpp",
+      "js_interop_ability_monitor.cpp",
       "native_module.cpp",
     ]
 
@@ -50,6 +53,7 @@ template("delegator") {
       "${ability_runtime_native_path}/ability/native:abilitykit_native",
       "${ability_runtime_native_path}/appkit:app_context_utils",
       "${ability_runtime_native_path}/appkit:appkit_delegator",
+      "${ability_runtime_path}/frameworks/ets/ani/ani_common:ani_common",
     ]
 
     external_deps = [
@@ -64,6 +68,8 @@ template("delegator") {
       "ipc:ipc_napi",
       "ipc:ipc_single",
       "napi:ace_napi",
+      "runtime_core:ani",
+      "runtime_core:ani_helpers",
     ]
 
     cflags_cc = []

@@ -16,15 +16,20 @@
 #include "application_context.h"
 
 #include <algorithm>
+#include <memory>
+#include <unistd.h>
 
+#include "ability_manager_client.h"
 #include "ability_manager_errors.h"
 #include "ability_util.h"
+#include "app_mgr_client.h"
 #include "app_image_observer_manager.h"
 #include "configuration_convertor.h"
 #include "exit_reason.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
 #include "js_runtime.h"
+#include "native_ability_util.h"
 #include "running_process_info.h"
 
 namespace OHOS {
@@ -934,6 +939,59 @@ int32_t ApplicationContext::RestartApp(const AAFwk::Want& want)
     return (contextImpl_ != nullptr) ? contextImpl_->RestartApp(want) : ERR_INVALID_VALUE;
 }
 
+int32_t ApplicationContext::EnableDelayedProcessExit()
+{
+    auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+    if (appMgrClient == nullptr) {
+        return ERR_INVALID_VALUE;
+    }
+    auto ret = appMgrClient->EnableDelayedProcessExit(getpid(), true);
+    if (ret == ERR_OK) {
+        std::lock_guard<std::mutex> lock(delayedProcessExitStateLock_);
+        delayedProcessExitEnabled_ = true;
+    }
+    return ret;
+}
+
+int32_t ApplicationContext::DisableDelayedProcessExit()
+{
+    auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+    if (appMgrClient == nullptr) {
+        return ERR_INVALID_VALUE;
+    }
+
+    auto ret = appMgrClient->EnableDelayedProcessExit(getpid(), false);
+    if (ret == ERR_OK) {
+        std::lock_guard<std::mutex> lock(delayedProcessExitStateLock_);
+        delayedProcessExitEnabled_ = false;
+    }
+    return ret;
+}
+
+int32_t ApplicationContext::StartSelfUIAbility(const AAFwk::Want &want)
+{
+    if (!IsDelayedProcessExitPending()) {
+        TAG_LOGE(AAFwkTag::APPKIT, "delayed process exit is not pending");
+        return AAFwk::ERR_DELAYED_PROCESS_EXIT_NOT_PENDING;
+    }
+    auto abilityMgrClient = AAFwk::AbilityManagerClient::GetInstance();
+    if (abilityMgrClient == nullptr) {
+        return ERR_INVALID_VALUE;
+    }
+    auto errCode = abilityMgrClient->StartSelfUIAbilityByAppContext(want);
+    if (errCode != ERR_OK) {
+        TAG_LOGE(AAFwkTag::APPKIT, "StartSelfUIAbility failed, errCode:%{public}d", errCode);
+        return errCode;
+    }
+    return ERR_OK;
+}
+
+bool ApplicationContext::IsDelayedProcessExitPending()
+{
+    std::lock_guard<std::mutex> lock(delayedProcessExitStateLock_);
+    return delayedProcessExitEnabled_;
+}
+
 std::string ApplicationContext::GetDistributedFilesDir()
 {
     return (contextImpl_ != nullptr) ? contextImpl_->GetDistributedFilesDir() : "";
@@ -1296,5 +1354,95 @@ std::shared_ptr<Context> ApplicationContext::CreateDisplayContext(uint64_t displ
     return contextImpl_ ? contextImpl_->CreateDisplayContext(displayId) : nullptr;
 }
 #endif
+
+// Native Module related methods implementation
+bool ApplicationContext::CreateNativeThread(const AAFwk::NativeAbilityMetaData &metaData,
+    const std::string &bundleName, const std::string &moduleName)
+{
+    if (!metaData.withNativeModule) {
+        return false;
+    }
+    std::lock_guard lock(nativeMutex_);
+    if (abilityNativeThread_ != nullptr) {
+        TAG_LOGI(AAFwkTag::ABILITY, "Native thread exist");
+        return true;
+    }
+    auto nativeThread = std::make_shared<AppExecFwk::AbilityNativeThread>();
+    if (!nativeThread->LoadNativeModule(metaData, bundleName, moduleName)) {
+        return false;
+    }
+    nativeThread->RunMain();
+    abilityNativeThread_ = nativeThread;
+    return true;
+}
+
+std::shared_ptr<AppExecFwk::AbilityNativeThread> ApplicationContext::GetNativeThread()
+{
+    std::lock_guard<std::mutex> lock(nativeMutex_);
+    return abilityNativeThread_;
+}
+
+void ApplicationContext::AddNativeAbility(
+    const std::string &instanceId, std::shared_ptr<AbilityRuntime_NativeAbilityWrapper> wrapper)
+{
+    std::lock_guard<std::mutex> lock(nativeMutex_);
+    nativeAbilities_[instanceId] = wrapper;
+}
+
+std::shared_ptr<AbilityRuntime_NativeAbilityWrapper> ApplicationContext::GetNativeAbility(const std::string &instanceId)
+{
+    std::lock_guard<std::mutex> lock(nativeMutex_);
+    auto it = nativeAbilities_.find(instanceId);
+    if (it != nativeAbilities_.end()) {
+        return it->second;
+    }
+    return nullptr;
+}
+
+void ApplicationContext::RemoveNativeAbility(const std::string &instanceId)
+{
+    std::lock_guard<std::mutex> lock(nativeMutex_);
+    nativeAbilities_.erase(instanceId);
+}
+
+void ApplicationContext::PostAbility(
+    const std::string &instanceId, std::shared_ptr<AbilityRuntime_NativeAbilityWrapper> wrapper)
+{
+    if (wrapper == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITY, "NativeAbilityWrapper is null");
+        return;
+    }
+
+    AddNativeAbility(instanceId, wrapper);
+
+    auto nativeThreadInfo = GetNativeThread();
+    if (nativeThreadInfo != nullptr) {
+        nativeThreadInfo->PostAbility(wrapper.get());
+        TAG_LOGI(AAFwkTag::ABILITY, "PostAbility called for instanceId: %{public}s", instanceId.c_str());
+    } else {
+        TAG_LOGE(AAFwkTag::ABILITY, "AbilityNativeThread is null");
+    }
+}
+
+void ApplicationContext::DestroyAbility(const std::string &instanceId)
+{
+    auto nativeThreadInfo = GetNativeThread();
+    auto nativeAbility = GetNativeAbility(instanceId);
+    if (nativeThreadInfo != nullptr && nativeAbility != nullptr) {
+        nativeThreadInfo->DestroyAbility(nativeAbility.get());
+        TAG_LOGI(AAFwkTag::ABILITY, "DestroyAbility called for instanceId: %{public}s", instanceId.c_str());
+    }
+
+    RemoveNativeAbility(instanceId);
+}
+
+void ApplicationContext::NotifyProcessExit()
+{
+    auto nativeThreadInfo = GetNativeThread();
+    if (nativeThreadInfo != nullptr) {
+        nativeThreadInfo->NotifyProcessExit();
+    }
+}
+
 }  // namespace AbilityRuntime
 }  // namespace OHOS

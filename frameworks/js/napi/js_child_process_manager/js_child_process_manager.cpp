@@ -80,6 +80,16 @@ public:
         GET_CB_INFO_AND_CALL(env, info, JsChildProcessManager, OnStartNativeChildProcess);
     }
 
+    static napi_value IsArkChildProcessSupported(napi_env env, napi_callback_info info)
+    {
+        GET_CB_INFO_AND_CALL(env, info, JsChildProcessManager, OnIsArkChildProcessSupported);
+    }
+
+    static napi_value IsNativeChildProcessSupported(napi_env env, napi_callback_info info)
+    {
+        GET_CB_INFO_AND_CALL(env, info, JsChildProcessManager, OnIsNativeChildProcessSupported);
+    }
+
 private:
     napi_value OnStartChildProcess(napi_env env, size_t argc, napi_value* argv)
     {
@@ -264,6 +274,22 @@ private:
         return result;
     }
 
+    napi_value OnIsArkChildProcessSupported(napi_env env, size_t argc, napi_value* argv)
+    {
+        TAG_LOGI(AAFwkTag::PROCESSMGR, "called");
+        bool isSupported = ChildProcessManager::GetInstance().IsArkChildProcessSupported();
+        TAG_LOGD(AAFwkTag::PROCESSMGR, "result:%{public}d", isSupported);
+        return CreateJsValue(env, isSupported);
+    }
+
+    napi_value OnIsNativeChildProcessSupported(napi_env env, size_t argc, napi_value* argv)
+    {
+        TAG_LOGI(AAFwkTag::PROCESSMGR, "called");
+        bool isSupported = ChildProcessManager::GetInstance().IsNativeChildProcessSupported();
+        TAG_LOGD(AAFwkTag::PROCESSMGR, "result:%{public}d", isSupported);
+        return CreateJsValue(env, isSupported);
+    }
+
     bool ParseArgsAndOptions(const napi_env &env, napi_value* argv, size_t argc, AppExecFwk::ChildProcessArgs &args,
         AppExecFwk::ChildProcessOptions &options)
     {
@@ -338,6 +364,10 @@ napi_value JsChildProcessManagerInit(napi_env env, napi_value exportObj)
     BindNativeFunction(env, exportObj, "startArkChildProcess", moduleName, JsChildProcessManager::StartArkChildProcess);
     BindNativeFunction(env, exportObj, "startNativeChildProcess", moduleName,
         JsChildProcessManager::StartNativeChildProcess);
+    BindNativeFunction(env, exportObj, "isArkChildProcessSupported", moduleName,
+        JsChildProcessManager::IsArkChildProcessSupported);
+    BindNativeFunction(env, exportObj, "isNativeChildProcessSupported", moduleName,
+        JsChildProcessManager::IsNativeChildProcessSupported);
     return CreateJsUndefined(env);
 }
 }  // namespace AbilityRuntime

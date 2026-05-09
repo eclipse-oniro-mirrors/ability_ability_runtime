@@ -38,6 +38,9 @@ bool RunningProcessInfo::ReadFromParcel(Parcel &parcel)
     int32_t uidData;
     READ_PARCEL_AND_RETURN_FALSE_IF_FAIL(Int32, parcel, uidData);
     uid_ = static_cast<int32_t>(uidData);
+    uint32_t accessTokenIdData;
+    READ_PARCEL_AND_RETURN_FALSE_IF_FAIL(Uint32, parcel, accessTokenIdData);
+    accessTokenId_ = accessTokenIdData;
     int32_t stateData;
     READ_PARCEL_AND_RETURN_FALSE_IF_FAIL(Int32, parcel, stateData);
     state_ = static_cast<AppProcessState>(stateData);
@@ -98,6 +101,7 @@ bool RunningProcessInfo::Marshalling(Parcel &parcel) const
     WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(String16, parcel, Str8ToStr16(processName_));
     WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(Int32, parcel, static_cast<int32_t>(pid_));
     WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(Int32, parcel, static_cast<int32_t>(uid_));
+    WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(Uint32, parcel, accessTokenId_);
     WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(Int32, parcel, static_cast<int32_t>(state_));
     WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(Bool, parcel, isContinuousTask);
     WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(Bool, parcel, isKeepAlive);

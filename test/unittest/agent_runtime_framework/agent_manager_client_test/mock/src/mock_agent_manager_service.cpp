@@ -31,6 +31,8 @@ int MyFlag::retDisconnectAgentExtensionAbility = 0;
 int MyFlag::retConnectServiceExtensionAbility = 0;
 int MyFlag::retDisconnectServiceExtensionAbility = 0;
 int MyFlag::retNotifyLowCodeAgentComplete = 0;
+AgentCard MyFlag::lastRegisterCard;
+AgentCard MyFlag::lastUpdateCard;
 
 MockAgentManagerService::MockAgentManagerService()
 {}
@@ -43,8 +45,7 @@ int32_t MockAgentManagerService::GetAllAgentCards(AgentCardsRawData &rawData)
     return MyFlag::retGetAllAgentCards;
 }
 
-int32_t MockAgentManagerService::GetAgentCardsByBundleName(const std::string &bundleName,
-    std::vector<AgentCard> &cards)
+int32_t MockAgentManagerService::GetAgentCardsByBundleName(const std::string &bundleName, AgentCardsRawData &rawData)
 {
     return MyFlag::retGetAgentCardsByBundleName;
 }
@@ -62,11 +63,13 @@ int32_t MockAgentManagerService::GetCallerAgentCardByAgentId(const std::string &
 
 int32_t MockAgentManagerService::RegisterAgentCard(const AgentCard &card)
 {
+    MyFlag::lastRegisterCard = card;
     return MyFlag::retRegisterAgentCard;
 }
 
 int32_t MockAgentManagerService::UpdateAgentCard(const AgentCard &card)
 {
+    MyFlag::lastUpdateCard = card;
     return MyFlag::retUpdateAgentCard;
 }
 

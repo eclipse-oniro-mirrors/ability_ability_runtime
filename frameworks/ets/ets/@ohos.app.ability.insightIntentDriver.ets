@@ -34,9 +34,10 @@ export default namespace insightIntentDriver {
     uris?: Array<string>;
     flags?: int;
     userId?: int;
+    deviceId?: string;
   }
 
-  interface InsightIntentInfoFilter {
+  export interface InsightIntentInfoFilter {
     intentFlags: int;
     bundleName?: string;
     moduleName?: string;
@@ -44,7 +45,7 @@ export default namespace insightIntentDriver {
     userId?: int;
   }
 
-  interface QueryParam {
+  export interface QueryParam {
     bundleName: string;
     moduleName: string;
     intentName: string;

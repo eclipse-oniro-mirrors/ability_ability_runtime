@@ -45,6 +45,7 @@ ohos_shared_library("insightintentdriver_napi") {
     "hilog:libhilog",
     "ipc:ipc_core",
     "ipc:ipc_napi",
+    "json:nlohmann_json_static",
     "napi:ace_napi",
   ]
   cflags_cc = []

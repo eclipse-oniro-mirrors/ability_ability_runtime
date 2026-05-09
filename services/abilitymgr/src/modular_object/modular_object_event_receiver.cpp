@@ -122,7 +122,7 @@ void ModularObjectEventReceiver::HandleEventUserSwitched(const EventFwk::CommonE
 
 void ModularObjectEventReceiver::HandleBundleScanFinished(const EventFwk::CommonEventData &data)
 {
-    uint32_t userId = AppExecFwk::OsAccountManagerWrapper::GetCurrentActiveAccountId();
+    int32_t userId = AppExecFwk::OsAccountManagerWrapper::GetCurrentActiveAccountId();
     if (userId == 0) {
         TAG_LOGI(AAFwkTag::EXT, "use MAIN_USER_ID(%{public}d) instead of current userId: (%{public}d)",
             MAIN_USER_ID, userId);

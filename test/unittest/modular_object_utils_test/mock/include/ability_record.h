@@ -1,0 +1,40 @@
+/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef MOCK_ABILITY_RECORD_H
+#define MOCK_ABILITY_RECORD_H
+
+#include <memory>
+#include <sys/types.h>
+#include "ability_record/ability_request.h"
+
+namespace OHOS {
+namespace AAFwk {
+
+class AbilityRecord {
+public:
+    static AppExecFwk::AbilityInfo abilityInfo;
+    static int32_t recordId_;
+    static std::string processName_;
+
+    const AppExecFwk::AbilityInfo &GetAbilityInfo() const { return abilityInfo; }
+    int32_t GetRecordId() const { return recordId_; }
+    void SetProcessName(const std::string &name) { processName_ = name; }
+};
+
+} // namespace AAFwk
+} // namespace OHOS
+
+#endif // MOCK_ABILITY_RECORD_H

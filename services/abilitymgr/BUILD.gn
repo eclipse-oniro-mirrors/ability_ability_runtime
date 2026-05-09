@@ -41,6 +41,7 @@ config("abilityms_config") {
     "include/extension_record",
     "include/foreground_app_connection_manager",
     "include/insight_intent",
+    "include/skill",
     "include/mission/",
     "include/modular_object/",
     "include/rdb/",
@@ -583,18 +584,23 @@ ohos_shared_library("modular_object") {
   ]
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
+    "${ability_runtime_services_path}/common:app_util",
   ]
 
   external_deps = [
     "ability_base:want",
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",
+    "eventhandler:libeventhandler",
     "ffrt:libffrt",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
+    "hisysevent:libhisysevent",
     "ipc:ipc_core",
+    "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
   ]
 

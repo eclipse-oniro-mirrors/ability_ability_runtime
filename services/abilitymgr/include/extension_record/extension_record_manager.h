@@ -87,6 +87,13 @@ public:
      */
     int32_t GetActiveUIExtensionList(const std::string &bundleName, std::vector<std::string> &extensionList);
 
+    /**
+     * @brief Get extensionList by uid.
+     * @param uid The application uid.
+     * @param extensionList UIExtensionAbility name list.
+     */
+    int32_t GetActiveUIExtensionListByUid(int32_t uid, std::vector<std::string> &extensionList);
+
     int32_t StartAbility(const AAFwk::AbilityRequest &abilityRequest);
 
     int32_t CreateExtensionRecord(const AAFwk::AbilityRequest &abilityRequest, const std::string &hostBundleName,

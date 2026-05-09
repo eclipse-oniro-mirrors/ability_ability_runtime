@@ -35,7 +35,13 @@ void GetPatchNativeLibPath(const HapModuleInfo &hapInfo, std::string &patchNativ
 
 void GetLibrarySupportDirectory(
     const std::vector<HapModuleInfo> &hapModuleInfos,
-    const std::string nativeLibraryPath,
+    const std::string &nativeLibraryPath,
+    AppLibPathMap &appLibPaths);
+
+void TraverseLibrarySupportDirectory(
+    const std::vector<std::string> &librarySupportDirectory,
+    const std::string &prefixPath,
+    const std::string &appLibPathKey,
     AppLibPathMap &appLibPaths);
 }  // namespace AppExecFwk
 }  // namespace OHOS

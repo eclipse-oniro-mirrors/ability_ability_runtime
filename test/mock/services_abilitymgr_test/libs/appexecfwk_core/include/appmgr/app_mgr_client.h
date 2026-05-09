@@ -61,7 +61,8 @@ public:
      * @param state Ability running state.
      * @return Returns RESULT_OK on success, others on failure.
      */
-    virtual AppMgrResultCode UpdateAbilityState(const sptr<IRemoteObject>& token, const AbilityState state);
+    virtual AppMgrResultCode UpdateAbilityState(const sptr<IRemoteObject>& token, const AbilityState state,
+        bool isFromScreenOffBackground = false);
 
     /**
      * Register Application state callback.

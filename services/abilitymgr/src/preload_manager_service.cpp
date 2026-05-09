@@ -23,6 +23,7 @@
 #include "hilog_tag_wrapper.h"
 #include "in_process_call_wrapper.h"
 #include "global_constant.h"
+#include "native_ability_util.h"
 #include "parameters.h"
 #include "permission_verification.h"
 #include "process_options.h"
@@ -137,6 +138,8 @@ int32_t PreloadManagerService::PreloadApplicationVerification(const std::string 
     CHECK_TRUE_RETURN_RET(!IN_PROCESS_CALL(bundleMgrHelper->QueryAbilityInfo(want,
         AppExecFwk::AbilityInfoFlag::GET_ABILITY_INFO_WITH_APPLICATION, userId, abilityInfo)),
         RESOLVE_ABILITY_ERR, "failed to get abilityInfo");
+    CHECK_TRUE_RETURN_RET(NativeAbilityMetaData::IsWithNative(abilityInfo),
+        ERR_CAPABILITY_NOT_SUPPORT, "Native ability not supported");
     return ERR_OK;
 }
 }  // namespace AAFwk

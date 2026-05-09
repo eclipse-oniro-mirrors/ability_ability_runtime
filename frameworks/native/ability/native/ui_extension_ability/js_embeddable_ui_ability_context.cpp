@@ -196,6 +196,11 @@ napi_value JsEmbeddableUIAbilityContext::RequestModalUIExtension(napi_env env, n
     GET_NAPI_INFO_AND_CALL(env, info, JsEmbeddableUIAbilityContext, OnRequestModalUIExtension);
 }
 
+napi_value JsEmbeddableUIAbilityContext::RequestModalUIExtensionWithAccount(napi_env env, napi_callback_info info)
+{
+    GET_NAPI_INFO_AND_CALL(env, info, JsEmbeddableUIAbilityContext, OnRequestModalUIExtensionWithAccount);
+}
+
 napi_value JsEmbeddableUIAbilityContext::OpenAtomicService(napi_env env, napi_callback_info info)
 {
     GET_NAPI_INFO_AND_CALL(env, info, JsEmbeddableUIAbilityContext, OnOpenAtomicService);
@@ -525,6 +530,17 @@ napi_value JsEmbeddableUIAbilityContext::OnRequestModalUIExtension(napi_env env,
     return jsAbilityContext_->OnRequestModalUIExtension(env, info);
 }
 
+napi_value JsEmbeddableUIAbilityContext::OnRequestModalUIExtensionWithAccount(napi_env env, NapiCallbackInfo& info)
+{
+    if (IsEmbeddableStart(screenMode_)) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "OnRequestModalUIExtensionWithAccount in half screen mode");
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER), ERR_MSG_NOT_SUPPORT);
+        return CreateJsUndefined(env);
+    }
+    CHECK_POINTER_RETURN(env, jsAbilityContext_);
+    return jsAbilityContext_->OnRequestModalUIExtensionWithAccount(env, info);
+}
+
 napi_value JsEmbeddableUIAbilityContext::OnOpenAtomicService(napi_env env, NapiCallbackInfo& info)
 {
     if (IsEmbeddableStart(screenMode_)) {
@@ -746,6 +762,8 @@ napi_value JsEmbeddableUIAbilityContext::CreateJsEmbeddableUIAbilityContext(napi
     BindNativeFunction(env, objValue, "setMissionContinueState", moduleName, SetMissionContinueState);
     BindNativeFunction(env, objValue, "startAbilityByType", moduleName, StartAbilityByType);
     BindNativeFunction(env, objValue, "requestModalUIExtension", moduleName, RequestModalUIExtension);
+    BindNativeFunction(env, objValue, "requestModalUIExtensionWithAccount", moduleName,
+        RequestModalUIExtensionWithAccount);
     BindNativeFunction(env, objValue, "openAtomicService", moduleName, OpenAtomicService);
     BindNativeFunction(env, objValue, "showAbility", moduleName, ShowAbility);
     BindNativeFunction(env, objValue, "hideAbility", moduleName, HideAbility);

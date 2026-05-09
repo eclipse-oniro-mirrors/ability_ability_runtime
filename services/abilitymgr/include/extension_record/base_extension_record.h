@@ -138,16 +138,25 @@ public:
      */
     sptr<IRemoteObject> GetConnRemoteObject() const;
 
+    void SetClientPid(pid_t clientPid);
+
+    pid_t GetClientPid() const;
+    void SetRequestId(const std::string &requestId);
+    std::string GetRequestId() const;
+
 private:
     void DumpUIExtensionRootHostInfo(std::vector<std::string> &info) const;
 
     void DumpUIExtensionPid(std::vector<std::string> &info, bool isUIExtension) const;
+
+    pid_t clientPid_ = -1;
     // service(ability) can be connected by multi-pages(abilities), so need to store this service's connections
     mutable ffrt::mutex connRecordListMutex_;
     std::list<std::shared_ptr<ConnectionRecord>> connRecordList_ = {};
     // service(ability) onConnect() return proxy of service ability
     sptr<IRemoteObject> connRemoteObject_ = {};
     bool isConnected = false;
+    std::string requestId_;
 };
 } // namespace AAFwk
 } // namespace OHOS

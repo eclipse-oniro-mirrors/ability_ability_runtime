@@ -122,6 +122,10 @@ class ServiceExtensionContext extends ExtensionContext {
   requestModalUIExtension(want, callback) {
     return this.__context_impl__.requestModalUIExtension(want, callback);
   }
+
+  requestModalUIExtensionWithAccount(want, accountId, callback) {
+    return this.__context_impl__.requestModalUIExtensionWithAccount(want, accountId, callback);
+  }
   
   startAbilityByCall(want) {
     return new Promise(async (resolve, reject) => {

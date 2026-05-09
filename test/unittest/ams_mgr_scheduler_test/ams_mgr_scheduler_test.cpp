@@ -184,7 +184,7 @@ HWTEST_F(AmsMgrSchedulerTest, AmsMgrScheduler_003, TestSize.Level1)
     sptr<IRemoteObject> token = new MockAbilityToken();
     AbilityState abilityState = AbilityState::ABILITY_STATE_CREATE;
 
-    EXPECT_CALL(*mockAppMgrServiceInner, UpdateAbilityState(_, _))
+    EXPECT_CALL(*mockAppMgrServiceInner, UpdateAbilityState(_, _, _))
         .WillOnce(InvokeWithoutArgs(mockAppMgrServiceInner.get(), &MockAppMgrServiceInner::Post));
     amsMgrScheduler->UpdateAbilityState(token, abilityState);
     mockAppMgrServiceInner->Wait();

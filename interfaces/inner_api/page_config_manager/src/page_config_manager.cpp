@@ -42,7 +42,10 @@ int32_t PageConfigManager::Initialize(const std::string& configJson, const wptr<
     TAG_LOGD(AAFwkTag::ABILITY, "called");
     std::lock_guard guard(g_pageConfigMutex);
     if (isInitialized_) {
-        TAG_LOGI(AAFwkTag::ABILITY, "has initialized");
+        TAG_LOGI(AAFwkTag::ABILITY, "has initialized, update window");
+        if (g_initializeFunc != nullptr) {
+            g_initializeFunc(configJson, window);
+        }
         return ERR_OK;
     }
     if (configJson.empty()) {

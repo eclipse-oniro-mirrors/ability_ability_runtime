@@ -108,6 +108,16 @@ public:
         GetInstance().OnStartNativeChildProcessCheck(env, etsSrcEntry, ChildProcessArgs, ChildProcessOptions);
     }
 
+    static bool IsArkChildProcessSupported(ani_env *env)
+    {
+        return GetInstance().OnIsArkChildProcessSupported(env);
+    }
+
+    static bool IsNativeChildProcessSupported(ani_env *env)
+    {
+        return GetInstance().OnIsNativeChildProcessSupported(env);
+    }
+
 private:
     void OnStartChildProcess(ani_env *env, ani_string etsSrcEntry, ani_enum_item etsStartMode, ani_object callback)
     {
@@ -495,6 +505,26 @@ private:
         }
         return true;
     }
+
+    bool OnIsArkChildProcessSupported(ani_env *env)
+    {
+        TAG_LOGD(AAFwkTag::PROCESSMGR, "IsArkChildProcessSupported called");
+        if (env == nullptr) {
+            TAG_LOGE(AAFwkTag::PROCESSMGR, "env is null");
+            return false;
+        }
+        return AbilityRuntime::ChildProcessManager::GetInstance().IsArkChildProcessSupported();
+    }
+
+    bool OnIsNativeChildProcessSupported(ani_env *env)
+    {
+        TAG_LOGD(AAFwkTag::PROCESSMGR, "IsNativeChildProcessSupported called");
+        if (env == nullptr) {
+            TAG_LOGE(AAFwkTag::PROCESSMGR, "env is null");
+            return false;
+        }
+        return AbilityRuntime::ChildProcessManager::GetInstance().IsNativeChildProcessSupported();
+    }
 };
 
 void EtsChildProcessManagerInit(ani_env *env)
@@ -547,7 +577,13 @@ void EtsChildProcessManagerInit(ani_env *env)
         ani_native_function {"nativeStartNativeChildProcessCheck",
             "C{std.core.String}C{@ohos.app.ability.ChildProcessArgs.ChildProcessArgs}"
             "C{@ohos.app.ability.ChildProcessOptions.ChildProcessOptions}:",
-            reinterpret_cast<void *>(EtsChildProcessManager::StartNativeChildProcessCheck)}
+            reinterpret_cast<void *>(EtsChildProcessManager::StartNativeChildProcessCheck)},
+        ani_native_function {"isArkChildProcessSupported",
+            ":z",
+            reinterpret_cast<void *>(EtsChildProcessManager::IsArkChildProcessSupported)},
+        ani_native_function {"isNativeChildProcessSupported",
+            ":z",
+            reinterpret_cast<void *>(EtsChildProcessManager::IsNativeChildProcessSupported)}
     };
     status = env->Namespace_BindNativeFunctions(ns, kitFunctions.data(), kitFunctions.size());
     if (status != ANI_OK) {

@@ -29,6 +29,7 @@
 #include "iability_callback.h"
 #include "recovery_param.h"
 #include "resource_config_helper.h"
+#include "skill/skill_execute_param.h"
 #include "want.h"
 
 #ifdef SUPPORT_SCREEN
@@ -47,6 +48,7 @@ class LifeCycle;
 class ContinuationHandlerStage;
 class ContinuationManagerStage;
 class InsightIntentExecuteParam;
+class SkillExecuteParam;
 struct BaseDelegatorAbilityProperty;
 struct InsightIntentExecuteResult;
 using InsightIntentExecutorAsyncCallback = AbilityTransactionCallbackInfo<InsightIntentExecuteResult>;
@@ -61,6 +63,7 @@ class Runtime;
 using InsightIntentExecuteResult = AppExecFwk::InsightIntentExecuteResult;
 using InsightIntentExecuteParam = AppExecFwk::InsightIntentExecuteParam;
 using InsightIntentExecutorAsyncCallback = AppExecFwk::InsightIntentExecutorAsyncCallback;
+using SkillExecuteParam = AppExecFwk::SkillExecuteParam;
 class UIAbility : public AppExecFwk::AbilityContext,
                   public AppExecFwk::ILifeCycle,
                   public AppExecFwk::IAbilityCallback,
@@ -193,6 +196,12 @@ public:
      * @return Returns the module name of this ability.
      */
     std::string GetModuleName();
+
+    /**
+     * @brief Obtains the instance id of this ability.
+     * @return Returns the instance id string of this ability.
+     */
+    std::string GetInstanceId() const;
 
     /**
      * @brief Called when startAbilityForResult(ohos.aafwk.content.Want,int) is called to start an ability and the
@@ -366,6 +375,12 @@ public:
     bool CreateProperty(std::shared_ptr<AbilityRuntime::AbilityContext> abilityContext,
         std::shared_ptr<AppExecFwk::BaseDelegatorAbilityProperty> delegatorAbilityProperty);
 
+    // Native Module related methods
+    inline void SetWithNative(bool withNative)
+    {
+        withNative_ = withNative;
+    }
+
 protected:
     const AAFwk::LaunchParam &GetLaunchParam() const;
     bool IsRestoredInContinuation() const;
@@ -374,12 +389,18 @@ protected:
     bool ShouldDefaultRecoverState(const AAFwk::Want &want);
     bool IsUseNewStartUpRule();
 
+    inline bool IsWithNative() const
+    {
+        return withNative_;
+    }
+
     std::shared_ptr<AbilityRuntime::AbilityContext> abilityContext_ = nullptr;
     std::shared_ptr<AppExecFwk::AbilityStartSetting> setting_ = nullptr;
     std::shared_ptr<AppExecFwk::AbilityRecovery> abilityRecovery_ = nullptr;
     std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo_ = nullptr;
     AAFwk::LaunchParam launchParam_;
     bool securityFlag_ = false;
+    bool withNative_ = false;
     uint64_t intentId_;
 
 private:
@@ -407,6 +428,7 @@ private:
     bool startUpNewRule_ = false;
     bool isSilentForeground_ = false;
     std::atomic<bool> useAppSettedRecoveryValue_ = false;
+    std::string instanceId_;
 
 #ifdef SUPPORT_SCREEN
 public:
@@ -685,6 +707,15 @@ public:
     virtual void OnAbilityRequestSuccess(const std::string &requestId, const AppExecFwk::ElementName &element,
         const std::string &message);
 
+    /**
+     * @brief Execute skill by loading ArkTS script and calling the target function.
+     *
+     * @param want Want.
+     * @param param Skill execute param containing abc path, function name and arguments.
+     */
+    virtual void ExecuteSkill(const AAFwk::Want &want,
+        const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param) {}
+
 protected:
     class UIAbilityDisplayListener : public OHOS::Rosen::IDisplayInfoChangedListener {
     public:
@@ -744,7 +775,7 @@ protected:
 private:
     void OnStartForSupportGraphics(const AAFwk::Want &want);
     void OnChangeForUpdateConfiguration(const AppExecFwk::Configuration &newConfig);
-    void SetSessionToken(sptr<IRemoteObject> sessionToken);
+    void SetSessionToken(sptr<IRemoteObject> sessionToken, sptr<IRemoteObject> renderSession);
 
     std::string identityToken_;
     bool showOnLockScreen_ = false;

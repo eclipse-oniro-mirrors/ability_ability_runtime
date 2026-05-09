@@ -41,6 +41,7 @@
 #include "insight_intent_executor_info.h"
 #include "insight_intent_executor_mgr.h"
 #include "interop_object_instance.h"
+#include "ets_insight_intent_page.h"
 #include "js_insight_intent_utils.h"
 #include "js_runtime.h"
 #include "js_runtime_utils.h"
@@ -513,6 +514,38 @@ void EtsUIAbility::WriteLifecycleSwitchLog(const std::string lifecycleName)
     }
 }
 
+void EtsUIAbility::NotifyDelegatorProperty(
+    std::function<void(const std::shared_ptr<AppExecFwk::AbilityDelegator> &,
+        const std::shared_ptr<AppExecFwk::BaseDelegatorAbilityProperty> &)> notifyFunc)
+{
+    auto property = std::make_shared<AppExecFwk::EtsDelegatorAbilityProperty>();
+    property->language_ = AbilityRuntime::Runtime::Language::ETS;
+    if (!CreateProperty(abilityContext_, property)) {
+        return;
+    }
+    property->object_ = etsAbilityObj_;
+    auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
+        AbilityRuntime::Runtime::Language::ETS);
+    if (delegator) {
+        notifyFunc(std::static_pointer_cast<AppExecFwk::AbilityDelegator>(delegator), property);
+    }
+    auto jsDelegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
+        AbilityRuntime::Runtime::Language::JS);
+    if (jsDelegator && jsDelegator != delegator) {
+        notifyFunc(std::static_pointer_cast<AppExecFwk::AbilityDelegator>(jsDelegator), property);
+    }
+}
+
+bool EtsUIAbility::SetLastRequestWant(ani_env *env, ani_ref wantRef)
+{
+    ani_status status = env->Object_SetFieldByName_Ref(etsAbilityObj_->aniObj, "lastRequestWant", wantRef);
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "lastRequestWant Object_SetFieldByName_Ref status: %{public}d", status);
+        return false;
+    }
+    return true;
+}
+
 void EtsUIAbility::OnStart(const Want &want, sptr<AAFwk::SessionInfo> sessionInfo)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
@@ -545,10 +578,14 @@ void EtsUIAbility::OnStartInner(ani_env *env, const Want &want, sptr<AAFwk::Sess
         return;
     }
     if ((status = env->Object_SetFieldByName_Ref(etsAbilityObj_->aniObj, "lastRequestWant", wantObj)) != ANI_OK) {
-        TAG_LOGE(AAFwkTag::UIABILITY, "lastRequestWant Object_SetFieldByName_Ref status: %{public}d", status);
+        TAG_LOGE(AAFwkTag::UIABILITY, "lastRequestWant status: %{public}d", status);
         return;
     }
     SetSelfSpecifiedId(env, sessionInfo);
+
+    // Handle NativeModule: Create NativeAbilityWrapper and call PostAbility
+    HandleNativeModule();
+
     auto launchParam = GetLaunchParam();
     if (InsightIntentExecuteParam::IsInsightIntentExecute(want)) {
         launchParam.launchReason = AAFwk::LaunchReason::LAUNCHREASON_INSIGHT_INTENT;
@@ -565,22 +602,14 @@ void EtsUIAbility::OnStartInner(ani_env *env, const Want &want, sptr<AAFwk::Sess
     }
     WriteLifecycleSwitchLog("onCreate");
     CallObjectMethod(false, "onCreate", nullptr, wantObj, launchParamObj);
-    auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
-        AbilityRuntime::Runtime::Language::ETS);
-    auto property = std::make_shared<AppExecFwk::EtsDelegatorAbilityProperty>();
-    if (delegator && CreateProperty(abilityContext_, property)) {
-        TAG_LOGD(AAFwkTag::UIABILITY, "call PostPerformStart");
-        property->object_ = etsAbilityObj_;
-        delegator->PostPerformStart(property);
-    }
+    NotifyDelegatorProperty([](const std::shared_ptr<AppExecFwk::AbilityDelegator> &d,
+        const std::shared_ptr<AppExecFwk::BaseDelegatorAbilityProperty> &p) { d->PostPerformStart(p); });
     applicationContext = AbilityRuntime::Context::GetApplicationContext();
     if (applicationContext != nullptr) {
-        TAG_LOGD(AAFwkTag::UIABILITY, "call DispatchOnAbilityCreate");
         EtsAbilityLifecycleCallbackArgs ability(etsAbilityObj_);
         applicationContext->DispatchOnAbilityCreate(ability);
         DISPATCH_ABILITY_INTEROP(OnAbilityCreate, applicationContext, etsRuntime_, ability);
     }
-    TAG_LOGD(AAFwkTag::UIABILITY, "OnStart end");
 }
 
 int32_t EtsUIAbility::OnShare(WantParams &wantParam)
@@ -623,6 +652,34 @@ void EtsUIAbility::SetSelfSpecifiedId(ani_env *env, sptr<AAFwk::SessionInfo> ses
             TAG_LOGE(AAFwkTag::UIABILITY, "specifiedId Object_SetFieldByName_Ref status: %{public}d", status);
             return;
         }
+    }
+}
+
+void EtsUIAbility::HandleNativeModule()
+{
+    if (!IsWithNative()) {
+        return;
+    }
+
+    TAG_LOGI(AAFwkTag::UIABILITY, "Creating NativeAbilityWrapper for native module");
+
+    if (etsAbilityObj_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "etsAbilityObj_ is null");
+        return;
+    }
+
+    // Create NativeAbilityWrapper
+    auto wrapper = std::make_shared<AbilityRuntime_NativeAbilityWrapper>();
+    wrapper->instanceId = GetInstanceId();
+    wrapper->abilityName = GetAbilityName();
+    wrapper->etsAbilityObj = reinterpret_cast<ani_object>(etsAbilityObj_->aniRef);
+
+    // Get ApplicationContext
+    auto appContext = AbilityRuntime::Context::GetApplicationContext();
+    if (appContext != nullptr) {
+        appContext->PostAbility(wrapper->instanceId, wrapper);
+    } else {
+        TAG_LOGE(AAFwkTag::UIABILITY, "ApplicationContext is null");
     }
 }
 
@@ -702,13 +759,21 @@ void EtsUIAbility::OnStop(AppExecFwk::AbilityTransactionCallbackInfo<> *callback
 
 void EtsUIAbility::OnStopCallback()
 {
-    auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
-        AbilityRuntime::Runtime::Language::ETS);
     auto property = std::make_shared<AppExecFwk::EtsDelegatorAbilityProperty>();
-    if (delegator && CreateProperty(abilityContext_, property)) {
-        TAG_LOGD(AAFwkTag::UIABILITY, "call PostPerformStop");
+    property->language_ = AbilityRuntime::Runtime::Language::ETS;
+    if (CreateProperty(abilityContext_, property)) {
         property->object_ = etsAbilityObj_;
-        delegator->PostPerformStop(property);
+        auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
+            AbilityRuntime::Runtime::Language::ETS);
+        if (delegator) {
+            TAG_LOGD(AAFwkTag::UIABILITY, "call PostPerformStop");
+            delegator->PostPerformStop(property);
+        }
+        auto jsDelegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
+            AbilityRuntime::Runtime::Language::JS);
+        if (jsDelegator && jsDelegator != delegator) {
+            jsDelegator->PostPerformStop(property);
+        }
     }
     bool ret = ConnectionManager::GetInstance().DisconnectCaller(AbilityContext::token_);
     if (ret) {
@@ -722,6 +787,10 @@ void EtsUIAbility::OnStopCallback()
         EtsAbilityLifecycleCallbackArgs ability(etsAbilityObj_);
         applicationContext->DispatchOnAbilityDestroy(ability);
         DISPATCH_ABILITY_INTEROP(OnAbilityDestroy, applicationContext, etsRuntime_, ability);
+    }
+
+    if (IsWithNative() && applicationContext != nullptr) {
+        applicationContext->DestroyAbility(GetInstanceId());
     }
 }
 
@@ -755,24 +824,15 @@ void EtsUIAbility::OnSceneCreated()
     }
     WriteLifecycleSwitchLog("onWindowStageCreate");
     CallObjectMethod(false, "onWindowStageCreate", nullptr, etsAppWindowStage);
-    auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
-        AbilityRuntime::Runtime::Language::ETS);
-    auto property = std::make_shared<AppExecFwk::EtsDelegatorAbilityProperty>();
-    if (delegator && CreateProperty(abilityContext_, property)) {
-        TAG_LOGD(AAFwkTag::UIABILITY, "call PostPerformScenceCreated");
-        property->object_ = etsAbilityObj_;
-        delegator->PostPerformScenceCreated(property);
-    }
-
+    NotifyDelegatorProperty([](const std::shared_ptr<AppExecFwk::AbilityDelegator> &d,
+        const std::shared_ptr<AppExecFwk::BaseDelegatorAbilityProperty> &p) { d->PostPerformScenceCreated(p); });
     applicationContext = AbilityRuntime::Context::GetApplicationContext();
     if (applicationContext != nullptr && etsAbilityObj_ != nullptr && etsWindowStageObj_ != nullptr) {
-        TAG_LOGD(AAFwkTag::UIABILITY, "call DispatchOnWindowStageCreate");
         EtsAbilityLifecycleCallbackArgs ability(etsAbilityObj_);
         EtsAbilityLifecycleCallbackArgs stage(etsWindowStageObj_);
         applicationContext->DispatchOnWindowStageCreate(ability, stage);
         DISPATCH_WINDOW_INTEROP(OnWindowStageCreate, applicationContext, etsRuntime_, ability, stage);
     }
-    TAG_LOGD(AAFwkTag::UIABILITY, "OnSceneCreated end");
 }
 
 ani_object EtsUIAbility::GetEtsWindowStage()
@@ -883,13 +943,21 @@ void EtsUIAbility::onSceneDestroyed()
             window->UnregisterDisplayMoveListener(abilityDisplayMoveListener_);
         }
     }
-    auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
-        AbilityRuntime::Runtime::Language::ETS);
     auto property = std::make_shared<AppExecFwk::EtsDelegatorAbilityProperty>();
-    if (delegator && CreateProperty(abilityContext_, property)) {
-        TAG_LOGD(AAFwkTag::UIABILITY, "call PostPerformScenceDestroyed");
+    property->language_ = AbilityRuntime::Runtime::Language::ETS;
+    if (CreateProperty(abilityContext_, property)) {
         property->object_ = etsAbilityObj_;
-        delegator->PostPerformScenceDestroyed(property);
+        auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
+            AbilityRuntime::Runtime::Language::ETS);
+        if (delegator) {
+            TAG_LOGD(AAFwkTag::UIABILITY, "call PostPerformScenceDestroyed");
+            delegator->PostPerformScenceDestroyed(property);
+        }
+        auto jsDelegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
+            AbilityRuntime::Runtime::Language::JS);
+        if (jsDelegator && jsDelegator != delegator) {
+            jsDelegator->PostPerformScenceDestroyed(property);
+        }
     }
 
     applicationContext = AbilityRuntime::Context::GetApplicationContext();
@@ -927,10 +995,12 @@ void EtsUIAbility::CallOnForegroundFunc(const Want &want)
         TAG_LOGE(AAFwkTag::UIABILITY, "null etsAbilityObj_");
         return;
     }
-    ani_status status = ANI_ERROR;
     ani_ref wantRef = AppExecFwk::WrapWant(env, want);
     if (wantRef == nullptr) {
         TAG_LOGE(AAFwkTag::UIABILITY, "null wantObj");
+        return;
+    }
+    if (!SetLastRequestWant(env, wantRef)) {
         return;
     }
     auto applicationContext = AbilityRuntime::Context::GetApplicationContext();
@@ -938,29 +1008,18 @@ void EtsUIAbility::CallOnForegroundFunc(const Want &want)
         EtsAbilityLifecycleCallbackArgs ability(etsAbilityObj_);
         applicationContext->DispatchOnAbilityWillForeground(ability);
     }
-    if ((status = env->Object_SetFieldByName_Ref(etsAbilityObj_->aniObj, "lastRequestWant", wantRef)) != ANI_OK) {
-        TAG_LOGE(AAFwkTag::UIABILITY, "lastRequestWant Object_SetFieldByName_Ref status: %{public}d", status);
-        return;
-    }
     WriteLifecycleSwitchLog("onForeground");
     CallObjectMethod(false, "onForeground", nullptr, wantRef);
-    auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
-        AbilityRuntime::Runtime::Language::ETS);
-    auto property = std::make_shared<AppExecFwk::EtsDelegatorAbilityProperty>();
-    if (delegator && CreateProperty(abilityContext_, property)) {
-        TAG_LOGD(AAFwkTag::UIABILITY, "call PostPerformForeground");
-        property->object_ = etsAbilityObj_;
-        delegator->PostPerformForeground(property);
-    }
-
+    NotifyDelegatorProperty([](const std::shared_ptr<AppExecFwk::AbilityDelegator> &d,
+        const std::shared_ptr<AppExecFwk::BaseDelegatorAbilityProperty> &p) {
+        d->PostPerformForeground(p);
+    });
     applicationContext = AbilityRuntime::Context::GetApplicationContext();
     if (applicationContext != nullptr) {
-        TAG_LOGD(AAFwkTag::UIABILITY, "call DispatchOnAbilityForeground");
         EtsAbilityLifecycleCallbackArgs ability(etsAbilityObj_);
         applicationContext->DispatchOnAbilityForeground(ability);
         DISPATCH_ABILITY_INTEROP(OnAbilityForeground, applicationContext, etsRuntime_, ability);
     }
-    TAG_LOGD(AAFwkTag::UIABILITY, "CallOnForegroundFunc end");
 }
 
 void EtsUIAbility::OnBackground()
@@ -975,13 +1034,21 @@ void EtsUIAbility::OnBackground()
     WriteLifecycleSwitchLog("onBackground");
     CallObjectMethod(false, "onBackground", nullptr);
     UIAbility::OnBackground();
-    auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
-        AbilityRuntime::Runtime::Language::ETS);
     auto property = std::make_shared<AppExecFwk::EtsDelegatorAbilityProperty>();
-    if (delegator && CreateProperty(abilityContext_, property)) {
-        TAG_LOGD(AAFwkTag::UIABILITY, "call PostPerformBackground");
+    property->language_ = AbilityRuntime::Runtime::Language::ETS;
+    if (CreateProperty(abilityContext_, property)) {
         property->object_ = etsAbilityObj_;
-        delegator->PostPerformBackground(property);
+        auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
+            AbilityRuntime::Runtime::Language::ETS);
+        if (delegator) {
+            TAG_LOGD(AAFwkTag::UIABILITY, "call PostPerformBackground");
+            delegator->PostPerformBackground(property);
+        }
+        auto jsDelegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
+            AbilityRuntime::Runtime::Language::JS);
+        if (jsDelegator && jsDelegator != delegator) {
+            jsDelegator->PostPerformBackground(property);
+        }
     }
 
     applicationContext = AbilityRuntime::Context::GetApplicationContext();
@@ -1175,6 +1242,7 @@ void EtsUIAbility::DoOnForeground(const Want &want)
             windowMode_ = windowMode;
             TAG_LOGD(AAFwkTag::UIABILITY, "set window mode: %{public}d", windowMode);
         }
+        SetInsightIntentParam(want, false);
     }
 
     auto window = scene_->GetMainWindow();
@@ -1257,7 +1325,8 @@ void EtsUIAbility::DoOnForegroundForSceneIsNull(const Want &want)
             TAG_LOGD(AAFwkTag::UIABILITY, "SetNavDestinationInfo :%{public}s", navDestinationInfo.c_str());
             scene_->SetNavDestinationInfo(navDestinationInfo);
         }
-        ret = scene_->Init(displayId, abilityContext_, sceneListener_, option, sessionToken, identityToken);
+        ret = scene_->Init(
+            displayId, abilityContext_, sceneListener_, option, sessionToken, identityToken, false, renderSession_);
     } else {
         ret = scene_->Init(displayId, abilityContext_, sceneListener_, option);
     }
@@ -1266,6 +1335,7 @@ void EtsUIAbility::DoOnForegroundForSceneIsNull(const Want &want)
         return;
     }
 
+    SetInsightIntentParam(want, true);
     AbilityContinuationOrRecover(want);
     auto window = scene_->GetMainWindow();
     if (window) {
@@ -1428,6 +1498,25 @@ void EtsUIAbility::ExecuteInsightIntentRepeateForeground(const Want &want,
     }
 }
 
+void EtsUIAbility::RequestFocus(const Want &want)
+{
+    TAG_LOGD(AAFwkTag::UIABILITY, "RequestFocus called");
+    if (scene_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "null scene_");
+        return;
+    }
+    auto window = scene_->GetMainWindow();
+    if (window != nullptr && want.HasParameter(Want::PARAM_RESV_WINDOW_MODE) &&
+        !Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
+        auto windowMode = want.GetIntParam(
+            Want::PARAM_RESV_WINDOW_MODE, AAFwk::AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_UNDEFINED);
+        window->SetWindowMode(static_cast<Rosen::WindowMode>(windowMode));
+        TAG_LOGD(AAFwkTag::UIABILITY, "set window mode: %{public}d", windowMode);
+    }
+    SetInsightIntentParam(want, false);
+    scene_->GoForeground(UIAbility::sceneFlag_);
+}
+
 void EtsUIAbility::ExecuteInsightIntentMoveToForeground(const Want &want,
     const std::shared_ptr<InsightIntentExecuteParam> &executeParam,
     std::unique_ptr<InsightIntentExecutorAsyncCallback> callback)
@@ -1522,6 +1611,53 @@ void EtsUIAbility::ExecuteInsightIntentMoveToForeground(const Want &want,
         }
     }
     intentId_ = executeInfo.executeParam->insightIntentId_;
+}
+
+void EtsUIAbility::ExecuteInsightIntentPage(const Want &want,
+    const std::shared_ptr<InsightIntentExecuteParam> &executeParam,
+    std::unique_ptr<InsightIntentExecutorAsyncCallback> callback)
+{
+    TAG_LOGD(AAFwkTag::UIABILITY, "ExecuteInsightIntentPage called");
+    if (abilityInfo_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "invalid abilityInfo");
+        InsightIntentExecutorMgr::TriggerCallbackInner(std::move(callback),
+            static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_PARAM));
+        return;
+    }
+
+    InsightIntentExecutorInfo executeInfo;
+    executeInfo.hapPath = abilityInfo_->hapPath;
+    executeInfo.executeParam = executeParam;
+    auto ret = DelayedSingleton<InsightIntentExecutorMgr>::GetInstance()->ExecuteInsightIntent(
+        etsRuntime_, executeInfo, std::move(callback));
+    if (!ret) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "execute page insight intent failed");
+    }
+}
+
+void EtsUIAbility::SetInsightIntentParam(const Want &want, bool coldStart)
+{
+    if (scene_ == nullptr) {
+        TAG_LOGW(AAFwkTag::UIABILITY, "scene invalid");
+        return;
+    }
+
+    auto window = scene_->GetMainWindow();
+    if (window == nullptr) {
+        TAG_LOGW(AAFwkTag::UIABILITY, "window invalid");
+        return;
+    }
+
+    if (abilityInfo_ == nullptr) {
+        TAG_LOGW(AAFwkTag::UIABILITY, "abilityInfo invalid");
+        return;
+    }
+
+    if (!AppExecFwk::InsightIntentExecuteParam::IsInsightIntentPage(want)) {
+        return;
+    }
+
+    EtsInsightIntentPage::SetInsightIntentParam(abilityInfo_->hapPath, want, window, coldStart);
 }
 
 void EtsUIAbility::ExecuteInsightIntentBackground(const Want &want,

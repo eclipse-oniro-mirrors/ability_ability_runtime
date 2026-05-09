@@ -1378,5 +1378,74 @@ int AppfreezeManager::GetFreezeExitReason(const std::string& eventName)
     }
     return UNKNOWN_FREEZE_REASON;
 }
-}  // namespace AAFwk
+
+void AppfreezeManager::UpdateFreezeExcludedPid(bool isAdd, int32_t targetPid, int32_t profilerPid)
+{
+    std::lock_guard<ffrt::mutex> lock(freezeExcludedPidMutex_);
+    if (isAdd) {
+        FreezeExcludedPidInfo info;
+        info.targetPid = targetPid;
+        info.profilerPid = profilerPid;
+        info.timestamp = GetFreezeCurrentTime();
+        freezeExcludedPidMap_[targetPid] = info;
+        TAG_LOGI(AAFwkTag::APPDFR, "Add to freezeExcludedPidMap: targetPid=%{public}d, profilerPid=%{public}d",
+            targetPid, profilerPid);
+        if (freezeExcludedPidMap_.size() > FREEZE_EXCLUDED_PID_MAX_SIZE) {
+            CleanOldFreezeExcludedPids();
+        }
+    } else {
+        freezeExcludedPidMap_.erase(targetPid);
+        TAG_LOGI(AAFwkTag::APPDFR, "Remove from freezeExcludedPidMap: targetPid=%{public}d", targetPid);
+    }
+}
+
+void AppfreezeManager::CleanOldFreezeExcludedPids()
+{
+    std::vector<std::pair<int32_t, int64_t>> pidTimePairs;
+    for (const auto& pair : freezeExcludedPidMap_) {
+        pidTimePairs.emplace_back(pair.first, pair.second.timestamp);
+    }
+    std::sort(pidTimePairs.begin(), pidTimePairs.end(),
+        [](const auto& a, const auto& b) { return a.second < b.second; });
+
+    size_t cleanCount = std::min(FREEZE_EXCLUDED_PID_CLEAN_COUNT, pidTimePairs.size());
+    for (size_t i = 0; i < cleanCount; i++) {
+        freezeExcludedPidMap_.erase(pidTimePairs[i].first);
+        TAG_LOGI(AAFwkTag::APPDFR, "Clean old freezeExcludedPid: targetPid=%{public}d", pidTimePairs[i].first);
+    }
+}
+
+bool AppfreezeManager::IsNativeDaemonProcess(int32_t profilerPid) const
+{
+    std::string processName = AppfreezeUtil::GetProcessNameByPid(profilerPid);
+    return processName == NATIVE_DAEMON_PROCESS_NAME;
+}
+
+bool AppfreezeManager::IsFreezeExcludedPid(int32_t targetPid)
+{
+    std::lock_guard<ffrt::mutex> lock(freezeExcludedPidMutex_);
+    auto it = freezeExcludedPidMap_.find(targetPid);
+    if (it == freezeExcludedPidMap_.end()) {
+        return false;
+    }
+
+    int32_t profilerPid = it->second.profilerPid;
+    if (AppfreezeUtil::GetUidByPid(profilerPid) < 0) {
+        TAG_LOGW(AAFwkTag::APPDFR, "profilerPid %{public}d not exist, remove targetPid %{public}d",
+            profilerPid, targetPid);
+        freezeExcludedPidMap_.erase(it);
+        return false;
+    }
+
+    if (!IsNativeDaemonProcess(profilerPid)) {
+        TAG_LOGW(AAFwkTag::APPDFR, "profilerPid %{public}d is not native_daemon, remove targetPid %{public}d",
+            profilerPid, targetPid);
+        freezeExcludedPidMap_.erase(it);
+        return false;
+    }
+
+    TAG_LOGW(AAFwkTag::APPDFR, "pid %{public}d is in freeze excluded list", targetPid);
+    return true;
+}
+}  // namespace AppExecFwk
 }  // namespace OHOS

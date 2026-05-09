@@ -202,13 +202,14 @@ AppMgrResultCode AppMgrClient::TerminateAbility(const sptr<IRemoteObject> &token
     return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
 }
 
-AppMgrResultCode AppMgrClient::UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state)
+AppMgrResultCode AppMgrClient::UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state,
+    bool isFromScreenOffBackground)
 {
     sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
     if (service != nullptr) {
         sptr<IAmsMgr> amsService = service->GetAmsMgr();
         if (amsService != nullptr) {
-            amsService->UpdateAbilityState(token, state);
+            amsService->UpdateAbilityState(token, state, isFromScreenOffBackground);
             return AppMgrResultCode::RESULT_OK;
         }
     }
@@ -530,6 +531,20 @@ AppMgrResultCode AppMgrClient::GetProcessRunningInfosByUserId(std::vector<Runnin
     return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
 }
 
+AppMgrResultCode AppMgrClient::GetProcessRunningInfosByAccessTokenId(uint32_t accessTokenId,
+    std::vector<RunningProcessInfo> &info)
+{
+    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
+    if (service != nullptr) {
+        int32_t result = service->GetProcessRunningInfosByAccessTokenId(accessTokenId, info);
+        if (result == ERR_OK) {
+            return AppMgrResultCode::RESULT_OK;
+        }
+        return AppMgrResultCode::ERROR_SERVICE_NOT_READY;
+    }
+    return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
+}
+
 AppMgrResultCode AppMgrClient::GetProcessRunningInformation(AppExecFwk::RunningProcessInfo &info)
 {
     sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
@@ -791,6 +806,26 @@ int32_t AppMgrClient::GetRunningProcessInfoByChildProcessPid(const pid_t childPi
         return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
     }
     return service->GetRunningProcessInfoByChildProcessPid(childPid, info);
+}
+
+int32_t AppMgrClient::EnableDelayedProcessExit(int32_t pid, bool enabled) const
+{
+    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
+    if (service == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Service is nullptr.");
+        return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
+    }
+    return service->EnableDelayedProcessExit(pid, enabled);
+}
+
+void AppMgrClient::CancelDelayedExitTask(int32_t pid) const
+{
+    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
+    if (service == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Service is nullptr.");
+        return;
+    }
+    service->CancelDelayedExitTask(pid);
 }
 
 void AppMgrClient::SetAbilityForegroundingFlagToAppRecord(const pid_t pid) const
@@ -1172,6 +1207,16 @@ bool AppMgrClient::SetAppFreezeFilter(int32_t pid)
         return false;
     }
     return service->SetAppFreezeFilter(pid);
+}
+
+void AppMgrClient::UpdateFreezeExcludedPid(bool isAdd, int32_t targetPid, int32_t profilerPid)
+{
+    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
+    if (service == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "service is null");
+        return;
+    }
+    service->UpdateFreezeExcludedPid(isAdd, targetPid, profilerPid);
 }
 
 int32_t AppMgrClient::ChangeAppGcState(pid_t pid, int32_t state, uint64_t tid)
@@ -1601,9 +1646,9 @@ int32_t AppMgrClient::IsProcessCacheSupported(int32_t pid, bool &isSupported)
     return service->IsProcessCacheSupported(pid, isSupported);
 }
 
-int32_t AppMgrClient::IsArkChildProcessSupported(bool &isSupported)
+int32_t AppMgrClient::IsChildProcessSupported(bool isNative, bool &isSupported)
 {
-    TAG_LOGD(AAFwkTag::APPMGR, "IsArkChildProcessSupported called");
+    TAG_LOGD(AAFwkTag::APPMGR, "IsChildProcessSupported called");
     if (mgrHolder_ == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "mgrHolder_ is nullptr.");
         return AppMgrResultCode::ERROR_SERVICE_NOT_READY;
@@ -1613,22 +1658,7 @@ int32_t AppMgrClient::IsArkChildProcessSupported(bool &isSupported)
         TAG_LOGE(AAFwkTag::APPMGR, "Service is nullptr.");
         return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
     }
-    return service->IsArkChildProcessSupported(getpid(), isSupported);
-}
-
-int32_t AppMgrClient::IsNativeChildProcessSupported(bool &isSupported)
-{
-    TAG_LOGD(AAFwkTag::APPMGR, "IsNativeChildProcessSupported called");
-    if (mgrHolder_ == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "mgrHolder_ is nullptr.");
-        return AppMgrResultCode::ERROR_SERVICE_NOT_READY;
-    }
-    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
-    if (service == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "Service is nullptr.");
-        return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
-    }
-    return service->IsNativeChildProcessSupported(getpid(), isSupported);
+    return service->IsChildProcessSupported(isNative, isSupported);
 }
 
 int32_t AppMgrClient::SetProcessCacheEnable(int32_t pid, bool enable)

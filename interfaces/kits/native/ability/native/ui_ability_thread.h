@@ -140,6 +140,8 @@ public:
 
     void OnExecuteIntent(const Want &want) override;
 
+    void ExecuteSkill(const Want &want) override;
+
     /**
      * @brief create modal UIExtension.
      * @param want Create modal UIExtension with want object.
@@ -170,6 +172,7 @@ public:
 private:
     void DumpAbilityInfoInner(const std::vector<std::string> &params, std::vector<std::string> &info);
     void DumpOtherInfo(std::vector<std::string> &info);
+    bool InitNativeThread(const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo);
     void AttachInner(const std::shared_ptr<AppExecFwk::OHOSApplication> &application,
         const std::shared_ptr<AppExecFwk::AbilityLocalRecord> &abilityRecord,
         const std::shared_ptr<Context> &stageContext);

@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 #include "ability_connect_callback_interface.h"
+#include "agent_card.h"
 #include "hap_module_info.h"
 #include "want.h"
 #include "iremote_object.h"
@@ -51,6 +52,7 @@ public:
     static int32_t retGetAllAgentCards;
     static int32_t retGetAgentCardsByBundleName;
     static int32_t retGetAgentCardByAgentId;
+    static std::vector<AgentCard> agentCardsByBundleName;
     static std::string agentCardAgentId;
     static std::string agentCardBundleName;
     static std::string agentCardModuleName;

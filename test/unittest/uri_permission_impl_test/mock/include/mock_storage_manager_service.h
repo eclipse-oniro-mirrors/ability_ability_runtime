@@ -540,6 +540,31 @@ public:
     {
         return E_OK;
     }
+
+    virtual int32_t Eject(const std::string &volumeId) override
+    {
+        return E_OK;
+    }
+
+    virtual int32_t GetOpticalDriveOpsProgress(const std::string &volumeId, uint32_t &progress) override
+    {
+        return E_OK;
+    }
+
+    virtual int32_t Erase(const std::string &volId) override
+    {
+        return E_OK;
+    }
+
+    virtual int32_t CreateIsoImage(const std::string &volId, const std::string &filePath) override
+    {
+        return E_OK;
+    }
+
+    virtual int32_t GetPartitionTable(const std::string &diskId, PartitionTableInfo &partitionTableInfo)
+    {
+        return E_OK;
+    }
 };
 
 bool StorageManagerServiceMock::isZero = true;

@@ -29,6 +29,7 @@ using AppLibPathVec = std::vector<std::string>;
 
 namespace OHOS {
 struct CJUncaughtExceptionInfo;
+struct CJEventReportInfo;
 namespace AbilityRuntime {
 
 class CJRuntime : public Runtime {
@@ -79,6 +80,7 @@ public:
     void AllowCrossThreadExecution() override {};
     void GetHeapPrepare() override {};
     void RegisterUncaughtExceptionHandler(const CJUncaughtExceptionInfo& uncaughtExceptionInfo);
+    void RegisterEventHandler(const CJEventReportInfo& reportInfo);
 
 private:
     bool StartDebugger();

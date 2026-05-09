@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "agent_card.h"
-#include "bundle_mgr_client.h"
+#include "bundle_mgr_helper.h"
 
 namespace OHOS {
 namespace AgentRuntime {

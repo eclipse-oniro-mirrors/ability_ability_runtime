@@ -510,22 +510,22 @@ HWTEST_F(AbilityManagerServiceNinthTest, ExecuteIntentWithServiceMatch_002, Test
 
 /*
  * Feature: AbilityManagerService
- * Function: RecordRecoveryExitReason
+ * Function: RecordAppRestartExitReason
  * SubFunction: NA
- * FunctionPoints: AbilityManagerService RecordRecoveryExitReason
+ * FunctionPoints: AbilityManagerService RecordAppRestartExitReason
  */
-HWTEST_F(AbilityManagerServiceNinthTest, RecordRecoveryExitReason_001, TestSize.Level1)
+HWTEST_F(AbilityManagerServiceNinthTest, RecordAppRestartExitReason_001, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest RecordRecoveryExitReason_001 start");
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest RecordAppRestartExitReason_001 start");
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
     bool isAppRecovery = false;
     int32_t callerPid = getpid();
     int32_t callerUid = getuid();
-    abilityMs_->RecordRecoveryExitReason(isAppRecovery, callerPid, callerUid);
+    abilityMs_->RecordAppRestartExitReason(isAppRecovery, callerPid, callerUid);
     isAppRecovery = true;
-    abilityMs_->RecordRecoveryExitReason(isAppRecovery, callerPid, callerUid);
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest RecordRecoveryExitReason_001 end");
+    abilityMs_->RecordAppRestartExitReason(isAppRecovery, callerPid, callerUid);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest RecordAppRestartExitReason_001 end");
 }
 }  // namespace AAFwk
 }  // namespace OHOS

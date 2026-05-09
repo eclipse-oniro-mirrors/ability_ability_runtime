@@ -33,6 +33,8 @@ config("common_config") {
     "${ability_runtime_path}/frameworks/c/ability_runtime/*",
     "${ability_runtime_path}/frameworks/simulator/ability_simulator/*",
     "${ability_runtime_path}/tools/aa/*",
+    "${ability_runtime_path}/tools/ohos-aa/*",
+    "${ability_runtime_path}/tools/cc/*",
     "${ability_runtime_services_path}/common/*",
     "${ability_runtime_services_path}/quickfixmgr/*",
     "${ability_runtime_services_path}/uripermmgr/*",
@@ -436,6 +438,7 @@ ohos_shared_library("user_controller") {
   external_deps = [
     "c_utils:utils",
     "ffrt:libffrt",
+    "graphic_2d:color_manager",
     "hilog:libhilog",
     "ipc:ipc_single",
   ]
@@ -486,6 +489,7 @@ ohos_static_library("user_controller_static") {
   external_deps = [
     "c_utils:utils",
     "ffrt:libffrt",
+    "graphic_2d:color_manager",
     "hilog:libhilog",
     "ipc:ipc_single",
   ]

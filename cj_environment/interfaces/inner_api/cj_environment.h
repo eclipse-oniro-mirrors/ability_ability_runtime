@@ -62,6 +62,7 @@ public:
     void RegisterCJUncaughtExceptionHandler(const CJUncaughtExceptionInfo& handle);
     bool RegisterCangjieCallback();
     void RegisterEventHandlerCallbacks();
+    void RegisterEventHandler(const CJEventReportInfo& handle);
     int InitCJRuntime();
     bool IsUISchedulerStarted()
     {
@@ -111,6 +112,7 @@ public:
     void UnLoadRuntimeApis();
     static void DumpCjHeap(int fd);
     static void GC();
+    bool LoadSymbols(void* handle, CJRuntimeAPI& apis);
 
     static const char *cjChipSDKNSName;
     static const char *cjAppNSName;
