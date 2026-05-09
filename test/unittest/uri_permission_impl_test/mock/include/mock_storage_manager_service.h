@@ -565,6 +565,16 @@ public:
     {
         return E_OK;
     }
+
+    int32_t CreatePartition(const std::string &diskId, const PartitionOptions &partitionOption)
+    {
+        return E_OK;
+    }
+
+    int32_t DeletePartition(const std::string &diskId, uint32_t partitionNum)
+    {
+        return E_OK;
+    }
 };
 
 bool StorageManagerServiceMock::isZero = true;
