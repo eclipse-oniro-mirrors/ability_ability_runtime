@@ -28,12 +28,6 @@ public:
     static AbilityRuntime_ErrorCode UnmarshalCallResult(const MoMethodMeta& methodMeta,
         MessageParcel& replyParcel, OH_AbilityRuntime_MoDispatcher_Variant* result);
 
-    static AbilityRuntime_ErrorCode WriteVariant(MessageParcel& parcel,
-        const OH_AbilityRuntime_MoDispatcher_Variant* value);
-
-    static AbilityRuntime_ErrorCode ReadVariant(MessageParcel& parcel,
-        OH_AbilityRuntime_MoDispatcher_Variant* value);
-
 private:
     static AbilityRuntime_ErrorCode WriteRawValue(MessageParcel& parcel,
         const std::shared_ptr<MoTypeInfo>& typeInfo, const OH_AbilityRuntime_MoDispatcher_Variant* value);

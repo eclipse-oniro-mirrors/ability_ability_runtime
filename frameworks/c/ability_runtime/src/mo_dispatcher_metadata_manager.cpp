@@ -10,7 +10,6 @@
 #include <cctype>
 #include <cstring>
 #include <fcntl.h>
-#include <optional>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -123,106 +122,7 @@ bool IsSimpleVtType(OH_AbilityRuntime_MoDispatcher_ValueType vt)
     }
 }
 
-std::optional<Json> FindInterface(const Json& descriptor, const std::string& interfaceName)
-{
-    auto match = [&interfaceName](const Json& node) {
-        return node.is_object() && node.contains("name") && node["name"].is_string() &&
-            (interfaceName.empty() || node["name"].get<std::string>() == interfaceName);
-    };
-
-    if (descriptor.is_object() && descriptor.contains("interfaces") && descriptor["interfaces"].is_array()) {
-        for (const auto& item : descriptor["interfaces"]) {
-            if (match(item)) {
-                return item;
-            }
-        }
-        return std::nullopt;
-    }
-    if (descriptor.is_array()) {
-        for (const auto& item : descriptor) {
-            if (match(item)) {
-                return item;
-            }
-        }
-        return std::nullopt;
-    }
-    if (match(descriptor)) {
-        return descriptor;
-    }
-    return std::nullopt;
-}
-
-std::optional<Json> FindMethod(const Json& interfaceObj, const std::string& methodName)
-{
-    if (!interfaceObj.is_object() || !interfaceObj.contains("methods") || !interfaceObj["methods"].is_array()) {
-        return std::nullopt;
-    }
-    for (const auto& method : interfaceObj["methods"]) {
-        if (method.is_object() && method.contains("name") && method["name"].is_string() &&
-            method["name"].get<std::string>() == methodName) {
-            return method;
-        }
-    }
-    return std::nullopt;
-}
-
-// Check whether a type string is a simple/primitive type name
-bool IsSimpleTypeString(const std::string& typeStr)
-{
-    return IsSimpleVtType(MapTypeStringToVt(typeStr));
-}
-
 } // namespace
-
-// -------- ParseTypeInfo: JSON object -> MoTypeInfo tree (no validation) --------
-
-std::shared_ptr<MoTypeInfo> MoDispatcherMetadataManager::ParseTypeInfo(const Json& typeInfoObj)
-{
-    if (!typeInfoObj.is_object() || !typeInfoObj.contains("type") || !typeInfoObj["type"].is_string()) {
-        return nullptr;
-    }
-
-    auto result = std::make_shared<MoTypeInfo>();
-    const std::string typeStr = typeInfoObj["type"].get<std::string>();
-    result->vt = MapTypeStringToVt(typeStr);
-
-    if (result->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_EMPTY) {
-        return nullptr;
-    }
-
-    if (ToLower(typeStr) == "map") {
-        // Parse key_type (must be simple type)
-        if (typeInfoObj.contains("key_type") && typeInfoObj["key_type"].is_object()) {
-            auto keyInfo = ParseTypeInfo(typeInfoObj["key_type"]);
-            if (keyInfo) {
-                result->mapKeyType = keyInfo->vt;
-            }
-        }
-        // Parse value_type (can be anything)
-        if (typeInfoObj.contains("value_type") && typeInfoObj["value_type"].is_object()) {
-            result->pMapValueType = ParseTypeInfo(typeInfoObj["value_type"]);
-        }
-    } else if (ToLower(typeStr) == "array" || ToLower(typeStr) == "vector" || ToLower(typeStr) == "set") {
-        // Parse element type
-        if (typeInfoObj.contains("value_type") && typeInfoObj["value_type"].is_object()) {
-            result->pElementType = ParseTypeInfo(typeInfoObj["value_type"]);
-        }
-    } else if (ToLower(typeStr) == "enum" || ToLower(typeStr) == "interface" || ToLower(typeStr) == "struct") {
-        // Store idl_type reference
-        if (typeInfoObj.contains("idl_type") && typeInfoObj["idl_type"].is_string()) {
-            result->idlType = typeInfoObj["idl_type"].get<std::string>();
-        }
-    }
-
-    return result;
-}
-
-// -------- ParseTypeInfo: simple string -> Vt (backward compat) --------
-
-OH_AbilityRuntime_MoDispatcher_ValueType MoDispatcherMetadataManager::ParseTypeInfo(const std::string& typeName)
-{
-    return MapTypeStringToVt(typeName);
-}
 
 // -------- ParseTypeInfoFromJson: validated parsing for metadata --------
 
@@ -272,7 +172,25 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::ParseTypeInfoFromJson(cons
             return ret;
         }
         result->pMapValueType = valInfo;
-    } else if (typeLower == "array" || typeLower == "vector" || typeLower == "set") {
+    } else if (typeLower == "array") {
+        // value_type is mandatory
+        if (!typeInfoObj.contains("value_type") || !typeInfoObj["value_type"].is_object()) {
+            TAG_LOGE(AAFwkTag::EXT, "ParseTypeInfoFromJson: array missing value_type");
+            return ABILITY_RUNTIME_ERROR_CODE_TLB_METADATA_INVALID;
+        }
+        // size is mandatory for fixed-size arrays
+        if (!typeInfoObj.contains("size") || !typeInfoObj["size"].is_number_unsigned()) {
+            TAG_LOGE(AAFwkTag::EXT, "ParseTypeInfoFromJson: array missing size");
+            return ABILITY_RUNTIME_ERROR_CODE_TLB_METADATA_INVALID;
+        }
+        auto elemInfo = std::make_shared<MoTypeInfo>();
+        auto ret = ParseTypeInfoFromJson(typeInfoObj["value_type"], elemInfo);
+        if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+            return ret;
+        }
+        result->pElementType = elemInfo;
+        result->arraySize = typeInfoObj["size"].get<uint32_t>();
+    } else if (typeLower == "vector" || typeLower == "set") {
         // value_type is mandatory
         if (!typeInfoObj.contains("value_type") || !typeInfoObj["value_type"].is_object()) {
             TAG_LOGE(AAFwkTag::EXT, "ParseTypeInfoFromJson: %{public}s missing value_type", typeLower.c_str());

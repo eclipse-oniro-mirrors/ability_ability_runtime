@@ -19,6 +19,7 @@
 #include <cstring>
 #include <mutex>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "hilog_tag_wrapper.h"
 #include "securec.h"
@@ -28,6 +29,43 @@ namespace {
 std::mutex g_structMetaMutex;
 std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<MoTypeInfo>>> g_structFieldTypes;
 std::unordered_map<std::string, std::vector<std::string>> g_structFieldOrder;
+
+bool IsVariantHandleValid(const OH_AbilityRuntime_MoDispatcher_Variant* value)
+{
+    switch (value->vt) {
+        case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_ARRAY:
+            return value->u.parrayVal != nullptr;
+        case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_VECTOR:
+            return value->u.pvectorVal != nullptr;
+        case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_SET:
+            return value->u.psetVal != nullptr;
+        case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_MAP:
+            return value->u.pmapVal != nullptr;
+        case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_STRUCT:
+            return value->u.pstructVal != nullptr;
+        default:
+            return true;
+    }
+}
+
+// RAII helper: inserts a pointer into a visited set on construction, erases on destruction.
+// Used to detect circular references in nested container types.
+struct ScopedVisited {
+    std::unordered_set<const void*>& visited;
+    const void* ptr;
+    bool inserted;
+    ScopedVisited(std::unordered_set<const void*>& v, const void* p) : visited(v), ptr(p)
+    {
+        inserted = visited.insert(ptr).second;
+    }
+    ~ScopedVisited()
+    {
+        if (inserted) {
+            visited.erase(ptr);
+        }
+    }
+    explicit operator bool() const { return inserted; }
+};
 
 AbilityRuntime_ErrorCode CopyStringToBuffer(const std::string& src, char* dst, uint32_t maxLen)
 {
@@ -55,7 +93,8 @@ MoVariantStorage CreateDefaultVariantStorage(OH_AbilityRuntime_MoDispatcher_Valu
 }
 
 // Deep copy a MoVariantStorage into another. Handles strings and nested containers recursively.
-AbilityRuntime_ErrorCode DeepCopyStorage(const MoVariantStorage& src, MoVariantStorage& dst)
+AbilityRuntime_ErrorCode DeepCopyStorage(const MoVariantStorage& src, MoVariantStorage& dst,
+    std::unordered_set<const void*>& visited)
 {
     dst.value = src.value;
     dst.stringStorage.clear();
@@ -63,6 +102,11 @@ AbilityRuntime_ErrorCode DeepCopyStorage(const MoVariantStorage& src, MoVariantS
         dst.stringStorage = src.stringStorage;
         dst.value.u.bstrVal = const_cast<char*>(dst.stringStorage.c_str());
     } else if (src.value.vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_ARRAY && src.value.u.parrayVal != nullptr) {
+        ScopedVisited sv(visited, src.value.u.parrayVal);
+        if (!sv) {
+            TAG_LOGE(AAFwkTag::EXT, "DeepCopyStorage: circular reference detected in array");
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         auto* oldArray = src.value.u.parrayVal;
         auto* newArray = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Array();
         if (newArray == nullptr) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
@@ -70,12 +114,17 @@ AbilityRuntime_ErrorCode DeepCopyStorage(const MoVariantStorage& src, MoVariantS
         newArray->elements.reserve(oldArray->elements.size());
         for (const auto& elem : oldArray->elements) {
             MoVariantStorage elemCopy;
-            auto ret = DeepCopyStorage(elem, elemCopy);
+            auto ret = DeepCopyStorage(elem, elemCopy, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newArray; return ret; }
             newArray->elements.emplace_back(std::move(elemCopy));
         }
         dst.value.u.parrayVal = newArray;
     } else if (src.value.vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_VECTOR && src.value.u.pvectorVal != nullptr) {
+        ScopedVisited sv(visited, src.value.u.pvectorVal);
+        if (!sv) {
+            TAG_LOGE(AAFwkTag::EXT, "DeepCopyStorage: circular reference detected in vector");
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         auto* oldVector = src.value.u.pvectorVal;
         auto* newVector = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Vector();
         if (newVector == nullptr) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
@@ -83,12 +132,17 @@ AbilityRuntime_ErrorCode DeepCopyStorage(const MoVariantStorage& src, MoVariantS
         newVector->elements.reserve(oldVector->elements.size());
         for (const auto& elem : oldVector->elements) {
             MoVariantStorage elemCopy;
-            auto ret = DeepCopyStorage(elem, elemCopy);
+            auto ret = DeepCopyStorage(elem, elemCopy, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newVector; return ret; }
             newVector->elements.emplace_back(std::move(elemCopy));
         }
         dst.value.u.pvectorVal = newVector;
     } else if (src.value.vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_SET && src.value.u.psetVal != nullptr) {
+        ScopedVisited sv(visited, src.value.u.psetVal);
+        if (!sv) {
+            TAG_LOGE(AAFwkTag::EXT, "DeepCopyStorage: circular reference detected in set");
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         auto* oldSet = src.value.u.psetVal;
         auto* newSet = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Set();
         if (newSet == nullptr) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
@@ -96,12 +150,17 @@ AbilityRuntime_ErrorCode DeepCopyStorage(const MoVariantStorage& src, MoVariantS
         newSet->elements.reserve(oldSet->elements.size());
         for (const auto& elem : oldSet->elements) {
             MoVariantStorage elemCopy;
-            auto ret = DeepCopyStorage(elem, elemCopy);
+            auto ret = DeepCopyStorage(elem, elemCopy, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newSet; return ret; }
             newSet->elements.emplace_back(std::move(elemCopy));
         }
         dst.value.u.psetVal = newSet;
     } else if (src.value.vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_MAP && src.value.u.pmapVal != nullptr) {
+        ScopedVisited sv(visited, src.value.u.pmapVal);
+        if (!sv) {
+            TAG_LOGE(AAFwkTag::EXT, "DeepCopyStorage: circular reference detected in map");
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         auto* oldMap = src.value.u.pmapVal;
         auto* newMap = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Map();
         if (newMap == nullptr) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
@@ -110,14 +169,19 @@ AbilityRuntime_ErrorCode DeepCopyStorage(const MoVariantStorage& src, MoVariantS
         newMap->entries.reserve(oldMap->entries.size());
         for (const auto& entry : oldMap->entries) {
             std::pair<MoVariantStorage, MoVariantStorage> entryCopy;
-            auto ret = DeepCopyStorage(entry.first, entryCopy.first);
+            auto ret = DeepCopyStorage(entry.first, entryCopy.first, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newMap; return ret; }
-            ret = DeepCopyStorage(entry.second, entryCopy.second);
+            ret = DeepCopyStorage(entry.second, entryCopy.second, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newMap; return ret; }
             newMap->entries.emplace_back(std::move(entryCopy));
         }
         dst.value.u.pmapVal = newMap;
     } else if (src.value.vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_STRUCT && src.value.u.pstructVal != nullptr) {
+        ScopedVisited sv(visited, src.value.u.pstructVal);
+        if (!sv) {
+            TAG_LOGE(AAFwkTag::EXT, "DeepCopyStorage: circular reference detected in struct");
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         auto* oldStruct = src.value.u.pstructVal;
         auto* newStruct = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Struct();
         if (newStruct == nullptr) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
@@ -125,7 +189,7 @@ AbilityRuntime_ErrorCode DeepCopyStorage(const MoVariantStorage& src, MoVariantS
         newStruct->fieldTypes = oldStruct->fieldTypes;
         for (const auto& field : oldStruct->fields) {
             MoVariantStorage fieldCopy;
-            auto ret = DeepCopyStorage(field.second, fieldCopy);
+            auto ret = DeepCopyStorage(field.second, fieldCopy, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newStruct; return ret; }
             newStruct->fields[field.first] = std::move(fieldCopy);
         }
@@ -144,6 +208,12 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::ArrayCreate(
     }
     auto typeInfo = MoTypeInfo::FromCTypeInfo(elementType);
     if (typeInfo == nullptr) {
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    // Validate that size matches metadata (fixed-size arrays)
+    if (typeInfo->arraySize > 0 && size != typeInfo->arraySize) {
+        TAG_LOGE(AAFwkTag::EXT, "ArrayCreate: size mismatch, metadata=%{public}u, requested=%{public}u",
+            typeInfo->arraySize, size);
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto* array = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Array();
@@ -203,20 +273,6 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::ArrayGetSize(OH_Ability
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     *pSize = static_cast<uint32_t>(pArray->elements.size());
-    return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
-}
-
-AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::ArrayResize(OH_AbilityRuntime_MoDispatcher_ArrayHandle pArray,
-    uint32_t newSize)
-{
-    if (pArray == nullptr) {
-        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
-    }
-    const auto oldSize = static_cast<uint32_t>(pArray->elements.size());
-    pArray->elements.resize(newSize);
-    for (uint32_t i = oldSize; i < newSize; i++) {
-        pArray->elements[i] = CreateDefaultVariantStorage(pArray->elementTypeInfo->vt);
-    }
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
@@ -746,10 +802,16 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::StoreVariant(
     }
     dst->value = *src;
     dst->stringStorage.clear();
+    std::unordered_set<const void*> visited;
     if (src->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_STRING) {
         dst->stringStorage = (src->u.bstrVal != nullptr) ? src->u.bstrVal : "";
         dst->value.u.bstrVal = const_cast<char*>(dst->stringStorage.c_str());
     } else if (src->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_ARRAY && src->u.parrayVal != nullptr) {
+        ScopedVisited sv(visited, src->u.parrayVal);
+        if (!sv) {
+            TAG_LOGE(AAFwkTag::EXT, "StoreVariant: circular reference detected in array");
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         auto* oldArray = src->u.parrayVal;
         auto* newArray = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Array();
         if (newArray == nullptr) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
@@ -757,12 +819,17 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::StoreVariant(
         newArray->elements.reserve(oldArray->elements.size());
         for (const auto& elem : oldArray->elements) {
             MoVariantStorage elemCopy;
-            auto ret = DeepCopyStorage(elem, elemCopy);
+            auto ret = DeepCopyStorage(elem, elemCopy, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newArray; return ret; }
             newArray->elements.emplace_back(std::move(elemCopy));
         }
         dst->value.u.parrayVal = newArray;
     } else if (src->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_VECTOR && src->u.pvectorVal != nullptr) {
+        ScopedVisited sv(visited, src->u.pvectorVal);
+        if (!sv) {
+            TAG_LOGE(AAFwkTag::EXT, "StoreVariant: circular reference detected in vector");
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         auto* oldVector = src->u.pvectorVal;
         auto* newVector = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Vector();
         if (newVector == nullptr) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
@@ -770,12 +837,17 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::StoreVariant(
         newVector->elements.reserve(oldVector->elements.size());
         for (const auto& elem : oldVector->elements) {
             MoVariantStorage elemCopy;
-            auto ret = DeepCopyStorage(elem, elemCopy);
+            auto ret = DeepCopyStorage(elem, elemCopy, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newVector; return ret; }
             newVector->elements.emplace_back(std::move(elemCopy));
         }
         dst->value.u.pvectorVal = newVector;
     } else if (src->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_SET && src->u.psetVal != nullptr) {
+        ScopedVisited sv(visited, src->u.psetVal);
+        if (!sv) {
+            TAG_LOGE(AAFwkTag::EXT, "StoreVariant: circular reference detected in set");
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         auto* oldSet = src->u.psetVal;
         auto* newSet = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Set();
         if (newSet == nullptr) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
@@ -783,12 +855,17 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::StoreVariant(
         newSet->elements.reserve(oldSet->elements.size());
         for (const auto& elem : oldSet->elements) {
             MoVariantStorage elemCopy;
-            auto ret = DeepCopyStorage(elem, elemCopy);
+            auto ret = DeepCopyStorage(elem, elemCopy, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newSet; return ret; }
             newSet->elements.emplace_back(std::move(elemCopy));
         }
         dst->value.u.psetVal = newSet;
     } else if (src->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_MAP && src->u.pmapVal != nullptr) {
+        ScopedVisited sv(visited, src->u.pmapVal);
+        if (!sv) {
+            TAG_LOGE(AAFwkTag::EXT, "StoreVariant: circular reference detected in map");
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         auto* oldMap = src->u.pmapVal;
         auto* newMap = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Map();
         if (newMap == nullptr) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
@@ -797,14 +874,19 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::StoreVariant(
         newMap->entries.reserve(oldMap->entries.size());
         for (const auto& entry : oldMap->entries) {
             std::pair<MoVariantStorage, MoVariantStorage> entryCopy;
-            auto ret = DeepCopyStorage(entry.first, entryCopy.first);
+            auto ret = DeepCopyStorage(entry.first, entryCopy.first, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newMap; return ret; }
-            ret = DeepCopyStorage(entry.second, entryCopy.second);
+            ret = DeepCopyStorage(entry.second, entryCopy.second, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newMap; return ret; }
             newMap->entries.emplace_back(std::move(entryCopy));
         }
         dst->value.u.pmapVal = newMap;
     } else if (src->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_STRUCT && src->u.pstructVal != nullptr) {
+        ScopedVisited sv(visited, src->u.pstructVal);
+        if (!sv) {
+            TAG_LOGE(AAFwkTag::EXT, "StoreVariant: circular reference detected in struct");
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         auto* oldStruct = src->u.pstructVal;
         auto* newStruct = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Struct();
         if (newStruct == nullptr) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
@@ -812,7 +894,7 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::StoreVariant(
         newStruct->fieldTypes = oldStruct->fieldTypes;
         for (const auto& field : oldStruct->fields) {
             MoVariantStorage fieldCopy;
-            auto ret = DeepCopyStorage(field.second, fieldCopy);
+            auto ret = DeepCopyStorage(field.second, fieldCopy, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newStruct; return ret; }
             newStruct->fields[field.first] = std::move(fieldCopy);
         }
@@ -843,7 +925,12 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::LoadVariant(const MoVar
         }
         dst->u.bstrVal = mem;
     } else if (dst->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_ARRAY && dst->u.parrayVal != nullptr) {
-        // Deep copy: create a new array with copies of all elements
+        std::unordered_set<const void*> visited;
+        ScopedVisited sv(visited, dst->u.parrayVal);
+        if (!sv) {
+            TAG_LOGE(AAFwkTag::EXT, "LoadVariant: circular reference detected in array");
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         auto* oldArray = dst->u.parrayVal;
         auto* newArray = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Array();
         if (newArray == nullptr) {
@@ -853,7 +940,7 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::LoadVariant(const MoVar
         newArray->elements.reserve(oldArray->elements.size());
         for (const auto& elem : oldArray->elements) {
             MoVariantStorage copy;
-            auto ret = DeepCopyStorage(elem, copy);
+            auto ret = DeepCopyStorage(elem, copy, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
                 delete newArray;
                 dst->u.parrayVal = nullptr;
@@ -863,6 +950,12 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::LoadVariant(const MoVar
         }
         dst->u.parrayVal = newArray;
     } else if (dst->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_VECTOR && dst->u.pvectorVal != nullptr) {
+        std::unordered_set<const void*> visited;
+        ScopedVisited sv(visited, dst->u.pvectorVal);
+        if (!sv) {
+            TAG_LOGE(AAFwkTag::EXT, "LoadVariant: circular reference detected in vector");
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         auto* oldVector = dst->u.pvectorVal;
         auto* newVector = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Vector();
         if (newVector == nullptr) {
@@ -872,7 +965,7 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::LoadVariant(const MoVar
         newVector->elements.reserve(oldVector->elements.size());
         for (const auto& elem : oldVector->elements) {
             MoVariantStorage copy;
-            auto ret = DeepCopyStorage(elem, copy);
+            auto ret = DeepCopyStorage(elem, copy, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
                 delete newVector;
                 dst->u.pvectorVal = nullptr;
@@ -882,6 +975,12 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::LoadVariant(const MoVar
         }
         dst->u.pvectorVal = newVector;
     } else if (dst->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_SET && dst->u.psetVal != nullptr) {
+        std::unordered_set<const void*> visited;
+        ScopedVisited sv(visited, dst->u.psetVal);
+        if (!sv) {
+            TAG_LOGE(AAFwkTag::EXT, "LoadVariant: circular reference detected in set");
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         auto* oldSet = dst->u.psetVal;
         auto* newSet = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Set();
         if (newSet == nullptr) {
@@ -891,7 +990,7 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::LoadVariant(const MoVar
         newSet->elements.reserve(oldSet->elements.size());
         for (const auto& elem : oldSet->elements) {
             MoVariantStorage copy;
-            auto ret = DeepCopyStorage(elem, copy);
+            auto ret = DeepCopyStorage(elem, copy, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
                 delete newSet;
                 dst->u.psetVal = nullptr;
@@ -901,6 +1000,12 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::LoadVariant(const MoVar
         }
         dst->u.psetVal = newSet;
     } else if (dst->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_MAP && dst->u.pmapVal != nullptr) {
+        std::unordered_set<const void*> visited;
+        ScopedVisited sv(visited, dst->u.pmapVal);
+        if (!sv) {
+            TAG_LOGE(AAFwkTag::EXT, "LoadVariant: circular reference detected in map");
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         auto* oldMap = dst->u.pmapVal;
         auto* newMap = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Map();
         if (newMap == nullptr) {
@@ -911,13 +1016,13 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::LoadVariant(const MoVar
         newMap->entries.reserve(oldMap->entries.size());
         for (const auto& entry : oldMap->entries) {
             std::pair<MoVariantStorage, MoVariantStorage> copy;
-            auto ret = DeepCopyStorage(entry.first, copy.first);
+            auto ret = DeepCopyStorage(entry.first, copy.first, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
                 delete newMap;
                 dst->u.pmapVal = nullptr;
                 return ret;
             }
-            ret = DeepCopyStorage(entry.second, copy.second);
+            ret = DeepCopyStorage(entry.second, copy.second, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
                 delete newMap;
                 dst->u.pmapVal = nullptr;
@@ -927,6 +1032,12 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::LoadVariant(const MoVar
         }
         dst->u.pmapVal = newMap;
     } else if (dst->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_STRUCT && dst->u.pstructVal != nullptr) {
+        std::unordered_set<const void*> visited;
+        ScopedVisited sv(visited, dst->u.pstructVal);
+        if (!sv) {
+            TAG_LOGE(AAFwkTag::EXT, "LoadVariant: circular reference detected in struct");
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         auto* oldStruct = dst->u.pstructVal;
         auto* newStruct = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Struct();
         if (newStruct == nullptr) {
@@ -936,7 +1047,7 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::LoadVariant(const MoVar
         newStruct->fieldTypes = oldStruct->fieldTypes;
         for (const auto& field : oldStruct->fields) {
             MoVariantStorage copy;
-            auto ret = DeepCopyStorage(field.second, copy);
+            auto ret = DeepCopyStorage(field.second, copy, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
                 delete newStruct;
                 dst->u.pstructVal = nullptr;
@@ -949,22 +1060,6 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::LoadVariant(const MoVar
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::DeepCopyVariant(
-    const OH_AbilityRuntime_MoDispatcher_Variant* src, OH_AbilityRuntime_MoDispatcher_Variant* dst)
-{
-    if (src == nullptr || dst == nullptr) {
-        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
-    }
-    // Wrap the source in a temporary MoVariantStorage and delegate to LoadVariant
-    MoVariantStorage tempStorage;
-    tempStorage.value = *src;
-    if (src->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_STRING && src->u.bstrVal != nullptr) {
-        tempStorage.stringStorage = src->u.bstrVal;
-        tempStorage.value.u.bstrVal = const_cast<char*>(tempStorage.stringStorage.c_str());
-    }
-    return LoadVariant(tempStorage, dst);
-}
-
 AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::ValidateVariantType(
     const OH_AbilityRuntime_MoDispatcher_Variant* value, OH_AbilityRuntime_MoDispatcher_ValueType expectedType)
 {
@@ -972,12 +1067,22 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::ValidateVariantType(
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     if (value->vt == expectedType) {
+        if (!IsVariantHandleValid(value)) {
+            TAG_LOGE(AAFwkTag::EXT, "ValidateVariantType: vt=%{public}d but required handle is null",
+                static_cast<int32_t>(value->vt));
+            return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+        }
         return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
     }
     if ((expectedType == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_IPC_REMOTE_PROXY &&
         value->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_IPC_REMOTE_STUB) ||
         (expectedType == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_IPC_REMOTE_STUB &&
         value->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_IPC_REMOTE_PROXY)) {
+        if (!IsVariantHandleValid(value)) {
+            TAG_LOGE(AAFwkTag::EXT, "ValidateVariantType: vt=%{public}d but required handle is null",
+                static_cast<int32_t>(value->vt));
+            return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+        }
         return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
     }
     return ABILITY_RUNTIME_ERROR_CODE_TYPE_MISMATCH;
@@ -1093,8 +1198,4 @@ bool MoDispatcherComplexTypeManager::GetStructFieldNames(const std::string& stru
     return true;
 }
 
-bool MoDispatcherComplexTypeManager::IsPrimitiveType(OH_AbilityRuntime_MoDispatcher_ValueType type)
-{
-    return type >= OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_BOOL && type <= OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_F64;
-}
 } // namespace OHOS::AbilityRuntime

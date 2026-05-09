@@ -491,9 +491,6 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Array_Get(
 AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Array_GetSize(
     OH_AbilityRuntime_MoDispatcher_ArrayHandle pArray, uint32_t* pSize)
 { return MoDispatcherComplexTypeManager::ArrayGetSize(pArray, pSize); }
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Array_Resize(
-    OH_AbilityRuntime_MoDispatcher_ArrayHandle pArray, uint32_t newSize)
-{ return MoDispatcherComplexTypeManager::ArrayResize(pArray, newSize); }
 void OH_AbilityRuntime_MoDispatcher_Array_Release(OH_AbilityRuntime_MoDispatcher_ArrayHandle* ppArray)
 { MoDispatcherComplexTypeManager::ArrayRelease(ppArray); }
 

@@ -76,10 +76,6 @@ public:
         OH_AbilityRuntime_MoDispatcher_TypeInfo* fieldType) const;
 
 private:
-    // Parse a JSON type_info object into a MoTypeInfo tree (recursive for nested types)
-    static std::shared_ptr<MoTypeInfo> ParseTypeInfo(const nlohmann::json& typeInfoObj);
-    // Backward-compatible overload: simple type string -> Vt mapping
-    static OH_AbilityRuntime_MoDispatcher_ValueType ParseTypeInfo(const std::string& typeName);
     // Static entry point for descriptor-based parsing with validation
     static AbilityRuntime_ErrorCode ParseTypeInfoFromJson(const nlohmann::json& typeInfoObj,
         std::shared_ptr<MoTypeInfo>& result);

@@ -33,7 +33,6 @@ public:
     static AbilityRuntime_ErrorCode ArrayGet(OH_AbilityRuntime_MoDispatcher_ArrayHandle pArray, uint32_t index,
         OH_AbilityRuntime_MoDispatcher_Variant* pValue);
     static AbilityRuntime_ErrorCode ArrayGetSize(OH_AbilityRuntime_MoDispatcher_ArrayHandle pArray, uint32_t* pSize);
-    static AbilityRuntime_ErrorCode ArrayResize(OH_AbilityRuntime_MoDispatcher_ArrayHandle pArray, uint32_t newSize);
     static void ArrayRelease(OH_AbilityRuntime_MoDispatcher_ArrayHandle* ppArray);
 
     static AbilityRuntime_ErrorCode VectorCreate(OH_AbilityRuntime_MoDispatcher_TypeInfo* elementType,
@@ -104,8 +103,6 @@ public:
         MoVariantStorage* dst);
     static AbilityRuntime_ErrorCode LoadVariant(const MoVariantStorage& src,
         OH_AbilityRuntime_MoDispatcher_Variant* dst);
-    static AbilityRuntime_ErrorCode DeepCopyVariant(const OH_AbilityRuntime_MoDispatcher_Variant* src,
-        OH_AbilityRuntime_MoDispatcher_Variant* dst);
     static AbilityRuntime_ErrorCode ValidateVariantType(const OH_AbilityRuntime_MoDispatcher_Variant* value,
         OH_AbilityRuntime_MoDispatcher_ValueType expectedType);
     static bool VariantEquals(const MoVariantStorage& lhs, const OH_AbilityRuntime_MoDispatcher_Variant* rhs);
@@ -115,8 +112,6 @@ public:
         std::shared_ptr<MoTypeInfo>* fieldType);
     static bool GetStructFieldNames(const std::string& structName, std::vector<std::string>* fieldNames);
 
-private:
-    static bool IsPrimitiveType(OH_AbilityRuntime_MoDispatcher_ValueType type);
 };
 } // namespace OHOS::AbilityRuntime
 

@@ -123,7 +123,8 @@ struct OH_AbilityRuntime_MoDispatcher_TypeInfo;
  *
  * Describes the type of a parameter or return value using a tagged union.
  * For map types, use u.mapType.keyType and u.mapType.pValueType;
- * for array/vector/set types, use u.pElementType;
+ * for array types, use u.arrayType.pElementType and u.arrayType.size;
+ * for vector/set types, use u.pElementType;
  * for other custom types, use u.idlType.
  *
  * @since 26.0.0
@@ -135,6 +136,10 @@ typedef struct OH_AbilityRuntime_MoDispatcher_TypeInfo {
             OH_AbilityRuntime_MoDispatcher_ValueType keyType;
             struct OH_AbilityRuntime_MoDispatcher_TypeInfo *pValueType;
         } mapType;
+        struct {
+            struct OH_AbilityRuntime_MoDispatcher_TypeInfo *pElementType;
+            uint32_t size;
+        } arrayType;
         struct OH_AbilityRuntime_MoDispatcher_TypeInfo *pElementType;
         char* idlType;
     } u;
@@ -923,20 +928,6 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Array_Get(
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Array_GetSize(
     OH_AbilityRuntime_MoDispatcher_ArrayHandle pArray, uint32_t* pSize);
-
-/**
- * @brief Resize array.
- *
- * @param pArray Indicates array handle.
- * @param newSize Indicates new array size.
- * @return Returns error code.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pArray is null.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
- * @since 26.0.0
- */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Array_Resize(
-    OH_AbilityRuntime_MoDispatcher_ArrayHandle pArray, uint32_t newSize);
 
 /**
  * @brief Release array instance.

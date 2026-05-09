@@ -41,8 +41,10 @@ struct MoTypeInfo {
     // For map: keyType + pValueType
     OH_AbilityRuntime_MoDispatcher_ValueType mapKeyType = OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_EMPTY;
     std::shared_ptr<MoTypeInfo> pMapValueType;
-    // For array/vector/set: pElementType
+    // For array/vector/set: pElementType (shared by all three)
     std::shared_ptr<MoTypeInfo> pElementType;
+    // For array: fixed size (0 means dynamic/unspecified)
+    uint32_t arraySize = 0;
     // For enum/interface/struct: idlType
     std::string idlType;
 
@@ -61,8 +63,15 @@ struct MoTypeInfo {
                     pMapValueType->FillCTypeInfo(cType->u.mapType.pValueType);
                 }
             }
-        } else if (vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_ARRAY ||
-                   vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_VECTOR ||
+        } else if (vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_ARRAY) {
+            if (pElementType) {
+                cType->u.arrayType.pElementType = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_TypeInfo();
+                if (cType->u.arrayType.pElementType != nullptr) {
+                    pElementType->FillCTypeInfo(cType->u.arrayType.pElementType);
+                }
+            }
+            cType->u.arrayType.size = arraySize;
+        } else if (vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_VECTOR ||
                    vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_SET) {
             if (pElementType) {
                 cType->u.pElementType = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_TypeInfo();
@@ -92,6 +101,12 @@ struct MoTypeInfo {
                 }
                 break;
             case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_ARRAY:
+                if (cType->u.arrayType.pElementType != nullptr) {
+                    ClearCTypeInfo(cType->u.arrayType.pElementType);
+                    delete cType->u.arrayType.pElementType;
+                    cType->u.arrayType.pElementType = nullptr;
+                }
+                break;
             case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_VECTOR:
             case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_SET:
                 if (cType->u.pElementType != nullptr) {
@@ -121,13 +136,20 @@ struct MoTypeInfo {
         result->vt = cType->vt;
         if (cType->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_MAP) {
             result->mapKeyType = cType->u.mapType.keyType;
+            if (cType->u.mapType.pValueType == nullptr) return nullptr;
             result->pMapValueType = FromCTypeInfo(cType->u.mapType.pValueType);
-        } else if (cType->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_ARRAY ||
-                   cType->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_VECTOR ||
+        } else if (cType->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_ARRAY) {
+            if (cType->u.arrayType.pElementType == nullptr) return nullptr;
+            result->pElementType = FromCTypeInfo(cType->u.arrayType.pElementType);
+            result->arraySize = cType->u.arrayType.size;
+        } else if (cType->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_VECTOR ||
                    cType->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_SET) {
+            if (cType->u.pElementType == nullptr) return nullptr;
             result->pElementType = FromCTypeInfo(cType->u.pElementType);
+        } else if (cType->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_STRUCT) {
+            if (cType->u.idlType == nullptr) return nullptr;
+            result->idlType = cType->u.idlType;
         } else if (cType->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_ENUM ||
-                   cType->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_STRUCT ||
                    cType->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_IPC_REMOTE_PROXY) {
             if (cType->u.idlType != nullptr) {
                 result->idlType = cType->u.idlType;
