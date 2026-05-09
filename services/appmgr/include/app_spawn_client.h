@@ -122,6 +122,7 @@ struct StartFlags {
     static const int DLP_MANAGER_FULL_CONTROL = 37;
     static const int DLP_MANAGER_READ_ONLY = 38;
     static const int CLOUD_FILE_SYNC_ENABLED = 39;
+    static const int APP_FLAGS_DEBUGSERVER = 44;
 };
 
 struct CreateStartMsgParam {
