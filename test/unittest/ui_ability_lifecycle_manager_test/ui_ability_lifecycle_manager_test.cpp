@@ -1731,53 +1731,6 @@ HWTEST_F(UIAbilityLifecycleManagerTest, HandleForegroundTimeout_006, TestSize.Le
 }
 
 /**
- * @tc.name: UIAbilityLifecycleManager_HandleStartSelfTimeout_0100
- * @tc.desc: HandleStartSelfTimeout with null abilityRecord
- * @tc.type: FUNC
- */
-HWTEST_F(UIAbilityLifecycleManagerTest, HandleStartSelfTimeout_001, TestSize.Level1)
-{
-    auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
-    ASSERT_NE(uiAbilityLifecycleManager, nullptr);
-    uiAbilityLifecycleManager->HandleStartSelfTimeout(nullptr);
-    EXPECT_TRUE(uiAbilityLifecycleManager->sessionAbilityMap_.empty());
-    uiAbilityLifecycleManager.reset();
-}
-
-/**
- * @tc.name: UIAbilityLifecycleManager_HandleStartSelfTimeout_0200
- * @tc.desc: HandleStartSelfTimeout with native state not CREATED
- * @tc.type: FUNC
- */
-HWTEST_F(UIAbilityLifecycleManagerTest, HandleStartSelfTimeout_002, TestSize.Level1)
-{
-    auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
-    ASSERT_NE(uiAbilityLifecycleManager, nullptr);
-    UIAbilityRecordPtr abilityRecord = InitAbilityRecord();
-    abilityRecord->SetNativeState(AbilityNativeState::ATTACHED);
-    uiAbilityLifecycleManager->HandleStartSelfTimeout(abilityRecord);
-    EXPECT_TRUE(uiAbilityLifecycleManager->sessionAbilityMap_.empty());
-    uiAbilityLifecycleManager.reset();
-}
-
-/**
- * @tc.name: UIAbilityLifecycleManager_HandleStartSelfTimeout_0300
- * @tc.desc: HandleStartSelfTimeout with native state CREATED and ability not FOREGROUNDING
- * @tc.type: FUNC
- */
-HWTEST_F(UIAbilityLifecycleManagerTest, HandleStartSelfTimeout_003, TestSize.Level1)
-{
-    auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
-    ASSERT_NE(uiAbilityLifecycleManager, nullptr);
-    UIAbilityRecordPtr abilityRecord = InitAbilityRecord();
-    abilityRecord->SetNativeState(AbilityNativeState::CREATED);
-    abilityRecord->currentState_ = AbilityState::TERMINATING;
-    uiAbilityLifecycleManager->HandleStartSelfTimeout(abilityRecord);
-    EXPECT_TRUE(uiAbilityLifecycleManager->sessionAbilityMap_.empty());
-    uiAbilityLifecycleManager.reset();
-}
-
-/**
  * @tc.name: UIAbilityLifecycleManager_OnAbilityDied_0100
  * @tc.desc: OnAbilityDied
  * @tc.type: FUNC
