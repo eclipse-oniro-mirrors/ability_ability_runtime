@@ -20,6 +20,7 @@ group("unittest") {
     "cli_tool_data_manager_test:cli_tool_data_manager_test",
     "cli_tool_mgr_client_test:cli_tool_mgr_client_test",
     "cli_tool_mgr_service_test:cli_tool_mgr_service_test",
+    "permission_query_util_test:permission_query_util_test",
     "process_manager_test:process_manager_test",
     "sub_command_info_test:sub_command_info_test",
     "tool_info_test:tool_info_test",

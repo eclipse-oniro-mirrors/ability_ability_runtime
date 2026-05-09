@@ -42,6 +42,7 @@ ohos_shared_library("climgr") {
     "src/cli_tool_app_state_observer.cpp",
     "src/cli_tool_data_manager.cpp",
     "src/cli_tool_manager_service.cpp",
+    "src/permission_query_util.cpp",
     "src/process_manager.cpp",
     "src/session_record.cpp",
     "src/tool_util.cpp",
