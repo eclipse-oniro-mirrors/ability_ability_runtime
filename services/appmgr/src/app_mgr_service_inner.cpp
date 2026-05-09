@@ -5386,6 +5386,7 @@ int32_t AppMgrServiceInner::StartPerfProcessByStartMsg(AppSpawnStartMsg &startMs
         startMsg.flags |= (START_FLAG_BASE << StartFlags::NO_SANDBOX);
     } else {
         TAG_LOGI(AAFwkTag::APPMGR, "debuggablePipe sandbox: true");
+        startMsg.flags |= (START_FLAG_BASE << StartFlags::APP_FLAGS_DEBUGSERVER);
     }
     if (!perfCmd.empty()) {
         startMsg.renderParam = perfCmd;
