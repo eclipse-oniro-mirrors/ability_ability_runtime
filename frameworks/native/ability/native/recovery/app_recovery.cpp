@@ -33,6 +33,7 @@
 #include "js_runtime.h"
 #include "js_runtime_utils.h"
 #include "js_ui_ability.h"
+#include "jsnapi_expo.h"
 #include "mission_info.h"
 #include "napi/native_api.h"
 #include "napi/native_common.h"
@@ -191,6 +192,9 @@ bool AppRecovery::ScheduleSaveAppState(StateReason reason, uintptr_t ability)
 {
     TAG_LOGI(AAFwkTag::RECOVERY, "begin");
     bool ret = IsNeedSaveAppState(reason);
+    if (reason == StateReason::APP_FREEZE) {
+        panda::JSNApi::NotifyOnANR();
+    }
     if (!ret && this->freezeCallback ==  nullptr) {
         return false;
     }

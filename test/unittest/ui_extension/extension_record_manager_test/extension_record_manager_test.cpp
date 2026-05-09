@@ -246,6 +246,144 @@ HWTEST_F(ExtensionRecordManagerTest, GetActiveUIExtensionList_0100, TestSize.Lev
 }
 
 /**
+ * @tc.name: GetActiveUIExtensionListByUid_0100
+ * @tc.desc: Empty extensionRecords_, should return ERR_OK with empty list.
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(ExtensionRecordManagerTest, GetActiveUIExtensionListByUid_0100, TestSize.Level1)
+{
+    auto extRecordMgr = std::make_shared<ExtensionRecordManager>(0);
+    ASSERT_NE(extRecordMgr, nullptr);
+
+    std::vector<std::string> extensionList;
+    auto result = extRecordMgr->GetActiveUIExtensionListByUid(1000, extensionList);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(extensionList.size(), 0);
+}
+
+/**
+ * @tc.name: GetActiveUIExtensionListByUid_0200
+ * @tc.desc: uid match, should add moduleName:name to list.
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(ExtensionRecordManagerTest, GetActiveUIExtensionListByUid_0200, TestSize.Level1)
+{
+    auto extRecordMgr = std::make_shared<ExtensionRecordManager>(0);
+    ASSERT_NE(extRecordMgr, nullptr);
+
+    AAFwk::AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.moduleName = "entry";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::EXTENSION;
+    auto abilityRecord = AAFwk::BaseExtensionRecord::CreateBaseExtensionRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    int32_t testUid = 2000;
+    abilityRecord->SetUid(testUid);
+    auto extRecord = std::make_shared<ExtensionRecord>(abilityRecord);
+    extRecordMgr->AddExtensionRecord(10, extRecord);
+
+    std::vector<std::string> extensionList;
+    auto result = extRecordMgr->GetActiveUIExtensionListByUid(testUid, extensionList);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(extensionList.size(), 1);
+    EXPECT_EQ(extensionList[0], std::string("entry") + SEPARATOR + "MainAbility");
+}
+
+/**
+ * @tc.name: GetActiveUIExtensionListByUid_0300
+ * @tc.desc: uid not match, should return empty list.
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(ExtensionRecordManagerTest, GetActiveUIExtensionListByUid_0300, TestSize.Level1)
+{
+    auto extRecordMgr = std::make_shared<ExtensionRecordManager>(0);
+    ASSERT_NE(extRecordMgr, nullptr);
+
+    AAFwk::AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.moduleName = "entry";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::EXTENSION;
+    auto abilityRecord = AAFwk::BaseExtensionRecord::CreateBaseExtensionRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->SetUid(2000);
+    auto extRecord = std::make_shared<ExtensionRecord>(abilityRecord);
+    extRecordMgr->AddExtensionRecord(10, extRecord);
+
+    std::vector<std::string> extensionList;
+    auto result = extRecordMgr->GetActiveUIExtensionListByUid(9999, extensionList);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(extensionList.size(), 0);
+}
+
+/**
+ * @tc.name: GetActiveUIExtensionListByUid_0400
+ * @tc.desc: it.second is nullptr, should skip.
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(ExtensionRecordManagerTest, GetActiveUIExtensionListByUid_0400, TestSize.Level1)
+{
+    auto extRecordMgr = std::make_shared<ExtensionRecordManager>(0);
+    ASSERT_NE(extRecordMgr, nullptr);
+
+    AAFwk::AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.moduleName = "entry";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::EXTENSION;
+    auto abilityRecord = AAFwk::BaseExtensionRecord::CreateBaseExtensionRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    int32_t testUid = 2000;
+    abilityRecord->SetUid(testUid);
+    auto extRecord = std::make_shared<ExtensionRecord>(abilityRecord);
+    extRecordMgr->AddExtensionRecord(10, extRecord);
+
+    extRecordMgr->extensionRecords_[11] = nullptr;
+
+    std::vector<std::string> extensionList;
+    auto result = extRecordMgr->GetActiveUIExtensionListByUid(testUid, extensionList);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(extensionList.size(), 1);
+}
+
+/**
+ * @tc.name: GetActiveUIExtensionListByUid_0500
+ * @tc.desc: it.second->abilityRecord_ is nullptr, should skip.
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(ExtensionRecordManagerTest, GetActiveUIExtensionListByUid_0500, TestSize.Level1)
+{
+    auto extRecordMgr = std::make_shared<ExtensionRecordManager>(0);
+    ASSERT_NE(extRecordMgr, nullptr);
+
+    AAFwk::AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.moduleName = "entry";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::EXTENSION;
+    auto abilityRecord = AAFwk::BaseExtensionRecord::CreateBaseExtensionRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    int32_t testUid = 2000;
+    abilityRecord->SetUid(testUid);
+    auto extRecord = std::make_shared<ExtensionRecord>(abilityRecord);
+    extRecordMgr->AddExtensionRecord(10, extRecord);
+
+    auto extRecordNullAbility = std::make_shared<ExtensionRecord>(nullptr);
+    extRecordMgr->extensionRecords_[11] = extRecordNullAbility;
+
+    std::vector<std::string> extensionList;
+    auto result = extRecordMgr->GetActiveUIExtensionListByUid(testUid, extensionList);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(extensionList.size(), 1);
+}
+
+/**
  * @tc.name: GetAbilityRecordBySessionInfo_0100
  * @tc.desc: GetAbilityRecordBySessionInfo
  * @tc.type: FUNC

@@ -43,6 +43,7 @@ namespace AppExecFwk {
 constexpr int32_t CYCLE_LIMIT = 1000;
 constexpr int32_t MAX_PROCESS_STATE_COUNT = 1000;
 constexpr int32_t MAX_BACKGROUND_APP_COUNT = 1000;
+constexpr int32_t MAX_PROCESS_INFO_COUNT = 1024;
 
 AppMgrStub::AppMgrStub() {}
 
@@ -97,6 +98,10 @@ int32_t AppMgrStub::OnRemoteRequestInner(uint32_t code, MessageParcel &data,
     if (retCode != INVALID_FD) {
         return retCode;
     }
+    retCode = OnRemoteRequestInnerNinth(code, data, reply, option);
+    if (retCode != INVALID_FD) {
+        return retCode;
+    }
     TAG_LOGD(AAFwkTag::APPMGR, "AppMgrStub::OnRemoteRequest end");
     return IPCObjectStub::OnRemoteRequest(code, data, reply, option);
 }
@@ -129,6 +134,8 @@ int32_t AppMgrStub::OnRemoteRequestInnerFirst(uint32_t code, MessageParcel &data
             return HandleNotifyProcMemoryLevel(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::APP_GET_RUNNING_PROCESSES_BY_USER_ID):
             return HandleGetProcessRunningInfosByUserId(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::GET_PROCESS_RUNNING_INFOS_BY_ACCESS_TOKEN_ID):
+            return HandleGetProcessRunningInfosByAccessTokenId(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::APP_ADD_ABILITY_STAGE_INFO_DONE):
             return HandleAddAbilityStageDone(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::STARTUP_RESIDENT_PROCESS):
@@ -239,6 +246,8 @@ int32_t AppMgrStub::OnRemoteRequestInnerFourth(uint32_t code, MessageParcel &dat
             return HandleNotifyFaultBySA(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::SET_APPFREEZE_FILTER):
             return HandleSetAppFreezeFilter(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::UPDATE_FREEZE_EXCLUDED_PID):
+            return HandleUpdateFreezeExcludedPid(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::GET_BUNDLE_NAME_BY_PID):
             return HandleGetBundleNameByPid(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::GET_RUNNING_PROCESS_INFO_BY_PID):
@@ -441,10 +450,8 @@ int32_t AppMgrStub::OnRemoteRequestInnerEighth(uint32_t code, MessageParcel &dat
             return HandleNotifyTemplateProcessDeepFrozen(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_IMAGE_PROCESS_STATE_OBSERVER):
             return HandleRegisterImageProcessStateObserver(data, reply);
-        case static_cast<uint32_t>(AppMgrInterfaceCode::IS_ARK_CHILD_PROCESS_SUPPORTED):
-            return HandleIsArkChildProcessSupported(data, reply);
-        case static_cast<uint32_t>(AppMgrInterfaceCode::IS_NATIVE_CHILD_PROCESS_SUPPORTED):
-            return HandleIsNativeChildProcessSupported(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::IS_CHILD_PROCESS_SUPPORTED):
+            return HandleIsChildProcessSupported(data, reply);
     }
     return INVALID_FD;
 }
@@ -455,6 +462,12 @@ int32_t AppMgrStub::OnRemoteRequestInnerNinth(uint32_t code, MessageParcel &data
     switch (static_cast<uint32_t>(code)) {
         case static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_IMAGE_PROCESS_STATE_OBSERVER):
             return HandleUnregisterImageProcessStateObserver(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::SET_TERMINATE_TIMEOUT_FLAG):
+            return HandleSetTerminateTimeOutFlag(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::ENABLE_DELAYED_PROCESS_EXIT):
+            return HandleEnableDelayedProcessExit(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::CANCEL_DELAYED_EXIT_TASK):
+            return HandleCancelDelayedExitTask(data, reply);
     }
     return INVALID_FD;
 }
@@ -729,6 +742,26 @@ int32_t AppMgrStub::HandleGetProcessRunningInfosByUserId(MessageParcel &data, Me
         return ERR_INVALID_VALUE;
     }
     TAG_LOGD(AAFwkTag::APPMGR, "AppMgrStub::HandleGetAllRunningProcesses end");
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleGetProcessRunningInfosByAccessTokenId(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    uint32_t accessTokenId = data.ReadUint32();
+    std::vector<RunningProcessInfo> info;
+    auto result = GetProcessRunningInfosByAccessTokenId(accessTokenId, info);
+    int32_t writeSize = std::min(static_cast<int32_t>(info.size()), MAX_PROCESS_INFO_COUNT);
+    reply.WriteInt32(writeSize);
+    for (int32_t i = 0; i < writeSize; ++i) {
+        if (!reply.WriteParcelable(&info[i])) {
+            return ERR_INVALID_VALUE;
+        }
+    }
+    if (!reply.WriteInt32(result)) {
+        return ERR_INVALID_VALUE;
+    }
+    TAG_LOGD(AAFwkTag::APPMGR, "AppMgrStub::HandleGetProcessRunningInfosByAccessTokenId end");
     return NO_ERROR;
 }
 
@@ -1533,6 +1566,15 @@ int32_t AppMgrStub::HandleSetAppFreezeFilter(MessageParcel &data, MessageParcel 
     return NO_ERROR;
 }
 
+int32_t AppMgrStub::HandleUpdateFreezeExcludedPid(MessageParcel &data, MessageParcel &reply)
+{
+    bool isAdd = data.ReadBool();
+    int32_t targetPid = data.ReadInt32();
+    int32_t profilerPid = data.ReadInt32();
+    UpdateFreezeExcludedPid(isAdd, targetPid, profilerPid);
+    return NO_ERROR;
+}
+
 int32_t AppMgrStub::HandleGetProcessMemoryByPid(MessageParcel &data, MessageParcel &reply)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
@@ -2009,29 +2051,12 @@ int32_t AppMgrStub::HandleIsProcessCacheSupported(MessageParcel &data, MessagePa
     return NO_ERROR;
 }
 
-int32_t AppMgrStub::HandleIsArkChildProcessSupported(MessageParcel &data, MessageParcel &reply)
+int32_t AppMgrStub::HandleIsChildProcessSupported(MessageParcel &data, MessageParcel &reply)
 {
-    TAG_LOGD(AAFwkTag::APPMGR, "HandleIsArkChildProcessSupported called");
-    pid_t pid = data.ReadInt32();
+    TAG_LOGD(AAFwkTag::APPMGR, "HandleIsChildProcessSupported called");
+    bool isNative = data.ReadBool();
     bool isSupported = false;
-    auto ret = IsArkChildProcessSupported(pid, isSupported);
-    if (!reply.WriteBool(isSupported)) {
-        TAG_LOGE(AAFwkTag::APPMGR, "Write isSupported error.");
-        return AAFwk::ERR_WRITE_BOOL_FAILED;
-    }
-    if (!reply.WriteInt32(ret)) {
-        TAG_LOGE(AAFwkTag::APPMGR, "Write ret error.");
-        return AAFwk::ERR_WRITE_RESULT_CODE_FAILED;
-    }
-    return NO_ERROR;
-}
-
-int32_t AppMgrStub::HandleIsNativeChildProcessSupported(MessageParcel &data, MessageParcel &reply)
-{
-    TAG_LOGD(AAFwkTag::APPMGR, "HandleIsNativeChildProcessSupported called");
-    pid_t pid = data.ReadInt32();
-    bool isSupported = false;
-    auto ret = IsNativeChildProcessSupported(pid, isSupported);
+    auto ret = IsChildProcessSupported(isNative, isSupported);
     if (!reply.WriteBool(isSupported)) {
         TAG_LOGE(AAFwkTag::APPMGR, "Write isSupported error.");
         return AAFwk::ERR_WRITE_BOOL_FAILED;
@@ -2433,6 +2458,18 @@ int32_t AppMgrStub::HandleSetProcessPrepareExit(MessageParcel &data, MessageParc
     return NO_ERROR;
 }
 
+int32_t AppMgrStub::HandleSetTerminateTimeOutFlag(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "HandleSetTerminateTimeOutFlag call");
+    sptr<IRemoteObject> token = data.ReadRemoteObject();
+    if (token == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "token is nullptr");
+        return ERR_INVALID_VALUE;
+    }
+    SetTerminateTimeOutFlag(token);
+    return NO_ERROR;
+}
+
 int32_t AppMgrStub::HandleGetAllAbilityInfos(MessageParcel &data, MessageParcel &reply)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "HandleGetAllAbilityInfos call");
@@ -2457,6 +2494,26 @@ int32_t AppMgrStub::HandleGetAllAbilityInfos(MessageParcel &data, MessageParcel 
             return ERR_APPEXECFWK_PARCEL_ERROR;
         }
     }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleEnableDelayedProcessExit(MessageParcel &data, MessageParcel &reply)
+{
+    pid_t pid = data.ReadInt32();
+    bool enabled = data.ReadBool();
+    auto result = EnableDelayedProcessExit(pid, enabled);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write result fail");
+        return AAFwk::ERR_WRITE_RESULT_CODE_FAILED;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleCancelDelayedExitTask(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "HandleCancelDelayedExitTask call");
+    pid_t pid = data.ReadInt32();
+    CancelDelayedExitTask(pid);
     return NO_ERROR;
 }
 }  // namespace AppExecFwk

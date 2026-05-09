@@ -39,7 +39,7 @@ export default class ServiceExtensionAbility {
   }
 
   private callPromise(p: Promise<rpc.RemoteObject>): boolean {
-    let remoteObj: rpc.RemoteObject = waitForCompletion(async () => { return await p });
+    let remoteObj: rpc.RemoteObject = p.awaitSync();
     return this.nativeOnConnectCallback(remoteObj);
   }
 

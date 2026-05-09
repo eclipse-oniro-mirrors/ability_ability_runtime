@@ -505,5 +505,28 @@ HWTEST_F(ExtensionTest, AaFwk_Extension_2800, Function | MediumTest | Level1)
     EXPECT_NE(extension_, nullptr);
     GTEST_LOG_(INFO) << "AaFwk_Extension_2800 end";
 }
+/**
+ * @tc.name: GetAbilityHandler_ShouldReturnNullptrWhenCalledOnBaseExtension
+ * @tc.desc: Base Extension GetAbilityHandler returns nullptr by default.
+ */
+HWTEST_F(ExtensionTest, GetAbilityHandler_ShouldReturnNullptrWhenCalledOnBaseExtension,
+    Function | MediumTest | Level1)
+{
+    auto info = std::make_shared<AbilityInfo>();
+    auto handler = extension_->GetAbilityHandler(info);
+    EXPECT_EQ(handler, nullptr);
+}
+
+/**
+ * @tc.name: GetAbilityHandler_ShouldReturnNullptrWhenAbilityInfoIsNull
+ * @tc.desc: Base Extension GetAbilityHandler returns nullptr when abilityInfo is null.
+ */
+HWTEST_F(ExtensionTest, GetAbilityHandler_ShouldReturnNullptrWhenAbilityInfoIsNull,
+    Function | MediumTest | Level1)
+{
+    auto handler = extension_->GetAbilityHandler(nullptr);
+    EXPECT_EQ(handler, nullptr);
+}
+
 } // namespace AppExecFwk
 } // namespace OHOS

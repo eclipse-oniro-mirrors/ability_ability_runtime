@@ -28,6 +28,7 @@ using HasHigherPriorityType = bool(*)();
 using UpdateStackInfoFuncType = void(*)(unsigned long long, void*, unsigned int);
 
 struct CJUncaughtExceptionInfo;
+struct CJEventReportInfo;
 
 struct CJRuntimeAPI {
     int (*InitCJRuntime)(const struct RuntimeParam*) = nullptr;
@@ -41,6 +42,7 @@ struct CJRuntimeAPI {
     void (*RegisterStackInfoCallbacks)(UpdateStackInfoFuncType) = nullptr;
     void (*DumpHeapSnapshot)(int fd) = nullptr;
     void (*ForceFullGC)() = nullptr;
+    void (*RegisterEventHandler)(const CJEventReportInfo& handle) = nullptr;
 };
 }
 

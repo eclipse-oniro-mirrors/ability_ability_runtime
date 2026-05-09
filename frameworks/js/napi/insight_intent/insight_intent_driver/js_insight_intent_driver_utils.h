@@ -19,6 +19,7 @@
 #include "insight_intent_execute_result.h"
 #include "insight_intent_info_for_query.h"
 #include "native_engine/native_engine.h"
+#include "nlohmann/json.hpp"
 
 namespace OHOS {
 namespace AbilityRuntime {

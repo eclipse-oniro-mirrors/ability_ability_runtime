@@ -69,6 +69,9 @@ void AbilityEventHandler::ProcessEvent(const EventWrap &event)
         case AbilityManagerService::CONNECT_HALF_TIMEOUT_MSG:
             ProcessConnectTimeOut(event, true);
             break;
+        case AbilityManagerService::SKILL_EXECUTE_TIMEOUT_MSG:
+            ProcessSkillExecuteTimeOut(event.GetParam());
+            break;
         default:
             TAG_LOGW(AAFwkTag::ABILITYMGR, "unsupported timeout message");
             break;
@@ -121,6 +124,14 @@ void AbilityEventHandler::ProcessConnectTimeOut(const EventWrap &event, bool isH
     auto server = server_.lock();
     CHECK_POINTER(server);
     server->HandleConnectTimeOut(event.GetParam(), isHalf);
+}
+
+void AbilityEventHandler::ProcessSkillExecuteTimeOut(int64_t requestCodeSeq)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "skill execute timeout");
+    auto server = server_.lock();
+    CHECK_POINTER(server);
+    server->HandleSkillExecuteTimeOut(requestCodeSeq);
 }
 
 }  // namespace AAFwk

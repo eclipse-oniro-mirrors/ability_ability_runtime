@@ -155,7 +155,8 @@ public:
      * @param fromUser, Whether form user.
      * @return Returns ERR_OK on success, others on failure.
      */
-    int MinimizeUIAbility(const UIAbilityRecordPtr &abilityRecord, bool fromUser, uint32_t sceneFlag);
+    int MinimizeUIAbility(const UIAbilityRecordPtr &abilityRecord, bool fromUser, uint32_t sceneFlag,
+        int32_t backgroundReason = 0);
 
     /**
      * GetUIAbilityRecordBySessionInfo.
@@ -425,6 +426,7 @@ public:
     ErrCode IsUIAbilityAlreadyExist(const Want &want, const std::string &specifiedFlag,
         int32_t appIndex, const std::string &instanceKey, AppExecFwk::LaunchMode launchMode);
     void HandleUIAbilityDiedByPid(pid_t pid);
+    int32_t StartSelf(const UIAbilityRecordPtr &abilityRecord);
 
 private:
     void AddStartingPid(pid_t pid);

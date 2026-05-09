@@ -52,6 +52,7 @@ StartOptions::StartOptions(const StartOptions &other)
     supportWindowModes_ = other.supportWindowModes_;
     requestId_ = other.requestId_;
     windowCreateParams_ = other.windowCreateParams_;
+    splitRatioPreference_ = other.splitRatioPreference_;
     currentProcessName_ = other.currentProcessName_;
 }
 
@@ -84,6 +85,7 @@ StartOptions &StartOptions::operator=(const StartOptions &other)
         supportWindowModes_ = other.supportWindowModes_;
         requestId_ = other.requestId_;
         windowCreateParams_ = other.windowCreateParams_;
+        splitRatioPreference_ = other.splitRatioPreference_;
         currentProcessName_ = other.currentProcessName_;
     }
     return *this;
@@ -124,6 +126,7 @@ bool StartOptions::ReadFromParcel(Parcel &parcel)
     }
     requestId_ = parcel.ReadString();
     windowCreateParams_.reset(parcel.ReadParcelable<Rosen::WindowCreateParams>());
+    SetSplitRatioPreference(parcel.ReadInt32());
     return true;
 }
 
@@ -191,6 +194,10 @@ bool StartOptions::MarshallingTwo(Parcel &parcel) const
 {
     if (!parcel.WriteParcelable(windowCreateParams_.get())) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Write windowCreateParams_ failed");
+        return false;
+    }
+    if (!parcel.WriteInt32(GetSplitRatioPreference())) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "Write splitRatioPreference_ failed");
         return false;
     }
     return true;
@@ -334,6 +341,16 @@ void StartOptions::SetCurrentProcessName(const std::string &processName)
 std::string StartOptions::GetCurrentProcessName() const
 {
     return currentProcessName_;
+}
+
+void StartOptions::SetSplitRatioPreference(int32_t splitRatioPreference)
+{
+    splitRatioPreference_ = splitRatioPreference;
+}
+
+int32_t StartOptions::GetSplitRatioPreference() const
+{
+    return splitRatioPreference_;
 }
 }  // namespace AAFwk
 }  // namespace OHOS

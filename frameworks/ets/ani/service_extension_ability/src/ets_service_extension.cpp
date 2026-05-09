@@ -85,18 +85,18 @@ void DisconnectPromiseCallback(ani_env *env, ani_object aniObj)
     AppExecFwk::AbilityTransactionCallbackInfo<>::Destroy(callbackInfo);
 }
 
-void ConnectPromiseCallback(ani_env *env, ani_object aniObj, ani_object obj)
+bool ConnectPromiseCallback(ani_env *env, ani_object aniObj, ani_object obj)
 {
     TAG_LOGD(AAFwkTag::SERVICE_EXT, "ConnectPromiseCallback");
     if (env == nullptr) {
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "null env");
-        return;
+        return false;
     }
     ani_long connectCallback = 0;
     ani_status status = ANI_ERROR;
     if ((status = env->Object_GetFieldByName_Long(aniObj, "connectCallback", &connectCallback)) != ANI_OK) {
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "status : %{public}d", status);
-        return;
+        return false;
     }
     auto remoteObject = AniGetNativeRemoteObject(env, obj);
     if (remoteObject == nullptr) {
@@ -106,11 +106,12 @@ void ConnectPromiseCallback(ani_env *env, ani_object aniObj, ani_object obj)
         reinterpret_cast<AppExecFwk::AbilityTransactionCallbackInfo<sptr<IRemoteObject>> *>(connectCallback);
     if (callbackInfo == nullptr) {
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "null callbackInfo");
-        return;
+        return false;
     }
 
     callbackInfo->Call(remoteObject);
     AppExecFwk::AbilityTransactionCallbackInfo<sptr<IRemoteObject>>::Destroy(callbackInfo);
+    return true;
 }
 } // namespace
 

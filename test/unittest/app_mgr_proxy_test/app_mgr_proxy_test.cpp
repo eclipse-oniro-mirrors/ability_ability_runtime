@@ -1372,6 +1372,20 @@ HWTEST_F(AppMgrProxyTest, SetProcessPrepareExit_001, TestSize.Level2)
 }
 
 /**
+ * @tc.name: SetTerminateTimeOutFlag_001
+ * @tc.desc: SetTerminateTimeOutFlag.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(AppMgrProxyTest, SetTerminateTimeOutFlag_001, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetTerminateTimeOutFlag_001 start.");
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _)).Times(1);
+    sptr<IRemoteObject> token = new MockAppMgrService();
+    appMgrProxy_->SetTerminateTimeOutFlag(token);
+}
+
+/**
  * @tc.name: RegisterImageProcessStateObserver_0100
  * @tc.desc: Verify that the RegisterImageProcessStateObserver parameter of the function is null.
  * @tc.type: FUNC
@@ -1532,6 +1546,93 @@ HWTEST_F(AppMgrProxyTest, GetAllAbilityInfos_0600, TestSize.Level1)
     auto ret = appMgrProxy_->GetAllAbilityInfos(1001, infos);
     EXPECT_EQ(ret, ERR_OK);
     EXPECT_EQ(infos.size(), 1);
+}
+
+/**
+ * @tc.name: UpdateFreezeExcludedPid_001
+ * @tc.desc: Update freeze excluded pid.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, UpdateFreezeExcludedPid_001, TestSize.Level1)
+{
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mockAppMgrService_.GetRefPtr(), &MockAppMgrService::InvokeSendRequest));
+    int32_t pid = 1;
+    int32_t profilerPid = 2;
+    bool isAdd = true;
+    appMgrProxy_->UpdateFreezeExcludedPid(isAdd, pid, profilerPid);
+    EXPECT_EQ(mockAppMgrService_->code_, static_cast<uint32_t>(AppMgrInterfaceCode::UPDATE_FREEZE_EXCLUDED_PID));
+}
+
+/**
+ * @tc.name: EnableDelayedProcessExit_0100
+ * @tc.desc: Test EnableDelayedProcessExit with successful SendRequest.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, EnableDelayedProcessExit_0100, TestSize.Level1)
+{
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce([](uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) {
+            reply.WriteInt32(ERR_OK);
+            return NO_ERROR;
+        });
+
+    auto ret = appMgrProxy_->EnableDelayedProcessExit(1234, true);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: EnableDelayedProcessExit_0200
+ * @tc.desc: Test EnableDelayedProcessExit with disabled flag.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, EnableDelayedProcessExit_0200, TestSize.Level1)
+{
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce([](uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) {
+            reply.WriteInt32(ERR_OK);
+            return NO_ERROR;
+        });
+
+    auto ret = appMgrProxy_->EnableDelayedProcessExit(1234, false);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: EnableDelayedProcessExit_0300
+ * @tc.desc: Test EnableDelayedProcessExit with failed SendRequest.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, EnableDelayedProcessExit_0300, TestSize.Level1)
+{
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce([](uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) {
+            reply.WriteInt32(ERR_INVALID_VALUE);
+            return NO_ERROR;
+        });
+
+    auto ret = appMgrProxy_->EnableDelayedProcessExit(-1, true);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: CancelDelayedExitTask_0100
+ * @tc.desc: Test CancelDelayedExitTask with successful SendRequest.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, CancelDelayedExitTask_0100, TestSize.Level1)
+{
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce([](uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) {
+            return NO_ERROR;
+        });
+
+    appMgrProxy_->CancelDelayedExitTask(1234);
 }
 } // namespace AppExecFwk
 } // namespace OHOS

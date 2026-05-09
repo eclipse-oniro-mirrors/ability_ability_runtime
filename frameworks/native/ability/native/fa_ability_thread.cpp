@@ -1465,6 +1465,11 @@ void FAAbilityThread::CallRequest()
     AbilityManagerClient::GetInstance()->CallRequestDone(token_, retval);
 }
 
+void FAAbilityThread::ExecuteSkill(const Want &want)
+{
+    TAG_LOGW(AAFwkTag::FA, "FA model does not support ExecuteSkill");
+}
+
 void FAAbilityThread::HandlePrepareTerminateAbility()
 {
     std::unique_lock<std::mutex> lock(mutex_);

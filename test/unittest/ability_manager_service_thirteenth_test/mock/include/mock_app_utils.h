@@ -321,6 +321,10 @@ public:
 
     bool IsPreloadApplicationEnabled();
 
+    bool IsForbidStart();
+
+    bool IsSupportDelayedProcessExit();
+
 private:
     /**
      * LoadResidentProcessInExtremeMemory, load resident process in extreme low memory.

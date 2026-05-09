@@ -48,6 +48,7 @@ ohos_shared_library("ability_delegator_registry_ani_kit") {
     "./src/ets_ability_delegator_registry.cpp",
     "./src/ets_ability_delegator_utils.cpp",
     "./src/ets_ability_monitor.cpp",
+    "./src/ets_interop_ability_monitor.cpp",
   ]
 
   cflags = []
@@ -77,6 +78,7 @@ ohos_shared_library("ability_delegator_registry_ani_kit") {
     "json:nlohmann_json_static",
     "napi:ace_napi",
     "runtime_core:ani",
+    "runtime_core:ani_helpers",
   ]
 
   innerapi_tags = [ "platformsdk" ]

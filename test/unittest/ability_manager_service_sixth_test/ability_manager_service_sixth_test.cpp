@@ -2503,5 +2503,60 @@ HWTEST_F(AbilityManagerServiceSixthTest, UnRegisterPreloadUIExtensionHostClient_
     auto ret = abilityMs->UnRegisterPreloadUIExtensionHostClient(DEFAULT_INVALID_USER_ID);
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
 }
+
+/*
+ * Feature: AbilityManagerService
+ * Function: AtomicServicePreprocess
+ * FunctionPoints: AbilityManagerService AtomicServicePreprocess
+ */
+HWTEST_F(AbilityManagerServiceSixthTest, AtomicServicePreprocess_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest AtomicServicePreprocess_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    Want want;
+    EXPECT_EQ(abilityMs->AtomicServicePreprocess(want), 0);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest AtomicServicePreprocess_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: IsFloodAttackByCallerUid
+ * FunctionPoints: AbilityManagerService IsFloodAttackByCallerUid
+ */
+HWTEST_F(AbilityManagerServiceSixthTest, IsFloodAttackByCallerUid_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest IsFloodAttackByCallerUid_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    int32_t callerUid = 1000;
+    EXPECT_FALSE(abilityMs->IsFloodAttackByCallerUid(callerUid));
+    bool isFloodAttack = false;
+    for (int i = 0; i < 11; ++i) {
+        isFloodAttack = abilityMs->IsFloodAttackByCallerUid(callerUid);
+    }
+    EXPECT_TRUE(isFloodAttack);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest IsFloodAttackByCallerUid_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetCallerUidAndToken
+ * FunctionPoints: AbilityManagerService GetCallerUidAndToken
+ */
+HWTEST_F(AbilityManagerServiceSixthTest, GetCallerUidAndToken_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest GetCallerUidAndToken_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    std::string bundleName = "com.example.bundle";
+    int32_t userId = 1000;
+    int32_t callerUid = 0;
+    uint32_t accessToken = 0;
+    abilityMs->GetCallerUidAndToken(bundleName, userId, callerUid, accessToken);
+    EXPECT_EQ(callerUid, 0);
+    EXPECT_EQ(accessToken, 0);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest GetCallerUidAndToken_001 end");
+}
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -879,6 +879,88 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_GetFreezeExitReason_Test001,
     eventName = "test";
     result = appfreezeManager->GetFreezeExitReason(eventName);
     EXPECT_EQ(result, -1);
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest_UpdateFreezeExcludedPid_001
+ * @tc.desc: Test UpdateFreezeExcludedPid and IsFreezeExcludedPid
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_UpdateFreezeExcludedPid_001, TestSize.Level1)
+{
+    EXPECT_NE(appfreezeManager, nullptr);
+
+    constexpr int32_t TEST_PID_FIRST = 1000;
+    constexpr int32_t TEST_PID_SECOND = 2000;
+    constexpr int32_t TEST_PID_THIRD = 3000;
+    constexpr int32_t TEST_PROFILER_PID = 5000;
+
+    appfreezeManager->UpdateFreezeExcludedPid(true, TEST_PID_FIRST, TEST_PROFILER_PID);
+    EXPECT_FALSE(appfreezeManager->IsFreezeExcludedPid(TEST_PID_FIRST));
+
+    appfreezeManager->UpdateFreezeExcludedPid(false, TEST_PID_FIRST, TEST_PROFILER_PID);
+    EXPECT_FALSE(appfreezeManager->IsFreezeExcludedPid(TEST_PID_FIRST));
+
+    appfreezeManager->UpdateFreezeExcludedPid(true, TEST_PID_SECOND, TEST_PROFILER_PID);
+    appfreezeManager->UpdateFreezeExcludedPid(true, TEST_PID_THIRD, TEST_PROFILER_PID);
+    EXPECT_FALSE(appfreezeManager->IsFreezeExcludedPid(TEST_PID_SECOND));
+    EXPECT_FALSE(appfreezeManager->IsFreezeExcludedPid(TEST_PID_THIRD));
+
+    appfreezeManager->UpdateFreezeExcludedPid(false, TEST_PID_SECOND, TEST_PROFILER_PID);
+    EXPECT_FALSE(appfreezeManager->IsFreezeExcludedPid(TEST_PID_SECOND));
+    EXPECT_FALSE(appfreezeManager->IsFreezeExcludedPid(TEST_PID_THIRD));
+
+    appfreezeManager->UpdateFreezeExcludedPid(false, TEST_PID_THIRD, TEST_PROFILER_PID);
+    EXPECT_FALSE(appfreezeManager->IsFreezeExcludedPid(TEST_PID_THIRD));
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest_UpdateFreezeExcludedPid_002
+ * @tc.desc: Test capacity limit cleanup logic when size exceeds FREEZE_EXCLUDED_PID_MAX_SIZE
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_UpdateFreezeExcludedPid_002, TestSize.Level1)
+{
+    EXPECT_NE(appfreezeManager, nullptr);
+    appfreezeManager->freezeExcludedPidMap_.clear();
+
+    constexpr int32_t TEST_PROFILER_PID = 5000;
+    constexpr int32_t BASE_PID = 10000;
+    constexpr size_t MAX_SIZE = 100;
+    constexpr size_t CLEAN_COUNT = 30;
+    constexpr int32_t TIME_DELAY_US = 100;
+
+    for (size_t i = 0; i < MAX_SIZE; i++) {
+        int32_t targetPid = BASE_PID + static_cast<int32_t>(i);
+        appfreezeManager->UpdateFreezeExcludedPid(true, targetPid, TEST_PROFILER_PID);
+        usleep(TIME_DELAY_US);
+    }
+    EXPECT_EQ(appfreezeManager->freezeExcludedPidMap_.size(), MAX_SIZE);
+
+    usleep(TIME_DELAY_US);
+    int32_t newPid = BASE_PID + static_cast<int32_t>(MAX_SIZE);
+    appfreezeManager->UpdateFreezeExcludedPid(true, newPid, TEST_PROFILER_PID);
+
+    size_t expectedSize = MAX_SIZE + 1 - CLEAN_COUNT;
+    EXPECT_EQ(appfreezeManager->freezeExcludedPidMap_.size(), expectedSize);
+
+    for (size_t i = 0; i < CLEAN_COUNT; i++) {
+        int32_t oldPid = BASE_PID + static_cast<int32_t>(i);
+        EXPECT_FALSE(appfreezeManager->freezeExcludedPidMap_.find(oldPid) !=
+                     appfreezeManager->freezeExcludedPidMap_.end());
+    }
+
+    for (size_t i = CLEAN_COUNT; i < MAX_SIZE + 1; i++) {
+        int32_t remainingPid = BASE_PID + static_cast<int32_t>(i);
+        EXPECT_TRUE(appfreezeManager->freezeExcludedPidMap_.find(remainingPid) !=
+                    appfreezeManager->freezeExcludedPidMap_.end());
+    }
+
+    int32_t newestPid = BASE_PID + static_cast<int32_t>(MAX_SIZE);
+    EXPECT_TRUE(appfreezeManager->freezeExcludedPidMap_.find(newestPid) !=
+                appfreezeManager->freezeExcludedPidMap_.end());
+
+    appfreezeManager->freezeExcludedPidMap_.clear();
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

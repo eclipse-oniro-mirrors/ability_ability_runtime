@@ -225,7 +225,7 @@ HWTEST_F(InsightIntentExecutorTest, ETSInsightIntentExecutorCreate_005, TestSize
     auto runtime = std::make_shared<MockRuntime>();
     runtime->SetLanguage(Runtime::Language::ETS);
     auto res = InsightIntentExecutor::Create(*runtime, InsightIntentType::DECOR_PAGE);
-    EXPECT_EQ(res, nullptr);
+    EXPECT_NE(res, nullptr);
 }
 
 /*

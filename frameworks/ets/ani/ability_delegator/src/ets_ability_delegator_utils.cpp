@@ -33,6 +33,8 @@ constexpr const char* WANT_ASYNCCALLBACK = "C{@ohos.app.ability.Want.Want}C{util
 constexpr const char* ARGS_ABILITY_DELEGATOR_CLASS_NAME =
     "application.abilityDelegatorArgs.AbilityDelegatorArgsInner";
 constexpr const char* SIGNATURE_MONITOR_VOID = "C{application.AbilityMonitor.AbilityMonitor}:";
+constexpr const char* INTEROP_MONITOR_VOID =
+    "C{application.InteropAbilityMonitor.InteropAbilityMonitor}:";
 constexpr const char* SIGNATURE_MONITOR_NUMBER_ASYNCCALLBACK =
     "C{application.AbilityMonitor.AbilityMonitor}lC{utils.AbilityUtils.AsyncCallbackWrapper}:";
 constexpr const char* STAGEMONITOR_ASYNCCALLBACK_VOID =
@@ -55,25 +57,45 @@ constexpr const char* RECORD_SET_NAME =
     "X{C{std.core.BaseEnum}C{std.core.Numeric}C{std.core.String}}Y:";
 }
 
-bool BindFunctions(ani_env *aniEnv, ani_class abilityDelegator)
+auto GetBaseNativeFunctions()
 {
-    if (aniEnv == nullptr) {
-        return false;
-    }
-    std::array functions = {
+    return std::array {
         ani_native_function {"getAppContext", VOID_CONTEXT,
             reinterpret_cast<void *>(EtsAbilityDelegator::GetAppContext)},
         ani_native_function {"nativeExecuteShellCommand", STRING_NUMBER_ASYNCCALLBACK,
             reinterpret_cast<void *>(EtsAbilityDelegator::ExecuteShellCommand)},
         ani_native_function {"nativeFinishTest", STRING_NUMBER_ASYNCCALLBACK,
             reinterpret_cast<void *>(EtsAbilityDelegator::FinishTest)},
-        ani_native_function {"printSync", STRING_VOID, reinterpret_cast<void *>(EtsAbilityDelegator::PrintSync)},
+        ani_native_function {"printSync", STRING_VOID,
+            reinterpret_cast<void *>(EtsAbilityDelegator::PrintSync)},
+        ani_native_function {"nativeStartAbility", WANT_ASYNCCALLBACK,
+            reinterpret_cast<void *>(EtsAbilityDelegator::StartAbility)},
+        ani_native_function {"printAsync", STRING_ASYNCCALLBACK_VOID,
+            reinterpret_cast<void *>(EtsAbilityDelegator::Print)},
+        ani_native_function {"getAbilityState", STRING_UIABILITY_NUMBER,
+            reinterpret_cast<void *>(EtsAbilityDelegator::GetAbilityState)},
+        ani_native_function {"nativeGetCurrentTopAbility", STRING_CALLBACK_UIABILITY,
+            reinterpret_cast<void *>(EtsAbilityDelegator::GetCurrentTopAbility)},
+        ani_native_function {"doAbilityForegroundAsync", STAGEMONITOR_UIABILITY_ASYNCCALLBACK,
+            reinterpret_cast<void *>(EtsAbilityDelegator::DoAbilityForeground)},
+        ani_native_function {"doAbilityForegroundOrBackgroundCheck", STAGEMONITOR_UIABILITY_CHECK,
+            reinterpret_cast<void *>(EtsAbilityDelegator::DoAbilityForegroundOrBackgroundCheck)},
+        ani_native_function {"doAbilityBackgroundAsync", STAGEMONITOR_UIABILITY_ASYNCCALLBACK,
+            reinterpret_cast<void *>(EtsAbilityDelegator::DoAbilityBackground)},
+        ani_native_function {"addInteropAbilityMonitorSync", INTEROP_MONITOR_VOID,
+            reinterpret_cast<void *>(EtsAbilityDelegator::AddInteropAbilityMonitorSync)},
+        ani_native_function {"removeInteropAbilityMonitorSync", INTEROP_MONITOR_VOID,
+            reinterpret_cast<void *>(EtsAbilityDelegator::RemoveInteropAbilityMonitorSync)}
+    };
+}
+
+auto GetMonitorNativeFunctions()
+{
+    return std::array {
         ani_native_function {"nativeAddAbilityMonitor", MONITOR_ASYNCCALLBACK_VOID,
             reinterpret_cast<void *>(EtsAbilityDelegator::AddAbilityMonitor)},
         ani_native_function {"addAbilityMonitorCheck", SIGNATURE_MONITOR_VOID,
             reinterpret_cast<void *>(EtsAbilityDelegator::AddAbilityMonitorCheck)},
-        ani_native_function {"nativeStartAbility", WANT_ASYNCCALLBACK,
-            reinterpret_cast<void *>(EtsAbilityDelegator::StartAbility)},
         ani_native_function {"addAbilityMonitorSync", SIGNATURE_MONITOR_VOID,
             reinterpret_cast<void *>(EtsAbilityDelegator::AddAbilityMonitorSync)},
         ani_native_function {"removeAbilityMonitorAsync", MONITOR_ASYNCCALLBACK_VOID,
@@ -97,26 +119,32 @@ bool BindFunctions(ani_env *aniEnv, ani_class abilityDelegator)
         ani_native_function {"removeAbilityStageMonitorCheck", STAGEMONITOR_VOID,
             reinterpret_cast<void *>(EtsAbilityDelegator::RemoveAbilityStageMonitorCheck)},
         ani_native_function {"waitAbilityStageMonitorAsync", SIGNATURE_STAGEMONITOR_NUMBER_ASYNCCALLBACK,
-            reinterpret_cast<void *>(EtsAbilityDelegator::WaitAbilityStageMonitor)},
-        ani_native_function {"doAbilityForegroundAsync", STAGEMONITOR_UIABILITY_ASYNCCALLBACK,
-            reinterpret_cast<void *>(EtsAbilityDelegator::DoAbilityForeground)},
-        ani_native_function {"doAbilityForegroundOrBackgroundCheck", STAGEMONITOR_UIABILITY_CHECK,
-            reinterpret_cast<void *>(EtsAbilityDelegator::DoAbilityForegroundOrBackgroundCheck)},
-        ani_native_function {"doAbilityBackgroundAsync", STAGEMONITOR_UIABILITY_ASYNCCALLBACK,
-            reinterpret_cast<void *>(EtsAbilityDelegator::DoAbilityBackground)},
-        ani_native_function {"printAsync", STRING_ASYNCCALLBACK_VOID,
-            reinterpret_cast<void *>(EtsAbilityDelegator::Print)},
-        ani_native_function {"getAbilityState", STRING_UIABILITY_NUMBER,
-            reinterpret_cast<void *>(EtsAbilityDelegator::GetAbilityState)},
-        ani_native_function {"nativeGetCurrentTopAbility", STRING_CALLBACK_UIABILITY,
-            reinterpret_cast<void *>(EtsAbilityDelegator::GetCurrentTopAbility)}
+            reinterpret_cast<void *>(EtsAbilityDelegator::WaitAbilityStageMonitor)}
     };
+}
+
+template<typename T>
+bool BindNativeArray(ani_env *aniEnv, ani_class abilityDelegator, const T &functions)
+{
     ani_status status = aniEnv->Class_BindNativeMethods(abilityDelegator, functions.data(), functions.size());
     if (status != ANI_OK) {
         TAG_LOGE(AAFwkTag::DELEGATOR, "Class_BindNativeMethods failed status: %{public}d", status);
         return false;
     }
     return true;
+}
+
+bool BindFunctions(ani_env *aniEnv, ani_class abilityDelegator)
+{
+    if (aniEnv == nullptr) {
+        return false;
+    }
+    auto baseFuncs = GetBaseNativeFunctions();
+    auto monitorFuncs = GetMonitorNativeFunctions();
+    if (!BindNativeArray(aniEnv, abilityDelegator, baseFuncs)) {
+        return false;
+    }
+    return BindNativeArray(aniEnv, abilityDelegator, monitorFuncs);
 }
 
 ani_object CreateEtsAbilityDelegator(ani_env *aniEnv)

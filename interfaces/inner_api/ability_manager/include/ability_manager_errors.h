@@ -1138,6 +1138,33 @@ enum {
      */
     ERR_NOT_SUPPORT_SCREEN = 2099411,
 
+    ERR_MODULAR_OBJECT_DISABLED = 2099412,
+
+    ERR_NO_RUNNING_ABILITIES_WITH_UI = 2099413,
+    
+    ERR_INVALID_DISTRIBUTION_TYPE = 2099414,
+
+    // Result (2099420) for Cross-device execution intent connection failed.
+    ERR_INTENT_CONNECTION_FAILED = 2099420,
+
+    // Result (2099421) for Device disconnected during cross-device intent execution.
+    ERR_INTENT_DEVICE_DISCONNECTED = 2099421,
+
+    /**
+     * Result (2099414) for moe connection number per caller pid reached upper limit.
+     */
+    ERR_MOE_CONNECTION_LIMIT = 2099415,
+
+    /**
+     * Result (2099415) for moe instance number reached upper limit.
+     */
+    ERR_MOE_INSTANCE_LIMIT = 2099416,
+
+    /**
+     * Result (2099417) for IN_PROCESS mode does not allow cross-application connection.
+     */
+    ERR_MOE_CROSS_APP_IN_PROCESS = 2099417,
+
     /**
      * Native error(3000000) for target bundle not exist.
      */
@@ -1410,10 +1437,21 @@ enum NativeFreeInstallError {
      */
     ERR_NOT_GAME_PRELOAD_STATE = 29360227,
 
+    /* codes 29360270 - 29360280 are reserved for StartSelfUIAbility by delayed process exit */
     /*
-     * Result (29360228) for Connect: An error of the get cli tool mgr service.
+     * Result (29360270) The current process has no UIAbility, cannot be called.
      */
-    GET_CLI_TOOL_MGR_SERVICE_FAILED = 29360228,
+    ERR_DELAYED_PROCESS_EXIT_NO_UIABILITY = 29360270,
+
+    /*
+     * Result (29360271) Delayed process exit is not pending in the current process, cannot be called.
+     */
+    ERR_DELAYED_PROCESS_EXIT_NOT_PENDING = 29360271,
+    
+    /*
+     * Result (29360272) The current process still has another UIAbility.
+     */
+    ERR_DELAYED_PROCESS_EXIT_HAS_OTHER_UIABILITY = 29360272,
 
     /**
      * Undefine error code.

@@ -18,9 +18,8 @@
 #include <cstdint>
 
 #include "ability_state.h"
-#include "ani_common_cache_mgr.h"
+#include "ani_common_json_util.h"
 #include "ani_common_util.h"
-#include "ani_common_want.h"
 #include "ani_enum_convert.h"
 #include "hilog_tag_wrapper.h"
 
@@ -455,40 +454,33 @@ ani_object CreateEtsFormInfoForQuery(ani_env *env, const FormInfoForQuery &info)
     return objValue;
 }
 
-bool CreateEmptyRecordObject(ani_env *env, ani_object &recordObject)
-{
-    ani_class recordCls = nullptr;
-    ani_method recordCtorMethod = nullptr;
-    AppExecFwk::AniCommonMethodCacheKey recordCtor = std::make_pair("<ctor>", ":");
-    if (!AppExecFwk::AniCommonCacheMgr::GetCachedClassAndMethod(env, "std.core.Record", recordCtor,
-        recordCls, recordCtorMethod)) {
-        return false;
-    }
-    ani_status status = env->Object_New(recordCls, recordCtorMethod, &recordObject);
-    if (status != ANI_OK) {
-        TAG_LOGE(AAFwkTag::ANI, "Object_New failed: %{public}d", status);
-        return false;
-    }
-    return true;
-}
-
 ani_object CreateInsightIntentInfoParam(ani_env *env, const std::string &paramStr)
 {
     ani_object recordObject;
     if (paramStr.empty()) {
         TAG_LOGE(AAFwkTag::INTENT, "paramStr empty");
-        CreateEmptyRecordObject(env, recordObject);
+        AppExecFwk::CreateEmptyAniRecord(env, recordObject);
         return recordObject;
     }
     nlohmann::json jsonObject = nlohmann::json::parse(paramStr, nullptr, false);
     if (jsonObject.is_discarded()) {
         TAG_LOGE(AAFwkTag::INTENT, "Parse param str fail");
-        CreateEmptyRecordObject(env, recordObject);
+        AppExecFwk::CreateEmptyAniRecord(env, recordObject);
         return recordObject;
     }
 
-    if (!AppExecFwk::CreateRecordObjectFromJson(env, jsonObject, recordObject)) {
+    if (!AppExecFwk::CreateAniRecordFromJson(env, jsonObject, recordObject)) {
         TAG_LOGE(AAFwkTag::INTENT, "failed to create record object from json");
+        return nullptr;
+    }
+    return recordObject;
+}
+
+ani_object CreateInsightIntentInfoWithJson(ani_env *env, const nlohmann::json &jsonObject)
+{
+    ani_object recordObject = nullptr;
+    if (!AppExecFwk::CreateAniRecordFromJson(env, jsonObject, recordObject)) {
+        TAG_LOGE(AAFwkTag::INTENT, "failed to create InsightIntent record object from JSON");
         return nullptr;
     }
     return recordObject;

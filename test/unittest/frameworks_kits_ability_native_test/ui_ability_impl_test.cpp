@@ -21,6 +21,7 @@
 #undef protected
 #undef private
 #include "ability_context_impl.h"
+#include "native_ability_util.h"
 #include "ability_handler.h"
 #include "context_deal.h"
 #include "locale_config.h"
@@ -2516,5 +2517,120 @@ HWTEST_F(UIAbilityImplTest, AbilityRuntime_GetUIAbility_0100, TestSize.Level1)
     GTEST_LOG_(INFO) << "AbilityRuntime_GetUIAbility_0100 end";
 }
 #endif
+
+/*
+ * Feature: UIAbilityImpl
+ * Function: SetNativeModuleMetaData
+ * SubFunction: NA
+ * FunctionPoints: SetNativeModuleMetaData
+ * EnvConditions: NA
+ * CaseDescription: Test SetNativeModuleMetaData with withNativeModule=false
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_SetNativeModuleMetaData_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_SetNativeModuleMetaData_001 start";
+    AAFwk::NativeAbilityMetaData metaData;
+    metaData.withNativeModule = false;
+    metaData.startupPhase = AAFwk::StartupPhase::PRE_WINDOW;
+
+    abilityImpl_->SetNativeModuleMetaData(metaData);
+
+    EXPECT_EQ(abilityImpl_->localNativeState_, AbilityRuntime::LocalNativeState::NONE);
+    GTEST_LOG_(INFO) << "AbilityRuntime_SetNativeModuleMetaData_001 end";
+}
+
+/*
+ * Feature: UIAbilityImpl
+ * Function: SetNativeModuleMetaData
+ * SubFunction: NA
+ * FunctionPoints: SetNativeModuleMetaData
+ * EnvConditions: NA
+ * CaseDescription: Test SetNativeModuleMetaData with withNativeModule=true and startupPhase=PRE_WINDOW
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_SetNativeModuleMetaData_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_SetNativeModuleMetaData_002 start";
+    AAFwk::NativeAbilityMetaData metaData;
+    metaData.withNativeModule = true;
+    metaData.startupPhase = AAFwk::StartupPhase::PRE_WINDOW;
+    metaData.nativeModuleSource = "libtest.so";
+    metaData.nativeModuleFunc = "OHMain";
+
+    abilityImpl_->SetNativeModuleMetaData(metaData);
+
+    EXPECT_EQ(abilityImpl_->localNativeState_, AbilityRuntime::LocalNativeState::INIT_PRE_WINDOW);
+    EXPECT_EQ(abilityImpl_->nativeModuleMetaData_.nativeModuleSource, "libtest.so");
+    EXPECT_EQ(abilityImpl_->nativeModuleMetaData_.nativeModuleFunc, "OHMain");
+    GTEST_LOG_(INFO) << "AbilityRuntime_SetNativeModuleMetaData_002 end";
+}
+
+/*
+ * Feature: UIAbilityImpl
+ * Function: SetNativeModuleMetaData
+ * SubFunction: NA
+ * FunctionPoints: SetNativeModuleMetaData
+ * EnvConditions: NA
+ * CaseDescription: Test SetNativeModuleMetaData with withNativeModule=true and startupPhase=PRE_FOREGROUND
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_SetNativeModuleMetaData_003, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_SetNativeModuleMetaData_003 start";
+    AAFwk::NativeAbilityMetaData metaData;
+    metaData.withNativeModule = true;
+    metaData.startupPhase = AAFwk::StartupPhase::PRE_FOREGROUND;
+
+    abilityImpl_->SetNativeModuleMetaData(metaData);
+
+    EXPECT_EQ(abilityImpl_->localNativeState_, AbilityRuntime::LocalNativeState::INIT_PRE_FOREGROUND);
+    GTEST_LOG_(INFO) << "AbilityRuntime_SetNativeModuleMetaData_003 end";
+}
+
+/*
+ * Feature: UIAbilityImpl
+ * Function: SetNativeModuleMetaData
+ * SubFunction: NA
+ * FunctionPoints: SetNativeModuleMetaData
+ * EnvConditions: NA
+ * CaseDescription: Test SetNativeModuleMetaData with withNativeModule=true and startupPhase=FOREGROUND,
+ *                  localNativeState should remain NONE
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_SetNativeModuleMetaData_004, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_SetNativeModuleMetaData_004 start";
+    AAFwk::NativeAbilityMetaData metaData;
+    metaData.withNativeModule = true;
+    metaData.startupPhase = AAFwk::StartupPhase::FOREGROUND;
+
+    abilityImpl_->SetNativeModuleMetaData(metaData);
+
+    EXPECT_EQ(abilityImpl_->localNativeState_, AbilityRuntime::LocalNativeState::NONE);
+    GTEST_LOG_(INFO) << "AbilityRuntime_SetNativeModuleMetaData_004 end";
+}
+
+/*
+ * Feature: UIAbilityImpl
+ * Function: SetNativeModuleMetaData
+ * SubFunction: NA
+ * FunctionPoints: SetNativeModuleMetaData
+ * EnvConditions: NA
+ * CaseDescription: Test SetNativeModuleMetaData overwrites previous state
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_SetNativeModuleMetaData_005, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_SetNativeModuleMetaData_005 start";
+    AAFwk::NativeAbilityMetaData metaData;
+    metaData.withNativeModule = true;
+    metaData.startupPhase = AAFwk::StartupPhase::PRE_WINDOW;
+    abilityImpl_->SetNativeModuleMetaData(metaData);
+    EXPECT_EQ(abilityImpl_->localNativeState_, AbilityRuntime::LocalNativeState::INIT_PRE_WINDOW);
+
+    AAFwk::NativeAbilityMetaData metaData2;
+    metaData2.withNativeModule = false;
+    abilityImpl_->SetNativeModuleMetaData(metaData2);
+    EXPECT_EQ(abilityImpl_->localNativeState_, AbilityRuntime::LocalNativeState::INIT_PRE_WINDOW);
+    EXPECT_FALSE(abilityImpl_->nativeModuleMetaData_.withNativeModule);
+    GTEST_LOG_(INFO) << "AbilityRuntime_SetNativeModuleMetaData_005 end";
+}
+
 } // namespace AppExecFwk
 } // namespace OHOS

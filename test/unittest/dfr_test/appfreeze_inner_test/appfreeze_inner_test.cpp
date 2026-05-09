@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -477,6 +477,50 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner_ChangeFaultDateInfo_004, TestSize.Le
     appfreezeInner->ChangeFaultDateInfo(faultData, msgContent);
     EXPECT_TRUE(!faultData.errorObject.message.empty());
     EXPECT_TRUE(faultData.forceExit);
+}
+
+/**
+ * @tc.number: AppfreezeInner_GetMainStackDump_001
+ * @tc.name: GetMainStackDump
+ * @tc.desc: Verify that function GetMainStackDump.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetMainStackDump_001, TestSize.Level1)
+{
+    appfreezeInner->lastMainStack_ = "";
+    int pid = -1;
+    std::string ret = appfreezeInner->GetMainStackDump(pid);
+    pid = getpid();
+    appfreezeInner->GetMainStackDump(pid);
+    pid = 1;
+    appfreezeInner->GetMainStackDump(pid);
+    EXPECT_TRUE(!ret.empty());
+}
+
+/**
+ * @tc.number: AppfreezeInner_GetMainStackDump_002
+ * @tc.name: GetMainStackDump
+ * @tc.desc: Verify that function GetMainStackDump.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetMainStackDump_002, TestSize.Level1)
+{
+    appfreezeInner->lastMainStack_ = "";
+    int pid = getpid();
+    std::string firstCall = appfreezeInner->GetMainStackDump(pid);
+    std::string secondCall = appfreezeInner->GetMainStackDump(pid);
+    EXPECT_EQ(firstCall, secondCall);
+}
+
+/**
+ * @tc.number: AppfreezeInner_GetMainStackDump_003
+ * @tc.name: GetMainStackDump
+ * @tc.desc: Verify that function GetMainStackDump.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetMainStackDump_003, TestSize.Level1)
+{
+    appfreezeInner->lastMainStack_ = "";
+    int pid = 999999;
+    std::string ret = appfreezeInner->GetMainStackDump(pid);
+    EXPECT_TRUE(ret.empty());
 }
 
 /**

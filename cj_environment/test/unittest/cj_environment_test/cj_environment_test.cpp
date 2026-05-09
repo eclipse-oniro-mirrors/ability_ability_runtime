@@ -46,6 +46,15 @@ void CjEnvironmentTest::TearDown() {}
 
 void RegisterCJUncaughtExceptionHandlerTest(const CJUncaughtExceptionInfo &handle) {}
 
+void RegisterCJOOMHandlerTest(const CJEventReportInfo &handle) {}
+
+static bool g_isRegisterCalled = false;
+
+void MockRegisterCJOOMHandler(const CJEventReportInfo& handle)
+{
+    g_isRegisterCalled = true;
+}
+
 /**
  * @tc.name: CJEnvironment_GetInstance_0001
  * @tc.desc: JsRuntime test for UpdatePkgContextInfoJson.
@@ -382,5 +391,42 @@ HWTEST_F(CjEnvironmentTest, CjEnvironmentTestInitCJAppNS_0100, TestSize.Level2)
     std::string appPath = "com/ohos/unittest/test/";
     cJEnvironment.InitCJAppNS(appPath);
     EXPECT_EQ(CJEnvironment::GetInstance(), nullptr);
+}
+
+/**
+ * @tc.name: CJEnvironment_RegisterOOMHandler_0001
+ * @tc.desc: JsRuntime test for RegisterCJOOMHandler.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjEnvironmentTest, CJEnvironment_RegisterCJOOMHandler_0001, TestSize.Level1)
+{
+    CJEnvironment cJEnvironment(CJEnvironment::NSMode::APP);
+    CJEventReportInfo handle;
+    handle.hapPath = "/test1/";
+    handle.reportInfoTask = [](const char* domain, const char* event, size_t hiSysEventType,
+        const std::map<std::string, std::string>& params) {};
+    CJRuntimeAPI api;
+    api.RegisterEventHandler = RegisterCJOOMHandlerTest;
+    CJRuntimeAPI* lazyApis_ = new CJRuntimeAPI(api);
+    cJEnvironment.SetLazyApis(lazyApis_);
+    cJEnvironment.RegisterEventHandler(handle);
+
+    bool ret = cJEnvironment.StartRuntime();
+    EXPECT_EQ(ret, false);
+}
+
+/**
+ * @tc.name: CJEnvironment_RegisterCJOOMHandler_0002
+ * @tc.desc: JsRuntime test for RegisterCJOOMHandler.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjEnvironmentTest, CJEnvironment_RegisterCJOOMHandler_0002, TestSize.Level1)
+{
+    CJEnvironment cJEnvironment(CJEnvironment::NSMode::APP);
+    CJEventReportInfo handle;
+    cJEnvironment.SetLazyApis(nullptr);
+    cJEnvironment.RegisterEventHandler(handle);
+
+    EXPECT_EQ(cJEnvironment.lazyApis_, nullptr);
 }
 } // namespace OHOS

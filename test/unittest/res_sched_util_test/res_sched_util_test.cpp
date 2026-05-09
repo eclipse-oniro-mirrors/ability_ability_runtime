@@ -58,7 +58,7 @@ HWTEST_F(ResSchedUtilTest, ResSchedUtilTest_0100, TestSize.Level2)
     TAG_LOGI(AAFwkTag::TEST, "ResSchedUtilTest_0100 called.");
     AbilityInfo abilityInfo;
     int64_t resSchedType = -1;
-    AAFwk::ResSchedUtil::GetInstance().ReportAbilityStartInfoToRSS(abilityInfo, -1, false, false, -1);
+    AAFwk::ResSchedUtil::GetInstance().ReportAbilityStartInfoToRSS(abilityInfo, -1, false, false, -1, false);
     AAFwk::ResSchedUtil::GetInstance().ReportAbilityAssociatedStartInfoToRSS(abilityInfo, resSchedType, 0, 0);
     int64_t ret = AAFwk::ResSchedUtil::GetInstance().convertType(resSchedType);
     EXPECT_EQ(resSchedType, ret);

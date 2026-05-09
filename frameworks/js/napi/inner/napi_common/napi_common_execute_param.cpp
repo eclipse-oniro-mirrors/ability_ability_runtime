@@ -64,6 +64,16 @@ bool UnwrapExecuteParam(napi_env env, napi_value param, InsightIntentExecutePara
         return false;
     }
 
+    if (IsExistsByPropertyName(env, param, "deviceId")) {
+        TAG_LOGI(AAFwkTag::JSNAPI, "has deviceId");
+        std::string deviceId {""};
+        if (!UnwrapStringByPropertyName(env, param, "deviceId", deviceId)) {
+            TAG_LOGE(AAFwkTag::JSNAPI, "Wrong argument type deviceId");
+            return false;
+        }
+        executeParam.deviceId_ = deviceId;
+    }
+
     napi_valuetype valueType = napi_undefined;
     napi_typeof(env, napiIntentParam, &valueType);
     if (valueType != napi_object) {

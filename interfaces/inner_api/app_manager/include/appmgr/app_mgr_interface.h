@@ -281,6 +281,18 @@ public:
     virtual int GetProcessRunningInfosByUserId(std::vector<RunningProcessInfo> &info, int32_t userId) = 0;
 
     /**
+     * GetProcessRunningInfosByAccessTokenId, call GetProcessRunningInfosByAccessTokenId()
+     * through proxy project. Obtains information about application processes
+     * that are running on the device by accessTokenId.
+     *
+     * @param accessTokenId, accessTokenId.
+     * @param info, Running process information list.
+     * @return ERR_OK ,return back success，others fail.
+     */
+    virtual int32_t GetProcessRunningInfosByAccessTokenId(uint32_t accessTokenId,
+        std::vector<RunningProcessInfo> &info) = 0;
+
+    /**
      * GetProcessRunningInformation, call GetProcessRunningInformation() through proxy project.
      * Obtains information about current application process which is running on the device.
      *
@@ -623,6 +635,14 @@ public:
      */
     virtual bool SetAppFreezeFilter(int32_t pid) = 0;
 
+    /**
+     * @brief Update freeze excluded pid set.
+     * @param isAdd true to add pid, false to remove pid.
+     * @param targetPid The target process id to be added or removed.
+     * @param profilerPid The profiler process id.
+     */
+    virtual void UpdateFreezeExcludedPid(bool isAdd, int32_t targetPid, int32_t profilerPid) = 0;
+
 #ifdef BGTASKMGR_CONTINUOUS_TASK_ENABLE
     /**
      * @brief Set whether the process is continuousTask.
@@ -957,13 +977,9 @@ public:
 
     virtual int32_t IsProcessCacheSupported(int32_t pid, bool &isSupported) = 0;
 
-    virtual int32_t IsArkChildProcessSupported(pid_t pid, bool &isSupported)
+    virtual int32_t IsChildProcessSupported(bool isNative, bool &isSupported)
     {
-        return 0;
-    }
-
-    virtual int32_t IsNativeChildProcessSupported(pid_t pid, bool &isSupported)
-    {
+        isSupported = false;
         return 0;
     }
 
@@ -1177,6 +1193,12 @@ public:
     virtual void SetProcessPrepareExit(int32_t pid) {}
 
     /**
+     * @brief set TerminateTimeOut flag.
+     * @param token Ability identify.
+     */
+    virtual void SetTerminateTimeOutFlag(const sptr<IRemoteObject> token) {}
+
+    /**
      * Get all ability infos
      *
      * @param pid if pid is -1, query all ability infos, otherwise query ability infos for this pid
@@ -1187,6 +1209,13 @@ public:
     {
         return 0;
     }
+
+    virtual int32_t EnableDelayedProcessExit(int32_t pid, bool enabled)
+    {
+        return ERR_OK;
+    }
+
+    virtual void CancelDelayedExitTask(int32_t pid) {}
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

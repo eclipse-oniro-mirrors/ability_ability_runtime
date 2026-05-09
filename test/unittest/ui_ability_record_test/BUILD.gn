@@ -16,15 +16,23 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 ohos_unittest("ui_ability_record_test") {
   module_out_path = "ability_runtime/ability_runtime/ability_call_test"
-
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+    blocklist = "../../cfi_blocklist.txt"
+  }
   include_dirs = [
     "mock/include",
     "${ability_runtime_services_path}/abilitymgr/include/scene_board",
+    "${ability_runtime_services_path}/common/include",
+    "${ability_runtime_path}/interfaces/inner_api/ability_manager/include",
   ]
 
   sources = [
     "${ability_runtime_services_path}/abilitymgr/src/scene_board/ui_ability_record.cpp",
     "mock/src/mock_ability_record.cpp",
+    "mock/src/mock_native_ability_util.cpp",
     "ui_ability_record_test.cpp",
   ]
 
@@ -35,6 +43,8 @@ ohos_unittest("ui_ability_record_test") {
 
   external_deps = [
     "googletest:gmock_main",
+    "hilog:libhilog",
+    "hitrace:hitrace_meter",
   ]
 }
 

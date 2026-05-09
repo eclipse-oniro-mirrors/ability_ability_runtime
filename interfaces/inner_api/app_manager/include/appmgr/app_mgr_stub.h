@@ -76,6 +76,7 @@ private:
     int32_t HandleGetAllRunningProcesses(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetRunningProcessesByBundleType(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetProcessRunningInfosByUserId(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleGetProcessRunningInfosByAccessTokenId(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetProcessRunningInformation(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetAllRenderProcesses(MessageParcel &data, MessageParcel &reply);
     int32_t HandlePreloadModuleFinished(MessageParcel &data, MessageParcel &reply);
@@ -137,6 +138,7 @@ private:
     int32_t HandleNotifyFault(MessageParcel &data, MessageParcel &reply);
     int32_t HandleNotifyFaultBySA(MessageParcel &data, MessageParcel &reply);
     int32_t HandleSetAppFreezeFilter(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleUpdateFreezeExcludedPid(MessageParcel &data, MessageParcel &reply);
     int32_t HandleIsTerminatingByPid(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetBundleNameByPid(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetRunningProcessInfoByPid(MessageParcel &data, MessageParcel &reply);
@@ -174,8 +176,7 @@ private:
     int32_t HandleSetSupportedProcessCacheSelf(MessageParcel &data, MessageParcel &reply);
     int32_t HandleSetSupportedProcessCache(MessageParcel &data, MessageParcel &reply);
     int32_t HandleIsProcessCacheSupported(MessageParcel &data, MessageParcel &reply);
-    int32_t HandleIsArkChildProcessSupported(MessageParcel &data, MessageParcel &reply);
-    int32_t HandleIsNativeChildProcessSupported(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleIsChildProcessSupported(MessageParcel &data, MessageParcel &reply);
     int32_t HandleSetProcessCacheEnable(MessageParcel &data, MessageParcel &reply);
     int32_t HandleLockProcessCache(MessageParcel &data, MessageParcel &reply);
     int32_t HandleSaveBrowserChannel(MessageParcel &data, MessageParcel &reply);
@@ -206,6 +207,8 @@ private:
         MessageParcel &reply, MessageOption &option);
     int32_t OnRemoteRequestInnerEighth(uint32_t code, MessageParcel &data,
         MessageParcel &reply, MessageOption &option);
+    int32_t OnRemoteRequestInnerNinth(uint32_t code, MessageParcel &data,
+        MessageParcel &reply, MessageOption &option);
     int32_t HandleGetSupportedProcessCachePids(MessageParcel &data, MessageParcel &reply);
     int32_t HandleUpdateProcessMemoryState(MessageParcel &data, MessageParcel &reply);
     int32_t HandleLaunchAbility(MessageParcel &data, MessageParcel &reply);
@@ -219,7 +222,10 @@ private:
     int32_t HandleKillChildProcessByPid(MessageParcel &data, MessageParcel &reply);
     int32_t HandlePreloadExtension(MessageParcel &data, MessageParcel &reply);
     int32_t HandleSetProcessPrepareExit(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleSetTerminateTimeOutFlag(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetAllAbilityInfos(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleEnableDelayedProcessExit(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleCancelDelayedExitTask(MessageParcel &data, MessageParcel &reply);
     DISALLOW_COPY_AND_MOVE(AppMgrStub);
 };
 }  // namespace AppExecFwk

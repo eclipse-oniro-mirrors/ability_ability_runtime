@@ -20,7 +20,7 @@ interface OHOS.AAFwk.IAbilityConnection;
 rawdata AgentCard..OHOS.AgentRuntime.AgentCardsRawData;
 interface OHOS.AgentRuntime.IAgentManager {
     void GetAllAgentCards([out] AgentCardsRawData cards);
-    void GetAgentCardsByBundleName([in] String bundleName, [out] AgentCard[] cards);
+    void GetAgentCardsByBundleName([in] String bundleName, [out] AgentCardsRawData cards);
     void GetAgentCardByAgentId([in] String bundleName, [in] String agentId, [out] AgentCard card);
     void GetCallerAgentCardByAgentId([in] String agentId, [out] AgentCard card);
     void RegisterAgentCard([in] AgentCard card);

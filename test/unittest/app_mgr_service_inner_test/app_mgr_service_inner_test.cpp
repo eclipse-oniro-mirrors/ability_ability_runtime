@@ -4838,6 +4838,31 @@ HWTEST_F(AppMgrServiceInnerTest, AppRecoveryNotifyApp_001, TestSize.Level1)
 }
 
 /**
+ * @tc.name: RecordAppRecoveryNotifyAppReason_001
+ * @tc.desc: AppRecovery NotifyApp.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, RecordAppRecoveryNotifyAppReason_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RecordAppRecoveryNotifyAppReason_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    int pid = getpid();
+    appMgrServiceInner->RecordAppRecoveryNotifyAppReason(pid);
+    std::shared_ptr<ApplicationInfo> info = std::make_shared<ApplicationInfo>();
+    int32_t recordId = RECORD_ID;
+    std::string processName = "processName";
+    std::shared_ptr<AppRunningRecord> appRecord = std::make_shared<AppRunningRecord>(info, recordId, processName);
+    EXPECT_NE(appRecord, nullptr);
+    appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
+    EXPECT_NE(appMgrServiceInner->appRunningManager_, nullptr);
+    appMgrServiceInner->RecordAppRecoveryNotifyAppReason(pid);
+    pid = 1;
+    appMgrServiceInner->RecordAppRecoveryNotifyAppReason(pid);
+    TAG_LOGI(AAFwkTag::TEST, "RecordAppRecoveryNotifyAppReason_001 end");
+}
+
+/**
  * @tc.name: NotifyAppFault_001
  * @tc.desc: Notify AppFault.
  * @tc.type: FUNC

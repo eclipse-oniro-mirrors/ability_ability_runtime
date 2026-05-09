@@ -21,6 +21,7 @@
 #include "ets_runtime.h"
 #include "insight_intent_execute_result.h"
 #include "insight_intent_info_for_query.h"
+#include "nlohmann/json.hpp"
 #include "want_params.h"
 #include "want_params_wrapper.h"
 
@@ -45,7 +46,6 @@ ani_object CreateEtsConfigPutParams(ani_env *env, const std::vector<std::string>
 ani_object CreateEtsConfigIntentInfo(ani_env *env, const InsightIntentInfoForQuery &info);
 ani_object CreateInsightIntentInfoParam(ani_env *env, const std::string &paramStr);
 ani_object CreateInsightIntentInfoWithJson(ani_env *env, const nlohmann::json &jsonObject);
-bool CreateEmptyRecordObject(ani_env *env, ani_object &recordObject);
 void SetInsightIntentInfo(ani_env *env, ani_object objValue, const InsightIntentInfoForQuery &info);
 
 } // namespace AbilityRuntime

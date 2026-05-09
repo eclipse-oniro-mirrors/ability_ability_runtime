@@ -161,9 +161,11 @@ public:
      *
      * @param abilityRecord, the ability to minimize.
      * @param fromUser, Whether form user.
+     * @param backgroundReason The reason for moving to background (3: screen off).
      * @return Returns ERR_OK on success, others on failure.
      */
-    int MinimizeUIAbility(const UIAbilityRecordPtr &abilityRecord, bool fromUser, uint32_t sceneFlag);
+    int MinimizeUIAbility(const UIAbilityRecordPtr &abilityRecord, bool fromUser, uint32_t sceneFlag,
+        int32_t backgroundReason = 0);
 
     /**
      * GetUIAbilityRecordBySessionInfo.
@@ -584,6 +586,13 @@ public:
         int32_t appIndex, const std::string &instanceKey, AppExecFwk::LaunchMode launchMode);
 
     void HandleUIAbilityDiedByPid(pid_t pid);
+
+    /**
+     * @brief Start the ability itself
+     * @param abilityRecord The ability record to start
+     * @return Returns ERR_OK on success, others on failure
+     */
+    int32_t StartSelf(const UIAbilityRecordPtr &abilityRecord);
 
 private:
     /**
@@ -1294,6 +1303,7 @@ private:
     bool ExactSpecified(const AbilityRequest &abilityRequest);
     bool CheckStartByOEExt(const AbilityRequest &abilityRequest, int32_t requestId,
         int32_t &persistentId, bool &reuse);
+    bool CalcHideNativeWindow(int32_t persistentId, const AppExecFwk::AbilityInfo& abilityInfo);
     
     struct CallerInfo {
         uint32_t callerTokenId = 0;

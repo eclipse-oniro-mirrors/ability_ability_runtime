@@ -25,6 +25,7 @@ public:
         IS_SA_AND_SHELL_CALL,
     };
     static int flag_;
+    static bool retCreateModalUIExtension_;  // Control ModalSystemUiExtension mock return value
 };
 } // namespace AAFwk
 } // namespace OHOS

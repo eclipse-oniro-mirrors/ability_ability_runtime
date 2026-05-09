@@ -71,6 +71,7 @@ ohos_unittest("ability_manager_service_twelfth_test") {
     "mock/src/mock_ability_connect_callback.cpp",
     "mock/src/mock_ipc_skeleton.cpp",
     "mock/src/mock_my_flag.cpp",
+    "mock/src/mock_modal_system_ui_extension.cpp",
     "mock/src/mock_parameters.cpp",
     "mock/src/mock_permission_verification.cpp",
     "mock/src/mock_scene_board_judgement.cpp",

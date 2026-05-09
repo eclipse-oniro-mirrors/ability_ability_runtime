@@ -743,7 +743,7 @@ bool JsAbility::InitWindowScene(const Want &want)
             return false;
         }
         abilityContext_->SetWeakSessionToken(sessionToken);
-        ret = scene_->Init(displayId, abilityContext_, sceneListener_, option, sessionToken);
+        ret = scene_->Init(displayId, abilityContext_, sceneListener_, option, sessionToken, "", false, renderSession_);
     } else {
         ret = scene_->Init(displayId, abilityContext_, sceneListener_, option);
     }

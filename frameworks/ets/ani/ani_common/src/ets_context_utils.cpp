@@ -295,7 +295,7 @@ void BindNativeFunction(ani_env *aniEnv)
             ani_native_function {"nativeCreateSystemHspModuleResourceManager", "C{std.core.String}C{std.core.String}"
                 ":C{@ohos.resourceManager.resourceManager.ResourceManager}",
                 reinterpret_cast<void *>(ContextUtil::NativeCreateSystemHspModuleResourceManager)},
-            ani_native_function {"nativeContextType",
+            ani_native_function {"nativeIsContextOf",
                 "C{@ohos.app.ability.contextConstant.contextConstant.ContextType}:z",
                 reinterpret_cast<void *>(ContextUtil::ContextType)},
         };

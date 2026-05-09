@@ -134,13 +134,15 @@ void AppScheduler::MoveToForeground(const sptr<IRemoteObject> &token)
         appMgrClient_->UpdateAbilityState(token, AppExecFwk::AbilityState::ABILITY_STATE_FOREGROUND));
 }
 
-void AppScheduler::MoveToBackground(const sptr<IRemoteObject> &token)
+void AppScheduler::MoveToBackground(const sptr<IRemoteObject> &token, bool isFromScreenOffBackground)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "Move the app to background.");
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "Move the app to background, isFromScreenOffBackground:%{public}d",
+        isFromScreenOffBackground);
     CHECK_POINTER(appMgrClient_);
     IN_PROCESS_CALL_WITHOUT_RET(
-        appMgrClient_->UpdateAbilityState(token, AppExecFwk::AbilityState::ABILITY_STATE_BACKGROUND));
+        appMgrClient_->UpdateAbilityState(token, AppExecFwk::AbilityState::ABILITY_STATE_BACKGROUND,
+            isFromScreenOffBackground));
 }
 
 void AppScheduler::UpdateAbilityState(const sptr<IRemoteObject> &token, const AppExecFwk::AbilityState state)
@@ -506,6 +508,13 @@ int AppScheduler::GetProcessRunningInfosByUserId(std::vector<AppExecFwk::Running
 {
     CHECK_POINTER_AND_RETURN(appMgrClient_, INNER_ERR);
     return static_cast<int>(appMgrClient_->GetProcessRunningInfosByUserId(info, userId));
+}
+
+int AppScheduler::GetProcessRunningInfosByAccessTokenId(uint32_t accessTokenId,
+    std::vector<AppExecFwk::RunningProcessInfo> &info)
+{
+    CHECK_POINTER_AND_RETURN(appMgrClient_, INNER_ERR);
+    return static_cast<int>(appMgrClient_->GetProcessRunningInfosByAccessTokenId(accessTokenId, info));
 }
 
 std::string AppScheduler::ConvertAppState(const AppState &state)

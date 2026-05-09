@@ -23,6 +23,9 @@
 #include "ets_runtime.h"
 
 namespace OHOS {
+namespace AppExecFwk {
+class AbilityDelegator;
+} // namespace AppExecFwk
 namespace AbilityRuntime {
 struct InsightIntentExecutorInfo;
 using AbilityHandler = AppExecFwk::AbilityHandler;
@@ -274,6 +277,17 @@ public:
         std::unique_ptr<InsightIntentExecutorAsyncCallback> callback) override;
 
     /**
+     * @brief Execute insight intent when an ability start with page insight intent.
+     *
+     * @param want Want.
+     * @param executeParam insight intent execute param.
+     * @param callback insight intent async callback.
+     */
+    void ExecuteInsightIntentPage(const AAFwk::Want &want,
+        const std::shared_ptr<InsightIntentExecuteParam> &executeParam,
+        std::unique_ptr<InsightIntentExecutorAsyncCallback> callback) override;
+
+    /**
      * @brief Execute insight intent when an ability didn't started, schedule it to background.
      *
      * @param want Want.
@@ -327,6 +341,8 @@ private:
     void AbilityContinuationOrRecover(const Want &want);
     void UpdateEtsWindowStage(ani_ref windowStage);
     std::unique_ptr<NativeReference> CreateJsAppWindowStage();
+    void RequestFocus(const Want &want) override;
+    void SetInsightIntentParam(const Want &want, bool coldStart);
     inline bool GetInsightIntentExecutorInfo(const Want &want,
         const std::shared_ptr<InsightIntentExecuteParam> &executeParam,
         InsightIntentExecutorInfo& executeInfo, std::string arkTSMode = AbilityRuntime::CODE_LANGUAGE_ARKTS_1_2);
@@ -351,6 +367,11 @@ private:
     bool CheckSatisfyTargetAPIVersion(int32_t targetAPIVersion);
     bool BackPressDefaultValue();
     void WriteLifecycleSwitchLog(const std::string lifecycleName);
+    void NotifyDelegatorProperty(
+        std::function<void(const std::shared_ptr<AppExecFwk::AbilityDelegator> &,
+            const std::shared_ptr<AppExecFwk::BaseDelegatorAbilityProperty> &)> notifyFunc);
+    bool SetLastRequestWant(ani_env *env, ani_ref wantRef);
+    void HandleNativeModule();
     int32_t CallSaveState(ani_value args[], WantParams &wantParams, AppExecFwk::StateReason stateReason,
         AppExecFwk::AbilityTransactionCallbackInfo<AppExecFwk::OnSaveStateResult> *callbackInfo);
 

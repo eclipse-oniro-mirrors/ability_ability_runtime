@@ -348,7 +348,13 @@ bool CJUIExtensionBase::HandleSessionCreate(const AAFwk::Want &want, const sptr<
         {
             HITRACE_METER_NAME(HITRACE_TAG_APP, "Rosen::Window::Create");
             option->SetDisplayId(sessionInfo->displayId);
-            uiWindow = Rosen::Window::Create(option, context_, sessionInfo->sessionToken);
+            uiWindow = Rosen::Window::Create(option,
+                context_,
+                sessionInfo->sessionToken,
+            Rosen::DefaultCreateErrCode,
+            "",
+            false,
+            sessionInfo->renderSession);
         }
         if (uiWindow == nullptr) {
             TAG_LOGE(AAFwkTag::UI_EXT, "null uiWindow");

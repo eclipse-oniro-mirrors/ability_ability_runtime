@@ -16,6 +16,7 @@
 #include "js_ability_manager.h"
 
 #include <cstdint>
+#include <cinttypes>
 #include <memory>
 #include <regex>
 #include <future>

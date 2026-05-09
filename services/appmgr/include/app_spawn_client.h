@@ -57,6 +57,7 @@ struct AppSpawnStartMsg {
     std::string overlayInfo; // overlay hap resource path list
     std::string ownerId;
     std::string provisionType;
+    std::string appDistributionType;
     std::string atomicAccount = "";
     std::string extensionSandboxPath;
     std::string processType = "";

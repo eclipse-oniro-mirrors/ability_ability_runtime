@@ -31,6 +31,10 @@ bool PermissionVerification::JudgeCallerIsAllowedToUseSystemAPI() const
 {
     return true;
 }
+bool PermissionVerification::IsShellCall() const
+{
+    return false;
+}
 }
 
 namespace AbilityRuntime {

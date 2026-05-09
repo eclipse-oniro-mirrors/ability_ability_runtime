@@ -193,6 +193,23 @@ int32_t ExtensionRecordManager::GetActiveUIExtensionList(
     return ERR_OK;
 }
 
+int32_t ExtensionRecordManager::GetActiveUIExtensionListByUid(
+    int32_t uid, std::vector<std::string> &extensionList)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "called");
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (const auto &it : extensionRecords_) {
+        if (it.second == nullptr || it.second->abilityRecord_ == nullptr ||
+            uid != it.second->abilityRecord_->GetUid()) {
+            continue;
+        }
+
+        extensionList.push_back(it.second->abilityRecord_->GetAbilityInfo().moduleName + SEPARATOR +
+                                it.second->abilityRecord_->GetAbilityInfo().name);
+    }
+    return ERR_OK;
+}
+
 int32_t ExtensionRecordManager::GetOrCreateExtensionRecord(const AAFwk::AbilityRequest &abilityRequest,
     const std::string &hostBundleName, std::shared_ptr<AAFwk::BaseExtensionRecord> &abilityRecord, bool &isLoaded)
 {

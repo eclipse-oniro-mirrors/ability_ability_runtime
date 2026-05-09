@@ -41,9 +41,6 @@ ani_object WrapElementNameInner(ani_env *env, ani_class elementNameObj, ani_obje
     const AppExecFwk::ElementName &elementNameParam);
 
 ani_object CreateAniWant(ani_env *env, const AAFwk::Want &want);
-bool CreateArrayFromJson(ani_env *env, const nlohmann::json &jsonArray, ani_object &arrayObject);
-bool CreateRecordObjectFromJson(ani_env *env,
-    const nlohmann::json &jsonObject, ani_object &recordObject);
 } // namespace AppExecFwk
 } // namespace OHOS
 #endif // OHOS_ABILITY_RUNTIME_ANI_COMMON_WANT_H

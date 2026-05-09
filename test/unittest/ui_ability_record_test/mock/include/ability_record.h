@@ -19,16 +19,12 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
-#include <string>
 #include <gmock/gmock.h>
 
+#include "ability_info.h"
+#include "ability_state.h"
+
 namespace OHOS {
-namespace AppExecFwk {
-struct ApplicationInfo {};
-struct AbilityInfo {
-    ApplicationInfo applicationInfo;
-};
-}
 namespace AAFwk {
 enum class AbilityRecordType {
     BASE_ABILITY,
@@ -53,18 +49,31 @@ public:
 class AbilityRecord : public std::enable_shared_from_this<AbilityRecord> {
 public:
     AbilityRecord(const Want &want, const AppExecFwk::AbilityInfo &abilityInfo,
-        const AppExecFwk::ApplicationInfo &applicationInfo, int32_t requestCode) {}
+        const AppExecFwk::ApplicationInfo &applicationInfo, int32_t requestCode)
+        : abilityInfo_(abilityInfo) {}
     virtual ~AbilityRecord() = default;
 
     virtual void Init(const AbilityRequest &abilityRequest);
     virtual AbilityRecordType GetAbilityRecordType();
+
+    inline void SetPendingState(AbilityState state)
+    {
+        pendingState_ = state;
+    }
+    inline AbilityState GetPendingState() const
+    {
+        return pendingState_;
+    }
 protected:
     bool isPrelaunch_ = false;
     bool isHook_ = false;
+    AbilityState pendingState_ = AbilityState::INITIAL;
     std::atomic_bool isLastWantBackgroundDriven_ = false;
     std::mutex collaborateWantLock_;
     std::shared_ptr<LifecycleDeal> lifecycleDeal_;
+
+    AppExecFwk::AbilityInfo abilityInfo_;
 };
-} // namespace OHOS
 } // namespace AAFwk
+} // namespace OHOS
 #endif

@@ -274,7 +274,7 @@ public:
      *
      * @param token, the token of ability.
      */
-    void MoveToBackground(const sptr<IRemoteObject> &token);
+    void MoveToBackground(const sptr<IRemoteObject> &token, bool isFromScreenOffBackground = false);
 
     /**
      * Update ability state.
@@ -522,6 +522,18 @@ public:
      * @return ERR_OK ,return back success，others fail.
      */
     int GetProcessRunningInfosByUserId(std::vector<AppExecFwk::RunningProcessInfo> &info, int32_t userId);
+
+    /**
+     * GetProcessRunningInfosByAccessTokenId, call GetProcessRunningInfosByAccessTokenId() through proxy project.
+     * Obtains information about application processes that are running on the device by accessTokenId.
+     *
+     * @param accessTokenId, accessTokenId in Application record.
+     * @param info, Running process info.
+     * @return ERR_OK ,return back success，others fail.
+     */
+    int32_t GetProcessRunningInfosByAccessTokenId(uint32_t accessTokenId,
+        std::vector<AppExecFwk::RunningProcessInfo> &info);
+
     std::string ConvertAppState(const AppState &state);
 
     /**

@@ -175,7 +175,7 @@ void Ability::OnStart(const Want &want, sptr<AAFwk::SessionInfo> sessionInfo)
     SetWant(want);
 #ifdef SUPPORT_SCREEN
     if (sessionInfo != nullptr) {
-        SetSessionToken(sessionInfo->sessionToken);
+        SetSessionToken(sessionInfo->sessionToken, sessionInfo->renderSession);
     }
     TAG_LOGD(AAFwkTag::ABILITY, "ability:%{public}s", abilityInfo_->name.c_str());
     if (abilityInfo_->type == AppExecFwk::AbilityType::PAGE) {
@@ -1579,7 +1579,7 @@ void Ability::InitWindow(int32_t displayId, sptr<Rosen::WindowOption> option)
         TAG_LOGE(AAFwkTag::ABILITY, "null Ability window");
         return;
     }
-    abilityWindow_->SetSessionToken(sessionToken_);
+    abilityWindow_->SetSessionToken(sessionToken_, renderSession_);
     abilityWindow_->InitWindow(abilityContext_, sceneListener_, displayId, option, securityFlag_);
 }
 
@@ -2106,20 +2106,21 @@ int Ability::CreateModalUIExtension(const Want &want)
     return abilityContextImpl->CreateModalUIExtensionWithApp(want);
 }
 
-void Ability::SetSessionToken(sptr<IRemoteObject> sessionToken)
+void Ability::SetSessionToken(sptr<IRemoteObject> sessionToken, sptr<IRemoteObject> renderSession)
 {
     std::lock_guard lock(sessionTokenMutex_);
     sessionToken_ = sessionToken;
+    renderSession_ = renderSession;
 }
 
 void Ability::UpdateSessionToken(sptr<IRemoteObject> sessionToken)
 {
-    SetSessionToken(sessionToken);
+    SetSessionToken(sessionToken, nullptr);
     if (abilityWindow_ == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITY, "null Ability window");
         return;
     }
-    abilityWindow_->SetSessionToken(sessionToken);
+    abilityWindow_->SetSessionToken(sessionToken, nullptr);
 }
 
 void Ability::InitFAWindow(const Want &want, int32_t displayId)

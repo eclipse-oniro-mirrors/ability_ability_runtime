@@ -208,11 +208,33 @@ class EventHub {
 }
 
 class ApplicationContext {
+  static contextTypeMap = {
+    0: 'ApplicationContext',
+    1: 'AbilityStageContext',
+    2: 'UIAbilityContext',
+    3: 'FormExtensionContext',
+    4: 'AppServiceExtensionContext',
+    5: 'ServiceExtensionContext',
+    6: 'UIServiceExtensionContext',
+    7: 'AutoFillExtensionContext'
+  };
+
   constructor(obj) {
     this.__context_impl__ = obj;
     let eventHub = new EventHub();
     eventHub.contextIndex = obj.index;
     this.__context_impl__.eventHub = eventHub;
+  }
+
+  isContextOf(contextType) {
+    if (typeof (contextType) !== 'number') {
+      return false;
+    }
+    const expectedType = ApplicationContext.contextTypeMap[contextType];
+    if (!expectedType) {
+      return false;
+    }
+    return this.__context_impl__.contextType === expectedType;
   }
 
   registerAbilityLifecycleCallback(abilityLifecycleCallback) {
@@ -331,6 +353,18 @@ class ApplicationContext {
     return this.__context_impl__.restartApp(want);
   }
 
+  enableDelayedProcessExit() {
+    return this.__context_impl__.enableDelayedProcessExit();
+  }
+
+  disableDelayedProcessExit() {
+    return this.__context_impl__.disableDelayedProcessExit();
+  }
+
+  startSelfUIAbility(want) {
+    return this.__context_impl__.startSelfUIAbility(want);
+  }
+
   setSupportedProcessCache(isSupport) {
     return this.__context_impl__.setSupportedProcessCache(isSupport);
   }
@@ -357,6 +391,10 @@ class ApplicationContext {
 
   getAllWindowStages() {
     return this.__context_impl__.getAllWindowStages();
+  }
+
+  getUIAbilityByInstanceId(instanceId) {
+    return this.__context_impl__.getUIAbilityByInstanceId(instanceId);
   }
 
   set area(mode) {

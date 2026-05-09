@@ -796,6 +796,23 @@ ohos_prebuilt_etc("ability_delegator_ability_monitor_abc_etc") {
   deps = [ ":ability_delegator_ability_monitor_abc" ]
 }
 
+generate_static_abc("ability_delegator_interop_ability_monitor_abc") {
+  base_url = "."
+  files = [ "./application/InteropAbilityMonitor.ets" ]
+
+  is_boot_abc = "True"
+  device_dst_file =
+      "/system/framework/ability_delegator_interop_ability_monitor_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_delegator_interop_ability_monitor_abc_etc") {
+  source = "$target_out_dir/ability_delegator_interop_ability_monitor_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_delegator_interop_ability_monitor_abc" ]
+}
+
 generate_static_abc("ability_runtime_ability_stage_monitor_abc") {
   base_url = "./"
   files = [ "./application/AbilityStageMonitor.ets" ]
@@ -1016,6 +1033,25 @@ ohos_prebuilt_etc("ability_runtime_insight_intent_context_abc_etc") {
   subsystem_name = "ability"
   part_name = "ability_runtime"
   deps = [ ":ability_runtime_insight_intent_context_abc" ]
+}
+
+generate_static_abc("ability_runtime_insight_intent_decorator_abc") {
+  base_url = "./"
+  files = [
+    "./@ohos.app.ability.InsightIntentDecorator.ets",
+  ]
+
+  is_boot_abc = "True"
+  device_dst_file =
+      "/system/framework/ability_runtime_insight_intent_decorator_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_insight_intent_decorator_abc_etc") {
+  source = "$target_out_dir/ability_runtime_insight_intent_decorator_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_insight_intent_decorator_abc" ]
 }
 
 generate_static_abc("ability_runtime_insight_intent_driver_abc") {
@@ -2101,6 +2137,7 @@ group("ets_packages") {
     ":ability_application_abc_etc",
     ":ability_delegator_abc_etc",
     ":ability_delegator_ability_monitor_abc_etc",
+    ":ability_delegator_interop_ability_monitor_abc_etc",
     ":ability_delegator_application_testRunner_abc_etc",
     ":ability_delegator_args_abc_etc",
     ":ability_delegator_registry_abc_etc",
@@ -2165,6 +2202,7 @@ group("ets_packages") {
     ":ability_runtime_hyper_snap_manager_abc_etc",
     ":ability_runtime_insight_intent_abc_etc",
     ":ability_runtime_insight_intent_context_abc_etc",
+    ":ability_runtime_insight_intent_decorator_abc_etc",
     ":ability_runtime_insight_intent_driver_abc_etc",
     ":ability_runtime_insight_intent_executor_abc_etc",
     ":ability_runtime_insight_intent_provider_abc_etc",

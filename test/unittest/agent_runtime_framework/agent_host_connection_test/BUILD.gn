@@ -26,6 +26,7 @@ ohos_unittest("agent_host_connection_test") {
   }
 
   sources = [
+    "../agent_manager_service_test/mock/src/bundle_mgr_client.cpp",
     "../agent_manager_service_test/mock/src/mock_ability_manager_client.cpp",
     "../agent_manager_service_test/mock/src/mock_agent_card_mgr.cpp",
     "../agent_manager_service_test/mock/src/mock_app_mgr_client.cpp",

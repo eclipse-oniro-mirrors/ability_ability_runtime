@@ -432,6 +432,22 @@ bool ExtensionImpl::HandleInsightIntent(const Want &want)
     return true;
 }
 
+bool ExtensionImpl::HandleExecuteSkill(const Want &want)
+{
+    TAG_LOGD(AAFwkTag::EXT, "call");
+    if (extension_ == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "null extension_");
+        return false;
+    }
+    auto ret = extension_->HandleExecuteSkill(want);
+    if (!ret) {
+        TAG_LOGE(AAFwkTag::EXT, "handle failed");
+        return false;
+    }
+    TAG_LOGD(AAFwkTag::EXT, "ok");
+    return true;
+}
+
 void ExtensionImpl::CommandExtensionWindow(const Want &want, const sptr<AAFwk::SessionInfo> &sessionInfo,
     AAFwk::WindowCommand winCmd)
 {

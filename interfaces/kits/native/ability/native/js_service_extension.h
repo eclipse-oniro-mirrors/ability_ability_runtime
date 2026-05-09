@@ -27,6 +27,8 @@
 #include "window_manager.h"
 #endif
 #include "service_extension.h"
+#include "skill/skill_execute_param.h"
+#include "skill/skill_execute_result.h"
 
 class NativeReference;
 
@@ -135,6 +137,8 @@ public:
      */
     bool HandleInsightIntent(const AAFwk::Want &want) override;
 
+    bool HandleExecuteSkill(const AAFwk::Want &want) override;
+
     /**
      * @brief Called when this extension enters the <b>STATE_STOP</b> state.
      *
@@ -182,6 +186,13 @@ private:
     void ListenWMS();
 
     void AddLifecycleEventForJSCall(const std::string &eventStr);
+
+    void ExecuteSkill(const AAFwk::Want &want,
+        const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param);
+    napi_value LoadSkillFunction(const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param,
+        napi_value &outJsObj);
+    std::vector<napi_value> BuildSkillCallArgs(napi_env env,
+        const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param);
 
     bool HasScreenDensityBeenSet(std::shared_ptr<Global::Resource::ResourceManager> resourceManager);
 

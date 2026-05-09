@@ -250,6 +250,21 @@ bool UnwrapStartOptions(napi_env env, napi_value param, AAFwk::StartOptions &sta
         }
     }
 
+    bool hasSplitRatio = false;
+    napi_has_named_property(env, param, "splitRatio", &hasSplitRatio);
+    if (hasSplitRatio) {
+        napi_value splitRatioJsObject = nullptr;
+        napi_get_named_property(env, param, "splitRatio", &splitRatioJsObject);
+        Rosen::SplitRatioPreference splitRatioPreference;
+        if (Rosen::ConvertSplitRatioPreferenceFromJsValue(env, splitRatioJsObject, splitRatioPreference)) {
+            startOptions.SetSplitRatioPreference(static_cast<int32_t>(splitRatioPreference));
+            TAG_LOGI(AAFwkTag::JSNAPI, "splitRatio value:%{public}d",
+                static_cast<int32_t>(splitRatioPreference));
+        } else {
+            TAG_LOGW(AAFwkTag::JSNAPI, "ConvertSplitRatioPreferenceFromJsValue failed");
+        }
+    }
+
     return true;
 }
 

@@ -33,6 +33,8 @@
 #include "event_report.h"
 #include "extension_config.h"
 #include "extension_running_info.h"
+#include "modular_object_extension_info.h"
+#include "modular_object_manager.h"
 #include "connection_record.h"
 #include "element_name.h"
 #include "res_sched_util.h"
@@ -722,6 +724,8 @@ private:
     */
     void GetOrCreateServiceRecord(const AbilityRequest &abilityRequest, const bool isCreatedByConnect,
         std::shared_ptr<BaseExtensionRecord> &targetAbilityRecord, bool &isLoadedAbility);
+    int32_t HandleExtensionSetup(const AbilityRequest &abilityRequest,
+        std::shared_ptr<BaseExtensionRecord> &targetService, const std::string &serviceKey);
     void SetServiceAfterNewCreate(const AbilityRequest &abilityRequest, BaseExtensionRecord &targetService);
 
     /**
@@ -820,6 +824,7 @@ private:
     void ProcessEliminateAbilityRecord(std::shared_ptr<BaseExtensionRecord> eliminateRecord);
     static std::string GetServiceKey(const std::shared_ptr<BaseExtensionRecord> &service);
     static std::string GetServiceKey(const AbilityRequest &abilityRequest);
+    int32_t CheckModularObjectLimits(const AbilityRequest &abilityRequest);
 
     void SetExtensionLoadParam(AbilityRuntime::LoadParam &loadParam,
         std::shared_ptr<BaseExtensionRecord> abilityRecord);

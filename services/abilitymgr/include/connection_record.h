@@ -168,6 +168,10 @@ public:
     int32_t GetCallerPid() const;
     uint32_t GetCallerTokenId() const;
     std::string GetCallerName() const;
+    int32_t GetDirectCallerUid() const;
+    int32_t GetDirectCallerPid() const;
+    uint32_t GetDirectCallerTokenId() const;
+    std::string GetDirectCallerName() const;
     sptr<IRemoteObject> GetTargetToken() const;
     sptr<IRemoteObject> GetConnection() const;
 
@@ -175,6 +179,7 @@ public:
     Want GetConnectWant() const;
 private:
     void ScheduleDisconnectTimeout();
+    void SetDirectCallerInfo();
 
     static int64_t connectRecordId;
     Want connectWant_;
@@ -189,6 +194,10 @@ private:
     int32_t callerUid_ = 0;                            // caller uid
     int32_t callerPid_ = 0;                            // caller pid
     uint32_t callerTokenId_ = 0;                       // caller token id
+    int32_t directCallerUid_ = 0;                      // direct caller uid
+    int32_t directCallerPid_ = 0;                      // direct caller pid
+    uint32_t directCallerTokenId_ = 0;                 // direct caller token id
+    std::string directCallerName_;                     // direct caller bundleName or processName
 
     DISALLOW_COPY_AND_MOVE(ConnectionRecord);
 };

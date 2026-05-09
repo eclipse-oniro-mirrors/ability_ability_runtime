@@ -300,7 +300,8 @@ ErrCode AmsMgrStub::HandleUpdateAbilityState(MessageParcel &data, MessageParcel 
     HITRACE_METER(HITRACE_TAG_APP);
     sptr<IRemoteObject> token = data.ReadRemoteObject();
     int32_t state = data.ReadInt32();
-    UpdateAbilityState(token, static_cast<AbilityState>(state));
+    bool isFromScreenOffBackground = data.ReadBool();
+    UpdateAbilityState(token, static_cast<AbilityState>(state), isFromScreenOffBackground);
     return NO_ERROR;
 }
 

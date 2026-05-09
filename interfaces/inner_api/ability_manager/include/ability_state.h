@@ -18,8 +18,6 @@
 
 #include <string>
 
-#include "parcel.h"
-
 namespace OHOS {
 namespace AAFwk {
 /**
@@ -68,6 +66,15 @@ enum UserStatus {
     ASSERT_TERMINATE = 0,
     ASSERT_CONTINUE,
     ASSERT_RETRY,
+};
+
+enum class AbilityNativeState : int8_t {
+    NONE,
+    NORMAL,
+    INIT,
+    ATTACHED,
+    CREATED,
+    ON_FOREGROUND,
 };
 }  // namespace AAFwk
 }  // namespace OHOS

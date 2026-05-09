@@ -509,7 +509,7 @@ void CreateContextTypeTestEnv(napi_env env, const char* typeStr, napi_value &con
 void CallContextTypeAndCheck(napi_env env, napi_value contextObj, napi_value contextTypeArg, bool expected)
 {
     napi_value funcValue = nullptr;
-    napi_create_function(env, "contextType", NAPI_AUTO_LENGTH, ContextTypeFunc, nullptr, &funcValue);
+    napi_create_function(env, "isContextOf", NAPI_AUTO_LENGTH, ContextTypeFunc, nullptr, &funcValue);
     napi_value result = nullptr;
     napi_call_function(env, contextObj, funcValue, 1, &contextTypeArg, &result);
     bool boolResult = false;

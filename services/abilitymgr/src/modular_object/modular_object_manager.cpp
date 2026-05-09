@@ -14,9 +14,11 @@
  */
 
 #include "modular_object_manager.h"
-#include "ability_manager_errors.h"
+
+#include "hilog_tag_wrapper.h"
 #include "modular_object_rdb_storage_mgr.h"
-#include "os_account_manager_wrapper.h"
+
+using namespace OHOS::AAFwk;
 
 namespace OHOS {
 namespace AbilityRuntime {

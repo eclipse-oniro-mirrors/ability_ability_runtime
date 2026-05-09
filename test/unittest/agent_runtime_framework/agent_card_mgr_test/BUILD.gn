@@ -28,8 +28,9 @@ ohos_unittest("agent_card_mgr_test") {
   sources = [
     "agent_card_mgr_test.cpp",
     "mock/src/bundle_mgr_client.cpp",
-    "mock/src/mock_agent_card_db_mgr.cpp",
+    "mock/src/bundle_mgr_helper.cpp",
     "mock/src/mock_agent_card.cpp",
+    "mock/src/mock_agent_card_db_mgr.cpp",
     "${agent_runtime_framework_path}/services/agentmgr/src/agent_card_mgr.cpp",
   ]
 

@@ -324,6 +324,26 @@ sptr<IRemoteObject> BaseExtensionRecord::GetConnRemoteObject() const
     return connRemoteObject_;
 }
 
+void BaseExtensionRecord::SetClientPid(pid_t clientPid)
+{
+    clientPid_ = clientPid;
+}
+
+pid_t BaseExtensionRecord::GetClientPid() const
+{
+    return clientPid_;
+}
+
+void BaseExtensionRecord::SetRequestId(const std::string &requestId)
+{
+    requestId_ = requestId;
+}
+
+std::string BaseExtensionRecord::GetRequestId() const
+{
+    return requestId_;
+}
+
 void BaseExtensionRecord::PostUIExtensionAbilityTimeoutTask(uint32_t messageId)
 {
     if (IsDebug()) {

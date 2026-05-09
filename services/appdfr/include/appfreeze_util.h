@@ -41,6 +41,7 @@ public:
     static int GetCpuCount();
     static std::string FreezePathToRealPath(const std::string& filePath);
     static int32_t GetUidByPid(const int32_t pid);
+    static std::string GetProcessNameByPid(const int32_t pid);
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

@@ -122,6 +122,8 @@ public:
 
     ErrCode TerminateSelf() override;
 
+    ErrCode StartSelf() override;
+
     ErrCode CloseAbility() override;
 
     sptr<IRemoteObject> GetToken() override;

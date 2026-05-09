@@ -747,6 +747,16 @@ ErrCode AbilityContextImpl::TerminateSelf()
 #endif
 }
 
+ErrCode AbilityContextImpl::StartSelf()
+{
+    TAG_LOGI(AAFwkTag::CONTEXT, "StartSelf");
+    ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->StartSelf(token_);
+    if (err != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "StartSelf failed: %{public}d", err);
+    }
+    return err;
+}
+
 ErrCode AbilityContextImpl::CloseAbility()
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);

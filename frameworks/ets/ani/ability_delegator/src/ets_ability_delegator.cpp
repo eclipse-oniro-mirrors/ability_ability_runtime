@@ -39,6 +39,8 @@ std::map<std::weak_ptr<ETSNativeReference>, sptr<IRemoteObject>, std::owner_less
 std::mutex g_mtxMonitorRecord;
 std::mutex g_mtxStageMonitorRecord;
 std::mutex g_mutexAbilityRecord;
+std::map<std::shared_ptr<ETSNativeReference>, std::shared_ptr<EtsInteropAbilityMonitor>> g_interopMonitorRecord;
+std::mutex g_mtxInteropMonitorRecord;
 
 namespace {
 constexpr const char* CONTEXT_CLASS_NAME = "application.Context.Context";
@@ -1267,6 +1269,176 @@ void EtsAbilityDelegator::CleanAndFindMonitorRecord(ani_env *env, ani_object mon
         }
         ++iter;
     }
+}
+
+void EtsAbilityDelegator::AddInteropAbilityMonitorSync(ani_env *env, [[maybe_unused]]ani_class aniClass,
+    ani_object monitorObj)
+{
+    TAG_LOGD(AAFwkTag::DELEGATOR, "AddInteropAbilityMonitorSync called");
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::DELEGATOR, "env is nullptr");
+        return;
+    }
+    std::shared_ptr<EtsInteropAbilityMonitor> monitorImpl = nullptr;
+    if (!ParseInteropMonitorPara(env, monitorObj, monitorImpl)) {
+        TAG_LOGE(AAFwkTag::DELEGATOR, "ParseInteropMonitorPara failed");
+        AbilityRuntime::EtsErrorUtil::ThrowError(env,
+            static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INVALID_PARAM),
+            "Parse param monitor failed, monitor must be InteropAbilityMonitor.");
+        return;
+    }
+    auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
+        AbilityRuntime::Runtime::Language::ETS);
+    if (delegator) {
+        monitorImpl->SetLanguage(AbilityRuntime::Runtime::Language::ETS);
+        delegator->AddInteropAbilityMonitor(monitorImpl);
+    } else {
+        TAG_LOGE(AAFwkTag::DELEGATOR, "null delegator");
+        AbilityRuntime::EtsErrorUtil::ThrowError(env, COMMON_FAILED,
+            "Calling AddInteropAbilityMonitorSync failed.");
+    }
+    return;
+}
+
+void EtsAbilityDelegator::RemoveInteropAbilityMonitorSync(ani_env *env, [[maybe_unused]]ani_class aniClass,
+    ani_object monitorObj)
+{
+    TAG_LOGD(AAFwkTag::DELEGATOR, "RemoveInteropAbilityMonitorSync called");
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::DELEGATOR, "env is nullptr");
+        return;
+    }
+    auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
+        AbilityRuntime::Runtime::Language::ETS);
+    auto monitor = CleanAndFindInteropMonitorRecord(env, monitorObj);
+    if (delegator && monitor) {
+        delegator->RemoveInteropAbilityMonitor(monitor);
+    } else if (!delegator) {
+        TAG_LOGE(AAFwkTag::DELEGATOR, "null delegator");
+        AbilityRuntime::EtsErrorUtil::ThrowError(env, COMMON_FAILED,
+            "Calling RemoveInteropAbilityMonitorSync failed.");
+    }
+    return;
+}
+
+bool EtsAbilityDelegator::ParseInteropMonitorPara(ani_env *env, ani_object monitorObj,
+    std::shared_ptr<EtsInteropAbilityMonitor> &monitorImpl)
+{
+    if (env == nullptr || monitorObj == nullptr || !CheckMonitorPara(env, monitorObj)) {
+        TAG_LOGE(AAFwkTag::DELEGATOR, "env or monitorObj is nullptr");
+        return false;
+    }
+    {
+        std::unique_lock<std::mutex> lck(g_mtxInteropMonitorRecord);
+        TAG_LOGI(AAFwkTag::DELEGATOR, "interopMonitorRecord size: %{public}zu", g_interopMonitorRecord.size());
+        for (auto iter = g_interopMonitorRecord.begin(); iter != g_interopMonitorRecord.end();) {
+            if (iter->first.get() == nullptr) {
+                TAG_LOGE(AAFwkTag::DELEGATOR, "interopMonitorRecord is nullptr");
+                iter = g_interopMonitorRecord.erase(iter);
+                continue;
+            }
+            std::shared_ptr<ETSNativeReference> etsMonitor = iter->first;
+            if (etsMonitor == nullptr) {
+                TAG_LOGE(AAFwkTag::DELEGATOR, "etsMonitor is nullptr");
+                iter = g_interopMonitorRecord.erase(iter);
+                continue;
+            }
+            ani_boolean result = false;
+            ani_status status = env->Reference_StrictEquals(reinterpret_cast<ani_ref>(monitorObj),
+                etsMonitor->aniRef, &result);
+            if (status != ANI_OK) {
+                TAG_LOGE(AAFwkTag::DELEGATOR, "Reference_StrictEquals failed status: %{public}d", status);
+            }
+            if (result) {
+                TAG_LOGW(AAFwkTag::DELEGATOR, "interop monitor exist");
+                monitorImpl = iter->second;
+                return monitorImpl ? true : false;
+            }
+            ++iter;
+        }
+    }
+    if (!ParseInteropMonitorParaInner(env, monitorObj, monitorImpl)) {
+        TAG_LOGE(AAFwkTag::DELEGATOR, "ParseInteropMonitorParaInner failed");
+        return false;
+    }
+    return true;
+}
+
+bool EtsAbilityDelegator::ParseInteropMonitorParaInner(ani_env *env, ani_object monitorObj,
+    std::shared_ptr<EtsInteropAbilityMonitor> &monitorImpl)
+{
+    std::string strAbilityName = "";
+    if (!GetStringProperty(env, monitorObj, "abilityName", strAbilityName)) {
+        TAG_LOGE(AAFwkTag::DELEGATOR, "GetStringProperty abilityName failed");
+        return false;
+    }
+    std::string strModuleName = "";
+    auto interopMonitor = std::make_shared<EtsInteropAbilityMonitor>(strAbilityName);
+    if (GetStringProperty(env, monitorObj, "moduleName", strModuleName)) {
+        interopMonitor = std::make_shared<EtsInteropAbilityMonitor>(strAbilityName, strModuleName);
+    }
+    interopMonitor->SetEtsInteropAbilityMonitor(env, monitorObj);
+    auto *napiEnvPtr = reinterpret_cast<napi_env>(AppExecFwk::AbilityDelegatorRegistry::GetNapiEnv());
+    if (napiEnvPtr != nullptr) {
+        interopMonitor->SetNapiEnv(napiEnvPtr);
+    }
+    monitorImpl = interopMonitor;
+
+    ani_ref monitorRef = nullptr;
+    if (env->GlobalReference_Create(monitorObj, &monitorRef) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::DELEGATOR, "GlobalReference_Create failed");
+        return false;
+    }
+    auto reference = std::make_shared<ETSNativeReference>();
+    if (reference != nullptr) {
+        reference->aniRef = monitorRef;
+        reference->aniObj = monitorObj;
+    }
+    {
+        std::unique_lock<std::mutex> lck(g_mtxInteropMonitorRecord);
+        g_interopMonitorRecord.emplace(reference, monitorImpl);
+    }
+    return true;
+}
+
+std::shared_ptr<EtsInteropAbilityMonitor> EtsAbilityDelegator::CleanAndFindInteropMonitorRecord(
+    ani_env *env, ani_object monitorObj)
+{
+    if (env == nullptr || monitorObj == nullptr) {
+        TAG_LOGE(AAFwkTag::DELEGATOR, "env or monitorObj is nullptr");
+        return nullptr;
+    }
+    std::unique_lock<std::mutex> lck(g_mtxInteropMonitorRecord);
+    for (auto iter = g_interopMonitorRecord.begin(); iter != g_interopMonitorRecord.end();) {
+        if (iter->first.get() == nullptr) {
+            TAG_LOGE(AAFwkTag::DELEGATOR, "interopMonitorRecord is nullptr");
+            iter = g_interopMonitorRecord.erase(iter);
+            continue;
+        }
+        std::shared_ptr<ETSNativeReference> etsMonitor = iter->first;
+        if (etsMonitor == nullptr) {
+            TAG_LOGE(AAFwkTag::DELEGATOR, "etsMonitor is nullptr");
+            iter = g_interopMonitorRecord.erase(iter);
+            continue;
+        }
+        ani_boolean result = false;
+        ani_status status = env->Reference_StrictEquals(reinterpret_cast<ani_ref>(monitorObj),
+            etsMonitor->aniRef, &result);
+        if (status != ANI_OK) {
+            TAG_LOGE(AAFwkTag::DELEGATOR, "Reference_StrictEquals failed status: %{public}d", status);
+        }
+        if (result) {
+            status = env->GlobalReference_Delete(etsMonitor->aniRef);
+            if (status != ANI_OK) {
+                TAG_LOGE(AAFwkTag::DELEGATOR, "GlobalReference_Delete failed status: %{public}d", status);
+            }
+            auto monitor = iter->second;
+            g_interopMonitorRecord.erase(iter);
+            return monitor;
+        }
+        ++iter;
+    }
+    return nullptr;
 }
 } // namespace AbilityDelegatorEts
 } // namespace OHOS

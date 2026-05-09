@@ -37,6 +37,7 @@ public:
 
     RateLimiter::LimitResult CheckExtensionLimit(int32_t uid);
     bool CheckReportLimit(int32_t uid, int32_t triggeredTier);
+    bool CheckModularObjectLimit(int32_t uid);
 
 private:
     RateLimiter() = default;
@@ -58,6 +59,8 @@ private:
     std::mutex extensionCallMapLock_;
     std::unordered_map<int32_t, std::unordered_map<int32_t, std::vector<int64_t>>> tierReportCallMap_;
     std::mutex tierReportCallMapLock_;
+    std::unordered_map<int32_t, std::vector<int64_t>> modularObjectCallMap_;
+    std::mutex modularObjectCallMapLock_;
 
     DISALLOW_COPY_AND_MOVE(RateLimiter);
 };

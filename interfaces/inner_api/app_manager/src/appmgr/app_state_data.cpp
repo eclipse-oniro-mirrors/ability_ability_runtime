@@ -23,12 +23,13 @@ namespace OHOS {
 namespace AppExecFwk {
 bool AppStateData::Marshalling(Parcel &parcel) const
 {
-    return (parcel.WriteString(bundleName) && parcel.WriteInt32(uid) && parcel.WriteInt32(state)
-        && parcel.WriteInt32(pid) && parcel.WriteUint32(accessTokenId) && parcel.WriteBool(isFocused)
-        && parcel.WriteInt32(static_cast<int32_t>(extensionType)) && parcel.WriteInt32Vector(renderPids)
-        && parcel.WriteString(callerBundleName) && parcel.WriteBool(isSplitScreenMode) && parcel.WriteInt32(callerUid)
-        && parcel.WriteBool(isFloatingWindowMode) && parcel.WriteInt32(appIndex) && parcel.WriteBool(isPreloadModule)
-        && parcel.WriteBool(isFromWindowFocusChanged) && parcel.WriteInt32(preloadMode));
+    return parcel.WriteString(bundleName) && parcel.WriteInt32(uid) && parcel.WriteInt32(state) &&
+        parcel.WriteInt32(pid) && parcel.WriteUint32(accessTokenId) && parcel.WriteBool(isFocused) &&
+        parcel.WriteInt32(static_cast<int32_t>(extensionType)) && parcel.WriteInt32Vector(renderPids) &&
+        parcel.WriteString(callerBundleName) && parcel.WriteBool(isSplitScreenMode) && parcel.WriteInt32(callerUid) &&
+        parcel.WriteBool(isFloatingWindowMode) && parcel.WriteInt32(appIndex) && parcel.WriteBool(isPreloadModule) &&
+        parcel.WriteBool(isFromWindowFocusChanged) && parcel.WriteInt32(preloadMode) &&
+        parcel.WriteInt32(byCallStatus);
 }
 
 bool AppStateData::ReadFromParcel(Parcel &parcel)
@@ -49,6 +50,7 @@ bool AppStateData::ReadFromParcel(Parcel &parcel)
     isPreloadModule = parcel.ReadBool();
     isFromWindowFocusChanged = parcel.ReadBool();
     preloadMode = parcel.ReadInt32();
+    byCallStatus = parcel.ReadInt32();
     return true;
 }
 

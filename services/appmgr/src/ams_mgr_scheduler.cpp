@@ -148,7 +148,8 @@ void AmsMgrScheduler::NotifyLoadAbilityFinished(pid_t callingPid, pid_t targetPi
     });
 }
 
-void AmsMgrScheduler::UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state)
+void AmsMgrScheduler::UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state,
+    bool isFromScreenOffBackground)
 {
     if (!IsReady()) {
         return;
@@ -158,8 +159,9 @@ void AmsMgrScheduler::UpdateAbilityState(const sptr<IRemoteObject> &token, const
         TAG_LOGE(AAFwkTag::APPMGR, "verification failed");
         return;
     }
-    std::function<void()> updateAbilityStateFunc = [amsMgrServiceInner = amsMgrServiceInner_, token, state] () {
-        amsMgrServiceInner->UpdateAbilityState(token, state);
+    std::function<void()> updateAbilityStateFunc = [amsMgrServiceInner = amsMgrServiceInner_, token, state,
+        isFromScreenOffBackground] () {
+        amsMgrServiceInner->UpdateAbilityState(token, state, isFromScreenOffBackground);
     };
     amsHandler_->SubmitTask(updateAbilityStateFunc, AAFwk::TaskAttribute{
         .taskName_ = TASK_UPDATE_ABILITY_STATE,

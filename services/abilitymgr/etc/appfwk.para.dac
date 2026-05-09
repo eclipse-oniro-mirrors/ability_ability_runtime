@@ -40,6 +40,7 @@ persist.sys.abilityms.inherit_plugin_namespace = foundation:foundation:0755
 persist.sys.abilityms.plugin_default_namespace_lddictionary = foundation:foundation:0755
 persist.sys.abilityms.allow_debug_permission = foundation:foundation:0755
 persist.sys.abilityms.restart_app_with_window = foundation:foundation:0755
+persist.sys.abilityms.support_native_ui_ability = foundation:foundation:0755
 const.abilityms.launch_embeded_ui_ability = foundation:foundation:0755
 const.sys.abilityms.limit_maximum_extensions_of_per_process = foundation:foundation:0755
 const.sys.abilityms.limit_maximum_extensions_of_per_device = foundation:foundation:0755

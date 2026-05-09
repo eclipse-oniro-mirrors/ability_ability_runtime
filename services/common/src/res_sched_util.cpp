@@ -83,7 +83,7 @@ void ResSchedUtil::ReportForkAllEventToRSS(int32_t imagePid, int32_t orginalPid,
 }
 
 void ResSchedUtil::ReportAbilityStartInfoToRSS(const AbilityInfo &abilityInfo, int32_t pid, bool isColdStart,
-    bool supportWarmSmartGC, int32_t preloadMode)
+    bool supportWarmSmartGC, int32_t preloadMode, bool isSuggestCache)
 {
 #ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
     uint32_t resType = ResourceSchedule::ResType::RES_TYPE_APP_ABILITY_START;
@@ -94,7 +94,8 @@ void ResSchedUtil::ReportAbilityStartInfoToRSS(const AbilityInfo &abilityInfo, i
         { "abilityName", abilityInfo.name },
         { "pid", std::to_string(pid) },
         { "supportWarmSmartGC", supportWarmSmartGC ? "1": "0" },
-        { "preloadMode", std::to_string(preloadMode) }
+        { "preloadMode", std::to_string(preloadMode) },
+        { "suggestCache", isSuggestCache ? "1": "0" }
     };
     TAG_LOGD(AAFwkTag::DEFAULT, "call");
     ResourceSchedule::ResSchedClient::GetInstance().ReportData(resType, isColdStart ? 1 : 0, eventParams);

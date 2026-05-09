@@ -15,6 +15,9 @@
 
 #include "ets_insight_intent_func.h"
 
+#include <algorithm>
+#include <initializer_list>
+
 #include "ability_transaction_callback_info.h"
 #include "ani_common_want.h"
 #include "hilog_tag_wrapper.h"
@@ -37,6 +40,75 @@ constexpr const char *FUNCTION_UTILS_CLASS_NAME = "utils.AbilityUtils.InsightInt
 constexpr const char *METHOD_RESULT_KEY = "methodResult";
 constexpr const char *CALL_PROMISE_SIGNATURE = "C{std.core.Promise}:";
 constexpr int ANI_ALREADY_BINDED = 8;
+constexpr const char *CLASSNAME_STRING = "std.core.String";
+constexpr const char *CLASSNAME_INT = "std.core.Int";
+constexpr const char *CLASSNAME_LONG = "std.core.Long";
+constexpr const char *CLASSNAME_SHORT = "std.core.Short";
+constexpr const char *CLASSNAME_FLOAT = "std.core.Float";
+constexpr const char *CLASSNAME_DOUBLE = "std.core.Double";
+constexpr const char *CLASSNAME_BOOLEAN = "std.core.Boolean";
+constexpr const char *CLASSNAME_ARRAY = "std.core.Array";
+constexpr const char *FUNCTION_RETURN_TYPE_VOID = "void";
+
+bool IsInstanceOfClass(ani_env *env, ani_ref value, const char *className)
+{
+    ani_class cls = nullptr;
+    ani_status status = env->FindClass(className, &cls);
+    if (status != ANI_OK || cls == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "find class failed, className: %{public}s, status: %{public}d",
+            className, status);
+        return false;
+    }
+    ani_boolean result = ANI_FALSE;
+    status = env->Object_InstanceOf(static_cast<ani_object>(value), cls, &result);
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::INTENT, "instanceof failed, className: %{public}s, status: %{public}d",
+            className, status);
+        return false;
+    }
+    return static_cast<bool>(result);
+}
+
+bool ValidateAniValueType(
+    ani_env *env, ani_ref value, const char *typeName, std::initializer_list<const char *> classNames)
+{
+    if (std::any_of(classNames.begin(), classNames.end(),
+        [env, value](const char *className) { return IsInstanceOfClass(env, value, className); })) {
+        return true;
+    }
+    TAG_LOGE(AAFwkTag::INTENT, "type mismatch: expected %{public}s", typeName);
+    return false;
+}
+
+bool ValidateParamType(ani_env *env, ani_ref value, AppExecFwk::ParamType expectedType)
+{
+    if (expectedType == AppExecFwk::ParamType::UNKNOWN) {
+        TAG_LOGD(AAFwkTag::INTENT, "unknown type, skip validation");
+        return true;
+    }
+    if (value == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "null value for validation");
+        return false;
+    }
+    switch (expectedType) {
+        case AppExecFwk::ParamType::STRING:
+            return ValidateAniValueType(env, value, "string", { CLASSNAME_STRING });
+        case AppExecFwk::ParamType::NUMBER:
+            return ValidateAniValueType(env, value, "number",
+                { CLASSNAME_INT, CLASSNAME_LONG, CLASSNAME_SHORT, CLASSNAME_FLOAT, CLASSNAME_DOUBLE });
+        case AppExecFwk::ParamType::INTEGER:
+            return ValidateAniValueType(env, value, "integer", { CLASSNAME_INT, CLASSNAME_LONG, CLASSNAME_SHORT });
+        case AppExecFwk::ParamType::BOOLEAN:
+            return ValidateAniValueType(env, value, "boolean", { CLASSNAME_BOOLEAN });
+        case AppExecFwk::ParamType::OBJECT:
+            return ValidateAniValueType(env, value, "object", { RECORD_CLASS_NAME });
+        case AppExecFwk::ParamType::ARRAY:
+            return ValidateAniValueType(env, value, "array", { CLASSNAME_ARRAY });
+        default:
+            TAG_LOGD(AAFwkTag::INTENT, "unknown type, skip validation");
+            return true;
+    }
+}
 
 ani_object CreateMethodResultRecord(ani_env *env, ani_ref result)
 {
@@ -245,6 +317,42 @@ bool EtsInsightIntentFunc::HandleExecuteIntent(std::shared_ptr<InsightIntentExec
     return ExecuteInsightIntent(env, executeParam, isAsync);
 }
 
+bool EtsInsightIntentFunc::GetDecodedMethodParam(const std::string &encodedMethodParam,
+    AppExecFwk::InsightIntentParam &methodParamInfo) const
+{
+    if (!AppExecFwk::DecodeMethodParam(encodedMethodParam, methodParamInfo)) {
+        TAG_LOGE(AAFwkTag::INTENT, "decode method param failed");
+        return false;
+    }
+    return true;
+}
+
+bool EtsInsightIntentFunc::GetMethodArg(ani_env *env, ani_object wantParams, ani_method recordGetMethod,
+    const std::string &encodedMethodParam, ani_ref &valueRef)
+{
+    AppExecFwk::InsightIntentParam methodParamInfo;
+    if (!GetDecodedMethodParam(encodedMethodParam, methodParamInfo)) {
+        return false;
+    }
+    const std::string &paramName = methodParamInfo.paramName;
+    ani_string key = AppExecFwk::GetAniString(env, paramName);
+    if (key == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "create key failed, name: %{public}s", paramName.c_str());
+        return false;
+    }
+    ani_status status = env->Object_CallMethod_Ref(wantParams, recordGetMethod, &valueRef, key);
+    if (status != ANI_OK || valueRef == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "get method param failed, name: %{public}s, status: %{public}d",
+            paramName.c_str(), status);
+        return false;
+    }
+    if (!ValidateParamType(env, valueRef, methodParamInfo.type)) {
+        TAG_LOGE(AAFwkTag::INTENT, "param type validation failed, name: %{public}s", paramName.c_str());
+        return false;
+    }
+    return true;
+}
+
 bool EtsInsightIntentFunc::BuildMethodArgs(ani_env *env,
     const std::shared_ptr<InsightIntentExecuteParam> &executeParam, std::vector<ani_value> &args)
 {
@@ -273,17 +381,10 @@ bool EtsInsightIntentFunc::BuildMethodArgs(ani_env *env,
     }
 
     args.reserve(executeParam->methodParams_.size());
-    for (const auto &paramName : executeParam->methodParams_) {
+    for (const auto &encodedMethodParam : executeParam->methodParams_) {
         ani_ref valueRef = nullptr;
-        ani_string key = AppExecFwk::GetAniString(env, paramName);
-        if (key == nullptr) {
-            TAG_LOGE(AAFwkTag::INTENT, "create key failed, name: %{public}s", paramName.c_str());
-            return false;
-        }
-        status = env->Object_CallMethod_Ref(static_cast<ani_object>(wantParams), recordGetMethod, &valueRef, key);
-        if (status != ANI_OK || valueRef == nullptr) {
-            TAG_LOGE(AAFwkTag::INTENT, "get method param failed, name: %{public}s, status: %{public}d",
-                paramName.c_str(), status);
+        if (!GetMethodArg(env, static_cast<ani_object>(wantParams), recordGetMethod, encodedMethodParam, valueRef)) {
+            TAG_LOGE(AAFwkTag::INTENT, "GetMethodArg failed");
             return false;
         }
         ani_value arg { .r = valueRef };
@@ -292,12 +393,31 @@ bool EtsInsightIntentFunc::BuildMethodArgs(ani_env *env,
     return true;
 }
 
+bool EtsInsightIntentFunc::IsVoidReturnType(const std::shared_ptr<InsightIntentExecuteParam> &executeParam) const
+{
+    if (executeParam == nullptr) {
+        return false;
+    }
+    return !executeParam->methodReturnType_.empty() &&
+        executeParam->methodReturnType_ == FUNCTION_RETURN_TYPE_VOID;
+}
+
 bool EtsInsightIntentFunc::ExecuteInsightIntent(ani_env *env,
     const std::shared_ptr<InsightIntentExecuteParam> &executeParam, bool &isAsync)
 {
     std::vector<ani_value> args;
     if (!BuildMethodArgs(env, executeParam, args)) {
         return ExecuteIntentCheckError();
+    }
+
+    if (IsVoidReturnType(executeParam)) {
+        ani_status status = env->Class_CallStaticMethodByName_Void_A(
+            etsObj_->aniCls, executeParam->methodName_.c_str(), nullptr, args.empty() ? nullptr : args.data());
+        if (status != ANI_OK) {
+            TAG_LOGE(AAFwkTag::INTENT, "call static void method failed %{public}d", status);
+            return ExecuteIntentCheckError();
+        }
+        return HandleVoidExecuteResult();
     }
 
     ani_ref result = nullptr;
@@ -309,6 +429,15 @@ bool EtsInsightIntentFunc::ExecuteInsightIntent(ani_env *env,
     }
 
     return HandleExecuteResult(env, result, isAsync);
+}
+
+bool EtsInsightIntentFunc::HandleVoidExecuteResult()
+{
+    auto resultCpp = std::make_shared<AppExecFwk::InsightIntentExecuteResult>();
+    resultCpp->result = std::make_shared<AAFwk::WantParams>();
+    resultCpp->code = InsightIntentInnerErr::INSIGHT_INTENT_ERR_OK;
+    ReplySucceededInner(resultCpp);
+    return true;
 }
 
 bool EtsInsightIntentFunc::HandleExecuteResult(ani_env *env, ani_ref result, bool &isAsync)

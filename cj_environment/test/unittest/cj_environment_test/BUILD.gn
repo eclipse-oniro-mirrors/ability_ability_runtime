@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import("//build/test.gni")
+import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 module_output_path = "ability_runtime/ability_runtime/cj_environment"
 
@@ -20,10 +21,9 @@ ohos_unittest("cj_environment_test") {
   sources = [ "cj_environment_test.cpp" ]
   sources += [ "cj_invoker.h" ]
 
-  deps = []
+  deps = [ "${ability_runtime_path}/cj_environment/frameworks/cj_environment:cj_environment" ]
 
   external_deps = [
-    "ability_runtime:cj_environment",
     "googletest:gmock_main",
     "googletest:gtest_main",
     "hilog:libhilog",
