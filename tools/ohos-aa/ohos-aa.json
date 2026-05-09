@@ -49,7 +49,9 @@
     "subcommands": {
         "start": {
             "description": "ohos-aa start - Start an ability on the system",
-            "requirePermissions": [],
+            "requirePermissions": [
+                "ohos.permission.cli.START_ABILITY"
+            ],
             "inputSchema": {
                 "type": "object",
                 "description": "Sub-options of the ohos-aa start command.",
@@ -147,7 +149,9 @@
         },
         "force-stop": {
             "description": "ohos-aa force-stop - Stop an application on the system.",
-            "requirePermissions": [],
+            "requirePermissions": [
+                "ohos.permission.cli.KILL_APP_PROCESSES"
+            ],
             "inputSchema": {
                 "type": "object",
                 "description": "Sub-options of the ohos-aa force-stop command.",
