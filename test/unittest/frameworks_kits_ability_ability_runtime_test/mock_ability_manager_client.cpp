@@ -1132,6 +1132,33 @@ ErrCode AbilityManagerClient::RevokeDelegator(sptr<IRemoteObject> token)
     return ERR_OK;
 }
 
+ErrCode AbilityManagerClient::StartSelf(sptr<IRemoteObject> token)
+{
+    return ERR_OK;
+}
+
+ErrCode AbilityManagerClient::SetOnNewWantSkipScenarios(sptr<IRemoteObject> callerToken, int32_t scenarios)
+{
+    return ERR_OK;
+}
+
+ErrCode AbilityManagerClient::StartSelfUIAbilityInCurrentProcess(const Want &want,
+    const std::string &specifiedFlag, const AAFwk::StartOptions &startOptions,
+    bool hasOptions, sptr<IRemoteObject> callerToken)
+{
+    return ERR_OK;
+}
+
+ErrCode AbilityManagerClient::NotifyCancelGamePreLaunch(const sptr<IRemoteObject> callerToken)
+{
+    return ERR_OK;
+}
+
+ErrCode AbilityManagerClient::NotifyCompleteGamePreLaunch(const sptr<IRemoteObject> callerToken)
+{
+    return ERR_OK;
+}
+
 ErrCode GetUserLockedBundleList(int32_t userId, std::unordered_set<std::string> &userLockedBundleList)
 {
     return ERR_OK;
