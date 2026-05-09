@@ -457,6 +457,7 @@ group("unittest") {
       "mission_manager_client_test:unittest",
       "modal_system_app_freeze_uiextension_test:unittest",
       "modal_system_dialog_util_test:unittest",
+      "modular_object_connect_test:unittest",
       "modular_object_extension_manager_test:unittest",
       "modular_object_rdb_data_mgr_test:unittest",
       "multi_app_utils_test:unittest",

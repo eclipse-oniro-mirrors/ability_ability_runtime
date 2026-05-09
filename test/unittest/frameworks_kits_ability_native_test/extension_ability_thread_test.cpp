@@ -26,6 +26,7 @@
 #undef protected
 #include "mock_ability_thread.h"
 #include "mock_ability_token.h"
+#include "modular_object_worker_manager.h"
 #include "ohos_application.h"
 
 namespace OHOS {
@@ -1265,6 +1266,196 @@ HWTEST_F(ExtensionAbilityThreadTest, ExtensionAbilityThread_HandleNativeExtensio
     ExtensionAbilityThread thread;
     thread.HandleNativeExtensionAttach(abilityRecord, abilityName);
     EXPECT_NE(thread.contentEmbedEventRunner_, nullptr);
+}
+
+/**
+ * @tc.name: GetOrCreateWorkerThread_ShouldReturnNonNullWhenFirstCreated
+ * @tc.desc: Test creating a new worker thread returns valid handler
+ */
+HWTEST_F(ExtensionAbilityThreadTest,
+    GetOrCreateWorkerThread_ShouldReturnNonNullWhenFirstCreated, Function | MediumTest | Level1)
+{
+    auto &mgr = ModularObjectWorkerManager::GetInstance();
+    auto handler = mgr.GetOrCreateWorkerThread("test_bundle_TestExt");
+    EXPECT_NE(handler, nullptr);
+    mgr.ReleaseWorkerThread("test_bundle_TestExt");
+}
+
+/**
+ * @tc.name: GetOrCreateWorkerThread_ShouldReturnSameHandlerWhenKeyExists
+ * @tc.desc: Test reusing existing worker thread returns same handler
+ */
+HWTEST_F(ExtensionAbilityThreadTest,
+    GetOrCreateWorkerThread_ShouldReturnSameHandlerWhenKeyExists, Function | MediumTest | Level1)
+{
+    auto &mgr = ModularObjectWorkerManager::GetInstance();
+    auto handler1 = mgr.GetOrCreateWorkerThread("test_reuse_key");
+    ASSERT_NE(handler1, nullptr);
+    auto handler2 = mgr.GetOrCreateWorkerThread("test_reuse_key");
+    EXPECT_EQ(handler1, handler2);
+    mgr.ReleaseWorkerThread("test_reuse_key");
+    mgr.ReleaseWorkerThread("test_reuse_key");
+}
+
+/**
+ * @tc.name: GetOrCreateWorkerThread_ShouldReturnDifferentHandlerWhenKeyDiffers
+ * @tc.desc: Test different keys create different handlers
+ */
+HWTEST_F(ExtensionAbilityThreadTest,
+    GetOrCreateWorkerThread_ShouldReturnDifferentHandlerWhenKeyDiffers, Function | MediumTest | Level1)
+{
+    auto &mgr = ModularObjectWorkerManager::GetInstance();
+    auto handler1 = mgr.GetOrCreateWorkerThread("test_key_A");
+    auto handler2 = mgr.GetOrCreateWorkerThread("test_key_B");
+    ASSERT_NE(handler1, nullptr);
+    ASSERT_NE(handler2, nullptr);
+    EXPECT_NE(handler1, handler2);
+    mgr.ReleaseWorkerThread("test_key_A");
+    mgr.ReleaseWorkerThread("test_key_B");
+}
+
+/**
+ * @tc.name: ReleaseWorkerThread_ShouldRemoveHandlerWhenRefCountReachesZero
+ * @tc.desc: Test releasing all refs removes handler, next create gives new instance
+ */
+HWTEST_F(ExtensionAbilityThreadTest,
+    ReleaseWorkerThread_ShouldRemoveHandlerWhenRefCountReachesZero, Function | MediumTest | Level1)
+{
+    auto &mgr = ModularObjectWorkerManager::GetInstance();
+    auto handler1 = mgr.GetOrCreateWorkerThread("test_release_key");
+    ASSERT_NE(handler1, nullptr);
+    mgr.ReleaseWorkerThread("test_release_key");
+    auto handler2 = mgr.GetOrCreateWorkerThread("test_release_key");
+    ASSERT_NE(handler2, nullptr);
+    EXPECT_NE(handler1, handler2);
+    mgr.ReleaseWorkerThread("test_release_key");
+}
+
+/**
+ * @tc.name: ReleaseWorkerThread_ShouldNotCrashWhenKeyNotFound
+ * @tc.desc: Test releasing non-existent key does not crash
+ */
+HWTEST_F(ExtensionAbilityThreadTest,
+    ReleaseWorkerThread_ShouldNotCrashWhenKeyNotFound, Function | MediumTest | Level1)
+{
+    auto &mgr = ModularObjectWorkerManager::GetInstance();
+    mgr.ReleaseWorkerThread("non_existent_key");
+    EXPECT_TRUE(true);
+}
+
+/**
+ * @tc.name: ReleaseWorkerThread_ShouldKeepHandlerWhenPartialRelease
+ * @tc.desc: Test ref counting: partial release keeps handler, full release removes it
+ */
+HWTEST_F(ExtensionAbilityThreadTest,
+    ReleaseWorkerThread_ShouldKeepHandlerWhenPartialRelease, Function | MediumTest | Level1)
+{
+    auto &mgr = ModularObjectWorkerManager::GetInstance();
+    auto handler1 = mgr.GetOrCreateWorkerThread("test_refcount_key");
+    ASSERT_NE(handler1, nullptr);
+    auto handler2 = mgr.GetOrCreateWorkerThread("test_refcount_key");
+    EXPECT_EQ(handler1, handler2);
+    mgr.ReleaseWorkerThread("test_refcount_key");
+    auto handler3 = mgr.GetOrCreateWorkerThread("test_refcount_key");
+    EXPECT_EQ(handler1, handler3);
+    mgr.ReleaseWorkerThread("test_refcount_key");
+    mgr.ReleaseWorkerThread("test_refcount_key");
+}
+
+/**
+ * @tc.name: GenerateInstanceId_ShouldReturnMonotonicallyIncreasingIds
+ * @tc.desc: Test instance IDs are unique and monotonically increasing
+ */
+HWTEST_F(ExtensionAbilityThreadTest,
+    GenerateInstanceId_ShouldReturnMonotonicallyIncreasingIds, Function | MediumTest | Level1)
+{
+    auto &mgr = ModularObjectWorkerManager::GetInstance();
+    uint32_t id1 = mgr.GenerateInstanceId();
+    uint32_t id2 = mgr.GenerateInstanceId();
+    uint32_t id3 = mgr.GenerateInstanceId();
+    EXPECT_LT(id1, id2);
+    EXPECT_LT(id2, id3);
+}
+
+// Test extension that overrides GetAbilityHandler to provide a custom handler
+class TestHandlerExtension : public AbilityRuntime::Extension {
+public:
+    TestHandlerExtension() = default;
+    ~TestHandlerExtension() override = default;
+
+    std::shared_ptr<AppExecFwk::AbilityHandler> GetAbilityHandler(
+        const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo) override
+    {
+        if (abilityInfo == nullptr) {
+            return nullptr;
+        }
+        auto runner = AppExecFwk::EventRunner::Create("TestHandlerThread");
+        return std::make_shared<AppExecFwk::AbilityHandler>(runner);
+    }
+};
+
+/**
+ * @tc.name: HandleAttach_ShouldUseExtensionHandlerWhenOverrideReturnsNonNull
+ * @tc.desc: Test HandleAttach uses extension-provided handler via GetAbilityHandler
+ */
+HWTEST_F(ExtensionAbilityThreadTest,
+    HandleAttach_ShouldUseExtensionHandlerWhenOverrideReturnsNonNull, Function | MediumTest | Level1)
+{
+    AppExecFwk::AbilityLoader::GetInstance().RegisterExtension("TestHandlerExtension",
+        [](const std::string &) -> AbilityRuntime::Extension * {
+            return new (std::nothrow) TestHandlerExtension();
+        });
+
+    sptr<AbilityRuntime::ExtensionAbilityThread> thread = sptr<AbilityRuntime::ExtensionAbilityThread>::MakeSptr();
+    ASSERT_NE(thread, nullptr);
+
+    std::shared_ptr<AbilityInfo> abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->name = "TestHandlerExtension";
+    abilityInfo->type = AbilityType::EXTENSION;
+    abilityInfo->isNativeAbility = true;
+    abilityInfo->extensionAbilityType = AppExecFwk::ExtensionAbilityType::SERVICE;
+
+    sptr<IRemoteObject> token = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    ASSERT_NE(token, nullptr);
+
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    auto abilityRecord = std::make_shared<AbilityLocalRecord>(abilityInfo, token, nullptr, 0);
+    std::shared_ptr<EventRunner> mainRunner = EventRunner::Create(abilityInfo->name);
+
+    thread->Attach(application, abilityRecord, mainRunner, nullptr);
+    EXPECT_NE(thread->abilityHandler_, nullptr);
+}
+
+/**
+ * @tc.name: HandleAttach_ShouldFallbackToDefaultWhenOverrideReturnsNull
+ * @tc.desc: Test HandleAttach falls back to default when GetAbilityHandler returns nullptr
+ */
+HWTEST_F(ExtensionAbilityThreadTest,
+    HandleAttach_ShouldFallbackToDefaultWhenOverrideReturnsNull, Function | MediumTest | Level1)
+{
+    AppExecFwk::AbilityLoader::GetInstance().RegisterExtension("DefaultHandlerExtension",
+        [](const std::string &) -> AbilityRuntime::Extension * {
+            return new (std::nothrow) AbilityRuntime::Extension();
+        });
+
+    sptr<AbilityRuntime::ExtensionAbilityThread> thread = sptr<AbilityRuntime::ExtensionAbilityThread>::MakeSptr();
+    ASSERT_NE(thread, nullptr);
+
+    std::shared_ptr<AbilityInfo> abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->name = "DefaultHandlerExtension";
+    abilityInfo->type = AbilityType::EXTENSION;
+    abilityInfo->isNativeAbility = true;
+    abilityInfo->extensionAbilityType = AppExecFwk::ExtensionAbilityType::SERVICE;
+
+    sptr<IRemoteObject> token = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    ASSERT_NE(token, nullptr);
+
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    auto abilityRecord = std::make_shared<AbilityLocalRecord>(abilityInfo, token, nullptr, 0);
+    std::shared_ptr<EventRunner> mainRunner = EventRunner::Create(abilityInfo->name);
+
+    thread->Attach(application, abilityRecord, mainRunner, nullptr);
+    EXPECT_NE(thread->abilityHandler_, nullptr);
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

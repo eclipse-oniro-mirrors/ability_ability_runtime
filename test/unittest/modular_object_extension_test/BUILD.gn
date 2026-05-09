@@ -26,15 +26,18 @@ ohos_unittest("modular_object_extension_test") {
   sources = [
     "modular_object_extension_test.cpp",
     "${ability_runtime_path}/frameworks/native/ability/native/modular_object_extension/modular_object_extension.cpp",
+    "${ability_runtime_path}/frameworks/native/ability/native/modular_object_worker_manager.cpp",
   ]
   include_dirs = [
     "mock/include",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native",
     "${ability_runtime_path}/frameworks/c/ability_runtime/include",
     "${ability_runtime_services_path}/common/include",
   ]
   cflags = [ "-Dprivate=public" ]
   external_deps = [
     "c_utils:utils",
+    "eventhandler:libeventhandler",
     "googletest:gtest_main",
     "hilog:libhilog",
     "ipc:ipc_core",

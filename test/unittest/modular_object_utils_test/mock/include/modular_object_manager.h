@@ -13,31 +13,30 @@
  * limitations under the License.
  */
 
-#ifndef MOCK_APP_MGR_CLIENT_H
-#define MOCK_APP_MGR_CLIENT_H
+#ifndef MOCK_MODULAR_OBJECT_MANAGER_H
+#define MOCK_MODULAR_OBJECT_MANAGER_H
 
-#include "running_process_info.h"
+#include <cstdint>
+#include <string>
+#include <vector>
 #include "mock_flag.h"
+#include "modular_object_extension_info.h"
+#include "singleton.h"
 
 namespace OHOS {
-namespace AppExecFwk {
-
-class AppMgrClient {
-    DECLARE_DELAYED_SINGLETON(AppMgrClient);
+namespace AbilityRuntime {
+class ModularObjectManager : public DelayedSingleton<ModularObjectManager> {
 public:
-    int32_t GetRunningProcessInfoByPid(const pid_t pid, RunningProcessInfo &info)
+    int32_t QuerySelfModularObjectExtensionInfos(int32_t userId, const std::string &bundleName,
+        int32_t appIndex, std::vector<AAFwk::ModularObjectExtensionInfo> &infos)
     {
-        if (MockFlag::getRunningProcessInfoRet != 0) {
-            return MockFlag::getRunningProcessInfoRet;
+        if (MockFlag::querySelfModularObjectRet != 0) {
+            return MockFlag::querySelfModularObjectRet;
         }
-        info.state_ = static_cast<AppProcessState>(MockFlag::processState);
-        info.isPreForeground = MockFlag::isPreForeground;
-        info.processName_ = MockFlag::processName;
+        infos = MockFlag::modularObjectInfos;
         return 0;
     }
 };
-
-} // namespace AppExecFwk
+} // namespace AbilityRuntime
 } // namespace OHOS
-
-#endif // MOCK_APP_MGR_CLIENT_H
+#endif // MOCK_MODULAR_OBJECT_MANAGER_H

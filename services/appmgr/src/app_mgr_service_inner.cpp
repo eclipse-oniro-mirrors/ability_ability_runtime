@@ -2341,7 +2341,8 @@ void AppMgrServiceInner::MakeProcessName(const std::shared_ptr<AbilityInfo> &abi
     }
     if (!abilityInfo->process.empty() && (isCallerSetProcess || specifiedProcessFlag.empty())) {
         TAG_LOGD(AAFwkTag::APPMGR, "Process not null");
-        if (AAFwk::UIExtensionWrapper::IsUIExtension(abilityInfo->extensionAbilityType)) {
+        if (AAFwk::UIExtensionWrapper::IsUIExtension(abilityInfo->extensionAbilityType) ||
+            abilityInfo->extensionAbilityType == AppExecFwk::ExtensionAbilityType::MODULAR_OBJECT) {
             processName = abilityInfo->process;
             return;
         }

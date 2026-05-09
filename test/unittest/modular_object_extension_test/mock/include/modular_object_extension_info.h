@@ -13,30 +13,24 @@
  * limitations under the License.
  */
 
-#ifndef MOCK_RUNNING_PROCESS_INFO_H
-#define MOCK_RUNNING_PROCESS_INFO_H
-
-#include <cstdint>
-#include <string>
+#ifndef OHOS_ABILITY_RUNTIME_MODULAR_OBJECT_EXTENSION_INFO_H
+#define OHOS_ABILITY_RUNTIME_MODULAR_OBJECT_EXTENSION_INFO_H
 
 namespace OHOS {
-namespace AppExecFwk {
+namespace AAFwk {
 
-enum class AppProcessState {
-    APP_STATE_BEGIN = 0,
-    APP_STATE_READY = 1,
-    APP_STATE_FOREGROUND = 2,
-    APP_STATE_BACKGROUND = 4,
-    APP_STATE_END
+enum class MoeLaunchMode : int32_t {
+    IN_PROCESS = 0,
+    CROSS_PROCESS = 1,
 };
 
-struct RunningProcessInfo {
-    AppProcessState state_ = AppProcessState::APP_STATE_FOREGROUND;
-    bool isPreForeground = false;
-    std::string processName_;
+enum class MoeThreadMode : int32_t {
+    BUNDLE = 0,
+    TYPE = 1,
+    INSTANCE = 2,
 };
 
-} // namespace AppExecFwk
+} // namespace AAFwk
 } // namespace OHOS
 
-#endif // MOCK_RUNNING_PROCESS_INFO_H
+#endif // OHOS_ABILITY_RUNTIME_MODULAR_OBJECT_EXTENSION_INFO_H

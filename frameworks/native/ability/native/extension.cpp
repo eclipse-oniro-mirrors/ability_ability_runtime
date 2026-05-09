@@ -15,6 +15,7 @@
 
 #include "extension.h"
 
+#include "ability_info.h"
 #include "ability_local_record.h"
 #include "configuration.h"
 #include "extension_context.h"
@@ -23,6 +24,12 @@
 
 namespace OHOS {
 namespace AbilityRuntime {
+std::shared_ptr<AppExecFwk::AbilityHandler> Extension::GetAbilityHandler(
+    const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo)
+{
+    return nullptr;
+}
+
 void Extension::Init(const std::shared_ptr<AppExecFwk::AbilityLocalRecord> &record,
     const std::shared_ptr<AppExecFwk::OHOSApplication> &application,
     std::shared_ptr<AppExecFwk::AbilityHandler> &handler,
