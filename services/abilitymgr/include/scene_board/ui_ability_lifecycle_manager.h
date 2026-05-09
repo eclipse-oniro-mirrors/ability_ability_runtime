@@ -742,6 +742,8 @@ private:
      * @param ability The ability that timed out
      */
     void HandleForegroundTimeout(const UIAbilityRecordPtr &ability);
+    void HandleStartSelfTimeout(const UIAbilityRecordPtr &abilityRecord, bool isHalf);
+    void PostStartSelfTimeoutEvent(const UIAbilityRecordPtr &abilityRecord);
 
     /**
      * @brief Notify SCB to handle ability exception

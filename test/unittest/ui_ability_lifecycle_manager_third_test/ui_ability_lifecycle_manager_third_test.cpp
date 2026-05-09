@@ -1840,5 +1840,87 @@ HWTEST_F(UIAbilityLifecycleManagerThirdTest, SyncLoadExitReasonTask_001, TestSiz
 
     EXPECT_TRUE(mgr->exitReasonTasks_.empty());
 }
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_HandleStartSelfTimeout_0100
+ * @tc.desc: HandleStartSelfTimeout with null abilityRecord
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, HandleStartSelfTimeout_001, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
+    MyFlag::ffrtSubmitFlag_ = 0;
+    uiAbilityLifecycleManager->HandleStartSelfTimeout(nullptr, false);
+    EXPECT_EQ(MyFlag::ffrtSubmitFlag_, 0);
+    uiAbilityLifecycleManager.reset();
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_HandleStartSelfTimeout_0200
+ * @tc.desc: HandleStartSelfTimeout with native state not CREATED
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, HandleStartSelfTimeout_002, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
+    UIAbilityRecordPtr abilityRecord = InitAbilityRecord();
+    abilityRecord->SetNativeState(AbilityNativeState::ATTACHED);
+    MyFlag::ffrtSubmitFlag_ = 0;
+    uiAbilityLifecycleManager->HandleStartSelfTimeout(abilityRecord, false);
+    EXPECT_EQ(MyFlag::ffrtSubmitFlag_, 0);
+    uiAbilityLifecycleManager.reset();
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_HandleStartSelfTimeout_0300
+ * @tc.desc: HandleStartSelfTimeout with isHalf=true, should not call ffrt::submit
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, HandleStartSelfTimeout_003, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
+    UIAbilityRecordPtr abilityRecord = InitAbilityRecord();
+    abilityRecord->SetNativeState(AbilityNativeState::CREATED);
+    MyFlag::ffrtSubmitFlag_ = 0;
+    uiAbilityLifecycleManager->HandleStartSelfTimeout(abilityRecord, true);
+    EXPECT_EQ(MyFlag::ffrtSubmitFlag_, 0);
+    uiAbilityLifecycleManager.reset();
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_HandleStartSelfTimeout_0400
+ * @tc.desc: HandleStartSelfTimeout with isHalf=false and native state CREATED, should call ffrt::submit for kill
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, HandleStartSelfTimeout_004, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(uiAbilityLifecycleManager, nullptr);
+    UIAbilityRecordPtr abilityRecord = InitAbilityRecord();
+    abilityRecord->SetNativeState(AbilityNativeState::CREATED);
+    MyFlag::ffrtSubmitFlag_ = 0;
+    uiAbilityLifecycleManager->HandleStartSelfTimeout(abilityRecord, false);
+    EXPECT_TRUE(uiAbilityLifecycleManager->sessionAbilityMap_.empty());
+    EXPECT_EQ(MyFlag::ffrtSubmitFlag_, 1);
+    uiAbilityLifecycleManager.reset();
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_PostStartSelfTimeoutEvent_0100
+ * @tc.desc: PostStartSelfTimeoutEvent should call ffrt::submit twice for half and full timeout
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, PostStartSelfTimeoutEvent_001, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(uiAbilityLifecycleManager, nullptr);
+    UIAbilityRecordPtr abilityRecord = InitAbilityRecord();
+    abilityRecord->SetNativeState(AbilityNativeState::CREATED);
+    MyFlag::ffrtSubmitFlag_ = 0;
+    uiAbilityLifecycleManager->PostStartSelfTimeoutEvent(abilityRecord);
+    usleep(TIMEOUT_VALUE);
+    EXPECT_EQ(MyFlag::ffrtSubmitFlag_, 3);
+    uiAbilityLifecycleManager.reset();
+}
 }  // namespace AAFwk
 }  // namespace OHOS
