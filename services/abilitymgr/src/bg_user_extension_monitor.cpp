@@ -33,7 +33,7 @@ constexpr const char *ABILITY_NAME_KEY = "ABILITY_NAME";
 constexpr const char *RUNNING_DURATION_KEY = "RUNNING_DURATION";
 constexpr const char *STILL_ALIVE_KEY = "STILL_ALIVE";
 constexpr const char *CNT_KEY = "CNT";
-constexpr const char *BG_START_EVENT_VALUE = "BG_START_EVENT";
+constexpr const char *BG_START_EVENT_VALUE = "BG_USER_START_EVENT";
 
 bool CopyStringParam(const std::string &str, std::vector<std::unique_ptr<char[]>> &buffers,
     std::vector<char*> &ptrs)

@@ -15544,6 +15544,7 @@ void AbilityManagerService::ReportBgUserExtensionEvent(const sptr<IRemoteObject>
             int32_t result = Security::AccessToken::AccessTokenKit::GetNativeTokenInfo(tokenId, nativeTokenInfo);
             if (result == ERR_OK) {
                 callerProcessName = nativeTokenInfo.processName;
+                callerBundleName = nativeTokenInfo.processName;
             }
         } else {
             callerProcessName = callerBundleName;
