@@ -2827,6 +2827,18 @@ public:
     }
 
     /**
+     * @brief Execute in-app skill with explicit caller tokenId (for SA-to-SA calls).
+     * @param request The skill execute request parameters.
+     * @param callback The callback for skill execution result.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t ExecuteInAppSkillWithTokenId(const AppExecFwk::SkillExecuteRequest &request,
+        const sptr<ISkillExecuteCallback> &callback)
+    {
+        return ERR_OK;
+    }
+
+    /**
      * @brief Query the type of a skill (independent or in-app).
      * @param bundleName The bundle name of the target application.
      * @param moduleName The module name of the target application.

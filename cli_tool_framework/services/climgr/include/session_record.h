@@ -30,10 +30,17 @@
 namespace OHOS {
 namespace CliTool {
 
+enum class SessionType {
+    CLI = 0,
+    SKILL,
+};
+
 enum class SessionState {
     SPAWNING = 0,
     RUNNING,
     CANCELLING,
+    COMPLETED,
+    FAILED,
 };
 
 class SessionRecord {
@@ -51,12 +58,15 @@ public:
     int32_t stdinPipe[2] = {-1, -1};        // [0]=read, [1]=write
     int32_t stdoutPipe[2] = {-1, -1};
     int32_t stderrPipe[2] = {-1, -1};
+    SessionType sessionType = SessionType::CLI;
 
     void SetState(SessionState state);
     SessionState GetState() const;
 
     void SetTerminalResult(int32_t status, int32_t sig);
     int32_t GetTerminalStatus() const;
+
+    void SetSkillResult(int32_t resultCode, const std::string &outputText);
 
     void SetTimedOut(bool timedOut);
     bool TimedOut() const;

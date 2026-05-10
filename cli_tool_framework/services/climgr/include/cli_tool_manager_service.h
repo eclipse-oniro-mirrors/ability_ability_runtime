@@ -30,17 +30,23 @@
 #include "io_monitor.h"
 #include "process_manager.h"
 #include "session_record.h"
+#include "skill/skill_execute_callback_stub.h"
 
 namespace OHOS {
 namespace AppExecFwk {
 class IApplicationStateObserver;
+struct SkillExecuteResult;
 }
 namespace CliTool {
 class SessionRecord;
+class SkillCallbackAdapter;
+class CliToolManagerService;
+
 class CliToolManagerService : public SystemAbility,
-                              public CliToolManagerStub,
-                              public std::enable_shared_from_this<CliToolManagerService> {
+                              public CliToolManagerStub {
     DECLARE_SYSTEM_ABILITY(CliToolManagerService);
+
+    friend class SkillCallbackAdapter;
 
 public:
     static sptr<CliToolManagerService> GetInstance();
@@ -136,8 +142,17 @@ private:
         ToolInfo &toolInfo, std::string &sandboxConfig, std::string &bundleName);
     int32_t SetupAndStartSession(const ExecToolParam &param, const std::string &eventId,
         const ToolInfo &toolInfo, const std::string &sandboxConfig, const std::string &bundleName);
-    void HandleBackgroundSessionReply(const std::shared_ptr<SessionRecord> &record, const std::string &eventId);
 
+    int32_t SetupAndStartSkillSession(const ExecToolParam &param,
+        const std::string &eventId, const ToolInfo &toolInfo);
+    int32_t ValidateSkillTypeFromParam(const ExecToolParam &param, int32_t &skillType);
+    int32_t ValidateSkillType(const std::string &bundleName,
+        const std::string &moduleName, const std::string &skillName, int32_t &skillType);
+    void HandleSkillSessionComplete(const std::string &sessionId, int32_t callerPid,
+        const std::string &eventId, int32_t resultCode, const CliSessionInfo &session);
+    void HandleSkillSessionTimeout(const std::string &sessionId);
+
+    void HandleBackgroundSessionReply(const std::shared_ptr<SessionRecord> &record, const std::string &eventId);
     void HandleProcessTimeout(const std::string &sessionId);
     void HandleProcessYieldTimeout(const std::string &sessionId);
     void HandleOutputClosed(const std::string &sessionId, bool isStdout);
@@ -163,6 +178,19 @@ private:
     ffrt::mutex sessionsMutex_;
     std::unordered_map<std::string, std::shared_ptr<SessionRecord>> sessionRecords_;
     std::unordered_map<std::string, sptr<AppExecFwk::IApplicationStateObserver>> bundleObservers_;
+};
+
+class SkillCallbackAdapter : public AAFwk::SkillExecuteCallbackStub {
+public:
+    SkillCallbackAdapter(const std::string &sessionId,
+        int32_t callerPid, const std::string &eventId);
+    void OnExecuteDone(const std::string &requestCode, int32_t resultCode,
+        const AppExecFwk::SkillExecuteResult &result) override;
+
+private:
+    std::string sessionId_;
+    int32_t callerPid_;
+    std::string eventId_;
 };
 
 } // namespace CliTool

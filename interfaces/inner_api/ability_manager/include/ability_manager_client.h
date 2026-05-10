@@ -2274,6 +2274,9 @@ public:
         const std::shared_ptr<AAFwk::WantParams> &skillArgs = nullptr,
         const sptr<ISkillExecuteCallback> &callback = nullptr);
 
+    ErrCode ExecuteInAppSkillWithTokenId(const AppExecFwk::SkillExecuteRequest &request,
+        const sptr<ISkillExecuteCallback> &callback);
+
     ErrCode ExecuteSkillDone(sptr<IRemoteObject> token, const std::string &requestCode,
         int32_t resultCode, const AppExecFwk::SkillExecuteResult &result);
 

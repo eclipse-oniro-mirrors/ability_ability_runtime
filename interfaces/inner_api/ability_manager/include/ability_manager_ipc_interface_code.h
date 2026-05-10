@@ -764,6 +764,9 @@ enum class AbilityManagerInterfaceCode {
 
     // execute skill done with token for identity verification
     EXECUTE_SKILL_DONE_WITH_TOKEN = 6172,
+
+    // execute in-app skill with explicit caller tokenId
+    EXECUTE_IN_APP_SKILL_WITH_TOKEN_ID = 6173,
 };
 }  // namespace AAFwk
 }  // namespace OHOS

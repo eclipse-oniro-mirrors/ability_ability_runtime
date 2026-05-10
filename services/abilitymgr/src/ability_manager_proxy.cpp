@@ -8267,6 +8267,51 @@ int32_t AbilityManagerProxy::ExecuteInAppSkill(const std::string &bundleName, co
     return reply.ReadInt32();
 }
 
+int32_t AbilityManagerProxy::ExecuteInAppSkillWithTokenId(const AppExecFwk::SkillExecuteRequest &request,
+    const sptr<ISkillExecuteCallback> &callback)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "execute in-app skill with tokenId proxy, bundleName:%{public}s",
+        request.bundleName.c_str());
+    MessageParcel data;
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write token fail");
+        return INNER_ERR;
+    }
+    if (!data.WriteUint32(request.callerTokenId)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write callerTokenId fail");
+        return INNER_ERR;
+    }
+    if (!data.WriteString16(Str8ToStr16(request.bundleName)) ||
+        !data.WriteString16(Str8ToStr16(request.moduleName)) ||
+        !data.WriteString16(Str8ToStr16(request.skillName)) ||
+        !data.WriteString16(Str8ToStr16(request.scriptPath)) ||
+        !data.WriteString16(Str8ToStr16(request.functionName))) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write string params fail");
+        return INNER_ERR;
+    }
+    auto paramsToWrite = (request.skillArgs != nullptr)
+        ? request.skillArgs : std::make_shared<AAFwk::WantParams>();
+    if (!data.WriteParcelable(paramsToWrite.get())) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write skillArgs fail");
+        return INNER_ERR;
+    }
+    bool hasCallback = callback != nullptr;
+    if (!data.WriteBool(hasCallback) ||
+        (hasCallback && !data.WriteRemoteObject(callback->AsObject()))) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write callback fail");
+        return INNER_ERR;
+    }
+    MessageParcel reply;
+    MessageOption option;
+    auto ret = SendRequest(AbilityManagerInterfaceCode::EXECUTE_IN_APP_SKILL_WITH_TOKEN_ID,
+        data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "request fail:%{public}d", ret);
+        return ret;
+    }
+    return reply.ReadInt32();
+}
+
 int32_t AbilityManagerProxy::ExecuteSkillDone(const sptr<IRemoteObject> &token,
     const std::string &requestCode, int32_t resultCode,
     const AppExecFwk::SkillExecuteResult &result)

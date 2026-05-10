@@ -1792,6 +1792,9 @@ public:
         const std::shared_ptr<AAFwk::WantParams> &skillArgs = nullptr,
         const sptr<ISkillExecuteCallback> &callback = nullptr) override;
 
+    virtual int32_t ExecuteInAppSkillWithTokenId(const AppExecFwk::SkillExecuteRequest &request,
+        const sptr<ISkillExecuteCallback> &callback) override;
+
     virtual int32_t QuerySkillType(const std::string &bundleName, const std::string &moduleName,
         const std::string &skillName, int32_t &skillType) override;
 
