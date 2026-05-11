@@ -2215,6 +2215,9 @@ public:
         const std::shared_ptr<AAFwk::WantParams> &skillArgs = nullptr,
         const sptr<ISkillExecuteCallback> &callback = nullptr) override;
 
+    int32_t ExecuteInAppSkillWithTokenId(const AppExecFwk::SkillExecuteRequest &request,
+        const sptr<ISkillExecuteCallback> &callback) override;
+
     int32_t StartAbilityByCallWithSkill(const Want &want,
         const sptr<IRemoteObject> &callerToken, int32_t userId = DEFAULT_INVAL_VALUE);
 

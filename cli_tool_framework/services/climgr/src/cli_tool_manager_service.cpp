@@ -18,6 +18,7 @@
 #include <sys/wait.h>
 
 #include "accesstoken_kit.h"
+#include "ability_manager_client.h"
 #include "app_mgr_client.h"
 #include "ccm_util.h"
 #include "cli_error_code.h"
@@ -46,6 +47,8 @@ constexpr int32_t QUERY_COMMAND_NOT_EXIST = 1;
 constexpr int32_t QUERY_DB_ERROR = 2;
 constexpr int32_t MAX_QUERY_CMDS_SIZE = 100;
 constexpr int32_t ACTIVE_TIME = 30 * 1000; // 30s
+constexpr int32_t SKILL_TYPE_INDEPENDENT = -1;
+sptr<SkillCallbackAdapter> adaptor_;
 } // namespace
 
 std::mutex g_mutex;
@@ -86,6 +89,12 @@ void CliToolManagerService::HandleProcessTimeout(const std::string &sessionId)
             "HandleProcessTimeout skipped: sessionId=%{public}s not found", sessionId.c_str());
         return;
     }
+
+    if (record->sessionType == SessionType::SKILL) {
+        HandleSkillSessionTimeout(sessionId);
+        return;
+    }
+
     TAG_LOGI(AAFwkTag::CLI_TOOL, "HandleProcessTimeout: sessionId=%{public}s", sessionId.c_str());
     record->SetTimedOut(true);
     record->SetState(SessionState::CANCELLING);
@@ -503,6 +512,9 @@ int32_t CliToolManagerService::ValidateAndPrepareTool(const ExecToolParam &param
 int32_t CliToolManagerService::SetupAndStartSession(const ExecToolParam &param, const std::string &eventId,
     const ToolInfo &toolInfo, const std::string &sandboxConfig, const std::string &bundleName)
 {
+    TAG_LOGI(AAFwkTag::CLI_TOOL,
+        "Dispatch to CLI path, toolName=%{public}s eventId=%{public}s", param.toolName.c_str(), eventId.c_str());
+
     std::shared_ptr<SessionRecord> record = CreateSessionRecord(param, eventId);
     if (record == nullptr) {
         return ERR_NO_INIT;
@@ -544,17 +556,37 @@ int32_t CliToolManagerService::ExecTool(const ExecToolParam &param, const std::s
     InterfaceCallCounter counter(interfaceCalledCount_);
     TAG_LOGI(AAFwkTag::CLI_TOOL, "ExecTool called: toolName=%{public}s, subcommand=%{public}s",
         param.toolName.c_str(), param.subcommand.c_str());
+    ToolInfo toolInfo;
+    if (ToolUtil::IsSkillTool(param.toolName)) {
+        int32_t skillType = 0;
+        auto skillRet = ValidateSkillTypeFromParam(param, skillType);
+        if (skillRet == ERR_OK && skillType != SKILL_TYPE_INDEPENDENT) {
+            TAG_LOGI(AAFwkTag::CLI_TOOL,
+                "Dispatch to skill path, toolName=%{public}s eventId=%{public}s",
+                param.toolName.c_str(), eventId.c_str());
+            int32_t ret = SetupAndStartSkillSession(param, eventId, toolInfo);
+            if (ret != ERR_OK) {
+                TAG_LOGE(AAFwkTag::CLI_TOOL,
+                    "Skill dispatch failed, toolName=%{public}s ret=%{public}d", param.toolName.c_str(), ret);
+            }
+            return ret;
+        }
+        if (skillRet != ERR_OK) {
+            return skillRet;
+        }
+        TAG_LOGI(AAFwkTag::CLI_TOOL,
+            "Independent skill, fallback to CLI path, toolName=%{public}s", param.toolName.c_str());
+    }
 
     if (auto ret = ValidateExecToolPermissions(); ret != ERR_OK) {
         return ret;
     }
-
     if (auto ret = ValidateSessionLimit(); ret != ERR_OK) {
         return ret;
     }
 
     auto tokenId = IPCSkeleton::GetCallingTokenID();
-    ToolInfo toolInfo;
+
     std::string sandboxConfig;
     std::string bundleName;
 
@@ -641,8 +673,10 @@ void CliToolManagerService::OnProcessDied(const std::string &bundleName, pid_t d
             continue;
         }
 
-        // Kill the CLI process group
-        ProcessManager::GetInstance().Killpg(sessionRecord->processId);
+        // Kill the CLI process group (skill sessions have processId=-1, Killpg handles it)
+        if (sessionRecord->processId > 0) {
+            ProcessManager::GetInstance().Killpg(sessionRecord->processId);
+        }
 
         // Clean up session
         iter = sessionRecords_.erase(iter);
@@ -736,6 +770,16 @@ int32_t CliToolManagerService::ClearSession(const std::string &sessionId)
     }
     TAG_LOGI(AAFwkTag::CLI_TOOL, "ClearSession: sessionId=%{public}s, pid=%{public}d",
         sessionId.c_str(), record->processId);
+
+    if (record->sessionType == SessionType::SKILL) {
+        // Skill sessions don't have a child process, mark as cancelling and clean up
+        record->SetState(SessionState::CANCELLING);
+        EventDispatcher::GetInstance().DispatchExitEvent(sessionId, 0);
+        EventDispatcher::GetInstance().ClearSessionSubscribers(sessionId);
+        RemoveSessionRecord(sessionId);
+        return ERR_OK;
+    }
+
     if (!ProcessManager::GetInstance().Killpg(record->processId)) {
         return ERR_NOT_KILL;
     }
@@ -861,6 +905,13 @@ int32_t CliToolManagerService::SendMessage(const std::string &sessionId,
         return ERR_CLI_SEND_MESSAGE;
     }
 
+    // Skill sessions don't support stdin
+    if (record->sessionType == SessionType::SKILL) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL,
+            "SendMessage failed: sessionId=%{public}s is a skill session (no stdin)", sessionId.c_str());
+        return ERR_CLI_SEND_MESSAGE;
+    }
+
     ioMonitor_->SendMessage(sessionId, inputText, eventId);
     return ERR_OK;
 }
@@ -888,6 +939,172 @@ int32_t CliToolManagerService::BatchQueryPermissionBySubCommand(
     }
 
     return PermissionQueryUtil::BatchQueryPermissions(cmds, cmdPermissions);
+}
+
+SkillCallbackAdapter::SkillCallbackAdapter(const std::string &sessionId,
+    int32_t callerPid, const std::string &eventId)
+    : sessionId_(sessionId), callerPid_(callerPid), eventId_(eventId)
+{}
+
+void SkillCallbackAdapter::OnExecuteDone(const std::string &requestCode, int32_t resultCode,
+    const AppExecFwk::SkillExecuteResult &result)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL,
+        "SkillCallbackAdapter::OnExecuteDone sessionId:%{public}s code:%{public}d",
+        sessionId_.c_str(), resultCode);
+
+    auto service = CliToolManagerService::GetInstance();
+    if (service == nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "service expired for sessionId:%{public}s", sessionId_.c_str());
+        return;
+    }
+
+    auto record = service->GetSessionRecord(sessionId_);
+    if (record == nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL,
+            "OnExecuteDone skipped: sessionId:%{public}s already cleaned", sessionId_.c_str());
+        return;
+    }
+
+    std::string outputText;
+    if (result.result != nullptr) {
+        outputText = result.result->ToString();
+    }
+    record->SetSkillResult(resultCode, outputText);
+    record->SetState(resultCode == ERR_OK ? SessionState::COMPLETED : SessionState::FAILED);
+
+    auto session = ToolUtil::BuildSkillSessionInfo(sessionId_, resultCode, result);
+    service->HandleSkillSessionComplete(sessionId_, callerPid_, eventId_, resultCode, session);
+}
+
+int32_t CliToolManagerService::ValidateSkillTypeFromParam(const ExecToolParam &param, int32_t &skillType)
+{
+    auto &args = const_cast<ExecToolParam &>(param).args;
+    ToolUtil::NormalizeSkillParamKeys(args);
+    auto bundleName = args.GetStringParam("bundleName");
+    auto moduleName = args.GetStringParam("moduleName");
+    auto skillName = args.GetStringParam("skillName");
+    if (skillName.empty()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "skillName is required in args");
+        return ERR_INVALID_VALUE;
+    }
+    return ValidateSkillType(bundleName, moduleName, skillName, skillType);
+}
+
+int32_t CliToolManagerService::ValidateSkillType(const std::string &bundleName,
+    const std::string &moduleName, const std::string &skillName, int32_t &skillType)
+{
+    auto queryRet = AAFwk::AbilityManagerClient::GetInstance()->QuerySkillType(
+        bundleName, moduleName, skillName, skillType);
+    if (queryRet != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "querySkillType failed:%{public}d", queryRet);
+        return queryRet;
+    }
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::SetupAndStartSkillSession(const ExecToolParam &param,
+    const std::string &eventId, const ToolInfo &toolInfo)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "SetupAndStartSkillSession: toolName=%{public}s",
+        param.toolName.c_str());
+
+    auto &args = const_cast<ExecToolParam &>(param).args;
+    auto bundleName = args.GetStringParam("bundleName");
+    auto moduleName = args.GetStringParam("moduleName");
+    auto skillName = args.GetStringParam("skillName");
+    auto scriptPath = args.GetStringParam("scriptPath");
+    auto funcName = args.GetStringParam("functionName");
+
+    ToolUtil::ExpandArgsJsonString(args);
+    auto skillArgs = ToolUtil::FilterSkillArgs(args);
+
+    auto record = CreateSessionRecord(param, eventId);
+    if (record == nullptr) {
+        return ERR_NO_INIT;
+    }
+    record->sessionType = SessionType::SKILL;
+    AddSessionRecord(record);
+
+    auto callerTokenId = IPCSkeleton::GetCallingTokenID();
+    adaptor_ = sptr<SkillCallbackAdapter>::MakeSptr(
+        record->sessionId, record->callerPid, eventId);
+
+    AppExecFwk::SkillExecuteRequest skillRequest;
+    skillRequest.callerTokenId = callerTokenId;
+    skillRequest.bundleName = bundleName;
+    skillRequest.moduleName = moduleName;
+    skillRequest.skillName = skillName;
+    skillRequest.scriptPath = scriptPath;
+    skillRequest.functionName = funcName;
+    skillRequest.skillArgs = skillArgs;
+
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "execSkill before ExecuteInAppSkillWithTokenId");
+    int32_t ret = AAFwk::AbilityManagerClient::GetInstance()->ExecuteInAppSkillWithTokenId(
+        skillRequest, adaptor_);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ExecuteInAppSkillWithTokenId failed:%{public}d", ret);
+        RemoveSessionRecord(record->sessionId);
+        return ret;
+    }
+
+    if (param.options.background) {
+        HandleBackgroundSessionReply(record, eventId);
+    }
+
+    return ERR_OK;
+}
+
+void CliToolManagerService::HandleSkillSessionComplete(const std::string &sessionId,
+    int32_t callerPid, const std::string &eventId, int32_t resultCode,
+    const CliSessionInfo &session)
+{
+    auto record = GetSessionRecord(sessionId);
+    if (record == nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL,
+            "HandleSkillSessionComplete skipped: sessionId:%{public}s not found", sessionId.c_str());
+        return;
+    }
+    if (!record->BeginCleanup()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL,
+            "HandleSkillSessionComplete skipped: already cleaning sessionId:%{public}s", sessionId.c_str());
+        return;
+    }
+
+    auto oldBackground = record->SetBackground(true);
+    if (oldBackground == false) {
+        EventDispatcher::GetInstance().DispatchExecToolReplyEvent(callerPid, eventId, ERR_OK, session);
+    }
+
+    EventDispatcher::GetInstance().DispatchExitEvent(sessionId, 0);
+    EventDispatcher::GetInstance().ClearSessionSubscribers(sessionId);
+    RemoveSessionRecord(sessionId);
+}
+
+void CliToolManagerService::HandleSkillSessionTimeout(const std::string &sessionId)
+{
+    auto record = GetSessionRecord(sessionId);
+    if (record == nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL,
+            "HandleSkillSessionTimeout skipped: sessionId:%{public}s not found", sessionId.c_str());
+        return;
+    }
+
+    record->SetTimedOut(true);
+    record->SetState(SessionState::FAILED);
+
+    auto oldBackground = record->SetBackground(true);
+    if (oldBackground == false) {
+        CliSessionInfo session;
+        record->BuildSessionInfo(session);
+        EventDispatcher::GetInstance().DispatchExecToolReplyEvent(
+            record->callerPid, record->eventId, ERR_OK, session);
+    }
+
+    EventDispatcher::GetInstance().DispatchErrorEvent(sessionId, "session timed out");
+    EventDispatcher::GetInstance().DispatchExitEvent(sessionId, 0);
+    EventDispatcher::GetInstance().ClearSessionSubscribers(sessionId);
+    RemoveSessionRecord(sessionId);
 }
 } // namespace CliTool
 } // namespace OHOS

@@ -28,12 +28,22 @@ namespace AppExecFwk {
 
 using WantParams = OHOS::AAFwk::WantParams;
 
+struct SkillExecuteRequest {
+    uint32_t callerTokenId = 0;
+    std::string bundleName;
+    std::string moduleName;
+    std::string skillName;
+    std::string scriptPath;
+    std::string functionName;
+    std::shared_ptr<WantParams> skillArgs;
+};
+
 // Want parameter keys for skill execution
 constexpr char SKILL_EXECUTE_PARAM_BUNDLE_NAME[] = "ohos.skill.executeParam.bundleName";
 constexpr char SKILL_EXECUTE_PARAM_MODULE_NAME[] = "ohos.skill.executeParam.moduleName";
 constexpr char SKILL_EXECUTE_PARAM_SKILL_NAME[] = "ohos.skill.executeParam.skillName";
-constexpr char SKILL_EXECUTE_PARAM_ARKTS_PATH[] = "ohos.skill.executeParam.arkTSPath";
-constexpr char SKILL_EXECUTE_PARAM_FUNC_NAME[] = "ohos.skill.executeParam.funcName";
+constexpr char SKILL_EXECUTE_PARAM_SCRIPT_PATH[] = "ohos.skill.executeParam.scriptPath";
+constexpr char SKILL_EXECUTE_PARAM_FUNCTION_NAME[] = "ohos.skill.executeParam.functionName";
 constexpr char SKILL_EXECUTE_PARAM_ARGS_KEYS[] = "ohos.skill.executeParam.argsKeys";
 constexpr char SKILL_EXECUTE_PARAM_ARGS_PREFIX[] = "ohos.skill.executeParam.args.";
 constexpr char SKILL_EXECUTE_PARAM_SRC_ENTRIES_COUNT[] = "ohos.skill.executeParam.srcEntriesCount";
@@ -55,7 +65,7 @@ public:
     static bool RemoveSkillParam(AAFwk::Want &want);
     static void WriteToWant(AAFwk::Want &want, const std::string &bundleName,
         const std::string &moduleName, const std::string &skillName,
-        const std::string &arkTSPath = "", const std::string &funcName = "",
+        const std::string &scriptPath = "", const std::string &functionName = "",
         const std::shared_ptr<AAFwk::WantParams> &skillArgs = nullptr,
         const std::vector<std::string> &srcEntries = {},
         const std::string &requestCode = "", const std::string &hapPath = "");
@@ -63,8 +73,8 @@ public:
     std::string bundleName_;
     std::string moduleName_;
     std::string skillName_;
-    std::string arkTSPath_;
-    std::string funcName_;
+    std::string scriptPath_;
+    std::string functionName_;
     std::shared_ptr<AAFwk::WantParams> skillArgs_;
     std::vector<std::string> srcEntries_;
     std::string hapPath_;

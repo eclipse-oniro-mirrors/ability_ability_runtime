@@ -601,13 +601,13 @@ napi_value JsServiceExtension::LoadSkillFunction(
         }
         outJsObj = moduleRef->GetNapiValue();
         method = AppExecFwk::GetPropertyValueByPropertyName(
-            env, outJsObj, param->funcName_.c_str(), napi_valuetype::napi_function);
+            env, outJsObj, param->functionName_.c_str(), napi_valuetype::napi_function);
         if (method != nullptr) {
             TAG_LOGI(AAFwkTag::SERVICE_EXT, "func found in srcEntry:%{public}s", srcEntry.c_str());
             break;
         }
         TAG_LOGW(AAFwkTag::SERVICE_EXT, "func not found:%{public}s in srcEntry:%{public}s",
-            param->funcName_.c_str(), srcEntry.c_str());
+            param->functionName_.c_str(), srcEntry.c_str());
     }
     return method;
 }
@@ -615,6 +615,7 @@ napi_value JsServiceExtension::LoadSkillFunction(
 std::vector<napi_value> JsServiceExtension::BuildSkillCallArgs(napi_env env,
     const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param)
 {
+    TAG_LOGI(AAFwkTag::SERVICE_EXT, "execSkill CallFunc inputArgs:%{public}s", param->skillArgs_->ToString().c_str());
     napi_value info = nullptr;
     napi_create_object(env, &info);
     napi_value requestCodeVal = nullptr;
@@ -656,7 +657,7 @@ void JsServiceExtension::ExecuteSkill(const AAFwk::Want &want,
     napi_value jsObj = nullptr;
     napi_value method = LoadSkillFunction(param, jsObj);
     if (method == nullptr) {
-        TAG_LOGE(AAFwkTag::SERVICE_EXT, "func not found in any srcEntry:%{public}s", param->funcName_.c_str());
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "func not found in any srcEntry:%{public}s", param->functionName_.c_str());
         return;
     }
     auto args = BuildSkillCallArgs(env, param);
@@ -664,7 +665,7 @@ void JsServiceExtension::ExecuteSkill(const AAFwk::Want &want,
     napi_status status = napi_call_function(env, jsObj, method, args.size(), args.data(), &result);
     if (status != napi_ok) {
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "napi_call_function failed, status:%{public}d func:%{public}s",
-            status, param->funcName_.c_str());
+            status, param->functionName_.c_str());
         return;
     }
     TAG_LOGD(AAFwkTag::SERVICE_EXT,

@@ -1,9 +1,10 @@
 {
-  "name": "ohos-arktsScript",
+  "name": "ohos-arkTSScript",
   "version": "1.0.0",
   "description": "Run a specified function from an ArkTS script ABC file",
-  "executablePath": "/system/bin/cli_tool/executable/ohos-arktsScript",
+  "executablePath": "/system/bin/cli_tool/executable/ohos-arkTSScript",
   "requirePermissions": [],
+  
   "inputSchema": {
     "type": "object",
     "description": "Tool input parameters",

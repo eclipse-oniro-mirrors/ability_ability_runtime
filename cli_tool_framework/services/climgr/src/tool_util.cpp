@@ -19,6 +19,7 @@
 #include <climits>
 #include <nlohmann/json.hpp>
 #include <random>
+#include <set>
 #include <sstream>
 #include <utility>
 #include <vector>
@@ -32,15 +33,20 @@
 #include "ipc_skeleton.h"
 #include "permission_util.h"
 #include "session_record.h"
+#include "skill_execute_result.h"
 #include "tool_info.h"
 #include "want_params.h"
 #include "want_params_wrapper.h"
+#include "bool_wrapper.h"
+#include "int_wrapper.h"
+#include "string_wrapper.h"
 
 namespace OHOS {
 namespace CliTool {
 namespace {
 constexpr int32_t MILLISECOND_COEFFICIENT = 1000;
 constexpr int64_t MAX_TIMEOUT = 30 * 60; // 30 m
+constexpr size_t PREFIX_DOUBLE_DASH_LEN = 2;
 }
 int32_t ToolUtil::ValidateProperties(const ToolInfo &toolInfo, ExecToolParam &param,
     AccessToken::AccessTokenID tokenId)
@@ -478,6 +484,134 @@ bool ToolUtil::IsNumberType(const sptr<AAFwk::IInterface> &value)
 bool ToolUtil::IsArrayType(const sptr<AAFwk::IInterface> &value)
 {
     return AAFwk::IArray::Query(value) != nullptr;
+}
+
+bool ToolUtil::IsSkillTool(const std::string &toolName)
+{
+    return toolName == "ohos-arkTSScript";
+}
+
+void ToolUtil::NormalizeSkillParamKeys(AAFwk::WantParams &args)
+{
+    auto &params = args.GetParams();
+    std::vector<std::pair<std::string, sptr<AAFwk::IInterface>>> toRename;
+    for (const auto &[key, value] : params) {
+        std::string bareKey = key;
+        if (bareKey.size() > PREFIX_DOUBLE_DASH_LEN && bareKey.compare(0, PREFIX_DOUBLE_DASH_LEN, "--") == 0) {
+            bareKey.erase(0, PREFIX_DOUBLE_DASH_LEN);
+        } else if (bareKey.size() > 1 && bareKey[0] == '-') {
+            bareKey.erase(0, 1);
+        } else {
+            continue;
+        }
+        if (params.find(bareKey) == params.end()) {
+            toRename.emplace_back(key, value);
+        }
+    }
+    for (auto &[prefixedKey, value] : toRename) {
+        std::string bareKey = prefixedKey;
+        if (bareKey.compare(0, PREFIX_DOUBLE_DASH_LEN, "--") == 0) {
+            bareKey.erase(0, PREFIX_DOUBLE_DASH_LEN);
+        } else {
+            bareKey.erase(0, 1);
+        }
+        args.Remove(prefixedKey);
+        args.SetParam(bareKey, value);
+    }
+}
+
+bool ToolUtil::ExpandArgsFromJson(AAFwk::WantParams &args, const std::string &argsStr)
+{
+    static const std::set<std::string> RESERVED_KEYS = {
+        "bundleName", "moduleName", "skillName", "scriptPath", "functionName"
+    };
+
+    auto jsonObj = nlohmann::json::parse(argsStr, nullptr, false);
+    if (!jsonObj.is_object() || jsonObj.is_discarded()) {
+        return false;
+    }
+    args.Remove("args");
+    for (auto &[key, val] : jsonObj.items()) {
+        if (RESERVED_KEYS.count(key) > 0) {
+            continue;
+        }
+        if (val.is_string()) {
+            args.SetParam(key, AAFwk::String::Box(val.get<std::string>()));
+        } else if (val.is_number_integer()) {
+            args.SetParam(key, AAFwk::Integer::Box(val.get<int32_t>()));
+        } else if (val.is_boolean()) {
+            args.SetParam(key, AAFwk::Boolean::Box(val.get<bool>()));
+        }
+    }
+    return true;
+}
+
+void ToolUtil::ExpandArgsFromWantParams(AAFwk::WantParams &args)
+{
+    static const std::set<std::string> RESERVED_KEYS = {
+        "bundleName", "moduleName", "skillName", "scriptPath", "functionName"
+    };
+
+    auto &params = args.GetParams();
+    auto it = params.find("args");
+    if (it == params.end()) {
+        return;
+    }
+    auto *wantParams = AAFwk::IWantParams::Query(it->second);
+    if (wantParams == nullptr) {
+        return;
+    }
+    AAFwk::WantParams nestedParams;
+    if (wantParams->GetValue(nestedParams) != ERR_OK) {
+        return;
+    }
+    args.Remove("args");
+    for (auto &[key, value] : nestedParams.GetParams()) {
+        if (RESERVED_KEYS.count(key) > 0) {
+            continue;
+        }
+        args.SetParam(key, value);
+    }
+}
+
+void ToolUtil::ExpandArgsJsonString(AAFwk::WantParams &args)
+{
+    auto argsStr = args.GetStringParam("args");
+    if (!argsStr.empty() && ExpandArgsFromJson(args, argsStr)) {
+        return;
+    }
+    ExpandArgsFromWantParams(args);
+}
+
+std::shared_ptr<AAFwk::WantParams> ToolUtil::FilterSkillArgs(const AAFwk::WantParams &args)
+{
+    static const std::set<std::string> RESERVED_KEYS = {
+        "bundleName", "moduleName", "skillName", "scriptPath", "functionName"
+    };
+
+    auto skillArgs = std::make_shared<AAFwk::WantParams>();
+    auto &params = args.GetParams();
+    for (auto &[key, value] : params) {
+        if (RESERVED_KEYS.count(key) == 0) {
+            skillArgs->SetParam(key, value);
+        }
+    }
+    return skillArgs;
+}
+
+CliSessionInfo ToolUtil::BuildSkillSessionInfo(const std::string &sessionId,
+    int32_t resultCode, const AppExecFwk::SkillExecuteResult &skillResult)
+{
+    CliSessionInfo session;
+    session.sessionId = sessionId;
+    session.toolName = "ohos-arkTSScript";
+    session.status = (resultCode == ERR_OK) ? "completed" : "failed";
+    session.result = std::make_shared<ExecResult>();
+    session.result->exitCode = skillResult.code;
+    if (skillResult.result != nullptr) {
+        session.result->outputText = skillResult.result->ToString();
+    }
+    return session;
 }
 
 } // namespace CliTool

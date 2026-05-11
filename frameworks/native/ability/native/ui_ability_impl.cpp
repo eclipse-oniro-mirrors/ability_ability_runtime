@@ -275,10 +275,10 @@ bool UIAbilityImpl::HandleExecuteSkill(const AAFwk::Want &want, bool onlyExecute
 
     TAG_LOGD(AAFwkTag::UIABILITY,
         "skill bundle:%{public}s module:%{public}s name:%{public}s "
-        "arkTSPath:%{public}s func:%{public}s requestCode:%{public}s",
+        "scriptPath:%{public}s func:%{public}s requestCode:%{public}s",
         param->bundleName_.c_str(), param->moduleName_.c_str(),
-        param->skillName_.c_str(), param->arkTSPath_.c_str(),
-        param->funcName_.c_str(), param->requestCode_.c_str());
+        param->skillName_.c_str(), param->scriptPath_.c_str(),
+        param->functionName_.c_str(), param->requestCode_.c_str());
     ability_->ExecuteSkill(want, param);
     if (!onlyExecuteSkill) {
         Background();

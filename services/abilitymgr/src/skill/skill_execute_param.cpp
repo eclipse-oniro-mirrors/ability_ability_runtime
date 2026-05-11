@@ -28,8 +28,8 @@ bool SkillExecuteParam::ReadFromParcel(Parcel &parcel)
     bundleName_ = Str16ToStr8(parcel.ReadString16());
     moduleName_ = Str16ToStr8(parcel.ReadString16());
     skillName_ = Str16ToStr8(parcel.ReadString16());
-    arkTSPath_ = Str16ToStr8(parcel.ReadString16());
-    funcName_ = Str16ToStr8(parcel.ReadString16());
+    scriptPath_ = Str16ToStr8(parcel.ReadString16());
+    functionName_ = Str16ToStr8(parcel.ReadString16());
     auto *args = parcel.ReadParcelable<AAFwk::WantParams>();
     if (args != nullptr) {
         skillArgs_ = std::shared_ptr<AAFwk::WantParams>(args);
@@ -63,8 +63,8 @@ bool SkillExecuteParam::Marshalling(Parcel &parcel) const
     parcel.WriteString16(Str8ToStr16(bundleName_));
     parcel.WriteString16(Str8ToStr16(moduleName_));
     parcel.WriteString16(Str8ToStr16(skillName_));
-    parcel.WriteString16(Str8ToStr16(arkTSPath_));
-    parcel.WriteString16(Str8ToStr16(funcName_));
+    parcel.WriteString16(Str8ToStr16(scriptPath_));
+    parcel.WriteString16(Str8ToStr16(functionName_));
     if (skillArgs_ != nullptr) {
         parcel.WriteParcelable(skillArgs_.get());
     } else {
@@ -96,8 +96,8 @@ bool SkillExecuteParam::GenerateFromWant(const AAFwk::Want &want, SkillExecutePa
     param.bundleName_ = wantParams.GetStringParam(SKILL_EXECUTE_PARAM_BUNDLE_NAME);
     param.moduleName_ = wantParams.GetStringParam(SKILL_EXECUTE_PARAM_MODULE_NAME);
     param.skillName_ = wantParams.GetStringParam(SKILL_EXECUTE_PARAM_SKILL_NAME);
-    param.arkTSPath_ = wantParams.GetStringParam(SKILL_EXECUTE_PARAM_ARKTS_PATH);
-    param.funcName_ = wantParams.GetStringParam(SKILL_EXECUTE_PARAM_FUNC_NAME);
+    param.scriptPath_ = wantParams.GetStringParam(SKILL_EXECUTE_PARAM_SCRIPT_PATH);
+    param.functionName_ = wantParams.GetStringParam(SKILL_EXECUTE_PARAM_FUNCTION_NAME);
 
     // Extract skill args from Want
     auto argsKeysStr = wantParams.GetStringParam(SKILL_EXECUTE_PARAM_ARGS_KEYS);
@@ -138,8 +138,8 @@ bool SkillExecuteParam::RemoveSkillParam(AAFwk::Want &want)
     want.RemoveParam(SKILL_EXECUTE_PARAM_BUNDLE_NAME);
     want.RemoveParam(SKILL_EXECUTE_PARAM_MODULE_NAME);
     want.RemoveParam(SKILL_EXECUTE_PARAM_SKILL_NAME);
-    want.RemoveParam(SKILL_EXECUTE_PARAM_ARKTS_PATH);
-    want.RemoveParam(SKILL_EXECUTE_PARAM_FUNC_NAME);
+    want.RemoveParam(SKILL_EXECUTE_PARAM_SCRIPT_PATH);
+    want.RemoveParam(SKILL_EXECUTE_PARAM_FUNCTION_NAME);
     want.RemoveParam(SKILL_EXECUTE_PARAM_ARGS_KEYS);
     want.RemoveParam(SKILL_EXECUTE_PARAM_SRC_ENTRIES_COUNT);
     want.RemoveParam(SKILL_EXECUTE_PARAM_HAP_PATH);
@@ -166,7 +166,7 @@ bool SkillExecuteParam::RemoveSkillParam(AAFwk::Want &want)
 
 void SkillExecuteParam::WriteToWant(AAFwk::Want &want, const std::string &bundleName,
     const std::string &moduleName, const std::string &skillName,
-    const std::string &arkTSPath, const std::string &funcName,
+    const std::string &scriptPath, const std::string &functionName,
     const std::shared_ptr<AAFwk::WantParams> &skillArgs,
     const std::vector<std::string> &srcEntries,
     const std::string &requestCode, const std::string &hapPath)
@@ -174,11 +174,11 @@ void SkillExecuteParam::WriteToWant(AAFwk::Want &want, const std::string &bundle
     want.SetParam(SKILL_EXECUTE_PARAM_BUNDLE_NAME, bundleName);
     want.SetParam(SKILL_EXECUTE_PARAM_MODULE_NAME, moduleName);
     want.SetParam(SKILL_EXECUTE_PARAM_SKILL_NAME, skillName);
-    if (!arkTSPath.empty()) {
-        want.SetParam(SKILL_EXECUTE_PARAM_ARKTS_PATH, arkTSPath);
+    if (!scriptPath.empty()) {
+        want.SetParam(SKILL_EXECUTE_PARAM_SCRIPT_PATH, scriptPath);
     }
-    if (!funcName.empty()) {
-        want.SetParam(SKILL_EXECUTE_PARAM_FUNC_NAME, funcName);
+    if (!functionName.empty()) {
+        want.SetParam(SKILL_EXECUTE_PARAM_FUNCTION_NAME, functionName);
     }
     if (skillArgs != nullptr && !skillArgs->GetParams().empty()) {
         std::string argsKeys;

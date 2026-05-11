@@ -79,7 +79,7 @@ ohos_shared_library("arkts_script") {
   part_name = "ability_runtime"
 }
 
-ohos_cli_executable("ohos-arktsScript") {
+ohos_cli_executable("ohos-arkTSScript") {
   use_exceptions = true
   sanitize = {
     cfi = true
@@ -87,6 +87,7 @@ ohos_cli_executable("ohos-arktsScript") {
     cfi_policy = "adaptive"
     debug = false
   }
+  
   branch_protector_ret = "pac_ret"
 
   cli_config_file = "config.json"
