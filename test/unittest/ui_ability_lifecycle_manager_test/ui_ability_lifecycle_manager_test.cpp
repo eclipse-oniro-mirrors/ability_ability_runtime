@@ -8809,5 +8809,87 @@ HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0010, TestSize.Leve
 
     EXPECT_FALSE(mgr->CalcHideNativeWindow(1, abilityInfo));
 }
+
+/**
+ * @tc.name: CompleteForegroundSuccess_GameSAPreLaunch_0001
+ * @tc.desc: CompleteForegroundSuccess with GameSAPreLaunch = true
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CompleteForegroundSuccess_GameSAPreLaunch_0001, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    abilityRecord->SetPendingState(AbilityState::FOREGROUND);
+    abilityRecord->SetGameSAPreLaunch(true);
+
+    mgr->CompleteForegroundSuccess(abilityRecord);
+
+    EXPECT_EQ(abilityRecord->GetAbilityState(), AbilityState::FOREGROUND);
+    EXPECT_TRUE(abilityRecord->IsGameSAPreLaunch());
+}
+
+/**
+ * @tc.name: CompleteForegroundSuccess_GameSAPreLaunch_0002
+ * @tc.desc: CompleteForegroundSuccess with GameSAPreLaunch = false
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CompleteForegroundSuccess_GameSAPreLaunch_0002, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    abilityRecord->SetPendingState(AbilityState::FOREGROUND);
+    abilityRecord->SetGameSAPreLaunch(false);
+
+    mgr->CompleteForegroundSuccess(abilityRecord);
+
+    EXPECT_EQ(abilityRecord->GetAbilityState(), AbilityState::FOREGROUND);
+    EXPECT_FALSE(abilityRecord->IsGameSAPreLaunch());
+}
+
+/**
+ * @tc.name: CompleteForegroundSuccess_GameSAPreLaunch_0003
+ * @tc.desc: CompleteForegroundSuccess with GameSAPreLaunch = true and startedByCall = true
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CompleteForegroundSuccess_GameSAPreLaunch_0003, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    abilityRecord->SetPendingState(AbilityState::FOREGROUND);
+    abilityRecord->SetGameSAPreLaunch(true);
+    abilityRecord->SetStartedByCall(true);
+    abilityRecord->SetStartToForeground(true);
+    abilityRecord->isReady_ = true;
+
+    mgr->CompleteForegroundSuccess(abilityRecord);
+
+    EXPECT_EQ(abilityRecord->GetAbilityState(), AbilityState::FOREGROUND);
+    EXPECT_TRUE(abilityRecord->IsGameSAPreLaunch());
+}
+
+/**
+ * @tc.name: CompleteForegroundSuccess_GameSAPreLaunch_0004
+ * @tc.desc: CompleteForegroundSuccess with GameSAPreLaunch = true and HasLastWant = true
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CompleteForegroundSuccess_GameSAPreLaunch_0004, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    Want lastWant;
+    lastWant.SetElementName("com.example.unittest", "MainAbility");
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    abilityRecord->SetPendingState(AbilityState::FOREGROUND);
+    abilityRecord->SetGameSAPreLaunch(true);
+    abilityRecord->SetLastWant(std::make_shared<Want>(lastWant));
+
+    mgr->CompleteForegroundSuccess(abilityRecord);
+
+    EXPECT_EQ(abilityRecord->GetAbilityState(), AbilityState::FOREGROUNDING);
+    EXPECT_TRUE(abilityRecord->IsGameSAPreLaunch());
+}
 }  // namespace AAFwk
 }  // namespace OHOS
