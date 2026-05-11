@@ -171,6 +171,13 @@ public:
 
     void ScheduleAbilityRequestSuccess(const std::string &requestId, const AppExecFwk::ElementName &element);
 
+    /**
+     * @brief Create modal UIExtension.
+     * @param want The want of the modal UIExtension to create.
+     * @return Returns ERR_OK on success, error code on failure.
+     */
+    int CreateModalUIExtension(const AAFwk::Want &want);
+
 protected:
     /**
      * @brief Toggles the lifecycle status of Extension to AAFwk::ABILITY_STATE_INACTIVE. And notifies the application
