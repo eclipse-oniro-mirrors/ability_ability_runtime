@@ -35,6 +35,9 @@
 #ifdef CJ_FRONTEND
 #include "cj_runtime.h"
 #endif
+#if defined(NWEB)
+#include "nweb_helper.h"
+#endif
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -354,6 +357,9 @@ void DumpRuntimeHelper::DumpMem(const OHOS::AppExecFwk::MemDumpInfo &info, std::
     if (info.dumpType == MemDumpType::JSVM) {
         DumpJsvmHeap(info);
     }
+    if (info.dumpType == MemDumpType::ARKWEB_JS) {
+        DumpArkwebJsHeap(info);
+    }
 }
 
 void DumpRuntimeHelper::DumpNativeHeap(const OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
@@ -481,6 +487,30 @@ void DumpRuntimeHelper::DumpJsvmHeap(const OHOS::AppExecFwk::MemDumpInfo &info)
         return;
     }
     dlclose(jsvmHandle);
+}
+
+void DumpRuntimeHelper::DumpArkwebJsHeap(const OHOS::AppExecFwk::MemDumpInfo &info)
+{
+#if defined(NWEB)
+    TAG_LOGI(AAFwkTag::APPKIT, "dump arkwebjs heaps, renderPid:%{public}u, needDump:%{public}d, "
+        "needGc:%{public}d, needRaw:%{public}d", info.renderPid, info.needDump, info.needGc, info.needRaw);
+    int32_t fd = -1;
+    if (info.needDump) {
+        struct FaultLoggerdRequest request{};
+        request.type = info.needRaw ? static_cast<int32_t>(FaultLoggerType::ARKWEB_JS_RAW_SNAPSHOT) :
+                                      static_cast<int32_t>(FaultLoggerType::ARKWEB_JS_HEAP_SNAPSHOT);
+        request.pid = info.pid;
+        request.tid = info.renderPid;
+        request.time = GetCurrentTimestamp();
+        fd = RequestFileDescriptorEx(&request);
+    }
+
+    OHOS::NWeb::NWebHelper &nWebHelper = OHOS::NWeb::NWebHelper::Instance();
+    nWebHelper.DumpArkWebJSHeap(fd, info.renderPid, info.needDump, info.needGc, info.needRaw);
+    if (fd > 0) {
+        close(fd);
+    }
+#endif
 }
 
 void DumpRuntimeHelper::GetCheckList(const std::unique_ptr<AbilityRuntime::Runtime> &runtime, std::string &checkList)
