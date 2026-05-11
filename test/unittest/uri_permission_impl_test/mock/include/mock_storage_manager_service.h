@@ -575,6 +575,11 @@ public:
     {
         return E_OK;
     }
+
+    int32_t FormatPartition(uint32_t partitionNum, const FormatOptions &options)
+    {
+        return E_OK;
+    }
 };
 
 bool StorageManagerServiceMock::isZero = true;
