@@ -210,12 +210,6 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::ArrayCreate(
     if (typeInfo == nullptr) {
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
-    // Validate that size matches metadata (fixed-size arrays)
-    if (typeInfo->arraySize > 0 && size != typeInfo->arraySize) {
-        TAG_LOGE(AAFwkTag::EXT, "ArrayCreate: size mismatch, metadata=%{public}u, requested=%{public}u",
-            typeInfo->arraySize, size);
-        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
-    }
     auto* array = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Array();
     if (array == nullptr) {
         TAG_LOGE(AAFwkTag::EXT, "ArrayCreate: allocate failed");
