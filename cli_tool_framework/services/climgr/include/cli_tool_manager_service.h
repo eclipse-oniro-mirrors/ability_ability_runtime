@@ -16,8 +16,11 @@
 #ifndef OHOS_ABILITY_RUNTIME_CLI_TOOL_MGR_SERVICE_H
 #define OHOS_ABILITY_RUNTIME_CLI_TOOL_MGR_SERVICE_H
 
+#include <atomic>
 #include <map>
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "cli_tool_manager_stub.h"

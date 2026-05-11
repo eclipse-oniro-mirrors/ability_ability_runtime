@@ -20,17 +20,18 @@ ohos_unittest("cli_tool_mgr_service_test") {
   module_out_path = module_output_path
 
   include_dirs = [
+    "${ability_runtime_innerkits_path}/app_manager/include/appmgr",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
     "${ability_runtime_path}/test/unittest/cli_tool_mgr/cli_tool_mgr_service_test",
     "${cli_tool_framework_path}/interfaces/cli_tool/include",
     "${cli_tool_framework_path}/services/climgr/include",
     "${cli_tool_framework_path}/services/common/include",
+    "${cli_tool_framework_path}/test/unittest/common_mock/climgr_data/include",
   ]
 
   sources = [
     "cli_tool_mgr_service_test.cpp",
     "${cli_tool_framework_path}/services/climgr/src/cli_tool_app_state_observer.cpp",
-    "${cli_tool_framework_path}/services/climgr/src/cli_tool_data_manager.cpp",
     "${cli_tool_framework_path}/services/climgr/src/cli_tool_manager_service.cpp",
     "${cli_tool_framework_path}/services/climgr/src/event_dispatcher.cpp",
     "${cli_tool_framework_path}/services/climgr/src/io_monitor.cpp",
@@ -40,11 +41,12 @@ ohos_unittest("cli_tool_mgr_service_test") {
     "${cli_tool_framework_path}/services/climgr/src/tool_util.cpp",
     "${cli_tool_framework_path}/services/common/src/ccm_util.cpp",
     "${cli_tool_framework_path}/services/common/src/permission_util.cpp",
+    "${cli_tool_framework_path}/test/unittest/common_mock/climgr_data/src/cli_tool_data_manager_mock.cpp",
   ]
 
   cflags = []
   if (target_cpu == "arm") {
-    cflags += [ "-BINDER_IPC_32BIT" ]
+    cflags += [ "-DBINDER_IPC_32BIT" ]
   }
 
   deps = [

@@ -18,9 +18,12 @@
 #include <condition_variable>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <memory>
 #include <mutex>
+#include <string>
 #include <thread>
 #include <unistd.h>
+#include <vector>
 
 #define protected public
 #define private public
@@ -485,6 +488,275 @@ HWTEST_F(CliToolManagerServiceTest, AppStateObserver_0200, TestSize.Level1)
     EXPECT_EQ(diedPid, 1001);
 
     GTEST_LOG_(INFO) << "CliToolManagerService_AppStateObserver_0200 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_SessionRecord_0100
+ * @tc.desc: Test GetSessionRecord removes null leak entries and RemoveSessionRecord erases records
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, SessionRecord_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_SessionRecord_0100 start";
+
+    {
+        std::lock_guard<ffrt::mutex> guard(service_->sessionsMutex_);
+        service_->sessionRecords_["leak_session"] = nullptr;
+    }
+    EXPECT_EQ(service_->GetSessionRecord("leak_session"), nullptr);
+    EXPECT_EQ(service_->sessionRecords_.find("leak_session"), service_->sessionRecords_.end());
+
+    auto record = std::make_shared<SessionRecord>();
+    record->sessionId = "normal_session";
+    service_->AddSessionRecord(record);
+    EXPECT_EQ(service_->GetSessionRecord("normal_session"), record);
+    service_->RemoveSessionRecord("normal_session");
+    EXPECT_EQ(service_->GetSessionRecord("normal_session"), nullptr);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_SessionRecord_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_CreateSessionRecord_0100
+ * @tc.desc: Test CreateSessionRecord initializes session fields from ExecToolParam
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, CreateSessionRecord_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_CreateSessionRecord_0100 start";
+
+    ExecToolParam param;
+    param.toolName = "create_tool";
+    param.options.background = false;
+    param.options.timeout = 12;
+
+    auto record = service_->CreateSessionRecord(param, "event-id");
+
+    ASSERT_NE(record, nullptr);
+    EXPECT_EQ(record->toolName, "create_tool");
+    EXPECT_TRUE(record->sessionId.find("create_tool_") == 0);
+    EXPECT_EQ(record->timeoutMs, 12 * 1000);
+    EXPECT_EQ(record->eventId, "event-id");
+    EXPECT_EQ(record->GetState(), SessionState::RUNNING);
+    EXPECT_FALSE(record->Background());
+    EXPECT_GT(record->startTime, 0);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_CreateSessionRecord_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_HandleProcessYieldTimeout_0100
+ * @tc.desc: Test yield timeout missing-session and foreground-to-background branches
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, HandleProcessYieldTimeout_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_HandleProcessYieldTimeout_0100 start";
+
+    service_->HandleProcessYieldTimeout("missing_session");
+
+    auto record = std::make_shared<SessionRecord>();
+    record->sessionId = "yield_session";
+    record->eventId = "yield_event";
+    record->SetBackground(false);
+    service_->AddSessionRecord(record);
+
+    service_->HandleProcessYieldTimeout(record->sessionId);
+
+    EXPECT_TRUE(record->Background());
+    EXPECT_NE(service_->GetSessionRecord(record->sessionId), nullptr);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_HandleProcessYieldTimeout_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_HandleProcessTimeout_0100
+ * @tc.desc: Test process timeout marks CLI session timed out and cancelling
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, HandleProcessTimeout_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_HandleProcessTimeout_0100 start";
+
+    service_->HandleProcessTimeout("missing_session");
+
+    auto record = std::make_shared<SessionRecord>();
+    record->sessionId = "timeout_session";
+    record->eventId = "timeout_event";
+    record->processId = 999999;
+    record->SetBackground(true);
+    service_->AddSessionRecord(record);
+
+    service_->HandleProcessTimeout(record->sessionId);
+
+    EXPECT_TRUE(record->TimedOut());
+    EXPECT_EQ(record->GetState(), SessionState::CANCELLING);
+    EXPECT_TRUE(record->Background());
+    EXPECT_NE(service_->GetSessionRecord(record->sessionId), nullptr);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_HandleProcessTimeout_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_HandleSkillSessionTimeout_0100
+ * @tc.desc: Test skill timeout removes skill session and handles missing session
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, HandleSkillSessionTimeout_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_HandleSkillSessionTimeout_0100 start";
+
+    service_->HandleSkillSessionTimeout("missing_session");
+
+    auto record = std::make_shared<SessionRecord>();
+    record->sessionId = "skill_timeout_session";
+    record->eventId = "skill_timeout_event";
+    record->sessionType = SessionType::SKILL;
+    record->SetBackground(true);
+    service_->AddSessionRecord(record);
+
+    service_->HandleProcessTimeout(record->sessionId);
+
+    EXPECT_TRUE(record->TimedOut());
+    EXPECT_EQ(record->GetState(), SessionState::FAILED);
+    EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_HandleSkillSessionTimeout_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_HandleOutputClosed_0100
+ * @tc.desc: Test output close branches for missing, stdout and stderr paths
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, HandleOutputClosed_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_HandleOutputClosed_0100 start";
+
+    service_->HandleOutputClosed("missing_session", true);
+
+    auto record = std::make_shared<SessionRecord>();
+    record->sessionId = "output_session";
+    service_->AddSessionRecord(record);
+
+    service_->HandleOutputClosed(record->sessionId, true);
+    EXPECT_FALSE(record->OutputDrained());
+    service_->HandleOutputClosed(record->sessionId, false);
+    EXPECT_TRUE(record->OutputDrained());
+    EXPECT_NE(service_->GetSessionRecord(record->sessionId), nullptr);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_HandleOutputClosed_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_FinalizeBackgroundSession_0100
+ * @tc.desc: Test finalize background session null, success and duplicate cleanup branches
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, FinalizeBackgroundSession_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_FinalizeBackgroundSession_0100 start";
+
+    service_->FinalizeBackgroundSession(nullptr);
+
+    auto record = std::make_shared<SessionRecord>();
+    record->sessionId = "finalize_session";
+    record->eventId = "finalize_event";
+    record->SetBackground(true);
+    record->MarkStdoutClosed();
+    record->MarkStderrClosed();
+    record->SetTerminalResult(0, 0);
+    service_->AddSessionRecord(record);
+
+    service_->FinalizeBackgroundSession(record);
+
+    EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
+    service_->FinalizeBackgroundSession(record);
+    EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_FinalizeBackgroundSession_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_RegisterSessionWithMonitors_0100
+ * @tc.desc: Test monitor registration failure when ioMonitor is null
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, RegisterSessionWithMonitors_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_RegisterSessionWithMonitors_0100 start";
+
+    auto oldMonitor = service_->ioMonitor_;
+    service_->ioMonitor_ = nullptr;
+
+    auto record = std::make_shared<SessionRecord>();
+    record->sessionId = "monitor_session";
+    record->stdoutPipe[0] = -1;
+    record->stderrPipe[0] = -1;
+    record->stdinPipe[1] = -1;
+    ExecToolParam param;
+
+    EXPECT_FALSE(service_->RegisterSessionWithMonitors(record, param));
+
+    service_->ioMonitor_ = oldMonitor;
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_RegisterSessionWithMonitors_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_HandleSkillSessionComplete_0100
+ * @tc.desc: Test skill completion missing, duplicate and cleanup branches
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, HandleSkillSessionComplete_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_HandleSkillSessionComplete_0100 start";
+
+    CliSessionInfo session;
+    session.sessionId = "missing_skill_session";
+    service_->HandleSkillSessionComplete("missing_skill_session", 0, "event", ERR_OK, session);
+
+    auto record = std::make_shared<SessionRecord>();
+    record->sessionId = "skill_complete_session";
+    record->eventId = "skill_complete_event";
+    record->sessionType = SessionType::SKILL;
+    record->SetBackground(true);
+    service_->AddSessionRecord(record);
+    session.sessionId = record->sessionId;
+
+    service_->HandleSkillSessionComplete(record->sessionId, 0, record->eventId, ERR_OK, session);
+
+    EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
+    service_->HandleSkillSessionComplete(record->sessionId, 0, record->eventId, ERR_OK, session);
+    EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_HandleSkillSessionComplete_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_WaitPid_0100
+ * @tc.desc: Test WaitPid ignores unknown pid and finalizes drained matching record
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, WaitPid_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_WaitPid_0100 start";
+
+    service_->WaitPid(12345, 0, 0);
+
+    auto record = std::make_shared<SessionRecord>();
+    record->sessionId = "waitpid_session";
+    record->processId = 23456;
+    record->MarkStdoutClosed();
+    record->MarkStderrClosed();
+    service_->AddSessionRecord(record);
+
+    service_->WaitPid(record->processId, 0, 0);
+
+    EXPECT_TRUE(record->HasProcessExited());
+    EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_WaitPid_0100 end";
 }
 
 } // namespace CliTool

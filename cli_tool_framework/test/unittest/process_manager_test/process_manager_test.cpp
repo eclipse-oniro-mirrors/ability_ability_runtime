@@ -18,7 +18,9 @@
 
 #include "cli_error_code.h"
 #include "exec_tool_param.h"
+#define private public
 #include "process_manager.h"
+#undef private
 #include "tool_info.h"
 
 using namespace testing::ext;
@@ -377,6 +379,45 @@ HWTEST_F(ProcessManagerTest, ConstCorrectness_0100, TestSize.Level1)
     EXPECT_EQ(result, ERR_OK);
 
     GTEST_LOG_(INFO) << "ProcessManager_ConstCorrectness_0100 end";
+}
+
+/**
+ * @tc.name: ProcessManager_CreatePipes_0100
+ * @tc.desc: Test private pipe creation and cleanup helpers
+ * @tc.type: FUNC
+ */
+HWTEST_F(ProcessManagerTest, CreatePipes_0100, TestSize.Level1)
+{
+    auto& manager = ProcessManager::GetInstance();
+    SessionRecord record;
+
+    EXPECT_TRUE(manager.CreatePipes(record));
+    EXPECT_NE(record.stdinPipe[0], -1);
+    EXPECT_NE(record.stdinPipe[1], -1);
+    EXPECT_NE(record.stdoutPipe[0], -1);
+    EXPECT_NE(record.stdoutPipe[1], -1);
+    EXPECT_NE(record.stderrPipe[0], -1);
+    EXPECT_NE(record.stderrPipe[1], -1);
+
+    manager.CloseAllPipes(record);
+    EXPECT_EQ(record.stdinPipe[0], -1);
+    EXPECT_EQ(record.stdinPipe[1], -1);
+    EXPECT_EQ(record.stdoutPipe[0], -1);
+    EXPECT_EQ(record.stdoutPipe[1], -1);
+    EXPECT_EQ(record.stderrPipe[0], -1);
+    EXPECT_EQ(record.stderrPipe[1], -1);
+}
+
+/**
+ * @tc.name: ProcessManager_Killpg_0100
+ * @tc.desc: Test Killpg false branch with a non-existent process group
+ * @tc.type: FUNC
+ */
+HWTEST_F(ProcessManagerTest, Killpg_0100, TestSize.Level1)
+{
+    auto& manager = ProcessManager::GetInstance();
+
+    EXPECT_FALSE(manager.Killpg(999999));
 }
 
 } // namespace CliTool

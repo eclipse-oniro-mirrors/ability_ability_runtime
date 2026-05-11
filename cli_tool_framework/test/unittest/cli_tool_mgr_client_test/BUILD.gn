@@ -19,16 +19,39 @@ module_output_path = "ability_runtime/ability_runtime/clitool"
 ohos_unittest("cli_tool_mgr_client_test") {
   module_out_path = module_output_path
 
-  include_dirs = [ "${cli_tool_framework_path}/interfaces/cli_tool/include" ]
+  include_dirs = [
+    "mock/include",
+    "${cli_tool_framework_path}/interfaces/cli_tool/include",
+    "${ability_runtime_innerkits_path}/ability_manager/include",
+    "${ability_runtime_services_path}/common/include",
+  ]
 
-  sources = [ "cli_tool_mgr_client_test.cpp" ]
+  sources = [
+    "cli_tool_mgr_client_test.cpp",
+    "mock/src/mock_cli_tool_mgr_scheduler_recipient.cpp",
+    "mock/src/mock_cli_tool_mgr_service.cpp",
+    "mock/src/mock_system_ability_client.cpp",
+    "mock/src/mock_system_ability_manager.cpp",
+    "${cli_tool_framework_path}/interfaces/cli_tool/src/cli_event_reply_manager.cpp",
+    "${cli_tool_framework_path}/interfaces/cli_tool/src/cli_mgr_load_callback.cpp",
+    "${cli_tool_framework_path}/interfaces/cli_tool/src/cli_session_info.cpp",
+    "${cli_tool_framework_path}/interfaces/cli_tool/src/cli_session_subscription_manager.cpp",
+    "${cli_tool_framework_path}/interfaces/cli_tool/src/cli_tool_event.cpp",
+    "${cli_tool_framework_path}/interfaces/cli_tool/src/cli_tool_mgr_client.cpp",
+    "${cli_tool_framework_path}/interfaces/cli_tool/src/exec_options.cpp",
+    "${cli_tool_framework_path}/interfaces/cli_tool/src/exec_result.cpp",
+    "${cli_tool_framework_path}/interfaces/cli_tool/src/exec_tool_param.cpp",
+    "${cli_tool_framework_path}/interfaces/cli_tool/src/sub_command_info.cpp",
+    "${cli_tool_framework_path}/interfaces/cli_tool/src/tool_info.cpp",
+    "${cli_tool_framework_path}/interfaces/cli_tool/src/tool_summary.cpp",
+  ]
 
   cflags = []
   if (target_cpu == "arm") {
     cflags += [ "-BINDER_IPC_32BIT" ]
   }
 
-  deps = [ "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client" ]
+  deps = []
 
   external_deps = [
     "ability_base:want",
@@ -36,8 +59,11 @@ ohos_unittest("cli_tool_mgr_client_test") {
     "googletest:gmock_main",
     "googletest:gtest_main",
     "hilog:libhilog",
+    "hitrace:hitrace_meter",
     "ipc:ipc_core",
     "json:nlohmann_json_static",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
   ]
 }
 

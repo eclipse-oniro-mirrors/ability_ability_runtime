@@ -17,8 +17,8 @@
 
 #include <sys/wait.h>
 
-#include "accesstoken_kit.h"
 #include "ability_manager_client.h"
+#include "accesstoken_kit.h"
 #include "app_mgr_client.h"
 #include "ccm_util.h"
 #include "cli_error_code.h"
@@ -328,6 +328,7 @@ std::shared_ptr<SessionRecord> CliToolManagerService::GetSessionRecord(const std
     }
     if (it->second == nullptr) {
         sessionRecords_.erase(it); // for leak
+        return nullptr;
     }
     return it->second;
 }
@@ -619,8 +620,9 @@ void CliToolManagerService::WaitPid(pid_t pid, int32_t status, int32_t sig)
         std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
         for (auto iter = sessionRecords_.begin(); iter != sessionRecords_.end();) {
             if (iter->second == nullptr) {
+                std::string sessionId = iter->first;
                 iter = sessionRecords_.erase(iter);
-                TAG_LOGW(AAFwkTag::CLI_TOOL, "delete leak sessionId:%{public}s", iter->first.c_str());
+                TAG_LOGW(AAFwkTag::CLI_TOOL, "delete leak sessionId:%{public}s", sessionId.c_str());
                 continue;
             }
             if (pid == iter->second->processId) {
@@ -662,8 +664,9 @@ void CliToolManagerService::OnProcessDied(const std::string &bundleName, pid_t d
     for (auto iter = sessionRecords_.begin(); iter != sessionRecords_.end();) {
         auto sessionRecord = iter->second;
         if (sessionRecord == nullptr) {
+            std::string sessionId = iter->first;
             iter = sessionRecords_.erase(iter);
-            TAG_LOGW(AAFwkTag::CLI_TOOL, "delete leak sessionId:%{public}s", iter->first.c_str());
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "delete leak sessionId:%{public}s", sessionId.c_str());
             continue;
         }
 
