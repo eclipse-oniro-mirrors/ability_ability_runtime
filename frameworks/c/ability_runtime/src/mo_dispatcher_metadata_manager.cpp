@@ -42,7 +42,9 @@ bool ReadAllFromFd(int32_t fd, std::string* out)
 std::string ToLower(const std::string& v)
 {
     std::string out = v;
-    std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) { 
+        return static_cast<char>(std::tolower(c)); 
+    });
     return out;
 }
 
@@ -385,8 +387,8 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::ParseMetadata(const std::s
                     value.value = valueObj.value("value", 0);
                     value.memberId = GetMemberId(valueObj);
                     if (value.memberId > 0 && usedIds.count(value.memberId) > 0) {
-                        TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: enum value '%{public}s.%{public}s' duplicate memberID=%{public}u",
-                            meta.name.c_str(), value.name.c_str(), value.memberId);
+                        TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: enum value '%{public}s.%{public}s' duplicate "
+                            "memberID=%{public}u", meta.name.c_str(), value.name.c_str(), value.memberId);
                         return ABILITY_RUNTIME_ERROR_CODE_TLB_METADATA_INVALID;
                     }
                     if (value.memberId > 0) {
@@ -427,8 +429,8 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::ParseMetadata(const std::s
                     field.name = fieldObj.value("name", "");
                     field.memberId = GetMemberId(fieldObj);
                     if (field.memberId > 0 && usedIds.count(field.memberId) > 0) {
-                        TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: struct field '%{public}s.%{public}s' duplicate memberID=%{public}u",
-                            meta.name.c_str(), field.name.c_str(), field.memberId);
+                        TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: struct field '%{public}s.%{public}s' duplicate "
+                            "memberID=%{public}u", meta.name.c_str(), field.name.c_str(), field.memberId);
                         return ABILITY_RUNTIME_ERROR_CODE_TLB_METADATA_INVALID;
                     }
                     if (field.memberId > 0) {
@@ -438,8 +440,8 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::ParseMetadata(const std::s
                         std::shared_ptr<MoTypeInfo> fieldTypeInfo;
                         auto ret = ParseTypeInfoFromJson(fieldObj["type_info"], fieldTypeInfo);
                         if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
-                            TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: struct field '%{public}s.%{public}s' type_info invalid, ret=%{public}d",
-                                meta.name.c_str(), field.name.c_str(), ret);
+                            TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: struct field '%{public}s.%{public}s' type_info "
+                                "invalid, ret=%{public}d", meta.name.c_str(), field.name.c_str(), ret);
                             return ret;
                         }
                         field.typeInfo = fieldTypeInfo;
@@ -498,8 +500,8 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::ParseMetadata(const std::s
                         return ABILITY_RUNTIME_ERROR_CODE_TLB_METADATA_INVALID;
                     }
                     if (usedIds.count(method.memberId) > 0) {
-                        TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: method '%{public}s.%{public}s' duplicate memberID=%{public}u",
-                            interfaceMeta.name.c_str(), method.name.c_str(), method.memberId);
+                        TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: method '%{public}s.%{public}s' duplicate "
+                            "memberID=%{public}u", interfaceMeta.name.c_str(), method.name.c_str(), method.memberId);
                         return ABILITY_RUNTIME_ERROR_CODE_TLB_METADATA_INVALID;
                     }
                     usedIds.insert(method.memberId);
@@ -509,8 +511,8 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::ParseMetadata(const std::s
                         std::shared_ptr<MoTypeInfo> retTypeInfo;
                         auto ret = ParseTypeInfoFromJson(methodObj["return_type"], retTypeInfo);
                         if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
-                            TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: method '%{public}s.%{public}s' return_type invalid, ret=%{public}d",
-                                interfaceMeta.name.c_str(), method.name.c_str(), ret);
+                            TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: method '%{public}s.%{public}s' return_type "
+                                "invalid, ret=%{public}d", interfaceMeta.name.c_str(), method.name.c_str(), ret);
                             return ret;
                         }
                         method.returnType = retTypeInfo;
@@ -523,8 +525,9 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::ParseMetadata(const std::s
                                 std::shared_ptr<MoTypeInfo> paramTypeInfo;
                                 auto ret = ParseTypeInfoFromJson(paramObj["type_info"], paramTypeInfo);
                                 if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
-                                    TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: param '%{public}s.%{public}s.%{public}s' type_info invalid, ret=%{public}d",
-                                        interfaceMeta.name.c_str(), method.name.c_str(), param.name.c_str(), ret);
+                                    TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: param '%{public}s.%{public}s.%{public}s' "
+                                        "type_info invalid, ret=%{public}d", interfaceMeta.name.c_str(),
+                                        method.name.c_str(), param.name.c_str(), ret);
                                     return ret;
                                 }
                                 param.typeInfo = paramTypeInfo;
@@ -532,8 +535,9 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::ParseMetadata(const std::s
                             method.params.emplace_back(param);
                             const uint32_t paramMemberId = GetMemberId(paramObj);
                             if (paramMemberId > 0 && usedIds.count(paramMemberId) > 0) {
-                                TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: param '%{public}s.%{public}s.%{public}s' duplicate memberID=%{public}u",
-                                    interfaceMeta.name.c_str(), method.name.c_str(), param.name.c_str(), paramMemberId);
+                                TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: param '%{public}s.%{public}s.%{public}s' "
+                                    "duplicate memberID=%{public}u", interfaceMeta.name.c_str(), method.name.c_str(),
+                                    param.name.c_str(), paramMemberId);
                                 return ABILITY_RUNTIME_ERROR_CODE_TLB_METADATA_INVALID;
                             }
                             if (paramMemberId > 0) {
@@ -554,8 +558,8 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::ParseMetadata(const std::s
 
             if (interfaceMeta.IsMainService()) {
                 if (!mainServiceInterface_.empty()) {
-                    TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: duplicate mainService interface, first=%{public}s, second=%{public}s",
-                        mainServiceInterface_.c_str(), interfaceMeta.name.c_str());
+                    TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: duplicate mainService interface, first=%{public}s,
+                        second=%{public}s", mainServiceInterface_.c_str(), interfaceMeta.name.c_str());
                     return ABILITY_RUNTIME_ERROR_CODE_TLB_METADATA_INVALID;
                 }
                 mainServiceInterface_ = interfaceMeta.name;
@@ -574,8 +578,8 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::ParseMetadata(const std::s
         for (const auto& field : st.fields) {
             if (field.typeInfo && !field.typeInfo->idlType.empty()) {
                 if (!IsIdlTypeDeclared(field.typeInfo->idlType)) {
-                    TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: struct '%{public}s' field '%{public}s' unresolved idl_type '%{public}s'",
-                        st.name.c_str(), field.name.c_str(), field.typeInfo->idlType.c_str());
+                    TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: struct '%{public}s' field '%{public}s' unresolved "
+                        "idl_type '%{public}s'", st.name.c_str(), field.name.c_str(), field.typeInfo->idlType.c_str());
                     return ABILITY_RUNTIME_ERROR_CODE_TLB_METADATA_INVALID;
                 }
             }
@@ -585,16 +589,18 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::ParseMetadata(const std::s
         for (const auto& method : iface.methods) {
             if (method.returnType && !method.returnType->idlType.empty()) {
                 if (!IsIdlTypeDeclared(method.returnType->idlType)) {
-                    TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: method '%{public}s.%{public}s' return_type unresolved idl_type '%{public}s'",
-                        iface.name.c_str(), method.name.c_str(), method.returnType->idlType.c_str());
+                    TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: method '%{public}s.%{public}s' return_type unresolved "
+                        "idl_type '%{public}s'", iface.name.c_str(), method.name.c_str(),
+                        method.returnType->idlType.c_str());
                     return ABILITY_RUNTIME_ERROR_CODE_TLB_METADATA_INVALID;
                 }
             }
             for (const auto& param : method.params) {
                 if (param.typeInfo && !param.typeInfo->idlType.empty()) {
                     if (!IsIdlTypeDeclared(param.typeInfo->idlType)) {
-                        TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: param '%{public}s.%{public}s.%{public}s' unresolved idl_type '%{public}s'",
-                            iface.name.c_str(), method.name.c_str(), param.name.c_str(), param.typeInfo->idlType.c_str());
+                        TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: param '%{public}s.%{public}s.%{public}s' unresolved "
+                            "idl_type '%{public}s'", iface.name.c_str(), method.name.c_str(), param.name.c_str(),
+                            param.typeInfo->idlType.c_str());
                         return ABILITY_RUNTIME_ERROR_CODE_TLB_METADATA_INVALID;
                     }
                 }
@@ -760,7 +766,8 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetEnumName(uint32_t index
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetEnumValueCount(const std::string& enumName, uint32_t* count) const
+AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetEnumValueCount(const std::string& enumName,
+    uint32_t* count) const
 {
     if (count == nullptr || enumName.empty()) return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     std::lock_guard<std::mutex> lock(mutex_);
@@ -862,7 +869,9 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetStructFieldName(const s
 AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetStructFieldType(const std::string& structName,
     const std::string& fieldName, OH_AbilityRuntime_MoDispatcher_TypeInfo* fieldType) const
 {
-    if (fieldType == nullptr || structName.empty() || fieldName.empty()) return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    if (fieldType == nullptr || structName.empty() || fieldName.empty()) {
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     for (const auto& item : structs_) {
@@ -984,7 +993,8 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetMethodReturnType(const 
     if (method->returnType) {
         method->returnType->FillCTypeInfo(returnType);
     } else {
-        std::memset(returnType, 0, sizeof(OH_AbilityRuntime_MoDispatcher_TypeInfo));
+        (void)memset_s(returnType, sizeof(OH_AbilityRuntime_MoDispatcher_TypeInfo), 0,
+            sizeof(OH_AbilityRuntime_MoDispatcher_TypeInfo));
         returnType->vt = OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_VOID;
     }
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
@@ -1038,7 +1048,8 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetMethodParamType(const s
     if (param.typeInfo) {
         param.typeInfo->FillCTypeInfo(paramType);
     } else {
-        std::memset(paramType, 0, sizeof(OH_AbilityRuntime_MoDispatcher_TypeInfo));
+        (void)memset_s(paramType, sizeof(OH_AbilityRuntime_MoDispatcher_TypeInfo), 0,
+            sizeof(OH_AbilityRuntime_MoDispatcher_TypeInfo));
     }
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }

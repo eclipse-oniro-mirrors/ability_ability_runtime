@@ -53,7 +53,8 @@ struct MoTypeInfo {
     void FillCTypeInfo(OH_AbilityRuntime_MoDispatcher_TypeInfo* cType) const
     {
         if (cType == nullptr) return;
-        std::memset(cType, 0, sizeof(OH_AbilityRuntime_MoDispatcher_TypeInfo));
+        (void)memset_s(cType, sizeof(OH_AbilityRuntime_MoDispatcher_TypeInfo), 0,
+            sizeof(OH_AbilityRuntime_MoDispatcher_TypeInfo));
         cType->vt = vt;
         if (vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_MAP) {
             cType->u.mapType.keyType = mapKeyType;

@@ -125,7 +125,8 @@ AbilityRuntime_ErrorCode WriteRawValueImpl(MessageParcel& parcel,
             OH_AbilityRuntime_MoDispatcher_Variant temp;
             auto loadRet = MoDispatcherComplexTypeManager::LoadVariant(item, &temp);
             if (loadRet != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
-                TAG_LOGE(AAFwkTag::EXT, "WriteRawValue: LoadVariant failed for vector element, ret=%{public}d", loadRet);
+                TAG_LOGE(AAFwkTag::EXT, "WriteRawValue: LoadVariant failed for vector element, ret=%{public}d",
+                    loadRet);
                 return loadRet;
             }
             ret = WriteRawValueImpl(parcel, typeInfo->pElementType, &temp, visited);
@@ -224,8 +225,8 @@ AbilityRuntime_ErrorCode WriteRawValueImpl(MessageParcel& parcel,
                 OH_AbilityRuntime_MoDispatcher_Variant temp;
                 auto loadRet = MoDispatcherComplexTypeManager::LoadVariant(it->second, &temp);
                 if (loadRet != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
-                    TAG_LOGE(AAFwkTag::EXT, "WriteRawValue: LoadVariant failed for struct field '%{public}s', ret=%{public}d",
-                        fieldName.c_str(), loadRet);
+                    TAG_LOGE(AAFwkTag::EXT, "WriteRawValue: LoadVariant failed for struct field '%{public}s',
+                        ret=%{public}d", fieldName.c_str(), loadRet);
                     return loadRet;
                 }
                 auto ret = WriteRawValueImpl(parcel, fieldType, &temp, visited);
@@ -233,7 +234,7 @@ AbilityRuntime_ErrorCode WriteRawValueImpl(MessageParcel& parcel,
                 if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
             } else {
                 OH_AbilityRuntime_MoDispatcher_Variant temp;
-                std::memset(&temp, 0, sizeof(temp));
+                (void)memset_s(&temp, sizeof(temp), 0, sizeof(temp));
                 temp.vt = fieldType ? fieldType->vt : OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_EMPTY;
                 auto ret = WriteRawValueImpl(parcel, fieldType, &temp, visited);
                 if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
@@ -409,7 +410,7 @@ AbilityRuntime_ErrorCode MoDispatcherParamCodec::ReadRawValue(MessageParcel& par
         }
         TAG_LOGI(AAFwkTag::EXT, "arraySize=%{public}d", size);
         OH_AbilityRuntime_MoDispatcher_TypeInfo elemTypeInfo;
-        std::memset(&elemTypeInfo, 0, sizeof(elemTypeInfo));
+        (void)memset_s(&elemTypeInfo, sizeof(elemTypeInfo), 0, sizeof(elemTypeInfo));
         if (typeInfo->pElementType) {
             typeInfo->pElementType->FillCTypeInfo(&elemTypeInfo);
         }
@@ -436,7 +437,7 @@ AbilityRuntime_ErrorCode MoDispatcherParamCodec::ReadRawValue(MessageParcel& par
         }
         TAG_LOGI(AAFwkTag::EXT, "vectorSize=%{public}d", size);
         OH_AbilityRuntime_MoDispatcher_TypeInfo elemTypeInfo;
-        std::memset(&elemTypeInfo, 0, sizeof(elemTypeInfo));
+        (void)memset_s(&elemTypeInfo, sizeof(elemTypeInfo), 0, sizeof(elemTypeInfo));
         if (typeInfo->pElementType) {
             typeInfo->pElementType->FillCTypeInfo(&elemTypeInfo);
         }
@@ -462,7 +463,7 @@ AbilityRuntime_ErrorCode MoDispatcherParamCodec::ReadRawValue(MessageParcel& par
         }
         TAG_LOGI(AAFwkTag::EXT, "setSize=%{public}d", size);
         OH_AbilityRuntime_MoDispatcher_TypeInfo elemTypeInfo;
-        std::memset(&elemTypeInfo, 0, sizeof(elemTypeInfo));
+        (void)memset_s(&elemTypeInfo, sizeof(elemTypeInfo), 0, sizeof(elemTypeInfo));
         if (typeInfo->pElementType) {
             typeInfo->pElementType->FillCTypeInfo(&elemTypeInfo);
         }
@@ -488,7 +489,7 @@ AbilityRuntime_ErrorCode MoDispatcherParamCodec::ReadRawValue(MessageParcel& par
         }
         TAG_LOGI(AAFwkTag::EXT, "mapSize=%{public}d", size);
         OH_AbilityRuntime_MoDispatcher_TypeInfo valueTypeInfo;
-        std::memset(&valueTypeInfo, 0, sizeof(valueTypeInfo));
+        (void)memset_s(&valueTypeInfo, sizeof(valueTypeInfo), 0, sizeof(valueTypeInfo));
         if (typeInfo->pMapValueType) {
             typeInfo->pMapValueType->FillCTypeInfo(&valueTypeInfo);
         }
@@ -525,7 +526,7 @@ AbilityRuntime_ErrorCode MoDispatcherParamCodec::ReadRawValue(MessageParcel& par
             std::shared_ptr<MoTypeInfo> fieldType;
             MoDispatcherComplexTypeManager::GetStructFieldType(typeInfo->idlType, fieldName, &fieldType);
             OH_AbilityRuntime_MoDispatcher_Variant fieldVal;
-            std::memset(&fieldVal, 0, sizeof(fieldVal));
+            (void)memset_s(&fieldVal, sizeof(fieldVal), 0, sizeof(fieldVal));
             ret = ReadRawValue(parcel, fieldType, &fieldVal);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
                 MoDispatcherComplexTypeManager::StructRelease(&structObj);

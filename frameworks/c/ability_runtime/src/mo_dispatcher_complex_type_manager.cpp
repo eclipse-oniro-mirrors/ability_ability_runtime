@@ -779,7 +779,8 @@ void MoDispatcherComplexTypeManager::Variant_Clear(OH_AbilityRuntime_MoDispatche
         default:
             break;
     }
-    std::memset(pVariant, 0, sizeof(OH_AbilityRuntime_MoDispatcher_Variant));
+    (void)memset_s(pVariant, sizeof(OH_AbilityRuntime_MoDispatcher_Variant), 0,
+        sizeof(OH_AbilityRuntime_MoDispatcher_Variant));
     pVariant->vt = OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_EMPTY;
 }
 
