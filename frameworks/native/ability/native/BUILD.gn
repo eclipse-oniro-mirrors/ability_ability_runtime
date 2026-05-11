@@ -562,6 +562,7 @@ config("extensionkit_public_config") {
   visibility = [ ":*" ]
   include_dirs = [
     "${ability_runtime_path}/interfaces/kits/native/ability/native/continuation/distributed",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_extension_ability",
     "${ability_runtime_path}/interfaces/kits/native/ability/native/continuation/kits",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_runtime/context",
     "${ability_runtime_path}/interfaces/kits/native/ability/ability_runtime",
@@ -2432,6 +2433,7 @@ ohos_shared_library("ui_extension") {
     "${ability_runtime_native_path}/ability/native/ui_extension_base/js_ui_extension_context.cpp",
     "${ability_runtime_native_path}/ability/native/ui_extension_base/js_uiservice_uiext_connection.cpp",
     "${ability_runtime_native_path}/ability/native/ui_extension_base/ui_extension_context.cpp",
+    "${ability_runtime_native_path}/ability/native/ui_extension_base/ui_extension_modal_callback.cpp",
     "${ability_runtime_native_path}/ability/native/ui_extension_base/ui_extension_servicehost_stub_impl.cpp",
     "${ability_runtime_path}/frameworks/ets/ani/ui_extension_ability/src/ets_ui_extension_instance.cpp",
   ]

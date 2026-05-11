@@ -148,6 +148,8 @@ public:
         const std::shared_ptr<AppExecFwk::EventRunner> &mainRunner,
         const std::string &abilityName);
 
+    int CreateModalUIExtension(const Want &want) override;
+
 private:
 
     /**

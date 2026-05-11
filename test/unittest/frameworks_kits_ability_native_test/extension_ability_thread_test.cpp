@@ -1457,5 +1457,45 @@ HWTEST_F(ExtensionAbilityThreadTest,
     thread->Attach(application, abilityRecord, mainRunner, nullptr);
     EXPECT_NE(thread->abilityHandler_, nullptr);
 }
+
+/**
+ * @tc.number: ExtensionAbilityThread_CreateModalUIExtension_0100
+ * @tc.name: CreateModalUIExtension
+ * @tc.desc: Test CreateModalUIExtension function when extensionImpl_ is nullptr
+ */
+HWTEST_F(ExtensionAbilityThreadTest, ExtensionAbilityThread_CreateModalUIExtension_0100,
+    Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "ExtensionAbilityThread_CreateModalUIExtension_0100 start";
+    AbilityRuntime::ExtensionAbilityThread *extensionabilitythread =
+        new (std::nothrow) AbilityRuntime::ExtensionAbilityThread();
+    EXPECT_NE(extensionabilitythread, nullptr);
+    EXPECT_EQ(extensionabilitythread->extensionImpl_, nullptr);
+    AAFwk::Want want;
+    int result = extensionabilitythread->CreateModalUIExtension(want);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    GTEST_LOG_(INFO) << "ExtensionAbilityThread_CreateModalUIExtension_0100 end";
+}
+
+/**
+ * @tc.number: ExtensionAbilityThread_CreateModalUIExtension_0200
+ * @tc.name: CreateModalUIExtension
+ * @tc.desc: Test CreateModalUIExtension function when extensionImpl_ is not nullptr
+ */
+HWTEST_F(ExtensionAbilityThreadTest, ExtensionAbilityThread_CreateModalUIExtension_0200,
+    Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "ExtensionAbilityThread_CreateModalUIExtension_0200 start";
+    AbilityRuntime::ExtensionAbilityThread *extensionabilitythread =
+        new (std::nothrow) AbilityRuntime::ExtensionAbilityThread();
+    EXPECT_NE(extensionabilitythread, nullptr);
+    extensionabilitythread->extensionImpl_ = std::make_shared<AbilityRuntime::ExtensionImpl>();
+    EXPECT_NE(extensionabilitythread->extensionImpl_, nullptr);
+    AAFwk::Want want;
+    int result = extensionabilitythread->CreateModalUIExtension(want);
+    // ExtensionImpl::CreateModalUIExtension returns ERR_INVALID_VALUE when extension is not UIExtension
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    GTEST_LOG_(INFO) << "ExtensionAbilityThread_CreateModalUIExtension_0200 end";
+}
 } // namespace AbilityRuntime
 } // namespace OHOS
