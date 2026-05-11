@@ -504,6 +504,7 @@ void DumpRuntimeHelper::DumpArkwebJsHeap(const OHOS::AppExecFwk::MemDumpInfo &in
         request.time = GetCurrentTimestamp();
         fd = RequestFileDescriptorEx(&request);
     }
+
     OHOS::NWeb::NWebHelper &nWebHelper = OHOS::NWeb::NWebHelper::Instance();
     nWebHelper.DumpArkWebJSHeap(fd, info.renderPid, info.needDump, info.needGc, info.needRaw);
     if (fd > 0) {
