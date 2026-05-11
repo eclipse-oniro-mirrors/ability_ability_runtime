@@ -134,7 +134,7 @@ bool StartOtherAppInterceptor::CheckAncoShellCall(const AppExecFwk::ApplicationI
 
 bool StartOtherAppInterceptor::CheckStartOtherApp(const Want want)
 {
-    return want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME) != want.GetElement().GetBundleName();
+    return want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME) != want.GetBundle();
 }
 
 bool StartOtherAppInterceptor::CheckCallerApiBelow12(const AppExecFwk::ApplicationInfo &applicationInfo)

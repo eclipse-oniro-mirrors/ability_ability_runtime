@@ -360,6 +360,12 @@ public:
      *
      */
     Want GetWant() const;
+    std::string GetAbilityName() const;
+    std::string GetBundleName() const;
+    std::string GetStringParam(const std::string &key) const;
+    int GetIntParam(const std::string &key, int defaultValue) const;
+    bool GetBoolParam(const std::string &key, bool defaultValue) const;
+    bool HasParameter(const std::string &key) const;
 
     /**
      * remove signature info of want.
@@ -747,16 +753,6 @@ public:
     void NotifyAbilityRequestSuccess(const std::string &requestId, const AppExecFwk::ElementName &element);
     void NotifyAbilitiesRequestDone(const std::string &requestKey, int32_t resultCode);
 
-    inline void SetLaunchWant(std::shared_ptr<Want> launchWant)
-    {
-        launchWant_ = launchWant;
-    }
-
-    inline std::shared_ptr<Want> GetLaunchWant() const
-    {
-        return launchWant_;
-    }
-
     inline void SetLastWant(std::shared_ptr<Want> lastWant)
     {
         lastWant_ = lastWant;
@@ -1005,7 +1001,6 @@ protected:
     std::shared_ptr<CallContainer> callContainer_ = nullptr;       // new version
     std::shared_ptr<Want> connectWant_ = nullptr;
     std::shared_ptr<CallerAbilityInfo> saCallerInfo_ = nullptr;
-    std::shared_ptr<Want> launchWant_ = nullptr;
     std::shared_ptr<Want> lastWant_ = nullptr;
     std::shared_ptr<UIAbilityProperty> uiAbilityProperty_ = nullptr;
 

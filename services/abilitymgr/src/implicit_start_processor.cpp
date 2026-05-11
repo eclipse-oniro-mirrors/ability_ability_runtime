@@ -761,7 +761,7 @@ std::vector<std::string> ImplicitStartProcessor::SplitStr(const std::string& str
 bool ImplicitStartProcessor::CheckImplicitStartExtensionIsValid(const AbilityRequest &request,
     const AppExecFwk::ExtensionAbilityInfo &extensionInfo)
 {
-    if (!request.want.GetElement().GetBundleName().empty()) {
+    if (!request.want.GetBundle().empty()) {
         return true;
     }
     TAG_LOGD(
@@ -828,9 +828,10 @@ int ImplicitStartProcessor::CallStartAbilityInner(int32_t userId,
 {
     EventInfo eventInfo;
     eventInfo.userId = userId;
-    eventInfo.bundleName = want.GetElement().GetBundleName();
-    eventInfo.moduleName = want.GetElement().GetModuleName();
-    eventInfo.abilityName = want.GetElement().GetAbilityName();
+    auto element = want.GetElement();
+    eventInfo.bundleName = element.GetBundleName();
+    eventInfo.moduleName = element.GetModuleName();
+    eventInfo.abilityName = element.GetAbilityName();
 
     if (callType == AbilityCallType::INVALID_TYPE) {
         eventInfo.calleeId = static_cast<int32_t>(CalleeId::IMPLICIT_START_PROCESSOR_CALL_START_ABILITY_INNER);
@@ -1077,7 +1078,7 @@ bool ImplicitStartProcessor::IsActionImplicitStart(const Want &want, bool findDe
         return false;
     }
 
-    if (want.GetElement().GetBundleName() != "") {
+    if (want.GetBundle() != "") {
         return false;
     }
 

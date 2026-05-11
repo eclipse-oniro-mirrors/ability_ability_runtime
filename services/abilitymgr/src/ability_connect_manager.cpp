@@ -137,12 +137,12 @@ int AbilityConnectManager::StopServiceAbility(const AbilityRequest &abilityReque
 int AbilityConnectManager::StartAbilityLocked(const AbilityRequest &abilityRequest)
 {
     if (AppUtils::GetInstance().IsForbidStart()) {
-        TAG_LOGW(AAFwkTag::EXT, "forbid start: %{public}s", abilityRequest.want.GetElement().GetBundleName().c_str());
+        TAG_LOGW(AAFwkTag::EXT, "forbid start: %{public}s", abilityRequest.want.GetBundle().c_str());
         return INNER_ERR;
     }
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::EXT, "bundle/ability:%{public}s/%{public}s",
-        abilityRequest.want.GetElement().GetBundleName().c_str(),
+        abilityRequest.want.GetBundle().c_str(),
         abilityRequest.want.GetElement().GetAbilityName().c_str());
 
     int32_t ret = AbilityPermissionUtil::GetInstance().CheckMultiInstanceKeyForExtension(abilityRequest);
@@ -198,7 +198,7 @@ void AbilityConnectManager::EnqueueStartServiceReq(const AbilityRequest &ability
         abilityUri = serviceUri;
     }
     TAG_LOGI(AAFwkTag::EXT, "abilityUri: %{public}s/%{public}s",
-        abilityRequest.want.GetElement().GetBundleName().c_str(),
+        abilityRequest.want.GetBundle().c_str(),
         abilityRequest.want.GetElement().GetAbilityName().c_str());
     auto reqListIt = startServiceReqList_.find(abilityUri);
     if (reqListIt != startServiceReqList_.end()) {
@@ -1370,8 +1370,7 @@ void AbilityConnectManager::SetExtensionLoadParam(AbilityRuntime::LoadParam &loa
 bool AbilityConnectManager::IsStrictMode(std::shared_ptr<BaseExtensionRecord> abilityRecord)
 {
     CHECK_POINTER_AND_RETURN(abilityRecord, false);
-    const auto &want = abilityRecord->GetWant();
-    bool strictMode = want.GetBoolParam(OHOS::AAFwk::STRICT_MODE, false);
+    bool strictMode = abilityRecord->GetBoolParam(OHOS::AAFwk::STRICT_MODE, false);
     if (abilityRecord->GetAbilityInfo().extensionAbilityType == AppExecFwk::ExtensionAbilityType::INPUTMETHOD) {
         return strictMode;
     }
@@ -1382,7 +1381,7 @@ bool AbilityConnectManager::IsStrictMode(std::shared_ptr<BaseExtensionRecord> ab
         TAG_LOGD(AAFwkTag::EXT, "SetExtensionLoadParam, not SACall, force enable strictMode");
         return true;
     }
-    if (!want.HasParameter(OHOS::AAFwk::STRICT_MODE)) {
+    if (!abilityRecord->HasParameter(OHOS::AAFwk::STRICT_MODE)) {
         TAG_LOGD(AAFwkTag::EXT, "SetExtensionLoadParam, no striteMode param, force enable strictMode");
         return true;
     }
@@ -1436,10 +1435,12 @@ void AbilityConnectManager::HandleRestartResidentTask(const AbilityRequest &abil
 {
     TAG_LOGI(AAFwkTag::EXT, "HandleRestartResidentTask start");
     std::lock_guard guard(serialMutex_);
-    auto findRestartResidentTask = [abilityRequest](const AbilityRequest &requestInfo) {
-        return (requestInfo.want.GetElement().GetBundleName() == abilityRequest.want.GetElement().GetBundleName() &&
-            requestInfo.want.GetElement().GetModuleName() == abilityRequest.want.GetElement().GetModuleName() &&
-            requestInfo.want.GetElement().GetAbilityName() == abilityRequest.want.GetElement().GetAbilityName());
+    auto srcElement = abilityRequest.want.GetElement();
+    auto findRestartResidentTask = [&srcElement](const AbilityRequest &requestInfo) {
+        auto dstElement = requestInfo.want.GetElement();
+        return (dstElement.GetBundleName() == srcElement.GetBundleName() &&
+            dstElement.GetModuleName() == srcElement.GetModuleName() &&
+            dstElement.GetAbilityName() == srcElement.GetAbilityName());
     };
     auto findIter = find_if(restartResidentTaskList_.begin(), restartResidentTaskList_.end(), findRestartResidentTask);
     if (findIter != restartResidentTaskList_.end()) {
@@ -2386,8 +2387,7 @@ void AbilityConnectManager::HandleNotifyAssertFaultDialogDied(
         return;
     }
 
-    auto want = abilityRecord->GetWant();
-    auto assertSessionStr = want.GetStringParam(Want::PARAM_ASSERT_FAULT_SESSION_ID);
+    auto assertSessionStr = abilityRecord->GetStringParam(Want::PARAM_ASSERT_FAULT_SESSION_ID);
     if (!CheckIsNumString(assertSessionStr)) {
         TAG_LOGE(AAFwkTag::EXT, "assertSessionStr not number");
         return;
@@ -2412,7 +2412,7 @@ void AbilityConnectManager::CloseAssertDialog(const std::string &assertSessionId
                 continue;
             }
 
-            auto assertSessionStr = item.second->GetWant().GetStringParam(Want::PARAM_ASSERT_FAULT_SESSION_ID);
+            auto assertSessionStr = item.second->GetStringParam(Want::PARAM_ASSERT_FAULT_SESSION_ID);
             if (assertSessionStr == assertSessionId) {
                 abilityRecord = item.second;
                 NotifyExtensionTerminated(abilityRecord);
@@ -2485,10 +2485,12 @@ void AbilityConnectManager::RestartAbility(const std::shared_ptr<BaseExtensionRe
         requestInfo.restartTime = AbilityUtil::SystemTimeMillis();
         StartAbilityLocked(requestInfo);
     } else {
-        auto findRestartResidentTask = [requestInfo](const AbilityRequest &abilityRequest) {
-            return (requestInfo.want.GetElement().GetBundleName() == abilityRequest.want.GetElement().GetBundleName() &&
-                requestInfo.want.GetElement().GetModuleName() == abilityRequest.want.GetElement().GetModuleName() &&
-                requestInfo.want.GetElement().GetAbilityName() == abilityRequest.want.GetElement().GetAbilityName());
+        auto srcElement = requestInfo.want.GetElement();
+        auto findRestartResidentTask = [&srcElement](const AbilityRequest &abilityRequest) {
+            auto dstElement = abilityRequest.want.GetElement();
+            return (srcElement.GetBundleName() == dstElement.GetBundleName() &&
+                srcElement.GetModuleName() == dstElement.GetModuleName() &&
+                srcElement.GetAbilityName() == dstElement.GetAbilityName());
         };
         auto findIter = find_if(restartResidentTaskList_.begin(), restartResidentTaskList_.end(),
             findRestartResidentTask);
@@ -2505,9 +2507,9 @@ std::string AbilityConnectManager::GetServiceKey(const std::shared_ptr<BaseExten
 {
     std::string serviceKey = service->GetURI();
     if (FRS_BUNDLE_NAME == service->GetAbilityInfo().bundleName) {
-        serviceKey = serviceKey + std::to_string(service->GetWant().GetIntParam(FRS_APP_INDEX, 0));
+        serviceKey = serviceKey + std::to_string(service->GetIntParam(FRS_APP_INDEX, 0));
     } else if (service->GetAbilityInfo().extensionAbilityType == AppExecFwk::ExtensionAbilityType::AGENT) {
-        serviceKey = serviceKey + service->GetWant().GetStringParam(AgentRuntime::AGENTID_KEY);
+        serviceKey = serviceKey + service->GetStringParam(AgentRuntime::AGENTID_KEY);
     } else if (service->GetAbilityInfo().extensionAbilityType ==
                AppExecFwk::ExtensionAbilityType::MODULAR_OBJECT) {
         std::string requestId = service->GetRequestId();
@@ -2829,7 +2831,7 @@ void AbilityConnectManager::PrintTimeOutLog(const std::shared_ptr<BaseExtensionR
     if (!GetTimeoutMsgContent(msgId, msgContent, typeId)) {
         return;
     }
-    if (ability->GetWant().GetBoolParam(IS_PRELOAD_UIEXTENSION_ABILITY, false)) {
+    if (ability->GetBoolParam(IS_PRELOAD_UIEXTENSION_ABILITY, false)) {
         msgContent += "\nabilityLoadType: PreloadUIExtension\n";
     }
 
@@ -3105,7 +3107,7 @@ EventInfo AbilityConnectManager::BuildEventInfo(const std::shared_ptr<BaseExtens
     eventInfo.processName = processInfo.processName_;
     eventInfo.time = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
-    auto callerPid = abilityRecord->GetWant().GetIntParam(Want::PARAM_RESV_CALLER_PID, -1);
+    auto callerPid = abilityRecord->GetIntParam(Want::PARAM_RESV_CALLER_PID, -1);
     eventInfo.callerPid = callerPid == -1 ? IPCSkeleton::GetCallingPid() : callerPid;
     DelayedSingleton<AppScheduler>::GetInstance()->GetRunningProcessInfoByPid(eventInfo.callerPid, processInfo);
     eventInfo.callerPid = processInfo.pid_;

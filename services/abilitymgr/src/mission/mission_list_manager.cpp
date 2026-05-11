@@ -1039,7 +1039,7 @@ int MissionListManager::AttachAbilityThread(const sptr<IAbilityScheduler> &sched
 
     if (abilityRecord->IsStartedByCall()) {
         (void)abilityRecord->PromotePriority();
-        if (abilityRecord->GetWant().GetBoolParam(Want::PARAM_RESV_CALL_TO_FOREGROUND, false)) {
+        if (abilityRecord->GetBoolParam(Want::PARAM_RESV_CALL_TO_FOREGROUND, false)) {
             abilityRecord->SetStartToForeground(true);
             abilityRecord->PostForegroundTimeoutTask();
             DelayedSingleton<AppScheduler>::GetInstance()->MoveToForeground(token);
@@ -3403,7 +3403,7 @@ int MissionListManager::CallAbilityLocked(const AbilityRequest &abilityRequest)
 
     // new version started by call type
     auto ret = ResolveAbility(targetAbilityRecord, abilityRequest);
-    bool isStartToForeground = targetAbilityRecord->GetWant().GetBoolParam(Want::PARAM_RESV_CALL_TO_FOREGROUND, false);
+    bool isStartToForeground = targetAbilityRecord->GetBoolParam(Want::PARAM_RESV_CALL_TO_FOREGROUND, false);
     if (ret == ResolveResultType::OK_HAS_REMOTE_OBJ || (ret == ResolveResultType::OK_NO_REMOTE_OBJ &&
         targetAbilityRecord->GetStartTime() > 0)) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "target ability has been resolved.");

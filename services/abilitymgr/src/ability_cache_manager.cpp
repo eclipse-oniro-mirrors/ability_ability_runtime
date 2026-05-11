@@ -159,7 +159,7 @@ bool AbilityCacheManager::IsRecInfoSame(const AbilityRequest& abilityRequest,
 {
     return abilityRecord != nullptr &&
         abilityRequest.abilityInfo.moduleName == abilityRecord->GetAbilityInfo().moduleName &&
-        abilityRequest.want.GetElement().GetAbilityName() == abilityRecord->GetWant().GetElement().GetAbilityName();
+        abilityRequest.want.GetElement().GetAbilityName() == abilityRecord->GetAbilityName();
 }
 
 std::shared_ptr<BaseExtensionRecord> AbilityCacheManager::GetAbilityRecInProcList(const AbilityRequest &abilityRequest)
@@ -237,7 +237,7 @@ std::shared_ptr<BaseExtensionRecord> AbilityCacheManager::FindRecordBySessionId(
             it++;
             continue;
         }
-        auto assertSessionStr = (*it)->GetWant().GetStringParam(Want::PARAM_ASSERT_FAULT_SESSION_ID);
+        auto assertSessionStr = (*it)->GetStringParam(Want::PARAM_ASSERT_FAULT_SESSION_ID);
         if (assertSessionStr == assertSessionId) {
             std::shared_ptr<BaseExtensionRecord> &abilityRecord = *it;
             TAG_LOGD(AAFwkTag::SERVICE_EXT,
@@ -262,7 +262,7 @@ std::shared_ptr<BaseExtensionRecord> AbilityCacheManager::FindRecordByServiceKey
         }
         std::string curServiceKey = (*it)->GetURI();
         if (FRS_BUNDLE_NAME == (*it)->GetAbilityInfo().bundleName) {
-            curServiceKey = curServiceKey + std::to_string((*it)->GetWant().GetIntParam(FRS_APP_INDEX, 0));
+            curServiceKey = curServiceKey + std::to_string((*it)->GetIntParam(FRS_APP_INDEX, 0));
         }
         if (curServiceKey.compare(serviceKey) == 0) {
             std::shared_ptr<BaseExtensionRecord> &abilityRecord = *it;

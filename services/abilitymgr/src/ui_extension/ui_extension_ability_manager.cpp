@@ -154,9 +154,9 @@ int UIExtensionAbilityManager::UnloadUIExtensionAbility(
     TAG_LOGD(AAFwkTag::ABILITYMGR, "call");
     CHECK_POINTER_AND_RETURN(abilityRecord, ERR_INVALID_VALUE);
 
-    auto preLoadUIExtensionInfo = std::make_tuple(abilityRecord->GetWant().GetElement().GetAbilityName(),
-        abilityRecord->GetWant().GetElement().GetBundleName(),
-        abilityRecord->GetWant().GetElement().GetModuleName(), hostPid);
+    auto preLoadUIExtensionInfo = std::make_tuple(abilityRecord->GetAbilityName(),
+        abilityRecord->GetBundleName(),
+        abilityRecord->GetModuleName(), hostPid);
 
     CHECK_POINTER_AND_RETURN(uiExtensionAbilityRecordMgr_, ERR_NULL_OBJECT);
     auto extensionRecordId = abilityRecord->GetUIExtensionAbilityId();
@@ -184,9 +184,9 @@ void UIExtensionAbilityManager::ClearPreloadUIExtensionRecord(const std::shared_
         return;
     }
 
-    auto extensionRecordMapKey = std::make_tuple(abilityRecord->GetWant().GetElement().GetAbilityName(),
-        abilityRecord->GetWant().GetElement().GetBundleName(),
-        abilityRecord->GetWant().GetElement().GetModuleName(), hostPid);
+    auto extensionRecordMapKey = std::make_tuple(abilityRecord->GetAbilityName(),
+        abilityRecord->GetBundleName(),
+        abilityRecord->GetModuleName(), hostPid);
     uiExtensionAbilityRecordMgr_->RemovePreloadUIExtensionRecordById(extensionRecordMapKey, extensionRecordId);
 }
 
@@ -228,7 +228,7 @@ int UIExtensionAbilityManager::AttachAbilityThreadInner(const sptr<IAbilitySched
     abilityRecord->RemoveSpecifiedWantParam(UIEXTENSION_NOTIFY_BIND);
 
     if (IsUIExtensionAbility(abilityRecord) && !abilityRecord->IsCreateByConnect()
-        && !abilityRecord->GetWant().GetBoolParam(IS_PRELOAD_UIEXTENSION_ABILITY, false)) {
+        && !abilityRecord->GetBoolParam(IS_PRELOAD_UIEXTENSION_ABILITY, false)) {
         abilityRecord->PostUIExtensionAbilityTimeoutTask(AbilityManagerService::FOREGROUND_TIMEOUT_MSG);
         DelayedSingleton<AppScheduler>::GetInstance()->MoveToForeground(token);
 
@@ -520,7 +520,7 @@ int32_t UIExtensionAbilityManager::UnRegisterPreloadUIExtensionHostClient(int32_
 int32_t UIExtensionAbilityManager::StartAbilityLocked(const AbilityRequest &abilityRequest)
 {
     if (AppUtils::GetInstance().IsForbidStart()) {
-        TAG_LOGW(AAFwkTag::EXT, "forbid start: %{public}s", abilityRequest.want.GetElement().GetBundleName().c_str());
+        TAG_LOGW(AAFwkTag::EXT, "forbid start: %{public}s", abilityRequest.want.GetBundle().c_str());
         return INNER_ERR;
     }
 
@@ -812,7 +812,7 @@ void UIExtensionAbilityManager::RemoveUIExtensionAbilityRecord(
 {
     CHECK_POINTER(abilityRecord);
     CHECK_POINTER(uiExtensionAbilityRecordMgr_);
-    if (abilityRecord->GetWant().GetBoolParam(IS_PRELOAD_UIEXTENSION_ABILITY, false)) {
+    if (abilityRecord->GetBoolParam(IS_PRELOAD_UIEXTENSION_ABILITY, false)) {
         ClearPreloadUIExtensionRecord(abilityRecord);
     }
     if (UIExtensionWrapper::IsAgentUIExtension(abilityRecord->GetAbilityInfo().extensionAbilityType)) {
@@ -894,7 +894,7 @@ void UIExtensionAbilityManager::UpdateUIExtensionInfo(const std::shared_ptr<Base
         wantParams.SetParam(UIEXTENSION_ROOT_HOST_PID, AAFwk::Integer::Box(rootHostPid));
     }
 
-    if (abilityRecord->GetWant().GetBoolParam(IS_PRELOAD_UIEXTENSION_ABILITY, false)) {
+    if (abilityRecord->GetBoolParam(IS_PRELOAD_UIEXTENSION_ABILITY, false)) {
         auto rootHostPid = (hostPid == AAFwk::DEFAULT_INVAL_VALUE) ? IPCSkeleton::GetCallingPid() : hostPid;
         wantParams.SetParam(UIEXTENSION_ROOT_HOST_PID, AAFwk::Integer::Box(rootHostPid));
     }
@@ -1263,7 +1263,7 @@ int UIExtensionAbilityManager::DispatchInactive(const std::shared_ptr<BaseExtens
     abilityRecord->SetAbilityState(AbilityState::INACTIVE);
     if (abilityRecord->IsCreateByConnect()) {
         ConnectAbility(abilityRecord);
-    } else if (abilityRecord->GetWant().GetBoolParam(IS_PRELOAD_UIEXTENSION_ABILITY, false)) {
+    } else if (abilityRecord->GetBoolParam(IS_PRELOAD_UIEXTENSION_ABILITY, false)) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "IS_PRELOAD_UIEXTENSION_ABILITY");
         auto ret = AddPreloadUIExtensionRecord(abilityRecord);
         if (ret != ERR_OK) {

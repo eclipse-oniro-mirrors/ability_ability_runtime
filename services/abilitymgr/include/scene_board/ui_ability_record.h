@@ -108,12 +108,23 @@ public:
         startSelfRequestId_ = startSelfRequestId;
     }
 
+    inline void SetLaunchWant(std::shared_ptr<Want> launchWant)
+    {
+        launchWant_ = launchWant;
+    }
+
+    inline std::shared_ptr<Want> GetLaunchWant() const
+    {
+        return launchWant_;
+    }
+
 private:
     bool exitReasonLoaded_ = false;
     bool hookOff_ = false;
     int32_t startSelfRequestId_ = 0;
     std::atomic_bool isKillPrecedeStart_ = false;
     std::atomic<AbilityNativeState> abilityNativeState_ = AbilityNativeState::NONE;
+    std::shared_ptr<Want> launchWant_ = nullptr;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

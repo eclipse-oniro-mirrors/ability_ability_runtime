@@ -151,9 +151,10 @@ Want SystemDialogScheduler::GetJumpInterceptorDialogWant(Want &targetWant)
 
     nlohmann::json jsonObj;
     jsonObj[IS_DEFAULT_SELECTOR] = AppUtils::GetInstance().IsSelectorDialogDefaultPossion();
-    jsonObj["bundleName"] = targetWant.GetElement().GetBundleName();
-    jsonObj["abilityName"] = targetWant.GetElement().GetAbilityName();
-    jsonObj["moduleName"] = targetWant.GetElement().GetModuleName();
+    auto wantEle = targetWant.GetElement();
+    jsonObj["bundleName"] = wantEle.GetBundleName();
+    jsonObj["abilityName"] = wantEle.GetAbilityName();
+    jsonObj["moduleName"] = wantEle.GetModuleName();
     const std::string params = jsonObj.dump();
 
     targetWant.SetElementName(BUNDLE_NAME_DIALOG, ABILITY_NAME_JUMP_INTERCEPTOR_DIALOG);

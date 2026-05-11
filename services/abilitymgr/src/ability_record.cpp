@@ -474,8 +474,8 @@ void AbilityRecord::ProcessForegroundAbility(uint32_t tokenId, const ForegroundO
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::ABILITYMGR, "ability record: %{public}s/%{public}s", GetElementName().GetBundleName().c_str(),
         GetElementName().GetAbilityName().c_str());
-    needCheckAutoStartupStatusBar_ = GetWant().GetBoolParam(HIDDEN_START_AUTOSTARTUP, false);
-    GetWant().RemoveParam(HIDDEN_START_AUTOSTARTUP);
+    needCheckAutoStartupStatusBar_ = GetBoolParam(HIDDEN_START_AUTOSTARTUP, false);
+    RemoveSpecifiedWantParam(HIDDEN_START_AUTOSTARTUP);
 #ifdef SUPPORT_UPMS
     {
         std::lock_guard guard(wantLock_);
@@ -2136,6 +2136,42 @@ Want AbilityRecord::GetWant() const
 {
     std::lock_guard guard(wantLock_);
     return want_;
+}
+
+std::string AbilityRecord::GetAbilityName() const
+{
+    std::lock_guard guard(wantLock_);
+    return want_.GetElement().GetAbilityName();
+}
+
+std::string AbilityRecord::GetBundleName() const
+{
+    std::lock_guard guard(wantLock_);
+    return want_.GetBundle();
+}
+
+std::string AbilityRecord::GetStringParam(const std::string &key) const
+{
+    std::lock_guard guard(wantLock_);
+    return want_.GetStringParam(key);
+}
+
+int AbilityRecord::GetIntParam(const std::string &key, int defaultValue) const
+{
+    std::lock_guard guard(wantLock_);
+    return want_.GetIntParam(key, defaultValue);
+}
+
+bool AbilityRecord::GetBoolParam(const std::string &key, bool defaultValue) const
+{
+    std::lock_guard guard(wantLock_);
+    return want_.GetBoolParam(key, defaultValue);
+}
+
+bool AbilityRecord::HasParameter(const std::string &key) const
+{
+    std::lock_guard guard(wantLock_);
+    return want_.HasParameter(key);
 }
 
 void AbilityRecord::RemoveSignatureInfo()

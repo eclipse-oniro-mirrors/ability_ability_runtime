@@ -590,7 +590,7 @@ int UIAbilityLifecycleManager::AttachAbilityThread(const sptr<IAbilityScheduler>
     }
     if (abilityRecord->IsStartedByCall()) {
         (void)abilityRecord->PromotePriority();
-        if (abilityRecord->GetWant().GetBoolParam(Want::PARAM_RESV_CALL_TO_FOREGROUND, false)) {
+        if (abilityRecord->GetBoolParam(Want::PARAM_RESV_CALL_TO_FOREGROUND, false)) {
             abilityRecord->SetStartToForeground(true);
             abilityRecord->PostForegroundTimeoutTask();
             abilityRecord->SetAbilityState(AbilityState::FOREGROUNDING);
@@ -1885,8 +1885,8 @@ void UIAbilityLifecycleManager::CallUIAbilityBySCB(const sptr<SessionInfo> &sess
     uiAbilityRecord->lifeCycleStateInfo_.sceneFlagBak = params.sceneFlag;
     uiAbilityRecord->SetInstanceKey(sessionInfo->instanceKey);
 
-    MoreAbilityNumbersSendEventInfo(sessionInfo->userId, sessionInfo->want.GetElement().GetBundleName(),
-        sessionInfo->want.GetElement().GetAbilityName(), sessionInfo->want.GetElement().GetModuleName());
+    MoreAbilityNumbersSendEventInfo(sessionInfo->userId, sessionInfo->want.GetBundle(),
+        sessionInfo->want.GetElement().GetAbilityName(), sessionInfo->want.GetModuleName());
 
     sessionAbilityMap_.emplace(sessionInfo->persistentId, uiAbilityRecord);
     uiAbilityRecord->SetSessionInfo(sessionInfo);
@@ -2862,7 +2862,7 @@ void UIAbilityLifecycleManager::HandleLegacyAcceptWantDone(SpecifiedRequest &spe
     const std::string &flag, const AAFwk::Want &want)
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "HandleLegacyAcceptWantDone, ability:%{public}s/%{public}s",
-        want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str());
+        want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str());
     auto &abilityRequest = specifiedRequest.abilityRequest;
     auto callerAbility = GetAbilityRecordByToken(abilityRequest.callerToken);
     abilityRequest.specifiedFlag = flag;
@@ -4421,7 +4421,7 @@ void UIAbilityLifecycleManager::AddSpecifiedRequest(std::shared_ptr<SpecifiedReq
 
     auto &abilityRequest = request->abilityRequest;
     TAG_LOGI(AAFwkTag::ABILITYMGR, "AddSpecifiedRequest: %{public}d, %{public}s/%{public}s", request->requestId,
-        abilityRequest.want.GetElement().GetBundleName().c_str(),
+        abilityRequest.want.GetBundle().c_str(),
         abilityRequest.want.GetElement().GetAbilityName().c_str());
     auto instanceKey = abilityRequest.want.GetStringParam(Want::APP_INSTANCE_KEY);
     auto accessTokenIdStr = std::to_string(abilityRequest.abilityInfo.applicationInfo.accessTokenId);
@@ -4791,7 +4791,7 @@ ErrCode UIAbilityLifecycleManager::IsUIAbilityAlreadyExist(const Want &want,
         std::lock_guard<ffrt::mutex> guard(sessionLock_);
         tempSessionAbilityMap = sessionAbilityMap_;
     }
-    std::string moduleName = want.GetElement().GetModuleName();
+    std::string moduleName = want.GetModuleName();
     std::string abilityName = want.GetElement().GetAbilityName();
 
     for (auto it = tempSessionAbilityMap.begin(); it != tempSessionAbilityMap.end(); it++) {

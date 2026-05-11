@@ -47,7 +47,7 @@ thread_local bool StartAbilityUtils::startSpecifiedBySCB = false;
 bool StartAbilityUtils::GetAppIndex(const Want &want, sptr<IRemoteObject> callerToken, int32_t &appIndex)
 {
     auto abilityRecord = Token::GetAbilityRecordByToken(callerToken);
-    if (abilityRecord && abilityRecord->GetApplicationInfo().bundleName == want.GetElement().GetBundleName() &&
+    if (abilityRecord && abilityRecord->GetApplicationInfo().bundleName == want.GetBundle() &&
         abilityRecord->GetAppIndex() > AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
         appIndex = abilityRecord->GetAppIndex();
         return true;
@@ -110,7 +110,7 @@ std::vector<int32_t> StartAbilityUtils::GetCloneAppIndexes(const std::string &bu
 int32_t StartAbilityUtils::CheckAppProvisionMode(const Want& want, int32_t userId, sptr<IRemoteObject> callerToken)
 {
     auto abilityInfo = StartAbilityUtils::startAbilityInfo;
-    if (!abilityInfo || abilityInfo->GetAppBundleName() != want.GetElement().GetBundleName()) {
+    if (!abilityInfo || abilityInfo->GetAppBundleName() != want.GetBundle()) {
         int32_t appIndex = 0;
         if (!GetAppIndex(want, callerToken, appIndex)) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid app clone index");
@@ -420,7 +420,7 @@ void StartAbilityUtils::SetTargetCloneIndexInSameBundle(const Want &want, sptr<I
 {
     auto callerRecord = Token::GetAbilityRecordByToken(callerToken);
     CHECK_POINTER(callerRecord);
-    if (callerRecord->GetAbilityInfo().bundleName != want.GetElement().GetBundleName()) {
+    if (callerRecord->GetAbilityInfo().bundleName != want.GetBundle()) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "not the same bundle");
         return;
     }
