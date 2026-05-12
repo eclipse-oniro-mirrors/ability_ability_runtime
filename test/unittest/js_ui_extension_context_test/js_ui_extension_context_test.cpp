@@ -1280,7 +1280,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_TerminateSelf
     auto jsCtx = std::make_shared<JsUIExtensionContext>(ctx);
     ctx.reset(); // release, weak_ptr expires
 
-    auto func = [jsCtx](napi_env env, napi_callback_info info) -> napi_value {
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
         return JsUIExtensionContext::TerminateSelfWithResult(env, info);
     };
 
