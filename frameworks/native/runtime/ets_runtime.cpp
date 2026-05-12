@@ -17,11 +17,13 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdlib>
 #include <dlfcn.h>
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <regex>
+#include <sys/mman.h>
 #include <unistd.h>
 
 #include "bundle_constants.h"
@@ -275,11 +277,29 @@ bool ETSRuntime::PostFork(const Options &options, std::unique_ptr<Runtime> &jsRu
     return true;
 }
 
+/*
+ * HWASan's ProtectGap() blocks [0x10000, 0x100000000) with PROT_NONE.
+ * Shadow memory and allocator are placed above 4 GB (aligned to 1 << 32).
+ * ETS runtime needs to allocate heap in the lower 4 GB.
+ * appspawn sets HWASAN_OPTIONS env var whenever HWASan is enabled for
+ * the child process — both via APP_FLAGS_HWASAN_ENABLED and wrap.<bundle>.
+ */
+static void UnmapHwasanProtectGap()
+{
+    HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
+    if (getenv("HWASAN_OPTIONS") == nullptr) {
+        return;
+    }
+    TAG_LOGI(AAFwkTag::ETSRUNTIME, "Unmapping HWASan ProtectGap in lower 4 GB");
+    munmap(reinterpret_cast<void *>(0x10000), 0x100000000UL - 0x10000);
+}
+
 std::unique_ptr<ETSRuntime> ETSRuntime::Create(const Options &options,
     std::unique_ptr<Runtime> &jsRuntime, bool isMove)
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::ETSRUNTIME, "Create called");
+    UnmapHwasanProtectGap();
     if (!RegisterETSEnvFuncs()) {
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "RegisterETSEnvFuncs failed");
         return std::unique_ptr<ETSRuntime>();
