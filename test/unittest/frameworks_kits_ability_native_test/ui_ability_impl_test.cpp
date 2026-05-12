@@ -2632,5 +2632,81 @@ HWTEST_F(UIAbilityImplTest, AbilityRuntime_SetNativeModuleMetaData_005, TestSize
     GTEST_LOG_(INFO) << "AbilityRuntime_SetNativeModuleMetaData_005 end";
 }
 
+/*
+ * Feature: UIAbilityImpl
+ * Function: ExecuteInsightIntentMoveToForeground
+ * SubFunction: NA
+ * FunctionPoints: SilentForeground with PRE_FOREGROUND native state
+ * EnvConditions: NA
+ * CaseDescription: When localNativeState is INIT_PRE_FOREGROUND, ExecuteInsightIntentMoveToForeground
+ *                 sets silentForeground to true and transitions state to HALF_FOREGROUND.
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_ExecuteInsightIntentMoveToForeground_PreForeground_0100, TestSize.Level1)
+{
+    auto abilityImpl = std::make_shared<UIAbilityImpl>();
+    std::shared_ptr<MockUIAbility> pMocKUIAbility = std::make_shared<MockUIAbility>();
+    abilityImpl->ability_ = pMocKUIAbility;
+    abilityImpl->localNativeState_ = AbilityRuntime::LocalNativeState::INIT_PRE_FOREGROUND;
+
+    Want want;
+    auto executeParam = std::make_shared<InsightIntentExecuteParam>();
+    auto callback = std::make_unique<InsightIntentExecutorAsyncCallback>();
+
+    abilityImpl->ExecuteInsightIntentMoveToForeground(want, executeParam, std::move(callback));
+
+    EXPECT_EQ(abilityImpl->localNativeState_, AbilityRuntime::LocalNativeState::HALF_FOREGROUND);
+    EXPECT_FALSE(abilityImpl->ability_->CheckIsSilentForeground());
+}
+
+/*
+ * Feature: UIAbilityImpl
+ * Function: ExecuteInsightIntentMoveToForeground
+ * SubFunction: NA
+ * FunctionPoints: SilentForeground preserved when not in PRE_FOREGROUND state
+ * EnvConditions: NA
+ * CaseDescription: When localNativeState is NONE, ExecuteInsightIntentMoveToForeground does not
+ *                 modify silentForeground state.
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_ExecuteInsightIntentMoveToForeground_PreForeground_0300, TestSize.Level1)
+{
+    auto abilityImpl = std::make_shared<UIAbilityImpl>();
+    std::shared_ptr<MockUIAbility> pMocKUIAbility = std::make_shared<MockUIAbility>();
+
+    abilityImpl->ability_ = pMocKUIAbility;
+
+    EXPECT_EQ(abilityImpl->localNativeState_, AbilityRuntime::LocalNativeState::NONE);
+
+    Want want;
+    auto executeParam = std::make_shared<InsightIntentExecuteParam>();
+    auto callback = std::make_unique<InsightIntentExecutorAsyncCallback>();
+    ASSERT_NE(callback, nullptr);
+
+    abilityImpl->ExecuteInsightIntentMoveToForeground(want, executeParam, std::move(callback));
+
+    EXPECT_FALSE(abilityImpl->ability_->CheckIsSilentForeground());
+}
+
+/*
+ * Feature: UIAbilityImpl
+ * Function: ExecuteInsightIntentMoveToForeground
+ * SubFunction: NA
+ * FunctionPoints: Null ability_ early return
+ * EnvConditions: NA
+ * CaseDescription: When ability_ is nullptr, ExecuteInsightIntentMoveToForeground returns early
+ *                 without crash.
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_ExecuteInsightIntentMoveToForeground_PreForeground_0400, TestSize.Level1)
+{
+    auto abilityImpl = std::make_shared<UIAbilityImpl>();
+    EXPECT_EQ(abilityImpl->ability_, nullptr);
+
+    Want want;
+    auto executeParam = std::make_shared<InsightIntentExecuteParam>();
+    auto callback = std::make_unique<InsightIntentExecutorAsyncCallback>();
+
+    abilityImpl->ExecuteInsightIntentMoveToForeground(want, executeParam, std::move(callback));
+
+    EXPECT_EQ(abilityImpl->ability_, nullptr);
+}
 } // namespace AppExecFwk
 } // namespace OHOS

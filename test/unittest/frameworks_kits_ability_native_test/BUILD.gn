@@ -752,6 +752,10 @@ ohos_unittest("ui_ability_impl_test") {
   ]
 
   if (ability_runtime_graphics) {
+    defines = [
+      "SUPPORT_GRAPHICS",
+      "SUPPORT_SCREEN",
+    ]
     sources += [ "ui_ability_impl_test.cpp" ]
     external_deps += [
       "form_fwk:fmskit_native",
