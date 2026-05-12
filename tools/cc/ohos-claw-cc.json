@@ -1,0 +1,203 @@
+{
+    "name": "ohos-claw-cc",
+    "version": "1.0.0",
+    "description": "ohos-claw-cc - InsightIntent framework CLI tool for executing and querying InsightIntents.",
+    "executablePath": "/system/bin/cli_tool/executable/ohos-claw-cc",
+    "requirePermissions": [],
+    "inputSchema": {
+        "type": "object",
+        "description": "Sub-options of the ohos-claw-cc command.",
+        "properties": {
+            "help": {
+                "type": "boolean",
+                "default": false
+            }
+        }
+    },
+    "outputSchema": {
+        "type": "object",
+        "description": "Execution result of the ohos-claw-cc command.",
+        "properties": {
+            "type": {
+                "type": "string",
+                "enum": ["result"]
+            },
+            "status": {
+                "type": "string",
+                "enum": ["success", "failed"]
+            },
+            "data": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    }
+                }
+            },
+            "errCode": {
+                "type": "string"
+            },
+            "errMsg": {
+                "type": "string"
+            },
+            "suggestion": {
+                "type": "string"
+            }
+        }
+    },
+    "hasSubCommand": true,
+    "subcommands": {
+        "execute-intent": {
+            "description": "ohos-claw-cc execute-intent - Execute an InsightIntent synchronously and return the execution result.",
+            "requirePermissions": [],
+            "inputSchema": {
+                "type": "object",
+                "description": "Sub-options of the ohos-claw-cc execute-intent command.",
+                "properties": {
+                    "help": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "bundleName": {
+                        "type": "string",
+                        "description": "Target application bundle name"
+                    },
+                    "moduleName": {
+                        "type": "string",
+                        "description": "Module name within the bundle"
+                    },
+                    "intentName": {
+                        "type": "string",
+                        "description": "InsightIntent name to execute"
+                    },
+                    "abilityName": {
+                        "type": "string",
+                        "description": "Ability name"
+                    },
+                    "executeMode": {
+                        "type": "integer",
+                        "description": "Execute mode: 0=UI_ABILITY_FOREGROUND, 1=UI_ABILITY_BACKGROUND, 2=UI_EXTENSION_ABILITY, 3=SERVICE_EXTENSION_ABILITY",
+                        "minimum": 0,
+                        "maximum": 3
+                    },
+                    "param": {
+                        "type": "string",
+                        "description": "InsightIntent parameters as a JSON object string. Pass '{}' if not needed."
+                    }
+                },
+                "required": [
+                    "bundleName",
+                    "moduleName",
+                    "intentName",
+                    "abilityName",
+                    "executeMode",
+                    "param"
+                ]
+            },
+            "outputSchema": {
+                "type": "object",
+                "description": "Execution result of the ohos-claw-cc execute-intent command.",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": ["result"]
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": ["success", "failed"]
+                    },
+                    "data": {
+                        "type": "object",
+                        "properties": {
+                            "message": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "errCode": {
+                        "type": "string"
+                    },
+                    "errMsg": {
+                        "type": "string"
+                    },
+                    "suggestion": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "get-intent": {
+            "description": "ohos-claw-cc get-intent - Query InsightIntent registration information with three query modes.",
+            "requirePermissions": [],
+            "inputSchema": {
+                "type": "object",
+                "description": "Sub-options of the ohos-claw-cc get-intent command.",
+                "properties": {
+                    "help": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "executeMode": {
+                        "type": "integer",
+                        "description": "Query mode: 1=query all, 2=query by bundle, 3=query by InsightIntent name",
+                        "minimum": 1,
+                        "maximum": 3
+                    },
+                    "flag": {
+                        "type": "integer",
+                        "description": "Query flag (required, values: 1=GET_FULL_INSIGHT_INTENT, 2=GET_SUMMARY_INSIGHT_INTENT, 5=FULL+ENTITY_INFO, 6=SUMMARY+ENTITY_INFO)",
+                        "enum": [1, 2, 5, 6]
+                    },
+                    "bundleName": {
+                        "type": "string",
+                        "description": "Bundle name (required when executeMode is 2 or 3)"
+                    },
+                    "moduleName": {
+                        "type": "string",
+                        "description": "Module name (required when executeMode is 3)"
+                    },
+                    "intentName": {
+                        "type": "string",
+                        "description": "InsightIntent name (required when executeMode is 3)"
+                    }
+                },
+                "required": [
+                    "executeMode",
+                    "flag"
+                ]
+            },
+            "outputSchema": {
+                "type": "object",
+                "description": "Execution result of the ohos-claw-cc get-intent command.",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": ["result"]
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": ["success", "failed"]
+                    },
+                    "data": {
+                        "type": "object",
+                        "properties": {
+                            "message": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "errCode": {
+                        "type": "string"
+                    },
+                    "errMsg": {
+                        "type": "string"
+                    },
+                    "suggestion": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "eventSchemas": {}
+}

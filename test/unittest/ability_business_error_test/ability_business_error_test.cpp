@@ -68,6 +68,8 @@ HWTEST_F(AbilityBusinessErrorTest, GetErrorMsg_3560000X, TestSize.Level2)
 {
     EXPECT_EQ(GetErrorMsg(AbilityErrorCode::ERROR_CODE_AGENT_ID_NOT_EXIST),
         "The specified agentId does not exist.");
+    EXPECT_EQ(GetErrorMsg(AbilityErrorCode::ERROR_CODE_AGENT_CARD_LIST_OUT_OF_RANGE),
+        "The number of agent cards in the bundle reaches the limit.");
     EXPECT_EQ(GetErrorMsg(AbilityErrorCode::ERROR_CODE_MAX_CONNECTIONS_REACHED),
         "Maximum connections from the same caller have been reached. "
         "Please disconnect at least one agent extension beforehand.");
@@ -106,6 +108,9 @@ HWTEST_F(AbilityBusinessErrorTest, GetJsErrorCodeByNativeError_0100, TestSize.Le
 
     result = GetJsErrorCodeByNativeError(OHOS::AAFwk::ERR_AGENT_CARD_DUPLICATE_REGISTER);
     EXPECT_TRUE(result == AbilityErrorCode::ERROR_CODE_AGENT_CARD_DUPLICATE_REGISTER);
+
+    result = GetJsErrorCodeByNativeError(OHOS::AAFwk::ERR_AGENT_CARD_LIST_OUT_OF_RANGE);
+    EXPECT_TRUE(result == AbilityErrorCode::ERROR_CODE_AGENT_CARD_LIST_OUT_OF_RANGE);
 
     result = GetJsErrorCodeByNativeError(OHOS::AAFwk::ERR_LOW_CODE_AGENT_ALREADY_ACTIVE);
     EXPECT_TRUE(result == AbilityErrorCode::ERROR_CODE_LOW_CODE_AGENT_ALREADY_ACTIVE);

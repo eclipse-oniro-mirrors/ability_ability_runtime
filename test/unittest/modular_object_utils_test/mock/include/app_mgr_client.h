@@ -32,6 +32,7 @@ public:
         }
         info.state_ = static_cast<AppProcessState>(MockFlag::processState);
         info.isPreForeground = MockFlag::isPreForeground;
+        info.processName_ = MockFlag::processName;
         return 0;
     }
 };

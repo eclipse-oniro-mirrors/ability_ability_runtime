@@ -1,0 +1,142 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//build/ohos/cli/ohos_cli_executable.gni")
+import("//foundation/ability/ability_runtime/ability_runtime.gni")
+
+config("ohos_aa_command_config") {
+  include_dirs = [
+    "include",
+    "${ability_runtime_path}/tools/aa/include",
+    "${ability_runtime_innerkits_path}/app_manager/include/appmgr",
+    "${ability_runtime_services_path}/abilitymgr/include/utils",
+    "${ability_runtime_services_path}/abilitymgr/include",
+  ]
+}
+
+config("ohos_aa_command_exception_config") {
+  cflags_cc = [ "-fexceptions" ]
+}
+
+ohos_static_library("ohos_aa_cli_source_set") {
+  sources = [
+    "src/ohos_aa_command.cpp",
+    "${ability_runtime_path}/tools/aa/src/ability_start_with_observer.cpp",
+    "${ability_runtime_path}/tools/aa/src/shell_command.cpp",
+    "${ability_runtime_path}/tools/aa/src/shell_command_config_loader.cpp",
+    "${ability_runtime_path}/tools/aa/src/shell_command_executor.cpp",
+    "${ability_runtime_path}/tools/aa/src/shell_command_result.cpp",
+  ]
+
+  sanitize = {
+    integer_overflow = true
+    ubsan = true
+    boundary_sanitize = true
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  public_configs = [
+    ":ohos_aa_command_config",
+    ":ohos_aa_command_exception_config",
+    "${ability_runtime_services_path}/abilitymgr:abilityms_config",
+    "${ability_runtime_services_path}/common:common_config",
+  ]
+
+  cflags = []
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
+
+  deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/ability_manager:ability_start_options",
+    "${ability_runtime_innerkits_path}/ability_manager:ability_start_setting",
+    "${ability_runtime_innerkits_path}/ability_manager:mission_info",
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
+  ]
+
+  external_deps = [
+    "ability_base:base",
+    "ability_base:want",
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "eventhandler:libeventhandler",
+    "hicollie:libhicollie",
+    "hilog:libhilog",
+    "init:libbegetutil",
+    "ipc:ipc_core",
+  ]
+  external_deps += [
+    "ability_base:session_info",
+    "bundle_framework:appexecfwk_base",
+    "graphic_2d:color_manager",
+    "image_framework:image_native",
+    "init:libbegetutil",
+    "relational_store:native_dataability",
+    "relational_store:native_rdb",
+    "samgr:samgr_proxy",
+  ]
+
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
+ohos_cli_executable("ohos-aa") {
+  sources = [ "src/main.cpp" ]
+
+  sanitize = {
+    integer_overflow = true
+    ubsan = true
+    boundary_sanitize = true
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  cflags = []
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
+
+  deps = [ ":ohos_aa_cli_source_set" ]
+
+  external_deps = [
+    "ability_base:base",
+    "ability_base:configuration",
+    "ability_base:session_info",
+    "c_utils:utils",
+    "hicollie:libhicollie",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+    "ability_base:want",
+    "ability_base:session_info",
+    "bundle_framework:appexecfwk_base",
+  ]
+
+  defines = []
+
+  install_enable = true
+  install_images = ["system"]
+  cli_config_file = "ohos-aa.json"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
+group("tools_ohos_aa") {
+  deps = [
+    ":ohos-aa",
+  ]
+}

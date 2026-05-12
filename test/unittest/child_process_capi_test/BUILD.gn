@@ -17,6 +17,7 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 module_output_path = "ability_runtime/ability_runtime/child_process_capi"
 
 ohos_unittest("child_process_capi_test") {
+  use_exceptions = true
   module_out_path = module_output_path
 
   configs = [ "${ability_runtime_services_path}/common:common_config" ]
@@ -31,9 +32,19 @@ ohos_unittest("child_process_capi_test") {
     "${ability_runtime_native_path}/child_process/include",
   ]
 
-  sources = [ "child_process_capi_test.cpp" ]
+  sources = [
+    "child_process_capi_test.cpp",
+    "${ability_runtime_native_path}/child_process/src/child_callback_manager.cpp",
+    "${ability_runtime_native_path}/child_process/src/native_child_callback.cpp",
+    "${ability_runtime_native_path}/child_process/src/native_child_process.cpp",
+  ]
 
-  deps = [ "${ability_runtime_services_path}/common:app_util_static" ]
+  deps = [
+    "${ability_runtime_services_path}/common:app_util_static",
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
+    "${ability_runtime_native_path}/ability/native:ability_business_error",
+  ]
 
   external_deps = [
     "c_utils:utils",
@@ -45,8 +56,6 @@ ohos_unittest("child_process_capi_test") {
 
   if (ability_runtime_child_process) {
     deps += [
-      "${ability_runtime_native_path}/child_process:child_process",
-      "${ability_runtime_innerkits_path}/app_manager:app_manager",
       "${ability_runtime_path}/interfaces/inner_api/child_process_manager:child_process_manager",
     ]
   }

@@ -29,6 +29,7 @@
 #include "iability_callback.h"
 #include "recovery_param.h"
 #include "resource_config_helper.h"
+#include "skill/skill_execute_param.h"
 #include "want.h"
 
 #ifdef SUPPORT_SCREEN
@@ -47,6 +48,7 @@ class LifeCycle;
 class ContinuationHandlerStage;
 class ContinuationManagerStage;
 class InsightIntentExecuteParam;
+class SkillExecuteParam;
 struct BaseDelegatorAbilityProperty;
 struct InsightIntentExecuteResult;
 using InsightIntentExecutorAsyncCallback = AbilityTransactionCallbackInfo<InsightIntentExecuteResult>;
@@ -61,6 +63,7 @@ class Runtime;
 using InsightIntentExecuteResult = AppExecFwk::InsightIntentExecuteResult;
 using InsightIntentExecuteParam = AppExecFwk::InsightIntentExecuteParam;
 using InsightIntentExecutorAsyncCallback = AppExecFwk::InsightIntentExecutorAsyncCallback;
+using SkillExecuteParam = AppExecFwk::SkillExecuteParam;
 class UIAbility : public AppExecFwk::AbilityContext,
                   public AppExecFwk::ILifeCycle,
                   public AppExecFwk::IAbilityCallback,
@@ -703,6 +706,15 @@ public:
      */
     virtual void OnAbilityRequestSuccess(const std::string &requestId, const AppExecFwk::ElementName &element,
         const std::string &message);
+
+    /**
+     * @brief Execute skill by loading ArkTS script and calling the target function.
+     *
+     * @param want Want.
+     * @param param Skill execute param containing abc path, function name and arguments.
+     */
+    virtual void ExecuteSkill(const AAFwk::Want &want,
+        const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param) {}
 
 protected:
     class UIAbilityDisplayListener : public OHOS::Rosen::IDisplayInfoChangedListener {

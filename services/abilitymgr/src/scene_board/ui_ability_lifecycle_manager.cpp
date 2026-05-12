@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -85,6 +85,7 @@ constexpr const char* IS_CALLING_FROM_DMS = "supportCollaborativeCallingFromDmsI
 constexpr int REMOVE_STARTING_BUNDLE_TIMEOUT_MICRO_SECONDS = 5000000; // 5s
 constexpr int32_t BY_CALL_TIMEOUT = 10 * 1000 * 1000; // 10s
 constexpr int32_t START_SELF_TIMEOUT = 10 * 1000 * 1000; // 10s
+constexpr int32_t START_SELF_TIMEOUT_KILL_DELAY = 3 * 1000 * 1000; // 3s
 constexpr int32_t SCENE_FLAG_BYCALL = 4;
 
 auto g_deleteLifecycleEventTask = [](const sptr<Token> &token) {
@@ -735,6 +736,7 @@ int UIAbilityLifecycleManager::NotifySCBToStartUIAbility(AbilityRequest &ability
         if (abilityRecord != nullptr && abilityRecord->IsHook() && !abilityRecord->GetHookOff()) {
             AbilityRequest request;
             request.callerToken = abilityRequest.callerToken;
+            request.requestCallback = abilityRequest.requestCallback;
             sptr<SessionInfo> hookSessionInfo = abilityRecord->GetSessionInfo();
             if (hookSessionInfo != nullptr) {
                 hookSessionInfo->want = abilityRequest.want;
@@ -1085,15 +1087,7 @@ int UIAbilityLifecycleManager::DispatchForeground(const UIAbilityRecordPtr &abil
     if (abilityRecord->GetNativeState() == AbilityNativeState::ATTACHED) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "NativeModule foreground is pending");
         abilityRecord->SetNativeState(AbilityNativeState::CREATED);
-        auto timeoutTask = [wThis = weak_from_this(), abilityRecord]() {
-            auto pThis = wThis.lock();
-            if (pThis != nullptr && abilityRecord->GetNativeState() == AbilityNativeState::CREATED) {
-                TAG_LOGW(AAFwkTag::ABILITYMGR, "Start self Timeout");
-                std::lock_guard guard(pThis->sessionLock_);
-                pThis->HandleForegroundTimeout(abilityRecord);
-            }
-        };
-        ffrt::submit(std::move(timeoutTask), ffrt::task_attr().delay(START_SELF_TIMEOUT));
+        PostStartSelfTimeoutEvent(abilityRecord);
         return ERR_OK;
     }
     if (abilityRecord->GetNativeState() == AbilityNativeState::ON_FOREGROUND) {
@@ -2010,6 +2004,10 @@ int UIAbilityLifecycleManager::NotifySCBPendingActivation(sptr<SessionInfo> &ses
         if (!requestId.empty()) {
             abilityRecord->NotifyAbilityRequestSuccess(requestId, abilityRequest.want.GetElement());
         }
+        if (abilityRequest.requestCallback != nullptr) {
+            TAG_LOGD(AAFwkTag::ABILITYMGR, "callback request ability");
+            abilityRequest.requestCallback->OnRequestStartAbilityResult(true);
+        }
         const_cast<AbilityRequest &>(abilityRequest).want.RemoveParam(KEY_REQUEST_ID);
         TAG_LOGI(AAFwkTag::ABILITYMGR, "scb call, NotifySCBPendingActivation for callerSession, target: %{public}s"
             "requestId:%{public}s, splitRatio:%{public}d, windowMode:%{public}d",
@@ -2036,6 +2034,10 @@ int UIAbilityLifecycleManager::NotifySCBPendingActivation(sptr<SessionInfo> &ses
             callerRecord->NotifyAbilityRequestSuccess(requestId, abilityRequest.want.GetElement());
         }
         const_cast<AbilityRequest &>(abilityRequest).want.RemoveParam(KEY_REQUEST_ID);
+    }
+    if (abilityRequest.requestCallback != nullptr) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "callback request ability");
+        abilityRequest.requestCallback->OnRequestStartAbilityResult(true);
     }
     sessionInfo->canStartAbilityFromBackground = true;
     TAG_LOGI(AAFwkTag::ABILITYMGR,
@@ -2199,6 +2201,10 @@ bool UIAbilityLifecycleManager::GetContentAndTypeId(uint32_t msgId, std::string 
             break;
         case AbilityManagerService::TERMINATE_TIMEOUT_MSG:
             msgContent += "terminate timeout.";
+            break;
+        case AbilityManagerService::START_SELF_TIMEOUT_MSG:
+            msgContent += "startSelf timeout.";
+            typeId = AppExecFwk::AppfreezeManager::TypeAttribute::CRITICAL_TIMEOUT;
             break;
         default:
             return false;
@@ -2723,6 +2729,42 @@ void UIAbilityLifecycleManager::HandleForegroundTimeout(const UIAbilityRecordPtr
     DelayedSingleton<AppScheduler>::GetInstance()->AttachTimeOut(abilityRecord->GetToken());
 }
 
+void UIAbilityLifecycleManager::HandleStartSelfTimeout(const UIAbilityRecordPtr &abilityRecord, bool isHalf)
+{
+    if (abilityRecord == nullptr || abilityRecord->GetNativeState() != AbilityNativeState::CREATED) {
+        return;
+    }
+    TAG_LOGW(AAFwkTag::ABILITYMGR, "Start self Timeout");
+    OnTimeOut(AbilityManagerService::START_SELF_TIMEOUT_MSG, abilityRecord->GetRecordId(), isHalf);
+    if (isHalf) {
+        return;
+    }
+    std::lock_guard guard(sessionLock_);
+    HandleForegroundTimeout(abilityRecord);
+    auto pid = abilityRecord->GetPid();
+    auto killTask = [pid]() {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "Kill process %{public}d for StartSelfTimeout", pid);
+        auto appMgr = AppMgrUtil::GetAppMgr();
+        if (appMgr != nullptr) {
+            appMgr->KillProcessByPidForExit(pid, "StartSelfTimeout");
+        }
+    };
+    ffrt::submit(std::move(killTask), ffrt::task_attr().delay(START_SELF_TIMEOUT_KILL_DELAY));
+}
+
+void UIAbilityLifecycleManager::PostStartSelfTimeoutEvent(const UIAbilityRecordPtr &abilityRecord)
+{
+    auto halfTimeout = START_SELF_TIMEOUT / 2;
+    auto halfTimeoutTask = [pThis = shared_from_this(), abilityRecord]() {
+        pThis->HandleStartSelfTimeout(abilityRecord, true);
+    };
+    ffrt::submit(std::move(halfTimeoutTask), ffrt::task_attr().delay(halfTimeout));
+    auto timeoutTask = [pThis = shared_from_this(), abilityRecord]() {
+        pThis->HandleStartSelfTimeout(abilityRecord, false);
+    };
+    ffrt::submit(std::move(timeoutTask), ffrt::task_attr().delay(START_SELF_TIMEOUT));
+}
+
 void UIAbilityLifecycleManager::OnAbilityDied(UIAbilityRecordPtr abilityRecord)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "call OnAbilityDied");
@@ -3071,6 +3113,13 @@ int UIAbilityLifecycleManager::SendSessionInfoToSCB(UIAbilityRecordPtr &callerAb
             TAG_LOGI(AAFwkTag::ABILITYMGR, "notify request success, requestId:%{public}s", requestId.c_str());
             callerAbility->NotifyAbilityRequestSuccess(requestId, sessionInfo->want.GetElement());
         }
+        if (sessionInfo->requestCallback != nullptr) {
+            auto requestCallback = iface_cast<IRequestStartAbilityCallback>(sessionInfo->requestCallback);
+            if (requestCallback != nullptr) {
+                TAG_LOGD(AAFwkTag::ABILITYMGR, "callback request ability");
+                requestCallback->OnRequestStartAbilityResult(true);
+            }
+        }
         sessionInfo->want.RemoveParam(KEY_REQUEST_ID);
         TAG_LOGI(AAFwkTag::ABILITYMGR, "scb call, NotifySCBPendingActivation for callerSession, "
             "target: %{public}s, splitRatio:%{public}d, windowMode:%{public}d",
@@ -3090,6 +3139,13 @@ int UIAbilityLifecycleManager::SendSessionInfoToSCB(UIAbilityRecordPtr &callerAb
             abilityRecord->NotifyAbilityRequestSuccess(requestId, sessionInfo->want.GetElement());
         }
         sessionInfo->want.RemoveParam(KEY_REQUEST_ID);
+        if (sessionInfo->requestCallback != nullptr) {
+            auto requestCallback = iface_cast<IRequestStartAbilityCallback>(sessionInfo->requestCallback);
+            if (requestCallback != nullptr) {
+                TAG_LOGD(AAFwkTag::ABILITYMGR, "callback request ability");
+                requestCallback->OnRequestStartAbilityResult(true);
+            }
+        }
     }
     TAG_LOGI(AAFwkTag::ABILITYMGR, "scb call, NotifySCBPendingActivation for rootSceneSession, "
         "target: %{public}s, splitRatio:%{public}d, windowMode:%{public}d",

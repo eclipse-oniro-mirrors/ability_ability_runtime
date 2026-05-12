@@ -16,51 +16,102 @@
 #ifndef OHOS_ABILITY_RUNTIME_SESSION_RECORD_H
 #define OHOS_ABILITY_RUNTIME_SESSION_RECORD_H
 
+#include <atomic>
 #include <memory>
+#include <mutex>
+#include <string>
+#include <chrono>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <condition_variable>
 
 #include "cli_session_info.h"
-#include "iremote_object.h"
 
 namespace OHOS {
 namespace CliTool {
+
+enum class SessionType {
+    CLI = 0,
+    SKILL,
+};
+
+enum class SessionState {
+    SPAWNING = 0,
+    RUNNING,
+    CANCELLING,
+    COMPLETED,
+    FAILED,
+};
+
 class SessionRecord {
 public:
-    SessionRecord(std::shared_ptr<CliSessionInfo> sessinInfo, pid_t cliPid, sptr<IRemoteObject> callback)
-        : callBack_(callback),
-          cliPid_(cliPid),
-          sessinInfo_(sessinInfo) {}
+    SessionRecord() = default;
     ~SessionRecord() = default;
 
-    inline void AddStartTime(int64_t startTime)
-    {
-        startTime_ = startTime;
-    }
+    int32_t callerPid = -1;
+    std::string sessionId = "";
+    std::string toolName = "";
+    std::string eventId = "";
+    pid_t processId = -1;
+    int64_t startTime = 0;
+    int32_t timeoutMs = 0;
+    int32_t stdinPipe[2] = {-1, -1};        // [0]=read, [1]=write
+    int32_t stdoutPipe[2] = {-1, -1};
+    int32_t stderrPipe[2] = {-1, -1};
+    SessionType sessionType = SessionType::CLI;
 
-    inline sptr<IRemoteObject> GetCallback()
-    {
-        return callBack_;
-    }
+    void SetState(SessionState state);
+    SessionState GetState() const;
 
-    inline std::shared_ptr<CliSessionInfo> GetCliSessionInfo()
-    {
-        return sessinInfo_;
-    }
+    void SetTerminalResult(int32_t status, int32_t sig);
+    int32_t GetTerminalStatus() const;
 
-    inline int64_t GetStartTime()
-    {
-        return startTime_;
-    }
+    void SetSkillResult(int32_t resultCode, const std::string &outputText);
 
-    inline pid_t GetPid()
+    void SetTimedOut(bool timedOut);
+    bool TimedOut() const;
+    int64_t GetEndTimeMs() const;
+
+    bool HasProcessExited() const;
+    void MarkStdoutClosed();
+    void MarkStderrClosed();
+    bool OutputDrained() const;
+
+    bool BeginCleanup();
+
+    void AppendOutput(bool isStdout, const std::string &data);
+
+    bool SetBackground(bool background);
+    bool Background() const;
+
+    void BuildSessionInfo(CliSessionInfo &session) const;
+
+    inline pid_t GetCallerPid()
     {
-        return cliPid_;
+        return callerPid;
     }
 
 private:
-    sptr<IRemoteObject> callBack_;
-    pid_t cliPid_;
-    std::shared_ptr<CliSessionInfo> sessinInfo_;
-    int64_t startTime_ = 0;
+    void TrimBufferedOutput(std::string &buffer);
+
+    std::shared_ptr<ExecResult> BuildExecResult() const;
+
+private:
+    std::atomic<SessionState> state_ {SessionState::SPAWNING};
+    std::atomic<bool> processExited_ {false};
+    std::atomic<bool> stdoutClosed_ {false};
+    std::atomic<bool> stderrClosed_ {false};
+    std::atomic<bool> cleanupStarted_ {false};
+    mutable std::mutex resultMutex_;
+    int32_t terminalStatus_ = 0;
+    int32_t signalNumber_ = 0;
+    bool timedOut_ = false;
+    bool background_ = true;
+    int64_t endTimeMs_ = 0;
+    std::string stdoutText_ = "";
+    std::string stderrText_ = "";
+
+    static constexpr size_t MAX_BUFFERED_OUTPUT_BYTES = 64 * 1024;
 };
 
 } // namespace CliTool

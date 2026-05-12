@@ -105,10 +105,10 @@ public:
     bool CreateNativeThread(const AAFwk::NativeAbilityMetaData &metaData, const std::string &bundleName,
         const std::string &moduleName);
     std::shared_ptr<AppExecFwk::AbilityNativeThread> GetNativeThread();
-    void AddNativeAbility(const std::string &instanceId, std::shared_ptr<NativeAbilityWrapper> wrapper);
-    std::shared_ptr<NativeAbilityWrapper> GetNativeAbility(const std::string &instanceId);
+    void AddNativeAbility(const std::string &instanceId, std::shared_ptr<AbilityRuntime_NativeAbilityWrapper> wrapper);
+    std::shared_ptr<AbilityRuntime_NativeAbilityWrapper> GetNativeAbility(const std::string &instanceId);
     void RemoveNativeAbility(const std::string &instanceId);
-    void PostAbility(const std::string &instanceId, std::shared_ptr<NativeAbilityWrapper> wrapper);
+    void PostAbility(const std::string &instanceId, std::shared_ptr<AbilityRuntime_NativeAbilityWrapper> wrapper);
     void DestroyAbility(const std::string &instanceId);
     void NotifyProcessExit();
 
@@ -167,6 +167,9 @@ public:
     void KillProcessBySelf(const bool clearPageStack = false);
     int32_t GetProcessRunningInformation(AppExecFwk::RunningProcessInfo &info);
     int32_t RestartApp(const AAFwk::Want& want);
+    int32_t EnableDelayedProcessExit();
+    int32_t DisableDelayedProcessExit();
+    int32_t StartSelfUIAbility(const AAFwk::Want &want);
 
     void AttachContextImpl(const std::shared_ptr<ContextImpl> &contextImpl);
 
@@ -233,6 +236,7 @@ protected:
     }
 
 private:
+    bool IsDelayedProcessExitPending();
     std::vector<std::shared_ptr<InteropAbilityLifecycleCallback>> GetInteropCallbacks();
 
 private:
@@ -261,8 +265,10 @@ private:
 
     // Native Module related members
     std::shared_ptr<AppExecFwk::AbilityNativeThread> abilityNativeThread_;
-    std::unordered_map<std::string, std::shared_ptr<NativeAbilityWrapper>> nativeAbilities_;
+    std::unordered_map<std::string, std::shared_ptr<AbilityRuntime_NativeAbilityWrapper>> nativeAbilities_;
     std::mutex nativeMutex_;
+    std::mutex delayedProcessExitStateLock_;
+    bool delayedProcessExitEnabled_ = false;
 };
 }  // namespace AbilityRuntime
 }  // namespace OHOS

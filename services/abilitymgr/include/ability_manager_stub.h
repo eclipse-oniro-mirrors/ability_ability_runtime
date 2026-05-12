@@ -309,6 +309,7 @@ private:
     int32_t AttachAppDebugInner(MessageParcel &data, MessageParcel &reply);
     int32_t DetachAppDebugInner(MessageParcel &data, MessageParcel &reply);
     int32_t ExecuteIntentInner(MessageParcel &data, MessageParcel &reply);
+    int32_t ExecuteIntentForDistributedInner(MessageParcel &data, MessageParcel &reply);
 
     int32_t QueryEntityInner(MessageParcel &data, MessageParcel &reply);
 
@@ -366,6 +367,7 @@ private:
     int32_t GetInsightIntentInfoByBundleNameInner(MessageParcel &data, MessageParcel &reply);
     int32_t GetInsightIntentInfoByIntentNameInner(MessageParcel &data, MessageParcel &reply);
     int32_t StartAbilityWithWaitInner(MessageParcel &data, MessageParcel &reply);
+    int32_t StartUIAbilityWithCallbackInner(MessageParcel &data, MessageParcel &reply);
     int32_t RestartSelfAtomicServiceInner(MessageParcel &data, MessageParcel &reply);
     int32_t RegisterSAInterceptorInner(MessageParcel &data, MessageParcel &reply);
     int32_t SuspendExtensionAbilityInner(MessageParcel &data, MessageParcel &reply);
@@ -443,6 +445,11 @@ private:
     int32_t IsRestartAppLimitInner(MessageParcel &data, MessageParcel &reply);
     int32_t QuerySelfModularObjectExtensionInfosInner(MessageParcel &data, MessageParcel &reply);
     int32_t GetUserLockedBundleListInner(MessageParcel &data, MessageParcel &reply);
+    int32_t ExecuteInAppSkillInner(MessageParcel &data, MessageParcel &reply);
+    int32_t ExecuteInAppSkillWithTokenIdInner(MessageParcel &data, MessageParcel &reply);
+    int32_t ExecuteSkillDoneWithTokenInner(MessageParcel &data, MessageParcel &reply);
+    int32_t QuerySkillTypeInner(MessageParcel &data, MessageParcel &reply);
+    int32_t StartSelfUIAbilityByAppContextInner(MessageParcel &data, MessageParcel &reply);
 };
 }  // namespace AAFwk
 }  // namespace OHOS

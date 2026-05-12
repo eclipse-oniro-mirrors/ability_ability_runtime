@@ -21,6 +21,7 @@
 #include "accesstoken_kit.h"
 #include "app_scheduler.h"
 #include "ams_configuration_parameter.h"
+#include "event_report.h"
 #include "dialog_session_manager.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
@@ -48,6 +49,7 @@ constexpr const char* COMPONENT_STARTUP_NEW_RULES = "component.startup.newRules"
 constexpr const char* SPECIFIED_ABILITY_FLAG = "ohos.ability.params.specifiedAbilityFlag";
 constexpr const char* SHELL_ASSISTANT_BUNDLENAME = "com.ohos.shell_assistant";
 constexpr const char* UIEXTENSION_TYPE_KEY = "ability.want.params.uiExtensionType";
+const std::string HIDE_SENSITIVE_TYPE = "ohos.media.params.hideSensitiveType";
 constexpr int32_t BROKER_UID = 5557;
 }
 
@@ -385,6 +387,23 @@ void UpdateCallerInfoUtil::ClearProtectedWantParam(Want &want)
         eventInfo.callerBundleName = callerBundleName.empty() ? std::to_string(callerUid) : callerBundleName;
         AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, AAFwk::ERR_NOT_EXPECTED_NATIVE_CALLER_NAME,
             std::string("no expected caller native name: ") + want.GetStringParam(Want::PARAM_RESV_CALLER_NATIVE_NAME));
+    }
+    if (want.HasParameter(HIDE_SENSITIVE_TYPE)) {
+        EventInfo eventInfo;
+        std::string bundleName = want.GetElement().GetBundleName();
+        int32_t callerUid = IPCSkeleton::GetCallingUid();
+        std::string callerBundleName;
+        auto bundleMgr = AbilityUtil::GetBundleManagerHelper();
+        if (bundleMgr != nullptr) {
+            IN_PROCESS_CALL(bundleMgr->GetNameForUid(callerUid, callerBundleName));
+        }
+        if (callerBundleName.empty()) {
+            callerBundleName = std::to_string(callerUid);
+        }
+        auto hideSensitiveType = want.GetIntParam(HIDE_SENSITIVE_TYPE, 0);
+        eventInfo.uri = "HideSensitiveType://" + bundleName + "/" + callerBundleName + "/" +
+            std::to_string(hideSensitiveType);
+        EventReport::SendGrantUriPermissionEvent(EventName::GRANT_URI_PERMISSION, eventInfo);
     }
     want.RemoveParam(Want::PARAM_RESV_CALLER_NATIVE_NAME);
     want.RemoveParam(COMPONENT_STARTUP_NEW_RULES);

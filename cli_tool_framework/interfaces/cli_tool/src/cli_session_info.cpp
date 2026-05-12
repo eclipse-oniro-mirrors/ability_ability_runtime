@@ -31,7 +31,11 @@ bool CliSessionInfo::Marshalling(Parcel &parcel) const
         return false;
     }
 
-    if (!parcel.WriteParcelable(result.get())) {
+    bool hasResult = (result != nullptr);
+    if (!parcel.WriteBool(hasResult)) {
+        return false;
+    }
+    if (hasResult && !parcel.WriteParcelable(result.get())) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Write result failed.");
         return false;
     }
@@ -54,12 +58,19 @@ CliSessionInfo *CliSessionInfo::Unmarshalling(Parcel &parcel)
         return nullptr;
     }
 
-    std::shared_ptr<ExecResult> execResult(parcel.ReadParcelable<ExecResult>());
-    if (execResult == nullptr) {
+    bool hasResult = false;
+    if (!parcel.ReadBool(hasResult)) {
         delete info;
         return nullptr;
     }
-    info->result = execResult;
+    if (hasResult) {
+        std::shared_ptr<ExecResult> execResult(parcel.ReadParcelable<ExecResult>());
+        if (execResult == nullptr) {
+            delete info;
+            return nullptr;
+        }
+        info->result = execResult;
+    }
     return info;
 }
 } // namespace CliTool

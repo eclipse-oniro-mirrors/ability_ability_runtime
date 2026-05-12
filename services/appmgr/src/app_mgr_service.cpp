@@ -2324,5 +2324,25 @@ int32_t AppMgrService::GetAllAbilityInfos(const int32_t pid, std::vector<AppExec
     }
     return appMgrServiceInner_->GetAllAbilityInfos(pid, infos);
 }
+
+int32_t AppMgrService::EnableDelayedProcessExit(int32_t pid, bool enabled)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Service not ready");
+        return ERR_INVALID_OPERATION;
+    }
+    return appMgrServiceInner_->EnableDelayedProcessExit(pid, enabled);
+}
+
+void AppMgrService::CancelDelayedExitTask(int32_t pid)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Service not ready");
+        return;
+    }
+    appMgrServiceInner_->CancelDelayedExitTask(pid);
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

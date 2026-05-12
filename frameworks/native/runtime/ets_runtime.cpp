@@ -466,6 +466,20 @@ void ETSRuntime::XGC()
         TAG_LOGE(AAFwkTag::APPKIT, "Class_CallStaticMethod_Long failed, status: %{public}d", status);
         return;
     }
+    ani_namespace imageNameSpace;
+    if ((status = env->FindNamespace("std.core.GC", &imageNameSpace)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPKIT, "FindNamespace failed, status: %{public}d", status);
+        return;
+    }
+    ani_function gcFunc {};
+    if ((status = env->Namespace_FindFunction(imageNameSpace, "waitForFinishGC", "l:", &gcFunc)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPKIT, "Namespace_FindFunction failed, status: %{public}d", status);
+        return;
+    }
+    if ((status = env->Function_Call_Void(gcFunc, longnum)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPKIT, "Function_Call_Void failed, status: %{public}d", status);
+        return;
+    }
 }
 
 void ETSRuntime::FinishPreload()

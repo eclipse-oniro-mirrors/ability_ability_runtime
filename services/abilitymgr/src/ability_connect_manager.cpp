@@ -36,6 +36,8 @@
 #include "init_reboot.h"
 #include "int_wrapper.h"
 #include "multi_instance_utils.h"
+#include "modular_object_manager.h"
+#include "modular_object_utils.h"
 #include "param.h"
 #include "request_id_util.h"
 #include "res_sched_util.h"
@@ -354,8 +356,14 @@ int AbilityConnectManager::ConnectAbilityLocked(const AbilityRequest &abilityReq
 #endif // SUPPORT_UPMS
     std::lock_guard guard(serialMutex_);
 
+    // ModularObject instance and connection limit checks
+    int32_t ret = CheckModularObjectLimits(abilityRequest);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
     // 1. get target service ability record, and check whether it has been loaded.
-    int32_t ret = AbilityPermissionUtil::GetInstance().CheckMultiInstanceKeyForExtension(abilityRequest);
+    ret = AbilityPermissionUtil::GetInstance().CheckMultiInstanceKeyForExtension(abilityRequest);
     if (ret != ERR_OK) {
         //  Do not distinguishing specific error codes
         return ERR_INVALID_VALUE;
@@ -2500,6 +2508,12 @@ std::string AbilityConnectManager::GetServiceKey(const std::shared_ptr<BaseExten
         serviceKey = serviceKey + std::to_string(service->GetWant().GetIntParam(FRS_APP_INDEX, 0));
     } else if (service->GetAbilityInfo().extensionAbilityType == AppExecFwk::ExtensionAbilityType::AGENT) {
         serviceKey = serviceKey + service->GetWant().GetStringParam(AgentRuntime::AGENTID_KEY);
+    } else if (service->GetAbilityInfo().extensionAbilityType ==
+               AppExecFwk::ExtensionAbilityType::MODULAR_OBJECT) {
+        std::string requestId = service->GetRequestId();
+        if (!requestId.empty()) {
+            serviceKey = serviceKey + "_" + requestId;
+        }
     }
     return serviceKey;
 }
@@ -2513,6 +2527,10 @@ std::string AbilityConnectManager::GetServiceKey(const AbilityRequest &abilityRe
         serviceKey = serviceKey + std::to_string(abilityRequest.want.GetIntParam(FRS_APP_INDEX, 0));
     } else if (abilityRequest.abilityInfo.extensionAbilityType == AppExecFwk::ExtensionAbilityType::AGENT) {
         serviceKey = serviceKey + abilityRequest.want.GetStringParam(AgentRuntime::AGENTID_KEY);
+    } else if (abilityRequest.abilityInfo.extensionAbilityType ==
+               AppExecFwk::ExtensionAbilityType::MODULAR_OBJECT) {
+        auto requestId = std::to_string(RequestIdUtil::GetRequestId());
+        serviceKey = serviceKey + "_" + requestId;
     }
     return serviceKey;
 }
@@ -3272,8 +3290,15 @@ void AbilityConnectManager::GetOrCreateServiceRecord(const AbilityRequest &abili
             targetService->SetCreateByConnectMode();
         }
         SetServiceAfterNewCreate(abilityRequest, *targetService);
-        AddToServiceMap(serviceKey, targetService);
         isLoadedAbility = false;
+
+        auto setupRet = HandleExtensionSetup(abilityRequest, targetService, serviceKey);
+        if (setupRet != ERR_OK) {
+            targetService = nullptr;
+            return;
+        }
+
+        AddToServiceMap(serviceKey, targetService);
 
         // Notify running timeout monitor about service extension start
         auto &newAbilityInfo = abilityRequest.abilityInfo;
@@ -3287,6 +3312,16 @@ void AbilityConnectManager::GetOrCreateServiceRecord(const AbilityRequest &abili
         }
     }
     TAG_LOGD(AAFwkTag::EXT, "service map add, serviceKey: %{public}s", serviceKey.c_str());
+}
+
+int32_t AbilityConnectManager::HandleExtensionSetup(const AbilityRequest &abilityRequest,
+    std::shared_ptr<BaseExtensionRecord> &targetService, const std::string &serviceKey)
+{
+    if (abilityRequest.abilityInfo.extensionAbilityType !=
+        AppExecFwk::ExtensionAbilityType::MODULAR_OBJECT) {
+        return ERR_OK;
+    }
+    return ModularObjectUtils::SetupNewRecord(abilityRequest, targetService, serviceKey);
 }
 
 void AbilityConnectManager::SetServiceAfterNewCreate(const AbilityRequest &abilityRequest,
@@ -3311,5 +3346,48 @@ void AbilityConnectManager::SetServiceAfterNewCreate(const AbilityRequest &abili
         sceneBoardTokenId_ = abilityRequest.appInfo.accessTokenId;
     }
 }
+
+int32_t AbilityConnectManager::CheckModularObjectLimits(const AbilityRequest &abilityRequest)
+{
+    if (abilityRequest.abilityInfo.extensionAbilityType !=
+        AppExecFwk::ExtensionAbilityType::MODULAR_OBJECT) {
+        return ERR_OK;
+    }
+    AppExecFwk::ElementName element(abilityRequest.abilityInfo.deviceId,
+        GenerateBundleName(abilityRequest),
+        abilityRequest.abilityInfo.name, abilityRequest.abilityInfo.moduleName);
+    std::string prefix = element.GetURI() + "_";
+    int32_t callerPid = IPCSkeleton::GetCallingPid();
+
+    // Snapshot matching entries under one lock to minimize lock hold time
+    std::vector<std::shared_ptr<ConnectionRecord>> connections;
+    int32_t instanceCount = 0;
+    {
+        std::lock_guard lock(serviceMapMutex_);
+        for (const auto &[key, record] : serviceMap_) {
+            if (key.compare(0, prefix.size(), prefix) != 0) {
+                continue;
+            }
+            instanceCount++;
+            if (record == nullptr) {
+                continue;
+            }
+            for (const auto &conn : record->GetConnectRecordList()) {
+                if (conn != nullptr) {
+                    connections.push_back(conn);
+                }
+            }
+        }
+    }
+
+    int32_t connectionCount = 0;
+    for (const auto &conn : connections) {
+        if (conn->GetCallerPid() == callerPid) {
+            connectionCount++;
+        }
+    }
+    return ModularObjectUtils::CheckLimits(instanceCount, connectionCount);
+}
+
 }  // namespace AAFwk
 }  // namespace OHOS

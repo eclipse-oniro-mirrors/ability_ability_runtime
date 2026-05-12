@@ -17,6 +17,7 @@
 #define MOCK_RUNNING_PROCESS_INFO_H
 
 #include <cstdint>
+#include <string>
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -32,6 +33,7 @@ enum class AppProcessState {
 struct RunningProcessInfo {
     AppProcessState state_ = AppProcessState::APP_STATE_FOREGROUND;
     bool isPreForeground = false;
+    std::string processName_;
 };
 
 } // namespace AppExecFwk

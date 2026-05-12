@@ -819,6 +819,26 @@ int32_t AppMgrClient::GetRunningProcessInfoByChildProcessPid(const pid_t childPi
     return service->GetRunningProcessInfoByChildProcessPid(childPid, info);
 }
 
+int32_t AppMgrClient::EnableDelayedProcessExit(int32_t pid, bool enabled) const
+{
+    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
+    if (service == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Service is nullptr.");
+        return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
+    }
+    return service->EnableDelayedProcessExit(pid, enabled);
+}
+
+void AppMgrClient::CancelDelayedExitTask(int32_t pid) const
+{
+    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
+    if (service == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Service is nullptr.");
+        return;
+    }
+    service->CancelDelayedExitTask(pid);
+}
+
 void AppMgrClient::SetAbilityForegroundingFlagToAppRecord(const pid_t pid) const
 {
     sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());

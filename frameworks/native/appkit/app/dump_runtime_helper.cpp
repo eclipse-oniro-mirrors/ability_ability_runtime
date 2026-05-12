@@ -35,6 +35,9 @@
 #ifdef CJ_FRONTEND
 #include "cj_runtime.h"
 #endif
+#if defined(NWEB)
+#include "nweb_helper.h"
+#endif
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -69,6 +72,8 @@ static constexpr uint32_t BUF_SIZE_256 = 256;
 static constexpr int DECIMAL_BASE = 10;
 static constexpr int KB_PER_MB = 1024;
 static constexpr size_t MEM_LEAK_MAX_SIZE = 100;
+static constexpr int JSVM_SNAPSHOT = 0;
+static constexpr int JSVM_RAW = 1;
 
 enum {
     INDEX_DELIVERY_TS = 0,
@@ -349,6 +354,12 @@ void DumpRuntimeHelper::DumpMem(const OHOS::AppExecFwk::MemDumpInfo &info, std::
     if (info.dumpType == MemDumpType::KMP_KOTLIN) {
         DumpKmpKotlinHeap(info);
     }
+    if (info.dumpType == MemDumpType::JSVM) {
+        DumpJsvmHeap(info);
+    }
+    if (info.dumpType == MemDumpType::ARKWEB_JS) {
+        DumpArkwebJsHeap(info);
+    }
 }
 
 void DumpRuntimeHelper::DumpNativeHeap(const OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
@@ -451,6 +462,55 @@ void DumpRuntimeHelper::DumpKmpKotlinHeap(const OHOS::AppExecFwk::MemDumpInfo &i
         return;
     }
     close(fd);
+}
+
+void DumpRuntimeHelper::DumpJsvmHeap(const OHOS::AppExecFwk::MemDumpInfo &info)
+{
+    TAG_LOGI(AAFwkTag::APPKIT, "dump jsvm heaps, tid:%{public}d, needRaw:%{public}d", info.tid, info.needRaw);
+    void* jsvmHandle = dlopen("libjsvm.so", RTLD_LAZY);
+    if (jsvmHandle == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "jsvm dlopen failed");
+        return;
+    }
+    using jsvmFunc = int (*)(uint32_t, int);
+    auto jsvmDump = reinterpret_cast<jsvmFunc>(dlsym(jsvmHandle, "jsvm_dump_heapsnapshot"));
+    if (jsvmDump == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "jsvm dlsym failed");
+        dlclose(jsvmHandle);
+        return;
+    }
+    int dumpType = info.needRaw ? JSVM_RAW : JSVM_SNAPSHOT;
+    int ret = jsvmDump(info.tid, dumpType);
+    if (ret != 0) {
+        TAG_LOGE(AAFwkTag::APPKIT, "jsvm dump failed");
+        dlclose(jsvmHandle);
+        return;
+    }
+    dlclose(jsvmHandle);
+}
+
+void DumpRuntimeHelper::DumpArkwebJsHeap(const OHOS::AppExecFwk::MemDumpInfo &info)
+{
+#if defined(NWEB)
+    TAG_LOGI(AAFwkTag::APPKIT, "dump arkwebjs heaps, renderPid:%{public}u, needDump:%{public}d, "
+        "needGc:%{public}d, needRaw:%{public}d", info.renderPid, info.needDump, info.needGc, info.needRaw);
+    int32_t fd = -1;
+    if (info.needDump) {
+        struct FaultLoggerdRequest request{};
+        request.type = info.needRaw ? static_cast<int32_t>(FaultLoggerType::ARKWEB_JS_RAW_SNAPSHOT) :
+                                      static_cast<int32_t>(FaultLoggerType::ARKWEB_JS_HEAP_SNAPSHOT);
+        request.pid = info.pid;
+        request.tid = info.renderPid;
+        request.time = GetCurrentTimestamp();
+        fd = RequestFileDescriptorEx(&request);
+    }
+
+    OHOS::NWeb::NWebHelper &nWebHelper = OHOS::NWeb::NWebHelper::Instance();
+    nWebHelper.DumpArkWebJSHeap(fd, info.renderPid, info.needDump, info.needGc, info.needRaw);
+    if (fd > 0) {
+        close(fd);
+    }
+#endif
 }
 
 void DumpRuntimeHelper::GetCheckList(const std::unique_ptr<AbilityRuntime::Runtime> &runtime, std::string &checkList)

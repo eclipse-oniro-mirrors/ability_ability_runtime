@@ -20,10 +20,10 @@ static napi_module _module = {
     .nm_version = 0,
     .nm_filename = "app/cli_tool/climanager_napi.so/cli_manager.js",
     .nm_register_func = OHOS::CliTool::JSCliManagerInit,
-    .nm_modname = "app.ability.cliManager",
+    .nm_modname = "app.cli.cliManager",
 };
 
-extern "C" __attribute__((constructor)) void NAPI_app_ability_CliManager_AutoRegister(void)
+extern "C" __attribute__((constructor)) void NAPI_app_cli_CliManager_AutoRegister(void)
 {
     napi_module_register(&_module);
 }

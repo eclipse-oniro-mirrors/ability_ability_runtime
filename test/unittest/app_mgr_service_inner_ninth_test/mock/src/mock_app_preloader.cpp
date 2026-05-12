@@ -101,7 +101,7 @@ std::shared_ptr<BundleMgrHelper> AppPreloader::GetBundleManagerHelper()
     return nullptr;
 }
 
-int32_t AppPreloader::GeneratePreloadExtensionRequest(const AAFwk::Want &want, const AbilityInfo &abilityInfo,
+int32_t AppPreloader::GeneratePreloadExtensionRequest(const AAFwk::Want &want,
     int32_t userId, int32_t appIndex, PreloadRequest &request)
 {
     return ERR_OK;

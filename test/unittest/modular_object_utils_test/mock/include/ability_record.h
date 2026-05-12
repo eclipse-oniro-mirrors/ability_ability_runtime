@@ -26,8 +26,12 @@ namespace AAFwk {
 class AbilityRecord {
 public:
     static AppExecFwk::AbilityInfo abilityInfo;
+    static int32_t recordId_;
+    static std::string processName_;
 
     const AppExecFwk::AbilityInfo &GetAbilityInfo() const { return abilityInfo; }
+    int32_t GetRecordId() const { return recordId_; }
+    void SetProcessName(const std::string &name) { processName_ = name; }
 };
 
 } // namespace AAFwk

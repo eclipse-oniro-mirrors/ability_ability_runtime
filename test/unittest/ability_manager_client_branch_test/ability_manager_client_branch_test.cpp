@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -2825,6 +2825,18 @@ HWTEST_F(AbilityManagerClientBranchTest, QuerySelfModularObjectExtensionInfos_01
 {
     std::vector<ModularObjectExtensionInfo> infos;
     EXPECT_EQ(client_->QuerySelfModularObjectExtensionInfos(infos), ERR_OK);
+}
+
+/**
+ * @tc.name: StartUIAbilityWithCallback_0100
+ * @tc.desc: StartUIAbilityWithCallback
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, StartUIAbilityWithCallback_0100, TestSize.Level1)
+{
+    Want want;
+    sptr<IRemoteObject> callerToken = new AbilityManagerStubTestMock();
+    EXPECT_EQ(client_->StartUIAbilityWithCallback(want, callerToken, nullptr), ERR_OK);
 }
 
 /*

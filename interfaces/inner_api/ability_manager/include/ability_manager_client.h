@@ -56,6 +56,14 @@ public:
     ErrCode StartSelfUIAbility(const Want &want);
 
     /**
+     * StartSelfUIAbility from ApplicationContext and force launch in current process.
+     *
+     * @param want, the want of the ability to start.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode StartSelfUIAbilityByAppContext(const Want &want);
+
+    /**
      * StartSelfUIAbility with want and startOptions, start self uiability only on 2-in-1 devices.
      *
      * @param want, the want of the ability to start.
@@ -397,6 +405,19 @@ public:
         const Want &want,
         sptr<IRemoteObject> callerToken,
         uint32_t specifyTokenId);
+
+    /**
+     * Start UIAbility with callback to receive the request result, the callback is valid only for SA callers.
+     *
+     * @param want Indicates the ability to start.
+     * @param callerToken Indicates the caller ability token.
+     * @param callback Indicates the callback used to receive the result of request start ability.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode StartUIAbilityWithCallback(
+        const Want &want,
+        sptr<IRemoteObject> callerToken,
+        sptr<IRequestStartAbilityCallback> callback);
 
     /**
      * Start extension ability with want, send want to ability manager service.
@@ -1749,6 +1770,18 @@ public:
         const InsightIntentExecuteParam &param);
 
     /**
+      * @brief Execute intent for distributed scenario.
+      *
+      * @param want The want containing intent execution information.
+      * @param srcDeviceId The source device id.
+      * @param requestCode The Intent id.
+      * @param specifiedFullTokenId The caller token id.
+      * @return Returns ERR_OK on success, others on failure.
+      */
+    ErrCode ExecuteIntentForDistributed(const Want &want, const std::string &srcDeviceId,
+        uint64_t requestCode, uint64_t specifiedFullTokenId = 0);
+
+    /**
      * @brief Query entity info.
      * @param key The key of intent executing client.
      * @param callerToken Caller ability token.
@@ -1757,6 +1790,17 @@ public:
      */
     ErrCode QueryEntityInfo(uint64_t key, sptr<IRemoteObject> callerToken,
         const InsightIntentQueryParam &param);
+     
+    /**
+     * @brief Execute intent with result synchronously.
+     * @param callerToken Caller ability token.
+     * @param param The Intent execute param.
+     * @param result The Intent execute result output.
+     * @param timeoutMs Timeout in milliseconds, default 30000ms.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode ExecuteIntentWithResult(const InsightIntentExecuteParam &param, InsightIntentExecuteResult &result,
+        int32_t timeoutMs = 30000);
 
     /**
      * @brief Called when insight intent execute finished.
@@ -2223,6 +2267,21 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     int32_t SetAppRecoveryFlag(const sptr<IRemoteObject>& token, int flag);
+
+    ErrCode ExecuteInAppSkill(const std::string &bundleName, const std::string &moduleName,
+        const std::string &skillName, const std::string &arkTSPath = "",
+        const std::string &funcName = "",
+        const std::shared_ptr<AAFwk::WantParams> &skillArgs = nullptr,
+        const sptr<ISkillExecuteCallback> &callback = nullptr);
+
+    ErrCode ExecuteInAppSkillWithTokenId(const AppExecFwk::SkillExecuteRequest &request,
+        const sptr<ISkillExecuteCallback> &callback);
+
+    ErrCode ExecuteSkillDone(sptr<IRemoteObject> token, const std::string &requestCode,
+        int32_t resultCode, const AppExecFwk::SkillExecuteResult &result);
+
+    ErrCode QuerySkillType(const std::string &bundleName, const std::string &moduleName,
+        const std::string &skillName, int32_t &skillType);
 
 private:
     AbilityManagerClient();

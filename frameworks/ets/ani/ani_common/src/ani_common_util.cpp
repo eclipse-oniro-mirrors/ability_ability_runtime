@@ -1605,5 +1605,55 @@ ani_object CreateIntAniArray(ani_env *env, const std::vector<int32_t> &dataArry)
     }
     return arrayObj;
 }
+
+bool CreateObjectByClassName(ani_env *env, const char *className, ani_object &object)
+{
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "env null");
+        return false;
+    }
+
+    ani_class cls = nullptr;
+    ani_status status = env->FindClass(className, &cls);
+    if (status != ANI_OK || cls == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "FindClass status: %{public}d", status);
+        return false;
+    }
+    ani_method method = nullptr;
+    if ((status = env->Class_FindMethod(cls, "<ctor>", ":", &method)) != ANI_OK || method == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "Class_FindMethod status: %{public}d", status);
+        return false;
+    }
+    if ((status = env->Object_New(cls, method, &object)) != ANI_OK || object == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "Object_New status: %{public}d", status);
+        return false;
+    }
+    return true;
+}
+
+bool CreateArrayObject(ani_env *env, ani_object &object, size_t length)
+{
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "env null");
+        return false;
+    }
+
+    ani_class cls = nullptr;
+    ani_status status = env->FindClass(CLASSNAME_ARRAY, &cls);
+    if (status != ANI_OK || cls == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "FindClass status: %{public}d", status);
+        return false;
+    }
+    ani_method method = nullptr;
+    if ((status = env->Class_FindMethod(cls, "<ctor>", "i:", &method)) != ANI_OK || method == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "Class_FindMethod status: %{public}d", status);
+        return false;
+    }
+    if ((status = env->Object_New(cls, method, &object, length)) != ANI_OK || object == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "Object_New status: %{public}d", status);
+        return false;
+    }
+    return true;
+}
 } // namespace AppExecFwk
 } // namespace OHOS

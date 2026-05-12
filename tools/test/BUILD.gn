@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import("//build/test.gni")
+import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 group("systemtest") {
   testonly = true
@@ -32,4 +33,5 @@ group("unittest") {
   deps = [ "unittest/aa:unittest" ]
   deps += [ "unittest/ability_delegator:unittest" ]
   deps += [ "unittest/system_time:unittest" ]
+  deps += [ "${ability_runtime_path}/tools/ohos-aa/tests:unittest"]
 }

@@ -218,6 +218,8 @@ export default class UIAbilityContext extends Context {
 
   private native nativeSetOnNewWantSkipScenarios(scenarios: int, callback: AsyncCallbackWrapper<void>): void;
 
+  private native nativeStartSelf(callback: AsyncCallbackWrapper<void>): void;
+
   startAbility(want: Want, callback: AsyncCallback<void>): void {
     let myCall = new AsyncCallbackWrapper<void>(callback);
     taskpool.execute((): void => {
@@ -1115,6 +1117,23 @@ hideAbility(): Promise<void> {
       });
       taskpool.execute((): void => {
         this.nativeSetOnNewWantSkipScenarios(scenarios, callback);
+      }).catch((err: Error): void => {
+        reject(err as BusinessError);
+      });
+    });
+  }
+
+  startSelf(): Promise<void> {
+    return new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
+      let callback = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+        if (err == null || err.code == 0) {
+          resolve(undefined);
+        } else {
+          reject(err);
+        }
+      });
+      taskpool.execute((): void => {
+        this.nativeStartSelf(callback);
       }).catch((err: Error): void => {
         reject(err as BusinessError);
       });

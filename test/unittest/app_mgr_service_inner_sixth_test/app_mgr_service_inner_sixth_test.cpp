@@ -125,7 +125,7 @@ HWTEST_F(AppMgrServiceInnerSixthTest, CreateAbilityInfo_001, TestSize.Level0)
 
     MyFlag::flag_ = FALSE_VALUE;
     auto ret4 = appMgrServiceInner->CreateAbilityInfo(want, abilityInfo);
-    EXPECT_EQ(ret4, true);
+    EXPECT_EQ(ret4, false);
     TAG_LOGI(AAFwkTag::TEST, "CreateAbilityInfo_001 end");
 }
 
@@ -140,7 +140,7 @@ HWTEST_F(AppMgrServiceInnerSixthTest, CreateAbilityInfo_002, TestSize.Level0)
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     EXPECT_NE(appMgrServiceInner, nullptr);
     MyFlag::flag1_ = FALSE_VALUE;
-    MyFlag::flag2_ = TRUE_VALUE;
+    MyFlag::flag2_ = FALSE_VALUE;
     MyFlag::flag_ = TRUE_VALUE;
     AAFwk::Want want;
     want.SetParam(DLP_PARAMS_INDEX, DLP_PARAMS_INDEX_VALUE_ONE);
@@ -148,7 +148,7 @@ HWTEST_F(AppMgrServiceInnerSixthTest, CreateAbilityInfo_002, TestSize.Level0)
     auto ret1 = appMgrServiceInner->CreateAbilityInfo(want, abilityInfo);
     EXPECT_EQ(ret1, true);
 
-    MyFlag::flag2_ = FALSE_VALUE;
+    MyFlag::flag2_ = TRUE_VALUE;
     MyFlag::flag_ = FALSE_VALUE;
     auto ret2 = appMgrServiceInner->CreateAbilityInfo(want, abilityInfo);
     EXPECT_EQ(ret2, false);

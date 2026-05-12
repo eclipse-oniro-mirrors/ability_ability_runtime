@@ -65,6 +65,7 @@
 #include "locale_config.h"
 #endif
 #include "xcollie/process_kill_reason.h"
+#include "parameters.h"
 
 namespace OHOS {
 using AbilityRuntime::FreezeUtil;
@@ -131,6 +132,8 @@ const int32_t BY_CALL_TIMEOUT_MS = 5000;
 constexpr int32_t NON_BY_CALL = 0;
 constexpr int32_t CALL_TO_BACKGROUND = 1;
 constexpr int32_t CALL_TO_FOREGROUND = 2;
+const bool BETA_VERSION = OHOS::system::GetParameter("const.logsystem.versiontype", "unknown") == "beta";
+
 
 auto g_addLifecycleEventTask = [](sptr<Token> token, std::string &methodName) {
     CHECK_POINTER_LOG(token, "token is nullptr");
@@ -537,8 +540,9 @@ void AbilityRecord::PostForegroundTimeoutTask()
             IsDebug(), IsPreloadStart(), IsPreloaded());
         return;
     }
+    int radio = BETA_VERSION ? FOREGROUND_TIMEOUT_MULTIPLE_BETA : FOREGROUND_TIMEOUT_MULTIPLE;
     int foregroundTimeout =
-        AmsConfigurationParameter::GetInstance().GetAppStartTimeoutTime() * FOREGROUND_TIMEOUT_MULTIPLE;
+        AmsConfigurationParameter::GetInstance().GetAppStartTimeoutTime() * radio;
     if (InsightIntentExecuteParam::IsInsightIntentExecute(GetWant())) {
         foregroundTimeout = AmsConfigurationParameter::GetInstance().GetAppStartTimeoutTime() *
             INSIGHT_INTENT_TIMEOUT_MULTIPLE;
@@ -1863,9 +1867,9 @@ void AbilityRecord::DumpAbilityState(
 
 void AbilityRecord::SetStartTime()
 {
-    if (startTime_ == 0) {
-        startTime_ = AbilityUtil::SystemTimeMillis();
-    }
+    int64_t expected = 0;
+    int64_t desired = AbilityUtil::SystemTimeMillis();
+    startTime_.compare_exchange_strong(expected, desired);
 }
 
 int64_t AbilityRecord::GetStartTime() const

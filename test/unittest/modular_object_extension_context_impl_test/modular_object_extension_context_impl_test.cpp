@@ -64,6 +64,40 @@ public:
     void TearDown() override {}
 };
 
+class MockEventHandler : public AppExecFwk::EventHandler {
+};
+
+// ==================== EventHandler ====================
+
+HWTEST_F(ModularObjectExtensionContextImplTest, GetEventHandler_DefaultNull_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetEventHandler_DefaultNull_001 start";
+    auto context = std::make_shared<ModularObjectExtensionContext>();
+    EXPECT_EQ(context->GetEventHandler(), nullptr);
+    GTEST_LOG_(INFO) << "GetEventHandler_DefaultNull_001 end";
+}
+
+HWTEST_F(ModularObjectExtensionContextImplTest, SetEventHandler_GetSameHandler_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SetEventHandler_GetSameHandler_001 start";
+    auto context = std::make_shared<ModularObjectExtensionContext>();
+    auto handler = std::make_shared<MockEventHandler>();
+    context->SetEventHandler(handler);
+    EXPECT_EQ(context->GetEventHandler(), handler);
+    GTEST_LOG_(INFO) << "SetEventHandler_GetSameHandler_001 end";
+}
+
+HWTEST_F(ModularObjectExtensionContextImplTest, GetEventHandler_HandlerExpired_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetEventHandler_HandlerExpired_001 start";
+    auto context = std::make_shared<ModularObjectExtensionContext>();
+    auto handler = std::make_shared<MockEventHandler>();
+    context->SetEventHandler(handler);
+    handler.reset();
+    EXPECT_EQ(context->GetEventHandler(), nullptr);
+    GTEST_LOG_(INFO) << "GetEventHandler_HandlerExpired_001 end";
+}
+
 // ==================== StartSelfUIAbility ====================
 
 HWTEST_F(ModularObjectExtensionContextImplTest, StartSelfUIAbility_Success_001, TestSize.Level1)

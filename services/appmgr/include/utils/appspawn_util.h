@@ -88,7 +88,9 @@ static uint64_t BuildStartFlags(const AAFwk::Want &want, const ApplicationInfo &
     if (applicationInfo.appProvisionType == AppExecFwk::Constants::APP_PROVISION_TYPE_DEBUG) {
         startFlags = startFlags | (START_FLAG_BASE << APP_FLAGS_DEBUG_SIGN);
     }
-    startFlags = startFlags | (START_FLAG_BASE << APP_FLAGS_SKILLS);
+    if (applicationInfo.skillEnabled) {
+        startFlags = startFlags | (START_FLAG_BASE << APP_FLAGS_SKILLS);
+    }
     return startFlags;
 }
 

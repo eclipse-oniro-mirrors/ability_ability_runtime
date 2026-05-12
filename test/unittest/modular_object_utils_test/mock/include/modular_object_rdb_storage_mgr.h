@@ -38,6 +38,7 @@ public:
             info.bundleName = "com.test.bundle";
             info.abilityName = "TestAbility";
             info.isDisabled = MockFlag::extensionDisabled;
+            info.launchMode = MockFlag::launchMode;
             infos.push_back(info);
         }
         return 0;

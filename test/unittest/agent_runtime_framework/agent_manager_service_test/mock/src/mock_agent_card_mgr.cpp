@@ -29,6 +29,7 @@ std::string AgentRuntime::MyFlag::agentCardModuleName;
 std::string AgentRuntime::MyFlag::agentCardAbilityName = "TestAbility";
 bool AgentRuntime::MyFlag::shouldCreateAgentCardAppInfo = true;
 int32_t AgentRuntime::MyFlag::agentCardType = 0;
+std::vector<AgentRuntime::AgentCard> AgentRuntime::MyFlag::agentCardsByBundleName;
 
 namespace AgentRuntime {
 AgentCardMgr &AgentCardMgr::GetInstance()
@@ -50,6 +51,9 @@ int32_t AgentCardMgr::GetAllAgentCards(AgentCardsRawData &cards)
 
 int32_t AgentCardMgr::GetAgentCardsByBundleName(const std::string &bundleName, std::vector<AgentCard> &cards)
 {
+    if (MyFlag::retGetAgentCardsByBundleName == ERR_OK) {
+        cards = MyFlag::agentCardsByBundleName;
+    }
     return MyFlag::retGetAgentCardsByBundleName;
 }
 

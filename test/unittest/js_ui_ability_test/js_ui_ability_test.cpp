@@ -517,6 +517,90 @@ HWTEST_F(JsUiAbilityTest, JSUIAbility_OnStart_0600, TestSize.Level1)
 }
 
 /**
+ * @tc.name: JSUIAbility_OnStart_0700
+ * @tc.desc: OnStart test with GAME_PRELAUNCH = true
+ * @tc.desc: Verify isGamePreLaunch_ is set to true when GAME_PRELAUNCH param is true
+ */
+HWTEST_F(JsUiAbilityTest, JSUIAbility_OnStart_0700, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "JSUIAbility_OnStart_0700 start";
+    AbilityRuntime::Runtime::Options options;
+    options.lang = AbilityRuntime::Runtime::Language::JS;
+    auto runtime = AbilityRuntime::Runtime::Create(options);
+    auto jsRuntime = static_cast<AbilityRuntime::JsRuntime*>(runtime.get());
+    auto ability = std::make_shared<AbilityRuntime::JsUIAbility>(*jsRuntime);
+    EXPECT_NE(ability, nullptr);
+    Want want;
+    want.SetParam(std::string("ohos.params.gamePrelaunch"), true);
+    napi_ref ref = nullptr;
+    auto env = jsRuntime->GetNapiEnv();
+    napi_value value = OHOS::AppExecFwk::WrapWant(env, want);
+    napi_create_reference(env, value, 1, &ref);
+    ability->jsAbilityObj_ = std::unique_ptr<NativeReference>(
+        reinterpret_cast<NativeReference *>(ref));
+    EXPECT_NE(ability->jsAbilityObj_, nullptr);
+
+    sptr<AAFwk::SessionInfo> sessionInfo = sptr<AAFwk::SessionInfo>::MakeSptr();
+    EXPECT_NE(sessionInfo, nullptr);
+    ability->scene_ = std::make_shared<Rosen::WindowScene>();
+    EXPECT_NE(ability->scene_, nullptr);
+    auto abilityContextImpl = std::make_shared<AbilityContextImpl>();
+    EXPECT_NE(abilityContextImpl, nullptr);
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    EXPECT_NE(abilityInfo, nullptr);
+    abilityContextImpl->SetAbilityInfo(abilityInfo);
+    ability->abilityContext_ = abilityContextImpl;
+    ability->abilityInfo_ = abilityInfo;
+    EXPECT_NE(ability->abilityInfo_, nullptr);
+    ability->OnStart(want, sessionInfo);
+    EXPECT_TRUE(ability->isGamePreLaunch_);
+
+    GTEST_LOG_(INFO) << "JSUIAbility_OnStart_0700 end";
+}
+
+/**
+ * @tc.name: JSUIAbility_OnStart_0800
+ * @tc.desc: OnStart test with GAME_PRELAUNCH = false
+ * @tc.desc: Verify isGamePreLaunch_ remains false when GAME_PRELAUNCH param is false
+ */
+HWTEST_F(JsUiAbilityTest, JSUIAbility_OnStart_0800, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "JSUIAbility_OnStart_0800 start";
+    AbilityRuntime::Runtime::Options options;
+    options.lang = AbilityRuntime::Runtime::Language::JS;
+    auto runtime = AbilityRuntime::Runtime::Create(options);
+    auto jsRuntime = static_cast<AbilityRuntime::JsRuntime*>(runtime.get());
+    auto ability = std::make_shared<AbilityRuntime::JsUIAbility>(*jsRuntime);
+    EXPECT_NE(ability, nullptr);
+    Want want;
+    want.SetParam(std::string("ohos.params.gamePrelaunch"), false);
+    napi_ref ref = nullptr;
+    auto env = jsRuntime->GetNapiEnv();
+    napi_value value = OHOS::AppExecFwk::WrapWant(env, want);
+    napi_create_reference(env, value, 1, &ref);
+    ability->jsAbilityObj_ = std::unique_ptr<NativeReference>(
+        reinterpret_cast<NativeReference *>(ref));
+    EXPECT_NE(ability->jsAbilityObj_, nullptr);
+
+    sptr<AAFwk::SessionInfo> sessionInfo = sptr<AAFwk::SessionInfo>::MakeSptr();
+    EXPECT_NE(sessionInfo, nullptr);
+    ability->scene_ = std::make_shared<Rosen::WindowScene>();
+    EXPECT_NE(ability->scene_, nullptr);
+    auto abilityContextImpl = std::make_shared<AbilityContextImpl>();
+    EXPECT_NE(abilityContextImpl, nullptr);
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    EXPECT_NE(abilityInfo, nullptr);
+    abilityContextImpl->SetAbilityInfo(abilityInfo);
+    ability->abilityContext_ = abilityContextImpl;
+    ability->abilityInfo_ = abilityInfo;
+    EXPECT_NE(ability->abilityInfo_, nullptr);
+    ability->OnStart(want, sessionInfo);
+    EXPECT_FALSE(ability->isGamePreLaunch_);
+
+    GTEST_LOG_(INFO) << "JSUIAbility_OnStart_0800 end";
+}
+
+/**
  * @tc.name: JSUIAbility_GetWindowStage_0100
  * @tc.desc: GetWindowStage test
  * @tc.desc: Verify function GetWindowStage.

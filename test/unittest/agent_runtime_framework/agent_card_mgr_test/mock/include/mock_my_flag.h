@@ -20,6 +20,7 @@
 #include "agent_card.h"
 #include "extension_ability_info.h"
 #include "hap_module_info.h"
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -37,6 +38,8 @@ public:
     static std::vector<AgentCard> queryDataCards;
     static std::vector<StoredAgentCardEntry> queryAllDataEntries;
     static std::vector<AgentCard> queryAllDataCards;
+    static bool syncQueryDataWithInsert;
+    static std::mutex dbMutex;
     static bool retGetBundleInfo;
     static bool retGetResConfigFile;
     static bool retFromJson;

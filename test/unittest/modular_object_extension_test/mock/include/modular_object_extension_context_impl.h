@@ -26,6 +26,11 @@ namespace AbilityRuntime {
 class ModularObjectExtensionContext : public Context {
 public:
     ModularObjectExtensionContext() = default;
+
+    void SetEventHandler(const std::shared_ptr<AppExecFwk::EventHandler> &handler)
+    {
+        (void)handler;
+    }
 };
 
 } // namespace AbilityRuntime

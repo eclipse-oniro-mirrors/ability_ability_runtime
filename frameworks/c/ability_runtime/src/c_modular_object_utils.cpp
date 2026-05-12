@@ -38,12 +38,16 @@ AbilityRuntime_ErrorCode CModularObjectUtils::ConvertConnectBusinessErrorCode(in
             return ABILITY_RUNTIME_ERROR_CODE_CROSS_USER_OPERATION;
         case ERR_FREQ_START_ABILITY:
             return ABILITY_RUNTIME_ERROR_CODE_UPPER_RATE_LIMIT;
+        case ERR_MOE_CONNECTION_LIMIT:
+            return ABILITY_RUNTIME_ERROR_CODE_UPPER_CONNECTION_NUMBER_LIMIT;
+        case ERR_MOE_INSTANCE_LIMIT:
+            return ABILITY_RUNTIME_ERROR_CODE_UPPER_LIMIT_REACHED;
         case ERR_MODULAR_OBJECT_DISABLED:
             return ABILITY_RUNTIME_ERROR_CODE_NO_SUCH_ABILITY;
         case ERR_NO_RUNNING_ABILITIES_WITH_UI:
             return ABILITY_RUNTIME_ERROR_CODE_NO_RUNNING_ABILITIES_WITH_UI;
-        case ERR_INVALID_DISTRIBUTION_TYPE:
-            return ABILITY_RUNTIME_ERROR_CODE_INVALID_DISTRIBUTION_TYPE;
+        case ERR_MOE_CROSS_APP_IN_PROCESS:
+            return ABILITY_RUNTIME_ERROR_CODE_CROSS_APP_IN_PROCESS;
         default:
             return ConvertToCommonBusinessErrorCode(errCode);
     }

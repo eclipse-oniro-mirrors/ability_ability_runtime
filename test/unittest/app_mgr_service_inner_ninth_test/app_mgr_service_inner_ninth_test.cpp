@@ -2452,5 +2452,290 @@ HWTEST_F(AppMgrServiceInnerNinthTest, KillChildProcessByPid_0300, TestSize.Level
     AAFwk::MyStatus::GetInstance().getChildProcessRecordByPid_ = nullptr;
     TAG_LOGI(AAFwkTag::TEST, "KillChildProcessByPid_0300 end");
 }
+
+/**
+ * @tc.name: EnableDelayedProcessExit_0100
+ * @tc.desc: Test EnableDelayedProcessExit when device not supported
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerNinthTest, EnableDelayedProcessExit_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "EnableDelayedProcessExit_0100 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    int32_t pid = 1234;
+    auto ret = appMgrServiceInner->EnableDelayedProcessExit(pid, true);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "EnableDelayedProcessExit_0100 end");
+}
+
+/**
+ * @tc.name: EnableDelayedProcessExit_0200
+ * @tc.desc: Test EnableDelayedProcessExit with null appRecord
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerNinthTest, EnableDelayedProcessExit_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "EnableDelayedProcessExit_0200 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    // Force IsSupportDelayedProcessExit to return true
+    AAFwk::AppUtils::GetInstance().isSupportDelayedProcessExit_.isLoaded = true;
+    AAFwk::AppUtils::GetInstance().isSupportDelayedProcessExit_.value = true;
+
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = nullptr;
+    int32_t pid = 1234;
+    auto ret = appMgrServiceInner->EnableDelayedProcessExit(pid, true);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+
+    // Restore
+    AAFwk::AppUtils::GetInstance().isSupportDelayedProcessExit_.isLoaded = false;
+    TAG_LOGI(AAFwkTag::TEST, "EnableDelayedProcessExit_0200 end");
+}
+
+/**
+ * @tc.name: EnableDelayedProcessExit_0300
+ * @tc.desc: Test EnableDelayedProcessExit with appRecord but no UIAbility
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerNinthTest, EnableDelayedProcessExit_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "EnableDelayedProcessExit_0300 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    AAFwk::AppUtils::GetInstance().isSupportDelayedProcessExit_.isLoaded = true;
+    AAFwk::AppUtils::GetInstance().isSupportDelayedProcessExit_.value = true;
+
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    applicationInfo->name = "test.app.name";
+    applicationInfo->bundleName = "test.bundle.name";
+    auto appRecord = std::make_shared<AppRunningRecord>(applicationInfo, 1, "test_process");
+    ASSERT_NE(appRecord, nullptr);
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = appRecord;
+
+    // No UIAbility added, so should return ERR_DELAYED_PROCESS_EXIT_NO_UIABILITY
+    int32_t pid = 1234;
+    auto ret = appMgrServiceInner->EnableDelayedProcessExit(pid, true);
+    EXPECT_EQ(ret, AAFwk::ERR_DELAYED_PROCESS_EXIT_NO_UIABILITY);
+
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = nullptr;
+    AAFwk::AppUtils::GetInstance().isSupportDelayedProcessExit_.isLoaded = false;
+    TAG_LOGI(AAFwkTag::TEST, "EnableDelayedProcessExit_0300 end");
+}
+
+/**
+ * @tc.name: EnableDelayedProcessExit_0400
+ * @tc.desc: Test EnableDelayedProcessExit with UIAbility present and enabled=true (success path)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerNinthTest, EnableDelayedProcessExit_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "EnableDelayedProcessExit_0400 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    AAFwk::AppUtils::GetInstance().isSupportDelayedProcessExit_.isLoaded = true;
+    AAFwk::AppUtils::GetInstance().isSupportDelayedProcessExit_.value = true;
+
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    applicationInfo->name = "test.app.name";
+    applicationInfo->bundleName = "test.bundle.name";
+    auto appRecord = std::make_shared<AppRunningRecord>(applicationInfo, 1, "test_process");
+    ASSERT_NE(appRecord, nullptr);
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = appRecord;
+
+    // Add a UIAbility (PAGE type) to the abilitiesMap
+    auto abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->type = AbilityType::PAGE;
+    sptr<IRemoteObject> token = new MockAppScheduler();
+    auto abilityRecord = std::make_shared<AbilityRunningRecord>(abilityInfo, token, 1);
+    AAFwk::MyStatus::GetInstance().abilitiesMap_[token] = abilityRecord;
+
+    int32_t pid = 1234;
+    auto ret = appMgrServiceInner->EnableDelayedProcessExit(pid, true);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(appRecord->IsDelayedProcessExitEnabled());
+
+    AAFwk::MyStatus::GetInstance().abilitiesMap_.clear();
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = nullptr;
+    AAFwk::AppUtils::GetInstance().isSupportDelayedProcessExit_.isLoaded = false;
+    TAG_LOGI(AAFwkTag::TEST, "EnableDelayedProcessExit_0400 end");
+}
+
+/**
+ * @tc.name: EnableDelayedProcessExit_0500
+ * @tc.desc: Test EnableDelayedProcessExit with UIAbility present and enabled=false (disable + cancel task)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerNinthTest, EnableDelayedProcessExit_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "EnableDelayedProcessExit_0500 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    AAFwk::AppUtils::GetInstance().isSupportDelayedProcessExit_.isLoaded = true;
+    AAFwk::AppUtils::GetInstance().isSupportDelayedProcessExit_.value = true;
+
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    applicationInfo->name = "test.app.name";
+    applicationInfo->bundleName = "test.bundle.name";
+    auto appRecord = std::make_shared<AppRunningRecord>(applicationInfo, 1, "test_process");
+    ASSERT_NE(appRecord, nullptr);
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = appRecord;
+
+    // Add a UIAbility (PAGE type) to the abilitiesMap
+    auto abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->type = AbilityType::PAGE;
+    sptr<IRemoteObject> token = new MockAppScheduler();
+    auto abilityRecord = std::make_shared<AbilityRunningRecord>(abilityInfo, token, 1);
+    AAFwk::MyStatus::GetInstance().abilitiesMap_[token] = abilityRecord;
+
+    appMgrServiceInner->taskHandler_ =
+        std::make_shared<AAFwk::MockTaskHandlerWrapForRestart>("EnableDelayedProcessExitTest");
+
+    int32_t pid = 1234;
+    auto ret = appMgrServiceInner->EnableDelayedProcessExit(pid, false);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_FALSE(appRecord->IsDelayedProcessExitEnabled());
+
+    AAFwk::MyStatus::GetInstance().abilitiesMap_.clear();
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = nullptr;
+    AAFwk::AppUtils::GetInstance().isSupportDelayedProcessExit_.isLoaded = false;
+    TAG_LOGI(AAFwkTag::TEST, "EnableDelayedProcessExit_0500 end");
+}
+
+/**
+ * @tc.name: EnableDelayedProcessExit_0600
+ * @tc.desc: Test EnableDelayedProcessExit with null AbilityRunningRecord item in abilitiesMap
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerNinthTest, EnableDelayedProcessExit_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "EnableDelayedProcessExit_0600 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    AAFwk::AppUtils::GetInstance().isSupportDelayedProcessExit_.isLoaded = true;
+    AAFwk::AppUtils::GetInstance().isSupportDelayedProcessExit_.value = true;
+
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    applicationInfo->name = "test.app.name";
+    applicationInfo->bundleName = "test.bundle.name";
+    auto appRecord = std::make_shared<AppRunningRecord>(applicationInfo, 1, "test_process");
+    ASSERT_NE(appRecord, nullptr);
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = appRecord;
+
+    // Add a null AbilityRunningRecord to the abilitiesMap
+    sptr<IRemoteObject> token = new MockAppScheduler();
+    AAFwk::MyStatus::GetInstance().abilitiesMap_[token] = nullptr;
+
+    int32_t pid = 1234;
+    auto ret = appMgrServiceInner->EnableDelayedProcessExit(pid, true);
+    // null item.second -> continue, then no UIAbility found
+    EXPECT_EQ(ret, AAFwk::ERR_DELAYED_PROCESS_EXIT_NO_UIABILITY);
+
+    AAFwk::MyStatus::GetInstance().abilitiesMap_.clear();
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = nullptr;
+    AAFwk::AppUtils::GetInstance().isSupportDelayedProcessExit_.isLoaded = false;
+    TAG_LOGI(AAFwkTag::TEST, "EnableDelayedProcessExit_0600 end");
+}
+
+/**
+ * @tc.name: EnableDelayedProcessExit_0700
+ * @tc.desc: Test EnableDelayedProcessExit with non-PAGE ability type (abilityInfo not null but not PAGE)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerNinthTest, EnableDelayedProcessExit_0700, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "EnableDelayedProcessExit_0700 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    AAFwk::AppUtils::GetInstance().isSupportDelayedProcessExit_.isLoaded = true;
+    AAFwk::AppUtils::GetInstance().isSupportDelayedProcessExit_.value = true;
+
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    applicationInfo->name = "test.app.name";
+    applicationInfo->bundleName = "test.bundle.name";
+    auto appRecord = std::make_shared<AppRunningRecord>(applicationInfo, 1, "test_process");
+    ASSERT_NE(appRecord, nullptr);
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = appRecord;
+
+    // Add a SERVICE type ability (not PAGE)
+    auto abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->type = AbilityType::SERVICE;
+    sptr<IRemoteObject> token = new MockAppScheduler();
+    auto abilityRecord = std::make_shared<AbilityRunningRecord>(abilityInfo, token, 1);
+    AAFwk::MyStatus::GetInstance().abilitiesMap_[token] = abilityRecord;
+
+    int32_t pid = 1234;
+    auto ret = appMgrServiceInner->EnableDelayedProcessExit(pid, true);
+    // abilityInfo != nullptr but type != PAGE, so no UIAbility found
+    EXPECT_EQ(ret, AAFwk::ERR_DELAYED_PROCESS_EXIT_NO_UIABILITY);
+
+    AAFwk::MyStatus::GetInstance().abilitiesMap_.clear();
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = nullptr;
+    AAFwk::AppUtils::GetInstance().isSupportDelayedProcessExit_.isLoaded = false;
+    TAG_LOGI(AAFwkTag::TEST, "EnableDelayedProcessExit_0700 end");
+}
+
+/**
+ * @tc.name: CancelDelayedExitTask_0300
+ * @tc.desc: Test CancelDelayedExitTask with appRecord and delayed exit enabled
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerNinthTest, CancelDelayedExitTask_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CancelDelayedExitTask_0300 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    applicationInfo->name = "test.app.name";
+    applicationInfo->bundleName = "test.bundle.name";
+    auto appRecord = std::make_shared<AppRunningRecord>(applicationInfo, 1, "test_process");
+    ASSERT_NE(appRecord, nullptr);
+    appRecord->EnableDelayedProcessExit(true);
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = appRecord;
+
+    appMgrServiceInner->taskHandler_ =
+        std::make_shared<AAFwk::MockTaskHandlerWrapForRestart>("CancelDelayedExitTaskTest");
+    // Should cancel the task
+    appMgrServiceInner->CancelDelayedExitTask(1234);
+    EXPECT_TRUE(appRecord->IsDelayedProcessExitEnabled());
+
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "CancelDelayedExitTask_0300 end");
+}
+
+/**
+ * @tc.name: CancelDelayedExitTask_0400
+ * @tc.desc: Test CancelDelayedExitTask with delayed exit enabled but null taskHandler
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerNinthTest, CancelDelayedExitTask_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CancelDelayedExitTask_0400 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    applicationInfo->name = "test.app.name";
+    applicationInfo->bundleName = "test.bundle.name";
+    auto appRecord = std::make_shared<AppRunningRecord>(applicationInfo, 1, "test_process");
+    ASSERT_NE(appRecord, nullptr);
+    appRecord->EnableDelayedProcessExit(true);
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = appRecord;
+
+    appMgrServiceInner->taskHandler_ = nullptr;
+    // Should not crash even with null taskHandler
+    appMgrServiceInner->CancelDelayedExitTask(1234);
+
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "CancelDelayedExitTask_0400 end");
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

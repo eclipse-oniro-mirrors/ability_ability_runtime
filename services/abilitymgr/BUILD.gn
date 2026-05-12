@@ -41,6 +41,7 @@ config("abilityms_config") {
     "include/extension_record",
     "include/foreground_app_connection_manager",
     "include/insight_intent",
+    "include/skill",
     "include/mission/",
     "include/modular_object/",
     "include/rdb/",

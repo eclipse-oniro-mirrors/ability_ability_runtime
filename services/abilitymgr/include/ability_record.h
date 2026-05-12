@@ -1012,7 +1012,7 @@ protected:
     LaunchDebugInfo launchDebugInfo_;
     WindowConfig windowConfig_;
 
-    int64_t startTime_ = 0;                           // records first time of ability start
+    std::atomic_int64_t startTime_ = 0;                           // records first time of ability start
     int64_t restartTime_ = 0;                         // the time of last trying restart
     std::atomic<AbilityState> pendingState_ = AbilityState::INITIAL;    // pending life state
     std::atomic<AbilityVisibilityState> abilityVisibilityState_ = AbilityVisibilityState::INITIAL;

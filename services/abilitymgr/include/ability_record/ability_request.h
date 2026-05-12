@@ -22,6 +22,7 @@
 #include "ability_connect_callback_interface.h"
 #include "ability_info.h"
 #include "ability_start_setting.h"
+#include "irequest_start_ability_callback.h"
 #include "launch_param.h"
 #include "process_options.h"
 #include "session_info.h"
@@ -69,6 +70,7 @@ struct AbilityRequest {
     sptr<IRemoteObject> asCallerSourceToken = nullptr;          // call ability
     sptr<IAbilityConnection> connect = nullptr;
     sptr<IRemoteObject> abilityInfoCallback = nullptr;
+    sptr<IRequestStartAbilityCallback> requestCallback = nullptr;
     sptr<SessionInfo> sessionInfo;
     std::shared_ptr<AbilityStartSetting> startSetting = nullptr;
     std::shared_ptr<ProcessOptions> processOptions = nullptr;
@@ -90,6 +92,7 @@ struct AbilityRequest {
     uint32_t specifyTokenId = 0;
     int callerUid = -1;         // call ability
     int requestCode = -1;
+    int32_t atomicServiceShortLink = 0;
     AbilityCallType callType = AbilityCallType::INVALID_TYPE;           // call ability
     AppExecFwk::ExtensionAbilityType extensionType = AppExecFwk::ExtensionAbilityType::UNSPECIFIED;
     AppExecFwk::ExtensionProcessMode extensionProcessMode = AppExecFwk::ExtensionProcessMode::UNDEFINED;

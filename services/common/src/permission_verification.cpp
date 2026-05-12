@@ -17,6 +17,7 @@
 
 #include "ability_manager_errors.h"
 #include "accesstoken_kit.h"
+#include "event_report.h"
 #include "hilog_tag_wrapper.h"
 #include "permission_constants.h"
 #include "server_constant.h"
@@ -335,7 +336,8 @@ int PermissionVerification::CheckStartByCallPermission(const VerificationInfo &v
         return CHECK_PERMISSION_FAILED;
     }
     // Different APP call, check permissions
-    if (!VerifyCallingPermission(PermissionConstants::PERMISSION_ABILITY_BACKGROUND_COMMUNICATION)) {
+    if (!VerifyCallingPermission(
+        PermissionConstants::PERMISSION_ABILITY_BACKGROUND_COMMUNICATION, verificationInfo.specifiedFullTokenId)) {
         TAG_LOGE(AAFwkTag::DEFAULT, "Permission denied");
         return CHECK_PERMISSION_FAILED;
     }
@@ -432,6 +434,12 @@ int PermissionVerification::JudgeInvisibleAndBackground(const VerificationInfo &
     if (specifyTokenId == 0 &&
         SupportSystemAbilityPermission::IsSupportSaCallPermission()) {
         TAG_LOGD(AAFwkTag::DEFAULT, "Support SA call");
+        // Only report when: 1) shell call, 2) ability is invisible (exported=false)
+        if (IsShellCall() && !verificationInfo.visible) {
+            EventInfo eventInfo;
+            eventInfo.uri = "ShellCall://" + std::to_string(IPCSkeleton::GetCallingUid());
+            EventReport::SendGrantUriPermissionEvent(EventName::GRANT_URI_PERMISSION, eventInfo);
+        }
         return ERR_OK;
     }
     if (!isCallByShortcut &&

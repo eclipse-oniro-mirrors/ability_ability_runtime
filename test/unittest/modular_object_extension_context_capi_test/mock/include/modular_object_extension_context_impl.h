@@ -29,6 +29,12 @@ public:
     static ErrCode g_startSelfWithOptionsResult;
     static ErrCode g_terminateResult;
 
+    std::shared_ptr<OHOS::AppExecFwk::EventHandler> GetEventHandler() const
+    {
+        static auto handler = std::make_shared<OHOS::AppExecFwk::EventHandler>();
+        return handler;
+    }
+
     ErrCode StartSelfUIAbility(const AAFwk::Want &want) const { return g_startSelfResult; }
     ErrCode StartSelfUIAbilityWithStartOptions(const AAFwk::Want &want,
         const AAFwk::StartOptions &options) const { return g_startSelfWithOptionsResult; }

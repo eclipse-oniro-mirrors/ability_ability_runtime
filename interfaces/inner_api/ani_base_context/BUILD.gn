@@ -45,6 +45,7 @@ ohos_shared_library("ani_base_context") {
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "hilog:libhilog",
+    "icu:shared_icuuc",
     "ipc:ipc_single",
     "runtime_core:ani",
   ]

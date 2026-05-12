@@ -16,8 +16,6 @@
 #ifndef OHOS_ABILITY_RUNTIME_SUB_COMMAND_INFO_H
 #define OHOS_ABILITY_RUNTIME_SUB_COMMAND_INFO_H
 
-#include "arg_mapping.h"
-
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <parcel.h>
@@ -36,7 +34,6 @@ public:
     std::vector<std::string> requirePermissions;
     std::string inputSchema;    // JSON string
     std::string outputSchema;   // JSON string
-    std::shared_ptr<ArgMapping> argMapping;
     std::vector<std::string> eventTypes;
     std::string eventSchemas;   // JSON string
 

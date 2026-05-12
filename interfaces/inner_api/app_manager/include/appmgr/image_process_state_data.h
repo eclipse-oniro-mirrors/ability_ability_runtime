@@ -50,6 +50,7 @@ struct ImageProcessStateData : public Parcelable {
     int32_t uid = -1;
     int32_t state = -1;
     std::string bundleName;
+    std::string abilityName;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

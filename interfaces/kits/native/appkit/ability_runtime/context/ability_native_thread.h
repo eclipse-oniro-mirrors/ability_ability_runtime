@@ -30,7 +30,7 @@ class NativeReference;
 #ifdef __cplusplus
 extern "C" {
 #endif
-struct NativeAbilityWrapper {
+struct AbilityRuntime_NativeAbilityWrapper {
     std::string instanceId;
     std::string abilityName;
     napi_env env = nullptr;
@@ -78,13 +78,13 @@ public:
      * @brief Post the ability wrapper to the native thread.
      * @param nativeAbilityWrapper The pointer to the native ability wrapper.
      */
-    void PostAbility(const NativeAbilityWrapper* nativeAbilityWrapper);
+    void PostAbility(const AbilityRuntime_NativeAbilityWrapper* nativeAbilityWrapper);
 
     /**
      * @brief Notify the native module that the ability is being destroyed.
      * @param nativeAbilityWrapper The pointer to the native ability wrapper.
      */
-    void DestroyAbility(const NativeAbilityWrapper* nativeAbilityWrapper);
+    void DestroyAbility(const AbilityRuntime_NativeAbilityWrapper* nativeAbilityWrapper);
 
     /**
      * @brief Notify the native module that the process is exiting.
@@ -95,8 +95,8 @@ public:
 private:
     void *moduleHandle_ = nullptr;
     std::function<void()> ohMainFun_;
-    std::function<void(const NativeAbilityWrapper*)> postAbilityFunc_;
-    std::function<void(const NativeAbilityWrapper*)> destroyAbilityFunc_;
+    std::function<void(const AbilityRuntime_NativeAbilityWrapper*)> postAbilityFunc_;
+    std::function<void(const AbilityRuntime_NativeAbilityWrapper*)> destroyAbilityFunc_;
     std::function<void()> notifyProcessExitFunc_;
     std::thread nativeThread_;
 };

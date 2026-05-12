@@ -365,3 +365,10 @@ Ability_NativeChildProcess_ErrCode OH_Ability_KillChildProcess(int32_t pid)
     }
     return NCP_NO_ERROR;
 }
+
+bool OH_Ability_IsNativeChildProcessSupported()
+{
+    bool result = ChildProcessManager::GetInstance().IsNativeChildProcessSupported();
+    TAG_LOGD(AAFwkTag::PROCESSMGR, "IsNativeChildProcessSupported: %{public}d", result);
+    return result;
+}

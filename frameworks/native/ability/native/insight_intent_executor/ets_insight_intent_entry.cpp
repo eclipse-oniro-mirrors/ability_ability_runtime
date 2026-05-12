@@ -272,8 +272,11 @@ bool EtsInsightIntentEntry::PrepareExecuteEnvironment(ani_env *env, InsightInten
         return false;
     }
 
-    if (pageLoader == nullptr) {
+    if (mode == InsightIntentExecuteMode::UIABILITY_BACKGROUND ||
+        mode == InsightIntentExecuteMode::SERVICE_EXTENSION_ABILITY) {
         return true;
+    } else if (pageLoader == nullptr) {
+        return false;
     }
 
     const char *propertyName = mode == InsightIntentExecuteMode::UIEXTENSION_ABILITY ?

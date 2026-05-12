@@ -15,6 +15,8 @@
 
 #include <gtest/gtest.h>
 
+#include <cstring>
+
 #include "modular_object_extension_context.h"
 #include "modular_object_extension_types.h"
 #include "modular_object_extension_context_impl.h"
@@ -37,6 +39,33 @@ ErrCode ModularObjectExtensionContext::g_terminateResult = ERR_OK;
 int OHOS::AAFwk::CWantManager::g_transformResult = 0;
 AbilityRuntime_ErrorCode g_checkWantResult = ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 
+namespace {
+bool g_remoteStubCreateSuccess = true;
+int g_remoteStubDestroyCount = 0;
+OHIPCRemoteStub *g_lastDestroyedStub = nullptr;
+const char *g_lastCreateDescriptor = nullptr;
+OH_OnRemoteRequestCallback g_lastRequestCallback = nullptr;
+OH_OnRemoteDestroyCallback g_lastDestroyCallback = nullptr;
+void *g_lastRemoteStubUserData = nullptr;
+OHIPCRemoteStub g_mockRemoteStub {};
+} // namespace
+
+extern "C" OHIPCRemoteStub* OH_IPCRemoteStub_Create(const char *descriptor,
+    OH_OnRemoteRequestCallback requestCallback, OH_OnRemoteDestroyCallback destroyCallback, void *userData)
+{
+    g_lastCreateDescriptor = descriptor;
+    g_lastRequestCallback = requestCallback;
+    g_lastDestroyCallback = destroyCallback;
+    g_lastRemoteStubUserData = userData;
+    return g_remoteStubCreateSuccess ? &g_mockRemoteStub : nullptr;
+}
+
+extern "C" void OH_IPCRemoteStub_Destroy(OHIPCRemoteStub *stub)
+{
+    g_lastDestroyedStub = stub;
+    ++g_remoteStubDestroyCount;
+}
+
 AbilityRuntime_ErrorCode CheckWant(AbilityBase_Want *want)
 {
     return g_checkWantResult;
@@ -53,9 +82,32 @@ public:
         OHOS::AbilityRuntime::ModularObjectExtensionContext::g_terminateResult = ERR_OK;
         OHOS::AAFwk::CWantManager::g_transformResult = 0;
         g_checkWantResult = ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
+        g_remoteStubCreateSuccess = true;
+        g_remoteStubDestroyCount = 0;
+        g_lastDestroyedStub = nullptr;
+        g_lastCreateDescriptor = nullptr;
+        g_lastRequestCallback = nullptr;
+        g_lastDestroyCallback = nullptr;
+        g_lastRemoteStubUserData = nullptr;
     }
     void TearDown() override {}
 };
+
+namespace {
+int MockRemoteRequest(uint32_t code, const OHIPCParcel *data, OHIPCParcel *reply, void *userData)
+{
+    (void)code;
+    (void)data;
+    (void)reply;
+    (void)userData;
+    return 0;
+}
+
+void MockRemoteDestroy(void *userData)
+{
+    (void)userData;
+}
+} // namespace
 
 // ==================== GetBaseContext ====================
 
@@ -325,4 +377,121 @@ HWTEST_F(ModularObjectExtensionContextCapiTest, TerminateSelf_Error_001, TestSiz
     auto ret = OH_AbilityRuntime_ModObjExtensionContext_TerminateSelf(ctx.get());
     EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_INTERNAL);
     GTEST_LOG_(INFO) << "TerminateSelf_Error_001 end";
+}
+
+// ==================== CreateIPCRemoteStub ====================
+
+HWTEST_F(ModularObjectExtensionContextCapiTest, CreateIPCRemoteStub_NullDescriptor_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CreateIPCRemoteStub_NullDescriptor_001 start";
+    auto stub = OH_AbilityRuntime_ModObjExtensionContext_CreateIPCRemoteStub(
+        nullptr, nullptr, MockRemoteRequest, MockRemoteDestroy, nullptr);
+    EXPECT_EQ(stub, nullptr);
+    GTEST_LOG_(INFO) << "CreateIPCRemoteStub_NullDescriptor_001 end";
+}
+
+HWTEST_F(ModularObjectExtensionContextCapiTest, CreateIPCRemoteStub_NullRequestCallback_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CreateIPCRemoteStub_NullRequestCallback_001 start";
+    auto stub = OH_AbilityRuntime_ModObjExtensionContext_CreateIPCRemoteStub(
+        nullptr, "descriptor", nullptr, MockRemoteDestroy, nullptr);
+    EXPECT_EQ(stub, nullptr);
+    GTEST_LOG_(INFO) << "CreateIPCRemoteStub_NullRequestCallback_001 end";
+}
+
+HWTEST_F(ModularObjectExtensionContextCapiTest, CreateIPCRemoteStub_WrongType_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CreateIPCRemoteStub_WrongType_001 start";
+    auto ctx = std::make_shared<OH_AbilityRuntime_ModularObjectExtensionContext>();
+    ctx->type = OHOS::AppExecFwk::ExtensionAbilityType::SERVICE;
+    auto cppCtx = std::make_shared<OHOS::AbilityRuntime::ModularObjectExtensionContext>();
+    ctx->context = cppCtx;
+    auto stub = OH_AbilityRuntime_ModObjExtensionContext_CreateIPCRemoteStub(
+        ctx.get(), "descriptor", MockRemoteRequest, MockRemoteDestroy, nullptr);
+    EXPECT_EQ(stub, nullptr);
+    GTEST_LOG_(INFO) << "CreateIPCRemoteStub_WrongType_001 end";
+}
+
+HWTEST_F(ModularObjectExtensionContextCapiTest, CreateIPCRemoteStub_ExpiredContext_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CreateIPCRemoteStub_ExpiredContext_001 start";
+    auto ctx = std::make_shared<OH_AbilityRuntime_ModularObjectExtensionContext>();
+    ctx->type = OHOS::AppExecFwk::ExtensionAbilityType::MODULAR_OBJECT;
+    auto stub = OH_AbilityRuntime_ModObjExtensionContext_CreateIPCRemoteStub(
+        ctx.get(), "descriptor", MockRemoteRequest, MockRemoteDestroy, nullptr);
+    EXPECT_EQ(stub, nullptr);
+    GTEST_LOG_(INFO) << "CreateIPCRemoteStub_ExpiredContext_001 end";
+}
+
+HWTEST_F(ModularObjectExtensionContextCapiTest, CreateIPCRemoteStub_CreateFail_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CreateIPCRemoteStub_CreateFail_001 start";
+    auto ctx = std::make_shared<OH_AbilityRuntime_ModularObjectExtensionContext>();
+    ctx->type = OHOS::AppExecFwk::ExtensionAbilityType::MODULAR_OBJECT;
+    auto cppCtx = std::make_shared<OHOS::AbilityRuntime::ModularObjectExtensionContext>();
+    ctx->context = cppCtx;
+    g_remoteStubCreateSuccess = false;
+    auto stub = OH_AbilityRuntime_ModObjExtensionContext_CreateIPCRemoteStub(
+        ctx.get(), "descriptor", MockRemoteRequest, MockRemoteDestroy, nullptr);
+    EXPECT_EQ(stub, nullptr);
+    EXPECT_STREQ(g_lastCreateDescriptor, "descriptor");
+    EXPECT_NE(g_lastRequestCallback, nullptr);
+    EXPECT_NE(g_lastDestroyCallback, nullptr);
+    EXPECT_NE(g_lastRemoteStubUserData, nullptr);
+    GTEST_LOG_(INFO) << "CreateIPCRemoteStub_CreateFail_001 end";
+}
+
+HWTEST_F(ModularObjectExtensionContextCapiTest, CreateIPCRemoteStub_Success_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CreateIPCRemoteStub_Success_001 start";
+    int userData = 42;
+    auto ctx = std::make_shared<OH_AbilityRuntime_ModularObjectExtensionContext>();
+    ctx->type = OHOS::AppExecFwk::ExtensionAbilityType::MODULAR_OBJECT;
+    auto cppCtx = std::make_shared<OHOS::AbilityRuntime::ModularObjectExtensionContext>();
+    ctx->context = cppCtx;
+    auto stub = OH_AbilityRuntime_ModObjExtensionContext_CreateIPCRemoteStub(
+        ctx.get(), "descriptor", MockRemoteRequest, MockRemoteDestroy, &userData);
+    EXPECT_EQ(stub, &g_mockRemoteStub);
+    EXPECT_STREQ(g_lastCreateDescriptor, "descriptor");
+    EXPECT_NE(g_lastRequestCallback, nullptr);
+    EXPECT_NE(g_lastDestroyCallback, nullptr);
+    EXPECT_NE(g_lastRemoteStubUserData, nullptr);
+    GTEST_LOG_(INFO) << "CreateIPCRemoteStub_Success_001 end";
+}
+
+// ==================== DestroyIPCRemoteStub ====================
+
+HWTEST_F(ModularObjectExtensionContextCapiTest, DestroyIPCRemoteStub_NullStub_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "DestroyIPCRemoteStub_NullStub_001 start";
+    OH_AbilityRuntime_ModObjExtensionContext_DestroyIPCRemoteStub(nullptr, nullptr);
+    EXPECT_EQ(g_remoteStubDestroyCount, 1);
+    EXPECT_EQ(g_lastDestroyedStub, nullptr);
+    GTEST_LOG_(INFO) << "DestroyIPCRemoteStub_NullStub_001 end";
+}
+
+HWTEST_F(ModularObjectExtensionContextCapiTest, DestroyIPCRemoteStub_Success_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "DestroyIPCRemoteStub_Success_001 start";
+    OHIPCRemoteStub stub {};
+    OH_AbilityRuntime_ModObjExtensionContext_DestroyIPCRemoteStub(nullptr, &stub);
+    EXPECT_EQ(g_remoteStubDestroyCount, 1);
+    EXPECT_EQ(g_lastDestroyedStub, &stub);
+    GTEST_LOG_(INFO) << "DestroyIPCRemoteStub_Success_001 end";
+}
+
+HWTEST_F(ModularObjectExtensionContextCapiTest, DestroyIPCRemoteStub_ContextAndStubNotNull_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "DestroyIPCRemoteStub_ContextAndStubNotNull_001 start";
+    auto ctx = std::make_shared<OH_AbilityRuntime_ModularObjectExtensionContext>();
+    ctx->type = OHOS::AppExecFwk::ExtensionAbilityType::MODULAR_OBJECT;
+    auto cppCtx = std::make_shared<OHOS::AbilityRuntime::ModularObjectExtensionContext>();
+    ctx->context = cppCtx;
+    OHIPCRemoteStub stub {};
+
+    OH_AbilityRuntime_ModObjExtensionContext_DestroyIPCRemoteStub(ctx.get(), &stub);
+
+    EXPECT_EQ(g_remoteStubDestroyCount, 1);
+    EXPECT_EQ(g_lastDestroyedStub, &stub);
+    GTEST_LOG_(INFO) << "DestroyIPCRemoteStub_ContextAndStubNotNull_001 end";
 }

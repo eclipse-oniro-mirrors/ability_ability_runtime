@@ -16,12 +16,18 @@
 #ifndef OHOS_ABILITY_RUNTIME_PROCESS_MANAGER_H
 #define OHOS_ABILITY_RUNTIME_PROCESS_MANAGER_H
 
+#include <csignal>
 #include <map>
+#include <memory>
 #include <string>
+
+#include "session_record.h"
 
 namespace OHOS {
 namespace CliTool {
 class ExecToolParam;
+class ToolInfo;
+
 class ProcessManager {
 public:
     static ProcessManager &GetInstance();
@@ -32,11 +38,16 @@ public:
     ProcessManager &operator=(ProcessManager &&) = delete;
 
     int32_t CreateChildProcess(const ExecToolParam &param, const std::string &sandboxConfig,
-        const std::string &executablePath, pid_t &childPid) const;
+        const ToolInfo &toolInfo, std::shared_ptr<SessionRecord> record) const;
+
+    bool Killpg(pid_t pid) const;
 
 private:
     ProcessManager() = default;
     ~ProcessManager() = default;
+
+    bool CreatePipes(SessionRecord &record) const;
+    void CloseAllPipes(SessionRecord &record) const;
 };
 
 } // namespace CliTool

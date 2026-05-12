@@ -25,6 +25,7 @@
 #include "freeze_util.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
+#include "skill/skill_execute_param.h"
 #include "time_util.h"
 
 namespace OHOS {
@@ -688,10 +689,34 @@ void UIAbilityThread::OnExecuteIntent(const Want &want)
         }
         if (abilityThread->abilityImpl_ != nullptr) {
             abilityThread->abilityImpl_->HandleExecuteInsightIntentBackground(want, true);
-            return;
         }
     };
     abilityHandler_->PostTask(task, "UIAbilityThread:OnExecuteIntent");
+}
+
+void UIAbilityThread::ExecuteSkill(const Want &want)
+{
+    TAG_LOGI(AAFwkTag::UIABILITY, "execute skill");
+    if (abilityImpl_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "null abilityImpl_");
+        return;
+    }
+    if (abilityHandler_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "null abilityHandler_");
+        return;
+    }
+    wptr<UIAbilityThread> weak = this;
+    auto task = [weak, want]() {
+        auto abilityThread = weak.promote();
+        if (abilityThread == nullptr) {
+            TAG_LOGE(AAFwkTag::UIABILITY, "null AbilityThread");
+            return;
+        }
+        if (abilityThread->abilityImpl_ != nullptr) {
+            abilityThread->abilityImpl_->HandleExecuteSkill(want, true);
+        }
+    };
+    abilityHandler_->PostTask(task, "UIAbilityThread:ExecuteSkill");
 }
 
 #ifdef SUPPORT_SCREEN

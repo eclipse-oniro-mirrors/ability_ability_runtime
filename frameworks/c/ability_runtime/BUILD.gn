@@ -89,6 +89,7 @@ ohos_shared_library("ability_runtime") {
     "ability_base:ability_base_want",
     "ability_base:want",
     "c_utils:utils",
+    "eventhandler:libeventhandler",
     "ffrt:libffrt",
     "hilog:libhilog",
     "image_framework:image_native",

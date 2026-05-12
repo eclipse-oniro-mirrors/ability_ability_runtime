@@ -447,8 +447,8 @@ private:
 
     void HandleSchedulePrepareTerminate(const std::string &moduleName);
 
-    void PreloadModule(const AppExecFwk::HapModuleInfo &entryHapModuleInfo,
-        const std::unique_ptr<AbilityRuntime::Runtime>& runtime);
+    void PreloadModule(const BundleInfo &bundleInfo, const AppLaunchData &appLaunchData,
+        const AppExecFwk::HapModuleInfo &entryHapModuleInfo, const std::unique_ptr<AbilityRuntime::Runtime> &runtime);
 
     void ProcessMainAbility(const AbilityInfo &info, const std::unique_ptr<AbilityRuntime::Runtime>& runtime);
 

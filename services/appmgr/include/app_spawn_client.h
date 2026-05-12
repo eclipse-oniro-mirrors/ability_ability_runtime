@@ -57,11 +57,13 @@ struct AppSpawnStartMsg {
     std::string overlayInfo; // overlay hap resource path list
     std::string ownerId;
     std::string provisionType;
+    std::string appDistributionType;
     std::string atomicAccount = "";
     std::string extensionSandboxPath;
     std::string processType = "";
     std::string extensionTypeName;
     std::string appSignType;
+    std::string imageName;
     HspList hspList; // list of harmony shared package
     std::set<std::string> permissions;
     std::map<std::string, std::string> appEnv; // environment variable to be set to the process
@@ -120,7 +122,7 @@ struct StartFlags {
     static const int DLP_MANAGER_FULL_CONTROL = 37;
     static const int DLP_MANAGER_READ_ONLY = 38;
     static const int CLOUD_FILE_SYNC_ENABLED = 39;
-    static const int SPAWN_IMAGE_PROCESS = 41;
+    static const int APP_FLAGS_DEBUGSERVER = 44;
 };
 
 struct CreateStartMsgParam {

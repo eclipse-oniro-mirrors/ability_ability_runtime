@@ -16,11 +16,29 @@
 #ifndef MOCK_TYPES_H
 #define MOCK_TYPES_H
 
+#include <functional>
+#include <memory>
+
 namespace OHOS {
 namespace AAFwk {
 class Want {};
 class StartOptions {};
 } // namespace AAFwk
+
+namespace AppExecFwk {
+class EventHandler {
+public:
+    bool PostSyncTask(const std::function<void()> &task, const char *name)
+    {
+        (void)name;
+        if (!task) {
+            return false;
+        }
+        task();
+        return true;
+    }
+};
+} // namespace AppExecFwk
 } // namespace OHOS
 
 #endif // MOCK_TYPES_H

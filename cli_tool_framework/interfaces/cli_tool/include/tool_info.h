@@ -16,7 +16,6 @@
 #ifndef OHOS_ABILITY_RUNTIME_TOOL_INFO_H
 #define OHOS_ABILITY_RUNTIME_TOOL_INFO_H
 
-#include "arg_mapping.h"
 #include "sub_command_info.h"
 #include "tool_summary.h"
 
@@ -29,38 +28,25 @@
 #include <string>
 #include <vector>
 
-#include "exec_result.h"
-
 namespace OHOS {
 namespace CliTool {
 
+class ToolInfo;
+
 /**
- * @brief Raw data type for IDL serialization
+ * @brief Raw data type for IDL serialization (shared memory optimization)
  */
-class ToolsRawData : public Parcelable {
+class ToolsRawData {
 public:
-    std::vector<uint32_t> data;
+    std::string ownedData;
+    uint32_t size = 0;
+    const void* data = nullptr;
+    bool isMalloc = false;
 
-    ToolsRawData() = default;
-    ~ToolsRawData() = default;
-
-    bool Marshalling(Parcel &parcel) const override
-    {
-        if (!parcel.WriteUInt32Vector(data)) {
-            return false;
-        }
-        return true;
-    }
-
-    static ToolsRawData *Unmarshalling(Parcel &parcel)
-    {
-        ToolsRawData *rawdata = new (std::nothrow) ToolsRawData();
-        if (rawdata && !parcel.ReadUInt32Vector(&rawdata->data)) {
-            delete rawdata;
-            return nullptr;
-        }
-        return rawdata;
-    }
+    static void FromToolInfoVec(const std::vector<ToolInfo> &tools, ToolsRawData &rawData);
+    static int32_t ToToolInfoVec(const ToolsRawData &rawData, std::vector<ToolInfo> &tools);
+    int32_t RawDataCpy(const void *readdata);
+    ~ToolsRawData();
 };
 
 /**
@@ -75,10 +61,8 @@ public:
     std::vector<std::string> requirePermissions;
     std::string inputSchema;       // JSON string
     std::string outputSchema;      // JSON string
-    std::shared_ptr<ArgMapping> argMapping;
     std::vector<std::string> eventTypes;
     std::string eventSchemas;      // JSON string (map of event type to schema)
-    int32_t timeout = 1800;
     bool hasSubCommand = false;
     std::map<std::string, SubCommandInfo> subcommands;
 

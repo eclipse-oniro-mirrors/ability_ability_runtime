@@ -1019,6 +1019,16 @@ std::string AppRunningRecord::GetPreloadModuleName() const
     return preloadModuleName_;
 }
 
+void AppRunningRecord::SetPreloadAbilityName(const std::string &abilityName)
+{
+    preloadAbilityName_ = abilityName;
+}
+
+std::string AppRunningRecord::GetPreloadAbilityName() const
+{
+    return preloadAbilityName_;
+}
+
 void AppRunningRecord::SetPreloadState(PreloadState state)
 {
     preloadState_ = state;

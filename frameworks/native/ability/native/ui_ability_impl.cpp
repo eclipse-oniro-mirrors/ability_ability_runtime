@@ -15,6 +15,8 @@
 
 #include "ui_ability_impl.h"
 
+#include <cinttypes>
+
 #include "ability_handler.h"
 #include "ability_manager_client.h"
 #include "context/application_context.h"
@@ -258,6 +260,32 @@ void UIAbilityImpl::ExecuteInsightIntentDone(uint64_t intentId, const InsightInt
         TAG_LOGE(AAFwkTag::UIABILITY, "notify execute done failed");
     }
 }
+
+bool UIAbilityImpl::HandleExecuteSkill(const AAFwk::Want &want, bool onlyExecuteSkill)
+{
+    TAG_LOGD(AAFwkTag::UIABILITY, "handle execute skill");
+    auto param = std::make_shared<SkillExecuteParam>();
+    if (!SkillExecuteParam::GenerateFromWant(want, *param)) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "generate skill param from want failed");
+        if (!onlyExecuteSkill) {
+            Background();
+        }
+        return true;
+    }
+
+    TAG_LOGD(AAFwkTag::UIABILITY,
+        "skill bundle:%{public}s module:%{public}s name:%{public}s "
+        "scriptPath:%{public}s func:%{public}s requestCode:%{public}s",
+        param->bundleName_.c_str(), param->moduleName_.c_str(),
+        param->skillName_.c_str(), param->scriptPath_.c_str(),
+        param->functionName_.c_str(), param->requestCode_.c_str());
+    ability_->ExecuteSkill(want, param);
+    if (!onlyExecuteSkill) {
+        Background();
+    }
+    return true;
+}
+
 #ifdef SUPPORT_SCREEN
 bool UIAbilityImpl::PrepareTerminateAbility(std::function<void(bool)> callback, bool &isAsync)
 {
@@ -683,11 +711,14 @@ bool UIAbilityImpl::AbilityTransaction(const AAFwk::Want &want, const AAFwk::Lif
             }
             OnWillBackground();
 #ifdef SUPPORT_GRAPHICS
-            if (!InsightIntentExecuteParam::IsInsightIntentExecute(want)) {
-                Background();
-            } else {
+            if (InsightIntentExecuteParam::IsInsightIntentExecute(want)) {
                 TAG_LOGD(AAFwkTag::UIABILITY, "handleExecuteInsightIntentBackground");
                 ret = HandleExecuteInsightIntentBackground(want);
+            } else if (SkillExecuteParam::IsSkillExecute(want)) {
+                TAG_LOGD(AAFwkTag::UIABILITY, "handleExecuteSkill");
+                ret = HandleExecuteSkill(want);
+            } else {
+                Background();
             }
 #endif
             break;
