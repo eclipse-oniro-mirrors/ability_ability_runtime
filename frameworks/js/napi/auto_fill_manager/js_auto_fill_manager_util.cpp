@@ -130,7 +130,7 @@ napi_value WrapViewData(const napi_env env, const AbilityBase::ViewData &viewDat
     napi_value jsArray = nullptr;
     NAPI_CALL(env, napi_create_array(env, &jsArray));
     uint32_t index = 0;
-    for (auto element : viewData.nodes) {
+    for (const auto &element : viewData.nodes) {
         napi_value jsSubValue = WrapPageNodeInfo(env, element);
         if (jsSubValue != nullptr && napi_set_element(env, jsArray, index, jsSubValue) == napi_ok) {
             ++index;
@@ -273,24 +273,25 @@ bool UnwrapViewData(napi_env env, napi_value jsValue, AbilityBase::ViewData &vie
     }
 
     napi_value jsPageNodeInfos = GetPropertyValueByPropertyName(env, jsValue, PAGE_NODE_INFOS, napi_object);
-    if (jsPageNodeInfos != nullptr) {
-        uint32_t arraySize = 0;
-        if (!IsArrayForNapiValue(env, jsPageNodeInfos, arraySize)) {
+    uint32_t arraySize = 0;
+    if (jsPageNodeInfos == nullptr || !IsArrayForNapiValue(env, jsPageNodeInfos, arraySize)) {
+        TAG_LOGE(AAFwkTag::AUTOFILLMGR, "parameter error");
+        errorMsg = "Parameter error. The type of viewData.pageNodeInfos must be array";
+        return false;
+    }
+    viewData.nodes.clear();
+    for (uint32_t i = 0; i < arraySize; ++i) {
+        napi_value jsPageNodeInfo = nullptr;
+        if (napi_get_element(env, jsPageNodeInfos, i, &jsPageNodeInfo) != napi_ok) {
+            TAG_LOGE(AAFwkTag::AUTOFILLMGR, "napi_get_element failed");
             return false;
         }
-        viewData.nodes.clear();
-        for (uint32_t i = 0; i < arraySize; ++i) {
-            napi_value jsPageNodeInfo = nullptr;
-            if (napi_get_element(env, jsPageNodeInfos, i, &jsPageNodeInfo) != napi_ok) {
-                return false;
-            }
-            AbilityBase::PageNodeInfo pageNodeInfo;
-            if (!UnwrapPageNodeInfo(env, jsPageNodeInfo, pageNodeInfo, errorMsg)) {
-                TAG_LOGE(AAFwkTag::AUTOFILLMGR, "UnwrapPageNodeInfo failed");
-                return false;
-            }
-            viewData.nodes.emplace_back(pageNodeInfo);
+        AbilityBase::PageNodeInfo pageNodeInfo;
+        if (!UnwrapPageNodeInfo(env, jsPageNodeInfo, pageNodeInfo, errorMsg)) {
+            TAG_LOGE(AAFwkTag::AUTOFILLMGR, "UnwrapPageNodeInfo failed");
+            return false;
         }
+        viewData.nodes.emplace_back(pageNodeInfo);
     }
 
     napi_value jsPageRect = GetPropertyValueByPropertyName(env, jsValue, PAGE_RECT, napi_object);

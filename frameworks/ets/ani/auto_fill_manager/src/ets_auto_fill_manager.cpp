@@ -106,23 +106,25 @@ void EtsAutoFillManager::OnRequestAutoSaveInner(ani_env *env, int32_t instanceId
         AbilityRuntime::EtsErrorUtil::ThrowError(env, AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);
         return;
     }
-    if (uiContent->CheckNeedAutoSave()) {
-        if (!hasRequest) {
-            uiContent->DumpViewData(request.viewData, request.autoFillType);
-        }
-        request.autoFillCommand = AbilityRuntime::AutoFill::AutoFillCommand::SAVE;
-        AbilityRuntime::AutoFill::AutoFillResult result;
-        auto ret = AbilityRuntime::AutoFillManager::GetInstance().RequestAutoSave(uiContent, request,
-            saveRequestCallback, result);
-        if (ret != ERR_OK) {
-            TAG_LOGE(AAFwkTag::AUTOFILLMGR, "RequestAutoSave error[%{public}d]", ret);
-            AbilityRuntime::EtsErrorUtil::ThrowError(env, AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env,
-                static_cast<int32_t>(ret)));
+    if (!hasRequest) {
+        if (!uiContent->CheckNeedAutoSave()) {
+            TAG_LOGE(AAFwkTag::AUTOFILLMGR, "no need auto save");
             return;
         }
-        std::lock_guard<std::mutex> lock(saveMutex_);
-        saveRequestObject_.emplace(instanceId, saveRequestCallback);
+        uiContent->DumpViewData(request.viewData, request.autoFillType);
     }
+    request.autoFillCommand = AbilityRuntime::AutoFill::AutoFillCommand::SAVE;
+    AbilityRuntime::AutoFill::AutoFillResult result;
+    auto ret = AbilityRuntime::AutoFillManager::GetInstance().RequestAutoSave(uiContent, request,
+        saveRequestCallback, result);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::AUTOFILLMGR, "RequestAutoSave error[%{public}d]", ret);
+        AbilityRuntime::EtsErrorUtil::ThrowError(env, AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env,
+            static_cast<int32_t>(ret)));
+        return;
+    }
+    std::lock_guard<std::mutex> lock(saveMutex_);
+    saveRequestObject_.emplace(instanceId, saveRequestCallback);
 #endif // SUPPORT_GRAPHICS
 }
 
