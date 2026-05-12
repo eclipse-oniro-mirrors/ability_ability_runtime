@@ -205,7 +205,7 @@ void UIExtensionContextTest::TearDown()
 void UIExtensionContextTest::Connect(napi_value* argv, int32_t argc)
 {
     GTEST_LOG_(INFO) << "AbilityRuntime_AbilityContext_0100 start";
-    auto func = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
         JsUIExtensionContext::ConnectUIServiceExtension(env, info);
         napi_value result = nullptr;
         napi_get_undefined(env, &result);
@@ -231,7 +231,7 @@ void UIExtensionContextTest::Connect(napi_value* argv, int32_t argc)
 
 void UIExtensionContextTest::Disconnect(napi_value* argv, int32_t argc)
 {
-    auto func = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
         JsUIExtensionContext::DisconnectUIServiceExtension(env, info);
         napi_value result = nullptr;
         napi_get_undefined(env, &result);
@@ -414,7 +414,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSe
 {
     GTEST_LOG_(INFO) << "AbilityRuntime_UIExtensionContext_OnTerminateSelf_0100 start";
     HandleScope handleScope(env_);
-    auto func = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
         return JsUIExtensionContext::TerminateSelf(env, info);
     };
 
@@ -445,7 +445,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSe
     HandleScope handleScope(env_);
     TryCatch tryCatch(env_);
 
-    auto func = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
         return JsUIExtensionContext::TerminateSelf(env, info);
     };
 
@@ -493,7 +493,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSe
     // Set screen mode to embeddable
     abilityContextImpl_->SetScreenMode(1); // EMBEDDED_FULL_SCREEN_MODE
 
-    auto func = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
         return JsUIExtensionContext::TerminateSelf(env, info);
     };
 
@@ -530,7 +530,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSe
     // Set screen mode to embeddable half screen
     abilityContextImpl_->SetScreenMode(2); // EMBEDDED_HALF_SCREEN_MODE
 
-    auto func = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
         return JsUIExtensionContext::TerminateSelf(env, info);
     };
 
@@ -614,7 +614,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_HandleTermina
     // Set embeddable screen mode
     abilityContextImpl_->SetScreenMode(1); // EMBEDDED_FULL_SCREEN_MODE
 
-    auto func = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
         return JsUIExtensionContext::TerminateSelf(env, info);
     };
 
@@ -683,7 +683,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_HandleTermina
     EXPECT_NE(abilityContextImpl_->GetScreenMode(), 1);
     EXPECT_NE(abilityContextImpl_->GetScreenMode(), 2);
 
-    auto func = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
         return JsUIExtensionContext::TerminateSelf(env, info);
     };
 
@@ -724,7 +724,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSe
     HandleScope handleScope(env_);
     TryCatch tryCatch(env_);
 
-    auto func = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
         return JsUIExtensionContext::TerminateSelfWithResult(env, info);
     };
 
@@ -757,7 +757,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSe
     HandleScope handleScope(env_);
     TryCatch tryCatch(env_);
 
-    auto func = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
         return JsUIExtensionContext::TerminateSelfWithResult(env, info);
     };
 
@@ -792,7 +792,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSe
     HandleScope handleScope(env_);
     TryCatch tryCatch(env_);
 
-    auto func = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
         return JsUIExtensionContext::TerminateSelfWithResult(env, info);
     };
 
@@ -843,7 +843,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSe
     // Set embeddable screen mode
     abilityContextImpl_->SetScreenMode(1); // EMBEDDED_FULL_SCREEN_MODE
 
-    auto func = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
         return JsUIExtensionContext::TerminateSelfWithResult(env, info);
     };
 
@@ -897,7 +897,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSe
     // Set embeddable screen mode
     abilityContextImpl_->SetScreenMode(2); // EMBEDDED_HALF_SCREEN_MODE
 
-    auto func = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
         return JsUIExtensionContext::TerminateSelfWithResult(env, info);
     };
 
@@ -957,7 +957,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSe
     TryCatch tryCatch(env_);
 
     // Default non-embeddable mode
-    auto func = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
         return JsUIExtensionContext::TerminateSelfWithResult(env, info);
     };
 
@@ -1061,7 +1061,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_TerminateSelf
 
     abilityContextImpl_->SetScreenMode(1); // EMBEDDED_FULL_SCREEN_MODE
 
-    auto func = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
         return JsUIExtensionContext::TerminateSelfWithResult(env, info);
     };
 
@@ -1113,7 +1113,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_TerminateSelf
     TryCatch tryCatch(env_);
 
     // Default non-embeddable mode
-    auto func = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
         return JsUIExtensionContext::TerminateSelfWithResult(env, info);
     };
 
@@ -1163,7 +1163,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_TerminateSelf
     TryCatch tryCatch(env_);
 
     // Default non-embeddable mode
-    auto func = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
         return JsUIExtensionContext::TerminateSelfWithResult(env, info);
     };
 
@@ -1225,7 +1225,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_HandleTermina
     // Set embeddable screen mode
     abilityContextImpl_->SetScreenMode(1); // EMBEDDED_FULL_SCREEN_MODE
 
-    auto func = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
         return JsUIExtensionContext::TerminateSelf(env, info);
     };
 
