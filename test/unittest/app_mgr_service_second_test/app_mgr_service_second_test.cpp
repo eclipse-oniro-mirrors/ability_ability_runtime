@@ -19,6 +19,10 @@
 #define private public
 #define protected public
 #include "app_mgr_service.h"
+#include "app_running_manager.h"
+#include "app_running_record.h"
+#include "app_utils.h"
+#include "priority_object.h"
 #undef protected
 #undef private
 #include "mock_ipc_skeleton.h"
@@ -571,6 +575,92 @@ HWTEST_F(AppMgrServiceSecondTest, UpdateFreezeExcludedPid_0100, TestSize.Level2)
     constexpr int32_t HIPROFILER_UID = 3063;
     IPCSkeleton::uid_ = HIPROFILER_UID;
     appMgrService->UpdateFreezeExcludedPid(true, pid, profilerPid);
+}
+
+/**
+ * @tc.name: IsChildProcessSupported_0100
+ * @tc.desc: IsChildProcessSupported when ready but no app record for ark.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceSecondTest, IsChildProcessSupported_0100, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    ASSERT_NE(appMgrService, nullptr);
+    ReadyToRun(appMgrService);
+    IPCSkeleton::pid_ = PID;
+    bool isSupported = false;
+    auto ret = appMgrService->IsChildProcessSupported(false, isSupported);
+    EXPECT_EQ(ret, AAFwk::ERR_NO_APP_RECORD);
+}
+
+/**
+ * @tc.name: IsChildProcessSupported_0200
+ * @tc.desc: IsChildProcessSupported when ready but no app record for native.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceSecondTest, IsChildProcessSupported_0200, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    ASSERT_NE(appMgrService, nullptr);
+    ReadyToRun(appMgrService);
+    IPCSkeleton::pid_ = PID;
+    bool isSupported = false;
+    auto ret = appMgrService->IsChildProcessSupported(true, isSupported);
+    EXPECT_EQ(ret, AAFwk::ERR_NO_APP_RECORD);
+}
+
+/**
+ * @tc.name: IsChildProcessSupported_0300
+ * @tc.desc: IsChildProcessSupported when ready with app record for ark and multiProcessModel is true.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceSecondTest, IsChildProcessSupported_0300, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    ASSERT_NE(appMgrService, nullptr);
+    ReadyToRun(appMgrService);
+
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->bundleName = BUNDLE_NAME;
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, 1, "test_process");
+    appRecord->GetPriorityObject()->SetPid(PID);
+    appMgrService->appMgrServiceInner_->appRunningManager_->appRunningRecordMap_.emplace(1, appRecord);
+
+    AAFwk::AppUtils::GetInstance().isMultiProcessModel_.isLoaded = true;
+    AAFwk::AppUtils::GetInstance().isMultiProcessModel_.value = true;
+    IPCSkeleton::pid_ = PID;
+
+    bool isSupported = false;
+    auto ret = appMgrService->IsChildProcessSupported(false, isSupported);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(isSupported);
+}
+
+/**
+ * @tc.name: IsChildProcessSupported_0400
+ * @tc.desc: IsChildProcessSupported when ready with app record for native and multiProcessModel is true.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceSecondTest, IsChildProcessSupported_0400, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    ASSERT_NE(appMgrService, nullptr);
+    ReadyToRun(appMgrService);
+
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->bundleName = BUNDLE_NAME;
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, 2, "test_process");
+    appRecord->GetPriorityObject()->SetPid(PID);
+    appMgrService->appMgrServiceInner_->appRunningManager_->appRunningRecordMap_.emplace(2, appRecord);
+
+    AAFwk::AppUtils::GetInstance().isMultiProcessModel_.isLoaded = true;
+    AAFwk::AppUtils::GetInstance().isMultiProcessModel_.value = true;
+    IPCSkeleton::pid_ = PID;
+
+    bool isSupported = false;
+    auto ret = appMgrService->IsChildProcessSupported(true, isSupported);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(isSupported);
 }
 } // namespace AppExecFwk
 } // namespace OHOS

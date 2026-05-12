@@ -18,11 +18,13 @@
 #define private public
 #include "app_utils.h"
 #include "child_process_manager.h"
+#include "iservice_registry.h"
 #undef private
 #include "child_process_manager_error_utils.h"
 #include "js_runtime.h"
 #include "mock_app_mgr_service.h"
 #include "mock_bundle_manager.h"
+#include "mock_system_ability_manager.h"
 #include "parameters.h"
 #include "sys_mgr_client.h"
 #include "system_ability_definition.h"
@@ -58,6 +60,14 @@ void ChildProcessManagerTest::SetUpTestCase()
     }
     sysMgr->RegisterSystemAbility(BUNDLE_MGR_SERVICE_SYS_ABILITY_ID, bundleMgrService);
     sysMgr->RegisterSystemAbility(APP_MGR_SERVICE_ID, mockAppMgrService);
+
+    sptr<AppExecFwk::MockSystemAbilityManager> mockSamgr =
+        sptr<AppExecFwk::MockSystemAbilityManager>(new (std::nothrow) AppExecFwk::MockSystemAbilityManager());
+    if (mockSamgr != nullptr) {
+        ON_CALL(*mockSamgr, GetSystemAbility(APP_MGR_SERVICE_ID))
+            .WillByDefault(testing::Return(mockAppMgrService));
+        SystemAbilityManagerClient::GetInstance().systemAbilityManager_ = mockSamgr;
+    }
 }
 
 void ChildProcessManagerTest::TearDownTestCase()
@@ -66,6 +76,7 @@ void ChildProcessManagerTest::TearDownTestCase()
     AAFwk::AppUtils::GetInstance().isMultiProcessModel_.value = false;
     AAFwk::AppUtils::GetInstance().isSupportNativeChildProcess_.isLoaded = false;
     AAFwk::AppUtils::GetInstance().isSupportNativeChildProcess_.value = false;
+    SystemAbilityManagerClient::GetInstance().systemAbilityManager_ = nullptr;
 }
 
 void ChildProcessManagerTest::SetUp()
