@@ -9616,8 +9616,6 @@ std::function<void(int32_t)> AbilityManagerService::GetUserScreenUnlockCallback(
             TAG_LOGE(AAFwkTag::ABILITYMGR, "Invalid abilityMgr pointer.");
             return;
         }
-        AbilityRuntime::UserController::GetInstance().SetUserLockStatus(userId,
-            AbilityRuntime::UserController::UserLockStatus::USER_UNLOCKED);
         auto taskHandler = abilityMgr->GetTaskHandler();
         if (taskHandler == nullptr) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "taskHandler nullptr");
