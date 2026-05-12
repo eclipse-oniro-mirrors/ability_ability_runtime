@@ -606,7 +606,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Set_GetSize(
 AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Set_GetAt(
     OH_AbilityRuntime_MoDispatcher_SetHandle pSet, uint32_t index,
     OH_AbilityRuntime_MoDispatcher_Variant* pValue)
-{ 
+{
     return MoDispatcherComplexTypeManager::SetGetAt(pSet, index, pValue);
 }
 

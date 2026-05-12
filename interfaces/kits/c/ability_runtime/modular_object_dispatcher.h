@@ -130,10 +130,10 @@ struct OH_AbilityRuntime_MoDispatcher_TypeInfo;
  * @since 26.0.0
  */
 typedef struct OH_AbilityRuntime_MoDispatcher_TypeInfo {
-    OH_AbilityRuntime_MoDispatcher_ValueType vt;
+    OH_AbilityRuntime_MoDispatcher_ValueType vt = OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_EMPTY;
     union {
         struct {
-            OH_AbilityRuntime_MoDispatcher_ValueType keyType;
+            OH_AbilityRuntime_MoDispatcher_ValueType keyType = OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_EMPTY;
             struct OH_AbilityRuntime_MoDispatcher_TypeInfo *pValueType;
         } mapType;
         struct {
@@ -238,7 +238,7 @@ typedef struct {
     /**
      * @brief Variant type.
      */
-    OH_AbilityRuntime_MoDispatcher_ValueType vt;
+    OH_AbilityRuntime_MoDispatcher_ValueType vt = OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_EMPTY;
     /**
      * @brief Reserved field 1 for future use.
      */
@@ -730,11 +730,13 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetEnumCount(
  * @param cMaxName Indicates size of buffer.
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrName is null, or cMaxName is 0, or index is out of range.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrName is null, or cMaxName is 0,
+ *         or index is out of range.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetEnumName(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor, uint32_t index, char* pbstrName, uint32_t cMaxName);
+    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor, uint32_t index,
+    char* pbstrName, uint32_t cMaxName);
 
 /**
  * @brief Get enum value count by enum name.
@@ -860,14 +862,14 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetStructFieldName(
  * @param pFieldType Indicates a pointer to receive field type.
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrStructName or 
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrStructName or
  *         pbstrFieldName or pFieldType is null.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND} if field not found.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetStructFieldType(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor, const char* pbstrStructName, const char* pbstrFieldName,
-    OH_AbilityRuntime_MoDispatcher_TypeInfo* pFieldType);
+    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor, const char* pbstrStructName,
+    const char* pbstrFieldName, OH_AbilityRuntime_MoDispatcher_TypeInfo* pFieldType);
 
 // ========== Complex Type Operations ==========
 
