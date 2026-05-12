@@ -494,7 +494,7 @@ int32_t GetUserLockedBundleList(int32_t userId, std::unordered_set<std::string> 
     MOCK_METHOD7(ExecuteInAppSkill, int32_t(const std::string &, const std::string &,
         const std::string &, const std::string &, const std::string &,
         const std::shared_ptr<AAFwk::WantParams> &, const sptr<ISkillExecuteCallback> &));
-    MOCK_METHOD5(ExecuteInAppSkillWithTokenId, int32_t(const AppExecFwk::SkillExecuteRequest &,
+    MOCK_METHOD2(ExecuteInAppSkillWithTokenId, int32_t(const AppExecFwk::SkillExecuteRequest &,
         const sptr<ISkillExecuteCallback> &));
     MOCK_METHOD4(ExecuteSkillDone, int32_t(const sptr<IRemoteObject> &, const std::string &,
         int32_t, const AppExecFwk::SkillExecuteResult &));
