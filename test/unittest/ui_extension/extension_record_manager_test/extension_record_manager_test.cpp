@@ -2052,5 +2052,32 @@ HWTEST_F(ExtensionRecordManagerTest, UpdateProcessName_NullAbilityRecord_0100, T
 
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
+
+/**
+ * @tc.name: UpdateProcessName_CallerInstance_NullCaller_0100
+ * @tc.desc: Test UpdateProcessName PROCESS_MODE_CALLER_INSTANCE with null callerRecord.
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(ExtensionRecordManagerTest, UpdateProcessName_CallerInstance_NullCaller_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    auto extRecordMgr = std::make_shared<ExtensionRecordManager>(0);
+    ASSERT_NE(extRecordMgr, nullptr);
+
+    AAFwk::AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.bundleName = "com.test.target";
+    abilityRequest.abilityInfo.name = "TargetAbility";
+    // callerToken is null by default, so callerRecord will be null
+    auto abilityRecord = AAFwk::BaseExtensionRecord::CreateBaseExtensionRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    std::shared_ptr<ExtensionRecord> extRecord = std::make_shared<ExtensionRecord>(abilityRecord);
+    extRecord->processMode_ = PROCESS_MODE_CALLER_INSTANCE;
+
+    int32_t result = extRecordMgr->UpdateProcessName(abilityRequest, extRecord);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
 } // namespace AbilityRuntime
 } // namespace OHOS

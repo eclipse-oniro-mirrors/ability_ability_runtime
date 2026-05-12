@@ -386,6 +386,10 @@ int32_t ExtensionRecordManager::UpdateProcessName(const AAFwk::AbilityRequest &a
             break;
         }
         case PROCESS_MODE_CALLER_INSTANCE: {
+            if (callerRecord == nullptr) {
+                TAG_LOGE(AAFwkTag::ABILITYMGR, "callerRecord is null");
+                return ERR_INVALID_VALUE;
+            }
             std::string process = abilityRequest.abilityInfo.bundleName + SEPARATOR + abilityRequest.abilityInfo.name
                 + SEPARATOR + std::to_string(callerRecord->GetPid());
             appendAppIndex(process);
