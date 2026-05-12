@@ -11265,7 +11265,7 @@ int AbilityManagerService::GetTopAbilityInner(sptr<IRemoteObject> &token, uint64
     return ERR_OK;
 }
 
-int     (sptr<IRemoteObject> &token, int32_t userId, uint64_t displayId)
+int AbilityManagerService::GetTopAbilityByUserId(sptr<IRemoteObject> &token, int32_t userId, uint64_t displayId)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
 
