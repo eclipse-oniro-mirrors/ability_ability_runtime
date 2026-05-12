@@ -642,7 +642,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_HandleTermina
 // ==================== HandleTerminateSelfInNonEmbeddableMode Tests ====================
 
 // HandleTerminateSelfInNonEmbeddableMode: context is null
-HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_HandleTerminateSelfNonEmbeddable_0100, TestSize.Level1)
+HWTEST_F(UIExtensionContextTest, HandleTerminateSelfNonEmbeddable_0100, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HandleTerminateSelfNonEmbeddable_0100 start";
     HandleScope handleScope(env_);
@@ -673,7 +673,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_HandleTermina
 }
 
 // HandleTerminateSelfInNonEmbeddableMode: context valid, TerminateSelf succeeds
-HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_HandleTerminateSelfNonEmbeddable_0200, TestSize.Level1)
+HWTEST_F(UIExtensionContextTest, HandleTerminateSelfNonEmbeddable_0200, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HandleTerminateSelfNonEmbeddable_0200 start";
     HandleScope handleScope(env_);
@@ -1010,7 +1010,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSe
 // ==================== HandleTerminateSelfWithResultInEmbeddableMode Tests ====================
 
 // HandleTerminateSelfWithResultInEmbeddableMode: context is null
-HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_TerminateSelfWithResultEmbeddable_0100, TestSize.Level1)
+HWTEST_F(UIExtensionContextTest, TerminateSelfWithResultEmbeddable_0100, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "TerminateSelfWithResultEmbeddable_0100 start";
     HandleScope handleScope(env_);
@@ -1053,7 +1053,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_TerminateSelf
 }
 
 // HandleTerminateSelfWithResultInEmbeddableMode: context valid, ConvertTo succeeds
-HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_TerminateSelfWithResultEmbeddable_0200, TestSize.Level1)
+HWTEST_F(UIExtensionContextTest, TerminateSelfWithResultEmbeddable_0200, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "TerminateSelfWithResultEmbeddable_0200 start";
     HandleScope handleScope(env_);
@@ -1106,7 +1106,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_TerminateSelf
 // ==================== HandleTerminateSelfWithResultInNonEmbeddableMode Tests ====================
 
 // HandleTerminateSelfWithResultInNonEmbeddableMode: basic call
-HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_TerminateSelfWithResultNonEmbeddable_0100, TestSize.Level1)
+HWTEST_F(UIExtensionContextTest, TerminateSelfWithResultNonEmbeddable_0100, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "TerminateSelfWithResultNonEmbeddable_0100 start";
     HandleScope handleScope(env_);
@@ -1156,7 +1156,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_TerminateSelf
 }
 
 // HandleTerminateSelfWithResultInNonEmbeddableMode: with callback param
-HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_TerminateSelfWithResultNonEmbeddable_0200, TestSize.Level1)
+HWTEST_F(UIExtensionContextTest, TerminateSelfWithResultNonEmbeddable_0200, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "TerminateSelfWithResultNonEmbeddable_0200 start";
     HandleScope handleScope(env_);
@@ -1214,7 +1214,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_TerminateSelf
     GTEST_LOG_(INFO) << "TerminateSelfWithResultNonEmbeddable_0200 end";
 }
 
-// ==================== HandleTerminateSelfInEmbeddableMode: context valid, embeddable with callback ====================
+// HandleTerminateSelfInEmbeddableMode: context valid, embeddable with callback
 
 HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_HandleTerminateSelfEmbeddable_0300, TestSize.Level1)
 {
@@ -1268,7 +1268,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_HandleTermina
 
 // ==================== HandleTerminateSelfWithResultInEmbeddableMode: context null path ====================
 
-HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_TerminateSelfWithResultEmbeddable_0300, TestSize.Level1)
+HWTEST_F(UIExtensionContextTest, TerminateSelfWithResultEmbeddable_0300, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "TerminateSelfWithResultEmbeddable_0300 start";
     HandleScope handleScope(env_);
