@@ -37,7 +37,6 @@ using testing::Return;
 namespace {
 const std::string STRING_ABILITY_NAME = "ability";
 const std::string STRING_BUNDLE_NAME = "bundle";
-const std::string STRING_DEVICE = "device";
 const std::string STRING_ACTION = "action";
 const std::string STRING_URI = "https://valid.uri.com";
 const std::string STRING_TYPE = "type";
@@ -146,34 +145,6 @@ HWTEST_F(OhosAaCommandStartTest, Ohos_Aa_Command_Start_0400, Function | MediumTe
     cmd.CreateErrorInfoMap();
     std::string result = cmd.ExecCommand();
     EXPECT_NE(result.find("error"), std::string::npos);
-}
-
-/**
- * @tc.number: Ohos_Aa_Command_Start_0800
- * @tc.name: ExecCommand
- * @tc.desc: Verify start with deviceId, abilityName, bundleName.
- */
-HWTEST_F(OhosAaCommandStartTest, Ohos_Aa_Command_Start_0800, Function | MediumTest | Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "Ohos_Aa_Command_Start_0800");
-
-    char* argv[] = {
-        (char*)TOOL_NAME.c_str(),
-        (char*)cmd_.c_str(),
-        (char*)"--deviceId",
-        (char*)STRING_DEVICE.c_str(),
-        (char*)"--abilityname",
-        (char*)STRING_ABILITY_NAME.c_str(),
-        (char*)"--bundlename",
-        (char*)STRING_BUNDLE_NAME.c_str(),
-        (char*)"",
-    };
-    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
-
-    ClawAaShellCommand cmd(argc, argv);
-    cmd.CreateErrorInfoMap();
-    std::string result = cmd.ExecCommand();
-    EXPECT_NE(result.find("start ability successfully"), std::string::npos);
 }
 
 /**
@@ -569,8 +540,6 @@ HWTEST_F(OhosAaCommandStartTest, Ohos_Aa_Command_Start_2400, Function | MediumTe
         (char*)STRING_BUNDLE_NAME.c_str(),
         (char*)"--modulename",
         (char*)STRING_MODULE_NAME.c_str(),
-        (char*)"--deviceId",
-        (char*)STRING_DEVICE.c_str(),
         (char*)"--action",
         (char*)STRING_ACTION.c_str(),
         (char*)"--entity",
