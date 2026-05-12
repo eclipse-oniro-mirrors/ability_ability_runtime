@@ -1954,7 +1954,7 @@ HWTEST_F(UIExtensionContextTest, TerminateSelfWithAnimation_0200, TestSize.Level
     ErrCode receivedErr = ERR_OK;
     TerminateSelfResultCallback callback = [&receivedErr](ErrCode err) { receivedErr = err; };
 
-    auto result = context->TerminateSelfWithAnimation(std::move(callback));
+    context->TerminateSelfWithAnimation(std::move(callback));
     // Falls back to TerminateSelfInner because no animation callback
     // TerminateSelfInner processes and removes request
     EXPECT_TRUE(context->pendingTerminateRequests_.empty());
@@ -2139,7 +2139,7 @@ HWTEST_F(UIExtensionContextTest, TerminateSelfInner_0500, TestSize.Level1)
     context->pendingTerminateRequests_[terminateRequestId] = request;
 
     // Should not crash with null callback
-    auto result = context->TerminateSelfInner(terminateRequestId);
+    context->TerminateSelfInner(terminateRequestId);
     EXPECT_TRUE(context->pendingTerminateRequests_.empty());
 
     context->eventHandler_ = nullptr;
