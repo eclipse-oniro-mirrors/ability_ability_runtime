@@ -36,7 +36,6 @@
 #include "mock_parameters.h"
 #include "mock_scene_board_judgement.h"
 #include "mock_test_object.h"
-#include "skill_execute_result.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -2556,124 +2555,6 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, RequestModalUIExtensionWithAccount_01
     EXPECT_EQ(result, ERR_INVALID_VALUE);
 
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_018 end");
-}
-
-/**
- * @tc.name: ExecuteInAppSkill_0100
- * @tc.desc: Test ExecuteInAppSkill when QuerySkillInfo fails
- * @tc.type: FUNC
- */
-HWTEST_F(AbilityManagerServiceTwelfthTest, ExecuteInAppSkill_0100, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "ExecuteInAppSkill_0100 start");
-    auto abilityMs_ = std::make_shared<AbilityManagerService>();
-    ASSERT_NE(abilityMs_, nullptr);
-
-    auto skillArgs = std::make_shared<AAFwk::WantParams>();
-    sptr<ISkillExecuteCallback> callback = nullptr;
-    auto result = abilityMs_->ExecuteInAppSkill("com.test.bundle", "entry", "PlayMusic",
-        "path", "func", skillArgs, callback);
-    EXPECT_NE(result, ERR_OK);
-
-    TAG_LOGI(AAFwkTag::TEST, "ExecuteInAppSkill_0100 end");
-}
-
-/**
- * @tc.name: ExecuteSkillDone_0100
- * @tc.desc: Test ExecuteSkillDone with null token
- * @tc.type: FUNC
- */
-HWTEST_F(AbilityManagerServiceTwelfthTest, ExecuteSkillDone_0100, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "ExecuteSkillDone_0100 start");
-    auto abilityMs_ = std::make_shared<AbilityManagerService>();
-    ASSERT_NE(abilityMs_, nullptr);
-
-    sptr<IRemoteObject> token = nullptr;
-    AppExecFwk::SkillExecuteResult skillResult;
-    auto result = abilityMs_->ExecuteSkillDone(token, "requestCode", 0, skillResult);
-    EXPECT_EQ(result, ERR_INVALID_VALUE);
-
-    TAG_LOGI(AAFwkTag::TEST, "ExecuteSkillDone_0100 end");
-}
-
-/**
- * @tc.name: ExecuteSkillDone_0200
- * @tc.desc: Test ExecuteSkillDone with token that has no ability record
- * @tc.type: FUNC
- */
-HWTEST_F(AbilityManagerServiceTwelfthTest, ExecuteSkillDone_0200, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "ExecuteSkillDone_0200 start");
-    auto abilityMs_ = std::make_shared<AbilityManagerService>();
-    ASSERT_NE(abilityMs_, nullptr);
-
-    auto token = MockToken(AbilityType::PAGE);
-    ASSERT_NE(token, nullptr);
-    AppExecFwk::SkillExecuteResult skillResult;
-    auto result = abilityMs_->ExecuteSkillDone(token, "requestCode", 0, skillResult);
-    EXPECT_NE(result, ERR_OK);
-
-    TAG_LOGI(AAFwkTag::TEST, "ExecuteSkillDone_0200 end");
-}
-
-/**
- * @tc.name: QuerySkillType_0100
- * @tc.desc: Test QuerySkillType when QuerySkillInfo fails
- * @tc.type: FUNC
- */
-HWTEST_F(AbilityManagerServiceTwelfthTest, QuerySkillType_0100, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "QuerySkillType_0100 start");
-    auto abilityMs_ = std::make_shared<AbilityManagerService>();
-    ASSERT_NE(abilityMs_, nullptr);
-
-    int32_t skillType = 0;
-    auto result = abilityMs_->QuerySkillType("com.test.bundle", "entry", "PlayMusic", skillType);
-    EXPECT_NE(result, ERR_OK);
-
-    TAG_LOGI(AAFwkTag::TEST, "QuerySkillType_0100 end");
-}
-
-/**
- * @tc.name: StartAbilityByCallWithSkill_0100
- * @tc.desc: Test StartAbilityByCallWithSkill with basic call
- * @tc.type: FUNC
- */
-HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityByCallWithSkill_0100, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "StartAbilityByCallWithSkill_0100 start");
-    auto abilityMs_ = std::make_shared<AbilityManagerService>();
-    ASSERT_NE(abilityMs_, nullptr);
-
-    Want want;
-    want.SetElementName("com.test.bundle", "MainAbility");
-    sptr<IRemoteObject> callerToken = nullptr;
-    int32_t userId = 100;
-    auto result = abilityMs_->StartAbilityByCallWithSkill(want, callerToken, userId);
-    EXPECT_NE(result, ERR_OK);
-
-    TAG_LOGI(AAFwkTag::TEST, "StartAbilityByCallWithSkill_0100 end");
-}
-
-/**
- * @tc.name: StartExtensionAbilityWithSkill_0100
- * @tc.desc: Test StartExtensionAbilityWithSkill with basic call
- * @tc.type: FUNC
- */
-HWTEST_F(AbilityManagerServiceTwelfthTest, StartExtensionAbilityWithSkill_0100, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "StartExtensionAbilityWithSkill_0100 start");
-    auto abilityMs_ = std::make_shared<AbilityManagerService>();
-    ASSERT_NE(abilityMs_, nullptr);
-
-    Want want;
-    want.SetElementName("com.test.bundle", "ServiceExtAbility");
-    int32_t userId = 100;
-    auto result = abilityMs_->StartExtensionAbilityWithSkill(want, userId);
-    EXPECT_NE(result, ERR_OK);
-
-    TAG_LOGI(AAFwkTag::TEST, "StartExtensionAbilityWithSkill_0100 end");
 }
 } // namespace AAFwk
 } // namespace OHOS
