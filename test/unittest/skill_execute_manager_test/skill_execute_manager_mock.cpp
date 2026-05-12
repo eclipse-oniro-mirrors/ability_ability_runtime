@@ -16,6 +16,7 @@
 #include "ability_manager_errors.h"
 #include "hilog_tag_wrapper.h"
 #include "mock_my_flag.h"
+#include "permission_verification.h"
 
 namespace OHOS {
 namespace AAFwk {
