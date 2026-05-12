@@ -130,10 +130,10 @@ struct OH_AbilityRuntime_MoDispatcher_TypeInfo;
  * @since 26.0.0
  */
 typedef struct OH_AbilityRuntime_MoDispatcher_TypeInfo {
-    OH_AbilityRuntime_MoDispatcher_ValueType vt = OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_EMPTY;
+    OH_AbilityRuntime_MoDispatcher_ValueType vt;
     union {
         struct {
-            OH_AbilityRuntime_MoDispatcher_ValueType keyType = OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_EMPTY;
+            OH_AbilityRuntime_MoDispatcher_ValueType keyType;
             struct OH_AbilityRuntime_MoDispatcher_TypeInfo *pValueType;
         } mapType;
         struct {
@@ -238,7 +238,7 @@ typedef struct {
     /**
      * @brief Variant type.
      */
-    OH_AbilityRuntime_MoDispatcher_ValueType vt = OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_EMPTY;
+    OH_AbilityRuntime_MoDispatcher_ValueType vt;
     /**
      * @brief Reserved field 1 for future use.
      */

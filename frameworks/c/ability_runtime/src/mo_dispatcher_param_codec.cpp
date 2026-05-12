@@ -241,8 +241,8 @@ AbilityRuntime_ErrorCode WriteRawValueImpl(MessageParcel& parcel,
                 OH_AbilityRuntime_MoDispatcher_Variant temp;
                 auto loadRet = MoDispatcherComplexTypeManager::LoadVariant(it->second, &temp);
                 if (loadRet != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
-                    TAG_LOGE(AAFwkTag::EXT, "WriteRawValue: LoadVariant failed for struct field '%{public}s',
-                        ret=%{public}d", fieldName.c_str(), loadRet);
+                    TAG_LOGE(AAFwkTag::EXT, "WriteRawValue: LoadVariant failed for struct field '%{public}s',"
+                        "ret=%{public}d", fieldName.c_str(), loadRet);
                     return loadRet;
                 }
                 auto ret = WriteRawValueImpl(parcel, fieldType, &temp, visited);

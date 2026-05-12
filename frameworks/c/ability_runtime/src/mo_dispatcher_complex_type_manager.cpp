@@ -208,7 +208,7 @@ AbilityRuntime_ErrorCode DeepCopyStorage(const MoVariantStorage& src, MoVariantS
         auto* oldStruct = src.value.u.pstructVal;
         auto* newStruct = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Struct();
         if (newStruct == nullptr) {
-            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         };
         newStruct->name = oldStruct->name;
         newStruct->fieldTypes = oldStruct->fieldTypes;

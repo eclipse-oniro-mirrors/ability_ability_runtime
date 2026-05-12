@@ -557,8 +557,8 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::ParseMetadata(const std::s
 
             if (interfaceMeta.IsMainService()) {
                 if (!mainServiceInterface_.empty()) {
-                    TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: duplicate mainService interface, first=%{public}s,
-                        second=%{public}s", mainServiceInterface_.c_str(), interfaceMeta.name.c_str());
+                    TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: duplicate mainService interface, first=%{public}s,"
+                        "second=%{public}s", mainServiceInterface_.c_str(), interfaceMeta.name.c_str());
                     return ABILITY_RUNTIME_ERROR_CODE_TLB_METADATA_INVALID;
                 }
                 mainServiceInterface_ = interfaceMeta.name;

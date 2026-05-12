@@ -24,6 +24,7 @@
 
 #include "ipc_inner_object.h"
 #include "modular_object_dispatcher.h"
+#include "securec.h"
 
 namespace OHOS::AbilityRuntime {
 class MoDispatcherMetadataManager;
