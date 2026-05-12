@@ -14,9 +14,13 @@
  */
 #include <gtest/gtest.h>
 
+#include <chrono>
+#include <deque>
+
 #define private public
 #define protected public
 #include "ability_manager_service.h"
+#include "extract_insight_intent_profile.h"
 #include "session_info.h"
 #include "sub_managers_helper.h"
 #include "insight_intent_query_param.h"
@@ -266,6 +270,182 @@ HWTEST_F(AbilityManagerServiceMockTest, ExecuteIntent_0300, TestSize.Level1)
     sptr<IRemoteObject> callerToken = new OHOS::AAFwk::Token(ability);
     uint64_t key = 1;
     auto ret = abilityMs->ExecuteIntent(key, callerToken, param);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: ExecuteIntent_0400
+ * @tc.desc: Test ExecuteIntent distributed branch permission denied
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceMockTest, ExecuteIntent_0400, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    AppExecFwk::InsightIntentExecuteParam param;
+    param.bundleName_ = "test.bundleName";
+    param.moduleName_ = "test.entry";
+    param.abilityName_ = "ability1";
+    param.insightIntentName_ = "test1";
+    param.insightIntentParam_ = std::make_shared<WantParams>();
+    param.executeMode_ = AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND;
+    param.deviceId_ = "remoteDevice";
+
+    std::shared_ptr<AbilityRecord> ability = nullptr;
+    sptr<IRemoteObject> callerToken = new OHOS::AAFwk::Token(ability);
+    uint64_t key = 1;
+
+    auto ret = abilityMs->ExecuteIntent(key, callerToken, param);
+    EXPECT_EQ(ret, ERR_INTENT_CONNECTION_FAILED);
+}
+
+/**
+ * @tc.name: ExecuteIntent_0500
+ * @tc.desc: Test ExecuteIntent distributed branch with flood attack
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceMockTest, ExecuteIntent_0500, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    AppExecFwk::InsightIntentExecuteParam param;
+    param.bundleName_ = "test.bundleName";
+    param.moduleName_ = "test.entry";
+    param.abilityName_ = "ability1";
+    param.insightIntentName_ = "test1";
+    param.insightIntentParam_ = std::make_shared<WantParams>();
+    param.executeMode_ = AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND;
+    param.deviceId_ = "remoteDevice";
+
+    int32_t callerUid = IPCSkeleton::GetCallingUid();
+    int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+    abilityMs->floodAttackStatistics_[callerUid] = std::deque<int64_t>(10, now);
+
+    std::shared_ptr<AbilityRecord> ability = nullptr;
+    sptr<IRemoteObject> callerToken = new OHOS::AAFwk::Token(ability);
+    uint64_t key = 1;
+    auto ret = abilityMs->ExecuteIntent(key, callerToken, param);
+    EXPECT_EQ(ret, INNER_ERR);
+}
+
+/**
+ * @tc.name: ExecuteIntentForDistributed_0100
+ * @tc.desc: Test ExecuteIntentForDistributed with invalid want
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceMockTest, ExecuteIntentForDistributed_0100, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    Want want;
+    uint64_t requestCode = 1;
+    uint64_t specifiedFullTokenId = 0;
+    auto ret = abilityMs->ExecuteIntentForDistributed(want, "deviceA", requestCode, specifiedFullTokenId);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: ExecuteIntentForDistributed_0200
+ * @tc.desc: Test ExecuteIntentForDistributed enters common path and returns invalid for incomplete element
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceMockTest, ExecuteIntentForDistributed_0200, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    Want want;
+    want.SetElementName("", "com.example.bundle", "MainAbility");
+    want.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME, std::string("intent.test"));
+    want.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID, std::string("1"));
+
+    uint64_t requestCode = 1;
+    uint64_t specifiedFullTokenId = 0;
+    auto ret = abilityMs->ExecuteIntentForDistributed(want, "deviceA", requestCode, specifiedFullTokenId);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: ExecuteIntentCommon_0100
+ * @tc.desc: Test ExecuteIntentCommon with nullptr param
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceMockTest, ExecuteIntentCommon_0100, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    AbilityRuntime::ExtractInsightIntentGenericInfo infos;
+    AbilityRuntime::ExecuteIntentCommonOptions options(true, infos, 1);
+    auto ret = abilityMs->ExecuteIntentCommon(nullptr, nullptr, "", options);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: ExecuteIntentCommon_0200
+ * @tc.desc: Test ExecuteIntentCommon with invalid required fields
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceMockTest, ExecuteIntentCommon_0200, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    auto param = std::make_shared<AppExecFwk::InsightIntentExecuteParam>();
+    param->isServiceMatch_ = true;
+    param->bundleName_ = "";
+    param->moduleName_ = "test.entry";
+    param->abilityName_ = "MainAbility";
+    param->insightIntentName_ = "intent.test";
+
+    AbilityRuntime::ExtractInsightIntentGenericInfo infos;
+    AbilityRuntime::ExecuteIntentCommonOptions options(false, infos, 1);
+    auto ret = abilityMs->ExecuteIntentCommon(nullptr, param, "", options);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: ExecuteIntentCommon_0300
+ * @tc.desc: Test ExecuteIntentCommon switch UI_ABILITY_FOREGROUND branch
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceMockTest, ExecuteIntentCommon_0300, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    auto param = std::make_shared<AppExecFwk::InsightIntentExecuteParam>();
+    param->isServiceMatch_ = true;
+    param->bundleName_ = "test.bundleName";
+    param->moduleName_ = "test.entry";
+    param->abilityName_ = "ability1";
+    param->insightIntentName_ = "test1";
+    param->insightIntentParam_ = std::make_shared<WantParams>();
+    param->executeMode_ = AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND;
+
+    AbilityRuntime::ExtractInsightIntentGenericInfo infos;
+    AbilityRuntime::ExecuteIntentCommonOptions options(false, infos, 1);
+    auto ret = abilityMs->ExecuteIntentCommon(nullptr, param, "", options);
+    EXPECT_NE(ret, ERR_OK);
+
+    param->executeMode_ = AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND;
+    ret = abilityMs->ExecuteIntentCommon(nullptr, param, "", options);
+    EXPECT_NE(ret, ERR_OK);
+
+    param->executeMode_ = AppExecFwk::ExecuteMode::UI_EXTENSION_ABILITY;
+    ret = abilityMs->ExecuteIntentCommon(nullptr, param, "", options);
+    EXPECT_EQ(ret, ERR_INVALID_OPERATION);
+
+    param->executeMode_ = AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY;
+    ret = abilityMs->ExecuteIntentCommon(nullptr, param, "", options);
+    EXPECT_NE(ret, ERR_OK);
+
+    param->executeMode_ = 999;
+    ret = abilityMs->ExecuteIntentCommon(nullptr, param, "", options);
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
 }
 
