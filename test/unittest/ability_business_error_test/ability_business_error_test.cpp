@@ -69,7 +69,7 @@ HWTEST_F(AbilityBusinessErrorTest, GetErrorMsg_3560000X, TestSize.Level2)
     EXPECT_EQ(GetErrorMsg(AbilityErrorCode::ERROR_CODE_AGENT_ID_NOT_EXIST),
         "The specified agentId does not exist.");
     EXPECT_EQ(GetErrorMsg(AbilityErrorCode::ERROR_CODE_AGENT_CARD_LIST_OUT_OF_RANGE),
-        "The number of agent cards in the bundle reaches the limit.");
+        "The number of AgentCards in the bundle reaches the limit.");
     EXPECT_EQ(GetErrorMsg(AbilityErrorCode::ERROR_CODE_MAX_CONNECTIONS_REACHED),
         "Maximum connections from the same caller have been reached. "
         "Please disconnect at least one agent extension beforehand.");
