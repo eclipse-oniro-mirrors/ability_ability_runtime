@@ -2070,6 +2070,38 @@ HWTEST_F(AbilityManagerClientBranchTest, ExecuteIntent_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: AbilityManagerClient_QueryEntityInfo_0100
+ * @tc.desc: QueryEntityInfo
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, QueryEntityInfo_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "QueryEntityInfo_0100 start";
+    uint64_t key = 1;
+    sptr<IRemoteObject> callerToken = nullptr;
+    const InsightIntentQueryParam param;
+    auto result = client_->QueryEntityInfo(key, callerToken, param);
+    EXPECT_EQ(ERR_OK, result);
+    GTEST_LOG_(INFO) << "QueryEntityInfo_0100 end";
+}
+
+/**
+ * @tc.name: AbilityManagerClient_QueryEntityInfo_0200
+ * @tc.desc: QueryEntityInfo default implementation return
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, QueryEntityInfo_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "QueryEntityInfo_0200 start";
+    uint64_t key = 1;
+    sptr<IRemoteObject> callerToken = nullptr;
+    const InsightIntentQueryParam param;
+    auto result = client_->QueryEntityInfo(key, callerToken, param);
+    EXPECT_EQ(ERR_OK, result);
+    GTEST_LOG_(INFO) << "QueryEntityInfo_0200 end";
+}
+
+/**
  * @tc.name: AbilityManagerClient_ExecuteInsightIntentDone_0100
  * @tc.desc: ExecuteInsightIntentDone
  * @tc.type: FUNC
