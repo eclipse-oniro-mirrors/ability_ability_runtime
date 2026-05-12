@@ -95,7 +95,9 @@ AbilityRuntime_ErrorCode WriteRawValueImpl(MessageParcel& parcel,
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
         auto ret = CheckWrite(parcel.WriteInt32(static_cast<int32_t>(value->u.parrayVal->elements.size())));
-        if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+        if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+            return ret;
+        }
         for (const auto& item : value->u.parrayVal->elements) {
             OH_AbilityRuntime_MoDispatcher_Variant temp;
             auto loadRet = MoDispatcherComplexTypeManager::LoadVariant(item, &temp);
@@ -105,7 +107,9 @@ AbilityRuntime_ErrorCode WriteRawValueImpl(MessageParcel& parcel,
             }
             ret = WriteRawValueImpl(parcel, typeInfo->pElementType, &temp, visited);
             MoDispatcherComplexTypeManager::Variant_Clear(&temp);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                return ret;
+            }
         }
         return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
     }
@@ -120,7 +124,9 @@ AbilityRuntime_ErrorCode WriteRawValueImpl(MessageParcel& parcel,
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
         auto ret = CheckWrite(parcel.WriteInt32(static_cast<int32_t>(value->u.pvectorVal->elements.size())));
-        if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+        if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+            return ret;
+        }
         for (const auto& item : value->u.pvectorVal->elements) {
             OH_AbilityRuntime_MoDispatcher_Variant temp;
             auto loadRet = MoDispatcherComplexTypeManager::LoadVariant(item, &temp);
@@ -131,7 +137,9 @@ AbilityRuntime_ErrorCode WriteRawValueImpl(MessageParcel& parcel,
             }
             ret = WriteRawValueImpl(parcel, typeInfo->pElementType, &temp, visited);
             MoDispatcherComplexTypeManager::Variant_Clear(&temp);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                return ret;
+            }
         }
         return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
     }
@@ -146,7 +154,9 @@ AbilityRuntime_ErrorCode WriteRawValueImpl(MessageParcel& parcel,
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
         auto ret = CheckWrite(parcel.WriteInt32(static_cast<int32_t>(value->u.psetVal->elements.size())));
-        if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+        if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+            return ret;
+        }
         for (const auto& item : value->u.psetVal->elements) {
             OH_AbilityRuntime_MoDispatcher_Variant temp;
             auto loadRet = MoDispatcherComplexTypeManager::LoadVariant(item, &temp);
@@ -156,7 +166,9 @@ AbilityRuntime_ErrorCode WriteRawValueImpl(MessageParcel& parcel,
             }
             ret = WriteRawValueImpl(parcel, typeInfo->pElementType, &temp, visited);
             MoDispatcherComplexTypeManager::Variant_Clear(&temp);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                return ret;
+            }
         }
         return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
     }
@@ -171,7 +183,9 @@ AbilityRuntime_ErrorCode WriteRawValueImpl(MessageParcel& parcel,
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
         auto ret = CheckWrite(parcel.WriteInt32(static_cast<int32_t>(value->u.pmapVal->entries.size())));
-        if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+        if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+            return ret;
+        }
         auto keyTypeInfo = std::make_shared<MoTypeInfo>();
         keyTypeInfo->vt = typeInfo->mapKeyType;
         for (const auto& item : value->u.pmapVal->entries) {
@@ -197,7 +211,9 @@ AbilityRuntime_ErrorCode WriteRawValueImpl(MessageParcel& parcel,
             ret = WriteRawValueImpl(parcel, typeInfo->pMapValueType, &val, visited);
             MoDispatcherComplexTypeManager::Variant_Clear(&key);
             MoDispatcherComplexTypeManager::Variant_Clear(&val);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                return ret;
+            }
         }
         return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
     }
@@ -231,13 +247,17 @@ AbilityRuntime_ErrorCode WriteRawValueImpl(MessageParcel& parcel,
                 }
                 auto ret = WriteRawValueImpl(parcel, fieldType, &temp, visited);
                 MoDispatcherComplexTypeManager::Variant_Clear(&temp);
-                if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+                if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                    return ret;
+                }
             } else {
                 OH_AbilityRuntime_MoDispatcher_Variant temp;
                 (void)memset_s(&temp, sizeof(temp), 0, sizeof(temp));
                 temp.vt = fieldType ? fieldType->vt : OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_EMPTY;
                 auto ret = WriteRawValueImpl(parcel, fieldType, &temp, visited);
-                if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+                if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                    return ret;
+                }
             }
         }
         return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
@@ -417,13 +437,19 @@ AbilityRuntime_ErrorCode MoDispatcherParamCodec::ReadRawValue(MessageParcel& par
         OH_AbilityRuntime_MoDispatcher_ArrayHandle array = nullptr;
         auto ret = MoDispatcherComplexTypeManager::ArrayCreate(&elemTypeInfo,
             static_cast<uint32_t>(size), &array);
-        if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+        if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+            return ret;
+        }
         for (uint32_t i = 0; i < static_cast<uint32_t>(size); i++) {
             OH_AbilityRuntime_MoDispatcher_Variant elem;
             ret = ReadRawValue(parcel, typeInfo->pElementType, &elem);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                return ret;
+            }
             ret = MoDispatcherComplexTypeManager::ArraySet(array, i, &elem);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                return ret;
+            }
         }
         value->u.parrayVal = array;
         MoTypeInfo::ClearCTypeInfo(&elemTypeInfo);
@@ -443,13 +469,19 @@ AbilityRuntime_ErrorCode MoDispatcherParamCodec::ReadRawValue(MessageParcel& par
         }
         OH_AbilityRuntime_MoDispatcher_VectorHandle vector = nullptr;
         auto ret = MoDispatcherComplexTypeManager::VectorCreate(&elemTypeInfo, &vector);
-        if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+        if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+            return ret;
+        }
         for (uint32_t i = 0; i < static_cast<uint32_t>(size); i++) {
             OH_AbilityRuntime_MoDispatcher_Variant elem;
             ret = ReadRawValue(parcel, typeInfo->pElementType, &elem);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                return ret;
+            }
             ret = MoDispatcherComplexTypeManager::VectorAdd(vector, &elem);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                return ret;
+            }
         }
         value->u.pvectorVal = vector;
         MoTypeInfo::ClearCTypeInfo(&elemTypeInfo);
@@ -469,13 +501,19 @@ AbilityRuntime_ErrorCode MoDispatcherParamCodec::ReadRawValue(MessageParcel& par
         }
         OH_AbilityRuntime_MoDispatcher_SetHandle setHandle = nullptr;
         auto ret = MoDispatcherComplexTypeManager::SetCreate(&elemTypeInfo, &setHandle);
-        if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+        if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+            return ret;
+        }
         for (uint32_t i = 0; i < static_cast<uint32_t>(size); i++) {
             OH_AbilityRuntime_MoDispatcher_Variant elem;
             ret = ReadRawValue(parcel, typeInfo->pElementType, &elem);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                return ret;
+            }
             ret = MoDispatcherComplexTypeManager::SetAdd(setHandle, &elem);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                return ret;
+            }
         }
         value->u.psetVal = setHandle;
         MoTypeInfo::ClearCTypeInfo(&elemTypeInfo);
@@ -495,18 +533,26 @@ AbilityRuntime_ErrorCode MoDispatcherParamCodec::ReadRawValue(MessageParcel& par
         }
         OH_AbilityRuntime_MoDispatcher_MapHandle map = nullptr;
         auto ret = MoDispatcherComplexTypeManager::MapCreate(typeInfo->mapKeyType, &valueTypeInfo, &map);
-        if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+        if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+            return ret;
+        }
         auto keyTypeInfo = std::make_shared<MoTypeInfo>();
         keyTypeInfo->vt = typeInfo->mapKeyType;
         for (uint32_t i = 0; i < static_cast<uint32_t>(size); i++) {
             OH_AbilityRuntime_MoDispatcher_Variant k;
             OH_AbilityRuntime_MoDispatcher_Variant v;
             ret = ReadRawValue(parcel, keyTypeInfo, &k);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                return ret;
+            }
             ret = ReadRawValue(parcel, typeInfo->pMapValueType, &v);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                return ret;
+            }
             ret = MoDispatcherComplexTypeManager::MapPut(map, &k, &v);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                return ret;
+            }
         }
         value->u.pmapVal = map;
         MoTypeInfo::ClearCTypeInfo(&valueTypeInfo);
@@ -521,7 +567,9 @@ AbilityRuntime_ErrorCode MoDispatcherParamCodec::ReadRawValue(MessageParcel& par
         }
         OH_AbilityRuntime_MoDispatcher_StructHandle structObj = nullptr;
         auto ret = MoDispatcherComplexTypeManager::StructCreate(typeInfo->idlType.c_str(), &structObj);
-        if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) return ret;
+        if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+            return ret;
+        }
         for (const auto& fieldName : fieldNames) {
             std::shared_ptr<MoTypeInfo> fieldType;
             MoDispatcherComplexTypeManager::GetStructFieldType(typeInfo->idlType, fieldName, &fieldType);

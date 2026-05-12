@@ -65,13 +65,16 @@ public:
     AbilityRuntime_ErrorCode GetEnumCount(uint32_t* count) const;
     AbilityRuntime_ErrorCode GetEnumName(uint32_t index, std::string* name) const;
     AbilityRuntime_ErrorCode GetEnumValueCount(const std::string& enumName, uint32_t* count) const;
-    AbilityRuntime_ErrorCode GetEnumValueName(const std::string& enumName, uint32_t index, std::string* valueName) const;
-    AbilityRuntime_ErrorCode GetEnumValue(const std::string& enumName, const std::string& valueName, int32_t* value) const;
+    AbilityRuntime_ErrorCode GetEnumValueName(const std::string& enumName, uint32_t index,
+        std::string* valueName) const;
+    AbilityRuntime_ErrorCode GetEnumValue(const std::string& enumName, const std::string& valueName,
+        int32_t* value) const;
 
     AbilityRuntime_ErrorCode GetStructCount(uint32_t* count) const;
     AbilityRuntime_ErrorCode GetStructName(uint32_t index, std::string* name) const;
     AbilityRuntime_ErrorCode GetStructFieldCount(const std::string& structName, uint32_t* count) const;
-    AbilityRuntime_ErrorCode GetStructFieldName(const std::string& structName, uint32_t index, std::string* fieldName) const;
+    AbilityRuntime_ErrorCode GetStructFieldName(const std::string& structName, uint32_t index,
+        std::string* fieldName) const;
     AbilityRuntime_ErrorCode GetStructFieldType(const std::string& structName, const std::string& fieldName,
         OH_AbilityRuntime_MoDispatcher_TypeInfo* fieldType) const;
 
@@ -84,7 +87,8 @@ private:
     bool IsIdlTypeDeclared(const std::string& idlType) const;
 
     // Fill a C TypeInfo struct from MoTypeInfo (shallow copy of the top-level fields only)
-    static void FillCTypeInfo(OH_AbilityRuntime_MoDispatcher_TypeInfo* cType, const std::shared_ptr<MoTypeInfo>& moType);
+    static void FillCTypeInfo(OH_AbilityRuntime_MoDispatcher_TypeInfo* cType,
+        const std::shared_ptr<MoTypeInfo>& moType);
 
     AbilityRuntime_ErrorCode ParseMetadata(const std::string& jsonText);
     AbilityRuntime_ErrorCode RequestMetadataJson(OHOS::IRemoteObject* proxy, std::string* jsonText);

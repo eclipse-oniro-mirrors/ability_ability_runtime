@@ -42,8 +42,8 @@ bool ReadAllFromFd(int32_t fd, std::string* out)
 std::string ToLower(const std::string& v)
 {
     std::string out = v;
-    std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) { 
-        return static_cast<char>(std::tolower(c)); 
+    std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
     });
     return out;
 }
@@ -72,7 +72,6 @@ uint32_t GetMemberId(const Json& obj)
         if (memId > 0) {
             return memId;
         }
-
     }
     return 0;
 }
@@ -750,18 +749,26 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetInterfaceDescriptor(con
 
 AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetEnumCount(uint32_t* count) const
 {
-    if (count == nullptr) return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    if (count == nullptr) {
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
     std::lock_guard<std::mutex> lock(mutex_);
-    if (!loaded_) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+    if (!loaded_) {
+        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+    }
     *count = static_cast<uint32_t>(enums_.size());
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
 AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetEnumName(uint32_t index, std::string* name) const
 {
-    if (name == nullptr) return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    if (name == nullptr) {
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
     std::lock_guard<std::mutex> lock(mutex_);
-    if (!loaded_ || index >= enums_.size()) return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    if (!loaded_ || index >= enums_.size()) {
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
     *name = enums_[index].name;
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
@@ -769,9 +776,13 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetEnumName(uint32_t index
 AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetEnumValueCount(const std::string& enumName,
     uint32_t* count) const
 {
-    if (count == nullptr || enumName.empty()) return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    if (count == nullptr || enumName.empty()) {
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
     std::lock_guard<std::mutex> lock(mutex_);
-    if (!loaded_) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+    if (!loaded_) {
+        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+    }
     for (const auto& item : enums_) {
         if (item.name == enumName) {
             *count = static_cast<uint32_t>(item.values.size());
@@ -784,9 +795,13 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetEnumValueCount(const st
 AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetEnumValueName(const std::string& enumName, uint32_t index,
     std::string* valueName) const
 {
-    if (valueName == nullptr || enumName.empty()) return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    if (valueName == nullptr || enumName.empty()) {
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
     std::lock_guard<std::mutex> lock(mutex_);
-    if (!loaded_) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+    if (!loaded_) {
+        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+    }
     for (const auto& item : enums_) {
         if (item.name == enumName) {
             if (index >= item.values.size()) return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
@@ -800,9 +815,13 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetEnumValueName(const std
 AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetEnumValue(const std::string& enumName,
     const std::string& valueName, int32_t* value) const
 {
-    if (value == nullptr || enumName.empty() || valueName.empty()) return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    if (value == nullptr || enumName.empty() || valueName.empty()) {
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
     std::lock_guard<std::mutex> lock(mutex_);
-    if (!loaded_) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+    if (!loaded_) {
+        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+    }
     for (const auto& item : enums_) {
         if (item.name == enumName) {
             for (const auto& enumValue : item.values) {
@@ -819,16 +838,22 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetEnumValue(const std::st
 
 AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetStructCount(uint32_t* count) const
 {
-    if (count == nullptr) return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    if (count == nullptr) {
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
     std::lock_guard<std::mutex> lock(mutex_);
-    if (!loaded_) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+    if (!loaded_) {
+        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+    }
     *count = static_cast<uint32_t>(structs_.size());
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
 AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetStructName(uint32_t index, std::string* name) const
 {
-    if (name == nullptr) return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    if (name == nullptr) {
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_ || index >= structs_.size()) return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     *name = structs_[index].name;
@@ -838,7 +863,9 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetStructName(uint32_t ind
 AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetStructFieldCount(const std::string& structName,
     uint32_t* count) const
 {
-    if (count == nullptr || structName.empty()) return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    if (count == nullptr || structName.empty()) {
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     for (const auto& item : structs_) {
@@ -853,12 +880,18 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetStructFieldCount(const 
 AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetStructFieldName(const std::string& structName, uint32_t index,
     std::string* fieldName) const
 {
-    if (fieldName == nullptr || structName.empty()) return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    if (fieldName == nullptr || structName.empty()) {
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
     std::lock_guard<std::mutex> lock(mutex_);
-    if (!loaded_) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+    if (!loaded_) {
+        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+    }
     for (const auto& item : structs_) {
         if (item.name == structName) {
-            if (index >= item.fields.size()) return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+            if (index >= item.fields.size()) {
+                return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+            }
             *fieldName = item.fields[index].name;
             return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
         }
@@ -873,7 +906,9 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetStructFieldType(const s
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
-    if (!loaded_) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+    if (!loaded_) {
+        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+    }
     for (const auto& item : structs_) {
         if (item.name == structName) {
             for (const auto& field : item.fields) {

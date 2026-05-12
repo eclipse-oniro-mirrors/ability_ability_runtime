@@ -109,13 +109,18 @@ AbilityRuntime_ErrorCode DeepCopyStorage(const MoVariantStorage& src, MoVariantS
         }
         auto* oldArray = src.value.u.parrayVal;
         auto* newArray = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Array();
-        if (newArray == nullptr) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        if (newArray == nullptr) {
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         newArray->elementTypeInfo = oldArray->elementTypeInfo;
         newArray->elements.reserve(oldArray->elements.size());
         for (const auto& elem : oldArray->elements) {
             MoVariantStorage elemCopy;
             auto ret = DeepCopyStorage(elem, elemCopy, visited);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newArray; return ret; }
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                delete newArray;
+                return ret;
+            }
             newArray->elements.emplace_back(std::move(elemCopy));
         }
         dst.value.u.parrayVal = newArray;
@@ -127,13 +132,18 @@ AbilityRuntime_ErrorCode DeepCopyStorage(const MoVariantStorage& src, MoVariantS
         }
         auto* oldVector = src.value.u.pvectorVal;
         auto* newVector = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Vector();
-        if (newVector == nullptr) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        if (newVector == nullptr) {
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         newVector->elementTypeInfo = oldVector->elementTypeInfo;
         newVector->elements.reserve(oldVector->elements.size());
         for (const auto& elem : oldVector->elements) {
             MoVariantStorage elemCopy;
             auto ret = DeepCopyStorage(elem, elemCopy, visited);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newVector; return ret; }
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                delete newVector;
+                return ret;
+            }
             newVector->elements.emplace_back(std::move(elemCopy));
         }
         dst.value.u.pvectorVal = newVector;
@@ -145,13 +155,18 @@ AbilityRuntime_ErrorCode DeepCopyStorage(const MoVariantStorage& src, MoVariantS
         }
         auto* oldSet = src.value.u.psetVal;
         auto* newSet = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Set();
-        if (newSet == nullptr) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        if (newSet == nullptr) {
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         newSet->elementTypeInfo = oldSet->elementTypeInfo;
         newSet->elements.reserve(oldSet->elements.size());
         for (const auto& elem : oldSet->elements) {
             MoVariantStorage elemCopy;
             auto ret = DeepCopyStorage(elem, elemCopy, visited);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newSet; return ret; }
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                delete newSet;
+                return ret;
+            }
             newSet->elements.emplace_back(std::move(elemCopy));
         }
         dst.value.u.psetVal = newSet;
@@ -163,16 +178,24 @@ AbilityRuntime_ErrorCode DeepCopyStorage(const MoVariantStorage& src, MoVariantS
         }
         auto* oldMap = src.value.u.pmapVal;
         auto* newMap = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Map();
-        if (newMap == nullptr) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        if (newMap == nullptr) {
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         newMap->keyType = oldMap->keyType;
         newMap->valueTypeInfo = oldMap->valueTypeInfo;
         newMap->entries.reserve(oldMap->entries.size());
         for (const auto& entry : oldMap->entries) {
             std::pair<MoVariantStorage, MoVariantStorage> entryCopy;
             auto ret = DeepCopyStorage(entry.first, entryCopy.first, visited);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newMap; return ret; }
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                delete newMap;
+                return ret;
+            }
             ret = DeepCopyStorage(entry.second, entryCopy.second, visited);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newMap; return ret; }
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                delete newMap;
+                return ret;
+            }
             newMap->entries.emplace_back(std::move(entryCopy));
         }
         dst.value.u.pmapVal = newMap;
@@ -184,13 +207,18 @@ AbilityRuntime_ErrorCode DeepCopyStorage(const MoVariantStorage& src, MoVariantS
         }
         auto* oldStruct = src.value.u.pstructVal;
         auto* newStruct = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Struct();
-        if (newStruct == nullptr) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        if (newStruct == nullptr) {
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL
+        };
         newStruct->name = oldStruct->name;
         newStruct->fieldTypes = oldStruct->fieldTypes;
         for (const auto& field : oldStruct->fields) {
             MoVariantStorage fieldCopy;
             auto ret = DeepCopyStorage(field.second, fieldCopy, visited);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newStruct; return ret; }
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                delete newStruct;
+                return ret;
+            }
             newStruct->fields[field.first] = std::move(fieldCopy);
         }
         dst.value.u.pstructVal = newStruct;
@@ -433,8 +461,9 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::SetRemove(OH_AbilityRun
     if (pSet == nullptr || pValue == nullptr) {
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
-    auto iter = std::find_if(pSet->elements.begin(), pSet->elements.end(),
-        [pValue](const MoVariantStorage& item) { return VariantEquals(item, pValue); });
+    auto iter = std::find_if(pSet->elements.begin(), pSet->elements.end(), [pValue](const MoVariantStorage& item) {
+        return VariantEquals(item, pValue);
+    });
     if (iter != pSet->elements.end()) {
         pSet->elements.erase(iter);
     }
@@ -447,8 +476,9 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::SetContains(OH_AbilityR
     if (pSet == nullptr || pValue == nullptr || pExists == nullptr) {
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
-    *pExists = std::any_of(pSet->elements.begin(), pSet->elements.end(),
-        [pValue](const MoVariantStorage& item) { return VariantEquals(item, pValue); });
+    *pExists = std::any_of(pSet->elements.begin(), pSet->elements.end(), [pValue](const MoVariantStorage& item) {
+        return VariantEquals(item, pValue);
+    });
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
@@ -590,8 +620,9 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::MapRemove(OH_AbilityRun
     if (pMap == nullptr || pKey == nullptr) {
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
-    auto iter = std::find_if(pMap->entries.begin(), pMap->entries.end(),
-        [pKey](const auto& item) { return VariantEquals(item.first, pKey); });
+    auto iter = std::find_if(pMap->entries.begin(), pMap->entries.end(), [pKey](const auto& item) {
+        return VariantEquals(item.first, pKey);
+    });
     if (iter != pMap->entries.end()) {
         pMap->entries.erase(iter);
     }
@@ -604,8 +635,9 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::MapContainsKey(OH_Abili
     if (pMap == nullptr || pKey == nullptr || pExists == nullptr) {
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
-    *pExists = std::any_of(pMap->entries.begin(), pMap->entries.end(),
-        [pKey](const auto& item) { return VariantEquals(item.first, pKey); });
+    *pExists = std::any_of(pMap->entries.begin(), pMap->entries.end(), [pKey](const auto& item) {
+        return VariantEquals(item.first, pKey);
+    });
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
@@ -809,13 +841,18 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::StoreVariant(
         }
         auto* oldArray = src->u.parrayVal;
         auto* newArray = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Array();
-        if (newArray == nullptr) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        if (newArray == nullptr) {
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         newArray->elementTypeInfo = oldArray->elementTypeInfo;
         newArray->elements.reserve(oldArray->elements.size());
         for (const auto& elem : oldArray->elements) {
             MoVariantStorage elemCopy;
             auto ret = DeepCopyStorage(elem, elemCopy, visited);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newArray; return ret; }
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                delete newArray;
+                return ret;
+            }
             newArray->elements.emplace_back(std::move(elemCopy));
         }
         dst->value.u.parrayVal = newArray;
@@ -827,13 +864,18 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::StoreVariant(
         }
         auto* oldVector = src->u.pvectorVal;
         auto* newVector = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Vector();
-        if (newVector == nullptr) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        if (newVector == nullptr) {
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         newVector->elementTypeInfo = oldVector->elementTypeInfo;
         newVector->elements.reserve(oldVector->elements.size());
         for (const auto& elem : oldVector->elements) {
             MoVariantStorage elemCopy;
             auto ret = DeepCopyStorage(elem, elemCopy, visited);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newVector; return ret; }
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                delete newVector;
+                return ret;
+            }
             newVector->elements.emplace_back(std::move(elemCopy));
         }
         dst->value.u.pvectorVal = newVector;
@@ -845,13 +887,18 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::StoreVariant(
         }
         auto* oldSet = src->u.psetVal;
         auto* newSet = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Set();
-        if (newSet == nullptr) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        if (newSet == nullptr) {
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         newSet->elementTypeInfo = oldSet->elementTypeInfo;
         newSet->elements.reserve(oldSet->elements.size());
         for (const auto& elem : oldSet->elements) {
             MoVariantStorage elemCopy;
             auto ret = DeepCopyStorage(elem, elemCopy, visited);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newSet; return ret; }
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                delete newSet;
+                return ret;
+            }
             newSet->elements.emplace_back(std::move(elemCopy));
         }
         dst->value.u.psetVal = newSet;
@@ -863,16 +910,24 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::StoreVariant(
         }
         auto* oldMap = src->u.pmapVal;
         auto* newMap = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Map();
-        if (newMap == nullptr) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        if (newMap == nullptr) {
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         newMap->keyType = oldMap->keyType;
         newMap->valueTypeInfo = oldMap->valueTypeInfo;
         newMap->entries.reserve(oldMap->entries.size());
         for (const auto& entry : oldMap->entries) {
             std::pair<MoVariantStorage, MoVariantStorage> entryCopy;
             auto ret = DeepCopyStorage(entry.first, entryCopy.first, visited);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newMap; return ret; }
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                delete newMap;
+                return ret;
+            }
             ret = DeepCopyStorage(entry.second, entryCopy.second, visited);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newMap; return ret; }
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                delete newMap;
+                return ret;
+            }
             newMap->entries.emplace_back(std::move(entryCopy));
         }
         dst->value.u.pmapVal = newMap;
@@ -884,13 +939,18 @@ AbilityRuntime_ErrorCode MoDispatcherComplexTypeManager::StoreVariant(
         }
         auto* oldStruct = src->u.pstructVal;
         auto* newStruct = new (std::nothrow) OH_AbilityRuntime_MoDispatcher_Struct();
-        if (newStruct == nullptr) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        if (newStruct == nullptr) {
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         newStruct->name = oldStruct->name;
         newStruct->fieldTypes = oldStruct->fieldTypes;
         for (const auto& field : oldStruct->fields) {
             MoVariantStorage fieldCopy;
             auto ret = DeepCopyStorage(field.second, fieldCopy, visited);
-            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) { delete newStruct; return ret; }
+            if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                delete newStruct;
+                return ret;
+            }
             newStruct->fields[field.first] = std::move(fieldCopy);
         }
         dst->value.u.pstructVal = newStruct;

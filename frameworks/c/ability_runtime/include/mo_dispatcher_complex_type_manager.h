@@ -111,7 +111,6 @@ public:
     static bool GetStructFieldType(const std::string& structName, const std::string& fieldName,
         std::shared_ptr<MoTypeInfo>* fieldType);
     static bool GetStructFieldNames(const std::string& structName, std::vector<std::string>* fieldNames);
-
 };
 } // namespace OHOS::AbilityRuntime
 
