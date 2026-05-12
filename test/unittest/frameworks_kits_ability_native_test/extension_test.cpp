@@ -528,5 +528,22 @@ HWTEST_F(ExtensionTest, GetAbilityHandler_ShouldReturnNullptrWhenAbilityInfoIsNu
     EXPECT_EQ(handler, nullptr);
 }
 
+/**
+ * @tc.number: AaFwk_Extension_2900
+ * @tc.name: OnConnect
+ * @tc.desc: Incoming want with callback info, verify OnConnect with async callback successfully.
+ */
+HWTEST_F(ExtensionTest, AaFwk_Extension_2900, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AaFwk_Extension_2900 start";
+    Want want;
+    want.SetElementName("DemoDeviceId", "DemoBundleName", "DemoAbilityName");
+    AppExecFwk::AbilityTransactionCallbackInfo<sptr<IRemoteObject>> *callbackInfo = nullptr;
+    bool isAsyncCallback = true;
+    auto remoteObject = extension_->OnConnect(want, callbackInfo, isAsyncCallback);
+    EXPECT_TRUE(remoteObject == nullptr);
+    EXPECT_FALSE(isAsyncCallback);
+    GTEST_LOG_(INFO) << "AaFwk_Extension_2900 end";
+}
 } // namespace AppExecFwk
 } // namespace OHOS
