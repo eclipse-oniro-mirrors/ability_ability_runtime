@@ -16,8 +16,10 @@
 #ifndef OHOS_ABILITY_RUNTIME_CLI_TOOL_MGR_EVENT_DISPATCHER_H
 #define OHOS_ABILITY_RUNTIME_CLI_TOOL_MGR_EVENT_DISPATCHER_H
 
+#include <functional>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <sys/types.h>
 #include <unordered_map>
 #include <utility>

@@ -16,6 +16,7 @@
 #include "event_dispatcher.h"
 
 #include <chrono>
+#include <vector>
 
 #include "hilog_tag_wrapper.h"
 

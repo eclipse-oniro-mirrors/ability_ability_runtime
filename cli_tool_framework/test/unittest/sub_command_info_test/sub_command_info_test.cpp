@@ -193,6 +193,50 @@ HWTEST_F(SubCommandInfoTest, SubCommandInfo_Unmarshalling_0300, TestSize.Level1)
 }
 
 /**
+ * @tc.name: SubCommandInfo_Unmarshalling_0350
+ * @tc.desc: Test SubCommandInfo Unmarshalling fails when requirePermissions is missing
+ * @tc.type: FUNC
+ */
+HWTEST_F(SubCommandInfoTest, SubCommandInfo_Unmarshalling_0350, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SubCommandInfo_Unmarshalling_0350 start";
+
+    Parcel parcel;
+    ASSERT_TRUE(parcel.WriteString("partial subcommand"));
+    parcel.RewindRead(0);
+
+    SubCommandInfo *result = SubCommandInfo::Unmarshalling(parcel);
+
+    EXPECT_EQ(result, nullptr);
+
+    GTEST_LOG_(INFO) << "SubCommandInfo_Unmarshalling_0350 end";
+}
+
+/**
+ * @tc.name: SubCommandInfo_Unmarshalling_0360
+ * @tc.desc: Test SubCommandInfo Unmarshalling fails when eventSchemas is missing
+ * @tc.type: FUNC
+ */
+HWTEST_F(SubCommandInfoTest, SubCommandInfo_Unmarshalling_0360, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SubCommandInfo_Unmarshalling_0360 start";
+
+    Parcel parcel;
+    ASSERT_TRUE(parcel.WriteString("partial subcommand"));
+    ASSERT_TRUE(parcel.WriteStringVector({"ohos.permission.INTERNET"}));
+    ASSERT_TRUE(parcel.WriteString("{}"));
+    ASSERT_TRUE(parcel.WriteString("{}"));
+    ASSERT_TRUE(parcel.WriteStringVector({"stdout"}));
+    parcel.RewindRead(0);
+
+    SubCommandInfo *result = SubCommandInfo::Unmarshalling(parcel);
+
+    EXPECT_EQ(result, nullptr);
+
+    GTEST_LOG_(INFO) << "SubCommandInfo_Unmarshalling_0360 end";
+}
+
+/**
  * @tc.name: SubCommandInfo_Unmarshalling_0400
  * @tc.desc: Test SubCommandInfo Unmarshalling with full data
  * @tc.type: FUNC

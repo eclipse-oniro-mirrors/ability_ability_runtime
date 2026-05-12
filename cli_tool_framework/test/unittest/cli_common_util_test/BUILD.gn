@@ -1,0 +1,47 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//foundation/ability/ability_runtime/ability_runtime.gni")
+
+module_output_path = "ability_runtime/ability_runtime/clitool"
+
+ohos_unittest("cli_common_util_test") {
+  module_out_path = module_output_path
+
+  include_dirs = [
+    "mock/include",
+    "${ability_runtime_services_path}/common/include",
+    "${cli_tool_framework_path}/services/common/include",
+  ]
+
+  sources = [
+    "cli_common_util_test.cpp",
+    "mock/src/cli_common_mock.cpp",
+    "${cli_tool_framework_path}/services/common/src/ccm_util.cpp",
+    "${cli_tool_framework_path}/services/common/src/permission_util.cpp",
+  ]
+
+  external_deps = [
+    "access_token:libaccesstoken_sdk",
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+}
+
+group("unittest") {
+  testonly = true
+  deps = [ ":cli_common_util_test" ]
+}

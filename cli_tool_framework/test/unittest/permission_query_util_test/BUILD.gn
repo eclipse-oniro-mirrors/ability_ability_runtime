@@ -20,6 +20,7 @@ ohos_unittest("permission_query_util_test") {
   module_out_path = module_output_path
 
   include_dirs = [
+    "${cli_tool_framework_path}/test/unittest/common_mock/climgr_data/include",
     "${ability_runtime_path}/cli_tool_framework/interfaces/cli_tool/include",
     "${ability_runtime_path}/cli_tool_framework/services/climgr/include",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
@@ -29,9 +30,11 @@ ohos_unittest("permission_query_util_test") {
 
   sources = [
     "permission_query_util_test.cpp",
-    "${cli_tool_framework_path}/services/climgr/src/cli_tool_data_manager.cpp",
+    "${cli_tool_framework_path}/test/unittest/common_mock/climgr_data/src/cli_tool_data_manager_mock.cpp",
     "${cli_tool_framework_path}/services/climgr/src/permission_query_util.cpp",
-    "${cli_tool_framework_path}/services/common/src/permission_util.cpp",
+    "${cli_tool_framework_path}/interfaces/cli_tool/src/sub_command_info.cpp",
+    "${cli_tool_framework_path}/interfaces/cli_tool/src/tool_info.cpp",
+    "${cli_tool_framework_path}/interfaces/cli_tool/src/tool_summary.cpp",
   ]
 
   cflags = []
@@ -41,7 +44,6 @@ ohos_unittest("permission_query_util_test") {
 
   deps = [
     "${ability_runtime_path}/cli_tool_framework/interfaces/cli_tool:cli_tool_client",
-    "${ability_runtime_path}/cli_tool_framework/services/climgr:climgr",
   ]
 
   external_deps = [
