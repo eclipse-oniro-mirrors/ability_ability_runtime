@@ -541,7 +541,7 @@ HWTEST_F(SkillExecuteManagerTest, GenerateSkillWant_0100, TestSize.Level1)
     // abilityName is set so it won't call ResolveDefaultAbilityName
     // The function writes to want regardless of ResolveTargetType result
     EXPECT_EQ(ret, ERR_OK);
-    EXPECT_TRUE(SkillExecuteParam::IsSkillExecute(want));
+    EXPECT_TRUE(AppExecFwk::SkillExecuteParam::IsSkillExecute(want));
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
 
