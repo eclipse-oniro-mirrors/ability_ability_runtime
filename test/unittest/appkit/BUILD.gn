@@ -24,6 +24,7 @@ group("unittest") {
     deps += [
       "child_main_thread_first_test:unittest",
       "child_main_thread_test:unittest",
+      "child_process_api_test:unittest",
     ]
   }
 }
