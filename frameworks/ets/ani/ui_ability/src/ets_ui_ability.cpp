@@ -1542,7 +1542,9 @@ void EtsUIAbility::ExecuteInsightIntentMoveToForeground(const Want &want,
         }
         ability->CallOnForegroundFunc(want);
     };
-    callback->Push(asyncCallback);
+    if (!CheckIsSilentForeground()) {
+        callback->Push(asyncCallback);
+    }
     const WantParams &wantParams = want.GetParams();
     std::string arkTSMode = wantParams.GetStringParam(AppExecFwk::INSIGHT_INTENT_ARKTS_MODE);
     InsightIntentExecutorInfo executeInfo;

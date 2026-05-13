@@ -1491,7 +1491,9 @@ void JsUIAbility::ExecuteInsightIntentMoveToForeground(const Want &want,
             FreezeUtil::TimeoutState::FOREGROUND, "IntentForeground");
         ability->CallOnForegroundFunc(want);
     };
-    callback->Push(asyncCallback);
+    if (!CheckIsSilentForeground()) {
+        callback->Push(asyncCallback);
+    }
 
     InsightIntentExecutorInfo executeInfo;
     auto ret = GetInsightIntentExecutorInfo(want, executeParam, executeInfo);
