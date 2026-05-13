@@ -577,14 +577,14 @@ public:
     }
 
     virtual int32_t Burn(const std::string &volumeId, const BurnParams &params) override
- 	{
- 	    return E_OK;
- 	}
+    {
+        return E_OK;
+    }
 
- 	virtual int32_t VerifyBurnData(const std::string &volumeId, uint32_t verType) override
- 	{
- 	    return E_OK;
- 	}
+    virtual int32_t VerifyBurnData(const std::string &volumeId, uint32_t verType) override
+    {
+        return E_OK;
+    }
 };
 
 bool StorageManagerServiceMock::isZero = true;
