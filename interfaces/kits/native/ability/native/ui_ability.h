@@ -772,6 +772,7 @@ protected:
     sptr<Rosen::IWindowLifeCycle> sceneListener_ = nullptr;
     sptr<UIAbilityDisplayListener> abilityDisplayListener_ = nullptr;
     sptr<Rosen::IDisplayMoveListener> abilityDisplayMoveListener_ = nullptr;
+
 private:
     void OnStartForSupportGraphics(const AAFwk::Want &want);
     void OnChangeForUpdateConfiguration(const AppExecFwk::Configuration &newConfig);

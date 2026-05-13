@@ -1269,12 +1269,16 @@ void JsUIAbility::DoOnForeground(const Want &want)
 
     OnWillForeground();
 
-    TAG_LOGD(AAFwkTag::UIABILITY, "move scene to foreground, sceneFlag_: %{public}d, isGamePreLaunch_: %{public}d",
-        UIAbility::sceneFlag_, isGamePreLaunch_);
+    int32_t requestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, 0);
+    int32_t scbRequestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 0);
+    TAG_LOGD(AAFwkTag::UIABILITY, "move scene to foreground, sceneFlag_: %{public}d, isGamePreLaunch_: %{public}d,"
+        "requestId: %{public}d, scbRequestId: %{public}d", UIAbility::sceneFlag_, isGamePreLaunch_,
+        requestId, scbRequestId);
     AddLifecycleEventBeforeJSCall(FreezeUtil::TimeoutState::FOREGROUND, METHOD_NAME);
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, "scene_->GoForeground");
-
-    scene_->GoForeground(UIAbility::sceneFlag_, isGamePreLaunch_);
+    scene_->GoForeground(UIAbility::sceneFlag_, isGamePreLaunch_, requestId, scbRequestId);
+    const_cast<AAFwk::Want &>(want).RemoveParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID);
+    const_cast<AAFwk::Want &>(want).RemoveParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID);
     TAG_LOGD(AAFwkTag::UIABILITY, "end");
 }
 
@@ -1298,11 +1302,16 @@ void JsUIAbility::DoOnForegroundForSceneIsNull(const Want &want)
     Rosen::WMError ret = Rosen::WMError::WM_OK;
     auto sessionToken = GetSessionToken();
     auto identityToken = GetIdentityToken();
+
+    int32_t requestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, 0);
+    int32_t scbRequestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 0);
+    TAG_LOGD(AAFwkTag::UIABILITY, "Get requestId: %{public}d, scbRequestId: %{public}d from want",
+        requestId, scbRequestId);
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, "scene_->Init");
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled() && sessionToken != nullptr) {
         abilityContext_->SetWeakSessionToken(sessionToken);
         ret = scene_->Init(displayId, abilityContext_, sceneListener_, option, sessionToken, identityToken,
-            reusingWindow_, renderSession_);
+            reusingWindow_, renderSession_, requestId, scbRequestId);
         std::string navDestinationInfo = want.GetStringParam(Want::ATOMIC_SERVICE_SHARE_ROUTER);
         if (!navDestinationInfo.empty()) {
             TAG_LOGD(AAFwkTag::UIABILITY, "SetNavDestinationInfo :%{public}s", navDestinationInfo.c_str());
@@ -1316,7 +1325,7 @@ void JsUIAbility::DoOnForegroundForSceneIsNull(const Want &want)
             }
         }
     } else {
-        ret = scene_->Init(displayId, abilityContext_, sceneListener_, option);
+        ret = scene_->Init(displayId, abilityContext_, sceneListener_, option, requestId, scbRequestId);
     }
     if (ret != Rosen::WMError::WM_OK) {
         TAG_LOGE(AAFwkTag::UIABILITY, "init window scene failed");
@@ -1356,8 +1365,15 @@ void JsUIAbility::RequestFocus(const Want &want)
     }
     SetInsightIntentParam(want, false);
     AddLifecycleEventBeforeJSCall(FreezeUtil::TimeoutState::FOREGROUND, METHOD_NAME);
-    scene_->GoForeground(UIAbility::sceneFlag_);
-    TAG_LOGI(AAFwkTag::UIABILITY, "end");
+
+    int32_t requestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, 0);
+    int32_t scbRequestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 0);
+    TAG_LOGD(AAFwkTag::UIABILITY, "Get requestId: %{public}d, scbRequestId: %{public}d from want for GoForeground",
+        requestId, scbRequestId);
+    scene_->GoForeground(UIAbility::sceneFlag_, requestId, scbRequestId);
+    const_cast<AAFwk::Want &>(want).RemoveParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID);
+    const_cast<AAFwk::Want &>(want).RemoveParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID);
+    TAG_LOGD(AAFwkTag::UIABILITY, "end");
 }
 
 void JsUIAbility::ContinuationRestore(const Want &want)

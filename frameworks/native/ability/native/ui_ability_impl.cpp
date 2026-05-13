@@ -326,10 +326,14 @@ void UIAbilityImpl::NewWant(const AAFwk::Want &want)
         TAG_LOGE(AAFwkTag::UIABILITY, "null ability_");
         return;
     }
-    ability_->SetWant(want);
-    ability_->OnNewWant(want);
+
+    AAFwk::Want wantWithoutRequestId = want;
+    wantWithoutRequestId.RemoveParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID);
+    wantWithoutRequestId.RemoveParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID);
+    ability_->SetWant(wantWithoutRequestId);
+    ability_->OnNewWant(wantWithoutRequestId);
 #ifdef SUPPORT_SCREEN
-    ability_->ContinuationRestore(want);
+    ability_->ContinuationRestore(wantWithoutRequestId);
 #endif
     TAG_LOGD(AAFwkTag::UIABILITY, "end");
 }
