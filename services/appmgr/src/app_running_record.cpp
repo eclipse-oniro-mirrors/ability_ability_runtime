@@ -423,6 +423,7 @@ void AppRunningRecord::LaunchApplication(const Configuration &config)
     launchData.SetNativeChildProcessSupported(isNativeChildProcessSupported_);
     launchData.SetStartupTaskData(startupTaskData_);
     launchData.SetImageProcessType(static_cast<int32_t>(imageProcessType_));
+    launchData.SetMainProcess(isMainProcess_);
 
     TAG_LOGD(AAFwkTag::APPMGR, "%{public}s called,app is %{public}s.", __func__, GetName().c_str());
     AddAppLifecycleEvent("AppRunningRecord::LaunchApplication");

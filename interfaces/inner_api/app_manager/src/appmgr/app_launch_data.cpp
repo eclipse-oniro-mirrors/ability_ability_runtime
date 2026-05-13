@@ -166,6 +166,10 @@ bool AppLaunchData::MarshallingExtend(Parcel &parcel) const
         TAG_LOGE(AAFwkTag::APPMGR, "Marshalling, Failed to write imageProcessType");
         return false;
     }
+    if (!parcel.WriteBool(isMainProcess_)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Marshalling, Failed to write isMainProcess");
+        return false;
+    }
     return true;
 }
 
@@ -223,6 +227,7 @@ bool AppLaunchData::ReadFromParcel(Parcel &parcel)
         return false;
     }
     imageProcessType_ = parcel.ReadInt32();
+    isMainProcess_ = parcel.ReadBool();
     return true;
 }
 
@@ -366,6 +371,16 @@ void AppLaunchData::SetDebugFromLocal(bool isDebugFromLocal)
 bool AppLaunchData::GetDebugFromLocal() const
 {
     return isDebugFromLocal_;
+}
+
+void AppLaunchData::SetMainProcess(bool isMainProcess)
+{
+    isMainProcess_ = isMainProcess;
+}
+
+bool AppLaunchData::GetMainProcess() const
+{
+    return isMainProcess_;
 }
 
 bool StartupTaskData::Marshalling(Parcel &parcel) const

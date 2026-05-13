@@ -378,6 +378,9 @@ public:
      */
     bool GetDebugFromLocal() const;
 
+    void SetMainProcess(bool isMainProcess);
+    bool GetMainProcess() const;
+
     inline void SetArkChildProcessSupported(bool supported)
     {
         isArkChildProcessSupported_ = supported;
@@ -421,6 +424,7 @@ private:
     std::string preloadModuleName_;
     std::string preloadAbilityName_; // ability name for preloading specific ability (for image creation)
     bool isDebugFromLocal_;
+    bool isMainProcess_ = true;
     std::shared_ptr<StartupTaskData> startupTaskData_ = nullptr;
     bool isArkChildProcessSupported_ = false;
     bool isNativeChildProcessSupported_ = false;
