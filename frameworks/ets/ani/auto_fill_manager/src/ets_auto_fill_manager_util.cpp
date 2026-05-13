@@ -155,16 +155,15 @@ ani_object WrapViewData(ani_env *env, const AbilityBase::ViewData &viewData)
         return nullptr;
     }
 
-    ani_object aniPageNodeInfos = nullptr;
-    if (!CreateArrayObject(env, aniPageNodeInfos, viewData.nodes.size())) {
+    ani_object aniNodes = nullptr;
+    if (!CreateArrayObject(env, aniNodes, viewData.nodes.size())) {
         TAG_LOGE(AAFwkTag::AUTOFILLMGR, "fail to create array object");
         return nullptr;
     }
     ani_size index = 0;
     ani_status status = ANI_ERROR;
-    for (const auto& item : viewData.nodes) {
-        status = env->Object_CallMethodByName_Void(
-            aniPageNodeInfos, "$_set", "iY:", index, WrapPageNodeInfo(env, item));
+    for (const auto &item : viewData.nodes) {
+        status = env->Object_CallMethodByName_Void(aniNodes, "$_set", "iY:", index, WrapPageNodeInfo(env, item));
         if (status != ANI_OK) {
             TAG_LOGE(AAFwkTag::AUTOFILLMGR, "Object_CallMethodByName_Void failed: %{public}d", status);
             return nullptr;
@@ -172,7 +171,7 @@ ani_object WrapViewData(ani_env *env, const AbilityBase::ViewData &viewData)
         ++index;
     }
 
-    if (!SetRefProperty(env, object, PAGE_NODE_INFOS, aniPageNodeInfos)) {
+    if (!SetRefProperty(env, object, PAGE_NODE_INFOS, aniNodes)) {
         TAG_LOGE(AAFwkTag::AUTOFILLMGR, "set pageNodeInfos failed");
         return nullptr;
     }
@@ -315,32 +314,32 @@ bool UnwrapViewData(ani_env *env, ani_object object, AbilityBase::ViewData &view
         return false;
     }
 
-    ani_ref aniPageNodeInfos = nullptr;
-    if (GetRefProperty(env, object, PAGE_NODE_INFOS, aniPageNodeInfos) && aniPageNodeInfos != nullptr) {
-        ani_int length = 0;
-        ani_status status = ANI_ERROR;
-        status = env->Object_GetPropertyByName_Int(reinterpret_cast<ani_object>(aniPageNodeInfos), "length", &length);
-        if (status != ANI_OK) {
-            TAG_LOGE(AAFwkTag::AUTOFILLMGR, "Object_GetPropertyByName_Int failed: status: %{public}d", status);
+    ani_ref aniNodes = nullptr;
+    if (!GetRefProperty(env, object, PAGE_NODE_INFOS, aniNodes) || aniNodes == nullptr) {
+        TAG_LOGE(AAFwkTag::AUTOFILLMGR, "parameter error");
+        errorMsg = "Parameter error. The type of viewData.pageNodeInfos must be array";
+        return false;
+    }
+    ani_int length = 0;
+    ani_status status = env->Object_GetPropertyByName_Int(reinterpret_cast<ani_object>(aniNodes), "length", &length);
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::AUTOFILLMGR, "Object_GetPropertyByName_Int failed: status: %{public}d", status);
+        return false;
+    }
+    viewData.nodes.clear();
+    for (int i = 0; i < length; ++i) {
+        ani_ref aniPageNodeInfo = nullptr;
+        if ((status = env->Object_CallMethodByName_Ref(reinterpret_cast<ani_object>(aniNodes),
+            "$_get", "i:Y", &aniPageNodeInfo, (ani_int)i)) != ANI_OK) {
+            TAG_LOGE(AAFwkTag::AUTOFILLMGR, "Object_CallMethodByName_Ref failed: status: %{public}d", status);
             return false;
         }
-        viewData.nodes.clear();
-        for (int i = 0; i < length; ++i) {
-            ani_ref aniPageNodeInfo;
-            status = env->Object_CallMethodByName_Ref(reinterpret_cast<ani_object>(aniPageNodeInfos),
-                "$_get", "i:Y", &aniPageNodeInfo, (ani_int)i);
-            if (status != ANI_OK) {
-                TAG_LOGE(AAFwkTag::AUTOFILLMGR,
-                    "Object_CallMethodByName_Ref failed: status: %{public}d, index: %{public}d", status, i);
-                return false;
-            }
-            AbilityBase::PageNodeInfo pageNodeInfo;
-            if (!UnwrapPageNodeInfo(env, reinterpret_cast<ani_object>(aniPageNodeInfo), pageNodeInfo, errorMsg)) {
-                TAG_LOGE(AAFwkTag::AUTOFILLMGR, "UnwrapPageNodeInfo failed");
-                return false;
-            }
-            viewData.nodes.emplace_back(pageNodeInfo);
+        AbilityBase::PageNodeInfo pageNodeInfo;
+        if (!UnwrapPageNodeInfo(env, reinterpret_cast<ani_object>(aniPageNodeInfo), pageNodeInfo, errorMsg)) {
+            TAG_LOGE(AAFwkTag::AUTOFILLMGR, "UnwrapPageNodeInfo failed");
+            return false;
         }
+        viewData.nodes.emplace_back(pageNodeInfo);
     }
 
     ani_ref aniPageRect = nullptr;
