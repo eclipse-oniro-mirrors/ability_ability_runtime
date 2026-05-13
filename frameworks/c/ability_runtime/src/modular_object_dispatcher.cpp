@@ -39,7 +39,7 @@ AbilityRuntime_ErrorCode CopyStringToBuffer(const std::string& src, char* dst, u
 extern "C" {
 #endif
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_CreateInstance(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_CreateMainServiceInstance(
     OHIPCRemoteProxy* remoteProxy, OH_AbilityRuntime_MoDispatcherHandle* ppMoDispatcher)
 {
     if (remoteProxy == nullptr || ppMoDispatcher == nullptr) {
@@ -52,6 +52,25 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_CreateInstance(
     }
     dispatcher->proxy = remoteProxy->remote;
     dispatcher->metadataManager = std::make_shared<MoDispatcherMetadataManager>();
+    *ppMoDispatcher = dispatcher;
+    return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
+}
+
+AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_CreateSubInstance(
+    OH_AbilityRuntime_MoDispatcherHandle mainServiceDispatcher,
+    OHIPCRemoteProxy* subProxy, OH_AbilityRuntime_MoDispatcherHandle* ppMoDispatcher)
+{
+    if (mainServiceDispatcher == nullptr || subProxy == nullptr || ppMoDispatcher == nullptr
+        || mainServiceDispatcher->metadataManager == nullptr) {
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    auto* dispatcher = new (std::nothrow) OH_AbilityRuntime_MoDispatcher();
+    if (dispatcher == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "Failed to allocate MoDispatcher sub-instance");
+        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+    }
+    dispatcher->proxy = subProxy->remote;
+    dispatcher->metadataManager = mainServiceDispatcher->metadataManager;
     *ppMoDispatcher = dispatcher;
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
@@ -121,11 +140,15 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_QueryMainServiceInterfac
 AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_CallMethod(
     OH_AbilityRuntime_MoDispatcherHandle pMoDispatcher, uint32_t memID,
     OH_AbilityRuntime_MoDispatcher_InputParams* pInputParams,
-    OH_AbilityRuntime_MoDispatcher_Variant* pResult)
+    OH_AbilityRuntime_MoDispatcher_Variant* pResult,
+    int32_t* pMethodErrCode)
 {
     if (pMoDispatcher == nullptr || pInputParams == nullptr || pResult == nullptr
         || pMoDispatcher->metadataManager == nullptr) {
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    if (pMethodErrCode != nullptr) {
+        *pMethodErrCode = 0;
     }
     auto ret = pMoDispatcher->metadataManager->EnsureLoaded(pMoDispatcher->proxy);
     if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
@@ -173,7 +196,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_CallMethod(
     if (methodMeta.oneway) {
         return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
     }
-    ret = MoDispatcherParamCodec::UnmarshalCallResult(methodMeta, replyParcel, pResult);
+    ret = MoDispatcherParamCodec::UnmarshalCallResult(methodMeta, replyParcel, pResult, pMethodErrCode);
     if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
         TAG_LOGE(AAFwkTag::EXT, "CallMethod: UnmarshalCallResult failed, memID=%{public}u, ret=%{public}d",
             memID, ret);

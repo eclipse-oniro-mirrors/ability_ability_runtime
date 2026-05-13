@@ -401,7 +401,7 @@ void OH_AbilityRuntime_MoDispatcher_Variant_Clear(
     OH_AbilityRuntime_MoDispatcher_Variant* pVariant);
 
 /**
- * @brief Create a modular object dispatcher instance from an IPC remote proxy.
+ * @brief Create a modular object dispatcher instance for mainService interface from an IPC remote proxy.
  *
  * @param remoteProxy Indicates IPC remote proxy handle obtained from connectExtension.
  * @param ppMoDispatcher Indicates a pointer to receive modular object dispatcher handle.
@@ -411,8 +411,29 @@ void OH_AbilityRuntime_MoDispatcher_Variant_Clear(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_CreateInstance(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_CreateMainServiceInstance(
     OHIPCRemoteProxy* remoteProxy, OH_AbilityRuntime_MoDispatcherHandle* ppMoDispatcher);
+
+/**
+ * @brief Create a sub-instance dispatcher bound to a mainService dispatcher.
+ *
+ * The sub-instance shares the mainService dispatcher's metadata but uses its own
+ * IPC proxy. When CallMethod is invoked on the sub-instance, method metadata is
+ * resolved from the mainService dispatcher and the call is sent through subProxy.
+ *
+ * @param mainServiceDispatcher Indicates mainService dispatcher handle.
+ * @param subProxy Indicates IPC remote proxy for the non-mainService interface.
+ * @param ppMoDispatcher Indicates a pointer to receive the created sub-instance dispatcher handle.
+ * @return Returns error code.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if mainServiceDispatcher or subProxy
+ *         or ppMoDispatcher is null.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
+ * @since 26.0.0
+ */
+AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_CreateSubInstance(
+    OH_AbilityRuntime_MoDispatcherHandle mainServiceDispatcher,
+    OHIPCRemoteProxy* subProxy, OH_AbilityRuntime_MoDispatcherHandle* ppMoDispatcher);
 
 /**
  * @brief Release modular object dispatcher instance.
@@ -478,18 +499,23 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_QueryMainServiceInterfac
  * @param memID Indicates method member ID (MemberID).
  * @param pInputParams Indicates parameter structure containing arguments.
  * @param pResult Indicates pointer to receive result variant.
- * @return Returns error code.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
+ * @param pMethodErrCode Indicates a pointer to receive the error code returned by the remote method.
+ *                   0 if the method executed successfully, non-zero if the method returned an error.
+ *                   This is independent of the framework-level return value.
+ * @return Returns framework error code.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if IPC call is successful.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pMoDispatcher or pInputParams or pResult is null.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND} if method not found.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_TYPE_MISMATCH} if parameter type mismatches.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_SEND_REQUEST_FAILED} if send request failed.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_CallMethod(
     OH_AbilityRuntime_MoDispatcherHandle pMoDispatcher, uint32_t memID,
     OH_AbilityRuntime_MoDispatcher_InputParams* pInputParams,
-    OH_AbilityRuntime_MoDispatcher_Variant* pResult);
+    OH_AbilityRuntime_MoDispatcher_Variant* pResult,
+    int32_t* pMethodErrCode);
 
 // ========== TypeDescriptor Interfaces ==========
 

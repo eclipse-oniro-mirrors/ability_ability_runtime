@@ -162,6 +162,7 @@
           "//foundation/ability/ability_runtime/ets_environment/frameworks/ets_environment:ets_environment",
           "//foundation/ability/ability_runtime/js_environment/frameworks/js_environment:js_environment",
           "//foundation/ability/ability_runtime/services/abilitymgr/etc:appfwk_etc",
+          "//foundation/ability/ability_runtime/services/dialog_ui/ams_system_dialog:dialog_hap",
           "//foundation/ability/ability_runtime/service_router_framework:srms_target",
           "//foundation/ability/ability_runtime/service_router_framework:jsapi_target",
           "//foundation/ability/ability_runtime/agent_runtime_framework/frameworks/ets/ets:agent_runtime_ets_packages",

@@ -26,7 +26,7 @@ public:
         const OH_AbilityRuntime_MoDispatcher_InputParams* inputParams, MessageParcel& dataParcel);
 
     static AbilityRuntime_ErrorCode UnmarshalCallResult(const MoMethodMeta& methodMeta,
-        MessageParcel& replyParcel, OH_AbilityRuntime_MoDispatcher_Variant* result);
+        MessageParcel& replyParcel, OH_AbilityRuntime_MoDispatcher_Variant* result, int32_t* pMethodErrCode);
 
 private:
     static AbilityRuntime_ErrorCode WriteRawValue(MessageParcel& parcel,

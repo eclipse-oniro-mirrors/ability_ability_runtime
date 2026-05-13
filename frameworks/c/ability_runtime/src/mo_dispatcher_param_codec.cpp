@@ -313,16 +313,15 @@ AbilityRuntime_ErrorCode MoDispatcherParamCodec::MarshalCallRequest(const MoMeth
 }
 
 AbilityRuntime_ErrorCode MoDispatcherParamCodec::UnmarshalCallResult(const MoMethodMeta& methodMeta,
-    MessageParcel& replyParcel, OH_AbilityRuntime_MoDispatcher_Variant* result)
+    MessageParcel& replyParcel, OH_AbilityRuntime_MoDispatcher_Variant* result, int32_t* pMethodErrCode)
 {
     if (result == nullptr) {
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     // Read application-level error code from reply
     int32_t errCode = replyParcel.ReadInt32();
-    if (errCode != 0) {
-        TAG_LOGE(AAFwkTag::EXT, "UnmarshalCallResult: remote returned errCode=%{public}d", errCode);
-        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+    if (pMethodErrCode != nullptr) {
+        *pMethodErrCode = errCode;
     }
     // For void return type, nothing more to read
     if (methodMeta.returnType == nullptr ||
