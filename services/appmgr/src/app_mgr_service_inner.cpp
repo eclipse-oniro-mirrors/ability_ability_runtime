@@ -9139,6 +9139,10 @@ int AppMgrServiceInner::GetExceptionTimerId(const FaultData &faultData, const st
 int32_t AppMgrServiceInner::SubmitDfxFaultTask(const FaultData &faultData, const std::string &bundleName,
     const std::shared_ptr<AppRunningRecord> &appRecord, const int32_t pid)
 {
+    if (AppExecFwk::AppfreezeManager::GetInstance()->CheckPreloadUIExtension(faultData.errorObject.message,
+        bundleName, pid)) {
+        return ERR_OK;
+    }
     int32_t callerUid = IPCSkeleton::GetCallingUid();
     std::string processName = appRecord->GetProcessName();
     int exceptionId = GetExceptionTimerId(faultData, bundleName, appRecord, pid, callerUid);
@@ -9373,7 +9377,9 @@ int32_t AppMgrServiceInner::TransformedNotifyAppFault(const AppFaultDataBySA &fa
         }
         auto timeoutNotifyApp = [this, pid, uid, bundleName, processName, transformedFaultData, recordId]() {
             std::string key = std::to_string(pid) + "_" + std::to_string(uid) + "_" + bundleName;
-            if (AppExecFwk::AppfreezeManager::GetInstance()->CheckAppfreezeHappend(key,
+            std::string message = transformedFaultData.errorObject.message;
+            if (AppExecFwk::AppfreezeManager::GetInstance()->CheckPreloadUIExtension(message, bundleName, pid) ||
+                AppExecFwk::AppfreezeManager::GetInstance()->CheckAppfreezeHappend(key,
                 transformedFaultData.errorObject.name)) {
                 return;
             }
