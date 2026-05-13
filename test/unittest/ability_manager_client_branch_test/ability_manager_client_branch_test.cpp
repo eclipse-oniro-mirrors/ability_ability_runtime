@@ -2195,6 +2195,57 @@ HWTEST_F(AbilityManagerClientBranchTest, RequestModalUIExtension_0100, TestSize.
 }
 
 /**
+ * @tc.name: AbilityManagerClient_RequestModalUIExtensionWithAccount_0100
+ * @tc.desc: RequestModalUIExtensionWithAccount with valid proxy
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, RequestModalUIExtensionWithAccount_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RequestModalUIExtensionWithAccount_0100 start";
+    EXPECT_TRUE(client_ != nullptr);
+    Want want;
+    int32_t accountId = 100;
+    auto result = client_->RequestModalUIExtensionWithAccount(want, accountId);
+    EXPECT_EQ(result, ERR_OK);
+    GTEST_LOG_(INFO) << "RequestModalUIExtensionWithAccount_0100 end";
+}
+
+/**
+ * @tc.name: AbilityManagerClient_RequestModalUIExtensionWithAccount_0300
+ * @tc.desc: RequestModalUIExtensionWithAccount with various accountIds
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, RequestModalUIExtensionWithAccount_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RequestModalUIExtensionWithAccount_0300 start";
+    EXPECT_TRUE(client_ != nullptr);
+    Want want;
+    ElementName element("device", "com.test.modal", "ModalUIExtension");
+    want.SetElement(element);
+
+    int32_t accountId = -1;
+    auto result = client_->RequestModalUIExtensionWithAccount(want, accountId);
+    EXPECT_EQ(result, ERR_OK);
+    GTEST_LOG_(INFO) << "RequestModalUIExtensionWithAccount_0300 end";
+}
+
+/**
+ * @tc.name: AbilityManagerClient_RequestModalUIExtensionWithAccount_0400
+ * @tc.desc: RequestModalUIExtensionWithAccount with default accountId
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, RequestModalUIExtensionWithAccount_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RequestModalUIExtensionWithAccount_0400 start";
+    EXPECT_TRUE(client_ != nullptr);
+    Want want;
+    int32_t accountId = 0;
+    auto result = client_->RequestModalUIExtensionWithAccount(want, accountId);
+    EXPECT_EQ(result, ERR_OK);
+    GTEST_LOG_(INFO) << "RequestModalUIExtensionWithAccount_0400 end";
+}
+
+/**
  * @tc.name: AbilityManagerClient_UpdateSessionInfoBySCB_0100
  * @tc.desc: UpdateSessionInfoBySCB
  * @tc.type: FUNC

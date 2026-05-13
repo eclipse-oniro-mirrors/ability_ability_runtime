@@ -539,5 +539,40 @@ HWTEST_F(AbilitySchedulerProxyTest, ScheduleAbilitiesRequestDone_001, TestSize.L
     abilitySchedulerProxy_->ScheduleAbilitiesRequestDone(requestKey, resultCode);
     EXPECT_EQ(IAbilityScheduler::SCHEDULE_ABILITIES_REQUEST_DONE, mock_->code_);
 }
+
+/*
+ * Feature: AbilitySchedulerProxy
+ * Function: ExecuteSkill
+ * SubFunction: NA
+ * FunctionPoints: AbilitySchedulerProxy ExecuteSkill
+ * EnvConditions: NA
+ * CaseDescription: verify ExecuteSkill with SendRequest success
+ */
+HWTEST_F(AbilitySchedulerProxyTest, ExecuteSkill_001, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilitySchedulerMock::InvokeSendRequest));
+    Want want;
+    abilitySchedulerProxy_->ExecuteSkill(want);
+    EXPECT_EQ(IAbilityScheduler::SCHEDULE_EXECUTE_SKILL, mock_->code_);
+}
+
+/*
+ * Feature: AbilitySchedulerProxy
+ * Function: ExecuteSkill
+ * SubFunction: NA
+ * FunctionPoints: AbilitySchedulerProxy ExecuteSkill
+ * EnvConditions: NA
+ * CaseDescription: verify ExecuteSkill with SendRequest failure
+ */
+HWTEST_F(AbilitySchedulerProxyTest, ExecuteSkill_002, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(-1));
+    Want want;
+    abilitySchedulerProxy_->ExecuteSkill(want);
+}
 }  // namespace AAFwk
 }  // namespace OHOS
