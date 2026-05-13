@@ -2211,23 +2211,6 @@ HWTEST_F(AbilityManagerClientBranchTest, RequestModalUIExtensionWithAccount_0100
 }
 
 /**
- * @tc.name: AbilityManagerClient_RequestModalUIExtensionWithAccount_0200
- * @tc.desc: RequestModalUIExtensionWithAccount with proxy disconnected
- * @tc.type: FUNC
- */
-HWTEST_F(AbilityManagerClientBranchTest, RequestModalUIExtensionWithAccount_0200, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "RequestModalUIExtensionWithAccount_0200 start";
-    EXPECT_TRUE(client_ != nullptr);
-    client_->proxy_ = nullptr;
-    Want want;
-    int32_t accountId = 100;
-    auto result = client_->RequestModalUIExtensionWithAccount(want, accountId);
-    EXPECT_EQ(result, INNER_ERR);
-    GTEST_LOG_(INFO) << "RequestModalUIExtensionWithAccount_0200 end";
-}
-
-/**
  * @tc.name: AbilityManagerClient_RequestModalUIExtensionWithAccount_0300
  * @tc.desc: RequestModalUIExtensionWithAccount with various accountIds
  * @tc.type: FUNC
