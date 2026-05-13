@@ -1583,5 +1583,127 @@ HWTEST_F(AppMgrServiceInnerTest, GetLoadTimeout_002, TestSize.Level1)
     EXPECT_EQ(timeout, timeoutDefault);
     TAG_LOGI(AAFwkTag::TEST, "GetLoadTimeout_002 end");
 }
+
+/**
+ * @tc.name: UpdateForeground
+ * @tc.desc: UpdateForeground
+ * @tc.type: FUNC
+ * @tc.Function: UpdateForeground
+ * @tc.SubFunction: NA
+ * @tc.EnvConditions: NA
+ */
+HWTEST_F(AppMgrServiceInnerTest, UpdateForeground_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "UpdateForeground_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+
+    int32_t recordId = 1;
+    std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
+    std::string processName = "UpdateForeground_001";
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, recordId, processName);
+    EXPECT_NE(appRecord, nullptr);
+    appRecord->SetState(ApplicationState::APP_STATE_FOREGROUND);
+    std::string eventName = AppFreezeType::THREAD_BLOCK_3S;
+    bool ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
+    EXPECT_TRUE(ret);
+    appRecord->SetState(ApplicationState::APP_STATE_FOCUS);
+    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
+    EXPECT_TRUE(ret);
+    appRecord->SetState(ApplicationState::APP_STATE_BACKGROUND);
+    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
+    EXPECT_TRUE(!ret);
+    TAG_LOGI(AAFwkTag::TEST, "UpdateForeground_001 end");
+}
+
+/**
+ * @tc.name: UpdateForeground
+ * @tc.desc: UpdateForeground
+ * @tc.type: FUNC
+ * @tc.Function: UpdateForeground
+ * @tc.SubFunction: NA
+ * @tc.EnvConditions: NA
+ */
+HWTEST_F(AppMgrServiceInnerTest, UpdateForeground_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "UpdateForeground_002 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+
+    int32_t recordId = 1;
+    std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
+    std::string processName = "UpdateForeground_002";
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, recordId, processName);
+    EXPECT_NE(appRecord, nullptr);
+    appRecord->SetState(ApplicationState::APP_STATE_FOREGROUND);
+    std::string eventName = AppFreezeType::BUSSINESS_THREAD_BLOCK_3S;
+    bool ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
+    EXPECT_TRUE(ret);
+    appRecord->SetState(ApplicationState::APP_STATE_FOCUS);
+    eventName = AppFreezeType::BUSSINESS_THREAD_BLOCK_6S;
+    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
+    EXPECT_TRUE(ret);
+    eventName = AppFreezeType::THREAD_BLOCK_6S;
+    appRecord->SetState(ApplicationState::APP_STATE_BACKGROUND);
+    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
+    EXPECT_TRUE(!ret);
+    TAG_LOGI(AAFwkTag::TEST, "UpdateForeground_002 end");
+}
+
+/**
+ * @tc.name: UpdateForeground
+ * @tc.desc: UpdateForeground
+ * @tc.type: FUNC
+ * @tc.Function: UpdateForeground
+ * @tc.SubFunction: NA
+ * @tc.EnvConditions: NA
+ */
+HWTEST_F(AppMgrServiceInnerTest, UpdateForeground_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "UpdateForeground_003 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+
+    int32_t recordId = 1;
+    std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
+    std::string processName = "UpdateForeground_003";
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, recordId, processName);
+    EXPECT_NE(appRecord, nullptr);
+    appRecord->SetState(ApplicationState::APP_STATE_FOREGROUND);
+    std::string eventName = AppFreezeType::LIFECYCLE_TIMEOUT;
+    bool ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
+    EXPECT_TRUE(ret);
+    TAG_LOGI(AAFwkTag::TEST, "UpdateForeground_003 end");
+}
+
+/**
+ * @tc.name: UpdateForeground
+ * @tc.desc: UpdateForeground
+ * @tc.type: FUNC
+ * @tc.Function: UpdateForeground
+ * @tc.SubFunction: NA
+ * @tc.EnvConditions: NA
+ */
+HWTEST_F(AppMgrServiceInnerTest, UpdateForeground_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "UpdateForeground_004 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+
+    int32_t recordId = 1;
+    std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
+    std::string processName = "UpdateForeground_004";
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, recordId, processName);
+    EXPECT_NE(appRecord, nullptr);
+    appRecord->SetState(ApplicationState::APP_STATE_BACKGROUND);
+    appRecord->SetApplicationPendingState(ApplicationPendingState::FOREGROUNDING);
+    std::string eventName = AppFreezeType::LIFECYCLE_TIMEOUT;
+    bool ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
+    EXPECT_TRUE(ret);
+    appRecord->SetApplicationPendingState(ApplicationPendingState::BACKGROUNDING);
+    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
+    EXPECT_TRUE(!ret);
+    TAG_LOGI(AAFwkTag::TEST, "UpdateForeground_004 end");
+}
 } // namespace AppExecFwk
 } // namespace OHOS

@@ -1450,14 +1450,22 @@ bool AppfreezeManager::IsFreezeExcludedPid(int32_t targetPid)
 }
 
 bool AppfreezeManager::CheckPreloadUIExtension(const std::string& message, const std::string& bundleName,
-    int32_t pid)
+    int32_t pid, const std::string& eventName)
 {
+    if (eventName != AppFreezeType::LIFECYCLE_HALF_TIMEOUT && eventName != AppFreezeType::LIFECYCLE_TIMEOUT) {
+        return false;
+    }
     if (message.find(PRELOAD_UIEXTENSION) != std::string::npos) {
         TAG_LOGW(AAFwkTag::APPDFR, "don't report event, msg: PreloadUIExtension, bundleName: %{public}s "
             "pid: %{public}d", bundleName.c_str(), pid);
         return true;
     }
     return false;
+}
+
+bool AppfreezeManager::CheckProcessExit(const std::string& eventName, bool foreground)
+{
+    return foreground || (eventName != AppFreezeType::THREAD_BLOCK_6S);
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

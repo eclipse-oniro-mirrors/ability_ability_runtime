@@ -4905,6 +4905,61 @@ HWTEST_F(AppMgrServiceInnerTest, TimeoutNotifyApp_001, TestSize.Level1)
 }
 
 /**
+ * @tc.name: KillFaultApp
+ * @tc.desc: KillFaultApp
+ * @tc.type: FUNC
+ * @tc.Function: KillFaultApp
+ * @tc.SubFunction: NA
+ * @tc.EnvConditions: NA
+ */
+HWTEST_F(AppMgrServiceInnerTest, KillFaultApp_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "KillFaultApp_001 start");
+    std::shared_ptr<AppMgrServiceInner> appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    std::shared_ptr<MockTaskHandlerWrap> taskHandler = MockTaskHandlerWrap::CreateQueueHandler("app_mgr_task_queue");
+    appMgrServiceInner->SetTaskHandler(taskHandler);
+
+    int pid = 0;
+    std::string bundleName = "bundleName";
+    bool isNeedExit = true;
+    FaultData faultData;
+    faultData.errorObject.name = "1234";
+    faultData.faultType = FaultDataType::APP_FREEZE;
+    int32_t result = appMgrServiceInner->KillFaultApp(pid, bundleName, faultData, isNeedExit);
+    EXPECT_EQ(result, ERR_OK);
+    sleep(3);
+    TAG_LOGI(AAFwkTag::TEST, "KillFaultApp_001 end");
+}
+
+/**
+ * @tc.name: KillFaultApp
+ * @tc.desc: KillFaultApp
+ * @tc.type: FUNC
+ * @tc.Function: KillFaultApp
+ * @tc.SubFunction: NA
+ * @tc.EnvConditions: NA
+ */
+HWTEST_F(AppMgrServiceInnerTest, KillFaultApp_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "KillFaultApp_002 start");
+    std::shared_ptr<AppMgrServiceInner> appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    std::shared_ptr<MockTaskHandlerWrap> taskHandler = MockTaskHandlerWrap::CreateQueueHandler("app_mgr_task_queue");
+    appMgrServiceInner->SetTaskHandler(taskHandler);
+
+    int pid = 0;
+    std::string bundleName = "KillFaultApp_002";
+    bool isNeedExit = true;
+    FaultData faultData;
+    faultData.isInForeground = false;
+    faultData.errorObject.name = AppFreezeType::THREAD_BLOCK_6S;
+    int32_t result = appMgrServiceInner->KillFaultApp(pid, bundleName, faultData, isNeedExit);
+    EXPECT_EQ(result, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "KillFaultApp_002 end");
+}
+
+/**
  * @tc.name: NotifyAppFaultBySA_001
  * @tc.desc: Notify Fault Data By SA
  * @tc.type: FUNC
