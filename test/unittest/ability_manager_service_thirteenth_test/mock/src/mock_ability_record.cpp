@@ -366,7 +366,7 @@ bool AbilityRecord::CanRestartResident()
 }
 
 // only for UIAbility
-void AbilityRecord::ForegroundAbility(uint32_t sceneFlag, bool hasLastWant)
+void AbilityRecord::ForegroundAbility(uint32_t sceneFlag)
 {
 }
 

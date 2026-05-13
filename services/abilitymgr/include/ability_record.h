@@ -104,7 +104,7 @@ public:
      * foreground the ability.
      *
      */
-    void ForegroundAbility(uint32_t sceneFlag = 0, bool hasLastWant = false);
+    void ForegroundAbility(uint32_t sceneFlag = 0);
     void ForegroundUIExtensionAbility(uint32_t sceneFlag = 0);
 
     /**
@@ -753,31 +753,6 @@ public:
     void NotifyAbilityRequestSuccess(const std::string &requestId, const AppExecFwk::ElementName &element);
     void NotifyAbilitiesRequestDone(const std::string &requestKey, int32_t resultCode);
 
-    inline void SetLastWant(std::shared_ptr<Want> lastWant)
-    {
-        lastWant_ = lastWant;
-    }
-
-    inline bool HasLastWant() const
-    {
-        return lastWant_ != nullptr;
-    }
-
-    inline void SetBackgroundDrivenFlag(bool isLastWantBackgroundDriven)
-    {
-        isLastWantBackgroundDriven_.store(isLastWantBackgroundDriven);
-    }
-
-    inline void SetOnNewWantSkipScenarios(int32_t scenarios)
-    {
-        scenarios_.store(scenarios);
-    }
-
-    inline int32_t GetOnNewWantSkipScenarios() const
-    {
-        return scenarios_.load();
-    }
-
     inline void SetPreloadStart(bool isPreloadStart)
     {
         isPreloadStart_.store(isPreloadStart);
@@ -1001,7 +976,6 @@ protected:
     std::shared_ptr<CallContainer> callContainer_ = nullptr;       // new version
     std::shared_ptr<Want> connectWant_ = nullptr;
     std::shared_ptr<CallerAbilityInfo> saCallerInfo_ = nullptr;
-    std::shared_ptr<Want> lastWant_ = nullptr;
     std::shared_ptr<UIAbilityProperty> uiAbilityProperty_ = nullptr;
 
     LaunchDebugInfo launchDebugInfo_;
@@ -1013,8 +987,6 @@ protected:
     std::atomic<AbilityVisibilityState> abilityVisibilityState_ = AbilityVisibilityState::INITIAL;
     std::atomic_bool isPrepareTerminateAbilityCalled_ = false;
     std::atomic_bool isPrepareTerminateAbilityDone_ = false;
-    std::atomic_bool isLastWantBackgroundDriven_ = false;
-    std::atomic<int32_t> scenarios_ = 0;
     std::atomic<bool> isPreloaded_ = false;
     std::atomic<bool> isFrozenByPreload_ = false;
     std::atomic<bool> isAbilityConnectionReported_ = false;

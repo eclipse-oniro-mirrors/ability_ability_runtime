@@ -258,10 +258,8 @@ int UIAbilityLifecycleManager::StartUIAbility(AbilityRequest &abilityRequest, sp
         return ERR_OK;
     }
     TAG_LOGD(AAFwkTag::ABILITYMGR, "StartUIAbility, specifyTokenId is %{public}u.", abilityRequest.specifyTokenId);
-    auto want = uiAbilityRecord->GetWant();
-    if (want.GetBoolParam(IS_CALLING_FROM_DMS, false) && !(sessionInfo->isNewWant)) {
-        want.RemoveParam(IS_CALLING_FROM_DMS);
-        uiAbilityRecord->SetWant(want);
+    if (uiAbilityRecord->GetBoolParam(IS_CALLING_FROM_DMS, false) && !(sessionInfo->isNewWant)) {
+        uiAbilityRecord->RemoveSpecifiedWantParam(IS_CALLING_FROM_DMS);
     }
     uiAbilityRecord->SetSpecifyTokenId(abilityRequest.specifyTokenId);
     UpdateAbilityRecordLaunchReason(abilityRequest, uiAbilityRecord);
@@ -623,8 +621,8 @@ void UIAbilityLifecycleManager::OnAbilityRequestDone(const sptr<IRemoteObject> &
         TAG_LOGI(AAFwkTag::ABILITYMGR, "Ability is %{public}s/%{public}s, start to foreground.",
             abilityRecord->GetElementName().GetBundleName().c_str(),
             abilityRecord->GetElementName().GetAbilityName().c_str());
-        bool hasLastWant = abilityRecord->IsLastWantBackgroundDriven();
-        abilityRecord->ForegroundAbility(abilityRecord->lifeCycleStateInfo_.sceneFlagBak, hasLastWant);
+        abilityRecord->UpdateWantByLastWant();
+        abilityRecord->ForegroundAbility(abilityRecord->lifeCycleStateInfo_.sceneFlagBak);
     }
 }
 
@@ -1257,9 +1255,10 @@ void UIAbilityLifecycleManager::CompleteForegroundSuccess(const UIAbilityRecordP
         ffrt::submit(task, ffrt::task_attr().delay(gamePreLaunchCompleteTime_));
     }
 
-    if (abilityRecord->HasLastWant()) {
+    abilityRecord->SetShouldUpdateWant(true);
+    if (abilityRecord->UpdateWantByLastWant()) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "has last want");
-        abilityRecord->ForegroundAbility(0, true);
+        abilityRecord->ForegroundAbility(0);
     } else if (abilityRecord->GetPendingState() == AbilityState::BACKGROUND) {
         if (abilityRecord->GetPrelaunchFlag()) {
             HandlePrelaunchBackground(abilityRecord);
@@ -2230,7 +2229,7 @@ void UIAbilityLifecycleManager::CompleteBackground(const UIAbilityRecordPtr &abi
     if (abilityRecord->GetPendingState() == AbilityState::FOREGROUND) {
         abilityRecord->PostForegroundTimeoutTask();
         abilityRecord->SetAbilityState(AbilityState::FOREGROUNDING);
-        abilityRecord->SetBackgroundDrivenFlag(abilityRecord->HasLastWant());
+        abilityRecord->SetShouldUpdateWant(abilityRecord->HasLastWant());
         DelayedSingleton<AppScheduler>::GetInstance()->MoveToForeground(abilityRecord->GetToken());
     } else if (abilityRecord->GetPendingState() == AbilityState::BACKGROUND) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "not continuous startup.");

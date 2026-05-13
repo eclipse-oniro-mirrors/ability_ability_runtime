@@ -1954,22 +1954,6 @@ HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_ForegroundAbility_005, TestSize.Leve
  * EnvConditions: NA
  * CaseDescription: Verify AbilityRecord ForegroundAbility
  */
-HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_ForegroundAbility_006, TestSize.Level1)
-{
-    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
-    abilityRecord->SetLastWant(std::make_shared<Want>());
-    abilityRecord->ForegroundAbility(0, true);
-    EXPECT_TRUE(abilityRecord != nullptr);
-}
-
-/*
- * Feature: AbilityRecord
- * Function: ForegroundAbility
- * SubFunction: ForegroundAbility
- * FunctionPoints: NA
- * EnvConditions: NA
- * CaseDescription: Verify AbilityRecord ForegroundAbility
- */
 HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_ForegroundAbility_007, TestSize.Level1)
 {
     std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
@@ -1977,7 +1961,7 @@ HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_ForegroundAbility_007, TestSize.Leve
     AppUtils::GetInstance().isStartSpecifiedProcess_.isLoaded = true;
     AppUtils::GetInstance().isStartSpecifiedProcess_.value = true;
     abilityRecord->abilityInfo_.applicationInfo.isSystemApp = true;
-    abilityRecord->ForegroundAbility(0, true);
+    abilityRecord->ForegroundAbility(0);
     EXPECT_TRUE(abilityRecord != nullptr);
 }
 
@@ -1996,7 +1980,7 @@ HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_ForegroundAbility_008, TestSize.Leve
     AppUtils::GetInstance().isStartSpecifiedProcess_.isLoaded = true;
     AppUtils::GetInstance().isStartSpecifiedProcess_.value = true;
     abilityRecord->abilityInfo_.applicationInfo.isSystemApp = false;
-    abilityRecord->ForegroundAbility(0, true);
+    abilityRecord->ForegroundAbility(0);
     EXPECT_TRUE(abilityRecord != nullptr);
 }
 
@@ -2015,7 +1999,7 @@ HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_ForegroundAbility_009, TestSize.Leve
     AppUtils::GetInstance().isStartSpecifiedProcess_.isLoaded = true;
     AppUtils::GetInstance().isStartSpecifiedProcess_.value = false;
     abilityRecord->abilityInfo_.applicationInfo.isSystemApp = true;
-    abilityRecord->ForegroundAbility(0, true);
+    abilityRecord->ForegroundAbility(0);
     EXPECT_TRUE(abilityRecord != nullptr);
 }
 
@@ -2034,7 +2018,7 @@ HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_ForegroundAbility_010, TestSize.Leve
     AppUtils::GetInstance().isStartSpecifiedProcess_.isLoaded = true;
     AppUtils::GetInstance().isStartSpecifiedProcess_.value = false;
     abilityRecord->abilityInfo_.applicationInfo.isSystemApp = false;
-    abilityRecord->ForegroundAbility(0, true);
+    abilityRecord->ForegroundAbility(0);
     EXPECT_TRUE(abilityRecord != nullptr);
 }
 

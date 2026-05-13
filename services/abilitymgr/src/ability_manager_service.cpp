@@ -17822,7 +17822,11 @@ int32_t AbilityManagerService::SetOnNewWantSkipScenarios(sptr<IRemoteObject> cal
         TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid callerToken");
         return ERR_INVALID_CALLER;
     }
-    record->SetOnNewWantSkipScenarios(scenarios);
+    if (record->GetAbilityRecordType() != AbilityRecordType::UI_ABILITY) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid ability type");
+        return ERR_OK;
+    }
+    (std::static_pointer_cast<UIAbilityRecord>(record))->SetOnNewWantSkipScenarios(scenarios);
     return ERR_OK;
 }
 

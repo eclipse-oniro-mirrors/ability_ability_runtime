@@ -399,7 +399,7 @@ bool AbilityRecord::CanRestartResident()
 }
 
 // only for UIAbility
-void AbilityRecord::ForegroundAbility(uint32_t sceneFlag, bool hasLastWant)
+void AbilityRecord::ForegroundAbility(uint32_t sceneFlag)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     isWindowStarted_ = true;
@@ -412,16 +412,7 @@ void AbilityRecord::ForegroundAbility(uint32_t sceneFlag, bool hasLastWant)
     SetAbilityStateInner(AbilityState::FOREGROUNDING);
 #endif // SUPPORT_SCREEN
     lifeCycleStateInfo_.sceneFlag = sceneFlag;
-    Want want;
-    if (hasLastWant) {
-        if (HasLastWant()) {
-            SetWant(*lastWant_);
-            lifeCycleStateInfo_.isNewWant = true;
-            lastWant_ = nullptr;
-        }
-        SetBackgroundDrivenFlag(false);
-    }
-    want = GetWant();
+    auto want = GetWant();
     UpdateDmsCallerInfo(want);
     AbilityRuntime::ErrorMsgGuard errorMsgGuard(token_ ? token_->AsObject() : nullptr,
         reinterpret_cast<uintptr_t>(GetScheduler().GetRefPtr()), "ScheduleAbilityTransaction");

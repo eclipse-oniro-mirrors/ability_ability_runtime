@@ -60,5 +60,25 @@ void UIAbilityRecord::AttachNative()
         SetNativeState(AbilityNativeState::ATTACHED);
     }
 }
+
+bool UIAbilityRecord::UpdateWantByLastWant()
+{
+    if (!ShouldUpdateWant()) {
+        return false;
+    }
+    SetShouldUpdateWant(false);
+    std::shared_ptr<Want> lastWant;
+    {
+        std::lock_guard lock(wantLock_);
+        if (lastWant_ == nullptr) {
+            return false;
+        }
+        lastWant = lastWant_;
+        lastWant_ = nullptr;
+    }
+    SetWant(lastWant);
+    SetIsNewWant(true);
+    return true;
+}
 }  // namespace AAFwk
 }  // namespace OHOS
