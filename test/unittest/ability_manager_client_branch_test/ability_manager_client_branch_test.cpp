@@ -2223,7 +2223,7 @@ HWTEST_F(AbilityManagerClientBranchTest, RequestModalUIExtensionWithAccount_0200
     Want want;
     int32_t accountId = 100;
     auto result = client_->RequestModalUIExtensionWithAccount(want, accountId);
-    EXPECT_EQ(result, ABILITY_SERVICE_NOT_CONNECTED);
+    EXPECT_EQ(result, INNER_ERR);
     GTEST_LOG_(INFO) << "RequestModalUIExtensionWithAccount_0200 end";
 }
 

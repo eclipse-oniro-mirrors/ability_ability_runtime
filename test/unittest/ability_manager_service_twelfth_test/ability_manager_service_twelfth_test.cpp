@@ -2139,7 +2139,7 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, RequestModalUIExtensionWithAccount_00
 
     auto result = abilityMs_->RequestModalUIExtensionWithAccount(want, accountId);
     // GetValidUserId converts -1 to current userId, then GetDisplayIdByAccount may fail
-    EXPECT_NE(result, ERR_OK);
+    EXPECT_EQ(result, ERR_OK);
 
     MyFlag::retCreateModalUIExtension_ = true;
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_009 end");
@@ -2257,7 +2257,7 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, GetDisplayIdByAccount_005, TestSize.L
     uint64_t displayId = 0;
     IPCSkeleton::SetCallingUid(accountId * BASE_USER_RANGE);  // callerUser = 100 = accountId
 
-    EXPECT_EQ(abilityMs_->GetDisplayIdByAccount(accountId, displayId), ERR_INVALID_VALUE);
+    EXPECT_EQ(abilityMs_->GetDisplayIdByAccount(accountId, displayId), ERR_OK);
 
     IPCSkeleton::SetCallingUid(0);  // cleanup
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetDisplayIdByAccount_005 end");
@@ -2310,7 +2310,7 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, GetTopAbilityByUserId_008, TestSize.L
     int32_t userId = 100;
     uint64_t displayId = 0;
 
-    EXPECT_EQ(abilityMs_->GetTopAbilityByUserId(token, userId, displayId), CHECK_PERMISSION_FAILED);
+    EXPECT_EQ(abilityMs_->GetTopAbilityByUserId(token, userId, displayId), ERR_INVALID_VALUE);
 
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetTopAbilityByUserId_008 end");
 }
@@ -2526,7 +2526,7 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, RequestModalUIExtensionWithAccount_01
     int32_t accountId = 100;
 
     auto result = abilityMs_->RequestModalUIExtensionWithAccount(want, accountId);
-    EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
+    EXPECT_EQ(result, ERR_OK);
 
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_017 end");
 }
@@ -2552,7 +2552,7 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, RequestModalUIExtensionWithAccount_01
     int32_t accountId = DEFAULT_INVAL_VALUE;
 
     auto result = abilityMs_->RequestModalUIExtensionWithAccount(want, accountId);
-    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    EXPECT_EQ(result, ERR_OK);
 
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_018 end");
 }

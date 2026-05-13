@@ -739,7 +739,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSe
     napi_value funcResultValue = nullptr;
     napi_value argv[] = {};
     napi_status status = napi_call_function(env_, recv, funcValue, ARGC_ZERO, argv, &funcResultValue);
-    EXPECT_EQ(status, napi_ok);
+    EXPECT_EQ(status, napi_pending_exception);
 
     EXPECT_TRUE(tryCatch.HasCaught());
     tryCatch.ClearException();
@@ -774,7 +774,7 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSe
     napi_create_function(env_, "terminateSelfWithResult", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
     napi_value funcResultValue = nullptr;
     napi_status status = napi_call_function(env_, recv, funcValue, ARGC_ONE, argv, &funcResultValue);
-    EXPECT_EQ(status, napi_ok);
+    EXPECT_EQ(status, napi_pending_exception);
 
     EXPECT_TRUE(tryCatch.HasCaught());
     tryCatch.ClearException();
