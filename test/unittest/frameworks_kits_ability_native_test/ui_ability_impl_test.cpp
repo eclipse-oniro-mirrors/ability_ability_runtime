@@ -2708,5 +2708,91 @@ HWTEST_F(UIAbilityImplTest, AbilityRuntime_ExecuteInsightIntentMoveToForeground_
 
     EXPECT_EQ(abilityImpl->ability_, nullptr);
 }
+/**
+ * @tc.name: AbilityRuntime_Foreground_AbilityNullptr_0100
+ * @tc.desc: Test Foreground when ability_ is nullptr, should return early without crash.
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_Foreground_AbilityNullptr_0100, TestSize.Level1)
+{
+    auto impl = std::make_shared<UIAbilityImpl>();
+    EXPECT_EQ(impl->GetUIAbility(), nullptr);
+    Want want;
+    impl->Foreground(want);
+    EXPECT_FALSE(impl->notifyForegroundByWindow_);
+}
+
+/**
+ * @tc.name: AbilityRuntime_Foreground_AbilityInfoNullptr_0100
+ * @tc.desc: Test Foreground when ability exists but GetAbilityInfo() returns nullptr.
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_Foreground_AbilityInfoNullptr_0100, TestSize.Level1)
+{
+    auto impl = std::make_shared<UIAbilityImpl>();
+    auto ability = std::make_shared<MockUIAbility>();
+    ability->useMockAbilityInfo_ = true;
+    impl->ability_ = ability;
+    Want want;
+    impl->Foreground(want);
+    EXPECT_FALSE(impl->notifyForegroundByWindow_);
+}
+
+/**
+ * @tc.name: AbilityRuntime_Foreground_InitPreForeground_0100
+ * @tc.desc: Test Foreground when localNativeState_ is INIT_PRE_FOREGROUND,
+ *           should set HALF_FOREGROUND, call OnForeground silently, and set notifyForegroundByWindow_.
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_Foreground_InitPreForeground_0100, TestSize.Level1)
+{
+    auto impl = std::make_shared<UIAbilityImpl>();
+    auto ability = std::make_shared<MockUIAbility>();
+    ability->useMockAbilityInfo_ = true;
+    ability->mockAbilityInfo_ = std::make_shared<AbilityInfo>();
+    impl->ability_ = ability;
+    impl->localNativeState_ = LocalNativeState::INIT_PRE_FOREGROUND;
+    Want want;
+    impl->Foreground(want);
+    EXPECT_TRUE(impl->notifyForegroundByWindow_);
+    EXPECT_EQ(impl->localNativeState_, LocalNativeState::HALF_FOREGROUND);
+}
+
+/**
+ * @tc.name: AbilityRuntime_Foreground_Normal_Foreground_0100
+ * @tc.desc: Test Foreground normal path with silent foreground,
+ *           should set notifyForegroundByWindow_ to true.
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_Foreground_Normal_Foreground_0100, TestSize.Level1)
+{
+    auto impl = std::make_shared<UIAbilityImpl>();
+    auto ability = std::make_shared<MockUIAbility>();
+    ability->useMockAbilityInfo_ = true;
+    ability->mockAbilityInfo_ = std::make_shared<AbilityInfo>();
+    ability->SetIsSilentForeground(true);
+    impl->ability_ = ability;
+    impl->localNativeState_ = LocalNativeState::HALF_FOREGROUND;
+    Want want;
+    impl->Foreground(want);
+    EXPECT_TRUE(impl->notifyForegroundByWindow_);
+    EXPECT_EQ(impl->localNativeState_, LocalNativeState::NONE);
+}
+
+/**
+ * @tc.name: AbilityRuntime_Foreground_Normal_Foreground_0200
+ * @tc.desc: Test Foreground normal path with non-silent foreground,
+ *           should set notifyForegroundByAbility_ to true.
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_Foreground_Normal_Foreground_0200, TestSize.Level1)
+{
+    auto impl = std::make_shared<UIAbilityImpl>();
+    auto ability = std::make_shared<MockUIAbility>();
+    ability->useMockAbilityInfo_ = true;
+    ability->mockAbilityInfo_ = std::make_shared<AbilityInfo>();
+    ability->SetIsSilentForeground(false);
+    impl->ability_ = ability;
+    impl->localNativeState_ = LocalNativeState::HALF_FOREGROUND;
+    Want want;
+    impl->Foreground(want);
+    EXPECT_TRUE(impl->notifyForegroundByAbility_);
+    EXPECT_EQ(impl->localNativeState_, LocalNativeState::NONE);
+}
 } // namespace AppExecFwk
 } // namespace OHOS

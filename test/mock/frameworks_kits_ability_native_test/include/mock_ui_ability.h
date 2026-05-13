@@ -32,57 +32,65 @@ public:
 
     enum Event { ON_ACTIVE = 0, ON_BACKGROUND, ON_FOREGROUND, ON_INACTIVE, ON_START, ON_STOP, UNDEFINED };
 
-    void OnAbilityResult(int requestCode, int resultCode, const AAFwk::Want &resultData)
+    void OnAbilityResult(int requestCode, int resultCode, const AAFwk::Want &resultData) override
     {
         GTEST_LOG_(INFO) << "MockUIAbility::OnAbilityResult called";
         state_ = ON_ACTIVE;
     }
 
-    void OnNewWant(const Want &want)
+    void OnNewWant(const Want &want) override
     {
         onNewWantCalled_ = true;
         GTEST_LOG_(INFO) << "MockUIAbility::OnNewWant called";
     }
 
-    void OnStart(const Want &want, sptr<AAFwk::SessionInfo> sessionInfo)
+    void OnStart(const Want &want, sptr<AAFwk::SessionInfo> sessionInfo) override
     {
         GTEST_LOG_(INFO) << "MockUIAbility::OnStart called";
         state_ = ON_START;
     }
 
-    void OnStop()
+    void OnStop() override
     {
         GTEST_LOG_(INFO) << "MockUIAbility::OnStop called";
         state_ = ON_STOP;
     }
 
-    void OnForeground(const Want &want)
+    void OnForeground(const Want &want) override
     {
         GTEST_LOG_(INFO) << "MockUIAbility::OnForeground called";
         state_ = ON_FOREGROUND;
     }
 
-    void OnBackground()
+    void OnBackground() override
     {
         GTEST_LOG_(INFO) << "MockUIAbility::OnBackground called";
         state_ = ON_BACKGROUND;
     }
 
-    void OnRestoreAbilityState(const PacMap &inState)
+    void OnRestoreAbilityState(const PacMap &inState) override
     {
         GTEST_LOG_(INFO) << "Mock UIAbility::OnRestoreAbilityState called";
     }
 
-    void OnConfigurationUpdated(const Configuration &config)
+    void OnConfigurationUpdated(const Configuration &config) override
     {
         GTEST_LOG_(INFO) << "Mock UIAbility::OnConfigurationUpdated called";
         OnConfigurationUpdated_++;
     }
 
-    void ContinuationRestore(const Want &want)
+    void ContinuationRestore(const Want &want) override
     {
         GTEST_LOG_(INFO) << "Mock UIAbility::ContinuationRestore called";
         continueRestoreCalled_ = true;
+    }
+
+    const std::shared_ptr<AbilityInfo> GetAbilityInfo() override
+    {
+        if (useMockAbilityInfo_) {
+            return mockAbilityInfo_;
+        }
+        return AbilityRuntime::UIAbility::GetAbilityInfo();
     }
 
     MockUIAbility::Event state_ = UNDEFINED;
@@ -90,6 +98,8 @@ public:
     bool continueRestoreCalled_ = false;
     int OnConfigurationUpdated_ = 0;
     std::vector<std::string> value;
+    bool useMockAbilityInfo_ = false;
+    std::shared_ptr<AbilityInfo> mockAbilityInfo_;
 };
 } // namespace AppExecFwk
 } // namespace OHOS

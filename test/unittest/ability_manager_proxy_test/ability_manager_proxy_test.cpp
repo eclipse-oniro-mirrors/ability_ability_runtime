@@ -4028,5 +4028,58 @@ HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_StartSelfUIAbilityByAppCon
         mock_->code_);
     EXPECT_NE(res, NO_ERROR);
 }
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartSelf
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService StartSelf
+ * EnvConditions: NA
+ * CaseDescription: Verify the normal process of StartSelf
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_StartSelf_001, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
+    auto token = sptr<MockAbilityToken>::MakeSptr();
+    auto res = proxy_->StartSelf(token);
+    EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::START_SELF), mock_->code_);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartSelf
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService StartSelf
+ * EnvConditions: NA
+ * CaseDescription: Verify StartSelf with null token returns ERR_INVALID_VALUE
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_StartSelf_002, TestSize.Level1)
+{
+    OHOS::sptr<IRemoteObject> token = nullptr;
+    auto res = proxy_->StartSelf(token);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartSelf
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService StartSelf
+ * EnvConditions: NA
+ * CaseDescription: Verify the abnormal process of StartSelf (SendRequest failure)
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_StartSelf_003, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeErrorSendRequest));
+    auto token = sptr<MockAbilityToken>::MakeSptr();
+    auto res = proxy_->StartSelf(token);
+    EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::START_SELF), mock_->code_);
+    EXPECT_NE(res, NO_ERROR);
+}
 } // namespace AAFwk
 } // namespace OHOS

@@ -1836,5 +1836,43 @@ HWTEST_F(AbilityManagerServiceFourteenthTest, StartAbilityDelayed_002, TestSize.
     EXPECT_NE(result, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "StartAbilityDelayed_002 end");
 }
+/**
+ * @tc.number: StartAbilityByOEExt_001
+ * @tc.name: StartAbilityByOEExt
+ * @tc.desc: Test StartAbilityByOEExt when ValidateCaller returns CHECK_PERMISSION_FAILED
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, StartAbilityByOEExt_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest StartAbilityByOEExt_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    MyStatus::GetInstance().oeuValidateCallerResult_ = CHECK_PERMISSION_FAILED;
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    int32_t result = abilityMs->StartAbilityByOEExt(want, nullptr, 0, "");
+    EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
+    MyStatus::GetInstance().oeuValidateCallerResult_ = ERR_OK;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest StartAbilityByOEExt_001 end");
+}
+
+/**
+ * @tc.number: StartAbilityByOEExt_005
+ * @tc.name: StartAbilityByOEExt
+ * @tc.desc: Test StartAbilityByOEExt when ValidateCaller returns ERR_OK, falls through to StartAbilityWrap
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, StartAbilityByOEExt_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest StartAbilityByOEExt_005 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    MyStatus::GetInstance().oeuValidateCallerResult_ = ERR_OK;
+    MyStatus::GetInstance().oeuValidateCallerUserId_ = 100;
+    MyStatus::GetInstance().oeuValidateCallerHostBundleName_ = "com.test.host";
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    int32_t result = abilityMs->StartAbilityByOEExt(want, nullptr, 1000, "testFlag");
+    EXPECT_NE(result, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest StartAbilityByOEExt_005 end");
+}
+
 } // namespace AAFwk
 } // namespace OHOS
