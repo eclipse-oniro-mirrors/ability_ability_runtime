@@ -54,6 +54,12 @@ public:
         bundleInfo = retBundleInfo;
         return retGetBundleInfo;
     }
+
+    bool GetBundleInfo(const std::string &bundleName, int32_t flags, BundleInfo &bundleInfo, int32_t userId)
+    {
+        bundleInfo = retBundleInfo;
+        return retGetBundleInfo;
+    }
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

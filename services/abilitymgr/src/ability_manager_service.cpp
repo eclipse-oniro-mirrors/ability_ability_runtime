@@ -3122,6 +3122,11 @@ int AbilityManagerService::StartUIAbilityBySCB(sptr<SessionInfo> sessionInfo, Ab
             "not sceneboard", true);
         return ERR_WRONG_INTERFACE_CALL;
     }
+    std::string targetBundleName = sessionInfo->want.GetBundle();
+    if (!AbilityPermissionUtil::GetInstance().CheckStartUIAbilityByUserLockStatus(targetBundleName)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "scb call, user lock");
+        return ERR_BLOCK_START_FIRST_BOOT_SCREEN_UNLOCK;
+    }
 
     if (params.isRestart && !AppUtils::GetInstance().IsSupportRestartAppWithWindow()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "not supported");
@@ -13443,6 +13448,11 @@ int32_t AbilityManagerService::StartSpecifiedAbilityBySCB(const Want &want, cons
     if (!IsCallerSceneBoard()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "no sceneboard called, no allowed");
         return ERR_PERMISSION_DENIED;
+    }
+    std::string targetBundleName = want.GetBundle();
+    if (!AbilityPermissionUtil::GetInstance().CheckStartUIAbilityByUserLockStatus(targetBundleName)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "scb call, user lock");
+        return ERR_BLOCK_START_FIRST_BOOT_SCREEN_UNLOCK;
     }
     StartAbilityUtils::startSpecifiedBySCB = true;
     StartAbilityWrapParam param = {

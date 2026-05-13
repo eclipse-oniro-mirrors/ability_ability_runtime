@@ -28,6 +28,7 @@
 #include "permission_constants.h"
 #include "permission_verification.h"
 #include "start_ability_utils.h"
+#include "user_controller/user_controller.h"
 #include "utils/app_mgr_util.h"
 #ifdef SUPPORT_SCREEN
 #include "scene_board_judgement.h"
@@ -413,6 +414,33 @@ bool AbilityPermissionUtil::NeedCheckStatusBar(std::shared_ptr<AbilityRecord> ab
         return false;
     }
     return true;
+}
+
+bool AbilityPermissionUtil::CheckStartUIAbilityByUserLockStatus(const std::string &bundleName)
+{
+    if (bundleName.empty()) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "empty name");
+        return true;
+    }
+    auto userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+    auto userLockStatus = AbilityRuntime::UserController::GetInstance().GetUserLockStatus(userId);
+    if (userLockStatus == AbilityRuntime::UserController::UserLockStatus::USER_UNLOCKED) {
+        return true;
+    }
+    auto bms = AbilityUtil::GetBundleManagerHelper();
+    if (bms == nullptr) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "null helper");
+        return true;
+    }
+    AppExecFwk::BundleInfo bundleInfo;
+    auto ret =
+        IN_PROCESS_CALL(bms->GetBundleInfo(bundleName,
+            static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION), bundleInfo, userId));
+    bool isSystemApp = ret ? bundleInfo.applicationInfo.isSystemApp : false;
+    if (!isSystemApp) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "not system app");
+    }
+    return isSystemApp;
 }
 } // AAFwk
 } // OHOS
