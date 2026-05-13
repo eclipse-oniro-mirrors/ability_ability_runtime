@@ -114,7 +114,7 @@ constexpr const char* ERROR_MSG_CALLER_NOT_ATOMIC_SERVICE =
 constexpr const char* ERROR_MSG_AGENT_ID_NOT_EXIST =
     "The specified agentId does not exist.";
 constexpr const char* ERROR_MSG_AGENT_CARD_LIST_OUT_OF_RANGE =
-    "The number of agent cards in the bundle reaches the limit.";
+    "The number of AgentCards in the bundle reaches the limit.";
 constexpr const char* ERROR_MSG_AGENT_CARD_VERSION_TOO_OLD =
     "The specified agent card version is older than the current version.";
 constexpr const char* ERROR_MSG_AGENT_CARD_VERSION_INVALID =
