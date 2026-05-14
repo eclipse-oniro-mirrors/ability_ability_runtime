@@ -76,47 +76,47 @@ uint32_t GetMemberId(const Json& obj)
     return 0;
 }
 
-OH_AbilityRuntime_MoDispatcher_ValueType MapTypeStringToVt(const std::string& typeName)
+OH_AbilityRuntime_ModObjDispatcher_ValueType MapTypeStringToVt(const std::string& typeName)
 {
     const std::string type = ToLower(typeName);
-    if (type == "void") return OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_VOID;
-    if (type == "bool" || type == "boolean") return OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_BOOL;
-    if (type == "i8" || type == "int8") return OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_I8;
-    if (type == "i16" || type == "int16") return OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_I16;
-    if (type == "i32" || type == "int32") return OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_I32;
-    if (type == "i64" || type == "int64") return OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_I64;
-    if (type == "u8" || type == "uint8") return OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_U8;
-    if (type == "u16" || type == "uint16") return OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_U16;
-    if (type == "u32" || type == "uint32") return OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_U32;
-    if (type == "u64" || type == "uint64") return OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_U64;
-    if (type == "f32" || type == "float") return OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_F32;
-    if (type == "f64" || type == "double") return OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_F64;
-    if (type == "string") return OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_STRING;
-    if (type == "array") return OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_ARRAY;
-    if (type == "vector") return OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_VECTOR;
-    if (type == "set") return OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_SET;
-    if (type == "map") return OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_MAP;
-    if (type == "struct") return OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_STRUCT;
-    if (type == "interface") return OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_IPC_REMOTE_PROXY;
-    if (type == "enum") return OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_ENUM;
-    return OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_EMPTY;
+    if (type == "void") return OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VOID;
+    if (type == "bool" || type == "boolean") return OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_BOOL;
+    if (type == "i8" || type == "int8") return OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I8;
+    if (type == "i16" || type == "int16") return OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I16;
+    if (type == "i32" || type == "int32") return OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I32;
+    if (type == "i64" || type == "int64") return OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I64;
+    if (type == "u8" || type == "uint8") return OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U8;
+    if (type == "u16" || type == "uint16") return OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U16;
+    if (type == "u32" || type == "uint32") return OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U32;
+    if (type == "u64" || type == "uint64") return OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U64;
+    if (type == "f32" || type == "float") return OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_F32;
+    if (type == "f64" || type == "double") return OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_F64;
+    if (type == "string") return OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRING;
+    if (type == "array") return OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_ARRAY;
+    if (type == "vector") return OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VECTOR;
+    if (type == "set") return OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_SET;
+    if (type == "map") return OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_MAP;
+    if (type == "struct") return OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRUCT;
+    if (type == "interface") return OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_IPC_REMOTE_PROXY;
+    if (type == "enum") return OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_ENUM;
+    return OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_EMPTY;
 }
 
-bool IsSimpleVtType(OH_AbilityRuntime_MoDispatcher_ValueType vt)
+bool IsSimpleVtType(OH_AbilityRuntime_ModObjDispatcher_ValueType vt)
 {
     switch (vt) {
-        case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_BOOL:
-        case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_I8:
-        case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_I16:
-        case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_I32:
-        case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_I64:
-        case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_U8:
-        case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_U16:
-        case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_U32:
-        case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_U64:
-        case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_F32:
-        case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_F64:
-        case OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_STRING:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_BOOL:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I8:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I16:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I32:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I64:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U8:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U16:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U32:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U64:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_F32:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_F64:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRING:
             return true;
         default:
             return false;
@@ -127,7 +127,7 @@ bool IsSimpleVtType(OH_AbilityRuntime_MoDispatcher_ValueType vt)
 
 // -------- ParseTypeInfoFromJson: validated parsing for metadata --------
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::ParseTypeInfoFromJson(const Json& typeInfoObj,
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::ParseTypeInfoFromJson(const Json& typeInfoObj,
     std::shared_ptr<MoTypeInfo>& result)
 {
     if (!typeInfoObj.is_object() || !typeInfoObj.contains("type") || !typeInfoObj["type"].is_string()) {
@@ -140,7 +140,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::ParseTypeInfoFromJson(cons
     const std::string typeLower = ToLower(typeStr);
     result->vt = MapTypeStringToVt(typeStr);
 
-    if (result->vt == OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_EMPTY) {
+    if (result->vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_EMPTY) {
         TAG_LOGE(AAFwkTag::EXT, "ParseTypeInfoFromJson: unknown type '%{public}s'", typeStr.c_str());
         return ABILITY_RUNTIME_ERROR_CODE_TLB_METADATA_INVALID;
     }
@@ -218,7 +218,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::ParseTypeInfoFromJson(cons
 
 // -------- IsIdlTypeDeclared: check if idl_type references a known type --------
 
-bool MoDispatcherMetadataManager::IsIdlTypeDeclared(const std::string& idlType) const
+bool ModObjDispatcherMetadataManager::IsIdlTypeDeclared(const std::string& idlType) const
 {
     // Check enums
     for (const auto& e : enums_) {
@@ -243,7 +243,7 @@ bool MoDispatcherMetadataManager::IsIdlTypeDeclared(const std::string& idlType) 
 
 // -------- FillCTypeInfo: fill a C TypeInfo struct from MoTypeInfo (recursive deep copy) --------
 
-void MoDispatcherMetadataManager::FillCTypeInfo(OH_AbilityRuntime_MoDispatcher_TypeInfo* cType,
+void ModObjDispatcherMetadataManager::FillCTypeInfo(OH_AbilityRuntime_ModObjDispatcher_TypeInfo* cType,
     const std::shared_ptr<MoTypeInfo>& moType)
 {
     if (cType == nullptr || moType == nullptr) {
@@ -254,7 +254,7 @@ void MoDispatcherMetadataManager::FillCTypeInfo(OH_AbilityRuntime_MoDispatcher_T
 
 // -------- EnsureLoaded --------
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::EnsureLoaded(OHOS::IRemoteObject* proxy)
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::EnsureLoaded(OHOS::IRemoteObject* proxy)
 {
     if (proxy == nullptr) {
         TAG_LOGE(AAFwkTag::EXT, "EnsureLoaded: proxy is nullptr");
@@ -276,13 +276,13 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::EnsureLoaded(OHOS::IRemote
         return ret;
     }
     loaded_ = true;
-    MoDispatcherComplexTypeManager::RegisterStructMetadata(structs_);
+    ModObjDispatcherComplexTypeManager::RegisterStructMetadata(structs_);
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
 // -------- RequestMetadataJson --------
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::RequestMetadataJson(OHOS::IRemoteObject* proxy,
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::RequestMetadataJson(OHOS::IRemoteObject* proxy,
     std::string* jsonText)
 {
     if (proxy == nullptr || jsonText == nullptr) {
@@ -336,7 +336,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::RequestMetadataJson(OHOS::
 
 // -------- ParseMetadata --------
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::ParseMetadata(const std::string& jsonText)
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::ParseMetadata(const std::string& jsonText)
 {
     Json root = Json::parse(jsonText, nullptr, false);
     if (root.is_discarded() || !root.is_object()) {
@@ -612,7 +612,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::ParseMetadata(const std::s
 
 // -------- QueryMainServiceInterfaceMemberIds --------
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::QueryMainServiceInterfaceMemberIds(
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::QueryMainServiceInterfaceMemberIds(
     const char** names, uint32_t count, uint32_t* memberIds) const
 {
     if (names == nullptr || memberIds == nullptr) {
@@ -637,7 +637,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::QueryMainServiceInterfaceM
 }
 
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetMethodMeta(uint32_t memberId, MoMethodMeta* methodMeta) const
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMethodMeta(uint32_t memberId, MoMethodMeta* methodMeta) const
 {
     if (methodMeta == nullptr) {
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
@@ -654,7 +654,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetMethodMeta(uint32_t mem
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetVersion(std::string* version) const
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetVersion(std::string* version) const
 {
     if (version == nullptr) {
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
@@ -667,7 +667,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetVersion(std::string* ve
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetMainServiceInterfaceName(std::string* interfaceName) const
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMainServiceInterfaceName(std::string* interfaceName) const
 {
     if (interfaceName == nullptr) {
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
@@ -683,7 +683,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetMainServiceInterfaceNam
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetInterfaceCount(uint32_t* count) const
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetInterfaceCount(uint32_t* count) const
 {
     if (count == nullptr) {
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
@@ -696,7 +696,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetInterfaceCount(uint32_t
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetInterfaceName(uint32_t index, std::string* name) const
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetInterfaceName(uint32_t index, std::string* name) const
 {
     if (name == nullptr) {
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
@@ -709,7 +709,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetInterfaceName(uint32_t 
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetInterfaceIsCallback(const std::string& interfaceName,
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetInterfaceIsCallback(const std::string& interfaceName,
     bool* isCallback) const
 {
     if (isCallback == nullptr || interfaceName.empty()) {
@@ -728,7 +728,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetInterfaceIsCallback(con
     return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetInterfaceDescriptor(const std::string& interfaceName,
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetInterfaceDescriptor(const std::string& interfaceName,
     std::u16string* descriptor) const
 {
     if (descriptor == nullptr || interfaceName.empty()) {
@@ -747,7 +747,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetInterfaceDescriptor(con
     return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetEnumCount(uint32_t* count) const
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetEnumCount(uint32_t* count) const
 {
     if (count == nullptr) {
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
@@ -760,7 +760,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetEnumCount(uint32_t* cou
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetEnumName(uint32_t index, std::string* name) const
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetEnumName(uint32_t index, std::string* name) const
 {
     if (name == nullptr) {
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
@@ -773,7 +773,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetEnumName(uint32_t index
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetEnumValueCount(const std::string& enumName,
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetEnumValueCount(const std::string& enumName,
     uint32_t* count) const
 {
     if (count == nullptr || enumName.empty()) {
@@ -792,7 +792,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetEnumValueCount(const st
     return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetEnumValueName(const std::string& enumName, uint32_t index,
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetEnumValueName(const std::string& enumName, uint32_t index,
     std::string* valueName) const
 {
     if (valueName == nullptr || enumName.empty()) {
@@ -812,7 +812,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetEnumValueName(const std
     return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetEnumValue(const std::string& enumName,
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetEnumValue(const std::string& enumName,
     const std::string& valueName, int32_t* value) const
 {
     if (value == nullptr || enumName.empty() || valueName.empty()) {
@@ -836,7 +836,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetEnumValue(const std::st
     return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetStructCount(uint32_t* count) const
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetStructCount(uint32_t* count) const
 {
     if (count == nullptr) {
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
@@ -849,7 +849,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetStructCount(uint32_t* c
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetStructName(uint32_t index, std::string* name) const
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetStructName(uint32_t index, std::string* name) const
 {
     if (name == nullptr) {
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
@@ -860,7 +860,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetStructName(uint32_t ind
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetStructFieldCount(const std::string& structName,
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetStructFieldCount(const std::string& structName,
     uint32_t* count) const
 {
     if (count == nullptr || structName.empty()) {
@@ -877,7 +877,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetStructFieldCount(const 
     return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetStructFieldName(const std::string& structName, uint32_t index,
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetStructFieldName(const std::string& structName, uint32_t index,
     std::string* fieldName) const
 {
     if (fieldName == nullptr || structName.empty()) {
@@ -899,8 +899,8 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetStructFieldName(const s
     return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetStructFieldType(const std::string& structName,
-    const std::string& fieldName, OH_AbilityRuntime_MoDispatcher_TypeInfo* fieldType) const
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetStructFieldType(const std::string& structName,
+    const std::string& fieldName, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* fieldType) const
 {
     if (fieldType == nullptr || structName.empty() || fieldName.empty()) {
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
@@ -946,7 +946,7 @@ const MoMethodMeta* FindMethodByName(const std::vector<MoMethodMeta>& methods, c
     return nullptr;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetMethodCount(const std::string& interfaceName,
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMethodCount(const std::string& interfaceName,
     uint32_t* count) const
 {
     if (count == nullptr || interfaceName.empty()) {
@@ -964,7 +964,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetMethodCount(const std::
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetMethodName(const std::string& interfaceName,
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMethodName(const std::string& interfaceName,
     uint32_t index, std::string* methodName) const
 {
     if (methodName == nullptr || interfaceName.empty()) {
@@ -985,7 +985,7 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetMethodName(const std::s
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetMethodMemberId(const std::string& interfaceName,
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMethodMemberId(const std::string& interfaceName,
     const std::string& methodName, uint32_t* memberId) const
 {
     if (memberId == nullptr || interfaceName.empty() || methodName.empty()) {
@@ -1007,8 +1007,8 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetMethodMemberId(const st
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetMethodReturnType(const std::string& interfaceName,
-    const std::string& methodName, OH_AbilityRuntime_MoDispatcher_TypeInfo* returnType) const
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMethodReturnType(const std::string& interfaceName,
+    const std::string& methodName, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* returnType) const
 {
     if (returnType == nullptr || interfaceName.empty() || methodName.empty()) {
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
@@ -1028,14 +1028,14 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetMethodReturnType(const 
     if (method->returnType) {
         method->returnType->FillCTypeInfo(returnType);
     } else {
-        (void)memset_s(returnType, sizeof(OH_AbilityRuntime_MoDispatcher_TypeInfo), 0,
-            sizeof(OH_AbilityRuntime_MoDispatcher_TypeInfo));
-        returnType->vt = OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_VOID;
+        (void)memset_s(returnType, sizeof(OH_AbilityRuntime_ModObjDispatcher_TypeInfo), 0,
+            sizeof(OH_AbilityRuntime_ModObjDispatcher_TypeInfo));
+        returnType->vt = OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VOID;
     }
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetMethodParamCount(const std::string& interfaceName,
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMethodParamCount(const std::string& interfaceName,
     const std::string& methodName, uint32_t* count) const
 {
     if (count == nullptr || interfaceName.empty() || methodName.empty()) {
@@ -1057,9 +1057,9 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetMethodParamCount(const 
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetMethodParamType(const std::string& interfaceName,
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMethodParamType(const std::string& interfaceName,
     const std::string& methodName, uint32_t paramIndex,
-    OH_AbilityRuntime_MoDispatcher_TypeInfo* paramType) const
+    OH_AbilityRuntime_ModObjDispatcher_TypeInfo* paramType) const
 {
     if (paramType == nullptr || interfaceName.empty() || methodName.empty()) {
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
@@ -1083,13 +1083,13 @@ AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetMethodParamType(const s
     if (param.typeInfo) {
         param.typeInfo->FillCTypeInfo(paramType);
     } else {
-        (void)memset_s(paramType, sizeof(OH_AbilityRuntime_MoDispatcher_TypeInfo), 0,
-            sizeof(OH_AbilityRuntime_MoDispatcher_TypeInfo));
+        (void)memset_s(paramType, sizeof(OH_AbilityRuntime_ModObjDispatcher_TypeInfo), 0,
+            sizeof(OH_AbilityRuntime_ModObjDispatcher_TypeInfo));
     }
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode MoDispatcherMetadataManager::GetMethodParamName(const std::string& interfaceName,
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMethodParamName(const std::string& interfaceName,
     const std::string& methodName, uint32_t paramIndex, std::string* paramName) const
 {
     if (paramName == nullptr || interfaceName.empty() || methodName.empty()) {

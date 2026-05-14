@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ABILITY_RUNTIME_MO_DISPATCHER_METADATA_MANAGER_H
-#define ABILITY_RUNTIME_MO_DISPATCHER_METADATA_MANAGER_H
+#ifndef ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_METADATA_MANAGER_H
+#define ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_METADATA_MANAGER_H
 
 #include <mutex>
 #include <string>
@@ -27,7 +27,7 @@
 
 namespace OHOS::AbilityRuntime {
 
-class MoDispatcherMetadataManager {
+class ModObjDispatcherMetadataManager {
 public:
     static constexpr uint32_t IPC_CODE_GET_TLB_FD = 1;
     static constexpr const char16_t INTERFACE_DESCRIPTOR[] = u"ohos.abilityruntime.ModularObjectService";
@@ -54,11 +54,11 @@ public:
     AbilityRuntime_ErrorCode GetMethodMemberId(const std::string& interfaceName, const std::string& methodName,
         uint32_t* memberId) const;
     AbilityRuntime_ErrorCode GetMethodReturnType(const std::string& interfaceName, const std::string& methodName,
-        OH_AbilityRuntime_MoDispatcher_TypeInfo* returnType) const;
+        OH_AbilityRuntime_ModObjDispatcher_TypeInfo* returnType) const;
     AbilityRuntime_ErrorCode GetMethodParamCount(const std::string& interfaceName, const std::string& methodName,
         uint32_t* count) const;
     AbilityRuntime_ErrorCode GetMethodParamType(const std::string& interfaceName, const std::string& methodName,
-        uint32_t paramIndex, OH_AbilityRuntime_MoDispatcher_TypeInfo* paramType) const;
+        uint32_t paramIndex, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* paramType) const;
     AbilityRuntime_ErrorCode GetMethodParamName(const std::string& interfaceName, const std::string& methodName,
         uint32_t paramIndex, std::string* paramName) const;
 
@@ -76,7 +76,7 @@ public:
     AbilityRuntime_ErrorCode GetStructFieldName(const std::string& structName, uint32_t index,
         std::string* fieldName) const;
     AbilityRuntime_ErrorCode GetStructFieldType(const std::string& structName, const std::string& fieldName,
-        OH_AbilityRuntime_MoDispatcher_TypeInfo* fieldType) const;
+        OH_AbilityRuntime_ModObjDispatcher_TypeInfo* fieldType) const;
 
 private:
     // Static entry point for descriptor-based parsing with validation
@@ -87,7 +87,7 @@ private:
     bool IsIdlTypeDeclared(const std::string& idlType) const;
 
     // Fill a C TypeInfo struct from MoTypeInfo (shallow copy of the top-level fields only)
-    static void FillCTypeInfo(OH_AbilityRuntime_MoDispatcher_TypeInfo* cType,
+    static void FillCTypeInfo(OH_AbilityRuntime_ModObjDispatcher_TypeInfo* cType,
         const std::shared_ptr<MoTypeInfo>& moType);
 
     AbilityRuntime_ErrorCode ParseMetadata(const std::string& jsonText);
@@ -109,4 +109,4 @@ private:
 };
 } // namespace OHOS::AbilityRuntime
 
-#endif // ABILITY_RUNTIME_MO_DISPATCHER_METADATA_MANAGER_H
+#endif // ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_METADATA_MANAGER_H

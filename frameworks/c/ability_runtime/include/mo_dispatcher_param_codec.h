@@ -13,28 +13,28 @@
  * limitations under the License.
  */
 
-#ifndef ABILITY_RUNTIME_MO_DISPATCHER_PARAM_CODEC_H
-#define ABILITY_RUNTIME_MO_DISPATCHER_PARAM_CODEC_H
+#ifndef ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_PARAM_CODEC_H
+#define ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_PARAM_CODEC_H
 
 #include "message_parcel.h"
 #include "mo_dispatcher_metadata_manager.h"
 
 namespace OHOS::AbilityRuntime {
-class MoDispatcherParamCodec {
+class ModObjDispatcherParamCodec {
 public:
     static AbilityRuntime_ErrorCode MarshalCallRequest(const MoMethodMeta& methodMeta,
-        const OH_AbilityRuntime_MoDispatcher_InputParams* inputParams, MessageParcel& dataParcel);
+        const OH_AbilityRuntime_ModObjDispatcher_InputParams* inputParams, MessageParcel& dataParcel);
 
     static AbilityRuntime_ErrorCode UnmarshalCallResult(const MoMethodMeta& methodMeta,
-        MessageParcel& replyParcel, OH_AbilityRuntime_MoDispatcher_Variant* result, int32_t* pMethodErrCode);
+        MessageParcel& replyParcel, OH_AbilityRuntime_ModObjDispatcher_Variant* result, int32_t* pMethodErrCode);
 
 private:
     static AbilityRuntime_ErrorCode WriteRawValue(MessageParcel& parcel,
-        const std::shared_ptr<MoTypeInfo>& typeInfo, const OH_AbilityRuntime_MoDispatcher_Variant* value);
+        const std::shared_ptr<MoTypeInfo>& typeInfo, const OH_AbilityRuntime_ModObjDispatcher_Variant* value);
 
     static AbilityRuntime_ErrorCode ReadRawValue(MessageParcel& parcel,
-        const std::shared_ptr<MoTypeInfo>& typeInfo, OH_AbilityRuntime_MoDispatcher_Variant* value);
+        const std::shared_ptr<MoTypeInfo>& typeInfo, OH_AbilityRuntime_ModObjDispatcher_Variant* value);
 };
 } // namespace OHOS::AbilityRuntime
 
-#endif // ABILITY_RUNTIME_MO_DISPATCHER_PARAM_CODEC_H
+#endif // ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_PARAM_CODEC_H

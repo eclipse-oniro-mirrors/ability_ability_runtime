@@ -1,13 +1,13 @@
-/*
+﻿/*
  * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with License.
- * You may obtain the License at
+ * You may obtain a copy of License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -34,8 +34,8 @@
  * @since 26.0.0
  */
 
-#ifndef OHOS_ABILITY_RUNTIME_C_MO_DISPATCHER_H
-#define OHOS_ABILITY_RUNTIME_C_MO_DISPATCHER_H
+#ifndef OHOS_ABILITY_RUNTIME_C_MOD_OBJ_DISPATCHER_H
+#define OHOS_ABILITY_RUNTIME_C_MOD_OBJ_DISPATCHER_H
 
 #include <stdbool.h>
 #include "ability_runtime_common.h"
@@ -46,18 +46,12 @@ extern "C" {
 #endif
 
 /**
- * @brief Forward declaration of OH_AbilityRuntime_MoDispatcher_TypeDescriptor structure.
+ * @brief Defines a pointer to OH_AbilityRuntime_ModularObjectDispatcher_TypeDescriptor.
  *
  * @since 26.0.0
  */
-struct OH_AbilityRuntime_MoDispatcher_TypeDescriptor;
-
-/**
- * @brief Defines a pointer to OH_AbilityRuntime_MoDispatcher_TypeDescriptor.
- *
- * @since 26.0.0
- */
-typedef struct OH_AbilityRuntime_MoDispatcher_TypeDescriptor* OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle;
+typedef struct OH_AbilityRuntime_ModularObjectDispatcher_TypeDescriptor*
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle;
 
  /**
   * @brief Enumerates variant types.
@@ -65,169 +59,235 @@ typedef struct OH_AbilityRuntime_MoDispatcher_TypeDescriptor* OH_AbilityRuntime_
   * @since 26.0.0
   */
 typedef enum {
-    /** @description Empty value. */
-    OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_EMPTY = 0,
-    /** @description Void value. */
-    OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_VOID = 1,
-    /** @description Boolean value. */
-    OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_BOOL = 2,
-    /** @description 8-bit signed integer. */
-    OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_I8 = 3,
-    /** @description 16-bit signed integer. */
-    OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_I16 = 4,
-    /** @description 32-bit signed integer. */
-    OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_I32 = 5,
-    /** @description 64-bit signed integer. */
-    OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_I64 = 6,
-    /** @description 8-bit unsigned integer. */
-    OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_U8 = 7,
-    /** @description 16-bit unsigned integer. */
-    OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_U16 = 8,
-    /** @description 32-bit unsigned integer. */
-    OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_U32 = 9,
-    /** @description 64-bit unsigned integer. */
-    OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_U64 = 10,
-    /** @description 32-bit floating point. */
-    OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_F32 = 11,
-    /** @description 64-bit floating point. */
-    OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_F64 = 12,
-    /** @description String (UTF-8). */
-    OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_STRING = 13,
-    /** @description Array. */
-    OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_ARRAY = 14,
-    /** @description Vector. */
-    OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_VECTOR = 15,
-    /** @description Set. */
-    OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_SET = 16,
-    /** @description Map. */
-    OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_MAP = 17,
-    /** @description Struct. */
-    OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_STRUCT = 18,
-    /** @description Ipc Remote Proxy. */
-    OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_IPC_REMOTE_PROXY = 19,
-    /** @description Ipc Remote Stub. */
-    OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_IPC_REMOTE_STUB = 20,
-    /** @description Enum value. */
-    OH_ABILITY_RUNTIME_MO_DISPATCHER_VT_ENUM = 21,
-} OH_AbilityRuntime_MoDispatcher_ValueType;
-
-/**
- * @brief Forward declaration of OH_AbilityRuntime_MoDispatcher_TypeInfo structure.
- *
- * @since 26.0.0
- */
-struct OH_AbilityRuntime_MoDispatcher_TypeInfo;
+    /**
+     * @brief Empty value.
+     * @since 26.0.0
+     */
+    OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_EMPTY = 0,
+    /**
+     * @brief Void value.
+     * @since 26.0.0
+     */
+    OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VOID = 1,
+    /**
+     * @brief Boolean value.
+     * @since 26.0.0
+     */
+    OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_BOOL = 2,
+    /**
+     * @brief 8-bit signed integer.
+     * @since 26.0.0
+     */
+    OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I8 = 3,
+    /**
+     * @brief 16-bit signed integer.
+     * @since 26.0.0
+     */
+    OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I16 = 4,
+    /**
+     * @brief 32-bit signed integer.
+     * @since 26.0.0
+     */
+    OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I32 = 5,
+    /**
+     * @brief 64-bit signed integer.
+     * @since 26.0.0
+     */
+    OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I64 = 6,
+    /**
+     * @brief 8-bit unsigned integer.
+     * @since 26.0.0
+     */
+    OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U8 = 7,
+    /**
+     * @brief 16-bit unsigned integer.
+     * @since 26.0.0
+     */
+    OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U16 = 8,
+    /**
+     * @brief 32-bit unsigned integer.
+     * @since 26.0.0
+     */
+    OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U32 = 9,
+    /**
+     * @brief 64-bit unsigned integer.
+     * @since 26.0.0
+     */
+    OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U64 = 10,
+    /**
+     * @brief 32-bit floating point.
+     * @since 26.0.0
+     */
+    OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_F32 = 11,
+    /**
+     * @brief 64-bit floating point.
+     * @since 26.0.0
+     */
+    OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_F64 = 12,
+    /**
+     * @brief String (UTF-8).
+     * @since 26.0.0
+     */
+    OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRING = 13,
+    /**
+     * @brief Array.
+     * @since 26.0.0
+     */
+    OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_ARRAY = 14,
+    /**
+     * @brief Vector.
+     * @since 26.0.0
+     */
+    OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VECTOR = 15,
+    /**
+     * @brief Set.
+     * @since 26.0.0
+     */
+    OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_SET = 16,
+    /**
+     * @brief Map.
+     * @since 26.0.0
+     */
+    OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_MAP = 17,
+    /**
+     * @brief Struct.
+     * @since 26.0.0
+     */
+    OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRUCT = 18,
+    /**
+     * @brief Ipc Remote Proxy.
+     * @since 26.0.0
+     */
+    OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_IPC_REMOTE_PROXY = 19,
+    /**
+     * @brief Ipc Remote Stub.
+     * @since 26.0.0
+     */
+    OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_IPC_REMOTE_STUB = 20,
+    /**
+     * @brief Enum value.
+     * @since 26.0.0
+     */
+    OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_ENUM = 21,
+} OH_AbilityRuntime_ModObjDispatcher_ValueType;
 
 /**
  * @brief Defines the parameter type descriptor for modular object dispatcher.
  *
  * Describes the type of a parameter or return value using a tagged union.
- * For map types, use u.mapType.keyType and u.mapType.pValueType;
- * for array types, use u.arrayType.pElementType and u.arrayType.size;
- * for vector/set types, use u.pElementType;
- * for other custom types, use u.idlType.
+  * for array types, use u.arrayType.pElementType and u.arrayType.size;
+  * for vector/set types, use u.pElementType;
+  * for struct/proxy/stub/enum types, use u.idlType.
  *
  * @since 26.0.0
  */
-typedef struct OH_AbilityRuntime_MoDispatcher_TypeInfo {
-    OH_AbilityRuntime_MoDispatcher_ValueType vt;
+typedef struct OH_AbilityRuntime_ModObjDispatcher_TypeInfo {
+    /**
+     * @brief Type tag that determines which union member is valid.
+     * @since 26.0.0
+     */
+    OH_AbilityRuntime_ModObjDispatcher_ValueType vt;
     union {
+        /**
+         * @brief Map type metadata.
+         *         Used when vt is {@link OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_MAP}.
+         * @since 26.0.0
+         */
         struct {
-            OH_AbilityRuntime_MoDispatcher_ValueType keyType;
-            struct OH_AbilityRuntime_MoDispatcher_TypeInfo *pValueType;
+            /**
+             * @brief Key type of the map. Only basic types are supported.
+             *        Container types (ARRAY, VECTOR, SET, MAP) and complex types
+             *        (STRUCT, IPC_REMOTE_PROXY, IPC_REMOTE_STUB) are not supported.
+             * @since 26.0.0
+             */
+            OH_AbilityRuntime_ModObjDispatcher_ValueType keyType;
+            /**
+             * @brief Pointer to the value type descriptor.
+             *         Must be released by {@link OH_AbilityRuntime_ModObjDispatcher_TypeInfo_Clear}.
+             * @since 26.0.0
+             */
+            OH_AbilityRuntime_ModObjDispatcher_TypeInfo *pValueType;
         } mapType;
+        /**
+         * @brief Array type metadata.
+         *         Used when vt is {@link OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_ARRAY}.
+         * @since 26.0.0
+         */
         struct {
-            struct OH_AbilityRuntime_MoDispatcher_TypeInfo *pElementType;
+            /**
+             * @brief Pointer to the element type descriptor.
+             *         Must be released by {@link OH_AbilityRuntime_ModObjDispatcher_TypeInfo_Clear}.
+             * @since 26.0.0
+             */
+            struct OH_AbilityRuntime_ModObjDispatcher_TypeInfo *pElementType;
+            /**
+             * @brief Fixed array size.
+             * @since 26.0.0
+             */
             uint32_t size;
         } arrayType;
-        struct OH_AbilityRuntime_MoDispatcher_TypeInfo *pElementType;
+        /**
+         * @brief Pointer to the element type descriptor.
+         *         Used when vt is {@link OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VECTOR}
+         *         or {@link OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_SET}.
+         *         Must be released by {@link OH_AbilityRuntime_ModObjDispatcher_TypeInfo_Clear}.
+         * @since 26.0.0
+         */
+        OH_AbilityRuntime_ModObjDispatcher_TypeInfo *pElementType;
+        /**
+         * @brief IDL type name string (heap-allocated).
+         *         Used when vt is {@link OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRUCT},
+         *         {@link OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_IPC_REMOTE_PROXY},
+         *         {@link OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_IPC_REMOTE_STUB},
+         *         or {@link OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_ENUM}.
+         *         Must be released by {@link OH_AbilityRuntime_ModObjDispatcher_TypeInfo_Clear}.
+         * @since 26.0.0
+         */
         char* idlType;
     } u;
-} OH_AbilityRuntime_MoDispatcher_TypeInfo;
+} OH_AbilityRuntime_ModObjDispatcher_TypeInfo;
 
 /**
- * @brief Forward declaration of OH_AbilityRuntime_MoDispatcher structure.
+ * @brief Defines a pointer to OH_AbilityRuntime_ModularObjectDispatcher.
  *
  * @since 26.0.0
  */
-struct OH_AbilityRuntime_MoDispatcher;
+typedef struct OH_AbilityRuntime_ModularObjectDispatcher* OH_AbilityRuntime_ModObjDispatcherHandle;
 
 /**
- * @brief Defines a pointer to OH_AbilityRuntime_MoDispatcher.
+ * @brief Defines a pointer to OH_AbilityRuntime_ModularObjectDispatcher_Array.
  *
  * @since 26.0.0
  */
-typedef struct OH_AbilityRuntime_MoDispatcher* OH_AbilityRuntime_MoDispatcherHandle;
+typedef struct OH_AbilityRuntime_ModularObjectDispatcher_Array* OH_AbilityRuntime_ModObjDispatcher_ArrayHandle;
 
 /**
- * @brief Forward declaration of OH_AbilityRuntime_MoDispatcher_Array structure.
+ * @brief Defines a pointer to OH_AbilityRuntime_ModularObjectDispatcher_Vector.
  *
  * @since 26.0.0
  */
-struct OH_AbilityRuntime_MoDispatcher_Array;
+typedef struct OH_AbilityRuntime_ModularObjectDispatcher_Vector* OH_AbilityRuntime_ModObjDispatcher_VectorHandle;
 
 /**
- * @brief Defines a pointer to OH_AbilityRuntime_MoDispatcher_Array.
+ * @brief Defines a pointer to OH_AbilityRuntime_ModularObjectDispatcher_Set.
  *
  * @since 26.0.0
  */
-typedef struct OH_AbilityRuntime_MoDispatcher_Array* OH_AbilityRuntime_MoDispatcher_ArrayHandle;
+typedef struct OH_AbilityRuntime_ModularObjectDispatcher_Set* OH_AbilityRuntime_ModObjDispatcher_SetHandle;
 
 /**
- * @brief Forward declaration of OH_AbilityRuntime_MoDispatcher_Vector structure.
+ * @brief Defines a pointer to OH_AbilityRuntime_ModularObjectDispatcher_Map.
  *
  * @since 26.0.0
  */
-struct OH_AbilityRuntime_MoDispatcher_Vector;
+typedef struct OH_AbilityRuntime_ModularObjectDispatcher_Map* OH_AbilityRuntime_ModObjDispatcher_MapHandle;
 
 /**
- * @brief Defines a pointer to OH_AbilityRuntime_MoDispatcher_Vector.
+ * @brief Defines a pointer to OH_AbilityRuntime_ModularObjectDispatcher_Struct.
  *
  * @since 26.0.0
  */
-typedef struct OH_AbilityRuntime_MoDispatcher_Vector* OH_AbilityRuntime_MoDispatcher_VectorHandle;
-
-/**
- * @brief Forward declaration of OH_AbilityRuntime_MoDispatcher_Set structure.
- *
- * @since 26.0.0
- */
-struct OH_AbilityRuntime_MoDispatcher_Set;
-
-/**
- * @brief Defines a pointer to OH_AbilityRuntime_MoDispatcher_Set.
- *
- * @since 26.0.0
- */
-typedef struct OH_AbilityRuntime_MoDispatcher_Set* OH_AbilityRuntime_MoDispatcher_SetHandle;
-
-/**
- * @brief Forward declaration of OH_AbilityRuntime_MoDispatcher_Map structure.
- *
- * @since 26.0.0
- */
-struct OH_AbilityRuntime_MoDispatcher_Map;
-
-/**
- * @brief Defines a pointer to OH_AbilityRuntime_MoDispatcher_Map.
- *
- * @since 26.0.0
- */
-typedef struct OH_AbilityRuntime_MoDispatcher_Map* OH_AbilityRuntime_MoDispatcher_MapHandle;
-
-/**
- * @brief Forward declaration of OH_AbilityRuntime_MoDispatcher_Struct structure.
- *
- * @since 26.0.0
- */
-struct OH_AbilityRuntime_MoDispatcher_Struct;
-
-/**
- * @brief Defines a pointer to OH_AbilityRuntime_MoDispatcher_Struct.
- *
- * @since 26.0.0
- */
-typedef struct OH_AbilityRuntime_MoDispatcher_Struct* OH_AbilityRuntime_MoDispatcher_StructHandle;
+typedef struct OH_AbilityRuntime_ModularObjectDispatcher_Struct* OH_AbilityRuntime_ModObjDispatcher_StructHandle;
 
 /**
  * @brief Defines a variant structure using union + type tag for ABI compatibility.
@@ -237,110 +297,136 @@ typedef struct OH_AbilityRuntime_MoDispatcher_Struct* OH_AbilityRuntime_MoDispat
 typedef struct {
     /**
      * @brief Variant type.
+     * @since 26.0.0
      */
-    OH_AbilityRuntime_MoDispatcher_ValueType vt;
+    OH_AbilityRuntime_ModObjDispatcher_ValueType vt;
     /**
      * @brief Reserved field 1 for future use.
+     * @since 26.0.0
      */
     uint64_t reserved1;
     /**
      * @brief Reserved field 2 for future use.
+     * @since 26.0.0
      */
     uint64_t reserved2;
     /**
      * @brief Reserved field 3 for future use.
+     * @since 26.0.0
      */
     uint64_t reserved3;
     /**
      * @brief Variant value data.
+     * @since 26.0.0
      */
     union {
         /**
          * @brief Empty value.
+         * @since 26.0.0
          */
         void *pvoidVal;
         /**
          * @brief Boolean value.
+         * @since 26.0.0
          */
         bool boolVal;
         /**
          * @brief 8-bit signed integer.
+         * @since 26.0.0
          */
         int8_t i8Val;
         /**
          * @brief 16-bit signed integer.
+         * @since 26.0.0
          */
         int16_t i16Val;
         /**
          * @brief 32-bit signed integer.
+         * @since 26.0.0
          */
         int32_t i32Val;
         /**
          * @brief 64-bit signed integer.
+         * @since 26.0.0
          */
         int64_t i64Val;
         /**
          * @brief 8-bit unsigned integer.
+         * @since 26.0.0
          */
         uint8_t u8Val;
         /**
          * @brief 16-bit unsigned integer.
+         * @since 26.0.0
          */
         uint16_t u16Val;
         /**
          * @brief 32-bit unsigned integer.
+         * @since 26.0.0
          */
         uint32_t u32Val;
         /**
          * @brief 64-bit unsigned integer.
+         * @since 26.0.0
          */
         uint64_t u64Val;
         /**
          * @brief 32-bit floating point.
+         * @since 26.0.0
          */
         float f32Val;
         /**
          * @brief 64-bit floating point.
+         * @since 26.0.0
          */
         double f64Val;
         /**
          * @brief Enum value.
+         * @since 26.0.0
          */
         int32_t enumVal;
         /**
          * @brief String value (UTF-8) pointer.
+         * @since 26.0.0
          */
         char* bstrVal;
         /**
          * @brief Array handle.
+         * @since 26.0.0
          */
-        OH_AbilityRuntime_MoDispatcher_ArrayHandle parrayVal;
+        OH_AbilityRuntime_ModObjDispatcher_ArrayHandle parrayVal;
         /**
          * @brief Vector handle.
+         * @since 26.0.0
          */
-        OH_AbilityRuntime_MoDispatcher_VectorHandle pvectorVal;
+        OH_AbilityRuntime_ModObjDispatcher_VectorHandle pvectorVal;
         /**
          * @brief Set handle.
+         * @since 26.0.0
          */
-        OH_AbilityRuntime_MoDispatcher_SetHandle psetVal;
+        OH_AbilityRuntime_ModObjDispatcher_SetHandle psetVal;
         /**
          * @brief Map handle.
+         * @since 26.0.0
          */
-        OH_AbilityRuntime_MoDispatcher_MapHandle pmapVal;
+        OH_AbilityRuntime_ModObjDispatcher_MapHandle pmapVal;
         /**
          * @brief Struct handle.
+         * @since 26.0.0
          */
-        OH_AbilityRuntime_MoDispatcher_StructHandle pstructVal;
+        OH_AbilityRuntime_ModObjDispatcher_StructHandle pstructVal;
         /**
          * @brief Ipc remote proxy handle.
+         * @since 26.0.0
          */
         OHIPCRemoteProxy *premoteProxyVal;
         /**
          * @brief Ipc remote stub handle.
+         * @since 26.0.0
          */
         OHIPCRemoteStub *premoteStubVal;
     } u;
-} OH_AbilityRuntime_MoDispatcher_Variant;
+} OH_AbilityRuntime_ModObjDispatcher_Variant;
 
 /**
  * @brief Defines a parameter structure for method invocation.
@@ -351,12 +437,12 @@ typedef struct {
     /**
      * @brief Array of argument variants.
      */
-    OH_AbilityRuntime_MoDispatcher_Variant* rgvarg;
+    OH_AbilityRuntime_ModObjDispatcher_Variant* rgvarg;
     /**
      * @brief Number of arguments.
      */
     uint32_t cArgs;
-} OH_AbilityRuntime_MoDispatcher_InputParams;
+} OH_AbilityRuntime_ModObjDispatcher_InputParams;
 
 /**
  * @brief Clear TypeInfo resources.
@@ -372,8 +458,8 @@ typedef struct {
  * @param pTypeInfo Indicates a pointer to TypeInfo to clear.
  * @since 26.0.0
  */
-void OH_AbilityRuntime_MoDispatcher_TypeInfo_Clear(
-    OH_AbilityRuntime_MoDispatcher_TypeInfo* pTypeInfo);
+void OH_AbilityRuntime_ModObjDispatcher_TypeInfo_Clear(
+    OH_AbilityRuntime_ModObjDispatcher_TypeInfo* pTypeInfo);
 
 /**
  * @brief Clear variant resources.
@@ -397,22 +483,25 @@ void OH_AbilityRuntime_MoDispatcher_TypeInfo_Clear(
  * @param pVariant Indicates a pointer to variant to clear.
  * @since 26.0.0
  */
-void OH_AbilityRuntime_MoDispatcher_Variant_Clear(
-    OH_AbilityRuntime_MoDispatcher_Variant* pVariant);
+void OH_AbilityRuntime_ModObjDispatcher_Variant_Clear(
+    OH_AbilityRuntime_ModObjDispatcher_Variant* pVariant);
 
 /**
- * @brief Create a modular object dispatcher instance for mainService interface from an IPC remote proxy.
+ * @brief Create a modular object dispatcher instance from an IPC remote proxy for the main service interface.
+ *
+ * The type library metadata will be lazily loaded from the remote service on the first call
+ * that requires it, such as HasTypeDescriptor, QueryMainServiceInterfaceMemIDsOfNames, or CallMethod.
  *
  * @param remoteProxy Indicates IPC remote proxy handle obtained from connectExtension.
- * @param ppMoDispatcher Indicates a pointer to receive modular object dispatcher handle.
+ * @param ppModObjDispatcher Indicates a pointer to receive modular object dispatcher handle.
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if remoteProxy or ppMoDispatcher is null.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if remoteProxy or ppModObjDispatcher is null.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_CreateMainServiceInstance(
-    OHIPCRemoteProxy* remoteProxy, OH_AbilityRuntime_MoDispatcherHandle* ppMoDispatcher);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_CreateMainServiceInstance(
+    OHIPCRemoteProxy* remoteProxy, OH_AbilityRuntime_ModObjDispatcherHandle* ppModObjDispatcher);
 
 /**
  * @brief Create a sub-instance dispatcher bound to a mainService dispatcher.
@@ -423,98 +512,112 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_CreateMainServiceInstanc
  *
  * @param mainServiceDispatcher Indicates mainService dispatcher handle.
  * @param subProxy Indicates IPC remote proxy for the non-mainService interface.
- * @param ppMoDispatcher Indicates a pointer to receive the created sub-instance dispatcher handle.
+ * @param ppModObjDispatcher Indicates a pointer to receive the created sub-instance dispatcher handle.
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if mainServiceDispatcher or subProxy
- *         or ppMoDispatcher is null.
+ *         or ppModObjDispatcher is null.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_CreateSubInstance(
-    OH_AbilityRuntime_MoDispatcherHandle mainServiceDispatcher,
-    OHIPCRemoteProxy* subProxy, OH_AbilityRuntime_MoDispatcherHandle* ppMoDispatcher);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_CreateSubInstance(
+    OH_AbilityRuntime_ModObjDispatcherHandle mainServiceDispatcher,
+    OHIPCRemoteProxy* subProxy, OH_AbilityRuntime_ModObjDispatcherHandle* ppModObjDispatcher);
 
 /**
  * @brief Release modular object dispatcher instance.
  *
- * @param ppMoDispatcher Indicates a pointer to modular object dispatcher handle to release.
+ * @param ppModObjDispatcher Indicates a pointer to modular object dispatcher handle to release.
  *                   After release, handle will be set to NULL.
  * @since 26.0.0
  */
-void OH_AbilityRuntime_MoDispatcher_Release(OH_AbilityRuntime_MoDispatcherHandle* ppMoDispatcher);
+void OH_AbilityRuntime_ModObjDispatcher_Release(OH_AbilityRuntime_ModObjDispatcherHandle* ppModObjDispatcher);
 
 /**
- * @brief Check if type library is supported.
+ * @brief Check if the type library metadata is available from the remote service.
  *
- * @param pMoDispatcher Indicates modular object dispatcher handle.
+ * @param pModObjDispatcher Indicates modular object dispatcher handle.
  * @param pctinfo Indicates a pointer to receive support status (1 if supported, 0 if not supported).
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pMoDispatcher or pctinfo is null.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pModObjDispatcher or pctinfo is null.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_SEND_REQUEST_FAILED} if send request failed.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_TLB_METADATA_INVALID} if type library metadata is invalid.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_HasTypeDescriptor(
-    OH_AbilityRuntime_MoDispatcherHandle pMoDispatcher, uint32_t* pctinfo);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_HasTypeDescriptor(
+    OH_AbilityRuntime_ModObjDispatcherHandle pModObjDispatcher, uint32_t* pctinfo);
 
 /**
- * @brief Get type descriptor.
+ * @brief Get type descriptor for querying interface metadata information.
  *
- * @param pMoDispatcher Indicates modular object dispatcher handle.
+ * The type descriptor provides access to type library metadata including interfaces,
+ * methods, enums, and structs defined in the remote service's type library.
+ * Must call {@link OH_AbilityRuntime_TypeDescriptor_Release} to release the handle when no longer needed.
+ *
+ * @param pModObjDispatcher Indicates modular object dispatcher handle.
  * @param ppTypeDescriptor Indicates a pointer to receive type descriptor handle.
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pMoDispatcher or ppTypeDescriptor is null.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pModObjDispatcher or ppTypeDescriptor is null.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_SEND_REQUEST_FAILED} if send request failed.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_TLB_METADATA_INVALID} if type library metadata is invalid.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_GetTypeDescriptor(
-    OH_AbilityRuntime_MoDispatcherHandle pMoDispatcher,
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle* ppTypeDescriptor);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_GetTypeDescriptor(
+    OH_AbilityRuntime_ModObjDispatcherHandle pModObjDispatcher,
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle* ppTypeDescriptor);
 
 /**
- * @brief Query member IDs of names.
+ * @brief Query member IDs of method names in the main service interface.
  *
- * @param pMoDispatcher Indicates modular object dispatcher handle.
- * @param rgszNames Indicates array of property or method names.
+ * The returned member IDs can be used as the memID parameter in
+ * {@link OH_AbilityRuntime_ModObjDispatcher_CallMethod}.
+ *
+ * @param pModObjDispatcher Indicates modular object dispatcher handle.
+ * @param rgszNames Indicates array of method names.
  * @param cNames Indicates number of names.
  * @param pMemID Indicates pointer to receive member IDs (MemberIDs).
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pMoDispatcher or rgszNames or pMemID is null.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pModObjDispatcher or rgszNames or pMemID is null.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_SEND_REQUEST_FAILED} if send request failed.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_TLB_METADATA_INVALID} if type library metadata is invalid.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND} if name not found.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_QueryMainServiceInterfaceMemIDsOfNames(
-    OH_AbilityRuntime_MoDispatcherHandle pMoDispatcher, const char** rgszNames, uint32_t cNames,
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_QueryMainServiceInterfaceMemIDsOfNames(
+    OH_AbilityRuntime_ModObjDispatcherHandle pModObjDispatcher, const char** rgszNames, uint32_t cNames,
     uint32_t* pMemID);
 
 /**
  * @brief Call a method.
  *
- * @param pMoDispatcher Indicates modular object dispatcher handle.
+ * @param pModObjDispatcher Indicates modular object dispatcher handle.
  * @param memID Indicates method member ID (MemberID).
  * @param pInputParams Indicates parameter structure containing arguments.
  * @param pResult Indicates pointer to receive result variant.
  * @param pMethodErrCode Indicates a pointer to receive the error code returned by the remote method.
  *                   0 if the method executed successfully, non-zero if the method returned an error.
  *                   This is independent of the framework-level return value.
+ *                   This parameter can be NULL if the caller does not need the method-level error code.
  * @return Returns framework error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if IPC call is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pMoDispatcher or pInputParams or pResult is null.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pModObjDispatcher or pInputParams or pResult is null.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND} if method not found.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_TYPE_MISMATCH} if parameter type mismatches.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_SEND_REQUEST_FAILED} if send request failed.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_TLB_METADATA_INVALID} if type library metadata is invalid.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_CallMethod(
-    OH_AbilityRuntime_MoDispatcherHandle pMoDispatcher, uint32_t memID,
-    OH_AbilityRuntime_MoDispatcher_InputParams* pInputParams,
-    OH_AbilityRuntime_MoDispatcher_Variant* pResult,
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_CallMethod(
+    OH_AbilityRuntime_ModObjDispatcherHandle pModObjDispatcher, uint32_t memID,
+    OH_AbilityRuntime_ModObjDispatcher_InputParams* pInputParams,
+    OH_AbilityRuntime_ModObjDispatcher_Variant* pResult,
     int32_t* pMethodErrCode);
 
 // ========== TypeDescriptor Interfaces ==========
@@ -525,22 +628,23 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_CallMethod(
  * @param pTypeDescriptor Indicates TypeDescriptor handle to release.
  * @since 26.0.0
  */
-void OH_AbilityRuntime_TypeDescriptor_Release(OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle *pTypeDescriptor);
+void OH_AbilityRuntime_TypeDescriptor_Release(OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle *pTypeDescriptor);
 
 /**
- * @brief Get version.
+ * @brief Get version of the type library.
  *
  * @param pTypeDescriptor Indicates TypeDescriptor handle.
- * @param pbstrVersion Indicates a buffer to receive version.
- * @param cMaxVersion Indicates size of buffer.
+ * @param pbstrVersion Indicates a buffer to receive version string.
+ * @param cMaxVersion Indicates size of buffer in bytes, including the null terminator.
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrVersion is null,
- *         or cMaxVersion is 0.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or
+ *          pbstrVersion is null, or cMaxVersion is 0.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetVersion(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor, char* pbstrVersion, uint32_t cMaxVersion);
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor, char* pbstrVersion, uint32_t cMaxVersion);
 
 /**
  * @brief Get total number of interfaces.
@@ -550,25 +654,30 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetVersion(
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pcInterfaces is null.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetInterfaceCount(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor, uint32_t* pcInterfaces);
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor, uint32_t* pcInterfaces);
 
 /**
  * @brief Get interface name by index.
  *
  * @param pTypeDescriptor Indicates TypeDescriptor handle.
- * @param index Indicates interface index.
+ * @param index Indicates interface index, ranging from 0 to
+ *              (interface count - 1) obtained from {@link OH_AbilityRuntime_TypeDescriptor_GetInterfaceCount}.
  * @param pbstrName Indicates a buffer to receive interface name.
- * @param cMaxName Indicates size of buffer.
+ * @param cMaxName Indicates size of buffer in bytes, including the null terminator.
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrName is null, or cMaxName is 0, or index is out of range.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrName is null,
+ *          or cMaxName is 0, or index is out of range.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetInterfaceName(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor, uint32_t index, char* pbstrName, uint32_t cMaxName);
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor, uint32_t index,
+    char* pbstrName, uint32_t cMaxName);
 
 /**
  * @brief Check if interface is a callback type.
@@ -579,11 +688,12 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetInterfaceName(
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrName or pIsCallback is null.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND} if interface not found.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetInterfaceIsCallback(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor, const char* pbstrName, bool* pIsCallback);
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor, const char* pbstrName, bool* pIsCallback);
 
 /**
  * @brief Get main service interface name.
@@ -594,11 +704,11 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetInterfaceIsCallback
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrName is null, or cMaxName is 0.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND} if main service interface not found.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMainServiceInterfaceName(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor, char* pbstrName, uint32_t cMaxName);
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor, char* pbstrName, uint32_t cMaxName);
 
 /**
  * @brief Get method count from interface.
@@ -608,13 +718,14 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMainServiceInterfac
  * @param pcMethods Indicates a pointer to receive method count.
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrInterfaceName
- *         or pcMethods is null.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or
+ *          pbstrInterfaceName or pcMethods is null.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND} if interface not found.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMethodCount(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor,
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor,
     const char* pbstrInterfaceName, uint32_t* pcMethods);
 
 /**
@@ -622,18 +733,20 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMethodCount(
  *
  * @param pTypeDescriptor Indicates TypeDescriptor handle.
  * @param pbstrInterfaceName Indicates interface name.
- * @param index Indicates method index.
+ * @param index Indicates method index, ranging from 0 to (method count - 1)
+ *              obtained from {@link OH_AbilityRuntime_TypeDescriptor_GetMethodCount}.
  * @param pbstrName Indicates a buffer to receive method name.
- * @param cMaxName Indicates size of buffer.
+ * @param cMaxName Indicates size of buffer in bytes, including the null terminator.
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrInterfaceName or
  *         pbstrName is null, or cMaxName is 0, or index is out of range.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND} if interface not found.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMethodName(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor,
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor,
     const char* pbstrInterfaceName, uint32_t index, char* pbstrName, uint32_t cMaxName);
 
 /**
@@ -646,12 +759,13 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMethodName(
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrInterfaceName or
- *              pbstrMethodName or pMemID is null.
+ *          pbstrMethodName or pMemID is null.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND} if interface or method not found.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMethodMemberId(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor,
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor,
     const char* pbstrInterfaceName, const char* pbstrMethodName, uint32_t* pMemID);
 
 /**
@@ -664,14 +778,15 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMethodMemberId(
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrInterfaceName or
- *         pbstrMethodName or pReturnType is null.
+ *          pbstrMethodName or pReturnType is null.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND} if interface or method not found.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMethodReturnType(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor,
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor,
     const char* pbstrInterfaceName, const char* pbstrMethodName,
-    OH_AbilityRuntime_MoDispatcher_TypeInfo* pReturnType);
+    OH_AbilityRuntime_ModObjDispatcher_TypeInfo* pReturnType);
 
 /**
  * @brief Get method parameter count by name from interface.
@@ -682,13 +797,14 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMethodReturnType(
  * @param pcParams Indicates a pointer to receive parameter count.
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrInterfaceName
- *         or pbstrMethodName or pcParams is null.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrInterfaceName or
+ *          pbstrMethodName or pcParams is null.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND} if interface or method not found.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMethodParamCount(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor,
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor,
     const char* pbstrInterfaceName, const char* pbstrMethodName, uint32_t* pcParams);
 
 /**
@@ -702,14 +818,15 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMethodParamCount(
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrInterfaceName or
- *         pbstrMethodName or pParamType is null, or iParamIndex is out of range.
+ *          pbstrMethodName or pParamType is null, or iParamIndex is out of range.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND} if interface or method not found.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMethodParamType(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor,
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor,
     const char* pbstrInterfaceName, const char* pbstrMethodName,
-    uint32_t iParamIndex, OH_AbilityRuntime_MoDispatcher_TypeInfo* pParamType);
+    uint32_t iParamIndex, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* pParamType);
 
 /**
  * @brief Get method parameter name by name and index from interface.
@@ -722,13 +839,14 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMethodParamType(
  * @param cMaxName Indicates size of buffer.
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrInterfaceName
- *         or pbstrMethodName or pbstrName is null, or iParamIndex is out of range.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrInterfaceName or
+ *          pbstrMethodName or pbstrName is null, or iParamIndex is out of range.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND} if interface or method not found.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMethodParamName(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor,
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor,
     const char* pbstrInterfaceName, const char* pbstrMethodName,
     uint32_t iParamIndex, char* pbstrName, uint32_t cMaxName);
 
@@ -742,10 +860,11 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMethodParamName(
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pcEnums is null.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetEnumCount(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor, uint32_t* pcEnums);
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor, uint32_t* pcEnums);
 
 /**
  * @brief Get enum name by index.
@@ -756,12 +875,13 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetEnumCount(
  * @param cMaxName Indicates size of buffer.
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrName is null, or cMaxName is 0,
- *         or index is out of range.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrName is null,
+ *          or cMaxName is 0, or index is out of range.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetEnumName(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor, uint32_t index,
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor, uint32_t index,
     char* pbstrName, uint32_t cMaxName);
 
 /**
@@ -774,10 +894,12 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetEnumName(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrEnumName or pcValues is null.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND} if enum not found.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetEnumValueCount(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor, const char* pbstrEnumName, uint32_t* pcValues);
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor, const char* pbstrEnumName,
+    uint32_t* pcValues);
 
 /**
  * @brief Get enum value name by enum name and value index.
@@ -789,12 +911,14 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetEnumValueCount(
  * @param cMaxName Indicates size of buffer.
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrEnumName or
- *         pbstrValueName is null, or iValueIndex is out of range.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrEnumName or pbstrValueName
+ *          is null, or iValueIndex is out of range.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND} if enum not found.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetEnumValueName(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor, const char* pbstrEnumName,
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor, const char* pbstrEnumName,
     uint32_t iValueIndex, char* pbstrValueName, uint32_t cMaxName);
 
 /**
@@ -807,12 +931,13 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetEnumValueName(
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrEnumName or
- *         pbstrValueName or pValue is null.
+ *          pbstrValueName or pValue is null.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND} if enum value not found.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetEnumValue(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor, const char* pbstrEnumName,
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor, const char* pbstrEnumName,
     const char* pbstrValueName, int32_t* pValue);
 
 /**
@@ -823,10 +948,11 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetEnumValue(
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pcStructs is null.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetStructCount(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor, uint32_t* pcStructs);
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor, uint32_t* pcStructs);
 
 /**
  * @brief Get struct name by index.
@@ -837,12 +963,13 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetStructCount(
  * @param cMaxName Indicates size of buffer.
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrName is null,
- *         or cMaxName is 0, or index is out of range.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrName is null, or cMaxName is 0,
+ *          or index is out of range.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetStructName(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor, uint32_t index,
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor, uint32_t index,
     char* pbstrName, uint32_t cMaxName);
 
 /**
@@ -855,10 +982,11 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetStructName(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrStructName or pcFields is null.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND} if struct not found.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetStructFieldCount(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor, const char* pbstrStructName,
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor, const char* pbstrStructName,
     uint32_t* pcFields);
 
 /**
@@ -872,11 +1000,13 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetStructFieldCount(
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrStructName or
- *         pbstrFieldName is null, or iFieldIndex is out of range.
+ *          pbstrFieldName is null, or iFieldIndex is out of range.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND} if struct not found.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetStructFieldName(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor, const char* pbstrStructName,
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor, const char* pbstrStructName,
     uint32_t iFieldIndex, char* pbstrFieldName, uint32_t cMaxName);
 
 /**
@@ -888,16 +1018,15 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetStructFieldName(
  * @param pFieldType Indicates a pointer to receive field type.
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrStructName or
- *         pbstrFieldName or pFieldType is null.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pTypeDescriptor or pbstrStructName or pbstrFieldName
+ *          or pFieldType is null.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND} if field not found.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetStructFieldType(
-    OH_AbilityRuntime_MoDispatcher_TypeDescriptorHandle pTypeDescriptor, const char* pbstrStructName,
-    const char* pbstrFieldName, OH_AbilityRuntime_MoDispatcher_TypeInfo* pFieldType);
-
-// ========== Complex Type Operations ==========
+    OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor, const char* pbstrStructName,
+    const char* pbstrFieldName, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* pFieldType);
 
 /**
  * @brief Create an array instance.
@@ -907,13 +1036,13 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetStructFieldType(
  * @param ppArray Indicates a pointer to receive array handle.
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if ppArray is null.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if elementType or ppArray is null.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Array_Create(
-    OH_AbilityRuntime_MoDispatcher_TypeInfo *elementType, uint32_t size,
-    OH_AbilityRuntime_MoDispatcher_ArrayHandle* ppArray);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Array_Create(
+    OH_AbilityRuntime_ModObjDispatcher_TypeInfo *elementType, uint32_t size,
+    OH_AbilityRuntime_ModObjDispatcher_ArrayHandle* ppArray);
 
 /**
  * @brief Get array element type.
@@ -925,8 +1054,8 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Array_Create(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pArray or pElementType is null.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Array_GetElementType(
-    OH_AbilityRuntime_MoDispatcher_ArrayHandle pArray, OH_AbilityRuntime_MoDispatcher_TypeInfo* pElementType);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Array_GetElementType(
+    OH_AbilityRuntime_ModObjDispatcher_ArrayHandle pArray, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* pElementType);
 
 /**
  * @brief Set an array element value.
@@ -940,9 +1069,9 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Array_GetElementType(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_TYPE_MISMATCH} if element type mismatches.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Array_Set(
-    OH_AbilityRuntime_MoDispatcher_ArrayHandle pArray, uint32_t index,
-    const OH_AbilityRuntime_MoDispatcher_Variant* pValue);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Array_Set(
+    OH_AbilityRuntime_ModObjDispatcher_ArrayHandle pArray, uint32_t index,
+    const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue);
 
 /**
  * @brief Get an array element value.
@@ -955,9 +1084,9 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Array_Set(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pArray or pValue is null, or index is out of bounds.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Array_Get(
-    OH_AbilityRuntime_MoDispatcher_ArrayHandle pArray, uint32_t index,
-    OH_AbilityRuntime_MoDispatcher_Variant* pValue);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Array_Get(
+    OH_AbilityRuntime_ModObjDispatcher_ArrayHandle pArray, uint32_t index,
+    OH_AbilityRuntime_ModObjDispatcher_Variant* pValue);
 
 /**
  * @brief Get array size.
@@ -969,8 +1098,8 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Array_Get(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pArray or pSize is null.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Array_GetSize(
-    OH_AbilityRuntime_MoDispatcher_ArrayHandle pArray, uint32_t* pSize);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Array_GetSize(
+    OH_AbilityRuntime_ModObjDispatcher_ArrayHandle pArray, uint32_t* pSize);
 
 /**
  * @brief Release array instance.
@@ -978,7 +1107,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Array_GetSize(
  * @param ppArray Indicates array handle to release.
  * @since 26.0.0
  */
-void OH_AbilityRuntime_MoDispatcher_Array_Release(OH_AbilityRuntime_MoDispatcher_ArrayHandle* ppArray);
+void OH_AbilityRuntime_ModObjDispatcher_Array_Release(OH_AbilityRuntime_ModObjDispatcher_ArrayHandle* ppArray);
 
 /**
  * @brief Create a vector instance.
@@ -987,12 +1116,13 @@ void OH_AbilityRuntime_MoDispatcher_Array_Release(OH_AbilityRuntime_MoDispatcher
  * @param ppVector Indicates a pointer to receive vector handle.
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if ppVector is null.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if elementType or ppVector is null.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Vector_Create(
-    OH_AbilityRuntime_MoDispatcher_TypeInfo *elementType, OH_AbilityRuntime_MoDispatcher_VectorHandle* ppVector);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Vector_Create(
+    OH_AbilityRuntime_ModObjDispatcher_TypeInfo *elementType,
+    OH_AbilityRuntime_ModObjDispatcher_VectorHandle* ppVector);
 
 /**
  * @brief Get vector element type.
@@ -1004,8 +1134,8 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Vector_Create(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pVector or pElementType is null.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Vector_GetElementType(
-    OH_AbilityRuntime_MoDispatcher_VectorHandle pVector, OH_AbilityRuntime_MoDispatcher_TypeInfo* pElementType);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Vector_GetElementType(
+    OH_AbilityRuntime_ModObjDispatcher_VectorHandle pVector, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* pElementType);
 
 /**
  * @brief Add an element to vector.
@@ -1019,8 +1149,8 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Vector_GetElementType(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Vector_Add(
-    OH_AbilityRuntime_MoDispatcher_VectorHandle pVector, const OH_AbilityRuntime_MoDispatcher_Variant* pValue);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Vector_Add(
+    OH_AbilityRuntime_ModObjDispatcher_VectorHandle pVector, const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue);
 
 /**
  * @brief Get a vector element value.
@@ -1033,9 +1163,9 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Vector_Add(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pVector or pValue is null, or index is out of bounds.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Vector_Get(
-    OH_AbilityRuntime_MoDispatcher_VectorHandle pVector, uint32_t index,
-    OH_AbilityRuntime_MoDispatcher_Variant* pValue);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Vector_Get(
+    OH_AbilityRuntime_ModObjDispatcher_VectorHandle pVector, uint32_t index,
+    OH_AbilityRuntime_ModObjDispatcher_Variant* pValue);
 
 /**
  * @brief Get vector size.
@@ -1047,8 +1177,8 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Vector_Get(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pVector or pSize is null.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Vector_GetSize(
-    OH_AbilityRuntime_MoDispatcher_VectorHandle pVector, uint32_t* pSize);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Vector_GetSize(
+    OH_AbilityRuntime_ModObjDispatcher_VectorHandle pVector, uint32_t* pSize);
 
 /**
  * @brief Clear vector.
@@ -1059,8 +1189,8 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Vector_GetSize(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pVector is null.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Vector_Clear(
-    OH_AbilityRuntime_MoDispatcher_VectorHandle pVector);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Vector_Clear(
+    OH_AbilityRuntime_ModObjDispatcher_VectorHandle pVector);
 
 /**
  * @brief Release vector instance.
@@ -1068,7 +1198,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Vector_Clear(
  * @param ppVector Indicates vector handle to release.
  * @since 26.0.0
  */
-void OH_AbilityRuntime_MoDispatcher_Vector_Release(OH_AbilityRuntime_MoDispatcher_VectorHandle* ppVector);
+void OH_AbilityRuntime_ModObjDispatcher_Vector_Release(OH_AbilityRuntime_ModObjDispatcher_VectorHandle* ppVector);
 
 /**
  * @brief Create a set instance.
@@ -1077,12 +1207,12 @@ void OH_AbilityRuntime_MoDispatcher_Vector_Release(OH_AbilityRuntime_MoDispatche
  * @param ppSet Indicates a pointer to receive set handle.
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if ppSet is null.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if elementType or ppSet is null.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Set_Create(
-    OH_AbilityRuntime_MoDispatcher_TypeInfo *elementType, OH_AbilityRuntime_MoDispatcher_SetHandle* ppSet);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Set_Create(
+    OH_AbilityRuntime_ModObjDispatcher_TypeInfo *elementType, OH_AbilityRuntime_ModObjDispatcher_SetHandle* ppSet);
 
 /**
  * @brief Get set element type.
@@ -1094,8 +1224,8 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Set_Create(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pSet or pElementType is null.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Set_GetElementType(
-    OH_AbilityRuntime_MoDispatcher_SetHandle pSet, OH_AbilityRuntime_MoDispatcher_TypeInfo* pElementType);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Set_GetElementType(
+    OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* pElementType);
 
 /**
  * @brief Add an element to set.
@@ -1109,8 +1239,8 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Set_GetElementType(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Set_Add(
-    OH_AbilityRuntime_MoDispatcher_SetHandle pSet, const OH_AbilityRuntime_MoDispatcher_Variant* pValue);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Set_Add(
+    OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet, const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue);
 
 /**
  * @brief Remove an element from set.
@@ -1122,8 +1252,8 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Set_Add(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pSet or pValue is null.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Set_Remove(
-    OH_AbilityRuntime_MoDispatcher_SetHandle pSet, const OH_AbilityRuntime_MoDispatcher_Variant* pValue);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Set_Remove(
+    OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet, const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue);
 
 /**
  * @brief Check if an element exists in set.
@@ -1136,8 +1266,9 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Set_Remove(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pSet or pValue or pExists is null.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Set_Contains(
-    OH_AbilityRuntime_MoDispatcher_SetHandle pSet, const OH_AbilityRuntime_MoDispatcher_Variant* pValue, bool* pExists);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Set_Contains(
+    OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet, const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue,
+    bool* pExists);
 
 /**
  * @brief Get set size.
@@ -1149,14 +1280,14 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Set_Contains(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pSet or pSize is null.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Set_GetSize(
-    OH_AbilityRuntime_MoDispatcher_SetHandle pSet, uint32_t* pSize);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Set_GetSize(
+    OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet, uint32_t* pSize);
 
 /**
  * @brief Get a set element value by index.
  *
  * The returned variant is a deep copy owned by the caller.
- * Caller must call {@link OH_AbilityRuntime_MoDispatcher_Variant_Clear} to release it.
+ * Caller must call {@link OH_AbilityRuntime_ModObjDispatcher_Variant_Clear} to release it.
  *
  * @param pSet Indicates set handle.
  * @param index Indicates element index.
@@ -1166,9 +1297,9 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Set_GetSize(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pSet or pValue is null, or index is out of bounds.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Set_GetAt(
-    OH_AbilityRuntime_MoDispatcher_SetHandle pSet, uint32_t index,
-    OH_AbilityRuntime_MoDispatcher_Variant* pValue);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Set_GetAt(
+    OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet, uint32_t index,
+    OH_AbilityRuntime_ModObjDispatcher_Variant* pValue);
 
 /**
  * @brief Clear set.
@@ -1179,8 +1310,8 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Set_GetAt(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pSet is null.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Set_Clear(
-    OH_AbilityRuntime_MoDispatcher_SetHandle pSet);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Set_Clear(
+    OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet);
 
 /**
  * @brief Release set instance.
@@ -1188,23 +1319,29 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Set_Clear(
  * @param ppSet Indicates set handle to release.
  * @since 26.0.0
  */
-void OH_AbilityRuntime_MoDispatcher_Set_Release(OH_AbilityRuntime_MoDispatcher_SetHandle* ppSet);
+void OH_AbilityRuntime_ModObjDispatcher_Set_Release(OH_AbilityRuntime_ModObjDispatcher_SetHandle* ppSet);
 
 /**
  * @brief Create a map instance.
  *
- * @param keyType Indicates key type.
+ * @param keyType Indicates key type. Only basic types are supported, such as
+ *               {@link OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_BOOL},
+ *               {@link OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I32},
+ *               {@link OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRING},
+ *               and {@link OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_ENUM}.
+ *               Container types (ARRAY, VECTOR, SET, MAP) and complex types
+ *               (STRUCT, IPC_REMOTE_PROXY, IPC_REMOTE_STUB) are not supported.
  * @param valueType Indicates value type.
  * @param ppMap Indicates a pointer to receive map handle.
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if ppMap is null.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if valueType or ppMap is null.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Map_Create(
-    OH_AbilityRuntime_MoDispatcher_ValueType keyType, OH_AbilityRuntime_MoDispatcher_TypeInfo *valueType,
-    OH_AbilityRuntime_MoDispatcher_MapHandle* ppMap);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_Create(
+    OH_AbilityRuntime_ModObjDispatcher_ValueType keyType, OH_AbilityRuntime_ModObjDispatcher_TypeInfo *valueType,
+    OH_AbilityRuntime_ModObjDispatcher_MapHandle* ppMap);
 
 /**
  * @brief Get map key type.
@@ -1216,8 +1353,8 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Map_Create(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pMap or pKeyType is null.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Map_GetKeyType(
-    OH_AbilityRuntime_MoDispatcher_MapHandle pMap, OH_AbilityRuntime_MoDispatcher_ValueType* pKeyType);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_GetKeyType(
+    OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, OH_AbilityRuntime_ModObjDispatcher_ValueType* pKeyType);
 
 /**
  * @brief Get map value type.
@@ -1229,8 +1366,8 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Map_GetKeyType(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pMap or pValueType is null.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Map_GetValueType(
-    OH_AbilityRuntime_MoDispatcher_MapHandle pMap, OH_AbilityRuntime_MoDispatcher_TypeInfo* pValueType);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_GetValueType(
+    OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* pValueType);
 
 /**
  * @brief Put a key-value pair into map.
@@ -1245,9 +1382,9 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Map_GetValueType(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Map_Put(
-    OH_AbilityRuntime_MoDispatcher_MapHandle pMap, const OH_AbilityRuntime_MoDispatcher_Variant* pKey,
-    const OH_AbilityRuntime_MoDispatcher_Variant* pValue);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_Put(
+    OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, const OH_AbilityRuntime_ModObjDispatcher_Variant* pKey,
+    const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue);
 
 /**
  * @brief Get a value from map by key.
@@ -1257,13 +1394,13 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Map_Put(
  * @param pValue Indicates a pointer to receive value variant.
  * @return Returns error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pMap or pKey or pValue is null, or key is
- *         not found in map.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pMap or pKey or pValue is null,
+ *          or key is not found in map.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Map_Get(
-    OH_AbilityRuntime_MoDispatcher_MapHandle pMap, const OH_AbilityRuntime_MoDispatcher_Variant* pKey,
-    OH_AbilityRuntime_MoDispatcher_Variant* pValue);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_Get(
+    OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, const OH_AbilityRuntime_ModObjDispatcher_Variant* pKey,
+    OH_AbilityRuntime_ModObjDispatcher_Variant* pValue);
 
 /**
  * @brief Remove a key-value pair from map.
@@ -1275,8 +1412,8 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Map_Get(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pMap or pKey is null.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Map_Remove(
-    OH_AbilityRuntime_MoDispatcher_MapHandle pMap, const OH_AbilityRuntime_MoDispatcher_Variant* pKey);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_Remove(
+    OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, const OH_AbilityRuntime_ModObjDispatcher_Variant* pKey);
 
 /**
  * @brief Check if a key exists in map.
@@ -1289,8 +1426,9 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Map_Remove(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pMap or pKey or pExists is null.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Map_ContainsKey(
-    OH_AbilityRuntime_MoDispatcher_MapHandle pMap, const OH_AbilityRuntime_MoDispatcher_Variant* pKey, bool* pExists);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_ContainsKey(
+    OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, const OH_AbilityRuntime_ModObjDispatcher_Variant* pKey,
+    bool* pExists);
 
 /**
  * @brief Get map size.
@@ -1302,14 +1440,14 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Map_ContainsKey(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pMap or pSize is null.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Map_GetSize(
-    OH_AbilityRuntime_MoDispatcher_MapHandle pMap, uint32_t* pSize);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_GetSize(
+    OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, uint32_t* pSize);
 
 /**
  * @brief Get a map key by index.
  *
  * The returned variant is a deep copy owned by the caller.
- * Caller must call {@link OH_AbilityRuntime_MoDispatcher_Variant_Clear} to release it.
+ * Caller must call {@link OH_AbilityRuntime_ModObjDispatcher_Variant_Clear} to release it.
  *
  * @param pMap Indicates map handle.
  * @param index Indicates entry index.
@@ -1319,15 +1457,15 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Map_GetSize(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pMap or pKey is null, or index is out of bounds.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Map_GetKeyAt(
-    OH_AbilityRuntime_MoDispatcher_MapHandle pMap, uint32_t index,
-    OH_AbilityRuntime_MoDispatcher_Variant* pKey);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_GetKeyAt(
+    OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, uint32_t index,
+    OH_AbilityRuntime_ModObjDispatcher_Variant* pKey);
 
 /**
  * @brief Get a map value by index.
  *
  * The returned variant is a deep copy owned by the caller.
- * Caller must call {@link OH_AbilityRuntime_MoDispatcher_Variant_Clear} to release it.
+ * Caller must call {@link OH_AbilityRuntime_ModObjDispatcher_Variant_Clear} to release it.
  *
  * @param pMap Indicates map handle.
  * @param index Indicates entry index.
@@ -1337,9 +1475,9 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Map_GetKeyAt(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pMap or pValue is null, or index is out of bounds.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Map_GetValueAt(
-    OH_AbilityRuntime_MoDispatcher_MapHandle pMap, uint32_t index,
-    OH_AbilityRuntime_MoDispatcher_Variant* pValue);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_GetValueAt(
+    OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, uint32_t index,
+    OH_AbilityRuntime_ModObjDispatcher_Variant* pValue);
 
 /**
  * @brief Clear map.
@@ -1350,8 +1488,8 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Map_GetValueAt(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pMap is null.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Map_Clear(
-    OH_AbilityRuntime_MoDispatcher_MapHandle pMap);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_Clear(
+    OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap);
 
 /**
  * @brief Release map instance.
@@ -1359,7 +1497,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Map_Clear(
  * @param ppMap Indicates map handle to release.
  * @since 26.0.0
  */
-void OH_AbilityRuntime_MoDispatcher_Map_Release(OH_AbilityRuntime_MoDispatcher_MapHandle* ppMap);
+void OH_AbilityRuntime_ModObjDispatcher_Map_Release(OH_AbilityRuntime_ModObjDispatcher_MapHandle* ppMap);
 
 /**
  * @brief Create a struct instance.
@@ -1372,8 +1510,8 @@ void OH_AbilityRuntime_MoDispatcher_Map_Release(OH_AbilityRuntime_MoDispatcher_M
  *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if internal error occurs.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Struct_Create(
-    const char* structName, OH_AbilityRuntime_MoDispatcher_StructHandle* ppStruct);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Struct_Create(
+    const char* structName, OH_AbilityRuntime_ModObjDispatcher_StructHandle* ppStruct);
 
 /**
  * @brief Get struct name.
@@ -1386,8 +1524,8 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Struct_Create(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if pStruct or pbstrName is null, or cMaxName is 0.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Struct_GetName(
-    OH_AbilityRuntime_MoDispatcher_StructHandle pStruct, char* pbstrName, uint32_t cMaxName);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Struct_GetName(
+    OH_AbilityRuntime_ModObjDispatcher_StructHandle pStruct, char* pbstrName, uint32_t cMaxName);
 
 /**
  * @brief Set a struct field value.
@@ -1402,9 +1540,9 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Struct_GetName(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_TYPE_MISMATCH} if field type mismatches.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Struct_SetField(
-    OH_AbilityRuntime_MoDispatcher_StructHandle pStruct, const char* szName,
-    const OH_AbilityRuntime_MoDispatcher_Variant* pValue);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Struct_SetField(
+    OH_AbilityRuntime_ModObjDispatcher_StructHandle pStruct, const char* szName,
+    const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue);
 
 /**
  * @brief Get a struct field value.
@@ -1418,9 +1556,9 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Struct_SetField(
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND} if field is not found in struct.
  * @since 26.0.0
  */
-AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Struct_GetField(
-    OH_AbilityRuntime_MoDispatcher_StructHandle pStruct, const char* szName,
-    OH_AbilityRuntime_MoDispatcher_Variant* pValue);
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Struct_GetField(
+    OH_AbilityRuntime_ModObjDispatcher_StructHandle pStruct, const char* szName,
+    OH_AbilityRuntime_ModObjDispatcher_Variant* pValue);
 
 /**
  * @brief Release struct instance.
@@ -1428,9 +1566,10 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_MoDispatcher_Struct_GetField(
  * @param ppStruct Indicates struct handle to release.
  * @since 26.0.0
  */
-void OH_AbilityRuntime_MoDispatcher_Struct_Release(OH_AbilityRuntime_MoDispatcher_StructHandle* ppStruct);
+void OH_AbilityRuntime_ModObjDispatcher_Struct_Release(OH_AbilityRuntime_ModObjDispatcher_StructHandle* ppStruct);
 #ifdef __cplusplus
 }
 #endif
+/** @} */
+#endif // OHOS_ABILITY_RUNTIME_C_MOD_OBJ_DISPATCHER_H
 
-#endif // OHOS_ABILITY_RUNTIME_C_MO_DISPATCHER_H
