@@ -45,6 +45,7 @@ ohos_unittest("ui_extension_preload_test") {
     "googletest:gtest_main",
     "hilog:libhilog",
     "ipc:ipc_single",
+    "eventhandler:libeventhandler"
   ]
 }
 
