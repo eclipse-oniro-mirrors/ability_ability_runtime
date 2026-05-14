@@ -259,9 +259,9 @@ declare_args() {
     ability_runtime_udmf_enable = false
   }
 
-  hiviewdfx_apprecovery_api_metrics_enable = true
+  hiviewdfx_runtime_api_metrics_enable = true
   if (defined(global_parts_info) &&
       !defined(global_parts_info.hiviewdfx_api_metrics)) {
-    hiviewdfx_apprecovery_api_metrics_enable = false
+    hiviewdfx_runtime_api_metrics_enable = false
   }
 }

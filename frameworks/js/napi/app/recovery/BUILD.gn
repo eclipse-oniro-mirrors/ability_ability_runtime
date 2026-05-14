@@ -51,7 +51,7 @@ ohos_shared_library("apprecovery_napi") {
     "ipc:ipc_single",
     "napi:ace_napi",
   ]
-  if (hiviewdfx_apprecovery_api_metrics_enable) {
+  if (hiviewdfx_runtime_api_metrics_enable) {
     defines += [ "APPRECOVERY_ENABLE_API_METRICS" ]
     external_deps += [
       "api_metrics:histogrammanager"
