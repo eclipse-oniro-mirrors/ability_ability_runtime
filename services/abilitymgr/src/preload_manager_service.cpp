@@ -104,9 +104,6 @@ int32_t PreloadManagerService::LaunchGameCustomized(const std::string &bundleNam
         return CHECK_PERMISSION_FAILED;
     }
 
-    // Set game prelaunch flag
-    launchWant.SetParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH, true);
-
     StartAbilityWrapParam startAbilityWrapParam;
     startAbilityWrapParam.want = launchWant;
     startAbilityWrapParam.userId = userId;

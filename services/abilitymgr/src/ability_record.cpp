@@ -233,11 +233,6 @@ void AbilityRecord::Init(const AbilityRequest &abilityRequest)
             abilityRequest.abilityInfo.bundleName, abilityRequest.abilityInfo.name, userId)) {
         keepAliveBundle_ = true;
     }
-
-    if (abilityRequest.want.GetBoolParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH, false)) {
-        TAG_LOGD(AAFwkTag::UIABILITY, "abilityRecord: Set game prelaunch flag from want");
-        SetGameSAPreLaunch(true);
-    }
 }
 
 AbilityRecordType AbilityRecord::GetAbilityRecordType()
@@ -337,6 +332,7 @@ int AbilityRecord::LoadAbility(bool isShellCall, bool isStartupHide, pid_t calli
     loadParam.isPreloadStart = isPreloadStart_;
     loadParam.selfPid = selfPid;
     loadParam.byCallStatus = GetByCallStatus();
+    loadParam.isGamePrelaunch = IsGameSAPreLaunch();
     auto userId = abilityInfo_.uid / BASE_USER_RANGE;
     bool isMainUIAbility =
         MainElementUtils::IsMainUIAbility(abilityInfo_.bundleName, abilityInfo_.name, userId);
@@ -421,7 +417,7 @@ void AbilityRecord::ForegroundAbility(uint32_t sceneFlag)
         want.SetParam(SPECIFIED_ABILITY_FLAG, GetSpecifiedFlag());
     }
     lifecycleDeal_->ForegroundNew(want, lifeCycleStateInfo_, GetSessionInfo());
-    want.RemoveParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH);
+    RemoveSpecifiedWantParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH);
     SetIsNewWant(false);
     if (!Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
         lifeCycleStateInfo_.sceneFlag = 0;
@@ -1560,9 +1556,7 @@ void SystemAbilityCallerRecord::SendResultToSystemAbility(int requestCode,
 void AbilityRecord::RemoveSpecifiedWantParam(const std::string &key)
 {
     std::lock_guard guard(wantLock_);
-    if (want_.HasParameter(key)) {
-        want_.RemoveParam(key);
-    }
+    want_.RemoveParam(key);
 }
 
 void AbilityRecord::RemoveCallerRequestCode(std::shared_ptr<AbilityRecord> callerAbilityRecord, int32_t requestCode)
