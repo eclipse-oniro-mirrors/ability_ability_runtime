@@ -410,6 +410,16 @@ ohos_shared_library("abilitykit_native") {
     "samgr:samgr_proxy",
     "window_manager:windowstage_kit",
   ]
+
+  defines = []
+
+  if (defined(hiviewdfx_runtime_api_metrics_enable) && hiviewdfx_runtime_api_metrics_enable) {
+    defines += [ "HIVIEWDFX_RUNTIME_API_METRICS" ]
+    external_deps += [
+      "api_metrics:histogrammanager",
+    ]
+  }
+
   if (!(host_os == "linux" && host_cpu == "arm64")) {
     external_deps += [ "relational_store:native_rdb" ]
   }
@@ -428,8 +438,6 @@ ohos_shared_library("abilitykit_native") {
     "napi:ace_napi",
     "window_manager:sms",
   ]
-
-  defines = []
 
   if (cj_frontend) {
     sources += [

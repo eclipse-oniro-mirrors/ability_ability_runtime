@@ -19,6 +19,9 @@
 #include "ability_manager_errors.h"
 #include "ability_runtime_error_util.h"
 #include "hilog_tag_wrapper.h"
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+#include "histogram_plugin_macros.h"
+#endif
 #include "ipc_skeleton.h"
 #include "js_error_utils.h"
 #include "napi_common_util.h"
@@ -317,6 +320,9 @@ private:
     napi_value OnGrantUriPermission(napi_env env, NapiCallbackInfo& info)
     {
         TAG_LOGD(AAFwkTag::URIPERMMGR, "start");
+    #ifdef HIVIEWDFX_RUNTIME_API_METRICS
+        HISTOGRAM_BOOLEAN("AbilityKit.uriPermissionManager.grantUriPermission", 1);
+    #endif
         HandleEscape handleEscape(env);
         UriPermissionParam param;
         if (!ParseGrantUriPermissionParams(env, info, param)) {
