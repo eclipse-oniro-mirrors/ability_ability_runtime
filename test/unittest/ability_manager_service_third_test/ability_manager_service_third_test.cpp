@@ -1197,7 +1197,7 @@ HWTEST_F(AbilityManagerServiceThirdTest, CheckRestartAppWant_001, TestSize.Level
     EXPECT_NE(abilityMs, nullptr);
     AAFwk::Want want;
     int32_t userId = 100;
-    int32_t res = abilityMs->CheckRestartAppWant(want, 0, userId);
+    int32_t res = abilityMs->CheckRestartAppWant(want.GetElement(), 0, userId);
     EXPECT_EQ(res, AAFwk::ERR_RESTART_APP_INCORRECT_ABILITY);
 }
 

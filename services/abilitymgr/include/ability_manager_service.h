@@ -3390,7 +3390,7 @@ private:
     };
     int32_t SignRestartAppFlag(const SignRestartAppFlagParam &param);
 
-    int32_t CheckRestartAppWant(const AAFwk::Want &want, int32_t appIndex, int32_t userId);
+    int32_t CheckRestartAppWant(const AppExecFwk::ElementName &elementName, int32_t appIndex, int32_t userId);
 
     int32_t CheckDebugAssertPermission();
     bool VerifySameAppOrAppIdentifierAllowListPermission(const AbilityRequest &abilityRequest);

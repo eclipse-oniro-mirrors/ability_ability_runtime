@@ -76,7 +76,7 @@ bool UIAbilityRecord::UpdateWantByLastWant()
         lastWant = lastWant_;
         lastWant_ = nullptr;
     }
-    SetWant(lastWant);
+    SetWant(*lastWant);
     SetIsNewWant(true);
     return true;
 }

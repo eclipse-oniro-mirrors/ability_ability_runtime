@@ -362,6 +362,7 @@ public:
     Want GetWant() const;
     std::string GetAbilityName() const;
     std::string GetBundleName() const;
+    std::string GetModuleName() const;
     std::string GetStringParam(const std::string &key) const;
     int GetIntParam(const std::string &key, int defaultValue) const;
     bool GetBoolParam(const std::string &key, bool defaultValue) const;
