@@ -48,6 +48,13 @@ ohos_shared_library("insightintentdriver_napi") {
     "json:nlohmann_json_static",
     "napi:ace_napi",
   ]
+  defines = []
+  if (hiviewdfx_runtime_api_metrics_enable) {
+    defines += [ "HIVIEWDFX_RUNTIME_API_METRICS" ]
+    external_deps += [
+      "api_metrics:histogrammanager"
+    ]
+  }
   cflags_cc = []
   if (os_dlp_part_enabled) {
     cflags_cc += [ "-DWITH_DLP" ]
