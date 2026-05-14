@@ -891,7 +891,7 @@ void EtsAbilityManager::NativeOffPreloadedUIExtensionAbilityLoaded(ani_env *env,
         loadedCallback_.clear();
         return;
     }
-    auto it = std::find_if(loadedCallback_.begin(), loadedCallback_.end(), [&](const auto &cb) {
+    auto it = std::find_if(loadedCallback_.begin(), loadedCallback_.end(), [env, callback](const auto &cb) {
         ani_boolean isEquals = ANI_FALSE;
         env->Reference_StrictEquals(callback, cb.first, &isEquals);
         return isEquals;
@@ -962,7 +962,7 @@ void EtsAbilityManager::NativeOffPreloadedUIExtensionAbilityDestroyed(ani_env *e
         destroyCallback_.clear();
         return;
     }
-    auto it = std::find_if(destroyCallback_.begin(), destroyCallback_.end(), [&](const auto &cb) {
+    auto it = std::find_if(destroyCallback_.begin(), destroyCallback_.end(), [env, callback](const auto &cb) {
         ani_boolean isEquals = ANI_FALSE;
         env->Reference_StrictEquals(callback, cb.first, &isEquals);
         return isEquals;
