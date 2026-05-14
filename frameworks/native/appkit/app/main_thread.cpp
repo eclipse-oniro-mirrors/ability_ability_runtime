@@ -1867,10 +1867,6 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
         AbilityRuntime::ChildProcessManager::GetInstance().SetForkProcessDebugOption(appInfo.bundleName,
             appLaunchData.GetDebugApp(), appInfo.debug, appLaunchData.isNativeStart());
         AbilityRuntime::ChildProcessManager::GetInstance().SetApplication(application_);
-        AbilityRuntime::ChildProcessManager::GetInstance().SetArkChildProcessSupported(
-            appLaunchData.IsArkChildProcessSupported());
-        AbilityRuntime::ChildProcessManager::GetInstance().SetNativeChildProcessSupported(
-            appLaunchData.IsNativeChildProcessSupported());
 #endif // SUPPORT_CHILD_PROCESS
         if (!pluginBundleInfos.empty()) {
             for (auto &pluginBundleInfo : pluginBundleInfos) {

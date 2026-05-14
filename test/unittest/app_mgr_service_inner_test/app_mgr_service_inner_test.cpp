@@ -6800,5 +6800,22 @@ HWTEST_F(AppMgrServiceInnerTest, GetAllAbilityInfos_0003, TestSize.Level1)
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
     TAG_LOGI(AAFwkTag::TEST, "GetAllAbilityInfos_0003 end");
 }
+
+/**
+ * @tc.name: IsChildProcessSupported_001
+ * @tc.desc: IsChildProcessSupported when no app record.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, IsChildProcessSupported_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+
+    bool isSupported = false;
+    EXPECT_EQ(appMgrServiceInner->IsChildProcessSupported(false, isSupported), AAFwk::ERR_NO_APP_RECORD);
+
+    isSupported = false;
+    EXPECT_EQ(appMgrServiceInner->IsChildProcessSupported(true, isSupported), AAFwk::ERR_NO_APP_RECORD);
+}
 } // namespace AppExecFwk
 } // namespace OHOS

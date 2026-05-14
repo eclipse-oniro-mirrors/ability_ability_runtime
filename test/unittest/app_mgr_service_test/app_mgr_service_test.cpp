@@ -2622,5 +2622,19 @@ HWTEST_F(AppMgrServiceTest, UpdateConfigurationByUserIds_001, TestSize.Level2)
     int32_t res = appMgrService->UpdateConfigurationByUserIds(config, userIds);
     EXPECT_EQ(res, ERR_INVALID_OPERATION);
 }
+
+/**
+ * @tc.name: IsChildProcessSupported_0100
+ * @tc.desc: IsChildProcessSupported when service is not ready.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, IsChildProcessSupported_0100, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    ASSERT_NE(appMgrService, nullptr);
+    bool isSupported = false;
+    auto ret = appMgrService->IsChildProcessSupported(false, isSupported);
+    EXPECT_EQ(ret, ERR_INVALID_OPERATION);
+}
 } // namespace AppExecFwk
 } // namespace OHOS
