@@ -197,7 +197,7 @@ void UserController::SetUserLockStatus(int32_t userId, UserController::UserLockS
         return;
     }
     userLockStatusMap_[userId] = status;
-    TAG_LOGD(AAFwkTag::USER_CONTROLLER, "SetUserLockStatus successful, userId:%{public}d, status:%{public}d",
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "SetUserLockStatus successful, userId:%{public}d, status:%{public}d",
         userId, static_cast<int32_t>(status));
 }
 
@@ -205,7 +205,7 @@ void UserController::DeleteUserLockStatus(int32_t userId)
 {
     std::lock_guard<ffrt::mutex> guard(userLock_);
     userLockStatusMap_.erase(userId);
-    TAG_LOGD(AAFwkTag::USER_CONTROLLER, "DeleteUserLockStatus successful, userId:%{public}d", userId);
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "DeleteUserLockStatus successful, userId:%{public}d", userId);
 }
 
 int32_t UserController::GetUserLockedBundleList(int32_t userId, std::unordered_set<std::string> &userLockedBundleList)
