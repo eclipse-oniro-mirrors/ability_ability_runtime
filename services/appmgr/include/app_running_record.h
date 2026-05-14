@@ -985,6 +985,10 @@ public:
 
     std::string GetPreloadModuleName() const;
 
+    void SetPreloadAbilityName(const std::string &abilityName);
+
+    std::string GetPreloadAbilityName() const;
+
     /**
      * @brief Obtains the app record assign tokenId.
      *
@@ -1480,6 +1484,7 @@ private:
     std::string moduleName_;
     std::string perfCmd_;
     std::string preloadModuleName_;
+    std::string preloadAbilityName_; // ability name for preloading specific ability
     std::string exitMsg_ = "";
     std::string instanceKey_; // render record
     std::string killReason_ = "";

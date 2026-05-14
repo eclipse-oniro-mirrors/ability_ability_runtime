@@ -34,6 +34,8 @@ public:
 private:
     void OnAbilityStateChanged(const AppExecFwk::AbilityStateData &abilityStateData) override;
     void OnPageShow(const AppExecFwk::PageStateData &pageStateData) override;
+
+    ErrCode ExecuteUIExtension(const AppExecFwk::PageStateData &pageStateData);
 private:
     std::shared_ptr<DisposedRuleInterceptor> interceptor_ = nullptr;
     AppExecFwk::DisposedRule disposedRule_;

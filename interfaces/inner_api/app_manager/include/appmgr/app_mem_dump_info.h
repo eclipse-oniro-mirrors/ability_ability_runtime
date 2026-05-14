@@ -26,6 +26,7 @@ enum class MemDumpType : uint32_t {
     NATIVE = 1,
     JSVM = 2,
     KMP_KOTLIN = 3,
+    ARKWEB_JS = 4,
 };
 
 struct MemDumpInfo : public Parcelable {
@@ -34,8 +35,11 @@ struct MemDumpInfo : public Parcelable {
     bool needRaw = false;
     uint32_t pid = 0;
     uint32_t tid = 0;
+    uint32_t renderPid = 0;
     bool isSync = false;
     bool mayReportToOEM = false;
+    bool needDump = true;
+    bool needGc = false;
     virtual bool Marshalling(Parcel &parcel) const override;
     static MemDumpInfo *Unmarshalling(Parcel &parcel);
 };

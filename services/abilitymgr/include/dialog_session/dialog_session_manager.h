@@ -47,6 +47,7 @@ struct DialogCallerInfo {
     // for app gallery selector
     bool needGrantUriPermission = false;
     sptr<IRemoteObject> sessionToken = nullptr;
+    sptr<IRequestStartAbilityCallback> requestCallback = nullptr;
 };
 
 struct StartupSessionInfo {

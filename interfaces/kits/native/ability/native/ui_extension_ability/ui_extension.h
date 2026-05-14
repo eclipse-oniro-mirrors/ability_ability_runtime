@@ -92,6 +92,13 @@ public:
     void RegisterUiExtensionDelayResultCallback(uint64_t intentId, const sptr<AAFwk::SessionInfo> &sessionInfo,
         bool isDecorator = false);
 
+    /**
+     * @brief Create modal UIExtension.
+     * @param want The want of the modal UIExtension to create.
+     * @return Returns ERR_OK on success, error code on failure.
+     */
+    virtual int CreateModalUIExtension(const AAFwk::Want &want);
+
 protected:
     virtual void ForegroundWindow(const AAFwk::Want &want, const sptr<AAFwk::SessionInfo> &sessionInfo);
     virtual void BackgroundWindow(const sptr<AAFwk::SessionInfo> &sessionInfo);
@@ -104,6 +111,7 @@ protected:
     std::map<uint64_t, sptr<Rosen::Window>> uiWindowMap_;
     std::set<uint64_t> foregroundWindows_;
     uint64_t intentId_;
+    std::shared_ptr<AbilityHandler> handler_ = nullptr;
 };
 }  // namespace AbilityRuntime
 }  // namespace OHOS

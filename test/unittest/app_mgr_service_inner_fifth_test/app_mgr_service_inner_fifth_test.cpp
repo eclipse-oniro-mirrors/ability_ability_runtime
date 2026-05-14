@@ -901,5 +901,565 @@ HWTEST_F(AppMgrServiceInnerTest, HandleConfigurationChange_001, TestSize.Level2)
         }
     }
 }
+
+/**
+ * @tc.name: GetValidUserId_001
+ * @tc.desc: GetValidUserId - input userId is not DEFAULT_INVAL_VALUE, return as-is
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, GetValidUserId_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    int32_t result = appMgrServiceInner->GetValidUserId(100);
+    EXPECT_EQ(result, 100);
+}
+
+/**
+ * @tc.name: GetValidUserId_002
+ * @tc.desc: GetValidUserId - input is DEFAULT_INVAL_VALUE, uid maps to U0/U1, get foreground userId
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, GetValidUserId_002, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    int32_t result = appMgrServiceInner->GetValidUserId(-1);
+    EXPECT_GE(result, 0);
+}
+
+/**
+ * @tc.name: MakeImageInner_ImageExist_001
+ * @tc.desc: MakeImageInner - image already exists in imageInfoMap_
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, MakeImageInner_ImageExist_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::Want want;
+    want.SetElementName("bundleName", "abilityName");
+    AppMgrServiceInner::MakeImageRequest request {
+        .bundleName = "bundleName",
+        .abilityName = "abilityName",
+        .userId = 100,
+        .appCloneIndex = 0
+    };
+    auto imageInfo = std::make_shared<ForkImageInfo>();
+    appMgrServiceInner->imageInfoMap_[request] = imageInfo;
+
+    auto ret = appMgrServiceInner->MakeImageInner(want, 100,
+        AppExecFwk::PreloadMode::PRELOAD_MODULE, 0, nullptr);
+    EXPECT_EQ(ret, ImageError::ERR_IMAGE_INFO_EXIST);
+}
+
+/**
+ * @tc.name: MakeImageInner_PreloadFailed_001
+ * @tc.desc: MakeImageInner - PreloadApplication fails
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, MakeImageInner_PreloadFailed_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::Want want;
+    want.SetElementName("bundleName", "abilityName");
+
+    auto ret = appMgrServiceInner->MakeImageInner(want, -1,
+        AppExecFwk::PreloadMode::PRELOAD_MODULE, 0, nullptr);
+    EXPECT_EQ(ret, ImageError::ERR_PRELOAD_FAILED);
+}
+
+/**
+ * @tc.name: MakeImageInner_NotPreloadModule_001
+ * @tc.desc: MakeImageInner - preloadMode is not PRELOAD_MODULE
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, MakeImageInner_NotPreloadModule_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::Want want;
+    want.SetElementName("bundleName", "abilityName");
+
+    auto ret = appMgrServiceInner->MakeImageInner(want, 100,
+        AppExecFwk::PreloadMode::PRELOAD_NONE, 0, nullptr);
+    EXPECT_EQ(ret, ImageError::ERR_INVALID_PRELOAD_TYPE);
+}
+
+/**
+ * @tc.name: DestroyImageByImageInfo_NullImageInfo_001
+ * @tc.desc: DestroyImageByImageInfo - imageInfo is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, DestroyImageByImageInfo_NullImageInfo_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto ret = appMgrServiceInner->DestroyImageByImageInfo(nullptr);
+    EXPECT_EQ(ret, ImageError::ERR_IMAGE_INFO_NOT_EXIST);
+}
+
+/**
+ * @tc.name: DestroyImageByImageInfo_ImagePidInvalid_001
+ * @tc.desc: DestroyImageByImageInfo - imagePid < 0
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, DestroyImageByImageInfo_ImagePidInvalid_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto imageInfo = std::make_shared<ForkImageInfo>();
+    imageInfo->imagePid = -1;
+    auto appRecord = std::make_shared<AppRunningRecord>(
+        std::make_shared<ApplicationInfo>(), 1, "processName");
+    imageInfo->baseAppRecord = appRecord;
+    // imagePid < 0 → ERR_IMAGE_INFO_NOT_READY
+    auto ret = appMgrServiceInner->DestroyImageByImageInfo(imageInfo);
+    EXPECT_EQ(ret, ImageError::ERR_IMAGE_INFO_NOT_READY);
+}
+
+/**
+ * @tc.name: DestroyImageByImageInfo_BaseAppRecordNull_001
+ * @tc.desc: DestroyImageByImageInfo - baseAppRecord is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, DestroyImageByImageInfo_BaseAppRecordNull_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto imageInfo = std::make_shared<ForkImageInfo>();
+    imageInfo->imagePid = 100;
+    imageInfo->baseAppRecord = nullptr;
+    auto ret = appMgrServiceInner->DestroyImageByImageInfo(imageInfo);
+    EXPECT_EQ(ret, ImageError::ERR_IMAGE_INFO_NOT_READY);
+}
+
+/**
+ * @tc.name: DestroyImageForFault_NullAppRecord_001
+ * @tc.desc: DestroyImageForFault - appRecord is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, DestroyImageForFault_NullAppRecord_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto ret = appMgrServiceInner->DestroyImageForFault(nullptr);
+    EXPECT_EQ(ret, ImageError::ERR_INNER);
+}
+
+/**
+ * @tc.name: DestroyImageForFault_ImageInfoNotExist_001
+ * @tc.desc: DestroyImageForFault - imageInfo not found in map
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, DestroyImageForFault_ImageInfoNotExist_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto appRecord = std::make_shared<AppRunningRecord>(
+        std::make_shared<ApplicationInfo>(), 1, "processName");
+    auto ret = appMgrServiceInner->DestroyImageForFault(appRecord);
+    EXPECT_EQ(ret, ImageError::ERR_IMAGE_INFO_NOT_EXIST);
+}
+
+/**
+ * @tc.name: HandleForkAll_NullAppRecord_001
+ * @tc.desc: HandleForkAll - appRecord not found by pid, returns -1
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, HandleForkAll_NullAppRecord_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    int32_t ret = appMgrServiceInner->HandleForkAll(99999);
+    EXPECT_EQ(ret, -1);
+}
+
+/**
+ * @tc.name: HandleForkAllInner_AppRecordNull_001
+ * @tc.desc: HandleForkAllInner - appRecord is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, HandleForkAllInner_AppRecordNull_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto ret = appMgrServiceInner->HandleForkAllInner(nullptr, 100);
+    EXPECT_EQ(ret, ImageError::ERR_INNER);
+}
+
+/**
+ * @tc.name: HandleForkAllInner_StateNotReady_001
+ * @tc.desc: HandleForkAllInner - makeImageState is not MAKE_PRELOAD_FINISH
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, HandleForkAllInner_StateNotReady_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto appRecord = std::make_shared<AppRunningRecord>(
+        std::make_shared<ApplicationInfo>(), 1, "processName");
+    appRecord->SetMakeImageState(MakeImageState::NONE);
+    auto ret = appMgrServiceInner->HandleForkAllInner(appRecord, 100);
+    EXPECT_EQ(ret, ImageError::ERR_TEMPLATE_HAS_BEEN_USED);
+}
+
+/**
+ * @tc.name: IsImageInfoExist_NullAppRecord_001
+ * @tc.desc: IsImageInfoExist - appRecord is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, IsImageInfoExist_NullAppRecord_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    bool ret = appMgrServiceInner->IsImageInfoExist(nullptr);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.name: IsImageInfoExist_NotFound_001
+ * @tc.desc: IsImageInfoExist - image not found in map
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, IsImageInfoExist_NotFound_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    bool ret = appMgrServiceInner->IsImageInfoExist("bundle", "ability", 100, 0);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.name: IsImageInfoExist_Found_001
+ * @tc.desc: IsImageInfoExist - image found in map
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, IsImageInfoExist_Found_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AppMgrServiceInner::MakeImageRequest request {
+        .bundleName = "bundle",
+        .abilityName = "ability",
+        .userId = 100,
+        .appCloneIndex = 0
+    };
+    appMgrServiceInner->imageInfoMap_[request] = std::make_shared<ForkImageInfo>();
+    bool ret = appMgrServiceInner->IsImageInfoExist("bundle", "ability", 100, 0);
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.name: GetImageInfoByRecord_NullAppRecord_001
+ * @tc.desc: GetImageInfo - appRecord is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, GetImageInfoByRecord_NullAppRecord_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto ret = appMgrServiceInner->GetImageInfo(nullptr);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: GetImageInfoByRecord_Valid_001
+ * @tc.desc: GetImageInfo - valid appRecord found in map
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, GetImageInfoByRecord_Valid_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AppMgrServiceInner::MakeImageRequest request {
+        .bundleName = "bundleName",
+        .abilityName = "abilityName",
+        .userId = 100,
+        .appCloneIndex = 0
+    };
+    auto imageInfo = std::make_shared<ForkImageInfo>();
+    appMgrServiceInner->imageInfoMap_[request] = imageInfo;
+
+    auto appRecord = std::make_shared<AppRunningRecord>(
+        std::make_shared<ApplicationInfo>(), 1, "processName");
+    auto ret = appMgrServiceInner->GetImageInfo(appRecord);
+    EXPECT_EQ(ret, nullptr); // preload ability name won't match
+}
+
+/**
+ * @tc.name: GetImageInfoByRemoteObject_NotFound_001
+ * @tc.desc: GetImageInfoByRemoteObject - no matching remote object
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, GetImageInfoByRemoteObject_NotFound_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto ret = appMgrServiceInner->GetImageInfoByRemoteObject(nullptr);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: GetImageInfoByRemoteObject_EmptyMap_001
+ * @tc.desc: GetImageInfoByRemoteObject - empty map returns nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, GetImageInfoByRemoteObject_EmptyMap_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto mockObj = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    auto ret = appMgrServiceInner->GetImageInfoByRemoteObject(mockObj);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: IsImageInfoMatched_NullImageInfo_001
+ * @tc.desc: IsImageInfoMatched - imageInfo is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, IsImageInfoMatched_NullImageInfo_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    bool ret = appMgrServiceInner->IsImageInfoMatched(nullptr, 0, "", "", "", "");
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.name: IsImageInfoMatched_ImagePidInvalid_001
+ * @tc.desc: IsImageInfoMatched - imagePid <= 0
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, IsImageInfoMatched_ImagePidInvalid_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto imageInfo = std::make_shared<ForkImageInfo>();
+    imageInfo->imagePid = 0;
+    bool ret = appMgrServiceInner->IsImageInfoMatched(imageInfo, 0, "", "", "", "");
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.name: IsImageInfoMatched_NullAppRecord_001
+ * @tc.desc: IsImageInfoMatched - baseAppRecord is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, IsImageInfoMatched_NullAppRecord_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto imageInfo = std::make_shared<ForkImageInfo>();
+    imageInfo->imagePid = 100;
+    imageInfo->baseAppRecord = nullptr;
+    bool ret = appMgrServiceInner->IsImageInfoMatched(imageInfo, 0, "", "", "", "");
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.name: IsImageInfoMatched_ProcessNameMismatch_001
+ * @tc.desc: IsImageInfoMatched - process name does not match
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, IsImageInfoMatched_ProcessNameMismatch_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto imageInfo = std::make_shared<ForkImageInfo>();
+    imageInfo->imagePid = 100;
+    auto appRecord = std::make_shared<AppRunningRecord>(
+        std::make_shared<ApplicationInfo>(), 1, "processName");
+    imageInfo->baseAppRecord = appRecord;
+    bool ret = appMgrServiceInner->IsImageInfoMatched(imageInfo, 0, "differentProcess", "", "", "");
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.name: CreateAppRunningRecordFromImageInfo_Null_001
+ * @tc.desc: CreateAppRunningRecordFromImageInfo - imageInfo is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, CreateAppRunningRecordFromImageInfo_Null_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto ret = appMgrServiceInner->CreateAppRunningRecordFromImageInfo(nullptr);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: CreateAppRunningRecordFromImageInfo_NoBaseRecord_001
+ * @tc.desc: CreateAppRunningRecordFromImageInfo - baseAppRecord is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, CreateAppRunningRecordFromImageInfo_NoBaseRecord_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto imageInfo = std::make_shared<ForkImageInfo>();
+    imageInfo->baseAppRecord = nullptr;
+    auto ret = appMgrServiceInner->CreateAppRunningRecordFromImageInfo(imageInfo);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: TryToUseImageInfo_NullParams_001
+ * @tc.desc: TryToUseImageInfo - appRunningManager_ is null (first null check)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, TryToUseImageInfo_NullParams_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    std::shared_ptr<AppRunningRecord> appRecord = nullptr;
+    auto ret = appMgrServiceInner->TryToUseImageInfo(nullptr, nullptr, nullptr,
+        "callerKey", 0, "process", "instanceKey", "", "", appRecord);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: TryToUseImageInfo_ImageInfoNotFound_001
+ * @tc.desc: TryToUseImageInfo - imageInfo not found in map
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, TryToUseImageInfo_ImageInfoNotFound_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->name = "testAbility";
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->bundleName = "testBundle";
+    appInfo->uid = 0;
+    std::shared_ptr<AppRunningRecord> appRecord = nullptr;
+    auto ret = appMgrServiceInner->TryToUseImageInfo(abilityInfo, appInfo, nullptr,
+        "callerKey", 0, "process", "instanceKey", "", "", appRecord);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: TryToUseImageInfo_ImageInfoNotMatched_001
+ * @tc.desc: TryToUseImageInfo - IsImageInfoMatched returns false
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, TryToUseImageInfo_ImageInfoNotMatched_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->name = "testAbility";
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->bundleName = "testBundle";
+    appInfo->uid = 0;
+    AppMgrServiceInner::MakeImageRequest request {
+        .bundleName = "testBundle",
+        .abilityName = "testAbility",
+        .userId = 0,
+        .appCloneIndex = 0
+    };
+    auto imageInfo = std::make_shared<ForkImageInfo>();
+    imageInfo->imagePid = 100;
+    appMgrServiceInner->imageInfoMap_[request] = imageInfo;
+    std::shared_ptr<AppRunningRecord> appRecord = nullptr;
+    auto ret = appMgrServiceInner->TryToUseImageInfo(abilityInfo, appInfo,
+        sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken()),
+        "callerKey", 0, "differentProcess", "instanceKey", "", "", appRecord);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: ProcessKia_NotKia_001
+ * @tc.desc: ProcessKia - isKia is false, early return ERR_OK
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, ProcessKia_NotKia_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    int32_t ret = appMgrServiceInner->ProcessKia(false, nullptr, "", false);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: ProcessKia_NullAppRecord_001
+ * @tc.desc: ProcessKia - isKia false regardless of appRecord
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, ProcessKia_NullAppRecord_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    // isKia=false always returns ERR_OK regardless of AppUtils::IsStartOptionsWithAnimation
+    int32_t ret = appMgrServiceInner->ProcessKia(false, nullptr, "watermark", true);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: ProcessKia_Valid_001
+ * @tc.desc: ProcessKia - isKia true with valid appRecord
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, ProcessKia_Valid_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto appRecord = std::make_shared<AppRunningRecord>(
+        std::make_shared<ApplicationInfo>(), 1, "processName");
+    int32_t ret = appMgrServiceInner->ProcessKia(true, appRecord, "watermark", true);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: GetBackgroundAppInfo_NullSession_001
+ * @tc.desc: GetBackgroundAppInfo - SessionManager returns null
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, GetBackgroundAppInfo_NullSession_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    std::vector<BackgroundAppInfo> allowList;
+    auto ret = appMgrServiceInner->GetBackgroundAppInfo(allowList);
+    EXPECT_TRUE(ret.empty());
+}
+
+/**
+ * @tc.name: GetRenderProcessTerminationStatus_NoAppMgr_001
+ * @tc.desc: GetRenderProcessTerminationStatus - appRunningManager_ is null
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, GetRenderProcessTerminationStatus_NoAppMgr_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    int status = 0;
+    int32_t ret = appMgrServiceInner->GetRenderProcessTerminationStatus(100, status);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: GetRenderProcessTerminationStatus_HostRecordNull_001
+ * @tc.desc: GetRenderProcessTerminationStatus - hostRecord not found
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, GetRenderProcessTerminationStatus_HostRecordNull_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto appRunningManager = std::make_shared<AppRunningManager>();
+    appMgrServiceInner->appRunningManager_ = appRunningManager;
+    int status = 0;
+    int32_t ret = appMgrServiceInner->GetRenderProcessTerminationStatus(99999, status);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: IsAppRunning_InvalidCloneIndex_001
+ * @tc.desc: IsAppRunning - appCloneIndex out of valid range, clamped to -1
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, IsAppRunning_InvalidCloneIndex_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    bool isRunning = false;
+    // callingUid likely != FOUNDATION_UID in test → first check fails
+    int32_t ret = appMgrServiceInner->IsAppRunning("testBundle", -2, 100, isRunning);
+    EXPECT_EQ(ret, ERR_PERMISSION_DENIED);
+}
+
+/**
+ * @tc.name: CreateAbilityInfo_NullBundleMgr_001
+ * @tc.desc: CreateAbilityInfo - bundleMgrHelper is null, early return false
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, CreateAbilityInfo_NullBundleMgr_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    appMgrServiceInner->remoteClientManager_ = std::make_shared<RemoteClientManager>();
+    AAFwk::Want want;
+    AbilityInfo abilityInfo;
+    bool ret = appMgrServiceInner->CreateAbilityInfo(want, abilityInfo);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.name: AllowChildProcessInMultiProcessFeatureApp_NullAppRecord_001
+ * @tc.desc: AllowChildProcessInMultiProcessFeatureApp - appRecord is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, AllowChildProcessInMultiProcessFeatureApp_NullAppRecord_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    bool ret = appMgrServiceInner->AllowChildProcessInMultiProcessFeatureApp(nullptr);
+    EXPECT_FALSE(ret);
+}
 } // namespace AppExecFwk
 } // namespace OHOS

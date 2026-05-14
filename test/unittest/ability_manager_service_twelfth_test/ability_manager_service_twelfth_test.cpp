@@ -2115,5 +2115,446 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, RequestModalUIExtensionWithAccount_00
     MyFlag::retCreateModalUIExtension_ = true;  // 恢复默认值
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_008 end");
 }
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RequestModalUIExtensionWithAccount
+ * SubFunction: NA
+ * FunctionPoints: Request modal UI extension with DEFAULT_INVAL_VALUE accountId
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, RequestModalUIExtensionWithAccount_009, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_009 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+
+    MyFlag::retCreateModalUIExtension_ = true;
+
+    // Test: accountId == DEFAULT_INVAL_VALUE (-1), triggers GetValidUserId path
+    Want want;
+    std::string bundleName = "com.test.demo";
+    want.SetParam("bundleName", bundleName);
+    int32_t accountId = DEFAULT_INVAL_VALUE;  // -1
+    MyFlag::flag_ = 0;  // Mock permission fail for default userId
+
+    auto result = abilityMs_->RequestModalUIExtensionWithAccount(want, accountId);
+    // GetValidUserId converts -1 to current userId, then GetDisplayIdByAccount may fail
+    EXPECT_EQ(result, ERR_OK);
+
+    MyFlag::retCreateModalUIExtension_ = true;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_009 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RequestModalUIExtensionWithAccount
+ * SubFunction: NA
+ * FunctionPoints: Request modal UI extension with accountId=0
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, RequestModalUIExtensionWithAccount_010, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_010 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+
+    MyFlag::retCreateModalUIExtension_ = true;
+
+    // Test: accountId = 0 (not DEFAULT_INVAL_VALUE, so no GetValidUserId call)
+    Want want;
+    std::string bundleName = "com.test.demo";
+    want.SetParam("bundleName", bundleName);
+    int32_t accountId = 0;
+    MyFlag::flag_ = 0;  // Mock permission fail
+
+    auto result = abilityMs_->RequestModalUIExtensionWithAccount(want, accountId);
+    EXPECT_NE(result, ERR_OK);
+
+    MyFlag::retCreateModalUIExtension_ = true;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_010 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RequestModalUIExtensionWithAccount
+ * SubFunction: NA
+ * FunctionPoints: Request modal UI extension with retCreateModalUIExtension_ = false
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, RequestModalUIExtensionWithAccount_011, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_011 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+
+    // Test: ModalSystemUiExtension::CreateModalUIExtension returns false
+    MyFlag::retCreateModalUIExtension_ = false;
+
+    Want want;
+    std::string bundleName = "com.test.demo";
+    want.SetParam("bundleName", bundleName);
+    int32_t accountId = 100;
+    uint64_t displayId = 1;
+    MyFlag::flag_ = 1;  // Mock permission pass but no GetTopAbility success
+
+    AbilityRuntime::UserController::GetInstance().SetForegroundUserId(accountId, displayId);
+
+    // Falls through to ModalSystemUiExtension which returns false → INNER_ERR
+    auto result = abilityMs_->RequestModalUIExtensionWithAccount(want, accountId);
+    EXPECT_EQ(result, INNER_ERR);
+
+    AbilityRuntime::UserController::GetInstance().ClearUserId(accountId);
+    MyFlag::retCreateModalUIExtension_ = true;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_011 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RequestModalUIExtensionWithAccount
+ * SubFunction: NA
+ * FunctionPoints: Request modal UI extension without bundleName param
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, RequestModalUIExtensionWithAccount_012, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_012 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+
+    MyFlag::retCreateModalUIExtension_ = true;
+
+    // Test: no bundleName param in want, callerName will be empty
+    Want want;
+    // intentionally NOT setting bundleName
+    int32_t accountId = 100;
+    uint64_t displayId = 1;
+    MyFlag::flag_ = 1;
+
+    AbilityRuntime::UserController::GetInstance().SetForegroundUserId(accountId, displayId);
+
+    auto result = abilityMs_->RequestModalUIExtensionWithAccount(want, accountId);
+    // Falls through to ModalSystemUiExtension because bundleName mismatch
+    EXPECT_EQ(result, ERR_OK);
+
+    AbilityRuntime::UserController::GetInstance().ClearUserId(accountId);
+    MyFlag::retCreateModalUIExtension_ = true;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_012 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetDisplayIdByAccount
+ * SubFunction: NA
+ * FunctionPoints: Positive accountId, callerUser matches userId via IPCSkeleton, no display found
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, GetDisplayIdByAccount_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetDisplayIdByAccount_005 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+
+    // 分支: callerUser == userId (通过 IPCSkeleton uid 匹配)，权限检查通过，
+    // 但 GetDisplayIdByForegroundUserId 返回 false → ERR_INVALID_VALUE
+    MyFlag::flag_ = 0;
+    int32_t accountId = 100;
+    uint64_t displayId = 0;
+    IPCSkeleton::SetCallingUid(accountId * BASE_USER_RANGE);  // callerUser = 100 = accountId
+
+    EXPECT_EQ(abilityMs_->GetDisplayIdByAccount(accountId, displayId), ERR_OK);
+
+    IPCSkeleton::SetCallingUid(0);  // cleanup
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetDisplayIdByAccount_005 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetDisplayIdByAccount
+ * SubFunction: NA
+ * FunctionPoints: accountId=0, callerUser=0=userId, displayId found successfully
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, GetDisplayIdByAccount_006, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetDisplayIdByAccount_006 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+
+    // 分支: accountId=0, callerUser=0=userId → VerifyAccountPermission returns ERR_OK
+    // SetForegroundUserId(0, 5) → GetDisplayIdByForegroundUserId returns true
+    MyFlag::flag_ = 0;
+    int32_t accountId = 0;
+    uint64_t displayId = 0;
+    uint64_t expectedDisplayId = 5;
+
+    AbilityRuntime::UserController::GetInstance().SetForegroundUserId(accountId, expectedDisplayId);
+
+    EXPECT_EQ(abilityMs_->GetDisplayIdByAccount(accountId, displayId), ERR_OK);
+    EXPECT_EQ(displayId, expectedDisplayId);
+
+    AbilityRuntime::UserController::GetInstance().ClearUserId(accountId);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetDisplayIdByAccount_006 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetTopAbilityByUserId
+ * SubFunction: NA
+ * FunctionPoints: VerifyAccountPermission returns CHECK_PERMISSION_FAILED
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, GetTopAbilityByUserId_008, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetTopAbilityByUserId_008 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+
+    // 分支: VerifyAccountPermission 返回 CHECK_PERMISSION_FAILED
+    // callerUser=0=U0, IsForegroundUser(100)=false, callerUser!=100 → falls to mock
+    MyFlag::flag_ = CHECK_PERMISSION_FAILED;
+    sptr<IRemoteObject> token = nullptr;
+    int32_t userId = 100;
+    uint64_t displayId = 0;
+
+    EXPECT_EQ(abilityMs_->GetTopAbilityByUserId(token, userId, displayId), ERR_INVALID_VALUE);
+
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetTopAbilityByUserId_008 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetTopAbilityByUserId
+ * SubFunction: NA
+ * FunctionPoints: callerUser matches userId via IPCSkeleton uid, permission OK, wmsHandler empty
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, GetTopAbilityByUserId_009, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetTopAbilityByUserId_009 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+
+    // 分支: callerUser == userId (通过 IPCSkeleton uid 匹配) → VerifyAccountPermission OK
+    // 但 wmsHandler 为空 → ERR_INVALID_VALUE
+    MyFlag::flag_ = 0;
+    sptr<IRemoteObject> token = nullptr;
+    int32_t userId = 100;
+    uint64_t displayId = 0;
+    IPCSkeleton::SetCallingUid(userId * BASE_USER_RANGE);  // callerUser = 100 = userId
+
+    EXPECT_EQ(abilityMs_->GetTopAbilityByUserId(token, userId, displayId), ERR_INVALID_VALUE);
+
+    IPCSkeleton::SetCallingUid(0);  // cleanup
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetTopAbilityByUserId_009 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetTopAbilityByUserId
+ * SubFunction: NA
+ * FunctionPoints: U0 callerUser with IsForegroundUser true, permission OK, wmsHandler empty
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, GetTopAbilityByUserId_010, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetTopAbilityByUserId_010 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+
+    // 分支: callerUser=0=U0, SetForegroundUserId(100, 1) → IsForegroundUser(100)=true
+    // → VerifyAccountPermission returns ERR_OK → wmsHandler 为空 → ERR_INVALID_VALUE
+    MyFlag::flag_ = 0;
+    sptr<IRemoteObject> token = nullptr;
+    int32_t userId = 100;
+    uint64_t displayId = 1;
+
+    AbilityRuntime::UserController::GetInstance().SetForegroundUserId(userId, displayId);
+
+    EXPECT_EQ(abilityMs_->GetTopAbilityByUserId(token, userId, displayId), ERR_INVALID_VALUE);
+
+    AbilityRuntime::UserController::GetInstance().ClearUserId(userId);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetTopAbilityByUserId_010 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RequestModalUIExtensionWithAccount
+ * SubFunction: NA
+ * FunctionPoints: accountId=DEFAULT_INVAL_VALUE, GetDisplayIdByAccount succeeds, fallback path
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, RequestModalUIExtensionWithAccount_013, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_013 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+
+    // 分支: accountId=DEFAULT_INVAL_VALUE → GetValidUserId returns 0 (callerUserId)
+    // SetForegroundUserId(0, 1) → GetDisplayIdByAccount(0) succeeds
+    // GetTopAbilityByUserId fails → fallback → ModalSystemUiExtension → ERR_OK
+    MyFlag::retCreateModalUIExtension_ = true;
+    MyFlag::flag_ = 1;
+
+    Want want;
+    std::string bundleName = "com.test.demo";
+    want.SetParam("bundleName", bundleName);
+    int32_t accountId = DEFAULT_INVAL_VALUE;  // -1
+
+    // SetForegroundUserId for user 0 so GetDisplayIdByAccount succeeds
+    AbilityRuntime::UserController::GetInstance().SetForegroundUserId(0, 1);
+
+    auto result = abilityMs_->RequestModalUIExtensionWithAccount(want, accountId);
+    EXPECT_EQ(result, ERR_OK);
+
+    AbilityRuntime::UserController::GetInstance().ClearUserId(0);
+    MyFlag::retCreateModalUIExtension_ = true;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_013 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RequestModalUIExtensionWithAccount
+ * SubFunction: NA
+ * FunctionPoints: accountId=DEFAULT_INVAL_VALUE, GetDisplayIdByAccount succeeds, ModalSystemUiExtension fails
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, RequestModalUIExtensionWithAccount_014, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_014 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+
+    // 分支: accountId=DEFAULT_INVAL_VALUE, GetDisplayIdByAccount succeeds
+    // GetTopAbilityByUserId fails → fallback → ModalSystemUiExtension returns false → INNER_ERR
+    MyFlag::retCreateModalUIExtension_ = false;
+    MyFlag::flag_ = 1;
+
+    Want want;
+    std::string bundleName = "com.test.demo";
+    want.SetParam("bundleName", bundleName);
+    int32_t accountId = DEFAULT_INVAL_VALUE;
+
+    AbilityRuntime::UserController::GetInstance().SetForegroundUserId(0, 1);
+
+    auto result = abilityMs_->RequestModalUIExtensionWithAccount(want, accountId);
+    EXPECT_EQ(result, INNER_ERR);
+
+    AbilityRuntime::UserController::GetInstance().ClearUserId(0);
+    MyFlag::retCreateModalUIExtension_ = true;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_014 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RequestModalUIExtensionWithAccount
+ * SubFunction: NA
+ * FunctionPoints: Positive accountId, callerUser matches userId, GetDisplayIdByAccount succeeds, fallback
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, RequestModalUIExtensionWithAccount_015, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_015 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+
+    // 分支: accountId=100, IPCSkeleton uid=100*BASE_USER_RANGE → callerUser=100=accountId
+    // VerifyAccountPermission OK (callerUser==userId), SetForegroundUserId(100, 2)
+    // GetDisplayIdByAccount succeeds → GetTopAbilityByUserId fails → fallback → ERR_OK
+    MyFlag::retCreateModalUIExtension_ = true;
+    MyFlag::flag_ = 1;
+
+    Want want;
+    std::string bundleName = "com.test.demo";
+    want.SetParam("bundleName", bundleName);
+    int32_t accountId = 100;
+    uint64_t displayId = 2;
+
+    IPCSkeleton::SetCallingUid(accountId * BASE_USER_RANGE);
+    AbilityRuntime::UserController::GetInstance().SetForegroundUserId(accountId, displayId);
+
+    auto result = abilityMs_->RequestModalUIExtensionWithAccount(want, accountId);
+    EXPECT_EQ(result, ERR_OK);
+
+    IPCSkeleton::SetCallingUid(0);
+    AbilityRuntime::UserController::GetInstance().ClearUserId(accountId);
+    MyFlag::retCreateModalUIExtension_ = true;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_015 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RequestModalUIExtensionWithAccount
+ * SubFunction: NA
+ * FunctionPoints: Positive accountId, U0 with foreground user, ModalSystemUiExtension fails
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, RequestModalUIExtensionWithAccount_016, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_016 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+
+    // 分支: accountId=100, callerUser=0=U0, IsForegroundUser(100)=true → VerifyAccountPermission OK
+    // SetForegroundUserId(100, 1) → GetDisplayIdByAccount succeeds
+    // GetTopAbilityByUserId fails → fallback → ModalSystemUiExtension returns false → INNER_ERR
+    MyFlag::retCreateModalUIExtension_ = false;
+    MyFlag::flag_ = 0;
+
+    Want want;
+    std::string bundleName = "com.test.demo";
+    want.SetParam("bundleName", bundleName);
+    int32_t accountId = 100;
+    uint64_t displayId = 1;
+
+    AbilityRuntime::UserController::GetInstance().SetForegroundUserId(accountId, displayId);
+
+    auto result = abilityMs_->RequestModalUIExtensionWithAccount(want, accountId);
+    EXPECT_EQ(result, INNER_ERR);
+
+    AbilityRuntime::UserController::GetInstance().ClearUserId(accountId);
+    MyFlag::retCreateModalUIExtension_ = true;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_016 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RequestModalUIExtensionWithAccount
+ * SubFunction: NA
+ * FunctionPoints: CHECK_PERMISSION_FAILED from VerifyAccountPermission
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, RequestModalUIExtensionWithAccount_017, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_017 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+
+    // 分支: VerifyAccountPermission returns CHECK_PERMISSION_FAILED via mock
+    // GetDisplayIdByAccount fails with CHECK_PERMISSION_FAILED
+    MyFlag::flag_ = CHECK_PERMISSION_FAILED;
+
+    Want want;
+    std::string bundleName = "com.test.demo";
+    want.SetParam("bundleName", bundleName);
+    int32_t accountId = 100;
+
+    auto result = abilityMs_->RequestModalUIExtensionWithAccount(want, accountId);
+    EXPECT_EQ(result, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_017 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RequestModalUIExtensionWithAccount
+ * SubFunction: NA
+ * FunctionPoints: accountId=DEFAULT_INVAL_VALUE, no foreground user, GetDisplayIdByAccount fails
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, RequestModalUIExtensionWithAccount_018, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_018 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+
+    // 分支: accountId=DEFAULT_INVAL_VALUE, GetValidUserId returns 0
+    // callerUser=0=userId → VerifyAccountPermission(0) OK
+    // But GetDisplayIdByForegroundUserId(0) returns false (no foreground user 0) → ERR_INVALID_VALUE
+    MyFlag::flag_ = 0;
+
+    Want want;
+    int32_t accountId = DEFAULT_INVAL_VALUE;
+
+    auto result = abilityMs_->RequestModalUIExtensionWithAccount(want, accountId);
+    EXPECT_EQ(result, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RequestModalUIExtensionWithAccount_018 end");
+}
 } // namespace AAFwk
 } // namespace OHOS

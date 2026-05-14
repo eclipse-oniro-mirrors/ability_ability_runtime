@@ -1495,14 +1495,16 @@ public:
         int requestCode = DEFAULT_INVAL_VALUE,
         bool isImplicit = false,
         bool isAppCloneSelector = false,
-        uint32_t callerAccessTokenId = 0);
+        uint32_t callerAccessTokenId = 0,
+        sptr<IRequestStartAbilityCallback> callback = nullptr);
 
     int ImplicitStartAbilityAsCaller(
         const Want &want,
         const sptr<IRemoteObject> &callerToken,
         sptr<IRemoteObject> asCallerSourceToken,
         int32_t userId = DEFAULT_INVAL_VALUE,
-        int requestCode = DEFAULT_INVAL_VALUE);
+        int requestCode = DEFAULT_INVAL_VALUE,
+        sptr<IRequestStartAbilityCallback> callback = nullptr);
 
     /**
      * @brief called when the module's onAcceptWant done to notify ability mgr to continue
@@ -2213,6 +2215,9 @@ public:
         const std::shared_ptr<AAFwk::WantParams> &skillArgs = nullptr,
         const sptr<ISkillExecuteCallback> &callback = nullptr) override;
 
+    int32_t ExecuteInAppSkillWithTokenId(const AppExecFwk::SkillExecuteRequest &request,
+        const sptr<ISkillExecuteCallback> &callback) override;
+
     int32_t StartAbilityByCallWithSkill(const Want &want,
         const sptr<IRemoteObject> &callerToken, int32_t userId = DEFAULT_INVAL_VALUE);
 
@@ -2680,6 +2685,7 @@ public:
     static constexpr uint32_t CONNECT_TIMEOUT_MSG = 10;
     static constexpr uint32_t CONNECT_HALF_TIMEOUT_MSG = 11;
     static constexpr uint32_t SKILL_EXECUTE_TIMEOUT_MSG = 12;
+    static constexpr uint32_t START_SELF_TIMEOUT_MSG = 13;
 
     static constexpr uint32_t MIN_DUMP_ARGUMENT_NUM = 2;
     static constexpr uint32_t MAX_WAIT_SYSTEM_UI_NUM = 600;

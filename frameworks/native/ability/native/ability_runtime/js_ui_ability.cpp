@@ -1491,7 +1491,9 @@ void JsUIAbility::ExecuteInsightIntentMoveToForeground(const Want &want,
             FreezeUtil::TimeoutState::FOREGROUND, "IntentForeground");
         ability->CallOnForegroundFunc(want);
     };
-    callback->Push(asyncCallback);
+    if (!CheckIsSilentForeground()) {
+        callback->Push(asyncCallback);
+    }
 
     InsightIntentExecutorInfo executeInfo;
     auto ret = GetInsightIntentExecutorInfo(want, executeParam, executeInfo);
@@ -2535,13 +2537,13 @@ napi_value JsUIAbility::LoadSkillFunction(
         }
         outJsObj = moduleRef->GetNapiValue();
         method = AppExecFwk::GetPropertyValueByPropertyName(
-            env, outJsObj, param->funcName_.c_str(), napi_valuetype::napi_function);
+            env, outJsObj, param->functionName_.c_str(), napi_valuetype::napi_function);
         if (method != nullptr) {
             TAG_LOGI(AAFwkTag::UIABILITY, "func found in srcEntry:%{public}s", srcEntry.c_str());
             break;
         }
         TAG_LOGW(AAFwkTag::UIABILITY, "func not found:%{public}s in srcEntry:%{public}s",
-            param->funcName_.c_str(), srcEntry.c_str());
+            param->functionName_.c_str(), srcEntry.c_str());
     }
     return method;
 }
@@ -2590,7 +2592,7 @@ void JsUIAbility::ExecuteSkill(const AAFwk::Want &want,
     napi_value jsObj = nullptr;
     napi_value method = LoadSkillFunction(param, jsObj);
     if (method == nullptr) {
-        TAG_LOGE(AAFwkTag::UIABILITY, "func not found in any srcEntry:%{public}s", param->funcName_.c_str());
+        TAG_LOGE(AAFwkTag::UIABILITY, "func not found in any srcEntry:%{public}s", param->functionName_.c_str());
         return;
     }
     auto args = BuildSkillCallArgs(env, param);
@@ -2598,7 +2600,7 @@ void JsUIAbility::ExecuteSkill(const AAFwk::Want &want,
     napi_status status = napi_call_function(env, jsObj, method, args.size(), args.data(), &result);
     if (status != napi_ok) {
         TAG_LOGE(AAFwkTag::UIABILITY, "napi_call_function failed, status:%{public}d func:%{public}s",
-            status, param->funcName_.c_str());
+            status, param->functionName_.c_str());
         return;
     }
     TAG_LOGD(AAFwkTag::UIABILITY,

@@ -45,12 +45,32 @@ public:
     DistributedKv::Status GetEntries(
         const DistributedKv::Key &prefix, std::vector<DistributedKv::Entry> &entries) const override
     {
+        if (GetEntries_ != DistributedKv::Status::SUCCESS) {
+            return GetEntries_;
+        }
+        entries.clear();
+        for (const auto &item : mockData_) {
+            DistributedKv::Entry entry;
+            entry.key = DistributedKv::Key(item.first);
+            entry.value = item.second;
+            entries.push_back(entry);
+        }
         return GetEntries_;
     };
 
     DistributedKv::Status GetEntries(
         const DistributedKv::DataQuery &query, std::vector<DistributedKv::Entry> &entries) const override
     {
+        if (GetEntries_ != DistributedKv::Status::SUCCESS) {
+            return GetEntries_;
+        }
+        entries.clear();
+        for (const auto &item : mockData_) {
+            DistributedKv::Entry entry;
+            entry.key = DistributedKv::Key(item.first);
+            entry.value = item.second;
+            entries.push_back(entry);
+        }
         return GetEntries_;
     };
 
@@ -229,6 +249,11 @@ public:
     void SetMockData(const std::string &key, const std::string &value)
     {
         mockData_[key] = DistributedKv::Value(value);
+    }
+
+    bool HasMockData(const std::string &key) const
+    {
+        return mockData_.find(key) != mockData_.end();
     }
 
     DistributedKv::Status GetEntries_ = DistributedKv::Status::SUCCESS;

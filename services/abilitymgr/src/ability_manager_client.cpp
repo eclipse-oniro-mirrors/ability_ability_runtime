@@ -2820,6 +2820,16 @@ ErrCode AbilityManagerClient::ExecuteInAppSkill(const std::string &bundleName, c
     return abms->ExecuteInAppSkill(bundleName, moduleName, skillName, arkTSPath, funcName, skillArgs, callback);
 }
 
+ErrCode AbilityManagerClient::ExecuteInAppSkillWithTokenId(
+    const AppExecFwk::SkillExecuteRequest &request,
+    const sptr<ISkillExecuteCallback> &callback)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "called");
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    return abms->ExecuteInAppSkillWithTokenId(request, callback);
+}
+
 ErrCode AbilityManagerClient::ExecuteSkillDone(sptr<IRemoteObject> token, const std::string &requestCode,
     int32_t resultCode, const AppExecFwk::SkillExecuteResult &result)
 {

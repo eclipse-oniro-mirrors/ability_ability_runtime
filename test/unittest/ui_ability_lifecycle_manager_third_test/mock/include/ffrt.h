@@ -23,6 +23,7 @@
 
 #include "cpp/mutex.h"
 #include "cpp/condition_variable.h"
+#include "mock_my_flag.h"
 
 namespace ffrt {
 struct task_attr {
@@ -35,6 +36,7 @@ struct task_handle {};
 
 inline void submit(std::function<void()> &&task, task_attr attr = {})
 {
+    OHOS::AAFwk::MyFlag::ffrtSubmitFlag_++;
     if (task) {
         std::thread taskThread(task);
         taskThread.detach();

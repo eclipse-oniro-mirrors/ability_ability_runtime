@@ -8517,7 +8517,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, SetGamePreLaunchCompleteTime_003, TestSi
  */
 HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_001, TestSize.Level1)
 {
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     EXPECT_EQ(mgr->StartSelf(nullptr), ERR_INVALID_VALUE);
 }
 
@@ -8528,7 +8528,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_001, TestSize.Level1)
  */
 HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_002, TestSize.Level1)
 {
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     auto abilityRecord = InitAbilityRecord();
     EXPECT_NE(abilityRecord, nullptr);
     // Default nativeState is NONE
@@ -8543,7 +8543,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_002, TestSize.Level1)
  */
 HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_003, TestSize.Level1)
 {
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     auto abilityRecord = InitAbilityRecord();
     abilityRecord->SetNativeState(AbilityNativeState::NORMAL);
     EXPECT_EQ(mgr->StartSelf(abilityRecord), ERR_INVALID_VALUE);
@@ -8556,7 +8556,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_003, TestSize.Level1)
  */
 HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_004, TestSize.Level1)
 {
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     auto abilityRecord = InitAbilityRecord();
     abilityRecord->SetNativeState(AbilityNativeState::NORMAL);
     sptr<SessionInfo> sessionInfo(new SessionInfo());
@@ -8572,7 +8572,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_004, TestSize.Level1)
  */
 HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_005, TestSize.Level1)
 {
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     auto abilityRecord = InitAbilityRecord();
     abilityRecord->SetNativeState(AbilityNativeState::NORMAL);
 
@@ -8598,7 +8598,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_005, TestSize.Level1)
  */
 HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_006, TestSize.Level1)
 {
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     auto abilityRecord = InitAbilityRecord();
     abilityRecord->SetNativeState(AbilityNativeState::CREATED);
 
@@ -8622,7 +8622,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_006, TestSize.Level1)
  */
 HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_007, TestSize.Level1)
 {
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     auto abilityRecord = InitAbilityRecord();
     abilityRecord->SetNativeState(AbilityNativeState::ON_FOREGROUND);
 
@@ -8646,7 +8646,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_007, TestSize.Level1)
  */
 HWTEST_F(UIAbilityLifecycleManagerTest, DispatchForeground_NativeModuleAttached_0100, TestSize.Level1)
 {
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     auto abilityRecord = InitAbilityRecord();
     abilityRecord->SetNativeState(AbilityNativeState::ATTACHED);
     abilityRecord->SetAbilityState(AbilityState::FOREGROUNDING);
@@ -8664,7 +8664,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, DispatchForeground_NativeModuleAttached_
  */
 HWTEST_F(UIAbilityLifecycleManagerTest, DispatchForeground_NativeModuleOnForeground_0100, TestSize.Level1)
 {
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     auto abilityRecord = InitAbilityRecord();
     abilityRecord->SetNativeState(AbilityNativeState::ON_FOREGROUND);
     abilityRecord->SetAbilityState(AbilityState::FOREGROUNDING);
@@ -8681,7 +8681,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, DispatchForeground_NativeModuleOnForegro
  */
 HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0002, TestSize.Level1)
 {
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     AppExecFwk::AbilityInfo abilityInfo;
 
     EXPECT_FALSE(mgr->CalcHideNativeWindow(0, abilityInfo));
@@ -8694,7 +8694,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0002, TestSize.Leve
  */
 HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0003, TestSize.Level1)
 {
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     AppExecFwk::AbilityInfo abilityInfo;
 
     EXPECT_FALSE(mgr->CalcHideNativeWindow(100, abilityInfo));
@@ -8707,7 +8707,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0003, TestSize.Leve
  */
 HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0004, TestSize.Level1)
 {
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     AppExecFwk::AbilityInfo abilityInfo;
     auto abilityRecord = InitAbilityRecord();
     mgr->sessionAbilityMap_[1] = abilityRecord;
@@ -8723,7 +8723,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0004, TestSize.Leve
  */
 HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0005, TestSize.Level1)
 {
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     AppExecFwk::AbilityInfo abilityInfo;
     auto abilityRecord = InitAbilityRecord();
     abilityRecord->SetNativeState(AbilityNativeState::NORMAL);
@@ -8739,7 +8739,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0005, TestSize.Leve
  */
 HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0006, TestSize.Level1)
 {
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     AppExecFwk::AbilityInfo abilityInfo;
     auto abilityRecord = InitAbilityRecord();
     abilityRecord->SetNativeState(AbilityNativeState::INIT);
@@ -8755,7 +8755,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0006, TestSize.Leve
  */
 HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0007, TestSize.Level1)
 {
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     AppExecFwk::AbilityInfo abilityInfo;
     auto abilityRecord = InitAbilityRecord();
     abilityRecord->SetNativeState(AbilityNativeState::ATTACHED);
@@ -8771,7 +8771,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0007, TestSize.Leve
  */
 HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0008, TestSize.Level1)
 {
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     AppExecFwk::AbilityInfo abilityInfo;
     auto abilityRecord = InitAbilityRecord();
     abilityRecord->SetNativeState(AbilityNativeState::CREATED);
@@ -8787,7 +8787,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0008, TestSize.Leve
  */
 HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0009, TestSize.Level1)
 {
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     AppExecFwk::AbilityInfo abilityInfo;
     auto abilityRecord = InitAbilityRecord();
     abilityRecord->SetNativeState(AbilityNativeState::ON_FOREGROUND);
@@ -8803,11 +8803,93 @@ HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0009, TestSize.Leve
  */
 HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0010, TestSize.Level1)
 {
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     AppExecFwk::AbilityInfo abilityInfo;
     mgr->sessionAbilityMap_[1] = nullptr;
 
     EXPECT_FALSE(mgr->CalcHideNativeWindow(1, abilityInfo));
+}
+
+/**
+ * @tc.name: CompleteForegroundSuccess_GameSAPreLaunch_0001
+ * @tc.desc: CompleteForegroundSuccess with GameSAPreLaunch = true
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CompleteForegroundSuccess_GameSAPreLaunch_0001, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    abilityRecord->SetPendingState(AbilityState::FOREGROUND);
+    abilityRecord->SetGameSAPreLaunch(true);
+
+    mgr->CompleteForegroundSuccess(abilityRecord);
+
+    EXPECT_EQ(abilityRecord->GetAbilityState(), AbilityState::FOREGROUND);
+    EXPECT_TRUE(abilityRecord->IsGameSAPreLaunch());
+}
+
+/**
+ * @tc.name: CompleteForegroundSuccess_GameSAPreLaunch_0002
+ * @tc.desc: CompleteForegroundSuccess with GameSAPreLaunch = false
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CompleteForegroundSuccess_GameSAPreLaunch_0002, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    abilityRecord->SetPendingState(AbilityState::FOREGROUND);
+    abilityRecord->SetGameSAPreLaunch(false);
+
+    mgr->CompleteForegroundSuccess(abilityRecord);
+
+    EXPECT_EQ(abilityRecord->GetAbilityState(), AbilityState::FOREGROUND);
+    EXPECT_FALSE(abilityRecord->IsGameSAPreLaunch());
+}
+
+/**
+ * @tc.name: CompleteForegroundSuccess_GameSAPreLaunch_0003
+ * @tc.desc: CompleteForegroundSuccess with GameSAPreLaunch = true and startedByCall = true
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CompleteForegroundSuccess_GameSAPreLaunch_0003, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    abilityRecord->SetPendingState(AbilityState::FOREGROUND);
+    abilityRecord->SetGameSAPreLaunch(true);
+    abilityRecord->SetStartedByCall(true);
+    abilityRecord->SetStartToForeground(true);
+    abilityRecord->isReady_ = true;
+
+    mgr->CompleteForegroundSuccess(abilityRecord);
+
+    EXPECT_EQ(abilityRecord->GetAbilityState(), AbilityState::FOREGROUND);
+    EXPECT_TRUE(abilityRecord->IsGameSAPreLaunch());
+}
+
+/**
+ * @tc.name: CompleteForegroundSuccess_GameSAPreLaunch_0004
+ * @tc.desc: CompleteForegroundSuccess with GameSAPreLaunch = true and HasLastWant = true
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CompleteForegroundSuccess_GameSAPreLaunch_0004, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    Want lastWant;
+    lastWant.SetElementName("com.example.unittest", "MainAbility");
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    abilityRecord->SetPendingState(AbilityState::FOREGROUND);
+    abilityRecord->SetGameSAPreLaunch(true);
+    abilityRecord->SetLastWant(std::make_shared<Want>(lastWant));
+
+    mgr->CompleteForegroundSuccess(abilityRecord);
+
+    EXPECT_EQ(abilityRecord->GetAbilityState(), AbilityState::FOREGROUNDING);
+    EXPECT_TRUE(abilityRecord->IsGameSAPreLaunch());
 }
 }  // namespace AAFwk
 }  // namespace OHOS

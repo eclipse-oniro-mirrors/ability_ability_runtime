@@ -24,6 +24,7 @@
 #include "extension_context.h"
 #include "hilog_tag_wrapper.h"
 #include "ui_extension_wrapper.h"
+#include "ui_extension.h"
 
 
 namespace OHOS {
@@ -538,6 +539,27 @@ void ExtensionImpl::Background(const Want &want, sptr<AAFwk::SessionInfo> sessio
 
     extension_->OnBackground();
     lifecycleState_ = AAFwk::ABILITY_STATE_BACKGROUND_NEW;
+}
+
+int ExtensionImpl::CreateModalUIExtension(const AAFwk::Want &want)
+{
+    if (!AAFwk::UIExtensionWrapper::IsUIExtension(extensionType_)) {
+        TAG_LOGE(AAFwkTag::EXT, "Not UIExtension type: %{public}d", static_cast<int>(extensionType_));
+        return ERR_INVALID_VALUE;
+    }
+
+    if (extension_ == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "null extension_");
+        return ERR_INVALID_VALUE;
+    }
+
+    auto uiExtension = std::static_pointer_cast<AbilityRuntime::UIExtension>(extension_);
+    if (uiExtension == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "Failed to cast extension to UIExtension");
+        return ERR_INVALID_VALUE;
+    }
+
+    return uiExtension->CreateModalUIExtension(want);
 }
 
 void ExtensionImpl::ExtensionWindowLifeCycleImpl::AfterForeground()

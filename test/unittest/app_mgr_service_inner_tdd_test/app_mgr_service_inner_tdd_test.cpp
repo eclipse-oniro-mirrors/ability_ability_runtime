@@ -1002,6 +1002,8 @@ HWTEST_F(AppMgrServiceInnerTest, SubmitDfxFaultTask_001, TestSize.Level1)
     appMgrServiceInner->Init();
     EXPECT_NE(appMgrServiceInner, nullptr);
     appMgrServiceInner->SubmitDfxFaultTask(faultData, bundleName, appRecord, pid);
+    faultData.errorObject.message = "PreloadUIExtension test";
+    appMgrServiceInner->SubmitDfxFaultTask(faultData, bundleName, appRecord, pid);
     TAG_LOGI(AAFwkTag::TEST, "SubmitDfxFaultTask end");
 }
 

@@ -42,6 +42,7 @@ ohos_unittest("AppMgrServiceInnerFifthTest") {
     "${ability_runtime_services_path}/appmgr/src/advanced_security_mode_manager.cpp",
     "${ability_runtime_test_path}/mock/common/src/mock_native_token.cpp",
     "${ability_runtime_test_path}/mock/task_handler_wrap_mock/src/mock_task_handler_wrap.cpp",
+    "${ability_runtime_services_path}/appmgr/src/fork_image_info.cpp",
     "app_mgr_service_inner_fifth_test.cpp",
   ]
 

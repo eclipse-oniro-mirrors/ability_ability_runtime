@@ -805,7 +805,17 @@ int32_t ImplicitStartProcessor::ImplicitStartAbilityInner(const Want &targetWant
             break;
         default:
             StartAbilityWrapParam startAbilityWrapParam = {
-                targetWant, request.callerToken, request.requestCode, false, userId, false, 0, false, true };
+                .want = targetWant,
+                .callerToken = request.callerToken,
+                .requestCode = request.requestCode,
+                .isPendingWantCaller = false,
+                .userId = userId,
+                .isStartAsCaller = false,
+                .specifyTokenId = 0,
+                .isForegroundToRestartApp = false,
+                .isImplicit = true,
+                .requestCallback = request.requestCallback,
+            };
             result = abilityMgr->StartAbilityWrap(startAbilityWrapParam);
             break;
     }

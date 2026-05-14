@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -22,6 +22,7 @@
 #undef private
 #include "hilog_tag_wrapper.h"
 #include "mock_ability_token.h"
+#include "request_start_ability_callback_stub.h"
 #include "start_ability_utils.h"
 
 using OHOS::AppExecFwk::AbilityType;
@@ -78,6 +79,18 @@ sptr<Token> DialogSessionManagerTest::MockToken(AbilityType abilityType)
     }
     return abilityRecord->GetToken();
 }
+
+class RequestAbilityImplCallback : public AAFwk::RequestStartAbilityCallbackStub {
+public:
+    void OnRequestStartAbilityResult(bool result) override
+    {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "UIAbility start request result: %{public}s",
+            result ? "success" : "failed");
+        result_ = result;
+    }
+
+bool result_ = false;
+};
 
 /**
  * @tc.name: GetStartupSessionInfoTest_0100
@@ -747,6 +760,33 @@ HWTEST_F(DialogSessionManagerTest, NotifyAbilityRequestFailure_0700, TestSize.Le
     dialogSessionManager.NotifyAbilityRequestFailure(TEST_DIALOG_SESSION_ID, want);
 
     GTEST_LOG_(INFO) << "NotifyAbilityRequestFailure_0700 end";
+}
+
+/**
+ * @tc.name: NotifyAbilityRequestFailure_0800
+ * @tc.desc: Test NotifyAbilityRequestFailure triggers OnRequestStartAbilityResult(false) callback
+ * @tc.type: FUNC
+ */
+HWTEST_F(DialogSessionManagerTest, NotifyAbilityRequestFailure_0800, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "NotifyAbilityRequestFailure_0800 start";
+    DialogSessionManager dialogSessionManager;
+    Want want;
+    want.SetParam(KEY_REQUEST_ID, std::string("test_request_id_0800"));
+    sptr<DialogSessionInfo> dialogSessionInfo = nullptr;
+    std::shared_ptr<DialogCallerInfo> dialogCallerInfo = std::make_shared<DialogCallerInfo>();
+    ASSERT_NE(dialogCallerInfo, nullptr);
+
+    dialogCallerInfo->targetWant = want;
+    sptr<RequestAbilityImplCallback> testCallback = new RequestAbilityImplCallback();
+    dialogCallerInfo->requestCallback = testCallback;
+    dialogSessionManager.SetDialogSessionInfo(TEST_DIALOG_SESSION_ID, dialogSessionInfo, dialogCallerInfo);
+    auto storedCallerInfo = dialogSessionManager.GetDialogCallerInfo(TEST_DIALOG_SESSION_ID);
+    ASSERT_NE(storedCallerInfo, nullptr);
+    ASSERT_NE(storedCallerInfo->requestCallback, nullptr);
+    dialogSessionManager.NotifyAbilityRequestFailure(TEST_DIALOG_SESSION_ID, want);
+    EXPECT_EQ(testCallback->result_, false);
+    GTEST_LOG_(INFO) << "NotifyAbilityRequestFailure_0800 end";
 }
 
 /**

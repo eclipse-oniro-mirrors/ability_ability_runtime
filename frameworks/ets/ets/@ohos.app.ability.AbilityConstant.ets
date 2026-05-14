@@ -17,7 +17,7 @@ import appManager from '@ohos.app.ability.appManager';
 
 namespace AbilityConstant {
 
-  const REASON_MESSAGE_DESKTOP_SHORTCUT = 'ReasonMessage_DesktopShortcut';
+  const REASON_MESSAGE_DESKTOP_SHORTCUT: string = 'ReasonMessage_DesktopShortcut';
 
   export interface LaunchParam {
     launchReason: LaunchReason;

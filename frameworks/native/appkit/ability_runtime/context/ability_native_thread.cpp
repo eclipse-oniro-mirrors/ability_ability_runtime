@@ -197,7 +197,7 @@ LIBHANDLE AbilityNativeThread::OpenNativeLibrary(const std::string& bundleModule
     auto libName = fileName;
     auto pos = fileName.find_last_of('/');
     if (pos != std::string::npos) {
-        libName = fileName.substr(pos);
+        libName = fileName.substr(pos + 1);
     }
     nativeHandle = dlopen_ns(&ns, libName.c_str(), RTLD_LAZY);
     return nativeHandle;

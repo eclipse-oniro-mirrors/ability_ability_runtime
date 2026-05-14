@@ -38,6 +38,18 @@ void SessionRecord::SetTerminalResult(int32_t status, int32_t sig) // for waitpi
     processExited_.store(true, std::memory_order_release);
 }
 
+void SessionRecord::SetSkillResult(int32_t resultCode, const std::string &outputText)
+{
+    std::lock_guard<std::mutex> lock(resultMutex_);
+    terminalStatus_ = resultCode;
+    stdoutText_ = outputText;
+    endTimeMs_ = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    processExited_.store(true, std::memory_order_release);
+    stdoutClosed_.store(true, std::memory_order_release);
+    stderrClosed_.store(true, std::memory_order_release);
+}
+
 int32_t SessionRecord::GetTerminalStatus() const
 {
     std::lock_guard<std::mutex> lock(resultMutex_);

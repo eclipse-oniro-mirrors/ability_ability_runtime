@@ -70,7 +70,7 @@ export class AbilityUtils {
     return false;
   }
 
-  public static createBusinessError(code: int, message: string) {
+  public static createBusinessError(code: int, message: string): BusinessError {
     let err = new BusinessError();
     err.code = code;
     err.name = 'Error';

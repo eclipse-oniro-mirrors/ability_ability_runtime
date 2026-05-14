@@ -276,7 +276,7 @@ private:
     inline void ExecuteInsightIntentRepeateForeground(const Want &want,
         const std::shared_ptr<InsightIntentExecuteParam> &executeParam,
         std::unique_ptr<InsightIntentExecutorAsyncCallback> callback);
-    inline void ExecuteInsightIntentMoveToForeground(const Want &want,
+    void ExecuteInsightIntentMoveToForeground(const Want &want,
         const std::shared_ptr<InsightIntentExecuteParam> &executeParam,
         std::unique_ptr<InsightIntentExecutorAsyncCallback> callback);
     inline void ExecuteInsightIntentPage(const Want &want,

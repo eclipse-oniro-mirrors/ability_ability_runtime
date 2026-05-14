@@ -36,7 +36,7 @@ DECLARE_DELAYED_SINGLETON(SkillExecuteManager)
 public:
     int32_t GenerateSkillWant(const AppExecFwk::SkillInfo &skillInfo, Want &want,
         int32_t userId, const std::string &requestCode, AppExecFwk::ExtensionAbilityType &targetType,
-        const std::string &arkTSPath = "", const std::string &funcName = "",
+        const std::string &scriptPath = "", const std::string &functionName = "",
         const std::shared_ptr<AAFwk::WantParams> &skillArgs = nullptr);
 
     int32_t QuerySkillInfo(const std::string &bundleName, const std::string &moduleName,
@@ -47,7 +47,8 @@ public:
     std::string CreateExecuteRecord(const sptr<IRemoteObject> &callerToken,
         const std::string &targetBundleName, const std::string &callerBundleName,
         uint32_t callerTokenId,
-        const sptr<ISkillExecuteCallback> &callback = nullptr);
+        const sptr<ISkillExecuteCallback> &callback = nullptr,
+        const std::string &externalRequestCode = "");
 
     int32_t ExecuteSkillDone(const std::string &requestCode, int32_t resultCode,
         const AppExecFwk::SkillExecuteResult &result,

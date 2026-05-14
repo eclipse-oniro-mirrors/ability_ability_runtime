@@ -166,6 +166,47 @@ HWTEST_F(ToolSummaryTest, Unmarshalling_0300, TestSize.Level1)
 }
 
 /**
+ * @tc.name: ToolSummary_Unmarshalling_0400
+ * @tc.desc: Test Unmarshalling fails when version is missing
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolSummaryTest, Unmarshalling_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolSummary_Unmarshalling_0400 start";
+
+    Parcel parcel;
+    ASSERT_TRUE(parcel.WriteString("test_tool"));
+    parcel.RewindRead(0);
+
+    ToolSummary *result = ToolSummary::Unmarshalling(parcel);
+
+    EXPECT_EQ(result, nullptr);
+
+    GTEST_LOG_(INFO) << "ToolSummary_Unmarshalling_0400 end";
+}
+
+/**
+ * @tc.name: ToolSummary_Unmarshalling_0500
+ * @tc.desc: Test Unmarshalling fails when description is missing
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolSummaryTest, Unmarshalling_0500, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolSummary_Unmarshalling_0500 start";
+
+    Parcel parcel;
+    ASSERT_TRUE(parcel.WriteString("test_tool"));
+    ASSERT_TRUE(parcel.WriteString("1.0.0"));
+    parcel.RewindRead(0);
+
+    ToolSummary *result = ToolSummary::Unmarshalling(parcel);
+
+    EXPECT_EQ(result, nullptr);
+
+    GTEST_LOG_(INFO) << "ToolSummary_Unmarshalling_0500 end";
+}
+
+/**
  * @tc.name: ToolSummary_Marshalling_Unmarshalling_RoundTrip_0100
  * @tc.desc: Test Marshalling and Unmarshalling round trip
  * @tc.type: FUNC

@@ -480,11 +480,6 @@ public:
         return E_OK;
     }
 
-    virtual int32_t ClearSecondMountPoint(uint32_t userId, const std::string &bundleName) override
-    {
-        return E_OK;
-    }
-
     virtual int32_t Encrypt(const std::string &volumeId, const std::string &password) override
     {
         return E_OK;
@@ -562,6 +557,31 @@ public:
     }
 
     virtual int32_t GetPartitionTable(const std::string &diskId, PartitionTableInfo &partitionTableInfo)
+    {
+        return E_OK;
+    }
+
+    int32_t CreatePartition(const std::string &diskId, const PartitionOptions &partitionOption)
+    {
+        return E_OK;
+    }
+
+    int32_t DeletePartition(const std::string &diskId, uint32_t partitionNum)
+    {
+        return E_OK;
+    }
+
+    int32_t FormatPartition(const std::string &diskId, uint32_t partitionNum, const FormatOptions &options)
+    {
+        return E_OK;
+    }
+
+    virtual int32_t Burn(const std::string &volumeId, const BurnParams &params) override
+    {
+        return E_OK;
+    }
+
+    virtual int32_t VerifyBurnData(const std::string &volumeId, uint32_t verType) override
     {
         return E_OK;
     }
