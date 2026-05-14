@@ -139,11 +139,13 @@ std::shared_ptr<AppExecFwk::AbilityHandler> ModularObjectExtension::GetAbilityHa
         return nullptr;
     }
     // Read threadMode from metadata
-    AAFwk::MoeThreadMode threadMode = AAFwk::MoeThreadMode::TYPE; // default
+    AAFwk::MoeThreadMode threadMode = AAFwk::MoeThreadMode::BUNDLE; // default
     for (const auto &meta : abilityInfo->metadata) {
         if (meta.name == "threadMode") {
             if (meta.value == "BUNDLE") {
                 threadMode = AAFwk::MoeThreadMode::BUNDLE;
+            } else if (meta.value == "TYPE") {
+                threadMode = AAFwk::MoeThreadMode::TYPE;
             } else if (meta.value == "INSTANCE") {
                 threadMode = AAFwk::MoeThreadMode::INSTANCE;
             }
