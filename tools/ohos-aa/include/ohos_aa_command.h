@@ -60,7 +60,6 @@ const std::string HELP_MSG_START = "ohos-aa start - Start an ability on the syst
     "  --abilityname <abilityname>                              Ability name to be started\n"
     "  --bundlename <bundlename>                                bundle name to be started\n"
     "  --modulename <modulename>                                module name to be started\n"
-    "  --deviceId <deviceId>                                    device id\n"
     "  --uri <uri>                                              URI for implicit startup\n"
     "  --action <action>                                        action for implicit startup\n"
     "  --entity <entity>                                        entity for implicit startup\n"
@@ -112,7 +111,6 @@ enum OptionType {
     OPTION_ABILITY_NAME,
     OPTION_BUNDLE_NAME,
     OPTION_MODULE_NAME,
-    OPTION_DEVICE_ID,
     OPTION_URI,
     OPTION_ACTION,
     OPTION_ENTITY,
@@ -127,7 +125,6 @@ struct option LONG_OPTIONS[] = {
     {"help", no_argument, 0, OPTION_HELP},
     {"abilityname", required_argument, 0, OPTION_ABILITY_NAME},
     {"bundlename", required_argument, 0, OPTION_BUNDLE_NAME},
-    {"deviceId", required_argument, 0, OPTION_DEVICE_ID},
     {"modulename", required_argument, 0, OPTION_MODULE_NAME},
     {"uri", required_argument, 0, OPTION_URI},
     {"action", required_argument, 0, OPTION_ACTION},
