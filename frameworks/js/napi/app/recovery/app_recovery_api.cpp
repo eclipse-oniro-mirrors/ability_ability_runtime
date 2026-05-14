@@ -29,6 +29,9 @@
 #include "want.h"
 #include "ability_manager_client.h"
 #include "exit_reason.h"
+#ifdef APPRECOVERY_ENABLE_API_METRICS
+#include "histogram_plugin_macros.h"
+#endif
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -75,6 +78,9 @@ public:
 private:
     napi_value OnEnableAppRecovery(napi_env env, const size_t argc, napi_value* argv)
     {
+    #ifdef APPRECOVERY_ENABLE_API_METRICS
+        HISTOGRAM_BOOLEAN("AbilityKit.ApiCall.enableAppRecovery", 1);
+    #endif
         size_t parameterCount = argc;
         napi_value result = CreateJsUndefined(env);
         constexpr int maxCount = 3;
@@ -135,6 +141,9 @@ private:
 
     napi_value OnSaveAppState(napi_env env, const size_t argc, napi_value* argv)
     {
+    #ifdef APPRECOVERY_ENABLE_API_METRICS
+        HISTOGRAM_BOOLEAN("AbilityKit.ApiCall.saveAppState", 1);
+    #endif
         if (argc > 1) {
             TAG_LOGE(AAFwkTag::RECOVERY, "invalid argc");
             return CreateJsValue(env, false);
@@ -158,6 +167,9 @@ private:
 
     napi_value OnRestartApp(napi_env env, const size_t argc, napi_value* argv)
     {
+    #ifdef APPRECOVERY_ENABLE_API_METRICS
+        HISTOGRAM_BOOLEAN("AbilityKit.ApiCall.restartApp", 1);
+    #endif
         if (argc != 0) {
             TAG_LOGE(AAFwkTag::RECOVERY, "invalid argc");
             return CreateJsUndefined(env);
@@ -178,6 +190,9 @@ private:
 
     napi_value OnSetRestartWant(napi_env env, const size_t argc, napi_value* argv)
     {
+    #ifdef APPRECOVERY_ENABLE_API_METRICS
+        HISTOGRAM_BOOLEAN("AbilityKit.ApiCall.setRestartWant", 1);
+    #endif
         if (argc != 1) {
             TAG_LOGE(AAFwkTag::RECOVERY, "invalid argc");
             return CreateJsUndefined(env);
