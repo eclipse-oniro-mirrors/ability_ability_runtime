@@ -983,6 +983,32 @@ HWTEST_F(MultiUserConfigMgrTest, InitConfiguration_2600, TestSize.Level1)
     multiUserConfigurationMgr->InitConfiguration(config);
     EXPECT_EQ(config, multiUserConfigurationMgr->globalConfiguration_);
 }
+
+/**
+ * @tc.name: InitConfiguration_2100
+ * @tc.desc: InitConfiguration.
+ * @tc.type: FUNC
+ */
+HWTEST_F(MultiUserConfigMgrTest, InitConfiguration_2700, TestSize.Level1)
+{
+    auto config = std::make_shared<AppExecFwk::Configuration>();
+    int displayId = 1001;
+    std::string val{ "phone11" };
+    config->AddItem(displayId, AAFwk::GlobalConfigurationKey::APP_FONT_MAX_SCALE, val);
+    auto multiUserConfigurationMgr =
+        std::make_shared<AppExecFwk::MultiUserConfigurationMgr>();
+    multiUserConfigurationMgr->globalConfiguration_ = nullptr;
+    multiUserConfigurationMgr->InitConfiguration(config);
+
+    multiUserConfigurationMgr->globalConfiguration_ =
+        std::make_shared<AppExecFwk::Configuration>();
+    int displayId2 = 1010;
+    std::string deviceType{ "phone11" };
+    multiUserConfigurationMgr->globalConfiguration_->AddItem(displayId2,
+        AAFwk::GlobalConfigurationKey::APP_FONT_MAX_SCALE, deviceType);
+    multiUserConfigurationMgr->InitConfiguration(config);
+    EXPECT_EQ(config, multiUserConfigurationMgr->globalConfiguration_);
+}
 } // namespace AppExecFwk
 } // namespace OHOS
     
