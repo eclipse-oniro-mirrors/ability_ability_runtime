@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,13 +19,36 @@
 #include "hitrace_meter.h"
 #include "int_wrapper.h"
 #include "cj_utils_ffi.h"
+#include "last_exit_detail_info.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
+struct CJLastExitDetailInfo {
+    int32_t pid;
+    char* processName;
+    int32_t uid;
+    int32_t exitSubReason;
+    char* exitMsg;
+    int32_t rss;
+    int32_t pss;
+    int64_t timestamp;
+    int32_t processState;
+    char* killReason;
+    bool hasKillReason;
+};
+
 struct CJLaunchParam {
     int32_t launchReason;
     int32_t lastExitReason;
     char* lastExitMessage;
+};
+
+struct CJLaunchParamV3 {
+    int32_t launchReason;
+    int32_t lastExitReason;
+    char* lastExitMessage;
+    char* launchReasonMessage;
+    CJLastExitDetailInfo lastExitDetailInfo;
 };
 
 struct CJExtAbilityFuncs {
@@ -43,11 +66,17 @@ struct CJExtAbilityFuncs {
     void (*cjExtAbilityOnStartContentEditing)(int64_t id, int32_t type, const char* imageUri, WantHandle want,
         int64_t sessionId);
 };
+
+struct CJExtAbilityFuncsV2 {
+    void (*cjExtAbilityOnCreateV3)(int64_t id, int32_t type, WantHandle want, CJLaunchParamV3 launchParam);
+    void (*cjExtAbilityOnConfigurationUpdateV2)(int64_t id, int32_t type, CConfigurationV2 configuration);
+};
 } // namespace AbilityRuntime
 } // namespace OHOS
 
 namespace {
 static OHOS::AbilityRuntime::CJExtAbilityFuncs g_cjFuncs {};
+static OHOS::AbilityRuntime::CJExtAbilityFuncsV2 g_cjFuncsV2 {};
 static const int32_t CJ_OBJECT_ERR_CODE = -1;
 } // namespace
 
@@ -95,14 +124,66 @@ int32_t CJUIExtensionObject::Init(const std::string& abilityName, CJExtensionAbi
     return 0;
 }
 
+CJLastExitDetailInfo CreateCJLastExitDetailInfo(const AAFwk::LastExitDetailInfo& lastExitDetailInfo)
+{
+    CJLastExitDetailInfo detailInfo = {};
+    detailInfo.pid = lastExitDetailInfo.pid;
+    detailInfo.processName = CreateCStringFromString(lastExitDetailInfo.processName);
+    detailInfo.uid = lastExitDetailInfo.uid;
+    detailInfo.exitSubReason = lastExitDetailInfo.exitSubReason;
+    detailInfo.exitMsg = CreateCStringFromString(lastExitDetailInfo.exitMsg);
+    detailInfo.rss = lastExitDetailInfo.rss;
+    detailInfo.pss = lastExitDetailInfo.pss;
+    detailInfo.timestamp = lastExitDetailInfo.timestamp;
+    detailInfo.processState = lastExitDetailInfo.processState;
+    if (!lastExitDetailInfo.killReason.empty()) {
+        detailInfo.killReason = CreateCStringFromString(lastExitDetailInfo.killReason);
+        detailInfo.hasKillReason = true;
+    } else {
+        detailInfo.killReason = nullptr;
+        detailInfo.hasKillReason = false;
+    }
+    return detailInfo;
+}
+
+void FreeCJLastExitDetailInfo(CJLastExitDetailInfo& detailInfo)
+{
+    if (detailInfo.processName != nullptr) {
+        free(detailInfo.processName);
+        detailInfo.processName = nullptr;
+    }
+    if (detailInfo.exitMsg != nullptr) {
+        free(detailInfo.exitMsg);
+        detailInfo.exitMsg = nullptr;
+    }
+    if (detailInfo.killReason != nullptr) {
+        free(detailInfo.killReason);
+        detailInfo.killReason = nullptr;
+    }
+}
+
 void CJUIExtensionObject::OnCreate(const AAFwk::Want &want, AAFwk::LaunchParam &launchParam)
 {
+    WantHandle wantHandle = const_cast<AAFwk::Want*>(&want);
+    if (g_cjFuncsV2.cjExtAbilityOnCreateV3 != nullptr) {
+        CJLaunchParamV3 param;
+        param.launchReason = launchParam.launchReason;
+        param.lastExitReason = launchParam.lastExitReason;
+        param.lastExitMessage = CreateCStringFromString(launchParam.lastExitMessage);
+        param.launchReasonMessage = CreateCStringFromString(launchParam.launchReasonMessage);
+        param.lastExitDetailInfo = CreateCJLastExitDetailInfo(launchParam.lastExitDetailInfo);
+
+        g_cjFuncsV2.cjExtAbilityOnCreateV3(cjID_, GetType(), wantHandle, param);
+        free(param.lastExitMessage);
+        free(param.launchReasonMessage);
+        FreeCJLastExitDetailInfo(param.lastExitDetailInfo);
+        return;
+    }
     if (g_cjFuncs.cjExtAbilityOnCreate == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "cjExtAbilityOnCreate is not registered");
         return;
     }
 
-    WantHandle wantHandle = const_cast<AAFwk::Want*>(&want);
     CJLaunchParam param;
     param.launchReason = launchParam.launchReason;
     param.lastExitReason = launchParam.lastExitReason;
@@ -165,6 +246,12 @@ void CJUIExtensionObject::OnBackground()
 
 void CJUIExtensionObject::OnConfigurationUpdate(std::shared_ptr<AppExecFwk::Configuration> fullConfig)
 {
+    if (g_cjFuncsV2.cjExtAbilityOnConfigurationUpdateV2 != nullptr) {
+        auto cfg = CreateCConfigurationV2(*fullConfig);
+        g_cjFuncsV2.cjExtAbilityOnConfigurationUpdateV2(cjID_, GetType(), cfg);
+        FreeCConfigurationV2(&cfg);
+        return;
+    }
     if (g_cjFuncs.cjExtAbilityOnConfigurationUpdate == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "cjExtAbilityOnConfigurationUpdate is not registered");
         return;
@@ -172,6 +259,7 @@ void CJUIExtensionObject::OnConfigurationUpdate(std::shared_ptr<AppExecFwk::Conf
 
     auto cfg = CreateCConfiguration(*fullConfig);
     g_cjFuncs.cjExtAbilityOnConfigurationUpdate(cjID_, GetType(), cfg);
+    FreeCConfiguration(&cfg);
 }
 
 void CJUIExtensionObject::OnMemoryLevel(int level)
@@ -218,6 +306,18 @@ CJ_EXPORT void FFIRegisterCJExtAbilityFuncs(void (*registerFunc)(CJExtAbilityFun
 
     registerFunc(&g_cjFuncs);
     TAG_LOGD(AAFwkTag::UI_EXT, "FFIRegisterCJExtAbilityFuncs end");
+}
+
+CJ_EXPORT void FFIRegisterCJExtAbilityFuncsV2(void (*registerFunc)(CJExtAbilityFuncsV2*))
+{
+    TAG_LOGD(AAFwkTag::UI_EXT, "FFIRegisterCJExtAbilityFuncsV2 start");
+    if (registerFunc == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "FFIRegisterCJExtAbilityFuncsV2 failed, registerFunc is nullptr");
+        return;
+    }
+
+    registerFunc(&g_cjFuncsV2);
+    TAG_LOGD(AAFwkTag::UI_EXT, "FFIRegisterCJExtAbilityFuncsV2 end");
 }
 } // extern "C"
 } // namespace AbilityRuntime

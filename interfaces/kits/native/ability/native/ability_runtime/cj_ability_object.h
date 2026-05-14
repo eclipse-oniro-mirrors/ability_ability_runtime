@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -22,6 +22,7 @@
 #include "cj_runtime.h"
 #include "cj_utils_ffi.h"
 #include "configuration.h"
+#include "last_exit_detail_info.h"
 
 #ifdef WINDOWS_PLATFORM
 #define CJ_EXPORT __declspec(dllexport)
@@ -43,15 +44,37 @@ struct CJConfiguration {
     int32_t screenDensity;
     int32_t displayId;
 };
-}
 
-extern "C" {
+struct CJLastExitDetailInfo {
+    int32_t pid;
+    char* processName;
+    int32_t uid;
+    int32_t exitSubReason;
+    char* exitMsg;
+    int32_t rss;
+    int32_t pss;
+    int64_t timestamp;
+    int32_t processState;
+    char* killReason;
+    bool hasKillReason;
+};
+
 struct CJLaunchParam {
     int32_t launchReason;
     int32_t lastExitReason;
     char* lastExitMessage;
 };
 
+struct CJLaunchParamV3 {
+    int32_t launchReason;
+    int32_t lastExitReason;
+    char* lastExitMessage;
+    char* launchReasonMessage;
+    CJLastExitDetailInfo lastExitDetailInfo;
+};
+}
+
+extern "C" {
 struct CJNumberParmas {
     int32_t numberResult;
     char* params;
@@ -84,7 +107,14 @@ struct CJAbilityFuncs {
     void (*cjAbilityOnSetCalleeFlag)(int64_t id, bool flag);
 };
 
+struct CJAbilityFuncsV3 {
+    void (*cjAbilityOnStartV3)(int64_t id, WantHandle want, CJLaunchParamV3 launchParam);
+    void (*cjAbilityOnNewWantV3)(int64_t id, WantHandle want, CJLaunchParamV3 launchParam);
+    void (*cjAbilityOnConfigurationUpdateV3)(int64_t id, OHOS::AbilityRuntime::CConfigurationV2 configuration);
+};
+
 CJ_EXPORT void RegisterCJAbilityFuncs(void (*registerFunc)(CJAbilityFuncs*));
+CJ_EXPORT void RegisterCJAbilityFuncsV3(void (*registerFunc)(CJAbilityFuncsV3*));
 }
 
 namespace OHOS {

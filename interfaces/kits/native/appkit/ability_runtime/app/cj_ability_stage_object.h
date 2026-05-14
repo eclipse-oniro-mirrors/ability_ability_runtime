@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -53,7 +53,12 @@ struct CJAbilityStageFuncs {
     char* (*AbilityStageOnNewProcessRequest)(int64_t id, OHOS::AAFwk::Want* want);
 };
 
+struct CJAbilityStageFuncsV3 {
+    void (*AbilityStageOnConfigurationUpdatedV2)(int64_t id, OHOS::AbilityRuntime::CConfigurationV2 configuration);
+};
+
 CJ_EXPORT void RegisterCJAbilityStageFuncs(void (*registerFunc)(CJAbilityStageFuncs* result));
+CJ_EXPORT void RegisterCJAbilityStageFuncsV3(void (*registerFunc)(CJAbilityStageFuncsV3* result));
 }
 
 namespace OHOS {

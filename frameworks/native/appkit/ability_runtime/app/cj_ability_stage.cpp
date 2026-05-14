@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -100,6 +100,17 @@ CJ_EXPORT CConfiguration FFICJGetConfiguration(int64_t id)
     }
 
     return abilityStageContext->GetConfiguration();
+}
+
+CJ_EXPORT CConfigurationV2 FFICJGetConfigurationV2(int64_t id)
+{
+    auto abilityStageContext = OHOS::FFI::FFIData::GetData<CJAbilityStageContext>(id);
+    if (abilityStageContext == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "Get abilityStageContext failed. ");
+        return CConfigurationV2();
+    }
+
+    return abilityStageContext->GetConfigurationV2();
 }
 
 CJ_EXPORT int64_t FFIAbilityGetAbilityStageContext(AbilityStageHandle abilityStageHandle)

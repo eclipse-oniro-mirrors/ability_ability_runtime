@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -140,6 +140,113 @@ HWTEST_F(CjApplicationContextTest, CJApplicationContextTestOnOnEnvironment_001, 
     CJApplicationContext::GetInstance()->envCallback_ = nullptr;
     ret = CJApplicationContext::GetInstance()->OnOnEnvironment(cfgCallback, memCallback, true, err);
     EXPECT_EQ(ret, -1);
+}
+
+/**
+ * @tc.name: CJApplicationContextTestOnOnEnvironmentV2_001
+ * @tc.desc: CjApplicationContextTest test for OnOnEnvironmentV2.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjApplicationContextTest, CJApplicationContextTestOnOnEnvironmentV2_001, TestSize.Level1)
+{
+    auto cfgCallback = [](AbilityRuntime::CConfigurationV2) {};
+    auto memCallback = [](int32_t) {};
+    int32_t err = 0;
+    auto ret =
+        CJApplicationContext::GetInstance()->OnOnEnvironmentV2(cfgCallback, memCallback, true, err);
+    EXPECT_EQ(ret, -1);
+
+    CJApplicationContext::GetInstance()->envCallback_ = nullptr;
+    ret = CJApplicationContext::GetInstance()->OnOnEnvironmentV2(cfgCallback, memCallback, true, err);
+    EXPECT_EQ(ret, -1);
+}
+
+/**
+ * @tc.name: CJApplicationContextTestOnConfigurationUpdatedDispatch_001
+ * @tc.desc: Test V2 priority - when both V1 and V2 registered, only V2 is called
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjApplicationContextTest, CJApplicationContextTestOnConfigurationUpdatedDispatch_001, TestSize.Level1)
+{
+    bool v1Called = false;
+    bool v2Called = false;
+    auto cfgCallbackV1 = [&v1Called](AbilityRuntime::CConfiguration) { v1Called = true; };
+    auto cfgCallbackV2 = [&v2Called](AbilityRuntime::CConfigurationV2) { v2Called = true; };
+    auto memCallback = [](int32_t) {};
+
+    auto cb = std::make_shared<CjEnvironmentCallback>();
+    cb->Register(cfgCallbackV1, memCallback, false);
+    cb->RegisterV2(cfgCallbackV2, memCallback, false);
+
+    AppExecFwk::Configuration config;
+    cb->OnConfigurationUpdated(config);
+
+    EXPECT_FALSE(v1Called);
+    EXPECT_TRUE(v2Called);
+}
+
+/**
+ * @tc.name: CJApplicationContextTestOnConfigurationUpdatedDispatch_002
+ * @tc.desc: Test V1 fallback - when only V1 registered, V1 is called
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjApplicationContextTest, CJApplicationContextTestOnConfigurationUpdatedDispatch_002, TestSize.Level1)
+{
+    bool v1Called = false;
+    auto cfgCallbackV1 = [&v1Called](AbilityRuntime::CConfiguration) { v1Called = true; };
+    auto memCallback = [](int32_t) {};
+
+    auto cb = std::make_shared<CjEnvironmentCallback>();
+    cb->Register(cfgCallbackV1, memCallback, false);
+
+    AppExecFwk::Configuration config;
+    cb->OnConfigurationUpdated(config);
+
+    EXPECT_TRUE(v1Called);
+}
+
+/**
+ * @tc.name: CJApplicationContextTestOnConfigurationUpdatedDispatch_003
+ * @tc.desc: Test V2 only - when only V2 registered, V2 is called
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjApplicationContextTest, CJApplicationContextTestOnConfigurationUpdatedDispatch_003, TestSize.Level1)
+{
+    bool v2Called = false;
+    auto cfgCallbackV2 = [&v2Called](AbilityRuntime::CConfigurationV2) { v2Called = true; };
+    auto memCallback = [](int32_t) {};
+
+    auto cb = std::make_shared<CjEnvironmentCallback>();
+    cb->RegisterV2(cfgCallbackV2, memCallback, false);
+
+    AppExecFwk::Configuration config;
+    cb->OnConfigurationUpdated(config);
+
+    EXPECT_TRUE(v2Called);
+}
+
+/**
+ * @tc.name: CJApplicationContextTestUnRegisterV2_001
+ * @tc.desc: Test UnRegister removes V2 callback correctly
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjApplicationContextTest, CJApplicationContextTestUnRegisterV2_001, TestSize.Level1)
+{
+    bool v2Called = false;
+    auto cfgCallbackV2 = [&v2Called](AbilityRuntime::CConfigurationV2) { v2Called = true; };
+    auto memCallback = [](int32_t) {};
+
+    auto cb = std::make_shared<CjEnvironmentCallback>();
+    int32_t callbackId = cb->RegisterV2(cfgCallbackV2, memCallback, false);
+    EXPECT_NE(callbackId, -1);
+
+    cb->UnRegister(callbackId, false);
+
+    AppExecFwk::Configuration config;
+    cb->OnConfigurationUpdated(config);
+
+    EXPECT_FALSE(v2Called);
+    EXPECT_TRUE(cb->IsEmpty());
 }
 
 /**

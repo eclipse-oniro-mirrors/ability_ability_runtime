@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -39,6 +39,7 @@ public:
     std::shared_ptr<AppExecFwk::HapModuleInfo> GetHapModuleInfo();
     RetHapModuleInfoV2 GetRetHapModuleInfo();
     CConfiguration GetConfiguration();
+    CConfigurationV2 GetConfigurationV2();
     std::shared_ptr<Context> GetContext()
     {
         return abilityStageContext_.lock();
@@ -49,6 +50,8 @@ private:
 };
 
 CConfiguration CallConvertConfig(std::shared_ptr<AppExecFwk::Configuration> configuration);
+CConfigurationV2 CallConvertConfigV2(std::shared_ptr<AppExecFwk::Configuration> configuration);
+void CallFreeConfigV2(CConfigurationV2 cCfg);
 }
 }
 #endif //OHOS_ABILITY_RUNTIME_CJ_ABILITY_STAGE_CONTEXT_H

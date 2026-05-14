@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -23,18 +23,29 @@
 namespace OHOS {
 namespace AbilityRuntime {
 
+#define CJ_CONFIGURATION_COMMON_FIELDS \
+    char* language;                    \
+    int32_t colorMode;                 \
+    int32_t direction;                 \
+    int32_t screenDensity;             \
+    int32_t displayId;                 \
+    bool hasPointerDevice;             \
+    double fontSizeScale;              \
+    double fontWeightScale;            \
+    char* mcc;                         \
+    char* mnc
+
 struct CConfiguration {
-    char* language;
-    int32_t colorMode;
-    int32_t direction;
-    int32_t screenDensity;
-    int32_t displayId;
-    bool hasPointerDevice;
-    double fontSizeScale;
-    double fontWeightScale;
-    char* mcc;
-    char* mnc;
+    CJ_CONFIGURATION_COMMON_FIELDS;
 };
+
+struct CConfigurationV2 {
+    CJ_CONFIGURATION_COMMON_FIELDS;
+    char* fontId;
+    char* locale;
+};
+
+#undef CJ_CONFIGURATION_COMMON_FIELDS
 
 struct CArrString {
     char** head;
@@ -57,7 +68,9 @@ struct CArrProcessInformation {
 };
 
 CConfiguration CreateCConfiguration(const OHOS::AppExecFwk::Configuration &configuration);
-void FreeCConfiguration(CConfiguration configuration);
+void FreeCConfiguration(CConfiguration *configuration);
+CConfigurationV2 CreateCConfigurationV2(const OHOS::AppExecFwk::Configuration &configuration);
+void FreeCConfigurationV2(CConfigurationV2 *configuration);
 }
 }
 
