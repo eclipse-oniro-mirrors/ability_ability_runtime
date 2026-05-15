@@ -26,16 +26,18 @@ bool PermissionUtil::VerifyAccessToken(AccessToken::AccessTokenID tokenId,
     std::vector<int32_t> perStateList;
     auto permRet = AccessToken::AccessTokenKit::VerifyAccessToken(tokenId, requirePermissions,
         perStateList);
-    if (permRet != AccessToken::PermissionState::PERMISSION_GRANTED) {
+    if (permRet == 0) {
         for (size_t index = 0; index < perStateList.size(); index++) {
             if (perStateList[index] == AccessToken::TypePermissionState::PERMISSION_DENIED) {
                 TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}d not has %{public}s", tokenId,
                     requirePermissions[index].c_str());
+                return false;
             }
         }
-        return false;
+        return true;
     }
-    return true;
+    TAG_LOGE(AAFwkTag::CLI_TOOL, "fail to call VerifyAccessToken");
+    return false;
 }
 
 bool PermissionUtil::VerifyAccessToken(AccessToken::AccessTokenID tokenId, const std::string &requirePermission)
