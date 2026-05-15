@@ -52,6 +52,7 @@ const std::string FILE_SCHEME = "file";
 const int32_t MAX_URI_COUNT = 500;
 constexpr int32_t API20 = 20;
 constexpr int32_t API_VERSION_MOD = 100;
+constexpr int32_t DEFAULT_HIDE_SENSITIVE_TYPE = 4;
 constexpr uint32_t TOKEN_ID_BIT_SIZE = 32;
 }
 
@@ -294,7 +295,7 @@ bool UriUtils::GrantDmsUriPermission(Want &want, uint32_t callerTokenId,
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto validUriVec = GetUriListFromWantDms(want);
-    auto hideSensitiveType = want.GetIntParam(HIDE_SENSITIVE_TYPE, 0);
+    auto hideSensitiveType = want.GetIntParam(HIDE_SENSITIVE_TYPE, DEFAULT_HIDE_SENSITIVE_TYPE);
     auto ret = IN_PROCESS_CALL(UriPermissionManagerClient::GetInstance().GrantUriPermissionPrivileged(validUriVec,
         want.GetFlags(), targetBundleName, appIndex, callerTokenId, hideSensitiveType));
     if (ret != ERR_OK) {
@@ -485,7 +486,7 @@ bool UriUtils::GrantUriPermissionInner(const std::vector<std::string> &uriVec,
             permissionTypes.emplace_back(checkResults[i].permissionType);
         }
     }
-    auto hideSensitiveType = want.GetIntParam(HIDE_SENSITIVE_TYPE, 0);
+    auto hideSensitiveType = want.GetIntParam(HIDE_SENSITIVE_TYPE, DEFAULT_HIDE_SENSITIVE_TYPE);
     auto ret = IN_PROCESS_CALL(UriPermissionManagerClient::GetInstance().GrantUriPermissionWithType(
         permissionUris, grantInfo.flag, grantInfo.targetBundleName, grantInfo.appIndex, grantInfo.callerTokenId,
         hideSensitiveType, permissionTypes));
