@@ -207,7 +207,7 @@ ohos_unittest("ability_manager_service_fourteenth_test") {
     "${ability_runtime_services_path}/abilitymgr/src/utils/modal_system_dialog_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/multi_app_utils.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/multi_instance_utils.cpp",
-    "${ability_runtime_services_path}/abilitymgr/src/utils/oe_extension_utils.cpp",
+    "mock/src/mock_oe_extension_utils.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/start_ability_utils.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/start_options_utils.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/state_utils.cpp",

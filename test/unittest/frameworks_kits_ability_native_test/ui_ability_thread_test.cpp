@@ -1389,10 +1389,9 @@ HWTEST_F(UIAbilityThreadTest, AbilityRuntime_ScheduleAbilityRequestSuccess_0200,
 HWTEST_F(UIAbilityThreadTest, AbilityRuntime_InitNativeThread_0100, Function | MediumTest | Level1)
 {
     GTEST_LOG_(INFO) << "AbilityRuntime_InitNativeThread_0100 start";
-    AbilityRuntime::UIAbilityThread *abilitythread = new (std::nothrow) AbilityRuntime::UIAbilityThread();
-    EXPECT_NE(abilitythread, nullptr);
+    auto abilityThread = std::make_shared<AbilityRuntime::UIAbilityThread>();
     std::shared_ptr<AbilityInfo> abilityInfo = nullptr;
-    auto ret = abilitythread->InitNativeThread(abilityInfo);
+    auto ret = abilityThread->InitNativeThread(abilityInfo);
     EXPECT_EQ(ret, false);
     GTEST_LOG_(INFO) << "AbilityRuntime_InitNativeThread_0100 end";
 }
@@ -1405,12 +1404,11 @@ HWTEST_F(UIAbilityThreadTest, AbilityRuntime_InitNativeThread_0100, Function | M
 HWTEST_F(UIAbilityThreadTest, AbilityRuntime_InitNativeThread_0200, Function | MediumTest | Level1)
 {
     GTEST_LOG_(INFO) << "AbilityRuntime_InitNativeThread_0200 start";
-    AbilityRuntime::UIAbilityThread *abilitythread = new (std::nothrow) AbilityRuntime::UIAbilityThread();
-    EXPECT_NE(abilitythread, nullptr);
+    auto abilityThread = std::make_shared<AbilityRuntime::UIAbilityThread>();
     std::shared_ptr<AbilityInfo> abilityInfo = std::make_shared<AbilityInfo>();
     abilityInfo->name = "MockUIAbility";
     abilityInfo->type = AbilityType::PAGE;
-    auto ret = abilitythread->InitNativeThread(abilityInfo);
+    auto ret = abilityThread->InitNativeThread(abilityInfo);
     EXPECT_TRUE(ret);
     GTEST_LOG_(INFO) << "AbilityRuntime_InitNativeThread_0200 end";
 }
@@ -1423,8 +1421,7 @@ HWTEST_F(UIAbilityThreadTest, AbilityRuntime_InitNativeThread_0200, Function | M
 HWTEST_F(UIAbilityThreadTest, AbilityRuntime_InitNativeThread_0300, Function | MediumTest | Level1)
 {
     GTEST_LOG_(INFO) << "AbilityRuntime_InitNativeThread_0300 start";
-    AbilityRuntime::UIAbilityThread *abilitythread = new (std::nothrow) AbilityRuntime::UIAbilityThread();
-    EXPECT_NE(abilitythread, nullptr);
+    auto abilityThread = std::make_shared<AbilityRuntime::UIAbilityThread>();
     std::shared_ptr<AbilityInfo> abilityInfo = std::make_shared<AbilityInfo>();
     abilityInfo->name = "MockUIAbility";
     abilityInfo->type = AbilityType::PAGE;
@@ -1432,8 +1429,8 @@ HWTEST_F(UIAbilityThreadTest, AbilityRuntime_InitNativeThread_0300, Function | M
     std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
     auto abilityRecord = std::make_shared<AbilityLocalRecord>(abilityInfo, token, nullptr, 0);
     std::shared_ptr<EventRunner> mainRunner = EventRunner::Create(abilityInfo->name);
-    abilitythread->Attach(application, abilityRecord, mainRunner, nullptr);
-    auto ret = abilitythread->InitNativeThread(abilityInfo);
+    abilityThread->Attach(application, abilityRecord, mainRunner, nullptr);
+    auto ret = abilityThread->InitNativeThread(abilityInfo);
     EXPECT_EQ(ret, true);
     GTEST_LOG_(INFO) << "AbilityRuntime_InitNativeThread_0300 end";
 }
@@ -1446,8 +1443,7 @@ HWTEST_F(UIAbilityThreadTest, AbilityRuntime_InitNativeThread_0300, Function | M
 HWTEST_F(UIAbilityThreadTest, AbilityRuntime_InitNativeThread_0400, Function | MediumTest | Level1)
 {
     GTEST_LOG_(INFO) << "AbilityRuntime_InitNativeThread_0400 start";
-    AbilityRuntime::UIAbilityThread *abilitythread = new (std::nothrow) AbilityRuntime::UIAbilityThread();
-    EXPECT_NE(abilitythread, nullptr);
+    auto abilityThread = std::make_shared<AbilityRuntime::UIAbilityThread>();
     std::shared_ptr<AbilityInfo> abilityInfo = std::make_shared<AbilityInfo>();
     abilityInfo->name = "MockUIAbility";
     abilityInfo->type = AbilityType::PAGE;
@@ -1455,10 +1451,10 @@ HWTEST_F(UIAbilityThreadTest, AbilityRuntime_InitNativeThread_0400, Function | M
     std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
     auto abilityRecord = std::make_shared<AbilityLocalRecord>(abilityInfo, token, nullptr, 0);
     std::shared_ptr<EventRunner> mainRunner = EventRunner::Create(abilityInfo->name);
-    abilitythread->Attach(application, abilityRecord, mainRunner, nullptr);
-    abilitythread->currentAbility_ = nullptr;
-    abilitythread->abilityImpl_ = nullptr;
-    auto ret = abilitythread->InitNativeThread(abilityInfo);
+    abilityThread->Attach(application, abilityRecord, mainRunner, nullptr);
+    abilityThread->currentAbility_ = nullptr;
+    abilityThread->abilityImpl_ = nullptr;
+    auto ret = abilityThread->InitNativeThread(abilityInfo);
     EXPECT_EQ(ret, true);
     GTEST_LOG_(INFO) << "AbilityRuntime_InitNativeThread_0400 end";
 }
@@ -1471,8 +1467,7 @@ HWTEST_F(UIAbilityThreadTest, AbilityRuntime_InitNativeThread_0400, Function | M
 HWTEST_F(UIAbilityThreadTest, AbilityRuntime_InitNativeThread_0500, Function | MediumTest | Level1)
 {
     GTEST_LOG_(INFO) << "AbilityRuntime_InitNativeThread_0500 start";
-    AbilityRuntime::UIAbilityThread *abilitythread = new (std::nothrow) AbilityRuntime::UIAbilityThread();
-    EXPECT_NE(abilitythread, nullptr);
+    auto abilityThread = std::make_shared<AbilityRuntime::UIAbilityThread>();
     std::shared_ptr<AbilityInfo> abilityInfo = std::make_shared<AbilityInfo>();
     abilityInfo->name = "MockUIAbility";
     abilityInfo->type = AbilityType::PAGE;
@@ -1480,14 +1475,28 @@ HWTEST_F(UIAbilityThreadTest, AbilityRuntime_InitNativeThread_0500, Function | M
     std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
     auto abilityRecord = std::make_shared<AbilityLocalRecord>(abilityInfo, token, nullptr, 0);
     std::shared_ptr<EventRunner> mainRunner = EventRunner::Create(abilityInfo->name);
-    abilitythread->Attach(application, abilityRecord, mainRunner, nullptr);
-    abilitythread->currentAbility_ = std::make_shared<AbilityRuntime::UIAbility>();
-    abilitythread->abilityImpl_ = std::make_shared<AbilityRuntime::UIAbilityImpl>();
-    EXPECT_NE(abilitythread->currentAbility_, nullptr);
-    EXPECT_NE(abilitythread->abilityImpl_, nullptr);
-    auto ret = abilitythread->InitNativeThread(abilityInfo);
+    abilityThread->Attach(application, abilityRecord, mainRunner, nullptr);
+    abilityThread->currentAbility_ = std::make_shared<AbilityRuntime::UIAbility>();
+    abilityThread->abilityImpl_ = std::make_shared<AbilityRuntime::UIAbilityImpl>();
+    EXPECT_NE(abilityThread->currentAbility_, nullptr);
+    EXPECT_NE(abilityThread->abilityImpl_, nullptr);
+    auto ret = abilityThread->InitNativeThread(abilityInfo);
     EXPECT_EQ(ret, true);
     GTEST_LOG_(INFO) << "AbilityRuntime_InitNativeThread_0500 end";
+}
+
+/**
+ * @tc.number: AbilityRuntime_AttachInner_0100
+ * @tc.name: AttachInner
+ * @tc.desc: Test AttachInner function with valid parameters
+ */
+HWTEST_F(UIAbilityThreadTest, AbilityRuntime_AttachInner_0100, Function | MediumTest | Level1)
+{
+    auto abilityThread = std::make_shared<AbilityRuntime::UIAbilityThread>();
+    abilityThread->abilityImpl_ = nullptr;
+    auto abilityRecord = std::make_shared<AbilityLocalRecord>(nullptr, nullptr, nullptr, 0);
+    abilityThread->AttachInner(nullptr, abilityRecord, nullptr);
+    EXPECT_NE(abilityThread->abilityImpl_, nullptr);
 }
 
 #ifdef SUPPORT_SCREEN

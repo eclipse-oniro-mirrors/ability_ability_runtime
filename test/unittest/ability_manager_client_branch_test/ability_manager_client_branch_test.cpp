@@ -2936,5 +2936,17 @@ HWTEST_F(AbilityManagerClientBranchTest, StartAbilityForPrelaunch_001, TestSize.
     EXPECT_EQ(client_->StartAbilityForPrelaunch(want, 0), 0);
 }
 
+/**
+ * @tc.name: AbilityManagerClient_StartSelf_0100
+ * @tc.desc: StartSelf
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_StartSelf_0100, TestSize.Level1)
+{
+    sptr<IRemoteObject> token = nullptr;
+    EXPECT_CALL(*mock_, StartSelf(_)).WillOnce(Return(ERR_OK));
+    auto result = client_->StartSelf(token);
+    EXPECT_EQ(ERR_OK, result);
+}
 }  // namespace AAFwk
 }  // namespace OHOS
