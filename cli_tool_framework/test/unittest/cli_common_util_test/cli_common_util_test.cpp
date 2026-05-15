@@ -72,10 +72,16 @@ HWTEST_F(CliCommonUtilTest, PermissionUtil_VerifyAccessToken_0100, TestSize.Leve
         "ohos.permission.QUERY_CLI_TOOL",
     };
 
-    CliCommonMock::vectorPermissionResult = Security::AccessToken::PermissionState::PERMISSION_GRANTED;
+    // Test all permissions granted - permRet should be 0 for success
+    CliCommonMock::vectorPermissionResult = 0;
+    CliCommonMock::permissionStateList = {
+        Security::AccessToken::TypePermissionState::PERMISSION_GRANTED,
+        Security::AccessToken::TypePermissionState::PERMISSION_GRANTED,
+    };
     EXPECT_TRUE(PermissionUtil::VerifyAccessToken(TEST_TOKEN_ID, permissions));
 
-    CliCommonMock::vectorPermissionResult = Security::AccessToken::PermissionState::PERMISSION_DENIED;
+    // Test first permission denied - should return false immediately
+    CliCommonMock::vectorPermissionResult = 0;
     CliCommonMock::permissionStateList = {
         Security::AccessToken::TypePermissionState::PERMISSION_DENIED,
         Security::AccessToken::TypePermissionState::PERMISSION_GRANTED,
