@@ -29,6 +29,7 @@ constexpr int MIN_INTERVAL = 1;
 struct TimerConfig {
     int duration = 0;
     int interval = DEFAULT_INTERVAL;
+    std::string errMsg;
     bool showProgress = false;
     bool verbose = false;
 };
@@ -87,6 +88,7 @@ void ShowHelp()
     std::cout << "Options:" << std::endl;
     std::cout << "  --duration <sec>      Duration in seconds (required, minimum 1)" << std::endl;
     std::cout << "  --interval <sec>      Progress update interval in seconds (default 1)" << std::endl;
+    std::cout << "  --errMsg <message>    Error message written to stderr when duration elapses" << std::endl;
     std::cout << "  --showProgress        Enable progress events" << std::endl;
     std::cout << "  --verbose             Enable verbose mode" << std::endl;
     std::cout << "  --help, -h            Show this help message" << std::endl;
@@ -139,6 +141,17 @@ int ParseArguments(int argc, char* argv[], TimerConfig& config)
             ++i;
             continue;
         }
+        if (arg == "--errMsg") {
+            if (i + 1 >= argc) {
+                EmitError("ERR_MISSING_PARAM", "Missing value for parameter 'errMsg'.",
+                    "Use: ohos-timer --duration <sec> [--errMsg <message>] [--showProgress] [--verbose]");
+                return 1;
+            }
+            ++i;
+            config.errMsg = argv[i];
+            ++i;
+            continue;
+        }
         if (arg == "--showProgress") {
             config.showProgress = true;
             ++i;
@@ -155,7 +168,7 @@ int ParseArguments(int argc, char* argv[], TimerConfig& config)
         }
 
         EmitError("ERR_UNKNOWN_PARAM", "Unknown parameter '" + arg + "'.",
-            "Supported parameters are: --duration, --interval, --showProgress, --verbose");
+            "Supported parameters are: --duration, --interval, --errMsg, --showProgress, --verbose");
         return 1;
     }
     return 0;
@@ -182,6 +195,9 @@ int ExecuteTimer(const TimerConfig& config)
 
     if (config.showProgress) {
         EmitProgress(PROGRESS_MAX, "completed");
+    }
+    if (!config.errMsg.empty()) {
+        std::cerr << config.errMsg << std::endl;
     }
     EmitSuccessResult("{\"duration\":" + std::to_string(config.duration) +
         ",\"actual_duration\":" + std::to_string(elapsed) + "}");
