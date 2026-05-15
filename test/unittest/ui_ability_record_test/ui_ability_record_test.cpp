@@ -404,5 +404,84 @@ HWTEST_F(UIAbilityRecordTest, CreateAbilityRecord_ForegroundPhase_0100, TestSize
     EXPECT_EQ(abilityRecord->GetNativeState(), AbilityNativeState::NORMAL);
 }
 
+/**
+ * @tc.name: UpdateWantByLastWant_0100
+ * @tc.desc: ShouldUpdateWant is false, should return false directly.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityRecordTest, UpdateWantByLastWant_0100, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+
+    abilityRecord->SetShouldUpdateWant(false);
+    EXPECT_FALSE(abilityRecord->UpdateWantByLastWant());
+}
+
+/**
+ * @tc.name: UpdateWantByLastWant_0200
+ * @tc.desc: ShouldUpdateWant is true but lastWant is nullptr, should return false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityRecordTest, UpdateWantByLastWant_0200, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+
+    abilityRecord->SetLastWant(nullptr);
+    abilityRecord->SetShouldUpdateWant(true);
+    EXPECT_FALSE(abilityRecord->UpdateWantByLastWant());
+    // ShouldUpdateWant should be reset to false
+    EXPECT_FALSE(abilityRecord->ShouldUpdateWant());
+}
+
+/**
+ * @tc.name: UpdateWantByLastWant_0300
+ * @tc.desc: ShouldUpdateWant is true and lastWant is valid, should update want and return true.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityRecordTest, UpdateWantByLastWant_0300, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    abilityRequest.want.SetElementName("com.test", "MainAbility");
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+
+    auto lastWant = std::make_shared<Want>();
+    lastWant->SetElementName("com.test", "MainAbility");
+    abilityRecord->SetLastWant(lastWant);
+    abilityRecord->SetShouldUpdateWant(true);
+
+    EXPECT_TRUE(abilityRecord->UpdateWantByLastWant());
+
+    // ShouldUpdateWant should be reset to false
+    EXPECT_FALSE(abilityRecord->ShouldUpdateWant());
+    // lastWant should be cleared
+    EXPECT_FALSE(abilityRecord->HasLastWant());
+}
+
+/**
+ * @tc.name: UpdateWantByLastWant_0400
+ * @tc.desc: Call UpdateWantByLastWant twice, second call should return false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityRecordTest, UpdateWantByLastWant_0400, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+
+    auto lastWant = std::make_shared<Want>();
+    lastWant->SetElementName("com.test", "MainAbility");
+    abilityRecord->SetLastWant(lastWant);
+    abilityRecord->SetShouldUpdateWant(true);
+
+    EXPECT_TRUE(abilityRecord->UpdateWantByLastWant());
+    // Second call: ShouldUpdateWant has been reset to false
+    EXPECT_FALSE(abilityRecord->UpdateWantByLastWant());
+}
+
 }  // namespace AAFwk
 }  // namespace OHOS

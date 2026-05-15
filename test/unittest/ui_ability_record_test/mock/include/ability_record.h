@@ -23,6 +23,7 @@
 
 #include "ability_info.h"
 #include "ability_state.h"
+#include "want.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -31,8 +32,6 @@ enum class AbilityRecordType {
     UI_ABILITY,
     MISSION_ABILITY,
 };
-
-class Want {};
 
 struct AbilityRequest {
     int32_t requestCode = 0;
@@ -60,9 +59,17 @@ public:
     {
         pendingState_ = state;
     }
+
     inline AbilityState GetPendingState() const
     {
         return pendingState_;
+    }
+
+    inline void SetGameSAPreLaunch(bool) {}
+    inline void SetIsNewWant(bool) {}
+    inline void SetWant(Want want)
+    {
+        want_ = want;
     }
 protected:
     bool isPrelaunch_ = false;
@@ -73,6 +80,9 @@ protected:
     std::shared_ptr<LifecycleDeal> lifecycleDeal_;
 
     AppExecFwk::AbilityInfo abilityInfo_;
+
+    mutable std::mutex wantLock_;
+    Want want_;
 };
 } // namespace AAFwk
 } // namespace OHOS

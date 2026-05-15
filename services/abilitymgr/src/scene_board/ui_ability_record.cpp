@@ -16,6 +16,8 @@
 #include "ui_ability_record.h"
 
 #include "ability_util.h"
+#include "global_constant.h"
+#include "hilog_tag_wrapper.h"
 #include "native_ability_util.h"
 
 namespace OHOS {
