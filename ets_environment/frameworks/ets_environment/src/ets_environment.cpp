@@ -458,11 +458,16 @@ bool ETSEnvironment::InitAbcLinker(ani_env *env)
     }
 
     ani_status status = ANI_ERROR;
-    if ((status = env->FindClass(CLASSNAME_LINKER, &vmEntry_.abcLinkerClass_)) != ANI_OK) {
+    ani_class abcLinkerClass {};
+    if ((status = env->FindClass(CLASSNAME_LINKER, &abcLinkerClass)) != ANI_OK) {
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "FindClass failed, status: %{public}d", status);
         return false;
     }
-
+    status = env->GlobalReference_Create(abcLinkerClass, reinterpret_cast<ani_ref *>(&vmEntry_.abcLinkerClass_));
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "GlobalReference_Create failed, status: %{public}d", status);
+        return false;
+    }
     ani_ref undefinedRef = nullptr;
     if ((status = env->GetUndefined(&undefinedRef)) != ANI_OK) {
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "GetUndefined failed, status: %{public}d", status);
@@ -600,7 +605,12 @@ bool ETSEnvironment::LoadModule(const std::string &modulePath, const std::string
     }
     ani_ref clsRef = nullptr;
     ani_class clsAni = nullptr;
-    if ((status = env->Object_CallMethod_Ref(abcObj, loadClassMethod, &clsRef, clsStr, false)) != ANI_OK) {
+    ani_object boolObj = nullptr;
+    if ((status = env->Primitive_Box_Boolean(ANI_FALSE, &boolObj)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "Primitive_Box_Boolean failed, status: %{public}d", status);
+        return false;
+    }
+    if ((status = env->Object_CallMethod_Ref(abcObj, loadClassMethod, &clsRef, clsStr, boolObj)) != ANI_OK) {
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "Object_CallMethod_Ref failed, status: %{public}d", status);
         return false;
     }
