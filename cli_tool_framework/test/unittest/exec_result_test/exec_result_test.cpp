@@ -69,11 +69,31 @@ HWTEST_F(ExecResultTest, ExecResult_Unmarshalling_0200, TestSize.Level1)
     Parcel emptyParcel;
     EXPECT_EQ(ExecResult::Unmarshalling(emptyParcel), nullptr);
 
+    Parcel missingOutputParcel;
+    ASSERT_TRUE(missingOutputParcel.WriteInt32(TEST_EXIT_CODE));
+    missingOutputParcel.RewindRead(0);
+    EXPECT_EQ(ExecResult::Unmarshalling(missingOutputParcel), nullptr);
+
     Parcel missingErrorParcel;
     ASSERT_TRUE(missingErrorParcel.WriteInt32(TEST_EXIT_CODE));
     ASSERT_TRUE(missingErrorParcel.WriteString("stdout"));
     missingErrorParcel.RewindRead(0);
     EXPECT_EQ(ExecResult::Unmarshalling(missingErrorParcel), nullptr);
+
+    Parcel missingSignalParcel;
+    ASSERT_TRUE(missingSignalParcel.WriteInt32(TEST_EXIT_CODE));
+    ASSERT_TRUE(missingSignalParcel.WriteString("stdout"));
+    ASSERT_TRUE(missingSignalParcel.WriteString("stderr"));
+    missingSignalParcel.RewindRead(0);
+    EXPECT_EQ(ExecResult::Unmarshalling(missingSignalParcel), nullptr);
+
+    Parcel missingTimedOutParcel;
+    ASSERT_TRUE(missingTimedOutParcel.WriteInt32(TEST_EXIT_CODE));
+    ASSERT_TRUE(missingTimedOutParcel.WriteString("stdout"));
+    ASSERT_TRUE(missingTimedOutParcel.WriteString("stderr"));
+    ASSERT_TRUE(missingTimedOutParcel.WriteInt32(0));
+    missingTimedOutParcel.RewindRead(0);
+    EXPECT_EQ(ExecResult::Unmarshalling(missingTimedOutParcel), nullptr);
 
     Parcel missingExecutionTimeParcel;
     ASSERT_TRUE(missingExecutionTimeParcel.WriteInt32(TEST_EXIT_CODE));

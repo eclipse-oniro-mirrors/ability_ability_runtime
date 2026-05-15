@@ -126,13 +126,13 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_0100, TestSize.Level1)
 }
 
 /**
- * @tc.name: ToolUtil_ValidateInputSchemaProperties_0200
+ * @tc.name: ToolUtil_ValidateInputSchemaProperties_1700
  * @tc.desc: Test ValidateInputSchemaProperties with invalid JSON schema
  * @tc.type: FUNC
  */
-HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_0200, TestSize.Level1)
+HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_1700, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_0200 start";
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_1700 start";
 
     std::string invalidSchema = "{invalid json}";
     std::string subcommand = "";
@@ -142,17 +142,17 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_0200, TestSize.Level1)
 
     EXPECT_EQ(result, ERR_OK);
 
-    GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_0200 end";
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_1700 end";
 }
 
 /**
- * @tc.name: ToolUtil_ValidateInputSchemaProperties_0300
+ * @tc.name: ToolUtil_ValidateInputSchemaProperties_1800
  * @tc.desc: Test ValidateInputSchemaProperties with schema missing properties
  * @tc.type: FUNC
  */
-HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_0300, TestSize.Level1)
+HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_1800, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_0300 start";
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_1800 start";
 
     std::string schema = R"({"type": "object"})";
     std::string subcommand = "";
@@ -162,7 +162,7 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_0300, TestSize.Level1)
 
     EXPECT_EQ(result, ERR_OK);
 
-    GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_0300 end";
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_1800 end";
 }
 
 /**
@@ -1098,6 +1098,29 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_ArrayItems_0200, TestSize.L
 }
 
 /**
+ * @tc.name: ToolUtil_ValidateInputSchemaProperties_ArrayItems_0300
+ * @tc.desc: Test array schema branches with omitted items and item schema without type
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_ArrayItems_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_ArrayItems_0300 start";
+
+    AAFwk::WantParams args;
+    sptr<AAFwk::IArray> array = new (std::nothrow) AAFwk::Array(1, AAFwk::g_IID_IString);
+    ASSERT_NE(array, nullptr);
+    array->Set(0, AAFwk::String::Box("value").GetRefPtr());
+    args.SetParam("values", array);
+
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(
+        R"({"properties":{"values":{"type":"array"}}})", args), ERR_OK);
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(
+        R"({"properties":{"values":{"type":"array","items":{"description":"any"}}}})", args), ERR_OK);
+
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_ArrayItems_0300 end";
+}
+
+/**
  * @tc.name: ToolUtil_ValidateInputSchemaProperties_1100
  * @tc.desc: Test ValidateInputSchemaProperties with non-empty args and empty schema
  * @tc.type: FUNC
@@ -1189,13 +1212,13 @@ HWTEST_F(ToolUtilTest, GenerateCliSessionId_0700, TestSize.Level1)
 }
 
 /**
- * @tc.name: ToolUtil_NormalizeSkillParamKeys_0100
+ * @tc.name: ToolUtil_NormalizeSkillParamKeys_0200
  * @tc.desc: Test NormalizeSkillParamKeys renames dashed args and preserves existing bare keys
  * @tc.type: FUNC
  */
-HWTEST_F(ToolUtilTest, NormalizeSkillParamKeys_0100, TestSize.Level1)
+HWTEST_F(ToolUtilTest, NormalizeSkillParamKeys_0200, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ToolUtil_NormalizeSkillParamKeys_0100 start";
+    GTEST_LOG_(INFO) << "ToolUtil_NormalizeSkillParamKeys_0200 start";
 
     AAFwk::WantParams args;
     args.SetParam("--target", AAFwk::String::Box("device"));
@@ -1215,17 +1238,17 @@ HWTEST_F(ToolUtilTest, NormalizeSkillParamKeys_0100, TestSize.Level1)
     EXPECT_TRUE(args.GetStringParam("--target").empty());
     EXPECT_EQ(args.GetStringParam("--exists"), "prefixed");
 
-    GTEST_LOG_(INFO) << "ToolUtil_NormalizeSkillParamKeys_0100 end";
+    GTEST_LOG_(INFO) << "ToolUtil_NormalizeSkillParamKeys_0200 end";
 }
 
 /**
- * @tc.name: ToolUtil_ExpandArgsFromJson_0100
+ * @tc.name: ToolUtil_ExpandArgsFromJson_0300
  * @tc.desc: Test ExpandArgsFromJson expands supported values and skips reserved/object values
  * @tc.type: FUNC
  */
-HWTEST_F(ToolUtilTest, ExpandArgsFromJson_0100, TestSize.Level1)
+HWTEST_F(ToolUtilTest, ExpandArgsFromJson_0300, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ToolUtil_ExpandArgsFromJson_0100 start";
+    GTEST_LOG_(INFO) << "ToolUtil_ExpandArgsFromJson_0300 start";
 
     AAFwk::WantParams args;
     args.SetParam("args", AAFwk::String::Box("placeholder"));
@@ -1253,7 +1276,7 @@ HWTEST_F(ToolUtilTest, ExpandArgsFromJson_0100, TestSize.Level1)
     EXPECT_TRUE(args.GetStringParam("bundleName").empty());
     EXPECT_TRUE(args.GetStringParam("nested").empty());
 
-    GTEST_LOG_(INFO) << "ToolUtil_ExpandArgsFromJson_0100 end";
+    GTEST_LOG_(INFO) << "ToolUtil_ExpandArgsFromJson_0300 end";
 }
 
 /**
@@ -1296,6 +1319,98 @@ HWTEST_F(ToolUtilTest, ExpandArgsFromWantParams_0100, TestSize.Level1)
     EXPECT_TRUE(args.GetStringParam("bundleName").empty());
 
     GTEST_LOG_(INFO) << "ToolUtil_ExpandArgsFromWantParams_0100 end";
+}
+
+/**
+ * @tc.name: ToolUtil_ExpandArgsFromWantParams_0200
+ * @tc.desc: Test ExpandArgsFromWantParams no-op branches for missing and non-WantParams args
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ExpandArgsFromWantParams_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolUtil_ExpandArgsFromWantParams_0200 start";
+
+    AAFwk::WantParams missingArgs;
+    missingArgs.SetParam("target", AAFwk::String::Box("device"));
+    ToolUtil::ExpandArgsFromWantParams(missingArgs);
+    EXPECT_EQ(missingArgs.GetStringParam("target"), "device");
+
+    AAFwk::WantParams stringArgs;
+    stringArgs.SetParam("args", AAFwk::String::Box("not nested params"));
+    ToolUtil::ExpandArgsFromWantParams(stringArgs);
+    EXPECT_EQ(stringArgs.GetStringParam("args"), "not nested params");
+
+    GTEST_LOG_(INFO) << "ToolUtil_ExpandArgsFromWantParams_0200 end";
+}
+
+/**
+ * @tc.name: ToolUtil_ExpandArgsJsonString_0100
+ * @tc.desc: Test ExpandArgsJsonString falls back to nested WantParams when args string is invalid
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ExpandArgsJsonString_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolUtil_ExpandArgsJsonString_0100 start";
+
+    AAFwk::WantParams invalidStringArgs;
+    invalidStringArgs.SetParam("args", AAFwk::String::Box("{invalid json}"));
+    ToolUtil::ExpandArgsJsonString(invalidStringArgs);
+    EXPECT_EQ(invalidStringArgs.GetStringParam("args"), "{invalid json}");
+
+    AAFwk::WantParams nestedArgs;
+    nestedArgs.SetParam("target", AAFwk::String::Box("fallback-device"));
+    AAFwk::WantParams args;
+    args.SetParam("args", AAFwk::WantParamWrapper::Box(nestedArgs));
+    ToolUtil::ExpandArgsJsonString(args);
+    EXPECT_EQ(args.GetStringParam("target"), "fallback-device");
+
+    GTEST_LOG_(INFO) << "ToolUtil_ExpandArgsJsonString_0100 end";
+}
+
+/**
+ * @tc.name: ToolUtil_TransferToCmdParam_0100
+ * @tc.desc: Test TransferToCmdParam appends supported params and skips false, null and nested array values
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, TransferToCmdParam_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolUtil_TransferToCmdParam_0100 start";
+
+    ToolInfo toolInfo;
+    AAFwk::WantParams emptyArgs;
+    std::string emptyCmd;
+    ToolUtil::TransferToCmdParam(toolInfo, emptyArgs, emptyCmd);
+    EXPECT_TRUE(emptyCmd.empty());
+
+    AAFwk::WantParams args;
+    args.SetParam("target", AAFwk::String::Box("device"));
+    args.SetParam("enabled", AAFwk::Boolean::Box(true));
+    args.SetParam("disabled", AAFwk::Boolean::Box(false));
+    args.SetParam("count", AAFwk::Integer::Box(3));
+    args.SetParam("nullValue", nullptr);
+
+    sptr<AAFwk::IArray> values = new (std::nothrow) AAFwk::Array(3, AAFwk::g_IID_IString);
+    ASSERT_NE(values, nullptr);
+    values->Set(0, AAFwk::String::Box("first").GetRefPtr());
+    values->Set(1, AAFwk::String::Box("").GetRefPtr());
+    sptr<AAFwk::IArray> nested = new (std::nothrow) AAFwk::Array(1, AAFwk::g_IID_IString);
+    ASSERT_NE(nested, nullptr);
+    nested->Set(0, AAFwk::String::Box("nested").GetRefPtr());
+    values->Set(2, nested);
+    args.SetParam("values", values);
+
+    std::string cmdLine;
+    ToolUtil::TransferToCmdParam(toolInfo, args, cmdLine);
+
+    EXPECT_NE(cmdLine.find("--target device"), std::string::npos);
+    EXPECT_NE(cmdLine.find("--enabled"), std::string::npos);
+    EXPECT_NE(cmdLine.find("--count 3"), std::string::npos);
+    EXPECT_NE(cmdLine.find("--values first"), std::string::npos);
+    EXPECT_EQ(cmdLine.find("--disabled"), std::string::npos);
+    EXPECT_EQ(cmdLine.find("nullValue"), std::string::npos);
+    EXPECT_EQ(cmdLine.find("nested"), std::string::npos);
+
+    GTEST_LOG_(INFO) << "ToolUtil_TransferToCmdParam_0100 end";
 }
 
 /**
@@ -1353,6 +1468,150 @@ HWTEST_F(ToolUtilTest, BuildSkillSessionInfo_0100, TestSize.Level1)
     EXPECT_TRUE(failed.result->outputText.empty());
 
     GTEST_LOG_(INFO) << "ToolUtil_BuildSkillSessionInfo_0100 end";
+}
+
+/**
+ * @tc.name: ToolUtil_NormalizeSkillParamKeys_0300
+ * @tc.desc: Test NormalizeSkillParamKeys strips prefixes and does not overwrite existing bare keys
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, NormalizeSkillParamKeys_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolUtil_NormalizeSkillParamKeys_0300 start";
+
+    AAFwk::WantParams args;
+    args.SetParam("--foo", AAFwk::String::Box("double"));
+    args.SetParam("-b", AAFwk::String::Box("single"));
+    args.SetParam("bare", AAFwk::String::Box("existing"));
+    // --bare should not overwrite existing bare key
+    args.SetParam("--bare", AAFwk::String::Box("prefixed"));
+
+    ToolUtil::NormalizeSkillParamKeys(args);
+
+    EXPECT_EQ(args.GetStringParam("foo"), "double");
+    EXPECT_EQ(args.GetStringParam("b"), "single");
+    EXPECT_EQ(args.GetStringParam("bare"), "existing");
+    // Existing bare keys are not overwritten by prefixed aliases.
+    EXPECT_EQ(args.GetParams().count("--bare"), 1u);
+
+    GTEST_LOG_(INFO) << "ToolUtil_NormalizeSkillParamKeys_0300 end";
+}
+
+/**
+ * @tc.name: ToolUtil_ExpandArgsFromJson_0400
+ * @tc.desc: Test ExpandArgsFromJson rejects invalid/non-object, copies valid types, skips reserved
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ExpandArgsFromJson_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolUtil_ExpandArgsFromJson_0400 start";
+
+    AAFwk::WantParams args;
+    EXPECT_FALSE(ToolUtil::ExpandArgsFromJson(args, "{invalid}"));
+    EXPECT_FALSE(ToolUtil::ExpandArgsFromJson(args, "42"));
+    EXPECT_FALSE(ToolUtil::ExpandArgsFromJson(args, ""));
+
+    EXPECT_TRUE(ToolUtil::ExpandArgsFromJson(args, R"({"key":"value","count":5,"flag":true})"));
+    EXPECT_EQ(args.GetStringParam("key"), "value");
+
+    AAFwk::WantParams reservedArgs;
+    EXPECT_TRUE(ToolUtil::ExpandArgsFromJson(reservedArgs,
+        R"({"bundleName":"x","moduleName":"y","myArg":"val"})"));
+    EXPECT_EQ(reservedArgs.GetStringParam("bundleName"), "");
+    EXPECT_EQ(reservedArgs.GetStringParam("myArg"), "val");
+
+    GTEST_LOG_(INFO) << "ToolUtil_ExpandArgsFromJson_0400 end";
+}
+
+/**
+ * @tc.name: ToolUtil_ValidateInputSchemaProperties_1500
+ * @tc.desc: Test ValidateInputSchemaProperties with invalid schema, missing properties, help, unknown key
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_1500, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_1500 start";
+
+    AAFwk::WantParams args;
+    args.SetParam("key", AAFwk::String::Box("val"));
+
+    // non-empty args with empty schema
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties("", args), ERR_INVALID_PARAM);
+
+    // invalid JSON schema
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties("{bad}", args), ERR_NO_INIT);
+
+    // schema missing properties
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(R"({"type":"object"})", args), ERR_INVALID_PARAM);
+
+    // help alone -> OK
+    AAFwk::WantParams helpArgs;
+    helpArgs.SetParam("help", AAFwk::String::Box(""));
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(
+        R"({"properties":{}})", helpArgs), ERR_OK);
+
+    // help plus another arg -> error
+    AAFwk::WantParams helpPlusArgs;
+    helpPlusArgs.SetParam("help", AAFwk::String::Box(""));
+    helpPlusArgs.SetParam("extra", AAFwk::String::Box("val"));
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(
+        R"({"properties":{}})", helpPlusArgs), ERR_INVALID_PARAM);
+
+    // arg key not in schema properties
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(
+        R"({"properties":{"other":{"type":"string"}}})", args), ERR_INVALID_PARAM);
+
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_1500 end";
+}
+
+/**
+ * @tc.name: ToolUtil_ValidateInputSchemaProperties_1600
+ * @tc.desc: Test type validation: matching types and mismatched types
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_1600, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_1600 start";
+
+    const std::string schema = R"({
+        "properties": {
+            "str": {"type": "string"},
+            "bool": {"type": "boolean"},
+            "int": {"type": "integer"},
+            "num": {"type": "number"},
+            "arr": {"type": "array"},
+            "unknown_type": {"type": "custom"}
+        }
+    })";
+
+    // matching types
+    AAFwk::WantParams validArgs;
+    validArgs.SetParam("str", AAFwk::String::Box("hello"));
+    validArgs.SetParam("bool", AAFwk::Boolean::Box(true));
+    validArgs.SetParam("int", AAFwk::Integer::Box(42));
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(schema, validArgs), ERR_OK);
+
+    // type mismatch: bool where string expected
+    AAFwk::WantParams mismatchArgs;
+    mismatchArgs.SetParam("str", AAFwk::Boolean::Box(true));
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(schema, mismatchArgs), ERR_INVALID_PARAM);
+
+    // type mismatch: string where bool expected
+    AAFwk::WantParams mismatchArgs2;
+    mismatchArgs2.SetParam("bool", AAFwk::String::Box("not_bool"));
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(schema, mismatchArgs2), ERR_INVALID_PARAM);
+
+    // type mismatch: string where int expected
+    AAFwk::WantParams mismatchArgs3;
+    mismatchArgs3.SetParam("int", AAFwk::String::Box("not_int"));
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(schema, mismatchArgs3), ERR_INVALID_PARAM);
+
+    // unknown type returns true (accepted)
+    AAFwk::WantParams unknownArgs;
+    unknownArgs.SetParam("unknown_type", AAFwk::String::Box("anything"));
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(schema, unknownArgs), ERR_OK);
+
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_1600 end";
 }
 
 } // namespace CliTool

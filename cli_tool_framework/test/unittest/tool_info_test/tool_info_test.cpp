@@ -255,6 +255,43 @@ HWTEST_F(ToolInfoTest, ToolInfo_Unmarshalling_0400, TestSize.Level1)
     GTEST_LOG_(INFO) << "ToolInfo_Unmarshalling_0400 end";
 }
 
+/**
+ * @tc.name: ToolInfo_Unmarshalling_0500
+ * @tc.desc: Test ToolInfo Unmarshalling fails when serialized subcommand JSON is invalid
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_Unmarshalling_0500, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_Unmarshalling_0500 start";
+
+    nlohmann::json invalidSubcommands = {
+        {"bad", {
+            {"description", ""},
+            {"requirePermissions", nlohmann::json::array()},
+            {"inputSchema", nlohmann::json::object()},
+            {"outputSchema", nlohmann::json::object()}
+        }}
+    };
+
+    Parcel parcel;
+    ASSERT_TRUE(parcel.WriteString("tool"));
+    ASSERT_TRUE(parcel.WriteString("1.0.0"));
+    ASSERT_TRUE(parcel.WriteString("description"));
+    ASSERT_TRUE(parcel.WriteString("/bin/tool"));
+    ASSERT_TRUE(parcel.WriteStringVector({}));
+    ASSERT_TRUE(parcel.WriteString("{}"));
+    ASSERT_TRUE(parcel.WriteString("{}"));
+    ASSERT_TRUE(parcel.WriteString(""));
+    ASSERT_TRUE(parcel.WriteStringVector({}));
+    ASSERT_TRUE(parcel.WriteBool(true));
+    ASSERT_TRUE(parcel.WriteString(invalidSubcommands.dump()));
+    parcel.RewindRead(0);
+
+    EXPECT_EQ(ToolInfo::Unmarshalling(parcel), nullptr);
+
+    GTEST_LOG_(INFO) << "ToolInfo_Unmarshalling_0500 end";
+}
+
 // ==================== ToolsRawData Tests ====================
 
 /**
@@ -480,6 +517,52 @@ HWTEST_F(ToolInfoTest, ToolsRawData_RawDataCpy_0400, TestSize.Level1)
     GTEST_LOG_(INFO) << "ToolsRawData_RawDataCpy_0400 end";
 }
 
+/**
+ * @tc.name: ToolsRawData_ToToolInfoVec_0300
+ * @tc.desc: Test ToolsRawData ToToolInfoVec rejects oversized count, oversized item, and malformed JSON
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolsRawData_ToToolInfoVec_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolsRawData_ToToolInfoVec_0300 start";
+
+    auto fillRawData = [](const std::string &data, ToolsRawData &rawData) {
+        rawData.ownedData = data;
+        rawData.data = rawData.ownedData.data();
+        rawData.size = rawData.ownedData.size();
+        rawData.isMalloc = false;
+    };
+
+    uint32_t tooManyTools = 200001;
+    std::string tooManyData(reinterpret_cast<const char*>(&tooManyTools), sizeof(tooManyTools));
+    ToolsRawData tooManyRawData;
+    fillRawData(tooManyData, tooManyRawData);
+    std::vector<ToolInfo> parsedTools;
+    EXPECT_NE(ToolsRawData::ToToolInfoVec(tooManyRawData, parsedTools), ERR_OK);
+
+    uint32_t count = 1;
+    uint32_t oversizedTool = 64;
+    std::string oversizedData(reinterpret_cast<const char*>(&count), sizeof(count));
+    oversizedData.append(reinterpret_cast<const char*>(&oversizedTool), sizeof(oversizedTool));
+    oversizedData.append("{}");
+    ToolsRawData oversizedRawData;
+    fillRawData(oversizedData, oversizedRawData);
+    parsedTools.clear();
+    EXPECT_NE(ToolsRawData::ToToolInfoVec(oversizedRawData, parsedTools), ERR_OK);
+
+    std::string invalidJson = "{invalid json}";
+    uint32_t invalidJsonSize = invalidJson.size();
+    std::string invalidJsonData(reinterpret_cast<const char*>(&count), sizeof(count));
+    invalidJsonData.append(reinterpret_cast<const char*>(&invalidJsonSize), sizeof(invalidJsonSize));
+    invalidJsonData.append(invalidJson);
+    ToolsRawData invalidJsonRawData;
+    fillRawData(invalidJsonData, invalidJsonRawData);
+    parsedTools.clear();
+    EXPECT_NE(ToolsRawData::ToToolInfoVec(invalidJsonRawData, parsedTools), ERR_OK);
+
+    GTEST_LOG_(INFO) << "ToolsRawData_ToToolInfoVec_0300 end";
+}
+
 // ==================== ToolInfo ParseToJson Tests ====================
 
 /**
@@ -598,13 +681,13 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_0100, TestSize.Level1)
 }
 
 /**
- * @tc.name: ToolInfo_ParseFromJson_0200
+ * @tc.name: ToolInfo_ParseFromJson_0400
  * @tc.desc: Test ToolInfo ParseFromJson with subcommands
  * @tc.type: FUNC
  */
-HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_0200, TestSize.Level1)
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_0400, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_0200 start";
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_0400 start";
 
     nlohmann::json json = R"({
         "name": "hms-tool_with_sub",
@@ -640,17 +723,17 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_0200, TestSize.Level1)
     EXPECT_EQ(tool.subcommands.size(), 2u);
     EXPECT_EQ(tool.subcommands["build"].description, "Build the project");
 
-    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_0200 end";
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_0400 end";
 }
 
 /**
- * @tc.name: ToolInfo_ParseFromJson_0300
+ * @tc.name: ToolInfo_ParseFromJson_0500
  * @tc.desc: Test ToolInfo ParseFromJson with empty JSON
  * @tc.type: FUNC
  */
-HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_0300, TestSize.Level1)
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_0500, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_0300 start";
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_0500 start";
 
     nlohmann::json json;
 
@@ -660,7 +743,7 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_0300, TestSize.Level1)
     EXPECT_FALSE(result);
     EXPECT_TRUE(tool.name.empty());
 
-    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_0300 end";
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_0500 end";
 }
 
 // ==================== ToolInfo ParseFromJson/ParseToJson Round Trip Tests ====================
@@ -711,13 +794,13 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_ParseToJson_RoundTrip_0100, TestSi
 }
 
 /**
- * @tc.name: ToolInfo_ParseToJson_0400
+ * @tc.name: ToolInfo_ParseToJson_0500
  * @tc.desc: Test ToolInfo ParseToJson with invalid inputSchema JSON string
  * @tc.type: FUNC
  */
-HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_0400, TestSize.Level1)
+HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_0500, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_0400 start";
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_0500 start";
 
     ToolInfo tool;
     tool.name = "invalid_input_schema";
@@ -734,17 +817,17 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_0400, TestSize.Level1)
     EXPECT_TRUE(json.contains("outputSchema"));
     EXPECT_TRUE(json.contains("eventSchemas"));
 
-    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_0400 end";
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_0500 end";
 }
 
 /**
- * @tc.name: ToolInfo_ParseToJson_0500
+ * @tc.name: ToolInfo_ParseToJson_0700
  * @tc.desc: Test ToolInfo ParseToJson with invalid outputSchema JSON string
  * @tc.type: FUNC
  */
-HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_0500, TestSize.Level1)
+HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_0700, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_0500 start";
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_0700 start";
 
     ToolInfo tool;
     tool.name = "invalid_output_schema";
@@ -760,7 +843,7 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_0500, TestSize.Level1)
     EXPECT_TRUE(json.contains("outputSchema"));
     EXPECT_EQ(json["outputSchema"], "{broken json}");
 
-    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_0500 end";
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_0700 end";
 }
 
 /**
@@ -791,11 +874,11 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_0600, TestSize.Level1)
 }
 
 /**
- * @tc.name: ToolInfo_ParseToJson_0700
+ * @tc.name: ToolInfo_ParseToJson_0900
  * @tc.desc: Test ToolInfo ParseToJson with complex valid schemas
  * @tc.type: FUNC
  */
-HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_0700, TestSize.Level1)
+HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_0900, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_0700 start";
 
@@ -852,15 +935,15 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_0700, TestSize.Level1)
     EXPECT_TRUE(json["eventSchemas"].contains("stdout"));
     EXPECT_TRUE(json["eventSchemas"].contains("progress"));
 
-    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_0700 end";
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_0900 end";
 }
 
 /**
- * @tc.name: ToolInfo_ParseToJson_0800
+ * @tc.name: ToolInfo_ParseToJson_1000
  * @tc.desc: Test ToolInfo ParseToJson with all invalid schemas
  * @tc.type: FUNC
  */
-HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_0800, TestSize.Level1)
+HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_1000, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_0800 start";
 
@@ -881,17 +964,17 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_0800, TestSize.Level1)
     EXPECT_TRUE(json.contains("eventSchemas"));
     EXPECT_EQ(json["eventSchemas"], "invalid events");
 
-    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_0800 end";
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_1000 end";
 }
 
 /**
- * @tc.name: ToolInfo_ParseToJson_0900
+ * @tc.name: ToolInfo_ParseToJson_1100
  * @tc.desc: Test ToolInfo ParseToJson with empty inputSchema
  * @tc.type: FUNC
  */
-HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_0900, TestSize.Level1)
+HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_1100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_0900 start";
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_1100 start";
 
     ToolInfo tool;
     tool.name = "empty_input_schema";
@@ -906,17 +989,17 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_0900, TestSize.Level1)
     EXPECT_FALSE(json.contains("inputSchema"));
     EXPECT_TRUE(json.contains("outputSchema"));
 
-    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_0900 end";
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_1100 end";
 }
 
 /**
- * @tc.name: ToolInfo_ParseToJson_1000
+ * @tc.name: ToolInfo_ParseToJson_1200
  * @tc.desc: Test ToolInfo ParseToJson with empty outputSchema
  * @tc.type: FUNC
  */
-HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_1000, TestSize.Level1)
+HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_1200, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_1000 start";
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_1200 start";
 
     ToolInfo tool;
     tool.name = "empty_output_schema";
@@ -931,17 +1014,17 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_1000, TestSize.Level1)
     EXPECT_TRUE(json.contains("inputSchema"));
     EXPECT_FALSE(json.contains("outputSchema"));
 
-    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_1000 end";
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_1200 end";
 }
 
 /**
- * @tc.name: ToolInfo_ParseToJson_1100
+ * @tc.name: ToolInfo_ParseToJson_1300
  * @tc.desc: Test ToolInfo ParseToJson with empty eventSchemas
  * @tc.type: FUNC
  */
-HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_1100, TestSize.Level1)
+HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_1300, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_1100 start";
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_1300 start";
 
     ToolInfo tool;
     tool.name = "empty_event_schemas";
@@ -957,17 +1040,17 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_1100, TestSize.Level1)
     EXPECT_TRUE(json.contains("outputSchema"));
     EXPECT_FALSE(json.contains("eventSchemas"));
 
-    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_1100 end";
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_1300 end";
 }
 
 /**
- * @tc.name: ToolInfo_ParseToJson_1200
+ * @tc.name: ToolInfo_ParseToJson_1400
  * @tc.desc: Test ToolInfo ParseToJson with subcommands containing schemas
  * @tc.type: FUNC
  */
-HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_1200, TestSize.Level1)
+HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_1400, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_1200 start";
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_1400 start";
 
     ToolInfo tool;
     tool.name = "tool_with_subcmd_schemas";
@@ -1006,17 +1089,17 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_1200, TestSize.Level1)
     EXPECT_TRUE(json["subcommands"]["invalid"].contains("eventSchemas"));
     EXPECT_EQ(json["subcommands"]["invalid"]["eventSchemas"], "invalid too");
 
-    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_1200 end";
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_1400 end";
 }
 
 /**
- * @tc.name: ToolInfo_ParseToJson_1300
+ * @tc.name: ToolInfo_ParseToJson_1500
  * @tc.desc: Test ToolInfo ParseToJson with primitive type schemas
  * @tc.type: FUNC
  */
-HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_1300, TestSize.Level1)
+HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_1500, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_1300 start";
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_1500 start";
 
     ToolInfo tool;
     tool.name = "primitive_schemas";
@@ -1038,19 +1121,19 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_1300, TestSize.Level1)
     EXPECT_TRUE(json.contains("eventSchemas"));
     EXPECT_EQ(json["eventSchemas"]["status"]["type"], "boolean");
 
-    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_1300 end";
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_1500 end";
 }
 
 // ==================== ValidateName Tests ====================
 
 /**
- * @tc.name: ToolInfo_ValidateName_0100
+ * @tc.name: ToolInfo_ValidateName_0800
  * @tc.desc: Test ToolInfo ValidateName with valid ohos- prefix
  * @tc.type: FUNC
  */
-HWTEST_F(ToolInfoTest, ToolInfo_ValidateName_0100, TestSize.Level1)
+HWTEST_F(ToolInfoTest, ToolInfo_ValidateName_0800, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ToolInfo_ValidateName_0100 start";
+    GTEST_LOG_(INFO) << "ToolInfo_ValidateName_0800 start";
 
     EXPECT_TRUE(ToolInfo::ValidateName("ohos-ls"));
     EXPECT_TRUE(ToolInfo::ValidateName("ohos-test"));
@@ -1058,7 +1141,7 @@ HWTEST_F(ToolInfoTest, ToolInfo_ValidateName_0100, TestSize.Level1)
     EXPECT_TRUE(ToolInfo::ValidateName("ohos-1234567890123456"));  // 16 chars suffix
     EXPECT_TRUE(ToolInfo::ValidateName("ohos-12345678901234567890123456789012"));  // 32 chars suffix
 
-    GTEST_LOG_(INFO) << "ToolInfo_ValidateName_0100 end";
+    GTEST_LOG_(INFO) << "ToolInfo_ValidateName_0800 end";
 }
 
 /**
@@ -1159,13 +1242,13 @@ HWTEST_F(ToolInfoTest, ToolInfo_ValidateName_0600, TestSize.Level1)
 // ==================== ValidateExecutablePath Tests ====================
 
 /**
- * @tc.name: ToolInfo_ValidateExecutablePath_0100
+ * @tc.name: ToolInfo_ValidateExecutablePath_0300
  * @tc.desc: Test ToolInfo ValidateExecutablePath with valid absolute paths
  * @tc.type: FUNC
  */
-HWTEST_F(ToolInfoTest, ToolInfo_ValidateExecutablePath_0100, TestSize.Level1)
+HWTEST_F(ToolInfoTest, ToolInfo_ValidateExecutablePath_0300, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ToolInfo_ValidateExecutablePath_0100 start";
+    GTEST_LOG_(INFO) << "ToolInfo_ValidateExecutablePath_0300 start";
 
     EXPECT_TRUE(ToolInfo::ValidateExecutablePath("/bin/ls"));
     EXPECT_TRUE(ToolInfo::ValidateExecutablePath("/usr/bin/test"));
@@ -1173,7 +1256,7 @@ HWTEST_F(ToolInfoTest, ToolInfo_ValidateExecutablePath_0100, TestSize.Level1)
     EXPECT_TRUE(ToolInfo::ValidateExecutablePath("/"));
     EXPECT_TRUE(ToolInfo::ValidateExecutablePath("/a"));
 
-    GTEST_LOG_(INFO) << "ToolInfo_ValidateExecutablePath_0100 end";
+    GTEST_LOG_(INFO) << "ToolInfo_ValidateExecutablePath_0300 end";
 }
 
 /**
@@ -1197,18 +1280,18 @@ HWTEST_F(ToolInfoTest, ToolInfo_ValidateExecutablePath_0200, TestSize.Level1)
 // ==================== ValidateRequirePermissions Tests ====================
 
 /**
- * @tc.name: ToolInfo_ValidateRequirePermissions_0100
+ * @tc.name: ToolInfo_ValidateRequirePermissions_0700
  * @tc.desc: Test ToolInfo ValidateRequirePermissions with empty permissions
  * @tc.type: FUNC
  */
-HWTEST_F(ToolInfoTest, ToolInfo_ValidateRequirePermissions_0100, TestSize.Level1)
+HWTEST_F(ToolInfoTest, ToolInfo_ValidateRequirePermissions_0700, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ToolInfo_ValidateRequirePermissions_0100 start";
+    GTEST_LOG_(INFO) << "ToolInfo_ValidateRequirePermissions_0700 start";
 
     std::vector<std::string> permissions;
     EXPECT_TRUE(ToolInfo::ValidateRequirePermissions(permissions));
 
-    GTEST_LOG_(INFO) << "ToolInfo_ValidateRequirePermissions_0100 end";
+    GTEST_LOG_(INFO) << "ToolInfo_ValidateRequirePermissions_0700 end";
 }
 
 /**
@@ -1300,18 +1383,18 @@ HWTEST_F(ToolInfoTest, ToolInfo_ValidateRequirePermissions_0600, TestSize.Level1
 // ==================== ValidateEventTypes Tests ====================
 
 /**
- * @tc.name: ToolInfo_ValidateEventTypes_0100
+ * @tc.name: ToolInfo_ValidateEventTypes_0600
  * @tc.desc: Test ToolInfo ValidateEventTypes with empty eventTypes
  * @tc.type: FUNC
  */
-HWTEST_F(ToolInfoTest, ToolInfo_ValidateEventTypes_0100, TestSize.Level1)
+HWTEST_F(ToolInfoTest, ToolInfo_ValidateEventTypes_0600, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ToolInfo_ValidateEventTypes_0100 start";
+    GTEST_LOG_(INFO) << "ToolInfo_ValidateEventTypes_0600 start";
 
     std::vector<std::string> eventTypes;
     EXPECT_TRUE(ToolInfo::ValidateEventTypes(eventTypes));
 
-    GTEST_LOG_(INFO) << "ToolInfo_ValidateEventTypes_0100 end";
+    GTEST_LOG_(INFO) << "ToolInfo_ValidateEventTypes_0600 end";
 }
 
 /**
@@ -3045,6 +3128,320 @@ HWTEST_F(ToolInfoTest, ToolInfo_Validate_2400, TestSize.Level1)
     EXPECT_TRUE(ToolInfo::Validate(tool));
 
     GTEST_LOG_(INFO) << "ToolInfo_Validate_2400 end";
+}
+
+// ==================== ParseFromJson Missing Field Tests ====================
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_0600
+ * @tc.desc: Test ParseFromJson fails for each missing/wrong required field
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_0600, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_0600 start";
+
+    auto validJson = R"({
+        "name": "ohos-test",
+        "version": "1.0.0",
+        "description": "test tool",
+        "executablePath": "/bin/test",
+        "requirePermissions": ["ohos.permission.INTERNET"],
+        "inputSchema": {"type": "object"},
+        "outputSchema": {"type": "object"}
+    })"_json;
+
+    // missing name
+    auto missingName = validJson;
+    missingName.erase("name");
+    ToolInfo tool;
+    EXPECT_FALSE(ToolInfo::ParseFromJson(missingName, tool));
+
+    // wrong type name
+    auto wrongName = validJson;
+    wrongName["name"] = 42;
+    EXPECT_FALSE(ToolInfo::ParseFromJson(wrongName, tool));
+
+    // invalid name (bad prefix)
+    auto badName = validJson;
+    badName["name"] = "no-prefix";
+    EXPECT_FALSE(ToolInfo::ParseFromJson(badName, tool));
+
+    // missing version
+    auto missingVersion = validJson;
+    missingVersion.erase("version");
+    EXPECT_FALSE(ToolInfo::ParseFromJson(missingVersion, tool));
+
+    // empty version
+    auto emptyVersion = validJson;
+    emptyVersion["version"] = "";
+    EXPECT_FALSE(ToolInfo::ParseFromJson(emptyVersion, tool));
+
+    // missing description
+    auto missingDesc = validJson;
+    missingDesc.erase("description");
+    EXPECT_FALSE(ToolInfo::ParseFromJson(missingDesc, tool));
+
+    // empty description
+    auto emptyDesc = validJson;
+    emptyDesc["description"] = "";
+    EXPECT_FALSE(ToolInfo::ParseFromJson(emptyDesc, tool));
+
+    // missing executablePath
+    auto missingPath = validJson;
+    missingPath.erase("executablePath");
+    EXPECT_FALSE(ToolInfo::ParseFromJson(missingPath, tool));
+
+    // relative path
+    auto relPath = validJson;
+    relPath["executablePath"] = "relative/path";
+    EXPECT_FALSE(ToolInfo::ParseFromJson(relPath, tool));
+
+    // missing requirePermissions
+    auto missingPerms = validJson;
+    missingPerms.erase("requirePermissions");
+    EXPECT_FALSE(ToolInfo::ParseFromJson(missingPerms, tool));
+
+    // non-array requirePermissions
+    auto wrongPerms = validJson;
+    wrongPerms["requirePermissions"] = "not-array";
+    EXPECT_FALSE(ToolInfo::ParseFromJson(wrongPerms, tool));
+
+    // non-string permission item
+    auto badPermItem = validJson;
+    badPermItem["requirePermissions"] = {42};
+    EXPECT_FALSE(ToolInfo::ParseFromJson(badPermItem, tool));
+
+    // empty permission entries skipped
+    auto emptyPermEntry = validJson;
+    emptyPermEntry["requirePermissions"] = {"", "ohos.permission.INTERNET"};
+    EXPECT_TRUE(ToolInfo::ParseFromJson(emptyPermEntry, tool));
+    EXPECT_EQ(tool.requirePermissions.size(), 1u);
+
+    // missing inputSchema
+    auto missingInput = validJson;
+    missingInput.erase("inputSchema");
+    EXPECT_FALSE(ToolInfo::ParseFromJson(missingInput, tool));
+
+    // non-object inputSchema
+    auto wrongInput = validJson;
+    wrongInput["inputSchema"] = "not-object";
+    EXPECT_FALSE(ToolInfo::ParseFromJson(wrongInput, tool));
+
+    // missing outputSchema
+    auto missingOutput = validJson;
+    missingOutput.erase("outputSchema");
+    EXPECT_FALSE(ToolInfo::ParseFromJson(missingOutput, tool));
+
+    // non-object outputSchema
+    auto wrongOutput = validJson;
+    wrongOutput["outputSchema"] = 123;
+    EXPECT_FALSE(ToolInfo::ParseFromJson(wrongOutput, tool));
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_0600 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_0700
+ * @tc.desc: Test ParseFromJson with optional fields and hasSubCommand branches
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_0700, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_0700 start";
+
+    auto validJson = R"({
+        "name": "ohos-test",
+        "version": "1.0.0",
+        "description": "test tool",
+        "executablePath": "/bin/test",
+        "requirePermissions": [],
+        "inputSchema": {"type": "object"},
+        "outputSchema": {"type": "object"}
+    })"_json;
+
+    // non-object eventSchemas
+    auto badEventSchemas = validJson;
+    badEventSchemas["eventSchemas"] = "not-object";
+    ToolInfo tool;
+    EXPECT_FALSE(ToolInfo::ParseFromJson(badEventSchemas, tool));
+
+    // non-array eventTypes
+    auto badEventTypes = validJson;
+    badEventTypes["eventTypes"] = "not-array";
+    EXPECT_FALSE(ToolInfo::ParseFromJson(badEventTypes, tool));
+
+    // non-string event type item
+    auto badEventTypeItem = validJson;
+    badEventTypeItem["eventTypes"] = {42};
+    EXPECT_FALSE(ToolInfo::ParseFromJson(badEventTypeItem, tool));
+
+    // empty event type entries skipped
+    auto emptyEventType = validJson;
+    emptyEventType["eventTypes"] = {"", "exit"};
+    EXPECT_TRUE(ToolInfo::ParseFromJson(emptyEventType, tool));
+    EXPECT_EQ(tool.eventTypes.size(), 1u);
+
+    // hasSubCommand non-bool
+    auto badHasSub = validJson;
+    badHasSub["hasSubCommand"] = "true";
+    EXPECT_FALSE(ToolInfo::ParseFromJson(badHasSub, tool));
+
+    // hasSubCommand true without subcommands
+    auto noSubCmds = validJson;
+    noSubCmds["hasSubCommand"] = true;
+    EXPECT_FALSE(ToolInfo::ParseFromJson(noSubCmds, tool));
+
+    // hasSubCommand true with empty subcommands object
+    auto emptySubCmds = validJson;
+    emptySubCmds["hasSubCommand"] = true;
+    emptySubCmds["subcommands"] = nlohmann::json::object();
+    EXPECT_FALSE(ToolInfo::ParseFromJson(emptySubCmds, tool));
+
+    // hasSubCommand true with invalid subcommand body
+    auto invalidSubCmdBody = validJson;
+    invalidSubCmdBody["hasSubCommand"] = true;
+    invalidSubCmdBody["subcommands"] = {{"sub1", {{"description", ""}}}};
+    EXPECT_FALSE(ToolInfo::ParseFromJson(invalidSubCmdBody, tool));
+
+    // hasSubCommand true with valid subcommand
+    auto validSubCmd = validJson;
+    validSubCmd["hasSubCommand"] = true;
+    validSubCmd["subcommands"] = {{"sub1", {
+        {"description", "a sub command"},
+        {"requirePermissions", nlohmann::json::array()},
+        {"inputSchema", {{"type", "object"}}},
+        {"outputSchema", {{"type", "object"}}}
+    }}};
+    EXPECT_TRUE(ToolInfo::ParseFromJson(validSubCmd, tool));
+    EXPECT_EQ(tool.subcommands.size(), 1u);
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_0700 end";
+}
+
+// ==================== ParseToJson Schema String Tests ====================
+
+/**
+ * @tc.name: ToolInfo_ParseToJson_0800
+ * @tc.desc: Test ParseToJson emits invalid schema as string and valid as JSON object
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_0800, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_0800 start";
+
+    ToolInfo tool;
+    tool.name = "ohos-schema_test";
+    tool.inputSchema = "{not valid json}";
+    tool.outputSchema = R"({"type":"object"})";
+    tool.eventSchemas = "{also bad}";
+
+    nlohmann::json json = tool.ParseToJson();
+    EXPECT_EQ(json["inputSchema"], "{not valid json}");
+    EXPECT_TRUE(json["outputSchema"].is_object());
+    EXPECT_EQ(json["eventSchemas"], "{also bad}");
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_0800 end";
+}
+
+// ==================== Validate Failure Branch Tests ====================
+
+/**
+ * @tc.name: ToolInfo_Validate_2500
+ * @tc.desc: Test Validate rejects invalid name, empty version/description, bad path, bad schema
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_Validate_2500, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_Validate_2500 start";
+
+    auto valid = []() {
+        ToolInfo tool;
+        tool.name = "ohos-valid";
+        tool.version = "1.0";
+        tool.description = "desc";
+        tool.executablePath = "/bin/v";
+        tool.inputSchema = R"({"type":"object"})";
+        tool.outputSchema = R"({"type":"object"})";
+        tool.hasSubCommand = false;
+        return tool;
+    };
+
+    auto badName = valid();
+    badName.name = "no-prefix";
+    EXPECT_FALSE(ToolInfo::Validate(badName));
+
+    auto emptyVersion = valid();
+    emptyVersion.version = "";
+    EXPECT_FALSE(ToolInfo::Validate(emptyVersion));
+
+    auto emptyDesc = valid();
+    emptyDesc.description = "";
+    EXPECT_FALSE(ToolInfo::Validate(emptyDesc));
+
+    auto badPath = valid();
+    badPath.executablePath = "relative";
+    EXPECT_FALSE(ToolInfo::Validate(badPath));
+
+    auto emptyInput = valid();
+    emptyInput.inputSchema = "";
+    EXPECT_FALSE(ToolInfo::Validate(emptyInput));
+
+    auto badInput = valid();
+    badInput.inputSchema = "{invalid}";
+    EXPECT_FALSE(ToolInfo::Validate(badInput));
+
+    auto emptyOutput = valid();
+    emptyOutput.outputSchema = "";
+    EXPECT_FALSE(ToolInfo::Validate(emptyOutput));
+
+    auto badOutput = valid();
+    badOutput.outputSchema = "{invalid}";
+    EXPECT_FALSE(ToolInfo::Validate(badOutput));
+
+    auto badEventSchemas = valid();
+    badEventSchemas.eventSchemas = "{invalid}";
+    EXPECT_FALSE(ToolInfo::Validate(badEventSchemas));
+
+    auto hasSubNoCmds = valid();
+    hasSubNoCmds.hasSubCommand = true;
+    EXPECT_FALSE(ToolInfo::Validate(hasSubNoCmds));
+
+    EXPECT_TRUE(ToolInfo::Validate(valid()));
+
+    GTEST_LOG_(INFO) << "ToolInfo_Validate_2500 end";
+}
+
+// ==================== ToolsRawData Round Trip ====================
+
+/**
+ * @tc.name: ToolsRawData_RoundTrip_0100
+ * @tc.desc: Test valid round trip through FromToolInfoVec and ToToolInfoVec
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolsRawData_RoundTrip_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolsRawData_RoundTrip_0100 start";
+
+    ToolInfo tool;
+    tool.name = "ohos-roundtrip";
+    tool.version = "1.0.0";
+    tool.description = "round trip test";
+    tool.executablePath = "/bin/roundtrip";
+    tool.inputSchema = R"({"type":"object"})";
+    tool.outputSchema = R"({"type":"object"})";
+    tool.hasSubCommand = false;
+
+    std::vector<ToolInfo> original = {tool};
+    ToolsRawData rawData;
+    ToolsRawData::FromToolInfoVec(original, rawData);
+
+    std::vector<ToolInfo> parsed;
+    EXPECT_EQ(ToolsRawData::ToToolInfoVec(rawData, parsed), ERR_OK);
+    ASSERT_EQ(parsed.size(), 1u);
+    EXPECT_EQ(parsed[0].name, "ohos-roundtrip");
+
+    GTEST_LOG_(INFO) << "ToolsRawData_RoundTrip_0100 end";
 }
 
 } // namespace CliTool
