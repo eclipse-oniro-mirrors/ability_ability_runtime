@@ -60,7 +60,6 @@ constexpr size_t ARGC_TWO = 2;
 constexpr size_t ARGC_THREE = 3;
 constexpr size_t ARGC_FOUR = 4;
 constexpr const char* ON_OFF_TYPE = "applicationState";
-constexpr const char* ON_OFF_TYPE_SYNC = "applicationStateEvent";
 constexpr const char* ON_OFF_TYPE_APP_FOREGROUND_STATE = "appForegroundState";
 constexpr const char* ON_OFF_TYPE_ABILITY_FIRST_FRAME_STATE = "abilityFirstFrameState";
 
@@ -271,9 +270,7 @@ private:
     {
         TAG_LOGD(AAFwkTag::APPMGR, "called");
         std::string type = ParseParamType(env, argc, argv);
-        if (type == ON_OFF_TYPE_SYNC) {
-            return OnOnNew(env, argc, argv);
-        } else if (type == ON_OFF_TYPE_APP_FOREGROUND_STATE) {
+        if (type == ON_OFF_TYPE_APP_FOREGROUND_STATE) {
             return OnOnForeground(env, argc, argv);
         } else if (type == ON_OFF_TYPE_ABILITY_FIRST_FRAME_STATE) {
 #ifdef SUPPORT_SCREEN
@@ -357,51 +354,6 @@ private:
         return CreateJsValue(env, observerId);
     }
 
-    napi_value OnOnNew(napi_env env, size_t argc, napi_value* argv)
-    {
-        TAG_LOGD(AAFwkTag::APPMGR, "called");
-        if (argc < ARGC_TWO) { // support 2 or 3 params, if > 3 params, ignore other params
-            TAG_LOGE(AAFwkTag::APPMGR, "invalid argc");
-            ThrowTooFewParametersError(env);
-            return CreateJsUndefined(env);
-        }
-        if (!AppExecFwk::IsTypeForNapiValue(env, argv[INDEX_ONE], napi_object)) {
-            TAG_LOGE(AAFwkTag::APPMGR, "Invalid param");
-            ThrowInvalidParamError(env, "Parse param observer failed, must be a ApplicationStateObserver.");
-            return CreateJsUndefined(env);
-        }
-        std::vector<std::string> bundleNameList;
-        if (argc > ARGC_TWO) {
-            AppExecFwk::UnwrapArrayStringFromJS(env, argv[INDEX_TWO], bundleNameList);
-        }
-        if (observerSync_ == nullptr) {
-            observerSync_ = new JSAppStateObserver(env);
-        }
-        if (appManager_ == nullptr || observerSync_ == nullptr) {
-            TAG_LOGE(AAFwkTag::APPMGR, "null appMgr or observer");
-            ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
-            return CreateJsUndefined(env);
-        }
-        if (observerSync_->GetJsObserverMapSize() == 0) {
-            int32_t ret = appManager_->RegisterApplicationStateObserver(observerSync_, bundleNameList);
-            if (ret == 0) {
-                TAG_LOGD(AAFwkTag::APPMGR, "success");
-            } else {
-                TAG_LOGE(AAFwkTag::APPMGR, "err:%{public}d", ret);
-                ThrowErrorByNativeErr(env, ret);
-                return CreateJsUndefined(env);
-            }
-        }
-        int32_t observerId = serialNumber_;
-        observerSync_->AddJsObserverObject(observerId, argv[INDEX_ONE]);
-        if (serialNumber_ < INT32_MAX) {
-            serialNumber_++;
-        } else {
-            serialNumber_ = 0;
-        }
-        return CreateJsValue(env, observerId);
-    }
-
     napi_value OnOnForeground(napi_env env, size_t argc, napi_value *argv)
     {
         TAG_LOGD(AAFwkTag::APPMGR, "called");
@@ -441,9 +393,7 @@ private:
     {
         TAG_LOGD(AAFwkTag::APPMGR, "called");
         std::string type = ParseParamType(env, argc, argv);
-        if (type == ON_OFF_TYPE_SYNC) {
-            return OnOffNew(env, argc, argv);
-        } else if (type == ON_OFF_TYPE_APP_FOREGROUND_STATE) {
+        if (type == ON_OFF_TYPE_APP_FOREGROUND_STATE) {
             return OnOffForeground(env, argc, argv);
         } else if (type == ON_OFF_TYPE_ABILITY_FIRST_FRAME_STATE) {
 #ifdef SUPPORT_SCREEN
@@ -607,44 +557,6 @@ private:
             napiAsyncTask.release();
         }
         return result;
-    }
-
-    napi_value OnOffNew(napi_env env, size_t argc, napi_value* argv)
-    {
-        TAG_LOGD(AAFwkTag::APPMGR, "called");
-        if (argc < ARGC_TWO) {
-            TAG_LOGE(AAFwkTag::APPMGR, "invalid argc");
-            ThrowTooFewParametersError(env);
-            return CreateJsUndefined(env);
-        }
-        int32_t observerId = -1;
-        if (!ConvertFromJsValue(env, argv[INDEX_ONE], observerId)) {
-            TAG_LOGE(AAFwkTag::APPMGR, "Parse observerId failed");
-            ThrowInvalidParamError(env, "Parse param observerId failed, must be a number.");
-            return CreateJsUndefined(env);
-        }
-
-        if (observerSync_ == nullptr || appManager_ == nullptr) {
-            TAG_LOGE(AAFwkTag::APPMGR, "null observer or appMgr");
-            ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
-            return CreateJsUndefined(env);
-        }
-        if (!observerSync_->FindObserverByObserverId(observerId)) {
-            TAG_LOGE(AAFwkTag::APPMGR, "not find observer:%{public}d", static_cast<int32_t>(observerId));
-            ThrowInvalidParamError(env, "not find observerId.");
-            return CreateJsUndefined(env);
-        }
-        observerSync_->RemoveJsObserverObject(observerId);
-        if (observerSync_->GetJsObserverMapSize() == 0) {
-            int32_t ret = appManager_->UnregisterApplicationStateObserver(observerSync_);
-            if (ret != 0) {
-                TAG_LOGE(AAFwkTag::APPMGR, "err:%{public}d", ret);
-                ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
-                return CreateJsUndefined(env);
-            }
-        }
-        TAG_LOGI(AAFwkTag::APPMGR, "unregister success size:%{public}zu", observerSync_->GetJsObserverMapSize());
-        return CreateJsUndefined(env);
     }
 
     napi_value OnOffForeground(napi_env env, size_t argc, napi_value *argv)
