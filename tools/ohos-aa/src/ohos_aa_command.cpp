@@ -664,17 +664,6 @@ ErrCode ClawAaShellCommand::MakeWantFromCmd(Want& want, int32_t& userId)
                     result = OHOS::ERR_INVALID_VALUE;
                     break;
                 }
-                case OPTION_DEVICE_ID: {
-                    // 'aa start -d' with no argument
-                    // 'aa stop-service -d' with no argument
-                    TAG_LOGI(AAFwkTag::AA_TOOL, "'ohos-aa %{public}s --deviceId' no arg", cmd_.c_str());
-
-                    resultReceiver_.append("error: option ");
-                    resultReceiver_.append("requires a value.\n");
-
-                    result = OHOS::ERR_INVALID_VALUE;
-                    break;
-                }
                 case OPTION_ABILITY_NAME: {
                     // 'aa start -a' with no argument
                     // 'aa stop-service -a' with no argument
@@ -838,16 +827,6 @@ ErrCode ClawAaShellCommand::MakeWantFromCmd(Want& want, int32_t& userId)
                 // 'aa stop-service -h'
                 // 'aa stop-service --help'
                 result = START_HELP_CODE;
-                break;
-            }
-            case OPTION_DEVICE_ID: {
-                // 'aa start -d xxx'
-                // 'aa stop-service -d xxx'
-
-                // save device ID
-                if (optarg != nullptr) {
-                    deviceId = optarg;
-                }
                 break;
             }
             case OPTION_ABILITY_NAME: {

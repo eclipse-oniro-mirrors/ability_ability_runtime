@@ -364,7 +364,7 @@ HWTEST_F(ModularObjectExtensionTest,
 }
 
 HWTEST_F(ModularObjectExtensionTest,
-    GetAbilityHandler_ShouldUseDefaultTypeKeyWhenNoMetadata, TestSize.Level1)
+    GetAbilityHandler_ShouldUseDefaultBundleKeyWhenNoMetadata, TestSize.Level1)
 {
     auto ext = std::make_shared<ModularObjectExtension>();
     auto abilityInfo = std::make_shared<AbilityInfo>();
@@ -372,7 +372,7 @@ HWTEST_F(ModularObjectExtensionTest,
     abilityInfo->name = "TestExt";
     auto handler = ext->GetAbilityHandler(abilityInfo);
     ASSERT_NE(handler, nullptr);
-    EXPECT_EQ(ext->threadKey_, "com.test_TestExt");
+    EXPECT_EQ(ext->threadKey_, "com.test");
     ModularObjectWorkerManager::GetInstance().ReleaseWorkerThread(ext->threadKey_);
 }
 
@@ -428,7 +428,7 @@ HWTEST_F(ModularObjectExtensionTest,
 }
 
 HWTEST_F(ModularObjectExtensionTest,
-    GetAbilityHandler_ShouldUseDefaultTypeKeyWhenMetadataIsNotThreadMode, TestSize.Level1)
+    GetAbilityHandler_ShouldUseDefaultBundleKeyWhenMetadataIsNotThreadMode, TestSize.Level1)
 {
     auto ext = std::make_shared<ModularObjectExtension>();
     auto abilityInfo = std::make_shared<AbilityInfo>();
@@ -440,7 +440,7 @@ HWTEST_F(ModularObjectExtensionTest,
     abilityInfo->metadata.push_back(meta);
     auto handler = ext->GetAbilityHandler(abilityInfo);
     ASSERT_NE(handler, nullptr);
-    EXPECT_EQ(ext->threadKey_, "com.test_TestExt");
+    EXPECT_EQ(ext->threadKey_, "com.test");
     ModularObjectWorkerManager::GetInstance().ReleaseWorkerThread(ext->threadKey_);
 }
 
@@ -562,7 +562,7 @@ HWTEST_F(ModularObjectExtensionTest,
     abilityInfo->name = "TestExt";
     auto result = ext->GetAbilityHandler(abilityInfo);
     ASSERT_NE(result, nullptr);
-    EXPECT_EQ(ext->threadKey_, "com.test.lifecycle_TestExt");
+    EXPECT_EQ(ext->threadKey_, "com.test.lifecycle");
 
     ext->OnStop();
     EXPECT_TRUE(ext->threadKey_.empty());

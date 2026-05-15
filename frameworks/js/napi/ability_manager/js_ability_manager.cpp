@@ -994,11 +994,12 @@ private:
             loadedCallback_.clear();
             return CreateJsUndefined(env);
         }
-        auto it = std::find_if(loadedCallback_.begin(), loadedCallback_.end(), [&](const auto &cb) {
+        auto it = std::find_if(loadedCallback_.begin(), loadedCallback_.end(),
+            [env, targetFunc = info.argv[INDEX_ZERO]](const auto &cb) {
             napi_value jsFunc = nullptr;
             bool isEquals = false;
             napi_get_reference_value(env, cb.first, &jsFunc);
-            napi_strict_equals(env, info.argv[INDEX_ZERO], jsFunc, &isEquals);
+            napi_strict_equals(env, targetFunc, jsFunc, &isEquals);
             return isEquals;
         });
         if (it == loadedCallback_.end()) {
@@ -1073,11 +1074,12 @@ private:
             destroyCallback_.clear();
             return CreateJsUndefined(env);
         }
-        auto it = std::find_if(destroyCallback_.begin(), destroyCallback_.end(), [&](const auto &cb) {
+        auto it = std::find_if(destroyCallback_.begin(), destroyCallback_.end(),
+            [env, targetFunc = info.argv[INDEX_ZERO]](const auto &cb) {
             napi_value jsFunc = nullptr;
             bool isEquals = false;
             napi_get_reference_value(env, cb.first, &jsFunc);
-            napi_strict_equals(env, info.argv[INDEX_ZERO], jsFunc, &isEquals);
+            napi_strict_equals(env, targetFunc, jsFunc, &isEquals);
             return isEquals;
         });
         if (it == destroyCallback_.end()) {

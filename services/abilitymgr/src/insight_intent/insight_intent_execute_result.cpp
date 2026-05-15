@@ -31,6 +31,7 @@ constexpr const char *KEY_IS_DECORATOR = "isDecorator";
 constexpr const char *KEY_IS_NEED_DELAY_RESULT = "isNeedDelayResult";
 constexpr const char *KEY_IS_QUERY_ENTITY = "isQueryEntity";
 constexpr const char *KEY_QUERY_RESULTS = "queryResults";
+constexpr int32_t CYCLE_LIMIT = 1000;
 } // namespace
 
 bool InsightIntentExecuteResult::ReadFromParcel(Parcel &parcel)
@@ -44,9 +45,17 @@ bool InsightIntentExecuteResult::ReadFromParcel(Parcel &parcel)
     flags = parcel.ReadInt32();
     isDecorator = parcel.ReadBool();
     isQueryEntity = parcel.ReadBool();
-    queryResults.resize(parcel.ReadInt32());
-    for (size_t i = 0; i < queryResults.size(); i++) {
-        queryResults[i] = std::shared_ptr<WantParams>(parcel.ReadParcelable<WantParams>());
+    int32_t resultSize = parcel.ReadInt32();
+    if (resultSize < 0 || resultSize > CYCLE_LIMIT) {
+        return false;
+    }
+    queryResults.clear();
+    for (int32_t i = 0; i < resultSize; i++) {
+        auto temp = std::shared_ptr<WantParams>(parcel.ReadParcelable<WantParams>());
+        if (temp == nullptr) {
+            return false;
+        }
+        queryResults.push_back(temp);
     }
     return true;
 }

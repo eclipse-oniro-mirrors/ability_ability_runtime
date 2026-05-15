@@ -1242,26 +1242,6 @@ public:
     std::optional<bool> IsSupportMultiProcessDeviceFeature() const;
     void SetSupportMultiProcessDeviceFeature(bool support);
 
-    inline void SetArkChildProcessSupported(bool supported)
-    {
-        isArkChildProcessSupported_ = supported;
-    }
-
-    inline bool IsArkChildProcessSupported() const
-    {
-        return isArkChildProcessSupported_;
-    }
-
-    inline void SetNativeChildProcessSupported(bool supported)
-    {
-        isNativeChildProcessSupported_ = supported;
-    }
-
-    inline bool IsNativeChildProcessSupported() const
-    {
-        return isNativeChildProcessSupported_;
-    }
-
     inline void SetMasterProcess(bool isMasterProcess)
     {
         isMasterProcess_ = isMasterProcess;
@@ -1521,8 +1501,6 @@ private:
     bool isContinuousTask_ = false;    // Only continuesTask processes can be set to true, please choose carefully
     bool isDebugApp_ = false;
     bool isDebugFromLocal_ = false;
-    bool isArkChildProcessSupported_ = false;
-    bool isNativeChildProcessSupported_ = false;
     bool isDependedOnArkWeb_ = false;
     bool isEmptyKeepAliveApp_ = false;  // Only empty resident processes can be set to true, please choose carefully
     bool isErrorInfoEnhance_ = false;

@@ -258,4 +258,10 @@ declare_args() {
       !defined(global_parts_info.distributeddatamgr_udmf)) {
     ability_runtime_udmf_enable = false
   }
+
+  hiviewdfx_runtime_api_metrics_enable = true
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.hiviewdfx_api_metrics)) {
+    hiviewdfx_runtime_api_metrics_enable = false
+  }
 }

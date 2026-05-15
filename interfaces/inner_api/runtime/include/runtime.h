@@ -91,6 +91,7 @@ public:
         uint32_t versionCode = 0;
         bool enableWarmStartupSmartGC = false;
         std::string arkTSMode;
+        bool isMainProcess = true;
     };
 
     struct DebugOption {

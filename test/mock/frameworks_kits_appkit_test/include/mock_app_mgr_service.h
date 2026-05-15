@@ -99,6 +99,7 @@ public:
         std::vector<std::string> &instanceKeys, int32_t userId));
     MOCK_METHOD1(SetSupportedProcessCacheSelf, int32_t(bool isSupported));
     MOCK_METHOD2(IsProcessCacheSupported, int32_t(int32_t pid, bool &isSupported));
+    MOCK_METHOD2(IsChildProcessSupported, int32_t(bool isNative, bool &isSupported));
     MOCK_METHOD2(SetProcessCacheEnable, int32_t(int32_t pid, bool enable));
     MOCK_METHOD2(SetSupportedProcessCache, int32_t(int32_t pid, bool isSupport));
     MOCK_METHOD2(LockProcessCache, int32_t(int32_t pid, bool isLock));

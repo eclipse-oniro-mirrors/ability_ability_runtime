@@ -423,7 +423,7 @@ int UIExtension::CreateModalUIExtension(const AAFwk::Want &want)
         return ERR_INVALID_VALUE;
     }
 
-    auto uiExtensionContext = std::static_pointer_cast<UIExtensionContext>(context);
+    auto uiExtensionContext = Context::ConvertTo<UIExtensionContext>(context);
     if (uiExtensionContext == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "uiExtensionContext is null");
         return ERR_INVALID_VALUE;

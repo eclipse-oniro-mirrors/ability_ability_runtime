@@ -16,16 +16,15 @@
 #include "cli_tool_mgr_client.h"
 
 #include "cli_error_code.h"
+#include "cli_event_reply_manager.h"
+#include "cli_mgr_load_callback.h"
+#include "cli_session_subscription_manager.h"
+#include "cli_tool_mgr_scheduler_recipient.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
 #include "if_system_ability_manager.h"
 #include "iservice_registry.h"
 #include "system_ability_definition.h"
-#include "cli_mgr_load_callback.h"
-
-#include "cli_event_reply_manager.h"
-#include "cli_session_subscription_manager.h"
-#include "cli_tool_mgr_scheduler_recipient.h"
 
 namespace OHOS {
 namespace CliTool {
@@ -202,7 +201,8 @@ sptr<ICliToolManager> CliToolMGRClient::GetCliToolMgrProxy()
 
     const auto &onClearProxyCallback = [](const wptr<IRemoteObject> &remote) {
         auto &instance = GetInstance();
-        if (instance.cliToolMgr_->AsObject() == remote) {
+        auto cliToolMgr = instance.GetCliToolMgr();
+        if (cliToolMgr != nullptr && cliToolMgr->AsObject() == remote) {
             instance.ClearProxy();
         }
     };

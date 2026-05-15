@@ -51,6 +51,7 @@
             "accessibility",
             "access_token",
             "ace_engine",
+            "api_metrics",
             "app_domain_verify",
             "app_file_service",
             "appspawn",
@@ -850,6 +851,16 @@
               ]
             },
             "name": "//foundation/ability/ability_runtime/frameworks/ets/ani/featureAbility:featureability_ani"
+          },
+          {
+            "header": {
+              "header_base": "//foundation/ability/ability_runtime/frameworks/native/ability/native/ability_runtime/madvise",
+              "header_files": [
+                "madvise_utils.h",
+                "vma_utils.h"
+              ]
+            },
+            "name": "//foundation/ability/ability_runtime/frameworks/native/ability/native/ability_runtime/madvise:ability_madvise"
           },
           {
             "header": {

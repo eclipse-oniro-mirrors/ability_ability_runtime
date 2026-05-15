@@ -2759,13 +2759,6 @@ void AppMgrServiceInner::LaunchApplicationExt(const std::shared_ptr<AppRunningRe
 {
     auto isPreload = IsAllowedNWebPreload(appRecord->GetProcessName());
     appRecord->SetNWebPreload(isPreload);
-    bool isMultiProcessModel = AAFwk::AppUtils::GetInstance().IsMultiProcessModel();
-    bool isArkSupported = isMultiProcessModel || AllowChildProcessInMultiProcessFeatureApp(appRecord);
-    bool isNativeSupported = isMultiProcessModel ||
-        AllowNativeChildProcess(CHILD_PROCESS_TYPE_NATIVE, appRecord->GetAppIdentifier()) ||
-        AllowChildProcessInMultiProcessFeatureApp(appRecord);
-    appRecord->SetArkChildProcessSupported(isArkSupported);
-    appRecord->SetNativeChildProcessSupported(isNativeSupported);
     LaunchApplication(appRecord);
 }
 
@@ -9150,6 +9143,10 @@ int AppMgrServiceInner::GetExceptionTimerId(const FaultData &faultData, const st
 int32_t AppMgrServiceInner::SubmitDfxFaultTask(const FaultData &faultData, const std::string &bundleName,
     const std::shared_ptr<AppRunningRecord> &appRecord, const int32_t pid)
 {
+    if (AppExecFwk::AppfreezeManager::GetInstance()->CheckPreloadUIExtension(faultData.errorObject.message,
+        bundleName, pid)) {
+        return ERR_OK;
+    }
     int32_t callerUid = IPCSkeleton::GetCallingUid();
     std::string processName = appRecord->GetProcessName();
     int exceptionId = GetExceptionTimerId(faultData, bundleName, appRecord, pid, callerUid);
@@ -9384,7 +9381,9 @@ int32_t AppMgrServiceInner::TransformedNotifyAppFault(const AppFaultDataBySA &fa
         }
         auto timeoutNotifyApp = [this, pid, uid, bundleName, processName, transformedFaultData, recordId]() {
             std::string key = std::to_string(pid) + "_" + std::to_string(uid) + "_" + bundleName;
-            if (AppExecFwk::AppfreezeManager::GetInstance()->CheckAppfreezeHappend(key,
+            std::string message = transformedFaultData.errorObject.message;
+            if (AppExecFwk::AppfreezeManager::GetInstance()->CheckPreloadUIExtension(message, bundleName, pid) ||
+                AppExecFwk::AppfreezeManager::GetInstance()->CheckAppfreezeHappend(key,
                 transformedFaultData.errorObject.name)) {
                 return;
             }
@@ -11703,6 +11702,26 @@ int32_t AppMgrServiceInner::IsProcessCacheSupported(int32_t pid, bool &isSupport
         return AAFwk::ERR_CAPABILITY_NOT_SUPPORT;
     }
     isSupported = (appRecord->GetSupportProcessCacheState() == SupportProcessCacheState::SUPPORT);
+    return ERR_OK;
+}
+
+int32_t AppMgrServiceInner::IsChildProcessSupported(bool isNative, bool &isSupported)
+{
+    pid_t pid = IPCSkeleton::GetCallingPid();
+    TAG_LOGD(AAFwkTag::APPMGR, "IsChildProcessSupported called, pid:%{public}d, isNative:%{public}d", pid, isNative);
+    auto appRecord = GetAppRunningRecordByPid(pid);
+    if (!appRecord) {
+        TAG_LOGE(AAFwkTag::APPMGR, "no such appRecord, pid:%{public}d", pid);
+        return AAFwk::ERR_NO_APP_RECORD;
+    }
+    bool isMultiProcessModel = AAFwk::AppUtils::GetInstance().IsMultiProcessModel();
+    if (isNative) {
+        isSupported = isMultiProcessModel ||
+            AAFwk::AppUtils::GetInstance().IsAllowNativeChildProcess(appRecord->GetAppIdentifier()) ||
+            AllowChildProcessInMultiProcessFeatureApp(appRecord);
+    } else {
+        isSupported = isMultiProcessModel || AllowChildProcessInMultiProcessFeatureApp(appRecord);
+    }
     return ERR_OK;
 }
 

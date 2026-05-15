@@ -839,10 +839,23 @@ void UIAbilityImpl::ExecuteInsightIntentMoveToForeground(const Want &want,
     std::unique_ptr<InsightIntentExecutorAsyncCallback> callback)
 {
     TAG_LOGD(AAFwkTag::INTENT, "called");
+    if (ability_ == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "ability null");
+        return;
+    }
 
     {
         std::lock_guard<std::mutex> lock(notifyForegroundLock_);
         notifyForegroundByWindow_ = false;
+    }
+
+    auto oriHideValue = ability_->CheckIsSilentForeground();
+    if (localNativeState_ == LocalNativeState::INIT_PRE_FOREGROUND) {
+        TAG_LOGI(AAFwkTag::UIABILITY, "Native module startPhase is PRE_FOREGROUND, skip OnForeground");
+        localNativeState_ = LocalNativeState::HALF_FOREGROUND;
+        ability_->SetIsSilentForeground(true);
+        std::lock_guard<std::mutex> lock(notifyForegroundLock_);
+        notifyForegroundByWindow_ = true;
     }
 
     auto asyncCallback =
@@ -860,6 +873,7 @@ void UIAbilityImpl::ExecuteInsightIntentMoveToForeground(const Want &want,
 
     // private function, no need check ability_ validity.
     ability_->ExecuteInsightIntentMoveToForeground(want, executeParam, std::move(callback));
+    ability_->SetIsSilentForeground(oriHideValue);
 }
 
 void UIAbilityImpl::ExecuteInsightIntentPage(const Want &want,

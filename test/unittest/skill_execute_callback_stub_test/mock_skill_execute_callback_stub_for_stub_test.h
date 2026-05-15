@@ -13,19 +13,20 @@
  * limitations under the License.
  */
 
-#include "fork_image_info.h"
+#ifndef UNITTEST_OHOS_ABILITY_RUNTIME_MOCK_SKILL_EXECUTE_CALLBACK_STUB_FOR_STUB_TEST_H
+#define UNITTEST_OHOS_ABILITY_RUNTIME_MOCK_SKILL_EXECUTE_CALLBACK_STUB_FOR_STUB_TEST_H
+
+#include <gmock/gmock.h>
+#include "skill/skill_execute_callback_stub.h"
 
 namespace OHOS {
-namespace AppExecFwk {
-ForkImageInfo::ForkImageInfo()
-{
-    imageInfoId = CreateId();
-}
-
-int32_t ForkImageInfo::CreateId()
-{
-    static std::atomic_int id(0);
-    return ++id;
-}
-} // namespace AppExecFwk
+namespace AAFwk {
+class MockSkillExecuteCallback : public SkillExecuteCallbackStub {
+public:
+    MOCK_METHOD3(OnExecuteDone,
+        void(const std::string &requestCode, int32_t resultCode,
+            const AppExecFwk::SkillExecuteResult &result));
+};
+} // namespace AAFwk
 } // namespace OHOS
+#endif // UNITTEST_OHOS_ABILITY_RUNTIME_MOCK_SKILL_EXECUTE_CALLBACK_STUB_FOR_STUB_TEST_H

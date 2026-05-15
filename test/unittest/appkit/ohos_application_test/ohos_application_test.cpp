@@ -2263,5 +2263,31 @@ HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_InitJSLeakWatcher_0
 
     GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_InitJSLeakWatcher_0400 end.";
 }
+
+/**
+* @tc.number: AppExecFwk_OHOSApplicationTest_OnTerminate_0100
+* @tc.name: OnTerminate
+* @tc.desc: Verify OnTerminate with abilityRuntimeContext_ nullptr
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_OnTerminate_0100, TestSize.Level1)
+{
+    EXPECT_EQ(ohosApplication_->abilityRuntimeContext_, nullptr);
+    ohosApplication_->OnTerminate();
+    EXPECT_EQ(ohosApplication_->abilityRuntimeContext_, nullptr);
+}
+
+/**
+* @tc.number: AppExecFwk_OHOSApplicationTest_OnTerminate_0200
+* @tc.name: OnTerminate
+* @tc.desc: Verify OnTerminate with abilityRuntimeContext_ not nullptr
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_OnTerminate_0200, TestSize.Level1)
+{
+    auto abilityRuntimeContext =
+        std::make_shared<AbilityRuntime::ApplicationContext>();
+    ohosApplication_->SetApplicationContext(abilityRuntimeContext);
+    ohosApplication_->OnTerminate();
+    EXPECT_NE(ohosApplication_->abilityRuntimeContext_, nullptr);
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

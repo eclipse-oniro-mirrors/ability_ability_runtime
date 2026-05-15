@@ -1952,6 +1952,16 @@ int32_t AppMgrService::IsProcessCacheSupported(int32_t pid, bool &isSupported)
     return appMgrServiceInner_->IsProcessCacheSupported(pid, isSupported);
 }
 
+int32_t AppMgrService::IsChildProcessSupported(bool isNative, bool &isSupported)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "IsChildProcessSupported called");
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "not ready");
+        return ERR_INVALID_OPERATION;
+    }
+    return appMgrServiceInner_->IsChildProcessSupported(isNative, isSupported);
+}
+
 int32_t AppMgrService::SetProcessCacheEnable(int32_t pid, bool enable)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "set enable process cache");
