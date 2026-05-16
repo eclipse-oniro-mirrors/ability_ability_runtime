@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2026 Huawei Device Co., Ltd.
+# Copyright (c) 2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -11,69 +11,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("//build/ohos.gni")
+import("//build/test.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
-config("ability_runtime_ndk_config") {
-  include_dirs = [
-    "include",
-    "${ability_runtime_ndk_path}",
-    "${ability_runtime_ndk_path}/ability_runtime",
-    "${ability_runtime_innerkits_path}",
+module_output_path = "ability_runtime/ability_runtime/c_framework"
+
+ohos_unittest("mo_dispatcher_capi_test") {
+  module_out_path = module_output_path
+
+  sources = [
+    "${ability_runtime_path}/frameworks/c/ability_runtime/src/mo_dispatcher_complex_type_manager.cpp",
+    "${ability_runtime_path}/frameworks/c/ability_runtime/src/modular_object_dispatcher.cpp",
+    "${ability_runtime_path}/frameworks/c/ability_runtime/src/mo_dispatcher_metadata_manager.cpp",
+    "${ability_runtime_path}/frameworks/c/ability_runtime/src/mo_dispatcher_param_codec.cpp",
+    "mo_dispatcher_capi_test.cpp",
   ]
 
-  if (target_cpu == "arm") {
-    cflags = [ "-DBINDER_IPC_32BIT" ]
-  }
-}
-
-ohos_shared_library("ability_runtime") {
-  sanitize = {
-    integer_overflow = true
-    ubsan = true
-    boundary_sanitize = true
-    cfi = true
-    cfi_cross_dso = true
-    cfi_vcall_icall_only = true
-    cfi_policy = "adaptive"
-    debug = false
-  }
-  branch_protector_ret = "pac_ret"
-
   include_dirs = [
-    "include",
+    "${ability_runtime_path}/frameworks/c/ability_runtime/include",
+    "${ability_runtime_path}/interfaces/kits/c/ability_runtime",
     "${ability_runtime_path}/interfaces/inner_api",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_runtime",
     "${ability_runtime_path}/interfaces/kits/native/ability/native/modular_object_extension",
+    "${ability_runtime_services_path}/common/include",
   ]
 
   configs = [
     "${ability_runtime_services_path}/common:common_config",
-    "${ability_runtime_services_path}/common:optimize_config",
-  ]
-  public_configs = [ ":ability_runtime_ndk_config" ]
-
-  sources = [
-    "src/ability_business_error_utils.cpp",
-    "src/application_context.cpp",
-    "src/connect_options.cpp",
-    "src/context.cpp",
-    "src/load_ability_callback_impl.cpp",
-    "src/mo_dispatcher_complex_type_manager.cpp",
-    "src/mo_dispatcher_metadata_manager.cpp",
-    "src/mo_dispatcher_param_codec.cpp",
-    "src/modular_object_dispatcher.cpp",
-    "src/modular_object_extension_ability.cpp",
-    "src/modular_object_extension_context.cpp",
-    "src/c_modular_object_connection_callback.cpp",
-    "src/modular_object_extension_manager.cpp",
-    "src/modular_object_connection_manager.cpp",
-    "src/modular_object_ability_connection.cpp",
-    "src/c_modular_object_utils.cpp",
-    "src/native_ability_wrapper.cpp",
-    "src/start_options.cpp",
-    "src/start_options_impl.cpp",
-    "src/want_utils.cpp",
   ]
 
   deps = [
@@ -83,7 +47,6 @@ ohos_shared_library("ability_runtime") {
     "${ability_runtime_innerkits_path}/ability_manager:process_options",
     "${ability_runtime_innerkits_path}/ability_manager:start_window_option",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
-    "${ability_runtime_innerkits_path}/page_config_manager:page_config_manager",
     "${ability_runtime_native_path}/ability:ability_context_native",
     "${ability_runtime_native_path}/ability/native:modular_object_extension",
     "${ability_runtime_native_path}/appkit:app_context",
@@ -95,9 +58,8 @@ ohos_shared_library("ability_runtime") {
     "c_utils:utils",
     "eventhandler:libeventhandler",
     "ffrt:libffrt",
+    "googletest:gtest_main",
     "hilog:libhilog",
-    "image_framework:image_native",
-    "image_framework:pixelmap",
     "ipc:ipc_capi",
     "ipc:ipc_core",
     "ipc:ipc_napi",
@@ -123,9 +85,12 @@ ohos_shared_library("ability_runtime") {
     defines += [ "START_WINDOW_OPTIONS_WITH_PIXELMAP" ]
   }
 
-  output_extension = "so"
-  innerapi_tags = [ "ndk" ]
-  install_images = [ "system" ]
-  subsystem_name = "ability"
-  part_name = "ability_runtime"
+  if (target_cpu == "arm") {
+    cflags = [ "-DBINDER_IPC_32BIT" ]
+  }
+}
+
+group("unittest") {
+  testonly = true
+  deps = [ ":mo_dispatcher_capi_test" ]
 }
