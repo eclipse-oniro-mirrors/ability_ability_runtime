@@ -117,6 +117,11 @@ HWTEST_F(AgentCardUtilsTest, HasRequiredRegisterFields_001, TestSize.Level1)
     auto invalidIconCard = BuildCard("invalidIcon", "1.0.0");
     invalidIconCard.iconUrl.clear();
     EXPECT_FALSE(AgentCardUtils::HasRequiredRegisterFields(invalidIconCard));
+    invalidIconCard.iconUrl = std::string(513, 'a');
+    EXPECT_FALSE(AgentCardUtils::HasRequiredRegisterFields(invalidIconCard));
+    EXPECT_FALSE(AgentCardUtils::HasValidIconUrl(""));
+    EXPECT_TRUE(AgentCardUtils::HasValidIconUrl(std::string(512, 'a')));
+    EXPECT_FALSE(AgentCardUtils::HasValidIconUrl(std::string(513, 'a')));
 }
 
 HWTEST_F(AgentCardUtilsTest, ShouldValidateAppInfo_001, TestSize.Level1)
@@ -124,6 +129,8 @@ HWTEST_F(AgentCardUtilsTest, ShouldValidateAppInfo_001, TestSize.Level1)
     EXPECT_TRUE(AgentCardUtils::ShouldValidateAppInfo(BuildCard("app", "1.0.0", AgentCardType::APP)));
     EXPECT_TRUE(AgentCardUtils::ShouldValidateAppInfo(BuildCard("lowCode", "1.0.0", AgentCardType::LOW_CODE)));
     EXPECT_TRUE(AgentCardUtils::ShouldValidateAppInfo(BuildCard("atomic", "1.0.0", AgentCardType::ATOMIC_SERVICE)));
+    EXPECT_FALSE(AgentCardUtils::ShouldValidateAppInfo(BuildCard(
+        "invalidType", "1.0.0", static_cast<AgentCardType>(99))));
 }
 
 HWTEST_F(AgentCardUtilsTest, ShouldValidateBundleAbility_001, TestSize.Level1)
@@ -137,12 +144,24 @@ HWTEST_F(AgentCardUtilsTest, ShouldValidateBundleAbility_001, TestSize.Level1)
     MyFlag::retGetBundleInfo = false;
     EXPECT_FALSE(AgentCardUtils::ShouldValidateBundleAbility(
         BuildCard("atomic", "1.0.0", AgentCardType::ATOMIC_SERVICE), 100));
+    EXPECT_FALSE(AgentCardUtils::ShouldValidateBundleAbility(BuildCard(
+        "invalidType", "1.0.0", static_cast<AgentCardType>(99)), 100));
+
+    auto atomicWithoutAppInfo = BuildCard("atomicNoAppInfo", "1.0.0", AgentCardType::ATOMIC_SERVICE);
+    atomicWithoutAppInfo.appInfo = nullptr;
+    EXPECT_FALSE(AgentCardUtils::ShouldValidateBundleAbility(atomicWithoutAppInfo, 100));
 }
 
 HWTEST_F(AgentCardUtilsTest, ValidateSystemAppRequirement_001, TestSize.Level1)
 {
     EXPECT_EQ(AgentCardUtils::ValidateSystemAppRequirement(
         BuildCard("app", "1.0.0", AgentCardType::APP), 100), ERR_OK);
+    auto lowCodeWithoutAppInfo = BuildCard("lowCode", "1.0.0", AgentCardType::LOW_CODE);
+    lowCodeWithoutAppInfo.appInfo = nullptr;
+    EXPECT_EQ(AgentCardUtils::ValidateSystemAppRequirement(lowCodeWithoutAppInfo, 100), ERR_OK);
+    auto lowCodeWithoutBundleName = BuildCard("lowCode", "1.0.0", AgentCardType::LOW_CODE);
+    lowCodeWithoutBundleName.appInfo->bundleName.clear();
+    EXPECT_EQ(AgentCardUtils::ValidateSystemAppRequirement(lowCodeWithoutBundleName, 100), ERR_OK);
 }
 
 HWTEST_F(AgentCardUtilsTest, ValidateSystemAppRequirement_002, TestSize.Level1)
@@ -170,6 +189,9 @@ HWTEST_F(AgentCardUtilsTest, IsCardOwnedByAbility_001, TestSize.Level1)
     auto card = BuildCard("testAgent", "1.0.0");
     EXPECT_TRUE(AgentCardUtils::IsCardOwnedByAbility(card, "test.bundle", "TestAgent"));
     EXPECT_FALSE(AgentCardUtils::IsCardOwnedByAbility(card, "other.bundle", "TestAgent"));
+    EXPECT_FALSE(AgentCardUtils::IsCardOwnedByAbility(card, "test.bundle", "OtherAgent"));
+    card.appInfo = nullptr;
+    EXPECT_FALSE(AgentCardUtils::IsCardOwnedByAbility(card, "test.bundle", "TestAgent"));
 }
 
 HWTEST_F(AgentCardUtilsTest, ApplyDeviceTypes_001, TestSize.Level1)
@@ -179,6 +201,13 @@ HWTEST_F(AgentCardUtilsTest, ApplyDeviceTypes_001, TestSize.Level1)
     AgentCardUtils::ApplyDeviceTypes({"phone", "tablet"}, card);
     ASSERT_EQ(card.appInfo->deviceTypes.size(), 1);
     EXPECT_EQ(card.appInfo->deviceTypes[0], "phone");
+
+    auto fallbackCard = BuildCard("fallbackAgent", "1.0.0");
+    fallbackCard.appInfo->deviceTypes = {"watch"};
+    AgentCardUtils::ApplyDeviceTypes({"phone", "tablet"}, fallbackCard);
+    ASSERT_EQ(fallbackCard.appInfo->deviceTypes.size(), 2);
+    EXPECT_EQ(fallbackCard.appInfo->deviceTypes[0], "phone");
+    EXPECT_EQ(fallbackCard.appInfo->deviceTypes[1], "tablet");
 }
 
 HWTEST_F(AgentCardUtilsTest, ApplyDeviceTypes_002, TestSize.Level1)
@@ -211,6 +240,8 @@ HWTEST_F(AgentCardUtilsTest, ShouldKeepStoredCard_001, TestSize.Level1)
     EXPECT_TRUE(AgentCardUtils::ShouldKeepStoredCard(
         BuildCard("testAgent", "1.0.0"), BuildCard("testAgent", "2.0.0")));
     EXPECT_FALSE(AgentCardUtils::ShouldKeepStoredCard(
+        BuildCard("testAgent", "1.0.0"), BuildCard("testAgent", "1.0.0")));
+    EXPECT_FALSE(AgentCardUtils::ShouldKeepStoredCard(
         BuildCard("testAgent", "2.0.0"), BuildCard("testAgent", "1.0.0")));
 }
 
@@ -226,6 +257,7 @@ HWTEST_F(AgentCardUtilsTest, FindHapDeviceTypes_001, TestSize.Level1)
     ASSERT_EQ(deviceTypes.size(), 2);
     EXPECT_EQ(deviceTypes[0], "phone");
     EXPECT_EQ(deviceTypes[1], "tablet");
+    EXPECT_TRUE(AgentCardUtils::FindHapDeviceTypes(bundleInfo, "missingModule").empty());
 }
 } // namespace AgentRuntime
 } // namespace OHOS
