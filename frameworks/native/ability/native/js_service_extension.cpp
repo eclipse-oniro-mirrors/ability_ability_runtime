@@ -615,7 +615,6 @@ napi_value JsServiceExtension::LoadSkillFunction(
 std::vector<napi_value> JsServiceExtension::BuildSkillCallArgs(napi_env env,
     const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param)
 {
-    TAG_LOGI(AAFwkTag::SERVICE_EXT, "execSkill CallFunc inputArgs:%{public}s", param->skillArgs_->ToString().c_str());
     napi_value info = nullptr;
     napi_create_object(env, &info);
     napi_value requestCodeVal = nullptr;
