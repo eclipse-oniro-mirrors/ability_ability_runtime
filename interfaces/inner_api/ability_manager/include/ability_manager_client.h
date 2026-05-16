@@ -2207,6 +2207,15 @@ public:
     ErrCode NotifyCompleteGamePreLaunch(const sptr<IRemoteObject> callerToken);
 
     /**
+     * Start self UIAbility in child process.
+     * @param want Ability want.
+     * @param specifiedFlag specified flag.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode StartSelfUIAbilityInChildProcess(
+        const Want &want, const std::string &specifiedFlag, sptr<IRemoteObject> callerToken);
+
+    /**
      * Check if the app is restart-limited.
      * @return Returns true on being limited.
      */

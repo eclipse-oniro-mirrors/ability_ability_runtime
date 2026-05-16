@@ -484,6 +484,7 @@ public:
     MOCK_METHOD1(GetAutoStartupStatusForSelf, int32_t(bool &isAutoStartEnabled));
     MOCK_METHOD4(StartAbilityByOEExt, int32_t(const Want&, sptr<IRemoteObject>, int32_t, const std::string&));
     MOCK_METHOD1(StartSelf, int(sptr<IRemoteObject> token));
+    MOCK_METHOD3(StartSelfUIAbilityInChildProcess, ErrCode(const Want&, const std::string&, sptr<IRemoteObject>));
 
 int32_t GetUserLockedBundleList(int32_t userId, std::unordered_set<std::string> &userLockedBundleList) override
 {
