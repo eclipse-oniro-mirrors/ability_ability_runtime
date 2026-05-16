@@ -86,6 +86,18 @@ HWTEST_F(CliSessionInfoTest, CliSessionInfo_Unmarshalling_0200, TestSize.Level1)
     missingStatusParcel.RewindRead(0);
     EXPECT_EQ(CliSessionInfo::Unmarshalling(missingStatusParcel), nullptr);
 
+    Parcel missingToolNameParcel;
+    ASSERT_TRUE(missingToolNameParcel.WriteString("session"));
+    missingToolNameParcel.RewindRead(0);
+    EXPECT_EQ(CliSessionInfo::Unmarshalling(missingToolNameParcel), nullptr);
+
+    Parcel missingHasResultParcel;
+    ASSERT_TRUE(missingHasResultParcel.WriteString("session"));
+    ASSERT_TRUE(missingHasResultParcel.WriteString("tool"));
+    ASSERT_TRUE(missingHasResultParcel.WriteString("running"));
+    missingHasResultParcel.RewindRead(0);
+    EXPECT_EQ(CliSessionInfo::Unmarshalling(missingHasResultParcel), nullptr);
+
     Parcel missingResultParcel;
     ASSERT_TRUE(missingResultParcel.WriteString("session"));
     ASSERT_TRUE(missingResultParcel.WriteString("tool"));

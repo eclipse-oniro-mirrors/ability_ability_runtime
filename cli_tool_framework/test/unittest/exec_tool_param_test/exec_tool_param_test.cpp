@@ -63,6 +63,28 @@ HWTEST_F(ExecToolParamTest, ExecToolParam_Parcelable_0100, TestSize.Level1)
     ASSERT_TRUE(missingOptionsParcel.WriteString("challenge"));
     missingOptionsParcel.RewindRead(0);
     EXPECT_EQ(ExecToolParam::Unmarshalling(missingOptionsParcel), nullptr);
+
+    Parcel emptyParcel;
+    EXPECT_EQ(ExecToolParam::Unmarshalling(emptyParcel), nullptr);
+
+    Parcel missingSubcommandParcel;
+    ASSERT_TRUE(missingSubcommandParcel.WriteString("tool"));
+    missingSubcommandParcel.RewindRead(0);
+    EXPECT_EQ(ExecToolParam::Unmarshalling(missingSubcommandParcel), nullptr);
+
+    Parcel missingChallengeParcel;
+    ASSERT_TRUE(missingChallengeParcel.WriteString("tool"));
+    ASSERT_TRUE(missingChallengeParcel.WriteString("run"));
+    missingChallengeParcel.RewindRead(0);
+    EXPECT_EQ(ExecToolParam::Unmarshalling(missingChallengeParcel), nullptr);
+
+    Parcel missingArgsParcel;
+    ASSERT_TRUE(missingArgsParcel.WriteString("tool"));
+    ASSERT_TRUE(missingArgsParcel.WriteString("run"));
+    ASSERT_TRUE(missingArgsParcel.WriteString("challenge"));
+    ASSERT_TRUE(missingArgsParcel.WriteParcelable(&param.options));
+    missingArgsParcel.RewindRead(0);
+    EXPECT_EQ(ExecToolParam::Unmarshalling(missingArgsParcel), nullptr);
 }
 } // namespace CliTool
 } // namespace OHOS

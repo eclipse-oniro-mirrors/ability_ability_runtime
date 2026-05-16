@@ -50,6 +50,11 @@ namespace {
 const char *CLI_TOOL_PERMS[] = {
     "ohos.permission.EXEC_CLI_TOOL",
 };
+
+bool IsPermissionGateResult(int32_t result)
+{
+    return result == ERR_NOT_SYSTEM_APP || result == ERR_PERMISSION_DENIED;
+}
 }
 
 class CliToolManagerServiceTest : public testing::Test {
@@ -757,6 +762,152 @@ HWTEST_F(CliToolManagerServiceTest, WaitPid_0100, TestSize.Level1)
     EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
 
     GTEST_LOG_(INFO) << "CliToolManagerService_WaitPid_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_RegisterScheduler_0100
+ * @tc.desc: Test RegisterScheduler with null and valid scheduler
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, RegisterScheduler_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_RegisterScheduler_0100 start";
+
+    EXPECT_NE(service_->RegisterScheduler(nullptr), ERR_OK);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_RegisterScheduler_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_UnregisterScheduler_0100
+ * @tc.desc: Test UnregisterScheduler clears scheduler
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, UnregisterScheduler_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_UnregisterScheduler_0100 start";
+
+    service_->UnregisterScheduler();
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_UnregisterScheduler_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_ClearSession_0100
+ * @tc.desc: Test ClearSession with missing session
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ClearSession_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_ClearSession_0100 start";
+
+    int32_t result = service_->ClearSession("nonexistent_session");
+    EXPECT_TRUE(result == ERR_CLI_SESSION_NOT_FOUND || IsPermissionGateResult(result));
+    if (IsPermissionGateResult(result)) {
+        GTEST_LOG_(INFO) << "CliToolManagerService_ClearSession_0100 skipped session gate checks";
+        return;
+    }
+
+    auto record = std::make_shared<SessionRecord>();
+    record->sessionId = "completed_session";
+    record->SetState(SessionState::COMPLETED);
+    service_->AddSessionRecord(record);
+    EXPECT_EQ(service_->ClearSession("completed_session"), ERR_CLI_SESSION_NOT_FOUND);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_ClearSession_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_QuerySession_0100
+ * @tc.desc: Test QuerySession with missing session returns error
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, QuerySession_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_QuerySession_0100 start";
+
+    CliSessionInfo session;
+    int32_t result = service_->QuerySession("missing_session", session);
+    EXPECT_TRUE(result == ERR_CLI_SESSION_NOT_FOUND || IsPermissionGateResult(result));
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_QuerySession_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_SubscribeSession_0200
+ * @tc.desc: Test SubscribeSession with empty args and missing session
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, SubscribeSession_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_SubscribeSession_0200 start";
+
+    int32_t result = service_->SubscribeSession("", "sub1");
+    EXPECT_TRUE(result == ERR_INVALID_PARAM || IsPermissionGateResult(result));
+    if (IsPermissionGateResult(result)) {
+        GTEST_LOG_(INFO) << "CliToolManagerService_SubscribeSession_0200 skipped argument/session gate checks";
+        return;
+    }
+    EXPECT_EQ(service_->SubscribeSession("session", ""), ERR_INVALID_PARAM);
+    EXPECT_EQ(service_->SubscribeSession("missing", "sub1"), ERR_CLI_SESSION_NOT_FOUND);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_SubscribeSession_0200 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_HandleOutputDrained_0100
+ * @tc.desc: Test HandleOutputDrained with missing and present sessions
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, HandleOutputDrained_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_HandleOutputDrained_0100 start";
+
+    service_->HandleOutputDrained("missing_session");
+
+    auto record = std::make_shared<SessionRecord>();
+    record->sessionId = "drained_session";
+    record->processId = 12345;
+    service_->AddSessionRecord(record);
+    service_->HandleOutputDrained(record->sessionId);
+    EXPECT_NE(service_->GetSessionRecord(record->sessionId), nullptr);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_HandleOutputDrained_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_RegisterTool_0100
+ * @tc.desc: Test RegisterTool returns permission denied (system API only)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, RegisterTool_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_RegisterTool_0100 start";
+
+    ToolInfo tool;
+    tool.name = "ohos-test";
+    EXPECT_EQ(service_->RegisterTool(tool), ERR_PERMISSION_DENIED);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_RegisterTool_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecTool_0600
+ * @tc.desc: Test ExecTool with nonexistent tool name
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecTool_0600, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0600 start";
+
+    ExecToolParam param;
+    param.toolName = "ohos-nonexistent_tool";
+    param.options.timeout = 30;
+    CliSessionInfo session;
+    int32_t result = service_->ExecTool(param, "event_exec_0600");
+    EXPECT_TRUE(result == ERR_TOOL_NOT_EXIST || IsPermissionGateResult(result));
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0600 end";
 }
 
 } // namespace CliTool

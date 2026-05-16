@@ -58,6 +58,22 @@ HWTEST_F(CliToolEventTest, CliToolEvent_Parcelable_0100, TestSize.Level1)
     ASSERT_TRUE(partialParcel.WriteString("exit"));
     partialParcel.RewindRead(0);
     EXPECT_EQ(CliToolEvent::Unmarshalling(partialParcel), nullptr);
+
+    Parcel emptyParcel;
+    EXPECT_EQ(CliToolEvent::Unmarshalling(emptyParcel), nullptr);
+
+    Parcel missingExitCodeParcel;
+    ASSERT_TRUE(missingExitCodeParcel.WriteString("exit"));
+    ASSERT_TRUE(missingExitCodeParcel.WriteString("payload"));
+    missingExitCodeParcel.RewindRead(0);
+    EXPECT_EQ(CliToolEvent::Unmarshalling(missingExitCodeParcel), nullptr);
+
+    Parcel missingTimestampParcel;
+    ASSERT_TRUE(missingTimestampParcel.WriteString("exit"));
+    ASSERT_TRUE(missingTimestampParcel.WriteString("payload"));
+    ASSERT_TRUE(missingTimestampParcel.WriteInt32(TEST_EXIT_CODE));
+    missingTimestampParcel.RewindRead(0);
+    EXPECT_EQ(CliToolEvent::Unmarshalling(missingTimestampParcel), nullptr);
 }
 } // namespace CliTool
 } // namespace OHOS

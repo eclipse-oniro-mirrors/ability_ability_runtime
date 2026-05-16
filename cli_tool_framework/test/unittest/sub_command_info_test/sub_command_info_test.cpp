@@ -237,6 +237,39 @@ HWTEST_F(SubCommandInfoTest, SubCommandInfo_Unmarshalling_0360, TestSize.Level1)
 }
 
 /**
+ * @tc.name: SubCommandInfo_Unmarshalling_0370
+ * @tc.desc: Test SubCommandInfo Unmarshalling fails on intermediate missing fields
+ * @tc.type: FUNC
+ */
+HWTEST_F(SubCommandInfoTest, SubCommandInfo_Unmarshalling_0370, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SubCommandInfo_Unmarshalling_0370 start";
+
+    Parcel missingInputSchemaParcel;
+    ASSERT_TRUE(missingInputSchemaParcel.WriteString("partial subcommand"));
+    ASSERT_TRUE(missingInputSchemaParcel.WriteStringVector({"ohos.permission.INTERNET"}));
+    missingInputSchemaParcel.RewindRead(0);
+    EXPECT_EQ(SubCommandInfo::Unmarshalling(missingInputSchemaParcel), nullptr);
+
+    Parcel missingOutputSchemaParcel;
+    ASSERT_TRUE(missingOutputSchemaParcel.WriteString("partial subcommand"));
+    ASSERT_TRUE(missingOutputSchemaParcel.WriteStringVector({"ohos.permission.INTERNET"}));
+    ASSERT_TRUE(missingOutputSchemaParcel.WriteString("{}"));
+    missingOutputSchemaParcel.RewindRead(0);
+    EXPECT_EQ(SubCommandInfo::Unmarshalling(missingOutputSchemaParcel), nullptr);
+
+    Parcel missingEventTypesParcel;
+    ASSERT_TRUE(missingEventTypesParcel.WriteString("partial subcommand"));
+    ASSERT_TRUE(missingEventTypesParcel.WriteStringVector({"ohos.permission.INTERNET"}));
+    ASSERT_TRUE(missingEventTypesParcel.WriteString("{}"));
+    ASSERT_TRUE(missingEventTypesParcel.WriteString("{}"));
+    missingEventTypesParcel.RewindRead(0);
+    EXPECT_EQ(SubCommandInfo::Unmarshalling(missingEventTypesParcel), nullptr);
+
+    GTEST_LOG_(INFO) << "SubCommandInfo_Unmarshalling_0370 end";
+}
+
+/**
  * @tc.name: SubCommandInfo_Unmarshalling_0400
  * @tc.desc: Test SubCommandInfo Unmarshalling with full data
  * @tc.type: FUNC
@@ -413,13 +446,13 @@ HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseFromJson_0300, TestSize.Level1)
 // ==================== ParseToJson Tests ====================
 
 /**
- * @tc.name: SubCommandInfo_ParseToJson_0100
+ * @tc.name: SubCommandInfo_ParseToJson_1300
  * @tc.desc: Test SubCommandInfo ParseToJson with full data
  * @tc.type: FUNC
  */
-HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseToJson_0100, TestSize.Level1)
+HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseToJson_1300, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "SubCommandInfo_ParseToJson_0100 start";
+    GTEST_LOG_(INFO) << "SubCommandInfo_ParseToJson_1300 start";
 
     SubCommandInfo subCmd;
     subCmd.description = "Test to JSON";
@@ -441,7 +474,7 @@ HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseToJson_0100, TestSize.Level1)
     EXPECT_TRUE(json["eventSchemas"].is_object());
     EXPECT_EQ(json["eventSchemas"]["event1"]["type"], "object");
 
-    GTEST_LOG_(INFO) << "SubCommandInfo_ParseToJson_0100 end";
+    GTEST_LOG_(INFO) << "SubCommandInfo_ParseToJson_1300 end";
 }
 
 /**
@@ -1677,6 +1710,236 @@ HWTEST_F(SubCommandInfoTest, SubCommandInfo_Validate_1700, TestSize.Level1)
     EXPECT_TRUE(SubCommandInfo::Validate(subCmd));
 
     GTEST_LOG_(INFO) << "SubCommandInfo_Validate_1700 end";
+}
+
+// ==================== ParseFromJson Missing/Wrong Field Tests ====================
+
+/**
+ * @tc.name: SubCommandInfo_ParseFromJson_0180
+ * @tc.desc: Test ParseFromJson fails for each missing/wrong required field
+ * @tc.type: FUNC
+ */
+HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseFromJson_0180, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SubCommandInfo_ParseFromJson_0180 start";
+
+    auto validJson = R"({
+        "description": "test sub",
+        "requirePermissions": ["ohos.permission.INTERNET"],
+        "inputSchema": {"type": "object"},
+        "outputSchema": {"type": "object"}
+    })"_json;
+
+    // missing description
+    auto missingDesc = validJson;
+    missingDesc.erase("description");
+    SubCommandInfo subCmd;
+    EXPECT_FALSE(SubCommandInfo::ParseFromJson(missingDesc, subCmd));
+
+    // wrong type description
+    auto wrongDesc = validJson;
+    wrongDesc["description"] = 42;
+    EXPECT_FALSE(SubCommandInfo::ParseFromJson(wrongDesc, subCmd));
+
+    // empty description
+    auto emptyDesc = validJson;
+    emptyDesc["description"] = "";
+    EXPECT_FALSE(SubCommandInfo::ParseFromJson(emptyDesc, subCmd));
+
+    // missing requirePermissions
+    auto missingPerms = validJson;
+    missingPerms.erase("requirePermissions");
+    EXPECT_FALSE(SubCommandInfo::ParseFromJson(missingPerms, subCmd));
+
+    // non-array requirePermissions
+    auto wrongPerms = validJson;
+    wrongPerms["requirePermissions"] = "not-array";
+    EXPECT_FALSE(SubCommandInfo::ParseFromJson(wrongPerms, subCmd));
+
+    // non-string permission item
+    auto badPerm = validJson;
+    badPerm["requirePermissions"] = {42};
+    EXPECT_FALSE(SubCommandInfo::ParseFromJson(badPerm, subCmd));
+
+    // empty permission entries skipped
+    auto emptyPerm = validJson;
+    emptyPerm["requirePermissions"] = {"", "ohos.permission.INTERNET"};
+    EXPECT_TRUE(SubCommandInfo::ParseFromJson(emptyPerm, subCmd));
+    EXPECT_EQ(subCmd.requirePermissions.size(), 1u);
+
+    // missing inputSchema
+    auto missingInput = validJson;
+    missingInput.erase("inputSchema");
+    EXPECT_FALSE(SubCommandInfo::ParseFromJson(missingInput, subCmd));
+
+    // non-object inputSchema
+    auto wrongInput = validJson;
+    wrongInput["inputSchema"] = "string";
+    EXPECT_FALSE(SubCommandInfo::ParseFromJson(wrongInput, subCmd));
+
+    // missing outputSchema
+    auto missingOutput = validJson;
+    missingOutput.erase("outputSchema");
+    EXPECT_FALSE(SubCommandInfo::ParseFromJson(missingOutput, subCmd));
+
+    // non-object outputSchema
+    auto wrongOutput = validJson;
+    wrongOutput["outputSchema"] = 123;
+    EXPECT_FALSE(SubCommandInfo::ParseFromJson(wrongOutput, subCmd));
+
+    GTEST_LOG_(INFO) << "SubCommandInfo_ParseFromJson_0180 end";
+}
+
+/**
+ * @tc.name: SubCommandInfo_ParseFromJson_0190
+ * @tc.desc: Test ParseFromJson optional eventTypes and eventSchemas branches
+ * @tc.type: FUNC
+ */
+HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseFromJson_0190, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SubCommandInfo_ParseFromJson_0190 start";
+
+    auto validJson = R"({
+        "description": "test sub",
+        "requirePermissions": [],
+        "inputSchema": {"type": "object"},
+        "outputSchema": {"type": "object"}
+    })"_json;
+
+    // non-array eventTypes
+    auto badEventTypes = validJson;
+    badEventTypes["eventTypes"] = "not-array";
+    SubCommandInfo subCmd;
+    EXPECT_FALSE(SubCommandInfo::ParseFromJson(badEventTypes, subCmd));
+
+    // non-string event type
+    auto badEventItem = validJson;
+    badEventItem["eventTypes"] = {42};
+    EXPECT_FALSE(SubCommandInfo::ParseFromJson(badEventItem, subCmd));
+
+    // empty event type entries skipped
+    auto emptyEvent = validJson;
+    emptyEvent["eventTypes"] = {"", "exit"};
+    EXPECT_TRUE(SubCommandInfo::ParseFromJson(emptyEvent, subCmd));
+    EXPECT_EQ(subCmd.eventTypes.size(), 1u);
+
+    // non-object eventSchemas
+    auto badEventSchemas = validJson;
+    badEventSchemas["eventSchemas"] = "not-object";
+    EXPECT_FALSE(SubCommandInfo::ParseFromJson(badEventSchemas, subCmd));
+
+    // valid optional fields
+    auto withOptional = validJson;
+    withOptional["eventTypes"] = {"stdout"};
+    withOptional["eventSchemas"] = {{"stdout", {{"type", "string"}}}};
+    subCmd = SubCommandInfo();
+    EXPECT_TRUE(SubCommandInfo::ParseFromJson(withOptional, subCmd));
+    EXPECT_EQ(subCmd.eventTypes.size(), 1u);
+    EXPECT_FALSE(subCmd.eventSchemas.empty());
+
+    GTEST_LOG_(INFO) << "SubCommandInfo_ParseFromJson_0190 end";
+}
+
+// ==================== ParseToJson Schema String Tests ====================
+
+/**
+ * @tc.name: SubCommandInfo_ParseToJson_1400
+ * @tc.desc: Test ParseToJson emits valid schema as JSON, invalid as string
+ * @tc.type: FUNC
+ */
+HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseToJson_1400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SubCommandInfo_ParseToJson_1400 start";
+
+    SubCommandInfo subCmd;
+    subCmd.description = "test";
+    subCmd.inputSchema = R"({"type":"object"})";
+    subCmd.outputSchema = "{invalid}";
+    subCmd.eventSchemas = "{also-bad}";
+
+    nlohmann::json json = subCmd.ParseToJson();
+    EXPECT_TRUE(json["inputSchema"].is_object());
+    EXPECT_EQ(json["outputSchema"], "{invalid}");
+    EXPECT_EQ(json["eventSchemas"], "{also-bad}");
+
+    GTEST_LOG_(INFO) << "SubCommandInfo_ParseToJson_1400 end";
+}
+
+// ==================== Validate Failure Branch Tests ====================
+
+/**
+ * @tc.name: SubCommandInfo_Validate_1800
+ * @tc.desc: Test Validate rejects empty/invalid schemas and eventSchemas
+ * @tc.type: FUNC
+ */
+HWTEST_F(SubCommandInfoTest, SubCommandInfo_Validate_1800, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SubCommandInfo_Validate_1800 start";
+
+    auto valid = []() {
+        SubCommandInfo subCmd;
+        subCmd.description = "desc";
+        subCmd.inputSchema = R"({"type":"object"})";
+        subCmd.outputSchema = R"({"type":"object"})";
+        return subCmd;
+    };
+
+    // empty description
+    auto emptyDesc = valid();
+    emptyDesc.description = "";
+    EXPECT_FALSE(SubCommandInfo::Validate(emptyDesc));
+
+    // empty inputSchema
+    auto emptyInput = valid();
+    emptyInput.inputSchema = "";
+    EXPECT_FALSE(SubCommandInfo::Validate(emptyInput));
+
+    // invalid inputSchema JSON
+    auto badInput = valid();
+    badInput.inputSchema = "{bad}";
+    EXPECT_FALSE(SubCommandInfo::Validate(badInput));
+
+    // non-object inputSchema
+    auto nonObjInput = valid();
+    nonObjInput.inputSchema = R"("not-object")";
+    EXPECT_FALSE(SubCommandInfo::Validate(nonObjInput));
+
+    // empty outputSchema
+    auto emptyOutput = valid();
+    emptyOutput.outputSchema = "";
+    EXPECT_FALSE(SubCommandInfo::Validate(emptyOutput));
+
+    // invalid outputSchema JSON
+    auto badOutput = valid();
+    badOutput.outputSchema = "{bad}";
+    EXPECT_FALSE(SubCommandInfo::Validate(badOutput));
+
+    // non-object outputSchema
+    auto nonObjOutput = valid();
+    nonObjOutput.outputSchema = "42";
+    EXPECT_FALSE(SubCommandInfo::Validate(nonObjOutput));
+
+    // invalid eventSchemas
+    auto badEventSchemas = valid();
+    badEventSchemas.eventSchemas = "{invalid}";
+    EXPECT_FALSE(SubCommandInfo::Validate(badEventSchemas));
+
+    // non-object eventSchemas
+    auto nonObjEvent = valid();
+    nonObjEvent.eventSchemas = R"("string")";
+    EXPECT_FALSE(SubCommandInfo::Validate(nonObjEvent));
+
+    // valid with empty eventSchemas (accepted)
+    auto noEvent = valid();
+    noEvent.eventSchemas = "";
+    EXPECT_TRUE(SubCommandInfo::Validate(noEvent));
+
+    // valid with proper eventSchemas
+    auto withEvent = valid();
+    withEvent.eventSchemas = R"({"stdout":{"type":"string"}})";
+    EXPECT_TRUE(SubCommandInfo::Validate(withEvent));
+
+    GTEST_LOG_(INFO) << "SubCommandInfo_Validate_1800 end";
 }
 
 } // namespace CliTool
