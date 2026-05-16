@@ -582,6 +582,10 @@ int32_t CliToolManagerService::ExecTool(const ExecToolParam &param, const std::s
             "Independent skill, fallback to CLI path, toolName=%{public}s", param.toolName.c_str());
     }
 
+    if (auto ret = ValidateSessionLimit(); ret != ERR_OK) {
+        return ret;
+    }
+
     auto tokenId = IPCSkeleton::GetCallingTokenID();
 
     std::string sandboxConfig;

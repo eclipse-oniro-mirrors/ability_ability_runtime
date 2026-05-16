@@ -462,6 +462,7 @@ private:
     JsRuntime &jsRuntime_;
     std::shared_ptr<NativeReference> shellContextRef_;
     std::shared_ptr<NativeReference> jsAbilityObj_;
+    std::unique_ptr<NativeReference> skillModuleRef_;
     sptr<IRemoteObject> remoteCallee_;
     bool reusingWindow_ = false;
     bool isGamePreLaunch_  = false;

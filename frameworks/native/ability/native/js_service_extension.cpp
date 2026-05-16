@@ -600,7 +600,6 @@ napi_value JsServiceExtension::LoadSkillFunction(
     const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param, napi_value &outJsObj)
 {
     napi_env env = jsRuntime_.GetNapiEnv();
-    std::unique_ptr<NativeReference> moduleRef = nullptr;
     napi_value method = nullptr;
 
     auto TryLoadEntry = [&](const std::string &srcEntry) -> bool {
@@ -612,12 +611,12 @@ napi_value JsServiceExtension::LoadSkillFunction(
         }
         srcPath.erase(pos);
         srcPath.append(".abc");
-        moduleRef = jsRuntime_.LoadModule(param->moduleName_, srcPath, param->hapPath_, true);
-        if (moduleRef == nullptr) {
+        skillModuleRef_ = jsRuntime_.LoadModule(param->moduleName_, srcPath, param->hapPath_, true);
+        if (skillModuleRef_ == nullptr) {
             TAG_LOGW(AAFwkTag::SERVICE_EXT, "LoadModule failed, path:%{public}s", srcPath.c_str());
             return false;
         }
-        outJsObj = moduleRef->GetNapiValue();
+        outJsObj = skillModuleRef_->GetNapiValue();
         method = AppExecFwk::GetPropertyValueByPropertyName(
             env, outJsObj, param->functionName_.c_str(), napi_valuetype::napi_function);
         return method != nullptr;
