@@ -611,7 +611,8 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_VectorAdd(
 }
 
 AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_VectorGet(
-    OH_AbilityRuntime_ModObjDispatcher_VectorHandle pVector, uint32_t index, OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
+    OH_AbilityRuntime_ModObjDispatcher_VectorHandle pVector, uint32_t index,
+    OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     return ModObjDispatcherComplexTypeManager::VectorGet(pVector, index, pValue);
 }
@@ -664,7 +665,8 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_SetRemove(
 }
 
 AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_SetContains(
-    OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet, const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue, bool* pExists)
+    OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet,
+    const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue, bool* pExists)
 {
     return ModObjDispatcherComplexTypeManager::SetContains(pSet, pValue, pExists);
 }
@@ -740,7 +742,8 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_MapRemove(
 }
 
 AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_MapContainsKey(
-    OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, const OH_AbilityRuntime_ModObjDispatcher_Variant* pKey, bool* pExists)
+    OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap,
+    const OH_AbilityRuntime_ModObjDispatcher_Variant* pKey, bool* pExists)
 {
     return ModObjDispatcherComplexTypeManager::MapContainsKey(pMap, pKey, pExists);
 }

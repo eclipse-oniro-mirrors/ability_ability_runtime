@@ -32,7 +32,8 @@ public:
         const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue);
     static AbilityRuntime_ErrorCode ArrayGet(OH_AbilityRuntime_ModObjDispatcher_ArrayHandle pArray, uint32_t index,
         OH_AbilityRuntime_ModObjDispatcher_Variant* pValue);
-    static AbilityRuntime_ErrorCode ArrayGetSize(OH_AbilityRuntime_ModObjDispatcher_ArrayHandle pArray, uint32_t* pSize);
+    static AbilityRuntime_ErrorCode ArrayGetSize(
+        OH_AbilityRuntime_ModObjDispatcher_ArrayHandle pArray, uint32_t* pSize);
     static void ArrayRelease(OH_AbilityRuntime_ModObjDispatcher_ArrayHandle* ppArray);
 
     static AbilityRuntime_ErrorCode VectorCreate(OH_AbilityRuntime_ModObjDispatcher_TypeInfo* elementType,
@@ -71,7 +72,8 @@ public:
     static AbilityRuntime_ErrorCode MapGetValueType(OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap,
         OH_AbilityRuntime_ModObjDispatcher_TypeInfo* pValueType);
     static AbilityRuntime_ErrorCode MapPut(OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap,
-        const OH_AbilityRuntime_ModObjDispatcher_Variant* pKey, const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue);
+        const OH_AbilityRuntime_ModObjDispatcher_Variant* pKey,
+        const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue);
     static AbilityRuntime_ErrorCode MapGet(OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap,
         const OH_AbilityRuntime_ModObjDispatcher_Variant* pKey, OH_AbilityRuntime_ModObjDispatcher_Variant* pValue);
     static AbilityRuntime_ErrorCode MapRemove(OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap,
@@ -88,8 +90,8 @@ public:
 
     static AbilityRuntime_ErrorCode StructCreate(const char* structName,
         OH_AbilityRuntime_ModObjDispatcher_StructHandle* ppStruct);
-    static AbilityRuntime_ErrorCode StructGetName(OH_AbilityRuntime_ModObjDispatcher_StructHandle pStruct, char* pbstrName,
-        uint32_t cMaxName);
+    static AbilityRuntime_ErrorCode StructGetName(OH_AbilityRuntime_ModObjDispatcher_StructHandle pStruct,
+        char* pbstrName, uint32_t cMaxName);
     static AbilityRuntime_ErrorCode StructSetField(OH_AbilityRuntime_ModObjDispatcher_StructHandle pStruct,
         const char* szName, const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue);
     static AbilityRuntime_ErrorCode StructGetField(OH_AbilityRuntime_ModObjDispatcher_StructHandle pStruct,

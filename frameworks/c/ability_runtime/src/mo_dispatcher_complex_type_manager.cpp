@@ -675,7 +675,8 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::ArrayGetElementType
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::ArraySet(OH_AbilityRuntime_ModObjDispatcher_ArrayHandle pArray,
+AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::ArraySet(
+    OH_AbilityRuntime_ModObjDispatcher_ArrayHandle pArray,
     uint32_t index, const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     if (pArray == nullptr || pValue == nullptr || index >= pArray->elements.size()) {
@@ -690,7 +691,8 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::ArraySet(OH_Ability
     return StoreVariant(pValue, &pArray->elements[index]);
 }
 
-AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::ArrayGet(OH_AbilityRuntime_ModObjDispatcher_ArrayHandle pArray,
+AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::ArrayGet(
+    OH_AbilityRuntime_ModObjDispatcher_ArrayHandle pArray,
     uint32_t index, OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     if (pArray == nullptr || pValue == nullptr || index >= pArray->elements.size()) {
@@ -700,8 +702,8 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::ArrayGet(OH_Ability
     return LoadVariant(pArray->elements[index], pValue);
 }
 
-AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::ArrayGetSize(OH_AbilityRuntime_ModObjDispatcher_ArrayHandle pArray,
-    uint32_t* pSize)
+AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::ArrayGetSize(
+    OH_AbilityRuntime_ModObjDispatcher_ArrayHandle pArray, uint32_t* pSize)
 {
     if (pArray == nullptr || pSize == nullptr) {
         TAG_LOGE(AAFwkTag::EXT, "ArrayGetSize: null param");
@@ -761,7 +763,8 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::VectorGetElementTyp
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::VectorAdd(OH_AbilityRuntime_ModObjDispatcher_VectorHandle pVector,
+AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::VectorAdd(
+    OH_AbilityRuntime_ModObjDispatcher_VectorHandle pVector,
     const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     if (pVector == nullptr || pValue == nullptr) {
@@ -782,7 +785,8 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::VectorAdd(OH_Abilit
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::VectorGet(OH_AbilityRuntime_ModObjDispatcher_VectorHandle pVector,
+AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::VectorGet(
+    OH_AbilityRuntime_ModObjDispatcher_VectorHandle pVector,
     uint32_t index, OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     if (pVector == nullptr || pValue == nullptr || index >= pVector->elements.size()) {
@@ -890,8 +894,8 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::SetAdd(OH_AbilityRu
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::SetRemove(OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet,
-    const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
+AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::SetRemove(
+    OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet, const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     if (pSet == nullptr || pValue == nullptr) {
         TAG_LOGE(AAFwkTag::EXT, "SetRemove: null param");
@@ -913,7 +917,8 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::SetRemove(OH_Abilit
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::SetContains(OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet,
+AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::SetContains(
+    OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet,
     const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue, bool* pExists)
 {
     if (pSet == nullptr || pValue == nullptr || pExists == nullptr) {
@@ -931,8 +936,8 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::SetContains(OH_Abil
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::SetGetSize(OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet,
-    uint32_t* pSize)
+AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::SetGetSize(
+    OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet, uint32_t* pSize)
 {
     if (pSet == nullptr || pSize == nullptr) {
         TAG_LOGE(AAFwkTag::EXT, "SetGetSize: null param");
@@ -1084,8 +1089,8 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapGet(OH_AbilityRu
     return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
 }
 
-AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapRemove(OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap,
-    const OH_AbilityRuntime_ModObjDispatcher_Variant* pKey)
+AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapRemove(
+    OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, const OH_AbilityRuntime_ModObjDispatcher_Variant* pKey)
 {
     if (pMap == nullptr || pKey == nullptr) {
         TAG_LOGE(AAFwkTag::EXT, "MapRemove: null param");
@@ -1107,7 +1112,8 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapRemove(OH_Abilit
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapContainsKey(OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap,
+AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapContainsKey(
+    OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap,
     const OH_AbilityRuntime_ModObjDispatcher_Variant* pKey, bool* pExists)
 {
     if (pMap == nullptr || pKey == nullptr || pExists == nullptr) {
@@ -1125,8 +1131,8 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapContainsKey(OH_A
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapGetSize(OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap,
-    uint32_t* pSize)
+AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapGetSize(
+    OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, uint32_t* pSize)
 {
     if (pMap == nullptr || pSize == nullptr) {
         TAG_LOGE(AAFwkTag::EXT, "MapGetSize: null param");
@@ -1136,8 +1142,8 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapGetSize(OH_Abili
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
-AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapGetKeyAt(OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap,
-    uint32_t index, OH_AbilityRuntime_ModObjDispatcher_Variant* pKey)
+AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapGetKeyAt(
+    OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, uint32_t index, OH_AbilityRuntime_ModObjDispatcher_Variant* pKey)
 {
     if (pMap == nullptr || pKey == nullptr || index >= pMap->entries.size()) {
         TAG_LOGE(AAFwkTag::EXT, "MapGetKeyAt: null param or index out of range");
@@ -1146,7 +1152,8 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapGetKeyAt(OH_Abil
     return LoadVariant(pMap->entries[index].first, pKey);
 }
 
-AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapGetValueAt(OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap,
+AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapGetValueAt(
+    OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap,
     uint32_t index, OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     if (pMap == nullptr || pValue == nullptr || index >= pMap->entries.size()) {
