@@ -642,7 +642,8 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::QueryMainServiceInterf
 }
 
 
-AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMethodMeta(uint32_t memberId, MoMethodMeta* methodMeta) const
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMethodMeta(uint32_t memberId,
+    MoMethodMeta* methodMeta) const
 {
     if (methodMeta == nullptr) {
         TAG_LOGE(AAFwkTag::EXT, "GetMethodMeta: null param");
@@ -932,8 +933,8 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetStructFieldCount(co
     return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
 }
 
-AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetStructFieldName(const std::string& structName, uint32_t index,
-    std::string* fieldName) const
+AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetStructFieldName(const std::string& structName,
+    uint32_t index, std::string* fieldName) const
 {
     if (fieldName == nullptr || structName.empty()) {
         TAG_LOGE(AAFwkTag::EXT, "GetStructFieldName: null param");
