@@ -38,6 +38,9 @@
 #include "open_link/napi_common_open_link_options.h"
 #include "start_options.h"
 #include "hitrace_meter.h"
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+#include "histogram_plugin_macros.h"
+#endif
 #include "uri.h"
 
 namespace OHOS {
@@ -682,7 +685,13 @@ private:
         if (!CheckStartAbilityByCallInputParam(env, info, want, accountId)) {
             return CreateJsUndefined(env);
         }
-
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+        if (accountId == DEFAULT_INVAL_VALUE) {
+            HISTOGRAM_BOOLEAN("AbilityKit.ServiceExtensionContext.startAbilityByCall", 1);
+        } else {
+            HISTOGRAM_BOOLEAN("AbilityKit.ServiceExtensionContext.startAbilityByCallWithAccount", 1);
+        }
+#endif
         auto calls = std::make_shared<StartAbilityByCallParameters>();
         napi_value result = nullptr;
         calls->callerCallBack = std::make_shared<CallerCallBack>();
@@ -1029,6 +1038,9 @@ private:
     {
         HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
         TAG_LOGD(AAFwkTag::SERVICE_EXT, "called");
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+    HISTOGRAM_BOOLEAN("AbilityKit.ServiceExtensionContext.connectServiceExtensionAbility", 1);
+#endif
         // Check params count
         if (info.argc < ARGC_TWO) {
             TAG_LOGE(AAFwkTag::SERVICE_EXT, "invalid argc");
@@ -1074,6 +1086,10 @@ private:
     {
         HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
         TAG_LOGI(AAFwkTag::SERVICE_EXT, "ConnectAbilityWithAccount");
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+    HISTOGRAM_BOOLEAN(
+        "AbilityKit.ServiceExtensionContext.connectServiceExtensionAbilityWithAccount", 1);
+#endif
         // Unwrap want, accountId and connection
         AAFwk::Want want;
         int32_t accountId = 0;
@@ -1221,6 +1237,9 @@ private:
     {
         HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
         TAG_LOGI(AAFwkTag::SERVICE_EXT, "called");
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+    HISTOGRAM_BOOLEAN("AbilityKit.ServiceExtensionContext.startServiceExtensionAbility", 1);
+#endif
         if (info.argc < ARGC_ONE) {
             TAG_LOGE(AAFwkTag::SERVICE_EXT, "invalid argc");
             ThrowTooFewParametersError(env);

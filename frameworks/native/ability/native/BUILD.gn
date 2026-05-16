@@ -1564,6 +1564,13 @@ ohos_shared_library("service_extension") {
     "samgr:samgr_proxy",
   ]
 
+  if (defined(hiviewdfx_runtime_api_metrics_enable) && hiviewdfx_runtime_api_metrics_enable) {
+    defines += [ "HIVIEWDFX_RUNTIME_API_METRICS" ]
+    external_deps += [
+      "api_metrics:histogrammanager",
+    ]
+  }
+
   if (ability_runtime_graphics) {
     external_deps += [
       "image_framework:image",
