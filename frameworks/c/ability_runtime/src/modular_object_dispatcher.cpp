@@ -204,12 +204,12 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_CallMethod(
     return ret;
 }
 
-void OH_AbilityRuntime_ModObjDispatcher_Variant_Clear(OH_AbilityRuntime_ModObjDispatcher_Variant* pVariant)
+void OH_AbilityRuntime_ModObjDispatcher_VariantClear(OH_AbilityRuntime_ModObjDispatcher_Variant* pVariant)
 {
     ModObjDispatcherComplexTypeManager::Variant_Clear(pVariant);
 }
 
-void OH_AbilityRuntime_ModObjDispatcher_TypeInfo_Clear(OH_AbilityRuntime_ModObjDispatcher_TypeInfo* pTypeInfo)
+void OH_AbilityRuntime_ModObjDispatcher_TypeInfoClear(OH_AbilityRuntime_ModObjDispatcher_TypeInfo* pTypeInfo)
 {
     ModObjDispatcherComplexTypeManager::TypeInfo_Clear(pTypeInfo);
 }
@@ -493,7 +493,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetStructFieldType(
     return pTypeDescriptor->metadataManager->GetStructFieldType(pbstrStructName, pbstrFieldName, pFieldType);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Array_Create(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_ArrayCreate(
     OH_AbilityRuntime_ModObjDispatcher_TypeInfo* elementType, uint32_t size,
     OH_AbilityRuntime_ModObjDispatcher_ArrayHandle* ppArray)
 {
@@ -503,7 +503,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Array_Create(
     return ModObjDispatcherComplexTypeManager::ArrayCreate(elementType, size, ppArray);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Array_GetElementType(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_ArrayGetElementType(
     OH_AbilityRuntime_ModObjDispatcher_ArrayHandle pArray, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* pElementType)
 {
     if (pArray == nullptr || pElementType == nullptr) {
@@ -512,32 +512,32 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Array_GetElementType
     return ModObjDispatcherComplexTypeManager::ArrayGetElementType(pArray, pElementType);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Array_Set(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_ArraySet(
     OH_AbilityRuntime_ModObjDispatcher_ArrayHandle pArray, uint32_t index,
     const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     return ModObjDispatcherComplexTypeManager::ArraySet(pArray, index, pValue);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Array_Get(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_ArrayGet(
     OH_AbilityRuntime_ModObjDispatcher_ArrayHandle pArray, uint32_t index,
     OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     return ModObjDispatcherComplexTypeManager::ArrayGet(pArray, index, pValue);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Array_GetSize(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_ArrayGetSize(
     OH_AbilityRuntime_ModObjDispatcher_ArrayHandle pArray, uint32_t* pSize)
 {
     return ModObjDispatcherComplexTypeManager::ArrayGetSize(pArray, pSize);
 }
 
-void OH_AbilityRuntime_ModObjDispatcher_Array_Release(OH_AbilityRuntime_ModObjDispatcher_ArrayHandle* ppArray)
+void OH_AbilityRuntime_ModObjDispatcher_ArrayRelease(OH_AbilityRuntime_ModObjDispatcher_ArrayHandle* ppArray)
 {
     ModObjDispatcherComplexTypeManager::ArrayRelease(ppArray);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Vector_Create(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_VectorCreate(
     OH_AbilityRuntime_ModObjDispatcher_TypeInfo* elementType, OH_AbilityRuntime_ModObjDispatcher_VectorHandle* ppVector)
 {
     if (elementType == nullptr || ppVector == nullptr) {
@@ -546,7 +546,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Vector_Create(
     return ModObjDispatcherComplexTypeManager::VectorCreate(elementType, ppVector);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Vector_GetElementType(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_VectorGetElementType(
     OH_AbilityRuntime_ModObjDispatcher_VectorHandle pVector, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* pElementType)
 {
     if (pVector == nullptr || pElementType == nullptr) {
@@ -555,36 +555,36 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Vector_GetElementTyp
     return ModObjDispatcherComplexTypeManager::VectorGetElementType(pVector, pElementType);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Vector_Add(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_VectorAdd(
     OH_AbilityRuntime_ModObjDispatcher_VectorHandle pVector, const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     return ModObjDispatcherComplexTypeManager::VectorAdd(pVector, pValue);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Vector_Get(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_VectorGet(
     OH_AbilityRuntime_ModObjDispatcher_VectorHandle pVector, uint32_t index, OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     return ModObjDispatcherComplexTypeManager::VectorGet(pVector, index, pValue);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Vector_GetSize(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_VectorGetSize(
     OH_AbilityRuntime_ModObjDispatcher_VectorHandle pVector, uint32_t* pSize)
 {
     return ModObjDispatcherComplexTypeManager::VectorGetSize(pVector, pSize);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Vector_Clear(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_VectorClear(
     OH_AbilityRuntime_ModObjDispatcher_VectorHandle pVector)
 {
     return ModObjDispatcherComplexTypeManager::VectorClear(pVector);
 }
 
-void OH_AbilityRuntime_ModObjDispatcher_Vector_Release(OH_AbilityRuntime_ModObjDispatcher_VectorHandle* ppVector)
+void OH_AbilityRuntime_ModObjDispatcher_VectorRelease(OH_AbilityRuntime_ModObjDispatcher_VectorHandle* ppVector)
 {
     ModObjDispatcherComplexTypeManager::VectorRelease(ppVector);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Set_Create(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_SetCreate(
     OH_AbilityRuntime_ModObjDispatcher_TypeInfo* elementType, OH_AbilityRuntime_ModObjDispatcher_SetHandle* ppSet)
 {
     if (elementType == nullptr || ppSet == nullptr) {
@@ -593,7 +593,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Set_Create(
     return ModObjDispatcherComplexTypeManager::SetCreate(elementType, ppSet);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Set_GetElementType(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_SetGetElementType(
     OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* pElementType)
 {
     if (pSet == nullptr || pElementType == nullptr) {
@@ -602,48 +602,48 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Set_GetElementType(
     return ModObjDispatcherComplexTypeManager::SetGetElementType(pSet, pElementType);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Set_Add(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_SetAdd(
     OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet, const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     return ModObjDispatcherComplexTypeManager::SetAdd(pSet, pValue);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Set_Remove(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_SetRemove(
     OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet, const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     return ModObjDispatcherComplexTypeManager::SetRemove(pSet, pValue);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Set_Contains(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_SetContains(
     OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet, const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue, bool* pExists)
 {
     return ModObjDispatcherComplexTypeManager::SetContains(pSet, pValue, pExists);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Set_GetSize(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_SetGetSize(
     OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet, uint32_t* pSize)
 {
     return ModObjDispatcherComplexTypeManager::SetGetSize(pSet, pSize);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Set_GetAt(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_SetGetAt(
     OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet, uint32_t index,
     OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     return ModObjDispatcherComplexTypeManager::SetGetAt(pSet, index, pValue);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Set_Clear(OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet)
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_SetClear(OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet)
 {
     return ModObjDispatcherComplexTypeManager::SetClear(pSet);
 }
 
-void OH_AbilityRuntime_ModObjDispatcher_Set_Release(OH_AbilityRuntime_ModObjDispatcher_SetHandle* ppSet)
+void OH_AbilityRuntime_ModObjDispatcher_SetRelease(OH_AbilityRuntime_ModObjDispatcher_SetHandle* ppSet)
 {
     ModObjDispatcherComplexTypeManager::SetRelease(ppSet);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_Create(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_MapCreate(
     OH_AbilityRuntime_ModObjDispatcher_ValueType keyType, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* valueType,
     OH_AbilityRuntime_ModObjDispatcher_MapHandle* ppMap)
 {
@@ -653,13 +653,13 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_Create(
     return ModObjDispatcherComplexTypeManager::MapCreate(keyType, valueType, ppMap);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_GetKeyType(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_MapGetKeyType(
     OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, OH_AbilityRuntime_ModObjDispatcher_ValueType* pKeyType)
 {
     return ModObjDispatcherComplexTypeManager::MapGetKeyType(pMap, pKeyType);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_GetValueType(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_MapGetValueType(
     OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* pValueType)
 {
     if (pMap == nullptr || pValueType == nullptr) {
@@ -668,89 +668,89 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_GetValueType(
     return ModObjDispatcherComplexTypeManager::MapGetValueType(pMap, pValueType);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_Put(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_MapPut(
     OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, const OH_AbilityRuntime_ModObjDispatcher_Variant* pKey,
     const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     return ModObjDispatcherComplexTypeManager::MapPut(pMap, pKey, pValue);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_Get(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_MapGet(
     OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, const OH_AbilityRuntime_ModObjDispatcher_Variant* pKey,
     OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     return ModObjDispatcherComplexTypeManager::MapGet(pMap, pKey, pValue);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_Remove(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_MapRemove(
     OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, const OH_AbilityRuntime_ModObjDispatcher_Variant* pKey)
 {
     return ModObjDispatcherComplexTypeManager::MapRemove(pMap, pKey);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_ContainsKey(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_MapContainsKey(
     OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, const OH_AbilityRuntime_ModObjDispatcher_Variant* pKey, bool* pExists)
 {
     return ModObjDispatcherComplexTypeManager::MapContainsKey(pMap, pKey, pExists);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_GetSize(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_MapGetSize(
     OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, uint32_t* pSize)
 {
     return ModObjDispatcherComplexTypeManager::MapGetSize(pMap, pSize);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_GetKeyAt(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_MapGetKeyAt(
     OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, uint32_t index,
     OH_AbilityRuntime_ModObjDispatcher_Variant* pKey)
 {
     return ModObjDispatcherComplexTypeManager::MapGetKeyAt(pMap, index, pKey);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_GetValueAt(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_MapGetValueAt(
     OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, uint32_t index,
     OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     return ModObjDispatcherComplexTypeManager::MapGetValueAt(pMap, index, pValue);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Map_Clear(OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap)
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_MapClear(OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap)
 {
     return ModObjDispatcherComplexTypeManager::MapClear(pMap);
 }
 
-void OH_AbilityRuntime_ModObjDispatcher_Map_Release(OH_AbilityRuntime_ModObjDispatcher_MapHandle* ppMap)
+void OH_AbilityRuntime_ModObjDispatcher_MapRelease(OH_AbilityRuntime_ModObjDispatcher_MapHandle* ppMap)
 {
     ModObjDispatcherComplexTypeManager::MapRelease(ppMap);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Struct_Create(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_StructCreate(
     const char* structName, OH_AbilityRuntime_ModObjDispatcher_StructHandle* ppStruct)
 {
     return ModObjDispatcherComplexTypeManager::StructCreate(structName, ppStruct);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Struct_GetName(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_StructGetName(
     OH_AbilityRuntime_ModObjDispatcher_StructHandle pStruct, char* pbstrName, uint32_t cMaxName)
 {
     return ModObjDispatcherComplexTypeManager::StructGetName(pStruct, pbstrName, cMaxName);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Struct_SetField(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_StructSetField(
     OH_AbilityRuntime_ModObjDispatcher_StructHandle pStruct, const char* szName,
     const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     return ModObjDispatcherComplexTypeManager::StructSetField(pStruct, szName, pValue);
 }
 
-AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_Struct_GetField(
+AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_StructGetField(
     OH_AbilityRuntime_ModObjDispatcher_StructHandle pStruct, const char* szName,
     OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     return ModObjDispatcherComplexTypeManager::StructGetField(pStruct, szName, pValue);
 }
 
-void OH_AbilityRuntime_ModObjDispatcher_Struct_Release(OH_AbilityRuntime_ModObjDispatcher_StructHandle* ppStruct)
+void OH_AbilityRuntime_ModObjDispatcher_StructRelease(OH_AbilityRuntime_ModObjDispatcher_StructHandle* ppStruct)
 {
     ModObjDispatcherComplexTypeManager::StructRelease(ppStruct);
 }

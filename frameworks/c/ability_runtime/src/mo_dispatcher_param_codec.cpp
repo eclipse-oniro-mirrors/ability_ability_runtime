@@ -66,13 +66,13 @@ AbilityRuntime_ErrorCode WriteRawValueImpl(MessageParcel& parcel,
         case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I64:
             return CheckWrite(parcel.WriteInt64(value->u.i64Val));
         case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U8:
-            return CheckWrite(parcel.WriteInt8(static_cast<int8_t>(value->u.u8Val)));
+            return CheckWrite(parcel.WriteUint8(value->u.u8Val));
         case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U16:
-            return CheckWrite(parcel.WriteInt16(static_cast<int16_t>(value->u.u16Val)));
+            return CheckWrite(parcel.WriteUint16(value->u.u16Val));
         case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U32:
-            return CheckWrite(parcel.WriteInt32(static_cast<uint32_t>(value->u.u32Val)));
+            return CheckWrite(parcel.WriteUint32(value->u.u32Val));
         case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U64:
-            return CheckWrite(parcel.WriteInt64(static_cast<int64_t>(value->u.u64Val)));
+            return CheckWrite(parcel.WriteUint64(value->u.u64Val));
         case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_F32:
             return CheckWrite(parcel.WriteFloat(value->u.f32Val));
         case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_F64:
