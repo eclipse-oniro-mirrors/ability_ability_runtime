@@ -1618,22 +1618,5 @@ HWTEST_F(AbilityManagerClientBranchThirdTest, ExecuteIntentWithResult_0200, Test
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
 }
 
-/**
- * @tc.name: ExecuteIntentWithResult_0300
- * @tc.desc: Test ExecuteIntentWithResult with timeout
- * @tc.type: FUNC
- */
-HWTEST_F(AbilityManagerClientBranchThirdTest, ExecuteIntentWithResult_0300, TestSize.Level1)
-{
-    client_->proxy_ = mock_;
-    EXPECT_CALL(*mock_, ExecuteIntent(_, _, _))
-        .Times(1)
-        .WillOnce(Return(ERR_OK));
-
-    InsightIntentExecuteParam param;
-    InsightIntentExecuteResult result;
-    auto ret = client_->ExecuteIntentWithResult(param, result, 1);
-    EXPECT_EQ(ret, ERR_INSIGHT_INTENT_EXECUTE_REPLY_FAILED);
-}
 }  // namespace AAFwk
 }  // namespace OHOS

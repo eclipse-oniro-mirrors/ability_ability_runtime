@@ -551,6 +551,37 @@ void CliToolManagerService::HandleBackgroundSessionReply(
     EventDispatcher::GetInstance().DispatchExecToolReplyEvent(record->callerPid, eventId, ERR_OK, session);
 }
 
+int32_t CliToolManagerService::TryDispatchSkillSession(const ExecToolParam &param,
+    const std::string &eventId, const ToolInfo &toolInfo, bool &dispatched)
+{
+    dispatched = false;
+    if (!ToolUtil::IsSkillTool(param.toolName)) {
+        return ERR_OK;
+    }
+
+    int32_t skillType = 0;
+    auto skillRet = ValidateSkillTypeFromParam(param, skillType);
+    if (skillRet != ERR_OK) {
+        return skillRet;
+    }
+    if (skillType == SKILL_TYPE_INDEPENDENT) {
+        TAG_LOGI(AAFwkTag::CLI_TOOL,
+            "Independent skill, fallback to CLI path, toolName=%{public}s", param.toolName.c_str());
+        return ERR_OK;
+    }
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL,
+        "Dispatch to skill path, toolName=%{public}s eventId=%{public}s",
+        param.toolName.c_str(), eventId.c_str());
+    dispatched = true;
+    int32_t ret = SetupAndStartSkillSession(param, eventId, toolInfo);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL,
+            "Skill dispatch failed, toolName=%{public}s ret=%{public}d", param.toolName.c_str(), ret);
+    }
+    return ret;
+}
+
 int32_t CliToolManagerService::ExecTool(const ExecToolParam &param, const std::string &eventId)
 {
     InterfaceCallCounter counter(interfaceCalledCount_);
@@ -561,25 +592,13 @@ int32_t CliToolManagerService::ExecTool(const ExecToolParam &param, const std::s
     }
 
     ToolInfo toolInfo;
-    if (ToolUtil::IsSkillTool(param.toolName)) {
-        int32_t skillType = 0;
-        auto skillRet = ValidateSkillTypeFromParam(param, skillType);
-        if (skillRet == ERR_OK && skillType != SKILL_TYPE_INDEPENDENT) {
-            TAG_LOGI(AAFwkTag::CLI_TOOL,
-                "Dispatch to skill path, toolName=%{public}s eventId=%{public}s",
-                param.toolName.c_str(), eventId.c_str());
-            int32_t ret = SetupAndStartSkillSession(param, eventId, toolInfo);
-            if (ret != ERR_OK) {
-                TAG_LOGE(AAFwkTag::CLI_TOOL,
-                    "Skill dispatch failed, toolName=%{public}s ret=%{public}d", param.toolName.c_str(), ret);
-            }
-            return ret;
-        }
-        if (skillRet != ERR_OK) {
-            return skillRet;
-        }
-        TAG_LOGI(AAFwkTag::CLI_TOOL,
-            "Independent skill, fallback to CLI path, toolName=%{public}s", param.toolName.c_str());
+    bool dispatched = false;
+    auto skillRet = TryDispatchSkillSession(param, eventId, toolInfo, dispatched);
+    if (skillRet != ERR_OK) {
+        return skillRet;
+    }
+    if (dispatched) {
+        return ERR_OK;
     }
 
     if (auto ret = ValidateSessionLimit(); ret != ERR_OK) {
@@ -587,10 +606,8 @@ int32_t CliToolManagerService::ExecTool(const ExecToolParam &param, const std::s
     }
 
     auto tokenId = IPCSkeleton::GetCallingTokenID();
-
     std::string sandboxConfig;
     std::string bundleName;
-
     if (auto ret = ValidateAndPrepareTool(param, tokenId, toolInfo, sandboxConfig, bundleName); ret != ERR_OK) {
         return ret;
     }
