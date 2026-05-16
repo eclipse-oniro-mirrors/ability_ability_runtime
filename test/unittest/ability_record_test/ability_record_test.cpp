@@ -1957,7 +1957,6 @@ HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_ForegroundAbility_005, TestSize.Leve
 HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_ForegroundAbility_007, TestSize.Level1)
 {
     std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
-    abilityRecord->SetLastWant(std::make_shared<Want>());
     AppUtils::GetInstance().isStartSpecifiedProcess_.isLoaded = true;
     AppUtils::GetInstance().isStartSpecifiedProcess_.value = true;
     abilityRecord->abilityInfo_.applicationInfo.isSystemApp = true;
@@ -1976,7 +1975,6 @@ HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_ForegroundAbility_007, TestSize.Leve
 HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_ForegroundAbility_008, TestSize.Level1)
 {
     std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
-    abilityRecord->SetLastWant(std::make_shared<Want>());
     AppUtils::GetInstance().isStartSpecifiedProcess_.isLoaded = true;
     AppUtils::GetInstance().isStartSpecifiedProcess_.value = true;
     abilityRecord->abilityInfo_.applicationInfo.isSystemApp = false;
@@ -1995,7 +1993,6 @@ HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_ForegroundAbility_008, TestSize.Leve
 HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_ForegroundAbility_009, TestSize.Level1)
 {
     std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
-    abilityRecord->SetLastWant(std::make_shared<Want>());
     AppUtils::GetInstance().isStartSpecifiedProcess_.isLoaded = true;
     AppUtils::GetInstance().isStartSpecifiedProcess_.value = false;
     abilityRecord->abilityInfo_.applicationInfo.isSystemApp = true;
@@ -2014,7 +2011,6 @@ HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_ForegroundAbility_009, TestSize.Leve
 HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_ForegroundAbility_010, TestSize.Level1)
 {
     std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
-    abilityRecord->SetLastWant(std::make_shared<Want>());
     AppUtils::GetInstance().isStartSpecifiedProcess_.isLoaded = true;
     AppUtils::GetInstance().isStartSpecifiedProcess_.value = false;
     abilityRecord->abilityInfo_.applicationInfo.isSystemApp = false;

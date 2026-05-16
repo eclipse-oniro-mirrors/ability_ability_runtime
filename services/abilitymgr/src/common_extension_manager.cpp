@@ -44,14 +44,14 @@ int CommonExtensionManager::AttachAbilityThreadInner(const sptr<IAbilitySchedule
         auto terminatingRecord = GetExtensionByTokenFromTerminatingMap(token);
         if (terminatingRecord != nullptr) {
             TAG_LOGW(AAFwkTag::EXT, "Ability:%{public}s/%{public}s, user:%{public}d",
-                terminatingRecord->GetBundleName().c_str(),
-                terminatingRecord->GetAbilityName().c_str(), userId_);
+                terminatingRecord->GetInfoBundleName().c_str(),
+                terminatingRecord->GetInfoAbilityName().c_str(), userId_);
         }
         auto tmpRecord = Token::GetAbilityRecordByToken(token);
         if (tmpRecord && tmpRecord != terminatingRecord) {
             TAG_LOGW(AAFwkTag::EXT, "Token:%{public}s/%{public}s, user:%{public}d",
-                tmpRecord->GetBundleName().c_str(),
-                tmpRecord->GetAbilityName().c_str(), userId_);
+                tmpRecord->GetInfoBundleName().c_str(),
+                tmpRecord->GetInfoAbilityName().c_str(), userId_);
         }
     }
     CHECK_POINTER_AND_RETURN(abilityRecord, ERR_INVALID_VALUE);

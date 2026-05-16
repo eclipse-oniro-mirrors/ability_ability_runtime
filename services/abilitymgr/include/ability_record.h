@@ -368,6 +368,21 @@ public:
     bool GetBoolParam(const std::string &key, bool defaultValue) const;
     bool HasParameter(const std::string &key) const;
 
+    inline const std::string &GetInfoAbilityName() const
+    {
+        return abilityInfo_.name;
+    }
+
+    inline const std::string &GetInfoBundleName() const
+    {
+        return abilityInfo_.bundleName;
+    }
+
+    inline const std::string &GetInfoModuleName() const
+    {
+        return abilityInfo_.moduleName;
+    }
+
     /**
      * remove signature info of want.
      *
