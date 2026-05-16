@@ -561,7 +561,7 @@ public:
         return E_OK;
     }
 
-    int32_t CreatePartition(const std::string &diskId, const PartitionOptions &partitionOption)
+    int32_t CreatePartition(const std::string &diskId, const PartitionParams &partitionParams)
     {
         return E_OK;
     }
@@ -571,7 +571,7 @@ public:
         return E_OK;
     }
 
-    int32_t FormatPartition(const std::string &diskId, uint32_t partitionNum, const FormatOptions &options)
+    int32_t FormatPartition(const std::string &diskId, uint32_t partitionNum, const FormatParams &formatParams)
     {
         return E_OK;
     }
