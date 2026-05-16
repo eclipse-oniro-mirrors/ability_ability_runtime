@@ -1528,5 +1528,112 @@ HWTEST_F(AbilityManagerClientBranchThirdTest, QuerySkillType_0200, TestSize.Leve
     auto ret = client_->QuerySkillType("bundle", "module", "skill", skillType);
     EXPECT_EQ(ret, ERR_OK);
 }
+
+/**
+ * @tc.name: ExecuteInAppSkillWithTokenId_0100
+ * @tc.desc: Test ExecuteInAppSkillWithTokenId with proxy not connected
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, ExecuteInAppSkillWithTokenId_0100, TestSize.Level1)
+{
+    client_->proxy_ = nullptr;
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(testing::Return(false));
+    EXPECT_CALL(*mockSystemAbility_, GetSystemAbility(testing::_)).WillRepeatedly(Return(nullptr));
+    SystemAbilityManagerClient::GetInstance().systemAbilityManager_ = mockSystemAbility_;
+
+    AppExecFwk::SkillExecuteRequest request;
+    auto ret = client_->ExecuteInAppSkillWithTokenId(request, nullptr);
+    EXPECT_EQ(ret, ABILITY_SERVICE_NOT_CONNECTED);
+}
+
+/**
+ * @tc.name: ExecuteInAppSkillWithTokenId_0200
+ * @tc.desc: Test ExecuteInAppSkillWithTokenId with proxy connected and success
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, ExecuteInAppSkillWithTokenId_0200, TestSize.Level1)
+{
+    client_->proxy_ = mock_;
+    AppExecFwk::SkillExecuteRequest request;
+    sptr<ISkillExecuteCallback> callback = nullptr;
+    EXPECT_CALL(*mock_, ExecuteInAppSkillWithTokenId(_, _))
+        .Times(1)
+        .WillOnce(Return(ERR_OK));
+    auto ret = client_->ExecuteInAppSkillWithTokenId(request, callback);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: ExecuteInAppSkillWithTokenId_0300
+ * @tc.desc: Test ExecuteInAppSkillWithTokenId with proxy returns error
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, ExecuteInAppSkillWithTokenId_0300, TestSize.Level1)
+{
+    client_->proxy_ = mock_;
+    AppExecFwk::SkillExecuteRequest request;
+    sptr<ISkillExecuteCallback> callback = nullptr;
+    EXPECT_CALL(*mock_, ExecuteInAppSkillWithTokenId(_, _))
+        .Times(1)
+        .WillOnce(Return(ERR_CODE_INVALID_ID));
+    auto ret = client_->ExecuteInAppSkillWithTokenId(request, callback);
+    EXPECT_EQ(ret, ERR_CODE_INVALID_ID);
+}
+
+/**
+ * @tc.name: ExecuteIntentWithResult_0100
+ * @tc.desc: Test ExecuteIntentWithResult with proxy not connected
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, ExecuteIntentWithResult_0100, TestSize.Level1)
+{
+    client_->proxy_ = nullptr;
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(testing::Return(false));
+    EXPECT_CALL(*mockSystemAbility_, GetSystemAbility(testing::_)).WillRepeatedly(Return(nullptr));
+    SystemAbilityManagerClient::GetInstance().systemAbilityManager_ = mockSystemAbility_;
+
+    InsightIntentExecuteParam param;
+    InsightIntentExecuteResult result;
+    auto ret = client_->ExecuteIntentWithResult(param, result, 1000);
+    EXPECT_EQ(ret, ABILITY_SERVICE_NOT_CONNECTED);
+}
+
+/**
+ * @tc.name: ExecuteIntentWithResult_0200
+ * @tc.desc: Test ExecuteIntentWithResult with ExecuteIntent returning error
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, ExecuteIntentWithResult_0200, TestSize.Level1)
+{
+    client_->proxy_ = mock_;
+    EXPECT_CALL(*mock_, ExecuteIntent(_, _, _))
+        .Times(1)
+        .WillOnce(Return(ERR_INVALID_VALUE));
+
+    InsightIntentExecuteParam param;
+    InsightIntentExecuteResult result;
+    auto ret = client_->ExecuteIntentWithResult(param, result, 1000);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: ExecuteIntentWithResult_0300
+ * @tc.desc: Test ExecuteIntentWithResult with timeout
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, ExecuteIntentWithResult_0300, TestSize.Level1)
+{
+    client_->proxy_ = mock_;
+    EXPECT_CALL(*mock_, ExecuteIntent(_, _, _))
+        .Times(1)
+        .WillOnce(Return(ERR_OK));
+
+    InsightIntentExecuteParam param;
+    InsightIntentExecuteResult result;
+    auto ret = client_->ExecuteIntentWithResult(param, result, 1);
+    EXPECT_EQ(ret, ERR_INSIGHT_INTENT_EXECUTE_REPLY_FAILED);
+}
 }  // namespace AAFwk
 }  // namespace OHOS
