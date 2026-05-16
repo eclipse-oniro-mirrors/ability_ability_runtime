@@ -48,7 +48,6 @@ constexpr int32_t QUERY_DB_ERROR = 2;
 constexpr int32_t MAX_QUERY_CMDS_SIZE = 100;
 constexpr int32_t ACTIVE_TIME = 30 * 1000; // 30s
 constexpr int32_t SKILL_TYPE_INDEPENDENT = -1;
-sptr<SkillCallbackAdapter> adaptor_;
 } // namespace
 
 std::mutex g_mutex;
@@ -1027,7 +1026,7 @@ int32_t CliToolManagerService::SetupAndStartSkillSession(const ExecToolParam &pa
     AddSessionRecord(record);
 
     auto callerTokenId = IPCSkeleton::GetCallingTokenID();
-    adaptor_ = sptr<SkillCallbackAdapter>::MakeSptr(
+    auto adaptor = sptr<SkillCallbackAdapter>::MakeSptr(
         record->sessionId, record->callerPid, eventId);
 
     AppExecFwk::SkillExecuteRequest skillRequest;
@@ -1041,7 +1040,7 @@ int32_t CliToolManagerService::SetupAndStartSkillSession(const ExecToolParam &pa
 
     TAG_LOGD(AAFwkTag::CLI_TOOL, "execSkill before ExecuteInAppSkillWithTokenId");
     int32_t ret = AAFwk::AbilityManagerClient::GetInstance()->ExecuteInAppSkillWithTokenId(
-        skillRequest, adaptor_);
+        skillRequest, adaptor);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "ExecuteInAppSkillWithTokenId failed:%{public}d", ret);
         RemoveSessionRecord(record->sessionId);
