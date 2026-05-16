@@ -15,6 +15,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <thread>
 
 #define private public
 #define protected public
@@ -104,6 +105,7 @@ void AgentCardMgrTest::SetUp(void)
     MyFlag::queryDataCards.clear();
     MyFlag::queryAllDataEntries.clear();
     MyFlag::queryAllDataCards.clear();
+    MyFlag::syncQueryDataWithInsert = false;
     MyFlag::retGetBundleInfo = true;
     MyFlag::retGetResConfigFile = true;
     MyFlag::retFromJson = true;
@@ -1127,6 +1129,86 @@ HWTEST_F(AgentCardMgrTest, RegisterAgentCard_010, TestSize.Level1)
     AgentCard card = BuildCard("workflowAgent", "1.0.0", "test.bundle", "TestAgent", AgentCardType::LOW_CODE);
 
     EXPECT_EQ(agentCardMgr.RegisterAgentCard(card), AAFwk::ERR_NOT_SYSTEM_APP);
+}
+
+/**
+ * @tc.name: RegisterAgentCard_011
+ * @tc.desc: RegisterAgentCard persists concurrent registrations with distinct agentIds
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardMgrTest, RegisterAgentCard_011, TestSize.Level1)
+{
+    AgentCardMgr agentCardMgr;
+    MyFlag::mockExtensionInfos.push_back(BuildAgentExtensionInfo());
+    MyFlag::retQueryData = ERR_NAME_NOT_FOUND;
+    MyFlag::syncQueryDataWithInsert = true;
+
+    constexpr int32_t cardCount = 10;
+    std::vector<std::thread> threads;
+    std::vector<int32_t> results(cardCount, ERR_INVALID_VALUE);
+    threads.reserve(cardCount);
+    for (int32_t i = 0; i < cardCount; ++i) {
+        threads.emplace_back([&agentCardMgr, &results, i]() {
+            AgentCard card = BuildCard("testAgent" + std::to_string(i), "1.0.0");
+            results[i] = agentCardMgr.RegisterAgentCard(card);
+        });
+    }
+    for (auto &thread : threads) {
+        thread.join();
+    }
+
+    for (int32_t result : results) {
+        EXPECT_EQ(result, ERR_OK);
+    }
+    ASSERT_EQ(MyFlag::insertedCards.size(), static_cast<size_t>(cardCount));
+    for (int32_t i = 0; i < cardCount; ++i) {
+        auto it = std::find_if(MyFlag::insertedCards.begin(), MyFlag::insertedCards.end(),
+            [i](const AgentCard &card) { return card.agentId == "testAgent" + std::to_string(i); });
+        EXPECT_NE(it, MyFlag::insertedCards.end());
+    }
+}
+
+/**
+ * @tc.name: RegisterAgentCard_012
+ * @tc.desc: RegisterAgentCard rejects new cards when the bundle has reached the max card count
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardMgrTest, RegisterAgentCard_012, TestSize.Level1)
+{
+    AgentCardMgr agentCardMgr;
+    MyFlag::mockExtensionInfos.push_back(BuildAgentExtensionInfo());
+    MyFlag::retQueryData = ERR_OK;
+    constexpr int32_t maxAgentCardSize = 1000;
+    MyFlag::queryDataCards.reserve(maxAgentCardSize);
+    for (int32_t i = 0; i < maxAgentCardSize; ++i) {
+        MyFlag::queryDataCards.emplace_back(BuildCard("storedAgent" + std::to_string(i), "1.0.0"));
+    }
+
+    AgentCard card = BuildCard("newAgent", "1.0.0");
+    EXPECT_EQ(agentCardMgr.RegisterAgentCard(card), AAFwk::ERR_AGENT_CARD_LIST_OUT_OF_RANGE);
+    EXPECT_TRUE(MyFlag::insertedCards.empty());
+}
+
+/**
+ * @tc.name: RegisterAgentCard_013
+ * @tc.desc: RegisterAgentCard allows adding the card that reaches the max card count
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardMgrTest, RegisterAgentCard_013, TestSize.Level1)
+{
+    AgentCardMgr agentCardMgr;
+    MyFlag::mockExtensionInfos.push_back(BuildAgentExtensionInfo());
+    MyFlag::retQueryData = ERR_OK;
+    constexpr int32_t maxAgentCardSize = 1000;
+    MyFlag::queryDataCards.reserve(maxAgentCardSize - 1);
+    for (int32_t i = 0; i < maxAgentCardSize - 1; ++i) {
+        MyFlag::queryDataCards.emplace_back(BuildCard("storedAgent" + std::to_string(i), "1.0.0"));
+    }
+
+    AgentCard card = BuildCard("newAgent", "1.0.0");
+    EXPECT_EQ(agentCardMgr.RegisterAgentCard(card), ERR_OK);
+    ASSERT_EQ(MyFlag::insertedCards.size(), static_cast<size_t>(maxAgentCardSize));
+    EXPECT_EQ(MyFlag::insertedCards.back().agentId, "newAgent");
 }
 
 /**

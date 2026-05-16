@@ -28,7 +28,7 @@ SessionState SessionRecord::GetState() const
     return state_.load(std::memory_order_acquire);
 }
 
-void SessionRecord::SetTerminalResult(int32_t status, int32_t sig)
+void SessionRecord::SetTerminalResult(int32_t status, int32_t sig) // for waitpid
 {
     std::lock_guard<std::mutex> lock(resultMutex_);
     terminalStatus_ = status;
@@ -36,6 +36,18 @@ void SessionRecord::SetTerminalResult(int32_t status, int32_t sig)
     endTimeMs_ = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
     processExited_.store(true, std::memory_order_release);
+}
+
+void SessionRecord::SetSkillResult(int32_t resultCode, const std::string &outputText)
+{
+    std::lock_guard<std::mutex> lock(resultMutex_);
+    terminalStatus_ = resultCode;
+    stdoutText_ = outputText;
+    endTimeMs_ = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    processExited_.store(true, std::memory_order_release);
+    stdoutClosed_.store(true, std::memory_order_release);
+    stderrClosed_.store(true, std::memory_order_release);
 }
 
 int32_t SessionRecord::GetTerminalStatus() const
@@ -120,14 +132,12 @@ void SessionRecord::BuildSessionInfo(CliSessionInfo &session) const
     session.sessionId = sessionId;
     session.toolName = toolName;
 
-    if (!HasProcessExited() || !OutputDrained()) {
-        session.result = nullptr;
+    if ((!HasProcessExited() || !OutputDrained()) && !timedOut_) {
         session.status = "running";
     } else {
         session.result = BuildExecResult();
         session.status =
-            (!session.result || session.result->timedOut || session.result->exitCode != 0) ?
-            "failed" : "completed";
+            (!session.result || session.result->timedOut || session.result->exitCode != 0) ? "failed" : "completed";
     }
 }
 
@@ -142,17 +152,17 @@ void SessionRecord::TrimBufferedOutput(std::string &buffer)
 std::shared_ptr<ExecResult> SessionRecord::BuildExecResult() const
 {
     auto result = std::make_shared<ExecResult>();
-    if (result == nullptr) {
-        return nullptr;
-    }
-
     std::lock_guard<std::mutex> lock(resultMutex_);
-    result->exitCode = terminalStatus_;
+    if (timedOut_) {
+        result->executionTime = timeoutMs;
+    } else {
+        result->exitCode = terminalStatus_;
+        result->executionTime = (endTimeMs_ > startTime) ? (endTimeMs_ - startTime) : 0;
+    }
     result->outputText = stdoutText_;
     result->errorText = stderrText_;
     result->signalNumber = signalNumber_;
     result->timedOut = timedOut_;
-    result->executionTime = (endTimeMs_ > startTime) ? (endTimeMs_ - startTime) : 0;
     return result;
 }
 

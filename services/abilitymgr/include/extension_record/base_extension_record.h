@@ -141,6 +141,8 @@ public:
     void SetClientPid(pid_t clientPid);
 
     pid_t GetClientPid() const;
+    void SetRequestId(const std::string &requestId);
+    std::string GetRequestId() const;
 
 private:
     void DumpUIExtensionRootHostInfo(std::vector<std::string> &info) const;
@@ -154,6 +156,7 @@ private:
     // service(ability) onConnect() return proxy of service ability
     sptr<IRemoteObject> connRemoteObject_ = {};
     bool isConnected = false;
+    std::string requestId_;
 };
 } // namespace AAFwk
 } // namespace OHOS

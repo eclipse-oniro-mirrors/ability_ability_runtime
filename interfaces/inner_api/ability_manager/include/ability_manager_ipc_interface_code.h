@@ -744,6 +744,12 @@ enum class AbilityManagerInterfaceCode {
     // query entity
     INSIGHT_INTENT_QUERY_ENTITY = 6165,
 
+    // execute in-app skill
+    EXECUTE_IN_APP_SKILL = 6169,
+
+    // query skill type (independent or in-app)
+    QUERY_SKILL_TYPE = 6171,
+
     // start self ability with token
     START_SELF = 6166,
 
@@ -752,6 +758,18 @@ enum class AbilityManagerInterfaceCode {
 
     // start self uiability with start options and caller token
     START_SELF_UI_ABILITY_WITH_OPTIONS_AND_TOKEN = 6168,
+
+    // start self uiability by application context in current process
+    START_SELF_UI_ABILITY_BY_APP_CONTEXT = 6169,
+
+    // execute skill done with token for identity verification
+    EXECUTE_SKILL_DONE_WITH_TOKEN = 6172,
+
+    // execute in-app skill with explicit caller tokenId
+    EXECUTE_IN_APP_SKILL_WITH_TOKEN_ID = 6173,
+
+    // start self uiability in child process
+    START_SELF_UI_ABILITY_IN_CHILD_PROCESS = 6174,
 };
 }  // namespace AAFwk
 }  // namespace OHOS

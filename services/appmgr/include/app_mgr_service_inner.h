@@ -135,6 +135,7 @@ public:
 
     struct MakeImageRequest {
         std::string bundleName;
+        std::string abilityName;
         int32_t userId = -1;
         int32_t appCloneIndex = -1;
         PreloadMode preloadMode = PreloadMode::PRELOAD_NONE;
@@ -142,6 +143,7 @@ public:
         bool operator==(const MakeImageRequest& other) const
         {
             return bundleName == other.bundleName &&
+                   abilityName == other.abilityName &&
                    userId == other.userId &&
                    appCloneIndex == other.appCloneIndex;
         }
@@ -150,9 +152,10 @@ public:
             size_t operator()(const MakeImageRequest& req) const
             {
                 size_t h1 = std::hash<std::string>{}(req.bundleName);
-                size_t h2 = std::hash<int32_t>{}(req.userId);
-                size_t h3 = std::hash<int32_t>{}(req.appCloneIndex);
-                return h1 ^ (h2 << 1) ^ (h3 << 2);
+                size_t h2 = std::hash<std::string>{}(req.abilityName);
+                size_t h3 = std::hash<int32_t>{}(req.userId);
+                size_t h4 = std::hash<int32_t>{}(req.appCloneIndex);
+                return h1 ^ (h2 << 1) ^ (h3 << 2) ^ (h4 << 3);
             }
         };
     };
@@ -332,15 +335,18 @@ public:
     ImageError MakeImageInner(const AAFwk::Want &want, int32_t userId,
         AppExecFwk::PreloadMode preloadMode, int32_t appIndex, sptr<IImageErrorHandler> errorHandler);
     void DestroyImage(uint64_t checkpointId, sptr<IImageErrorHandler> errorHandler);
-    ImageError DestroyImageInner(uint64_t checkpointId, sptr<IImageErrorHandler> errorHandler);
+    ImageError DestroyImageByCheckpointId(uint64_t checkpointId);
     ImageError DestroyImageForUninstallOrUpgrade(int32_t uid);
-    ImageError DestroyImageForFault(const std::string& bundleName, int32_t userId, int32_t appIndex);
+    ImageError DestroyImageByImageInfo(std::shared_ptr<ForkImageInfo> imageInfo);
+    ImageError DestroyImageForFault(std::shared_ptr<AppRunningRecord> appRecord);
     int32_t HandleForkAll(int32_t pid);
     ImageError HandleForkAllInner(std::shared_ptr<AppRunningRecord> appRecord, int32_t pid);
-    void HandleMakeImageTimeout(const std::string& bundleName, int32_t userId, int32_t appIndex);
+    void HandleMakeImageTimeout(const std::string& bundleName, const std::string& abilityName,
+        int32_t userId, int32_t appIndex);
     void CheckMakeImageState(std::shared_ptr<AppRunningRecord> appRecord, ImageError error);
-    void HandleMakeImageFailed(const PreloadRequest& request, ImageError error);
-    void HandleMakeImageFailed(const std::string& bundleName, int32_t userId, int32_t appIndex, ImageError err);
+    void HandleMakeImageFailed(std::shared_ptr<AppRunningRecord> appRecord, ImageError error);
+    void HandleMakeImageFailed(const std::string& bundleName, const std::string& abilityName,
+        int32_t userId, int32_t appIndex, ImageError err);
 
     /**
      * ApplicationForegrounded, set the application to Foreground State.
@@ -1630,6 +1636,8 @@ public:
       */
     int32_t IsProcessCacheSupported(int32_t pid, bool &isSupported);
 
+    int32_t IsChildProcessSupported(bool isNative, bool &isSupported);
+    
     int32_t SetProcessCacheEnable(int32_t pid, bool enable);
 
     int32_t LockProcessCache(int32_t pid, bool isLock);
@@ -1786,6 +1794,9 @@ public:
      */
     int32_t GetAllAbilityInfos(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos);
 
+    int32_t EnableDelayedProcessExit(int32_t pid, bool enabled);
+    
+    void CancelDelayedExitTask(int32_t pid);
 private:
     int32_t ForceKillApplicationInner(const std::string &bundleName, const int userId = -1,
         const int appIndex = 0);
@@ -2346,6 +2357,8 @@ private:
     int32_t SubmitDfxFaultTask(const FaultData &faultData, const std::string &bundleName,
         const std::shared_ptr<AppRunningRecord> &appRecord, const int32_t pid);
     void AddAbilityStageForSpecified(std::shared_ptr<AppRunningRecord> appRecord);
+    void ReportAbilityStartInfoForSpecified(std::shared_ptr<AppRunningRecord> appRecord,
+        const AbilityInfo &abilityInfo);
     void GetKernelPermissions(uint32_t accessTokenId, JITPermissionsMap &permissionsMap);
     void SendAppSpawnUninstallDebugHapMsg(int32_t userId);
     std::shared_ptr<AppRunningRecord> CreateAppRunningRecord(std::shared_ptr<ApplicationInfo> appInfo,
@@ -2384,15 +2397,23 @@ private:
         sptr<IImageErrorHandler> errorHandler, const PreloadRequest& preloadRequest);
     void SetTemplatePid(std::shared_ptr<AppRunningRecord> appRecord);
     void UpdateImageInfo(int32_t imagePid, uint64_t checkpointId, std::shared_ptr<AppRunningRecord> appRecord);
-    void RemoveImageInfo(const std::string &bundleName, int32_t userId, int32_t appIndex);
+    void RemoveImageInfo(std::shared_ptr<AppRunningRecord> appRecord);
+    void RemoveImageInfo(const std::string &bundleName, const std::string &abilityName,
+        int32_t userId, int32_t appIndex);
     void RemoveImageInfoByCheckpointId(uint64_t checkpointId);
     bool IsImageInfoExist(std::shared_ptr<AppRunningRecord> appRecord);
-    bool IsImageInfoExist(const std::string &bundleName, int32_t userId, int32_t appIndex);
-    std::shared_ptr<ForkImageInfo> GetImageInfo(const std::string &bundleName, int32_t userId, int32_t appIndex);
+    bool IsImageInfoExist(const std::string &bundleName, const std::string &abilityName,
+        int32_t userId, int32_t appIndex);
+    std::shared_ptr<ForkImageInfo> GetImageInfo(std::shared_ptr<AppRunningRecord> appRecord);
+    std::shared_ptr<ForkImageInfo> GetImageInfo(const std::string &bundleName, const std::string &abilityName,
+        int32_t userId, int32_t appIndex);
+    std::shared_ptr<ForkImageInfo> FindImageInfo(
+        const std::string &bundleName, const std::string &abilityName, int32_t userId, int32_t appIndex);
     std::shared_ptr<ForkImageInfo> GetImageInfoByCheckPointId(uint64_t checkpointId);
-    std::shared_ptr<ForkImageInfo> GetImageInfoByUid(int32_t uid);
+    std::list<std::shared_ptr<ForkImageInfo>> GetImageInfosByUid(int32_t uid);
     std::shared_ptr<ForkImageInfo> GetImageInfoByRemoteObject(sptr<IRemoteObject> object);
-    bool IsImageMakeSuccess(const std::string &bundleName, int32_t userId, int32_t appIndex);
+    bool IsImageMakeSuccess(const std::string &bundleName, const std::string &abilityName,
+        int32_t userId, int32_t appIndex);
     bool IsImageInfoMatched(std::shared_ptr<ForkImageInfo> imageInfo, int32_t appIndex, const std::string &processName,
         const std::string &instanceKey, const std::string &specifiedProcessFlag, const std::string &customProcessFlag);
     void RemoveImageDeathRecipient(std::shared_ptr<ForkImageInfo> imageInfo);

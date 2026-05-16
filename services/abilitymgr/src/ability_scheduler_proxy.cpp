@@ -1148,6 +1148,26 @@ void AbilitySchedulerProxy::OnExecuteIntent(const Want &want)
     TAG_LOGI(AAFwkTag::ABILITYMGR, "end");
 }
 
+void AbilitySchedulerProxy::ExecuteSkill(const Want &want)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "execute skill proxy");
+
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_ASYNC);
+    AAFwk::ExtendMaxIpcCapacityForInnerWant(data);
+    if (!WriteInterfaceToken(data)) {
+        return;
+    }
+    data.WriteParcelable(&want);
+    int32_t err = SendTransactCmd(IAbilityScheduler::SCHEDULE_EXECUTE_SKILL, data, reply, option);
+    if (err != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "fail, err: %{public}d", err);
+    }
+
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "end");
+}
+
 int32_t AbilitySchedulerProxy::CreateModalUIExtension(const Want &want)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);

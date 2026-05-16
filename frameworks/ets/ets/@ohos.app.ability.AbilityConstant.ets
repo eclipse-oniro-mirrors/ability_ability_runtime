@@ -17,7 +17,7 @@ import appManager from '@ohos.app.ability.appManager';
 
 namespace AbilityConstant {
 
-  const REASON_MESSAGE_DESKTOP_SHORTCUT = 'ReasonMessage_DesktopShortcut';
+  const REASON_MESSAGE_DESKTOP_SHORTCUT: string = 'ReasonMessage_DesktopShortcut';
 
   export interface LaunchParam {
     launchReason: LaunchReason;
@@ -91,7 +91,7 @@ namespace AbilityConstant {
     WINDOW_MODE_SPLIT_PRIMARY = 100,
     WINDOW_MODE_SPLIT_SECONDARY = 101,
     WINDOW_MODE_FLOATING = 102,
-    WINDOW_MODE_SPLIT = 103
+    WINDOW_MODE_SPLIT = 105
   }
 
   export enum OnSaveResult {

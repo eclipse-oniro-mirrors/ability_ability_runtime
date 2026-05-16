@@ -34,6 +34,9 @@
 #include "native_engine/native_value.h"
 #include "string_wrapper.h"
 #include "int_wrapper.h"
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+#include "histogram_plugin_macros.h"
+#endif
 
 #include <mutex>
 
@@ -219,6 +222,9 @@ private:
             param.isServiceMatch_ = false;
             ParseParam(param);
             if (param.isServiceMatch_) {
+                #ifdef HIVIEWDFX_RUNTIME_API_METRICS
+                    HISTOGRAM_BOOLEAN("Ability.InsightIntentDriver.Execute.service_match", 1);
+                #endif
                 return true;
             }
         }

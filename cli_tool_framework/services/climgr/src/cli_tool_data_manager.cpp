@@ -22,18 +22,16 @@
 #include <set>
 #include <unistd.h>
 
-#include "arg_mapping.h"
+#include "cli_error_code.h"
 #include "hilog_tag_wrapper.h"
 
 namespace OHOS {
 namespace CliTool {
 namespace {
 constexpr int32_t ERR_OK = 0;
-constexpr int32_t ERR_NO_INIT = -1;
 constexpr int32_t ERR_FILE_NOT_FOUND = -2;
 constexpr int32_t ERR_JSON_PARSE_FAILED = -3;
 constexpr int32_t ERR_KVSTORE_NOT_READY = -4;
-constexpr int32_t ERR_NAME_NOT_FOUND = -5;
 constexpr int32_t CHECK_INTERVAL = 100000; // 100ms
 constexpr int32_t MAX_TIMES = 5;           // 5 * 100ms = 500ms
 
@@ -61,6 +59,7 @@ CliToolDataManager::CliToolDataManager()
 CliToolDataManager::~CliToolDataManager()
 {
     TAG_LOGI(AAFwkTag::CLI_TOOL, "CliToolDataManager destructor called");
+    std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
     if (kvStorePtr_ != nullptr) {
         dataManager_.CloseKvStore(APP_ID, kvStorePtr_);
     }
@@ -296,6 +295,17 @@ int32_t CliToolDataManager::GetAllTools(std::vector<ToolInfo> &tools)
     return ERR_OK;
 }
 
+int32_t CliToolDataManager::GetAllToolsRawData(ToolsRawData &rawData)
+{
+    std::vector<ToolInfo> tools;
+    int32_t ret = GetAllTools(tools);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    ToolsRawData::FromToolInfoVec(tools, rawData);
+    return ERR_OK;
+}
+
 int32_t CliToolDataManager::GetToolByName(const std::string &name, ToolInfo &tool)
 {
     TAG_LOGI(AAFwkTag::CLI_TOOL, "GetToolByName called: %{public}s", name.c_str());
@@ -312,7 +322,7 @@ int32_t CliToolDataManager::GetToolByName(const std::string &name, ToolInfo &too
         TAG_LOGE(AAFwkTag::SER_ROUTER, "GetToolByName error: %{public}d", status);
         if (status == DistributedKv::Status::KEY_NOT_FOUND) {
             TAG_LOGW(AAFwkTag::SER_ROUTER, "key not found");
-            return ERR_NAME_NOT_FOUND;
+            return ERR_TOOL_NOT_EXIST;
         }
         RestoreKvStore(status);
         return status;

@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Timer tool example, supports progress event output",
   "executablePath": "/system/bin/cli_tool/executable/ohos-timer",
-  "timeout": 30,
   "requirePermissions": [],
   "eventTypes": ["progress"],
   "inputSchema": {
@@ -20,6 +19,10 @@
         "description": "Progress update interval (seconds)",
         "default": 1,
         "minimum": 1
+      },
+      "errMsg": {
+        "type": "string",
+        "description": "Error message written to stderr when duration elapses"
       },
       "showProgress": {
         "type": "boolean",
@@ -38,10 +41,6 @@
     "type": "object",
     "description": "Tool output result",
     "properties": {
-      "status": {
-        "type": "string",
-        "description": "Execution status"
-      },
       "duration": {
         "type": "integer",
         "description": "Planned duration (seconds)"
@@ -51,13 +50,16 @@
         "description": "Actual duration (seconds)"
       }
     },
-    "required": ["status", "duration", "actual_duration"]
+    "required": ["duration", "actual_duration"]
   },
   "eventSchemas": {
     "progress": {
       "type": "object",
       "description": "Progress event",
       "properties": {
+        "type": {
+          "const": "progress"
+        },
         "percentage": {
           "type": "integer",
           "minimum": 0,
@@ -69,22 +71,7 @@
           "description": "Current status"
         }
       },
-      "required": ["percentage", "status"]
-    }
-  },
-  "argMapping": {
-    "type": "flag",
-    "templates": {
-      "duration": "--duration={value}",
-      "interval": "--interval={value}",
-      "showProgress": {
-        "if_true": "--progress",
-        "if_false": ""
-      },
-      "verbose": {
-        "if_true": "--verbose",
-        "if_false": ""
-      }
+      "required": ["type", "percentage", "status"]
     }
   }
 }

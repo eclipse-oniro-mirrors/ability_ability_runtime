@@ -79,9 +79,38 @@ public:
         hookOff_ = hookOff;
     }
 
-    inline bool IsLastWantBackgroundDriven() const
+    inline void SetShouldUpdateWant(bool shouldUpdateWant)
     {
-        return isLastWantBackgroundDriven_.load();
+        shouldUpdateWant_.store(shouldUpdateWant);
+    }
+
+    inline bool ShouldUpdateWant() const
+    {
+        return shouldUpdateWant_.load();
+    }
+
+    inline void SetLastWant(std::shared_ptr<Want> lastWant)
+    {
+        std::lock_guard lock(wantLock_);
+        lastWant_ = lastWant;
+    }
+
+    inline bool HasLastWant() const
+    {
+        std::lock_guard lock(wantLock_);
+        return lastWant_ != nullptr;
+    }
+
+    bool UpdateWantByLastWant();
+
+    inline void SetOnNewWantSkipScenarios(int32_t scenarios)
+    {
+        scenarios_.store(scenarios);
+    }
+
+    inline int32_t GetOnNewWantSkipScenarios() const
+    {
+        return scenarios_.load();
     }
 
     inline void SetNativeState(AbilityNativeState newState)
@@ -108,12 +137,26 @@ public:
         startSelfRequestId_ = startSelfRequestId;
     }
 
+    inline void SetLaunchWant(std::shared_ptr<Want> launchWant)
+    {
+        launchWant_ = launchWant;
+    }
+
+    inline std::shared_ptr<Want> GetLaunchWant() const
+    {
+        return launchWant_;
+    }
+
 private:
     bool exitReasonLoaded_ = false;
     bool hookOff_ = false;
     int32_t startSelfRequestId_ = 0;
+    std::atomic_bool shouldUpdateWant_ = false;
     std::atomic_bool isKillPrecedeStart_ = false;
     std::atomic<AbilityNativeState> abilityNativeState_ = AbilityNativeState::NONE;
+    std::atomic_int32_t scenarios_ = 0;
+    std::shared_ptr<Want> launchWant_;
+    std::shared_ptr<Want> lastWant_;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -326,7 +326,7 @@ public:
 
     int StartAbilityByCall(const Want& want, const sptr<IAbilityConnection>& connect,
         const sptr<IRemoteObject>& callerToken, int32_t userId = DEFAULT_INVAL_VALUE, bool isSilent = false,
-        bool promotePriority = false, bool isVisible = false) override
+        bool promotePriority = false, bool isVisible = false, uint64_t specifiedFullTokenId = 0) override
     {
         return 0;
     }
@@ -433,6 +433,13 @@ public:
     MOCK_METHOD(void, CompleteFirstFrameDrawing, (int32_t sessionId), (override));
 #endif
     MOCK_METHOD(int32_t, GetUserLockedBundleList, (int32_t, std::unordered_set<std::string> &), (override));
+    MOCK_METHOD7(ExecuteInAppSkill, int32_t(const std::string &, const std::string &,
+        const std::string &, const std::string &, const std::string &,
+        const std::shared_ptr<AAFwk::WantParams> &, const sptr<ISkillExecuteCallback> &));
+    MOCK_METHOD4(ExecuteSkillDone, int32_t(const sptr<IRemoteObject> &, const std::string &,
+        int32_t, const AppExecFwk::SkillExecuteResult &));
+    MOCK_METHOD4(QuerySkillType, int32_t(const std::string &, const std::string &,
+        const std::string &, int32_t &));
 };  // namespace AAFwk
 }   // namespace OHOS
 }

@@ -152,6 +152,7 @@ void CModularObjectConnectionCallback::OnAbilityDisconnectDone(const AppExecFwk:
 
     if (callback == nullptr) {
         TAG_LOGW(AAFwkTag::EXT, "callback null");
+        CModularObjectConnectionUtils::RemoveConnectionCallback(connectionId_);
         return;
     }
     AbilityBase_Element cElement;
@@ -161,6 +162,7 @@ void CModularObjectConnectionCallback::OnAbilityDisconnectDone(const AppExecFwk:
     } else {
         CModularObjectUtils::NotifyFailed(state, ABILITY_RUNTIME_ERROR_CODE_INTERNAL);
     }
+    CModularObjectConnectionUtils::RemoveConnectionCallback(connectionId_);
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

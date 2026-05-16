@@ -42,6 +42,7 @@ enum class AAFwkLogTag : uint32_t {
     ABILITY,
     TEST,
     AA_TOOL,
+    CC_TOOL,
     ABILITY_SIM,
 
     APPDFR = DEFAULT + 0x10,    // 0xD001310
@@ -87,6 +88,7 @@ enum class AAFwkLogTag : uint32_t {
     AUTOFILLMGR,
     EXTMGR,
     SER_ROUTER,
+    CLI_TOOL = SER_ROUTER,
     AUTO_STARTUP,
     STARTUP,
     RECOVERY,
@@ -102,7 +104,6 @@ enum class AAFwkLogTag : uint32_t {
     APP_SERVICE_EXT,
     VERTICAL_PANEL,
     USER_CONTROLLER,
-    CLI_TOOL,
 
     END = 256,               // N.B. never use it
 };
@@ -114,7 +115,7 @@ inline uint32_t GetOffset(AAFwkLogTag tag, AAFwkLogTag base)
 
 inline const char* GetDomainName0(AAFwkLogTag tag)
 {
-    const char* tagNames[] = { "AAFwk", "Ability", "Test", "AATool", "Simulator" };
+    const char* tagNames[] = { "AAFwk", "Ability", "Test", "AATool", "CCTool", "Simulator" };
     uint32_t offset = GetOffset(tag, AAFwkLogTag::DEFAULT);
     if (offset >= sizeof(tagNames) / sizeof(const char*)) {
         return "UN";

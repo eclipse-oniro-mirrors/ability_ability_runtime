@@ -1430,5 +1430,80 @@ HWTEST_F(AppMgrStubTest, HandleUpdateFreezeExcludedPid_001, TestSize.Level1)
         static_cast<uint32_t>(AppMgrInterfaceCode::UPDATE_FREEZE_EXCLUDED_PID), data, reply, option);
     EXPECT_EQ(result, NO_ERROR);
 }
+
+/**
+ * @tc.name: HandleEnableDelayedProcessExit_0100
+ * @tc.desc: Test HandleEnableDelayedProcessExit with enable flag.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleEnableDelayedProcessExit_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    int32_t pid = 1234;
+    data.WriteInt32(pid);
+    data.WriteBool(true);
+
+    EXPECT_CALL(*mockAppMgrService_, EnableDelayedProcessExit(_, _))
+        .Times(1)
+        .WillOnce(Return(ERR_OK));
+
+    auto ret = mockAppMgrService_->OnRemoteRequest(
+        static_cast<uint32_t>(AppMgrInterfaceCode::ENABLE_DELAYED_PROCESS_EXIT), data, reply, option);
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+}
+
+/**
+ * @tc.name: HandleEnableDelayedProcessExit_0200
+ * @tc.desc: Test HandleEnableDelayedProcessExit with disable flag.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleEnableDelayedProcessExit_0200, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    int32_t pid = 1234;
+    data.WriteInt32(pid);
+    data.WriteBool(false);
+
+    EXPECT_CALL(*mockAppMgrService_, EnableDelayedProcessExit(_, _))
+        .Times(1)
+        .WillOnce(Return(ERR_INVALID_VALUE));
+
+    auto ret = mockAppMgrService_->OnRemoteRequest(
+        static_cast<uint32_t>(AppMgrInterfaceCode::ENABLE_DELAYED_PROCESS_EXIT), data, reply, option);
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: HandleCancelDelayedExitTask_0100
+ * @tc.desc: Test HandleCancelDelayedExitTask.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleCancelDelayedExitTask_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    int32_t pid = 1234;
+    data.WriteInt32(pid);
+
+    EXPECT_CALL(*mockAppMgrService_, CancelDelayedExitTask(_))
+        .Times(1);
+
+    auto ret = mockAppMgrService_->OnRemoteRequest(
+        static_cast<uint32_t>(AppMgrInterfaceCode::CANCEL_DELAYED_EXIT_TASK), data, reply, option);
+    EXPECT_EQ(ret, NO_ERROR);
+}
 } // namespace AppExecFwk
 } // namespace OHOS

@@ -18,6 +18,7 @@
 
 #include "extension_base.h"
 #include "modular_object_extension_context_impl.h"
+#include "modular_object_worker_manager.h"
 #include "modular_object_extension_types.h"
 
 #ifdef __cplusplus
@@ -59,6 +60,9 @@ public:
     sptr<IRemoteObject> OnConnect(const AAFwk::Want &want) override;
     void OnDisconnect(const AAFwk::Want &want) override;
 
+    std::shared_ptr<AbilityHandler> GetAbilityHandler(
+        const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo) override;
+
 private:
     bool LoadNativeExtensionModule();
     bool BuildCWant(const AAFwk::Want &want, AbilityBase_Want &cWant, AbilityBase_Element &element) const;
@@ -67,6 +71,7 @@ private:
 
     std::shared_ptr<OH_AbilityRuntime_ModularObjectExtensionInstance> moeInstance_;
     std::shared_ptr<OH_AbilityRuntime_ModularObjectExtensionContext> moeContext_;
+    std::string threadKey_;
 };
 
 } // namespace AbilityRuntime

@@ -977,6 +977,12 @@ public:
 
     virtual int32_t IsProcessCacheSupported(int32_t pid, bool &isSupported) = 0;
 
+    virtual int32_t IsChildProcessSupported(bool isNative, bool &isSupported)
+    {
+        isSupported = false;
+        return 0;
+    }
+
     virtual int32_t SetProcessCacheEnable(int32_t pid, bool enable) = 0;
 
     virtual int32_t LockProcessCache(int32_t pid, bool isLock)
@@ -1203,6 +1209,13 @@ public:
     {
         return 0;
     }
+
+    virtual int32_t EnableDelayedProcessExit(int32_t pid, bool enabled)
+    {
+        return ERR_OK;
+    }
+
+    virtual void CancelDelayedExitTask(int32_t pid) {}
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

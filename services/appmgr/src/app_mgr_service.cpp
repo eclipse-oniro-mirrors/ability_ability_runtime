@@ -1942,6 +1942,16 @@ int32_t AppMgrService::IsProcessCacheSupported(int32_t pid, bool &isSupported)
     return appMgrServiceInner_->IsProcessCacheSupported(pid, isSupported);
 }
 
+int32_t AppMgrService::IsChildProcessSupported(bool isNative, bool &isSupported)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "IsChildProcessSupported called");
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "not ready");
+        return ERR_INVALID_OPERATION;
+    }
+    return appMgrServiceInner_->IsChildProcessSupported(isNative, isSupported);
+}
+
 int32_t AppMgrService::SetProcessCacheEnable(int32_t pid, bool enable)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "set enable process cache");
@@ -2313,6 +2323,26 @@ int32_t AppMgrService::GetAllAbilityInfos(const int32_t pid, std::vector<AppExec
         return AAFwk::ERR_APP_MGR_SERVICE_NOT_READY;
     }
     return appMgrServiceInner_->GetAllAbilityInfos(pid, infos);
+}
+
+int32_t AppMgrService::EnableDelayedProcessExit(int32_t pid, bool enabled)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Service not ready");
+        return ERR_INVALID_OPERATION;
+    }
+    return appMgrServiceInner_->EnableDelayedProcessExit(pid, enabled);
+}
+
+void AppMgrService::CancelDelayedExitTask(int32_t pid)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Service not ready");
+        return;
+    }
+    appMgrServiceInner_->CancelDelayedExitTask(pid);
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

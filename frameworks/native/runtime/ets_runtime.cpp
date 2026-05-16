@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -67,6 +67,7 @@ constexpr char SANDBOX_SHARED_BUNDLE_ARK_CACHE_PATH[] =
     "/data/service/el1/public/for-all-app/shared_bundles_ark_cache/";
 constexpr char MERGE_ABC_PATH[] = "/ets/modules_static.abc";
 const std::string SYS_HSP_FILE_PATH_PREFIX = "/system/app/";
+const std::string PREINSTALL_HOST_AOT_ARK_CACHE_PATH = "/system/app/ark_cache/";
 const std::string ARK_CACHE_NATIVE_PATH = "arm64/";
 
 const char *ETS_ENV_LIBNAME = "libets_environment.z.so";
@@ -129,6 +130,30 @@ private:
     AppLibPathMap appLibPathMap_;
 };
 std::shared_ptr<EtsAppLibNamespaceMgr> g_etsAppLibNamespaceMgr;
+
+bool IsFileExists(const std::string &path)
+{
+    std::error_code errorCode;
+    bool isRegularFile = std::filesystem::is_regular_file(path, errorCode);
+    if (errorCode) {
+        const std::string errorMessage = errorCode.message();
+        TAG_LOGW(AAFwkTag::ETSRUNTIME,
+            "check file exists failed, path: %{public}s, errorCode: %{public}d, "
+            "category: %{public}s, message: %{public}s",
+            path.c_str(), errorCode.value(), errorCode.category().name(), errorMessage.c_str());
+    }
+    return isRegularFile;
+}
+
+std::string GetPreinstallHostAotAnPath(const std::string &bundleName, const std::string &moduleName)
+{
+    if (bundleName.empty() || moduleName.empty()) {
+        return "";
+    }
+    return PREINSTALL_HOST_AOT_ARK_CACHE_PATH + bundleName +
+        std::string(AbilityBase::Constants::FILE_SEPARATOR) + moduleName + ".an";
+}
+
 } // namespace
 
 std::unique_ptr<ETSRuntime> ETSRuntime::PreFork(const Options &options,
@@ -176,6 +201,15 @@ std::string ETSRuntime::GetAotPath(const Options &options)
     for (const auto& status: options.aotCompileStatusMap) {
         if (IsAotCompiledSuccess(status.second)) {
             aotFiles.push_back(SANDBOX_ARK_CACHE_PATH + ARK_CACHE_NATIVE_PATH + status.first + ".an");
+        } else {
+            std::string anPath = GetPreinstallHostAotAnPath(options.bundleName, status.first);
+            if (!IsFileExists(anPath)) {
+                TAG_LOGW(AAFwkTag::ETSRUNTIME, "preinstall host AOT file is unavailable, skip loading: %{public}s",
+                    anPath.c_str());
+                continue;
+            }
+            TAG_LOGI(AAFwkTag::ETSRUNTIME, "load preinstall host aot an: %{public}s", anPath.c_str());
+            aotFiles.push_back(anPath);
         }
     }
 
@@ -464,6 +498,20 @@ void ETSRuntime::XGC()
     ani_long longnum;
     if ((status = env->Class_CallStaticMethod_Long(cls, ctor, &longnum)) != ANI_OK) {
         TAG_LOGE(AAFwkTag::APPKIT, "Class_CallStaticMethod_Long failed, status: %{public}d", status);
+        return;
+    }
+    ani_namespace imageNameSpace;
+    if ((status = env->FindNamespace("std.core.GC", &imageNameSpace)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPKIT, "FindNamespace failed, status: %{public}d", status);
+        return;
+    }
+    ani_function gcFunc {};
+    if ((status = env->Namespace_FindFunction(imageNameSpace, "waitForFinishGC", "l:", &gcFunc)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPKIT, "Namespace_FindFunction failed, status: %{public}d", status);
+        return;
+    }
+    if ((status = env->Function_Call_Void(gcFunc, longnum)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPKIT, "Function_Call_Void failed, status: %{public}d", status);
         return;
     }
 }

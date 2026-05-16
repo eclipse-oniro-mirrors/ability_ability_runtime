@@ -50,6 +50,7 @@ struct LoadParam : public Parcelable {
     bool isMainElementRunning = false;
     bool isKeepAliveAppService = false;
     bool isCallerSetProcess = false;
+    bool isGamePrelaunch = false;
     std::string customProcessFlag = "";
     uint32_t extensionProcessMode = 0;
     ExtensionLoadParam extensionLoadParam;

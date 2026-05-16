@@ -2363,6 +2363,24 @@ int32_t AppMgrProxy::IsProcessCacheSupported(int32_t pid, bool &isSupported)
     return reply.ReadInt32();
 }
 
+int32_t AppMgrProxy::IsChildProcessSupported(bool isNative, bool &isSupported)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "IsChildProcessSupported called");
+    MessageParcel data;
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write interface token failed.");
+        return AAFwk::ERR_WRITE_INTERFACE_TOKEN_FAILED;
+    }
+    PARCEL_UTIL_WRITE_RET_INT(data, Bool, isNative);
+
+    MessageParcel reply;
+    MessageOption option;
+
+    PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::IS_CHILD_PROCESS_SUPPORTED, data, reply, option);
+    isSupported = reply.ReadBool();
+    return reply.ReadInt32();
+}
+
 int32_t AppMgrProxy::SetProcessCacheEnable(int32_t pid, bool enable)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "SetProcessCacheEnable called");
@@ -2985,6 +3003,38 @@ int32_t AppMgrProxy::GetAllAbilityInfos(const int32_t pid, std::vector<AppExecFw
     }
 
     return ret;
+}
+
+int32_t AppMgrProxy::EnableDelayedProcessExit(int32_t pid, bool enabled)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write interface token failed.");
+        return IPC_PROXY_ERR;
+    }
+
+    PARCEL_UTIL_WRITE_RET_INT(data, Int32, pid);
+    PARCEL_UTIL_WRITE_RET_INT(data, Bool, enabled);
+    PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::ENABLE_DELAYED_PROCESS_EXIT, data, reply, option);
+    return reply.ReadInt32();
+}
+
+void AppMgrProxy::CancelDelayedExitTask(int32_t pid)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write interface token failed.");
+        return;
+    }
+
+    PARCEL_UTIL_WRITE_NORET(data, Int32, pid);
+    PARCEL_UTIL_SENDREQ_NORET(AppMgrInterfaceCode::CANCEL_DELAYED_EXIT_TASK, data, reply, option);
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

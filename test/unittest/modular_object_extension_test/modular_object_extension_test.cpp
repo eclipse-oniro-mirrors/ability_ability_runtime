@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 
 #include "modular_object_extension.h"
+#include "modular_object_worker_manager.h"
 #include "native_runtime.h"
 #include "want_manager.h"
 
@@ -349,4 +350,232 @@ HWTEST_F(ModularObjectExtensionTest, CreateAndInitContext_ReturnsNullptr_001, Te
     auto ret = ext->CreateAndInitContext(record, app, handler, token);
     EXPECT_EQ(ret, nullptr);
     GTEST_LOG_(INFO) << "CreateAndInitContext_ReturnsNullptr_001 end";
+}
+
+// ==================== GetAbilityHandler ====================
+
+HWTEST_F(ModularObjectExtensionTest,
+    GetAbilityHandler_ShouldReturnNullptrWhenAbilityInfoIsNull, TestSize.Level1)
+{
+    auto ext = std::make_shared<ModularObjectExtension>();
+    auto handler = ext->GetAbilityHandler(nullptr);
+    EXPECT_EQ(handler, nullptr);
+    EXPECT_TRUE(ext->threadKey_.empty());
+}
+
+HWTEST_F(ModularObjectExtensionTest,
+    GetAbilityHandler_ShouldUseDefaultBundleKeyWhenNoMetadata, TestSize.Level1)
+{
+    auto ext = std::make_shared<ModularObjectExtension>();
+    auto abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->bundleName = "com.test";
+    abilityInfo->name = "TestExt";
+    auto handler = ext->GetAbilityHandler(abilityInfo);
+    ASSERT_NE(handler, nullptr);
+    EXPECT_EQ(ext->threadKey_, "com.test");
+    ModularObjectWorkerManager::GetInstance().ReleaseWorkerThread(ext->threadKey_);
+}
+
+HWTEST_F(ModularObjectExtensionTest,
+    GetAbilityHandler_ShouldUseBundleKeyWhenThreadModeIsBundle, TestSize.Level1)
+{
+    auto ext = std::make_shared<ModularObjectExtension>();
+    auto abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->bundleName = "com.test";
+    abilityInfo->name = "TestExt";
+    AppExecFwk::Metadata meta;
+    meta.name = "threadMode";
+    meta.value = "BUNDLE";
+    abilityInfo->metadata.push_back(meta);
+    auto handler = ext->GetAbilityHandler(abilityInfo);
+    ASSERT_NE(handler, nullptr);
+    EXPECT_EQ(ext->threadKey_, "com.test");
+    ModularObjectWorkerManager::GetInstance().ReleaseWorkerThread(ext->threadKey_);
+}
+
+HWTEST_F(ModularObjectExtensionTest,
+    GetAbilityHandler_ShouldUseInstanceKeyWhenThreadModeIsInstance, TestSize.Level1)
+{
+    auto ext = std::make_shared<ModularObjectExtension>();
+    auto abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->bundleName = "com.test";
+    abilityInfo->name = "TestExt";
+    AppExecFwk::Metadata meta;
+    meta.name = "threadMode";
+    meta.value = "INSTANCE";
+    abilityInfo->metadata.push_back(meta);
+    auto handler = ext->GetAbilityHandler(abilityInfo);
+    ASSERT_NE(handler, nullptr);
+    EXPECT_EQ(ext->threadKey_.substr(0, strlen("com.test_TestExt_")), "com.test_TestExt_");
+    ModularObjectWorkerManager::GetInstance().ReleaseWorkerThread(ext->threadKey_);
+}
+
+HWTEST_F(ModularObjectExtensionTest,
+    GetAbilityHandler_ShouldUseTypeKeyWhenThreadModeIsType, TestSize.Level1)
+{
+    auto ext = std::make_shared<ModularObjectExtension>();
+    auto abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->bundleName = "com.test";
+    abilityInfo->name = "TestExt";
+    AppExecFwk::Metadata meta;
+    meta.name = "threadMode";
+    meta.value = "TYPE";
+    abilityInfo->metadata.push_back(meta);
+    auto handler = ext->GetAbilityHandler(abilityInfo);
+    ASSERT_NE(handler, nullptr);
+    EXPECT_EQ(ext->threadKey_, "com.test_TestExt");
+    ModularObjectWorkerManager::GetInstance().ReleaseWorkerThread(ext->threadKey_);
+}
+
+HWTEST_F(ModularObjectExtensionTest,
+    GetAbilityHandler_ShouldUseDefaultBundleKeyWhenMetadataIsNotThreadMode, TestSize.Level1)
+{
+    auto ext = std::make_shared<ModularObjectExtension>();
+    auto abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->bundleName = "com.test";
+    abilityInfo->name = "TestExt";
+    AppExecFwk::Metadata meta;
+    meta.name = "launchMode";
+    meta.value = "CROSS_PROCESS";
+    abilityInfo->metadata.push_back(meta);
+    auto handler = ext->GetAbilityHandler(abilityInfo);
+    ASSERT_NE(handler, nullptr);
+    EXPECT_EQ(ext->threadKey_, "com.test");
+    ModularObjectWorkerManager::GetInstance().ReleaseWorkerThread(ext->threadKey_);
+}
+
+HWTEST_F(ModularObjectExtensionTest,
+    GetAbilityHandler_ShouldFindThreadModeAmongMultipleMetadata, TestSize.Level1)
+{
+    auto ext = std::make_shared<ModularObjectExtension>();
+    auto abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->bundleName = "com.test";
+    abilityInfo->name = "TestExt";
+    AppExecFwk::Metadata meta1;
+    meta1.name = "launchMode";
+    meta1.value = "CROSS_PROCESS";
+    abilityInfo->metadata.push_back(meta1);
+    AppExecFwk::Metadata meta2;
+    meta2.name = "threadMode";
+    meta2.value = "BUNDLE";
+    abilityInfo->metadata.push_back(meta2);
+    auto handler = ext->GetAbilityHandler(abilityInfo);
+    ASSERT_NE(handler, nullptr);
+    EXPECT_EQ(ext->threadKey_, "com.test");
+    ModularObjectWorkerManager::GetInstance().ReleaseWorkerThread(ext->threadKey_);
+}
+
+HWTEST_F(ModularObjectExtensionTest,
+    GetAbilityHandler_ShouldShareHandlerWhenSameBundleInBundleMode, TestSize.Level1)
+{
+    auto ext1 = std::make_shared<ModularObjectExtension>();
+    auto abilityInfo1 = std::make_shared<AbilityInfo>();
+    abilityInfo1->bundleName = "com.shared";
+    abilityInfo1->name = "ExtA";
+    AppExecFwk::Metadata meta1;
+    meta1.name = "threadMode";
+    meta1.value = "BUNDLE";
+    abilityInfo1->metadata.push_back(meta1);
+
+    auto ext2 = std::make_shared<ModularObjectExtension>();
+    auto abilityInfo2 = std::make_shared<AbilityInfo>();
+    abilityInfo2->bundleName = "com.shared";
+    abilityInfo2->name = "ExtB";
+    AppExecFwk::Metadata meta2;
+    meta2.name = "threadMode";
+    meta2.value = "BUNDLE";
+    abilityInfo2->metadata.push_back(meta2);
+
+    auto handler1 = ext1->GetAbilityHandler(abilityInfo1);
+    auto handler2 = ext2->GetAbilityHandler(abilityInfo2);
+    ASSERT_NE(handler1, nullptr);
+    ASSERT_NE(handler2, nullptr);
+    EXPECT_EQ(handler1, handler2);
+    EXPECT_EQ(ext1->threadKey_, "com.shared");
+    EXPECT_EQ(ext2->threadKey_, "com.shared");
+    ModularObjectWorkerManager::GetInstance().ReleaseWorkerThread("com.shared");
+    ModularObjectWorkerManager::GetInstance().ReleaseWorkerThread("com.shared");
+}
+
+// ==================== OnStop with threadKey_ release ====================
+
+HWTEST_F(ModularObjectExtensionTest,
+    OnStop_ShouldNotCrashWhenThreadKeyIsEmpty, TestSize.Level1)
+{
+    auto ext = std::make_shared<ModularObjectExtension>();
+    ext->OnStop();
+    EXPECT_TRUE(ext->threadKey_.empty());
+}
+
+HWTEST_F(ModularObjectExtensionTest,
+    OnStop_ShouldReleaseWorkerThreadWhenThreadKeyIsSet, TestSize.Level1)
+{
+    auto ext = std::make_shared<ModularObjectExtension>();
+    auto abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->bundleName = "com.test.stop";
+    abilityInfo->name = "TestExt";
+    auto handler = ext->GetAbilityHandler(abilityInfo);
+    ASSERT_NE(handler, nullptr);
+    EXPECT_FALSE(ext->threadKey_.empty());
+    ext->OnStop();
+    EXPECT_TRUE(ext->threadKey_.empty());
+}
+
+HWTEST_F(ModularObjectExtensionTest,
+    OnStop_ShouldCallCallbackAndReleaseWhenBothPresent, TestSize.Level1)
+{
+    g_onDestroyCalled = false;
+    auto ext = std::make_shared<ModularObjectExtension>();
+    auto record = std::make_shared<AbilityLocalRecord>();
+    auto app = std::make_shared<OHOSApplication>();
+    auto handler = std::make_shared<AbilityHandler>();
+    sptr<OHOS::IRemoteObject> token;
+    ext->Init(record, app, handler, token);
+    ext->moeInstance_->onDestroyFunc = OnDestroyCallback;
+
+    auto abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->bundleName = "com.test.stopcb";
+    abilityInfo->name = "TestExt";
+    ext->GetAbilityHandler(abilityInfo);
+    EXPECT_FALSE(ext->threadKey_.empty());
+
+    ext->OnStop();
+    EXPECT_TRUE(g_onDestroyCalled);
+    EXPECT_TRUE(ext->threadKey_.empty());
+}
+
+// ==================== GetAbilityHandler + OnStop lifecycle ====================
+
+HWTEST_F(ModularObjectExtensionTest,
+    OnStop_ShouldNotCrashWhenCalledTwiceInLifecycle, TestSize.Level1)
+{
+    auto ext = std::make_shared<ModularObjectExtension>();
+    auto record = std::make_shared<AbilityLocalRecord>();
+    auto app = std::make_shared<OHOSApplication>();
+    auto handler = std::make_shared<AbilityHandler>();
+    sptr<OHOS::IRemoteObject> token;
+    ext->Init(record, app, handler, token);
+    ext->moeInstance_->onDestroyFunc = OnDestroyCallback;
+
+    auto abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->bundleName = "com.test.lifecycle";
+    abilityInfo->name = "TestExt";
+    auto result = ext->GetAbilityHandler(abilityInfo);
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(ext->threadKey_, "com.test.lifecycle");
+
+    ext->OnStop();
+    EXPECT_TRUE(ext->threadKey_.empty());
+    ext->OnStop();
+    EXPECT_TRUE(ext->threadKey_.empty());
+}
+
+// ==================== ModularObjectWorkerManager singleton identity ====================
+
+HWTEST_F(ModularObjectExtensionTest,
+    GetInstance_ShouldReturnSameSingletonReference, TestSize.Level1)
+{
+    auto &inst1 = ModularObjectWorkerManager::GetInstance();
+    auto &inst2 = ModularObjectWorkerManager::GetInstance();
+    EXPECT_EQ(&inst1, &inst2);
 }

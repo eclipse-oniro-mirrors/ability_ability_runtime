@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -961,6 +961,23 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_UpdateFreezeExcludedPid_002,
                 appfreezeManager->freezeExcludedPidMap_.end());
 
     appfreezeManager->freezeExcludedPidMap_.clear();
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest CheckPreloadUIExtension Test
+ * @tc.desc: add testcase
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_CheckPreloadUIExtension_Test001, TestSize.Level1)
+{
+    std::string bundleName = "AppfreezeManagerTest_CheckPreloadUIExtension_Test001";
+    int32_t pid = getpid();
+    std::string message = "test";
+    bool result = appfreezeManager->CheckPreloadUIExtension(message, bundleName, pid);
+    EXPECT_EQ(result, false);
+    message = "PreloadUIExtension test";
+    result = appfreezeManager->CheckPreloadUIExtension(message, bundleName, pid);
+    EXPECT_EQ(result, true);
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

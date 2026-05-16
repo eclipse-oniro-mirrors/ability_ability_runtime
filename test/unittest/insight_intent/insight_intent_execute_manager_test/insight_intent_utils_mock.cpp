@@ -14,8 +14,16 @@
  */
 
 #include "insight_intent_utils.h"
+#include "permission_verification.h"
 
 namespace OHOS {
+namespace AAFwk {
+bool PermissionVerification::IsShellCall() const
+{
+    return false;
+}
+}
+
 namespace AbilityRuntime {
 uint32_t InsightIntentUtils::GetSrcEntry(const AppExecFwk::ElementName &elementName, const std::string &intentName,
     const AppExecFwk::ExecuteMode &executeMode, std::string &srcEntry, std::string *arkTSMode, int32_t userId,

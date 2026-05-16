@@ -15,8 +15,8 @@
 
 package OHOS.CliTool;
 
-sequenceable CliToolEvent..OHOS.CliTool.CliToolEvent;
 sequenceable CliSessionInfo..OHOS.CliTool.CliSessionInfo;
+sequenceable CliToolEvent..OHOS.CliTool.CliToolEvent;
 
 interface ICliToolManagerScheduler {
     [oneway]void SchedulerSessionEvent([in] String sessionId, [in] String subscriptionId, [in] CliToolEvent event);

@@ -1104,6 +1104,7 @@ private:
         }
         if (CheckTypeForNapiValue(env, function, napi_undefined)) {
             TAG_LOGI(AAFwkTag::JSNAPI, "func is undefined.");
+            function = nullptr;
         }
         std::lock_guard<std::mutex> lock(g_defaultFreezeMtx);
         napi_value object = nullptr;
@@ -1579,21 +1580,31 @@ private:
         return result;
     }
 
+    static napi_value DeleteUnhandledRejectionObservers(napi_env env)
+    {
+        auto res = CreateJsUndefined(env);
+        for (auto& iter : unhandledRejectionObservers) {
+            napi_delete_reference(env, iter);
+        }
+        unhandledRejectionObservers.clear();
+        return res;
+    }
+
     napi_value OnOffUnhandledRejection(napi_env env, size_t argc, napi_value* argv)
     {
         auto res = CreateJsUndefined(env);
         if (argc == ARGC_ONE) {
-            for (auto& iter : unhandledRejectionObservers) {
-                napi_delete_reference(env, iter);
-            }
-            unhandledRejectionObservers.clear();
-            return res;
+            return DeleteUnhandledRejectionObservers(env);
         }
         napi_value function = argv[INDEX_ONE];
         if (function == nullptr || CheckTypeForNapiValue(env, function, napi_null)) {
             TAG_LOGE(AAFwkTag::JSNAPI, "null function.");
             ThrowInvalidNumParametersError(env);
             return CreateJsUndefined(env);
+        }
+        if (CheckTypeForNapiValue(env, function, napi_undefined)) {
+            TAG_LOGI(AAFwkTag::JSNAPI, "undefined function.");
+            return DeleteUnhandledRejectionObservers(env);
         }
         for (auto& iter : unhandledRejectionObservers) {
             napi_value observer = nullptr;

@@ -346,8 +346,14 @@ int AbilityManagerStub::OnRemoteRequestInnerSeventh(uint32_t code, MessageParcel
         return StartSelfUIAbilityInCurrentProcessInner(data, reply);
     }
     if (interfaceCode == AbilityManagerInterfaceCode::EXECUTE_INTENT_FOR_DISTRIBUTED) {
- 	    return ExecuteIntentForDistributedInner(data, reply);
- 	}
+        return ExecuteIntentForDistributedInner(data, reply);
+    }
+    if (interfaceCode == AbilityManagerInterfaceCode::START_SELF_UI_ABILITY_BY_APP_CONTEXT) {
+        return StartSelfUIAbilityByAppContextInner(data, reply);
+    }
+    if (interfaceCode == AbilityManagerInterfaceCode::START_SELF_UI_ABILITY_IN_CHILD_PROCESS) {
+        return StartSelfUIAbilityInChildProcessInner(data, reply);
+    }
     return ERR_CODE_NOT_EXIST;
 }
 
@@ -1013,6 +1019,18 @@ int AbilityManagerStub::OnRemoteRequestInnerTwentySecond(uint32_t code, MessageP
     }
     if (interfaceCode == AbilityManagerInterfaceCode::INSIGHT_INTENT_QUERY_ENTITY) {
         return QueryEntityInner(data, reply);
+    }
+    if (interfaceCode == AbilityManagerInterfaceCode::EXECUTE_IN_APP_SKILL) {
+        return ExecuteInAppSkillInner(data, reply);
+    }
+    if (interfaceCode == AbilityManagerInterfaceCode::EXECUTE_IN_APP_SKILL_WITH_TOKEN_ID) {
+        return ExecuteInAppSkillWithTokenIdInner(data, reply);
+    }
+    if (interfaceCode == AbilityManagerInterfaceCode::EXECUTE_SKILL_DONE_WITH_TOKEN) {
+        return ExecuteSkillDoneWithTokenInner(data, reply);
+    }
+    if (interfaceCode == AbilityManagerInterfaceCode::QUERY_SKILL_TYPE) {
+        return QuerySkillTypeInner(data, reply);
     }
     return ERR_CODE_NOT_EXIST;
 }
@@ -5572,6 +5590,23 @@ int AbilityManagerStub::StartSelfUIAbilityInCurrentProcessInner(MessageParcel &d
     return NO_ERROR;
 }
 
+int AbilityManagerStub::StartSelfUIAbilityInChildProcessInner(MessageParcel &data, MessageParcel &reply)
+{
+    std::shared_ptr<Want> want(data.ReadParcelable<Want>());
+    if (want == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "want null");
+        return ERR_INVALID_VALUE;
+    }
+    std::string specifiedFlag = data.ReadString();
+    sptr<IRemoteObject> callerToken = nullptr;
+    if (data.ReadBool()) {
+        callerToken = data.ReadRemoteObject();
+    }
+    int32_t result = StartSelfUIAbilityInChildProcess(*want, specifiedFlag, callerToken);
+    reply.WriteInt32(result);
+    return NO_ERROR;
+}
+
 int AbilityManagerStub::IsRestartAppLimitInner(MessageParcel &data, MessageParcel &reply)
 {
     reply.WriteBool(IsRestartAppLimit());
@@ -5669,6 +5704,119 @@ int32_t AbilityManagerStub::SetAppRecoveryFlagInner(MessageParcel &data, Message
     }
     int flag = data.ReadInt32();
     int32_t result = SetAppRecoveryFlag(token, flag);
+    reply.WriteInt32(result);
+    return NO_ERROR;
+}
+
+int32_t AbilityManagerStub::ExecuteInAppSkillInner(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "execute in-app skill stub");
+    std::string bundleName = Str16ToStr8(data.ReadString16());
+    std::string moduleName = Str16ToStr8(data.ReadString16());
+    std::string skillName = Str16ToStr8(data.ReadString16());
+    std::string scriptPath = Str16ToStr8(data.ReadString16());
+    std::string functionName = Str16ToStr8(data.ReadString16());
+
+    auto *args = data.ReadParcelable<AAFwk::WantParams>();
+    std::shared_ptr<AAFwk::WantParams> skillArgs;
+    if (args != nullptr) {
+        skillArgs = std::shared_ptr<AAFwk::WantParams>(args);
+    } else {
+        skillArgs = std::make_shared<AAFwk::WantParams>();
+    }
+
+    sptr<ISkillExecuteCallback> callback = nullptr;
+    bool hasCallback = data.ReadBool();
+    if (hasCallback) {
+        auto callbackObj = data.ReadRemoteObject();
+        if (callbackObj != nullptr) {
+            callback = iface_cast<ISkillExecuteCallback>(callbackObj);
+        }
+    }
+
+    int32_t result = ExecuteInAppSkill(
+        bundleName, moduleName, skillName, scriptPath, functionName, skillArgs, callback);
+    reply.WriteInt32(result);
+    return NO_ERROR;
+}
+
+int32_t AbilityManagerStub::ExecuteInAppSkillWithTokenIdInner(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "execute in-app skill with tokenId stub");
+    AppExecFwk::SkillExecuteRequest request;
+    request.callerTokenId = data.ReadUint32();
+    request.bundleName = Str16ToStr8(data.ReadString16());
+    request.moduleName = Str16ToStr8(data.ReadString16());
+    request.skillName = Str16ToStr8(data.ReadString16());
+    request.scriptPath = Str16ToStr8(data.ReadString16());
+    request.functionName = Str16ToStr8(data.ReadString16());
+
+    auto *args = data.ReadParcelable<AAFwk::WantParams>();
+    if (args != nullptr) {
+        request.skillArgs = std::shared_ptr<AAFwk::WantParams>(args);
+    } else {
+        request.skillArgs = std::make_shared<AAFwk::WantParams>();
+    }
+
+    sptr<ISkillExecuteCallback> callback = nullptr;
+    bool hasCallback = data.ReadBool();
+    if (hasCallback) {
+        auto callbackObj = data.ReadRemoteObject();
+        if (callbackObj != nullptr) {
+            callback = iface_cast<ISkillExecuteCallback>(callbackObj);
+        }
+    }
+
+    int32_t result = ExecuteInAppSkillWithTokenId(request, callback);
+    reply.WriteInt32(result);
+    return NO_ERROR;
+}
+
+int32_t AbilityManagerStub::ExecuteSkillDoneWithTokenInner(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "execute skill done with token stub");
+    auto token = data.ReadRemoteObject();
+    if (token == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "null token");
+        return ERR_INVALID_VALUE;
+    }
+    std::string requestCode = data.ReadString();
+    int32_t resultCode = data.ReadInt32();
+    auto *result = data.ReadParcelable<AppExecFwk::SkillExecuteResult>();
+    if (result == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "read result fail");
+        return ERR_INVALID_VALUE;
+    }
+    int32_t ret = ExecuteSkillDone(token, requestCode, resultCode, *result);
+    reply.WriteInt32(ret);
+    delete result;
+    return NO_ERROR;
+}
+
+int32_t AbilityManagerStub::QuerySkillTypeInner(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "query skill type stub");
+    std::string bundleName = Str16ToStr8(data.ReadString16());
+    std::string moduleName = Str16ToStr8(data.ReadString16());
+    std::string skillName = Str16ToStr8(data.ReadString16());
+
+    int32_t skillType = 0;
+    int32_t result = QuerySkillType(bundleName, moduleName, skillName, skillType);
+    reply.WriteInt32(result);
+    if (result == ERR_OK) {
+        reply.WriteInt32(skillType);
+    }
+    return NO_ERROR;
+}
+
+int32_t AbilityManagerStub::StartSelfUIAbilityByAppContextInner(MessageParcel &data, MessageParcel &reply)
+{
+    std::shared_ptr<Want> want(data.ReadParcelable<Want>());
+    if (want == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "want null");
+        return ERR_INVALID_VALUE;
+    }
+    int32_t result = StartSelfUIAbilityByAppContext(*want);
     reply.WriteInt32(result);
     return NO_ERROR;
 }

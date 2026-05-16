@@ -835,6 +835,8 @@ public:
 
     int32_t IsProcessCacheSupported(int32_t pid, bool &isSupported) override;
 
+    int32_t IsChildProcessSupported(bool isNative, bool &isSupported) override;
+
     int32_t SetProcessCacheEnable(int32_t pid, bool enable) override;
 
     int32_t LockProcessCache(int32_t pid, bool isLock) override;
@@ -1152,6 +1154,10 @@ private:
      * @param token Ability identify.
      */
     void SetTerminateTimeOutFlag(const sptr<IRemoteObject> token) override;
+
+    int32_t EnableDelayedProcessExit(int32_t pid, bool enabled) override;
+
+    void CancelDelayedExitTask(int32_t pid) override;
 
     enum DumpIpcKey {
         KEY_DUMP_IPC_START = 0,

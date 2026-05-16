@@ -88,6 +88,7 @@ constexpr const char* PERMISSION_GET_AGENT_CARD = "ohos.permission.GET_AGENT_CAR
 constexpr const char* PERMISSION_MODIFY_AGENT_CARD = "ohos.permission.MODIFY_AGENT_CARD";
 constexpr const char* PERMISSION_START_ABILITY_TO_PAGE = "ohos.permission.START_ABILITY_TO_PAGE";
 constexpr const char* PERMISSION_CONTINUATION_NOTIFY = "ohos.permission.CONTINUATION_NOTIFY";
+constexpr const char* PERMISSION_EXECUTE_DISTRIBUTED_INTENT = "ohos.permission.EXECUTE_DISTRIBUTED_INTENT";
 } // namespace PermissionConstants
 } // namespace AAFwk
 } // namespace OHOS

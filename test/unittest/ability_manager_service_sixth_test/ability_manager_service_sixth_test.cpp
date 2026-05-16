@@ -44,6 +44,8 @@
 #include "start_ability_utils.h"
 #include "start_params_by_SCB.h"
 #include "ui_service_extension_connection_constants.h"
+#include "user_controller.h"
+#include "server_constant.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -2189,6 +2191,197 @@ HWTEST_F(AbilityManagerServiceSixthTest, IsUIAbilityAlreadyExist_001, TestSize.L
 
 /*
  * Feature: AbilityManagerService
+ * Function: IsSpecifiedUIAbilityAlreadyExist
+ * FunctionPoints: AbilityManagerService IsSpecifiedUIAbilityAlreadyExist
+ */
+HWTEST_F(AbilityManagerServiceSixthTest, IsSpecifiedUIAbilityAlreadyExist_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest IsSpecifiedUIAbilityAlreadyExist_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    std::string specifiedFlag;
+    int32_t appIndex = 0;
+    std::string instanceKey;
+    auto ret = abilityMs->IsSpecifiedUIAbilityAlreadyExist(want, specifiedFlag, appIndex, instanceKey);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest IsSpecifiedUIAbilityAlreadyExist_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: IsSpecifiedUIAbilityAlreadyExist
+ * FunctionPoints: AbilityManagerService IsSpecifiedUIAbilityAlreadyExist
+ */
+HWTEST_F(AbilityManagerServiceSixthTest, IsSpecifiedUIAbilityAlreadyExist_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest IsSpecifiedUIAbilityAlreadyExist_002 start");
+    auto abilityMs = MockAbilityManagerService();
+    ASSERT_NE(abilityMs, nullptr);
+    auto foregroundUserId = AbilityRuntime::UserController::GetInstance().GetForegroundUserId(
+        AbilityRuntime::ServerConstant::DEFAULT_DISPLAY_ID);
+    abilityMs->subManagersHelper_->uiAbilityManagers_[0] =
+        std::make_shared<UIAbilityLifecycleManager>(0);
+    abilityMs->subManagersHelper_->uiAbilityManagers_[USER_ID_U100] =
+        std::make_shared<UIAbilityLifecycleManager>(USER_ID_U100);
+    abilityMs->subManagersHelper_->uiAbilityManagers_[foregroundUserId] =
+        std::make_shared<UIAbilityLifecycleManager>(foregroundUserId);
+
+    Want want;
+    want.SetElementName("target.bundle", "TargetAbility");
+    std::string specifiedFlag = "specifiedFlag";
+    int32_t appIndex = 0;
+    std::string instanceKey;
+    auto ret = abilityMs->IsSpecifiedUIAbilityAlreadyExist(want, specifiedFlag, appIndex, instanceKey);
+    EXPECT_EQ(ret, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest IsSpecifiedUIAbilityAlreadyExist_002 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: CheckStartSelfUIAbilityInChildProcess
+ * FunctionPoints: AbilityManagerService CheckStartSelfUIAbilityInChildProcess
+ */
+HWTEST_F(AbilityManagerServiceSixthTest, CheckStartSelfUIAbilityInChildProcess_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest CheckStartSelfUIAbilityInChildProcess_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    std::string specifiedFlag = "flag";
+    AppExecFwk::AbilityInfo outAbilityInfo;
+    auto ret = abilityMs->CheckStartSelfUIAbilityInChildProcess(want, specifiedFlag, nullptr, outAbilityInfo);
+    EXPECT_EQ(ret, START_UI_ABILITIES_NOT_SUPPORT_IMPLICIT_START);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest CheckStartSelfUIAbilityInChildProcess_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: CheckStartSelfUIAbilityInChildProcess
+ * FunctionPoints: AbilityManagerService CheckStartSelfUIAbilityInChildProcess
+ */
+HWTEST_F(AbilityManagerServiceSixthTest, CheckStartSelfUIAbilityInChildProcess_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest CheckStartSelfUIAbilityInChildProcess_002 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+
+    auto scheduler = DelayedSingleton<AppScheduler>::GetInstance();
+    ASSERT_NE(scheduler, nullptr);
+    auto mockClient = std::make_unique<TestAppMgrClientMock>();
+    scheduler->appMgrClient_ = std::move(mockClient);
+
+    Want want;
+    want.SetElementName("target.bundle", "TargetAbility");
+    AppExecFwk::AbilityInfo abilityInfo;
+    AppExecFwk::ApplicationInfo applicationInfo;
+    applicationInfo.bundleName = "target.bundle";
+    applicationInfo.accessTokenId = IPCSkeleton::GetCallingTokenID();
+    auto callerRecord = std::make_shared<AbilityRecord>(want, abilityInfo, applicationInfo);
+    callerRecord->Init(AbilityRequest());
+
+    std::string specifiedFlag = "flag";
+    AppExecFwk::AbilityInfo outAbilityInfo;
+    auto ret = abilityMs->CheckStartSelfUIAbilityInChildProcess(want, specifiedFlag, callerRecord, outAbilityInfo);
+    EXPECT_EQ(ret, TARGET_BUNDLE_NOT_EXIST);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest CheckStartSelfUIAbilityInChildProcess_002 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: CheckStartSelfUIAbilityInChildProcess
+ * FunctionPoints: AbilityManagerService CheckStartSelfUIAbilityInChildProcess
+ */
+HWTEST_F(AbilityManagerServiceSixthTest, CheckStartSelfUIAbilityInChildProcess_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest CheckStartSelfUIAbilityInChildProcess_003 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+
+    auto scheduler = DelayedSingleton<AppScheduler>::GetInstance();
+    ASSERT_NE(scheduler, nullptr);
+    auto mockClient = std::make_unique<TestAppMgrClientMock>();
+    scheduler->appMgrClient_ = std::move(mockClient);
+
+    Want want;
+    want.SetElementName("target.bundle", "TargetAbility");
+    AppExecFwk::AbilityInfo abilityInfo;
+    AppExecFwk::ApplicationInfo applicationInfo;
+    applicationInfo.bundleName = "other.bundle";
+    applicationInfo.accessTokenId = IPCSkeleton::GetCallingTokenID();
+    auto callerRecord = std::make_shared<AbilityRecord>(want, abilityInfo, applicationInfo);
+    callerRecord->Init(AbilityRequest());
+
+    std::string specifiedFlag = "flag";
+    AppExecFwk::AbilityInfo outAbilityInfo;
+    auto ret = abilityMs->CheckStartSelfUIAbilityInChildProcess(want, specifiedFlag, callerRecord, outAbilityInfo);
+    EXPECT_EQ(ret, ERROR_UIABILITY_NOT_BELONG_TO_CALLER);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest CheckStartSelfUIAbilityInChildProcess_003 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: CheckStartSelfUIAbilityInChildProcess
+ * FunctionPoints: AbilityManagerService CheckStartSelfUIAbilityInChildProcess
+ */
+HWTEST_F(AbilityManagerServiceSixthTest, CheckStartSelfUIAbilityInChildProcess_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest CheckStartSelfUIAbilityInChildProcess_004 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+
+    auto scheduler = DelayedSingleton<AppScheduler>::GetInstance();
+    ASSERT_NE(scheduler, nullptr);
+    auto mockClient = std::make_unique<TestAppMgrClientMock>();
+    mockClient->configuredInstanceKey = "instance_origin";
+    scheduler->appMgrClient_ = std::move(mockClient);
+
+    Want want;
+    want.SetElementName("target.bundle", "TargetAbility");
+    want.SetParam(Want::APP_INSTANCE_KEY, std::string("instance_other"));
+    AppExecFwk::AbilityInfo abilityInfo;
+    AppExecFwk::ApplicationInfo applicationInfo;
+    applicationInfo.bundleName = "target.bundle";
+    applicationInfo.accessTokenId = IPCSkeleton::GetCallingTokenID();
+    auto callerRecord = std::make_shared<AbilityRecord>(want, abilityInfo, applicationInfo);
+    callerRecord->Init(AbilityRequest());
+
+    std::string specifiedFlag = "flag";
+    AppExecFwk::AbilityInfo outAbilityInfo;
+    auto ret = abilityMs->CheckStartSelfUIAbilityInChildProcess(want, specifiedFlag, callerRecord, outAbilityInfo);
+    EXPECT_EQ(ret, ERROR_UIABILITY_NOT_BELONG_TO_CALLER);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest CheckStartSelfUIAbilityInChildProcess_004 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: CheckStartSelfUIAbilityInChildProcess
+ * FunctionPoints: AbilityManagerService CheckStartSelfUIAbilityInChildProcess
+ */
+HWTEST_F(AbilityManagerServiceSixthTest, CheckStartSelfUIAbilityInChildProcess_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest CheckStartSelfUIAbilityInChildProcess_005 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+
+    auto scheduler = DelayedSingleton<AppScheduler>::GetInstance();
+    ASSERT_NE(scheduler, nullptr);
+    auto mockClient = std::make_unique<TestAppMgrClientMock>();
+    mockClient->configuredInstanceKey = "instance_origin";
+    scheduler->appMgrClient_ = std::move(mockClient);
+
+    Want want;
+    want.SetElementName("target.bundle", "TargetAbility");
+    AppExecFwk::AbilityInfo abilityInfo;
+    AppExecFwk::ApplicationInfo applicationInfo;
+    applicationInfo.bundleName = "target.bundle";
+    applicationInfo.accessTokenId = IPCSkeleton::GetCallingTokenID();
+    auto callerRecord = std::make_shared<AbilityRecord>(want, abilityInfo, applicationInfo);
+    callerRecord->Init(AbilityRequest());
+
+    std::string specifiedFlag = "flag";
+    AppExecFwk::AbilityInfo outAbilityInfo;
+    auto ret = abilityMs->CheckStartSelfUIAbilityInChildProcess(want, specifiedFlag, callerRecord, outAbilityInfo);
+    EXPECT_EQ(ret, TARGET_BUNDLE_NOT_EXIST);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest CheckStartSelfUIAbilityInChildProcess_005 end");
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: StartSelfUIAbilityInCurrentProcess
  * FunctionPoints: AbilityManagerService StartSelfUIAbilityInCurrentProcess
  */
@@ -2502,6 +2695,61 @@ HWTEST_F(AbilityManagerServiceSixthTest, UnRegisterPreloadUIExtensionHostClient_
     ASSERT_NE(abilityMs, nullptr);
     auto ret = abilityMs->UnRegisterPreloadUIExtensionHostClient(DEFAULT_INVALID_USER_ID);
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: AtomicServicePreprocess
+ * FunctionPoints: AbilityManagerService AtomicServicePreprocess
+ */
+HWTEST_F(AbilityManagerServiceSixthTest, AtomicServicePreprocess_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest AtomicServicePreprocess_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    Want want;
+    EXPECT_EQ(abilityMs->AtomicServicePreprocess(want), 0);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest AtomicServicePreprocess_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: IsFloodAttackByCallerUid
+ * FunctionPoints: AbilityManagerService IsFloodAttackByCallerUid
+ */
+HWTEST_F(AbilityManagerServiceSixthTest, IsFloodAttackByCallerUid_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest IsFloodAttackByCallerUid_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    int32_t callerUid = 1000;
+    EXPECT_FALSE(abilityMs->IsFloodAttackByCallerUid(callerUid));
+    bool isFloodAttack = false;
+    for (int i = 0; i < 11; ++i) {
+        isFloodAttack = abilityMs->IsFloodAttackByCallerUid(callerUid);
+    }
+    EXPECT_TRUE(isFloodAttack);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest IsFloodAttackByCallerUid_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetCallerUidAndToken
+ * FunctionPoints: AbilityManagerService GetCallerUidAndToken
+ */
+HWTEST_F(AbilityManagerServiceSixthTest, GetCallerUidAndToken_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest GetCallerUidAndToken_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    std::string bundleName = "com.example.bundle";
+    int32_t userId = 1000;
+    int32_t callerUid = 0;
+    uint32_t accessToken = 0;
+    abilityMs->GetCallerUidAndToken(bundleName, userId, callerUid, accessToken);
+    EXPECT_EQ(callerUid, 0);
+    EXPECT_EQ(accessToken, 0);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest GetCallerUidAndToken_001 end");
 }
 }  // namespace AAFwk
 }  // namespace OHOS

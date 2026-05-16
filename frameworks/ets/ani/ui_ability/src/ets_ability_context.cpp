@@ -610,6 +610,19 @@ void EtsAbilityContext::StartSelfUIAbilityInCurrentProcessWithOptions(
     etsContext->OnStartSelfUIAbilityInCurrentProcess(env, aniObj, wantObj, aniSpecifiedFlag, opt, call);
 }
 
+void EtsAbilityContext::StartSelfUIAbilityInChildProcess(
+    ani_env *env, ani_object aniObj, ani_object wantObj, ani_string aniSpecifiedFlag, ani_object call)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::CONTEXT, "StartSelfUIAbilityInChildProcess called");
+    auto etsContext = GetEtsAbilityContext(env, aniObj);
+    if (etsContext == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null etsContext");
+        return;
+    }
+    etsContext->OnStartSelfUIAbilityInChildProcess(env, wantObj, aniSpecifiedFlag, call);
+}
+
 void EtsAbilityContext::OpenAtomicServiceCheck(ani_env *env, ani_object aniObj)
 {
     TAG_LOGD(AAFwkTag::CONTEXT, "OpenAtomicServiceCheck called");
@@ -886,6 +899,17 @@ void EtsAbilityContext::SetOnNewWantSkipScenarios(ani_env *env, ani_object aniOb
         return;
     }
     etsContext->OnSetOnNewWantSkipScenarios(env, aniObj, etsScenarios, callback);
+}
+
+void EtsAbilityContext::StartSelf(ani_env *env, ani_object aniObj, ani_object callback)
+{
+    TAG_LOGD(AAFwkTag::CONTEXT, "StartSelf called");
+    auto etsContext = GetEtsAbilityContext(env, aniObj);
+    if (etsContext == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null etsContext");
+        return;
+    }
+    etsContext->OnStartSelf(env, callback);
 }
 
 int32_t EtsAbilityContext::GenerateRequestCode()
@@ -1905,6 +1929,36 @@ void EtsAbilityContext::OnStartSelfUIAbilityInCurrentProcess(ani_env *env, ani_o
     } else {
         innerErrCode = context->StartSelfUIAbilityInCurrentProcess(want, specifiedFlag, startOptions, false);
     }
+    ani_object aniObject = EtsErrorUtil::CreateErrorByNativeErr(env, innerErrCode);
+    AppExecFwk::AsyncCallback(env, call, aniObject, nullptr);
+}
+
+void EtsAbilityContext::OnStartSelfUIAbilityInChildProcess(
+    ani_env *env, ani_object wantObj, ani_string aniSpecifiedFlag, ani_object call)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    AAFwk::Want want;
+    if (!AppExecFwk::UnwrapWant(env, wantObj, want)) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "Failed to parse want");
+        EtsErrorUtil::ThrowInvalidParamError(env, "Parse param want failed, must be a Want");
+        return;
+    }
+    std::string specifiedFlag;
+    if (!AppExecFwk::GetStdString(env, aniSpecifiedFlag, specifiedFlag)) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "Failed to parse specifiedFlag");
+        EtsErrorUtil::ThrowInvalidParamError(env, "Failed to parse specifiedFlag.");
+        return;
+    }
+    ErrCode innerErrCode = ERR_OK;
+    auto context = context_.lock();
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null context");
+        innerErrCode = static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT);
+        ani_object aniObject = EtsErrorUtil::CreateErrorByNativeErr(env, innerErrCode);
+        AppExecFwk::AsyncCallback(env, call, aniObject, nullptr);
+        return;
+    }
+    innerErrCode = context->StartSelfUIAbilityInChildProcess(want, specifiedFlag);
     ani_object aniObject = EtsErrorUtil::CreateErrorByNativeErr(env, innerErrCode);
     AppExecFwk::AsyncCallback(env, call, aniObject, nullptr);
 }
@@ -2990,6 +3044,24 @@ void EtsAbilityContext::OnSetOnNewWantSkipScenarios(ani_env *env, ani_object ani
     AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateErrorByNativeErr(env, ERR_OK), nullptr);
 }
 
+void EtsAbilityContext::OnStartSelf(ani_env *env, ani_object callback)
+{
+    TAG_LOGD(AAFwkTag::CONTEXT, "OnStartSelf called");
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null env");
+        return;
+    }
+    auto context = context_.lock();
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null context");
+        EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT);
+        return;
+    }
+    ErrCode innerErrCode = context->StartSelf();
+    AppExecFwk::AsyncCallback(
+        env, callback, EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(innerErrCode)), nullptr);
+}
+
 namespace {
 bool BindNativeMethods(ani_env *env, ani_class &cls)
 {
@@ -3083,6 +3155,9 @@ bool BindNativeMethods(ani_env *env, ani_class &cls)
                 "C{@ohos.app.ability.Want.Want}C{std.core.String}C{@ohos.app.ability.StartOptions.StartOptions}C{utils."
                 "AbilityUtils.AsyncCallbackWrapper}:",
                 reinterpret_cast<void *>(EtsAbilityContext::StartSelfUIAbilityInCurrentProcessWithOptions) },
+            ani_native_function { "nativeStartSelfUIAbilityInChildProcessSync",
+                "C{@ohos.app.ability.Want.Want}C{std.core.String}C{utils.AbilityUtils.AsyncCallbackWrapper}:",
+                reinterpret_cast<void *>(EtsAbilityContext::StartSelfUIAbilityInChildProcess) },
             ani_native_function { "nativeOnSetRestoreEnabled", "z:",
                 reinterpret_cast<void*>(EtsAbilityContext::NativeOnSetRestoreEnabled) },
             ani_native_function { "nativeConnectServiceExtensionAbilityWithAccount",
@@ -3159,6 +3234,9 @@ bool BindNativeMethods(ani_env *env, ani_class &cls)
             ani_native_function { "nativeSetOnNewWantSkipScenarios",
                 "iC{utils.AbilityUtils.AsyncCallbackWrapper}:",
                 reinterpret_cast<void*>(EtsAbilityContext::SetOnNewWantSkipScenarios) },
+            ani_native_function { "nativeStartSelf",
+                "C{utils.AbilityUtils.AsyncCallbackWrapper}:",
+                reinterpret_cast<void*>(EtsAbilityContext::StartSelf) },
         };
         if ((status = env->Class_BindNativeMethods(cls, functions.data(), functions.size())) != ANI_OK) {
             TAG_LOGE(AAFwkTag::CONTEXT, "Class_BindNativeMethods failed status: %{public}d", status);

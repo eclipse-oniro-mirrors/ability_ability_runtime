@@ -116,6 +116,15 @@ public:
 
     bool NeedCheckStatusBar(std::shared_ptr<AbilityRecord> abilityRecord, const AbilityRequest &abilityRequest);
 
+    /**
+     * CheckStartUIAbilityByUserLockStatus, check if UIAbility start is allowed based on user lock status.
+     * When status is locked, only system apps are allowed to start.
+     *
+     * @param bundleName The bundle name of the target application.
+     * @return Whether the ability start is allowed (true) or should be blocked (false).
+     */
+    bool CheckStartUIAbilityByUserLockStatus(const std::string &bundleName);
+
 private:
     /**
      * AbilityPermissionUtil, the private constructor.

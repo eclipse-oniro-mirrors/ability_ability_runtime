@@ -40,7 +40,7 @@ public:
     int32_t CreateChildProcess(const ExecToolParam &param, const std::string &sandboxConfig,
         const ToolInfo &toolInfo, std::shared_ptr<SessionRecord> record) const;
 
-    bool TerminateProcess(pid_t pid, int signal = SIGTERM) const;
+    bool Killpg(pid_t pid) const;
 
 private:
     ProcessManager() = default;

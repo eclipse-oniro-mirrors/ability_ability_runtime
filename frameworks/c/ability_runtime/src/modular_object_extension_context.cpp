@@ -15,9 +15,13 @@
 
 #include "modular_object_extension_context.h"
 
+#include <memory>
+#include <new>
+
 #include "ability_business_error_utils.h"
 #include "ability_manager_client.h"
 #include "hilog_tag_wrapper.h"
+#include "ipc_error_code.h"
 #include "modular_object_extension_context_impl.h"
 #include "modular_object_extension_types.h"
 #include "start_options_impl.h"
@@ -29,6 +33,16 @@ using namespace OHOS::AAFwk;
 using namespace OHOS::AbilityRuntime;
 
 namespace {
+constexpr const char *REQUEST_TASK_NAME = "ModObjExtRequest";
+constexpr const char *DESTROY_TASK_NAME = "ModObjExtDestroy";
+
+struct IPCRemoteStubUserData {
+    std::weak_ptr<AppExecFwk::EventHandler> handler;
+    OH_OnRemoteRequestCallback requestCallback = nullptr;
+    OH_OnRemoteDestroyCallback destroyCallback = nullptr;
+    void *userData = nullptr;
+};
+
 AbilityRuntime_ErrorCode CheckMoeContext(OH_AbilityRuntime_ModObjExtensionContextHandle context,
     std::shared_ptr<OHOS::AbilityRuntime::Context> &contextPtr)
 {
@@ -61,6 +75,67 @@ AbilityRuntime_ErrorCode TransformWant(const AbilityBase_Want *want, Want &abili
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
+}
+
+std::unique_ptr<IPCRemoteStubUserData> CreateIPCRemoteStubUserData(
+    const std::shared_ptr<AppExecFwk::EventHandler> &handler,
+    OH_OnRemoteRequestCallback requestCallback, OH_OnRemoteDestroyCallback destroyCallback,
+    void *userData)
+{
+    std::unique_ptr<IPCRemoteStubUserData> callbackInfo(new (std::nothrow) IPCRemoteStubUserData());
+    if (callbackInfo == nullptr) {
+        return nullptr;
+    }
+    callbackInfo->handler = handler;
+    callbackInfo->requestCallback = requestCallback;
+    callbackInfo->destroyCallback = destroyCallback;
+    callbackInfo->userData = userData;
+    return callbackInfo;
+}
+
+int OnRemoteRequestOnHandler(uint32_t code, const OHIPCParcel *data, OHIPCParcel *reply, void *userData)
+{
+    auto *callbackInfo = static_cast<IPCRemoteStubUserData *>(userData);
+    if (callbackInfo == nullptr || callbackInfo->requestCallback == nullptr) {
+        return OH_IPC_INNER_ERROR;
+    }
+    auto handler = callbackInfo->handler.lock();
+    if (handler == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "event handler not exist");
+        return OH_IPC_INNER_ERROR;
+    }
+    int32_t result = OH_IPC_INNER_ERROR;
+    auto task = [&callbackInfo, &result, code, data, reply]() {
+        result = callbackInfo->requestCallback(code, data, reply, callbackInfo->userData);
+    };
+    if (!handler->PostSyncTask(task, REQUEST_TASK_NAME)) {
+        TAG_LOGE(AAFwkTag::APPKIT, "post request task failed");
+        return OH_IPC_INNER_ERROR;
+    }
+    return result;
+}
+
+void OnRemoteDestroyOnHandler(void *userData)
+{
+    std::unique_ptr<IPCRemoteStubUserData> callbackInfo(static_cast<IPCRemoteStubUserData *>(userData));
+    if (callbackInfo == nullptr) {
+        return;
+    }
+    if (callbackInfo->destroyCallback == nullptr) {
+        return;
+    }
+    auto handler = callbackInfo->handler.lock();
+    if (handler == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "event handler not exist");
+        return;
+    }
+    auto task = [&callbackInfo]() {
+        callbackInfo->destroyCallback(callbackInfo->userData);
+    };
+    if (!handler->PostSyncTask(task, DESTROY_TASK_NAME)) {
+        TAG_LOGE(AAFwkTag::APPKIT, "post destroy task failed");
+        return;
+    }
 }
 } // namespace
 
@@ -136,6 +211,43 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjExtensionContext_TerminateSelf(
     auto moeContext = std::static_pointer_cast<OHOS::AbilityRuntime::ModularObjectExtensionContext>(contextPtr);
     auto err = moeContext->TerminateSelf();
     return ConvertToCommonBusinessErrorCode(err);
+}
+
+OHIPCRemoteStub* OH_AbilityRuntime_ModObjExtensionContext_CreateIPCRemoteStub(
+    OH_AbilityRuntime_ModObjExtensionContextHandle context, const char *descriptor,
+    OH_OnRemoteRequestCallback requestCallback, OH_OnRemoteDestroyCallback destroyCallback, void *userData)
+{
+    if (descriptor == nullptr || requestCallback == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "invalid create stub params");
+        return nullptr;
+    }
+    std::shared_ptr<OHOS::AbilityRuntime::Context> contextPtr;
+    auto ret = CheckMoeContext(context, contextPtr);
+    if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+        return nullptr;
+    }
+    auto moeContext = std::static_pointer_cast<ModularObjectExtensionContext>(contextPtr);
+    auto callbackInfo = CreateIPCRemoteStubUserData(
+        moeContext->GetEventHandler(), requestCallback, destroyCallback, userData);
+    if (callbackInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "create callback info failed");
+        return nullptr;
+    }
+    auto *stub = OH_IPCRemoteStub_Create(descriptor, OnRemoteRequestOnHandler,
+        OnRemoteDestroyOnHandler, callbackInfo.get());
+    if (stub == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "create remote stub failed");
+        return nullptr;
+    }
+    callbackInfo.release();
+    return stub;
+}
+
+void OH_AbilityRuntime_ModObjExtensionContext_DestroyIPCRemoteStub(
+    OH_AbilityRuntime_ModObjExtensionContextHandle context, OHIPCRemoteStub *stub)
+{
+    (void)context;
+    OH_IPCRemoteStub_Destroy(stub);
 }
 
 #ifdef __cplusplus

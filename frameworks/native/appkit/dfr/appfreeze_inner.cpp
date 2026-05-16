@@ -59,6 +59,8 @@ constexpr int APP_INPUT_BLOCK_TYPE = 4;
 constexpr int BUSSINESS_THREAD_BLOCK_3S_TYPE = 5;
 constexpr int BUSSINESS_THREAD_BLOCK_6S_TYPE = 6;
 constexpr int BUSINESS_INPUT_BLOCK_TYPE = 7;
+constexpr int DUMP_MAIN_STACK_TIMEOUT = 1; // s
+constexpr int LAST_SAVE_MAIN_STACK_TIME = 3000; // ms
 }
 std::weak_ptr<EventHandler> AppfreezeInner::appMainHandler_;
 std::shared_ptr<AppfreezeInner> AppfreezeInner::instance_ = nullptr;
@@ -287,6 +289,46 @@ int AppfreezeInner::TransformHicollieFaultNumber(const std::string& faultName)
     return -1;
 }
 
+std::string AppfreezeInner::GetMainStackDump(int32_t pid)
+{
+    int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::
+        system_clock::now().time_since_epoch()).count();
+    if (!lastMainStack_.empty() && now - lastMainStackTime_ < LAST_SAVE_MAIN_STACK_TIME) {
+        {
+            std::lock_guard<std::mutex> lock(mainStackMutex_);
+            return lastMainStack_;
+        }
+    }
+    auto task = [pid, this]() {
+        std::string startTime = "\nDump main thread stack start time: " +
+            AbilityRuntime::TimeUtil::DefaultCurrentTimeStr() + "\n";
+        std::string mainStack;
+        if (HiviewDFX::GetBacktraceStringByTidWithMix(mainStack, pid, 0, true)) {
+            mainStack = startTime + mainStack + "\nDump main thread stack end time: " +
+                AbilityRuntime::TimeUtil::DefaultCurrentTimeStr() + "\n";
+        } else {
+            TAG_LOGE(AAFwkTag::APPDFR, "get main stack failed, mainStack=%{public}s", mainStack.c_str());
+        }
+        lastMainStackTime_ = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::
+            system_clock::now().time_since_epoch()).count();
+        std::unique_lock<std::mutex> lock(mainStackMutex_);
+        lastMainStack_ = mainStack;
+        mainStackCv_.notify_one();
+    };
+    ffrt::submit_h(task);
+
+    {
+        std::unique_lock<std::mutex> lock(mainStackMutex_);
+        if (mainStackCv_.wait_for(lock, std::chrono::seconds(DUMP_MAIN_STACK_TIMEOUT)) == std::cv_status::timeout) {
+            TAG_LOGW(AAFwkTag::APPDFR, "get main stack has been extecting more than 1s");
+        } else {
+            TAG_LOGI(AAFwkTag::APPDFR, "get main stack has finished less than 1s");
+            return lastMainStack_;
+        }
+    }
+    return "";
+}
+
 void AppfreezeInner::ChangeFaultDateInfo(FaultData& faultData, const std::string& msgContent)
 {
     faultData.errorObject.message += msgContent;
@@ -307,13 +349,7 @@ void AppfreezeInner::ChangeFaultDateInfo(FaultData& faultData, const std::string
     }
     int32_t pid = IPCSkeleton::GetCallingPid();
     int32_t uid = IPCSkeleton::GetCallingUid();
-    std::string mainStack = "";
-    std::string startTime = "\nDump main thread stack start time: " +
-        AbilityRuntime::TimeUtil::DefaultCurrentTimeStr() + "\n";
-    if (HiviewDFX::GetBacktraceStringByTidWithMix(mainStack, pid, 0, true)) {
-        faultData.errorObject.mainStack = startTime + mainStack + "\nDump main thread stack end time: " +
-            AbilityRuntime::TimeUtil::DefaultCurrentTimeStr() + "\n";
-    }
+    faultData.errorObject.mainStack = GetMainStackDump(pid);
     bool isExit = IsExitApp(faultData.errorObject.name) && faultData.needKillProcess;
     if (isExit) {
         faultData.forceExit = true;
@@ -325,7 +361,7 @@ void AppfreezeInner::ChangeFaultDateInfo(FaultData& faultData, const std::string
         exitReason.killMsg = reason;
         exitReason.innerMsg = reason;
         auto result = AbilityManagerClient::GetInstance()->RecordAppWithReason(pid, uid, exitReason);
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "Record result=%{public}d, pid=%{public}d, uid=%{public}d, "
+        TAG_LOGI(AAFwkTag::APPDFR, "Record result=%{public}d, pid=%{public}d, uid=%{public}d, "
             "killId=%{public}d", result, pid, uid, exitReason.killId);
     }
     NotifyANR(faultData);
@@ -381,7 +417,7 @@ void AppfreezeInner::EnableFreezeSample(FaultData& newFaultData)
     std::string eventName = newFaultData.errorObject.name;
     newFaultData.isInForeground = GetAppInForeground();
     if (eventName == AppFreezeType::THREAD_BLOCK_3S || eventName == AppFreezeType::LIFECYCLE_HALF_TIMEOUT) {
-        OHOS::HiviewDFX::Watchdog::GetInstance().StartSample(HALF_DURATION, HALF_INTERVAL);
+        newFaultData.appfreezeInfo = OHOS::HiviewDFX::Watchdog::GetInstance().StartSample(HALF_DURATION, HALF_INTERVAL);
         TAG_LOGI(AAFwkTag::APPDFR, "start to sample freeze stack, eventName:%{public}s", eventName.c_str());
         return;
     }

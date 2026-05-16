@@ -33,6 +33,13 @@ public:
 
 } // namespace AbilityRuntime
 
+namespace AppExecFwk {
+class EventHandler : public std::enable_shared_from_this<EventHandler> {
+public:
+    virtual ~EventHandler() = default;
+};
+} // namespace AppExecFwk
+
 namespace AAFwk {
 class Want {};
 
@@ -86,6 +93,13 @@ namespace AbilityRuntime {
 class ExtensionContext : public Context {
 public:
     sptr<IRemoteObject> token_;
+
+protected:
+    virtual bool IsContext(size_t contextTypeId)
+    {
+        (void)contextTypeId;
+        return false;
+    }
 };
 
 } // namespace AbilityRuntime

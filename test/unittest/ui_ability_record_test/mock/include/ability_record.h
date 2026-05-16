@@ -23,6 +23,7 @@
 
 #include "ability_info.h"
 #include "ability_state.h"
+#include "want.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -31,8 +32,6 @@ enum class AbilityRecordType {
     UI_ABILITY,
     MISSION_ABILITY,
 };
-
-class Want {};
 
 struct AbilityRequest {
     int32_t requestCode = 0;
@@ -50,7 +49,7 @@ class AbilityRecord : public std::enable_shared_from_this<AbilityRecord> {
 public:
     AbilityRecord(const Want &want, const AppExecFwk::AbilityInfo &abilityInfo,
         const AppExecFwk::ApplicationInfo &applicationInfo, int32_t requestCode)
-        : abilityInfo_(abilityInfo) {}
+        : abilityInfo_(abilityInfo), want_(want) {}
     virtual ~AbilityRecord() = default;
 
     virtual void Init(const AbilityRequest &abilityRequest);
@@ -60,19 +59,40 @@ public:
     {
         pendingState_ = state;
     }
+
     inline AbilityState GetPendingState() const
     {
         return pendingState_;
     }
+
+    inline void SetGameSAPreLaunch(bool isGameSAPreLaunch)
+    {
+        isGameSAPreLaunch_ = isGameSAPreLaunch;
+    }
+
+    inline bool IsGameSAPreLaunch() const
+    {
+        return isGameSAPreLaunch_;
+    }
+
+    inline void SetIsNewWant(bool) {}
+    inline void SetWant(Want want)
+    {
+        want_ = want;
+    }
 protected:
     bool isPrelaunch_ = false;
     bool isHook_ = false;
+    bool isGameSAPreLaunch_ = false;
     AbilityState pendingState_ = AbilityState::INITIAL;
     std::atomic_bool isLastWantBackgroundDriven_ = false;
     std::mutex collaborateWantLock_;
     std::shared_ptr<LifecycleDeal> lifecycleDeal_;
 
     AppExecFwk::AbilityInfo abilityInfo_;
+
+    mutable std::mutex wantLock_;
+    Want want_;
 };
 } // namespace AAFwk
 } // namespace OHOS

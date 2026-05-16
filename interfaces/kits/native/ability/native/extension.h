@@ -47,6 +47,17 @@ public:
     virtual ~Extension() = default;
 
     /**
+     * @brief Get the ability handler for this extension.
+     * Override to provide a custom handler (e.g., shared worker thread).
+     * Default returns nullptr, meaning the caller should create handler by itself.
+     *
+     * @param abilityInfo The ability info for handler creation.
+     * @return The shared ability handler, or nullptr to use default behavior.
+     */
+    virtual std::shared_ptr<AppExecFwk::AbilityHandler> GetAbilityHandler(
+        const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo);
+
+    /**
      * @brief Init the extension.
      *
      * @param record the extension record.
@@ -266,6 +277,8 @@ public:
 
     virtual void OnExtensionAbilityRequestSuccess(const std::string &requestId, const AppExecFwk::ElementName &element,
         const std::string &message);
+
+    virtual bool HandleExecuteSkill(const AAFwk::Want &want);
 
     std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo_ = nullptr;
 protected:

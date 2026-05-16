@@ -63,6 +63,10 @@ public:
     int32_t fimConnectExtensionType_ = -1;
     std::string fimConnectLocalDeviceId_;
     int32_t softbusGetLocalNodeDeviceInfo_ = ERR_OK;
+    bool auIsSupportDelayedProcessExit_ = false;
+    int32_t oeuValidateCallerResult_ = ERR_OK;
+    int32_t oeuValidateCallerUserId_ = 0;
+    std::string oeuValidateCallerHostBundleName_;
 };
 } // namespace AAFwk
 } // namespace OHOS

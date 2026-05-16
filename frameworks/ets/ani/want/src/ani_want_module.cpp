@@ -269,7 +269,7 @@ ani_boolean EtsWantParams::NativeSetLongParam(ani_env *env, ani_object, ani_long
         return false;
     }
 
-    params->SetParam(keyString, AAFwk::Long::Box(value));
+    params->SetParam(keyString, AAFwk::Long::Box64(value));
     return true;
 }
 
@@ -580,7 +580,7 @@ bool EtsWantParams::SetArrayLong(ani_env *env, const std::string &key, ani_objec
 
     sptr<AAFwk::IArray> ao = sptr<AAFwk::Array>::MakeSptr(length, AAFwk::g_IID_ILong);
     for (int i = 0; i < length; i++) {
-        ao->Set(i, AAFwk::Long::Box(nativeArray[i]));
+        ao->Set(i, AAFwk::Long::Box64(nativeArray[i]));
     }
     wantParams.SetParam(key, ao);
     return true;

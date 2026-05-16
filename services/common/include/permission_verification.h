@@ -28,6 +28,7 @@ struct VerificationInfo {
     uint32_t accessTokenId = 0;
     uint32_t specifyTokenId = 0;
     int32_t apiTargetVersion = 0;
+    uint32_t specifiedFullTokenId = 0;
     bool visible = false;
     bool isBackgroundCall = true;
     bool associatedWakeUp = false;

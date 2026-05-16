@@ -1001,6 +1001,8 @@ public:
 
     int32_t IsProcessCacheSupported(int32_t pid, bool &isSupported);
 
+    int32_t IsChildProcessSupported(bool isNative, bool &isSupported);
+
     int32_t SetProcessCacheEnable(int32_t pid, bool enable);
 
     int32_t LockProcessCache(int32_t pid, bool isLock);
@@ -1163,6 +1165,9 @@ public:
      */
     int32_t GetAllAbilityInfos(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos);
 
+    virtual int32_t EnableDelayedProcessExit(int32_t pid, bool enabled) const;
+
+    virtual void CancelDelayedExitTask(int32_t pid) const;
 private:
     void SetServiceManager(std::unique_ptr<AppServiceManager> serviceMgr);
     /**

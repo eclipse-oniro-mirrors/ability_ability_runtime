@@ -20,6 +20,7 @@
 #include "ability_context.h"
 #include "ability_context_impl.h"
 #include "ability_business_error.h"
+#include "ability_manager_errors.h"
 #include "errors.h"
 #include "hilog_wrapper.h"
 #define private public
@@ -115,6 +116,13 @@ public:
     void DisconnectAbility(const AAFwk::Want &want, const sptr<AbilityConnectCallback> &connectCallback,
         int32_t accountId = -1) override
     {}
+
+    virtual ErrCode StartSelfUIAbilityInChildProcess(const AAFwk::Want &want,
+        const std::string &specifiedFlag) override
+    {
+        GTEST_LOG_(INFO) << "StartSelfUIAbilityInChildProcess mock called, ret " << startSelfRet_;
+        return startSelfRet_;
+    }
 public:
     static void DoneConnect(int status)
     {
@@ -130,9 +138,11 @@ public:
         callback_->OnAbilityDisconnectDone(element, 0);
     }
     void SetConnectResult(ErrCode code) { connectRet_ = code; }
+    void SetStartSelfResult(ErrCode code) { startSelfRet_ = code; }
 protected:
     static sptr<AbilityConnectCallback> callback_;
     ErrCode connectRet_ = ERR_OK;
+    ErrCode startSelfRet_ = ERR_OK;
 };
 
 sptr<AbilityConnectCallback> MockAbilityContextImpl::callback_;
@@ -601,5 +611,75 @@ HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_ContextType_0400, Tes
     GTEST_LOG_(INFO) << "AbilityRuntime_AbilityContext_ContextType_0400 end";
 }
 
+/**
+ * @tc.name: AbilityRuntime_AbilityContext_StartSelfUIAbilityInChildProcess_0100
+ * @tc.desc: Test StartSelfUIAbilityInChildProcess with normal parameters
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_StartSelfUIAbilityInChildProcess_0100, TestSize.Level1)
+{
+    auto contextImpl = std::make_shared<MockAbilityContextImpl>();
+    AAFwk::Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    std::string specifiedFlag = "testFlag";
+    contextImpl->SetStartSelfResult(ERR_OK);
+    auto errCode = contextImpl->StartSelfUIAbilityInChildProcess(want, specifiedFlag);
+    EXPECT_EQ(errCode, ERR_OK);
+}
+
+/**
+ * @tc.name: AbilityRuntime_AbilityContext_StartSelfUIAbilityInChildProcess_0200
+ * @tc.desc: Test StartSelfUIAbilityInChildProcess with empty want
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_StartSelfUIAbilityInChildProcess_0200, TestSize.Level1)
+{
+    auto contextImpl = std::make_shared<MockAbilityContextImpl>();
+    AAFwk::Want want;
+    std::string specifiedFlag = "";
+    contextImpl->SetStartSelfResult(ERR_INVALID_VALUE);
+    auto errCode = contextImpl->StartSelfUIAbilityInChildProcess(want, specifiedFlag);
+    EXPECT_EQ(errCode, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: AbilityRuntime_AbilityContext_StartSelfUIAbilityInChildProcess_0300
+ * @tc.desc: Test StartSelfUIAbilityInChildProcess with specifiedFlag
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_StartSelfUIAbilityInChildProcess_0300, TestSize.Level1)
+{
+    auto contextImpl = std::make_shared<MockAbilityContextImpl>();
+    AAFwk::Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    want.SetParam("testKey", std::string("testValue"));
+    std::string specifiedFlag = "specifiedFlag123";
+    contextImpl->SetStartSelfResult(ERR_OK);
+    auto errCode = contextImpl->StartSelfUIAbilityInChildProcess(want, specifiedFlag);
+    EXPECT_EQ(errCode, ERR_OK);
+}
+
+/**
+ * @tc.name: AbilityRuntime_AbilityContext_OnStartSelfUIAbilityInChildProcess_0100
+ * @tc.desc: Test OnStartSelfUIAbilityInChildProcess JS binding
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_OnStartSelfUIAbilityInChildProcess_0100, TestSize.Level1)
+{
+    OHOS::AbilityRuntime::Runtime::Options options;
+    std::shared_ptr<OHOS::JsEnv::JsEnvironment> jsEnv = nullptr;
+    auto err = JsRuntimeLite::GetInstance().CreateJsEnv(options, jsEnv);
+    ASSERT_EQ(err, napi_status::napi_ok);
+    ASSERT_NE(jsEnv, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(jsEnv->GetNativeEngine());
+
+    NapiCallbackInfo info{2};
+    AAFwk::Want want;
+    info.argv[0] = OHOS::AppExecFwk::WrapWant(env, want);
+    napi_create_string_latin1(env, "testFlag", NAPI_AUTO_LENGTH, &info.argv[1]);
+    jsAbilityContext_->OnStartSelfUIAbilityInChildProcess(env, info);
+
+    JsRuntimeLite::GetInstance().RemoveJsEnv(reinterpret_cast<napi_env>(jsEnv->GetNativeEngine()));
+}
 }  // namespace AAFwk
 }  // namespace OHOS

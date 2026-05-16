@@ -130,6 +130,7 @@ public:
     int GetFreezeExitReason(const std::string& eventName);
     void UpdateFreezeExcludedPid(bool isAdd, int32_t targetPid, int32_t profilerPid);
     bool IsFreezeExcludedPid(int32_t targetPid);
+    bool CheckPreloadUIExtension(const std::string& message, const std::string& bundleName, int32_t pid);
 
 private:
     struct PeerBinderInfo {

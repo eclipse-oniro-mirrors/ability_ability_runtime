@@ -42,6 +42,7 @@ ohos_unittest("AppMgrServiceInnerFourthTest") {
     "mock/src/mock_ipc_skeleton.cpp",
     "mock/src/mock_my_flag.cpp",
     "mock/src/mock_permission_verification.cpp",
+    "${ability_runtime_services_path}/appmgr/src/fork_image_info.cpp",
   ]
 
   configs = [ "${ability_runtime_services_path}/appmgr:appmgr_config" ]

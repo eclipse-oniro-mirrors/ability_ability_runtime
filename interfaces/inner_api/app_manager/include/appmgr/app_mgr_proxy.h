@@ -818,6 +818,8 @@ public:
 
     int32_t IsProcessCacheSupported(int32_t pid, bool &isSupported) override;
 
+    int32_t IsChildProcessSupported(bool isNative, bool &isSupported) override;
+
     int32_t SetProcessCacheEnable(int32_t pid, bool enable) override;
 
     int32_t LockProcessCache(int32_t pid, bool isLock) override;
@@ -968,6 +970,16 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int32_t GetAllAbilityInfos(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos) override;
+
+    /**
+     * Enable delayed process exit.
+     *
+     * @param pid Process id.
+     * @param enabled Whether enable delayed process exit.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t EnableDelayedProcessExit(int32_t pid, bool enabled) override;
+    void CancelDelayedExitTask(int32_t pid) override;
 private:
     bool SendTransactCmd(AppMgrInterfaceCode code, MessageParcel &data, MessageParcel &reply);
     bool WriteInterfaceToken(MessageParcel &data);

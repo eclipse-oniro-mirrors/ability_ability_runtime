@@ -27,16 +27,28 @@ bool MemDumpInfo::Marshalling(Parcel &parcel) const
     if (!parcel.WriteBool(needLeakobj)) {
         return false;
     }
+    if (!parcel.WriteBool(needRaw)) {
+        return false;
+    }
     if (!parcel.WriteUint32(pid)) {
         return false;
     }
     if (!parcel.WriteUint32(tid)) {
         return false;
     }
+    if (!parcel.WriteUint32(renderPid)) {
+        return false;
+    }
     if (!parcel.WriteBool(isSync)) {
         return false;
     }
     if (!parcel.WriteBool(mayReportToOEM)) {
+        return false;
+    }
+    if (!parcel.WriteBool(needDump)) {
+        return false;
+    }
+    if (!parcel.WriteBool(needGc)) {
         return false;
     }
     return true;
@@ -61,6 +73,10 @@ MemDumpInfo *MemDumpInfo::Unmarshalling(Parcel &parcel)
         delete info;
         return nullptr;
     }
+    if (!parcel.ReadBool(info->needRaw)) {
+        delete info;
+        return nullptr;
+    }
     if (!parcel.ReadUint32(info->pid)) {
         delete info;
         return nullptr;
@@ -73,11 +89,16 @@ MemDumpInfo *MemDumpInfo::Unmarshalling(Parcel &parcel)
         delete info;
         return nullptr;
     }
+    if (!parcel.ReadUint32(info->renderPid)) {
+        delete info;
+        return nullptr;
+    }
     if (!parcel.ReadBool(info->isSync)) {
         delete info;
         return nullptr;
     }
-    if (!parcel.ReadBool(info->mayReportToOEM)) {
+    if (!parcel.ReadBool(info->mayReportToOEM) || !parcel.ReadBool(info->needDump) ||
+        !parcel.ReadBool(info->needGc)) {
         delete info;
         return nullptr;
     }

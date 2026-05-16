@@ -18,6 +18,7 @@
 
 #include "insight_intent_execute_result.h"
 #include "native_ability_util.h"
+#include "skill/skill_execute_param.h"
 #include "ui_ability.h"
 
 namespace OHOS {
@@ -177,6 +178,8 @@ public:
      */
     bool HandleExecuteInsightIntentBackground(const AAFwk::Want &want, bool onlyExecuteIntent = false);
 
+    bool HandleExecuteSkill(const AAFwk::Want &want, bool onlyExecuteSkill = false);
+
     void SetAbilityRecordId(int32_t abilityRecordId)
     {
         if (ability_ != nullptr) {
@@ -273,7 +276,7 @@ private:
     inline void ExecuteInsightIntentRepeateForeground(const Want &want,
         const std::shared_ptr<InsightIntentExecuteParam> &executeParam,
         std::unique_ptr<InsightIntentExecutorAsyncCallback> callback);
-    inline void ExecuteInsightIntentMoveToForeground(const Want &want,
+    void ExecuteInsightIntentMoveToForeground(const Want &want,
         const std::shared_ptr<InsightIntentExecuteParam> &executeParam,
         std::unique_ptr<InsightIntentExecutorAsyncCallback> callback);
     inline void ExecuteInsightIntentPage(const Want &want,

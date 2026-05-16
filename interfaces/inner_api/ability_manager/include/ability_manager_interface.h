@@ -41,6 +41,10 @@
 #include "iacquire_share_data_callback_interface.h"
 #include "insight_intent/insight_intent_execute_param.h"
 #include "insight_intent/insight_intent_execute_result.h"
+#include "skill/skill_execute_param.h"
+#include "skill/skill_execute_result.h"
+#include "skill/skill_execute_callback_interface.h"
+
 #include "insight_intent/insight_intent_info_for_query.h"
 #include "insight_intent/insight_intent_query_param.h"
 #include "iprepare_terminate_callback_interface.h"
@@ -93,6 +97,7 @@ using AutoStartupInfo = AbilityRuntime::AutoStartupInfo;
 using InsightIntentExecuteParam = AppExecFwk::InsightIntentExecuteParam;
 using InsightIntentExecuteResult = AppExecFwk::InsightIntentExecuteResult;
 using InsightIntentQueryParam = AppExecFwk::InsightIntentQueryParam;
+using SkillExecuteParam = AppExecFwk::SkillExecuteParam;
 using UIExtensionAbilityConnectInfo = AbilityRuntime::UIExtensionAbilityConnectInfo;
 using UIExtensionHostInfo = AbilityRuntime::UIExtensionHostInfo;
 using UIExtensionSessionInfo = AbilityRuntime::UIExtensionSessionInfo;
@@ -122,6 +127,17 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int StartSelfUIAbility(const Want &want)
+    {
+        return 0;
+    }
+
+    /**
+     * StartSelfUIAbility from ApplicationContext and force launch in current process.
+     *
+     * @param want, the want of the ability to start.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int StartSelfUIAbilityByAppContext(const Want &want)
     {
         return 0;
     }
@@ -1221,7 +1237,7 @@ public:
      */
     virtual int StartAbilityByCall(const Want &want, const sptr<IAbilityConnection> &connect,
         const sptr<IRemoteObject> &callerToken, int32_t accountId = DEFAULT_INVAL_VALUE, bool isSilent = false,
-        bool promotePriority = false, bool isVisible = false) = 0;
+        bool promotePriority = false, bool isVisible = false, uint64_t specifiedFullTokenId = 0) = 0;
 
     /**
      * Start Ability, connect session with common ability.
@@ -1237,8 +1253,9 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int StartAbilityByCallWithErrMsg(const Want &want, const sptr<IAbilityConnection> &connect,
-        const sptr<IRemoteObject> &callerToken, int32_t accountId, std::string &errMsg, bool isSilent = false,
-        bool promotePriority = false, bool isVisible = false)
+        const sptr<IRemoteObject> &callerToken, int32_t accountId, std::string &errMsg,
+        bool isSilent = false, bool promotePriority = false,
+        bool isVisible = false, uint64_t specifiedFullTokenId = 0)
     {
         return 0;
     };
@@ -2701,6 +2718,19 @@ public:
     }
 
     /**
+     * Start self UIAbility in child process.
+     * @param want Ability want.
+     * @param specifiedFlag specified flag.
+     * @param callerToken The caller ability token.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual ErrCode StartSelfUIAbilityInChildProcess(
+        const Want &want, const std::string &specifiedFlag, sptr<IRemoteObject> callerToken)
+    {
+        return ERR_OK;
+    }
+
+    /**
      * Check if the app is restart-limited.
      * @return Returns true on being limited.
      */
@@ -2788,6 +2818,57 @@ public:
     virtual int32_t SetAppRecoveryFlag(const sptr<IRemoteObject>& token, int flag)
     {
         return 0;
+    }
+
+    /**
+     * @brief Start skill by HDC, launch target ability.
+     * @param bundleName The target bundle name.
+     * @param moduleName The target module name.
+     * @param skillName The skill name to execute.
+     * @param arkTSPath The target ArkTS file path.
+     * @param funcName The target function name.
+     * @param argv The arguments for skill execution.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t ExecuteInAppSkill(const std::string &bundleName, const std::string &moduleName,
+        const std::string &skillName, const std::string &arkTSPath = "",
+        const std::string &funcName = "",
+        const std::shared_ptr<AAFwk::WantParams> &skillArgs = nullptr,
+        const sptr<ISkillExecuteCallback> &callback = nullptr)
+    {
+        return ERR_OK;
+    }
+
+    /**
+     * @brief Execute in-app skill with explicit caller tokenId (for SA-to-SA calls).
+     * @param request The skill execute request parameters.
+     * @param callback The callback for skill execution result.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t ExecuteInAppSkillWithTokenId(const AppExecFwk::SkillExecuteRequest &request,
+        const sptr<ISkillExecuteCallback> &callback)
+    {
+        return ERR_OK;
+    }
+
+    /**
+     * @brief Query the type of a skill (independent or in-app).
+     * @param bundleName The bundle name of the target application.
+     * @param moduleName The module name of the target application.
+     * @param skillName The skill name identifier.
+     * @param skillType Output the skill type.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t QuerySkillType(const std::string &bundleName, const std::string &moduleName,
+        const std::string &skillName, int32_t &skillType)
+    {
+        return ERR_OK;
+    }
+
+    virtual int32_t ExecuteSkillDone(const sptr<IRemoteObject> &token, const std::string &requestCode,
+        int32_t resultCode, const AppExecFwk::SkillExecuteResult &result)
+    {
+        return ERR_OK;
     }
 };
 }  // namespace AAFwk

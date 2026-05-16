@@ -47,6 +47,7 @@ private:
     void ProcessForegroundTimeOut(const EventWrap &event, bool isHalf = false);
     void ProcessShareDataTimeOut(int64_t uniqueId);
     void ProcessConnectTimeOut(const EventWrap &event, bool isHalf = false);
+    void ProcessSkillExecuteTimeOut(int64_t requestCodeSeq);
 private:
     std::weak_ptr<AbilityManagerService> server_;
 };

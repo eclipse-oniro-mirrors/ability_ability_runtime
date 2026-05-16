@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "ability_record/ability_request.h"
+#include "base_extension_record.h"
 #include "iremote_object.h"
 #include "modular_object_extension_info.h"
 
@@ -34,8 +35,14 @@ public:
     static int32_t CheckRateLimit();
     static bool GetPidToCheckByCallerToken(sptr<IRemoteObject> callerToken, pid_t &outPid);
 
+    static std::shared_ptr<ModularObjectExtensionInfo> QueryConfig(const AbilityRequest &abilityRequest);
+    static int32_t SetupNewRecord(const AbilityRequest &abilityRequest,
+        std::shared_ptr<BaseExtensionRecord> &targetService, const std::string &serviceKey);
+    static int32_t CheckLimits(int32_t instanceCount, int32_t connectionCount);
+
     static int32_t CheckExtensionEnabled(const ModularObjectExtensionInfo &info,
         const AbilityRequest &abilityRequest);
+    static int32_t CheckInProcessLaunchMode(MoeLaunchMode launchMode, int32_t targetUid);
     static int32_t CheckCallerForeground();
     static int32_t CheckAppDistributionType(const std::string &callerAppDistributionType,
         const std::string &targetAppDistributionType);

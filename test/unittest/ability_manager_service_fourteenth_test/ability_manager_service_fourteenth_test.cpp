@@ -23,6 +23,7 @@
 #include "mission_list_manager.h"
 #include "scene_board_judgement.h"
 #include "call_record.h"
+#include "utils/start_ability_utils.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -1747,5 +1748,131 @@ HWTEST_F(AbilityManagerServiceFourteenthTest, NotifyCompleteGamePreLaunch_001, T
     }
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest NotifyCompleteGamePreLaunch_001 end");
 }
+
+/**
+ * @tc.number: StartSelfUIAbilityByAppContext_001
+ * @tc.name: StartSelfUIAbilityByAppContext
+ * @tc.desc: Test StartSelfUIAbilityByAppContext when device not supported
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, StartSelfUIAbilityByAppContext_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartSelfUIAbilityByAppContext_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    MyStatus::GetInstance().auIsSupportDelayedProcessExit_ = false;
+    Want want;
+    want.SetElementName("com.example.bundle", "MainAbility");
+    auto result = abilityMs->StartSelfUIAbilityByAppContext(want);
+    EXPECT_EQ(result, ERR_CAPABILITY_NOT_SUPPORT);
+    TAG_LOGI(AAFwkTag::TEST, "StartSelfUIAbilityByAppContext_001 end");
+}
+
+/**
+ * @tc.number: StartSelfUIAbilityByAppContext_002
+ * @tc.name: StartSelfUIAbilityByAppContext
+ * @tc.desc: Test StartSelfUIAbilityByAppContext when device supported, empty bundle (implicit start)
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, StartSelfUIAbilityByAppContext_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartSelfUIAbilityByAppContext_002 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    MyStatus::GetInstance().auIsSupportDelayedProcessExit_ = true;
+    Want want;
+    auto result = abilityMs->StartSelfUIAbilityByAppContext(want);
+    EXPECT_EQ(result, START_UI_ABILITIES_NOT_SUPPORT_IMPLICIT_START);
+    MyStatus::GetInstance().auIsSupportDelayedProcessExit_ = false;
+    TAG_LOGI(AAFwkTag::TEST, "StartSelfUIAbilityByAppContext_002 end");
+}
+
+/**
+ * @tc.number: StartSelfUIAbilityByAppContext_003
+ * @tc.name: StartSelfUIAbilityByAppContext
+ * @tc.desc: Test StartSelfUIAbilityByAppContext with non-empty bundle, falls through to StartAbilityDelayed
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, StartSelfUIAbilityByAppContext_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartSelfUIAbilityByAppContext_003 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    MyStatus::GetInstance().auIsSupportDelayedProcessExit_ = true;
+    Want want;
+    want.SetElementName("com.example.bundle", "MainAbility");
+    auto result = abilityMs->StartSelfUIAbilityByAppContext(want);
+    EXPECT_NE(result, ERR_OK);
+    MyStatus::GetInstance().auIsSupportDelayedProcessExit_ = false;
+    TAG_LOGI(AAFwkTag::TEST, "StartSelfUIAbilityByAppContext_003 end");
+}
+
+/**
+ * @tc.number: StartAbilityDelayed_001
+ * @tc.name: StartAbilityDelayed
+ * @tc.desc: Test StartAbilityDelayed with empty bundle name
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, StartAbilityDelayed_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityDelayed_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    StartAbilityWrapParam param;
+    auto result = abilityMs->StartAbilityDelayed(param);
+    EXPECT_EQ(result, TARGET_BUNDLE_NOT_EXIST);
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityDelayed_001 end");
+}
+
+/**
+ * @tc.number: StartAbilityDelayed_002
+ * @tc.name: StartAbilityDelayed
+ * @tc.desc: Test StartAbilityDelayed with bundle not belonging to caller
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, StartAbilityDelayed_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityDelayed_002 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    StartAbilityWrapParam param;
+    param.want.SetBundle("com.example.nonexistent");
+    auto result = abilityMs->StartAbilityDelayed(param);
+    EXPECT_NE(result, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityDelayed_002 end");
+}
+/**
+ * @tc.number: StartAbilityByOEExt_001
+ * @tc.name: StartAbilityByOEExt
+ * @tc.desc: Test StartAbilityByOEExt when ValidateCaller returns CHECK_PERMISSION_FAILED
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, StartAbilityByOEExt_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest StartAbilityByOEExt_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    MyStatus::GetInstance().oeuValidateCallerResult_ = CHECK_PERMISSION_FAILED;
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    int32_t result = abilityMs->StartAbilityByOEExt(want, nullptr, 0, "");
+    EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
+    MyStatus::GetInstance().oeuValidateCallerResult_ = ERR_OK;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest StartAbilityByOEExt_001 end");
+}
+
+/**
+ * @tc.number: StartAbilityByOEExt_005
+ * @tc.name: StartAbilityByOEExt
+ * @tc.desc: Test StartAbilityByOEExt when ValidateCaller returns ERR_OK, falls through to StartAbilityWrap
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, StartAbilityByOEExt_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest StartAbilityByOEExt_005 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    MyStatus::GetInstance().oeuValidateCallerResult_ = ERR_OK;
+    MyStatus::GetInstance().oeuValidateCallerUserId_ = 100;
+    MyStatus::GetInstance().oeuValidateCallerHostBundleName_ = "com.test.host";
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    int32_t result = abilityMs->StartAbilityByOEExt(want, nullptr, 1000, "testFlag");
+    EXPECT_NE(result, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest StartAbilityByOEExt_005 end");
+}
+
 } // namespace AAFwk
 } // namespace OHOS

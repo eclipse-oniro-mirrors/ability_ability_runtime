@@ -3,12 +3,20 @@
   "version": "1.0.0",
   "description": "Example CLI tool, demonstrates CLI tool specification implementation (with subcommand format)",
   "executablePath": "/system/bin/cli_tool/executable/ohos-example",
-  "hasSubcommands": true,
-  "timeout": 30,
+  "hasSubCommand": true,
   "requirePermissions": [],
+  "inputSchema": {
+    "type": "object",
+    "properties": {}
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {}
+  },
   "subcommands": {
     "run": {
       "description": "Run example tool, execute and return results",
+      "requirePermissions": [],
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -28,23 +36,15 @@
           }
         }
       },
-      "eventTypes": ["progress", "result"],
+      "eventTypes": ["progress"],
       "eventSchemas": {
-        "result": {
-          "type": "object",
-          "description": "Execution result event",
-          "properties": {
-            "result": {
-              "type": "string",
-              "description": "Execution result string"
-            }
-          },
-          "required": ["result"]
-        },
         "progress": {
           "type": "object",
           "description": "Execution progress event",
           "properties": {
+            "type": {
+              "const": "progress"
+            },
             "percentage": {
               "type": "integer",
               "minimum": 0,
@@ -56,24 +56,16 @@
               "description": "Current status"
             }
           },
-          "required": ["percentage", "status"]
+          "required": ["type", "percentage", "status"]
         }
-      },
-      "argMapping": {
-        "type": "positional",
-        "order": ["argLine"]
       }
     },
     "version": {
       "description": "Display version information",
+      "requirePermissions": [],
       "inputSchema": {
         "type": "object",
-        "properties": {
-          "reserved": {
-            "type": "string",
-            "description": "Reserved placeholder parameter for future use, not required for normal calls"
-          }
-        }
+        "properties": {}
       },
       "outputSchema": {
         "type": "object",
@@ -89,12 +81,6 @@
           }
         },
         "required": ["version"]
-      },
-      "argMapping": {
-        "type": "flag",
-        "templates": {
-          "reserved": "--reserved={value}"
-        }
       }
     }
   }

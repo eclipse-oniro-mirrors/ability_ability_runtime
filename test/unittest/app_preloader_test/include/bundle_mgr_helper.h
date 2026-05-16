@@ -111,6 +111,22 @@ public:
         }
         return true;
     }
+
+    bool QueryExtensionAbilityInfos(const Want &want, const int32_t &flag, const int32_t &userId,
+        std::vector<ExtensionAbilityInfo> &extensionInfos)
+    {
+        ExtensionAbilityInfo extensionInfo;
+        extensionInfos.emplace_back(extensionInfo);
+        return true;
+    }
+
+    ErrCode GetSandboxExtAbilityInfos(const Want &want, int32_t appIndex, int32_t flags,
+        int32_t userId, std::vector<ExtensionAbilityInfo> &extensionInfos)
+    {
+        ExtensionAbilityInfo extensionInfo;
+        extensionInfos.emplace_back(extensionInfo);
+        return ERR_OK;
+    }
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

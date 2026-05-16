@@ -669,7 +669,7 @@ void EtsUIAbility::HandleNativeModule()
     }
 
     // Create NativeAbilityWrapper
-    auto wrapper = std::make_shared<NativeAbilityWrapper>();
+    auto wrapper = std::make_shared<AbilityRuntime_NativeAbilityWrapper>();
     wrapper->instanceId = GetInstanceId();
     wrapper->abilityName = GetAbilityName();
     wrapper->etsAbilityObj = reinterpret_cast<ani_object>(etsAbilityObj_->aniRef);
@@ -1542,7 +1542,9 @@ void EtsUIAbility::ExecuteInsightIntentMoveToForeground(const Want &want,
         }
         ability->CallOnForegroundFunc(want);
     };
-    callback->Push(asyncCallback);
+    if (!CheckIsSilentForeground()) {
+        callback->Push(asyncCallback);
+    }
     const WantParams &wantParams = want.GetParams();
     std::string arkTSMode = wantParams.GetStringParam(AppExecFwk::INSIGHT_INTENT_ARKTS_MODE);
     InsightIntentExecutorInfo executeInfo;

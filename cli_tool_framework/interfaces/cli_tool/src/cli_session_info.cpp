@@ -31,7 +31,6 @@ bool CliSessionInfo::Marshalling(Parcel &parcel) const
         return false;
     }
 
-    // Write result presence flag
     bool hasResult = (result != nullptr);
     if (!parcel.WriteBool(hasResult)) {
         return false;

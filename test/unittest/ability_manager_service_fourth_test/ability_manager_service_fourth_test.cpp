@@ -27,6 +27,7 @@
 #include "modal_system_dialog/modal_system_dialog_ui_extension.h"
 #include "user_controller/user_controller.h"
 #include "utils/modal_system_dialog_util.h"
+#include "app_utils.h"
 #undef private
 #undef protected
 #include "hilog_tag_wrapper.h"
@@ -48,6 +49,7 @@ using OHOS::AppExecFwk::ExtensionAbilityType;
 constexpr char DEVELOPER_MODE_STATE[] = "const.security.developermode.state";
 constexpr const char* DEBUG_APP = "debugApp";
 constexpr const char* START_ABILITY_TYPE = "ABILITY_INNER_START_WITH_ACCOUNT";
+constexpr const char* SUPPORT_NATIVE_UI_ABILITY = "persist.sys.abilityms.support_native_ui_ability";
 
 constexpr int32_t FOUNDATION_UID = 5523;
 constexpr int32_t TEST_VALID_USER_ID = 100;
@@ -1689,6 +1691,57 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartUIExtensionAbilityTset_001, TestS
 
 /*
  * Feature: AbilityManagerService
+ * Function: StartAbilityAsCallerDetails
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityAsCallerDetails with non-null callback on failure
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, StartAbilityAsCallerDetails_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartAbilityAsCallerDetails_002 start");
+    Want want;
+    auto callerToken = MockToken(AbilityType::PAGE);
+    auto asCallerSourceToken = MockToken(AbilityType::PAGE);
+    int32_t userId = 0;
+    int requestCode = 0;
+    bool isImplicit = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    sptr<RequestAbilityImplCallback> callback = new RequestAbilityImplCallback();
+    auto ret = abilityMs_->StartAbilityAsCallerDetails(
+        want, callerToken, asCallerSourceToken, userId, requestCode, isImplicit, false, 0, callback);
+    EXPECT_NE(ret, ERR_OK);
+    EXPECT_EQ(callback->result_, false);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartAbilityAsCallerDetails_002 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityAsCallerDetails
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityAsCallerDetails with null callback on failure
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, StartAbilityAsCallerDetails_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartAbilityAsCallerDetails_003 start");
+    Want want;
+    auto callerToken = MockToken(AbilityType::PAGE);
+    auto asCallerSourceToken = MockToken(AbilityType::PAGE);
+    int32_t userId = 0;
+    int requestCode = 0;
+    bool isImplicit = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    sptr<IRequestStartAbilityCallback> callback = nullptr;
+    auto ret = abilityMs_->StartAbilityAsCallerDetails(
+        want, callerToken, asCallerSourceToken, userId, requestCode, isImplicit, false, 0, callback);
+    EXPECT_NE(ret, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartAbilityAsCallerDetails_003 end");
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: StartUIAbilityWithCallback
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService StartUIAbilityWithCallback with SA check failed
@@ -1887,6 +1940,31 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartSelf_005, TestSize.Level1)
     // With BASE_ABILITY type, still falls to "not supported" branch
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartSelf_005 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartSelf
+ * FunctionPoints: AbilityManagerService StartSelf when device does not support Native UI Ability
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, StartSelf_006, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartSelf_006 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    auto &appUtils = AppUtils::GetInstance();
+    bool srcCacheLoaded = appUtils.isSupportNativeUIAbility_.isLoaded;
+    bool srcCacheValue = appUtils.isSupportNativeUIAbility_.value;
+    bool srcSupportNativeUiAbility = OHOS::system::GetBoolParameter(SUPPORT_NATIVE_UI_ABILITY, false);
+    OHOS::system::SetBoolParameter(SUPPORT_NATIVE_UI_ABILITY, false);
+    appUtils.isSupportNativeUIAbility_.isLoaded = false;
+    auto callerToken = MockToken(AbilityType::PAGE);
+    ASSERT_NE(callerToken, nullptr);
+    auto ret = abilityMs_->StartSelf(callerToken);
+    EXPECT_EQ(ret, ERR_CAPABILITY_NOT_SUPPORT);
+    OHOS::system::SetBoolParameter(SUPPORT_NATIVE_UI_ABILITY, srcSupportNativeUiAbility);
+    appUtils.isSupportNativeUIAbility_.isLoaded = srcCacheLoaded;
+    appUtils.isSupportNativeUIAbility_.value = srcCacheValue;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartSelf_006 end");
 }
 } // namespace AAFwk
 } // namespace OHOS

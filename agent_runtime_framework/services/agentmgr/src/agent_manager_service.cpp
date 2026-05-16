@@ -175,7 +175,7 @@ int32_t AgentManagerService::GetAllAgentCards(AgentCardsRawData &cards)
     return AgentCardMgr::GetInstance().GetAllAgentCards(cards);
 }
 
-int32_t AgentManagerService::GetAgentCardsByBundleName(const std::string &bundleName, std::vector<AgentCard> &cards)
+int32_t AgentManagerService::GetAgentCardsByBundleName(const std::string &bundleName, AgentCardsRawData &cards)
 {
     if (!AAFwk::PermissionVerification::GetInstance()->JudgeCallerIsAllowedToUseSystemAPI()) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "caller no system-app, can not use system-api");
@@ -186,7 +186,8 @@ int32_t AgentManagerService::GetAgentCardsByBundleName(const std::string &bundle
         TAG_LOGE(AAFwkTag::SER_ROUTER, "Permission verification failed");
         return ERR_PERMISSION_DENIED;
     }
-    auto ret = AgentCardMgr::GetInstance().GetAgentCardsByBundleName(bundleName, cards);
+    std::vector<AgentCard> cardVec;
+    auto ret = AgentCardMgr::GetInstance().GetAgentCardsByBundleName(bundleName, cardVec);
     if (ret == ERR_NAME_NOT_FOUND) {
         TAG_LOGW(AAFwkTag::SER_ROUTER, "no agent cards of bundle %{public}s", bundleName.c_str());
         int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
@@ -198,7 +199,11 @@ int32_t AgentManagerService::GetAgentCardsByBundleName(const std::string &bundle
             TAG_LOGE(AAFwkTag::SER_ROUTER, "bundle unexist");
             return AAFwk::ERR_BUNDLE_NOT_EXIST;
         }
+        AgentCardsRawData::FromAgentCardVec({}, cards);
         return ERR_OK;
+    }
+    if (ret == ERR_OK) {
+        AgentCardsRawData::FromAgentCardVec(cardVec, cards);
     }
     return ret;
 }
@@ -306,7 +311,7 @@ int32_t AgentManagerService::DeleteAgentCard(const std::string &bundleName, cons
 int32_t AgentManagerService::ConnectAgentExtensionAbility(const AAFwk::Want &want,
     const sptr<AAFwk::IAbilityConnection> &connection)
 {
-    // Step 1: validate caller state and shared caller-side connection quota.
+    // Step 1: validate caller state before classifying the agent connect request.
     int32_t callerUid = 0;
     auto ret = ValidateConnectAgentRequest(connection, callerUid);
     if (ret != ERR_OK) {
@@ -409,15 +414,7 @@ int32_t AgentManagerService::ValidateConnectAgentRequest(const sptr<AAFwk::IAbil
         return ERR_INVALID_VALUE;
     }
 
-    // Reserve only against the caller-level shared connection budget.
     callerUid = IPCSkeleton::GetCallingUid();
-    {
-        std::lock_guard<std::mutex> lock(connectionLock_);
-        if (HasReachedCallerConnectionLimitLocked(callerUid)) {
-            TAG_LOGE(AAFwkTag::SER_ROUTER, "Maximum agent connections reached for callerUid: %{public}d", callerUid);
-            return AAFwk::ERR_MAX_AGENT_CONNECTIONS_REACHED;
-        }
-    }
 
     // Only foreground apps are allowed to initiate agent connects.
     auto callerPid = IPCSkeleton::GetCallingPid();
@@ -922,6 +919,7 @@ void AgentManagerService::ReleaseTrackedConnectionByRemoteLocked(const sptr<IRem
     }
 
     auto callerUid = it->second.callerUid;
+    auto countTowardsCallerLimit = it->second.countTowardsCallerLimit;
     if (it->second.callerRemote != nullptr && it->second.deathRecipient != nullptr) {
         it->second.callerRemote->RemoveDeathRecipient(it->second.deathRecipient);
     }
@@ -929,6 +927,9 @@ void AgentManagerService::ReleaseTrackedConnectionByRemoteLocked(const sptr<IRem
     trackedConnections_.erase(it);
 
     if (isDisconnecting) {
+        return;
+    }
+    if (!countTowardsCallerLimit) {
         return;
     }
 
@@ -941,6 +942,35 @@ void AgentManagerService::ReleaseTrackedConnectionByRemoteLocked(const sptr<IRem
         return;
     }
     countIt->second--;
+}
+
+void AgentManagerService::TransferLowCodeCallerLimitLocked(const std::shared_ptr<AgentHostSession> &session,
+    const sptr<IRemoteObject> &callerRemote)
+{
+    if (session == nullptr || callerRemote == nullptr) {
+        return;
+    }
+    auto currentIter = trackedConnections_.find(callerRemote);
+    if (currentIter == trackedConnections_.end() || !currentIter->second.countTowardsCallerLimit) {
+        return;
+    }
+    for (const auto &connectionEntry : session->callerConnections) {
+        const auto &candidateRemote = connectionEntry.first;
+        if (candidateRemote == nullptr || candidateRemote == callerRemote) {
+            continue;
+        }
+        auto candidateIter = trackedConnections_.find(candidateRemote);
+        if (candidateIter == trackedConnections_.end() || !candidateIter->second.isLowCode ||
+            candidateIter->second.hostKey < currentIter->second.hostKey ||
+            currentIter->second.hostKey < candidateIter->second.hostKey ||
+            candidateIter->second.callerUid != currentIter->second.callerUid ||
+            candidateIter->second.countTowardsCallerLimit) {
+            continue;
+        }
+        candidateIter->second.countTowardsCallerLimit = true;
+        currentIter->second.countTowardsCallerLimit = false;
+        return;
+    }
 }
 
 void AgentManagerService::HandleCallerConnectionDied(const sptr<IRemoteObject> &remote)
@@ -976,6 +1006,8 @@ void AgentManagerService::HandleCallerConnectionDied(const sptr<IRemoteObject> &
                 if (!session->isDisconnecting && session->agents.empty()) {
                     session->isDisconnecting = true;
                     hostConnection = session->hostConnection;
+                } else {
+                    TransferLowCodeCallerLimitLocked(session, remote);
                 }
             }
             ReleaseTrackedConnectionByRemoteLocked(remote);
@@ -1071,6 +1103,7 @@ int32_t AgentManagerService::NotifyLowCodeAgentComplete(const std::string &agent
         agentOwners_.erase(ownerIter);
         if (!callerStillOwnsAgent && callerRemote != nullptr) {
             session->callerConnections.erase(callerRemote);
+            TransferLowCodeCallerLimitLocked(session, callerRemote);
             ReleaseTrackedConnectionByRemoteLocked(callerRemote);
         }
         if (!session->agents.empty() || session->isDisconnecting) {
@@ -1170,7 +1203,8 @@ int32_t AgentManagerService::PrepareLowCodeConnectPlan(const AgentHostKey &hostK
         }
     }
 
-    auto ret = TryRegisterConnectionLocked(connection, callingUid, session->hostConnection, &hostKey);
+    auto ret = TryRegisterConnectionLocked(connection, callingUid, session->hostConnection, &hostKey,
+        plan.needRealConnect);
     if (ret != ERR_OK) {
         if (plan.needRealConnect) {
             agentHostSessions_.erase(hostKey);
@@ -1214,6 +1248,8 @@ void AgentManagerService::CleanupLowCodeConnectPlan(const AgentConnectPlan &plan
         }
         if (session->callerConnections.empty() && session->agents.empty()) {
             agentHostSessions_.erase(sessionIter);
+        } else {
+            TransferLowCodeCallerLimitLocked(session, plan.callerRemote);
         }
     }
     if (plan.registeredTrackedConnection && plan.callerRemote != nullptr) {

@@ -647,7 +647,8 @@ int ImplicitStartProcessor::GenerateAbilityRequestByAppIndexes(int32_t userId, A
         IN_PROCESS_CALL_WITHOUT_RET(bms->QueryCloneAbilityInfo(request.want.GetElement(), abilityInfoFlag, appIndex,
             abilityInfo, userId));
         if (abilityInfo.name.empty() || abilityInfo.bundleName.empty()) {
-            int32_t ret = FindExtensionInfo(request.want, abilityInfoFlag, userId, appIndex, abilityInfo);
+            int32_t ret = FindExtensionInfo(request.want.GetElement(), abilityInfoFlag, userId, appIndex,
+                abilityInfo);
             if (ret != ERR_OK) {
                 TAG_LOGE(AAFwkTag::ABILITYMGR, "query info failed");
                 return ret;
@@ -674,8 +675,8 @@ int ImplicitStartProcessor::GenerateAbilityRequestByAppIndexes(int32_t userId, A
     return ERR_OK;
 }
 
-int ImplicitStartProcessor::FindExtensionInfo(const Want &want, int32_t flags, int32_t userId,
-    int32_t appIndex, AppExecFwk::AbilityInfo &abilityInfo)
+int ImplicitStartProcessor::FindExtensionInfo(const AppExecFwk::ElementName &elementName, int32_t flags,
+    int32_t userId, int32_t appIndex, AppExecFwk::AbilityInfo &abilityInfo)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto bms = GetBundleManagerHelper();
@@ -683,8 +684,8 @@ int ImplicitStartProcessor::FindExtensionInfo(const Want &want, int32_t flags, i
     AppExecFwk::ExtensionAbilityInfo extensionInfo;
     TAG_LOGD(AAFwkTag::ABILITYMGR,
         "abilityName: %{public}s, appIndex: %{public}d, userId: %{public}d",
-        want.GetElement().GetAbilityName().c_str(), appIndex, userId);
-    IN_PROCESS_CALL_WITHOUT_RET(bms->QueryCloneExtensionAbilityInfoWithAppIndex(want.GetElement(),
+        elementName.GetAbilityName().c_str(), appIndex, userId);
+    IN_PROCESS_CALL_WITHOUT_RET(bms->QueryCloneExtensionAbilityInfoWithAppIndex(elementName,
         flags, appIndex, extensionInfo, userId));
     if (extensionInfo.bundleName.empty() || extensionInfo.name.empty()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "extensionInfo empty.");
@@ -761,7 +762,7 @@ std::vector<std::string> ImplicitStartProcessor::SplitStr(const std::string& str
 bool ImplicitStartProcessor::CheckImplicitStartExtensionIsValid(const AbilityRequest &request,
     const AppExecFwk::ExtensionAbilityInfo &extensionInfo)
 {
-    if (!request.want.GetElement().GetBundleName().empty()) {
+    if (!request.want.GetBundle().empty()) {
         return true;
     }
     TAG_LOGD(
@@ -805,7 +806,17 @@ int32_t ImplicitStartProcessor::ImplicitStartAbilityInner(const Want &targetWant
             break;
         default:
             StartAbilityWrapParam startAbilityWrapParam = {
-                targetWant, request.callerToken, request.requestCode, false, userId, false, 0, false, true };
+                .want = targetWant,
+                .callerToken = request.callerToken,
+                .requestCode = request.requestCode,
+                .isPendingWantCaller = false,
+                .userId = userId,
+                .isStartAsCaller = false,
+                .specifyTokenId = 0,
+                .isForegroundToRestartApp = false,
+                .isImplicit = true,
+                .requestCallback = request.requestCallback,
+            };
             result = abilityMgr->StartAbilityWrap(startAbilityWrapParam);
             break;
     }
@@ -818,9 +829,10 @@ int ImplicitStartProcessor::CallStartAbilityInner(int32_t userId,
 {
     EventInfo eventInfo;
     eventInfo.userId = userId;
-    eventInfo.bundleName = want.GetElement().GetBundleName();
-    eventInfo.moduleName = want.GetElement().GetModuleName();
-    eventInfo.abilityName = want.GetElement().GetAbilityName();
+    auto element = want.GetElement();
+    eventInfo.bundleName = element.GetBundleName();
+    eventInfo.moduleName = element.GetModuleName();
+    eventInfo.abilityName = element.GetAbilityName();
 
     if (callType == AbilityCallType::INVALID_TYPE) {
         eventInfo.calleeId = static_cast<int32_t>(CalleeId::IMPLICIT_START_PROCESSOR_CALL_START_ABILITY_INNER);
@@ -1067,7 +1079,7 @@ bool ImplicitStartProcessor::IsActionImplicitStart(const Want &want, bool findDe
         return false;
     }
 
-    if (want.GetElement().GetBundleName() != "") {
+    if (want.GetBundle() != "") {
         return false;
     }
 

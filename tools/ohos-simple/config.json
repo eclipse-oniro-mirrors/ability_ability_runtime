@@ -3,30 +3,7 @@
   "version": "1.0.0",
   "description": "Simple CLI tool, supports message output, repeat count and verbose mode",
   "executablePath": "/system/bin/cli_tool/executable/ohos-simple",
-  "timeout": 30,
   "requirePermissions": [],
-  "eventTypes": ["result"],
-  "eventSchemas": {
-    "result": {
-      "type": "object",
-      "description": "Execution result event",
-      "properties": {
-        "status": {
-          "type": "string",
-          "description": "Execution status"
-        },
-        "message": {
-          "type": "string",
-          "description": "Processed output message"
-        },
-        "repeat_count": {
-          "type": "integer",
-          "description": "Actual repeat count"
-        }
-      },
-      "required": ["status", "message", "repeat_count"]
-    }
-  },
   "inputSchema": {
     "type": "object",
     "description": "Tool input parameters",
@@ -55,10 +32,6 @@
     "type": "object",
     "description": "Tool execution result",
     "properties": {
-      "status": {
-        "type": "string",
-        "description": "Execution status, success when completed successfully"
-      },
       "message": {
         "type": "string",
         "description": "Processed output message"
@@ -68,17 +41,6 @@
         "description": "Actual repeat count"
       }
     },
-    "required": ["status", "message", "repeat_count"]
-  },
-  "argMapping": {
-    "type": "flag",
-    "templates": {
-      "message": "--message={value}",
-      "count": "--count={value}",
-      "verbose": {
-        "if_true": "--verbose",
-        "if_false": ""
-      }
-    }
+    "required": ["message", "repeat_count"]
   }
 }

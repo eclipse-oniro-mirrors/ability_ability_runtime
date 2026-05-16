@@ -49,6 +49,7 @@ ohos_unittest("ability_permission_util_test") {
     "mock/src/mock_app_mgr_impl.cpp",
     "mock/src/mock_my_flag.cpp",
     "mock/src/permission_verification.cpp",
+    "mock/src/user_controller.cpp",
   ]
 
   deps = [

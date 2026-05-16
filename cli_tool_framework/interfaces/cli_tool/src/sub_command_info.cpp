@@ -38,14 +38,6 @@ bool SubCommandInfo::Marshalling(Parcel &parcel) const
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write outputSchema");
         return false;
     }
-    if (!parcel.WriteBool(argMapping != nullptr)) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write hasArgMapping flag");
-        return false;
-    }
-    if (argMapping != nullptr && !argMapping->Marshalling(parcel)) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write argMapping");
-        return false;
-    }
     if (!parcel.WriteStringVector(eventTypes)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write eventTypes");
         return false;
@@ -65,7 +57,6 @@ SubCommandInfo *SubCommandInfo::Unmarshalling(Parcel &parcel)
         return nullptr;
     }
 
-    bool hasArgMapping = false;
     if (!parcel.ReadString(subCmd->description)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to read description");
         delete subCmd;
@@ -86,21 +77,6 @@ SubCommandInfo *SubCommandInfo::Unmarshalling(Parcel &parcel)
         delete subCmd;
         return nullptr;
     }
-    if (!parcel.ReadBool(hasArgMapping)) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to read hasArgMapping flag");
-        delete subCmd;
-        return nullptr;
-    }
-
-    if (hasArgMapping) {
-        subCmd->argMapping.reset(ArgMapping::Unmarshalling(parcel));
-        if (subCmd->argMapping == nullptr) {
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to unmarshal argMapping");
-            delete subCmd;
-            return nullptr;
-        }
-    }
-
     if (!parcel.ReadStringVector(&subCmd->eventTypes)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to read eventTypes");
         delete subCmd;
@@ -119,59 +95,55 @@ bool SubCommandInfo::ParseFromJson(const nlohmann::json &json, SubCommandInfo &s
 {
     // description is required and must be non-empty
     if (!json.contains("description") || !json["description"].is_string()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: description is missing or not a string");
         return false;
     }
     std::string description = json["description"];
     if (description.empty()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: description is empty");
         return false;
     }
     subCmd.description = description;
 
-    // requirePermissions is optional, but if present must be array of strings
-    if (json.contains("requirePermissions")) {
-        if (!json["requirePermissions"].is_array()) {
+    // requirePermissions is required and must be array
+    if (!json.contains("requirePermissions") || !json["requirePermissions"].is_array()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: requirePermissions is missing or not an array");
+        return false;
+    }
+    for (const auto &perm : json["requirePermissions"]) {
+        if (!perm.is_string()) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: requirePermissions contains non-string item");
             return false;
         }
-        for (const auto &perm : json["requirePermissions"]) {
-            if (!perm.is_string()) {
-                return false;
-            }
-            std::string permStr = perm;
-            if (!permStr.empty()) {
-                subCmd.requirePermissions.push_back(std::move(permStr));
-            }
+        std::string permStr = perm;
+        if (!permStr.empty()) {
+            subCmd.requirePermissions.push_back(std::move(permStr));
         }
     }
 
     // inputSchema is required and must be JSON object
     if (!json.contains("inputSchema") || !json["inputSchema"].is_object()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: inputSchema is missing or not a JSON object");
         return false;
     }
     subCmd.inputSchema = json["inputSchema"].dump();
 
     // outputSchema is required and must be JSON object
     if (!json.contains("outputSchema") || !json["outputSchema"].is_object()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: outputSchema is missing or not a JSON object");
         return false;
     }
     subCmd.outputSchema = json["outputSchema"].dump();
 
-    // argMapping is required
-    if (!json.contains("argMapping") || !json["argMapping"].is_object()) {
-        return false;
-    }
-    subCmd.argMapping = std::make_shared<ArgMapping>();
-    if (!ArgMapping::ParseFromJson(json["argMapping"], *subCmd.argMapping)) {
-        subCmd.argMapping = nullptr;
-        return false;  // argMapping parse failed
-    }
-
     // eventTypes is optional, but if present must be array of strings
     if (json.contains("eventTypes")) {
         if (!json["eventTypes"].is_array()) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: eventTypes is not an array");
             return false;
         }
         for (const auto &evt : json["eventTypes"]) {
             if (!evt.is_string()) {
+                TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: eventTypes contains non-string item");
                 return false;
             }
             std::string evtStr = evt;
@@ -184,6 +156,7 @@ bool SubCommandInfo::ParseFromJson(const nlohmann::json &json, SubCommandInfo &s
     // eventSchemas is optional, but if present must be JSON object
     if (json.contains("eventSchemas")) {
         if (!json["eventSchemas"].is_object()) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: eventSchemas is not a JSON object");
             return false;
         }
         subCmd.eventSchemas = json["eventSchemas"].dump();
@@ -223,9 +196,6 @@ nlohmann::json SubCommandInfo::ParseToJson() const
             json["eventSchemas"] = eventSchemas;
         }
     }
-    if (argMapping != nullptr) {
-        json["argMapping"] = argMapping->ParseToJson();
-    }
 
     return json;
 }
@@ -257,16 +227,6 @@ bool SubCommandInfo::Validate(const SubCommandInfo &subCmd)
     nlohmann::json outputSchemaJson = nlohmann::json::parse(subCmd.outputSchema, nullptr, false);
     if (outputSchemaJson.is_discarded() || !outputSchemaJson.is_object()) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: outputSchema is not a valid JSON object");
-        return false;
-    }
-
-    // argMapping is required
-    if (subCmd.argMapping == nullptr) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: argMapping is null");
-        return false;
-    }
-    if (!ArgMapping::Validate(*subCmd.argMapping)) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: argMapping validation failed");
         return false;
     }
 

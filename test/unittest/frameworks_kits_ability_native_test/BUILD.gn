@@ -752,6 +752,10 @@ ohos_unittest("ui_ability_impl_test") {
   ]
 
   if (ability_runtime_graphics) {
+    defines = [
+      "SUPPORT_GRAPHICS",
+      "SUPPORT_SCREEN",
+    ]
     sources += [ "ui_ability_impl_test.cpp" ]
     external_deps += [
       "form_fwk:fmskit_native",
@@ -954,6 +958,7 @@ ohos_unittest("extension_ability_thread_test") {
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_native_path}/ability/native:abilitykit_utils",
     "${ability_runtime_native_path}/ability/native:extensionkit_native",
+    "${ability_runtime_native_path}/ability/native:modular_object_extension",
     "${ability_runtime_native_path}/appkit:app_context",
     "${ability_runtime_native_path}/appkit:appkit_native",
   ]
@@ -1784,8 +1789,10 @@ ohos_unittest("data_uri_utils_test") {
 
 ohos_unittest("extension_impl_test") {
   module_out_path = module_output_path
-  include_dirs = [ "${ability_runtime_test_path}/mock/frameworks_kits_ability_native_test/include" ]
-
+  include_dirs = [
+    "${ability_runtime_test_path}/mock/frameworks_kits_ability_native_test/include",
+    "${ability_runtime_path}/utils/global/common/include",
+  ]
   sources = [ "extension_impl_test.cpp" ]
 
   configs = [ ":module_private_config" ]
@@ -1796,6 +1803,7 @@ ohos_unittest("extension_impl_test") {
     "${ability_runtime_native_path}/ability/native:abilitykit_utils",
     "${ability_runtime_native_path}/ability/native:extensionkit_native",
     "${ability_runtime_native_path}/ability/native:form_extension",
+    "${ability_runtime_native_path}/ability/native:ui_extension",
     "${ability_runtime_native_path}/appkit:app_context",
     "${ability_runtime_native_path}/appkit:appkit_native",
   ]

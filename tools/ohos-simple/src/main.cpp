@@ -11,63 +11,136 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cerrno>
+#include <climits>
+#include <cstdlib>
 #include <iostream>
 #include <string>
-#include <cstdlib>
 
-// Constants for magic numbers
 namespace {
-    constexpr int MESSAGE_PREFIX_LEN = 10;
-    constexpr int COUNT_PREFIX_LEN = 8;
-    constexpr int MAX_COUNT = 10;
-    constexpr int MIN_COUNT = 1;
+constexpr int MAX_COUNT = 10;
+constexpr int MIN_COUNT = 1;
 }
 
-void EmitResult(const std::string& status, const std::string& message, int repeatCount)
+struct SimpleConfig {
+    std::string message = "Hello from ohos-simple";
+    int count = 1;
+    bool verbose = false;
+};
+
+std::string EscapeJson(const std::string& input)
 {
-    std::cout << "{\"event\": \"result\", \"data\": {"
-              << "\"status\": \"" << status << "\", "
-              << "\"message\": \"" << message << "\", "
-              << "\"repeat_count\": " << repeatCount
-              << "}}" << std::endl;
+    std::string escaped;
+    escaped.reserve(input.size());
+    for (char ch : input) {
+        switch (ch) {
+            case '\\':
+                escaped += "\\\\";
+                break;
+            case '"':
+                escaped += "\\\"";
+                break;
+            case '\n':
+                escaped += "\\n";
+                break;
+            case '\r':
+                escaped += "\\r";
+                break;
+            case '\t':
+                escaped += "\\t";
+                break;
+            default:
+                escaped += ch;
+                break;
+        }
+    }
+    return escaped;
+}
+
+void EmitSuccessResult(const std::string& dataJson)
+{
+    std::cout << "{\"type\":\"result\",\"status\":\"success\",\"data\":"
+              << dataJson << "}" << std::endl;
+}
+
+void EmitError(const std::string& errCode, const std::string& errMsg, const std::string& suggestion)
+{
+    std::cout << "{\"type\":\"result\",\"status\":\"failed\",\"errCode\":\""
+              << EscapeJson(errCode) << "\",\"errMsg\":\"" << EscapeJson(errMsg)
+              << "\",\"suggestion\":\"" << EscapeJson(suggestion) << "\"}" << std::endl;
 }
 
 void ShowHelp()
 {
     std::cout << "Usage: ohos-simple [options]" << std::endl;
     std::cout << "Options:" << std::endl;
-    std::cout << "  --message=<msg>  Set message to display (default: 'Hello from ohos-simple')" << std::endl;
-    std::cout << "  --count=<num>    Number of repetitions (1-10, default: 1)" << std::endl;
+    std::cout << "  --message <msg>  Set message to display (default: 'Hello from ohos-simple')" << std::endl;
+    std::cout << "  --count <num>    Number of repetitions (1-10, default: 1)" << std::endl;
     std::cout << "  --verbose        Enable verbose output" << std::endl;
     std::cout << "  --help, -h       Show this help message" << std::endl;
 }
 
-bool ParseArguments(int argc, char* argv[], std::string& message, int& count, bool& verbose)
+bool ParseInteger(const std::string& value, int& result)
 {
-    for (int i = 1; i < argc; ++i) {
-        std::string arg = argv[i];
-
-        if (arg.find("--message=") == 0) {
-            message = arg.substr(MESSAGE_PREFIX_LEN);
-        } else if (arg.find("--count=") == 0) {
-            count = std::atoi(arg.substr(COUNT_PREFIX_LEN).c_str());
-            if (count < MIN_COUNT) {
-                count = MIN_COUNT;
-            }
-            if (count > MAX_COUNT) {
-                count = MAX_COUNT;
-            }
-        } else if (arg == "--verbose") {
-            verbose = true;
-        } else if (arg == "--help" || arg == "-h") {
-            ShowHelp();
-            return false;
-        }
+    char* end = nullptr;
+    errno = 0;
+    long parsed = std::strtol(value.c_str(), &end, 10);
+    if (errno != 0 || end == value.c_str() || *end != '\0' || parsed < INT_MIN || parsed > INT_MAX) {
+        return false;
     }
+    result = static_cast<int>(parsed);
     return true;
 }
 
-std::string ExecuteTask(const std::string& message, int count, bool verbose)
+int ParseArguments(int argc, char* argv[], SimpleConfig& config)
+{
+    int i = 1;
+    while (i < argc) {
+        std::string arg = argv[i];
+        if (arg == "--message") {
+            if (i + 1 >= argc) {
+                EmitError("ERR_MISSING_PARAM", "Missing value for parameter 'message'.",
+                    "Use: ohos-simple --message <msg> [--count <num>] [--verbose]");
+                return 1;
+            }
+            ++i;
+            config.message = argv[i];
+            ++i;
+            continue;
+        }
+        if (arg == "--count") {
+            if (i + 1 >= argc) {
+                EmitError("ERR_MISSING_PARAM", "Missing value for parameter 'count'.",
+                    "Use: ohos-simple --count <num> [--message <msg>] [--verbose]");
+                return 1;
+            }
+            ++i;
+            if (!ParseInteger(argv[i], config.count)) {
+                EmitError("ERR_INVALID_PARAM", "Parameter 'count' must be an integer.",
+                    "Use an integer between 1 and 10, for example: --count 2");
+                return 1;
+            }
+            ++i;
+            continue;
+        }
+        if (arg == "--verbose") {
+            config.verbose = true;
+            ++i;
+            continue;
+        }
+        if (arg == "--help" || arg == "-h") {
+            ShowHelp();
+            return 2;
+        }
+
+        EmitError("ERR_UNKNOWN_PARAM", "Unknown parameter '" + arg + "'.",
+            "Supported parameters are: --message, --count, --verbose");
+        return 1;
+    }
+    return 0;
+}
+
+std::string ExecuteTask(const std::string& message, int count)
 {
     std::string result;
     for (int i = 0; i < count; ++i) {
@@ -76,27 +149,33 @@ std::string ExecuteTask(const std::string& message, int count, bool verbose)
         }
         result += message;
     }
-
     return result;
 }
 
 int main(int argc, char* argv[])
 {
-    std::string message = "Hello from ohos-simple";
-    int count = 1;
-    bool verbose = false;
-
-    if (!ParseArguments(argc, argv, message, count, verbose)) {
-        return 0;
+    SimpleConfig config;
+    int parseResult = ParseArguments(argc, argv, config);
+    if (parseResult != 0) {
+        return parseResult == 2 ? 0 : 1;
     }
 
-    if (message.empty()) {
+    if (config.message.empty()) {
+        EmitError("ERR_INVALID_PARAM", "Parameter 'message' must not be empty.",
+            "Provide a non-empty string, for example: --message hello");
+        return 1;
+    }
+    if (config.count < MIN_COUNT || config.count > MAX_COUNT) {
+        EmitError("ERR_INVALID_PARAM", "Parameter 'count' must be between 1 and 10.",
+            "Use an integer between 1 and 10, for example: --count 2");
         return 1;
     }
 
-    std::string result = ExecuteTask(message, count, verbose);
-
-    EmitResult("success", result, count);
-
+    std::string result = ExecuteTask(config.message, config.count);
+    if (config.verbose) {
+        result = "[verbose] " + result;
+    }
+    EmitSuccessResult("{\"message\":\"" + EscapeJson(result) + "\",\"repeat_count\":" +
+        std::to_string(config.count) + "}");
     return 0;
 }

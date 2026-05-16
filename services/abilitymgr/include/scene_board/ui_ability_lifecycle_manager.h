@@ -585,6 +585,9 @@ public:
     ErrCode IsUIAbilityAlreadyExist(const Want &want, const std::string &specifiedFlag,
         int32_t appIndex, const std::string &instanceKey, AppExecFwk::LaunchMode launchMode);
 
+    ErrCode IsSpecifiedUIAbilityAlreadyExist(const Want &want, const std::string &specifiedFlag,
+        int32_t appIndex, const std::string &instanceKey);
+
     void HandleUIAbilityDiedByPid(pid_t pid);
 
     /**
@@ -742,6 +745,8 @@ private:
      * @param ability The ability that timed out
      */
     void HandleForegroundTimeout(const UIAbilityRecordPtr &ability);
+    void HandleStartSelfTimeout(const UIAbilityRecordPtr &abilityRecord, bool isHalf);
+    void PostStartSelfTimeoutEvent(const UIAbilityRecordPtr &abilityRecord);
 
     /**
      * @brief Notify SCB to handle ability exception

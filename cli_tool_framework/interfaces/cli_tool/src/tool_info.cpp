@@ -17,11 +17,17 @@
 
 #include <nlohmann/json.hpp>
 #include <set>
+#include <sstream>
 
 #include "hilog_tag_wrapper.h"
+#include "securec.h"
 
 namespace OHOS {
 namespace CliTool {
+
+namespace {
+constexpr uint32_t MAX_TOOL_INFO_COUNT = 200000;
+} // namespace
 
 // ToolInfo implementation
 bool ToolInfo::Marshalling(Parcel &parcel) const
@@ -43,10 +49,7 @@ bool ToolInfo::Marshalling(Parcel &parcel) const
            parcel.WriteStringVector(requirePermissions) &&
            parcel.WriteString(inputSchema) &&
            parcel.WriteString(outputSchema) &&
-           parcel.WriteBool(argMapping != nullptr) &&
-           (argMapping == nullptr || argMapping->Marshalling(parcel)) &&
            parcel.WriteString(eventSchemas) &&
-           parcel.WriteInt32(timeout) &&
            parcel.WriteStringVector(eventTypes) &&
            parcel.WriteBool(hasSubCommand) &&
            parcel.WriteString(subcommandsJson);
@@ -59,7 +62,6 @@ ToolInfo *ToolInfo::Unmarshalling(Parcel &parcel)
         return nullptr;
     }
 
-    bool hasArgMapping = false;
     std::string subcommandsJson;
     if (!parcel.ReadString(tool->name) ||
         !parcel.ReadString(tool->version) ||
@@ -68,21 +70,7 @@ ToolInfo *ToolInfo::Unmarshalling(Parcel &parcel)
         !parcel.ReadStringVector(&tool->requirePermissions) ||
         !parcel.ReadString(tool->inputSchema) ||
         !parcel.ReadString(tool->outputSchema) ||
-        !parcel.ReadBool(hasArgMapping)) {
-        delete tool;
-        return nullptr;
-    }
-
-    if (hasArgMapping) {
-        tool->argMapping.reset(ArgMapping::Unmarshalling(parcel));
-        if (tool->argMapping == nullptr) {
-            delete tool;
-            return nullptr;
-        }
-    }
-
-    if (!parcel.ReadString(tool->eventSchemas) ||
-        !parcel.ReadInt32(tool->timeout) ||
+        !parcel.ReadString(tool->eventSchemas) ||
         !parcel.ReadStringVector(&tool->eventTypes) ||
         !parcel.ReadBool(tool->hasSubCommand) ||
         !parcel.ReadString(subcommandsJson)) {
@@ -117,7 +105,7 @@ bool ToolInfo::ValidateName(const std::string &name)
     // Must start with "ohos-" or "hms-"
     const std::string OHOS_PREFIX = "ohos-";
     const std::string HMS_PREFIX = "hms-";
-    const size_t MAX_SUFFIX_LENGTH = 16;
+    const size_t MAX_SUFFIX_LENGTH = 32;
 
     bool hasValidPrefix = false;
     size_t suffixStart = 0;
@@ -134,7 +122,7 @@ bool ToolInfo::ValidateName(const std::string &name)
         return false;
     }
 
-    // Suffix must not exceed 16 characters
+    // Suffix must not exceed 32 characters
     std::string suffix = name.substr(suffixStart);
     if (suffix.empty() || suffix.size() > MAX_SUFFIX_LENGTH) {
         return false;
@@ -247,63 +235,44 @@ bool ToolInfo::ParseFromJson(const nlohmann::json &json, ToolInfo &tool)
     }
     tool.executablePath = executablePath;
 
-    if (json.contains("requirePermissions") && json["requirePermissions"].is_array()) {
-        std::vector<std::string> perms;
-        for (const auto &perm : json["requirePermissions"]) {
-            if (!perm.is_string()) {
-                TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: requirePermissions contains non-string item");
-                return false;
-            }
-            std::string permStr = perm.get<std::string>();
-            if (!permStr.empty()) {
-                perms.push_back(std::move(permStr));
-            }
-        }
-        tool.requirePermissions = std::move(perms);
-    }
-    if (json.contains("inputSchema")) {
-        if (!json["inputSchema"].is_object()) {
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: inputSchema is not a JSON object");
-            return false;
-        }
-        tool.inputSchema = json["inputSchema"].dump();
-    }
-    if (json.contains("outputSchema")) {
-        if (!json["outputSchema"].is_object()) {
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: outputSchema is not a JSON object");
-            return false;
-        }
-        tool.outputSchema = json["outputSchema"].dump();
-    }
-    if (!json.contains("argMapping") || !json["argMapping"].is_object()) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: argMapping is required and must be an object");
+    // requirePermissions is required and must be array
+    if (!json.contains("requirePermissions") || !json["requirePermissions"].is_array()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: requirePermissions is missing or not an array");
         return false;
     }
-    tool.argMapping = std::make_shared<ArgMapping>();
-    if (!ArgMapping::ParseFromJson(json["argMapping"], *tool.argMapping)) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: argMapping parse failed");
-        tool.argMapping = nullptr;
+    std::vector<std::string> perms;
+    for (const auto &perm : json["requirePermissions"]) {
+        if (!perm.is_string()) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: requirePermissions contains non-string item");
+            return false;
+        }
+        std::string permStr = perm.get<std::string>();
+        if (!permStr.empty()) {
+            perms.push_back(std::move(permStr));
+        }
+    }
+    tool.requirePermissions = std::move(perms);
+
+    // inputSchema is required and must be a JSON object
+    if (!json.contains("inputSchema") || !json["inputSchema"].is_object()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: inputSchema is missing or not a JSON object");
         return false;
     }
+    tool.inputSchema = json["inputSchema"].dump();
+
+    // outputSchema is required and must be a JSON object
+    if (!json.contains("outputSchema") || !json["outputSchema"].is_object()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: outputSchema is missing or not a JSON object");
+        return false;
+    }
+    tool.outputSchema = json["outputSchema"].dump();
+
     if (json.contains("eventSchemas")) {
         if (!json["eventSchemas"].is_object()) {
             TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: eventSchemas is not a JSON object");
             return false;
         }
         tool.eventSchemas = json["eventSchemas"].dump();
-    }
-    if (json.contains("timeout")) {
-        if (!json["timeout"].is_number_integer()) {
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: timeout is not an integer");
-            return false;
-        }
-        int32_t timeoutValue = json["timeout"];
-        if (timeoutValue <= 0 || timeoutValue > 1800) {
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: timeout %{public}d is out of range (0, 1800]",
-                timeoutValue);
-            return false;
-        }
-        tool.timeout = timeoutValue;
     }
     if (json.contains("eventTypes")) {
         if (!json["eventTypes"].is_array()) {
@@ -374,9 +343,6 @@ nlohmann::json ToolInfo::ParseToJson() const
             j["outputSchema"] = outputSchema;
         }
     }
-    if (argMapping != nullptr) {
-        j["argMapping"] = argMapping->ParseToJson();
-    }
     if (!eventSchemas.empty()) {
         nlohmann::json eventSchemasJson = nlohmann::json::parse(eventSchemas, nullptr, false);
         if (!eventSchemasJson.is_discarded()) {
@@ -385,7 +351,6 @@ nlohmann::json ToolInfo::ParseToJson() const
             j["eventSchemas"] = eventSchemas;
         }
     }
-    j["timeout"] = timeout;
     j["eventTypes"] = eventTypes;
     j["hasSubCommand"] = hasSubCommand;
     if (!subcommands.empty()) {
@@ -426,38 +391,25 @@ bool ToolInfo::Validate(const ToolInfo &tool)
         return false;
     }
 
-    // inputSchema: if not empty, must be valid JSON string
-    if (!tool.inputSchema.empty()) {
-        nlohmann::json inputSchemaJson = nlohmann::json::parse(tool.inputSchema, nullptr, false);
-        if (inputSchemaJson.is_discarded()) {
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: inputSchema is not valid JSON");
-            return false;
-        }
-    }
-
-    // outputSchema: if not empty, must be valid JSON string
-    if (!tool.outputSchema.empty()) {
-        nlohmann::json outputSchemaJson = nlohmann::json::parse(tool.outputSchema, nullptr, false);
-        if (outputSchemaJson.is_discarded()) {
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: outputSchema is not valid JSON");
-            return false;
-        }
-    }
-
-    // argMapping is required
-    if (tool.argMapping == nullptr) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: argMapping is null");
+    // inputSchema is required and must be valid JSON string
+    if (tool.inputSchema.empty()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: inputSchema is empty");
         return false;
     }
-    if (!ArgMapping::Validate(*tool.argMapping)) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: argMapping validation failed");
+    nlohmann::json inputSchemaJson = nlohmann::json::parse(tool.inputSchema, nullptr, false);
+    if (inputSchemaJson.is_discarded()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: inputSchema is not valid JSON");
         return false;
     }
 
-    // timeout must be > 0 and <= 1800
-    if (tool.timeout <= 0 || tool.timeout > 1800) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: timeout %{public}d is out of range (0, 1800]",
-            tool.timeout);
+    // outputSchema is required and must be valid JSON string
+    if (tool.outputSchema.empty()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: outputSchema is empty");
+        return false;
+    }
+    nlohmann::json outputSchemaJson = nlohmann::json::parse(tool.outputSchema, nullptr, false);
+    if (outputSchemaJson.is_discarded()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: outputSchema is not valid JSON");
         return false;
     }
 
@@ -477,6 +429,95 @@ bool ToolInfo::Validate(const ToolInfo &tool)
     }
 
     return true;
+}
+
+ToolsRawData::~ToolsRawData()
+{
+    if (data != nullptr && isMalloc) {
+        free(const_cast<void*>(data));
+        isMalloc = false;
+        data = nullptr;
+    }
+}
+
+int32_t ToolsRawData::RawDataCpy(const void *readdata)
+{
+    if (readdata == nullptr || size == 0) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "null data or zero size");
+        return ERR_INVALID_VALUE;
+    }
+    void* newData = malloc(size);
+    if (newData == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "malloc failed");
+        return ERR_INVALID_VALUE;
+    }
+    if (memcpy_s(newData, size, readdata, size) != EOK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "memcpy_s failed");
+        free(newData);
+        return ERR_INVALID_VALUE;
+    }
+    if (data != nullptr && isMalloc) {
+        free(const_cast<void*>(data));
+        data = nullptr;
+    }
+    data = newData;
+    isMalloc = true;
+    return ERR_OK;
+}
+
+void ToolsRawData::FromToolInfoVec(const std::vector<ToolInfo> &tools, ToolsRawData &rawData)
+{
+    std::stringstream ss;
+    uint32_t count = tools.size();
+    ss.write(reinterpret_cast<const char*>(&count), sizeof(count));
+
+    for (uint32_t i = 0; i < count; ++i) {
+        std::string dumped = tools[i].ParseToJson().dump();
+        uint32_t strLen = dumped.length();
+        ss.write(reinterpret_cast<const char*>(&strLen), sizeof(strLen));
+        ss.write(dumped.c_str(), strLen);
+    }
+    std::string result = ss.str();
+    rawData.ownedData = std::move(result);
+    rawData.data = rawData.ownedData.data();
+    rawData.size = rawData.ownedData.size();
+    rawData.isMalloc = false;
+}
+
+int32_t ToolsRawData::ToToolInfoVec(const ToolsRawData &rawData, std::vector<ToolInfo> &tools)
+{
+    std::stringstream ss;
+    ss.write(reinterpret_cast<const char *>(rawData.data), rawData.size);
+    ss.seekg(0, std::ios::beg);
+    uint32_t ssLength = static_cast<uint32_t>(ss.str().length());
+    uint32_t count = 0;
+    ss.read(reinterpret_cast<char *>(&count), sizeof(count));
+    if (count > MAX_TOOL_INFO_COUNT) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "tools exceed maxSize %{public}d, count: %{public}d",
+            MAX_TOOL_INFO_COUNT, count);
+        return ERR_INVALID_VALUE;
+    }
+    tools.resize(count);
+    for (uint32_t i = 0; i < count; ++i) {
+        uint32_t toolSize = 0;
+        ss.read(reinterpret_cast<char *>(&toolSize), sizeof(toolSize));
+        if (toolSize > ssLength - static_cast<uint32_t>(ss.tellg())) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "toolSize:%{public}u is invalid", toolSize);
+            return ERR_INVALID_VALUE;
+        }
+        std::string toolStr(toolSize, '\0');
+        ss.read(toolStr.data(), toolSize);
+        nlohmann::json jsonObject = nlohmann::json::parse(toolStr, nullptr, false, true);
+        if (jsonObject.is_discarded()) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "json parse failed, index: %{public}u", i);
+            return ERR_INVALID_VALUE;
+        }
+        if (!ToolInfo::ParseFromJson(jsonObject, tools[i])) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed, index: %{public}u", i);
+            return ERR_INVALID_VALUE;
+        }
+    }
+    return ERR_OK;
 }
 
 } // namespace CliTool

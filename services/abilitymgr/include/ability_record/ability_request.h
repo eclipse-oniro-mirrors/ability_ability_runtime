@@ -92,6 +92,7 @@ struct AbilityRequest {
     uint32_t specifyTokenId = 0;
     int callerUid = -1;         // call ability
     int requestCode = -1;
+    int32_t atomicServiceShortLink = 0;
     AbilityCallType callType = AbilityCallType::INVALID_TYPE;           // call ability
     AppExecFwk::ExtensionAbilityType extensionType = AppExecFwk::ExtensionAbilityType::UNSPECIFIED;
     AppExecFwk::ExtensionProcessMode extensionProcessMode = AppExecFwk::ExtensionProcessMode::UNDEFINED;

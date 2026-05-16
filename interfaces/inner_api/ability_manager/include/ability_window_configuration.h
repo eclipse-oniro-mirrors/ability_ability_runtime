@@ -45,7 +45,7 @@ enum AbilityWindowConfiguration {
     /**
      * Indicates that the Page ability is displayed in split-screen mode.
      */
-    MULTI_WINDOW_DISPLAY_SPLIT = 103
+    MULTI_WINDOW_DISPLAY_SPLIT = 105
 };
 }  // namespace AAFwk
 }  // namespace OHOS

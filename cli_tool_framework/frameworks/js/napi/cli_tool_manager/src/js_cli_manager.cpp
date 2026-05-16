@@ -15,22 +15,20 @@
 
 #include "js_cli_manager.h"
 
-#include <map>
 #include <string>
 
 #include "cli_error_code.h"
 #include "cli_manager_error_utils.h"
 #include "cli_session_info.h"
 #include "cli_tool_mgr_client.h"
-#include "exec_tool_callback_impl.h"
+#include "exec_result.h"
 #include "hilog_tag_wrapper.h"
+#include "js_cli_event_handler_manager.h"
 #include "js_cli_manager_utils.h"
+#include "js_cli_session_event_callback.h"
 #include "js_error_utils.h"
 #include "napi_common_util.h"
 #include "napi_common_want.h"
-
-#include "js_cli_event_handler_manager.h"
-#include "js_cli_session_event_callback.h"
 
 using namespace OHOS::AbilityRuntime;
 
@@ -42,6 +40,29 @@ constexpr int32_t INDEX_ONE = 1;
 constexpr int32_t INDEX_TWO = 2;
 constexpr int32_t INDEX_THREE = 3;
 constexpr int32_t INDEX_FOUR = 4;
+
+int32_t DispatchCliTool(const ExecToolParam &param, napi_env env,
+    std::shared_ptr<NapiAsyncTask> asyncTask)
+{
+    CliToolMGRClient::ExecToolReplyCallback replyCallback =
+        [env, asyncTask](int32_t resultCode, const CliSessionInfo &session) {
+            JsCliEventHandlerManager::GetInstance().PostTask(
+                [env, asyncTask, resultCode, session]() {
+                    HandleScope handleScope(env);
+                    if (resultCode != ERR_OK) {
+                        asyncTask->Reject(env, CreateCliJsErrorByNativeErr(env, resultCode));
+                        return;
+                    }
+                    napi_value jsSession = CreateJsCliSessionInfo(env, session);
+                    if (jsSession == nullptr) {
+                        asyncTask->Reject(env, CreateJsUndefined(env));
+                        return;
+                    }
+                    asyncTask->ResolveWithNoError(env, jsSession);
+                });
+        };
+    return CliToolMGRClient::GetInstance().ExecTool(param, replyCallback);
+}
 } // namespace
 
 void JSCliManager::Finalizer(napi_env env, void *data, void *hint)
@@ -115,7 +136,7 @@ napi_value JSCliManager::OnExecTool(napi_env env, size_t argc, napi_value *argv)
         return CreateJsUndefined(env);
     }
 
-    if (!AppExecFwk::UnwrapStringFromJS2(env, argv[INDEX_THREE], param.challenge)) {
+    if (!AppExecFwk::UnwrapStringFromJS2(env, argv[INDEX_THREE], param.challenge) || param.challenge.empty()) {
         ThrowInvalidParamError(env, "Tool challenge is required");
         return CreateJsUndefined(env);
     }
@@ -131,24 +152,7 @@ napi_value JSCliManager::OnExecTool(napi_env env, size_t argc, napi_value *argv)
     auto uasyncTask = CreateAsyncTaskWithLastParam(env, nullptr, nullptr, nullptr, &result);
     std::shared_ptr<NapiAsyncTask> asyncTask = std::move(uasyncTask);
 
-    // Create callback task that will be invoked when ExecTool completes
-    CliToolMGRClient::ExecToolReplyCallback replyCallback =
-        [env, asyncTask](int32_t resultCode, const CliSessionInfo &session) {
-            JsCliEventHandlerManager::GetInstance().PostTask([env, asyncTask, resultCode, session]() {
-                HandleScope handleScope(env);
-                if (resultCode != ERR_OK) {
-                    asyncTask->Reject(env, CreateCliJsErrorByNativeErr(env, resultCode));
-                    return;
-                }
-                napi_value jsSession = CreateJsCliSessionInfo(env, session);
-                if (jsSession == nullptr) {
-                    asyncTask->Reject(env, CreateJsUndefined(env));
-                    return;
-                }
-                asyncTask->ResolveWithNoError(env, jsSession);
-            });
-        };
-    int32_t errCode = CliToolMGRClient::GetInstance().ExecTool(param, replyCallback);
+    int32_t errCode = DispatchCliTool(param, env, asyncTask);
     if (errCode != ERR_OK) {
         asyncTask->Reject(env, CreateCliJsErrorByNativeErr(env, errCode));
     }
@@ -456,7 +460,7 @@ napi_value JSCliManagerInit(napi_env env, napi_value exportObj)
     BindNativeFunction(env, exportObj, "subscribeSession", moduleName, JSCliManager::SubscribeSession);
     BindNativeFunction(env, exportObj, "clearSession", moduleName, JSCliManager::ClearSession);
     BindNativeFunction(env, exportObj, "querySession", moduleName, JSCliManager::QuerySession);
-    BindNativeFunction(env, exportObj, "sendMsg", moduleName, JSCliManager::SendMessage);
+    BindNativeFunction(env, exportObj, "sendMessage", moduleName, JSCliManager::SendMessage);
     BindNativeFunction(env, exportObj, "getToolInfoByName", moduleName, JSCliManager::GetToolInfoByName);
     BindNativeFunction(env, exportObj, "queryToolSummaries", moduleName, JSCliManager::QueryToolSummaries);
     BindNativeFunction(env, exportObj, "queryTools", moduleName, JSCliManager::QueryTools);

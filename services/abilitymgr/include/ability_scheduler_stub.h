@@ -67,6 +67,7 @@ private:
     int DumpAbilityInfoInner(MessageParcel& data, MessageParcel& reply);
     int CallRequestInner(MessageParcel &data, MessageParcel &reply);
     int OnExecuteIntentInner(MessageParcel &data, MessageParcel &reply);
+    int ExecuteSkillInner(MessageParcel &data, MessageParcel &reply);
     int ContinueAbilityInner(MessageParcel &data, MessageParcel &reply);
     int ShareDataInner(MessageParcel &data, MessageParcel &reply);
     int CreateModalUIExtensionInner(MessageParcel &data, MessageParcel &reply);

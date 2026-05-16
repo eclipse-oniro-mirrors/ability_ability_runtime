@@ -176,6 +176,7 @@ private:
     int32_t HandleSetSupportedProcessCacheSelf(MessageParcel &data, MessageParcel &reply);
     int32_t HandleSetSupportedProcessCache(MessageParcel &data, MessageParcel &reply);
     int32_t HandleIsProcessCacheSupported(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleIsChildProcessSupported(MessageParcel &data, MessageParcel &reply);
     int32_t HandleSetProcessCacheEnable(MessageParcel &data, MessageParcel &reply);
     int32_t HandleLockProcessCache(MessageParcel &data, MessageParcel &reply);
     int32_t HandleSaveBrowserChannel(MessageParcel &data, MessageParcel &reply);
@@ -223,6 +224,8 @@ private:
     int32_t HandleSetProcessPrepareExit(MessageParcel &data, MessageParcel &reply);
     int32_t HandleSetTerminateTimeOutFlag(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetAllAbilityInfos(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleEnableDelayedProcessExit(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleCancelDelayedExitTask(MessageParcel &data, MessageParcel &reply);
     DISALLOW_COPY_AND_MOVE(AppMgrStub);
 };
 }  // namespace AppExecFwk

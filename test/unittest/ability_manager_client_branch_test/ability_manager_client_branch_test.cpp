@@ -2070,6 +2070,38 @@ HWTEST_F(AbilityManagerClientBranchTest, ExecuteIntent_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: AbilityManagerClient_QueryEntityInfo_0100
+ * @tc.desc: QueryEntityInfo
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, QueryEntityInfo_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "QueryEntityInfo_0100 start";
+    uint64_t key = 1;
+    sptr<IRemoteObject> callerToken = nullptr;
+    const InsightIntentQueryParam param;
+    auto result = client_->QueryEntityInfo(key, callerToken, param);
+    EXPECT_EQ(ERR_OK, result);
+    GTEST_LOG_(INFO) << "QueryEntityInfo_0100 end";
+}
+
+/**
+ * @tc.name: AbilityManagerClient_QueryEntityInfo_0200
+ * @tc.desc: QueryEntityInfo default implementation return
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, QueryEntityInfo_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "QueryEntityInfo_0200 start";
+    uint64_t key = 1;
+    sptr<IRemoteObject> callerToken = nullptr;
+    const InsightIntentQueryParam param;
+    auto result = client_->QueryEntityInfo(key, callerToken, param);
+    EXPECT_EQ(ERR_OK, result);
+    GTEST_LOG_(INFO) << "QueryEntityInfo_0200 end";
+}
+
+/**
  * @tc.name: AbilityManagerClient_ExecuteInsightIntentDone_0100
  * @tc.desc: ExecuteInsightIntentDone
  * @tc.type: FUNC
@@ -2160,6 +2192,57 @@ HWTEST_F(AbilityManagerClientBranchTest, RequestModalUIExtension_0100, TestSize.
     auto result = client_->RequestModalUIExtension(want);
     EXPECT_EQ(result, ERR_OK);
     GTEST_LOG_(INFO) << "RequestModalUIExtension_0100 end";
+}
+
+/**
+ * @tc.name: AbilityManagerClient_RequestModalUIExtensionWithAccount_0100
+ * @tc.desc: RequestModalUIExtensionWithAccount with valid proxy
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, RequestModalUIExtensionWithAccount_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RequestModalUIExtensionWithAccount_0100 start";
+    EXPECT_TRUE(client_ != nullptr);
+    Want want;
+    int32_t accountId = 100;
+    auto result = client_->RequestModalUIExtensionWithAccount(want, accountId);
+    EXPECT_EQ(result, ERR_OK);
+    GTEST_LOG_(INFO) << "RequestModalUIExtensionWithAccount_0100 end";
+}
+
+/**
+ * @tc.name: AbilityManagerClient_RequestModalUIExtensionWithAccount_0300
+ * @tc.desc: RequestModalUIExtensionWithAccount with various accountIds
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, RequestModalUIExtensionWithAccount_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RequestModalUIExtensionWithAccount_0300 start";
+    EXPECT_TRUE(client_ != nullptr);
+    Want want;
+    ElementName element("device", "com.test.modal", "ModalUIExtension");
+    want.SetElement(element);
+
+    int32_t accountId = -1;
+    auto result = client_->RequestModalUIExtensionWithAccount(want, accountId);
+    EXPECT_EQ(result, ERR_OK);
+    GTEST_LOG_(INFO) << "RequestModalUIExtensionWithAccount_0300 end";
+}
+
+/**
+ * @tc.name: AbilityManagerClient_RequestModalUIExtensionWithAccount_0400
+ * @tc.desc: RequestModalUIExtensionWithAccount with default accountId
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, RequestModalUIExtensionWithAccount_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RequestModalUIExtensionWithAccount_0400 start";
+    EXPECT_TRUE(client_ != nullptr);
+    Want want;
+    int32_t accountId = 0;
+    auto result = client_->RequestModalUIExtensionWithAccount(want, accountId);
+    EXPECT_EQ(result, ERR_OK);
+    GTEST_LOG_(INFO) << "RequestModalUIExtensionWithAccount_0400 end";
 }
 
 /**
@@ -2817,6 +2900,54 @@ HWTEST_F(AbilityManagerClientBranchTest, StartSelfUIAbilityInCurrentProcess_0100
 }
 
 /**
+ * @tc.name: StartSelfUIAbilityInChildProcess_0100
+ * @tc.desc: Test StartSelfUIAbilityInChildProcess with normal parameters
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, StartSelfUIAbilityInChildProcess_0100, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    std::string specifiedFlag = "testFlag";
+    sptr<IRemoteObject> callerToken = nullptr;
+    EXPECT_CALL(*mock_, StartSelfUIAbilityInChildProcess(_, specifiedFlag, callerToken)).WillOnce(Return(ERR_OK));
+    EXPECT_EQ(client_->StartSelfUIAbilityInChildProcess(want, specifiedFlag, callerToken), ERR_OK);
+}
+
+/**
+ * @tc.name: StartSelfUIAbilityInChildProcess_0200
+ * @tc.desc: Test StartSelfUIAbilityInChildProcess with service return error
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, StartSelfUIAbilityInChildProcess_0200, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    std::string specifiedFlag = "testFlag";
+    sptr<IRemoteObject> callerToken = nullptr;
+    EXPECT_CALL(*mock_, StartSelfUIAbilityInChildProcess(_, specifiedFlag, callerToken))
+        .WillOnce(Return(ERR_CAPABILITY_NOT_SUPPORT));
+    EXPECT_EQ(client_->StartSelfUIAbilityInChildProcess(want, specifiedFlag, callerToken),
+        ERR_CAPABILITY_NOT_SUPPORT);
+}
+
+/**
+ * @tc.name: StartSelfUIAbilityInChildProcess_0300
+ * @tc.desc: Test StartSelfUIAbilityInChildProcess with empty want
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, StartSelfUIAbilityInChildProcess_0300, TestSize.Level1)
+{
+    Want want;
+    std::string specifiedFlag = "";
+    sptr<IRemoteObject> callerToken = nullptr;
+    EXPECT_CALL(*mock_, StartSelfUIAbilityInChildProcess(_, specifiedFlag, callerToken))
+        .WillOnce(Return(START_UI_ABILITIES_NOT_SUPPORT_IMPLICIT_START));
+    EXPECT_EQ(client_->StartSelfUIAbilityInChildProcess(want, specifiedFlag, callerToken),
+        START_UI_ABILITIES_NOT_SUPPORT_IMPLICIT_START);
+}
+
+/**
  * @tc.name: QuerySelfModularObjectExtensionInfos_0100
  * @tc.desc: QuerySelfModularObjectExtensionInfos
  * @tc.type: FUNC
@@ -2853,5 +2984,17 @@ HWTEST_F(AbilityManagerClientBranchTest, StartAbilityForPrelaunch_001, TestSize.
     EXPECT_EQ(client_->StartAbilityForPrelaunch(want, 0), 0);
 }
 
+/**
+ * @tc.name: AbilityManagerClient_StartSelf_0100
+ * @tc.desc: StartSelf
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_StartSelf_0100, TestSize.Level1)
+{
+    sptr<IRemoteObject> token = nullptr;
+    EXPECT_CALL(*mock_, StartSelf(_)).WillOnce(Return(ERR_OK));
+    auto result = client_->StartSelf(token);
+    EXPECT_EQ(ERR_OK, result);
+}
 }  // namespace AAFwk
 }  // namespace OHOS

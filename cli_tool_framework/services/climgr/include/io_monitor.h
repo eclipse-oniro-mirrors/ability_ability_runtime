@@ -17,7 +17,9 @@
 #define OHOS_ABILITY_RUNTIME_IO_MONITOR_H
 
 #include <atomic>
+#include <deque>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -57,8 +59,22 @@ private:
         bool isStdin = false;
     };
 
+    struct PendingInput {
+        std::string message;
+        std::string eventId;
+    };
+
+    struct InputQueue {
+        std::deque<PendingInput> pendingInputs;
+        size_t pendingBytes = 0;
+        bool writeTaskRunning = false;
+    };
+
     int GetStdinFd(const std::string &sessionId);
-    void WriteTask(const std::string &sessionId, const std::string &message, const std::string &eventId);
+    int GetStdinFdLocked(const std::string &sessionId) const;
+    bool WriteMessage(int fd, const std::string &sessionId, const std::string &message);
+    void ProcessWriteQueue(const std::string &sessionId);
+    void NotifyInputReply(const std::string &sessionId, const std::string &eventId, bool result);
 
     void MonitorLoop();
     void HandleReadableFd(int fd);
@@ -70,6 +86,7 @@ private:
     int epollFd_ = -1;
     std::mutex fdMutex_;
     std::unordered_map<int, FdInfo> fdMap_;
+    std::unordered_map<std::string, InputQueue> inputQueues_;
     OutputCallback outputCallback_;
     InputReplyCallback inputReplyCallback_;
     SessionClosedCallback sessionClosedCallback_;

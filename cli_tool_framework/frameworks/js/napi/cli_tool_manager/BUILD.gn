@@ -14,6 +14,61 @@
 import("//build/ohos.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
+ohos_source_set("cli_manager_error_utils_src") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  include_dirs = [
+    "include",
+    "${cli_tool_framework_path}/interfaces/cli_tool/include",
+    "${ability_runtime_services_path}/common/include",
+  ]
+
+  sources = [ "src/cli_manager_error_utils.cpp" ]
+
+  deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/error_utils:ability_runtime_error_util",
+    "${ability_runtime_napi_path}/inner/napi_common:napi_common",
+    "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",
+  ]
+
+  external_deps = [
+    "hilog:libhilog",
+    "napi:ace_napi",
+  ]
+
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
+ohos_source_set("js_cli_event_handler_manager_src") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  include_dirs = [
+    "include",
+    "${ability_runtime_services_path}/common/include",
+  ]
+
+  sources = [ "src/js_cli_event_handler_manager.cpp" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "eventhandler:libeventhandler",
+    "hilog:libhilog",
+  ]
+
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
 ohos_shared_library("climanager_napi") {
   sanitize = {
     cfi = true
@@ -28,11 +83,9 @@ ohos_shared_library("climanager_napi") {
   ]
 
   sources = [
-    "src/cli_manager_error_utils.cpp",
     "src/cli_tool_manager_module.cpp",
     "src/js_cli_manager.cpp",
     "src/js_cli_manager_utils.cpp",
-    "src/js_cli_event_handler_manager.cpp",
     "src/js_cli_session_event_callback.cpp",
   ]
 
@@ -41,6 +94,8 @@ ohos_shared_library("climanager_napi") {
     "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_napi_path}/inner/napi_common:napi_common",
     "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",
+    ":cli_manager_error_utils_src",
+    ":js_cli_event_handler_manager_src",
   ]
 
   external_deps = [
@@ -52,7 +107,7 @@ ohos_shared_library("climanager_napi") {
     "napi:ace_napi",
   ]
 
-  relative_install_dir = "module/app/ability"
+  relative_install_dir = "module/app/cli"
   subsystem_name = "ability"
   part_name = "ability_runtime"
 }

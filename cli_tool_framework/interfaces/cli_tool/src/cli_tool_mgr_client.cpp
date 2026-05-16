@@ -16,16 +16,15 @@
 #include "cli_tool_mgr_client.h"
 
 #include "cli_error_code.h"
+#include "cli_event_reply_manager.h"
+#include "cli_mgr_load_callback.h"
+#include "cli_session_subscription_manager.h"
+#include "cli_tool_mgr_scheduler_recipient.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
 #include "if_system_ability_manager.h"
 #include "iservice_registry.h"
 #include "system_ability_definition.h"
-#include "cli_mgr_load_callback.h"
-
-#include "cli_event_reply_manager.h"
-#include "cli_session_subscription_manager.h"
-#include "cli_tool_mgr_scheduler_recipient.h"
 
 namespace OHOS {
 namespace CliTool {
@@ -130,7 +129,13 @@ ErrCode CliToolMGRClient::GetAllToolInfos(std::vector<ToolInfo> &tools)
         TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
         return GET_CLI_TOOL_MGR_SERVICE_FAILED;
     }
-    return proxy->GetAllToolInfos(tools);
+    ToolsRawData rawData;
+    auto ret = proxy->GetAllToolInfos(rawData);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllToolInfos failed: %{public}d", ret);
+        return ret;
+    }
+    return ToolsRawData::ToToolInfoVec(rawData, tools);
 }
 
 ErrCode CliToolMGRClient::RegisterTool(const ToolInfo &tool)
@@ -196,7 +201,8 @@ sptr<ICliToolManager> CliToolMGRClient::GetCliToolMgrProxy()
 
     const auto &onClearProxyCallback = [](const wptr<IRemoteObject> &remote) {
         auto &instance = GetInstance();
-        if (instance.cliToolMgr_ == remote) {
+        auto cliToolMgr = instance.GetCliToolMgr();
+        if (cliToolMgr != nullptr && cliToolMgr->AsObject() == remote) {
             instance.ClearProxy();
         }
     };
@@ -281,7 +287,7 @@ void CliToolMGRClient::ClearProxy()
 void CliToolMGRClient::CliMgrDeathRecipient::OnRemoteDied(const wptr<IRemoteObject> &remote)
 {
     if (callback_ != nullptr) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "cli tool manager service died");
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "cli tool manager service died");
         callback_(remote);
     }
 }

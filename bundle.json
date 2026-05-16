@@ -51,6 +51,7 @@
             "accessibility",
             "access_token",
             "ace_engine",
+            "api_metrics",
             "app_domain_verify",
             "app_file_service",
             "appspawn",
@@ -88,6 +89,7 @@
             "ipc",
             "json",
             "kv_store",
+            "libjpeg-turbo",
             "libuv",
             "libxml2",
             "media_library",
@@ -118,9 +120,6 @@
             "zlib",
             "hiperf",
             "hiprofiler"
-  ],
-          "third_party": [
-            "libjpeg-turbo"
           ]
       },
       "build": {
@@ -855,6 +854,16 @@
           },
           {
             "header": {
+              "header_base": "//foundation/ability/ability_runtime/frameworks/native/ability/native/ability_runtime/madvise",
+              "header_files": [
+                "madvise_utils.h",
+                "vma_utils.h"
+              ]
+            },
+            "name": "//foundation/ability/ability_runtime/frameworks/native/ability/native/ability_runtime/madvise:ability_madvise"
+          },
+          {
+            "header": {
               "header_base": "//foundation/ability/ability_runtime/agent_runtime_framework/interfaces/kits/native/agent_extension/connection/include/",
               "header_files": [
                 "agent_connector_proxy.h",
@@ -879,6 +888,7 @@
           }
         ],
         "test": [
+          "//foundation/ability/ability_runtime/cli_tool_framework/test/unittest:unittest",
           "//foundation/ability/ability_runtime/test/moduletest:moduletest",
           "//foundation/ability/ability_runtime/test/fuzztest:fuzztest",
           "//foundation/ability/ability_runtime/test/unittest:unittest",

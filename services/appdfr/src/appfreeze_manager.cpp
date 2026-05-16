@@ -79,6 +79,7 @@ static constexpr const char *const SPAN_ID = "span_id: ";
 static constexpr const char *const PARENT_SPAN_ID = "parent_span_id: ";
 static constexpr const char *const TRACE_FLAG = "trace_flag: ";
 static constexpr const char *const DEV_SYSLOAD = "/dev/sysload";
+constexpr const char* PRELOAD_UIEXTENSION = "PreloadUIExtension";
 // kill resaon
 constexpr int32_t INVALID_KILL_ID = -2;
 constexpr const char* INVALID_KILL_REASON = "InvalidKillId";
@@ -1446,6 +1447,17 @@ bool AppfreezeManager::IsFreezeExcludedPid(int32_t targetPid)
 
     TAG_LOGW(AAFwkTag::APPDFR, "pid %{public}d is in freeze excluded list", targetPid);
     return true;
+}
+
+bool AppfreezeManager::CheckPreloadUIExtension(const std::string& message, const std::string& bundleName,
+    int32_t pid)
+{
+    if (message.find(PRELOAD_UIEXTENSION) != std::string::npos) {
+        TAG_LOGW(AAFwkTag::APPDFR, "don't report event, msg: PreloadUIExtension, bundleName: %{public}s "
+            "pid: %{public}d", bundleName.c_str(), pid);
+        return true;
+    }
+    return false;
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS
