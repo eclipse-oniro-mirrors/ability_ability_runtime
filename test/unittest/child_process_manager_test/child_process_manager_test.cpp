@@ -697,34 +697,12 @@ HWTEST_F(ChildProcessManagerTest, LoadFromAppRuntime_0300, TestSize.Level2)
 
 /**
  * @tc.number: IsArkChildProcessSupported_0100
- * @tc.desc: Test IsArkChildProcessSupported when IPC returns true
+ * @tc.desc: Test IsArkChildProcessSupported when IPC returns false
  * @tc.type: FUNC
  */
 HWTEST_F(ChildProcessManagerTest, IsArkChildProcessSupported_0100, TestSize.Level1)
 {
     TAG_LOGD(AAFwkTag::TEST, "IsArkChildProcessSupported_0100 called.");
-    auto sysMgr = DelayedSingleton<AppExecFwk::SysMrgClient>::GetInstance();
-    ASSERT_NE(sysMgr, nullptr);
-    sptr<IRemoteObject> remoteObj = sysMgr->GetSystemAbility(APP_MGR_SERVICE_ID);
-    ASSERT_NE(remoteObj, nullptr);
-    auto mockService = static_cast<AppExecFwk::MockAppMgrService*>(remoteObj.GetRefPtr());
-    ASSERT_NE(mockService, nullptr);
-
-    EXPECT_CALL(*mockService, IsChildProcessSupported(false, _))
-        .WillOnce(DoAll(SetArgReferee<1>(true), Return(ERR_OK)));
-
-    bool result = ChildProcessManager::GetInstance().IsArkChildProcessSupported();
-    EXPECT_TRUE(result);
-}
-
-/**
- * @tc.number: IsArkChildProcessSupported_0200
- * @tc.desc: Test IsArkChildProcessSupported when IPC returns false
- * @tc.type: FUNC
- */
-HWTEST_F(ChildProcessManagerTest, IsArkChildProcessSupported_0200, TestSize.Level1)
-{
-    TAG_LOGD(AAFwkTag::TEST, "IsArkChildProcessSupported_0200 called.");
     auto sysMgr = DelayedSingleton<AppExecFwk::SysMrgClient>::GetInstance();
     ASSERT_NE(sysMgr, nullptr);
     sptr<IRemoteObject> remoteObj = sysMgr->GetSystemAbility(APP_MGR_SERVICE_ID);
@@ -740,13 +718,13 @@ HWTEST_F(ChildProcessManagerTest, IsArkChildProcessSupported_0200, TestSize.Leve
 }
 
 /**
- * @tc.number: IsArkChildProcessSupported_0300
+ * @tc.number: IsArkChildProcessSupported_0200
  * @tc.desc: Test IsArkChildProcessSupported when IPC fails
  * @tc.type: FUNC
  */
-HWTEST_F(ChildProcessManagerTest, IsArkChildProcessSupported_0300, TestSize.Level1)
+HWTEST_F(ChildProcessManagerTest, IsArkChildProcessSupported_0200, TestSize.Level1)
 {
-    TAG_LOGD(AAFwkTag::TEST, "IsArkChildProcessSupported_0300 called.");
+    TAG_LOGD(AAFwkTag::TEST, "IsArkChildProcessSupported_0200 called.");
     auto sysMgr = DelayedSingleton<AppExecFwk::SysMrgClient>::GetInstance();
     ASSERT_NE(sysMgr, nullptr);
     sptr<IRemoteObject> remoteObj = sysMgr->GetSystemAbility(APP_MGR_SERVICE_ID);
@@ -763,34 +741,12 @@ HWTEST_F(ChildProcessManagerTest, IsArkChildProcessSupported_0300, TestSize.Leve
 
 /**
  * @tc.number: IsNativeChildProcessSupported_0100
- * @tc.desc: Test IsNativeChildProcessSupported when IPC returns true
+ * @tc.desc: Test IsNativeChildProcessSupported when IPC returns false
  * @tc.type: FUNC
  */
 HWTEST_F(ChildProcessManagerTest, IsNativeChildProcessSupported_0100, TestSize.Level1)
 {
     TAG_LOGD(AAFwkTag::TEST, "IsNativeChildProcessSupported_0100 called.");
-    auto sysMgr = DelayedSingleton<AppExecFwk::SysMrgClient>::GetInstance();
-    ASSERT_NE(sysMgr, nullptr);
-    sptr<IRemoteObject> remoteObj = sysMgr->GetSystemAbility(APP_MGR_SERVICE_ID);
-    ASSERT_NE(remoteObj, nullptr);
-    auto mockService = static_cast<AppExecFwk::MockAppMgrService*>(remoteObj.GetRefPtr());
-    ASSERT_NE(mockService, nullptr);
-
-    EXPECT_CALL(*mockService, IsChildProcessSupported(true, _))
-        .WillOnce(DoAll(SetArgReferee<1>(true), Return(ERR_OK)));
-
-    bool result = ChildProcessManager::GetInstance().IsNativeChildProcessSupported();
-    EXPECT_TRUE(result);
-}
-
-/**
- * @tc.number: IsNativeChildProcessSupported_0200
- * @tc.desc: Test IsNativeChildProcessSupported when IPC returns false
- * @tc.type: FUNC
- */
-HWTEST_F(ChildProcessManagerTest, IsNativeChildProcessSupported_0200, TestSize.Level1)
-{
-    TAG_LOGD(AAFwkTag::TEST, "IsNativeChildProcessSupported_0200 called.");
     auto sysMgr = DelayedSingleton<AppExecFwk::SysMrgClient>::GetInstance();
     ASSERT_NE(sysMgr, nullptr);
     sptr<IRemoteObject> remoteObj = sysMgr->GetSystemAbility(APP_MGR_SERVICE_ID);
@@ -806,13 +762,13 @@ HWTEST_F(ChildProcessManagerTest, IsNativeChildProcessSupported_0200, TestSize.L
 }
 
 /**
- * @tc.number: IsNativeChildProcessSupported_0300
+ * @tc.number: IsNativeChildProcessSupported_0200
  * @tc.desc: Test IsNativeChildProcessSupported when IPC fails
  * @tc.type: FUNC
  */
-HWTEST_F(ChildProcessManagerTest, IsNativeChildProcessSupported_0300, TestSize.Level1)
+HWTEST_F(ChildProcessManagerTest, IsNativeChildProcessSupported_0200, TestSize.Level1)
 {
-    TAG_LOGD(AAFwkTag::TEST, "IsNativeChildProcessSupported_0300 called.");
+    TAG_LOGD(AAFwkTag::TEST, "IsNativeChildProcessSupported_0200 called.");
     auto sysMgr = DelayedSingleton<AppExecFwk::SysMrgClient>::GetInstance();
     ASSERT_NE(sysMgr, nullptr);
     sptr<IRemoteObject> remoteObj = sysMgr->GetSystemAbility(APP_MGR_SERVICE_ID);

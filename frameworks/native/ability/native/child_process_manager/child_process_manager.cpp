@@ -636,6 +636,10 @@ bool ChildProcessManager::IsArkChildProcessSupported()
     TAG_LOGD(AAFwkTag::PROCESSMGR, "called");
     bool isSupported = false;
     auto client = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+    if (client == nullptr) {
+        TAG_LOGE(AAFwkTag::PROCESSMGR, "AppMgrClient instance is nullptr");
+        return false;
+    }
     if (client->IsChildProcessSupported(false, isSupported) != ERR_OK) {
         TAG_LOGE(AAFwkTag::PROCESSMGR, "ipc query failed");
         return false;
@@ -648,6 +652,10 @@ bool ChildProcessManager::IsNativeChildProcessSupported()
     TAG_LOGD(AAFwkTag::PROCESSMGR, "called");
     bool isSupported = false;
     auto client = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+    if (client == nullptr) {
+        TAG_LOGE(AAFwkTag::PROCESSMGR, "AppMgrClient instance is nullptr");
+        return false;
+    }
     if (client->IsChildProcessSupported(true, isSupported) != ERR_OK) {
         TAG_LOGE(AAFwkTag::PROCESSMGR, "ipc query failed");
         return false;
