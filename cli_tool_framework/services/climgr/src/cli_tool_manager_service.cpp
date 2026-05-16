@@ -557,6 +557,10 @@ int32_t CliToolManagerService::ExecTool(const ExecToolParam &param, const std::s
     InterfaceCallCounter counter(interfaceCalledCount_);
     TAG_LOGI(AAFwkTag::CLI_TOOL, "ExecTool called: toolName=%{public}s, subcommand=%{public}s",
         param.toolName.c_str(), param.subcommand.c_str());
+    if (auto ret = ValidateExecToolPermissions(); ret != ERR_OK) {
+        return ret;
+    }
+
     ToolInfo toolInfo;
     if (ToolUtil::IsSkillTool(param.toolName)) {
         int32_t skillType = 0;
@@ -577,13 +581,6 @@ int32_t CliToolManagerService::ExecTool(const ExecToolParam &param, const std::s
         }
         TAG_LOGI(AAFwkTag::CLI_TOOL,
             "Independent skill, fallback to CLI path, toolName=%{public}s", param.toolName.c_str());
-    }
-
-    if (auto ret = ValidateExecToolPermissions(); ret != ERR_OK) {
-        return ret;
-    }
-    if (auto ret = ValidateSessionLimit(); ret != ERR_OK) {
-        return ret;
     }
 
     auto tokenId = IPCSkeleton::GetCallingTokenID();
