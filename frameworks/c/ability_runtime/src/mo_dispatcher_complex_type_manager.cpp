@@ -67,15 +67,412 @@ struct ScopedVisited {
     explicit operator bool() const { return inserted; }
 };
 
+// Validate that vt is a known, valid value type.
+bool IsValidValueTypeForCreate(OH_AbilityRuntime_ModObjDispatcher_ValueType vt)
+{
+    switch (vt) {
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_BOOL:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I8:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I16:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I32:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I64:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U8:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U16:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U32:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U64:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_F32:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_F64:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRING:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_ENUM:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_ARRAY:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VECTOR:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_SET:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_MAP:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRUCT:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_IPC_REMOTE_PROXY:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_IPC_REMOTE_STUB:
+            return true;
+        default:
+            return false;
+    }
+}
+
+// Validate that keyType is a simple/comparable type (not a complex container).
+bool IsValidMapKeyType(OH_AbilityRuntime_ModObjDispatcher_ValueType keyType)
+{
+    switch (keyType) {
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_BOOL:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I8:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I16:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I32:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I64:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U8:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U16:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U32:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U64:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_F32:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_F64:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRING:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_ENUM:
+            return true;
+        default:
+            return false;
+    }
+}
+
+// Forward declaration for deep comparison
+bool VariantDeepEquals(const MoVariantStorage& lhs, const OH_AbilityRuntime_ModObjDispatcher_Variant* rhs,
+    std::unordered_set<const void*>& visited);
+
+// Recursively compare array contents
+bool ArrayDeepEquals(const OH_AbilityRuntime_ModularObjectDispatcher_Array& lhs,
+    const OH_AbilityRuntime_ModularObjectDispatcher_Array& rhs, std::unordered_set<const void*>& visited)
+{
+    if (lhs.elements.size() != rhs.elements.size()) {
+        return false;
+    }
+    if (lhs.elementTypeInfo == nullptr || rhs.elementTypeInfo == nullptr) {
+        return lhs.elementTypeInfo == rhs.elementTypeInfo;
+    }
+    if (lhs.elementTypeInfo->vt != rhs.elementTypeInfo->vt) {
+        return false;
+    }
+    for (size_t i = 0; i < lhs.elements.size(); i++) {
+        OH_AbilityRuntime_ModObjDispatcher_Variant rhsVar = rhs.elements[i].value;
+        if (!VariantDeepEquals(lhs.elements[i], &rhsVar, visited)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// Recursively compare map contents
+bool MapDeepEquals(const OH_AbilityRuntime_ModularObjectDispatcher_Map& lhs,
+    const OH_AbilityRuntime_ModularObjectDispatcher_Map& rhs, std::unordered_set<const void*>& visited)
+{
+    if (lhs.entries.size() != rhs.entries.size()) {
+        return false;
+    }
+    if (lhs.keyType != rhs.keyType) {
+        return false;
+    }
+    for (size_t i = 0; i < lhs.entries.size(); i++) {
+        OH_AbilityRuntime_ModObjDispatcher_Variant rhsKey = rhs.entries[i].first.value;
+        if (!VariantDeepEquals(lhs.entries[i].first, &rhsKey, visited)) {
+            return false;
+        }
+        OH_AbilityRuntime_ModObjDispatcher_Variant rhsVal = rhs.entries[i].second.value;
+        if (!VariantDeepEquals(lhs.entries[i].second, &rhsVal, visited)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// Deep variant comparison (handles nested containers by content, not pointer)
+bool VariantDeepEquals(const MoVariantStorage& lhs, const OH_AbilityRuntime_ModObjDispatcher_Variant* rhs,
+    std::unordered_set<const void*>& visited)
+{
+    if (rhs == nullptr) {
+        return false;
+    }
+    if (lhs.value.vt != rhs->vt) {
+        return false;
+    }
+    switch (lhs.value.vt) {
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_EMPTY:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VOID:
+            return true;
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_BOOL:
+            return lhs.value.u.boolVal == rhs->u.boolVal;
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I8:
+            return lhs.value.u.i8Val == rhs->u.i8Val;
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I16:
+            return lhs.value.u.i16Val == rhs->u.i16Val;
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I32:
+            return lhs.value.u.i32Val == rhs->u.i32Val;
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I64:
+            return lhs.value.u.i64Val == rhs->u.i64Val;
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U8:
+            return lhs.value.u.u8Val == rhs->u.u8Val;
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U16:
+            return lhs.value.u.u16Val == rhs->u.u16Val;
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U32:
+            return lhs.value.u.u32Val == rhs->u.u32Val;
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U64:
+            return lhs.value.u.u64Val == rhs->u.u64Val;
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_F32:
+            return lhs.value.u.f32Val == rhs->u.f32Val;
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_F64:
+            return lhs.value.u.f64Val == rhs->u.f64Val;
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRING: {
+            const char* lhsStr = lhs.stringStorage.c_str();
+            const char* rhsStr = (rhs->u.bstrVal != nullptr) ? rhs->u.bstrVal : "";
+            return std::strcmp(lhsStr, rhsStr) == 0;
+        }
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_ARRAY: {
+            if (lhs.value.u.parrayVal == nullptr || rhs->u.parrayVal == nullptr) {
+                return lhs.value.u.parrayVal == rhs->u.parrayVal;
+            }
+            if (!visited.insert(lhs.value.u.parrayVal).second) {
+                return true; // Already visiting this node, assume equal to avoid infinite recursion
+            }
+            bool result = ArrayDeepEquals(*lhs.value.u.parrayVal, *rhs->u.parrayVal, visited);
+            visited.erase(lhs.value.u.parrayVal);
+            return result;
+        }
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VECTOR: {
+            auto* lhsVec = lhs.value.u.pvectorVal;
+            auto* rhsVec = rhs->u.pvectorVal;
+            if (lhsVec == nullptr || rhsVec == nullptr) {
+                return lhsVec == rhsVec;
+            }
+            if (lhsVec->elements.size() != rhsVec->elements.size()) {
+                return false;
+            }
+            for (size_t i = 0; i < lhsVec->elements.size(); i++) {
+                OH_AbilityRuntime_ModObjDispatcher_Variant rhsElem = rhsVec->elements[i].value;
+                if (!VariantDeepEquals(lhsVec->elements[i], &rhsElem, visited)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_SET: {
+            auto* lhsSet = lhs.value.u.psetVal;
+            auto* rhsSet = rhs->u.psetVal;
+            if (lhsSet == nullptr || rhsSet == nullptr) {
+                return lhsSet == rhsSet;
+            }
+            if (!visited.insert(lhsSet).second) {
+                return true; // Already visiting, avoid infinite recursion
+            }
+            bool result = false;
+            if (lhsSet->elements.size() == rhsSet->elements.size()) {
+                result = true;
+                std::vector<bool> matched(rhsSet->elements.size(), false);
+                for (size_t i = 0; i < lhsSet->elements.size() && result; i++) {
+                    bool found = false;
+                    for (size_t j = 0; j < rhsSet->elements.size(); j++) {
+                        if (!matched[j]) {
+                            OH_AbilityRuntime_ModObjDispatcher_Variant rhsElem = rhsSet->elements[j].value;
+                            if (VariantDeepEquals(lhsSet->elements[i], &rhsElem, visited)) {
+                                matched[j] = true;
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!found) {
+                        result = false;
+                    }
+                }
+            }
+            visited.erase(lhsSet);
+            return result;
+        }
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_MAP: {
+            if (lhs.value.u.pmapVal == nullptr || rhs->u.pmapVal == nullptr) {
+                return lhs.value.u.pmapVal == rhs->u.pmapVal;
+            }
+            if (!visited.insert(lhs.value.u.pmapVal).second) {
+                return true;
+            }
+            bool result = MapDeepEquals(*lhs.value.u.pmapVal, *rhs->u.pmapVal, visited);
+            visited.erase(lhs.value.u.pmapVal);
+            return result;
+        }
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRUCT: {
+            if (lhs.value.u.pstructVal == nullptr || rhs->u.pstructVal == nullptr) {
+                return lhs.value.u.pstructVal == rhs->u.pstructVal;
+            }
+            if (lhs.value.u.pstructVal->fields.size() != rhs->u.pstructVal->fields.size()) {
+                return false;
+            }
+            for (const auto& field : lhs.value.u.pstructVal->fields) {
+                auto rhsIter = rhs->u.pstructVal->fields.find(field.first);
+                if (rhsIter == rhs->u.pstructVal->fields.end()) {
+                    return false;
+                }
+                OH_AbilityRuntime_ModObjDispatcher_Variant rhsField = rhsIter->second.value;
+                if (!VariantDeepEquals(field.second, &rhsField, visited)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_IPC_REMOTE_PROXY:
+            return lhs.value.u.premoteProxyVal == rhs->u.premoteProxyVal;
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_IPC_REMOTE_STUB:
+            return lhs.value.u.premoteStubVal == rhs->u.premoteStubVal;
+        default:
+            return false;
+    }
+}
+
+// Recursively compare two MoTypeInfo trees for structural equality.
+bool TypeInfoMatches(const std::shared_ptr<MoTypeInfo>& actual, const std::shared_ptr<MoTypeInfo>& expected)
+{
+    if (actual == nullptr || expected == nullptr) {
+        return actual == expected;
+    }
+    if (actual->vt != expected->vt) {
+        return false;
+    }
+    switch (actual->vt) {
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_MAP:
+            if (actual->mapKeyType != expected->mapKeyType) {
+                return false;
+            }
+            return TypeInfoMatches(actual->pMapValueType, expected->pMapValueType);
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_ARRAY:
+            if (actual->arraySize != 0 && expected->arraySize != 0 && actual->arraySize != expected->arraySize) {
+                return false; // Fixed-size array size mismatch
+            }
+            return TypeInfoMatches(actual->pElementType, expected->pElementType);
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VECTOR:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_SET:
+            return TypeInfoMatches(actual->pElementType, expected->pElementType);
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRUCT:
+            // Struct identity is by idlType name
+            return actual->idlType == expected->idlType;
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_ENUM:
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_IPC_REMOTE_PROXY:
+            return true; // idlType is informational, vt match is sufficient
+        default:
+            return true; // Simple types match by vt alone
+    }
+}
+
+// Deep variant type validation — checks that the variant's internal structure
+// matches the full expected MoTypeInfo tree, not just the top-level vt.
+AbilityRuntime_ErrorCode ValidateVariantTypeDeep(
+    const OH_AbilityRuntime_ModObjDispatcher_Variant* value, const std::shared_ptr<MoTypeInfo>& expectedInfo)
+{
+    if (value == nullptr || expectedInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "ValidateVariantTypeDeep: null param");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    // Top-level vt check
+    if (value->vt != expectedInfo->vt) {
+        // IPC proxy/stub interchange
+        if ((expectedInfo->vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_IPC_REMOTE_PROXY &&
+            value->vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_IPC_REMOTE_STUB) ||
+            (expectedInfo->vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_IPC_REMOTE_STUB &&
+            value->vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_IPC_REMOTE_PROXY)) {
+            if (!IsVariantHandleValid(value)) {
+                return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+            }
+            return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
+        }
+        TAG_LOGE(AAFwkTag::EXT, "ValidateVariantTypeDeep: vt mismatch, actual=%{public}d, expected=%{public}d",
+            static_cast<int32_t>(value->vt), static_cast<int32_t>(expectedInfo->vt));
+        return ABILITY_RUNTIME_ERROR_CODE_TYPE_MISMATCH;
+    }
+    if (!IsVariantHandleValid(value)) {
+        TAG_LOGE(AAFwkTag::EXT, "ValidateVariantTypeDeep: vt=%{public}d but required handle is null",
+            static_cast<int32_t>(value->vt));
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+
+    // For complex types, validate the nested TypeInfo structure
+    switch (value->vt) {
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_ARRAY: {
+            auto* arr = value->u.parrayVal;
+            if (arr == nullptr || arr->elementTypeInfo == nullptr) {
+                return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
+            }
+            if (expectedInfo->pElementType == nullptr) {
+                return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
+            }
+            if (!TypeInfoMatches(arr->elementTypeInfo, expectedInfo->pElementType)) {
+                TAG_LOGE(AAFwkTag::EXT, "ValidateVariantTypeDeep: array element type mismatch");
+                return ABILITY_RUNTIME_ERROR_CODE_TYPE_MISMATCH;
+            }
+            return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
+        }
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VECTOR: {
+            auto* vec = value->u.pvectorVal;
+            if (vec == nullptr || vec->elementTypeInfo == nullptr) {
+                return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
+            }
+            if (expectedInfo->pElementType == nullptr) {
+                return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
+            }
+            if (!TypeInfoMatches(vec->elementTypeInfo, expectedInfo->pElementType)) {
+                TAG_LOGE(AAFwkTag::EXT, "ValidateVariantTypeDeep: vector element type mismatch");
+                return ABILITY_RUNTIME_ERROR_CODE_TYPE_MISMATCH;
+            }
+            return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
+        }
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_SET: {
+            auto* set = value->u.psetVal;
+            if (set == nullptr || set->elementTypeInfo == nullptr) {
+                return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
+            }
+            if (expectedInfo->pElementType == nullptr) {
+                return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
+            }
+            if (!TypeInfoMatches(set->elementTypeInfo, expectedInfo->pElementType)) {
+                TAG_LOGE(AAFwkTag::EXT, "ValidateVariantTypeDeep: set element type mismatch");
+                return ABILITY_RUNTIME_ERROR_CODE_TYPE_MISMATCH;
+            }
+            return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
+        }
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_MAP: {
+            auto* map = value->u.pmapVal;
+            if (map == nullptr) {
+                return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
+            }
+            // Validate keyType
+            if (map->keyType != expectedInfo->mapKeyType) {
+                TAG_LOGE(AAFwkTag::EXT, "ValidateVariantTypeDeep: map keyType mismatch, "
+                    "actual=%{public}d, expected=%{public}d",
+                    static_cast<int32_t>(map->keyType), static_cast<int32_t>(expectedInfo->mapKeyType));
+                return ABILITY_RUNTIME_ERROR_CODE_TYPE_MISMATCH;
+            }
+            // Validate value TypeInfo
+            if (map->valueTypeInfo != nullptr && expectedInfo->pMapValueType != nullptr) {
+                if (!TypeInfoMatches(map->valueTypeInfo, expectedInfo->pMapValueType)) {
+                    TAG_LOGE(AAFwkTag::EXT, "ValidateVariantTypeDeep: map value type mismatch");
+                    return ABILITY_RUNTIME_ERROR_CODE_TYPE_MISMATCH;
+                }
+            }
+            return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
+        }
+        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRUCT: {
+            auto* st = value->u.pstructVal;
+            if (st == nullptr) {
+                return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
+            }
+            // Struct identity check by name
+            if (!expectedInfo->idlType.empty() && st->name != expectedInfo->idlType) {
+                TAG_LOGE(AAFwkTag::EXT, "ValidateVariantTypeDeep: struct name mismatch, "
+                    "actual='%{public}s', expected='%{public}s'",
+                    st->name.c_str(), expectedInfo->idlType.c_str());
+                return ABILITY_RUNTIME_ERROR_CODE_TYPE_MISMATCH;
+            }
+            return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
+        }
+        default:
+            // Simple types (bool, i32, string, enum, etc.) — vt match is sufficient
+            return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
+    }
+}
+
 AbilityRuntime_ErrorCode CopyStringToBuffer(const std::string& src, char* dst, uint32_t maxLen)
 {
     if (dst == nullptr || maxLen == 0) {
+        TAG_LOGE(AAFwkTag::EXT, "CopyStringToBuffer: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     if (src.size() + 1 > maxLen) {
+        TAG_LOGE(AAFwkTag::EXT, "CopyStringToBuffer: buffer too small, need=%{public}zu, maxLen=%{public}u",
+            src.size() + 1, maxLen);
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     if (strcpy_s(dst, maxLen, src.c_str()) != EOK) {
+        TAG_LOGE(AAFwkTag::EXT, "CopyStringToBuffer: strcpy_s failed");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
@@ -110,6 +507,7 @@ AbilityRuntime_ErrorCode DeepCopyStorage(const MoVariantStorage& src, MoVariantS
         auto* oldArray = src.value.u.parrayVal;
         auto* newArray = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher_Array();
         if (newArray == nullptr) {
+            TAG_LOGE(AAFwkTag::EXT, "DeepCopyStorage: allocate array failed");
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
         newArray->elementTypeInfo = oldArray->elementTypeInfo;
@@ -133,6 +531,7 @@ AbilityRuntime_ErrorCode DeepCopyStorage(const MoVariantStorage& src, MoVariantS
         auto* oldVector = src.value.u.pvectorVal;
         auto* newVector = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher_Vector();
         if (newVector == nullptr) {
+            TAG_LOGE(AAFwkTag::EXT, "DeepCopyStorage: allocate vector failed");
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
         newVector->elementTypeInfo = oldVector->elementTypeInfo;
@@ -156,6 +555,7 @@ AbilityRuntime_ErrorCode DeepCopyStorage(const MoVariantStorage& src, MoVariantS
         auto* oldSet = src.value.u.psetVal;
         auto* newSet = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher_Set();
         if (newSet == nullptr) {
+            TAG_LOGE(AAFwkTag::EXT, "DeepCopyStorage: allocate set failed");
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
         newSet->elementTypeInfo = oldSet->elementTypeInfo;
@@ -179,6 +579,7 @@ AbilityRuntime_ErrorCode DeepCopyStorage(const MoVariantStorage& src, MoVariantS
         auto* oldMap = src.value.u.pmapVal;
         auto* newMap = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher_Map();
         if (newMap == nullptr) {
+            TAG_LOGE(AAFwkTag::EXT, "DeepCopyStorage: allocate map failed");
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
         newMap->keyType = oldMap->keyType;
@@ -208,6 +609,7 @@ AbilityRuntime_ErrorCode DeepCopyStorage(const MoVariantStorage& src, MoVariantS
         auto* oldStruct = src.value.u.pstructVal;
         auto* newStruct = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher_Struct();
         if (newStruct == nullptr) {
+            TAG_LOGE(AAFwkTag::EXT, "DeepCopyStorage: allocate struct failed");
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         };
         newStruct->name = oldStruct->name;
@@ -231,11 +633,17 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::ArrayCreate(
     OH_AbilityRuntime_ModObjDispatcher_TypeInfo* elementType, uint32_t size,
     OH_AbilityRuntime_ModObjDispatcher_ArrayHandle* ppArray)
 {
-    if (ppArray == nullptr || elementType == nullptr) {
+    if (ppArray == nullptr || elementType == nullptr || *ppArray != nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "ArrayCreate: null param or handle already initialized");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    if (!IsValidValueTypeForCreate(elementType->vt)) {
+        TAG_LOGE(AAFwkTag::EXT, "ArrayCreate: invalid vt=%{public}d", static_cast<int32_t>(elementType->vt));
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto typeInfo = MoTypeInfo::FromCTypeInfo(elementType);
     if (typeInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "ArrayCreate: FromCTypeInfo failed");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto* array = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher_Array();
@@ -256,9 +664,11 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::ArrayGetElementType
     OH_AbilityRuntime_ModObjDispatcher_ArrayHandle pArray, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* pElementType)
 {
     if (pArray == nullptr || pElementType == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "ArrayGetElementType: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     if (pArray->elementTypeInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "ArrayGetElementType: elementTypeInfo is null");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     pArray->elementTypeInfo->FillCTypeInfo(pElementType);
@@ -269,9 +679,10 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::ArraySet(OH_Ability
     uint32_t index, const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     if (pArray == nullptr || pValue == nullptr || index >= pArray->elements.size()) {
+        TAG_LOGE(AAFwkTag::EXT, "ArraySet: null param or index out of range");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
-    auto ret = ValidateVariantType(pValue, pArray->elementTypeInfo->vt);
+    auto ret = ValidateVariantTypeDeep(pValue, pArray->elementTypeInfo);
     if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
         TAG_LOGE(AAFwkTag::EXT, "ArraySet: type mismatch at index=%{public}u", index);
         return ret;
@@ -283,6 +694,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::ArrayGet(OH_Ability
     uint32_t index, OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     if (pArray == nullptr || pValue == nullptr || index >= pArray->elements.size()) {
+        TAG_LOGE(AAFwkTag::EXT, "ArrayGet: null param or index out of range");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return LoadVariant(pArray->elements[index], pValue);
@@ -292,6 +704,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::ArrayGetSize(OH_Abi
     uint32_t* pSize)
 {
     if (pArray == nullptr || pSize == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "ArrayGetSize: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     *pSize = static_cast<uint32_t>(pArray->elements.size());
@@ -310,11 +723,17 @@ void ModObjDispatcherComplexTypeManager::ArrayRelease(OH_AbilityRuntime_ModObjDi
 AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::VectorCreate(
     OH_AbilityRuntime_ModObjDispatcher_TypeInfo* elementType, OH_AbilityRuntime_ModObjDispatcher_VectorHandle* ppVector)
 {
-    if (ppVector == nullptr || elementType == nullptr) {
+    if (ppVector == nullptr || elementType == nullptr || *ppVector != nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "VectorCreate: null param or handle already initialized");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    if (!IsValidValueTypeForCreate(elementType->vt)) {
+        TAG_LOGE(AAFwkTag::EXT, "VectorCreate: invalid vt=%{public}d", static_cast<int32_t>(elementType->vt));
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto typeInfo = MoTypeInfo::FromCTypeInfo(elementType);
     if (typeInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "VectorCreate: FromCTypeInfo failed");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto* vector = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher_Vector();
@@ -331,9 +750,11 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::VectorGetElementTyp
     OH_AbilityRuntime_ModObjDispatcher_VectorHandle pVector, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* pElementType)
 {
     if (pVector == nullptr || pElementType == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "VectorGetElementType: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     if (pVector->elementTypeInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "VectorGetElementType: elementTypeInfo is null");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     pVector->elementTypeInfo->FillCTypeInfo(pElementType);
@@ -344,9 +765,10 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::VectorAdd(OH_Abilit
     const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     if (pVector == nullptr || pValue == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "VectorAdd: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
-    auto ret = ValidateVariantType(pValue, pVector->elementTypeInfo->vt);
+    auto ret = ValidateVariantTypeDeep(pValue, pVector->elementTypeInfo);
     if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
         TAG_LOGE(AAFwkTag::EXT, "VectorAdd: type mismatch");
         return ret;
@@ -364,6 +786,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::VectorGet(OH_Abilit
     uint32_t index, OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     if (pVector == nullptr || pValue == nullptr || index >= pVector->elements.size()) {
+        TAG_LOGE(AAFwkTag::EXT, "VectorGet: null param or index out of range");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return LoadVariant(pVector->elements[index], pValue);
@@ -373,6 +796,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::VectorGetSize(
     OH_AbilityRuntime_ModObjDispatcher_VectorHandle pVector, uint32_t* pSize)
 {
     if (pVector == nullptr || pSize == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "VectorGetSize: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     *pSize = static_cast<uint32_t>(pVector->elements.size());
@@ -383,6 +807,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::VectorClear(
     OH_AbilityRuntime_ModObjDispatcher_VectorHandle pVector)
 {
     if (pVector == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "VectorClear: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     pVector->elements.clear();
@@ -401,11 +826,17 @@ void ModObjDispatcherComplexTypeManager::VectorRelease(OH_AbilityRuntime_ModObjD
 AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::SetCreate(
     OH_AbilityRuntime_ModObjDispatcher_TypeInfo* elementType, OH_AbilityRuntime_ModObjDispatcher_SetHandle* ppSet)
 {
-    if (ppSet == nullptr || elementType == nullptr) {
+    if (ppSet == nullptr || elementType == nullptr || *ppSet != nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "SetCreate: null param or handle already initialized");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    if (!IsValidValueTypeForCreate(elementType->vt)) {
+        TAG_LOGE(AAFwkTag::EXT, "SetCreate: invalid vt=%{public}d", static_cast<int32_t>(elementType->vt));
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto typeInfo = MoTypeInfo::FromCTypeInfo(elementType);
     if (typeInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "SetCreate: FromCTypeInfo failed");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto* set = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher_Set();
@@ -422,9 +853,11 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::SetGetElementType(
     OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* pElementType)
 {
     if (pSet == nullptr || pElementType == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "SetGetElementType: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     if (pSet->elementTypeInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "SetGetElementType: elementTypeInfo is null");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     pSet->elementTypeInfo->FillCTypeInfo(pElementType);
@@ -435,10 +868,12 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::SetAdd(OH_AbilityRu
     const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     if (pSet == nullptr || pValue == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "SetAdd: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
-    auto ret = ValidateVariantType(pValue, pSet->elementTypeInfo->vt);
+    auto ret = ValidateVariantTypeDeep(pValue, pSet->elementTypeInfo);
     if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+        TAG_LOGE(AAFwkTag::EXT, "SetAdd: type mismatch");
         return ret;
     }
     for (const auto& element : pSet->elements) {
@@ -459,14 +894,22 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::SetRemove(OH_Abilit
     const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     if (pSet == nullptr || pValue == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "SetRemove: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    auto ret = ValidateVariantTypeDeep(pValue, pSet->elementTypeInfo);
+    if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+        TAG_LOGE(AAFwkTag::EXT, "SetRemove: type mismatch");
+        return ret;
     }
     auto iter = std::find_if(pSet->elements.begin(), pSet->elements.end(), [pValue](const MoVariantStorage& item) {
         return VariantEquals(item, pValue);
     });
-    if (iter != pSet->elements.end()) {
-        pSet->elements.erase(iter);
+    if (iter == pSet->elements.end()) {
+        TAG_LOGE(AAFwkTag::EXT, "SetRemove: element not found");
+        return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
     }
+    pSet->elements.erase(iter);
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
@@ -474,7 +917,13 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::SetContains(OH_Abil
     const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue, bool* pExists)
 {
     if (pSet == nullptr || pValue == nullptr || pExists == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "SetContains: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    auto ret = ValidateVariantTypeDeep(pValue, pSet->elementTypeInfo);
+    if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+        TAG_LOGE(AAFwkTag::EXT, "SetContains: type mismatch");
+        return ret;
     }
     *pExists = std::any_of(pSet->elements.begin(), pSet->elements.end(), [pValue](const MoVariantStorage& item) {
         return VariantEquals(item, pValue);
@@ -486,6 +935,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::SetGetSize(OH_Abili
     uint32_t* pSize)
 {
     if (pSet == nullptr || pSize == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "SetGetSize: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     *pSize = static_cast<uint32_t>(pSet->elements.size());
@@ -496,6 +946,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::SetGetAt(OH_Ability
     uint32_t index, OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     if (pSet == nullptr || pValue == nullptr || index >= pSet->elements.size()) {
+        TAG_LOGE(AAFwkTag::EXT, "SetGetAt: null param or index out of range");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return LoadVariant(pSet->elements[index], pValue);
@@ -504,6 +955,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::SetGetAt(OH_Ability
 AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::SetClear(OH_AbilityRuntime_ModObjDispatcher_SetHandle pSet)
 {
     if (pSet == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "SetClear: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     pSet->elements.clear();
@@ -523,11 +975,18 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapCreate(
     OH_AbilityRuntime_ModObjDispatcher_ValueType keyType, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* valueType,
     OH_AbilityRuntime_ModObjDispatcher_MapHandle* ppMap)
 {
-    if (ppMap == nullptr || valueType == nullptr) {
+    if (ppMap == nullptr || valueType == nullptr || *ppMap != nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "MapCreate: null param or handle already initialized");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    if (!IsValidMapKeyType(keyType)) {
+        TAG_LOGE(AAFwkTag::EXT, "MapCreate: keyType=%{public}d is not a valid map key type",
+            static_cast<int32_t>(keyType));
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto valueTypeInfo = MoTypeInfo::FromCTypeInfo(valueType);
     if (valueTypeInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "MapCreate: FromCTypeInfo failed");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto* map = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher_Map();
@@ -545,6 +1004,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapGetKeyType(
     OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, OH_AbilityRuntime_ModObjDispatcher_ValueType* pKeyType)
 {
     if (pMap == nullptr || pKeyType == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "MapGetKeyType: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     *pKeyType = pMap->keyType;
@@ -555,9 +1015,11 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapGetValueType(
     OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* pValueType)
 {
     if (pMap == nullptr || pValueType == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "MapGetValueType: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     if (pMap->valueTypeInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "MapGetValueType: valueTypeInfo is null");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     pMap->valueTypeInfo->FillCTypeInfo(pValueType);
@@ -568,6 +1030,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapPut(OH_AbilityRu
     const OH_AbilityRuntime_ModObjDispatcher_Variant* pKey, const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     if (pMap == nullptr || pKey == nullptr || pValue == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "MapPut: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto ret = ValidateVariantType(pKey, pMap->keyType);
@@ -575,7 +1038,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapPut(OH_AbilityRu
         TAG_LOGE(AAFwkTag::EXT, "MapPut: key type mismatch");
         return ret;
     }
-    ret = ValidateVariantType(pValue, pMap->valueTypeInfo->vt);
+    ret = ValidateVariantTypeDeep(pValue, pMap->valueTypeInfo);
     if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
         TAG_LOGE(AAFwkTag::EXT, "MapPut: value type mismatch");
         return ret;
@@ -604,28 +1067,43 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapGet(OH_AbilityRu
     const OH_AbilityRuntime_ModObjDispatcher_Variant* pKey, OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     if (pMap == nullptr || pKey == nullptr || pValue == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "MapGet: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    auto ret = ValidateVariantType(pKey, pMap->keyType);
+    if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+        TAG_LOGE(AAFwkTag::EXT, "MapGet: key type mismatch");
+        return ret;
     }
     for (const auto& entry : pMap->entries) {
         if (VariantEquals(entry.first, pKey)) {
             return LoadVariant(entry.second, pValue);
         }
     }
-    return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    TAG_LOGE(AAFwkTag::EXT, "MapGet: key not found");
+    return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
 }
 
 AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapRemove(OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap,
     const OH_AbilityRuntime_ModObjDispatcher_Variant* pKey)
 {
     if (pMap == nullptr || pKey == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "MapRemove: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    auto ret = ValidateVariantType(pKey, pMap->keyType);
+    if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+        TAG_LOGE(AAFwkTag::EXT, "MapRemove: key type mismatch");
+        return ret;
     }
     auto iter = std::find_if(pMap->entries.begin(), pMap->entries.end(), [pKey](const auto& item) {
         return VariantEquals(item.first, pKey);
     });
-    if (iter != pMap->entries.end()) {
-        pMap->entries.erase(iter);
+    if (iter == pMap->entries.end()) {
+        TAG_LOGE(AAFwkTag::EXT, "MapRemove: key not found");
+        return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
     }
+    pMap->entries.erase(iter);
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
@@ -633,7 +1111,13 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapContainsKey(OH_A
     const OH_AbilityRuntime_ModObjDispatcher_Variant* pKey, bool* pExists)
 {
     if (pMap == nullptr || pKey == nullptr || pExists == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "MapContainsKey: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    auto ret = ValidateVariantType(pKey, pMap->keyType);
+    if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+        TAG_LOGE(AAFwkTag::EXT, "MapContainsKey: key type mismatch");
+        return ret;
     }
     *pExists = std::any_of(pMap->entries.begin(), pMap->entries.end(), [pKey](const auto& item) {
         return VariantEquals(item.first, pKey);
@@ -645,6 +1129,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapGetSize(OH_Abili
     uint32_t* pSize)
 {
     if (pMap == nullptr || pSize == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "MapGetSize: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     *pSize = static_cast<uint32_t>(pMap->entries.size());
@@ -655,6 +1140,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapGetKeyAt(OH_Abil
     uint32_t index, OH_AbilityRuntime_ModObjDispatcher_Variant* pKey)
 {
     if (pMap == nullptr || pKey == nullptr || index >= pMap->entries.size()) {
+        TAG_LOGE(AAFwkTag::EXT, "MapGetKeyAt: null param or index out of range");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return LoadVariant(pMap->entries[index].first, pKey);
@@ -664,6 +1150,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapGetValueAt(OH_Ab
     uint32_t index, OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     if (pMap == nullptr || pValue == nullptr || index >= pMap->entries.size()) {
+        TAG_LOGE(AAFwkTag::EXT, "MapGetValueAt: null param or index out of range");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return LoadVariant(pMap->entries[index].second, pValue);
@@ -672,6 +1159,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapGetValueAt(OH_Ab
 AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::MapClear(OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap)
 {
     if (pMap == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "MapClear: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     pMap->entries.clear();
@@ -690,7 +1178,8 @@ void ModObjDispatcherComplexTypeManager::MapRelease(OH_AbilityRuntime_ModObjDisp
 AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::StructCreate(const char* structName,
     OH_AbilityRuntime_ModObjDispatcher_StructHandle* ppStruct)
 {
-    if (structName == nullptr || ppStruct == nullptr) {
+    if (structName == nullptr || ppStruct == nullptr || *ppStruct != nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "StructCreate: null param or handle already initialized");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto* object = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher_Struct();
@@ -714,6 +1203,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::StructGetName(
     OH_AbilityRuntime_ModObjDispatcher_StructHandle pStruct, char* pbstrName, uint32_t cMaxName)
 {
     if (pStruct == nullptr || pbstrName == nullptr || cMaxName == 0) {
+        TAG_LOGE(AAFwkTag::EXT, "StructGetName: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return CopyStringToBuffer(pStruct->name, pbstrName, cMaxName);
@@ -724,6 +1214,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::StructSetField(
     const OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     if (pStruct == nullptr || szName == nullptr || pValue == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "StructSetField: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto fieldTypeIter = pStruct->fieldTypes.find(szName);
@@ -732,7 +1223,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::StructSetField(
             szName, pStruct->name.c_str());
         return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
     }
-    auto ret = ValidateVariantType(pValue, fieldTypeIter->second->vt);
+    auto ret = ValidateVariantTypeDeep(pValue, fieldTypeIter->second);
     if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
         TAG_LOGE(AAFwkTag::EXT, "StructSetField: type mismatch for field '%{public}s'", szName);
         return ret;
@@ -751,6 +1242,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::StructGetField(
     OH_AbilityRuntime_ModObjDispatcher_Variant* pValue)
 {
     if (pStruct == nullptr || szName == nullptr || pValue == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "StructGetField: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto iter = pStruct->fields.find(szName);
@@ -825,7 +1317,28 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::StoreVariant(
     const OH_AbilityRuntime_ModObjDispatcher_Variant* src, MoVariantStorage* dst)
 {
     if (src == nullptr || dst == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "StoreVariant: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    // Release old nested resources before overwriting to avoid leak
+    if (dst->value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRING) {
+        dst->stringStorage.clear();
+        dst->value.u.bstrVal = nullptr;
+    } else if (dst->value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_ARRAY && dst->value.u.parrayVal != nullptr) {
+        delete dst->value.u.parrayVal;
+        dst->value.u.parrayVal = nullptr;
+    } else if (dst->value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VECTOR && dst->value.u.pvectorVal != nullptr) {
+        delete dst->value.u.pvectorVal;
+        dst->value.u.pvectorVal = nullptr;
+    } else if (dst->value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_SET && dst->value.u.psetVal != nullptr) {
+        delete dst->value.u.psetVal;
+        dst->value.u.psetVal = nullptr;
+    } else if (dst->value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_MAP && dst->value.u.pmapVal != nullptr) {
+        delete dst->value.u.pmapVal;
+        dst->value.u.pmapVal = nullptr;
+    } else if (dst->value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRUCT && dst->value.u.pstructVal != nullptr) {
+        delete dst->value.u.pstructVal;
+        dst->value.u.pstructVal = nullptr;
     }
     dst->value = *src;
     dst->stringStorage.clear();
@@ -842,6 +1355,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::StoreVariant(
         auto* oldArray = src->u.parrayVal;
         auto* newArray = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher_Array();
         if (newArray == nullptr) {
+            TAG_LOGE(AAFwkTag::EXT, "StoreVariant: allocate array failed");
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
         newArray->elementTypeInfo = oldArray->elementTypeInfo;
@@ -865,6 +1379,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::StoreVariant(
         auto* oldVector = src->u.pvectorVal;
         auto* newVector = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher_Vector();
         if (newVector == nullptr) {
+            TAG_LOGE(AAFwkTag::EXT, "StoreVariant: allocate vector failed");
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
         newVector->elementTypeInfo = oldVector->elementTypeInfo;
@@ -888,6 +1403,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::StoreVariant(
         auto* oldSet = src->u.psetVal;
         auto* newSet = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher_Set();
         if (newSet == nullptr) {
+            TAG_LOGE(AAFwkTag::EXT, "StoreVariant: allocate set failed");
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
         newSet->elementTypeInfo = oldSet->elementTypeInfo;
@@ -911,6 +1427,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::StoreVariant(
         auto* oldMap = src->u.pmapVal;
         auto* newMap = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher_Map();
         if (newMap == nullptr) {
+            TAG_LOGE(AAFwkTag::EXT, "StoreVariant: allocate map failed");
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
         newMap->keyType = oldMap->keyType;
@@ -940,6 +1457,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::StoreVariant(
         auto* oldStruct = src->u.pstructVal;
         auto* newStruct = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher_Struct();
         if (newStruct == nullptr) {
+            TAG_LOGE(AAFwkTag::EXT, "StoreVariant: allocate struct failed");
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
         newStruct->name = oldStruct->name;
@@ -962,11 +1480,13 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::LoadVariant(const M
     OH_AbilityRuntime_ModObjDispatcher_Variant* dst)
 {
     if (dst == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "LoadVariant: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
-    *dst = src.value;
-    if (dst->vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRING) {
-        // Deep copy: allocate new string so caller can safely Variant_Clear
+    // Do NOT assign src.value directly to dst first (that would leak internal pointers
+    // if deep copy fails below). Instead, build result into a local temp and assign only on success.
+    // For simple types, direct copy is safe. For complex types, construct into temp first.
+    if (src.value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRING) {
         const char* srcStr = src.stringStorage.c_str();
         size_t len = src.stringStorage.size();
         auto* mem = static_cast<char*>(std::malloc(len + 1));
@@ -976,19 +1496,23 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::LoadVariant(const M
         }
         if (strcpy_s(mem, len + 1, srcStr) != EOK) {
             std::free(mem);
+            TAG_LOGE(AAFwkTag::EXT, "LoadVariant: strcpy_s failed for string");
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
+        (void)memset_s(dst, sizeof(*dst), 0, sizeof(*dst));
+        dst->vt = OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRING;
         dst->u.bstrVal = mem;
-    } else if (dst->vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_ARRAY && dst->u.parrayVal != nullptr) {
+    } else if (src.value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_ARRAY && src.value.u.parrayVal != nullptr) {
         std::unordered_set<const void*> visited;
-        ScopedVisited sv(visited, dst->u.parrayVal);
+        ScopedVisited sv(visited, src.value.u.parrayVal);
         if (!sv) {
             TAG_LOGE(AAFwkTag::EXT, "LoadVariant: circular reference detected in array");
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
-        auto* oldArray = dst->u.parrayVal;
+        auto* oldArray = src.value.u.parrayVal;
         auto* newArray = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher_Array();
         if (newArray == nullptr) {
+            TAG_LOGE(AAFwkTag::EXT, "LoadVariant: allocate array failed");
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
         newArray->elementTypeInfo = oldArray->elementTypeInfo;
@@ -998,22 +1522,24 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::LoadVariant(const M
             auto ret = DeepCopyStorage(elem, copy, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
                 delete newArray;
-                dst->u.parrayVal = nullptr;
                 return ret;
             }
             newArray->elements.emplace_back(std::move(copy));
         }
+        (void)memset_s(dst, sizeof(*dst), 0, sizeof(*dst));
+        dst->vt = OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_ARRAY;
         dst->u.parrayVal = newArray;
-    } else if (dst->vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VECTOR && dst->u.pvectorVal != nullptr) {
+    } else if (src.value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VECTOR && src.value.u.pvectorVal != nullptr) {
         std::unordered_set<const void*> visited;
-        ScopedVisited sv(visited, dst->u.pvectorVal);
+        ScopedVisited sv(visited, src.value.u.pvectorVal);
         if (!sv) {
             TAG_LOGE(AAFwkTag::EXT, "LoadVariant: circular reference detected in vector");
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
-        auto* oldVector = dst->u.pvectorVal;
+        auto* oldVector = src.value.u.pvectorVal;
         auto* newVector = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher_Vector();
         if (newVector == nullptr) {
+            TAG_LOGE(AAFwkTag::EXT, "LoadVariant: allocate vector failed");
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
         newVector->elementTypeInfo = oldVector->elementTypeInfo;
@@ -1023,22 +1549,24 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::LoadVariant(const M
             auto ret = DeepCopyStorage(elem, copy, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
                 delete newVector;
-                dst->u.pvectorVal = nullptr;
                 return ret;
             }
             newVector->elements.emplace_back(std::move(copy));
         }
+        (void)memset_s(dst, sizeof(*dst), 0, sizeof(*dst));
+        dst->vt = OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VECTOR;
         dst->u.pvectorVal = newVector;
-    } else if (dst->vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_SET && dst->u.psetVal != nullptr) {
+    } else if (src.value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_SET && src.value.u.psetVal != nullptr) {
         std::unordered_set<const void*> visited;
-        ScopedVisited sv(visited, dst->u.psetVal);
+        ScopedVisited sv(visited, src.value.u.psetVal);
         if (!sv) {
             TAG_LOGE(AAFwkTag::EXT, "LoadVariant: circular reference detected in set");
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
-        auto* oldSet = dst->u.psetVal;
+        auto* oldSet = src.value.u.psetVal;
         auto* newSet = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher_Set();
         if (newSet == nullptr) {
+            TAG_LOGE(AAFwkTag::EXT, "LoadVariant: allocate set failed");
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
         newSet->elementTypeInfo = oldSet->elementTypeInfo;
@@ -1048,22 +1576,24 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::LoadVariant(const M
             auto ret = DeepCopyStorage(elem, copy, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
                 delete newSet;
-                dst->u.psetVal = nullptr;
                 return ret;
             }
             newSet->elements.emplace_back(std::move(copy));
         }
+        (void)memset_s(dst, sizeof(*dst), 0, sizeof(*dst));
+        dst->vt = OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_SET;
         dst->u.psetVal = newSet;
-    } else if (dst->vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_MAP && dst->u.pmapVal != nullptr) {
+    } else if (src.value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_MAP && src.value.u.pmapVal != nullptr) {
         std::unordered_set<const void*> visited;
-        ScopedVisited sv(visited, dst->u.pmapVal);
+        ScopedVisited sv(visited, src.value.u.pmapVal);
         if (!sv) {
             TAG_LOGE(AAFwkTag::EXT, "LoadVariant: circular reference detected in map");
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
-        auto* oldMap = dst->u.pmapVal;
+        auto* oldMap = src.value.u.pmapVal;
         auto* newMap = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher_Map();
         if (newMap == nullptr) {
+            TAG_LOGE(AAFwkTag::EXT, "LoadVariant: allocate map failed");
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
         newMap->keyType = oldMap->keyType;
@@ -1074,28 +1604,29 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::LoadVariant(const M
             auto ret = DeepCopyStorage(entry.first, copy.first, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
                 delete newMap;
-                dst->u.pmapVal = nullptr;
                 return ret;
             }
             ret = DeepCopyStorage(entry.second, copy.second, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
                 delete newMap;
-                dst->u.pmapVal = nullptr;
                 return ret;
             }
             newMap->entries.emplace_back(std::move(copy));
         }
+        (void)memset_s(dst, sizeof(*dst), 0, sizeof(*dst));
+        dst->vt = OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_MAP;
         dst->u.pmapVal = newMap;
-    } else if (dst->vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRUCT && dst->u.pstructVal != nullptr) {
+    } else if (src.value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRUCT && src.value.u.pstructVal != nullptr) {
         std::unordered_set<const void*> visited;
-        ScopedVisited sv(visited, dst->u.pstructVal);
+        ScopedVisited sv(visited, src.value.u.pstructVal);
         if (!sv) {
             TAG_LOGE(AAFwkTag::EXT, "LoadVariant: circular reference detected in struct");
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
-        auto* oldStruct = dst->u.pstructVal;
+        auto* oldStruct = src.value.u.pstructVal;
         auto* newStruct = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher_Struct();
         if (newStruct == nullptr) {
+            TAG_LOGE(AAFwkTag::EXT, "LoadVariant: allocate struct failed");
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
         newStruct->name = oldStruct->name;
@@ -1105,12 +1636,16 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::LoadVariant(const M
             auto ret = DeepCopyStorage(field.second, copy, visited);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
                 delete newStruct;
-                dst->u.pstructVal = nullptr;
                 return ret;
             }
             newStruct->fields[field.first] = std::move(copy);
         }
+        (void)memset_s(dst, sizeof(*dst), 0, sizeof(*dst));
+        dst->vt = OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRUCT;
         dst->u.pstructVal = newStruct;
+    } else {
+        // Simple types (bool, i32, f64, enum, etc.) or null handles — safe to copy directly
+        *dst = src.value;
     }
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
@@ -1119,6 +1654,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::ValidateVariantType
     const OH_AbilityRuntime_ModObjDispatcher_Variant* value, OH_AbilityRuntime_ModObjDispatcher_ValueType expectedType)
 {
     if (value == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "ValidateVariantType: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     if (value->vt == expectedType) {
@@ -1140,66 +1676,16 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::ValidateVariantType
         }
         return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
     }
+    TAG_LOGE(AAFwkTag::EXT, "ValidateVariantType: type mismatch, actual=%{public}d, expected=%{public}d",
+        static_cast<int32_t>(value->vt), static_cast<int32_t>(expectedType));
     return ABILITY_RUNTIME_ERROR_CODE_TYPE_MISMATCH;
 }
 
 bool ModObjDispatcherComplexTypeManager::VariantEquals(const MoVariantStorage& lhs,
     const OH_AbilityRuntime_ModObjDispatcher_Variant* rhs)
 {
-    if (rhs == nullptr) {
-        return false;
-    }
-    if (lhs.value.vt != rhs->vt) {
-        return false;
-    }
-    switch (lhs.value.vt) {
-        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_EMPTY:
-        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VOID:
-            return true;
-        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_BOOL:
-            return lhs.value.u.boolVal == rhs->u.boolVal;
-        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I8:
-            return lhs.value.u.i8Val == rhs->u.i8Val;
-        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I16:
-            return lhs.value.u.i16Val == rhs->u.i16Val;
-        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I32:
-            return lhs.value.u.i32Val == rhs->u.i32Val;
-        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I64:
-            return lhs.value.u.i64Val == rhs->u.i64Val;
-        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U8:
-            return lhs.value.u.u8Val == rhs->u.u8Val;
-        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U16:
-            return lhs.value.u.u16Val == rhs->u.u16Val;
-        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U32:
-            return lhs.value.u.u32Val == rhs->u.u32Val;
-        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U64:
-            return lhs.value.u.u64Val == rhs->u.u64Val;
-        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_F32:
-            return lhs.value.u.f32Val == rhs->u.f32Val;
-        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_F64:
-            return lhs.value.u.f64Val == rhs->u.f64Val;
-        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRING: {
-            const char* lhsStr = lhs.stringStorage.c_str();
-            const char* rhsStr = (rhs->u.bstrVal != nullptr) ? rhs->u.bstrVal : "";
-            return std::strcmp(lhsStr, rhsStr) == 0;
-        }
-        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_ARRAY:
-            return lhs.value.u.parrayVal == rhs->u.parrayVal;
-        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VECTOR:
-            return lhs.value.u.pvectorVal == rhs->u.pvectorVal;
-        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_SET:
-            return lhs.value.u.psetVal == rhs->u.psetVal;
-        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_MAP:
-            return lhs.value.u.pmapVal == rhs->u.pmapVal;
-        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRUCT:
-            return lhs.value.u.pstructVal == rhs->u.pstructVal;
-        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_IPC_REMOTE_PROXY:
-            return lhs.value.u.premoteProxyVal == rhs->u.premoteProxyVal;
-        case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_IPC_REMOTE_STUB:
-            return lhs.value.u.premoteStubVal == rhs->u.premoteStubVal;
-        default:
-            return false;
-    }
+    std::unordered_set<const void*> visited;
+    return VariantDeepEquals(lhs, rhs, visited);
 }
 
 void ModObjDispatcherComplexTypeManager::RegisterStructMetadata(const std::vector<MoStructMeta>& structs)
@@ -1251,6 +1737,59 @@ bool ModObjDispatcherComplexTypeManager::GetStructFieldNames(const std::string& 
     }
     *fieldNames = iter->second;
     return true;
+}
+
+// MoVariantStorage member functions — must be defined here where struct types are complete
+MoVariantStorage::~MoVariantStorage()
+{
+    ReleaseNestedResources();
+}
+
+MoVariantStorage::MoVariantStorage(MoVariantStorage&& other) noexcept
+    : value(other.value), stringStorage(std::move(other.stringStorage))
+{
+    if (value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRING) {
+        value.u.bstrVal = const_cast<char*>(stringStorage.c_str());
+    }
+    (void)memset_s(&other.value, sizeof(other.value), 0, sizeof(other.value));
+    other.stringStorage.clear();
+}
+
+MoVariantStorage& MoVariantStorage::operator=(MoVariantStorage&& other) noexcept
+{
+    if (this != &other) {
+        ReleaseNestedResources();
+        value = other.value;
+        stringStorage = std::move(other.stringStorage);
+        if (value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRING) {
+            value.u.bstrVal = const_cast<char*>(stringStorage.c_str());
+        }
+        (void)memset_s(&other.value, sizeof(other.value), 0, sizeof(other.value));
+        other.stringStorage.clear();
+    }
+    return *this;
+}
+
+void MoVariantStorage::ReleaseNestedResources()
+{
+    if (value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRING) {
+        stringStorage.clear();
+    } else if (value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_ARRAY && value.u.parrayVal != nullptr) {
+        delete value.u.parrayVal;
+        value.u.parrayVal = nullptr;
+    } else if (value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VECTOR && value.u.pvectorVal != nullptr) {
+        delete value.u.pvectorVal;
+        value.u.pvectorVal = nullptr;
+    } else if (value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_SET && value.u.psetVal != nullptr) {
+        delete value.u.psetVal;
+        value.u.psetVal = nullptr;
+    } else if (value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_MAP && value.u.pmapVal != nullptr) {
+        delete value.u.pmapVal;
+        value.u.pmapVal = nullptr;
+    } else if (value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRUCT && value.u.pstructVal != nullptr) {
+        delete value.u.pstructVal;
+        value.u.pstructVal = nullptr;
+    }
 }
 
 } // namespace OHOS::AbilityRuntime

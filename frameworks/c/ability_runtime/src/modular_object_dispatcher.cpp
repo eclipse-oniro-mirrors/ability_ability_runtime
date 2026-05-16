@@ -42,7 +42,8 @@ extern "C" {
 AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_CreateMainServiceInstance(
     OHIPCRemoteProxy* remoteProxy, OH_AbilityRuntime_ModObjDispatcherHandle* ppModObjDispatcher)
 {
-    if (remoteProxy == nullptr || ppModObjDispatcher == nullptr) {
+    if (remoteProxy == nullptr || ppModObjDispatcher == nullptr || *ppModObjDispatcher != nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "CreateMainServiceInstance: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto* dispatcher = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher();
@@ -62,6 +63,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_CreateSubInstance(
 {
     if (mainServiceDispatcher == nullptr || subProxy == nullptr || ppModObjDispatcher == nullptr
         || mainServiceDispatcher->metadataManager == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "CreateSubInstance: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto* dispatcher = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher();
@@ -88,6 +90,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_HasTypeDescriptor(
     OH_AbilityRuntime_ModObjDispatcherHandle pModObjDispatcher, uint32_t* pctinfo)
 {
     if (pModObjDispatcher == nullptr || pctinfo == nullptr || pModObjDispatcher->metadataManager == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "HasTypeDescriptor: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto ret = pModObjDispatcher->metadataManager->EnsureLoaded(pModObjDispatcher->proxy);
@@ -104,6 +107,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_GetTypeDescriptor(
     OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle* ppTypeDescriptor)
 {
     if (pModObjDispatcher == nullptr || ppTypeDescriptor == nullptr || pModObjDispatcher->metadataManager == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetTypeDescriptor: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto ret = pModObjDispatcher->metadataManager->EnsureLoaded(pModObjDispatcher->proxy);
@@ -127,6 +131,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_QueryMainServiceInte
 {
     if (pModObjDispatcher == nullptr || rgszNames == nullptr || pMemID == nullptr
         || pModObjDispatcher->metadataManager == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "QueryMemIDsOfNames: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto ret = pModObjDispatcher->metadataManager->EnsureLoaded(pModObjDispatcher->proxy);
@@ -145,6 +150,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_CallMethod(
 {
     if (pModObjDispatcher == nullptr || pInputParams == nullptr || pResult == nullptr
         || pModObjDispatcher->metadataManager == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "CallMethod: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     if (pMethodErrCode != nullptr) {
@@ -227,11 +233,13 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetVersion(
     OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor, char* pbstrVersion, uint32_t cMaxVersion)
 {
     if (pTypeDescriptor == nullptr || pbstrVersion == nullptr || cMaxVersion == 0) {
+        TAG_LOGE(AAFwkTag::EXT, "GetVersion: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::string version;
     auto ret = pTypeDescriptor->metadataManager->GetVersion(&version);
     if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+        TAG_LOGE(AAFwkTag::EXT, "GetVersion: failed, ret=%{public}d", ret);
         return ret;
     }
     return CopyStringToBuffer(version, pbstrVersion, cMaxVersion);
@@ -241,9 +249,14 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetInterfaceCount(
     OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor, uint32_t* pcInterfaces)
 {
     if (pTypeDescriptor == nullptr || pcInterfaces == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetInterfaceCount: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
-    return pTypeDescriptor->metadataManager->GetInterfaceCount(pcInterfaces);
+    auto ret = pTypeDescriptor->metadataManager->GetInterfaceCount(pcInterfaces);
+    if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+        TAG_LOGE(AAFwkTag::EXT, "GetInterfaceCount: failed, ret=%{public}d", ret);
+    }
+    return ret;
 }
 
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetInterfaceName(
@@ -251,11 +264,13 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetInterfaceName(
     uint32_t cMaxName)
 {
     if (pTypeDescriptor == nullptr || pbstrName == nullptr || cMaxName == 0) {
+        TAG_LOGE(AAFwkTag::EXT, "GetInterfaceName: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::string name;
     auto ret = pTypeDescriptor->metadataManager->GetInterfaceName(index, &name);
     if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+        TAG_LOGE(AAFwkTag::EXT, "GetInterfaceName: failed, index=%{public}u, ret=%{public}d", index, ret);
         return ret;
     }
     return CopyStringToBuffer(name, pbstrName, cMaxName);
@@ -265,20 +280,27 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetInterfaceIsCallback
     OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor, const char* pbstrName, bool* pIsCallback)
 {
     if (pTypeDescriptor == nullptr || pbstrName == nullptr || pIsCallback == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetInterfaceIsCallback: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
-    return pTypeDescriptor->metadataManager->GetInterfaceIsCallback(pbstrName, pIsCallback);
+    auto ret = pTypeDescriptor->metadataManager->GetInterfaceIsCallback(pbstrName, pIsCallback);
+    if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+        TAG_LOGE(AAFwkTag::EXT, "GetInterfaceIsCallback: failed, name=%{public}s, ret=%{public}d", pbstrName, ret);
+    }
+    return ret;
 }
 
 AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMainServiceInterfaceName(
     OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor, char* pbstrName, uint32_t cMaxName)
 {
     if (pTypeDescriptor == nullptr || pbstrName == nullptr || cMaxName == 0) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMainServiceInterfaceName: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::string name;
     auto ret = pTypeDescriptor->metadataManager->GetMainServiceInterfaceName(&name);
     if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMainServiceInterfaceName: failed, ret=%{public}d", ret);
         return ret;
     }
     return CopyStringToBuffer(name, pbstrName, cMaxName);
@@ -289,6 +311,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMethodCount(
     const char* pbstrInterfaceName, uint32_t* pcMethods)
 {
     if (pTypeDescriptor == nullptr || pbstrInterfaceName == nullptr || pcMethods == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodCount: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return pTypeDescriptor->metadataManager->GetMethodCount(pbstrInterfaceName, pcMethods);
@@ -299,11 +322,13 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMethodName(
     const char* pbstrInterfaceName, uint32_t index, char* pbstrName, uint32_t cMaxName)
 {
     if (pTypeDescriptor == nullptr || pbstrInterfaceName == nullptr || pbstrName == nullptr || cMaxName == 0) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodName: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::string methodName;
     auto ret = pTypeDescriptor->metadataManager->GetMethodName(pbstrInterfaceName, index, &methodName);
     if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodName: query failed, index=%{public}u, ret=%{public}d", index, ret);
         return ret;
     }
     return CopyStringToBuffer(methodName, pbstrName, cMaxName);
@@ -315,6 +340,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMethodMemberId(
 {
     if (pTypeDescriptor == nullptr || pbstrInterfaceName == nullptr || pbstrMethodName == nullptr
         || pMemID == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodMemberId: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return pTypeDescriptor->metadataManager->GetMethodMemberId(pbstrInterfaceName, pbstrMethodName, pMemID);
@@ -327,6 +353,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMethodReturnType(
 {
     if (pTypeDescriptor == nullptr || pbstrInterfaceName == nullptr || pbstrMethodName == nullptr
         || pReturnType == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodReturnType: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return pTypeDescriptor->metadataManager->GetMethodReturnType(
@@ -339,6 +366,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMethodParamCount(
 {
     if (pTypeDescriptor == nullptr || pbstrInterfaceName == nullptr || pbstrMethodName == nullptr
         || pcParams == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodParamCount: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return pTypeDescriptor->metadataManager->GetMethodParamCount(pbstrInterfaceName, pbstrMethodName, pcParams);
@@ -351,6 +379,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMethodParamType(
 {
     if (pTypeDescriptor == nullptr || pbstrInterfaceName == nullptr || pbstrMethodName == nullptr
         || pParamType == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodParamType: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return pTypeDescriptor->metadataManager->GetMethodParamType(
@@ -364,12 +393,14 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetMethodParamName(
 {
     if (pTypeDescriptor == nullptr || pbstrInterfaceName == nullptr || pbstrMethodName == nullptr
         || pbstrName == nullptr || cMaxName == 0) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodParamName: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::string paramName;
     auto ret = pTypeDescriptor->metadataManager->GetMethodParamName(
         pbstrInterfaceName, pbstrMethodName, iParamIndex, &paramName);
     if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodParamName: query failed, index=%{public}u, ret=%{public}d", iParamIndex, ret);
         return ret;
     }
     return CopyStringToBuffer(paramName, pbstrName, cMaxName);
@@ -378,6 +409,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetEnumCount(
     OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor, uint32_t* pcEnums)
 {
     if (pTypeDescriptor == nullptr || pcEnums == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetEnumCount: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return pTypeDescriptor->metadataManager->GetEnumCount(pcEnums);
@@ -388,11 +420,13 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetEnumName(
     uint32_t cMaxName)
 {
     if (pTypeDescriptor == nullptr || pbstrName == nullptr || cMaxName == 0) {
+        TAG_LOGE(AAFwkTag::EXT, "GetEnumName: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::string name;
     auto ret = pTypeDescriptor->metadataManager->GetEnumName(index, &name);
     if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+        TAG_LOGE(AAFwkTag::EXT, "GetEnumName: query failed, index=%{public}u, ret=%{public}d", index, ret);
         return ret;
     }
     return CopyStringToBuffer(name, pbstrName, cMaxName);
@@ -403,6 +437,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetEnumValueCount(
     uint32_t* pcValues)
 {
     if (pTypeDescriptor == nullptr || pbstrEnumName == nullptr || pcValues == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetEnumValueCount: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return pTypeDescriptor->metadataManager->GetEnumValueCount(pbstrEnumName, pcValues);
@@ -413,11 +448,13 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetEnumValueName(
     uint32_t iValueIndex, char* pbstrValueName, uint32_t cMaxName)
 {
     if (pTypeDescriptor == nullptr || pbstrEnumName == nullptr || pbstrValueName == nullptr || cMaxName == 0) {
+        TAG_LOGE(AAFwkTag::EXT, "GetEnumValueName: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::string valueName;
     auto ret = pTypeDescriptor->metadataManager->GetEnumValueName(pbstrEnumName, iValueIndex, &valueName);
     if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+        TAG_LOGE(AAFwkTag::EXT, "GetEnumValueName: query failed, index=%{public}u, ret=%{public}d", iValueIndex, ret);
         return ret;
     }
     return CopyStringToBuffer(valueName, pbstrValueName, cMaxName);
@@ -428,6 +465,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetEnumValue(
     const char* pbstrValueName, int32_t* pValue)
 {
     if (pTypeDescriptor == nullptr || pbstrEnumName == nullptr || pbstrValueName == nullptr || pValue == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetEnumValue: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return pTypeDescriptor->metadataManager->GetEnumValue(pbstrEnumName, pbstrValueName, pValue);
@@ -437,6 +475,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetStructCount(
     OH_AbilityRuntime_ModObjDispatcher_TypeDescriptorHandle pTypeDescriptor, uint32_t* pcStructs)
 {
     if (pTypeDescriptor == nullptr || pcStructs == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetStructCount: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return pTypeDescriptor->metadataManager->GetStructCount(pcStructs);
@@ -447,11 +486,13 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetStructName(
     uint32_t cMaxName)
 {
     if (pTypeDescriptor == nullptr || pbstrName == nullptr || cMaxName == 0) {
+        TAG_LOGE(AAFwkTag::EXT, "GetStructName: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::string name;
     auto ret = pTypeDescriptor->metadataManager->GetStructName(index, &name);
     if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+        TAG_LOGE(AAFwkTag::EXT, "GetStructName: query failed, index=%{public}u, ret=%{public}d", index, ret);
         return ret;
     }
     return CopyStringToBuffer(name, pbstrName, cMaxName);
@@ -462,6 +503,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetStructFieldCount(
     uint32_t* pcFields)
 {
     if (pTypeDescriptor == nullptr || pbstrStructName == nullptr || pcFields == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetStructFieldCount: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return pTypeDescriptor->metadataManager->GetStructFieldCount(pbstrStructName, pcFields);
@@ -472,11 +514,13 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetStructFieldName(
     uint32_t iFieldIndex, char* pbstrFieldName, uint32_t cMaxName)
 {
     if (pTypeDescriptor == nullptr || pbstrStructName == nullptr || pbstrFieldName == nullptr || cMaxName == 0) {
+        TAG_LOGE(AAFwkTag::EXT, "GetStructFieldName: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::string name;
     auto ret = pTypeDescriptor->metadataManager->GetStructFieldName(pbstrStructName, iFieldIndex, &name);
     if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+        TAG_LOGE(AAFwkTag::EXT, "GetStructFieldName: query failed, index=%{public}u, ret=%{public}d", iFieldIndex, ret);
         return ret;
     }
     return CopyStringToBuffer(name, pbstrFieldName, cMaxName);
@@ -488,6 +532,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_TypeDescriptor_GetStructFieldType(
 {
     if (pTypeDescriptor == nullptr || pbstrStructName == nullptr || pbstrFieldName == nullptr ||
         pFieldType == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetStructFieldType: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return pTypeDescriptor->metadataManager->GetStructFieldType(pbstrStructName, pbstrFieldName, pFieldType);
@@ -498,6 +543,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_ArrayCreate(
     OH_AbilityRuntime_ModObjDispatcher_ArrayHandle* ppArray)
 {
     if (elementType == nullptr || ppArray == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "ArrayCreate: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return ModObjDispatcherComplexTypeManager::ArrayCreate(elementType, size, ppArray);
@@ -507,6 +553,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_ArrayGetElementType(
     OH_AbilityRuntime_ModObjDispatcher_ArrayHandle pArray, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* pElementType)
 {
     if (pArray == nullptr || pElementType == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "ArrayGetElementType: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return ModObjDispatcherComplexTypeManager::ArrayGetElementType(pArray, pElementType);
@@ -541,6 +588,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_VectorCreate(
     OH_AbilityRuntime_ModObjDispatcher_TypeInfo* elementType, OH_AbilityRuntime_ModObjDispatcher_VectorHandle* ppVector)
 {
     if (elementType == nullptr || ppVector == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "VectorCreate: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return ModObjDispatcherComplexTypeManager::VectorCreate(elementType, ppVector);
@@ -550,6 +598,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_VectorGetElementType
     OH_AbilityRuntime_ModObjDispatcher_VectorHandle pVector, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* pElementType)
 {
     if (pVector == nullptr || pElementType == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "VectorGetElementType: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return ModObjDispatcherComplexTypeManager::VectorGetElementType(pVector, pElementType);
@@ -648,6 +697,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_MapCreate(
     OH_AbilityRuntime_ModObjDispatcher_MapHandle* ppMap)
 {
     if (valueType == nullptr || ppMap == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "MapCreate: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return ModObjDispatcherComplexTypeManager::MapCreate(keyType, valueType, ppMap);
@@ -663,6 +713,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_MapGetValueType(
     OH_AbilityRuntime_ModObjDispatcher_MapHandle pMap, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* pValueType)
 {
     if (pMap == nullptr || pValueType == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "MapGetValueType: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return ModObjDispatcherComplexTypeManager::MapGetValueType(pMap, pValueType);

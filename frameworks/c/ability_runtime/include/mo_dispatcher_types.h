@@ -216,6 +216,16 @@ struct MoInterfaceMeta {
 struct MoVariantStorage {
     OH_AbilityRuntime_ModObjDispatcher_Variant value {};
     std::string stringStorage;
+
+    ~MoVariantStorage();
+    MoVariantStorage() = default;
+    MoVariantStorage(const MoVariantStorage&) = delete;
+    MoVariantStorage& operator=(const MoVariantStorage&) = delete;
+    MoVariantStorage(MoVariantStorage&& other) noexcept;
+    MoVariantStorage& operator=(MoVariantStorage&& other) noexcept;
+
+private:
+    void ReleaseNestedResources();
 };
 } // namespace OHOS::AbilityRuntime
 

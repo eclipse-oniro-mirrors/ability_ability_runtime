@@ -616,19 +616,24 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::QueryMainServiceInterf
     const char** names, uint32_t count, uint32_t* memberIds) const
 {
     if (names == nullptr || memberIds == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "QueryMainServiceInterfaceMemberIds: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_ || mainServiceInterface_.empty()) {
+        TAG_LOGE(AAFwkTag::EXT, "QueryMainServiceInterfaceMemberIds: not loaded");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     for (uint32_t i = 0; i < count; i++) {
         if (names[i] == nullptr) {
+            TAG_LOGE(AAFwkTag::EXT, "QueryMainServiceInterfaceMemberIds: name null at index=%{public}u", i);
             return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
         }
         std::string qualifiedName = mainServiceInterface_ + "." + names[i];
         auto it = nameToMemberId_.find(qualifiedName);
         if (it == nameToMemberId_.end()) {
+            TAG_LOGE(AAFwkTag::EXT, "QueryMainServiceInterfaceMemberIds: name not found, name=%{public}s",
+                names[i]);
             return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
         }
         memberIds[i] = it->second;
@@ -640,14 +645,17 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::QueryMainServiceInterf
 AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMethodMeta(uint32_t memberId, MoMethodMeta* methodMeta) const
 {
     if (methodMeta == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodMeta: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodMeta: not loaded");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     auto it = memberIdToMethod_.find(memberId);
     if (it == memberIdToMethod_.end()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodMeta: not found, memberId=%{public}u", memberId);
         return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
     }
     *methodMeta = it->second;
@@ -657,10 +665,12 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMethodMeta(uint32_t
 AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetVersion(std::string* version) const
 {
     if (version == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetVersion: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetVersion: not loaded");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     *version = version_;
@@ -670,13 +680,16 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetVersion(std::string
 AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMainServiceInterfaceName(std::string* interfaceName) const
 {
     if (interfaceName == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMainServiceInterfaceName: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMainServiceInterfaceName: not loaded");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     if (mainServiceInterface_.empty()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMainServiceInterfaceName: empty");
         return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
     }
     *interfaceName = mainServiceInterface_;
@@ -686,10 +699,12 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMainServiceInterfac
 AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetInterfaceCount(uint32_t* count) const
 {
     if (count == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetInterfaceCount: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetInterfaceCount: not loaded");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     *count = static_cast<uint32_t>(interfaces_.size());
@@ -699,10 +714,13 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetInterfaceCount(uint
 AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetInterfaceName(uint32_t index, std::string* name) const
 {
     if (name == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetInterfaceName: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_ || index >= interfaces_.size()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetInterfaceName: out of range, index=%{public}u, size=%{public}zu",
+            index, interfaces_.size());
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     *name = interfaces_[index].name;
@@ -713,10 +731,12 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetInterfaceIsCallback
     bool* isCallback) const
 {
     if (isCallback == nullptr || interfaceName.empty()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetInterfaceIsCallback: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetInterfaceIsCallback: not loaded");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     for (const auto& item : interfaces_) {
@@ -725,6 +745,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetInterfaceIsCallback
             return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
         }
     }
+    TAG_LOGE(AAFwkTag::EXT, "GetInterfaceIsCallback: not found, name=%{public}s", interfaceName.c_str());
     return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
 }
 
@@ -732,10 +753,12 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetInterfaceDescriptor
     std::u16string* descriptor) const
 {
     if (descriptor == nullptr || interfaceName.empty()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetInterfaceDescriptor: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetInterfaceDescriptor: not loaded");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     for (const auto& item : interfaces_) {
@@ -744,16 +767,19 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetInterfaceDescriptor
             return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
         }
     }
+    TAG_LOGE(AAFwkTag::EXT, "GetInterfaceDescriptor: not found, name=%{public}s", interfaceName.c_str());
     return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
 }
 
 AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetEnumCount(uint32_t* count) const
 {
     if (count == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetEnumCount: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetEnumCount: not loaded");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     *count = static_cast<uint32_t>(enums_.size());
@@ -763,10 +789,12 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetEnumCount(uint32_t*
 AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetEnumName(uint32_t index, std::string* name) const
 {
     if (name == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetEnumName: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_ || index >= enums_.size()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetEnumName: out of range, index=%{public}u, size=%{public}zu", index, enums_.size());
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     *name = enums_[index].name;
@@ -777,10 +805,12 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetEnumValueCount(cons
     uint32_t* count) const
 {
     if (count == nullptr || enumName.empty()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetEnumValueCount: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetEnumValueCount: not loaded");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     for (const auto& item : enums_) {
@@ -789,6 +819,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetEnumValueCount(cons
             return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
         }
     }
+    TAG_LOGE(AAFwkTag::EXT, "GetEnumValueCount: not found, enum='%{public}s'", enumName.c_str());
     return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
 }
 
@@ -796,19 +827,26 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetEnumValueName(const
     std::string* valueName) const
 {
     if (valueName == nullptr || enumName.empty()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetEnumValueName: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetEnumValueName: not loaded");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     for (const auto& item : enums_) {
         if (item.name == enumName) {
-            if (index >= item.values.size()) return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+            if (index >= item.values.size()) {
+                TAG_LOGE(AAFwkTag::EXT, "GetEnumValueName: out of range, index=%{public}u, size=%{public}zu",
+                    index, item.values.size());
+                return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+            }
             *valueName = item.values[index].name;
             return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
         }
     }
+    TAG_LOGE(AAFwkTag::EXT, "GetEnumValueName: not found, enum='%{public}s'", enumName.c_str());
     return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
 }
 
@@ -816,10 +854,12 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetEnumValue(const std
     const std::string& valueName, int32_t* value) const
 {
     if (value == nullptr || enumName.empty() || valueName.empty()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetEnumValue: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetEnumValue: not loaded");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     for (const auto& item : enums_) {
@@ -830,19 +870,24 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetEnumValue(const std
                     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
                 }
             }
+            TAG_LOGE(AAFwkTag::EXT, "GetEnumValue: not found, enum='%{public}s', value='%{public}s'",
+                enumName.c_str(), valueName.c_str());
             return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
         }
     }
+    TAG_LOGE(AAFwkTag::EXT, "GetEnumValue: not found, enum='%{public}s'", enumName.c_str());
     return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
 }
 
 AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetStructCount(uint32_t* count) const
 {
     if (count == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetStructCount: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetStructCount: not loaded");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     *count = static_cast<uint32_t>(structs_.size());
@@ -852,10 +897,15 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetStructCount(uint32_
 AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetStructName(uint32_t index, std::string* name) const
 {
     if (name == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetStructName: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
-    if (!loaded_ || index >= structs_.size()) return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    if (!loaded_ || index >= structs_.size()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetStructName: out of range, index=%{public}u, size=%{public}zu",
+            index, structs_.size());
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
     *name = structs_[index].name;
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
@@ -864,16 +914,21 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetStructFieldCount(co
     uint32_t* count) const
 {
     if (count == nullptr || structName.empty()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetStructFieldCount: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
-    if (!loaded_) return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+    if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetStructFieldCount: not loaded");
+        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+    }
     for (const auto& item : structs_) {
         if (item.name == structName) {
             *count = static_cast<uint32_t>(item.fields.size());
             return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
         }
     }
+    TAG_LOGE(AAFwkTag::EXT, "GetStructFieldCount: not found, struct='%{public}s'", structName.c_str());
     return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
 }
 
@@ -881,21 +936,26 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetStructFieldName(con
     std::string* fieldName) const
 {
     if (fieldName == nullptr || structName.empty()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetStructFieldName: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetStructFieldName: not loaded");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     for (const auto& item : structs_) {
         if (item.name == structName) {
             if (index >= item.fields.size()) {
+                TAG_LOGE(AAFwkTag::EXT, "GetStructFieldName: out of range, index=%{public}u, size=%{public}zu",
+                    index, item.fields.size());
                 return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
             }
             *fieldName = item.fields[index].name;
             return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
         }
     }
+    TAG_LOGE(AAFwkTag::EXT, "GetStructFieldName: not found, struct='%{public}s'", structName.c_str());
     return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
 }
 
@@ -903,10 +963,12 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetStructFieldType(con
     const std::string& fieldName, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* fieldType) const
 {
     if (fieldType == nullptr || structName.empty() || fieldName.empty()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetStructFieldType: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetStructFieldType: not loaded");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     for (const auto& item : structs_) {
@@ -917,9 +979,12 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetStructFieldType(con
                     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
                 }
             }
+            TAG_LOGE(AAFwkTag::EXT, "GetStructFieldType: not found, struct='%{public}s', field='%{public}s'",
+                structName.c_str(), fieldName.c_str());
             return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
         }
     }
+    TAG_LOGE(AAFwkTag::EXT, "GetStructFieldType: not found, struct='%{public}s'", structName.c_str());
     return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
 }
 
@@ -950,14 +1015,17 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMethodCount(const s
     uint32_t* count) const
 {
     if (count == nullptr || interfaceName.empty()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodCount: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodCount: not loaded");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     auto* iface = FindInterfaceByName(interfaces_, interfaceName);
     if (iface == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodCount: not found, iface='%{public}s'", interfaceName.c_str());
         return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
     }
     *count = static_cast<uint32_t>(iface->methods.size());
@@ -968,17 +1036,22 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMethodName(const st
     uint32_t index, std::string* methodName) const
 {
     if (methodName == nullptr || interfaceName.empty()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodName: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodName: not loaded");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     auto* iface = FindInterfaceByName(interfaces_, interfaceName);
     if (iface == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodName: not found, iface='%{public}s'", interfaceName.c_str());
         return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
     }
     if (index >= iface->methods.size()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodName: out of range, index=%{public}u, size=%{public}zu",
+            index, iface->methods.size());
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     *methodName = iface->methods[index].name;
@@ -989,18 +1062,22 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMethodMemberId(cons
     const std::string& methodName, uint32_t* memberId) const
 {
     if (memberId == nullptr || interfaceName.empty() || methodName.empty()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodMemberId: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodMemberId: not loaded");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     auto* iface = FindInterfaceByName(interfaces_, interfaceName);
     if (iface == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodMemberId: not found, iface='%{public}s'", interfaceName.c_str());
         return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
     }
     auto* method = FindMethodByName(iface->methods, methodName);
     if (method == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodMemberId: not found, method='%{public}s'", methodName.c_str());
         return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
     }
     *memberId = method->memberId;
@@ -1011,18 +1088,22 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMethodReturnType(co
     const std::string& methodName, OH_AbilityRuntime_ModObjDispatcher_TypeInfo* returnType) const
 {
     if (returnType == nullptr || interfaceName.empty() || methodName.empty()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodReturnType: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodReturnType: not loaded");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     auto* iface = FindInterfaceByName(interfaces_, interfaceName);
     if (iface == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodReturnType: not found, iface='%{public}s'", interfaceName.c_str());
         return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
     }
     auto* method = FindMethodByName(iface->methods, methodName);
     if (method == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodReturnType: not found, method='%{public}s'", methodName.c_str());
         return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
     }
     if (method->returnType) {
@@ -1039,18 +1120,22 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMethodParamCount(co
     const std::string& methodName, uint32_t* count) const
 {
     if (count == nullptr || interfaceName.empty() || methodName.empty()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodParamCount: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodParamCount: not loaded");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     auto* iface = FindInterfaceByName(interfaces_, interfaceName);
     if (iface == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodParamCount: not found, iface='%{public}s'", interfaceName.c_str());
         return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
     }
     auto* method = FindMethodByName(iface->methods, methodName);
     if (method == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodParamCount: not found, method='%{public}s'", methodName.c_str());
         return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
     }
     *count = static_cast<uint32_t>(method->params.size());
@@ -1062,21 +1147,27 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMethodParamType(con
     OH_AbilityRuntime_ModObjDispatcher_TypeInfo* paramType) const
 {
     if (paramType == nullptr || interfaceName.empty() || methodName.empty()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodParamType: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodParamType: not loaded");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     auto* iface = FindInterfaceByName(interfaces_, interfaceName);
     if (iface == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodParamType: not found, iface='%{public}s'", interfaceName.c_str());
         return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
     }
     auto* method = FindMethodByName(iface->methods, methodName);
     if (method == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodParamType: not found, method='%{public}s'", methodName.c_str());
         return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
     }
     if (paramIndex >= method->params.size()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodParamType: out of range, index=%{public}u, size=%{public}zu",
+            paramIndex, method->params.size());
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     const auto& param = method->params[paramIndex];
@@ -1093,21 +1184,27 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMethodParamName(con
     const std::string& methodName, uint32_t paramIndex, std::string* paramName) const
 {
     if (paramName == nullptr || interfaceName.empty() || methodName.empty()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodParamName: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     std::lock_guard<std::mutex> lock(mutex_);
     if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodParamName: not loaded");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     auto* iface = FindInterfaceByName(interfaces_, interfaceName);
     if (iface == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodParamName: not found, iface='%{public}s'", interfaceName.c_str());
         return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
     }
     auto* method = FindMethodByName(iface->methods, methodName);
     if (method == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodParamName: not found, method='%{public}s'", methodName.c_str());
         return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
     }
     if (paramIndex >= method->params.size()) {
+        TAG_LOGE(AAFwkTag::EXT, "GetMethodParamName: out of range, index=%{public}u, size=%{public}zu",
+            paramIndex, method->params.size());
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     *paramName = method->params[paramIndex].name;

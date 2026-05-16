@@ -285,6 +285,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherParamCodec::MarshalCallRequest(const Mo
     const OH_AbilityRuntime_ModObjDispatcher_InputParams* inputParams, MessageParcel& dataParcel)
 {
     if (inputParams == nullptr || inputParams->rgvarg == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "MarshalCallRequest: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     if (inputParams->cArgs != methodMeta.params.size()) {
@@ -316,6 +317,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherParamCodec::UnmarshalCallResult(const M
     MessageParcel& replyParcel, OH_AbilityRuntime_ModObjDispatcher_Variant* result, int32_t* pMethodErrCode)
 {
     if (result == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "UnmarshalCallResult: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     // Read application-level error code from reply
@@ -344,6 +346,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherParamCodec::ReadRawValue(MessageParcel&
     const std::shared_ptr<MoTypeInfo>& typeInfo, OH_AbilityRuntime_ModObjDispatcher_Variant* value)
 {
     if (typeInfo == nullptr || value == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "ReadRawValue: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     value->vt = typeInfo->vt;
