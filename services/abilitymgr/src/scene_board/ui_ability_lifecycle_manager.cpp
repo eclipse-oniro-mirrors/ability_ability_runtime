@@ -1223,8 +1223,7 @@ void UIAbilityLifecycleManager::CompleteForegroundSuccess(const UIAbilityRecordP
     CHECK_POINTER(abilityRecord);
     // ability do not save window mode
     abilityRecord->RemoveWindowMode();
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "ability: %{public}s/%{public}s",
-        abilityRecord->GetInfoBundleName().c_str(),
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "ability: %{public}s/%{public}s", abilityRecord->GetInfoBundleName().c_str(),
         abilityRecord->GetInfoAbilityName().c_str());
     abilityRecord->SetAbilityState(AbilityState::FOREGROUND);
     abilityRecord->UpdateAbilityVisibilityState();
@@ -1238,9 +1237,8 @@ void UIAbilityLifecycleManager::CompleteForegroundSuccess(const UIAbilityRecordP
     }
     if (abilityRecord->IsGameSAPreLaunch()) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "Game SA prelaunch detected, schedule NotifyCompleteGamePreLaunch task");
-        auto self(weak_from_this());
         std::weak_ptr<UIAbilityRecord> weakAbilityRecord(abilityRecord);
-        auto task = [self, weakAbilityRecord]() {
+        auto task = [self = weak_from_this(), weakAbilityRecord]() {
             auto selfObj = self.lock();
             auto abilityRecordObj = weakAbilityRecord.lock();
             if (selfObj == nullptr || abilityRecordObj == nullptr) {

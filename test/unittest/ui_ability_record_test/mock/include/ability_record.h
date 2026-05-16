@@ -49,7 +49,7 @@ class AbilityRecord : public std::enable_shared_from_this<AbilityRecord> {
 public:
     AbilityRecord(const Want &want, const AppExecFwk::AbilityInfo &abilityInfo,
         const AppExecFwk::ApplicationInfo &applicationInfo, int32_t requestCode)
-        : abilityInfo_(abilityInfo) {}
+        : abilityInfo_(abilityInfo), want_(want) {}
     virtual ~AbilityRecord() = default;
 
     virtual void Init(const AbilityRequest &abilityRequest);
@@ -65,7 +65,16 @@ public:
         return pendingState_;
     }
 
-    inline void SetGameSAPreLaunch(bool) {}
+    inline void SetGameSAPreLaunch(bool isGameSAPreLaunch)
+    {
+        isGameSAPreLaunch_ = isGameSAPreLaunch;
+    }
+
+    inline bool IsGameSAPreLaunch() const
+    {
+        return isGameSAPreLaunch_;
+    }
+
     inline void SetIsNewWant(bool) {}
     inline void SetWant(Want want)
     {
@@ -74,6 +83,7 @@ public:
 protected:
     bool isPrelaunch_ = false;
     bool isHook_ = false;
+    bool isGameSAPreLaunch_ = false;
     AbilityState pendingState_ = AbilityState::INITIAL;
     std::atomic_bool isLastWantBackgroundDriven_ = false;
     std::mutex collaborateWantLock_;

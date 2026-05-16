@@ -42,7 +42,7 @@ std::shared_ptr<UIAbilityRecord> UIAbilityRecord::CreateAbilityRecord(const Abil
         }
     }
     if (abilityRecord->want_.GetBoolParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH, false)) {
-        TAG_LOGD(AAFwkTag::UIABILITY, "abilityRecord: Set game prelaunch flag from want");
+        TAG_LOGI(AAFwkTag::UIABILITY, "abilityRecord: Set game prelaunch flag from want");
         abilityRecord->SetGameSAPreLaunch(true);
     }
     return abilityRecord;

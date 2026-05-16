@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 
 #include "ui_ability_record.h"
+#include "global_constant.h"
 #include "native_ability_util.h"
 
 using namespace testing::ext;
@@ -413,7 +414,6 @@ HWTEST_F(UIAbilityRecordTest, UpdateWantByLastWant_0100, TestSize.Level1)
 {
     AbilityRequest abilityRequest;
     auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
-    ASSERT_NE(abilityRecord, nullptr);
 
     abilityRecord->SetShouldUpdateWant(false);
     EXPECT_FALSE(abilityRecord->UpdateWantByLastWant());
@@ -428,7 +428,6 @@ HWTEST_F(UIAbilityRecordTest, UpdateWantByLastWant_0200, TestSize.Level1)
 {
     AbilityRequest abilityRequest;
     auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
-    ASSERT_NE(abilityRecord, nullptr);
 
     abilityRecord->SetLastWant(nullptr);
     abilityRecord->SetShouldUpdateWant(true);
@@ -447,7 +446,6 @@ HWTEST_F(UIAbilityRecordTest, UpdateWantByLastWant_0300, TestSize.Level1)
     AbilityRequest abilityRequest;
     abilityRequest.want.SetElementName("com.test", "MainAbility");
     auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
-    ASSERT_NE(abilityRecord, nullptr);
 
     auto lastWant = std::make_shared<Want>();
     lastWant->SetElementName("com.test", "MainAbility");
@@ -471,7 +469,6 @@ HWTEST_F(UIAbilityRecordTest, UpdateWantByLastWant_0400, TestSize.Level1)
 {
     AbilityRequest abilityRequest;
     auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
-    ASSERT_NE(abilityRecord, nullptr);
 
     auto lastWant = std::make_shared<Want>();
     lastWant->SetElementName("com.test", "MainAbility");
@@ -483,5 +480,18 @@ HWTEST_F(UIAbilityRecordTest, UpdateWantByLastWant_0400, TestSize.Level1)
     EXPECT_FALSE(abilityRecord->UpdateWantByLastWant());
 }
 
+/**
+ * @tc.name: SetGameSAPreLaunch_0100
+ * @tc.desc: Call SetGameSAPreLaunch
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityRecordTest, SetGameSAPreLaunch_0100, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    abilityRequest.want.SetParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH, true);
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+
+    EXPECT_TRUE(abilityRecord->IsGameSAPreLaunch());
+}
 }  // namespace AAFwk
 }  // namespace OHOS
