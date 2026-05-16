@@ -233,11 +233,6 @@ void AbilityRecord::Init(const AbilityRequest &abilityRequest)
             abilityRequest.abilityInfo.bundleName, abilityRequest.abilityInfo.name, userId)) {
         keepAliveBundle_ = true;
     }
-
-    if (abilityRequest.want.GetBoolParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH, false)) {
-        TAG_LOGD(AAFwkTag::UIABILITY, "abilityRecord: Set game prelaunch flag from want");
-        SetGameSAPreLaunch(true);
-    }
 }
 
 AbilityRecordType AbilityRecord::GetAbilityRecordType()
@@ -337,6 +332,7 @@ int AbilityRecord::LoadAbility(bool isShellCall, bool isStartupHide, pid_t calli
     loadParam.isPreloadStart = isPreloadStart_;
     loadParam.selfPid = selfPid;
     loadParam.byCallStatus = GetByCallStatus();
+    loadParam.isGamePrelaunch = IsGameSAPreLaunch();
     auto userId = abilityInfo_.uid / BASE_USER_RANGE;
     bool isMainUIAbility =
         MainElementUtils::IsMainUIAbility(abilityInfo_.bundleName, abilityInfo_.name, userId);
@@ -399,7 +395,7 @@ bool AbilityRecord::CanRestartResident()
 }
 
 // only for UIAbility
-void AbilityRecord::ForegroundAbility(uint32_t sceneFlag, bool hasLastWant)
+void AbilityRecord::ForegroundAbility(uint32_t sceneFlag)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     isWindowStarted_ = true;
@@ -412,16 +408,7 @@ void AbilityRecord::ForegroundAbility(uint32_t sceneFlag, bool hasLastWant)
     SetAbilityStateInner(AbilityState::FOREGROUNDING);
 #endif // SUPPORT_SCREEN
     lifeCycleStateInfo_.sceneFlag = sceneFlag;
-    Want want;
-    if (hasLastWant) {
-        if (HasLastWant()) {
-            SetWant(*lastWant_);
-            lifeCycleStateInfo_.isNewWant = true;
-            lastWant_ = nullptr;
-        }
-        SetBackgroundDrivenFlag(false);
-    }
-    want = GetWant();
+    auto want = GetWant();
     UpdateDmsCallerInfo(want);
     AbilityRuntime::ErrorMsgGuard errorMsgGuard(token_ ? token_->AsObject() : nullptr,
         reinterpret_cast<uintptr_t>(GetScheduler().GetRefPtr()), "ScheduleAbilityTransaction");
@@ -430,7 +417,7 @@ void AbilityRecord::ForegroundAbility(uint32_t sceneFlag, bool hasLastWant)
         want.SetParam(SPECIFIED_ABILITY_FLAG, GetSpecifiedFlag());
     }
     lifecycleDeal_->ForegroundNew(want, lifeCycleStateInfo_, GetSessionInfo());
-    want.RemoveParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH);
+    RemoveSpecifiedWantParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH);
     SetIsNewWant(false);
     if (!Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
         lifeCycleStateInfo_.sceneFlag = 0;
@@ -447,7 +434,7 @@ void AbilityRecord::ForegroundUIExtensionAbility(uint32_t sceneFlag)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "ForegroundUIExtensionAbility:%{public}s/%{public}s",
-        GetElementName().GetBundleName().c_str(), GetElementName().GetAbilityName().c_str());
+        GetInfoBundleName().c_str(), GetInfoAbilityName().c_str());
     CHECK_POINTER(lifecycleDeal_);
 
     if (IsAbilityState(AbilityState::BACKGROUND)) {
@@ -472,10 +459,10 @@ void AbilityRecord::ForegroundUIExtensionAbility(uint32_t sceneFlag)
 void AbilityRecord::ProcessForegroundAbility(uint32_t tokenId, const ForegroundOptions &options)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "ability record: %{public}s/%{public}s", GetElementName().GetBundleName().c_str(),
-        GetElementName().GetAbilityName().c_str());
-    needCheckAutoStartupStatusBar_ = GetWant().GetBoolParam(HIDDEN_START_AUTOSTARTUP, false);
-    GetWant().RemoveParam(HIDDEN_START_AUTOSTARTUP);
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "ability record: %{public}s/%{public}s", GetInfoBundleName().c_str(),
+        GetInfoAbilityName().c_str());
+    needCheckAutoStartupStatusBar_ = GetBoolParam(HIDDEN_START_AUTOSTARTUP, false);
+    RemoveSpecifiedWantParam(HIDDEN_START_AUTOSTARTUP);
 #ifdef SUPPORT_UPMS
     {
         std::lock_guard guard(wantLock_);
@@ -506,8 +493,8 @@ void AbilityRecord::ProcessForegroundAbility(uint32_t tokenId, const ForegroundO
 
     PostForegroundTimeoutTask();
     if (IsAbilityState(AbilityState::FOREGROUND)) {
-        TAG_LOGD(AAFwkTag::ABILITYMGR, "Activate %{public}s/%{public}s", GetElementName().GetBundleName().c_str(),
-            GetElementName().GetAbilityName().c_str());
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "Activate %{public}s/%{public}s", GetInfoBundleName().c_str(),
+            GetInfoAbilityName().c_str());
         if (IsFrozenByPreload()) {
             SetFrozenByPreload(false);
             auto ret =
@@ -518,8 +505,8 @@ void AbilityRecord::ProcessForegroundAbility(uint32_t tokenId, const ForegroundO
         return;
     }
     // background to active state
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "MoveToForeground, %{public}s/%{public}s", GetElementName().GetBundleName().c_str(),
-        GetElementName().GetAbilityName().c_str());
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "MoveToForeground, %{public}s/%{public}s", GetInfoBundleName().c_str(),
+        GetInfoAbilityName().c_str());
     lifeCycleStateInfo_.sceneFlagBak = options.sceneFlag;
     ResSchedUtil::GetInstance().ReportEventToRSS(GetUid(), GetAbilityInfo().bundleName,
         "THAW_BY_FOREGROUND_ABILITY", GetPid(), GetCallerRecord() ? GetCallerRecord()->GetPid() : -1);
@@ -757,7 +744,7 @@ void AbilityRecord::BackgroundAbility(const Closure &task)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "BackgroundLifecycle %{public}s/%{public}s",
-        GetElementName().GetBundleName().c_str(), GetElementName().GetAbilityName().c_str());
+        GetInfoBundleName().c_str(), GetInfoAbilityName().c_str());
     if (lifecycleDeal_ == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null lifecycleDeal_");
         return;
@@ -1569,9 +1556,7 @@ void SystemAbilityCallerRecord::SendResultToSystemAbility(int requestCode,
 void AbilityRecord::RemoveSpecifiedWantParam(const std::string &key)
 {
     std::lock_guard guard(wantLock_);
-    if (want_.HasParameter(key)) {
-        want_.RemoveParam(key);
-    }
+    want_.RemoveParam(key);
 }
 
 void AbilityRecord::RemoveCallerRequestCode(std::shared_ptr<AbilityRecord> callerAbilityRecord, int32_t requestCode)
@@ -2136,6 +2121,48 @@ Want AbilityRecord::GetWant() const
 {
     std::lock_guard guard(wantLock_);
     return want_;
+}
+
+std::string AbilityRecord::GetAbilityName() const
+{
+    std::lock_guard guard(wantLock_);
+    return want_.GetElement().GetAbilityName();
+}
+
+std::string AbilityRecord::GetBundleName() const
+{
+    std::lock_guard guard(wantLock_);
+    return want_.GetBundle();
+}
+
+std::string AbilityRecord::GetModuleName() const
+{
+    std::lock_guard guard(wantLock_);
+    return want_.GetModuleName();
+}
+
+std::string AbilityRecord::GetStringParam(const std::string &key) const
+{
+    std::lock_guard guard(wantLock_);
+    return want_.GetStringParam(key);
+}
+
+int AbilityRecord::GetIntParam(const std::string &key, int defaultValue) const
+{
+    std::lock_guard guard(wantLock_);
+    return want_.GetIntParam(key, defaultValue);
+}
+
+bool AbilityRecord::GetBoolParam(const std::string &key, bool defaultValue) const
+{
+    std::lock_guard guard(wantLock_);
+    return want_.GetBoolParam(key, defaultValue);
+}
+
+bool AbilityRecord::HasParameter(const std::string &key) const
+{
+    std::lock_guard guard(wantLock_);
+    return want_.HasParameter(key);
 }
 
 void AbilityRecord::RemoveSignatureInfo()
@@ -3317,7 +3344,7 @@ bool AbilityRecord::ReportAbilityConnectionRelations()
     auto callerPid = recordCallerInfo->callerPid;
     auto callerUid = recordCallerInfo->callerUid;
     auto callerBundleName = recordCallerInfo->callerBundleName;
-    auto targetBundleName = GetElementName().GetBundleName();
+    auto targetBundleName = GetBundleName();
     if (targetPid <= 0 || targetUid <= 0 || callerPid <= 0 || callerUid <= 0) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Invalid target process: targetPid=%{public}d, targetUid=%{public}d, "
             "callerPid=%{public}d, callerUid=%{public}d", targetPid, targetUid, callerPid, callerUid);

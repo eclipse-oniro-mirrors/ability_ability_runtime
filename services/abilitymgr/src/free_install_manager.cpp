@@ -120,7 +120,7 @@ int FreeInstallManager::StartFreeInstall(const Want &want, int32_t userId, int r
     sptr<IRemoteObject> callerToken, std::shared_ptr<FreeInstallParams> param)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    TAG_LOGI(AAFwkTag::FREE_INSTALL, "StartFreeInstall:%{public}s", want.GetElement().GetBundleName().c_str());
+    TAG_LOGI(AAFwkTag::FREE_INSTALL, "StartFreeInstall:%{public}s", want.GetBundle().c_str());
     bool skipPermissionCheck = param != nullptr ? param->skipStartFreeInstallPermissionCheck : false;
     if (!skipPermissionCheck && !VerifyStartFreeInstallPermission(callerToken)) {
         TAG_LOGE(AAFwkTag::FREE_INSTALL, "permission denied");
@@ -164,7 +164,7 @@ int FreeInstallManager::StartFreeInstall(const Want &want, int32_t userId, int r
         auto future = info.promise->get_future();
         std::future_status status = future.wait_for(std::chrono::milliseconds(DELAY_LOCAL_FREE_INSTALL_TIMEOUT));
         if (status == std::future_status::timeout) {
-            RemoveFreeInstallInfo(info.want.GetElement().GetBundleName(), info.want.GetElement().GetAbilityName(),
+            RemoveFreeInstallInfo(info.want.GetBundle(), info.want.GetElement().GetAbilityName(),
                 info.want.GetStringParam(Want::PARAM_RESV_START_TIME));
             return FREE_INSTALL_TIMEOUT;
         }
@@ -266,9 +266,10 @@ void FreeInstallManager::NotifyDmsCallback(const Want &want, int resultCode)
         return;
     }
 
+    auto srcAbilityName = want.GetElement().GetAbilityName();
     for (auto it = dmsFreeInstallCbs_.begin(); it != dmsFreeInstallCbs_.end();) {
         std::string abilityName = (*it).want.GetElement().GetAbilityName();
-        if (want.GetElement().GetAbilityName() == abilityName) {
+        if (srcAbilityName == abilityName) {
             HandleDMSCallback(resultCode, *it);
             it = dmsFreeInstallCbs_.erase(it);
         } else {
@@ -290,16 +291,16 @@ void FreeInstallManager::NotifyFreeInstallResult(int32_t recordId, const Want &w
         }
 
         bool isFromRemote = want.GetBoolParam(FROM_REMOTE_KEY, false);
+        auto srcBundleName = want.GetBundle();
+        auto srcAbilityName = want.GetElement().GetAbilityName();
+        auto srcStartTime = want.GetStringParam(Want::PARAM_RESV_START_TIME);
+        auto srcUri = want.GetUriString();
         for (auto it = freeInstallList_.begin(); it != freeInstallList_.end();) {
             FreeInstallInfo &freeInstallInfo = *it;
-            std::string bundleName = freeInstallInfo.want.GetElement().GetBundleName();
-            std::string abilityName = freeInstallInfo.want.GetElement().GetAbilityName();
-            std::string startTime = freeInstallInfo.want.GetStringParam(Want::PARAM_RESV_START_TIME);
-            std::string url = freeInstallInfo.want.GetUriString();
-            if (want.GetElement().GetBundleName() != bundleName ||
-                want.GetElement().GetAbilityName() != abilityName ||
-                want.GetStringParam(Want::PARAM_RESV_START_TIME) != startTime ||
-                want.GetUriString() != url) {
+            if (srcBundleName != freeInstallInfo.want.GetBundle() ||
+                srcAbilityName != freeInstallInfo.want.GetElement().GetAbilityName() ||
+                srcStartTime != freeInstallInfo.want.GetStringParam(Want::PARAM_RESV_START_TIME) ||
+                srcUri != freeInstallInfo.want.GetUriString()) {
                 it++;
                 continue;
             }
@@ -330,7 +331,7 @@ void FreeInstallManager::HandleOnFreeInstallSuccess(int32_t recordId, FreeInstal
 
     if (isAsync) {
         std::string startTime = freeInstallInfo.want.GetStringParam(Want::PARAM_RESV_START_TIME);
-        std::string bundleName = freeInstallInfo.want.GetElement().GetBundleName();
+        std::string bundleName = freeInstallInfo.want.GetBundle();
         std::string abilityName = freeInstallInfo.want.GetElement().GetAbilityName();
         if (freeInstallInfo.isPreStartMissionCalled) {
             StartAbilityByPreInstall(recordId, freeInstallInfo, bundleName, abilityName, startTime);
@@ -378,7 +379,7 @@ void FreeInstallManager::HandleOnFreeInstallFail(int32_t recordId, FreeInstallIn
             return;
         }
 
-        std::string bundleName = freeInstallInfo.want.GetElement().GetBundleName();
+        std::string bundleName = freeInstallInfo.want.GetBundle();
         std::string abilityName = freeInstallInfo.want.GetElement().GetAbilityName();
         DelayedSingleton<FreeInstallObserverManager>::GetInstance()->OnInstallFinished(
             recordId, bundleName, abilityName, startTime, resultCode);
@@ -564,7 +565,7 @@ int FreeInstallManager::ConnectFreeInstall(const Want &want, int32_t userId,
 {
     auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
     CHECK_POINTER_AND_RETURN(bundleMgrHelper, GET_ABILITY_SERVICE_FAILED);
-    std::string wantDeviceId = want.GetElement().GetDeviceID();
+    std::string wantDeviceId = want.GetDeviceId();
     if (!(localDeviceId == wantDeviceId || wantDeviceId.empty())) {
         TAG_LOGE(AAFwkTag::FREE_INSTALL, "deviceID empty");
         return INVALID_PARAMETERS_ERR;
@@ -574,7 +575,7 @@ int FreeInstallManager::ConnectFreeInstall(const Want &want, int32_t userId,
     bool isAgentConnect = extensionType == AppExecFwk::ExtensionAbilityType::AGENT;
     if (!isSaCall) {
         std::string wantAbilityName = want.GetElement().GetAbilityName();
-        std::string wantBundleName = want.GetElement().GetBundleName();
+        std::string wantBundleName = want.GetBundle();
         if (wantBundleName.empty() || wantAbilityName.empty()) {
             TAG_LOGE(AAFwkTag::FREE_INSTALL, "wantBundleName or wantAbilityName empty.");
             return INVALID_PARAMETERS_ERR;
@@ -595,7 +596,7 @@ int FreeInstallManager::ConnectFreeInstall(const Want &want, int32_t userId,
     std::vector<AppExecFwk::ExtensionAbilityInfo> extensionInfos;
     TAG_LOGD(AAFwkTag::FREE_INSTALL,
         "bundleName: %{public}s, moduleName: %{public}s, abilityName: %{public}s, userId: %{public}d",
-        want.GetElement().GetBundleName().c_str(), want.GetElement().GetModuleName().c_str(),
+        want.GetBundle().c_str(), want.GetModuleName().c_str(),
         want.GetElement().GetAbilityName().c_str(), userId);
     if (!IN_PROCESS_CALL(bundleMgrHelper->QueryAbilityInfo(
         want, AppExecFwk::AbilityInfoFlag::GET_ABILITY_INFO_WITH_APPLICATION, userId, abilityInfo)) &&
@@ -644,9 +645,9 @@ void FreeInstallManager::PostUpgradeAtomicServiceTask(int resultCode, const Want
         }
         TAG_LOGD(AAFwkTag::FREE_INSTALL,
             "bundleName: %{public}s, moduleName: %{public}s, abilityName: %{public}s, userId: %{public}d",
-            want.GetElement().GetBundleName().c_str(), want.GetElement().GetModuleName().c_str(),
+            want.GetBundle().c_str(), want.GetModuleName().c_str(),
             want.GetElement().GetAbilityName().c_str(), userId);
-        std::string nameKey = want.GetElement().GetBundleName() + want.GetElement().GetModuleName();
+        std::string nameKey = want.GetBundle() + want.GetModuleName();
         bool needUpgrade = false;
         {
             std::lock_guard<ffrt::mutex> lock(freeInstallManager->timestampMapLock_);
@@ -695,7 +696,7 @@ void FreeInstallManager::RemoveFreeInstallInfo(const std::string &bundleName, co
 {
     std::lock_guard<ffrt::mutex> lock(freeInstallListLock_);
     for (auto it = freeInstallList_.begin(); it != freeInstallList_.end();) {
-        if ((*it).want.GetElement().GetBundleName() == bundleName &&
+        if ((*it).want.GetBundle() == bundleName &&
             (*it).want.GetElement().GetAbilityName() == abilityName &&
             (*it).want.GetStringParam(Want::PARAM_RESV_START_TIME) == startTime) {
             it = freeInstallList_.erase(it);
@@ -737,7 +738,7 @@ int FreeInstallManager::SetAppRunningState(Want &want)
         return ERR_NULL_APP_MGR_CLIENT;
     }
 
-    bool isAppRunning = appMgr->GetAppRunningStateByBundleName(want.GetElement().GetBundleName());
+    bool isAppRunning = appMgr->GetAppRunningStateByBundleName(want.GetBundle());
     TAG_LOGI(AAFwkTag::FREE_INSTALL, "isAppRunning:%{public}d", static_cast<int>(isAppRunning));
     want.SetParam(KEY_IS_APP_RUNNING, isAppRunning);
     return ERR_OK;
@@ -748,7 +749,7 @@ bool FreeInstallManager::GetFreeInstallTaskInfo(const std::string& bundleName, c
 {
     std::lock_guard<ffrt::mutex> lock(freeInstallListLock_);
     for (auto it = freeInstallList_.begin(); it != freeInstallList_.end();) {
-        if ((*it).want.GetElement().GetBundleName() == bundleName &&
+        if ((*it).want.GetBundle() == bundleName &&
             (*it).want.GetElement().GetAbilityName() == abilityName &&
             (*it).want.GetStringParam(Want::PARAM_RESV_START_TIME) == startTime) {
             taskInfo = *it;
@@ -777,7 +778,7 @@ void FreeInstallManager::SetSCBCallStatus(const std::string& bundleName, const s
 {
     std::lock_guard<ffrt::mutex> lock(freeInstallListLock_);
     for (auto it = freeInstallList_.begin(); it != freeInstallList_.end();) {
-        if ((*it).want.GetElement().GetBundleName() == bundleName &&
+        if ((*it).want.GetBundle() == bundleName &&
             (*it).want.GetElement().GetAbilityName() == abilityName &&
             (*it).want.GetStringParam(Want::PARAM_RESV_START_TIME) == startTime) {
             (*it).isStartUIAbilityBySCBCalled = scbCallStatus;
@@ -792,7 +793,7 @@ void FreeInstallManager::SetPreStartMissionCallStatus(const std::string& bundleN
 {
     std::lock_guard<ffrt::mutex> lock(freeInstallListLock_);
     for (auto it = freeInstallList_.begin(); it != freeInstallList_.end();) {
-        if ((*it).want.GetElement().GetBundleName() == bundleName &&
+        if ((*it).want.GetBundle() == bundleName &&
             (*it).want.GetElement().GetAbilityName() == abilityName &&
             (*it).want.GetStringParam(Want::PARAM_RESV_START_TIME) == startTime) {
             (*it).isPreStartMissionCalled = preStartMissionCallStatus;
@@ -807,7 +808,7 @@ void FreeInstallManager::SetFreeInstallTaskSessionId(const std::string& bundleNa
 {
     std::lock_guard<ffrt::mutex> lock(freeInstallListLock_);
     for (auto it = freeInstallList_.begin(); it != freeInstallList_.end();) {
-        if ((*it).want.GetElement().GetBundleName() == bundleName &&
+        if ((*it).want.GetBundle() == bundleName &&
             (*it).want.GetElement().GetAbilityName() == abilityName &&
             (*it).want.GetStringParam(Want::PARAM_RESV_START_TIME) == startTime) {
             (*it).want.SetParam(KEY_SESSION_ID, sessionId);
@@ -822,7 +823,7 @@ void FreeInstallManager::NotifyInsightIntentFreeInstallResult(const Want &want, 
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGI(AAFwkTag::FREE_INSTALL, "insight install result:%{public}d", resultCode);
     if (resultCode != ERR_OK) {
-        RemoveFreeInstallInfo(want.GetElement().GetBundleName(), want.GetElement().GetAbilityName(),
+        RemoveFreeInstallInfo(want.GetBundle(), want.GetElement().GetAbilityName(),
             want.GetStringParam(Want::PARAM_RESV_START_TIME));
         NotifyInsightIntentExecuteDone(want, ERR_INVALID_VALUE);
         return;
@@ -835,17 +836,17 @@ void FreeInstallManager::NotifyInsightIntentFreeInstallResult(const Want &want, 
     }
 
     for (auto it = freeInstallList_.begin(); it != freeInstallList_.end();) {
-        std::string bundleName = (*it).want.GetElement().GetBundleName();
+        std::string bundleName = (*it).want.GetBundle();
         std::string abilityName = (*it).want.GetElement().GetAbilityName();
         std::string startTime = (*it).want.GetStringParam(Want::PARAM_RESV_START_TIME);
-        if (want.GetElement().GetBundleName() != bundleName ||
+        if (want.GetBundle() != bundleName ||
             want.GetElement().GetAbilityName() != abilityName ||
             want.GetStringParam(Want::PARAM_RESV_START_TIME) != startTime) {
             it++;
             continue;
         }
 
-        auto moduleName = (*it).want.GetElement().GetModuleName();
+        auto moduleName = (*it).want.GetModuleName();
         auto insightIntentName = (*it).want.GetStringParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME);
         auto executeMode = static_cast<AppExecFwk::ExecuteMode>(
             it->want.GetIntParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_MODE, 0));

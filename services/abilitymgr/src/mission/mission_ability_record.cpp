@@ -183,7 +183,7 @@ void MissionAbilityRecord::ProcessForegroundAbility(const std::shared_ptr<Abilit
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::ABILITYMGR, "SUPPORT_GRAPHICS: ability record: %{public}s/%{public}s",
-        GetElementName().GetBundleName().c_str(), GetElementName().GetAbilityName().c_str());
+        GetBundleName().c_str(), GetAbilityName().c_str());
 
     StartingWindowHot();
     auto flag = !IsForeground();
@@ -193,12 +193,12 @@ void MissionAbilityRecord::ProcessForegroundAbility(const std::shared_ptr<Abilit
     PostForegroundTimeoutTask();
     if (IsAbilityState(AbilityState::FOREGROUND)) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "Activate %{public}s/%{public}s",
-            GetElementName().GetBundleName().c_str(), GetElementName().GetAbilityName().c_str());
+            GetBundleName().c_str(), GetAbilityName().c_str());
         ForegroundAbility(sceneFlag);
     } else {
         // background to active state
         TAG_LOGD(AAFwkTag::ABILITYMGR, "MoveToForeground, %{public}s/%{public}s",
-            GetElementName().GetBundleName().c_str(), GetElementName().GetAbilityName().c_str());
+            GetBundleName().c_str(), GetAbilityName().c_str());
         lifeCycleStateInfo_.sceneFlagBak = sceneFlag;
         DelayedSingleton<AppScheduler>::GetInstance()->MoveToForeground(token_);
     }
@@ -210,7 +210,7 @@ void MissionAbilityRecord::ProcessForegroundAbility(bool isRecent, const Ability
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::ABILITYMGR, "SUPPORT_GRAPHICS: ability record: %{public}s/%{public}s",
-        GetElementName().GetBundleName().c_str(), GetElementName().GetAbilityName().c_str());
+        GetBundleName().c_str(), GetAbilityName().c_str());
 #ifdef SUPPORT_UPMS
     {
         std::lock_guard guard(wantLock_);
@@ -237,12 +237,12 @@ void MissionAbilityRecord::ProcessForegroundAbility(bool isRecent, const Ability
         PostForegroundTimeoutTask();
         if (IsAbilityState(AbilityState::FOREGROUND)) {
             TAG_LOGD(AAFwkTag::ABILITYMGR, "Activate %{public}s/%{public}s",
-                GetElementName().GetBundleName().c_str(), GetElementName().GetAbilityName().c_str());
+                GetBundleName().c_str(), GetAbilityName().c_str());
             ForegroundAbility(sceneFlag);
         } else {
             // background to active state
             TAG_LOGD(AAFwkTag::ABILITYMGR, "MoveToForeground, %{public}s/%{public}s",
-                GetElementName().GetBundleName().c_str(), GetElementName().GetAbilityName().c_str());
+                GetBundleName().c_str(), GetAbilityName().c_str());
             lifeCycleStateInfo_.sceneFlagBak = sceneFlag;
             DelayedSingleton<AppScheduler>::GetInstance()->MoveToForeground(token_);
         }

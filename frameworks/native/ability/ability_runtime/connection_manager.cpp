@@ -131,15 +131,16 @@ bool ConnectionManager::MatchConnection(
     if (accountId != connection.first.userid) {
         return false;
     }
-    if (!connectReceiver.GetElement().GetAbilityName().empty()) {
+    auto receiverEle = connectReceiver.GetElement();
+    if (!receiverEle.GetAbilityName().empty()) {
         return connectCaller == connection.first.connectCaller &&
-            connectReceiver.GetElement().GetBundleName() == connection.first.connectReceiver.GetBundleName() &&
-            connectReceiver.GetElement().GetModuleName() == connection.first.connectReceiver.GetModuleName() &&
-            connectReceiver.GetElement().GetAbilityName() == connection.first.connectReceiver.GetAbilityName();
+            receiverEle.GetBundleName() == connection.first.connectReceiver.GetBundleName() &&
+            receiverEle.GetModuleName() == connection.first.connectReceiver.GetModuleName() &&
+            receiverEle.GetAbilityName() == connection.first.connectReceiver.GetAbilityName();
     } else {
         // ImplicitConnect
         return connectCaller == connection.first.connectCaller &&
-            connectReceiver.GetElement().GetBundleName() == connection.first.connectReceiver.GetBundleName() &&
+            receiverEle.GetBundleName() == connection.first.connectReceiver.GetBundleName() &&
             connectReceiver.GetOperation() == connection.first.connectReceiver;
     }
 }

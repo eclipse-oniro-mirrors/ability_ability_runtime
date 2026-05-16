@@ -48,9 +48,10 @@ ErrCode ControlInterceptor::DoProcess(AbilityInterceptorParam param)
                 controlParam.SetParam(INTERCEPT_PARAMETERS, interceptParam);
             }
             controlWant->SetParams(controlParam);
-            controlWant->SetParam(INTERCEPT_BUNDLE_NAME, param.want.GetElement().GetBundleName());
-            controlWant->SetParam(INTERCEPT_ABILITY_NAME, param.want.GetElement().GetAbilityName());
-            controlWant->SetParam(INTERCEPT_MODULE_NAME, param.want.GetElement().GetModuleName());
+            auto wantEle = param.want.GetElement();
+            controlWant->SetParam(INTERCEPT_BUNDLE_NAME, wantEle.GetBundleName());
+            controlWant->SetParam(INTERCEPT_ABILITY_NAME, wantEle.GetAbilityName());
+            controlWant->SetParam(INTERCEPT_MODULE_NAME, wantEle.GetModuleName());
             controlRule.controlWant = controlWant;
         }
         int ret = IN_PROCESS_CALL(AbilityManagerClient::GetInstance()->StartAbility(*controlRule.controlWant,

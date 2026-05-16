@@ -60,9 +60,9 @@ int32_t OEExtensionUtils::ValidateCaller(
         return ERR_INVALID_CALLER;
     }
 
-    if (want.GetElement().GetBundleName() != abilityInfo.bundleName) {
+    if (want.GetBundle() != abilityInfo.bundleName) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "want bundleName %{public}s does not match caller bundleName %{public}s",
-            want.GetElement().GetBundleName().c_str(), abilityInfo.bundleName.c_str());
+            want.GetBundle().c_str(), abilityInfo.bundleName.c_str());
         return INVALID_PARAMETERS_ERR;
     }
 

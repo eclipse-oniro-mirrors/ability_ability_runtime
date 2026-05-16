@@ -35,7 +35,7 @@ int KioskInterceptor::DoProcess(AbilityInterceptorParam param)
     if (!kioskManager.IsInKioskMode()) {
         return ERR_OK;
     }
-    auto bundleName = param.want.GetElement().GetBundleName();
+    auto bundleName = param.want.GetBundle();
     if (!kioskManager.IsInWhiteList(bundleName)) {
         return ERR_KIOSK_MODE_NOT_IN_WHITELIST;
     }

@@ -134,7 +134,7 @@ void AbilityStartWithWaitObserverManager::NotifyAATerminateWait(
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null abilityRecord");
         return;
     }
-    auto observerId = abilityRecord->GetWant().GetIntParam(Want::START_ABILITY_WITH_WAIT_OBSERVER_ID_KEY, -1);
+    auto observerId = abilityRecord->GetIntParam(Want::START_ABILITY_WITH_WAIT_OBSERVER_ID_KEY, -1);
     if (observerId == -1) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "invaid observerId");
         return;
@@ -188,7 +188,7 @@ void AbilityStartWithWaitObserverManager::SetColdStartForShellCall(std::shared_p
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null abilityRecord");
         return;
     }
-    auto observerId = abilityRecord->GetWant().GetIntParam(Want::START_ABILITY_WITH_WAIT_OBSERVER_ID_KEY, -1);
+    auto observerId = abilityRecord->GetIntParam(Want::START_ABILITY_WITH_WAIT_OBSERVER_ID_KEY, -1);
     if (observerId == -1) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "invaid observerId");
         return;

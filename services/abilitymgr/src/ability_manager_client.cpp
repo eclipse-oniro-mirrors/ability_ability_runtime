@@ -151,7 +151,7 @@ ErrCode AbilityManagerClient::StartAbility(const Want &want, int requestCode, in
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "StartAbility %{public}s/%{public}s, userId:%{public}d, "
         "appCloneIndex:%{public}d, requestCode:%{public}d, specifiedFullTokenId:%{public}" PRIu64 "",
-        want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(),
+        want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(),
         userId, want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1), requestCode,
         specifiedFullTokenId);
 
@@ -163,7 +163,7 @@ ErrCode AbilityManagerClient::StartAbilityWithWait(Want &want, sptr<IAbilityStar
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::ABILITYMGR, "ability:%{public}s, bundle:%{public}s",
-        want.GetElement().GetAbilityName().c_str(), want.GetElement().GetBundleName().c_str());
+        want.GetElement().GetAbilityName().c_str(), want.GetBundle().c_str());
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
 
@@ -179,7 +179,7 @@ ErrCode AbilityManagerClient::StartAbility(
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "StartAbility ability:%{public}s/%{public}s, userId:%{public}d, "
         "appCloneIndex:%{public}d, requestCode:%{public}d, specifiedFullTokenId:%{public}" PRIu64 "",
-        want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(),
+        want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(),
         userId, want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1), requestCode,
         specifiedFullTokenId);
     HandleDlpApp(const_cast<Want &>(want));
@@ -203,7 +203,7 @@ ErrCode AbilityManagerClient::StartAbilityByInsightIntent(
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGD(AAFwkTag::ABILITYMGR, "ability:%{public}s, bundle:%{public}s, intentId:%{public}" PRIu64,
-        want.GetElement().GetAbilityName().c_str(), want.GetElement().GetBundleName().c_str(), intentId);
+        want.GetElement().GetAbilityName().c_str(), want.GetBundle().c_str(), intentId);
     HandleDlpApp(const_cast<Want &>(want));
     return abms->StartAbilityByInsightIntent(want, callerToken, intentId, userId);
 }
@@ -215,7 +215,7 @@ ErrCode AbilityManagerClient::StartAbilityByOEExt(
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "StartAbilityByOEExt ability:%{public}s/%{public}s, hostPid=%{public}d, "
-        "specifiedFlag=%{public}s", want.GetElement().GetBundleName().c_str(),
+        "specifiedFlag=%{public}s", want.GetBundle().c_str(),
         want.GetElement().GetAbilityName().c_str(), hostPid, specifiedFlag.c_str());
     HandleDlpApp(const_cast<Want &>(want));
     return abms->StartAbilityByOEExt(want, callerToken, hostPid, specifiedFlag);
@@ -228,7 +228,7 @@ ErrCode AbilityManagerClient::StartAbility(const Want &want, const AbilityStartS
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "StartAbility ability:%{public}s/%{public}s, userId:%{public}d, "
-        "appCloneIndex:%{public}d, requestCode:%{public}d", want.GetElement().GetBundleName().c_str(),
+        "appCloneIndex:%{public}d, requestCode:%{public}d", want.GetBundle().c_str(),
         want.GetElement().GetAbilityName().c_str(), userId, want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1),
         requestCode);
     HandleDlpApp(const_cast<Want &>(want));
@@ -243,7 +243,7 @@ ErrCode AbilityManagerClient::StartAbility(const Want &want, const StartOptions 
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "StartAbility ability:%{public}s/%{public}s, userId:%{public}d, "
         "appCloneIndex:%{public}d, requestCode:%{public}d, splitRatioPreference:%{public}d",
-        want.GetElement().GetBundleName().c_str(),
+        want.GetBundle().c_str(),
         want.GetElement().GetAbilityName().c_str(), userId, want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1),
         requestCode, startOptions.GetSplitRatioPreference());
     HandleDlpApp(const_cast<Want &>(want));
@@ -258,7 +258,7 @@ ErrCode AbilityManagerClient::StartAbilityAsCaller(
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "StartAbilityAsCaller ability:%{public}s/%{public}s, userId:%{public}d, "
-        "appIndex:%{public}d", want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(),
+        "appIndex:%{public}d", want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(),
         userId, want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1));
     HandleDlpApp(const_cast<Want &>(want));
     return abms->StartAbilityAsCaller(want, callerToken, asCallerSourceToken, userId, requestCode);
@@ -272,7 +272,7 @@ ErrCode AbilityManagerClient::StartAbilityAsCaller(const Want &want, const Start
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "StartAbilityAsCaller ability:%{public}s/%{public}s, userId:%{public}d, "
-        "appIndex:%{public}d", want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(),
+        "appIndex:%{public}d", want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(),
         userId, want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1));
     HandleDlpApp(const_cast<Want &>(want));
     return abms->StartAbilityAsCaller(want, startOptions, callerToken, asCallerSourceToken, userId, requestCode);
@@ -285,7 +285,7 @@ ErrCode AbilityManagerClient::StartAbilityForResultAsCaller(
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "StartAbilityForResultAsCaller ability:%{public}s/%{public}s, userId:%{public}d",
-        want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(), userId);
+        want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(), userId);
     HandleDlpApp(const_cast<Want &>(want));
     return abms->StartAbilityForResultAsCaller(want, callerToken, requestCode, userId);
 }
@@ -297,7 +297,7 @@ ErrCode AbilityManagerClient::StartAbilityForResultAsCaller(const Want &want, co
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "StartAbilityForResultAsCaller ability:%{public}s/%{public}s, userId:%{public}d",
-        want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(), userId);
+        want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(), userId);
     HandleDlpApp(const_cast<Want &>(want));
     return abms->StartAbilityForResultAsCaller(want, startOptions, callerToken, requestCode, userId);
 }
@@ -377,7 +377,7 @@ ErrCode AbilityManagerClient::StartUIAbilityWithCallback(const Want &want, sptr<
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "StartUIAbilityWithCallback ability:%{public}s/%{public}s",
-        want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str());
+        want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str());
     return abms->StartUIAbilityWithCallback(want, callerToken, callback);
 }
 
@@ -396,7 +396,7 @@ ErrCode AbilityManagerClient::StartExtensionAbility(const Want &want, sptr<IRemo
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::SERVICE_EXT, "name:%{public}s %{public}s, userId=%{public}d.",
-        want.GetElement().GetAbilityName().c_str(), want.GetElement().GetBundleName().c_str(), userId);
+        want.GetElement().GetAbilityName().c_str(), want.GetBundle().c_str(), userId);
     return abms->StartExtensionAbility(want, callerToken, userId, extensionType);
 }
 
@@ -420,7 +420,7 @@ ErrCode AbilityManagerClient::PreloadUIExtensionAbility(
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "elementName:%{public}s/%{public}s, hostBundleName:%{public}s",
-        want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(), hostBundleName.c_str());
+        want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(), hostBundleName.c_str());
     return abms->PreloadUIExtensionAbility(want, hostBundleName, userId, hostPid, requestCode);
 }
 
@@ -454,7 +454,7 @@ ErrCode AbilityManagerClient::StartUIExtensionAbility(sptr<SessionInfo> extensio
     CHECK_POINTER_RETURN_INVALID_VALUE(extensionSessionInfo);
     TAG_LOGD(AAFwkTag::ABILITYMGR, "name:%{public}s %{public}s, persistentId:%{public}d, userId:%{public}d",
         extensionSessionInfo->want.GetElement().GetAbilityName().c_str(),
-        extensionSessionInfo->want.GetElement().GetBundleName().c_str(), extensionSessionInfo->persistentId, userId);
+        extensionSessionInfo->want.GetBundle().c_str(), extensionSessionInfo->persistentId, userId);
     return abms->StartUIExtensionAbility(extensionSessionInfo, userId);
 }
 
@@ -470,7 +470,7 @@ ErrCode AbilityManagerClient::StartUIAbilityBySCB(sptr<SessionInfo> sessionInfo,
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "scb call, StartUIAbilityBySCB target: %{public}s/%{public}s, flags: %{public}u, "
         "persistentId: %{public}d, appIndex: %{public}d, pageConfigSize:%{public}zu, requestCode:%{public}d",
-        sessionInfo->want.GetElement().GetBundleName().c_str(),
+        sessionInfo->want.GetBundle().c_str(),
         sessionInfo->want.GetElement().GetAbilityName().c_str(),
         sessionInfo->want.GetFlags(), sessionInfo->persistentId,
         sessionInfo->want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1), params.pageConfig.size(),
@@ -484,7 +484,7 @@ ErrCode AbilityManagerClient::StopExtensionAbility(const Want &want, sptr<IRemot
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::SERVICE_EXT, "name:%{public}s %{public}s, userId=%{public}d.",
-        want.GetElement().GetAbilityName().c_str(), want.GetElement().GetBundleName().c_str(), userId);
+        want.GetElement().GetAbilityName().c_str(), want.GetBundle().c_str(), userId);
     return abms->StopExtensionAbility(want, callerToken, userId, extensionType);
 }
 
@@ -530,7 +530,7 @@ ErrCode AbilityManagerClient::TerminateUIExtensionAbility(sptr<SessionInfo> exte
     CHECK_POINTER_RETURN_INVALID_VALUE(extensionSessionInfo);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "name: %{public}s %{public}s, persistentId: %{public}d",
         extensionSessionInfo->want.GetElement().GetAbilityName().c_str(),
-        extensionSessionInfo->want.GetElement().GetBundleName().c_str(), extensionSessionInfo->persistentId);
+        extensionSessionInfo->want.GetBundle().c_str(), extensionSessionInfo->persistentId);
     return abms->TerminateUIExtensionAbility(extensionSessionInfo, resultCode, resultWant);
 }
 
@@ -618,7 +618,7 @@ ErrCode AbilityManagerClient::MinimizeUIExtensionAbility(sptr<SessionInfo> exten
     CHECK_POINTER_RETURN_INVALID_VALUE(extensionSessionInfo);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "name: %{public}s %{public}s, persistentId: %{public}d, fromUser: %{public}d",
         extensionSessionInfo->want.GetElement().GetAbilityName().c_str(),
-        extensionSessionInfo->want.GetElement().GetBundleName().c_str(), extensionSessionInfo->persistentId, fromUser);
+        extensionSessionInfo->want.GetBundle().c_str(), extensionSessionInfo->persistentId, fromUser);
     return abms->MinimizeUIExtensionAbility(extensionSessionInfo, fromUser);
 }
 
@@ -634,7 +634,7 @@ ErrCode AbilityManagerClient::MinimizeUIAbilityBySCB(sptr<SessionInfo> sessionIn
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "scb call, MinimizeUIAbilityBySCB target: %{public}s/%{public}s, "
         "persistentId: %{public}d, backgroundReason: %{public}d",
-        sessionInfo->want.GetElement().GetBundleName().c_str(),
+        sessionInfo->want.GetBundle().c_str(),
         sessionInfo->want.GetElement().GetAbilityName().c_str(), sessionInfo->persistentId, backgroundReason);
     return abms->MinimizeUIAbilityBySCB(sessionInfo, fromUser, sceneFlag, backgroundReason);
 }
@@ -651,7 +651,7 @@ ErrCode AbilityManagerClient::ConnectAbility(const Want &want, sptr<IAbilityConn
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::SERVICE_EXT, "name:%{public}s %{public}s, userId:%{public}d",
-        want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(), userId);
+        want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(), userId);
     return abms->ConnectAbilityCommon(want, connect, nullptr, AppExecFwk::ExtensionAbilityType::SERVICE, userId,
         false, 0, loadTimeout);
 }
@@ -664,7 +664,7 @@ ErrCode AbilityManagerClient::ConnectAbility(
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::SERVICE_EXT, "name:%{public}s %{public}s, userId:%{public}d, "
-        "specifiedFullTokenId:%{public}" PRIu64 "", want.GetElement().GetBundleName().c_str(),
+        "specifiedFullTokenId:%{public}" PRIu64 "", want.GetBundle().c_str(),
         want.GetElement().GetAbilityName().c_str(), userId, specifiedFullTokenId);
     return abms->ConnectAbilityCommon(want, connect, callerToken, AppExecFwk::ExtensionAbilityType::SERVICE, userId,
         false, specifiedFullTokenId);
@@ -678,7 +678,7 @@ ErrCode AbilityManagerClient::ConnectAbilityWithIndirectCallerInfo(const Want &w
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::SERVICE_EXT, "name:%{public}s %{public}s, userId:%{public}d",
-        want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(), userId);
+        want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(), userId);
     return abms->ConnectAbilityCommon(want, connect, callerToken, extensionType, userId, false, 0, 0,
         indirectCallerInfo);
 }
@@ -691,7 +691,7 @@ ErrCode AbilityManagerClient::ConnectAbilityWithExtensionType(
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "%{public}s/%{public}s, userId:%{public}d",
-        want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(), userId);
+        want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(), userId);
     return abms->ConnectAbilityCommon(want, connect, callerToken, extensionType, userId);
 }
 
@@ -702,7 +702,7 @@ ErrCode AbilityManagerClient::ConnectUIServiceExtesnionAbility(
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "name:%{public}s %{public}s, userId:%{public}d",
-        want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(), userId);
+        want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(), userId);
     return abms->ConnectAbilityCommon(want, connect, callerToken,
         AppExecFwk::ExtensionAbilityType::UI_SERVICE, userId);
 }
@@ -714,13 +714,13 @@ ErrCode AbilityManagerClient::ConnectDataShareExtensionAbility(const Want &want,
     auto abms = GetAbilityManager();
     if (abms == nullptr) {
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "failed,bundleName:%{public}s,abilityName:%{public}s,uri:%{public}s",
-            want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(),
+            want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(),
             want.GetUriString().c_str());
         return ABILITY_SERVICE_NOT_CONNECTED;
     }
 
     TAG_LOGI(AAFwkTag::SERVICE_EXT, "name:%{public}s %{public}s, uri:%{public}s.",
-        want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(),
+        want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(),
         want.GetUriString().c_str());
     return abms->ConnectAbilityCommon(want, connect, nullptr, AppExecFwk::ExtensionAbilityType::DATASHARE, userId);
 }
@@ -732,12 +732,12 @@ ErrCode AbilityManagerClient::ConnectExtensionAbility(const Want &want, sptr<IAb
     auto abms = GetAbilityManager();
     if (abms == nullptr) {
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "failed,bundleName:%{public}s,abilityName:%{public}s",
-            want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str());
+            want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str());
         return ABILITY_SERVICE_NOT_CONNECTED;
     }
 
     TAG_LOGI(AAFwkTag::SERVICE_EXT, "name:%{public}s %{public}s, userId:%{public}d.",
-        want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(), userId);
+        want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(), userId);
     return abms->ConnectAbilityCommon(want, connect, nullptr, AppExecFwk::ExtensionAbilityType::UNSPECIFIED, userId,
         false, 0, loadTimeout);
 }
@@ -749,13 +749,13 @@ ErrCode AbilityManagerClient::ConnectUIExtensionAbility(const Want &want, sptr<I
     auto abms = GetAbilityManager();
     if (abms == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "failed,bundleName:%{public}s,abilityName:%{public}s,uri:%{public}s",
-            want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(),
+            want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(),
             want.GetUriString().c_str());
         return ABILITY_SERVICE_NOT_CONNECTED;
     }
 
     TAG_LOGI(AAFwkTag::ABILITYMGR, "name:%{public}s %{public}s, uri:%{public}s.",
-        want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(),
+        want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(),
         want.GetUriString().c_str());
     return abms->ConnectUIExtensionAbility(want, connect, sessionInfo, userId, connectInfo);
 }
@@ -1260,7 +1260,7 @@ ErrCode AbilityManagerClient::StartAbilityByCall(const Want &want, sptr<IAbility
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "ByCall, ability:%{public}s/%{public}s, isSilent:%{public}d, isVisible:%{public}d",
-        want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(), isSilent, isVisible);
+        want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(), isSilent, isVisible);
     return abms->StartAbilityByCall(want, connect, nullptr, DEFAULT_INVAL_VALUE, isSilent, isVisible);
 }
 
@@ -1271,7 +1271,7 @@ ErrCode AbilityManagerClient::StartAbilityByCall(const Want &want, sptr<IAbility
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "ByCall, ability:%{public}s/%{public}s, userId:%{public}d, isSilent:%{public}d, "
-        "isVisible:%{public}d", want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(),
+        "isVisible:%{public}d", want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(),
         accountId, isSilent, isVisible);
     return abms->StartAbilityByCall(want, connect, callToken, accountId, isSilent, promotePriority, isVisible);
 }
@@ -1284,7 +1284,7 @@ ErrCode AbilityManagerClient::StartAbilityByCallWithErrMsg(const Want &want, spt
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "ByCall, ability:%{public}s/%{public}s, userId:%{public}d, isSilent:%{public}d, "
-        "isVisible:%{public}d", want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(),
+        "isVisible:%{public}d", want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(),
         accountId, isSilent, isVisible);
     return abms->StartAbilityByCallWithErrMsg(want, connect, callToken, accountId, errMsg, isSilent, promotePriority,
         isVisible);
@@ -1295,7 +1295,7 @@ ErrCode AbilityManagerClient::StartAbilityForPrelaunch(const Want &want, const i
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "prelaunch, ability:%{public}s/%{public}s",
-        want.GetElement().GetBundleName().c_str(),
+        want.GetBundle().c_str(),
         want.GetElement().GetAbilityName().c_str());
     return abms->StartAbilityForPrelaunch(want, frameNum);
 }
@@ -1359,7 +1359,7 @@ ErrCode AbilityManagerClient::RequestDialogService(
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "request:%{public}s/%{public}s", want.GetElement().GetBundleName().c_str(),
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "request:%{public}s/%{public}s", want.GetBundle().c_str(),
         want.GetElement().GetAbilityName().c_str());
     HandleDlpApp(const_cast<Want &>(want));
     return abms->RequestDialogService(want, callerToken);
@@ -1938,7 +1938,7 @@ void AbilityManagerClient::CallUIAbilityBySCB(sptr<SessionInfo> sessionInfo, Abi
     if (sessionInfo) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "scb call,CallUIAbilityBySCB:%{public}s/%{public}s/%{public}d,flag:%{public}u, "
             "pageConfigSize:%{public}zu",
-            sessionInfo->want.GetElement().GetBundleName().c_str(),
+            sessionInfo->want.GetBundle().c_str(),
             sessionInfo->want.GetElement().GetAbilityName().c_str(),
             sessionInfo->want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1),
             params.sceneFlag, params.pageConfig.size());
@@ -1953,7 +1953,7 @@ int32_t AbilityManagerClient::StartSpecifiedAbilityBySCB(const Want &want, const
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "scb call, StartSpecifiedAbilityBySCB, target: %{public}s/%{public}s, "
-        "persistentId:%{public}d, reason:%{public}d", want.GetElement().GetBundleName().c_str(),
+        "persistentId:%{public}d, reason:%{public}d", want.GetBundle().c_str(),
         want.GetElement().GetAbilityName().c_str(), params.persistentId, static_cast<int32_t>(params.specifiedReason));
     return abms->StartSpecifiedAbilityBySCB(want, params);
 }
@@ -2315,7 +2315,7 @@ int32_t AbilityManagerClient::RestartApp(const AAFwk::Want &want)
 int32_t AbilityManagerClient::OpenAtomicService(Want& want, const StartOptions &options,
     sptr<IRemoteObject> callerToken, int32_t requestCode, int32_t userId)
 {
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "openas:%{public}s", want.GetElement().GetBundleName().c_str());
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "openas:%{public}s", want.GetBundle().c_str());
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_INVALID_VALUE(abms);
     return abms->OpenAtomicService(want, options, callerToken, requestCode, userId);

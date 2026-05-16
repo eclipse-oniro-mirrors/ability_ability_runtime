@@ -92,7 +92,6 @@ void UpdateCallerInfoUtil::UpdateCallerInfo(Want& want, const sptr<IRemoteObject
     want.RemoveParam(WANT_PARAMS_APP_RESTART_FLAG);
     want.RemoveParam(IS_SHELL_CALL);
     want.RemoveParam(Want::PARAMS_REAL_CALLER_KEY);
-    want.RemoveParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH);
 
     auto abilityRecord = Token::GetAbilityRecordByToken(callerToken);
     if (!abilityRecord) {
@@ -156,7 +155,6 @@ void UpdateCallerInfoUtil::UpdateAsCallerSourceInfo(Want& want, sptr<IRemoteObje
     want.RemoveParam(IS_SHELL_CALL);
     want.RemoveParam(Want::PARAMS_REAL_CALLER_KEY);
     want.RemoveParam(Want::PARAM_RESV_CALLER_APP_CLONE_INDEX);
-    want.RemoveParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH);
     ClearProtectedWantParam(want);
 #ifdef SUPPORT_SCREEN
     if (UpdateAsCallerInfoFromDialog(want)) {
@@ -275,7 +273,6 @@ void UpdateCallerInfoUtil::UpdateCallerInfoFromToken(Want& want, const sptr<IRem
     want.RemoveParam(WANT_PARAMS_APP_RESTART_FLAG);
     want.RemoveParam(IS_SHELL_CALL);
     want.RemoveParam(Want::PARAMS_REAL_CALLER_KEY);
-    want.RemoveParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH);
 
     std::string callerBundleName = abilityRecord->GetAbilityInfo().bundleName;
     want.RemoveParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME);
@@ -294,7 +291,6 @@ void UpdateCallerInfoUtil::UpdateCallerInfoFromToken(Want& want, const sptr<IRem
 void UpdateCallerInfoUtil::UpdateBackToCallerFlag(const sptr<IRemoteObject> &callerToken, Want &want,
     int32_t requestCode, bool backFlag)
 {
-    want.RemoveParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH);
     if (want.HasParameter(CALLER_REQUEST_CODE)) {
         want.RemoveParam(CALLER_REQUEST_CODE);
     }
@@ -319,7 +315,6 @@ void UpdateCallerInfoUtil::UpdateDmsCallerInfo(Want& want, const sptr<IRemoteObj
     int32_t tokenId = static_cast<int32_t>(IPCSkeleton::GetCallingTokenID());
     int32_t callerUid = IPCSkeleton::GetCallingUid();
     ClearProtectedWantParam(want);
-    want.RemoveParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH);
 
     auto abilityRecord = Token::GetAbilityRecordByToken(callerToken);
     if (!abilityRecord) {
@@ -373,24 +368,9 @@ void UpdateCallerInfoUtil::UpdateCallerAppCloneIndex(Want& want, int32_t appInde
 
 void UpdateCallerInfoUtil::ClearProtectedWantParam(Want &want)
 {
-    if (want.HasParameter(Want::PARAM_RESV_CALLER_NATIVE_NAME)) {
-        EventInfo eventInfo;
-        eventInfo.bundleName = want.GetElement().GetBundleName();
-        eventInfo.moduleName = want.GetElement().GetModuleName();
-        eventInfo.abilityName = want.GetElement().GetAbilityName();
-        int32_t callerUid = IPCSkeleton::GetCallingUid();
-        std::string callerBundleName;
-        auto bundleMgr = AbilityUtil::GetBundleManagerHelper();
-        if (bundleMgr != nullptr) {
-            IN_PROCESS_CALL(bundleMgr->GetNameForUid(callerUid, callerBundleName));
-        }
-        eventInfo.callerBundleName = callerBundleName.empty() ? std::to_string(callerUid) : callerBundleName;
-        AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, AAFwk::ERR_NOT_EXPECTED_NATIVE_CALLER_NAME,
-            std::string("no expected caller native name: ") + want.GetStringParam(Want::PARAM_RESV_CALLER_NATIVE_NAME));
-    }
     if (want.HasParameter(HIDE_SENSITIVE_TYPE)) {
         EventInfo eventInfo;
-        std::string bundleName = want.GetElement().GetBundleName();
+        std::string bundleName = want.GetBundle();
         int32_t callerUid = IPCSkeleton::GetCallingUid();
         std::string callerBundleName;
         auto bundleMgr = AbilityUtil::GetBundleManagerHelper();

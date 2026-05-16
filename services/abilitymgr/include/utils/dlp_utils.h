@@ -55,7 +55,7 @@ using Dlp = Security::DlpPermission::DlpPermissionKit;
     if (abilityRecord->GetAppIndex() <= AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
         return true;
     }
-    if (abilityRecord->GetApplicationInfo().bundleName == want.GetElement().GetBundleName()) {
+    if (abilityRecord->GetApplicationInfo().bundleName == want.GetBundle()) {
         return true;
     }
     int32_t uid = abilityRecord->GetApplicationInfo().uid;
