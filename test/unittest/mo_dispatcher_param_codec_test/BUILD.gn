@@ -1,0 +1,59 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//foundation/ability/ability_runtime/ability_runtime.gni")
+
+module_output_path = "ability_runtime/ability_runtime/c_framework"
+
+ohos_unittest("mo_dispatcher_param_codec_test") {
+  module_out_path = module_output_path
+
+  sources = [
+    "${ability_runtime_path}/frameworks/c/ability_runtime/src/mo_dispatcher_complex_type_manager.cpp",
+    "${ability_runtime_path}/frameworks/c/ability_runtime/src/mo_dispatcher_metadata_manager.cpp",
+    "${ability_runtime_path}/frameworks/c/ability_runtime/src/mo_dispatcher_param_codec.cpp",
+    "mo_dispatcher_param_codec_test.cpp",
+  ]
+
+  include_dirs = [
+    "${ability_runtime_path}/frameworks/c/ability_runtime/include",
+    "${ability_runtime_path}/interfaces/kits/c/ability_runtime",
+    "${ability_runtime_path}/interfaces/inner_api",
+    "${ability_runtime_services_path}/common/include",
+  ]
+
+  configs = [
+    "${ability_runtime_services_path}/common:common_config",
+  ]
+
+  deps = []
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_capi",
+    "ipc:ipc_core",
+    "json:nlohmann_json_static",
+  ]
+
+  if (target_cpu == "arm") {
+    cflags = [ "-DBINDER_IPC_32BIT" ]
+  }
+}
+
+group("unittest") {
+  testonly = true
+  deps = [ ":mo_dispatcher_param_codec_test" ]
+}
