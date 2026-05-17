@@ -48,7 +48,6 @@ constexpr int32_t QUERY_DB_ERROR = 2;
 constexpr int32_t MAX_QUERY_CMDS_SIZE = 100;
 constexpr int32_t ACTIVE_TIME = 30 * 1000; // 30s
 constexpr int32_t SKILL_TYPE_INDEPENDENT = -1;
-sptr<SkillCallbackAdapter> adaptor_;
 } // namespace
 
 std::mutex g_mutex;
@@ -552,45 +551,63 @@ void CliToolManagerService::HandleBackgroundSessionReply(
     EventDispatcher::GetInstance().DispatchExecToolReplyEvent(record->callerPid, eventId, ERR_OK, session);
 }
 
+int32_t CliToolManagerService::TryDispatchSkillSession(const ExecToolParam &param,
+    const std::string &eventId, const ToolInfo &toolInfo, bool &dispatched)
+{
+    dispatched = false;
+    if (!ToolUtil::IsSkillTool(param.toolName)) {
+        return ERR_OK;
+    }
+
+    int32_t skillType = 0;
+    auto skillRet = ValidateSkillTypeFromParam(param, skillType);
+    if (skillRet != ERR_OK) {
+        return skillRet;
+    }
+    if (skillType == SKILL_TYPE_INDEPENDENT) {
+        TAG_LOGI(AAFwkTag::CLI_TOOL,
+            "Independent skill, fallback to CLI path, toolName=%{public}s", param.toolName.c_str());
+        return ERR_OK;
+    }
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL,
+        "Dispatch to skill path, toolName=%{public}s eventId=%{public}s",
+        param.toolName.c_str(), eventId.c_str());
+    dispatched = true;
+    int32_t ret = SetupAndStartSkillSession(param, eventId, toolInfo);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL,
+            "Skill dispatch failed, toolName=%{public}s ret=%{public}d", param.toolName.c_str(), ret);
+    }
+    return ret;
+}
+
 int32_t CliToolManagerService::ExecTool(const ExecToolParam &param, const std::string &eventId)
 {
     InterfaceCallCounter counter(interfaceCalledCount_);
     TAG_LOGI(AAFwkTag::CLI_TOOL, "ExecTool called: toolName=%{public}s, subcommand=%{public}s",
         param.toolName.c_str(), param.subcommand.c_str());
-    ToolInfo toolInfo;
-    if (ToolUtil::IsSkillTool(param.toolName)) {
-        int32_t skillType = 0;
-        auto skillRet = ValidateSkillTypeFromParam(param, skillType);
-        if (skillRet == ERR_OK && skillType != SKILL_TYPE_INDEPENDENT) {
-            TAG_LOGI(AAFwkTag::CLI_TOOL,
-                "Dispatch to skill path, toolName=%{public}s eventId=%{public}s",
-                param.toolName.c_str(), eventId.c_str());
-            int32_t ret = SetupAndStartSkillSession(param, eventId, toolInfo);
-            if (ret != ERR_OK) {
-                TAG_LOGE(AAFwkTag::CLI_TOOL,
-                    "Skill dispatch failed, toolName=%{public}s ret=%{public}d", param.toolName.c_str(), ret);
-            }
-            return ret;
-        }
-        if (skillRet != ERR_OK) {
-            return skillRet;
-        }
-        TAG_LOGI(AAFwkTag::CLI_TOOL,
-            "Independent skill, fallback to CLI path, toolName=%{public}s", param.toolName.c_str());
-    }
-
     if (auto ret = ValidateExecToolPermissions(); ret != ERR_OK) {
         return ret;
     }
+
+    ToolInfo toolInfo;
+    bool dispatched = false;
+    auto skillRet = TryDispatchSkillSession(param, eventId, toolInfo, dispatched);
+    if (skillRet != ERR_OK) {
+        return skillRet;
+    }
+    if (dispatched) {
+        return ERR_OK;
+    }
+
     if (auto ret = ValidateSessionLimit(); ret != ERR_OK) {
         return ret;
     }
 
     auto tokenId = IPCSkeleton::GetCallingTokenID();
-
     std::string sandboxConfig;
     std::string bundleName;
-
     if (auto ret = ValidateAndPrepareTool(param, tokenId, toolInfo, sandboxConfig, bundleName); ret != ERR_OK) {
         return ret;
     }
@@ -1030,7 +1047,7 @@ int32_t CliToolManagerService::SetupAndStartSkillSession(const ExecToolParam &pa
     AddSessionRecord(record);
 
     auto callerTokenId = IPCSkeleton::GetCallingTokenID();
-    adaptor_ = sptr<SkillCallbackAdapter>::MakeSptr(
+    auto adaptor = sptr<SkillCallbackAdapter>::MakeSptr(
         record->sessionId, record->callerPid, eventId);
 
     AppExecFwk::SkillExecuteRequest skillRequest;
@@ -1044,7 +1061,7 @@ int32_t CliToolManagerService::SetupAndStartSkillSession(const ExecToolParam &pa
 
     TAG_LOGD(AAFwkTag::CLI_TOOL, "execSkill before ExecuteInAppSkillWithTokenId");
     int32_t ret = AAFwk::AbilityManagerClient::GetInstance()->ExecuteInAppSkillWithTokenId(
-        skillRequest, adaptor_);
+        skillRequest, adaptor);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "ExecuteInAppSkillWithTokenId failed:%{public}d", ret);
         RemoveSessionRecord(record->sessionId);

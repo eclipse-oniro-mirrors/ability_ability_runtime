@@ -180,7 +180,7 @@ int32_t SkillExecuteManager::ExecuteSkillDone(const std::string &requestCode, in
     auto it = records_.find(requestCode);
     if (it == records_.end()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "record not found, requestCode:%{public}s", requestCode.c_str());
-        return ERR_INVALID_VALUE;
+        return ERR_CODE_INVALID_ID;
     }
 
     auto record = it->second;

@@ -200,6 +200,7 @@ private:
     std::unique_ptr<NativeReference> jsObj_;
     std::shared_ptr<NativeReference> shellContextRef_ = nullptr;
     std::shared_ptr<AbilityHandler> handler_ = nullptr;
+    std::unique_ptr<NativeReference> skillModuleRef_;
 
 #ifdef SUPPORT_GRAPHICS
 protected:

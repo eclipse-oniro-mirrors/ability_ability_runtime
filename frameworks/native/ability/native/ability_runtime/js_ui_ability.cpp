@@ -2515,32 +2515,70 @@ void JsUIAbility::NotifyWindowDestroy()
     }
 }
 
+namespace {
+std::string ExtractBaseName(const std::string &path)
+{
+    auto slashPos = path.rfind('/');
+    auto dotPos = path.rfind('.');
+    if (slashPos == std::string::npos) {
+        slashPos = 0;
+    } else {
+        slashPos++;
+    }
+    if (dotPos == std::string::npos || dotPos <= slashPos) {
+        return path.substr(slashPos);
+    }
+    return path.substr(slashPos, dotPos - slashPos);
+}
+} // namespace
+
 napi_value JsUIAbility::LoadSkillFunction(
     const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param, napi_value &outJsObj)
 {
     napi_env env = jsRuntime_.GetNapiEnv();
-    std::unique_ptr<NativeReference> moduleRef = nullptr;
     napi_value method = nullptr;
-    for (const auto &srcEntry : param->srcEntries_) {
+
+    auto TryLoadEntry = [&](const std::string &srcEntry) -> bool {
         std::string srcPath(param->moduleName_ + "/" + srcEntry);
         auto pos = srcPath.rfind('.');
         if (pos == std::string::npos) {
             TAG_LOGW(AAFwkTag::UIABILITY, "skip srcEntry, no extension:%{public}s", srcEntry.c_str());
-            continue;
+            return false;
         }
         srcPath.erase(pos);
         srcPath.append(".abc");
-        moduleRef = jsRuntime_.LoadModule(param->moduleName_, srcPath, param->hapPath_, true);
-        if (moduleRef == nullptr) {
+        skillModuleRef_ = jsRuntime_.LoadModule(param->moduleName_, srcPath, param->hapPath_, true);
+        if (skillModuleRef_ == nullptr) {
             TAG_LOGW(AAFwkTag::UIABILITY, "LoadModule failed, path:%{public}s", srcPath.c_str());
-            continue;
+            return false;
         }
-        outJsObj = moduleRef->GetNapiValue();
+        outJsObj = skillModuleRef_->GetNapiValue();
         method = AppExecFwk::GetPropertyValueByPropertyName(
             env, outJsObj, param->functionName_.c_str(), napi_valuetype::napi_function);
-        if (method != nullptr) {
+        return method != nullptr;
+    };
+
+    if (!param->scriptPath_.empty()) {
+        auto scriptBase = ExtractBaseName(param->scriptPath_);
+        for (const auto &srcEntry : param->srcEntries_) {
+            if (ExtractBaseName(srcEntry) != scriptBase) {
+                continue;
+            }
+            if (TryLoadEntry(srcEntry)) {
+                TAG_LOGI(AAFwkTag::UIABILITY,
+                    "func found via scriptPath match, srcEntry:%{public}s", srcEntry.c_str());
+                return method;
+            }
+        }
+        TAG_LOGW(AAFwkTag::UIABILITY,
+            "scriptPath match failed, fallback to full scan, scriptPath:%{public}s",
+            param->scriptPath_.c_str());
+    }
+
+    for (const auto &srcEntry : param->srcEntries_) {
+        if (TryLoadEntry(srcEntry)) {
             TAG_LOGI(AAFwkTag::UIABILITY, "func found in srcEntry:%{public}s", srcEntry.c_str());
-            break;
+            return method;
         }
         TAG_LOGW(AAFwkTag::UIABILITY, "func not found:%{public}s in srcEntry:%{public}s",
             param->functionName_.c_str(), srcEntry.c_str());
@@ -2567,6 +2605,10 @@ std::vector<napi_value> JsUIAbility::BuildSkillCallArgs(napi_env env,
     if (param->skillArgs_ != nullptr && !param->skillArgs_->GetParams().empty()) {
         napi_value wrappedObj = AppExecFwk::WrapWantParams(env, *param->skillArgs_);
         for (const auto &[key, value] : param->skillArgs_->GetParams()) {
+            auto typeId = AppExecFwk::WantParams::GetDataType(value);
+            auto valStr = AppExecFwk::WantParams::GetStringByType(value, typeId);
+            TAG_LOGI(AAFwkTag::UIABILITY, "skillArg key:%{public}s value:%{public}s",
+                key.c_str(), valStr.c_str());
             napi_value val = nullptr;
             napi_get_named_property(env, wrappedObj, key.c_str(), &val);
             args.push_back(val);

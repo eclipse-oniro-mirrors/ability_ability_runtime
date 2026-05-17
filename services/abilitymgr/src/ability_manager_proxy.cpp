@@ -8377,7 +8377,7 @@ int32_t AbilityManagerProxy::ExecuteSkillDone(const sptr<IRemoteObject> &token,
         return INNER_ERR;
     }
     MessageParcel reply;
-    MessageOption option(MessageOption::TF_ASYNC);
+    MessageOption option;
     auto ret = SendRequest(AbilityManagerInterfaceCode::EXECUTE_SKILL_DONE_WITH_TOKEN, data, reply, option);
     if (ret != NO_ERROR) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "request fail:%{public}d", ret);
