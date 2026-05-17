@@ -24,6 +24,7 @@
 #include "mo_dispatcher_param_codec.h"
 #include "mo_dispatcher_types.h"
 #include "modular_object_dispatcher.h"
+#include "securec.h"
 
 using namespace testing::ext;
 using namespace OHOS;
@@ -234,7 +235,7 @@ HWTEST_F(MoDispatcherParamCodecTest, MarshalCallRequest_NullInputParams, TestSiz
     EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
 }
 
-// Test 2: null rgvarg -> PARAM_INVALID
+// Test 2: null rgvarg with cArgs==0 -> NO_ERROR (allowed)
 HWTEST_F(MoDispatcherParamCodecTest, MarshalCallRequest_NullRgvarg, TestSize.Level1)
 {
     MoMethodMeta meta = MakeMethodMeta({});
@@ -243,7 +244,7 @@ HWTEST_F(MoDispatcherParamCodecTest, MarshalCallRequest_NullRgvarg, TestSize.Lev
     inputParams.cArgs = 0;
     MessageParcel parcel;
     auto ret = ModObjDispatcherParamCodec::MarshalCallRequest(meta, &inputParams, parcel);
-    EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+    EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
 }
 
 // Test 3: count mismatch (more args than params) -> TYPE_MISMATCH
@@ -353,7 +354,7 @@ HWTEST_F(MoDispatcherParamCodecTest, MarshalCallRequest_BoolTrue, TestSize.Level
     auto ret = ModObjDispatcherParamCodec::MarshalCallRequest(meta, &inputParams, parcel);
     EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
 
-    int8_t val = parcel.ReadInt8();
+    int32_t val = parcel.ReadInt32();
     EXPECT_EQ(val, 1);
 }
 
@@ -372,7 +373,7 @@ HWTEST_F(MoDispatcherParamCodecTest, MarshalCallRequest_BoolFalse, TestSize.Leve
     auto ret = ModObjDispatcherParamCodec::MarshalCallRequest(meta, &inputParams, parcel);
     EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
 
-    int8_t val = parcel.ReadInt8();
+    int32_t val = parcel.ReadInt32();
     EXPECT_EQ(val, 0);
 }
 
@@ -815,7 +816,7 @@ HWTEST_F(MoDispatcherParamCodecTest, UnmarshalCallResult_BoolTrueRoundTrip, Test
 
     MessageParcel reply;
     reply.WriteInt32(0);
-    reply.WriteInt8(1); // true
+    reply.WriteInt32(1); // true
 
     MoMethodMeta meta = MakeMethodMeta({}, typeBool);
     OH_AbilityRuntime_ModObjDispatcher_Variant result;
@@ -833,7 +834,7 @@ HWTEST_F(MoDispatcherParamCodecTest, UnmarshalCallResult_BoolFalseRoundTrip, Tes
 
     MessageParcel reply;
     reply.WriteInt32(0);
-    reply.WriteInt8(0); // false
+    reply.WriteInt32(0); // false
 
     MoMethodMeta meta = MakeMethodMeta({}, typeBool);
     OH_AbilityRuntime_ModObjDispatcher_Variant result;

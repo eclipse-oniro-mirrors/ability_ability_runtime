@@ -21,6 +21,7 @@ ohos_unittest("mo_dispatcher_capi_test") {
 
   sources = [
     "${ability_runtime_path}/frameworks/c/ability_runtime/src/mo_dispatcher_complex_type_manager.cpp",
+    "${ability_runtime_path}/frameworks/c/ability_runtime/src/mo_dispatcher_type.cpp",
     "${ability_runtime_path}/frameworks/c/ability_runtime/src/modular_object_dispatcher.cpp",
     "${ability_runtime_path}/frameworks/c/ability_runtime/src/mo_dispatcher_metadata_manager.cpp",
     "${ability_runtime_path}/frameworks/c/ability_runtime/src/mo_dispatcher_param_codec.cpp",

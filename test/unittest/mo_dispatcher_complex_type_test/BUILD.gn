@@ -21,6 +21,7 @@ ohos_unittest("mo_dispatcher_complex_type_test") {
 
   sources = [
     "${ability_runtime_path}/frameworks/c/ability_runtime/src/mo_dispatcher_complex_type_manager.cpp",
+    "${ability_runtime_path}/frameworks/c/ability_runtime/src/mo_dispatcher_type.cpp",
     "mo_dispatcher_complex_type_test.cpp",
   ]
 

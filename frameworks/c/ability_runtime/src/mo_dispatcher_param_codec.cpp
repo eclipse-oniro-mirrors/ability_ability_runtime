@@ -19,13 +19,13 @@ namespace OHOS::AbilityRuntime {
 namespace {
 AbilityRuntime_ErrorCode CheckWrite(bool success)
 {
-    return success ? ABILITY_RUNTIME_ERROR_CODE_NO_ERROR : ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+    return success ? ABILITY_RUNTIME_ERROR_CODE_NO_ERROR : ABILITY_RUNTIME_ERROR_CODE_SEND_REQUEST_FAILED;
 }
 
 struct ScopedVisited {
     std::unordered_set<const void*>& visited;
     const void* ptr;
-    bool inserted;
+    bool inserted = false;
     ScopedVisited(std::unordered_set<const void*>& v, const void* p) : visited(v), ptr(p)
     {
         inserted = visited.insert(ptr).second;
@@ -39,24 +39,24 @@ struct ScopedVisited {
     explicit operator bool() const { return inserted; }
 };
 
-// Forward declaration
-AbilityRuntime_ErrorCode WriteRawValueImpl(MessageParcel& parcel,
-    const std::shared_ptr<MoTypeInfo>& typeInfo, const OH_AbilityRuntime_ModObjDispatcher_Variant* value,
-    std::unordered_set<const void*>& visited);
+} // namespace
 
-AbilityRuntime_ErrorCode WriteRawValueImpl(MessageParcel& parcel,
+AbilityRuntime_ErrorCode ModObjDispatcherParamCodec::WriteRawValueImpl(MessageParcel& parcel,
     const std::shared_ptr<MoTypeInfo>& typeInfo, const OH_AbilityRuntime_ModObjDispatcher_Variant* value,
     std::unordered_set<const void*>& visited)
 {
-    if (typeInfo == nullptr || value == nullptr) {
+    if (value == nullptr) {
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    if (typeInfo == nullptr) {
+        return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
     }
     switch (typeInfo->vt) {
         case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_EMPTY:
         case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VOID:
             return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
         case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_BOOL:
-            return CheckWrite(parcel.WriteInt8(value->u.boolVal ? 1 : 0));
+            return CheckWrite(parcel.WriteInt32(value->u.boolVal ? 1 : 0));
         case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I8:
             return CheckWrite(parcel.WriteInt8(value->u.i8Val));
         case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_I16:
@@ -231,7 +231,7 @@ AbilityRuntime_ErrorCode WriteRawValueImpl(MessageParcel& parcel,
         if (!ModObjDispatcherComplexTypeManager::GetStructFieldNames(typeInfo->idlType, &fieldNames)) {
             TAG_LOGE(AAFwkTag::EXT, "WriteRawValue: struct '%{public}s' metadata not found",
                 typeInfo->idlType.c_str());
-            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+            return ABILITY_RUNTIME_ERROR_CODE_TYPE_MISMATCH;
         }
         for (const auto& fieldName : fieldNames) {
             std::shared_ptr<MoTypeInfo> fieldType;
@@ -279,12 +279,11 @@ AbilityRuntime_ErrorCode WriteRawValueImpl(MessageParcel& parcel,
     TAG_LOGE(AAFwkTag::EXT, "WriteRawValue: unknown type=%{public}d", static_cast<int32_t>(typeInfo->vt));
     return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
 }
-} // namespace
 
 AbilityRuntime_ErrorCode ModObjDispatcherParamCodec::MarshalCallRequest(const MoMethodMeta& methodMeta,
     const OH_AbilityRuntime_ModObjDispatcher_InputParams* inputParams, MessageParcel& dataParcel)
 {
-    if (inputParams == nullptr || inputParams->rgvarg == nullptr) {
+    if (inputParams == nullptr || (inputParams->rgvarg == nullptr && inputParams->cArgs != 0)) {
         TAG_LOGE(AAFwkTag::EXT, "MarshalCallRequest: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
@@ -355,7 +354,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherParamCodec::ReadRawValue(MessageParcel&
         case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VOID:
             return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
         case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_BOOL: {
-            int8_t v = parcel.ReadInt8();
+            int32_t v = parcel.ReadInt32();
             value->u.boolVal = (v != 0);
             return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
         }
@@ -372,23 +371,19 @@ AbilityRuntime_ErrorCode ModObjDispatcherParamCodec::ReadRawValue(MessageParcel&
             value->u.i64Val = parcel.ReadInt64();
             return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
         case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U8: {
-            int8_t v = parcel.ReadInt8();
-            value->u.u8Val = static_cast<uint8_t>(v);
+            value->u.u8Val = parcel.ReadUint8();
             return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
         }
         case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U16: {
-            int16_t v = parcel.ReadInt16();
-            value->u.u16Val = static_cast<uint16_t>(v);
+            value->u.u16Val = parcel.ReadUint16();
             return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
         }
         case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U32: {
-            int32_t v = parcel.ReadInt32();
-            value->u.u32Val = static_cast<uint32_t>(v);
+            value->u.u32Val = parcel.ReadUint32();
             return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
         }
         case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_U64: {
-            int64_t v = parcel.ReadInt64();
-            value->u.u64Val = static_cast<uint64_t>(v);
+            value->u.u64Val = parcel.ReadUint64();
             return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
         }
         case OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_F32:
@@ -565,7 +560,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherParamCodec::ReadRawValue(MessageParcel&
         if (!ModObjDispatcherComplexTypeManager::GetStructFieldNames(typeInfo->idlType, &fieldNames)) {
             TAG_LOGE(AAFwkTag::EXT, "ReadRawValue: struct '%{public}s' metadata not found",
                 typeInfo->idlType.c_str());
-            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+            return ABILITY_RUNTIME_ERROR_CODE_TYPE_MISMATCH;
         }
         OH_AbilityRuntime_ModObjDispatcher_StructHandle structObj = nullptr;
         auto ret = ModObjDispatcherComplexTypeManager::StructCreate(typeInfo->idlType.c_str(), &structObj);

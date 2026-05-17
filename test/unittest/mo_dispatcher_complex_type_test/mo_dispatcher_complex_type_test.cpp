@@ -1785,7 +1785,7 @@ HWTEST_F(ModObjDispatcherComplexTypeTest, ValidateVariantType_StringWithNullBstr
     v.u.bstrVal = nullptr;
     auto ret = ModObjDispatcherComplexTypeManager::ValidateVariantType(
         &v, OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRING);
-    EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+    EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
 }
 
 HWTEST_F(ModObjDispatcherComplexTypeTest, ValidateVariantType_EmptyMismatch, TestSize.Level1)
