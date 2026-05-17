@@ -1285,7 +1285,7 @@ HWTEST_F(MoDispatcherCapiTest, Map_CreatePutGetRemoveRelease_5600, TestSize.Leve
     std::free(k2.u.bstrVal);
     std::free(k3.u.bstrVal);
     std::free(kNotFound.u.bstrVal);
-    std::free(outVal.u.bstrVal); // might be null but free(nullptr) is safe
+    // outVal is I32 (vt=I32, i32Val=100), not STRING — no bstrVal to free
 }
 
 /**

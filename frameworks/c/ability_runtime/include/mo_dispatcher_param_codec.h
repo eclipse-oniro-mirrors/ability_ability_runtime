@@ -16,6 +16,8 @@
 #ifndef ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_PARAM_CODEC_H
 #define ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_PARAM_CODEC_H
 
+#include <unordered_set>
+
 #include "message_parcel.h"
 #include "mo_dispatcher_metadata_manager.h"
 
@@ -34,6 +36,10 @@ private:
 
     static AbilityRuntime_ErrorCode ReadRawValue(MessageParcel& parcel,
         const std::shared_ptr<MoTypeInfo>& typeInfo, OH_AbilityRuntime_ModObjDispatcher_Variant* value);
+
+    static AbilityRuntime_ErrorCode WriteRawValueImpl(MessageParcel& parcel,
+        const std::shared_ptr<MoTypeInfo>& typeInfo, const OH_AbilityRuntime_ModObjDispatcher_Variant* value,
+        std::unordered_set<const void*>& visited);
 };
 } // namespace OHOS::AbilityRuntime
 

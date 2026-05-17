@@ -61,6 +61,7 @@ ohos_shared_library("ability_runtime") {
     "src/load_ability_callback_impl.cpp",
     "src/mo_dispatcher_complex_type_manager.cpp",
     "src/mo_dispatcher_metadata_manager.cpp",
+    "src/mo_dispatcher_type.cpp",
     "src/mo_dispatcher_param_codec.cpp",
     "src/modular_object_dispatcher.cpp",
     "src/modular_object_extension_ability.cpp",

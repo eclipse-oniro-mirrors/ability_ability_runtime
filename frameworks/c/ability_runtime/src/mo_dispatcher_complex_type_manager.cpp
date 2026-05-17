@@ -53,7 +53,7 @@ bool IsVariantHandleValid(const OH_AbilityRuntime_ModObjDispatcher_Variant* valu
 struct ScopedVisited {
     std::unordered_set<const void*>& visited;
     const void* ptr;
-    bool inserted;
+    bool inserted = false;
     ScopedVisited(std::unordered_set<const void*>& v, const void* p) : visited(v), ptr(p)
     {
         inserted = visited.insert(ptr).second;
@@ -1744,59 +1744,6 @@ bool ModObjDispatcherComplexTypeManager::GetStructFieldNames(const std::string& 
     }
     *fieldNames = iter->second;
     return true;
-}
-
-// MoVariantStorage member functions — must be defined here where struct types are complete
-MoVariantStorage::~MoVariantStorage()
-{
-    ReleaseNestedResources();
-}
-
-MoVariantStorage::MoVariantStorage(MoVariantStorage&& other) noexcept
-    : value(other.value), stringStorage(std::move(other.stringStorage))
-{
-    if (value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRING) {
-        value.u.bstrVal = const_cast<char*>(stringStorage.c_str());
-    }
-    (void)memset_s(&other.value, sizeof(other.value), 0, sizeof(other.value));
-    other.stringStorage.clear();
-}
-
-MoVariantStorage& MoVariantStorage::operator=(MoVariantStorage&& other) noexcept
-{
-    if (this != &other) {
-        ReleaseNestedResources();
-        value = other.value;
-        stringStorage = std::move(other.stringStorage);
-        if (value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRING) {
-            value.u.bstrVal = const_cast<char*>(stringStorage.c_str());
-        }
-        (void)memset_s(&other.value, sizeof(other.value), 0, sizeof(other.value));
-        other.stringStorage.clear();
-    }
-    return *this;
-}
-
-void MoVariantStorage::ReleaseNestedResources()
-{
-    if (value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRING) {
-        stringStorage.clear();
-    } else if (value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_ARRAY && value.u.parrayVal != nullptr) {
-        delete value.u.parrayVal;
-        value.u.parrayVal = nullptr;
-    } else if (value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VECTOR && value.u.pvectorVal != nullptr) {
-        delete value.u.pvectorVal;
-        value.u.pvectorVal = nullptr;
-    } else if (value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_SET && value.u.psetVal != nullptr) {
-        delete value.u.psetVal;
-        value.u.psetVal = nullptr;
-    } else if (value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_MAP && value.u.pmapVal != nullptr) {
-        delete value.u.pmapVal;
-        value.u.pmapVal = nullptr;
-    } else if (value.vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_STRUCT && value.u.pstructVal != nullptr) {
-        delete value.u.pstructVal;
-        value.u.pstructVal = nullptr;
-    }
 }
 
 } // namespace OHOS::AbilityRuntime

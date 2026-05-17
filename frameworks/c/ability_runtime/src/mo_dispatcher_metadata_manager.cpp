@@ -18,6 +18,7 @@
 #include "message_option.h"
 #include "mo_dispatcher_complex_type_manager.h"
 #include "nlohmann/json.hpp"
+#include "securec.h"
 #include "string_ex.h"
 
 namespace OHOS::AbilityRuntime {
@@ -305,13 +306,13 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::RequestMetadataJson(OH
     if (!dataParcel.WriteInterfaceToken(descriptor)) {
         TAG_LOGE(AAFwkTag::EXT, "RequestMetadataJson: WriteInterfaceToken failed");
         close(fd);
-        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        return ABILITY_RUNTIME_ERROR_CODE_SEND_REQUEST_FAILED;
     }
 
     if (!dataParcel.WriteFileDescriptor(fd)) {
         TAG_LOGE(AAFwkTag::EXT, "RequestMetadataJson: WriteFileDescriptor failed");
         close(fd);
-        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        return ABILITY_RUNTIME_ERROR_CODE_SEND_REQUEST_FAILED;
     }
 
     MessageOption option(MessageOption::TF_SYNC);
@@ -341,7 +342,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::ParseMetadata(const st
     Json root = Json::parse(jsonText, nullptr, false);
     if (root.is_discarded() || !root.is_object()) {
         TAG_LOGE(AAFwkTag::EXT, "ParseMetadata: tlb.json parse failed, is_discarded=%{public}d", root.is_discarded());
-        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        return ABILITY_RUNTIME_ERROR_CODE_METADATA_INVALID;
     }
 
     interfaces_.clear();
@@ -691,7 +692,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetMainServiceInterfac
     }
     if (mainServiceInterface_.empty()) {
         TAG_LOGE(AAFwkTag::EXT, "GetMainServiceInterfaceName: empty");
-        return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
+        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     *interfaceName = mainServiceInterface_;
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
@@ -718,11 +719,15 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetInterfaceName(uint3
         TAG_LOGE(AAFwkTag::EXT, "GetInterfaceName: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (!loaded_ || index >= interfaces_.size()) {
+    if (index >= interfaces_.size()) {
         TAG_LOGE(AAFwkTag::EXT, "GetInterfaceName: out of range, index=%{public}u, size=%{public}zu",
             index, interfaces_.size());
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetInterfaceName: not loaded");
+        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     *name = interfaces_[index].name;
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
@@ -793,10 +798,14 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetEnumName(uint32_t i
         TAG_LOGE(AAFwkTag::EXT, "GetEnumName: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (!loaded_ || index >= enums_.size()) {
+    if (index >= enums_.size()) {
         TAG_LOGE(AAFwkTag::EXT, "GetEnumName: out of range, index=%{public}u, size=%{public}zu", index, enums_.size());
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetEnumName: not loaded");
+        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     *name = enums_[index].name;
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
@@ -901,11 +910,15 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::GetStructName(uint32_t
         TAG_LOGE(AAFwkTag::EXT, "GetStructName: null param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (!loaded_ || index >= structs_.size()) {
+    if (index >= structs_.size()) {
         TAG_LOGE(AAFwkTag::EXT, "GetStructName: out of range, index=%{public}u, size=%{public}zu",
             index, structs_.size());
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!loaded_) {
+        TAG_LOGE(AAFwkTag::EXT, "GetStructName: not loaded");
+        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     *name = structs_[index].name;
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;

@@ -113,7 +113,7 @@ HWTEST_F(MoDispatcherMetadataTest, ParseMetadata_ValidJson_0100, TestSize.Level1
 HWTEST_F(MoDispatcherMetadataTest, ParseMetadata_InvalidJson_0200, TestSize.Level1)
 {
     ModObjDispatcherMetadataManager m;
-    EXPECT_EQ(m.ParseMetadata("not json"), ABILITY_RUNTIME_ERROR_CODE_INTERNAL);
+    EXPECT_EQ(m.ParseMetadata("not json"), ABILITY_RUNTIME_ERROR_CODE_METADATA_INVALID);
 }
 
 HWTEST_F(MoDispatcherMetadataTest, ParseMetadata_EmptyJson_0300, TestSize.Level1)
