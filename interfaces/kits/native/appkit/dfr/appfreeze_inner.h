@@ -31,6 +31,7 @@
 #include "application_impl.h"
 #include "fault_data.h"
 #include "task_handler_wrap.h"
+#include "ffrt.h"
 
 #define OHOS_TEMP_FAILURE_RETRY(exp)               \
     ({                                             \
@@ -98,8 +99,8 @@ private:
     std::shared_ptr<AAFwk::TaskHandlerWrap> appfreezeInnerTaskHandler_;
     std::shared_ptr<OHOSApplication> application_ = nullptr;
 
-    std::mutex mainStackMutex_;
-    std::condition_variable mainStackCv_;
+    ffrt::mutex mainStackMutex_;
+    ffrt::condition_variable mainStackCv_;
     std::string lastMainStack_ = "";
     std::atomic<int64_t> lastMainStackTime_ = 0;
 };

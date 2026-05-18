@@ -22,7 +22,6 @@
 #include "app_recovery.h"
 #include "backtrace_local.h"
 #include "file_ex.h"
-#include "ffrt.h"
 #include "freeze_util.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
@@ -295,7 +294,7 @@ std::string AppfreezeInner::GetMainStackDump(int32_t pid)
         system_clock::now().time_since_epoch()).count();
     if (!lastMainStack_.empty() && now - lastMainStackTime_ < LAST_SAVE_MAIN_STACK_TIME) {
         {
-            std::lock_guard<std::mutex> lock(mainStackMutex_);
+            std::unique_lock<ffrt::mutex> lock(mainStackMutex_);
             return lastMainStack_;
         }
     }
@@ -311,15 +310,15 @@ std::string AppfreezeInner::GetMainStackDump(int32_t pid)
         }
         lastMainStackTime_ = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::
             system_clock::now().time_since_epoch()).count();
-        std::unique_lock<std::mutex> lock(mainStackMutex_);
+        std::unique_lock<ffrt::mutex> lock(mainStackMutex_);
         lastMainStack_ = mainStack;
         mainStackCv_.notify_one();
     };
     ffrt::submit_h(task);
 
     {
-        std::unique_lock<std::mutex> lock(mainStackMutex_);
-        if (mainStackCv_.wait_for(lock, std::chrono::seconds(DUMP_MAIN_STACK_TIMEOUT)) == std::cv_status::timeout) {
+        std::unique_lock<ffrt::mutex> lock(mainStackMutex_);
+        if (mainStackCv_.wait_for(lock, std::chrono::seconds(DUMP_MAIN_STACK_TIMEOUT)) == ffrt::cv_status::timeout) {
             TAG_LOGW(AAFwkTag::APPDFR, "get main stack has been extecting more than 1s");
         } else {
             TAG_LOGI(AAFwkTag::APPDFR, "get main stack has finished less than 1s");

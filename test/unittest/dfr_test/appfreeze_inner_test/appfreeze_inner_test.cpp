@@ -521,6 +521,7 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetMainStackDump_003, TestSize.Level
     int pid = 999999;
     std::string ret = appfreezeInner->GetMainStackDump(pid);
     EXPECT_TRUE(ret.empty());
+    appfreezeInner->GetMainStackDump(pid);
 }
 
 /**
