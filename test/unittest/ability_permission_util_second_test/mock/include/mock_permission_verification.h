@@ -57,7 +57,7 @@ struct VerificationInfo {
     int CheckStartByCallPermission(const VerificationInfo &verificationInfo) const;
     unsigned int GetCallingTokenID() const;
     bool JudgeStartInvisibleAbility(const uint32_t accessTokenId, const bool visible) const;
-    bool JudgeStartAbilityFromBackground(const bool isBackgroundCall) const;
+    bool JudgeStartAbilityFromBackground(const bool isBackgroundCall, const uint32_t specifyTokenId = 0) const;
     bool JudgeAssociatedWakeUp(const uint32_t accessTokenId, const bool associatedWakeUp) const;
     int JudgeInvisibleAndBackground(const VerificationInfo &verificationInfo) const;
     inline bool IsCallFromSameAccessToken(const uint32_t accessTokenId) const

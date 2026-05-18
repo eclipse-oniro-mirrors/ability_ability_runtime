@@ -475,5 +475,38 @@ HWTEST_F(SkillExecuteParamTest, WriteToWantAndGenerateFromWant_0100, TestSize.Le
     EXPECT_EQ(param.hapPath_, TEST_HAP_PATH);
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
+
+/**
+ * @tc.name: CallerTokenId_WriteAndRead_0100
+ * @tc.desc: Test writing and reading callerTokenId from want.
+ * @tc.type: FUNC
+ */
+HWTEST_F(SkillExecuteParamTest, CallerTokenId_WriteAndRead_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    AAFwk::Want want;
+    uint32_t testTokenId = 12345678;
+    want.SetParam(SKILL_EXECUTE_PARAM_CALLER_TOKEN_ID,
+        static_cast<int32_t>(testTokenId));
+    auto result = static_cast<uint32_t>(
+        want.GetIntParam(SKILL_EXECUTE_PARAM_CALLER_TOKEN_ID, 0));
+    EXPECT_EQ(result, testTokenId);
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: CallerTokenId_WriteAndRead_0200
+ * @tc.desc: Test reading callerTokenId returns 0 when not set.
+ * @tc.type: FUNC
+ */
+HWTEST_F(SkillExecuteParamTest, CallerTokenId_WriteAndRead_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    AAFwk::Want want;
+    auto result = static_cast<uint32_t>(
+        want.GetIntParam(SKILL_EXECUTE_PARAM_CALLER_TOKEN_ID, 0));
+    EXPECT_EQ(result, 0U);
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
 } // namespace AppExecFwk
 } // namespace OHOS

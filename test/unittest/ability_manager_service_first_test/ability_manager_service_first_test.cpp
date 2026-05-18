@@ -26,6 +26,7 @@
 #include "ability_connection.h"
 #include "ability_scheduler.h"
 #include "ability_start_setting.h"
+#include "skill/skill_execute_param.h"
 #include "app_utils.h"
 #include "recovery_param.h"
 #undef private
@@ -2229,6 +2230,46 @@ HWTEST_F(AbilityManagerServiceFirstTest, CheckStaticCfgPermission_0002, TestSize
     MyFlag::flag_ = 1;
     int ret = abilityMs->CheckStaticCfgPermission(
         abilityRequest, isStartAsCaller, callerTokenId, isData, isSaCall, isImplicit);
+    EXPECT_EQ(ret, AppExecFwk::Constants::PERMISSION_GRANTED);
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_CheckStaticCfgPermission_SkillCaller_0001
+ * @tc.desc: Test CheckStaticCfgPermission with skill callerTokenId skips SA shortcut
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, CheckStaticCfgPermission_SkillCaller_0001, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    AppExecFwk::AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.permissions.push_back("test.permission");
+    abilityRequest.want.SetParam(
+        AppExecFwk::SKILL_EXECUTE_PARAM_CALLER_TOKEN_ID, static_cast<int32_t>(100));
+    MyFlag::flag_ = MyFlag::IS_SA_CALL;
+    int ret = abilityMs->CheckStaticCfgPermission(
+        abilityRequest, false, 0, false, false, false);
+    // SA call still skips permission check, skillCallerTokenId used for tokenId selection
+    EXPECT_EQ(ret, AppExecFwk::Constants::PERMISSION_GRANTED);
+    MyFlag::flag_ = 0;
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_CheckStaticCfgPermission_SkillCaller_0002
+ * @tc.desc: Test CheckStaticCfgPermission with skill callerTokenId uses caller tokenId
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, CheckStaticCfgPermission_SkillCaller_0002, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    AppExecFwk::AbilityRequest abilityRequest;
+    uint32_t callerTokenId = 100;
+    abilityRequest.want.SetParam(
+        AppExecFwk::SKILL_EXECUTE_PARAM_CALLER_TOKEN_ID, static_cast<int32_t>(callerTokenId));
+    abilityRequest.abilityInfo.applicationInfo.accessTokenId = callerTokenId;
+    MyFlag::flag_ = 0;
+    int ret = abilityMs->CheckStaticCfgPermission(
+        abilityRequest, false, 0, false, false, false);
+    // Same accessTokenId should be granted
     EXPECT_EQ(ret, AppExecFwk::Constants::PERMISSION_GRANTED);
 }
 
