@@ -216,12 +216,20 @@ int UIAbilityLifecycleManager::StartUIAbility(AbilityRequest &abilityRequest, sp
     auto isCallBySCB = sessionInfo->want.GetBoolParam(ServerConstant::IS_CALL_BY_SCB, true);
     sessionInfo->want.RemoveParam(ServerConstant::IS_CALL_BY_SCB);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "StartUIAbility session:%{public}d. bundle:%{public}s, ability:%{public}s, "
-        "instanceKey:%{public}s, requestId: %{public}d, isCallBySCB: %{public}d, reuseDelegator: %{public}d, "
-        "scenarios:%{public}d, requestCode:%{public}d", sessionInfo->persistentId,
+        "instanceKey:%{public}s, requestId: %{public}d, scbRequestId: %{public}d, isCallBySCB: %{public}d, "
+        "reuseDelegator: %{public}d, scenarios:%{public}d, requestCode:%{public}d", sessionInfo->persistentId,
         abilityRequest.abilityInfo.bundleName.c_str(), abilityRequest.abilityInfo.name.c_str(),
-        sessionInfo->instanceKey.c_str(), sessionInfo->requestId, isCallBySCB, sessionInfo->reuseDelegatorWindow,
-        sessionInfo->scenarios, abilityRequest.requestCode);
+        sessionInfo->instanceKey.c_str(), sessionInfo->requestId, sessionInfo->scbRequestId, isCallBySCB,
+        sessionInfo->reuseDelegatorWindow, sessionInfo->scenarios, abilityRequest.requestCode);
     abilityRequest.sessionInfo = sessionInfo;
+
+    if (sessionInfo->requestId != 0) {
+        abilityRequest.want.SetParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, sessionInfo->requestId);
+    }
+    if (sessionInfo->scbRequestId != 0) {
+        abilityRequest.want.SetParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, sessionInfo->scbRequestId);
+    }
+
     if (sessionInfo->callerTypeForAnco == static_cast<int32_t>(CallerTypeForAnco::ADD)) {
         auto asCallerForAncoSessionId = StartAbilityUtils::GenerateAsCallerForAncoSessionId();
         CallerInfo callerInfo;
@@ -392,6 +400,26 @@ UIAbilityRecordPtr UIAbilityLifecycleManager::HandleAbilityRecordReused(
         }
     }
     abilityRequest.want.RemoveParam(Want::PARAMS_REAL_CALLER_KEY);
+
+    if (sessionInfo.requestId != 0 || sessionInfo.scbRequestId != 0) {
+        AAFwk::Want updatedWant = uiAbilityRecord->GetWant();
+        if (sessionInfo.requestId != 0) {
+            updatedWant.SetParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, sessionInfo.requestId);
+        }
+        if (sessionInfo.scbRequestId != 0) {
+            updatedWant.SetParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, sessionInfo.scbRequestId);
+        }
+        uiAbilityRecord->SetWant(updatedWant);
+        if (sessionInfo.requestId != 0) {
+            uiAbilityRecord->GetSessionInfo()->want.SetParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID,
+                sessionInfo.requestId);
+        }
+        if (sessionInfo.scbRequestId != 0) {
+            uiAbilityRecord->GetSessionInfo()->want.SetParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID,
+                sessionInfo.scbRequestId);
+        }
+    }
+
     auto appMgr = AppMgrUtil::GetAppMgr();
     if (appMgr != nullptr && sessionInfo.reuseDelegatorWindow) {
         auto ret = IN_PROCESS_CALL(appMgr->LaunchAbility(uiAbilityRecord->GetToken()));
@@ -766,8 +794,9 @@ int UIAbilityLifecycleManager::NotifySCBToStartUIAbility(AbilityRequest &ability
     }
     sessionInfo->userId = userId_;
     sessionInfo->isAtomicService = (abilityInfo.applicationInfo.bundleType == AppExecFwk::BundleType::ATOMIC_SERVICE);
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "Reused sessionId: %{public}d, userId: %{public}d, requestId: %{public}d",
-        sessionInfo->persistentId, userId_, requestId);
+    TAG_LOGI(AAFwkTag::ABILITYMGR,
+        "Reused sessionId: %{public}d, userId: %{public}d, requestId: %{public}d, scbRequestId: %{public}d",
+        sessionInfo->persistentId, userId_, requestId, sessionInfo->scbRequestId);
     std::string errMsg;
     int ret = NotifySCBPendingActivation(sessionInfo, abilityRequest, errMsg);
     if (ret == ERR_INVALID_VALUE) {
@@ -890,8 +919,9 @@ void UIAbilityLifecycleManager::HandleAbilitiesNormalSessionInfo(AbilityRequest 
     sessionInfo->persistentId = GetPersistentIdByAbilityRequest(abilityRequest, sessionInfo->reuse);
     sessionInfo->userId = userId_;
     sessionInfo->isAtomicService = (abilityInfo.applicationInfo.bundleType == AppExecFwk::BundleType::ATOMIC_SERVICE);
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "Reused sessionId: %{public}d, userId: %{public}d, requestId: %{public}d",
-        sessionInfo->persistentId, userId_, requestId);
+    TAG_LOGI(AAFwkTag::ABILITYMGR,
+        "Reused sessionId: %{public}d, userId: %{public}d, requestId: %{public}d, scbRequestId: %{public}d",
+        sessionInfo->persistentId, userId_, requestId, sessionInfo->scbRequestId);
 
     abilitiesRequest->sessionInfoList.emplace_back(requestId, sessionInfo);
     abilitiesRequest->doneCount++;
@@ -1862,8 +1892,9 @@ void UIAbilityLifecycleManager::CallUIAbilityBySCB(const sptr<SessionInfo> &sess
         return;
     }
 
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "scb call, CallUIAbilityBySCB abilityId:%{public}" PRIu64 ".",
-        sessionInfo->uiAbilityId);
+    TAG_LOGI(AAFwkTag::ABILITYMGR,
+        "scb call, CallUIAbilityBySCB abilityId:%{public}" PRIu64 ", requestId: %{public}d, scbRequestId: %{public}d.",
+        sessionInfo->uiAbilityId, sessionInfo->requestId, sessionInfo->scbRequestId);
     sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::PAGE_CONFIG, params.pageConfig);
     auto search = tmpAbilityMap_.find(sessionInfo->requestId);
     if (search == tmpAbilityMap_.end()) {
@@ -2010,11 +2041,13 @@ int UIAbilityLifecycleManager::NotifySCBPendingActivation(sptr<SessionInfo> &ses
             TAG_LOGD(AAFwkTag::ABILITYMGR, "callback request ability");
             abilityRequest.requestCallback->OnRequestStartAbilityResult(true);
         }
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "scb call, NotifySCBPendingActivation for callerSession, target: %{public}s"
-            "requestId:%{public}s, splitRatio:%{public}d, windowMode:%{public}d",
+        TAG_LOGI(AAFwkTag::ABILITYMGR,
+            "scb call, NotifySCBPendingActivation for callerSession, target: %{public}s, keyRequestId:%{public}s, "
+            "splitRatio:%{public}d, windowMode:%{public}d, requestId: %{public}d, scbRequestId: %{public}d",
             sessionInfo->want.GetElement().GetAbilityName().c_str(), requestId.c_str(),
             sessionInfo->splitRatioPreference, sessionInfo->want.GetIntParam(Want::PARAM_RESV_WINDOW_MODE,
-                AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_UNDEFINED));
+                AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_UNDEFINED),
+            sessionInfo->requestId, sessionInfo->scbRequestId);
         auto ret = static_cast<int>(callerSession->PendingSessionActivation(sessionInfo));
         if (ret != ERR_OK) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "PendingSessionActivation failed:%{public}d", ret);
@@ -2041,12 +2074,14 @@ int UIAbilityLifecycleManager::NotifySCBPendingActivation(sptr<SessionInfo> &ses
     }
     sessionInfo->canStartAbilityFromBackground = true;
     TAG_LOGI(AAFwkTag::ABILITYMGR,
-        "scb call, NotifySCBPendingActivation for rootSceneSession, target: %{public}s, "
-        "splitRatio:%{public}d, flags:%{public}u, windowMode:%{public}d",
+        "scb call, NotifySCBPendingActivation for rootSceneSession, target: %{public}s,  splitRatio:%{public}d, "
+        "flags:%{public}u, windowMode:%{public}d, requestId: %{public}d, scbRequestId: %{public}d",
         sessionInfo->want.GetElement().GetAbilityName().c_str(),
         sessionInfo->splitRatioPreference, sessionInfo->want.GetFlags(),
         sessionInfo->want.GetIntParam(Want::PARAM_RESV_WINDOW_MODE,
-            AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_UNDEFINED));
+            AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_UNDEFINED),
+        sessionInfo->requestId, sessionInfo->scbRequestId);
+
     auto ret = static_cast<int>(tmpSceneSession->PendingSessionActivation(sessionInfo));
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "PendingSessionActivation failed:%{public}d", ret);
