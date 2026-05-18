@@ -275,11 +275,6 @@ void CliToolMGRClient::ClearProxy()
     std::lock_guard<std::mutex> lock(proxyMutex_);
     cliToolMgr_ = nullptr;
     schedulerRegistered_ = false;
-    for (auto &handler : serviceDeathHandlers_) {
-        if (handler) {
-            handler();
-        }
-    }
     CliEventReplyManager::GetInstance().ClearAllEvent();
     CliSessionSubscriptionManager::GetInstance().ClearAllSubscriptions();
 }
