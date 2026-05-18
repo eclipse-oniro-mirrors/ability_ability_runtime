@@ -85,8 +85,20 @@ void ProcessManager::CloseAllPipes(SessionRecord &record) const
     record.stderrPipe[1] = -1;
 }
 
+void ProcessManager::CloseFatherSessionPipes(
+    const std::vector<std::shared_ptr<SessionRecord>> &fatherSessionRecords) const
+{
+    for (const auto &fatherRecord : fatherSessionRecords) {
+        if (fatherRecord == nullptr) {
+            continue;
+        }
+        CloseAllPipes(*fatherRecord);
+    }
+}
+
 int32_t ProcessManager::CreateChildProcess(const ExecToolParam &param, const std::string &sandboxConfig,
-    const ToolInfo &toolInfo, std::shared_ptr<SessionRecord> record) const
+    const ToolInfo &toolInfo, std::shared_ptr<SessionRecord> record,
+    const std::vector<std::shared_ptr<SessionRecord>> &fatherSessionRecords) const
 {
     if (CreatePipes(*record) == false) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create pipes");
@@ -109,6 +121,7 @@ int32_t ProcessManager::CreateChildProcess(const ExecToolParam &param, const std
         close(record->stdinPipe[0]);
         close(record->stdoutPipe[1]);
         close(record->stderrPipe[1]);
+        CloseFatherSessionPipes(fatherSessionRecords);
 
         std::string clawSandbox = "/system/bin/claw_sandbox";
         std::string configPrompt = "--config";

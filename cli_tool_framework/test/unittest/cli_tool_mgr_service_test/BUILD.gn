@@ -40,7 +40,7 @@ ohos_unittest("cli_tool_mgr_service_test") {
     "${cli_tool_framework_path}/services/climgr/src/session_record.cpp",
     "${cli_tool_framework_path}/services/climgr/src/tool_util.cpp",
     "${cli_tool_framework_path}/services/common/src/ccm_util.cpp",
-    "${cli_tool_framework_path}/services/common/src/permission_util.cpp",
+    "permission_util_mock.cpp",
     "${cli_tool_framework_path}/test/unittest/common_mock/climgr_data/src/cli_tool_data_manager_mock.cpp",
   ]
 

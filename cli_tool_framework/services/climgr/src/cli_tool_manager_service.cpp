@@ -332,10 +332,38 @@ std::shared_ptr<SessionRecord> CliToolManagerService::GetSessionRecord(const std
     return it->second;
 }
 
+std::vector<std::shared_ptr<SessionRecord>> CliToolManagerService::GetSessionRecords()
+{
+    std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
+    std::vector<std::shared_ptr<SessionRecord>> records;
+    records.reserve(sessionRecords_.size());
+    for (const auto &[sessionId, record] : sessionRecords_) {
+        if (record != nullptr) {
+            records.emplace_back(record);
+        }
+    }
+    return records;
+}
+
 void CliToolManagerService::RemoveSessionRecord(const std::string &sessionId)
 {
     std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
     sessionRecords_.erase(sessionId);
+}
+
+bool CliToolManagerService::IsSessionOwner(const std::shared_ptr<SessionRecord> &record, const char *action) const
+{
+    if (record == nullptr) {
+        return false;
+    }
+    auto callingPid = IPCSkeleton::GetCallingPid();
+    if (record->callerPid != callingPid) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL,
+            "%{public}s failed: caller pid=%{public}d is not session owner pid=%{public}d, sessionId=%{public}s",
+            action, callingPid, record->callerPid, record->sessionId.c_str());
+        return false;
+    }
+    return true;
 }
 
 void CliToolManagerService::DelayUnloadTask()
@@ -520,7 +548,9 @@ int32_t CliToolManagerService::SetupAndStartSession(const ExecToolParam &param, 
         return ERR_NO_INIT;
     }
 
-    auto createRet = ProcessManager::GetInstance().CreateChildProcess(param, sandboxConfig, toolInfo, record);
+    auto fatherSessionRecords = GetSessionRecords();
+    auto createRet = ProcessManager::GetInstance().CreateChildProcess(
+        param, sandboxConfig, toolInfo, record, fatherSessionRecords);
     if (createRet != ERR_OK) {
         return createRet;
     }
@@ -782,6 +812,9 @@ int32_t CliToolManagerService::ClearSession(const std::string &sessionId)
         TAG_LOGE(AAFwkTag::CLI_TOOL, "ClearSession failed: sessionId=%{public}s not found", sessionId.c_str());
         return ERR_CLI_SESSION_NOT_FOUND;
     }
+    if (!IsSessionOwner(record, "ClearSession")) {
+        return ERR_PERMISSION_DENIED;
+    }
     if (record->GetState() != SessionState::RUNNING && record->GetState() != SessionState::SPAWNING) {
         TAG_LOGE(AAFwkTag::CLI_TOOL,
             "ClearSession failed: sessionId=%{public}s state=%{public}d is not cancellable",
@@ -833,6 +866,9 @@ int32_t CliToolManagerService::SubscribeSession(const std::string &sessionId, co
             "SubscribeSession failed: sessionId=%{public}s not found, subscriptionId=%{public}s",
             sessionId.c_str(), subscriptionId.c_str());
         return ERR_CLI_SESSION_NOT_FOUND;
+    }
+    if (!IsSessionOwner(record, "SubscribeSession")) {
+        return ERR_PERMISSION_DENIED;
     }
     CliSessionInfo session;
     record->BuildSessionInfo(session);
@@ -889,6 +925,9 @@ int32_t CliToolManagerService::QuerySession(const std::string &sessionId, CliSes
         TAG_LOGE(AAFwkTag::CLI_TOOL, "QuerySession failed: sessionId=%{public}s not found", sessionId.c_str());
         return ERR_CLI_SESSION_NOT_FOUND;
     }
+    if (!IsSessionOwner(record, "QuerySession")) {
+        return ERR_PERMISSION_DENIED;
+    }
     record->BuildSessionInfo(session);
     return ERR_OK;
 }
@@ -908,14 +947,17 @@ int32_t CliToolManagerService::SendMessage(const std::string &sessionId,
         return ERR_PERMISSION_DENIED;
     }
 
-    if (ioMonitor_ == nullptr) {
-        return ERR_CLI_SEND_MESSAGE;
-    }
-
     auto record = GetSessionRecord(sessionId);
     if (record == nullptr) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "SendMessage failed: sessionId=%{public}s not found", sessionId.c_str());
         return ERR_CLI_SESSION_NOT_FOUND;
+    }
+    if (!IsSessionOwner(record, "SendMessage")) {
+        return ERR_PERMISSION_DENIED;
+    }
+
+    if (ioMonitor_ == nullptr) {
+        return ERR_CLI_SEND_MESSAGE;
     }
 
     // Check session state
