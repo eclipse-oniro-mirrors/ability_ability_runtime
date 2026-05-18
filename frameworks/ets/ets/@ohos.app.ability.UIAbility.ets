@@ -115,6 +115,7 @@ export default class UIAbility extends Ability {
   lastRequestWant: Want = new Want();
   callee: Callee = new CalleeImpl() as Callee;
   specifiedId?: string;
+  isDestroyed: boolean = false;
 
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
   }

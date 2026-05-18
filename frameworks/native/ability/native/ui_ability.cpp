@@ -348,6 +348,9 @@ void UIAbility::OnStop()
 #ifdef SUPPORT_SCREEN
     Rosen::DisplayManager::GetInstance().RemoveDisplayIdFromAms(token_);
 #endif
+
+    // Set isDestroyed to true after onDestroy callback
+    isDestroyed_ = true;
     TAG_LOGD(AAFwkTag::UIABILITY, "end");
 }
 

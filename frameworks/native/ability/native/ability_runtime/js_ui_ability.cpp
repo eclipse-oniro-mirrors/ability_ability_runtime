@@ -539,6 +539,13 @@ void JsUIAbility::OnStart(const Want &want, sptr<AAFwk::SessionInfo> sessionInfo
 
     napi_set_named_property(env, obj, "launchWant", jsWant);
     napi_set_named_property(env, obj, "lastRequestWant", jsWant);
+
+    // Initialize isDestroyed to false
+    napi_value jsIsDestroyed = nullptr;
+    if (napi_get_boolean(env, false, &jsIsDestroyed) == napi_ok) {
+        napi_set_named_property(env, obj, "isDestroyed", jsIsDestroyed);
+    }
+
     auto launchParam = GetLaunchParam();
     if (abilityInfo_->launchMode == AppExecFwk::LaunchMode::SPECIFIED) {
         napi_set_named_property(env, obj, "specifiedId", CreateJsValue(env, launchParam.specifiedId));
@@ -661,6 +668,17 @@ void JsUIAbility::OnStop()
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         applicationContext->DispatchOnAbilityWillDestroy(ability);
     }
+
+    // Set isDestroyed to true BEFORE onDestroy callback
+    // This ensures the property is set while all objects are still valid
+    napi_value obj = jsAbilityObj_->GetNapiValue();
+    if (CheckTypeForNapiValue(jsRuntime_.GetNapiEnv(), obj, napi_object)) {
+        napi_value jsIsDestroyed = nullptr;
+        if (napi_get_boolean(jsRuntime_.GetNapiEnv(), true, &jsIsDestroyed) == napi_ok) {
+            napi_set_named_property(jsRuntime_.GetNapiEnv(), obj, "isDestroyed", jsIsDestroyed);
+        }
+    }
+
     WriteLifecycleSwitchLog("onDestroy");
     CallObjectMethod("onDestroy");
     OnStopCallback();
@@ -690,6 +708,17 @@ void JsUIAbility::OnStop(AppExecFwk::AbilityTransactionCallbackInfo<> *callbackI
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         applicationContext->DispatchOnAbilityWillDestroy(ability);
     }
+
+    // Set isDestroyed to true BEFORE onDestroy callback
+    // This ensures the property is set while all objects are still valid
+    napi_value obj = jsAbilityObj_->GetNapiValue();
+    if (CheckTypeForNapiValue(jsRuntime_.GetNapiEnv(), obj, napi_object)) {
+        napi_value jsIsDestroyed = nullptr;
+        if (napi_get_boolean(jsRuntime_.GetNapiEnv(), true, &jsIsDestroyed) == napi_ok) {
+            napi_set_named_property(jsRuntime_.GetNapiEnv(), obj, "isDestroyed", jsIsDestroyed);
+        }
+    }
+
     WriteLifecycleSwitchLog("onDestroy");
     napi_value result = CallObjectMethod("onDestroy", nullptr, 0, true);
     if (!CheckPromise(result)) {
