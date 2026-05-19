@@ -17,6 +17,9 @@
 
 namespace OHOS {
 namespace AppExecFwk {
+namespace {
+constexpr int32_t MAX_URI_COUNT = 500;
+} // namespace
 
 bool SkillExecuteResult::ReadFromParcel(Parcel &parcel)
 {
@@ -27,6 +30,9 @@ bool SkillExecuteResult::ReadFromParcel(Parcel &parcel)
     }
     result = std::shared_ptr<WantParams>(wantParams);
     int32_t uriCount = parcel.ReadInt32();
+    if (uriCount < 0 || uriCount > MAX_URI_COUNT) {
+        return false;
+    }
     for (int32_t i = 0; i < uriCount; i++) {
         uris.push_back(Str16ToStr8(parcel.ReadString16()));
     }
