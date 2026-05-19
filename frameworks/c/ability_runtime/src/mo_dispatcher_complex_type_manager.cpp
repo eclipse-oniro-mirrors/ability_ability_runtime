@@ -361,6 +361,9 @@ AbilityRuntime_ErrorCode ValidateVariantTypeDeep(
             (expectedInfo->vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_IPC_REMOTE_STUB &&
             value->vt == OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_IPC_REMOTE_PROXY)) {
             if (!IsVariantHandleValid(value)) {
+                TAG_LOGE(AAFwkTag::EXT,
+                    "ValidateVariantTypeDeep: IPC handle is null for vt=%{public}d",
+                    static_cast<int32_t>(value->vt));
                 return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
             }
             return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
@@ -1188,6 +1191,13 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::StructCreate(const 
     if (structName == nullptr || ppStruct == nullptr || *ppStruct != nullptr) {
         TAG_LOGE(AAFwkTag::EXT, "StructCreate: null param or handle already initialized");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    {
+        std::lock_guard<std::mutex> lock(g_structMetaMutex);
+        if (g_structFieldTypes.find(structName) == g_structFieldTypes.end()) {
+            TAG_LOGE(AAFwkTag::EXT, "StructCreate: struct '%{public}s' not found in metadata", structName);
+            return ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND;
+        }
     }
     auto* object = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher_Struct();
     if (object == nullptr) {

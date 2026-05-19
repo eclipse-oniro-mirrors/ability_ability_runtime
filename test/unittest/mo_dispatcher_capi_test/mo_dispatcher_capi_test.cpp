@@ -15,9 +15,11 @@
 
 #include <gtest/gtest.h>
 #include <cstring>
+#include <vector>
 
 #include "modular_object_dispatcher.h"
 #include "mo_dispatcher_types.h"
+#include "mo_dispatcher_complex_type_manager.h"
 
 using namespace testing::ext;
 
@@ -72,7 +74,17 @@ class MoDispatcherCapiTest : public testing::Test {
 public:
     MoDispatcherCapiTest() = default;
     ~MoDispatcherCapiTest() override = default;
-    void SetUp() override {}
+    void SetUp() override
+    {
+        // Register struct metadata needed by StructCreate tests
+        std::vector<OHOS::AbilityRuntime::MoStructMeta> structs;
+        for (const auto& name : {"TestStruct", "MyStruct", "ALongStructName"}) {
+            OHOS::AbilityRuntime::MoStructMeta sm;
+            sm.name = name;
+            structs.push_back(sm);
+        }
+        OHOS::AbilityRuntime::ModObjDispatcherComplexTypeManager::RegisterStructMetadata(structs);
+    }
     void TearDown() override {}
 };
 
