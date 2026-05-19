@@ -159,6 +159,9 @@ private:
         const AppExecFwk::InsightIntentQueryEntityParam& queryParams);
 
     void SendIntentReport(EventInfo &eventInfo, int32_t errCode);
+
+    void HandleDiedRecordsCleanup(const std::vector<uint64_t> &toRemove,
+        const AppExecFwk::InsightIntentExecuteResult &errorResult);
 };
 } // namespace AAFwk
 } // namespace OHOS
