@@ -429,4 +429,20 @@ HWTEST_F(CjEnvironmentTest, CJEnvironment_RegisterCJOOMHandler_0002, TestSize.Le
 
     EXPECT_EQ(cJEnvironment.lazyApis_, nullptr);
 }
+
+/**
+ * @tc.name: CJEnvironment_RegisterExceptionOnCreated
+ * @tc.desc: JsRuntime test for RegisterExceptionOnCreated.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjEnvironmentTest, CJEnvironment_RegisterExceptionOnCreated, TestSize.Level1)
+{
+    CJEnvironment cJEnvironment(CJEnvironment::NSMode::APP);
+    cJEnvironment.SetLazyApis(nullptr);
+    cJEnvironment.RegisterExceptionOnCreated([] {
+        EXPECT_TRUE(true);
+    });
+
+    EXPECT_EQ(cJEnvironment.lazyApis_, nullptr);
+}
 } // namespace OHOS

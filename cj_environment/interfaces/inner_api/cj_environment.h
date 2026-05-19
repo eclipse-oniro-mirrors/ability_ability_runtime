@@ -113,6 +113,7 @@ public:
     static void DumpCjHeap(int fd);
     static void GC();
     bool LoadSymbols(void* handle, CJRuntimeAPI& apis);
+    void RegisterExceptionOnCreated(void(*callback)());
 
     static const char *cjChipSDKNSName;
     static const char *cjAppNSName;

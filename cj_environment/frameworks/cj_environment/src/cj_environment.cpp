@@ -23,6 +23,8 @@
 #include "cj_hilog.h"
 #include "cj_invoker.h"
 #include "cj_envsetup.h"
+#include "cj_backtrace.h"
+
 #ifdef __OHOS__
 #include <dlfcn.h>
 #endif
@@ -78,6 +80,7 @@ const char REGISTER_STACKINFO_CALLBACKS_NAME[] = "RegisterStackInfoCallbacks";
 const char DUMP_HEAP_SNAPSHOT_NAME[] = "CJ_MRT_DumpHeapSnapshot";
 const char FORCE_FULL_GC_NAME[] = "CJ_MRT_ForceFullGC";
 const char REGISTER_EVENT_HANDLER_NAME[] = "RegisterEventHandler";
+const char REGISTER_EXCEPTION_ON_CREATED_NAME[] = "CJ_MRT_RegisterExceptionCallback";
 
 using InitCJRuntimeType = int(*)(const struct RuntimeParam*);;
 using InitUISchedulerType = void*(*)();
@@ -273,6 +276,19 @@ bool LoadSymbolForceFullGC(void* handle, CJRuntimeAPI& apis)
     return true;
 }
 
+bool LoadSymbolRegisterExceptionOnCreated(void* handle, CJRuntimeAPI& apis)
+{
+    auto symbol = DynamicFindSymbol(handle, REGISTER_EXCEPTION_ON_CREATED_NAME);
+    if (symbol == nullptr) {
+        LOGE("runtime api not found: %{public}s", REGISTER_EXCEPTION_ON_CREATED_NAME);
+        // return true for compatible.
+        apis.RegisterExceptionOnCreated = nullptr;
+        return true;
+    }
+    apis.RegisterExceptionOnCreated = reinterpret_cast<decltype(apis.RegisterExceptionOnCreated)>(symbol);
+    return true;
+}
+
 bool PostTaskWrapper(void* func)
 {
     return CJEnvironment::GetInstance()->PostTask(reinterpret_cast<TaskFuncType>(func));
@@ -334,6 +350,15 @@ void CJEnvironment::SetAppPath(const std::string& appPath)
     }
     instance_ = new CJEnvironment(mode);
     instance_->InitCJNS(appPath);
+#ifdef __OHOS__
+    instance_->RegisterExceptionOnCreated([] {
+        if (getpid() != gettid()) {
+            return;
+        }
+        constexpr uint32_t removeTopFrames = 3;
+        CJDFX_Backtrace(removeTopFrames);
+    });
+#endif
     isInited = true;
 }
 
@@ -457,7 +482,8 @@ bool CJEnvironment::LoadSymbols(void* dso, CJRuntimeAPI& lazyApis_)
             !LoadSymbolRegisterArkVM(dso, lazyApis_) ||
             !LoadSymbolDumpHeapSnapshot(dso, lazyApis_) ||
             !LoadSymbolForceFullGC(dso, lazyApis_) ||
-            !LoadSymbolRegisterEventHandler(dso, lazyApis_));
+            !LoadSymbolRegisterEventHandler(dso, lazyApis_) ||
+            !LoadSymbolRegisterExceptionOnCreated(dso, lazyApis_));
 }
 
 void CJEnvironment::RegisterArkVMInRuntime(unsigned long long externalVM)
@@ -466,6 +492,14 @@ void CJEnvironment::RegisterArkVMInRuntime(unsigned long long externalVM)
         return;
     }
     lazyApis_->RegisterArkVMInRuntime(externalVM);
+}
+
+void CJEnvironment::RegisterExceptionOnCreated(void (*callback)())
+{
+    if (!lazyApis_ || !lazyApis_->RegisterExceptionOnCreated) {
+        return;
+    }
+    lazyApis_->RegisterExceptionOnCreated(callback);
 }
 
 void CJEnvironment::RegisterStackInfoCallbacks(UpdateStackInfoFuncType uFunc)
