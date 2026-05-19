@@ -253,6 +253,17 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_007, TestSize.Level1)
 }
 
 /**
+ * @tc.number: AppfreezeManagerTest_007
+ * @tc.desc: add testcase codecoverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, PeerBinderCatcherTest_008, TestSize.Level1)
+{
+    bool ret = appfreezeManager->IsAncoProc(getpid());
+    EXPECT_TRUE(!ret);
+}
+
+/**
  * @tc.number: AppfreezeManagerTest_IsHalfTimeout_001
  * @tc.desc: add testcase codecoverage
  * @tc.type: FUNC
