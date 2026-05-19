@@ -74,11 +74,11 @@ HWTEST_F(AbilityBusinessErrorTest, GetErrorMsg_3560000X, TestSize.Level2)
         "Maximum connections from the same caller have been reached. "
         "Please disconnect at least one agent extension beforehand.");
     EXPECT_EQ(GetErrorMsg(AbilityErrorCode::ERROR_CODE_AGENT_CARD_VERSION_TOO_OLD),
-        "The specified agent card version is older than the current version.");
+        "The specified AgentCard version is older than the current version.");
     EXPECT_EQ(GetErrorMsg(AbilityErrorCode::ERROR_CODE_AGENT_CARD_VERSION_INVALID),
-        "The specified agent card version is invalid.");
+        "The specified AgentCard version is invalid.");
     EXPECT_EQ(GetErrorMsg(AbilityErrorCode::ERROR_CODE_AGENT_CARD_DUPLICATE_REGISTER),
-        "The specified agent card has already been registered. Use updateAgentCard instead.");
+        "The specified AgentCard has already been registered. Use updateAgentCard instead.");
     EXPECT_EQ(GetErrorMsg(AbilityErrorCode::ERROR_CODE_LOW_CODE_AGENT_ALREADY_ACTIVE),
         "The specified LOW_CODE agent is already active and is not yet completed.");
 }

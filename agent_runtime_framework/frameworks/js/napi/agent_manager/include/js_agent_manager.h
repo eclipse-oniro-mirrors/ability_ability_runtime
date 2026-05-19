@@ -36,7 +36,7 @@ class JSAgentConnection;
  * @class JsAgentManager
  * @brief JS API wrapper for AgentManager functionality.
  *
- * Provides native methods for getting agent cards and connecting to agent extensions.
+ * Provides native methods for getting AgentCards and connecting to agent extensions.
  */
 class JsAgentManager final {
 public:
@@ -53,7 +53,7 @@ public:
     static void Finalizer(napi_env env, void *data, void *hint);
 
     /**
-     * @brief Native method for getting all agent cards.
+     * @brief Native method for getting all AgentCards.
      *
      * @param env The N-API environment.
      * @param info The N-API callback info.
@@ -62,7 +62,7 @@ public:
     static napi_value GetAllAgentCards(napi_env env, napi_callback_info info);
 
     /**
-     * @brief Native method for getting agent cards by bundle name.
+     * @brief Native method for getting AgentCards by bundle name.
      *
      * @param env The N-API environment.
      * @param info The N-API callback info.
@@ -71,7 +71,7 @@ public:
     static napi_value GetAgentCardsByBundleName(napi_env env, napi_callback_info info);
 
     /**
-     * @brief Native method for getting an agent card by URL.
+     * @brief Native method for getting an AgentCard by URL.
      *
      * @param env The N-API environment.
      * @param info The N-API callback info.
@@ -111,7 +111,7 @@ public:
 
 private:
     /**
-     * @brief Implementation for getting all agent cards.
+     * @brief Implementation for getting all AgentCards.
      *
      * @param env The N-API environment.
      * @param argc The argument count.
@@ -121,7 +121,7 @@ private:
     napi_value OnGetAllAgentCards(napi_env env, size_t argc, napi_value *argv);
 
     /**
-     * @brief Implementation for getting agent cards by bundle name.
+     * @brief Implementation for getting AgentCards by bundle name.
      *
      * @param env The N-API environment.
      * @param argc The argument count.
@@ -131,7 +131,7 @@ private:
     napi_value OnGetAgentCardsByBundleName(napi_env env, size_t argc, napi_value *argv);
 
     /**
-     * @brief Implementation for getting an agent card by URL.
+     * @brief Implementation for getting an AgentCard by URL.
      *
      * @param env The N-API environment.
      * @param argc The argument count.

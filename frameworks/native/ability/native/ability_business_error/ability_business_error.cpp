@@ -116,11 +116,11 @@ constexpr const char* ERROR_MSG_AGENT_ID_NOT_EXIST =
 constexpr const char* ERROR_MSG_AGENT_CARD_LIST_OUT_OF_RANGE =
     "The number of AgentCards in the bundle reaches the limit.";
 constexpr const char* ERROR_MSG_AGENT_CARD_VERSION_TOO_OLD =
-    "The specified agent card version is older than the current version.";
+    "The specified AgentCard version is older than the current version.";
 constexpr const char* ERROR_MSG_AGENT_CARD_VERSION_INVALID =
-    "The specified agent card version is invalid.";
+    "The specified AgentCard version is invalid.";
 constexpr const char* ERROR_MSG_AGENT_CARD_DUPLICATE_REGISTER =
-    "The specified agent card has already been registered. Use updateAgentCard instead.";
+    "The specified AgentCard has already been registered. Use updateAgentCard instead.";
 constexpr const char* ERROR_MSG_MAX_CONNECTIONS_REACHED =
     "Maximum connections from the same caller have been reached. "
     "Please disconnect at least one agent extension beforehand.";
