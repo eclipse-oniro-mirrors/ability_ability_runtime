@@ -184,6 +184,7 @@ private:
     std::atomic<int32_t> interfaceCalledCount_ = 0;
     ffrt::mutex sessionsMutex_;
     std::unordered_map<std::string, std::shared_ptr<SessionRecord>> sessionRecords_;
+    ffrt::mutex observerMutex_;
     std::unordered_map<std::string, sptr<AppExecFwk::IApplicationStateObserver>> bundleObservers_;
 };
 

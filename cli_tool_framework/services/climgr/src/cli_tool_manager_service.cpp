@@ -706,6 +706,10 @@ void CliToolManagerService::OnProcessDied(const std::string &bundleName, pid_t d
 {
     TAG_LOGI(AAFwkTag::CLI_TOOL, "OnProcessDied called: bundleName=%{public}s, diedPid=%{public}d",
         bundleName.c_str(), diedPid);
+    {
+        std::lock_guard<ffrt::mutex> guard(observerMutex_);
+        bundleObservers_.erase(bundleName);
+    }
     std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
     // Iterate through sessionRecords_ to find matching SessionRecord by callerPid
     for (auto iter = sessionRecords_.begin(); iter != sessionRecords_.end();) {
@@ -739,6 +743,7 @@ void CliToolManagerService::RegisterAppStateObserver(const std::string &bundleNa
         bundleName.c_str(), callerPid);
 
     // Check if observer already exists for this bundle
+    std::lock_guard<ffrt::mutex> guard(observerMutex_);
     if (bundleObservers_.find(bundleName) != bundleObservers_.end()) {
         TAG_LOGI(AAFwkTag::CLI_TOOL, "Observer already registered for bundleName=%{public}s", bundleName.c_str());
         return;
