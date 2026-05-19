@@ -49,6 +49,7 @@ public:
     ~SessionRecord() = default;
 
     int32_t callerPid = -1;
+    int32_t callerUid = -1;
     std::string sessionId = "";
     std::string toolName = "";
     std::string eventId = "";
@@ -89,6 +90,11 @@ public:
     inline pid_t GetCallerPid()
     {
         return callerPid;
+    }
+
+    inline int32_t GetCallerUid()
+    {
+        return callerUid;
     }
 
 private:

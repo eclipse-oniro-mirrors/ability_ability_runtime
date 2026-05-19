@@ -29,7 +29,6 @@ public:
     static int32_t retClearSession;
     static int32_t retQuerySession;
     static int32_t retSendMessage;
-    static int32_t retRegisterScheduler;
     static int32_t retBatchQueryPermission;
     static int32_t retLoadSystemAbility;
     static bool nullSystemAbility;

@@ -28,14 +28,12 @@ interface ICliToolManager {
     void GetToolInfoByName([in] String name, [out] ToolInfo tool);
     void GetAllToolInfos([out] ToolsRawData tools);
     void RegisterTool([in] ToolInfo tool);
-    void ExecTool([in] ExecToolParam param, [in] String eventId);
-    void SubscribeSession([in] String sessionId, [in] String subscriptionId);
+    void ExecTool([in] ExecToolParam param, [in] String eventId, [in] ICliToolManagerScheduler scheduler);
+    void SubscribeSession([in] String sessionId, [in] String subscriptionId, [in] ICliToolManagerScheduler scheduler);
     void UnsubscribeSession([in] String sessionId, [in] String subscriptionId);
     void ClearSession([in] String sessionId);
     void QuerySession([in] String sessionId, [out] CliSessionInfo session);
-    void SendMessage([in] String sessionId, [in] String inputText, [in] String eventId);
-
-    void RegisterScheduler([in] ICliToolManagerScheduler scheduler);
-    void UnregisterScheduler();
+    void SendMessage([in] String sessionId, [in] String inputText, [in] String eventId,
+        [in] ICliToolManagerScheduler scheduler);
     void BatchQueryPermissionBySubCommand([in] List<Command> cmds, [out] List<CommandPermission> cmdPermissions);
 }

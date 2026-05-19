@@ -155,7 +155,7 @@ private:
     void ClearProxy();
     void SetCliToolMgr(const sptr<IRemoteObject> &remoteObject);
     sptr<ICliToolManager> GetCliToolMgr();
-    ErrCode EnsureSchedulerRegistered();
+    ErrCode EnsureSchedulerStubCreated();
 
     std::condition_variable loadSaCondation_;
     std::mutex loadSaMutex_;
@@ -163,7 +163,6 @@ private:
     std::mutex proxyMutex_;
     sptr<ICliToolManager> cliToolMgr_ = nullptr;
     std::mutex schedulerMutex_;
-    bool schedulerRegistered_ = false;
     sptr<ICliToolManagerScheduler> schedulerStub_ = nullptr;
 };
 
