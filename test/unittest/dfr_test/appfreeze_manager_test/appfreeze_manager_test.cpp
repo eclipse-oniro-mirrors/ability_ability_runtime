@@ -984,10 +984,41 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_CheckPreloadUIExtension_Test
     std::string bundleName = "AppfreezeManagerTest_CheckPreloadUIExtension_Test001";
     int32_t pid = getpid();
     std::string message = "test";
-    bool result = appfreezeManager->CheckPreloadUIExtension(message, bundleName, pid);
+    std::string eventName = "test";
+    bool result = appfreezeManager->CheckPreloadUIExtension(message, bundleName, pid, eventName);
+    EXPECT_EQ(result, false);
+    eventName = AppFreezeType::LIFECYCLE_HALF_TIMEOUT;
+    result = appfreezeManager->CheckPreloadUIExtension(message, bundleName, pid, eventName);
     EXPECT_EQ(result, false);
     message = "PreloadUIExtension test";
-    result = appfreezeManager->CheckPreloadUIExtension(message, bundleName, pid);
+    result = appfreezeManager->CheckPreloadUIExtension(message, bundleName, pid, eventName);
+    EXPECT_EQ(result, true);
+    eventName = AppFreezeType::LIFECYCLE_TIMEOUT;
+    result = appfreezeManager->CheckPreloadUIExtension(message, bundleName, pid, eventName);
+    EXPECT_EQ(result, true);
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest CheckProcessExit Test
+ * @tc.desc: add testcase
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_CheckProcessExit_Test001, TestSize.Level1)
+{
+    std::string eventName = AppFreezeType::THREAD_BLOCK_6S;
+    bool result = appfreezeManager->CheckProcessExit(eventName, false);
+    EXPECT_EQ(result, false);
+
+    eventName = AppFreezeType::THREAD_BLOCK_6S;
+    result = appfreezeManager->CheckProcessExit(eventName, true);
+    EXPECT_EQ(result, true);
+
+    eventName = AppFreezeType::THREAD_BLOCK_3S;
+    result = appfreezeManager->CheckProcessExit(eventName, false);
+    EXPECT_EQ(result, true);
+
+    eventName = AppFreezeType::THREAD_BLOCK_3S;
+    result = appfreezeManager->CheckProcessExit(eventName, true);
     EXPECT_EQ(result, true);
 }
 }  // namespace AppExecFwk
