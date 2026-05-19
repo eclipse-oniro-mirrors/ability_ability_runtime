@@ -16975,13 +16975,6 @@ int AbilityManagerService::StartAbilityDelayed(StartAbilityWrapParam &param)
         callingPid, tokens));
     AppExecFwk::RunningProcessInfo processInfo;
     DelayedSingleton<AppScheduler>::GetInstance()->GetRunningProcessInfoByChildProcessPid(callingPid, processInfo);
-    auto targetBundleName = param.want.GetBundle();
-    auto iter = std::find(processInfo.bundleNames.begin(), processInfo.bundleNames.end(), targetBundleName);
-    if (iter == processInfo.bundleNames.end()) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "The specified ability does not exist.");
-        removeDelayedPid();
-        return TARGET_BUNDLE_NOT_EXIST;
-    }
     for (const auto &token : tokens) {
         auto abilityRecord = Token::GetAbilityRecordByToken(token);
         if (abilityRecord && abilityRecord->GetAbilityInfo().type == AppExecFwk::AbilityType::PAGE &&
