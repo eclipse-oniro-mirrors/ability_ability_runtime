@@ -383,7 +383,7 @@ void DumpRuntimeHelper::DumpNativeHeap(const OHOS::AppExecFwk::MemDumpInfo &info
     }
 }
 
-GetMemLeakStringFunc DumpRuntimeHelper::LoadMemLeakFunc()
+GetMemLeakStringFunc DumpRuntimeHelper::LoadMemLeakFunc(void **handle)
 {
     if (SO_NAME[0] == '\0') {
         TAG_LOGW(AAFwkTag::APPKIT, "mem leak so is unsupported on non-64-bit");
@@ -400,12 +400,16 @@ GetMemLeakStringFunc DumpRuntimeHelper::LoadMemLeakFunc()
         dlclose(hd);
         return nullptr;
     }
+    if (handle != nullptr) {
+        *handle = hd;
+    }
     return func;
 }
 
 bool DumpRuntimeHelper::GetDumpResult(std::string &dumpResult)
 {
-    auto func = LoadMemLeakFunc();
+    void* handle = nullptr;
+    auto func = LoadMemLeakFunc(&handle);
     if (!func) {
         return false;
     }
@@ -418,12 +422,16 @@ bool DumpRuntimeHelper::GetDumpResult(std::string &dumpResult)
         TAG_LOGI(AAFwkTag::APPKIT, "TYPE_TXT finish, result:%{public}s", dumpResult.c_str());
     }
     free(buf);
+    if (handle != nullptr) {
+        dlclose(handle);
+    }
     return ret;
 }
 
 bool DumpRuntimeHelper::GetSnapshot(int fd)
 {
-    auto func = LoadMemLeakFunc();
+    void* handle = nullptr;
+    auto func = LoadMemLeakFunc(&handle);
     if (!func) {
         return false;
     }
@@ -438,11 +446,17 @@ bool DumpRuntimeHelper::GetSnapshot(int fd)
         if (written < 0) {
             TAG_LOGE(AAFwkTag::APPKIT, "write snapshot failed, errno:%{public}d", errno);
             free(buf);
+            if (handle != nullptr) {
+                dlclose(handle);
+            }
             return false;
         }
         TAG_LOGI(AAFwkTag::APPKIT, "TYPE_SNAPSHOT finish");
     }
     free(buf);
+    if (handle != nullptr) {
+        dlclose(handle);
+    }
     return ret;
 }
 
