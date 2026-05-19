@@ -35,6 +35,7 @@
 #include "cli_error_code.h"
 #include "cli_tool_app_state_observer.h"
 #include "ccm_util.h"
+#include "cli_tool_manager_scheduler_stub.h"
 #include "cli_tool_data_manager_mock.h"
 #include "event_dispatcher.h"
 #include "exec_options.h"
@@ -72,6 +73,24 @@ bool IsPermissionGateResult(int32_t result)
     return result == ERR_NOT_SYSTEM_APP || result == ERR_PERMISSION_DENIED;
 }
 }
+
+class TestScheduler : public CliToolManagerSchedulerStub {
+public:
+    int32_t SchedulerSessionEvent(const std::string &, const std::string &, const CliToolEvent &) override
+    {
+        return ERR_OK;
+    }
+
+    int32_t SchedulerInputReplyEvent(const std::string &, int32_t) override
+    {
+        return ERR_OK;
+    }
+
+    int32_t SchedulerExecToolReplyEvent(const std::string &, int32_t, const CliSessionInfo &) override
+    {
+        return ERR_OK;
+    }
+};
 
 class CliToolManagerServiceTest : public testing::Test {
 public:
@@ -292,7 +311,7 @@ HWTEST_F(CliToolManagerServiceTest, SubscribeSession_0100, TestSize.Level1)
     runningRecord->sessionId = "running_session";
     runningRecord->callerPid = IPCSkeleton::GetCallingPid();
     service_->AddSessionRecord(runningRecord);
-    int32_t runningRet = service_->SubscribeSession(runningRecord->sessionId, "running_subscription");
+    int32_t runningRet = service_->SubscribeSession(runningRecord->sessionId, "running_subscription", nullptr);
     EXPECT_TRUE(runningRet == ERR_NO_INIT || runningRet == ERR_NOT_SYSTEM_APP || runningRet == ERR_PERMISSION_DENIED);
     if (runningRet != ERR_NO_INIT) {
         GTEST_LOG_(INFO) << "CliToolManagerService_SubscribeSession_0100 skipped status gate checks";
@@ -306,7 +325,7 @@ HWTEST_F(CliToolManagerServiceTest, SubscribeSession_0100, TestSize.Level1)
     completedRecord->MarkStdoutClosed();
     completedRecord->MarkStderrClosed();
     service_->AddSessionRecord(completedRecord);
-    EXPECT_EQ(service_->SubscribeSession(completedRecord->sessionId, "completed_subscription"),
+    EXPECT_EQ(service_->SubscribeSession(completedRecord->sessionId, "completed_subscription", nullptr),
         ERR_CLI_SESSION_NOT_FOUND);
 
     auto failedRecord = std::make_shared<SessionRecord>();
@@ -316,7 +335,8 @@ HWTEST_F(CliToolManagerServiceTest, SubscribeSession_0100, TestSize.Level1)
     failedRecord->MarkStdoutClosed();
     failedRecord->MarkStderrClosed();
     service_->AddSessionRecord(failedRecord);
-    EXPECT_EQ(service_->SubscribeSession(failedRecord->sessionId, "failed_subscription"), ERR_CLI_SESSION_NOT_FOUND);
+    EXPECT_EQ(service_->SubscribeSession(failedRecord->sessionId, "failed_subscription", nullptr),
+        ERR_CLI_SESSION_NOT_FOUND);
 
     GTEST_LOG_(INFO) << "CliToolManagerService_SubscribeSession_0100 end";
 }
@@ -363,7 +383,8 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0110, TestSize.Level1)
 
     ExecToolParam param;
     param.toolName = "ohos-limit_tool";
-    int32_t result = service_->ExecTool(param, "event_exec_limit");
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecTool(param, "event_exec_limit", scheduler);
     EXPECT_TRUE(result == ERR_SESSION_LIMIT_EXCEEDED || IsPermissionGateResult(result));
 
     GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0110 end";
@@ -406,7 +427,8 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0200, TestSize.Level1)
     param.subcommand = "";
     param.challenge = "test_challenge";
 
-    int32_t result = service_->ExecTool(param, "event_exec_missing_tool");
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecTool(param, "event_exec_missing_tool", scheduler);
 
     EXPECT_TRUE(result == ERR_TOOL_NOT_EXIST || IsPermissionGateResult(result));
 
@@ -457,7 +479,8 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0300, TestSize.Level1)
     param.subcommand = "";
     param.challenge = "test_challenge";
 
-    int32_t result = service_->ExecTool(param, "event_exec_empty_tool");
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecTool(param, "event_exec_empty_tool", scheduler);
 
     EXPECT_TRUE(result == ERR_TOOL_NOT_EXIST || IsPermissionGateResult(result));
 
@@ -481,7 +504,8 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0400, TestSize.Level1)
     param.toolName = "ohos-prepared_tool";
     param.challenge = "test_challenge";
 
-    int32_t result = service_->ExecTool(param, "event_exec_prepared_tool");
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecTool(param, "event_exec_prepared_tool", scheduler);
 
     EXPECT_TRUE(result == ERR_NO_INIT || result == ERR_NOT_HAP || IsPermissionGateResult(result));
     service_->ioMonitor_ = oldMonitor;
@@ -1262,7 +1286,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleSkillSessionComplete_0100, TestSize.Le
 
     CliSessionInfo session;
     session.sessionId = "missing_skill_session";
-    service_->HandleSkillSessionComplete("missing_skill_session", 0, "event", ERR_OK, session);
+    service_->HandleSkillSessionComplete("missing_skill_session", 0, 0, "event", ERR_OK, session);
 
     auto record = std::make_shared<SessionRecord>();
     record->sessionId = "skill_complete_session";
@@ -1272,10 +1296,10 @@ HWTEST_F(CliToolManagerServiceTest, HandleSkillSessionComplete_0100, TestSize.Le
     service_->AddSessionRecord(record);
     session.sessionId = record->sessionId;
 
-    service_->HandleSkillSessionComplete(record->sessionId, 0, record->eventId, ERR_OK, session);
+    service_->HandleSkillSessionComplete(record->sessionId, 0, 0, record->eventId, ERR_OK, session);
 
     EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
-    service_->HandleSkillSessionComplete(record->sessionId, 0, record->eventId, ERR_OK, session);
+    service_->HandleSkillSessionComplete(record->sessionId, 0, 0, record->eventId, ERR_OK, session);
     EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
 
     GTEST_LOG_(INFO) << "CliToolManagerService_HandleSkillSessionComplete_0100 end";
@@ -1291,7 +1315,8 @@ HWTEST_F(CliToolManagerServiceTest, SkillCallbackAdapter_0100, TestSize.Level1)
     GTEST_LOG_(INFO) << "CliToolManagerService_SkillCallbackAdapter_0100 start";
 
     AppExecFwk::SkillExecuteResult result;
-    SkillCallbackAdapter missingAdapter("missing_callback_session", IPCSkeleton::GetCallingPid(), "missing_event");
+    SkillCallbackAdapter missingAdapter("missing_callback_session",
+        IPCSkeleton::GetCallingPid(), IPCSkeleton::GetCallingUid(), "missing_event");
     missingAdapter.OnExecuteDone("request", ERR_OK, result);
 
     auto record = std::make_shared<SessionRecord>();
@@ -1302,7 +1327,8 @@ HWTEST_F(CliToolManagerServiceTest, SkillCallbackAdapter_0100, TestSize.Level1)
     record->SetBackground(true);
     service_->AddSessionRecord(record);
 
-    SkillCallbackAdapter adapter(record->sessionId, record->callerPid, record->eventId);
+    record->callerUid = IPCSkeleton::GetCallingUid();
+    SkillCallbackAdapter adapter(record->sessionId, record->callerPid, record->callerUid, record->eventId);
     adapter.OnExecuteDone("request", ERR_OK, result);
 
     EXPECT_EQ(record->GetState(), SessionState::COMPLETED);
@@ -1362,34 +1388,6 @@ HWTEST_F(CliToolManagerServiceTest, WaitPid_0200, TestSize.Level1)
     EXPECT_FALSE(record->HasProcessExited());
 
     GTEST_LOG_(INFO) << "CliToolManagerService_WaitPid_0200 end";
-}
-
-/**
- * @tc.name: CliToolManagerService_RegisterScheduler_0100
- * @tc.desc: Test RegisterScheduler with null and valid scheduler
- * @tc.type: FUNC
- */
-HWTEST_F(CliToolManagerServiceTest, RegisterScheduler_0100, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "CliToolManagerService_RegisterScheduler_0100 start";
-
-    EXPECT_NE(service_->RegisterScheduler(nullptr), ERR_OK);
-
-    GTEST_LOG_(INFO) << "CliToolManagerService_RegisterScheduler_0100 end";
-}
-
-/**
- * @tc.name: CliToolManagerService_UnregisterScheduler_0100
- * @tc.desc: Test UnregisterScheduler clears scheduler
- * @tc.type: FUNC
- */
-HWTEST_F(CliToolManagerServiceTest, UnregisterScheduler_0100, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "CliToolManagerService_UnregisterScheduler_0100 start";
-
-    service_->UnregisterScheduler();
-
-    GTEST_LOG_(INFO) << "CliToolManagerService_UnregisterScheduler_0100 end";
 }
 
 /**
@@ -1534,11 +1532,12 @@ HWTEST_F(CliToolManagerServiceTest, SessionOwner_0100, TestSize.Level1)
     ASSERT_EQ(service_->ValidateExecToolPermissions(), ERR_OK);
     int32_t clearResult = service_->ClearSession(record->sessionId);
     EXPECT_EQ(clearResult, ERR_PERMISSION_DENIED);
-    int32_t subscribeResult = service_->SubscribeSession(record->sessionId, "subscription");
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t subscribeResult = service_->SubscribeSession(record->sessionId, "subscription", scheduler);
     EXPECT_EQ(subscribeResult, ERR_PERMISSION_DENIED);
     int32_t queryResult = service_->QuerySession(record->sessionId, session);
     EXPECT_EQ(queryResult, ERR_PERMISSION_DENIED);
-    int32_t sendResult = service_->SendMessage(record->sessionId, "input", "event");
+    int32_t sendResult = service_->SendMessage(record->sessionId, "input", "event", scheduler);
     EXPECT_EQ(sendResult, ERR_PERMISSION_DENIED);
 
     GTEST_LOG_(INFO) << "CliToolManagerService_SessionOwner_0100 end";
@@ -1593,7 +1592,8 @@ HWTEST_F(CliToolManagerServiceTest, SessionOwner_0300, TestSize.Level1)
     subscribeRecord->callerPid = IPCSkeleton::GetCallingPid();
     subscribeRecord->SetState(SessionState::RUNNING);
     service_->AddSessionRecord(subscribeRecord);
-    int32_t subscribeResult = service_->SubscribeSession(subscribeRecord->sessionId, "owner_subscription");
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t subscribeResult = service_->SubscribeSession(subscribeRecord->sessionId, "owner_subscription", scheduler);
     EXPECT_TRUE(subscribeResult == ERR_OK || subscribeResult == ERR_NO_INIT);
 
     auto queryRecord = std::make_shared<SessionRecord>();
@@ -1615,7 +1615,7 @@ HWTEST_F(CliToolManagerServiceTest, SessionOwner_0300, TestSize.Level1)
     sendRecord->callerPid = IPCSkeleton::GetCallingPid();
     sendRecord->SetState(SessionState::RUNNING);
     service_->AddSessionRecord(sendRecord);
-    int32_t sendResult = service_->SendMessage(sendRecord->sessionId, "input", "event");
+    int32_t sendResult = service_->SendMessage(sendRecord->sessionId, "input", "event", scheduler);
     EXPECT_EQ(sendResult, ERR_CLI_SEND_MESSAGE);
     service_->ioMonitor_ = oldMonitor;
 
@@ -1631,14 +1631,14 @@ HWTEST_F(CliToolManagerServiceTest, SubscribeSession_0200, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "CliToolManagerService_SubscribeSession_0200 start";
 
-    int32_t result = service_->SubscribeSession("", "sub1");
+    int32_t result = service_->SubscribeSession("", "sub1", nullptr);
     EXPECT_TRUE(result == ERR_INVALID_PARAM || IsPermissionGateResult(result));
     if (IsPermissionGateResult(result)) {
         GTEST_LOG_(INFO) << "CliToolManagerService_SubscribeSession_0200 skipped argument/session gate checks";
         return;
     }
-    EXPECT_EQ(service_->SubscribeSession("session", ""), ERR_INVALID_PARAM);
-    EXPECT_EQ(service_->SubscribeSession("missing", "sub1"), ERR_CLI_SESSION_NOT_FOUND);
+    EXPECT_EQ(service_->SubscribeSession("session", "", nullptr), ERR_INVALID_PARAM);
+    EXPECT_EQ(service_->SubscribeSession("missing", "sub1", nullptr), ERR_CLI_SESSION_NOT_FOUND);
 
     GTEST_LOG_(INFO) << "CliToolManagerService_SubscribeSession_0200 end";
 }
@@ -1676,7 +1676,8 @@ HWTEST_F(CliToolManagerServiceTest, SendMessage_0100, TestSize.Level1)
     noMonitorRecord->SetState(SessionState::RUNNING);
     service_->AddSessionRecord(noMonitorRecord);
 
-    int32_t result = service_->SendMessage(noMonitorRecord->sessionId, "input", "event");
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->SendMessage(noMonitorRecord->sessionId, "input", "event", scheduler);
     EXPECT_TRUE(result == ERR_CLI_SEND_MESSAGE || IsPermissionGateResult(result));
     if (IsPermissionGateResult(result)) {
         service_->ioMonitor_ = oldMonitor;
@@ -1691,7 +1692,7 @@ HWTEST_F(CliToolManagerServiceTest, SendMessage_0100, TestSize.Level1)
     completedRecord->callerPid = IPCSkeleton::GetCallingPid();
     completedRecord->SetState(SessionState::COMPLETED);
     service_->AddSessionRecord(completedRecord);
-    EXPECT_EQ(service_->SendMessage(completedRecord->sessionId, "input", "event"), ERR_CLI_SEND_MESSAGE);
+    EXPECT_EQ(service_->SendMessage(completedRecord->sessionId, "input", "event", scheduler), ERR_CLI_SEND_MESSAGE);
 
     auto skillRecord = std::make_shared<SessionRecord>();
     skillRecord->sessionId = "send_skill_session";
@@ -1699,7 +1700,7 @@ HWTEST_F(CliToolManagerServiceTest, SendMessage_0100, TestSize.Level1)
     skillRecord->sessionType = SessionType::SKILL;
     skillRecord->SetState(SessionState::RUNNING);
     service_->AddSessionRecord(skillRecord);
-    EXPECT_EQ(service_->SendMessage(skillRecord->sessionId, "input", "event"), ERR_CLI_SEND_MESSAGE);
+    EXPECT_EQ(service_->SendMessage(skillRecord->sessionId, "input", "event", scheduler), ERR_CLI_SEND_MESSAGE);
 
     service_->ioMonitor_ = oldMonitor;
 
@@ -1909,7 +1910,7 @@ HWTEST_F(CliToolManagerServiceTest, RegisterTool_0100, TestSize.Level1)
 
 /**
  * @tc.name: CliToolManagerService_ExecTool_0600
- * @tc.desc: Test ExecTool with nonexistent tool name
+ * @tc.desc: Test ExecTool rejects missing scheduler after permission gate
  * @tc.type: FUNC
  */
 HWTEST_F(CliToolManagerServiceTest, ExecTool_0600, TestSize.Level1)
@@ -1920,8 +1921,8 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0600, TestSize.Level1)
     param.toolName = "ohos-nonexistent_tool";
     param.options.timeout = 30;
     CliSessionInfo session;
-    int32_t result = service_->ExecTool(param, "event_exec_0600");
-    EXPECT_TRUE(result == ERR_TOOL_NOT_EXIST || IsPermissionGateResult(result));
+    int32_t result = service_->ExecTool(param, "event_exec_0600", nullptr);
+    EXPECT_TRUE(result == ERR_NO_INIT || IsPermissionGateResult(result));
 
     GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0600 end";
 }
@@ -1938,7 +1939,8 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0700, TestSize.Level1)
     ExecToolParam param;
     param.toolName = "ohos-arkTSScript";
 
-    int32_t result = service_->ExecTool(param, "event_exec_skill_invalid");
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecTool(param, "event_exec_skill_invalid", scheduler);
     EXPECT_TRUE(result == ERR_INVALID_VALUE || IsPermissionGateResult(result));
 
     GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0700 end";

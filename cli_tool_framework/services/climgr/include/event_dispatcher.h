@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_CLI_TOOL_MGR_EVENT_DISPATCHER_H
 #define OHOS_ABILITY_RUNTIME_CLI_TOOL_MGR_EVENT_DISPATCHER_H
 
+#include <cstddef>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -32,20 +33,45 @@ namespace CliTool {
 
 class EventDispatcher final {
 public:
+    static constexpr size_t CALLER_UID_HASH_SHIFT = 1;
+    static constexpr size_t SUBSCRIPTION_ID_HASH_SHIFT = 2;
+
+    struct SchedulerKey {
+        int32_t callerPid = 0;
+        int32_t callerUid = 0;
+
+        bool operator==(const SchedulerKey &other) const
+        {
+            return callerPid == other.callerPid && callerUid == other.callerUid;
+        }
+    };
+
+    struct SchedulerKeyHash {
+        size_t operator()(const SchedulerKey &key) const
+        {
+            return std::hash<int32_t>()(key.callerPid) ^
+                (std::hash<int32_t>()(key.callerUid) << CALLER_UID_HASH_SHIFT);
+        }
+    };
+
     struct SubscriberKey {
         int32_t callerPid = 0;
+        int32_t callerUid = 0;
         std::string subscriptionId;
 
         bool operator==(const SubscriberKey &other) const
         {
-            return callerPid == other.callerPid && subscriptionId == other.subscriptionId;
+            return callerPid == other.callerPid && callerUid == other.callerUid &&
+                subscriptionId == other.subscriptionId;
         }
     };
 
     struct SubscriberKeyHash {
         size_t operator()(const SubscriberKey &key) const
         {
-            return std::hash<int32_t>()(key.callerPid) ^ (std::hash<std::string>()(key.subscriptionId) << 1);
+            return std::hash<int32_t>()(key.callerPid) ^
+                (std::hash<int32_t>()(key.callerUid) << CALLER_UID_HASH_SHIFT) ^
+                (std::hash<std::string>()(key.subscriptionId) << SUBSCRIPTION_ID_HASH_SHIFT);
         }
     };
 
@@ -62,21 +88,23 @@ public:
 
     static EventDispatcher &GetInstance();
 
-    bool RegisterScheduler(int32_t callerPid, const sptr<ICliToolManagerScheduler> &remote);
+    bool SetScheduler(int32_t callerPid, int32_t callerUid, const sptr<ICliToolManagerScheduler> &remote);
 
-    void UnregisterScheduler(int32_t callerPid);
+    void ClearScheduler(int32_t callerPid, int32_t callerUid);
 
-    bool RegisterSubscriber(const std::string &sessionId, const std::string &subscriptionId, int32_t callerPid);
+    bool RegisterSubscriber(const std::string &sessionId, const std::string &subscriptionId,
+        int32_t callerPid, int32_t callerUid);
 
-    bool UnregisterSubscriber(const std::string &sessionId, const std::string &subscriptionId, int32_t callerPid);
+    bool UnregisterSubscriber(const std::string &sessionId, const std::string &subscriptionId,
+        int32_t callerPid, int32_t callerUid);
 
     void DispatchIOEvent(const std::string &sessionId, const std::string &eventType, const std::string &data);
     void DispatchErrorEvent(const std::string &sessionId, const std::string &error);
     void DispatchExitEvent(const std::string &sessionId, int32_t exitCode);
 
-    bool DispatchInputReplyEvent(int32_t callerPid, const std::string &eventId, int32_t result);
+    bool DispatchInputReplyEvent(int32_t callerPid, int32_t callerUid, const std::string &eventId, int32_t result);
 
-    bool DispatchExecToolReplyEvent(int32_t callerPid, const std::string &eventId,
+    bool DispatchExecToolReplyEvent(int32_t callerPid, int32_t callerUid, const std::string &eventId,
         int32_t result, const CliSessionInfo &session);
 
     void ClearSessionSubscribers(const std::string &sessionId);
@@ -86,10 +114,15 @@ public:
 private:
     void DispatchEvent(const std::string &sessionId, const CliToolEvent &event);
 
-    void RemoveSubscribersForPidLocked(int32_t callerPid);
+    void RemoveSubscribersForCallerLocked(const SchedulerKey &caller);
+    bool HasSameScheduler(const SchedulerKey &caller, const sptr<IRemoteObject> &remote);
+    sptr<IRemoteObject::DeathRecipient> CreateDeathRecipient(int32_t callerPid, int32_t callerUid);
+    bool SaveScheduler(const SchedulerKey &caller, const sptr<ICliToolManagerScheduler> &scheduler,
+        const sptr<IRemoteObject> &remote, const sptr<IRemoteObject::DeathRecipient> &deathRecipient,
+        sptr<IRemoteObject> &oldRemote, sptr<IRemoteObject::DeathRecipient> &oldDeathRecipient);
 
 private:
-    std::unordered_map<int32_t, SchedulerState> schedulers_;
+    std::unordered_map<SchedulerKey, SchedulerState, SchedulerKeyHash> schedulers_;
     std::unordered_map<std::string, std::unordered_map<SubscriberKey, SubscriberState, SubscriberKeyHash>>
         sessionSubscribers_;
     std::mutex mutex_;

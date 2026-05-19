@@ -20,7 +20,6 @@ int32_t CliToolMgrClientFlag::retUnsubscribeSession = ERR_OK;
 int32_t CliToolMgrClientFlag::retClearSession = ERR_OK;
 int32_t CliToolMgrClientFlag::retQuerySession = ERR_OK;
 int32_t CliToolMgrClientFlag::retSendMessage = ERR_OK;
-int32_t CliToolMgrClientFlag::retRegisterScheduler = ERR_OK;
 int32_t CliToolMgrClientFlag::retBatchQueryPermission = ERR_OK;
 int32_t CliToolMgrClientFlag::retLoadSystemAbility = ERR_OK;
 bool CliToolMgrClientFlag::nullSystemAbility = false;
@@ -45,7 +44,6 @@ void CliToolMgrClientFlag::Reset()
     retClearSession = ERR_OK;
     retQuerySession = ERR_OK;
     retSendMessage = ERR_OK;
-    retRegisterScheduler = ERR_OK;
     retBatchQueryPermission = ERR_OK;
     retLoadSystemAbility = ERR_OK;
     nullSystemAbility = false;
@@ -86,13 +84,15 @@ int32_t MockCliToolMgrService::RegisterTool(const ToolInfo &)
     return CliToolMgrClientFlag::retRegisterTool;
 }
 
-int32_t MockCliToolMgrService::ExecTool(const ExecToolParam &, const std::string &eventId)
+int32_t MockCliToolMgrService::ExecTool(const ExecToolParam &, const std::string &eventId,
+    const sptr<ICliToolManagerScheduler> &)
 {
     CliToolMgrClientFlag::lastEventId = eventId;
     return CliToolMgrClientFlag::retExecTool;
 }
 
-int32_t MockCliToolMgrService::SubscribeSession(const std::string &, const std::string &subscriptionId)
+int32_t MockCliToolMgrService::SubscribeSession(const std::string &, const std::string &subscriptionId,
+    const sptr<ICliToolManagerScheduler> &)
 {
     CliToolMgrClientFlag::lastSubscriptionId = subscriptionId;
     return CliToolMgrClientFlag::retSubscribeSession;
@@ -114,20 +114,11 @@ int32_t MockCliToolMgrService::QuerySession(const std::string &, CliSessionInfo 
     return CliToolMgrClientFlag::retQuerySession;
 }
 
-int32_t MockCliToolMgrService::SendMessage(const std::string &, const std::string &, const std::string &eventId)
+int32_t MockCliToolMgrService::SendMessage(const std::string &, const std::string &, const std::string &eventId,
+    const sptr<ICliToolManagerScheduler> &)
 {
     CliToolMgrClientFlag::lastEventId = eventId;
     return CliToolMgrClientFlag::retSendMessage;
-}
-
-int32_t MockCliToolMgrService::RegisterScheduler(const sptr<ICliToolManagerScheduler> &)
-{
-    return CliToolMgrClientFlag::retRegisterScheduler;
-}
-
-int32_t MockCliToolMgrService::UnregisterScheduler()
-{
-    return ERR_OK;
 }
 
 int32_t MockCliToolMgrService::BatchQueryPermissionBySubCommand(

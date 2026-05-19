@@ -195,19 +195,19 @@ EventDispatcher &EventDispatcher::GetInstance()
     return instance;
 }
 
-bool EventDispatcher::RegisterScheduler(int32_t, const sptr<ICliToolManagerScheduler> &)
+bool EventDispatcher::SetScheduler(int32_t, int32_t, const sptr<ICliToolManagerScheduler> &)
 {
     return true;
 }
 
-void EventDispatcher::UnregisterScheduler(int32_t) {}
+void EventDispatcher::ClearScheduler(int32_t, int32_t) {}
 
-bool EventDispatcher::RegisterSubscriber(const std::string &, const std::string &, int32_t)
+bool EventDispatcher::RegisterSubscriber(const std::string &, const std::string &, int32_t, int32_t)
 {
     return true;
 }
 
-bool EventDispatcher::UnregisterSubscriber(const std::string &, const std::string &, int32_t)
+bool EventDispatcher::UnregisterSubscriber(const std::string &, const std::string &, int32_t, int32_t)
 {
     return true;
 }
@@ -216,12 +216,13 @@ void EventDispatcher::DispatchIOEvent(const std::string &, const std::string &, 
 void EventDispatcher::DispatchErrorEvent(const std::string &, const std::string &) {}
 void EventDispatcher::DispatchExitEvent(const std::string &, int32_t) {}
 
-bool EventDispatcher::DispatchInputReplyEvent(int32_t, const std::string &, int32_t)
+bool EventDispatcher::DispatchInputReplyEvent(int32_t, int32_t, const std::string &, int32_t)
 {
     return true;
 }
 
-bool EventDispatcher::DispatchExecToolReplyEvent(int32_t, const std::string &, int32_t, const CliSessionInfo &)
+bool EventDispatcher::DispatchExecToolReplyEvent(int32_t, int32_t, const std::string &, int32_t,
+    const CliSessionInfo &)
 {
     return true;
 }

@@ -24,15 +24,15 @@ public:
     virtual int32_t GetToolInfoByName(const std::string &name, ToolInfo &tool) = 0;
     virtual int32_t GetAllToolInfos(ToolsRawData &tools) = 0;
     virtual int32_t RegisterTool(const ToolInfo &tool) = 0;
-    virtual int32_t ExecTool(const ExecToolParam &param, const std::string &eventId) = 0;
-    virtual int32_t SubscribeSession(const std::string &sessionId, const std::string &subscriptionId) = 0;
+    virtual int32_t ExecTool(const ExecToolParam &param, const std::string &eventId,
+        const sptr<ICliToolManagerScheduler> &scheduler) = 0;
+    virtual int32_t SubscribeSession(const std::string &sessionId, const std::string &subscriptionId,
+        const sptr<ICliToolManagerScheduler> &scheduler) = 0;
     virtual int32_t UnsubscribeSession(const std::string &sessionId, const std::string &subscriptionId) = 0;
     virtual int32_t ClearSession(const std::string &sessionId) = 0;
     virtual int32_t QuerySession(const std::string &sessionId, CliSessionInfo &session) = 0;
     virtual int32_t SendMessage(const std::string &sessionId, const std::string &inputText,
-        const std::string &eventId) = 0;
-    virtual int32_t RegisterScheduler(const sptr<ICliToolManagerScheduler> &scheduler) = 0;
-    virtual int32_t UnregisterScheduler() = 0;
+        const std::string &eventId, const sptr<ICliToolManagerScheduler> &scheduler) = 0;
     virtual int32_t BatchQueryPermissionBySubCommand(
         const std::vector<Command> &cmds, std::vector<CommandPermission> &cmdPermissions) = 0;
 };

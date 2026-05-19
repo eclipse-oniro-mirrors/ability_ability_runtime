@@ -247,12 +247,6 @@ HWTEST_F(CliToolMGRClientTest, ExecTool_0100, TestSize.Level1)
     param.toolName = "ohos-tool";
     int32_t callbackCode = -1;
 
-    CliToolMgrClientFlag::retRegisterScheduler = ERR_INVALID_VALUE;
-    EXPECT_EQ(CliToolMGRClient::GetInstance().ExecTool(param,
-        [&callbackCode](int32_t code, const CliSessionInfo &) { callbackCode = code; }), ERR_INVALID_VALUE);
-
-    CliToolMGRClient::GetInstance().schedulerRegistered_ = false;
-    CliToolMgrClientFlag::retRegisterScheduler = ERR_OK;
     CliToolMgrClientFlag::retExecTool = ERR_INVALID_VALUE;
     EXPECT_EQ(CliToolMGRClient::GetInstance().ExecTool(param,
         [&callbackCode](int32_t code, const CliSessionInfo &) { callbackCode = code; }), ERR_INVALID_VALUE);
@@ -379,10 +373,8 @@ HWTEST_F(CliToolMGRClientTest, ProxyLifecycle_0100, TestSize.Level1)
 {
     auto &client = CliToolMGRClient::GetInstance();
     auto mockService = SetMockService();
-    client.schedulerRegistered_ = true;
     client.ClearProxy();
     EXPECT_EQ(client.cliToolMgr_, nullptr);
-    EXPECT_FALSE(client.schedulerRegistered_);
 
     client.OnLoadSystemAbilitySuccess(mockService->AsObject());
     EXPECT_NE(client.cliToolMgr_, nullptr);

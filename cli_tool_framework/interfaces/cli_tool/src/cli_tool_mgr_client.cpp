@@ -41,7 +41,7 @@ CliToolMGRClient& CliToolMGRClient::GetInstance()
 
 ErrCode CliToolMGRClient::ExecTool(const ExecToolParam &param, const ExecToolReplyCallback &callback)
 {
-    ErrCode ret = EnsureSchedulerRegistered();
+    ErrCode ret = EnsureSchedulerStubCreated();
     if (ret != ERR_OK) {
         return ret;
     }
@@ -62,7 +62,7 @@ ErrCode CliToolMGRClient::ExecTool(const ExecToolParam &param, const ExecToolRep
                 cb(result.code, sessionInfo);
             }
         });
-    ret = proxy->ExecTool(param, eventId);
+    ret = proxy->ExecTool(param, eventId, schedulerStub_);
     if (ret != ERR_OK) {
         CliEventReplyManager::GetInstance().RemoveEventReplyCallback(eventId);
     } else {
@@ -71,32 +71,18 @@ ErrCode CliToolMGRClient::ExecTool(const ExecToolParam &param, const ExecToolRep
     return ret;
 }
 
-ErrCode CliToolMGRClient::EnsureSchedulerRegistered()
+ErrCode CliToolMGRClient::EnsureSchedulerStubCreated()
 {
     std::lock_guard<std::mutex> lock(schedulerMutex_);
-    if (schedulerRegistered_) {
+    if (schedulerStub_ != nullptr) {
         return ERR_OK;
     }
+    schedulerStub_ = sptr<CliToolManagerSchedulerRecipient>::MakeSptr();
     if (schedulerStub_ == nullptr) {
-        schedulerStub_ = sptr<CliToolManagerSchedulerRecipient>::MakeSptr();
-        if (schedulerStub_ == nullptr) {
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "EnsureSchedulerRegistered prerequisites are missing");
-            return ERR_NO_INIT;
-        }
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "EnsureSchedulerStubCreated failed");
+        return ERR_NO_INIT;
     }
-
-    auto proxy = GetCliToolMgrProxy();
-    if (proxy == nullptr) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "connect failed");
-        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
-    }
-    ErrCode ret = proxy->RegisterScheduler(schedulerStub_);
-    if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "RegisterScheduler failed: %{public}d", ret);
-        return ret;
-    }
-    schedulerRegistered_ = true;
-    return ret;
+    return ERR_OK;
 }
 
 ErrCode CliToolMGRClient::GetAllToolSummaries(std::vector<ToolSummary> &summaries)
@@ -274,7 +260,6 @@ void CliToolMGRClient::ClearProxy()
     TAG_LOGD(AAFwkTag::CLI_TOOL, "called");
     std::lock_guard<std::mutex> lock(proxyMutex_);
     cliToolMgr_ = nullptr;
-    schedulerRegistered_ = false;
     CliEventReplyManager::GetInstance().ClearAllEvent();
     CliSessionSubscriptionManager::GetInstance().ClearAllSubscriptions();
 }
@@ -291,7 +276,7 @@ ErrCode CliToolMGRClient::SubscribeSession(const std::string &sessionId,
                                            const std::shared_ptr<SessionEventCallback> &callback,
                                            std::string &subscriptionId)
 {
-    ErrCode ret = EnsureSchedulerRegistered();
+    ErrCode ret = EnsureSchedulerStubCreated();
     if (ret != ERR_OK) {
         return ret;
     }
@@ -309,7 +294,7 @@ ErrCode CliToolMGRClient::SubscribeSession(const std::string &sessionId,
                 callback->OnToolEvent(sessionId, subscriptionId, event);
             }
         });
-    ret = proxy->SubscribeSession(sessionId, subscriptionId);
+    ret = proxy->SubscribeSession(sessionId, subscriptionId, schedulerStub_);
     if (ret != ERR_OK) {
         CliSessionSubscriptionManager::GetInstance().RemoveSubscription(subscriptionId);
         subscriptionId = "";
@@ -354,7 +339,7 @@ ErrCode CliToolMGRClient::QuerySession(const std::string &sessionId, CliSessionI
 ErrCode CliToolMGRClient::SendMessage(const std::string &sessionId, const std::string &inputText,
     const EventReplyCallback &callback)
 {
-    ErrCode ret = EnsureSchedulerRegistered();
+    ErrCode ret = EnsureSchedulerStubCreated();
     if (ret != ERR_OK) {
         return ret;
     }
@@ -371,7 +356,7 @@ ErrCode CliToolMGRClient::SendMessage(const std::string &sessionId, const std::s
                 cb(result.code);
             }
         });
-    ret = proxy->SendMessage(sessionId, inputText, eventId);
+    ret = proxy->SendMessage(sessionId, inputText, eventId, schedulerStub_);
     if (ret != ERR_OK) {
         CliEventReplyManager::GetInstance().RemoveEventReplyCallback(eventId);
     } else {

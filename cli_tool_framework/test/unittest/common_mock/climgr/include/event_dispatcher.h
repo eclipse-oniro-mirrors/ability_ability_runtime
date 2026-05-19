@@ -17,15 +17,17 @@ class EventDispatcher final {
 public:
     static EventDispatcher &GetInstance();
 
-    bool RegisterScheduler(int32_t callerPid, const sptr<ICliToolManagerScheduler> &scheduler);
-    void UnregisterScheduler(int32_t callerPid);
-    bool RegisterSubscriber(const std::string &sessionId, const std::string &subscriptionId, int32_t callerPid);
-    bool UnregisterSubscriber(const std::string &sessionId, const std::string &subscriptionId, int32_t callerPid);
+    bool SetScheduler(int32_t callerPid, int32_t callerUid, const sptr<ICliToolManagerScheduler> &scheduler);
+    void ClearScheduler(int32_t callerPid, int32_t callerUid);
+    bool RegisterSubscriber(const std::string &sessionId, const std::string &subscriptionId,
+        int32_t callerPid, int32_t callerUid);
+    bool UnregisterSubscriber(const std::string &sessionId, const std::string &subscriptionId,
+        int32_t callerPid, int32_t callerUid);
     void DispatchIOEvent(const std::string &sessionId, const std::string &eventType, const std::string &data);
     void DispatchErrorEvent(const std::string &sessionId, const std::string &error);
     void DispatchExitEvent(const std::string &sessionId, int32_t exitCode);
-    bool DispatchInputReplyEvent(int32_t callerPid, const std::string &eventId, int32_t result);
-    bool DispatchExecToolReplyEvent(int32_t callerPid, const std::string &eventId,
+    bool DispatchInputReplyEvent(int32_t callerPid, int32_t callerUid, const std::string &eventId, int32_t result);
+    bool DispatchExecToolReplyEvent(int32_t callerPid, int32_t callerUid, const std::string &eventId,
         int32_t result, const CliSessionInfo &session);
     void ClearSessionSubscribers(const std::string &sessionId);
     void ClearAll();
