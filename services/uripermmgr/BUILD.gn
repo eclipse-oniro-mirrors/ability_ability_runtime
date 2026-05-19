@@ -112,10 +112,7 @@ ohos_shared_library("libupms") {
 
   if (ability_runtime_udmf_enable) {
     sources += [ "src/upms_udmf_utils.cpp" ]
-    external_deps += [
-      "udmf:udmf_client",
-      "image_framework:image",
-    ]
+    external_deps += [ "udmf:udmf_client" ]
     defines += [ "ABILITY_RUNTIME_UDMF_ENABLE" ]
   }
 
@@ -194,10 +191,7 @@ ohos_static_library("libupms_static") {
 
   if (ability_runtime_udmf_enable) {
     sources += [ "src/upms_udmf_utils.cpp" ]
-    external_deps += [
-      "udmf:udmf_client",
-      "image_framework:image",
-    ]
+    external_deps += [ "udmf:udmf_client" ]
     defines += [ "ABILITY_RUNTIME_UDMF_ENABLE" ]
   }
 
