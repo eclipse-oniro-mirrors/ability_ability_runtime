@@ -64,8 +64,8 @@ public:
     bool PostFork(void *napiEnv, const std::string &aotPath, const std::vector<std::string>& appInnerHspPathList,
         const std::vector<std::string> &staticHapModuleNameList,
         const std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> &commonHspBundleInfos,
-        const std::shared_ptr<OHOS::AppExecFwk::EventRunner> &eventRunner,
-        const bool isBaseLineProfile);
+        const std::shared_ptr<OHOS::AppExecFwk::EventRunner> &eventRunner, const bool isBaseLineProfile,
+        const std::vector<std::string> &staticPluginHspPathList, const std::string &bundleName);
     bool PreloadSystemClass(const char *className);
 
     void RemoveInstance(uint32_t instanceId);
@@ -129,6 +129,8 @@ private:
     bool debugMode_ = false;
     std::vector<std::string> appInnerHspPathList_;
     std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> commonHspBundleInfos_;
+    std::vector<std::string> staticPluginHspPathList_;
+    std::string bundleName_;
 };
 } // namespace EtsEnv
 } // namespace OHOS

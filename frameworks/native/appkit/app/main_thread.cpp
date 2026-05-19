@@ -1872,6 +1872,9 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
             for (auto &pluginBundleInfo : pluginBundleInfos) {
                 for (auto &pluginModuleInfo : pluginBundleInfo.pluginModuleInfos) {
                     options.packageNameList[pluginModuleInfo.moduleName] = pluginModuleInfo.packageName;
+                    if (pluginModuleInfo.moduleArkTSMode != AppExecFwk::Constants::ARKTS_MODE_DYNAMIC) {
+                        options.staticPluginHspPathList.push_back(pluginModuleInfo.hapPath);
+                    }
                     TAG_LOGI(AAFwkTag::APPKIT, "moduleName %{public}s, packageName %{public}s",
                         pluginModuleInfo.moduleName.c_str(), pluginModuleInfo.packageName.c_str());
                 }

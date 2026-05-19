@@ -501,7 +501,8 @@ HWTEST_F(EtsEnvironmentTest, PostFork_0100, TestSize.Level0)
     std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> commonHspBundleInfos;
     std::shared_ptr<OHOS::AppExecFwk::EventRunner> eventRunner;
     auto result = etsEnv->PostFork(
-        napiEnv, aotPath, appInnerHspPathList, staticHapModuleNameList, commonHspBundleInfos, eventRunner, false);
+        napiEnv, aotPath, appInnerHspPathList, staticHapModuleNameList, commonHspBundleInfos, eventRunner, false,
+        {}, {});
     EXPECT_FALSE(result);
 }
 
@@ -522,7 +523,8 @@ HWTEST_F(EtsEnvironmentTest, PostFork_0200, TestSize.Level0)
     std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> commonHspBundleInfos;
     std::shared_ptr<OHOS::AppExecFwk::EventRunner> eventRunner;
     auto result = etsEnv->PostFork(
-        napiEnv, aotPath, appInnerHspPathList, staticHapModuleNameList, commonHspBundleInfos, eventRunner, true);
+        napiEnv, aotPath, appInnerHspPathList, staticHapModuleNameList, commonHspBundleInfos, eventRunner, true, {},
+        {});
     EXPECT_FALSE(result);
 }
 
@@ -542,7 +544,8 @@ HWTEST_F(EtsEnvironmentTest, PostFork_0300, TestSize.Level0)
     std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> commonHspBundleInfos;
     std::shared_ptr<OHOS::AppExecFwk::EventRunner> eventRunner;
     auto result = etsEnv->PostFork(
-        napiEnv, aotPath, appInnerHspPathList, staticHapModuleNameList, commonHspBundleInfos, eventRunner, false);
+        napiEnv, aotPath, appInnerHspPathList, staticHapModuleNameList, commonHspBundleInfos, eventRunner, false, {},
+        {});
     EXPECT_FALSE(result);
 }
 
@@ -562,7 +565,8 @@ HWTEST_F(EtsEnvironmentTest, PostFork_0400, TestSize.Level0)
     std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> commonHspBundleInfos;
     std::shared_ptr<OHOS::AppExecFwk::EventRunner> eventRunner;
     auto result = etsEnv->PostFork(
-        napiEnv, aotPath, appInnerHspPathList, staticHapModuleNameList, commonHspBundleInfos, eventRunner, true);
+        napiEnv, aotPath, appInnerHspPathList, staticHapModuleNameList, commonHspBundleInfos, eventRunner, true, {},
+        {});
     EXPECT_FALSE(result);
 }
 
@@ -582,7 +586,8 @@ HWTEST_F(EtsEnvironmentTest, PostFork_0500, TestSize.Level0)
     std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> commonHspBundleInfos;
     std::shared_ptr<OHOS::AppExecFwk::EventRunner> eventRunner;
     auto result = etsEnv->PostFork(
-        napiEnv, aotPath, appInnerHspPathList, staticHapModuleNameList, commonHspBundleInfos, eventRunner, true);
+        napiEnv, aotPath, appInnerHspPathList, staticHapModuleNameList, commonHspBundleInfos, eventRunner, true, {},
+        {});
     EXPECT_FALSE(result);
 }
 
@@ -602,7 +607,8 @@ HWTEST_F(EtsEnvironmentTest, PostFork_0600, TestSize.Level0)
     std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> commonHspBundleInfos;
     std::shared_ptr<OHOS::AppExecFwk::EventRunner> eventRunner;
     auto result = etsEnv->PostFork(
-        napiEnv, aotPath, appInnerHspPathList, staticHapModuleNameList, commonHspBundleInfos, eventRunner, false);
+        napiEnv, aotPath, appInnerHspPathList, staticHapModuleNameList, commonHspBundleInfos, eventRunner, false, {},
+        {});
     EXPECT_FALSE(result);
 }
 
