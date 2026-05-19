@@ -3511,6 +3511,7 @@ ohos_shared_library("auto_fill_extension_ani") {
     "window_manager:embeddablewindowstage_kit",
     "window_manager:embeddablewindowstageani_kit",
     "window_manager:extensionwindow_napi",
+    "eventhandler:libeventhandler"
   ]
 
   if (ability_runtime_auto_fill) {
