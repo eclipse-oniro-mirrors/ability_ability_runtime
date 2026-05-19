@@ -72,7 +72,7 @@ ProcessManager &ProcessManager::GetInstance()
 }
 
 int32_t ProcessManager::CreateChildProcess(const ExecToolParam &, const std::string &, const ToolInfo &,
-    std::shared_ptr<SessionRecord> record) const
+    std::shared_ptr<SessionRecord> record, const std::vector<std::shared_ptr<SessionRecord>> &) const
 {
     if (record != nullptr) {
         record->processId = 1001;

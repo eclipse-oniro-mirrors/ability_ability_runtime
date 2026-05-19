@@ -409,6 +409,28 @@ HWTEST_F(ProcessManagerTest, CreatePipes_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: ProcessManager_CloseFatherSessionPipes_0100
+ * @tc.desc: Test inherited father session pipe cleanup helper
+ * @tc.type: FUNC
+ */
+HWTEST_F(ProcessManagerTest, CloseFatherSessionPipes_0100, TestSize.Level1)
+{
+    auto& manager = ProcessManager::GetInstance();
+    auto fatherRecord = std::make_shared<SessionRecord>();
+    ASSERT_NE(fatherRecord, nullptr);
+    ASSERT_TRUE(manager.CreatePipes(*fatherRecord));
+
+    manager.CloseFatherSessionPipes({fatherRecord});
+
+    EXPECT_EQ(fatherRecord->stdinPipe[0], -1);
+    EXPECT_EQ(fatherRecord->stdinPipe[1], -1);
+    EXPECT_EQ(fatherRecord->stdoutPipe[0], -1);
+    EXPECT_EQ(fatherRecord->stdoutPipe[1], -1);
+    EXPECT_EQ(fatherRecord->stderrPipe[0], -1);
+    EXPECT_EQ(fatherRecord->stderrPipe[1], -1);
+}
+
+/**
  * @tc.name: ProcessManager_Killpg_0100
  * @tc.desc: Test Killpg false branch with a non-existent process group
  * @tc.type: FUNC

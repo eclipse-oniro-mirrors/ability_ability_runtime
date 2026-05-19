@@ -134,7 +134,9 @@ private:
     std::shared_ptr<SessionRecord> CreateSessionRecord(const ExecToolParam &param, const std::string &eventId);
     void AddSessionRecord(const std::shared_ptr<SessionRecord> &record);
     std::shared_ptr<SessionRecord> GetSessionRecord(const std::string &sessionId);
+    std::vector<std::shared_ptr<SessionRecord>> GetSessionRecords();
     void RemoveSessionRecord(const std::string &sessionId);
+    bool IsSessionOwner(const std::shared_ptr<SessionRecord> &record, const char *action) const;
 
     bool RegisterSessionWithMonitors(const std::shared_ptr<SessionRecord> &record, const ExecToolParam &param);
     void UnregisterSessionWithMonitors(const std::string &sessionId);
