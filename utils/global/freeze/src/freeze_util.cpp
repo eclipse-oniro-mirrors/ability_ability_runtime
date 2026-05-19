@@ -17,6 +17,7 @@
 
 #include "hilog_tag_wrapper.h"
 #include "time_util.h"
+#include "file_ex.h"
 
 namespace OHOS::AbilityRuntime {
 namespace {
@@ -78,6 +79,20 @@ bool FreezeUtil::AppendLifecycleEvent(sptr<IRemoteObject> token, const std::stri
         entryList.pop_front();
     }
     return true;
+}
+
+bool FreezeUtil::IsFrozen(pid_t pid)
+{
+    std::string content;
+    std::string cgroupPath = "/proc/" + std::to_string(pid) + "/cgroup";
+    if (!LoadStringFromFile(cgroupPath, content)) {
+        return true;
+    }
+
+    if (content.find("Frozen") != std::string::npos) {
+        return true;
+    }
+    return false;
 }
 
 std::string FreezeUtil::GetLifecycleEvent(sptr<IRemoteObject> token)
