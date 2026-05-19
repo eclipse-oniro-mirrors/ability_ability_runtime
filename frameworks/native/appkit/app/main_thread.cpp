@@ -698,29 +698,28 @@ void MainThread::ScheduleCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info)
 
 /**
  *
- * @brief application triggerGC and dump memory.
+ * @brief triggerGC and dump application's memory info.
  *
  * @param info, pid, tid, needGC, needSnapshot.
+ * @param callback The callback to receive dump result
  */
-void MainThread::ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
+void MainThread::ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback)
 {
-    if (info.isSync) {
-        HandleMem(info, dumpResult);
-    } else {
-        wptr<MainThread> weak = this;
-        auto task = [weak, info]() {
-            auto appThread = weak.promote();
-            if (appThread == nullptr) {
-                TAG_LOGE(AAFwkTag::APPKIT, "null appThread");
-                return;
-            }
-            // async mode does not return dumpResult to caller
-            std::string asyncResult;
-            appThread->HandleMem(info, asyncResult);
-        };
-        if (!mainHandler_->PostTask(task, "MainThread:HandleMem")) {
-            TAG_LOGE(AAFwkTag::APPKIT, "PostTask HandleMem failed");
+    wptr<MainThread> weak = this;
+    auto task = [weak, info, callback]() {
+        auto appThread = weak.promote();
+        if (appThread == nullptr) {
+            TAG_LOGE(AAFwkTag::APPKIT, "null appThread");
+            return;
         }
+        std::string dumpResult;
+        appThread->HandleMem(info, dumpResult);
+        if (callback) {
+            appThread->appMgr_->ReportDumpMemResult(callback, dumpResult);
+        }
+    };
+    if (!mainHandler_->PostTask(task, "MainThread:HandleMem")) {
+        TAG_LOGE(AAFwkTag::APPKIT, "PostTask HandleMem failed");
     }
 }
 

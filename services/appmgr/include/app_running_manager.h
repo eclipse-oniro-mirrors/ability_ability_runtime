@@ -36,6 +36,7 @@
 #include "configuration_policy.h"
 #include "iremote_object.h"
 #include "kill_process_config.h"
+#include "mem_dump_callback_interface.h"
 #include "record_query_result.h"
 #include "refbase.h"
 #include "running_process_info.h"
@@ -313,10 +314,10 @@ public:
      * triggerGC and dump application's memory info.
      *
      * @param info The information to be dumped
-     * @param dumpResult The dump result string
+     * @param callback The callback to receive dump result
      * @return Returns ERR_OK on success, others on failure.
      */
-    int32_t DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult);
+    int32_t DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback);
 
     /**
      * Set AbilityForegroundingFlag of an app-record to true.

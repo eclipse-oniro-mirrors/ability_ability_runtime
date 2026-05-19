@@ -219,7 +219,7 @@ void AppLifeCycleDeal::ScheduleCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &in
     appThread->ScheduleCjHeapMemory(info);
 }
 
-void AppLifeCycleDeal::ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
+void AppLifeCycleDeal::ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback)
 {
     auto appThread = GetApplicationClient();
     if (!appThread) {
@@ -227,7 +227,7 @@ void AppLifeCycleDeal::ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::str
         return;
     }
 
-    appThread->ScheduleMem(info, dumpResult);
+    appThread->ScheduleMem(info, callback);
 }
 
 void AppLifeCycleDeal::LowMemoryWarning()
