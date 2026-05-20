@@ -157,7 +157,7 @@ int32_t ProcessManager::CreateChildProcess(const ExecToolParam &param, const std
 
 bool ProcessManager::Killpg(pid_t pid) const
 {
-    int32_t killRet = kill(0 - pid, SIGTERM);
+    int32_t killRet = kill(0 - pid, SIGKILL);
     if (killRet != 0) {
         TAG_LOGW(AAFwkTag::CLI_TOOL, "killpg result:%{public}d", killRet);
         return false;
