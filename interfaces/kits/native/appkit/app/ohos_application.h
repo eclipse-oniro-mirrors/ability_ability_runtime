@@ -152,11 +152,13 @@ public:
      * @brief add the ability stage when a hap first load
      *
      * @param hapModuleInfo
+     * @param preloadAbilityName The ability name for preload scenario
      * @return Returns true on success, false on failure
      */
     bool AddAbilityStage(
         const AppExecFwk::HapModuleInfo &hapModuleInfo,
-        const std::function<void()> &callback, bool &isAsyncCallback);
+        const std::function<void()> &callback, bool &isAsyncCallback,
+        const std::string &preloadAbilityName = "");
 
     /**
      * @brief remove the ability stage when all of the abilities in the hap have been removed
@@ -285,6 +287,17 @@ private:
     bool IsMainProcess(const std::string &bundleName, const std::string &process);
     void PreloadHybridModule(const HapModuleInfo &hapModuleInfo) const;
     void LoadDeduplicatedHarResource(
+        const std::shared_ptr<AbilityRuntime::AbilityStageContext> &stageContext);
+    void SetLaunchElementForStage(
+        const std::shared_ptr<AbilityRuntime::AbilityStageContext> &stageContext,
+        const std::shared_ptr<AppExecFwk::HapModuleInfo> &moduleInfo,
+        const std::string &abilityName);
+    std::shared_ptr<AbilityRuntime::AbilityStageContext> CreateAndInitStageContext(
+        const AppExecFwk::HapModuleInfo &hapModuleInfo);
+    bool ExecuteAutoStartupTasks(std::shared_ptr<AbilityRuntime::AbilityStage> abilityStage,
+        const AppExecFwk::HapModuleInfo &hapModuleInfo,
+        const std::function<void()> &callback,
+        bool &isAsyncCallback,
         const std::shared_ptr<AbilityRuntime::AbilityStageContext> &stageContext);
 
     const std::function<void()> CreateFirstStartupCallbackForRecord(

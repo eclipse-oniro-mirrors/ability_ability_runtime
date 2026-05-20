@@ -2371,7 +2371,7 @@ void MainThread::PreloadModule(const BundleInfo &bundleInfo, const AppLaunchData
     TAG_LOGI(AAFwkTag::APPKIT, "preload module %{public}s", preloadModuleInfo->moduleName.c_str());
     auto callback = []() {};
     bool isAsyncCallback = false;
-    application_->AddAbilityStage(*preloadModuleInfo, callback, isAsyncCallback);
+    application_->AddAbilityStage(*preloadModuleInfo, callback, isAsyncCallback, preloadAbilityName);
     if (isAsyncCallback) {
         return;
     }
