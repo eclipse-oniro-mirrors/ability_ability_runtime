@@ -151,6 +151,8 @@ public:
     MOCK_METHOD2(GetAllAbilityInfos, int32_t(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos));
     MOCK_METHOD2(EnableDelayedProcessExit, int32_t(int32_t pid, bool enabled));
     MOCK_METHOD1(CancelDelayedExitTask, void(int32_t pid));
+    MOCK_METHOD2(DumpMem, int32_t(MemDumpInfo &info, sptr<IMemDumpCallback> callback));
+    MOCK_METHOD2(ReportDumpMemResult, int32_t(sptr<IMemDumpCallback>, const std::string&));
     virtual int StartUserTestProcess(
         const AAFwk::Want &want, const sptr<IRemoteObject> &observer, const BundleInfo &bundleInfo, int32_t userId)
     {
@@ -289,17 +291,6 @@ public:
         return 0;
     }
 
-    int32_t DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback)
-    {
-        return 0;
-    }
-
-    int32_t ReportDumpMemResult(sptr<IMemDumpCallback> callback,
-        const std::string &dumpResult)
-    {
-        return 0;
-    }
-    
     int32_t DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info)
     {
         return 0;

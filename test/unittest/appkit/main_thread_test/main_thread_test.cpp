@@ -2064,6 +2064,41 @@ HWTEST_F(MainThreadTest, ProcessEvent_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: ScheduleMem_0100
+ * @tc.desc: Verify ScheduleMem with valid info and callback.
+ * @tc.type: FUNC
+ */
+HWTEST_F(MainThreadTest, ScheduleMem_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    MemDumpInfo info;
+    info.pid = 1;
+    sptr<IMemDumpCallback> callback = nullptr;
+    ASSERT_NE(mainThread_, nullptr);
+    mainThread_->ScheduleMem(info, callback);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: ScheduleMem_0200
+ * @tc.desc: Verify ScheduleMem with null mainHandler.
+ * @tc.type: FUNC
+ */
+HWTEST_F(MainThreadTest, ScheduleMem_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    ASSERT_NE(mainThread_, nullptr);
+    auto bakHandler = mainThread_->mainHandler_;
+    mainThread_->mainHandler_ = nullptr;
+    MemDumpInfo info;
+    info.pid = 1;
+    sptr<IMemDumpCallback> callback = nullptr;
+    mainThread_->ScheduleMem(info, callback);
+    mainThread_->mainHandler_ = bakHandler;
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
  * @tc.name: Start_0100
  * @tc.desc: Main thread start.
  * @tc.type: FUNC
