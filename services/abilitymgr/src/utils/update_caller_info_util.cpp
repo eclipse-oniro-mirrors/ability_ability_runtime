@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -50,6 +50,7 @@ constexpr const char* SPECIFIED_ABILITY_FLAG = "ohos.ability.params.specifiedAbi
 constexpr const char* SHELL_ASSISTANT_BUNDLENAME = "com.ohos.shell_assistant";
 constexpr const char* UIEXTENSION_TYPE_KEY = "ability.want.params.uiExtensionType";
 const std::string HIDE_SENSITIVE_TYPE = "ohos.media.params.hideSensitiveType";
+constexpr int32_t DEFAULT_HIDE_SENSITIVE_TYPE = 4;
 constexpr int32_t BROKER_UID = 5557;
 }
 
@@ -380,7 +381,7 @@ void UpdateCallerInfoUtil::ClearProtectedWantParam(Want &want)
         if (callerBundleName.empty()) {
             callerBundleName = std::to_string(callerUid);
         }
-        auto hideSensitiveType = want.GetIntParam(HIDE_SENSITIVE_TYPE, 0);
+        auto hideSensitiveType = want.GetIntParam(HIDE_SENSITIVE_TYPE, DEFAULT_HIDE_SENSITIVE_TYPE);
         eventInfo.uri = "HideSensitiveType://" + bundleName + "/" + callerBundleName + "/" +
             std::to_string(hideSensitiveType);
         EventReport::SendGrantUriPermissionEvent(EventName::GRANT_URI_PERMISSION, eventInfo);
