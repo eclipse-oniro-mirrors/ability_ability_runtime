@@ -182,6 +182,9 @@ bool ToolUtil::GenerateSandboxConfig(const ExecToolParam &param, AccessToken::Ac
     config["bundleName"] = bundleInfo.name;
     config["cliName"] = param.toolName;
     config["subCliName"] = param.subcommand;
+    std::vector<std::string> nsFlags;
+    nsFlags.push_back("pid");
+    config["nsFlags"] = nsFlags;
     sandboxConfig = config.dump();
     bundleName = bundleInfo.name;
     TAG_LOGI(AAFwkTag::CLI_TOOL, "bundleName:%{public}s, gid:%{public}d, cliName:%{public}s, subCliName:%{public}s",

@@ -439,7 +439,7 @@ HWTEST_F(ProcessManagerTest, Killpg_0100, TestSize.Level1)
 {
     auto& manager = ProcessManager::GetInstance();
 
-    EXPECT_FALSE(manager.Killpg(999999));
+    EXPECT_FALSE(manager.Kill(999999));
 }
 
 } // namespace CliTool
