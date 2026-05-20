@@ -1104,25 +1104,25 @@ enum {
     // Result (2099210) for agent manager proxy is nullptr.
     ERR_NULL_AGENT_MGR_PROXY = 2099210,
 
-    // Result (2099211) for invalid agent card data.
+    // Result (2099211) for invalid AgentCard data.
     ERR_INVALID_AGENT_CARD_DATA = 2099211,
 
-    // Result (2099212) for agent card list is out of range.
+    // Result (2099212) for AgentCard list is out of range.
     ERR_AGENT_CARD_LIST_OUT_OF_RANGE = 2099212,
 
-    // Result (2099213) for agent card id does not exist.
+    // Result (2099213) for AgentCard id does not exist.
     ERR_INVALID_AGENT_CARD_ID = 2099213,
 
     // Result (2099214) for agent connections from the same caller reach the limit.
     ERR_MAX_AGENT_CONNECTIONS_REACHED = 2099214,
 
-    // Result (2099215) for agent card version is older than stored version.
+    // Result (2099215) for AgentCard version is older than stored version.
     ERR_AGENT_CARD_VERSION_TOO_OLD = 2099215,
 
-    // Result (2099216) for invalid agent card version.
+    // Result (2099216) for invalid AgentCard version.
     ERR_INVALID_AGENT_CARD_VERSION = 2099216,
 
-    // Result (2099217) for duplicate register of an existing agent card.
+    // Result (2099217) for duplicate register of an existing AgentCard.
     ERR_AGENT_CARD_DUPLICATE_REGISTER = 2099217,
 
     // Result (2099218) for duplicate active LOW_CODE agent invocation.

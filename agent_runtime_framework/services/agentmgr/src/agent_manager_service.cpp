@@ -189,7 +189,7 @@ int32_t AgentManagerService::GetAgentCardsByBundleName(const std::string &bundle
     std::vector<AgentCard> cardVec;
     auto ret = AgentCardMgr::GetInstance().GetAgentCardsByBundleName(bundleName, cardVec);
     if (ret == ERR_NAME_NOT_FOUND) {
-        TAG_LOGW(AAFwkTag::SER_ROUTER, "no agent cards of bundle %{public}s", bundleName.c_str());
+        TAG_LOGW(AAFwkTag::SER_ROUTER, "no AgentCards of bundle %{public}s", bundleName.c_str());
         int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
         AppExecFwk::ApplicationInfo appInfo;
         auto queryRet = IN_PROCESS_CALL(
@@ -231,7 +231,7 @@ int32_t AgentManagerService::GetAgentCardByAgentId(const std::string &bundleName
             TAG_LOGE(AAFwkTag::SER_ROUTER, "bundle unexist");
             return AAFwk::ERR_BUNDLE_NOT_EXIST;
         }
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "no agent card of agentId %{public}s", agentId.c_str());
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "no AgentCard of agentId %{public}s", agentId.c_str());
         return AAFwk::ERR_INVALID_AGENT_CARD_ID;
     }
     return ret;
@@ -260,7 +260,7 @@ int32_t AgentManagerService::GetCallerAgentCardByAgentId(const std::string &agen
             TAG_LOGE(AAFwkTag::SER_ROUTER, "bundle unexist");
             return AAFwk::ERR_BUNDLE_NOT_EXIST;
         }
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "no agent card of agentId %{public}s", agentId.c_str());
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "no AgentCard of agentId %{public}s", agentId.c_str());
         return AAFwk::ERR_INVALID_AGENT_CARD_ID;
     }
     return ret;
@@ -450,7 +450,7 @@ int32_t AgentManagerService::ResolveConnectAgentTarget(const AAFwk::Want &want, 
     }
 
     if (!IsMatchedAgentCardTarget(connectWant, card)) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "want target does not match agent card");
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "want target does not match AgentCard");
         return AAFwk::ERR_WRONG_INTERFACE_CALL;
     }
     if (card.type == AgentCardType::LOW_CODE && !IsLowCodeTargetMatched(connectWant, card)) {

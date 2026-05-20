@@ -225,13 +225,13 @@ enum class AbilityErrorCode {
     // beforehand.
     ERROR_CODE_MAX_CONNECTIONS_REACHED = 35600003,
 
-    // The specified agent card version is older than the current version.
+    // The specified AgentCard version is older than the current version.
     ERROR_CODE_AGENT_CARD_VERSION_TOO_OLD = 35600004,
 
-    // The specified agent card version is invalid.
+    // The specified AgentCard version is invalid.
     ERROR_CODE_AGENT_CARD_VERSION_INVALID = 35600005,
 
-    // The specified agent card has already been registered. Use updateAgentCard instead.
+    // The specified AgentCard has already been registered. Use updateAgentCard instead.
     ERROR_CODE_AGENT_CARD_DUPLICATE_REGISTER = 35600006,
 
     // The specified LOW_CODE agent is already active and is not yet completed.

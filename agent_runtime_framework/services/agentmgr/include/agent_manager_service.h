@@ -106,7 +106,7 @@ private:
      */
     int32_t ValidateConnectAgentRequest(const sptr<AAFwk::IAbilityConnection> &connection, int32_t &callerUid);
     /**
-     * @brief Resolves the target agent card and builds the connect Want consumed by later connect paths.
+     * @brief Resolves the target AgentCard and builds the connect Want consumed by later connect paths.
      */
     int32_t ResolveConnectAgentTarget(const AAFwk::Want &want, AAFwk::Want &connectWant,
         std::string &agentId, AgentCard &card, int32_t &callingUid) const;

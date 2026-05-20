@@ -876,7 +876,7 @@ HWTEST_F(AgentCardMgrTest, HandleBundleInstallTest_019, TestSize.Level1)
 
 /**
  * @tc.name: HandleBundleInstallTest_020
- * @tc.desc: HandleBundleInstall accepts string agent card type from profile JSON
+ * @tc.desc: HandleBundleInstall accepts string AgentCard type from profile JSON
  * @tc.type: FUNC
  */
 HWTEST_F(AgentCardMgrTest, HandleBundleInstallTest_020, TestSize.Level1)

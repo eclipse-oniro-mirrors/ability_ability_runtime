@@ -2468,7 +2468,7 @@ HWTEST_F(AgentManagerServiceTest, ResolveConnectAgentTarget_001, TestSize.Level1
 /**
 * @tc.name  : ResolveConnectAgentTarget_002
 * @tc.number: ResolveConnectAgentTarget_002
-* @tc.desc  : Test ResolveConnectAgentTarget rejects unknown agent cards
+* @tc.desc  : Test ResolveConnectAgentTarget rejects unknown AgentCards
 */
 HWTEST_F(AgentManagerServiceTest, ResolveConnectAgentTarget_002, TestSize.Level1)
 {

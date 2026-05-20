@@ -301,7 +301,7 @@ HWTEST_F(AgentManagerClientTest, GetCallerAgentCardByAgentId_001, TestSize.Level
 /**
 * @tc.name  : GetCallerAgentCardByAgentId_ShouldReturnError_WhenRetrievalFails
 * @tc.number: GetCallerAgentCardByAgentId_002
-* @tc.desc  : Test that GetCallerAgentCardByAgentId returns the error code when agent card retrieval fails.
+* @tc.desc  : Test that GetCallerAgentCardByAgentId returns the error code when AgentCard retrieval fails.
 */
 HWTEST_F(AgentManagerClientTest, GetCallerAgentCardByAgentId_002, TestSize.Level1)
 {
