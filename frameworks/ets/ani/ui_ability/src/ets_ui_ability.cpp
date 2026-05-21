@@ -646,11 +646,11 @@ void EtsUIAbility::SetSelfSpecifiedId(ani_env *env, sptr<AAFwk::SessionInfo> ses
         return;
     }
     ani_status status = ANI_ERROR;
-    if (sessionInfo != nullptr && abilityInfo_->launchMode == AppExecFwk::LaunchMode::SPECIFIED) {
+    if (abilityInfo_->launchMode == AppExecFwk::LaunchMode::SPECIFIED) {
         if ((status = env->Object_SetFieldByName_Ref(etsAbilityObj_->aniObj,
-            "specifiedId", AppExecFwk::GetAniString(env, sessionInfo->specifiedFlag))) != ANI_OK) {
-            TAG_LOGE(AAFwkTag::UIABILITY, "specifiedId Object_SetFieldByName_Ref status: %{public}d", status);
-            return;
+            "specifiedId", AppExecFwk::GetAniString(env, GetLaunchParam().specifiedId))) != ANI_OK) {
+            TAG_LOGE(AAFwkTag::UIABILITY,
+                "specifiedId Object_SetFieldByName_Ref failed, status: %{public}d", status);
         }
     }
 }

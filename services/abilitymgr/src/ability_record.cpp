@@ -2492,6 +2492,8 @@ int32_t AbilityRecord::GetMissionId() const
 void AbilityRecord::SetSpecifiedFlag(const std::string &flag)
 {
     specifiedFlag_ = flag;
+
+    lifeCycleStateInfo_.launchParam.specifiedId = flag;
 }
 
 std::string AbilityRecord::GetSpecifiedFlag() const
