@@ -258,7 +258,8 @@ void StartAbilityByCallComplete(napi_env env, NapiAsyncTask& task, std::weak_ptr
     if (context == nullptr || callerCallBack == nullptr || calldata->remoteCallee == nullptr) {
         TAG_LOGE(AAFwkTag::CONTEXT, "null callComplete params error %{public}s",
             context == nullptr ? "context" : (calldata->remoteCallee == nullptr ? "remoteCallee" : "callerCallBack"));
-        task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+        task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_CALLER_FAILED)));
         TAG_LOGD(AAFwkTag::CONTEXT, "callComplete end");
         return;
     }
@@ -1022,7 +1023,8 @@ bool JsAbilityContext::CreateOpenLinkTask(const napi_env &env, const napi_value 
         napi_value abilityResult = AppExecFwk::WrapAbilityResult(env, resultCode, want);
         if (abilityResult == nullptr) {
             TAG_LOGW(AAFwkTag::CONTEXT, "null abilityResult");
-            asyncTask->Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+            asyncTask->Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                GetInnerErrorMsg(AbilityInnerErrorMsg::WRAP_ABILITY_RESULT_FAILED)));
             return;
         }
         isInner ? asyncTask->Reject(env, CreateJsErrorByNativeErr(env, resultCode)) :
@@ -2129,7 +2131,8 @@ napi_value JsAbilityContext::OnRestoreWindowStage(napi_env env, NapiCallbackInfo
     }
     auto errcode = context->RestoreWindowStage(env, info.argv[INDEX_ZERO]);
     if (errcode != 0) {
-        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::RESTORE_WINDOW_STAGE_FAILED));
         return CreateJsError(env, errcode, "restoreWindowStage failed");
     }
     return CreateJsUndefined(env);
@@ -2158,7 +2161,8 @@ napi_value JsAbilityContext::OnRequestDialogService(napi_env env, NapiCallbackIn
         napi_value requestResult = JsAbilityContext::WrapRequestDialogResult(env, resultCode, resultWant);
         if (requestResult == nullptr) {
             TAG_LOGW(AAFwkTag::CONTEXT, "null requestResult");
-            asyncTask->Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+            asyncTask->Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                GetInnerErrorMsg(AbilityInnerErrorMsg::REQUEST_DIALOG_RESULT_FAILED)));
         } else {
             asyncTask->Resolve(env, requestResult);
         }
@@ -3511,7 +3515,8 @@ napi_value JsAbilityContext::OnSetOnNewWantSkipScenarios(napi_env env, NapiCallb
             if (*innerErrCode == ERR_OK) {
                 task.Resolve(env, CreateJsUndefined(env));
             } else {
-                task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+                task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::SET_ON_NEW_WANT_SKIP_SCENARIOS_FAILED)));
             }
         };
 

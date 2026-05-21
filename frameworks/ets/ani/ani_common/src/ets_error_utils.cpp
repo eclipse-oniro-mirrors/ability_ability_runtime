@@ -181,9 +181,7 @@ ani_object EtsErrorUtil::CreateErrorByNativeErr(ani_env *env, int32_t err, const
         return nullptr;
     }
     auto errCode = GetJsErrorCodeByNativeError(err);
-    auto errMsg = (errCode == AbilityErrorCode::ERROR_CODE_PERMISSION_DENIED && !permission.empty())
-                      ? GetNoPermissionErrorMsg(permission)
-                      : GetErrorMsg(errCode);
+    auto errMsg = GetErrorMsgByNativeError(err, "", permission);
     return EtsErrorUtil::CreateError(env, static_cast<int32_t>(errCode), errMsg);
 }
 
