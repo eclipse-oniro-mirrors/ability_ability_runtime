@@ -30,6 +30,7 @@
 namespace OHOS {
 namespace AAFwk {
 using ProxyClearProxyCallback = std::function<void()>;
+constexpr int32_t DEFAULT_HIDE_SENSITIVE_TYPE = 4;
 #ifdef ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER
 using namespace AccessControl::SandboxManager;
 #endif // ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER
@@ -68,7 +69,7 @@ public:
      */
     int32_t GrantUriPermissionPrivileged(const std::vector<Uri> &uriVec, uint32_t flag,
         const std::string &targetBundleName, int32_t appIndex = 0, uint32_t initiatorTokenId = 0,
-        int32_t hideSensitiveType = 0);
+        int32_t hideSensitiveType = DEFAULT_HIDE_SENSITIVE_TYPE);
     
     /**
      * @brief Authorize the uri permission to targetBundleName with permission type.Only for foundation.
