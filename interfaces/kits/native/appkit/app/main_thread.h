@@ -353,7 +353,7 @@ public:
     int32_t ScheduleNotifyAppFault(const FaultData &faultData) override;
 #ifdef CJ_FRONTEND
     CJUncaughtExceptionInfo CreateCjExceptionInfo(const std::string &bundleName, uint32_t versionCode,
-        const std::string &hapPath);
+        const std::string &hapPath, const std::string &appRunningId);
     CJEventReportInfo CreateCjEventReportInfo(const std::string &bundleName, uint32_t versionCode,
         const std::string &hapPath, std::string &appRunningId);
 #endif

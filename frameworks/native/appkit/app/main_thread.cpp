@@ -1429,13 +1429,13 @@ bool GetBundleForLaunchApplication(std::shared_ptr<BundleMgrHelper> bundleMgrHel
 }
 #ifdef CJ_FRONTEND
 CJUncaughtExceptionInfo MainThread::CreateCjExceptionInfo(const std::string &bundleName,
-    uint32_t versionCode, const std::string &hapPath)
+    uint32_t versionCode, const std::string &hapPath, const std::string &appRunningId)
 {
     CJUncaughtExceptionInfo uncaughtExceptionInfo;
     wptr<MainThread> weak_this = this;
     std::string processName = processInfo_ != nullptr ? processInfo_->GetProcessName() : "unknown";
     uncaughtExceptionInfo.hapPath = hapPath.c_str();
-    uncaughtExceptionInfo.uncaughtTask = [weak_this, bundleName, versionCode, processName]
+    uncaughtExceptionInfo.uncaughtTask = [weak_this, bundleName, versionCode, processName, appRunningId]
         (std::string summary, const CJErrorObject errorObj) {
             auto appThread = weak_this.promote();
             if (appThread == nullptr) {
@@ -1457,6 +1457,7 @@ CJUncaughtExceptionInfo MainThread::CreateCjExceptionInfo(const std::string &bun
             hisyseventReport->InsertParam(EVENT_KEY_JSVM, JSVM_TYPE);
             hisyseventReport->InsertParam(EVENT_KEY_SUMMARY, errSummary);
             hisyseventReport->InsertParam(EVENT_KEY_PNAME, processName);
+            hisyseventReport->InsertParam(EVENT_KEY_APP_RUNNING_UNIQUE_ID, appRunningId);
             hisyseventReport->InsertParam(EVENT_KEY_THREAD_NAME, DumpProcessHelper::GetThreadName());
             hisyseventReport->InsertParam(EVENT_KEY_PROCESS_RSS_MEMINFO,
                 std::to_string(DumpProcessHelper::GetProcRssMemInfo()));
@@ -1996,7 +1997,7 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
             }
 #ifdef CJ_FRONTEND
         } else {
-            auto expectionInfo = CreateCjExceptionInfo(bundleName, versionCode, hapPath);
+            auto expectionInfo = CreateCjExceptionInfo(bundleName, versionCode, hapPath, appRunningId);
             (static_cast<AbilityRuntime::CJRuntime&>(*runtime)).RegisterUncaughtExceptionHandler(expectionInfo);
             auto reportInfo = CreateCjEventReportInfo(bundleName, versionCode, hapPath, appRunningId);
             (static_cast<AbilityRuntime::CJRuntime&>(*runtime)).RegisterEventHandler(reportInfo);
