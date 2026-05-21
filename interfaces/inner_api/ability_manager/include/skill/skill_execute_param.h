@@ -50,6 +50,7 @@ constexpr char SKILL_EXECUTE_PARAM_SRC_ENTRIES_COUNT[] = "ohos.skill.executePara
 constexpr char SKILL_EXECUTE_PARAM_SRC_ENTRY_PREFIX[] = "ohos.skill.executeParam.srcEntry.";
 constexpr char SKILL_EXECUTE_PARAM_HAP_PATH[] = "ohos.skill.executeParam.hapPath";
 constexpr char SKILL_EXECUTE_PARAM_REQUEST_CODE[] = "ohos.skill.executeParam.requestCode";
+constexpr char SKILL_EXECUTE_PARAM_CALLER_TOKEN_ID[] = "ohos.skill.executeParam.callerTokenId";
 
 class SkillExecuteParam : public Parcelable {
 public:

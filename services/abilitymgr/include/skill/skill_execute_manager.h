@@ -42,7 +42,8 @@ public:
     int32_t QuerySkillInfo(const std::string &bundleName, const std::string &moduleName,
         const std::string &skillName, int32_t userId, AppExecFwk::SkillInfo &skillInfo);
 
-    int32_t CheckSkillPermission(const AppExecFwk::SkillInfo &skillInfo);
+    int32_t CheckSkillPermission(const AppExecFwk::SkillInfo &skillInfo,
+        uint32_t callerTokenId = 0);
 
     std::string CreateExecuteRecord(const sptr<IRemoteObject> &callerToken,
         const std::string &targetBundleName, const std::string &callerBundleName,
