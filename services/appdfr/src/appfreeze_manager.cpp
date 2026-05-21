@@ -472,9 +472,8 @@ int AppfreezeManager::AcquireStack(const FaultData& faultData,
     AppfreezeManager::ParseBinderParam params = {pid, faultNotifyData.tid, pid, 0};
     std::set<int> asyncPids;
     std::set<int> syncPids = GetBinderPeerPids(binderInfo, params, asyncPids, terminalBinder);
-    if (syncPids.empty()) {
-        binderInfo += "PeerBinder pids is empty\n";
-    }
+    std::string binderProcessNameStr;
+    std::string binderProcessStackStr;
     for (auto& pidTemp : syncPids) {
         TAG_LOGI(AAFwkTag::APPDFR, "PeerBinder pidTemp pids:%{public}d", pidTemp);
         if (pidTemp == pid || IsAncoProc(pidTemp)) {
@@ -483,13 +482,24 @@ int AppfreezeManager::AcquireStack(const FaultData& faultData,
         std::string content = "Binder catcher stacktrace, type is peer, pid : " + std::to_string(pidTemp) + "\n";
         content += CatcherStacktrace(pidTemp);
         binderPidsStr += " " + std::to_string(pidTemp);
+        binderProcessNameStr += std::to_string(pidTemp) + "(" +
+            AppfreezeUtil::GetProcessNameFromProcCmdline(pidTemp) + ");";
         if (terminalBinder.pid > 0 && pidTemp == terminalBinder.pid) {
             terminalBinder.tid  = (terminalBinder.tid > 0) ? terminalBinder.tid : terminalBinder.pid;
             content = "Binder catcher stacktrace, terminal binder tag\n" + content +
                 "Binder catcher stacktrace, terminal binder tag\n";
             terminalBinderTid = std::to_string(terminalBinder.tid);
         }
-        binderInfo += content;
+        binderProcessStackStr += content;
+    }
+    if (syncPids.empty()) {
+        binderInfo += "PeerBinder pids is empty\n";
+    } else {
+        if (!binderProcessNameStr.empty()) {
+            binderProcessNameStr.pop_back();
+            binderProcessNameStr = "BINDER_PROC_NAME: " + binderProcessNameStr + "\n";
+        }
+        binderInfo = binderInfo + binderProcessNameStr + binderProcessStackStr;
     }
     binderInfo += CatchASyncByPid(asyncPids, syncPids, pid);
     std::string fileName = faultData.errorObject.name + "_" +
@@ -599,6 +609,7 @@ int AppfreezeManager::NotifyANR(const FaultData& faultData, const AppfreezeManag
     eventInfo.tid = tid > 0 ? tid : 0;
     eventInfo.pid = appInfo.pid;
     eventInfo.uid = appInfo.uid;
+    eventInfo.isFrozen = appInfo.isFrozen;
     eventInfo.eventId = faultData.eventId;
     eventInfo.bundleName = appInfo.bundleName;
     eventInfo.processName = appInfo.processName;

@@ -9084,8 +9084,10 @@ void AppMgrServiceInner::ParseInfoToAppfreeze(const FaultData &faultData, int32_
     const std::string &bundleName, const std::string &processName, const bool isOccurException)
 {
     if (faultData.faultType == FaultDataType::APP_FREEZE) {
+        bool isFrozen = AbilityRuntime::FreezeUtil::GetInstance().IsFrozen(pid);
         AppfreezeManager::AppInfo info = {
             .isOccurException = isOccurException,
+            .isFrozen = isFrozen,
             .pid = pid,
             .uid = uid,
             .bundleName = bundleName,
@@ -9184,8 +9186,10 @@ int32_t AppMgrServiceInner::SubmitDfxFaultTask(const FaultData &faultData, const
     int64_t startTime = AbilityRuntime::TimeUtil::CurrentTimeMillis();
     TAG_LOGI(AAFwkTag::APPDFR, "init cpuInfo, eventName:%{public}s, bundleName:%{public}s, "
         "pid:%{public}d", faultData.errorObject.name.c_str(), bundleName.c_str(), pid);
+    bool isFrozen = AbilityRuntime::FreezeUtil::GetInstance().IsFrozen(pid);
     AppfreezeManager::AppInfo info = {
         .pid = pid,
+        .isFrozen = isFrozen,
         .uid = callerUid,
         .bundleName = bundleName,
         .processName = processName,
@@ -9357,7 +9361,9 @@ void AppMgrServiceInner::TimeoutNotifyApp(int32_t pid, int32_t uid,
     KillFaultApp(pid, bundleName, faultData, isNeedExit, recordId);
 #endif
     if (faultData.faultType == FaultDataType::APP_FREEZE) {
+        bool isFrozen = AbilityRuntime::FreezeUtil::GetInstance().IsFrozen(pid);    
         AppfreezeManager::AppInfo info = {
+            .isFrozen = isFrozen,
             .pid = pid,
             .uid = uid,
             .bundleName = bundleName,

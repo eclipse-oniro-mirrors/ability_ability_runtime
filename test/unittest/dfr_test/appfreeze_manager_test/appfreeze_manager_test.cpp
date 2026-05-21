@@ -519,6 +519,24 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_CatchSyncByPid_Test001, Test
 }
 
 /**
+ * @tc.number: AppfreezeManagerTest GetProcessNameFromProcCmdline Test
+ * @tc.name: GetProcessNameFromProcCmdline_001
+ * @tc.desc: test GetProcessNameFromProcCmdline function
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_GetProcessNameFromProcCmdline_Test001, TestSize.Level1)
+{
+    std::string processName = AppfreezeUtil::GetProcessNameFromProcCmdline(getpid());
+    EXPECT_TRUE(!processName.empty());
+
+    std::string invalidName = AppfreezeUtil::GetProcessNameFromProcCmdline(-1);
+    EXPECT_TRUE(invalidName.empty());
+
+    std::string zeroName = AppfreezeUtil::GetProcessNameFromProcCmdline(0);
+    EXPECT_TRUE(zeroName.empty());
+}
+
+/**
  * @tc.number: AppfreezeManagerTest InsertKillThread Test
  * @tc.desc: add testcase
  * @tc.type: FUNC
