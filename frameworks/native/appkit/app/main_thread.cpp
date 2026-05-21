@@ -2273,13 +2273,6 @@ void MainThread::ProcessExit(const ProcessExitInfo& info)
 }
 
 #if defined(NWEB) && defined(NWEB_GRAPHIC)
-class CustomizedBufferConsumerListener : public IBufferConsumerListener {
-public:
-    CustomizedBufferConsumerListener() {}
-    ~CustomizedBufferConsumerListener() {}
-
-    void OnBufferAvailable() override {}
-};
 void MainThread::HandleNWebPreload()
 {
     if (!mainHandler_) {
@@ -2292,21 +2285,21 @@ void MainThread::HandleNWebPreload()
             TAG_LOGE(AAFwkTag::APPKIT, "init NWebEngine failed");
             return;
         }
-        cSurface_ = IConsumerSurface::Create(NWEB_SURFACE_NODE_NAME);
-        if (cSurface_ == nullptr) {
-            TAG_LOGE(AAFwkTag::APPKIT, "create cSurface failed");
+        Rosen::RSSurfaceNodeConfig config;
+        config.SurfaceNodeName = NWEB_SURFACE_NODE_NAME;
+        preloadSurfaceNode_ = Rosen::RSSurfaceNode::Create(config, false);
+        if (!preloadSurfaceNode_) {
+            TAG_LOGE(AAFwkTag::APPKIT, "preload surface node is nullptr");
             return;
         }
-        auto producer = cSurface_->GetProducer();
-        pSurface_ = Surface::CreateSurfaceAsProducer(producer);
-        if (pSurface_ == nullptr) {
-            TAG_LOGE(AAFwkTag::APPKIT, "create pSurface failed");
+        auto surface = preloadSurfaceNode_->GetSurface();
+        if (!surface) {
+            TAG_LOGE(AAFwkTag::APPKIT, "preload surface is nullptr");
+            preloadSurfaceNode_ = nullptr;
             return;
         }
-        sptr<IBufferConsumerListener> listener = sptr<CustomizedBufferConsumerListener>::MakeSptr();
-        cSurface_->RegisterConsumerListener(listener);
         auto initArgs = std::make_shared<NWeb::NWebEngineInitArgsImpl>();
-        preloadNWeb_ = NWeb::NWebAdapterHelper::Instance().CreateNWeb(pSurface_, initArgs,
+        preloadNWeb_ = NWeb::NWebAdapterHelper::Instance().CreateNWeb(surface, initArgs,
             NWEB_SURFACE_SIZE, NWEB_SURFACE_SIZE, false);
         if (!preloadNWeb_) {
             TAG_LOGE(AAFwkTag::APPKIT, "create preLoadNWeb failed");
