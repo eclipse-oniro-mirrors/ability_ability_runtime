@@ -373,5 +373,29 @@ HWTEST_F(AppfreezeCpuFreqManagerTest, FreezePathToRealPathTest_001, TestSize.Lev
     logFile = AppfreezeUtil::FreezePathToRealPath("/data/log/faultlog");
     EXPECT_TRUE(!logFile.empty());
 }
+
+/**
+ * @tc.number: ClockTicksToMsTest_001
+ * @tc.desc: add testcase
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeCpuFreqManagerTest, ClockTicksToMsTest_001, TestSize.Level0)
+{
+    uint64_t cpuTime = 0;
+    auto ret = AppfreezeCpuFreqManager::GetInstance().ClockTicksToMs(cpuTime);
+    EXPECT_EQ(ret, 0);
+    cpuTime = 100;
+    ret = AppfreezeCpuFreqManager::GetInstance().ClockTicksToMs(cpuTime);
+    EXPECT_TRUE(ret >= 0);
+    cpuTime = 10000;
+    ret = AppfreezeCpuFreqManager::GetInstance().ClockTicksToMs(cpuTime);
+    EXPECT_TRUE(ret >= 0);
+    cpuTime = 1000000;
+    ret = AppfreezeCpuFreqManager::GetInstance().ClockTicksToMs(cpuTime);
+    EXPECT_TRUE(ret >= 0);
+    cpuTime = UINT64_MAX;
+    ret = AppfreezeCpuFreqManager::GetInstance().ClockTicksToMs(cpuTime);
+    EXPECT_TRUE(ret >= 0);
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS
