@@ -2632,5 +2632,312 @@ HWTEST_F(UIAbilityImplTest, AbilityRuntime_SetNativeModuleMetaData_005, TestSize
     GTEST_LOG_(INFO) << "AbilityRuntime_SetNativeModuleMetaData_005 end";
 }
 
+/*
+ * Feature: UIAbilityImpl
+ * Function: ExecuteInsightIntentMoveToForeground
+ * SubFunction: NA
+ * FunctionPoints: SilentForeground with PRE_FOREGROUND native state
+ * EnvConditions: NA
+ * CaseDescription: When localNativeState is INIT_PRE_FOREGROUND, ExecuteInsightIntentMoveToForeground
+ *                 sets silentForeground to true and transitions state to HALF_FOREGROUND.
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_ExecuteInsightIntentMoveToForeground_PreForeground_0100, TestSize.Level1)
+{
+    auto abilityImpl = std::make_shared<UIAbilityImpl>();
+    std::shared_ptr<MockUIAbility> pMocKUIAbility = std::make_shared<MockUIAbility>();
+    abilityImpl->ability_ = pMocKUIAbility;
+    abilityImpl->localNativeState_ = AbilityRuntime::LocalNativeState::INIT_PRE_FOREGROUND;
+
+    Want want;
+    auto executeParam = std::make_shared<InsightIntentExecuteParam>();
+    auto callback = std::make_unique<InsightIntentExecutorAsyncCallback>();
+
+    abilityImpl->ExecuteInsightIntentMoveToForeground(want, executeParam, std::move(callback));
+
+    EXPECT_EQ(abilityImpl->localNativeState_, AbilityRuntime::LocalNativeState::HALF_FOREGROUND);
+    EXPECT_FALSE(abilityImpl->ability_->CheckIsSilentForeground());
+}
+
+/*
+ * Feature: UIAbilityImpl
+ * Function: NewWant with requestId
+ * SubFunction: NA
+ * FunctionPoints: NewWant removes requestId and scbRequestId
+ * EnvConditions: NA
+ * CaseDescription: Test NewWant removes requestId and scbRequestId from want
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_NewWant_WithRequestId_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_NewWant_WithRequestId_001 start";
+    std::shared_ptr<MockUIAbilityimpl> mockUIAbilityimpl = std::make_shared<MockUIAbilityimpl>();
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    std::shared_ptr<AbilityInfo> abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->name = "uiAbility";
+    sptr<IRemoteObject> token = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    EXPECT_NE(token, nullptr);
+    if (token != nullptr) {
+        auto record = std::make_shared<AbilityLocalRecord>(abilityInfo, token, nullptr, 0);
+        std::shared_ptr<EventRunner> eventRunner = EventRunner::Create(abilityInfo->name);
+        std::shared_ptr<AbilityHandler> handler = std::make_shared<AbilityHandler>(eventRunner);
+        std::shared_ptr<UIAbility> uiability;
+        MockUIAbility *pMocKUIAbility = new (std::nothrow) MockUIAbility();
+        EXPECT_NE(pMocKUIAbility, nullptr);
+        if (pMocKUIAbility != nullptr) {
+            uiability.reset(pMocKUIAbility);
+            bool createObjSuc = false;
+            mockUIAbilityimpl->Init(application, record, uiability, handler, token, createObjSuc);
+
+            // Create want with requestId and scbRequestId
+            Want want;
+            want.SetParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, 100);
+            want.SetParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 200);
+
+            // Call NewWant
+            mockUIAbilityimpl->NewWant(want);
+
+            // Verify requestId and scbRequestId are removed
+            int32_t requestId = mockUIAbilityimpl->ability_->GetWant()->GetIntParam(
+                AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, -1);
+            int32_t scbRequestId = mockUIAbilityimpl->ability_->GetWant()->GetIntParam(
+                AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, -1);
+            EXPECT_EQ(requestId, -1);  // Should be removed
+            EXPECT_EQ(scbRequestId, -1);  // Should be removed
+        }
+    }
+    GTEST_LOG_(INFO) << "AbilityRuntime_NewWant_WithRequestId_001 end";
+}
+
+/*
+ * Feature: UIAbilityImpl
+ * Function: ExecuteInsightIntentMoveToForeground
+ * SubFunction: NA
+ * FunctionPoints: SilentForeground preserved when not in PRE_FOREGROUND state
+ * EnvConditions: NA
+ * CaseDescription: When localNativeState is NONE, ExecuteInsightIntentMoveToForeground does not
+ *                 modify silentForeground state.
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_ExecuteInsightIntentMoveToForeground_PreForeground_0300, TestSize.Level1)
+{
+    auto abilityImpl = std::make_shared<UIAbilityImpl>();
+    std::shared_ptr<MockUIAbility> pMocKUIAbility = std::make_shared<MockUIAbility>();
+
+    abilityImpl->ability_ = pMocKUIAbility;
+
+    EXPECT_EQ(abilityImpl->localNativeState_, AbilityRuntime::LocalNativeState::NONE);
+
+    Want want;
+    auto executeParam = std::make_shared<InsightIntentExecuteParam>();
+    auto callback = std::make_unique<InsightIntentExecutorAsyncCallback>();
+    ASSERT_NE(callback, nullptr);
+
+    abilityImpl->ExecuteInsightIntentMoveToForeground(want, executeParam, std::move(callback));
+
+    EXPECT_FALSE(abilityImpl->ability_->CheckIsSilentForeground());
+}
+
+/*
+ * Feature: UIAbilityImpl
+ * Function: NewWant with only requestId
+ * SubFunction: NA
+ * FunctionPoints: NewWant removes requestId only
+ * EnvConditions: NA
+ * CaseDescription: Test NewWant removes only requestId from want
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_NewWant_WithRequestId_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_NewWant_WithRequestId_002 start";
+    std::shared_ptr<MockUIAbilityimpl> mockUIAbilityimpl = std::make_shared<MockUIAbilityimpl>();
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    std::shared_ptr<AbilityInfo> abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->name = "uiAbility";
+    sptr<IRemoteObject> token = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    EXPECT_NE(token, nullptr);
+    if (token != nullptr) {
+        auto record = std::make_shared<AbilityLocalRecord>(abilityInfo, token, nullptr, 0);
+        std::shared_ptr<EventRunner> eventRunner = EventRunner::Create(abilityInfo->name);
+        std::shared_ptr<AbilityHandler> handler = std::make_shared<AbilityHandler>(eventRunner);
+        std::shared_ptr<UIAbility> uiability;
+        MockUIAbility *pMocKUIAbility = new (std::nothrow) MockUIAbility();
+        EXPECT_NE(pMocKUIAbility, nullptr);
+        if (pMocKUIAbility != nullptr) {
+            uiability.reset(pMocKUIAbility);
+            bool createObjSuc = false;
+            mockUIAbilityimpl->Init(application, record, uiability, handler, token, createObjSuc);
+
+            // Create want with only requestId
+            Want want;
+            want.SetParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, 100);
+
+            // Call NewWant
+            mockUIAbilityimpl->NewWant(want);
+
+            // Verify requestId is removed
+            int32_t requestId = mockUIAbilityimpl->ability_->GetWant()->GetIntParam(
+                AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, -1);
+            int32_t scbRequestId = mockUIAbilityimpl->ability_->GetWant()->GetIntParam(
+                AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, -1);
+            EXPECT_EQ(requestId, -1);  // Should be removed
+            EXPECT_EQ(scbRequestId, -1);  // Never set
+        }
+    }
+    GTEST_LOG_(INFO) << "AbilityRuntime_NewWant_WithRequestId_002 end";
+}
+
+/*
+ * Feature: UIAbilityImpl
+ * Function: ExecuteInsightIntentMoveToForeground
+ * SubFunction: NA
+ * FunctionPoints: Null ability_ early return
+ * EnvConditions: NA
+ * CaseDescription: When ability_ is nullptr, ExecuteInsightIntentMoveToForeground returns early
+ *                 without crash.
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_ExecuteInsightIntentMoveToForeground_PreForeground_0400, TestSize.Level1)
+{
+    auto abilityImpl = std::make_shared<UIAbilityImpl>();
+    EXPECT_EQ(abilityImpl->ability_, nullptr);
+
+    Want want;
+    auto executeParam = std::make_shared<InsightIntentExecuteParam>();
+    auto callback = std::make_unique<InsightIntentExecutorAsyncCallback>();
+
+    abilityImpl->ExecuteInsightIntentMoveToForeground(want, executeParam, std::move(callback));
+
+    EXPECT_EQ(abilityImpl->ability_, nullptr);
+}
+/**
+ * @tc.name: AbilityRuntime_Foreground_AbilityNullptr_0100
+ * @tc.desc: Test Foreground when ability_ is nullptr, should return early without crash.
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_Foreground_AbilityNullptr_0100, TestSize.Level1)
+{
+    auto impl = std::make_shared<UIAbilityImpl>();
+    EXPECT_EQ(impl->GetUIAbility(), nullptr);
+    Want want;
+    impl->Foreground(want);
+    EXPECT_FALSE(impl->notifyForegroundByWindow_);
+}
+
+/**
+ * @tc.name: AbilityRuntime_Foreground_AbilityInfoNullptr_0100
+ * @tc.desc: Test Foreground when ability exists but GetAbilityInfo() returns nullptr.
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_Foreground_AbilityInfoNullptr_0100, TestSize.Level1)
+{
+    auto impl = std::make_shared<UIAbilityImpl>();
+    auto ability = std::make_shared<MockUIAbility>();
+    ability->useMockAbilityInfo_ = true;
+    impl->ability_ = ability;
+    Want want;
+    impl->Foreground(want);
+    EXPECT_FALSE(impl->notifyForegroundByWindow_);
+}
+
+/**
+ * @tc.name: AbilityRuntime_Foreground_InitPreForeground_0100
+ * @tc.desc: Test Foreground when localNativeState_ is INIT_PRE_FOREGROUND,
+ *           should set HALF_FOREGROUND, call OnForeground silently, and set notifyForegroundByWindow_.
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_Foreground_InitPreForeground_0100, TestSize.Level1)
+{
+    auto impl = std::make_shared<UIAbilityImpl>();
+    auto ability = std::make_shared<MockUIAbility>();
+    ability->useMockAbilityInfo_ = true;
+    ability->mockAbilityInfo_ = std::make_shared<AbilityInfo>();
+    impl->ability_ = ability;
+    impl->localNativeState_ = LocalNativeState::INIT_PRE_FOREGROUND;
+    Want want;
+    impl->Foreground(want);
+    EXPECT_TRUE(impl->notifyForegroundByWindow_);
+    EXPECT_EQ(impl->localNativeState_, LocalNativeState::HALF_FOREGROUND);
+}
+
+/**
+ * @tc.name: AbilityRuntime_Foreground_Normal_Foreground_0100
+ * @tc.desc: Test Foreground normal path with silent foreground,
+ *           should set notifyForegroundByWindow_ to true.
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_Foreground_Normal_Foreground_0100, TestSize.Level1)
+{
+    auto impl = std::make_shared<UIAbilityImpl>();
+    auto ability = std::make_shared<MockUIAbility>();
+    ability->useMockAbilityInfo_ = true;
+    ability->mockAbilityInfo_ = std::make_shared<AbilityInfo>();
+    ability->SetIsSilentForeground(true);
+    impl->ability_ = ability;
+    impl->localNativeState_ = LocalNativeState::HALF_FOREGROUND;
+    Want want;
+    impl->Foreground(want);
+    EXPECT_TRUE(impl->notifyForegroundByWindow_);
+    EXPECT_EQ(impl->localNativeState_, LocalNativeState::NONE);
+}
+
+/**
+ * @tc.name: AbilityRuntime_Foreground_Normal_Foreground_0200
+ * @tc.desc: Test Foreground normal path with non-silent foreground,
+ *           should set notifyForegroundByAbility_ to true.
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_Foreground_Normal_Foreground_0200, TestSize.Level1)
+{
+    auto impl = std::make_shared<UIAbilityImpl>();
+    auto ability = std::make_shared<MockUIAbility>();
+    ability->useMockAbilityInfo_ = true;
+    ability->mockAbilityInfo_ = std::make_shared<AbilityInfo>();
+    ability->SetIsSilentForeground(false);
+    impl->ability_ = ability;
+    impl->localNativeState_ = LocalNativeState::HALF_FOREGROUND;
+    Want want;
+    impl->Foreground(want);
+    EXPECT_TRUE(impl->notifyForegroundByAbility_);
+    EXPECT_EQ(impl->localNativeState_, LocalNativeState::NONE);
+}
+
+/*
+ * Feature: UIAbilityImpl
+ * Function: NewWant with only scbRequestId
+ * SubFunction: NA
+ * FunctionPoints: NewWant removes scbRequestId only
+ * EnvConditions: NA
+ * CaseDescription: Test NewWant removes only scbRequestId from want
+ */
+HWTEST_F(UIAbilityImplTest, AbilityRuntime_NewWant_WithRequestId_003, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_NewWant_WithRequestId_003 start";
+    std::shared_ptr<MockUIAbilityimpl> mockUIAbilityimpl = std::make_shared<MockUIAbilityimpl>();
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    std::shared_ptr<AbilityInfo> abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->name = "uiAbility";
+    sptr<IRemoteObject> token = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    EXPECT_NE(token, nullptr);
+    if (token != nullptr) {
+        auto record = std::make_shared<AbilityLocalRecord>(abilityInfo, token, nullptr, 0);
+        std::shared_ptr<EventRunner> eventRunner = EventRunner::Create(abilityInfo->name);
+        std::shared_ptr<AbilityHandler> handler = std::make_shared<AbilityHandler>(eventRunner);
+        std::shared_ptr<UIAbility> uiability;
+        MockUIAbility *pMocKUIAbility = new (std::nothrow) MockUIAbility();
+        EXPECT_NE(pMocKUIAbility, nullptr);
+        if (pMocKUIAbility != nullptr) {
+            uiability.reset(pMocKUIAbility);
+            bool createObjSuc = false;
+            mockUIAbilityimpl->Init(application, record, uiability, handler, token, createObjSuc);
+
+            // Create want with only scbRequestId
+            Want want;
+            want.SetParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 200);
+
+            // Call NewWant
+            mockUIAbilityimpl->NewWant(want);
+
+            // Verify scbRequestId is removed
+            int32_t requestId = mockUIAbilityimpl->ability_->GetWant()->GetIntParam(
+                AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, -1);
+            int32_t scbRequestId = mockUIAbilityimpl->ability_->GetWant()->GetIntParam(
+                AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, -1);
+            EXPECT_EQ(requestId, -1);  // Never set
+            EXPECT_EQ(scbRequestId, -1);  // Should be removed
+        }
+    }
+    GTEST_LOG_(INFO) << "AbilityRuntime_NewWant_WithRequestId_003 end";
+}
 } // namespace AppExecFwk
 } // namespace OHOS

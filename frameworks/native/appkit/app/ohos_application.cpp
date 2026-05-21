@@ -1006,6 +1006,8 @@ void OHOSApplication::ScheduleNewProcessRequest(const AAFwk::Want &want, const s
 
     if (abilityStages_.empty()) {
         TAG_LOGE(AAFwkTag::APPKIT, "abilityStages_ empty");
+        std::string flag;
+        callback(flag);
         return;
     }
     auto iter = abilityStages_.find(moduleName);

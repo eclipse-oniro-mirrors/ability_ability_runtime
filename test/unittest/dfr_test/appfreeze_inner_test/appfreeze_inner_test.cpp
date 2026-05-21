@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -480,6 +480,51 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner_ChangeFaultDateInfo_004, TestSize.Le
 }
 
 /**
+ * @tc.number: AppfreezeInner_GetMainStackDump_001
+ * @tc.name: GetMainStackDump
+ * @tc.desc: Verify that function GetMainStackDump.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetMainStackDump_001, TestSize.Level1)
+{
+    appfreezeInner->lastMainStack_ = "";
+    int pid = -1;
+    std::string ret = appfreezeInner->GetMainStackDump(pid);
+    pid = getpid();
+    appfreezeInner->GetMainStackDump(pid);
+    pid = 1;
+    appfreezeInner->GetMainStackDump(pid);
+    EXPECT_TRUE(!ret.empty());
+}
+
+/**
+ * @tc.number: AppfreezeInner_GetMainStackDump_002
+ * @tc.name: GetMainStackDump
+ * @tc.desc: Verify that function GetMainStackDump.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetMainStackDump_002, TestSize.Level1)
+{
+    appfreezeInner->lastMainStack_ = "";
+    int pid = getpid();
+    std::string firstCall = appfreezeInner->GetMainStackDump(pid);
+    std::string secondCall = appfreezeInner->GetMainStackDump(pid);
+    EXPECT_EQ(firstCall, secondCall);
+}
+
+/**
+ * @tc.number: AppfreezeInner_GetMainStackDump_003
+ * @tc.name: GetMainStackDump
+ * @tc.desc: Verify that function GetMainStackDump.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetMainStackDump_003, TestSize.Level1)
+{
+    appfreezeInner->lastMainStack_ = "";
+    int pid = 999999;
+    std::string ret = appfreezeInner->GetMainStackDump(pid);
+    EXPECT_TRUE(ret.empty());
+    appfreezeInner->GetMainStackDump(pid);
+}
+
+/**
  * @tc.number: AppfreezeInnerTest
  * @tc.name: add test
  * @tc.desc: Verify that function SetMainHandler.
@@ -581,13 +626,13 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInnerTest_LogFormat_001, TestSize.Level1)
     size_t totalSize = 0;
     size_t objectSize = 0;
     std::string ret = appfreezeInner->LogFormat(totalSize, objectSize);
-    std::string testValue = "HEAP_TOTAL_SIZE:0,HEAP_OBJECT_SIZE:0,";
+    std::string testValue = "HEAP_TOTAL_SIZE:0,HEAP_OBJECT_SIZE:0";
     EXPECT_EQ(ret, testValue);
     ret = appfreezeInner->LogFormat(totalSize, objectSize);
     totalSize = 1234;
     objectSize = 1234;
     ret = appfreezeInner->LogFormat(totalSize, objectSize);
-    testValue = "HEAP_TOTAL_SIZE:1234,HEAP_OBJECT_SIZE:1234,";
+    testValue = "HEAP_TOTAL_SIZE:1234,HEAP_OBJECT_SIZE:1234";
     EXPECT_EQ(ret, testValue);
 }
 

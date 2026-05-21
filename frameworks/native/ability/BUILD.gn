@@ -166,6 +166,7 @@ ohos_shared_library("cj_ability_context_native") {
     "faultloggerd:libdfx_dumpcatcher",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
+    "icu:shared_icuuc",
     "image_framework:image_native",
     "ipc:ipc_single",
     "napi:cj_bind_ffi",

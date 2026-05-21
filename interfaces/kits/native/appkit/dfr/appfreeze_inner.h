@@ -20,6 +20,7 @@
 #include <thread>
 #include <set>
 #include <sys/types.h>
+#include <condition_variable>
 
 #include "refbase.h"
 #include "singleton.h"
@@ -30,6 +31,7 @@
 #include "application_impl.h"
 #include "fault_data.h"
 #include "task_handler_wrap.h"
+#include "ffrt.h"
 
 #define OHOS_TEMP_FAILURE_RETRY(exp)               \
     ({                                             \
@@ -84,6 +86,7 @@ private:
     bool GetProcessStartTime(pid_t tid, unsigned long long &startTime);
     bool ReadFdToString(int fd, std::string& content);
     int TransformHicollieFaultNumber(const std::string& faultName);
+    std::string GetMainStackDump(int32_t pid);
 
     static std::mutex singletonMutex_;
     static std::shared_ptr<AppfreezeInner> instance_;
@@ -95,6 +98,11 @@ private:
     std::list<FaultData> handlinglist_;
     std::shared_ptr<AAFwk::TaskHandlerWrap> appfreezeInnerTaskHandler_;
     std::shared_ptr<OHOSApplication> application_ = nullptr;
+
+    ffrt::mutex mainStackMutex_;
+    ffrt::condition_variable mainStackCv_;
+    std::string lastMainStack_ = "";
+    std::atomic<int64_t> lastMainStackTime_ = 0;
 };
 
 class MainHandlerDumper : public Dumper {

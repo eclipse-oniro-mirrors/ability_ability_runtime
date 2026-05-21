@@ -29,7 +29,7 @@ extern "C" {
  * @brief Get ability instance ID from NativeAbilityWrapper.
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_GetAbilityInstanceId(
-    const NativeAbilityWrapper* nativeAbilityWrapper, char* buffer, const int32_t bufferSize)
+    const AbilityRuntime_NativeAbilityWrapper* nativeAbilityWrapper, char* buffer, const int32_t bufferSize)
 {
     constexpr int32_t MIN_BUFFER_SIZE = 37; // UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx + '\0'
     if (nativeAbilityWrapper == nullptr || buffer == nullptr) {
@@ -63,7 +63,8 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetAbilityInstanceId(
  * @brief Get ability name from NativeAbilityWrapper.
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_GetAbilityName(
-    const NativeAbilityWrapper* nativeAbilityWrapper, char* buffer, const int32_t bufferSize, int32_t* writeLength)
+    const AbilityRuntime_NativeAbilityWrapper *nativeAbilityWrapper, char *buffer, const int32_t bufferSize,
+    int32_t *writeLength)
 {
     if (nativeAbilityWrapper == nullptr || writeLength == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "Invalid parameter: nativeAbilityWrapper or writeLength is null");
@@ -72,7 +73,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetAbilityName(
 
     if (nativeAbilityWrapper->abilityName.empty()) {
         TAG_LOGE(AAFwkTag::APPKIT, "Ability name is empty");
-        return ABILITY_RUNTIME_ERROR_CODE_CONTEXT_NOT_EXIST;
+        return ABILITY_RUNTIME_ERROR_CODE_ABILITY_WRAPPER_INVALID;
     }
 
     int32_t nameLength = static_cast<int32_t>(nativeAbilityWrapper->abilityName.length());
@@ -111,7 +112,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetAbilityName(
  * @brief Get napi_env from NativeAbilityWrapper.
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_GetEnv(
-    const NativeAbilityWrapper* nativeAbilityWrapper, napi_env* env)
+    const AbilityRuntime_NativeAbilityWrapper* nativeAbilityWrapper, napi_env* env)
 {
     if (nativeAbilityWrapper == nullptr || env == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "Invalid parameter: nativeAbilityWrapper or env is null");
@@ -120,7 +121,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetEnv(
 
     if (nativeAbilityWrapper->env == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "napi_env in NativeAbilityWrapper is null");
-        return ABILITY_RUNTIME_ERROR_CODE_CONTEXT_NOT_EXIST;
+        return ABILITY_RUNTIME_ERROR_CODE_ABILITY_WRAPPER_INVALID;
     }
 
     *env = nativeAbilityWrapper->env;

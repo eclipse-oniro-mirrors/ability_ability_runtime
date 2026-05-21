@@ -694,9 +694,69 @@ HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_NotifyAppFau
     // expect in appfreezeManager return OK
     AppfreezeManager::GetInstance()->CancelAppFreezeDetect(1, TEST_BUNDLE_NAME);
     ret = appMgrServiceInner->NotifyAppFault(faultData);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_NotifyAppFault_0100 end");
 }
+
+/**
+ * @tc.name: AppMgrServiceInnerSecondTest_NotifyAppFault_0200
+ * @tc.desc: Test NotifyAppFault
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_NotifyAppFault_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_NotifyAppFault_0200 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    appMgrServiceInner->Init();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    BundleInfo bundleInfo;
+    HapModuleInfo hapModuleInfo;
+    auto loadParam = std::make_shared<AbilityRuntime::LoadParam>();
+    loadParam->token = token_;
+    loadParam->preToken = preToken_;
+    auto appRecord = appMgrServiceInner->CreateAppRunningRecord(loadParam, applicationInfo_, abilityInfo_,
+        TEST_PROCESS_NAME, bundleInfo, hapModuleInfo, want_, false);
+    appRecord->GetPriorityObject()->SetPid(1);
+    appRecord->SetState(ApplicationState::APP_STATE_BACKGROUND);
+
+    FaultData faultData;
+    faultData.errorObject.name = AppFreezeType::THREAD_BLOCK_6S;
+    auto ret = appMgrServiceInner->NotifyAppFault(faultData);
+    EXPECT_EQ(ret, ERR_OK);
+    sleep(3);
+    TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_NotifyAppFault_0200 end");
+}
+
+/**
+ * @tc.name: AppMgrServiceInnerSecondTest_NotifyAppFault_0300
+ * @tc.desc: Test NotifyAppFault
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_NotifyAppFault_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_NotifyAppFault_0300 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    appMgrServiceInner->Init();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    BundleInfo bundleInfo;
+    HapModuleInfo hapModuleInfo;
+    auto loadParam = std::make_shared<AbilityRuntime::LoadParam>();
+    loadParam->token = token_;
+    loadParam->preToken = preToken_;
+    auto appRecord = appMgrServiceInner->CreateAppRunningRecord(loadParam, applicationInfo_, abilityInfo_,
+        TEST_PROCESS_NAME, bundleInfo, hapModuleInfo, want_, false);
+    appRecord->GetPriorityObject()->SetPid(1);
+    appRecord->SetState(ApplicationState::APP_STATE_BACKGROUND);
+
+    FaultData faultData;
+    faultData.errorObject.name = AppFreezeType::THREAD_BLOCK_6S;
+    faultData.faultType = FaultDataType::APP_FREEZE;
+    auto ret = appMgrServiceInner->NotifyAppFault(faultData);
+    EXPECT_EQ(ret, ERR_OK);
+    sleep(3);
+    TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_NotifyAppFault_0300 end");
+}
+
 
 /**
  * @tc.name: AppMgrServiceInnerSecondTest_BuildEventInfo_0100
@@ -1506,6 +1566,8 @@ HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_TransformedN
     appRecord->isDebugApp_ = true;
     ret = appMgrServiceInner->TransformedNotifyAppFault(faultData);
     EXPECT_EQ(ret, ERR_OK);
+    faultData.errorObject.message = "PreloadUIExtension test";
+    appMgrServiceInner->TransformedNotifyAppFault(faultData);
     EXPECT_NE(appMgrServiceInner, nullptr);
     TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_TransformedNotifyAppFault_0200 end");
 }

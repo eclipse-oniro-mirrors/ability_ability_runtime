@@ -20,9 +20,10 @@ ohos_unittest("source_map_test") {
   module_out_path = module_output_path
   sources = [ "source_map_test.cpp" ]
 
+  deps = [ "${ability_runtime_path}/js_environment/frameworks/js_environment:js_environment" ]
+
   external_deps = [
     "ability_base:want",
-    "ability_runtime:js_environment",
     "bundle_framework:appexecfwk_base",
     "c_utils:utils",
     "eventhandler:libeventhandler",

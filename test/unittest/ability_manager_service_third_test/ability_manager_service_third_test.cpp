@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1197,7 +1197,7 @@ HWTEST_F(AbilityManagerServiceThirdTest, CheckRestartAppWant_001, TestSize.Level
     EXPECT_NE(abilityMs, nullptr);
     AAFwk::Want want;
     int32_t userId = 100;
-    int32_t res = abilityMs->CheckRestartAppWant(want, 0, userId);
+    int32_t res = abilityMs->CheckRestartAppWant(want.GetElement(), 0, userId);
     EXPECT_EQ(res, AAFwk::ERR_RESTART_APP_INCORRECT_ABILITY);
 }
 
@@ -3370,5 +3370,6 @@ HWTEST_F(AbilityManagerServiceThirdTest, CheckSupportVpn_002, TestSize.Level1)
     auto result = abilityMs_->CheckSupportVpn(abilityInfo);
     EXPECT_TRUE(result);
 }
+
 }  // namespace AAFwk
 }  // namespace OHOS

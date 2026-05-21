@@ -34,6 +34,7 @@
 #include "app_mgr_service_const.h"
 #include "app_mgr_service_dump_error_code.h"
 #include "cache_process_manager.h"
+#include "global_constant.h"
 #include "hisysevent_report.h"
 #ifdef SUPPORT_SCREEN
 #include "window_visibility_info.h"
@@ -416,9 +417,11 @@ void AppRunningRecord::LaunchApplication(const Configuration &config)
     launchData.SetAppPreloadMode(preloadMode_);
     launchData.SetNWebPreload(isAllowedNWebPreload_);
     launchData.SetPreloadModuleName(preloadModuleName_);
+    launchData.SetPreloadAbilityName(preloadAbilityName_);
     launchData.SetDebugFromLocal(isDebugFromLocal_);
     launchData.SetStartupTaskData(startupTaskData_);
     launchData.SetImageProcessType(static_cast<int32_t>(imageProcessType_));
+    launchData.SetMainProcess(isMainProcess_);
 
     TAG_LOGD(AAFwkTag::APPMGR, "%{public}s called,app is %{public}s.", __func__, GetName().c_str());
     AddAppLifecycleEvent("AppRunningRecord::LaunchApplication");
@@ -698,10 +701,10 @@ void AppRunningRecord::ScheduleCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &in
     }
 }
 
-void AppRunningRecord::ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
+void AppRunningRecord::ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback)
 {
     if (appLifeCycleDeal_) {
-        appLifeCycleDeal_->ScheduleMem(info, dumpResult);
+        appLifeCycleDeal_->ScheduleMem(info, callback);
     }
 }
 
@@ -1175,7 +1178,9 @@ void AppRunningRecord::AbilityTerminated(const sptr<IRemoteObject> &token)
     auto abilityRecord = moduleRecord->GetAbilityByTerminateLists(token);
     if (abilityRecord != nullptr && abilityRecord->GetAbilityInfo() != nullptr) {
         isExtensionDebug = (abilityRecord->GetAbilityInfo()->type == AppExecFwk::AbilityType::EXTENSION) &&
-                           (isAttachDebug_ || isDebugApp_);
+            abilityRecord->GetAbilityInfo()->extensionAbilityType != AppExecFwk::ExtensionAbilityType::AGENT &&
+            abilityRecord->GetAbilityInfo()->extensionAbilityType != AppExecFwk::ExtensionAbilityType::AGENT_UI &&
+            (isAttachDebug_ || isDebugApp_);
     }
     TAG_LOGD(AAFwkTag::APPMGR, "Extension debug is [%{public}s]", isExtensionDebug ? "true" : "false");
 
@@ -1203,14 +1208,33 @@ void AppRunningRecord::AbilityTerminated(const sptr<IRemoteObject> &token)
         || !ExitResidentProcessManager::GetInstance().IsMemorySizeSufficient()) && !needCache) {
         RemoveModuleRecord(moduleRecord, isExtensionDebug);
     }
-
+    bool isLastUIAbility = (abilityRecord != nullptr && abilityRecord->GetAbilityInfo() != nullptr &&
+        abilityRecord->GetAbilityInfo()->type == AppExecFwk::AbilityType::PAGE);
     auto moduleRecordList = GetAllModuleRecord();
     if (moduleRecordList.empty() && (!IsKeepAliveApp()
         || AAFwk::UIExtensionWrapper::IsUIExtension(GetExtensionType())
         || !ExitResidentProcessManager::GetInstance().IsMemorySizeSufficient()) && !isExtensionDebug
         && !needCache) {
-        ScheduleTerminate();
+        ScheduleTerminateByDelayed(isLastUIAbility);
     }
+}
+
+void AppRunningRecord::ScheduleTerminateByDelayed(bool isLastUIAbility)
+{
+    if (IsDelayedProcessExitEnabled() && isLastUIAbility) {
+        TAG_LOGD(AAFwkTag::APPMGR, "ScheduleTerminateByDelayed");
+        auto delayedExitTime = AbilityRuntime::GlobalConstant::PREPARE_TERMINATE_TIMEOUT_TIME;
+        std::string taskName = std::string("DELAY_EXIT_UI_PROCESS_") + std::to_string(GetRecordId());
+        auto terminateTask = [weakThis = weak_from_this()]() {
+            auto self = weakThis.lock();
+            if (self) {
+                self->ScheduleTerminate();
+            }
+        };
+        PostTask(taskName, delayedExitTime, terminateTask);
+        return;
+    }
+    ScheduleTerminate();
 }
 
 std::list<std::shared_ptr<ModuleRunningRecord>> AppRunningRecord::GetAllModuleRecord() const
@@ -2546,6 +2570,16 @@ void AppRunningRecord::SetPreloadModuleName(const std::string& preloadModuleName
 std::string AppRunningRecord::GetPreloadModuleName() const
 {
     return preloadModuleName_;
+}
+
+void AppRunningRecord::SetPreloadAbilityName(const std::string &abilityName)
+{
+    preloadAbilityName_ = abilityName;
+}
+
+std::string AppRunningRecord::GetPreloadAbilityName() const
+{
+    return preloadAbilityName_;
 }
 
 void AppRunningRecord::SetPreloadState(PreloadState state)

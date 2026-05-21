@@ -97,6 +97,7 @@ ohos_shared_library("appkit_native") {
     "${ability_runtime_napi_path}/inner/napi_common/ani_common",
     "${ability_runtime_utils_path}/global/constant",
     "${ability_runtime_path}/interfaces/inner_api/app_manager",
+    "${ability_runtime_path}/interfaces/kits/c/ability_runtime",
   ]
 
   configs = [
@@ -184,6 +185,7 @@ ohos_shared_library("appkit_native") {
     "${ability_runtime_path}/js_environment/frameworks/js_environment:js_environment",
     "${ability_runtime_path}/utils/global/common:runtime_utils",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
+    "${ability_runtime_path}/utils/server/startup:startup_util",
     "${ability_runtime_services_path}/common:app_util",
     "${ability_runtime_services_path}/common:hisysevent_report",
     "${ability_runtime_services_path}/common:task_handler_wrap",
@@ -895,7 +897,10 @@ ohos_shared_library("appkit_child") {
     debug = false
   }
 
-  include_dirs = []
+  include_dirs = [
+    "${ability_runtime_path}/interfaces/kits/c/ability_runtime",
+    "${ability_runtime_path}/interfaces/inner_api/connect_server_manager/include",
+  ]
 
   configs = [
     ":appkit_config",

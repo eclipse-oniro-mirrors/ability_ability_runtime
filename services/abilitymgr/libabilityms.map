@@ -40,6 +40,7 @@
       *AppMgrUtil*;
       *AppScheduler*;
       *AtomicServiceStatusCallback*;
+      *RemoteIntentResultCallback*;
       *BackgroundTaskObserver*;
       *MainElementUtils*;
       *CallContainer*;

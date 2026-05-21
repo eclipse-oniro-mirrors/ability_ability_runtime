@@ -134,15 +134,6 @@ HWTEST_F(CModularObjectUtilsTest, ConvertConnectBusinessErrorCode_003, TestSize.
     GTEST_LOG_(INFO) << "ConvertConnectBusinessErrorCode_003 end";
 }
 
-HWTEST_F(CModularObjectUtilsTest, ConvertConnectBusinessErrorCode_004, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "ConvertConnectBusinessErrorCode_004 start";
-    // ERR_INVALID_DISTRIBUTION_TYPE -> INVALID_DISTRIBUTION_TYPE
-    auto ret = CModularObjectUtils::ConvertConnectBusinessErrorCode(ERR_INVALID_DISTRIBUTION_TYPE);
-    EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_INVALID_DISTRIBUTION_TYPE);
-    GTEST_LOG_(INFO) << "ConvertConnectBusinessErrorCode_004 end";
-}
-
 HWTEST_F(CModularObjectUtilsTest, ConvertConnectBusinessErrorCode_005, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "ConvertConnectBusinessErrorCode_005 start";
@@ -416,10 +407,10 @@ HWTEST_F(CModularObjectUtilsTest, NotifyFailed_005, TestSize.Level1)
     state->owner = nullptr;
     state->onFailedCallback = MockOnFailedCallback;
 
-    int32_t businessCode = ABILITY_RUNTIME_ERROR_CODE_INVALID_DISTRIBUTION_TYPE;
+    int32_t businessCode = ABILITY_RUNTIME_ERROR_CODE_CROSS_APP_IN_PROCESS;
     CModularObjectUtils::NotifyFailed(state, businessCode);
     EXPECT_EQ(g_callbackCallCount, 1);
-    EXPECT_EQ(g_capturedErrorCode, ABILITY_RUNTIME_ERROR_CODE_INVALID_DISTRIBUTION_TYPE);
+    EXPECT_EQ(g_capturedErrorCode, ABILITY_RUNTIME_ERROR_CODE_CROSS_APP_IN_PROCESS);
     GTEST_LOG_(INFO) << "NotifyFailed_005 end";
 }
 

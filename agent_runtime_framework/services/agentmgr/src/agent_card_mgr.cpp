@@ -158,6 +158,7 @@ int32_t AgentCardMgr::HandleBundleInstall(const std::string &bundleName, int32_t
     }
 
     std::vector<StoredAgentCardEntry> storedEntries;
+    std::lock_guard<std::mutex> lock(cardDataMutex_);
     int32_t ret = AgentCardDbMgr::GetInstance().QueryData(bundleName, userId, storedEntries);
     if (ret != ERR_OK && ret != ERR_NAME_NOT_FOUND) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "query stored cards failed: %{public}d", ret);
@@ -198,6 +199,7 @@ int32_t AgentCardMgr::HandleBundleRemove(const std::string &bundleName, int32_t 
         TAG_LOGE(AAFwkTag::SER_ROUTER, "invalid bundleName");
         return -1;
     }
+    std::lock_guard<std::mutex> lock(cardDataMutex_);
     return AgentCardDbMgr::GetInstance().DeleteData(bundleName, userId);
 }
 
@@ -213,6 +215,7 @@ int32_t AgentCardMgr::GetAgentCardsByBundleName(const std::string &bundleName, s
 {
     int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
     std::vector<StoredAgentCardEntry> entries;
+    std::lock_guard<std::mutex> lock(cardDataMutex_);
     int32_t ret = AgentCardDbMgr::GetInstance().QueryData(bundleName, userId, entries);
     if (ret == ERR_OK) {
         cards = ExtractCards(entries);
@@ -275,6 +278,7 @@ int32_t AgentCardMgr::RegisterAgentCard(const AgentCard &card)
     }
 
     std::vector<StoredAgentCardEntry> entries;
+    std::lock_guard<std::mutex> lock(cardDataMutex_);
     int32_t ret = AgentCardDbMgr::GetInstance().QueryData(registerCard.appInfo->bundleName, userId, entries);
     if (ret != ERR_OK && ret != ERR_NAME_NOT_FOUND) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "query data failed: %{public}d", ret);
@@ -285,8 +289,12 @@ int32_t AgentCardMgr::RegisterAgentCard(const AgentCard &card)
         return item.card.agentId == registerCard.agentId;
     });
     if (it != entries.end()) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "agent card already registered");
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "AgentCard already registered");
         return AAFwk::ERR_AGENT_CARD_DUPLICATE_REGISTER;
+    }
+    if (entries.size() >= MAX_AGENT_CARD_SIZE) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "AgentCard count reached max size %{public}d", MAX_AGENT_CARD_SIZE);
+        return AAFwk::ERR_AGENT_CARD_LIST_OUT_OF_RANGE;
     }
 
     entries.push_back({registerCard, AgentCardUpdateSource::API});
@@ -316,6 +324,7 @@ int32_t AgentCardMgr::UpdateAgentCard(const AgentCard &card)
     }
 
     std::vector<StoredAgentCardEntry> entries;
+    std::lock_guard<std::mutex> lock(cardDataMutex_);
     int32_t ret = AgentCardDbMgr::GetInstance().QueryData(card.appInfo->bundleName, userId, entries);
     if (ret == ERR_NAME_NOT_FOUND) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "bundle cards not found");
@@ -330,7 +339,7 @@ int32_t AgentCardMgr::UpdateAgentCard(const AgentCard &card)
         return item.card.agentId == card.agentId;
     });
     if (it == entries.end()) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "agent card not found");
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "AgentCard not found");
         return AAFwk::ERR_INVALID_AGENT_CARD_ID;
     }
     if (!AgentCardUtils::IsCardOwnedByAbility(it->card, card.appInfo->bundleName, card.appInfo->abilityName)) {
@@ -369,6 +378,7 @@ int32_t AgentCardMgr::DeleteAgentCard(const std::string &bundleName, const std::
 
     int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
     std::vector<StoredAgentCardEntry> bundleCards;
+    std::lock_guard<std::mutex> lock(cardDataMutex_);
     int32_t ret = AgentCardDbMgr::GetInstance().QueryData(bundleName, userId, bundleCards);
     if (ret == ERR_NAME_NOT_FOUND) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "bundle cards not found");
@@ -382,7 +392,7 @@ int32_t AgentCardMgr::DeleteAgentCard(const std::string &bundleName, const std::
     auto bundleIt = std::remove_if(bundleCards.begin(), bundleCards.end(),
         [&agentId](const StoredAgentCardEntry &item) { return item.card.agentId == agentId; });
     if (bundleIt == bundleCards.end()) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "agent card not found in bundle");
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "AgentCard not found in bundle");
         return AAFwk::ERR_INVALID_AGENT_CARD_ID;
     }
     bundleCards.erase(bundleIt, bundleCards.end());

@@ -63,6 +63,15 @@ bool UnwrapExecuteParam(ani_env *env, ani_object param, AppExecFwk::InsightInten
     }
     executeParam.insightIntentName_ = insightIntentName;
 
+    if (IsExistsProperty(env, param, "deviceId")) {
+        std::string deviceId {""};
+        if (!GetStringProperty(env, param, "deviceId", deviceId)) {
+            TAG_LOGE(AAFwkTag::INTENT, "Wrong argument type deviceId");
+            return false;
+        }
+        executeParam.deviceId_ = deviceId;
+    }
+
     ani_ref aniIntentParam = nullptr;
     if (!GetRefProperty(env, param, "insightIntentParam", aniIntentParam)) {
         TAG_LOGE(AAFwkTag::INTENT, "null aniIntentParam");

@@ -16,29 +16,30 @@
 #include "cli_tool_data_manager.h"
 
 #include <chrono>
+#include <dirent.h>
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <set>
 #include <unistd.h>
 
-#include "arg_mapping.h"
+#include "cli_error_code.h"
 #include "hilog_tag_wrapper.h"
 
 namespace OHOS {
 namespace CliTool {
 namespace {
 constexpr int32_t ERR_OK = 0;
-constexpr int32_t ERR_NO_INIT = -1;
 constexpr int32_t ERR_FILE_NOT_FOUND = -2;
 constexpr int32_t ERR_JSON_PARSE_FAILED = -3;
 constexpr int32_t ERR_KVSTORE_NOT_READY = -4;
-constexpr int32_t ERR_NAME_NOT_FOUND = -5;
 constexpr int32_t CHECK_INTERVAL = 100000; // 100ms
 constexpr int32_t MAX_TIMES = 5;           // 5 * 100ms = 500ms
 
-constexpr const char* DEFAULT_REGISTRY_PATH = "/system/bin/cli_tool/cli_tool.json";
+constexpr const char* DEFAULT_CONFIG_DIR = "/system/bin/cli_tool/configs";
 constexpr const char* KV_STORE_APP_ID = "cli_tools_db";
 constexpr const char* KV_STORE_STORE_ID = "cli_tools_store";
 constexpr const char* CLI_TOOLS_STORAGE_DIR = "/data/service/el1/public/database/aimgr/cli_tool";
+constexpr const char* ALL_CLI_TOOL_NAMES_KEY = "AllCliToolNames";
 
 const DistributedKv::AppId APP_ID { KV_STORE_APP_ID };
 const DistributedKv::StoreId STORE_ID { KV_STORE_STORE_ID };
@@ -58,6 +59,7 @@ CliToolDataManager::CliToolDataManager()
 CliToolDataManager::~CliToolDataManager()
 {
     TAG_LOGI(AAFwkTag::CLI_TOOL, "CliToolDataManager destructor called");
+    std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
     if (kvStorePtr_ != nullptr) {
         dataManager_.CloseKvStore(APP_ID, kvStorePtr_);
     }
@@ -116,9 +118,9 @@ int32_t CliToolDataManager::EnsureToolsLoaded()
         return ERR_KVSTORE_NOT_READY;
     }
 
-    int32_t ret = LoadToolsFromFile(DEFAULT_REGISTRY_PATH);
+    int32_t ret = LoadToolsFromDir(DEFAULT_CONFIG_DIR);
     if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to load tools from default registry: %{public}d", ret);
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to load tools from config dir: %{public}d", ret);
         return ret;
     }
 
@@ -126,25 +128,138 @@ int32_t CliToolDataManager::EnsureToolsLoaded()
     return ERR_OK;
 }
 
-int32_t CliToolDataManager::LoadToolsFromFile(const std::string &filePath)
+int32_t CliToolDataManager::LoadToolsFromDir(const std::string &dirPath)
 {
-    std::vector<ToolInfo> tools;
-    int32_t ret = ParseJsonFile(filePath, tools);
-    if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to parse JSON file: %{public}d", ret);
-        return ret;
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "LoadToolsFromDir: %{public}s", dirPath.c_str());
+
+    DIR *dir = opendir(dirPath.c_str());
+    if (dir == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to open directory: %{public}s", dirPath.c_str());
+        return ERR_FILE_NOT_FOUND;
     }
 
+    std::vector<std::string> currentToolNames;
+    int32_t totalLoaded = 0;
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != nullptr) {
+        std::string filename = entry->d_name;
+        if (filename.size() < 5 || filename.substr(filename.size() - 5) != ".json") {
+            continue;
+        }
+
+        std::string filePath = dirPath + "/" + filename;
+        ToolInfo tool;
+        int32_t ret = ParseToolFromJsonFile(filePath, tool);
+        if (ret == ERR_OK) {
+            std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
+            ret = StoreTool(tool);
+            if (ret == ERR_OK) {
+                currentToolNames.push_back(tool.name);
+                totalLoaded++;
+                TAG_LOGI(AAFwkTag::CLI_TOOL, "Loaded tool: %{public}s", tool.name.c_str());
+            }
+        }
+    }
+    closedir(dir);
+
+    // Sync tool names and remove tools that no longer exist
+    SyncToolNames(currentToolNames);
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully loaded %{public}d tools from %{public}s",
+        totalLoaded, dirPath.c_str());
+    return ERR_OK;
+}
+
+int32_t CliToolDataManager::SyncToolNames(const std::vector<std::string> &currentToolNames)
+{
     std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
-    // Insert tools one by one using StoreTool
-    for (const auto &tool : tools) {
-        ret = StoreTool(tool);
-        if (ret != ERR_OK) {
-            TAG_LOGW(AAFwkTag::CLI_TOOL, "Failed to store tool: %{public}s", tool.name.c_str());
+    if (!CheckKvStore()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "KVStore not ready for SyncToolNames");
+        return ERR_KVSTORE_NOT_READY;
+    }
+
+    std::set<std::string> currentNameSet(currentToolNames.begin(), currentToolNames.end());
+
+    // Get previously stored tool names
+    DistributedKv::Key namesKey(ALL_CLI_TOOL_NAMES_KEY);
+    DistributedKv::Value namesValue;
+    DistributedKv::Status status = kvStorePtr_->Get(namesKey, namesValue);
+
+    if (status == DistributedKv::Status::SUCCESS) {
+        nlohmann::json namesJson = nlohmann::json::parse(namesValue.ToString(), nullptr, false);
+        if (!namesJson.is_discarded() && namesJson.is_array()) {
+            for (const auto &name : namesJson) {
+                if (name.is_string()) {
+                    std::string oldName = name.get<std::string>();
+                    if (currentNameSet.find(oldName) == currentNameSet.end()) {
+                        // Tool was removed, delete from KVStore
+                        DistributedKv::Key toolKey(oldName);
+                        DistributedKv::Status deleteStatus = kvStorePtr_->Delete(toolKey);
+                        if (deleteStatus == DistributedKv::Status::SUCCESS) {
+                            TAG_LOGI(AAFwkTag::CLI_TOOL, "Removed tool: %{public}s", oldName.c_str());
+                        } else {
+                            TAG_LOGW(AAFwkTag::CLI_TOOL, "Failed to remove tool: %{public}s", oldName.c_str());
+                        }
+                    }
+                }
+            }
         }
     }
 
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully loaded and stored %{public}zu tools", tools.size());
+    // Store current tool names
+    nlohmann::json newNamesJson = currentToolNames;
+    DistributedKv::Value newNamesValue(newNamesJson.dump());
+    status = kvStorePtr_->Put(namesKey, newNamesValue);
+    if (status != DistributedKv::Status::SUCCESS) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "Failed to store AllCliToolNames");
+        return -1;
+    }
+
+    return ERR_OK;
+}
+
+int32_t CliToolDataManager::ParseToolFromJsonFile(const std::string &filePath, ToolInfo &tool)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "ParseToolFromJsonFile: %{public}s", filePath.c_str());
+
+    std::ifstream file(filePath);
+    if (!file.is_open()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to open file: %{public}s", filePath.c_str());
+        return ERR_FILE_NOT_FOUND;
+    }
+
+    std::string fileContent((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    file.close();
+
+    if (fileContent.empty()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "File is empty: %{public}s", filePath.c_str());
+        return ERR_JSON_PARSE_FAILED;
+    }
+
+    // Check for BOM
+    if (fileContent.size() >= 3 &&
+        (unsigned char)fileContent[0] == 0xEF &&
+        (unsigned char)fileContent[1] == 0xBB &&
+        (unsigned char)fileContent[2] == 0xBF) {
+        fileContent = fileContent.substr(3);
+    }
+
+    nlohmann::json root = nlohmann::json::parse(fileContent, nullptr, false);
+    if (root.is_discarded()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "JSON parse failed: %{public}s", filePath.c_str());
+        return ERR_JSON_PARSE_FAILED;
+    }
+
+    if (!root.is_object()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "JSON root is not an object: %{public}s", filePath.c_str());
+        return ERR_JSON_PARSE_FAILED;
+    }
+
+    if (!ToolInfo::ParseFromJson(root, tool)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to parse tool info: %{public}s", filePath.c_str());
+        return ERR_JSON_PARSE_FAILED;
+    }
+
     return ERR_OK;
 }
 
@@ -180,6 +295,17 @@ int32_t CliToolDataManager::GetAllTools(std::vector<ToolInfo> &tools)
     return ERR_OK;
 }
 
+int32_t CliToolDataManager::GetAllToolsRawData(ToolsRawData &rawData)
+{
+    std::vector<ToolInfo> tools;
+    int32_t ret = GetAllTools(tools);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    ToolsRawData::FromToolInfoVec(tools, rawData);
+    return ERR_OK;
+}
+
 int32_t CliToolDataManager::GetToolByName(const std::string &name, ToolInfo &tool)
 {
     TAG_LOGI(AAFwkTag::CLI_TOOL, "GetToolByName called: %{public}s", name.c_str());
@@ -196,7 +322,7 @@ int32_t CliToolDataManager::GetToolByName(const std::string &name, ToolInfo &too
         TAG_LOGE(AAFwkTag::SER_ROUTER, "GetToolByName error: %{public}d", status);
         if (status == DistributedKv::Status::KEY_NOT_FOUND) {
             TAG_LOGW(AAFwkTag::SER_ROUTER, "key not found");
-            return ERR_NAME_NOT_FOUND;
+            return ERR_TOOL_NOT_EXIST;
         }
         RestoreKvStore(status);
         return status;
@@ -210,60 +336,6 @@ int32_t CliToolDataManager::GetToolByName(const std::string &name, ToolInfo &too
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Invalid tool name for: %{public}s", name.c_str());
         return ERR_JSON_PARSE_FAILED;
     }
-    return ERR_OK;
-}
-
-int32_t CliToolDataManager::ParseJsonFile(const std::string &filePath, std::vector<ToolInfo> &tools)
-{
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "ParseJsonFile: %{public}s", filePath.c_str());
-
-    std::ifstream file(filePath);
-    if (!file.is_open()) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to open file: %{public}s", filePath.c_str());
-        return ERR_FILE_NOT_FOUND;
-    }
-
-    std::string fileContent((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    file.close();
-
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "File size: %{public}zu bytes", fileContent.size());
-
-    if (fileContent.empty()) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "File is empty");
-        return ERR_JSON_PARSE_FAILED;
-    }
-
-    // Check for BOM
-    if (fileContent.size() >= 3 &&
-        (unsigned char)fileContent[0] == 0xEF &&
-        (unsigned char)fileContent[1] == 0xBB &&
-        (unsigned char)fileContent[2] == 0xBF) {
-        TAG_LOGW(AAFwkTag::CLI_TOOL, "UTF-8 BOM detected, removing");
-        fileContent = fileContent.substr(3);
-    }
-
-    nlohmann::json root = nlohmann::json::parse(fileContent, nullptr, false);
-    if (root.is_discarded()) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "JSON parse failed: invalid JSON format");
-        return ERR_JSON_PARSE_FAILED;
-    }
-
-    if (!root.is_array()) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "JSON root is not an array");
-        return ERR_JSON_PARSE_FAILED;
-    }
-
-    for (const auto &item : root) {
-        ToolInfo tool;
-        if (ToolInfo::ParseFromJson(item, tool)) {
-            tools.push_back(std::move(tool));
-            TAG_LOGI(AAFwkTag::CLI_TOOL, "Parsed tool: %{public}s", tool.name.c_str());
-        } else {
-            TAG_LOGW(AAFwkTag::CLI_TOOL, "Failed to parse tool: invalid name");
-        }
-    }
-
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully parsed %{public}zu tools", tools.size());
     return ERR_OK;
 }
 

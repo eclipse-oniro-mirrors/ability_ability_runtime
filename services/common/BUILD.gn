@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+# Copyright (c) 2024-2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -33,6 +33,8 @@ config("common_config") {
     "${ability_runtime_path}/frameworks/c/ability_runtime/*",
     "${ability_runtime_path}/frameworks/simulator/ability_simulator/*",
     "${ability_runtime_path}/tools/aa/*",
+    "${ability_runtime_path}/tools/ohos-aa/*",
+    "${ability_runtime_path}/tools/cc/*",
     "${ability_runtime_services_path}/common/*",
     "${ability_runtime_services_path}/quickfixmgr/*",
     "${ability_runtime_services_path}/uripermmgr/*",
@@ -111,7 +113,10 @@ ohos_shared_library("perm_verification") {
 
   sources = [ "src/permission_verification.cpp" ]
 
-  deps = [ ":app_util" ]
+  deps = [
+    ":app_util",
+    ":hisysevent_report",
+  ]
 
   external_deps = [
     "ability_base:want",
@@ -119,6 +124,7 @@ ohos_shared_library("perm_verification") {
     "access_token:libtokenid_sdk",
     "c_utils:utils",
     "hilog:libhilog",
+    "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
     "init:libbegetutil",
     "ipc:ipc_core",
@@ -148,7 +154,10 @@ ohos_static_library("perm_verification_static") {
 
   sources = [ "src/permission_verification.cpp" ]
 
-  deps = [ ":app_util_static" ]
+  deps = [
+    ":app_util_static",
+    ":hisysevent_report_static",
+  ]
 
   external_deps = [
     "ability_base:want",
@@ -156,6 +165,7 @@ ohos_static_library("perm_verification_static") {
     "access_token:libtokenid_sdk",
     "c_utils:utils",
     "hilog:libhilog",
+    "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
     "init:libbegetutil",
     "ipc:ipc_core",

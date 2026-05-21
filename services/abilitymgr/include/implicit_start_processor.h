@@ -87,8 +87,8 @@ private:
     int GenerateAbilityRequestByAppIndexes(int32_t userId, AbilityRequest &request,
         std::vector<DialogAppInfo> &dialogAppInfos);
 
-    int FindExtensionInfo(const Want &want, int32_t flags, int32_t userId, int32_t appIndex,
-        AppExecFwk::AbilityInfo &abilityInfo);
+    int FindExtensionInfo(const AppExecFwk::ElementName &elementName, int32_t flags, int32_t userId,
+        int32_t appIndex, AppExecFwk::AbilityInfo &abilityInfo);
 
     std::string MatchTypeAndUri(const AAFwk::Want &want);
     std::shared_ptr<AppExecFwk::BundleMgrHelper> GetBundleManagerHelper();

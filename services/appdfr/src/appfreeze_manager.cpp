@@ -79,6 +79,7 @@ static constexpr const char *const SPAN_ID = "span_id: ";
 static constexpr const char *const PARENT_SPAN_ID = "parent_span_id: ";
 static constexpr const char *const TRACE_FLAG = "trace_flag: ";
 static constexpr const char *const DEV_SYSLOAD = "/dev/sysload";
+constexpr const char* PRELOAD_UIEXTENSION = "PreloadUIExtension";
 // kill resaon
 constexpr int32_t INVALID_KILL_ID = -2;
 constexpr const char* INVALID_KILL_REASON = "InvalidKillId";
@@ -471,24 +472,34 @@ int AppfreezeManager::AcquireStack(const FaultData& faultData,
     AppfreezeManager::ParseBinderParam params = {pid, faultNotifyData.tid, pid, 0};
     std::set<int> asyncPids;
     std::set<int> syncPids = GetBinderPeerPids(binderInfo, params, asyncPids, terminalBinder);
-    if (syncPids.empty()) {
-        binderInfo += "PeerBinder pids is empty\n";
-    }
+    std::string binderProcessNameStr;
+    std::string binderProcessStackStr;
     for (auto& pidTemp : syncPids) {
         TAG_LOGI(AAFwkTag::APPDFR, "PeerBinder pidTemp pids:%{public}d", pidTemp);
-        if (pidTemp == pid) {
+        if (pidTemp == pid || IsAncoProc(pidTemp)) {
             continue;
         }
         std::string content = "Binder catcher stacktrace, type is peer, pid : " + std::to_string(pidTemp) + "\n";
         content += CatcherStacktrace(pidTemp);
         binderPidsStr += " " + std::to_string(pidTemp);
+        binderProcessNameStr += std::to_string(pidTemp) + "(" +
+            AppfreezeUtil::GetProcessNameFromProcCmdline(pidTemp) + ");";
         if (terminalBinder.pid > 0 && pidTemp == terminalBinder.pid) {
             terminalBinder.tid  = (terminalBinder.tid > 0) ? terminalBinder.tid : terminalBinder.pid;
             content = "Binder catcher stacktrace, terminal binder tag\n" + content +
                 "Binder catcher stacktrace, terminal binder tag\n";
             terminalBinderTid = std::to_string(terminalBinder.tid);
         }
-        binderInfo += content;
+        binderProcessStackStr += content;
+    }
+    if (syncPids.empty()) {
+        binderInfo += "PeerBinder pids is empty\n";
+    } else {
+        if (!binderProcessNameStr.empty()) {
+            binderProcessNameStr.pop_back();
+            binderProcessNameStr = "BINDER_PROC_NAME: " + binderProcessNameStr + "\n";
+        }
+        binderInfo = binderInfo + binderProcessNameStr + binderProcessStackStr;
     }
     binderInfo += CatchASyncByPid(asyncPids, syncPids, pid);
     std::string fileName = faultData.errorObject.name + "_" +
@@ -498,6 +509,13 @@ int AppfreezeManager::AcquireStack(const FaultData& faultData,
 
     int ret = NotifyANR(faultNotifyData, appInfo, binderInfo, memoryContent);
     return ret;
+}
+
+bool AppfreezeManager::IsAncoProc(int pid)
+{
+    std::string cgroupPath = "/proc/" + std::to_string(pid) + "/cgroup";
+    std::string firstLine = GetFirstLine(cgroupPath);
+    return firstLine.find("isulad") != std::string::npos;
 }
 
 std::string AppfreezeManager::CatchASyncByPid(const std::set<int> &asyncPids, const std::set<int> &syncPids, int pid)
@@ -510,7 +528,7 @@ std::string AppfreezeManager::CatchASyncByPid(const std::set<int> &asyncPids, co
             continue;
         }
         TAG_LOGI(AAFwkTag::APPDFR, "AsyncBinder pidTemp pids:%{public}d", pidTemp);
-        if (pidTemp != pid && syncPids.find(pidTemp) == syncPids.end()) {
+        if (pidTemp != pid && !IsAncoProc(pidTemp) && syncPids.find(pidTemp) == syncPids.end()) {
             std::string content = "Binder catcher stacktrace, type is async, pid : " + std::to_string(pidTemp) + "\n";
             content += CatcherStacktrace(pidTemp);
             binderInfo += content;
@@ -591,6 +609,7 @@ int AppfreezeManager::NotifyANR(const FaultData& faultData, const AppfreezeManag
     eventInfo.tid = tid > 0 ? tid : 0;
     eventInfo.pid = appInfo.pid;
     eventInfo.uid = appInfo.uid;
+    eventInfo.isFrozen = appInfo.isFrozen;
     eventInfo.eventId = faultData.eventId;
     eventInfo.bundleName = appInfo.bundleName;
     eventInfo.processName = appInfo.processName;
@@ -1446,6 +1465,25 @@ bool AppfreezeManager::IsFreezeExcludedPid(int32_t targetPid)
 
     TAG_LOGW(AAFwkTag::APPDFR, "pid %{public}d is in freeze excluded list", targetPid);
     return true;
+}
+
+bool AppfreezeManager::CheckPreloadUIExtension(const std::string& message, const std::string& bundleName,
+    int32_t pid, const std::string& eventName)
+{
+    if (eventName != AppFreezeType::LIFECYCLE_HALF_TIMEOUT && eventName != AppFreezeType::LIFECYCLE_TIMEOUT) {
+        return false;
+    }
+    if (message.find(PRELOAD_UIEXTENSION) != std::string::npos) {
+        TAG_LOGW(AAFwkTag::APPDFR, "don't report event, msg: PreloadUIExtension, bundleName: %{public}s "
+            "pid: %{public}d", bundleName.c_str(), pid);
+        return true;
+    }
+    return false;
+}
+
+bool AppfreezeManager::CheckProcessExit(const std::string& eventName, bool foreground)
+{
+    return foreground || (eventName != AppFreezeType::THREAD_BLOCK_6S);
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

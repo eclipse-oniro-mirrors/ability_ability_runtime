@@ -183,6 +183,10 @@ public:
         if (!CheckDefaultFreezeError(env, function)) {
             return result;
         }
+        if (IsRefUndefined(env, function)) {
+            function = nullptr;
+            TAG_LOGI(AAFwkTag::JSNAPI, "func is undefined.");
+        }
         std::lock_guard<std::mutex> lock(g_defaultFreezeMtx);
         if (g_defaultFreezeObserver.ref) {
             ani_wref weakRef;
@@ -234,9 +238,6 @@ public:
             TAG_LOGE(AAFwkTag::JSNAPI, "func is null.");
             EtsErrorUtil::ThrowInvalidNumParametersError(env);
             return false;
-        }
-        if (IsRefUndefined(env, function)) {
-            TAG_LOGI(AAFwkTag::JSNAPI, "func is undefined.");
         }
         return true;
     }

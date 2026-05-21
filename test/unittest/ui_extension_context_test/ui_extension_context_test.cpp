@@ -19,12 +19,14 @@
 #define protected public
 #include "extension_base.h"
 #include "ui_extension_context.h"
+#include "ui_extension_modal_callback.h"
 #undef private
 #undef protected
 
 #include "hilog_tag_wrapper.h"
 #include "want.h"
 #include "mock_window.h"
+#include "int_wrapper.h"
 
 using namespace testing::ext;
 using namespace OHOS::Rosen;
@@ -1538,5 +1540,415 @@ HWTEST_F(UIExtensionContextTest, SetAbilityConfiguration_0500, TestSize.Level1)
 
     TAG_LOGI(AAFwkTag::TEST, "SetAbilityConfiguration_0500 end");
 }
+
+/**
+ * @tc.number: CreateModalUIExtensionWithApp_0100
+ * @tc.name: CreateModalUIExtensionWithApp
+ * @tc.desc: Test CreateModalUIExtensionWithApp when uiContent is nullptr
+ */
+HWTEST_F(UIExtensionContextTest, CreateModalUIExtensionWithApp_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CreateModalUIExtensionWithApp_0100 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    AAFwk::Want want;
+    auto result = context->CreateModalUIExtensionWithApp(want);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "CreateModalUIExtensionWithApp_0100 end");
+}
+
+/**
+ * @tc.number: CreateModalUIExtensionWithApp_0200
+ * @tc.name: CreateModalUIExtensionWithApp
+ * @tc.desc: Test CreateModalUIExtensionWithApp when UIExtension already exists
+ */
+HWTEST_F(UIExtensionContextTest, CreateModalUIExtensionWithApp_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CreateModalUIExtensionWithApp_0200 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    // Setup window with UIContent
+    sptr<MockWindow> window = sptr<MockWindow>::MakeSptr();
+    context->SetWindow(window);
+
+    // Add an existing UIExtension to the map
+    AAFwk::Want existingWant;
+    ElementName element("", "com.example.test", "TestExtension");
+    existingWant.SetElement(element);
+    context->uiExtensionMap_[1] = existingWant;
+
+    // Try to create the same extension again
+    AAFwk::Want want;
+    want.SetElement(element);
+    auto result = context->CreateModalUIExtensionWithApp(want);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+
+    context->uiExtensionMap_.clear();
+    TAG_LOGI(AAFwkTag::TEST, "CreateModalUIExtensionWithApp_0200 end");
+}
+
+/**
+ * @tc.number: CreateModalUIExtensionWithApp_0300
+ * @tc.name: CreateModalUIExtensionWithApp
+ * @tc.desc: Test CreateModalUIExtensionWithApp when CreateModalUIExtension fails (returns sessionId=0)
+ */
+HWTEST_F(UIExtensionContextTest, CreateModalUIExtensionWithApp_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CreateModalUIExtensionWithApp_0300 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    // Setup window with UIContent - MockWindow returns nullptr UIContent
+    sptr<MockWindow> window = sptr<MockWindow>::MakeSptr();
+    context->SetWindow(window);
+
+    AAFwk::Want want;
+    ElementName element("", "com.example.test", "TestExtension");
+    want.SetElement(element);
+
+    // When UIContent is not null but CreateModalUIExtension returns 0
+    // The mock window will have nullptr UIContent, so it should return ERR_INVALID_VALUE
+    auto result = context->CreateModalUIExtensionWithApp(want);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+
+    TAG_LOGI(AAFwkTag::TEST, "CreateModalUIExtensionWithApp_0300 end");
+}
+
+/**
+ * @tc.number: EraseUIExtension_0100
+ * @tc.name: EraseUIExtension
+ * @tc.desc: Test EraseUIExtension when sessionId exists
+ */
+HWTEST_F(UIExtensionContextTest, EraseUIExtension_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "EraseUIExtension_0100 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    // Add a UIExtension to the map
+    AAFwk::Want want;
+    ElementName element("", "com.example.test", "TestExtension");
+    want.SetElement(element);
+    int32_t sessionId = 123;
+    context->uiExtensionMap_[sessionId] = want;
+
+    EXPECT_EQ(context->uiExtensionMap_.size(), 1);
+
+    // Erase the UIExtension
+    auto result = context->EraseUIExtension(sessionId);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(context->uiExtensionMap_.size(), 0);
+
+    TAG_LOGI(AAFwkTag::TEST, "EraseUIExtension_0100 end");
+}
+
+/**
+ * @tc.number: EraseUIExtension_0200
+ * @tc.name: EraseUIExtension
+ * @tc.desc: Test EraseUIExtension when sessionId does not exist
+ */
+HWTEST_F(UIExtensionContextTest, EraseUIExtension_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "EraseUIExtension_0200 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    // Try to erase a non-existent sessionId
+    int32_t sessionId = 999;
+    auto result = context->EraseUIExtension(sessionId);
+    // EraseUIExtension always returns ERR_OK even if not found
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(context->uiExtensionMap_.size(), 0);
+
+    TAG_LOGI(AAFwkTag::TEST, "EraseUIExtension_0200 end");
+}
+
+/**
+ * @tc.number: IsUIExtensionExist_0100
+ * @tc.name: IsUIExtensionExist
+ * @tc.desc: Test IsUIExtensionExist when UIExtension exists
+ */
+HWTEST_F(UIExtensionContextTest, IsUIExtensionExist_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsUIExtensionExist_0100 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    // Add a UIExtension to the map
+    AAFwk::Want want;
+    ElementName element("", "com.example.test", "TestExtension");
+    want.SetElement(element);
+    context->uiExtensionMap_[1] = want;
+
+    // Check if exists
+    auto result = context->IsUIExtensionExist(want);
+    EXPECT_TRUE(result);
+
+    context->uiExtensionMap_.clear();
+    TAG_LOGI(AAFwkTag::TEST, "IsUIExtensionExist_0100 end");
+}
+
+/**
+ * @tc.number: IsUIExtensionExist_0200
+ * @tc.name: IsUIExtensionExist
+ * @tc.desc: Test IsUIExtensionExist when UIExtension does not exist
+ */
+HWTEST_F(UIExtensionContextTest, IsUIExtensionExist_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsUIExtensionExist_0200 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    // Check non-existent extension
+    AAFwk::Want want;
+    ElementName element("", "com.example.test", "NonExistentExtension");
+    want.SetElement(element);
+
+    auto result = context->IsUIExtensionExist(want);
+    EXPECT_FALSE(result);
+
+    TAG_LOGI(AAFwkTag::TEST, "IsUIExtensionExist_0200 end");
+}
+/**
+ * @tc.number: CreateModalUIExtensionWithApp_0400
+ * @tc.name: CreateModalUIExtensionWithApp
+ * @tc.desc: Test with USE_GLOBAL_UICONTENT=true bypasses IsUIExtensionExist check but uiContent=null.
+ */
+HWTEST_F(UIExtensionContextTest, CreateModalUIExtensionWithApp_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CreateModalUIExtensionWithApp_0400 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    // Add existing extension
+    AAFwk::Want existingWant;
+    ElementName element("", "com.example.test", "TestExtension");
+    existingWant.SetElement(element);
+    context->uiExtensionMap_[1] = existingWant;
+
+    // Same element but with USE_GLOBAL_UICONTENT=true → bypasses the early return
+    AAFwk::Want want;
+    want.SetElement(element);
+    want.SetParam("ohos.uec.params.useGlobalUIContent", static_cast<int32_t>(1));
+
+    // Still fails because uiContent is null
+    auto result = context->CreateModalUIExtensionWithApp(want);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+
+    context->uiExtensionMap_.clear();
+    TAG_LOGI(AAFwkTag::TEST, "CreateModalUIExtensionWithApp_0400 end");
+}
+
+/**
+ * @tc.number: CreateModalUIExtensionWithApp_0500
+ * @tc.name: CreateModalUIExtensionWithApp
+ * @tc.desc: Test with DISPOSED_PROHIBIT_BACK=true, verifies config parameter is processed.
+ *           uiContent is null so returns ERR_INVALID_VALUE before reaching CreateModalUIExtension.
+ */
+HWTEST_F(UIExtensionContextTest, CreateModalUIExtensionWithApp_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CreateModalUIExtensionWithApp_0500 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    // Setup window (but UIContent will still be null from MockWindow)
+    sptr<MockWindow> window = sptr<MockWindow>::MakeSptr();
+    context->SetWindow(window);
+
+    AAFwk::Want want;
+    want.SetElement(ElementName("", "com.example.test", "TestExtension"));
+    want.SetParam("ohos.disposed.prohibitBack", static_cast<int32_t>(1));
+
+    auto result = context->CreateModalUIExtensionWithApp(want);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+
+    TAG_LOGI(AAFwkTag::TEST, "CreateModalUIExtensionWithApp_0500 end");
+}
+
+/**
+ * @tc.number: CreateModalUIExtensionWithApp_0600
+ * @tc.name: CreateModalUIExtensionWithApp
+ * @tc.desc: Test with IS_WINDOWMODE_FOLLOWHOST parameter, verifies config processing.
+ *           uiContent is null so returns ERR_INVALID_VALUE.
+ */
+HWTEST_F(UIExtensionContextTest, CreateModalUIExtensionWithApp_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CreateModalUIExtensionWithApp_0600 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    sptr<MockWindow> window = sptr<MockWindow>::MakeSptr();
+    context->SetWindow(window);
+
+    AAFwk::Want want;
+    want.SetElement(ElementName("", "com.example.test", "TestExtension"));
+    want.SetParam("ohos.window.mode.followHost", static_cast<int32_t>(1));
+
+    auto result = context->CreateModalUIExtensionWithApp(want);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+
+    TAG_LOGI(AAFwkTag::TEST, "CreateModalUIExtensionWithApp_0600 end");
+}
+
+/**
+ * @tc.number: SetupModalCallbacks_0100
+ * @tc.name: SetupModalCallbacks
+ * @tc.desc: Verify SetupModalCallbacks creates all 5 callbacks (onError, onRelease, onResult, onDestroy, onReceive).
+ */
+HWTEST_F(UIExtensionContextTest, SetupModalCallbacks_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetupModalCallbacks_0100 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    auto modalCallback = std::make_shared<UIExtensionModalCallback>();
+    modalCallback->SetSessionId(100);
+
+    // Set context so callbacks don't crash
+    modalCallback->SetUIExtensionContext(context);
+
+    auto callbacks = context->SetupModalCallbacks(modalCallback);
+
+    // Verify all callbacks are non-null (callable)
+    EXPECT_TRUE(callbacks.onError != nullptr);
+    EXPECT_TRUE(callbacks.onRelease != nullptr);
+    EXPECT_TRUE(callbacks.onResult != nullptr);
+    EXPECT_TRUE(callbacks.onDestroy != nullptr);
+    EXPECT_TRUE(callbacks.onReceive != nullptr);
+
+    TAG_LOGI(AAFwkTag::TEST, "SetupModalCallbacks_0100 end");
+}
+
+/**
+ * @tc.number: SetupModalCallbacks_0200
+ * @tc.name: SetupModalCallbacks
+ * @tc.desc: Verify onError callback invokes UIExtensionModalCallback::OnError.
+ */
+HWTEST_F(UIExtensionContextTest, SetupModalCallbacks_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetupModalCallbacks_0200 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    auto modalCallback = std::make_shared<UIExtensionModalCallback>();
+    modalCallback->SetSessionId(200);
+    modalCallback->SetUIExtensionContext(context);
+
+    auto callbacks = context->SetupModalCallbacks(modalCallback);
+
+    // Invoke onError callback — should call modalCallback->OnError() without crash
+    ASSERT_TRUE(callbacks.onError != nullptr);
+    callbacks.onError(1, "test", "error message");
+
+    EXPECT_EQ(modalCallback->sessionId_, 200);
+
+    TAG_LOGI(AAFwkTag::TEST, "SetupModalCallbacks_0200 end");
+}
+
+/**
+ * @tc.number: SetupModalCallbacks_0300
+ * @tc.name: SetupModalCallbacks
+ * @tc.desc: Verify onRelease callback invokes UIExtensionModalCallback::OnRelease.
+ */
+HWTEST_F(UIExtensionContextTest, SetupModalCallbacks_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetupModalCallbacks_0300 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    auto modalCallback = std::make_shared<UIExtensionModalCallback>();
+    modalCallback->SetSessionId(300);
+    modalCallback->SetUIExtensionContext(context);
+
+    auto callbacks = context->SetupModalCallbacks(modalCallback);
+
+    // Invoke onRelease callback
+    ASSERT_TRUE(callbacks.onRelease != nullptr);
+    callbacks.onRelease(0);
+
+    EXPECT_EQ(modalCallback->sessionId_, 300);
+
+    TAG_LOGI(AAFwkTag::TEST, "SetupModalCallbacks_0300 end");
+}
+
+/**
+ * @tc.number: SetupModalCallbacks_0400
+ * @tc.name: SetupModalCallbacks
+ * @tc.desc: Verify onResult callback can be invoked without crash.
+ */
+HWTEST_F(UIExtensionContextTest, SetupModalCallbacks_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetupModalCallbacks_0400 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    auto modalCallback = std::make_shared<UIExtensionModalCallback>();
+    modalCallback->SetSessionId(400);
+    modalCallback->SetUIExtensionContext(context);
+
+    auto callbacks = context->SetupModalCallbacks(modalCallback);
+
+    ASSERT_TRUE(callbacks.onResult != nullptr);
+    AAFwk::Want resultWant;
+    callbacks.onResult(0, resultWant);
+
+    EXPECT_EQ(modalCallback->sessionId_, 400);
+
+    TAG_LOGI(AAFwkTag::TEST, "SetupModalCallbacks_0400 end");
+}
+
+/**
+ * @tc.number: SetupModalCallbacks_0500
+ * @tc.name: SetupModalCallbacks
+ * @tc.desc: Verify onDestroy callback invokes UIExtensionModalCallback::OnDestroy.
+ */
+HWTEST_F(UIExtensionContextTest, SetupModalCallbacks_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetupModalCallbacks_0500 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    auto modalCallback = std::make_shared<UIExtensionModalCallback>();
+    modalCallback->SetSessionId(500);
+    modalCallback->SetUIExtensionContext(context);
+
+    auto callbacks = context->SetupModalCallbacks(modalCallback);
+
+    ASSERT_TRUE(callbacks.onDestroy != nullptr);
+    callbacks.onDestroy();
+
+    EXPECT_EQ(modalCallback->sessionId_, 500);
+
+    TAG_LOGI(AAFwkTag::TEST, "SetupModalCallbacks_0500 end");
+}
+
+/**
+ * @tc.number: SetupModalCallbacks_0600
+ * @tc.name: SetupModalCallbacks
+ * @tc.desc: Verify onReceive callback invokes UIExtensionModalCallback::OnReceive with correct data.
+ */
+HWTEST_F(UIExtensionContextTest, SetupModalCallbacks_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetupModalCallbacks_0600 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    auto modalCallback = std::make_shared<UIExtensionModalCallback>();
+    modalCallback->SetSessionId(600);
+    modalCallback->SetUIExtensionContext(context);
+
+    auto callbacks = context->SetupModalCallbacks(modalCallback);
+
+    ASSERT_TRUE(callbacks.onReceive != nullptr);
+    AAFwk::WantParams data;
+    data.SetParam("testKey", AAFwk::Integer::Box(42));
+    callbacks.onReceive(data);
+
+    EXPECT_EQ(modalCallback->sessionId_, 600);
+
+    TAG_LOGI(AAFwkTag::TEST, "SetupModalCallbacks_0600 end");
+}
+
 } // namespace AbilityRuntime
 } // namespace OHOS

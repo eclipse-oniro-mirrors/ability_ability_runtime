@@ -17,16 +17,15 @@
  * @addtogroup AbilityRuntime
  * @{
  *
- * @brief Provide the definition of the C interface for the native ability wrapper
+ * @brief Provides the definition of the C interface for the native ability wrapper
  *
- * @syscap SystemCapability.Ability.AbilityRuntime.Core
  * @since 26.0.0
  */
 
 /**
  * @file native_ability_wrapper.h
  *
- * @brief Define the native ability wrapper APIs.
+ * @brief Declares the native ability wrapper APIs.
  *
  * @library libability_runtime.so
  * @kit AbilityKit
@@ -45,7 +44,12 @@
 extern "C" {
 #endif
 
-typedef struct NativeAbilityWrapper NativeAbilityWrapper;
+/**
+ * @brief Defines the AbilityRuntime_NativeAbilityWrapper structure type.
+ *
+ * @since 26.0.0
+ */
+typedef struct AbilityRuntime_NativeAbilityWrapper AbilityRuntime_NativeAbilityWrapper;
 
 /**
  * @brief Get ability instance ID from NativeAbilityWrapper.
@@ -61,40 +65,43 @@ typedef struct NativeAbilityWrapper NativeAbilityWrapper;
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_GetAbilityInstanceId(
-    const NativeAbilityWrapper* nativeAbilityWrapper, char* buffer, const int32_t bufferSize);
+    const AbilityRuntime_NativeAbilityWrapper* nativeAbilityWrapper, char* buffer, const int32_t bufferSize);
 
 /**
  * @brief Get ability name from NativeAbilityWrapper.
  *
  * @param nativeAbilityWrapper The native ability wrapper pointer.
  * @param buffer A pointer to a buffer that receives the ability name.
- * @param bufferSize The length of the buffer.
- * @param writeLength The string length actually written to the buffer,
- *                    when returning {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR}.
+ *               Pass nullptr to query the ability name length.
+ * @param bufferSize The length of the buffer. Make sure the buffer has at least one more byte for '\0'.
+ * @param writeLength Outputs the ability name string length.
  * @return The error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if the operation is successful.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if the nativeAbilityWrapper, buffer, or writeLength is null,
- *         or the buffer size is less than the minimum buffer size.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_CONTEXT_NOT_EXIST} if the ability context does not exist.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if the nativeAbilityWrapper or writeLength is null,
+ *         or the buffer is too small for the ability name.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_ABILITY_WRAPPER_INVALID} if the native ability wrapper is invalid or
+ *         incomplete.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} inner error.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_GetAbilityName(
-    const NativeAbilityWrapper* nativeAbilityWrapper, char* buffer, const int32_t bufferSize, int32_t* writeLength);
+    const AbilityRuntime_NativeAbilityWrapper *nativeAbilityWrapper, char *buffer, const int32_t bufferSize,
+    int32_t *writeLength);
 
 /**
  * @brief Get napi_env from NativeAbilityWrapper.
  *
  * @param nativeAbilityWrapper The native ability wrapper pointer.
- * @param env A pointer to the napi environment.
+ * @param env A pointer to the receive napi_env value. napi_env is valid until the process terminates.
  * @return The error code.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_NO_ERROR} if the operation is successful.
  *         {@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if the nativeAbilityWrapper or env is null.
- *         {@link ABILITY_RUNTIME_ERROR_CODE_CONTEXT_NOT_EXIST} if the ability context does not exist.
+ *         {@link ABILITY_RUNTIME_ERROR_CODE_ABILITY_WRAPPER_INVALID} if the native ability wrapper is invalid or
+ *         incomplete.
  * @since 26.0.0
  */
 AbilityRuntime_ErrorCode OH_AbilityRuntime_GetEnv(
-    const NativeAbilityWrapper* nativeAbilityWrapper, napi_env* env);
+    const AbilityRuntime_NativeAbilityWrapper* nativeAbilityWrapper, napi_env* env);
 
 #ifdef __cplusplus
 }

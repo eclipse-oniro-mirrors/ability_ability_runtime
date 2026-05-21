@@ -1157,7 +1157,7 @@ HWTEST_F(ImplicitStartProcessorTest, FindExtensionInfo_001, TestSize.Level1)
     TAG_LOGI(AAFwkTag::TEST, "GetBundleName %{public}s", test.c_str());
     test = want.GetElement().GetAbilityName();
     TAG_LOGI(AAFwkTag::TEST, "GetAbilityName %{public}s", test.c_str());
-    auto res = processor->FindExtensionInfo(want, flags, userId, appIndex, abilityInfo);
+    auto res = processor->FindExtensionInfo(elementName, flags, userId, appIndex, abilityInfo);
     EXPECT_EQ(res, RESOLVE_ABILITY_ERR);
     TAG_LOGI(AAFwkTag::TEST, "FindExtensionInfo_001 end");
 }

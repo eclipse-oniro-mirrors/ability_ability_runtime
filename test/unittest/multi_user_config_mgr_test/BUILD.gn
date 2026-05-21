@@ -50,6 +50,7 @@ ohos_unittest("multi_user_config_mgr_test") {
     "i18n:i18n_sa_client",
     "init:libbegetutil",
     "ipc:ipc_core",
+    "ipc:ipc_single",
     "os_account:libaccountkits",
     "os_account:os_account_innerkits",
     "window_manager:libwm",

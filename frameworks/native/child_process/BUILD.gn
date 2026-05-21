@@ -73,4 +73,5 @@ ohos_shared_library("child_process") {
   install_images = [ "system" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  version_script = "child_process.version_script"
 }

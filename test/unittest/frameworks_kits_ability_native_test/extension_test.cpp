@@ -505,5 +505,45 @@ HWTEST_F(ExtensionTest, AaFwk_Extension_2800, Function | MediumTest | Level1)
     EXPECT_NE(extension_, nullptr);
     GTEST_LOG_(INFO) << "AaFwk_Extension_2800 end";
 }
+/**
+ * @tc.name: GetAbilityHandler_ShouldReturnNullptrWhenCalledOnBaseExtension
+ * @tc.desc: Base Extension GetAbilityHandler returns nullptr by default.
+ */
+HWTEST_F(ExtensionTest, GetAbilityHandler_ShouldReturnNullptrWhenCalledOnBaseExtension,
+    Function | MediumTest | Level1)
+{
+    auto info = std::make_shared<AbilityInfo>();
+    auto handler = extension_->GetAbilityHandler(info);
+    EXPECT_EQ(handler, nullptr);
+}
+
+/**
+ * @tc.name: GetAbilityHandler_ShouldReturnNullptrWhenAbilityInfoIsNull
+ * @tc.desc: Base Extension GetAbilityHandler returns nullptr when abilityInfo is null.
+ */
+HWTEST_F(ExtensionTest, GetAbilityHandler_ShouldReturnNullptrWhenAbilityInfoIsNull,
+    Function | MediumTest | Level1)
+{
+    auto handler = extension_->GetAbilityHandler(nullptr);
+    EXPECT_EQ(handler, nullptr);
+}
+
+/**
+ * @tc.number: AaFwk_Extension_2900
+ * @tc.name: OnConnect
+ * @tc.desc: Incoming want with callback info, verify OnConnect with async callback successfully.
+ */
+HWTEST_F(ExtensionTest, AaFwk_Extension_2900, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AaFwk_Extension_2900 start";
+    Want want;
+    want.SetElementName("DemoDeviceId", "DemoBundleName", "DemoAbilityName");
+    AppExecFwk::AbilityTransactionCallbackInfo<sptr<IRemoteObject>> *callbackInfo = nullptr;
+    bool isAsyncCallback = true;
+    auto remoteObject = extension_->OnConnect(want, callbackInfo, isAsyncCallback);
+    EXPECT_TRUE(remoteObject == nullptr);
+    EXPECT_FALSE(isAsyncCallback);
+    GTEST_LOG_(INFO) << "AaFwk_Extension_2900 end";
+}
 } // namespace AppExecFwk
 } // namespace OHOS

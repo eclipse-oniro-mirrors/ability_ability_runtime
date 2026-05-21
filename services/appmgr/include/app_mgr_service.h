@@ -41,6 +41,7 @@
 #include "task_handler_wrap.h"
 #include "app_jsheap_mem_info.h"
 #include "app_cjheap_mem_info.h"
+#include "mem_dump_callback_interface.h"
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -318,10 +319,22 @@ public:
      * triggerGC and dump application's memory info.
      *
      * @param info The information to be dumped
+     * @param callback The callback to receive dump result
+     * @return ERR_OK ,return back success, others fail.
+     */
+    virtual int32_t DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback) override;
+
+    /**
+     * ReportDumpMemResult, called by app process to report dump result.
+     * AppMgrService will forward the result to hidumper via callback.
+     *
+     * @param callback The callback received from app process
+     * @param resultCode The result code of dump operation
      * @param dumpResult The dump result string
      * @return ERR_OK ,return back success, others fail.
      */
-    virtual int32_t DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult) override;
+    virtual int32_t ReportDumpMemResult(sptr<IMemDumpCallback> callback,
+        const std::string &dumpResult) override;
 
     // the function about service running info
     /**
@@ -835,6 +848,8 @@ public:
 
     int32_t IsProcessCacheSupported(int32_t pid, bool &isSupported) override;
 
+    int32_t IsChildProcessSupported(bool isNative, bool &isSupported) override;
+
     int32_t SetProcessCacheEnable(int32_t pid, bool enable) override;
 
     int32_t LockProcessCache(int32_t pid, bool isLock) override;
@@ -1152,6 +1167,10 @@ private:
      * @param token Ability identify.
      */
     void SetTerminateTimeOutFlag(const sptr<IRemoteObject> token) override;
+
+    int32_t EnableDelayedProcessExit(int32_t pid, bool enabled) override;
+
+    void CancelDelayedExitTask(int32_t pid) override;
 
     enum DumpIpcKey {
         KEY_DUMP_IPC_START = 0,

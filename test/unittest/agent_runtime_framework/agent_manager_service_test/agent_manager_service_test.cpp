@@ -45,6 +45,31 @@ namespace OHOS {
 namespace AgentRuntime {
 const int BUNDLE_MGR_SERVICE_SYS_ABILITY_ID = 401;
 
+AgentCard BuildServiceTestAgentCard(const std::string &agentId)
+{
+    AgentCard card;
+    card.agentId = agentId;
+    card.type = AgentCardType::APP;
+    card.name = agentId;
+    card.description = "desc";
+    card.version = "1.0.0";
+    card.category = "productivity";
+    card.defaultInputModes = { "text/plain" };
+    card.defaultOutputModes = { "text/plain" };
+    card.iconUrl = "http://example.com/icon.png";
+    auto skill = std::make_shared<AgentSkill>();
+    skill->id = agentId + "_skill";
+    skill->name = "skill";
+    skill->description = "skill desc";
+    skill->tags = { "tag" };
+    card.skills = { skill };
+    card.appInfo = std::make_shared<AgentAppInfo>();
+    card.appInfo->bundleName = "bundle";
+    card.appInfo->moduleName = "module";
+    card.appInfo->abilityName = "ability";
+    return card;
+}
+
 class AgentManagerServiceTest : public testing::Test {
 public:
     static void SetUpTestCase(void);
@@ -86,6 +111,7 @@ void AgentManagerServiceTest::SetUp(void)
     MyFlag::retGetBundleNameByPid = ERR_OK;
     MyFlag::processState = AppExecFwk::AppProcessState::APP_STATE_FOREGROUND;
     MyFlag::retGetAgentCardByAgentId = ERR_OK;
+    MyFlag::agentCardsByBundleName.clear();
     MyFlag::agentCardAgentId = "testAgent";
     MyFlag::agentCardBundleName = "test.bundle";
     MyFlag::agentCardModuleName = "";
@@ -345,7 +371,7 @@ HWTEST_F(AgentManagerServiceTest, GetAgentCardsByBundleName_000, TestSize.Level1
 {
     MyFlag::retJudgeCallerIsAllowedToUseSystemAPI = false;
     std::string bundleName = "bundle";
-    std::vector<AgentCard> cards;
+    AgentCardsRawData cards;
     EXPECT_EQ(AgentManagerService::GetInstance()->GetAgentCardsByBundleName(bundleName, cards), ERR_NOT_SYSTEM_APP);
 }
 
@@ -360,7 +386,7 @@ HWTEST_F(AgentManagerServiceTest, GetAgentCardsByBundleName_001, TestSize.Level1
     MyFlag::retGetAgentCardsByBundleName = ERR_NAME_NOT_FOUND;
     MyFlag::retGetApplicationInfo = true;
     std::string bundleName = "bundle";
-    std::vector<AgentCard> cards;
+    AgentCardsRawData cards;
     EXPECT_EQ(AgentManagerService::GetInstance()->GetAgentCardsByBundleName(bundleName, cards), ERR_OK);
     MyFlag::retGetAgentCardsByBundleName = ERR_OK;
 }
@@ -374,7 +400,7 @@ HWTEST_F(AgentManagerServiceTest, GetAgentCardsByBundleName_002, TestSize.Level1
 {
     MyFlag::retVerifyGetAgentCardPermission = false;
     std::string bundleName = "bundle";
-    std::vector<AgentCard> cards;
+    AgentCardsRawData cards;
     EXPECT_EQ(AgentManagerService::GetInstance()->GetAgentCardsByBundleName(bundleName, cards), ERR_PERMISSION_DENIED);
     MyFlag::retVerifyGetAgentCardPermission = true;
 }
@@ -389,7 +415,7 @@ HWTEST_F(AgentManagerServiceTest, GetAgentCardsByBundleName_003, TestSize.Level1
     MyFlag::retVerifyCallingPermission = true;
     MyFlag::retGetAgentCardsByBundleName = ERR_INVALID_VALUE;
     std::string bundleName = "bundle";
-    std::vector<AgentCard> cards;
+    AgentCardsRawData cards;
     EXPECT_EQ(AgentManagerService::GetInstance()->GetAgentCardsByBundleName(bundleName, cards), ERR_INVALID_VALUE);
     MyFlag::retGetAgentCardsByBundleName = ERR_OK;
 }
@@ -403,9 +429,15 @@ HWTEST_F(AgentManagerServiceTest, GetAgentCardsByBundleName_004, TestSize.Level1
 {
     MyFlag::retVerifyCallingPermission = true;
     MyFlag::retGetAgentCardsByBundleName = ERR_OK;
+    MyFlag::agentCardsByBundleName = { BuildServiceTestAgentCard("agent1"), BuildServiceTestAgentCard("agent2") };
     std::string bundleName = "bundle";
-    std::vector<AgentCard> cards;
+    AgentCardsRawData cards;
     EXPECT_EQ(AgentManagerService::GetInstance()->GetAgentCardsByBundleName(bundleName, cards), ERR_OK);
+    std::vector<AgentCard> cardVec;
+    EXPECT_EQ(AgentCardsRawData::ToAgentCardVec(cards, cardVec), ERR_OK);
+    ASSERT_EQ(cardVec.size(), 2);
+    EXPECT_EQ(cardVec[0].agentId, "agent1");
+    EXPECT_EQ(cardVec[1].agentId, "agent2");
 }
 
 /**
@@ -419,7 +451,7 @@ HWTEST_F(AgentManagerServiceTest, GetAgentCardsByBundleName_005, TestSize.Level1
     MyFlag::retGetAgentCardsByBundleName = ERR_NAME_NOT_FOUND;
     MyFlag::retGetApplicationInfo = false;
     std::string bundleName = "bundle";
-    std::vector<AgentCard> cards;
+    AgentCardsRawData cards;
     EXPECT_EQ(AgentManagerService::GetInstance()->GetAgentCardsByBundleName(bundleName, cards),
         AAFwk::ERR_BUNDLE_NOT_EXIST);
     MyFlag::retGetAgentCardsByBundleName = ERR_OK;
@@ -1407,7 +1439,7 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_026, TestSize.Lev
     EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(wantB, connectionB), ERR_OK);
     EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 1);
     ASSERT_EQ(service->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(service->callerConnectionCounts_.begin()->second, 2);
+    EXPECT_EQ(service->callerConnectionCounts_.begin()->second, 1);
     EXPECT_EQ(receiver->agentInvokedCount, 2);
     ASSERT_EQ(receiver->invokedAgentIds.size(), 2);
     EXPECT_EQ(receiver->invokedAgentIds[1], "agentB");
@@ -1527,7 +1559,7 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_029, TestSize.Lev
 /**
  * @tc.name  : ConnectAgentExtensionAbility_030
  * @tc.number: ConnectAgentExtensionAbility_030
- * @tc.desc  : Test low-code shared host still enforces MAX_CONNECTIONS_PER_CALLER per caller
+ * @tc.desc  : Test low-code shared host allows MAX_AGENTS_PER_HOST_SESSION agents
  */
 HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_030, TestSize.Level1)
 {
@@ -1550,7 +1582,7 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_030, TestSize.Lev
     AppExecFwk::ElementName element("", "lowcode.bundle", "LowCodeExtAbility", "entry");
     service->HandleAgentHostConnectDone(hostKey, element, receiver->AsObject(), ERR_OK);
 
-    for (size_t i = 1; i < AgentManagerService::MAX_CONNECTIONS_PER_CALLER; i++) {
+    for (size_t i = 1; i < AgentManagerService::MAX_AGENTS_PER_HOST_SESSION; i++) {
         std::string index = std::to_string(i);
         std::string agentId = "agent" + index;
         AAFwk::Want want;
@@ -1560,9 +1592,9 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_030, TestSize.Lev
         EXPECT_EQ(service->ConnectAgentExtensionAbility(want, connection), ERR_OK);
     }
 
-    EXPECT_EQ(service->agentOwners_.size(), AgentManagerService::MAX_CONNECTIONS_PER_CALLER);
+    EXPECT_EQ(service->agentOwners_.size(), AgentManagerService::MAX_AGENTS_PER_HOST_SESSION);
     ASSERT_EQ(service->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(service->callerConnectionCounts_.begin()->second, AgentManagerService::MAX_CONNECTIONS_PER_CALLER);
+    EXPECT_EQ(service->callerConnectionCounts_.begin()->second, 1);
     EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 1);
 
     AAFwk::Want overflowWant;
@@ -1571,6 +1603,41 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_030, TestSize.Lev
     auto overflowConnection = sptr<MockAbilityConnection>::MakeSptr();
     EXPECT_EQ(service->ConnectAgentExtensionAbility(overflowWant, overflowConnection),
         ERR_MAX_AGENT_CONNECTIONS_REACHED);
+}
+
+/**
+ * @tc.name  : ConnectAgentExtensionAbility_032
+ * @tc.number: ConnectAgentExtensionAbility_032
+ * @tc.desc  : Test reused low-code host session ignores caller-wide quota and uses the host session limit
+ */
+HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_032, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    MyFlag::retGetAgentCardByAgentId = ERR_OK;
+    MyFlag::agentCardType = static_cast<int32_t>(AgentCardType::LOW_CODE);
+    MyFlag::agentCardBundleName = "lowcode.bundle";
+    MyFlag::agentCardAbilityName = "LowCodeExtAbility";
+    MyFlag::agentCardModuleName = "entry";
+
+    AAFwk::Want firstWant;
+    firstWant.SetParam(AGENTID_KEY, std::string("agent0"));
+    firstWant.SetElementName("", "lowcode.bundle", "LowCodeExtAbility", "entry");
+    auto firstConnection = sptr<MockAbilityConnection>::MakeSptr();
+    EXPECT_EQ(service->ConnectAgentExtensionAbility(firstWant, firstConnection), ERR_OK);
+    ASSERT_EQ(service->callerConnectionCounts_.size(), 1);
+
+    int32_t callerUid = IPCSkeleton::GetCallingUid();
+    service->callerConnectionCounts_[callerUid] = AgentManagerService::MAX_CONNECTIONS_PER_CALLER;
+
+    AAFwk::Want reuseWant;
+    reuseWant.SetParam(AGENTID_KEY, std::string("agent1"));
+    reuseWant.SetElementName("", "lowcode.bundle", "LowCodeExtAbility", "entry");
+    auto reuseConnection = sptr<MockAbilityConnection>::MakeSptr();
+    EXPECT_EQ(service->ConnectAgentExtensionAbility(reuseWant, reuseConnection), ERR_OK);
+    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 1);
+    EXPECT_EQ(service->agentOwners_.size(), 2);
+    ASSERT_EQ(service->callerConnectionCounts_.size(), 1);
+    EXPECT_EQ(service->callerConnectionCounts_[callerUid], AgentManagerService::MAX_CONNECTIONS_PER_CALLER);
 }
 
 /**
@@ -2338,7 +2405,7 @@ HWTEST_F(AgentManagerServiceTest, ValidateConnectAgentRequest_003, TestSize.Leve
 /**
 * @tc.name  : ValidateConnectAgentRequest_004
 * @tc.number: ValidateConnectAgentRequest_004
-* @tc.desc  : Test ValidateConnectAgentRequest rejects callers at the shared connection limit
+* @tc.desc  : Test ValidateConnectAgentRequest leaves quota checks to the classified connect path
 */
 HWTEST_F(AgentManagerServiceTest, ValidateConnectAgentRequest_004, TestSize.Level1)
 {
@@ -2348,8 +2415,8 @@ HWTEST_F(AgentManagerServiceTest, ValidateConnectAgentRequest_004, TestSize.Leve
     auto connection = sptr<MockAbilityConnection>::MakeSptr();
     int32_t outCallerUid = -1;
 
-    EXPECT_EQ(service->ValidateConnectAgentRequest(connection, outCallerUid),
-        AAFwk::ERR_MAX_AGENT_CONNECTIONS_REACHED);
+    EXPECT_EQ(service->ValidateConnectAgentRequest(connection, outCallerUid), ERR_OK);
+    EXPECT_EQ(outCallerUid, callerUid);
 }
 
 /**
@@ -2401,7 +2468,7 @@ HWTEST_F(AgentManagerServiceTest, ResolveConnectAgentTarget_001, TestSize.Level1
 /**
 * @tc.name  : ResolveConnectAgentTarget_002
 * @tc.number: ResolveConnectAgentTarget_002
-* @tc.desc  : Test ResolveConnectAgentTarget rejects unknown agent cards
+* @tc.desc  : Test ResolveConnectAgentTarget rejects unknown AgentCards
 */
 HWTEST_F(AgentManagerServiceTest, ResolveConnectAgentTarget_002, TestSize.Level1)
 {

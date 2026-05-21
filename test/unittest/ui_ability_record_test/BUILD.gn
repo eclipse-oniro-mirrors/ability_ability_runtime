@@ -27,6 +27,7 @@ ohos_unittest("ui_ability_record_test") {
     "${ability_runtime_services_path}/abilitymgr/include/scene_board",
     "${ability_runtime_services_path}/common/include",
     "${ability_runtime_path}/interfaces/inner_api/ability_manager/include",
+    "${ability_runtime_path}/utils/global/constant",
   ]
 
   sources = [
@@ -42,6 +43,7 @@ ohos_unittest("ui_ability_record_test") {
   ]
 
   external_deps = [
+    "ability_base:want",
     "googletest:gmock_main",
     "hilog:libhilog",
     "hitrace:hitrace_meter",

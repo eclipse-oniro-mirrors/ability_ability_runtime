@@ -218,17 +218,20 @@ enum class AbilityErrorCode {
     // The specified agentId does not exist.
     ERROR_CODE_AGENT_ID_NOT_EXIST = 35600001,
 
+    // The number of AgentCards in the bundle reaches the limit.
+    ERROR_CODE_AGENT_CARD_LIST_OUT_OF_RANGE = 35600008,
+
     // Maximum connections from the same caller have been reached. Please disconnect at least one agent extension
     // beforehand.
     ERROR_CODE_MAX_CONNECTIONS_REACHED = 35600003,
 
-    // The specified agent card version is older than the current version.
+    // The specified AgentCard version is older than the current version.
     ERROR_CODE_AGENT_CARD_VERSION_TOO_OLD = 35600004,
 
-    // The specified agent card version is invalid.
+    // The specified AgentCard version is invalid.
     ERROR_CODE_AGENT_CARD_VERSION_INVALID = 35600005,
 
-    // The specified agent card has already been registered. Use updateAgentCard instead.
+    // The specified AgentCard has already been registered. Use updateAgentCard instead.
     ERROR_CODE_AGENT_CARD_DUPLICATE_REGISTER = 35600006,
 
     // The specified LOW_CODE agent is already active and is not yet completed.
@@ -316,7 +319,17 @@ enum class AbilityErrorCode {
 
     ERROR_CODE_SELF_REDIRECTION_DISALLOWED = 16000136,
 
+    ERROR_CODE_INTENT_CONNECTION_FAILED = 16000137,
+
+    ERROR_CODE_INTENT_DEVICE_DISCONNECTED = 16000138,
+
     ERROR_CODE_SEND_REQUEST_TO_SYSTEM_FAIL = 16000150,
+
+    ERROR_CODE_DELAYED_PROCESS_EXIT_NO_UIABILITY = 16000151,
+
+    ERROR_CODE_DELAYED_PROCESS_EXIT_NOT_PENDING = 16000161,
+
+    ERROR_CODE_DELAYED_PROCESS_EXIT_HAS_OTHER_UIABILITY = 16000162,
 
     // target bundle is not in u1
     ERROR_CODE_NO_U1 = 16000204,

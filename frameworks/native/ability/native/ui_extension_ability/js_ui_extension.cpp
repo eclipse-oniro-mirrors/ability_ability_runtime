@@ -165,7 +165,9 @@ void JsUIExtension::Init(const std::shared_ptr<AbilityLocalRecord> &record,
     HandleScope handleScope(jsRuntime_);
     auto env = jsRuntime_.GetNapiEnv();
 
-    jsObj_ = jsRuntime_.LoadModule(
+    std::string key = moduleName + "::" + srcPath;
+    std::unique_ptr<NativeReference> moduleObj = nullptr;
+    jsObj_ = jsRuntime_.PopPreloadObj(key, moduleObj) ? std::move(moduleObj) : jsRuntime_.LoadModule(
         moduleName, srcPath, abilityInfo_->hapPath, abilityInfo_->compileMode == CompileMode::ES_MODULE, false,
         abilityInfo_->srcEntrance);
     if (jsObj_ == nullptr) {

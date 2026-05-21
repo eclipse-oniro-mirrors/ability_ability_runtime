@@ -745,15 +745,29 @@ HWTEST_F(AppMgrClientTest, AppMgrClient_DumpCjHeapMemory_001, TestSize.Level2)
 HWTEST_F(AppMgrClientTest, AppMgrClient_DumpMem_001, TestSize.Level2)
 {
     auto appMgrClient = std::make_unique<AppMgrClient>();
-
     auto result = appMgrClient->ConnectAppMgrService();
     EXPECT_EQ(result, AppMgrResultCode::RESULT_OK);
 
     OHOS::AppExecFwk::MemDumpInfo info;
-    info.pid = 1;
-    std::string dumpResult;
+    sptr<IMemDumpCallback> callback = nullptr;
+    appMgrClient->DumpMem(info, callback);
+    EXPECT_NE(appMgrClient, nullptr);
+}
 
-    appMgrClient->DumpMem(info, dumpResult);
+/**
+ * @tc.name: AppMgrClient_ReportDumpMemResult_001
+ * @tc.desc: ReportDumpMemResult.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrClientTest, AppMgrClient_ReportDumpMemResult_001, TestSize.Level2)
+{
+    auto appMgrClient = std::make_unique<AppMgrClient>();
+    auto result = appMgrClient->ConnectAppMgrService();
+    EXPECT_EQ(result, AppMgrResultCode::RESULT_OK);
+
+    sptr<IMemDumpCallback> callback = nullptr;
+    std::string dumpResult = "test";
+    appMgrClient->ReportDumpMemResult(callback, dumpResult);
     EXPECT_NE(appMgrClient, nullptr);
 }
 
@@ -1905,6 +1919,73 @@ HWTEST_F(AppMgrClientTest, AppMgrClient_UpdateFreezeExcludedPid_001, TestSize.Le
     int32_t pid = 1;
     int32_t profilerPid = 2;
     appMgrClient->UpdateFreezeExcludedPid(true, pid, profilerPid);
+}
+
+/**
+ * @tc.name: EnableDelayedProcessExit_001
+ * @tc.desc: Enable delayed process exit with valid connection.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrClientTest, EnableDelayedProcessExit_001, TestSize.Level2)
+{
+    auto appMgrClient = std::make_unique<AppMgrClient>();
+    EXPECT_NE(appMgrClient, nullptr);
+
+    auto result = appMgrClient->ConnectAppMgrService();
+    EXPECT_EQ(result, AppMgrResultCode::RESULT_OK);
+
+    int32_t pid = 1234;
+    int32_t ret = appMgrClient->EnableDelayedProcessExit(pid, true);
+    EXPECT_NE(ret, AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED);
+}
+
+/**
+ * @tc.name: EnableDelayedProcessExit_002
+ * @tc.desc: Disable delayed process exit with valid connection.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrClientTest, EnableDelayedProcessExit_002, TestSize.Level2)
+{
+    auto appMgrClient = std::make_unique<AppMgrClient>();
+    EXPECT_NE(appMgrClient, nullptr);
+
+    auto result = appMgrClient->ConnectAppMgrService();
+    EXPECT_EQ(result, AppMgrResultCode::RESULT_OK);
+
+    int32_t pid = 1234;
+    int32_t ret = appMgrClient->EnableDelayedProcessExit(pid, false);
+    EXPECT_NE(ret, AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED);
+}
+
+/**
+ * @tc.name: CancelDelayedExitTask_001
+ * @tc.desc: Cancel delayed exit task with valid connection.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrClientTest, CancelDelayedExitTask_001, TestSize.Level2)
+{
+    auto appMgrClient = std::make_unique<AppMgrClient>();
+    EXPECT_NE(appMgrClient, nullptr);
+
+    auto result = appMgrClient->ConnectAppMgrService();
+    EXPECT_EQ(result, AppMgrResultCode::RESULT_OK);
+
+    int32_t pid = 1234;
+    appMgrClient->CancelDelayedExitTask(pid);
+}
+
+/**
+ * @tc.name: CancelDelayedExitTask_002
+ * @tc.desc: Cancel delayed exit task without connecting service (null service).
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrClientTest, CancelDelayedExitTask_002, TestSize.Level2)
+{
+    auto appMgrClient = std::make_unique<AppMgrClient>();
+    EXPECT_NE(appMgrClient, nullptr);
+
+    int32_t pid = 1234;
+    appMgrClient->CancelDelayedExitTask(pid);
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

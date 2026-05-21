@@ -21,6 +21,7 @@
 
 #include "ability_info.h"
 #include "extension_ability_info.h"
+#include "irequest_start_ability_callback.h"
 #include "start_specified_ability_params.h"
 #include "want.h"
 
@@ -113,6 +114,7 @@ struct StartAbilityWrapParam {
     bool isStartByOEExt = false;
     std::string specifiedFlag;
     bool isGamePrelaunch = false;
+    sptr<IRequestStartAbilityCallback> requestCallback = nullptr;
 };
 }
 }

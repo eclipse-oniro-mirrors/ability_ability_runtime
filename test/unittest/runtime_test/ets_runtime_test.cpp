@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,6 +15,8 @@
 
 #include <gtest/gtest.h>
 #include <gtest/hwext/gtest-multithread.h>
+#include <cstdlib>
+#include <fstream>
 
 #define private public
 #define protected public
@@ -43,6 +45,25 @@ const std::string TEST_CODE_PATH = "/data/storage/el1/bundle";
 const std::string TEST_HAP_PATH = "/system/app/com.ohos.contactsdataabilityContacts_DataAbility.hap";
 const std::string TEST_LIB_PATH = "/data/storage/el1/bundle/lib/";
 const std::string TEST_MODULE_PATH = "/data/storage/el1/bundle/curJsModulePath";
+const std::string TEST_HOST_AOT_ROOT = "/system/app/ark_cache/";
+const std::string TEST_HOST_AOT_BUNDLE_NAME = "com.example.hostaot";
+
+std::string GetHostAotAnPath(const std::string &bundleName, const std::string &moduleName)
+{
+    return TEST_HOST_AOT_ROOT + bundleName + "/" + moduleName + ".an";
+}
+
+void CreateHostAotAnFile(const std::string &bundleName, const std::string &moduleName)
+{
+    std::string anPath = GetHostAotAnPath(bundleName, moduleName);
+    std::string mkdirCmd = "mkdir -p " + TEST_HOST_AOT_ROOT + bundleName;
+    ASSERT_EQ(std::system(mkdirCmd.c_str()), 0);
+
+    std::ofstream anFile(anPath);
+    ASSERT_TRUE(anFile.is_open());
+    anFile << "test";
+    anFile.close();
+}
 } // namespace
 
 class EtsRuntimeTest : public testing::Test {
@@ -72,7 +93,11 @@ void EtsRuntimeTest::SetUp()
     options_.eventRunner = eventRunner;
 }
 
-void EtsRuntimeTest::TearDown() {}
+void EtsRuntimeTest::TearDown()
+{
+    std::string rmCmd = "rm -rf " + TEST_HOST_AOT_ROOT + TEST_HOST_AOT_BUNDLE_NAME;
+    std::system(rmCmd.c_str());
+}
 
 /**
  * @tc.name: Create_100
@@ -723,6 +748,88 @@ HWTEST_F(EtsRuntimeTest, GetAotPath_012, TestSize.Level1)
     options.commonHspBundleInfos = hspInfos;
     auto result = etsRuntime->GetAotPath(options);
     EXPECT_NE(result.find("hspModule1.an"), std::string::npos);
+}
+
+/**
+ * @tc.name: GetAotPath_013
+ * @tc.desc: Test GetAotPath loads preinstall host AOT an file when aot status is failed.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, GetAotPath_013, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    Runtime::Options options;
+    options.bundleName = TEST_HOST_AOT_BUNDLE_NAME;
+    options.aotCompileStatusMap = {
+        {"entry", static_cast<int32_t>(AppExecFwk::AOTCompileStatus::NOT_COMPILED)}
+    };
+    options.commonHspBundleInfos = {};
+    CreateHostAotAnFile(TEST_HOST_AOT_BUNDLE_NAME, "entry");
+
+    auto result = etsRuntime->GetAotPath(options);
+    EXPECT_EQ(result, GetHostAotAnPath(TEST_HOST_AOT_BUNDLE_NAME, "entry"));
+}
+
+/**
+ * @tc.name: GetAotPath_014
+ * @tc.desc: Test GetAotPath skips missing preinstall host AOT an file when aot status is failed.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, GetAotPath_014, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    Runtime::Options options;
+    options.bundleName = TEST_HOST_AOT_BUNDLE_NAME;
+    options.aotCompileStatusMap = {
+        {"entry", static_cast<int32_t>(AppExecFwk::AOTCompileStatus::COMPILE_FAILED)}
+    };
+    options.commonHspBundleInfos = {};
+
+    auto result = etsRuntime->GetAotPath(options);
+    EXPECT_EQ(result, "");
+}
+
+/**
+ * @tc.name: GetAotPath_015
+ * @tc.desc: Test GetAotPath only loads existing preinstall host AOT an files for failed modules.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, GetAotPath_015, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    Runtime::Options options;
+    options.bundleName = TEST_HOST_AOT_BUNDLE_NAME;
+    options.aotCompileStatusMap = {
+        {"entry", static_cast<int32_t>(AppExecFwk::AOTCompileStatus::COMPILE_FAILED)},
+        {"feature", static_cast<int32_t>(AppExecFwk::AOTCompileStatus::COMPILE_FAILED)}
+    };
+    options.commonHspBundleInfos = {};
+    CreateHostAotAnFile(TEST_HOST_AOT_BUNDLE_NAME, "entry");
+
+    auto result = etsRuntime->GetAotPath(options);
+    EXPECT_NE(result.find(GetHostAotAnPath(TEST_HOST_AOT_BUNDLE_NAME, "entry")), std::string::npos);
+    EXPECT_EQ(result.find(GetHostAotAnPath(TEST_HOST_AOT_BUNDLE_NAME, "feature")), std::string::npos);
+}
+
+/**
+ * @tc.name: GetAotPath_016
+ * @tc.desc: Test successful AOT status still loads original sandbox an path.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, GetAotPath_016, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    Runtime::Options options;
+    options.bundleName = TEST_HOST_AOT_BUNDLE_NAME;
+    options.aotCompileStatusMap = {
+        {"entry", static_cast<int32_t>(AppExecFwk::AOTCompileStatus::IDLE_COMPILE_SUCCESS)}
+    };
+    options.commonHspBundleInfos = {};
+    CreateHostAotAnFile(TEST_HOST_AOT_BUNDLE_NAME, "entry");
+
+    auto result = etsRuntime->GetAotPath(options);
+    EXPECT_EQ(result, "/data/storage/ark-cache/arm64/entry.an");
+    EXPECT_EQ(result.find(GetHostAotAnPath(TEST_HOST_AOT_BUNDLE_NAME, "entry")), std::string::npos);
 }
 
 /**

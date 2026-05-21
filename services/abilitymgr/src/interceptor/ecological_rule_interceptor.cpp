@@ -86,7 +86,7 @@ bool EcologicalRuleInterceptor::NoNeedErms(const AbilityInterceptorParam &param)
         return true;
     }
     if (param.want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME) ==
-        param.want.GetElement().GetBundleName()) {
+        param.want.GetBundle()) {
         TAG_LOGD(AAFwkTag::ECOLOGICAL_RULE, "same bundle");
         StartAbilityUtils::ermsSupportBackToCallerFlag = true;
         return true;
@@ -101,7 +101,7 @@ bool EcologicalRuleInterceptor::NoNeedErms(const AbilityInterceptorParam &param)
 bool EcologicalRuleInterceptor::DoProcess(Want &want, int32_t userId)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    if (want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME) == want.GetElement().GetBundleName()) {
+    if (want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME) == want.GetBundle()) {
         TAG_LOGD(AAFwkTag::ECOLOGICAL_RULE, "same bundle");
         StartAbilityUtils::ermsSupportBackToCallerFlag = true;
         return true;
@@ -148,7 +148,7 @@ ErrCode EcologicalRuleInterceptor::QueryAtomicServiceStartupRule(Want &want, spt
     int32_t userId, AtomicServiceStartupRule &rule, sptr<Want> &replaceWant)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    CHECK_TRUE_RETURN_RET(want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME) == want.GetElement().GetBundleName(),
+    CHECK_TRUE_RETURN_RET(want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME) == want.GetBundle(),
         ERR_INVALID_CALLER, "same bundle");
     std::string supportErms = OHOS::system::GetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "true");
     CHECK_TRUE_RETURN_RET(supportErms == "false", ERR_CAPABILITY_NOT_SUPPORT, "not support erms");
@@ -293,7 +293,7 @@ void EcologicalRuleInterceptor::InitErmsCallerInfo(const Want &want,
     }
 
     callerInfo.userId = userId;
-    if (want.GetElement().GetBundleName().empty() && abilityInfo != nullptr) {
+    if (want.GetBundle().empty() && abilityInfo != nullptr) {
         callerInfo.targetBundleName = abilityInfo->bundleName;
     }
 

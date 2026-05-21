@@ -96,6 +96,7 @@
 #include "parameters.h"
 #include "resource_manager.h"
 #include "runtime.h"
+#include "startup_util.h"
 #include "sys_mgr_client.h"
 #include "system_ability_definition.h"
 #include "task_handler_client.h"
@@ -697,29 +698,28 @@ void MainThread::ScheduleCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info)
 
 /**
  *
- * @brief application triggerGC and dump memory.
+ * @brief triggerGC and dump application's memory info.
  *
  * @param info, pid, tid, needGC, needSnapshot.
+ * @param callback The callback to receive dump result
  */
-void MainThread::ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
+void MainThread::ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback)
 {
-    if (info.isSync) {
-        HandleMem(info, dumpResult);
-    } else {
-        wptr<MainThread> weak = this;
-        auto task = [weak, info]() {
-            auto appThread = weak.promote();
-            if (appThread == nullptr) {
-                TAG_LOGE(AAFwkTag::APPKIT, "null appThread");
-                return;
-            }
-            // async mode does not return dumpResult to caller
-            std::string asyncResult;
-            appThread->HandleMem(info, asyncResult);
-        };
-        if (!mainHandler_->PostTask(task, "MainThread:HandleMem")) {
-            TAG_LOGE(AAFwkTag::APPKIT, "PostTask HandleMem failed");
+    wptr<MainThread> weak = this;
+    auto task = [weak, info, callback]() {
+        auto appThread = weak.promote();
+        if (appThread == nullptr) {
+            TAG_LOGE(AAFwkTag::APPKIT, "null appThread");
+            return;
         }
+        std::string dumpResult;
+        appThread->HandleMem(info, dumpResult);
+        if (callback) {
+            appThread->appMgr_->ReportDumpMemResult(callback, dumpResult);
+        }
+    };
+    if (!mainHandler_->PostTask(task, "MainThread:HandleMem")) {
+        TAG_LOGE(AAFwkTag::APPKIT, "PostTask HandleMem failed");
     }
 }
 
@@ -1429,13 +1429,13 @@ bool GetBundleForLaunchApplication(std::shared_ptr<BundleMgrHelper> bundleMgrHel
 }
 #ifdef CJ_FRONTEND
 CJUncaughtExceptionInfo MainThread::CreateCjExceptionInfo(const std::string &bundleName,
-    uint32_t versionCode, const std::string &hapPath)
+    uint32_t versionCode, const std::string &hapPath, const std::string &appRunningId)
 {
     CJUncaughtExceptionInfo uncaughtExceptionInfo;
     wptr<MainThread> weak_this = this;
     std::string processName = processInfo_ != nullptr ? processInfo_->GetProcessName() : "unknown";
     uncaughtExceptionInfo.hapPath = hapPath.c_str();
-    uncaughtExceptionInfo.uncaughtTask = [weak_this, bundleName, versionCode, processName]
+    uncaughtExceptionInfo.uncaughtTask = [weak_this, bundleName, versionCode, processName, appRunningId]
         (std::string summary, const CJErrorObject errorObj) {
             auto appThread = weak_this.promote();
             if (appThread == nullptr) {
@@ -1457,6 +1457,7 @@ CJUncaughtExceptionInfo MainThread::CreateCjExceptionInfo(const std::string &bun
             hisyseventReport->InsertParam(EVENT_KEY_JSVM, JSVM_TYPE);
             hisyseventReport->InsertParam(EVENT_KEY_SUMMARY, errSummary);
             hisyseventReport->InsertParam(EVENT_KEY_PNAME, processName);
+            hisyseventReport->InsertParam(EVENT_KEY_APP_RUNNING_UNIQUE_ID, appRunningId);
             hisyseventReport->InsertParam(EVENT_KEY_THREAD_NAME, DumpProcessHelper::GetThreadName());
             hisyseventReport->InsertParam(EVENT_KEY_PROCESS_RSS_MEMINFO,
                 std::to_string(DumpProcessHelper::GetProcRssMemInfo()));
@@ -1858,6 +1859,7 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
             options.isErrorInfoEnhance = appLaunchData.GetErrorInfoEnhance();
         }
         options.jitEnabled = appLaunchData.IsJITEnabled();
+        options.isMainProcess = appLaunchData.GetMainProcess();
 #ifdef SUPPORT_CHILD_PROCESS
         AbilityRuntime::ChildProcessManager::GetInstance().SetForkProcessJITEnabled(appLaunchData.IsJITEnabled());
         TAG_LOGD(AAFwkTag::APPKIT, "isStartWithDebug:%{public}d, debug:%{public}d, isNativeStart:%{public}d",
@@ -1870,6 +1872,9 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
             for (auto &pluginBundleInfo : pluginBundleInfos) {
                 for (auto &pluginModuleInfo : pluginBundleInfo.pluginModuleInfos) {
                     options.packageNameList[pluginModuleInfo.moduleName] = pluginModuleInfo.packageName;
+                    if (pluginModuleInfo.moduleArkTSMode != AppExecFwk::Constants::ARKTS_MODE_DYNAMIC) {
+                        options.staticPluginHspPathList.push_back(pluginModuleInfo.hapPath);
+                    }
                     TAG_LOGI(AAFwkTag::APPKIT, "moduleName %{public}s, packageName %{public}s",
                         pluginModuleInfo.moduleName.c_str(), pluginModuleInfo.packageName.c_str());
                 }
@@ -1992,7 +1997,7 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
             }
 #ifdef CJ_FRONTEND
         } else {
-            auto expectionInfo = CreateCjExceptionInfo(bundleName, versionCode, hapPath);
+            auto expectionInfo = CreateCjExceptionInfo(bundleName, versionCode, hapPath, appRunningId);
             (static_cast<AbilityRuntime::CJRuntime&>(*runtime)).RegisterUncaughtExceptionHandler(expectionInfo);
             auto reportInfo = CreateCjEventReportInfo(bundleName, versionCode, hapPath, appRunningId);
             (static_cast<AbilityRuntime::CJRuntime&>(*runtime)).RegisterEventHandler(reportInfo);
@@ -2138,7 +2143,7 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
     if (!IsEtsAPP(appInfo) &&
         (appLaunchData.IsNeedPreloadModule() ||
         appLaunchData.GetAppPreloadMode() == AppExecFwk::PreloadMode::PRELOAD_MODULE)) {
-        PreloadModule(entryHapModuleInfo, application_->GetRuntime());
+        PreloadModule(bundleInfo, appLaunchData, entryHapModuleInfo, application_->GetRuntime());
         if (appMgr_ == nullptr) {
             TAG_LOGE(AAFwkTag::APPKIT, "null appMgr");
             return;
@@ -2268,13 +2273,6 @@ void MainThread::ProcessExit(const ProcessExitInfo& info)
 }
 
 #if defined(NWEB) && defined(NWEB_GRAPHIC)
-class CustomizedBufferConsumerListener : public IBufferConsumerListener {
-public:
-    CustomizedBufferConsumerListener() {}
-    ~CustomizedBufferConsumerListener() {}
-
-    void OnBufferAvailable() override {}
-};
 void MainThread::HandleNWebPreload()
 {
     if (!mainHandler_) {
@@ -2287,21 +2285,21 @@ void MainThread::HandleNWebPreload()
             TAG_LOGE(AAFwkTag::APPKIT, "init NWebEngine failed");
             return;
         }
-        cSurface_ = IConsumerSurface::Create(NWEB_SURFACE_NODE_NAME);
-        if (cSurface_ == nullptr) {
-            TAG_LOGE(AAFwkTag::APPKIT, "create cSurface failed");
+        Rosen::RSSurfaceNodeConfig config;
+        config.SurfaceNodeName = NWEB_SURFACE_NODE_NAME;
+        preloadSurfaceNode_ = Rosen::RSSurfaceNode::Create(config, false);
+        if (!preloadSurfaceNode_) {
+            TAG_LOGE(AAFwkTag::APPKIT, "preload surface node is nullptr");
             return;
         }
-        auto producer = cSurface_->GetProducer();
-        pSurface_ = Surface::CreateSurfaceAsProducer(producer);
-        if (pSurface_ == nullptr) {
-            TAG_LOGE(AAFwkTag::APPKIT, "create pSurface failed");
+        auto surface = preloadSurfaceNode_->GetSurface();
+        if (!surface) {
+            TAG_LOGE(AAFwkTag::APPKIT, "preload surface is nullptr");
+            preloadSurfaceNode_ = nullptr;
             return;
         }
-        sptr<IBufferConsumerListener> listener = sptr<CustomizedBufferConsumerListener>::MakeSptr();
-        cSurface_->RegisterConsumerListener(listener);
         auto initArgs = std::make_shared<NWeb::NWebEngineInitArgsImpl>();
-        preloadNWeb_ = NWeb::NWebAdapterHelper::Instance().CreateNWeb(pSurface_, initArgs,
+        preloadNWeb_ = NWeb::NWebAdapterHelper::Instance().CreateNWeb(surface, initArgs,
             NWEB_SURFACE_SIZE, NWEB_SURFACE_SIZE, false);
         if (!preloadNWeb_) {
             TAG_LOGE(AAFwkTag::APPKIT, "create preLoadNWeb failed");
@@ -2346,19 +2344,43 @@ void MainThread::ProcessMainAbility(const AbilityInfo &info, const std::unique_p
     runtime->PreloadMainAbility(moduleName, srcPath, info.hapPath, isEsmode, info.srcEntrance);
 }
 
-void MainThread::PreloadModule(const AppExecFwk::HapModuleInfo &entryHapModuleInfo,
-    const std::unique_ptr<AbilityRuntime::Runtime> &runtime)
+void MainThread::PreloadModule(const BundleInfo &bundleInfo, const AppLaunchData &appLaunchData,
+    const AppExecFwk::HapModuleInfo &entryHapModuleInfo, const std::unique_ptr<AbilityRuntime::Runtime> &runtime)
 {
-    TAG_LOGI(AAFwkTag::APPKIT, "preload module %{public}s", entryHapModuleInfo.moduleName.c_str());
+    HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
+    const AppExecFwk::HapModuleInfo* preloadModuleInfo = nullptr;
+    for (const auto& hapModuleInfo: bundleInfo.hapModuleInfos) {
+        if (hapModuleInfo.moduleName == appLaunchData.GetPreloadModuleName()) {
+            preloadModuleInfo = &hapModuleInfo;
+            break;
+        }
+    }
+    if (preloadModuleInfo == nullptr) {
+        preloadModuleInfo = &entryHapModuleInfo;
+    }
+    std::string preloadAbilityName = appLaunchData.GetPreloadAbilityName();
+    if (preloadAbilityName.empty()) {
+        preloadAbilityName = preloadModuleInfo->mainAbility;
+    }
+    TAG_LOGI(AAFwkTag::APPKIT, "preload module %{public}s", preloadModuleInfo->moduleName.c_str());
     auto callback = []() {};
     bool isAsyncCallback = false;
-    application_->AddAbilityStage(entryHapModuleInfo, callback, isAsyncCallback);
+    application_->AddAbilityStage(*preloadModuleInfo, callback, isAsyncCallback);
     if (isAsyncCallback) {
         return;
     }
-    for (const auto &info : entryHapModuleInfo.abilityInfos) {
-        if (info.name == entryHapModuleInfo.mainAbility) {
+    for (const auto& info : preloadModuleInfo->abilityInfos) {
+        if (info.name == preloadAbilityName) {
             ProcessMainAbility(info, runtime);
+            return;
+        }
+    }
+    for (auto& extensionInfo : preloadModuleInfo->extensionInfos) {
+        if (extensionInfo.name == preloadAbilityName) {
+            AbilityInfo abilityInfo;
+            AbilityRuntime::StartupUtil::InitAbilityInfoFromExtension(
+                const_cast<ExtensionAbilityInfo&>(extensionInfo), abilityInfo);
+            ProcessMainAbility(abilityInfo, runtime);
             return;
         }
     }
@@ -3176,7 +3198,12 @@ void MainThread::Init(const std::shared_ptr<EventRunner> &runner)
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::APPKIT, "Start");
     mainHandler_ = std::make_shared<MainHandler>(runner, this);
-    watchdog_ = std::make_shared<Watchdog>();
+    bool isRescueMode = (system::GetParameter("soc.boot.mode", "") == "rescue");
+    if (!isRescueMode) {
+        TAG_LOGE(AAFwkTag::APPKIT, "is not in rescue mode");
+        watchdog_ = std::make_shared<Watchdog>();
+    }
+
     extensionConfigMgr_ = std::make_shared<AbilityRuntime::ExtensionConfigMgr>();
     wptr<MainThread> weak = this;
     auto task = [weak]() {
@@ -3192,7 +3219,11 @@ void MainThread::Init(const std::shared_ptr<EventRunner> &runner)
     }
     TaskTimeoutDetected(runner);
 
-    watchdog_->Init(mainHandler_);
+    if (!isRescueMode) {
+        TAG_LOGE(AAFwkTag::APPKIT, "is not in rescue mode");
+        watchdog_->Init(mainHandler_);
+    }
+
     AppExecFwk::AppfreezeInner::GetInstance()->SetMainHandler(mainHandler_);
 }
 

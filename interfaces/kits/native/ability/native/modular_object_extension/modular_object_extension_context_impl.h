@@ -16,6 +16,9 @@
 #ifndef OHOS_ABILITY_RUNTIME_MODULAR_OBJECT_EXTENSION_CONTEXT_IMPL_H
 #define OHOS_ABILITY_RUNTIME_MODULAR_OBJECT_EXTENSION_CONTEXT_IMPL_H
 
+#include <memory>
+
+#include "event_handler.h"
 #include "extension_context.h"
 #include "start_options.h"
 #include "want.h"
@@ -26,6 +29,10 @@ class ModularObjectExtensionContext : public ExtensionContext {
 public:
     ModularObjectExtensionContext() = default;
     ~ModularObjectExtensionContext() override = default;
+
+    void SetEventHandler(const std::shared_ptr<AppExecFwk::EventHandler> &handler);
+
+    std::shared_ptr<AppExecFwk::EventHandler> GetEventHandler() const;
 
     ErrCode StartSelfUIAbility(const AAFwk::Want &want) const;
 
@@ -40,6 +47,9 @@ protected:
     {
         return contextTypeId == CONTEXT_TYPE_ID || ExtensionContext::IsContext(contextTypeId);
     }
+
+private:
+    std::weak_ptr<AppExecFwk::EventHandler> handler_;
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

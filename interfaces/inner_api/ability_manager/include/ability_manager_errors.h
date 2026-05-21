@@ -1104,25 +1104,25 @@ enum {
     // Result (2099210) for agent manager proxy is nullptr.
     ERR_NULL_AGENT_MGR_PROXY = 2099210,
 
-    // Result (2099211) for invalid agent card data.
+    // Result (2099211) for invalid AgentCard data.
     ERR_INVALID_AGENT_CARD_DATA = 2099211,
 
-    // Result (2099212) for agent card list is out of range.
+    // Result (2099212) for AgentCard list is out of range.
     ERR_AGENT_CARD_LIST_OUT_OF_RANGE = 2099212,
 
-    // Result (2099213) for agent card id does not exist.
+    // Result (2099213) for AgentCard id does not exist.
     ERR_INVALID_AGENT_CARD_ID = 2099213,
 
     // Result (2099214) for agent connections from the same caller reach the limit.
     ERR_MAX_AGENT_CONNECTIONS_REACHED = 2099214,
 
-    // Result (2099215) for agent card version is older than stored version.
+    // Result (2099215) for AgentCard version is older than stored version.
     ERR_AGENT_CARD_VERSION_TOO_OLD = 2099215,
 
-    // Result (2099216) for invalid agent card version.
+    // Result (2099216) for invalid AgentCard version.
     ERR_INVALID_AGENT_CARD_VERSION = 2099216,
 
-    // Result (2099217) for duplicate register of an existing agent card.
+    // Result (2099217) for duplicate register of an existing AgentCard.
     ERR_AGENT_CARD_DUPLICATE_REGISTER = 2099217,
 
     // Result (2099218) for duplicate active LOW_CODE agent invocation.
@@ -1143,6 +1143,27 @@ enum {
     ERR_NO_RUNNING_ABILITIES_WITH_UI = 2099413,
     
     ERR_INVALID_DISTRIBUTION_TYPE = 2099414,
+
+    // Result (2099420) for Cross-device execution intent connection failed.
+    ERR_INTENT_CONNECTION_FAILED = 2099420,
+
+    // Result (2099421) for Device disconnected during cross-device intent execution.
+    ERR_INTENT_DEVICE_DISCONNECTED = 2099421,
+
+    /**
+     * Result (2099414) for moe connection number per caller pid reached upper limit.
+     */
+    ERR_MOE_CONNECTION_LIMIT = 2099415,
+
+    /**
+     * Result (2099415) for moe instance number reached upper limit.
+     */
+    ERR_MOE_INSTANCE_LIMIT = 2099416,
+
+    /**
+     * Result (2099417) for IN_PROCESS mode does not allow cross-application connection.
+     */
+    ERR_MOE_CROSS_APP_IN_PROCESS = 2099417,
 
     /**
      * Native error(3000000) for target bundle not exist.
@@ -1415,6 +1436,22 @@ enum NativeFreeInstallError {
      * Result (29360227) The current application is not in a game preloading state.
      */
     ERR_NOT_GAME_PRELOAD_STATE = 29360227,
+
+    /* codes 29360270 - 29360280 are reserved for StartSelfUIAbility by delayed process exit */
+    /*
+     * Result (29360270) The current process has no UIAbility, cannot be called.
+     */
+    ERR_DELAYED_PROCESS_EXIT_NO_UIABILITY = 29360270,
+
+    /*
+     * Result (29360271) Delayed process exit is not pending in the current process, cannot be called.
+     */
+    ERR_DELAYED_PROCESS_EXIT_NOT_PENDING = 29360271,
+    
+    /*
+     * Result (29360272) The current process still has another UIAbility.
+     */
+    ERR_DELAYED_PROCESS_EXIT_HAS_OTHER_UIABILITY = 29360272,
 
     /**
      * Undefine error code.

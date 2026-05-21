@@ -196,7 +196,7 @@ public:
     void ScheduleCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info) override
     {}
     
-    void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpresult) override
+    void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback) override
     {}
 
     int32_t ScheduleDumpIpcStart(std::string& result) override

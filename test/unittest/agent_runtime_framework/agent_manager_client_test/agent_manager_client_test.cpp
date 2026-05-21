@@ -68,6 +68,8 @@ void AgentManagerClientTest::SetUp(void)
     MyFlag::retRegisterAgentCard = ERR_OK;
     MyFlag::retUpdateAgentCard = ERR_OK;
     MyFlag::retDeleteAgentCard = ERR_OK;
+    MyFlag::retToAgentCardVec = ERR_OK;
+    MyFlag::convertedCards.clear();
 }
 
 void AgentManagerClientTest::TearDown(void)
@@ -191,11 +193,35 @@ HWTEST_F(AgentManagerClientTest, GetAgentCardsByBundleName_003, TestSize.Level1)
     auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
     client.agentMgr_ = mockAgentMgr;
     MyFlag::retGetAgentCardsByBundleName = ERR_OK;
+    AgentCard card;
+    card.agentId = "agent";
+    MyFlag::convertedCards = { card };
 
     std::vector<AgentCard> cards;
     std::string bundleName = "bundle";
     int32_t result = client.GetAgentCardsByBundleName(bundleName, cards);
     EXPECT_EQ(result, ERR_OK);
+    ASSERT_EQ(cards.size(), 1);
+    EXPECT_EQ(cards[0].agentId, "agent");
+}
+
+/**
+* @tc.name  : GetAgentCardsByBundleName_ShouldReturnError_WhenRawDataConversionFails
+* @tc.number: GetAgentCardsByBundleName_004
+* @tc.desc  : Test that GetAgentCardsByBundleName returns the error code when raw data conversion fails.
+*/
+HWTEST_F(AgentManagerClientTest, GetAgentCardsByBundleName_004, TestSize.Level1)
+{
+    AgentManagerClient client;
+    auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
+    client.agentMgr_ = mockAgentMgr;
+    MyFlag::retGetAgentCardsByBundleName = ERR_OK;
+    MyFlag::retToAgentCardVec = ERR_INVALID_VALUE;
+
+    std::vector<AgentCard> cards;
+    std::string bundleName = "bundle";
+    int32_t result = client.GetAgentCardsByBundleName(bundleName, cards);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
 }
 
 /**
@@ -275,7 +301,7 @@ HWTEST_F(AgentManagerClientTest, GetCallerAgentCardByAgentId_001, TestSize.Level
 /**
 * @tc.name  : GetCallerAgentCardByAgentId_ShouldReturnError_WhenRetrievalFails
 * @tc.number: GetCallerAgentCardByAgentId_002
-* @tc.desc  : Test that GetCallerAgentCardByAgentId returns the error code when agent card retrieval fails.
+* @tc.desc  : Test that GetCallerAgentCardByAgentId returns the error code when AgentCard retrieval fails.
 */
 HWTEST_F(AgentManagerClientTest, GetCallerAgentCardByAgentId_002, TestSize.Level1)
 {

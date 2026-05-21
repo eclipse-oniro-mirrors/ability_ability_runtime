@@ -618,6 +618,116 @@ napi_value JsApplicationContextUtils::OnRestartApp(napi_env env, NapiCallbackInf
     return CreateJsUndefined(env);
 }
 
+napi_value JsApplicationContextUtils::EnableDelayedProcessExit(napi_env env, napi_callback_info info)
+{
+    GET_NAPI_INFO_WITH_NAME_AND_CALL(env, info, JsApplicationContextUtils,
+        OnEnableDelayedProcessExit, APPLICATION_CONTEXT_NAME);
+}
+
+napi_value JsApplicationContextUtils::OnEnableDelayedProcessExit(napi_env env, NapiCallbackInfo& info)
+{
+    if (info.argc != ARGC_ZERO) {
+        ThrowInvalidParamError(env, "No parameters are supported.");
+        return CreateJsUndefined(env);
+    }
+    auto innerErrCode = std::make_shared<ErrCode>(ERR_OK);
+    NapiAsyncTask::ExecuteCallback execute = [applicationContext = applicationContext_, innerErrCode]() {
+        auto context = applicationContext.lock();
+        if (!context) {
+            *innerErrCode = ERR_ABILITY_RUNTIME_EXTERNAL_CONTEXT_NOT_EXIST;
+            return;
+        }
+        *innerErrCode = context->EnableDelayedProcessExit();
+    };
+    NapiAsyncTask::CompleteCallback complete = [innerErrCode](napi_env env, NapiAsyncTask& task, int32_t status) {
+        HandleScope handleScope(env);
+        if (*innerErrCode == ERR_OK) {
+            task.ResolveWithNoError(env, CreateJsUndefined(env));
+            return;
+        }
+        task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrCode));
+    };
+    napi_value result = nullptr;
+    NapiAsyncTask::Schedule("JsApplicationContextUtils::OnEnableDelayedProcessExit",
+        env, CreateAsyncTaskWithLastParam(env, nullptr, std::move(execute), std::move(complete), &result));
+    return result;
+}
+
+napi_value JsApplicationContextUtils::DisableDelayedProcessExit(napi_env env, napi_callback_info info)
+{
+    GET_NAPI_INFO_WITH_NAME_AND_CALL(env, info, JsApplicationContextUtils,
+        OnDisableDelayedProcessExit, APPLICATION_CONTEXT_NAME);
+}
+
+napi_value JsApplicationContextUtils::OnDisableDelayedProcessExit(napi_env env, NapiCallbackInfo& info)
+{
+    if (info.argc != ARGC_ZERO) {
+        ThrowInvalidParamError(env, "No parameters are supported.");
+        return CreateJsUndefined(env);
+    }
+    auto innerErrCode = std::make_shared<ErrCode>(ERR_OK);
+    NapiAsyncTask::ExecuteCallback execute = [applicationContext = applicationContext_, innerErrCode]() {
+        auto context = applicationContext.lock();
+        if (!context) {
+            *innerErrCode = ERR_ABILITY_RUNTIME_EXTERNAL_CONTEXT_NOT_EXIST;
+            return;
+        }
+        *innerErrCode = context->DisableDelayedProcessExit();
+    };
+    NapiAsyncTask::CompleteCallback complete = [innerErrCode](napi_env env, NapiAsyncTask& task, int32_t status) {
+        HandleScope handleScope(env);
+        if (*innerErrCode == ERR_OK) {
+            task.ResolveWithNoError(env, CreateJsUndefined(env));
+            return;
+        }
+        task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrCode));
+    };
+    napi_value result = nullptr;
+    NapiAsyncTask::Schedule("JsApplicationContextUtils::OnDisableDelayedProcessExit",
+        env, CreateAsyncTaskWithLastParam(env, nullptr, std::move(execute), std::move(complete), &result));
+    return result;
+}
+
+napi_value JsApplicationContextUtils::StartSelfUIAbility(napi_env env, napi_callback_info info)
+{
+    GET_NAPI_INFO_WITH_NAME_AND_CALL(env, info, JsApplicationContextUtils,
+        OnStartSelfUIAbility, APPLICATION_CONTEXT_NAME);
+}
+
+napi_value JsApplicationContextUtils::OnStartSelfUIAbility(napi_env env, NapiCallbackInfo& info)
+{
+    if (info.argc != ARGC_ONE) {
+        ThrowInvalidParamError(env, "Exactly one want parameter is required.");
+        return CreateJsUndefined(env);
+    }
+    AAFwk::Want want;
+    if (!AppExecFwk::UnwrapWant(env, info.argv[INDEX_ZERO], want)) {
+        ThrowInvalidParamError(env, "Parse param want failed, want must be Want.");
+        return CreateJsUndefined(env);
+    }
+    auto innerErrCode = std::make_shared<ErrCode>(ERR_OK);
+    NapiAsyncTask::ExecuteCallback execute = [applicationContext = applicationContext_, want, innerErrCode]() {
+        auto context = applicationContext.lock();
+        if (!context) {
+            *innerErrCode = ERR_ABILITY_RUNTIME_EXTERNAL_CONTEXT_NOT_EXIST;
+            return;
+        }
+        *innerErrCode = context->StartSelfUIAbility(want);
+    };
+    NapiAsyncTask::CompleteCallback complete = [innerErrCode](napi_env env, NapiAsyncTask& task, int32_t status) {
+        HandleScope handleScope(env);
+        if (*innerErrCode == ERR_OK) {
+            task.ResolveWithNoError(env, CreateJsUndefined(env));
+            return;
+        }
+        task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrCode));
+    };
+    napi_value result = nullptr;
+    NapiAsyncTask::Schedule("JsApplicationContextUtils::OnStartSelfUIAbility",
+        env, CreateAsyncTaskWithLastParam(env, nullptr, std::move(execute), std::move(complete), &result));
+    return result;
+}
+
 napi_value JsApplicationContextUtils::GetBundleCodeDir(napi_env env, napi_callback_info info)
 {
     TAG_LOGD(AAFwkTag::APPKIT, "called");
@@ -2178,6 +2288,12 @@ void JsApplicationContextUtils::BindNativeApplicationContextTwo(napi_env env, na
     BindNativeFunction(env, object, "getAllWindowStages", MD_NAME, JsApplicationContextUtils::GetAllWindowStages);
     BindNativeFunction(env, object, "getUIAbilityByInstanceId", MD_NAME,
         JsApplicationContextUtils::GetUIAbilityByInstanceId);
+    BindNativeFunction(env, object, "enableDelayedProcessExit", MD_NAME,
+        JsApplicationContextUtils::EnableDelayedProcessExit);
+    BindNativeFunction(env, object, "disableDelayedProcessExit", MD_NAME,
+        JsApplicationContextUtils::DisableDelayedProcessExit);
+    BindNativeFunction(env, object, "startSelfUIAbility", MD_NAME,
+        JsApplicationContextUtils::StartSelfUIAbility);
 }
 }  // namespace AbilityRuntime
 }  // namespace OHOS

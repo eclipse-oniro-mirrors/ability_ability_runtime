@@ -19,7 +19,6 @@
 #include <map>
 #include <string>
 
-#include "arg_mapping.h"
 #include "native_engine/native_engine.h"
 #include "tool_info.h"
 #include "tool_summary.h"
@@ -27,7 +26,9 @@
 namespace OHOS {
 namespace CliTool {
 class CliSessionInfo;
+class CliToolEvent;
 class ExecOptions;
+
 /**
  * @brief Unwrap a string map from JavaScript object.
  * @param env The N-API environment.
@@ -55,13 +56,15 @@ bool UnwrapExecOptions(napi_env env, napi_value obj, ExecOptions &options);
  */
 napi_value CreateJsCliSessionInfo(napi_env env, const CliSessionInfo &session);
 
+bool IsValidToolEventCallback(napi_env env, napi_value obj);
+
 /**
- * @brief Create JavaScript ArgMapping object.
+ * @brief Create JavaScript CliToolEvent object.
  * @param env The N-API environment.
- * @param argMapping The ArgMapping structure.
+ * @param session The CliToolEvent structure.
  * @return Returns the JavaScript object.
  */
-napi_value CreateJsArgMapping(napi_env env, const ArgMapping &argMapping);
+napi_value CreateJsCliToolEvent(napi_env env, const CliToolEvent &event);
 
 /**
  * @brief Create JavaScript SubCommandInfo object.

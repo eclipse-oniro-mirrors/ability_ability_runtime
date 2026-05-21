@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -94,6 +94,8 @@ bool IsValidProperty(ani_env *env, ani_ref param);
 bool CheckCallerIsSystemApp();
 ani_object WrapLocale(ani_env *env, const std::string &locale);
 ani_object CreateIntAniArray(ani_env *env, const std::vector<int32_t> &dataArry);
+bool CreateObjectByClassName(ani_env *env, const char *className, ani_object &object);
+bool CreateArrayObject(ani_env *env, ani_object &object, size_t length);
 } // namespace AppExecFwk
 } // namespace OHOS
 #endif  // OHOS_ABILITY_RUNTIME_ANI_COMMON_UTIL_H

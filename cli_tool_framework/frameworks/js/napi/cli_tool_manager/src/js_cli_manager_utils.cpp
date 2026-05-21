@@ -18,8 +18,10 @@
 #include <nlohmann/json.hpp>
 
 #include "cli_session_info.h"
+#include "cli_tool_event.h"
 #include "exec_options.h"
 #include "hilog_tag_wrapper.h"
+#include "icli_tool_data.h"
 #include "napi_common_util.h"
 
 using namespace OHOS::AbilityRuntime;
@@ -27,29 +29,6 @@ using namespace OHOS::AbilityRuntime;
 namespace OHOS {
 namespace CliTool {
 namespace {
-const std::string ARG_MAPPING_TYPE_FLAG = "flag";
-const std::string ARG_MAPPING_TYPE_POSITIONAL = "positional";
-const std::string ARG_MAPPING_TYPE_FLATTENED = "flattened";
-const std::string ARG_MAPPING_TYPE_JSONSTRING = "jsonString";
-const std::string ARG_MAPPING_TYPE_MIXED = "mixed";
-
-std::string ArgMappingTypeToString(ArgMappingType type)
-{
-    switch (type) {
-        case ArgMappingType::FLAG:
-            return ARG_MAPPING_TYPE_FLAG;
-        case ArgMappingType::POSITIONAL:
-            return ARG_MAPPING_TYPE_POSITIONAL;
-        case ArgMappingType::FLATTENED:
-            return ARG_MAPPING_TYPE_FLATTENED;
-        case ArgMappingType::JSONSTRING:
-            return ARG_MAPPING_TYPE_JSONSTRING;
-        case ArgMappingType::MIXED:
-            return ARG_MAPPING_TYPE_MIXED;
-        default:
-            return ARG_MAPPING_TYPE_FLAG;
-    }
-}
 
 napi_value ParseJsonStringToJsObject(napi_env env, const std::string &jsonStr)
 {
@@ -206,7 +185,7 @@ bool UnwrapExecOptions(napi_env env, napi_value obj, ExecOptions &options)
             TAG_LOGE(AAFwkTag::CLI_TOOL, "invalid yieldMs property");
             return false;
         }
-        if (!AppExecFwk::UnwrapInt32FromJS2(env, yieldMsProp, options.yieldMs)) {
+        if (!AppExecFwk::UnwrapInt64FromJS2(env, yieldMsProp, options.yieldMs)) {
             TAG_LOGE(AAFwkTag::CLI_TOOL, "unwrap yieldMs failed");
             return false;
         }
@@ -222,7 +201,7 @@ bool UnwrapExecOptions(napi_env env, napi_value obj, ExecOptions &options)
             TAG_LOGE(AAFwkTag::CLI_TOOL, "invalid timeout property");
             return false;
         }
-        if (!AppExecFwk::UnwrapInt32FromJS2(env, timeoutProp, options.timeout)) {
+        if (!AppExecFwk::UnwrapInt64FromJS2(env, timeoutProp, options.timeout)) {
             TAG_LOGE(AAFwkTag::CLI_TOOL, "unwrap timeout failed");
             return false;
         }
@@ -245,22 +224,29 @@ napi_value CreateJsCliSessionInfo(napi_env env, const CliSessionInfo &session)
     napi_set_named_property(env, jsObj, "status", AppExecFwk::WrapStringToJS(env, session.status));
 
     // Set result if present
-    if (session.result != nullptr) {
+    if (session.status != "running" && session.result != nullptr) {
         napi_value jsResult = nullptr;
         status = napi_create_object(env, &jsResult);
         if (status != napi_ok) {
             TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create JS ExecResult");
             return nullptr;
         }
-        napi_set_named_property(env, jsResult, "exitCode", AppExecFwk::WrapInt32ToJS(env, session.result->exitCode));
-        // Set outputText
-        napi_value jsOutputText = AppExecFwk::WrapStringToJS(env, session.result->outputText);
-        napi_set_named_property(env, jsResult, "outputText", jsOutputText);
-        // Set errorText
-        napi_set_named_property(env, jsResult, "errorText", AppExecFwk::WrapStringToJS(env, session.result->errorText));
-        // Set signalNumber
-        napi_value jsSignalNumber = AppExecFwk::WrapInt32ToJS(env, session.result->signalNumber);
-        napi_set_named_property(env, jsResult, "signalNumber", jsSignalNumber);
+        if (!session.result->timedOut) {
+            napi_value jsExitCode = AppExecFwk::WrapInt32ToJS(env, session.result->exitCode);
+            napi_set_named_property(env, jsResult, "exitCode", jsExitCode);
+        }
+        if (!session.result->outputText.empty()) {
+            napi_value jsOutputText = AppExecFwk::WrapStringToJS(env, session.result->outputText);
+            napi_set_named_property(env, jsResult, "outputText", jsOutputText);
+        }
+        if (!session.result->errorText.empty()) {
+            napi_value jsErrorText = AppExecFwk::WrapStringToJS(env, session.result->errorText);
+            napi_set_named_property(env, jsResult, "errorText", jsErrorText);
+        }
+        if (session.result->signalNumber != 0) {
+            napi_value jsSignalNumber = AppExecFwk::WrapInt32ToJS(env, session.result->signalNumber);
+            napi_set_named_property(env, jsResult, "signalNumber", jsSignalNumber);
+        }
         // Set timedOut
         napi_set_named_property(env, jsResult, "timedOut", AppExecFwk::WrapBoolToJS(env, session.result->timedOut));
         // Set executionTime
@@ -270,34 +256,6 @@ napi_value CreateJsCliSessionInfo(napi_env env, const CliSessionInfo &session)
     }
 
     return handleEscape.Escape(jsObj);
-}
-
-napi_value CreateJsArgMapping(napi_env env, const ArgMapping &argMapping)
-{
-    napi_value jsObj = nullptr;
-    napi_status status = napi_create_object(env, &jsObj);
-    if (status != napi_ok) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create JS object");
-        return nullptr;
-    }
-
-    // Set type (string: 'flag', 'positional', 'flattened', 'jsonString', 'mixed')
-    napi_value jsType = AppExecFwk::WrapStringToJS(env, ArgMappingTypeToString(argMapping.type));
-    napi_set_named_property(env, jsObj, "type", jsType);
-
-    // Set separator
-    napi_value jsSeparator = AppExecFwk::WrapStringToJS(env, argMapping.separator);
-    napi_set_named_property(env, jsObj, "separator", jsSeparator);
-
-    // Set order
-    napi_value jsOrder = AppExecFwk::WrapStringToJS(env, argMapping.order);
-    napi_set_named_property(env, jsObj, "order", jsOrder);
-
-    // Set templates (parse JSON string to object)
-    napi_value jsTemplates = ParseJsonStringToJsObject(env, argMapping.templates);
-    napi_set_named_property(env, jsObj, "templates", jsTemplates);
-
-    return jsObj;
 }
 
 napi_value CreateJsSubCommandInfo(napi_env env, const SubCommandInfo &subcmd)
@@ -330,14 +288,6 @@ napi_value CreateJsSubCommandInfo(napi_env env, const SubCommandInfo &subcmd)
     napi_value jsOutputSchema = ParseJsonStringToJsObject(env, subcmd.outputSchema);
     napi_set_named_property(env, jsObj, "outputSchema", jsOutputSchema);
 
-    // Set argMapping
-    if (subcmd.argMapping != nullptr) {
-        napi_value jsArgMapping = CreateJsArgMapping(env, *subcmd.argMapping);
-        if (jsArgMapping != nullptr) {
-            napi_set_named_property(env, jsObj, "argMapping", jsArgMapping);
-        }
-    }
-
     // Set eventTypes (array)
     napi_value jsEventTypes = nullptr;
     napi_create_array(env, &jsEventTypes);
@@ -352,6 +302,49 @@ napi_value CreateJsSubCommandInfo(napi_env env, const SubCommandInfo &subcmd)
     napi_set_named_property(env, jsObj, "eventSchemas", jsEventSchemas);
 
     return jsObj;
+}
+
+bool IsValidToolEventCallback(napi_env env, napi_value obj)
+{
+    if (obj == nullptr) {
+        return false;
+    }
+    napi_valuetype valueType = napi_undefined;
+    napi_status status = napi_typeof(env, obj, &valueType);
+    if (status != napi_ok || valueType != napi_object) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Input is not an object");
+        return false;
+    }
+
+    napi_value onEventProp = nullptr;
+    if (napi_get_named_property(env, obj, "onEvent", &onEventProp) != napi_ok || !onEventProp) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "invalid onEvent property");
+        return false;
+    }
+
+    napi_valuetype callbackType = napi_undefined;
+    if (napi_typeof(env, onEventProp, &callbackType) != napi_ok || callbackType != napi_function) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "onEvent must be a function");
+        return false;
+    }
+
+    return true;
+}
+
+napi_value CreateJsCliToolEvent(napi_env env, const CliToolEvent &event)
+{
+    HandleEscape handleEscape(env);
+    napi_value objValue = nullptr;
+    napi_status createStatus = napi_create_object(env, &objValue);
+    if (createStatus != napi_ok || objValue == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create CliToolEvent object");
+        return nullptr;
+    }
+
+    napi_set_named_property(env, objValue, "toolEventType", CreateJsValue(env, event.type));
+    napi_set_named_property(env, objValue, "data", CreateJsValue(env, event.eventData));
+
+    return handleEscape.Escape(objValue);
 }
 
 napi_value CreateJsToolInfo(napi_env env, const ToolInfo &tool)
@@ -396,14 +389,6 @@ napi_value CreateJsToolInfo(napi_env env, const ToolInfo &tool)
     napi_value jsOutputSchema = ParseJsonStringToJsObject(env, tool.outputSchema);
     napi_set_named_property(env, jsObj, "outputSchema", jsOutputSchema);
 
-    // Set argMapping
-    if (tool.argMapping != nullptr) {
-        napi_value jsArgMapping = CreateJsArgMapping(env, *tool.argMapping);
-        if (jsArgMapping != nullptr) {
-            napi_set_named_property(env, jsObj, "argMapping", jsArgMapping);
-        }
-    }
-
     // Set eventTypes (array)
     napi_value jsEventTypes = nullptr;
     napi_create_array(env, &jsEventTypes);
@@ -416,10 +401,6 @@ napi_value CreateJsToolInfo(napi_env env, const ToolInfo &tool)
     // Set eventSchemas (parse JSON string to object)
     napi_value jsEventSchemas = ParseJsonStringToJsObject(env, tool.eventSchemas);
     napi_set_named_property(env, jsObj, "eventSchemas", jsEventSchemas);
-
-    // Set timeout
-    napi_value jsTimeout = AppExecFwk::WrapInt32ToJS(env, tool.timeout);
-    napi_set_named_property(env, jsObj, "timeout", jsTimeout);
 
     // Set hasSubCommand
     napi_value jsHasSubCommand = AppExecFwk::WrapBoolToJS(env, tool.hasSubCommand);

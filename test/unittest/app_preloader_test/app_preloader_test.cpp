@@ -629,14 +629,41 @@ HWTEST_F(AppPreloaderTest, AppPreloaderTest_GeneratePreloadExtensionRequest_0100
     std::string abilityName = "InputService";
     AAFwk::Want want;
     want.SetElementName(bundleName, abilityName);
-    AbilityInfo abilityInfo;
 
     int32_t userId = -9; // failed GetBundleAndHapInfo
     int32_t appIndex = 0;
     PreloadRequest request;
 
-    auto ret = manager->GeneratePreloadExtensionRequest(want, abilityInfo, userId, appIndex, request);
+    auto ret = manager->GeneratePreloadExtensionRequest(want, userId, appIndex, request);
     EXPECT_EQ(ret, AAFwk::GET_BUNDLE_INFO_FAILED);
+}
+
+/**
+ * @tc.number: AppPreloaderTest_GeneratePreloadExtensionRequest_0200
+ * @tc.desc: Test GeneratePreloadExtensionRequest with appIndex != 0
+ * @tc.type: FUNC
+ * @tc.Function: GeneratePreloadExtensionRequest
+ * @tc.SubFunction: NA
+ * @tc.EnvConditions: NA
+ */
+HWTEST_F(AppPreloaderTest, AppPreloaderTest_GeneratePreloadExtensionRequest_0200, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppPreloaderTest_GeneratePreloadExtensionRequest_0200 start.");
+    auto manager = std::make_shared<AppPreloader>(remoteClientManager_);
+    EXPECT_NE(manager, nullptr);
+
+    std::string bundleName = "com.example.hmos.inputmethod";
+    std::string abilityName = "InputService";
+    AAFwk::Want want;
+    want.SetElementName(bundleName, abilityName);
+
+    int32_t userId = 1;
+    int32_t appIndex = 1;
+    PreloadRequest request;
+
+    auto ret = manager->GeneratePreloadExtensionRequest(want, userId, appIndex, request);
+    EXPECT_EQ(ret, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "AppPreloaderTest_GeneratePreloadExtensionRequest_0200 end.");
 }
 
 /**
@@ -649,7 +676,7 @@ HWTEST_F(AppPreloaderTest, AppPreloaderTest_GeneratePreloadExtensionRequest_0100
  */
 HWTEST_F(AppPreloaderTest, AppPreloaderTest_GeneratePreloadExtensionRequest_0300, TestSize.Level2)
 {
-    TAG_LOGD(AAFwkTag::TEST, "AppPreloaderTest_GeneratePreloadExtensionRequest_0300 start.");
+    TAG_LOGI(AAFwkTag::TEST, "AppPreloaderTest_GeneratePreloadExtensionRequest_0300 start.");
     auto manager = std::make_shared<AppPreloader>(remoteClientManager_);
     EXPECT_NE(manager, nullptr);
 
@@ -657,14 +684,74 @@ HWTEST_F(AppPreloaderTest, AppPreloaderTest_GeneratePreloadExtensionRequest_0300
     std::string abilityName = "InputService";
     AAFwk::Want want;
     want.SetElementName(bundleName, abilityName);
-    AbilityInfo abilityInfo;
 
     int32_t userId = 1;
     int32_t appIndex = 0;
     PreloadRequest request;
 
-    auto ret = manager->GeneratePreloadExtensionRequest(want, abilityInfo, userId, appIndex, request);
+    auto ret = manager->GeneratePreloadExtensionRequest(want, userId, appIndex, request);
     EXPECT_EQ(ret, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "AppPreloaderTest_GeneratePreloadExtensionRequest_0300 end.");
+}
+
+
+/**
+ * @tc.number: AppPreloaderTest_GeneratePreloadExtensionRequest_0400
+ * @tc.desc: Test GeneratePreloadExtensionRequest with null remoteClientManager
+ * @tc.type: FUNC
+ * @tc.Function: GeneratePreloadExtensionRequest
+ * @tc.SubFunction: NA
+ * @tc.EnvConditions: NA
+ */
+HWTEST_F(AppPreloaderTest, AppPreloaderTest_GeneratePreloadExtensionRequest_0400, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppPreloaderTest_GeneratePreloadExtensionRequest_0400 start.");
+    auto manager = std::make_shared<AppPreloader>(remoteClientManager_);
+    EXPECT_NE(manager, nullptr);
+
+    std::string bundleName = "com.example.hmos.inputmethod";
+    std::string abilityName = "InputService";
+    AAFwk::Want want;
+    want.SetElementName(bundleName, abilityName);
+
+    manager->remoteClientManager_ = nullptr;
+    int32_t userId = 1;
+    int32_t appIndex = 0;
+    PreloadRequest request;
+
+    auto ret = manager->GeneratePreloadExtensionRequest(want, userId, appIndex, request);
+    manager->remoteClientManager_ = remoteClientManager_;
+    EXPECT_EQ(ret, ERR_INVALID_OPERATION);
+    TAG_LOGI(AAFwkTag::TEST, "AppPreloaderTest_GeneratePreloadExtensionRequest_0400 end.");
+}
+
+/**
+ * @tc.number: AppPreloaderTest_GetAbilityInfo_0100
+ * @tc.desc: Test GetAbilityInfo works correctly
+ * @tc.type: FUNC
+ * @tc.Function: GetAbilityInfo
+ * @tc.SubFunction: NA
+ * @tc.EnvConditions: NA
+ */
+HWTEST_F(AppPreloaderTest, AppPreloaderTest_GetAbilityInfo_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppPreloaderTest_GetAbilityInfo_0100 start.");
+    auto manager = std::make_shared<AppPreloader>(remoteClientManager_);
+    EXPECT_NE(manager, nullptr);
+
+    std::string bundleName = "com.example.hmos.inputmethod";
+    std::string abilityName = "InputService";
+    AAFwk::Want want;
+    want.SetElementName(bundleName, abilityName);
+
+    int32_t userId = 1;
+    int32_t appIndex = 0;
+    PreloadRequest request;
+    AbilityInfo abilityInfo;
+
+    auto ret = manager->GetAbilityInfo(want, userId, appIndex, request, abilityInfo);
+    EXPECT_TRUE(ret);
+    TAG_LOGI(AAFwkTag::TEST, "AppPreloaderTest_GetAbilityInfo_0100 end.");
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

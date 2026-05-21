@@ -380,6 +380,19 @@ public:
     int32_t OnCollaborate(WantParams &wantParams) override;
 
     /**
+     * @brief Execute skill by loading ArkTS script and calling the target function.
+     *
+     * @param want Want.
+     * @param param Skill execute param containing abc path, function name and arguments.
+     */
+    void ExecuteSkill(const AAFwk::Want &want,
+        const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param) override;
+    napi_value LoadSkillFunction(const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param,
+        napi_value &outJsObj);
+    std::vector<napi_value> BuildSkillCallArgs(napi_env env,
+        const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param);
+
+    /**
      * @brief Called when startAbility request failed.
      * @param requestId, the requestId.
      * @param element, the element to start ability.
@@ -449,6 +462,7 @@ private:
     JsRuntime &jsRuntime_;
     std::shared_ptr<NativeReference> shellContextRef_;
     std::shared_ptr<NativeReference> jsAbilityObj_;
+    std::unique_ptr<NativeReference> skillModuleRef_;
     sptr<IRemoteObject> remoteCallee_;
     bool reusingWindow_ = false;
     bool isGamePreLaunch_  = false;

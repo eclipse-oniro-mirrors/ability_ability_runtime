@@ -1,0 +1,97 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//foundation/ability/ability_runtime/ability_runtime.gni")
+
+module_output_path = "ability_runtime/ability_runtime/c_framework"
+
+ohos_unittest("mo_dispatcher_capi_test") {
+  module_out_path = module_output_path
+
+  sources = [
+    "${ability_runtime_path}/frameworks/c/ability_runtime/src/mo_dispatcher_complex_type_manager.cpp",
+    "${ability_runtime_path}/frameworks/c/ability_runtime/src/mo_dispatcher_type.cpp",
+    "${ability_runtime_path}/frameworks/c/ability_runtime/src/modular_object_dispatcher.cpp",
+    "${ability_runtime_path}/frameworks/c/ability_runtime/src/mo_dispatcher_metadata_manager.cpp",
+    "${ability_runtime_path}/frameworks/c/ability_runtime/src/mo_dispatcher_param_codec.cpp",
+    "mo_dispatcher_capi_test.cpp",
+  ]
+
+  include_dirs = [
+    "${ability_runtime_path}/frameworks/c/ability_runtime/include",
+    "${ability_runtime_path}/interfaces/kits/c/ability_runtime",
+    "${ability_runtime_path}/interfaces/inner_api",
+    "${ability_runtime_path}/interfaces/kits/native/appkit/ability_runtime",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native/modular_object_extension",
+    "${ability_runtime_services_path}/common/include",
+  ]
+
+  configs = [
+    "${ability_runtime_services_path}/common:common_config",
+  ]
+
+  deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_connect_callback_stub",
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/ability_manager:ability_start_options",
+    "${ability_runtime_innerkits_path}/ability_manager:process_options",
+    "${ability_runtime_innerkits_path}/ability_manager:start_window_option",
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_native_path}/ability:ability_context_native",
+    "${ability_runtime_native_path}/ability/native:modular_object_extension",
+    "${ability_runtime_native_path}/appkit:app_context",
+  ]
+
+  external_deps = [
+    "ability_base:ability_base_want",
+    "ability_base:want",
+    "c_utils:utils",
+    "eventhandler:libeventhandler",
+    "ffrt:libffrt",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_capi",
+    "ipc:ipc_core",
+    "ipc:ipc_napi",
+    "napi:ace_napi",
+    "samgr:samgr_proxy",
+  ]
+
+  if (ability_runtime_graphics) {
+    external_deps += [
+      "graphic_2d:color_manager",
+      "image_framework:image",
+      "window_manager:libwm",
+      "window_manager:window_animation_utils",
+    ]
+    defines = [
+      "SUPPORT_GRAPHICS",
+      "SUPPORT_SCREEN",
+    ]
+  }
+
+  if (ability_runtime_graphics &&
+      ability_runtime_start_window_options_with_pixelmap) {
+    defines += [ "START_WINDOW_OPTIONS_WITH_PIXELMAP" ]
+  }
+
+  if (target_cpu == "arm") {
+    cflags = [ "-DBINDER_IPC_32BIT" ]
+  }
+}
+
+group("unittest") {
+  testonly = true
+  deps = [ ":mo_dispatcher_capi_test" ]
+}

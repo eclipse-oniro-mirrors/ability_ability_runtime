@@ -15,6 +15,8 @@
 
 #include "ui_ability_impl.h"
 
+#include <cinttypes>
+
 #include "ability_handler.h"
 #include "ability_manager_client.h"
 #include "context/application_context.h"
@@ -258,6 +260,32 @@ void UIAbilityImpl::ExecuteInsightIntentDone(uint64_t intentId, const InsightInt
         TAG_LOGE(AAFwkTag::UIABILITY, "notify execute done failed");
     }
 }
+
+bool UIAbilityImpl::HandleExecuteSkill(const AAFwk::Want &want, bool onlyExecuteSkill)
+{
+    TAG_LOGD(AAFwkTag::UIABILITY, "handle execute skill");
+    auto param = std::make_shared<SkillExecuteParam>();
+    if (!SkillExecuteParam::GenerateFromWant(want, *param)) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "generate skill param from want failed");
+        if (!onlyExecuteSkill) {
+            Background();
+        }
+        return true;
+    }
+
+    TAG_LOGD(AAFwkTag::UIABILITY,
+        "skill bundle:%{public}s module:%{public}s name:%{public}s "
+        "scriptPath:%{public}s func:%{public}s requestCode:%{public}s",
+        param->bundleName_.c_str(), param->moduleName_.c_str(),
+        param->skillName_.c_str(), param->scriptPath_.c_str(),
+        param->functionName_.c_str(), param->requestCode_.c_str());
+    ability_->ExecuteSkill(want, param);
+    if (!onlyExecuteSkill) {
+        Background();
+    }
+    return true;
+}
+
 #ifdef SUPPORT_SCREEN
 bool UIAbilityImpl::PrepareTerminateAbility(std::function<void(bool)> callback, bool &isAsync)
 {
@@ -298,10 +326,14 @@ void UIAbilityImpl::NewWant(const AAFwk::Want &want)
         TAG_LOGE(AAFwkTag::UIABILITY, "null ability_");
         return;
     }
-    ability_->SetWant(want);
-    ability_->OnNewWant(want);
+
+    AAFwk::Want wantWithoutRequestId = want;
+    wantWithoutRequestId.RemoveParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID);
+    wantWithoutRequestId.RemoveParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID);
+    ability_->SetWant(wantWithoutRequestId);
+    ability_->OnNewWant(wantWithoutRequestId);
 #ifdef SUPPORT_SCREEN
-    ability_->ContinuationRestore(want);
+    ability_->ContinuationRestore(wantWithoutRequestId);
 #endif
     TAG_LOGD(AAFwkTag::UIABILITY, "end");
 }
@@ -683,11 +715,14 @@ bool UIAbilityImpl::AbilityTransaction(const AAFwk::Want &want, const AAFwk::Lif
             }
             OnWillBackground();
 #ifdef SUPPORT_GRAPHICS
-            if (!InsightIntentExecuteParam::IsInsightIntentExecute(want)) {
-                Background();
-            } else {
+            if (InsightIntentExecuteParam::IsInsightIntentExecute(want)) {
                 TAG_LOGD(AAFwkTag::UIABILITY, "handleExecuteInsightIntentBackground");
                 ret = HandleExecuteInsightIntentBackground(want);
+            } else if (SkillExecuteParam::IsSkillExecute(want)) {
+                TAG_LOGD(AAFwkTag::UIABILITY, "handleExecuteSkill");
+                ret = HandleExecuteSkill(want);
+            } else {
+                Background();
             }
 #endif
             break;
@@ -808,10 +843,23 @@ void UIAbilityImpl::ExecuteInsightIntentMoveToForeground(const Want &want,
     std::unique_ptr<InsightIntentExecutorAsyncCallback> callback)
 {
     TAG_LOGD(AAFwkTag::INTENT, "called");
+    if (ability_ == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "ability null");
+        return;
+    }
 
     {
         std::lock_guard<std::mutex> lock(notifyForegroundLock_);
         notifyForegroundByWindow_ = false;
+    }
+
+    auto oriHideValue = ability_->CheckIsSilentForeground();
+    if (localNativeState_ == LocalNativeState::INIT_PRE_FOREGROUND) {
+        TAG_LOGI(AAFwkTag::UIABILITY, "Native module startPhase is PRE_FOREGROUND, skip OnForeground");
+        localNativeState_ = LocalNativeState::HALF_FOREGROUND;
+        ability_->SetIsSilentForeground(true);
+        std::lock_guard<std::mutex> lock(notifyForegroundLock_);
+        notifyForegroundByWindow_ = true;
     }
 
     auto asyncCallback =
@@ -829,6 +877,7 @@ void UIAbilityImpl::ExecuteInsightIntentMoveToForeground(const Want &want,
 
     // private function, no need check ability_ validity.
     ability_->ExecuteInsightIntentMoveToForeground(want, executeParam, std::move(callback));
+    ability_->SetIsSilentForeground(oriHideValue);
 }
 
 void UIAbilityImpl::ExecuteInsightIntentPage(const Want &want,

@@ -353,6 +353,18 @@ class ApplicationContext {
     return this.__context_impl__.restartApp(want);
   }
 
+  enableDelayedProcessExit() {
+    return this.__context_impl__.enableDelayedProcessExit();
+  }
+
+  disableDelayedProcessExit() {
+    return this.__context_impl__.disableDelayedProcessExit();
+  }
+
+  startSelfUIAbility(want) {
+    return this.__context_impl__.startSelfUIAbility(want);
+  }
+
   setSupportedProcessCache(isSupport) {
     return this.__context_impl__.setSupportedProcessCache(isSupport);
   }

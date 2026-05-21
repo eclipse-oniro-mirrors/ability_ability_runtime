@@ -23,8 +23,11 @@ namespace AAFwk {
 class BaseExtensionRecord : public AbilityRecord {
 public:
     static pid_t clientPid;
+    static std::string requestId_;
 
     pid_t GetClientPid() const { return clientPid; }
+    void SetRequestId(const std::string &id) { requestId_ = id; }
+    std::string GetRequestId() const { return requestId_; }
 };
 
 } // namespace AAFwk

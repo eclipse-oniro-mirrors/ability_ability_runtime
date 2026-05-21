@@ -108,6 +108,7 @@ void UIExtension::Init(const std::shared_ptr<AbilityLocalRecord> &record,
     const sptr<IRemoteObject> &token)
 {
     TAG_LOGD(AAFwkTag::UI_EXT, "called");
+    handler_ = handler;
     ExtensionBase<UIExtensionContext>::Init(record, application, handler, token);
 }
 
@@ -407,6 +408,42 @@ void UIExtension::RegisterAbilityConfigUpdateCallback()
 
         abilitySptr->OnAbilityConfigurationUpdated(config);
     });
+}
+
+int UIExtension::CreateModalUIExtension(const AAFwk::Want &want)
+{
+    auto context = GetContext();
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "context is null");
+        return ERR_INVALID_VALUE;
+    }
+
+    if (handler_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null handler_");
+        return ERR_INVALID_VALUE;
+    }
+
+    auto uiExtensionContext = Context::ConvertTo<UIExtensionContext>(context);
+    if (uiExtensionContext == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "uiExtensionContext is null");
+        return ERR_INVALID_VALUE;
+    }
+
+    std::weak_ptr<UIExtensionContext> uiExtensionContextWptr = uiExtensionContext;
+    auto task = [uiExtensionContextWptr, want]() {
+        std::shared_ptr<UIExtensionContext> uiExtensionContextSptr = uiExtensionContextWptr.lock();
+        if (uiExtensionContextSptr == nullptr) {
+            TAG_LOGE(AAFwkTag::UI_EXT, "null uiExtensionContext in task");
+            return;
+        }
+        (void)uiExtensionContextSptr->CreateModalUIExtensionWithApp(want);
+    };
+    if (!handler_->PostTask(task, "UIExtension:CreateModalUIExtensionWithApp")) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "PostTask failed");
+        return ERR_INVALID_VALUE;
+    }
+
+    return ERR_OK;
 }
 }
 }

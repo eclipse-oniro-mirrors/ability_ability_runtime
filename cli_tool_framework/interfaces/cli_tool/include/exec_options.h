@@ -30,8 +30,8 @@ namespace CliTool {
 class ExecOptions : public Parcelable {
 public:
     bool background = false;
-    int32_t yieldMs = 0;
-    int32_t timeout = 0;
+    int64_t yieldMs = 0;
+    int64_t timeout = 0;
 
     bool Marshalling(Parcel &parcel) const;
     static ExecOptions *Unmarshalling(Parcel &parcel);

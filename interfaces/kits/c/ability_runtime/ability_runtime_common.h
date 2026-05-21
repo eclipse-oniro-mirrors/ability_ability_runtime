@@ -190,29 +190,41 @@ typedef enum {
      */
     ABILITY_RUNTIME_ERROR_CODE_UPPER_CONNECTION_NUMBER_LIMIT = 16000172,
     /**
-     * The property was not found.
+     * The requested property, method, enum, or struct member is not found.
      *
      * @since 26.0.0
      */
     ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND = 16000173,
     /**
-     * Type mismatch.
+     * The runtime value type does not match the expected metadata type.
      *
      * @since 26.0.0
      */
     ABILITY_RUNTIME_ERROR_CODE_TYPE_MISMATCH = 16000174,
     /**
-     * Sending request to the remote failed.
+     * The IPC request to the remote service fails.
      *
      * @since 26.0.0
      */
     ABILITY_RUNTIME_ERROR_CODE_SEND_REQUEST_FAILED = 16000175,
     /**
-     * The distribution type of application is invalid.
+     * Caller and target are not in the same application for IN_PROCESS mode.
      *
      * @since 26.0.0
      */
-    ABILITY_RUNTIME_ERROR_CODE_INVALID_DISTRIBUTION_TYPE = 16000176,
+    ABILITY_RUNTIME_ERROR_CODE_CROSS_APP_IN_PROCESS = 16000176,
+    /**
+     * The native ability wrapper is invalid or incomplete.
+     *
+     * @since 26.0.0
+     */
+    ABILITY_RUNTIME_ERROR_CODE_ABILITY_WRAPPER_INVALID = 16000177,
+    /**
+     * The type library metadata is invalid, e.g. missing or duplicate main interface.
+     *
+     * @since 26.0.0
+     */
+    ABILITY_RUNTIME_ERROR_CODE_METADATA_INVALID = 16000178,
 } AbilityRuntime_ErrorCode;
 
 #ifdef __cplusplus

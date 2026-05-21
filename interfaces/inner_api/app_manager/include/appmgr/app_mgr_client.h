@@ -37,6 +37,7 @@
 #include "irender_scheduler.h"
 #include "irender_state_observer.h"
 #include "istart_specified_ability_response.h"
+#include "mem_dump_callback_interface.h"
 #include "refbase.h"
 #include "render_process_info.h"
 #include "running_process_info.h"
@@ -400,15 +401,27 @@ public:
      */
     virtual AppMgrResultCode DumpCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info);
 
-    /**
+/**
      * DumpMem, call DumpMem() through proxy project.
      * triggerGC and dump application's memory info.
      *
      * @param info, pid tid needGc needSnapshot
-     * @param dumpResult, the dump result string
+     * @param callback The callback to receive dump result
      * @return ERR_OK ,return back success, others fail.
      */
-    virtual AppMgrResultCode DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult);
+    virtual AppMgrResultCode DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback);
+
+    /**
+     * ReportDumpMemResult, called by app process to report dump result to appmgr.
+     * appmgr will forward the result to hidumper via callback.
+     *
+     * @param callback The callback received from ScheduleMem
+     * @param resultCode The result code of dump operation
+     * @param dumpResult The dump result string
+     * @return ERR_OK ,return back success, others fail.
+     */
+    virtual AppMgrResultCode ReportDumpMemResult(sptr<IMemDumpCallback> callback,
+        const std::string &dumpResult);
 
     /**
      * GetConfiguration
@@ -1001,6 +1014,8 @@ public:
 
     int32_t IsProcessCacheSupported(int32_t pid, bool &isSupported);
 
+    int32_t IsChildProcessSupported(bool isNative, bool &isSupported);
+
     int32_t SetProcessCacheEnable(int32_t pid, bool enable);
 
     int32_t LockProcessCache(int32_t pid, bool isLock);
@@ -1163,6 +1178,9 @@ public:
      */
     int32_t GetAllAbilityInfos(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos);
 
+    virtual int32_t EnableDelayedProcessExit(int32_t pid, bool enabled) const;
+
+    virtual void CancelDelayedExitTask(int32_t pid) const;
 private:
     void SetServiceManager(std::unique_ptr<AppServiceManager> serviceMgr);
     /**

@@ -73,7 +73,7 @@ private:
     napi_env env_ = nullptr;
     bool isStatic_;
 
-    void AppendStackTrace(const std::string& errorStack, std::string& summary);
+    void AppendStackTrace(const std::string& errorStack, std::string& summary, bool isCangjieError);
 
     void AppendAsyncStack(const napi_value& obj, std::string& summary);
 

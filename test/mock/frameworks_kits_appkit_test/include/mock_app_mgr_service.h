@@ -99,6 +99,7 @@ public:
         std::vector<std::string> &instanceKeys, int32_t userId));
     MOCK_METHOD1(SetSupportedProcessCacheSelf, int32_t(bool isSupported));
     MOCK_METHOD2(IsProcessCacheSupported, int32_t(int32_t pid, bool &isSupported));
+    MOCK_METHOD2(IsChildProcessSupported, int32_t(bool isNative, bool &isSupported));
     MOCK_METHOD2(SetProcessCacheEnable, int32_t(int32_t pid, bool enable));
     MOCK_METHOD2(SetSupportedProcessCache, int32_t(int32_t pid, bool isSupport));
     MOCK_METHOD2(LockProcessCache, int32_t(int32_t pid, bool isLock));
@@ -371,12 +372,18 @@ public:
         return true;
     }
 
-    int32_t DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
+    int32_t DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback)
     {
         return 0;
     }
     
     int32_t DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info)
+    {
+        return 0;
+    }
+
+    int32_t ReportDumpMemResult(sptr<IMemDumpCallback> callback,
+        const std::string &dumpResult)
     {
         return 0;
     }

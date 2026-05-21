@@ -38,8 +38,9 @@ napi_value JsInsightIntentUtils::CallJsFunctionWithResult(
         TAG_LOGE(AAFwkTag::INTENT, "null method");
         return nullptr;
     }
-
+    TAG_LOGI(AAFwkTag::INTENT, "call js function");
     auto status = napi_call_function(env, obj, method, argc, argv, &result);
+    TAG_LOGI(AAFwkTag::INTENT, "call js function end");
     if (status != napi_ok) {
         TAG_LOGE(AAFwkTag::INTENT, "napi call function failed %{public}d", status);
         return nullptr;

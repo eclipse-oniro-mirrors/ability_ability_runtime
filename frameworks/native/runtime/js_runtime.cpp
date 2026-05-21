@@ -91,6 +91,7 @@ constexpr char MERGE_ABC_PATH[] = "/ets/modules.abc";
 constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
 constexpr const char* PERMISSION_RUN_ANY_CODE = "ohos.permission.RUN_ANY_CODE";
 constexpr const char* PERMISSION_LOAD_INDEPENDENT_LIBRARY = "ohos.permission.kernel.LOAD_INDEPENDENT_LIBRARY";
+constexpr const char* PERMISSION_LOAD_CERTSIGN_LIBRARY = "ohos.permission.kernel.LOAD_CERTSIGN_LIBRARY_FOR_WEB";
 
 const std::string CONFIG_PATH = "/etc/system_kits_config.json";
 const std::string SYSTEM_KITS_CONFIG_PATH = "/system/etc/system_kits_config.json";
@@ -764,6 +765,7 @@ bool JsRuntime::Initialize(const Options& options)
             LoadAotFile(options);
             panda::JSNApi::SetBundle(vm, options.isBundle);
             panda::JSNApi::SetBundleName(vm, options.bundleName);
+            panda::JSNApi::SetIsMainProcess(options.isMainProcess);
             panda::JSNApi::SetHostResolveBufferTracker(
                 vm, JsModuleReader(options.bundleName, options.hapPath, options.isUnique));
             isModular = !panda::JSNApi::IsBundle(vm);
@@ -977,7 +979,10 @@ void JsRuntime::CreatePluginDefaultNamespace(const std::string &lddictionaries)
     Security::AccessToken::AccessTokenID selfToken = IPCSkeleton::GetSelfTokenID();
     int result = Security::AccessToken::AccessTokenKit::VerifyAccessToken(selfToken,
         PERMISSION_LOAD_INDEPENDENT_LIBRARY);
-    if (result != Security::AccessToken::PermissionState::PERMISSION_GRANTED) {
+    int resultWeb = Security::AccessToken::AccessTokenKit::VerifyAccessToken(selfToken,
+        PERMISSION_LOAD_CERTSIGN_LIBRARY);
+    if (result != Security::AccessToken::PermissionState::PERMISSION_GRANTED &&
+        resultWeb != Security::AccessToken::PermissionState::PERMISSION_GRANTED) {
         TAG_LOGE(AAFwkTag::JSRUNTIME, "verify access token failed: %{public}d", result);
         return;
     }
@@ -1534,6 +1539,7 @@ bool JsRuntime::PopPreloadObj(const std::string& key, std::unique_ptr<NativeRefe
     if (preloadList_[key] != nullptr) {
         obj = std::move(preloadList_[key]);
         preloadList_.erase(key);
+        TAG_LOGD(AAFwkTag::JSRUNTIME, "PopPreloadObj key: %{public}s", key.c_str());
         return true;
     }
     preloadList_.erase(key);

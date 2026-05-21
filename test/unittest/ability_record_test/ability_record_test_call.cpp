@@ -923,5 +923,32 @@ HWTEST_F(AbilityRecordTest, AbilityRecord_PrepareTerminateAbility_002, TestSize.
     EXPECT_EQ(result, false);
     EXPECT_NE(abilityRecord_, nullptr);
 }
+
+/**
+ * @tc.name: GetWantParam_0100
+ * @tc.desc: Call GetWantParam
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityRecordTest, GetWantParam_0100, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+
+    abilityRequest.want.SetElementName("", "testBundle", "testAbility", "testModule");
+    abilityRequest.want.SetParam("boolKey", true);
+    std::string testStringValue = "testStringValue";
+    abilityRequest.want.SetParam("testStringKey", testStringValue);
+    auto abilityRecord = AbilityRecord::CreateAbilityRecord(abilityRequest);
+
+    EXPECT_TRUE(abilityRecord->HasParameter("testStringKey"));
+    EXPECT_TRUE(abilityRecord->GetBoolParam("boolKey", false));
+    EXPECT_EQ(abilityRecord->GetStringParam("testStringKey"), testStringValue);
+
+    EXPECT_EQ(abilityRecord->GetBundleName(), "testBundle");
+    EXPECT_EQ(abilityRecord->GetAbilityName(), "testAbility");
+    EXPECT_EQ(abilityRecord->GetModuleName(), "testModule");
+
+    abilityRecord->RemoveSpecifiedWantParam("testStringKey");
+    EXPECT_FALSE(abilityRecord->HasParameter("testStringKey"));
+}
 }  // namespace AAFwk
 }  // namespace OHOS

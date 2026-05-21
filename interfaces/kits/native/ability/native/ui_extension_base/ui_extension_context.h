@@ -36,7 +36,12 @@ namespace AppExecFwk {
 class EventHandler;
 }
 
+namespace Ace {
+struct ModalUIExtensionCallbacks;
+}
+
 namespace AbilityRuntime {
+class UIExtensionModalCallback;
 using RuntimeTask = std::function<void(int, const AAFwk::Want &, bool)>;
 using AbilityConfigUpdateCallback = std::function<void(AppExecFwk::Configuration &config)>;
 using TerminateSelfWithAnimationCallback = std::function<void(int32_t)>;
@@ -253,6 +258,28 @@ public:
     */
     ErrCode StartAbilityByType(const std::string &type,
         AAFwk::WantParams &wantParam, const std::shared_ptr<JsUIExtensionCallback> &uiExtensionCallbacks);
+
+    /**
+     * @brief Create modal UIExtension with app (consistent with AbilityContext).
+     * @param want The want of the modal UIExtension to create.
+     * @return Returns ERR_OK on success, error code on failure.
+     */
+    ErrCode CreateModalUIExtensionWithApp(const AAFwk::Want &want);
+
+    /**
+     * @brief Check if a modal UIExtension with the same component already exists.
+     * @param want The want of the modal UIExtension to check.
+     * @return Returns true if exists, false otherwise.
+     */
+    bool IsUIExtensionExist(const AAFwk::Want &want);
+
+    /**
+     * @brief Erase modal UIExtension from the tracking map.
+     * @param sessionId The session ID of the modal UIExtension to erase.
+     * @return Returns ERR_OK on success.
+     */
+    ErrCode EraseUIExtension(int32_t sessionId);
+
     bool IsTerminating();
     void SetTerminating(bool state);
 
@@ -327,6 +354,10 @@ private:
 
     // ====== Timeout management (only for embeddable mode) ======
     std::shared_ptr<AppExecFwk::EventHandler> eventHandler_;
+    std::map<int32_t, AAFwk::Want> uiExtensionMap_;
+    std::mutex uiExtensionMutex_;
+
+    Ace::ModalUIExtensionCallbacks SetupModalCallbacks(std::shared_ptr<UIExtensionModalCallback> modalCallbackWeak);
 };
 }  // namespace AbilityRuntime
 }  // namespace OHOS

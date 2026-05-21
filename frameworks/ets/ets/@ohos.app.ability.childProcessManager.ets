@@ -31,6 +31,8 @@ namespace childProcessManager {
   export native function nativeStartArkChildProcess(srcEntry: string, args: ChildProcessArgs, options: ChildProcessOptions, callback: AsyncCallbackWrapper<int>): void;
   export native function nativeStartNativeChildProcess(entryPoint: string, args: ChildProcessArgs, callback: AsyncCallbackWrapper<int>): void;
   export native function nativeStartNativeChildProcess(entryPoint: string, args: ChildProcessArgs, options: ChildProcessOptions, callback: AsyncCallbackWrapper<int>): void;
+  export native function isArkChildProcessSupported(): boolean;
+  export native function isNativeChildProcessSupported(): boolean;
 
   export native function nativeStartChildProcessCheck(srcEntry: string, startMode: StartMode): void;
   export native function nativeStartArkChildProcessCheck(srcEntry: string, args: ChildProcessArgs, options?: ChildProcessOptions): void;

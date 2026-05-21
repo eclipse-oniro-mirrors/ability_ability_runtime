@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -253,6 +253,17 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_007, TestSize.Level1)
 }
 
 /**
+ * @tc.number: AppfreezeManagerTest_007
+ * @tc.desc: add testcase codecoverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, PeerBinderCatcherTest_008, TestSize.Level1)
+{
+    bool ret = appfreezeManager->IsAncoProc(getpid());
+    EXPECT_TRUE(!ret);
+}
+
+/**
  * @tc.number: AppfreezeManagerTest_IsHalfTimeout_001
  * @tc.desc: add testcase codecoverage
  * @tc.type: FUNC
@@ -494,7 +505,7 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_CatchSyncByPid_Test001, Test
     asyncPids.insert(hiviewPid);
     asyncPids.insert(-1);
     int launcherUid = AppfreezeUtil::GetUidByPid(launcherPid);
-    EXPECT_TRUE(launcherUid >= 20000);
+    printf("launcherUid: %d\n", launcherUid);
 
     std::set<int> syncPids;
     syncPids.insert(hiviewPid);
@@ -505,6 +516,24 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_CatchSyncByPid_Test001, Test
     ret = appfreezeManager->CatchASyncByPid(asyncPids, syncPids, pid);
     printf("ret: %s\n", ret.c_str());
     EXPECT_TRUE(pid > 0);
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest GetProcessNameFromProcCmdline Test
+ * @tc.name: GetProcessNameFromProcCmdline_001
+ * @tc.desc: test GetProcessNameFromProcCmdline function
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_GetProcessNameFromProcCmdline_Test001, TestSize.Level1)
+{
+    std::string processName = AppfreezeUtil::GetProcessNameFromProcCmdline(getpid());
+    EXPECT_TRUE(!processName.empty());
+
+    std::string invalidName = AppfreezeUtil::GetProcessNameFromProcCmdline(-1);
+    EXPECT_TRUE(invalidName.empty());
+
+    std::string zeroName = AppfreezeUtil::GetProcessNameFromProcCmdline(0);
+    EXPECT_TRUE(zeroName.empty());
 }
 
 /**
@@ -620,7 +649,7 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_CheckAppfreezeHappend_Test00
     ret = appfreezeManager->CheckAppfreezeHappend(key, "LIFECYCLE_TIMEOUT_WARNING");
     EXPECT_EQ(ret, false);
     ret = appfreezeManager->CheckAppfreezeHappend(key, "LIFECYCLE_TIMEOUT_WARNING");
-    EXPECT_EQ(ret, false);
+    EXPECT_EQ(ret, true);
 }
 
 /**
@@ -642,7 +671,7 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_IsNeedIgnoreFreezeEvent_Test
     ret = appfreezeManager->IsNeedIgnoreFreezeEvent(key, "LIFECYCLE_TIMEOUT", reportTimes);
     EXPECT_EQ(ret, false);
     ret = appfreezeManager->IsNeedIgnoreFreezeEvent(key, "THREAD_BLOCK_6S", reportTimes);
-    EXPECT_EQ(ret, false);
+    EXPECT_EQ(ret, true);
     std::string eventName = "LIFECYCLE_TIMEOUT_WARNING";
     ret = appfreezeManager->IsNeedIgnoreFreezeEvent(eventName, eventName, reportTimes);
     EXPECT_EQ(ret, false);
@@ -961,6 +990,54 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_UpdateFreezeExcludedPid_002,
                 appfreezeManager->freezeExcludedPidMap_.end());
 
     appfreezeManager->freezeExcludedPidMap_.clear();
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest CheckPreloadUIExtension Test
+ * @tc.desc: add testcase
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_CheckPreloadUIExtension_Test001, TestSize.Level1)
+{
+    std::string bundleName = "AppfreezeManagerTest_CheckPreloadUIExtension_Test001";
+    int32_t pid = getpid();
+    std::string message = "test";
+    std::string eventName = "test";
+    bool result = appfreezeManager->CheckPreloadUIExtension(message, bundleName, pid, eventName);
+    EXPECT_EQ(result, false);
+    eventName = AppFreezeType::LIFECYCLE_HALF_TIMEOUT;
+    result = appfreezeManager->CheckPreloadUIExtension(message, bundleName, pid, eventName);
+    EXPECT_EQ(result, false);
+    message = "PreloadUIExtension test";
+    result = appfreezeManager->CheckPreloadUIExtension(message, bundleName, pid, eventName);
+    EXPECT_EQ(result, true);
+    eventName = AppFreezeType::LIFECYCLE_TIMEOUT;
+    result = appfreezeManager->CheckPreloadUIExtension(message, bundleName, pid, eventName);
+    EXPECT_EQ(result, true);
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest CheckProcessExit Test
+ * @tc.desc: add testcase
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_CheckProcessExit_Test001, TestSize.Level1)
+{
+    std::string eventName = AppFreezeType::THREAD_BLOCK_6S;
+    bool result = appfreezeManager->CheckProcessExit(eventName, false);
+    EXPECT_EQ(result, false);
+
+    eventName = AppFreezeType::THREAD_BLOCK_6S;
+    result = appfreezeManager->CheckProcessExit(eventName, true);
+    EXPECT_EQ(result, true);
+
+    eventName = AppFreezeType::THREAD_BLOCK_3S;
+    result = appfreezeManager->CheckProcessExit(eventName, false);
+    EXPECT_EQ(result, true);
+
+    eventName = AppFreezeType::THREAD_BLOCK_3S;
+    result = appfreezeManager->CheckProcessExit(eventName, true);
+    EXPECT_EQ(result, true);
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

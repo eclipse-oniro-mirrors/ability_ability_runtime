@@ -69,7 +69,7 @@ private:
     static bool Check2CQuota();
     static bool Check2DQuota(bool needDecreaseQuota);
     static bool SafeStoll(const std::string &str, long long &value);
-    static GetMemLeakStringFunc LoadMemLeakFunc();
+    static GetMemLeakStringFunc LoadMemLeakFunc(void **handle);
     static bool GetDumpResult(std::string &dumpResult);
     static bool GetSnapshot(int fd);
     static int GetCompressQuota (const std::vector<int64_t> &quotas);
@@ -78,6 +78,8 @@ private:
     void DumpJsHeapGc(const std::unique_ptr<AbilityRuntime::Runtime> &runtime,
         const OHOS::AppExecFwk::JsHeapDumpInfo &info);
     void DumpKmpKotlinHeap(const OHOS::AppExecFwk::MemDumpInfo &info);
+    void DumpJsvmHeap(const OHOS::AppExecFwk::MemDumpInfo &info);
+    void DumpArkwebJsHeap(const OHOS::AppExecFwk::MemDumpInfo &info);
 };
 } // namespace AppExecFwk
 } // namespace OHOS

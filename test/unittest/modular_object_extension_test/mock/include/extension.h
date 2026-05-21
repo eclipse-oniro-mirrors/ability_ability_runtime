@@ -18,6 +18,8 @@
 
 #include <memory>
 #include <string>
+#include <vector>
+#include "ability_handler.h"
 #include "mock_types.h"
 #include "refbase.h"
 #include "iremote_object.h"
@@ -27,19 +29,34 @@ namespace AbilityRuntime {
 
 class AbilityLocalRecord {};
 class OHOSApplication {};
-class AbilityHandler {};
+
+} // namespace AbilityRuntime
+
+namespace AppExecFwk {
+
+struct Metadata {
+    std::string name;
+    std::string value;
+};
 
 struct AbilityInfo {
     std::string srcEntrance;
     std::string moduleName;
     std::string bundleName;
     std::string name;
+    std::vector<Metadata> metadata;
 };
+
+} // namespace AppExecFwk
+
+namespace AbilityRuntime {
 
 class Extension : public std::enable_shared_from_this<Extension> {
 public:
     Extension() = default;
     virtual ~Extension() = default;
+
+    using AbilityHandler = AppExecFwk::AbilityHandler;
 
     virtual void Init(const std::shared_ptr<AbilityLocalRecord> &,
         const std::shared_ptr<OHOSApplication> &,
@@ -51,7 +68,13 @@ public:
     virtual sptr<IRemoteObject> OnConnect(const AAFwk::Want &want) { return nullptr; }
     virtual void OnDisconnect(const AAFwk::Want &want) {}
 
-    std::shared_ptr<AbilityInfo> abilityInfo_;
+    virtual std::shared_ptr<AbilityHandler> GetAbilityHandler(
+        const std::shared_ptr<AppExecFwk::AbilityInfo> &)
+    {
+        return nullptr;
+    }
+
+    std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo_;
 };
 
 } // namespace AbilityRuntime

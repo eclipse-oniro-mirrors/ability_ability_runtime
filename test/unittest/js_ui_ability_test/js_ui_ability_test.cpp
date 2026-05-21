@@ -517,6 +517,90 @@ HWTEST_F(JsUiAbilityTest, JSUIAbility_OnStart_0600, TestSize.Level1)
 }
 
 /**
+ * @tc.name: JSUIAbility_OnStart_0700
+ * @tc.desc: OnStart test with GAME_PRELAUNCH = true
+ * @tc.desc: Verify isGamePreLaunch_ is set to true when GAME_PRELAUNCH param is true
+ */
+HWTEST_F(JsUiAbilityTest, JSUIAbility_OnStart_0700, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "JSUIAbility_OnStart_0700 start";
+    AbilityRuntime::Runtime::Options options;
+    options.lang = AbilityRuntime::Runtime::Language::JS;
+    auto runtime = AbilityRuntime::Runtime::Create(options);
+    auto jsRuntime = static_cast<AbilityRuntime::JsRuntime*>(runtime.get());
+    auto ability = std::make_shared<AbilityRuntime::JsUIAbility>(*jsRuntime);
+    EXPECT_NE(ability, nullptr);
+    Want want;
+    want.SetParam(std::string("ohos.params.gamePrelaunch"), true);
+    napi_ref ref = nullptr;
+    auto env = jsRuntime->GetNapiEnv();
+    napi_value value = OHOS::AppExecFwk::WrapWant(env, want);
+    napi_create_reference(env, value, 1, &ref);
+    ability->jsAbilityObj_ = std::unique_ptr<NativeReference>(
+        reinterpret_cast<NativeReference *>(ref));
+    EXPECT_NE(ability->jsAbilityObj_, nullptr);
+
+    sptr<AAFwk::SessionInfo> sessionInfo = sptr<AAFwk::SessionInfo>::MakeSptr();
+    EXPECT_NE(sessionInfo, nullptr);
+    ability->scene_ = std::make_shared<Rosen::WindowScene>();
+    EXPECT_NE(ability->scene_, nullptr);
+    auto abilityContextImpl = std::make_shared<AbilityContextImpl>();
+    EXPECT_NE(abilityContextImpl, nullptr);
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    EXPECT_NE(abilityInfo, nullptr);
+    abilityContextImpl->SetAbilityInfo(abilityInfo);
+    ability->abilityContext_ = abilityContextImpl;
+    ability->abilityInfo_ = abilityInfo;
+    EXPECT_NE(ability->abilityInfo_, nullptr);
+    ability->OnStart(want, sessionInfo);
+    EXPECT_TRUE(ability->isGamePreLaunch_);
+
+    GTEST_LOG_(INFO) << "JSUIAbility_OnStart_0700 end";
+}
+
+/**
+ * @tc.name: JSUIAbility_OnStart_0800
+ * @tc.desc: OnStart test with GAME_PRELAUNCH = false
+ * @tc.desc: Verify isGamePreLaunch_ remains false when GAME_PRELAUNCH param is false
+ */
+HWTEST_F(JsUiAbilityTest, JSUIAbility_OnStart_0800, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "JSUIAbility_OnStart_0800 start";
+    AbilityRuntime::Runtime::Options options;
+    options.lang = AbilityRuntime::Runtime::Language::JS;
+    auto runtime = AbilityRuntime::Runtime::Create(options);
+    auto jsRuntime = static_cast<AbilityRuntime::JsRuntime*>(runtime.get());
+    auto ability = std::make_shared<AbilityRuntime::JsUIAbility>(*jsRuntime);
+    EXPECT_NE(ability, nullptr);
+    Want want;
+    want.SetParam(std::string("ohos.params.gamePrelaunch"), false);
+    napi_ref ref = nullptr;
+    auto env = jsRuntime->GetNapiEnv();
+    napi_value value = OHOS::AppExecFwk::WrapWant(env, want);
+    napi_create_reference(env, value, 1, &ref);
+    ability->jsAbilityObj_ = std::unique_ptr<NativeReference>(
+        reinterpret_cast<NativeReference *>(ref));
+    EXPECT_NE(ability->jsAbilityObj_, nullptr);
+
+    sptr<AAFwk::SessionInfo> sessionInfo = sptr<AAFwk::SessionInfo>::MakeSptr();
+    EXPECT_NE(sessionInfo, nullptr);
+    ability->scene_ = std::make_shared<Rosen::WindowScene>();
+    EXPECT_NE(ability->scene_, nullptr);
+    auto abilityContextImpl = std::make_shared<AbilityContextImpl>();
+    EXPECT_NE(abilityContextImpl, nullptr);
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    EXPECT_NE(abilityInfo, nullptr);
+    abilityContextImpl->SetAbilityInfo(abilityInfo);
+    ability->abilityContext_ = abilityContextImpl;
+    ability->abilityInfo_ = abilityInfo;
+    EXPECT_NE(ability->abilityInfo_, nullptr);
+    ability->OnStart(want, sessionInfo);
+    EXPECT_FALSE(ability->isGamePreLaunch_);
+
+    GTEST_LOG_(INFO) << "JSUIAbility_OnStart_0800 end";
+}
+
+/**
  * @tc.name: JSUIAbility_GetWindowStage_0100
  * @tc.desc: GetWindowStage test
  * @tc.desc: Verify function GetWindowStage.
@@ -925,6 +1009,233 @@ HWTEST_F(JsUiAbilityTest, JSUIAbility_HandleNativeModule_0600, TestSize.Level1)
     // Cleanup
     AbilityRuntime::Context::applicationContext_ = nullptr;
     GTEST_LOG_(INFO) << "JSUIAbility_HandleNativeModule_0600 end";
+}
+
+/**
+ * @tc.name: JSUIAbility_DoOnForeground_WithRequestId_0100
+ * @tc.desc: Test DoOnForeground with requestId and scbRequestId in want
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsUiAbilityTest, JSUIAbility_DoOnForeground_WithRequestId_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "JSUIAbility_DoOnForeground_WithRequestId_0100 start";
+    AbilityRuntime::Runtime::Options options;
+    options.lang = AbilityRuntime::Runtime::Language::JS;
+    auto runtime = AbilityRuntime::Runtime::Create(options);
+    auto jsRuntime = static_cast<AbilityRuntime::JsRuntime*>(runtime.get());
+    auto ability = std::make_shared<AbilityRuntime::JsUIAbility>(*jsRuntime);
+    ASSERT_NE(ability, nullptr);
+
+    // Create mock scene
+    ability->scene_ = std::make_shared<Rosen::WindowScene>();
+    ASSERT_NE(ability->scene_, nullptr);
+
+    // Create want with requestId and scbRequestId
+    Want want;
+    want.SetParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, 100);
+    want.SetParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 200);
+
+    // Call DoOnForeground
+    ability->DoOnForeground(want);
+
+    // Verify requestId and scbRequestId are removed after calling WMS
+    int32_t requestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, -1);
+    int32_t scbRequestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, -1);
+    EXPECT_EQ(requestId, -1);  // Should be removed (returns default -1)
+    EXPECT_EQ(scbRequestId, -1);  // Should be removed (returns default -1)
+
+    GTEST_LOG_(INFO) << "JSUIAbility_DoOnForeground_WithRequestId_0100 end";
+}
+
+/**
+ * @tc.name: JSUIAbility_DoOnForeground_WithRequestId_0200
+ * @tc.desc: Test DoOnForeground with only requestId in want
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsUiAbilityTest, JSUIAbility_DoOnForeground_WithRequestId_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "JSUIAbility_DoOnForeground_WithRequestId_0200 start";
+    AbilityRuntime::Runtime::Options options;
+    options.lang = AbilityRuntime::Runtime::Language::JS;
+    auto runtime = AbilityRuntime::Runtime::Create(options);
+    auto jsRuntime = static_cast<AbilityRuntime::JsRuntime*>(runtime.get());
+    auto ability = std::make_shared<AbilityRuntime::JsUIAbility>(*jsRuntime);
+    ASSERT_NE(ability, nullptr);
+
+    // Create mock scene
+    ability->scene_ = std::make_shared<Rosen::WindowScene>();
+    ASSERT_NE(ability->scene_, nullptr);
+
+    // Create want with only requestId
+    Want want;
+    want.SetParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, 100);
+
+    // Call DoOnForeground
+    ability->DoOnForeground(want);
+
+    // Verify requestId is removed and scbRequestId was never set
+    int32_t requestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, -1);
+    int32_t scbRequestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, -1);
+    EXPECT_EQ(requestId, -1);  // Should be removed
+    EXPECT_EQ(scbRequestId, -1);  // Was never set
+
+    GTEST_LOG_(INFO) << "JSUIAbility_DoOnForeground_WithRequestId_0200 end";
+}
+
+/**
+ * @tc.name: JSUIAbility_DoOnForeground_WithRequestId_0300
+ * @tc.desc: Test DoOnForeground with only scbRequestId in want
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsUiAbilityTest, JSUIAbility_DoOnForeground_WithRequestId_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "JSUIAbility_DoOnForeground_WithRequestId_0300 start";
+    AbilityRuntime::Runtime::Options options;
+    options.lang = AbilityRuntime::Runtime::Language::JS;
+    auto runtime = AbilityRuntime::Runtime::Create(options);
+    auto jsRuntime = static_cast<AbilityRuntime::JsRuntime*>(runtime.get());
+    auto ability = std::make_shared<AbilityRuntime::JsUIAbility>(*jsRuntime);
+    ASSERT_NE(ability, nullptr);
+
+    // Create mock scene
+    ability->scene_ = std::make_shared<Rosen::WindowScene>();
+    ASSERT_NE(ability->scene_, nullptr);
+
+    // Create want with only scbRequestId
+    Want want;
+    want.SetParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 200);
+
+    // Call DoOnForeground
+    ability->DoOnForeground(want);
+
+    // Verify scbRequestId is removed and requestId was never set
+    int32_t requestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, -1);
+    int32_t scbRequestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, -1);
+    EXPECT_EQ(requestId, -1);  // Was never set
+    EXPECT_EQ(scbRequestId, -1);  // Should be removed
+
+    GTEST_LOG_(INFO) << "JSUIAbility_DoOnForeground_WithRequestId_0300 end";
+}
+
+/**
+ * @tc.name: JSUIAbility_DoOnForeground_WithRequestId_0400
+ * @tc.desc: Test DoOnForeground without requestId or scbRequestId in want
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsUiAbilityTest, JSUIAbility_DoOnForeground_WithRequestId_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "JSUIAbility_DoOnForeground_WithRequestId_0400 start";
+    AbilityRuntime::Runtime::Options options;
+    options.lang = AbilityRuntime::Runtime::Language::JS;
+    auto runtime = AbilityRuntime::Runtime::Create(options);
+    auto jsRuntime = static_cast<AbilityRuntime::JsRuntime*>(runtime.get());
+    auto ability = std::make_shared<AbilityRuntime::JsUIAbility>(*jsRuntime);
+    ASSERT_NE(ability, nullptr);
+
+    // Create mock scene
+    ability->scene_ = std::make_shared<Rosen::WindowScene>();
+    ASSERT_NE(ability->scene_, nullptr);
+
+    // Create want without requestId or scbRequestId
+    Want want;
+
+    // Call DoOnForeground
+    ability->DoOnForeground(want);
+
+    // Verify neither parameter is set
+    int32_t requestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, -1);
+    int32_t scbRequestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, -1);
+    EXPECT_EQ(requestId, -1);  // Never set
+    EXPECT_EQ(scbRequestId, -1);  // Never set
+
+    GTEST_LOG_(INFO) << "JSUIAbility_DoOnForeground_WithRequestId_0400 end";
+}
+
+/**
+ * @tc.name: JSUIAbility_DoOnForegroundForSceneIsNull_WithRequestId_0100
+ * @tc.desc: Test DoOnForegroundForSceneIsNull with requestId and scbRequestId
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsUiAbilityTest, JSUIAbility_DoOnForegroundForSceneIsNull_WithRequestId_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "JSUIAbility_DoOnForegroundForSceneIsNull_WithRequestId_0100 start";
+    AbilityRuntime::Runtime::Options options;
+    options.lang = AbilityRuntime::Runtime::Language::JS;
+    auto runtime = AbilityRuntime::Runtime::Create(options);
+    auto jsRuntime = static_cast<AbilityRuntime::JsRuntime*>(runtime.get());
+    auto ability = std::make_shared<AbilityRuntime::JsUIAbility>(*jsRuntime);
+    ASSERT_NE(ability, nullptr);
+
+    wptr<IRemoteObject> token(new IPCObjectStub());
+    ability->sessionToken_ = token;
+    auto abilityContextImpl = std::make_shared<AbilityContextImpl>();
+
+    auto stageContext = std::make_shared<AbilityRuntime::AbilityStageContext>();
+    AppExecFwk::HapModuleInfo hapModuleInfo;
+    stageContext->InitHapModuleInfo(hapModuleInfo);
+    abilityContextImpl->SetStageContext(stageContext);
+
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->applicationInfo.bundleType = OHOS::AppExecFwk::BundleType::APP;
+    abilityContextImpl->SetAbilityInfo(abilityInfo);
+    ability->abilityContext_ = abilityContextImpl;
+
+    Rosen::SceneBoardJudgement::flag_ = true;
+
+    // Create want with requestId and scbRequestId
+    Want want;
+    want.SetParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, 100);
+    want.SetParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 200);
+
+    // Note: This will try to initialize scene which may fail in test environment
+    // The important part is testing that the requestIds are extracted and removed
+    ability->sceneListener_ = new Rosen::IWindowLifeCycle();
+
+    // Call DoOnForegroundForSceneIsNull
+    ability->DoOnForegroundForSceneIsNull(want);
+
+    int32_t requestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, -1);
+    int32_t scbRequestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, -1);
+    EXPECT_EQ(requestId, 100);
+    EXPECT_EQ(scbRequestId, 200);
+
+    GTEST_LOG_(INFO) << "JSUIAbility_DoOnForegroundForSceneIsNull_WithRequestId_0100 end";
+}
+
+/**
+ * @tc.name: JSUIAbility_RequestFocus_WithRequestId_0100
+ * @tc.desc: Test RequestFocus with requestId and scbRequestId
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsUiAbilityTest, JSUIAbility_RequestFocus_WithRequestId_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "JSUIAbility_RequestFocus_WithRequestId_0100 start";
+    AbilityRuntime::Runtime::Options options;
+    options.lang = AbilityRuntime::Runtime::Language::JS;
+    auto runtime = AbilityRuntime::Runtime::Create(options);
+    auto jsRuntime = static_cast<AbilityRuntime::JsRuntime*>(runtime.get());
+    auto ability = std::make_shared<AbilityRuntime::JsUIAbility>(*jsRuntime);
+    ASSERT_NE(ability, nullptr);
+
+    // Create mock scene
+    ability->scene_ = std::make_shared<Rosen::WindowScene>();
+    ASSERT_NE(ability->scene_, nullptr);
+
+    // Create want with requestId and scbRequestId
+    Want want;
+    want.SetParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, 100);
+    want.SetParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 200);
+
+    // Call RequestFocus
+    ability->RequestFocus(want);
+
+    // Verify requestId and scbRequestId are removed after calling WMS
+    int32_t requestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, -1);
+    int32_t scbRequestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, -1);
+    EXPECT_EQ(requestId, -1);  // Should be removed
+    EXPECT_EQ(scbRequestId, -1);  // Should be removed
+
+    GTEST_LOG_(INFO) << "JSUIAbility_RequestFocus_WithRequestId_0100 end";
 }
 
 } // namespace AbilityRuntime

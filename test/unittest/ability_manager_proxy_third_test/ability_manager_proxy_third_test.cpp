@@ -27,6 +27,7 @@
 #include "mission_snapshot.h"
 #include "mock_ability_connect_callback.h"
 #include "mock_ability_token.h"
+#include "request_start_ability_callback_stub.h"
 #include "want_sender_info.h"
 
 using namespace testing::ext;
@@ -83,6 +84,16 @@ public:
         return iremoteObject_;
     }
     sptr<IRemoteObject> iremoteObject_ = nullptr;
+};
+
+class MockRequestStartAbilityCallback : public AAFwk::RequestStartAbilityCallbackStub {
+public:
+    void OnRequestStartAbilityResult(bool result) override
+    {
+        result_ = result;
+    }
+
+bool result_ = false;
 };
 
 #ifdef SUPPORT_SCREEN
@@ -637,6 +648,30 @@ HWTEST_F(AbilityManagerProxyTest, StartAbilityOnlyUIAbility_1500, TestSize.Level
     EXPECT_EQ(result, NO_ERROR);
 
     GTEST_LOG_(INFO) << "StartAbilityOnlyUIAbility_1500 end";
+}
+
+/**
+ * @tc.name: StartUIAbilityWithCallback_0100
+ * @tc.desc: StartUIAbilityWithCallback
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxyTest, StartUIAbilityWithCallback_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "StartUIAbilityWithCallback_0100 start";
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    sptr<IRemoteObject> callerToken = new (std::nothrow) MockAbilityToken();
+    sptr<MockRequestStartAbilityCallback> callback = new (std::nothrow) MockRequestStartAbilityCallback();
+
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
+
+    ErrCode result = proxy_->StartUIAbilityWithCallback(want, callerToken, callback);
+    EXPECT_EQ(result, NO_ERROR);
+    EXPECT_EQ(callback->result_, false);
+
+    GTEST_LOG_(INFO) << "StartUIAbilityWithCallback_0100 end";
 }
 
 /**

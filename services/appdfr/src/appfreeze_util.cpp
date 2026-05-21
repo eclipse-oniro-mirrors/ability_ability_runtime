@@ -172,5 +172,26 @@ std::string AppfreezeUtil::GetProcessNameByPid(const int32_t pid)
     }
     return processName;
 }
+
+std::string AppfreezeUtil::GetProcessNameFromProcCmdline(const int32_t pid)
+{
+    std::string cmdlinePath = "/proc/" + std::to_string(pid) + "/cmdline";
+    std::string realPath = FreezePathToRealPath(cmdlinePath);
+    std::string processName;
+    if (realPath.empty() || !LoadStringFromFile(realPath, processName)) {
+        TAG_LOGW(AAFwkTag::APPDFR, "failed to read path:%{public}s, errno:%{public}d",
+            realPath.c_str(), errno);
+        return "";
+    }
+    size_t nullPos = processName.find('\0');
+    if (nullPos != std::string::npos) {
+        processName = processName.substr(0, nullPos);
+    }
+    size_t slashPos = processName.find_last_of('/');
+    if (slashPos != std::string::npos) {
+        processName = processName.substr(slashPos + 1);
+    }
+    return processName;
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

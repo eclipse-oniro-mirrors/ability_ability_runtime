@@ -34,7 +34,11 @@ struct PreloadRequest {
     BundleInfo bundleInfo;
     HapModuleInfo hapModuleInfo;
     PreloadPhase preloadPhase = PreloadPhase::UNSPECIFIED;
+    ExtensionProcessMode extensionProcessMode = ExtensionProcessMode::UNDEFINED;
+    std::string imageName;
+    std::string abilityName;
     bool needMakeImage = false;
+    bool needDestroyTemplate = false;
 };
 
 class AppPreloader {
@@ -44,7 +48,7 @@ public:
 
     int32_t GeneratePreloadRequest(const std::string &bundleName, int32_t userId, int32_t appIndex,
         PreloadRequest &request);
-    int32_t GeneratePreloadExtensionRequest(const AAFwk::Want &want, const AbilityInfo &abilityInfo,
+    int32_t GeneratePreloadExtensionRequest(const AAFwk::Want &want,
         int32_t userId, int32_t appIndex, PreloadRequest &request);
 
     bool PreCheck(const std::string &bundleName, PreloadMode mode);
@@ -53,6 +57,9 @@ private:
     bool GetLaunchWant(const std::string &bundleName, int32_t userId, AAFwk::Want &want);
 
     bool GetLaunchAbilityInfo(const AAFwk::Want &want, int32_t userId, AbilityInfo &abilityInfo);
+
+    bool GetAbilityInfo(const AAFwk::Want &want, int32_t userId, int32_t appIndex,
+        PreloadRequest &request, AbilityInfo &abilityInfo);
 
     bool GetBundleAndHapInfo(const std::string &bundleName, int32_t userId,
         const AbilityInfo &abilityInfo, BundleInfo &bundleInfo, HapModuleInfo &hapModuleInfo);

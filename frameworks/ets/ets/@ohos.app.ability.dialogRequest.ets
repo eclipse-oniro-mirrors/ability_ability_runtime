@@ -41,11 +41,11 @@ namespace dialogRequest {
     cleaner.cleanToReqCallback();
   }
 
-  let destroyRegisterReqInfo = new FinalizationRegistry<Cleaner>(callbackToReqInfo);
-  let unregisterTokenReqInfo = new object();
+  let destroyRegisterReqInfo: FinalizationRegistry<Cleaner> = new FinalizationRegistry<Cleaner>(callbackToReqInfo);
+  let unregisterTokenReqInfo: object = new object();
 
-  let destroyRegisterReqCallback = new FinalizationRegistry<Cleaner>(callbackToReqCallback);
-  let unregisterTokenReqCallback = new object();
+  let destroyRegisterReqCallback: FinalizationRegistry<Cleaner> = new FinalizationRegistry<Cleaner>(callbackToReqCallback);
+  let unregisterTokenReqCallback: object = new object();
   
   export interface WindowRect {
     left: int;

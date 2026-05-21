@@ -26,6 +26,7 @@
 #include "ability_connection.h"
 #include "ability_scheduler.h"
 #include "ability_start_setting.h"
+#include "skill/skill_execute_param.h"
 #include "app_utils.h"
 #include "recovery_param.h"
 #undef private
@@ -2233,6 +2234,46 @@ HWTEST_F(AbilityManagerServiceFirstTest, CheckStaticCfgPermission_0002, TestSize
 }
 
 /**
+ * @tc.name: AbilityManagerServiceFirstTest_CheckStaticCfgPermission_SkillCaller_0001
+ * @tc.desc: Test CheckStaticCfgPermission with skill callerTokenId skips SA shortcut
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, CheckStaticCfgPermission_SkillCaller_0001, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    AppExecFwk::AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.permissions.push_back("test.permission");
+    abilityRequest.want.SetParam(
+        AppExecFwk::SKILL_EXECUTE_PARAM_CALLER_TOKEN_ID, static_cast<int32_t>(100));
+    MyFlag::flag_ = MyFlag::IS_SA_CALL;
+    int ret = abilityMs->CheckStaticCfgPermission(
+        abilityRequest, false, 0, false, false, false);
+    // SA call still skips permission check, skillCallerTokenId used for tokenId selection
+    EXPECT_EQ(ret, AppExecFwk::Constants::PERMISSION_GRANTED);
+    MyFlag::flag_ = 0;
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_CheckStaticCfgPermission_SkillCaller_0002
+ * @tc.desc: Test CheckStaticCfgPermission with skill callerTokenId uses caller tokenId
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, CheckStaticCfgPermission_SkillCaller_0002, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    AppExecFwk::AbilityRequest abilityRequest;
+    uint32_t callerTokenId = 100;
+    abilityRequest.want.SetParam(
+        AppExecFwk::SKILL_EXECUTE_PARAM_CALLER_TOKEN_ID, static_cast<int32_t>(callerTokenId));
+    abilityRequest.abilityInfo.applicationInfo.accessTokenId = callerTokenId;
+    MyFlag::flag_ = 0;
+    int ret = abilityMs->CheckStaticCfgPermission(
+        abilityRequest, false, 0, false, false, false);
+    // Same accessTokenId should be granted
+    EXPECT_EQ(ret, AppExecFwk::Constants::PERMISSION_GRANTED);
+}
+
+/**
  * @tc.name: AbilityManagerServiceFirstTest_CheckPermissionForUIService_0001
  * @tc.desc: Test the state of CheckPermissionForUIService
  * @tc.type: FUNC
@@ -2909,6 +2950,89 @@ HWTEST_F(AbilityManagerServiceFirstTest, CheckCallAbilityPermission_004, TestSiz
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest CheckCallAbilityPermission_004 end");
 }
 
+/**
+ * @tc.name: StartSelfUIAbilityInChildProcess_0100
+ * @tc.desc: Test StartSelfUIAbilityInChildProcess with device not supported
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartSelfUIAbilityInChildProcess_0100, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    std::string specifiedFlag = "testFlag";
+    sptr<IRemoteObject> callerToken = nullptr;
+    AppUtils::GetInstance().isSupportNativeUIAbility_.isLoaded = true;
+    AppUtils::GetInstance().isSupportNativeUIAbility_.value = false;
+    auto res = abilityMs_->StartSelfUIAbilityInChildProcess(want, specifiedFlag, callerToken);
+    EXPECT_EQ(res, ERR_CAPABILITY_NOT_SUPPORT);
+}
 
+/**
+ * @tc.name: StartSelfUIAbilityInChildProcess_0200
+ * @tc.desc: Test StartSelfUIAbilityInChildProcess with null callerToken
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartSelfUIAbilityInChildProcess_0200, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    std::string specifiedFlag = "testFlag";
+    sptr<IRemoteObject> callerToken = nullptr;
+    AppUtils::GetInstance().isSupportNativeUIAbility_.isLoaded = true;
+    AppUtils::GetInstance().isSupportNativeUIAbility_.value = true;
+    auto res = abilityMs_->StartSelfUIAbilityInChildProcess(want, specifiedFlag, callerToken);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: StartSelfUIAbilityInChildProcess_0300
+ * @tc.desc: Test StartSelfUIAbilityInChildProcess with empty specifiedFlag
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartSelfUIAbilityInChildProcess_0300, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    Want want;
+    std::string specifiedFlag = "";
+    AppExecFwk::AbilityInfo abilityInfo;
+    AppExecFwk::ApplicationInfo applicationInfo;
+    applicationInfo.accessTokenId = IPCSkeleton::GetCallingTokenID();
+    auto abilityRecord = std::make_shared<AbilityRecord>(want, abilityInfo, applicationInfo);
+    abilityRecord->Init(AbilityRequest());
+    sptr<IRemoteObject> callerToken = abilityRecord->token_;
+    AppUtils::GetInstance().isSupportNativeUIAbility_.isLoaded = true;
+    AppUtils::GetInstance().isSupportNativeUIAbility_.value = true;
+    auto res = abilityMs_->StartSelfUIAbilityInChildProcess(want, specifiedFlag, callerToken);
+    EXPECT_EQ(res, START_UI_ABILITIES_NOT_SUPPORT_IMPLICIT_START);
+}
+
+/**
+ * @tc.name: StartSelfUIAbilityInChildProcess_0400
+ * @tc.desc: Test StartSelfUIAbilityInChildProcess with valid want
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartSelfUIAbilityInChildProcess_0400, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    want.SetParam("testParam", std::string("testValue"));
+    std::string specifiedFlag = "testFlag";
+    AppExecFwk::AbilityInfo abilityInfo;
+    AppExecFwk::ApplicationInfo applicationInfo;
+    applicationInfo.accessTokenId = IPCSkeleton::GetCallingTokenID();
+    auto abilityRecord = std::make_shared<AbilityRecord>(want, abilityInfo, applicationInfo);
+    abilityRecord->Init(AbilityRequest());
+    sptr<IRemoteObject> callerToken = abilityRecord->token_;
+    AppUtils::GetInstance().isSupportNativeUIAbility_.isLoaded = true;
+    AppUtils::GetInstance().isSupportNativeUIAbility_.value = true;
+    auto res = abilityMs_->StartSelfUIAbilityInChildProcess(want, specifiedFlag, callerToken);
+    EXPECT_EQ(res, ERROR_UIABILITY_NOT_BELONG_TO_CALLER);
+}
 } // namespace AAFwk
 } // namespace OHOS

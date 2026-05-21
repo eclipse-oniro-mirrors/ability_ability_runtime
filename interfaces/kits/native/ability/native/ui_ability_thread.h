@@ -140,6 +140,8 @@ public:
 
     void OnExecuteIntent(const Want &want) override;
 
+    void ExecuteSkill(const Want &want) override;
+
     /**
      * @brief create modal UIExtension.
      * @param want Create modal UIExtension with want object.

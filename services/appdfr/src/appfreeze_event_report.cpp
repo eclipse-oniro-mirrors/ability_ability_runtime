@@ -25,6 +25,7 @@ namespace {
 constexpr char EVENT_UID[] = "UID";
 constexpr char EVENT_PID[] = "PID";
 constexpr char EVENT_TID[] = "TID";
+constexpr char EVENT_IS_FROZEN[] = "IS_FROZEN";
 constexpr char EVENT_INPUT_ID[] = "INPUT_ID";
 constexpr char EVENT_MESSAGE[] = "MSG";
 constexpr char EVENT_PACKAGE_NAME[] = "PACKAGE_NAME";
@@ -68,9 +69,10 @@ int AppfreezeEventReport::LogAppInputBlockEvent(const std::string &name, HiSysEv
     const AppfreezeEventInfo &eventInfo)
 {
     int ret = -1;
-    auto hisyseventReport = std::make_shared<AAFwk::HisyseventReport>(20);
+    auto hisyseventReport = std::make_shared<AAFwk::HisyseventReport>(21);
     hisyseventReport->InsertParam(EVENT_UID, eventInfo.uid);
     hisyseventReport->InsertParam(EVENT_PID, eventInfo.pid);
+    hisyseventReport->InsertParam(EVENT_IS_FROZEN, eventInfo.isFrozen);
     hisyseventReport->InsertParam(EVENT_PACKAGE_NAME, eventInfo.bundleName);
     hisyseventReport->InsertParam(EVENT_PROCESS_NAME, eventInfo.processName);
     hisyseventReport->InsertParam(EVENT_MESSAGE, eventInfo.errorMessage);
@@ -101,6 +103,7 @@ int AppfreezeEventReport::LogThreadBlockEvent(const std::string &name, HiSysEven
     hisyseventReport->InsertParam(EVENT_UID, eventInfo.uid);
     hisyseventReport->InsertParam(EVENT_PID, eventInfo.pid);
     hisyseventReport->InsertParam(EVENT_TID, eventInfo.tid);
+    hisyseventReport->InsertParam(EVENT_IS_FROZEN, eventInfo.isFrozen);
     hisyseventReport->InsertParam(EVENT_PACKAGE_NAME, eventInfo.bundleName);
     hisyseventReport->InsertParam(EVENT_PROCESS_NAME, eventInfo.processName);
     hisyseventReport->InsertParam(EVENT_MESSAGE, eventInfo.errorMessage);
@@ -130,6 +133,7 @@ int AppfreezeEventReport::LogLifeCycleTimeoutEvent(const std::string &name, HiSy
     hisyseventReport->InsertParam(EVENT_UID, eventInfo.uid);
     hisyseventReport->InsertParam(EVENT_PID, eventInfo.pid);
     hisyseventReport->InsertParam(EVENT_TID, eventInfo.tid);
+    hisyseventReport->InsertParam(EVENT_IS_FROZEN, eventInfo.isFrozen);
     hisyseventReport->InsertParam(EVENT_PACKAGE_NAME, eventInfo.bundleName);
     hisyseventReport->InsertParam(EVENT_PROCESS_NAME, eventInfo.processName);
     hisyseventReport->InsertParam(EVENT_MESSAGE, eventInfo.errorMessage);
@@ -159,6 +163,7 @@ int AppfreezeEventReport::LogGeneralEvent(const std::string &name, HiSysEventEve
     hisyseventReport->InsertParam(EVENT_UID, eventInfo.uid);
     hisyseventReport->InsertParam(EVENT_PID, eventInfo.pid);
     hisyseventReport->InsertParam(EVENT_TID, eventInfo.tid);
+    hisyseventReport->InsertParam(EVENT_IS_FROZEN, eventInfo.isFrozen);
     hisyseventReport->InsertParam(EVENT_PACKAGE_NAME, eventInfo.bundleName);
     hisyseventReport->InsertParam(EVENT_PROCESS_NAME, eventInfo.processName);
     hisyseventReport->InsertParam(EVENT_MESSAGE, eventInfo.errorMessage);

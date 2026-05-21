@@ -275,7 +275,7 @@ void AppRunningRecord::ScheduleJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &in
 {
 }
 
-void AppRunningRecord::ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpresult)
+void AppRunningRecord::ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback)
 {
 }
 
@@ -1017,6 +1017,16 @@ void AppRunningRecord::SetPreloadModuleName(const std::string& preloadModuleName
 std::string AppRunningRecord::GetPreloadModuleName() const
 {
     return preloadModuleName_;
+}
+
+void AppRunningRecord::SetPreloadAbilityName(const std::string &abilityName)
+{
+    preloadAbilityName_ = abilityName;
+}
+
+std::string AppRunningRecord::GetPreloadAbilityName() const
+{
+    return preloadAbilityName_;
 }
 
 void AppRunningRecord::SetPreloadState(PreloadState state)

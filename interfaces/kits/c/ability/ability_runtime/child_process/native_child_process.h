@@ -504,6 +504,7 @@ Ability_NativeChildProcess_ErrCode OH_Ability_UnregisterNativeChildProcessExitCa
  */
 Ability_NativeChildProcess_ErrCode OH_Ability_KillChildProcess(int32_t pid);
 
+bool OH_Ability_IsNativeChildProcessSupported();
 #ifdef __cplusplus
 } // extern "C"
 #endif

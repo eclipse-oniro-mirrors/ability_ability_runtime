@@ -115,11 +115,53 @@ bool AppPreloader::GetLaunchWant(const std::string &bundleName, int32_t userId, 
     return true;
 }
 
-int32_t AppPreloader::GeneratePreloadExtensionRequest(const AAFwk::Want &want, const AbilityInfo &abilityInfo,
+bool AppPreloader::GetAbilityInfo(const AAFwk::Want &want, int32_t userId, int32_t appIndex,
+    PreloadRequest &request, AbilityInfo &abilityInfo)
+{
+    auto bundleMgrHelper = GetBundleManagerHelper();
+    if (!bundleMgrHelper) {
+        TAG_LOGE(AAFwkTag::APPMGR, "get bundle manager helper error");
+        return false;
+    }
+    auto abilityInfoFlag = AbilityRuntime::StartupUtil::BuildAbilityInfoFlag();
+    if (IN_PROCESS_CALL(bundleMgrHelper->QueryAbilityInfo(want, abilityInfoFlag, userId, abilityInfo))) {
+        TAG_LOGI(AAFwkTag::APPMGR, "queryAbilityInfo ok");
+        return true;
+    }
+    std::vector<AppExecFwk::ExtensionAbilityInfo> extensionInfos;
+    if (appIndex == 0) {
+        if (!IN_PROCESS_CALL(bundleMgrHelper->QueryExtensionAbilityInfos(want, abilityInfoFlag,
+            userId, extensionInfos))) {
+            TAG_LOGE(AAFwkTag::APPMGR, "queryExtensionAbilityInfos fail");
+            return false;
+        }
+    } else {
+        if (IN_PROCESS_CALL(bundleMgrHelper->GetSandboxExtAbilityInfos(want, appIndex,
+            abilityInfoFlag, userId, extensionInfos) != ERR_OK)) {
+            TAG_LOGE(AAFwkTag::APPMGR, "getSandboxExtAbilityInfos fail");
+            return false;
+        }
+    }
+    if (extensionInfos.size() <= 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "get extension info fail");
+        return false;
+    }
+    AppExecFwk::ExtensionAbilityInfo extensionInfo = extensionInfos.front();
+    request.extensionProcessMode = extensionInfo.extensionProcessMode;
+    AbilityRuntime::StartupUtil::InitAbilityInfoFromExtension(extensionInfo, abilityInfo);
+    return true;
+}
+
+int32_t AppPreloader::GeneratePreloadExtensionRequest(const AAFwk::Want &want,
     int32_t userId, int32_t appIndex, PreloadRequest &request)
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::APPMGR, "PreloadExtension GeneratePreloadRequest");
+    AbilityInfo abilityInfo;
+    if (!GetAbilityInfo(want, userId, appIndex, request, abilityInfo)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "createAbilityInfo fail");
+        return ERR_INVALID_OPERATION;
+    }
     std::string bundleName = want.GetElement().GetBundleName();
 
     BundleInfo bundleInfo;

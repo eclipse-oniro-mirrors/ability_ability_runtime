@@ -55,7 +55,7 @@ public:
 
     int32_t GetAllAgentCards(AgentCardsRawData &cards) override;
 
-    int32_t GetAgentCardsByBundleName(const std::string &bundleName, std::vector<AgentCard> &cards) override;
+    int32_t GetAgentCardsByBundleName(const std::string &bundleName, AgentCardsRawData &cards) override;
 
     int32_t GetAgentCardByAgentId(const std::string &bundleName, const std::string &agentId, AgentCard &card) override;
 
@@ -102,11 +102,11 @@ private:
     void Init();
     void RegisterBundleEventCallback();
     /**
-     * @brief Validates caller permission and reserves one slot from the per-caller connection quota.
+     * @brief Validates caller permission and foreground state before classifying the agent connect request.
      */
     int32_t ValidateConnectAgentRequest(const sptr<AAFwk::IAbilityConnection> &connection, int32_t &callerUid);
     /**
-     * @brief Resolves the target agent card and builds the connect Want consumed by later connect paths.
+     * @brief Resolves the target AgentCard and builds the connect Want consumed by later connect paths.
      */
     int32_t ResolveConnectAgentTarget(const AAFwk::Want &want, AAFwk::Want &connectWant,
         std::string &agentId, AgentCard &card, int32_t &callingUid) const;
@@ -153,6 +153,8 @@ private:
     bool ReleaseCallerConnectionCountLocked(const sptr<IRemoteObject> &callerRemote);
     void ReleaseTrackedConnection(const sptr<AAFwk::IAbilityConnection> &connection);
     void ReleaseTrackedConnectionByRemoteLocked(const sptr<IRemoteObject> &callerRemote);
+    void TransferLowCodeCallerLimitLocked(const std::shared_ptr<AgentHostSession> &session,
+        const sptr<IRemoteObject> &callerRemote);
     void HandleCallerConnectionDied(const wptr<IRemoteObject> &remote);
     void HandleCallerConnectionDied(const sptr<IRemoteObject> &remote);
     /**

@@ -314,6 +314,26 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::FindMasterProcessAppRunning
     return resMasterRecord;
 }
 
+std::shared_ptr<AppRunningRecord> AppRunningManager::FindMainProcessAppRunningRecord(const int uid)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::APPMGR, "uid: %{public}d", uid);
+    auto appRunningMap = GetAppRunningRecordMap();
+    for (const auto &item : appRunningMap) {
+        const auto &appRecord = item.second;
+        if (!(appRecord && appRecord->GetUid() == uid)) {
+            continue;
+        }
+        if (!IsAppRunningRecordValid(appRecord)) {
+            continue;
+        }
+        if (appRecord->IsMainProcess()) {
+            return appRecord;
+        }
+    }
+    return nullptr;
+}
+
 bool AppRunningManager::CheckMasterProcessAppRunningRecordIsExist(
     const std::string &appName, const AppExecFwk::AbilityInfo &abilityInfo, const int uid)
 {
@@ -902,7 +922,7 @@ void AppRunningManager::HandleAbilityAttachTimeOut(const sptr<IRemoteObject> &to
         }
         appRecord->TerminateAbility(token, true, true);
     };
-    appRecord->PostTask("DELAY_KILL_ABILITY", AMSEventHandler::KILL_PROCESS_TIMEOUT, timeoutTask);
+    appRecord->PostTask("DELAY_KILL_ABILITY", AMSEventHandler::KILL_PROCESS_TIMEOUT_DELAY, timeoutTask);
 }
 
 void AppRunningManager::PrepareTerminate(const sptr<IRemoteObject> &token, bool clearMissionFlag)
@@ -1449,14 +1469,14 @@ int32_t AppRunningManager::DumpCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &in
     return ERR_OK;
 }
 
-int32_t AppRunningManager::DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
+int32_t AppRunningManager::DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback)
 {
     auto appRecord = GetAppRunningRecordByPid(info.pid);
     if (appRecord == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "null appRecord");
         return ERR_INVALID_VALUE;
     }
-    appRecord->ScheduleMem(info, dumpResult);
+    appRecord->ScheduleMem(info, callback);
     return ERR_OK;
 }
 

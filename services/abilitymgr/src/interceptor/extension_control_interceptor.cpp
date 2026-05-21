@@ -124,7 +124,7 @@ bool ExtensionControlInterceptor::GetCallerAbilityInfo(const AbilityInterceptorP
     if (StartAbilityUtils::GetCallerAbilityInfo(param.callerToken, callerAbilityInfo)) {
         if (callerAbilityInfo.type != AppExecFwk::AbilityType::EXTENSION ||
             callerAbilityInfo.extensionAbilityType == AppExecFwk::ExtensionAbilityType::SERVICE ||
-            callerAbilityInfo.bundleName == param.want.GetElement().GetBundleName()) {
+            callerAbilityInfo.bundleName == param.want.GetBundle()) {
             TAG_LOGD(AAFwkTag::ABILITYMGR, "not other extension.");
             return true;
         }

@@ -89,5 +89,85 @@ HWTEST_F(NativeRuntimeTest, LoadModule_0300, TestSize.Level1)
     bool ret = NativeRuntime::LoadModule("testBundleName/moduleName", "test.so", "testAbilityName", instance);
     EXPECT_EQ(ret, false);
 }
+
+/**
+ * @tc.name: StartDebugMode_0100
+ * @tc.desc: StartDebugMode returns when local debug and developer mode are both false
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeRuntimeTest, StartDebugMode_0100, TestSize.Level1)
+{
+    Runtime::DebugOption debugOption;
+    debugOption.isDebugApp = false;
+    debugOption.isDebugFromLocal = false;
+    debugOption.isDeveloperMode = false;
+    debugOption.isDebugApp = false;
+    NativeRuntime::StartDebugMode(debugOption, "com.test.bundle");
+    EXPECT_EQ(debugOption.isDebugApp, false);
+}
+
+/**
+ * @tc.name: StartDebugMode_0200
+ * @tc.desc: StartDebugMode is callable when developer mode is true
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeRuntimeTest, StartDebugMode_0200, TestSize.Level1)
+{
+    Runtime::DebugOption debugOption;
+    debugOption.isDebugFromLocal = false;
+    debugOption.isDeveloperMode = true;
+    debugOption.isDebugApp = false;
+    NativeRuntime::StartDebugMode(debugOption, "com.test.bundle");
+    EXPECT_EQ(debugOption.isDebugApp, false);
+}
+
+/**
+ * @tc.name: StartDebugMode_0300
+ * @tc.desc: StartDebugMode is callable when local debug is true
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeRuntimeTest, StartDebugMode_0300, TestSize.Level1)
+{
+    Runtime::DebugOption debugOption;
+    debugOption.isDebugFromLocal = true;
+    debugOption.isDeveloperMode = false;
+    debugOption.isDebugApp = false;
+    NativeRuntime::StartDebugMode(debugOption, "com.test.bundle");
+    EXPECT_EQ(debugOption.isDebugApp, false);
+}
+
+/**
+ * @tc.name: StartDebugMode_0400
+ * @tc.desc: StartDebugMode is callable for debug app with release provision type
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeRuntimeTest, StartDebugMode_0400, TestSize.Level1)
+{
+    Runtime::DebugOption debugOption;
+    debugOption.isDebugFromLocal = true;
+    debugOption.isDeveloperMode = true;
+    debugOption.isDebugApp = true;
+    debugOption.appProvisionType = AppExecFwk::Constants::APP_PROVISION_TYPE_RELEASE;
+    NativeRuntime::StartDebugMode(debugOption, "com.test.bundle");
+    EXPECT_EQ(debugOption.isDebugApp, true);
+}
+
+/**
+ * @tc.name: StartDebugMode_0500
+ * @tc.desc: StartDebugMode is callable for debug app with non-release provision type
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeRuntimeTest, StartDebugMode_0500, TestSize.Level1)
+{
+    Runtime::DebugOption debugOption;
+    debugOption.isDebugFromLocal = true;
+    debugOption.isDeveloperMode = true;
+    debugOption.isDebugApp = true;
+    debugOption.appProvisionType = "testProvisionType";
+    NativeRuntime::StartDebugMode(debugOption, "com.test.bundle");
+    NativeRuntime::StartDebugMode(debugOption, "com.test.bundle");
+    NativeRuntime::StopDebugMode();
+    EXPECT_EQ(debugOption.isDebugApp, true);
+}
 }  // namespace AbilityRuntime
 }  // namespace OHOS

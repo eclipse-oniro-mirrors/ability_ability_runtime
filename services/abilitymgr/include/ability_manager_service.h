@@ -83,6 +83,7 @@ namespace AbilityRuntime {
 class IStatusBarDelegate;
 struct ExtractInsightIntentGenericInfo;
 struct LinkIntentParamMapping;
+struct ExecuteIntentCommonOptions;
 }
 namespace Rosen {
 class FocusChangeInfo;
@@ -215,6 +216,15 @@ public:
      */
     virtual ErrCode StartSelfUIAbilityInCurrentProcess(const Want &want, const std::string &specifiedFlag,
         const AAFwk::StartOptions &startOptions, bool hasOptions, sptr<IRemoteObject> callerToken) override;
+
+    /**
+     * Start Self UIAbility In Child Process.
+     * @param want Ability want.
+     * @param specifiedFlag specified flag.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual ErrCode StartSelfUIAbilityInChildProcess(
+        const Want &want, const std::string &specifiedFlag, sptr<IRemoteObject> callerToken) override;
 
     /**
      * StartAbilityWithSpecifyTokenIdInner with want and specialId, send want to ability manager service.
@@ -1350,8 +1360,8 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int StartAbilityByCall(const Want &want, const sptr<IAbilityConnection> &connect,
-        const sptr<IRemoteObject> &callerToken, int32_t accountId = DEFAULT_INVAL_VALUE,
-        bool isSilent = false, bool promotePriority = false, bool isVisible = false) override;
+        const sptr<IRemoteObject> &callerToken, int32_t accountId = DEFAULT_INVAL_VALUE, bool isSilent = false,
+        bool promotePriority = false, bool isVisible = false, uint64_t specifiedFullTokenId = 0) override;
 
     /**
      * Start Ability, connect session with common ability.
@@ -1368,7 +1378,8 @@ public:
      */
     virtual int StartAbilityByCallWithErrMsg(const Want &want, const sptr<IAbilityConnection> &connect,
         const sptr<IRemoteObject> &callerToken, int32_t accountId, std::string &errMsg,
-        bool isSilent = false, bool promotePriority = false, bool isVisible = false) override;
+        bool isSilent = false, bool promotePriority = false,
+        bool isVisible = false, uint64_t specifiedFullTokenId = 0) override;
 
     /**
      * Start Ability for prelauch.
@@ -1413,6 +1424,7 @@ public:
     void HandleForegroundTimeOut(int64_t abilityRecordId, bool isHalf = false, bool isExtension = false);
     void HandleConnectTimeOut(int64_t abilityRecordId, bool isHalf = false);
     void HandleShareDataTimeOut(int64_t uniqueId);
+    void HandleSkillExecuteTimeOut(int64_t requestCodeSeq);
     int32_t GetShareDataPairAndReturnData(std::shared_ptr<AbilityRecord> abilityRecord,
         const int32_t &resultCode, const int32_t &uniqueId, WantParams &wantParam);
 
@@ -1441,7 +1453,7 @@ public:
     int StartAbilityForOptionWrap(const Want &want, const StartOptions &startOptions,
         const sptr<IRemoteObject> &callerToken, bool isPendingWantCaller, int32_t userId = DEFAULT_INVAL_VALUE,
         int requestCode = DEFAULT_INVAL_VALUE, bool isStartAsCaller = false, uint32_t callerTokenId = 0,
-        bool isImplicit = false, bool isCallByShortcut = false);
+        bool isImplicit = false, bool isCallByShortcut = false, bool isCallByDelayed = false);
 
     int StartAbilityForOptionInner(
         const Want &want,
@@ -1453,7 +1465,8 @@ public:
         bool isStartAsCaller = false,
         uint32_t specifyTokenId = 0,
         bool isImplicit = false,
-        bool isCallByShortcut = false);
+        bool isCallByShortcut = false,
+        bool isCallByDelayed = false);
 
     int ImplicitStartAbility(
         const Want &want,
@@ -1491,14 +1504,16 @@ public:
         int requestCode = DEFAULT_INVAL_VALUE,
         bool isImplicit = false,
         bool isAppCloneSelector = false,
-        uint32_t callerAccessTokenId = 0);
+        uint32_t callerAccessTokenId = 0,
+        sptr<IRequestStartAbilityCallback> callback = nullptr);
 
     int ImplicitStartAbilityAsCaller(
         const Want &want,
         const sptr<IRemoteObject> &callerToken,
         sptr<IRemoteObject> asCallerSourceToken,
         int32_t userId = DEFAULT_INVAL_VALUE,
-        int requestCode = DEFAULT_INVAL_VALUE);
+        int requestCode = DEFAULT_INVAL_VALUE,
+        sptr<IRequestStartAbilityCallback> callback = nullptr);
 
     /**
      * @brief called when the module's onAcceptWant done to notify ability mgr to continue
@@ -2177,10 +2192,13 @@ public:
     int32_t OnExecuteIntent(AbilityRequest &abilityRequest, std::shared_ptr<AbilityRecord> &targetRecord);
 
     int32_t StartAbilityWithInsightIntent(const Want &want, int32_t userId = DEFAULT_INVAL_VALUE,
-        int requestCode = DEFAULT_INVAL_VALUE);
+        int requestCode = DEFAULT_INVAL_VALUE, uint64_t specifiedFullTokenId = 0);
 
-    int32_t StartAbilityByCallWithInsightIntent(const Want &want, const sptr<IRemoteObject> &callerToken,
-        const InsightIntentExecuteParam &param, int32_t userId = DEFAULT_INVAL_VALUE);
+    int32_t StartAbilityByCallWithInsightIntent(const Want &want,
+        const sptr<IRemoteObject> &callerToken, const InsightIntentExecuteParam &param,
+        int32_t userId = DEFAULT_INVAL_VALUE, uint64_t specifiedFullTokenId = 0);
+    int32_t ExecuteIntentForDistributed(const Want &want, const std::string &srcDeviceId,
+        uint64_t requestCode, uint64_t specifiedFullTokenId = 0) override;
 
     /**
      * @brief Check if ability controller can start.
@@ -2199,6 +2217,26 @@ public:
      */
     int32_t ExecuteInsightIntentDone(const sptr<IRemoteObject> &token, uint64_t intentId,
         const InsightIntentExecuteResult &result) override;
+
+    int32_t ExecuteInAppSkill(const std::string &bundleName, const std::string &moduleName,
+        const std::string &skillName, const std::string &arkTSPath = "",
+        const std::string &funcName = "",
+        const std::shared_ptr<AAFwk::WantParams> &skillArgs = nullptr,
+        const sptr<ISkillExecuteCallback> &callback = nullptr) override;
+
+    int32_t ExecuteInAppSkillWithTokenId(const AppExecFwk::SkillExecuteRequest &request,
+        const sptr<ISkillExecuteCallback> &callback) override;
+
+    int32_t StartAbilityByCallWithSkill(const Want &want,
+        const sptr<IRemoteObject> &callerToken, int32_t userId = DEFAULT_INVAL_VALUE);
+
+    int32_t StartExtensionAbilityWithSkill(const Want &want, int32_t userId);
+
+    int32_t ExecuteSkillDone(const sptr<IRemoteObject> &token, const std::string &requestCode,
+        int32_t resultCode, const AppExecFwk::SkillExecuteResult &result) override;
+
+    int32_t QuerySkillType(const std::string &bundleName, const std::string &moduleName,
+        const std::string &skillName, int32_t &skillType) override;
 
     /**
      * @brief Open file by uri.
@@ -2470,7 +2508,7 @@ public:
 
     int StartUIAbilityForOptionWrap(const Want &want, const StartOptions &options, sptr<IRemoteObject> callerToken,
         bool isPendingWantCaller, int32_t userId, int requestCode, uint32_t callerTokenId = 0, bool isImplicit = false,
-        bool isCallByShortcut = false);
+        bool isCallByShortcut = false, bool isCallByDelayed = false);
 
     /**
      * KillProcessForPermissionUpdate, call KillProcessForPermissionUpdate() through proxy object,
@@ -2576,6 +2614,17 @@ public:
      */
     virtual int32_t StartAbilityWithWait(Want &want, sptr<IAbilityStartWithWaitObserver> &observer) override;
 
+    /**
+     * Start UIAbility with callback to receive the request result, the callback is valid only for SA callers.
+     *
+     * @param want Indicates the ability to start.
+     * @param callerToken Indicates the caller ability token.
+     * @param callback Indicates the callback used to receive the result of request start ability.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t StartUIAbilityWithCallback(const Want &want, sptr<IRemoteObject> callerToken,
+        sptr<IRequestStartAbilityCallback> callback) override;
+
     int32_t UpdateKioskApplicationList(const std::vector<std::string> &appList) override;
 
     int32_t EnterKioskMode(sptr<IRemoteObject> callerToken) override;
@@ -2644,6 +2693,8 @@ public:
     static constexpr uint32_t FOREGROUND_HALF_TIMEOUT_MSG = 9;
     static constexpr uint32_t CONNECT_TIMEOUT_MSG = 10;
     static constexpr uint32_t CONNECT_HALF_TIMEOUT_MSG = 11;
+    static constexpr uint32_t SKILL_EXECUTE_TIMEOUT_MSG = 12;
+    static constexpr uint32_t START_SELF_TIMEOUT_MSG = 13;
 
     static constexpr uint32_t MIN_DUMP_ARGUMENT_NUM = 2;
     static constexpr uint32_t MAX_WAIT_SYSTEM_UI_NUM = 600;
@@ -2802,6 +2853,13 @@ protected:
     virtual int32_t GetUserLockedBundleList(int32_t userId,
         std::unordered_set<std::string> &userLockedBundleList) override;
 
+    /**
+     * StartSelfUIAbility from ApplicationContext and force launch in current process.
+     *
+     * @param want, the want of the ability to start.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int StartSelfUIAbilityByAppContext(const Want &want) override;
 private:
     int GetTopAbilityInner(sptr<IRemoteObject> &token, uint64_t displayId = 0);
 
@@ -2847,6 +2905,14 @@ private:
      * @return Returns ERR_OK on success, error code on failure.
      */
     int32_t CheckAndSubmitAutoStartupStatusBarTask(std::shared_ptr<AbilityRecord> abilityRecord);
+
+    /**
+     * @brief Check whether caller triggers distributed intent flood attack.
+     * @param callerUid Calling uid.
+     * @return Returns true if flood attack detected.
+     */
+    bool IsFloodAttackByCallerUid(int32_t callerUid);
+
     /**
      * initialization of ability manager service.
      *
@@ -3213,7 +3279,13 @@ private:
 
     ErrCode IsUIAbilityAlreadyExist(const Want &want, const std::string &specifiedFlag,
         int32_t appIndex, const std::string &instanceKey, AppExecFwk::LaunchMode launchMode);
-    
+
+    ErrCode IsSpecifiedUIAbilityAlreadyExist(const Want &want, const std::string &specifiedFlag,
+        int32_t appIndex, const std::string &instanceKey);
+
+    ErrCode CheckStartSelfUIAbilityInChildProcess(const Want &want, const std::string &specifiedFlag,
+        const std::shared_ptr<AbilityRecord> &callerRecord, AppExecFwk::AbilityInfo &abilityInfo);
+
     bool IsAppCloneOrMultiInstance(const Want &want, const std::shared_ptr<AbilityRecord> callerRecord,
         int32_t &appIndex, const std::string &callerInstanceKey);
 
@@ -3333,7 +3405,7 @@ private:
     };
     int32_t SignRestartAppFlag(const SignRestartAppFlagParam &param);
 
-    int32_t CheckRestartAppWant(const AAFwk::Want &want, int32_t appIndex, int32_t userId);
+    int32_t CheckRestartAppWant(const AppExecFwk::ElementName &elementName, int32_t appIndex, int32_t userId);
 
     int32_t CheckDebugAssertPermission();
     bool VerifySameAppOrAppIdentifierAllowListPermission(const AbilityRequest &abilityRequest);
@@ -3420,6 +3492,13 @@ private:
 
     bool HandleExecuteSAInterceptor(const Want &want, sptr<IRemoteObject> callerToken,
         AbilityRequest &abilityRequest, int32_t &result);
+
+    int StartAbilityDelayed(StartAbilityWrapParam &param);
+
+    int CheckDelayedStartBelongToCaller(const Want &want, const AppExecFwk::RunningProcessInfo &processInfo);
+
+    int StartAbilityDelayedInner(const Want &want, const AppExecFwk::RunningProcessInfo &processInfo,
+        int32_t callingPid);
 
     bool controllerIsAStabilityTest_ = false;
     bool isParamStartAbilityEnable_ = false;
@@ -3532,11 +3611,19 @@ private:
     void SetAppDeathRecipient(const sptr<IRemoteObject>& abilityToken);
     void HandleAppDiedForRecovery(const sptr<IRemoteObject>& remote, const AbilityInfo& abilityInfo,
         int32_t pid, int32_t uid, int32_t userId);
+    int32_t AtomicServicePreprocess(const Want &want);
     void startRecoveryMgr();
     int getAppRecoveryFlag(const sptr<IRemoteObject> &token);
     void HandleRecoveryRecipient(const std::shared_ptr<AbilityRecord>& abilityRecord,
         const sptr<IRemoteObject>& token);
     int32_t SetAppRecoveryFlag(const sptr<IRemoteObject>& token, int flag) override;
+    int32_t ExecuteIntentCommon(const sptr<IRemoteObject> &callerToken,
+        const std::shared_ptr<InsightIntentExecuteParam> &param, const std::string &callerBundleName,
+        const AbilityRuntime::ExecuteIntentCommonOptions &infos);
+    void GetCallerUidAndToken(const std::string &bundleName, int32_t userId,
+        int32_t &callerUid, uint32_t &accessToken);
+    bool IsDmsSameAPP(const AbilityRequest &abilityRequest);
+
 #ifdef BGTASKMGR_CONTINUOUS_TASK_ENABLE
     std::shared_ptr<BackgroundTaskObserver> bgtaskObserver_;
 #endif
@@ -3576,6 +3663,10 @@ private:
     ffrt::mutex shouldBlockAllAppStartMutex_;
     mutable ffrt::mutex timeoutMapLock_;
     std::mutex whiteListMutex_;
+    ffrt::mutex delayedStartPidsLock_;
+    std::unordered_set<int32_t> delayedStartPids_;
+    std::mutex floodAttackMutex_;
+    std::unordered_map<int32_t, std::deque<int64_t>> floodAttackStatistics_;
 
     std::mutex prepareTermiationCallbackMutex_;
     std::map<std::string, sptr<IPrepareTerminateCallback>> prepareTermiationCallbacks_;

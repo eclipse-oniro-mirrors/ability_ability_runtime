@@ -47,6 +47,7 @@ class AppfreezeManager : public std::enable_shared_from_this<AppfreezeManager> {
 public:
     struct AppInfo {
         bool isOccurException = false;
+        bool isFrozen = false;
         int pid;
         int uid;
         std::string bundleName;
@@ -130,6 +131,9 @@ public:
     int GetFreezeExitReason(const std::string& eventName);
     void UpdateFreezeExcludedPid(bool isAdd, int32_t targetPid, int32_t profilerPid);
     bool IsFreezeExcludedPid(int32_t targetPid);
+    bool CheckPreloadUIExtension(const std::string& message, const std::string& bundleName, int32_t pid,
+        const std::string& eventName);
+    bool CheckProcessExit(const std::string& eventName, bool foreground);
 
 private:
     struct PeerBinderInfo {
@@ -184,6 +188,7 @@ private:
     std::string CatcherStacktrace(int pid) const;
     FaultData GetFaultNotifyData(const FaultData& faultData, int pid);
     int AcquireStack(const FaultData& faultData, const AppInfo& appInfo, const std::string& memoryContent);
+    bool IsAncoProc(int pid);
     std::string GetAppfreezeInfoPath(const FaultData& faultData, const AppfreezeManager::AppInfo& appInfo);
     int NotifyANR(const FaultData& faultData, const AppfreezeManager::AppInfo& appInfo,
         const std::string& binderInfo, const std::string& memoryContent);

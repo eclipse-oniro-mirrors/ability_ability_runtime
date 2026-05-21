@@ -17,8 +17,10 @@
 
 #include <new>
 
+#include "ability_handler.h"
 #include "hilog_tag_wrapper.h"
 #include "ipc_inner_object.h"
+#include "modular_object_extension_info.h"
 #include "native_runtime.h"
 #include "securec.h"
 #include "want_manager.h"
@@ -53,6 +55,7 @@ void ModularObjectExtension::Init(const std::shared_ptr<AbilityLocalRecord> &rec
     moeContext_->type = AppExecFwk::ExtensionAbilityType::MODULAR_OBJECT;
     auto context = GetContext();
     if (context != nullptr) {
+        context->SetEventHandler(std::static_pointer_cast<AppExecFwk::EventHandler>(handler));
         moeContext_->context = context->weak_from_this();
     }
     moeInstance_->context = moeContext_;
@@ -92,6 +95,10 @@ void ModularObjectExtension::OnStop()
     if (moeInstance_ != nullptr && moeInstance_->onDestroyFunc != nullptr) {
         moeInstance_->onDestroyFunc(moeInstance_.get());
     }
+    if (!threadKey_.empty()) {
+        ModularObjectWorkerManager::GetInstance().ReleaseWorkerThread(threadKey_);
+        threadKey_.clear();
+    }
 }
 
 sptr<IRemoteObject> ModularObjectExtension::OnConnect(const AAFwk::Want &want)
@@ -122,6 +129,50 @@ void ModularObjectExtension::OnDisconnect(const AAFwk::Want &want)
     if (moeInstance_ != nullptr && moeInstance_->onDisconnectFunc != nullptr) {
         moeInstance_->onDisconnectFunc(moeInstance_.get());
     }
+}
+
+std::shared_ptr<AppExecFwk::AbilityHandler> ModularObjectExtension::GetAbilityHandler(
+    const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo)
+{
+    if (abilityInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "null abilityInfo");
+        return nullptr;
+    }
+    // Read threadMode from metadata
+    AAFwk::MoeThreadMode threadMode = AAFwk::MoeThreadMode::BUNDLE; // default
+    for (const auto &meta : abilityInfo->metadata) {
+        if (meta.name == "threadMode") {
+            if (meta.value == "BUNDLE") {
+                threadMode = AAFwk::MoeThreadMode::BUNDLE;
+            } else if (meta.value == "TYPE") {
+                threadMode = AAFwk::MoeThreadMode::TYPE;
+            } else if (meta.value == "INSTANCE") {
+                threadMode = AAFwk::MoeThreadMode::INSTANCE;
+            }
+            break;
+        }
+    }
+    auto &workerMgr = ModularObjectWorkerManager::GetInstance();
+    std::string threadKey;
+    switch (threadMode) {
+        case AAFwk::MoeThreadMode::BUNDLE:
+            threadKey = abilityInfo->bundleName;
+            break;
+        case AAFwk::MoeThreadMode::INSTANCE: {
+            uint32_t instanceId = workerMgr.GenerateInstanceId();
+            threadKey = abilityInfo->bundleName + "_" + abilityInfo->name + "_" + std::to_string(instanceId);
+            break;
+        }
+        case AAFwk::MoeThreadMode::TYPE:
+        default:
+            threadKey = abilityInfo->bundleName + "_" + abilityInfo->name;
+            break;
+    }
+    auto handler = workerMgr.GetOrCreateWorkerThread(threadKey);
+    if (handler != nullptr) {
+        threadKey_ = threadKey;
+    }
+    return handler;
 }
 
 bool ModularObjectExtension::LoadNativeExtensionModule()

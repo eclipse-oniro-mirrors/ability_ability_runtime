@@ -374,7 +374,7 @@ public:
 
     int StartAbilityByCall(const Want& want, const sptr<IAbilityConnection>& connect,
         const sptr<IRemoteObject>& callerToken, int32_t userId = DEFAULT_INVAL_VALUE, bool isSilent = false,
-        bool promotePriority = false, bool isVisible = false) override
+        bool promotePriority = false, bool isVisible = false, uint64_t specifiedFullTokenId = 0) override
     {
         return 0;
     }
@@ -462,6 +462,8 @@ public:
         const InsightIntentExecuteResult &result));
     MOCK_METHOD5(StartAbilityWithSpecifyTokenId, int(const Want& want, const sptr<IRemoteObject>& callerToken,
         uint32_t specifyTokenId, int32_t userId, int requestCode));
+    MOCK_METHOD1(StartSelf, int(sptr<IRemoteObject> token));
+    MOCK_METHOD3(StartSelfUIAbilityInChildProcess, ErrCode(const Want &, const std::string &, sptr<IRemoteObject>));
 };
 }  // namespace AAFwk
 }  // namespace OHOS

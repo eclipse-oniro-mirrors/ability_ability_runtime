@@ -35,6 +35,7 @@
 #include "inner_event.h"
 #include "ipc_singleton.h"
 #include "js_runtime.h"
+#include "mem_dump_callback_interface.h"
 #include "native_engine/native_engine.h"
 #include "overlay_event_subscriber.h"
 #include "resource_manager.h"
@@ -235,9 +236,9 @@ public:
      * @brief triggerGC and dump application's memory info.
      *
      * @param info, pid, tid, needGc, needSnapshot.
-     * @param dumpResult The dump result string
+     * @param callback The callback to receive dump result
      */
-    void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult) override;
+    void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback) override;
 
     /**
      *
@@ -352,7 +353,7 @@ public:
     int32_t ScheduleNotifyAppFault(const FaultData &faultData) override;
 #ifdef CJ_FRONTEND
     CJUncaughtExceptionInfo CreateCjExceptionInfo(const std::string &bundleName, uint32_t versionCode,
-        const std::string &hapPath);
+        const std::string &hapPath, const std::string &appRunningId);
     CJEventReportInfo CreateCjEventReportInfo(const std::string &bundleName, uint32_t versionCode,
         const std::string &hapPath, std::string &appRunningId);
 #endif
@@ -446,8 +447,8 @@ private:
 
     void HandleSchedulePrepareTerminate(const std::string &moduleName);
 
-    void PreloadModule(const AppExecFwk::HapModuleInfo &entryHapModuleInfo,
-        const std::unique_ptr<AbilityRuntime::Runtime>& runtime);
+    void PreloadModule(const BundleInfo &bundleInfo, const AppLaunchData &appLaunchData,
+        const AppExecFwk::HapModuleInfo &entryHapModuleInfo, const std::unique_ptr<AbilityRuntime::Runtime> &runtime);
 
     void ProcessMainAbility(const AbilityInfo &info, const std::unique_ptr<AbilityRuntime::Runtime>& runtime);
 
@@ -789,8 +790,7 @@ private:
     std::string pluginDefaultNamespaceLdDictionary_ = "";
     RuntimeUpdateParam runtimeUpdateParam_;
 #if defined(NWEB) && defined(NWEB_GRAPHIC)
-    sptr<OHOS::IConsumerSurface> cSurface_ = nullptr;
-    sptr<OHOS::Surface> pSurface_ = nullptr;
+    Rosen::RSSurfaceNode::SharedPtr preloadSurfaceNode_ = nullptr;
     std::shared_ptr<NWeb::NWeb> preloadNWeb_ = nullptr;
 #endif
 

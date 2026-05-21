@@ -41,6 +41,7 @@
 #include "insight_intent_executor_info.h"
 #include "insight_intent_executor_mgr.h"
 #include "interop_object_instance.h"
+#include "ets_insight_intent_page.h"
 #include "js_insight_intent_utils.h"
 #include "js_runtime.h"
 #include "js_runtime_utils.h"
@@ -668,7 +669,7 @@ void EtsUIAbility::HandleNativeModule()
     }
 
     // Create NativeAbilityWrapper
-    auto wrapper = std::make_shared<NativeAbilityWrapper>();
+    auto wrapper = std::make_shared<AbilityRuntime_NativeAbilityWrapper>();
     wrapper->instanceId = GetInstanceId();
     wrapper->abilityName = GetAbilityName();
     wrapper->etsAbilityObj = reinterpret_cast<ani_object>(etsAbilityObj_->aniRef);
@@ -1241,6 +1242,7 @@ void EtsUIAbility::DoOnForeground(const Want &want)
             windowMode_ = windowMode;
             TAG_LOGD(AAFwkTag::UIABILITY, "set window mode: %{public}d", windowMode);
         }
+        SetInsightIntentParam(want, false);
     }
 
     auto window = scene_->GetMainWindow();
@@ -1333,6 +1335,7 @@ void EtsUIAbility::DoOnForegroundForSceneIsNull(const Want &want)
         return;
     }
 
+    SetInsightIntentParam(want, true);
     AbilityContinuationOrRecover(want);
     auto window = scene_->GetMainWindow();
     if (window) {
@@ -1495,6 +1498,25 @@ void EtsUIAbility::ExecuteInsightIntentRepeateForeground(const Want &want,
     }
 }
 
+void EtsUIAbility::RequestFocus(const Want &want)
+{
+    TAG_LOGD(AAFwkTag::UIABILITY, "RequestFocus called");
+    if (scene_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "null scene_");
+        return;
+    }
+    auto window = scene_->GetMainWindow();
+    if (window != nullptr && want.HasParameter(Want::PARAM_RESV_WINDOW_MODE) &&
+        !Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
+        auto windowMode = want.GetIntParam(
+            Want::PARAM_RESV_WINDOW_MODE, AAFwk::AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_UNDEFINED);
+        window->SetWindowMode(static_cast<Rosen::WindowMode>(windowMode));
+        TAG_LOGD(AAFwkTag::UIABILITY, "set window mode: %{public}d", windowMode);
+    }
+    SetInsightIntentParam(want, false);
+    scene_->GoForeground(UIAbility::sceneFlag_);
+}
+
 void EtsUIAbility::ExecuteInsightIntentMoveToForeground(const Want &want,
     const std::shared_ptr<InsightIntentExecuteParam> &executeParam,
     std::unique_ptr<InsightIntentExecutorAsyncCallback> callback)
@@ -1520,7 +1542,9 @@ void EtsUIAbility::ExecuteInsightIntentMoveToForeground(const Want &want,
         }
         ability->CallOnForegroundFunc(want);
     };
-    callback->Push(asyncCallback);
+    if (!CheckIsSilentForeground()) {
+        callback->Push(asyncCallback);
+    }
     const WantParams &wantParams = want.GetParams();
     std::string arkTSMode = wantParams.GetStringParam(AppExecFwk::INSIGHT_INTENT_ARKTS_MODE);
     InsightIntentExecutorInfo executeInfo;
@@ -1589,6 +1613,53 @@ void EtsUIAbility::ExecuteInsightIntentMoveToForeground(const Want &want,
         }
     }
     intentId_ = executeInfo.executeParam->insightIntentId_;
+}
+
+void EtsUIAbility::ExecuteInsightIntentPage(const Want &want,
+    const std::shared_ptr<InsightIntentExecuteParam> &executeParam,
+    std::unique_ptr<InsightIntentExecutorAsyncCallback> callback)
+{
+    TAG_LOGD(AAFwkTag::UIABILITY, "ExecuteInsightIntentPage called");
+    if (abilityInfo_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "invalid abilityInfo");
+        InsightIntentExecutorMgr::TriggerCallbackInner(std::move(callback),
+            static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_PARAM));
+        return;
+    }
+
+    InsightIntentExecutorInfo executeInfo;
+    executeInfo.hapPath = abilityInfo_->hapPath;
+    executeInfo.executeParam = executeParam;
+    auto ret = DelayedSingleton<InsightIntentExecutorMgr>::GetInstance()->ExecuteInsightIntent(
+        etsRuntime_, executeInfo, std::move(callback));
+    if (!ret) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "execute page insight intent failed");
+    }
+}
+
+void EtsUIAbility::SetInsightIntentParam(const Want &want, bool coldStart)
+{
+    if (scene_ == nullptr) {
+        TAG_LOGW(AAFwkTag::UIABILITY, "scene invalid");
+        return;
+    }
+
+    auto window = scene_->GetMainWindow();
+    if (window == nullptr) {
+        TAG_LOGW(AAFwkTag::UIABILITY, "window invalid");
+        return;
+    }
+
+    if (abilityInfo_ == nullptr) {
+        TAG_LOGW(AAFwkTag::UIABILITY, "abilityInfo invalid");
+        return;
+    }
+
+    if (!AppExecFwk::InsightIntentExecuteParam::IsInsightIntentPage(want)) {
+        return;
+    }
+
+    EtsInsightIntentPage::SetInsightIntentParam(abilityInfo_->hapPath, want, window, coldStart);
 }
 
 void EtsUIAbility::ExecuteInsightIntentBackground(const Want &want,

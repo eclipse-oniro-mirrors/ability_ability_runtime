@@ -157,6 +157,8 @@ export default class UIAbilityContext extends Context {
 
   private native nativeStartSelfUIAbilityInCurrentProcessSync(want: Want, specifiedFlag: string, options: StartOptions, callback: AsyncCallbackWrapper<void>): void;
 
+  private native nativeStartSelfUIAbilityInChildProcessSync(want: Want, specifiedFlag: string, callback: AsyncCallbackWrapper<void>): void;
+
   private native nativeOnSetRestoreEnabled(enabled: boolean): void;
 
   private native nativeConnectServiceExtensionAbilityWithAccount(want: Want, accountId: int,
@@ -217,6 +219,8 @@ export default class UIAbilityContext extends Context {
   private native nativeSetMissionWindowIcon(windowIcon: image.PixelMap, callback: AsyncCallbackWrapper<void>): void;
 
   private native nativeSetOnNewWantSkipScenarios(scenarios: int, callback: AsyncCallbackWrapper<void>): void;
+
+  private native nativeStartSelf(callback: AsyncCallbackWrapper<void>): void;
 
   startAbility(want: Want, callback: AsyncCallback<void>): void {
     let myCall = new AsyncCallbackWrapper<void>(callback);
@@ -731,6 +735,23 @@ hideAbility(): Promise<void> {
     });
   }
 
+  startSelfUIAbilityInChildProcess(want: Want, specifiedFlag: string): Promise<void> {
+    return new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
+      let syncCall = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+        if (err == null || err.code == 0) {
+          resolve(undefined);
+        } else {
+          reject(err);
+        }
+      });
+      taskpool.execute((): void => {
+        this.nativeStartSelfUIAbilityInChildProcessSync(want, specifiedFlag, syncCall);
+      }).catch((err: Error): void => {
+        reject(err as BusinessError);
+      });
+    });
+  }
+
   setAbilityInstanceInfo(label: string, icon: image.PixelMap): Promise<void> {
     this.nativeSetAbilityInstanceInfoCheck(label, icon);
     let p:Promise<void> = new Promise<void>((resolve: (data:undefined)=>void, reject: (err: BusinessError)=>void):void => {
@@ -1115,6 +1136,23 @@ hideAbility(): Promise<void> {
       });
       taskpool.execute((): void => {
         this.nativeSetOnNewWantSkipScenarios(scenarios, callback);
+      }).catch((err: Error): void => {
+        reject(err as BusinessError);
+      });
+    });
+  }
+
+  startSelf(): Promise<void> {
+    return new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
+      let callback = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+        if (err == null || err.code == 0) {
+          resolve(undefined);
+        } else {
+          reject(err);
+        }
+      });
+      taskpool.execute((): void => {
+        this.nativeStartSelf(callback);
       }).catch((err: Error): void => {
         reject(err as BusinessError);
       });

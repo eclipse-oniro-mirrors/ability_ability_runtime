@@ -43,6 +43,7 @@ struct CJRuntimeAPI {
     void (*DumpHeapSnapshot)(int fd) = nullptr;
     void (*ForceFullGC)() = nullptr;
     void (*RegisterEventHandler)(const CJEventReportInfo& handle) = nullptr;
+    void (*RegisterExceptionOnCreated)(void (*callback)()) = nullptr;
 };
 }
 

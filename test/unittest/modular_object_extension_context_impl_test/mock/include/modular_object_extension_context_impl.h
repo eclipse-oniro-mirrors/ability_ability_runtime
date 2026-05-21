@@ -26,6 +26,16 @@ class ModularObjectExtensionContext : public ExtensionContext {
 public:
     static const size_t CONTEXT_TYPE_ID;
 
+    void SetEventHandler(const std::shared_ptr<AppExecFwk::EventHandler> &handler)
+    {
+        handler_ = handler;
+    }
+
+    std::shared_ptr<AppExecFwk::EventHandler> GetEventHandler() const
+    {
+        return handler_.lock();
+    }
+
     ErrCode StartSelfUIAbility(const AAFwk::Want &want) const
     {
         return AAFwk::AbilityManagerClient::GetInstance()->StartSelfUIAbility(want);
@@ -43,6 +53,9 @@ public:
     }
 
     bool IsContext(size_t contextTypeId) { return contextTypeId == CONTEXT_TYPE_ID; }
+
+private:
+    std::weak_ptr<AppExecFwk::EventHandler> handler_;
 };
 
 } // namespace AbilityRuntime

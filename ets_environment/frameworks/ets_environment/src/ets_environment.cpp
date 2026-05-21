@@ -20,6 +20,7 @@
 #include <dlfcn.h>
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <regex>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -64,6 +65,9 @@ constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
 constexpr char SANDBOX_ARK_PROFILE_PATH[] = "/data/storage/ark-profile/";
 constexpr char ARK_PROFILE_SUFFIX[] = ".ap";
 constexpr char MERGE_ABC_PATH[] = "/ets/modules_static.abc";
+constexpr char ABS_DATA_CODE_PATH[] = "/data/app/el1/bundle/public/";
+constexpr char BUNDLE[] = "bundle/";
+constexpr char ABS_CODE_PATH[] = "/data/storage/el1/";
 
 
 using CreateVMETSRuntimeType = ani_status (*)(const ani_options *options, uint32_t version, ani_vm **result);
@@ -458,11 +462,16 @@ bool ETSEnvironment::InitAbcLinker(ani_env *env)
     }
 
     ani_status status = ANI_ERROR;
-    if ((status = env->FindClass(CLASSNAME_LINKER, &vmEntry_.abcLinkerClass_)) != ANI_OK) {
+    ani_class abcLinkerClass {};
+    if ((status = env->FindClass(CLASSNAME_LINKER, &abcLinkerClass)) != ANI_OK) {
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "FindClass failed, status: %{public}d", status);
         return false;
     }
-
+    status = env->GlobalReference_Create(abcLinkerClass, reinterpret_cast<ani_ref *>(&vmEntry_.abcLinkerClass_));
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "GlobalReference_Create failed, status: %{public}d", status);
+        return false;
+    }
     ani_ref undefinedRef = nullptr;
     if ((status = env->GetUndefined(&undefinedRef)) != ANI_OK) {
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "GetUndefined failed, status: %{public}d", status);
@@ -600,7 +609,12 @@ bool ETSEnvironment::LoadModule(const std::string &modulePath, const std::string
     }
     ani_ref clsRef = nullptr;
     ani_class clsAni = nullptr;
-    if ((status = env->Object_CallMethod_Ref(abcObj, loadClassMethod, &clsRef, clsStr, false)) != ANI_OK) {
+    ani_object boolObj = nullptr;
+    if ((status = env->Primitive_Box_Boolean(ANI_FALSE, &boolObj)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "Primitive_Box_Boolean failed, status: %{public}d", status);
+        return false;
+    }
+    if ((status = env->Object_CallMethod_Ref(abcObj, loadClassMethod, &clsRef, clsStr, boolObj)) != ANI_OK) {
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "Object_CallMethod_Ref failed, status: %{public}d", status);
         return false;
     }
@@ -639,8 +653,8 @@ bool ETSEnvironment::FinishPreload(napi_env jsEnv) {
 bool ETSEnvironment::PostFork(void *napiEnv, const std::string &aotPath,
     const std::vector<std::string> &appInnerHspPathList, const std::vector<std::string> &staticHapModuleNameList,
     const std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> &commonHspBundleInfos,
-    const std::shared_ptr<OHOS::AppExecFwk::EventRunner> &eventRunner,
-    const bool isBaseLineProfile)
+    const std::shared_ptr<OHOS::AppExecFwk::EventRunner> &eventRunner, const bool isBaseLineProfile,
+    const std::vector<std::string> &staticPluginHspPathList, const std::string &bundleName)
 {
     InitEventHandler(eventRunner);
 
@@ -668,7 +682,9 @@ bool ETSEnvironment::PostFork(void *napiEnv, const std::string &aotPath,
 
     appInnerHspPathList_ = appInnerHspPathList;
     commonHspBundleInfos_ = commonHspBundleInfos;
-
+    staticPluginHspPathList_ = staticPluginHspPathList;
+    bundleName_ = bundleName;
+    
     RegisterProfilePaths(staticHapModuleNameList);
     ARKVM_RegisterExternalScheduler(PostTaskWrapper);
 
@@ -779,10 +795,11 @@ ETSEnvFuncs *ETSEnvironment::RegisterFuncs()
         .PostFork = [](void *napiEnv, const std::string &aotPath, const std::vector<std::string> &appInnerHspPathList,
             const std::vector<std::string> &staticHapModuleNameList,
             const std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> &commonHspBundleInfos,
-            const std::shared_ptr<OHOS::AppExecFwk::EventRunner> &eventRunner,
-            const bool isBaseLineProfile) {
+            const std::shared_ptr<OHOS::AppExecFwk::EventRunner> &eventRunner, const bool isBaseLineProfile,
+            const std::vector<std::string> &staticPluginHspPathList, const std::string &bundleName) {
             ETSEnvironment::GetInstance()->PostFork(napiEnv, aotPath, appInnerHspPathList,
-                staticHapModuleNameList, commonHspBundleInfos, eventRunner, isBaseLineProfile);
+                staticHapModuleNameList, commonHspBundleInfos, eventRunner, isBaseLineProfile, staticPluginHspPathList,
+                bundleName);
         },
         .PreloadSystemClass = [](const char *className) {
             ETSEnvironment::GetInstance()->PreloadSystemClass(className);
@@ -965,6 +982,13 @@ std::vector<std::string> ETSEnvironment::GetHspPathList()
 
     for (const auto &appInnerHspPath : appInnerHspPathList_) {
         hspPathList.push_back(AbilityBase::GetLoadPath(appInnerHspPath));
+    }
+
+    for (const auto &pluginHspPath : staticPluginHspPathList_) {
+        std::string targetPath = pluginHspPath;
+        std::regex patter(std::string(ABS_DATA_CODE_PATH) + bundleName_ + "/");
+        targetPath = std::regex_replace(targetPath, patter, std::string(ABS_CODE_PATH) + std::string(BUNDLE));
+        hspPathList.push_back(targetPath);
     }
 
     for (const auto &it : hspPathList) {

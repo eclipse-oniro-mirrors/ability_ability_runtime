@@ -583,7 +583,7 @@ int32_t AppMgrProxy::DumpCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info)
     return reply.ReadInt32();
 }
 
-int32_t AppMgrProxy::DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
+int32_t AppMgrProxy::DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "AppMgrProxy::DumpMem.");
     MessageParcel data;
@@ -593,9 +593,54 @@ int32_t AppMgrProxy::DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &d
         return ERR_FLATTEN_OBJECT;
     }
     PARCEL_UTIL_WRITE_RET_INT(data, Parcelable, &info);
+    if (callback != nullptr) {
+        if (!data.WriteBool(true) || !data.WriteRemoteObject(callback->AsObject())) {
+            TAG_LOGE(AAFwkTag::APPMGR, "write callback failed");
+            return ERR_INVALID_VALUE;
+        }
+    } else {
+        if (!data.WriteBool(false)) {
+            TAG_LOGE(AAFwkTag::APPMGR, "write callback flag failed");
+            return ERR_INVALID_VALUE;
+        }
+    }
+    int32_t ret = SendRequest(AppMgrInterfaceCode::DUMP_MEM_PROCESS, data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::APPMGR, "SendRequest failed: %{public}d", ret);
+        return ret;
+    }
+    return reply.ReadInt32();
+}
 
-    PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::DUMP_MEM_PROCESS, data, reply, option);
-    dumpResult = reply.ReadString();
+int32_t AppMgrProxy::ReportDumpMemResult(sptr<IMemDumpCallback> callback,
+    const std::string &dumpResult)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    if (!WriteInterfaceToken(data)) {
+        return ERR_FLATTEN_OBJECT;
+    }
+    if (callback != nullptr) {
+        if (!data.WriteRemoteObject(callback->AsObject())) {
+            TAG_LOGE(AAFwkTag::APPMGR, "write callback failed");
+            return ERR_INVALID_VALUE;
+        }
+    } else {
+        if (!data.WriteRemoteObject(nullptr)) {
+            TAG_LOGE(AAFwkTag::APPMGR, "write null callback failed");
+            return ERR_INVALID_VALUE;
+        }
+    }
+    if (!data.WriteString(dumpResult)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write dumpResult failed");
+        return ERR_INVALID_VALUE;
+    }
+    int32_t ret = SendRequest(AppMgrInterfaceCode::REPORT_DUMP_MEM_RESULT, data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::APPMGR, "SendRequest failed: %{public}d", ret);
+        return ret;
+    }
     return reply.ReadInt32();
 }
 
@@ -2363,6 +2408,24 @@ int32_t AppMgrProxy::IsProcessCacheSupported(int32_t pid, bool &isSupported)
     return reply.ReadInt32();
 }
 
+int32_t AppMgrProxy::IsChildProcessSupported(bool isNative, bool &isSupported)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "IsChildProcessSupported called");
+    MessageParcel data;
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write interface token failed.");
+        return AAFwk::ERR_WRITE_INTERFACE_TOKEN_FAILED;
+    }
+    PARCEL_UTIL_WRITE_RET_INT(data, Bool, isNative);
+
+    MessageParcel reply;
+    MessageOption option;
+
+    PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::IS_CHILD_PROCESS_SUPPORTED, data, reply, option);
+    isSupported = reply.ReadBool();
+    return reply.ReadInt32();
+}
+
 int32_t AppMgrProxy::SetProcessCacheEnable(int32_t pid, bool enable)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "SetProcessCacheEnable called");
@@ -2985,6 +3048,38 @@ int32_t AppMgrProxy::GetAllAbilityInfos(const int32_t pid, std::vector<AppExecFw
     }
 
     return ret;
+}
+
+int32_t AppMgrProxy::EnableDelayedProcessExit(int32_t pid, bool enabled)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write interface token failed.");
+        return IPC_PROXY_ERR;
+    }
+
+    PARCEL_UTIL_WRITE_RET_INT(data, Int32, pid);
+    PARCEL_UTIL_WRITE_RET_INT(data, Bool, enabled);
+    PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::ENABLE_DELAYED_PROCESS_EXIT, data, reply, option);
+    return reply.ReadInt32();
+}
+
+void AppMgrProxy::CancelDelayedExitTask(int32_t pid)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write interface token failed.");
+        return;
+    }
+
+    PARCEL_UTIL_WRITE_NORET(data, Int32, pid);
+    PARCEL_UTIL_SENDREQ_NORET(AppMgrInterfaceCode::CANCEL_DELAYED_EXIT_TASK, data, reply, option);
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

@@ -22,17 +22,25 @@ namespace CliTool {
 bool CliSessionInfo::Marshalling(Parcel &parcel) const
 {
     if (!parcel.WriteString(sessionId)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write sessionId.");
         return false;
     }
     if (!parcel.WriteString(toolName)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write toolName.");
         return false;
     }
     if (!parcel.WriteString(status)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write status.");
         return false;
     }
 
-    if (!parcel.WriteParcelable(result.get())) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Write result failed.");
+    bool hasResult = (result != nullptr);
+    if (!parcel.WriteBool(hasResult)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write hasResult flag.");
+        return false;
+    }
+    if (hasResult && !parcel.WriteParcelable(result.get())) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write ExecResult parcelable.");
         return false;
     }
     return true;
@@ -41,25 +49,41 @@ bool CliSessionInfo::Marshalling(Parcel &parcel) const
 CliSessionInfo *CliSessionInfo::Unmarshalling(Parcel &parcel)
 {
     auto *info = new (std::nothrow) CliSessionInfo();
-    if (info && !parcel.ReadString(info->sessionId)) {
+    if (info == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to allocate CliSessionInfo.");
+        return nullptr;
+    }
+    if (!parcel.ReadString(info->sessionId)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to read sessionId.");
         delete info;
         return nullptr;
     }
     if (!parcel.ReadString(info->toolName)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to read toolName.");
         delete info;
         return nullptr;
     }
     if (!parcel.ReadString(info->status)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to read status.");
         delete info;
         return nullptr;
     }
 
-    std::shared_ptr<ExecResult> execResult(parcel.ReadParcelable<ExecResult>());
-    if (execResult == nullptr) {
+    bool hasResult = false;
+    if (!parcel.ReadBool(hasResult)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to read hasResult flag.");
         delete info;
         return nullptr;
     }
-    info->result = execResult;
+    if (hasResult) {
+        std::shared_ptr<ExecResult> execResult(parcel.ReadParcelable<ExecResult>());
+        if (execResult == nullptr) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to read ExecResult parcelable.");
+            delete info;
+            return nullptr;
+        }
+        info->result = execResult;
+    }
     return info;
 }
 } // namespace CliTool

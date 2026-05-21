@@ -28,10 +28,12 @@ struct VerificationInfo {
     uint32_t accessTokenId = 0;
     uint32_t specifyTokenId = 0;
     int32_t apiTargetVersion = 0;
+    uint32_t specifiedFullTokenId = 0;
     bool visible = false;
     bool isBackgroundCall = true;
     bool associatedWakeUp = false;
     bool withContinuousTask = false;
+    uint32_t skillCallerTokenId = 0;
 };
 
     PermissionVerification() = default;
@@ -141,11 +143,14 @@ private:
     bool JudgeStartInvisibleAbility(const uint32_t accessTokenId, const bool visible,
         const uint32_t specifyTokenId = 0) const;
 
-    bool JudgeStartAbilityFromBackground(const bool isBackgroundCall) const;
+    bool JudgeStartAbilityFromBackground(const bool isBackgroundCall,
+        const uint32_t specifyTokenId = 0) const;
 
     bool JudgeAssociatedWakeUp(const uint32_t accessTokenId, const bool associatedWakeUp) const;
 
     int JudgeInvisibleAndBackground(const VerificationInfo &verificationInfo, bool isCallByShortcut = false) const;
+
+    int CheckSkillStartByCallPermission(const VerificationInfo &verificationInfo) const;
 
     inline bool IsCallFromSameAccessToken(const uint32_t accessTokenId) const
     {

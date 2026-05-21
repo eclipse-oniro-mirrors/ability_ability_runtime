@@ -62,7 +62,13 @@ int32_t AgentManagerClient::GetAgentCardsByBundleName(const std::string &bundleN
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null agentmgr");
         return ERR_NULL_AGENT_MGR_PROXY;
     }
-    return agentMgr->GetAgentCardsByBundleName(bundleName, cards);
+    AgentCardsRawData rawData;
+    auto ret = agentMgr->GetAgentCardsByBundleName(bundleName, rawData);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "get by bundle failed: %{public}d", ret);
+        return ret;
+    }
+    return AgentCardsRawData::ToAgentCardVec(rawData, cards);
 }
 
 int32_t AgentManagerClient::GetAgentCardByAgentId(const std::string &bundleName, const std::string &agentId,
