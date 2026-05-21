@@ -328,5 +328,56 @@ HWTEST_F(DumpRuntimeHelperTestSecond, DumpJsHeap_0700, TestSize.Level1)
     helper->DumpJsHeap(info);
     EXPECT_NE(application, nullptr);
 }
+
+/**
+ * @tc.number: DumpNativeHeap_1000
+ * @tc.name: DumpNativeHeap
+ * @tc.desc: Test DumpNativeHeap when application is nullptr.
+ */
+HWTEST_F(DumpRuntimeHelperTestSecond, DumpNativeHeap_1000, TestSize.Level1)
+{
+    std::shared_ptr<OHOSApplication> application = nullptr;
+    auto helper = std::make_shared<DumpRuntimeHelper>(application);
+    OHOS::AppExecFwk::MemDumpInfo info;
+    std::string dumpResult = "";
+    helper->DumpNativeHeap(info, dumpResult);
+    EXPECT_EQ(application, nullptr);
+}
+
+/**
+ * @tc.number: DumpNativeHeap_1100
+ * @tc.name: DumpNativeHeap
+ * @tc.desc: Test DumpNativeHeap when info.needLeakobj is true.
+ */
+HWTEST_F(DumpRuntimeHelperTestSecond, DumpNativeHeap_1100, TestSize.Level1)
+{
+    std::shared_ptr<OHOSApplication> application = std::shared_ptr<OHOSApplication>(
+        ApplicationLoader::GetInstance().GetApplicationByName());
+    auto helper = std::make_shared<DumpRuntimeHelper>(application);
+    OHOS::AppExecFwk::MemDumpInfo info;
+    info.needLeakobj = true;
+    std::string dumpResult = "";
+    
+    helper->DumpNativeHeap(info, dumpResult);
+    EXPECT_NE(application, nullptr);
+}
+
+/**
+ * @tc.number: DumpNativeHeap_1200
+ * @tc.name: DumpNativeHeap
+ * @tc.desc: Test DumpNativeHeap when info.needLeakobj is false.
+ */
+HWTEST_F(DumpRuntimeHelperTestSecond, DumpNativeHeap_1200, TestSize.Level1)
+{
+    std::shared_ptr<OHOSApplication> application = std::shared_ptr<OHOSApplication>(
+        ApplicationLoader::GetInstance().GetApplicationByName());
+    auto helper = std::make_shared<DumpRuntimeHelper>(application);
+    OHOS::AppExecFwk::MemDumpInfo info;
+    info.needLeakobj = false;
+    std::string dumpResult = "";
+    
+    helper->DumpNativeHeap(info, dumpResult);
+    EXPECT_NE(application, nullptr);
+}
 }
 }

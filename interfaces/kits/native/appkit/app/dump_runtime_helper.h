@@ -69,7 +69,7 @@ private:
     static bool Check2CQuota();
     static bool Check2DQuota(bool needDecreaseQuota);
     static bool SafeStoll(const std::string &str, long long &value);
-    static GetMemLeakStringFunc LoadMemLeakFunc();
+    static GetMemLeakStringFunc LoadMemLeakFunc(void **handle);
     static bool GetDumpResult(std::string &dumpResult);
     static bool GetSnapshot(int fd);
     static int GetCompressQuota (const std::vector<int64_t> &quotas);
