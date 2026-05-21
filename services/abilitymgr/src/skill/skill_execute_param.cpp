@@ -22,6 +22,9 @@
 
 namespace OHOS {
 namespace AppExecFwk {
+namespace {
+constexpr int32_t MAX_SRC_ENTRIES_COUNT = 500;
+} // namespace
 
 bool SkillExecuteParam::ReadFromParcel(Parcel &parcel)
 {
@@ -37,6 +40,9 @@ bool SkillExecuteParam::ReadFromParcel(Parcel &parcel)
         skillArgs_ = std::make_shared<AAFwk::WantParams>();
     }
     int32_t srcCount = parcel.ReadInt32();
+    if (srcCount < 0 || srcCount > MAX_SRC_ENTRIES_COUNT) {
+        return false;
+    }
     for (int32_t i = 0; i < srcCount; i++) {
         srcEntries_.push_back(Str16ToStr8(parcel.ReadString16()));
     }

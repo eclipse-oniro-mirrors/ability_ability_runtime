@@ -17,6 +17,9 @@
 
 namespace OHOS {
 namespace AppExecFwk {
+namespace {
+constexpr int32_t MAX_ARRAY_COUNT = 500;
+} // namespace
 
 bool SkillQueryInfo::ReadFromParcel(Parcel &parcel)
 {
@@ -27,11 +30,17 @@ bool SkillQueryInfo::ReadFromParcel(Parcel &parcel)
     type = parcel.ReadInt32();
 
     int32_t srcCount = parcel.ReadInt32();
+    if (srcCount < 0 || srcCount > MAX_ARRAY_COUNT) {
+        return false;
+    }
     for (int32_t i = 0; i < srcCount; i++) {
         srcEntries.push_back(Str16ToStr8(parcel.ReadString16()));
     }
 
     int32_t permCount = parcel.ReadInt32();
+    if (permCount < 0 || permCount > MAX_ARRAY_COUNT) {
+        return false;
+    }
     for (int32_t i = 0; i < permCount; i++) {
         permissions.push_back(Str16ToStr8(parcel.ReadString16()));
     }
