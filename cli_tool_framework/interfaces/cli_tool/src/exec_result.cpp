@@ -15,26 +15,34 @@
 
 #include "exec_result.h"
 
+#include "hilog_tag_wrapper.h"
+
 namespace OHOS {
 namespace CliTool {
 bool ExecResult::Marshalling(Parcel &parcel) const
 {
     if (!parcel.WriteInt32(exitCode)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write exitCode.");
         return false;
     }
     if (!parcel.WriteString(outputText)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write outputText.");
         return false;
     }
     if (!parcel.WriteString(errorText)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write errorText.");
         return false;
     }
     if (!parcel.WriteInt32(signalNumber)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write signalNumber.");
         return false;
     }
     if (!parcel.WriteBool(timedOut)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write timedOut.");
         return false;
     }
     if (!parcel.WriteInt64(executionTime)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write executionTime.");
         return false;
     }
     return true;
@@ -43,27 +51,37 @@ bool ExecResult::Marshalling(Parcel &parcel) const
 ExecResult *ExecResult::Unmarshalling(Parcel &parcel)
 {
     auto *result = new (std::nothrow) ExecResult();
-    if (result && !parcel.ReadInt32(result->exitCode)) {
+    if (result == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to allocate ExecResult.");
+        return nullptr;
+    }
+    if (!parcel.ReadInt32(result->exitCode)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to read exitCode.");
         delete result;
         return nullptr;
     }
     if (!parcel.ReadString(result->outputText)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to read outputText.");
         delete result;
         return nullptr;
     }
     if (!parcel.ReadString(result->errorText)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to read errorText.");
         delete result;
         return nullptr;
     }
     if (!parcel.ReadInt32(result->signalNumber)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to read signalNumber.");
         delete result;
         return nullptr;
     }
     if (!parcel.ReadBool(result->timedOut)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to read timedOut.");
         delete result;
         return nullptr;
     }
     if (!parcel.ReadInt64(result->executionTime)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to read executionTime.");
         delete result;
         return nullptr;
     }
