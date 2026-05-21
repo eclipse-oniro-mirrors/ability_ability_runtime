@@ -35,17 +35,6 @@ void CliCommonMock::Reset()
 
 namespace Security {
 namespace AccessToken {
-int32_t AccessTokenKit::VerifyAccessToken(AccessTokenID, const std::vector<std::string> &permissions,
-    std::vector<int32_t> &permStateList)
-{
-    if (!CliTool::CliCommonMock::permissionStateList.empty()) {
-        permStateList = CliTool::CliCommonMock::permissionStateList;
-    } else {
-        permStateList.assign(permissions.size(), CliTool::CliCommonMock::vectorPermissionResult);
-    }
-    return CliTool::CliCommonMock::vectorPermissionResult;
-}
-
 int32_t AccessTokenKit::VerifyAccessToken(AccessTokenID, const std::string &, bool)
 {
     return CliTool::CliCommonMock::singlePermissionResult;

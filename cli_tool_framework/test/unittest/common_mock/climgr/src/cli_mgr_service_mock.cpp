@@ -168,11 +168,6 @@ int32_t CliToolDataManager::GetToolByName(const std::string &name, ToolInfo &too
     return ERR_OK;
 }
 
-bool PermissionUtil::VerifyAccessToken(Security::AccessToken::AccessTokenID, const std::vector<std::string> &)
-{
-    return true;
-}
-
 bool PermissionUtil::VerifyAccessToken(Security::AccessToken::AccessTokenID, const std::string &)
 {
     return true;

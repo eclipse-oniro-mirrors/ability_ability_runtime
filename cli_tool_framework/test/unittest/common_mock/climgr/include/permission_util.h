@@ -22,8 +22,6 @@ public:
     ~PermissionUtil() = default;
 
     static bool VerifyAccessToken(AccessToken::AccessTokenID tokenId,
-        const std::vector<std::string> &requirePermissions);
-    static bool VerifyAccessToken(AccessToken::AccessTokenID tokenId,
         const std::string &requirePermission);
 };
 
