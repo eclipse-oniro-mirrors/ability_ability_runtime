@@ -2098,7 +2098,7 @@ void AppMgrServiceInner::LoadAbility(std::shared_ptr<AbilityInfo> abilityInfo, s
             isExtensionSandBox = IsIsolateExtensionSandBox(abilityInfo, hapModuleInfo);
             appRecord = appRunningManager_->CheckAppRunningRecordIsExist(appInfo->name,
                 processName, appInfo->uid, bundleInfo, specifiedProcessFlag, &isProcCache, loadParam->instanceKey,
-                customProcessFlag);
+                customProcessFlag, false, false, loadParam->reusePid);
         }
     } else {
         if (!GetBundleAndHapInfo(*abilityInfo, appInfo, bundleInfo, hapModuleInfo, appIndex)) {
@@ -2116,7 +2116,7 @@ void AppMgrServiceInner::LoadAbility(std::shared_ptr<AbilityInfo> abilityInfo, s
         }
         appRecord = appRunningManager_->CheckAppRunningRecordIsExist(appInfo->name,
             processName, appInfo->uid, bundleInfo, specifiedProcessFlag, &isProcCache, loadParam->instanceKey,
-            customProcessFlag);
+            customProcessFlag, false, false, loadParam->reusePid);
     }
 
     if (appRecord && appRecord->IsCaching()) {

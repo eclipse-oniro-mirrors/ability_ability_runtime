@@ -345,6 +345,537 @@ HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_CheckAppRunningRecordIsE
 }
 
 /**
+ * @tc.name: CheckAppRunningRecordIsExist_ShouldReturnRecordWhenReusePidMatchesAndStateValid
+ * @tc.desc: Test reusePid > 0 with valid matching appRecord
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, CheckAppRunningRecordIsExist_ShouldReturnRecordWhenReusePidMatchesAndStateValid,
+    TestSize.Level1)
+{
+    int uid = TEST_UID;
+    BundleInfo bundleInfo;
+    std::string specifiedProcessFlag;
+    bool *isProCache = nullptr;
+    std::string instanceKey;
+    std::string customProcessFlag;
+
+    appInfo_->name = APP_NAME;
+    std::shared_ptr<AppRunningRecord> record =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->appInfos_.insert(std::make_pair("test", appInfo_));
+    record->priorityObject_->SetPid(TEST_PID);
+    record->SetUid(uid);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    // reusePid matches existing record with same uid and valid state
+    auto ret = appRunningManager_->CheckAppRunningRecordIsExist(APP_NAME, PROCESS_NAME,
+        uid, bundleInfo, specifiedProcessFlag, isProCache, instanceKey, customProcessFlag,
+        false, false, TEST_PID);
+    EXPECT_NE(ret, nullptr);
+    EXPECT_EQ(ret, record);
+}
+
+/**
+ * @tc.name: CheckAppRunningRecordIsExist_ShouldReturnNullptrWhenReusePidNotFound
+ * @tc.desc: Test reusePid > 0 but no record with that PID exists
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, CheckAppRunningRecordIsExist_ShouldReturnNullptrWhenReusePidNotFound,
+    TestSize.Level1)
+{
+    int uid = TEST_UID;
+    BundleInfo bundleInfo;
+    std::string specifiedProcessFlag;
+    bool *isProCache = nullptr;
+    std::string instanceKey;
+    std::string customProcessFlag;
+
+    // Empty map, no record for the pid
+    appRunningManager_->appRunningRecordMap_.clear();
+    pid_t callerPid = 9999;
+    auto ret = appRunningManager_->CheckAppRunningRecordIsExist(APP_NAME, PROCESS_NAME,
+        uid, bundleInfo, specifiedProcessFlag, isProCache, instanceKey, customProcessFlag,
+        false, false, callerPid);
+    // Falls through to normal logic, no match found
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: CheckAppRunningRecordIsExist_ShouldReturnNullptrWhenReusePidMatchesButAppInfoListEmpty
+ * @tc.desc: Test PID matches but appInfoList has no matching appName+uid
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    CheckAppRunningRecordIsExist_ShouldReturnNullptrWhenReusePidMatchesButAppInfoListEmpty, TestSize.Level1)
+{
+    int uid = TEST_UID;
+    BundleInfo bundleInfo;
+    std::string specifiedProcessFlag;
+    bool *isProCache = nullptr;
+    std::string instanceKey;
+    std::string customProcessFlag;
+
+    appInfo_->name = APP_NAME;
+    std::shared_ptr<AppRunningRecord> record =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->priorityObject_->SetPid(TEST_PID);
+    record->SetUid(uid);
+    // No appInfo inserted into appInfos_, so appInfoList is empty
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    // PID and processName match, but appInfoList empty → continue → nullptr
+    auto ret = appRunningManager_->CheckAppRunningRecordIsExist(APP_NAME, PROCESS_NAME,
+        uid, bundleInfo, specifiedProcessFlag, isProCache, instanceKey, customProcessFlag,
+        false, false, TEST_PID);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: CheckAppRunningRecordIsExist_ShouldReturnNullptrWhenReusePidMatchesButTerminating
+ * @tc.desc: Test reusePid > 0 with terminating record
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    CheckAppRunningRecordIsExist_ShouldReturnNullptrWhenReusePidMatchesButTerminating, TestSize.Level1)
+{
+    int uid = TEST_UID;
+    BundleInfo bundleInfo;
+    std::string specifiedProcessFlag;
+    bool *isProCache = nullptr;
+    std::string instanceKey;
+    std::string customProcessFlag;
+
+    appInfo_->name = APP_NAME;
+    std::shared_ptr<AppRunningRecord> record =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->priorityObject_->SetPid(TEST_PID);
+    record->SetUid(uid);
+    record->SetTerminating();
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    // Record is terminating, falls through to normal logic
+    auto ret = appRunningManager_->CheckAppRunningRecordIsExist(APP_NAME, PROCESS_NAME,
+        uid, bundleInfo, specifiedProcessFlag, isProCache, instanceKey, customProcessFlag,
+        false, false, TEST_PID);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: CheckAppRunningRecordIsExist_ShouldReturnNullptrWhenReusePidMatchesButKilling
+ * @tc.desc: Test reusePid > 0 with killing record
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, CheckAppRunningRecordIsExist_ShouldReturnNullptrWhenReusePidMatchesButKilling,
+    TestSize.Level1)
+{
+    int uid = TEST_UID;
+    BundleInfo bundleInfo;
+    std::string specifiedProcessFlag;
+    bool *isProCache = nullptr;
+    std::string instanceKey;
+    std::string customProcessFlag;
+
+    appInfo_->name = APP_NAME;
+    std::shared_ptr<AppRunningRecord> record =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->priorityObject_->SetPid(TEST_PID);
+    record->SetUid(uid);
+    record->SetKilling();
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    // Record is killing, falls through to normal logic
+    auto ret = appRunningManager_->CheckAppRunningRecordIsExist(APP_NAME, PROCESS_NAME,
+        uid, bundleInfo, specifiedProcessFlag, isProCache, instanceKey, customProcessFlag,
+        false, false, TEST_PID);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: CheckAppRunningRecordIsExist_ShouldReturnNullptrWhenReusePidMatchesButRestartFlagSet
+ * @tc.desc: Test reusePid > 0 with restart flag set
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    CheckAppRunningRecordIsExist_ShouldReturnNullptrWhenReusePidMatchesButRestartFlagSet, TestSize.Level1)
+{
+    int uid = TEST_UID;
+    BundleInfo bundleInfo;
+    std::string specifiedProcessFlag;
+    bool *isProCache = nullptr;
+    std::string instanceKey;
+    std::string customProcessFlag;
+
+    appInfo_->name = APP_NAME;
+    std::shared_ptr<AppRunningRecord> record =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->priorityObject_->SetPid(TEST_PID);
+    record->SetUid(uid);
+    record->SetRestartAppFlag(true);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    // Restart flag set, falls through to normal logic
+    auto ret = appRunningManager_->CheckAppRunningRecordIsExist(APP_NAME, PROCESS_NAME,
+        uid, bundleInfo, specifiedProcessFlag, isProCache, instanceKey, customProcessFlag,
+        false, false, TEST_PID);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: CheckAppRunningRecordIsExist_ShouldReturnRecordWhenReusePidDefaultAndOriginalPathMatches
+ * @tc.desc: Test reusePid == -1 (default) falls through to normal logic
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    CheckAppRunningRecordIsExist_ShouldReturnRecordWhenReusePidDefaultAndOriginalPathMatches, TestSize.Level1)
+{
+    int uid = TEST_UID;
+    BundleInfo bundleInfo;
+    std::string specifiedProcessFlag;
+    bool *isProCache = nullptr;
+    std::string instanceKey;
+    std::string customProcessFlag;
+
+    appInfo_->name = APP_NAME;
+    std::shared_ptr<AppRunningRecord> record =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->appInfos_.insert(std::make_pair("test", appInfo_));
+    record->priorityObject_->SetPid(TEST_PID);
+    record->SetUid(uid);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    // reusePid == -1 (default), falls through to normal logic
+    auto ret = appRunningManager_->CheckAppRunningRecordIsExist(APP_NAME, PROCESS_NAME,
+        uid, bundleInfo, specifiedProcessFlag, isProCache, instanceKey, customProcessFlag);
+    EXPECT_NE(ret, nullptr);
+}
+
+/**
+ * @tc.name: CheckAppRunningRecordIsExist_ShouldReturnNullptrWhenReusePidMatchesButKillPrecedeStart
+ * @tc.desc: Test reusePid > 0 with killPrecedeStart record
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    CheckAppRunningRecordIsExist_ShouldReturnNullptrWhenReusePidMatchesButKillPrecedeStart, TestSize.Level1)
+{
+    int uid = TEST_UID;
+    BundleInfo bundleInfo;
+    std::string specifiedProcessFlag;
+    bool *isProCache = nullptr;
+    std::string instanceKey;
+    std::string customProcessFlag;
+
+    appInfo_->name = APP_NAME;
+    std::shared_ptr<AppRunningRecord> record =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->priorityObject_->SetPid(TEST_PID);
+    record->SetUid(uid);
+    record->SetIsKillPrecedeStart(true);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    // Record has killPrecedeStart, falls through to normal logic
+    auto ret = appRunningManager_->CheckAppRunningRecordIsExist(APP_NAME, PROCESS_NAME,
+        uid, bundleInfo, specifiedProcessFlag, isProCache, instanceKey, customProcessFlag,
+        false, false, TEST_PID);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: CheckAppRunningRecordIsExist_ShouldReturnRecordWhenReusePidMismatchButOriginalPathMatches
+ * @tc.desc: Test reusePid > 0, PID mismatch, original path matches
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    CheckAppRunningRecordIsExist_ShouldReturnRecordWhenReusePidMismatchButOriginalPathMatches, TestSize.Level1)
+{
+    int uid = TEST_UID;
+    BundleInfo bundleInfo;
+    std::string specifiedProcessFlag;
+    bool *isProCache = nullptr;
+    std::string instanceKey;
+    std::string customProcessFlag;
+
+    appInfo_->name = APP_NAME;
+    std::shared_ptr<AppRunningRecord> record =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->appInfos_.insert(std::make_pair("test", appInfo_));
+    record->priorityObject_->SetPid(TEST_PID);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    // reusePid mismatches PID, but original path (instanceKey/customProcessFlag empty) matches
+    pid_t wrongPid = TEST_PID + 100;
+    auto ret = appRunningManager_->CheckAppRunningRecordIsExist(APP_NAME, PROCESS_NAME,
+        uid, bundleInfo, specifiedProcessFlag, isProCache, instanceKey, customProcessFlag,
+        false, false, wrongPid);
+    EXPECT_NE(ret, nullptr);
+    EXPECT_EQ(ret, record);
+}
+
+/**
+ * @tc.name: CheckAppRunningRecordIsExist_ShouldReturnNullptrWhenReusePidMismatchAndOriginalPathMismatch
+ * @tc.desc: Test reusePid > 0, PID mismatch, original path also mismatch
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    CheckAppRunningRecordIsExist_ShouldReturnNullptrWhenReusePidMismatchAndOriginalPathMismatch, TestSize.Level1)
+{
+    int uid = TEST_UID;
+    BundleInfo bundleInfo;
+    std::string specifiedProcessFlag;
+    bool *isProCache = nullptr;
+    std::string instanceKey = "differentInstanceKey";
+    std::string customProcessFlag = "differentCustomFlag";
+
+    appInfo_->name = APP_NAME;
+    std::shared_ptr<AppRunningRecord> record =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->appInfos_.insert(std::make_pair("test", appInfo_));
+    record->priorityObject_->SetPid(TEST_PID);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    // PID mismatch, and original path fails (customProcessFlag/instanceKey mismatch)
+    pid_t wrongPid = TEST_PID + 100;
+    auto ret = appRunningManager_->CheckAppRunningRecordIsExist(APP_NAME, PROCESS_NAME,
+        uid, bundleInfo, specifiedProcessFlag, isProCache, instanceKey, customProcessFlag,
+        false, false, wrongPid);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: CheckAppRunningRecordIsExist_ShouldReturnNullptrWhenReusePidMatchesButProcessNameMismatch
+ * @tc.desc: Test PID matches but processName mismatches
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    CheckAppRunningRecordIsExist_ShouldReturnNullptrWhenReusePidMatchesButProcessNameMismatch, TestSize.Level1)
+{
+    int uid = TEST_UID;
+    BundleInfo bundleInfo;
+    std::string specifiedProcessFlag;
+    bool *isProCache = nullptr;
+    std::string instanceKey;
+    std::string customProcessFlag;
+    std::string wrongProcessName = "wrongProcessName";
+
+    appInfo_->name = APP_NAME;
+    std::shared_ptr<AppRunningRecord> record =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->appInfos_.insert(std::make_pair("test", appInfo_));
+    record->priorityObject_->SetPid(TEST_PID);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    // PID matches but processName doesn't → CheckAppProcessNameIsSame returns false
+    auto ret = appRunningManager_->CheckAppRunningRecordIsExist(APP_NAME, wrongProcessName,
+        uid, bundleInfo, specifiedProcessFlag, isProCache, instanceKey, customProcessFlag,
+        false, false, TEST_PID);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: CheckAppRunningRecordIsExist_ShouldReturnRecordWhenJointUserIdAndReusePidMatches
+ * @tc.desc: Test findSameProcess with jointUserId and PID path matches
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    CheckAppRunningRecordIsExist_ShouldReturnRecordWhenJointUserIdAndReusePidMatches, TestSize.Level1)
+{
+    int uid = TEST_UID;
+    BundleInfo bundleInfo;
+    bundleInfo.jointUserId = "jointUser123";
+    bundleInfo.appId = "com.test.app_code123";
+    std::string specifiedProcessFlag;
+    bool *isProCache = nullptr;
+    std::string instanceKey;
+    std::string customProcessFlag;
+
+    appInfo_->name = APP_NAME;
+    std::shared_ptr<AppRunningRecord> record =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->appInfos_.insert(std::make_pair("test", appInfo_));
+    record->priorityObject_->SetPid(TEST_PID);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    // jointUserId non-empty → findSameProcess path, PID matches
+    auto ret = appRunningManager_->CheckAppRunningRecordIsExist(APP_NAME, PROCESS_NAME,
+        uid, bundleInfo, specifiedProcessFlag, isProCache, instanceKey, customProcessFlag,
+        false, false, TEST_PID);
+    EXPECT_NE(ret, nullptr);
+    EXPECT_EQ(ret, record);
+}
+
+/**
+ * @tc.name: CheckAppRunningRecordIsExist_ShouldReturnRecordWhenJointUserIdAndOriginalPathMatches
+ * @tc.desc: Test findSameProcess with jointUserId and original path matches
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    CheckAppRunningRecordIsExist_ShouldReturnRecordWhenJointUserIdAndOriginalPathMatches, TestSize.Level1)
+{
+    int uid = TEST_UID;
+    BundleInfo bundleInfo;
+    bundleInfo.jointUserId = "jointUser456";
+    bundleInfo.appId = "com.test.app_code456";
+    std::string specifiedProcessFlag;
+    bool *isProCache = nullptr;
+    std::string instanceKey;
+    std::string customProcessFlag;
+
+    appInfo_->name = APP_NAME;
+    std::shared_ptr<AppRunningRecord> record =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->appInfos_.insert(std::make_pair("test", appInfo_));
+    record->priorityObject_->SetPid(TEST_PID);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    // jointUserId non-empty → findSameProcess path, PID mismatch, original path matches
+    pid_t wrongPid = TEST_PID + 100;
+    auto ret = appRunningManager_->CheckAppRunningRecordIsExist(APP_NAME, PROCESS_NAME,
+        uid, bundleInfo, specifiedProcessFlag, isProCache, instanceKey, customProcessFlag,
+        false, false, wrongPid);
+    EXPECT_NE(ret, nullptr);
+    EXPECT_EQ(ret, record);
+}
+
+/**
+ * @tc.name: IsProcessMatchedByFieldOrPid_ShouldReturnFalseWhenNull
+ * @tc.desc: Test IsProcessMatchedByFieldOrPid with nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    IsProcessMatchedByFieldOrPid_ShouldReturnFalseWhenNull, TestSize.Level1)
+{
+    EXPECT_FALSE(AppRunningManager::IsProcessMatchedByFieldOrPid(
+        nullptr, "", "", "", TEST_PID));
+}
+
+/**
+ * @tc.name: IsProcessMatchedByFieldOrPid_ShouldReturnTrueWhenFieldMatch
+ * @tc.desc: Test checkInstanceKey=true, all fields match
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    IsProcessMatchedByFieldOrPid_ShouldReturnTrueWhenFieldMatch, TestSize.Level1)
+{
+    auto record = std::make_shared<AppRunningRecord>(appInfo_, ONE, PROCESS_NAME);
+    record->SetInstanceKey("key1");
+    record->SetCustomProcessFlag("flag1");
+    EXPECT_TRUE(AppRunningManager::IsProcessMatchedByFieldOrPid(
+        record, "key1", "", "flag1", -1, true));
+}
+
+/**
+ * @tc.name: IsProcessMatchedByFieldOrPid_ShouldReturnFalseWhenKeyMismatch
+ * @tc.desc: Test checkInstanceKey=true, instanceKey mismatch, no reusePid
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    IsProcessMatchedByFieldOrPid_ShouldReturnFalseWhenKeyMismatch, TestSize.Level1)
+{
+    auto record = std::make_shared<AppRunningRecord>(appInfo_, ONE, PROCESS_NAME);
+    record->SetInstanceKey("key1");
+    record->SetCustomProcessFlag("flag1");
+    EXPECT_FALSE(AppRunningManager::IsProcessMatchedByFieldOrPid(
+        record, "wrongKey", "", "flag1", -1, true));
+}
+
+/**
+ * @tc.name: IsProcessMatchedByFieldOrPid_ShouldReturnTrueWhenPidFallback
+ * @tc.desc: Test checkInstanceKey=true, instanceKey mismatch but reusePid matches
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    IsProcessMatchedByFieldOrPid_ShouldReturnTrueWhenPidFallback, TestSize.Level1)
+{
+    auto record = std::make_shared<AppRunningRecord>(appInfo_, ONE, PROCESS_NAME);
+    record->SetInstanceKey("key1");
+    record->SetCustomProcessFlag("flag1");
+    record->GetPriorityObject()->SetPid(TEST_PID);
+    EXPECT_TRUE(AppRunningManager::IsProcessMatchedByFieldOrPid(
+        record, "wrongKey", "", "flag1", TEST_PID, true));
+}
+
+/**
+ * @tc.name: IsProcessMatchedByFieldOrPid_ShouldReturnTrueWhenSkipKeyMatch
+ * @tc.desc: Test checkInstanceKey=false, flags match
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    IsProcessMatchedByFieldOrPid_ShouldReturnTrueWhenSkipKeyMatch, TestSize.Level1)
+{
+    auto record = std::make_shared<AppRunningRecord>(appInfo_, ONE, PROCESS_NAME);
+    record->SetCustomProcessFlag("flag1");
+    EXPECT_TRUE(AppRunningManager::IsProcessMatchedByFieldOrPid(
+        record, "anyKey", "", "flag1", -1, false));
+}
+
+/**
+ * @tc.name: IsProcessMatchedByFieldOrPid_ShouldReturnFalseWhenFlagMismatch
+ * @tc.desc: Test checkInstanceKey=false, customProcessFlag mismatch, no reusePid
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    IsProcessMatchedByFieldOrPid_ShouldReturnFalseWhenFlagMismatch, TestSize.Level1)
+{
+    auto record = std::make_shared<AppRunningRecord>(appInfo_, ONE, PROCESS_NAME);
+    record->SetCustomProcessFlag("flag1");
+    EXPECT_FALSE(AppRunningManager::IsProcessMatchedByFieldOrPid(
+        record, "", "", "wrongFlag", -1, false));
+}
+
+/**
+ * @tc.name: IsProcessMatchedByFieldOrPid_ShouldReturnTrueWhenSkipPidOk
+ * @tc.desc: Test checkInstanceKey=false, field mismatch but reusePid matches
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    IsProcessMatchedByFieldOrPid_ShouldReturnTrueWhenSkipPidOk, TestSize.Level1)
+{
+    auto record = std::make_shared<AppRunningRecord>(appInfo_, ONE, PROCESS_NAME);
+    record->SetCustomProcessFlag("flag1");
+    record->GetPriorityObject()->SetPid(TEST_PID);
+    EXPECT_TRUE(AppRunningManager::IsProcessMatchedByFieldOrPid(
+        record, "", "", "wrongFlag", TEST_PID, false));
+}
+
+/**
+ * @tc.name: IsProcessMatchedByFieldOrPid_ShouldReturnFalseWhenAllMismatch
+ * @tc.desc: Test both field and PID mismatch
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    IsProcessMatchedByFieldOrPid_ShouldReturnFalseWhenAllMismatch, TestSize.Level1)
+{
+    auto record = std::make_shared<AppRunningRecord>(appInfo_, ONE, PROCESS_NAME);
+    record->SetCustomProcessFlag("flag1");
+    record->GetPriorityObject()->SetPid(TEST_PID);
+    EXPECT_FALSE(AppRunningManager::IsProcessMatchedByFieldOrPid(
+        record, "", "", "wrongFlag", TEST_PID + 1, false));
+}
+
+/**
  * @tc.name: AppRunningManager_GetProcessInfosByUserId_0100
  * @tc.desc: NA
  * @tc.type: FUNC

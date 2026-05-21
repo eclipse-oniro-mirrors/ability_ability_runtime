@@ -61,10 +61,18 @@ bool AppRunningManager::CheckAppProcessNameIsSame(const std::shared_ptr<AppRunni
     return false;
 }
 
+bool AppRunningManager::IsProcessMatchedByFieldOrPid(const std::shared_ptr<AppRunningRecord> &appRecord,
+    const std::string &instanceKey, const std::string &specifiedProcessFlag,
+    const std::string &customProcessFlag, pid_t reusePid, bool checkInstanceKey)
+{
+    return false;
+}
+
 std::shared_ptr<AppRunningRecord> AppRunningManager::CheckAppRunningRecordIsExist(const std::string &appName,
     const std::string &processName, const int uid, const BundleInfo &bundleInfo,
     const std::string &specifiedProcessFlag, bool *isProCache, const std::string &instanceKey,
-    const std::string &customProcessFlag, const bool notReuseCachedPorcess, bool isFromPreload)
+    const std::string &customProcessFlag, const bool notReuseCachedPorcess, bool isFromPreload,
+    pid_t reusePid)
 {
     AAFwk::MyStatus::GetInstance().checkAppRunningCall_++;
     if (AAFwk::MyStatus::GetInstance().checkAppRunning_) {

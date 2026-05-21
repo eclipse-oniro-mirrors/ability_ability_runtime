@@ -57,7 +57,8 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::CreateAppRunningRecord(
 std::shared_ptr<AppRunningRecord> AppRunningManager::CheckAppRunningRecordIsExist(const std::string &appName,
     const std::string &processName, const int uid, const BundleInfo &bundleInfo,
     const std::string &specifiedProcessFlag, bool *isProCache, const std::string &instanceKey,
-    const std::string &customProcessFlag, const bool notReuseCachedPorcess, bool isFromPreload)
+    const std::string &customProcessFlag, const bool notReuseCachedPorcess, bool isFromPreload,
+    pid_t reusePid)
 {
     return nullptr;
 }
