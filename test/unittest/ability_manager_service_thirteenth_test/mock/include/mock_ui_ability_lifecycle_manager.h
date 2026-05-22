@@ -425,8 +425,6 @@ public:
     ErrCode QueryCallerTokenIdForAnco(const std::string &asCallerForAncoSessionId, uint32_t &callerTokenId);
     ErrCode IsUIAbilityAlreadyExist(const Want &want, const std::string &specifiedFlag,
         int32_t appIndex, const std::string &instanceKey, AppExecFwk::LaunchMode launchMode);
-    ErrCode IsSpecifiedUIAbilityAlreadyExist(const Want &want, const std::string &specifiedFlag,
-        int32_t appIndex, const std::string &instanceKey);
     void HandleUIAbilityDiedByPid(pid_t pid);
     int32_t StartSelf(const UIAbilityRecordPtr &abilityRecord);
 
