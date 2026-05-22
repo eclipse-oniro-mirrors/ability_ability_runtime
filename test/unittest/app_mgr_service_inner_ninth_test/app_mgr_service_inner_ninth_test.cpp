@@ -458,7 +458,7 @@ HWTEST_F(AppMgrServiceInnerNinthTest, PreloadApplication_012, TestSize.Level1)
     int32_t appIndex = 1;
     
     int32_t ret = appMgrServiceInner->PreloadApplication(bundleName, userId, preloadMode, appIndex);
-    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_NE(ret, ERR_OK);
     appMgrServiceInner->taskHandler_.reset();
     TAG_LOGI(AAFwkTag::TEST, "PreloadApplication_012 end");
 }

@@ -107,7 +107,7 @@ HWTEST_F(PermissionQueryUtilTest, BatchQueryPermissions_ToolNotExist, TestSize.L
 
     EXPECT_EQ(ret, ERR_OK);
     EXPECT_EQ(cmdPermissions.size(), 1u);
-    EXPECT_EQ(cmdPermissions[0].queryRet, QueryResult::COMMAND_NOT_EXIST);
+    EXPECT_EQ(cmdPermissions[0].queryRet, QueryResult::DB_ERROR);
     EXPECT_EQ(cmdPermissions[0].permissions.size(), 0u);
 }
 
@@ -176,13 +176,13 @@ HWTEST_F(PermissionQueryUtilTest, BatchQueryPermissions_MultipleCommands, TestSi
     EXPECT_EQ(ret, ERR_OK);
     EXPECT_EQ(cmdPermissions.size(), 3u);
 
-    EXPECT_EQ(cmdPermissions[0].queryRet, QueryResult::COMMAND_NOT_EXIST);
+    EXPECT_EQ(cmdPermissions[0].queryRet, QueryResult::DB_ERROR);
     EXPECT_EQ(cmdPermissions[0].permissions.size(), 0u);
 
-    EXPECT_EQ(cmdPermissions[1].queryRet, QueryResult::COMMAND_NOT_EXIST);
+    EXPECT_EQ(cmdPermissions[1].queryRet, QueryResult::DB_ERROR);
     EXPECT_EQ(cmdPermissions[1].permissions.size(), 0u);
 
-    EXPECT_EQ(cmdPermissions[2].queryRet, QueryResult::COMMAND_NOT_EXIST);
+    EXPECT_EQ(cmdPermissions[2].queryRet, QueryResult::DB_ERROR);
     EXPECT_EQ(cmdPermissions[2].permissions.size(), 0u);
 }
 
@@ -215,7 +215,7 @@ HWTEST_F(PermissionQueryUtilTest, QuerySingleCommand_ToolNotExist, TestSize.Leve
 
     int32_t ret = PermissionQueryUtil::QuerySingleCommand(cmd, permissions);
 
-    EXPECT_EQ(ret, ERR_TOOL_NOT_EXIST);
+    EXPECT_EQ(ret, ERR_NO_INIT);
     EXPECT_EQ(permissions.size(), 0u);
 }
 

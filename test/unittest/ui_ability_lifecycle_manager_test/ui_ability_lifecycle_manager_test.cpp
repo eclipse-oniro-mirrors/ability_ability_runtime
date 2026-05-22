@@ -8646,7 +8646,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_007, TestSize.Level1)
  */
 HWTEST_F(UIAbilityLifecycleManagerTest, DispatchForeground_NativeModuleAttached_0100, TestSize.Level1)
 {
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     auto abilityRecord = InitAbilityRecord();
     abilityRecord->SetNativeState(AbilityNativeState::ATTACHED);
     abilityRecord->SetAbilityState(AbilityState::FOREGROUNDING);
