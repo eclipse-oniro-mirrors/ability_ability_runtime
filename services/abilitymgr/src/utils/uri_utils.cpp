@@ -52,7 +52,6 @@ const std::string FILE_SCHEME = "file";
 const int32_t MAX_URI_COUNT = 500;
 constexpr int32_t API20 = 20;
 constexpr int32_t API_VERSION_MOD = 100;
-constexpr int32_t DEFAULT_HIDE_SENSITIVE_TYPE = 4;
 constexpr uint32_t TOKEN_ID_BIT_SIZE = 32;
 }
 

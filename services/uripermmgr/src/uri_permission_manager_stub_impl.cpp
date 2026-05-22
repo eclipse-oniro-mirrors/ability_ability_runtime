@@ -55,6 +55,7 @@ constexpr uint32_t FLAG_PERSIST_URI = Want::FLAG_AUTH_PERSISTABLE_URI_PERMISSION
 constexpr const char* DISTRIBUTED_DOCS_URI_MARK = "?networkid=";
 constexpr size_t MAX_IPC_RAW_DATA_SIZE = 128 * 1024 * 1024; // 128M
 const int MAX_URI_COUNT = 200000;
+constexpr int32_t DEFAULT_HIDE_SENSITIVE_TYPE = 4;
 #ifndef ABILITY_RUNTIME_MEDIA_LIBRARY_ENABLE
 constexpr int32_t CAPABILITY_NOT_SUPPORT = 801;
 #endif // ABILITY_RUNTIME_MEDIA_LIBRARY_ENABLE
@@ -336,7 +337,8 @@ int32_t UriPermissionManagerStubImpl::GrantUriPermissionInner(BatchUri &batchUri
     // media
     std::vector<std::string> mediaUriVec;
     if (batchUri.GetMediaUriToGrant(mediaUriVec) > 0) {
-        if (GrantBatchMediaUriPermissionImpl(mediaUriVec, flag, callerInfo.tokenId, targetInfo.tokenId, 0) == ERR_OK) {
+        if (GrantBatchMediaUriPermissionImpl(mediaUriVec, flag, callerInfo.tokenId, targetInfo.tokenId,
+            DEFAULT_HIDE_SENSITIVE_TYPE) == ERR_OK) {
             grantRet = ERR_OK;
         }
     }
@@ -713,7 +715,7 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermissionPrivileged(const std::ve
         callerTokenId = initiatorTokenId;
     } else {
         // hideSensitiveType is only support for foundation
-        hideSensitiveType = 0;
+        hideSensitiveType = DEFAULT_HIDE_SENSITIVE_TYPE;
     }
     std::string targetAlterBundleName = targetBundleName;
     FUDUtils::GetDirByBundleNameAndAppIndex(targetBundleName, appIndex, targetAlterBundleName);
@@ -947,7 +949,8 @@ int32_t UriPermissionManagerStubImpl::GrantUriPermissionByKeyInner(const std::st
     }
     std::vector<std::string> mediaUriVec;
     if (batchUri.GetMediaUriToGrant(mediaUriVec) > 0 &&
-        GrantBatchMediaUriPermissionImpl(mediaUriVec, flag, callerTokenId, targetTokenId, 0) != ERR_OK) {
+        GrantBatchMediaUriPermissionImpl(mediaUriVec, flag, callerTokenId, targetTokenId,
+        DEFAULT_HIDE_SENSITIVE_TYPE) != ERR_OK) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "grant media uri permission failed");
         return ERR_UPMS_GRANT_URI_PERMISSION_FAILED;
     }
