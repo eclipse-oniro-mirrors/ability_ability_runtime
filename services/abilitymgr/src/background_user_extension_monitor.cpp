@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "bg_user_extension_monitor.h"
+#include "background_user_extension_monitor.h"
 
 #include <functional>
 
@@ -33,7 +33,7 @@ constexpr const char *ABILITY_NAME_KEY = "ABILITY_NAME";
 constexpr const char *RUNNING_DURATION_KEY = "RUNNING_DURATION";
 constexpr const char *STILL_ALIVE_KEY = "STILL_ALIVE";
 constexpr const char *CNT_KEY = "CNT";
-constexpr const char *BG_START_EVENT_VALUE = "BG_USER_START_EVENT";
+constexpr const char *BACKGROUND_START_EVENT_VALUE = "BACKGROUND_USER_START_EVENT";
 
 bool CopyStringParam(const std::string &str, std::vector<std::unique_ptr<char[]>> &buffers,
     std::vector<char*> &ptrs)
@@ -48,7 +48,7 @@ bool CopyStringParam(const std::string &str, std::vector<std::unique_ptr<char[]>
     return true;
 }
 
-std::string BuildJsonInfo(const BgUserExtensionEvent &event)
+std::string BuildJsonInfo(const BackgroundUserExtensionEvent &event)
 {
     return std::string("{\"callerUid\":") + std::to_string(event.callerUid) +
         ",\"callerBundleName\":\"" + event.callerBundleName + "\"" +
@@ -61,37 +61,38 @@ std::string BuildJsonInfo(const BgUserExtensionEvent &event)
 }
 }
 
-BgUserExtensionMonitor::BgUserExtensionMonitor() {}
+BackgroundUserExtensionMonitor::BackgroundUserExtensionMonitor() {}
 
-BgUserExtensionMonitor::~BgUserExtensionMonitor() {}
+BackgroundUserExtensionMonitor::~BackgroundUserExtensionMonitor() {}
 
-void BgUserExtensionMonitor::StartMonitor()
+void BackgroundUserExtensionMonitor::StartMonitor()
 {
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "start bg user extension monitor");
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "start background user extension monitor");
     SubmitPeriodicTask();
 }
 
-void BgUserExtensionMonitor::StopMonitor()
+void BackgroundUserExtensionMonitor::StopMonitor()
 {
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "stop bg user extension monitor");
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "stop background user extension monitor");
     auto taskHandler = TaskHandlerWrap::GetFfrtHandler();
     if (taskHandler != nullptr) {
         taskHandler->CancelTask(PERIODIC_TASK_NAME);
     }
 }
 
-void BgUserExtensionMonitor::OnBgUserExtensionStarted(const BgUserExtensionCallerInfo &callerInfo,
+void BackgroundUserExtensionMonitor::OnBackgroundUserExtensionStarted(
+    const BackgroundUserExtensionCallerInfo &callerInfo,
     const std::string &calleeBundleName, const std::string &calleeProcessName,
     const std::string &extensionTypeName, const std::string &abilityName,
     int32_t calleeUid)
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR,
-        "bg user extension started, type:%{public}s, callerUid:%{public}d, callerBundle:%{public}s, "
+        "background user extension started, type:%{public}s, callerUid:%{public}d, callerBundle:%{public}s, "
         "calleeBundle:%{public}s, ability:%{public}s, calleeUid:%{public}d",
         extensionTypeName.c_str(), callerInfo.callerUid, callerInfo.callerBundleName.c_str(),
         calleeBundleName.c_str(), abilityName.c_str(), calleeUid);
 
-    BgUserExtensionEvent event;
+    BackgroundUserExtensionEvent event;
     event.callerUid = callerInfo.callerUid;
     event.callerBundleName = callerInfo.callerBundleName;
     event.calleeBundleName = calleeBundleName;
@@ -104,7 +105,7 @@ void BgUserExtensionMonitor::OnBgUserExtensionStarted(const BgUserExtensionCalle
     AddOrUpdateEvent(event);
 }
 
-void BgUserExtensionMonitor::SubmitPeriodicTask()
+void BackgroundUserExtensionMonitor::SubmitPeriodicTask()
 {
     auto taskHandler = TaskHandlerWrap::GetFfrtHandler();
     if (taskHandler == nullptr) {
@@ -113,21 +114,21 @@ void BgUserExtensionMonitor::SubmitPeriodicTask()
     }
 
     auto task = []() {
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "bg user extension periodic task triggered");
-        auto monitor = DelayedSingleton<BgUserExtensionMonitor>::GetInstance();
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "background user extension periodic task triggered");
+        auto monitor = DelayedSingleton<BackgroundUserExtensionMonitor>::GetInstance();
         monitor->ReportCachedEvents();
         monitor->SubmitPeriodicTask();
     };
     taskHandler->SubmitTask(task, PERIODIC_TASK_NAME, REPORT_INTERVAL_MS);
 }
 
-void BgUserExtensionMonitor::ReportCachedEvents()
+void BackgroundUserExtensionMonitor::ReportCachedEvents()
 {
-    std::list<BgUserExtensionEvent> eventsToReport;
+    std::list<BackgroundUserExtensionEvent> eventsToReport;
     {
         std::lock_guard<std::mutex> lock(cacheMutex_);
         if (cachedEvents_.empty()) {
-            TAG_LOGD(AAFwkTag::ABILITYMGR, "no bg user extension events to report");
+            TAG_LOGD(AAFwkTag::ABILITYMGR, "no background user extension events to report");
             return;
         }
         eventsToReport = cachedEvents_;
@@ -138,9 +139,9 @@ void BgUserExtensionMonitor::ReportCachedEvents()
     std::vector<char*> extensionTypePtrs;
     std::vector<char*> bundleNamePtrs;
 
-    // EXTENSION_TYPE is fixed to "BG_START_EVENT" with length 1
-    if (!CopyStringParam(BG_START_EVENT_VALUE, stringBuffers, extensionTypePtrs)) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "strcpy_s failed for BG_START_EVENT");
+    // EXTENSION_TYPE is fixed to "BACKGROUND_START_EVENT" with length 1
+    if (!CopyStringParam(BACKGROUND_START_EVENT_VALUE, stringBuffers, extensionTypePtrs)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "strcpy_s failed for BACKGROUND_START_EVENT");
         return;
     }
 
@@ -169,12 +170,12 @@ void BgUserExtensionMonitor::ReportCachedEvents()
     report.InsertParam(STILL_ALIVE_KEY, emptyBoolArray);
     report.InsertParam(CNT_KEY, emptyInt32Array);
     int32_t ret = report.Report(DOMAIN, EVENT_NAME, HISYSEVENT_STATISTIC);
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "reported %{public}zu bg user extension events, ret: %{public}d",
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "reported %{public}zu background user extension events, ret: %{public}d",
         eventsToReport.size(), ret);
 }
 
-bool BgUserExtensionMonitor::IsDuplicateEvent(const BgUserExtensionEvent &event,
-    std::list<BgUserExtensionEvent>::iterator &dupIter)
+bool BackgroundUserExtensionMonitor::IsDuplicateEvent(const BackgroundUserExtensionEvent &event,
+    std::list<BackgroundUserExtensionEvent>::iterator &dupIter)
 {
     for (auto it = cachedEvents_.begin(); it != cachedEvents_.end(); ++it) {
         if (it->calleeExtensionTypeName == event.calleeExtensionTypeName &&
@@ -186,9 +187,9 @@ bool BgUserExtensionMonitor::IsDuplicateEvent(const BgUserExtensionEvent &event,
     return false;
 }
 
-void BgUserExtensionMonitor::AddOrUpdateEvent(const BgUserExtensionEvent &event)
+void BackgroundUserExtensionMonitor::AddOrUpdateEvent(const BackgroundUserExtensionEvent &event)
 {
-    std::list<BgUserExtensionEvent>::iterator dupIter;
+    std::list<BackgroundUserExtensionEvent>::iterator dupIter;
     if (IsDuplicateEvent(event, dupIter)) {
         dupIter->cnt++;
         dupIter->callerUid = event.callerUid;
@@ -196,7 +197,7 @@ void BgUserExtensionMonitor::AddOrUpdateEvent(const BgUserExtensionEvent &event)
         dupIter->calleeBundleName = event.calleeBundleName;
         dupIter->calleeUid = event.calleeUid;
         TAG_LOGD(AAFwkTag::ABILITYMGR,
-            "updated existing bg user extension event for %{public}s, cnt: %{public}d",
+            "updated existing background user extension event for %{public}s, cnt: %{public}d",
             event.calleeAbilityName.c_str(), dupIter->cnt);
         return;
     }
@@ -210,7 +211,7 @@ void BgUserExtensionMonitor::AddOrUpdateEvent(const BgUserExtensionEvent &event)
 
     cachedEvents_.push_back(event);
     TAG_LOGD(AAFwkTag::ABILITYMGR,
-        "added new bg user extension event for %{public}s, cache size: %{public}zu",
+        "added new background user extension event for %{public}s, cache size: %{public}zu",
         event.calleeAbilityName.c_str(), cachedEvents_.size());
 }
 

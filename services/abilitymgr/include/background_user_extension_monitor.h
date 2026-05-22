@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_ABILITY_RUNTIME_BG_USER_EXTENSION_MONITOR_H
-#define OHOS_ABILITY_RUNTIME_BG_USER_EXTENSION_MONITOR_H
+#ifndef OHOS_ABILITY_RUNTIME_BACKGROUND_USER_EXTENSION_MONITOR_H
+#define OHOS_ABILITY_RUNTIME_BACKGROUND_USER_EXTENSION_MONITOR_H
 
 #include <list>
 #include <mutex>
@@ -25,14 +25,14 @@
 namespace OHOS {
 namespace AAFwk {
 
-struct BgUserExtensionCallerInfo {
+struct BackgroundUserExtensionCallerInfo {
     int32_t callerUid = 0;
     int32_t callerUserId = 0;
     std::string callerProcessName;
     std::string callerBundleName;
 };
 
-struct BgUserExtensionEvent {
+struct BackgroundUserExtensionEvent {
     // Caller info
     int32_t callerUid = 0;
     std::string callerBundleName;
@@ -45,13 +45,13 @@ struct BgUserExtensionEvent {
     int32_t cnt = 1;
 };
 
-class BgUserExtensionMonitor : public DelayedSingleton<BgUserExtensionMonitor> {
-    DECLARE_DELAYED_SINGLETON(BgUserExtensionMonitor)
+class BackgroundUserExtensionMonitor : public DelayedSingleton<BackgroundUserExtensionMonitor> {
+    DECLARE_DELAYED_SINGLETON(BackgroundUserExtensionMonitor)
 public:
     void StartMonitor();
     void StopMonitor();
 
-    void OnBgUserExtensionStarted(const BgUserExtensionCallerInfo &callerInfo,
+    void OnBackgroundUserExtensionStarted(const BackgroundUserExtensionCallerInfo &callerInfo,
         const std::string &calleeBundleName, const std::string &calleeProcessName,
         const std::string &extensionTypeName, const std::string &abilityName,
         int32_t calleeUid);
@@ -59,20 +59,20 @@ public:
     void ReportCachedEvents();
 
 private:
-    void AddOrUpdateEvent(const BgUserExtensionEvent &event);
-    bool IsDuplicateEvent(const BgUserExtensionEvent &event,
-        std::list<BgUserExtensionEvent>::iterator &dupIter);
+    void AddOrUpdateEvent(const BackgroundUserExtensionEvent &event);
+    bool IsDuplicateEvent(const BackgroundUserExtensionEvent &event,
+        std::list<BackgroundUserExtensionEvent>::iterator &dupIter);
     void SubmitPeriodicTask();
 
     std::mutex cacheMutex_;
-    std::list<BgUserExtensionEvent> cachedEvents_;
+    std::list<BackgroundUserExtensionEvent> cachedEvents_;
 
     static constexpr int32_t HISEVENT_PARAM_COUNT = 7;
     static constexpr int32_t MAX_CACHED_EVENTS = 5;
     static constexpr int64_t REPORT_INTERVAL_MS = 2 * 60 * 60 * 1000; // 2 hours
-    static constexpr const char *PERIODIC_TASK_NAME = "BgUserExtensionPeriodicTask";
+    static constexpr const char *PERIODIC_TASK_NAME = "BackgroundUserExtensionPeriodicTask";
 };
 
 } // namespace AAFwk
 } // namespace OHOS
-#endif // OHOS_ABILITY_RUNTIME_BG_USER_EXTENSION_MONITOR_H
+#endif // OHOS_ABILITY_RUNTIME_BACKGROUND_USER_EXTENSION_MONITOR_H

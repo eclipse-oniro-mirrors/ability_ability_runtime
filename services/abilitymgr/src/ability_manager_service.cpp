@@ -55,7 +55,7 @@
 #include "hitrace_meter.h"
 #include "hisysevent_report.h"
 #include "extension_running_timeout_monitor.h"
-#include "bg_user_extension_monitor.h"
+#include "background_user_extension_monitor.h"
 #include "insight_intent_execute_manager.h"
 #include "insight_intent_db_cache.h"
 #include "insight_intent_utils.h"
@@ -475,7 +475,7 @@ bool AbilityManagerService::Init()
     modularObjectExtensionEventMgr_->SubscribeSysEventReceiver();
     ReportDataPartitionUsageManager::SendReportDataPartitionUsageEvent();
     DelayedSingleton<AAFwk::ExtensionRunningTimeoutMonitor>::GetInstance()->StartMonitor();
-    DelayedSingleton<AAFwk::BgUserExtensionMonitor>::GetInstance()->StartMonitor();
+    DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance()->StartMonitor();
 #ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
     ResourceSchedule::ResSchedClient::GetInstance().InitKillReasonListener();
 #endif
@@ -606,7 +606,7 @@ void AbilityManagerService::InitStartupFlag()
 void AbilityManagerService::OnStop()
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "stop");
-    DelayedSingleton<AAFwk::BgUserExtensionMonitor>::GetInstance()->StopMonitor();
+    DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance()->StopMonitor();
 #ifdef BGTASKMGR_CONTINUOUS_TASK_ENABLE
     std::unique_lock<ffrt::mutex> lock(bgtaskObserverMutex_);
     if (bgtaskObserver_) {
@@ -4461,7 +4461,7 @@ int32_t AbilityManagerService::StartExtensionAbilityInner(const Want &want, cons
         }
     }
     if (eventInfo.errCode == ERR_OK) {
-        ReportBgUserExtensionEvent(callerToken, abilityInfo, validUserId);
+        ReportBackgroundUserExtensionEvent(callerToken, abilityInfo, validUserId);
     }
     ReportAbilityAssociatedStartInfoToRSS(abilityRequest.abilityInfo, RES_TYPE_EXTENSION_START_ABILITY, callerToken);
     return eventInfo.errCode;
@@ -6156,7 +6156,7 @@ int32_t AbilityManagerService::ConnectLocalAbility(const Want &want, const int32
             indirectCallerInfo);
     }
     if (ret == ERR_OK) {
-        ReportBgUserExtensionEvent(callerToken, abilityInfo, userId);
+        ReportBackgroundUserExtensionEvent(callerToken, abilityInfo, userId);
     }
     return ret;
 }
@@ -15515,13 +15515,13 @@ void AbilityManagerService::ReportPreventStartAbilityResult(const AppExecFwk::Ab
     hisyseventReport->Report("AAFWK", "PREVENT_START_ABILITY", HISYSEVENT_BEHAVIOR);
 }
 
-void AbilityManagerService::ReportBgUserExtensionEvent(const sptr<IRemoteObject> &callerToken,
+void AbilityManagerService::ReportBackgroundUserExtensionEvent(const sptr<IRemoteObject> &callerToken,
     const AppExecFwk::AbilityInfo &calleeAbilityInfo, int32_t targetUserId)
 {
     if (JudgeMultiUserConcurrency(targetUserId)) {
         return;
     }
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "report bg user extension event, targetUserId:%{public}d", targetUserId);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "report background user extension event, targetUserId:%{public}d", targetUserId);
 
     int32_t callerUid = IPCSkeleton::GetCallingUid();
     int32_t callerUserId = callerUid / BASE_USER_RANGE;
@@ -15551,14 +15551,14 @@ void AbilityManagerService::ReportBgUserExtensionEvent(const sptr<IRemoteObject>
         }
     }
 
-    auto monitor = DelayedSingleton<AAFwk::BgUserExtensionMonitor>::GetInstance();
+    auto monitor = DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance();
     if (monitor != nullptr) {
-        AAFwk::BgUserExtensionCallerInfo callerInfo;
+        AAFwk::BackgroundUserExtensionCallerInfo callerInfo;
         callerInfo.callerUid = callerUid;
         callerInfo.callerUserId = callerUserId;
         callerInfo.callerProcessName = callerProcessName;
         callerInfo.callerBundleName = callerBundleName;
-        monitor->OnBgUserExtensionStarted(callerInfo,
+        monitor->OnBackgroundUserExtensionStarted(callerInfo,
             calleeAbilityInfo.bundleName, calleeAbilityInfo.process,
             calleeAbilityInfo.extensionTypeName, calleeAbilityInfo.name,
             calleeAbilityInfo.applicationInfo.uid);
