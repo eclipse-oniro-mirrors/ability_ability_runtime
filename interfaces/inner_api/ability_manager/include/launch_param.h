@@ -83,6 +83,7 @@ struct LaunchParam : public Parcelable {
     LastExitDetailInfo lastExitDetailInfo;
     int64_t launchUptime = 0;
     int64_t launchUTCTime = 0;
+    std::string specifiedId;
 
     bool ReadFromParcel(Parcel &parcel);
     virtual bool Marshalling(Parcel &parcel) const override;

@@ -521,10 +521,11 @@ void JsUIAbility::OnStart(const Want &want, sptr<AAFwk::SessionInfo> sessionInfo
 
     napi_set_named_property(env, obj, "launchWant", jsWant);
     napi_set_named_property(env, obj, "lastRequestWant", jsWant);
-    if (sessionInfo != nullptr && abilityInfo_->launchMode == AppExecFwk::LaunchMode::SPECIFIED) {
-        napi_set_named_property(env, obj, "specifiedId", CreateJsValue(env, sessionInfo->specifiedFlag));
-    }
     auto launchParam = GetLaunchParam();
+    if (abilityInfo_->launchMode == AppExecFwk::LaunchMode::SPECIFIED) {
+        napi_set_named_property(env, obj, "specifiedId", CreateJsValue(env, launchParam.specifiedId));
+    }
+
     if (InsightIntentExecuteParam::IsInsightIntentExecute(want)) {
         launchParam.launchReason = AAFwk::LaunchReason::LAUNCHREASON_INSIGHT_INTENT;
     }
