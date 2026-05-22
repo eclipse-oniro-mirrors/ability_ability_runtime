@@ -46,7 +46,9 @@ const std::string TEST_HAP_PATH = "/system/app/com.ohos.contactsdataabilityConta
 const std::string TEST_LIB_PATH = "/data/storage/el1/bundle/lib/";
 const std::string TEST_MODULE_PATH = "/data/storage/el1/bundle/curJsModulePath";
 const std::string TEST_HOST_AOT_ROOT = "/system/app/ark_cache/";
+const std::string TEST_HOST_PRIVATE_HSP_AOT_ROOT = "/data/storage/ark-cache/arm64/";
 const std::string TEST_HOST_AOT_BUNDLE_NAME = "com.example.hostaot";
+const std::string TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME = "com.example.hsp1";
 
 std::string GetHostAotAnPath(const std::string &bundleName, const std::string &moduleName)
 {
@@ -63,6 +65,28 @@ void CreateHostAotAnFile(const std::string &bundleName, const std::string &modul
     ASSERT_TRUE(anFile.is_open());
     anFile << "test";
     anFile.close();
+}
+
+std::string GetHostPrivateHspAotAnPath(
+    const std::string &bundleName, uint32_t versionCode, const std::string &moduleName)
+{
+    return TEST_HOST_PRIVATE_HSP_AOT_ROOT + bundleName + "/" + std::to_string(versionCode) + "/" +
+        moduleName + ".an";
+}
+
+std::string CreateHostPrivateHspAotAnFile(
+    const std::string &bundleName, uint32_t versionCode, const std::string &moduleName)
+{
+    std::string mkdirCmd = "mkdir -p " + TEST_HOST_PRIVATE_HSP_AOT_ROOT + bundleName + "/" +
+        std::to_string(versionCode);
+    EXPECT_EQ(std::system(mkdirCmd.c_str()), 0);
+
+    std::string hostPrivateHspAotPath = GetHostPrivateHspAotAnPath(bundleName, versionCode, moduleName);
+    std::ofstream anFile(hostPrivateHspAotPath);
+    EXPECT_TRUE(anFile.is_open());
+    anFile << "test";
+    anFile.close();
+    return hostPrivateHspAotPath;
 }
 } // namespace
 
@@ -95,8 +119,12 @@ void EtsRuntimeTest::SetUp()
 
 void EtsRuntimeTest::TearDown()
 {
-    std::string rmCmd = "rm -rf " + TEST_HOST_AOT_ROOT + TEST_HOST_AOT_BUNDLE_NAME;
-    std::system(rmCmd.c_str());
+    std::string rmHostAotCmd = "rm -rf " + TEST_HOST_AOT_ROOT + TEST_HOST_AOT_BUNDLE_NAME;
+    std::system(rmHostAotCmd.c_str());
+
+    std::string rmHostPrivateHspAotCmd =
+        "rm -rf " + TEST_HOST_PRIVATE_HSP_AOT_ROOT + TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME;
+    std::system(rmHostPrivateHspAotCmd.c_str());
 }
 
 /**
@@ -387,7 +415,7 @@ HWTEST_F(EtsRuntimeTest, GetHspPathList_100, TestSize.Level1)
 HWTEST_F(EtsRuntimeTest, GetHspPathList_200, TestSize.Level1)
 {
     std::unique_ptr<EtsEnv::ETSEnvironment> etsEnvironment = std::make_unique<EtsEnv::ETSEnvironment>();
-    etsEnvironment->commonHspBundleInfos_ = {{0, 0, "", "", "/system/app/path1", "static"}};
+    etsEnvironment->commonHspBundleInfos_ = {{0, "", "", "/system/app/path1", "static"}};
     auto hspPathList = etsEnvironment->GetHspPathList();
     EXPECT_EQ(hspPathList[0], "/system/app/path1");
 }
@@ -481,7 +509,7 @@ HWTEST_F(EtsRuntimeTest, GetAotPath_005, TestSize.Level1)
     options.aotCompileStatusMap = {};
     // ARKTS_MODE_DYNAMIC should be skipped
     std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> hspInfos = {
-        {1001, static_cast<int32_t>(AppExecFwk::AOTCompileStatus::NOT_COMPILED), "com.example.hsp1", "hspModule1",
+        {1001, "com.example.hsp1", "hspModule1",
         "/system/app/hsp1.hap", AppExecFwk::Constants::ARKTS_MODE_DYNAMIC}
     };
     options.commonHspBundleInfos = hspInfos;
@@ -501,9 +529,9 @@ HWTEST_F(EtsRuntimeTest, GetAotPath_006, TestSize.Level1)
     options.arkNativeFilePath = "arm64/";
     options.moduleName = "entry";
     options.aotCompileStatusMap = {};
-    // Static mode with system app path - should be included
+    // Static mode is skipped when the host-private HSP AOT file is unavailable.
     std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> hspInfos = {
-        {1001, static_cast<int32_t>(AppExecFwk::AOTCompileStatus::NOT_COMPILED), "com.example.hsp1", "hspModule1",
+        {1001, "com.example.hsp1", "hspModule1",
         "/system/app/hsp1.hap", AppExecFwk::Constants::ARKTS_MODE_STATIC}
     };
     options.commonHspBundleInfos = hspInfos;
@@ -528,7 +556,7 @@ HWTEST_F(EtsRuntimeTest, GetAotPath_007, TestSize.Level1)
     options.aotCompileStatusMap = {};
     // Non-system path (doesn't start with /system/app/) and has no '/' - should be skipped
     std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> hspInfos = {
-        {1001, static_cast<int32_t>(AppExecFwk::AOTCompileStatus::NOT_COMPILED), "com.example.hsp1", "hspModule1",
+        {1001, "com.example.hsp1", "hspModule1",
         "relativePathWithoutSlash", AppExecFwk::Constants::ARKTS_MODE_STATIC}
     };
     options.commonHspBundleInfos = hspInfos;
@@ -548,9 +576,9 @@ HWTEST_F(EtsRuntimeTest, GetAotPath_008, TestSize.Level1)
     options.arkNativeFilePath = "arm64/";
     options.moduleName = "entry";
     options.aotCompileStatusMap = {};
-    // Non-system path but has '/' - should be included
+    // Non-system path is skipped when the host-private HSP AOT file is unavailable.
     std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> hspInfos = {
-        {1001, static_cast<int32_t>(AppExecFwk::AOTCompileStatus::NOT_COMPILED), "com.example.hsp1", "hspModule1",
+        {1001, "com.example.hsp1", "hspModule1",
         "/data/app/hsp1.hap", AppExecFwk::Constants::ARKTS_MODE_STATIC}
     };
     options.commonHspBundleInfos = hspInfos;
@@ -575,32 +603,32 @@ HWTEST_F(EtsRuntimeTest, GetAotPath_009, TestSize.Level1)
     // Mix of different HSP types
     std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> hspInfos = {
         // Dynamic mode - should be skipped
-        {1001, static_cast<int32_t>(AppExecFwk::AOTCompileStatus::NOT_COMPILED), "com.example.hsp1", "hspModule1",
+        {1001, "com.example.hsp1", "hspModule1",
             "/system/app/hsp1.hap", AppExecFwk::Constants::ARKTS_MODE_DYNAMIC},
-        // Static mode, system path - should be included
-        {1002, static_cast<int32_t>(AppExecFwk::AOTCompileStatus::NOT_COMPILED), "com.example.hsp2", "hspModule2",
+        // Static mode without host-private AOT file - should be skipped
+        {1002, "com.example.hsp2", "hspModule2",
             "/system/app/hsp2.hap", AppExecFwk::Constants::ARKTS_MODE_STATIC},
-        // Static mode, non-system path with slash - should be included
-        {1003, static_cast<int32_t>(AppExecFwk::AOTCompileStatus::INSTALL_COMPILE_SUCCESS), "com.example.hsp3",
+        // Static mode without host-private AOT file - should be skipped
+        {1003, "com.example.hsp3",
             "hspModule3", "/data/app/hsp3.hap", AppExecFwk::Constants::ARKTS_MODE_STATIC},
-        // Non-system path without slash - should be skipped
-        {1004, static_cast<int32_t>(AppExecFwk::AOTCompileStatus::NOT_COMPILED), "com.example.hsp4", "hspModule4",
+        // Static mode without host-private AOT file - should be skipped
+        {1004, "com.example.hsp4", "hspModule4",
             "relativePath", AppExecFwk::Constants::ARKTS_MODE_STATIC}
     };
     options.commonHspBundleInfos = hspInfos;
     auto result = etsRuntime->GetAotPath(options);
     // Should contain entry.an (from aotCompileStatusMap)
     EXPECT_NE(result.find("entry.an"), std::string::npos);
-    // Should not contain hsp2 (static mode, system path) since compile status is not compiled
+    // Should not contain hsp2 because host-private AOT file is unavailable.
     EXPECT_EQ(result.find("hspModule2.an"), std::string::npos);
-    // Should contain hsp3 (non-system path with slash)
-    EXPECT_NE(result.find("hspModule3.an"), std::string::npos);
+    // Should not contain hsp3 because host-private AOT file is unavailable.
+    EXPECT_EQ(result.find("hspModule3.an"), std::string::npos);
     // Should NOT contain hsp1 (dynamic mode)
     EXPECT_EQ(result.find("hspModule1.an"), std::string::npos);
     // Should NOT contain hsp4 (relative path without slash)
     EXPECT_EQ(result.find("hspModule4.an"), std::string::npos);
-    // Check that paths are separated by colons
-    EXPECT_NE(result.find(":"), std::string::npos);
+    // Only entry.an is present, so no path separator is needed
+    EXPECT_EQ(result.find(":"), std::string::npos);
 }
 
 /**
@@ -618,15 +646,14 @@ HWTEST_F(EtsRuntimeTest, GetAotPath_010, TestSize.Level1)
         {"entry", static_cast<int32_t>(AppExecFwk::AOTCompileStatus::IDLE_COMPILE_SUCCESS)}
     };
     std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> hspInfos = {
-        {1002003, static_cast<int32_t>(AppExecFwk::AOTCompileStatus::IDLE_COMPILE_SUCCESS), "com.example.hsp",
+        {1002003, "com.example.hsp",
             "hspModule", "/system/app/hsp.hap", AppExecFwk::Constants::ARKTS_MODE_STATIC}
     };
     options.commonHspBundleInfos = hspInfos;
     auto result = etsRuntime->GetAotPath(options);
-    // Should include version in the path
-    EXPECT_NE(result.find("1002003"), std::string::npos);
-    // Should have proper path structure
-    EXPECT_NE(result.find("/data/service/el1/public/for-all-app/shared_bundles_ark_cache/"), std::string::npos);
+    // Shared HSP host-private AOT is ignored when the versioned file is unavailable.
+    EXPECT_EQ(result.find("1002003"), std::string::npos);
+    EXPECT_EQ(result.find("/data/service/el1/public/for-all-app/shared_bundles_ark_cache/"), std::string::npos);
 }
 
 /**
@@ -730,7 +757,7 @@ HWTEST_F(EtsRuntimeTest, GetAotPath_011, TestSize.Level1)
 
 /**
  * @tc.name: GetAotPath_012
- * @tc.desc: Test GetAotPath with INSTALL_COMPILE_SUCCESS status in commonHspBundleInfos.
+ * @tc.desc: Test GetAotPath skips static shared HSP when host-private AOT file is unavailable.
  * @tc.type: FUNC
  */
 HWTEST_F(EtsRuntimeTest, GetAotPath_012, TestSize.Level1)
@@ -741,13 +768,107 @@ HWTEST_F(EtsRuntimeTest, GetAotPath_012, TestSize.Level1)
     options.moduleName = "entry";
     options.aotCompileStatusMap = {};
     std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> hspInfos = {
-        {1001, static_cast<int32_t>(AppExecFwk::AOTCompileStatus::INSTALL_COMPILE_SUCCESS),
-         "com.example.hsp1", "hspModule1", "/system/app/hsp1.hap",
+        {1001, "com.example.hsp1", "hspModule1", "/system/app/hsp1.hap",
          AppExecFwk::Constants::ARKTS_MODE_STATIC}
     };
     options.commonHspBundleInfos = hspInfos;
     auto result = etsRuntime->GetAotPath(options);
-    EXPECT_NE(result.find("hspModule1.an"), std::string::npos);
+    EXPECT_EQ(result.find("hspModule1.an"), std::string::npos);
+}
+
+/**
+ * @tc.name: GetAotPath_0121
+ * @tc.desc: Test GetAotPath loads host-private static shared HSP AOT by file existence.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, GetAotPath_0121, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    Runtime::Options options;
+    options.aotCompileStatusMap = {};
+    std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> hspInfos = {
+        {1001, TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME, "hostPrivateHspModule", "/data/app/hsp1.hap",
+         AppExecFwk::Constants::ARKTS_MODE_STATIC}
+    };
+    options.commonHspBundleInfos = hspInfos;
+    std::string hostPrivateHspAotPath =
+        CreateHostPrivateHspAotAnFile(TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME, 1001, "hostPrivateHspModule");
+
+    auto result = etsRuntime->GetAotPath(options);
+    EXPECT_EQ(result, hostPrivateHspAotPath);
+}
+
+/**
+ * @tc.name: GetAotPath_0122
+ * @tc.desc: Test GetAotPath skips shared HSP AOT when bundleName or moduleName is empty.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, GetAotPath_0122, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    Runtime::Options options;
+    options.aotCompileStatusMap = {};
+    std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> hspInfos = {
+        {1001, "", "hostPrivateHspModule", "/data/app/hsp1.hap", AppExecFwk::Constants::ARKTS_MODE_STATIC},
+        {1001, TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME, "", "/data/app/hsp1.hap",
+         AppExecFwk::Constants::ARKTS_MODE_STATIC}
+    };
+    options.commonHspBundleInfos = hspInfos;
+
+    auto result = etsRuntime->GetAotPath(options);
+    EXPECT_EQ(result, "");
+}
+
+/**
+ * @tc.name: GetAotPath_0123
+ * @tc.desc: Test GetAotPath only loads existing static host-private shared HSP AOT files.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, GetAotPath_0123, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    Runtime::Options options;
+    options.aotCompileStatusMap = {};
+    std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> hspInfos = {
+        {1001, TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME, "dynamicHspModule", "/data/app/hsp1.hap",
+         AppExecFwk::Constants::ARKTS_MODE_DYNAMIC},
+        {1002, TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME, "staticHspModule", "/data/app/hsp2.hap",
+         AppExecFwk::Constants::ARKTS_MODE_STATIC},
+        {1003, TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME, "missingHspModule", "/data/app/hsp3.hap",
+         AppExecFwk::Constants::ARKTS_MODE_STATIC}
+    };
+    options.commonHspBundleInfos = hspInfos;
+    std::string hostPrivateHspAotPath =
+        CreateHostPrivateHspAotAnFile(TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME, 1002, "staticHspModule");
+
+    auto result = etsRuntime->GetAotPath(options);
+    EXPECT_EQ(result, hostPrivateHspAotPath);
+}
+
+/**
+ * @tc.name: GetAotPath_0124
+ * @tc.desc: Test GetAotPath joins multiple existing static host-private shared HSP AOT files.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, GetAotPath_0124, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    Runtime::Options options;
+    options.aotCompileStatusMap = {};
+    std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> hspInfos = {
+        {1004, TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME, "firstHspModule", "/data/app/hsp4.hap",
+         AppExecFwk::Constants::ARKTS_MODE_STATIC},
+        {1005, TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME, "secondHspModule", "/data/app/hsp5.hap",
+         AppExecFwk::Constants::ARKTS_MODE_STATIC}
+    };
+    options.commonHspBundleInfos = hspInfos;
+    std::string firstHspAotPath =
+        CreateHostPrivateHspAotAnFile(TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME, 1004, "firstHspModule");
+    std::string secondHspAotPath =
+        CreateHostPrivateHspAotAnFile(TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME, 1005, "secondHspModule");
+
+    auto result = etsRuntime->GetAotPath(options);
+    EXPECT_EQ(result, firstHspAotPath + ":" + secondHspAotPath);
 }
 
 /**
