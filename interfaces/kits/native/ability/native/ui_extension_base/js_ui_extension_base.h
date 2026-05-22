@@ -175,7 +175,7 @@ public:
     void RegisterAbilityConfigUpdateCallback();
 
 protected:
-    napi_value CallObjectMethod(const char *name, napi_value const *argv = nullptr, size_t argc = 0,
+    virtual napi_value CallObjectMethod(const char *name, napi_value const *argv = nullptr, size_t argc = 0,
         bool withResult = false);
     bool CheckPromise(napi_value result);
     bool CallPromise(napi_value result, AppExecFwk::AbilityTransactionCallbackInfo<> *callbackInfo);
