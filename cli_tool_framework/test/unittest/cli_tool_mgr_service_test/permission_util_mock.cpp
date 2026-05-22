@@ -17,12 +17,6 @@
 
 namespace OHOS {
 namespace CliTool {
-bool PermissionUtil::VerifyAccessToken(Security::AccessToken::AccessTokenID,
-    const std::vector<std::string> &)
-{
-    return true;
-}
-
 bool PermissionUtil::VerifyAccessToken(Security::AccessToken::AccessTokenID, const std::string &)
 {
     return true;

@@ -62,13 +62,6 @@ int32_t ToolUtil::ValidateProperties(const ToolInfo &toolInfo, ExecToolParam &pa
             TAG_LOGE(AAFwkTag::CLI_TOOL, "not have subcommand");
             return ERR_TOOL_NOT_EXIST;
         }
-        if (!PermissionUtil::VerifyAccessToken(tokenId, search->second.requirePermissions)) {
-            return ERR_PERMISSION_DENIED;
-        }
-    } else {
-        if (!PermissionUtil::VerifyAccessToken(tokenId, toolInfo.requirePermissions)) {
-            return ERR_PERMISSION_DENIED;
-        }
     }
 
     if (param.options.timeout < 0 || param.options.yieldMs < 0) {

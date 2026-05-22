@@ -26,8 +26,6 @@ namespace Security {
 namespace AccessToken {
 class AccessTokenKit {
 public:
-    static int32_t VerifyAccessToken(AccessTokenID tokenId, const std::vector<std::string> &permissions,
-        std::vector<int32_t> &permStateList);
     static int32_t VerifyAccessToken(AccessTokenID tokenId, const std::string &permissionName, bool crossUser);
 };
 } // namespace AccessToken
