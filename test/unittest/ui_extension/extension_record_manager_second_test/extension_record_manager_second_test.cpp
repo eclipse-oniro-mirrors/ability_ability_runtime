@@ -1961,12 +1961,12 @@ void BackgroundUserExtensionMonitorTest::TearDown()
 }
 
 /**
- * @tc.name: BackgroundUserExtension_OnBackgroundUserExtensionStarted_0100
+ * @tc.name: OnBackgroundUserExtensionStarted_0100
  * @tc.desc: Test OnBackgroundUserExtensionStarted stores event fields correctly.
  * @tc.type: FUNC
  * @tc.require: issue
  */
-HWTEST_F(BackgroundUserExtensionMonitorTest, BackgroundUserExtension_OnBackgroundUserExtensionStarted_0100, TestSize.Level1)
+HWTEST_F(BackgroundUserExtensionMonitorTest, OnBackgroundUserExtensionStarted_0100, TestSize.Level1)
 {
     TAG_LOGI(AAFwkTag::TEST, "begin.");
     auto monitor = DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance();
@@ -1996,12 +1996,12 @@ HWTEST_F(BackgroundUserExtensionMonitorTest, BackgroundUserExtension_OnBackgroun
 }
 
 /**
- * @tc.name: BackgroundUserExtension_OnBackgroundUserExtensionStarted_0200
+ * @tc.name: OnBackgroundUserExtensionStarted_0200
  * @tc.desc: Test OnBackgroundUserExtensionStarted with multiple different events.
  * @tc.type: FUNC
  * @tc.require: issue
  */
-HWTEST_F(BackgroundUserExtensionMonitorTest, BackgroundUserExtension_OnBackgroundUserExtensionStarted_0200, TestSize.Level1)
+HWTEST_F(BackgroundUserExtensionMonitorTest, OnBackgroundUserExtensionStarted_0200, TestSize.Level1)
 {
     TAG_LOGI(AAFwkTag::TEST, "begin.");
     auto monitor = DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance();
@@ -2025,12 +2025,12 @@ HWTEST_F(BackgroundUserExtensionMonitorTest, BackgroundUserExtension_OnBackgroun
 }
 
 /**
- * @tc.name: BackgroundUserExtension_OnBackgroundUserExtensionStarted_0300
+ * @tc.name: OnBackgroundUserExtensionStarted_0300
  * @tc.desc: Test OnBackgroundUserExtensionStarted dedupes by extensionTypeName + abilityName and increments cnt.
  * @tc.type: FUNC
  * @tc.require: issue
  */
-HWTEST_F(BackgroundUserExtensionMonitorTest, BackgroundUserExtension_OnBackgroundUserExtensionStarted_0300, TestSize.Level1)
+HWTEST_F(BackgroundUserExtensionMonitorTest, OnBackgroundUserExtensionStarted_0300, TestSize.Level1)
 {
     TAG_LOGI(AAFwkTag::TEST, "begin.");
     auto monitor = DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance();
@@ -2068,12 +2068,12 @@ HWTEST_F(BackgroundUserExtensionMonitorTest, BackgroundUserExtension_OnBackgroun
 }
 
 /**
- * @tc.name: BackgroundUserExtension_OnBackgroundUserExtensionStarted_0400
+ * @tc.name: OnBackgroundUserExtensionStarted_0400
  * @tc.desc: Test OnBackgroundUserExtensionStarted discards event when cache is full (MAX_CACHED_EVENTS=5).
  * @tc.type: FUNC
  * @tc.require: issue
  */
-HWTEST_F(BackgroundUserExtensionMonitorTest, BackgroundUserExtension_OnBackgroundUserExtensionStarted_0400, TestSize.Level1)
+HWTEST_F(BackgroundUserExtensionMonitorTest, OnBackgroundUserExtensionStarted_0400, TestSize.Level1)
 {
     TAG_LOGI(AAFwkTag::TEST, "begin.");
     auto monitor = DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance();
