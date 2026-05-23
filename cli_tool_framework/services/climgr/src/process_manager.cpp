@@ -131,13 +131,15 @@ int32_t ProcessManager::CreateChildProcess(const ExecToolParam &param, const std
         execArgs.push_back(const_cast<char *>(configPrompt.c_str()));
         execArgs.push_back(const_cast<char *>(sandboxConfig.c_str()));
         execArgs.push_back(const_cast<char *>(cmdPrompt.c_str()));
-        std::string cmdLine = toolInfo.executablePath;
+        execArgs.push_back(const_cast<char *>(toolInfo.executablePath.c_str()));
         if (!param.subcommand.empty()) {
-            cmdLine += " " + param.subcommand;
+            execArgs.push_back(const_cast<char *>(param.subcommand.c_str()));
         }
-        ToolUtil::TransferToCmdParam(toolInfo, param.args, cmdLine);
-        execArgs.push_back(const_cast<char *>(cmdLine.c_str()));
-        TAG_LOGI(AAFwkTag::CLI_TOOL, "cmd: %{public}s", cmdLine.c_str());
+        std::vector<std::string> tmpExecArgs;
+        ToolUtil::TransferToCmdParam(param.args, tmpExecArgs);
+        for (auto &element : tmpExecArgs) {
+            execArgs.push_back(const_cast<char *>(element.c_str()));
+        }
         execArgs.push_back(nullptr);
         TAG_LOGI(AAFwkTag::CLI_TOOL, "Before execvp");
         execvp(execArgs[0], execArgs.data());

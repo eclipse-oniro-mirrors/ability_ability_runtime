@@ -53,7 +53,7 @@ public:
     static bool GenerateSandboxConfig(const ExecToolParam &param, AccessToken::AccessTokenID tokenId,
         std::string &sandboxConfig, std::string &bundleName);
 
-    static void TransferToCmdParam(const ToolInfo &toolInfo, const AAFwk::WantParams &args, std::string &cmdLine);
+    static void TransferToCmdParam(const AAFwk::WantParams &args, std::vector<std::string> &execArgs);
 
     static bool IsSkillTool(const std::string &toolName);
     static void NormalizeSkillParamKeys(AAFwk::WantParams &args);
@@ -87,9 +87,9 @@ private:
 
     // Helper methods for mode processing (extracted to reduce nesting depth)
     static void ProcessBooleanParam(const std::string &key, const sptr<AAFwk::IInterface> &value,
-        std::string &cmdLine);
+        std::vector<std::string> &execArgs);
     static void ProcessArrayExpansion(const std::string &key, const sptr<AAFwk::IInterface> &value,
-        std::string &cmdLine);
+        std::vector<std::string> &execArgs);
 
     // Type conversion helpers
     // GetParamStringValue: only supports basic types (bool, int, long, float, double, string)
