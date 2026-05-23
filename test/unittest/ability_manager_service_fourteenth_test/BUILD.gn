@@ -125,6 +125,7 @@ ohos_unittest("ability_manager_service_fourteenth_test") {
     "${ability_runtime_services_path}/abilitymgr/src/extension_record/extension_record_factory.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/extension_record/extension_record_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/extension_running_timeout_monitor.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/background_user_extension_monitor.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/extension_running_info.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/foreground_app_connection_manager/foreground_app_connection_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/free_install_observer_manager.cpp",

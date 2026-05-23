@@ -55,6 +55,7 @@
 #include "hitrace_meter.h"
 #include "hisysevent_report.h"
 #include "extension_running_timeout_monitor.h"
+#include "background_user_extension_monitor.h"
 #include "insight_intent_execute_manager.h"
 #include "insight_intent_db_cache.h"
 #include "skill/skill_execute_manager.h"
@@ -489,6 +490,7 @@ bool AbilityManagerService::Init()
     modularObjectExtensionEventMgr_->SubscribeSysEventReceiver();
     ReportDataPartitionUsageManager::SendReportDataPartitionUsageEvent();
     DelayedSingleton<AAFwk::ExtensionRunningTimeoutMonitor>::GetInstance()->StartMonitor();
+    DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance()->StartMonitor();
 #ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
     ResourceSchedule::ResSchedClient::GetInstance().InitKillReasonListener();
 #endif
@@ -619,6 +621,7 @@ void AbilityManagerService::InitStartupFlag()
 void AbilityManagerService::OnStop()
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "stop");
+    DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance()->StopMonitor();
 #ifdef BGTASKMGR_CONTINUOUS_TASK_ENABLE
     std::unique_lock<ffrt::mutex> lock(bgtaskObserverMutex_);
     if (bgtaskObserver_) {
@@ -4487,6 +4490,9 @@ int32_t AbilityManagerService::StartExtensionAbilityInner(const Want &want, cons
             EventReport::SendExtensionEvent(EventName::START_EXTENSION_ERROR, HISYSEVENT_FAULT, eventInfo);
         }
     }
+    if (eventInfo.errCode == ERR_OK) {
+        ReportBackgroundUserExtensionEvent(callerToken, abilityInfo, validUserId);
+    }
     ReportAbilityAssociatedStartInfoToRSS(abilityRequest.abilityInfo, RES_TYPE_EXTENSION_START_ABILITY, callerToken);
     return eventInfo.errCode;
 }
@@ -5804,6 +5810,8 @@ int32_t AbilityManagerService::ConnectAbilityCommon(
     }
 
     if (CheckIfOperateRemote(abilityWant)) {
+        // Remote extension connections are handled by DMS and the extension runs on another device.
+        // Background user monitoring is not applicable for remote extensions, skip reporting.
         TAG_LOGD(AAFwkTag::SERVICE_EXT, "AbilityManagerService::ConnectAbility. try to ConnectRemoteAbility");
         eventInfo.errCode = ConnectRemoteAbility(abilityWant, callerToken, connect->AsObject());
         if (eventInfo.errCode != ERR_OK) {
@@ -6178,6 +6186,9 @@ int32_t AbilityManagerService::ConnectLocalAbility(const Want &want, const int32
     }else{
         ret = connectManager->ConnectAbilityLocked(abilityRequest, connect, callerToken, sessionInfo,
             indirectCallerInfo);
+    }
+    if (ret == ERR_OK) {
+        ReportBackgroundUserExtensionEvent(callerToken, abilityInfo, userId);
     }
     return ret;
 }
@@ -15890,6 +15901,56 @@ void AbilityManagerService::ReportPreventStartAbilityResult(const AppExecFwk::Ab
     hisyseventReport->InsertParam("EXTENSION_ABILITY_TYPE", extensionAbilityType);
     hisyseventReport->InsertParam("ABILITY_NAME", abilityInfo.name);
     hisyseventReport->Report("AAFWK", "PREVENT_START_ABILITY", HISYSEVENT_BEHAVIOR);
+}
+
+void AbilityManagerService::ReportBackgroundUserExtensionEvent(const sptr<IRemoteObject> &callerToken,
+    const AppExecFwk::AbilityInfo &calleeAbilityInfo, int32_t targetUserId)
+{
+    if (JudgeMultiUserConcurrency(targetUserId)) {
+        return;
+    }
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "report background user extension event, targetUserId:%{public}d", targetUserId);
+
+    int32_t callerUid = IPCSkeleton::GetCallingUid();
+    int32_t callerUserId = callerUid / BASE_USER_RANGE;
+    std::string callerBundleName;
+    std::string callerProcessName;
+
+    auto abilityRecord = Token::GetAbilityRecordByToken(callerToken);
+    if (abilityRecord != nullptr) {
+        auto callerAbilityInfo = abilityRecord->GetAbilityInfo();
+        callerBundleName = callerAbilityInfo.bundleName;
+        callerProcessName = callerAbilityInfo.process;
+    } else {
+        auto bms = AbilityUtil::GetBundleManagerHelper();
+        if (bms != nullptr) {
+            IN_PROCESS_CALL(bms->GetNameForUid(callerUid, callerBundleName));
+        }
+        if (callerBundleName.empty()) {
+            Security::AccessToken::NativeTokenInfo nativeTokenInfo;
+            auto tokenId = IPCSkeleton::GetCallingTokenID();
+            int32_t result = Security::AccessToken::AccessTokenKit::GetNativeTokenInfo(tokenId, nativeTokenInfo);
+            if (result == ERR_OK) {
+                callerProcessName = nativeTokenInfo.processName;
+                callerBundleName = nativeTokenInfo.processName;
+            }
+        } else {
+            callerProcessName = callerBundleName;
+        }
+    }
+
+    auto monitor = DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance();
+    if (monitor != nullptr) {
+        AAFwk::BackgroundUserExtensionCallerInfo callerInfo;
+        callerInfo.callerUid = callerUid;
+        callerInfo.callerUserId = callerUserId;
+        callerInfo.callerProcessName = callerProcessName;
+        callerInfo.callerBundleName = callerBundleName;
+        monitor->OnBackgroundUserExtensionStarted(callerInfo,
+            calleeAbilityInfo.bundleName, calleeAbilityInfo.process,
+            calleeAbilityInfo.extensionTypeName, calleeAbilityInfo.name,
+            calleeAbilityInfo.applicationInfo.uid);
+    }
 }
 
 bool AbilityManagerService::IsInWhiteList(const std::string &callerBundleName, const std::string &calleeBundleName,

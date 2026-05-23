@@ -30,6 +30,7 @@ ohos_moduletest("ability_timeout_module_test") {
     "${ability_runtime_services_path}/abilitymgr/src/ability_bundle_event_callback.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/ability_cache_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/ability_manager_service.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/background_user_extension_monitor.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/app_exit_reason_data_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/assert_fault_callback_death_mgr.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/assert_fault_proxy.cpp",

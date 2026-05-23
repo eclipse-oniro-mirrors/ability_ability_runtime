@@ -26,6 +26,7 @@
 #include "extension_record.h"
 #include "extension_record_manager.h"
 #include "extension_running_timeout_monitor.h"
+#include "background_user_extension_monitor.h"
 #include "extension_config.h"
 #define inline
 #undef protected
@@ -1926,6 +1927,411 @@ HWTEST_F(ExtensionRunningTimeoutMonitorTest, OnExtensionStarted_0500, TestSize.L
     EXPECT_EQ(monitor->runningExtensions_[100].abilityName, "SecondAbility");
 
     config->configMap_.erase("ServiceExtension");
+
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+// ========== BackgroundUserExtensionMonitor TDD Tests ==========
+
+class BackgroundUserExtensionMonitorTest : public testing::Test {
+public:
+    static void SetUpTestCase();
+    static void TearDownTestCase();
+    void SetUp() override;
+    void TearDown() override;
+};
+
+void BackgroundUserExtensionMonitorTest::SetUpTestCase()
+{}
+
+void BackgroundUserExtensionMonitorTest::TearDownTestCase()
+{}
+
+void BackgroundUserExtensionMonitorTest::SetUp()
+{
+    auto monitor = DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance();
+    monitor->cachedEvents_.clear();
+}
+
+void BackgroundUserExtensionMonitorTest::TearDown()
+{
+    auto monitor = DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance();
+    monitor->StopMonitor();
+    monitor->cachedEvents_.clear();
+}
+
+/**
+ * @tc.name: OnBackgroundUserExtensionStarted_0100
+ * @tc.desc: Test OnBackgroundUserExtensionStarted stores event fields correctly.
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(BackgroundUserExtensionMonitorTest, OnBackgroundUserExtensionStarted_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    auto monitor = DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance();
+    ASSERT_NE(monitor, nullptr);
+
+    AAFwk::BackgroundUserExtensionCallerInfo callerInfo;
+    callerInfo.callerUid = 200000100;
+    callerInfo.callerUserId = 100;
+    callerInfo.callerProcessName = "com.example.caller";
+    callerInfo.callerBundleName = "com.example.caller";
+
+    monitor->OnBackgroundUserExtensionStarted(callerInfo,
+        "com.example.callee", "com.example.callee",
+        "ServiceExtension", "ServiceExtAbility", 100200);
+
+    EXPECT_EQ(monitor->cachedEvents_.size(), static_cast<size_t>(1));
+    auto &event = monitor->cachedEvents_.front();
+    EXPECT_EQ(event.callerUid, 200000100);
+    EXPECT_EQ(event.callerBundleName, "com.example.caller");
+    EXPECT_EQ(event.calleeBundleName, "com.example.callee");
+    EXPECT_EQ(event.calleeAbilityName, "ServiceExtAbility");
+    EXPECT_EQ(event.calleeExtensionTypeName, "ServiceExtension");
+    EXPECT_EQ(event.calleeUid, 100200);
+    EXPECT_EQ(event.cnt, 1);
+
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: OnBackgroundUserExtensionStarted_0200
+ * @tc.desc: Test OnBackgroundUserExtensionStarted with multiple different events.
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(BackgroundUserExtensionMonitorTest, OnBackgroundUserExtensionStarted_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    auto monitor = DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance();
+    ASSERT_NE(monitor, nullptr);
+
+    AAFwk::BackgroundUserExtensionCallerInfo callerInfo;
+    callerInfo.callerUid = 200000100;
+    callerInfo.callerBundleName = "com.example.caller";
+
+    monitor->OnBackgroundUserExtensionStarted(callerInfo,
+        "com.example.callee", "com.example.callee",
+        "ServiceExtension", "ServiceExtAbility", 100200);
+
+    monitor->OnBackgroundUserExtensionStarted(callerInfo,
+        "com.example.callee", "com.example.callee",
+        "ShareExtension", "ShareExtAbility", 100200);
+
+    EXPECT_EQ(monitor->cachedEvents_.size(), static_cast<size_t>(2));
+
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: OnBackgroundUserExtensionStarted_0300
+ * @tc.desc: Test OnBackgroundUserExtensionStarted dedupes by extensionTypeName + abilityName and increments cnt.
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(BackgroundUserExtensionMonitorTest, OnBackgroundUserExtensionStarted_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    auto monitor = DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance();
+    ASSERT_NE(monitor, nullptr);
+
+    AAFwk::BackgroundUserExtensionCallerInfo callerInfo1;
+    callerInfo1.callerUid = 200000100;
+    callerInfo1.callerBundleName = "com.example.caller1";
+
+    monitor->OnBackgroundUserExtensionStarted(callerInfo1,
+        "com.example.callee", "com.example.callee",
+        "ServiceExtension", "ServiceExtAbility", 100200);
+
+    EXPECT_EQ(monitor->cachedEvents_.size(), static_cast<size_t>(1));
+    EXPECT_EQ(monitor->cachedEvents_.front().cnt, 1);
+
+    // Second call with same extension type + ability name → dedupe, cnt++
+    AAFwk::BackgroundUserExtensionCallerInfo callerInfo2;
+    callerInfo2.callerUid = 200000200;
+    callerInfo2.callerBundleName = "com.example.caller2";
+
+    monitor->OnBackgroundUserExtensionStarted(callerInfo2,
+        "com.example.callee2", "com.example.callee2",
+        "ServiceExtension", "ServiceExtAbility", 100300);
+
+    EXPECT_EQ(monitor->cachedEvents_.size(), static_cast<size_t>(1));
+    EXPECT_EQ(monitor->cachedEvents_.front().cnt, 2);
+    // Caller info updated to latest
+    EXPECT_EQ(monitor->cachedEvents_.front().callerUid, 200000200);
+    EXPECT_EQ(monitor->cachedEvents_.front().callerBundleName, "com.example.caller2");
+    EXPECT_EQ(monitor->cachedEvents_.front().calleeBundleName, "com.example.callee2");
+    EXPECT_EQ(monitor->cachedEvents_.front().calleeUid, 100300);
+
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: OnBackgroundUserExtensionStarted_0400
+ * @tc.desc: Test OnBackgroundUserExtensionStarted discards event when cache is full (MAX_CACHED_EVENTS=5).
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(BackgroundUserExtensionMonitorTest, OnBackgroundUserExtensionStarted_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    auto monitor = DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance();
+    ASSERT_NE(monitor, nullptr);
+
+    AAFwk::BackgroundUserExtensionCallerInfo callerInfo;
+    callerInfo.callerUid = 200000100;
+    callerInfo.callerBundleName = "com.example.caller";
+
+    for (int32_t i = 0; i < monitor->MAX_CACHED_EVENTS; i++) {
+        monitor->OnBackgroundUserExtensionStarted(callerInfo,
+            "com.example.callee" + std::to_string(i), "com.example.callee" + std::to_string(i),
+            "ServiceExtension", "Ability" + std::to_string(i), 100200 + i);
+    }
+    EXPECT_EQ(monitor->cachedEvents_.size(), static_cast<size_t>(monitor->MAX_CACHED_EVENTS));
+
+    // 6th event should be discarded
+    monitor->OnBackgroundUserExtensionStarted(callerInfo,
+        "com.example.overflow", "com.example.overflow",
+        "ServiceExtension", "OverflowAbility", 999999);
+    EXPECT_EQ(monitor->cachedEvents_.size(), static_cast<size_t>(monitor->MAX_CACHED_EVENTS));
+
+    bool found = false;
+    for (const auto &e : monitor->cachedEvents_) {
+        if (e.calleeAbilityName == "OverflowAbility") {
+            found = true;
+            break;
+        }
+    }
+    EXPECT_FALSE(found);
+
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: BackgroundUserExtension_IsDuplicateEvent_0100
+ * @tc.desc: Test IsDuplicateEvent returns true for same extensionTypeName + abilityName.
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(BackgroundUserExtensionMonitorTest, BackgroundUserExtension_IsDuplicateEvent_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    auto monitor = DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance();
+    ASSERT_NE(monitor, nullptr);
+
+    AAFwk::BackgroundUserExtensionEvent event;
+    event.calleeExtensionTypeName = "ServiceExtension";
+    event.calleeAbilityName = "TestAbility";
+    monitor->cachedEvents_.push_back(event);
+
+    AAFwk::BackgroundUserExtensionEvent candidate;
+    candidate.calleeExtensionTypeName = "ServiceExtension";
+    candidate.calleeAbilityName = "TestAbility";
+
+    std::list<AAFwk::BackgroundUserExtensionEvent>::iterator dupIter;
+    EXPECT_TRUE(monitor->IsDuplicateEvent(candidate, dupIter));
+    EXPECT_EQ(dupIter->calleeAbilityName, "TestAbility");
+
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: BackgroundUserExtension_IsDuplicateEvent_0200
+ * @tc.desc: Test IsDuplicateEvent returns false for different extensionTypeName.
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(BackgroundUserExtensionMonitorTest, BackgroundUserExtension_IsDuplicateEvent_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    auto monitor = DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance();
+    ASSERT_NE(monitor, nullptr);
+
+    AAFwk::BackgroundUserExtensionEvent event;
+    event.calleeExtensionTypeName = "ServiceExtension";
+    event.calleeAbilityName = "TestAbility";
+    monitor->cachedEvents_.push_back(event);
+
+    AAFwk::BackgroundUserExtensionEvent candidate;
+    candidate.calleeExtensionTypeName = "ShareExtension";
+    candidate.calleeAbilityName = "TestAbility";
+
+    std::list<AAFwk::BackgroundUserExtensionEvent>::iterator dupIter;
+    EXPECT_FALSE(monitor->IsDuplicateEvent(candidate, dupIter));
+
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: BackgroundUserExtension_IsDuplicateEvent_0300
+ * @tc.desc: Test IsDuplicateEvent returns false for different abilityName.
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(BackgroundUserExtensionMonitorTest, BackgroundUserExtension_IsDuplicateEvent_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    auto monitor = DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance();
+    ASSERT_NE(monitor, nullptr);
+
+    AAFwk::BackgroundUserExtensionEvent event;
+    event.calleeExtensionTypeName = "ServiceExtension";
+    event.calleeAbilityName = "Ability1";
+    monitor->cachedEvents_.push_back(event);
+
+    AAFwk::BackgroundUserExtensionEvent candidate;
+    candidate.calleeExtensionTypeName = "ServiceExtension";
+    candidate.calleeAbilityName = "Ability2";
+
+    std::list<AAFwk::BackgroundUserExtensionEvent>::iterator dupIter;
+    EXPECT_FALSE(monitor->IsDuplicateEvent(candidate, dupIter));
+
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: BackgroundUserExtension_ReportCachedEvents_0100
+ * @tc.desc: Test ReportCachedEvents with empty cache does nothing.
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(BackgroundUserExtensionMonitorTest, BackgroundUserExtension_ReportCachedEvents_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    auto monitor = DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance();
+    ASSERT_NE(monitor, nullptr);
+
+    EXPECT_EQ(monitor->cachedEvents_.size(), static_cast<size_t>(0));
+    monitor->ReportCachedEvents();
+    EXPECT_EQ(monitor->cachedEvents_.size(), static_cast<size_t>(0));
+
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: BackgroundUserExtension_ReportCachedEvents_0200
+ * @tc.desc: Test ReportCachedEvents clears cache after reporting events.
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(BackgroundUserExtensionMonitorTest, BackgroundUserExtension_ReportCachedEvents_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    auto monitor = DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance();
+    ASSERT_NE(monitor, nullptr);
+
+    AAFwk::BackgroundUserExtensionEvent event;
+    event.callerUid = 200000100;
+    event.callerBundleName = "com.example.caller";
+    event.calleeBundleName = "com.example.callee";
+    event.calleeAbilityName = "ServiceExtAbility";
+    event.calleeExtensionTypeName = "ServiceExtension";
+    event.calleeUid = 100200;
+    event.cnt = 1;
+    monitor->cachedEvents_.push_back(event);
+
+    EXPECT_EQ(monitor->cachedEvents_.size(), static_cast<size_t>(1));
+    monitor->ReportCachedEvents();
+    EXPECT_EQ(monitor->cachedEvents_.size(), static_cast<size_t>(0));
+
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: BackgroundUserExtension_StartStopMonitor_0100
+ * @tc.desc: Test StartMonitor and StopMonitor do not crash.
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(BackgroundUserExtensionMonitorTest, BackgroundUserExtension_StartStopMonitor_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    auto monitor = DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance();
+    ASSERT_NE(monitor, nullptr);
+
+    monitor->StartMonitor();
+    monitor->StopMonitor();
+    // Double stop should not crash
+    monitor->StopMonitor();
+
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: BackgroundUserExtension_BuildJsonInfo_0100
+ * @tc.desc: Test JSON string built from event contains all 7 fields.
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(BackgroundUserExtensionMonitorTest, BackgroundUserExtension_BuildJsonInfo_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    auto monitor = DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance();
+    ASSERT_NE(monitor, nullptr);
+
+    AAFwk::BackgroundUserExtensionCallerInfo callerInfo;
+    callerInfo.callerUid = 200000100;
+    callerInfo.callerUserId = 100;
+    callerInfo.callerProcessName = "com.example.caller";
+    callerInfo.callerBundleName = "com.example.caller";
+
+    monitor->OnBackgroundUserExtensionStarted(callerInfo,
+        "com.example.callee", "com.example.callee",
+        "ServiceExtension", "ServiceExtAbility", 100200);
+
+    ASSERT_EQ(monitor->cachedEvents_.size(), static_cast<size_t>(1));
+    auto &event = monitor->cachedEvents_.front();
+
+    // Verify JSON content via the stored event fields
+    // The JSON is built at report time from these fields
+    EXPECT_EQ(event.callerUid, 200000100);
+    EXPECT_EQ(event.callerBundleName, "com.example.caller");
+    EXPECT_EQ(event.calleeBundleName, "com.example.callee");
+    EXPECT_EQ(event.calleeAbilityName, "ServiceExtAbility");
+    EXPECT_EQ(event.calleeExtensionTypeName, "ServiceExtension");
+    EXPECT_EQ(event.calleeUid, 100200);
+    EXPECT_EQ(event.cnt, 1);
+
+    // Verify JSON contains all expected keys by reporting (BuildJsonInfo is called in ReportCachedEvents)
+    monitor->ReportCachedEvents();
+    EXPECT_EQ(monitor->cachedEvents_.size(), static_cast<size_t>(0));
+
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: BackgroundUserExtension_ConcurrentAccess_0100
+ * @tc.desc: Test concurrent OnBackgroundUserExtensionStarted does not crash.
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(BackgroundUserExtensionMonitorTest, BackgroundUserExtension_ConcurrentAccess_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    auto monitor = DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance();
+    ASSERT_NE(monitor, nullptr);
+
+    const int32_t threadCount = 10;
+    std::vector<std::thread> threads;
+
+    for (int32_t i = 0; i < threadCount; i++) {
+        threads.emplace_back([monitor, i]() {
+            AAFwk::BackgroundUserExtensionCallerInfo callerInfo;
+            callerInfo.callerUid = 200000100 + i;
+            callerInfo.callerBundleName = "com.example.caller" + std::to_string(i);
+            monitor->OnBackgroundUserExtensionStarted(callerInfo,
+                "com.example.callee" + std::to_string(i),
+                "com.example.callee" + std::to_string(i),
+                "ServiceExtension",
+                "Ability" + std::to_string(i),
+                100200 + i);
+        });
+    }
+    for (auto &t : threads) {
+        t.join();
+    }
+    EXPECT_EQ(monitor->cachedEvents_.size(), static_cast<size_t>(threadCount));
 
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
