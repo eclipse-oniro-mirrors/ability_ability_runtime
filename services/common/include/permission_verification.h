@@ -34,6 +34,8 @@ struct VerificationInfo {
     bool associatedWakeUp = false;
     bool withContinuousTask = false;
     uint32_t skillCallerTokenId = 0;
+    bool isCliToolToken = false;
+    bool isLaunchAbility = false;
 };
 
     PermissionVerification() = default;

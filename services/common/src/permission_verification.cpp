@@ -478,7 +478,7 @@ int PermissionVerification::JudgeInvisibleAndBackground(const VerificationInfo &
     }
     if (!isCallByShortcut &&
         !JudgeStartInvisibleAbility(verificationInfo.accessTokenId, verificationInfo.visible,
-        specifyTokenId)) {
+        specifyTokenId) && !(verificationInfo.isCliToolToken && verificationInfo.isLaunchAbility)) {
         TAG_LOGE(AAFwkTag::DEFAULT, "caller INVISIBLE permission invalid");
         return ABILITY_VISIBLE_FALSE_DENY_REQUEST;
     }
