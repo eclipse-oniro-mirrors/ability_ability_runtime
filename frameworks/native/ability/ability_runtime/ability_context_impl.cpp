@@ -25,6 +25,7 @@
 #include "connection_manager.h"
 #include "dialog_request_callback_impl.h"
 #include "dialog_ui_extension_callback.h"
+#include "event_report.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
 #include "json_utils.h"
@@ -1109,36 +1110,43 @@ ErrCode AbilityContextImpl::SetMissionWindowIcon(std::shared_ptr<OHOS::Media::Pi
 ErrCode AbilityContextImpl::SetAbilityInstanceInfo(const std::string& label,
     std::shared_ptr<OHOS::Media::PixelMap> icon)
 {
-    TAG_LOGD(AAFwkTag::CONTEXT, "call");
+    TAG_LOGD(AAFwkTag::CONTEXT, "SetAbilityInstanceInfo");
+    ErrCode ret = ERR_OK;
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
         auto ifaceSession = iface_cast<Rosen::ISession>(GetSessionToken());
         if (ifaceSession == nullptr) {
             TAG_LOGW(AAFwkTag::CONTEXT, "null ifaceSession");
-            return ERR_INVALID_VALUE;
-        }
-
-        TAG_LOGI(AAFwkTag::CONTEXT, "SetSessionLabelAndIcon");
-        auto errCode = ifaceSession->SetSessionLabelAndIcon(label, icon);
-        if (errCode != Rosen::WSError::WS_OK) {
-            TAG_LOGE(AAFwkTag::CONTEXT, "SetSessionLabelAndIcon err: %{public}d", static_cast<int32_t>(errCode));
+            ret = ERR_INVALID_VALUE;
         } else {
-            auto abilityCallback = abilityCallback_.lock();
-            if (abilityCallback) {
-                abilityCallback->SetMissionLabel(label);
-                abilityCallback->SetMissionIcon(icon);
+            TAG_LOGI(AAFwkTag::CONTEXT, "SetSessionLabelAndIcon");
+            auto errCode = ifaceSession->SetSessionLabelAndIcon(label, icon);
+            if (errCode != Rosen::WSError::WS_OK) {
+                TAG_LOGE(AAFwkTag::CONTEXT, "SetSessionLabelAndIcon err: %{public}d", static_cast<int32_t>(errCode));
             }
+            ret = TransferSetAbilityInstanceInfoErr(errCode);
         }
-        if (errCode == Rosen::WSError::WS_ERROR_INVALID_PERMISSION) {
-            return AAFwk::CHECK_PERMISSION_FAILED;
-        } else if (errCode == Rosen::WSError::WS_ERROR_SET_SESSION_LABEL_FAILED) {
-            return AAFwk::INVALID_PARAMETERS_ERR;
-        } else if (errCode == Rosen::WSError::WS_ERROR_DEVICE_NOT_SUPPORT) {
-            return AAFwk::ERR_CAPABILITY_NOT_SUPPORT;
-        }
-
-        return static_cast<int32_t>(errCode);
+    } else {
+        ret = AAFwk::ERR_CAPABILITY_NOT_SUPPORT;
     }
-    return AAFwk::ERR_CAPABILITY_NOT_SUPPORT;
+    if (ret != ERR_OK) {
+        AAFwk::EventInfo eventInfo;
+        eventInfo.errMsg = "SetAbilityInstanceInfo";
+        eventInfo.errCode = ret;
+        if (abilityInfo_ != nullptr) {
+            eventInfo.bundleName = abilityInfo_->bundleName;
+            eventInfo.moduleName = abilityInfo_->moduleName;
+            eventInfo.abilityName = abilityInfo_->name;
+        }
+        AAFwk::EventReport::SendAbilityEvent(
+            AAFwk::EventName::START_ABILITY_ERROR, HISYSEVENT_FAULT, eventInfo);
+    } else {
+        auto abilityCallback = abilityCallback_.lock();
+        if (abilityCallback) {
+            abilityCallback->SetMissionLabel(label);
+            abilityCallback->SetMissionIcon(icon);
+        }
+    }
+    return ret;
 }
 
 int AbilityContextImpl::GetCurrentWindowMode()
@@ -1636,6 +1644,21 @@ int32_t AbilityContextImpl::TransferRestartWSError(Rosen::WSError srcError)
         return it->second;
     }
     return ERR_INVALID_VALUE;
+}
+
+int32_t AbilityContextImpl::TransferSetAbilityInstanceInfoErr(Rosen::WSError srcError)
+{
+    std::map<Rosen::WSError, int32_t> codeMap {
+        {Rosen::WSError::WS_OK, ERR_OK},
+        {Rosen::WSError::WS_ERROR_INVALID_PERMISSION, AAFwk::CHECK_PERMISSION_FAILED},
+        {Rosen::WSError::WS_ERROR_SET_SESSION_LABEL_FAILED, AAFwk::INVALID_PARAMETERS_ERR},
+        {Rosen::WSError::WS_ERROR_DEVICE_NOT_SUPPORT, AAFwk::ERR_CAPABILITY_NOT_SUPPORT}
+    };
+    auto it = codeMap.find(srcError);
+    if (it != codeMap.end()) {
+        return it->second;
+    }
+    return static_cast<int32_t>(srcError);
 }
 #endif
 

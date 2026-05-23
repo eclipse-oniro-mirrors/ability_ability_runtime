@@ -171,6 +171,28 @@ HWTEST_F(AbilityContextImplSecondTest, TransferRestartWSError_0100, Function | M
     srcCode = Rosen::WSError::WS_ERROR_SET_SESSION_LABEL_FAILED;
     EXPECT_EQ(AbilityContextImpl::TransferRestartWSError(srcCode), ERR_INVALID_VALUE);
 }
+
+/**
+ * @tc.number: TransferSetAbilityInstanceInfoErr_0100
+ * @tc.name: TransferSetAbilityInstanceInfoErr
+ */
+HWTEST_F(AbilityContextImplSecondTest, TransferSetAbilityInstanceInfoErr_0100, Function | MediumTest | Level1)
+{
+    auto srcCode = Rosen::WSError::WS_OK;
+    EXPECT_EQ(AbilityContextImpl::TransferSetAbilityInstanceInfoErr(srcCode), ERR_OK);
+
+    srcCode = Rosen::WSError::WS_ERROR_INVALID_PERMISSION;
+    EXPECT_EQ(AbilityContextImpl::TransferSetAbilityInstanceInfoErr(srcCode), AAFwk::CHECK_PERMISSION_FAILED);
+
+    srcCode = Rosen::WSError::WS_ERROR_SET_SESSION_LABEL_FAILED;
+    EXPECT_EQ(AbilityContextImpl::TransferSetAbilityInstanceInfoErr(srcCode), AAFwk::INVALID_PARAMETERS_ERR);
+
+    srcCode = Rosen::WSError::WS_ERROR_DEVICE_NOT_SUPPORT;
+    EXPECT_EQ(AbilityContextImpl::TransferSetAbilityInstanceInfoErr(srcCode), AAFwk::ERR_CAPABILITY_NOT_SUPPORT);
+
+    srcCode = Rosen::WSError::WS_ERROR_INVALID_OPERATION;
+    EXPECT_EQ(AbilityContextImpl::TransferSetAbilityInstanceInfoErr(srcCode), static_cast<int32_t>(srcCode));
+}
 #endif
 
 /**

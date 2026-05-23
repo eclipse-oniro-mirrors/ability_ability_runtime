@@ -360,6 +360,7 @@ public:
     }
 
     static int32_t TransferRestartWSError(Rosen::WSError srcError);
+    static int32_t TransferSetAbilityInstanceInfoErr(Rosen::WSError srcError);
 #endif
 
     /**
