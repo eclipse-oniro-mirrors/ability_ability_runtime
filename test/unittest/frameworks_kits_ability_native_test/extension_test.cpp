@@ -545,5 +545,20 @@ HWTEST_F(ExtensionTest, AaFwk_Extension_2900, Function | MediumTest | Level1)
     EXPECT_FALSE(isAsyncCallback);
     GTEST_LOG_(INFO) << "AaFwk_Extension_2900 end";
 }
+
+/**
+ * @tc.number: AaFwk_Extension_3000
+ * @tc.name: HandleExecuteSkill
+ * @tc.desc: HandleExecuteSkill
+ */
+HWTEST_F(ExtensionTest, AaFwk_Extension_3000, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AaFwk_Extension_3000 start";
+    Want want;
+    want.SetElementName("DemoDeviceId", "DemoBundleName", "DemoAbilityName");
+    auto result = extension_->HandleExecuteSkill(want);
+    EXPECT_TRUE(result);
+    GTEST_LOG_(INFO) << "AaFwk_Extension_3000 end";
+}
 } // namespace AppExecFwk
 } // namespace OHOS
