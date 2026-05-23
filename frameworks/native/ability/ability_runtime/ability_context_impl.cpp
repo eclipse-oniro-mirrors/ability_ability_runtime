@@ -1111,24 +1111,21 @@ ErrCode AbilityContextImpl::SetAbilityInstanceInfo(const std::string& label,
     std::shared_ptr<OHOS::Media::PixelMap> icon)
 {
     TAG_LOGD(AAFwkTag::CONTEXT, "SetAbilityInstanceInfo");
-    ErrCode ret = ERR_OK;
-    if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto ifaceSession = iface_cast<Rosen::ISession>(GetSessionToken());
-        if (ifaceSession == nullptr) {
-            TAG_LOGW(AAFwkTag::CONTEXT, "null ifaceSession");
-            ret = ERR_INVALID_VALUE;
-        } else {
-            TAG_LOGI(AAFwkTag::CONTEXT, "SetSessionLabelAndIcon");
-            auto errCode = ifaceSession->SetSessionLabelAndIcon(label, icon);
-            if (errCode != Rosen::WSError::WS_OK) {
-                TAG_LOGE(AAFwkTag::CONTEXT, "SetSessionLabelAndIcon err: %{public}d", static_cast<int32_t>(errCode));
-            }
-            ret = TransferSetAbilityInstanceInfoErr(errCode);
-        }
-    } else {
-        ret = AAFwk::ERR_CAPABILITY_NOT_SUPPORT;
+    if (!Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
+        return AAFwk::ERR_CAPABILITY_NOT_SUPPORT;
     }
+
+    auto ifaceSession = iface_cast<Rosen::ISession>(GetSessionToken());
+    if (ifaceSession == nullptr) {
+        TAG_LOGW(AAFwkTag::CONTEXT, "null ifaceSession");
+        return ERR_INVALID_VALUE;
+    }
+
+    TAG_LOGI(AAFwkTag::CONTEXT, "SetSessionLabelAndIcon");
+    auto errCode = ifaceSession->SetSessionLabelAndIcon(label, icon);
+    auto ret = TransferSetAbilityInstanceInfoErr(errCode);
     if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "SetSessionLabelAndIcon err: %{public}d", ret);
         AAFwk::EventInfo eventInfo;
         eventInfo.errMsg = "SetAbilityInstanceInfo";
         eventInfo.errCode = ret;
