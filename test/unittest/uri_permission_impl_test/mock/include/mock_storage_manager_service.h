@@ -410,6 +410,11 @@ public:
         return E_OK;
     }
 
+    virtual int32_t UMountDisShareFile(const std::vector<std::string> &distributeDirs)
+    {
+        return E_OK;
+    }
+
     virtual int32_t InactiveUserPublicDirKey(uint32_t userId) override
     {
         return E_OK;
