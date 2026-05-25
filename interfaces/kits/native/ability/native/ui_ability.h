@@ -780,6 +780,7 @@ private:
 
     std::string identityToken_;
     bool showOnLockScreen_ = false;
+    bool isDestroyed_ = false;
     std::mutex wantMutexlock_;
 #endif
 };

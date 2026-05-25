@@ -131,6 +131,14 @@ void OnDestroyPromiseCallback(ani_env *env, ani_object aniObj)
         TAG_LOGE(AAFwkTag::UIABILITY, "Object_SetFieldByName_Long status: %{public}d", status);
         return;
     }
+
+    // isDestroyed was already set to true before onDestroy callback
+    // This is just a defensive check to ensure it's set correctly
+    ani_boolean isDestroyed = true;
+    status = env->Object_SetFieldByName_Boolean(aniObj, "isDestroyed", isDestroyed);
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "Failed to verify isDestroyed, status: %{public}d", status);
+    }
 }
 
 void OnPrepareTerminatePromiseCallback(ani_env *env, ani_object aniObj, ani_boolean aniPrepareTermination)
@@ -581,6 +589,14 @@ void EtsUIAbility::OnStartInner(ani_env *env, const Want &want, sptr<AAFwk::Sess
         TAG_LOGE(AAFwkTag::UIABILITY, "lastRequestWant status: %{public}d", status);
         return;
     }
+
+    ani_boolean isDestroyed = false;
+    status = env->Object_SetFieldByName_Boolean(etsAbilityObj_->aniObj, "isDestroyed", isDestroyed);
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "isDestroyed Object_SetFieldByName_Boolean status: %{public}d", status);
+    } else {
+        TAG_LOGI(AAFwkTag::UIABILITY, "Initialize isDestroyed to false successfully");
+    }
     SetSelfSpecifiedId(env, sessionInfo);
 
     // Handle NativeModule: Create NativeAbilityWrapper and call PostAbility
@@ -697,8 +713,22 @@ void EtsUIAbility::OnStop()
         EtsAbilityLifecycleCallbackArgs ability(etsAbilityObj_);
         applicationContext->DispatchOnAbilityWillDestroy(ability);
     }
+    // Set isDestroyed to true BEFORE onDestroy callback
+    // This ensures the property is set while all objects are still valid
+    auto env = etsRuntime_.GetAniEnv();
+    if (env != nullptr && etsAbilityObj_ != nullptr) {
+        ani_boolean isDestroyed = true;
+        ani_status status = env->Object_SetFieldByName_Boolean(etsAbilityObj_->aniObj, "isDestroyed", isDestroyed);
+        if (status != ANI_OK) {
+            TAG_LOGE(AAFwkTag::UIABILITY, "Failed to set isDestroyed, status: %{public}d", status);
+        } else {
+            TAG_LOGI(AAFwkTag::UIABILITY, "Set isDestroyed to true before sync onDestroy");
+        }
+    }
+
     WriteLifecycleSwitchLog("onDestroy");
     CallObjectMethod(false, "onDestroy", nullptr);
+
     OnStopCallback();
     TAG_LOGD(AAFwkTag::UIABILITY, "OnStop end");
 }
@@ -740,9 +770,18 @@ void EtsUIAbility::OnStop(AppExecFwk::AbilityTransactionCallbackInfo<> *callback
         return;
     }
 
+    // Set isDestroyed to true BEFORE onDestroy callback
+    // This ensures the property is set while all objects are still valid
+    ani_boolean isDestroyedFlag = true;
+    ani_status status = env->Object_SetFieldByName_Boolean(etsAbilityObj_->aniObj, "isDestroyed", isDestroyedFlag);
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "Failed to set isDestroyed before async onDestroy, status: %{public}d", status);
+    } else {
+        TAG_LOGI(AAFwkTag::UIABILITY, "Set isDestroyed to true before async onDestroy");
+    }
+
     ani_long destroyCallbackPoint = reinterpret_cast<ani_long>(callbackInfo);
-    ani_status status =
-        env->Object_SetFieldByName_Long(etsAbilityObj_->aniObj, "destroyCallbackPoint", destroyCallbackPoint);
+    status = env->Object_SetFieldByName_Long(etsAbilityObj_->aniObj, "destroyCallbackPoint", destroyCallbackPoint);
     if (status != ANI_OK) {
         TAG_LOGE(AAFwkTag::UIABILITY, "Object_SetFieldByName_Long status: %{public}d", status);
         return;
