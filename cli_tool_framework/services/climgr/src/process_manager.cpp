@@ -137,7 +137,9 @@ int32_t ProcessManager::CreateChildProcess(const ExecToolParam &param, const std
         }
         std::vector<std::string> tmpExecArgs;
         ToolUtil::TransferToCmdParam(param.args, tmpExecArgs);
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "args:");
         for (auto &element : tmpExecArgs) {
+            TAG_LOGI(AAFwkTag::CLI_TOOL, "%{public}s", element.c_str());
             execArgs.push_back(const_cast<char *>(element.c_str()));
         }
         execArgs.push_back(nullptr);
