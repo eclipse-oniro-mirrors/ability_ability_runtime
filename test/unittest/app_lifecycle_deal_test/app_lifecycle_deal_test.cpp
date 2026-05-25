@@ -489,5 +489,41 @@ HWTEST_F(AppLifecycleDealTest, SetWatchdogBackgroundStatusRunning_001, TestSize.
     EXPECT_CALL(*mockAppScheduler, SetWatchdogBackgroundStatus(_)).Times(1);
     appLifeCycle->SetWatchdogBackgroundStatusRunning(status);
 }
+
+/**
+ * @tc.name: ScheduleMem_001
+ * @tc.desc: Test the null appThread state of ScheduleMem
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppLifecycleDealTest, ScheduleMem_001, TestSize.Level1)
+{
+    TAG_LOGD(AAFwkTag::TEST, "ScheduleMem_001 start.");
+    auto appLifeCycle = std::make_shared<AppLifeCycleDeal>();
+    EXPECT_NE(appLifeCycle, nullptr);
+    MemDumpInfo info;
+    info.pid = 1;
+    sptr<IMemDumpCallback> callback = nullptr;
+    appLifeCycle->ScheduleMem(info, callback);
+}
+
+/**
+ * @tc.name: ScheduleMem_002
+ * @tc.desc: Test the normal state of ScheduleMem
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppLifecycleDealTest, ScheduleMem_002, TestSize.Level1)
+{
+    TAG_LOGD(AAFwkTag::TEST, "ScheduleMem_002 start.");
+    auto appLifeCycle = std::make_shared<AppLifeCycleDeal>();
+    sptr<MockAppScheduler> mockAppScheduler = new (std::nothrow) MockAppScheduler();
+    appLifeCycle->SetApplicationClient(mockAppScheduler);
+    MemDumpInfo info;
+    info.pid = 1;
+    sptr<IMemDumpCallback> callback = nullptr;
+    EXPECT_CALL(*mockAppScheduler, ScheduleMem(_, _)).Times(1);
+    appLifeCycle->ScheduleMem(info, callback);
+    TAG_LOGD(AAFwkTag::TEST, "ScheduleMem_002 end.");
+}
+
 }  // namespace AppExecFwk
 }  // namespace OHOS

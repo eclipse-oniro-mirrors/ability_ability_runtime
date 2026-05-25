@@ -26,6 +26,9 @@
 
 #include "hilog_tag_wrapper.h"
 #include "ipc_types.h"
+#include "mem_dump_callback_interface.h"
+#include "mem_dump_callback_stub.h"
+#include "mem_dump_callback_proxy.h"
 #include "mock_app_mgr_service.h"
 #include "render_state_observer_stub.h"
 #include "native_child_notify_stub.h"
@@ -84,6 +87,38 @@ public:
     void OnError(int32_t errCode) {}
     int32_t OnNativeChildExit(int32_t pid, int32_t signal) { return 0; }
 };
+
+class MemDumpCallbackMock : public MemDumpCallbackStub {
+public:
+    MemDumpCallbackMock() = default;
+    virtual ~MemDumpCallbackMock() = default;
+
+    void OnMemDumpDone(const std::string &dumpResult) override
+    {
+        dumpResult_ = dumpResult;
+    }
+    std::string dumpResult_;
+};
+
+class MemDumpCallbackProxyTest : public testing::Test {
+public:
+    static void SetUpTestCase();
+    static void TearDownTestCase();
+    void SetUp() override;
+    void TearDown() override;
+};
+
+void MemDumpCallbackProxyTest::SetUpTestCase(void)
+{}
+
+void MemDumpCallbackProxyTest::TearDownTestCase(void)
+{}
+
+void MemDumpCallbackProxyTest::SetUp()
+{}
+
+void MemDumpCallbackProxyTest::TearDown()
+{}
 
 class AppMgrStubTest : public testing::Test {
 public:
@@ -1505,5 +1540,190 @@ HWTEST_F(AppMgrStubTest, HandleCancelDelayedExitTask_0100, TestSize.Level1)
         static_cast<uint32_t>(AppMgrInterfaceCode::CANCEL_DELAYED_EXIT_TASK), data, reply, option);
     EXPECT_EQ(ret, NO_ERROR);
 }
+
+/**
+ * @tc.name: HandleDumpMem_001
+ * @tc.desc: Handle dump mem with valid info and no callback.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleDumpMem_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    WriteInterfaceToken(data);
+    MemDumpInfo info;
+    info.pid = 1;
+    data.WriteParcelable(&info);
+    data.WriteBool(false);
+
+    EXPECT_CALL(*mockAppMgrService_, DumpMem(_, _)).Times(1);
+
+    auto result = mockAppMgrService_->OnRemoteRequest(
+        static_cast<uint32_t>(AppMgrInterfaceCode::DUMP_MEM_PROCESS), data, reply, option);
+    EXPECT_EQ(result, NO_ERROR);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: HandleDumpMem_002
+ * @tc.desc: Handle dump mem with null info returns error.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleDumpMem_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    WriteInterfaceToken(data);
+
+    auto result = mockAppMgrService_->OnRemoteRequest(
+        static_cast<uint32_t>(AppMgrInterfaceCode::DUMP_MEM_PROCESS), data, reply, option);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: HandleReportDumpMemResult_001
+ * @tc.desc: Handle report dump mem result with valid callback.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleReportDumpMemResult_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    WriteInterfaceToken(data);
+    sptr<IRemoteObject> remoteCallback = nullptr;
+    data.WriteRemoteObject(remoteCallback);
+    std::string dumpResult = "test result";
+    data.WriteString(dumpResult);
+
+    EXPECT_CALL(*mockAppMgrService_, ReportDumpMemResult(_, _)).Times(1);
+
+    auto result = mockAppMgrService_->OnRemoteRequest(
+        static_cast<uint32_t>(AppMgrInterfaceCode::REPORT_DUMP_MEM_RESULT), data, reply, option);
+    EXPECT_EQ(result, NO_ERROR);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: HandleReportDumpMemResult_002
+ * @tc.desc: Handle report dump mem result with null callback.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleReportDumpMemResult_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    WriteInterfaceToken(data);
+    sptr<IRemoteObject> remoteCallback = nullptr;
+    data.WriteRemoteObject(remoteCallback);
+    std::string dumpResult = "test result";
+    data.WriteString(dumpResult);
+
+    auto result = mockAppMgrService_->OnRemoteRequest(
+        static_cast<uint32_t>(AppMgrInterfaceCode::REPORT_DUMP_MEM_RESULT), data, reply, option);
+    EXPECT_EQ(result, NO_ERROR);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: MemDumpCallbackStub_OnRemoteRequest_001
+ * @tc.desc: MemDumpCallbackStub handle OnMemDumpDone with valid descriptor.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, MemDumpCallbackStub_OnRemoteRequest_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto callback = sptr<MemDumpCallbackMock>(new (std::nothrow) MemDumpCallbackMock());
+    ASSERT_NE(callback, nullptr);
+
+    MessageParcel data;
+    data.WriteInterfaceToken(MemDumpCallbackStub::GetDescriptor());
+    std::string dumpResult = "test dump result";
+    data.WriteString(dumpResult);
+    MessageParcel reply;
+    MessageOption option;
+
+    auto result = callback->OnRemoteRequest(
+        static_cast<uint32_t>(IMemDumpCallback::Message::ON_MEM_DUMP_DONE), data, reply, option);
+    EXPECT_EQ(result, NO_ERROR);
+    EXPECT_EQ(callback->dumpResult_, dumpResult);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: MemDumpCallbackStub_OnRemoteRequest_002
+ * @tc.desc: MemDumpCallbackStub returns error with invalid descriptor.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, MemDumpCallbackStub_OnRemoteRequest_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto callback = sptr<MemDumpCallbackMock>(new (std::nothrow) MemDumpCallbackMock());
+    ASSERT_NE(callback, nullptr);
+
+    MessageParcel data;
+    data.WriteString(std::string("invalid_descriptor"));
+    MessageParcel reply;
+    MessageOption option;
+
+    auto result = callback->OnRemoteRequest(
+        static_cast<uint32_t>(IMemDumpCallback::Message::ON_MEM_DUMP_DONE), data, reply, option);
+    EXPECT_EQ(result, ERR_INVALID_STATE);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: MemDumpCallbackStub_OnRemoteRequest_003
+ * @tc.desc: MemDumpCallbackStub handles unknown code.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, MemDumpCallbackStub_OnRemoteRequest_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto callback = sptr<MemDumpCallbackMock>(new (std::nothrow) MemDumpCallbackMock());
+    ASSERT_NE(callback, nullptr);
+
+    MessageParcel data;
+    data.WriteInterfaceToken(MemDumpCallbackStub::GetDescriptor());
+    MessageParcel reply;
+    MessageOption option;
+
+    auto result = callback->OnRemoteRequest(999, data, reply, option);
+    EXPECT_NE(result, NO_ERROR);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: MemDumpCallbackProxy_OnMemDumpDone_001
+ * @tc.desc: MemDumpCallbackProxy OnMemDumpDone with null remote.
+ * @tc.type: FUNC
+ */
+HWTEST_F(MemDumpCallbackProxyTest, MemDumpCallbackProxy_OnMemDumpDone_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    sptr<IRemoteObject> impl = nullptr;
+    sptr<MemDumpCallbackProxy> proxy = new (std::nothrow) MemDumpCallbackProxy(impl);
+    ASSERT_NE(proxy, nullptr);
+
+    proxy->OnMemDumpDone("test result");
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
 } // namespace AppExecFwk
 } // namespace OHOS
