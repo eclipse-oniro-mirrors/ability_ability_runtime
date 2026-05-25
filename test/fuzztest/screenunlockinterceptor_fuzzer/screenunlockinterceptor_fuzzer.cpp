@@ -17,6 +17,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <fuzzer/FuzzedDataProvider.h>
 
 #include "bundle_mgr_helper.h"
 #define private public
@@ -30,54 +31,211 @@ using namespace OHOS::AppExecFwk;
 
 namespace OHOS {
 namespace {
-constexpr int INPUT_ZERO = 0;
-constexpr int INPUT_ONE = 1;
-constexpr int INPUT_TWO = 2;
-constexpr uint8_t ENABLE = 2;
-constexpr int INPUT_THREE = 3;
-constexpr size_t U32_AT_SIZE = 4;
-constexpr size_t OFFSET_ZERO = 24;
-constexpr size_t OFFSET_ONE = 16;
-constexpr size_t OFFSET_TWO = 8;
+constexpr int32_t API_DO_PROCESS = 0;
+constexpr int32_t API_GET_TARGET_ABILITY_INFO = 1;
+constexpr int32_t API_QUERY_TARGET_ABILITY_INFO = 2;
+constexpr int32_t API_PROCESS_SYSTEM_APP = 3;
+constexpr int32_t API_PROCESS_NON_SYSTEM_APP = 4;
+constexpr int32_t API_CHECK_EXT_INTERCEPTION = 5;
+constexpr int32_t API_CHECK_SYS_EXT_INTERCEPTION = 6;
+constexpr int32_t API_CHECK_THIRD_EXT_INTERCEPTION = 7;
+constexpr int32_t API_CHECK_INTERCEPTION_BY_CONFIG = 8;
+constexpr int32_t API_GET_APP_IDENTIFIER = 9;
+constexpr int32_t API_REPORT_SYS_UI_ABILITY_EVENT = 10;
+constexpr int32_t MAX_API_CASE = API_REPORT_SYS_UI_ABILITY_EVENT;
+constexpr size_t STRING_MAX_LEN = 128;
+constexpr int32_t USER_ID_DEFAULT = 100;
+constexpr int32_t REQUEST_CODE_DEFAULT = 0;
 } // namespace
 
-uint32_t GetU32Data(const char* ptr)
+sptr<Token> CreateFuzzAbilityToken()
 {
-    // convert fuzz input data to an integer
-    return (ptr[INPUT_ZERO] << OFFSET_ZERO) | (ptr[INPUT_ONE] << OFFSET_ONE) | (ptr[INPUT_TWO] << OFFSET_TWO) |
-        ptr[INPUT_THREE];
-}
-
-sptr<Token> GetFuzzAbilityToken()
-{
-    sptr<Token> token = nullptr;
-    AbilityRequest abilityRequest;
-    abilityRequest.appInfo.bundleName = "com.example.fuzzTest";
-    abilityRequest.abilityInfo.name = "MainAbility";
-    abilityRequest.abilityInfo.type = AbilityType::DATA;
-    std::shared_ptr<AbilityRecord> abilityRecord =
-        AbilityRecord::CreateAbilityRecord(abilityRequest);
-    if (abilityRecord) {
-        token = abilityRecord->GetToken();
+    AbilityRequest request;
+    request.appInfo.bundleName = "com.example.fuzzTest";
+    request.abilityInfo.name = "MainAbility";
+    request.abilityInfo.type = AbilityType::DATA;
+    auto record = AbilityRecord::CreateAbilityRecord(request);
+    if (record != nullptr) {
+        return record->GetToken();
     }
-    return token;
+    return nullptr;
 }
 
-bool DoSomethingInterestingWithMyAPI(const char *data, size_t size)
+AbilityInterceptorParam BuildInterceptorParam(Want &want, sptr<IRemoteObject> &token)
 {
-    std::shared_ptr<ScreenUnlockInterceptor> screenUnlockInterceptor =
-        std::make_shared<ScreenUnlockInterceptor>();
-    std::string strParam(data, size);
-    int intParam = static_cast<int>(GetU32Data(data));
-    int32_t int32Param = static_cast<int32_t>(GetU32Data(data));
-    Want want;
-    bool boolParam = *data % ENABLE;
-    sptr<IRemoteObject> token = GetFuzzAbilityToken();
     auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param(want, intParam, int32Param, boolParam, token, shouldBlockFunc);
+    return AbilityInterceptorParam(
+        want, REQUEST_CODE_DEFAULT, USER_ID_DEFAULT, false, token, shouldBlockFunc);
+}
+
+void FuzzDoProcess(FuzzedDataProvider &fdp)
+{
+    auto interceptor = std::make_shared<ScreenUnlockInterceptor>();
+    sptr<IRemoteObject> token = CreateFuzzAbilityToken();
+    Want want;
+    std::string bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    std::string abilityName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    want.SetElementName(bundleName, abilityName);
+    AbilityInterceptorParam param = BuildInterceptorParam(want, token);
+    interceptor->DoProcess(param);
+}
+
+void FuzzGetTargetAbilityInfo(FuzzedDataProvider &fdp)
+{
+    auto interceptor = std::make_shared<ScreenUnlockInterceptor>();
+    sptr<IRemoteObject> token = CreateFuzzAbilityToken();
+    Want want;
+    std::string bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    std::string abilityName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    want.SetElementName(bundleName, abilityName);
+    AbilityInterceptorParam param = BuildInterceptorParam(want, token);
     AbilityInfo targetAbilityInfo;
-    screenUnlockInterceptor->DoProcess(param);
-    screenUnlockInterceptor->QueryTargetAbilityInfo(param, targetAbilityInfo);
+    interceptor->GetTargetAbilityInfo(param, targetAbilityInfo);
+}
+
+void FuzzQueryTargetAbilityInfo(FuzzedDataProvider &fdp)
+{
+    auto interceptor = std::make_shared<ScreenUnlockInterceptor>();
+    sptr<IRemoteObject> token = CreateFuzzAbilityToken();
+    Want want;
+    std::string bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    std::string abilityName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    want.SetElementName(bundleName, abilityName);
+    int32_t userId = fdp.ConsumeIntegral<int32_t>();
+    auto shouldBlockFunc = []() { return false; };
+    AbilityInterceptorParam param(want, REQUEST_CODE_DEFAULT, userId, false, token, shouldBlockFunc);
+    AbilityInfo targetAbilityInfo;
+    interceptor->QueryTargetAbilityInfo(param, targetAbilityInfo);
+}
+
+void FuzzProcessSystemApp(FuzzedDataProvider &fdp)
+{
+    auto interceptor = std::make_shared<ScreenUnlockInterceptor>();
+    AbilityInfo info;
+    bool allowRun = fdp.ConsumeBool();
+    info.applicationInfo.allowAppRunWhenDeviceFirstLocked = allowRun;
+    info.applicationInfo.bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    info.applicationInfo.name = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    info.applicationInfo.isSystemApp = true;
+    bool isExtension = fdp.ConsumeBool();
+    if (isExtension) {
+        info.type = AbilityType::EXTENSION;
+    }
+    info.extensionTypeName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    info.name = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    interceptor->ProcessSystemApp(info);
+}
+
+void FuzzProcessNonSystemApp(FuzzedDataProvider &fdp)
+{
+    auto interceptor = std::make_shared<ScreenUnlockInterceptor>();
+    AbilityInfo info;
+    info.applicationInfo.bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    info.applicationInfo.name = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    info.applicationInfo.isSystemApp = false;
+    bool isExtension = fdp.ConsumeBool();
+    if (isExtension) {
+        info.type = AbilityType::EXTENSION;
+    }
+    info.extensionTypeName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    info.name = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    interceptor->ProcessNonSystemApp(info);
+}
+
+void FuzzCheckExtensionInterception(FuzzedDataProvider &fdp)
+{
+    auto interceptor = std::make_shared<ScreenUnlockInterceptor>();
+    std::string extTypeName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    std::string bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    bool isSystemApp = fdp.ConsumeBool();
+    interceptor->CheckExtensionInterception(extTypeName, bundleName, isSystemApp);
+}
+
+void FuzzCheckSystemAppExtensionInterception(FuzzedDataProvider &fdp)
+{
+    auto interceptor = std::make_shared<ScreenUnlockInterceptor>();
+    std::string extTypeName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    std::string bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    interceptor->CheckSystemAppExtensionInterception(extTypeName, bundleName);
+}
+
+void FuzzCheckThirdPartyExtensionInterception(FuzzedDataProvider &fdp)
+{
+    auto interceptor = std::make_shared<ScreenUnlockInterceptor>();
+    std::string extTypeName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    std::string bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    interceptor->CheckThirdPartyExtensionInterception(extTypeName, bundleName);
+}
+
+void FuzzCheckInterceptionByConfig(FuzzedDataProvider &fdp)
+{
+    auto interceptor = std::make_shared<ScreenUnlockInterceptor>();
+    std::string extTypeName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    std::string appIdentifier = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    bool interception = fdp.ConsumeBool();
+    bool isSystemApp = fdp.ConsumeBool();
+    interceptor->CheckInterceptionByConfig(
+        extTypeName, appIdentifier, interception, isSystemApp);
+}
+
+void FuzzGetAppIdentifier(FuzzedDataProvider &fdp)
+{
+    auto interceptor = std::make_shared<ScreenUnlockInterceptor>();
+    std::string bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    interceptor->GetAppIdentifier(bundleName);
+    interceptor->GetAppIdentifier("");
+}
+
+void FuzzReportSystemAppUIAbilityEvent(FuzzedDataProvider &fdp)
+{
+    auto interceptor = std::make_shared<ScreenUnlockInterceptor>();
+    AbilityInfo info;
+    info.applicationInfo.bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    info.name = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    interceptor->ReportSystemAppUIAbilityEvent(info);
+}
+
+bool DoSomethingInterestingWithMyAPI(const uint8_t *data, size_t size)
+{
+    FuzzedDataProvider fdp(data, size);
+    auto apiCase = fdp.ConsumeIntegralInRange<int32_t>(0, MAX_API_CASE);
+    switch (apiCase) {
+        case API_DO_PROCESS:
+            FuzzDoProcess(fdp);
+            break;
+        case API_GET_TARGET_ABILITY_INFO:
+            FuzzGetTargetAbilityInfo(fdp);
+            break;
+        case API_QUERY_TARGET_ABILITY_INFO:
+            FuzzQueryTargetAbilityInfo(fdp);
+            break;
+        case API_PROCESS_SYSTEM_APP:
+            FuzzProcessSystemApp(fdp);
+            break;
+        case API_PROCESS_NON_SYSTEM_APP:
+            FuzzProcessNonSystemApp(fdp);
+            break;
+        case API_CHECK_EXT_INTERCEPTION:
+            FuzzCheckExtensionInterception(fdp);
+            break;
+        case API_CHECK_SYS_EXT_INTERCEPTION:
+            FuzzCheckSystemAppExtensionInterception(fdp);
+            break;
+        case API_CHECK_THIRD_EXT_INTERCEPTION:
+            FuzzCheckThirdPartyExtensionInterception(fdp);
+            break;
+        case API_CHECK_INTERCEPTION_BY_CONFIG:
+            FuzzCheckInterceptionByConfig(fdp);
+            break;
+        case API_GET_APP_IDENTIFIER:
+            FuzzGetAppIdentifier(fdp);
+            break;
+        case API_REPORT_SYS_UI_ABILITY_EVENT:
+            FuzzReportSystemAppUIAbilityEvent(fdp);
+            break;
+        default:
+            break;
+    }
     return true;
 }
 } // namespace OHOS
@@ -85,33 +243,6 @@ bool DoSomethingInterestingWithMyAPI(const char *data, size_t size)
 /* Fuzzer entry point */
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
-    /* Run your code on data */
-    if (data == nullptr) {
-        std::cout << "invalid data" << std::endl;
-        return 0;
-    }
-
-    /* Validate the length of size */
-    if (size < OHOS::U32_AT_SIZE) {
-        return 0;
-    }
-
-    char *ch = static_cast<char*>(malloc(size + 1));
-    if (ch == nullptr) {
-        std::cout << "malloc failed." << std::endl;
-        return 0;
-    }
-
-    (void)memset_s(ch, size + 1, 0x00, size + 1);
-    if (memcpy_s(ch, size + 1, data, size) != EOK) {
-        std::cout << "copy failed." << std::endl;
-        free(ch);
-        ch = nullptr;
-        return 0;
-    }
-
-    OHOS::DoSomethingInterestingWithMyAPI(ch, size);
-    free(ch);
-    ch = nullptr;
+    OHOS::DoSomethingInterestingWithMyAPI(data, size);
     return 0;
 }
