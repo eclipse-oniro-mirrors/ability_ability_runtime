@@ -417,7 +417,7 @@ bool DumpRuntimeHelper::GetDumpResult(std::string &dumpResult)
     bool ret = func(TYPE_TXT, &buf, MEM_LEAK_MAX_SIZE);
     if (!ret) {
         TAG_LOGE(AAFwkTag::APPKIT, "TYPE_TXT Error");
-    } else if (buf != nullptr) {
+    } else if (buf != nullptr && *buf != '\0') {
         dumpResult = buf;
         TAG_LOGI(AAFwkTag::APPKIT, "TYPE_TXT finish, result:%{public}s", dumpResult.c_str());
     }
