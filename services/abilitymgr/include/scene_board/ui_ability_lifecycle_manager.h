@@ -187,6 +187,7 @@ public:
      * @param rootSceneSession Indicates root scene session of SCB.
      */
     void SetRootSceneSession(const sptr<IRemoteObject> &rootSceneSession);
+    sptr<IRemoteObject> GetRootSceneSession() const;
 
     int NotifySCBToStartUIAbility(AbilityRequest &abilityRequest);
     int32_t NotifySCBToStartUIAbilities(std::vector<AbilityRequest> &abilityRequestList,
@@ -1326,6 +1327,7 @@ private:
     ffrt::mutex callerInfoMapLock_;
     // if window reused, persistentId will be reused, keep previous record here until the ability is dead
     std::unordered_set<UIAbilityRecordPtr> reuseWindowRecords_;
+    mutable ffrt::mutex rootSceneSessionLock_;
     sptr<IRemoteObject> rootSceneSession_;
     sptr<ISessionHandler> handler_;
     ffrt::mutex statusBarDelegateManagerLock_;
