@@ -87,7 +87,7 @@ public:
         const std::string &processName, const int uid, const BundleInfo &bundleInfo,
         const std::string &specifiedProcessFlag = "", bool *isProCache = nullptr, const std::string &instanceKey = "",
         const std::string &customProcessFlag = "", const bool notReuseCachedPorcess = false,
-        bool isFromPreload = false, pid_t reusePid = -1);
+        bool isFromPreload = false);
 
     std::shared_ptr<AppRunningRecord> CheckAppRunningRecordForSpecifiedProcess(
         int32_t uid, const std::string &instanceKey, const std::string &customProcessFlag);
@@ -141,10 +141,6 @@ public:
     static bool CheckAppProcessNameIsSame(const std::shared_ptr<AppRunningRecord> &appRecord,
         const std::string &processName, bool isFromPreload = false);
 
-    static bool IsProcessMatchedByFieldOrPid(const std::shared_ptr<AppRunningRecord> &appRecord,
-        const std::string &instanceKey, const std::string &specifiedProcessFlag,
-        const std::string &customProcessFlag, pid_t reusePid, bool checkInstanceKey = true);
-
     /**
      * CheckAppRunningRecordIsExistByUid, check app exist when concurrent.
      *
@@ -186,6 +182,17 @@ public:
      * @return process record.
      */
     std::shared_ptr<AppRunningRecord> GetAppRunningRecordByPid(const pid_t pid);
+
+    /**
+     * GetValidAppRunningRecordByPid, Get valid process record by pid.
+     * Process is considered invalid if terminating, killing, restart flagged,
+     * user request cleaning, caching with blocked flag, or kill precede start.
+     *
+     * @param pid, the application pid.
+     *
+     * @return valid process record, or nullptr if not found or invalid.
+     */
+    std::shared_ptr<AppRunningRecord> GetValidAppRunningRecordByPid(const pid_t pid);
 
     /**
      * GetAppRunningRecordByAbilityToken, Get process record by ability token.

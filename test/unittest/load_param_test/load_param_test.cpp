@@ -15,9 +15,8 @@
 
 #include <gtest/gtest.h>
 
-#include "param.h"
-
 #include "message_parcel.h"
+#include "param.h"
 
 using namespace testing;
 using namespace testing::ext;

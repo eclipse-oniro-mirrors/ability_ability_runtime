@@ -120,43 +120,26 @@ bool AppRunningManager::CheckAppProcessNameIsSame(const std::shared_ptr<AppRunni
         || appRecord->GetPreloadMode() == PreloadMode::PRELOAD_MODULE || !(appRecord->GetExtensionSandBoxFlag()));
 }
 
-bool AppRunningManager::IsProcessMatchedByFieldOrPid(const std::shared_ptr<AppRunningRecord> &appRecord,
-    const std::string &instanceKey, const std::string &specifiedProcessFlag,
-    const std::string &customProcessFlag, pid_t reusePid, bool checkInstanceKey)
-{
-    if (appRecord == nullptr) {
-        return false;
-    }
-    bool fieldMatch = (specifiedProcessFlag.empty() || appRecord->GetSpecifiedProcessFlag() == specifiedProcessFlag) &&
-        appRecord->GetCustomProcessFlag() == customProcessFlag;
-    if (checkInstanceKey) {
-        fieldMatch = fieldMatch && (appRecord->GetInstanceKey() == instanceKey);
-    }
-    return fieldMatch || (reusePid > 0 && appRecord->GetPid() == reusePid);
-}
-
 std::shared_ptr<AppRunningRecord> AppRunningManager::CheckAppRunningRecordIsExist(const std::string &appName,
     const std::string &processName, const int uid, const BundleInfo &bundleInfo,
     const std::string &specifiedProcessFlag, bool *isProCache, const std::string &instanceKey,
-    const std::string &customProcessFlag, const bool notReuseCachedPorcess, bool isFromPreload,
-    pid_t reusePid)
+    const std::string &customProcessFlag, const bool notReuseCachedPorcess, bool isFromPreload)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::APPMGR,
         "appName: %{public}s, processName: %{public}s, uid: %{public}d, specifiedProcessFlag: %{public}s, \
-         customProcessFlag: %{public}s, reusePid: %{public}d",
-        appName.c_str(), processName.c_str(), uid, specifiedProcessFlag.c_str(),
-        customProcessFlag.c_str(), reusePid);
+         customProcessFlag: %{public}s",
+        appName.c_str(), processName.c_str(), uid, specifiedProcessFlag.c_str(), customProcessFlag.c_str());
     std::regex rule("[a-zA-Z.]+[-_#]{1}");
     std::string signCode;
     auto jointUserId = bundleInfo.jointUserId;
     TAG_LOGD(AAFwkTag::APPMGR, "jointUserId : %{public}s", jointUserId.c_str());
     ClipStringContent(rule, bundleInfo.appId, signCode);
-    auto findSameProcess = [signCode, specifiedProcessFlag, processName, jointUserId, customProcessFlag,
-        isFromPreload, reusePid](const auto &pair) {
+    auto findSameProcess = [signCode, specifiedProcessFlag, processName, jointUserId, customProcessFlag, isFromPreload]
+        (const auto &pair) {
             return (pair.second != nullptr) &&
-            AppRunningManager::IsProcessMatchedByFieldOrPid(
-                pair.second, std::string(""), specifiedProcessFlag, customProcessFlag, reusePid, false) &&
+            (specifiedProcessFlag.empty() || pair.second->GetSpecifiedProcessFlag() == specifiedProcessFlag) &&
+            (pair.second->GetCustomProcessFlag() == customProcessFlag) &&
             (pair.second->GetSignCode() == signCode) &&
             AppRunningManager::CheckAppProcessNameIsSame(pair.second, processName, isFromPreload) &&
             (pair.second->GetJointUserId() == jointUserId) && !(pair.second->IsTerminating()) &&
@@ -171,7 +154,9 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::CheckAppRunningRecordIsExis
     for (const auto &item : appRunningMap) {
         const auto &appRecord = item.second;
         if (appRecord && CheckAppProcessNameIsSame(appRecord, processName, isFromPreload) &&
-            IsProcessMatchedByFieldOrPid(appRecord, instanceKey, specifiedProcessFlag, customProcessFlag, reusePid) &&
+            appRecord->GetInstanceKey() == instanceKey &&
+            (specifiedProcessFlag.empty() || appRecord->GetSpecifiedProcessFlag() == specifiedProcessFlag) &&
+            (appRecord->GetCustomProcessFlag() == customProcessFlag) &&
             !(appRecord->IsTerminating()) && !(appRecord->IsKilling()) && !(appRecord->GetRestartAppFlag()) &&
             !(appRecord->IsUserRequestCleaning()) &&
             !(appRecord->IsCaching() && appRecord->GetProcessCacheBlocked()) &&
@@ -472,6 +457,15 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::GetAppRunningRecordByPid(co
         return pair.second->GetPid() == pid;
     });
     return ((iter == appRunningRecordMap_.end()) ? nullptr : iter->second);
+}
+
+std::shared_ptr<AppRunningRecord> AppRunningManager::GetValidAppRunningRecordByPid(const pid_t pid)
+{
+    auto appRecord = GetAppRunningRecordByPid(pid);
+    if (!IsAppRunningRecordValid(appRecord)) {
+        return nullptr;
+    }
+    return appRecord;
 }
 
 std::shared_ptr<AppRunningRecord> AppRunningManager::GetAppRunningRecordByAbilityToken(

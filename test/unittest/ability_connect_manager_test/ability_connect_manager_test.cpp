@@ -3728,6 +3728,81 @@ HWTEST_F(AbilityConnectManagerTest, AAFwk_AbilityMS_ScheduleDisconnectAbilityDon
     EXPECT_EQ(res, CONNECTION_NOT_EXIST);
 }
 
+/**
+ * @tc.name: SetExtensionLoadParam_ShouldSetReusePidWhenClientPidValidAndInProcess
+ * @tc.desc: Test reusePid is set when clientPid > 0 and isInProcess
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityConnectManagerTest,
+    SetExtensionLoadParam_ShouldSetReusePidWhenClientPidValidAndInProcess, TestSize.Level1)
+{
+    auto connectManager = std::make_shared<TestAbilityConnectManager>(0);
+    auto record = InitAbilityRecord();
+    ASSERT_NE(record, nullptr);
+    record->SetClientPid(1234);
+    record->SetIsInProcess(true);
+
+    AbilityRuntime::LoadParam loadParam;
+    connectManager->SetExtensionLoadParam(loadParam, record);
+    EXPECT_EQ(loadParam.reusePid, 1234);
+}
+
+/**
+ * @tc.name: SetExtensionLoadParam_ShouldNotSetReusePidWhenNotInProcess
+ * @tc.desc: Test reusePid is not set when clientPid > 0 but not isInProcess
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityConnectManagerTest,
+    SetExtensionLoadParam_ShouldNotSetReusePidWhenNotInProcess, TestSize.Level1)
+{
+    auto connectManager = std::make_shared<TestAbilityConnectManager>(0);
+    auto record = InitAbilityRecord();
+    ASSERT_NE(record, nullptr);
+    record->SetClientPid(1234);
+    // isInProcess defaults to false
+
+    AbilityRuntime::LoadParam loadParam;
+    connectManager->SetExtensionLoadParam(loadParam, record);
+    EXPECT_EQ(loadParam.reusePid, -1);
+}
+
+/**
+ * @tc.name: SetExtensionLoadParam_ShouldNotSetReusePidWhenClientPidInvalid
+ * @tc.desc: Test reusePid is not set when clientPid <= 0
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityConnectManagerTest,
+    SetExtensionLoadParam_ShouldNotSetReusePidWhenClientPidInvalid, TestSize.Level1)
+{
+    auto connectManager = std::make_shared<TestAbilityConnectManager>(0);
+    auto record = InitAbilityRecord();
+    ASSERT_NE(record, nullptr);
+    record->SetIsInProcess(true);
+    // clientPid defaults to -1
+
+    AbilityRuntime::LoadParam loadParam;
+    connectManager->SetExtensionLoadParam(loadParam, record);
+    EXPECT_EQ(loadParam.reusePid, -1);
+}
+
+/**
+ * @tc.name: SetExtensionLoadParam_ShouldNotSetReusePidWhenBothInvalid
+ * @tc.desc: Test reusePid is not set when both clientPid <= 0 and not isInProcess
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityConnectManagerTest,
+    SetExtensionLoadParam_ShouldNotSetReusePidWhenBothInvalid, TestSize.Level1)
+{
+    auto connectManager = std::make_shared<TestAbilityConnectManager>(0);
+    auto record = InitAbilityRecord();
+    ASSERT_NE(record, nullptr);
+    // both clientPid and isInProcess are default (invalid)
+
+    AbilityRuntime::LoadParam loadParam;
+    connectManager->SetExtensionLoadParam(loadParam, record);
+    EXPECT_EQ(loadParam.reusePid, -1);
+}
+
 
 }  // namespace AAFwk
 }  // namespace OHOS

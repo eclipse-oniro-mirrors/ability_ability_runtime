@@ -1352,7 +1352,7 @@ void AbilityConnectManager::SetExtensionLoadParam(AbilityRuntime::LoadParam &loa
     std::shared_ptr<BaseExtensionRecord> abilityRecord)
 {
     CHECK_POINTER(abilityRecord);
-    if (abilityRecord->GetClientPid() > 0) {
+    if (abilityRecord->GetClientPid() > 0 && abilityRecord->IsInProcess()) {
         loadParam.reusePid = abilityRecord->GetClientPid();
     }
     if (!IsStrictMode(abilityRecord)) {
