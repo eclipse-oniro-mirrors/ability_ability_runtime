@@ -123,6 +123,11 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::GetAppRunningRecordByPid(co
     return AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_;
 }
 
+std::shared_ptr<AppRunningRecord> AppRunningManager::GetValidAppRunningRecordByPid(const pid_t pid)
+{
+    return nullptr;
+}
+
 std::shared_ptr<AppRunningRecord> AppRunningManager::GetAppRunningRecordByAbilityToken(
     const sptr<IRemoteObject> &abilityToken)
 {

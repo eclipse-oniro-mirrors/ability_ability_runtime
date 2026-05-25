@@ -2040,7 +2040,16 @@ void AppMgrServiceInner::LoadAbility(std::shared_ptr<AbilityInfo> abilityInfo, s
         want->RemoveParam(Want::PARAMS_REAL_CALLER_KEY);
     }
     std::shared_ptr<AppRunningRecord> appRecord;
-    if (want && (want->GetBoolParam(AAFwk::Want::DESTINATION_PLUGIN_ABILITY, false))) {
+    if (loadParam->reusePid > 0) {
+        appRecord = appRunningManager_->GetValidAppRunningRecordByPid(loadParam->reusePid);
+        if (!appRecord) {
+            TAG_LOGE(AAFwkTag::APPMGR,
+                "reusePid %{public}d process not found, load failed", loadParam->reusePid);
+            NotifyStartProcessFailed(loadParam->token);
+            return;
+        }
+        isProcCache = DelayedSingleton<CacheProcessManager>::GetInstance()->ReuseCachedProcess(appRecord);
+    } else if (want && (want->GetBoolParam(AAFwk::Want::DESTINATION_PLUGIN_ABILITY, false))) {
         TAG_LOGI(AAFwkTag::APPMGR, "load plugin ability");
         if (abilityInfo->extensionAbilityType != ExtensionAbilityType::EMBEDDED_UI) {
             appRecord = GetAppRunningRecordByAbilityToken(loadParam->preToken);
@@ -2145,6 +2154,12 @@ void AppMgrServiceInner::LoadAbility(std::shared_ptr<AbilityInfo> abilityInfo, s
     if (AAFwk::UIExtensionWrapper::IsAgentUIExtension(abilityInfo->extensionAbilityType) &&
         (appRecord == nullptr || !appRecord->HasAgentExtensionAbility())) {
         TAG_LOGE(AAFwkTag::APPMGR, "agentUI start denied, agentExtension process not found");
+        NotifyStartProcessFailed(loadParam->token);
+        return;
+    }
+
+    if ((loadParam->reusePid > 0) && !appRecord) {
+        TAG_LOGE(AAFwkTag::APPMGR, "reusePid %{public}d process invalid, load failed", loadParam->reusePid);
         NotifyStartProcessFailed(loadParam->token);
         return;
     }

@@ -6909,5 +6909,123 @@ HWTEST_F(AppMgrServiceInnerTest, ReportDumpMemResult_001, TestSize.Level1)
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
 }
+
+/**
+ * @tc.name: LoadAbility_ReusePidFound_001
+ * @tc.desc: Test LoadAbility with reusePid > 0 and valid process found, process reused
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, LoadAbility_ReusePidFound_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "LoadAbility_ReusePidFound_001 start");
+    OHOS::sptr<IRemoteObject> token = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    pid_t testPid = 5678;
+    BundleInfo bundleInfo;
+    auto record = appMgrServiceInner->appRunningManager_->CreateAppRunningRecord(
+        applicationInfo_, "testReuseProcess", bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->GetPriorityObject()->SetPid(testPid);
+    record->appInfos_.insert(std::make_pair("test", applicationInfo_));
+    appMgrServiceInner->appRunningManager_->appRunningRecordMap_.clear();
+    appMgrServiceInner->appRunningManager_->appRunningRecordMap_.insert(std::make_pair(1, record));
+
+    AbilityRuntime::LoadParam loadParam;
+    loadParam.token = token;
+    loadParam.reusePid = testPid;
+    auto loadParamPtr = std::make_shared<AbilityRuntime::LoadParam>(loadParam);
+
+    size_t mapSizeBefore = appMgrServiceInner->appRunningManager_->appRunningRecordMap_.size();
+    appMgrServiceInner->LoadAbility(abilityInfo_, applicationInfo_, nullptr, loadParamPtr);
+    // reusePid found valid process, no new process created
+    EXPECT_EQ(appMgrServiceInner->appRunningManager_->appRunningRecordMap_.size(), mapSizeBefore);
+    TAG_LOGI(AAFwkTag::TEST, "LoadAbility_ReusePidFound_001 end");
+}
+
+/**
+ * @tc.name: LoadAbility_ReusePidNotFound_001
+ * @tc.desc: Test LoadAbility with reusePid > 0 but no matching process, load failed
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, LoadAbility_ReusePidNotFound_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "LoadAbility_ReusePidNotFound_001 start");
+    OHOS::sptr<IRemoteObject> token = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    appMgrServiceInner->appRunningManager_->appRunningRecordMap_.clear();
+
+    AbilityRuntime::LoadParam loadParam;
+    loadParam.token = token;
+    loadParam.reusePid = 9999;
+    auto loadParamPtr = std::make_shared<AbilityRuntime::LoadParam>(loadParam);
+
+    appMgrServiceInner->LoadAbility(abilityInfo_, applicationInfo_, nullptr, loadParamPtr);
+    // reusePid not found, early return, no new process created
+    EXPECT_EQ(appMgrServiceInner->appRunningManager_->appRunningRecordMap_.size(), 0u);
+    TAG_LOGI(AAFwkTag::TEST, "LoadAbility_ReusePidNotFound_001 end");
+}
+
+/**
+ * @tc.name: LoadAbility_ReusePidInvalid_001
+ * @tc.desc: Test LoadAbility with reusePid > 0 but process is terminating (invalid), load failed
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, LoadAbility_ReusePidInvalid_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "LoadAbility_ReusePidInvalid_001 start");
+    OHOS::sptr<IRemoteObject> token = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    pid_t testPid = 6789;
+    BundleInfo bundleInfo;
+    auto record = appMgrServiceInner->appRunningManager_->CreateAppRunningRecord(
+        applicationInfo_, "testInvalidProcess", bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->GetPriorityObject()->SetPid(testPid);
+    record->SetTerminating();
+    appMgrServiceInner->appRunningManager_->appRunningRecordMap_.clear();
+    appMgrServiceInner->appRunningManager_->appRunningRecordMap_.insert(std::make_pair(1, record));
+
+    AbilityRuntime::LoadParam loadParam;
+    loadParam.token = token;
+    loadParam.reusePid = testPid;
+    auto loadParamPtr = std::make_shared<AbilityRuntime::LoadParam>(loadParam);
+
+    size_t mapSizeBefore = appMgrServiceInner->appRunningManager_->appRunningRecordMap_.size();
+    appMgrServiceInner->LoadAbility(abilityInfo_, applicationInfo_, nullptr, loadParamPtr);
+    // reusePid process invalid (terminating), early return, no new process created
+    EXPECT_EQ(appMgrServiceInner->appRunningManager_->appRunningRecordMap_.size(), mapSizeBefore);
+    TAG_LOGI(AAFwkTag::TEST, "LoadAbility_ReusePidInvalid_001 end");
+}
+
+/**
+ * @tc.name: LoadAbility_ReusePidDefault_001
+ * @tc.desc: Test LoadAbility with reusePid = -1 (default, normal flow)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, LoadAbility_ReusePidDefault_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "LoadAbility_ReusePidDefault_001 start");
+    OHOS::sptr<IRemoteObject> token = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    appMgrServiceInner->appRunningManager_->appRunningRecordMap_.clear();
+
+    AbilityRuntime::LoadParam loadParam;
+    loadParam.token = token;
+    // reusePid defaults to -1, reusePid path skipped
+    auto loadParamPtr = std::make_shared<AbilityRuntime::LoadParam>(loadParam);
+
+    appMgrServiceInner->LoadAbility(abilityInfo_, applicationInfo_, nullptr, loadParamPtr);
+    // reusePid == -1, reusePid path skipped, goes through normal flow
+    EXPECT_NE(appMgrServiceInner->appRunningManager_, nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "LoadAbility_ReusePidDefault_001 end");
+}
 } // namespace AppExecFwk
 } // namespace OHOS

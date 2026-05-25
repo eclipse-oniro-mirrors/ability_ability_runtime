@@ -459,6 +459,15 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::GetAppRunningRecordByPid(co
     return ((iter == appRunningRecordMap_.end()) ? nullptr : iter->second);
 }
 
+std::shared_ptr<AppRunningRecord> AppRunningManager::GetValidAppRunningRecordByPid(const pid_t pid)
+{
+    auto appRecord = GetAppRunningRecordByPid(pid);
+    if (!IsAppRunningRecordValid(appRecord)) {
+        return nullptr;
+    }
+    return appRecord;
+}
+
 std::shared_ptr<AppRunningRecord> AppRunningManager::GetAppRunningRecordByAbilityToken(
     const sptr<IRemoteObject> &abilityToken)
 {

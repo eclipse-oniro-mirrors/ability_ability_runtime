@@ -445,6 +445,7 @@ group("unittest") {
       "lifecycle_test:unittest",
       "load_ability_callback_impl_test:unittest",
       "load_ability_callback_manager_test:unittest",
+      "load_param_test:unittest",
       "local_pending_want_test:unittest",
       "local_want_agent_info_test:unittest",
       "main_element_utils_test:unittest",

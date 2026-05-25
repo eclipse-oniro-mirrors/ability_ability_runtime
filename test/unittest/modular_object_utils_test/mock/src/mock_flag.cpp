@@ -58,4 +58,5 @@ OHOS::AppExecFwk::AbilityInfo OHOS::AAFwk::AbilityRecord::abilityInfo;
 int32_t OHOS::AAFwk::AbilityRecord::recordId_ = 0;
 std::string OHOS::AAFwk::AbilityRecord::processName_;
 pid_t OHOS::AAFwk::BaseExtensionRecord::clientPid = -1;
+bool OHOS::AAFwk::BaseExtensionRecord::isInProcess = false;
 std::string OHOS::AAFwk::BaseExtensionRecord::requestId_;

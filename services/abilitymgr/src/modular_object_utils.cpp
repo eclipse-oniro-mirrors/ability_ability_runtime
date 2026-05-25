@@ -350,6 +350,7 @@ int32_t ModularObjectUtils::SetupNewRecord(const AbilityRequest &abilityRequest,
     // Determine processName
     std::string process;
     if (config->launchMode == MoeLaunchMode::IN_PROCESS) {
+        targetService->SetIsInProcess(true);
         pid_t callingPid = IPCSkeleton::GetCallingPid();
         AppExecFwk::RunningProcessInfo processInfo;
         auto procRet = IN_PROCESS_CALL(

@@ -92,6 +92,9 @@ bool LoadParam::MarshallingTwo(Parcel &parcel) const
     if (!parcel.WriteInt32(byCallStatus)) {
         return false;
     }
+    if (!parcel.WriteInt32(reusePid)) {
+        return false;
+    }
     return true;
 }
 
@@ -128,6 +131,7 @@ bool LoadParam::ReadFromParcel(Parcel &parcel)
     isPreloadStart = parcel.ReadBool();
     loadTimeout = parcel.ReadInt32();
     byCallStatus = parcel.ReadInt32();
+    reusePid = parcel.ReadInt32();
     return true;
 }
 

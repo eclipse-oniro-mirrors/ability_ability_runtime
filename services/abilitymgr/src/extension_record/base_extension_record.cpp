@@ -334,6 +334,16 @@ pid_t BaseExtensionRecord::GetClientPid() const
     return clientPid_;
 }
 
+void BaseExtensionRecord::SetIsInProcess(bool isInProcess)
+{
+    isInProcess_ = isInProcess;
+}
+
+bool BaseExtensionRecord::IsInProcess() const
+{
+    return isInProcess_;
+}
+
 void BaseExtensionRecord::SetRequestId(const std::string &requestId)
 {
     requestId_ = requestId;
