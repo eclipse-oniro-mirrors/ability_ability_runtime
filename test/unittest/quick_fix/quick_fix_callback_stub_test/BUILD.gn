@@ -31,11 +31,12 @@ ohos_unittest("quick_fix_callback_stub_test") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
 
-  deps = []
+  deps = [
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
+  ]
 
   external_deps = [
     "ability_base:want",
-    "ability_runtime:app_manager",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",

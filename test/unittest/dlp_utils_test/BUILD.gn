@@ -25,6 +25,7 @@ ohos_unittest("dlp_utils_test") {
 
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
     "${ability_runtime_services_path}/common:perm_verification",
   ]
@@ -32,7 +33,6 @@ ohos_unittest("dlp_utils_test") {
   external_deps = [
     "ability_base:session_info",
     "ability_base:want",
-    "ability_runtime:app_manager",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",

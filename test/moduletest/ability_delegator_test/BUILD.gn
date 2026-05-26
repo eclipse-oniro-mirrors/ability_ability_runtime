@@ -113,7 +113,9 @@ ohos_moduletest("ability_delegator_registry_moduletest") {
   configs += [ "${ability_runtime_services_path}/common:common_config" ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_native_path}/appkit:app_context",
     "${ability_runtime_native_path}/appkit:appkit_delegator",
@@ -123,8 +125,6 @@ ohos_moduletest("ability_delegator_registry_moduletest") {
 
   external_deps = [
     "ability_base:want",
-    "ability_runtime:ability_manager",
-    "ability_runtime:runtime",
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",
     "eventhandler:libeventhandler",
@@ -134,8 +134,8 @@ ohos_moduletest("ability_delegator_registry_moduletest") {
     "hilog:libhilog",
     "init:libbegetutil",
     "ipc:ipc_core",
-    "runtime_core:ani",
     "napi:ace_napi",
+    "runtime_core:ani",
   ]
 }
 
@@ -149,6 +149,7 @@ ohos_moduletest("iability_monitor_moduletest") {
   configs += [ "${ability_runtime_services_path}/common:common_config" ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_native_path}/appkit:appkit_delegator",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
@@ -157,7 +158,6 @@ ohos_moduletest("iability_monitor_moduletest") {
   external_deps = [
     "ability_base:session_info",
     "ability_base:want",
-    "ability_runtime:ability_manager",
     "c_utils:utils",
     "eventhandler:libeventhandler",
     "googletest:gmock",
@@ -165,8 +165,8 @@ ohos_moduletest("iability_monitor_moduletest") {
     "googletest:gtest_main",
     "hilog:libhilog",
     "ipc:ipc_core",
-    "runtime_core:ani",
     "napi:ace_napi",
+    "runtime_core:ani",
   ]
 }
 
@@ -180,6 +180,7 @@ ohos_moduletest("ability_delegator_moduletest") {
   configs += [ "${ability_runtime_services_path}/common:common_config" ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_native_path}/appkit:app_context",
@@ -190,7 +191,6 @@ ohos_moduletest("ability_delegator_moduletest") {
 
   external_deps = [
     "ability_base:want",
-    "ability_runtime:ability_manager",
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",
     "eventhandler:libeventhandler",
@@ -200,8 +200,8 @@ ohos_moduletest("ability_delegator_moduletest") {
     "hilog:libhilog",
     "init:libbegetutil",
     "ipc:ipc_core",
-    "runtime_core:ani",
     "napi:ace_napi",
+    "runtime_core:ani",
   ]
 
   if (ability_runtime_graphics) {
@@ -222,7 +222,9 @@ ohos_moduletest("js_test_runner_moduletest") {
   configs += [ "${ability_runtime_services_path}/common:common_config" ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_native_path}/appkit:app_context",
     "${ability_runtime_native_path}/appkit:appkit_delegator",
@@ -234,8 +236,6 @@ ohos_moduletest("js_test_runner_moduletest") {
     "ability_base:configuration",
     "ability_base:extractortool",
     "ability_base:want",
-    "ability_runtime:ability_manager",
-    "ability_runtime:runtime",
     "bundle_framework:appexecfwk_base",
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",
@@ -247,8 +247,8 @@ ohos_moduletest("js_test_runner_moduletest") {
     "hilog:libhilog",
     "init:libbegetutil",
     "ipc:ipc_core",
-    "runtime_core:ani",
     "napi:ace_napi",
+    "runtime_core:ani",
   ]
 }
 

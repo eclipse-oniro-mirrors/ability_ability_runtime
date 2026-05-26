@@ -40,6 +40,7 @@ ohos_fuzztest("AbilityAppMgrEventFirstFuzzTest") {
   configs = [ "${ability_runtime_services_path}/appmgr:appmgr_config" ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_services_path}/appmgr:libappms",
     "${ability_runtime_services_path}/common:app_util",
     "${ability_runtime_services_path}/common:hisysevent_report",
@@ -48,7 +49,6 @@ ohos_fuzztest("AbilityAppMgrEventFirstFuzzTest") {
   external_deps = [
     "ability_base:configuration",
     "ability_base:want",
-    "ability_runtime:app_manager",
     "access_token:libaccesstoken_sdk",
     "access_token:libnativetoken",
     "access_token:libtoken_setproc",

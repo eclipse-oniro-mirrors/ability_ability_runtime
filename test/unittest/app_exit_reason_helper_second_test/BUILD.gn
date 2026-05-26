@@ -53,6 +53,7 @@ ohos_unittest("app_exit_reason_helper_second_test") {
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_path}/utils/global/common:runtime_utils",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
@@ -67,7 +68,6 @@ ohos_unittest("app_exit_reason_helper_second_test") {
   external_deps = [
     "ability_base:want",
     "ability_base:zuri",
-    "ability_runtime:ability_deps_wrapper",
     "access_token:libaccesstoken_sdk",
     "c_utils:utils",
     "eventhandler:libeventhandler",

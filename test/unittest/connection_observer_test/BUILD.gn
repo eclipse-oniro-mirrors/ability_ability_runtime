@@ -37,8 +37,11 @@ ohos_unittest("connection_observer_test") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
 
+  deps = [
+    "${ability_runtime_innerkits_path}/connectionobs_manager:connection_obs_manager",
+  ]
+
   external_deps = [
-    "ability_runtime:connection_obs_manager",
     "access_token:libnativetoken",
     "access_token:libtoken_setproc",
     "bundle_framework:appexecfwk_base",

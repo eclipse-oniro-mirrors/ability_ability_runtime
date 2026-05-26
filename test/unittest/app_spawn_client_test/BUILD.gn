@@ -29,6 +29,7 @@ ohos_unittest("AppSpawnClientTest") {
   configs = [ "${ability_runtime_services_path}/appmgr:appmgr_config" ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
     "${ability_runtime_services_path}/appmgr:libappms",
     "${ability_runtime_services_path}/common:perm_verification",
@@ -37,7 +38,6 @@ ohos_unittest("AppSpawnClientTest") {
   external_deps = [
     "ability_base:configuration",
     "ability_base:want",
-    "ability_runtime:app_manager",
     "access_token:libnativetoken",
     "access_token:libtoken_setproc",
     "appspawn:appspawn_client",
@@ -45,7 +45,6 @@ ohos_unittest("AppSpawnClientTest") {
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "eventhandler:libeventhandler",
-    "googletest:gtest_main",
     "googletest:gtest_main",
     "hilog:libhilog",
     "hitrace:hitrace_meter",

@@ -34,11 +34,11 @@ template("ets_environment_test_template") {
 
     deps = [
       "${ability_runtime_innerkits_path}/connect_server_manager:connect_server_manager",
+      "${ability_runtime_innerkits_path}/runtime:runtime",
+      "${ability_runtime_path}/ets_environment/frameworks/ets_environment:ets_environment",
     ]
 
     external_deps = [
-      "ability_runtime:runtime",
-      "ability_runtime:ets_environment",
       "c_utils:utils",
       "ets_runtime:libark_jsruntime",
       "eventhandler:libeventhandler",

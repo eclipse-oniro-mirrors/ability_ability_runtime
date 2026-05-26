@@ -39,12 +39,14 @@ ohos_unittest("insight_intent_rdb_storage_mgr_test") {
     "mock_insight_intent_rdb_data_mgr.cpp",
   ]
 
-  deps = [ "${ability_runtime_abilitymgr_path}/:abilityms" ]
+  deps = [
+    "${ability_runtime_abilitymgr_path}/:abilityms",
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+  ]
 
   external_deps = [
     "ability_base:want",
     "ability_base:zuri",
-    "ability_runtime:ability_manager",
     "access_token:libaccesstoken_sdk",
     "bundle_framework:libappexecfwk_common",
     "c_utils:utils",

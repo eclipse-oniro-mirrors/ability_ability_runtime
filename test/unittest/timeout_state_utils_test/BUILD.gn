@@ -34,24 +34,25 @@ ohos_unittest("timeout_state_utils_test") {
     "${ability_runtime_path}/utils/global/freeze/include"
   ]
 
-  deps = []
+  deps = [
+    "${ability_runtime_native_path}/ability/native:abilitykit_native",
+  ]
 
   external_deps = [
     "ability_base:configuration",
-    "ability_runtime:abilitykit_native",
+    "background_task_mgr:bgtaskmgr_innerkits",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "eventhandler:libeventhandler",
+    "ffrt:libffrt",
     "googletest:gmock_main",
     "googletest:gtest_main",
     "hilog:libhilog",
+    "hisysevent:libhisysevent",
     "init:libbegetutil",
     "ipc:ipc_core",
-    "hisysevent:libhisysevent",
-    "background_task_mgr:bgtaskmgr_innerkits",
     "safwk:system_ability_fwk",
-    "ffrt:libffrt"
   ]
 }
 

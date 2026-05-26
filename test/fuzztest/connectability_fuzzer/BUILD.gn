@@ -46,9 +46,10 @@ ohos_fuzztest("ConnectAbilityFuzzTest") {
 
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_connect_callback_stub",
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/runtime:runtime",
-    "${ability_runtime_native_path}/ability:ability_context_native",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
+    "${ability_runtime_native_path}/ability:ability_context_native",
     "${ability_runtime_native_path}/appkit:app_context",
     "${ability_runtime_native_path}/appkit:app_context_utils",
     "${ability_runtime_path}/services/abilitymgr:abilityms_target",
@@ -57,7 +58,6 @@ ohos_fuzztest("ConnectAbilityFuzzTest") {
   external_deps = [
     "ability_base:configuration",
     "ability_base:want",
-    "ability_runtime:ability_manager",
     "appspawn:appspawn_client",
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",

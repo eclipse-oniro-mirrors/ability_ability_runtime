@@ -39,15 +39,15 @@ ohos_unittest("application_context_second_test") {
 
   deps = [
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_native_path}/ability/native:service_extension",
+    "${ability_runtime_native_path}/ability:ability_context_native",
     "${ability_runtime_native_path}/appkit:app_context",
   ]
 
   external_deps = [
     "ability_base:configuration",
     "ability_base:want",
-    "ability_runtime:ability_context_native",
-    "ability_runtime:abilitykit_native",
     "access_token:libaccesstoken_sdk",
     "access_token:libnativetoken",
     "access_token:libtoken_setproc",

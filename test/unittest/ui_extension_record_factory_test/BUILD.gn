@@ -55,17 +55,18 @@ ohos_unittest("ui_extension_record_factory_test") {
   }
 
   deps = [
-    "${ability_runtime_path}/utils/server/startup:startup_util",
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/ability_manager:ability_start_options",
     "${ability_runtime_innerkits_path}/ability_manager:ability_start_setting",
     "${ability_runtime_innerkits_path}/ability_manager:mission_info",
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
     "${ability_runtime_innerkits_path}/uri_permission:uri_permission_mgr",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_native_path}/ability/native:auto_startup_callback",
     "${ability_runtime_native_path}/ability/native:ui_extension",
     "${ability_runtime_native_path}/appkit:app_context",
     "${ability_runtime_native_path}/appkit:appkit_native",
+    "${ability_runtime_path}/utils/server/startup:startup_util",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
     "${ability_runtime_services_path}/abilitymgr:mission_list",
     "${ability_runtime_services_path}/common:app_util",
@@ -86,7 +87,6 @@ ohos_unittest("ui_extension_record_factory_test") {
     "ability_base:session_info",
     "ability_base:want",
     "ability_base:zuri",
-    "ability_runtime:ability_deps_wrapper",
     "access_token:libaccesstoken_sdk",
     "bundle_framework:appexecfwk_base",
     "c_utils:utils",

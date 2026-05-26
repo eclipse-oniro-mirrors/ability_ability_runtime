@@ -33,9 +33,14 @@ ohos_unittest("js_auto_fill_extension_test") {
 
   configs = [ "${ability_runtime_services_path}/abilitymgr:abilityms_config" ]
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_native_path}/ability/native:abilitykit_utils",
+    "${ability_runtime_native_path}/ability/native:extensionkit_native",
     "${ability_runtime_native_path}/ability/native:ui_extension",
+    "${ability_runtime_native_path}/appkit:app_context",
+    "${ability_runtime_native_path}/appkit:appkit_native",
   ]
 
   external_deps = [
@@ -44,11 +49,6 @@ ohos_unittest("js_auto_fill_extension_test") {
     "ability_base:session_info",
     "ability_base:view_data",
     "ability_base:want",
-    "ability_runtime:ability_manager",
-    "ability_runtime:app_context",
-    "ability_runtime:appkit_native",
-    "ability_runtime:extensionkit_native",
-    "ability_runtime:runtime",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",

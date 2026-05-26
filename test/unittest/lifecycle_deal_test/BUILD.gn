@@ -39,6 +39,8 @@ ohos_unittest("lifecycle_deal_test") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_services_path}/common:perm_verification",
     "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/aakit:aakit_mock",
@@ -50,8 +52,6 @@ ohos_unittest("lifecycle_deal_test") {
     "ability_base:session_info",
     "ability_base:want",
     "ability_base:zuri",
-    "ability_runtime:ability_manager",
-    "ability_runtime:app_manager",
     "access_token:libaccesstoken_sdk",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",

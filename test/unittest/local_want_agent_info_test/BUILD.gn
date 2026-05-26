@@ -33,12 +33,13 @@ ohos_unittest("local_want_agent_info_test") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
 
-  deps = []
+  deps = [
+    "${ability_runtime_innerkits_path}/wantagent:wantagent_innerkits",
+  ]
 
   external_deps = [
     "ability_base:base",
     "ability_base:want",
-    "ability_runtime:wantagent_innerkits",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",

@@ -33,6 +33,7 @@ ohos_unittest("AmsMgrProxyTest") {
   sources = [ "ams_mgr_proxy_test.cpp" ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_services_path}/appmgr:libappms",
     "${ability_runtime_services_path}/common:task_handler_wrap",
@@ -41,7 +42,6 @@ ohos_unittest("AmsMgrProxyTest") {
   external_deps = [
     "ability_base:configuration",
     "ability_base:want",
-    "ability_runtime:app_manager",
     "appspawn:appspawn_client",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",

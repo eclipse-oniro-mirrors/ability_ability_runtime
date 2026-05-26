@@ -69,7 +69,6 @@ ohos_fuzztest("AbilityAppMgrAppRunningManagerFuzzTest") {
     "ability_base:configuration",
     "ability_base:want",
     "ability_base:zuri",
-    "ability_runtime:ability_deps_wrapper",
     "access_token:libaccesstoken_sdk",
     "appspawn:appspawn_client",
     "bundle_framework:appexecfwk_base",

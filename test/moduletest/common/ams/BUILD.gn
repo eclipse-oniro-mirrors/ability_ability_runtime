@@ -38,6 +38,7 @@ ohos_source_set("appmgr_mst_source") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
   deps = [
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
     "${ability_runtime_services_path}/appmgr:libappms",
     "${ability_runtime_services_path}/common:task_handler_wrap",
@@ -51,7 +52,6 @@ ohos_source_set("appmgr_mst_source") {
   external_deps = [
     "ability_base:configuration",
     "ability_base:want",
-    "ability_runtime:ability_deps_wrapper",
     "access_token:libaccesstoken_sdk",
     "appspawn:appspawn_client",
     "common_event_service:cesfwk_core",

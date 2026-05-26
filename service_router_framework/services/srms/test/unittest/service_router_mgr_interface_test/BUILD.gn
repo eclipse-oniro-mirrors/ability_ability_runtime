@@ -29,6 +29,7 @@ ohos_unittest("ServiceRouterMgrInterfaceTest") {
   ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${srms_inner_api_path}:service_router_mgr_proxy",
     "${srms_inner_api_path}:srms_fwk",
@@ -37,7 +38,6 @@ ohos_unittest("ServiceRouterMgrInterfaceTest") {
   external_deps = [
     "ability_base:want",
     "ability_base:zuri",
-    "ability_runtime:ability_manager",
     "access_token:libaccesstoken_sdk",
     "access_token:libtokenid_sdk",
     "bundle_framework:appexecfwk_base",

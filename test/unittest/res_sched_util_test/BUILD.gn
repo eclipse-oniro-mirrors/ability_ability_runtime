@@ -27,10 +27,12 @@ ohos_unittest("res_sched_util_test") {
 
   sources = [ "res_sched_util_test.cpp" ]
 
-  deps = [ "${ability_runtime_services_path}/common:app_util" ]
+  deps = [
+    "${ability_runtime_native_path}/ability/native:abilitykit_native",
+    "${ability_runtime_services_path}/common:app_util",
+  ]
 
   external_deps = [
-    "ability_runtime:abilitykit_native",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",

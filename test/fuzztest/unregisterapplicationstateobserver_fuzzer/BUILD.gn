@@ -35,14 +35,14 @@ ohos_fuzztest("UnregisterApplicationStateObserverFuzzTest") {
   configs = [ "${ability_runtime_services_path}/appmgr:appmgr_config" ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
     "${ability_runtime_services_path}/appmgr:libappms",
     "${ability_runtime_services_path}/common:task_handler_wrap",
   ]
 
   external_deps = [
     "ability_base:base",
-    "ability_runtime:ability_deps_wrapper",
-    "ability_runtime:app_manager",
     "appspawn:appspawn_client",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
