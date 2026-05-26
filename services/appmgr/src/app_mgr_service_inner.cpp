@@ -1557,13 +1557,18 @@ void AppMgrServiceInner::SnapshotErrorReport(int32_t uid, const std::string &bun
     AAFwk::EventReport::SendSnapshotEvent(AAFwk::EventName::SNAPSHOT_REPORT, snapshotInfo);
 }
 
-void AppMgrServiceInner::MarkTemplateProcess(int32_t templatePid, std::string imageName)
+void AppMgrServiceInner::MarkTemplateProcess(const std::shared_ptr<AppRunningRecord> &appRecord, std::string imageName)
 {
+    if (appRecord == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "MarkTemplateProcess null appRecord");
+        return;
+    }
     int fd = open(TEMPLATE_MONITOR_PATH, O_RDWR, 0);
     if (fd < 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "MarkTemplateProcess template openfile fail: %{public}s", strerror(errno));
         return;
     }
+    int32_t templatePid = appRecord->GetPid();
     struct HMCheckpointMarkS mark {
         .pid = templatePid,
         .type = CHECKPOINT_MONITOR_APP_TYPE
@@ -1573,7 +1578,10 @@ void AppMgrServiceInner::MarkTemplateProcess(int32_t templatePid, std::string im
     std::size_t length = imageName.copy(mark.name, CHECKPOINT_NAME_LEN - 1, beginIndex);
     mark.name[length] = '\0';
     /* In developer mode, set a specific flag for debug app */
-    if (system::GetBoolParameter(DEVELOPER_MODE_STATE, false) && CheckIsDebugApp(imageName)) {
+    std::shared_ptr<ApplicationInfo> applicationInfo = appRecord->GetApplicationInfo();
+    bool isDebugApp = applicationInfo != nullptr && applicationInfo->debug &&
+            (applicationInfo->appProvisionType == AppExecFwk::Constants::APP_PROVISION_TYPE_DEBUG);
+    if (system::GetBoolParameter(DEVELOPER_MODE_STATE, false) && isDebugApp) {
         mark.type |= CHECKPOINT_DEBUG_APP_TYPE_FLAG;
     }
     int ret = ioctl(fd, CHECKPOINT_MONITOR_IOCTL_MARK_TEMPLATE, &mark);
@@ -1762,7 +1770,7 @@ void AppMgrServiceInner::HandlePreloadApplication(const PreloadRequest &request)
             hapModuleInfo, want, appExistFlag, true, request.preloadMode);
         if (request.needMakeImage && appRecord->GetPid() > 0) {
             SetTemplatePid(appRecord);
-            MarkTemplateProcess(appRecord->GetPid(), request.imageName);
+            MarkTemplateProcess(appRecord, request.imageName);
         }
         appRecord->SetNeedLimitPrio(false);
         if (request.preloadMode == AppExecFwk::PreloadMode::PRELOAD_MODULE) {
