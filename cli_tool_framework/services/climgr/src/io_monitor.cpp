@@ -64,7 +64,10 @@ bool IOMonitor::Start()
         TAG_LOGE(AAFwkTag::CLI_TOOL, "epoll_create1 failed: %{public}s", strerror(errno));
         return false;
     }
-    monitorThread_ = std::thread(&IOMonitor::MonitorLoop, this);
+    auto monitor = shared_from_this();
+    monitorThread_ = std::thread([monitor]() {
+        monitor->MonitorLoop();
+    });
     return true;
 }
 

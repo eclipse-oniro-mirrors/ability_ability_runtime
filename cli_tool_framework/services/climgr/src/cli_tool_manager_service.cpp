@@ -206,11 +206,17 @@ void CliToolManagerService::Init()
             EventDispatcher::GetInstance().DispatchInputReplyEvent(record->callerPid, record->callerUid, eventId,
                 result ? ERR_OK : ERR_CLI_SEND_MESSAGE);
         });
-        ioMonitor_->SetSessionClosedCallback([this](const std::string &sessionId, bool isStdout) {
-            HandleOutputClosed(sessionId, isStdout);
+        ioMonitor_->SetSessionClosedCallback([](const std::string &sessionId, bool isStdout) {
+            auto service = CliToolManagerService::GetInstance();
+            if (service != nullptr) {
+                service->HandleOutputClosed(sessionId, isStdout);
+            }
         });
-        ioMonitor_->SetSessionDrainedCallback([this](const std::string &sessionId) {
-            HandleOutputDrained(sessionId);
+        ioMonitor_->SetSessionDrainedCallback([](const std::string &sessionId) {
+            auto service = CliToolManagerService::GetInstance();
+            if (service != nullptr) {
+                service->HandleOutputDrained(sessionId);
+            }
         });
         ioMonitor_->Start();
     }

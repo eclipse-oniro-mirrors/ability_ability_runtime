@@ -132,6 +132,10 @@ int32_t ToolUtil::ValidateInputSchemaProperties(const std::string &inputSchema,
         // Validate type if specified in schema
         auto &propertySchema = properties[key];
         if (propertySchema.contains("type")) {
+            if (!propertySchema["type"].is_string()) {
+                TAG_LOGE(AAFwkTag::CLI_TOOL, "args key '%{public}s' has invalid schema type", key.c_str());
+                return ERR_INVALID_PARAM;
+            }
             std::string expectedType = propertySchema["type"].get<std::string>();
             if (!ValidateParamType(value, expectedType, propertySchema, key)) {
                 TAG_LOGE(AAFwkTag::CLI_TOOL, "args key '%{public}s' type mismatch, expected: %{public}s",
@@ -440,7 +444,14 @@ bool ToolUtil::ValidateArrayItems(sptr<AAFwk::IArray> arrayObj,
     if (arrayObj->GetLength(arrayLength) != ERR_OK || arrayLength == 0) {
         return true;
     }
-    std::string itemType = itemsSchema.value("type", "");
+    if (!itemsSchema.contains("type")) {
+        return true;
+    }
+    if (!itemsSchema["type"].is_string()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Array '%{public}s' has invalid item schema type", key.c_str());
+        return false;
+    }
+    std::string itemType = itemsSchema["type"].get<std::string>();
     if (itemType.empty()) {
         return true;
     }
