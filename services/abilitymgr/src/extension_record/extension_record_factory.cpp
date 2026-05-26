@@ -75,29 +75,7 @@ int32_t ExtensionRecordFactory::PreCheck(const AAFwk::AbilityRequest &abilityReq
     if (preCheckFlag == 0) {
         return ERR_OK;
     }
-    if ((preCheckFlag & PRE_CHECK_FLAG_CALLED_WITHIN_THE_BUNDLE) &&
-        hostBundleName != AbilityConfig::SCENEBOARD_BUNDLE_NAME) {
-        if (hostBundleName != abilityRequest.abilityInfo.applicationName) {
-            if (abilityRequest.isTargetPlugin && abilityRequest.hostBundleName == hostBundleName &&
-                abilityRequest.abilityInfo.extensionAbilityType == ExtensionAbilityType::EMBEDDED_UI) {
-                return ERR_OK;
-            }
-            TAG_LOGW(AAFwkTag::ABILITYMGR, "not called");
-            return ERR_INVALID_VALUE;
-        }
 
-        // There may exist preload extension, the session info is nullptr
-        if (abilityRequest.sessionInfo != nullptr) {
-            auto callerToken = abilityRequest.sessionInfo->callerToken;
-            auto callerAbilityRecord = AAFwk::Token::GetAbilityRecordByToken(callerToken);
-            CHECK_POINTER_AND_RETURN(callerAbilityRecord, ERR_INVALID_VALUE);
-            AppExecFwk::AbilityInfo abilityInfo = callerAbilityRecord->GetAbilityInfo();
-            if (abilityInfo.type != AbilityType::PAGE) {
-                TAG_LOGW(AAFwkTag::ABILITYMGR, "not UIAbility");
-                return ERR_INVALID_VALUE;
-            }
-        }
-    }
     if (preCheckFlag & PRE_CHECK_FLAG_MULTIPLE_PROCESSES) {
         if (!AppUtils::GetInstance().IsMultiProcessModel()) {
             TAG_LOGW(AAFwkTag::ABILITYMGR, "not multi process model");

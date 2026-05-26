@@ -124,5 +124,9 @@ bool PermissionVerification::IsSystemAppCall() const
 {
     return true;
 }
+bool PermissionVerification::VerifySupportCrossAppEmbedForOaPermission() const
+{
+    return true;
+}
 } // namespace AAFwk
 } // namespace OHOS

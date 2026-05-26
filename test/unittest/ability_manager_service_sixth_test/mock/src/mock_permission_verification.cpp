@@ -313,5 +313,10 @@ int PermissionVerification::CheckCallModularObjectExtensionPermission(
 {
     return ERR_OK;
 }
+
+bool PermissionVerification::VerifySupportCrossAppEmbedForOaPermission() const
+{
+    return true;
+}
 }  // namespace AAFwk
 }  // namespace OHOS
