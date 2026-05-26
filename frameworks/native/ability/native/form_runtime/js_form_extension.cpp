@@ -31,6 +31,9 @@
 #include "napi_common_want.h"
 #include <type_traits>
 #include <vector>
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+#include "histogram_plugin_macros.h"
+#endif
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -38,6 +41,9 @@ using namespace OHOS::AppExecFwk;
 const int ON_EVENT_PARAMS_SIZE = 2;
 const int ARGC_TWO = 2;
 const int ARGC_THREE = 3;
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+constexpr bool HISTOGRAM_BOOLEAN_SAMPLE = true;
+#endif
 
 napi_value AttachFormExtensionContext(napi_env env, void* value, void*)
 {
@@ -539,6 +545,9 @@ bool JsFormExtension::ConvertFormDataProxy(napi_env env, napi_value jsValue, For
 
 void JsFormExtension::OnFormLocationChanged(const int64_t formId, const int32_t formLocation)
 {
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+    HISTOGRAM_BOOLEAN("Form.ExtensionAbility.onFormLocationChanged", HISTOGRAM_BOOLEAN_SAMPLE);
+#endif
     TAG_LOGI(AAFwkTag::FORM_EXT, "Card position changes, location: %{public}d, formId: %{public}" PRId64, formLocation, formId);
     FormExtension::OnFormLocationChanged(formId, formLocation);
  
@@ -553,6 +562,9 @@ void JsFormExtension::OnFormLocationChanged(const int64_t formId, const int32_t 
 
 void JsFormExtension::OnSizeChanged(int64_t formId, int32_t newDimension, const Rect &newRect)
 {
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+    HISTOGRAM_BOOLEAN("Form.ExtensionAbility.onSizeChanged", HISTOGRAM_BOOLEAN_SAMPLE);
+#endif
     TAG_LOGI(AAFwkTag::FORM_EXT, "Form size changed, formId: %{public}" PRId64, formId);
     FormExtension::OnSizeChanged(formId, newDimension, newRect);
  

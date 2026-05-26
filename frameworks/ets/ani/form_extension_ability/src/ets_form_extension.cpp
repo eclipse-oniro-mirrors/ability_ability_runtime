@@ -29,6 +29,9 @@
 #include "hilog_tag_wrapper.h"
 #include "ets_form_extension_context.h"
 #include "connection_manager.h"
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+#include "histogram_plugin_macros.h"
+#endif
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -43,6 +46,9 @@ constexpr const char *FORM_DIMENSION_ENUM_NAME = "@ohos.app.form.formInfo.formIn
 constexpr const char *FORM_SIZE_CHANGED_NAME =
     "C{std.core.String}C{@ohos.app.form.formInfo.formInfo.FormDimension}C{@ohos.app.form.formInfo.formInfo.Rect}:";
 constexpr const char* FORM_RECT_NAME = "@ohos.app.form.formInfo.formInfo.RectInner";
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+constexpr bool HISTOGRAM_BOOLEAN_SAMPLE = true;
+#endif
 }
 
 extern "C" __attribute__((visibility("default"))) FormExtension *OHOS_ABILITY_ETSFormExtension(
@@ -735,6 +741,9 @@ bool ETSFormExtension::OnAcquireData(int64_t formId, AAFwk::WantParams &wantPara
 
 void ETSFormExtension::OnFormLocationChanged(const int64_t formId, const int32_t formLocation)
 {
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+    HISTOGRAM_BOOLEAN("Form.ExtensionAbility.onFormLocationChanged", HISTOGRAM_BOOLEAN_SAMPLE);
+#endif
     TAG_LOGI(AAFwkTag::FORM_EXT, "OnFormLocationChanged Call");
     auto env = etsRuntime_.GetAniEnv();
     if (env == nullptr) {
@@ -839,6 +848,9 @@ FormState ETSFormExtension::OnAcquireFormState(const Want &want)
 
 void ETSFormExtension::OnSizeChanged(int64_t formId, int32_t newDimension, const Rect &newRect)
 {
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+    HISTOGRAM_BOOLEAN("Form.ExtensionAbility.onSizeChanged", HISTOGRAM_BOOLEAN_SAMPLE);
+#endif
     TAG_LOGI(AAFwkTag::FORM_EXT, "Form size changed, formId: %{public}" PRId64, formId);
     FormExtension::OnSizeChanged(formId, newDimension, newRect);
 
