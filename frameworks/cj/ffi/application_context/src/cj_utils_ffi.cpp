@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -157,9 +157,9 @@ bool ConvertToDouble(const std::string& str, double& outValue)
 namespace OHOS {
 namespace AbilityRuntime {
 
-CConfiguration CreateCConfiguration(const OHOS::AppExecFwk::Configuration &configuration)
+template<typename T>
+static void FillConfigV1Fields(const OHOS::AppExecFwk::Configuration &configuration, T &cfg)
 {
-    CConfiguration cfg;
     cfg.language = CreateCStringFromString(configuration.GetItem(
         OHOS::AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE));
     cfg.colorMode = ConvertColorMode(configuration.GetItem(OHOS::AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE));
@@ -182,14 +182,47 @@ CConfiguration CreateCConfiguration(const OHOS::AppExecFwk::Configuration &confi
     cfg.fontWeightScale = fontWeightScaleValue;
     cfg.mcc = CreateCStringFromString(configuration.GetItem(OHOS::AAFwk::GlobalConfigurationKey::SYSTEM_MCC));
     cfg.mnc = CreateCStringFromString(configuration.GetItem(OHOS::AAFwk::GlobalConfigurationKey::SYSTEM_MNC));
+}
+
+CConfiguration CreateCConfiguration(const OHOS::AppExecFwk::Configuration &configuration)
+{
+    CConfiguration cfg;
+    FillConfigV1Fields(configuration, cfg);
     return cfg;
 }
 
-void FreeCConfiguration(CConfiguration configuration)
+template<typename T>
+static void FreeConfigV1Fields(T *cfg)
 {
-    free(configuration.language);
-    free(configuration.mcc);
-    free(configuration.mnc);
+    free(cfg->language);
+    free(cfg->mcc);
+    free(cfg->mnc);
+    cfg->language = nullptr;
+    cfg->mcc = nullptr;
+    cfg->mnc = nullptr;
+}
+
+void FreeCConfiguration(CConfiguration *configuration)
+{
+    FreeConfigV1Fields(configuration);
+}
+
+CConfigurationV2 CreateCConfigurationV2(const OHOS::AppExecFwk::Configuration &configuration)
+{
+    CConfigurationV2 cfg;
+    FillConfigV1Fields(configuration, cfg);
+    cfg.fontId = CreateCStringFromString(configuration.GetItem(OHOS::AAFwk::GlobalConfigurationKey::SYSTEM_FONT_ID));
+    cfg.locale = CreateCStringFromString(configuration.GetItem(OHOS::AAFwk::GlobalConfigurationKey::SYSTEM_LOCALE));
+    return cfg;
+}
+
+void FreeCConfigurationV2(CConfigurationV2 *configuration)
+{
+    FreeConfigV1Fields(configuration);
+    free(configuration->fontId);
+    free(configuration->locale);
+    configuration->fontId = nullptr;
+    configuration->locale = nullptr;
 }
 
 extern "C" {
@@ -201,6 +234,21 @@ CJ_EXPORT CConfiguration OHOS_ConvertConfiguration(void* param)
         return cCfg;
     }
     return CreateCConfiguration(*config);
+}
+
+CJ_EXPORT CConfigurationV2 OHOS_ConvertConfigurationV2(void* param)
+{
+    CConfigurationV2 cCfg = {};
+    auto config = reinterpret_cast<AppExecFwk::Configuration*>(param);
+    if (config == nullptr) {
+        return cCfg;
+    }
+    return CreateCConfigurationV2(*config);
+}
+
+CJ_EXPORT void OHOS_FreeConfigurationV2(CConfigurationV2 *configuration)
+{
+    FreeCConfigurationV2(configuration);
 }
 }
 }

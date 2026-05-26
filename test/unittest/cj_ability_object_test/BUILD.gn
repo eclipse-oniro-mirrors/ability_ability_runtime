@@ -36,6 +36,7 @@ ohos_unittest("cj_ability_object_test") {
     "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_native_path}/ability:ability_context_native",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
+    "${ability_runtime_native_path}/ability/native:cj_extensionkit_native",
     "${ability_runtime_native_path}/ability/native:continuation_ipc",
     "${ability_runtime_native_path}/ability/native:insight_intent_executor",
     "${ability_runtime_native_path}/ability/native:uiabilitykit_native",

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -70,6 +70,18 @@ int32_t FfiCJApplicationContextOnOnEnvironment(int64_t id, void (*cfgCallback)(C
         return -1;
     }
     return context->OnOnEnvironment(cfgCallback, memCallback, false, *errCode);
+}
+
+int32_t FfiCJApplicationContextOnOnEnvironmentV2(int64_t id, void (*cfgCallback)(CConfigurationV2),
+                                                 void (*memCallback)(int32_t), int32_t *errCode)
+{
+    auto context = FFI::FFIData::GetData<CJApplicationContext>(id);
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null context");
+        *errCode = ERR_ABILITY_RUNTIME_EXTERNAL_INVALID_PARAMETER;
+        return -1;
+    }
+    return context->OnOnEnvironmentV2(cfgCallback, memCallback, false, *errCode);
 }
 
 int32_t FfiCJApplicationContextOnOnAbilityLifecycle(int64_t id, CArrI64 cFuncIds, int32_t *errCode)

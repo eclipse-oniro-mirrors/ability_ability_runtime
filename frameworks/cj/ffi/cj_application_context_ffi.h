@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -46,6 +46,8 @@ CJ_EXPORT int64_t FFIGetArea(int64_t id);
 CJ_EXPORT CApplicationInfo *FFICJApplicationInfo(int64_t id);
 CJ_EXPORT int32_t FfiCJApplicationContextOnOnEnvironment(int64_t id, void (*cfgCallback)(CConfiguration),
                                                          void (*memCallback)(int32_t), int32_t *errCode);
+CJ_EXPORT int32_t FfiCJApplicationContextOnOnEnvironmentV2(int64_t id, void (*cfgCallback)(CConfigurationV2),
+                                                           void (*memCallback)(int32_t), int32_t *errCode);
 CJ_EXPORT int32_t FfiCJApplicationContextOnOnAbilityLifecycle(int64_t id, CArrI64 cFuncIds, int32_t *errCode);
 CJ_EXPORT int32_t FfiCJApplicationContextOnOnApplicationStateChange(int64_t id, void (*foregroundCallback)(void),
                                                                     void (*backgroundCallback)(void), int32_t *errCode);

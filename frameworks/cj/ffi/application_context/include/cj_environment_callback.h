@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -34,15 +34,20 @@ public:
     void OnMemoryLevel(const int level) override;
     int32_t Register(std::function<void(CConfiguration)> cfgCallback,
         std::function<void(int32_t)> memCallback, bool isSync);
+    int32_t RegisterV2(std::function<void(CConfigurationV2)> cfgCallback,
+        std::function<void(int32_t)> memCallback, bool isSync);
     bool UnRegister(int32_t callbackId, bool isSync = false);
     bool IsEmpty() const;
     static int32_t serialNumber_;
 
 private:
     std::map<int32_t, std::function<void(CConfiguration)>> onConfigurationUpdatedCallbacks_;
+    std::map<int32_t, std::function<void(CConfigurationV2)>> onConfigurationUpdatedCallbacksV2_;
     std::map<int32_t, std::function<void(int32_t)>> onMemoryLevelCallbacks_;
     void CallConfigurationUpdatedInner(const AppExecFwk::Configuration &config,
         const std::map<int32_t, std::function<void(CConfiguration)>> &callbacks);
+    void CallConfigurationUpdatedInnerV2(const AppExecFwk::Configuration &config,
+        const std::map<int32_t, std::function<void(CConfigurationV2)>> &callbacks);
     void CallMemoryLevelInner(const int level,
         const std::map<int32_t, std::function<void(int32_t)>> &callbacks);
 };

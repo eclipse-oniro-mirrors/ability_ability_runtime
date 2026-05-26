@@ -319,6 +319,7 @@ group("unittest") {
       "cj_ability_delegator_test:unittest",
       "cj_ability_ffi_mock_test:unittest",
       "cj_ability_lifecycle_callback_Impl_test:unittest",
+      "cj_form_extension_object_test:unittest",
       "cj_ability_object_test:unittest",
       "cj_ability_stage_object_test:unittest",
       "cj_ability_stage_test:unittest",

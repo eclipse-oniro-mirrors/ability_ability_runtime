@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -27,6 +27,7 @@ namespace {
 // It is assigned by the global variable REGISTER_ABILITY_STAGE on the cj side which invokes
 // RegisterCJAbilityStageFuncs.
 CJAbilityStageFuncs g_cjAbilityStageFuncs {};
+CJAbilityStageFuncsV3 g_cjAbilityStageFuncsV3 {};
 } // namespace
 
 void RegisterCJAbilityStageFuncs(void (*registerFunc)(CJAbilityStageFuncs* result))
@@ -42,6 +43,21 @@ void RegisterCJAbilityStageFuncs(void (*registerFunc)(CJAbilityStageFuncs* resul
     }
 
     registerFunc(&g_cjAbilityStageFuncs);
+}
+
+void RegisterCJAbilityStageFuncsV3(void (*registerFunc)(CJAbilityStageFuncsV3* result))
+{
+    if (g_cjAbilityStageFuncsV3.AbilityStageOnConfigurationUpdatedV2 != nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null AbilityStageOnConfigurationUpdatedV2");
+        return;
+    }
+
+    if (registerFunc == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null registerFunc");
+        return;
+    }
+
+    registerFunc(&g_cjAbilityStageFuncsV3);
 }
 
 std::shared_ptr<CJAbilityStageObject> CJAbilityStageObject::LoadModule(const std::string& moduleName)
@@ -132,6 +148,13 @@ std::string CJAbilityStageObject::OnNewProcessRequest(const AAFwk::Want& want) c
 
 void CJAbilityStageObject::OnConfigurationUpdated(const std::shared_ptr<AppExecFwk::Configuration>& configuration) const
 {
+    if (g_cjAbilityStageFuncsV3.AbilityStageOnConfigurationUpdatedV2 != nullptr) {
+        auto config = CallConvertConfigV2(configuration);
+        g_cjAbilityStageFuncsV3.AbilityStageOnConfigurationUpdatedV2(id_, config);
+        CallFreeConfigV2(config);
+        return;
+    }
+
     if (g_cjAbilityStageFuncs.AbilityStageOnConfigurationUpdated2 == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "null AbilityStageOnConfigurationUpdated2");
         return;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -23,6 +23,8 @@
 namespace {
 const char* CJ_ABILITY_LIBNAME = "libcj_ability_ffi.z.so";
 const char* FUNC_CONVERT_CONFIGURATION = "OHOS_ConvertConfiguration";
+const char* FUNC_CONVERT_CONFIGURATION_V2 = "OHOS_ConvertConfigurationV2";
+const char* FUNC_FREE_CONFIGURATION_V2 = "OHOS_FreeConfigurationV2";
 const char* CJ_BUNDLE_MGR_LIBNAME = "libcj_bundle_manager_ffi.z.so";
 const char* FUNC_CONVERT_HAP_INFO = "OHOS_ConvertHapInfoV2";
 }
@@ -47,6 +49,44 @@ CConfiguration CallConvertConfig(std::shared_ptr<AppExecFwk::Configuration> conf
     cCfg = func(configuration.get());
     dlclose(handle);
     return cCfg;
+}
+
+CConfigurationV2 CallConvertConfigV2(std::shared_ptr<AppExecFwk::Configuration> configuration)
+{
+    CConfigurationV2 cCfg = {};
+    void* handle = dlopen(CJ_ABILITY_LIBNAME, RTLD_LAZY);
+    if (handle == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null handle");
+        return cCfg;
+    }
+    using ConvertConfigFuncV2 = CConfigurationV2 (*)(void*);
+    auto func = reinterpret_cast<ConvertConfigFuncV2>(dlsym(handle, FUNC_CONVERT_CONFIGURATION_V2));
+    if (func == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null func");
+        dlclose(handle);
+        return cCfg;
+    }
+    cCfg = func(configuration.get());
+    dlclose(handle);
+    return cCfg;
+}
+
+void CallFreeConfigV2(CConfigurationV2 cCfg)
+{
+    void* handle = dlopen(CJ_ABILITY_LIBNAME, RTLD_LAZY);
+    if (handle == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null handle");
+        return;
+    }
+    using FreeConfigFuncV2 = void (*)(CConfigurationV2*);
+    auto func = reinterpret_cast<FreeConfigFuncV2>(dlsym(handle, FUNC_FREE_CONFIGURATION_V2));
+    if (func == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null func");
+        dlclose(handle);
+        return;
+    }
+    func(&cCfg);
+    dlclose(handle);
 }
 
 RetHapModuleInfoV2 CallConvertHapInfo(std::shared_ptr<AppExecFwk::HapModuleInfo> hapInfo)
@@ -111,6 +151,23 @@ CConfiguration CJAbilityStageContext::GetConfiguration()
     }
 
     return CallConvertConfig(configuration);
+}
+
+CConfigurationV2 CJAbilityStageContext::GetConfigurationV2()
+{
+    auto context = GetContext();
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "context is null, getConfigurationV2 failed. ");
+        return CConfigurationV2();
+    }
+
+    auto configuration = context->GetConfiguration();
+    if (configuration == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "CurrentConfiguration is nullptr.");
+        return CConfigurationV2();
+    }
+
+    return CallConvertConfigV2(configuration);
 }
 
 }
