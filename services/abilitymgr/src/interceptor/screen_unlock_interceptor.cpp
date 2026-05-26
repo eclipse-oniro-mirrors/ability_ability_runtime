@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -82,6 +82,15 @@ bool ScreenUnlockInterceptor::GetTargetAbilityInfo(const AbilityInterceptorParam
         targetAbilityInfo = StartAbilityUtils::startAbilityInfo->abilityInfo;
         return true;
     }
+
+    if (param.fromConnect) {
+        std::string uri = param.want.GetUri().ToString();
+        bool isFileUri = (param.want.GetUri().GetScheme() == "file");
+        if (!uri.empty() && !isFileUri) {
+            return QueryTargetAbilityInfoByUri(param, targetAbilityInfo);
+        }
+    }
+
     QueryTargetAbilityInfo(param, targetAbilityInfo);
     if (targetAbilityInfo.applicationInfo.name.empty() ||
         targetAbilityInfo.applicationInfo.bundleName.empty()) {
@@ -89,6 +98,29 @@ bool ScreenUnlockInterceptor::GetTargetAbilityInfo(const AbilityInterceptorParam
             param.want.GetElement().GetBundleName().c_str(), param.want.GetElement().GetAbilityName().c_str());
         return false;
     }
+    return true;
+}
+
+bool ScreenUnlockInterceptor::QueryTargetAbilityInfoByUri(const AbilityInterceptorParam &param,
+    AppExecFwk::AbilityInfo &targetAbilityInfo)
+{
+    auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
+    if (bundleMgrHelper == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "The bundleMgrHelper is nullptr.");
+        return false;
+    }
+
+    std::string uri = param.want.GetUri().ToString();
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "Query by uri: %{private}s, userId: %{public}d", uri.c_str(), param.userId);
+    AppExecFwk::ExtensionAbilityInfo extensionInfo;
+    bool queryResult = IN_PROCESS_CALL(bundleMgrHelper->QueryExtensionAbilityInfoByUri(
+        uri, param.userId, extensionInfo));
+    if (!queryResult || extensionInfo.name.empty() || extensionInfo.bundleName.empty()) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "Cannot find extension by uri");
+        return false;
+    }
+
+    AbilityRuntime::StartupUtil::InitAbilityInfoFromExtension(extensionInfo, targetAbilityInfo);
     return true;
 }
 

@@ -46,6 +46,7 @@ struct AbilityInterceptorParam {
     bool isTargetPlugin = false; //Is it pulling up a plugin
     std::string hostBundleName;
     const StartOptions* startOptions = nullptr;
+    bool fromConnect = false;
 };
 
 /**
