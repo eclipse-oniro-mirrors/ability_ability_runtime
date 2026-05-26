@@ -1334,6 +1334,12 @@ ohos_shared_library("ets_form_extension") {
         "form_fwk:formutil_napi",
       ]
     }
+    if (defined(hiviewdfx_runtime_api_metrics_enable) && hiviewdfx_runtime_api_metrics_enable) {
+      defines += [ "HIVIEWDFX_RUNTIME_API_METRICS" ]
+      external_deps += [
+        "api_metrics:histogrammanager",
+      ]
+    }
   }
   subsystem_name = "ability"
   part_name = "ability_runtime"
@@ -1395,6 +1401,13 @@ ohos_shared_library("form_extension") {
         "form_fwk:form_render_info",
         "form_fwk:form_common_info",
         "form_fwk:formutil_napi",
+      ]
+    }
+
+    if (defined(hiviewdfx_runtime_api_metrics_enable) && hiviewdfx_runtime_api_metrics_enable) {
+      defines += [ "HIVIEWDFX_RUNTIME_API_METRICS" ]
+      external_deps += [
+        "api_metrics:histogrammanager",
       ]
     }
   }
