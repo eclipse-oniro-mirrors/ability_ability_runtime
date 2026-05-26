@@ -847,6 +847,7 @@ private:
         const AppExecFwk::HapModuleInfo &entryHapModuleInfo);
     void HandleInitAssertFaultTask(bool isDebugModule, bool isDebugApp);
     void HandleCancelAssertFaultTask();
+    void HandleDebugAppLaunchDelay(const AppLaunchData &appLaunchData);
 
     bool GetHqfFileAndHapPath(const std::string &bundleName,
         std::vector<std::pair<std::string, std::string>> &fileMap);

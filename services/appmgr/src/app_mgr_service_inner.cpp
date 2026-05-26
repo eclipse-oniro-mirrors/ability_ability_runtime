@@ -900,6 +900,7 @@ ImageError AppMgrServiceInner::DestroyImageForFault(const std::shared_ptr<AppRun
 
 #define CHECKPOINT_NAME_LEN 256
 constexpr int32_t CHECKPOINT_MONITOR_APP_TYPE = 1;
+constexpr int32_t CHECKPOINT_DEBUG_APP_TYPE_FLAG = 0x100;
 
 struct HMCheckpointMarkS {
     int32_t pid = -1;
@@ -1571,6 +1572,10 @@ void AppMgrServiceInner::MarkTemplateProcess(int32_t templatePid, std::string im
     beginIndex = beginIndex > 0 ? beginIndex : 0;
     std::size_t length = imageName.copy(mark.name, CHECKPOINT_NAME_LEN - 1, beginIndex);
     mark.name[length] = '\0';
+    /* In developer mode, set a specific flag for debug app */
+    if (system::GetBoolParameter(DEVELOPER_MODE_STATE, false) && CheckIsDebugApp(imageName)) {
+        mark.type |= CHECKPOINT_DEBUG_APP_TYPE_FLAG;
+    }
     int ret = ioctl(fd, CHECKPOINT_MONITOR_IOCTL_MARK_TEMPLATE, &mark);
     if (ret < 0) {
         close(fd);
