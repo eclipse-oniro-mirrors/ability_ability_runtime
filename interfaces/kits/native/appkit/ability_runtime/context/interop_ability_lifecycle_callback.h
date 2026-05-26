@@ -36,6 +36,28 @@ public:
     virtual void OnAbilityDestroy(std::shared_ptr<InteropObject> ability) {}
     virtual void OnAbilityForeground(std::shared_ptr<InteropObject> ability) {}
     virtual void OnAbilityBackground(std::shared_ptr<InteropObject> ability) {}
+    virtual void OnAbilityContinue(std::shared_ptr<InteropObject> ability) {}
+    virtual void OnWindowStageInactive(std::shared_ptr<InteropObject> ability,
+        std::shared_ptr<InteropObject> windowStage) {}
+    virtual void OnWindowStageActive(std::shared_ptr<InteropObject> ability,
+        std::shared_ptr<InteropObject> windowStage) {}
+    virtual void OnNewWant(std::shared_ptr<InteropObject> ability) {}
+    virtual void OnAbilityWillBackground(std::shared_ptr<InteropObject> ability) {}
+    virtual void OnAbilityWillForeground(std::shared_ptr<InteropObject> ability) {}
+    virtual void OnAbilityWillCreate(std::shared_ptr<InteropObject> ability) {}
+    virtual void OnWindowStageWillDestroy(std::shared_ptr<InteropObject> ability,
+        std::shared_ptr<InteropObject> windowStage) {}
+    virtual void OnAbilityWillDestroy(std::shared_ptr<InteropObject> ability) {}
+    virtual void OnWindowStageRestore(std::shared_ptr<InteropObject> ability,
+        std::shared_ptr<InteropObject> windowStage) {}
+    virtual void OnAbilitySaveState(std::shared_ptr<InteropObject> ability) {}
+    virtual void OnAbilityWillContinue(std::shared_ptr<InteropObject> ability) {}
+    virtual void OnAbilityWillSaveState(std::shared_ptr<InteropObject> ability) {}
+    virtual void OnWillNewWant(std::shared_ptr<InteropObject> ability) {}
+    virtual void OnWindowStageWillCreate(std::shared_ptr<InteropObject> ability,
+        std::shared_ptr<InteropObject> windowStage) {}
+    virtual void OnWindowStageWillRestore(std::shared_ptr<InteropObject> ability,
+        std::shared_ptr<InteropObject> windowStage) {}
 };
 }  // namespace AbilityRuntime
 }  // namespace OHOS

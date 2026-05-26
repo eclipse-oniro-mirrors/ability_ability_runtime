@@ -174,6 +174,92 @@ void JsInteropAbilityLifecycleCallback::OnAbilityBackground(std::shared_ptr<Inte
     CallObjectMethod("onAbilityBackground", ability);
 }
 
+void JsInteropAbilityLifecycleCallback::OnAbilityContinue(std::shared_ptr<InteropObject> ability)
+{
+    CallObjectMethod("onAbilityContinue", ability);
+}
+
+void JsInteropAbilityLifecycleCallback::OnWindowStageInactive(std::shared_ptr<InteropObject> ability,
+    std::shared_ptr<InteropObject> windowStage)
+{
+    CallObjectMethod("onWindowStageInactive", ability, windowStage);
+}
+
+void JsInteropAbilityLifecycleCallback::OnWindowStageActive(std::shared_ptr<InteropObject> ability,
+    std::shared_ptr<InteropObject> windowStage)
+{
+    CallObjectMethod("onWindowStageActive", ability, windowStage);
+}
+
+void JsInteropAbilityLifecycleCallback::OnNewWant(std::shared_ptr<InteropObject> ability)
+{
+    CallObjectMethod("onNewWant", ability);
+}
+
+void JsInteropAbilityLifecycleCallback::OnAbilityWillBackground(std::shared_ptr<InteropObject> ability)
+{
+    CallObjectMethod("onAbilityWillBackground", ability);
+}
+
+void JsInteropAbilityLifecycleCallback::OnAbilityWillForeground(std::shared_ptr<InteropObject> ability)
+{
+    CallObjectMethod("onAbilityWillForeground", ability);
+}
+
+void JsInteropAbilityLifecycleCallback::OnAbilityWillCreate(std::shared_ptr<InteropObject> ability)
+{
+    CallObjectMethod("onAbilityWillCreate", ability);
+}
+
+void JsInteropAbilityLifecycleCallback::OnWindowStageWillDestroy(std::shared_ptr<InteropObject> ability,
+    std::shared_ptr<InteropObject> windowStage)
+{
+    CallObjectMethod("onWindowStageWillDestroy", ability, windowStage);
+}
+
+void JsInteropAbilityLifecycleCallback::OnAbilityWillDestroy(std::shared_ptr<InteropObject> ability)
+{
+    CallObjectMethod("onAbilityWillDestroy", ability);
+}
+
+void JsInteropAbilityLifecycleCallback::OnWindowStageRestore(std::shared_ptr<InteropObject> ability,
+    std::shared_ptr<InteropObject> windowStage)
+{
+    CallObjectMethod("onWindowStageRestore", ability, windowStage);
+}
+
+void JsInteropAbilityLifecycleCallback::OnAbilitySaveState(std::shared_ptr<InteropObject> ability)
+{
+    CallObjectMethod("onAbilitySaveState", ability);
+}
+
+void JsInteropAbilityLifecycleCallback::OnAbilityWillContinue(std::shared_ptr<InteropObject> ability)
+{
+    CallObjectMethod("onAbilityWillContinue", ability);
+}
+
+void JsInteropAbilityLifecycleCallback::OnAbilityWillSaveState(std::shared_ptr<InteropObject> ability)
+{
+    CallObjectMethod("onAbilityWillSaveState", ability);
+}
+
+void JsInteropAbilityLifecycleCallback::OnWillNewWant(std::shared_ptr<InteropObject> ability)
+{
+    CallObjectMethod("onWillNewWant", ability);
+}
+
+void JsInteropAbilityLifecycleCallback::OnWindowStageWillCreate(std::shared_ptr<InteropObject> ability,
+    std::shared_ptr<InteropObject> windowStage)
+{
+    CallObjectMethod("onWindowStageWillCreate", ability, windowStage);
+}
+
+void JsInteropAbilityLifecycleCallback::OnWindowStageWillRestore(std::shared_ptr<InteropObject> ability,
+    std::shared_ptr<InteropObject> windowStage)
+{
+    CallObjectMethod("onWindowStageWillRestore", ability, windowStage);
+}
+
 extern "C" ETS_EXPORT InteropAbilityLifecycleCallback* OHOS_CreateJsInteropAbilityLifecycleCallback(void *env)
 {
     if (env == nullptr) {

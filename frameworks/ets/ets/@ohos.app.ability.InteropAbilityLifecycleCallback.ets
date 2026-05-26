@@ -26,6 +26,22 @@ interface InteropAbilityLifecycleCallback {
   onAbilityDestroy: AbilityCallbackFn;
   onWindowStageCreate: WindowStageCallbackFn;
   onWindowStageDestroy: WindowStageCallbackFn;
+  onAbilityContinue?: AbilityCallbackFn;
+  onWindowStageInactive?: WindowStageCallbackFn;
+  onWindowStageActive?: WindowStageCallbackFn;
+  onNewWant?: AbilityCallbackFn;
+  onAbilityWillBackground?: AbilityCallbackFn;
+  onAbilityWillForeground?: AbilityCallbackFn;
+  onAbilityWillCreate?: AbilityCallbackFn;
+  onWindowStageWillDestroy?: WindowStageCallbackFn;
+  onAbilityWillDestroy?: AbilityCallbackFn;
+  onWindowStageRestore?: WindowStageCallbackFn;
+  onAbilitySaveState?: AbilityCallbackFn;
+  onAbilityWillContinue?: AbilityCallbackFn;
+  onAbilityWillSaveState?: AbilityCallbackFn;
+  onWillNewWant?: AbilityCallbackFn;
+  onWindowStageWillCreate?: WindowStageCallbackFn;
+  onWindowStageWillRestore?: WindowStageCallbackFn;
 }
 
 namespace InteropAbilityLifecycle {
@@ -56,6 +72,82 @@ namespace InteropAbilityLifecycle {
     callback.onWindowStageDestroy(ability.unwrap(),
       transfer.transferStatic(windowStage.unwrap(), 'window.WindowStage') as window.WindowStage);
   };
+
+  function onAbilityContinueInner(ability: ESValue, callback: InteropAbilityLifecycleCallback): void {
+    callback.onAbilityContinue?.(ability.unwrap());
+  };
+
+  function onWindowStageInactiveInner(ability: ESValue, windowStage: ESValue,
+    callback: InteropAbilityLifecycleCallback): void {
+    callback.onWindowStageInactive?.(ability.unwrap(),
+      transfer.transferStatic(windowStage.unwrap(), 'window.WindowStage') as window.WindowStage);
+  };
+
+  function onWindowStageActiveInner(ability: ESValue, windowStage: ESValue,
+    callback: InteropAbilityLifecycleCallback): void {
+    callback.onWindowStageActive?.(ability.unwrap(),
+      transfer.transferStatic(windowStage.unwrap(), 'window.WindowStage') as window.WindowStage);
+  };
+
+  function onNewWantInner(ability: ESValue, callback: InteropAbilityLifecycleCallback): void {
+    callback.onNewWant?.(ability.unwrap());
+  };
+
+  function onAbilityWillBackgroundInner(ability: ESValue, callback: InteropAbilityLifecycleCallback): void {
+    callback.onAbilityWillBackground?.(ability.unwrap());
+  };
+
+  function onAbilityWillForegroundInner(ability: ESValue, callback: InteropAbilityLifecycleCallback): void {
+    callback.onAbilityWillForeground?.(ability.unwrap());
+  };
+
+  function onAbilityWillCreateInner(ability: ESValue, callback: InteropAbilityLifecycleCallback): void {
+    callback.onAbilityWillCreate?.(ability.unwrap());
+  };
+
+  function onWindowStageWillDestroyInner(ability: ESValue, windowStage: ESValue, 
+    callback: InteropAbilityLifecycleCallback): void {
+    callback.onWindowStageWillDestroy?.(ability.unwrap(),
+      transfer.transferStatic(windowStage.unwrap(), 'window.WindowStage') as window.WindowStage);
+  };
+
+  function onAbilityWillDestroyInner(ability: ESValue, callback: InteropAbilityLifecycleCallback): void {
+    callback.onAbilityWillDestroy?.(ability.unwrap());
+  };
+
+  function onWindowStageRestoreInner(ability: ESValue, windowStage: ESValue, 
+    callback: InteropAbilityLifecycleCallback): void {
+    callback.onWindowStageRestore?.(ability.unwrap(),
+      transfer.transferStatic(windowStage.unwrap(), 'window.WindowStage') as window.WindowStage);
+  };
+
+  function onAbilitySaveStateInner(ability: ESValue, callback: InteropAbilityLifecycleCallback): void {
+    callback.onAbilitySaveState?.(ability.unwrap());
+  };
+
+  function onAbilityWillContinueInner(ability: ESValue, callback: InteropAbilityLifecycleCallback): void {
+    callback.onAbilityWillContinue?.(ability.unwrap());
+  };
+
+  function onAbilityWillSaveStateInner(ability: ESValue, callback: InteropAbilityLifecycleCallback): void {
+    callback.onAbilityWillSaveState?.(ability.unwrap());
+  }
+
+  function onWillNewWantInner(ability: ESValue, callback: InteropAbilityLifecycleCallback): void {
+    callback.onWillNewWant?.(ability.unwrap());
+  };
+
+  function onWindowStageWillCreateInner(ability: ESValue, windowStage: ESValue, 
+    callback: InteropAbilityLifecycleCallback): void {
+    callback.onWindowStageWillCreate?.(ability.unwrap(),
+      transfer.transferStatic(windowStage.unwrap(), 'window.WindowStage') as window.WindowStage);
+  }
+
+  function onWindowStageWillRestoreInner(ability: ESValue, windowStage: ESValue, 
+    callback: InteropAbilityLifecycleCallback): void {
+    callback.onWindowStageWillRestore?.(ability.unwrap(),
+      transfer.transferStatic(windowStage.unwrap(), 'window.WindowStage') as window.WindowStage);
+  }
 }
 
 export default InteropAbilityLifecycleCallback;

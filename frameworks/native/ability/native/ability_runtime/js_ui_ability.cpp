@@ -531,6 +531,7 @@ void JsUIAbility::OnStart(const Want &want, sptr<AAFwk::SessionInfo> sessionInfo
         applicationContext->SetLaunchParameter(want);
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         applicationContext->DispatchOnAbilityWillCreate(ability);
+        DISPATCH_ABILITY_INTEROP(OnAbilityWillCreate, applicationContext, jsRuntime_, ability);
     }
 
     WriteLifecycleSwitchLog("onCreate");
@@ -621,6 +622,7 @@ void JsUIAbility::OnStop()
     if (applicationContext != nullptr) {
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         applicationContext->DispatchOnAbilityWillDestroy(ability);
+        DISPATCH_ABILITY_INTEROP(OnAbilityWillDestroy, applicationContext, jsRuntime_, ability);
     }
     WriteLifecycleSwitchLog("onDestroy");
     CallObjectMethod("onDestroy");
@@ -650,6 +652,7 @@ void JsUIAbility::OnStop(AppExecFwk::AbilityTransactionCallbackInfo<> *callbackI
     if (applicationContext != nullptr) {
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         applicationContext->DispatchOnAbilityWillDestroy(ability);
+        DISPATCH_ABILITY_INTEROP(OnAbilityWillDestroy, applicationContext, jsRuntime_, ability);
     }
     WriteLifecycleSwitchLog("onDestroy");
     napi_value result = CallObjectMethod("onDestroy", nullptr, 0, true);
@@ -722,6 +725,7 @@ void JsUIAbility::OnSceneCreated()
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         JsAbilityLifecycleCallbackArgs stage(jsWindowStageObj_);
         applicationContext->DispatchOnWindowStageWillCreate(ability, stage);
+        DISPATCH_WINDOW_INTEROP(OnWindowStageWillCreate, applicationContext, jsRuntime_, ability, stage);
     }
     {
         HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, "onWindowStageCreate");
@@ -770,10 +774,12 @@ void JsUIAbility::OnSceneRestored()
     JsAbilityLifecycleCallbackArgs stage(jsWindowStageObj_);
     if (applicationContext != nullptr) {
         applicationContext->DispatchOnWindowStageWillRestore(ability, stage);
+        DISPATCH_WINDOW_INTEROP(OnWindowStageWillRestore, applicationContext, jsRuntime_, ability, stage);
     }
     CallObjectMethod("onWindowStageRestore", argv, ArraySize(argv));
     if (applicationContext != nullptr) {
         applicationContext->DispatchOnWindowStageRestore(ability, stage);
+        DISPATCH_WINDOW_INTEROP(OnWindowStageRestore, applicationContext, jsRuntime_, ability, stage);
     }
 
     auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator();
@@ -811,6 +817,7 @@ void JsUIAbility::onSceneDestroyed()
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         JsAbilityLifecycleCallbackArgs stage(jsWindowStageObj_);
         applicationContext->DispatchOnWindowStageWillDestroy(ability, stage);
+        DISPATCH_WINDOW_INTEROP(OnWindowStageWillDestroy, applicationContext, jsRuntime_, ability, stage);
     }
     HandleScope handleScope(jsRuntime_);
     UpdateJsWindowStage(nullptr);
@@ -885,6 +892,7 @@ void JsUIAbility::CallOnForegroundFunc(const Want &want)
     if (applicationContext != nullptr) {
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         applicationContext->DispatchOnAbilityWillForeground(ability);
+        DISPATCH_ABILITY_INTEROP(OnAbilityWillForeground, applicationContext, jsRuntime_, ability);
     }
 
     WriteLifecycleSwitchLog("onForeground");
@@ -919,6 +927,7 @@ void JsUIAbility::OnBackground()
     if (applicationContext != nullptr) {
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         applicationContext->DispatchOnAbilityWillBackground(ability);
+        DISPATCH_ABILITY_INTEROP(OnAbilityWillBackground, applicationContext, jsRuntime_, ability);
     }
     std::string methodName = "OnBackground";
     HandleScope handleScope(jsRuntime_);
@@ -1641,6 +1650,7 @@ int32_t JsUIAbility::OnContinue(WantParams &wantParams, bool &isAsyncOnContinue,
     if (applicationContext != nullptr) {
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         applicationContext->DispatchOnAbilityWillContinue(ability);
+        DISPATCH_ABILITY_INTEROP(OnAbilityWillContinue, applicationContext, jsRuntime_, ability);
     }
     napi_value jsWantParams = OHOS::AppExecFwk::WrapWantParams(env, wantParams);
     napi_value result = CallObjectMethod("onContinue", &jsWantParams, 1, true);
@@ -1718,6 +1728,7 @@ int32_t JsUIAbility::OnContinueAsyncCB(napi_ref jsWantParamsRef, int32_t status,
     if (applicationContext != nullptr) {
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         applicationContext->DispatchOnAbilityContinue(ability);
+        DISPATCH_ABILITY_INTEROP(OnAbilityContinue, applicationContext, jsRuntime_, ability);
     }
 #ifdef SUPPORT_GRAPHICS
     auto value = wantParams.GetParam(SUPPORT_CONTINUE_PAGE_STACK_PROPERTY_NAME);
@@ -1761,6 +1772,7 @@ int32_t JsUIAbility::OnContinueSyncCB(napi_value result, WantParams &wantParams,
     if (applicationContext != nullptr) {
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         applicationContext->DispatchOnAbilityContinue(ability);
+        DISPATCH_ABILITY_INTEROP(OnAbilityContinue, applicationContext, jsRuntime_, ability);
     }
     TAG_LOGI(AAFwkTag::UIABILITY, "end");
     return onContinueRes;
@@ -1782,6 +1794,7 @@ int32_t JsUIAbility::OnSaveState(int32_t reason, WantParams &wantParams,
     auto applicationContext = AbilityRuntime::Context::GetApplicationContext();
     if (applicationContext != nullptr) {
         applicationContext->DispatchOnAbilityWillSaveState(ability);
+        DISPATCH_ABILITY_INTEROP(OnAbilityWillSaveState, applicationContext, jsRuntime_, ability);
     }
 
     napi_value jsWantParams = OHOS::AppExecFwk::WrapWantParams(env, wantParams);
@@ -1801,6 +1814,7 @@ int32_t JsUIAbility::OnSaveState(int32_t reason, WantParams &wantParams,
         int32_t status = CallSaveStatePromise(onSaveStateAsyncResult, info);
         if (status == ERR_OK && applicationContext != nullptr) {
             applicationContext->DispatchOnAbilitySaveState(ability);
+            DISPATCH_ABILITY_INTEROP(OnAbilitySaveState, applicationContext, jsRuntime_, ability);
         }
         isAsync = true;
         return status;
@@ -1821,6 +1835,7 @@ int32_t JsUIAbility::OnSaveState(int32_t reason, WantParams &wantParams,
 
     if (applicationContext != nullptr) {
         applicationContext->DispatchOnAbilitySaveState(ability);
+        DISPATCH_ABILITY_INTEROP(OnAbilitySaveState, applicationContext, jsRuntime_, ability);
     }
     AppExecFwk::OnSaveStateResult saveStateResult = {numberResult, wantParams, stateReason};
     callbackInfo->Call(saveStateResult);
@@ -1920,7 +1935,6 @@ void JsUIAbility::RemoveShareRouterByBundleType(const Want &want)
 
 void JsUIAbility::OnNewWant(const Want &want)
 {
-    TAG_LOGD(AAFwkTag::UIABILITY, "called");
     UIAbility::OnNewWant(want);
 
 #ifdef SUPPORT_SCREEN
@@ -1954,6 +1968,7 @@ void JsUIAbility::OnNewWant(const Want &want)
     if (applicationContext != nullptr) {
         applicationContext->SetLatestParameter(want);
         applicationContext->DispatchOnWillNewWant(ability);
+        DISPATCH_ABILITY_INTEROP(OnWillNewWant, applicationContext, jsRuntime_, ability);
     }
 
     napi_set_named_property(env, obj, "lastRequestWant", jsWant);
@@ -1974,8 +1989,8 @@ void JsUIAbility::OnNewWant(const Want &want)
     applicationContext = AbilityRuntime::Context::GetApplicationContext();
     if (applicationContext != nullptr) {
         applicationContext->DispatchOnNewWant(ability);
+        DISPATCH_ABILITY_INTEROP(OnNewWant, applicationContext, jsRuntime_, ability);
     }
-    TAG_LOGD(AAFwkTag::UIABILITY, "end");
 }
 
 void JsUIAbility::OnAbilityResult(int requestCode, int resultCode, const Want &resultData)
@@ -2411,16 +2426,18 @@ void JsUIAbility::OnAfterFocusedCommon(bool isFocused)
         return;
     }
     auto applicationContext = abilityContext->GetApplicationContext();
-    if (applicationContext == nullptr || applicationContext->IsAbilityLifecycleCallbackEmpty()) {
-        TAG_LOGD(AAFwkTag::UIABILITY, "null applicationContext or lifecycleCallback");
+    if (applicationContext == nullptr) {
+        TAG_LOGD(AAFwkTag::UIABILITY, "null applicationContext");
         return;
     }
     JsAbilityLifecycleCallbackArgs ability(GetJsAbility());
     JsAbilityLifecycleCallbackArgs stage(GetJsWindowStage());
     if (isFocused) {
         applicationContext->DispatchWindowStageFocus(ability, stage);
+        DISPATCH_WINDOW_INTEROP(WindowStageFocus, applicationContext, jsRuntime_, ability, stage);
     } else {
         applicationContext->DispatchWindowStageUnfocus(ability, stage);
+        DISPATCH_WINDOW_INTEROP(WindowStageUnfocus, applicationContext, jsRuntime_, ability, stage);
     }
 }
 
