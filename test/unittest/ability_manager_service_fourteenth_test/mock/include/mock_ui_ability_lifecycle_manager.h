@@ -187,6 +187,7 @@ public:
      * @param rootSceneSession Indicates root scene session of SCB.
      */
     void SetRootSceneSession(const sptr<IRemoteObject> &rootSceneSession);
+    sptr<IRemoteObject> GetRootSceneSession() const;
 
     int NotifySCBToStartUIAbility(AbilityRequest &abilityRequest);
 
@@ -558,6 +559,7 @@ private:
     std::unordered_map<int64_t, std::shared_ptr<AbilityRecord>> tmpAbilityMap_;
     std::unordered_map<std::shared_ptr<AbilityRecord>, std::list<AbilityRequest>> callRequestCache_;
     std::list<std::shared_ptr<AbilityRecord>> terminateAbilityList_;
+    ffrt::mutex rootSceneSessionLock_;
     sptr<IRemoteObject> rootSceneSession_;
     int32_t requestId_ = 0;
     sptr<ISessionHandler> handler_;

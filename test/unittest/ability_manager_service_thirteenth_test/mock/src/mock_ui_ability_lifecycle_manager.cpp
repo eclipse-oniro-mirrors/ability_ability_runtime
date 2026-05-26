@@ -392,6 +392,11 @@ void UIAbilityLifecycleManager::SetRootSceneSession(const sptr<IRemoteObject> &r
 {
 }
 
+sptr<IRemoteObject> UIAbilityLifecycleManager::GetRootSceneSession() const
+{
+    return nullptr;
+}
+
 void UIAbilityLifecycleManager::NotifySCBToHandleException(const UIAbilityRecordPtr &abilityRecord,
     int32_t errorCode, const std::string& errorReason, bool needClearCallerLink)
 {
