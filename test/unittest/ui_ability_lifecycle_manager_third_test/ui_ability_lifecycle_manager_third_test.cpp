@@ -1918,5 +1918,46 @@ HWTEST_F(UIAbilityLifecycleManagerThirdTest, PostStartSelfTimeoutEvent_001, Test
     EXPECT_GE(MyFlag::ffrtSubmitFlag_, 2);
     uiAbilityLifecycleManager.reset();
 }
+/**
+ * @tc.name: UIAbilityLifecycleManager_SubmitSpecifiedFailTask_001
+ * @tc.desc: SubmitSpecifiedFailTask with isDelay=false, should submit task immediately
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, SubmitSpecifiedFailTask_001, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    int32_t requestId = 1;
+    AbilityRequest abilityRequest;
+    auto abilityRecord = std::make_shared<UIAbilityRecord>(
+        abilityRequest.want, abilityRequest.abilityInfo, abilityRequest.appInfo, abilityRequest.requestCode);
+    mgr->hookSpecifiedMap_ = { { requestId, abilityRecord } };
+
+    MyFlag::ffrtSubmitFlag_ = 0;
+    mgr->SubmitSpecifiedFailTask(requestId, false);
+    EXPECT_GE(MyFlag::ffrtSubmitFlag_, 1);
+    usleep(TIMEOUT_VALUE);
+    EXPECT_EQ(mgr->hookSpecifiedMap_.size(), 0);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_SubmitSpecifiedFailTask_002
+ * @tc.desc: SubmitSpecifiedFailTask with isDelay=true, should submit delayed task
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, SubmitSpecifiedFailTask_002, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    int32_t requestId = 2;
+    AbilityRequest abilityRequest;
+    auto abilityRecord = std::make_shared<UIAbilityRecord>(
+        abilityRequest.want, abilityRequest.abilityInfo, abilityRequest.appInfo, abilityRequest.requestCode);
+    mgr->hookSpecifiedMap_ = { { requestId, abilityRecord } };
+
+    MyFlag::ffrtSubmitFlag_ = 0;
+    mgr->SubmitSpecifiedFailTask(requestId, true);
+    EXPECT_GE(MyFlag::ffrtSubmitFlag_, 1);
+    usleep(TIMEOUT_VALUE);
+    EXPECT_EQ(mgr->hookSpecifiedMap_.size(), 0);
+}
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -1148,6 +1148,7 @@ private:
      * @param specifiedRequest The request to process
      */
     void StartSpecifiedRequest(SpecifiedRequest &specifiedRequest);
+    void SubmitSpecifiedFailTask(int32_t requestId, bool isDelay);
 
     /**
      * @brief Pop next specified request by ID

@@ -4515,10 +4515,12 @@ void UIAbilityLifecycleManager::StartSpecifiedRequest(SpecifiedRequest &specifie
             TAG_LOGI(AAFwkTag::ABILITYMGR, "StartSpecifiedRequest cold");
             std::string errMsg;
             auto result = NotifySCBPendingActivation(sessionInfo, request, errMsg);
+            sessionInfo->want.RemoveAllFd();
             if (result != ERR_OK) {
                 RemoveInstanceKey(request);
+                SubmitSpecifiedFailTask(specifiedRequest.requestId, false);
+                return;
             }
-            sessionInfo->want.RemoveAllFd();
         } else {
             DelayedSingleton<AppScheduler>::GetInstance()->StartSpecifiedAbility(request.want,
                 request.abilityInfo, specifiedRequest.requestId, request.customProcess,
@@ -4530,14 +4532,23 @@ void UIAbilityLifecycleManager::StartSpecifiedRequest(SpecifiedRequest &specifie
         TAG_LOGI(AAFwkTag::ABILITYMGR, "StartSpecifiedRequest debug mode");
         return;
     }
-    auto timeoutTask = [requestId = specifiedRequest.requestId, wThis = weak_from_this()]() {
+    SubmitSpecifiedFailTask(specifiedRequest.requestId, true);
+}
+
+void UIAbilityLifecycleManager::SubmitSpecifiedFailTask(int32_t requestId, bool isDelay)
+{
+    auto timeoutTask = [requestId, wThis = weak_from_this()]() {
         auto pThis = wThis.lock();
         if (pThis) {
             pThis->OnStartSpecifiedFailed(requestId);
         }
     };
-    ffrt::submit(std::move(timeoutTask), ffrt::task_attr().name("SpecifiedFinalTimeout")
+    if (!isDelay) {
+        ffrt::submit(std::move(timeoutTask));
+    } else {
+        ffrt::submit(std::move(timeoutTask), ffrt::task_attr().name("SpecifiedFinalTimeout")
         .delay(GlobalConstant::TIMEOUT_UNIT_TIME_MICRO * (int64_t)GlobalConstant::COLDSTART_TIMEOUT_MULTIPLE));
+    }
 }
 
 void UIAbilityLifecycleManager::RemoveInstanceKey(const AbilityRequest &abilityRequest) const
