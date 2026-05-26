@@ -51,7 +51,9 @@ ohos_unittest("ability_manager_proxy_fourth_test") {
   }
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_connect_callback_stub",
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/ability_manager:mission_info",
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
     "${ability_runtime_services_path}/abilitymgr:wantagent_manager",
@@ -63,8 +65,6 @@ ohos_unittest("ability_manager_proxy_fourth_test") {
 
   external_deps = [
     "ability_base:zuri",
-    "ability_runtime:ability_deps_wrapper",
-    "ability_runtime:ability_manager",
     "access_token:libaccesstoken_sdk",
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",
@@ -72,11 +72,11 @@ ohos_unittest("ability_manager_proxy_fourth_test") {
     "googletest:gmock_main",
     "googletest:gtest_main",
     "hilog:libhilog",
+    "hisysevent:libhisysevent",
     "init:libbeget_proxy",
     "ipc:ipc_core",
     "napi:ace_napi",
     "samgr:samgr_proxy",
-    "hisysevent:libhisysevent",
     "window_manager:session_manager_lite",
   ]
 

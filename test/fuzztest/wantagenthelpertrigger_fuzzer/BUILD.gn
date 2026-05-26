@@ -36,11 +36,14 @@ ohos_fuzztest("WantAgentHelperTriggerFuzzTest") {
 
   sources = [ "wantagenthelpertrigger_fuzzer.cpp" ]
 
+  deps = [
+    "${ability_runtime_innerkits_path}/wantagent:wantagent_innerkits",
+  ]
+
   external_deps = [
     "ability_base:base",
     "ability_base:configuration",
     "ability_base:want",
-    "ability_runtime:wantagent_innerkits",
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",
     "ipc:ipc_core",

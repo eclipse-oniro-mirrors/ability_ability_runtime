@@ -35,11 +35,12 @@ ohos_unittest("udmf_utils_test") {
     "udmf_utils_test.cpp",
   ]
 
-  deps = []
+  deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+  ]
 
   external_deps = [
     "ability_base:want",
-    "ability_runtime:ability_manager",
     "googletest:gmock_main",
     "googletest:gtest_main",
     "hilog:libhilog",

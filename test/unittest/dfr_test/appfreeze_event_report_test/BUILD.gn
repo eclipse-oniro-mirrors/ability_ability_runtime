@@ -30,14 +30,14 @@ ohos_unittest("appfreeze_event_report_test") {
   sources = [ "appfreeze_event_report_test.cpp" ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_services_path}/common:hisysevent_report",
   ]
 
   external_deps = [
-    "ability_runtime:app_manager",
-    "hisysevent:libhisysevent",
     "googletest:gmock_main",
     "googletest:gtest_main",
+    "hisysevent:libhisysevent",
   ]
 }
 

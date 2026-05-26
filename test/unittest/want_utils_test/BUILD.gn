@@ -40,6 +40,7 @@ ohos_unittest("want_utils_test") {
   ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
     "${ability_runtime_services_path}/common:task_handler_wrap",
@@ -48,7 +49,6 @@ ohos_unittest("want_utils_test") {
   external_deps = [
     "ability_base:want",
     "ability_base:zuri",
-    "ability_runtime:ability_manager",
     "app_domain_verify:app_domain_verify_common",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",

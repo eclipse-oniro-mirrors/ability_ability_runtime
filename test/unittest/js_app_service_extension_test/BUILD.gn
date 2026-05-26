@@ -36,9 +36,14 @@ ohos_unittest("js_app_service_extension_test") {
   configs = [ "${ability_runtime_services_path}/abilitymgr:abilityms_config" ]
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_connect_callback_stub",
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_native_path}/ability/native:abilitykit_utils",
     "${ability_runtime_native_path}/ability/native:app_service_extension",
+    "${ability_runtime_native_path}/ability/native:extensionkit_native",
     "${ability_runtime_native_path}/ability/native:insight_intent_executor",
+    "${ability_runtime_native_path}/appkit:app_context",
+    "${ability_runtime_native_path}/appkit:appkit_native",
     "${ability_runtime_native_path}/insight_intent/insight_intent_context:insightintentcontext",
     "${ability_runtime_path}/services/abilitymgr:abilityms_target",
   ]
@@ -47,11 +52,6 @@ ohos_unittest("js_app_service_extension_test") {
     "ability_base:base",
     "ability_base:configuration",
     "ability_base:want",
-    "ability_runtime:ability_manager",
-    "ability_runtime:app_context",
-    "ability_runtime:appkit_native",
-    "ability_runtime:extensionkit_native",
-    "ability_runtime:runtime",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",

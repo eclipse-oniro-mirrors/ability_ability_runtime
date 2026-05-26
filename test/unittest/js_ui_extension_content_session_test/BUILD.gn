@@ -36,15 +36,21 @@ ohos_unittest("js_ui_extension_content_session_test") {
   ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/ability_manager:ability_start_options",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_napi_path}/inner/napi_common:napi_common",
     "${ability_runtime_napi_path}/inner/napi_wantagent_common:napi_wantagent_common",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_native_path}/ability/native:abilitykit_utils",
     "${ability_runtime_native_path}/ability/native:extensionkit_native",
     "${ability_runtime_native_path}/ability/native:insight_intent_executor",
+    "${ability_runtime_native_path}/ability/native:service_extension",
     "${ability_runtime_native_path}/ability/native:ui_extension",
+    "${ability_runtime_native_path}/appkit:app_context",
+    "${ability_runtime_native_path}/appkit:appkit_native",
     "${ability_runtime_native_path}/insight_intent/insight_intent_context:insightintentcontext",
+    "${ability_runtime_path}/js_environment/frameworks/js_environment:js_environment",
   ]
 
   external_deps = [
@@ -52,13 +58,6 @@ ohos_unittest("js_ui_extension_content_session_test") {
     "ability_base:configuration",
     "ability_base:session_info",
     "ability_base:want",
-    "ability_runtime:ability_manager",
-    "ability_runtime:app_context",
-    "ability_runtime:appkit_native",
-    "ability_runtime:extensionkit_native",
-    "ability_runtime:js_environment",
-    "ability_runtime:runtime",
-    "ability_runtime:service_extension",
     "ffrt:libffrt",
     "googletest:gmock_main",
     "googletest:gtest_main",

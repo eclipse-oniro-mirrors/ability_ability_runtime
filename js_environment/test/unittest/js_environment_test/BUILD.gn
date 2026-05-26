@@ -26,11 +26,12 @@ template("js_environment_test_template") {
 
     configs = []
 
-    deps = []
+    deps = [
+      "${ability_runtime_innerkits_path}/runtime:runtime",
+      "${ability_runtime_path}/js_environment/frameworks/js_environment:js_environment",
+    ]
 
     external_deps = [
-      "ability_runtime:js_environment",
-      "ability_runtime:runtime",
       "c_utils:utils",
       "ets_runtime:libark_jsruntime",
       "eventhandler:libeventhandler",

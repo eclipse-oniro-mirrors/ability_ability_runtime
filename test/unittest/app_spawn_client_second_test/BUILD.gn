@@ -31,12 +31,14 @@ ohos_unittest("AppSpawnClientSecondTest") {
 
   configs = [ "${ability_runtime_services_path}/appmgr:appmgr_config" ]
 
-  deps = [ "${ability_runtime_services_path}/appmgr:libappms" ]
+  deps = [
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_services_path}/appmgr:libappms",
+  ]
 
   external_deps = [
     "ability_base:configuration",
     "ability_base:want",
-    "ability_runtime:app_manager",
     "access_token:libnativetoken",
     "access_token:libtoken_setproc",
     "appspawn:appspawn_client",

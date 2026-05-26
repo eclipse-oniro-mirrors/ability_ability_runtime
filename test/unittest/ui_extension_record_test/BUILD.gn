@@ -35,13 +35,13 @@ ohos_unittest("ui_extension_record_test") {
 
   deps = [
     "${ability_runtime_abilitymgr_path}/:abilityms",
-    "${ability_runtime_innerkits_path}/app_manager:app_manager"
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
   ]
 
   external_deps = [
     "ability_base:want",
     "ability_base:zuri",
-    "ability_runtime:ability_manager",
     "access_token:libaccesstoken_sdk",
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",
