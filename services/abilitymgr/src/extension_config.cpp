@@ -143,6 +143,7 @@ void ExtensionConfig::LoadExtensionConfig(const nlohmann::json &object)
         LoadExtensionSAEnable(jsonObject, extensionTypeName);
         LoadScreenUnlockAccess(jsonObject, extensionTypeName);
     }
+    isConfigLoaded_.store(true);
 }
 
 void ExtensionConfig::LoadExtensionAutoDisconnectTime(const nlohmann::json &object,
@@ -665,6 +666,11 @@ bool ExtensionConfig::ReadFileInfoJson(const std::string &filePath, nlohmann::js
     }
 
     return true;
+}
+
+bool ExtensionConfig::IsConfigLoaded() const
+{
+    return isConfigLoaded_.load();
 }
 
 bool ExtensionConfig::CheckExtensionUriValid(const std::string &uri)
