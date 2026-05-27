@@ -215,7 +215,7 @@ bool CliToolMGRClient::LoadCliToolMgrService()
         return false;
     }
 
-    sptr<CliMgrLoadCallback> loadCallback = new (std::nothrow) CliMgrLoadCallback();
+    sptr<CliMgrLoadCallback> loadCallback = sptr<CliMgrLoadCallback>::MakeSptr();
     if (loadCallback == nullptr) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Create load callback failed");
         return false;

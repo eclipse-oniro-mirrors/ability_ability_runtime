@@ -67,6 +67,7 @@ void JsCliSessionEventCallbackImpl::FreeNativeReference(std::unique_ptr<NativeRe
 
     uv_work_t *work = new (std::nothrow) uv_work_t;
     if (work == nullptr) {
+        reference.reset();
         return;
     }
     work->data = reinterpret_cast<void *>(reference.release());
