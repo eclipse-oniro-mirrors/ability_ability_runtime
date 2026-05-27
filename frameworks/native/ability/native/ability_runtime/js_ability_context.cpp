@@ -259,7 +259,7 @@ void StartAbilityByCallComplete(napi_env env, NapiAsyncTask& task, std::weak_ptr
         TAG_LOGE(AAFwkTag::CONTEXT, "null callComplete params error %{public}s",
             context == nullptr ? "context" : (calldata->remoteCallee == nullptr ? "remoteCallee" : "callerCallBack"));
         task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-            GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_CALLER_FAILED)));
+            GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED)));
         TAG_LOGD(AAFwkTag::CONTEXT, "callComplete end");
         return;
     }
@@ -2162,7 +2162,7 @@ napi_value JsAbilityContext::OnRequestDialogService(napi_env env, NapiCallbackIn
         if (requestResult == nullptr) {
             TAG_LOGW(AAFwkTag::CONTEXT, "null requestResult");
             asyncTask->Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-                GetInnerErrorMsg(AbilityInnerErrorMsg::REQUEST_DIALOG_RESULT_FAILED)));
+                GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED)));
         } else {
             asyncTask->Resolve(env, requestResult);
         }
@@ -3516,7 +3516,7 @@ napi_value JsAbilityContext::OnSetOnNewWantSkipScenarios(napi_env env, NapiCallb
                 task.Resolve(env, CreateJsUndefined(env));
             } else {
                 task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-                    GetInnerErrorMsg(AbilityInnerErrorMsg::SET_ON_NEW_WANT_SKIP_SCENARIOS_FAILED)));
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED)));
             }
         };
 

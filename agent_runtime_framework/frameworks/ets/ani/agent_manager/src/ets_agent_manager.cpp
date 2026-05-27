@@ -322,7 +322,9 @@ void EtsAgentManager::GetAllAgentCards(ani_env *env, ani_object asyncCallback)
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "get all cards failed: %{public}d", ret);
         AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
-            EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(ret)), nullptr);
+            EtsErrorUtil::CreateError(env, static_cast<int32_t>(GetJsErrorCodeByNativeError(ret)),
+                GetAgentManagerErrorMsg(static_cast<int32_t>(ret), AgentManagerErrorOperation::READ_AGENT_CARDS)),
+            nullptr);
         return;
     }
     if (cards.empty()) {
@@ -355,7 +357,9 @@ void EtsAgentManager::GetAgentCardsByBundleName(ani_env *env, ani_string aniBund
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "get cards by bundle failed: %{public}d", ret);
         AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
-            EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(ret)), nullptr);
+            EtsErrorUtil::CreateError(env, static_cast<int32_t>(GetJsErrorCodeByNativeError(ret)),
+                GetAgentManagerErrorMsg(static_cast<int32_t>(ret), AgentManagerErrorOperation::READ_AGENT_CARDS)),
+            nullptr);
         return;
     }
     if (cards.empty()) {
@@ -396,7 +400,9 @@ void EtsAgentManager::GetAgentCardByAgentId(ani_env *env, ani_string aniBundleNa
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "get card by agentId failed: %{public}d", ret);
         AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
-            EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(ret)), nullptr);
+            EtsErrorUtil::CreateError(env, static_cast<int32_t>(GetJsErrorCodeByNativeError(ret)),
+                GetAgentManagerErrorMsg(static_cast<int32_t>(ret), AgentManagerErrorOperation::READ_AGENT_CARDS)),
+            nullptr);
         return;
     }
     AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
@@ -422,7 +428,9 @@ void EtsAgentManager::RegisterAgentCard(ani_env *env, ani_object aniCard, ani_ob
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "register card failed: %{public}d", ret);
         AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
-            EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(ret)), nullptr);
+            EtsErrorUtil::CreateError(env, static_cast<int32_t>(GetJsErrorCodeByNativeError(ret)),
+                GetAgentManagerErrorMsg(static_cast<int32_t>(ret), AgentManagerErrorOperation::REGISTER_AGENT_CARD)),
+            nullptr);
         return;
     }
     AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
@@ -448,7 +456,9 @@ void EtsAgentManager::UpdateAgentCard(ani_env *env, ani_object aniCard, ani_obje
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "update card failed: %{public}d", ret);
         AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
-            EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(ret)), nullptr);
+            EtsErrorUtil::CreateError(env, static_cast<int32_t>(GetJsErrorCodeByNativeError(ret)),
+                GetAgentManagerErrorMsg(static_cast<int32_t>(ret), AgentManagerErrorOperation::UPDATE_AGENT_CARD)),
+            nullptr);
         return;
     }
     AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
@@ -483,7 +493,9 @@ void EtsAgentManager::DeleteAgentCard(ani_env *env, ani_string aniBundleName, an
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "delete card failed: %{public}d", ret);
         AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
-            EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(ret)), nullptr);
+            EtsErrorUtil::CreateError(env, static_cast<int32_t>(GetJsErrorCodeByNativeError(ret)),
+                GetAgentManagerErrorMsg(static_cast<int32_t>(ret), AgentManagerErrorOperation::DELETE_AGENT_CARD)),
+            nullptr);
         return;
     }
     AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
@@ -560,7 +572,10 @@ void EtsAgentManager::ConnectAgentExtensionAbility(ani_env *env, ani_object aniW
     if (innerErrorCode != static_cast<int32_t>(AbilityErrorCode::ERROR_OK)) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "errcode: %{public}d.", innerErrorCode);
         AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
-            EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(innerErrorCode)), nullptr);
+            EtsErrorUtil::CreateError(env, static_cast<int32_t>(GetJsErrorCodeByNativeError(innerErrorCode)),
+                GetAgentManagerErrorMsg(
+                    static_cast<int32_t>(innerErrorCode), AgentManagerErrorOperation::CONNECT_AGENT_EXTENSION)),
+            nullptr);
         AgentConnectionUtils::RemoveAgentConnection(connectionId);
     }
 }
@@ -600,7 +615,9 @@ void EtsAgentManager::DisconnectAgentExtensionAbility(ani_env *env, ani_object a
     TAG_LOGD(AAFwkTag::SER_ROUTER, "DisconnectAgentExtensionAbility innerErrorCode: %{public}d", innerErrCode);
     if (innerErrCode != ERR_OK) {
         AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
-            EtsErrorUtil::CreateErrorByNativeErr(env, innerErrCode), nullptr);
+            EtsErrorUtil::CreateError(env, static_cast<int32_t>(GetJsErrorCodeByNativeError(innerErrCode)),
+                GetAgentManagerErrorMsg(innerErrCode, AgentManagerErrorOperation::DISCONNECT_AGENT_EXTENSION)),
+            nullptr);
     } else {
         // On success, callback is handled by DisconnectAgentExtensionAbility via OnAbilityDisconnectDone
         // Similar to how OnDisconnectUIServiceExtension always calls callback with ERROR_OK
@@ -704,7 +721,9 @@ void EtsAgentManager::DisconnectServiceExtensionAbility(
         return;
     }
     AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
-        EtsErrorUtil::CreateErrorByNativeErr(env, ret), nullptr);
+        EtsErrorUtil::CreateError(env, static_cast<int32_t>(GetJsErrorCodeByNativeError(ret)),
+            GetAgentManagerErrorMsg(ret, AgentManagerErrorOperation::DISCONNECT_SERVICE_EXTENSION)),
+        nullptr);
 }
 
 void EtsAgentManager::NotifyLowCodeAgentComplete(ani_env *env, ani_string aniAgentId, ani_object asyncCallback)
@@ -724,7 +743,9 @@ void EtsAgentManager::NotifyLowCodeAgentComplete(ani_env *env, ani_string aniAge
     int32_t ret = AgentManagerClient::GetInstance().NotifyLowCodeAgentComplete(agentId);
     if (ret != ERR_OK) {
         AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
-            EtsErrorUtil::CreateErrorByNativeErr(env, ret), nullptr);
+            EtsErrorUtil::CreateError(env, static_cast<int32_t>(GetJsErrorCodeByNativeError(ret)),
+                GetAgentManagerErrorMsg(ret, AgentManagerErrorOperation::COMPLETE_LOW_CODE_AGENT)),
+            nullptr);
         return;
     }
     AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,

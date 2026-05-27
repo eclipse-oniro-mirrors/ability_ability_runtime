@@ -18,7 +18,9 @@
 #include <map>
 #include <mutex>
 
+#include "ability_business_error.h"
 #include "ability_connection.h"
+#include "ability_manager_errors.h"
 #include "agent_connection_manager.h"
 #include "agent_extension_connection_constants.h"
 #include "agent_manager_client.h"
@@ -281,7 +283,8 @@ void DoConnectAgentExtensionAbility(napi_env env,
     AbilityErrorCode errcode = AbilityRuntime::GetJsErrorCodeByNativeError(innerErrCode);
     if (errcode != AbilityErrorCode::ERROR_OK) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "ConnectAgentExtensionAbility failed: %{public}d", errcode);
-        napi_value error = CreateJsError(env, errcode);
+        napi_value error = CreateJsError(env, static_cast<int32_t>(GetJsErrorCodeByNativeError(innerErrCode)),
+            GetAgentManagerErrorMsg(innerErrCode, AgentManagerErrorOperation::CONNECT_AGENT_EXTENSION));
         asyncTaskShared->Reject(env, error);
         AgentConnectionUtils::RemoveAgentConnection(connectionId);
     }
@@ -343,7 +346,8 @@ napi_value JsAgentManager::OnGetAllAgentCards(napi_env env, size_t argc, napi_va
         napi_env env, NapiAsyncTask &task, int32_t status) {
         if (*innerErrorCode != ERR_OK) {
             TAG_LOGE(AAFwkTag::SER_ROUTER, "error: %{public}d", *innerErrorCode);
-            task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrorCode));
+            task.Reject(env, CreateJsError(env, static_cast<int32_t>(GetJsErrorCodeByNativeError(*innerErrorCode)),
+                GetAgentManagerErrorMsg(*innerErrorCode, AgentManagerErrorOperation::READ_AGENT_CARDS)));
             return;
         }
         TAG_LOGI(AAFwkTag::SER_ROUTER, "cards.size: %{public}zu", cards->size());
@@ -380,7 +384,8 @@ napi_value JsAgentManager::OnGetAgentCardsByBundleName(napi_env env, size_t argc
         napi_env env, NapiAsyncTask &task, int32_t status) {
         if (*innerErrorCode != ERR_OK) {
             TAG_LOGE(AAFwkTag::SER_ROUTER, "error: %{public}d", *innerErrorCode);
-            task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrorCode));
+            task.Reject(env, CreateJsError(env, static_cast<int32_t>(GetJsErrorCodeByNativeError(*innerErrorCode)),
+                GetAgentManagerErrorMsg(*innerErrorCode, AgentManagerErrorOperation::READ_AGENT_CARDS)));
             return;
         }
         TAG_LOGI(AAFwkTag::SER_ROUTER, "cards.size: %{public}zu", cards->size());
@@ -424,7 +429,8 @@ napi_value JsAgentManager::OnGetAgentCardByAgentId(napi_env env, size_t argc, na
         napi_env env, NapiAsyncTask &task, int32_t status) {
         if (*innerErrorCode != ERR_OK) {
             TAG_LOGE(AAFwkTag::SER_ROUTER, "error: %{public}d", *innerErrorCode);
-            task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrorCode));
+            task.Reject(env, CreateJsError(env, static_cast<int32_t>(GetJsErrorCodeByNativeError(*innerErrorCode)),
+                GetAgentManagerErrorMsg(*innerErrorCode, AgentManagerErrorOperation::READ_AGENT_CARDS)));
             return;
         }
         task.ResolveWithNoError(env, CreateJsAgentCard(env, *card));
@@ -458,7 +464,8 @@ napi_value JsAgentManager::OnRegisterAgentCard(napi_env env, size_t argc, napi_v
     NapiAsyncTask::CompleteCallback complete = [innerErrorCode](napi_env env, NapiAsyncTask &task, int32_t status) {
         if (*innerErrorCode != ERR_OK) {
             TAG_LOGE(AAFwkTag::SER_ROUTER, "error: %{public}d", *innerErrorCode);
-            task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrorCode));
+            task.Reject(env, CreateJsError(env, static_cast<int32_t>(GetJsErrorCodeByNativeError(*innerErrorCode)),
+                GetAgentManagerErrorMsg(*innerErrorCode, AgentManagerErrorOperation::REGISTER_AGENT_CARD)));
             return;
         }
         task.ResolveWithNoError(env, CreateJsUndefined(env));
@@ -492,7 +499,8 @@ napi_value JsAgentManager::OnUpdateAgentCard(napi_env env, size_t argc, napi_val
     NapiAsyncTask::CompleteCallback complete = [innerErrorCode](napi_env env, NapiAsyncTask &task, int32_t status) {
         if (*innerErrorCode != ERR_OK) {
             TAG_LOGE(AAFwkTag::SER_ROUTER, "error: %{public}d", *innerErrorCode);
-            task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrorCode));
+            task.Reject(env, CreateJsError(env, static_cast<int32_t>(GetJsErrorCodeByNativeError(*innerErrorCode)),
+                GetAgentManagerErrorMsg(*innerErrorCode, AgentManagerErrorOperation::UPDATE_AGENT_CARD)));
             return;
         }
         task.ResolveWithNoError(env, CreateJsUndefined(env));
@@ -533,7 +541,8 @@ napi_value JsAgentManager::OnDeleteAgentCard(napi_env env, size_t argc, napi_val
     NapiAsyncTask::CompleteCallback complete = [innerErrorCode](napi_env env, NapiAsyncTask &task, int32_t status) {
         if (*innerErrorCode != ERR_OK) {
             TAG_LOGE(AAFwkTag::SER_ROUTER, "error: %{public}d", *innerErrorCode);
-            task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrorCode));
+            task.Reject(env, CreateJsError(env, static_cast<int32_t>(GetJsErrorCodeByNativeError(*innerErrorCode)),
+                GetAgentManagerErrorMsg(*innerErrorCode, AgentManagerErrorOperation::DELETE_AGENT_CARD)));
             return;
         }
         task.ResolveWithNoError(env, CreateJsUndefined(env));
@@ -742,7 +751,8 @@ napi_value JsAgentManager::OnDisconnectAgentExtensionAbility(napi_env env, size_
             task.ResolveWithNoError(env, CreateJsUndefined(env));
         } else {
             TAG_LOGE(AAFwkTag::SER_ROUTER, "Disconnect failed: %{public}d", *innerErrCode);
-            task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrCode));
+            task.Reject(env, CreateJsError(env, static_cast<int32_t>(GetJsErrorCodeByNativeError(*innerErrCode)),
+                GetAgentManagerErrorMsg(*innerErrCode, AgentManagerErrorOperation::DISCONNECT_AGENT_EXTENSION)));
         }
     };
 
@@ -843,7 +853,8 @@ napi_value JsAgentManager::OnDisconnectServiceExtensionAbility(napi_env env, siz
             task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM));
             return;
         }
-        task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrCode));
+        task.Reject(env, CreateJsError(env, static_cast<int32_t>(GetJsErrorCodeByNativeError(*innerErrCode)),
+            GetAgentManagerErrorMsg(*innerErrCode, AgentManagerErrorOperation::DISCONNECT_SERVICE_EXTENSION)));
     };
 
     napi_value result = nullptr;
@@ -873,7 +884,8 @@ napi_value JsAgentManager::OnNotifyLowCodeAgentComplete(napi_env env, size_t arg
         if (*innerErrCode == ERR_OK) {
             task.ResolveWithNoError(env, CreateJsUndefined(env));
         } else {
-            task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrCode));
+            task.Reject(env, CreateJsError(env, static_cast<int32_t>(GetJsErrorCodeByNativeError(*innerErrCode)),
+                GetAgentManagerErrorMsg(*innerErrCode, AgentManagerErrorOperation::COMPLETE_LOW_CODE_AGENT)));
         }
     };
 
