@@ -83,7 +83,7 @@ int32_t ProcessManager::CreateChildProcess(const ExecToolParam &, const std::str
     return CliMgrServiceMock::createChildProcessResult;
 }
 
-bool ProcessManager::Kill(pid_t) const
+bool ProcessManager::Killpg(pid_t) const
 {
     return CliMgrServiceMock::killpgResult;
 }

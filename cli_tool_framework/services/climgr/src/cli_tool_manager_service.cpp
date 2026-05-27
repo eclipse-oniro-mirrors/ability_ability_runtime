@@ -93,7 +93,7 @@ void CliToolManagerService::HandleProcessTimeout(const std::string &sessionId)
     }
 
     EventDispatcher::GetInstance().DispatchErrorEvent(sessionId, "session timed out");
-    ProcessManager::GetInstance().Kill(record->processId);
+    ProcessManager::GetInstance().Killpg(record->processId);
 }
 
 void CliToolManagerService::HandleProcessYieldTimeout(const std::string &sessionId)
@@ -268,7 +268,7 @@ void CliToolManagerService::OnStop()
     // Kill all active processes
     auto &processManager = ProcessManager::GetInstance();
     for (pid_t pid : activePids) {
-        processManager.Kill(pid);
+        processManager.Killpg(pid);
     }
 
     if (ioMonitor_ != nullptr) {
@@ -541,7 +541,7 @@ int32_t CliToolManagerService::SetupAndStartSession(const ExecToolParam &param, 
     AddSessionRecord(record);
 
     if (RegisterSessionWithMonitors(record, param) == false) {
-        ProcessManager::GetInstance().Kill(record->processId);
+        ProcessManager::GetInstance().Killpg(record->processId);
         RemoveSessionRecord(record->sessionId);
         return ERR_NO_INIT;
     }
@@ -688,6 +688,7 @@ void CliToolManagerService::sigchld_handler(int32_t sig)
         auto instance = CliToolManagerService::GetInstance();
         if (instance != nullptr) {
             instance->WaitPid(pid, status, sig);
+            ProcessManager::GetInstance().Killpg(pid);
         }
     }
 }
@@ -719,7 +720,7 @@ void CliToolManagerService::OnProcessDied(const std::string &bundleName, pid_t d
 
         // Kill the CLI process group (skill sessions have processId=-1, Killpg handles it)
         if (sessionRecord->processId > 0) {
-            ProcessManager::GetInstance().Kill(sessionRecord->processId);
+            ProcessManager::GetInstance().Killpg(sessionRecord->processId);
         }
 
         // Clean up session
@@ -829,7 +830,7 @@ int32_t CliToolManagerService::ClearSession(const std::string &sessionId)
         return ERR_OK;
     }
 
-    if (!ProcessManager::GetInstance().Kill(record->processId)) {
+    if (!ProcessManager::GetInstance().Killpg(record->processId)) {
         return ERR_NOT_KILL;
     }
     record->SetState(SessionState::CANCELLING);
