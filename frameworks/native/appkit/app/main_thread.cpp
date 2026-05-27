@@ -1905,8 +1905,8 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
         options.enableWarmStartupSmartGC =
             (appLaunchData.GetAppPreloadMode() == AppExecFwk::PreloadMode::PRE_MAKE ||
              appLaunchData.GetAppPreloadMode() == AppExecFwk::PreloadMode::PRELOAD_MODULE);
-        TAG_LOGI(AAFwkTag::APPKIT, "SmartGC: process is start. enable warm startup SmartGC: %{public}d",
-            static_cast<int32_t>(options.enableWarmStartupSmartGC));
+        TAG_LOGI(AAFwkTag::APPKIT, "SmartGC: process is start. enable warm startup SmartGC: %{public}d"
+            " version:%{public}u", static_cast<int32_t>(options.enableWarmStartupSmartGC), bundleInfo.versionCode);
         auto perfCmd = appLaunchData.GetPerfCmd();
         auto findPos = perfCmd.find(BASE_LINE_PERFCMD);
         if (findPos != std::string::npos && (appLaunchData.GetDebugFromLocal() || isDeveloperMode_)) {
