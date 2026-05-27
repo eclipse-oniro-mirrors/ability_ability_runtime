@@ -208,6 +208,10 @@ ohos_shared_library("app_manager") {
     defines += [ "ABILITY_RUNTIME_HITRACE_ENABLE" ]
   }
 
+  if (ability_runtime_app_no_response_dialog) {
+    defines += [ "APP_NO_RESPONSE_DIALOG" ]
+  }
+
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
