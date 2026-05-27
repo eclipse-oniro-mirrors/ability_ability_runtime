@@ -244,5 +244,41 @@ HWTEST_F(InsightIntentDbCacheTest, InsightIntentDbCacheTest_004, TestSize.Level0
         userId, genericInfos2);
     EXPECT_EQ(genericInfos2.empty(), false);
 }
+
+/**
+ * @tc.name: InsightIntentDbCacheTest_005
+ * @tc.desc: Test HasBundleCache
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentDbCacheTest, InsightIntentDbCacheTest_005, TestSize.Level0)
+{
+    int32_t userId = 0;
+    std::string bundleName = "test_bundle";
+    std::string moduleName = "test_module";
+    ExtractInsightIntentProfileInfoVec profileInfos;
+    ExtractInsightIntentProfileInfo info;
+    std::vector<InsightIntentInfo> configInfos;
+    InsightIntentInfo cfg;
+    cfg.intentName = "MockIntent";
+    configInfos.push_back(cfg);
+    profileInfos.insightIntents.push_back(info);
+
+    MockLoadInsightIntentInfos(true);
+    DelayedSingleton<InsightIntentDbCache>::GetInstance()->InitInsightIntentCache(userId);
+
+    bool hasCache = DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(bundleName);
+    EXPECT_EQ(hasCache, false);
+
+    MockSaveData(true);
+    auto result = DelayedSingleton<InsightIntentDbCache>::GetInstance()->SaveInsightIntentTotalInfo(
+        bundleName, moduleName, userId, 0, profileInfos, configInfos);
+    EXPECT_EQ(result, ERR_OK);
+
+    hasCache = DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(bundleName);
+    EXPECT_EQ(hasCache, true);
+
+    hasCache = DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache("not_exist_bundle");
+    EXPECT_EQ(hasCache, false);
+}
 }
 }

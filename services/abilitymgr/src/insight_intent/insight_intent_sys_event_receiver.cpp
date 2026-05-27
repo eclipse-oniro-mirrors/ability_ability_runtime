@@ -58,8 +58,10 @@ void InsightIntentSysEventReceiver::SaveInsightIntentInfos(const std::string &bu
         ret = IN_PROCESS_CALL(bundleMgrHelper->GetJsonProfile(AppExecFwk::INTENT_PROFILE, bundleName,
             moduleNameLocal, profile, userId));
         if (ret != ERR_OK) {
-            TAG_LOGE(AAFwkTag::INTENT, "GetJsonProfile failed, code: %{public}d", ret);
-            DeleteInsightIntent(bundleName, moduleNameLocal, userId);
+            TAG_LOGW(AAFwkTag::INTENT, "GetJsonProfile failed, code: %{public}d", ret);
+            if (DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(bundleName)) {
+                DeleteInsightIntent(bundleName, moduleNameLocal, userId);
+            }
             continue;
         }
 
