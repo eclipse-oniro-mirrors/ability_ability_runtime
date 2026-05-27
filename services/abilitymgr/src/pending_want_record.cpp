@@ -200,9 +200,11 @@ int32_t PendingWantRecord::ExecuteOperation(
                 SendTriggerFailedEvent(want, key_->GetAppIndex(), callerUid_, res, "Trigger Failed");
             }
             break;
-        case static_cast<int32_t>(OperationType::SEND_COMMON_EVENT):
-            res = pendingWantManager->PendingWantPublishCommonEvent(want, senderInfo, callerUid_, callerTokenId_);
+        case static_cast<int32_t>(OperationType::SEND_COMMON_EVENT): {
+            res = pendingWantManager->PendingWantPublishCommonEvent(want, senderInfo, publisherUid_,
+                callerTokenId_);
             break;
+        }
         case static_cast<int32_t>(OperationType::START_SERVICE_EXTENSION):
             res = pendingWantManager->PendingWantStartServiceExtension(want, senderInfo.callerToken);
             break;
@@ -293,6 +295,16 @@ bool PendingWantRecord::GetCanceled()
 void PendingWantRecord::SetCallerUid(const int32_t callerUid)
 {
     callerUid_ = callerUid;
+}
+
+void PendingWantRecord::SetPublisherUid(int32_t publisherUid)
+{
+    publisherUid_ = publisherUid;
+}
+
+int32_t PendingWantRecord::GetPublisherUid() const
+{
+    return publisherUid_;
 }
 
 std::list<sptr<IWantReceiver>> PendingWantRecord::GetCancelCallbacks()

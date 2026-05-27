@@ -1355,5 +1355,34 @@ HWTEST_F(PendingWantRecordTest, ExecuteOperation_EmptyAllWantsInfos_START_ABILIT
     TAG_LOGI(AAFwkTag::TEST, "ExecuteOperation_EmptyAllWantsInfos_START_ABILITIES_0100 end");
 }
 
+/*
+ * @tc.number    : SetPublisherUid_GetPublisherUid_0100
+ * @tc.name      : SetPublisherUid/GetPublisherUid
+ * @tc.desc      : 1.Default publisherUid_ is 0, set to specific uid values
+ */
+HWTEST_F(PendingWantRecordTest, SetPublisherUid_GetPublisherUid_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetPublisherUid_GetPublisherUid_0100 start");
+
+    Want want;
+    ElementName element("device", "com.ix.hiMusic", "MusicSAbility");
+    want.SetElement(element);
+    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 0);
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    EXPECT_NE(pendingManager_, nullptr);
+    std::shared_ptr<PendingWantKey> key = MakeWantKey(wantSenderInfo);
+    std::shared_ptr<PendingWantRecord> pendingWantRecord =
+        std::make_shared<PendingWantRecord>(pendingManager_, 1, 0, nullptr, key);
+    EXPECT_NE(pendingWantRecord, nullptr);
+
+    EXPECT_EQ(pendingWantRecord->GetPublisherUid(), 0);
+    pendingWantRecord->SetPublisherUid(100);
+    EXPECT_EQ(pendingWantRecord->GetPublisherUid(), 100);
+    pendingWantRecord->SetPublisherUid(200);
+    EXPECT_EQ(pendingWantRecord->GetPublisherUid(), 200);
+
+    TAG_LOGI(AAFwkTag::TEST, "SetPublisherUid_GetPublisherUid_0100 end");
+}
+
 }  // namespace AAFwk
 }  // namespace OHOS

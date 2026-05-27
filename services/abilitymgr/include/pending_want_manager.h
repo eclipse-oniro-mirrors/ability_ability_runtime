@@ -152,7 +152,8 @@ public:
 
 public:
     sptr<IWantSender> GetWantSender(int32_t callingUid, int32_t uid, const bool isSystemApp,
-        const WantSenderInfo &wantSenderInfo, const sptr<IRemoteObject> &callerToken, int32_t appIndex = 0);
+        const WantSenderInfo &wantSenderInfo, const sptr<IRemoteObject> &callerToken, int32_t appIndex = 0,
+        int32_t publisherUid = 0);
     int32_t SendWantSender(sptr<IWantSender> target, SenderInfo &senderInfo);
     int32_t SendLocalWantSender(const SenderInfo &senderInfo);
     void CancelWantSender(const bool isSystemAppCall, const sptr<IWantSender> &sender);
@@ -179,7 +180,7 @@ public:
     int32_t DeviceIdDetermine(const Want &want, const sptr<StartOptions> &startOptions,
         const sptr<IRemoteObject> &callerToken, int32_t requestCode, const int32_t callerUid, int32_t callerTokenId,
         int32_t userId);
-    int32_t PendingWantPublishCommonEvent(const Want &want, const SenderInfo &senderInfo, int32_t callerUid,
+    int32_t PendingWantPublishCommonEvent(const Want &want, const SenderInfo &senderInfo, int32_t publisherUid,
         int32_t callerTokenId);
     void ClearPendingWantRecord(const std::string &bundleName, int32_t uid);
 
@@ -189,7 +190,8 @@ public:
 
 private:
     sptr<IWantSender> GetWantSenderLocked(const int32_t callingUid, const int32_t uid, const int32_t userId,
-        WantSenderInfo &wantSenderInfo, const sptr<IRemoteObject> &callerToken, int32_t appIndex = 0);
+        WantSenderInfo &wantSenderInfo, const sptr<IRemoteObject> &callerToken, int32_t appIndex = 0,
+        int32_t publisherUid = 0);
     void MakeWantSenderCanceledLocked(PendingWantRecord &record);
 
     void HandleAddWantAgentNumber(std::shared_ptr<PendingWantKey> pendingKey);
