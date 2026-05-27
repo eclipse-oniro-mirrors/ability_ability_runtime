@@ -53,7 +53,8 @@ public:
     static void InitETSSysNS(const std::string &path);
     static ETSEnvFuncs *RegisterFuncs();
 
-    bool Initialize(const std::shared_ptr<AppExecFwk::EventRunner> eventRunner, bool isDebug);
+    bool Initialize(const std::shared_ptr<AppExecFwk::EventRunner> eventRunner, bool isDebug,
+        const std::string &bundleName = "");
     void RegisterUncaughtExceptionHandler(const ETSUncaughtExceptionInfo &handle);
     ani_env *GetAniEnv();
     bool HandleUncaughtError();

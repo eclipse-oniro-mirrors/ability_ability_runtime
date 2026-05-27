@@ -261,9 +261,10 @@ void ETSEnvironment::InitETSSysNS(const std::string &path)
     dlns_inherit(&ns, &ndk, "allow_all_shared_libs");
 }
 
-bool ETSEnvironment::Initialize(const std::shared_ptr<AppExecFwk::EventRunner> eventRunner, bool isStartWithDebug)
+bool ETSEnvironment::Initialize(const std::shared_ptr<AppExecFwk::EventRunner> eventRunner, bool isStartWithDebug,
+    const std::string &bundleName)
 {
-    TAG_LOGD(AAFwkTag::ETSRUNTIME, "Initialize called");
+    TAG_LOGD(AAFwkTag::ETSRUNTIME, "Initialize called, bundleName: %{public}s", bundleName.c_str());
     if (!LoadRuntimeApis()) {
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "LoadRuntimeApis failed");
         return false;
@@ -284,6 +285,11 @@ bool ETSEnvironment::Initialize(const std::shared_ptr<AppExecFwk::EventRunner> e
     options.push_back(ani_option { "--ext:--verification-mode=ahead-of-time", nullptr });
     options.push_back(ani_option { "--ext:--log-level=info", nullptr });
     options.push_back(ani_option { "--ext:taskpool-support-interop=true", nullptr });
+    std::string processPackageNameOption;
+    if (!bundleName.empty()) {
+        processPackageNameOption = "--ext:--process-package-name=" + bundleName;
+        options.push_back(ani_option { processPackageNameOption.data(), nullptr });
+    }
     std::string interpreerMode = "--ext:--interpreter-type=cpp";
     std::string debugEnalbeMode = "--ext:--debugger-enable=true";
     std::string debugLibraryPathMode = "--ext:--debugger-library-path=/system/lib64/libarkinspector.so";
@@ -766,8 +772,9 @@ ETSEnvFuncs *ETSEnvironment::RegisterFuncs()
         .InitETSSysNS = [](const std::string &path) {
             ETSEnvironment::InitETSSysNS(path);
         },
-        .Initialize = [](const std::shared_ptr<AppExecFwk::EventRunner> eventRunner, bool isStartWithDebug) {
-            return ETSEnvironment::GetInstance()->Initialize(eventRunner, isStartWithDebug);
+        .Initialize = [](const std::shared_ptr<AppExecFwk::EventRunner> eventRunner, bool isStartWithDebug,
+            const std::string &bundleName) {
+            return ETSEnvironment::GetInstance()->Initialize(eventRunner, isStartWithDebug, bundleName);
         },
         .RegisterUncaughtExceptionHandler = [](const ETSUncaughtExceptionInfo &exceptionInfo) {
             ETSEnvironment::GetInstance()->RegisterUncaughtExceptionHandler(exceptionInfo);
