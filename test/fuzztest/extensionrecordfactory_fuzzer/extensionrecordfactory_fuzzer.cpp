@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,88 +17,210 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <fuzzer/FuzzedDataProvider.h>
 
 #define protected public
 #include "extension_record_factory.h"
 #undef protected
 
-#include "ability_record.h"
+#include "base_extension_record.h"
 
 using namespace OHOS::AAFwk;
+using namespace OHOS::AbilityRuntime;
 using namespace OHOS::AppExecFwk;
 
 namespace OHOS {
 namespace {
-constexpr int INPUT_ZERO = 0;
-constexpr int INPUT_ONE = 1;
-constexpr int INPUT_TWO = 2;
-constexpr int INPUT_THREE = 3;
-constexpr size_t U32_AT_SIZE = 4;
-constexpr size_t OFFSET_ZERO = 24;
-constexpr size_t OFFSET_ONE = 16;
-constexpr size_t OFFSET_TWO = 8;
-constexpr uint8_t ENABLE = 2;
-} // namespace
+// Named constants for extension types used in the config map
+constexpr int32_t EXT_TYPE_WORK_SCHEDULER =
+    static_cast<int32_t>(ExtensionAbilityType::WORK_SCHEDULER);
+constexpr int32_t EXT_TYPE_INPUTMETHOD =
+    static_cast<int32_t>(ExtensionAbilityType::INPUTMETHOD);
+constexpr int32_t EXT_TYPE_EMBEDDED_UI =
+    static_cast<int32_t>(ExtensionAbilityType::EMBEDDED_UI);
+constexpr int32_t EXT_TYPE_STATUS_BAR_VIEW =
+    static_cast<int32_t>(ExtensionAbilityType::STATUS_BAR_VIEW);
+constexpr int32_t EXT_TYPE_AWC_WEBPAGE =
+    static_cast<int32_t>(ExtensionAbilityType::AWC_WEBPAGE);
+constexpr int32_t EXT_TYPE_AWC_NEWSFEED =
+    static_cast<int32_t>(ExtensionAbilityType::AWC_NEWSFEED);
+constexpr int32_t EXT_TYPE_LIVE_FORM =
+    static_cast<int32_t>(ExtensionAbilityType::LIVE_FORM);
+constexpr int32_t EXT_TYPE_SYS_COMMON_UI =
+    static_cast<int32_t>(ExtensionAbilityType::SYS_COMMON_UI);
+constexpr int32_t EXT_TYPE_AGENT_UI =
+    static_cast<int32_t>(ExtensionAbilityType::SYS_VISUAL);
+constexpr int32_t EXT_TYPE_SERVICE =
+    static_cast<int32_t>(ExtensionAbilityType::SERVICE);
+constexpr int32_t EXT_TYPE_FORM =
+    static_cast<int32_t>(ExtensionAbilityType::FORM);
 
-uint32_t GetU32Data(const char* ptr)
+// Named constants for fuzz operation selection
+constexpr uint8_t OP_NEED_REUSE = 0;
+constexpr uint8_t OP_PRE_CHECK = 1;
+constexpr uint8_t OP_GET_PROCESS_MODE = 2;
+constexpr uint8_t OP_CREATE_RECORD = 3;
+constexpr uint8_t OP_COUNT = 4;
+
+// Named constants for ExtensionProcessMode range
+constexpr int32_t PROCESS_MODE_MIN =
+    static_cast<int32_t>(ExtensionProcessMode::UNDEFINED);
+constexpr int32_t PROCESS_MODE_MAX =
+    static_cast<int32_t>(ExtensionProcessMode::RUN_WITH_MAIN_PROCESS);
+
+// Named constants for string length
+constexpr size_t BUNDLE_NAME_MAX_LEN = 128;
+
+void FillAbilityRequest(FuzzedDataProvider &fdp, AbilityRequest &req)
 {
-    // convert fuzz input data to an integer
-    return (ptr[INPUT_ZERO] << OFFSET_ZERO) | (ptr[INPUT_ONE] << OFFSET_ONE) | (ptr[INPUT_TWO] << OFFSET_TWO) |
-        ptr[INPUT_THREE];
+    req.abilityInfo.name =
+        fdp.ConsumeRandomLengthString(BUNDLE_NAME_MAX_LEN);
+    req.abilityInfo.bundleName =
+        fdp.ConsumeRandomLengthString(BUNDLE_NAME_MAX_LEN);
+    req.abilityInfo.moduleName =
+        fdp.ConsumeRandomLengthString(BUNDLE_NAME_MAX_LEN);
+    req.abilityInfo.process =
+        fdp.ConsumeRandomLengthString(BUNDLE_NAME_MAX_LEN);
+    req.abilityInfo.isStageBasedModel = fdp.ConsumeBool();
+    req.appInfo.bundleName = req.abilityInfo.bundleName;
+    req.appInfo.name =
+        fdp.ConsumeRandomLengthString(BUNDLE_NAME_MAX_LEN);
+    int32_t extType = fdp.ConsumeIntegralInRange<int32_t>(
+        EXT_TYPE_FORM, EXT_TYPE_AGENT_UI);
+    req.extensionType =
+        static_cast<ExtensionAbilityType>(extType);
 }
 
-bool DoSomethingInterestingWithMyAPI(const char *data, size_t size)
+void SetupWantHostSpecified(AbilityRequest &req)
 {
-    auto extensionRecordFactory = std::make_shared<AbilityRuntime::ExtensionRecordFactory>();
-    AAFwk::AbilityRequest abilityRequest;
-    int32_t int32Param = static_cast<int32_t>(GetU32Data(data));
-    extensionRecordFactory->NeedReuse(abilityRequest, int32Param);
-    std::string strParam(data, size);
-    extensionRecordFactory->PreCheck(abilityRequest, strParam);
-    abilityRequest.extensionType = ExtensionAbilityType::WORK_SCHEDULER;
-    extensionRecordFactory->PreCheck(abilityRequest, strParam);
-    abilityRequest.extensionType = ExtensionAbilityType::INPUTMETHOD;
-    extensionRecordFactory->PreCheck(abilityRequest, strParam);
-    std::shared_ptr<AbilityRuntime::ExtensionRecord> extensionRecord;
-    extensionRecordFactory->CreateRecord(abilityRequest, extensionRecord);
-    AAFwk::AbilityRequest abilityRequest01;
-    bool boolParam = *data % ENABLE;
-    extensionRecordFactory->GetExtensionProcessMode(abilityRequest01, boolParam);
+    req.want.SetParam(
+        PROCESS_MODE_HOST_SPECIFIED_KEY, true);
+}
+
+void SetupWantHostInstance(
+    FuzzedDataProvider &fdp, AbilityRequest &req)
+{
+    bool hostInstance = fdp.ConsumeBool();
+    req.want.SetParam(
+        PROCESS_MODE_HOST_INSTANCE_KEY, hostInstance);
+}
+
+void FuzzNeedReuse(
+    FuzzedDataProvider &fdp,
+    ExtensionRecordFactory &factory)
+{
+    AbilityRequest req;
+    FillAbilityRequest(fdp, req);
+    int32_t recordId = fdp.ConsumeIntegral<int32_t>();
+    factory.NeedReuse(req, recordId);
+}
+
+void FuzzPreCheck(
+    FuzzedDataProvider &fdp,
+    ExtensionRecordFactory &factory)
+{
+    AbilityRequest req;
+    FillAbilityRequest(fdp, req);
+    std::string hostBundleName =
+        fdp.ConsumeRandomLengthString(BUNDLE_NAME_MAX_LEN);
+    factory.PreCheck(req, hostBundleName);
+}
+
+void FuzzGetExtensionProcessMode(
+    FuzzedDataProvider &fdp,
+    ExtensionRecordFactory &factory)
+{
+    AbilityRequest req;
+    FillAbilityRequest(fdp, req);
+
+    // Optionally inject process mode keys into the Want
+    uint8_t wantConfig = fdp.ConsumeIntegral<uint8_t>();
+    switch (wantConfig % OP_COUNT) {
+        case OP_NEED_REUSE:
+            SetupWantHostSpecified(req);
+            break;
+        case OP_PRE_CHECK:
+            SetupWantHostInstance(fdp, req);
+            break;
+        case OP_GET_PROCESS_MODE:
+            SetupWantHostSpecified(req);
+            SetupWantHostInstance(fdp, req);
+            break;
+        default:
+            break;
+    }
+
+    // Optionally set customProcess for PROCESS_MODE_CUSTOM path
+    if (fdp.ConsumeBool()) {
+        req.customProcess =
+            fdp.ConsumeRandomLengthString(BUNDLE_NAME_MAX_LEN);
+    }
+
+    // Set extensionProcessMode to a fuzzed value
+    int32_t modeVal = fdp.ConsumeIntegralInRange<int32_t>(
+        PROCESS_MODE_MIN, PROCESS_MODE_MAX);
+    req.extensionProcessMode =
+        static_cast<ExtensionProcessMode>(modeVal);
+
+    bool isHostSpecified = false;
+    factory.GetExtensionProcessMode(req, isHostSpecified);
+}
+
+void FuzzCreateRecord(
+    FuzzedDataProvider &fdp,
+    ExtensionRecordFactory &factory)
+{
+    AbilityRequest req;
+    FillAbilityRequest(fdp, req);
+    std::shared_ptr<ExtensionRecord> extensionRecord;
+    factory.CreateRecord(req, extensionRecord);
+}
+
+void DispatchFuzzOperation(
+    FuzzedDataProvider &fdp,
+    ExtensionRecordFactory &factory)
+{
+    uint8_t op = fdp.ConsumeIntegralInRange<uint8_t>(
+        0, OP_COUNT - 1);
+    switch (op) {
+        case OP_NEED_REUSE:
+            FuzzNeedReuse(fdp, factory);
+            break;
+        case OP_PRE_CHECK:
+            FuzzPreCheck(fdp, factory);
+            break;
+        case OP_GET_PROCESS_MODE:
+            FuzzGetExtensionProcessMode(fdp, factory);
+            break;
+        case OP_CREATE_RECORD:
+            FuzzCreateRecord(fdp, factory);
+            break;
+        default:
+            break;
+    }
+}
+
+bool DoSomethingInterestingWithMyAPI(const uint8_t *data, size_t size)
+{
+    FuzzedDataProvider fdp(data, size);
+    auto factory = std::make_shared<ExtensionRecordFactory>();
+
+    // Consume remaining data across multiple fuzz iterations
+    while (fdp.remaining_bytes() > 0) {
+        DispatchFuzzOperation(fdp, *factory);
+    }
 
     return true;
 }
+} // namespace
 } // namespace OHOS
 
 /* Fuzzer entry point */
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
-    /* Run your code on data */
-    if (data == nullptr) {
-        std::cout << "invalid data" << std::endl;
+    if (data == nullptr || size == 0) {
         return 0;
     }
-
-    /* Validate the length of size */
-    if (size < OHOS::U32_AT_SIZE) {
-        return 0;
-    }
-
-    char *ch = static_cast<char*>(malloc(size + 1));
-    if (ch == nullptr) {
-        std::cout << "malloc failed." << std::endl;
-        return 0;
-    }
-
-    (void)memset_s(ch, size + 1, 0x00, size + 1);
-    if (memcpy_s(ch, size + 1, data, size) != EOK) {
-        std::cout << "copy failed." << std::endl;
-        free(ch);
-        ch = nullptr;
-        return 0;
-    }
-
-    OHOS::DoSomethingInterestingWithMyAPI(ch, size);
-    free(ch);
-    ch = nullptr;
+    OHOS::DoSomethingInterestingWithMyAPI(data, size);
     return 0;
 }

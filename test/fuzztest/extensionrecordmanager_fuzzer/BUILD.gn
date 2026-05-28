@@ -29,7 +29,6 @@ ohos_fuzztest("ExtensionRecordManagerFuzzTest") {
     "${ability_runtime_innerkits_path}/app_manager/include/appmgr",
     "${ability_runtime_services_path}/abilitymgr/include",
     "${ability_runtime_services_path}/abilitymgr/include/utils",
-    "${ability_runtime_test_path}/fuzztest",
   ]
   cflags = [
     "-g",
