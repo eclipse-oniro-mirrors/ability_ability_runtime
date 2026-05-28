@@ -178,6 +178,10 @@ void UIAbilityImpl::HandleAbilityTransaction(
     const_cast<AAFwk::LifeCycleStateInfo&>(targetState).pageConfig =
         want.GetStringParam(GlobalConstant::PAGE_CONFIG);
     const_cast<AAFwk::Want&>(want).RemoveParam(GlobalConstant::PAGE_CONFIG);
+#ifdef ENABLE_CLONE_FOR_ACCOUNT
+    const_cast<AAFwk::Want&>(want).RemoveParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY);
+    const_cast<AAFwk::Want&>(want).RemoveParam(AAFwk::Want::PARAM_RESV_CALLER_APP_CLONE_INDEX);
+#endif
     UpdateSilentForeground(targetState, sessionInfo);
 #ifdef SUPPORT_SCREEN
     if (ability_ != nullptr) {
