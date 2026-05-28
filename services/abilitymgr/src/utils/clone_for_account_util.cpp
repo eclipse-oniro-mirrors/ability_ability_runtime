@@ -16,7 +16,6 @@
 #include "clone_for_account_util.h"
 
 #include "ability_util.h"
-#include "ability_record/ability_record_utils.h"
 #include "ability_record.h"
 #include "bundle_mgr_helper.h"
 #include "hilog_tag_wrapper.h"
