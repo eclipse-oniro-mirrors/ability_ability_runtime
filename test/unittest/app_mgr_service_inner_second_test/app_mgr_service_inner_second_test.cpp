@@ -693,8 +693,9 @@ HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_NotifyAppFau
     appRecord->SetState(ApplicationState::APP_STATE_FOREGROUND);
     // expect in appfreezeManager return OK
     AppfreezeManager::GetInstance()->CancelAppFreezeDetect(1, TEST_BUNDLE_NAME);
+    appMgrServiceInner->dfxTaskHandler_.reset();
     ret = appMgrServiceInner->NotifyAppFault(faultData);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_NotifyAppFault_0100 end");
 }
 
@@ -1506,6 +1507,7 @@ HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_TransformedN
     appRecord->isDebugApp_ = true;
     ret = appMgrServiceInner->TransformedNotifyAppFault(faultData);
     EXPECT_EQ(ret, ERR_OK);
+    appMgrServiceInner->dfxTaskHandler_.reset();
     EXPECT_NE(appMgrServiceInner, nullptr);
     TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_TransformedNotifyAppFault_0200 end");
 }

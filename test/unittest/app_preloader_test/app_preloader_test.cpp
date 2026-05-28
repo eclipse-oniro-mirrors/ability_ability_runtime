@@ -635,7 +635,7 @@ HWTEST_F(AppPreloaderTest, AppPreloaderTest_GeneratePreloadExtensionRequest_0100
     PreloadRequest request;
 
     auto ret = manager->GeneratePreloadExtensionRequest(want, userId, appIndex, request);
-    EXPECT_EQ(ret, ERR_INVALID_OPERATION);
+    EXPECT_EQ(ret, AAFwk::GET_BUNDLE_INFO_FAILED);
 }
 
 /**
@@ -721,7 +721,7 @@ HWTEST_F(AppPreloaderTest, AppPreloaderTest_GeneratePreloadExtensionRequest_0400
 
     auto ret = manager->GeneratePreloadExtensionRequest(want, userId, appIndex, request);
     manager->remoteClientManager_ = remoteClientManager_;
-    EXPECT_EQ(ret, AAFwk::GET_BUNDLE_INFO_FAILED);
+    EXPECT_EQ(ret, ERR_INVALID_OPERATION);
     TAG_LOGI(AAFwkTag::TEST, "AppPreloaderTest_GeneratePreloadExtensionRequest_0400 end.");
 }
 

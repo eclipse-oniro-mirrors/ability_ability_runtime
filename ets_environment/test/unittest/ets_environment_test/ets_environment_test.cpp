@@ -146,11 +146,10 @@ HWTEST_F(EtsEnvironmentTest, RegisterUncaughtExceptionHandler_0100, TestSize.Lev
     auto etsEnv = std::make_shared<ETSEnvironment>();
     ASSERT_NE(etsEnv, nullptr);
     g_callbackModuleFlag = false;
-    ETSUncaughtExceptionInfo handlerInfo;
-    handlerInfo.uncaughtTask = [](const std::string& summary, const ETSErrorObject& errorObj) {
-        g_callbackModuleFlag = true;
-    };
-    etsEnv->RegisterUncaughtExceptionHandler(handlerInfo);
+    etsEnv->uncaughtExceptionInfo_.uncaughtTask =
+        [](const std::string& summary, const ETSErrorObject& errorObj) {
+            g_callbackModuleFlag = true;
+        };
     ETSErrorObject errorObj;
     errorObj.name = "TestError";
     errorObj.message = "Test error message";

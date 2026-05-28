@@ -39,7 +39,7 @@ public:
 
     bool IsProxyObject() const override
     {
-        return true;
+        return false;
     }
 
     bool CheckObjectLegality() const override
