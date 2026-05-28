@@ -999,6 +999,44 @@ bool AppfreezeManager::IsNeedIgnoreFreezeEvent(const std::string& key, const std
     return false;
 }
 
+int AppfreezeManager::ClearOldInputBlockFreezeInfo(size_t maxSize, int64_t maxTimelimit)
+{
+    if (appInputBlockFreezeInfo_.size() <= maxSize) {
+        return 0;
+    }
+    int ret = 0;
+    int64_t curTime = GetFreezeCurrentTime();
+    for (auto it = appInputBlockFreezeInfo_.begin(); it != appInputBlockFreezeInfo_.end();) {
+        auto interval = curTime - it->second;
+        if (interval > maxTimelimit || interval < 0) {
+            it = appInputBlockFreezeInfo_.erase(it);
+            ret++;
+        } else {
+            ++it;
+        }
+    }
+    return ret;
+}
+
+bool AppfreezeManager::IsNeedIgnoreInputBlockEvent(const std::string& key)
+{
+    std::lock_guard<ffrt::mutex> lock(freezeMutex_);
+    ClearOldInputBlockFreezeInfo(FREEZEMAP_SIZE_MAX, FREEZE_TIME_LIMIT);
+
+    int64_t curTime = GetFreezeCurrentTime();
+    auto it = appInputBlockFreezeInfo_.find(key);
+    if (it != appInputBlockFreezeInfo_.end()) {
+        int64_t lastTime = it->second;
+        int64_t diff = curTime - lastTime;
+        if (diff >= 0 && diff <= FREEZE_TIME_LIMIT) {
+            return true;
+        }
+    }
+    appInputBlockFreezeInfo_[key] = curTime;
+    TAG_LOGI(AAFwkTag::APPDFR, "Set input block info, key: %{public}s", key.c_str());
+    return false;
+}
+
 bool AppfreezeManager::CancelAppFreezeDetect(int32_t pid, const std::string& bundleName)
 {
     if (bundleName.empty()) {
@@ -1201,7 +1239,7 @@ bool AppfreezeManager::CheckInBackGround(const FaultData &faultData)
 bool AppfreezeManager::CheckAppfreezeHappend(const std::string& key, const std::string& eventName)
 {
     bool result = false;
-    if (eventName == AppFreezeType::LIFECYCLE_TIMEOUT || eventName == AppFreezeType::APP_INPUT_BLOCK ||
+    if (eventName == AppFreezeType::LIFECYCLE_TIMEOUT ||
         eventName == AppFreezeType::THREAD_BLOCK_6S || eventName == AppFreezeType::THREAD_BLOCK_3S ||
         eventName == AppFreezeType::BUSSINESS_THREAD_BLOCK_3S ||
         eventName == AppFreezeType::BUSSINESS_THREAD_BLOCK_6S) {
@@ -1210,7 +1248,13 @@ bool AppfreezeManager::CheckAppfreezeHappend(const std::string& key, const std::
         eventName == AppFreezeType::LIFECYCLE_TIMEOUT_WARNING) {
         std::string warningKey = eventName;
         result = IsNeedIgnoreFreezeEvent(warningKey, eventName);
-    }
+    } else if (eventName == AppFreezeType::APP_INPUT_BLOCK) {
+#ifdef APP_NO_RESPONSE_DIALOG
+        result = IsNeedIgnoreInputBlockEvent(key);
+#else
+        result = IsNeedIgnoreFreezeEvent(key, eventName);
+#endif
+     }
     if (result) {
         TAG_LOGE(AAFwkTag::APPDFR, "appFreeze happend, key:%{public}s, eventName:%{public}s",
             key.c_str(), eventName.c_str());

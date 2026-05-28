@@ -207,6 +207,8 @@ private:
     std::string GetCatcherStack(const std::string& fileName, const std::string& catcherStack);
     bool IsNeedIgnoreFreezeEvent(const std::string& key, const std::string& eventName,
         int maxReportTimes = DEFAULT_APPFREEZE_REPORT_TIMES);
+    bool IsNeedIgnoreInputBlockEvent(const std::string& key);
+    int ClearOldInputBlockFreezeInfo(size_t maxSize, int64_t maxTimelimit);
     int64_t GetFreezeCurrentTime();
     void SetFreezeState(const std::string& key, int state, const std::string& eventName);
     int GetReportTimes(const std::string& key);
@@ -226,6 +228,7 @@ private:
     static std::shared_ptr<AppfreezeManager> instance_;
     static ffrt::mutex freezeMutex_;
     std::map<std::string, AppFreezeInfo> appfreezeInfo_;
+    std::map<std::string, int64_t> appInputBlockFreezeInfo_;
     static ffrt::mutex catchStackMutex_;
     static std::map<int, std::string> catchStackMap_;
     static ffrt::mutex freezeFilterMutex_;
