@@ -17,6 +17,7 @@
 
 #include <sstream>
 
+#include "ani_common_util.h"
 #include "ets_exception_callback.h"
 #include "ets_interop_object.h"
 #include "ets_runtime.h"
@@ -332,6 +333,92 @@ void EtsInteropAbilityLifecycleCallback::OnAbilityForeground(std::shared_ptr<Int
 void EtsInteropAbilityLifecycleCallback::OnAbilityBackground(std::shared_ptr<InteropObject> ability)
 {
     CallObjectMethod("onAbilityBackgroundInner", SIGNATURE_UIABILITY, ability);
+}
+
+void EtsInteropAbilityLifecycleCallback::OnAbilityContinue(std::shared_ptr<InteropObject> ability)
+{
+    CallObjectMethod("onAbilityContinueInner", SIGNATURE_UIABILITY, ability);
+}
+
+void EtsInteropAbilityLifecycleCallback::OnWindowStageActive(std::shared_ptr<InteropObject> ability,
+    std::shared_ptr<InteropObject> windowStage)
+{
+    CallObjectMethod("onWindowStageActiveInner", SIGNATURE_UIABILITY_WINDOW_STAGE, ability, windowStage);
+}
+
+void EtsInteropAbilityLifecycleCallback::OnWindowStageInactive(std::shared_ptr<InteropObject> ability,
+    std::shared_ptr<InteropObject> windowStage)
+{
+    CallObjectMethod("onWindowStageInactiveInner", SIGNATURE_UIABILITY_WINDOW_STAGE, ability, windowStage);
+}
+
+void EtsInteropAbilityLifecycleCallback::OnNewWant(std::shared_ptr<InteropObject> ability)
+{
+    CallObjectMethod("onNewWantInner", SIGNATURE_UIABILITY, ability);
+}
+
+void EtsInteropAbilityLifecycleCallback::OnAbilityWillBackground(std::shared_ptr<InteropObject> ability)
+{
+    CallObjectMethod("onAbilityWillBackgroundInner", SIGNATURE_UIABILITY, ability);
+}
+
+void EtsInteropAbilityLifecycleCallback::OnAbilityWillForeground(std::shared_ptr<InteropObject> ability)
+{
+    CallObjectMethod("onAbilityWillForegroundInner", SIGNATURE_UIABILITY, ability);
+}
+
+void EtsInteropAbilityLifecycleCallback::OnAbilityWillCreate(std::shared_ptr<InteropObject> ability)
+{
+    CallObjectMethod("onAbilityWillCreateInner", SIGNATURE_UIABILITY, ability);
+}
+
+void EtsInteropAbilityLifecycleCallback::OnWindowStageWillDestroy(std::shared_ptr<InteropObject> ability,
+    std::shared_ptr<InteropObject> windowStage)
+{
+    CallObjectMethod("onWindowStageWillDestroyInner", SIGNATURE_UIABILITY_WINDOW_STAGE, ability, windowStage);
+}
+
+void EtsInteropAbilityLifecycleCallback::OnAbilityWillDestroy(std::shared_ptr<InteropObject> ability)
+{
+    CallObjectMethod("onAbilityWillDestroyInner", SIGNATURE_UIABILITY, ability);
+}
+
+void EtsInteropAbilityLifecycleCallback::OnWindowStageRestore(std::shared_ptr<InteropObject> ability,
+    std::shared_ptr<InteropObject> windowStage)
+{
+    CallObjectMethod("onWindowStageRestoreInner", SIGNATURE_UIABILITY_WINDOW_STAGE, ability, windowStage);
+}
+
+void EtsInteropAbilityLifecycleCallback::OnAbilitySaveState(std::shared_ptr<InteropObject> ability)
+{
+    CallObjectMethod("onAbilitySaveStateInner", SIGNATURE_UIABILITY, ability);
+}
+
+void EtsInteropAbilityLifecycleCallback::OnAbilityWillContinue(std::shared_ptr<InteropObject> ability)
+{
+    CallObjectMethod("onAbilityWillContinueInner", SIGNATURE_UIABILITY, ability);
+}
+
+void EtsInteropAbilityLifecycleCallback::OnAbilityWillSaveState(std::shared_ptr<InteropObject> ability)
+{
+    CallObjectMethod("onAbilityWillSaveStateInner", SIGNATURE_UIABILITY, ability);
+}
+
+void EtsInteropAbilityLifecycleCallback::OnWillNewWant(std::shared_ptr<InteropObject> ability)
+{
+    CallObjectMethod("onWillNewWantInner", SIGNATURE_UIABILITY, ability);
+}
+
+void EtsInteropAbilityLifecycleCallback::OnWindowStageWillCreate(std::shared_ptr<InteropObject> ability,
+    std::shared_ptr<InteropObject> windowStage)
+{
+    CallObjectMethod("onWindowStageWillCreateInner", SIGNATURE_UIABILITY_WINDOW_STAGE, ability, windowStage);
+}
+
+void EtsInteropAbilityLifecycleCallback::OnWindowStageWillRestore(std::shared_ptr<InteropObject> ability,
+    std::shared_ptr<InteropObject> windowStage)
+{
+    CallObjectMethod("onWindowStageWillRestoreInner", SIGNATURE_UIABILITY_WINDOW_STAGE, ability, windowStage);
 }
 }  // namespace AbilityRuntime
 }  // namespace OHOS

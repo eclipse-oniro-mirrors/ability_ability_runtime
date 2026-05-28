@@ -68,8 +68,12 @@ public:
         std::shared_ptr<InteropObject> windowStage);
     void DispatchWindowStageFocus(const AbilityLifecycleCallbackArgs &ability,
         const AbilityLifecycleCallbackArgs &windowStage);
+    void DispatchWindowStageFocus(std::shared_ptr<InteropObject> ability,
+        std::shared_ptr<InteropObject> windowStage);
     void DispatchWindowStageUnfocus(const AbilityLifecycleCallbackArgs &ability,
         const AbilityLifecycleCallbackArgs &windowStage);
+    void DispatchWindowStageUnfocus(std::shared_ptr<InteropObject> ability,
+        std::shared_ptr<InteropObject> windowStage);
     void DispatchOnAbilityDestroy(const AbilityLifecycleCallbackArgs &ability);
     void DispatchOnAbilityDestroy(std::shared_ptr<InteropObject> ability);
     void DispatchOnAbilityForeground(const AbilityLifecycleCallbackArgs &ability);
@@ -77,13 +81,21 @@ public:
     void DispatchOnAbilityBackground(const AbilityLifecycleCallbackArgs &ability);
     void DispatchOnAbilityBackground(std::shared_ptr<InteropObject> ability);
     void DispatchOnAbilityContinue(const AbilityLifecycleCallbackArgs &ability);
+    void DispatchOnAbilityContinue(std::shared_ptr<InteropObject> ability);
     void DispatchOnAbilityWillContinue(const AbilityLifecycleCallbackArgs &ability);
+    void DispatchOnAbilityWillContinue(std::shared_ptr<InteropObject> ability);
     void DispatchOnWindowStageWillRestore(const AbilityLifecycleCallbackArgs &ability,
         const AbilityLifecycleCallbackArgs &windowStage);
+    void DispatchOnWindowStageWillRestore(std::shared_ptr<InteropObject> ability,
+        std::shared_ptr<InteropObject> windowStage);
     void DispatchOnWindowStageRestore(const AbilityLifecycleCallbackArgs &ability,
         const AbilityLifecycleCallbackArgs &windowStage);
+    void DispatchOnWindowStageRestore(std::shared_ptr<InteropObject> ability,
+        std::shared_ptr<InteropObject> windowStage);
     void DispatchOnAbilityWillSaveState(const AbilityLifecycleCallbackArgs &ability);
+    void DispatchOnAbilityWillSaveState(std::shared_ptr<InteropObject> ability);
     void DispatchOnAbilitySaveState(const AbilityLifecycleCallbackArgs &ability);
+    void DispatchOnAbilitySaveState(std::shared_ptr<InteropObject> ability);
     void DispatchConfigurationUpdated(const AppExecFwk::Configuration &config);
     void DispatchMemoryLevel(const int level);
     void NotifyApplicationForeground();
@@ -91,15 +103,25 @@ public:
     void NotifySystemConfigurationUpdated(const AppExecFwk::Configuration& configuration);
     void RegisterSystemConfigurationUpdatedCallback(const std::weak_ptr<SystemConfigurationUpdatedCallback> &Callback);
     void DispatchOnWillNewWant(const AbilityLifecycleCallbackArgs &ability);
+    void DispatchOnWillNewWant(std::shared_ptr<InteropObject> ability);
     void DispatchOnNewWant(const AbilityLifecycleCallbackArgs &ability);
+    void DispatchOnNewWant(std::shared_ptr<InteropObject> ability);
     void DispatchOnAbilityWillCreate(const AbilityLifecycleCallbackArgs &ability);
+    void DispatchOnAbilityWillCreate(std::shared_ptr<InteropObject> ability);
     void DispatchOnWindowStageWillCreate(const AbilityLifecycleCallbackArgs &ability,
         const AbilityLifecycleCallbackArgs &windowStage);
+    void DispatchOnWindowStageWillCreate(std::shared_ptr<InteropObject> ability,
+        std::shared_ptr<InteropObject> windowStage);
     void DispatchOnWindowStageWillDestroy(const AbilityLifecycleCallbackArgs &ability,
         const AbilityLifecycleCallbackArgs &windowStage);
+    void DispatchOnWindowStageWillDestroy(std::shared_ptr<InteropObject> ability,
+        std::shared_ptr<InteropObject> windowStage);
     void DispatchOnAbilityWillDestroy(const AbilityLifecycleCallbackArgs &ability);
+    void DispatchOnAbilityWillDestroy(std::shared_ptr<InteropObject> ability);
     void DispatchOnAbilityWillForeground(const AbilityLifecycleCallbackArgs &ability);
+    void DispatchOnAbilityWillForeground(std::shared_ptr<InteropObject> ability);
     void DispatchOnAbilityWillBackground(const AbilityLifecycleCallbackArgs &ability);
+    void DispatchOnAbilityWillBackground(std::shared_ptr<InteropObject> ability);
 
     // Native Module related methods
     bool CreateNativeThread(const AAFwk::NativeAbilityMetaData &metaData, const std::string &bundleName,
