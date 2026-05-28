@@ -167,6 +167,12 @@ HWTEST_F(AbilityBusinessErrorTest, GetInnerErrorMsg_0100, TestSize.Level2)
     EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::DISCONNECT_AGENT_EXTENSION_NOT_EXIST),
         "Internal error. The agent extension connection does not exist. "
         "Use an AgentProxy returned by connectAgentExtensionAbility.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::TRANSFER_EXTENSION_DATA_FAILED),
+        "Internal error. Failed to transfer extension data to the window. Try again later.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::UI_WINDOW_NULL),
+        "Internal error. The UI window is not available. Try again later.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::RELOAD_IN_MODAL_RESULT_NULL),
+        "Internal error. Failed to create reload result. Try again later.");
 }
 
 /**

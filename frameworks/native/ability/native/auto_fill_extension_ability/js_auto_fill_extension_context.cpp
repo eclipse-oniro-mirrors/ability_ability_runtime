@@ -78,7 +78,8 @@ napi_value JsAutoFillExtensionContext::OnReloadInModal(napi_env env, NapiCallbac
         HandleScope handleScope(env);
         if (ret == nullptr) {
             TAG_LOGE(AAFwkTag::AUTOFILL_EXT, "null ret");
-            task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+            task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                GetInnerErrorMsg(AbilityInnerErrorMsg::RELOAD_IN_MODAL_RESULT_NULL)));
             return;
         }
         if (*ret != ERR_OK) {

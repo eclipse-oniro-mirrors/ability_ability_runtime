@@ -245,6 +245,13 @@ constexpr const char* ERROR_MSG_AGENT_EXTENSION_CONNECTION_ENDED =
 constexpr const char* ERROR_MSG_DISCONNECT_AGENT_EXTENSION_NOT_EXIST =
     "Internal error. The agent extension connection does not exist. "
     "Use an AgentProxy returned by connectAgentExtensionAbility.";
+constexpr const char* ERROR_MSG_TRANSFER_EXTENSION_DATA_FAILED =
+    "Internal error. Failed to transfer extension data to the window. Try again later.";
+constexpr const char* ERROR_MSG_UI_WINDOW_NULL =
+    "Internal error. The UI window is not available. Try again later.";
+constexpr const char* ERROR_MSG_RELOAD_IN_MODAL_RESULT_NULL =
+    "Internal error. Failed to create reload result. Try again later.";
+
 // follow ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST of appexecfwk_errors.h in bundle_framework
 constexpr int32_t ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST = 8521220;
 
@@ -543,6 +550,9 @@ static std::unordered_map<AbilityInnerErrorMsg, const char*> INNER_ERROR_MSG_BY_
     {AbilityInnerErrorMsg::CONNECT_AGENT_EXTENSION_FAILED, ERROR_MSG_CONNECT_AGENT_EXTENSION_FAILED},
     {AbilityInnerErrorMsg::AGENT_EXTENSION_CONNECTION_ENDED, ERROR_MSG_AGENT_EXTENSION_CONNECTION_ENDED},
     {AbilityInnerErrorMsg::DISCONNECT_AGENT_EXTENSION_NOT_EXIST, ERROR_MSG_DISCONNECT_AGENT_EXTENSION_NOT_EXIST},
+    {AbilityInnerErrorMsg::TRANSFER_EXTENSION_DATA_FAILED, ERROR_MSG_TRANSFER_EXTENSION_DATA_FAILED},
+    {AbilityInnerErrorMsg::UI_WINDOW_NULL, ERROR_MSG_UI_WINDOW_NULL},
+    {AbilityInnerErrorMsg::RELOAD_IN_MODAL_RESULT_NULL, ERROR_MSG_RELOAD_IN_MODAL_RESULT_NULL},
 };
 }
 
