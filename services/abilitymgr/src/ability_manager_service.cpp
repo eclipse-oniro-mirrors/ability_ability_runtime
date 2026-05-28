@@ -12869,6 +12869,25 @@ int AbilityManagerService::CheckCallAbilityPermission(const AbilityRequest &abil
     verificationInfo.visible = abilityRequest.abilityInfo.visible;
     verificationInfo.withContinuousTask = IsBackgroundTaskUid(IPCSkeleton::GetCallingUid());
     verificationInfo.specifyTokenId = specifyTokenId;
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+    verificationInfo.isCliToolToken = Security::AccessToken::AccessTokenKit::IsCliToolToken(tokenId);
+    auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
+    if (verificationInfo.isCliToolToken && bundleMgrHelper) {
+        std::vector<AppExecFwk::AbilityInfo> launcherAbilityInfos;
+        auto callerUserId = AbilityRuntime::UserController::GetInstance().GetCallerUserId();
+        uint32_t res = IN_PROCESS_CALL(bundleMgrHelper->GetLauncherAbilityInfoSync(
+            abilityRequest.abilityInfo.bundleName, callerUserId, launcherAbilityInfos));
+        if (res != ERR_OK) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "GetLauncherAbilityInfoSync failed: %{public}d", res);
+        }
+        for (auto launcherAbilityInfo : launcherAbilityInfos) {
+            if (launcherAbilityInfo.name == abilityRequest.abilityInfo.name &&
+                launcherAbilityInfo.moduleName == abilityRequest.abilityInfo.moduleName) {
+                verificationInfo.isLaunchAbility = true;
+                break;
+            }
+        }
+    }
     auto callerAbilityRecord = Token::GetAbilityRecordByToken(abilityRequest.callerToken);
     if (callerAbilityRecord != nullptr &&
         AbilityPermissionUtil::GetInstance().NeedCheckStatusBar(callerAbilityRecord, abilityRequest)) {

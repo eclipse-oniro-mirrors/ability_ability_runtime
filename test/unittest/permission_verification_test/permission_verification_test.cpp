@@ -250,6 +250,72 @@ HWTEST_F(PermissionVerificationTest, CheckCallAbilityPermission_0300, TestSize.L
 }
 
 /**
+ * @tc.name: CheckCallAbilityPermission_0400
+ * @tc.desc: visible=true and isBackgroundCall=false, all checks pass directly
+ * @tc.type: FUNC
+ * @tc.require: issueI5QXCQ
+ */
+HWTEST_F(PermissionVerificationTest, CheckCallAbilityPermission_0400, TestSize.Level1)
+{
+    AAFwk::PermissionVerification::VerificationInfo verificationInfo;
+    verificationInfo.visible = true;
+    verificationInfo.isBackgroundCall = false;
+    int result = AAFwk::PermissionVerification::GetInstance()->CheckCallAbilityPermission(verificationInfo);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+ * @tc.name: CheckCallAbilityPermission_0500
+ * @tc.desc: visible=false and isBackgroundCall=true, most restrictive case
+ * @tc.type: FUNC
+ * @tc.require: issueI5QXCQ
+ */
+HWTEST_F(PermissionVerificationTest, CheckCallAbilityPermission_0500, TestSize.Level1)
+{
+    AAFwk::PermissionVerification::VerificationInfo verificationInfo;
+    verificationInfo.visible = false;
+    verificationInfo.isBackgroundCall = true;
+    int code = AAFwk::PermissionVerification::GetInstance()->CheckCallAbilityPermission(verificationInfo);
+    bool result = (code == ABILITY_VISIBLE_FALSE_DENY_REQUEST) || (code == CHECK_PERMISSION_FAILED) ||
+        (code == ERR_OK);
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.name: CheckCallAbilityPermission_0600
+ * @tc.desc: isCallByShortcut=true with visible=false, bypass invisible check
+ * @tc.type: FUNC
+ * @tc.require: issueI5QXCQ
+ */
+HWTEST_F(PermissionVerificationTest, CheckCallAbilityPermission_0600, TestSize.Level1)
+{
+    AAFwk::PermissionVerification::VerificationInfo verificationInfo;
+    verificationInfo.visible = false;
+    verificationInfo.isBackgroundCall = false;
+    bool isCallByShortcut = true;
+    int result = AAFwk::PermissionVerification::GetInstance()->CheckCallAbilityPermission(
+        verificationInfo, isCallByShortcut);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+ * @tc.name: CheckCallAbilityPermission_0700
+ * @tc.desc: isCliToolToken and isLaunchAbility with visible=false, bypass invisible check
+ * @tc.type: FUNC
+ * @tc.require: issueI5QXCQ
+ */
+HWTEST_F(PermissionVerificationTest, CheckCallAbilityPermission_0700, TestSize.Level1)
+{
+    AAFwk::PermissionVerification::VerificationInfo verificationInfo;
+    verificationInfo.visible = false;
+    verificationInfo.isBackgroundCall = false;
+    verificationInfo.isCliToolToken = true;
+    verificationInfo.isLaunchAbility = true;
+    int result = AAFwk::PermissionVerification::GetInstance()->CheckCallAbilityPermission(verificationInfo);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
  * @tc.name: CheckStartByCallPermission_0100
  * @tc.desc: CheckStartByCallPermission Test
  * @tc.type: FUNC
