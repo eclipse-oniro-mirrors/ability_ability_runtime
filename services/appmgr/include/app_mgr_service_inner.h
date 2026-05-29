@@ -2442,7 +2442,7 @@ private:
     void SnapshotStartReport(int32_t uid, const std::string &bundleName, int32_t result, const std::string &reason);
     void SnapshotErrorReport(int32_t uid, const std::string &bundleName, int32_t result, const std::string &reason);
 
-    void MarkTemplateProcess(int32_t templatePid, std::string bundleName);
+    void MarkTemplateProcess(const std::shared_ptr<AppRunningRecord> &appRecord, std::string bundleName);
     void UnMarkTemplateProcess(int32_t templatePid);
 
     std::shared_ptr<RemoteClientManager> remoteClientManager_;

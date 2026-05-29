@@ -127,6 +127,7 @@ ohos_shared_library("appkit_native") {
     "${ability_runtime_native_path}/appkit/app/dump_ipc_helper.cpp",
     "${ability_runtime_native_path}/appkit/app/dump_runtime_helper.cpp",
     "${ability_runtime_native_path}/appkit/app/extension_plugin_info.cpp",
+    "${ability_runtime_native_path}/appkit/app/forkall_helper.cpp",
     "${ability_runtime_native_path}/appkit/app/idle_time.cpp",
     "${ability_runtime_native_path}/appkit/app/main_thread.cpp",
     "${ability_runtime_native_path}/appkit/app/native_lib_util.cpp",

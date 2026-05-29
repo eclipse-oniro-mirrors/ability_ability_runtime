@@ -68,6 +68,7 @@
 #include "extract_resource_manager.h"
 #include "ffrt.h"
 #include "file_path_utils.h"
+#include "forkall_helper.h"
 #include "freeze_util.h"
 #include "hilog_tag_wrapper.h"
 #include "load_ability_callback_manager.h"
@@ -1620,6 +1621,7 @@ EtsEnv::ETSUncaughtExceptionInfo MainThread::CreateEtsExceptionInfo(const std::s
 void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, const Configuration &config)
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
+    ForkAllHelper::HandleDebugAppLaunchDelay(appLaunchData, isDeveloperMode_);
     FreezeUtil::GetInstance().AddAppLifecycleEvent(0, "HandleLaunchApplication begin");
     ffrt::submit([]() {}, ffrt::task_attr().qos(LAUNCH_TASK_QOS));
     AppExecFwk::AppImageObserverManager::GetInstance().SetImageProcessType(appLaunchData.GetImageProcessType());
