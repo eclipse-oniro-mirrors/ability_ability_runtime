@@ -64,10 +64,14 @@ void ScreenUnlockInterceptorCoverageTest::TearDownTestCase()
 void ScreenUnlockInterceptorCoverageTest::SetUp()
 {
     extensionConfig_->configMap_.clear();
+    extensionConfig_->isConfigLoaded_.store(false);
 }
 
 void ScreenUnlockInterceptorCoverageTest::TearDown()
-{}
+{
+    extensionConfig_->configMap_.clear();
+    extensionConfig_->isConfigLoaded_.store(false);
+}
 
 void ScreenUnlockInterceptorCoverageTest::LoadTestConfig(const std::string &configStr)
 {

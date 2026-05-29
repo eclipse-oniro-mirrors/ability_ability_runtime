@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_EXTENSION_CONFIG_H
 #define OHOS_ABILITY_RUNTIME_EXTENSION_CONFIG_H
 
+#include <atomic>
 #include <map>
 #include <mutex>
 #include <nlohmann/json.hpp>
@@ -96,6 +97,7 @@ public:
     bool HasScreenUnlockAccessConfig(const std::string &extensionTypeName);
     bool HasScreenUnlockAccessAllowList(const std::string &extensionTypeName);
     bool HasScreenUnlockAccessBlockList(const std::string &extensionTypeName);
+    bool IsConfigLoaded() const;
 private:
     void LoadExtensionConfig(const nlohmann::json &object);
     bool ReadFileInfoJson(const std::string &filePath, nlohmann::json &jsonBuf);
@@ -124,6 +126,7 @@ private:
 
     std::unordered_map<std::string, ExtensionConfigItem> configMap_;
     std::mutex configMapMutex_;
+    std::atomic<bool> isConfigLoaded_ = false;
 };
 } // OHOS
 } // AAFwk

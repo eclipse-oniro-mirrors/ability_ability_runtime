@@ -182,6 +182,10 @@ ErrCode ScreenUnlockInterceptor::CheckExtensionInterception(const std::string &e
     const std::string &bundleName, bool isSystemApp)
 {
     auto extensionConfig = DelayedSingleton<ExtensionConfig>::GetInstance();
+    if (!extensionConfig->IsConfigLoaded()) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "extension config not loaded, allow all extensions");
+        return ERR_OK;
+    }
     if (!extensionConfig->HasScreenUnlockAccessConfig(extensionTypeName)) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "no screen_unlock_access config for extension: %{public}s",
             extensionTypeName.c_str());

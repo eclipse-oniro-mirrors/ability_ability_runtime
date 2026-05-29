@@ -63,10 +63,14 @@ void ScreenUnlockInterceptorTest::TearDownTestCase()
 void ScreenUnlockInterceptorTest::SetUp()
 {
     extensionConfig_->configMap_.clear();
+    extensionConfig_->isConfigLoaded_.store(false);
 }
 
 void ScreenUnlockInterceptorTest::TearDown()
-{}
+{
+    extensionConfig_->configMap_.clear();
+    extensionConfig_->isConfigLoaded_.store(false);
+}
 
 void ScreenUnlockInterceptorTest::LoadTestConfig(const std::string &configStr)
 {
@@ -202,12 +206,20 @@ HWTEST_F(ScreenUnlockInterceptorTest, DoProcess_ScreenUnlocked, TestSize.Level1)
 
 /**
  * @tc.name: CheckExtensionInterception_NoConfig_ShouldBlock
- * @tc.desc: Test CheckExtensionInterception when no screen_unlock_access config exists
+ * @tc.desc: Test CheckExtensionInterception when config is loaded but no screen_unlock_access config for this type
  * @tc.type: FUNC
  */
 HWTEST_F(ScreenUnlockInterceptorTest, CheckExtensionInterception_NoConfig_ShouldBlock, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "CheckExtensionInterception_NoConfig_ShouldBlock start";
+    // Load a dummy config so isConfigLoaded_ is true, simulating successful file read
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "extension_type_name": "other_type",
+            "screen_unlock_access": { "defaultInterception": false }
+        }]
+    })";
+    LoadTestConfig(configStr);
     ScreenUnlockInterceptor screenUnlockInterceptor;
     auto ret = screenUnlockInterceptor.CheckExtensionInterception("form", "com.test.bundle", true);
     EXPECT_EQ(ret, ERR_BLOCK_START_FIRST_BOOT_SCREEN_UNLOCK);
@@ -579,6 +591,104 @@ HWTEST_F(ScreenUnlockInterceptorTest, CheckExtensionInterception_SystemApp_NoInt
     auto ret = screenUnlockInterceptor.CheckExtensionInterception("form", "com.test.bundle", true);
     EXPECT_EQ(ret, ERR_BLOCK_START_FIRST_BOOT_SCREEN_UNLOCK);
     GTEST_LOG_(INFO) << "CheckExtensionInterception_SystemApp_NoInterceptionConfig end";
+}
+
+/**
+ * @tc.name: CheckExtensionInterception_ConfigNotLoaded_ShouldAllow
+ * @tc.desc: Test CheckExtensionInterception when config file failed to load, should allow all
+ * @tc.type: FUNC
+ */
+HWTEST_F(ScreenUnlockInterceptorTest, CheckExtensionInterception_ConfigNotLoaded_ShouldAllow, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CheckExtensionInterception_ConfigNotLoaded_ShouldAllow start";
+    // isConfigLoaded_ is false by default (SetUp resets it), simulating config file read failure
+    EXPECT_FALSE(extensionConfig_->IsConfigLoaded());
+    ScreenUnlockInterceptor screenUnlockInterceptor;
+    // system app extension
+    auto ret = screenUnlockInterceptor.CheckExtensionInterception("form", "com.test.bundle", true);
+    EXPECT_EQ(ret, ERR_OK);
+    // third-party extension
+    ret = screenUnlockInterceptor.CheckExtensionInterception("service", "com.test.bundle", false);
+    EXPECT_EQ(ret, ERR_OK);
+    GTEST_LOG_(INFO) << "CheckExtensionInterception_ConfigNotLoaded_ShouldAllow end";
+}
+
+/**
+ * @tc.name: IsConfigLoaded_AfterLoadConfig_ShouldReturnTrue
+ * @tc.desc: Test IsConfigLoaded returns true after config loaded, false after reset
+ * @tc.type: FUNC
+ */
+HWTEST_F(ScreenUnlockInterceptorTest, IsConfigLoaded_AfterLoadConfig_ShouldReturnTrue, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "IsConfigLoaded_AfterLoadConfig_ShouldReturnTrue start";
+    EXPECT_FALSE(extensionConfig_->IsConfigLoaded());
+    const std::string configStr = R"({
+        "ams_extension_config": [{
+            "extension_type_name": "form",
+            "screen_unlock_access": { "defaultInterception": false }
+        }]
+    })";
+    LoadTestConfig(configStr);
+    EXPECT_TRUE(extensionConfig_->IsConfigLoaded());
+    GTEST_LOG_(INFO) << "IsConfigLoaded_AfterLoadConfig_ShouldReturnTrue end";
+}
+
+/**
+ * @tc.name: DoProcess_SystemAppExtension_ConfigNotLoaded_ShouldAllow
+ * @tc.desc: Test DoProcess full chain: system app extension with config not loaded should allow
+ * @tc.type: FUNC
+ */
+HWTEST_F(ScreenUnlockInterceptorTest, DoProcess_SystemAppExtension_ConfigNotLoaded_ShouldAllow, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "DoProcess_SystemAppExtension_ConfigNotLoaded_ShouldAllow start";
+    EXPECT_FALSE(extensionConfig_->IsConfigLoaded());
+    ScreenUnlockInterceptor screenUnlockInterceptor;
+    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
+    StartAbilityUtils::startAbilityInfo->abilityInfo.type = AbilityType::EXTENSION;
+    StartAbilityUtils::startAbilityInfo->abilityInfo.extensionTypeName = "form";
+    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.isSystemApp = true;
+    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.allowAppRunWhenDeviceFirstLocked = true;
+    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.bundleName = "com.test.bundle";
+
+    Want want;
+    AbilityInterceptorParam param(want, 0, 100, true, nullptr, []() { return false; });
+
+    auto screenLockManager = OHOS::ScreenLock::ScreenLockManager::GetInstance();
+    EXPECT_NE(screenLockManager, nullptr);
+    screenLockManager->SetScreenLockedState(true);
+
+    auto ret = screenUnlockInterceptor.DoProcess(param);
+    EXPECT_EQ(ret, ERR_OK);
+    GTEST_LOG_(INFO) << "DoProcess_SystemAppExtension_ConfigNotLoaded_ShouldAllow end";
+}
+
+/**
+ * @tc.name: DoProcess_ThirdPartyExtension_ConfigNotLoaded_ShouldAllow
+ * @tc.desc: Test DoProcess full chain: third-party extension with config not loaded should allow
+ * @tc.type: FUNC
+ */
+HWTEST_F(ScreenUnlockInterceptorTest, DoProcess_ThirdPartyExtension_ConfigNotLoaded_ShouldAllow, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "DoProcess_ThirdPartyExtension_ConfigNotLoaded_ShouldAllow start";
+    EXPECT_FALSE(extensionConfig_->IsConfigLoaded());
+    ScreenUnlockInterceptor screenUnlockInterceptor;
+    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
+    StartAbilityUtils::startAbilityInfo->abilityInfo.type = AbilityType::EXTENSION;
+    StartAbilityUtils::startAbilityInfo->abilityInfo.extensionTypeName = "service";
+    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.isSystemApp = false;
+    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.allowAppRunWhenDeviceFirstLocked = false;
+    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.bundleName = "com.test.thirdparty";
+
+    Want want;
+    AbilityInterceptorParam param(want, 0, 100, true, nullptr, []() { return false; });
+
+    auto screenLockManager = OHOS::ScreenLock::ScreenLockManager::GetInstance();
+    EXPECT_NE(screenLockManager, nullptr);
+    screenLockManager->SetScreenLockedState(true);
+
+    auto ret = screenUnlockInterceptor.DoProcess(param);
+    EXPECT_EQ(ret, ERR_OK);
+    GTEST_LOG_(INFO) << "DoProcess_ThirdPartyExtension_ConfigNotLoaded_ShouldAllow end";
 }
 } // namespace AAFwk
 } // namespace OHOS
