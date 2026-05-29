@@ -421,26 +421,6 @@ int SystemDialogScheduler::GetSelectorDialogWantCommon(const std::vector<DialogA
             requestWant.SetParam(CALLER_TOKEN, callerToken);
         }
     }
-    if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled() && isCallerStageBasedModel) {
-        auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
-        if (bundleMgrHelper == nullptr) {
-            TAG_LOGE(AAFwkTag::DIALOG, "bundleMgrHelper null");
-            return INNER_ERR;
-        }
-        std::string bundleName;
-        if (!IN_PROCESS_CALL(bundleMgrHelper->QueryAppGalleryBundleName(bundleName))) {
-            TAG_LOGE(AAFwkTag::DIALOG, "QueryAppGalleryBundleName failed");
-            return INNER_ERR;
-        }
-        targetWant.SetElementName(bundleName, ABILITY_NAME_APPGALLERY_SELECTOR_DIALOG);
-        targetWant.SetParam(UIEXTENSION_TYPE_KEY, UIEXTENSION_SYS_COMMON_UI);
-        targetWant.SetParam("isCreateAppGallerySelector", true);
-        // app selectot not exist
-#ifndef SUPPORT_APP_SELECTOR
-        TAG_LOGI(AAFwkTag::DIALOG, "app selector not support");
-        return ERR_APP_SELECTOR_NOT_EXISTS;
-#endif
-    }
     return ERR_OK;
 }
 
