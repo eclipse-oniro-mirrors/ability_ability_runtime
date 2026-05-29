@@ -63,6 +63,11 @@ public:
      */
     virtual ~JsAgentConnectorProxy();
 
+    /**
+     * Invalidate this proxy after the connection is disconnected.
+     */
+    void Invalidate();
+
 private:
     /**
      * N-API callback for sendData method.
@@ -105,6 +110,7 @@ protected:
      * The native proxy for IPC communication with host application.
      */
     sptr<IAgentConnector> proxy_ = nullptr;
+    bool isDisconnected_ = false;
 };
 
 } // namespace AgentRuntime
