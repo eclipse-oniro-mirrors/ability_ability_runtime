@@ -5897,7 +5897,6 @@ int AbilityManagerService::ConnectUIExtensionAbility(const Want &want, const spt
     auto shouldBlockFunc = [aams = shared_from_this()]() { return aams->ShouldBlockAllAppStart(); };
     AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(want, 0, GetValidUserId(userId), false, nullptr,
         shouldBlockFunc);
-    interceptorParam.fromConnect = true;
     result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
         interceptorExecuter_->DoProcess(interceptorParam);
     if (result != ERR_OK) {
