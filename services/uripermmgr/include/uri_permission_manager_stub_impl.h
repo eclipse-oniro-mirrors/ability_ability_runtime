@@ -111,6 +111,9 @@ public:
         const std::string& targetBundleName, int32_t appIndex, uint32_t initiatorTokenId,
         int32_t hideSensitiveType, int32_t& funcResult) override;
 
+    ErrCode GrantUriPermission(const std::vector<std::string>& uriVec, uint32_t flag,
+        uint32_t targetTokenId, uint32_t oriCallerTokenId, int32_t& funcResult) override;
+
     ErrCode GrantUriPermissionByKeyAsCaller(const std::string &key, uint32_t flag, uint32_t callerTokenId,
         uint32_t targetTokenId, int32_t &funcResult) override;
 
@@ -191,7 +194,8 @@ private:
 
 #ifdef ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER
     int32_t SandboxManagerSetPolicy(const std::vector<PolicyInfo> &policyInfoVec, uint32_t flag,
-        const FUDAppInfo &callerInfo, const FUDAppInfo &targetInfo, std::vector<uint32_t> &result);
+        const FUDAppInfo &callerInfo, const FUDAppInfo &targetInfo,
+        int32_t userId, std::vector<uint32_t> &result);
 #endif
 
     int32_t GrantBatchUriPermissionImpl(const std::vector<std::string> &uriVec,
@@ -217,6 +221,14 @@ private:
     int32_t RevokeMapUriPermissionManually(uint32_t callerTokenId, uint32_t targetTokenId, Uri &uri);
 
     int32_t DeleteShareFile(uint32_t targetTokenId, const std::vector<std::string> &uriVec);
+
+    // Helper functions for new GrantUriPermission interface
+    int32_t CheckGrantUriPermissionParamsWithTokenId(const std::vector<std::string>& uriVec,
+        uint32_t flag, uint32_t targetTokenId);
+    int32_t GetCallerTokenIdAndUserId(uint32_t oriCallerTokenId, uint32_t& callerTokenId,
+        int32_t& callerUserId);
+    int32_t CheckTargetTokenIdAndUserConstraint(uint32_t targetTokenId, int32_t callerUserId,
+        FUDAppInfo& targetInfo);
 
     int32_t RevokePolicyUriPermissionManually(uint32_t callerTokenId, uint32_t targetTokenId, Uri &uri);
 

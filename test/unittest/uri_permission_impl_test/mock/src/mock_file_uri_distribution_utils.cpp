@@ -92,7 +92,8 @@ int32_t FUDUtils::GetAppIdByBundleName(const std::string &bundleName, std::strin
     return MyFlag::upmsUtilsGetAppIdByBundleNameRet_;
 }
 
-int32_t FUDUtils::GetTokenIdByBundleName(const std::string &bundleName, int32_t appIndex, uint32_t &tokenId)
+int32_t FUDUtils::GetTokenIdByBundleName(const std::string &bundleName, int32_t appIndex, int32_t userId,
+                                         uint32_t &tokenId)
 {
     tokenId = MyFlag::upmsUtilsTokenId_;
     return MyFlag::getTokenIdByBundleNameStatus_;
@@ -110,8 +111,21 @@ bool FUDUtils::IsDocsCloudUri(Uri &uri)
 
 bool FUDUtils::GenerateFUDAppInfo(FUDAppInfo &info)
 {
+    if (!MyFlag::generateFUDAppInfoResults_.empty()) {
+        auto result = MyFlag::generateFUDAppInfoResults_.front();
+        MyFlag::generateFUDAppInfoResults_.erase(MyFlag::generateFUDAppInfoResults_.begin());
+
+        info.alterBundleName = result.alterBundleName.empty() ?
+            MyFlag::upmsUtilsAlterBundleName_ : result.alterBundleName;
+        info.bundleName = result.bundleName.empty() ?
+            MyFlag::upmsUtilsBundleName_ : result.bundleName;
+        info.userId = result.userId;
+        return result.success;
+    }
+
     info.alterBundleName = MyFlag::upmsUtilsAlterBundleName_;
     info.bundleName = MyFlag::upmsUtilsBundleName_;
+    info.userId = MyFlag::fudAppInfoUserId_;
     return MyFlag::fudUtilsGenerateFUDAppInfoRet_;
 }
 

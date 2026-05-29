@@ -181,8 +181,9 @@ HWTEST_F(FileUriDistributionUtilsNewTest, GetTokenIdByBundleName_001, TestSize.L
 {
     std::string bundleName = "";
     int32_t appIndex = 1001;
+    int32_t userId = 100;
     uint32_t tokenId = 1;
-    auto result = FUDUtils::GetTokenIdByBundleName(bundleName, appIndex, tokenId);
+    auto result = FUDUtils::GetTokenIdByBundleName(bundleName, appIndex, userId, tokenId);
     EXPECT_EQ(result, ERR_GET_TARGET_BUNDLE_INFO_FAILED);
 }
 

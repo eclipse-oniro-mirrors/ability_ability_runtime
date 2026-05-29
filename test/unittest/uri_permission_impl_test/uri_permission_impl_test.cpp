@@ -1375,20 +1375,20 @@ HWTEST_F(UriPermissionImplTest, SandboxManagerSetPolicy_001, TestSize.Level1)
     FUDAppInfo callerInfo;
     FUDAppInfo targetInfo;
     std::vector<uint32_t> result;
-    auto ret = upms->SandboxManagerSetPolicy(emptyPolicyInfoVec, 1, callerInfo, targetInfo, result);
+    auto ret = upms->SandboxManagerSetPolicy(emptyPolicyInfoVec, 1, callerInfo, targetInfo, 0, result);
     EXPECT_EQ(ret, INNER_ERR);
 
     SandboxManagerKit::setPolicyRet_ = INNER_ERR;
-    ret = upms->SandboxManagerSetPolicy(policyInfoVec, 1, callerInfo, targetInfo, result);
+    ret = upms->SandboxManagerSetPolicy(policyInfoVec, 1, callerInfo, targetInfo, 0, result);
     EXPECT_EQ(ret, INNER_ERR);
-    
+
     // size not match
     SandboxManagerKit::setPolicyRet_ = ERR_OK;
-    ret = upms->SandboxManagerSetPolicy(policyInfoVec, 1, callerInfo, targetInfo, result);
+    ret = upms->SandboxManagerSetPolicy(policyInfoVec, 1, callerInfo, targetInfo, 0, result);
     EXPECT_EQ(ret, INNER_ERR);
 
     SandboxManagerKit::setPolicyResult_ = { ERR_OK };
-    ret = upms->SandboxManagerSetPolicy(policyInfoVec, 1, callerInfo, targetInfo, result);
+    ret = upms->SandboxManagerSetPolicy(policyInfoVec, 1, callerInfo, targetInfo, 0, result);
     EXPECT_EQ(ret, ERR_OK);
     EXPECT_EQ(result[0], ERR_OK);
 }
@@ -2731,8 +2731,10 @@ HWTEST_F(UriPermissionImplTest, Upmsi_CheckGrantUriPermissionByKeyParams_006, Te
     ASSERT_NE(upms, nullptr);
     const std::string key = "";
     uint32_t flag = 1;
-    FUDAppInfo calerAppInfo = { .tokenId = 1001, .userId = 1 };
-    FUDAppInfo targetAppInfo = { .tokenId = 1002, .userId = 2 };
+    FUDAppInfo calerAppInfo = { .tokenId = 1001 };
+    FUDAppInfo targetAppInfo = { .tokenId = 1002 };
+    MyFlag::PushGenerateFUDAppInfoResult(true, 1);
+    MyFlag::PushGenerateFUDAppInfoResult(true, 2);
     std::vector<std::string> uris;
     auto ret = upms->CheckGrantUriPermissionByKeyParams(key, flag, calerAppInfo, targetAppInfo, uris);
     EXPECT_EQ(ret, ERR_UPMS_INVALID_TARGET_TOKENID);
