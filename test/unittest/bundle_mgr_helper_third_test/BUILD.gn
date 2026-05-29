@@ -34,10 +34,10 @@ ohos_unittest("bundle_mgr_helper_third_test") {
 
   configs = [ "${ability_runtime_services_path}/abilitymgr:abilityms_config" ]
 
-  cflags = []
-  if (target_cpu == "arm") {
-    cflags += [ "-DBINDER_IPC_32BIT" ]
-  }
+  cflags = [
+    "-Dprivate = public",
+    "-Dprotected = public",
+  ]
 
   deps = [
     "${ability_runtime_services_path}/common:app_util",
@@ -53,6 +53,7 @@ ohos_unittest("bundle_mgr_helper_third_test") {
     "hitrace:hitrace_meter",
     "init:libbegetutil",
     "ipc:ipc_core",
+    "samgr:samgr_proxy",
   ]
 }
 

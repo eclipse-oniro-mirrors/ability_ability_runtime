@@ -15,9 +15,7 @@
 
 #include <gtest/gtest.h>
 
-#define private public
 #include "bundle_mgr_helper.h"
-#undef private
 
 #include "mock_bundle_mgr_stub.h"
 #include "want.h"

@@ -35,10 +35,10 @@ ohos_unittest("clone_for_account_util_test") {
     "${ability_runtime_innerkits_path}/ability_manager/include",
   ]
 
-  cflags = []
-  if (target_cpu == "arm") {
-    cflags += [ "-DBINDER_IPC_32BIT" ]
-  }
+  cflags = [
+    "-Dprivate = public",
+    "-Dprotected = public",
+  ]
 
   sources = [
     "${ability_runtime_services_path}/abilitymgr/src/ability_token_stub.cpp",
@@ -57,6 +57,7 @@ ohos_unittest("clone_for_account_util_test") {
     "googletest:gmock_main",
     "googletest:gtest_main",
     "hilog:libhilog",
+    "ipc:ipc_core",
   ]
 }
 

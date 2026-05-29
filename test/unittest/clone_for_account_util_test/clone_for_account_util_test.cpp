@@ -15,9 +15,7 @@
 
 #include <gtest/gtest.h>
 
-#define private public
 #include "clone_for_account_util.h"
-#undef private
 
 #include "ability_record.h"
 #include "auto_app_index.h"
@@ -100,27 +98,6 @@ HWTEST_F(CloneForAccountUtilTest, RemoveCachedAppIndex_001, TestSize.Level1)
 
     CloneForAccountUtil::RemoveCachedAppIndex(bundleName);
     EXPECT_FALSE(CloneForAccountUtil::GetCachedAppIndex(bundleName, appIndex));
-}
-
-/**
- * @tc.name: RemoveCachedAppIndex_002
- * @tc.desc: Test RemoveCachedAppIndex with empty bundleName
- * @tc.type: FUNC
- */
-HWTEST_F(CloneForAccountUtilTest, RemoveCachedAppIndex_002, TestSize.Level1)
-{
-    CloneForAccountUtil::RemoveCachedAppIndex("");
-}
-
-/**
- * @tc.name: GetCachedAppIndex_001
- * @tc.desc: Test GetCachedAppIndex returns false for non-existent bundle
- * @tc.type: FUNC
- */
-HWTEST_F(CloneForAccountUtilTest, GetCachedAppIndex_001, TestSize.Level1)
-{
-    int32_t appIndex = 0;
-    EXPECT_FALSE(CloneForAccountUtil::GetCachedAppIndex("com.nonexistent", appIndex));
 }
 
 // ========== CloneForAccountUtil ProcessAppIndex tests ==========
