@@ -301,6 +301,7 @@ group("unittest") {
       "block_all_app_start_interceptor_test:unittest",
       "bundle_mgr_helper_second_test:unittest",
       "bundle_mgr_helper_test:unittest",
+      "bundle_mgr_helper_third_test:unittest",
       "cache_process_manager_second_test:unittest",
       "cache_process_manager_test:unittest",
       "call_record_test:unittest",
