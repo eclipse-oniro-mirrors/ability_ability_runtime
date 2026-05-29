@@ -83,6 +83,9 @@ bool UIAbilityRecord::UpdateWantByLastWant()
         lastWant_ = nullptr;
     }
     SetWant(*lastWant);
+#ifdef SUPPORT_UPMS
+    GrantUriPermission();
+#endif // SUPPORT_UPMS
     SetIsNewWant(true);
     return true;
 }
