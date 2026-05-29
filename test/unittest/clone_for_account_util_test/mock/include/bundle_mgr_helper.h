@@ -28,14 +28,10 @@ public:
     static std::shared_ptr<BundleMgrHelper> GetInstance();
 
     bool QueryEnabledAbilityInfo(const Want &want, int32_t userId, AbilityInfo &abilityInfo);
-    bool QueryEnabledAbilityInfo(const Want &want, int32_t userId, int32_t appIndex, AbilityInfo &abilityInfo);
 
-public:
     static bool isBundleManagerHelperNull;
     static bool retQueryEnabledAbilityInfo;
     static AbilityInfo abilityInfoResult;
-    static bool retQueryEnabledAbilityInfoWithAppIndex;
-    static AbilityInfo abilityInfoResultWithAppIndex;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

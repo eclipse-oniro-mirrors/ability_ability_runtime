@@ -574,6 +574,10 @@ int32_t DialogSessionManager::HandleErmsResultBySCB(AbilityRequest &abilityReque
 
 bool DialogSessionManager::IsCreateCloneSelectorDialog(const std::string &bundleName, int32_t userId)
 {
+#ifdef ENABLE_CLONE_FOR_ACCOUNT
+    StartAbilityUtils::isWantWithAppCloneIndex = false;
+    return false;
+#else
     if (StartAbilityUtils::isWantWithAppCloneIndex) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "no clone index");
         StartAbilityUtils::isWantWithAppCloneIndex = false;
@@ -585,6 +589,7 @@ bool DialogSessionManager::IsCreateCloneSelectorDialog(const std::string &bundle
         return false;
     }
     return true;
+#endif
 }
 
 bool DialogSessionManager::UpdateExtensionWantWithDialogCallerInfo(AbilityRequest &abilityRequest,

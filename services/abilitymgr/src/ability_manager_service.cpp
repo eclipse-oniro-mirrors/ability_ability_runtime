@@ -110,7 +110,7 @@
 #include "start_options_utils.h"
 #include "startup_util.h"
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-#include "auto_app_index.h"
+#include "clone_for_account_util.h"
 #endif
 #include "status_bar_delegate_interface.h"
 #include "string_wrapper.h"
@@ -697,7 +697,7 @@ int AbilityManagerService::StartAbility(const Want &want, int32_t userId, int re
         userId = GetValidUserId(userId);
     }
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    AutoAppIndex autoAppIndex(const_cast<Want &>(want), nullptr, userId);
+    CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), userId);
 #endif
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     XCOLLIE_TIMER_LESS_IGNORE(__PRETTY_FUNCTION__, !want.GetDeviceId().empty());
@@ -1390,7 +1390,7 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
     }
     int32_t oriValidUserId = GetValidUserId(param.userId);
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    AutoAppIndex autoAppIndex(param.want, param.callerToken, oriValidUserId);
+    CloneForAccountUtil::ProcessAppIndex(param.want, oriValidUserId);
 #endif
     std::string dialogSessionId = param.want.GetStringParam("dialogSessionId");
     bool isSendDialogResult = false;
@@ -1836,7 +1836,7 @@ int AbilityManagerService::StartAbilityDetails(const Want &want, const AbilitySt
     EventInfo eventInfo = BuildEventInfo(want, userId);
     int32_t oriValidUserId = GetValidUserId(userId);
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    AutoAppIndex autoAppIndex(const_cast<Want &>(want), callerToken, oriValidUserId);
+    CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), oriValidUserId);
 #endif
     if (want.GetBoolParam(AbilityConfig::DEBUG_APP, false)) {
         if (!system::GetBoolParameter(DEVELOPER_MODE_STATE, false)) {
@@ -2217,7 +2217,7 @@ int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const St
     EventInfo eventInfo = BuildEventInfo(want, userId);
     int32_t oriValidUserId = GetValidUserId(userId);
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    AutoAppIndex autoAppIndex(const_cast<Want &>(want), callerToken, oriValidUserId);
+    CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), oriValidUserId);
 #endif
     // prevent the app from dominating the screen
     if (callerToken == nullptr && !IsCallerSceneBoard() && !isCallByShortcut &&
@@ -2627,7 +2627,7 @@ int32_t AbilityManagerService::StartUIAbilitiesInSplitWindowModeHandleWant(const
     int32_t requestCode = DEFAULT_INVAL_VALUE;
     int32_t appIndex = 0;
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    AutoAppIndex autoAppIndex(const_cast<Want &>(secondaryWant), callerToken, validUserId);
+    CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(secondaryWant), validUserId);
 #endif
     AbilityUtil::RemoveShowModeKey(const_cast<Want &>(secondaryWant));
     auto result = CheckWantForSplitMode(secondaryWant, callerToken, validUserId, appIndex);
@@ -2779,7 +2779,7 @@ int32_t AbilityManagerService::StartUIAbilitiesHandleWant(const Want &want, sptr
     uint32_t specifyTokenId = 0;
     int32_t requestCode = DEFAULT_INVAL_VALUE;
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    AutoAppIndex autoAppIndex(const_cast<Want &>(want), callerToken, validUserId);
+    CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), validUserId);
 #endif
     AbilityUtil::RemoveShowModeKey(const_cast<Want &>(want));
 
@@ -3124,7 +3124,7 @@ int AbilityManagerService::StartUIAbilityBySCB(sptr<SessionInfo> sessionInfo, Ab
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
     if (sessionInfo->want.GetBoolParam(ServerConstant::IS_CALL_BY_SCB, true)) {
         auto currentUserId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
-        AutoAppIndex autoAppIndex(sessionInfo->want, sessionInfo->callerToken, currentUserId);
+        CloneForAccountUtil::ProcessAppIndex(sessionInfo->want, currentUserId);
     }
 #endif
     sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::PAGE_CONFIG, params.pageConfig);
@@ -9947,7 +9947,7 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
     }
     int32_t oriValidUserId = GetValidUserId(accountId);
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    AutoAppIndex autoAppIndex(const_cast<Want &>(want), callerToken, oriValidUserId);
+    CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), oriValidUserId);
 #endif
     AbilityUtil::RemoveWantKey(const_cast<Want &>(want));
     int32_t appIndex = 0;
@@ -10071,7 +10071,7 @@ int AbilityManagerService::StartAbilityForPrelaunch(const Want &want, const int3
     }
     int32_t oriValidUserId = GetValidUserId(DEFAULT_INVAL_VALUE);
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    AutoAppIndex autoAppIndex(const_cast<Want &>(want), nullptr, oriValidUserId);
+    CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), oriValidUserId);
 #endif
     auto shouldBlockFunc = [aams = shared_from_this()]() { return aams->ShouldBlockAllAppStart(); };
     AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(want, 0, oriValidUserId, true, nullptr,
@@ -11213,7 +11213,7 @@ int AbilityManagerService::StartUserTest(const Want &want, const sptr<IRemoteObj
     int32_t userId = INVALID_USER_ID;
     auto ret = ParseAndValidateUserId(want, userId);
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    AutoAppIndex autoAppIndex(const_cast<Want &>(want), nullptr, GetValidUserId(DEFAULT_INVAL_VALUE));
+    CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), GetValidUserId(DEFAULT_INVAL_VALUE));
 #endif
     int32_t appIndex = 0;
     if (!StartAbilityUtils::GetAppIndex(want, nullptr, appIndex) || appIndex != 0) {

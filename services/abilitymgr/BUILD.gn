@@ -252,7 +252,6 @@ ohos_shared_library("abilityms") {
   if (ability_runtime_enable_clone_for_account) {
     defines += [ "ENABLE_CLONE_FOR_ACCOUNT" ]
     sources += [
-      "src/utils/auto_app_index.cpp",
       "src/utils/clone_for_account_util.cpp",
     ]
   }
@@ -455,6 +454,9 @@ ohos_static_library("abilityms_static") {
 
   if (ability_runtime_enable_clone_for_account) {
     defines += [ "ENABLE_CLONE_FOR_ACCOUNT" ]
+    sources += [
+      "src/utils/clone_for_account_util.cpp",
+    ]
   }
 
   if (ability_runtime_graphics) {

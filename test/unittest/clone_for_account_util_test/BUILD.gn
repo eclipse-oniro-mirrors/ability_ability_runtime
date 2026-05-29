@@ -18,14 +18,13 @@ module_output_path = "ability_runtime/ability_runtime/abilitymgr"
 
 ohos_unittest("clone_for_account_util_test") {
   module_out_path = module_output_path
+
   sanitize = {
     cfi = true
     cfi_cross_dso = true
     debug = false
     blocklist = "../../cfi_blocklist.txt"
   }
-
-  defines = [ "ENABLE_CLONE_FOR_ACCOUNT" ]
 
   include_dirs = [
     "mock/include",
@@ -35,16 +34,8 @@ ohos_unittest("clone_for_account_util_test") {
     "${ability_runtime_innerkits_path}/ability_manager/include",
   ]
 
-  cflags = [
-    "-Dprivate = public",
-    "-Dprotected = public",
-  ]
-
   sources = [
-    "${ability_runtime_services_path}/abilitymgr/src/ability_token_stub.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/clone_for_account_util.cpp",
-    "${ability_runtime_services_path}/abilitymgr/src/utils/auto_app_index.cpp",
-    "mock/src/ability_record.cpp",
     "mock/src/bundle_mgr_helper.cpp",
     "clone_for_account_util_test.cpp",
   ]
@@ -54,10 +45,8 @@ ohos_unittest("clone_for_account_util_test") {
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
-    "googletest:gmock_main",
     "googletest:gtest_main",
     "hilog:libhilog",
-    "ipc:ipc_core",
   ]
 }
 

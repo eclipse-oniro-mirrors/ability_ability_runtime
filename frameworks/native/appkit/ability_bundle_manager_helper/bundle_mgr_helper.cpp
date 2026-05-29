@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1202,51 +1202,31 @@ ErrCode BundleMgrHelper::QueryAbilityInfos(const Want &want, int32_t userId, std
     auto ret = bundleMgr->QueryAbilityInfosV9(want,
         static_cast<int32_t>(AppExecFwk::GetAbilityInfoFlag::GET_ABILITY_INFO_WITH_APPLICATION),
         userId, abilityInfos);
-    for (auto &abilityInfo : abilityInfos) {
-        SetAbilityProcessEmpty(abilityInfo);
-    }
     return ret;
 }
 
-bool BundleMgrHelper::QueryEnabledAbilityInfo(
-    const Want &want, int32_t userId, int32_t appIndex, AbilityInfo &abilityInfo)
+bool BundleMgrHelper::QueryEnabledAbilityInfo(const Want &want, int32_t userId, AbilityInfo &abilityInfo)
 {
-    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "QueryEnabledAbilityInfo with appIndex: %{public}d", appIndex);
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "QueryEnabledAbilityInfo");
     std::vector<AbilityInfo> abilityInfos;
     if (auto ret = QueryAbilityInfos(want, userId, abilityInfos); ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "QueryAbilityInfos failed:  %{public}d", ret);
         return false;
     }
 
-    if (abilityInfos.size() > 1u) {
-        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "too many infos: %{public}zu", abilityInfos.size());
+    if (abilityInfos.size() != 1u) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "Invalid info size: %{public}zu", abilityInfos.size());
+        return false;
     }
 
-    int32_t minValidAppIndex = -1;
-    for (const auto &info : abilityInfos) {
-        if (!info.applicationInfo.enabled) {
-            continue;
-        }
-        if (info.appIndex == appIndex) {
-            abilityInfo = info;
-            TAG_LOGI(AAFwkTag::BUNDLEMGRHELPER,
-                "found enabled ability with matched appIndex, bundleName=%{public}s, appIndex=%{public}d",
-                abilityInfo.bundleName.c_str(), abilityInfo.appIndex);
-            return true;
-        }
-        if (minValidAppIndex == -1 || info.appIndex < minValidAppIndex) {
-            minValidAppIndex = info.appIndex;
-            abilityInfo = info;
-        }
+    const auto &tmpInfo = abilityInfos[0];
+    if (!tmpInfo.applicationInfo.enabled) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "Disabled info bundleName=%{public}s", tmpInfo.bundleName.c_str());
+        return false;
     }
-    if (minValidAppIndex != -1) {
-        TAG_LOGI(AAFwkTag::BUNDLEMGRHELPER,
-            "appIndex %{public}d not found, fallback to min valid appIndex=%{public}d, bundleName=%{public}s",
-            appIndex, minValidAppIndex, abilityInfo.bundleName.c_str());
-        return true;
-    }
-    TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "no enabled ability found");
-    return false;
+
+    abilityInfo = tmpInfo;
+    return true;
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

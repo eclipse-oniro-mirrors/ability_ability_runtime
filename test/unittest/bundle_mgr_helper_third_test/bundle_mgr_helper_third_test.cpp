@@ -150,14 +150,91 @@ HWTEST_F(BundleMgrHelperThirdTest, QueryAbilityInfos_004, TestSize.Level1)
     EXPECT_EQ(ret, ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR);
 }
 
-// ========== QueryEnabledAbilityInfo(with appIndex) tests ==========
+// ========== QueryEnabledAbilityInfo tests ==========
 
 /**
  * @tc.name: QueryEnabledAbilityInfo_001
- * @tc.desc: Test QueryEnabledAbilityInfo with exact appIndex match
+ * @tc.desc: Test QueryEnabledAbilityInfo success with single enabled result
  * @tc.type: FUNC
  */
 HWTEST_F(BundleMgrHelperThirdTest, QueryEnabledAbilityInfo_001, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+
+    AbilityInfo info;
+    info.bundleName = "com.test.bundle";
+    info.appIndex = 0;
+    info.applicationInfo.enabled = true;
+    MockBundleMgrStub::mockAbilityInfos = {info};
+    MockBundleMgrStub::mockQueryAbilityInfosV9Ret = ERR_OK;
+
+    AbilityInfo result;
+    EXPECT_TRUE(bundleMgrHelper->QueryEnabledAbilityInfo(want, DEFAULT_USERID, result));
+    EXPECT_EQ(result.bundleName, "com.test.bundle");
+    EXPECT_EQ(result.appIndex, 0);
+}
+
+/**
+ * @tc.name: QueryEnabledAbilityInfo_002
+ * @tc.desc: Test QueryEnabledAbilityInfo returns false when disabled
+ * @tc.type: FUNC
+ */
+HWTEST_F(BundleMgrHelperThirdTest, QueryEnabledAbilityInfo_002, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+
+    AbilityInfo info;
+    info.bundleName = "com.test.bundle";
+    info.appIndex = 0;
+    info.applicationInfo.enabled = false;
+    MockBundleMgrStub::mockAbilityInfos = {info};
+    MockBundleMgrStub::mockQueryAbilityInfosV9Ret = ERR_OK;
+
+    AbilityInfo result;
+    EXPECT_FALSE(bundleMgrHelper->QueryEnabledAbilityInfo(want, DEFAULT_USERID, result));
+}
+
+/**
+ * @tc.name: QueryEnabledAbilityInfo_003
+ * @tc.desc: Test QueryEnabledAbilityInfo returns false when QueryAbilityInfos fails
+ * @tc.type: FUNC
+ */
+HWTEST_F(BundleMgrHelperThirdTest, QueryEnabledAbilityInfo_003, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+
+    MockBundleMgrStub::mockQueryAbilityInfosV9Ret = ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR;
+
+    AbilityInfo result;
+    EXPECT_FALSE(bundleMgrHelper->QueryEnabledAbilityInfo(want, DEFAULT_USERID, result));
+}
+
+/**
+ * @tc.name: QueryEnabledAbilityInfo_004
+ * @tc.desc: Test QueryEnabledAbilityInfo returns false with empty results
+ * @tc.type: FUNC
+ */
+HWTEST_F(BundleMgrHelperThirdTest, QueryEnabledAbilityInfo_004, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+
+    MockBundleMgrStub::mockAbilityInfos.clear();
+    MockBundleMgrStub::mockQueryAbilityInfosV9Ret = ERR_OK;
+
+    AbilityInfo result;
+    EXPECT_FALSE(bundleMgrHelper->QueryEnabledAbilityInfo(want, DEFAULT_USERID, result));
+}
+
+/**
+ * @tc.name: QueryEnabledAbilityInfo_005
+ * @tc.desc: Test QueryEnabledAbilityInfo returns false with multiple results (not exactly 1)
+ * @tc.type: FUNC
+ */
+HWTEST_F(BundleMgrHelperThirdTest, QueryEnabledAbilityInfo_005, TestSize.Level1)
 {
     Want want;
     want.SetElementName("com.test.bundle", "MainAbility");
@@ -176,152 +253,7 @@ HWTEST_F(BundleMgrHelperThirdTest, QueryEnabledAbilityInfo_001, TestSize.Level1)
     MockBundleMgrStub::mockQueryAbilityInfosV9Ret = ERR_OK;
 
     AbilityInfo result;
-    EXPECT_TRUE(bundleMgrHelper->QueryEnabledAbilityInfo(want, DEFAULT_USERID, 1, result));
-    EXPECT_EQ(result.appIndex, 1);
-}
-
-/**
- * @tc.name: QueryEnabledAbilityInfo_002
- * @tc.desc: Test QueryEnabledAbilityInfo fallback to min valid appIndex when exact not found
- * @tc.type: FUNC
- */
-HWTEST_F(BundleMgrHelperThirdTest, QueryEnabledAbilityInfo_002, TestSize.Level1)
-{
-    Want want;
-    want.SetElementName("com.test.bundle", "MainAbility");
-
-    AbilityInfo info1;
-    info1.bundleName = "com.test.bundle";
-    info1.appIndex = 0;
-    info1.applicationInfo.enabled = true;
-
-    AbilityInfo info2;
-    info2.bundleName = "com.test.bundle";
-    info2.appIndex = 2;
-    info2.applicationInfo.enabled = true;
-
-    MockBundleMgrStub::mockAbilityInfos = {info1, info2};
-    MockBundleMgrStub::mockQueryAbilityInfosV9Ret = ERR_OK;
-
-    AbilityInfo result;
-    EXPECT_TRUE(bundleMgrHelper->QueryEnabledAbilityInfo(want, DEFAULT_USERID, 5, result));
-    EXPECT_EQ(result.appIndex, 0);
-}
-
-/**
- * @tc.name: QueryEnabledAbilityInfo_003
- * @tc.desc: Test QueryEnabledAbilityInfo returns false when no enabled ability
- * @tc.type: FUNC
- */
-HWTEST_F(BundleMgrHelperThirdTest, QueryEnabledAbilityInfo_003, TestSize.Level1)
-{
-    Want want;
-    want.SetElementName("com.test.bundle", "MainAbility");
-
-    AbilityInfo info;
-    info.bundleName = "com.test.bundle";
-    info.appIndex = 0;
-    info.applicationInfo.enabled = false;
-
-    MockBundleMgrStub::mockAbilityInfos = {info};
-    MockBundleMgrStub::mockQueryAbilityInfosV9Ret = ERR_OK;
-
-    AbilityInfo result;
-    EXPECT_FALSE(bundleMgrHelper->QueryEnabledAbilityInfo(want, DEFAULT_USERID, 0, result));
-}
-
-/**
- * @tc.name: QueryEnabledAbilityInfo_004
- * @tc.desc: Test QueryEnabledAbilityInfo returns false when QueryAbilityInfos fails
- * @tc.type: FUNC
- */
-HWTEST_F(BundleMgrHelperThirdTest, QueryEnabledAbilityInfo_004, TestSize.Level1)
-{
-    Want want;
-    want.SetElementName("com.test.bundle", "MainAbility");
-
-    MockBundleMgrStub::mockQueryAbilityInfosV9Ret = ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR;
-
-    AbilityInfo result;
-    EXPECT_FALSE(bundleMgrHelper->QueryEnabledAbilityInfo(want, DEFAULT_USERID, 0, result));
-}
-
-/**
- * @tc.name: QueryEnabledAbilityInfo_005
- * @tc.desc: Test QueryEnabledAbilityInfo with empty results
- * @tc.type: FUNC
- */
-HWTEST_F(BundleMgrHelperThirdTest, QueryEnabledAbilityInfo_005, TestSize.Level1)
-{
-    Want want;
-    want.SetElementName("com.test.bundle", "MainAbility");
-
-    MockBundleMgrStub::mockAbilityInfos.clear();
-    MockBundleMgrStub::mockQueryAbilityInfosV9Ret = ERR_OK;
-
-    AbilityInfo result;
-    EXPECT_FALSE(bundleMgrHelper->QueryEnabledAbilityInfo(want, DEFAULT_USERID, 0, result));
-}
-
-/**
- * @tc.name: QueryEnabledAbilityInfo_006
- * @tc.desc: Test QueryEnabledAbilityInfo skips disabled and returns min enabled appIndex
- * @tc.type: FUNC
- */
-HWTEST_F(BundleMgrHelperThirdTest, QueryEnabledAbilityInfo_006, TestSize.Level1)
-{
-    Want want;
-    want.SetElementName("com.test.bundle", "MainAbility");
-
-    AbilityInfo disabledInfo;
-    disabledInfo.bundleName = "com.test.bundle";
-    disabledInfo.appIndex = 0;
-    disabledInfo.applicationInfo.enabled = false;
-
-    AbilityInfo enabledInfo1;
-    enabledInfo1.bundleName = "com.test.bundle";
-    enabledInfo1.appIndex = 1;
-    enabledInfo1.applicationInfo.enabled = true;
-
-    AbilityInfo enabledInfo2;
-    enabledInfo2.bundleName = "com.test.bundle";
-    enabledInfo2.appIndex = 2;
-    enabledInfo2.applicationInfo.enabled = true;
-
-    MockBundleMgrStub::mockAbilityInfos = {disabledInfo, enabledInfo1, enabledInfo2};
-    MockBundleMgrStub::mockQueryAbilityInfosV9Ret = ERR_OK;
-
-    AbilityInfo result;
-    EXPECT_TRUE(bundleMgrHelper->QueryEnabledAbilityInfo(want, DEFAULT_USERID, 99, result));
-    EXPECT_EQ(result.appIndex, 1);
-}
-
-/**
- * @tc.name: QueryEnabledAbilityInfo_007
- * @tc.desc: Test QueryEnabledAbilityInfo exact match takes priority over fallback
- * @tc.type: FUNC
- */
-HWTEST_F(BundleMgrHelperThirdTest, QueryEnabledAbilityInfo_007, TestSize.Level1)
-{
-    Want want;
-    want.SetElementName("com.test.bundle", "MainAbility");
-
-    AbilityInfo info1;
-    info1.bundleName = "com.test.bundle";
-    info1.appIndex = 0;
-    info1.applicationInfo.enabled = true;
-
-    AbilityInfo info2;
-    info2.bundleName = "com.test.bundle";
-    info2.appIndex = 3;
-    info2.applicationInfo.enabled = true;
-
-    MockBundleMgrStub::mockAbilityInfos = {info1, info2};
-    MockBundleMgrStub::mockQueryAbilityInfosV9Ret = ERR_OK;
-
-    AbilityInfo result;
-    EXPECT_TRUE(bundleMgrHelper->QueryEnabledAbilityInfo(want, DEFAULT_USERID, 3, result));
-    EXPECT_EQ(result.appIndex, 3);
+    EXPECT_FALSE(bundleMgrHelper->QueryEnabledAbilityInfo(want, DEFAULT_USERID, result));
 }
 
 }  // namespace AppExecFwk

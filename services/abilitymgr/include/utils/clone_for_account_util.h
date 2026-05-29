@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -26,15 +26,7 @@ namespace OHOS {
 namespace AAFwk {
 class CloneForAccountUtil {
 public:
-    static void ProcessAppIndex(Want &want, sptr<IRemoteObject> callerToken, int32_t userId);
-
-    static bool GetCachedAppIndex(const std::string &bundleName, int32_t &appIndex);
-    static void CacheAppIndex(const std::string &bundleName, int32_t appIndex);
-    static void RemoveCachedAppIndex(const std::string &bundleName);
-
-private:
-    static std::mutex mapMutex_;
-    static std::unordered_map<std::string, int32_t> appIndexMap_;
+    static void ProcessAppIndex(Want &want, int32_t userId);
 };
 }  // namespace AAFwk
 }  // namespace OHOS
