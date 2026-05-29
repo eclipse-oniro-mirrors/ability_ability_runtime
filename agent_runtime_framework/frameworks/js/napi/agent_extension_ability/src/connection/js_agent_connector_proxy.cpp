@@ -24,6 +24,7 @@ using namespace AbilityRuntime;
 
 static constexpr int32_t INDEX_ZERO = 0;
 static constexpr int32_t ARGC_ONE = 1;
+static constexpr const char *ERR_MSG_CONNECTION_DISCONNECTED = "The agent connection has been disconnected.";
 
 napi_ref JsAgentConnectorProxy::CreateJsAgentConnectorProxy(napi_env env, const sptr<IRemoteObject> &connectorProxy)
 {
@@ -37,16 +38,23 @@ napi_ref JsAgentConnectorProxy::CreateJsAgentConnectorProxy(napi_env env, const 
     }
 
     std::unique_ptr<JsAgentConnectorProxy> proxy = std::make_unique<JsAgentConnectorProxy>(connectorProxy);
-    napi_ref nref = nullptr;
-    napi_status status = napi_wrap(env, object, proxy.release(), Finalizer, nullptr, &nref);
+    napi_status status = napi_wrap(env, object, proxy.get(), Finalizer, nullptr, nullptr);
     if (status != napi_ok) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "napi_wrap failed %{public}d", status);
         return nullptr;
     }
+    proxy.release();
 
     const char *moduleName = "JsAgentConnectorProxy";
     BindNativeFunction(env, object, "sendData", moduleName, JsAgentConnectorProxy::SendData);
     BindNativeFunction(env, object, "authorize", moduleName, JsAgentConnectorProxy::Authorize);
+
+    napi_ref nref = nullptr;
+    status = napi_create_reference(env, object, 1, &nref);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "napi_create_reference failed %{public}d", status);
+        return nullptr;
+    }
     return nref;
 }
 
@@ -69,6 +77,12 @@ JsAgentConnectorProxy::~JsAgentConnectorProxy()
     proxy_ = nullptr;
 }
 
+void JsAgentConnectorProxy::Invalidate()
+{
+    isDisconnected_ = true;
+    proxy_ = nullptr;
+}
+
 napi_value JsAgentConnectorProxy::SendData(napi_env env, napi_callback_info info)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "SendData called from JS");
@@ -84,6 +98,12 @@ napi_value JsAgentConnectorProxy::Authorize(napi_env env, napi_callback_info inf
 napi_value JsAgentConnectorProxy::OnSendData(napi_env env, NapiCallbackInfo &info)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "OnSendData implementation");
+
+    if (isDisconnected_) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "agent connection disconnected");
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER), ERR_MSG_CONNECTION_DISCONNECTED);
+        return CreateJsUndefined(env);
+    }
 
     if (proxy_ == nullptr) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null proxy_");
@@ -119,6 +139,12 @@ napi_value JsAgentConnectorProxy::OnSendData(napi_env env, NapiCallbackInfo &inf
 napi_value JsAgentConnectorProxy::OnAuthorize(napi_env env, NapiCallbackInfo &info)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "OnAuthorize implementation");
+
+    if (isDisconnected_) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "agent connection disconnected");
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER), ERR_MSG_CONNECTION_DISCONNECTED);
+        return CreateJsUndefined(env);
+    }
 
     if (proxy_ == nullptr) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null proxy_");

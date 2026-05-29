@@ -134,6 +134,8 @@ private:
 
     sptr<IRemoteObject> GetHostProxyFromWant(const AAFwk::Want &want);
 
+    void ReleaseHostProxyReference(std::unique_ptr<NativeReference> &hostProxyRef);
+
     JsRuntime& jsRuntime_;
     std::unique_ptr<NativeReference> jsObj_;
     std::shared_ptr<NativeReference> shellContextRef_ = nullptr;
