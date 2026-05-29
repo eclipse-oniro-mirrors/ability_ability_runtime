@@ -443,7 +443,7 @@ private:
 
     void HandleCjHeapMemory(const OHOS::AppExecFwk::CjHeapDumpInfo &info);
 
-    void HandleMem(const OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult);
+    void HandleMem(const OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback);
 
     void HandleSchedulePrepareTerminate(const std::string &moduleName);
 
