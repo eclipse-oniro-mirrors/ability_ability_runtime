@@ -54,10 +54,13 @@ int32_t MyFlag::upmsUtilsGetAppIdByBundleNameRet_ = 0;
 bool MyFlag::upmsUtilsIsFoundationCallRet_ = false;
 uint32_t MyFlag::upmsUtilsTokenId_ = 0;
 bool MyFlag::fudUtilsGenerateFUDAppInfoRet_ = true;
+int32_t MyFlag::fudAppInfoUserId_ = -1;
 std::string MyFlag::bundleName_ = "";
+std::vector<FUDAppInfoMockResult> MyFlag::generateFUDAppInfoResults_ = {};
 TokenInfoMap MyFlag::tokenInfos = {};
 bool MyFlag::isUdmfOrPasteboardCallRet_ = false;
 bool MyFlag::isDFSCallRet_ = false;
 bool MyFlag::isSandboxAppRet_ = false;
+bool MyFlag::isSACall_ = false;
 } // namespace AAFwk
 } // namespace OHOS

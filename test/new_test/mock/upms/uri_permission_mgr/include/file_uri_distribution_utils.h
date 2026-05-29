@@ -86,7 +86,8 @@ public:
         return 0;
     }
 
-    static int32_t GetTokenIdByBundleName(const std::string &bundleName, int32_t appIndex, uint32_t &tokenId)
+    static int32_t GetTokenIdByBundleName(const std::string &bundleName, int32_t appIndex, int32_t userId,
+                                          uint32_t &tokenId)
     {
         return 0;
     }

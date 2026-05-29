@@ -86,6 +86,9 @@ bool PermissionVerification::VerifyCallingPermission(const std::string &permissi
 }
 bool PermissionVerification::IsSACall() const
 {
+    if (MyFlag::isSACall_) {
+        return true;
+    }
     return (MyFlag::flag_ & MyFlag::FLAG::IS_SA_CALL);
 }
 bool PermissionVerification::IsSystemAppCall() const

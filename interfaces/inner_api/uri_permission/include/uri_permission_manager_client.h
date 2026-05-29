@@ -87,6 +87,18 @@ public:
         int32_t hideSensitiveType, const std::vector<int32_t> &permissionTypes);
 
     /**
+     * @brief Authorize the uri permission to targetTokenId. Only for SA.
+     * @param uriVec The file uri list.
+     * @param flag Want::FLAG_AUTH_READ_URI_PERMISSION or Want::FLAG_AUTH_WRITE_URI_PERMISSION.
+     * @param targetTokenId The target application tokenId.
+     * @param oriCallerTokenId The original caller tokenId. Only effective when the caller has
+     *                        PERMISSION_GRANT_URI_PERMISSION_PRIVILEGED permission.
+     * @return Returns ERR_OK if the authorization is successful, otherwise returns error code.
+     */
+    int32_t GrantUriPermission(const std::vector<std::string>& uriVec, uint32_t flag,
+        uint32_t targetTokenId, uint32_t oriCallerTokenId = 0);
+
+    /**
      * @brief Clear user's all uri authorization record with auto remove flag.
      *
      * @param tokenId A tokenId of an application.

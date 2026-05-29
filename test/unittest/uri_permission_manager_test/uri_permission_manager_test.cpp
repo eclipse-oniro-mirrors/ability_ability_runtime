@@ -597,5 +597,80 @@ HWTEST_F(UriPermissionManagerTest, UriPermissionManager_Active_003, TestSize.Lev
     EXPECT_NE(res, ERR_OK);
 }
 #endif // ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER
+
+/*
+ * Feature: UriPermissionManagerClient
+ * Function: GrantUriPermission
+ * SubFunction: GrantUriPermissionByTokenId
+ * FunctionPoints: Size of uris is 0
+ * CaseDescription: Verify UriPermissionManagerClient GrantUriPermission with targetTokenId
+ */
+HWTEST_F(UriPermissionManagerTest, UriPermissionManager_GrantUriPermissionByTokenId_001, TestSize.Level1)
+{
+    auto& upmc = AAFwk::UriPermissionManagerClient::GetInstance();
+    std::vector<std::string> uriVec;
+    uint32_t flag = Want::FLAG_AUTH_READ_URI_PERMISSION;
+    uint32_t targetTokenId = 1001;
+    uint32_t oriCallerTokenId = 0;
+    auto ret = upmc.GrantUriPermission(uriVec, flag, targetTokenId, oriCallerTokenId);
+    EXPECT_EQ(ret, ERR_URI_LIST_OUT_OF_RANGE);
+}
+
+/*
+ * Feature: UriPermissionManagerClient
+ * Function: GrantUriPermission
+ * SubFunction: GrantUriPermissionByTokenId
+ * FunctionPoints: Size of uris is more than MAX_URI_COUNT
+ * CaseDescription: Verify UriPermissionManagerClient GrantUriPermission with targetTokenId
+ */
+HWTEST_F(UriPermissionManagerTest, UriPermissionManager_GrantUriPermissionByTokenId_002, TestSize.Level1)
+{
+    auto& upmc = AAFwk::UriPermissionManagerClient::GetInstance();
+    std::string uriStr = "file://com.example.test1001/data/storage/el2/base/haps/entry/files/test_A.txt";
+    std::vector<std::string> uriVec(MAX_URI_COUNT + 1, uriStr);
+    uint32_t flag = Want::FLAG_AUTH_READ_URI_PERMISSION;
+    uint32_t targetTokenId = 1001;
+    uint32_t oriCallerTokenId = 0;
+    auto ret = upmc.GrantUriPermission(uriVec, flag, targetTokenId, oriCallerTokenId);
+    EXPECT_EQ(ret, ERR_URI_LIST_OUT_OF_RANGE);
+}
+
+/*
+ * Feature: UriPermissionManagerClient
+ * Function: GrantUriPermission
+ * SubFunction: GrantUriPermissionByTokenId
+ * FunctionPoints: Size of uris is between 1 and MAX_URI_COUNT
+ * CaseDescription: Verify UriPermissionManagerClient GrantUriPermission with targetTokenId
+ */
+HWTEST_F(UriPermissionManagerTest, UriPermissionManager_GrantUriPermissionByTokenId_003, TestSize.Level1)
+{
+    auto& upmc = AAFwk::UriPermissionManagerClient::GetInstance();
+    std::string uriStr = "file://com.example.test1001/data/storage/el2/base/haps/entry/files/test_A.txt";
+    std::vector<std::string> uriVec(500, uriStr);
+    uint32_t flag = Want::FLAG_AUTH_READ_URI_PERMISSION;
+    uint32_t targetTokenId = 1001;
+    uint32_t oriCallerTokenId = 0;
+    auto ret = upmc.GrantUriPermission(uriVec, flag, targetTokenId, oriCallerTokenId);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/*
+ * Feature: UriPermissionManagerClient
+ * Function: GrantUriPermission
+ * SubFunction: GrantUriPermissionByTokenId
+ * FunctionPoints: Size of uris is MAX_URI_COUNT (boundary test)
+ * CaseDescription: Verify UriPermissionManagerClient GrantUriPermission with targetTokenId
+ */
+HWTEST_F(UriPermissionManagerTest, UriPermissionManager_GrantUriPermissionByTokenId_004, TestSize.Level1)
+{
+    auto& upmc = AAFwk::UriPermissionManagerClient::GetInstance();
+    std::string uriStr = "file://com.example.test1001/data/storage/el2/base/haps/entry/files/test_A.txt";
+    std::vector<std::string> uriVec(MAX_URI_COUNT, uriStr);
+    uint32_t flag = Want::FLAG_AUTH_READ_URI_PERMISSION;
+    uint32_t targetTokenId = 1001;
+    uint32_t oriCallerTokenId = 0;
+    auto ret = upmc.GrantUriPermission(uriVec, flag, targetTokenId, oriCallerTokenId);
+    EXPECT_NE(ret, ERR_URI_LIST_OUT_OF_RANGE);
+}
 }  // namespace AAFwk
 }  // namespace OHOS

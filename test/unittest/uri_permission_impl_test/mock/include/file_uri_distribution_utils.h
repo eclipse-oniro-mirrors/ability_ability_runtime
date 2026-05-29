@@ -25,7 +25,7 @@ struct FUDAppInfo {
     uint32_t tokenId = 0;
     std::string bundleName;
     std::string alterBundleName;
-    int32_t userId = 0;
+    int32_t userId = -1;
 };
 class FUDUtils {
 public:
@@ -42,7 +42,8 @@ public:
     static bool GetBundleNameByTokenId(uint32_t tokenId, std::string &bundleName);
     static bool GetAlterableBundleNameByTokenId(uint32_t tokenId, std::string &bundleName);
     static int32_t GetAppIdByBundleName(const std::string &bundleName, std::string &appId);
-    static int32_t GetTokenIdByBundleName(const std::string &bundleName, int32_t appIndex, uint32_t &tokenId);
+    static int32_t GetTokenIdByBundleName(const std::string &bundleName, int32_t appIndex, int32_t userId,
+                                          uint32_t &tokenId);
     static bool CheckUriTypeIsValid(Uri &uri);
     static bool GetBundleApiTargetVersion(const std::string &bundleName, int32_t &targetApiVersion);
     static bool IsDocsCloudUri(Uri &uri);
