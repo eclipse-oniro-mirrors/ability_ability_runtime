@@ -61,6 +61,14 @@ class ThrowInvalidParamError extends Error {
   }
 }
 
+class InnerCodeError extends Error {
+  constructor(msg) {
+    let message = ERROR_MSG_INNER_ERROR + ' ' + msg;
+    super(message);
+    this.code = ERROR_CODE_INNER_ERROR;
+  }
+}
+
 class Callee extends rpc.RemoteObject {
   constructor(des) {
     if (typeof des === 'string') {
@@ -137,7 +145,7 @@ class Callee extends rpc.RemoteObject {
 
     if (this.callList == null) {
       hilog.sLogI(domainID, TAG, 'Callee on error, this.callList is nullptr');
-      throw new BusinessError(ERROR_CODE_INNER_ERROR);
+      throw new InnerCodeError('Inner data has not been initialized.');
     }
 
     if (this.callList.has(method)) {
@@ -157,7 +165,7 @@ class Callee extends rpc.RemoteObject {
 
     if (this.callList == null) {
       hilog.sLogI(domainID, TAG, 'Callee off error, this.callList is null');
-      throw new BusinessError(ERROR_CODE_INNER_ERROR);
+      throw new InnerCodeError('Inner data has not been initialized.');
     }
 
     if (!this.callList.has(method)) {
