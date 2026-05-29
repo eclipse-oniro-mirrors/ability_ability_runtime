@@ -12875,7 +12875,7 @@ int AbilityManagerService::CheckCallAbilityPermission(const AbilityRequest &abil
     if (verificationInfo.isCliToolToken && bundleMgrHelper) {
         std::vector<AppExecFwk::AbilityInfo> launcherAbilityInfos;
         auto callerUserId = AbilityRuntime::UserController::GetInstance().GetCallerUserId();
-        uint32_t res = IN_PROCESS_CALL(bundleMgrHelper->GetLauncherAbilityInfoSync(
+        auto res = IN_PROCESS_CALL(bundleMgrHelper->GetLauncherAbilityInfoSync(
             abilityRequest.abilityInfo.bundleName, callerUserId, launcherAbilityInfos));
         if (res != ERR_OK) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "GetLauncherAbilityInfoSync failed: %{public}d", res);
