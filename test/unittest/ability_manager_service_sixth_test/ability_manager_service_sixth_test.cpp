@@ -2751,5 +2751,24 @@ HWTEST_F(AbilityManagerServiceSixthTest, GetCallerUidAndToken_001, TestSize.Leve
     EXPECT_EQ(accessToken, 0);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest GetCallerUidAndToken_001 end");
 }
+
+/*
+ * Feature: AbilityManagerService
+ * Function: SetRemoteIntentTimeout
+ * FunctionPoints: AbilityManagerService SetRemoteIntentTimeout
+ */
+HWTEST_F(AbilityManagerServiceSixthTest, SetRemoteIntentTimeout_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest SetRemoteIntentTimeout_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    uint64_t insightIntentId = 10000;
+    abilityMs->SetRemoteIntentTimeout(insightIntentId);
+    abilityMs->RemoveIntentTimeout(1);
+    EXPECT_EQ(abilityMs->remoteTaskHandles_.size(), 1);
+    abilityMs->RemoveIntentTimeout(insightIntentId);
+    EXPECT_EQ(abilityMs->remoteTaskHandles_.size(), 0);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest SetRemoteIntentTimeout_001 end");
+}
 }  // namespace AAFwk
 }  // namespace OHOS

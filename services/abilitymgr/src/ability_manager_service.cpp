@@ -287,6 +287,8 @@ constexpr int32_t BROKER_UID = 5557;
 constexpr int64_t FLOOD_ATTACK_INTERVAL_MAX = 1000;
 constexpr size_t FLOOD_ATTACK_NUMBER_MAX = 10;
 constexpr int32_t DEFAULT_USER_ID = 100;
+constexpr uint32_t REMOTE_INTENT_TIMEOUT_SECONDS = 40 * 1000;
+constexpr uint32_t MILL_TO_MICRO = 1000;
 
 const std::unordered_set<std::string> COMMON_PICKER_TYPE = {
     "share", "action", "navigation", "mail", "finance", "flight", "express", "photoEditor"
@@ -14332,11 +14334,66 @@ int32_t AbilityManagerService::ExecuteIntent(uint64_t key, const sptr<IRemoteObj
                 paramPtr->insightIntentId_);
  	        return ERR_INTENT_CONNECTION_FAILED;
  	    }
+        SetRemoteIntentTimeout(paramPtr->insightIntentId_);
         return ERR_OK;
  	}
 
     AbilityRuntime::ExecuteIntentCommonOptions options(ignoreAbilityName, infos, key);
     return ExecuteIntentCommon(callerToken, paramPtr, callerBundlename, options);
+}
+
+void AbilityManagerService::SetRemoteIntentTimeout(uint64_t insightIntentId)
+{
+    auto taskWrap = [insightIntentId]() {
+        TAG_LOGW(AAFwkTag::INTENT, "RemoteIntent timeout triggered, intentId: %{public}" PRIu64, insightIntentId);
+        AppExecFwk::InsightIntentExecuteResult errorResult{};
+        errorResult.innerErr = AbilityRuntime::InsightIntentInnerErr::INSIGHT_INTENT_EXECUTE_REPLY_FAILED;
+        DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->ExecuteIntentDone(
+            insightIntentId, ERR_INTENT_DEVICE_DISCONNECTED, errorResult);
+        auto abilityMgr = DelayedSingleton<AbilityManagerService>::GetInstance();
+        if (abilityMgr == nullptr) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "abilityMgr is nullptr.");
+            return;
+        }
+        abilityMgr->RemoveIntentTask(insightIntentId);
+    };
+    ffrt::task_attr ffrtTaskAttr;
+    ffrtTaskAttr.delay(REMOTE_INTENT_TIMEOUT_SECONDS * MILL_TO_MICRO);
+    auto ffrtTaskHandle = ffrt::submit_h(std::move(taskWrap), {}, {}, ffrtTaskAttr);
+    if (ffrtTaskHandle == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "null ffrtTaskHandle");
+        return;
+    }
+    std::shared_ptr<ffrt::task_handle> taskHandle = std::make_shared<ffrt::task_handle>(
+        std::move(ffrtTaskHandle));
+    std::lock_guard<ffrt::mutex> lock(remoteTaskHandlesMutex_);
+    remoteTaskHandles_.emplace(insightIntentId, taskHandle);
+}
+
+void AbilityManagerService::RemoveIntentTimeout(uint64_t insightIntentId)
+{
+    std::lock_guard<ffrt::mutex> lock(remoteTaskHandlesMutex_);
+    auto iter = remoteTaskHandles_.find(insightIntentId);
+    if (iter == remoteTaskHandles_.end()) {
+        TAG_LOGE(AAFwkTag::INTENT, "not find, insightIntentId: %{public}" PRIu64, insightIntentId);
+        return;
+    }
+    auto taskHandle = iter->second;
+    if (taskHandle == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "null taskHandle");
+        return;
+    }
+    auto ret = ffrt::skip(*taskHandle);
+    if (ret != 0) {
+        TAG_LOGE(AAFwkTag::INTENT, "remote intent task skip failed");
+    }
+    remoteTaskHandles_.erase(insightIntentId);
+}
+
+void AbilityManagerService::RemoveIntentTask(uint64_t insightIntentId)
+{
+    std::lock_guard<ffrt::mutex> lock(remoteTaskHandlesMutex_);
+    remoteTaskHandles_.erase(insightIntentId);
 }
 
 bool AbilityManagerService::IsFloodAttackByCallerUid(int32_t callerUid)
