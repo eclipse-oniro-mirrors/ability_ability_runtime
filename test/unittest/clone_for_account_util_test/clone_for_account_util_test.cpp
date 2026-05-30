@@ -46,7 +46,7 @@ void CloneForAccountUtilTest::TearDown() {}
 
 /**
  * @tc.name: ProcessAppIndex_001
- * @tc.desc: Test ProcessAppIndex success with appIndex in want
+ * @tc.desc: Test ProcessAppIndex returns true on success with appIndex in want
  * @tc.type: FUNC
  */
 HWTEST_F(CloneForAccountUtilTest, ProcessAppIndex_001, TestSize.Level1)
@@ -61,15 +61,14 @@ HWTEST_F(CloneForAccountUtilTest, ProcessAppIndex_001, TestSize.Level1)
     AppExecFwk::BundleMgrHelper::abilityInfoResult = mockAbilityInfo;
     AppExecFwk::BundleMgrHelper::retQueryEnabledAbilityInfo = true;
 
-    CloneForAccountUtil::ProcessAppIndex(want, 100);
-
+    EXPECT_TRUE(CloneForAccountUtil::ProcessAppIndex(want, 100));
     EXPECT_TRUE(want.HasParameter(Want::PARAM_APP_CLONE_INDEX_KEY));
     EXPECT_EQ(want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1), 1);
 }
 
 /**
  * @tc.name: ProcessAppIndex_002
- * @tc.desc: Test ProcessAppIndex with bundleMgrHelper null
+ * @tc.desc: Test ProcessAppIndex returns false when bundleMgrHelper is null
  * @tc.type: FUNC
  */
 HWTEST_F(CloneForAccountUtilTest, ProcessAppIndex_002, TestSize.Level1)
@@ -80,14 +79,13 @@ HWTEST_F(CloneForAccountUtilTest, ProcessAppIndex_002, TestSize.Level1)
     want.SetElementName("com.test.bundle", "MainAbility");
     want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 1);
 
-    CloneForAccountUtil::ProcessAppIndex(want, 100);
-
+    EXPECT_FALSE(CloneForAccountUtil::ProcessAppIndex(want, 100));
     EXPECT_FALSE(want.HasParameter(Want::PARAM_APP_CLONE_INDEX_KEY));
 }
 
 /**
  * @tc.name: ProcessAppIndex_003
- * @tc.desc: Test ProcessAppIndex with QueryEnabledAbilityInfo failed
+ * @tc.desc: Test ProcessAppIndex returns false when QueryEnabledAbilityInfo fails
  * @tc.type: FUNC
  */
 HWTEST_F(CloneForAccountUtilTest, ProcessAppIndex_003, TestSize.Level1)
@@ -98,14 +96,13 @@ HWTEST_F(CloneForAccountUtilTest, ProcessAppIndex_003, TestSize.Level1)
     want.SetElementName("com.test.bundle", "MainAbility");
     want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 1);
 
-    CloneForAccountUtil::ProcessAppIndex(want, 100);
-
+    EXPECT_FALSE(CloneForAccountUtil::ProcessAppIndex(want, 100));
     EXPECT_FALSE(want.HasParameter(Want::PARAM_APP_CLONE_INDEX_KEY));
 }
 
 /**
  * @tc.name: ProcessAppIndex_004
- * @tc.desc: Test ProcessAppIndex with no appIndex in want
+ * @tc.desc: Test ProcessAppIndex returns true with no appIndex in want
  * @tc.type: FUNC
  */
 HWTEST_F(CloneForAccountUtilTest, ProcessAppIndex_004, TestSize.Level1)
@@ -119,8 +116,7 @@ HWTEST_F(CloneForAccountUtilTest, ProcessAppIndex_004, TestSize.Level1)
     AppExecFwk::BundleMgrHelper::abilityInfoResult = mockAbilityInfo;
     AppExecFwk::BundleMgrHelper::retQueryEnabledAbilityInfo = true;
 
-    CloneForAccountUtil::ProcessAppIndex(want, 100);
-
+    EXPECT_TRUE(CloneForAccountUtil::ProcessAppIndex(want, 100));
     EXPECT_TRUE(want.HasParameter(Want::PARAM_APP_CLONE_INDEX_KEY));
     EXPECT_EQ(want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1), 0);
 }
@@ -142,15 +138,14 @@ HWTEST_F(CloneForAccountUtilTest, ProcessAppIndex_005, TestSize.Level1)
     AppExecFwk::BundleMgrHelper::abilityInfoResult = mockAbilityInfo;
     AppExecFwk::BundleMgrHelper::retQueryEnabledAbilityInfo = true;
 
-    CloneForAccountUtil::ProcessAppIndex(want, 100);
-
+    EXPECT_TRUE(CloneForAccountUtil::ProcessAppIndex(want, 100));
     EXPECT_TRUE(want.HasParameter(Want::PARAM_APP_CLONE_INDEX_KEY));
     EXPECT_EQ(want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1), 2);
 }
 
 /**
  * @tc.name: ProcessAppIndex_006
- * @tc.desc: Test ProcessAppIndex removes appIndex before query, query fails
+ * @tc.desc: Test ProcessAppIndex returns false and removes appIndex when query fails
  * @tc.type: FUNC
  */
 HWTEST_F(CloneForAccountUtilTest, ProcessAppIndex_006, TestSize.Level1)
@@ -161,8 +156,7 @@ HWTEST_F(CloneForAccountUtilTest, ProcessAppIndex_006, TestSize.Level1)
     want.SetElementName("com.test.bundle", "MainAbility");
     want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 99);
 
-    CloneForAccountUtil::ProcessAppIndex(want, 100);
-
+    EXPECT_FALSE(CloneForAccountUtil::ProcessAppIndex(want, 100));
     EXPECT_FALSE(want.HasParameter(Want::PARAM_APP_CLONE_INDEX_KEY));
 }
 
