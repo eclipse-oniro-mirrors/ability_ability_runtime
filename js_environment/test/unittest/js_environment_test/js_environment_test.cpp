@@ -636,5 +636,171 @@ HWTEST_F(JsEnvironmentTest, RegisterUncatchableExceptionHandler_0100, TestSize.L
     jsEnv->RegisterUncatchableExceptionHandler(task);
     EXPECT_NE(jsEnv, nullptr);
 }
+
+/**
+ * @tc.name: AppendSoLoadFailure_0100
+ * @tc.desc: Test AppendSoLoadFailure when nativeModuleErrorInfo is absent.
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(JsEnvironmentTest, AppendSoLoadFailure_0100, TestSize.Level2)
+{
+    auto jsEnv = std::make_shared<JsEnvironment>(std::make_unique<AbilityRuntime::OHOSJsEnvironmentImpl>());
+    ASSERT_NE(jsEnv, nullptr);
+    panda::RuntimeOption pandaOption;
+    ASSERT_EQ(jsEnv->Initialize(pandaOption, static_cast<void*>(this)), true);
+    napi_env env = reinterpret_cast<napi_env>(jsEnv->GetNativeEngine());
+    ASSERT_NE(env, nullptr);
+
+    // Provide minimal valid error properties so CallbackTask reaches AppendSoLoadFailure.
+    napi_value object = nullptr;
+    ASSERT_EQ(napi_create_object(env, &object), napi_ok);
+    ASSERT_NE(object, nullptr);
+    std::string errorMsg = "load native module failed";
+    std::string errorName = "BusinessError";
+    std::string errorStack = "BusinessError: load native module failed\n    at test.js:1:1";
+    napi_value nativeErrorMsg = nullptr;
+    napi_value nativeErrorName = nullptr;
+    napi_value nativeErrorStack = nullptr;
+    napi_create_string_utf8(env, errorMsg.c_str(), errorMsg.length(), &nativeErrorMsg);
+    napi_create_string_utf8(env, errorName.c_str(), errorName.length(), &nativeErrorName);
+    napi_create_string_utf8(env, errorStack.c_str(), errorStack.length(), &nativeErrorStack);
+    napi_set_named_property(env, object, "message", nativeErrorMsg);
+    napi_set_named_property(env, object, "name", nativeErrorName);
+    napi_set_named_property(env, object, "stack", nativeErrorStack);
+    // nativeModuleErrorInfo is intentionally not set.
+
+    std::string capturedSummary;
+    auto task = [&capturedSummary](std::string summary, const JsEnv::ErrorObject errorObj,
+        napi_env env, napi_value exception) { capturedSummary = summary; };
+    NapiUncaughtExceptionCallback callback(task, nullptr, env);
+    callback(object);
+
+    // The callback ran and produced a summary, but no NativeModuleErrorInfo section is appended.
+    EXPECT_FALSE(capturedSummary.empty());
+    EXPECT_EQ(capturedSummary.find("NativeModuleErrorInfo:"), std::string::npos);
+}
+
+/**
+ * @tc.name: AppendSoLoadFailure_0200
+ * @tc.desc: Test AppendSoLoadFailure with a single line of nativeModuleErrorInfo.
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(JsEnvironmentTest, AppendSoLoadFailure_0200, TestSize.Level2)
+{
+    auto jsEnv = std::make_shared<JsEnvironment>(std::make_unique<AbilityRuntime::OHOSJsEnvironmentImpl>());
+    ASSERT_NE(jsEnv, nullptr);
+    panda::RuntimeOption pandaOption;
+    ASSERT_EQ(jsEnv->Initialize(pandaOption, static_cast<void*>(this)), true);
+    napi_env env = reinterpret_cast<napi_env>(jsEnv->GetNativeEngine());
+    ASSERT_NE(env, nullptr);
+
+    napi_value object = nullptr;
+    ASSERT_EQ(napi_create_object(env, &object), napi_ok);
+    ASSERT_NE(object, nullptr);
+    std::string errorStack = "BusinessError: load native module failed\n    at test.js:1:1";
+    std::string soLoadFailureInfo = "Failed to dlopen libexample.so: cannot find symbol";
+    napi_value nativeErrorStack = nullptr;
+    napi_value nativeSoLoadFailure = nullptr;
+    napi_create_string_utf8(env, errorStack.c_str(), errorStack.length(), &nativeErrorStack);
+    napi_create_string_utf8(env, soLoadFailureInfo.c_str(), soLoadFailureInfo.length(), &nativeSoLoadFailure);
+    napi_set_named_property(env, object, "stack", nativeErrorStack);
+    napi_set_named_property(env, object, "nativeModuleErrorInfo", nativeSoLoadFailure);
+
+    std::string capturedSummary;
+    auto task = [&capturedSummary](std::string summary, const JsEnv::ErrorObject errorObj,
+        napi_env env, napi_value exception) { capturedSummary = summary; };
+    NapiUncaughtExceptionCallback callback(task, nullptr, env);
+    callback(object);
+
+    // Only one line: printed as-is with no numbering.
+    EXPECT_NE(capturedSummary.find("NativeModuleErrorInfo:\n" + soLoadFailureInfo + "\n"), std::string::npos);
+    EXPECT_EQ(capturedSummary.find("#1 "), std::string::npos);
+}
+
+/**
+ * @tc.name: AppendSoLoadFailure_0300
+ * @tc.desc: Test AppendSoLoadFailure with multiple lines of nativeModuleErrorInfo.
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(JsEnvironmentTest, AppendSoLoadFailure_0300, TestSize.Level2)
+{
+    auto jsEnv = std::make_shared<JsEnvironment>(std::make_unique<AbilityRuntime::OHOSJsEnvironmentImpl>());
+    ASSERT_NE(jsEnv, nullptr);
+    panda::RuntimeOption pandaOption;
+    ASSERT_EQ(jsEnv->Initialize(pandaOption, static_cast<void*>(this)), true);
+    napi_env env = reinterpret_cast<napi_env>(jsEnv->GetNativeEngine());
+    ASSERT_NE(env, nullptr);
+
+    napi_value object = nullptr;
+    ASSERT_EQ(napi_create_object(env, &object), napi_ok);
+    ASSERT_NE(object, nullptr);
+    std::string errorStack = "BusinessError: load native module failed\n    at test.js:1:1";
+    // The first line is the header; the remaining lines must be numbered starting from #1.
+    std::string firstLine = "NativeModule load failure summary";
+    std::string secondLine = "libfoo.so: dlopen failed";
+    std::string thirdLine = "libbar.so: symbol not found";
+    std::string soLoadFailureInfo = firstLine + "\n" + secondLine + "\n" + thirdLine;
+    napi_value nativeErrorStack = nullptr;
+    napi_value nativeSoLoadFailure = nullptr;
+    napi_create_string_utf8(env, errorStack.c_str(), errorStack.length(), &nativeErrorStack);
+    napi_create_string_utf8(env, soLoadFailureInfo.c_str(), soLoadFailureInfo.length(), &nativeSoLoadFailure);
+    napi_set_named_property(env, object, "stack", nativeErrorStack);
+    napi_set_named_property(env, object, "nativeModuleErrorInfo", nativeSoLoadFailure);
+
+    std::string capturedSummary;
+    auto task = [&capturedSummary](std::string summary, const JsEnv::ErrorObject errorObj,
+        napi_env env, napi_value exception) { capturedSummary = summary; };
+    NapiUncaughtExceptionCallback callback(task, nullptr, env);
+    callback(object);
+
+    EXPECT_NE(capturedSummary.find("NativeModuleErrorInfo:\n" + firstLine + "\n"), std::string::npos);
+    EXPECT_NE(capturedSummary.find("#1 " + secondLine + "\n"), std::string::npos);
+    EXPECT_NE(capturedSummary.find("#2 " + thirdLine + "\n"), std::string::npos);
+}
+
+/**
+ * @tc.name: AppendSoLoadFailure_0400
+ * @tc.desc: Test AppendSoLoadFailure skips empty lines and keeps numbering continuous.
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(JsEnvironmentTest, AppendSoLoadFailure_0400, TestSize.Level2)
+{
+    auto jsEnv = std::make_shared<JsEnvironment>(std::make_unique<AbilityRuntime::OHOSJsEnvironmentImpl>());
+    ASSERT_NE(jsEnv, nullptr);
+    panda::RuntimeOption pandaOption;
+    ASSERT_EQ(jsEnv->Initialize(pandaOption, static_cast<void*>(this)), true);
+    napi_env env = reinterpret_cast<napi_env>(jsEnv->GetNativeEngine());
+    ASSERT_NE(env, nullptr);
+
+    napi_value object = nullptr;
+    ASSERT_EQ(napi_create_object(env, &object), napi_ok);
+    ASSERT_NE(object, nullptr);
+    std::string errorStack = "BusinessError: load native module failed\n    at test.js:1:1";
+    // An empty line is embedded between the header and a detail line.
+    std::string firstLine = "NativeModule load failure summary";
+    std::string detailLine = "libfoo.so: dlopen failed";
+    std::string soLoadFailureInfo = firstLine + "\n" + "\n" + detailLine;
+    napi_value nativeErrorStack = nullptr;
+    napi_value nativeSoLoadFailure = nullptr;
+    napi_create_string_utf8(env, errorStack.c_str(), errorStack.length(), &nativeErrorStack);
+    napi_create_string_utf8(env, soLoadFailureInfo.c_str(), soLoadFailureInfo.length(), &nativeSoLoadFailure);
+    napi_set_named_property(env, object, "stack", nativeErrorStack);
+    napi_set_named_property(env, object, "nativeModuleErrorInfo", nativeSoLoadFailure);
+
+    std::string capturedSummary;
+    auto task = [&capturedSummary](std::string summary, const JsEnv::ErrorObject errorObj,
+        napi_env env, napi_value exception) { capturedSummary = summary; };
+    NapiUncaughtExceptionCallback callback(task, nullptr, env);
+    callback(object);
+
+    // The empty line is dropped and the detail line becomes the first numbered entry (#1).
+    EXPECT_NE(capturedSummary.find("NativeModuleErrorInfo:\n" + firstLine + "\n"), std::string::npos);
+    EXPECT_NE(capturedSummary.find("#1 " + detailLine + "\n"), std::string::npos);
+    EXPECT_EQ(capturedSummary.find("#2 "), std::string::npos);
+}
 } // namespace JsEnv
 } // namespace OHOS
