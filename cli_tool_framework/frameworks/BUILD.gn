@@ -17,7 +17,6 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 group("cli_tool_framework_packages") {
   deps = [
     "${cli_tool_framework_path}/frameworks/js/napi/cli_tool_manager:climanager_napi",
-    "${cli_tool_framework_path}/frameworks/js/napi/skill_driver:skilldriver_napi",
     "${cli_tool_framework_path}/frameworks/js/napi/script_manager:scriptmanager_napi",
   ]
 }
