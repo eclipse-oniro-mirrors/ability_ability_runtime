@@ -2199,6 +2199,8 @@ public:
         int32_t userId = DEFAULT_INVAL_VALUE, uint64_t specifiedFullTokenId = 0);
     int32_t ExecuteIntentForDistributed(const Want &want, const std::string &srcDeviceId,
         uint64_t requestCode, uint64_t specifiedFullTokenId = 0) override;
+    void RemoveIntentTimeout(uint64_t insightIntentId);
+    void RemoveIntentTask(uint64_t insightIntentId);
 
     /**
      * @brief Check if ability controller can start.
@@ -3623,6 +3625,7 @@ private:
     int32_t ExecuteIntentCommon(const sptr<IRemoteObject> &callerToken,
         const std::shared_ptr<InsightIntentExecuteParam> &param, const std::string &callerBundleName,
         const AbilityRuntime::ExecuteIntentCommonOptions &infos);
+    void SetRemoteIntentTimeout(uint64_t insightIntentId);
     void GetCallerUidAndToken(const std::string &bundleName, int32_t userId,
         int32_t &callerUid, uint32_t &accessToken);
     bool IsDmsSameAPP(const AbilityRequest &abilityRequest);
@@ -3673,6 +3676,9 @@ private:
 
     std::mutex prepareTermiationCallbackMutex_;
     std::map<std::string, sptr<IPrepareTerminateCallback>> prepareTermiationCallbacks_;
+
+    ffrt::mutex remoteTaskHandlesMutex_;
+    std::map<uint32_t, std::shared_ptr<ffrt::task_handle>> remoteTaskHandles_;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

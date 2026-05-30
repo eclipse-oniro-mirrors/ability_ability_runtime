@@ -14,6 +14,8 @@
  */
 
 #include "remote_intent_result_callback.h"
+
+#include "ability_manager_service.h"
 #include "insight_intent_execute_manager.h"
 #include "insight_intent_execute_result.h"
 
@@ -37,6 +39,12 @@ void RemoteIntentResultCallback::OnIntentResult(uint64_t requestCode, int32_t re
         DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->ExecuteIntentDone(
             requestCode, resultCode, result);
     }
+    auto abilityMgr = DelayedSingleton<AbilityManagerService>::GetInstance();
+    if (abilityMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "abilityMgr is nullptr.");
+        return;
+    }
+    abilityMgr->RemoveIntentTimeout(requestCode);
 }
 
 void RemoteIntentResultCallback::OnLinkDisconnected(uint64_t requestCode, int32_t reason)
@@ -47,6 +55,12 @@ void RemoteIntentResultCallback::OnLinkDisconnected(uint64_t requestCode, int32_
         errorResult.innerErr = AbilityRuntime::InsightIntentInnerErr::INSIGHT_INTENT_EXECUTE_REPLY_FAILED;
     DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->ExecuteIntentDone(
         requestCode, ERR_INTENT_DEVICE_DISCONNECTED, errorResult);
+    auto abilityMgr = DelayedSingleton<AbilityManagerService>::GetInstance();
+    if (abilityMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "abilityMgr is nullptr.");
+        return;
+    }
+    abilityMgr->RemoveIntentTimeout(requestCode);
 }
 }  // namespace AAFwk
 }  // namespace OHOS
