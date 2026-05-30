@@ -280,5 +280,26 @@ HWTEST_F(InsightIntentDbCacheTest, InsightIntentDbCacheTest_005, TestSize.Level0
     hasCache = DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache("not_exist_bundle");
     EXPECT_EQ(hasCache, false);
 }
+
+/**
+ * @tc.name: InsightIntentDbCacheTest_006
+ * @tc.desc: Test IsCacheInitialized
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentDbCacheTest, InsightIntentDbCacheTest_006, TestSize.Level0)
+{
+    int32_t userId = 100;
+    bool initialized = DelayedSingleton<InsightIntentDbCache>::GetInstance()->IsCacheInitialized(userId);
+    EXPECT_EQ(initialized, false);
+
+    MockLoadInsightIntentInfos(true);
+    DelayedSingleton<InsightIntentDbCache>::GetInstance()->InitInsightIntentCache(userId);
+
+    initialized = DelayedSingleton<InsightIntentDbCache>::GetInstance()->IsCacheInitialized(userId);
+    EXPECT_EQ(initialized, true);
+
+    initialized = DelayedSingleton<InsightIntentDbCache>::GetInstance()->IsCacheInitialized(999);
+    EXPECT_EQ(initialized, false);
+}
 }
 }

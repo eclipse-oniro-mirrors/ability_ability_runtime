@@ -112,7 +112,6 @@ void InsightIntentSysEventReceiver::DeleteInsightIntent(const std::string &bundl
 
 void InsightIntentSysEventReceiver::LoadInsightIntentInfos(int32_t userId)
 {
-    std::lock_guard<std::mutex> lock(userIdMutex_);
     if (userId == -1) {
         userId = AppExecFwk::OsAccountManagerWrapper::GetCurrentActiveAccountId();
         if (userId == 0) {
@@ -122,11 +121,7 @@ void InsightIntentSysEventReceiver::LoadInsightIntentInfos(int32_t userId)
         }
     }
 
-    TAG_LOGI(AAFwkTag::INTENT, "init insight intent cache start, userId: %{public}d", userId);
-    if (DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->
-        InitInsightIntentCache(userId) == ERR_OK) {
-        TAG_LOGI(AAFwkTag::INTENT, "Load intent from db success");
-    }
+    DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->InitInsightIntentCache(userId);
 
     auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
     if (bundleMgrHelper == nullptr) {
@@ -142,7 +137,6 @@ void InsightIntentSysEventReceiver::LoadInsightIntentInfos(int32_t userId)
         return;
     }
 
-    TAG_LOGI(AAFwkTag::INTENT, "bundleInfos size: %{public}zu", bundleInfos.size());
     bool hasNewIntent = false;
     for (auto &bundleInfo : bundleInfos) {
         if (DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->
@@ -173,7 +167,9 @@ void InsightIntentSysEventReceiver::DeleteInsightIntentInfoByUserId(int32_t user
 
 void InsightIntentSysEventReceiver::HandleBundleScanFinished()
 {
-    auto task = [self = shared_from_this()]() { self->LoadInsightIntentInfos(); };
+    auto task = [self = shared_from_this()]() {
+        self->LoadInsightIntentInfos();
+    };
     ffrt::submit(task);
 }
 
@@ -193,7 +189,15 @@ void InsightIntentSysEventReceiver::HandleUserSwitched(const EventFwk::CommonEve
     TAG_LOGI(AAFwkTag::INTENT, "userId: %{public}d switch to  current userId: %{public}d", lastUserId_, userId);
     lastUserId_ = userId;
 
-    auto task = [self = shared_from_this(), userId]() { self->LoadInsightIntentInfos(userId); };
+    if (DelayedSingleton<InsightIntentDbCache>::GetInstance()->IsCacheInitialized(userId)) {
+        TAG_LOGI(AAFwkTag::INTENT, "UserSwitched: cache already initialized for userId: %{public}d, skipped",
+            userId);
+        return;
+    }
+
+    auto task = [self = shared_from_this(), userId]() {
+        self->LoadInsightIntentInfos(userId);
+    };
     ffrt::submit(task);
 }
 
