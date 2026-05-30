@@ -224,6 +224,8 @@ HWTEST_F(CliToolMGRClientTest, NullProxyInterfaces_0100, TestSize.Level1)
     EXPECT_EQ(CliToolMGRClient::GetInstance().GetAllToolInfos(tools), GET_CLI_TOOL_MGR_SERVICE_FAILED);
     EXPECT_EQ(CliToolMGRClient::GetInstance().RegisterTool(tool), GET_CLI_TOOL_MGR_SERVICE_FAILED);
     EXPECT_EQ(CliToolMGRClient::GetInstance().ExecTool(ExecToolParam {}, nullptr), GET_CLI_TOOL_MGR_SERVICE_FAILED);
+    EXPECT_EQ(CliToolMGRClient::GetInstance().ExecCmd(ExecCmdParam {}, nullptr, nullptr),
+        GET_CLI_TOOL_MGR_SERVICE_FAILED);
     EXPECT_EQ(CliToolMGRClient::GetInstance().SubscribeSession("session", std::make_shared<MockSessionCallback>(),
         subscriptionId), GET_CLI_TOOL_MGR_SERVICE_FAILED);
     EXPECT_EQ(CliToolMGRClient::GetInstance().UnsubscribeSession("session", "sub"), GET_CLI_TOOL_MGR_SERVICE_FAILED);
@@ -390,5 +392,137 @@ HWTEST_F(CliToolMGRClientTest, ProxyLifecycle_0100, TestSize.Level1)
     recipient.OnRemoteDied(nullptr);
     EXPECT_TRUE(recipientCalled);
 }
+
+// ==================== ExecCmd Tests ====================
+
+/**
+ * @tc.name: ExecCmd_0100
+ * @tc.desc: Test ExecCmd failure cleanup removes reply callback and subscription
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, ExecCmd_0100, TestSize.Level1)
+{
+    SetMockService();
+    ExecCmdParam param;
+    param.cmd = "echo test_cmd";
+    param.options.timeout = 30;
+    int32_t callbackCode = -1;
+    auto sessionCallback = std::make_shared<MockSessionCallback>();
+
+    // Failure path: proxy returns error, so callback and subscription are removed
+    CliToolMgrClientFlag::retExecCmd = ERR_INVALID_VALUE;
+    EXPECT_EQ(CliToolMGRClient::GetInstance().ExecCmd(param,
+        [&callbackCode](int32_t code, const CliSessionInfo &) { callbackCode = code; },
+        sessionCallback), ERR_INVALID_VALUE);
+
+    // Event reply should have been removed, so HandleEventReply returns -1
+    EXPECT_EQ(CliEventReplyManager::GetInstance().HandleEventReply(
+        CliToolMgrClientFlag::lastEventId, CliEventReplyResult {}), -1);
+}
+
+/**
+ * @tc.name: ExecCmd_0200
+ * @tc.desc: Test ExecCmd success activates reply callback and subscription
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, ExecCmd_0200, TestSize.Level1)
+{
+    SetMockService();
+    ExecCmdParam param;
+    param.cmd = "ls /data";
+    param.options.timeout = 30;
+    int32_t callbackCode = -1;
+    auto sessionCallback = std::make_shared<MockSessionCallback>();
+
+    // Success path: proxy returns OK, callback and subscription are activated
+    CliToolMgrClientFlag::retExecCmd = ERR_OK;
+    EXPECT_EQ(CliToolMGRClient::GetInstance().ExecCmd(param,
+        [&callbackCode](int32_t code, const CliSessionInfo &) { callbackCode = code; },
+        sessionCallback), ERR_OK);
+
+    // Simulate a reply event dispatched by the service
+    CliSessionInfo session;
+    session.sessionId = "shell_session";
+    CliEventReplyResult result;
+    result.code = ERR_OK;
+    result.sessionInfo = session;
+    EXPECT_EQ(CliEventReplyManager::GetInstance().HandleEventReply(
+        CliToolMgrClientFlag::lastEventId, result), ERR_OK);
+    EXPECT_EQ(callbackCode, ERR_OK);
+}
+
+/**
+ * @tc.name: ExecCmd_0400
+ * @tc.desc: Test ExecCmd with null session callback still succeeds
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, ExecCmd_0400, TestSize.Level1)
+{
+    SetMockService();
+    ExecCmdParam param;
+    param.cmd = "echo no_session_callback";
+
+    CliToolMgrClientFlag::retExecCmd = ERR_OK;
+    EXPECT_EQ(CliToolMGRClient::GetInstance().ExecCmd(param, nullptr, nullptr), ERR_OK);
+
+    // Reply callback still works
+    CliEventReplyResult result;
+    result.code = ERR_OK;
+    EXPECT_EQ(CliEventReplyManager::GetInstance().HandleEventReply(
+        CliToolMgrClientFlag::lastEventId, result), ERR_OK);
+}
+
+/**
+ * @tc.name: ExecCmd_0500
+ * @tc.desc: Test ExecCmd failure does not fire session events
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, ExecCmd_0500, TestSize.Level1)
+{
+    SetMockService();
+    ExecCmdParam param;
+    param.cmd = "echo failure_no_events";
+    auto sessionCallback = std::make_shared<MockSessionCallback>();
+
+    CliToolMgrClientFlag::retExecCmd = ERR_INVALID_VALUE;
+    EXPECT_EQ(CliToolMGRClient::GetInstance().ExecCmd(param, nullptr, sessionCallback), ERR_INVALID_VALUE);
+
+    // Subscription was removed, so HandleSessionEvent should fail
+    CliToolEvent event;
+    event.type = "stdout";
+    EXPECT_NE(CliSessionSubscriptionManager::GetInstance().HandleSessionEvent(
+        "shell", CliToolMgrClientFlag::lastSubscriptionId, event), ERR_OK);
+    EXPECT_EQ(sessionCallback->eventCount, 0);
+}
+
+/**
+ * @tc.name: ExecCmd_0600
+ * @tc.desc: Test ExecCmd reply callback handles missing sessionInfo
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, ExecCmd_0600, TestSize.Level1)
+{
+    SetMockService();
+    ExecCmdParam param;
+    param.cmd = "echo missing_session_info";
+    CliSessionInfo receivedSession;
+    receivedSession.sessionId = "unset";
+
+    CliToolMgrClientFlag::retExecCmd = ERR_OK;
+    EXPECT_EQ(CliToolMGRClient::GetInstance().ExecCmd(param,
+        [&receivedSession](int32_t code, const CliSessionInfo &session) {
+            receivedSession = session;
+        }, nullptr), ERR_OK);
+
+    // Dispatch reply without sessionInfo (has_value is false)
+    CliEventReplyResult result;
+    result.code = 123;
+    result.sessionInfo = std::nullopt;
+    EXPECT_EQ(CliEventReplyManager::GetInstance().HandleEventReply(
+        CliToolMgrClientFlag::lastEventId, result), ERR_OK);
+    // sessionInfo was not set, so receivedSession keeps default empty state
+    EXPECT_TRUE(receivedSession.sessionId.empty());
+}
+
 } // namespace CliTool
 } // namespace OHOS

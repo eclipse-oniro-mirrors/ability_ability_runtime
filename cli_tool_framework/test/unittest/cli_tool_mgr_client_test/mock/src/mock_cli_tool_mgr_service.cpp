@@ -15,6 +15,7 @@ int32_t CliToolMgrClientFlag::retGetToolInfoByName = ERR_OK;
 int32_t CliToolMgrClientFlag::retGetAllToolInfos = ERR_OK;
 int32_t CliToolMgrClientFlag::retRegisterTool = ERR_OK;
 int32_t CliToolMgrClientFlag::retExecTool = ERR_OK;
+int32_t CliToolMgrClientFlag::retExecCmd = ERR_OK;
 int32_t CliToolMgrClientFlag::retSubscribeSession = ERR_OK;
 int32_t CliToolMgrClientFlag::retUnsubscribeSession = ERR_OK;
 int32_t CliToolMgrClientFlag::retClearSession = ERR_OK;
@@ -39,6 +40,7 @@ void CliToolMgrClientFlag::Reset()
     retGetAllToolInfos = ERR_OK;
     retRegisterTool = ERR_OK;
     retExecTool = ERR_OK;
+    retExecCmd = ERR_OK;
     retSubscribeSession = ERR_OK;
     retUnsubscribeSession = ERR_OK;
     retClearSession = ERR_OK;
@@ -89,6 +91,13 @@ int32_t MockCliToolMgrService::ExecTool(const ExecToolParam &, const std::string
 {
     CliToolMgrClientFlag::lastEventId = eventId;
     return CliToolMgrClientFlag::retExecTool;
+}
+
+int32_t MockCliToolMgrService::ExecCmd(const ExecCmdParam &, const std::string &eventId,
+    const sptr<ICliToolManagerScheduler> &, const std::string &)
+{
+    CliToolMgrClientFlag::lastEventId = eventId;
+    return CliToolMgrClientFlag::retExecCmd;
 }
 
 int32_t MockCliToolMgrService::SubscribeSession(const std::string &, const std::string &subscriptionId,

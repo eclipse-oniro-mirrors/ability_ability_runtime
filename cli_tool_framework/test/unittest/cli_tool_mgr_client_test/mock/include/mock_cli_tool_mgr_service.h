@@ -19,6 +19,8 @@ public:
     int32_t RegisterTool(const ToolInfo &tool) override;
     int32_t ExecTool(const ExecToolParam &param, const std::string &eventId,
         const sptr<ICliToolManagerScheduler> &scheduler) override;
+    int32_t ExecCmd(const ExecCmdParam &param, const std::string &eventId,
+        const sptr<ICliToolManagerScheduler> &scheduler, const std::string &subscriptionId) override;
     int32_t SubscribeSession(const std::string &sessionId, const std::string &subscriptionId,
         const sptr<ICliToolManagerScheduler> &scheduler) override;
     int32_t UnsubscribeSession(const std::string &sessionId, const std::string &subscriptionId) override;

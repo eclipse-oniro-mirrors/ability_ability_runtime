@@ -57,6 +57,7 @@ ohos_shared_library("cli_tool_client") {
     "src/cli_tool_event.cpp",
     "src/cli_tool_mgr_client.cpp",
     "src/cli_tool_mgr_scheduler_recipient.cpp",
+    "src/exec_cmd_param.cpp",
     "src/exec_options.cpp",
     "src/exec_result.cpp",
     "src/exec_tool_param.cpp",

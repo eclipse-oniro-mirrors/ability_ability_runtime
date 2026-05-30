@@ -37,6 +37,8 @@ struct BundleInfo;
 struct SkillExecuteResult;
 }
 namespace CliTool {
+class ExecCmdParam;
+class ExecOptions;
 class ExecToolParam;
 class SessionRecord;
 class ToolInfo;
@@ -48,9 +50,14 @@ public:
     static int32_t ValidateProperties(const ToolInfo &toolInfo, ExecToolParam &param,
         AccessToken::AccessTokenID tokenId);
 
+    static int32_t ValidateExecOptionsProperties(ExecOptions &options);
+
     static std::string GenerateCliSessionId(const std::string &name, std::shared_ptr<SessionRecord> record);
 
     static bool GenerateSandboxConfig(const ExecToolParam &param, AccessToken::AccessTokenID tokenId,
+        std::string &sandboxConfig, std::string &bundleName);
+
+    static bool GenerateCmdSandboxConfig(const ExecCmdParam &param, AccessToken::AccessTokenID tokenId,
         std::string &sandboxConfig, std::string &bundleName);
 
     static void TransferToCmdParam(const AAFwk::WantParams &args, std::vector<std::string> &execArgs);

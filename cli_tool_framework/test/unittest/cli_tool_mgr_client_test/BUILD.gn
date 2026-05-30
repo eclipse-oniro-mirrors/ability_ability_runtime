@@ -38,6 +38,7 @@ ohos_unittest("cli_tool_mgr_client_test") {
     "${cli_tool_framework_path}/interfaces/cli_tool/src/cli_session_subscription_manager.cpp",
     "${cli_tool_framework_path}/interfaces/cli_tool/src/cli_tool_event.cpp",
     "${cli_tool_framework_path}/interfaces/cli_tool/src/cli_tool_mgr_client.cpp",
+    "${cli_tool_framework_path}/interfaces/cli_tool/src/exec_cmd_param.cpp",
     "${cli_tool_framework_path}/interfaces/cli_tool/src/exec_options.cpp",
     "${cli_tool_framework_path}/interfaces/cli_tool/src/exec_result.cpp",
     "${cli_tool_framework_path}/interfaces/cli_tool/src/exec_tool_param.cpp",

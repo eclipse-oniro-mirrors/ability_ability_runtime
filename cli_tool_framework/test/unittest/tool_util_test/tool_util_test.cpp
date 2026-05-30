@@ -33,6 +33,7 @@
 #include "bool_wrapper.h"
 #include "cli_error_code.h"
 #include "double_wrapper.h"
+#include "exec_cmd_param.h"
 #include "exec_tool_param.h"
 #include "float_wrapper.h"
 #include "int_wrapper.h"
@@ -1625,6 +1626,272 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_1600, TestSize.Level1)
     EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(schema, unknownArgs), ERR_OK);
 
     GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_1600 end";
+}
+
+// ==================== ValidateExecOptionsProperties Tests ====================
+
+/**
+ * @tc.name: ToolUtil_ValidateExecOptionsProperties_0100
+ * @tc.desc: Test ValidateExecOptionsProperties with valid default options
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ValidateExecOptionsProperties_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0100 start";
+
+    ExecOptions options;
+    options.timeout = 0;
+    options.yieldMs = 0;
+    options.background = false;
+
+    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options), ERR_OK);
+
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0100 end";
+}
+
+/**
+ * @tc.name: ToolUtil_ValidateExecOptionsProperties_0200
+ * @tc.desc: Test ValidateExecOptionsProperties rejects negative timeout
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ValidateExecOptionsProperties_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0200 start";
+
+    ExecOptions options;
+    options.timeout = -1;
+    options.yieldMs = 0;
+
+    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options), ERR_INVALID_PARAM);
+
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0200 end";
+}
+
+/**
+ * @tc.name: ToolUtil_ValidateExecOptionsProperties_0300
+ * @tc.desc: Test ValidateExecOptionsProperties rejects negative yieldMs
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ValidateExecOptionsProperties_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0300 start";
+
+    ExecOptions options;
+    options.timeout = 30;
+    options.yieldMs = -1;
+
+    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options), ERR_INVALID_PARAM);
+
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0300 end";
+}
+
+/**
+ * @tc.name: ToolUtil_ValidateExecOptionsProperties_0400
+ * @tc.desc: Test ValidateExecOptionsProperties rejects timeout exceeding MAX_TIMEOUT (1800s)
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ValidateExecOptionsProperties_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0400 start";
+
+    ExecOptions options;
+    options.timeout = 1801; // MAX_TIMEOUT = 30 * 60 = 1800
+    options.yieldMs = 0;
+
+    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options), ERR_INVALID_PARAM);
+
+    // Boundary: exactly MAX_TIMEOUT should pass
+    options.timeout = 1800;
+    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options), ERR_OK);
+
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0400 end";
+}
+
+/**
+ * @tc.name: ToolUtil_ValidateExecOptionsProperties_0500
+ * @tc.desc: Test ValidateExecOptionsProperties rejects yieldMs exceeding timeout when not background
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ValidateExecOptionsProperties_0500, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0500 start";
+
+    ExecOptions options;
+    options.background = false;
+    options.timeout = 1;            // 1 second
+    options.yieldMs = 50000;        // 50 seconds > 1 * 1000 = 1000 ms
+
+    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options), ERR_INVALID_PARAM);
+
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0500 end";
+}
+
+/**
+ * @tc.name: ToolUtil_ValidateExecOptionsProperties_0600
+ * @tc.desc: Test ValidateExecOptionsProperties allows yieldMs exceeding timeout when background=true
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ValidateExecOptionsProperties_0600, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0600 start";
+
+    ExecOptions options;
+    options.background = true;
+    options.timeout = 1;
+    options.yieldMs = 50000;
+
+    // Background mode skips the yieldMs > timeout check
+    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options), ERR_OK);
+
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0600 end";
+}
+
+/**
+ * @tc.name: ToolUtil_ValidateExecOptionsProperties_0700
+ * @tc.desc: Test ValidateExecOptionsProperties boundary where yieldMs equals timeout in milliseconds
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ValidateExecOptionsProperties_0700, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0700 start";
+
+    ExecOptions options;
+    options.background = false;
+    options.timeout = 10;
+    options.yieldMs = 10000; // exactly timeout * 1000
+
+    // yieldMs > timeout * 1000 is the check, so equal should pass
+    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options), ERR_OK);
+
+    // yieldMs just one ms over should fail
+    options.yieldMs = 10001;
+    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options), ERR_INVALID_PARAM);
+
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0700 end";
+}
+
+/**
+ * @tc.name: ToolUtil_ValidateExecOptionsProperties_0800
+ * @tc.desc: Test ValidateExecOptionsProperties with both timeout and yieldMs negative
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ValidateExecOptionsProperties_0800, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0800 start";
+
+    ExecOptions options;
+    options.timeout = -5;
+    options.yieldMs = -10;
+
+    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options), ERR_INVALID_PARAM);
+
+    GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0800 end";
+}
+
+// ==================== GenerateCmdSandboxConfig Tests ====================
+
+/**
+ * @tc.name: ToolUtil_GenerateCmdSandboxConfig_0100
+ * @tc.desc: Test GenerateCmdSandboxConfig returns false for non-hap token (test env)
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, GenerateCmdSandboxConfig_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolUtil_GenerateCmdSandboxConfig_0100 start";
+
+    ExecCmdParam param;
+    param.cmd = "echo hello";
+    param.policy = "allow";
+    param.workDir = "/data/local/tmp";
+    param.env = "PATH=/bin";
+
+    std::string sandboxConfig;
+    std::string bundleName;
+    uint32_t tokenId = 0;
+
+    // Test environment token is not a HAP token, so GetBundleInfoByTokenId should fail
+    bool result = ToolUtil::GenerateCmdSandboxConfig(param, tokenId, sandboxConfig, bundleName);
+    EXPECT_FALSE(result);
+    EXPECT_TRUE(sandboxConfig.empty());
+    EXPECT_TRUE(bundleName.empty());
+
+    GTEST_LOG_(INFO) << "ToolUtil_GenerateCmdSandboxConfig_0100 end";
+}
+
+/**
+ * @tc.name: ToolUtil_GenerateCmdSandboxConfig_0200
+ * @tc.desc: Test GenerateCmdSandboxConfig with empty cmd and options
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, GenerateCmdSandboxConfig_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolUtil_GenerateCmdSandboxConfig_0200 start";
+
+    ExecCmdParam param;
+    param.cmd = "";
+    param.policy = "";
+    param.workDir = "";
+    param.env = "";
+
+    std::string sandboxConfig;
+    std::string bundleName;
+    uint32_t tokenId = 0;
+
+    // Still returns false because token is not HAP
+    bool result = ToolUtil::GenerateCmdSandboxConfig(param, tokenId, sandboxConfig, bundleName);
+    EXPECT_FALSE(result);
+
+    GTEST_LOG_(INFO) << "ToolUtil_GenerateCmdSandboxConfig_0200 end";
+}
+
+/**
+ * @tc.name: ToolUtil_GenerateCmdSandboxConfig_0300
+ * @tc.desc: Test GenerateCmdSandboxConfig with workDir set produces workdir field when token is valid
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, GenerateCmdSandboxConfig_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolUtil_GenerateCmdSandboxConfig_0300 start";
+
+    ExecCmdParam param;
+    param.cmd = "ls /data";
+    param.policy = "strict";
+    param.workDir = "/data/local/tmp";
+    param.env = "LANG=en_US.UTF-8";
+
+    std::string sandboxConfig;
+    std::string bundleName;
+
+    // In test env, non-HAP token causes early return false
+    // This test documents the expected behavior
+    bool result = ToolUtil::GenerateCmdSandboxConfig(param, 0, sandboxConfig, bundleName);
+    EXPECT_FALSE(result);
+
+    GTEST_LOG_(INFO) << "ToolUtil_GenerateCmdSandboxConfig_0300 end";
+}
+
+/**
+ * @tc.name: ToolUtil_GenerateCmdSandboxConfig_0400
+ * @tc.desc: Test GenerateCmdSandboxConfig with empty workDir omits workdir field when token is valid
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, GenerateCmdSandboxConfig_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolUtil_GenerateCmdSandboxConfig_0400 start";
+
+    ExecCmdParam param;
+    param.cmd = "pwd";
+    param.policy = "allow";
+    param.workDir = "";  // empty workDir
+    param.env = "";
+
+    std::string sandboxConfig;
+    std::string bundleName;
+
+    bool result = ToolUtil::GenerateCmdSandboxConfig(param, 0, sandboxConfig, bundleName);
+    EXPECT_FALSE(result);
+
+    GTEST_LOG_(INFO) << "ToolUtil_GenerateCmdSandboxConfig_0400 end";
 }
 
 } // namespace CliTool

@@ -26,6 +26,7 @@
 
 namespace OHOS {
 namespace CliTool {
+class ExecCmdParam;
 class ExecToolParam;
 class ToolInfo;
 
@@ -42,6 +43,10 @@ public:
         const ToolInfo &toolInfo, std::shared_ptr<SessionRecord> record,
         const std::vector<std::shared_ptr<SessionRecord>> &fatherSessionRecords = {}) const;
 
+    int32_t CreateShellProcess(const ExecCmdParam &param, const std::string &sandboxConfig,
+        std::shared_ptr<SessionRecord> record,
+        const std::vector<std::shared_ptr<SessionRecord>> &fatherSessionRecords = {}) const;
+
     bool Killpg(pid_t pid) const;
 
 private:
@@ -51,6 +56,7 @@ private:
     bool CreatePipes(SessionRecord &record) const;
     void CloseAllPipes(SessionRecord &record) const;
     void CloseFatherSessionPipes(const std::vector<std::shared_ptr<SessionRecord>> &fatherSessionRecords) const;
+    bool SetParentHapTokenId(uint32_t tokenId) const;
 };
 
 } // namespace CliTool

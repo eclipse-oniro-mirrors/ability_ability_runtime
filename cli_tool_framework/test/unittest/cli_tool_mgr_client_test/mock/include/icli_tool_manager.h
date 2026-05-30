@@ -7,6 +7,7 @@
 #define OHOS_ABILITY_RUNTIME_MOCK_ICLI_TOOL_MANAGER_H
 
 #include "cli_session_info.h"
+#include "exec_cmd_param.h"
 #include "exec_tool_param.h"
 #include "icli_tool_data.h"
 #include "icli_tool_manager_scheduler.h"
@@ -26,6 +27,8 @@ public:
     virtual int32_t RegisterTool(const ToolInfo &tool) = 0;
     virtual int32_t ExecTool(const ExecToolParam &param, const std::string &eventId,
         const sptr<ICliToolManagerScheduler> &scheduler) = 0;
+    virtual int32_t ExecCmd(const ExecCmdParam &param, const std::string &eventId,
+        const sptr<ICliToolManagerScheduler> &scheduler, const std::string &subscriptionId) = 0;
     virtual int32_t SubscribeSession(const std::string &sessionId, const std::string &subscriptionId,
         const sptr<ICliToolManagerScheduler> &scheduler) = 0;
     virtual int32_t UnsubscribeSession(const std::string &sessionId, const std::string &subscriptionId) = 0;

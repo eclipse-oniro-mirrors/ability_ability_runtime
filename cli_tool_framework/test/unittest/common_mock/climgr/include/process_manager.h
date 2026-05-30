@@ -16,6 +16,7 @@
 
 namespace OHOS {
 namespace CliTool {
+class ExecCmdParam;
 class ExecToolParam;
 class ToolInfo;
 
@@ -24,6 +25,9 @@ public:
     static ProcessManager &GetInstance();
     int32_t CreateChildProcess(const ExecToolParam &param, const std::string &sandboxConfig,
         const ToolInfo &toolInfo, std::shared_ptr<SessionRecord> record,
+        const std::vector<std::shared_ptr<SessionRecord>> &fatherSessionRecords = {}) const;
+    int32_t CreateShellProcess(const ExecCmdParam &param, const std::string &sandboxConfig,
+        std::shared_ptr<SessionRecord> record,
         const std::vector<std::shared_ptr<SessionRecord>> &fatherSessionRecords = {}) const;
     bool Killpg(pid_t pid) const;
 };

@@ -22,6 +22,7 @@
 
 #include "cli_session_info.h"
 #include "cli_tool_event.h"
+#include "exec_cmd_param.h"
 #include "exec_options.h"
 #include "icli_tool_manager.h"
 #include "iremote_object.h"
@@ -99,6 +100,9 @@ public:
      * @return Returns ERR_OK on success, error code otherwise.
      */
     ErrCode ExecTool(const ExecToolParam &param, const ExecToolReplyCallback &callback);
+
+    ErrCode ExecCmd(const ExecCmdParam &param,
+        const ExecToolReplyCallback &callback, const std::shared_ptr<SessionEventCallback> &sessionEventCallback);
 
     ErrCode SubscribeSession(const std::string &sessionId,
                              const std::shared_ptr<SessionEventCallback> &callback,
