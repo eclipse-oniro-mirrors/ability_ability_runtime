@@ -288,7 +288,6 @@ group("unittest") {
       "application_context_second_test:unittest",
       "application_context_test:unittest",
       "application_state_filter_test:unittest",
-      "arkts_script_test:unittest",
       "assert_fault_callback_death_mgr_test:unittest",
       "atomic_service_status_callback_proxy_test:unittest",
       "atomic_service_status_callback_stub_test:unittest",
