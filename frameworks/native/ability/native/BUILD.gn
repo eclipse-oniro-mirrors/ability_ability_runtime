@@ -1158,6 +1158,10 @@ ohos_shared_library("uiabilitykit_native") {
     external_deps += [ "hiappevent:hiappevent_innerapi" ]
   }
 
+  if (ability_runtime_enable_clone_for_account) {
+    defines += [ "ENABLE_CLONE_FOR_ACCOUNT" ]
+  }
+
   if (cj_frontend) {
     sources += [
       "${ability_runtime_native_path}/ability/native/ability_runtime/cj_ability_ffi.cpp",

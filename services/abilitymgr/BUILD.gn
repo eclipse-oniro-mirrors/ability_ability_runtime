@@ -249,6 +249,13 @@ ohos_shared_library("abilityms") {
     defines += [ "SUPPORT_CHILD_PROCESS" ]
   }
 
+  if (ability_runtime_enable_clone_for_account) {
+    defines += [ "ENABLE_CLONE_FOR_ACCOUNT" ]
+    sources += [
+      "src/utils/clone_for_account_util.cpp",
+    ]
+  }
+
   if (ability_runtime_graphics) {
     defines += [ "SUPPORT_GRAPHICS" ]
     external_deps += [
@@ -443,6 +450,13 @@ ohos_static_library("abilityms_static") {
 
   if (ability_runtime_child_process) {
     defines += [ "SUPPORT_CHILD_PROCESS" ]
+  }
+
+  if (ability_runtime_enable_clone_for_account) {
+    defines += [ "ENABLE_CLONE_FOR_ACCOUNT" ]
+    sources += [
+      "src/utils/clone_for_account_util.cpp",
+    ]
   }
 
   if (ability_runtime_graphics) {
