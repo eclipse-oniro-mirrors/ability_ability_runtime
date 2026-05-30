@@ -691,5 +691,129 @@ HWTEST_F(InsightIntentInfoForQueryTest, InsightIntentInfoForQuery_EntityVector_0
     delete result;
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
+
+/**
+ * @tc.name: ReadFromParcel_0200
+ * @tc.desc: Test ReadFromParcel with length exceeding MAX_IPC_REWDATA_SIZE returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, ReadFromParcel_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    constexpr size_t MAX_IPC_REWDATA_SIZE = 100 * 1024 * 1024;
+    uint32_t oversizedLength = static_cast<uint32_t>(MAX_IPC_REWDATA_SIZE + 1);
+    parcel.WriteUint32(oversizedLength);
+    
+    InsightIntentInfoForQuery info;
+    EXPECT_FALSE(info.ReadFromParcel(parcel));
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: UnmarshallingVector_0300
+ * @tc.desc: Test UnmarshallingVector with length exceeding MAX_IPC_REWDATA_SIZE returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, UnmarshallingVector_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    constexpr size_t MAX_IPC_REWDATA_SIZE = 100 * 1024 * 1024;
+    uint32_t oversizedLength = static_cast<uint32_t>(MAX_IPC_REWDATA_SIZE + 1);
+    parcel.WriteUint32(oversizedLength);
+    
+    std::vector<InsightIntentInfoForQuery> readInfos;
+    EXPECT_FALSE(InsightIntentInfoForQuery::UnmarshallingVector(parcel, readInfos));
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: Marshalling_0300
+ * @tc.desc: Test Marshalling with normal data returns true and passes size check.
+ * @tc.type: FUNC
+ * @tc.require: issueI5NRZJ
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, Marshalling_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    InsightIntentInfoForQuery info;
+    BuildFullIntentInfo(info);
+
+    EXPECT_TRUE(info.Marshalling(parcel));
+
+    auto result = InsightIntentInfoForQuery::Unmarshalling(parcel);
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(result->bundleName, TEST_BUNDLE_NAME);
+    EXPECT_EQ(result->intentName, TEST_INTENT_NAME);
+    EXPECT_EQ(result->intentType, std::string(INSIGHT_INTENTS_TYPE_PAGE));
+    delete result;
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: MarshallingVector_0400
+ * @tc.desc: Test MarshallingVector with multiple elements returns true and passes size check.
+ * @tc.type: FUNC
+ * @tc.require: issueI5NRZJ
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, MarshallingVector_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    std::vector<InsightIntentInfoForQuery> infos;
+    for (int i = 0; i < 10; i++) {
+        InsightIntentInfoForQuery info;
+        BuildFullIntentInfo(info);
+        info.bundleName = TEST_BUNDLE_NAME + std::to_string(i);
+        info.intentName = TEST_INTENT_NAME + std::to_string(i);
+        infos.push_back(info);
+    }
+
+    EXPECT_TRUE(InsightIntentInfoForQuery::MarshallingVector(parcel, infos));
+
+    std::vector<InsightIntentInfoForQuery> readInfos;
+    EXPECT_TRUE(InsightIntentInfoForQuery::UnmarshallingVector(parcel, readInfos));
+    ASSERT_EQ(readInfos.size(), 10U);
+    for (int i = 0; i < 10; i++) {
+        EXPECT_EQ(readInfos[i].bundleName, TEST_BUNDLE_NAME + std::to_string(i));
+        EXPECT_EQ(readInfos[i].intentName, TEST_INTENT_NAME + std::to_string(i));
+    }
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: MarshallingVector_0500
+ * @tc.desc: Test MarshallingVector with large data size close to limit boundary.
+ * @tc.type: FUNC
+ * @tc.require: issueI5NRZJ
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, MarshallingVector_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    std::vector<InsightIntentInfoForQuery> infos;
+    std::string largeData(2 * 1024, 'x');
+
+    for (int i = 0; i < 10; i++) {
+        InsightIntentInfoForQuery info;
+        info.bundleName = largeData;
+        info.intentType = INSIGHT_INTENTS_TYPE_PAGE;
+        info.pageInfo.uiAbility = TEST_ABILITY_NAME;
+        infos.push_back(info);
+    }
+
+    EXPECT_TRUE(InsightIntentInfoForQuery::MarshallingVector(parcel, infos));
+
+    std::vector<InsightIntentInfoForQuery> readInfos;
+    EXPECT_TRUE(InsightIntentInfoForQuery::UnmarshallingVector(parcel, readInfos));
+    ASSERT_EQ(readInfos.size(), 10U);
+    for (int i = 0; i < 10; i++) {
+        EXPECT_EQ(readInfos[i].bundleName.size(), 2 * 1024U);
+        EXPECT_EQ(readInfos[i].intentType, std::string(INSIGHT_INTENTS_TYPE_PAGE));
+    }
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
 } // namespace AbilityRuntime
 } // namespace OHOS
