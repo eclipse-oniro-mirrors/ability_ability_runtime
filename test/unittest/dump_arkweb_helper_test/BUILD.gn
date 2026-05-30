@@ -36,6 +36,7 @@ ohos_unittest("dump_arkweb_helper_test") {
 
   external_deps = [
     "googletest:gtest_main",
+    "faultloggerd:libfaultloggerd",
   ]
 }
 

@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_DUMP_ARKWEB_HELPER_H
 #define OHOS_ABILITY_RUNTIME_DUMP_ARKWEB_HELPER_H
 
+#include <cstdint>
 #include <string>
 
 namespace OHOS {
@@ -27,6 +28,8 @@ public:
     ~DumpArkWebHelper();
     
     static int DumpArkWeb(const std::string &customArgs, std::string &result);
+
+    static void DumpArkWebJSHeap(int32_t appPid, int32_t renderPid, bool needSnapshot, bool needGC, bool needRaw);
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS
