@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -979,10 +979,181 @@ HWTEST_F(DisposedRuleInterceptorTest, IsSkipDisposeRule_001, TestSize.Level1)
     sptr<IRemoteObject> callerToken = nullptr;
     std::function<bool(void)> shouldDisposedRuleFunc = nullptr;
     AbilityInterceptorParam param(want, requestCode, userId, isWithUI, callerToken, shouldDisposedRuleFunc);
-    std::string callerName = "7007";
-    auto ret = interceptor.IsSkipDisposeRule(callerName, param);
+    auto ret = interceptor.IsSkipDisposeRule(AppExecFwk::PageJumpMode::PAGE_JUMP_WINDOW_NOT_SHOW, param);
     EXPECT_EQ(ret, false);
     TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_001 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_IsSkipDisposeRule_002
+ * @tc.desc: IsSkipDisposeRule with null processOptions
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, IsSkipDisposeRule_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_002 start");
+    DisposedRuleInterceptor interceptor;
+    Want want;
+    int requestCode = 123;
+    int32_t userId = 1001;
+    bool isWithUI = true;
+    sptr<IRemoteObject> callerToken = nullptr;
+    std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo = nullptr;
+    // Create StartOptions with null processOptions
+    auto startOptions = std::make_shared<StartOptions>();
+    AbilityInterceptorParam param(
+        want, requestCode, userId, isWithUI, callerToken, abilityInfo, false, 0, startOptions.get());
+
+    auto ret = interceptor.IsSkipDisposeRule(AppExecFwk::PageJumpMode::PAGE_JUMP_WINDOW_NOT_SHOW, param);
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_002 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_IsSkipDisposeRule_003
+ * @tc.desc: IsSkipDisposeRule returns true when PAGE_JUMP_WINDOW_NOT_SHOW and STARTUP_HIDE
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, IsSkipDisposeRule_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_003 start");
+    DisposedRuleInterceptor interceptor;
+    Want want;
+    int requestCode = 123;
+    int32_t userId = 1001;
+    bool isWithUI = true;
+    sptr<IRemoteObject> callerToken = nullptr;
+    std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo = nullptr;
+
+    // Create StartOptions with valid processOptions
+    auto startOptions = std::make_shared<StartOptions>();
+    auto processOptions = std::make_shared<AAFwk::ProcessOptions>();
+    processOptions->startupVisibility = AAFwk::StartupVisibility::STARTUP_HIDE;
+    startOptions->processOptions = processOptions;
+    AbilityInterceptorParam param(
+        want, requestCode, userId, isWithUI, callerToken, abilityInfo, false, 0, startOptions.get());
+
+    auto ret = interceptor.IsSkipDisposeRule(AppExecFwk::PageJumpMode::PAGE_JUMP_WINDOW_NOT_SHOW, param);
+    EXPECT_EQ(ret, true);
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_003 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_IsSkipDisposeRule_004
+ * @tc.desc: IsSkipDisposeRule returns false when PAGE_JUMP_WINDOW_SHOW and STARTUP_HIDE
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, IsSkipDisposeRule_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_004 start");
+    DisposedRuleInterceptor interceptor;
+    Want want;
+    int requestCode = 123;
+    int32_t userId = 1001;
+    bool isWithUI = true;
+    sptr<IRemoteObject> callerToken = nullptr;
+    std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo = nullptr;
+
+    auto startOptions = std::make_shared<StartOptions>();
+    auto processOptions = std::make_shared<AAFwk::ProcessOptions>();
+    processOptions->startupVisibility = AAFwk::StartupVisibility::STARTUP_HIDE;
+    startOptions->processOptions = processOptions;
+    AbilityInterceptorParam param(
+        want, requestCode, userId, isWithUI, callerToken, abilityInfo, false, 0, startOptions.get());
+
+    auto ret = interceptor.IsSkipDisposeRule(AppExecFwk::PageJumpMode::PAGE_JUMP_WINDOW_SHOW, param);
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_004 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_IsSkipDisposeRule_005
+ * @tc.desc: IsSkipDisposeRule returns false when PAGE_JUMP_WINDOW_NOT_SHOW and STARTUP_SHOW
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, IsSkipDisposeRule_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_005 start");
+    DisposedRuleInterceptor interceptor;
+    Want want;
+    int requestCode = 123;
+    int32_t userId = 1001;
+    bool isWithUI = true;
+    sptr<IRemoteObject> callerToken = nullptr;
+    std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo = nullptr;
+
+    auto startOptions = std::make_shared<StartOptions>();
+    auto processOptions = std::make_shared<AAFwk::ProcessOptions>();
+    processOptions->startupVisibility = AAFwk::StartupVisibility::STARTUP_SHOW;
+    startOptions->processOptions = processOptions;
+    AbilityInterceptorParam param(
+        want, requestCode, userId, isWithUI, callerToken, abilityInfo, false, 0, startOptions.get());
+
+    auto ret = interceptor.IsSkipDisposeRule(AppExecFwk::PageJumpMode::PAGE_JUMP_WINDOW_NOT_SHOW, param);
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_005 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_IsSkipDisposeRule_006
+ * @tc.desc: IsSkipDisposeRule returns false when PAGE_JUMP_WINDOW_SHOW and STARTUP_SHOW
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, IsSkipDisposeRule_006, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_006 start");
+    DisposedRuleInterceptor interceptor;
+    Want want;
+    int requestCode = 123;
+    int32_t userId = 1001;
+    bool isWithUI = true;
+    sptr<IRemoteObject> callerToken = nullptr;
+    std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo = nullptr;
+
+    auto startOptions = std::make_shared<StartOptions>();
+    auto processOptions = std::make_shared<AAFwk::ProcessOptions>();
+    processOptions->startupVisibility = AAFwk::StartupVisibility::STARTUP_SHOW;
+    startOptions->processOptions = processOptions;
+    AbilityInterceptorParam param(
+        want, requestCode, userId, isWithUI, callerToken, abilityInfo, false, 0, startOptions.get());
+
+    auto ret = interceptor.IsSkipDisposeRule(AppExecFwk::PageJumpMode::PAGE_JUMP_WINDOW_SHOW, param);
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_006 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_IsSkipDisposeRule_007
+ * @tc.desc: IsSkipDisposeRule returns false when PAGE_JUMP_WINDOW_NOT_SHOW and UNSPECIFIED
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, IsSkipDisposeRule_007, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_007 start");
+    DisposedRuleInterceptor interceptor;
+    Want want;
+    int requestCode = 123;
+    int32_t userId = 1001;
+    bool isWithUI = true;
+    sptr<IRemoteObject> callerToken = nullptr;
+    std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo = nullptr;
+
+    auto startOptions = std::make_shared<StartOptions>();
+    auto processOptions = std::make_shared<AAFwk::ProcessOptions>();
+    processOptions->startupVisibility = AAFwk::StartupVisibility::UNSPECIFIED;
+    startOptions->processOptions = processOptions;
+    AbilityInterceptorParam param(
+        want, requestCode, userId, isWithUI, callerToken, abilityInfo, false, 0, startOptions.get());
+
+    auto ret = interceptor.IsSkipDisposeRule(AppExecFwk::PageJumpMode::PAGE_JUMP_WINDOW_NOT_SHOW, param);
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_007 end");
 }
 #endif
 } // namespace AAFwk

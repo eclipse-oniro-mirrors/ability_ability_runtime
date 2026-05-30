@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -37,7 +37,6 @@ constexpr const char* INTERCEPT_BUNDLE_NAME = "intercept_bundleName";
 constexpr const char* INTERCEPT_ABILITY_NAME = "intercept_abilityName";
 constexpr const char* INTERCEPT_MODULE_NAME = "intercept_moduleName";
 constexpr const char* IS_FROM_PARENTCONTROL = "ohos.ability.isFromParentControl";
-constexpr const char* SKIP_DISPOSE_RULE_NAME = "7007";
 }
 
 ErrCode DisposedRuleInterceptor::DoProcess(AbilityInterceptorParam param)
@@ -53,7 +52,7 @@ ErrCode DisposedRuleInterceptor::DoProcess(AbilityInterceptorParam param)
             TAG_LOGE(AAFwkTag::ABILITYMGR, "no dispose want");
             return AbilityUtil::EdmErrorType(disposedRule.isEdm);
         }
-        if (IsSkipDisposeRule(disposedRule.callerName, param)) {
+        if (IsSkipDisposeRule(disposedRule.pageJump, param)) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "skip dispose rule");
             return AbilityUtil::EdmErrorType(disposedRule.isEdm);
         }
@@ -275,13 +274,13 @@ void DisposedRuleInterceptor::SetInterceptInfo(const Want &want, AppExecFwk::Dis
     }
 }
 
-bool DisposedRuleInterceptor::IsSkipDisposeRule(const std::string &callerName, const AbilityInterceptorParam &param)
+bool DisposedRuleInterceptor::IsSkipDisposeRule(AppExecFwk::PageJumpMode mode, const AbilityInterceptorParam &param)
 {
     if (param.startOptions == nullptr || param.startOptions->processOptions == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null startOptions or processOptions");
         return false;
     }
-    return callerName == SKIP_DISPOSE_RULE_NAME &&
+    return mode == AppExecFwk::PageJumpMode::PAGE_JUMP_WINDOW_NOT_SHOW &&
         param.startOptions->processOptions->startupVisibility == StartupVisibility::STARTUP_HIDE;
 }
 } // namespace AAFwk
