@@ -358,5 +358,34 @@ HWTEST_F(InsightIntentSysEventReceiverTest, DeleteInsightIntent_MultiUser_0010, 
     sysEventReceiver->SaveInsightIntentInfos(TEST_BUNDLE_NAME, TEST_MODULE_NAME, ver, ZERO_USER_ID);
     EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
 }
+
+/**
+ * @tc.name: InsightIntentSysEventReceiverTest_HandleUserSwitched_CacheInitialized_0011
+ * @tc.desc: Test HandleUserSwitched skips when cache already initialized
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentSysEventReceiverTest, HandleUserSwitched_CacheInitialized_0011, TestSize.Level1)
+{
+    EventFwk::CommonEventSubscribeInfo subscribeInfo;
+    auto sysEventReceiver = std::make_shared<AbilityRuntime::InsightIntentSysEventReceiver>(subscribeInfo);
+    EventFwk::CommonEventData data;
+
+    // Test: invalid userId should early return without crash
+    data.SetCode(INVALID_USER_ID);
+    data.want_.operation_.action_ = EventFwk::CommonEventSupport::COMMON_EVENT_USER_SWITCHED;
+    sysEventReceiver->OnReceiveEvent(data);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, -1);
+
+    // Test: valid switch proceeds normally
+    sysEventReceiver->lastUserId_ = 0;
+    data.SetCode(MAIN_USER_ID);
+    sysEventReceiver->OnReceiveEvent(data);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, MAIN_USER_ID);
+
+    // Test: switch to another user also proceeds (cache not initialized for OTHER_USER_ID)
+    data.SetCode(OTHER_USER_ID);
+    sysEventReceiver->OnReceiveEvent(data);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, OTHER_USER_ID);
+}
 } // namespace AbilityRuntime
 } // namespace OHOS
