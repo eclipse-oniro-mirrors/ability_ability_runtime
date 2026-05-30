@@ -36,7 +36,7 @@
 #include "cj_runtime.h"
 #endif
 #if defined(NWEB)
-#include "nweb_helper.h"
+#include "dump_arkweb_helper.h"
 #endif
 
 namespace OHOS {
@@ -494,22 +494,8 @@ void DumpRuntimeHelper::DumpArkwebJsHeap(const OHOS::AppExecFwk::MemDumpInfo &in
 #if defined(NWEB)
     TAG_LOGI(AAFwkTag::APPKIT, "dump arkwebjs heaps, renderPid:%{public}u, needDump:%{public}d, "
         "needGc:%{public}d, needRaw:%{public}d", info.renderPid, info.needDump, info.needGc, info.needRaw);
-    int32_t fd = -1;
-    if (info.needDump) {
-        struct FaultLoggerdRequest request{};
-        request.type = info.needRaw ? static_cast<int32_t>(FaultLoggerType::ARKWEB_JS_RAW_SNAPSHOT) :
-                                      static_cast<int32_t>(FaultLoggerType::ARKWEB_JS_HEAP_SNAPSHOT);
-        request.pid = info.pid;
-        request.tid = info.renderPid;
-        request.time = GetCurrentTimestamp();
-        fd = RequestFileDescriptorEx(&request);
-    }
-
-    OHOS::NWeb::NWebHelper &nWebHelper = OHOS::NWeb::NWebHelper::Instance();
-    nWebHelper.DumpArkWebJSHeap(fd, info.renderPid, info.needDump, info.needGc, info.needRaw);
-    if (fd > 0) {
-        close(fd);
-    }
+    DumpArkWebHelper::DumpArkWebJSHeap(static_cast<int32_t>(info.pid), static_cast<int32_t>(info.renderPid),
+        info.needDump, info.needGc, info.needRaw);
 #endif
 }
 
