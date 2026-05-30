@@ -113,7 +113,7 @@ bool ScreenUnlockInterceptor::QueryTargetAbilityInfoByUri(const AbilityIntercept
     std::string uri = param.want.GetUri().ToString();
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Query by uri: %{private}s, userId: %{public}d", uri.c_str(), param.userId);
     AppExecFwk::ExtensionAbilityInfo extensionInfo;
-    bool queryResult = IN_PROCESS_CALL(bundleMgrHelper->QueryExtensionAbilityInfoByUri(
+    bool queryResult = IN_PROCESS_CALL(bundleMgrHelper->QueryExtensionAbilityInfoByUriOptimal(
         uri, param.userId, extensionInfo));
     if (!queryResult || extensionInfo.name.empty() || extensionInfo.bundleName.empty()) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "Cannot find extension by uri");

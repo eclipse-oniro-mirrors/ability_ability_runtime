@@ -5821,7 +5821,8 @@ int32_t AbilityManagerService::ConnectAbilityCommon(
         auto bms = AbilityUtil::GetBundleManagerHelper();
         CHECK_POINTER_AND_RETURN(bms, ERR_INVALID_VALUE);
 
-        bool queryResult = IN_PROCESS_CALL(bms->QueryExtensionAbilityInfoByUri(uri, validUserId, extensionInfo));
+        bool queryResult = 
+            IN_PROCESS_CALL(bms->QueryExtensionAbilityInfoByUriOptimal(uri, validUserId, extensionInfo));
         if (!queryResult || extensionInfo.name.empty() || extensionInfo.bundleName.empty()) {
             TAG_LOGE(AAFwkTag::SERVICE_EXT, "invalid extension ability info");
             if (extensionType == AppExecFwk::ExtensionAbilityType::UI_SERVICE) {
@@ -5946,7 +5947,8 @@ int AbilityManagerService::ConnectUIExtensionAbility(const Want &want, const spt
         auto bms = AbilityUtil::GetBundleManagerHelper();
         CHECK_POINTER_AND_RETURN(bms, ERR_INVALID_VALUE);
 
-        bool queryResult = IN_PROCESS_CALL(bms->QueryExtensionAbilityInfoByUri(uri, validUserId, extensionInfo));
+        bool queryResult =
+            IN_PROCESS_CALL(bms->QueryExtensionAbilityInfoByUriOptimal(uri, validUserId, extensionInfo));
         if (!queryResult || extensionInfo.name.empty() || extensionInfo.bundleName.empty()) {
             TAG_LOGE(AAFwkTag::UI_EXT, "invalid extension ability info");
             eventInfo.errReason = "invalid extension ability info";
