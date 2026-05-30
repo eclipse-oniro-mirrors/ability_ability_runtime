@@ -42,7 +42,7 @@ public:
         const ToolInfo &toolInfo, std::shared_ptr<SessionRecord> record,
         const std::vector<std::shared_ptr<SessionRecord>> &fatherSessionRecords = {}) const;
 
-    bool Kill(pid_t pid) const;
+    bool Killpg(pid_t pid) const;
 
 private:
     ProcessManager() = default;
