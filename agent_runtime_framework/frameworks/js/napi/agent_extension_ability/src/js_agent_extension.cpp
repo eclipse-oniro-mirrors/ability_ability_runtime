@@ -162,7 +162,7 @@ void JsAgentExtension::Init(const std::shared_ptr<AbilityLocalRecord> &record,
 void JsAgentExtension::OnStart(const AAFwk::Want &want)
 {
     Extension::OnStart(want);
-    TAG_LOGI(AAFwkTag::SER_ROUTER, "call");
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "call");
     auto context = GetContext();
     HandleScope handleScope(jsRuntime_);
     napi_env env = jsRuntime_.GetNapiEnv();
@@ -173,7 +173,6 @@ void JsAgentExtension::OnStart(const AAFwk::Want &want)
     napi_value napiWant = OHOS::AppExecFwk::WrapWant(env, want);
     napi_value argv[] = {napiWant};
     CallObjectMethod("onCreate", argv, ARGC_ONE);
-    TAG_LOGD(AAFwkTag::SER_ROUTER, "ok");
 }
 
 void JsAgentExtension::OnStop()
@@ -189,13 +188,12 @@ void JsAgentExtension::OnStop()
             TAG_LOGD(AAFwkTag::SER_ROUTER, "The agent extension connection is not disconnected.");
         }
     }
-    TAG_LOGD(AAFwkTag::SER_ROUTER, "ok");
 }
 
 sptr<IRemoteObject> JsAgentExtension::OnConnect(const AAFwk::Want &want,
     AppExecFwk::AbilityTransactionCallbackInfo<sptr<IRemoteObject>> *callbackInfo, bool &isAsyncCallback)
 {
-    TAG_LOGI(AAFwkTag::SER_ROUTER, "call");
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "call");
     HandleScope handleScope(jsRuntime_);
     Extension::OnConnect(want);
     napi_env env = jsRuntime_.GetNapiEnv();
@@ -236,7 +234,7 @@ sptr<IRemoteObject> JsAgentExtension::OnConnect(const AAFwk::Want &want,
 void JsAgentExtension::OnDisconnect(const AAFwk::Want &want,
     AppExecFwk::AbilityTransactionCallbackInfo<> *callbackInfo, bool &isAsyncCallback)
 {
-    TAG_LOGI(AAFwkTag::SER_ROUTER, "call");
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "call");
     HandleScope handleScope(jsRuntime_);
     Extension::OnDisconnect(want);
     napi_env env = jsRuntime_.GetNapiEnv();
