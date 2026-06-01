@@ -713,11 +713,7 @@ void MainThread::ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpC
             TAG_LOGE(AAFwkTag::APPKIT, "null appThread");
             return;
         }
-        std::string dumpResult;
-        appThread->HandleMem(info, dumpResult);
-        if (callback) {
-            appThread->appMgr_->ReportDumpMemResult(callback, dumpResult);
-        }
+        appThread->HandleMem(info, callback);
     };
     if (!mainHandler_->PostTask(task, "MainThread:HandleMem")) {
         TAG_LOGE(AAFwkTag::APPKIT, "PostTask HandleMem failed");
@@ -1084,7 +1080,7 @@ void MainThread::HandleCjHeapMemory(const OHOS::AppExecFwk::CjHeapDumpInfo &info
     }
 }
 
-void MainThread::HandleMem(const OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
+void MainThread::HandleMem(const OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback)
 {
     TAG_LOGD(AAFwkTag::APPKIT, "called");
     if (mainHandler_ == nullptr) {
@@ -1097,7 +1093,7 @@ void MainThread::HandleMem(const OHOS::AppExecFwk::MemDumpInfo &info, std::strin
         return;
     }
     auto helper = std::make_shared<DumpRuntimeHelper>(app);
-    helper->DumpMem(info, dumpResult);
+    helper->DumpMem(info, callback);
 }
 
 /**

@@ -142,9 +142,8 @@ HWTEST_F(DumpRuntimeHelperTest, DumpMem_0100, Function | MediumTest | Level1)
     info.pid = 1;
     info.needLeakobj = false;
     info.dumpType = MemDumpType::KMP_KOTLIN;
-    std::string dumpResult;
     auto helper = std::make_shared<DumpRuntimeHelper>(application);
-    helper->DumpMem(info, dumpResult);
+    helper->DumpMem(info, nullptr);
     GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpMem_0100 end";
 }
 
@@ -162,9 +161,8 @@ HWTEST_F(DumpRuntimeHelperTest, DumpMem_0200, Function | MediumTest | Level1)
     info.pid = 1;
     info.needLeakobj = false;
     info.dumpType = MemDumpType::NATIVE;
-    std::string dumpResult;
     auto helper = std::make_shared<DumpRuntimeHelper>(application);
-    helper->DumpMem(info, dumpResult);
+    helper->DumpMem(info, nullptr);
     GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpMem_0200 end";
 }
 
@@ -182,9 +180,8 @@ HWTEST_F(DumpRuntimeHelperTest, DumpMem_0300, Function | MediumTest | Level1)
     info.pid = 1;
     info.needLeakobj = false;
     info.dumpType = MemDumpType::JSVM;
-    std::string dumpResult;
     auto helper = std::make_shared<DumpRuntimeHelper>(application);
-    helper->DumpMem(info, dumpResult);
+    helper->DumpMem(info, nullptr);
     GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpMem_0300 end";
 }
 
@@ -203,9 +200,8 @@ HWTEST_F(DumpRuntimeHelperTest, DumpMem_0400, Function | MediumTest | Level1)
     info.needLeakobj = false;
     info.dumpType = MemDumpType::ARKWEB_JS;
     info.renderPid = 1234;
-    std::string dumpResult;
     auto helper = std::make_shared<DumpRuntimeHelper>(application);
-    helper->DumpMem(info, dumpResult);
+    helper->DumpMem(info, nullptr);
     GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpMem_0400 end";
 }
 
