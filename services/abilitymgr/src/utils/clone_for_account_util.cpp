@@ -21,23 +21,29 @@
 
 namespace OHOS {
 namespace AAFwk {
-void CloneForAccountUtil::ProcessAppIndex(Want &want, int32_t userId)
+bool CloneForAccountUtil::ProcessAppIndex(Want &want, int32_t userId)
 {
     want.RemoveParam(Want::PARAM_APP_CLONE_INDEX_KEY);
+
+    if (want.GetElement().GetAbilityName().empty()) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "implicit start, skip");
+        return true;
+    }
 
     auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
     if (bundleMgrHelper == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "bundleMgrHelper is nullptr");
-        return;
+        return false;
     }
     AppExecFwk::AbilityInfo abilityInfo;
     if (!IN_PROCESS_CALL(bundleMgrHelper->QueryEnabledAbilityInfo(want, userId, abilityInfo))) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "QueryEnabledAbilityInfo failed");
-        return;
+        return false;
     }
 
     want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, abilityInfo.appIndex);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "CloneForAccount resolved appIndex: %{public}d", abilityInfo.appIndex);
+    return true;
 }
 }  // namespace AAFwk
 }  // namespace OHOS
