@@ -18080,14 +18080,6 @@ ErrCode AbilityManagerService::IsUIAbilityAlreadyExist(const Want &want, const s
     return uiAbilityManager->IsUIAbilityAlreadyExist(want, specifiedFlag, appIndex, instanceKey, launchMode);
 }
 
-ErrCode AbilityManagerService::IsSpecifiedUIAbilityAlreadyExist(const Want &want, const std::string &specifiedFlag,
-    int32_t appIndex, const std::string &instanceKey)
-{
-    auto uiAbilityManager = GetUIAbilityManagerByUid(IPCSkeleton::GetCallingUid());
-    CHECK_POINTER_AND_RETURN(uiAbilityManager, ERR_INVALID_VALUE);
-    return uiAbilityManager->IsSpecifiedUIAbilityAlreadyExist(want, specifiedFlag, appIndex, instanceKey);
-}
-
 bool AbilityManagerService::IsAppCloneOrMultiInstance(const Want &want, const std::shared_ptr<AbilityRecord> callerRecord,
     int32_t &targetAppIndex, const std::string &callerInstanceKey)
 {
@@ -18177,15 +18169,12 @@ ErrCode AbilityManagerService::StartSelfUIAbilityInCurrentProcess(const Want &wa
 ErrCode AbilityManagerService::StartSelfUIAbilityInChildProcess(
     const Want &want, const std::string &specifiedFlag, sptr<IRemoteObject> callerToken)
 {
-    if (!AppUtils::GetInstance().IsSupportNativeUIAbility()) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "device not supported");
-        return ERR_CAPABILITY_NOT_SUPPORT;
-    }
+    CHECK_TRUE_RETURN_RET(!AppUtils::GetInstance().IsSupportNativeUIAbility(),
+        ERR_CAPABILITY_NOT_SUPPORT, "device not supported");
+
     auto callerRecord = Token::GetAbilityRecordByToken(callerToken);
-    if (callerRecord == nullptr || !JudgeSelfCalled(callerRecord)) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "not self call");
-        return ERR_INVALID_VALUE;
-    }
+    CHECK_TRUE_RETURN_RET(callerRecord == nullptr || !JudgeSelfCalled(callerRecord),
+        ERR_INVALID_VALUE, "not self call");
 
     AppExecFwk::AbilityInfo abilityInfo;
     auto checkRet = CheckStartSelfUIAbilityInChildProcess(want, specifiedFlag, callerRecord, abilityInfo);
@@ -18210,22 +18199,19 @@ ErrCode AbilityManagerService::StartSelfUIAbilityInChildProcess(
 ErrCode AbilityManagerService::CheckStartSelfUIAbilityInChildProcess(const Want &want, const std::string &specifiedFlag,
     const std::shared_ptr<AbilityRecord> &callerRecord, AppExecFwk::AbilityInfo &abilityInfo)
 {
+    CHECK_POINTER_AND_RETURN(callerRecord, INNER_ERR);
     std::string targetBundleName = want.GetBundle();
     std::string targetAbilityName = want.GetElement().GetAbilityName();
-    if (targetBundleName.empty() || targetAbilityName.empty()) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "implicit start not allowed");
-        return START_UI_ABILITIES_NOT_SUPPORT_IMPLICIT_START;
-    }
+    CHECK_TRUE_RETURN_RET(targetBundleName.empty() || targetAbilityName.empty(),
+        START_UI_ABILITIES_NOT_SUPPORT_IMPLICIT_START, "implicit start not allowed");
     CHECK_TRUE_RETURN_RET(targetBundleName != callerRecord->GetApplicationInfo().bundleName,
         ERROR_UIABILITY_NOT_BELONG_TO_CALLER, "The UIAbility not belog to caller");
+
     int32_t appIndex = want.GetIntParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, -1);
-    auto callerPid = IPCSkeleton::GetCallingPid();
-    AppExecFwk::RunningProcessInfo processInfo;
-    DelayedSingleton<AppScheduler>::GetInstance()->GetRunningProcessInfoByChildProcessPid(callerPid, processInfo);
-    if (IsAppCloneOrMultiInstance(want, callerRecord, appIndex, processInfo.instanceKey)) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "not support app clone and multi instance");
-        return ERROR_UIABILITY_NOT_BELONG_TO_CALLER;
-    }
+    std::string instanceKey = callerRecord->GetInstanceKey();
+    CHECK_TRUE_RETURN_RET(IsAppCloneOrMultiInstance(want, callerRecord, appIndex, instanceKey),
+        ERROR_UIABILITY_NOT_BELONG_TO_CALLER, "not support app clone and multi instance");
+
     auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
     CHECK_POINTER_AND_RETURN(bundleMgrHelper, INNER_ERR);
     auto callerUserId = AbilityRuntime::UserController::GetInstance().GetCallerUserId();
@@ -18233,16 +18219,13 @@ ErrCode AbilityManagerService::CheckStartSelfUIAbilityInChildProcess(const Want 
         AppExecFwk::AbilityInfoFlag::GET_ABILITY_INFO_WITH_APPLICATION, appIndex, abilityInfo, callerUserId)) != ERR_OK,
         TARGET_BUNDLE_NOT_EXIST, "The specified ability not exist");
 
-    CHECK_TRUE_RETURN_RET(abilityInfo.type != AppExecFwk::AbilityType::PAGE,
-        TARGET_BUNDLE_NOT_EXIST, "not UIAbility");
-    if (specifiedFlag != "" && abilityInfo.launchMode == AppExecFwk::LaunchMode::SPECIFIED) {
-        auto ret = IsSpecifiedUIAbilityAlreadyExist(want, specifiedFlag, appIndex, processInfo.instanceKey);
-        if (ret != ERR_OK) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "UIAbility already exist");
-            return ret;
-        }
+    CHECK_TRUE_RETURN_RET(abilityInfo.type != AppExecFwk::AbilityType::PAGE, TARGET_BUNDLE_NOT_EXIST, "not UIAbility");
+    if ((!specifiedFlag.empty() && abilityInfo.launchMode == AppExecFwk::LaunchMode::SPECIFIED) ||
+        abilityInfo.launchMode == AppExecFwk::LaunchMode::SINGLETON) {
+        auto ret = IsUIAbilityAlreadyExist(want, specifiedFlag, appIndex, instanceKey, abilityInfo.launchMode);
+        CHECK_RET_RETURN_RET(ret, "UIAbility already exist");
     }
-    CHECK_TRUE_RETURN_RET(processInfo.state_ != AppExecFwk::AppProcessState::APP_STATE_FOREGROUND,
+    CHECK_TRUE_RETURN_RET(!callerRecord->IsForeground() && !callerRecord->GetAbilityForegroundingFlag(),
         NOT_TOP_ABILITY, "caller not foreground");
     return ERR_OK;
 }
