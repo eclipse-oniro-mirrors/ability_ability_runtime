@@ -13,20 +13,8 @@
  * limitations under the License.
  */
 
-#include "arkts_script.h"
 
-#include "hilog_tag_wrapper.h"
-#include "ipc_skeleton.h"
-
-#include <unistd.h>
-
-int main(int argc, char* argv[])
+int main()
 {
-    TAG_LOGD(AAFwkTag::APPKIT,
-        "ohos-arkts process identity: processUid=%{public}d, processPid=%{public}d, callingUid=%{public}d, "
-        "callingPid=%{public}d, tokenId=%{public}u, fullTokenId=%{public}llu",
-        getuid(), getpid(), OHOS::IPCSkeleton::GetCallingUid(), OHOS::IPCSkeleton::GetCallingPid(),
-        OHOS::IPCSkeleton::GetCallingTokenID(),
-        static_cast<unsigned long long>(OHOS::IPCSkeleton::GetCallingFullTokenID()));
-    return OHOS::ArktsScript::ArktsScript::RunArkTsScript(argc, argv);
+    return 0;
 }
