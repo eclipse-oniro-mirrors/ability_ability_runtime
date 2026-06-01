@@ -160,5 +160,22 @@ HWTEST_F(CloneForAccountUtilTest, ProcessAppIndex_006, TestSize.Level1)
     EXPECT_FALSE(want.HasParameter(Want::PARAM_APP_CLONE_INDEX_KEY));
 }
 
+/**
+ * @tc.name: ProcessAppIndex_007
+ * @tc.desc: Test ProcessAppIndex returns true on implicit start without query
+ * @tc.type: FUNC
+ */
+HWTEST_F(CloneForAccountUtilTest, ProcessAppIndex_007, TestSize.Level1)
+{
+    Want want;
+    want.SetAction("ohos.want.action.viewData");
+    want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 1);
+
+    AppExecFwk::BundleMgrHelper::retQueryEnabledAbilityInfo = false;
+
+    EXPECT_TRUE(CloneForAccountUtil::ProcessAppIndex(want, 100));
+    EXPECT_FALSE(want.HasParameter(Want::PARAM_APP_CLONE_INDEX_KEY));
+}
+
 }  // namespace AAFwk
 }  // namespace OHOS

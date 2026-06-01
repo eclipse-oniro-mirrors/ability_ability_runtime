@@ -25,6 +25,11 @@ bool CloneForAccountUtil::ProcessAppIndex(Want &want, int32_t userId)
 {
     want.RemoveParam(Want::PARAM_APP_CLONE_INDEX_KEY);
 
+    if (want.GetElement().GetAbilityName().empty()) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "implicit start, skip");
+        return true;
+    }
+
     auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
     if (bundleMgrHelper == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "bundleMgrHelper is nullptr");
