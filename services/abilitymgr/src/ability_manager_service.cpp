@@ -3555,7 +3555,7 @@ int32_t AbilityManagerService::KillAppWithReason(const int32_t pid, const ExitRe
     appExitReasonHelper_->AddAppExitReason(bundleName, pid, uid, appIndex, exitReason);
     std::vector<int32_t> pidToBeKilled = { pid };
     return IN_PROCESS_CALL(DelayedSingleton<AppScheduler>::GetInstance()->KillProcessesByPids(pidToBeKilled,
-        reason.exitMsg, true, isKillPrecedeStart, exitReason.shouldKillForeground));
+        reason.exitMsg, true, isKillPrecedeStart));
 }
 
 int32_t AbilityManagerService::KillAppWithReasonInner(int32_t pid, int32_t uid,
@@ -13784,7 +13784,7 @@ int32_t AbilityManagerService::KillProcessWithReasonInner(int32_t pid, const Exi
     }
     std::vector<int32_t> pidToBeKilled = { pid };
     return IN_PROCESS_CALL(DelayedSingleton<AppScheduler>::GetInstance()->KillProcessesByPids(pidToBeKilled,
-        reason.exitMsg, true, isKillPrecedeStart, reason.shouldKillForeground));
+        reason.exitMsg, true, isKillPrecedeStart));
 }
 
 int32_t AbilityManagerService::RegisterAutoStartupSystemCallback(const sptr<IRemoteObject> &callback)

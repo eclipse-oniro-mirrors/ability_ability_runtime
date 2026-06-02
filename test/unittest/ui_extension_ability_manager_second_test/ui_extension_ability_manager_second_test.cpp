@@ -1844,7 +1844,7 @@ HWTEST_F(UIExtensionAbilityManagerSecondTest, AddStartingRecord_FirstAdd_0100, T
     mgr->AddStartingRecord(uid, 0, recordId, 10);
     auto key = std::make_tuple(uid, static_cast<pid_t>(0), recordId);
     EXPECT_EQ(mgr->startingRecordsMap_.count(key), 1u);
-    EXPECT_EQ(mgr->startingRecordsMap_[key], 1);
+    EXPECT_EQ((mgr->startingRecordsMap_[key]), 1);
     mgr->startingRecordsMap_.clear();
     TAG_LOGI(AAFwkTag::TEST, "AddStartingRecord_FirstAdd_0100 end");
 }
@@ -1865,8 +1865,8 @@ HWTEST_F(UIExtensionAbilityManagerSecondTest, AddStartingRecord_CountIncrement_0
     mgr->AddStartingRecord(uid, 0, recordId, 10);
     mgr->AddStartingRecord(uid, 5678, recordId, 5);
     EXPECT_EQ(mgr->startingRecordsMap_.size(), 2u);
-    EXPECT_EQ(mgr->startingRecordsMap_[{uid, 0, recordId}], 1);
-    EXPECT_EQ(mgr->startingRecordsMap_[{uid, 5678, recordId}], 1);
+    EXPECT_EQ((mgr->startingRecordsMap_[{uid, 0, recordId}]), 1);
+    EXPECT_EQ((mgr->startingRecordsMap_[{uid, 5678, recordId}]), 1);
     mgr->startingRecordsMap_.clear();
     TAG_LOGI(AAFwkTag::TEST, "AddStartingRecord_CountIncrement_0200 end");
 }
@@ -1905,8 +1905,8 @@ HWTEST_F(UIExtensionAbilityManagerSecondTest, RemoveStartingRecord_CountDecremen
     int64_t recordId = 1;
     mgr->AddStartingRecord(uid, 0, recordId, 10);
     mgr->AddStartingRecord(uid, 5678, recordId, 5);
-    EXPECT_EQ(mgr->startingRecordsMap_[{uid, 0, recordId}], 1);
-    EXPECT_EQ(mgr->startingRecordsMap_[{uid, 5678, recordId}], 1);
+    EXPECT_EQ((mgr->startingRecordsMap_[{uid, 0, recordId}]), 1);
+    EXPECT_EQ((mgr->startingRecordsMap_[{uid, 5678, recordId}]), 1);
     mgr->RemoveStartingRecord(uid, 0, recordId);
     EXPECT_EQ(mgr->startingRecordsMap_.count({uid, 0, recordId}), 0u);
     mgr->RemoveStartingRecord(uid, 5678, recordId);
@@ -2002,9 +2002,9 @@ HWTEST_F(UIExtensionAbilityManagerSecondTest, AddStartingRecord_SameKeyCountIncr
     int32_t uid = 101234;
     int64_t recordId = 1;
     mgr->AddStartingRecord(uid, 5678, recordId, 10);
-    EXPECT_EQ(mgr->startingRecordsMap_[{uid, 5678, recordId}], 1);
+    EXPECT_EQ((mgr->startingRecordsMap_[{uid, 5678, recordId}]), 1);
     mgr->AddStartingRecord(uid, 5678, recordId, 10);
-    EXPECT_EQ(mgr->startingRecordsMap_[{uid, 5678, recordId}], 2);
+    EXPECT_EQ((mgr->startingRecordsMap_[{uid, 5678, recordId}]), 2);
     mgr->startingRecordsMap_.clear();
     TAG_LOGI(AAFwkTag::TEST, "AddStartingRecord_SameKeyCountIncrement_0400 end");
 }
@@ -2025,11 +2025,11 @@ HWTEST_F(UIExtensionAbilityManagerSecondTest, RemoveStartingRecord_CountDecremen
     // add same key twice → count=2
     mgr->AddStartingRecord(uid, 5678, recordId, 10);
     mgr->AddStartingRecord(uid, 5678, recordId, 10);
-    EXPECT_EQ(mgr->startingRecordsMap_[{uid, 5678, recordId}], 2);
+    EXPECT_EQ((mgr->startingRecordsMap_[{uid, 5678, recordId}]), 2);
     // first remove → count=1, entry still exists
     mgr->RemoveStartingRecord(uid, 5678, recordId);
     EXPECT_EQ(mgr->startingRecordsMap_.count({uid, 5678, recordId}), 1u);
-    EXPECT_EQ(mgr->startingRecordsMap_[{uid, 5678, recordId}], 1);
+    EXPECT_EQ((mgr->startingRecordsMap_[{uid, 5678, recordId}]), 1);
     // second remove → count=0, entry erased
     mgr->RemoveStartingRecord(uid, 5678, recordId);
     EXPECT_EQ(mgr->startingRecordsMap_.count({uid, 5678, recordId}), 0u);
