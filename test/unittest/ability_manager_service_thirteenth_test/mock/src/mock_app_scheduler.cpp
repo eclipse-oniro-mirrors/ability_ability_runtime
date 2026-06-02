@@ -379,5 +379,9 @@ int32_t AppScheduler::VerifyKillProcessPermission(const std::string &bundleName)
 {
     return 0;
 }
+
+void AppScheduler::ClearProcessByToken(sptr<IRemoteObject> token) const
+{
+}
 } // namespace AAFwk
 } // namespace OHOS
