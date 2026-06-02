@@ -384,7 +384,7 @@ void AppScheduler::ClearProcessByToken(sptr<IRemoteObject> token) const
 {
 }
 
-bool IsKilledForUpgradeWeb(const std::string &bundleName)
+bool AppScheduler::IsKilledForUpgradeWeb(const std::string &bundleName)
 {
    return true; 
 }
