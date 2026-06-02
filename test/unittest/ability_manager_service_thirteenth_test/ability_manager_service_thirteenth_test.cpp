@@ -3387,7 +3387,7 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, KillAppWithReason_UIExtStarting_01
     int32_t testPid = 654321;
     int32_t testUid = 0; // mock returns uid_=0 from GetRunningProcessInfoByPid
     int64_t testRecordId = 1;
-    mockUIExtMgr->startingRecordsMap_[testUid][testRecordId] = {-1, 1};
+    mockUIExtMgr->startingRecordsMap_[{testUid, 0, testRecordId}] = 1;
     mockSubManagersHelper->currentUIExtensionAbilityManager_ = mockUIExtMgr;
     abilityMs->subManagersHelper_ = mockSubManagersHelper;
 
@@ -3425,7 +3425,7 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, KillAppWithReason_KillForeground_0
     int32_t testPid = 1111;
     int32_t testUid = 0; // mock returns uid_=0 from GetRunningProcessInfoByPid
     int64_t testRecordId = 1;
-    mockUIExtMgr->startingRecordsMap_[testUid][testRecordId] = {-1, 1};
+    mockUIExtMgr->startingRecordsMap_[{testUid, 0, testRecordId}] = 1;
     mockSubManagersHelper->uiExtensionAbilityManagers_[0] = mockUIExtMgr;
     auto mockCurrentUIAbilityManager = std::make_shared<UIAbilityLifecycleManager>(0);
     mockSubManagersHelper->currentUIAbilityManager_ = mockCurrentUIAbilityManager;

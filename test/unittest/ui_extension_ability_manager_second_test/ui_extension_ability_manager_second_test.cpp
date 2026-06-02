@@ -2035,6 +2035,5 @@ HWTEST_F(UIExtensionAbilityManagerSecondTest, RemoveStartingRecord_CountDecremen
     EXPECT_EQ(mgr->startingRecordsMap_.count({uid, 5678, recordId}), 0u);
     TAG_LOGI(AAFwkTag::TEST, "RemoveStartingRecord_CountDecrementNotErase_0300 end");
 }
-}
 }  // namespace AAFwk
-} // namespace OHOS
+}  // namespace OHOS
