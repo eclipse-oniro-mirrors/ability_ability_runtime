@@ -386,7 +386,7 @@ void AppScheduler::ClearProcessByToken(sptr<IRemoteObject> token) const
 
 bool AppScheduler::IsKilledForUpgradeWeb(const std::string &bundleName)
 {
-   return true; 
+    return true;
 }
 } // namespace AAFwk
 } // namespace OHOS
