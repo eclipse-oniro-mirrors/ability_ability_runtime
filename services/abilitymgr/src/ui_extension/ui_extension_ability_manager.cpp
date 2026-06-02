@@ -329,7 +329,6 @@ int UIExtensionAbilityManager::AttachAbilityThreadInner(const sptr<IAbilitySched
             abilityRecord->SetConnectionReported(true);
         }
     } else {
-        TAG_LOGD(AAFwkTag::EXT, "Inactivate");
         abilityRecord->Inactivate();
     }
     RemoveStartingRecord(abilityRecord->GetUid(), oldPid, abilityRecord->GetAbilityRecordId());
