@@ -1459,6 +1459,12 @@ int32_t AppMgrServiceInner::TryToUseImageInfo(std::shared_ptr<AbilityInfo> abili
         NotifyStartProcessFailed(token);
         return ret;
     }
+    bool appExistFlag = appRunningManager_->IsAppExist(appInfo->accessTokenId);
+    bool appMultiUserExistFlag = appRunningManager_->CheckAppRunningRecordIsExistByUid(appInfo->uid);
+    if (!appMultiUserExistFlag) {
+        NotifyAppRunningStatusEvent(
+            appInfo->bundleName, appInfo->uid, AbilityRuntime::RunningStatus::APP_RUNNING_START);
+    }
     appRecord = CreateAppRunningRecordFromImageInfo(imageInfo);
     if (appRecord == nullptr) {
         SnapshotErrorReport(appInfo->uid, appInfo->bundleName, -1, "appRecord not exist");
@@ -1496,7 +1502,6 @@ int32_t AppMgrServiceInner::TryToUseImageInfo(std::shared_ptr<AbilityInfo> abili
     KillingProcessManager::GetInstance().RemoveKillingCallerKey(key);
     OnAppStateChanged(appRecord, ApplicationState::APP_STATE_CREATE, false, false, false);
     DelayedSingleton<AppStateObserverManager>::GetInstance()->OnProcessCreated(appRecord, false);
-    bool appExistFlag = appRunningManager_->IsAppExist(appInfo->accessTokenId);
     if (!appExistFlag) {
         OnAppStarted(appRecord);
     }

@@ -3984,5 +3984,51 @@ HWTEST_F(AppMgrServiceInnerEighthTest, ReportAbilityStartInfoForSpecified_006, T
     appMgrServiceInner->ReportAbilityStartInfoForSpecified(appRecord, abilityInfo);
     TAG_LOGI(AAFwkTag::TEST, "ReportAbilityStartInfoForSpecified_006 end");
 }
+
+/**
+ * @tc.name: TryToUseImageInfo_NotifyAppRunningStatusEvent_001
+ * @tc.desc: Test TryToUseImageInfo when appMultiUserExistFlag is false, should call NotifyAppRunningStatusEvent
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, TryToUseImageInfo_NotifyAppRunningStatusEvent_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "TryToUseImageInfo_NotifyAppRunningStatusEvent_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto appRunningManager = std::make_shared<AppRunningManager>();
+    appMgrServiceInner->appRunningManager_ = appRunningManager;
+    
+    auto abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->name = "testAbility";
+    abilityInfo->bundleName = "testBundle";
+    
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->bundleName = "testBundle";
+    appInfo->uid = 100;
+    appInfo->accessTokenId = 1000;
+    
+    AppMgrServiceInner::MakeImageRequest request {
+        .bundleName = "testBundle",
+        .abilityName = "testAbility",
+        .userId = 0,
+        .appCloneIndex = 0
+    };
+    
+    auto imageInfo = std::make_shared<ForkImageInfo>();
+    imageInfo->imagePid = 100;
+    auto baseAppRecord = std::make_shared<AppRunningRecord>(appInfo, 1, "testProcess");
+    baseAppRecord->SetInstanceKey("instanceKey");
+    baseAppRecord->SetSpecifiedProcessFlag("");
+    baseAppRecord->SetCustomProcessFlag("");
+    imageInfo->baseAppRecord = baseAppRecord;
+    appMgrServiceInner->imageInfoMap_[request] = imageInfo;
+    
+    AAFwk::MyStatus::GetInstance().checkAppRunningByUid_ = false;
+    
+    std::shared_ptr<AppRunningRecord> appRecord = nullptr;
+    appMgrServiceInner->TryToUseImageInfo(abilityInfo, appInfo, nullptr, "callerKey", 0, "testProcess",
+        "instanceKey", "", "", appRecord);
+    
+    TAG_LOGI(AAFwkTag::TEST, "TryToUseImageInfo_NotifyAppRunningStatusEvent_001 end");
+}
 } // namespace AppExecFwk
 } // namespace OHOS
