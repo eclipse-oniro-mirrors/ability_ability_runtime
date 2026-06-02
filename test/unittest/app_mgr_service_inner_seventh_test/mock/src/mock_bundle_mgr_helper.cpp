@@ -239,6 +239,12 @@ bool BundleMgrHelper::QueryExtensionAbilityInfoByUri(
     return false;
 }
 
+bool BundleMgrHelper::QueryExtensionAbilityInfoByUriOptimal(
+    const std::string& uri, int32_t userId, ExtensionAbilityInfo& extensionAbilityInfo)
+{
+    return false;
+}
+
 bool BundleMgrHelper::ImplicitQueryInfoByPriority(
     const Want& want, int32_t flags, int32_t userId, AbilityInfo& abilityInfo, ExtensionAbilityInfo& extensionInfo)
 {

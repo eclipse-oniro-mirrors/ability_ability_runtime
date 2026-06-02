@@ -727,6 +727,20 @@ bool BundleMgrHelper::QueryExtensionAbilityInfoByUri(
     return bundleMgr->QueryExtensionAbilityInfoByUri(uri, userId, extensionAbilityInfo);
 }
 
+bool BundleMgrHelper::QueryExtensionAbilityInfoByUriOptimal(
+    const std::string &uri, int32_t userId, ExtensionAbilityInfo &extensionAbilityInfo)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "called");
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        return false;
+    }
+
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    return bundleMgr->QueryExtensionAbilityInfoByUriOptimal(uri, userId, extensionAbilityInfo);
+}
+
 bool BundleMgrHelper::ImplicitQueryInfoByPriority(
     const Want &want, int32_t flags, int32_t userId, AbilityInfo &abilityInfo, ExtensionAbilityInfo &extensionInfo)
 {

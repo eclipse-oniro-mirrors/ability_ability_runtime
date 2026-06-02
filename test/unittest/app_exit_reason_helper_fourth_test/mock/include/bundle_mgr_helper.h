@@ -191,6 +191,12 @@ public:
         return false;
     }
 
+    bool QueryExtensionAbilityInfoByUriOptimal(
+        const std::string& uri, int32_t userId, ExtensionAbilityInfo& extensionAbilityInfo)
+    {
+        return false;
+    }
+
     bool ImplicitQueryInfoByPriority(const AAFwk::Want& want, int32_t flags, int32_t userId, AbilityInfo& abilityInfo,
         ExtensionAbilityInfo& extensionInfo)
     {
