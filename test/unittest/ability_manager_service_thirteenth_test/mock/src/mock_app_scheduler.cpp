@@ -383,5 +383,10 @@ int32_t AppScheduler::VerifyKillProcessPermission(const std::string &bundleName)
 void AppScheduler::ClearProcessByToken(sptr<IRemoteObject> token) const
 {
 }
+
+bool IsKilledForUpgradeWeb(const std::string &bundleName)
+{
+   return true; 
+}
 } // namespace AAFwk
 } // namespace OHOS
