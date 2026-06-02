@@ -124,8 +124,9 @@ void UIExtensionAbilityManager::AddStartingRecord(int32_t uid, pid_t pid, int64_
         auto it = startingRecordsMap_.find(key);
         if (it != startingRecordsMap_.end()) {
             it->second++;
-            TAG_LOGI(AAFwkTag::ABILITYMGR, "uid %{public}d pid %{public}d recordId %{public}" PRId64
-                " count %{public}d", uid, pid, recordId, it->second);
+            TAG_LOGI(AAFwkTag::UI_EXT, "addStartingRecord, uid:%{public}d pid:%{public}d "
+                "recordId:%{public}" PRId64 " count:%{public}d mapSize:%{public}zu",
+                uid, pid, recordId, it->second, startingRecordsMap_.size());
         } else {
             startingRecordsMap_[key] = 1;
         }
@@ -141,7 +142,7 @@ void UIExtensionAbilityManager::AddStartingRecord(int32_t uid, pid_t pid, int64_
         [thisWeakPtr, uid, pid, recordId]() {
             auto mgr = thisWeakPtr.lock();
             if (mgr == nullptr) {
-                TAG_LOGE(AAFwkTag::ABILITYMGR, "UIExtensionAbilityManager is nullptr, uid %{public}d", uid);
+                TAG_LOGE(AAFwkTag::UI_EXT, "UIExtensionAbilityManager is nullptr, uid %{public}d", uid);
                 return;
             }
             mgr->RemoveStartingRecord(uid, pid, recordId);
@@ -155,8 +156,14 @@ void UIExtensionAbilityManager::RemoveStartingRecord(int32_t uid, pid_t pid, int
     auto key = std::make_tuple(uid, pid, recordId);
     auto it = startingRecordsMap_.find(key);
     if (it == startingRecordsMap_.end()) {
+        TAG_LOGW(AAFwkTag::UI_EXT, "remove not found, uid:%{public}d pid:%{public}d "
+            "recordId:%{public}" PRId64 " mapSize:%{public}zu",
+            uid, pid, recordId, startingRecordsMap_.size());
         return;
     }
+    TAG_LOGI(AAFwkTag::UI_EXT, "removeStartingRecord, uid:%{public}d pid:%{public}d "
+        "recordId:%{public}" PRId64 " mapSize:%{public}zu",
+        uid, pid, recordId, startingRecordsMap_.size());
     if (--it->second <= 0) {
         startingRecordsMap_.erase(it);
     }
@@ -212,7 +219,8 @@ int UIExtensionAbilityManager::PreloadUIExtensionAbilityInner(
 
     UpdateUIExtensionBindInfo(
         targetService, hostBundleName, abilityRequest.want.GetIntParam(UIEXTENSION_NOTIFY_BIND, -1));
-    AddStartingRecord(abilityRequest.uid, 0, targetService->GetAbilityRecordId(), LOAD_TIMEOUT_MULTIPLE);
+    AddStartingRecord(abilityRequest.uid, targetService->GetPid(), targetService->GetAbilityRecordId(),
+        LOAD_TIMEOUT_MULTIPLE);
     LoadAbility(targetService, updateRecordCallback, true);
     return ERR_OK;
 }
@@ -297,6 +305,7 @@ int UIExtensionAbilityManager::AttachAbilityThreadInner(const sptr<IAbilitySched
 
     abilityRecord->RemoveLoadTimeoutTask();
     AbilityRuntime::FreezeUtil::GetInstance().DeleteLifecycleEvent(token);
+    pid_t oldPid = abilityRecord->GetPid();
     abilityRecord->SetScheduler(scheduler);
 
     abilityRecord->RemoveSpecifiedWantParam(UIEXTENSION_ABILITY_ID);
@@ -323,7 +332,7 @@ int UIExtensionAbilityManager::AttachAbilityThreadInner(const sptr<IAbilitySched
         TAG_LOGD(AAFwkTag::EXT, "Inactivate");
         abilityRecord->Inactivate();
     }
-    RemoveStartingRecord(abilityRecord->GetUid(), 0, abilityRecord->GetAbilityRecordId());
+    RemoveStartingRecord(abilityRecord->GetUid(), oldPid, abilityRecord->GetAbilityRecordId());
     return ERR_OK;
 }
 
@@ -686,7 +695,8 @@ int32_t UIExtensionAbilityManager::StartAbilityLocked(const AbilityRequest &abil
 
         UpdateUIExtensionBindInfo(
             targetService, hostBundleName, abilityRequest.want.GetIntParam(UIEXTENSION_NOTIFY_BIND, -1));
-        AddStartingRecord(abilityRequest.uid, 0, targetService->GetAbilityRecordId(), LOAD_TIMEOUT_MULTIPLE);
+        AddStartingRecord(abilityRequest.uid, targetService->GetPid(), targetService->GetAbilityRecordId(),
+            LOAD_TIMEOUT_MULTIPLE);
         LoadAbility(targetService, updateRecordCallback);
     } else {
         AddStartingRecord(abilityRequest.uid, targetService->GetPid(),
