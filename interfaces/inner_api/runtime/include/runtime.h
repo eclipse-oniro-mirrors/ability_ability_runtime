@@ -29,7 +29,6 @@ class EventRunner;
 namespace AbilityRuntime {
 struct CommonHspBundleInfo {
     uint32_t versionCode;
-    int32_t aotCompileStatus;
     std::string bundleName;
     std::string moduleName;
     std::string hapPath;

@@ -65,10 +65,7 @@ const std::string ETS_SYSLIB_PATH =
 #endif
 constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
 constexpr char SANDBOX_ARK_CACHE_PATH[] = "/data/storage/ark-cache/";
-constexpr char SANDBOX_SHARED_BUNDLE_ARK_CACHE_PATH[] =
-    "/data/service/el1/public/for-all-app/shared_bundles_ark_cache/";
 constexpr char MERGE_ABC_PATH[] = "/ets/modules_static.abc";
-const std::string SYS_HSP_FILE_PATH_PREFIX = "/system/app/";
 const std::string PREINSTALL_HOST_AOT_ARK_CACHE_PATH = "/system/app/ark_cache/";
 const std::string ARK_CACHE_NATIVE_PATH = "arm64/";
 
@@ -156,6 +153,16 @@ std::string GetPreinstallHostAotAnPath(const std::string &bundleName, const std:
         std::string(AbilityBase::Constants::FILE_SEPARATOR) + moduleName + ".an";
 }
 
+std::string GetHostPrivateHspAotAnPath(const CommonHspBundleInfo &bundleInfo)
+{
+    if (bundleInfo.bundleName.empty() || bundleInfo.moduleName.empty()) {
+        return "";
+    }
+    return SANDBOX_ARK_CACHE_PATH + ARK_CACHE_NATIVE_PATH + bundleInfo.bundleName +
+        std::string(AbilityBase::Constants::FILE_SEPARATOR) + std::to_string(bundleInfo.versionCode) +
+        std::string(AbilityBase::Constants::FILE_SEPARATOR) + bundleInfo.moduleName + ".an";
+}
+
 } // namespace
 
 std::unique_ptr<ETSRuntime> ETSRuntime::PreFork(const Options &options,
@@ -217,21 +224,29 @@ std::string ETSRuntime::GetAotPath(const Options &options)
 
     // Handle Outer Hsp
     for (const auto& bundleInfo: options.commonHspBundleInfos) {
-        if (!IsAotCompiledSuccess(bundleInfo.aotCompileStatus) ||
-            bundleInfo.moduleArkTSMode == AppExecFwk::Constants::ARKTS_MODE_DYNAMIC) {
+        if (bundleInfo.moduleArkTSMode == AppExecFwk::Constants::ARKTS_MODE_DYNAMIC) {
+            continue;
+        }
+        if (bundleInfo.bundleName.empty() || bundleInfo.moduleName.empty()) {
+            TAG_LOGW(AAFwkTag::ETSRUNTIME,
+                "skip shared hsp aot with empty bundleName or moduleName, "
+                "bundleName:%{public}s, moduleName:%{public}s",
+                bundleInfo.bundleName.c_str(), bundleInfo.moduleName.c_str());
             continue;
         }
 
-        if (bundleInfo.hapPath.compare(0, SYS_HSP_FILE_PATH_PREFIX.size(), SYS_HSP_FILE_PATH_PREFIX) != 0 &&
-            bundleInfo.hapPath.rfind('/') == std::string::npos) {
+        // Host-private shared HSP AOT is stored in the host app ark cache and has no HSP global AOT status.
+        std::string hostPrivateHspAnPath = GetHostPrivateHspAotAnPath(bundleInfo);
+        if (!hostPrivateHspAnPath.empty() && IsFileExists(hostPrivateHspAnPath)) {
+            TAG_LOGI(AAFwkTag::ETSRUNTIME, "load versioned host private shared hsp aot an: %{public}s",
+                hostPrivateHspAnPath.c_str());
+            aotFiles.push_back(hostPrivateHspAnPath);
             continue;
         }
 
-        // path: <sandbox_path>/<bundleName>/v<versionCode>/arm64/<moduleName>.an
-        std::string outerHspAnPath = SANDBOX_SHARED_BUNDLE_ARK_CACHE_PATH + bundleInfo.bundleName +
-            std::string(AbilityBase::Constants::FILE_SEPARATOR) + std::to_string(bundleInfo.versionCode) +
-            std::string(AbilityBase::Constants::FILE_SEPARATOR) + ARK_CACHE_NATIVE_PATH + bundleInfo.moduleName + ".an";
-        aotFiles.push_back(outerHspAnPath);
+        TAG_LOGW(AAFwkTag::ETSRUNTIME,
+            "host private shared hsp aot file is unavailable, skip loading: %{public}s",
+            hostPrivateHspAnPath.c_str());
     }
 
     std::string aotFilePath;
