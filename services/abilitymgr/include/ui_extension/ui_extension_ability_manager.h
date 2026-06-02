@@ -18,6 +18,8 @@
 
 #include "ability_connect_manager.h"
 
+#include <tuple>
+
 #include "extension_record_manager.h"
 #include "nocopyable.h"
 
@@ -146,6 +148,8 @@ public:
     int32_t RegisterPreloadUIExtensionHostClient(const sptr<IRemoteObject> &callerToken);
     int32_t UnRegisterPreloadUIExtensionHostClient(int32_t callerPid) override;
 
+    bool IsUIExtensionStarting(int32_t uid, pid_t pid = -1);
+
 protected:
     int32_t StartAbilityLocked(const AbilityRequest &abilityRequest) override;
     void HandleLoadAbilityOrStartSpecifiedProcess(
@@ -184,6 +188,9 @@ private:
     void RemoveUIExtensionAbilityRecord(const std::shared_ptr<BaseExtensionRecord> &abilityRecord) override;
 
     void AddUIExtensionAbilityRecordToTerminatedList(const std::shared_ptr<BaseExtensionRecord> &abilityRecord);
+
+    void AddStartingRecord(int32_t uid, pid_t pid, int64_t recordId, int32_t timeoutMultiple);
+    void RemoveStartingRecord(int32_t uid, pid_t pid, int64_t recordId);
 
     int32_t GetOrCreateExtensionRecord(const AbilityRequest &abilityRequest, bool isCreatedByConnect,
         const std::string &hostBundleName, std::shared_ptr<BaseExtensionRecord> &extensionRecord, bool &isLoaded);
@@ -288,6 +295,8 @@ private:
     std::mutex uiExtensionMapMutex_;
     std::mutex preloadUIExtRecipientMapMutex_;
     std::map<int32_t, sptr<IRemoteObject::DeathRecipient>> preloadUIExtensionHostClientDeathRecipients_;
+    std::mutex startingRecordsMutex_;
+    std::map<std::tuple<int32_t, pid_t, int64_t>, int32_t> startingRecordsMap_;
 
     DISALLOW_COPY_AND_MOVE(UIExtensionAbilityManager);
 };

@@ -244,6 +244,7 @@ ohos_unittest("ability_manager_service_thirteenth_test") {
     "mock/src/mock_free_install_manager.cpp",
     "mock/src/mock_insight_intent_db_cache.cpp",
     "mock/src/mock_ipc_skeleton.cpp",
+    "mock/src/mock_os_account_manager_wrapper.cpp",
     "mock/src/mock_parameters.cpp",
     "mock/src/mock_permission_verification.cpp",
     "mock/src/mock_scene_board_judgement.cpp",

@@ -16,6 +16,7 @@
 #include "ui_extension_ability_manager.h"
 
 #include <algorithm>
+#include <limits>
 #include "ability_manager_service.h"
 #include "ability_manager_constants.h"
 #include "ability_permission_util.h"
@@ -73,6 +74,14 @@ const int COMMAND_TIMEOUT_MULTIPLE_NEW = 21;
 const int COMMAND_WINDOW_TIMEOUT_MULTIPLE = 5;
 #endif
 constexpr int32_t HALF_TIMEOUT = 2;
+
+int32_t GetForegroundTimeoutMultiple(const std::shared_ptr<BaseExtensionRecord> &abilityRecord)
+{
+    if (InsightIntentExecuteParam::IsInsightIntentExecute(abilityRecord->GetWant())) {
+        return OHOS::AbilityRuntime::GlobalConstant::INSIGHT_INTENT_TIMEOUT_MULTIPLE;
+    }
+    return OHOS::AbilityRuntime::GlobalConstant::FOREGROUND_TIMEOUT_MULTIPLE;
+}
 }
 
 UIExtensionAbilityManager::UIExtensionAbilityManager(int userId) : AbilityConnectManager(userId)
@@ -82,6 +91,76 @@ UIExtensionAbilityManager::UIExtensionAbilityManager(int userId) : AbilityConnec
 
 UIExtensionAbilityManager::~UIExtensionAbilityManager()
 {}
+
+bool UIExtensionAbilityManager::IsUIExtensionStarting(int32_t uid, pid_t pid)
+{
+    std::lock_guard<std::mutex> guard(startingRecordsMutex_);
+    auto begin = startingRecordsMap_.lower_bound(std::make_tuple(uid, std::numeric_limits<pid_t>::min(), INT64_MIN));
+    auto end = startingRecordsMap_.upper_bound(std::make_tuple(uid, std::numeric_limits<pid_t>::max(), INT64_MAX));
+    if (begin == end) {
+        return false;
+    }
+    if (pid <= 0) {
+        return true;
+    }
+    for (auto it = begin; it != end; ++it) {
+        auto entryPid = std::get<1>(it->first);
+        if (entryPid == pid || entryPid == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void UIExtensionAbilityManager::AddStartingRecord(int32_t uid, pid_t pid, int64_t recordId, int32_t timeoutMultiple)
+{
+    if (uid <= 0) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "invalid uid %{public}d", uid);
+        return;
+    }
+    {
+        std::lock_guard<std::mutex> guard(startingRecordsMutex_);
+        auto key = std::make_tuple(uid, pid, recordId);
+        auto it = startingRecordsMap_.find(key);
+        if (it != startingRecordsMap_.end()) {
+            it->second++;
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "uid %{public}d pid %{public}d recordId %{public}" PRId64
+                " count %{public}d", uid, pid, recordId, it->second);
+        } else {
+            startingRecordsMap_[key] = 1;
+        }
+    }
+
+    int32_t timeoutMicro =
+        AmsConfigurationParameter::GetInstance().GetAppStartTimeoutTime() * timeoutMultiple * 1000;
+    std::weak_ptr<UIExtensionAbilityManager> thisWeakPtr(
+        std::static_pointer_cast<UIExtensionAbilityManager>(shared_from_this()));
+    ffrt::task_attr attr;
+    attr.delay(timeoutMicro);
+    ffrt::submit(
+        [thisWeakPtr, uid, pid, recordId]() {
+            auto mgr = thisWeakPtr.lock();
+            if (mgr == nullptr) {
+                TAG_LOGE(AAFwkTag::ABILITYMGR, "UIExtensionAbilityManager is nullptr, uid %{public}d", uid);
+                return;
+            }
+            mgr->RemoveStartingRecord(uid, pid, recordId);
+        },
+        attr);
+}
+
+void UIExtensionAbilityManager::RemoveStartingRecord(int32_t uid, pid_t pid, int64_t recordId)
+{
+    std::lock_guard<std::mutex> guard(startingRecordsMutex_);
+    auto key = std::make_tuple(uid, pid, recordId);
+    auto it = startingRecordsMap_.find(key);
+    if (it == startingRecordsMap_.end()) {
+        return;
+    }
+    if (--it->second <= 0) {
+        startingRecordsMap_.erase(it);
+    }
+}
 
 int UIExtensionAbilityManager::PreloadUIExtensionAbilityLocked(
     const AbilityRequest &abilityRequest, std::string &hostBundleName, int32_t hostPid)
@@ -133,6 +212,7 @@ int UIExtensionAbilityManager::PreloadUIExtensionAbilityInner(
 
     UpdateUIExtensionBindInfo(
         targetService, hostBundleName, abilityRequest.want.GetIntParam(UIEXTENSION_NOTIFY_BIND, -1));
+    AddStartingRecord(abilityRequest.uid, 0, targetService->GetAbilityRecordId(), LOAD_TIMEOUT_MULTIPLE);
     LoadAbility(targetService, updateRecordCallback, true);
     return ERR_OK;
 }
@@ -229,6 +309,8 @@ int UIExtensionAbilityManager::AttachAbilityThreadInner(const sptr<IAbilitySched
 
     if (IsUIExtensionAbility(abilityRecord) && !abilityRecord->IsCreateByConnect()
         && !abilityRecord->GetBoolParam(IS_PRELOAD_UIEXTENSION_ABILITY, false)) {
+        AddStartingRecord(abilityRecord->GetUid(), abilityRecord->GetPid(),
+            abilityRecord->GetAbilityRecordId(), GetForegroundTimeoutMultiple(abilityRecord));
         abilityRecord->PostUIExtensionAbilityTimeoutTask(AbilityManagerService::FOREGROUND_TIMEOUT_MSG);
         DelayedSingleton<AppScheduler>::GetInstance()->MoveToForeground(token);
 
@@ -241,6 +323,7 @@ int UIExtensionAbilityManager::AttachAbilityThreadInner(const sptr<IAbilitySched
         TAG_LOGD(AAFwkTag::EXT, "Inactivate");
         abilityRecord->Inactivate();
     }
+    RemoveStartingRecord(abilityRecord->GetUid(), 0, abilityRecord->GetAbilityRecordId());
     return ERR_OK;
 }
 
@@ -603,8 +686,11 @@ int32_t UIExtensionAbilityManager::StartAbilityLocked(const AbilityRequest &abil
 
         UpdateUIExtensionBindInfo(
             targetService, hostBundleName, abilityRequest.want.GetIntParam(UIEXTENSION_NOTIFY_BIND, -1));
+        AddStartingRecord(abilityRequest.uid, 0, targetService->GetAbilityRecordId(), LOAD_TIMEOUT_MULTIPLE);
         LoadAbility(targetService, updateRecordCallback);
     } else {
+        AddStartingRecord(abilityRequest.uid, targetService->GetPid(),
+            targetService->GetAbilityRecordId(), GetForegroundTimeoutMultiple(targetService));
         DoForegroundUIExtension(targetService, abilityRequest);
     }
     return ERR_OK;
@@ -1096,6 +1182,7 @@ int UIExtensionAbilityManager::TerminateAbilityLocked(const sptr<IRemoteObject> 
 
 void UIExtensionAbilityManager::HandleStartTimeoutTaskInner(const std::shared_ptr<BaseExtensionRecord> &abilityRecord)
 {
+    RemoveStartingRecord(abilityRecord->GetUid(), abilityRecord->GetPid(), abilityRecord->GetAbilityRecordId());
     if (UIExtensionWrapper::IsUIExtension(abilityRecord->GetAbilityInfo().extensionAbilityType)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "consume session timeout, Uri: %{public}s/%{public}s",
             abilityRecord->GetInfoBundleName().c_str(),
@@ -1109,6 +1196,7 @@ void UIExtensionAbilityManager::HandleStartTimeoutTaskInner(const std::shared_pt
 void UIExtensionAbilityManager::HandleForegroundTimeoutTaskInner(
     const std::shared_ptr<BaseExtensionRecord> &abilityRecord)
 {
+    RemoveStartingRecord(abilityRecord->GetUid(), abilityRecord->GetPid(), abilityRecord->GetAbilityRecordId());
     if (UIExtensionWrapper::IsUIExtension(abilityRecord->GetAbilityInfo().extensionAbilityType)) {
         ForegroundTimeout(abilityRecord);
     }
@@ -1178,6 +1266,7 @@ void UIExtensionAbilityManager::HandleAbilityDiedTaskInner(const std::shared_ptr
     TAG_LOGD(AAFwkTag::EXT, "called");
     CHECK_POINTER(abilityRecord);
     TAG_LOGD(AAFwkTag::EXT, "ability died: %{public}s", abilityRecord->GetURI().c_str());
+    RemoveStartingRecord(abilityRecord->GetUid(), abilityRecord->GetPid(), abilityRecord->GetAbilityRecordId());
     HandleConnectRecordOnAbilityDied(abilityRecord);
     if (IsUIExtensionAbility(abilityRecord)) {
         HandleUIExtensionDied(abilityRecord);
@@ -1212,6 +1301,7 @@ int UIExtensionAbilityManager::DispatchForeground(const std::shared_ptr<BaseExte
     const sptr<IRemoteObject> &token)
 {
     CHECK_POINTER_AND_RETURN(abilityRecord, ERR_INVALID_VALUE);
+    RemoveStartingRecord(abilityRecord->GetUid(), abilityRecord->GetPid(), abilityRecord->GetAbilityRecordId());
     if (IsUIExtensionAbility(abilityRecord)) {
         DelayedSingleton<AppScheduler>::GetInstance()->UpdateExtensionState(
             token, AppExecFwk::ExtensionState::EXTENSION_STATE_FOREGROUND);
@@ -1234,6 +1324,7 @@ int UIExtensionAbilityManager::DispatchInactive(const std::shared_ptr<BaseExtens
     int state, const sptr<IRemoteObject> &token)
 {
     CHECK_POINTER_AND_RETURN(abilityRecord, ERR_INVALID_VALUE);
+    RemoveStartingRecord(abilityRecord->GetUid(), abilityRecord->GetPid(), abilityRecord->GetAbilityRecordId());
     HandlePreloadUIExtensionSuccess(abilityRecord->GetUIExtensionAbilityId(), true);
     TAG_LOGD(AAFwkTag::EXT, "DispatchInactive call");
 
@@ -1464,6 +1555,8 @@ void UIExtensionAbilityManager::CompleteBackground(const std::shared_ptr<BaseExt
     // notify AppMS to update application state.
     DelayedSingleton<AppScheduler>::GetInstance()->MoveToBackground(abilityRecord->GetToken());
     if (abilityRecord->GetPendingState() == AbilityState::FOREGROUND) {
+        AddStartingRecord(abilityRecord->GetUid(), abilityRecord->GetPid(),
+            abilityRecord->GetAbilityRecordId(), GetForegroundTimeoutMultiple(abilityRecord));
         abilityRecord->PostUIExtensionAbilityTimeoutTask(AbilityManagerService::FOREGROUND_TIMEOUT_MSG);
         abilityRecord->SetAbilityState(AbilityState::FOREGROUNDING);
         DelayedSingleton<AppScheduler>::GetInstance()->MoveToForeground(abilityRecord->GetToken());

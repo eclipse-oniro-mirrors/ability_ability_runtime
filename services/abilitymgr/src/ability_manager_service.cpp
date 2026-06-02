@@ -3544,26 +3544,39 @@ int32_t AbilityManagerService::KillAppWithReason(const int32_t pid, const ExitRe
         TAG_LOGE(AAFwkTag::ABILITYMGR, "KillProcess permission verification fail");
         return ERR_PERMISSION_DENIED;
     }
-    if (!exitReason.shouldKillForeground) {
+    ExitReason reason(exitReason.reason, exitReason.subReason, exitReason.exitMsg);
+    bool isKillPrecedeStart = (exitReason.reason == Reason::REASON_RESOURCE_CONTROL &&
+        exitReason.exitMsg == GlobalConstant::LOW_MEMORY_KILL) || exitReason.shouldSkipKillInStartup;
+    auto innerRet = KillAppWithReasonInner(pid, uid, reason, isKillPrecedeStart, exitReason.shouldKillForeground);
+    if (innerRet != ERR_OK) {
+        return innerRet;
+    }
+
+    appExitReasonHelper_->AddAppExitReason(bundleName, pid, uid, appIndex, exitReason);
+    std::vector<int32_t> pidToBeKilled = { pid };
+    return IN_PROCESS_CALL(DelayedSingleton<AppScheduler>::GetInstance()->KillProcessesByPids(pidToBeKilled,
+        reason.exitMsg, true, isKillPrecedeStart, exitReason.shouldKillForeground));
+}
+
+int32_t AbilityManagerService::KillAppWithReasonInner(int32_t pid, int32_t uid,
+    const ExitReason &reason, bool isKillPrecedeStart, bool shouldKillForeground)
+{
+    if (!shouldKillForeground) {
         AppExecFwk::RunningProcessInfo processInfo;
         DelayedSingleton<AppScheduler>::GetInstance()->GetRunningProcessInfoByPid(pid, processInfo);
         if (processInfo.isAbilityForegrounding || processInfo.isFocused) {
             TAG_LOGI(AAFwkTag::ABILITYMGR, "do not kill foreground apps, pid = %{public}d", pid);
             return ERR_KILL_APP_WHILE_FOREGROUND;
         }
+        if (ProcessLowMemoryKillUIExtension(pid, processInfo.uid_)) {
+            return ERR_KILL_APP_WHILE_STARTING;
+        }
     }
-    bool isKillPrecedeStart = (exitReason.reason == Reason::REASON_RESOURCE_CONTROL &&
-        exitReason.exitMsg == GlobalConstant::LOW_MEMORY_KILL) || exitReason.shouldSkipKillInStartup;
-    ExitReason reason(exitReason.reason, exitReason.subReason, exitReason.exitMsg);
     if (ProcessLowMemoryKill(pid, reason, isKillPrecedeStart)) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "%{public}d is starting", pid);
         return ERR_KILL_APP_WHILE_STARTING;
     }
-    
-    appExitReasonHelper_->AddAppExitReason(bundleName, pid, uid, appIndex, exitReason);
-    std::vector<int32_t> pidToBeKilled = { pid };
-    return IN_PROCESS_CALL(DelayedSingleton<AppScheduler>::GetInstance()->KillProcessesByPids(pidToBeKilled,
-        reason.exitMsg, true, isKillPrecedeStart));
+    return ERR_OK;
 }
 
 int32_t AbilityManagerService::KillBundleWithReason(
@@ -13685,6 +13698,22 @@ bool AbilityManagerService::ProcessLowMemoryKill(int32_t pid, const ExitReason &
     return false;
 }
 
+bool AbilityManagerService::ProcessLowMemoryKillUIExtension(int32_t pid, int32_t uid)
+{
+    int32_t userId = INVALID_USER_ID;
+    auto ret = DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()
+        ->GetOsAccountLocalIdFromUid(uid, userId);
+    if (ret == 0) {
+        auto uiExtManager = GetUIExtensionAbilityManagerByUserId(userId);
+        if (uiExtManager != nullptr && uiExtManager->IsUIExtensionStarting(uid, pid)) {
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "UIExtension uid %{public}d is starting, userId:%{public}d",
+                uid, userId);
+            return true;
+        }
+    }
+    return false;
+}
+
 int32_t AbilityManagerService::KillProcessWithReason(int32_t pid, const ExitReason &reason)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
@@ -13733,6 +13762,9 @@ int32_t AbilityManagerService::KillProcessWithReasonInner(int32_t pid, const Exi
             TAG_LOGI(AAFwkTag::ABILITYMGR, "do not kill foreground apps, pid = %{public}d", pid);
             return ERR_KILL_APP_WHILE_FOREGROUND;
         }
+        if (ProcessLowMemoryKillUIExtension(pid, processInfo.uid_)) {
+            return ERR_KILL_APP_WHILE_STARTING;
+        }
     }
 
     if (ProcessLowMemoryKill(pid, reason, isKillPrecedeStart)) {
@@ -13752,7 +13784,7 @@ int32_t AbilityManagerService::KillProcessWithReasonInner(int32_t pid, const Exi
     }
     std::vector<int32_t> pidToBeKilled = { pid };
     return IN_PROCESS_CALL(DelayedSingleton<AppScheduler>::GetInstance()->KillProcessesByPids(pidToBeKilled,
-        reason.exitMsg, true, isKillPrecedeStart));
+        reason.exitMsg, true, isKillPrecedeStart, reason.shouldKillForeground));
 }
 
 int32_t AbilityManagerService::RegisterAutoStartupSystemCallback(const sptr<IRemoteObject> &callback)
