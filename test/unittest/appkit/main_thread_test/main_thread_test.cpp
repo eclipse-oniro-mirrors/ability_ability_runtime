@@ -3059,5 +3059,119 @@ HWTEST_F(MainThreadTest, GetPluginNativeLibPath_0500, TestSize.Level1)
     EXPECT_EQ(appLibPaths["pluginBundleName/validModule"][0],
         "/data/storage/el1/bundle/+plugins/libs/arm");
 }
+
+/*
+* Feature: MainThread
+* Function: PreloadModule
+* SubFunction: NA
+* FunctionPoints: PreloadModule with preloadAbilityName
+* EnvConditions: NA
+* CaseDescription: Verify PreloadModule calls AddAbilityStage with preloadAbilityName
+*/
+HWTEST_F(MainThreadTest, PreloadModule_WithPreloadAbilityName_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+
+    // Setup application
+    mainThread_->application_ = std::make_shared<OHOSApplication>();
+    mainThread_->application_->SetRuntime(std::make_unique<AbilityRuntime::MockRuntime>());
+
+    // Prepare BundleInfo
+    BundleInfo bundleInfo;
+    bundleInfo.name = "com.example.test";
+    bundleInfo.bundleName = "com.example.test";
+
+    // Prepare HapModuleInfo for preload
+    HapModuleInfo preloadModuleInfo;
+    preloadModuleInfo.bundleName = "com.example.test";
+    preloadModuleInfo.moduleName = "entry";
+    preloadModuleInfo.mainAbility = "MainAbility";
+    preloadModuleInfo.arkTSMode = AbilityRuntime::CODE_LANGUAGE_ARKTS_1_0;
+    bundleInfo.hapModuleInfos.emplace_back(preloadModuleInfo);
+
+    // Prepare AppLaunchData
+    AppLaunchData appLaunchData;
+    appLaunchData.SetPreloadModuleName("entry");
+    appLaunchData.SetPreloadAbilityName("PreloadTargetAbility");
+
+    // Call PreloadModule
+    mainThread_->PreloadModule(bundleInfo, appLaunchData, preloadModuleInfo,
+        mainThread_->application_->GetRuntime());
+
+    // Verify abilityStage was created with launchElement set
+    auto& abilityStages = mainThread_->application_->abilityStages_;
+    EXPECT_GT(abilityStages.size(), 0u);
+
+    auto it = abilityStages.find("entry");
+    if (it != abilityStages.end()) {
+        auto abilityStage = it->second;
+        auto stageContext = std::static_pointer_cast<AbilityRuntime::AbilityStageContext>(abilityStage->GetContext());
+        ASSERT_NE(stageContext, nullptr);
+
+        auto launchElement = stageContext->GetLaunchElement();
+        EXPECT_EQ(launchElement.GetAbilityName(), "PreloadTargetAbility");
+        EXPECT_EQ(launchElement.GetBundleName(), "com.example.test");
+        EXPECT_EQ(launchElement.GetModuleName(), "entry");
+    }
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/*
+* Feature: MainThread
+* Function: PreloadModule
+* SubFunction: NA
+* FunctionPoints: PreloadModule with empty preloadAbilityName
+* EnvConditions: NA
+* CaseDescription: Verify PreloadModule uses mainAbility when preloadAbilityName is empty
+*/
+HWTEST_F(MainThreadTest, PreloadModule_WithEmptyPreloadAbilityName_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+
+    // Setup application
+    mainThread_->application_ = std::make_shared<OHOSApplication>();
+    mainThread_->application_->SetRuntime(std::make_unique<AbilityRuntime::MockRuntime>());
+
+    // Prepare BundleInfo
+    BundleInfo bundleInfo;
+    bundleInfo.name = "com.example.test";
+    bundleInfo.bundleName = "com.example.test";
+
+    // Prepare HapModuleInfo for preload
+    HapModuleInfo preloadModuleInfo;
+    preloadModuleInfo.bundleName = "com.example.test";
+    preloadModuleInfo.moduleName = "entry";
+    preloadModuleInfo.mainAbility = "MainAbility";
+    preloadModuleInfo.arkTSMode = AbilityRuntime::CODE_LANGUAGE_ARKTS_1_0;
+    bundleInfo.hapModuleInfos.emplace_back(preloadModuleInfo);
+
+    // Prepare AppLaunchData with empty preloadAbilityName
+    AppLaunchData appLaunchData;
+    appLaunchData.SetPreloadModuleName("entry");
+    appLaunchData.SetPreloadAbilityName("");  // Empty - should use mainAbility
+
+    // Call PreloadModule
+    mainThread_->PreloadModule(bundleInfo, appLaunchData, preloadModuleInfo,
+        mainThread_->application_->GetRuntime());
+
+    // Verify abilityStage was created with mainAbility as fallback
+    auto& abilityStages = mainThread_->application_->abilityStages_;
+    EXPECT_GT(abilityStages.size(), 0u);
+
+    auto it = abilityStages.find("entry");
+    if (it != abilityStages.end()) {
+        auto abilityStage = it->second;
+        auto stageContext = std::static_pointer_cast<AbilityRuntime::AbilityStageContext>(abilityStage->GetContext());
+        ASSERT_NE(stageContext, nullptr);
+
+        auto launchElement = stageContext->GetLaunchElement();
+        EXPECT_EQ(launchElement.GetAbilityName(), "MainAbility");  // Should use mainAbility
+        EXPECT_EQ(launchElement.GetBundleName(), "com.example.test");
+        EXPECT_EQ(launchElement.GetModuleName(), "entry");
+    }
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
 } // namespace AppExecFwk
 } // namespace OHOS

@@ -2289,5 +2289,357 @@ HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_OnTerminate_0200, T
     ohosApplication_->OnTerminate();
     EXPECT_NE(ohosApplication_->abilityRuntimeContext_, nullptr);
 }
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0100
+* @tc.name: SetLaunchElementForStage
+* @tc.desc: Verify SetLaunchElementForStage with valid parameters
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0100 start.";
+
+    auto stageContext = std::make_shared<AbilityRuntime::AbilityStageContext>();
+    ASSERT_NE(stageContext, nullptr);
+
+    auto moduleInfo = std::make_shared<AppExecFwk::HapModuleInfo>();
+    moduleInfo->bundleName = "com.example.test";
+    moduleInfo->moduleName = "entry";
+    moduleInfo->mainAbility = "MainAbility";
+
+    std::string abilityName = "MainAbility";
+
+    ohosApplication_->SetLaunchElementForStage(stageContext, moduleInfo, abilityName);
+
+    auto launchElement = stageContext->GetLaunchElement();
+    EXPECT_EQ(launchElement.GetBundleName(), "com.example.test");
+    EXPECT_EQ(launchElement.GetModuleName(), "entry");
+    EXPECT_EQ(launchElement.GetAbilityName(), "MainAbility");
+
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0100 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0200
+* @tc.name: SetLaunchElementForStage
+* @tc.desc: Verify SetLaunchElementForStage with null stageContext
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0200 start.";
+
+    std::shared_ptr<AbilityRuntime::AbilityStageContext> stageContext = nullptr;
+    auto moduleInfo = std::make_shared<AppExecFwk::HapModuleInfo>();
+    moduleInfo->bundleName = "com.example.test";
+    moduleInfo->moduleName = "entry";
+
+    std::string abilityName = "MainAbility";
+
+    ohosApplication_->SetLaunchElementForStage(stageContext, moduleInfo, abilityName);
+
+    EXPECT_TRUE(true);
+
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0200 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0300
+* @tc.name: SetLaunchElementForStage
+* @tc.desc: Verify SetLaunchElementForStage with null moduleInfo
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0300 start.";
+
+    auto stageContext = std::make_shared<AbilityRuntime::AbilityStageContext>();
+    ASSERT_NE(stageContext, nullptr);
+
+    std::shared_ptr<AppExecFwk::HapModuleInfo> moduleInfo = nullptr;
+    std::string abilityName = "MainAbility";
+
+    ohosApplication_->SetLaunchElementForStage(stageContext, moduleInfo, abilityName);
+
+    EXPECT_TRUE(true);
+
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0300 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0400
+* @tc.name: SetLaunchElementForStage
+* @tc.desc: Verify SetLaunchElementForStage with custom abilityName (preload scenario)
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0400 start.";
+
+    auto stageContext = std::make_shared<AbilityRuntime::AbilityStageContext>();
+    ASSERT_NE(stageContext, nullptr);
+
+    auto moduleInfo = std::make_shared<AppExecFwk::HapModuleInfo>();
+    moduleInfo->bundleName = "com.example.test";
+    moduleInfo->moduleName = "entry";
+    moduleInfo->mainAbility = "MainAbility";
+
+    std::string abilityName = "PreloadAbility";
+
+    ohosApplication_->SetLaunchElementForStage(stageContext, moduleInfo, abilityName);
+
+    auto launchElement = stageContext->GetLaunchElement();
+    EXPECT_EQ(launchElement.GetBundleName(), "com.example.test");
+    EXPECT_EQ(launchElement.GetModuleName(), "entry");
+    EXPECT_EQ(launchElement.GetAbilityName(), "PreloadAbility");
+
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0400 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_CreateAndInitStageContext_0100
+* @tc.name: CreateAndInitStageContext
+* @tc.desc: Verify CreateAndInitStageContext success
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_CreateAndInitStageContext_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_CreateAndInitStageContext_0100 start.";
+
+    // Setup application context
+    ohosApplication_->abilityRuntimeContext_ = std::make_shared<AbilityRuntime::ApplicationContext>();
+    ohosApplication_->configuration_ = std::make_shared<AppExecFwk::Configuration>();
+
+    AppExecFwk::HapModuleInfo hapModuleInfo;
+    hapModuleInfo.bundleName = "com.example.test";
+    hapModuleInfo.moduleName = "entry";
+    hapModuleInfo.mainAbility = "MainAbility";
+
+    auto stageContext = ohosApplication_->CreateAndInitStageContext(hapModuleInfo);
+
+    ASSERT_NE(stageContext, nullptr);
+
+    auto moduleInfo = stageContext->GetHapModuleInfo();
+    ASSERT_NE(moduleInfo, nullptr);
+    EXPECT_EQ(moduleInfo->bundleName, "com.example.test");
+    EXPECT_EQ(moduleInfo->moduleName, "entry");
+
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_CreateAndInitStageContext_0100 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_CreateAndInitStageContext_0200
+* @tc.name: CreateAndInitStageContext
+* @tc.desc: Verify CreateAndInitStageContext with multiProjects scenario
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_CreateAndInitStageContext_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_CreateAndInitStageContext_0200 start.";
+
+    // Setup application context with multiProjects
+    auto applicationContext = std::make_shared<AbilityRuntime::ApplicationContext>();
+    auto appInfo = std::make_shared<AppExecFwk::ApplicationInfo>();
+    appInfo->multiProjects = true;
+    applicationContext->SetApplicationInfo(appInfo);
+
+    ohosApplication_->abilityRuntimeContext_ = applicationContext;
+    ohosApplication_->configuration_ = std::make_shared<AppExecFwk::Configuration>();
+
+    AppExecFwk::HapModuleInfo hapModuleInfo;
+    hapModuleInfo.bundleName = "com.example.test";
+    hapModuleInfo.moduleName = "entry";
+
+    auto stageContext = ohosApplication_->CreateAndInitStageContext(hapModuleInfo);
+
+    ASSERT_NE(stageContext, nullptr);
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_CreateAndInitStageContext_0200 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_ExecuteAutoStartupTasks_0100
+* @tc.name: ExecuteAutoStartupTasks
+* @tc.desc: Verify ExecuteAutoStartupTasks with null abilityStage
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_ExecuteAutoStartupTasks_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_ExecuteAutoStartupTasks_0100 start.";
+
+    std::shared_ptr<AbilityRuntime::AbilityStage> abilityStage = nullptr;
+    AppExecFwk::HapModuleInfo hapModuleInfo;
+    auto callback = []() {};
+    bool isAsyncCallback = false;
+    auto stageContext = std::make_shared<AbilityRuntime::AbilityStageContext>();
+
+    auto result = ohosApplication_->ExecuteAutoStartupTasks(
+        abilityStage, hapModuleInfo, callback, isAsyncCallback, stageContext);
+
+    EXPECT_FALSE(result);
+
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_ExecuteAutoStartupTasks_0100 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0100
+* @tc.name: AddAbilityStage with preloadAbilityName
+* @tc.desc: Verify AddAbilityStage with non-empty preloadAbilityName (preload scenario)
+*/
+HWTEST_F(OHOSApplicationTest,
+    AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0100 start.";
+
+    ohosApplication_->abilityRuntimeContext_ = std::make_shared<AbilityRuntime::ApplicationContext>();
+    ohosApplication_->runtime_ = std::make_unique<AbilityRuntime::MockRuntime>();
+    ohosApplication_->configuration_ = std::make_shared<AppExecFwk::Configuration>();
+
+    AppExecFwk::HapModuleInfo hapModuleInfo;
+    hapModuleInfo.bundleName = "com.example.test";
+    hapModuleInfo.moduleName = "entry";
+    hapModuleInfo.mainAbility = "MainAbility";
+    hapModuleInfo.arkTSMode = AbilityRuntime::CODE_LANGUAGE_ARKTS_1_0;
+
+    auto callback = []() {};
+    bool isAsyncCallback = false;
+    std::string preloadAbilityName = "PreloadAbility";
+
+    auto result = ohosApplication_->AddAbilityStage(hapModuleInfo, callback, isAsyncCallback, preloadAbilityName);
+
+    EXPECT_TRUE(result);
+    EXPECT_FALSE(ohosApplication_->abilityStages_.empty());
+
+    auto abilityStage = ohosApplication_->abilityStages_["entry"];
+    ASSERT_NE(abilityStage, nullptr);
+    auto stageContext = std::static_pointer_cast<AbilityRuntime::AbilityStageContext>(abilityStage->GetContext());
+    ASSERT_NE(stageContext, nullptr);
+
+    auto launchElement = stageContext->GetLaunchElement();
+    EXPECT_EQ(launchElement.GetAbilityName(), "PreloadAbility");
+    EXPECT_EQ(launchElement.GetBundleName(), "com.example.test");
+    EXPECT_EQ(launchElement.GetModuleName(), "entry");
+
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0100 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0200
+* @tc.name: AddAbilityStage with empty preloadAbilityName
+* @tc.desc: Verify AddAbilityStage with empty preloadAbilityName (fallback to mainAbility)
+*/
+HWTEST_F(OHOSApplicationTest,
+    AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0200 start.";
+
+    ohosApplication_->abilityRuntimeContext_ = std::make_shared<AbilityRuntime::ApplicationContext>();
+    ohosApplication_->runtime_ = std::make_unique<AbilityRuntime::MockRuntime>();
+    ohosApplication_->configuration_ = std::make_shared<AppExecFwk::Configuration>();
+
+    AppExecFwk::HapModuleInfo hapModuleInfo;
+    hapModuleInfo.bundleName = "com.example.test";
+    hapModuleInfo.moduleName = "feature";
+    hapModuleInfo.mainAbility = "FeatureAbility";
+    hapModuleInfo.arkTSMode = AbilityRuntime::CODE_LANGUAGE_ARKTS_1_0;
+
+    auto callback = []() {};
+    bool isAsyncCallback = false;
+    std::string preloadAbilityName = "";
+
+    auto result = ohosApplication_->AddAbilityStage(hapModuleInfo, callback, isAsyncCallback, preloadAbilityName);
+
+    EXPECT_TRUE(result);
+    EXPECT_FALSE(ohosApplication_->abilityStages_.empty());
+
+    auto abilityStage = ohosApplication_->abilityStages_["feature"];
+    ASSERT_NE(abilityStage, nullptr);
+    auto stageContext = std::static_pointer_cast<AbilityRuntime::AbilityStageContext>(abilityStage->GetContext());
+    ASSERT_NE(stageContext, nullptr);
+
+    auto launchElement = stageContext->GetLaunchElement();
+    EXPECT_EQ(launchElement.GetAbilityName(), "FeatureAbility");
+    EXPECT_EQ(launchElement.GetBundleName(), "com.example.test");
+    EXPECT_EQ(launchElement.GetModuleName(), "feature");
+
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0200 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0300
+* @tc.name: AddAbilityStage without preloadAbilityName
+* @tc.desc: Verify AddAbilityStage backward compatibility (default parameter)
+*/
+HWTEST_F(OHOSApplicationTest,
+    AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0300 start.";
+
+    ohosApplication_->abilityRuntimeContext_ = std::make_shared<AbilityRuntime::ApplicationContext>();
+    ohosApplication_->runtime_ = std::make_unique<AbilityRuntime::MockRuntime>();
+    ohosApplication_->configuration_ = std::make_shared<AppExecFwk::Configuration>();
+
+    AppExecFwk::HapModuleInfo hapModuleInfo;
+    hapModuleInfo.bundleName = "com.example.test";
+    hapModuleInfo.moduleName = "service";
+    hapModuleInfo.mainAbility = "ServiceAbility";
+    hapModuleInfo.arkTSMode = AbilityRuntime::CODE_LANGUAGE_ARKTS_1_0;
+
+    auto callback = []() {};
+    bool isAsyncCallback = false;
+
+    auto result = ohosApplication_->AddAbilityStage(hapModuleInfo, callback, isAsyncCallback);
+
+    EXPECT_TRUE(result);
+    EXPECT_FALSE(ohosApplication_->abilityStages_.empty());
+
+    auto abilityStage = ohosApplication_->abilityStages_["service"];
+    ASSERT_NE(abilityStage, nullptr);
+    auto stageContext = std::static_pointer_cast<AbilityRuntime::AbilityStageContext>(abilityStage->GetContext());
+    ASSERT_NE(stageContext, nullptr);
+
+    auto launchElement = stageContext->GetLaunchElement();
+    EXPECT_EQ(launchElement.GetAbilityName(), "ServiceAbility");
+    EXPECT_EQ(launchElement.GetBundleName(), "com.example.test");
+    EXPECT_EQ(launchElement.GetModuleName(), "service");
+
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0300 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_AddAbilityStage_PreloadScenario_0100
+* @tc.name: AddAbilityStage preload scenario integration test
+* @tc.desc: Verify complete preload scenario with launchElement
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_AddAbilityStage_PreloadScenario_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_PreloadScenario_0100 start.";
+
+    ohosApplication_->abilityRuntimeContext_ = std::make_shared<AbilityRuntime::ApplicationContext>();
+    ohosApplication_->runtime_ = std::make_unique<AbilityRuntime::MockRuntime>();
+    ohosApplication_->configuration_ = std::make_shared<AppExecFwk::Configuration>();
+
+    AppExecFwk::HapModuleInfo preloadModuleInfo;
+    preloadModuleInfo.bundleName = "com.example.preload";
+    preloadModuleInfo.moduleName = "preload_entry";
+    preloadModuleInfo.mainAbility = "EntryAbility";
+    preloadModuleInfo.arkTSMode = AbilityRuntime::CODE_LANGUAGE_ARKTS_1_0;
+
+    std::string preloadAbilityName = "TargetPreloadAbility";
+
+    auto callback = []() {};
+    bool isAsyncCallback = false;
+
+    auto result = ohosApplication_->AddAbilityStage(
+        preloadModuleInfo, callback, isAsyncCallback, preloadAbilityName);
+
+    EXPECT_TRUE(result);
+    EXPECT_EQ(ohosApplication_->abilityStages_.size(), 1u);
+
+    auto abilityStage = ohosApplication_->abilityStages_["preload_entry"];
+    ASSERT_NE(abilityStage, nullptr);
+    auto stageContext = std::static_pointer_cast<AbilityRuntime::AbilityStageContext>(abilityStage->GetContext());
+    ASSERT_NE(stageContext, nullptr);
+
+    auto launchElement = stageContext->GetLaunchElement();
+    EXPECT_EQ(launchElement.GetBundleName(), "com.example.preload");
+    EXPECT_EQ(launchElement.GetModuleName(), "preload_entry");
+    EXPECT_EQ(launchElement.GetAbilityName(), "TargetPreloadAbility");
+
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_PreloadScenario_0100 end.";
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS
