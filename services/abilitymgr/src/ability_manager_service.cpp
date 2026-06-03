@@ -9957,6 +9957,9 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
         errMsg = "verify account permission failed";
         return CHECK_PERMISSION_FAILED;
     }
+    if (accountId == U0_USER_ID) {
+        accountId = DEFAULT_INVAL_VALUE;
+    }
     int32_t oriValidUserId = GetValidUserId(accountId);
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
     CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), oriValidUserId),
@@ -9967,9 +9970,6 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
     if (!StartAbilityUtils::GetAppIndex(want, callerToken, appIndex)) {
         errMsg = "app index is error";
         return ERR_APP_CLONE_INDEX_INVALID;
-    }
-    if (accountId == U0_USER_ID) {
-        accountId = DEFAULT_INVAL_VALUE;
     }
     auto checkRet = AbilityPermissionUtil::GetInstance().CheckMultiInstanceAndAppClone(const_cast<Want &>(want),
         oriValidUserId, appIndex, callerToken, false);
