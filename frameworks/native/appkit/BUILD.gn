@@ -518,6 +518,7 @@ ohos_shared_library("app_context") {
     "napi:ace_napi",
     "resource_management:global_resmgr",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
   public_external_deps = [
     "ability_base:configuration",
