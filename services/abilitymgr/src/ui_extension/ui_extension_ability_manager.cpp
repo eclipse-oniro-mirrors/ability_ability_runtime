@@ -129,6 +129,8 @@ void UIExtensionAbilityManager::AddStartingRecord(int32_t uid, pid_t pid, int64_
                 uid, pid, recordId, it->second, startingRecordsMap_.size());
         } else {
             startingRecordsMap_[key] = 1;
+            TAG_LOGI(AAFwkTag::UI_EXT, "addStartingRecord, uid:%{public}d pid:%{public}d "
+                "recordId:%{public}" PRId64, uid, pid, recordId);
         }
     }
 

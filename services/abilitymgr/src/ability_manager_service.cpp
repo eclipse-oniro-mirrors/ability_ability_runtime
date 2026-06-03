@@ -3547,7 +3547,7 @@ int32_t AbilityManagerService::KillAppWithReason(const int32_t pid, const ExitRe
     ExitReason reason(exitReason.reason, exitReason.subReason, exitReason.exitMsg);
     bool isKillPrecedeStart = (exitReason.reason == Reason::REASON_RESOURCE_CONTROL &&
         exitReason.exitMsg == GlobalConstant::LOW_MEMORY_KILL) || exitReason.shouldSkipKillInStartup;
-    auto innerRet = KillAppWithReasonInner(pid, uid, reason, isKillPrecedeStart, exitReason.shouldKillForeground);
+    auto innerRet = KillAppWithReasonInner(pid, reason, isKillPrecedeStart, exitReason.shouldKillForeground);
     if (innerRet != ERR_OK) {
         return innerRet;
     }
