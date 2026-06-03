@@ -40,12 +40,24 @@ public:
         return mockQueryAbilityInfosV9Ret;
     }
 
+    ErrCode QueryExtensionAbilityInfosV9(
+        const Want &want, int32_t flags, int32_t userId,
+        std::vector<ExtensionAbilityInfo> &extensionInfos) override
+    {
+        extensionInfos = mockExtensionInfos;
+        return mockQueryExtensionAbilityInfosV9Ret;
+    }
+
     static ErrCode mockQueryAbilityInfosV9Ret;
     static std::vector<AbilityInfo> mockAbilityInfos;
+    static ErrCode mockQueryExtensionAbilityInfosV9Ret;
+    static std::vector<ExtensionAbilityInfo> mockExtensionInfos;
 };
 
 ErrCode MockBundleMgrStub::mockQueryAbilityInfosV9Ret = ERR_OK;
 std::vector<AbilityInfo> MockBundleMgrStub::mockAbilityInfos;
+ErrCode MockBundleMgrStub::mockQueryExtensionAbilityInfosV9Ret = ERR_OK;
+std::vector<ExtensionAbilityInfo> MockBundleMgrStub::mockExtensionInfos;
 }  // namespace AppExecFwk
 }  // namespace OHOS
 

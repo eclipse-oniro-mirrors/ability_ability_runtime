@@ -148,6 +148,9 @@ public:
 
     ErrCode QueryAbilityInfos(const Want &want, int32_t userId, std::vector<AbilityInfo> &abilityInfos);
     bool QueryEnabledAbilityInfo(const Want &want, int32_t userId, AbilityInfo &abilityInfo);
+    ErrCode QueryExtensionAbilityInfosV9(const Want &want, int32_t userId,
+        std::vector<ExtensionAbilityInfo> &extensionInfos);
+    bool QueryEnabledExtensionAbilityInfo(const Want &want, int32_t userId, ExtensionAbilityInfo &extensionInfo);
 
 private:
     sptr<IBundleMgr> Connect();

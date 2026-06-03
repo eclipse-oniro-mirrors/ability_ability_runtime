@@ -45,6 +45,9 @@ ohos_shared_library("startup_util") {
 
   defines = [ "AMS_LOG_TAG = \"StartupUtil\"" ]
   defines += [ "AMS_LOG_DOMAIN = 0xD001306" ]
+  if (ability_runtime_enable_clone_for_account) {
+    defines += [ "ENABLE_CLONE_FOR_ACCOUNT" ]
+  }
   cflags = []
   if (target_cpu == "arm") {
     cflags += [ "-DBINDER_IPC_32BIT" ]

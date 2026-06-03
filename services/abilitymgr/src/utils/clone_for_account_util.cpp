@@ -21,7 +21,7 @@
 
 namespace OHOS {
 namespace AAFwk {
-bool CloneForAccountUtil::ProcessAppIndex(Want &want, int32_t userId)
+bool CloneForAccountUtil::ProcessAppIndex(Want &want, int32_t userId, bool isExtension)
 {
     want.RemoveParam(Want::PARAM_APP_CLONE_INDEX_KEY);
 
@@ -35,14 +35,24 @@ bool CloneForAccountUtil::ProcessAppIndex(Want &want, int32_t userId)
         TAG_LOGE(AAFwkTag::ABILITYMGR, "bundleMgrHelper is nullptr");
         return false;
     }
-    AppExecFwk::AbilityInfo abilityInfo;
-    if (!IN_PROCESS_CALL(bundleMgrHelper->QueryEnabledAbilityInfo(want, userId, abilityInfo))) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "QueryEnabledAbilityInfo failed");
-        return false;
+
+    if (!isExtension) {
+        AppExecFwk::AbilityInfo abilityInfo;
+        if (IN_PROCESS_CALL(bundleMgrHelper->QueryEnabledAbilityInfo(want, userId, abilityInfo))) {
+            want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, abilityInfo.appIndex);
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "CloneForAccount resolved appIndex: %{public}d", abilityInfo.appIndex);
+            return true;
+        }
     }
 
-    want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, abilityInfo.appIndex);
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "CloneForAccount resolved appIndex: %{public}d", abilityInfo.appIndex);
+    AppExecFwk::ExtensionAbilityInfo extensionInfo;
+    if (!IN_PROCESS_CALL(bundleMgrHelper->QueryEnabledExtensionAbilityInfo(want, userId, extensionInfo))) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "QueryEnabledExtensionAbilityInfo failed");
+        return false;
+    }
+    want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, extensionInfo.appIndex);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CloneForAccount resolved extension appIndex: %{public}d",
+        extensionInfo.appIndex);
     return true;
 }
 }  // namespace AAFwk

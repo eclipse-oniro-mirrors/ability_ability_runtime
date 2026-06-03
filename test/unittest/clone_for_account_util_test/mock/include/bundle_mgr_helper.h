@@ -29,9 +29,13 @@ public:
 
     bool QueryEnabledAbilityInfo(const Want &want, int32_t userId, AbilityInfo &abilityInfo);
 
+    bool QueryEnabledExtensionAbilityInfo(const Want &want, int32_t userId, ExtensionAbilityInfo &extensionInfo);
+
     static bool isBundleManagerHelperNull;
     static bool retQueryEnabledAbilityInfo;
+    static bool retQueryEnabledExtensionAbilityInfo;
     static AbilityInfo abilityInfoResult;
+    static ExtensionAbilityInfo extensionInfoResult;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

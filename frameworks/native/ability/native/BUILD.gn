@@ -612,6 +612,10 @@ ohos_shared_library("extensionkit_native") {
   public_configs = [ ":extensionkit_public_config" ]
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
 
+  if (ability_runtime_enable_clone_for_account) {
+    defines += [ "ENABLE_CLONE_FOR_ACCOUNT" ]
+  }
+
   deps = [
     ":abilitykit_utils",
     ":configuration_helper",
