@@ -133,7 +133,8 @@ int32_t PreloadManagerService::PreloadApplicationVerification(const std::string 
         return errCode;
     }
     CHECK_TRUE_RETURN_RET(!IN_PROCESS_CALL(bundleMgrHelper->QueryAbilityInfo(want,
-        AppExecFwk::AbilityInfoFlag::GET_ABILITY_INFO_WITH_APPLICATION, userId, abilityInfo)),
+        AppExecFwk::AbilityInfoFlag::GET_ABILITY_INFO_WITH_APPLICATION |
+        AppExecFwk::AbilityInfoFlag::GET_ABILITY_INFO_WITH_METADATA, userId, abilityInfo)),
         RESOLVE_ABILITY_ERR, "failed to get abilityInfo");
     CHECK_TRUE_RETURN_RET(NativeAbilityMetaData::IsWithNative(abilityInfo),
         ERR_CAPABILITY_NOT_SUPPORT, "Native ability not supported");
