@@ -752,11 +752,13 @@ static void RemoveGlobalRejection(napi_env env, napi_value promise, std::string 
         napi_value prom = nullptr;
         if (napi_get_reference_value(env, (*iter)->promiseRef, &prom) != napi_ok) {
             TAG_LOGI(AAFwkTag::JSNAPI, "Get Promise Failed");
+            iter++;
             continue;
         }
         bool isEqual = false;
         if (napi_strict_equals(env, promise, prom, &isEqual) != napi_ok) {
             TAG_LOGI(AAFwkTag::JSNAPI, "Strict Equals Failed");
+            iter++;
             continue;
         }
         if (isEqual) {
