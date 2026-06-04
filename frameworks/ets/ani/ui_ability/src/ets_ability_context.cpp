@@ -1059,7 +1059,7 @@ ani_object EtsAbilityContext::StartAbilityByCallWithAccount(
 
     if (callData->remoteCallee == nullptr) {
         EtsErrorUtil::ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-            GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_CALLER_FAILED));
+            GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED));
         return nullptr;
     }
 
@@ -1074,7 +1074,7 @@ ani_object EtsAbilityContext::StartAbilityByCallWithAccount(
     auto caller = EtsCallerComplex::CreateEtsCaller(env, releaseCallFunc, callData->remoteCallee, callerCallBack);
     if (caller == nullptr) {
         EtsErrorUtil::ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-            GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_CALLER_FAILED));
+            GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED));
     }
     return caller;
 }
@@ -2178,7 +2178,7 @@ void EtsAbilityContext::OnRestoreWindowStage(
         localStorageRef_ == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "status : %{public}d", status);
         EtsErrorUtil::ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-            GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_ANI_REFERENCE_FAILED));
+            GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED));
         return;
     }
     auto errCode = context->RestoreWindowStage(reinterpret_cast<void *>(localStorageRef_));
@@ -2525,7 +2525,7 @@ void EtsAbilityContext::OnRequestDialogService(ani_env *env, ani_object aniObj, 
         if (requestResult == nullptr) {
             TAG_LOGW(AAFwkTag::CONTEXT, "null requestResult");
             EtsErrorUtil::ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-                GetInnerErrorMsg(AbilityInnerErrorMsg::REQUEST_DIALOG_RESULT_FAILED));
+                GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED));
         } else {
             ani_object errorObj = EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_OK);
             AppExecFwk::AsyncCallback(env, reinterpret_cast<ani_object>(callbackRef), errorObj, requestResult);
@@ -2754,7 +2754,7 @@ void EtsAbilityContext::OnSetAbilityInstanceInfo(ani_env *env, ani_object aniObj
     if ((status = env->GetVM(&etsVm)) != ANI_OK || etsVm == nullptr) {
         TAG_LOGE(AAFwkTag::CONTEXT, "status: %{public}d", status);
         errorObj = EtsErrorUtil::CreateError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-            GetInnerErrorMsg(AbilityInnerErrorMsg::GET_ANI_VM_FAILED));
+            GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED));
         AppExecFwk::AsyncCallback(env, callback, errorObj, nullptr);
         return;
     }
@@ -2763,7 +2763,7 @@ void EtsAbilityContext::OnSetAbilityInstanceInfo(ani_env *env, ani_object aniObj
     if ((status = env->GlobalReference_Create(callback, &callbackRef)) != ANI_OK || callbackRef == nullptr) {
         TAG_LOGE(AAFwkTag::CONTEXT, "status: %{public}d", status);
         errorObj = EtsErrorUtil::CreateError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-            GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_ANI_REFERENCE_FAILED));
+            GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED));
         AppExecFwk::AsyncCallback(env, callback, errorObj, nullptr);
         return;
     }
@@ -2814,7 +2814,7 @@ void EtsAbilityContext::OnSetAbilityInstanceInfoInner(ani_env *env, std::string&
     if (AniTask::AniSendEvent(task) != ANI_OK) {
         TAG_LOGE(AAFwkTag::CONTEXT, "Failed to sendEvent");
         errorObj = EtsErrorUtil::CreateError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-            GetInnerErrorMsg(AbilityInnerErrorMsg::SET_ON_NEW_WANT_SKIP_SCENARIOS_FAILED));
+            GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED));
         AppExecFwk::AsyncCallback(env, callback, errorObj, nullptr);
         env->GlobalReference_Delete(callbackRef);
     }
@@ -3047,7 +3047,7 @@ void EtsAbilityContext::OnSetOnNewWantSkipScenarios(ani_env *env, ani_object ani
         TAG_LOGE(AAFwkTag::CONTEXT, "SetOnNewWantSkipScenarios failed, innerErrCode: %{public}d", innerErrCode);
         AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateError(
             env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-            GetInnerErrorMsg(AbilityInnerErrorMsg::SET_ON_NEW_WANT_SKIP_SCENARIOS_FAILED)), nullptr);
+            GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED)), nullptr);
         return;
     }
     AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateErrorByNativeErr(env, ERR_OK), nullptr);

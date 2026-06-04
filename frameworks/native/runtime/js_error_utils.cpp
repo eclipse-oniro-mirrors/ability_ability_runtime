@@ -106,9 +106,15 @@ napi_value CreateNoPermissionError(napi_env env, const std::string& permission)
 
 napi_value CreateJsErrorByNativeErr(napi_env env, int32_t err, const std::string& permission)
 {
+    return CreateJsErrorByNativeErr(env, err, permission, "");
+}
+
+napi_value CreateJsErrorByNativeErr(
+    napi_env env, int32_t err, const std::string& permission, const std::string& innerErrMsg)
+{
     HandleEscape handleEscape(env);
     auto errCode = GetJsErrorCodeByNativeError(err);
-    auto errMsg = GetErrorMsgByNativeError(err, "", permission);
+    auto errMsg = GetErrorMsgByNativeError(err, innerErrMsg, permission);
     return handleEscape.Escape(CreateJsError(env, static_cast<int32_t>(errCode), errMsg));
 }
 }  // namespace AbilityRuntime

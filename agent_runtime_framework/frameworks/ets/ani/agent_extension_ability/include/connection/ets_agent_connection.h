@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "ability_connect_callback.h"
+#include "ability_business_error.h"
 #include "ani.h"
 #include "want.h"
 
@@ -179,7 +180,8 @@ public:
      * @param env The ANI environment.
      * @param error The error code.
      */
-    void RejectDuplicatedPendingCallbacks(ani_env *env, int32_t error);
+    void RejectDuplicatedPendingCallbacks(
+        ani_env *env, int32_t error, AbilityRuntime::AbilityInnerErrorMsg fallbackMessage);
 
     /**
      * Called when agent extension sends data.
