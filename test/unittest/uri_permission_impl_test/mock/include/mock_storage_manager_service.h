@@ -541,26 +541,6 @@ public:
         return E_OK;
     }
 
-    virtual int32_t Eject(const std::string &volumeId) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t GetOpticalDriveOpsProgress(const std::string &volumeId, uint32_t &progress) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t Erase(const std::string &volId) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t CreateIsoImage(const std::string &volId, const std::string &filePath) override
-    {
-        return E_OK;
-    }
-
     virtual int32_t GetPartitionTable(const std::string &diskId, PartitionTableInfo &partitionTableInfo)
     {
         return E_OK;
@@ -577,16 +557,6 @@ public:
     }
 
     int32_t FormatPartition(const std::string &diskId, uint32_t partitionNum, const FormatParams &formatParams)
-    {
-        return E_OK;
-    }
-
-    virtual int32_t Burn(const std::string &volumeId, const BurnParams &params) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t VerifyBurnData(const std::string &volumeId, uint32_t verType) override
     {
         return E_OK;
     }
