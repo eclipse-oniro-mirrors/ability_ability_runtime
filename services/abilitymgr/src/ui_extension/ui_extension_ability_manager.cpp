@@ -1335,7 +1335,6 @@ int UIExtensionAbilityManager::DispatchInactive(const std::shared_ptr<BaseExtens
     int state, const sptr<IRemoteObject> &token)
 {
     CHECK_POINTER_AND_RETURN(abilityRecord, ERR_INVALID_VALUE);
-    RemoveStartingRecord(abilityRecord->GetUid(), abilityRecord->GetPid(), abilityRecord->GetAbilityRecordId());
     HandlePreloadUIExtensionSuccess(abilityRecord->GetUIExtensionAbilityId(), true);
     TAG_LOGD(AAFwkTag::EXT, "DispatchInactive call");
 
