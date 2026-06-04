@@ -1794,5 +1794,246 @@ HWTEST_F(UIExtensionAbilityManagerSecondTest, HandleCommandDestroy_002, TestSize
     EXPECT_EQ(connectManager->uiExtensionMap_.size(), 0);
     TAG_LOGI(AAFwkTag::TEST, "HandleCommandDestroy_002 end");
 }
+
+/**
+ * @tc.name: IsUIExtensionStarting_PidExists_0100
+ * @tc.type: FUNC
+ * @tc.Function: IsUIExtensionStarting
+ */
+HWTEST_F(UIExtensionAbilityManagerSecondTest, IsUIExtensionStarting_UidExists_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsUIExtensionStarting_UidExists_0100 start");
+    std::shared_ptr<UIExtensionAbilityManager> mgr = std::make_shared<UIExtensionAbilityManager>(0);
+    EXPECT_NE(mgr, nullptr);
+    int32_t uid = 105678;
+    int64_t recordId = 1;
+    mgr->startingRecordsMap_[{uid, 0, recordId}] = 1;
+    EXPECT_TRUE(mgr->IsUIExtensionStarting(uid));
+    mgr->startingRecordsMap_.clear();
+    TAG_LOGI(AAFwkTag::TEST, "IsUIExtensionStarting_UidExists_0100 end");
+}
+
+/**
+ * @tc.name: IsUIExtensionStarting_UidNotExists_0200
+ * @tc.type: FUNC
+ * @tc.Function: IsUIExtensionStarting
+ */
+HWTEST_F(UIExtensionAbilityManagerSecondTest, IsUIExtensionStarting_UidNotExists_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsUIExtensionStarting_UidNotExists_0200 start");
+    std::shared_ptr<UIExtensionAbilityManager> mgr = std::make_shared<UIExtensionAbilityManager>(0);
+    EXPECT_NE(mgr, nullptr);
+    int32_t uid = 105678;
+    EXPECT_FALSE(mgr->IsUIExtensionStarting(uid));
+    TAG_LOGI(AAFwkTag::TEST, "IsUIExtensionStarting_UidNotExists_0200 end");
+}
+
+/**
+ * @tc.name: AddStartingRecord_FirstAdd_0100
+ * @tc.type: FUNC
+ * @tc.Function: AddStartingRecord
+ */
+HWTEST_F(UIExtensionAbilityManagerSecondTest, AddStartingRecord_FirstAdd_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AddStartingRecord_FirstAdd_0100 start");
+    std::shared_ptr<UIExtensionAbilityManager> mgr = std::make_shared<UIExtensionAbilityManager>(0);
+    EXPECT_NE(mgr, nullptr);
+    mgr->startingRecordsMap_.clear();
+    int32_t uid = 101234;
+    int64_t recordId = 1;
+    mgr->AddStartingRecord(uid, 0, recordId, 10);
+    auto key = std::make_tuple(uid, static_cast<pid_t>(0), recordId);
+    EXPECT_EQ(mgr->startingRecordsMap_.count(key), 1u);
+    EXPECT_EQ((mgr->startingRecordsMap_[key]), 1);
+    mgr->startingRecordsMap_.clear();
+    TAG_LOGI(AAFwkTag::TEST, "AddStartingRecord_FirstAdd_0100 end");
+}
+
+/**
+ * @tc.name: AddStartingRecord_CountIncrement_0200
+ * @tc.type: FUNC
+ * @tc.Function: AddStartingRecord
+ */
+HWTEST_F(UIExtensionAbilityManagerSecondTest, AddStartingRecord_CountIncrement_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AddStartingRecord_CountIncrement_0200 start");
+    std::shared_ptr<UIExtensionAbilityManager> mgr = std::make_shared<UIExtensionAbilityManager>(0);
+    EXPECT_NE(mgr, nullptr);
+    mgr->startingRecordsMap_.clear();
+    int32_t uid = 101234;
+    int64_t recordId = 1;
+    mgr->AddStartingRecord(uid, 0, recordId, 10);
+    mgr->AddStartingRecord(uid, 5678, recordId, 5);
+    EXPECT_EQ(mgr->startingRecordsMap_.size(), 2u);
+    EXPECT_EQ((mgr->startingRecordsMap_[{uid, 0, recordId}]), 1);
+    EXPECT_EQ((mgr->startingRecordsMap_[{uid, 5678, recordId}]), 1);
+    mgr->startingRecordsMap_.clear();
+    TAG_LOGI(AAFwkTag::TEST, "AddStartingRecord_CountIncrement_0200 end");
+}
+
+/**
+ * @tc.name: AddStartingRecord_InvalidUid_0300
+ * @tc.type: FUNC
+ * @tc.Function: AddStartingRecord
+ */
+HWTEST_F(UIExtensionAbilityManagerSecondTest, AddStartingRecord_InvalidUid_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AddStartingRecord_InvalidUid_0300 start");
+    std::shared_ptr<UIExtensionAbilityManager> mgr = std::make_shared<UIExtensionAbilityManager>(0);
+    EXPECT_NE(mgr, nullptr);
+    mgr->startingRecordsMap_.clear();
+    int64_t recordId = 1;
+    mgr->AddStartingRecord(0, 0, recordId, 10);
+    EXPECT_EQ(mgr->startingRecordsMap_.size(), 0u);
+    mgr->AddStartingRecord(-1, 0, recordId, 10);
+    EXPECT_EQ(mgr->startingRecordsMap_.size(), 0u);
+    TAG_LOGI(AAFwkTag::TEST, "AddStartingRecord_InvalidUid_0300 end");
+}
+
+/**
+ * @tc.name: RemoveStartingRecord_CountDecrement_0100
+ * @tc.type: FUNC
+ * @tc.Function: RemoveStartingRecord
+ */
+HWTEST_F(UIExtensionAbilityManagerSecondTest, RemoveStartingRecord_CountDecrement_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RemoveStartingRecord_CountDecrement_0100 start");
+    std::shared_ptr<UIExtensionAbilityManager> mgr = std::make_shared<UIExtensionAbilityManager>(0);
+    EXPECT_NE(mgr, nullptr);
+    mgr->startingRecordsMap_.clear();
+    int32_t uid = 101234;
+    int64_t recordId = 1;
+    mgr->AddStartingRecord(uid, 0, recordId, 10);
+    mgr->AddStartingRecord(uid, 5678, recordId, 5);
+    EXPECT_EQ((mgr->startingRecordsMap_[{uid, 0, recordId}]), 1);
+    EXPECT_EQ((mgr->startingRecordsMap_[{uid, 5678, recordId}]), 1);
+    mgr->RemoveStartingRecord(uid, 0, recordId);
+    EXPECT_EQ(mgr->startingRecordsMap_.count({uid, 0, recordId}), 0u);
+    mgr->RemoveStartingRecord(uid, 5678, recordId);
+    EXPECT_EQ(mgr->startingRecordsMap_.empty(), true);
+    TAG_LOGI(AAFwkTag::TEST, "RemoveStartingRecord_CountDecrement_0100 end");
+}
+
+/**
+ * @tc.name: RemoveStartingRecord_NotFound_0200
+ * @tc.type: FUNC
+ * @tc.Function: RemoveStartingRecord
+ */
+HWTEST_F(UIExtensionAbilityManagerSecondTest, RemoveStartingRecord_NotFound_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RemoveStartingRecord_NotFound_0200 start");
+    std::shared_ptr<UIExtensionAbilityManager> mgr = std::make_shared<UIExtensionAbilityManager>(0);
+    EXPECT_NE(mgr, nullptr);
+    mgr->startingRecordsMap_.clear();
+    mgr->RemoveStartingRecord(109999, 0, 1);
+    EXPECT_EQ(mgr->startingRecordsMap_.size(), 0u);
+    TAG_LOGI(AAFwkTag::TEST, "RemoveStartingRecord_NotFound_0200 end");
+}
+
+/**
+ * @tc.name: IsUIExtensionStarting_PidMatchRealPid_0300
+ * @tc.type: FUNC
+ * @tc.Function: IsUIExtensionStarting
+ */
+HWTEST_F(UIExtensionAbilityManagerSecondTest, IsUIExtensionStarting_PidMatchRealPid_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsUIExtensionStarting_PidMatchRealPid_0300 start");
+    std::shared_ptr<UIExtensionAbilityManager> mgr = std::make_shared<UIExtensionAbilityManager>(0);
+    EXPECT_NE(mgr, nullptr);
+    int32_t uid = 105678;
+    int64_t recordId = 1;
+    pid_t pid = 5678;
+    mgr->startingRecordsMap_[{uid, pid, recordId}] = 1;
+    EXPECT_TRUE(mgr->IsUIExtensionStarting(uid, pid));
+    EXPECT_FALSE(mgr->IsUIExtensionStarting(uid, 9999));
+    mgr->startingRecordsMap_.clear();
+    TAG_LOGI(AAFwkTag::TEST, "IsUIExtensionStarting_PidMatchRealPid_0300 end");
+}
+
+/**
+ * @tc.name: IsUIExtensionStarting_PidMatchZeroPid_0400
+ * @tc.type: FUNC
+ * @tc.Function: IsUIExtensionStarting
+ */
+HWTEST_F(UIExtensionAbilityManagerSecondTest, IsUIExtensionStarting_PidMatchZeroPid_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsUIExtensionStarting_PidMatchZeroPid_0400 start");
+    std::shared_ptr<UIExtensionAbilityManager> mgr = std::make_shared<UIExtensionAbilityManager>(0);
+    EXPECT_NE(mgr, nullptr);
+    int32_t uid = 105678;
+    int64_t recordId = 1;
+    // only pid=0 entry exists (cold start, pid not assigned yet), query with real pid should match via 0 fallback
+    mgr->startingRecordsMap_[{uid, 0, recordId}] = 1;
+    EXPECT_TRUE(mgr->IsUIExtensionStarting(uid, 5678));
+    mgr->startingRecordsMap_.clear();
+    TAG_LOGI(AAFwkTag::TEST, "IsUIExtensionStarting_PidMatchZeroPid_0400 end");
+}
+
+/**
+ * @tc.name: IsUIExtensionStarting_PidNoMatch_0500
+ * @tc.type: FUNC
+ * @tc.Function: IsUIExtensionStarting
+ */
+HWTEST_F(UIExtensionAbilityManagerSecondTest, IsUIExtensionStarting_PidNoMatch_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsUIExtensionStarting_PidNoMatch_0500 start");
+    std::shared_ptr<UIExtensionAbilityManager> mgr = std::make_shared<UIExtensionAbilityManager>(0);
+    EXPECT_NE(mgr, nullptr);
+    int32_t uid = 105678;
+    int64_t recordId = 1;
+    // real pid entry exists, query different pid should return false
+    mgr->startingRecordsMap_[{uid, 5678, recordId}] = 1;
+    EXPECT_FALSE(mgr->IsUIExtensionStarting(uid, 9999));
+    mgr->startingRecordsMap_.clear();
+    TAG_LOGI(AAFwkTag::TEST, "IsUIExtensionStarting_PidNoMatch_0500 end");
+}
+
+/**
+ * @tc.name: AddStartingRecord_SameKeyCountIncrement_0400
+ * @tc.type: FUNC
+ * @tc.Function: AddStartingRecord
+ */
+HWTEST_F(UIExtensionAbilityManagerSecondTest, AddStartingRecord_SameKeyCountIncrement_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AddStartingRecord_SameKeyCountIncrement_0400 start");
+    std::shared_ptr<UIExtensionAbilityManager> mgr = std::make_shared<UIExtensionAbilityManager>(0);
+    EXPECT_NE(mgr, nullptr);
+    mgr->startingRecordsMap_.clear();
+    int32_t uid = 101234;
+    int64_t recordId = 1;
+    mgr->AddStartingRecord(uid, 5678, recordId, 10);
+    EXPECT_EQ((mgr->startingRecordsMap_[{uid, 5678, recordId}]), 1);
+    mgr->AddStartingRecord(uid, 5678, recordId, 10);
+    EXPECT_EQ((mgr->startingRecordsMap_[{uid, 5678, recordId}]), 2);
+    mgr->startingRecordsMap_.clear();
+    TAG_LOGI(AAFwkTag::TEST, "AddStartingRecord_SameKeyCountIncrement_0400 end");
+}
+
+/**
+ * @tc.name: RemoveStartingRecord_CountDecrementNotErase_0300
+ * @tc.type: FUNC
+ * @tc.Function: RemoveStartingRecord
+ */
+HWTEST_F(UIExtensionAbilityManagerSecondTest, RemoveStartingRecord_CountDecrementNotErase_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RemoveStartingRecord_CountDecrementNotErase_0300 start");
+    std::shared_ptr<UIExtensionAbilityManager> mgr = std::make_shared<UIExtensionAbilityManager>(0);
+    EXPECT_NE(mgr, nullptr);
+    mgr->startingRecordsMap_.clear();
+    int32_t uid = 101234;
+    int64_t recordId = 1;
+    // add same key twice → count=2
+    mgr->AddStartingRecord(uid, 5678, recordId, 10);
+    mgr->AddStartingRecord(uid, 5678, recordId, 10);
+    EXPECT_EQ((mgr->startingRecordsMap_[{uid, 5678, recordId}]), 2);
+    // first remove → count=1, entry still exists
+    mgr->RemoveStartingRecord(uid, 5678, recordId);
+    EXPECT_EQ(mgr->startingRecordsMap_.count({uid, 5678, recordId}), 1u);
+    EXPECT_EQ((mgr->startingRecordsMap_[{uid, 5678, recordId}]), 1);
+    // second remove → count=0, entry erased
+    mgr->RemoveStartingRecord(uid, 5678, recordId);
+    EXPECT_EQ(mgr->startingRecordsMap_.count({uid, 5678, recordId}), 0u);
+    TAG_LOGI(AAFwkTag::TEST, "RemoveStartingRecord_CountDecrementNotErase_0300 end");
+}
 }  // namespace AAFwk
 }  // namespace OHOS
