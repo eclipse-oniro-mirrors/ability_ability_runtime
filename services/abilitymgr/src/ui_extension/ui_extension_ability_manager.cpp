@@ -134,8 +134,8 @@ void UIExtensionAbilityManager::AddStartingRecord(int32_t uid, pid_t pid, int64_
         }
     }
 
-    int32_t timeoutMicro =
-        AmsConfigurationParameter::GetInstance().GetAppStartTimeoutTime() * timeoutMultiple * 1000;
+    int64_t timeoutMicro =
+        static_cast<int64_t>(AmsConfigurationParameter::GetInstance().GetAppStartTimeoutTime()) * timeoutMultiple * 1000;
     std::weak_ptr<UIExtensionAbilityManager> thisWeakPtr(
         std::static_pointer_cast<UIExtensionAbilityManager>(shared_from_this()));
     ffrt::task_attr attr;
