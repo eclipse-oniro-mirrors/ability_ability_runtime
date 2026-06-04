@@ -3558,7 +3558,7 @@ int32_t AbilityManagerService::KillAppWithReason(const int32_t pid, const ExitRe
         reason.exitMsg, true, isKillPrecedeStart));
 }
 
-int32_t AbilityManagerService::KillAppWithReasonInner(int32_t pid, int32_t uid,
+int32_t AbilityManagerService::KillAppWithReasonInner(int32_t pid,
     const ExitReason &reason, bool isKillPrecedeStart, bool shouldKillForeground)
 {
     if (!shouldKillForeground) {
