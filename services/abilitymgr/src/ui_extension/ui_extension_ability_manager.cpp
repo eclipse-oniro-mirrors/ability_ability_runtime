@@ -164,8 +164,8 @@ void UIExtensionAbilityManager::RemoveStartingRecord(int32_t uid, pid_t pid, int
         return;
     }
     TAG_LOGI(AAFwkTag::UI_EXT, "removeStartingRecord, uid:%{public}d pid:%{public}d "
-        "recordId:%{public}" PRId64 " mapSize:%{public}zu",
-        uid, pid, recordId, startingRecordsMap_.size());
+        "recordId:%{public}" PRId64 " count:%{public}d mapSize:%{public}zu",
+        uid, pid, recordId, it->second, startingRecordsMap_.size());
     if (--it->second <= 0) {
         startingRecordsMap_.erase(it);
     }
