@@ -1404,7 +1404,7 @@ bool GetBundleForLaunchApplication(std::shared_ptr<BundleMgrHelper> bundleMgrHel
     int32_t appIndex, BundleInfo &bundleInfo)
 {
     bool queryResult;
-    if (appIndex > AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
+    if (AbilityRuntime::GlobalConstant::IsDlpIndex(appIndex)) {
         TAG_LOGD(AAFwkTag::APPKIT, "The bundleName = %{public}s", bundleName.c_str());
         queryResult = (bundleMgrHelper->GetSandboxBundleInfo(bundleName,
             appIndex, UNSPECIFIED_USERID, bundleInfo) == 0);

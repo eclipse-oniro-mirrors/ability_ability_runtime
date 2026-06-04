@@ -381,7 +381,7 @@ bool UriUtils::IsSandboxApp(uint32_t tokenId)
             TAG_LOGE(AAFwkTag::URIPERMMGR, "GetHapTokenInfo failed, ret:%{public}d", ret);
             return false;
         }
-        return hapInfo.instIndex > AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX;
+        return AbilityRuntime::GlobalConstant::IsDlpIndex(hapInfo.instIndex);
     }
     return false;
 }

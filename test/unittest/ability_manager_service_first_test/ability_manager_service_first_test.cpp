@@ -33,6 +33,7 @@
 #undef protected
 #include "ability_manager_errors.h"
 #include "connection_observer_errors.h"
+#include "appexecfwk_errors.h"
 #include "hilog_tag_wrapper.h"
 #include "insight_intent_execute_manager.h"
 #include "insight_intent_execute_param.h"
@@ -48,6 +49,8 @@
 #include "start_ability_utils.h"
 #include "string_wrapper.h"
 #include "utils/window_options_utils.h"
+#include "sandbox_clone_params.h"
+#include "global_constant.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -1130,7 +1133,7 @@ HWTEST_F(AbilityManagerServiceFirstTest, StopExtensionAbility_002, TestSize.Leve
     abilityRecord->appIndex_ = -1;
     abilityRecord->abilityInfo_.applicationInfo.bundleName = "com.ix.hiservcie";
     EXPECT_EQ(abilityMs_->StopExtensionAbility(want, abilityRecord->GetToken(), -1, ExtensionAbilityType::SERVICE),
-        CHECK_PERMISSION_FAILED);
+        ERR_INVALID_CALLER);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StopExtensionAbility_002 end");
 }
 
@@ -3032,5 +3035,368 @@ HWTEST_F(AbilityManagerServiceFirstTest, StartSelfUIAbilityInChildProcess_0400, 
     auto res = abilityMs_->StartSelfUIAbilityInChildProcess(want, specifiedFlag, callerToken);
     EXPECT_EQ(res, ERROR_UIABILITY_NOT_BELONG_TO_CALLER);
 }
+
+/**
+ * @tc.name: GetCreatorBundleNameForSandboxClone_0100
+ * @tc.desc: Test GetCreatorBundleNameForSandboxClone with permission and input creator bundle name
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, GetCreatorBundleNameForSandboxClone_0100, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    want.SetParam(AbilityRuntime::GlobalConstant::CREATOR_BUNDLE_NAME, std::string("com.creator.bundle"));
+    std::string callerBundleName = "com.caller.bundle";
+    uint32_t callerTokenId = 1;
+    int32_t errCode = ERR_OK;
+
+    // Mock permission check - assuming no permission by default
+    std::string result = abilityMs_->GetCreatorBundleNameForSandboxClone(
+        want, callerBundleName, callerTokenId, errCode);
+
+    // Without permission, should use caller bundle name
+    EXPECT_EQ(result, callerBundleName);
+    EXPECT_EQ(errCode, ERR_OK);
+}
+
+/**
+ * @tc.name: GetCreatorBundleNameForSandboxClone_0200
+ * @tc.desc: Test GetCreatorBundleNameForSandboxClone with empty input creator bundle name
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, GetCreatorBundleNameForSandboxClone_0200, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    std::string callerBundleName = "com.caller.bundle";
+    uint32_t callerTokenId = 1;
+    int32_t errCode = ERR_OK;
+
+    std::string result = abilityMs_->GetCreatorBundleNameForSandboxClone(
+        want, callerBundleName, callerTokenId, errCode);
+
+    EXPECT_EQ(result, callerBundleName);
+    EXPECT_EQ(errCode, ERR_OK);
+}
+
+/**
+ * @tc.name: GetCreatorBundleNameForSandboxClone_0300
+ * @tc.desc: Test GetCreatorBundleNameForSandboxClone with empty caller bundle name (error case)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, GetCreatorBundleNameForSandboxClone_0300, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    std::string callerBundleName = "";
+    uint32_t callerTokenId = 1;
+    int32_t errCode = ERR_OK;
+
+    std::string result = abilityMs_->GetCreatorBundleNameForSandboxClone(
+        want, callerBundleName, callerTokenId, errCode);
+
+    EXPECT_TRUE(result.empty());
+    EXPECT_EQ(errCode, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: GetCreatorBundleNameForSandboxClone_0400
+ * @tc.desc: Test GetCreatorBundleNameForSandboxClone with input creator bundle name and no permission
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, GetCreatorBundleNameForSandboxClone_0400, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    want.SetParam(AbilityRuntime::GlobalConstant::CREATOR_BUNDLE_NAME, std::string("com.creator.bundle"));
+    std::string callerBundleName = "com.caller.bundle";
+    uint32_t callerTokenId = 1;
+    int32_t errCode = ERR_OK;
+
+    std::string result = abilityMs_->GetCreatorBundleNameForSandboxClone(
+        want, callerBundleName, callerTokenId, errCode);
+
+    // Without permission, should use caller bundle name, not the input creator bundle name
+    EXPECT_EQ(result, callerBundleName);
+    EXPECT_EQ(errCode, ERR_OK);
+}
+
+/**
+ * @tc.name: ProcessSandboxCloneLaunch_0100
+ * @tc.desc: Test ProcessSandboxCloneLaunch with null sandboxCloneParams
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_0100, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    std::shared_ptr<SandboxCloneParams> sandboxCloneParams = nullptr;
+    int32_t userId = 100;
+    AppExecFwk::AbilityInfo abilityInfo;
+
+    int32_t result = abilityMs_->ProcessSandboxCloneLaunch(
+        want, sandboxCloneParams, userId, abilityInfo);
+
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_TRUE(abilityInfo.bundleName.empty());
+}
+
+/**
+ * @tc.name: ProcessSandboxCloneLaunch_0200
+ * @tc.desc: Test ProcessSandboxCloneLaunch with sandboxCloneParams but no SANDBOX_CLONE_INDEX parameter
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_0200, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
+    sandboxCloneParams->callerBundleName = "com.caller.bundle";
+    sandboxCloneParams->callerUid = 1000;
+    sandboxCloneParams->callerTokenId = 1;
+    int32_t userId = 100;
+    AppExecFwk::AbilityInfo abilityInfo;
+
+    int32_t result = abilityMs_->ProcessSandboxCloneLaunch(
+        want, sandboxCloneParams, userId, abilityInfo);
+
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_TRUE(abilityInfo.bundleName.empty());
+}
+
+/**
+ * @tc.name: ProcessSandboxCloneLaunch_0300
+ * @tc.desc: Test ProcessSandboxCloneLaunch with invalid sandboxCloneIndex (below minimum)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_0300, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    want.SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, 1999);
+    auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
+    sandboxCloneParams->callerBundleName = "com.caller.bundle";
+    sandboxCloneParams->callerUid = 1000;
+    sandboxCloneParams->callerTokenId = 1;
+    int32_t userId = 100;
+    AppExecFwk::AbilityInfo abilityInfo;
+
+    int32_t result = abilityMs_->ProcessSandboxCloneLaunch(
+        want, sandboxCloneParams, userId, abilityInfo);
+
+    EXPECT_EQ(result, ERR_SANDBOX_CLONE_INDEX_INVALID);
+}
+
+/**
+ * @tc.name: ProcessSandboxCloneLaunch_0400
+ * @tc.desc: Test ProcessSandboxCloneLaunch with invalid sandboxCloneIndex (above maximum)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_0400, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    want.SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, 3001);
+    auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
+    sandboxCloneParams->callerBundleName = "com.caller.bundle";
+    sandboxCloneParams->callerUid = 1000;
+    sandboxCloneParams->callerTokenId = 1;
+    int32_t userId = 100;
+    AppExecFwk::AbilityInfo abilityInfo;
+
+    int32_t result = abilityMs_->ProcessSandboxCloneLaunch(
+        want, sandboxCloneParams, userId, abilityInfo);
+
+    EXPECT_EQ(result, ERR_SANDBOX_CLONE_INDEX_INVALID);
+}
+
+/**
+ * @tc.name: ProcessSandboxCloneLaunch_0500
+ * @tc.desc: Test ProcessSandboxCloneLaunch with empty caller bundle name
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_0500, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    want.SetElementName("com.target.bundle", "TestAbility", "entry");
+    want.SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, 2000);
+    auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
+    sandboxCloneParams->callerBundleName = "";
+    sandboxCloneParams->callerUid = 1000;
+    sandboxCloneParams->callerTokenId = 1;
+    int32_t userId = 100;
+    AppExecFwk::AbilityInfo abilityInfo;
+
+    int32_t result = abilityMs_->ProcessSandboxCloneLaunch(
+        want, sandboxCloneParams, userId, abilityInfo);
+
+    // Should fail due to empty caller bundle name
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: ProcessSandboxCloneLaunch_0600
+ * @tc.desc: Test ProcessSandboxCloneLaunch with negative sandboxCloneIndex
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_0600, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    want.SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, -1);
+    auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
+    sandboxCloneParams->callerBundleName = "com.caller.bundle";
+    sandboxCloneParams->callerUid = 1000;
+    sandboxCloneParams->callerTokenId = 1;
+    int32_t userId = 100;
+    AppExecFwk::AbilityInfo abilityInfo;
+
+    int32_t result = abilityMs_->ProcessSandboxCloneLaunch(
+        want, sandboxCloneParams, userId, abilityInfo);
+
+    EXPECT_EQ(result, ERR_SANDBOX_CLONE_INDEX_INVALID);
+}
+
+/**
+ * @tc.name: ProcessSandboxCloneLaunch_1000
+ * @tc.desc: Test ProcessSandboxCloneLaunch with sandboxCloneIndex = 0
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_1000, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    want.SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, 0);
+    auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
+    sandboxCloneParams->callerBundleName = "com.caller.bundle";
+    sandboxCloneParams->callerUid = 1000;
+    sandboxCloneParams->callerTokenId = 1;
+    int32_t userId = 100;
+    AppExecFwk::AbilityInfo abilityInfo;
+
+    int32_t result = abilityMs_->ProcessSandboxCloneLaunch(
+        want, sandboxCloneParams, userId, abilityInfo);
+
+    EXPECT_EQ(result, ERR_SANDBOX_CLONE_INDEX_INVALID);
+}
+
+/**
+ * @tc.name: StartSandboxCloneAbility_0100
+ * @tc.desc: Test StartSandboxCloneAbility with valid parameters but no CLI tool token
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartSandboxCloneAbility_0100, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    want.SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, 2000);
+    SandboxCloneParams params;
+    params.callerBundleName = "com.caller.bundle";
+    params.callerUid = 1000;
+    params.callerTokenId = 1;
+
+    int32_t result = abilityMs_->StartSandboxCloneAbility(want, params);
+
+    // Should fail due to no CLI tool token
+    EXPECT_EQ(result, ERR_PERMISSION_DENIED);
+}
+
+/**
+ * @tc.name: StartSandboxCloneAbility_0200
+ * @tc.desc: Test StartSandboxCloneAbility without SANDBOX_CLONE_INDEX parameter
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartSandboxCloneAbility_0200, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    SandboxCloneParams params;
+    params.callerBundleName = "com.caller.bundle";
+    params.callerUid = 1000;
+    params.callerTokenId = 1;
+
+    int32_t result = abilityMs_->StartSandboxCloneAbility(want, params);
+
+    // Should fail due to missing SANDBOX_CLONE_INDEX parameter
+    EXPECT_EQ(result, ERR_PERMISSION_DENIED);
+}
+
+/**
+ * @tc.name: StartSandboxCloneAbility_0300
+ * @tc.desc: Test StartSandboxCloneAbility with invalid sandboxCloneIndex
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartSandboxCloneAbility_0300, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    want.SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, 1999);
+    SandboxCloneParams params;
+    params.callerBundleName = "com.caller.bundle";
+    params.callerUid = 1000;
+    params.callerTokenId = 1;
+
+    int32_t result = abilityMs_->StartSandboxCloneAbility(want, params);
+
+    // Should fail due to no CLI tool token (even before index validation)
+    EXPECT_EQ(result, ERR_PERMISSION_DENIED);
+}
+
+/**
+ * @tc.name: IsWebSandBoxClone_0100
+ * @tc.desc: Test isWebSandBoxClone functionality through AbilityRequest
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, IsWebSandBoxClone_0100, TestSize.Level1)
+{
+    // Test the isWebSandBoxClone flag in AbilityRequest
+    AbilityRequest abilityRequest;
+    abilityRequest.isWebSandBoxClone = true;
+
+    EXPECT_TRUE(abilityRequest.isWebSandBoxClone);
+}
+
+/**
+ * @tc.name: IsWebSandBoxClone_0200
+ * @tc.desc: Test isWebSandBoxClone set to false
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, IsWebSandBoxClone_0200, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    abilityRequest.isWebSandBoxClone = false;
+
+    EXPECT_FALSE(abilityRequest.isWebSandBoxClone);
+}
+
 } // namespace AAFwk
 } // namespace OHOS

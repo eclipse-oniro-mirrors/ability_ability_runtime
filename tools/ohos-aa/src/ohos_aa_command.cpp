@@ -23,6 +23,7 @@
 #include "ability_manager_client.h"
 #include "ability_start_with_wait_observer.h"
 #include "ability_start_with_wait_observer_utils.h"
+#include "global_constant.h"
 #include "hilog_tag_wrapper.h"
 #include "iservice_registry.h"
 #include "system_ability_definition.h"
@@ -98,6 +99,9 @@ const std::string ERR_NOT_IN_APP_PROVISION_MODE_SOLUTION_ONE =
     "to produce an application that supports Debug mode";
 
 const std::string ERR_APP_CLONE_INDEX_INVALID_SOLUTION_ONE = "Confirm whether the appCloneIndex is valid";
+
+const std::string ERR_SANDBOX_CLONE_INDEX_INVALID_SOLUTION_ONE =
+    "Confirm whether the sandboxCloneIndex is valid (range: 2000-3000)";
 
 const std::string ERR_STATIC_CFG_PERMISSION_SOLUTION_ONE =
     "Confirm whether the permissions of the specified process are correct";
@@ -213,6 +217,11 @@ ErrCode ClawAaShellCommand::CreateErrorInfoMap()
         "If the appCloneIndex carried in the parameters of the command is an invalid value, return that error code.",
         {ERR_APP_CLONE_INDEX_INVALID_SOLUTION_ONE}};
 
+    errorInfoMap_[ERR_SANDBOX_CLONE_INDEX_INVALID] = {"ERR_SANDBOX_CLONE_INDEX_INVALID",
+        "The passed sandboxCloneIndex is invalid.",
+        "If the sandboxCloneIndex carried in the parameters of the command is an invalid value, return that error code.",
+        {ERR_SANDBOX_CLONE_INDEX_INVALID_SOLUTION_ONE}};
+
     errorInfoMap_[START_ABILITY_WAITING] = {"ERR_ABILITY_START_ABILITY_WAITING",
         "Another ability is being started. Wait until it finishes starting.",
         "High system concurrency.",
@@ -306,6 +315,29 @@ ErrCode ClawAaShellCommand::RunAsStartAbility()
     if (result == OHOS::ERR_OK) {
         if (startAbilityWithWaitFlag_) {
             result = StartAbilityWithWait(want);
+        } else if (StartSandboxCloneAbilityFlag_) {
+            SandboxCloneParams params;
+            // Get caller info from environment variables (set by SA-CLI via config["env"])
+            if (const char* envCallerUid = std::getenv("ohos_cli_callerUid")) {
+                auto res = std::from_chars(envCallerUid, envCallerUid + std::strlen(envCallerUid), params.callerUid);
+                if (res.ec != std::errc()) {
+                    TAG_LOGE(AAFwkTag::AA_TOOL, "Invalid callerUid from env: %{public}s", envCallerUid);
+                    params.callerUid = -1;
+                }
+            }
+            if (const char* envCallerTokenId = std::getenv("ohos_cli_callerTokenId")) {
+                auto res = std::from_chars(envCallerTokenId, envCallerTokenId + std::strlen(envCallerTokenId),
+                    params.callerTokenId);
+                if (res.ec != std::errc()) {
+                    TAG_LOGE(AAFwkTag::AA_TOOL, "Invalid callerTokenId from env: %{public}s", envCallerTokenId);
+                    params.callerTokenId = 0;
+                }
+            }
+            if (const char* envCallerBundleName = std::getenv("ohos_cli_callerBundleName"))
+                params.callerBundleName = envCallerBundleName;
+            TAG_LOGI(AAFwkTag::AA_TOOL, "StartSandboxCloneAbility with callerUid=%{public}d, callerTokenId=%{public}u, "
+                "callerBundleName=%{public}s", params.callerUid, params.callerTokenId, params.callerBundleName.c_str());
+            result = AbilityManagerClient::GetInstance()->StartSandboxCloneAbility(want, params);
         } else {
             result = AbilityManagerClient::GetInstance()->StartAbility(want);
         }
@@ -627,6 +659,9 @@ ErrCode ClawAaShellCommand::MakeWantFromCmd(Want& want, int32_t& userId)
     bool hasWindowHeight = false;
     int windowWidth = 0;
     bool hasWindowWidth = false;
+    int32_t sandBoxCloneIndex = 0;
+    bool hasSandBoxCloneIndex = false;
+    std::string creatorBundleName;  // Creator bundle name (untrusted, from command line)
 
     while (true) {
         counter++;
@@ -906,6 +941,31 @@ ErrCode ClawAaShellCommand::MakeWantFromCmd(Want& want, int32_t& userId)
                 
                 break;
             }
+            case OPTION_SANDBOX_CLONE_INDEX: {
+                // 'ohos-aa start --sandboxCloneIndex xxx'
+                if (optarg != nullptr) {
+                    std::string sandBoxCloneIndexStr = optarg;
+                    if (!std::regex_match(sandBoxCloneIndexStr, std::regex(STRING_TEST_REGEX_INTEGER_NUMBERS))) {
+                        TAG_LOGE(AAFwkTag::AA_TOOL, "invalid sandboxCloneIndex: %{public}s",
+                            sandBoxCloneIndexStr.c_str());
+                        result = ERR_SANDBOX_CLONE_INDEX_INVALID;
+                        break;
+                    }
+                    sandBoxCloneIndex = std::stoi(sandBoxCloneIndexStr);
+                    hasSandBoxCloneIndex = true;
+                    StartSandboxCloneAbilityFlag_ = true;
+                    TAG_LOGI(AAFwkTag::AA_TOOL, "sandBoxCloneIndex = %{public}d, Flag_ set to true", sandBoxCloneIndex);
+                }
+                break;
+            }
+            case OPTION_CREATOR_BUNDLE: {
+                // 'ohos-aa start --creatorBundle xxx'
+                if (optarg != nullptr) {
+                    creatorBundleName = optarg;
+                    TAG_LOGI(AAFwkTag::AA_TOOL, "creatorBundleName = %{public}s", creatorBundleName.c_str());
+                }
+                break;
+            }
             case OPTION_URI: {
                 // 'aa start -U xxx'
 
@@ -1004,6 +1064,15 @@ ErrCode ClawAaShellCommand::MakeWantFromCmd(Want& want, int32_t& userId)
             }
             if (hasWindowWidth) {
                 want.SetParam(Want::PARAM_RESV_WINDOW_WIDTH, windowWidth);
+            }
+            // Sandbox clone application support parameters
+            if (hasSandBoxCloneIndex) {
+                want.SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, sandBoxCloneIndex);
+            }
+            // Set creator bundle name (untrusted, from command line parameter)
+            if (!creatorBundleName.empty()) {
+                want.SetParam(AbilityRuntime::GlobalConstant::CREATOR_BUNDLE_NAME, creatorBundleName);
+                TAG_LOGI(AAFwkTag::AA_TOOL, "creatorBundleName: %{public}s", creatorBundleName.c_str());
             }
         }
     }

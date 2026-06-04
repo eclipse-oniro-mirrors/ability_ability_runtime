@@ -1178,6 +1178,15 @@ std::shared_ptr<AbilityStartSetting> AbilityRecord::GetStartSetting() const
     return lifeCycleStateInfo_.setting;
 }
 
+void AbilityRecord::SetSandboxCloneParams(const std::shared_ptr<SandboxCloneParams> &params) {}
+
+std::shared_ptr<SandboxCloneParams> AbilityRecord::GetSandboxCloneParams() const
+{
+    return nullptr;
+}
+
+void AbilityRecord::InitSandboxCloneParams(const AbilityRequest &abilityRequest) {}
+
 void AbilityRecord::SetRestarting(const bool isRestart)
 {
 }

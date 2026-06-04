@@ -770,6 +770,9 @@ enum class AbilityManagerInterfaceCode {
 
     // start self uiability by application context in current process
     START_SELF_UI_ABILITY_BY_APP_CONTEXT = 6175,
+
+    // start sandbox clone ability with sandBoxCloneIndex for CLI tool
+    START_SANDBOX_CLONE_ABILITY = 6176,
 };
 }  // namespace AAFwk
 }  // namespace OHOS

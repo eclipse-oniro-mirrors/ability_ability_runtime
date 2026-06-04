@@ -386,7 +386,8 @@ void ModuleRunningRecord::GetHapModuleInfo(HapModuleInfo &info)
     int32_t bundleMgrResult;
     auto flag = static_cast<int32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION) |
             static_cast<int32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_HAP_MODULE);
-    if (appIndex_ <= AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
+    if (AbilityRuntime::GlobalConstant::IsAppCloneIndex(appIndex_) ||
+        AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(appIndex_)) {
         bundleMgrResult = IN_PROCESS_CALL(bundleMgrHelper->GetCloneBundleInfo(appInfo_->bundleName,
             flag, appIndex_, bundleInfo, userId));
     } else {

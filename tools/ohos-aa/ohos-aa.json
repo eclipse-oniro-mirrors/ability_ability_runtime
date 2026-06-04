@@ -76,6 +76,14 @@
                         "type": "string",
                         "description": "moduleName"
                     },
+                    "sandboxCloneIndex": {
+                        "type": "integer",
+                        "description": "Sandbox clone index for launching sandbox clone application (range: 2000-3000)"
+                    },
+                    "creatorBundle": {
+                        "type": "string",
+                        "description": "Creator bundle name for sandbox clone application"
+                    },
                     "uri": {
                         "type": "string",
                         "description": "URI"

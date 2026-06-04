@@ -1436,6 +1436,11 @@ enum NativeFreeInstallError {
      * Result (29360227) The current application is not in a game preloading state.
      */
     ERR_NOT_GAME_PRELOAD_STATE = 29360227,
+    
+    /**
+     * Result(29360228) for sandbox clone index is invalid.
+     */
+    ERR_SANDBOX_CLONE_INDEX_INVALID = 29360228,
 
     /* codes 29360270 - 29360280 are reserved for StartSelfUIAbility by delayed process exit */
     /*
