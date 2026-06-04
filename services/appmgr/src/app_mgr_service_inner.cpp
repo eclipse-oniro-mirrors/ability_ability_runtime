@@ -9529,6 +9529,9 @@ FaultData AppMgrServiceInner::ConvertDataTypes(const AppFaultDataBySA &faultData
     newfaultData.isEnableMainThreadSample = faultData.isEnableMainThreadSample;
     newfaultData.reportLifecycleToFreeze = faultData.reportLifecycleToFreeze;
     newfaultData.applicationHeapInfo = faultData.applicationHeapInfo;
+    newfaultData.applicationGCInfo = faultData.applicationGCInfo;
+    newfaultData.applicationIOInfo = faultData.applicationIOInfo;
+    newfaultData.isBlockInGc = faultData.isBlockInGc;
     newfaultData.processLifeTime = faultData.processLifeTime;
     newfaultData.leakObject.leakType = faultData.leakObject.leakType;
     newfaultData.leakObject.leakSize = faultData.leakObject.leakSize;

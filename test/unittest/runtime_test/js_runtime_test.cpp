@@ -307,6 +307,34 @@ HWTEST_F(JsRuntimeTest, JsRuntimeGetHeapObjectSizeTest_0100, TestSize.Level2)
 }
 
 /**
+ * @tc.name: JsRuntimeGetSharedHeapSizeTest_0100
+ * @tc.desc: JsRuntime test for GetSharedHeapSize.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, JsRuntimeGetSharedHeapSize_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetSharedHeapSize start");
+    std::unique_ptr<JsRuntime> jsRuntime = std::make_unique<AbilityRuntime::JsRuntime>();
+    size_t ret = jsRuntime->GetSharedHeapSize();
+    EXPECT_TRUE(ret >= 0);
+    TAG_LOGI(AAFwkTag::TEST, "GetSharedHeapSize end");
+}
+
+/**
+ * @tc.name: JsRuntimeGetGCStatisticTest_0100
+ * @tc.desc: JsRuntime test for GetGCStatistic.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, JsRuntimeGetGCStatistic_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetGCStatistic start");
+    std::unique_ptr<JsRuntime> jsRuntime = std::make_unique<AbilityRuntime::JsRuntime>();
+    EXPECT_TRUE(jsRuntime != nullptr);
+    auto ret = jsRuntime->GetGCStatistic();
+    TAG_LOGI(AAFwkTag::TEST, "GetGCStatistic end");
+}
+
+/**
  * @tc.name: JsRuntimePreloadSystemModuleTest_0100
  * @tc.desc: JsRuntime test for PreloadSystemModule.
  * @tc.type: FUNC

@@ -42,7 +42,6 @@
 #include "hitrace/hitracechain.h"
 #endif
 #include "appfreeze_cpu_freq_manager.h"
-#include "appfreeze_event_report.h"
 #include "appfreeze_util.h"
 #include "xcollie/process_kill_reason.h"
 
@@ -323,6 +322,9 @@ int AppfreezeManager::AppfreezeHandleWithStack(const FaultData& faultData, const
     faultNotifyData.isEnableMainThreadSample = faultData.isEnableMainThreadSample;
     faultNotifyData.reportLifecycleToFreeze = faultData.reportLifecycleToFreeze;
     faultNotifyData.applicationHeapInfo = faultData.applicationHeapInfo;
+    faultNotifyData.applicationGCInfo = faultData.applicationGCInfo;
+    faultNotifyData.applicationIOInfo = faultData.applicationIOInfo;
+    faultNotifyData.isBlockInGc = faultData.isBlockInGc;
     faultNotifyData.processLifeTime = faultData.processLifeTime;
     faultNotifyData.markedId = faultData.markedId;
     faultNotifyData.processedId = faultData.processedId;
@@ -451,6 +453,9 @@ FaultData AppfreezeManager::GetFaultNotifyData(const FaultData& faultData, int p
     faultNotifyData.isEnableMainThreadSample = faultData.isEnableMainThreadSample;
     faultNotifyData.reportLifecycleToFreeze = faultData.reportLifecycleToFreeze;
     faultNotifyData.applicationHeapInfo = faultData.applicationHeapInfo;
+    faultNotifyData.applicationGCInfo = faultData.applicationGCInfo;
+    faultNotifyData.applicationIOInfo = faultData.applicationIOInfo;
+    faultNotifyData.isBlockInGc = faultData.isBlockInGc;
     faultNotifyData.processLifeTime = faultData.processLifeTime;
     faultNotifyData.markedId = faultData.markedId;
     faultNotifyData.processedId = faultData.processedId;
@@ -597,15 +602,12 @@ std::string AppfreezeManager::GetAppfreezeInfoPath(const FaultData& faultData,
     return cpuInfoFile;
 }
 
-int AppfreezeManager::NotifyANR(const FaultData& faultData, const AppfreezeManager::AppInfo& appInfo,
+AppfreezeEventInfo AppfreezeManager::UpdateEventInfo(
+    const FaultData& faultData, const AppfreezeManager::AppInfo& appInfo,
     const std::string& binderInfo, const std::string& memoryContent)
 {
-    std::string eventName = faultData.errorObject.name;
-    this->PerfStart(eventName);
-    int64_t startTime = AbilityRuntime::TimeUtil::CurrentTimeMillis();
-    int tid = faultData.tid;
-    std::string appRunningUniqueId = faultData.appRunningUniqueId;
     AppfreezeEventInfo eventInfo;
+    int tid = faultData.tid;
     eventInfo.tid = tid > 0 ? tid : 0;
     eventInfo.pid = appInfo.pid;
     eventInfo.uid = appInfo.uid;
@@ -615,10 +617,10 @@ int AppfreezeManager::NotifyANR(const FaultData& faultData, const AppfreezeManag
     eventInfo.processName = appInfo.processName;
     eventInfo.binderInfo = binderInfo;
     eventInfo.freezeMemory = memoryContent + "\n" + faultData.procStatm;
-    eventInfo.appRunningUniqueId = appRunningUniqueId;
+    eventInfo.appRunningUniqueId = faultData.appRunningUniqueId;
     eventInfo.errorStack = faultData.errorObject.stack;
     eventInfo.mainStack = faultData.errorObject.mainStack;
-    eventInfo.errorName = eventName;
+    eventInfo.errorName = faultData.errorObject.name;
     eventInfo.errorMessage = faultData.errorObject.message;
     eventInfo.freezeInfoFile = GetAppfreezeInfoPath(faultData, appInfo);
     eventInfo.hitraceInfo = GetHitraceInfo();
@@ -626,11 +628,24 @@ int AppfreezeManager::NotifyANR(const FaultData& faultData, const AppfreezeManag
     eventInfo.enableFreeze = faultData.isEnableMainThreadSample;
     eventInfo.reportLifecycleToFreeze = faultData.reportLifecycleToFreeze;
     eventInfo.applicationHeapInfo = faultData.applicationHeapInfo;
+    eventInfo.applicationGCInfo = faultData.applicationGCInfo;
+    eventInfo.applicationIOInfo = faultData.applicationIOInfo;
+    eventInfo.isBlockInGc = faultData.isBlockInGc;
     eventInfo.processLifeTime = faultData.processLifeTime;
     eventInfo.markedId = faultData.markedId;
     eventInfo.processedId = faultData.processedId;
     eventInfo.dispatchedEventId = faultData.dispatchedEventId;
     eventInfo.externalLog = faultData.callbackLog;
+    return eventInfo;
+}
+
+int AppfreezeManager::NotifyANR(const FaultData& faultData, const AppfreezeManager::AppInfo& appInfo,
+    const std::string& binderInfo, const std::string& memoryContent)
+{
+    std::string eventName = faultData.errorObject.name;
+    this->PerfStart(eventName);
+    int64_t startTime = AbilityRuntime::TimeUtil::CurrentTimeMillis();
+    AppfreezeEventInfo eventInfo = UpdateEventInfo(faultData, appInfo, binderInfo, memoryContent);
 
     int ret = AppfreezeEventReport::SendAppfreezeEvent(eventName, HISYSEVENT_FAULT, eventInfo);
     TAG_LOGW(AAFwkTag::APPDFR, "reportEvent:%{public}s, pid:%{public}d, tid:%{public}d, bundleName:%{public}s, "
@@ -639,7 +654,7 @@ int AppfreezeManager::NotifyANR(const FaultData& faultData, const AppfreezeManag
         " reportFreeze:%{public}d, applicationHeapInfo:%{public}s processLifeTime:%{public}s "
         "hisysevent write ret: %{public}d",
         faultData.errorObject.name.c_str(), appInfo.pid, faultData.tid, appInfo.bundleName.c_str(),
-        appRunningUniqueId.c_str(), AbilityRuntime::TimeUtil::DefaultCurrentTimeStr().c_str(),
+        faultData.appRunningUniqueId.c_str(), AbilityRuntime::TimeUtil::DefaultCurrentTimeStr().c_str(),
         AbilityRuntime::TimeUtil::CurrentTimeMillis() - startTime, faultData.eventId,
         eventInfo.freezeInfoFile.c_str(), eventInfo.foregroundState, eventInfo.enableFreeze,
         eventInfo.reportLifecycleToFreeze, eventInfo.applicationHeapInfo.c_str(),

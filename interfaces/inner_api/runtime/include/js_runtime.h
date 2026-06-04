@@ -31,6 +31,7 @@ class EcmaVM;
 } // namespace panda::ecmascript
 namespace panda {
 struct HmsMap;
+struct GCStatistic;
 }
 namespace OHOS {
 namespace AppExecFwk {
@@ -178,6 +179,8 @@ public:
 
     size_t GetHeapTotalSize();
     size_t GetHeapObjectSize();
+    size_t GetSharedHeapSize();
+    panda::GCStatistic GetGCStatistic();
 
 private:
     void FinishPreload() override;

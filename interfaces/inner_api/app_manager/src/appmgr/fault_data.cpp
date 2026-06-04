@@ -99,6 +99,14 @@ bool FaultData::ReadContent(Parcel &parcel)
     RETURN_FALSE_AND_WRITE_LOG_IF_TRUE(!parcel.ReadString(strValue), "ApplicationHeapInfo read string failed.");
     applicationHeapInfo = strValue;
 
+    RETURN_FALSE_AND_WRITE_LOG_IF_TRUE(!parcel.ReadString(strValue), "ApplicationGCInfo read string failed.");
+    applicationGCInfo = strValue;
+
+    RETURN_FALSE_AND_WRITE_LOG_IF_TRUE(!parcel.ReadString(strValue), "ApplicationIOInfo read string failed.");
+    applicationIOInfo = strValue;
+
+    isBlockInGc = parcel.ReadBool();
+
     RETURN_FALSE_AND_WRITE_LOG_IF_TRUE(!parcel.ReadString(strValue), "ProcessLifeTime read string failed.");
     processLifeTime = strValue;
 
@@ -212,6 +220,30 @@ bool FaultData::WriteLeakContent(Parcel &parcel) const
     return true;
 }
 
+bool FaultData::WriteApplicationContent(Parcel &parcel) const
+{
+    RETURN_FALSE_AND_WRITE_LOG_WITH_ONE_ARG_IF_TRUE(!parcel.WriteString(applicationHeapInfo),
+        "applicationHeapInfo [%{public}s] write string failed.", applicationHeapInfo.c_str()
+    );
+
+    RETURN_FALSE_AND_WRITE_LOG_WITH_ONE_ARG_IF_TRUE(!parcel.WriteString(applicationGCInfo),
+        "applicationGCInfo [%{public}s] write string failed.", applicationGCInfo.c_str()
+    );
+
+    RETURN_FALSE_AND_WRITE_LOG_WITH_ONE_ARG_IF_TRUE(!parcel.WriteString(applicationIOInfo),
+        "applicationIOInfo [%{public}s] write string failed.", applicationIOInfo.c_str()
+    );
+
+    RETURN_FALSE_AND_WRITE_LOG_WITH_ONE_ARG_IF_TRUE(!parcel.WriteBool(isBlockInGc),
+        "isBlockInGc [%{public}d] write bool failed.", isBlockInGc
+    );
+
+    RETURN_FALSE_AND_WRITE_LOG_WITH_ONE_ARG_IF_TRUE(!parcel.WriteString(processLifeTime),
+        "processLifeTime [%{public}s] write string failed.", processLifeTime.c_str()
+    );
+    return true;
+}
+
 bool FaultData::WriteContent(Parcel &parcel) const
 {
     RETURN_FALSE_AND_WRITE_LOG_WITH_ONE_ARG_IF_TRUE(!parcel.WriteUint32(stuckTimeout),
@@ -251,13 +283,9 @@ bool FaultData::WriteContent(Parcel &parcel) const
         "reportLifecycleToFreeze [%{public}d] write bool failed.", reportLifecycleToFreeze
     );
 
-    RETURN_FALSE_AND_WRITE_LOG_WITH_ONE_ARG_IF_TRUE(!parcel.WriteString(applicationHeapInfo),
-        "applicationHeapInfo [%{public}s] write string failed.", applicationHeapInfo.c_str()
-    );
-
-    RETURN_FALSE_AND_WRITE_LOG_WITH_ONE_ARG_IF_TRUE(!parcel.WriteString(processLifeTime),
-        "processLifeTime [%{public}s] write string failed.", processLifeTime.c_str()
-    );
+    if (!WriteApplicationContent(parcel)) {
+        return false;
+    }
 
     RETURN_FALSE_AND_WRITE_LOG_WITH_ONE_ARG_IF_TRUE(!parcel.WriteInt32(markedId),
         "MarkedId [%{public}d] write int32 failed.", markedId
@@ -416,6 +444,14 @@ bool AppFaultDataBySA::ReadContent(Parcel &parcel)
     RETURN_FALSE_AND_WRITE_LOG_IF_TRUE(!parcel.ReadString(strValue), "ApplicationHeapInfo read string failed.");
     applicationHeapInfo = strValue;
 
+    RETURN_FALSE_AND_WRITE_LOG_IF_TRUE(!parcel.ReadString(strValue), "ApplicationGCInfo read string failed.");
+    applicationGCInfo = strValue;
+
+    RETURN_FALSE_AND_WRITE_LOG_IF_TRUE(!parcel.ReadString(strValue), "ApplicationIOInfo read string failed.");
+    applicationIOInfo = strValue;
+
+    isBlockInGc = parcel.ReadBool();
+
     RETURN_FALSE_AND_WRITE_LOG_IF_TRUE(!parcel.ReadString(strValue), "ProcessLifeTime read string failed.");
     processLifeTime = strValue;
     return ReadLeakContent(parcel);
@@ -551,6 +587,18 @@ bool AppFaultDataBySA::WriteContent(Parcel &parcel) const
 
     RETURN_FALSE_AND_WRITE_LOG_WITH_ONE_ARG_IF_TRUE(!parcel.WriteString(applicationHeapInfo),
         "applicationHeapInfo [%{public}s] write string failed.", applicationHeapInfo.c_str()
+    );
+
+    RETURN_FALSE_AND_WRITE_LOG_WITH_ONE_ARG_IF_TRUE(!parcel.WriteString(applicationGCInfo),
+        "applicationGCInfo [%{public}s] write string failed.", applicationGCInfo.c_str()
+    );
+
+    RETURN_FALSE_AND_WRITE_LOG_WITH_ONE_ARG_IF_TRUE(!parcel.WriteString(applicationIOInfo),
+        "applicationIOInfo [%{public}s] write string failed.", applicationIOInfo.c_str()
+    );
+
+    RETURN_FALSE_AND_WRITE_LOG_WITH_ONE_ARG_IF_TRUE(!parcel.WriteBool(isBlockInGc),
+        "isBlockInGc [%{public}d] write bool failed.", isBlockInGc
     );
 
     RETURN_FALSE_AND_WRITE_LOG_WITH_ONE_ARG_IF_TRUE(!parcel.WriteString(processLifeTime),

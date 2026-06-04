@@ -33,6 +33,7 @@
 #include "constants.h"
 #include "connect_server_manager.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "extract_resource_manager.h"
 #include "file_mapper.h"
 #include "file_path_utils.h"
@@ -1438,6 +1439,22 @@ size_t JsRuntime::GetHeapObjectSize()
         return 0;
     }
     return DFXJSNApi::GetHeapObjectSize(vm);
+}
+
+size_t JsRuntime::GetSharedHeapSize()
+{
+    return DFXJSNApi::GetSharedHeapSize();
+}
+
+panda::GCStatistic JsRuntime::GetGCStatistic()
+{
+    auto vm = GetEcmaVm();
+    if (!vm) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "null vm");
+        panda::GCStatistic gCStatistic;
+        return gCStatistic;
+    }
+    return DFXJSNApi::GetGCStatistic(vm);
 }
 
 void JsRuntime::ForceFullGC(uint32_t tid)
