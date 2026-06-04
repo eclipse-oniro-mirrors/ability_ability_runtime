@@ -77,7 +77,7 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size, const uint8_
     auto shouldBlockFunc = []() { return false; };
     AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, isWithUI, token,
         shouldBlockFunc);
-    const std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo;
+    std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo;
     int32_t bundleType = static_cast<int32_t>(GetU32Data(data));
     std::vector<AppExecFwk::DisposedRule> disposedRules = AbilityFuzzUtil::GetRandomDisposedRulesList(fdp);
 
@@ -86,7 +86,8 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size, const uint8_
     executer-> FindBlockDisposedRule(want, disposedRules, disposedRule);
     executer-> FindNonBlockDisposedRule(disposedRules, disposedRule);
     int32_t uid = static_cast<int32_t>(GetU32Data(data));
-    executer-> StartNonBlockRule(want, disposedRule, uid);
+    abilityInfo->uid = uid;
+    executer-> StartNonBlockRule(want, disposedRule, abilityInfo);
     executer-> UnregisterObserver(uid);
     executer-> CreateModalUIExtension(want, token);
     executer-> SetInterceptInfo(want, disposedRule);

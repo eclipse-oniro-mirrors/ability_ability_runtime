@@ -31,6 +31,16 @@ public:
         const std::shared_ptr<DisposedRuleInterceptor> &interceptor, int32_t uid);
     ~DisposedObserver() = default;
 
+    static std::string GenerateAbilityKey(const std::string &moduleName, const std::string &abilityName);
+
+    void AddAbilityKey(const std::string &moduleName, const std::string &abilityName);
+
+    bool HasAbilityKey(const std::string &moduleName, const std::string &abilityName);
+
+    bool RemoveAbilityKey(const std::string &moduleName, const std::string &abilityName);
+
+    size_t GetAbilityKeyCount();
+
 private:
     void OnAbilityStateChanged(const AppExecFwk::AbilityStateData &abilityStateData) override;
     void OnPageShow(const AppExecFwk::PageStateData &pageStateData) override;
@@ -40,8 +50,9 @@ private:
     std::shared_ptr<DisposedRuleInterceptor> interceptor_ = nullptr;
     AppExecFwk::DisposedRule disposedRule_;
     sptr<IRemoteObject> token_ = nullptr;
-    ffrt::mutex observerLock_;
+    ffrt::mutex abilityKeyLock_;
     int32_t uid_ = 0;
+    std::vector<std::string> abilityKeys_;
 };
 } // namespace AAFwk
 } // namespace OHOS

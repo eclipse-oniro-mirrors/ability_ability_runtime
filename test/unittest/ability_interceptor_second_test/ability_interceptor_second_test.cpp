@@ -136,7 +136,9 @@ HWTEST_F(AbilityInterceptorSecondTest, DisposedRuleInterceptor_003, TestSize.Lev
     DisposedRule disposedRule;
     disposedRule.want = std::make_shared<Want>();
     disposedRule.want->SetBundle(bundleName);
-    ErrCode result = executer->StartNonBlockRule(want, disposedRule, 0);
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->uid = 0;
+    ErrCode result = executer->StartNonBlockRule(want, disposedRule, abilityInfo);
     EXPECT_EQ(result, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
 }
@@ -158,7 +160,9 @@ HWTEST_F(AbilityInterceptorSecondTest, DisposedRuleInterceptor_004, TestSize.Lev
     DisposedRule disposedRule;
     disposedRule.want = std::make_shared<Want>();
     disposedRule.want->SetBundle(bundleName2);
-    ErrCode result = executer->StartNonBlockRule(want, disposedRule, 0);
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->uid = 0;
+    ErrCode result = executer->StartNonBlockRule(want, disposedRule, abilityInfo);
     EXPECT_NE(result, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
 }
@@ -267,7 +271,9 @@ HWTEST_F(AbilityInterceptorSecondTest, DisposedRuleInterceptor_011, TestSize.Lev
     Want want;
     DisposedRule disposedRule;
     disposedRule.want = nullptr;
-    ErrCode result = executer->StartNonBlockRule(want, disposedRule, 0);
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->uid = 0;
+    ErrCode result = executer->StartNonBlockRule(want, disposedRule, abilityInfo);
     EXPECT_EQ(result, ERR_OK);
 }
 
@@ -289,7 +295,9 @@ HWTEST_F(AbilityInterceptorSecondTest, DisposedRuleInterceptor_012, TestSize.Lev
     DisposedRule disposedRule;
     disposedRule.want = std::make_shared<Want>();
     disposedRule.want->SetBundle(bundleName2);
-    ErrCode result = executer->StartNonBlockRule(want, disposedRule, 0);
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->uid = 0;
+    ErrCode result = executer->StartNonBlockRule(want, disposedRule, abilityInfo);
     EXPECT_EQ(result, ERR_OK);
 }
 } // namespace AAFwk

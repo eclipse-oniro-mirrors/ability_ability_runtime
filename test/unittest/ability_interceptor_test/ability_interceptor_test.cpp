@@ -475,7 +475,9 @@ HWTEST_F(AbilityInterceptorTest, DisposedRuleInterceptor_012, TestSize.Level1)
     std::shared_ptr<DisposedRuleInterceptor> executer = std::make_shared<DisposedRuleInterceptor>();
     Want want;
     AppExecFwk::DisposedRule disposedRule;
-    ErrCode result = executer->StartNonBlockRule(want, disposedRule, 0);
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->uid = 0;
+    ErrCode result = executer->StartNonBlockRule(want, disposedRule, abilityInfo);
     EXPECT_EQ(result, ERR_OK);
 }
 
@@ -492,7 +494,9 @@ HWTEST_F(AbilityInterceptorTest, DisposedRuleInterceptor_013, TestSize.Level1)
     Want want;
     want.SetBundle(bundleName);
     DisposedRule disposedRule;
-    ErrCode result = executer->StartNonBlockRule(want, disposedRule, 0);
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->uid = 0;
+    ErrCode result = executer->StartNonBlockRule(want, disposedRule, abilityInfo);
     EXPECT_EQ(result, ERR_OK);
 }
 

@@ -19,8 +19,20 @@ ohos_unittest("disposed_observer_test") {
   module_out_path = "ability_runtime/ability_runtime/abilitymgr"
 
   sources = [
+    "${ability_runtime_services_path}/abilitymgr/src/disposed_observer.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/interceptor/disposed_rule_interceptor.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/process_options.cpp",
+    "${ability_runtime_test_path}/unittest/disposed_rule_interceptor_test/mock/src/modal_system_ui_extension.cpp",
+    "${ability_runtime_test_path}/unittest/disposed_rule_interceptor_test/mock/src/mock_bundle_mgr_helper.cpp",
+    "${ability_runtime_test_path}/unittest/disposed_rule_interceptor_test/mock/src/mock_my_flag.cpp",
     "disposed_observer_test.cpp",
   ]
+
+  configs = [ "${ability_runtime_services_path}/abilitymgr:abilityms_config" ]
+  cflags = []
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
 
   include_dirs = [
     "./",
@@ -29,14 +41,23 @@ ohos_unittest("disposed_observer_test") {
     "${ability_runtime_path}/interfaces/kits/native/ability/ability_runtime/",
     "${ability_runtime_services_path}/abilitymgr/include",
     "${ability_runtime_services_path}/abilitymgr/include/interceptor",
+    "${ability_runtime_services_path}/abilitymgr/include/utils",
+    "${ability_runtime_services_path}/common/include",
     "${ability_runtime_test_path}/mock/frameworks_kits_ability_native_test/include",
+    "${ability_runtime_test_path}/unittest/disposed_rule_interceptor_test/mock/include",
   ]
+
+  defines = []
+  if (ability_runtime_graphics) {
+    defines += [ "SUPPORT_GRAPHICS" ]
+  }
 
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/ability_manager:ability_start_options",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
+    "${ability_runtime_services_path}/common:task_handler_wrap",
   ]
 
   external_deps = [

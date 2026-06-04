@@ -19,7 +19,10 @@
 #include <memory>
 
 #include "ability_info.h"
+#include "ability_manager_client.h"
+#include "in_process_call_wrapper.h"
 #include "iremote_object.h"
+#include "session_info.h"
 #include "want.h"
 
 namespace OHOS {
@@ -55,10 +58,19 @@ public:
      */
     const AppExecFwk::AbilityInfo &GetAbilityInfo() const;
 
+    const Want &GetWant() const;
+
+    sptr<SessionInfo> GetSessionInfo() const;
+
+    int32_t GetMissionId() const;
+
     int32_t CreateModalUIExtension(const Want &want);
 
 public:
     AppExecFwk::AbilityInfo abilityInfo;
+    Want want_;
+    sptr<SessionInfo> sessionInfo_ = nullptr;
+    int32_t missionId_ = -1;
 };
 }  // namespace AAFwk
 }  // namespace OHOS
