@@ -15,8 +15,17 @@
  
 import { IntentInfo } from './IntentContent';
 import { DetailItem } from './DetailItem';
-import { common, insightIntent, insightIntentDriver } from '@kit.AbilityKit';
+import { common, insightIntent, insightIntentDriver, bundleManager } from '@kit.AbilityKit';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { BusinessError } from '@kit.BasicServicesKit';
 import { format, jsClone, addArrayParams, removeArrayParams, removeFormData } from './format';
+
+const TAG: string = 'IntentDetailPage';
+const DOMAIN: number = 0xFF00;
+
+interface ItemsInfo {
+  type: string
+}
 
 interface propertiesInfo {
   name: string;
@@ -27,6 +36,7 @@ interface propertiesInfo {
   maxLength?: number;
   default?: number | Resource;
   required?: boolean;
+  items?: ItemsInfo;
 }
 
 interface FormField {
@@ -44,6 +54,11 @@ interface FormField {
   value?: string | number;
   index?: number;
   required?: boolean;
+}
+
+interface UIExtensionInfo {
+  type: string;
+  name: string;
 }
 
 type ObjVal = string | number | null;
@@ -143,6 +158,49 @@ export struct IntentDetailPage {
     }
   }
 
+  async getUIExtensionType(bundleName: string, moduleName: string, abilityName: string): Promise<UIExtensionInfo> {
+    hilog.info(DOMAIN, TAG, `getUIExtensionType start: bundleName=${bundleName}, moduleName=${moduleName}, abilityName=${abilityName}`);
+    const bundleInfo = await bundleManager.getBundleInfo(
+      bundleName,
+      bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_HAP_MODULE |
+      bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_EXTENSION_ABILITY
+    );
+    hilog.info(DOMAIN, TAG, `getBundleInfo success: bundleName=${bundleInfo.name}`);
+    const hapModulesInfo = bundleInfo.hapModulesInfo;
+    if (!hapModulesInfo) {
+      const errorMsg = `getUIExtensionType failed: hapModulesInfo is null for bundleName=${bundleName}`;
+      hilog.error(DOMAIN, TAG, errorMsg);
+      throw new Error(errorMsg);
+    }
+
+    for (let i = 0; i < hapModulesInfo.length; i++) {
+      const moduleInfo = hapModulesInfo[i];
+      if (moduleInfo.name === moduleName) {
+        const extensionAbilitiesInfo = moduleInfo.extensionAbilitiesInfo;
+        if (!extensionAbilitiesInfo) {
+          hilog.warn(DOMAIN, TAG, `extensionAbilitiesInfo is null for module: ${moduleName}`);
+          continue;
+        }
+
+        for (let j = 0; j < extensionAbilitiesInfo.length; j++) {
+          const extensionInfo = extensionAbilitiesInfo[j];
+          const typeName = extensionInfo.extensionAbilityTypeName;
+          if (typeName && typeName !== '') {
+            hilog.info(DOMAIN, TAG, `getUIExtensionType success: found UIExtensionAbility ${extensionInfo.name}, type=${typeName}`);
+            const result: UIExtensionInfo = {
+              type: typeName,
+              name: extensionInfo.name
+            };
+            return result;
+          }
+        }
+      }
+    }
+    const errorMsg = `getUIExtensionType failed: UIExtensionAbility not found for bundleName=${bundleName}, moduleName=${moduleName}, abilityName=${abilityName}`;
+    hilog.error(DOMAIN, TAG, errorMsg);
+    throw new Error(errorMsg);
+  }
+
   changeProperties(properties: Record<string, propertiesInfo>, fatherKey?: string, fatherType?: string) {
     const formArr: FormField[] = [];
     Object.keys(properties).forEach((propKey: string, index: number) => {
@@ -166,7 +224,12 @@ export struct IntentDetailPage {
         if (index === 0) {
           this.countArr = [0];
         }
-        const subProperties = this.findProperties(obj);
+        let subProperties = this.findProperties(obj);
+
+        if (Object.keys(subProperties).length === 0) {
+          subProperties = { 'items':  { name: '', type: obj.items?.type ?? 'string'  } as propertiesInfo };
+        }
+
         subItem = [this.changeProperties(subProperties, propKey, 'array')] as FormField[][];
       }
       const description = obj.description;
@@ -244,24 +307,33 @@ export struct IntentDetailPage {
     }
     if (this.intentDetail?.intentType === '@InsightIntentEntry') {
       param.executeMode = this.intentDetail.subIntentInfo['executeMode'][0];
+      hilog.info(DOMAIN, TAG, `InsightIntentEntry detected: intentName=${this.intentDetail.intentName}, executeMode=${param.executeMode}, subIntentInfo=${JSON.stringify(this.intentDetail.subIntentInfo)}`);
     }
 
     if (this.intentDetail?.intentType === '@InsightIntentEntry' &&
     this.intentDetail.subIntentInfo['executeMode'] && this.intentDetail.subIntentInfo['executeMode'][0] === 2) {
+      const uiExtensionInfo = await this.getUIExtensionType(
+        param.bundleName,
+        param.moduleName,
+        param.abilityName
+      );
+      hilog.info(DOMAIN, TAG, `IntentName: ${this.intentDetail.intentName}, uiExtensionType: ${uiExtensionInfo.type}, uiExtensionName: ${uiExtensionInfo.name}`);
       this.want = {
         bundleName: param.bundleName,
         abilityName: param.abilityName,
         moduleName: param.moduleName,
         parameters: {
-          'ability.want.params.uiExtensionType': 'share',
+          'ability.want.params.uiExtensionType': uiExtensionInfo.type,
           'ohos.insightIntent.executeParam.name': this.intentDetail.intentName,
           'ohos.insightIntent.executeParam.param': param.insightIntentParam,
         }
-      };
+      };   
+      hilog.info(DOMAIN, TAG, `UIExtensionComponent want: ${JSON.stringify(this.want)}`);
       this.isShowEntry2 = true;
       this.isShow = true;
     } else if (this.intentDetail?.intentType === '@InsightIntentForm') {
       this.formName = this.getAttribute(this.intentDetail?.subIntentInfo, 'formName') as string;
+      hilog.info(DOMAIN, TAG, `FormComponent: formName=${this.formName}`);
       this.isShow = true;
       this.isShowForm = true;
     } else {
@@ -287,6 +359,7 @@ export struct IntentDetailPage {
       if (executeParam[key] === undefined || executeParam[key] === null) {
         if (validate) {
           validate = false;
+          hilog.error(DOMAIN, TAG, `submitForm validation failed: required field '${key}' is missing`);
         }
       }
     })

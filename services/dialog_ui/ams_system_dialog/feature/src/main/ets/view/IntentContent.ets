@@ -36,6 +36,11 @@ export interface IntentGrout {
   string: IntentInfo[]
 }
 
+interface MaterialResult {
+  bundleName: string;
+  materialItems: IntentInfo[];
+}
+
 @Component
 export struct IntentContent {
   @Consume('articlePathStack') articlePathStack: NavPathStack;
@@ -67,6 +72,7 @@ export struct IntentContent {
     try {
       insightIntentDriver.getAllInsightIntentInfo(insightIntentDriver.GetInsightIntentFlag.GET_FULL_INSIGHT_INTENT)
         .then((data) => {
+          hilog.info(DOMAIN, TAG, `getAllInsightIntentInfo success: found ${data.length} total intents`);
           this.listMaterial = data as IntentInfo[];
           this.intermediateGroupMaterial = this.listMaterial
             .filter(item => item.developType != insightIntentDriver.DevelopType.CONFIGURATION)
@@ -89,15 +95,30 @@ export struct IntentContent {
                   const iconImg = await this.getAllIntentIcon(materialItems[key].icon, bundleName);
                   materialItems[key].iconImg = iconImg;
                   const appName = await this.setAppName(materialItems[0]);
-                  this.groupMaterial[appName] = materialItems;
+                  materialItems[key].bundleNameCN = appName;
                 }
+                const materialResult: MaterialResult = { bundleName, materialItems };
+                return materialResult;
               }
             } catch (err) {
               hilog.error(DOMAIN, TAG, 'getApplicationInfo failed. Cause: %{public}s', JSON.stringify(err));
             }
+            return null;
           });
-          Promise.all(promises).then(() => {
+          Promise.all(promises).then((results: Array<MaterialResult | null>) => {
+            results.forEach((result: MaterialResult | null) => {
+              if (result && result.bundleName && result.materialItems) {
+                this.groupMaterial[result.bundleName] = result.materialItems;
+              }
+            });
             this.groupMaterial = jsClone(this.groupMaterial);
+            Object.keys(this.groupMaterial).forEach((bundleName: string) => {
+              const intents = this.groupMaterial[bundleName];
+              hilog.info(DOMAIN, TAG, `Bundle: ${bundleName}, AppName: ${intents[0].bundleNameCN}, Intents: ${intents.length}`);
+              intents.forEach((intent: IntentInfo, index: number) => {
+                hilog.info(DOMAIN, TAG, `  [${index + 1}] IntentName: ${intent.intentName}, Type: ${intent.intentType}, DisplayName: ${intent.displayName}, Module: ${intent.moduleName}`);
+              });
+            });
           });
         }).catch((err: BusinessError) => {
           hilog.error(DOMAIN, TAG, 'getAllInsightIntentInfo errCode: %{public}d', err.code);
@@ -120,6 +141,15 @@ export struct IntentContent {
       hilog.error(DOMAIN, TAG, 'createBundleContext failed. Cause: %{public}s', JSON.stringify(error));
     }
     return bundleNameCN;
+  }
+
+  getDisplayName(bundleName: string): string {
+    const materialItems = this.groupMaterial[bundleName];
+    if (!materialItems || materialItems.length === 0) {
+      return bundleName;
+    }
+    const appName = materialItems[0].bundleNameCN;
+    return appName;
   }
 
   @Builder
@@ -312,10 +342,9 @@ export struct IntentContent {
 
       Scroll(this.scroller) {
         Column() {
-          ForEach(Object.keys(this.groupMaterial), (bundleNameCN: string) => {
-            Text(JSON.stringify(this.groupMaterial.bundleNameCN))
-            this.IntentBlock(bundleNameCN, this.groupMaterial[bundleNameCN])
-          }, (bundleNameCN: string) => bundleNameCN)
+          ForEach(Object.keys(this.groupMaterial), (bundleName: string) => {
+            this.IntentBlock(this.getDisplayName(bundleName), this.groupMaterial[bundleName])
+          }, (bundleName: string) => bundleName)
 
         }
       }
