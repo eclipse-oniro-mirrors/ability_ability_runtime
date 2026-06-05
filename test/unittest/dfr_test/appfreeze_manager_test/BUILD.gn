@@ -84,6 +84,7 @@ ohos_unittest("appfreeze_manager_test") {
     "googletest:gtest_main",
     "hicollie:libhicollie",
     "hilog:libhilog",
+    "hisysevent:libhisysevent",
     "init:libbeget_proxy",
     "ipc:ipc_core",
     "json:nlohmann_json_static",

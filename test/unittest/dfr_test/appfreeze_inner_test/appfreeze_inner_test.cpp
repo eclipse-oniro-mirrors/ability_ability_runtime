@@ -323,13 +323,13 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetApplicationInfo_001, TestSize.Lev
 
 /**
  * @tc.number: AppfreezeInner_LogFormat_001
- * @tc.name: LogFormat
+ * @tc.name: LogFormatHeapSize
  */
 HWTEST_F(AppfreezeInnerTest, AppfreezeInner_LogFormat_001, TestSize.Level1)
 {
-    std::string ret = appfreezeInner->LogFormat(0, 0);
+    std::string ret = appfreezeInner->LogFormatHeapSize(0, 0, 0);
     EXPECT_TRUE(!ret.empty());
-    ret = appfreezeInner->LogFormat(123, 123);
+    ret = appfreezeInner->LogFormatHeapSize(123, 123, 123);
     EXPECT_TRUE(!ret.empty());
 }
 
@@ -619,20 +619,22 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInnerTest_GetProcessStartTime_001, TestSiz
 /**
  * @tc.number: AppfreezeInnerTest
  * @tc.name: add test
- * @tc.desc: Verify that function LogFormat.
+ * @tc.desc: Verify that function LogFormatHeapSize.
  */
 HWTEST_F(AppfreezeInnerTest, AppfreezeInnerTest_LogFormat_001, TestSize.Level1)
 {
     size_t totalSize = 0;
     size_t objectSize = 0;
-    std::string ret = appfreezeInner->LogFormat(totalSize, objectSize);
-    std::string testValue = "HEAP_TOTAL_SIZE:0,HEAP_OBJECT_SIZE:0";
+    size_t sharedSize = 0;
+    std::string ret = appfreezeInner->LogFormatHeapSize(totalSize, objectSize, sharedSize);
+    std::string testValue = "HEAP_TOTAL_SIZE:0,HEAP_OBJECT_SIZE:0,HEAP_SHARED_SIZE:0";
     EXPECT_EQ(ret, testValue);
-    ret = appfreezeInner->LogFormat(totalSize, objectSize);
+    ret = appfreezeInner->LogFormatHeapSize(totalSize, objectSize, sharedSize);
     totalSize = 1234;
     objectSize = 1234;
-    ret = appfreezeInner->LogFormat(totalSize, objectSize);
-    testValue = "HEAP_TOTAL_SIZE:1234,HEAP_OBJECT_SIZE:1234";
+    sharedSize = 1234;
+    ret = appfreezeInner->LogFormatHeapSize(totalSize, objectSize, sharedSize);
+    testValue = "HEAP_TOTAL_SIZE:1234,HEAP_OBJECT_SIZE:1234,HEAP_SHARED_SIZE:1234";
     EXPECT_EQ(ret, testValue);
 }
 

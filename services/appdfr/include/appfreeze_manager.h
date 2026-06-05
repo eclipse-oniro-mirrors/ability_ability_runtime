@@ -30,6 +30,7 @@
 #include "cpp/condition_variable.h"
 #include "fault_data.h"
 #include "freeze_util.h"
+#include "appfreeze_event_report.h"
 
 namespace OHOS {
 using AbilityRuntime::FreezeUtil;
@@ -217,6 +218,8 @@ private:
     bool IsHalfTimeout(const std::string& faultType) const;
     void CleanOldFreezeExcludedPids();
     bool IsNativeDaemonProcess(int32_t profilerPid) const;
+    AppfreezeEventInfo UpdateEventInfo(const FaultData& faultData, const AppfreezeManager::AppInfo& appInfo,
+        const std::string& binderInfo, const std::string& memoryContent);
 
     static constexpr size_t FREEZE_EXCLUDED_PID_MAX_SIZE = 100;
     static constexpr size_t FREEZE_EXCLUDED_PID_CLEAN_COUNT = 30;

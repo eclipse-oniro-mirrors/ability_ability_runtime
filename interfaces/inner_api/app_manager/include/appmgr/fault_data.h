@@ -74,6 +74,7 @@ struct FaultData : public Parcelable {
     bool WriteContent(Parcel &parcel) const;
     bool ReadLeakContent(Parcel &parcel);
     bool WriteLeakContent(Parcel &parcel) const;
+    bool WriteApplicationContent(Parcel &parcel) const;
     static FaultData *Unmarshalling(Parcel &parcel);
     // error object
     ErrorObject errorObject;
@@ -102,6 +103,9 @@ struct FaultData : public Parcelable {
     bool isEnableMainThreadSample;
     bool reportLifecycleToFreeze = false;
     std::string applicationHeapInfo;
+    std::string applicationGCInfo;
+    std::string applicationIOInfo;
+    bool isBlockInGc = false;
     std::string processLifeTime;
     int32_t markedId = 0;
     int32_t processedId = 0;
@@ -146,6 +150,9 @@ struct AppFaultDataBySA : public Parcelable {
     bool isEnableMainThreadSample;
     bool reportLifecycleToFreeze = false;
     std::string applicationHeapInfo;
+    std::string applicationGCInfo;
+    std::string applicationIOInfo;
+    bool isBlockInGc = false;
     std::string processLifeTime;
     LeakObject leakObject;
     AppTelemetryLeakType atLeakType;
