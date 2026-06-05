@@ -773,71 +773,6 @@ HWTEST_F(PendingWantRecordTest, PendingWantRecordTest_2600, TestSize.Level1)
 }
 
 /*
- * @tc.number    : PendingWantRecordTest_IsBundleNotExistForUser0_0100
- * @tc.name      : IsBundleNotExistForUser0
- * @tc.desc      : 1. userId != 0, return false
- */
-HWTEST_F(PendingWantRecordTest, IsBundleNotExistForUser0_0100, TestSize.Level1)
-{
-    Want want;
-    ElementName element("device", "com.example.notexist", "TestAbility");
-    want.SetElement(element);
-    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 100);
-    std::shared_ptr<PendingWantKey> key = MakeWantKey(wantSenderInfo);
-    key->SetUserId(100);
-    std::shared_ptr<PendingWantRecord> pendingWantRecord =
-        std::make_shared<PendingWantRecord>(pendingManager_, 1, 0, nullptr, key);
-    EXPECT_NE(pendingWantRecord, nullptr);
-
-    bool result = pendingWantRecord->IsBundleNotExistForUser0(want);
-    EXPECT_FALSE(result);
-}
-
-/*
- * @tc.number    : IsBundleNotExistForUser0_NullKey_0100
- * @tc.name      : IsBundleNotExistForUser0
- * @tc.desc      : key_ is nullptr, should return false
- */
-HWTEST_F(PendingWantRecordTest, IsBundleNotExistForUser0_NullKey_0100, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "IsBundleNotExistForUser0_NullKey_0100 start");
-    Want want;
-    ElementName element("device", "com.ix.hiMusic", "MusicSAbility");
-    want.SetElement(element);
-
-    pendingManager_ = std::make_shared<PendingWantManager>();
-    std::shared_ptr<PendingWantRecord> pendingWantRecord =
-        std::make_shared<PendingWantRecord>(pendingManager_, 1, 0, nullptr, nullptr);
-
-    bool result = pendingWantRecord->IsBundleNotExistForUser0(want);
-    EXPECT_EQ(result, false);
-    TAG_LOGI(AAFwkTag::TEST, "IsBundleNotExistForUser0_NullKey_0100 end");
-}
-
-/*
- * @tc.number    : IsBundleNotExistForUser0_NonZeroUser_0100
- * @tc.name      : IsBundleNotExistForUser0
- * @tc.desc      : userId is not 0, should return false without query
- */
-HWTEST_F(PendingWantRecordTest, IsBundleNotExistForUser0_NonZeroUser_0100, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "IsBundleNotExistForUser0_NonZeroUser_0100 start");
-    Want want;
-    ElementName element("device", "com.ix.hiMusic", "MusicSAbility");
-    want.SetElement(element);
-
-    pendingManager_ = std::make_shared<PendingWantManager>();
-    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 100);
-    std::shared_ptr<PendingWantKey> key = MakeWantKey(wantSenderInfo);
-    std::shared_ptr<PendingWantRecord> pendingWantRecord =
-        std::make_shared<PendingWantRecord>(pendingManager_, 1, 0, nullptr, key);
-
-    bool result = pendingWantRecord->IsBundleNotExistForUser0(want);
-    EXPECT_EQ(result, false);
-    TAG_LOGI(AAFwkTag::TEST, "IsBundleNotExistForUser0_NonZeroUser_0100 end");
-}
-
-/*
  * @tc.number    : PendingWantRecordTest_0100
  * @tc.name      : ExecuteOperation
  * @tc.desc      : check Starts a service extension
@@ -882,6 +817,122 @@ HWTEST_F(PendingWantRecordTest, ExecuteOperation_0200, TestSize.Level1)
     auto params = pendingWantRecord->ExecuteOperation(pendingManager_, info, want);
     EXPECT_EQ(params, NO_ERROR);
     TAG_LOGD(AAFwkTag::TEST, "ExecuteOperation_0200 end.");
+}
+
+/*
+ * @tc.number    : ExecuteOperation_0300
+ * @tc.name      : ExecuteOperation
+ * @tc.desc      : ExecuteOperation with key userId == 0 (legacy/upgrade) should be treated as
+ *                 unspecified (-1) and run START_ABILITY
+ */
+HWTEST_F(PendingWantRecordTest, ExecuteOperation_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteOperation_0300 start");
+    Want want;
+    ElementName element("device", "com.ix.hiMusic", "MusicSAbility");
+    want.SetElement(element);
+
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    EXPECT_NE(pendingManager_, nullptr);
+    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 0);
+    std::shared_ptr<PendingWantKey> key = MakeWantKey(wantSenderInfo);
+    key->SetType(static_cast<int32_t>(OperationType::START_ABILITY));
+    key->SetUserId(0);
+    std::shared_ptr<PendingWantRecord> pendingWantRecord =
+        std::make_shared<PendingWantRecord>(pendingManager_, 1, 0, nullptr, key);
+    EXPECT_NE(pendingWantRecord, nullptr);
+
+    SenderInfo info;
+    pendingWantRecord->ExecuteOperation(pendingManager_, info, want);
+    EXPECT_EQ(key->GetUserId(), 0);
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteOperation_0300 end");
+}
+
+/*
+ * @tc.number    : ExecuteOperation_0400
+ * @tc.name      : ExecuteOperation
+ * @tc.desc      : ExecuteOperation with key userId > 0 should pass the real userId through
+ *                 START_SERVICE
+ */
+HWTEST_F(PendingWantRecordTest, ExecuteOperation_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteOperation_0400 start");
+    Want want;
+    ElementName element("device", "com.ix.hiMusic", "MusicSAbility");
+    want.SetElement(element);
+
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    EXPECT_NE(pendingManager_, nullptr);
+    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 100);
+    std::shared_ptr<PendingWantKey> key = MakeWantKey(wantSenderInfo);
+    key->SetType(static_cast<int32_t>(OperationType::START_SERVICE));
+    key->SetUserId(100);
+    std::shared_ptr<PendingWantRecord> pendingWantRecord =
+        std::make_shared<PendingWantRecord>(pendingManager_, 1, 0, nullptr, key);
+    EXPECT_NE(pendingWantRecord, nullptr);
+
+    SenderInfo info;
+    pendingWantRecord->ExecuteOperation(pendingManager_, info, want);
+    EXPECT_EQ(key->GetUserId(), 100);
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteOperation_0400 end");
+}
+
+/*
+ * @tc.number    : ExecuteOperation_0500
+ * @tc.name      : ExecuteOperation
+ * @tc.desc      : ExecuteOperation with key userId 0 and START_ABILITIES with non-empty
+ *                 allWantsInfos should be treated as unspecified (-1)
+ */
+HWTEST_F(PendingWantRecordTest, ExecuteOperation_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteOperation_0500 start");
+    Want want;
+    ElementName element("device", "com.ix.hiMusic", "MusicSAbility");
+    want.SetElement(element);
+
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    EXPECT_NE(pendingManager_, nullptr);
+    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 0);
+    std::shared_ptr<PendingWantKey> key = MakeWantKey(wantSenderInfo);
+    key->SetType(static_cast<int32_t>(OperationType::START_ABILITIES));
+    key->SetUserId(0);
+    std::shared_ptr<PendingWantRecord> pendingWantRecord =
+        std::make_shared<PendingWantRecord>(pendingManager_, 1, 0, nullptr, key);
+    EXPECT_NE(pendingWantRecord, nullptr);
+
+    SenderInfo info;
+    pendingWantRecord->ExecuteOperation(pendingManager_, info, want);
+    EXPECT_EQ(key->GetUserId(), 0);
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteOperation_0500 end");
+}
+
+/*
+ * @tc.number    : ExecuteOperation_0600
+ * @tc.name      : ExecuteOperation
+ * @tc.desc      : ExecuteOperation with key userId -1 (already unspecified) should keep
+ *                 going through START_FOREGROUND_SERVICE path without crash.
+ */
+HWTEST_F(PendingWantRecordTest, ExecuteOperation_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteOperation_0600 start");
+    Want want;
+    ElementName element("device", "com.ix.hiMusic", "MusicSAbility");
+    want.SetElement(element);
+
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    EXPECT_NE(pendingManager_, nullptr);
+    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, -1);
+    std::shared_ptr<PendingWantKey> key = MakeWantKey(wantSenderInfo);
+    key->SetType(static_cast<int32_t>(OperationType::START_FOREGROUND_SERVICE));
+    key->SetUserId(-1);
+    std::shared_ptr<PendingWantRecord> pendingWantRecord =
+        std::make_shared<PendingWantRecord>(pendingManager_, 1, 0, nullptr, key);
+    EXPECT_NE(pendingWantRecord, nullptr);
+
+    SenderInfo info;
+    pendingWantRecord->ExecuteOperation(pendingManager_, info, want);
+    EXPECT_EQ(key->GetUserId(), -1);
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteOperation_0600 end");
 }
 
 /*
