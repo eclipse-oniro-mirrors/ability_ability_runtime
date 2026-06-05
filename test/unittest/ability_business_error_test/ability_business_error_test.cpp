@@ -160,13 +160,14 @@ HWTEST_F(AbilityBusinessErrorTest, GetInnerErrorMsg_0100, TestSize.Level2)
         "Internal error. Operation failed. Try again later.");
     EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::RESTORE_WINDOW_STAGE_FAILED),
         "Internal error. Failed to restore the window stage. Check the local storage object and try again.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::QUERY_ATOMIC_SERVICE_STARTUP_RULE_FAILED),
+        "Internal error. Failed to query the atomic service startup rule. Try again later.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::RESTART_SELF_ATOMIC_SERVICE_FAILED),
+        "Internal error. Failed to restart the current atomic service. Try again later.");
     EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::CONNECT_AGENT_EXTENSION_FAILED),
         "Internal error. Failed to connect to the agent extension ability. Verify the target and try again.");
     EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::AGENT_EXTENSION_CONNECTION_ENDED),
         "Internal error. The agent extension connection ended before it was ready. Connect again.");
-    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::DISCONNECT_AGENT_EXTENSION_NOT_EXIST),
-        "Internal error. The agent extension connection does not exist. "
-        "Use an AgentProxy returned by connectAgentExtensionAbility.");
     EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::TRANSFER_EXTENSION_DATA_FAILED),
         "Internal error. Failed to transfer extension data to the window. Try again later.");
     EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::UI_WINDOW_NULL),
@@ -189,7 +190,8 @@ HWTEST_F(AbilityBusinessErrorTest, GetAgentManagerErrorMsg_0100, TestSize.Level2
         GetInnerErrorMsg(AbilityInnerErrorMsg::SERVICE_UNAVAILABLE));
     EXPECT_EQ(GetAgentManagerErrorMsg(AAFwk::CONNECTION_NOT_EXIST,
         AgentManagerErrorOperation::DISCONNECT_AGENT_EXTENSION),
-        GetInnerErrorMsg(AbilityInnerErrorMsg::DISCONNECT_AGENT_EXTENSION_NOT_EXIST));
+        "Internal error. The agent extension connection does not exist. "
+        "Use an AgentProxy returned by connectAgentExtensionAbility.");
     EXPECT_EQ(GetAgentManagerErrorMsg(AAFwk::ERR_MAX_AGENT_CONNECTIONS_REACHED,
         AgentManagerErrorOperation::CONNECT_AGENT_EXTENSION),
         GetErrorMsg(AbilityErrorCode::ERROR_CODE_MAX_CONNECTIONS_REACHED));

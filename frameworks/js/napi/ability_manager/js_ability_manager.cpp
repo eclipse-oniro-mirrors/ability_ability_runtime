@@ -877,7 +877,8 @@ private:
         auto ret = AbilityManagerClient::GetInstance()->RestartSelfAtomicService(token);
         if (ret != ERR_OK) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "resatrt atomic service failed: %{public}d", ret);
-            ThrowErrorByNativeErr(env, ret);
+            napi_throw(env, CreateJsErrorByNativeErr(env, ret, "",
+                GetInnerErrorMsg(AbilityInnerErrorMsg::RESTART_SELF_ATOMIC_SERVICE_FAILED)));
         }
         return CreateJsUndefined(env);
     }

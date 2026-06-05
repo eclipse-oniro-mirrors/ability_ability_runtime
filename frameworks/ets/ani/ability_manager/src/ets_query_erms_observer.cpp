@@ -97,7 +97,8 @@ void EtsQueryERMSObserver::CallCallback(ani_object callback, const AtomicService
     if (resultCode == ERR_OK) {
         aniObject = EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_OK);
     } else {
-        aniObject = EtsErrorUtil::CreateErrorByNativeErr(env, resultCode);
+        aniObject = EtsErrorUtil::CreateErrorByNativeErr(env, resultCode, "",
+            GetInnerErrorMsg(AbilityInnerErrorMsg::QUERY_ATOMIC_SERVICE_STARTUP_RULE_FAILED));
     }
     AppExecFwk::AsyncCallback(env, callback, aniObject, nullptr);
     AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);
