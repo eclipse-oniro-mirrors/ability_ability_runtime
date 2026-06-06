@@ -28,6 +28,7 @@ ohos_unittest("disposed_rule_interceptor_test") {
   ]
 
   sources = [
+    "${ability_runtime_services_path}/abilitymgr/src/disposed_observer.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/interceptor/disposed_rule_interceptor.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/process_options.cpp",
     "mock/src/mock_ability_manager_client.cpp",
@@ -57,6 +58,7 @@ ohos_unittest("disposed_rule_interceptor_test") {
   ]
 
   external_deps = [
+    "ability_base:session_info",
     "ability_base:want",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",

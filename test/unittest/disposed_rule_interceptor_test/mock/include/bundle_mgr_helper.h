@@ -18,6 +18,8 @@
 
 #include <memory>
 
+#include "ability_info.h"
+#include "application_info.h"
 #include "app_control_interface.h"
 
 namespace OHOS {
@@ -32,6 +34,19 @@ public:
     static std::shared_ptr<BundleMgrHelper> GetInstance();
 
     sptr<IAppControlMgr> GetAppControlProxy();
+
+    bool GetApplicationInfo(const std::string &appName, const ApplicationFlag flag, const int32_t userId,
+        ApplicationInfo &applicationInfo);
+
+    bool GetApplicationInfo(const std::string& appName, const ApplicationFlag flag,
+        const int32_t userId, const int32_t appIndex, ApplicationInfo &applicationInfo);
+
+    bool GetApplicationInfoWithAppIndex(const std::string& appName, const ApplicationFlag flag,
+        const int32_t userId, const int32_t appIndex, ApplicationInfo &applicationInfo);
+
+    ErrCode GetNameForUid(int32_t uid, std::string &name);
+
+    bool QueryAppGalleryBundleName(std::string &appGalleryBundleName);
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS
