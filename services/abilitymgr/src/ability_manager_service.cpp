@@ -3011,6 +3011,10 @@ int32_t AbilityManagerService::RequestDialogServiceInner(const Want &want, const
 
     AbilityUtil::RemoveShowModeKey(const_cast<Want &>(want));
     int32_t validUserId = GetValidUserId(userId);
+#ifdef ENABLE_CLONE_FOR_ACCOUNT
+    CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), validUserId, true),
+        RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+#endif
     StartAbilityInfoWrap threadLocalInfo;
     auto shouldBlockFunc = [aams = shared_from_this()]() { return aams->ShouldBlockAllAppStart(); };
     AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(want, requestCode, validUserId,
@@ -4091,6 +4095,10 @@ int AbilityManagerService::PreloadUIExtensionAbilityInner(
     TAG_LOGD(AAFwkTag::UI_EXT, "PreloadUIExtension called, elementName: %{public}s/%{public}s",
         want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str());
     int32_t validUserId = GetValidUserId(userId);
+#ifdef ENABLE_CLONE_FOR_ACCOUNT
+    CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), validUserId, true),
+        RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+#endif
     auto bms = AbilityUtil::GetBundleManagerHelper();
     CHECK_POINTER_AND_RETURN(bms, ERR_INVALID_VALUE);
     int32_t callerUid = IPCSkeleton::GetCallingUid();
@@ -4389,6 +4397,10 @@ int32_t AbilityManagerService::StartExtensionAbilityInner(const Want &want, cons
     }
 
     int32_t validUserId = GetValidUserId(userId);
+#ifdef ENABLE_CLONE_FOR_ACCOUNT
+    CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), validUserId, true),
+        RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+#endif
     int32_t appIndex = 0;
     if (!StartAbilityUtils::GetAppIndex(want, callerToken, appIndex)) {
         if (extensionType == AppExecFwk::ExtensionAbilityType::UI_SERVICE) {
@@ -4773,6 +4785,10 @@ int AbilityManagerService::StartUIExtensionAbility(const sptr<SessionInfo> &exte
         return ERR_INVALID_CALLER;
     }
     StartAbilityInfoWrap threadLocalInfo;
+#ifdef ENABLE_CLONE_FOR_ACCOUNT
+    CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(extensionSessionInfo->want,
+        GetValidUserId(userId), true), RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+#endif
 
     auto shouldBlockFunc = [aams = shared_from_this()]() { return aams->ShouldBlockAllAppStart(); };
     AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(extensionSessionInfo->want, 0,
@@ -4934,6 +4950,10 @@ int AbilityManagerService::StopExtensionAbility(const Want &want, const sptr<IRe
     }
 
     int32_t validUserId = GetValidUserId(userId);
+#ifdef ENABLE_CLONE_FOR_ACCOUNT
+    CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), validUserId, true),
+        RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+#endif
     if (!JudgeMultiUserConcurrency(validUserId)) {
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "multi-user non-concurrent unsatisfied");
         eventInfo.errCode = ERR_INVALID_VALUE;
@@ -5013,6 +5033,12 @@ void AbilityManagerService::StopSwitchUserDialog()
 void AbilityManagerService::StopSwitchUserDialogInner(const Want &want, const int32_t lastUserId)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Stop switch user dialog inner come");
+#ifdef ENABLE_CLONE_FOR_ACCOUNT
+    if (!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), lastUserId, true)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "CloneForAccountUtil::ProcessAppIndex failed");
+        return;
+    }
+#endif
     EventInfo eventInfo = BuildEventInfo(want, lastUserId);
     eventInfo.extensionType = static_cast<int32_t>(AppExecFwk::ExtensionAbilityType::SERVICE);
     AbilityRequest abilityRequest;
@@ -5859,6 +5885,11 @@ int32_t AbilityManagerService::ConnectAbilityCommon(
         abilityWant.SetElementName(extensionInfo.bundleName, extensionInfo.name);
     }
 
+#ifdef ENABLE_CLONE_FOR_ACCOUNT
+    CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(abilityWant, validUserId, true),
+        RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+#endif
+
     if (CheckIfOperateRemote(abilityWant)) {
         // Remote extension connections are handled by DMS and the extension runs on another device.
         // Background user monitoring is not applicable for remote extensions, skip reporting.
@@ -5979,6 +6010,11 @@ int AbilityManagerService::ConnectUIExtensionAbility(const Want &want, const spt
         }
         abilityWant.SetElementName(extensionInfo.bundleName, extensionInfo.name);
     }
+
+#ifdef ENABLE_CLONE_FOR_ACCOUNT
+    CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(abilityWant, validUserId, true),
+        RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+#endif
 
     UpdateCallerInfoUtil::GetInstance().UpdateCallerInfo(abilityWant, callerToken);
 
@@ -8732,6 +8768,10 @@ int AbilityManagerService::StopServiceAbility(const Want &want, int32_t userId, 
     }
 
     int32_t validUserId = GetValidUserId(userId);
+#ifdef ENABLE_CLONE_FOR_ACCOUNT
+    CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), validUserId),
+        RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+#endif
     if (!JudgeMultiUserConcurrency(validUserId)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "multi-user non-concurrent unsatisfied");
         return ERR_CROSS_USER;
@@ -10954,6 +10994,12 @@ void AbilityManagerService::StartSwitchUserDialog()
 void AbilityManagerService::StartSwitchUserDialogInner(const Want &want, int32_t lastUserId)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Start switch user dialog inner come");
+#ifdef ENABLE_CLONE_FOR_ACCOUNT
+    if (!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), lastUserId, true)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "CloneForAccountUtil::ProcessAppIndex failed");
+        return;
+    }
+#endif
     EventInfo eventInfo = BuildEventInfo(want, lastUserId);
     eventInfo.extensionType = static_cast<int32_t>(AppExecFwk::ExtensionAbilityType::SERVICE);
     AbilityRequest abilityRequest;
@@ -14589,6 +14635,11 @@ int32_t AbilityManagerService::StartAbilityByCallWithInsightIntent(const Want &w
 
     AbilityUtil::RemoveWantKey(const_cast<Want &>(want));
     AbilityUtil::RemoveInstanceKey(const_cast<Want &>(want));
+    int32_t oriValidUserId = GetValidUserId(userId);
+#ifdef ENABLE_CLONE_FOR_ACCOUNT
+    CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), oriValidUserId),
+        RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+#endif
     AbilityRequest abilityRequest;
     abilityRequest.callType = AbilityCallType::CALL_REQUEST_TYPE;
     abilityRequest.callerUid = IPCSkeleton::GetCallingUid();
@@ -14603,7 +14654,6 @@ int32_t AbilityManagerService::StartAbilityByCallWithInsightIntent(const Want &w
         return result;
     }
     std::shared_ptr<AbilityRecord> targetRecord;
-    int32_t oriValidUserId = GetValidUserId(userId);
     auto missionListMgr = GetMissionListManagerByUserId(oriValidUserId);
     if (IsAbilityStarted(abilityRequest, targetRecord, oriValidUserId)) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "ability has already started");
@@ -14806,6 +14856,10 @@ int32_t AbilityManagerService::StartAbilityByCallWithSkill(const Want &want,
     abilityRequest.want = want;
     abilityRequest.connect = connect;
     int32_t oriValidUserId = GetValidUserId(userId);
+#ifdef ENABLE_CLONE_FOR_ACCOUNT
+    CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), oriValidUserId),
+        RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+#endif
     int32_t result = GenerateAbilityRequest(want, -1, abilityRequest, callerToken, oriValidUserId);
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "generate ability request error");

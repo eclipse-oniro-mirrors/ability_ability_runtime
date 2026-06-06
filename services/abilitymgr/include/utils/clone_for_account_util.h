@@ -26,7 +26,7 @@ namespace OHOS {
 namespace AAFwk {
 class CloneForAccountUtil {
 public:
-    static bool ProcessAppIndex(Want &want, int32_t userId);
+    static bool ProcessAppIndex(Want &want, int32_t userId, bool isExtension = false);
 };
 }  // namespace AAFwk
 }  // namespace OHOS

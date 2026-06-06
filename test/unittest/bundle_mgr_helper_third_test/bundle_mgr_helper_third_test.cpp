@@ -48,6 +48,8 @@ void BundleMgrHelperThirdTest::SetUp()
 {
     MockBundleMgrStub::mockQueryAbilityInfosV9Ret = ERR_OK;
     MockBundleMgrStub::mockAbilityInfos.clear();
+    MockBundleMgrStub::mockQueryExtensionAbilityInfosV9Ret = ERR_OK;
+    MockBundleMgrStub::mockExtensionInfos.clear();
     bundleMgrHelper->bundleMgr_ = new MockBundleMgrStub();
 }
 
@@ -254,6 +256,174 @@ HWTEST_F(BundleMgrHelperThirdTest, QueryEnabledAbilityInfo_005, TestSize.Level1)
 
     AbilityInfo result;
     EXPECT_FALSE(bundleMgrHelper->QueryEnabledAbilityInfo(want, DEFAULT_USERID, result));
+}
+
+// ========== QueryExtensionAbilityInfosV9 tests ==========
+
+/**
+ * @tc.name: QueryExtensionAbilityInfosV9_001
+ * @tc.desc: Test QueryExtensionAbilityInfosV9 returns success with results
+ * @tc.type: FUNC
+ */
+HWTEST_F(BundleMgrHelperThirdTest, QueryExtensionAbilityInfosV9_001, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "ServiceExtAbility");
+
+    ExtensionAbilityInfo info;
+    info.bundleName = "com.test.bundle";
+    info.name = "ServiceExtAbility";
+    info.appIndex = 0;
+    MockBundleMgrStub::mockExtensionInfos = {info};
+    MockBundleMgrStub::mockQueryExtensionAbilityInfosV9Ret = ERR_OK;
+
+    std::vector<ExtensionAbilityInfo> extensionInfos;
+    auto ret = bundleMgrHelper->QueryExtensionAbilityInfosV9(want, DEFAULT_USERID, extensionInfos);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(extensionInfos.size(), 1u);
+    EXPECT_EQ(extensionInfos[0].bundleName, "com.test.bundle");
+}
+
+/**
+ * @tc.name: QueryExtensionAbilityInfosV9_002
+ * @tc.desc: Test QueryExtensionAbilityInfosV9 with IPC error
+ * @tc.type: FUNC
+ */
+HWTEST_F(BundleMgrHelperThirdTest, QueryExtensionAbilityInfosV9_002, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "ServiceExtAbility");
+
+    MockBundleMgrStub::mockQueryExtensionAbilityInfosV9Ret = ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR;
+
+    std::vector<ExtensionAbilityInfo> extensionInfos;
+    auto ret = bundleMgrHelper->QueryExtensionAbilityInfosV9(want, DEFAULT_USERID, extensionInfos);
+
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: QueryExtensionAbilityInfosV9_003
+ * @tc.desc: Test QueryExtensionAbilityInfosV9 with null bundleMgr
+ * @tc.type: FUNC
+ */
+HWTEST_F(BundleMgrHelperThirdTest, QueryExtensionAbilityInfosV9_003, TestSize.Level1)
+{
+    bundleMgrHelper->bundleMgr_ = nullptr;
+    bundleMgrHelper->bmsReady_ = false;
+
+    Want want;
+    want.SetElementName("com.test.bundle", "ServiceExtAbility");
+
+    std::vector<ExtensionAbilityInfo> extensionInfos;
+    auto ret = bundleMgrHelper->QueryExtensionAbilityInfosV9(want, DEFAULT_USERID, extensionInfos);
+
+    EXPECT_EQ(ret, ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR);
+}
+
+// ========== QueryEnabledExtensionAbilityInfo tests ==========
+
+/**
+ * @tc.name: QueryEnabledExtensionAbilityInfo_001
+ * @tc.desc: Test QueryEnabledExtensionAbilityInfo success with single enabled result
+ * @tc.type: FUNC
+ */
+HWTEST_F(BundleMgrHelperThirdTest, QueryEnabledExtensionAbilityInfo_001, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "ServiceExtAbility");
+
+    ExtensionAbilityInfo info;
+    info.bundleName = "com.test.bundle";
+    info.name = "ServiceExtAbility";
+    info.appIndex = 2;
+    info.applicationInfo.enabled = true;
+    MockBundleMgrStub::mockExtensionInfos = {info};
+    MockBundleMgrStub::mockQueryExtensionAbilityInfosV9Ret = ERR_OK;
+
+    ExtensionAbilityInfo result;
+    EXPECT_TRUE(bundleMgrHelper->QueryEnabledExtensionAbilityInfo(want, DEFAULT_USERID, result));
+    EXPECT_EQ(result.bundleName, "com.test.bundle");
+    EXPECT_EQ(result.appIndex, 2);
+}
+
+/**
+ * @tc.name: QueryEnabledExtensionAbilityInfo_002
+ * @tc.desc: Test QueryEnabledExtensionAbilityInfo returns false when disabled
+ * @tc.type: FUNC
+ */
+HWTEST_F(BundleMgrHelperThirdTest, QueryEnabledExtensionAbilityInfo_002, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "ServiceExtAbility");
+
+    ExtensionAbilityInfo info;
+    info.bundleName = "com.test.bundle";
+    info.applicationInfo.enabled = false;
+    MockBundleMgrStub::mockExtensionInfos = {info};
+    MockBundleMgrStub::mockQueryExtensionAbilityInfosV9Ret = ERR_OK;
+
+    ExtensionAbilityInfo result;
+    EXPECT_FALSE(bundleMgrHelper->QueryEnabledExtensionAbilityInfo(want, DEFAULT_USERID, result));
+}
+
+/**
+ * @tc.name: QueryEnabledExtensionAbilityInfo_003
+ * @tc.desc: Test QueryEnabledExtensionAbilityInfo returns false when query fails
+ * @tc.type: FUNC
+ */
+HWTEST_F(BundleMgrHelperThirdTest, QueryEnabledExtensionAbilityInfo_003, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "ServiceExtAbility");
+
+    MockBundleMgrStub::mockQueryExtensionAbilityInfosV9Ret = ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR;
+
+    ExtensionAbilityInfo result;
+    EXPECT_FALSE(bundleMgrHelper->QueryEnabledExtensionAbilityInfo(want, DEFAULT_USERID, result));
+}
+
+/**
+ * @tc.name: QueryEnabledExtensionAbilityInfo_004
+ * @tc.desc: Test QueryEnabledExtensionAbilityInfo returns false with empty results
+ * @tc.type: FUNC
+ */
+HWTEST_F(BundleMgrHelperThirdTest, QueryEnabledExtensionAbilityInfo_004, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "ServiceExtAbility");
+
+    MockBundleMgrStub::mockExtensionInfos.clear();
+    MockBundleMgrStub::mockQueryExtensionAbilityInfosV9Ret = ERR_OK;
+
+    ExtensionAbilityInfo result;
+    EXPECT_FALSE(bundleMgrHelper->QueryEnabledExtensionAbilityInfo(want, DEFAULT_USERID, result));
+}
+
+/**
+ * @tc.name: QueryEnabledExtensionAbilityInfo_005
+ * @tc.desc: Test QueryEnabledExtensionAbilityInfo returns false with multiple results
+ * @tc.type: FUNC
+ */
+HWTEST_F(BundleMgrHelperThirdTest, QueryEnabledExtensionAbilityInfo_005, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "ServiceExtAbility");
+
+    ExtensionAbilityInfo info1;
+    info1.bundleName = "com.test.bundle";
+    info1.applicationInfo.enabled = true;
+
+    ExtensionAbilityInfo info2;
+    info2.bundleName = "com.test.bundle";
+    info2.applicationInfo.enabled = true;
+
+    MockBundleMgrStub::mockExtensionInfos = {info1, info2};
+    MockBundleMgrStub::mockQueryExtensionAbilityInfosV9Ret = ERR_OK;
+
+    ExtensionAbilityInfo result;
+    EXPECT_FALSE(bundleMgrHelper->QueryEnabledExtensionAbilityInfo(want, DEFAULT_USERID, result));
 }
 
 }  // namespace AppExecFwk

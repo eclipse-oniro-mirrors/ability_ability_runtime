@@ -19,7 +19,9 @@ namespace OHOS {
 namespace AppExecFwk {
 bool BundleMgrHelper::isBundleManagerHelperNull = false;
 bool BundleMgrHelper::retQueryEnabledAbilityInfo = false;
+bool BundleMgrHelper::retQueryEnabledExtensionAbilityInfo = false;
 AbilityInfo BundleMgrHelper::abilityInfoResult;
+ExtensionAbilityInfo BundleMgrHelper::extensionInfoResult;
 
 BundleMgrHelper::BundleMgrHelper() {}
 BundleMgrHelper::~BundleMgrHelper() {}
@@ -37,6 +39,13 @@ bool BundleMgrHelper::QueryEnabledAbilityInfo(const Want &want, int32_t userId, 
 {
     abilityInfo = abilityInfoResult;
     return retQueryEnabledAbilityInfo;
+}
+
+bool BundleMgrHelper::QueryEnabledExtensionAbilityInfo(const Want &want, int32_t userId,
+    ExtensionAbilityInfo &extensionInfo)
+{
+    extensionInfo = extensionInfoResult;
+    return retQueryEnabledExtensionAbilityInfo;
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

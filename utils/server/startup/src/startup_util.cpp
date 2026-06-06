@@ -51,7 +51,7 @@ int32_t StartupUtil::BuildAbilityInfoFlag()
 
 bool StartupUtil::IsSupportAppClone(AppExecFwk::ExtensionAbilityType type)
 {
-    return type == AppExecFwk::ExtensionAbilityType::WORK_SCHEDULER ||
+    bool result = type == AppExecFwk::ExtensionAbilityType::WORK_SCHEDULER ||
         type == AppExecFwk::ExtensionAbilityType::BACKUP ||
         type == AppExecFwk::ExtensionAbilityType::SHARE ||
         type == AppExecFwk::ExtensionAbilityType::PUSH ||
@@ -61,6 +61,10 @@ bool StartupUtil::IsSupportAppClone(AppExecFwk::ExtensionAbilityType type)
         type == AppExecFwk::ExtensionAbilityType::FAULT_LOG ||
         type == AppExecFwk::ExtensionAbilityType::EMBEDDED_UI ||
         type == AppExecFwk::ExtensionAbilityType::MODULAR_OBJECT;
+#ifdef ENABLE_CLONE_FOR_ACCOUNT
+    result = true;
+#endif
+    return result;
 }
 
 void StartupUtil::InitAbilityInfoFromExtension(AppExecFwk::ExtensionAbilityInfo &extensionInfo,

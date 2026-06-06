@@ -1242,5 +1242,48 @@ bool BundleMgrHelper::QueryEnabledAbilityInfo(const Want &want, int32_t userId, 
     abilityInfo = tmpInfo;
     return true;
 }
+
+ErrCode BundleMgrHelper::QueryExtensionAbilityInfosV9(const Want &want, int32_t userId,
+    std::vector<ExtensionAbilityInfo> &extensionInfos)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "QueryExtensionAbilityInfosV9");
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        return ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR;
+    }
+
+    RecordCostTimeUtil timeRecord("QueryExtensionAbilityInfosV9");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto ret = bundleMgr->QueryExtensionAbilityInfosV9(want,
+        static_cast<int32_t>(AppExecFwk::GetAbilityInfoFlag::GET_ABILITY_INFO_WITH_APPLICATION),
+        userId, extensionInfos);
+    return ret;
+}
+
+bool BundleMgrHelper::QueryEnabledExtensionAbilityInfo(
+    const Want &want, int32_t userId, ExtensionAbilityInfo &extensionInfo)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "QueryEnabledExtensionAbilityInfo");
+    std::vector<ExtensionAbilityInfo> extensionInfos;
+    if (auto ret = QueryExtensionAbilityInfosV9(want, userId, extensionInfos); ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "QueryExtensionAbilityInfosV9 failed:  %{public}d", ret);
+        return false;
+    }
+
+    if (extensionInfos.size() != 1u) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "Invalid info size: %{public}zu", extensionInfos.size());
+        return false;
+    }
+
+    const auto &tmpInfo = extensionInfos[0];
+    if (!tmpInfo.applicationInfo.enabled) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "Disabled info bundleName=%{public}s", tmpInfo.bundleName.c_str());
+        return false;
+    }
+
+    extensionInfo = tmpInfo;
+    return true;
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS
