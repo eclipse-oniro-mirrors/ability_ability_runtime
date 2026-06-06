@@ -54,6 +54,10 @@ function buildInvalidParamError(msg: string): BusinessError {
   return new BusinessError(ERROR_CODE_INVALID_PARAM, new Error(ERROR_MSG_INVALID_PARAM + msg));
 }
 
+function buildInnerError(msg: string): BusinessError {
+  return new BusinessError(ERROR_CODE_INNER_ERROR, new Error(ERROR_MSG_INNER_ERROR + ' ' + msg));
+}
+
 export class CallerImpl implements Caller {
   static {
     loadLibrary("caller_complex_ani");
@@ -141,7 +145,7 @@ export class CallerImpl implements Caller {
       hilog.info(domainID, TAG, 'Caller call msgData rpc.sendMessageRequest called');
       if (retData.errCode != REQUEST_SUCCESS) {
         hilog.info(domainID, TAG, 'Caller call return errCode ' + retData.errCode);
-        throw buildError(retData.errCode);
+        throw buildInnerError('Rpc send message error. Try again later.');
       }
       let retVal = retData.reply.readInt();
       let str = retData.reply.readString();
@@ -175,7 +179,7 @@ export class CallerImpl implements Caller {
       hilog.info(domainID, TAG, 'Caller callWithResult msgData rpc.sendMessageRequest called');
       if (retData.errCode != REQUEST_SUCCESS) {
         hilog.info(domainID, TAG, 'Caller callWithResult return errCode ' + retData.errCode);
-        throw buildError(retData.errCode);
+        throw buildInnerError('Rpc send message error. Try again later.');
       }
       let retVal = retData.reply.readInt();
       let str = retData.reply.readString();
