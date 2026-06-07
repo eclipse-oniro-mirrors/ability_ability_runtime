@@ -173,6 +173,20 @@ HWTEST_F(AbilityBusinessErrorTest, GetInnerErrorMsg_0100, TestSize.Level2)
         "Internal error. The UI window is not available. Try again later.");
     EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::RELOAD_IN_MODAL_RESULT_NULL),
         "Internal error. Failed to create reload result. Try again later.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::OBSERVER_CREATE_FAILED),
+        "Internal error. Failed to create the observer.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::OBSERVER_NOT_EXIST),
+        "Internal error. The observer does not exist. Register the observer first.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::RESTART_APP_FAILED),
+        "Internal error. Failed to restart the application. Try again later.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_PROCESS_INFO_ARRAY_FAILED),
+        "Internal error. Failed to create the process information array.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::GET_PROCESS_INFO_FAILED),
+        "Internal error. Failed to get process information. Try again later.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::SET_PROCESS_CACHE_FAILED),
+        "Internal error. Failed to set the process cache state. Try again later.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::UI_ABILITY_OBJ_NULL),
+        "Internal error. The UIAbility object is not available. Verify the ability is active and try again.");
 }
 
 /**

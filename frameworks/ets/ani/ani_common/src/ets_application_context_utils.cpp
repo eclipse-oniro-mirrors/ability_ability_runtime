@@ -16,6 +16,7 @@
 
 #include <mutex>
 
+#include "ability_business_error.h"
 #include "ability_runtime_error_util.h"
 #include "ani_enum_convert.h"
 #include "application_context_manager.h"
@@ -584,7 +585,8 @@ void EtsApplicationContextUtils::OnRestartApp(ani_env *env, ani_object aniObj, a
             EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_NOT_TOP_ABILITY);
             break;
         default:
-            EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+            EtsErrorUtil::ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                GetInnerErrorMsg(AbilityInnerErrorMsg::RESTART_APP_FAILED));
     }
     TAG_LOGD(AAFwkTag::APPKIT, "RestartApp errCode is %{public}d", errCode);
 }
@@ -792,14 +794,16 @@ void EtsApplicationContextUtils::OnGetRunningProcessInformation(ani_env *env, an
         if (aniInfosRef == nullptr) {
             TAG_LOGE(AAFwkTag::APPKIT, "null array");
             AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateError(env,
-                (ani_int)AbilityErrorCode::ERROR_CODE_INNER, "Initiate array failed."), emptyArray);
+                (ani_int)AbilityErrorCode::ERROR_CODE_INNER,
+                GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_PROCESS_INFO_ARRAY_FAILED)), emptyArray);
         } else {
             AppExecFwk::AsyncCallback(env, callback,
                 EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_OK), aniInfosRef);
         }
     } else {
         AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateError(env,
-            (ani_int)AbilityErrorCode::ERROR_CODE_INNER, "Get process infos failed."), emptyArray);
+            (ani_int)AbilityErrorCode::ERROR_CODE_INNER,
+            GetInnerErrorMsg(AbilityInnerErrorMsg::GET_PROCESS_INFO_FAILED)), emptyArray);
     }
 }
 
@@ -873,7 +877,8 @@ void EtsApplicationContextUtils::OnSetSupportedProcessCacheSync(ani_env *env, an
         EtsErrorUtil::ThrowError(env,
             AbilityErrorCode::ERROR_CODE_CAPABILITY_NOT_SUPPORT);
     } else if (errCode != ERR_OK) {
-        EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        EtsErrorUtil::ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::SET_PROCESS_CACHE_FAILED));
     }
 }
 
