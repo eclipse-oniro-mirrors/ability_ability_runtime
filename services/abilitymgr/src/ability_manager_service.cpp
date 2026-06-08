@@ -73,6 +73,7 @@
 #include "int_wrapper.h"
 #include "ipc_skeleton.h"
 #include "iservice_registry.h"
+#include "os_account_constants.h"
 #include "keep_alive_process_manager.h"
 #include "keep_alive_utils.h"
 #include "main_element_utils.h"
@@ -6700,7 +6701,7 @@ int32_t AbilityManagerService::GetUidByCloneBundleInfo(
 sptr<IWantSender> AbilityManagerService::GetWantSenderByUserId(const WantSenderInfo &wantSenderInfo,
     const sptr<IRemoteObject> &callerToken, int32_t uid, int32_t callerUid, int32_t callerUserId)
 {
-    bool isSpecifyUserId = wantSenderInfo.userId >= 0;
+    bool isSpecifyUserId = wantSenderInfo.userId > 0;
     std::string bundleName = wantSenderInfo.allWants.empty() ? "" :
         wantSenderInfo.allWants.back().want.GetBundle();
     bool isSACall = AAFwk::PermissionVerification::GetInstance()->IsSACall();
@@ -6754,7 +6755,7 @@ sptr<IWantSender> AbilityManagerService::GetWantSender(
     int32_t userId = wantSenderInfo.userId;
     int32_t callerUid = IPCSkeleton::GetCallingUid();
     int32_t callerUserId = callerUid / BASE_USER_RANGE;
-    if (userId >= 0 || callerUserId == U0_USER_ID) {
+    if (userId > 0 && userId <= AccountSA::Constants::MAX_USER_ID) {
         return GetWantSenderByUserId(wantSenderInfo, callerToken, uid, callerUid, callerUserId);
     }
     auto pendingWantManager = GetCurrentPendingWantManager();
@@ -6827,7 +6828,7 @@ int AbilityManagerService::SendWantSender(sptr<IWantSender> target, SenderInfo &
         userId = record->GetKey()->GetUserId();
     }
     std::shared_ptr<PendingWantManager> pendingWantManager;
-    if (userId >= 0) {
+    if (userId > 0 && userId <= AccountSA::Constants::MAX_USER_ID) {
         pendingWantManager = GetPendingWantManagerByUserId(userId);
     } else {
         pendingWantManager = GetCurrentPendingWantManager();
@@ -6867,7 +6868,7 @@ void AbilityManagerService::CancelWantSender(const sptr<IWantSender> &sender)
         userId = record->GetKey()->GetUserId();
     }
     std::shared_ptr<PendingWantManager> pendingWantManager;
-    if (userId >= 0) {
+    if (userId > 0 && userId <= AccountSA::Constants::MAX_USER_ID) {
         pendingWantManager = GetPendingWantManagerByUserId(userId);
     } else {
         pendingWantManager = GetCurrentPendingWantManager();
@@ -6896,7 +6897,7 @@ void AbilityManagerService::CancelWantSenderByFlags(const sptr<IWantSender> &sen
         userId = record->GetKey()->GetUserId();
     }
     std::shared_ptr<PendingWantManager> pendingWantManager;
-    if (userId >= 0) {
+    if (userId > 0 && userId <= AccountSA::Constants::MAX_USER_ID) {
         pendingWantManager = GetPendingWantManagerByUserId(userId);
     } else {
         pendingWantManager = GetCurrentPendingWantManager();
@@ -6937,7 +6938,7 @@ int AbilityManagerService::GetPendingWantUid(const sptr<IWantSender> &target)
         userId = record->GetKey()->GetUserId();
     }
     std::shared_ptr<PendingWantManager> pendingWantManager;
-    if (userId >= 0) {
+    if (userId > 0 && userId <= AccountSA::Constants::MAX_USER_ID) {
         pendingWantManager = GetPendingWantManagerByUserId(userId);
     } else {
         pendingWantManager = GetCurrentPendingWantManager();
@@ -6977,7 +6978,7 @@ std::string AbilityManagerService::GetPendingWantBundleName(const sptr<IWantSend
         userId = record->GetKey()->GetUserId();
     }
     std::shared_ptr<PendingWantManager> pendingWantManager;
-    if (userId >= 0) {
+    if (userId > 0 && userId <= AccountSA::Constants::MAX_USER_ID) {
         pendingWantManager = GetPendingWantManagerByUserId(userId);
     } else {
         pendingWantManager = GetCurrentPendingWantManager();
@@ -7006,7 +7007,7 @@ int AbilityManagerService::GetPendingWantCode(const sptr<IWantSender> &target)
         userId = record->GetKey()->GetUserId();
     }
     std::shared_ptr<PendingWantManager> pendingWantManager;
-    if (userId >= 0) {
+    if (userId > 0 && userId <= AccountSA::Constants::MAX_USER_ID) {
         pendingWantManager = GetPendingWantManagerByUserId(userId);
     } else {
         pendingWantManager = GetCurrentPendingWantManager();
@@ -7036,7 +7037,7 @@ int AbilityManagerService::GetPendingWantType(const sptr<IWantSender> &target)
         userId = record->GetKey()->GetUserId();
     }
     std::shared_ptr<PendingWantManager> pendingWantManager;
-    if (userId >= 0) {
+    if (userId > 0 && userId <= AccountSA::Constants::MAX_USER_ID) {
         pendingWantManager = GetPendingWantManagerByUserId(userId);
     } else {
         pendingWantManager = GetCurrentPendingWantManager();
@@ -7087,7 +7088,7 @@ int AbilityManagerService::GetPendingRequestWant(const sptr<IWantSender> &target
         userId = record->GetKey()->GetUserId();
     }
     std::shared_ptr<PendingWantManager> pendingWantManager;
-    if (userId >= 0) {
+    if (userId > 0 && userId <= AccountSA::Constants::MAX_USER_ID) {
         pendingWantManager = GetPendingWantManagerByUserId(userId);
     } else {
         pendingWantManager = GetCurrentPendingWantManager();
@@ -7117,7 +7118,7 @@ int AbilityManagerService::GetPendingRequestWantFromProxy(const sptr<IWantSender
         userId = record->GetKey()->GetUserId();
     }
     std::shared_ptr<PendingWantManager> pendingWantManager;
-    if (userId >= 0) {
+    if (userId > 0 && userId <= AccountSA::Constants::MAX_USER_ID) {
         pendingWantManager = GetPendingWantManagerByUserId(userId);
     } else {
         pendingWantManager = GetCurrentPendingWantManager();
