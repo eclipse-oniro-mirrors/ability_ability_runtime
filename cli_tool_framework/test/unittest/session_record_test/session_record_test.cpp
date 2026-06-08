@@ -115,7 +115,7 @@ HWTEST_F(SessionRecordTest, SessionRecord_BuildSessionInfo_0100, TestSize.Level1
     ASSERT_NE(completedSession.result, nullptr);
     EXPECT_EQ(completedSession.status, "completed");
     EXPECT_EQ(completedSession.result->exitCode, TEST_STATUS_OK);
-    EXPECT_FALSE(completedSession.result->timedOut);
+    EXPECT_FALSE(completedSession.result->timeout);
     EXPECT_GT(completedSession.result->executionTime, 0);
 
     SessionRecord failedRecord;
@@ -130,13 +130,13 @@ HWTEST_F(SessionRecordTest, SessionRecord_BuildSessionInfo_0100, TestSize.Level1
 
     SessionRecord timeoutRecord;
     timeoutRecord.timeoutMs = TEST_TIMEOUT_MS;
-    timeoutRecord.SetTimedOut(true);
-    EXPECT_TRUE(timeoutRecord.TimedOut());
+    timeoutRecord.SetTimeout(true);
+    EXPECT_TRUE(timeoutRecord.Timeout());
     CliSessionInfo timeoutSession;
     timeoutRecord.BuildSessionInfo(timeoutSession);
     ASSERT_NE(timeoutSession.result, nullptr);
     EXPECT_EQ(timeoutSession.status, "failed");
-    EXPECT_TRUE(timeoutSession.result->timedOut);
+    EXPECT_TRUE(timeoutSession.result->timeout);
     EXPECT_EQ(timeoutSession.result->executionTime, TEST_TIMEOUT_MS);
 }
 

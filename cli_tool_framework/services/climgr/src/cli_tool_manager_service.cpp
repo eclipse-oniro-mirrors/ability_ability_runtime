@@ -79,7 +79,7 @@ void CliToolManagerService::HandleProcessTimeout(const std::string &sessionId)
     }
 
     TAG_LOGI(AAFwkTag::CLI_TOOL, "HandleProcessTimeout: sessionId=%{public}s", sessionId.c_str());
-    record->SetTimedOut(true);
+    record->SetTimeout(true);
     record->SetState(SessionState::CANCELLING);
 
     auto oldBackground = record->SetBackground(true);
@@ -1167,7 +1167,7 @@ void CliToolManagerService::HandleSkillSessionTimeout(const std::string &session
         return;
     }
 
-    record->SetTimedOut(true);
+    record->SetTimeout(true);
     record->SetState(SessionState::FAILED);
 
     auto oldBackground = record->SetBackground(true);

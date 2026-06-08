@@ -231,7 +231,7 @@ napi_value CreateJsCliSessionInfo(napi_env env, const CliSessionInfo &session)
             TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create JS ExecResult");
             return nullptr;
         }
-        if (!session.result->timedOut) {
+        if (!session.result->timeout) {
             napi_value jsExitCode = AppExecFwk::WrapInt32ToJS(env, session.result->exitCode);
             napi_set_named_property(env, jsResult, "exitCode", jsExitCode);
         }
@@ -247,8 +247,8 @@ napi_value CreateJsCliSessionInfo(napi_env env, const CliSessionInfo &session)
             napi_value jsSignalNumber = AppExecFwk::WrapInt32ToJS(env, session.result->signalNumber);
             napi_set_named_property(env, jsResult, "signalNumber", jsSignalNumber);
         }
-        // Set timedOut
-        napi_set_named_property(env, jsResult, "timedOut", AppExecFwk::WrapBoolToJS(env, session.result->timedOut));
+        // Set timeOut
+        napi_set_named_property(env, jsResult, "timeOut", AppExecFwk::WrapBoolToJS(env, session.result->timeout));
         // Set executionTime
         napi_value jsExecutionTime = AppExecFwk::WrapInt64ToJS(env, session.result->executionTime);
         napi_set_named_property(env, jsResult, "executionTime", jsExecutionTime);

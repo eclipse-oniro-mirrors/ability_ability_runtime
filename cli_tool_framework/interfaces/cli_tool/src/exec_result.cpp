@@ -37,8 +37,8 @@ bool ExecResult::Marshalling(Parcel &parcel) const
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write signalNumber.");
         return false;
     }
-    if (!parcel.WriteBool(timedOut)) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write timedOut.");
+    if (!parcel.WriteBool(timeout)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write timeout.");
         return false;
     }
     if (!parcel.WriteInt64(executionTime)) {
@@ -75,8 +75,8 @@ ExecResult *ExecResult::Unmarshalling(Parcel &parcel)
         delete result;
         return nullptr;
     }
-    if (!parcel.ReadBool(result->timedOut)) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to read timedOut.");
+    if (!parcel.ReadBool(result->timeout)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to read timeout.");
         delete result;
         return nullptr;
     }
