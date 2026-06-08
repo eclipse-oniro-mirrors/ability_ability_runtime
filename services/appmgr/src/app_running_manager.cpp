@@ -1421,9 +1421,7 @@ int32_t AppRunningManager::NotifyProcMemoryLevel(const std::map<pid_t, MemoryLev
         }
         auto pid = priorityObject->GetPid();
         auto it = procLevelMap.find(pid);
-        if (it == procLevelMap.end()) {
-            TAG_LOGW(AAFwkTag::APPMGR, "pid%{public}d not found", pid);
-        } else {
+        if (it != procLevelMap.end()) {
             TAG_LOGD(AAFwkTag::APPMGR, "pid%{public}d memory level = %{public}d", pid, it->second);
             appRecord->ScheduleMemoryLevel(it->second, isShellCall);
         }
