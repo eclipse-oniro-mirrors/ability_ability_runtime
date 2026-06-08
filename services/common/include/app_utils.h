@@ -363,6 +363,8 @@ public:
 
     bool IsSupportModularObjectExtension();
 
+    bool IsEnterpriseDeviceType();
+
     bool IsProductAppbootSettingEnabled();
 
     void LoadAppTransferList();
@@ -468,6 +470,7 @@ private:
     volatile DeviceConfiguration<bool> isSupportAllowDebugPermission_ = {false, false};
     volatile DeviceConfiguration<bool> isStartUIAbilityInCurrentProcess_ = {false, false};
     volatile DeviceConfiguration<bool> isSupportModularObjectExtension_ = {false, false};
+    volatile DeviceConfiguration<bool> isEnterpriseDeviceType_ = {false, false};
     volatile DeviceConfiguration<bool> isProductAppbootSettingEnabled_ = {false, false};
     volatile DeviceConfiguration<bool> isHybridSpawnUnified_ = {false, false};
     volatile DeviceConfiguration<bool> isSupportNativeUIAbility_ = {false, false};

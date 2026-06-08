@@ -89,6 +89,7 @@ constexpr const char* SUPPORT_MODULAR_OBJECT_EXTENSION = "const.abilityms.suppor
 constexpr const char* RESTART_APP_WITH_WINDOW = "persist.sys.abilityms.restart_app_with_window";
 constexpr const char* SUPPORT_NATIVE_UI_ABILITY = "persist.sys.abilityms.support_native_ui_ability";
 constexpr const char* PRODUCT_APPBOOT_SETTING_ENABLED = "const.product.appboot.setting.enabled";
+constexpr const char* IS_ENTERPRISE_DEVICE_TYPE = "const.edm.is_enterprise_device";
 constexpr const char* SUPPORT_DELAYED_PROCESS_EXIT = "const.abilityms.support_delayed_process_exit";
 // Support prepare terminate
 constexpr int32_t PREPARE_TERMINATE_ENABLE_SIZE = 6;
@@ -905,6 +906,16 @@ bool AppUtils::IsSupportDelayedProcessExit()
     }
     TAG_LOGD(AAFwkTag::DEFAULT, "supportDelayedProcessExit: %{public}d", isSupportDelayedProcessExit_.value);
     return isSupportDelayedProcessExit_.value;
+}
+
+bool AppUtils::IsEnterpriseDeviceType()
+{
+    if (!isEnterpriseDeviceType_.isLoaded) {
+        isEnterpriseDeviceType_.value = system::GetBoolParameter(IS_ENTERPRISE_DEVICE_TYPE, false);
+        isEnterpriseDeviceType_.isLoaded = true;
+    }
+    TAG_LOGD(AAFwkTag::DEFAULT, "IsEnterpriseDeviceType: %{public}d", isEnterpriseDeviceType_.value);
+    return isEnterpriseDeviceType_.value;
 }
 
 bool AppUtils::IsProductAppbootSettingEnabled()

@@ -259,7 +259,8 @@ int32_t AbilityAutoStartupService::GetAutoStartupStatusForSelf(uint32_t callerTo
 int32_t AbilityAutoStartupService::QueryAllAutoStartupApplicationsWithoutPermission(
     std::vector<AutoStartupInfo> &infoList, int32_t userId)
 {
-    if (!AAFwk::AppUtils::GetInstance().IsProductAppbootSettingEnabled()) {
+    if (!AAFwk::AppUtils::GetInstance().IsEnterpriseDeviceType() &&
+        !AAFwk::AppUtils::GetInstance().IsProductAppbootSettingEnabled()) {
         TAG_LOGE(AAFwkTag::AUTO_STARTUP, "Disabled config");
         return ERR_NOT_SUPPORTED_PRODUCT_TYPE;
     }
