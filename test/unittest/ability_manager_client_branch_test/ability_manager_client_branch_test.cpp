@@ -2070,6 +2070,23 @@ HWTEST_F(AbilityManagerClientBranchTest, ExecuteIntent_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: AbilityManagerClient_ExecuteIntentForDistributed_0100
+ * @tc.desc: ExecuteIntentForDistributed
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, ExecuteIntentForDistributed_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ExecuteIntentForDistributed_0100 start";
+    Want want;
+    std::string deviceId;
+    uint64_t requestCode = 1;
+    uint64_t specifiedFullTokenId = 1;
+    auto result = client_->ExecuteIntentForDistributed(want, deviceId, requestCode, specifiedFullTokenId);
+    EXPECT_EQ(ERR_OK, result);
+    GTEST_LOG_(INFO) << "ExecuteIntentForDistributed_0100 end";
+}
+
+/**
  * @tc.name: AbilityManagerClient_QueryEntityInfo_0100
  * @tc.desc: QueryEntityInfo
  * @tc.type: FUNC

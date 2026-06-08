@@ -826,6 +826,21 @@ HWTEST_F(AbilityManagerProxyFifthTest, ExecuteIntent_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: ExecuteIntentForDistributed_0100
+ * @tc.desc: Test the ExecuteIntentForDistributed
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxyFifthTest, ExecuteIntentForDistributed_0100, TestSize.Level1)
+{
+    Want want;
+    std::string deviceId;
+    uint64_t requestCode = 1;
+    uint64_t specifiedFullTokenId = 1;
+    auto res = proxy_->ExecuteIntentForDistributed(want, deviceId, requestCode, specifiedFullTokenId);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/**
  * @tc.name: IsAbilityControllerStart_0100
  * @tc.desc: Test the IsAbilityControllerStart
  * @tc.type: FUNC
