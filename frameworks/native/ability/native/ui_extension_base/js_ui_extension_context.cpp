@@ -981,7 +981,6 @@ napi_value JsUIExtensionContext::OnConnectAbilityWithRootHostToken(napi_env env,
 
 napi_value JsUIExtensionContext::OnDisconnectAbility(napi_env env, NapiCallbackInfo& info)
 {
-    TAG_LOGD(AAFwkTag::UI_EXT, "start");
     if (info.argc < ARGC_ONE) {
         TAG_LOGE(AAFwkTag::UI_EXT, "invalid argc");
         ThrowTooFewParametersError(env);
@@ -1231,7 +1230,6 @@ napi_value JsUIExtensionContext::OnDisconnectUIServiceExtension(napi_env env, Na
             TAG_LOGW(AAFwkTag::UISERVC_EXT, "null connection");
             *innerErrCode = static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER);
         }
-        TAG_LOGI(AAFwkTag::UISERVC_EXT, "context->DisconnectAbility");
         context->DisconnectAbility(want, connection);
     };
     NapiAsyncTask::CompleteCallback complete =

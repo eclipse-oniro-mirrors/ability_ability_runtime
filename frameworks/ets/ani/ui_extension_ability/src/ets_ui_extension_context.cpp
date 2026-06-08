@@ -516,8 +516,11 @@ void EtsUIExtensionContext::OnStartAbilityForResult(ani_env *env, ani_object ani
         ani_object abilityResult = AppExecFwk::WrapAbilityResult(env, resultCode, want);
         if (abilityResult == nullptr) {
             TAG_LOGW(AAFwkTag::UI_EXT, "null abilityResult");
-            AppExecFwk::AsyncCallback(env, reinterpret_cast<ani_object>(callbackRef),
-                EtsErrorUtil::CreateError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER), GetInnerErrorMsg(AbilityInnerErrorMsg::WRAP_ABILITY_RESULT_FAILED)), nullptr);
+            auto errObj = EtsErrorUtil::CreateError(env,
+                static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                GetInnerErrorMsg(AbilityInnerErrorMsg::WRAP_ABILITY_RESULT_FAILED));
+            AppExecFwk::AsyncCallback(env,
+                reinterpret_cast<ani_object>(callbackRef), errObj, nullptr);
             env->GlobalReference_Delete(callbackRef);
             return;
         }
