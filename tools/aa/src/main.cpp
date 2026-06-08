@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
         operation = argv[1];
     }
 
-    if (strstr(argv[0], "aa") != nullptr) {
+    if (argc > 0 && strstr(argv[0], "aa") != nullptr) {
         CommandTimer commandTimer("ability::aa_command", COMMAND_TIME_OUT, operation);
         OHOS::AAFwk::AbilityManagerShellCommand cmd(argc, argv);
         std::cout << cmd.ExecCommand();

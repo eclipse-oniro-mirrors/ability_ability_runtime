@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
         operation = argv[1];
     }
 
-    if (strstr(argv[0], "ohos-aa") != nullptr) {
+    if (argc > 0 && strstr(argv[0], "ohos-aa") != nullptr) {
         CommandTimer commandTimer("ability::claw_aa_cli_command", COMMAND_TIME_OUT, operation);
         OHOS::AAFwk::ClawAaShellCommand cmd(argc, argv);
         cmd.CreateErrorInfoMap();
