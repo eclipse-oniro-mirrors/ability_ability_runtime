@@ -151,7 +151,8 @@ void EtsUIServiceHostProxy::OnSendData(ani_env *env, ani_object data)
     }
     if (proxy_ == nullptr) {
         TAG_LOGE(AAFwkTag::UISERVC_EXT, "null proxy_");
-        AbilityRuntime::EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        AbilityRuntime::EtsErrorUtil::ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::PROXY_NOT_FOUND));
         return;
     }
     AAFwk::WantParams params;
@@ -166,7 +167,8 @@ void EtsUIServiceHostProxy::OnSendData(ani_env *env, ani_object data)
     int32_t ret = proxy_->SendData(params);
     if (ret != static_cast<int32_t>(AbilityErrorCode::ERROR_OK)) {
         TAG_LOGE(AAFwkTag::UISERVC_EXT, "SendData failed");
-        AbilityRuntime::EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        AbilityRuntime::EtsErrorUtil::ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::SEND_DATA_FAILED));
     }
 }
 }

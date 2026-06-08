@@ -101,7 +101,8 @@ napi_value JsUIServiceHostProxy::OnSendData(napi_env env, NapiCallbackInfo& info
     }
     if (proxy_ == nullptr) {
         TAG_LOGE(AAFwkTag::UISERVC_EXT, "null proxy_");
-        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::PROXY_NOT_FOUND));
         return CreateJsUndefined(env);
     }
     if (info.argc < ARGC_ONE) {
@@ -120,7 +121,8 @@ napi_value JsUIServiceHostProxy::OnSendData(napi_env env, NapiCallbackInfo& info
     int32_t ret = proxy_->SendData(params);
     if (ret != static_cast<int32_t>(AbilityErrorCode::ERROR_OK)) {
         TAG_LOGE(AAFwkTag::UISERVC_EXT, "SendData failed");
-        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::SEND_DATA_FAILED));
     }
     return CreateJsUndefined(env);
 }

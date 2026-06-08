@@ -191,7 +191,55 @@ HWTEST_F(AbilityBusinessErrorTest, GetInnerErrorMsg_0100, TestSize.Level2)
 }
 
 /**
- * @tc.name: GetAgentManagerErrorMsg_0100
+ * @tc.name: GetInnerErrorMsg_NewEnums_0100
+ * @tc.desc: Verify all new AbilityInnerErrorMsg enum values return specific non-generic messages.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityBusinessErrorTest, GetInnerErrorMsg_NewEnums_0100, TestSize.Level2)
+{
+    // UIExtension connection scene
+    auto msg = GetInnerErrorMsg(AbilityInnerErrorMsg::CONNECTION_NOT_FOUND);
+    EXPECT_NE(msg.find("does not exist"), std::string::npos);
+
+    // UIExtension data scene
+    msg = GetInnerErrorMsg(AbilityInnerErrorMsg::SEND_DATA_FAILED);
+    EXPECT_NE(msg.find("send data"), std::string::npos);
+
+    // UIExtension loading scene
+    msg = GetInnerErrorMsg(AbilityInnerErrorMsg::LOAD_CONTENT_FAILED);
+    EXPECT_NE(msg.find("load the UI content"), std::string::npos);
+
+    // UIExtension window property scene
+    msg = GetInnerErrorMsg(AbilityInnerErrorMsg::SET_WINDOW_BACKGROUND_COLOR_FAILED);
+    EXPECT_NE(msg.find("background color"), std::string::npos);
+
+    msg = GetInnerErrorMsg(AbilityInnerErrorMsg::SET_WINDOW_PRIVACY_MODE_FAILED);
+    EXPECT_NE(msg.find("privacy mode"), std::string::npos);
+
+    // UIExtension modal scene
+    msg = GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_MODAL_UI_EXTENSION_FAILED);
+    EXPECT_NE(msg.find("modal UI extension"), std::string::npos);
+
+    // UIExtension result scene
+    msg = GetInnerErrorMsg(AbilityInnerErrorMsg::TRANSFER_ABILITY_RESULT_FAILED);
+    EXPECT_NE(msg.find("ability result"), std::string::npos);
+
+    // UIExtension lifecycle scene
+    msg = GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_SESSION);
+    EXPECT_NE(msg.find("session"), std::string::npos);
+
+    // UIService scene
+    msg = GetInnerErrorMsg(AbilityInnerErrorMsg::PROXY_NOT_FOUND);
+    EXPECT_NE(msg.find("proxy"), std::string::npos);
+
+    // AbilityManager scene
+    msg = GetInnerErrorMsg(AbilityInnerErrorMsg::OBSERVER_NOT_REGISTERED);
+    EXPECT_FALSE(msg.empty());
+    EXPECT_NE(msg, "Internal error.");
+    EXPECT_NE(msg.find("not been registered"), std::string::npos);
+}
+
+/**
  * @tc.desc: Verify agentManager operation policy selects centralized messages without replacing mapped errors.
  * @tc.type: FUNC
  */
