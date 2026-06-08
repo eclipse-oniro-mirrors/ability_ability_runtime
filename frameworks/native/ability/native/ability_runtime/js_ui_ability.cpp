@@ -731,6 +731,11 @@ void JsUIAbility::OnStop(AppExecFwk::AbilityTransactionCallbackInfo<> *callbackI
 void JsUIAbility::OnStopCallback()
 {
     // Set isDestroyed to true after onDestroy callback completes
+    if (jsAbilityObj_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "null jsAbilityObj_");
+        return;
+    }
+
     napi_value obj = jsAbilityObj_->GetNapiValue();
     if (CheckTypeForNapiValue(jsRuntime_.GetNapiEnv(), obj, napi_object)) {
         napi_value jsIsDestroyed = nullptr;
