@@ -612,7 +612,8 @@ napi_value JsApplicationContextUtils::OnRestartApp(napi_env env, NapiCallbackInf
     } else if (errCode == AAFwk::NOT_TOP_ABILITY) {
         AbilityRuntimeErrorUtil::Throw(env, ERR_ABILITY_RUNTIME_EXTERNAL_NOT_TOP_ABILITY);
     } else {
-        AbilityRuntimeErrorUtil::Throw(env, ERR_ABILITY_RUNTIME_EXTERNAL_INTERNAL_ERROR);
+        AbilityRuntimeErrorUtil::Throw(env, ERR_ABILITY_RUNTIME_EXTERNAL_INTERNAL_ERROR,
+            GetInnerErrorMsg(AbilityInnerErrorMsg::RESTART_APP_FAILED));
     }
     TAG_LOGE(AAFwkTag::APPKIT, "errCode:%{public}d.", errCode);
     return CreateJsUndefined(env);
@@ -1060,14 +1061,14 @@ napi_value JsApplicationContextUtils::OnGetRunningProcessInformation(napi_env en
             if (array == nullptr) {
                 TAG_LOGE(AAFwkTag::APPKIT, "null array");
                 task.Reject(env, CreateJsError(env, ERR_ABILITY_RUNTIME_EXTERNAL_INTERNAL_ERROR,
-                    "Initiate array failed."));
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_PROCESS_INFO_ARRAY_FAILED)));
             } else {
                 napi_set_element(env, array, 0, object);
                 task.ResolveWithNoError(env, array);
             }
         } else {
             task.Reject(env, CreateJsError(env, ERR_ABILITY_RUNTIME_EXTERNAL_INTERNAL_ERROR,
-                "Get process infos failed."));
+                GetInnerErrorMsg(AbilityInnerErrorMsg::GET_PROCESS_INFO_FAILED)));
         }
     };
     napi_value lastParam = (info.argc == ARGC_ONE) ? info.argv[INDEX_ZERO] : nullptr;
@@ -2166,7 +2167,8 @@ napi_value JsApplicationContextUtils::OnGetUIAbilityByInstanceId(napi_env env, N
 
     if (nativeAbility->jsAbilityObj == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "jsAbilityObj is null for instanceId: %{public}s", instanceId.c_str());
-        AbilityRuntimeErrorUtil::Throw(env, ERR_ABILITY_RUNTIME_EXTERNAL_INTERNAL_ERROR);
+        AbilityRuntimeErrorUtil::Throw(env, ERR_ABILITY_RUNTIME_EXTERNAL_INTERNAL_ERROR,
+            GetInnerErrorMsg(AbilityInnerErrorMsg::UI_ABILITY_OBJ_NULL));
         return CreateJsUndefined(env);
     }
 
@@ -2212,7 +2214,8 @@ napi_value JsApplicationContextUtils::OnSetSupportedProcessCacheSelf(napi_env en
         AbilityRuntimeErrorUtil::Throw(env, ERR_ABILITY_RUNTIME_EXTERNAL_NO_SUCH_SYSCAP);
     } else if (errCode != ERR_OK) {
         TAG_LOGE(AAFwkTag::APPKIT, "set failed");
-        AbilityRuntimeErrorUtil::Throw(env, ERR_ABILITY_RUNTIME_EXTERNAL_INTERNAL_ERROR);
+        AbilityRuntimeErrorUtil::Throw(env, ERR_ABILITY_RUNTIME_EXTERNAL_INTERNAL_ERROR,
+            GetInnerErrorMsg(AbilityInnerErrorMsg::SET_PROCESS_CACHE_FAILED));
     }
     return CreateJsUndefined(env);
 }

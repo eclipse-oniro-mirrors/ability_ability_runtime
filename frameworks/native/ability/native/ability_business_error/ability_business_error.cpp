@@ -255,6 +255,20 @@ constexpr const char* ERROR_MSG_UI_WINDOW_NULL =
     "Internal error. The UI window is not available. Try again later.";
 constexpr const char* ERROR_MSG_RELOAD_IN_MODAL_RESULT_NULL =
     "Internal error. Failed to create reload result. Try again later.";
+constexpr const char* ERROR_MSG_OBSERVER_CREATE_FAILED =
+    "Internal error. Failed to create the observer.";
+constexpr const char* ERROR_MSG_OBSERVER_NOT_EXIST =
+    "Internal error. The observer does not exist. Register the observer first.";
+constexpr const char* ERROR_MSG_RESTART_APP_FAILED =
+    "Internal error. Failed to restart the application. Try again later.";
+constexpr const char* ERROR_MSG_CREATE_PROCESS_INFO_ARRAY_FAILED =
+    "Internal error. Failed to create the process information array.";
+constexpr const char* ERROR_MSG_GET_PROCESS_INFO_FAILED =
+    "Internal error. Failed to get process information. Try again later.";
+constexpr const char* ERROR_MSG_SET_PROCESS_CACHE_FAILED =
+    "Internal error. Failed to set the process cache state. Try again later.";
+constexpr const char* ERROR_MSG_UI_ABILITY_OBJ_NULL =
+    "Internal error. The UIAbility object is not available. Verify the ability is active and try again.";
 
 // follow ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST of appexecfwk_errors.h in bundle_framework
 constexpr int32_t ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST = 8521220;
@@ -559,6 +573,13 @@ static std::unordered_map<AbilityInnerErrorMsg, const char*> INNER_ERROR_MSG_BY_
     {AbilityInnerErrorMsg::TRANSFER_EXTENSION_DATA_FAILED, ERROR_MSG_TRANSFER_EXTENSION_DATA_FAILED},
     {AbilityInnerErrorMsg::UI_WINDOW_NULL, ERROR_MSG_UI_WINDOW_NULL},
     {AbilityInnerErrorMsg::RELOAD_IN_MODAL_RESULT_NULL, ERROR_MSG_RELOAD_IN_MODAL_RESULT_NULL},
+    {AbilityInnerErrorMsg::OBSERVER_CREATE_FAILED, ERROR_MSG_OBSERVER_CREATE_FAILED},
+    {AbilityInnerErrorMsg::OBSERVER_NOT_EXIST, ERROR_MSG_OBSERVER_NOT_EXIST},
+    {AbilityInnerErrorMsg::RESTART_APP_FAILED, ERROR_MSG_RESTART_APP_FAILED},
+    {AbilityInnerErrorMsg::CREATE_PROCESS_INFO_ARRAY_FAILED, ERROR_MSG_CREATE_PROCESS_INFO_ARRAY_FAILED},
+    {AbilityInnerErrorMsg::GET_PROCESS_INFO_FAILED, ERROR_MSG_GET_PROCESS_INFO_FAILED},
+    {AbilityInnerErrorMsg::SET_PROCESS_CACHE_FAILED, ERROR_MSG_SET_PROCESS_CACHE_FAILED},
+    {AbilityInnerErrorMsg::UI_ABILITY_OBJ_NULL, ERROR_MSG_UI_ABILITY_OBJ_NULL},
 };
 }
 

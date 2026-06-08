@@ -522,7 +522,8 @@ void EtsAbilityManager::NativeOn(ani_env *env, ani_string aniType, ani_object an
         observerForeground_ = sptr<ETSAbilityForegroundStateObserver>::MakeSptr(aniVM);
         if (observerForeground_ == nullptr) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "null observerForeground_");
-            EtsErrorUtil::ThrowError(env, AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);
+            EtsErrorUtil::ThrowError(env, static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER),
+                GetInnerErrorMsg(AbilityInnerErrorMsg::OBSERVER_CREATE_FAILED));
             return;
         }
     }
@@ -530,7 +531,8 @@ void EtsAbilityManager::NativeOn(ani_env *env, ani_string aniType, ani_object an
         auto appManager = GetAppManagerInstance();
         if (appManager == nullptr) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "appManager null ptr");
-            EtsErrorUtil::ThrowError(env, AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);
+            EtsErrorUtil::ThrowError(env, static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER),
+                GetInnerErrorMsg(AbilityInnerErrorMsg::SERVICE_UNAVAILABLE));
             return;
         }
         int32_t ret = appManager->RegisterAbilityForegroundStateObserver(observerForeground_);
@@ -560,7 +562,8 @@ void EtsAbilityManager::NativeOff(ani_env *env, ani_string aniType, ani_object a
     }
     if (observerForeground_ == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null observer");
-        EtsErrorUtil::ThrowError(env, AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);
+        EtsErrorUtil::ThrowError(env, static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::OBSERVER_NOT_EXIST));
         return;
     }
     ani_status status = ANI_OK;
@@ -578,7 +581,8 @@ void EtsAbilityManager::NativeOff(ani_env *env, ani_string aniType, ani_object a
         auto appManager = GetAppManagerInstance();
         if (appManager == nullptr) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "appManager null ptr");
-            EtsErrorUtil::ThrowError(env, AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);
+            EtsErrorUtil::ThrowError(env, static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER),
+                GetInnerErrorMsg(AbilityInnerErrorMsg::SERVICE_UNAVAILABLE));
             return;
         }
         int32_t ret = appManager->UnregisterAbilityForegroundStateObserver(observerForeground_);
