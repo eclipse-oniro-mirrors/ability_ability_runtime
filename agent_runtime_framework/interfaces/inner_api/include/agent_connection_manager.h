@@ -17,7 +17,8 @@
 #define OHOS_AGENT_RUNTIME_AGENT_CONNECTION_MANAGER_H
 
 #include <chrono>
-#include <map>
+#include <functional>
+#include <list>
 #include <mutex>
 #include <vector>
 
@@ -39,7 +40,7 @@ class AgentConnection;
  * @struct AgentConnectionInfo
  * @brief Stores information about an agent connection.
  *
- * The connection key consists of: agentId + agentExtProxy + connectReceiver
+ * The connection key consists of: agentId + connectReceiver
  */
 struct AgentConnectionInfo {
     // Target agent identifier (from Want parameter AGENTID_KEY)
@@ -49,8 +50,8 @@ struct AgentConnectionInfo {
     AAFwk::Operation connectReceiver;
     // The connection object
     sptr<AgentConnection> agentConnection;
-    // Agent extension proxy for bidirectional communication
-    // (from Want parameter AGENTEXTENSIONHOSTPROXY_KEY)
+    // Agent extension host proxy from Want parameter AGENTEXTENSIONHOSTPROXY_KEY.
+    // It is per API call and is not part of the reusable connection identity.
     void *agentExtProxy = nullptr;
     // Connection timestamp for timeout detection
     int64_t connectingTime = 0;
@@ -82,47 +83,6 @@ struct AgentConnectionInfo {
     {
         auto now = std::chrono::steady_clock::now().time_since_epoch();
         connectingTime = std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
-    }
-
-    /**
-     * @brief Comparison operator for map key ordering.
-     *
-     * Compares by: agentId -> agentExtProxy -> connectingTime -> connectReceiver
-     * (bundleName -> moduleName -> abilityName)
-     *
-     * @param that The other AgentConnectionInfo to compare with.
-     * @return Returns true if this is less than that.
-     */
-    inline bool operator<(const AgentConnectionInfo &that) const
-    {
-        if (agentId < that.agentId) {
-            return true;
-        }
-        if (agentExtProxy < that.agentExtProxy) {
-            return true;
-        }
-        if (connectingTime < that.connectingTime) {
-            return true;
-        }
-        if (connectReceiver.GetBundleName() < that.connectReceiver.GetBundleName()) {
-            return true;
-        }
-        if (connectReceiver.GetBundleName() == that.connectReceiver.GetBundleName() &&
-            connectReceiver.GetModuleName() < that.connectReceiver.GetModuleName()) {
-            return true;
-        }
-        if (connectReceiver.GetBundleName() == that.connectReceiver.GetBundleName() &&
-            connectReceiver.GetModuleName() == that.connectReceiver.GetModuleName() &&
-            connectReceiver.GetAbilityName() < that.connectReceiver.GetAbilityName()) {
-            return true;
-        }
-        if (connectReceiver.GetBundleName() == that.connectReceiver.GetBundleName() &&
-            connectReceiver.GetModuleName() == that.connectReceiver.GetModuleName() &&
-            connectReceiver.GetAbilityName() == that.connectReceiver.GetAbilityName() &&
-            !(connectReceiver == that.connectReceiver)) {
-            return true;
-        }
-        return false;
     }
 };
 
@@ -170,7 +130,7 @@ private:
  * @brief Manages connections to AgentExtensionAbility instances.
  *
  * This class is similar to ConnectionManager but specifically for agent extensions.
- * Connections are identified by: agentId + agentExtProxy + connectReceiver.
+ * Connections are identified by: agentId + connectReceiver.
  */
 class AgentConnectionManager {
 public:
@@ -255,16 +215,19 @@ private:
      */
     void *GetAgentExtProxyPtr(const AAFwk::Want &want);
     /**
-     * @brief Match connection by agentId + agentExtProxy + connectReceiver.
+     * @brief Match connection by agentId + connectReceiver.
      *
      * @param agentId The agent ID to match.
      * @param connectReceiver The connect receiver (Want) to match.
      * @param connection The existing connection entry.
      * @return Returns true if matches, false otherwise.
      */
+    using AgentConnectionCallbacks = std::vector<sptr<AbilityRuntime::AbilityConnectCallback>>;
+    using AgentConnectionRecord = std::pair<AgentConnectionInfo, AgentConnectionCallbacks>;
+    using AgentConnectionRecords = std::list<AgentConnectionRecord>;
+
     bool MatchConnection(const std::string &agentId, const AAFwk::Want &connectReceiver,
-        const std::map<AgentConnectionInfo,
-        std::vector<sptr<AbilityRuntime::AbilityConnectCallback>>>::value_type &connection);
+        const AgentConnectionRecord &connection);
     /**
      * @brief Create a new connection to the agent extension.
      *
@@ -293,7 +256,7 @@ private:
 
 private:
     std::mutex connectionsLock_;
-    std::map<AgentConnectionInfo, std::vector<sptr<AbilityRuntime::AbilityConnectCallback>>> agentConnections_;
+    AgentConnectionRecords agentConnections_;
 };
 } // namespace AgentRuntime
 } // namespace OHOS

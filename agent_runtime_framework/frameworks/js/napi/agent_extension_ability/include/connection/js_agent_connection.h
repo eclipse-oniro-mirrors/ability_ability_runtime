@@ -77,15 +77,13 @@ int64_t InsertAgentConnection(sptr<JSAgentConnection> connection, const AAFwk::W
 void FindAgentConnection(int64_t connectId, sptr<JSAgentConnection> &connection);
 
 /**
- * Find agent connection by want and callback.
+ * Find agent connection by target identity.
  *
- * @param env The N-API environment.
  * @param want The want information to match.
- * @param callback The callback object to match.
+ * @param agentId The agent ID to match.
  * @param connection Output parameter for the found connection.
  */
-void FindAgentConnection(napi_env env, AAFwk::Want &want, napi_value callback,
-    sptr<JSAgentConnection> &connection);
+void FindAgentConnection(const AAFwk::Want &want, const std::string &agentId, sptr<JSAgentConnection> &connection);
 }
 
 class JsAgentConnectorStubImpl;
