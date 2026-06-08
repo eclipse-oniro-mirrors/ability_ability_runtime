@@ -190,5 +190,23 @@ HWTEST_F(ResSchedUtilTest, ReportForkAllEventToRSS_0100, TestSize.Level2)
     EXPECT_EQ(forkAllState, 0);
     TAG_LOGI(AAFwkTag::TEST, "ReportForkAllEventToRSS_0100 end");
 }
+
+/**
+ * @tc.number: ReportGameClickToRSS_0100
+ * @tc.desc: Test ReportGameClickToRSS works
+ * @tc.type: FUNC
+ */
+HWTEST_F(ResSchedUtilTest, ReportGameClickToRSS_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ReportGameClickToRSS_0100 start");
+    std::string bundleName = "com.example.game";
+    int32_t pid = 520;
+    int32_t uid = 1314;
+    AAFwk::ResSchedUtil::GetInstance().ReportGameClickToRSS(bundleName, pid, uid);
+    EXPECT_EQ(bundleName, "com.example.game");
+    EXPECT_EQ(pid, 520);
+    EXPECT_EQ(uid, 1314);
+    TAG_LOGI(AAFwkTag::TEST, "ReportGameClickToRSS_0100 end");
+}
 }  // namespace AbilityRuntime
 }  // namespace OHOS

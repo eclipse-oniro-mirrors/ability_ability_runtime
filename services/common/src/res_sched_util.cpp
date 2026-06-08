@@ -30,6 +30,7 @@ namespace AAFwk {
 #ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
 using AssociatedStartType = ResourceSchedule::ResType::AssociatedStartType;
 static constexpr int PERF_NUM = 10202;
+static constexpr int GAME_CLICK_VALUE = 4;
 #endif
 ResSchedUtil &ResSchedUtil::GetInstance()
 {
@@ -79,6 +80,21 @@ void ResSchedUtil::ReportForkAllEventToRSS(int32_t imagePid, int32_t orginalPid,
     };
     TAG_LOGI(AAFwkTag::DEFAULT, "call");
     ResourceSchedule::ResSchedClient::GetInstance().ReportData(resType, forkAllState, eventParams);
+#endif
+}
+
+void ResSchedUtil::ReportGameClickToRSS(const std::string &bundleName, int32_t pid, int32_t uid)
+{
+#ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
+    uint32_t resType = ResourceSchedule::ResType::RES_TYPE_GAME_INFO_NOTIFY;
+    std::unordered_map<std::string, std::string> eventParams {
+        { "bundleName", bundleName },
+        { "pid", std::to_string(pid) },
+        { "uid", std::to_string(uid) }
+    };
+    TAG_LOGD(AAFwkTag::DEFAULT, "ReportGameClickToRSS: bundleName=%{public}s, pid=%{public}d, uid=%{public}d",
+        bundleName.c_str(), pid, uid);
+    ResourceSchedule::ResSchedClient::GetInstance().ReportData(resType, GAME_CLICK_VALUE, eventParams);
 #endif
 }
 

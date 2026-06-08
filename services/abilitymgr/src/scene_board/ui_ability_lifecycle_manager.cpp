@@ -35,6 +35,7 @@
 #include "permission_constants.h"
 #include "process_options.h"
 #include "request_id_util.h"
+#include "res_sched_util.h"
 #include "restart_app_manager.h"
 #include "session_info.h"
 #include "start_ability_utils.h"
@@ -390,6 +391,9 @@ UIAbilityRecordPtr UIAbilityLifecycleManager::HandleAbilityRecordReused(
         return nullptr;
     }
     if (uiAbilityRecord->IsGameSAPreLaunch()) {
+        // Report game prelaunch user click event to RSS.
+        ResSchedUtil::GetInstance().ReportGameClickToRSS(
+            uiAbilityRecord->GetBundleName(), uiAbilityRecord->GetPid(), uiAbilityRecord->GetUid());
         // Clear the game SA prelaunch flag in AbilityRecord and AppRecord when reusing AbilityRecord.
         uiAbilityRecord->SetGameSAPreLaunch(false);
         int32_t ret = IN_PROCESS_CALL(DelayedSingleton<AppScheduler>::GetInstance()->SetGameSAPrelaunch(
