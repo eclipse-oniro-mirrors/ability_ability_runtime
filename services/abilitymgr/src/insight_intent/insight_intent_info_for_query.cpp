@@ -25,6 +25,7 @@ using JsonType = AppExecFwk::JsonType;
 using ArrayType = AppExecFwk::ArrayType;
 namespace {
 int32_t g_parseResult = ERR_OK;
+constexpr size_t MAX_IPC_REWDATA_SIZE = 100 * 1024 * 1024;      // max ipc size 100MB
 std::mutex g_extraMutex;
 
 const std::map<AppExecFwk::ExecuteMode, std::string> EXECUTE_MODE_STRING_MAP = {
@@ -680,6 +681,10 @@ bool InsightIntentInfoForQuery::ReadFromParcel(Parcel &parcel)
         TAG_LOGE(AAFwkTag::INTENT, "Invalid data length");
         return false;
     }
+    if (length > MAX_IPC_REWDATA_SIZE) {
+        TAG_LOGE(AAFwkTag::INTENT, "Length is too large");
+        return false;
+    }
     const char *data = reinterpret_cast<const char *>(messageParcel->ReadRawData(length));
     TAG_LOGD(AAFwkTag::INTENT, "ReadFromParcel data: %{public}s", data);
     if (!data) {
@@ -711,6 +716,10 @@ bool InsightIntentInfoForQuery::Marshalling(Parcel &parcel) const
     }
     nlohmann::json jsonObject = *this;
     std::string str = jsonObject.dump();
+    if (str.size() + 1 > MAX_IPC_REWDATA_SIZE) {
+        TAG_LOGE(AAFwkTag::INTENT, "Data size is too large");
+        return false;
+    }
     TAG_LOGD(AAFwkTag::INTENT, "Marshalling str: %{public}s", str.c_str());
     if (!messageParcel->WriteUint32(str.size() + 1)) {
         TAG_LOGE(AAFwkTag::INTENT, "Write intent info size failed");
@@ -752,6 +761,10 @@ bool InsightIntentInfoForQuery::MarshallingVector(
     }
     std::string str = jsonArray.dump();
     TAG_LOGD(AAFwkTag::INTENT, "MarshallingVector size: %{public}zu", str.size());
+    if (str.size() + 1 > MAX_IPC_REWDATA_SIZE) {
+        TAG_LOGE(AAFwkTag::INTENT, "Data size is too large");
+        return false;
+    }
     if (!messageParcel->WriteUint32(str.size() + 1)) {
         TAG_LOGE(AAFwkTag::INTENT, "Write size failed");
         return false;
@@ -774,6 +787,10 @@ bool InsightIntentInfoForQuery::UnmarshallingVector(
     uint32_t length = messageParcel->ReadUint32();
     if (length == 0) {
         TAG_LOGE(AAFwkTag::INTENT, "Invalid data length");
+        return false;
+    }
+    if (length > MAX_IPC_REWDATA_SIZE) {
+        TAG_LOGE(AAFwkTag::INTENT, "Length is too large");
         return false;
     }
     const char *data = reinterpret_cast<const char *>(messageParcel->ReadRawData(length));
