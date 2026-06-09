@@ -120,7 +120,8 @@
             "window_manager",
             "zlib",
             "hiperf",
-            "hiprofiler"
+            "hiprofiler",
+            "taihe_ffi_gen"
           ]
       },
       "build": {
