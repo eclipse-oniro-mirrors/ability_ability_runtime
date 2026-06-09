@@ -903,7 +903,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleProcessTimeout_0100, TestSize.Level1)
 
     service_->HandleProcessTimeout(record->sessionId);
 
-    EXPECT_TRUE(record->TimedOut());
+    EXPECT_TRUE(record->Timeout());
     EXPECT_EQ(record->GetState(), SessionState::CANCELLING);
     EXPECT_TRUE(record->Background());
     EXPECT_NE(service_->GetSessionRecord(record->sessionId), nullptr);
@@ -930,7 +930,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleProcessTimeout_0200, TestSize.Level1)
 
     service_->HandleProcessTimeout(record->sessionId);
 
-    EXPECT_TRUE(record->TimedOut());
+    EXPECT_TRUE(record->Timeout());
     EXPECT_EQ(record->GetState(), SessionState::CANCELLING);
     EXPECT_TRUE(record->Background());
     EXPECT_NE(service_->GetSessionRecord(record->sessionId), nullptr);
@@ -958,7 +958,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleSkillSessionTimeout_0100, TestSize.Lev
 
     service_->HandleProcessTimeout(record->sessionId);
 
-    EXPECT_TRUE(record->TimedOut());
+    EXPECT_TRUE(record->Timeout());
     EXPECT_EQ(record->GetState(), SessionState::FAILED);
     EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
 
@@ -984,7 +984,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleSkillSessionTimeout_0200, TestSize.Lev
 
     service_->HandleSkillSessionTimeout(record->sessionId);
 
-    EXPECT_TRUE(record->TimedOut());
+    EXPECT_TRUE(record->Timeout());
     EXPECT_EQ(record->GetState(), SessionState::FAILED);
     EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
 

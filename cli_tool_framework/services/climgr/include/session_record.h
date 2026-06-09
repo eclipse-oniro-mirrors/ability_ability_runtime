@@ -69,8 +69,8 @@ public:
 
     void SetSkillResult(int32_t resultCode, const std::string &outputText);
 
-    void SetTimedOut(bool timedOut);
-    bool TimedOut() const;
+    void SetTimeout(bool timeout);
+    bool Timeout() const;
     int64_t GetEndTimeMs() const;
 
     bool HasProcessExited() const;
@@ -111,7 +111,7 @@ private:
     mutable std::mutex resultMutex_;
     int32_t terminalStatus_ = 0;
     int32_t signalNumber_ = 0;
-    bool timedOut_ = false;
+    bool timeout_ = false;
     bool background_ = true;
     int64_t endTimeMs_ = 0;
     std::string stdoutText_ = "";

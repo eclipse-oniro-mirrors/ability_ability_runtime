@@ -56,16 +56,16 @@ int32_t SessionRecord::GetTerminalStatus() const
     return terminalStatus_;
 }
 
-void SessionRecord::SetTimedOut(bool timedOut)
+void SessionRecord::SetTimeout(bool timeout)
 {
     std::lock_guard<std::mutex> lock(resultMutex_);
-    timedOut_ = timedOut;
+    timeout_ = timeout;
 }
 
-bool SessionRecord::TimedOut() const
+bool SessionRecord::Timeout() const
 {
     std::lock_guard<std::mutex> lock(resultMutex_);
-    return timedOut_;
+    return timeout_;
 }
 
 int64_t SessionRecord::GetEndTimeMs() const
@@ -132,12 +132,12 @@ void SessionRecord::BuildSessionInfo(CliSessionInfo &session) const
     session.sessionId = sessionId;
     session.toolName = toolName;
 
-    if ((!HasProcessExited() || !OutputDrained()) && !timedOut_) {
+    if ((!HasProcessExited() || !OutputDrained()) && !timeout_) {
         session.status = "running";
     } else {
         session.result = BuildExecResult();
         session.status =
-            (!session.result || session.result->timedOut || session.result->exitCode != 0) ? "failed" : "completed";
+            (!session.result || session.result->timeout || session.result->exitCode != 0) ? "failed" : "completed";
     }
 }
 
@@ -153,7 +153,7 @@ std::shared_ptr<ExecResult> SessionRecord::BuildExecResult() const
 {
     auto result = std::make_shared<ExecResult>();
     std::lock_guard<std::mutex> lock(resultMutex_);
-    if (timedOut_) {
+    if (timeout_) {
         result->executionTime = timeoutMs;
     } else {
         result->exitCode = terminalStatus_;
@@ -162,7 +162,7 @@ std::shared_ptr<ExecResult> SessionRecord::BuildExecResult() const
     result->outputText = stdoutText_;
     result->errorText = stderrText_;
     result->signalNumber = signalNumber_;
-    result->timedOut = timedOut_;
+    result->timeout = timeout_;
     return result;
 }
 
