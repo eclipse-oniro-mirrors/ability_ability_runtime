@@ -152,7 +152,7 @@ void EtsUIServiceHostProxy::OnSendData(ani_env *env, ani_object data)
     if (proxy_ == nullptr) {
         TAG_LOGE(AAFwkTag::UISERVC_EXT, "null proxy_");
         AbilityRuntime::EtsErrorUtil::ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-            GetInnerErrorMsg(AbilityInnerErrorMsg::PROXY_NOT_FOUND));
+            GetInnerErrorMsg(AbilityInnerErrorMsg::UI_SERVICE_PROXY_NOT_FOUND));
         return;
     }
     AAFwk::WantParams params;
