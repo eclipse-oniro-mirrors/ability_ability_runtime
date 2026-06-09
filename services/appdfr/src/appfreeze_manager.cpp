@@ -1190,7 +1190,7 @@ void AppfreezeManager::ReportAppFreezeSysEvents(int32_t pid, const std::string& 
     hisyseventReport->InsertParam("APP_PID", pid);
     hisyseventReport->InsertParam("REPEAT_KILLED_THREAD",
         freezeEventMap_[pid][KILL_EVENT_NAME].isRepeatKilledThread);
-    int ret = hisyseventReport->Report("RELIABILITY", "APP_FREEZE_STATISTIC", HISYSEVENT_STATISTIC);
+    int ret = hisyseventReport->Report("RELIABILITY", "APP_FREEZE_STATISTICS", HISYSEVENT_STATISTIC);
     freezeEventMap_.erase(pid);
 }
 
