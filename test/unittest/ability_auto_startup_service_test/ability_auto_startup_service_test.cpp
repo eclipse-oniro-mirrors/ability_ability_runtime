@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -89,7 +89,9 @@ HWTEST_F(AbilityAutoStartupServiceTest, RegisterAutoStartupSystemCallback_001, T
     EXPECT_NE(abilityAutoStartupService, nullptr);
     sptr<IRemoteObject> callback;
     auto result = abilityAutoStartupService->RegisterAutoStartupSystemCallback(callback);
-    if (!system::GetBoolParameter(PRODUCT_APPBOOT_SETTING_ENABLED, false)) {
+    if (!(system::GetBoolParameter("const.edm.is_enterprise_device", false) ||
+        system::GetBoolParameter("persist.edm.edm_enable", false) ||
+        system::GetBoolParameter("const.abilityms.enable_auto_startup", false))) {
         GTEST_LOG_(INFO) << "Disabled config";
         EXPECT_EQ(result, ERR_NOT_SUPPORTED_PRODUCT_TYPE);
     } else {
@@ -111,7 +113,9 @@ HWTEST_F(AbilityAutoStartupServiceTest, UnregisterAutoStartupSystemCallback_001,
     EXPECT_NE(abilityAutoStartupService, nullptr);
     sptr<IRemoteObject> callback;
     auto result = abilityAutoStartupService->UnregisterAutoStartupSystemCallback(callback);
-    if (!system::GetBoolParameter(PRODUCT_APPBOOT_SETTING_ENABLED, false)) {
+    if (!(system::GetBoolParameter("const.edm.is_enterprise_device", false) ||
+        system::GetBoolParameter("persist.edm.edm_enable", false) ||
+        system::GetBoolParameter("const.abilityms.enable_auto_startup", false))) {
         GTEST_LOG_(INFO) << "Disabled config";
         EXPECT_EQ(result, ERR_NOT_SUPPORTED_PRODUCT_TYPE);
     } else {
@@ -133,7 +137,9 @@ HWTEST_F(AbilityAutoStartupServiceTest, SetApplicationAutoStartup_001, TestSize.
     EXPECT_NE(abilityAutoStartupService, nullptr);
     AutoStartupInfo info;
     auto result = abilityAutoStartupService->SetApplicationAutoStartup(info);
-    if (!system::GetBoolParameter(PRODUCT_APPBOOT_SETTING_ENABLED, false)) {
+    if (!(system::GetBoolParameter("const.edm.is_enterprise_device", false) ||
+        system::GetBoolParameter("persist.edm.edm_enable", false) ||
+        system::GetBoolParameter("const.abilityms.enable_auto_startup", false))) {
         GTEST_LOG_(INFO) << "Disabled config";
         EXPECT_EQ(result, ERR_NOT_SUPPORTED_PRODUCT_TYPE);
     } else {
@@ -196,7 +202,9 @@ HWTEST_F(AbilityAutoStartupServiceTest, CancelApplicationAutoStartup_001, TestSi
     EXPECT_NE(abilityAutoStartupService, nullptr);
     AutoStartupInfo info;
     auto result = abilityAutoStartupService->CancelApplicationAutoStartup(info);
-    if (!system::GetBoolParameter(PRODUCT_APPBOOT_SETTING_ENABLED, false)) {
+    if (!(system::GetBoolParameter("const.edm.is_enterprise_device", false) ||
+        system::GetBoolParameter("persist.edm.edm_enable", false) ||
+        system::GetBoolParameter("const.abilityms.enable_auto_startup", false))) {
         GTEST_LOG_(INFO) << "Disabled config";
         EXPECT_EQ(result, ERR_NOT_SUPPORTED_PRODUCT_TYPE);
     } else {
@@ -260,7 +268,9 @@ HWTEST_F(AbilityAutoStartupServiceTest, QueryAllAutoStartupApplications_001, Tes
     std::vector<AutoStartupInfo> infoList;
     int32_t userId = 100;
     auto result = abilityAutoStartupService->QueryAllAutoStartupApplications(infoList, userId);
-    if (!system::GetBoolParameter(PRODUCT_APPBOOT_SETTING_ENABLED, false)) {
+    if (!(system::GetBoolParameter("const.edm.is_enterprise_device", false) ||
+        system::GetBoolParameter("persist.edm.edm_enable", false) ||
+        system::GetBoolParameter("const.abilityms.enable_auto_startup", false))) {
         GTEST_LOG_(INFO) << "Disabled config";
         EXPECT_EQ(result, ERR_NOT_SUPPORTED_PRODUCT_TYPE);
     } else {
@@ -305,7 +315,9 @@ HWTEST_F(AbilityAutoStartupServiceTest, QueryAllAutoStartupApplicationsWithoutPe
     std::vector<AutoStartupInfo> infoList;
     int32_t userId = 100;
     auto result = abilityAutoStartupService->QueryAllAutoStartupApplicationsWithoutPermission(infoList, userId);
-    if (!system::GetBoolParameter(PRODUCT_APPBOOT_SETTING_ENABLED, false)) {
+    if (!(system::GetBoolParameter("const.edm.is_enterprise_device", false) ||
+        system::GetBoolParameter("persist.edm.edm_enable", false) ||
+        system::GetBoolParameter("const.abilityms.enable_auto_startup", false))) {
         GTEST_LOG_(INFO) << "Disabled config";
         EXPECT_EQ(result, ERR_NOT_SUPPORTED_PRODUCT_TYPE);
     } else {
@@ -742,35 +754,15 @@ HWTEST_F(AbilityAutoStartupServiceTest, CheckPermissionForSystem_001, TestSize.L
     auto abilityAutoStartupService = std::make_shared<AbilityAutoStartupService>();
     EXPECT_NE(abilityAutoStartupService, nullptr);
     auto result = abilityAutoStartupService->CheckPermissionForSystem();
-    if (!system::GetBoolParameter(PRODUCT_APPBOOT_SETTING_ENABLED, false)) {
+    if (!(system::GetBoolParameter("const.edm.is_enterprise_device", false) ||
+        system::GetBoolParameter("persist.edm.edm_enable", false) ||
+        system::GetBoolParameter("const.abilityms.enable_auto_startup", false))) {
         GTEST_LOG_(INFO) << "Disabled config";
         EXPECT_EQ(result, ERR_NOT_SUPPORTED_PRODUCT_TYPE);
     } else {
         EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
     }
     GTEST_LOG_(INFO) << "AbilityAutoStartupServiceTest CheckPermissionForSystem_001 end";
-}
-
-/*
- * Feature: AbilityAutoStartupService
- * Function: CheckPermissionForSelf
- * SubFunction: NA
- * FunctionPoints: AbilityAutoStartupService CheckPermissionForSelf
- */
-HWTEST_F(AbilityAutoStartupServiceTest, CheckPermissionForSelf_001, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "AbilityAutoStartupServiceTest CheckPermissionForSelf_001 start";
-    auto abilityAutoStartupService = std::make_shared<AbilityAutoStartupService>();
-    EXPECT_NE(abilityAutoStartupService, nullptr);
-    std::string bundleName = AUTO_STARTUP_SERVICE_EMPTY;
-    auto result = abilityAutoStartupService->CheckPermissionForSelf(bundleName);
-    if (!system::GetBoolParameter(PRODUCT_APPBOOT_SETTING_ENABLED, false)) {
-        GTEST_LOG_(INFO) << "Disabled config";
-        EXPECT_EQ(result, ERR_NOT_SUPPORTED_PRODUCT_TYPE);
-    } else {
-        EXPECT_EQ(result, ERR_OK);
-    }
-    GTEST_LOG_(INFO) << "AbilityAutoStartupServiceTest CheckPermissionForSelf_001 end";
 }
 
 /*

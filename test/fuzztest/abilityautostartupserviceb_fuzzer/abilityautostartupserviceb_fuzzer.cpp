@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -97,7 +97,6 @@ void AbilityStartupServiceFuzztest1(bool boolParam, std::string &stringParam, in
     service->GetAbilityTypeName(abilityInfo); // branch
     service->GetBundleMgrClient();
     service->CheckPermissionForSystem();
-    service->CheckPermissionForSelf(stringParam);
     service->SetApplicationAutoStartupByEDM(info, boolParam);
     service->CancelApplicationAutoStartupByEDM(info, boolParam);
     service->InnerApplicationAutoStartupByEDM(info, boolParam, boolParam);

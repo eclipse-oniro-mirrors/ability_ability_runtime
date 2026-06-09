@@ -390,7 +390,7 @@ napi_value JsAbilityAutoStartupManager::OnIsAutoStartupSupported(napi_env env, c
 {
     TAG_LOGD(AAFwkTag::AUTO_STARTUP, "called");
     AbilityRuntime::HandleEscape handleEscape(env);
-    bool isSupported = AAFwk::AppUtils::GetInstance().IsProductAppbootSettingEnabled();
+    bool isSupported = AAFwk::AppUtils::GetInstance().IsAutoStartupSupported();
     return handleEscape.Escape(CreateJsValue(env, isSupported));
 }
 
