@@ -125,6 +125,11 @@ void JsEnvironmentCallback::OnMemoryLevel(const int level)
 int32_t JsEnvironmentCallback::Register(napi_value jsCallback, bool isSync)
 {
     if (env_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "env_ is nullptr");
+        return -1;
+    }
+    if (jsCallback == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "jsCallback is nullptr");
         return -1;
     }
     int32_t callbackId = serialNumber_;
@@ -134,7 +139,11 @@ int32_t JsEnvironmentCallback::Register(napi_value jsCallback, bool isSync)
         serialNumber_ = 0;
     }
     napi_ref ref = nullptr;
-    napi_create_reference(env_, jsCallback, 1, &ref);
+    napi_status status = napi_create_reference(env_, jsCallback, 1, &ref);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::APPKIT, "napi_create_reference failed, status: %{public}d", status);
+        return -1;
+    }
     if (isSync) {
         callbacksSync_.emplace(callbackId, std::shared_ptr<NativeReference>(reinterpret_cast<NativeReference*>(ref)));
     } else {
@@ -153,7 +162,10 @@ bool JsEnvironmentCallback::UnRegister(int32_t callbackId, bool isSync)
             return false;
         }
         TAG_LOGD(AAFwkTag::APPKIT, "callbacksSync_.callbackId : %{public}d", it->first);
-        return callbacksSync_.erase(callbackId) == 1;
+        std::shared_ptr<NativeReference> nativeRef = it->second;
+        callbacksSync_.erase(it);
+        FreeNativeReference(std::move(nativeRef));
+        return true;
     }
     auto it = callbacks_.find(callbackId);
     if (it == callbacks_.end()) {
@@ -161,12 +173,26 @@ bool JsEnvironmentCallback::UnRegister(int32_t callbackId, bool isSync)
         return false;
     }
     TAG_LOGD(AAFwkTag::APPKIT, "callbacks_.callbackId : %{public}d", it->first);
-    return callbacks_.erase(callbackId) == 1;
+    std::shared_ptr<NativeReference> nativeRef = it->second;
+    callbacks_.erase(it);
+    FreeNativeReference(std::move(nativeRef));
+    return true;
 }
 
 bool JsEnvironmentCallback::IsEmpty() const
 {
     return callbacks_.empty() && callbacksSync_.empty();
+}
+
+void JsEnvironmentCallback::FreeNativeReference(std::shared_ptr<NativeReference>&& reference)
+{
+    if (reference == nullptr) {
+        return;
+    }
+    napi_status ret = napi_send_event(env_, [sharedNativeRef = std::move(reference)]() {}, napi_eprio_immediate);
+    if (ret != napi_status::napi_ok) {
+        TAG_LOGE(AAFwkTag::APPKIT, "failed to send event");
+    }
 }
 }  // namespace AbilityRuntime
 }  // namespace OHOS
