@@ -17,6 +17,7 @@
 
 #include "extract_insight_intent_profile.h"
 #include "common_event_support.h"
+#include "function_call_convert.h"
 #include "hilog_tag_wrapper.h"
 #include "task_handler_wrap.h"
 #include "os_account_manager_wrapper.h"
@@ -87,6 +88,9 @@ void InsightIntentSysEventReceiver::SaveInsightIntentInfos(const std::string &bu
                 "userId: %{public}d", bundleName.c_str(), moduleNameLocal.c_str(), userId);
             continue;
         }
+        CliTool::RegisterInsightIntentFunctions(infos, configIntentInfos, bundleName);
+        DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->SaveFunctionVersion(
+            bundleName, versionCode, userId);
 
         TAG_LOGI(AAFwkTag::INTENT, "save intent info success, bundleName: %{public}s, moduleName: %{public}s, "
             "userId: %{public}d", bundleName.c_str(), moduleNameLocal.c_str(), userId);
@@ -107,6 +111,9 @@ void InsightIntentSysEventReceiver::DeleteInsightIntent(const std::string &bundl
             bundleName.c_str());
         DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(
             bundleName, moduleName, userId);
+        CliTool::UnregisterInsightIntentFunctions(bundleName);
+        DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->DeleteFunctionVersion(
+            bundleName, userId);
     }
 }
 
@@ -139,8 +146,11 @@ void InsightIntentSysEventReceiver::LoadInsightIntentInfos(int32_t userId)
 
     bool hasNewIntent = false;
     for (auto &bundleInfo : bundleInfos) {
-        if (DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->
-            HasInsightIntentByName(bundleInfo.versionCode, bundleInfo.name, userId)) {
+        bool rdbHas = DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->
+            HasInsightIntentByName(bundleInfo.versionCode, bundleInfo.name, userId);
+        bool funcHas = DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->
+            HasFunctionByName(bundleInfo.versionCode, bundleInfo.name, userId);
+        if (rdbHas && funcHas) {
             continue;
         }
         for (const auto &hapInfo : bundleInfo.hapModuleInfos) {

@@ -60,6 +60,9 @@
 #include "insight_intent_db_cache.h"
 #include "skill/skill_execute_manager.h"
 #include "insight_intent_utils.h"
+#include "extract_insight_intent_profile.h"
+#include "insight_intent_matcher.h"
+#include "insight_intent_profile.h"
 #include "interceptor/ability_jump_interceptor.h"
 #include "interceptor/block_all_app_start_interceptor.h"
 #include "interceptor/control_interceptor.h"
@@ -115,6 +118,7 @@
 #endif
 #include "status_bar_delegate_interface.h"
 #include "string_wrapper.h"
+#include "array_wrapper.h"
 #include "support_system_ability_permission.h"
 #include "time_util.h"
 #include "tokenid_kit.h"
@@ -14261,6 +14265,118 @@ int32_t AbilityManagerService::ExecuteIntentForDistributed(const Want &want, con
     options.requestCode = requestCode;
     options.specifiedFullTokenId = specifiedFullTokenId;
     return ExecuteIntentCommon(nullptr, paramCopy, callerBundlename, options);
+}
+
+namespace {
+void ApplyInsightIntentOptionsFromWantParam(const WantParams &wantParam,
+    std::shared_ptr<InsightIntentExecuteParam> &param)
+{
+    if (!wantParam.HasParam("ohos.insightIntent.options")) {
+        return;
+    }
+    auto options = wantParam.GetWantParams("ohos.insightIntent.options");
+    std::string executeModeStr = options.GetStringParam("executeMode");
+    if (!executeModeStr.empty()) {
+        if (executeModeStr == "UI_ABILITY_FOREGROUND") {
+            param->executeMode_ = AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND;
+        } else if (executeModeStr == "UI_ABILITY_BACKGROUND") {
+            param->executeMode_ = AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND;
+        } else if (executeModeStr == "UI_EXTENSION_ABILITY") {
+            param->executeMode_ = AppExecFwk::ExecuteMode::UI_EXTENSION_ABILITY;
+        } else if (executeModeStr == "SERVICE_EXTENSION_ABILITY") {
+            param->executeMode_ = AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY;
+        } else {
+            char *end = nullptr;
+            long val = std::strtol(executeModeStr.c_str(), &end, 10);
+            if (end != executeModeStr.c_str() && *end == '\0') {
+                param->executeMode_ = static_cast<int32_t>(val);
+            }
+        }
+    }
+    auto uriValue = options.GetParam("uris");
+    IArray *ao = IArray::Query(uriValue);
+    if (ao != nullptr && AAFwk::Array::IsStringArray(ao)) {
+        std::vector<std::string> uris;
+        AAFwk::Array::ForEach(ao, [&uris](IInterface *object) {
+            if (object != nullptr) {
+                IString *value = IString::Query(object);
+                if (value != nullptr) {
+                    uris.push_back(String::Unbox(value));
+                }
+            }
+        });
+        if (!uris.empty()) {
+            param->uris_ = std::move(uris);
+        }
+    }
+    std::string flagsStr = options.GetStringParam("flags");
+    if (!flagsStr.empty()) {
+        char *end = nullptr;
+        long val = std::strtol(flagsStr.c_str(), &end, 0);
+        if (end != flagsStr.c_str() && *end == '\0') {
+            param->flags_ = static_cast<int32_t>(val);
+        }
+    }
+}
+} // namespace
+
+int32_t AbilityManagerService::ExecuteIntentByFunctionCall(uint64_t key,
+    const sptr<IRemoteObject> &callerToken, const std::string &bundleName,
+    const std::string &intentName, const WantParams &wantParam)
+{
+    TAG_LOGI(AAFwkTag::INTENT, "called, bundleName: %{public}s, intentName: %{public}s",
+        bundleName.c_str(), intentName.c_str());
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (bundleName.empty() || intentName.empty()) {
+        TAG_LOGE(AAFwkTag::INTENT, "invalid params, bundleName or intentName empty");
+        return ERR_INVALID_VALUE;
+    }
+
+    AbilityRuntime::ExtractInsightIntentGenericInfo matchedInfo;
+    int32_t callerUserId = AbilityRuntime::UserController::GetInstance().GetCallerUserId();
+    int32_t ret = AbilityRuntime::InsightIntentMatcher::GetMatchedIntentInfo(
+        bundleName, intentName, callerUserId, matchedInfo);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::INTENT, "GetMatchedIntentInfo failed, ret: %{public}d", ret);
+        return ret;
+    }
+    TAG_LOGI(AAFwkTag::INTENT, "matched intent, moduleName: %{public}s, decoratorType: %{public}s",
+        matchedInfo.moduleName.c_str(), matchedInfo.decoratorType.c_str());
+
+    std::string abilityName;
+    int32_t executeMode = 0;
+    ret = AbilityRuntime::InsightIntentMatcher::ParseIntentExecuteMode(matchedInfo, abilityName, executeMode);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::INTENT, "ParseIntentExecuteMode failed, ret: %{public}d", ret);
+        return ret;
+    }
+    TAG_LOGI(AAFwkTag::INTENT, "parsed execute mode: %{public}d, abilityName: %{public}s",
+        executeMode, abilityName.c_str());
+
+    auto param = std::make_shared<InsightIntentExecuteParam>();
+    param->bundleName_ = bundleName;
+    param->moduleName_ = matchedInfo.moduleName;
+    param->abilityName_ = abilityName;
+    param->insightIntentName_ = intentName;
+    param->executeMode_ = executeMode;
+    param->userId_ = AbilityRuntime::UserController::GetInstance().GetCallerUserId();
+    param->insightIntentParam_ = std::make_shared<WantParams>(wantParam);
+    ApplyInsightIntentOptionsFromWantParam(wantParam, param);
+    TAG_LOGI(AAFwkTag::INTENT, "after apply options, executeMode: %{public}d, userId: %{public}d",
+        param->executeMode_, param->userId_);
+
+    bool openLinkExecuteFlag =
+        matchedInfo.decoratorType == AbilityRuntime::INSIGHT_INTENTS_DECORATOR_TYPE_LINK;
+    bool ignoreAbilityName = openLinkExecuteFlag ||
+        (matchedInfo.decoratorType == AbilityRuntime::INSIGHT_INTENTS_DECORATOR_TYPE_PAGE) ||
+        (matchedInfo.decoratorType == AbilityRuntime::INSIGHT_INTENTS_DECORATOR_TYPE_FUNCTION);
+
+    auto callerBundleName = InsightIntentGetcallerBundleName();
+    AbilityRuntime::ExecuteIntentCommonOptions options(ignoreAbilityName, matchedInfo, key);
+    TAG_LOGI(AAFwkTag::INTENT, "dispatch to ExecuteIntentCommon, ignoreAbilityName: %{public}d, "
+        "openLink: %{public}d, callerBundle: %{public}s",
+        ignoreAbilityName, openLinkExecuteFlag, callerBundleName.c_str());
+    return ExecuteIntentCommon(callerToken, param, callerBundleName, options);
 }
 
 int32_t AbilityManagerService::ExecuteIntentCommon(const sptr<IRemoteObject> &callerToken,

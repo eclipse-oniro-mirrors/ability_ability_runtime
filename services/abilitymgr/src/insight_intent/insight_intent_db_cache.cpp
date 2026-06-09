@@ -15,6 +15,8 @@
 
 #include "insight_intent_db_cache.h"
 
+#include <algorithm>
+
 namespace OHOS {
 namespace AbilityRuntime {
 InsightIntentDbCache::InsightIntentDbCache()
@@ -33,11 +35,16 @@ int32_t InsightIntentDbCache::InitInsightIntentCache(const int32_t userId)
     configInfos.clear();
     intentGenericInfos_.clear();
     bundleVersionMap_.clear();
+    {
+        std::lock_guard<std::mutex> fLock(functionVersionMutex_);
+        functionVersionMap_.clear();
+    }
     if (DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadInsightIntentInfos(
         userId, bundleVersionMap_, totalInfos, configInfos) != ERR_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "Load All IntentData failed");
         return ERR_INVALID_VALUE;
     }
+    LoadFunctionVersionMap(userId);
     userId_ = userId;
 
     if (totalInfos.size() == 0) {
@@ -202,6 +209,11 @@ void InsightIntentDbCache::GetInsightIntentGenericInfoByName(const std::string &
         std::lock_guard<std::mutex> lock(genericInfosMutex_);
         if (intentGenericInfos_.find(bundleName) != intentGenericInfos_.end()) {
             genericInfos = intentGenericInfos_[bundleName];
+            std::sort(genericInfos.begin(), genericInfos.end(),
+                [](const auto &a, const auto &b) {
+                    return a.moduleName == b.moduleName ? a.intentName < b.intentName
+                                                        : a.moduleName < b.moduleName;
+                });
         }
         return;
     }
@@ -217,6 +229,11 @@ void InsightIntentDbCache::GetInsightIntentGenericInfoByName(const std::string &
         ExtractInsightIntentInfo info = totalInfos.at(i);
         genericInfos.push_back(info.genericInfo);
     }
+    std::sort(genericInfos.begin(), genericInfos.end(),
+        [](const auto &a, const auto &b) {
+            return a.moduleName == b.moduleName ? a.intentName < b.intentName
+                                                : a.moduleName < b.moduleName;
+        });
 }
 
 void InsightIntentDbCache::GetInsightIntentGenericInfo(const std::string &bundleName, const std::string &moduleName,
@@ -308,6 +325,85 @@ void InsightIntentDbCache::GetConfigInsightIntentInfo(const std::string &bundleN
 void InsightIntentDbCache::BackupRdb()
 {
     DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->BackupRdb();
+}
+
+namespace {
+constexpr const char* FUNCTION_VERSION_PREFIX = "function_version";
+
+std::string BuildFunctionVersionKey(const int32_t userId, const std::string &bundleName)
+{
+    return std::to_string(userId) + "/" + FUNCTION_VERSION_PREFIX + "/" + bundleName;
+}
+
+std::string ExtractBundleFromFunctionKey(const std::string &key)
+{
+    auto first = key.find('/');
+    if (first == std::string::npos) {
+        return "";
+    }
+    auto second = key.find('/', first + 1);
+    if (second == std::string::npos) {
+        return "";
+    }
+    return key.substr(second + 1);
+}
+} // namespace
+
+void InsightIntentDbCache::LoadFunctionVersionMap(const int32_t userId)
+{
+    std::string prefix = std::to_string(userId) + "/" + FUNCTION_VERSION_PREFIX + "/";
+    std::unordered_map<std::string, std::string> allData;
+    if (!DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance()->QueryDataBeginWithKey(prefix, allData)) {
+        TAG_LOGW(AAFwkTag::INTENT, "load function version map failed");
+        return;
+    }
+    std::lock_guard<std::mutex> lock(functionVersionMutex_);
+    for (const auto &[key, value] : allData) {
+        std::string bundleName = ExtractBundleFromFunctionKey(key);
+        if (!bundleName.empty()) {
+            functionVersionMap_[bundleName] = value;
+        }
+    }
+}
+
+bool InsightIntentDbCache::HasFunctionByName(uint32_t versionCode, const std::string &bundleName,
+    const int32_t userId)
+{
+    std::string versionStr = std::to_string(versionCode);
+    std::lock_guard<std::mutex> lock(functionVersionMutex_);
+    auto it = functionVersionMap_.find(bundleName);
+    if (it != functionVersionMap_.end()) {
+        return it->second == versionStr;
+    }
+    std::string key = BuildFunctionVersionKey(userId, bundleName);
+    std::string value;
+    if (!DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance()->QueryData(key, value)) {
+        return false;
+    }
+    functionVersionMap_[bundleName] = value;
+    return value == versionStr;
+}
+
+void InsightIntentDbCache::SaveFunctionVersion(const std::string &bundleName, uint32_t versionCode,
+    const int32_t userId)
+{
+    std::string versionStr = std::to_string(versionCode);
+    {
+        std::lock_guard<std::mutex> lock(functionVersionMutex_);
+        functionVersionMap_[bundleName] = versionStr;
+    }
+    std::string key = BuildFunctionVersionKey(userId, bundleName);
+    DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance()->InsertData(key, versionStr);
+}
+
+void InsightIntentDbCache::DeleteFunctionVersion(const std::string &bundleName, const int32_t userId)
+{
+    {
+        std::lock_guard<std::mutex> lock(functionVersionMutex_);
+        functionVersionMap_.erase(bundleName);
+    }
+    std::string key = BuildFunctionVersionKey(userId, bundleName);
+    DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance()->DeleteData(key);
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

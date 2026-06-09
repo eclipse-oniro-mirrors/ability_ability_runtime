@@ -19,6 +19,7 @@
 #include <mutex>
 #include <set>
 #include <singleton.h>
+#include <unordered_map>
 #include <vector>
 #include "insight_intent_rdb_storage_mgr.h"
 
@@ -54,14 +55,20 @@ public:
         const std::string &moduleName, const int32_t userId);
     int32_t DeleteInsightIntentByUserId(const int32_t userId);
     bool HasInsightIntentByName(uint32_t versionCode, const std::string &bundleName, const int32_t userId);
+    bool HasFunctionByName(uint32_t versionCode, const std::string &bundleName, const int32_t userId);
+    void SaveFunctionVersion(const std::string &bundleName, uint32_t versionCode, const int32_t userId);
+    void DeleteFunctionVersion(const std::string &bundleName, const int32_t userId);
     bool HasBundleCache(const std::string &bundleName);
     bool IsCacheInitialized(int32_t userId);
     void BackupRdb();
 private:
+    void LoadFunctionVersionMap(const int32_t userId);
     int32_t userId_ = -1;
     mutable std::mutex genericInfosMutex_;
     std::map<std::string, std::vector<ExtractInsightIntentGenericInfo>> intentGenericInfos_;
     std::map<std::string, std::string> bundleVersionMap_;
+    mutable std::mutex functionVersionMutex_;
+    std::unordered_map<std::string, std::string> functionVersionMap_;
 };
 }  // namespace AbilityRuntime
 }  // namespace OHOS

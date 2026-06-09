@@ -60,6 +60,7 @@ config("abilityms_config") {
     "${ability_runtime_innerkits_path}/deps_wrapper/include",
     "${ability_runtime_innerkits_path}/foreground_app_obs_manager/include",
     "${ability_runtime_services_path}/common/include",
+    "${ability_runtime_services_path}/common/include/user_controller",
     "//prebuilts/jdk/jdk8/linux-x86/include",
     "//prebuilts/jdk/jdk8/linux-x86/include/linux",
     "${ability_runtime_path}/interfaces/kits/native/ability/native",
@@ -73,6 +74,7 @@ config("abilityms_config") {
     "${ability_runtime_utils_path}/global/constant",
     "${ability_runtime_path}/utils/global/time/include",
     "${ability_runtime_utils_path}/server/constant",
+    "${cli_tool_framework_path}/interfaces/cli_tool/include",
   ]
 
   defines = []
@@ -138,6 +140,7 @@ ohos_shared_library("abilityms") {
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_service_extension_ability/connection",
     "${ability_runtime_path}/utils/global/time/include",
     "${ability_runtime_services_path}/abilitymgr/include/mission",
+    "${ability_runtime_services_path}/common/include/user_controller",
     "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
   ]
   deps = [
@@ -159,6 +162,7 @@ ohos_shared_library("abilityms") {
     "${ability_runtime_native_path}/ability/native:ability_observer_ipc",
     "${ability_runtime_native_path}/ability/native:auto_startup_callback",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
+    "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
     "${ability_runtime_path}/utils/server/startup:startup_util",
     "${ability_runtime_path}/utils/global/common:runtime_utils",
@@ -339,6 +343,7 @@ ohos_static_library("abilityms_static") {
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_service_extension_ability/connection",
     "${ability_runtime_path}/utils/global/time/include",
     "${ability_runtime_services_path}/abilitymgr/include/mission",
+    "${ability_runtime_services_path}/common/include/user_controller",
     "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
   ]
   deps = [

@@ -54,11 +54,13 @@ ohos_unittest("kiosk_manager_test") {
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_rdb_storage_mgr.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_db_cache.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/extract_insight_intent_profile.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/function_call_convert.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_event_mgr.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/ability_connect_callback_stub.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/auto_startup_info.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/exit_reason.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_execute_manager.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_matcher.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/modal_system_dialog/modal_system_dialog_ui_extension.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/ability_event_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/modal_system_dialog_util.cpp",
@@ -87,9 +89,11 @@ ohos_unittest("kiosk_manager_test") {
     "${ability_runtime_native_path}/ability/native:auto_startup_callback",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
+    "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",
     "${ability_runtime_services_path}/abilitymgr:modular_object",
     "${ability_runtime_services_path}/common:app_util",
     "${ability_runtime_services_path}/common:perm_verification",
+    "${ability_runtime_services_path}/common:user_controller",
   ]
 
   external_deps = [
@@ -115,6 +119,7 @@ ohos_unittest("kiosk_manager_test") {
     "hisysevent:libhisysevent",
     "init:libbegetutil",
     "ipc:ipc_core",
+    "json:nlohmann_json_static",
     "kv_store:distributeddata_inner",
     "relational_store:native_dataability",
     "safwk:api_cache_manager",
