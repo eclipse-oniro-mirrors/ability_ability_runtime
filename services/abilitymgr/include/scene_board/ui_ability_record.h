@@ -147,9 +147,20 @@ public:
         return launchWant_;
     }
 
+    inline void SetByOeExt(bool isByOeExt)
+    {
+        isByOeExt_ = isByOeExt;
+    }
+
+    inline bool IsByOeExt() const
+    {
+        return isByOeExt_;
+    }
+
 private:
     bool exitReasonLoaded_ = false;
     bool hookOff_ = false;
+    bool isByOeExt_ = false;
     int32_t startSelfRequestId_ = 0;
     std::atomic_bool shouldUpdateWant_ = false;
     std::atomic_bool isKillPrecedeStart_ = false;

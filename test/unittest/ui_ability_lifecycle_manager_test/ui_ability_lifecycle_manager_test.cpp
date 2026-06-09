@@ -1299,6 +1299,21 @@ HWTEST_F(UIAbilityLifecycleManagerTest, CloseUIAbility_008, TestSize.Level1)
 }
 
 /**
+ * @tc.name: UIAbilityLifecycleManager_CloseUIAbility_ByOeExt_0100
+ * @tc.desc: CloseUIAbility with isByOeExt flag set - session should not be cleared
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CloseUIAbility_ByOeExt_0100, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
+    auto abilityRecord = InitAbilityRecord();
+    abilityRecord->currentState_ = AbilityState::BACKGROUND;
+    abilityRecord->SetByOeExt(true);
+    Want want;
+    EXPECT_EQ(uiAbilityLifecycleManager->CloseUIAbility(abilityRecord, -1, &want, false, false), ERR_OK);
+}
+
+/**
  * @tc.name: UIAbilityLifecycleManager_DelayCompleteTerminate_0100
  * @tc.desc: DelayCompleteTerminate
  * @tc.type: FUNC
