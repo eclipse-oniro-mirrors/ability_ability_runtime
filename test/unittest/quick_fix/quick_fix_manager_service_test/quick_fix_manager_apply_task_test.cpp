@@ -147,7 +147,7 @@ HWTEST_F(QuickFixManagerApplyTaskTest, Run_0100, TestSize.Level1)
         quickFixMs_->eventHandler_, quickFixMs_);
     ASSERT_NE(applyTask, nullptr);
 
-    EXPECT_CALL(*bundleQfMgr_, DeployQuickFix(_, _, _, _, _)).Times(1);
+    EXPECT_CALL(*bundleQfMgr_, DeployQuickFix(_, _, _, _, _, _)).Times(1);
     std::vector<std::string> quickFixFiles;
     applyTask->Run(quickFixFiles);
     WaitUntilTaskDone(quickFixMs_->eventHandler_);

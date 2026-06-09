@@ -35,6 +35,7 @@
 #include "hitrace_meter.h"
 #include "in_process_call_wrapper.h"
 #include "ipc_skeleton.h"
+#include "parameters.h"
 #include "perf_profile.h"
 #include "permission_constants.h"
 #include "permission_verification.h"
@@ -93,6 +94,7 @@ constexpr const char* BS_PROCESS_NAME = "resource_schedule_service";
 constexpr int32_t USER_UID = 2000;
 constexpr const char* HIVIEW_PROCESS_NAME = "hiview";
 constexpr const char* DEBUG_FROM = "ohos.param.debugFrom";
+constexpr const char* DEVELOPER_MODE_STATE = "const.security.developermode.state";
 }  // namespace
 
 REGISTER_SYSTEM_ABILITY_BY_ID(AppMgrService, APP_MGR_SERVICE_ID, true);
@@ -453,7 +455,10 @@ sptr<IAmsMgr> AppMgrService::GetAmsMgr()
 
 int32_t AppMgrService::ClearUpApplicationData(const std::string &bundleName, int32_t appCloneIndex, int32_t userId)
 {
-    if (!AAFwk::PermissionVerification::GetInstance()->JudgeCallerIsAllowedToUseSystemAPI()) {
+    bool isDeveloperMode = OHOS::system::GetBoolParameter(DEVELOPER_MODE_STATE, false);
+    bool isSACaller = AAFwk::PermissionVerification::GetInstance()->JudgeCallerIsAllowedToUseSystemAPI();
+    if (!isSACaller && (!isDeveloperMode || !AAFwk::PermissionVerification::GetInstance()->VerifyCallingPermission(
+        AAFwk::PermissionConstants::PERMISSION_ALLOW_USE_BM))) {
         TAG_LOGE(AAFwkTag::APPMGR, "caller is not SA");
         return AAFwk::ERR_NOT_SYSTEM_APP;
     }
@@ -471,17 +476,29 @@ int32_t AppMgrService::ClearUpApplicationData(const std::string &bundleName, int
         return ERR_INVALID_OPERATION;
     }
     int32_t callingUid = IPCSkeleton::GetCallingUid();
+    bool isCheckDebugApp = false;
     if ((callingUid != 0 && callingUid != USER_UID) || userId < 0) {
         auto isCallingPerm = AAFwk::PermissionVerification::GetInstance()->VerifyCallingPermission(
             AAFwk::PermissionConstants::PERMISSION_CLEAN_APPLICATION_DATA);
-        if (!isCallingPerm) {
-            TAG_LOGE(AAFwkTag::APPMGR, "verification failed");
-            return AAFwk::CHECK_PERMISSION_FAILED;
+        if (!isSACaller || !isCallingPerm) {
+            if (!isDeveloperMode ||
+                !AAFwk::PermissionVerification::GetInstance()->VerifyCallingPermission(
+                    AAFwk::PermissionConstants::PERMISSION_ALLOW_USE_BM)) {
+                TAG_LOGE(AAFwkTag::APPMGR, "verification failed");
+                return AAFwk::CHECK_PERMISSION_FAILED;
+            }
+            isCheckDebugApp = true;
         }
     }
     if (appCloneIndex < 0 || appCloneIndex > AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
         TAG_LOGE(AAFwkTag::APPMGR, "appCloneIndex invalid");
         return AAFwk::ERR_APP_CLONE_INDEX_INVALID;
+    }
+    if (isCheckDebugApp) {
+        auto ret = appMgrServiceInner_->CheckAppProvisionType(bundleName, callingUid, appCloneIndex, userId);
+        if (ret != ERR_OK) {
+            return ret;
+        }
     }
     pid_t pid = IPCSkeleton::GetCallingPid();
     return appMgrServiceInner_->ClearUpApplicationData(bundleName, callingUid, pid, appCloneIndex, userId);

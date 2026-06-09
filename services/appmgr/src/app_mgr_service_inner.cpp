@@ -3721,6 +3721,33 @@ int32_t AppMgrServiceInner::KillApplicationByUserIdLocked(
     return WaitProcessesExitAndKill(pids, startTime, "KillApplicationByUserId");
 }
 
+int32_t AppMgrServiceInner::CheckAppProvisionType(
+    const std::string &bundleName, int32_t callerUid, int32_t appCloneIndex, int32_t userId)
+{
+    int32_t newUserId = userId;
+    if (userId == DEFAULT_INVAL_VALUE) {
+        newUserId = GetUserIdByUid(callerUid);
+        if (newUserId == U0_USER_ID || newUserId == U1_USER_ID) {
+            newUserId = UserController::GetInstance().GetForegroundUserId(DEFAULT_DISPLAY_ID);
+        }
+    }
+    auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
+    if (bundleMgrHelper == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "bundleMgrHelper null");
+        return ERR_INVALID_OPERATION;
+    }
+    ApplicationInfo appInfo;
+    if (!IN_PROCESS_CALL(
+            bundleMgrHelper->GetApplicationInfoWithAppIndex(bundleName, appCloneIndex, newUserId, appInfo))) {
+        TAG_LOGE(AAFwkTag::APPMGR, "delete user data fail");
+        return AAFwk::ERR_APP_CLONE_INDEX_INVALID;
+    }
+    if (appInfo.appProvisionType != AppExecFwk::Constants::APP_PROVISION_TYPE_DEBUG) {
+        return AAFwk::CHECK_PERMISSION_FAILED;
+    }
+    return ERR_OK;
+}
+
 int32_t AppMgrServiceInner::ClearUpApplicationData(const std::string &bundleName,
     int32_t callerUid, pid_t callerPid, int32_t appCloneIndex, int32_t userId)
 {
