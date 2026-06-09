@@ -270,29 +270,24 @@ constexpr const char* ERROR_MSG_SET_PROCESS_CACHE_FAILED =
 constexpr const char* ERROR_MSG_UI_ABILITY_OBJ_NULL =
     "Internal error. The UIAbility object is not available. Verify the ability is active and try again.";
 constexpr const char* ERROR_MSG_CONNECTION_NOT_FOUND =
-    "Internal error. The service connection does not exist. Check the connection ID and try again.";
+    "Internal error. The service connection does not exist. Check the connection ID.";
 constexpr const char* ERROR_MSG_SEND_DATA_FAILED =
-    "Internal error. Failed to send data to the UIExtension. Try again later.";
+    "Internal error. Failed to send data to the extension.";
 constexpr const char* ERROR_MSG_LOAD_CONTENT_FAILED =
-    "Internal error. Failed to load the UI content. Check the content path and local storage object and try again.";
+    "Internal error. Failed to load the UI content.";
 constexpr const char* ERROR_MSG_SET_WINDOW_BACKGROUND_COLOR_FAILED =
-    "Internal error. Failed to set the window background color. Try again later.";
+    "Internal error. Failed to set the window background color.";
 constexpr const char* ERROR_MSG_SET_WINDOW_PRIVACY_MODE_FAILED =
-    "Internal error. Failed to set the window privacy mode. Try again later.";
+    "Internal error. Failed to set the window privacy mode.";
 constexpr const char* ERROR_MSG_CREATE_MODAL_UI_EXTENSION_FAILED =
-    "Internal error. Failed to create the modal UI extension. "
-    "Ensure the UIAbility window and UI content are ready before calling startAbilityByType.";
+    "Internal error. Failed to create the modal UI extension. ";
 constexpr const char* ERROR_MSG_TRANSFER_ABILITY_RESULT_FAILED =
-    "Internal error. Failed to transfer the ability result. Ensure the session is active and try again.";
+    "Internal error. Failed to transfer the ability result. ";
 constexpr const char* ERROR_MSG_INVALID_SESSION =
     "Internal error. The UIExtension content session is invalid or has been destroyed. "
     "Ensure the session is active before calling this method.";
-constexpr const char* ERROR_MSG_PROXY_NOT_FOUND =
-    "Internal error. The UIService proxy is invalid. "
-    "The connection may have been disconnected. Verify the connection status before sending data.";
-constexpr const char* ERROR_MSG_OBSERVER_NOT_REGISTERED =
-    "Internal error. The ability state observer has not been registered. "
-    "Call 'on' to register the observer before calling 'off'.";
+constexpr const char* ERROR_MSG_UI_SERVICE_PROXY_NOT_FOUND =
+    "Internal error. The UIService is not available.";
 
 // follow ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST of appexecfwk_errors.h in bundle_framework
 constexpr int32_t ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST = 8521220;
@@ -612,8 +607,7 @@ static std::unordered_map<AbilityInnerErrorMsg, const char*> INNER_ERROR_MSG_BY_
     {AbilityInnerErrorMsg::CREATE_MODAL_UI_EXTENSION_FAILED, ERROR_MSG_CREATE_MODAL_UI_EXTENSION_FAILED},
     {AbilityInnerErrorMsg::TRANSFER_ABILITY_RESULT_FAILED, ERROR_MSG_TRANSFER_ABILITY_RESULT_FAILED},
     {AbilityInnerErrorMsg::INVALID_SESSION, ERROR_MSG_INVALID_SESSION},
-    {AbilityInnerErrorMsg::PROXY_NOT_FOUND, ERROR_MSG_PROXY_NOT_FOUND},
-    {AbilityInnerErrorMsg::OBSERVER_NOT_REGISTERED, ERROR_MSG_OBSERVER_NOT_REGISTERED},
+    {AbilityInnerErrorMsg::UI_SERVICE_PROXY_NOT_FOUND, ERROR_MSG_UI_SERVICE_PROXY_NOT_FOUND},
 };
 }
 

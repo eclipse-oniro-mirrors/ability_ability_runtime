@@ -80,7 +80,7 @@ napi_value JsUIServiceProxy::OnSendData(napi_env env, NapiCallbackInfo& info)
     if (proxy_ == nullptr || hostProxy_ == nullptr) {
         TAG_LOGE(AAFwkTag::UISERVC_EXT, "null proxy_ or hostProxy_");
         ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-            GetInnerErrorMsg(AbilityInnerErrorMsg::PROXY_NOT_FOUND));
+            GetInnerErrorMsg(AbilityInnerErrorMsg::UI_SERVICE_PROXY_NOT_FOUND));
         return CreateJsUndefined(env);
     }
     if (info.argc < ARGC_ONE) {

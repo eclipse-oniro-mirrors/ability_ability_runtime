@@ -907,8 +907,7 @@ napi_value JsUIExtensionContentSession::OnSetWindowPrivacyMode(napi_env env, Nap
         delete task;
     };
     if (napi_status::napi_ok != napi_send_event(env, asyncTask, napi_eprio_vip)) {
-        napiAsyncTask->Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-            GetInnerErrorMsg(AbilityInnerErrorMsg::SET_WINDOW_PRIVACY_MODE_FAILED)));
+        napiAsyncTask->Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
     } else {
         napiAsyncTask.release();
     }

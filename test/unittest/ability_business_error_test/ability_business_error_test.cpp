@@ -229,7 +229,7 @@ HWTEST_F(AbilityBusinessErrorTest, GetInnerErrorMsg_NewEnums_0100, TestSize.Leve
     EXPECT_NE(msg.find("session"), std::string::npos);
 
     // UIService scene
-    msg = GetInnerErrorMsg(AbilityInnerErrorMsg::PROXY_NOT_FOUND);
+    msg = GetInnerErrorMsg(AbilityInnerErrorMsg::UI_SERVICE_PROXY_NOT_FOUND);
     EXPECT_NE(msg.find("proxy"), std::string::npos);
 
     // AbilityManager scene

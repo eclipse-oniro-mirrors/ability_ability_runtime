@@ -364,8 +364,7 @@ enum class AbilityInnerErrorMsg {
     CREATE_MODAL_UI_EXTENSION_FAILED,
     TRANSFER_ABILITY_RESULT_FAILED,
     INVALID_SESSION,
-    PROXY_NOT_FOUND,
-    OBSERVER_NOT_REGISTERED,
+    UI_SERVICE_PROXY_NOT_FOUND,
 };
 
 enum class AgentManagerErrorOperation {

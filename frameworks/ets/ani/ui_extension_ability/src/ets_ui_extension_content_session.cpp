@@ -938,8 +938,7 @@ void EtsUIExtensionContentSession::SetWindowPrivacyMode(
     ani_object errorObj = nullptr;
     if (env == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "null env");
-        errorObj = EtsErrorUtil::CreateError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-            GetInnerErrorMsg(AbilityInnerErrorMsg::SET_WINDOW_PRIVACY_MODE_FAILED));
+        errorObj = EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER);
         AppExecFwk::AsyncCallback(env, callbackObj, errorObj, nullptr);
         return;
     }
@@ -954,16 +953,14 @@ void EtsUIExtensionContentSession::SetWindowPrivacyMode(
     ani_status status = ANI_ERROR;
     if ((status = env->GlobalReference_Create(callbackObj, &callbackRef)) != ANI_OK || callbackRef == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "status: %{public}d", status);
-        errorObj = EtsErrorUtil::CreateError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-            GetInnerErrorMsg(AbilityInnerErrorMsg::SET_WINDOW_PRIVACY_MODE_FAILED));
+        errorObj = EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER);
         AppExecFwk::AsyncCallback(env, callbackObj, errorObj, nullptr);
         return;
     }
     ani_vm *etsVm = nullptr;
     if ((status = env->GetVM(&etsVm)) != ANI_OK || etsVm == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "status: %{public}d", status);
-        errorObj = EtsErrorUtil::CreateError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-            GetInnerErrorMsg(AbilityInnerErrorMsg::SET_WINDOW_PRIVACY_MODE_FAILED));
+        errorObj = EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER);
         AppExecFwk::AsyncCallback(env, callbackObj, errorObj, nullptr);
         return;
     }
@@ -1008,8 +1005,7 @@ void EtsUIExtensionContentSession::SetWindowPrivacyModeInner(ani_env *env, ani_b
     };
     if (AniTask::AniSendEvent(task) != ANI_OK) {
         TAG_LOGE(AAFwkTag::UI_EXT, "Failed to sendEvent");
-        errorObj = EtsErrorUtil::CreateError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-            GetInnerErrorMsg(AbilityInnerErrorMsg::SET_WINDOW_PRIVACY_MODE_FAILED));
+        errorObj = EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER);
         AppExecFwk::AsyncCallback(env, callbackObj, errorObj, nullptr);
         env->GlobalReference_Delete(callbackRef);
     }
