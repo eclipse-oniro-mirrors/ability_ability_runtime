@@ -2400,6 +2400,10 @@ int UIAbilityLifecycleManager::CloseUIAbility(const UIAbilityRecordPtr &abilityR
         return ERR_OK;
     }
 
+    if (abilityRecord->IsByOeExt()) {
+        isClearSession = false;
+    }
+
     // If this is a host ability, terminate all associated plugin abilities first
     auto pluginAbilities = abilityRecord->GetPluginAbilities();
     abilityRecord->ClearPluginAbilities();

@@ -493,5 +493,24 @@ HWTEST_F(UIAbilityRecordTest, SetGameSAPreLaunch_0100, TestSize.Level1)
 
     EXPECT_TRUE(abilityRecord->IsGameSAPreLaunch());
 }
+
+/**
+ * @tc.name: CreateAbilityRecord_ByOeExt_0100
+ * @tc.desc: Test CreateAbilityRecord sets isByOeExt from AbilityRequest
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityRecordTest, CreateAbilityRecord_ByOeExt_0100, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    abilityRequest.isStartByOEExt = true;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    EXPECT_TRUE(abilityRecord->IsByOeExt());
+
+    abilityRequest.isStartByOEExt = false;
+    abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    EXPECT_FALSE(abilityRecord->IsByOeExt());
+}
 }  // namespace AAFwk
 }  // namespace OHOS
