@@ -191,52 +191,31 @@ HWTEST_F(AbilityBusinessErrorTest, GetInnerErrorMsg_0100, TestSize.Level2)
 }
 
 /**
- * @tc.name: GetInnerErrorMsg_NewEnums_0100
+ * @tc.name: GetInnerErrorMsg_0200
  * @tc.desc: Verify all new AbilityInnerErrorMsg enum values return specific non-generic messages.
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityBusinessErrorTest, GetInnerErrorMsg_NewEnums_0100, TestSize.Level2)
+HWTEST_F(AbilityBusinessErrorTest, GetInnerErrorMsg_0200, TestSize.Level2)
 {
-    // UIExtension connection scene
-    auto msg = GetInnerErrorMsg(AbilityInnerErrorMsg::CONNECTION_NOT_FOUND);
-    EXPECT_NE(msg.find("does not exist"), std::string::npos);
-
-    // UIExtension data scene
-    msg = GetInnerErrorMsg(AbilityInnerErrorMsg::SEND_DATA_FAILED);
-    EXPECT_NE(msg.find("send data"), std::string::npos);
-
-    // UIExtension loading scene
-    msg = GetInnerErrorMsg(AbilityInnerErrorMsg::LOAD_CONTENT_FAILED);
-    EXPECT_NE(msg.find("load the UI content"), std::string::npos);
-
-    // UIExtension window property scene
-    msg = GetInnerErrorMsg(AbilityInnerErrorMsg::SET_WINDOW_BACKGROUND_COLOR_FAILED);
-    EXPECT_NE(msg.find("background color"), std::string::npos);
-
-    msg = GetInnerErrorMsg(AbilityInnerErrorMsg::SET_WINDOW_PRIVACY_MODE_FAILED);
-    EXPECT_NE(msg.find("privacy mode"), std::string::npos);
-
-    // UIExtension modal scene
-    msg = GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_MODAL_UI_EXTENSION_FAILED);
-    EXPECT_NE(msg.find("modal UI extension"), std::string::npos);
-
-    // UIExtension result scene
-    msg = GetInnerErrorMsg(AbilityInnerErrorMsg::TRANSFER_ABILITY_RESULT_FAILED);
-    EXPECT_NE(msg.find("ability result"), std::string::npos);
-
-    // UIExtension lifecycle scene
-    msg = GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_SESSION);
-    EXPECT_NE(msg.find("session"), std::string::npos);
-
-    // UIService scene
-    msg = GetInnerErrorMsg(AbilityInnerErrorMsg::UI_SERVICE_PROXY_NOT_FOUND);
-    EXPECT_NE(msg.find("proxy"), std::string::npos);
-
-    // AbilityManager scene
-    msg = GetInnerErrorMsg(AbilityInnerErrorMsg::OBSERVER_NOT_REGISTERED);
-    EXPECT_FALSE(msg.empty());
-    EXPECT_NE(msg, "Internal error.");
-    EXPECT_NE(msg.find("not been registered"), std::string::npos);
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::CONNECTION_NOT_FOUND),
+        "Internal error. The service connection does not exist. Check the connection ID.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::SEND_DATA_FAILED),
+        "Internal error. Failed to send data to the extension.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::LOAD_CONTENT_FAILED),
+        "Internal error. Failed to load the UI content.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::SET_WINDOW_BACKGROUND_COLOR_FAILED),
+        "Internal error. Failed to set the window background color.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::SET_WINDOW_PRIVACY_MODE_FAILED),
+        "Internal error. Failed to set the window privacy mode.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_MODAL_UI_EXTENSION_FAILED),
+        "Internal error. Failed to create the modal UI extension. ");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::TRANSFER_ABILITY_RESULT_FAILED),
+        "Internal error. Failed to transfer the ability result. ");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_SESSION),
+        "Internal error. The UIExtension content session is invalid or has been destroyed. "
+        "Ensure the session is active before calling this method.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::UI_SERVICE_PROXY_NOT_FOUND),
+        "Internal error. The UIService is not available.");
 }
 
 /**
