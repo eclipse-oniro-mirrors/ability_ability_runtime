@@ -32,6 +32,8 @@ group("unittest") {
     "exec_result_test:exec_result_test",
     "exec_tool_param_test:exec_tool_param_test",
     "function_info_test:function_info_test",
+    "invoke_function_callback_client_test:invoke_function_callback_client_test",
+    "invoke_function_executor_test:invoke_function_executor_test",
     "io_monitor_test:io_monitor_test",
     "permission_query_util_test:permission_query_util_test",
     "process_manager_test:process_manager_test",

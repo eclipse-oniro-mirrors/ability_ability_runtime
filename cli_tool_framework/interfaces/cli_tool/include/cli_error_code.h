@@ -110,6 +110,16 @@ enum {
      * Result (35700018): KVStore operation error.
      */
     ERR_KVSTORE_ERROR = 35700018,
+
+    /*
+     * Result (35700019): Function execute failed.
+     */
+    ERR_FUNCTION_EXECUTE_FAILED = 35700019,
+
+    /*
+     * Result (35700020): Function execute timeout.
+     */
+    ERR_FUNCTION_EXECUTE_TIMEOUT = 35700020,
 };
 
 } // namespace CliTool

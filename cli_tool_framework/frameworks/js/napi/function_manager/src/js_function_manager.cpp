@@ -22,14 +22,61 @@
 #include "cli_tool_mgr_client.h"
 #include "function_info.h"
 #include "hilog_tag_wrapper.h"
+#include "invoke_function_executor.h"
 #include "js_function_manager_utils.h"
 #include "js_error_utils.h"
 #include "napi_common_util.h"
+#include "napi_common_want.h"
 
 using namespace OHOS::AbilityRuntime;
 
 namespace OHOS {
 namespace CliTool {
+
+namespace {
+constexpr int32_t INDEX_ZERO = 0;
+constexpr int32_t INDEX_ONE = 1;
+constexpr int32_t INDEX_TWO = 2;
+constexpr int32_t INDEX_THREE = 3;
+
+struct InvokeFunctionTsfnContext {
+    napi_deferred deferred = nullptr;
+    napi_threadsafe_function tsfn = nullptr;
+};
+
+void InvokeFunctionFinalize(napi_env env, void *finalizeData, void *finalizeHint)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "InvokeFunctionTsfn finalize");
+    if (finalizeData == nullptr) {
+        return;
+    }
+    auto ctx = static_cast<std::shared_ptr<InvokeFunctionTsfnContext> *>(finalizeData);
+    delete ctx;
+}
+
+void InvokeFunctionCallJs(napi_env env, napi_value jsCb, void *context, void *data)
+{
+    if (env == nullptr || context == nullptr || data == nullptr) {
+        return;
+    }
+    auto *ctx = static_cast<InvokeFunctionTsfnContext *>(context);
+    // The executor delivers a pure-C++ InvokeFunctionResult; copy it onto the heap
+    // here as the tsfn payload and own its lifetime in this callback.
+    auto *result = static_cast<InvokeFunctionResult *>(data);
+    HandleScope handleScope(env);
+
+    if (result->success) {
+        napi_value jsResult = CreateJsInvokeResult(env, result->resultCode,
+            result->result, result->message);
+        napi_resolve_deferred(env, ctx->deferred, jsResult);
+    } else {
+        napi_value jsError = CreateCliJsErrorByNativeErr(env, result->errorCode);
+        napi_reject_deferred(env, ctx->deferred, jsError);
+    }
+    napi_release_threadsafe_function(ctx->tsfn, napi_tsfn_release);
+    delete result;
+}
+} // namespace
 
 void JSFunctionManager::Finalizer(napi_env env, void *data, void *hint)
 {
@@ -40,6 +87,11 @@ void JSFunctionManager::Finalizer(napi_env env, void *data, void *hint)
 napi_value JSFunctionManager::QueryFunctions(napi_env env, napi_callback_info info)
 {
     GET_CB_INFO_AND_CALL(env, info, JSFunctionManager, OnQueryFunctions);
+}
+
+napi_value JSFunctionManager::InvokeFunction(napi_env env, napi_callback_info info)
+{
+    GET_CB_INFO_AND_CALL(env, info, JSFunctionManager, OnInvokeFunction);
 }
 
 napi_value JSFunctionManager::OnQueryFunctions(napi_env env, size_t argc, napi_value *argv)
@@ -80,6 +132,73 @@ napi_value JSFunctionManager::OnQueryFunctions(napi_env env, size_t argc, napi_v
     return handleEscape.Escape(asyncResult);
 }
 
+napi_value JSFunctionManager::OnInvokeFunction(napi_env env, size_t argc, napi_value *argv)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "JSFunctionManager::OnInvokeFunction called");
+    HandleEscape handleEscape(env);
+    if (argc < INDEX_THREE) {
+        ThrowTooFewParametersError(env);
+        return CreateJsUndefined(env);
+    }
+
+    // Parse funcNamespace
+    std::string funcNamespace;
+    if (!AppExecFwk::UnwrapStringFromJS2(env, argv[INDEX_ZERO], funcNamespace) || funcNamespace.empty()) {
+        ThrowInvalidParamError(env, "funcNamespace is required");
+        return CreateJsUndefined(env);
+    }
+
+    // Parse function name
+    std::string functionName;
+    if (!AppExecFwk::UnwrapStringFromJS2(env, argv[INDEX_ONE], functionName) || functionName.empty()) {
+        ThrowInvalidParamError(env, "name is required");
+        return CreateJsUndefined(env);
+    }
+
+    // Parse args → WantParams
+    AAFwk::WantParams wantParams;
+    if (!AppExecFwk::UnwrapWantParams(env, argv[INDEX_TWO], wantParams)) {
+        ThrowInvalidParamError(env, "args is required");
+        return CreateJsUndefined(env);
+    }
+
+    // Create promise
+    napi_value promise = nullptr;
+    napi_deferred deferred = nullptr;
+    napi_create_promise(env, &deferred, &promise);
+
+    // Create threadsafe function context
+    auto tsfnContext = std::make_shared<InvokeFunctionTsfnContext>();
+    tsfnContext->deferred = deferred;
+
+    // Create threadsafe function
+    napi_value workName = nullptr;
+    napi_create_string_utf8(env, "InvokeFunctionTsfn", NAPI_AUTO_LENGTH, &workName);
+    auto finalizeData = std::make_unique<std::shared_ptr<InvokeFunctionTsfnContext>>(tsfnContext);
+    napi_status tsfnStatus = napi_create_threadsafe_function(env, nullptr, nullptr, workName, 0, 1,
+        finalizeData.get(), InvokeFunctionFinalize,
+        tsfnContext.get(), InvokeFunctionCallJs, &tsfnContext->tsfn);
+    if (tsfnStatus != napi_ok) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create threadsafe function");
+        napi_value jsError = CreateCliJsErrorByNativeErr(env, ERR_INNER_PARAM_INVALID);
+        napi_reject_deferred(env, deferred, jsError);
+        return handleEscape.Escape(promise);
+    }
+    finalizeData.release();
+
+    // Bridge: forward the pure-C++ outcome from the executor (worker/binder thread)
+    // into the threadsafe-function payload. InvokeFunctionExecutor owns all business
+    // logic and is fully decoupled from napi.
+    InvokeResultCallback bridge = [tsfnContext](const InvokeFunctionResult &outcome) {
+        auto *data = new InvokeFunctionResult(outcome);
+        napi_call_threadsafe_function(tsfnContext->tsfn, data, napi_tsfn_nonblocking);
+    };
+
+    InvokeFunctionExecutor::Create()->Execute(funcNamespace, functionName, wantParams, bridge);
+
+    return handleEscape.Escape(promise);
+}
+
 napi_value JSFunctionManagerInit(napi_env env, napi_value exportObj)
 {
     TAG_LOGD(AAFwkTag::CLI_TOOL, "Init JSFunctionManager");
@@ -94,6 +213,7 @@ napi_value JSFunctionManagerInit(napi_env env, napi_value exportObj)
 
     const char *moduleName = "FunctionManager";
     BindNativeFunction(env, exportObj, "queryFunctions", moduleName, JSFunctionManager::QueryFunctions);
+    BindNativeFunction(env, exportObj, "invokeFunction", moduleName, JSFunctionManager::InvokeFunction);
 
     TAG_LOGD(AAFwkTag::CLI_TOOL, "JSFunctionManagerInit end");
     return CreateJsUndefined(env);
