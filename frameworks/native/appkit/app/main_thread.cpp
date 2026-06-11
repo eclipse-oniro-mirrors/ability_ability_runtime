@@ -3201,6 +3201,13 @@ void MainThread::Init(const std::shared_ptr<EventRunner> &runner)
         watchdog_ = std::make_shared<Watchdog>();
     }
 
+    //since kernel use lazy fpu, but MainThread use fpu frequently
+    //set actv eager fpu enhance performance of MainThread
+    //it is ok if kernel do not support this prctl, the overhead of this prctl is ~ns.
+    #define HM_PR_ACTV_SET_FPU 0x53465055
+    #define ACTV_EAGER_FPU_BIT  0x1
+    (void)prctl(HM_PR_ACTV_SET_FPU, ACTV_EAGER_FPU_BIT, true, 0, 0);
+
     extensionConfigMgr_ = std::make_shared<AbilityRuntime::ExtensionConfigMgr>();
     wptr<MainThread> weak = this;
     auto task = [weak]() {
