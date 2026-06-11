@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "cli_session_info.h"
+#include "function_info.h"
 #include "icli_tool_data.h"
 #include "iremote_object.h"
 #include "tool_info.h"
@@ -23,6 +24,10 @@ public:
     static int32_t retGetToolInfoByName;
     static int32_t retGetAllToolInfos;
     static int32_t retRegisterTool;
+    static int32_t retRegisterFunction;
+    static int32_t retGetFunctionInfo;
+    static int32_t retUnregisterFunction;
+    static int32_t retGetAllFunctions;
     static int32_t retExecTool;
     static int32_t retSubscribeSession;
     static int32_t retUnsubscribeSession;
@@ -37,6 +42,7 @@ public:
     static std::string lastEventId;
     static std::string lastSubscriptionId;
     static std::vector<ToolInfo> toolInfos;
+    static std::vector<FunctionInfo> functionInfos;
     static std::vector<ToolSummary> summaries;
     static CliSessionInfo querySession;
     static std::vector<CommandPermission> commandPermissions;
