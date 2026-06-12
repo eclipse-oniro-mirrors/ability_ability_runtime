@@ -40,6 +40,6 @@ interface ICliToolManager {
     void RegisterFunction([in] FunctionInfo function);
     void GetFunctionInfo([in] String funcNamespace, [in] String functionName, [out] FunctionInfo function);
     void UnregisterFunction([in] String funcNamespace, [in] String functionName);
-    void UnregisterFunctionsByNamespace([in] String funcNamespace);
+    void UnregisterIntentFunctionsByNamespace([in] String funcNamespace);
     void GetAllFunctions([out] FunctionInfo[] functions);
 }

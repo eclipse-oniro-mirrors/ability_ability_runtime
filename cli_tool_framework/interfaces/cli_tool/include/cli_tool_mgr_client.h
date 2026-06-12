@@ -118,11 +118,11 @@ public:
     ErrCode UnregisterFunction(const std::string &funcNamespace, const std::string &functionName);
 
     /**
-     * @brief Batch unregister functions by namespace
+     * @brief Batch unregister intentFunctions by namespace
      * @param funcNamespace Namespace to delete all functions from
      * @return ErrCode ERR_OK on success
      */
-    ErrCode UnregisterFunctionsByNamespace(const std::string &funcNamespace);
+    ErrCode UnregisterIntentFunctionsByNamespace(const std::string &funcNamespace);
 
     /**
      * @brief Get all functions

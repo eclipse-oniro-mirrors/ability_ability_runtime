@@ -118,7 +118,7 @@ int32_t MockCliToolMgrService::UnregisterFunction(const std::string &, const std
     return CliToolMgrClientFlag::retUnregisterFunction;
 }
 
-int32_t MockCliToolMgrService::UnregisterFunctionsByNamespace(const std::string &)
+int32_t MockCliToolMgrService::UnregisterIntentFunctionsByNamespace(const std::string &)
 {
     return CliToolMgrClientFlag::retUnregisterFunction;
 }

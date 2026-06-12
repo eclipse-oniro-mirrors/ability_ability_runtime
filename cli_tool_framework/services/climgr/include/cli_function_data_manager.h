@@ -61,11 +61,11 @@ public:
     int32_t UnregisterFunction(const std::string &funcNamespace, const std::string &functionName);
 
     /**
-     * @brief Batch unregister functions by namespace
+     * @brief Batch unregister intentFunctions by namespace
      * @param funcNamespace Namespace to delete all functions from
-     * @return int32_t Number of functions deleted, or error code (< 0)
+     * @return int32_t ERR_OK on success, error code otherwise
      */
-    int32_t UnregisterFunctionsByNamespace(const std::string &funcNamespace);
+    int32_t UnregisterIntentFunctionsByNamespace(const std::string &funcNamespace);
 
     /**
      * @brief Get all functions from database
@@ -120,20 +120,13 @@ private:
     static std::string GenerateFunctionKey(const std::string &funcNamespace, const std::string &functionName);
 
     /**
-     * @brief Extract namespace from a KVStore entry value
-     * @param entryValue The KVStore entry value (JSON string)
-     * @param funcNamespace Output namespace
-     * @return bool true if successfully extracted
-     */
-    static bool ExtractNamespaceFromValue(const DistributedKv::Value &entryValue, std::string &funcNamespace);
-
-    /**
      * @brief Check if a KVStore entry matches the given namespace
      * @param entryValue The KVStore entry value (JSON string)
      * @param funcNamespace The namespace to match against
      * @return bool true if the entry's namespace matches
      */
-    static bool MatchesNamespace(const DistributedKv::Value &entryValue, const std::string &funcNamespace);
+    static bool MatchesIntentFunctionNamespace(const DistributedKv::Value &entryValue,
+        const std::string &funcNamespace);
 
     DistributedKv::DistributedKvDataManager dataManager_;
     std::shared_ptr<DistributedKv::SingleKvStore> kvStorePtr_;

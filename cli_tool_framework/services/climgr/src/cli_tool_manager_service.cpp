@@ -568,27 +568,27 @@ int32_t CliToolManagerService::UnregisterFunction(const std::string &funcNamespa
     return ERR_OK;
 }
 
-int32_t CliToolManagerService::UnregisterFunctionsByNamespace(const std::string &funcNamespace)
+int32_t CliToolManagerService::UnregisterIntentFunctionsByNamespace(const std::string &funcNamespace)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterFunctionsByNamespace called: %{public}s", funcNamespace.c_str());
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespace called: %{public}s", funcNamespace.c_str());
     InterfaceCallCounter counter(interfaceCalledCount_);
 
     auto callingUid = IPCSkeleton::GetCallingUid();
     if (callingUid != FOUNDATION_UID) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "UnregisterFunctionsByNamespace: Permission denied, callingUid=%{public}d",
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespace: Permission denied, callingUid=%{public}d",
             callingUid);
         return ERR_PERMISSION_DENIED;
     }
 
-    int32_t ret = CliFunctionDataManager::GetInstance().UnregisterFunctionsByNamespace(funcNamespace);
-    if (ret < 0) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "UnregisterFunctionsByNamespace: Failed, ret=%{public}d", ret);
+    int32_t ret = CliFunctionDataManager::GetInstance().UnregisterIntentFunctionsByNamespace(funcNamespace);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespace: Failed, ret=%{public}d", ret);
         return ret;
     }
 
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully unregistered functions from namespace: %{public}s, count: %{public}d",
-        funcNamespace.c_str(), ret);
-    return ret;
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully unregistered intentFunctions from namespace: %{public}s",
+        funcNamespace.c_str());
+    return ERR_OK;
 }
 
 int32_t CliToolManagerService::GetAllFunctions(std::vector<FunctionInfo> &functions)

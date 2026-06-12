@@ -169,7 +169,7 @@ ErrCode CliToolMGRClient::UnregisterFunction(const std::string &funcNamespace, c
     return proxy->UnregisterFunction(funcNamespace, functionName);
 }
 
-ErrCode CliToolMGRClient::UnregisterFunctionsByNamespace(const std::string &funcNamespace)
+ErrCode CliToolMGRClient::UnregisterIntentFunctionsByNamespace(const std::string &funcNamespace)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto proxy = GetCliToolMgrProxy();
@@ -177,7 +177,7 @@ ErrCode CliToolMGRClient::UnregisterFunctionsByNamespace(const std::string &func
         TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
         return GET_CLI_TOOL_MGR_SERVICE_FAILED;
     }
-    return proxy->UnregisterFunctionsByNamespace(funcNamespace);
+    return proxy->UnregisterIntentFunctionsByNamespace(funcNamespace);
 }
 
 ErrCode CliToolMGRClient::GetAllFunctions(std::vector<FunctionInfo> &functions)

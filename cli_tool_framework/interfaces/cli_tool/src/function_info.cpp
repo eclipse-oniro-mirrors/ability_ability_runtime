@@ -41,29 +41,30 @@ bool ParseRequiredStringField(const nlohmann::json &json, const std::string &fie
 
 bool ParseInputSchema(const nlohmann::json &json, std::string &output)
 {
-    if (!json.contains("inputSchema") || !json["inputSchema"].is_object()) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: inputSchema is missing or not an object");
-        return false;
+    if (!json.contains("inputSchema")) {
+        return true;
     }
-    output = json["inputSchema"].dump();
-    return true;
+    const auto &inputSchema = json["inputSchema"];
+    if (inputSchema.is_object()) {
+        output = inputSchema.dump();
+        return true;
+    }
+    TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: inputSchema must be a JSON object");
+    return false;
 }
 
 bool ParseOutputSchema(const nlohmann::json &json, std::string &output)
 {
     if (!json.contains("outputSchema")) {
-        return true;  // optional
+        return true;
     }
     const auto &outputSchema = json["outputSchema"];
     if (outputSchema.is_object()) {
         output = outputSchema.dump();
-    } else if (outputSchema.is_string()) {
-        output = outputSchema.get<std::string>();
-    } else if (!outputSchema.is_null()) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: outputSchema has invalid type");
-        return false;
+        return true;
     }
-    return true;
+    TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: outputSchema must be a JSON object");
+    return false;
 }
 
 bool ParseFunctionType(const nlohmann::json &json, FunctionType &output)
@@ -202,30 +203,24 @@ nlohmann::json FunctionInfo::ParseToJson() const
 
 bool FunctionInfo::Validate(const FunctionInfo &function)
 {
-    // functionName must not be empty
     if (function.functionName.empty()) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: functionName is empty");
         return false;
     }
 
-    // namespace must not be empty
     if (function.funcNamespace.empty()) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: namespace is empty");
         return false;
     }
 
-    // inputSchema is required and must be valid JSON
-    if (function.inputSchema.empty()) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: inputSchema is empty");
-        return false;
-    }
-    nlohmann::json inputSchemaJson = nlohmann::json::parse(function.inputSchema, nullptr, false);
-    if (inputSchemaJson.is_discarded()) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: inputSchema is not valid JSON");
-        return false;
+    if (!function.inputSchema.empty()) {
+        nlohmann::json inputSchemaJson = nlohmann::json::parse(function.inputSchema, nullptr, false);
+        if (inputSchemaJson.is_discarded()) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: inputSchema is not valid JSON");
+            return false;
+        }
     }
 
-    // outputSchema: if not empty, must be valid JSON
     if (!function.outputSchema.empty()) {
         nlohmann::json outputSchemaJson = nlohmann::json::parse(function.outputSchema, nullptr, false);
         if (outputSchemaJson.is_discarded()) {
