@@ -36,6 +36,7 @@ enum class LeakType {
     THREAD = 6,
     RSS_ARK_TS = 7,
     RSS_NATIVE_HEAP = 8,
+    KMP_DUMP = 9,
 };
  
 enum AppTelemetryLeakType {
@@ -44,6 +45,7 @@ enum AppTelemetryLeakType {
     ATLT_FD = 1 << static_cast<int>(LeakType::FD),
     ATLT_RSS_ARK_TS = 1 << static_cast<int>(LeakType::RSS_ARK_TS),
     ATLT_RSS_NATIVE_HEAP = 1 << static_cast<int>(LeakType::RSS_NATIVE_HEAP),
+    ATLT_RSS_KMP_DUMP = 1 << static_cast<int>(LeakType::KMP_DUMP),
 };
 
 struct LeakDetailInfo {
