@@ -46,9 +46,6 @@ public:
     static constexpr const char* TEST_TOOL1_FILE = "/data/test_cli_tool_configs/tool1.json";
     static constexpr const char* TEST_TOOL2_FILE = "/data/test_cli_tool_configs/tool2.json";
     static constexpr const char* TEST_TOOL3_FILE = "/data/test_cli_tool_configs/tool3.json";
-    static constexpr int32_t ERR_FILE_NOT_FOUND = -2;
-    static constexpr int32_t ERR_JSON_PARSE_FAILED = -3;
-    static constexpr int32_t ERR_KVSTORE_NOT_READY = -4;
 };
 
 void CliToolDataManagerTest::SetUpTestCase()

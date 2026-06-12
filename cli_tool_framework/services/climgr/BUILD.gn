@@ -50,6 +50,7 @@ ohos_shared_library("climgr") {
     "../common/src/permission_util.cpp",
     "src/event_dispatcher.cpp",
     "src/io_monitor.cpp",
+    "src/cli_function_data_manager.cpp",
   ]
   defines = [ "AMS_LOG_TAG = \"CliToolManager\"" ]
 

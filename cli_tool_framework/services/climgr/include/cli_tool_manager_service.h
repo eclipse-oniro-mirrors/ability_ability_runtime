@@ -100,6 +100,45 @@ public:
     int32_t BatchQueryPermissionBySubCommand(const std::vector<Command> &cmds,
         std::vector<CommandPermission> &cmdPermissions) override;
 
+    /**
+     * @brief Register a function
+     * @param function FunctionInfo to register
+     * @return int32_t ERR_OK on success, error code otherwise
+     */
+    int32_t RegisterFunction(const FunctionInfo &function) override;
+
+    /**
+     * @brief Get function information by bundleName and functionName
+     * @param bundleName Bundle name
+     * @param functionName Function name
+     * @param function Output FunctionInfo
+     * @return int32_t ERR_OK if found, error code otherwise
+     */
+    int32_t GetFunctionInfo(const std::string &funcNamespace, const std::string &functionName,
+        FunctionInfo &function) override;
+
+    /**
+     * @brief Unregister a function
+     * @param funcNamespace Namespace
+     * @param functionName Function name
+     * @return int32_t ERR_OK on success, error code otherwise
+     */
+    int32_t UnregisterFunction(const std::string &funcNamespace, const std::string &functionName) override;
+
+    /**
+     * @brief Batch unregister functions by namespace
+     * @param funcNamespace Namespace to delete all functions from
+     * @return int32_t Number of functions deleted, or error code (< 0)
+     */
+    int32_t UnregisterFunctionsByNamespace(const std::string &funcNamespace) override;
+
+    /**
+     * @brief Get all functions
+     * @param functions Output vector of FunctionInfo
+     * @return int32_t ERR_OK on success, error code otherwise
+     */
+    int32_t GetAllFunctions(std::vector<FunctionInfo> &functions) override;
+
 protected:
     void OnStart() override;
     void OnStop() override;

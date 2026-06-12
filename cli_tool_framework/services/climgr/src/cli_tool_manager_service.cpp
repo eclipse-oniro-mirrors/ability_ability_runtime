@@ -23,7 +23,9 @@
 #include "ccm_util.h"
 #include "cli_error_code.h"
 #include "cli_tool_app_state_observer.h"
+#include "cli_function_data_manager.h"
 #include "event_dispatcher.h"
+#include "function_info.h"
 #include "hilog_tag_wrapper.h"
 #include "if_system_ability_manager.h"
 #include "ipc_skeleton.h"
@@ -40,7 +42,9 @@ namespace CliTool {
 namespace {
 constexpr const char* PERMISSION_EXEC_CLI_TOOL = "ohos.permission.EXEC_CLI_TOOL";
 constexpr const char* PERMISSION_QUERY_CLI_TOOL = "ohos.permission.QUERY_CLI_TOOL";
+constexpr const char* PERMISSION_REGISTER_CLI_TOOL = "ohos.permission.REGISTER_CLI_TOOL";
 
+constexpr int32_t FOUNDATION_UID = 5523;
 constexpr int32_t COEFFICIENT = 1000;
 constexpr int32_t QUERY_SUCCESS = 0;
 constexpr int32_t QUERY_COMMAND_NOT_EXIST = 1;
@@ -238,9 +242,16 @@ void CliToolManagerService::OnStart()
 
     int32_t ret = CliToolDataManager::GetInstance().EnsureToolsLoaded();
     if (ret != 0) {
-        TAG_LOGW(AAFwkTag::CLI_TOOL, "Failed to load: %{public}d", ret);
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "Failed to load tools: %{public}d", ret);
     } else {
-        TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully loaded");
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully loaded tools");
+    }
+
+    ret = CliFunctionDataManager::GetInstance().EnsureFunctionsInitialized();
+    if (ret != 0) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "Failed to initialize functions database: %{public}d", ret);
+    } else {
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully initialized functions database");
     }
 
     if (!Publish(cliService)) {
@@ -478,6 +489,127 @@ int32_t CliToolManagerService::RegisterTool(const ToolInfo &tool)
 {
     TAG_LOGI(AAFwkTag::CLI_TOOL, "RegisterTool called, tool name='%{public}s'", tool.name.c_str());
     return ERR_PERMISSION_DENIED;
+}
+
+int32_t CliToolManagerService::RegisterFunction(const FunctionInfo &function)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "RegisterFunction called: %{public}s/%{public}s",
+        function.funcNamespace.c_str(), function.functionName.c_str());
+
+    InterfaceCallCounter counter(interfaceCalledCount_);
+
+    auto callingUid = IPCSkeleton::GetCallingUid();
+    if (callingUid != FOUNDATION_UID) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "RegisterFunction: Permission denied, callingUid=%{public}d", callingUid);
+        return ERR_PERMISSION_DENIED;
+    }
+
+    if (!FunctionInfo::Validate(function)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "RegisterFunction: FunctionInfo validation failed");
+        return ERR_INVALID_PARAM;
+    }
+
+    int32_t ret = CliFunctionDataManager::GetInstance().RegisterFunction(function);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "RegisterFunction: Failed to register function, ret=%{public}d", ret);
+        return ret;
+    }
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully registered function: %{public}s/%{public}s",
+        function.funcNamespace.c_str(), function.functionName.c_str());
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::GetFunctionInfo(const std::string &funcNamespace,
+    const std::string &functionName, FunctionInfo &function)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "GetFunctionInfo called: %{public}s/%{public}s",
+        funcNamespace.c_str(), functionName.c_str());
+    InterfaceCallCounter counter(interfaceCalledCount_);
+
+    auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
+    if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllFunctions: Not system app");
+        return ERR_NOT_SYSTEM_APP;
+    }
+
+    int32_t ret = CliFunctionDataManager::GetInstance().GetFunctionByName(funcNamespace, functionName, function);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetFunctionInfo: Failed to get function, ret=%{public}d", ret);
+        return ret;
+    }
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully got function: %{public}s/%{public}s",
+        funcNamespace.c_str(), functionName.c_str());
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::UnregisterFunction(const std::string &funcNamespace,
+    const std::string &functionName)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterFunction called: %{public}s/%{public}s",
+        funcNamespace.c_str(), functionName.c_str());
+    InterfaceCallCounter counter(interfaceCalledCount_);
+
+    auto callingUid = IPCSkeleton::GetCallingUid();
+    if (callingUid != FOUNDATION_UID) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "UnregisterFunction: Permission denied, callingUid=%{public}d", callingUid);
+        return ERR_PERMISSION_DENIED;
+    }
+
+    int32_t ret = CliFunctionDataManager::GetInstance().UnregisterFunction(funcNamespace, functionName);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "UnregisterFunction: Failed to unregister function, ret=%{public}d", ret);
+        return ret;
+    }
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully unregistered function: %{public}s/%{public}s",
+        funcNamespace.c_str(), functionName.c_str());
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::UnregisterFunctionsByNamespace(const std::string &funcNamespace)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterFunctionsByNamespace called: %{public}s", funcNamespace.c_str());
+    InterfaceCallCounter counter(interfaceCalledCount_);
+
+    auto callingUid = IPCSkeleton::GetCallingUid();
+    if (callingUid != FOUNDATION_UID) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "UnregisterFunctionsByNamespace: Permission denied, callingUid=%{public}d",
+            callingUid);
+        return ERR_PERMISSION_DENIED;
+    }
+
+    int32_t ret = CliFunctionDataManager::GetInstance().UnregisterFunctionsByNamespace(funcNamespace);
+    if (ret < 0) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "UnregisterFunctionsByNamespace: Failed, ret=%{public}d", ret);
+        return ret;
+    }
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully unregistered functions from namespace: %{public}s, count: %{public}d",
+        funcNamespace.c_str(), ret);
+    return ret;
+}
+
+int32_t CliToolManagerService::GetAllFunctions(std::vector<FunctionInfo> &functions)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "GetAllFunctions called");
+    InterfaceCallCounter counter(interfaceCalledCount_);
+
+    auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
+    if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllFunctions: Not system app");
+        return ERR_NOT_SYSTEM_APP;
+    }
+
+    int32_t ret = CliFunctionDataManager::GetInstance().GetAllFunctions(functions);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllFunctions: Failed to get functions, ret=%{public}d", ret);
+        return ret;
+    }
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully got all functions: %{public}zu", functions.size());
+    return ERR_OK;
 }
 
 int32_t CliToolManagerService::ValidateExecToolPermissions()

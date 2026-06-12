@@ -63,6 +63,7 @@ ohos_shared_library("cli_tool_client") {
     "src/sub_command_info.cpp",
     "src/tool_info.cpp",
     "src/tool_summary.cpp",
+    "src/function_info.cpp",
   ]
   output_values = get_target_outputs(":cli_tool_manager_interface")
   sources += filter_include(output_values, [ "*.cpp" ])

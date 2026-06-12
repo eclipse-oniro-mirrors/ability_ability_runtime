@@ -135,6 +135,62 @@ ErrCode CliToolMGRClient::RegisterTool(const ToolInfo &tool)
     return proxy->RegisterTool(tool);
 }
 
+ErrCode CliToolMGRClient::RegisterFunction(const FunctionInfo &function)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto proxy = GetCliToolMgrProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
+        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
+    }
+    return proxy->RegisterFunction(function);
+}
+
+ErrCode CliToolMGRClient::GetFunctionInfo(const std::string &funcNamespace, const std::string &functionName,
+    FunctionInfo &function)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto proxy = GetCliToolMgrProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
+        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
+    }
+    return proxy->GetFunctionInfo(funcNamespace, functionName, function);
+}
+
+ErrCode CliToolMGRClient::UnregisterFunction(const std::string &funcNamespace, const std::string &functionName)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto proxy = GetCliToolMgrProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
+        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
+    }
+    return proxy->UnregisterFunction(funcNamespace, functionName);
+}
+
+ErrCode CliToolMGRClient::UnregisterFunctionsByNamespace(const std::string &funcNamespace)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto proxy = GetCliToolMgrProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
+        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
+    }
+    return proxy->UnregisterFunctionsByNamespace(funcNamespace);
+}
+
+ErrCode CliToolMGRClient::GetAllFunctions(std::vector<FunctionInfo> &functions)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto proxy = GetCliToolMgrProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
+        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
+    }
+    return proxy->GetAllFunctions(functions);
+}
+
 int32_t CliToolMGRClient::BatchQueryPermissionBySubCommand(
     const std::vector<Command> &cmds,
     std::vector<CommandPermission> &cmdPermissions)

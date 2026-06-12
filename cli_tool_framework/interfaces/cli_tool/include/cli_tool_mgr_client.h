@@ -93,6 +93,45 @@ public:
     ErrCode RegisterTool(const ToolInfo &tool);
 
     /**
+     * @brief Register a function
+     * @param function FunctionInfo to register
+     * @return ErrCode ERR_OK on success
+     */
+    ErrCode RegisterFunction(const FunctionInfo &function);
+
+    /**
+     * @brief Get function information by bundleName and functionName
+     * @param bundleName Bundle name
+     * @param functionName Function name
+     * @param function Output FunctionInfo
+     * @return ErrCode ERR_OK on success
+     */
+    ErrCode GetFunctionInfo(const std::string &funcNamespace, const std::string &functionName,
+        FunctionInfo &function);
+
+    /**
+     * @brief Unregister a function
+     * @param funcNamespace Namespace
+     * @param functionName Function name
+     * @return ErrCode ERR_OK on success
+     */
+    ErrCode UnregisterFunction(const std::string &funcNamespace, const std::string &functionName);
+
+    /**
+     * @brief Batch unregister functions by namespace
+     * @param funcNamespace Namespace to delete all functions from
+     * @return ErrCode ERR_OK on success
+     */
+    ErrCode UnregisterFunctionsByNamespace(const std::string &funcNamespace);
+
+    /**
+     * @brief Get all functions
+     * @param functions Output vector of FunctionInfo
+     * @return ErrCode ERR_OK on success
+     */
+    ErrCode GetAllFunctions(std::vector<FunctionInfo> &functions);
+
+    /**
      * @brief Execute a CLI tool with key-value pairs (convenience method).
      * @param param The CLI tool param.
      * @param callback reply callback.

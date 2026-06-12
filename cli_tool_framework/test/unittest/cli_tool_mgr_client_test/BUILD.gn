@@ -41,6 +41,7 @@ ohos_unittest("cli_tool_mgr_client_test") {
     "${cli_tool_framework_path}/interfaces/cli_tool/src/exec_options.cpp",
     "${cli_tool_framework_path}/interfaces/cli_tool/src/exec_result.cpp",
     "${cli_tool_framework_path}/interfaces/cli_tool/src/exec_tool_param.cpp",
+    "${cli_tool_framework_path}/interfaces/cli_tool/src/function_info.cpp",
     "${cli_tool_framework_path}/interfaces/cli_tool/src/sub_command_info.cpp",
     "${cli_tool_framework_path}/interfaces/cli_tool/src/tool_info.cpp",
     "${cli_tool_framework_path}/interfaces/cli_tool/src/tool_summary.cpp",

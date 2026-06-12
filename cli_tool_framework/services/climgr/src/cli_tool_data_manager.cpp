@@ -28,10 +28,6 @@
 namespace OHOS {
 namespace CliTool {
 namespace {
-constexpr int32_t ERR_OK = 0;
-constexpr int32_t ERR_FILE_NOT_FOUND = -2;
-constexpr int32_t ERR_JSON_PARSE_FAILED = -3;
-constexpr int32_t ERR_KVSTORE_NOT_READY = -4;
 constexpr int32_t CHECK_INTERVAL = 100000; // 100ms
 constexpr int32_t MAX_TIMES = 5;           // 5 * 100ms = 500ms
 

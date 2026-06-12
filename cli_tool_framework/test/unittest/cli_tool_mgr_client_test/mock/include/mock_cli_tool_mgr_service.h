@@ -6,6 +6,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_MOCK_CLI_TOOL_MGR_SERVICE_H
 #define OHOS_ABILITY_RUNTIME_MOCK_CLI_TOOL_MGR_SERVICE_H
 
+#include "function_info.h"
 #include "icli_tool_manager.h"
 #include "iremote_stub.h"
 
@@ -17,6 +18,12 @@ public:
     int32_t GetToolInfoByName(const std::string &name, ToolInfo &tool) override;
     int32_t GetAllToolInfos(ToolsRawData &tools) override;
     int32_t RegisterTool(const ToolInfo &tool) override;
+    int32_t RegisterFunction(const FunctionInfo &function) override;
+    int32_t GetFunctionInfo(const std::string &funcNamespace, const std::string &functionName,
+        FunctionInfo &function) override;
+    int32_t UnregisterFunction(const std::string &funcNamespace, const std::string &functionName) override;
+    int32_t UnregisterFunctionsByNamespace(const std::string &funcNamespace) override;
+    int32_t GetAllFunctions(std::vector<FunctionInfo> &functions) override;
     int32_t ExecTool(const ExecToolParam &param, const std::string &eventId,
         const sptr<ICliToolManagerScheduler> &scheduler) override;
     int32_t SubscribeSession(const std::string &sessionId, const std::string &subscriptionId,

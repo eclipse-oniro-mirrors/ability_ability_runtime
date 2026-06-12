@@ -31,6 +31,7 @@ ohos_unittest("cli_tool_mgr_service_test") {
 
   sources = [
     "cli_tool_mgr_service_test.cpp",
+    "${cli_tool_framework_path}/services/climgr/src/cli_function_data_manager.cpp",
     "${cli_tool_framework_path}/services/climgr/src/cli_tool_app_state_observer.cpp",
     "${cli_tool_framework_path}/services/climgr/src/cli_tool_manager_service.cpp",
     "${cli_tool_framework_path}/services/climgr/src/event_dispatcher.cpp",
