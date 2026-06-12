@@ -14,6 +14,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <cstdlib>
 
 #define private public
 #include "appfreeze_cpu_freq_manager.h"
@@ -218,6 +219,36 @@ HWTEST_F(AppfreezeCpuFreqManagerTest, GetOptimalCpuTimeTest_001, TestSize.Level0
     ret = AppfreezeCpuFreqManager::GetInstance().GetOptimalCpuTime(getpid());
     EXPECT_TRUE(ret >= 0);
     AppfreezeCpuFreqManager::GetInstance().cpuCount_ = count;
+}
+
+/**
+ * @tc.number: GetThreadCpuLoadFuncTest_001
+ * @tc.desc: add testcase
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeCpuFreqManagerTest, GetThreadCpuLoadFuncTest_001, TestSize.Level0)
+{
+    GetThreadCpuLoad ret1 = AppfreezeCpuFreqManager::GetInstance().GetThreadCpuLoadFunc();
+    GetThreadCpuLoad ret2 = AppfreezeCpuFreqManager::GetInstance().GetThreadCpuLoadFunc();
+    EXPECT_TRUE(ret1 == ret2);
+}
+
+/**
+ * @tc.number: GetDimpsTest_001
+ * @tc.desc: add testcase
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeCpuFreqManagerTest, GetDimpsTest_001, TestSize.Level0)
+{
+    int count = AppfreezeCpuFreqManager::GetInstance().cpuCount_;
+    AppfreezeCpuFreqManager::GetInstance().cpuCount_ = 0;
+    double ret1 = AppfreezeCpuFreqManager::GetInstance().GetDimps();
+    EXPECT_TRUE(ret1 >= 0);
+    AppfreezeCpuFreqManager::GetInstance().cpuCount_ = count;
+    ret1 = AppfreezeCpuFreqManager::GetInstance().GetDimps();
+    EXPECT_TRUE(ret1 >= 0);
+    double ret2 = AppfreezeCpuFreqManager::GetInstance().GetDimps();
+    EXPECT_DOUBLE_EQ(ret1, ret2);
 }
 
 /**
