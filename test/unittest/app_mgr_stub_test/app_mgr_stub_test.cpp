@@ -932,7 +932,7 @@ HWTEST_F(AppMgrStubTest, HandleLockProcessCache_001, TestSize.Level1)
     data.WriteInt32(pid);
     data.WriteBool(isLock);
 
-    EXPECT_CALL(*mockAppMgrService_, SetProcessCacheEnable(_, _)).Times(1);
+    EXPECT_CALL(*mockAppMgrService_, LockProcessCache(_, _)).Times(1);
 
     auto result = mockAppMgrService_->OnRemoteRequest(
         static_cast<uint32_t>(AppMgrInterfaceCode::LOCK_PROCESS_CACHE), data, reply, option);
