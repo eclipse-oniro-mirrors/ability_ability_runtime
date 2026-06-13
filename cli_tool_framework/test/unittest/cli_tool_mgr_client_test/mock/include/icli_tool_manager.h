@@ -29,7 +29,7 @@ public:
     virtual int32_t GetFunctionInfo(const std::string &funcNamespace, const std::string &functionName,
         FunctionInfo &function) = 0;
     virtual int32_t UnregisterFunction(const std::string &funcNamespace, const std::string &functionName) = 0;
-    virtual int32_t UnregisterFunctionsByNamespace(const std::string &funcNamespace) = 0;
+    virtual int32_t UnregisterIntentFunctionsByNamespace(const std::string &funcNamespace) = 0;
     virtual int32_t GetAllFunctions(std::vector<FunctionInfo> &functions) = 0;
     virtual int32_t ExecTool(const ExecToolParam &param, const std::string &eventId,
         const sptr<ICliToolManagerScheduler> &scheduler) = 0;

@@ -114,7 +114,7 @@ int32_t CliFunctionDataManager::EnsureFunctionsInitialized()
 int32_t CliFunctionDataManager::RegisterFunction(const FunctionInfo &function)
 {
     std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "RegisterFunction called: %{public}s/%{public}s",
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "RegisterFunction called: %{public}s/%{public}s",
         function.funcNamespace.c_str(), function.functionName.c_str());
 
     if (!CheckKvStore()) {
@@ -145,7 +145,7 @@ int32_t CliFunctionDataManager::RegisterFunction(const FunctionInfo &function)
 int32_t CliFunctionDataManager::GetFunctionByName(const std::string &funcNamespace,
     const std::string &functionName, FunctionInfo &function)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "GetFunctionByName called: %{public}s/%{public}s",
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "GetFunctionByName called: %{public}s/%{public}s",
         funcNamespace.c_str(), functionName.c_str());
 
     std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
@@ -205,38 +205,29 @@ std::string CliFunctionDataManager::GenerateFunctionKey(const std::string &funcN
     return funcNamespace + "/" + functionName;
 }
 
-bool CliFunctionDataManager::ExtractNamespaceFromValue(const DistributedKv::Value &entryValue,
-    std::string &funcNamespace)
+bool CliFunctionDataManager::MatchesIntentFunctionNamespace(const DistributedKv::Value &entryValue,
+    const std::string &funcNamespace)
 {
     nlohmann::json j = nlohmann::json::parse(entryValue.ToString(), nullptr, false);
     if (j.is_discarded()) {
         TAG_LOGW(AAFwkTag::CLI_TOOL, "Failed to parse entry value as JSON");
         return false;
     }
-
-    if (!j.contains("namespace") || !j["namespace"].is_string()) {
-        TAG_LOGW(AAFwkTag::CLI_TOOL, "Entry value does not contain valid namespace field");
+    FunctionInfo functionInfo;
+    if (!FunctionInfo::ParseFromJson(j, functionInfo)) {
         return false;
     }
-
-    funcNamespace = j["namespace"].get<std::string>();
-    return true;
-}
-
-bool CliFunctionDataManager::MatchesNamespace(const DistributedKv::Value &entryValue, const std::string &funcNamespace)
-{
-    std::string entryNameSpace;
-    if (!ExtractNamespaceFromValue(entryValue, entryNameSpace)) {
+    if (functionInfo.functionType != FunctionType::INTENT_FUNCTION) {
         return false;
     }
-    return entryNameSpace == funcNamespace;
+    return functionInfo.funcNamespace == funcNamespace;
 }
 
 int32_t CliFunctionDataManager::UnregisterFunction(const std::string &funcNamespace,
     const std::string &functionName)
 {
     std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterFunction called: %{public}s/%{public}s",
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "UnregisterFunction called: %{public}s/%{public}s",
         funcNamespace.c_str(), functionName.c_str());
 
     if (!CheckKvStore()) {
@@ -284,10 +275,10 @@ DistributedKv::Status CliFunctionDataManager::RestoreKvStore(DistributedKv::Stat
     return status;
 }
 
-int32_t CliFunctionDataManager::UnregisterFunctionsByNamespace(const std::string &funcNamespace)
+int32_t CliFunctionDataManager::UnregisterIntentFunctionsByNamespace(const std::string &funcNamespace)
 {
     std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterFunctionsByNamespace called: %{public}s", funcNamespace.c_str());
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespace called: %{public}s", funcNamespace.c_str());
 
     if (!CheckKvStore()) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "KVStore not ready");
@@ -304,22 +295,23 @@ int32_t CliFunctionDataManager::UnregisterFunctionsByNamespace(const std::string
 
     int32_t deletedCount = 0;
     for (const auto &entry : allEntries) {
-        if (MatchesNamespace(entry.value, funcNamespace)) {
-            DistributedKv::Status deleteStatus = kvStorePtr_->Delete(entry.key);
-            if (deleteStatus == DistributedKv::Status::SUCCESS) {
-                deletedCount++;
-                TAG_LOGI(AAFwkTag::CLI_TOOL, "Deleted function: %{public}s",
-                    entry.key.ToString().c_str());
-            } else {
-                TAG_LOGW(AAFwkTag::CLI_TOOL, "Failed to delete function: %{public}s, status: %{public}d",
-                    entry.key.ToString().c_str(), static_cast<int>(deleteStatus));
-            }
+        if (!MatchesIntentFunctionNamespace(entry.value, funcNamespace)) {
+            continue;
+        }
+        DistributedKv::Status deleteStatus = kvStorePtr_->Delete(entry.key);
+        if (deleteStatus == DistributedKv::Status::SUCCESS) {
+            deletedCount++;
+            TAG_LOGD(AAFwkTag::CLI_TOOL, "Deleted function: %{public}s",
+                entry.key.ToString().c_str());
+        } else {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "Failed to delete function: %{public}s, status: %{public}d",
+                entry.key.ToString().c_str(), static_cast<int>(deleteStatus));
         }
     }
 
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterFunctionsByNamespace completed: %{public}s, deleted: %{public}d",
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespace completed: %{public}s, deleted: %{public}d",
         funcNamespace.c_str(), deletedCount);
-    return deletedCount;
+    return ERR_OK;
 }
 
 int32_t CliFunctionDataManager::GetAllFunctions(std::vector<FunctionInfo> &functions)
