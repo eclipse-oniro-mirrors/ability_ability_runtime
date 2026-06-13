@@ -324,23 +324,17 @@ ohos_shared_library("abilitykit_native") {
     "${ability_runtime_native_path}/ability/native/data_ability_helper_impl.cpp",
     "${ability_runtime_native_path}/ability/native/data_ability_impl.cpp",
     "${ability_runtime_native_path}/ability/native/data_uri_utils.cpp",
-    "${ability_runtime_native_path}/ability/native/distributed_ability_runtime/distributed_client.cpp",
-    "${ability_runtime_native_path}/ability/native/free_install_observer_proxy.cpp",
-    "${ability_runtime_native_path}/ability/native/free_install_observer_stub.cpp",
     "${ability_runtime_native_path}/ability/native/insight_intent_host_client.cpp",
     "${ability_runtime_native_path}/ability/native/js_deferred_callback.cpp",
     "${ability_runtime_native_path}/ability/native/js_free_install_observer.cpp",
     "${ability_runtime_native_path}/ability/native/js_query_erms_observer.cpp",
     "${ability_runtime_native_path}/ability/native/js_start_abilities_observer.cpp",
     "${ability_runtime_native_path}/ability/native/preload_ui_extension_host_client.cpp",
-    "${ability_runtime_native_path}/ability/native/query_erms_observer_proxy.cpp",
-    "${ability_runtime_native_path}/ability/native/query_erms_observer_stub.cpp",
     "${ability_runtime_native_path}/ability/native/service_ability_impl.cpp",
     "${ability_runtime_native_path}/ability/native/start_abilities_observer.cpp",
     "${ability_runtime_native_path}/appkit/app/app_context.cpp",
     "${ability_runtime_native_path}/appkit/app/context_container.cpp",
     "${ability_runtime_native_path}/appkit/app/context_deal.cpp",
-    "${ability_runtime_native_path}/appkit/app/sys_mgr_client.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/launch_param.cpp",
   ]
   configs = [
@@ -354,6 +348,7 @@ ohos_shared_library("abilitykit_native") {
   ]
 
   deps = [
+    ":ability_observer_ipc",
     ":abilitykit_utils",
     ":configuration_helper",
     ":continuation_ipc",
@@ -493,6 +488,61 @@ ohos_shared_library("abilitykit_native") {
   innerapi_tags = [ "platformsdk" ]
   version_script = "libabilitykit_native.map"
   subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
+ohos_shared_library("ability_observer_ipc") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    debug = false
+  }
+
+  include_dirs = [
+    "${ability_runtime_path}/interfaces/inner_api/runtime/include",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native/ability_runtime",
+    "${ability_runtime_innerkits_path}/ability_manager/include",
+    "${ability_runtime_services_path}/abilitymgr/include/utils",
+    "${ability_runtime_napi_path}/inner/napi_ability_common",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native/ability_business_error",
+  ]
+
+  sources = [
+    "${ability_runtime_native_path}/ability/native/free_install_observer_proxy.cpp",
+    "${ability_runtime_native_path}/ability/native/free_install_observer_stub.cpp",
+    "${ability_runtime_native_path}/ability/native/query_erms_observer_proxy.cpp",
+    "${ability_runtime_native_path}/ability/native/query_erms_observer_stub.cpp",
+    "${ability_runtime_native_path}/ability/native/distributed_ability_runtime/distributed_client.cpp",
+    "${ability_runtime_native_path}/appkit/app/sys_mgr_client.cpp",
+  ]
+
+  configs = [
+    ":ability_config",
+    "${ability_runtime_services_path}/common:optimize_config",
+  ]
+
+  deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:mission_info",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
+    "${ability_runtime_path}/utils/global/common:runtime_utils",
+    "${ability_runtime_native_path}/ability/native:ability_business_error",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "c_utils:utils",
+    "hilog:libhilog",
+    "hitrace:hitrace_meter",
+    "ipc:ipc_core",
+    "napi:ace_napi",
+    "samgr:samgr_proxy",
+  ]
+
+  subsystem_name = "ability"
+  innerapi_tags = [ "platformsdk" ]
   part_name = "ability_runtime"
 }
 
@@ -1095,6 +1145,7 @@ ohos_shared_library("uiabilitykit_native") {
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
 
   deps = [
+    ":ability_observer_ipc",
     ":abilitykit_native",
     ":abilitykit_utils",
     ":configuration_helper",

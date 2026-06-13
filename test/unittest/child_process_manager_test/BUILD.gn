@@ -44,7 +44,7 @@ ohos_unittest("child_process_manager_test") {
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_native_path}/ability/native:ability_business_error",
-    "${ability_runtime_native_path}/ability/native:abilitykit_native",
+    "${ability_runtime_native_path}/ability/native:ability_observer_ipc",
     "${ability_runtime_path}/interfaces/inner_api/child_process_manager:child_process_manager",
     "${ability_runtime_services_path}/common:app_util_static",
   ]

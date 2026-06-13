@@ -91,7 +91,7 @@ ohos_unittest("ability_manager_service_sixth_test") {
     "${ability_runtime_innerkits_path}/session_handler:session_handler",
     "${ability_runtime_innerkits_path}/uri_permission:uri_permission_mgr",
     "${ability_runtime_native_path}/ability/native:ability_business_error",
-    "${ability_runtime_native_path}/ability/native:abilitykit_native",
+    "${ability_runtime_native_path}/ability/native:ability_observer_ipc",
     "${ability_runtime_native_path}/ability/native:auto_startup_callback",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_path}/utils/global/common:runtime_utils",

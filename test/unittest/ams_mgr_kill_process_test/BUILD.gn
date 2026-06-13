@@ -53,7 +53,7 @@ ohos_unittest("AmsMgrKillProcessTest") {
 
   deps = [
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
-    "${ability_runtime_native_path}/ability/native:abilitykit_native",
+    "${ability_runtime_native_path}/ability/native:ability_observer_ipc",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_services_path}/appmgr:libappms",
     "${ability_runtime_services_path}/common:perm_verification",
