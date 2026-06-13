@@ -71,6 +71,49 @@ ErrCode CliToolMGRClient::ExecTool(const ExecToolParam &param, const ExecToolRep
     return ret;
 }
 
+ErrCode CliToolMGRClient::ExecCmd(const ExecCmdParam &param,
+    const ExecToolReplyCallback &callback, const std::shared_ptr<SessionEventCallback> &sessionEventCallback)
+{
+    ErrCode ret = EnsureSchedulerStubCreated();
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
+    auto proxy = GetCliToolMgrProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "connect failed");
+        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
+    }
+
+    std::string eventId = CliEventReplyManager::GetInstance().AddEventReplyCallback("shell",
+        [cb = std::move(callback)](const CliEventReplyResult &result) {
+            if (cb) {
+                CliSessionInfo sessionInfo;
+                if (result.sessionInfo.has_value()) {
+                    sessionInfo = result.sessionInfo.value();
+                }
+                cb(result.code, sessionInfo);
+            }
+        });
+    
+    std::string subscriptionId = CliSessionSubscriptionManager::GetInstance().AddProvisionalSubscription("shell",
+        [sessionEventCallback](const std::string &sessionId,
+            const std::string &subscriptionId, const CliToolEvent &event) {
+            if (sessionEventCallback) {
+                sessionEventCallback->OnToolEvent(sessionId, subscriptionId, event);
+            }
+        });
+    ret = proxy->ExecCmd(param, eventId, schedulerStub_, subscriptionId);
+    if (ret != ERR_OK) {
+        CliEventReplyManager::GetInstance().RemoveEventReplyCallback(eventId);
+        CliSessionSubscriptionManager::GetInstance().RemoveSubscription(subscriptionId);
+    } else {
+        CliEventReplyManager::GetInstance().ActivateEventReplyCallback(eventId);
+        CliSessionSubscriptionManager::GetInstance().ActivateSubscription(subscriptionId);
+    }
+    return ret;
+}
+
 ErrCode CliToolMGRClient::EnsureSchedulerStubCreated()
 {
     std::lock_guard<std::mutex> lock(schedulerMutex_);

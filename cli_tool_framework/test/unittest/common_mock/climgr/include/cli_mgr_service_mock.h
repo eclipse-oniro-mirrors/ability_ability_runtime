@@ -23,6 +23,7 @@ namespace CliTool {
 class CliMgrServiceMock {
 public:
     static int32_t createChildProcessResult;
+    static int32_t createShellProcessResult;
     static bool killpgResult;
     static int32_t registerSessionResult;
     static int32_t unregisterSessionCount;

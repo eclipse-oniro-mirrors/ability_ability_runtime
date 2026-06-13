@@ -13,6 +13,7 @@
 #include "cli_error_code.h"
 #include "cli_tool_data_manager.h"
 #include "event_dispatcher.h"
+#include "exec_cmd_param.h"
 #include "exec_result.h"
 #include "io_monitor.h"
 #include "permission_query_util.h"
@@ -24,7 +25,11 @@
 
 namespace OHOS {
 namespace CliTool {
+namespace {
+constexpr pid_t PID = 1002;
+}
 int32_t CliMgrServiceMock::createChildProcessResult = ERR_OK;
+int32_t CliMgrServiceMock::createShellProcessResult = ERR_OK;
 bool CliMgrServiceMock::killpgResult = true;
 int32_t CliMgrServiceMock::registerSessionResult = ERR_OK;
 int32_t CliMgrServiceMock::unregisterSessionCount = 0;
@@ -46,6 +51,7 @@ std::vector<std::string> CliMgrServiceMock::subCommandPermissions = {};
 void CliMgrServiceMock::Reset()
 {
     createChildProcessResult = ERR_OK;
+    createShellProcessResult = ERR_OK;
     killpgResult = true;
     registerSessionResult = ERR_OK;
     unregisterSessionCount = 0;
@@ -81,6 +87,18 @@ int32_t ProcessManager::CreateChildProcess(const ExecToolParam &, const std::str
         record->stdinPipe[1] = -1;
     }
     return CliMgrServiceMock::createChildProcessResult;
+}
+
+int32_t ProcessManager::CreateShellProcess(const ExecCmdParam &, const std::string &,
+    std::shared_ptr<SessionRecord> record, const std::vector<std::shared_ptr<SessionRecord>> &) const
+{
+    if (record != nullptr) {
+        record->processId = PID;
+        record->stdoutPipe[0] = -1;
+        record->stderrPipe[0] = -1;
+        record->stdinPipe[1] = -1;
+    }
+    return CliMgrServiceMock::createShellProcessResult;
 }
 
 bool ProcessManager::Killpg(pid_t) const

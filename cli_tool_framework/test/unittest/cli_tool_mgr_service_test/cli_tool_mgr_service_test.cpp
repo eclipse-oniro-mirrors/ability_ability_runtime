@@ -1143,7 +1143,7 @@ HWTEST_F(CliToolManagerServiceTest, RegisterSessionWithMonitors_0100, TestSize.L
     record->stdinPipe[1] = -1;
     ExecToolParam param;
 
-    EXPECT_FALSE(service_->RegisterSessionWithMonitors(record, param));
+    EXPECT_FALSE(service_->RegisterSessionWithMonitors(record, param.options));
 
     service_->ioMonitor_ = oldMonitor;
 
@@ -1181,7 +1181,7 @@ HWTEST_F(CliToolManagerServiceTest, RegisterSessionWithMonitors_0101, TestSize.L
     record->stdinPipe[1] = stdinPipe[1];
     ExecToolParam param;
 
-    EXPECT_FALSE(service_->RegisterSessionWithMonitors(record, param));
+    EXPECT_FALSE(service_->RegisterSessionWithMonitors(record, param.options));
 
     service_->ioMonitor_->Stop();
     service_->ioMonitor_ = oldMonitor;
@@ -1220,7 +1220,7 @@ HWTEST_F(CliToolManagerServiceTest, RegisterSessionWithMonitors_0200, TestSize.L
     record->stdinPipe[1] = stdinPipe[1];
     ExecToolParam param;
 
-    ASSERT_TRUE(service_->RegisterSessionWithMonitors(record, param));
+    ASSERT_TRUE(service_->RegisterSessionWithMonitors(record, param.options));
     service_->UnregisterSessionWithMonitors(record->sessionId);
     service_->ioMonitor_->Stop();
     service_->ioMonitor_ = oldMonitor;
@@ -1263,7 +1263,7 @@ HWTEST_F(CliToolManagerServiceTest, RegisterSessionWithMonitors_0300, TestSize.L
     param.options.background = false;
     param.options.yieldMs = 1;
 
-    ASSERT_TRUE(service_->RegisterSessionWithMonitors(record, param));
+    ASSERT_TRUE(service_->RegisterSessionWithMonitors(record, param.options));
     service_->UnregisterSessionWithMonitors(record->sessionId);
     service_->ioMonitor_->Stop();
     service_->ioMonitor_ = oldMonitor;
@@ -1944,6 +1944,266 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0700, TestSize.Level1)
     EXPECT_TRUE(result == ERR_INVALID_VALUE || IsPermissionGateResult(result));
 
     GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0700 end";
+}
+
+// ==================== ValidateAndPrepareCmd Tests ====================
+
+/**
+ * @tc.name: CliToolManagerService_ValidateAndPrepareCmd_0100
+ * @tc.desc: Test ValidateAndPrepareCmd with invalid options (negative timeout)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareCmd_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_ValidateAndPrepareCmd_0100 start";
+
+    ExecCmdParam param;
+    param.cmd = "echo hello";
+    param.options.timeout = -1;
+    std::string sandboxConfig;
+    std::string bundleName;
+
+    int32_t result = service_->ValidateAndPrepareCmd(param, IPCSkeleton::GetCallingTokenID(),
+        sandboxConfig, bundleName);
+    EXPECT_EQ(result, ERR_INVALID_PARAM);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_ValidateAndPrepareCmd_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_ValidateAndPrepareCmd_0200
+ * @tc.desc: Test ValidateAndPrepareCmd with invalid options (negative yieldMs)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareCmd_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_ValidateAndPrepareCmd_0200 start";
+
+    ExecCmdParam param;
+    param.cmd = "echo hello";
+    param.options.yieldMs = -1;
+    std::string sandboxConfig;
+    std::string bundleName;
+
+    int32_t result = service_->ValidateAndPrepareCmd(param, IPCSkeleton::GetCallingTokenID(),
+        sandboxConfig, bundleName);
+    EXPECT_EQ(result, ERR_INVALID_PARAM);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_ValidateAndPrepareCmd_0200 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_ValidateAndPrepareCmd_0300
+ * @tc.desc: Test ValidateAndPrepareCmd with valid options but non-hap caller returns ERR_NOT_HAP
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareCmd_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_ValidateAndPrepareCmd_0300 start";
+
+    ExecCmdParam param;
+    param.cmd = "ls /data";
+    param.options.timeout = 30;
+    param.options.yieldMs = 0;
+    std::string sandboxConfig;
+    std::string bundleName;
+
+    int32_t result = service_->ValidateAndPrepareCmd(param, IPCSkeleton::GetCallingTokenID(),
+        sandboxConfig, bundleName);
+    EXPECT_TRUE(result == ERR_OK || result == ERR_NOT_HAP);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_ValidateAndPrepareCmd_0300 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_ValidateAndPrepareCmd_0400
+ * @tc.desc: Test ValidateAndPrepareCmd with yieldMs exceeding timeout returns ERR_INVALID_PARAM
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareCmd_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_ValidateAndPrepareCmd_0400 start";
+
+    ExecCmdParam param;
+    param.cmd = "echo hello";
+    param.options.timeout = 1;
+    param.options.yieldMs = 50000;
+    param.options.background = false;
+    std::string sandboxConfig;
+    std::string bundleName;
+
+    int32_t result = service_->ValidateAndPrepareCmd(param, IPCSkeleton::GetCallingTokenID(),
+        sandboxConfig, bundleName);
+    EXPECT_EQ(result, ERR_INVALID_PARAM);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_ValidateAndPrepareCmd_0400 end";
+}
+
+// ==================== ExecCmd Tests ====================
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_0100
+ * @tc.desc: Test ExecCmd with default options returns validation or sandbox config error
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0100 start";
+
+    ExecCmdParam param;
+    param.cmd = "echo test";
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecCmd(param, "event_exec_cmd_test", scheduler, "subscription_1");
+
+    // Result depends on test environment permission setup
+    EXPECT_TRUE(result == ERR_NO_INIT || result == ERR_NOT_HAP ||
+        result == ERR_INVALID_PARAM || IsPermissionGateResult(result));
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0100 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_0200
+ * @tc.desc: Test ExecCmd with null scheduler returns ERR_NO_INIT after permission gate
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0200 start";
+
+    ExecCmdParam param;
+    param.cmd = "echo test";
+    int32_t result = service_->ExecCmd(param, "event_exec_cmd_null_scheduler", nullptr, "subscription_1");
+
+    EXPECT_TRUE(result == ERR_NO_INIT || IsPermissionGateResult(result));
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0200 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_0300
+ * @tc.desc: Test ExecCmd returns session limit error when session limit exceeded
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0300 start";
+
+    auto cliQuantity = CcmUtil::GetInstance().GetCliConcurrencyLimit();
+    for (int32_t i = 0; i < cliQuantity; ++i) {
+        auto record = std::make_shared<SessionRecord>();
+        record->sessionId = "exec_cmd_limit_session_" + std::to_string(i);
+        service_->AddSessionRecord(record);
+    }
+
+    ExecCmdParam param;
+    param.cmd = "echo test";
+    param.options.timeout = 30;
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecCmd(param, "event_exec_cmd_limit", scheduler, "subscription_limit");
+
+    EXPECT_TRUE(result == ERR_SESSION_LIMIT_EXCEEDED || IsPermissionGateResult(result));
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0300 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_0400
+ * @tc.desc: Test ExecCmd returns ERR_INVALID_PARAM with invalid timeout options
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0400 start";
+
+    ExecCmdParam param;
+    param.cmd = "echo test";
+    param.options.timeout = -1;
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecCmd(param, "event_exec_cmd_invalid_timeout", scheduler, "subscription_invalid");
+
+    EXPECT_TRUE(result == ERR_INVALID_PARAM || IsPermissionGateResult(result));
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0400 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_0500
+ * @tc.desc: Test ExecCmd fails when ioMonitor is null after validation and session setup
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_0500, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0500 start";
+
+    auto oldMonitor = service_->ioMonitor_;
+    service_->ioMonitor_ = nullptr;
+
+    ExecCmdParam param;
+    param.cmd = "echo hello";
+    param.options.timeout = 30;
+    param.options.yieldMs = 0;
+    param.options.background = false;
+
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecCmd(param, "event_exec_cmd_full_path", scheduler, "subscription_full");
+
+    // ioMonitor is null so RegisterSessionWithMonitors will fail, returning ERR_NO_INIT
+    // Or earlier gates may reject: ERR_NOT_HAP (sandbox config fails for non-hap caller)
+    // or permission gate
+    EXPECT_TRUE(result == ERR_NO_INIT || result == ERR_NOT_HAP || IsPermissionGateResult(result));
+
+    service_->ioMonitor_ = oldMonitor;
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0500 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_0600
+ * @tc.desc: Test ExecCmd with empty subscriptionId returns ERR_INVALID_PARAM or earlier error
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_0600, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0600 start";
+
+    ExecCmdParam param;
+    param.cmd = "echo test";
+    param.options.timeout = 30;
+    param.options.yieldMs = 0;
+
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecCmd(param, "event_exec_cmd_empty_sub", scheduler, "");
+
+    // Empty subscriptionId causes SubscribeSession to return ERR_INVALID_PARAM,
+    // or earlier gates may reject: ERR_NOT_HAP (sandbox config fails) or permission gate
+    EXPECT_TRUE(result == ERR_INVALID_PARAM || result == ERR_NOT_HAP || IsPermissionGateResult(result));
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0600 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_0700
+ * @tc.desc: Test ExecCmd with yieldMs exceeding timeout returns ERR_INVALID_PARAM
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_0700, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0700 start";
+
+    ExecCmdParam param;
+    param.cmd = "echo test";
+    param.options.timeout = 1;
+    param.options.yieldMs = 50000;
+    param.options.background = false;
+
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecCmd(param, "event_exec_cmd_yield_exceed", scheduler, "subscription_yield");
+
+    // yieldMs (50000) > timeout * 1000 (1000) with background=false triggers ERR_INVALID_PARAM
+    EXPECT_TRUE(result == ERR_INVALID_PARAM || IsPermissionGateResult(result));
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0700 end";
 }
 
 } // namespace CliTool

@@ -51,6 +51,15 @@ public:
     static napi_value ExecTool(napi_env env, napi_callback_info info);
 
     /**
+     * @brief Native method for executing a raw shell command.
+     *
+     * @param env The N-API environment.
+     * @param info The N-API callback info.
+     * @return Returns the N-API value.
+     */
+    static napi_value ExecCmd(napi_env env, napi_callback_info info);
+
+    /**
      * @brief Native method for subscribe session by session id.
      *
      * @param env The N-API environment.
@@ -123,6 +132,16 @@ private:
      * @return Returns the N-API value.
      */
     napi_value OnExecTool(napi_env env, size_t argc, napi_value *argv);
+
+    /**
+     * @brief Implementation for executing a raw shell command.
+     *
+     * @param env The N-API environment.
+     * @param argc The argument count.
+     * @param argv The argument values.
+     * @return Returns the N-API value.
+     */
+    napi_value OnExecCmd(napi_env env, size_t argc, napi_value *argv);
 
     /**
      * @brief Implementation for subscribe session by session id.

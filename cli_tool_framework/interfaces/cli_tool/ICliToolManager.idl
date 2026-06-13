@@ -18,6 +18,7 @@ package OHOS.CliTool;
 import ICliToolData;
 import ICliToolManagerScheduler;
 sequenceable CliSessionInfo..OHOS.CliTool.CliSessionInfo;
+sequenceable ExecCmdParam..OHOS.CliTool.ExecCmdParam;
 sequenceable ExecToolParam..OHOS.CliTool.ExecToolParam;
 sequenceable OHOS.CliTool.ToolSummary;
 sequenceable ToolInfo..OHOS.CliTool.ToolInfo;
@@ -30,6 +31,7 @@ interface ICliToolManager {
     void GetAllToolInfos([out] ToolsRawData tools);
     void RegisterTool([in] ToolInfo tool);
     void ExecTool([in] ExecToolParam param, [in] String eventId, [in] ICliToolManagerScheduler scheduler);
+    void ExecCmd([in] ExecCmdParam param, [in] String eventId, [in] ICliToolManagerScheduler scheduler, [in] String subscriptionId);
     void SubscribeSession([in] String sessionId, [in] String subscriptionId, [in] ICliToolManagerScheduler scheduler);
     void UnsubscribeSession([in] String sessionId, [in] String subscriptionId);
     void ClearSession([in] String sessionId);

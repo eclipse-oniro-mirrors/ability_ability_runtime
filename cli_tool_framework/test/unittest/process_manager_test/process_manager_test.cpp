@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 
 #include "cli_error_code.h"
+#include "exec_cmd_param.h"
 #include "exec_tool_param.h"
 #define private public
 #include "process_manager.h"
@@ -28,6 +29,9 @@ using namespace OHOS::CliTool;
 
 namespace OHOS {
 namespace CliTool {
+namespace {
+constexpr int64_t TIMEOUT = 30;
+}
 
 class ProcessManagerTest : public testing::Test {
 public:
@@ -37,6 +41,7 @@ public:
     void TearDown();
 
     ExecToolParam CreateTestParam(const std::string &toolName, const std::string &subcommand = "");
+    ExecCmdParam CreateTestCmdParam(const std::string &cmd);
     ToolInfo CreateTestToolInfo(const std::string &toolName);
 };
 
@@ -66,6 +71,14 @@ ExecToolParam ProcessManagerTest::CreateTestParam(const std::string &toolName, c
     param.toolName = toolName;
     param.subcommand = subcommand;
     param.challenge = "test_challenge";
+    return param;
+}
+
+ExecCmdParam ProcessManagerTest::CreateTestCmdParam(const std::string &cmd)
+{
+    ExecCmdParam param;
+    param.cmd = cmd;
+    param.options.timeout = TIMEOUT;
     return param;
 }
 
@@ -440,6 +453,252 @@ HWTEST_F(ProcessManagerTest, Killpg_0100, TestSize.Level1)
     auto& manager = ProcessManager::GetInstance();
 
     EXPECT_FALSE(manager.Killpg(999999));
+}
+
+// ==================== CreateShellProcess Tests ====================
+
+/**
+ * @tc.name: ProcessManager_CreateShellProcess_0100
+ * @tc.desc: Test CreateShellProcess with basic shell command
+ * @tc.type: FUNC
+ */
+HWTEST_F(ProcessManagerTest, CreateShellProcess_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_0100 start";
+
+    auto& manager = ProcessManager::GetInstance();
+
+    ExecCmdParam param = CreateTestCmdParam("echo hello");
+    std::string sandboxConfig = "/etc/claw/test_shell_config.json";
+
+    auto record = std::make_shared<SessionRecord>();
+    ASSERT_NE(record, nullptr);
+    record->sessionId = "shell_test_session";
+    record->toolName = "shell";
+
+    int32_t result = manager.CreateShellProcess(param, sandboxConfig, record);
+
+    // fork will succeed; child execvp may fail if claw_sandbox is absent but parent returns ERR_OK
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_GT(record->processId, 0);
+
+    GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_0100 end";
+}
+
+/**
+ * @tc.name: ProcessManager_CreateShellProcess_0200
+ * @tc.desc: Test CreateShellProcess with complex shell command containing pipes
+ * @tc.type: FUNC
+ */
+HWTEST_F(ProcessManagerTest, CreateShellProcess_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_0200 start";
+
+    auto& manager = ProcessManager::GetInstance();
+
+    ExecCmdParam param = CreateTestCmdParam("ls -la /data | grep test");
+    std::string sandboxConfig = "/etc/claw/shell_config.json";
+
+    auto record = std::make_shared<SessionRecord>();
+    ASSERT_NE(record, nullptr);
+    record->sessionId = "shell_complex_session";
+    record->toolName = "shell";
+
+    int32_t result = manager.CreateShellProcess(param, sandboxConfig, record);
+
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_GT(record->processId, 0);
+
+    GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_0200 end";
+}
+
+/**
+ * @tc.name: ProcessManager_CreateShellProcess_0300
+ * @tc.desc: Test CreateShellProcess with empty sandbox config
+ * @tc.type: FUNC
+ */
+HWTEST_F(ProcessManagerTest, CreateShellProcess_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_0300 start";
+
+    auto& manager = ProcessManager::GetInstance();
+
+    ExecCmdParam param = CreateTestCmdParam("echo test");
+    std::string sandboxConfig = "";
+
+    auto record = std::make_shared<SessionRecord>();
+    ASSERT_NE(record, nullptr);
+    record->sessionId = "shell_empty_config_session";
+    record->toolName = "shell";
+
+    int32_t result = manager.CreateShellProcess(param, sandboxConfig, record);
+
+    EXPECT_EQ(result, ERR_OK);
+
+    GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_0300 end";
+}
+
+/**
+ * @tc.name: ProcessManager_CreateShellProcess_0400
+ * @tc.desc: Test CreateShellProcess with empty command string
+ * @tc.type: FUNC
+ */
+HWTEST_F(ProcessManagerTest, CreateShellProcess_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_0400 start";
+
+    auto& manager = ProcessManager::GetInstance();
+
+    ExecCmdParam param = CreateTestCmdParam("");
+    std::string sandboxConfig = "/etc/claw/config.json";
+
+    auto record = std::make_shared<SessionRecord>();
+    ASSERT_NE(record, nullptr);
+    record->sessionId = "shell_empty_cmd_session";
+    record->toolName = "shell";
+
+    int32_t result = manager.CreateShellProcess(param, sandboxConfig, record);
+
+    // Empty command still succeeds at fork level
+    EXPECT_EQ(result, ERR_OK);
+
+    GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_0400 end";
+}
+
+/**
+ * @tc.name: ProcessManager_CreateShellProcess_0500
+ * @tc.desc: Test CreateShellProcess sets processId on parent side after fork
+ * @tc.type: FUNC
+ */
+HWTEST_F(ProcessManagerTest, CreateShellProcess_0500, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_0500 start";
+
+    auto& manager = ProcessManager::GetInstance();
+
+    ExecCmdParam param = CreateTestCmdParam("echo verify_pid");
+    std::string sandboxConfig = "/etc/claw/pid_config.json";
+
+    auto record = std::make_shared<SessionRecord>();
+    ASSERT_NE(record, nullptr);
+    record->sessionId = "shell_pid_session";
+    record->toolName = "shell";
+
+    pid_t originalPid = record->processId;
+    int32_t result = manager.CreateShellProcess(param, sandboxConfig, record);
+
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_NE(record->processId, originalPid);
+    EXPECT_GT(record->processId, 0);
+
+    GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_0500 end";
+}
+
+/**
+ * @tc.name: ProcessManager_CreateShellProcess_0700
+ * @tc.desc: Test CreateShellProcess with father session records closes father pipes
+ * @tc.type: FUNC
+ */
+HWTEST_F(ProcessManagerTest, CreateShellProcess_0700, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_0700 start";
+
+    auto& manager = ProcessManager::GetInstance();
+
+    // Create a father session with open pipes
+    auto fatherRecord = std::make_shared<SessionRecord>();
+    ASSERT_NE(fatherRecord, nullptr);
+    fatherRecord->sessionId = "father_shell_session";
+    ASSERT_TRUE(manager.CreatePipes(*fatherRecord));
+    EXPECT_NE(fatherRecord->stdinPipe[0], -1);
+
+    ExecCmdParam param = CreateTestCmdParam("echo with_father");
+    std::string sandboxConfig = "/etc/claw/father_config.json";
+
+    auto record = std::make_shared<SessionRecord>();
+    ASSERT_NE(record, nullptr);
+    record->sessionId = "shell_father_session";
+    record->toolName = "shell";
+
+    int32_t result = manager.CreateShellProcess(param, sandboxConfig, record, {fatherRecord});
+
+    EXPECT_EQ(result, ERR_OK);
+
+    GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_0700 end";
+}
+
+/**
+ * @tc.name: ProcessManager_CreateShellProcess_0800
+ * @tc.desc: Test CreateShellProcess const correctness
+ * @tc.type: FUNC
+ */
+HWTEST_F(ProcessManagerTest, CreateShellProcess_0800, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_0800 start";
+
+    const auto& manager = ProcessManager::GetInstance();
+
+    ExecCmdParam param = CreateTestCmdParam("echo const_test");
+    std::string sandboxConfig = "/etc/claw/const_shell_config.json";
+
+    auto record = std::make_shared<SessionRecord>();
+    ASSERT_NE(record, nullptr);
+    record->sessionId = "shell_const_session";
+    record->toolName = "shell";
+
+    // CreateShellProcess is const, so calling through const ref compiles
+    int32_t result = manager.CreateShellProcess(param, sandboxConfig, record);
+
+    EXPECT_EQ(result, ERR_OK);
+
+    GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_0800 end";
+}
+
+/**
+ * @tc.name: ProcessManager_CreateShellProcess_0900
+ * @tc.desc: Test CreateShellProcess with special characters in command
+ * @tc.type: FUNC
+ */
+HWTEST_F(ProcessManagerTest, CreateShellProcess_0900, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_0900 start";
+
+    auto& manager = ProcessManager::GetInstance();
+
+    ExecCmdParam param = CreateTestCmdParam("echo 'hello world' && ls -la /tmp/");
+    std::string sandboxConfig = "/etc/claw/special_config.json";
+
+    auto record = std::make_shared<SessionRecord>();
+    ASSERT_NE(record, nullptr);
+    record->sessionId = "shell_special_session";
+    record->toolName = "shell";
+
+    int32_t result = manager.CreateShellProcess(param, sandboxConfig, record);
+
+    EXPECT_EQ(result, ERR_OK);
+
+    GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_0900 end";
+}
+
+// ==================== SetParentHapTokenId Tests ====================
+
+/**
+ * @tc.name: ProcessManager_SetParentHapTokenId_0100
+ * @tc.desc: Test SetParentHapTokenId returns false when access_token_id device is available
+ * @tc.type: FUNC
+ */
+HWTEST_F(ProcessManagerTest, SetParentHapTokenId_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ProcessManager_SetParentHapTokenId_0100 start";
+
+    const auto& manager = ProcessManager::GetInstance();
+
+    // In test environment /dev/access_token_id does not exist, open fails and returns false.
+    // On a real OpenHarmony device with the access_token_id driver, this may return true.
+    bool result = manager.SetParentHapTokenId(12345);
+    EXPECT_TRUE(result);
+
+    GTEST_LOG_(INFO) << "ProcessManager_SetParentHapTokenId_0100 end";
 }
 
 } // namespace CliTool

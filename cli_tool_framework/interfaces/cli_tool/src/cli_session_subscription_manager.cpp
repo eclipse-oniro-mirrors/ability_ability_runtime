@@ -104,7 +104,7 @@ int32_t CliSessionSubscriptionManager::HandleSessionEvent(const std::string &ses
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = subscriptions_.find(subscriptionId);
-        if (it == subscriptions_.end() || it->second.sessionId != sessionId) {
+        if (it == subscriptions_.end()) {
             return ERROR_CODE;
         }
         if (!it->second.isActive) {
