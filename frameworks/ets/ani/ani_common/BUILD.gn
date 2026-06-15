@@ -19,6 +19,10 @@ config("ani_common_public_config") {
   include_dirs = [ "include" ]
 }
 
+config("ani_common_exception_config") {
+  cflags_cc = [ "-fexceptions" ]
+}
+
 ohos_shared_library("ani_common") {
   branch_protector_ret = "pac_ret"
   sanitize = {
@@ -41,8 +45,11 @@ ohos_shared_library("ani_common") {
   ]
 
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
-  public_configs = [ ":ani_common_public_config" ]
-
+  public_configs = [
+    ":ani_common_public_config",
+    ":ani_common_exception_config",
+  ]
+  
   sources = [
     "src/ani_common_ability_result.cpp",
     "src/ani_common_ability_state_data.cpp",

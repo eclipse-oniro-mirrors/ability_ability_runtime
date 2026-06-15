@@ -17,6 +17,7 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 module_output_path = "ability_runtime/ability_runtime/appmgrservice"
 
 ohos_unittest("cache_process_manager_second_test") {
+  use_exceptions = true
   sanitize = {
     cfi = true
     cfi_cross_dso = true

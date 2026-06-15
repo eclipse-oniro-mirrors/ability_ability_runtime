@@ -16,6 +16,10 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 module_output_path = "ability_runtime/ability_runtime/abilitymgr"
 
+config("test_exception_config") {
+  cflags_cc = [ "-fexceptions" ]
+}
+
 ohos_unittest("native_child_process_test") {
   module_out_path = module_output_path
 
@@ -33,6 +37,8 @@ ohos_unittest("native_child_process_test") {
 
   public_configs =
       [ "${ability_runtime_services_path}/abilitymgr:abilityms_config" ]
+
+  configs = [":test_exception_config"]
 
   sources = [
     "${ability_runtime_path}/frameworks/native/ability/native/child_process_manager/child_process_manager_error_utils.cpp",
