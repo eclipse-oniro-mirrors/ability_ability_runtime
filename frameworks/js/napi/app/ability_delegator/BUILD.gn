@@ -64,7 +64,6 @@ template("delegator") {
       "eventhandler:libeventhandler",
       "hilog:libhilog",
       "hitrace:hitrace_meter",
-      "image_framework:image_native",
       "ipc:ipc_napi",
       "ipc:ipc_single",
       "napi:ace_napi",

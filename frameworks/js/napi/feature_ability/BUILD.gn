@@ -42,7 +42,6 @@ ohos_shared_library("featureability_napi") {
     "common_event_service:cesfwk_innerkits",
     "eventhandler:libeventhandler",
     "hilog:libhilog",
-    "image_framework:image_native",
     "ipc:ipc_single",
     "napi:ace_napi",
   ]

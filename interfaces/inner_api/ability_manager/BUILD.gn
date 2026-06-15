@@ -197,14 +197,17 @@ ohos_shared_library("ability_manager") {
     "relational_store:native_rdb",
   ]
 
+  include_dirs = []
   if (ability_runtime_graphics) {
-    deps += []
+    deps += [ "${ability_runtime_services_path}/common:image_native_bridge" ]
     external_deps += [
       "ability_base:session_info",
+      # header used in window manager header
       "image_framework:image_native",
       "window_manager:libwsutils",
       "window_manager:session_manager_lite",
     ]
+    # color_manager should not be here. but is's public, with outside user now.
     public_external_deps += [ "graphic_2d:color_manager" ]
   }
 
@@ -287,9 +290,9 @@ ohos_shared_library("mission_info") {
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
   ]
+  deps = []
   if (ability_runtime_graphics) {
-    external_deps += [ "image_framework:image_native" ]
-    public_external_deps += [ "graphic_2d:color_manager" ]
+    deps += [ "${ability_runtime_services_path}/common:image_native_bridge" ]
   }
 
   cflags_cc = []
@@ -307,7 +310,6 @@ ohos_shared_library("ability_manager_c") {
   external_deps = [
     "ability_base:session_info",
     "c_utils:utils",
-    "image_framework:image_native",
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "ipc:ipc_single",
@@ -335,9 +337,6 @@ ohos_shared_library("ability_start_setting") {
     "bundle_framework:appexecfwk_core",
     "napi:ace_napi",
   ]
-  if (ability_runtime_graphics) {
-    public_external_deps += [ "graphic_2d:color_manager" ]
-  }
   cflags_cc = []
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
@@ -405,10 +404,11 @@ ohos_shared_library("start_window_option") {
     "napi:ace_napi",
   ]
 
+  deps = []
   if (ability_runtime_graphics &&
       ability_runtime_start_window_options_with_pixelmap) {
     defines = [ "START_WINDOW_OPTIONS_WITH_PIXELMAP" ]
-    external_deps += [ "image_framework:image_native" ]
+    deps += [ "${ability_runtime_services_path}/common:image_native_bridge" ]
   }
 
   cflags_cc = []
@@ -444,9 +444,6 @@ ohos_shared_library("ability_connect_callback_stub") {
     "ability_base:want",
     "bundle_framework:appexecfwk_base",
   ]
-  if (ability_runtime_graphics) {
-    external_deps += [ "graphic_2d:color_manager" ]
-  }
 
   cflags_cc = []
   innerapi_tags = [

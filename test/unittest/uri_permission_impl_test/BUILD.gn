@@ -167,7 +167,6 @@ ohos_unittest("uri_permission_manager_stub_impl_test") {
     "eventhandler:libeventhandler",
     "googletest:gmock_main",
     "googletest:gtest_main",
-    "graphic_2d:color_manager",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",

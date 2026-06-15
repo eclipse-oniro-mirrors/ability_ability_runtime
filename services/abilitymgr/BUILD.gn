@@ -259,13 +259,11 @@ ohos_shared_library("abilityms") {
 
   if (ability_runtime_graphics) {
     defines += [ "SUPPORT_GRAPHICS" ]
+    deps += [ "${ability_runtime_services_path}/common:image_native_bridge" ]
     external_deps += [
       "ability_base:session_info",
       "i18n:intl_util",
-      "icu:shared_icuuc",
-      "image_framework:image_native",
       "input:libmmi-client",
-      "resource_management:global_resmgr",
       "window_manager:libdm",
       "window_manager:libmodal_system_ui_extension_client",
       "window_manager:libwm",
@@ -307,7 +305,6 @@ ohos_shared_library("abilityms") {
   if (ability_runtime_graphics &&
       ability_runtime_start_window_options_with_pixelmap) {
     defines += [ "START_WINDOW_OPTIONS_WITH_PIXELMAP" ]
-    external_deps += [ "image_framework:image_native" ]
   }
 
   if (ability_runtime_no_screen) {
@@ -462,13 +459,12 @@ ohos_static_library("abilityms_static") {
 
   if (ability_runtime_graphics) {
     defines += [ "SUPPORT_GRAPHICS" ]
+    deps += [ "${ability_runtime_services_path}/common:image_native_bridge" ]
     external_deps += [
       "ability_base:session_info",
       "i18n:intl_util",
       "icu:shared_icuuc",
-      "image_framework:image_native",
       "input:libmmi-client",
-      "resource_management:global_resmgr",
       "window_manager:libdm",
       "window_manager:libmodal_system_ui_extension_client",
       "window_manager:libwm",
@@ -510,7 +506,6 @@ ohos_static_library("abilityms_static") {
   if (ability_runtime_graphics &&
       ability_runtime_start_window_options_with_pixelmap) {
     defines += [ "START_WINDOW_OPTIONS_WITH_PIXELMAP" ]
-    external_deps += [ "image_framework:image_native" ]
   }
 
   if (ability_runtime_no_screen) {
@@ -754,7 +749,6 @@ ohos_shared_library("mission_list") {
     "config_policy:configpolicy_util",
     "eventhandler:libeventhandler",
     "ffrt:libffrt",
-    "graphic_2d:color_manager",
     "hicollie:libhicollie",
     "hilog:libhilog",
     "hisysevent:libhisysevent",

@@ -108,7 +108,6 @@ ohos_shared_library("ability_runtime") {
 
   if (ability_runtime_graphics) {
     external_deps += [
-      "graphic_2d:color_manager",
       "image_framework:image",
       "window_manager:libwm",
       "window_manager:window_animation_utils",

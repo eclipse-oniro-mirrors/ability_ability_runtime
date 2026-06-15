@@ -90,6 +90,7 @@ ohos_unittest("ability_manager_service_first_test") {
     "${ability_runtime_services_path}/abilitymgr:wantagent_manager",
     "${ability_runtime_services_path}/common:app_util",
     "${ability_runtime_services_path}/common:hisysevent_report",
+    "${ability_runtime_services_path}/common:image_native_bridge",
     "${ability_runtime_services_path}/common:task_handler_wrap",
     "${ability_runtime_services_path}/common:user_controller",
     "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/aakit:aakit_mock",

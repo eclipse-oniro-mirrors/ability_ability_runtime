@@ -33,7 +33,6 @@ ohos_shared_library("insightintentdecorator_napi") {
     "ability_base:want",
     "c_utils:utils",
     "hilog:libhilog",
-    "image_framework:image_native",
     "ipc:ipc_core",
     "napi:ace_napi",
   ]
