@@ -2297,6 +2297,7 @@ ohos_shared_library("data_ability_helper") {
 
   deps = [
     ":abilitykit_native",
+    "${ability_runtime_innerkits_path}/dataobs_manager:dataobs_manager",
     "${ability_runtime_napi_path}/inner/napi_common:napi_common",
   ]
 
