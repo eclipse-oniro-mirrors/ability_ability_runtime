@@ -28,6 +28,7 @@
 
 namespace OHOS {
 namespace AppExecFwk {
+constexpr uint32_t INI_ONE_SHOE_TASK_FIRST_SECOND = 3000;
 constexpr uint32_t INI_TIMER_FIRST_SECOND = 10000;
 constexpr const char* MAIN_THREAD_TIMEOUT_TASK = "MAIN_THREAD_TIMEOUT_TASK";
 class Watchdog {
@@ -114,6 +115,7 @@ private:
     float getRatioValue();
     bool IsNumeric(const std::string &str);
     void SetReportLifeCycleAsAppfreeze();
+    bool CheckReportEvent(int64_t now);
 #ifdef ABILITY_RUNTIME_HITRACE_ENABLE
     void SetHiTraceChainId();
 
@@ -128,11 +130,11 @@ private:
     std::atomic_bool isBgWorkingThread_ = false;
     std::atomic_int backgroundReportCount_ = 0;
     std::atomic_int watchdogReportCount_ = 0;
+    std::atomic_int halfBckGroundCount_ = 0;
     std::mutex cvMutex_;
     std::condition_variable cvWatchdog_;
     static std::shared_ptr<EventHandler> appMainHandler_;
     int64_t lastWatchTime_ = 0;
-    bool isSystemApp_ = true;
     int64_t lastBackGroundWatchTime_ = 0;
     std::string bundleName_;
 };

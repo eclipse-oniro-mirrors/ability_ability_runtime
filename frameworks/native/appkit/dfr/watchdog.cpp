@@ -120,6 +120,8 @@ void Watchdog::Init(const std::shared_ptr<EventHandler> mainHandler)
     OHOS::HiviewDFX::Watchdog::GetInstance().RunPeriodicalTask("AppkitWatchdog", watchdogTask,
         WEARABLE_CHECK_INTERVAL_TIME, INI_TIMER_FIRST_SECOND);
 #else
+    OHOS::HiviewDFX::Watchdog::GetInstance().RunOneShotTask("AppkitOneShotWatchdogTask", watchdogTask,
+        INI_ONE_SHOE_TASK_FIRST_SECOND);
     OHOS::HiviewDFX::Watchdog::GetInstance().RunPeriodicalTask("AppkitWatchdog", watchdogTask,
         checkIntervalTime_, INI_TIMER_FIRST_SECOND);
 #endif
@@ -314,6 +316,29 @@ void Watchdog::Timer()
     }
 }
 
+bool Watchdog::CheckReportEvent(int64_t now)
+{
+    if (isInBackground_ && backgroundReportCount_.load() < BACKGROUND_REPORT_COUNT_MAX) {
+        bool enableCheck = std::find(std::begin(CHECK_BACKGROUND_THREAD), std::end(CHECK_BACKGROUND_THREAD),
+            bundleName_) != std::end(CHECK_BACKGROUND_THREAD);
+        if ((now - lastBackGroundWatchTime_) < 0 || (now - lastBackGroundWatchTime_) >= (BACKGROUND_INTERVAL_TIME)) {
+            TAG_LOGW(AAFwkTag::APPDFR, "In Background, thread may be blocked in, not report time"
+                "currTime: %{public}" PRIu64 ", lastTime: %{public}" PRIu64 ", enableCheck: %{public}d",
+                static_cast<uint64_t>(now), static_cast<uint64_t>(lastWatchTime_), enableCheck);
+            lastBackGroundWatchTime_ = now;
+        }
+        if (enableCheck) {
+            backgroundReportCount_++;
+            return false;
+        }
+        if (halfBckGroundCount_ > 0) {
+            return false;
+        }
+        halfBckGroundCount_++;
+    }
+    return true;
+}
+
 void Watchdog::ReportEvent()
 {
     if (isBgWorkingThread_) {
@@ -334,19 +359,7 @@ void Watchdog::ReportEvent()
             static_cast<unsigned long long>(now), static_cast<unsigned long long>(lastWatchTime_));
         return;
     }
-
-    if (isInBackground_ && backgroundReportCount_.load() < BACKGROUND_REPORT_COUNT_MAX) {
-        bool enableCheck = std::find(std::begin(CHECK_BACKGROUND_THREAD), std::end(CHECK_BACKGROUND_THREAD),
-            bundleName_) != std::end(CHECK_BACKGROUND_THREAD);
-        if (enableCheck) {
-            backgroundReportCount_++;
-        }
-        if ((now - lastBackGroundWatchTime_) < 0 || (now - lastBackGroundWatchTime_) >= (BACKGROUND_INTERVAL_TIME)) {
-            TAG_LOGW(AAFwkTag::APPDFR, "In Background, thread may be blocked in, not report time"
-                "currTime: %{public}" PRIu64 ", lastTime: %{public}" PRIu64 ", enableCheck: %{public}d",
-                static_cast<uint64_t>(now), static_cast<uint64_t>(lastWatchTime_), enableCheck);
-            lastBackGroundWatchTime_ = now;
-        }
+    if (!CheckReportEvent(now)) {
         return;
     }
 
