@@ -345,7 +345,7 @@ HWTEST_F(AbilityManagerServiceMockTest, ExecuteIntentForDistributed_0100, TestSi
     uint64_t requestCode = 1;
     uint64_t specifiedFullTokenId = 0;
     auto ret = abilityMs->ExecuteIntentForDistributed(want, "deviceA", requestCode, specifiedFullTokenId);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(ret, ERR_PERMISSION_DENIED);
 }
 
 /**
@@ -366,7 +366,7 @@ HWTEST_F(AbilityManagerServiceMockTest, ExecuteIntentForDistributed_0200, TestSi
     uint64_t requestCode = 1;
     uint64_t specifiedFullTokenId = 0;
     auto ret = abilityMs->ExecuteIntentForDistributed(want, "deviceA", requestCode, specifiedFullTokenId);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(ret, ERR_PERMISSION_DENIED);
 }
 
 /**
