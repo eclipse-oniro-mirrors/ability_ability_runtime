@@ -251,7 +251,7 @@ HWTEST_F(EtsEnvironmentTest, Initialize_0100, TestSize.Level0)
 {
     auto etsEnv = std::make_shared<ETSEnvironment>();
     ASSERT_NE(etsEnv, nullptr);
-    bool result = etsEnv->Initialize(nullptr, false);
+    bool result = etsEnv->Initialize(nullptr, false, "");
     EXPECT_FALSE(result);
 }
 
