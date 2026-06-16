@@ -25,7 +25,6 @@
 namespace OHOS {
 namespace AAFwk {
 namespace {
-const int LOAD_SA_TIMEOUT_MS = 4 * 1000;
 const int MAX_URI_COUNT = 200000;
 constexpr size_t MAX_IPC_RAW_DATA_SIZE = 128 * 1024 * 1024; // 128M
 constexpr int32_t BROKER_UID = 5557;
@@ -386,30 +385,15 @@ bool UriPermissionManagerClient::LoadUriPermService()
         return false;
     }
 
-    sptr<UriPermissionLoadCallback> loadCallback = new (std::nothrow) UriPermissionLoadCallback();
-    if (loadCallback == nullptr) {
-        TAG_LOGE(AAFwkTag::URIPERMMGR, "Create loadCallback failed");
+    auto remoteObject = systemAbilityMgr->GetSystemAbility(URI_PERMISSION_MGR_SERVICE_ID);
+    if (remoteObject == nullptr) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "GetSystemAbility %{public}d failed",
+            URI_PERMISSION_MGR_SERVICE_ID);
         return false;
     }
 
-    auto ret = systemAbilityMgr->LoadSystemAbility(URI_PERMISSION_MGR_SERVICE_ID, loadCallback);
-    if (ret != 0) {
-        TAG_LOGE(AAFwkTag::URIPERMMGR, "LoadSystemAbility %{public}d failed:%{public}d",
-            URI_PERMISSION_MGR_SERVICE_ID, ret);
-        return false;
-    }
-
-    {
-        std::unique_lock<std::mutex> lock(saLoadMutex_);
-        auto waitStatus = loadSaVariable_.wait_for(lock, std::chrono::milliseconds(LOAD_SA_TIMEOUT_MS),
-            [this]() {
-                return saLoadFinished_;
-            });
-        if (!waitStatus) {
-            TAG_LOGE(AAFwkTag::URIPERMMGR, "Wait for load sa timeout");
-            return false;
-        }
-    }
+    SetUriPermMgr(remoteObject);
+    TAG_LOGD(AAFwkTag::URIPERMMGR, "GetSystemAbility success");
     return true;
 }
 
@@ -430,29 +414,19 @@ void UriPermissionManagerClient::OnLoadSystemAbilitySuccess(const sptr<IRemoteOb
 {
     TAG_LOGD(AAFwkTag::URIPERMMGR, "call");
     SetUriPermMgr(remoteObject);
-    std::unique_lock<std::mutex> lock(saLoadMutex_);
-    saLoadFinished_ = true;
-    loadSaVariable_.notify_one();
 }
 
 void UriPermissionManagerClient::OnLoadSystemAbilityFail()
 {
     TAG_LOGD(AAFwkTag::URIPERMMGR, "call");
     SetUriPermMgr(nullptr);
-    std::unique_lock<std::mutex> lock(saLoadMutex_);
-    saLoadFinished_ = true;
-    loadSaVariable_.notify_one();
 }
 
 void UriPermissionManagerClient::ClearProxy()
 {
     TAG_LOGD(AAFwkTag::URIPERMMGR, "call");
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        uriPermMgr_ = nullptr;
-    }
-    std::unique_lock<std::mutex> lock(saLoadMutex_);
-    saLoadFinished_ = false;
+    std::lock_guard<std::mutex> lock(mutex_);
+    uriPermMgr_ = nullptr;
 }
 
 void UriPermissionManagerClient::UpmsDeathRecipient::OnRemoteDied([[maybe_unused]] const wptr<IRemoteObject>& remote)

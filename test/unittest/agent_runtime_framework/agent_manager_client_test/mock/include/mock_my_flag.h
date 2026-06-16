@@ -42,8 +42,6 @@ public:
     static AgentCard lastRegisterCard;
     static AgentCard lastUpdateCard;
     static bool nullSystemAbility;
-    static int retLoadSystemAbility;
-    static bool shouldCallback;
     static sptr<IRemoteObject> agentMgr;
 };
 }  // namespace AgentRuntime

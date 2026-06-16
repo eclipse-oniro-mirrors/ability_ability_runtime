@@ -541,9 +541,7 @@ HWTEST_F(AgentManagerClientTest, GetAgentMgrProxy_002, TestSize.Level1)
 HWTEST_F(AgentManagerClientTest, GetAgentMgrProxy_003, TestSize.Level1)
 {
     MyFlag::nullSystemAbility = false;
-    MyFlag::retLoadSystemAbility = 0;
     MyFlag::agentMgr = nullptr;
-    MyFlag::shouldCallback = true;
 
     auto result = AgentManagerClient::GetInstance().GetAgentMgrProxy();
     EXPECT_EQ(result, nullptr);
@@ -557,10 +555,8 @@ HWTEST_F(AgentManagerClientTest, GetAgentMgrProxy_003, TestSize.Level1)
 HWTEST_F(AgentManagerClientTest, GetAgentMgrProxy_004, TestSize.Level1)
 {
     MyFlag::nullSystemAbility = false;
-    MyFlag::retLoadSystemAbility = 0;
     auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
     MyFlag::agentMgr = mockAgentMgr;
-    MyFlag::shouldCallback = true;
 
     auto result = AgentManagerClient::GetInstance().GetAgentMgrProxy();
     EXPECT_EQ(result->AsObject(), mockAgentMgr->AsObject());
@@ -595,42 +591,28 @@ HWTEST_F(AgentManagerClientTest, LoadAgentMgrService_001, TestSize.Level1)
 }
 
 /**
-* @tc.name  : LoadAgentMgrService_ShouldReturnFalse_WhenLoadSystemAbilityFails
+* @tc.name  : LoadAgentMgrService_ShouldReturnFalse_WhenGetSystemAbilityReturnsNull
 * @tc.number: LoadAgentMgrService_002
-* @tc.desc  : Test that LoadAgentMgrService returns false when LoadSystemAbility fails
+* @tc.desc  : Test that LoadAgentMgrService returns false when GetSystemAbility returns nullptr
 */
 HWTEST_F(AgentManagerClientTest, LoadAgentMgrService_002, TestSize.Level1)
 {
     MyFlag::nullSystemAbility = false;
-    MyFlag::retLoadSystemAbility = -1;
-
-    EXPECT_FALSE(AgentManagerClient::GetInstance().LoadAgentMgrService());
-}
-
-/**
-* @tc.name  : LoadAgentMgrService_ShouldReturnFalse_WhenLoadSaTimeout
-* @tc.number: LoadAgentMgrService_003
-* @tc.desc  : Test that LoadAgentMgrService returns false when waiting for system ability loading times out
-*/
-HWTEST_F(AgentManagerClientTest, LoadAgentMgrService_003, TestSize.Level1)
-{
-    MyFlag::nullSystemAbility = false;
-    MyFlag::retLoadSystemAbility = 0;
-    MyFlag::shouldCallback = false;
+    MyFlag::agentMgr = nullptr;
 
     EXPECT_FALSE(AgentManagerClient::GetInstance().LoadAgentMgrService());
 }
 
 /**
 * @tc.name  : LoadAgentMgrService_ShouldReturnTrue_WhenAllStepsSucceed
-* @tc.number: LoadAgentMgrService_004
+* @tc.number: LoadAgentMgrService_003
 * @tc.desc  : Test that LoadAgentMgrService returns true when all steps succeed
 */
-HWTEST_F(AgentManagerClientTest, LoadAgentMgrService_004, TestSize.Level1)
+HWTEST_F(AgentManagerClientTest, LoadAgentMgrService_003, TestSize.Level1)
 {
     MyFlag::nullSystemAbility = false;
-    MyFlag::retLoadSystemAbility = 0;
-    MyFlag::shouldCallback = true;
+    auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
+    MyFlag::agentMgr = mockAgentMgr;
 
     EXPECT_TRUE(AgentManagerClient::GetInstance().LoadAgentMgrService());
 }
@@ -713,7 +695,6 @@ HWTEST_F(AgentManagerClientTest, OnLoadSystemAbilitySuccess_001, TestSize.Level1
     client.OnLoadSystemAbilitySuccess(mockAgentMgr);
 
     EXPECT_EQ(client.agentMgr_->AsObject(), mockAgentMgr->AsObject());
-    EXPECT_TRUE(client.loadSaFinished_);
 }
 
 /**
@@ -729,7 +710,6 @@ HWTEST_F(AgentManagerClientTest, OnLoadSystemAbilityFail_001, TestSize.Level1)
     client.OnLoadSystemAbilityFail();
 
     EXPECT_EQ(client.agentMgr_, nullptr);
-    EXPECT_TRUE(client.loadSaFinished_);
 }
 
 /**

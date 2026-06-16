@@ -25,6 +25,8 @@ public:
     DECLARE_INTERFACE_DESCRIPTOR(u"OHOS.ISystemAbilityManager")
 
     virtual int LoadSystemAbility(int32_t systemAbilityId, const sptr<ISystemAbilityLoadCallback> &callback) = 0;
+
+    virtual sptr<IRemoteObject> GetSystemAbility(int32_t systemAbilityId) = 0;
 };
 }  // namespace OHOS
 #endif // INTERFACES_INNERKITS_SAMGR_INCLUDE_IF_SYSTEM_ABILITY_MANAGER_H

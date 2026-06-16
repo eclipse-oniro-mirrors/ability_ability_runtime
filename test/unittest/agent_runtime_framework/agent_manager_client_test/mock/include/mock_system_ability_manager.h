@@ -32,6 +32,8 @@ public:
     }
 
     int LoadSystemAbility(int32_t systemAbilityId, const sptr<ISystemAbilityLoadCallback> &callback) override;
+
+    sptr<IRemoteObject> GetSystemAbility(int32_t systemAbilityId) override;
 };
 }  // namespace AAFwk
 }  // namespace OHOS
