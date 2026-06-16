@@ -33,9 +33,7 @@ using WritePixelMapFunc = bool (*)(Media::PixelMap *pixelMapPtr, Parcel *parcelP
 using DestroyPixelMapFunc = void (*)(Media::PixelMap *pixelMapPtr);
 
 // Bridge singleton that dlopen()'s libimage_native_wrap.z.so and caches the
-// resolved function pointers. Consumers (e.g. StartWindowOption) reach
-// Media::PixelMap Parcel operations through this bridge instead of linking
-// image_native directly, so the bridge SO itself has no image_native dependency.
+// resolved function pointers.
 //
 // All methods are thread safe. The wrapped library is loaded lazily on first
 // use; if it is unavailable every accessor degrades to a no-op / failure.
@@ -44,13 +42,11 @@ public:
     static PixelMapBridge &GetInstance();
     ~PixelMapBridge();
 
-    // Reads a PixelMap from the given Parcel (ownership transferred to caller).
-    // Returns nullptr on failure.
+    // Reads a PixelMap from the given Parcel.
     Media::PixelMap *ReadPixelMapFromParcel(Parcel *parcelPtr);
     // Writes a PixelMap into the given Parcel. Returns false on failure.
     bool WritePixelMapToParcel(Media::PixelMap *pixelMapPtr, Parcel *parcelPtr);
-    // Destroys a PixelMap. The delete runs inside the wrap SO (where it was
-    // allocated), keeping allocation/deallocation matched and CFI friendly.
+    // Destroys a PixelMap.
     void DestroyPixelMap(Media::PixelMap *pixelMapPtr);
 
 private:

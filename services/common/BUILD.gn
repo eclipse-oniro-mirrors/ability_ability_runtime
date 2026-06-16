@@ -518,8 +518,6 @@ ohos_static_library("user_controller_static") {
   part_name = "ability_runtime"
 }
 
-# SO #1: bridge library. Consumers depend on this instead of image_native; it
-# dlopen()'s libimage_native_wrap.z.so at runtime and has no image_native link.
 ohos_shared_library("image_native_bridge") {
   sanitize = {
     integer_overflow = true
@@ -547,8 +545,6 @@ ohos_shared_library("image_native_bridge") {
   part_name = "ability_runtime"
 }
 
-# SO #2: wrap library. Depends on image_native and exposes plain C entry points
-# for Media::PixelMap Parcel operations; resolved by the bridge via dlsym.
 ohos_shared_library("image_native_wrap") {
   sanitize = {
     integer_overflow = true
