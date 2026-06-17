@@ -242,23 +242,22 @@ void *AgentConnectionManager::GetAgentExtProxyPtr(const AAFwk::Want &want)
 }
 
 bool AgentConnectionManager::MatchConnection(const std::string &agentId, const AAFwk::Want &connectReceiver,
-    const AgentConnectionRecord &connection)
+    const std::map<AgentConnectionInfo, std::vector<sptr<AbilityConnectCallback>>>::value_type &connection)
 {
     // 1. Match by agentId
     if (agentId != connection.first.agentId) {
         return false;
     }
-    // 2. Match by connectReceiver (bundleName, moduleName, abilityName).
-    // AGENTEXTENSIONHOSTPROXY_KEY is per connect call, so it must not split reusable connections.
-    const AAFwk::Operation &storedReceiver = connection.first.connectReceiver;
-    const AppExecFwk::ElementName &element = connectReceiver.GetElement();
-    if (element.GetBundleName() != storedReceiver.GetBundleName() ||
-        element.GetAbilityName() != storedReceiver.GetAbilityName()) {
+    // 2. Match by agentExtProxy
+    void *agentExtProxy = GetAgentExtProxyPtr(connectReceiver);
+    if (agentExtProxy != connection.first.agentExtProxy) {
         return false;
     }
-    const std::string &moduleName = element.GetModuleName();
-    const std::string &storedModuleName = storedReceiver.GetModuleName();
-    return moduleName.empty() || storedModuleName.empty() || moduleName == storedModuleName;
+    // 3. Match by connectReceiver (bundleName, moduleName, abilityName)
+    const AAFwk::Operation &storedReceiver = connection.first.connectReceiver;
+    return connectReceiver.GetElement().GetBundleName() == storedReceiver.GetBundleName() &&
+        connectReceiver.GetElement().GetModuleName() == storedReceiver.GetModuleName() &&
+        connectReceiver.GetElement().GetAbilityName() == storedReceiver.GetAbilityName();
 }
 
 ErrCode AgentConnectionManager::CreateConnection(const AAFwk::Want &want,
@@ -282,19 +281,14 @@ ErrCode AgentConnectionManager::CreateConnection(const AAFwk::Want &want,
 
     {
         std::lock_guard<std::mutex> lock(connectionsLock_);
-        agentConnections_.emplace_back(connectionInfo, AgentConnectionCallbacks { connectCallback });
+        agentConnections_[connectionInfo] = { connectCallback };
     }
 
     ErrCode ret = AgentManagerClient::GetInstance().ConnectAgentExtensionAbility(want, agentConnection);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "error:%{public}d", ret);
         std::lock_guard<std::mutex> lock(connectionsLock_);
-        for (auto iter = agentConnections_.begin(); iter != agentConnections_.end(); ++iter) {
-            if (iter->first.agentConnection == agentConnection) {
-                agentConnections_.erase(iter);
-                break;
-            }
-        }
+        agentConnections_.erase(connectionInfo);
     }
     return ret;
 }

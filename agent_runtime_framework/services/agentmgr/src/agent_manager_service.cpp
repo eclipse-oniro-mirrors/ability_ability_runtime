@@ -81,19 +81,6 @@ bool IsMatchedAgentCardTarget(const AAFwk::Want &want, const AgentCard &card)
     return element.GetModuleName().empty() || card.appInfo->moduleName.empty() ||
         element.GetModuleName() == card.appInfo->moduleName;
 }
-
-void NormalizeConnectAgentTarget(AAFwk::Want &want, const AgentCard &card)
-{
-    if (card.appInfo == nullptr || card.appInfo->moduleName.empty()) {
-        return;
-    }
-    const auto &element = want.GetElement();
-    if (!element.GetModuleName().empty()) {
-        return;
-    }
-    want.SetElementName(element.GetBundleName(), element.GetAbilityName());
-    want.SetModuleName(card.appInfo->moduleName);
-}
 }
 
 sptr<AgentManagerService> AgentManagerService::GetInstance()
@@ -139,7 +126,6 @@ void AgentManagerService::OnStop() noexcept
         std::lock_guard<std::mutex> lock(connectionLock_);
         trackedConnections_.clear();
         callerConnectionCounts_.clear();
-        standardSessions_.clear();
     }
     std::lock_guard<std::mutex> hostLock(agentHostMutex_);
     agentHostSessions_.clear();
@@ -359,40 +345,23 @@ int32_t AgentManagerService::ConnectAgentExtensionAbility(const AAFwk::Want &wan
     TAG_LOGI(AAFwkTag::SER_ROUTER, "connecting %{public}s-%{public}s",
         connectWant.GetBundle().c_str(), agentId.c_str());
 
-    // Step 5: deduplicate standard agent connections at the service side.
-    StandardAgentKey key = BuildStandardAgentKey(callerUid, agentId, connectWant);
-    AppExecFwk::ElementName cachedElement;
-    sptr<IRemoteObject> cachedRemoteObject = nullptr;
-    int32_t cachedResultCode = ERR_OK;
-    bool notifyCached = false;
-    {
-        std::lock_guard<std::mutex> lock(connectionLock_);
-        auto existing = FindStandardSessionLocked(key);
-        if (existing != nullptr) {
-            ret = RegisterStandardSessionCallerLocked(existing, connection, false);
-            if (ret != ERR_OK) {
-                return ret;
-            }
-            if (existing->state == StandardAgentState::CONNECTING) {
-                TAG_LOGI(AAFwkTag::SER_ROUTER, "standard session connecting, append caller");
-                return ERR_OK;
-            }
-            if (existing->state == StandardAgentState::CONNECTED) {
-                TAG_LOGI(AAFwkTag::SER_ROUTER, "standard session connected, return cached proxy");
-                cachedElement = existing->cachedElement;
-                cachedRemoteObject = existing->cachedRemoteObject;
-                cachedResultCode = existing->cachedResultCode;
-                notifyCached = true;
-            }
-        }
-    }
-    if (notifyCached) {
-        connection->OnAbilityConnectDone(cachedElement, cachedRemoteObject, cachedResultCode);
-        return ERR_OK;
+    // Step 5: create the tracked wrapper connection before talking to AMS.
+    sptr<AAFwk::IAbilityConnection> serviceConnection;
+    ret = RegisterTrackedConnectionAndGetServiceConnection(connection, callerUid, true, serviceConnection);
+    if (ret != ERR_OK) {
+        return ret;
     }
 
-    // Step 6: no existing session — create one and issue the real AMS connect.
-    return CreateStandardAgentSession(connectWant, agentId, key, connection);
+    // Step 6: issue the actual extension connect request through AMS.
+    ret = AAFwk::AbilityManagerClient::GetInstance()->ConnectAbilityWithExtensionType(
+        connectWant, serviceConnection, nullptr, AAFwk::DEFAULT_INVAL_VALUE, AppExecFwk::ExtensionAbilityType::AGENT);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "ConnectAbilityWithExtensionType failed: %{public}d", ret);
+        ReleaseTrackedConnection(connection);
+        return ret;
+    }
+
+    return ERR_OK;
 }
 
 int32_t AgentManagerService::ConnectServiceExtensionAbility(const sptr<IRemoteObject> &callerToken,
@@ -488,7 +457,6 @@ int32_t AgentManagerService::ResolveConnectAgentTarget(const AAFwk::Want &want, 
         TAG_LOGE(AAFwkTag::SER_ROUTER, "low-code target mismatch");
         return AAFwk::INVALID_PARAMETERS_ERR;
     }
-    NormalizeConnectAgentTarget(connectWant, card);
 
     // Capture the caller UID once the target metadata is known-good.
     callingUid = IPCSkeleton::GetCallingUid();
@@ -610,27 +578,73 @@ int32_t AgentManagerService::DisconnectAgentExtensionAbility(const sptr<AAFwk::I
         return AAFwk::INVALID_PARAMETERS_ERR;
     }
 
-    AgentDisconnectPlan plan;
+    sptr<AAFwk::IAbilityConnection> serviceConnection = nullptr;
+    sptr<AgentHostConnection> hostConnection = nullptr;
+    sptr<IRemoteObject> callerRemote = nullptr;
+    AgentHostKey hostKey;
+    bool hasHostKey = false;
     {
         std::scoped_lock lock(connectionLock_, agentHostMutex_);
-        auto ret = PrepareAgentDisconnectLocked(connection, plan);
-        if (ret != ERR_OK) {
-            return ret;
+        auto it = FindTrackedConnectionLocked(connection, IPCSkeleton::GetCallingUid());
+        if (it == trackedConnections_.end()) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "Connection not tracked");
+            return ERR_INVALID_VALUE;
+        }
+        callerRemote = it->first;
+        if (it->second.isDisconnecting) {
+            TAG_LOGI(AAFwkTag::SER_ROUTER, "Connection is already disconnecting");
+            return ERR_OK;
+        }
+        if (it->second.isLowCode) {
+            auto sessionIter = agentHostSessions_.find(it->second.hostKey);
+            if (sessionIter == agentHostSessions_.end() || sessionIter->second == nullptr) {
+                TAG_LOGE(AAFwkTag::SER_ROUTER, "Low-code host session missing");
+                return ERR_INVALID_VALUE;
+            }
+            auto session = sessionIter->second;
+            if (session->isDisconnecting) {
+                return ERR_OK;
+            }
+            session->isDisconnecting = true;
+            it->second.isDisconnecting = true;
+            hostKey = it->second.hostKey;
+            hasHostKey = true;
+            if (!ReleaseCallerConnectionCountLocked(callerRemote)) {
+                session->isDisconnecting = false;
+                it->second.isDisconnecting = false;
+                TAG_LOGE(AAFwkTag::SER_ROUTER, "Release caller connection count failed");
+                return ERR_INVALID_VALUE;
+            }
+            hostConnection = session->hostConnection;
+        } else {
+            it->second.isDisconnecting = true;
+            if (!ReleaseCallerConnectionCountLocked(callerRemote)) {
+                TAG_LOGE(AAFwkTag::SER_ROUTER, "Release caller connection count failed");
+                return ERR_INVALID_VALUE;
+            }
+            serviceConnection = it->second.serviceConnection;
         }
     }
-    if (plan.serviceConnection == nullptr && plan.hostConnection == nullptr) {
-        return ERR_OK;
-    }
 
-    sptr<AAFwk::IAbilityConnection> disconnectConnection = plan.serviceConnection;
-    if (plan.hostConnection != nullptr) {
-        disconnectConnection = plan.hostConnection;
+    sptr<AAFwk::IAbilityConnection> disconnectConnection = serviceConnection;
+    if (hostConnection != nullptr) {
+        disconnectConnection = hostConnection;
     }
     auto ret = IN_PROCESS_CALL(AAFwk::AbilityManagerClient::GetInstance()->DisconnectAbility(disconnectConnection));
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "DisconnectAbility failed: %{public}d", ret);
         std::scoped_lock lock(connectionLock_, agentHostMutex_);
-        RollbackAgentDisconnectLocked(plan);
+        auto it = trackedConnections_.find(callerRemote);
+        if (hasHostKey) {
+            auto sessionIter = agentHostSessions_.find(hostKey);
+            if (sessionIter != agentHostSessions_.end() && sessionIter->second != nullptr) {
+                sessionIter->second->isDisconnecting = false;
+            }
+        }
+        if (it != trackedConnections_.end() && it->second.isDisconnecting) {
+            it->second.isDisconnecting = false;
+            callerConnectionCounts_[it->second.callerUid]++;
+        }
         return ret;
     }
 
@@ -664,7 +678,8 @@ sptr<IRemoteObject> AgentManagerService::GetConnectionIdentityRemote(
     return connection->AsObject();
 }
 
-AgentManagerService::TrackedConnectionIter AgentManagerService::FindTrackedConnectionLocked(
+std::map<sptr<IRemoteObject>, AgentManagerService::TrackedConnectionRecord>::iterator
+AgentManagerService::FindTrackedConnectionLocked(
     const sptr<AAFwk::IAbilityConnection> &connection, int32_t callerUid)
 {
     auto end = trackedConnections_.end();
@@ -703,115 +718,6 @@ AgentManagerService::TrackedConnectionIter AgentManagerService::FindTrackedConne
         TAG_LOGW(AAFwkTag::SER_ROUTER, "Resolved tracked connection by callerUid fallback: %{public}d", callerUid);
     }
     return matched;
-}
-
-int32_t AgentManagerService::PrepareAgentDisconnectLocked(const sptr<AAFwk::IAbilityConnection> &connection,
-    AgentDisconnectPlan &plan)
-{
-    auto it = FindTrackedConnectionLocked(connection, IPCSkeleton::GetCallingUid());
-    if (it == trackedConnections_.end()) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "Connection not tracked");
-        return ERR_INVALID_VALUE;
-    }
-
-    plan.callerRemote = it->first;
-    if (it->second.isDisconnecting) {
-        TAG_LOGI(AAFwkTag::SER_ROUTER, "Connection is already disconnecting");
-        return ERR_OK;
-    }
-    if (it->second.isLowCode) {
-        return PrepareLowCodeDisconnectLocked(it, plan);
-    }
-    return PrepareStandardDisconnectLocked(it, plan);
-}
-
-int32_t AgentManagerService::PrepareLowCodeDisconnectLocked(TrackedConnectionIter it, AgentDisconnectPlan &plan)
-{
-    auto sessionIter = agentHostSessions_.find(it->second.hostKey);
-    if (sessionIter == agentHostSessions_.end() || sessionIter->second == nullptr) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "Low-code host session missing");
-        return ERR_INVALID_VALUE;
-    }
-
-    auto session = sessionIter->second;
-    if (session->isDisconnecting) {
-        return ERR_OK;
-    }
-    session->isDisconnecting = true;
-    it->second.isDisconnecting = true;
-    plan.hostKey = it->second.hostKey;
-    plan.hasHostKey = true;
-    if (!ReleaseCallerConnectionCountLocked(plan.callerRemote)) {
-        session->isDisconnecting = false;
-        it->second.isDisconnecting = false;
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "Release caller connection count failed");
-        return ERR_INVALID_VALUE;
-    }
-    plan.hostConnection = session->hostConnection;
-    return ERR_OK;
-}
-
-int32_t AgentManagerService::PrepareStandardDisconnectLocked(TrackedConnectionIter it, AgentDisconnectPlan &plan)
-{
-    const auto &stdKey = it->second.standardKey;
-    if (stdKey.callerUid != 0 && !stdKey.agentId.empty()) {
-        auto sessionIt = std::find_if(standardSessions_.begin(), standardSessions_.end(),
-            [this, &stdKey](const auto &item) {
-                return item != nullptr && IsStandardAgentKeyEqual(item->key, stdKey);
-            });
-        if (sessionIt != standardSessions_.end() && *sessionIt != nullptr) {
-            auto &session = *sessionIt;
-            if (session->isDisconnecting) {
-                TAG_LOGI(AAFwkTag::SER_ROUTER, "standard session already disconnecting");
-                return ERR_OK;
-            }
-            session->isDisconnecting = true;
-            it->second.isDisconnecting = true;
-            plan.serviceConnection = session->serviceConnection;
-            plan.isStandard = true;
-            plan.standardCallerUid = session->key.callerUid;
-            plan.standardKey = session->key;
-            ReleaseCallerConnectionCountByUidLocked(plan.standardCallerUid);
-            return ERR_OK;
-        }
-    }
-
-    it->second.isDisconnecting = true;
-    if (!ReleaseCallerConnectionCountLocked(plan.callerRemote)) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "Release caller connection count failed");
-        return ERR_INVALID_VALUE;
-    }
-    plan.serviceConnection = it->second.serviceConnection;
-    return ERR_OK;
-}
-
-void AgentManagerService::RollbackAgentDisconnectLocked(const AgentDisconnectPlan &plan)
-{
-    auto it = trackedConnections_.find(plan.callerRemote);
-    if (plan.hasHostKey) {
-        auto sessionIter = agentHostSessions_.find(plan.hostKey);
-        if (sessionIter != agentHostSessions_.end() && sessionIter->second != nullptr) {
-            sessionIter->second->isDisconnecting = false;
-        }
-    }
-    if (plan.isStandard) {
-        auto sessionIt = std::find_if(standardSessions_.begin(), standardSessions_.end(),
-            [this, &plan](const auto &item) {
-                return item != nullptr && IsStandardAgentKeyEqual(item->key, plan.standardKey);
-            });
-        if (sessionIt != standardSessions_.end() && *sessionIt != nullptr) {
-            (*sessionIt)->isDisconnecting = false;
-        }
-        if (plan.standardCallerUid != 0) {
-            callerConnectionCounts_[plan.standardCallerUid]++;
-        }
-    }
-    if (it != trackedConnections_.end() && it->second.isDisconnecting) {
-        it->second.isDisconnecting = false;
-        if (!plan.isStandard) {
-            callerConnectionCounts_[it->second.callerUid]++;
-        }
-    }
 }
 
 int32_t AgentManagerService::DisconnectServiceExtensionAbility(const sptr<IRemoteObject> &callerToken,
@@ -1067,66 +973,53 @@ void AgentManagerService::TransferLowCodeCallerLimitLocked(const std::shared_ptr
     }
 }
 
-void AgentManagerService::CleanupDeadStandardConnectionLocked(TrackedConnectionIter it,
-    const sptr<IRemoteObject> &remote, sptr<AAFwk::IAbilityConnection> &serviceConnection)
+void AgentManagerService::HandleCallerConnectionDied(const sptr<IRemoteObject> &remote)
 {
-    serviceConnection = it->second.serviceConnection;
-    auto &stdKey = it->second.standardKey;
-    if (stdKey.callerUid != 0 && !stdKey.agentId.empty()) {
-        auto sessionIt = std::find_if(standardSessions_.begin(), standardSessions_.end(),
-            [this, &stdKey](const auto &item) {
-                return item != nullptr && IsStandardAgentKeyEqual(item->key, stdKey);
-            });
-        if (sessionIt != standardSessions_.end() && *sessionIt != nullptr) {
-            serviceConnection = (*sessionIt)->serviceConnection;
-            for (const auto &callerRemote : (*sessionIt)->callerRemotes) {
-                if (callerRemote != remote) {
-                    ReleaseTrackedConnectionByRemoteLocked(callerRemote);
+    sptr<AAFwk::IAbilityConnection> serviceConnection = nullptr;
+    sptr<AgentHostConnection> hostConnection = nullptr;
+    {
+        std::scoped_lock lock(connectionLock_, agentHostMutex_);
+        if (remote == nullptr) {
+            return;
+        }
+        auto it = trackedConnections_.find(remote);
+        if (it == trackedConnections_.end()) {
+            return;
+        }
+
+        if (!it->second.isLowCode) {
+            serviceConnection = it->second.serviceConnection;
+            ReleaseTrackedConnectionByRemoteLocked(remote);
+        } else {
+            auto sessionIter = agentHostSessions_.find(it->second.hostKey);
+            if (sessionIter != agentHostSessions_.end() && sessionIter->second != nullptr) {
+                auto session = sessionIter->second;
+                session->callerConnections.erase(remote);
+                for (auto agentIter = session->agents.begin(); agentIter != session->agents.end();) {
+                    if (agentIter->second.callerRemote == remote) {
+                        agentOwners_.erase(AgentOwnerKey { session->hostUid, agentIter->first });
+                        agentIter = session->agents.erase(agentIter);
+                        continue;
+                    }
+                    ++agentIter;
+                }
+                if (!session->isDisconnecting && session->agents.empty()) {
+                    session->isDisconnecting = true;
+                    hostConnection = session->hostConnection;
+                } else {
+                    TransferLowCodeCallerLimitLocked(session, remote);
                 }
             }
-            standardSessions_.erase(sessionIt);
+            ReleaseTrackedConnectionByRemoteLocked(remote);
         }
     }
-    ReleaseTrackedConnectionByRemoteLocked(remote);
-}
 
-void AgentManagerService::CleanupDeadLowCodeConnectionLocked(TrackedConnectionIter it,
-    const sptr<IRemoteObject> &remote, sptr<AgentHostConnection> &hostConnection)
-{
-    auto sessionIter = agentHostSessions_.find(it->second.hostKey);
-    if (sessionIter != agentHostSessions_.end() && sessionIter->second != nullptr) {
-        auto session = sessionIter->second;
-        session->callerConnections.erase(remote);
-        for (auto agentIter = session->agents.begin(); agentIter != session->agents.end();) {
-            if (agentIter->second.callerRemote == remote) {
-                agentOwners_.erase(AgentOwnerKey { session->hostUid, agentIter->first });
-                agentIter = session->agents.erase(agentIter);
-                continue;
-            }
-            ++agentIter;
-        }
-        if (!session->isDisconnecting && session->agents.empty()) {
-            session->isDisconnecting = true;
-            hostConnection = session->hostConnection;
-        } else {
-            TransferLowCodeCallerLimitLocked(session, remote);
-        }
-    }
-    ReleaseTrackedConnectionByRemoteLocked(remote);
-}
-
-void AgentManagerService::DisconnectDeadServiceConnection(const sptr<AAFwk::IAbilityConnection> &serviceConnection)
-{
     if (serviceConnection != nullptr) {
         auto ret = IN_PROCESS_CALL(AAFwk::AbilityManagerClient::GetInstance()->DisconnectAbility(serviceConnection));
         if (ret != ERR_OK) {
             TAG_LOGW(AAFwkTag::SER_ROUTER, "DisconnectAbility after caller death failed: %{public}d", ret);
         }
     }
-}
-
-void AgentManagerService::DisconnectDeadHostConnection(const sptr<AgentHostConnection> &hostConnection)
-{
     if (hostConnection != nullptr) {
         auto ret = IN_PROCESS_CALL(AAFwk::AbilityManagerClient::GetInstance()->DisconnectAbility(hostConnection));
         if (ret != ERR_OK) {
@@ -1141,30 +1034,6 @@ void AgentManagerService::DisconnectDeadHostConnection(const sptr<AgentHostConne
             TAG_LOGW(AAFwkTag::SER_ROUTER, "DisconnectAbility after caller death failed: %{public}d", ret);
         }
     }
-}
-
-void AgentManagerService::HandleCallerConnectionDied(const sptr<IRemoteObject> &remote)
-{
-    sptr<AAFwk::IAbilityConnection> serviceConnection = nullptr;
-    sptr<AgentHostConnection> hostConnection = nullptr;
-    {
-        std::scoped_lock lock(connectionLock_, agentHostMutex_);
-        if (remote == nullptr) {
-            return;
-        }
-        auto it = trackedConnections_.find(remote);
-        if (it == trackedConnections_.end()) {
-            return;
-        }
-        if (it->second.isLowCode) {
-            CleanupDeadLowCodeConnectionLocked(it, remote, hostConnection);
-        } else {
-            CleanupDeadStandardConnectionLocked(it, remote, serviceConnection);
-        }
-    }
-
-    DisconnectDeadServiceConnection(serviceConnection);
-    DisconnectDeadHostConnection(hostConnection);
 }
 
 void AgentManagerService::HandleCallerConnectionDied(const wptr<IRemoteObject> &remote)
@@ -1518,208 +1387,6 @@ void AgentManagerService::ClearAgentHostSessionLocked(const AgentHostKey &key)
         EraseAgentOwnersLocked(*sessionIter->second);
     }
     agentHostSessions_.erase(sessionIter);
-}
-
-AgentManagerService::StandardAgentKey AgentManagerService::BuildStandardAgentKey(
-    int32_t callerUid, const std::string &agentId, const AAFwk::Want &want) const
-{
-    StandardAgentKey key;
-    key.callerUid = callerUid;
-    key.agentId = agentId;
-    const auto &element = want.GetElement();
-    key.bundleName = element.GetBundleName();
-    key.moduleName = element.GetModuleName();
-    key.abilityName = element.GetAbilityName();
-    return key;
-}
-
-bool AgentManagerService::IsStandardAgentKeyEqual(const StandardAgentKey &left, const StandardAgentKey &right) const
-{
-    return left.callerUid == right.callerUid && left.agentId == right.agentId &&
-        left.bundleName == right.bundleName && left.moduleName == right.moduleName &&
-        left.abilityName == right.abilityName;
-}
-
-bool AgentManagerService::IsStandardAgentKeyMatched(
-    const StandardAgentKey &storedKey, const StandardAgentKey &incomingKey) const
-{
-    return storedKey.callerUid == incomingKey.callerUid && storedKey.agentId == incomingKey.agentId &&
-        storedKey.bundleName == incomingKey.bundleName && storedKey.abilityName == incomingKey.abilityName &&
-        (storedKey.moduleName.empty() || incomingKey.moduleName.empty() ||
-            storedKey.moduleName == incomingKey.moduleName);
-}
-
-std::shared_ptr<AgentManagerService::StandardAgentSession> AgentManagerService::FindStandardSessionLocked(
-    const StandardAgentKey &key) const
-{
-    for (const auto &entry : standardSessions_) {
-        if (entry != nullptr && IsStandardAgentKeyMatched(entry->key, key)) {
-            return entry;
-        }
-    }
-    return nullptr;
-}
-
-AgentManagerService::StandardSessionIter AgentManagerService::FindStandardSessionByServiceRemoteLocked(
-    const sptr<IRemoteObject> &serviceRemote)
-{
-    return std::find_if(standardSessions_.begin(), standardSessions_.end(),
-        [&serviceRemote](const auto &item) {
-            return item != nullptr && item->serviceConnection != nullptr &&
-                item->serviceConnection->AsObject() == serviceRemote;
-        });
-}
-
-int32_t AgentManagerService::RegisterStandardSessionCallerLocked(
-    const std::shared_ptr<StandardAgentSession> &session,
-    const sptr<AAFwk::IAbilityConnection> &connection, bool countTowardsCallerLimit)
-{
-    if (session == nullptr || connection == nullptr || session->serviceConnection == nullptr) {
-        return ERR_INVALID_VALUE;
-    }
-    auto callerRemote = GetConnectionIdentityRemote(connection);
-    if (callerRemote == nullptr) {
-        return ERR_INVALID_VALUE;
-    }
-
-    auto trackedIt = trackedConnections_.find(callerRemote);
-    if (trackedIt == trackedConnections_.end()) {
-        auto ret = TryRegisterConnectionLocked(connection, session->key.callerUid,
-            session->serviceConnection, nullptr, countTowardsCallerLimit);
-        if (ret != ERR_OK) {
-            return ret;
-        }
-        trackedIt = trackedConnections_.find(callerRemote);
-    } else if (trackedIt->second.standardKey.callerUid != 0 &&
-        !IsStandardAgentKeyEqual(trackedIt->second.standardKey, session->key)) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "Connection already belongs to another standard session");
-        return ERR_INVALID_VALUE;
-    }
-
-    if (trackedIt != trackedConnections_.end()) {
-        trackedIt->second.standardKey = session->key;
-    }
-    if (std::find(session->callerRemotes.begin(), session->callerRemotes.end(), callerRemote) ==
-        session->callerRemotes.end()) {
-        session->callerRemotes.push_back(callerRemote);
-    }
-    auto &callbacks = session->state == StandardAgentState::CONNECTED ?
-        session->connectedCallbacks : session->pendingCallbacks;
-    if (std::find(callbacks.begin(), callbacks.end(), connection) == callbacks.end()) {
-        callbacks.push_back(connection);
-    }
-    return ERR_OK;
-}
-
-int32_t AgentManagerService::CreateStandardAgentSession(const AAFwk::Want &connectWant,
-    const std::string &agentId, const StandardAgentKey &key,
-    const sptr<AAFwk::IAbilityConnection> &connection)
-{
-    auto serviceConnection = sptr<AgentServiceConnection>::MakeSptr(connection);
-    if (serviceConnection == nullptr) {
-        return ERR_INVALID_VALUE;
-    }
-
-    serviceConnection->SetStandardSessionMode();
-
-    auto session = std::make_shared<StandardAgentSession>();
-    session->key = key;
-    session->state = StandardAgentState::CONNECTING;
-    session->serviceConnection = serviceConnection;
-
-    {
-        std::lock_guard<std::mutex> lock(connectionLock_);
-        auto ret = RegisterStandardSessionCallerLocked(session, connection, true);
-        if (ret != ERR_OK) {
-            return ret;
-        }
-        standardSessions_.emplace_back(session);
-    }
-
-    auto ret = AAFwk::AbilityManagerClient::GetInstance()->ConnectAbilityWithExtensionType(
-        connectWant, serviceConnection, nullptr, AAFwk::DEFAULT_INVAL_VALUE, AppExecFwk::ExtensionAbilityType::AGENT);
-    if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "ConnectAbilityWithExtensionType failed: %{public}d", ret);
-        ReleaseTrackedConnection(connection);
-        std::lock_guard<std::mutex> lock(connectionLock_);
-        auto sessionIt = FindStandardSessionByServiceRemoteLocked(serviceConnection->AsObject());
-        if (sessionIt != standardSessions_.end()) {
-            standardSessions_.erase(sessionIt);
-        }
-        return ret;
-    }
-    return ERR_OK;
-}
-
-void AgentManagerService::HandleStandardAgentConnectDone(
-    const sptr<IRemoteObject> &serviceRemote,
-    const AppExecFwk::ElementName &element, const sptr<IRemoteObject> &remoteObject, int32_t resultCode)
-{
-    std::vector<sptr<AAFwk::IAbilityConnection>> callbacks;
-    {
-        std::lock_guard<std::mutex> lock(connectionLock_);
-        auto sessionIt = FindStandardSessionByServiceRemoteLocked(serviceRemote);
-        if (sessionIt == standardSessions_.end() || *sessionIt == nullptr) {
-            return;
-        }
-        auto &session = *sessionIt;
-        session->cachedElement = element;
-        session->cachedRemoteObject = remoteObject;
-        session->cachedResultCode = resultCode;
-
-        if (resultCode == ERR_OK && remoteObject != nullptr) {
-            session->state = StandardAgentState::CONNECTED;
-            callbacks = session->pendingCallbacks;
-            session->pendingCallbacks.clear();
-            // Move all pending callers to connectedCallbacks for disconnect notification
-            session->connectedCallbacks.insert(session->connectedCallbacks.end(),
-                callbacks.begin(), callbacks.end());
-        } else {
-            // Connect failed: clean up the entire collapsed session
-            callbacks = session->pendingCallbacks;
-            session->pendingCallbacks.clear();
-            standardSessions_.erase(sessionIt);
-        }
-    }
-
-    for (const auto &cb : callbacks) {
-        if (cb != nullptr) {
-            cb->OnAbilityConnectDone(element, remoteObject, resultCode);
-        }
-        if (resultCode != ERR_OK) {
-            ReleaseTrackedConnection(cb);
-        }
-    }
-}
-
-void AgentManagerService::HandleStandardAgentDisconnectDone(
-    const sptr<IRemoteObject> &serviceRemote,
-    const AppExecFwk::ElementName &element, int32_t resultCode)
-{
-    std::vector<sptr<AAFwk::IAbilityConnection>> callbacks;
-    {
-        std::lock_guard<std::mutex> lock(connectionLock_);
-        auto sessionIt = FindStandardSessionByServiceRemoteLocked(serviceRemote);
-        if (sessionIt == standardSessions_.end() || *sessionIt == nullptr) {
-            return;
-        }
-        auto &session = *sessionIt;
-        // Collect all callers: pending + connected
-        callbacks = session->pendingCallbacks;
-        session->pendingCallbacks.clear();
-        callbacks.insert(callbacks.end(),
-            session->connectedCallbacks.begin(), session->connectedCallbacks.end());
-        session->connectedCallbacks.clear();
-        // Erase session bookkeeping
-        standardSessions_.erase(sessionIt);
-    }
-
-    for (const auto &cb : callbacks) {
-        if (cb != nullptr) {
-            cb->OnAbilityDisconnectDone(element, resultCode);
-            HandleConnectionDone(cb, resultCode, true);
-        }
-    }
 }
 }  // namespace AgentRuntime
 }  // namespace OHOS

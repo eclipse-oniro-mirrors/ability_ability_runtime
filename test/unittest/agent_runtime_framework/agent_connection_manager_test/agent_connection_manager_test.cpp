@@ -884,9 +884,9 @@ HWTEST_F(AgentConnectionManagerTest, MatchConnection_001, TestSize.Level1)
 }
 
 /**
-* @tc.name  : MatchConnection_ShouldReturnTrue_WhenAgentExtProxyDiffers
+* @tc.name  : MatchConnection_ShouldReturnFalse_WhenAgentExtProxyDiffers
 * @tc.number: MatchConnection_002
-* @tc.desc  : Test MatchConnection returns true when only agentExtProxy differs
+* @tc.desc  : Test MatchConnection returns false when agentExtProxy differs
 */
 HWTEST_F(AgentConnectionManagerTest, MatchConnection_002, TestSize.Level1)
 {
@@ -908,7 +908,7 @@ HWTEST_F(AgentConnectionManagerTest, MatchConnection_002, TestSize.Level1)
 
     auto &connectionEntry = *AgentConnectionManager::GetInstance().agentConnections_.begin();
     auto result = AgentConnectionManager::GetInstance().MatchConnection("testAgent", want, connectionEntry);
-    EXPECT_TRUE(result);
+    EXPECT_FALSE(result);
 }
 
 /**
@@ -957,30 +957,6 @@ HWTEST_F(AgentConnectionManagerTest, MatchConnection_004, TestSize.Level1)
     auto &connectionEntry = *AgentConnectionManager::GetInstance().agentConnections_.begin();
     auto result = AgentConnectionManager::GetInstance().MatchConnection("testAgent", want, connectionEntry);
     EXPECT_FALSE(result);
-}
-
-/**
-* @tc.name  : MatchConnection_ShouldReturnTrue_WhenModuleNameIsEmpty
-* @tc.number: MatchConnection_007
-* @tc.desc  : Test MatchConnection returns true when the user-passed Want does not specify moduleName
-*/
-HWTEST_F(AgentConnectionManagerTest, MatchConnection_007, TestSize.Level1)
-{
-    Want want;
-    want.SetParam(AGENTID_KEY, std::string("testAgent"));
-    want.SetElementName("", "test.bundle", "test.ability");
-
-    Want want2;
-    want2.SetParam(AGENTID_KEY, std::string("testAgent"));
-    want2.SetElementName("", "test.bundle", "test.ability", "test.module");
-
-    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
-    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
-    AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want2, callback);
-
-    auto &connectionEntry = *AgentConnectionManager::GetInstance().agentConnections_.begin();
-    auto result = AgentConnectionManager::GetInstance().MatchConnection("testAgent", want, connectionEntry);
-    EXPECT_TRUE(result);
 }
 
 /**
@@ -1262,62 +1238,6 @@ HWTEST_F(AgentConnectionManagerTest, ConnectAbilityInner_002, TestSize.Level1)
 
     EXPECT_EQ(result, ERR_OK);
     EXPECT_EQ(AgentConnectionManager::GetInstance().agentConnections_.size(), static_cast<size_t>(1));
-}
-
-/**
-* @tc.name  : ConnectAbilityInner_ShouldReuseConnection_WhenHostProxyDiffers
-* @tc.number: ConnectAbilityInner_004
-* @tc.desc  : Test ConnectAbilityInner reuses connection for same agent and target with different host proxies
-*/
-HWTEST_F(AgentConnectionManagerTest, ConnectAbilityInner_004, TestSize.Level1)
-{
-    Want want1;
-    want1.SetParam(AGENTID_KEY, std::string("testAgent"));
-    want1.SetElementName("", "test.bundle", "test.ability", "test.module");
-    sptr<IRemoteObject> remoteObj1 = sptr<MockIRemoteObject>::MakeSptr();
-    want1.SetParam(AGENTEXTENSIONHOSTPROXY_KEY, remoteObj1);
-
-    Want want2;
-    want2.SetParam(AGENTID_KEY, std::string("testAgent"));
-    want2.SetElementName("", "test.bundle", "test.ability", "test.module");
-    sptr<IRemoteObject> remoteObj2 = sptr<MockIRemoteObject>::MakeSptr();
-    want2.SetParam(AGENTEXTENSIONHOSTPROXY_KEY, remoteObj2);
-
-    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
-    sptr<MockAbilityConnectCallback> callback1 = new MockAbilityConnectCallback();
-    auto result = AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want1, callback1);
-    EXPECT_EQ(result, ERR_OK);
-
-    sptr<MockAbilityConnectCallback> callback2 = new MockAbilityConnectCallback();
-    result = AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want2, callback2);
-    EXPECT_EQ(result, ERR_OK);
-    EXPECT_EQ(AgentConnectionManager::GetInstance().agentConnections_.size(), static_cast<size_t>(1));
-    EXPECT_EQ(AgentConnectionManager::GetInstance().agentConnections_.begin()->second.size(), static_cast<size_t>(2));
-}
-
-/**
-* @tc.name  : ConnectAbilityInner_ShouldCreateNewConnection_WhenExplicitModuleNameDiffers
-* @tc.number: ConnectAbilityInner_005
-* @tc.desc  : Test ConnectAbilityInner keeps same abilityName in different explicit modules separate
-*/
-HWTEST_F(AgentConnectionManagerTest, ConnectAbilityInner_005, TestSize.Level1)
-{
-    Want want1;
-    want1.SetParam(AGENTID_KEY, std::string("testAgent"));
-    want1.SetElementName("", "test.bundle", "test.ability", "moduleA");
-
-    Want want2;
-    want2.SetParam(AGENTID_KEY, std::string("testAgent"));
-    want2.SetElementName("", "test.bundle", "test.ability", "moduleB");
-
-    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
-    sptr<MockAbilityConnectCallback> callback1 = new MockAbilityConnectCallback();
-    EXPECT_EQ(AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want1, callback1), ERR_OK);
-
-    sptr<MockAbilityConnectCallback> callback2 = new MockAbilityConnectCallback();
-    EXPECT_EQ(AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want2, callback2), ERR_OK);
-
-    EXPECT_EQ(AgentConnectionManager::GetInstance().agentConnections_.size(), static_cast<size_t>(2));
 }
 
 /**

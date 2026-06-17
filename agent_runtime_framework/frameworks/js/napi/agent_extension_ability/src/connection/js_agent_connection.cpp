@@ -33,22 +33,6 @@ constexpr int32_t ARGC_ONE = 1;
 static std::map<ConnectionKey, sptr<JSAgentConnection>, KeyCompare> g_agentConnects;
 static std::recursive_mutex g_agentConnectsLock_;
 static int64_t g_agentSerialNumber = 0;
-
-bool IsSameAgentConnection(const AAFwk::Want &storedWant, const AAFwk::Want &want, const std::string &agentId)
-{
-    std::string existingId = storedWant.GetStringParam(AGENTID_KEY);
-    if (existingId.empty() || agentId.empty() || existingId != agentId) {
-        return false;
-    }
-    const auto &storedElement = storedWant.GetElement();
-    const auto &element = want.GetElement();
-    if (storedElement.GetBundleName() != element.GetBundleName() ||
-        storedElement.GetAbilityName() != element.GetAbilityName()) {
-        return false;
-    }
-    return storedElement.GetModuleName().empty() || element.GetModuleName().empty() ||
-        storedElement.GetModuleName() == element.GetModuleName();
-}
 } // namespace
 
 namespace AgentConnectionUtils {
@@ -109,13 +93,21 @@ void FindAgentConnection(int64_t connectId, sptr<JSAgentConnection> &connection)
     }
 }
 
-void FindAgentConnection(const AAFwk::Want &want, const std::string &agentId, sptr<JSAgentConnection> &connection)
+void FindAgentConnection(napi_env env, AAFwk::Want &want, napi_value callback,
+    sptr<JSAgentConnection> &connection)
 {
-    TAG_LOGD(AAFwkTag::SER_ROUTER, "FindAgentConnection by target");
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "FindAgentConnection by want+callback");
     std::lock_guard<std::recursive_mutex> lock(g_agentConnectsLock_);
     auto item = std::find_if(g_agentConnects.begin(), g_agentConnects.end(),
-        [&want, &agentId](const auto &obj) {
-        return IsSameAgentConnection(obj.first.want, want, agentId);
+        [&want, env, callback](const auto &obj) {
+        std::string exstingId = obj.first.want.GetStringParam(AGENTID_KEY);
+        std::string agentId = want.GetStringParam(AGENTID_KEY);
+        bool wantEquals = obj.first.want.GetElement() == want.GetElement() &&
+            !exstingId.empty() && !agentId.empty() && exstingId == agentId;
+        std::unique_ptr<NativeReference> &tempCallbackPtr = obj.second->GetJsConnectionObject();
+        bool callbackObjectEquals =
+            JSAgentConnection::IsJsCallbackObjectEquals(env, tempCallbackPtr, callback);
+        return wantEquals && callbackObjectEquals;
     });
     if (item == g_agentConnects.end()) {
         TAG_LOGD(AAFwkTag::SER_ROUTER, "Connection not found");

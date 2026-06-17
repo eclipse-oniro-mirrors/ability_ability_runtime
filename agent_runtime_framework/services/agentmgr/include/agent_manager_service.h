@@ -16,7 +16,6 @@
 #ifndef OHOS_AGENT_RUNTIME_FRAMEWORK_AGENT_MANAGER_SERVICE_H
 #define OHOS_AGENT_RUNTIME_FRAMEWORK_AGENT_MANAGER_SERVICE_H
 
-#include <list>
 #include <memory>
 #include <map>
 #include <mutex>
@@ -32,7 +31,6 @@
 #include "task_handler_wrap.h"
 #include "agent_host_connection.h"
 #include "agent_host_connection_types.h"
-#include "element_name.h"
 
 namespace OHOS {
 namespace AgentRuntime {
@@ -85,41 +83,6 @@ public:
 private:
     friend class AgentServiceConnection;
     friend class AgentHostConnection;
-
-    /**
-     * @struct StandardAgentKey
-     * @brief Identity key for deduplicating non-low-code agent connections: callerUid + agentId + target.
-     */
-    struct StandardAgentKey {
-        int32_t callerUid = 0;
-        std::string agentId;
-        std::string bundleName;
-        std::string moduleName;
-        std::string abilityName;
-    };
-
-    enum class StandardAgentState : int32_t {
-        CONNECTING,
-        CONNECTED,
-    };
-
-    /**
-     * @struct StandardAgentSession
-     * @brief Collapsed session for standard agent connections sharing the same (callerUid, agentId, target).
-     */
-    struct StandardAgentSession {
-        StandardAgentKey key;
-        StandardAgentState state = StandardAgentState::CONNECTING;
-        sptr<AAFwk::IAbilityConnection> serviceConnection = nullptr;
-        std::vector<sptr<AAFwk::IAbilityConnection>> pendingCallbacks;
-        std::vector<sptr<AAFwk::IAbilityConnection>> connectedCallbacks;
-        std::vector<sptr<IRemoteObject>> callerRemotes;
-        AppExecFwk::ElementName cachedElement;
-        sptr<IRemoteObject> cachedRemoteObject = nullptr;
-        int32_t cachedResultCode = ERR_OK;
-        bool isDisconnecting = false;
-    };
-
     /**
      * @struct TrackedConnectionRecord
      * @brief Stores one caller-visible connection together with the service-side wrapper used to talk to AMS.
@@ -133,21 +96,6 @@ private:
         bool isLowCode = false;
         bool countTowardsCallerLimit = true;
         bool isDisconnecting = false;
-        StandardAgentKey standardKey;
-    };
-
-    using TrackedConnectionIter = std::map<sptr<IRemoteObject>, TrackedConnectionRecord>::iterator;
-    using StandardSessionIter = std::list<std::shared_ptr<StandardAgentSession>>::iterator;
-
-    struct AgentDisconnectPlan {
-        sptr<AAFwk::IAbilityConnection> serviceConnection = nullptr;
-        sptr<AgentHostConnection> hostConnection = nullptr;
-        sptr<IRemoteObject> callerRemote = nullptr;
-        AgentHostKey hostKey;
-        bool hasHostKey = false;
-        bool isStandard = false;
-        int32_t standardCallerUid = 0;
-        StandardAgentKey standardKey;
     };
 
     AgentManagerService();
@@ -195,13 +143,8 @@ private:
     /**
      * @brief Finds the tracked record that matches the caller callback object or the fallback caller uid path.
      */
-    TrackedConnectionIter FindTrackedConnectionLocked(const sptr<AAFwk::IAbilityConnection> &connection,
-        int32_t callerUid);
-    int32_t PrepareAgentDisconnectLocked(const sptr<AAFwk::IAbilityConnection> &connection,
-        AgentDisconnectPlan &plan);
-    int32_t PrepareLowCodeDisconnectLocked(TrackedConnectionIter it, AgentDisconnectPlan &plan);
-    int32_t PrepareStandardDisconnectLocked(TrackedConnectionIter it, AgentDisconnectPlan &plan);
-    void RollbackAgentDisconnectLocked(const AgentDisconnectPlan &plan);
+    std::map<sptr<IRemoteObject>, TrackedConnectionRecord>::iterator FindTrackedConnectionLocked(
+        const sptr<AAFwk::IAbilityConnection> &connection, int32_t callerUid);
     void ReleaseCallerConnectionCountByUidLocked(int32_t callerUid);
     /**
      * @brief Forwards connect/disconnect completion from the service-side wrapper back to the original caller.
@@ -214,12 +157,6 @@ private:
         const sptr<IRemoteObject> &callerRemote);
     void HandleCallerConnectionDied(const wptr<IRemoteObject> &remote);
     void HandleCallerConnectionDied(const sptr<IRemoteObject> &remote);
-    void CleanupDeadStandardConnectionLocked(TrackedConnectionIter it, const sptr<IRemoteObject> &remote,
-        sptr<AAFwk::IAbilityConnection> &serviceConnection);
-    void CleanupDeadLowCodeConnectionLocked(TrackedConnectionIter it, const sptr<IRemoteObject> &remote,
-        sptr<AgentHostConnection> &hostConnection);
-    void DisconnectDeadServiceConnection(const sptr<AAFwk::IAbilityConnection> &serviceConnection);
-    void DisconnectDeadHostConnection(const sptr<AgentHostConnection> &hostConnection);
     /**
      * @brief Connect path for LOW_CODE agents, which reuse one shared host session per target host.
      */
@@ -249,38 +186,6 @@ private:
      * @brief Extracts the host-session identity from the target element and caller user context.
      */
     AgentHostKey BuildAgentHostKey(const AAFwk::Want &want, int32_t callingUid) const;
-    /**
-     * @brief Builds the identity key for standard agent session deduplication.
-     */
-    StandardAgentKey BuildStandardAgentKey(int32_t callerUid, const std::string &agentId,
-        const AAFwk::Want &want) const;
-    bool IsStandardAgentKeyEqual(const StandardAgentKey &left, const StandardAgentKey &right) const;
-    bool IsStandardAgentKeyMatched(const StandardAgentKey &storedKey, const StandardAgentKey &incomingKey) const;
-    /**
-     * @brief Finds an existing standard session matching the given key.
-     */
-    std::shared_ptr<StandardAgentSession> FindStandardSessionLocked(const StandardAgentKey &key) const;
-    StandardSessionIter FindStandardSessionByServiceRemoteLocked(const sptr<IRemoteObject> &serviceRemote);
-    /**
-     * @brief Registers a caller callback against an existing standard session without consuming another quota slot.
-     */
-    int32_t RegisterStandardSessionCallerLocked(const std::shared_ptr<StandardAgentSession> &session,
-        const sptr<AAFwk::IAbilityConnection> &connection, bool countTowardsCallerLimit);
-    /**
-     * @brief Creates a new collapsed standard session, registers one quota, and issues the real AMS connect.
-     */
-    int32_t CreateStandardAgentSession(const AAFwk::Want &connectWant, const std::string &agentId,
-        const StandardAgentKey &key, const sptr<AAFwk::IAbilityConnection> &connection);
-    /**
-     * @brief Handles AMS connect completion for a standard collapsed session.
-     */
-    void HandleStandardAgentConnectDone(const sptr<IRemoteObject> &serviceRemote,
-        const AppExecFwk::ElementName &element, const sptr<IRemoteObject> &remoteObject, int32_t resultCode);
-    /**
-     * @brief Handles AMS disconnect completion for a standard collapsed session.
-     */
-    void HandleStandardAgentDisconnectDone(const sptr<IRemoteObject> &serviceRemote,
-        const AppExecFwk::ElementName &element, int32_t resultCode);
     /**
      * @brief Marks the target low-code agent as invoked so future callers can detect duplicate activation.
      */
@@ -318,7 +223,6 @@ private:
     std::mutex agentHostMutex_;
     std::map<AgentHostKey, std::shared_ptr<AgentHostSession>> agentHostSessions_;
     std::map<AgentOwnerKey, std::shared_ptr<AgentHostSession>> agentOwners_;
-    std::list<std::shared_ptr<StandardAgentSession>> standardSessions_;
 };
 }  // namespace AgentRuntime
 }  // namespace OHOS

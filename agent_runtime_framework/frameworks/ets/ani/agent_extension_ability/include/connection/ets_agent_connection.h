@@ -76,13 +76,15 @@ int64_t InsertAgentConnection(sptr<EtsAgentConnection> connection, const AAFwk::
 void FindAgentConnection(int64_t connectId, sptr<EtsAgentConnection> &connection);
 
 /**
- * Find agent connection by target identity.
+ * Find agent connection by want and callback.
  *
+ * @param env The ANI environment.
  * @param want The want information to match.
- * @param agentId The agent ID to match.
+ * @param callback The callback object to match.
  * @param connection Output parameter for the found connection.
  */
-void FindAgentConnection(const AAFwk::Want &want, const std::string &agentId, sptr<EtsAgentConnection> &connection);
+void FindAgentConnection(ani_env *env, AAFwk::Want &want, ani_object callback,
+    sptr<EtsAgentConnection> &connection);
 }
 
 class EtsAgentConnectorStubImpl;
@@ -162,7 +164,7 @@ public:
      *
      * @param duplicatedCallback The callback object from ETS.
      */
-    bool AddDuplicatedPendingCallback(ani_object duplicatedCallback);
+    void AddDuplicatedPendingCallback(ani_object duplicatedCallback);
 
     /**
      * Resolve all duplicated pending callbacks with the proxy.
