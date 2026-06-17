@@ -49,7 +49,6 @@ ohos_unittest("want_agent_test") {
     "ffrt:libffrt",
     "googletest:gmock_main",
     "googletest:gtest_main",
-    "graphic_2d:color_manager",
     "hilog:libhilog",
     "image_framework:image_native",
     "ipc:ipc_core",

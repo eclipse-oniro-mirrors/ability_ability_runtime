@@ -25,7 +25,6 @@ ohos_shared_library("ark_interop_helper_ffi") {
     "ets_runtime:libark_jsruntime",
     "eventhandler:libeventhandler",
     "hilog:libhilog",
-    "image_framework:image_native",
     "ipc:ipc_single",
     "napi:ace_napi",
     "napi:ark_interop",

@@ -28,7 +28,7 @@
 #include "mission_snapshot.h"
 #include "snapshot.h"
 #ifdef SUPPORT_SCREEN
-#include "pixel_map.h"
+#include "pixel_map_bridge.h"
 #endif //SUPPORT_SCREEN
 
 namespace OHOS {
@@ -3272,11 +3272,14 @@ int AbilityManagerStub::UpdateMissionSnapShotFromWMSInner(MessageParcel &data, M
         return ERR_NULL_OBJECT;
     }
 #ifdef SUPPORT_SCREEN
-    std::shared_ptr<Media::PixelMap> pixelMap(data.ReadParcelable<Media::PixelMap>());
-    if (pixelMap == nullptr) {
+    auto &bridge = PixelMapBridge::GetInstance();
+    Media::PixelMap *rawPtr = bridge.ReadPixelMapFromParcel(&data);
+    if (rawPtr == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null pixelMap");
         return ERR_NULL_OBJECT;
     }
+    std::shared_ptr<Media::PixelMap> pixelMap(rawPtr,
+        [&bridge](Media::PixelMap *p) { bridge.DestroyPixelMap(p); });
     UpdateMissionSnapShot(token, pixelMap);
 #endif // SUPPORT_SCREEN
     return NO_ERROR;
@@ -3534,11 +3537,14 @@ int AbilityManagerStub::SetMissionIconInner(MessageParcel &data, MessageParcel &
         return ERR_NULL_OBJECT;
     }
 
-    std::shared_ptr<Media::PixelMap> icon(data.ReadParcelable<Media::PixelMap>());
-    if (!icon) {
+    auto &bridge = PixelMapBridge::GetInstance();
+    Media::PixelMap *rawIconPtr = bridge.ReadPixelMapFromParcel(&data);
+    if (!rawIconPtr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "read icon fail");
         return ERR_NULL_OBJECT;
     }
+    std::shared_ptr<Media::PixelMap> icon(rawIconPtr,
+        [&bridge](Media::PixelMap *p) { bridge.DestroyPixelMap(p); });
 
     int result = SetMissionIcon(token, icon);
     if (!reply.WriteInt32(result)) {

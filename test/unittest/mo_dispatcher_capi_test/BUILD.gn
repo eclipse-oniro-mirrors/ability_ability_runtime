@@ -70,7 +70,6 @@ ohos_unittest("mo_dispatcher_capi_test") {
 
   if (ability_runtime_graphics) {
     external_deps += [
-      "graphic_2d:color_manager",
       "image_framework:image",
       "window_manager:libwm",
       "window_manager:window_animation_utils",

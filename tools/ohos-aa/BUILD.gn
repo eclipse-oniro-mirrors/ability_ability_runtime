@@ -82,8 +82,6 @@ ohos_static_library("ohos_aa_cli_source_set") {
   external_deps += [
     "ability_base:session_info",
     "bundle_framework:appexecfwk_base",
-    "graphic_2d:color_manager",
-    "image_framework:image_native",
     "init:libbegetutil",
     "relational_store:native_dataability",
     "relational_store:native_rdb",

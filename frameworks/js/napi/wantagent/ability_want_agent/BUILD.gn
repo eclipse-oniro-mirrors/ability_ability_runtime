@@ -51,7 +51,6 @@ ohos_shared_library("wantagent_napi") {
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",
     "hilog:libhilog",
-    "image_framework:image_native",
     "ipc:ipc_core",
     "libuv:uv",
     "napi:ace_napi",

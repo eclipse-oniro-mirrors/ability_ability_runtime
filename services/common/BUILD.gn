@@ -20,6 +20,7 @@ group("ams_common_target") {
   deps = [
     ":perm_verification",
     ":task_handler_wrap",
+    ":image_native_wrap",
   ]
 }
 
@@ -446,7 +447,6 @@ ohos_shared_library("user_controller") {
   external_deps = [
     "c_utils:utils",
     "ffrt:libffrt",
-    "graphic_2d:color_manager",
     "hilog:libhilog",
     "ipc:ipc_single",
   ]
@@ -497,7 +497,6 @@ ohos_static_library("user_controller_static") {
   external_deps = [
     "c_utils:utils",
     "ffrt:libffrt",
-    "graphic_2d:color_manager",
     "hilog:libhilog",
     "ipc:ipc_single",
   ]
@@ -514,6 +513,61 @@ ohos_static_library("user_controller_static") {
       "window_manager:libwsutils",
     ]
   }
+
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
+ohos_shared_library("image_native_bridge") {
+  sanitize = {
+    integer_overflow = true
+    ubsan = true
+    boundary_sanitize = true
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    cfi_policy = "adaptive"
+    debug = false
+  }
+  branch_protector_ret = "pac_ret"
+
+  public_configs = [ ":common_config" ]
+  include_dirs = [ "include" ]
+
+  sources = [ "src/pixel_map_bridge.cpp" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+  ]
+
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
+ohos_shared_library("image_native_wrap") {
+  sanitize = {
+    integer_overflow = true
+    ubsan = true
+    boundary_sanitize = true
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    cfi_policy = "adaptive"
+    debug = false
+  }
+  branch_protector_ret = "pac_ret"
+
+  include_dirs = [ "include" ]
+
+  sources = [ "src/pixel_map_wrap.cpp" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "image_framework:image_native",
+    "ipc:ipc_single",
+  ]
 
   subsystem_name = "ability"
   part_name = "ability_runtime"

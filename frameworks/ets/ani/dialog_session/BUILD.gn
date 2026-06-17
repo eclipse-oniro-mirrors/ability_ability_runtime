@@ -55,7 +55,6 @@ ohos_shared_library("dialog_session_ani_kit") {
     "eventhandler:libeventhandler",
     "ffrt:libffrt",
     "hilog:libhilog",
-    "image_framework:image_native",
     "init:libbegetutil",
     "ipc:ipc_core",
     "runtime_core:ani",

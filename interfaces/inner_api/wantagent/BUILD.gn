@@ -79,7 +79,6 @@ ohos_shared_library("wantagent_innerkits") {
   ]
 
   external_deps = [
-    "ability_base:configuration",
     "ability_base:want",
     "c_utils:utils",
     "eventhandler:libeventhandler",
@@ -97,9 +96,6 @@ ohos_shared_library("wantagent_innerkits") {
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "eventhandler:libeventhandler",
-    "icu:shared_icuuc",
-    "image_framework:image_native",
-    "resource_management:global_resmgr",
   ]
 
   if (is_double_framework) {

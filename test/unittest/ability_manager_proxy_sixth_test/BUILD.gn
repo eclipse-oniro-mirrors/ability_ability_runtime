@@ -54,6 +54,7 @@ ohos_unittest("ability_manager_proxy_sixth_test") {
     "${ability_runtime_services_path}/abilitymgr:abilityms",
     "${ability_runtime_services_path}/abilitymgr:wantagent_manager",
     "${ability_runtime_services_path}/common:app_util",
+    "${ability_runtime_services_path}/common:image_native_bridge",
     "${ability_runtime_services_path}/common:perm_verification",
     "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/aakit:aakit_mock",
     "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/appexecfwk_core:appexecfwk_appmgr_mock",
