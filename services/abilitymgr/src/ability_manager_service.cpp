@@ -4051,8 +4051,7 @@ int32_t AbilityManagerService::StartExtensionAbility(const Want &want, const spt
         }
     }
     InsightIntentExecuteParam::RemoveInsightIntent(const_cast<Want &>(want));
-    if (extensionType == AppExecFwk::ExtensionAbilityType::VPN ||
-        extensionType == AppExecFwk::ExtensionAbilityType::UI_SERVICE ||
+    if (extensionType == AppExecFwk::ExtensionAbilityType::UI_SERVICE ||
         extensionType == AppExecFwk::ExtensionAbilityType::APP_SERVICE) {
         return StartExtensionAbilityInner(want, callerToken, userId, extensionType, false);
     }
