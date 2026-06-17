@@ -644,14 +644,7 @@ sptr<Rosen::Window> EtsUIExtension::CreateUIWindow(const std::shared_ptr<UIExten
     option->SetParentWindowType(static_cast<Rosen::WindowType>(sessionInfo->parentWindowType));
     option->SetUIExtensionUsage(static_cast<uint32_t>(sessionInfo->uiExtensionUsage));
     HITRACE_METER_NAME(HITRACE_TAG_APP, "Rosen::Window::Create");
-    return Rosen::Window::Create(
-        option,
-        GetContext(),
-        sessionInfo->sessionToken,
-        Rosen::DefaultCreateErrCode,
-        "",
-        false,
-        sessionInfo->renderSession);
+    return Rosen::Window::Create(option, GetContext(), sessionInfo->sessionToken);
 }
 
 std::unique_ptr<AppExecFwk::ETSNativeReference> EtsUIExtension::CreateAppWindowStage(sptr<Rosen::Window> uiWindow,
