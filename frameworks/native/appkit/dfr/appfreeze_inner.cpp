@@ -369,17 +369,20 @@ int64_t AppfreezeInner::GetFreezeCurrentTime()
         system_clock::now().time_since_epoch()).count();
 }
 
-bool AppfreezeInner::IsBlockTimeInGCPeriod(uint64_t halfTime, uint64_t blockTime,
+bool AppfreezeInner::IsFreezeTimeInGCPeriod(uint64_t halfTime, uint64_t blockTime,
     uint64_t lastStartTime, uint64_t lastEndTime)
 {
     if (halfTime == 0 || blockTime == 0 || lastStartTime == 0 || lastEndTime == 0) {
         return false;
     }
-    if (lastStartTime > lastEndTime || halfTime > blockTime) {
+    if (halfTime > blockTime) {
         return false;
     }
 
-    return (halfTime >= lastStartTime && blockTime < lastEndTime);
+    TAG_LOGD(AAFwkTag::APPDFR, "GC Period halfTime: %{public}" PRIu64 ", blockTime: %{public}" PRIu64 " "
+        "lastStartTime: %{public}" PRIu64 ", lastStartTime: %{public}" PRIu64".",
+        halfTime, blockTime, lastStartTime, lastEndTime);
+    return (halfTime >= lastStartTime && lastEndTime < lastStartTime);
 }
 
 bool AppfreezeInner::CheckBlockInGC(const std::string& faultName,
@@ -389,14 +392,14 @@ bool AppfreezeInner::CheckBlockInGC(const std::string& faultName,
     if (faultName == AppFreezeType::THREAD_BLOCK_3S) {
         threadBlock3STime_ = now;
     } else if (faultName == AppFreezeType::THREAD_BLOCK_6S) {
-        return IsBlockTimeInGCPeriod(threadBlock3STime_, now, lastStartTime, lastEndTime);
+        return IsFreezeTimeInGCPeriod(threadBlock3STime_, now, lastStartTime, lastEndTime);
     } else if (faultName == AppFreezeType::LIFECYCLE_HALF_TIMEOUT) {
         lifeCycleHalfTime_ = now;
     } else if (faultName == AppFreezeType::LIFECYCLE_TIMEOUT) {
-        return IsBlockTimeInGCPeriod(lifeCycleHalfTime_, now, lastStartTime, lastEndTime);
+        return IsFreezeTimeInGCPeriod(lifeCycleHalfTime_, now, lastStartTime, lastEndTime);
     } else if (faultName == AppFreezeType::APP_INPUT_BLOCK) {
         uint64_t inputBegin = now - APP_INPUT_BLOCK_TIME;
-        return IsBlockTimeInGCPeriod(inputBegin, now, lastStartTime, lastEndTime);
+        return IsFreezeTimeInGCPeriod(inputBegin, now, lastStartTime, lastEndTime);
     }
     return false;
 }
