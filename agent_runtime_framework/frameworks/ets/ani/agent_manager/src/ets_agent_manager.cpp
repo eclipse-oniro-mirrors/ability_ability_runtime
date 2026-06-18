@@ -57,12 +57,12 @@ class EtsAgentServiceConnection;
 std::map<int64_t, sptr<EtsAgentServiceConnection>> g_serviceConnections;
 int64_t g_serviceConnectionSerialNumber = 0;
 
-bool CheckConnectAlreadyExist(ani_env *env, const AAFwk::Want &want, const std::string &agentId,
-    ani_object asyncCallback)
+bool CheckConnectAlreadyExist(ani_env *env, AAFwk::Want &want,
+    ani_object callback, ani_object asyncCallback)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "CheckConnectAlreadyExist called");
     sptr<EtsAgentConnection> connection = nullptr;
-    AgentConnectionUtils::FindAgentConnection(want, agentId, connection);
+    AgentConnectionUtils::FindAgentConnection(env, want, callback, connection);
     if (connection == nullptr) {
         TAG_LOGD(AAFwkTag::SER_ROUTER, "null connection");
         return false;
@@ -70,10 +70,7 @@ bool CheckConnectAlreadyExist(ani_env *env, const AAFwk::Want &want, const std::
     ani_ref proxy = connection->GetProxyObject();
     if (proxy == nullptr) {
         TAG_LOGW(AAFwkTag::SER_ROUTER, "null proxy");
-        if (!connection->AddDuplicatedPendingCallback(asyncCallback)) {
-            AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
-                EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER), nullptr);
-        }
+        connection->AddDuplicatedPendingCallback(asyncCallback);
     } else {
         TAG_LOGI(AAFwkTag::SER_ROUTER, "Resolve, got proxy object");
         AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
@@ -534,7 +531,7 @@ void EtsAgentManager::ConnectAgentExtensionAbility(ani_env *env, ani_object aniW
         want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str());
 
     // Check for duplicate connection
-    if (CheckConnectAlreadyExist(env, want, agentId, asyncCallback)) {
+    if (CheckConnectAlreadyExist(env, want, callbackObj, asyncCallback)) {
         TAG_LOGI(AAFwkTag::SER_ROUTER, "Duplicate connection found");
         return;
     }

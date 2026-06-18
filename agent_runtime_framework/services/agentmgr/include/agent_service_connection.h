@@ -25,14 +25,12 @@ public:
     explicit AgentServiceConnection(const sptr<AAFwk::IAbilityConnection> &connection);
     ~AgentServiceConnection() override = default;
 
-    void SetStandardSessionMode();
     void OnAbilityConnectDone(
         const AppExecFwk::ElementName &element, const sptr<IRemoteObject> &remoteObject, int resultCode) override;
     void OnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int resultCode) override;
 
 private:
     sptr<AAFwk::IAbilityConnection> callerConnection_;
-    bool isStandardSession_ = false;
 };
 }  // namespace AgentRuntime
 }  // namespace OHOS

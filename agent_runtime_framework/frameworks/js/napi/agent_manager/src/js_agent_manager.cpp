@@ -54,7 +54,6 @@ constexpr int32_t ARG_INDEX_0 = 0;
 constexpr int32_t ARG_INDEX_1 = 1;
 constexpr int32_t ARG_INDEX_2 = 2;
 constexpr int64_t INVALID_CONNECT_ID = -1;
-constexpr const char *INTERNAL_ERROR_MSG = "Internal error.";
 
 std::mutex g_serviceConnectionsLock;
 class JSAgentServiceConnection;
@@ -233,12 +232,13 @@ void RemoveServiceConnection(int64_t connectionId)
 }
 
 // Helper function to check for duplicate connections
-bool CheckConnectAlreadyExist(napi_env env, const AAFwk::Want &want, const std::string &agentId, napi_value &result)
+bool CheckConnectAlreadyExist(napi_env env, AAFwk::Want &want,
+    napi_value callback, napi_value &result)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "CheckConnectAlreadyExist called");
 
     sptr<JSAgentConnection> connection = nullptr;
-    AgentConnectionUtils::FindAgentConnection(want, agentId, connection);
+    AgentConnectionUtils::FindAgentConnection(env, want, callback, connection);
     if (connection == nullptr) {
         TAG_LOGD(AAFwkTag::SER_ROUTER, "No duplicate connection found");
         return false;
@@ -251,27 +251,13 @@ bool CheckConnectAlreadyExist(napi_env env, const AAFwk::Want &want, const std::
         TAG_LOGD(AAFwkTag::SER_ROUTER, "Proxy not ready, queuing pending task");
         std::unique_ptr<NapiAsyncTask> asyncTask =
             CreateAsyncTaskWithLastParam(env, nullptr, nullptr, nullptr, &result);
-        if (asyncTask == nullptr) {
-            TAG_LOGE(AAFwkTag::SER_ROUTER, "Create async task failed");
-            ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER), INTERNAL_ERROR_MSG);
-            result = CreateJsUndefined(env);
-            return true;
-        }
         connection->AddDuplicatedPendingTask(asyncTask);
         return true;
     }
 
     // Connection exists and proxy is ready, resolve immediately
     TAG_LOGD(AAFwkTag::SER_ROUTER, "Resolving with existing proxy");
-    std::unique_ptr<NapiAsyncTask> asyncTask =
-        CreateAsyncTaskWithLastParam(env, nullptr, nullptr, nullptr, &result);
-    if (asyncTask == nullptr) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "Create async task failed");
-        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER), INTERNAL_ERROR_MSG);
-        result = CreateJsUndefined(env);
-        return true;
-    }
-    asyncTask->ResolveWithNoError(env, proxy);
+    result = proxy;
     return true;
 }
 
@@ -580,7 +566,7 @@ napi_value JsAgentManager::OnConnectAgentExtensionAbility(napi_env env, size_t a
 
     // 2. Check for duplicate connection
     napi_value result = nullptr;
-    bool duplicated = CheckConnectAlreadyExist(env, want, agentId, result);
+    bool duplicated = CheckConnectAlreadyExist(env, want, callbackObject, result);
     if (duplicated) {
         TAG_LOGI(AAFwkTag::SER_ROUTER, "Duplicated connection found");
         return result;
@@ -669,11 +655,6 @@ napi_value JsAgentManager::ScheduleAgentConnection(napi_env env, const AAFwk::Wa
     napi_value result = nullptr;
     std::unique_ptr<NapiAsyncTask> asyncTask =
         CreateAsyncTaskWithLastParam(env, nullptr, nullptr, nullptr, &result);
-    if (asyncTask == nullptr) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "Create async task failed");
-        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER), INTERNAL_ERROR_MSG);
-        return CreateJsUndefined(env);
-    }
     std::shared_ptr<NapiAsyncTask> asyncTaskShared = std::move(asyncTask);
     connection->SetNapiAsyncTask(asyncTaskShared);
 

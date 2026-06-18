@@ -23,21 +23,9 @@ AgentServiceConnection::AgentServiceConnection(const sptr<AAFwk::IAbilityConnect
     : callerConnection_(connection)
 {}
 
-void AgentServiceConnection::SetStandardSessionMode()
-{
-    isStandardSession_ = true;
-}
-
 void AgentServiceConnection::OnAbilityConnectDone(
     const AppExecFwk::ElementName &element, const sptr<IRemoteObject> &remoteObject, int resultCode)
 {
-    if (isStandardSession_) {
-        auto service = AgentManagerService::GetInstance();
-        if (service != nullptr) {
-            service->HandleStandardAgentConnectDone(AsObject(), element, remoteObject, resultCode);
-        }
-        return;
-    }
     if (callerConnection_ != nullptr) {
         callerConnection_->OnAbilityConnectDone(element, remoteObject, resultCode);
     }
@@ -49,13 +37,6 @@ void AgentServiceConnection::OnAbilityConnectDone(
 
 void AgentServiceConnection::OnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int resultCode)
 {
-    if (isStandardSession_) {
-        auto service = AgentManagerService::GetInstance();
-        if (service != nullptr) {
-            service->HandleStandardAgentDisconnectDone(AsObject(), element, resultCode);
-        }
-        return;
-    }
     if (callerConnection_ != nullptr) {
         callerConnection_->OnAbilityDisconnectDone(element, resultCode);
     }
