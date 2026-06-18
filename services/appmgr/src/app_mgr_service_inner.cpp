@@ -787,7 +787,10 @@ ImageError AppMgrServiceInner::MakeImageInner(const AAFwk::Want &want, int32_t u
         TAG_LOGE(AAFwkTag::APPMGR, "only support preloadModule");
         return ImageError::ERR_INVALID_PRELOAD_TYPE;
     }
-
+    if (appIndex != 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "not support appIndex yet");
+        return ImageError::ERR_INNER;
+    }
     userId = GetValidUserId(userId);
     // Check image existence: if abilityName is empty, it's a general image
     if (IsImageInfoExist(bundleName, abilityName, userId, appIndex)) {
@@ -1056,7 +1059,8 @@ void AppMgrServiceInner::HandleMakeImageFailed(const std::string& bundleName, co
     int32_t userId, int32_t appIndex, ImageError err)
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
-    TAG_LOGI(AAFwkTag::APPMGR, "HandleMakeImageFailed, bundleName:%{public}s", bundleName.c_str());
+    TAG_LOGI(AAFwkTag::APPMGR, "HandleMakeImageFailed, bundleName:%{public}s, abilityName:%{public}s, err:%{public}d",
+        bundleName.c_str(), abilityName.c_str(), static_cast<int32_t>(err));
     auto imageInfo = GetImageInfo(bundleName, abilityName, userId, appIndex);
     if (imageInfo == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "null imageInfo");
@@ -1722,8 +1726,10 @@ void AppMgrServiceInner::HandlePreloadApplication(const PreloadRequest &request)
     std::string specifiedProcessFlag;
     if (CheckAppRecordExistByPreloadRequest(request, processName, specifiedProcessFlag)) {
         TAG_LOGW(AAFwkTag::APPMGR, "appRecord already exists when preload application");
-        HandleMakeImageFailed(request.appInfo->bundleName, request.abilityName,
-            request.appInfo->uid / BASE_USER_RANGE, request.appIndex, ImageError::ERR_APP_RECORD_EXIST);
+        if (request.needMakeImage) {
+            HandleMakeImageFailed(request.appInfo->bundleName, request.abilityName,
+                request.appInfo->uid / BASE_USER_RANGE, request.appIndex, ImageError::ERR_APP_RECORD_EXIST);
+        }
         return;
     }
 
