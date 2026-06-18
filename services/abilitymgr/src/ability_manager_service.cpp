@@ -14233,6 +14233,10 @@ int32_t AbilityManagerService::StartAbilityWithServiceMatch(const InsightIntentE
 int32_t AbilityManagerService::ExecuteIntentForDistributed(const Want &want, const std::string &srcDeviceId, 
     uint64_t requestCode, uint64_t specifiedFullTokenId)
 {
+    if (IPCSkeleton::GetCallingUid() != DMS_UID) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "caller not DMS");
+        return ERR_PERMISSION_DENIED;
+    }
     AppExecFwk::InsightIntentExecuteParam param;
     if (!AppExecFwk::InsightIntentExecuteParam::GenerateFromWant(want, param)) {
         TAG_LOGE(AAFwkTag::INTENT, "GenerateFromWant failed, not a valid insight intent");
