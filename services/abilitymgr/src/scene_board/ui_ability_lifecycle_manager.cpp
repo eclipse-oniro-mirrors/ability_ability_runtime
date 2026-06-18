@@ -4846,6 +4846,9 @@ ErrCode UIAbilityLifecycleManager::IsUIAbilityAlreadyExist(const Want &want,
     const std::string &specifiedFlag, int32_t appIndex,
     const std::string &instanceKey, AppExecFwk::LaunchMode launchMode)
 {
+    if (launchMode == AppExecFwk::LaunchMode::STANDARD) {
+        return ERR_OK;
+    }
     std::unordered_map<int32_t, UIAbilityRecordPtr> tempSessionAbilityMap;
     {
         std::lock_guard<ffrt::mutex> guard(sessionLock_);
