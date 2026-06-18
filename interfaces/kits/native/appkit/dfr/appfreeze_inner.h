@@ -98,6 +98,8 @@ private:
         uint64_t lastStartTime, uint64_t lastEndTime);
     bool CheckBlockInGC(const std::string& faultName, uint64_t lastStartTime, uint64_t lastEndTime);
     bool CheckSharedGC(std::string lastType);
+    bool IsProcessDebug(int32_t pid, std::string bundleName);
+    std::string GetBundleNameByApplication();
 
     static std::mutex singletonMutex_;
     static std::shared_ptr<AppfreezeInner> instance_;
