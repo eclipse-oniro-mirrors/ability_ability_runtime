@@ -88,8 +88,8 @@ int32_t SkillExecuteManager::CheckSkillPermission(const AppExecFwk::SkillInfo &s
     uint32_t callerTokenId)
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR,
-        "check skill permission, skill:%{public}s callerTokenId:%{public}u",
-        skillInfo.skillName.c_str(), callerTokenId);
+        "check skill permission, skill:%{public}s",
+        skillInfo.skillName.c_str());
 
     auto permVerif = PermissionVerification::GetInstance();
     if (!permVerif->IsSACall()) {
