@@ -32,6 +32,7 @@
 #include "hidden_start_observer_manager.h"
 #include "hitrace_meter.h"
 #include "native_ability_util.h"
+#include "ability_util.h"
 #include "permission_constants.h"
 #include "process_options.h"
 #include "request_id_util.h"
@@ -551,10 +552,7 @@ UIAbilityRecordPtr UIAbilityLifecycleManager::CreateAbilityRecord(AbilityRequest
 void UIAbilityLifecycleManager::AddCallerRecord(AbilityRequest &abilityRequest, sptr<SessionInfo> sessionInfo,
     UIAbilityRecordPtr uiAbilityRecord) const
 {
-    if (sessionInfo == nullptr) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "sessionInfo invalid");
-        return;
-    }
+    CHECK_POINTER_LOG(sessionInfo, "sessionInfo invalid");
     CHECK_POINTER(uiAbilityRecord);
     std::string srcAbilityId = "";
     if (abilityRequest.want.GetBoolParam(Want::PARAM_RESV_FOR_RESULT, false)) {
@@ -789,6 +787,7 @@ int UIAbilityLifecycleManager::NotifySCBToStartUIAbility(AbilityRequest &ability
     }
 
     auto sessionInfo = CreateSessionInfo(abilityRequest, requestId);
+    CHECK_POINTER_AND_RETURN_LOG(sessionInfo, ERR_NO_MEMORY, "Failed to create SessionInfo.");
     sessionInfo->requestCode = abilityRequest.requestCode;
     auto isCreating = abilityRequest.want.GetBoolParam(Want::CREATE_APP_INSTANCE_KEY, false);
     if (abilityInfo.applicationInfo.multiAppMode.multiAppModeType != AppExecFwk::MultiAppModeType::MULTI_INSTANCE ||
@@ -919,6 +918,7 @@ void UIAbilityLifecycleManager::HandleAbilitiesNormalSessionInfo(AbilityRequest 
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Call HandleAbilitiesNormalSessionInfo");
     const auto &abilityInfo = abilityRequest.abilityInfo;
     auto sessionInfo = CreateSessionInfo(abilityRequest, requestId);
+    CHECK_POINTER_LOG(sessionInfo, "Failed to create SessionInfo.");
     sessionInfo->requestCode = abilityRequest.requestCode;
     sessionInfo->persistentId = GetPersistentIdByAbilityRequest(abilityRequest, sessionInfo->reuse);
     sessionInfo->userId = userId_;
@@ -1046,6 +1046,7 @@ int32_t UIAbilityLifecycleManager::NotifySCBToRecoveryAfterInterception(const Ab
         return ERR_OK;
     }
     auto sessionInfo = CreateSessionInfo(abilityRequest, requestId);
+    CHECK_POINTER_AND_RETURN_LOG(sessionInfo, ERR_NO_MEMORY, "Failed to create SessionInfo.");
     sessionInfo->requestCode = abilityRequest.requestCode;
     sessionInfo->persistentId = GetPersistentIdByAbilityRequest(abilityRequest, sessionInfo->reuse);
     sessionInfo->userId = userId_;
@@ -1066,6 +1067,7 @@ int UIAbilityLifecycleManager::NotifySCBToPreStartUIAbility(const AbilityRequest
 
     std::lock_guard<ffrt::mutex> guard(sessionLock_);
     sessionInfo = CreateSessionInfo(abilityRequest, RequestIdUtil::GetRequestId());
+    CHECK_POINTER_AND_RETURN_LOG(sessionInfo, ERR_NO_MEMORY, "Failed to create SessionInfo.");
     sessionInfo->requestCode = abilityRequest.requestCode;
     sessionInfo->isAtomicService = true;
     std::string errMsg;
@@ -1704,6 +1706,7 @@ int UIAbilityLifecycleManager::PrelaunchAbilityLocked(const AbilityRequest &abil
     uiAbilityRecord->SetPrelaunchFlag(true);
 
     auto sessionInfo = CreateSessionInfo(abilityRequest, RequestIdUtil::GetRequestId());
+    CHECK_POINTER_AND_RETURN_LOG(sessionInfo, ERR_NO_MEMORY, "Failed to create SessionInfo.");
     sessionInfo->persistentId = persistentId;
     sessionInfo->reuse = reuse;
     sessionInfo->uiAbilityId = uiAbilityRecord->GetAbilityRecordId();
@@ -1808,6 +1811,7 @@ int UIAbilityLifecycleManager::CallAbilityLocked(const AbilityRequest &abilityRe
             ReportGrantUriPermissionEvent(abilityRequest, "BackgroundToForegroundByCall");
 
             auto sessionInfo = CreateSessionInfo(abilityRequest, requestId);
+            CHECK_POINTER_AND_RETURN_LOG(sessionInfo, ERR_NO_MEMORY, "Failed to create SessionInfo.");
             if ((persistentId != 0) && abilityRequest.want.GetBoolParam(IS_CALLING_FROM_DMS, false)) {
                 HandleForegroundCollaborate(abilityRequest, uiAbilityRecord);
             }
@@ -1840,6 +1844,7 @@ int UIAbilityLifecycleManager::CallAbilityLocked(const AbilityRequest &abilityRe
     }
 
     auto sessionInfo = CreateSessionInfo(abilityRequest, requestId);
+    CHECK_POINTER_AND_RETURN_LOG(sessionInfo, ERR_NO_MEMORY, "Failed to create SessionInfo.");
     sessionInfo->persistentId = persistentId;
     sessionInfo->reuse = reuse;
     sessionInfo->uiAbilityId = uiAbilityRecord->GetAbilityRecordId();
@@ -1941,7 +1946,8 @@ sptr<SessionInfo> UIAbilityLifecycleManager::CreateSessionInfo(const AbilityRequ
     int32_t requestId)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Create session.");
-    sptr<SessionInfo> sessionInfo = new SessionInfo();
+    sptr<SessionInfo> sessionInfo = new (std::nothrow) SessionInfo();
+    CHECK_POINTER_AND_RETURN_LOG(sessionInfo, nullptr, "Failed to create SessionInfo.");
     sessionInfo->requestId = requestId;
     sessionInfo->callerToken = abilityRequest.callerToken;
     sessionInfo->want = abilityRequest.want;
@@ -3007,6 +3013,7 @@ void UIAbilityLifecycleManager::OnStartSpecifiedProcessResponse(const std::strin
             }, ffrt::task_attr().timeout(AbilityRuntime::GlobalConstant::DEFAULT_FFRT_TASK_TIMEOUT));
     }
     auto sessionInfo = CreateSessionInfo(abilityRequest, requestId);
+    CHECK_POINTER_LOG(sessionInfo, "Failed to create SessionInfo.");
     sessionInfo->requestCode = abilityRequest.requestCode;
     sessionInfo->persistentId = GetPersistentIdByAbilityRequest(abilityRequest, sessionInfo->reuse);
     sessionInfo->userId = abilityRequest.userId;
@@ -3107,6 +3114,7 @@ int32_t UIAbilityLifecycleManager::MoveAbilityToFront(const SpecifiedRequest &sp
     int32_t requestId = specifiedRequest.requestId;
     int32_t requestListId = specifiedRequest.requestListId;
     auto sessionInfo = CreateSessionInfo(abilityRequest, requestId);
+    CHECK_POINTER_AND_RETURN_LOG(sessionInfo, ERR_NO_MEMORY, "Failed to create SessionInfo.");
     CHECK_POINTER_AND_RETURN(abilityRecord->GetSessionInfo(), ERR_INVALID_VALUE);
     sessionInfo->persistentId = abilityRecord->GetSessionInfo()->persistentId;
     sessionInfo->requestCode = abilityRequest.requestCode;
@@ -3244,6 +3252,7 @@ int32_t UIAbilityLifecycleManager::StartAbilityBySpecified(const SpecifiedReques
     TAG_LOGD(AAFwkTag::ABILITYMGR, "call");
     const auto &abilityRequest = specifiedRequest.abilityRequest;
     auto sessionInfo = CreateSessionInfo(abilityRequest, specifiedRequest.requestId);
+    CHECK_POINTER_AND_RETURN_LOG(sessionInfo, ERR_NO_MEMORY, "Failed to create SessionInfo.");
     sessionInfo->requestCode = abilityRequest.requestCode;
     sessionInfo->specifiedFlag = abilityRequest.specifiedFlag;
     sessionInfo->nativeHideWindow = NativeAbilityMetaData::HideWindowOnStartup(abilityRequest.abilityInfo);
@@ -3265,6 +3274,7 @@ int32_t UIAbilityLifecycleManager::StartSpecifiedAbilityDirectlyWithFlag(const A
     int32_t requestId)
 {
     auto sessionInfo = CreateSessionInfo(abilityRequest, requestId);
+    CHECK_POINTER_AND_RETURN_LOG(sessionInfo, ERR_NO_MEMORY, "Failed to create SessionInfo.");
     sessionInfo->requestCode = abilityRequest.requestCode;
     sessionInfo->specifiedFlag = abilityRequest.specifiedFlag;
     sessionInfo->nativeHideWindow = NativeAbilityMetaData::HideWindowOnStartup(abilityRequest.abilityInfo);
@@ -4373,6 +4383,7 @@ int UIAbilityLifecycleManager::StartWithPersistentIdByDistributed(const AbilityR
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "StartWithPersistentIdByDistributed, called");
     auto sessionInfo = CreateSessionInfo(abilityRequest, RequestIdUtil::GetRequestId());
+    CHECK_POINTER_AND_RETURN_LOG(sessionInfo, ERR_NO_MEMORY, "Failed to create SessionInfo.");
     sessionInfo->requestCode = abilityRequest.requestCode;
     sessionInfo->persistentId = persistentId;
     sessionInfo->userId = userId_;
@@ -4524,6 +4535,12 @@ void UIAbilityLifecycleManager::StartSpecifiedRequest(SpecifiedRequest &specifie
         if (specifiedRequest.requestListId == REQUEST_LIST_ID_INIT && !isLoaded) {
             specifiedRequest.isCold = true;
             auto sessionInfo = CreateSessionInfo(request, specifiedRequest.requestId);
+            if (sessionInfo == nullptr) {
+                TAG_LOGE(AAFwkTag::ABILITYMGR, "Failed to create SessionInfo.");
+                RemoveInstanceKey(request);
+                SubmitSpecifiedFailTask(specifiedRequest.requestId, false);
+                return;
+            }
             sessionInfo->requestCode = request.requestCode;
             sessionInfo->userId = userId_;
             TAG_LOGI(AAFwkTag::ABILITYMGR, "StartSpecifiedRequest cold");
