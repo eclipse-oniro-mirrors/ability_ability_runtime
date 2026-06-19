@@ -90,6 +90,7 @@ struct AbilityRequest {
     int32_t loadExtensionTimeout = 0; // only for connectAbility
     uint32_t callerAccessTokenId = 0;
     uint32_t specifyTokenId = 0;
+    uint32_t skillCallerTokenId = 0;
     int callerUid = -1;         // call ability
     int requestCode = -1;
     int32_t atomicServiceShortLink = 0;

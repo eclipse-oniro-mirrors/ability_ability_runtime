@@ -20,6 +20,8 @@
 #include "ability_event_handler.h"
 #include "ability_manager_errors.h"
 #include "ability_manager_service.h"
+#include "accesstoken_kit.h"
+#include "bundle_constants.h"
 #include "bundle_mgr_helper.h"
 #include "hilog_tag_wrapper.h"
 #include "in_process_call_wrapper.h"
@@ -85,17 +87,28 @@ int32_t SkillExecuteManager::QuerySkillInfo(const std::string &bundleName, const
 int32_t SkillExecuteManager::CheckSkillPermission(const AppExecFwk::SkillInfo &skillInfo,
     uint32_t callerTokenId)
 {
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "check skill permission for skill:%{public}s",
+    TAG_LOGI(AAFwkTag::ABILITYMGR,
+        "check skill permission, skill:%{public}s",
         skillInfo.skillName.c_str());
 
     auto permVerif = PermissionVerification::GetInstance();
-    if (callerTokenId == 0) {
-        if (!permVerif->JudgeCallerIsAllowedToUseSystemAPI()) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "caller not allowed to use system API");
-            return ERR_NOT_SYSTEM_APP;
-        }
+    if (!permVerif->IsSACall()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "direct caller is not SA");
+        return ERR_NOT_SYSTEM_APP;
     }
 
+    for (const auto &permission : skillInfo.permissions) {
+        if (permission.empty()) {
+            continue;
+        }
+        if (Security::AccessToken::AccessTokenKit::VerifyAccessToken(
+            callerTokenId, permission, false) != AppExecFwk::Constants::PERMISSION_GRANTED) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR,
+                "caller lacks permission:%{public}s for skill:%{public}s",
+                permission.c_str(), skillInfo.skillName.c_str());
+            return CHECK_PERMISSION_FAILED;
+        }
+    }
     return ERR_OK;
 }
 

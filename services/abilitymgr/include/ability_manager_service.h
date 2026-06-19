@@ -1442,7 +1442,8 @@ public:
         bool checkSystemCaller = true,
         bool isImplicit = false,
         bool isDlp = false,
-        bool isStartAsCaller = false);
+        bool isStartAsCaller = false,
+        uint32_t skillCallerTokenId = 0);
 
     int RequestModalUIExtensionInner(Want want);
 
@@ -2230,9 +2231,11 @@ public:
         const sptr<ISkillExecuteCallback> &callback) override;
 
     int32_t StartAbilityByCallWithSkill(const Want &want,
-        const sptr<IRemoteObject> &callerToken, int32_t userId = DEFAULT_INVAL_VALUE);
+        const sptr<IRemoteObject> &callerToken, int32_t userId = DEFAULT_INVAL_VALUE,
+        uint32_t skillCallerTokenId = 0);
 
-    int32_t StartExtensionAbilityWithSkill(const Want &want, int32_t userId);
+    int32_t StartExtensionAbilityWithSkill(const Want &want, int32_t userId,
+        uint32_t skillCallerTokenId = 0);
 
     int32_t ExecuteSkillDone(const sptr<IRemoteObject> &token, const std::string &requestCode,
         int32_t resultCode, const AppExecFwk::SkillExecuteResult &result) override;

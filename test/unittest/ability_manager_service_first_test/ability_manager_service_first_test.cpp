@@ -2243,8 +2243,7 @@ HWTEST_F(AbilityManagerServiceFirstTest, CheckStaticCfgPermission_SkillCaller_00
     auto abilityMs = std::make_shared<AbilityManagerService>();
     AppExecFwk::AbilityRequest abilityRequest;
     abilityRequest.abilityInfo.permissions.push_back("test.permission");
-    abilityRequest.want.SetParam(
-        AppExecFwk::SKILL_EXECUTE_PARAM_CALLER_TOKEN_ID, static_cast<int32_t>(100));
+    abilityRequest.skillCallerTokenId = 100;
     MyFlag::flag_ = MyFlag::IS_SA_CALL;
     int ret = abilityMs->CheckStaticCfgPermission(
         abilityRequest, false, 0, false, false, false);
@@ -2263,8 +2262,7 @@ HWTEST_F(AbilityManagerServiceFirstTest, CheckStaticCfgPermission_SkillCaller_00
     auto abilityMs = std::make_shared<AbilityManagerService>();
     AppExecFwk::AbilityRequest abilityRequest;
     uint32_t callerTokenId = 100;
-    abilityRequest.want.SetParam(
-        AppExecFwk::SKILL_EXECUTE_PARAM_CALLER_TOKEN_ID, static_cast<int32_t>(callerTokenId));
+    abilityRequest.skillCallerTokenId = callerTokenId;
     abilityRequest.abilityInfo.applicationInfo.accessTokenId = callerTokenId;
     MyFlag::flag_ = 0;
     int ret = abilityMs->CheckStaticCfgPermission(
