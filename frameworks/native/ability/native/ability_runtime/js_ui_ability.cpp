@@ -2634,6 +2634,10 @@ napi_value JsUIAbility::LoadSkillFunction(
             return false;
         }
         outJsObj = skillModuleRef_->GetNapiValue();
+        bool hasOwn = false;
+        if (napi_has_own_property(env, outJsObj, param->functionName_.c_str(), &hasOwn) != napi_ok || !hasOwn) {
+            return false;
+        }
         method = AppExecFwk::GetPropertyValueByPropertyName(
             env, outJsObj, param->functionName_.c_str(), napi_valuetype::napi_function);
         return method != nullptr;
@@ -2690,6 +2694,11 @@ std::vector<napi_value> JsUIAbility::BuildSkillCallArgs(napi_env env,
             auto valStr = AppExecFwk::WantParams::GetStringByType(value, typeId);
             TAG_LOGI(AAFwkTag::UIABILITY, "skillArg key:%{public}s value:%{public}s",
                 key.c_str(), valStr.c_str());
+            bool hasOwn = false;
+            if (napi_has_own_property(env, wrappedObj, key.c_str(), &hasOwn) != napi_ok || !hasOwn) {
+                TAG_LOGW(AAFwkTag::UIABILITY, "skip non-own skillArg key:%{public}s", key.c_str());
+                continue;
+            }
             napi_value val = nullptr;
             napi_get_named_property(env, wrappedObj, key.c_str(), &val);
             args.push_back(val);
