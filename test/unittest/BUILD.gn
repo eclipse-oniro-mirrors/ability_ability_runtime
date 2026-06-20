@@ -519,6 +519,7 @@ group("unittest") {
       "service_router_mgr_service_test:unittest",
       "skill_execute_callback_proxy_test:unittest",
       "skill_execute_callback_stub_test:unittest",
+      "skill_execute_manager_test:unittest",
       "skill_execute_param_test:unittest",
       "skill_execute_result_test:unittest",
       "services/ability_util_test:unittest",
