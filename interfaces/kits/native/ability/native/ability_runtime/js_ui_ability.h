@@ -389,6 +389,9 @@ public:
         const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param) override;
     napi_value LoadSkillFunction(const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param,
         napi_value &outJsObj);
+    bool TryLoadSkillEntry(const std::string &srcEntry,
+        const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param,
+        napi_env env, napi_value &outJsObj, napi_value &method);
     std::vector<napi_value> BuildSkillCallArgs(napi_env env,
         const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param);
 

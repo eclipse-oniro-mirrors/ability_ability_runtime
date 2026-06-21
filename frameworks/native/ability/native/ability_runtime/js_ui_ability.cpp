@@ -2619,39 +2619,13 @@ napi_value JsUIAbility::LoadSkillFunction(
     napi_env env = jsRuntime_.GetNapiEnv();
     napi_value method = nullptr;
 
-    auto TryLoadEntry = [&](const std::string &srcEntry) -> bool {
-        std::string srcPath(param->moduleName_ + "/" + srcEntry);
-        auto pos = srcPath.rfind('.');
-        if (pos == std::string::npos) {
-            TAG_LOGW(AAFwkTag::UIABILITY, "skip srcEntry, no extension:%{public}s", srcEntry.c_str());
-            return false;
-        }
-        srcPath.erase(pos);
-        srcPath.append(".abc");
-        skillModuleRef_ = jsRuntime_.LoadModule(param->moduleName_, srcPath, param->hapPath_, true);
-        if (skillModuleRef_ == nullptr) {
-            TAG_LOGW(AAFwkTag::UIABILITY, "LoadModule failed, path:%{public}s", srcPath.c_str());
-            return false;
-        }
-        outJsObj = skillModuleRef_->GetNapiValue();
-        napi_value keyName = nullptr;
-        napi_create_string_utf8(env, param->functionName_.c_str(), NAPI_AUTO_LENGTH, &keyName);
-        bool hasOwn = false;
-        if (napi_has_own_property(env, outJsObj, keyName, &hasOwn) != napi_ok || !hasOwn) {
-            return false;
-        }
-        method = AppExecFwk::GetPropertyValueByPropertyName(
-            env, outJsObj, param->functionName_.c_str(), napi_valuetype::napi_function);
-        return method != nullptr;
-    };
-
     if (!param->scriptPath_.empty()) {
         auto scriptBase = ExtractBaseName(param->scriptPath_);
         for (const auto &srcEntry : param->srcEntries_) {
             if (ExtractBaseName(srcEntry) != scriptBase) {
                 continue;
             }
-            if (TryLoadEntry(srcEntry)) {
+            if (TryLoadSkillEntry(srcEntry, param, env, outJsObj, method)) {
                 TAG_LOGI(AAFwkTag::UIABILITY,
                     "func found via scriptPath match, srcEntry:%{public}s", srcEntry.c_str());
                 return method;
@@ -2663,7 +2637,7 @@ napi_value JsUIAbility::LoadSkillFunction(
     }
 
     for (const auto &srcEntry : param->srcEntries_) {
-        if (TryLoadEntry(srcEntry)) {
+        if (TryLoadSkillEntry(srcEntry, param, env, outJsObj, method)) {
             TAG_LOGI(AAFwkTag::UIABILITY, "func found in srcEntry:%{public}s", srcEntry.c_str());
             return method;
         }
@@ -2671,6 +2645,35 @@ napi_value JsUIAbility::LoadSkillFunction(
             param->functionName_.c_str(), srcEntry.c_str());
     }
     return method;
+}
+
+bool JsUIAbility::TryLoadSkillEntry(const std::string &srcEntry,
+    const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param,
+    napi_env env, napi_value &outJsObj, napi_value &method)
+{
+    std::string srcPath(param->moduleName_ + "/" + srcEntry);
+    auto pos = srcPath.rfind('.');
+    if (pos == std::string::npos) {
+        TAG_LOGW(AAFwkTag::UIABILITY, "skip srcEntry, no extension:%{public}s", srcEntry.c_str());
+        return false;
+    }
+    srcPath.erase(pos);
+    srcPath.append(".abc");
+    skillModuleRef_ = jsRuntime_.LoadModule(param->moduleName_, srcPath, param->hapPath_, true);
+    if (skillModuleRef_ == nullptr) {
+        TAG_LOGW(AAFwkTag::UIABILITY, "LoadModule failed, path:%{public}s", srcPath.c_str());
+        return false;
+    }
+    outJsObj = skillModuleRef_->GetNapiValue();
+    napi_value keyName = nullptr;
+    napi_create_string_utf8(env, param->functionName_.c_str(), NAPI_AUTO_LENGTH, &keyName);
+    bool hasOwn = false;
+    if (napi_has_own_property(env, outJsObj, keyName, &hasOwn) != napi_ok || !hasOwn) {
+        return false;
+    }
+    method = AppExecFwk::GetPropertyValueByPropertyName(
+        env, outJsObj, param->functionName_.c_str(), napi_valuetype::napi_function);
+    return method != nullptr;
 }
 
 std::vector<napi_value> JsUIAbility::BuildSkillCallArgs(napi_env env,
