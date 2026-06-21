@@ -1051,7 +1051,7 @@ void AbilityContextImpl::UnregisterAbilityLifecycleObserver(
 #ifdef SUPPORT_SCREEN
 ErrCode AbilityContextImpl::SetMissionLabel(const std::string& label)
 {
-    TAG_LOGD(AAFwkTag::CONTEXT, "label:%{public}s", label.c_str());
+    TAG_LOGD(AAFwkTag::CONTEXT, "label:%{private}s", label.c_str());
     if (isHook_) {
         TAG_LOGD(AAFwkTag::CONTEXT, "SetMissionLabel is hook module");
         return ERR_NOT_SUPPORTED;
