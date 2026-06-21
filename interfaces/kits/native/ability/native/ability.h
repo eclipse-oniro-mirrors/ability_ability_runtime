@@ -1255,7 +1255,7 @@ protected:
      */
     virtual void ContinuationRestore(const Want &want);
 
-    void SetSessionToken(sptr<IRemoteObject> sessionToken);
+    void SetSessionToken(sptr<IRemoteObject> sessionToken, sptr<IRemoteObject> renderSession);
 
     std::shared_ptr<Rosen::WindowScene> scene_ = nullptr;
     sptr<Rosen::IWindowLifeCycle> sceneListener_ = nullptr;

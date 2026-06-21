@@ -607,7 +607,7 @@ void CJUIAbility::InitSceneDoOnForeground(std::shared_ptr<Rosen::WindowScene> sc
     auto sessionToken = GetSessionToken();
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled() && sessionToken != nullptr) {
         abilityContext_->SetWeakSessionToken(sessionToken);
-        ret = scene_->Init(displayId, abilityContext_, sceneListener_, option, sessionToken);
+        ret = scene_->Init(displayId, abilityContext_, sceneListener_, option, sessionToken, "", false, renderSession_);
     } else {
         ret = scene_->Init(displayId, abilityContext_, sceneListener_, option);
     }

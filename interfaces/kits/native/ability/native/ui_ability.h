@@ -776,7 +776,7 @@ protected:
 private:
     void OnStartForSupportGraphics(const AAFwk::Want &want);
     void OnChangeForUpdateConfiguration(const AppExecFwk::Configuration &newConfig);
-    void SetSessionToken(sptr<IRemoteObject> sessionToken);
+    void SetSessionToken(sptr<IRemoteObject> sessionToken, sptr<IRemoteObject> renderSession);
 
     std::string identityToken_;
     bool showOnLockScreen_ = false;
