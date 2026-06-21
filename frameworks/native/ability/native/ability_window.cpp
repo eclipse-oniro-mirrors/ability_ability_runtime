@@ -50,7 +50,7 @@ bool AbilityWindow::InitWindow(const std::shared_ptr<AbilityRuntime::AbilityCont
     Rosen::WMError ret = Rosen::WMError::WM_OK;
     auto sessionToken = GetSessionToken();
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled() && sessionToken != nullptr) {
-        ret = windowScene_->Init(displayId, abilityContext, listener, option, sessionToken);
+        ret = windowScene_->Init(displayId, abilityContext, listener, option, sessionToken, "", false, renderSession_);
     } else {
         ret = windowScene_->Init(displayId, abilityContext, listener, option);
     }
@@ -187,10 +187,11 @@ ErrCode AbilityWindow::SetMissionIcon(const std::shared_ptr<OHOS::Media::PixelMa
 }
 #endif
 
-void AbilityWindow::SetSessionToken(sptr<IRemoteObject> sessionToken)
+void AbilityWindow::SetSessionToken(sptr<IRemoteObject> sessionToken, sptr<IRemoteObject> renderSession)
 {
     std::lock_guard lock(sessionTokenMutex_);
     sessionToken_ = sessionToken;
+    renderSession_ = renderSession;
 }
 
 sptr<IRemoteObject> AbilityWindow::GetSessionToken()
