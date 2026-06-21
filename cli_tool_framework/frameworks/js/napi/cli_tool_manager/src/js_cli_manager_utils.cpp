@@ -611,6 +611,10 @@ napi_value CreateJsToolInfo(napi_env env, const ToolInfo &tool)
     }
     napi_set_named_property(env, jsObj, "subcommands", jsSubcommands);
 
+    // Set isLockScreenExecutionAllowed
+    napi_value jsIsLockScreenExecutionAllowed = AppExecFwk::WrapBoolToJS(env, tool.isLockScreenExecutionAllowed);
+    napi_set_named_property(env, jsObj, "isLockScreenExecutionAllowed", jsIsLockScreenExecutionAllowed);
+
     return jsObj;
 }
 

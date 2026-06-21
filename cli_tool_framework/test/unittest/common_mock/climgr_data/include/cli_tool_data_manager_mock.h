@@ -16,6 +16,7 @@ class CliToolDataManagerMock {
 public:
     static int32_t getToolByNameResult;
     static bool toolHasSubCommand;
+    static bool toolIsLockScreenExecEnabled;
     static std::string subCommandName;
     static std::vector<std::string> toolPermissions;
     static std::vector<std::string> subCommandPermissions;

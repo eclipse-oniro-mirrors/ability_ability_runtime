@@ -14,6 +14,7 @@ namespace OHOS {
 namespace CliTool {
 int32_t CliToolDataManagerMock::getToolByNameResult = ERR_TOOL_NOT_EXIST;
 bool CliToolDataManagerMock::toolHasSubCommand = false;
+bool CliToolDataManagerMock::toolIsLockScreenExecEnabled = false;
 std::string CliToolDataManagerMock::subCommandName = "build";
 std::vector<std::string> CliToolDataManagerMock::toolPermissions = {};
 std::vector<std::string> CliToolDataManagerMock::subCommandPermissions = {};
@@ -22,6 +23,7 @@ void CliToolDataManagerMock::Reset()
 {
     getToolByNameResult = ERR_TOOL_NOT_EXIST;
     toolHasSubCommand = false;
+    toolIsLockScreenExecEnabled = false;
     subCommandName = "build";
     toolPermissions.clear();
     subCommandPermissions.clear();
@@ -94,6 +96,7 @@ int32_t CliToolDataManager::GetToolByName(const std::string &name, ToolInfo &too
     toolInfo.inputSchema = "{}";
     toolInfo.outputSchema = "{}";
     toolInfo.hasSubCommand = CliToolDataManagerMock::toolHasSubCommand;
+    toolInfo.isLockScreenExecutionAllowed = CliToolDataManagerMock::toolIsLockScreenExecEnabled;
     if (toolInfo.hasSubCommand) {
         SubCommandInfo subCommand;
         subCommand.description = "mock subcommand";

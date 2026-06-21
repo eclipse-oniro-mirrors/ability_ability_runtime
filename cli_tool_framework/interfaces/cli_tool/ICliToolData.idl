@@ -25,5 +25,6 @@ struct CommandPermission
 {
     Command cmd;
     List<String> permissions;
+    boolean isLockScreenExecutionAllowed;
     int queryRet;
 };

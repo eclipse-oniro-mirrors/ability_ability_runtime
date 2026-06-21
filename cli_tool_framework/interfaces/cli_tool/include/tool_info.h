@@ -65,6 +65,7 @@ public:
     std::string eventSchemas;      // JSON string (map of event type to schema)
     bool hasSubCommand = false;
     std::map<std::string, SubCommandInfo> subcommands;
+    bool isLockScreenExecutionAllowed = false;  // Allow execution when screen is locked
 
     ToolInfo() = default;
     ~ToolInfo() = default;

@@ -52,7 +52,8 @@ bool ToolInfo::Marshalling(Parcel &parcel) const
            parcel.WriteString(eventSchemas) &&
            parcel.WriteStringVector(eventTypes) &&
            parcel.WriteBool(hasSubCommand) &&
-           parcel.WriteString(subcommandsJson);
+           parcel.WriteString(subcommandsJson) &&
+           parcel.WriteBool(isLockScreenExecutionAllowed);
 }
 
 ToolInfo *ToolInfo::Unmarshalling(Parcel &parcel)
@@ -73,7 +74,8 @@ ToolInfo *ToolInfo::Unmarshalling(Parcel &parcel)
         !parcel.ReadString(tool->eventSchemas) ||
         !parcel.ReadStringVector(&tool->eventTypes) ||
         !parcel.ReadBool(tool->hasSubCommand) ||
-        !parcel.ReadString(subcommandsJson)) {
+        !parcel.ReadString(subcommandsJson) ||
+        !parcel.ReadBool(tool->isLockScreenExecutionAllowed)) {
         delete tool;
         return nullptr;
     }
@@ -314,6 +316,13 @@ bool ToolInfo::ParseFromJson(const nlohmann::json &json, ToolInfo &tool)
             tool.subcommands[it.key()] = std::move(subCmd);
         }
     }
+    if (json.contains("isLockScreenExecutionAllowed")) {
+        if (!json["isLockScreenExecutionAllowed"].is_boolean()) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: isLockScreenExecutionAllowed is not a boolean");
+            return false;
+        }
+        tool.isLockScreenExecutionAllowed = json["isLockScreenExecutionAllowed"];
+    }
 
     return true;
 }
@@ -360,6 +369,7 @@ nlohmann::json ToolInfo::ParseToJson() const
         }
         j["subcommands"] = subcommandsJson;
     }
+    j["isLockScreenExecutionAllowed"] = isLockScreenExecutionAllowed;
 
     return j;
 }

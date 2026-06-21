@@ -54,31 +54,36 @@ private:
      * @brief Query permissions for a single command
      * @param cmd Command to query
      * @param permissions Output vector of permission strings
+     * @param isLockScreenExecutionAllowed Output whether lock screen execution is enabled
      * @return ERR_OK on success
      *         ERR_TOOL_NOT_EXIST when tool not found
      *         ERR_NO_INIT on database error
      */
     static int32_t QuerySingleCommand(
         const Command &cmd,
-        std::vector<std::string> &permissions);
+        std::vector<std::string> &permissions,
+        bool &isLockScreenExecutionAllowed);
 
     /**
      * @brief Query permissions for main command (no subcommand)
      * @param toolName Tool name
      * @param permissions Output vector of permission strings
+     * @param isLockScreenExecutionAllowed Output whether lock screen execution is enabled
      * @return ERR_OK on success
      *         ERR_TOOL_NOT_EXIST when tool not found
      *         ERR_NO_INIT on database error
      */
     static int32_t QueryMainCommandPermission(
         const std::string &toolName,
-        std::vector<std::string> &permissions);
+        std::vector<std::string> &permissions,
+        bool &isLockScreenExecutionAllowed);
 
     /**
      * @brief Query permissions for subcommand
      * @param toolName Tool name
      * @param subCommand Subcommand name
      * @param permissions Output vector of permission strings
+     * @param isLockScreenExecutionAllowed Output whether lock screen execution is enabled
      * @return ERR_OK on success
      *         ERR_TOOL_NOT_EXIST when tool or subcommand not found
      *         ERR_NO_INIT on database error
@@ -86,19 +91,22 @@ private:
     static int32_t QuerySubCommandPermission(
         const std::string &toolName,
         const std::string &subCommand,
-        std::vector<std::string> &permissions);
+        std::vector<std::string> &permissions,
+        bool &isLockScreenExecutionAllowed);
 
     /**
      * @brief Build CommandPermission result object
      * @param cmd Command
      * @param permissions Permission list
      * @param queryRet Query result code
+     * @param isLockScreenExecutionAllowed Whether lock screen execution is enabled
      * @return CommandPermission object
      */
     static CommandPermission BuildCommandPermission(
         const Command &cmd,
         const std::vector<std::string> &permissions,
-        int32_t queryRet);
+        int32_t queryRet,
+        bool isLockScreenExecutionAllowed);
 };
 } // namespace CliTool
 } // namespace OHOS
