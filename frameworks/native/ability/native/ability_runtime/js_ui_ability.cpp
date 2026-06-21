@@ -2634,8 +2634,10 @@ napi_value JsUIAbility::LoadSkillFunction(
             return false;
         }
         outJsObj = skillModuleRef_->GetNapiValue();
+        napi_value keyName = nullptr;
+        napi_create_string_utf8(env, param->functionName_.c_str(), NAPI_AUTO_LENGTH, &keyName);
         bool hasOwn = false;
-        if (napi_has_own_property(env, outJsObj, param->functionName_.c_str(), &hasOwn) != napi_ok || !hasOwn) {
+        if (napi_has_own_property(env, outJsObj, keyName, &hasOwn) != napi_ok || !hasOwn) {
             return false;
         }
         method = AppExecFwk::GetPropertyValueByPropertyName(
@@ -2694,8 +2696,10 @@ std::vector<napi_value> JsUIAbility::BuildSkillCallArgs(napi_env env,
             auto valStr = AppExecFwk::WantParams::GetStringByType(value, typeId);
             TAG_LOGI(AAFwkTag::UIABILITY, "skillArg key:%{public}s value:%{public}s",
                 key.c_str(), valStr.c_str());
+            napi_value keyName = nullptr;
+            napi_create_string_utf8(env, key.c_str(), NAPI_AUTO_LENGTH, &keyName);
             bool hasOwn = false;
-            if (napi_has_own_property(env, wrappedObj, key.c_str(), &hasOwn) != napi_ok || !hasOwn) {
+            if (napi_has_own_property(env, wrappedObj, keyName, &hasOwn) != napi_ok || !hasOwn) {
                 TAG_LOGW(AAFwkTag::UIABILITY, "skip non-own skillArg key:%{public}s", key.c_str());
                 continue;
             }
