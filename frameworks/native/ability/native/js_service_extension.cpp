@@ -15,6 +15,8 @@
 
 #include "js_service_extension.h"
 
+#include <unordered_set>
+
 #include "ability_business_error.h"
 #include "ability_handler.h"
 #include "ability_info.h"
@@ -594,6 +596,16 @@ std::string ExtractBaseName(const std::string &path)
     }
     return path.substr(slashPos, dotPos - slashPos);
 }
+
+bool IsBlockedSkillKeyName(const std::string &name)
+{
+    static const std::unordered_set<std::string> BLOCKED = {
+        "constructor", "__proto__", "__defineGetter__", "__defineSetter__",
+        "__lookupGetter__", "__lookupSetter__", "toString", "toLocaleString",
+        "valueOf", "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable"
+    };
+    return BLOCKED.count(name) > 0;
+}
 } // namespace
 
 napi_value JsServiceExtension::LoadSkillFunction(
@@ -634,6 +646,11 @@ bool JsServiceExtension::TryLoadSkillEntry(const std::string &srcEntry,
     const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param,
     napi_env env, napi_value &outJsObj, napi_value &method)
 {
+    if (IsBlockedSkillKeyName(param->functionName_)) {
+        TAG_LOGW(AAFwkTag::SERVICE_EXT, "blocked skill function name:%{public}s",
+            param->functionName_.c_str());
+        return false;
+    }
     std::string srcPath(param->moduleName_ + "/" + srcEntry);
     auto pos = srcPath.rfind('.');
     if (pos == std::string::npos) {
@@ -682,6 +699,10 @@ std::vector<napi_value> JsServiceExtension::BuildSkillCallArgs(napi_env env,
             auto valStr = AppExecFwk::WantParams::GetStringByType(value, typeId);
             TAG_LOGI(AAFwkTag::SERVICE_EXT, "skillArg key:%{public}s value:%{public}s",
                 key.c_str(), valStr.c_str());
+            if (IsBlockedSkillKeyName(key)) {
+                TAG_LOGW(AAFwkTag::SERVICE_EXT, "skip blocked skillArg key:%{public}s", key.c_str());
+                continue;
+            }
             napi_value keyName = nullptr;
             napi_create_string_utf8(env, key.c_str(), NAPI_AUTO_LENGTH, &keyName);
             bool hasOwn = false;
