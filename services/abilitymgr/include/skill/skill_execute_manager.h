@@ -33,7 +33,6 @@ namespace AAFwk {
 
 class SkillExecuteManager {
 DECLARE_DELAYED_SINGLETON(SkillExecuteManager)
-friend class SkillExecuteManagerTest;
 public:
     int32_t GenerateSkillWant(const AppExecFwk::SkillInfo &skillInfo, Want &want,
         int32_t userId, const std::string &requestCode, AppExecFwk::ExtensionAbilityType &targetType,
