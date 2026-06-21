@@ -2264,7 +2264,7 @@ int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const St
 
     if ((want.GetFlags() & Want::FLAG_ABILITY_PREPARE_CONTINUATION) == Want::FLAG_ABILITY_PREPARE_CONTINUATION &&
         IPCSkeleton::GetCallingUid() != DMS_UID) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "The flag only support for DMS, flag:%{public}d, error:%{publicd}d",
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "The flag only support for DMS, flag:%{public}d, error:%{public}d",
             want.GetFlags(), ERR_INVALID_CONTINUATION_FLAG);
         AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, ERR_INVALID_CONTINUATION_FLAG, "flags not allowed");
         return ERR_INVALID_CONTINUATION_FLAG;

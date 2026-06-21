@@ -60,7 +60,7 @@ int32_t ToolUtil::ValidateProperties(const ToolInfo &toolInfo, ExecToolParam &pa
 
         auto search = toolInfo.subcommands.find(param.subcommand);
         if (search == toolInfo.subcommands.end()) {
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "not have subcommand");
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "not have subcommand, %{public}s", param.subcommand.c_str());
             return ERR_TOOL_NOT_EXIST;
         }
     }
@@ -77,6 +77,7 @@ int32_t ToolUtil::ValidateProperties(const ToolInfo &toolInfo, ExecToolParam &pa
     auto it = toolInfo.subcommands.find(param.subcommand);
     if (it == toolInfo.subcommands.end()) {
         TAG_LOGW(AAFwkTag::CLI_TOOL, "GetSubCommandInfo failed: subcommand=%{public}s", param.subcommand.c_str());
+        return ERR_INVALID_PARAM;
     }
     return ValidateInputSchemaProperties(it->second.inputSchema, param.args);
 }
