@@ -27,6 +27,8 @@
 #include "ability_manager_errors.h"
 #include "ability_scheduler.h"
 #include "ability_util.h"
+#include "agent_card.h"
+#include "agent_extension_connection_constants.h"
 #include "bundlemgr/mock_bundle_manager.h"
 #include "hilog_tag_wrapper.h"
 #include "mock_ability_connect_callback.h"
@@ -254,6 +256,35 @@ HWTEST_F(AbilityConnectManagerTest, HandleActiveAbility_002, TestSize.Level1)
     connectManager->HandleActiveAbility(abilityRecord, connectRecord);
     EXPECT_EQ(abilityRecord->GetWant().GetStringParam(PARAM_RESV_CALLER_APP_ID), "app"); // no remove signatureInfo
     TAG_LOGI(AAFwkTag::TEST, "HandleActiveAbility_002 end");
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: HandleActiveAbility
+ */
+HWTEST_F(AbilityConnectManagerTest, HandleActiveAbility_006, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleActiveAbility_006 start");
+    std::shared_ptr<AbilityConnectManager> connectManager = std::make_shared<AbilityConnectManager>(0);
+    std::shared_ptr<BaseExtensionRecord> abilityRecord = serviceRecord_;
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->abilityInfo_.type = AbilityType::EXTENSION;
+    abilityRecord->abilityInfo_.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    abilityRecord->SetAbilityState(AbilityState::ACTIVE);
+    abilityRecord->isConnected = false;
+
+    Want want = abilityRecord->GetWant();
+    want.SetParam(AgentRuntime::AGENT_CARD_TYPE_KEY, static_cast<int32_t>(AgentRuntime::AgentCardType::LOW_CODE));
+    want.SetParam(AgentRuntime::AGENTID_KEY, std::string("lowCodeAgent"));
+    OHOS::sptr<IAbilityConnection> callback = new AbilityConnectCallback();
+    auto connectRecord = std::make_shared<ConnectionRecord>(abilityRecord->GetToken(), abilityRecord, callback, nullptr);
+    connectRecord->SetConnectWant(want);
+    connectRecord->SetConnectState(ConnectionState::CONNECTING);
+
+    connectManager->HandleActiveAbility(abilityRecord, connectRecord);
+    EXPECT_TRUE(abilityRecord->isConnected);
+    EXPECT_EQ(connectRecord->GetConnectState(), ConnectionState::CONNECTING);
+    TAG_LOGI(AAFwkTag::TEST, "HandleActiveAbility_006 end");
 }
 
 /*

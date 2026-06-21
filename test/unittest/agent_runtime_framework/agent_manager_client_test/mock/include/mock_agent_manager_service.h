@@ -46,6 +46,8 @@ public:
 
     virtual int32_t DisconnectAgentExtensionAbility(const sptr<AAFwk::IAbilityConnection> &connection) override;
 
+    virtual int32_t GetAgentCardTypeForConnect(AAFwk::Want &want, int32_t &cardType) override;
+
     virtual int32_t ConnectServiceExtensionAbility(const sptr<IRemoteObject> &callerToken, const AAFwk::Want &want,
         const sptr<AAFwk::IAbilityConnection> &connection) override;
 
@@ -53,6 +55,12 @@ public:
         const sptr<AAFwk::IAbilityConnection> &connection) override;
 
     virtual int32_t NotifyLowCodeAgentComplete(const std::string &agentId) override;
+
+    virtual int32_t VerifyAgentConnectRequest(const AAFwk::Want &want,
+        const sptr<AAFwk::IAbilityConnection> &connection, std::string &callerIdentity) override;
+
+    virtual int32_t VerifyAgentDisconnectRequests(const std::vector<AAFwk::Want> &wants,
+        const sptr<AAFwk::IAbilityConnection> &connection, std::string &callerIdentity) override;
 };
 }  // namespace AgentRuntime
 }  // namespace OHOS

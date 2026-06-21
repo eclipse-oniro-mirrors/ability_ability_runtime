@@ -32,6 +32,8 @@ ohos_unittest("agent_card_mgr_test") {
     "mock/src/mock_agent_card.cpp",
     "mock/src/mock_agent_card_db_mgr.cpp",
     "${agent_runtime_framework_path}/services/agentmgr/src/agent_card_mgr.cpp",
+    "${agent_runtime_framework_path}/services/common/src/agent_card_utils.cpp",
+    "${agent_runtime_framework_path}/services/common/src/sem_ver.cpp",
   ]
 
   include_dirs = [
@@ -40,12 +42,10 @@ ohos_unittest("agent_card_mgr_test") {
     "${ability_runtime_services_path}/common/include",
     "${agent_runtime_framework_path}/interfaces/inner_api/include",
     "${agent_runtime_framework_path}/services/agentmgr/include",
+    "${agent_runtime_framework_path}/services/common/include",
   ]
 
-  deps = [
-    "${agent_runtime_framework_path}/services/common:agent_card_utils",
-    "${agent_runtime_framework_path}/services/common:agent_semver",
-  ]
+  deps = []
 
   external_deps = [
     "bundle_framework:appexecfwk_base",

@@ -2136,6 +2136,15 @@ void AbilityRecord::SetWant(const Want &want)
     if (want_.HasParameter(AgentRuntime::AGENTEXTENSIONHOSTPROXY_KEY)) {
         want_.RemoveParam(AgentRuntime::AGENTEXTENSIONHOSTPROXY_KEY);
     }
+    if (want_.HasParameter(AgentRuntime::AGENTID_KEY)) {
+        want_.RemoveParam(AgentRuntime::AGENTID_KEY);
+    }
+    if (want_.HasParameter(AgentRuntime::AGENT_CARD_TYPE_KEY)) {
+        want_.RemoveParam(AgentRuntime::AGENT_CARD_TYPE_KEY);
+    }
+    if (want_.HasParameter(AgentRuntime::AGENT_VERIFICATION_NONCE_KEY)) {
+        want_.RemoveParam(AgentRuntime::AGENT_VERIFICATION_NONCE_KEY);
+    }
 }
 
 Want AbilityRecord::GetWant() const

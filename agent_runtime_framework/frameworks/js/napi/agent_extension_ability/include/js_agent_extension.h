@@ -17,6 +17,7 @@
 #define OHOS_AGENT_RUNTIME_JS_AGENT_EXTENSION_H
 
 #include "agent_extension.h"
+#include "agent_remote_object_key.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -140,7 +141,7 @@ private:
     std::unique_ptr<NativeReference> jsObj_;
     std::shared_ptr<NativeReference> shellContextRef_ = nullptr;
     sptr<JsAgentExtensionStubImpl> extensionStub_;
-    std::map<sptr<IRemoteObject>, std::unique_ptr<NativeReference>> hostProxyMap_;
+    std::map<AgentRemoteObjectKey, std::unique_ptr<NativeReference>> hostProxyMap_;
 };
 }  // namespace AgentRuntime
 }  // namespace OHOS

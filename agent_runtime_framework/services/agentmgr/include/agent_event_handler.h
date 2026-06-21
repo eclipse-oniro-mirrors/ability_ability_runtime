@@ -22,15 +22,13 @@
 
 namespace OHOS {
 namespace AgentRuntime {
-class AgentManagerService;
 /**
  * @class AgentEventHandler
  * AgentEventHandler handling the agent event.
  */
 class AgentEventHandler : public AAFwk::EventHandlerWrap {
 public:
-    AgentEventHandler(
-        const std::shared_ptr<AAFwk::TaskHandlerWrap> &taskHandler, const std::weak_ptr<AgentManagerService> &server);
+    explicit AgentEventHandler(const std::shared_ptr<AAFwk::TaskHandlerWrap> &taskHandler);
     virtual ~AgentEventHandler() = default;
 
     /**
@@ -39,9 +37,6 @@ public:
      * @param event, inner event loop.
      */
     void ProcessEvent(const AAFwk::EventWrap &event) override;
-
-private:
-    std::weak_ptr<AgentManagerService> server_;
 };
 }  // namespace AgentRuntime
 }  // namespace OHOS

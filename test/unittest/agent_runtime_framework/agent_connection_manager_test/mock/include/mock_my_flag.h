@@ -26,6 +26,8 @@ public:
     static int32_t retDisconnectAgentExtensionAbility;
     static int32_t retConnectServiceExtensionAbility;
     static int32_t retDisconnectServiceExtensionAbility;
+    static int32_t onAbilityConnectDoneCount;
+    static int32_t onAbilityDisconnectDoneCount;
     static bool isOnAbilityConnectDoneCalled;
     static bool isOnAbilityDisconnectDoneCalled;
 };

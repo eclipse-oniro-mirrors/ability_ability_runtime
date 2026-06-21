@@ -203,6 +203,8 @@ group("unittest") {
       "ability_token_stub_test:unittest",
       "acquire_share_data_callback_proxy_test:unittest",
       "advanced_security_mode_manager_test:unittest",
+      "agent_ability_util_test:unittest",
+      "agent_caller_identity_util_test:unittest",
       "agent_runtime_framework:unittest",
       "ams_ability_running_record_test:unittest",
       "ams_app_death_recipient_test:unittest",

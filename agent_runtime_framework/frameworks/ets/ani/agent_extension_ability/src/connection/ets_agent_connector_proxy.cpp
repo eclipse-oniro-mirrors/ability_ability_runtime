@@ -56,15 +56,6 @@ ani_object EtsAgentConnectorProxy::CreateEtsAgentConnectorProxy(
         TAG_LOGE(AAFwkTag::SER_ROUTER, "Class_FindField failed status: %{public}d", status);
         return nullptr;
     }
-    std::unique_ptr<EtsAgentConnectorProxy> connectorProxyPtr =
-        std::make_unique<EtsAgentConnectorProxy>(connectorProxy);
-
-    ani_long nativeConnectorProxyLong = reinterpret_cast<ani_long>(connectorProxyPtr.release());
-    if ((status = env->Object_SetField_Long(object, field, nativeConnectorProxyLong)) != ANI_OK) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "Object_SetField_Long failed status: %{public}d", status);
-        return nullptr;
-    }
-
     std::array functions = {
         ani_native_function {"nativeSendData", "C{std.core.String}:",
             reinterpret_cast<void *>(EtsAgentConnectorProxy::SendData)},
@@ -77,6 +68,15 @@ ani_object EtsAgentConnectorProxy::CreateEtsAgentConnectorProxy(
         TAG_LOGE(AAFwkTag::SER_ROUTER, "Class_BindNativeMethods failed status: %{public}d", status);
         return nullptr;
     }
+
+    std::unique_ptr<EtsAgentConnectorProxy> connectorProxyPtr =
+        std::make_unique<EtsAgentConnectorProxy>(connectorProxy);
+    ani_long nativeConnectorProxyLong = reinterpret_cast<ani_long>(connectorProxyPtr.get());
+    if ((status = env->Object_SetField_Long(object, field, nativeConnectorProxyLong)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "Object_SetField_Long failed status: %{public}d", status);
+        return nullptr;
+    }
+    connectorProxyPtr.release();
     TAG_LOGD(AAFwkTag::SER_ROUTER, "CreateEtsAgentConnectorProxy success");
     return object;
 }

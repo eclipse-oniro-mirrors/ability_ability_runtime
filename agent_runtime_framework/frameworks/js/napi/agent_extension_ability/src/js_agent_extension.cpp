@@ -43,6 +43,12 @@ namespace AgentRuntime {
 namespace {
 constexpr size_t ARGC_ONE = 1;
 constexpr size_t ARGC_TWO = 2;
+
+void RemoveAgentWantParams(AAFwk::Want &want)
+{
+    want.RemoveParam(AGENT_CARD_TYPE_KEY);
+    want.RemoveParam(AGENT_VERIFICATION_NONCE_KEY);
+}
 }
 using namespace OHOS::AbilityRuntime;
 using namespace OHOS::AppExecFwk;
@@ -170,7 +176,7 @@ void JsAgentExtension::OnStart(const AAFwk::Want &want)
     if (context != nullptr) {
         JsExtensionContext::ConfigurationUpdated(env, shellContextRef_, context->GetConfiguration());
     }
-    napi_value napiWant = OHOS::AppExecFwk::WrapWant(env, want);
+    napi_value napiWant = WrapWant(env, want);
     napi_value argv[] = {napiWant};
     CallObjectMethod("onCreate", argv, ARGC_ONE);
 }
@@ -215,7 +221,8 @@ sptr<IRemoteObject> JsAgentExtension::OnConnect(const AAFwk::Want &want,
     if (extensionStub_ != nullptr) {
         stubObject = extensionStub_->AsObject();
     }
-    if (hostProxyMap_.find(hostProxy) != hostProxyMap_.end()) {
+    auto hostProxyKey = BuildAgentRemoteObjectKey(hostProxy);
+    if (hostProxyMap_.find(hostProxyKey) != hostProxyMap_.end()) {
         TAG_LOGI(AAFwkTag::SER_ROUTER, "hostProxy exist");
         return stubObject;
     }
@@ -227,7 +234,7 @@ sptr<IRemoteObject> JsAgentExtension::OnConnect(const AAFwk::Want &want,
     napi_value jsHostProxy = reinterpret_cast<NativeReference*>(hostProxyNref)->GetNapiValue();
     napi_value argv[] = {napiWant, jsHostProxy};
     CallObjectMethod("onConnect", argv, ARGC_TWO);
-    hostProxyMap_[hostProxy] = std::unique_ptr<NativeReference>(reinterpret_cast<NativeReference*>(hostProxyNref));
+    hostProxyMap_[hostProxyKey] = std::unique_ptr<NativeReference>(reinterpret_cast<NativeReference*>(hostProxyNref));
     return stubObject;
 }
 
@@ -249,7 +256,7 @@ void JsAgentExtension::OnDisconnect(const AAFwk::Want &want,
         return;
     }
     napi_value jsHostProxy = nullptr;
-    auto iter = hostProxyMap_.find(hostProxy);
+    auto iter = hostProxyMap_.find(BuildAgentRemoteObjectKey(hostProxy));
     if (iter != hostProxyMap_.end()) {
         auto &hostProxyNref = iter->second;
         if (hostProxyNref != nullptr) {
@@ -352,7 +359,7 @@ void JsAgentExtension::HandleSendData(sptr<IRemoteObject> hostProxy, const std::
         return;
     }
     napi_value jsHostProxy = nullptr;
-    auto iter = hostProxyMap_.find(hostProxy);
+    auto iter = hostProxyMap_.find(BuildAgentRemoteObjectKey(hostProxy));
     if (iter != hostProxyMap_.end()) {
         auto &hostProxyNref = iter->second;
         if (hostProxyNref != nullptr) {
@@ -376,7 +383,7 @@ void JsAgentExtension::HandleAuthorize(sptr<IRemoteObject> hostProxy, const std:
         return;
     }
     napi_value jsHostProxy = nullptr;
-    auto iter = hostProxyMap_.find(hostProxy);
+    auto iter = hostProxyMap_.find(BuildAgentRemoteObjectKey(hostProxy));
     if (iter != hostProxyMap_.end()) {
         auto &hostProxyNref = iter->second;
         if (hostProxyNref != nullptr) {
@@ -439,7 +446,7 @@ napi_value JsAgentExtension::CallObjectMethod(const char* name, napi_value const
 napi_value JsAgentExtension::WrapWant(napi_env env, const AAFwk::Want &want)
 {
     AAFwk::Want jsWant = want;
-    jsWant.RemoveParam(AGENTEXTENSIONHOSTPROXY_KEY);
+    RemoveAgentWantParams(jsWant);
     napi_value napiWant = OHOS::AppExecFwk::WrapWant(env, jsWant);
     return napiWant;
 }

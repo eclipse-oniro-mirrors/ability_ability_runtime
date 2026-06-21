@@ -24,7 +24,11 @@ ohos_unittest("connection_record_test") {
     debug = false
   }
   branch_protector_ret = "pac_ret"
-  include_dirs = [ "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/system_ability_mock" ]
+  include_dirs = [
+    "${agent_runtime_framework_path}/interfaces/inner_api/include",
+    "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
+    "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/system_ability_mock",
+  ]
 
   sources = [
     "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/appexecfwk_core/src/appmgr/mock_app_scheduler.cpp",
@@ -43,6 +47,7 @@ ohos_unittest("connection_record_test") {
     "${ability_runtime_innerkits_path}/ability_manager:ability_connect_callback_stub",
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
+    "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection:agent_extension_connection",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
     "${ability_runtime_services_path}/common:perm_verification",
     "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/aakit:aakit_mock",

@@ -16,6 +16,8 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include <limits>
+
 #define private public
 #define protected public
 #include "base_extension_record.h"
@@ -28,7 +30,11 @@
 #include "ability_connect_callback_stub.h"
 #include "ability_scheduler.h"
 #include "ability_state.h"
+#include "agent_card.h"
+#include "agent_extension_connection_constants.h"
+#include "agent_receiver_stub.h"
 #include "iremote_object.h"
+#include "long_wrapper.h"
 
 using namespace testing::ext;
 using namespace OHOS::AppExecFwk;
@@ -101,6 +107,27 @@ public:
 
     MOCK_METHOD3(OnAbilityConnectDone, void(const ElementName&, const OHOS::sptr<IRemoteObject>&, int));
     MOCK_METHOD2(OnAbilityDisconnectDone, void(const ElementName&, int));
+};
+
+class TestAgentReceiver : public AgentRuntime::AgentReceiverStub {
+public:
+    int32_t SendData(const sptr<IRemoteObject> &, const std::string &) override
+    {
+        return ERR_OK;
+    }
+
+    int32_t Authorize(const sptr<IRemoteObject> &, const std::string &) override
+    {
+        return ERR_OK;
+    }
+
+    int32_t AgentInvoked(const std::string &agentId) override
+    {
+        invokedAgentIds.emplace_back(agentId);
+        return ERR_OK;
+    }
+
+    std::vector<std::string> invokedAgentIds;
 };
 
 class ConnectionRecordTest : public testing::TestWithParam<OHOS::AAFwk::ConnectionState> {
@@ -767,6 +794,220 @@ HWTEST_F(ConnectionRecordTest, ConnectionRecord_ScheduleConnectAbilityDone_008, 
     record->SetConnectWant(want);
     record->ScheduleConnectAbilityDone();
     EXPECT_EQ(record->GetConnectState(), ConnectionState::CONNECTED);
+}
+
+/*
+ * Feature: ConnectionRecord
+ * Function: ScheduleConnectAbilityDone
+ * SubFunction: NA
+ * FunctionPoints: ScheduleConnectAbilityDone
+ * EnvConditions:NA
+ * CaseDescription: Verify low-code system AgentExt invocation is dispatched by AMS connection record
+ */
+HWTEST_F(ConnectionRecordTest, ConnectionRecord_ScheduleConnectAbilityDone_009, TestSize.Level1)
+{
+    service_->abilityInfo_.type = AbilityType::EXTENSION;
+    service_->abilityInfo_.extensionAbilityType = ExtensionAbilityType::AGENT;
+    service_->abilityInfo_.applicationInfo.isSystemApp = true;
+    auto receiver = sptr<TestAgentReceiver>::MakeSptr();
+    service_->SetConnRemoteObject(receiver->AsObject());
+    auto record = std::make_shared<ConnectionRecord>(service_->GetToken(), service_, callback_, nullptr);
+    record->SetConnectState(ConnectionState::CONNECTING);
+    Want want;
+    want.SetParam(AgentRuntime::AGENTID_KEY, std::string("agentA"));
+    want.SetParam(AgentRuntime::AGENT_CARD_TYPE_KEY, static_cast<int32_t>(AgentRuntime::AgentCardType::LOW_CODE));
+    record->SetConnectWant(want);
+
+    record->ScheduleConnectAbilityDone();
+
+    EXPECT_EQ(record->GetConnectState(), ConnectionState::CONNECTED);
+    ASSERT_EQ(receiver->invokedAgentIds.size(), 1);
+    EXPECT_EQ(receiver->invokedAgentIds[0], "agentA");
+}
+
+/*
+ * Feature: ConnectionRecord
+ * Function: ScheduleConnectAbilityDone
+ * SubFunction: NA
+ * FunctionPoints: ScheduleConnectAbilityDone
+ * EnvConditions:NA
+ * CaseDescription: Verify low-code non-system AgentExt invocation is not dispatched
+ */
+HWTEST_F(ConnectionRecordTest, ConnectionRecord_ScheduleConnectAbilityDone_010, TestSize.Level1)
+{
+    service_->abilityInfo_.type = AbilityType::EXTENSION;
+    service_->abilityInfo_.extensionAbilityType = ExtensionAbilityType::AGENT;
+    service_->abilityInfo_.applicationInfo.isSystemApp = false;
+    auto receiver = sptr<TestAgentReceiver>::MakeSptr();
+    service_->SetConnRemoteObject(receiver->AsObject());
+    auto record = std::make_shared<ConnectionRecord>(service_->GetToken(), service_, callback_, nullptr);
+    record->SetConnectState(ConnectionState::CONNECTING);
+    Want want;
+    want.SetParam(AgentRuntime::AGENTID_KEY, std::string("agentA"));
+    want.SetParam(AgentRuntime::AGENT_CARD_TYPE_KEY, static_cast<int32_t>(AgentRuntime::AgentCardType::LOW_CODE));
+    record->SetConnectWant(want);
+
+    record->ScheduleConnectAbilityDone();
+
+    EXPECT_EQ(record->GetConnectState(), ConnectionState::CONNECTED);
+    EXPECT_TRUE(receiver->invokedAgentIds.empty());
+}
+
+/*
+ * Feature: ConnectionRecord
+ * Function: ScheduleConnectAbilityDone
+ * SubFunction: NA
+ * FunctionPoints: Standard AGENT fixed-width nonce preservation
+ * EnvConditions:NA
+ * CaseDescription: Verify standard AGENT connect Want keeps an int64 nonce after scheduling connect done
+ */
+HWTEST_F(ConnectionRecordTest, ConnectionRecord_ScheduleConnectAbilityDone_011, TestSize.Level1)
+{
+    constexpr int64_t nonce = std::numeric_limits<int64_t>::max() - 29;
+    service_->abilityInfo_.type = AbilityType::EXTENSION;
+    service_->abilityInfo_.extensionAbilityType = ExtensionAbilityType::AGENT;
+    auto record = std::make_shared<ConnectionRecord>(service_->GetToken(), service_, callback_, nullptr);
+    record->SetConnectState(ConnectionState::CONNECTING);
+    Want want;
+    want.SetParam(AgentRuntime::AGENTID_KEY, std::string("agentA"));
+    want.SetParam(AgentRuntime::AGENT_CARD_TYPE_KEY, static_cast<int32_t>(AgentRuntime::AgentCardType::APP));
+    WantParams params = want.GetParams();
+    params.SetParam(AgentRuntime::AGENT_VERIFICATION_NONCE_KEY, Long::Box64(nonce));
+    want.SetParams(params);
+    record->SetConnectWant(want);
+
+    record->ScheduleConnectAbilityDone();
+
+    auto storedNonce = ILong::Query(record->GetConnectWant().GetParams().GetParam(
+        AgentRuntime::AGENT_VERIFICATION_NONCE_KEY));
+    ASSERT_NE(storedNonce, nullptr);
+    EXPECT_EQ(Long::Unbox64(storedNonce), nonce);
+}
+
+/*
+ * Feature: ConnectionRecord
+ * Function: SetConnectWant
+ * SubFunction: NA
+ * FunctionPoints: Low-code connect Want sanitization
+ * EnvConditions:NA
+ * CaseDescription: Verify low-code Agent nonce is stripped from the base connect Want
+ */
+HWTEST_F(ConnectionRecordTest, ConnectionRecord_SetConnectWant_001, TestSize.Level1)
+{
+    service_->abilityInfo_.type = AbilityType::EXTENSION;
+    service_->abilityInfo_.extensionAbilityType = ExtensionAbilityType::AGENT;
+    auto record = std::make_shared<ConnectionRecord>(service_->GetToken(), service_, callback_, nullptr);
+    Want want;
+    want.SetParam(AgentRuntime::AGENTID_KEY, std::string("agentA"));
+    want.SetParam(AgentRuntime::AGENT_CARD_TYPE_KEY, static_cast<int32_t>(AgentRuntime::AgentCardType::LOW_CODE));
+    want.SetParam(AgentRuntime::AGENT_VERIFICATION_NONCE_KEY, 1000000001L);
+
+    record->SetConnectWant(want);
+
+    auto baseWant = record->GetConnectWant();
+    EXPECT_FALSE(baseWant.HasParameter(AgentRuntime::AGENT_VERIFICATION_NONCE_KEY));
+}
+
+/*
+ * Feature: ConnectionRecord
+ * Function: QueueLowCodeAgentInvocation
+ * SubFunction: NA
+ * FunctionPoints: Low-code connect Want sanitization
+ * EnvConditions:NA
+ * CaseDescription: Verify queued same-host low-code Agent nonce is not persisted in the base connect Want
+ */
+HWTEST_F(ConnectionRecordTest, ConnectionRecord_QueueLowCodeAgentInvocation_001, TestSize.Level1)
+{
+    service_->abilityInfo_.type = AbilityType::EXTENSION;
+    service_->abilityInfo_.extensionAbilityType = ExtensionAbilityType::AGENT;
+    auto record = std::make_shared<ConnectionRecord>(service_->GetToken(), service_, callback_, nullptr);
+    Want wantA;
+    wantA.SetParam(AgentRuntime::AGENTID_KEY, std::string("agentA"));
+    wantA.SetParam(AgentRuntime::AGENT_CARD_TYPE_KEY, static_cast<int32_t>(AgentRuntime::AgentCardType::LOW_CODE));
+    wantA.SetParam(AgentRuntime::AGENT_VERIFICATION_NONCE_KEY, 1000000001L);
+    record->SetConnectWant(wantA);
+
+    Want wantB = wantA;
+    wantB.SetParam(AgentRuntime::AGENTID_KEY, std::string("agentB"));
+    wantB.SetParam(AgentRuntime::AGENT_VERIFICATION_NONCE_KEY, 1000000002L);
+    record->SetConnectState(ConnectionState::CONNECTING);
+    record->QueueLowCodeAgentInvocation(wantB, callback_);
+
+    auto baseWant = record->GetConnectWant();
+    EXPECT_FALSE(baseWant.HasParameter(AgentRuntime::AGENT_VERIFICATION_NONCE_KEY));
+    EXPECT_EQ(baseWant.GetStringParam(AgentRuntime::AGENTID_KEY), "agentA");
+}
+
+/*
+ * Feature: ConnectionRecord
+ * Function: QueueLowCodeAgentInvocation
+ * SubFunction: NA
+ * FunctionPoints: Non-low-code Want early return
+ * EnvConditions:NA
+ * CaseDescription: Verify a non-low-code Want is ignored and the pending queue stays empty.
+ */
+HWTEST_F(ConnectionRecordTest, ConnectionRecord_QueueLowCodeAgentInvocation_002, TestSize.Level1)
+{
+    service_->abilityInfo_.type = AbilityType::EXTENSION;
+    service_->abilityInfo_.extensionAbilityType = ExtensionAbilityType::AGENT;
+    auto record = std::make_shared<ConnectionRecord>(service_->GetToken(), service_, callback_, nullptr);
+    record->SetConnectState(ConnectionState::CONNECTING);
+
+    Want nonLowCodeWant;
+    nonLowCodeWant.SetParam(AgentRuntime::AGENTID_KEY, std::string("agentX"));
+    // AGENT_CARD_TYPE_KEY is absent => IsLowCodeAgentWant returns false.
+    record->QueueLowCodeAgentInvocation(nonLowCodeWant, callback_);
+
+    EXPECT_TRUE(record->pendingLowCodeInvocations_.empty());
+}
+
+/*
+ * Feature: ConnectionRecord
+ * Function: QueueLowCodeAgentInvocation
+ * SubFunction: NA
+ * FunctionPoints: CONNECTED state completes invocation directly
+ * EnvConditions:NA
+ * CaseDescription: Verify a low-code Want in CONNECTED state is completed directly, not queued.
+ */
+HWTEST_F(ConnectionRecordTest, ConnectionRecord_QueueLowCodeAgentInvocation_003, TestSize.Level1)
+{
+    service_->abilityInfo_.type = AbilityType::EXTENSION;
+    service_->abilityInfo_.extensionAbilityType = ExtensionAbilityType::AGENT;
+    auto record = std::make_shared<ConnectionRecord>(service_->GetToken(), service_, callback_, nullptr);
+    record->SetConnectState(ConnectionState::CONNECTED);
+
+    Want lowCodeWant;
+    lowCodeWant.SetParam(AgentRuntime::AGENTID_KEY, std::string("agentC"));
+    lowCodeWant.SetParam(AgentRuntime::AGENT_CARD_TYPE_KEY,
+        static_cast<int32_t>(AgentRuntime::AgentCardType::LOW_CODE));
+    // In CONNECTED state, CompleteLowCodeAgentInvocation is called directly; no queueing.
+    record->QueueLowCodeAgentInvocation(lowCodeWant, callback_);
+
+    EXPECT_TRUE(record->pendingLowCodeInvocations_.empty());
+}
+
+/*
+ * Feature: ConnectionRecord
+ * Function: QueueLowCodeAgentInvocation
+ * SubFunction: NA
+ * FunctionPoints: Non-CONNECTING state skip
+ * EnvConditions:NA
+ * CaseDescription: Verify a low-code Want in DISCONNECTED state is skipped and not queued.
+ */
+HWTEST_F(ConnectionRecordTest, ConnectionRecord_QueueLowCodeAgentInvocation_004, TestSize.Level1)
+{
+    service_->abilityInfo_.type = AbilityType::EXTENSION;
+    service_->abilityInfo_.extensionAbilityType = ExtensionAbilityType::AGENT;
+    auto record = std::make_shared<ConnectionRecord>(service_->GetToken(), service_, callback_, nullptr);
+    record->SetConnectState(ConnectionState::DISCONNECTED);
+
+    Want lowCodeWant;
+    lowCodeWant.SetParam(AgentRuntime::AGENTID_KEY, std::string("agentD"));
+    lowCodeWant.SetParam(AgentRuntime::AGENT_CARD_TYPE_KEY,
+        static_cast<int32_t>(AgentRuntime::AgentCardType::LOW_CODE));
+    record->QueueLowCodeAgentInvocation(lowCodeWant, callback_);
+
+    EXPECT_TRUE(record->pendingLowCodeInvocations_.empty());
 }
 
 /*

@@ -114,6 +114,9 @@ HWTEST_F(AbilityBusinessErrorTest, GetJsErrorCodeByNativeError_0100, TestSize.Le
 
     result = GetJsErrorCodeByNativeError(OHOS::AAFwk::ERR_LOW_CODE_AGENT_ALREADY_ACTIVE);
     EXPECT_TRUE(result == AbilityErrorCode::ERROR_CODE_LOW_CODE_AGENT_ALREADY_ACTIVE);
+
+    result = GetJsErrorCodeByNativeError(OHOS::AAFwk::ERR_LOW_CODE_AGENT_DISCONNECT_BATCH_MISMATCH);
+    EXPECT_TRUE(result == AbilityErrorCode::ERROR_CODE_INNER);
 }
 
 /**
@@ -236,6 +239,9 @@ HWTEST_F(AbilityBusinessErrorTest, GetAgentManagerErrorMsg_0100, TestSize.Level2
     EXPECT_EQ(GetAgentManagerErrorMsg(AAFwk::ERR_MAX_AGENT_CONNECTIONS_REACHED,
         AgentManagerErrorOperation::CONNECT_AGENT_EXTENSION),
         GetErrorMsg(AbilityErrorCode::ERROR_CODE_MAX_CONNECTIONS_REACHED));
+    EXPECT_EQ(GetAgentManagerErrorMsg(AAFwk::ERR_LOW_CODE_AGENT_DISCONNECT_BATCH_MISMATCH,
+        AgentManagerErrorOperation::DISCONNECT_AGENT_EXTENSION),
+        GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED));
 }
 }  // namespace AAFwk
 }  // namespace OHOS

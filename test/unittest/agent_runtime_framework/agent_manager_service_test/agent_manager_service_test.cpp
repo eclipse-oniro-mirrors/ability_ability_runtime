@@ -16,6 +16,14 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <chrono>
+#include <limits>
+#include <map>
+#include <set>
+#include <type_traits>
+#include <utility>
+#include <vector>
+
 #include "ability_connect_callback_interface.h"
 #include "ability_manager_errors.h"
 #include "agent_card.h"
@@ -23,6 +31,7 @@
 
 #define private public
 #include "agent_bundle_event_callback.h"
+#include "agent_connect_manager.h"
 #include "agent_manager_service.h"
 #include "agent_load_callback.h"
 #undef private
@@ -33,6 +42,8 @@
 #include "iremote_object.h"
 #include "mock_my_flag.h"
 #include "system_ability.h"
+#include "utils/agent_ability_util.h"
+#include "agent_utils.h"
 #include "want.h"
 
 using namespace testing;
@@ -43,6 +54,14 @@ using namespace OHOS::AAFwk;
 
 namespace OHOS {
 namespace AgentRuntime {
+namespace {
+constexpr size_t AGENT_MGR_QUOTA_DEAUTH_PROBE_COUNT = 5;
+constexpr size_t LOW_CODE_HOST_LIMIT_PROBE_COUNT = 100;
+constexpr int32_t BASE_USER_RANGE_FOR_TEST = 200000;
+static_assert(!std::is_base_of<std::enable_shared_from_this<AgentManagerService>, AgentManagerService>::value,
+    "AgentManagerService must use OpenHarmony sptr/SystemAbility ownership only");
+}
+
 const int BUNDLE_MGR_SERVICE_SYS_ABILITY_ID = 401;
 
 AgentCard BuildServiceTestAgentCard(const std::string &agentId)
@@ -70,6 +89,96 @@ AgentCard BuildServiceTestAgentCard(const std::string &agentId)
     return card;
 }
 
+AgentConnectPlanRequest BuildLowCodeConnectPlanRequest(const AgentHostKey &hostKey,
+    const sptr<AAFwk::IAbilityConnection> &connection, const std::string &agentId, int32_t callingUid)
+{
+    AgentConnectPlanRequest request;
+    request.hostKey = hostKey;
+    request.hostUid = callingUid;
+    request.agentId = agentId;
+    request.connection = connection;
+    request.callerUid = callingUid;
+    return request;
+}
+
+AppExecFwk::ElementName BuildLowCodeElement()
+{
+    return AppExecFwk::ElementName("", "lowcode.bundle", "LowCodeExtAbility", "entry");
+}
+
+AgentHostConnectDoneRequest BuildHostConnectDoneRequest(const AgentHostKey &hostKey,
+    const sptr<IRemoteObject> &callerRemote, const std::string &agentId, const sptr<IRemoteObject> &remoteObject)
+{
+    AgentHostConnectDoneRequest request;
+    request.hostKey = hostKey;
+    request.callerRemote = callerRemote;
+    request.agentId = agentId;
+    request.element = BuildLowCodeElement();
+    request.remoteObject = remoteObject;
+    request.resultCode = ERR_OK;
+    return request;
+}
+
+AgentHostDisconnectDoneRequest BuildHostDisconnectDoneRequest(const AgentHostKey &hostKey,
+    const sptr<IRemoteObject> &callerRemote, std::set<std::string> agentIds,
+    const sptr<IRemoteObject> &hostConnectionRemote = nullptr)
+{
+    AgentHostDisconnectDoneRequest request;
+    request.hostKey = hostKey;
+    request.callerRemote = callerRemote;
+    request.hostConnectionRemote = hostConnectionRemote;
+    request.agentIds = std::move(agentIds);
+    request.element = BuildLowCodeElement();
+    request.resultCode = ERR_OK;
+    return request;
+}
+
+LowCodePendingDisconnectRecord BuildPendingDisconnectRecord(
+    const std::string &agentId, const LowCodeAgentRecord &record)
+{
+    LowCodePendingDisconnectRecord pending;
+    pending.agentId = agentId;
+    pending.callerRemote = record.callerRemote;
+    pending.originalIdentity = record.originalIdentity;
+    pending.verificationNonce = record.verificationNonce;
+    return pending;
+}
+
+AgentConnectPreflightConsumeRequest BuildPreflightConsumeRequest(
+    const Want &want, int32_t callerUid, int32_t callerUserId)
+{
+    AgentConnectPreflightConsumeRequest request;
+    request.want = want;
+    request.callerUid = callerUid;
+    request.callerUserId = callerUserId;
+    return request;
+}
+
+AgentQuotaKey BuildStandardTestQuotaKey(const std::string &agentId)
+{
+    AgentQuotaKey key;
+    key.hostKey.userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE_FOR_TEST;
+    key.hostKey.bundleName = "standard.bundle";
+    key.hostKey.moduleName = "entry";
+    key.hostKey.abilityName = "StandardAgentExtAbility";
+    key.agentId = agentId;
+    key.isLowCode = false;
+    return key;
+}
+
+AgentStandardConnectRequest BuildStandardConnectRequest(
+    const sptr<AAFwk::IAbilityConnection> &connection, const std::string &agentId, int64_t verificationNonce)
+{
+    AgentStandardConnectRequest request;
+    request.connection = connection;
+    request.callerUid = IPCSkeleton::GetCallingUid();
+    request.agentId = agentId;
+    request.originalIdentity = "identity-" + agentId;
+    request.quotaKey = BuildStandardTestQuotaKey(agentId);
+    request.verificationNonce = verificationNonce;
+    return request;
+}
+
 class AgentManagerServiceTest : public testing::Test {
 public:
     static void SetUpTestCase(void);
@@ -82,7 +191,16 @@ void AgentManagerServiceTest::SetUpTestCase(void)
 {}
 
 void AgentManagerServiceTest::TearDownTestCase(void)
-{}
+{
+    // The singleton AgentManagerService holds an FFRT queue (taskHandler_) created in OnStart/Init.
+    // Destroying it during process-exit static destruction crashes (~ffrt::queue after FFRT globals
+    // are torn down). Reset it here while FFRT is still alive so the queue is released cleanly.
+    auto service = AgentManagerService::GetInstance();
+    if (service != nullptr) {
+        service->eventHandler_.reset();
+        service->taskHandler_.reset();
+    }
+}
 
 void AgentManagerServiceTest::SetUp(void)
 {
@@ -93,6 +211,7 @@ void AgentManagerServiceTest::SetUp(void)
     MyFlag::retVerifyGetAgentCardPermission = true;
     MyFlag::retJudgeCallerIsAllowedToUseSystemAPI = true;
     MyFlag::retVerifyModifyAgentCardPermission = true;
+    MyFlag::retCheckSpecificSystemAbilityAccessPermission = true;
     MyFlag::retRegisterAgentCard = ERR_OK;
     MyFlag::retUpdateAgentCard = ERR_OK;
     MyFlag::retDeleteAgentCard = ERR_OK;
@@ -125,19 +244,63 @@ void AgentManagerServiceTest::SetUp(void)
     MyFlag::lastConnectAbilityCallerToken = nullptr;
     MyFlag::lastConnectAbilityExtensionType = AppExecFwk::ExtensionAbilityType::UNSPECIFIED;
     MyFlag::lastDisconnectAbilityConnection = nullptr;
-    auto service = AgentManagerService::GetInstance();
-    service->trackedConnections_.clear();
-    service->callerConnectionCounts_.clear();
+    AgentConnectManager::GetInstance().Clear();
     MyFlag::connectAbilityWithExtensionTypeCallCount = 0;
     MyFlag::disconnectAbilityCallCount = 0;
     MyFlag::lastConnectAbilityConnection = nullptr;
     MyFlag::lastDisconnectAbilityConnection = nullptr;
-    AgentManagerService::GetInstance()->agentHostSessions_.clear();
-    AgentManagerService::GetInstance()->agentOwners_.clear();
 }
 
 void AgentManagerServiceTest::TearDown(void)
 {}
+
+/**
+* @tc.name  : AgentHostKeyMap_ShouldIncludeAppIndex
+* @tc.number: AgentHostKeyMap_001
+* @tc.desc  : Test low-code AgentHostKey map key includes appIndex explicitly
+*/
+HWTEST_F(AgentManagerServiceTest, AgentHostKeyMap_001, TestSize.Level1)
+{
+    AgentHostKey baseKey;
+    baseKey.userId = 100;
+    baseKey.appIndex = 0;
+    baseKey.bundleName = "lowcode.bundle";
+    baseKey.moduleName = "entry";
+    baseKey.abilityName = "LowCodeExtAbility";
+
+    AgentHostKey cloneKey = baseKey;
+    cloneKey.appIndex = 1;
+    std::map<AgentHostKey, int32_t> hostKeys;
+    hostKeys[baseKey] = 1;
+    hostKeys[cloneKey] = 2;
+
+    EXPECT_FALSE(AgentHostKeyEqual()(baseKey, cloneKey));
+    EXPECT_EQ(hostKeys.size(), static_cast<size_t>(2));
+    EXPECT_EQ(hostKeys[baseKey], 1);
+    EXPECT_EQ(hostKeys[cloneKey], 2);
+}
+
+/**
+* @tc.name  : BuildAgentHostKey_ShouldPreserveAppIndex
+* @tc.number: BuildAgentHostKey_001
+* @tc.desc  : Test low-code host key captures appIndex from Want
+*/
+HWTEST_F(AgentManagerServiceTest, BuildAgentHostKey_001, TestSize.Level1)
+{
+    constexpr int32_t USER_ID = 100;
+    constexpr int32_t APP_INDEX = 2;
+    Want want;
+    want.SetElementName("", "lowcode.bundle", "LowCodeExtAbility", "entry");
+    want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, APP_INDEX);
+
+    auto key = AgentManagerService::GetInstance()->BuildAgentHostKey(want, USER_ID * BASE_USER_RANGE_FOR_TEST);
+
+    EXPECT_EQ(key.userId, USER_ID);
+    EXPECT_EQ(key.appIndex, APP_INDEX);
+    EXPECT_EQ(key.bundleName, "lowcode.bundle");
+    EXPECT_EQ(key.moduleName, "entry");
+    EXPECT_EQ(key.abilityName, "LowCodeExtAbility");
+}
 
 /**
 * @tc.name  : GetInstance_ShouldReturnNewInstance_WhenCalledFirstTime
@@ -220,15 +383,17 @@ HWTEST_F(AgentManagerServiceTest, OnStart_003, TestSize.Level1)
 HWTEST_F(AgentManagerServiceTest, OnStop_001, TestSize.Level1)
 {
     auto connection = sptr<IRemoteObject>(new (std::nothrow) IPCObjectStub(u"tracked.remote"));
-    AgentManagerService::TrackedConnectionRecord record;
+    TrackedConnectionRecord record;
     record.callerUid = 100;
-    AgentManagerService::GetInstance()->trackedConnections_.emplace(connection, record);
-    AgentManagerService::GetInstance()->callerConnectionCounts_[100] = 1;
+    AgentConnectManager::GetInstance().trackedConnections_.emplace(connection, record);
+    AgentQuotaKey quotaKey;
+    quotaKey.agentId = "testAgent";
+    AgentConnectManager::GetInstance().callerQuotas_[100][quotaKey] = 1;
 
     AgentManagerService::GetInstance()->OnStop();
 
-    EXPECT_TRUE(AgentManagerService::GetInstance()->trackedConnections_.empty());
-    EXPECT_TRUE(AgentManagerService::GetInstance()->callerConnectionCounts_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().callerQuotas_.empty());
 }
 
 /**
@@ -910,6 +1075,61 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_003, TestSize.Lev
 }
 
 /**
+* @tc.name  : ConnectAgentExtensionAbility_033
+* @tc.number: ConnectAgentExtensionAbility_033
+* @tc.desc  : Test ConnectAgentExtensionAbility revalidates target even when preflight nonce exists
+*/
+HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_033, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    AgentConnectManager::GetInstance().connectPreflights_.clear();
+
+    AAFwk::Want preflightWant;
+    preflightWant.SetParam(AGENTID_KEY, std::string("testAgent"));
+    preflightWant.SetBundle("test.bundle");
+    preflightWant.SetElementName("", "test.bundle", "TestAbility", "");
+    AgentCard preflightCard = BuildServiceTestAgentCard("testAgent");
+    int64_t nonce = service->RegisterConnectPreflight(preflightWant, "testAgent", preflightCard,
+        IPCSkeleton::GetCallingUid());
+
+    AAFwk::Want connectWant = preflightWant;
+    SetAgentVerificationNonceParam(connectWant, nonce);
+    MyFlag::retGetAgentCardByAgentId = ERR_NAME_NOT_FOUND;
+
+    sptr<MockAbilityConnection> connection = new MockAbilityConnection();
+    EXPECT_EQ(service->ConnectAgentExtensionAbility(connectWant, connection), AAFwk::ERR_INVALID_AGENT_CARD_ID);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().connectPreflights_.empty());
+}
+
+/**
+* @tc.name  : CleanupExpiredConnectPreflights_001
+* @tc.number: CleanupExpiredConnectPreflights_001
+* @tc.desc  : Test delayed preflight cleanup removes expired records proactively
+*/
+HWTEST_F(AgentManagerServiceTest, CleanupExpiredConnectPreflights_001, TestSize.Level1)
+{
+    using namespace std::chrono;
+
+    auto service = AgentManagerService::GetInstance();
+    AgentConnectManager::GetInstance().connectPreflights_.clear();
+    auto expiredAt = steady_clock::now() - milliseconds(1);
+
+    AgentConnectPreflightRecord record;
+    record.callerUid = IPCSkeleton::GetCallingUid();
+    record.callerUserId = record.callerUid / BASE_USER_RANGE_FOR_TEST;
+    record.agentId = "testAgent";
+    record.card = BuildServiceTestAgentCard("testAgent");
+    record.expiresAt = expiredAt;
+    AgentConnectManager::GetInstance().connectPreflights_[1000000001L] = record;
+    AgentConnectManager::GetInstance().connectPreflightCleanupScheduled_ = true;
+    AgentConnectManager::GetInstance().connectPreflightCleanupAt_ = expiredAt;
+
+    service->CleanupExpiredConnectPreflights(expiredAt);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().connectPreflights_.empty());
+    EXPECT_FALSE(AgentConnectManager::GetInstance().connectPreflightCleanupScheduled_);
+}
+
+/**
 * @tc.name  : ConnectAgentExtensionAbility_004
 * @tc.number: ConnectAgentExtensionAbility_004
 * @tc.desc  : Test ConnectAgentExtensionAbility when agentId is empty
@@ -946,8 +1166,7 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_005, TestSize.Lev
     sptr<AAFwk::IAbilityConnection> connection = nullptr;
     EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, connection),
         ERR_INVALID_VALUE);
-    EXPECT_TRUE(AgentManagerService::GetInstance()->trackedConnections_.empty());
-    EXPECT_TRUE(AgentManagerService::GetInstance()->callerConnectionCounts_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
 }
 
 /**
@@ -1082,6 +1301,9 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_018, TestSize.Lev
     EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, connection), ERR_OK);
     EXPECT_EQ(MyFlag::lastConnectAbilityWant.GetFlags() & Want::FLAG_INSTALL_ON_DEMAND, 0);
     EXPECT_TRUE(MyFlag::lastConnectAbilityWant.GetStringParam(Want::PARAM_RESV_START_TIME).empty());
+    EXPECT_EQ(MyFlag::lastConnectAbilityWant.GetIntParam(AGENT_CARD_TYPE_KEY, -1),
+        static_cast<int32_t>(AgentCardType::APP));
+    EXPECT_FALSE(want.HasParameter(AGENT_CARD_TYPE_KEY));
 }
 
 /**
@@ -1252,6 +1474,9 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_014, TestSize.Lev
     EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, connection), ERR_OK);
     EXPECT_NE(MyFlag::lastConnectAbilityWant.GetFlags() & Want::FLAG_INSTALL_ON_DEMAND, 0);
     EXPECT_FALSE(MyFlag::lastConnectAbilityWant.GetStringParam(Want::PARAM_RESV_START_TIME).empty());
+    EXPECT_EQ(MyFlag::lastConnectAbilityWant.GetIntParam(AGENT_CARD_TYPE_KEY, -1),
+        static_cast<int32_t>(AgentCardType::ATOMIC_SERVICE));
+    EXPECT_FALSE(want.HasParameter(AGENT_CARD_TYPE_KEY));
 }
 
 /**
@@ -1371,6 +1596,9 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_025, TestSize.Lev
 
     EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, connection), ERR_OK);
     EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 1);
+    EXPECT_EQ(MyFlag::lastConnectAbilityWant.GetIntParam(AGENT_CARD_TYPE_KEY, -1),
+        static_cast<int32_t>(AgentCardType::LOW_CODE));
+    EXPECT_FALSE(want.HasParameter(AGENT_CARD_TYPE_KEY));
 }
 
 /**
@@ -1394,14 +1622,13 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_031, TestSize.Lev
     EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, connection),
         AAFwk::INVALID_PARAMETERS_ERR);
     EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 0);
-    EXPECT_TRUE(AgentManagerService::GetInstance()->trackedConnections_.empty());
-    EXPECT_TRUE(AgentManagerService::GetInstance()->callerConnectionCounts_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
 }
 
 /**
  * @tc.name  : ConnectAgentExtensionAbility_026
  * @tc.number: ConnectAgentExtensionAbility_026
- * @tc.desc  : Test low-code connect reuses one real host connection and notifies each invocation
+ * @tc.desc  : Test low-code connect reuses one real host connection and delivers connect-done to each caller
  */
 HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_026, TestSize.Level1)
 {
@@ -1421,35 +1648,29 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_026, TestSize.Lev
 
     auto service = AgentManagerService::GetInstance();
     ASSERT_NE(MyFlag::lastConnectAbilityConnection, nullptr);
-    ASSERT_EQ(service->agentHostSessions_.size(), 1);
-    auto sessionIter = service->agentHostSessions_.begin();
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+    auto sessionIter = AgentConnectManager::GetInstance().agentHostSessions_.begin();
     auto hostKey = sessionIter->first;
 
     sptr<TestAgentReceiver> receiver = new TestAgentReceiver();
-    AppExecFwk::ElementName element("", "lowcode.bundle", "LowCodeExtAbility", "entry");
-    service->HandleAgentHostConnectDone(hostKey, element, receiver->AsObject(), ERR_OK);
-    EXPECT_EQ(receiver->agentInvokedCount, 1);
-    ASSERT_EQ(receiver->invokedAgentIds.size(), 1);
-    EXPECT_EQ(receiver->invokedAgentIds[0], "agentA");
+    service->HandleAgentHostConnectDone(
+        BuildHostConnectDoneRequest(hostKey, connectionA->AsObject(), "agentA", receiver->AsObject()));
     EXPECT_EQ(connectionA->connectDoneCount, 1);
 
     AAFwk::Want wantB;
     wantB.SetParam(AGENTID_KEY, std::string("agentB"));
     wantB.SetElementName("", "lowcode.bundle", "LowCodeExtAbility", "entry");
     EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(wantB, connectionB), ERR_OK);
-    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 1);
-    ASSERT_EQ(service->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(service->callerConnectionCounts_.begin()->second, 1);
-    EXPECT_EQ(receiver->agentInvokedCount, 2);
-    ASSERT_EQ(receiver->invokedAgentIds.size(), 2);
-    EXPECT_EQ(receiver->invokedAgentIds[1], "agentB");
+    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 2);
+    service->HandleAgentHostConnectDone(
+        BuildHostConnectDoneRequest(hostKey, connectionB->AsObject(), "agentB", receiver->AsObject()));
     EXPECT_EQ(connectionB->connectDoneCount, 1);
 }
 
 /**
  * @tc.name  : ConnectAgentExtensionAbility_027
  * @tc.number: ConnectAgentExtensionAbility_027
- * @tc.desc  : Test low-code connect rejects duplicate active agentId for the same caller
+ * @tc.desc  : Test low-code duplicate active agentId is rejected without cached callback replay
  */
 HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_027, TestSize.Level1)
 {
@@ -1464,16 +1685,32 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_027, TestSize.Lev
     sptr<MockAbilityConnection> connectionA = new MockAbilityConnection();
     sptr<MockAbilityConnection> connectionB = new MockAbilityConnection();
 
-    EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, connectionA), ERR_OK);
-    EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, connectionB),
-        ERR_LOW_CODE_AGENT_ALREADY_ACTIVE);
+    auto service = AgentManagerService::GetInstance();
+    EXPECT_EQ(service->ConnectAgentExtensionAbility(want, connectionA), ERR_OK);
     EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 1);
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+    auto sessionIter = AgentConnectManager::GetInstance().agentHostSessions_.begin();
+    auto hostKey = sessionIter->first;
+    sptr<TestAgentReceiver> receiver = new TestAgentReceiver();
+    service->HandleAgentHostConnectDone(
+        BuildHostConnectDoneRequest(hostKey, connectionA->AsObject(), "agentA", receiver->AsObject()));
+    EXPECT_EQ(connectionA->connectDoneCount, 1);
+
+    EXPECT_EQ(service->ConnectAgentExtensionAbility(want, connectionB), AAFwk::ERR_LOW_CODE_AGENT_ALREADY_ACTIVE);
+    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 1);
+    EXPECT_EQ(connectionB->connectDoneCount, 0);
+    EXPECT_EQ(sessionIter->second->agents.size(), 1);
+    EXPECT_EQ(sessionIter->second->callerConnections.size(), 1);
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentOwners_.size(), 1);
+    EXPECT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1);
+    EXPECT_TRUE(sessionIter->second->callerConnections.count(connectionB->AsObject()) == 0);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.count(connectionB->AsObject()) == 0);
 }
 
 /**
  * @tc.name  : ConnectAgentExtensionAbility_028
  * @tc.number: ConnectAgentExtensionAbility_028
- * @tc.desc  : Test low-code host connections consume MAX_CONNECTIONS_PER_CALLER slots per distinct host
+ * @tc.desc  : Test low-code host connections are subject to the AgentMgr per-caller quota
  */
 HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_028, TestSize.Level1)
 {
@@ -1481,7 +1718,7 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_028, TestSize.Lev
     MyFlag::retGetAgentCardByAgentId = ERR_OK;
     MyFlag::agentCardType = static_cast<int32_t>(AgentCardType::LOW_CODE);
 
-    for (size_t i = 0; i < AgentManagerService::MAX_CONNECTIONS_PER_CALLER; i++) {
+    for (size_t i = 0; i < AGENT_MGR_QUOTA_DEAUTH_PROBE_COUNT; i++) {
         std::string index = std::to_string(i);
         std::string bundleName = "lowcode.bundle." + index;
         std::string abilityName = "LowCodeExtAbility" + index;
@@ -1497,8 +1734,6 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_028, TestSize.Lev
         EXPECT_EQ(service->ConnectAgentExtensionAbility(want, connection), ERR_OK);
     }
 
-    ASSERT_EQ(service->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(service->callerConnectionCounts_.begin()->second, AgentManagerService::MAX_CONNECTIONS_PER_CALLER);
 
     MyFlag::agentCardBundleName = "lowcode.bundle.overflow";
     MyFlag::agentCardAbilityName = "LowCodeExtAbilityOverflow";
@@ -1508,13 +1743,14 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_028, TestSize.Lev
     overflowWant.SetElementName("", "lowcode.bundle.overflow", "LowCodeExtAbilityOverflow", "entry");
     auto overflowConnection = sptr<MockAbilityConnection>::MakeSptr();
     EXPECT_EQ(service->ConnectAgentExtensionAbility(overflowWant, overflowConnection),
-        ERR_MAX_AGENT_CONNECTIONS_REACHED);
+        AAFwk::ERR_MAX_AGENT_CONNECTIONS_REACHED);
+    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, AGENT_MGR_QUOTA_DEAUTH_PROBE_COUNT);
 }
 
 /**
  * @tc.name  : ConnectAgentExtensionAbility_029
  * @tc.number: ConnectAgentExtensionAbility_029
- * @tc.desc  : Test low-code shared host session rejects more than MAX_AGENTS_PER_HOST_SESSION agents
+ * @tc.desc  : Test low-code shared host enforces the per-host agent limit on overflow
  */
 HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_029, TestSize.Level1)
 {
@@ -1532,34 +1768,35 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_029, TestSize.Lev
     auto session = std::make_shared<AgentHostSession>();
     session->key = hostKey;
     session->hostUid = IPCSkeleton::GetCallingUid();
-    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey);
+    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "");
     session->isConnected = true;
     session->remoteObject = sptr<TestAgentReceiver>(new TestAgentReceiver())->AsObject();
     session->element = AppExecFwk::ElementName("", "lowcode.bundle", "LowCodeExtAbility", "entry");
-    for (size_t i = 0; i < AgentManagerService::MAX_AGENTS_PER_HOST_SESSION; i++) {
+    for (size_t i = 0; i < LOW_CODE_HOST_LIMIT_PROBE_COUNT; i++) {
         std::string agentId = "agent" + std::to_string(i);
-        session->agents[agentId] = LowCodeAgentRecord { nullptr, false };
-        service->agentOwners_[{session->hostUid, agentId}] = session;
+        session->agents[agentId] = LowCodeAgentRecord { nullptr, session->hostUid, false };
+        AgentConnectManager::GetInstance().agentOwners_[{session->hostUid, agentId}] = session;
     }
-    service->agentHostSessions_[hostKey] = session;
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
 
-    ASSERT_EQ(service->agentHostSessions_.size(), 1);
-    EXPECT_EQ(service->agentHostSessions_.begin()->second->agents.size(),
-        AgentManagerService::MAX_AGENTS_PER_HOST_SESSION);
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.size(),
+        LOW_CODE_HOST_LIMIT_PROBE_COUNT);
 
     AAFwk::Want overflowWant;
     overflowWant.SetParam(AGENTID_KEY, std::string("agentOverflow"));
     overflowWant.SetElementName("", "lowcode.bundle", "LowCodeExtAbility", "entry");
     auto overflowConnection = sptr<MockAbilityConnection>::MakeSptr();
     EXPECT_EQ(service->ConnectAgentExtensionAbility(overflowWant, overflowConnection),
-        ERR_MAX_AGENT_CONNECTIONS_REACHED);
+        AAFwk::ERR_MAX_AGENT_CONNECTIONS_REACHED);
     EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 0);
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentOwners_.size(), LOW_CODE_HOST_LIMIT_PROBE_COUNT);
 }
 
 /**
  * @tc.name  : ConnectAgentExtensionAbility_030
  * @tc.number: ConnectAgentExtensionAbility_030
- * @tc.desc  : Test low-code shared host allows MAX_AGENTS_PER_HOST_SESSION agents
+* @tc.desc  : Test low-code shared host enforces the per-host agent limit on overflow
  */
 HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_030, TestSize.Level1)
 {
@@ -1577,12 +1814,12 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_030, TestSize.Lev
     auto firstConnection = sptr<MockAbilityConnection>::MakeSptr();
     EXPECT_EQ(service->ConnectAgentExtensionAbility(firstWant, firstConnection), ERR_OK);
 
-    auto hostKey = service->agentHostSessions_.begin()->first;
+    auto hostKey = AgentConnectManager::GetInstance().agentHostSessions_.begin()->first;
     sptr<TestAgentReceiver> receiver = new TestAgentReceiver();
-    AppExecFwk::ElementName element("", "lowcode.bundle", "LowCodeExtAbility", "entry");
-    service->HandleAgentHostConnectDone(hostKey, element, receiver->AsObject(), ERR_OK);
+    service->HandleAgentHostConnectDone(
+        BuildHostConnectDoneRequest(hostKey, nullptr, "", receiver->AsObject()));
 
-    for (size_t i = 1; i < AgentManagerService::MAX_AGENTS_PER_HOST_SESSION; i++) {
+    for (size_t i = 1; i < LOW_CODE_HOST_LIMIT_PROBE_COUNT; i++) {
         std::string index = std::to_string(i);
         std::string agentId = "agent" + index;
         AAFwk::Want want;
@@ -1592,17 +1829,17 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_030, TestSize.Lev
         EXPECT_EQ(service->ConnectAgentExtensionAbility(want, connection), ERR_OK);
     }
 
-    EXPECT_EQ(service->agentOwners_.size(), AgentManagerService::MAX_AGENTS_PER_HOST_SESSION);
-    ASSERT_EQ(service->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(service->callerConnectionCounts_.begin()->second, 1);
-    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 1);
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentOwners_.size(), LOW_CODE_HOST_LIMIT_PROBE_COUNT);
+    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, LOW_CODE_HOST_LIMIT_PROBE_COUNT);
 
     AAFwk::Want overflowWant;
     overflowWant.SetParam(AGENTID_KEY, std::string("agentExtra"));
     overflowWant.SetElementName("", "lowcode.bundle", "LowCodeExtAbility", "entry");
     auto overflowConnection = sptr<MockAbilityConnection>::MakeSptr();
     EXPECT_EQ(service->ConnectAgentExtensionAbility(overflowWant, overflowConnection),
-        ERR_MAX_AGENT_CONNECTIONS_REACHED);
+        AAFwk::ERR_MAX_AGENT_CONNECTIONS_REACHED);
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentOwners_.size(), LOW_CODE_HOST_LIMIT_PROBE_COUNT);
+    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, LOW_CODE_HOST_LIMIT_PROBE_COUNT);
 }
 
 /**
@@ -1624,20 +1861,70 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_032, TestSize.Lev
     firstWant.SetElementName("", "lowcode.bundle", "LowCodeExtAbility", "entry");
     auto firstConnection = sptr<MockAbilityConnection>::MakeSptr();
     EXPECT_EQ(service->ConnectAgentExtensionAbility(firstWant, firstConnection), ERR_OK);
-    ASSERT_EQ(service->callerConnectionCounts_.size(), 1);
-
-    int32_t callerUid = IPCSkeleton::GetCallingUid();
-    service->callerConnectionCounts_[callerUid] = AgentManagerService::MAX_CONNECTIONS_PER_CALLER;
 
     AAFwk::Want reuseWant;
     reuseWant.SetParam(AGENTID_KEY, std::string("agent1"));
     reuseWant.SetElementName("", "lowcode.bundle", "LowCodeExtAbility", "entry");
     auto reuseConnection = sptr<MockAbilityConnection>::MakeSptr();
     EXPECT_EQ(service->ConnectAgentExtensionAbility(reuseWant, reuseConnection), ERR_OK);
-    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 1);
-    EXPECT_EQ(service->agentOwners_.size(), 2);
-    ASSERT_EQ(service->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(service->callerConnectionCounts_[callerUid], AgentManagerService::MAX_CONNECTIONS_PER_CALLER);
+    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 2);
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentOwners_.size(), 2);
+}
+
+/**
+ * @tc.name  : ConnectAgentExtensionAbility_034
+ * @tc.number: ConnectAgentExtensionAbility_034
+ * @tc.desc  : Test low-code host teardown releases caller quota before standard agent connects
+ */
+HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_034, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    int32_t callerUid = IPCSkeleton::GetCallingUid();
+    MyFlag::retGetAgentCardByAgentId = ERR_OK;
+    MyFlag::agentCardType = static_cast<int32_t>(AgentCardType::LOW_CODE);
+    MyFlag::agentCardBundleName = "lowcode.bundle";
+    MyFlag::agentCardAbilityName = "LowCodeExtAbility";
+    MyFlag::agentCardModuleName = "entry";
+
+    AgentHostKey hostKey;
+    sptr<TestAgentReceiver> receiver = new TestAgentReceiver();
+    auto connection = sptr<MockAbilityConnection>::MakeSptr();
+    std::set<std::string> agentIds;
+    for (size_t i = 0; i < LOW_CODE_HOST_LIMIT_PROBE_COUNT; i++) {
+        std::string agentId = "agent" + std::to_string(i);
+        agentIds.insert(agentId);
+        AAFwk::Want want;
+        want.SetParam(AGENTID_KEY, agentId);
+        want.SetElementName("", "lowcode.bundle", "LowCodeExtAbility", "entry");
+        EXPECT_EQ(service->ConnectAgentExtensionAbility(want, connection), ERR_OK);
+        ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+        hostKey = AgentConnectManager::GetInstance().agentHostSessions_.begin()->first;
+        service->HandleAgentHostConnectDone(
+            BuildHostConnectDoneRequest(hostKey, connection->AsObject(), agentId, receiver->AsObject()));
+    }
+    ASSERT_EQ(AgentConnectManager::GetInstance().callerQuotas_.count(callerUid), 1);
+    ASSERT_EQ(AgentConnectManager::GetInstance().callerQuotas_[callerUid].size(), 1);
+    EXPECT_EQ(AgentConnectManager::GetInstance().callerQuotas_[callerUid].begin()->second, 1);
+
+    service->HandleAgentHostDisconnectDone(
+        BuildHostDisconnectDoneRequest(hostKey, connection->AsObject(), agentIds));
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentOwners_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().callerQuotas_.empty());
+
+    MyFlag::agentCardType = static_cast<int32_t>(AgentCardType::APP);
+    MyFlag::agentCardBundleName = "standard.bundle";
+    MyFlag::agentCardAbilityName = "StandardAgentExtAbility";
+    MyFlag::agentCardModuleName = "entry";
+    for (size_t i = 0; i < AGENT_MGR_QUOTA_DEAUTH_PROBE_COUNT; i++) {
+        std::string agentId = "standardAgent" + std::to_string(i);
+        AAFwk::Want want;
+        want.SetParam(AGENTID_KEY, agentId);
+        want.SetElementName("", "standard.bundle", "StandardAgentExtAbility", "entry");
+        auto connection = sptr<MockAbilityConnection>::MakeSptr();
+        EXPECT_EQ(service->ConnectAgentExtensionAbility(want, connection), ERR_OK);
+    }
 }
 
 /**
@@ -1682,10 +1969,10 @@ HWTEST_F(AgentManagerServiceTest, NotifyLowCodeAgentComplete_003, TestSize.Level
     sptr<MockAbilityConnection> connectionA = new MockAbilityConnection();
     EXPECT_EQ(service->ConnectAgentExtensionAbility(wantA, connectionA), ERR_OK);
 
-    AppExecFwk::ElementName element("", "lowcode.bundle", "LowCodeExtAbility", "entry");
-    auto hostKey = service->agentHostSessions_.begin()->first;
+    auto hostKey = AgentConnectManager::GetInstance().agentHostSessions_.begin()->first;
     sptr<TestAgentReceiver> receiver = new TestAgentReceiver();
-    service->HandleAgentHostConnectDone(hostKey, element, receiver->AsObject(), ERR_OK);
+    service->HandleAgentHostConnectDone(
+        BuildHostConnectDoneRequest(hostKey, nullptr, "", receiver->AsObject()));
 
     AAFwk::Want wantB;
     wantB.SetParam(AGENTID_KEY, std::string("agentB"));
@@ -1693,17 +1980,23 @@ HWTEST_F(AgentManagerServiceTest, NotifyLowCodeAgentComplete_003, TestSize.Level
     sptr<MockAbilityConnection> connectionB = new MockAbilityConnection();
     EXPECT_EQ(service->ConnectAgentExtensionAbility(wantB, connectionB), ERR_OK);
 
+    int32_t connectCountBeforeComplete = MyFlag::connectAbilityWithExtensionTypeCallCount;
     EXPECT_EQ(service->NotifyLowCodeAgentComplete("agentA"), ERR_OK);
-    EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 0);
-    ASSERT_EQ(service->agentHostSessions_.size(), 1);
-    EXPECT_TRUE(service->agentHostSessions_.begin()->second->agents.count("agentB") > 0);
-    EXPECT_EQ(service->agentHostSessions_.begin()->second->callerConnections.size(), 1);
-    ASSERT_EQ(service->trackedConnections_.size(), 1);
-    ASSERT_EQ(service->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(service->callerConnectionCounts_.begin()->second, 1);
+    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, connectCountBeforeComplete);
+    EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 1);
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.count("agentB") > 0);
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->callerConnections.size(), 2);
+    ASSERT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 2);
 
     EXPECT_EQ(service->NotifyLowCodeAgentComplete("agentB"), ERR_OK);
     EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 1);
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+    auto storedSession = AgentConnectManager::GetInstance().agentHostSessions_.begin()->second;
+    ASSERT_NE(storedSession, nullptr);
+    EXPECT_EQ(storedSession->pendingDisconnects.size(), 2u);
+    ASSERT_TRUE(storedSession->agents.count("agentB") > 0);
+    EXPECT_TRUE(storedSession->agents["agentB"].isDisconnecting);
 }
 
 /**
@@ -1726,10 +2019,10 @@ HWTEST_F(AgentManagerServiceTest, NotifyLowCodeAgentComplete_004, TestSize.Level
     sptr<MockAbilityConnection> connectionA = new MockAbilityConnection();
     EXPECT_EQ(service->ConnectAgentExtensionAbility(wantA, connectionA), ERR_OK);
 
-    AppExecFwk::ElementName element("", "lowcode.bundle", "LowCodeExtAbility", "entry");
-    auto hostKey = service->agentHostSessions_.begin()->first;
+    auto hostKey = AgentConnectManager::GetInstance().agentHostSessions_.begin()->first;
     sptr<TestAgentReceiver> receiver = new TestAgentReceiver();
-    service->HandleAgentHostConnectDone(hostKey, element, receiver->AsObject(), ERR_OK);
+    service->HandleAgentHostConnectDone(
+        BuildHostConnectDoneRequest(hostKey, nullptr, "", receiver->AsObject()));
 
     AAFwk::Want wantB;
     wantB.SetParam(AGENTID_KEY, std::string("agentB"));
@@ -1738,22 +2031,20 @@ HWTEST_F(AgentManagerServiceTest, NotifyLowCodeAgentComplete_004, TestSize.Level
     EXPECT_EQ(service->ConnectAgentExtensionAbility(wantB, connectionB), ERR_OK);
 
     EXPECT_EQ(service->NotifyLowCodeAgentComplete("agentA"), ERR_OK);
-    EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 0);
-    EXPECT_EQ(service->DisconnectAgentExtensionAbility(connectionA), ERR_INVALID_VALUE);
-    EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 0);
-    ASSERT_EQ(service->agentHostSessions_.size(), 1);
-    EXPECT_TRUE(service->agentHostSessions_.begin()->second->agents.count("agentB") > 0);
-    EXPECT_EQ(service->agentHostSessions_.begin()->second->callerConnections.size(), 1);
-    ASSERT_EQ(service->trackedConnections_.size(), 1);
-    EXPECT_EQ(service->trackedConnections_.begin()->second.callerRemote, connectionB->AsObject());
-    ASSERT_EQ(service->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(service->callerConnectionCounts_.begin()->second, 1);
+    EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 1);
+    EXPECT_EQ(service->DisconnectAgentExtensionAbility(connectionA), ERR_OK);
+    EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 1);
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.count("agentB") > 0);
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->callerConnections.size(), 2);
+    ASSERT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 2);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.count(connectionB->AsObject()) > 0);
 }
 
 /**
  * @tc.name  : DisconnectAgentExtensionAbility_010
  * @tc.number: DisconnectAgentExtensionAbility_010
- * @tc.desc  : Test explicit low-code disconnect clears bookkeeping and disconnects shared host once
+ * @tc.desc  : Test explicit low-code disconnect only tears down shared host after the last active agent
  */
 HWTEST_F(AgentManagerServiceTest, DisconnectAgentExtensionAbility_010, TestSize.Level1)
 {
@@ -1770,10 +2061,10 @@ HWTEST_F(AgentManagerServiceTest, DisconnectAgentExtensionAbility_010, TestSize.
     sptr<MockAbilityConnection> connectionB = new MockAbilityConnection();
 
     EXPECT_EQ(service->ConnectAgentExtensionAbility(wantA, connectionA), ERR_OK);
-    auto hostKey = service->agentHostSessions_.begin()->first;
+    auto hostKey = AgentConnectManager::GetInstance().agentHostSessions_.begin()->first;
     sptr<TestAgentReceiver> receiver = new TestAgentReceiver();
-    AppExecFwk::ElementName element("", "lowcode.bundle", "LowCodeExtAbility", "entry");
-    service->HandleAgentHostConnectDone(hostKey, element, receiver->AsObject(), ERR_OK);
+    service->HandleAgentHostConnectDone(
+        BuildHostConnectDoneRequest(hostKey, nullptr, "", receiver->AsObject()));
 
     AAFwk::Want wantB;
     wantB.SetParam(AGENTID_KEY, std::string("agentB"));
@@ -1782,18 +2073,276 @@ HWTEST_F(AgentManagerServiceTest, DisconnectAgentExtensionAbility_010, TestSize.
 
     EXPECT_EQ(service->DisconnectAgentExtensionAbility(connectionB), ERR_OK);
     EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 1);
-    ASSERT_EQ(service->agentHostSessions_.size(), 1);
-    EXPECT_TRUE(service->agentHostSessions_.begin()->second->isDisconnecting);
-    EXPECT_EQ(service->agentOwners_.size(), 2);
-    ASSERT_EQ(service->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(service->callerConnectionCounts_.begin()->second, 1);
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.count("agentB") > 0);
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.size(), 2);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.count("agentA") > 0);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents["agentB"].isDisconnecting);
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentOwners_.size(), 2);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentOwners_.count({ MyFlag::extensionAbilityUid, "agentA" }) > 0);
+    EXPECT_EQ(connectionB->disconnectDoneCount, 0);
+    ASSERT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 2);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.count(connectionA->AsObject()) > 0);
 
-    service->HandleAgentHostDisconnectDone(hostKey, element, ERR_OK);
+    auto hostConnectionRemoteB = AgentConnectManager::GetInstance()
+        .agentHostSessions_[hostKey]->agents["agentB"].hostConnection->AsObject();
+    service->HandleAgentHostDisconnectDone(
+        BuildHostDisconnectDoneRequest(hostKey, connectionB->AsObject(), { "agentB" }, hostConnectionRemoteB));
+    EXPECT_EQ(connectionB->disconnectDoneCount, 1);
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.count("agentA") > 0);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.count(connectionA->AsObject()) > 0);
+
+    EXPECT_EQ(service->DisconnectAgentExtensionAbility(connectionA), ERR_OK);
+    EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 2);
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.count("agentA") > 0);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents["agentA"].isDisconnecting);
+
+    auto hostConnectionRemoteA = AgentConnectManager::GetInstance()
+        .agentHostSessions_[hostKey]->agents["agentA"].hostConnection->AsObject();
+    service->HandleAgentHostDisconnectDone(
+        BuildHostDisconnectDoneRequest(hostKey, connectionA->AsObject(), { "agentA" }, hostConnectionRemoteA));
     EXPECT_EQ(connectionA->disconnectDoneCount, 1);
     EXPECT_EQ(connectionB->disconnectDoneCount, 1);
-    EXPECT_TRUE(service->agentHostSessions_.empty());
-    EXPECT_TRUE(service->agentOwners_.empty());
-    EXPECT_TRUE(service->callerConnectionCounts_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentOwners_.empty());
+}
+
+/**
+ * @tc.name  : DisconnectAgentExtensionAbility_011
+ * @tc.number: DisconnectAgentExtensionAbility_011
+ * @tc.desc  : Test one low-code caller callback disconnect expands to all owned low-code AgentIds
+ */
+HWTEST_F(AgentManagerServiceTest, DisconnectAgentExtensionAbility_011, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    MyFlag::retGetAgentCardByAgentId = ERR_OK;
+    MyFlag::agentCardType = static_cast<int32_t>(AgentCardType::LOW_CODE);
+    MyFlag::agentCardBundleName = "lowcode.bundle";
+    MyFlag::agentCardAbilityName = "LowCodeExtAbility";
+    MyFlag::agentCardModuleName = "entry";
+
+    sptr<MockAbilityConnection> connection = new MockAbilityConnection();
+    sptr<TestAgentReceiver> receiver = new TestAgentReceiver();
+    std::vector<std::string> agentIds;
+    AgentHostKey hostKey;
+    for (size_t i = 0; i < LOW_CODE_HOST_LIMIT_PROBE_COUNT; i++) {
+        std::string agentId = "agent" + std::to_string(i);
+        agentIds.emplace_back(agentId);
+        AAFwk::Want want;
+        want.SetParam(AGENTID_KEY, agentId);
+        want.SetElementName("", "lowcode.bundle", "LowCodeExtAbility", "entry");
+
+        EXPECT_EQ(service->ConnectAgentExtensionAbility(want, connection), ERR_OK);
+        ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+        hostKey = AgentConnectManager::GetInstance().agentHostSessions_.begin()->first;
+        service->HandleAgentHostConnectDone(
+            BuildHostConnectDoneRequest(hostKey, connection->AsObject(), agentId, receiver->AsObject()));
+    }
+
+    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount,
+        static_cast<int32_t>(LOW_CODE_HOST_LIMIT_PROBE_COUNT));
+    EXPECT_EQ(connection->connectDoneCount, static_cast<int32_t>(LOW_CODE_HOST_LIMIT_PROBE_COUNT));
+    ASSERT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1);
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.size(), LOW_CODE_HOST_LIMIT_PROBE_COUNT);
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentOwners_.size(), LOW_CODE_HOST_LIMIT_PROBE_COUNT);
+
+    EXPECT_EQ(service->DisconnectAgentExtensionAbility(connection), ERR_OK);
+    EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 1);
+    EXPECT_EQ(connection->disconnectDoneCount, 0);
+    for (const auto &agentId : agentIds) {
+        auto session = AgentConnectManager::GetInstance().agentHostSessions_.begin()->second;
+        ASSERT_NE(session, nullptr);
+        ASSERT_TRUE(session->agents.count(agentId) > 0);
+        EXPECT_TRUE(session->agents[agentId].isDisconnecting);
+    }
+
+    service->HandleAgentHostDisconnectDone(BuildHostDisconnectDoneRequest(
+        hostKey, connection->AsObject(), std::set<std::string>(agentIds.begin(), agentIds.end())));
+
+    EXPECT_EQ(connection->disconnectDoneCount, 1);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentOwners_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().callerQuotas_.empty());
+}
+
+/**
+ * @tc.name  : DisconnectAgentExtensionAbility_012
+ * @tc.number: DisconnectAgentExtensionAbility_012
+ * @tc.desc  : Test same-host low-code disconnects are serialized by pending host completion.
+ */
+HWTEST_F(AgentManagerServiceTest, DisconnectAgentExtensionAbility_012, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    int32_t callingUid = IPCSkeleton::GetCallingUid();
+    AgentHostKey hostKey;
+    hostKey.userId = callingUid / 200000;
+    hostKey.bundleName = "lowcode.bundle";
+    hostKey.moduleName = "entry";
+    hostKey.abilityName = "LowCodeExtAbility";
+
+    auto connectionA = sptr<MockAbilityConnection>::MakeSptr();
+    auto connectionB = sptr<MockAbilityConnection>::MakeSptr();
+    auto remoteA = connectionA->AsObject();
+    auto remoteB = connectionB->AsObject();
+    auto hostConnectionA = sptr<AgentHostConnection>::MakeSptr(hostKey, remoteA, "agentA");
+    auto hostConnectionB = sptr<AgentHostConnection>::MakeSptr(hostKey, remoteB, "agentB");
+    auto session = std::make_shared<AgentHostSession>();
+    session->key = hostKey;
+    session->hostUid = callingUid;
+    session->hostConnection = hostConnectionA;
+    session->callerConnections[remoteA] = connectionA;
+    session->callerConnections[remoteB] = connectionB;
+
+    LowCodeAgentRecord recordA;
+    recordA.callerRemote = remoteA;
+    recordA.callerUid = callingUid;
+    recordA.hostConnection = hostConnectionA;
+    recordA.originalIdentity = "identity-a";
+    recordA.verificationNonce = 1000000001L;
+    LowCodeAgentRecord recordB;
+    recordB.callerRemote = remoteB;
+    recordB.callerUid = callingUid;
+    recordB.hostConnection = hostConnectionB;
+    recordB.originalIdentity = "identity-b";
+    recordB.verificationNonce = 1000000002L;
+    session->agents["agentA"] = recordA;
+    session->agents["agentB"] = recordB;
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+    AgentConnectManager::GetInstance().agentOwners_[{callingUid, "agentA"}] = session;
+    AgentConnectManager::GetInstance().agentOwners_[{callingUid, "agentB"}] = session;
+
+    TrackedConnectionRecord trackedA;
+    trackedA.callerUid = callingUid;
+    trackedA.callerRemote = remoteA;
+    trackedA.serviceConnection = hostConnectionA;
+    trackedA.hostKey = hostKey;
+    trackedA.isLowCode = true;
+    TrackedConnectionRecord trackedB = trackedA;
+    trackedB.callerRemote = remoteB;
+    trackedB.serviceConnection = hostConnectionB;
+    AgentConnectManager::GetInstance().trackedConnections_[remoteA] = trackedA;
+    AgentConnectManager::GetInstance().trackedConnections_[remoteB] = trackedB;
+
+    EXPECT_EQ(service->DisconnectAgentExtensionAbility(connectionA), ERR_OK);
+    EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 1);
+    ASSERT_NE(MyFlag::lastDisconnectAbilityConnection, nullptr);
+    EXPECT_EQ(MyFlag::lastDisconnectAbilityConnection->AsObject(), hostConnectionA->AsObject());
+
+    EXPECT_EQ(service->DisconnectAgentExtensionAbility(connectionB), ERR_OK);
+    EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 1);
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+    auto storedSession = AgentConnectManager::GetInstance().agentHostSessions_.begin()->second;
+    ASSERT_NE(storedSession, nullptr);
+    EXPECT_TRUE(storedSession->agents["agentA"].isDisconnecting);
+    EXPECT_TRUE(storedSession->agents["agentB"].isDisconnecting);
+    EXPECT_EQ(storedSession->pendingDisconnects.size(), 2u);
+    EXPECT_EQ(connectionA->disconnectDoneCount, 0);
+    EXPECT_EQ(connectionB->disconnectDoneCount, 0);
+
+    service->HandleAgentHostDisconnectDone(
+        BuildHostDisconnectDoneRequest(hostKey, remoteA, { "agentA" }, hostConnectionA->AsObject()));
+    EXPECT_EQ(connectionA->disconnectDoneCount, 1);
+    EXPECT_EQ(connectionB->disconnectDoneCount, 0);
+    EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 2);
+    ASSERT_NE(MyFlag::lastDisconnectAbilityConnection, nullptr);
+    EXPECT_EQ(MyFlag::lastDisconnectAbilityConnection->AsObject(), hostConnectionB->AsObject());
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+    storedSession = AgentConnectManager::GetInstance().agentHostSessions_.begin()->second;
+    ASSERT_NE(storedSession, nullptr);
+    EXPECT_TRUE(storedSession->agents.count("agentA") == 0);
+    EXPECT_TRUE(storedSession->agents.count("agentB") > 0);
+    EXPECT_TRUE(storedSession->agents["agentB"].isDisconnecting);
+
+    service->HandleAgentHostDisconnectDone(
+        BuildHostDisconnectDoneRequest(hostKey, remoteB, { "agentB" }, hostConnectionB->AsObject()));
+    EXPECT_EQ(connectionA->disconnectDoneCount, 1);
+    EXPECT_EQ(connectionB->disconnectDoneCount, 1);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentOwners_.empty());
+}
+
+/**
+ * @tc.name  : HandleCallerConnectionDied_ShouldCleanupQueuedLowCodeBatchWhenPromotedDisconnectFails
+ * @tc.number: HandleCallerConnectionDied_009
+ * @tc.desc  : Test queued caller-death low-code disconnect keeps cleanup semantics after promotion failure.
+ */
+HWTEST_F(AgentManagerServiceTest, HandleCallerConnectionDied_009, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    int32_t callingUid = IPCSkeleton::GetCallingUid();
+    AgentHostKey hostKey;
+    hostKey.userId = callingUid / BASE_USER_RANGE_FOR_TEST;
+    hostKey.bundleName = "lowcode.bundle";
+    hostKey.moduleName = "entry";
+    hostKey.abilityName = "LowCodeExtAbility";
+
+    auto connectionA = sptr<MockAbilityConnection>::MakeSptr();
+    auto connectionB = sptr<MockAbilityConnection>::MakeSptr();
+    auto remoteA = connectionA->AsObject();
+    auto remoteB = connectionB->AsObject();
+    auto hostConnectionA = sptr<AgentHostConnection>::MakeSptr(hostKey, remoteA, "agentA");
+    auto hostConnectionB = sptr<AgentHostConnection>::MakeSptr(hostKey, remoteB, "agentB");
+    auto session = std::make_shared<AgentHostSession>();
+    session->key = hostKey;
+    session->hostUid = callingUid;
+    session->hostConnection = hostConnectionA;
+    session->callerConnections[remoteA] = connectionA;
+    session->callerConnections[remoteB] = connectionB;
+
+    LowCodeAgentRecord recordA;
+    recordA.callerRemote = remoteA;
+    recordA.callerUid = callingUid;
+    recordA.hostConnection = hostConnectionA;
+    recordA.originalIdentity = "identity-a";
+    recordA.verificationNonce = 1000000001L;
+    LowCodeAgentRecord recordB;
+    recordB.callerRemote = remoteB;
+    recordB.callerUid = callingUid;
+    recordB.hostConnection = hostConnectionB;
+    recordB.originalIdentity = "identity-b";
+    recordB.verificationNonce = 1000000002L;
+    session->agents["agentA"] = recordA;
+    session->agents["agentB"] = recordB;
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+    AgentConnectManager::GetInstance().agentOwners_[{callingUid, "agentA"}] = session;
+    AgentConnectManager::GetInstance().agentOwners_[{callingUid, "agentB"}] = session;
+
+    TrackedConnectionRecord trackedA;
+    trackedA.callerUid = callingUid;
+    trackedA.callerRemote = remoteA;
+    trackedA.serviceConnection = hostConnectionA;
+    trackedA.hostKey = hostKey;
+    trackedA.isLowCode = true;
+    TrackedConnectionRecord trackedB = trackedA;
+    trackedB.callerRemote = remoteB;
+    trackedB.serviceConnection = hostConnectionB;
+    AgentConnectManager::GetInstance().trackedConnections_[remoteA] = trackedA;
+    AgentConnectManager::GetInstance().trackedConnections_[remoteB] = trackedB;
+
+    EXPECT_EQ(service->DisconnectAgentExtensionAbility(connectionA), ERR_OK);
+    EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 1);
+    service->HandleCallerConnectionDied(wptr<IRemoteObject>(remoteB));
+    EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 1);
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+    auto storedSession = AgentConnectManager::GetInstance().agentHostSessions_.begin()->second;
+    ASSERT_NE(storedSession, nullptr);
+    EXPECT_TRUE(storedSession->agents["agentB"].isDisconnecting);
+    EXPECT_TRUE(storedSession->callerConnections.count(remoteB) == 0);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.count(remoteB) == 0);
+
+    MyFlag::retDisconnectAbility = ERR_INVALID_VALUE;
+    service->HandleAgentHostDisconnectDone(
+        BuildHostDisconnectDoneRequest(hostKey, remoteA, { "agentA" }, hostConnectionA->AsObject()));
+
+    EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 2);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentOwners_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.empty());
 }
 
 /**
@@ -1847,7 +2396,7 @@ HWTEST_F(AgentManagerServiceTest, DisconnectAgentExtensionAbility_004, TestSize.
 /**
 * @tc.name  : ConnectAgentExtensionAbility_011
 * @tc.number: ConnectAgentExtensionAbility_011
-* @tc.desc  : Test ConnectAgentExtensionAbility enforces max connections per caller on the service side
+* @tc.desc  : Test ConnectAgentExtensionAbility leaves caller quota admission to AMS
 */
 HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_011, TestSize.Level1)
 {
@@ -1863,15 +2412,15 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_011, TestSize.Lev
     want.SetElementName("test.bundle", "TestAbility");
 
     std::vector<sptr<MockAbilityConnection>> connections;
-    for (size_t i = 0; i < AgentManagerService::MAX_CONNECTIONS_PER_CALLER; i++) {
+    for (size_t i = 0; i < AGENT_MGR_QUOTA_DEAUTH_PROBE_COUNT; i++) {
         auto connection = sptr<MockAbilityConnection>::MakeSptr();
         connections.emplace_back(connection);
         EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, connection), ERR_OK);
     }
 
     auto overflowConnection = sptr<MockAbilityConnection>::MakeSptr();
-    EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, overflowConnection),
-        ERR_MAX_AGENT_CONNECTIONS_REACHED);
+    EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, overflowConnection), ERR_OK);
+    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, AGENT_MGR_QUOTA_DEAUTH_PROBE_COUNT + 1);
 }
 
 /**
@@ -1895,13 +2444,10 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_012, TestSize.Lev
 
     EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, connection), ERR_OK);
     ASSERT_NE(MyFlag::lastConnectAbilityConnection, nullptr);
-    ASSERT_EQ(AgentManagerService::GetInstance()->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(AgentManagerService::GetInstance()->callerConnectionCounts_.begin()->second, 1);
 
     AppExecFwk::ElementName element;
     MyFlag::lastConnectAbilityConnection->OnAbilityConnectDone(element, nullptr, ERR_INVALID_VALUE);
-    EXPECT_TRUE(AgentManagerService::GetInstance()->trackedConnections_.empty());
-    EXPECT_TRUE(AgentManagerService::GetInstance()->callerConnectionCounts_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
 }
 
 /**
@@ -1930,13 +2476,11 @@ HWTEST_F(AgentManagerServiceTest, DisconnectAgentExtensionAbility_005, TestSize.
 
     EXPECT_EQ(AgentManagerService::GetInstance()->DisconnectAgentExtensionAbility(connection), ERR_OK);
     EXPECT_EQ(MyFlag::lastDisconnectAbilityConnection, MyFlag::lastConnectAbilityConnection);
-    EXPECT_TRUE(AgentManagerService::GetInstance()->callerConnectionCounts_.empty());
-    ASSERT_EQ(AgentManagerService::GetInstance()->trackedConnections_.size(), 1);
+    ASSERT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1);
 
     AppExecFwk::ElementName element;
     MyFlag::lastConnectAbilityConnection->OnAbilityDisconnectDone(element, ERR_OK);
-    EXPECT_TRUE(AgentManagerService::GetInstance()->trackedConnections_.empty());
-    EXPECT_TRUE(AgentManagerService::GetInstance()->callerConnectionCounts_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
 }
 
 /**
@@ -1961,10 +2505,8 @@ HWTEST_F(AgentManagerServiceTest, DisconnectAgentExtensionAbility_007, TestSize.
 
     EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, connection), ERR_OK);
     EXPECT_EQ(AgentManagerService::GetInstance()->DisconnectAgentExtensionAbility(connection), ERR_INVALID_VALUE);
-    ASSERT_EQ(AgentManagerService::GetInstance()->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(AgentManagerService::GetInstance()->callerConnectionCounts_.begin()->second, 1);
-    ASSERT_EQ(AgentManagerService::GetInstance()->trackedConnections_.size(), 1);
-    EXPECT_FALSE(AgentManagerService::GetInstance()->trackedConnections_.begin()->second.isDisconnecting);
+    ASSERT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1);
+    EXPECT_FALSE(AgentConnectManager::GetInstance().trackedConnections_.begin()->second.isDisconnecting);
     MyFlag::retDisconnectAbility = ERR_OK;
 }
 
@@ -1988,7 +2530,7 @@ HWTEST_F(AgentManagerServiceTest, DisconnectAgentExtensionAbility_008, TestSize.
     want.SetElementName("test.bundle", "TestAbility");
 
     std::vector<sptr<MockAbilityConnection>> connections;
-    for (size_t i = 0; i < AgentManagerService::MAX_CONNECTIONS_PER_CALLER; i++) {
+    for (size_t i = 0; i < AGENT_MGR_QUOTA_DEAUTH_PROBE_COUNT; i++) {
         auto connection = sptr<MockAbilityConnection>::MakeSptr();
         connections.emplace_back(connection);
         EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, connection), ERR_OK);
@@ -2022,8 +2564,8 @@ HWTEST_F(AgentManagerServiceTest, DisconnectAgentExtensionAbility_009, TestSize.
     EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, connection), ERR_OK);
     EXPECT_EQ(AgentManagerService::GetInstance()->DisconnectAgentExtensionAbility(connection), ERR_OK);
     EXPECT_EQ(AgentManagerService::GetInstance()->DisconnectAgentExtensionAbility(connection), ERR_OK);
-    ASSERT_EQ(AgentManagerService::GetInstance()->trackedConnections_.size(), 1);
-    EXPECT_TRUE(AgentManagerService::GetInstance()->trackedConnections_.begin()->second.isDisconnecting);
+    ASSERT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.begin()->second.isDisconnecting);
 }
 
 /**
@@ -2094,9 +2636,7 @@ HWTEST_F(AgentManagerServiceTest, ConnectServiceExtensionAbility_002, TestSize.L
     EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 1);
     EXPECT_EQ(MyFlag::lastConnectAbilityCallerToken, callerToken);
     EXPECT_EQ(MyFlag::lastConnectAbilityExtensionType, AppExecFwk::ExtensionAbilityType::SERVICE);
-    EXPECT_TRUE(AgentManagerService::GetInstance()->callerConnectionCounts_.empty());
-    ASSERT_EQ(AgentManagerService::GetInstance()->trackedConnections_.size(), 1);
-    EXPECT_FALSE(AgentManagerService::GetInstance()->trackedConnections_.begin()->second.countTowardsCallerLimit);
+    ASSERT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1);
 }
 
 /**
@@ -2169,7 +2709,7 @@ HWTEST_F(AgentManagerServiceTest, ConnectServiceExtensionAbility_006, TestSize.L
     EXPECT_EQ(AgentManagerService::GetInstance()->ConnectServiceExtensionAbility(callerToken, want, connection),
         RESOLVE_ABILITY_ERR);
     EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 0);
-    EXPECT_TRUE(AgentManagerService::GetInstance()->trackedConnections_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
 }
 
 /**
@@ -2189,7 +2729,7 @@ HWTEST_F(AgentManagerServiceTest, ConnectServiceExtensionAbility_007, TestSize.L
     EXPECT_EQ(AgentManagerService::GetInstance()->ConnectServiceExtensionAbility(callerToken, want, connection),
         ERR_WRONG_INTERFACE_CALL);
     EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 0);
-    EXPECT_TRUE(AgentManagerService::GetInstance()->trackedConnections_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
 }
 
 /**
@@ -2210,8 +2750,7 @@ HWTEST_F(AgentManagerServiceTest, ConnectServiceExtensionAbility_008, TestSize.L
     EXPECT_EQ(AgentManagerService::GetInstance()->ConnectServiceExtensionAbility(callerToken, want, connection),
         ERR_INVALID_VALUE);
     EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 1);
-    EXPECT_TRUE(AgentManagerService::GetInstance()->trackedConnections_.empty());
-    EXPECT_TRUE(AgentManagerService::GetInstance()->callerConnectionCounts_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
 }
 
 /**
@@ -2236,13 +2775,11 @@ HWTEST_F(AgentManagerServiceTest, DisconnectServiceExtensionAbility_001, TestSiz
     ASSERT_NE(MyFlag::lastConnectAbilityConnection, nullptr);
     EXPECT_EQ(AgentManagerService::GetInstance()->DisconnectServiceExtensionAbility(callerToken, connection), ERR_OK);
     EXPECT_EQ(MyFlag::lastDisconnectAbilityConnection, MyFlag::lastConnectAbilityConnection);
-    EXPECT_TRUE(AgentManagerService::GetInstance()->callerConnectionCounts_.empty());
-    ASSERT_EQ(AgentManagerService::GetInstance()->trackedConnections_.size(), 1);
+    ASSERT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1);
 
     AppExecFwk::ElementName element;
     MyFlag::lastConnectAbilityConnection->OnAbilityDisconnectDone(element, ERR_OK);
-    EXPECT_TRUE(AgentManagerService::GetInstance()->trackedConnections_.empty());
-    EXPECT_TRUE(AgentManagerService::GetInstance()->callerConnectionCounts_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
 }
 
 /**
@@ -2330,8 +2867,8 @@ HWTEST_F(AgentManagerServiceTest, DisconnectServiceExtensionAbility_006, TestSiz
         ERR_OK);
     EXPECT_EQ(AgentManagerService::GetInstance()->DisconnectServiceExtensionAbility(callerToken, connection), ERR_OK);
     EXPECT_EQ(AgentManagerService::GetInstance()->DisconnectServiceExtensionAbility(callerToken, connection), ERR_OK);
-    ASSERT_EQ(AgentManagerService::GetInstance()->trackedConnections_.size(), 1);
-    EXPECT_TRUE(AgentManagerService::GetInstance()->trackedConnections_.begin()->second.isDisconnecting);
+    ASSERT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.begin()->second.isDisconnecting);
 }
 
 /**
@@ -2354,11 +2891,10 @@ HWTEST_F(AgentManagerServiceTest, DisconnectServiceExtensionAbility_007, TestSiz
         ERR_OK);
     EXPECT_EQ(AgentManagerService::GetInstance()->DisconnectServiceExtensionAbility(callerToken, connection),
         ERR_INVALID_VALUE);
-    ASSERT_EQ(AgentManagerService::GetInstance()->trackedConnections_.size(), 1);
-    auto trackedIter = AgentManagerService::GetInstance()->trackedConnections_.find(connection->AsObject());
-    ASSERT_NE(trackedIter, AgentManagerService::GetInstance()->trackedConnections_.end());
+    ASSERT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1);
+    auto trackedIter = AgentConnectManager::GetInstance().trackedConnections_.find(connection->AsObject());
+    ASSERT_NE(trackedIter, AgentConnectManager::GetInstance().trackedConnections_.end());
     EXPECT_FALSE(trackedIter->second.isDisconnecting);
-    EXPECT_TRUE(AgentManagerService::GetInstance()->callerConnectionCounts_.empty());
 }
 
 /**
@@ -2411,7 +2947,6 @@ HWTEST_F(AgentManagerServiceTest, ValidateConnectAgentRequest_004, TestSize.Leve
 {
     auto service = AgentManagerService::GetInstance();
     int32_t callerUid = IPCSkeleton::GetCallingUid();
-    service->callerConnectionCounts_[callerUid] = AgentManagerService::MAX_CONNECTIONS_PER_CALLER;
     auto connection = sptr<MockAbilityConnection>::MakeSptr();
     int32_t outCallerUid = -1;
 
@@ -2577,16 +3112,16 @@ HWTEST_F(AgentManagerServiceTest, ResolveLowCodeHostInfo_003, TestSize.Level1)
 */
 HWTEST_F(AgentManagerServiceTest, FindTrackedConnectionLocked_001, TestSize.Level1)
 {
-    auto service = AgentManagerService::GetInstance();
     auto trackedConnection = sptr<MockAbilityConnection>::MakeSptr();
     auto probeConnection = sptr<MockAbilityConnection>::MakeSptr();
-    AgentManagerService::TrackedConnectionRecord record;
+    TrackedConnectionRecord record;
     record.callerUid = IPCSkeleton::GetCallingUid();
     record.callerRemote = trackedConnection->AsObject();
-    service->trackedConnections_[trackedConnection->AsObject()] = record;
+    AgentConnectManager::GetInstance().trackedConnections_[trackedConnection->AsObject()] = record;
 
-    auto iter = service->FindTrackedConnectionLocked(probeConnection, IPCSkeleton::GetCallingUid());
-    ASSERT_NE(iter, service->trackedConnections_.end());
+    auto iter = AgentConnectManager::GetInstance().FindTrackedConnectionLocked(
+        probeConnection, IPCSkeleton::GetCallingUid());
+    ASSERT_NE(iter, AgentConnectManager::GetInstance().trackedConnections_.end());
     EXPECT_EQ(iter->first, trackedConnection->AsObject());
 }
 
@@ -2597,20 +3132,20 @@ HWTEST_F(AgentManagerServiceTest, FindTrackedConnectionLocked_001, TestSize.Leve
 */
 HWTEST_F(AgentManagerServiceTest, FindTrackedConnectionLocked_002, TestSize.Level1)
 {
-    auto service = AgentManagerService::GetInstance();
     auto trackedConnectionA = sptr<MockAbilityConnection>::MakeSptr();
     auto trackedConnectionB = sptr<MockAbilityConnection>::MakeSptr();
     auto probeConnection = sptr<MockAbilityConnection>::MakeSptr();
-    AgentManagerService::TrackedConnectionRecord recordA;
+    TrackedConnectionRecord recordA;
     recordA.callerUid = IPCSkeleton::GetCallingUid();
     recordA.callerRemote = trackedConnectionA->AsObject();
-    AgentManagerService::TrackedConnectionRecord recordB = recordA;
+    TrackedConnectionRecord recordB = recordA;
     recordB.callerRemote = trackedConnectionB->AsObject();
-    service->trackedConnections_[trackedConnectionA->AsObject()] = recordA;
-    service->trackedConnections_[trackedConnectionB->AsObject()] = recordB;
+    AgentConnectManager::GetInstance().trackedConnections_[trackedConnectionA->AsObject()] = recordA;
+    AgentConnectManager::GetInstance().trackedConnections_[trackedConnectionB->AsObject()] = recordB;
 
-    auto iter = service->FindTrackedConnectionLocked(probeConnection, IPCSkeleton::GetCallingUid());
-    EXPECT_EQ(iter, service->trackedConnections_.end());
+    auto iter = AgentConnectManager::GetInstance().FindTrackedConnectionLocked(
+        probeConnection, IPCSkeleton::GetCallingUid());
+    EXPECT_EQ(iter, AgentConnectManager::GetInstance().trackedConnections_.end());
 }
 
 /**
@@ -2620,17 +3155,17 @@ HWTEST_F(AgentManagerServiceTest, FindTrackedConnectionLocked_002, TestSize.Leve
 */
 HWTEST_F(AgentManagerServiceTest, FindTrackedConnectionLocked_003, TestSize.Level1)
 {
-    auto service = AgentManagerService::GetInstance();
     auto trackedConnection = sptr<MockAbilityConnection>::MakeSptr();
     auto probeConnection = sptr<MockAbilityConnection>::MakeSptr();
-    AgentManagerService::TrackedConnectionRecord record;
+    TrackedConnectionRecord record;
     record.callerUid = IPCSkeleton::GetCallingUid();
     record.callerRemote = trackedConnection->AsObject();
     record.isLowCode = true;
-    service->trackedConnections_[trackedConnection->AsObject()] = record;
+    AgentConnectManager::GetInstance().trackedConnections_[trackedConnection->AsObject()] = record;
 
-    auto iter = service->FindTrackedConnectionLocked(probeConnection, IPCSkeleton::GetCallingUid());
-    EXPECT_EQ(iter, service->trackedConnections_.end());
+    auto iter = AgentConnectManager::GetInstance().FindTrackedConnectionLocked(
+        probeConnection, IPCSkeleton::GetCallingUid());
+    EXPECT_EQ(iter, AgentConnectManager::GetInstance().trackedConnections_.end());
 }
 
 /**
@@ -2640,14 +3175,14 @@ HWTEST_F(AgentManagerServiceTest, FindTrackedConnectionLocked_003, TestSize.Leve
 */
 HWTEST_F(AgentManagerServiceTest, TryRegisterConnectionLocked_001, TestSize.Level1)
 {
-    auto service = AgentManagerService::GetInstance();
     auto connection = sptr<MockAbilityConnection>::MakeSptr();
-    AgentManagerService::TrackedConnectionRecord record;
+    TrackedConnectionRecord record;
     record.callerUid = IPCSkeleton::GetCallingUid();
     record.callerRemote = connection->AsObject();
-    service->trackedConnections_[connection->AsObject()] = record;
+    AgentConnectManager::GetInstance().trackedConnections_[connection->AsObject()] = record;
 
-    EXPECT_EQ(service->TryRegisterConnectionLocked(connection, IPCSkeleton::GetCallingUid()), ERR_INVALID_VALUE);
+    EXPECT_EQ(AgentConnectManager::GetInstance().TryRegisterConnectionLocked(
+        connection, IPCSkeleton::GetCallingUid(), AgentConnectManager::CallerDeathHandler()), ERR_INVALID_VALUE);
 }
 
 /**
@@ -2660,38 +3195,36 @@ HWTEST_F(AgentManagerServiceTest, RegisterTrackedConnectionAndGetServiceConnecti
     auto connection = sptr<MockAbilityConnection>::MakeSptr();
     sptr<AAFwk::IAbilityConnection> serviceConnection = nullptr;
 
-    EXPECT_EQ(AgentManagerService::GetInstance()->RegisterTrackedConnectionAndGetServiceConnection(
-        connection, IPCSkeleton::GetCallingUid(), true, serviceConnection), ERR_OK);
+    EXPECT_EQ(AgentConnectManager::GetInstance().RegisterTrackedConnectionAndGetServiceConnection(
+        connection, IPCSkeleton::GetCallingUid(), AgentConnectManager::CallerDeathHandler(), serviceConnection),
+        ERR_OK);
     ASSERT_NE(serviceConnection, nullptr);
-    ASSERT_EQ(AgentManagerService::GetInstance()->trackedConnections_.size(), 1);
-    auto trackedIter = AgentManagerService::GetInstance()->trackedConnections_.find(connection->AsObject());
-    ASSERT_NE(trackedIter, AgentManagerService::GetInstance()->trackedConnections_.end());
+    ASSERT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1);
+    auto trackedIter = AgentConnectManager::GetInstance().trackedConnections_.find(connection->AsObject());
+    ASSERT_NE(trackedIter, AgentConnectManager::GetInstance().trackedConnections_.end());
     EXPECT_EQ(trackedIter->second.serviceConnection->AsObject(), serviceConnection->AsObject());
 }
 
 /**
 * @tc.name  : RegisterTrackedConnectionAndGetServiceConnection_002
 * @tc.number: RegisterTrackedConnectionAndGetServiceConnection_002
-* @tc.desc  : Test RegisterTrackedConnectionAndGetServiceConnection skips caller quota bookkeeping when requested
+* @tc.desc  : Test RegisterTrackedConnectionAndGetServiceConnection stores caller tracking metadata
 */
 HWTEST_F(AgentManagerServiceTest, RegisterTrackedConnectionAndGetServiceConnection_002, TestSize.Level1)
 {
-    auto service = AgentManagerService::GetInstance();
     auto connection = sptr<MockAbilityConnection>::MakeSptr();
     sptr<AAFwk::IAbilityConnection> serviceConnection = nullptr;
     int32_t callerUid = IPCSkeleton::GetCallingUid();
 
-    EXPECT_EQ(service->RegisterTrackedConnectionAndGetServiceConnection(connection, callerUid, false,
-        serviceConnection), ERR_OK);
+    EXPECT_EQ(AgentConnectManager::GetInstance().RegisterTrackedConnectionAndGetServiceConnection(
+        connection, callerUid, AgentConnectManager::CallerDeathHandler(), serviceConnection), ERR_OK);
     ASSERT_NE(serviceConnection, nullptr);
-    ASSERT_EQ(service->trackedConnections_.size(), 1);
-    auto trackedIter = service->trackedConnections_.find(connection->AsObject());
-    ASSERT_NE(trackedIter, service->trackedConnections_.end());
+    ASSERT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1);
+    auto trackedIter = AgentConnectManager::GetInstance().trackedConnections_.find(connection->AsObject());
+    ASSERT_NE(trackedIter, AgentConnectManager::GetInstance().trackedConnections_.end());
     EXPECT_EQ(trackedIter->second.callerUid, callerUid);
     EXPECT_EQ(trackedIter->second.serviceConnection->AsObject(), serviceConnection->AsObject());
-    EXPECT_FALSE(trackedIter->second.countTowardsCallerLimit);
     EXPECT_NE(trackedIter->second.deathRecipient, nullptr);
-    EXPECT_TRUE(service->callerConnectionCounts_.empty());
 }
 
 /**
@@ -2701,50 +3234,89 @@ HWTEST_F(AgentManagerServiceTest, RegisterTrackedConnectionAndGetServiceConnecti
 */
 HWTEST_F(AgentManagerServiceTest, RegisterTrackedConnectionAndGetServiceConnection_003, TestSize.Level1)
 {
-    auto service = AgentManagerService::GetInstance();
     auto connection = sptr<MockAbilityConnection>::MakeSptr();
-    AgentManagerService::TrackedConnectionRecord record;
+    TrackedConnectionRecord record;
     record.callerUid = IPCSkeleton::GetCallingUid();
     record.callerRemote = connection->AsObject();
-    service->trackedConnections_[connection->AsObject()] = record;
+    AgentConnectManager::GetInstance().trackedConnections_[connection->AsObject()] = record;
     sptr<AAFwk::IAbilityConnection> serviceConnection = nullptr;
 
-    EXPECT_EQ(service->RegisterTrackedConnectionAndGetServiceConnection(
-        connection, IPCSkeleton::GetCallingUid(), true, serviceConnection), ERR_INVALID_VALUE);
+    EXPECT_EQ(AgentConnectManager::GetInstance().RegisterTrackedConnectionAndGetServiceConnection(
+        connection, IPCSkeleton::GetCallingUid(), AgentConnectManager::CallerDeathHandler(), serviceConnection),
+        ERR_INVALID_VALUE);
     EXPECT_EQ(serviceConnection, nullptr);
-    EXPECT_EQ(service->trackedConnections_.size(), 1);
-    EXPECT_TRUE(service->callerConnectionCounts_.empty());
+    EXPECT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1);
 }
 
 /**
 * @tc.name  : RegisterTrackedConnectionAndGetServiceConnection_004
 * @tc.number: RegisterTrackedConnectionAndGetServiceConnection_004
-* @tc.desc  : Test RegisterTrackedConnectionAndGetServiceConnection rejects callers that already hit the quota
+* @tc.desc  : Test RegisterTrackedConnectionAndGetServiceConnection has no local quota admission
 */
 HWTEST_F(AgentManagerServiceTest, RegisterTrackedConnectionAndGetServiceConnection_004, TestSize.Level1)
 {
-    auto service = AgentManagerService::GetInstance();
     auto connection = sptr<MockAbilityConnection>::MakeSptr();
     int32_t callerUid = IPCSkeleton::GetCallingUid();
-    service->callerConnectionCounts_[callerUid] = AgentManagerService::MAX_CONNECTIONS_PER_CALLER;
     sptr<AAFwk::IAbilityConnection> serviceConnection = nullptr;
 
-    EXPECT_EQ(service->RegisterTrackedConnectionAndGetServiceConnection(connection, callerUid, true, serviceConnection),
-        AAFwk::ERR_MAX_AGENT_CONNECTIONS_REACHED);
-    EXPECT_EQ(serviceConnection, nullptr);
-    EXPECT_TRUE(service->trackedConnections_.empty());
-    ASSERT_EQ(service->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(service->callerConnectionCounts_[callerUid], AgentManagerService::MAX_CONNECTIONS_PER_CALLER);
+    EXPECT_EQ(AgentConnectManager::GetInstance().RegisterTrackedConnectionAndGetServiceConnection(
+        connection, callerUid, AgentConnectManager::CallerDeathHandler(), serviceConnection), ERR_OK);
+    EXPECT_NE(serviceConnection, nullptr);
+    EXPECT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1);
+}
+
+/**
+* @tc.name  : RegisterStandardAgentConnection_001
+* @tc.number: RegisterStandardAgentConnection_001
+* @tc.desc  : Test RegisterStandardAgentConnection installs quota identity in the tracked record.
+*/
+HWTEST_F(AgentManagerServiceTest, RegisterStandardAgentConnection_001, TestSize.Level1)
+{
+    auto connection = sptr<MockAbilityConnection>::MakeSptr();
+    auto request = BuildStandardConnectRequest(connection, "agentA", 1001);
+    int32_t callerUid = request.callerUid;
+
+    EXPECT_EQ(AgentConnectManager::GetInstance().RegisterStandardAgentConnection(request), ERR_OK);
+    ASSERT_NE(request.serviceConnection, nullptr);
+    ASSERT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1);
+    auto trackedIter = AgentConnectManager::GetInstance().trackedConnections_.find(connection->AsObject());
+    ASSERT_NE(trackedIter, AgentConnectManager::GetInstance().trackedConnections_.end());
+    EXPECT_EQ(trackedIter->second.agentId, "agentA");
+    EXPECT_EQ(trackedIter->second.originalIdentity, "identity-agentA");
+    EXPECT_EQ(trackedIter->second.verificationNonce, 1001);
+    EXPECT_TRUE(trackedIter->second.hasQuota);
+    ASSERT_EQ(AgentConnectManager::GetInstance().callerQuotas_[callerUid].count(request.quotaKey), 1u);
+    EXPECT_EQ(AgentConnectManager::GetInstance().callerQuotas_[callerUid][request.quotaKey], 1);
+}
+
+/**
+* @tc.name  : RegisterStandardAgentConnection_002
+* @tc.number: RegisterStandardAgentConnection_002
+* @tc.desc  : Test RegisterStandardAgentConnection rolls back quota when tracking registration fails.
+*/
+HWTEST_F(AgentManagerServiceTest, RegisterStandardAgentConnection_002, TestSize.Level1)
+{
+    auto connection = sptr<MockAbilityConnection>::MakeSptr();
+    auto firstRequest = BuildStandardConnectRequest(connection, "agentA", 1001);
+    ASSERT_EQ(AgentConnectManager::GetInstance().RegisterStandardAgentConnection(firstRequest), ERR_OK);
+
+    auto duplicateRequest = BuildStandardConnectRequest(connection, "agentB", 1002);
+    EXPECT_EQ(AgentConnectManager::GetInstance().RegisterStandardAgentConnection(duplicateRequest),
+        ERR_INVALID_VALUE);
+    EXPECT_EQ(duplicateRequest.serviceConnection, nullptr);
+    int32_t callerUid = duplicateRequest.callerUid;
+    EXPECT_EQ(AgentConnectManager::GetInstance().callerQuotas_[callerUid].count(duplicateRequest.quotaKey), 0u);
+    ASSERT_EQ(AgentConnectManager::GetInstance().callerQuotas_[callerUid].count(firstRequest.quotaKey), 1u);
+    EXPECT_EQ(AgentConnectManager::GetInstance().callerQuotas_[callerUid][firstRequest.quotaKey], 1);
 }
 
 /**
 * @tc.name  : TryRegisterConnectionLocked_002
 * @tc.number: TryRegisterConnectionLocked_002
-* @tc.desc  : Test TryRegisterConnectionLocked stores explicit low-code tracking state without quota bookkeeping
+* @tc.desc  : Test TryRegisterConnectionLocked stores explicit low-code tracking state
 */
 HWTEST_F(AgentManagerServiceTest, TryRegisterConnectionLocked_002, TestSize.Level1)
 {
-    auto service = AgentManagerService::GetInstance();
     auto connection = sptr<MockAbilityConnection>::MakeSptr();
     auto serviceConnection = sptr<MockAbilityConnection>::MakeSptr();
     AgentHostKey hostKey;
@@ -2754,18 +3326,17 @@ HWTEST_F(AgentManagerServiceTest, TryRegisterConnectionLocked_002, TestSize.Leve
     hostKey.abilityName = "LowCodeAbility";
     int32_t callerUid = IPCSkeleton::GetCallingUid();
 
-    EXPECT_EQ(service->TryRegisterConnectionLocked(connection, callerUid, serviceConnection, &hostKey, false), ERR_OK);
-    ASSERT_EQ(service->trackedConnections_.size(), 1);
-    auto trackedIter = service->trackedConnections_.find(connection->AsObject());
-    ASSERT_NE(trackedIter, service->trackedConnections_.end());
+    EXPECT_EQ(AgentConnectManager::GetInstance().TryRegisterConnectionLocked(
+        connection, callerUid, AgentConnectManager::CallerDeathHandler(), serviceConnection, &hostKey), ERR_OK);
+    ASSERT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1);
+    auto trackedIter = AgentConnectManager::GetInstance().trackedConnections_.find(connection->AsObject());
+    ASSERT_NE(trackedIter, AgentConnectManager::GetInstance().trackedConnections_.end());
     EXPECT_EQ(trackedIter->second.serviceConnection->AsObject(), serviceConnection->AsObject());
     EXPECT_TRUE(trackedIter->second.isLowCode);
     EXPECT_EQ(trackedIter->second.hostKey.userId, hostKey.userId);
     EXPECT_EQ(trackedIter->second.hostKey.bundleName, hostKey.bundleName);
     EXPECT_EQ(trackedIter->second.hostKey.moduleName, hostKey.moduleName);
     EXPECT_EQ(trackedIter->second.hostKey.abilityName, hostKey.abilityName);
-    EXPECT_FALSE(trackedIter->second.countTowardsCallerLimit);
-    EXPECT_TRUE(service->callerConnectionCounts_.empty());
 }
 
 /**
@@ -2775,7 +3346,6 @@ HWTEST_F(AgentManagerServiceTest, TryRegisterConnectionLocked_002, TestSize.Leve
 */
 HWTEST_F(AgentManagerServiceTest, PrepareLowCodeConnectPlan_001, TestSize.Level1)
 {
-    auto service = AgentManagerService::GetInstance();
     AgentConnectPlan plan;
     int32_t callingUid = IPCSkeleton::GetCallingUid();
     AgentHostKey hostKey;
@@ -2785,15 +3355,13 @@ HWTEST_F(AgentManagerServiceTest, PrepareLowCodeConnectPlan_001, TestSize.Level1
     hostKey.abilityName = "LowCodeExtAbility";
     auto connection = sptr<MockAbilityConnection>::MakeSptr();
 
-    EXPECT_EQ(service->PrepareLowCodeConnectPlan(hostKey, callingUid, "agentA", connection, callingUid, plan),
-        ERR_OK);
+    auto request = BuildLowCodeConnectPlanRequest(hostKey, connection, "agentA", callingUid);
+    EXPECT_EQ(AgentConnectManager::GetInstance().PrepareLowCodeConnectPlan(request, plan), ERR_OK);
     EXPECT_TRUE(plan.needRealConnect);
     EXPECT_TRUE(plan.registeredTrackedConnection);
     ASSERT_NE(plan.hostConnection, nullptr);
-    ASSERT_EQ(service->agentHostSessions_.size(), 1);
-    ASSERT_EQ(service->agentOwners_.size(), 1);
-    ASSERT_EQ(service->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(service->callerConnectionCounts_.begin()->second, 1);
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentOwners_.size(), 1);
 }
 
 /**
@@ -2816,10 +3384,10 @@ HWTEST_F(AgentManagerServiceTest, NotifyLowCodeAgentComplete_006, TestSize.Level
 {
     auto service = AgentManagerService::GetInstance();
     int32_t callingUid = IPCSkeleton::GetCallingUid();
-    service->agentOwners_[{callingUid, "agentA"}] = nullptr;
+    AgentConnectManager::GetInstance().agentOwners_[{callingUid, "agentA"}] = nullptr;
 
     EXPECT_EQ(service->NotifyLowCodeAgentComplete("agentA"), AAFwk::CONNECTION_NOT_EXIST);
-    EXPECT_TRUE(service->agentOwners_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentOwners_.empty());
 }
 
 /**
@@ -2839,12 +3407,12 @@ HWTEST_F(AgentManagerServiceTest, NotifyLowCodeAgentComplete_007, TestSize.Level
     auto session = std::make_shared<AgentHostSession>();
     session->key = hostKey;
     session->hostUid = callingUid;
-    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey);
-    service->agentOwners_[{callingUid, "agentA"}] = session;
-    service->agentHostSessions_[hostKey] = session;
+    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "");
+    AgentConnectManager::GetInstance().agentOwners_[{callingUid, "agentA"}] = session;
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
 
     EXPECT_EQ(service->NotifyLowCodeAgentComplete("agentA"), AAFwk::CONNECTION_NOT_EXIST);
-    EXPECT_TRUE(service->agentOwners_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentOwners_.empty());
 }
 
 /**
@@ -2866,31 +3434,33 @@ HWTEST_F(AgentManagerServiceTest, NotifyLowCodeAgentComplete_008, TestSize.Level
     auto session = std::make_shared<AgentHostSession>();
     session->key = hostKey;
     session->hostUid = callingUid;
-    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey);
+    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "");
     session->callerConnections[remote] = connection;
-    session->agents["agentA"] = LowCodeAgentRecord { remote, false };
-    session->agents["agentB"] = LowCodeAgentRecord { remote, false };
-    service->agentHostSessions_[hostKey] = session;
-    service->agentOwners_[{callingUid, "agentA"}] = session;
-    service->agentOwners_[{callingUid, "agentB"}] = session;
-    AgentManagerService::TrackedConnectionRecord record;
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, remote, "agentA");
+    session->agents["agentA"] = LowCodeAgentRecord { remote, callingUid, false, hostConnection, "caller-identity", 1 };
+    session->agents["agentB"] = LowCodeAgentRecord { remote, callingUid, false, hostConnection, "caller-identity", 1 };
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+    AgentConnectManager::GetInstance().agentOwners_[{callingUid, "agentA"}] = session;
+    AgentConnectManager::GetInstance().agentOwners_[{callingUid, "agentB"}] = session;
+    TrackedConnectionRecord record;
     record.callerUid = callingUid;
     record.callerRemote = remote;
     record.serviceConnection = session->hostConnection;
     record.isLowCode = true;
     record.hostKey = hostKey;
-    service->trackedConnections_[remote] = record;
-    service->callerConnectionCounts_[callingUid] = 1;
+    AgentConnectManager::GetInstance().trackedConnections_[remote] = record;
 
     EXPECT_EQ(service->NotifyLowCodeAgentComplete("agentA"), ERR_OK);
     EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 0);
-    ASSERT_EQ(service->agentHostSessions_.size(), 1);
-    EXPECT_EQ(service->agentHostSessions_.begin()->second->callerConnections.size(), 1);
-    EXPECT_EQ(service->agentHostSessions_.begin()->second->agents.size(), 1);
-    EXPECT_TRUE(service->agentHostSessions_.begin()->second->agents.count("agentB") > 0);
-    ASSERT_EQ(service->trackedConnections_.size(), 1);
-    ASSERT_EQ(service->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(service->callerConnectionCounts_.begin()->second, 1);
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->callerConnections.size(), 1);
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.size(), 1);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.count("agentA") == 0);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.count("agentB") > 0);
+    ASSERT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1);
+
+    EXPECT_EQ(service->NotifyLowCodeAgentComplete("agentB"), ERR_OK);
+    EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 1);
 }
 
 /**
@@ -2913,36 +3483,33 @@ HWTEST_F(AgentManagerServiceTest, NotifyLowCodeAgentComplete_009, TestSize.Level
     auto session = std::make_shared<AgentHostSession>();
     session->key = hostKey;
     session->hostUid = callingUid;
-    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey);
+    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "");
     session->callerConnections[remote] = connection;
-    session->agents["agentA"] = LowCodeAgentRecord { remote, false };
-    service->agentHostSessions_[hostKey] = session;
-    service->agentOwners_[{callingUid, "agentA"}] = session;
-    AgentManagerService::TrackedConnectionRecord record;
+    session->agents["agentA"] = LowCodeAgentRecord { remote, callingUid, false, session->hostConnection };
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+    AgentConnectManager::GetInstance().agentOwners_[{callingUid, "agentA"}] = session;
+    TrackedConnectionRecord record;
     record.callerUid = callingUid;
     record.callerRemote = remote;
     record.serviceConnection = session->hostConnection;
     record.isLowCode = true;
     record.hostKey = hostKey;
-    service->trackedConnections_[remote] = record;
-    service->callerConnectionCounts_[callingUid] = 1;
+    AgentConnectManager::GetInstance().trackedConnections_[remote] = record;
 
     EXPECT_EQ(service->NotifyLowCodeAgentComplete("agentA"), ERR_INVALID_VALUE);
-    ASSERT_EQ(service->agentHostSessions_.size(), 1);
-    EXPECT_FALSE(service->agentHostSessions_.begin()->second->isDisconnecting);
-    EXPECT_TRUE(service->trackedConnections_.empty());
-    EXPECT_TRUE(service->callerConnectionCounts_.empty());
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+    EXPECT_FALSE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents["agentA"].isDisconnecting);
+    EXPECT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1u);
     MyFlag::retDisconnectAbility = ERR_OK;
 }
 
 /**
 * @tc.name  : PrepareLowCodeConnectPlan_002
 * @tc.number: PrepareLowCodeConnectPlan_002
-* @tc.desc  : Test PrepareLowCodeConnectPlan reuses connected host sessions and enables immediate callback delivery
+* @tc.desc  : Test PrepareLowCodeConnectPlan reuses connected host sessions for a newly admitted agent
 */
 HWTEST_F(AgentManagerServiceTest, PrepareLowCodeConnectPlan_002, TestSize.Level1)
 {
-    auto service = AgentManagerService::GetInstance();
     AgentConnectPlan plan;
     int32_t callingUid = IPCSkeleton::GetCallingUid();
     AgentHostKey hostKey;
@@ -2955,30 +3522,32 @@ HWTEST_F(AgentManagerServiceTest, PrepareLowCodeConnectPlan_002, TestSize.Level1
     auto session = std::make_shared<AgentHostSession>();
     session->key = hostKey;
     session->hostUid = callingUid;
-    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey);
+    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "");
     session->isConnected = true;
     session->remoteObject = receiver->AsObject();
     session->resultCode = ERR_OK;
     session->element = AppExecFwk::ElementName("", "lowcode.bundle", "LowCodeExtAbility", "entry");
-    service->agentHostSessions_[hostKey] = session;
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
 
-    EXPECT_EQ(service->PrepareLowCodeConnectPlan(hostKey, callingUid, "agentA", connection, callingUid, plan),
-        ERR_OK);
+    auto request = BuildLowCodeConnectPlanRequest(hostKey, connection, "agentA", callingUid);
+    EXPECT_EQ(AgentConnectManager::GetInstance().PrepareLowCodeConnectPlan(request, plan), ERR_OK);
     EXPECT_FALSE(plan.needRealConnect);
-    EXPECT_TRUE(plan.notifyExistingConnection);
-    EXPECT_EQ(plan.cachedRemoteObject, receiver->AsObject());
-    ASSERT_EQ(service->agentOwners_.size(), 1);
-    ASSERT_EQ(service->trackedConnections_.size(), 1);
+    EXPECT_TRUE(plan.reusedHostSession);
+    EXPECT_EQ(session->agents.size(), 1);
+    EXPECT_TRUE(session->agents.count("agentA") > 0);
+    EXPECT_EQ(session->callerConnections.size(), 1);
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentOwners_.size(), 1);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentOwners_.count({ callingUid, "agentA" }) > 0);
+    ASSERT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1);
 }
 
 /**
 * @tc.name  : PrepareLowCodeConnectPlan_003
 * @tc.number: PrepareLowCodeConnectPlan_003
-* @tc.desc  : Test PrepareLowCodeConnectPlan rejects reconnect while the shared host session is disconnecting
+* @tc.desc  : Test PrepareLowCodeConnectPlan allows reuse because disconnecting state is tracked per agent
 */
 HWTEST_F(AgentManagerServiceTest, PrepareLowCodeConnectPlan_003, TestSize.Level1)
 {
-    auto service = AgentManagerService::GetInstance();
     AgentConnectPlan plan;
     int32_t callingUid = IPCSkeleton::GetCallingUid();
     AgentHostKey hostKey;
@@ -2990,57 +3559,63 @@ HWTEST_F(AgentManagerServiceTest, PrepareLowCodeConnectPlan_003, TestSize.Level1
     auto session = std::make_shared<AgentHostSession>();
     session->key = hostKey;
     session->hostUid = callingUid;
-    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey);
-    session->isDisconnecting = true;
-    service->agentHostSessions_[hostKey] = session;
+    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "");
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
 
-    EXPECT_EQ(service->PrepareLowCodeConnectPlan(hostKey, callingUid, "agentA", connection, callingUid, plan),
-        ERR_INVALID_VALUE);
-    EXPECT_TRUE(service->trackedConnections_.empty());
-    EXPECT_TRUE(service->agentOwners_.empty());
+    auto request = BuildLowCodeConnectPlanRequest(hostKey, connection, "agentA", callingUid);
+    EXPECT_EQ(AgentConnectManager::GetInstance().PrepareLowCodeConnectPlan(request, plan), ERR_OK);
+    EXPECT_FALSE(AgentConnectManager::GetInstance().trackedConnections_.empty());
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentOwners_.size(), 1u);
 }
 
 /**
-* @tc.name  : NotifyExistingLowCodeConnection_001
-* @tc.number: NotifyExistingLowCodeConnection_001
-* @tc.desc  : Test NotifyExistingLowCodeConnection notifies the agent receiver and callback immediately
+* @tc.name  : PrepareLowCodeConnectPlan_004
+* @tc.number: PrepareLowCodeConnectPlan_004
+* @tc.desc  : Test PrepareLowCodeConnectPlan rejects an active agentId from another caller remote
 */
-HWTEST_F(AgentManagerServiceTest, NotifyExistingLowCodeConnection_001, TestSize.Level1)
+HWTEST_F(AgentManagerServiceTest, PrepareLowCodeConnectPlan_004, TestSize.Level1)
 {
-    auto service = AgentManagerService::GetInstance();
     AgentConnectPlan plan;
-    plan.cachedElement = AppExecFwk::ElementName("", "lowcode.bundle", "LowCodeExtAbility", "entry");
-    sptr<TestAgentReceiver> receiver = new TestAgentReceiver();
-    plan.cachedRemoteObject = receiver->AsObject();
-    plan.cachedResultCode = ERR_OK;
-    auto connection = sptr<MockAbilityConnection>::MakeSptr();
+    int32_t callingUid = IPCSkeleton::GetCallingUid();
+    AgentHostKey hostKey;
+    hostKey.userId = callingUid / 200000;
+    hostKey.bundleName = "lowcode.bundle";
+    hostKey.moduleName = "entry";
+    hostKey.abilityName = "LowCodeExtAbility";
 
-    service->NotifyExistingLowCodeConnection(plan, "agentA", connection);
-    EXPECT_EQ(receiver->agentInvokedCount, 1);
-    ASSERT_EQ(receiver->invokedAgentIds.size(), 1);
-    EXPECT_EQ(receiver->invokedAgentIds[0], "agentA");
-    EXPECT_EQ(connection->connectDoneCount, 1);
-    EXPECT_EQ(connection->lastConnectResultCode, ERR_OK);
-}
+    auto activeConnection = sptr<MockAbilityConnection>::MakeSptr();
+    auto activeRemote = activeConnection->AsObject();
+    auto activeHostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, activeRemote, "agentA");
+    auto session = std::make_shared<AgentHostSession>();
+    session->key = hostKey;
+    session->hostUid = callingUid;
+    session->hostConnection = activeHostConnection;
+    session->isConnected = true;
+    session->callerConnections[activeRemote] = activeConnection;
+    session->agents["agentA"] = LowCodeAgentRecord { activeRemote, callingUid, false, activeHostConnection };
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+    AgentConnectManager::GetInstance().agentOwners_[{ callingUid, "agentA" }] = session;
+    TrackedConnectionRecord record;
+    record.callerUid = callingUid;
+    record.callerRemote = activeRemote;
+    record.serviceConnection = activeHostConnection;
+    record.hostKey = hostKey;
+    record.isLowCode = true;
+    AgentConnectManager::GetInstance().trackedConnections_[activeRemote] = record;
 
-/**
-* @tc.name  : NotifyExistingLowCodeConnection_002
-* @tc.number: NotifyExistingLowCodeConnection_002
-* @tc.desc  : Test NotifyExistingLowCodeConnection still notifies the callback when no agent receiver is exposed
-*/
-HWTEST_F(AgentManagerServiceTest, NotifyExistingLowCodeConnection_002, TestSize.Level1)
-{
-    auto service = AgentManagerService::GetInstance();
-    AgentConnectPlan plan;
-    plan.cachedElement = AppExecFwk::ElementName("", "lowcode.bundle", "LowCodeExtAbility", "entry");
-    plan.cachedRemoteObject = sptr<MockAbilityConnection>::MakeSptr()->AsObject();
-    plan.cachedResultCode = ERR_OK;
-    auto connection = sptr<MockAbilityConnection>::MakeSptr();
+    auto duplicateConnection = sptr<MockAbilityConnection>::MakeSptr();
+    auto duplicateRemote = duplicateConnection->AsObject();
+    auto request = BuildLowCodeConnectPlanRequest(hostKey, duplicateConnection, "agentA", callingUid);
+    EXPECT_EQ(AgentConnectManager::GetInstance().PrepareLowCodeConnectPlan(request, plan),
+        AAFwk::ERR_LOW_CODE_AGENT_ALREADY_ACTIVE);
 
-    service->NotifyExistingLowCodeConnection(plan, "agentA", connection);
-
-    EXPECT_EQ(connection->connectDoneCount, 1);
-    EXPECT_EQ(connection->lastConnectResultCode, ERR_OK);
+    EXPECT_TRUE(plan.reusedHostSession);
+    EXPECT_EQ(session->agents.size(), 1);
+    EXPECT_EQ(session->callerConnections.size(), 1);
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentOwners_.size(), 1);
+    EXPECT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1);
+    EXPECT_TRUE(session->callerConnections.count(duplicateRemote) == 0);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.count(duplicateRemote) == 0);
 }
 
 /**
@@ -3050,7 +3625,6 @@ HWTEST_F(AgentManagerServiceTest, NotifyExistingLowCodeConnection_002, TestSize.
 */
 HWTEST_F(AgentManagerServiceTest, CleanupLowCodeConnectPlan_001, TestSize.Level1)
 {
-    auto service = AgentManagerService::GetInstance();
     int32_t callingUid = IPCSkeleton::GetCallingUid();
     AgentHostKey hostKey;
     hostKey.userId = callingUid / 200000;
@@ -3063,31 +3637,29 @@ HWTEST_F(AgentManagerServiceTest, CleanupLowCodeConnectPlan_001, TestSize.Level1
     auto session = std::make_shared<AgentHostSession>();
     session->key = hostKey;
     session->hostUid = callingUid;
-    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey);
+    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "");
     session->callerConnections[callerRemote] = connection;
-    session->agents["agentA"] = LowCodeAgentRecord { callerRemote, true };
-    service->agentHostSessions_[hostKey] = session;
-    service->agentOwners_[{callingUid, "agentA"}] = session;
-    AgentManagerService::TrackedConnectionRecord record;
+    session->agents["agentA"] = LowCodeAgentRecord { callerRemote, callingUid, true };
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+    AgentConnectManager::GetInstance().agentOwners_[{callingUid, "agentA"}] = session;
+    TrackedConnectionRecord record;
     record.callerUid = callingUid;
     record.callerRemote = callerRemote;
     record.serviceConnection = session->hostConnection;
     record.isLowCode = true;
     record.hostKey = hostKey;
-    service->trackedConnections_[callerRemote] = record;
-    service->callerConnectionCounts_[callingUid] = 1;
+    AgentConnectManager::GetInstance().trackedConnections_[callerRemote] = record;
 
     AgentConnectPlan plan;
     plan.hostKey = hostKey;
     plan.hostUid = callingUid;
     plan.callerRemote = callerRemote;
     plan.registeredTrackedConnection = true;
-    service->CleanupLowCodeConnectPlan(plan, "agentA");
+    AgentConnectManager::GetInstance().CleanupLowCodeConnectPlan(plan, "agentA");
 
-    EXPECT_TRUE(service->agentHostSessions_.empty());
-    EXPECT_TRUE(service->agentOwners_.empty());
-    EXPECT_TRUE(service->callerConnectionCounts_.empty());
-    EXPECT_TRUE(service->trackedConnections_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentOwners_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
 }
 
 /**
@@ -3097,7 +3669,6 @@ HWTEST_F(AgentManagerServiceTest, CleanupLowCodeConnectPlan_001, TestSize.Level1
 */
 HWTEST_F(AgentManagerServiceTest, CleanupLowCodeConnectPlan_002, TestSize.Level1)
 {
-    auto service = AgentManagerService::GetInstance();
     int32_t callingUid = IPCSkeleton::GetCallingUid();
     AgentHostKey hostKey;
     hostKey.userId = callingUid / 200000;
@@ -3112,42 +3683,39 @@ HWTEST_F(AgentManagerServiceTest, CleanupLowCodeConnectPlan_002, TestSize.Level1
     auto session = std::make_shared<AgentHostSession>();
     session->key = hostKey;
     session->hostUid = callingUid;
-    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey);
+    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "");
     session->callerConnections[remoteA] = connectionA;
     session->callerConnections[remoteB] = connectionB;
-    session->agents["agentA"] = LowCodeAgentRecord { remoteA, true };
-    session->agents["agentB"] = LowCodeAgentRecord { remoteB, true };
-    service->agentHostSessions_[hostKey] = session;
-    service->agentOwners_[{callingUid, "agentA"}] = session;
-    service->agentOwners_[{callingUid, "agentB"}] = session;
-    AgentManagerService::TrackedConnectionRecord recordA;
+    session->agents["agentA"] = LowCodeAgentRecord { remoteA, callingUid, true };
+    session->agents["agentB"] = LowCodeAgentRecord { remoteB, callingUid, true };
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+    AgentConnectManager::GetInstance().agentOwners_[{callingUid, "agentA"}] = session;
+    AgentConnectManager::GetInstance().agentOwners_[{callingUid, "agentB"}] = session;
+    TrackedConnectionRecord recordA;
     recordA.callerUid = callingUid;
     recordA.callerRemote = remoteA;
     recordA.serviceConnection = session->hostConnection;
     recordA.isLowCode = true;
     recordA.hostKey = hostKey;
-    AgentManagerService::TrackedConnectionRecord recordB = recordA;
+    TrackedConnectionRecord recordB = recordA;
     recordB.callerRemote = remoteB;
-    service->trackedConnections_[remoteA] = recordA;
-    service->trackedConnections_[remoteB] = recordB;
-    service->callerConnectionCounts_[callingUid] = 2;
+    AgentConnectManager::GetInstance().trackedConnections_[remoteA] = recordA;
+    AgentConnectManager::GetInstance().trackedConnections_[remoteB] = recordB;
 
     AgentConnectPlan plan;
     plan.hostKey = hostKey;
     plan.hostUid = callingUid;
     plan.callerRemote = remoteA;
     plan.registeredTrackedConnection = true;
-    service->CleanupLowCodeConnectPlan(plan, "agentA");
+    AgentConnectManager::GetInstance().CleanupLowCodeConnectPlan(plan, "agentA");
 
-    ASSERT_EQ(service->agentHostSessions_.size(), 1);
-    EXPECT_EQ(service->agentHostSessions_.begin()->second->agents.size(), 1);
-    EXPECT_TRUE(service->agentHostSessions_.begin()->second->agents.count("agentB") > 0);
-    ASSERT_EQ(service->agentOwners_.size(), 1);
-    EXPECT_TRUE(service->agentOwners_.count({ callingUid, "agentB" }) > 0);
-    ASSERT_EQ(service->trackedConnections_.size(), 1);
-    EXPECT_TRUE(service->trackedConnections_.count(remoteB) > 0);
-    ASSERT_EQ(service->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(service->callerConnectionCounts_.begin()->second, 1);
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.size(), 1);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.count("agentB") > 0);
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentOwners_.size(), 1);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentOwners_.count({ callingUid, "agentB" }) > 0);
+    ASSERT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.count(remoteB) > 0);
 }
 
 /**
@@ -3171,19 +3739,18 @@ HWTEST_F(AgentManagerServiceTest, CompleteAgentHostConnect_001, TestSize.Level1)
     auto session = std::make_shared<AgentHostSession>();
     session->key = hostKey;
     session->hostUid = callingUid;
-    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey);
+    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "");
     session->callerConnections[callerRemote] = connection;
-    session->agents["agentA"] = LowCodeAgentRecord { callerRemote, true };
-    service->agentHostSessions_[hostKey] = session;
-    service->agentOwners_[{callingUid, "agentA"}] = session;
-    AgentManagerService::TrackedConnectionRecord record;
+    session->agents["agentA"] = LowCodeAgentRecord { callerRemote, callingUid, true };
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+    AgentConnectManager::GetInstance().agentOwners_[{callingUid, "agentA"}] = session;
+    TrackedConnectionRecord record;
     record.callerUid = callingUid;
     record.callerRemote = callerRemote;
     record.serviceConnection = session->hostConnection;
     record.isLowCode = true;
     record.hostKey = hostKey;
-    service->trackedConnections_[callerRemote] = record;
-    service->callerConnectionCounts_[callingUid] = 1;
+    AgentConnectManager::GetInstance().trackedConnections_[callerRemote] = record;
 
     AgentConnectPlan plan;
     plan.hostKey = hostKey;
@@ -3196,10 +3763,9 @@ HWTEST_F(AgentManagerServiceTest, CompleteAgentHostConnect_001, TestSize.Level1)
     AAFwk::Want want;
     want.SetElementName("", "lowcode.bundle", "LowCodeExtAbility", "entry");
     EXPECT_EQ(service->CompleteAgentHostConnect(want, "agentA", plan), ERR_INVALID_VALUE);
-    EXPECT_TRUE(service->agentHostSessions_.empty());
-    EXPECT_TRUE(service->agentOwners_.empty());
-    EXPECT_TRUE(service->callerConnectionCounts_.empty());
-    EXPECT_TRUE(service->trackedConnections_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentOwners_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
     MyFlag::retConnectAbilityWithExtensionType = ERR_OK;
 }
 
@@ -3219,36 +3785,20 @@ HWTEST_F(AgentManagerServiceTest, CompleteAgentHostConnect_002, TestSize.Level1)
     hostKey.abilityName = "LowCodeExtAbility";
     plan.hostKey = hostKey;
     plan.hostUid = IPCSkeleton::GetCallingUid();
-    plan.hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey);
+    plan.hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "");
     AAFwk::Want want;
     want.SetElementName("", "lowcode.bundle", "LowCodeExtAbility", "entry");
+
+    auto session = std::make_shared<AgentHostSession>();
+    session->key = hostKey;
+    session->hostUid = plan.hostUid;
+    session->hostConnection = plan.hostConnection;
+    session->agents["agentA"] = LowCodeAgentRecord { nullptr, plan.hostUid, true, plan.hostConnection };
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
 
     EXPECT_EQ(service->CompleteAgentHostConnect(want, "agentA", plan), ERR_OK);
     ASSERT_NE(MyFlag::lastConnectAbilityConnection, nullptr);
     EXPECT_EQ(MyFlag::lastConnectAbilityConnection->AsObject(), plan.hostConnection->AsObject());
-}
-
-/**
-* @tc.name  : NotifyAgentInvokedLocked_001
-* @tc.number: NotifyAgentInvokedLocked_001
-* @tc.desc  : Test NotifyAgentInvokedLocked returns false when no remote object is cached
-*/
-HWTEST_F(AgentManagerServiceTest, NotifyAgentInvokedLocked_001, TestSize.Level1)
-{
-    AgentHostSession session;
-    EXPECT_FALSE(AgentManagerService::GetInstance()->NotifyAgentInvokedLocked(session, "agentA"));
-}
-
-/**
-* @tc.name  : NotifyAgentInvokedLocked_002
-* @tc.number: NotifyAgentInvokedLocked_002
-* @tc.desc  : Test NotifyAgentInvokedLocked returns false when the remote object is not an IAgentReceiver
-*/
-HWTEST_F(AgentManagerServiceTest, NotifyAgentInvokedLocked_002, TestSize.Level1)
-{
-    AgentHostSession session;
-    session.remoteObject = sptr<MockAbilityConnection>::MakeSptr()->AsObject();
-    EXPECT_FALSE(AgentManagerService::GetInstance()->NotifyAgentInvokedLocked(session, "agentA"));
 }
 
 /**
@@ -3270,29 +3820,28 @@ HWTEST_F(AgentManagerServiceTest, HandleAgentHostConnectDone_001, TestSize.Level
     auto session = std::make_shared<AgentHostSession>();
     session->key = hostKey;
     session->hostUid = callingUid;
-    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey);
+    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "");
     session->callerConnections[remote] = connection;
-    session->agents["agentA"] = LowCodeAgentRecord { remote, true };
-    service->agentHostSessions_[hostKey] = session;
-    service->agentOwners_[{callingUid, "agentA"}] = session;
-    AgentManagerService::TrackedConnectionRecord record;
+    session->agents["agentA"] = LowCodeAgentRecord { remote, callingUid, true };
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+    AgentConnectManager::GetInstance().agentOwners_[{callingUid, "agentA"}] = session;
+    TrackedConnectionRecord record;
     record.callerUid = callingUid;
     record.callerRemote = remote;
     record.serviceConnection = session->hostConnection;
     record.isLowCode = true;
     record.hostKey = hostKey;
-    service->trackedConnections_[remote] = record;
-    service->callerConnectionCounts_[callingUid] = 1;
+    AgentConnectManager::GetInstance().trackedConnections_[remote] = record;
 
-    AppExecFwk::ElementName element("", "lowcode.bundle", "LowCodeExtAbility", "entry");
-    service->HandleAgentHostConnectDone(hostKey, element, nullptr, ERR_INVALID_VALUE);
+    auto request = BuildHostConnectDoneRequest(hostKey, remote, "agentA", nullptr);
+    request.resultCode = ERR_INVALID_VALUE;
+    service->HandleAgentHostConnectDone(request);
 
     EXPECT_EQ(connection->connectDoneCount, 1);
     EXPECT_EQ(connection->lastConnectResultCode, ERR_INVALID_VALUE);
-    EXPECT_TRUE(service->agentHostSessions_.empty());
-    EXPECT_TRUE(service->agentOwners_.empty());
-    EXPECT_TRUE(service->trackedConnections_.empty());
-    EXPECT_TRUE(service->callerConnectionCounts_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentOwners_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
 }
 
 /**
@@ -3303,13 +3852,12 @@ HWTEST_F(AgentManagerServiceTest, HandleAgentHostConnectDone_001, TestSize.Level
 HWTEST_F(AgentManagerServiceTest, ReleaseTrackedConnection_001, TestSize.Level1)
 {
     auto connection = sptr<MockAbilityConnection>::MakeSptr();
-    AgentManagerService::TrackedConnectionRecord record;
+    TrackedConnectionRecord record;
     record.callerUid = 100;
-    AgentManagerService::GetInstance()->trackedConnections_.emplace(connection->AsObject(), record);
+    AgentConnectManager::GetInstance().trackedConnections_.emplace(connection->AsObject(), record);
 
-    AgentManagerService::GetInstance()->ReleaseTrackedConnection(connection);
-    EXPECT_TRUE(AgentManagerService::GetInstance()->trackedConnections_.empty());
-    EXPECT_TRUE(AgentManagerService::GetInstance()->callerConnectionCounts_.empty());
+    AgentConnectManager::GetInstance().ReleaseTrackedConnection(connection);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
 }
 
 /**
@@ -3320,99 +3868,12 @@ HWTEST_F(AgentManagerServiceTest, ReleaseTrackedConnection_001, TestSize.Level1)
 HWTEST_F(AgentManagerServiceTest, ReleaseTrackedConnection_002, TestSize.Level1)
 {
     auto connection = sptr<MockAbilityConnection>::MakeSptr();
-    AgentManagerService::TrackedConnectionRecord record;
+    TrackedConnectionRecord record;
     record.callerUid = 100;
-    AgentManagerService::GetInstance()->trackedConnections_.emplace(connection->AsObject(), record);
-    AgentManagerService::GetInstance()->callerConnectionCounts_[100] = 2;
+    AgentConnectManager::GetInstance().trackedConnections_.emplace(connection->AsObject(), record);
 
-    AgentManagerService::GetInstance()->ReleaseTrackedConnection(connection);
-    EXPECT_TRUE(AgentManagerService::GetInstance()->trackedConnections_.empty());
-    ASSERT_EQ(AgentManagerService::GetInstance()->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(AgentManagerService::GetInstance()->callerConnectionCounts_[100], 1);
-}
-
-/**
-* @tc.name  : ReleaseCallerConnectionCountLocked_001
-* @tc.number: ReleaseCallerConnectionCountLocked_001
-* @tc.desc  : Test ReleaseCallerConnectionCountLocked returns false for unknown connection
-*/
-HWTEST_F(AgentManagerServiceTest, ReleaseCallerConnectionCountLocked_001, TestSize.Level1)
-{
-    auto callerRemote = sptr<IRemoteObject>(new (std::nothrow) IPCObjectStub(u"unknown.remote"));
-    EXPECT_FALSE(AgentManagerService::GetInstance()->ReleaseCallerConnectionCountLocked(callerRemote));
-}
-
-/**
-* @tc.name  : ReleaseCallerConnectionCountLocked_002
-* @tc.number: ReleaseCallerConnectionCountLocked_002
-* @tc.desc  : Test ReleaseCallerConnectionCountLocked returns false when caller count entry is missing
-*/
-HWTEST_F(AgentManagerServiceTest, ReleaseCallerConnectionCountLocked_002, TestSize.Level1)
-{
-    auto connection = sptr<MockAbilityConnection>::MakeSptr();
-    AgentManagerService::TrackedConnectionRecord record;
-    record.callerUid = 100;
-    record.callerRemote = connection->AsObject();
-    AgentManagerService::GetInstance()->trackedConnections_.emplace(connection->AsObject(), record);
-
-    EXPECT_FALSE(AgentManagerService::GetInstance()->ReleaseCallerConnectionCountLocked(connection->AsObject()));
-}
-
-/**
-* @tc.name  : ReleaseCallerConnectionCountLocked_003
-* @tc.number: ReleaseCallerConnectionCountLocked_003
-* @tc.desc  : Test ReleaseCallerConnectionCountLocked decrements remaining count
-*/
-HWTEST_F(AgentManagerServiceTest, ReleaseCallerConnectionCountLocked_003, TestSize.Level1)
-{
-    auto connection = sptr<MockAbilityConnection>::MakeSptr();
-    AgentManagerService::TrackedConnectionRecord record;
-    record.callerUid = 100;
-    record.callerRemote = connection->AsObject();
-    AgentManagerService::GetInstance()->trackedConnections_.emplace(connection->AsObject(), record);
-    AgentManagerService::GetInstance()->callerConnectionCounts_[100] = 2;
-
-    EXPECT_TRUE(AgentManagerService::GetInstance()->ReleaseCallerConnectionCountLocked(connection->AsObject()));
-    ASSERT_EQ(AgentManagerService::GetInstance()->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(AgentManagerService::GetInstance()->callerConnectionCounts_[100], 1);
-}
-
-/**
-* @tc.name  : ReleaseCallerConnectionCountLocked_004
-* @tc.number: ReleaseCallerConnectionCountLocked_004
-* @tc.desc  : Test ReleaseCallerConnectionCountLocked erases the last caller count entry
-*/
-HWTEST_F(AgentManagerServiceTest, ReleaseCallerConnectionCountLocked_004, TestSize.Level1)
-{
-    auto connection = sptr<MockAbilityConnection>::MakeSptr();
-    AgentManagerService::TrackedConnectionRecord record;
-    record.callerUid = 100;
-    record.callerRemote = connection->AsObject();
-    AgentManagerService::GetInstance()->trackedConnections_.emplace(connection->AsObject(), record);
-    AgentManagerService::GetInstance()->callerConnectionCounts_[100] = 1;
-
-    EXPECT_TRUE(AgentManagerService::GetInstance()->ReleaseCallerConnectionCountLocked(connection->AsObject()));
-    EXPECT_TRUE(AgentManagerService::GetInstance()->callerConnectionCounts_.empty());
-}
-
-/**
-* @tc.name  : ReleaseCallerConnectionCountLocked_005
-* @tc.number: ReleaseCallerConnectionCountLocked_005
-* @tc.desc  : Test ReleaseCallerConnectionCountLocked ignores non-counted connections
-*/
-HWTEST_F(AgentManagerServiceTest, ReleaseCallerConnectionCountLocked_005, TestSize.Level1)
-{
-    auto connection = sptr<MockAbilityConnection>::MakeSptr();
-    AgentManagerService::TrackedConnectionRecord record;
-    record.callerUid = 100;
-    record.callerRemote = connection->AsObject();
-    record.countTowardsCallerLimit = false;
-    AgentManagerService::GetInstance()->trackedConnections_.emplace(connection->AsObject(), record);
-    AgentManagerService::GetInstance()->callerConnectionCounts_[100] = 2;
-
-    EXPECT_TRUE(AgentManagerService::GetInstance()->ReleaseCallerConnectionCountLocked(connection->AsObject()));
-    ASSERT_EQ(AgentManagerService::GetInstance()->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(AgentManagerService::GetInstance()->callerConnectionCounts_[100], 2);
+    AgentConnectManager::GetInstance().ReleaseTrackedConnection(connection);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
 }
 
 /**
@@ -3423,12 +3884,9 @@ HWTEST_F(AgentManagerServiceTest, ReleaseCallerConnectionCountLocked_005, TestSi
 HWTEST_F(AgentManagerServiceTest, ReleaseTrackedConnection_003, TestSize.Level1)
 {
     sptr<AAFwk::IAbilityConnection> connection = nullptr;
-    AgentManagerService::GetInstance()->callerConnectionCounts_[100] = 1;
 
-    AgentManagerService::GetInstance()->ReleaseTrackedConnection(connection);
+    AgentConnectManager::GetInstance().ReleaseTrackedConnection(connection);
 
-    ASSERT_EQ(AgentManagerService::GetInstance()->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(AgentManagerService::GetInstance()->callerConnectionCounts_[100], 1);
 }
 
 /**
@@ -3439,34 +3897,27 @@ HWTEST_F(AgentManagerServiceTest, ReleaseTrackedConnection_003, TestSize.Level1)
 HWTEST_F(AgentManagerServiceTest, ReleaseTrackedConnection_004, TestSize.Level1)
 {
     auto connection = sptr<MockAbilityConnection>::MakeSptr();
-    AgentManagerService::GetInstance()->callerConnectionCounts_[100] = 1;
 
-    AgentManagerService::GetInstance()->ReleaseTrackedConnection(connection);
+    AgentConnectManager::GetInstance().ReleaseTrackedConnection(connection);
 
-    ASSERT_EQ(AgentManagerService::GetInstance()->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(AgentManagerService::GetInstance()->callerConnectionCounts_[100], 1);
 }
 
 /**
 * @tc.name  : ReleaseTrackedConnection_005
 * @tc.number: ReleaseTrackedConnection_005
-* @tc.desc  : Test ReleaseTrackedConnection erases non-counted tracking without changing caller quota bookkeeping
+* @tc.desc  : Test ReleaseTrackedConnection erases tracking state
 */
 HWTEST_F(AgentManagerServiceTest, ReleaseTrackedConnection_005, TestSize.Level1)
 {
     auto connection = sptr<MockAbilityConnection>::MakeSptr();
-    AgentManagerService::TrackedConnectionRecord record;
+    TrackedConnectionRecord record;
     record.callerUid = 100;
     record.callerRemote = connection->AsObject();
-    record.countTowardsCallerLimit = false;
-    AgentManagerService::GetInstance()->trackedConnections_.emplace(connection->AsObject(), record);
-    AgentManagerService::GetInstance()->callerConnectionCounts_[100] = 2;
+    AgentConnectManager::GetInstance().trackedConnections_.emplace(connection->AsObject(), record);
 
-    AgentManagerService::GetInstance()->ReleaseTrackedConnection(connection);
+    AgentConnectManager::GetInstance().ReleaseTrackedConnection(connection);
 
-    EXPECT_TRUE(AgentManagerService::GetInstance()->trackedConnections_.empty());
-    ASSERT_EQ(AgentManagerService::GetInstance()->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(AgentManagerService::GetInstance()->callerConnectionCounts_[100], 2);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
 }
 
 /**
@@ -3504,17 +3955,50 @@ HWTEST_F(AgentManagerServiceTest, HandleCallerConnectionDied_003, TestSize.Level
     auto callerConnection = sptr<MockAbilityConnection>::MakeSptr();
     auto serviceConnection = sptr<MockAbilityConnection>::MakeSptr();
     auto callerRemote = callerConnection->AsObject();
-    AgentManagerService::TrackedConnectionRecord record;
+    TrackedConnectionRecord record;
     record.callerUid = 100;
     record.serviceConnection = serviceConnection;
     record.callerRemote = callerRemote;
-    AgentManagerService::GetInstance()->trackedConnections_.emplace(callerRemote, record);
-    AgentManagerService::GetInstance()->callerConnectionCounts_[100] = 1;
+    AgentConnectManager::GetInstance().trackedConnections_.emplace(callerRemote, record);
 
     AgentManagerService::GetInstance()->HandleCallerConnectionDied(wptr<IRemoteObject>(callerRemote));
     EXPECT_EQ(MyFlag::lastDisconnectAbilityConnection->AsObject(), serviceConnection->AsObject());
-    EXPECT_TRUE(AgentManagerService::GetInstance()->trackedConnections_.empty());
-    EXPECT_TRUE(AgentManagerService::GetInstance()->callerConnectionCounts_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
+    MyFlag::retDisconnectAbility = ERR_OK;
+}
+
+/**
+* @tc.name  : HandleCallerConnectionDied_008
+* @tc.number: HandleCallerConnectionDied_008
+* @tc.desc  : Test standard-Agent caller death releases tracked quota after immediate AMS failure.
+*/
+HWTEST_F(AgentManagerServiceTest, HandleCallerConnectionDied_008, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    int32_t callerUid = IPCSkeleton::GetCallingUid();
+    std::vector<sptr<MockAbilityConnection>> connections;
+    for (size_t i = 0; i < AGENT_MGR_QUOTA_DEAUTH_PROBE_COUNT; i++) {
+        auto connection = sptr<MockAbilityConnection>::MakeSptr();
+        connections.emplace_back(connection);
+        auto request = BuildStandardConnectRequest(connection, "agent" + std::to_string(i), 2000 + i);
+        ASSERT_EQ(AgentConnectManager::GetInstance().RegisterStandardAgentConnection(request), ERR_OK);
+    }
+    ASSERT_EQ(AgentConnectManager::GetInstance().callerQuotas_[callerUid].size(),
+        AGENT_MGR_QUOTA_DEAUTH_PROBE_COUNT);
+
+    MyFlag::retDisconnectAbility = ERR_INVALID_VALUE;
+    auto deadRemote = connections[0]->AsObject();
+    service->HandleCallerConnectionDied(wptr<IRemoteObject>(deadRemote));
+
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.count(deadRemote) == 0);
+    ASSERT_EQ(AgentConnectManager::GetInstance().callerQuotas_[callerUid].size(),
+        AGENT_MGR_QUOTA_DEAUTH_PROBE_COUNT - 1);
+
+    auto newConnection = sptr<MockAbilityConnection>::MakeSptr();
+    auto newRequest = BuildStandardConnectRequest(newConnection, "agent5", 3000);
+    EXPECT_EQ(AgentConnectManager::GetInstance().RegisterStandardAgentConnection(newRequest), ERR_OK);
+    EXPECT_EQ(AgentConnectManager::GetInstance().callerQuotas_[callerUid].size(),
+        AGENT_MGR_QUOTA_DEAUTH_PROBE_COUNT);
     MyFlag::retDisconnectAbility = ERR_OK;
 }
 
@@ -3527,17 +4011,15 @@ HWTEST_F(AgentManagerServiceTest, HandleCallerConnectionDied_004, TestSize.Level
 {
     auto callerConnection = sptr<MockAbilityConnection>::MakeSptr();
     auto callerRemote = callerConnection->AsObject();
-    AgentManagerService::TrackedConnectionRecord record;
+    TrackedConnectionRecord record;
     record.callerUid = 100;
     record.callerRemote = callerRemote;
-    AgentManagerService::GetInstance()->trackedConnections_.emplace(callerRemote, record);
-    AgentManagerService::GetInstance()->callerConnectionCounts_[100] = 1;
+    AgentConnectManager::GetInstance().trackedConnections_.emplace(callerRemote, record);
 
     AgentManagerService::GetInstance()->HandleCallerConnectionDied(wptr<IRemoteObject>(callerRemote));
 
     EXPECT_EQ(MyFlag::lastDisconnectAbilityConnection, nullptr);
-    EXPECT_TRUE(AgentManagerService::GetInstance()->trackedConnections_.empty());
-    EXPECT_TRUE(AgentManagerService::GetInstance()->callerConnectionCounts_.empty());
+    EXPECT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1u);
 }
 
 /**
@@ -3562,45 +4044,42 @@ HWTEST_F(AgentManagerServiceTest, HandleCallerConnectionDied_005, TestSize.Level
     auto session = std::make_shared<AgentHostSession>();
     session->key = hostKey;
     session->hostUid = callingUid;
-    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey);
+    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "");
     session->callerConnections[remoteA] = connectionA;
     session->callerConnections[remoteB] = connectionB;
-    session->agents["agentA"] = LowCodeAgentRecord { remoteA, false };
-    session->agents["agentB"] = LowCodeAgentRecord { remoteB, false };
-    service->agentHostSessions_[hostKey] = session;
-    service->agentOwners_[{callingUid, "agentA"}] = session;
-    service->agentOwners_[{callingUid, "agentB"}] = session;
+    session->agents["agentA"] = LowCodeAgentRecord { remoteA, callingUid, false };
+    session->agents["agentB"] = LowCodeAgentRecord { remoteB, callingUid, false };
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+    AgentConnectManager::GetInstance().agentOwners_[{callingUid, "agentA"}] = session;
+    AgentConnectManager::GetInstance().agentOwners_[{callingUid, "agentB"}] = session;
 
-    AgentManagerService::TrackedConnectionRecord recordA;
+    TrackedConnectionRecord recordA;
     recordA.callerUid = callingUid;
     recordA.callerRemote = remoteA;
     recordA.serviceConnection = session->hostConnection;
     recordA.hostKey = hostKey;
     recordA.isLowCode = true;
-    service->trackedConnections_[remoteA] = recordA;
+    AgentConnectManager::GetInstance().trackedConnections_[remoteA] = recordA;
 
-    AgentManagerService::TrackedConnectionRecord recordB;
+    TrackedConnectionRecord recordB;
     recordB.callerUid = callingUid;
     recordB.callerRemote = remoteB;
     recordB.serviceConnection = session->hostConnection;
     recordB.hostKey = hostKey;
     recordB.isLowCode = true;
-    service->trackedConnections_[remoteB] = recordB;
-    service->callerConnectionCounts_[callingUid] = 2;
+    AgentConnectManager::GetInstance().trackedConnections_[remoteB] = recordB;
 
     service->HandleCallerConnectionDied(wptr<IRemoteObject>(remoteA));
 
     EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 0);
-    ASSERT_EQ(service->agentHostSessions_.size(), 1);
-    EXPECT_EQ(service->agentHostSessions_.begin()->second->callerConnections.size(), 1);
-    EXPECT_EQ(service->agentHostSessions_.begin()->second->agents.size(), 1);
-    EXPECT_TRUE(service->agentHostSessions_.begin()->second->agents.count("agentB") > 0);
-    ASSERT_EQ(service->agentOwners_.size(), 1);
-    EXPECT_TRUE(service->agentOwners_.count({ callingUid, "agentB" }) > 0);
-    ASSERT_EQ(service->trackedConnections_.size(), 1);
-    EXPECT_TRUE(service->trackedConnections_.count(remoteB) > 0);
-    ASSERT_EQ(service->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(service->callerConnectionCounts_.begin()->second, 1);
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->callerConnections.size(), 1);
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.size(), 2);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.count("agentB") > 0);
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentOwners_.size(), 2);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentOwners_.count({ callingUid, "agentB" }) > 0);
+    ASSERT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.count(remoteB) > 0);
 }
 
 /**
@@ -3623,37 +4102,95 @@ HWTEST_F(AgentManagerServiceTest, HandleCallerConnectionDied_006, TestSize.Level
     auto session = std::make_shared<AgentHostSession>();
     session->key = hostKey;
     session->hostUid = callingUid;
-    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey);
+    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "");
     session->callerConnections[remote] = connection;
-    session->agents["agentA"] = LowCodeAgentRecord { remote, false };
-    service->agentHostSessions_[hostKey] = session;
-    service->agentOwners_[{callingUid, "agentA"}] = session;
+    session->agents["agentA"] = LowCodeAgentRecord { remote, callingUid, false, session->hostConnection };
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+    AgentConnectManager::GetInstance().agentOwners_[{callingUid, "agentA"}] = session;
 
-    AgentManagerService::TrackedConnectionRecord record;
+    TrackedConnectionRecord record;
     record.callerUid = callingUid;
     record.callerRemote = remote;
     record.serviceConnection = session->hostConnection;
     record.hostKey = hostKey;
     record.isLowCode = true;
-    service->trackedConnections_[remote] = record;
-    service->callerConnectionCounts_[callingUid] = 1;
+    AgentConnectManager::GetInstance().trackedConnections_[remote] = record;
 
     service->HandleCallerConnectionDied(wptr<IRemoteObject>(remote));
 
     EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 1);
-    ASSERT_EQ(service->agentHostSessions_.size(), 1);
-    EXPECT_TRUE(service->agentHostSessions_.begin()->second->isDisconnecting);
-    EXPECT_TRUE(service->agentHostSessions_.begin()->second->callerConnections.empty());
-    EXPECT_TRUE(service->agentHostSessions_.begin()->second->agents.empty());
-    EXPECT_TRUE(service->agentOwners_.empty());
-    EXPECT_TRUE(service->trackedConnections_.empty());
-    EXPECT_TRUE(service->callerConnectionCounts_.empty());
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents["agentA"].isDisconnecting);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->callerConnections.empty());
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.size(), 1u);
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentOwners_.size(), 1u);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
     ASSERT_NE(MyFlag::lastDisconnectAbilityConnection, nullptr);
     EXPECT_EQ(MyFlag::lastDisconnectAbilityConnection->AsObject(), session->hostConnection->AsObject());
 
-    AppExecFwk::ElementName element("", "lowcode.bundle", "LowCodeExtAbility", "entry");
-    service->HandleAgentHostDisconnectDone(hostKey, element, ERR_OK);
-    EXPECT_TRUE(service->agentHostSessions_.empty());
+    service->HandleAgentHostDisconnectDone(
+        BuildHostDisconnectDoneRequest(hostKey, nullptr, { "agentA" }));
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.empty());
+}
+
+/**
+* @tc.name  : HandleCallerConnectionDied_ShouldCleanupLowCodeAgentWhenDisconnectFails
+* @tc.number: HandleCallerConnectionDied_007
+* @tc.desc  : Test low-code caller death removes dead AgentIds when AMS disconnect scheduling fails
+*/
+HWTEST_F(AgentManagerServiceTest, HandleCallerConnectionDied_007, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    int32_t callingUid = IPCSkeleton::GetCallingUid();
+    AgentHostKey hostKey;
+    hostKey.userId = callingUid / 200000;
+    hostKey.bundleName = "lowcode.bundle";
+    hostKey.moduleName = "entry";
+    hostKey.abilityName = "LowCodeExtAbility";
+
+    auto deadConnection = sptr<MockAbilityConnection>::MakeSptr();
+    auto deadRemote = deadConnection->AsObject();
+    auto liveConnection = sptr<MockAbilityConnection>::MakeSptr();
+    auto liveRemote = liveConnection->AsObject();
+    auto session = std::make_shared<AgentHostSession>();
+    session->key = hostKey;
+    session->hostUid = callingUid;
+    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "");
+    session->callerConnections[deadRemote] = deadConnection;
+    session->callerConnections[liveRemote] = liveConnection;
+    session->agents["agentA"] = LowCodeAgentRecord { deadRemote, callingUid, false, session->hostConnection };
+    session->agents["agentB"] = LowCodeAgentRecord { liveRemote, callingUid, false, session->hostConnection };
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+    AgentConnectManager::GetInstance().agentOwners_[{callingUid, "agentA"}] = session;
+    AgentConnectManager::GetInstance().agentOwners_[{callingUid, "agentB"}] = session;
+
+    TrackedConnectionRecord deadRecord;
+    deadRecord.callerUid = callingUid;
+    deadRecord.callerRemote = deadRemote;
+    deadRecord.serviceConnection = session->hostConnection;
+    deadRecord.hostKey = hostKey;
+    deadRecord.isLowCode = true;
+    AgentConnectManager::GetInstance().trackedConnections_[deadRemote] = deadRecord;
+
+    TrackedConnectionRecord liveRecord = deadRecord;
+    liveRecord.callerRemote = liveRemote;
+    AgentConnectManager::GetInstance().trackedConnections_[liveRemote] = liveRecord;
+
+    MyFlag::retDisconnectAbility = ERR_INVALID_VALUE;
+    service->HandleCallerConnectionDied(wptr<IRemoteObject>(deadRemote));
+
+    EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 1);
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+    auto remainingSession = AgentConnectManager::GetInstance().agentHostSessions_.begin()->second;
+    ASSERT_NE(remainingSession, nullptr);
+    EXPECT_TRUE(remainingSession->callerConnections.count(deadRemote) == 0);
+    EXPECT_TRUE(remainingSession->callerConnections.count(liveRemote) > 0);
+    EXPECT_TRUE(remainingSession->agents.count("agentA") == 0);
+    EXPECT_TRUE(remainingSession->agents.count("agentB") > 0);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentOwners_.count({callingUid, "agentA"}) == 0);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentOwners_.count({callingUid, "agentB"}) > 0);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.count(deadRemote) == 0);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.count(liveRemote) > 0);
 }
 
 /**
@@ -3664,16 +4201,13 @@ HWTEST_F(AgentManagerServiceTest, HandleCallerConnectionDied_006, TestSize.Level
 HWTEST_F(AgentManagerServiceTest, HandleConnectionDone_001, TestSize.Level1)
 {
     auto connection = sptr<MockAbilityConnection>::MakeSptr();
-    AgentManagerService::TrackedConnectionRecord record;
+    TrackedConnectionRecord record;
     record.callerUid = 100;
-    AgentManagerService::GetInstance()->trackedConnections_.emplace(connection->AsObject(), record);
-    AgentManagerService::GetInstance()->callerConnectionCounts_[100] = 1;
+    AgentConnectManager::GetInstance().trackedConnections_.emplace(connection->AsObject(), record);
 
     AgentManagerService::GetInstance()->HandleConnectionDone(connection, ERR_OK, false);
 
-    ASSERT_EQ(AgentManagerService::GetInstance()->trackedConnections_.size(), 1);
-    ASSERT_EQ(AgentManagerService::GetInstance()->callerConnectionCounts_.size(), 1);
-    EXPECT_EQ(AgentManagerService::GetInstance()->callerConnectionCounts_[100], 1);
+    ASSERT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1);
 }
 
 /**
@@ -3684,15 +4218,1129 @@ HWTEST_F(AgentManagerServiceTest, HandleConnectionDone_001, TestSize.Level1)
 HWTEST_F(AgentManagerServiceTest, HandleConnectionDone_002, TestSize.Level1)
 {
     auto connection = sptr<MockAbilityConnection>::MakeSptr();
-    AgentManagerService::TrackedConnectionRecord record;
+    TrackedConnectionRecord record;
     record.callerUid = 100;
-    AgentManagerService::GetInstance()->trackedConnections_.emplace(connection->AsObject(), record);
-    AgentManagerService::GetInstance()->callerConnectionCounts_[100] = 1;
+    AgentConnectManager::GetInstance().trackedConnections_.emplace(connection->AsObject(), record);
 
     AgentManagerService::GetInstance()->HandleConnectionDone(connection, ERR_OK, true);
 
-    EXPECT_TRUE(AgentManagerService::GetInstance()->trackedConnections_.empty());
-    EXPECT_TRUE(AgentManagerService::GetInstance()->callerConnectionCounts_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
+}
+
+/**
+* @tc.name  : VerifyAgentRequestNonce_001
+* @tc.number: VerifyAgentRequestNonce_001
+* @tc.desc  : Test AGENT connect/disconnect verification requires the AgentMgr nonce
+*/
+HWTEST_F(AgentManagerServiceTest, VerifyAgentRequestNonce_001, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    auto callerConnection = sptr<MockAbilityConnection>::MakeSptr();
+    auto serviceConnection = sptr<MockAbilityConnection>::MakeSptr();
+    constexpr int64_t verificationNonce = 1000000001;
+
+    TrackedConnectionRecord record;
+    record.callerUid = IPCSkeleton::GetCallingUid();
+    record.callerRemote = callerConnection->AsObject();
+    record.serviceConnection = serviceConnection;
+    record.agentId = "testAgent";
+    record.originalIdentity = "caller.identity";
+    record.verificationNonce = verificationNonce;
+    AgentConnectManager::GetInstance().trackedConnections_[callerConnection->AsObject()] = record;
+
+    AAFwk::Want want;
+    want.SetParam(AGENTID_KEY, std::string("testAgent"));
+    SetAgentVerificationNonceParam(want, verificationNonce);
+    std::string callerIdentity;
+    EXPECT_EQ(service->VerifyAgentConnectRequest(want, serviceConnection, callerIdentity), ERR_OK);
+    EXPECT_EQ(callerIdentity, "caller.identity");
+
+    callerIdentity.clear();
+    EXPECT_EQ(service->VerifyAgentDisconnectRequests({ want }, serviceConnection, callerIdentity), ERR_OK);
+    EXPECT_EQ(callerIdentity, "caller.identity");
+}
+
+/**
+* @tc.name  : VerifyAgentRequestNonce_002
+* @tc.number: VerifyAgentRequestNonce_002
+* @tc.desc  : Test AGENT connect verification rejects nonce mismatch
+*/
+HWTEST_F(AgentManagerServiceTest, VerifyAgentRequestNonce_002, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    auto callerConnection = sptr<MockAbilityConnection>::MakeSptr();
+    auto serviceConnection = sptr<MockAbilityConnection>::MakeSptr();
+
+    TrackedConnectionRecord record;
+    record.callerUid = IPCSkeleton::GetCallingUid();
+    record.callerRemote = callerConnection->AsObject();
+    record.serviceConnection = serviceConnection;
+    record.agentId = "testAgent";
+    record.originalIdentity = "caller.identity";
+    record.verificationNonce = 1000000001L;
+    AgentConnectManager::GetInstance().trackedConnections_[callerConnection->AsObject()] = record;
+
+    AAFwk::Want want;
+    want.SetParam(AGENTID_KEY, std::string("testAgent"));
+    SetAgentVerificationNonceParam(want, 1000000002);
+    std::string callerIdentity;
+    EXPECT_EQ(service->VerifyAgentConnectRequest(want, serviceConnection, callerIdentity),
+        AAFwk::ERR_WRONG_INTERFACE_CALL);
+}
+
+/**
+* @tc.name  : VerifyLowCodeAgentConnectRequest_001
+* @tc.number: VerifyLowCodeAgentConnectRequest_001
+* @tc.desc  : Test low-code connect verification matches agentId under a shared host connection
+*/
+HWTEST_F(AgentManagerServiceTest, VerifyLowCodeAgentConnectRequest_001, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    auto callerConnection = sptr<MockAbilityConnection>::MakeSptr();
+    AgentHostKey hostKey;
+    hostKey.userId = IPCSkeleton::GetCallingUid() / 200000;
+    hostKey.bundleName = "bundle";
+    hostKey.moduleName = "module";
+    hostKey.abilityName = "ability";
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, callerConnection->AsObject(), "agentA");
+
+    auto session = std::make_shared<AgentHostSession>();
+    session->key = hostKey;
+    session->hostConnection = hostConnection;
+    LowCodeAgentRecord firstRecord;
+    firstRecord.callerRemote = callerConnection->AsObject();
+    firstRecord.callerUid = IPCSkeleton::GetCallingUid();
+    firstRecord.hostConnection = hostConnection;
+    firstRecord.originalIdentity = "first.identity";
+    firstRecord.verificationNonce = 1000000001L;
+    session->agents["agentA"] = firstRecord;
+
+    LowCodeAgentRecord secondRecord = firstRecord;
+    secondRecord.originalIdentity = "second.identity";
+    secondRecord.verificationNonce = 1000000002L;
+    session->agents["agentB"] = secondRecord;
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+
+    AAFwk::Want want;
+    want.SetParam(AGENTID_KEY, std::string("agentB"));
+    SetAgentVerificationNonceParam(want, 1000000002);
+    std::string callerIdentity;
+    EXPECT_EQ(service->VerifyAgentConnectRequest(want, hostConnection, callerIdentity), ERR_OK);
+    EXPECT_EQ(callerIdentity, "second.identity");
+}
+
+/**
+* @tc.name  : VerifyLowCodeAgentDisconnectRequests_ShouldRejectWithoutPendingBatch
+* @tc.number: VerifyLowCodeAgentDisconnectRequests_001
+* @tc.desc  : Test low-code disconnect verification rejects disconnecting records without a pending batch.
+*/
+HWTEST_F(AgentManagerServiceTest, VerifyLowCodeAgentDisconnectRequests_001, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    auto callerConnection = sptr<MockAbilityConnection>::MakeSptr();
+    AgentHostKey hostKey;
+    hostKey.userId = IPCSkeleton::GetCallingUid() / 200000;
+    hostKey.bundleName = "bundle";
+    hostKey.moduleName = "module";
+    hostKey.abilityName = "ability";
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, callerConnection->AsObject(), "agentA");
+
+    auto session = std::make_shared<AgentHostSession>();
+    session->key = hostKey;
+    session->hostConnection = hostConnection;
+    LowCodeAgentRecord record;
+    record.callerRemote = callerConnection->AsObject();
+    record.callerUid = IPCSkeleton::GetCallingUid();
+    record.hostConnection = hostConnection;
+    record.originalIdentity = "second.identity";
+    record.verificationNonce = 1000000001L;
+    record.isDisconnecting = true;
+    session->agents["agentB"] = record;
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+
+    AAFwk::Want baseWant;
+    std::vector<AAFwk::Want> verificationWants = { baseWant };
+    std::string callerIdentity;
+    EXPECT_EQ(service->VerifyAgentDisconnectRequests(verificationWants, hostConnection, callerIdentity),
+        AAFwk::CONNECTION_NOT_EXIST);
+}
+
+/**
+* @tc.name  : VerifyLowCodeAgentDisconnectRequests_ShouldAcceptVerifiedPendingBatch
+* @tc.number: VerifyLowCodeAgentDisconnectRequests_002
+* @tc.desc  : Test low-code disconnect verification matches a multi-AgentId pending batch with stored nonces.
+*/
+HWTEST_F(AgentManagerServiceTest, VerifyLowCodeAgentDisconnectRequests_002, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    auto callerConnection = sptr<MockAbilityConnection>::MakeSptr();
+    AgentHostKey hostKey;
+    hostKey.userId = IPCSkeleton::GetCallingUid() / 200000;
+    hostKey.bundleName = "bundle";
+    hostKey.moduleName = "module";
+    hostKey.abilityName = "ability";
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, callerConnection->AsObject(), "agentA");
+
+    auto session = std::make_shared<AgentHostSession>();
+    session->key = hostKey;
+    session->hostConnection = hostConnection;
+    LowCodeAgentRecord firstRecord;
+    firstRecord.callerRemote = callerConnection->AsObject();
+    firstRecord.callerUid = IPCSkeleton::GetCallingUid();
+    firstRecord.hostConnection = hostConnection;
+    firstRecord.originalIdentity = "caller.identity";
+    firstRecord.verificationNonce = 1000000001L;
+    firstRecord.isDisconnecting = true;
+    session->agents["agentA"] = firstRecord;
+    LowCodeAgentRecord secondRecord = firstRecord;
+    secondRecord.verificationNonce = 1000000002L;
+    session->agents["agentB"] = secondRecord;
+    session->pendingDisconnects[hostConnection->AsObject()] = {
+        BuildPendingDisconnectRecord("agentA", firstRecord),
+        BuildPendingDisconnectRecord("agentB", secondRecord)
+    };
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+
+    AAFwk::Want baseWant;
+    std::vector<AAFwk::Want> verificationWants = { baseWant };
+    std::string callerIdentity;
+    EXPECT_EQ(service->VerifyAgentDisconnectRequests(verificationWants, hostConnection, callerIdentity), ERR_OK);
+    EXPECT_EQ(callerIdentity, "caller.identity");
+}
+
+/**
+* @tc.name  : VerifyLowCodeAgentDisconnectRequests_ShouldRejectWrongPendingAgentId
+* @tc.number: VerifyLowCodeAgentDisconnectRequests_003
+* @tc.desc  : Test low-code disconnect verification rejects a pending batch that names an unknown AgentId.
+*/
+HWTEST_F(AgentManagerServiceTest, VerifyLowCodeAgentDisconnectRequests_003, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    auto callerConnection = sptr<MockAbilityConnection>::MakeSptr();
+    AgentHostKey hostKey;
+    hostKey.userId = IPCSkeleton::GetCallingUid() / 200000;
+    hostKey.bundleName = "bundle";
+    hostKey.moduleName = "module";
+    hostKey.abilityName = "ability";
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, callerConnection->AsObject(), "agentA");
+
+    auto session = std::make_shared<AgentHostSession>();
+    session->key = hostKey;
+    session->hostConnection = hostConnection;
+    LowCodeAgentRecord record;
+    record.callerRemote = callerConnection->AsObject();
+    record.callerUid = IPCSkeleton::GetCallingUid();
+    record.hostConnection = hostConnection;
+    record.originalIdentity = "caller.identity";
+    record.verificationNonce = 1000000001L;
+    record.isDisconnecting = true;
+    session->agents["agentA"] = record;
+    session->pendingDisconnects[hostConnection->AsObject()] = {
+        BuildPendingDisconnectRecord("agentA", record)
+    };
+    session->pendingDisconnects[hostConnection->AsObject()][0].agentId = "agentB";
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+
+    AAFwk::Want baseWant;
+    std::string callerIdentity;
+    EXPECT_EQ(service->VerifyAgentDisconnectRequests({ baseWant }, hostConnection, callerIdentity),
+        AAFwk::ERR_LOW_CODE_AGENT_DISCONNECT_BATCH_MISMATCH);
+}
+
+/**
+* @tc.name  : VerifyLowCodeAgentDisconnectRequests_ShouldRejectNonceMismatch
+* @tc.number: VerifyLowCodeAgentDisconnectRequests_004
+* @tc.desc  : Test low-code disconnect verification rejects a pending batch with a wrong nonce.
+*/
+HWTEST_F(AgentManagerServiceTest, VerifyLowCodeAgentDisconnectRequests_004, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    auto callerConnection = sptr<MockAbilityConnection>::MakeSptr();
+    AgentHostKey hostKey;
+    hostKey.userId = IPCSkeleton::GetCallingUid() / 200000;
+    hostKey.bundleName = "bundle";
+    hostKey.moduleName = "module";
+    hostKey.abilityName = "ability";
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, callerConnection->AsObject(), "agentA");
+
+    auto session = std::make_shared<AgentHostSession>();
+    session->key = hostKey;
+    session->hostConnection = hostConnection;
+    LowCodeAgentRecord record;
+    record.callerRemote = callerConnection->AsObject();
+    record.callerUid = IPCSkeleton::GetCallingUid();
+    record.hostConnection = hostConnection;
+    record.originalIdentity = "caller.identity";
+    record.verificationNonce = 1000000001L;
+    record.isDisconnecting = true;
+    session->agents["agentA"] = record;
+    session->pendingDisconnects[hostConnection->AsObject()] = {
+        BuildPendingDisconnectRecord("agentA", record)
+    };
+    session->pendingDisconnects[hostConnection->AsObject()][0].verificationNonce = 1000000002L;
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+
+    AAFwk::Want baseWant;
+    std::string callerIdentity;
+    EXPECT_EQ(service->VerifyAgentDisconnectRequests({ baseWant }, hostConnection, callerIdentity),
+        AAFwk::ERR_LOW_CODE_AGENT_DISCONNECT_BATCH_MISMATCH);
+}
+
+/**
+* @tc.name  : VerifyLowCodeAgentDisconnectRequests_ShouldRejectMissingNonce
+* @tc.number: VerifyLowCodeAgentDisconnectRequests_005
+* @tc.desc  : Test low-code disconnect verification rejects a pending batch without nonce material.
+*/
+HWTEST_F(AgentManagerServiceTest, VerifyLowCodeAgentDisconnectRequests_005, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    auto callerConnection = sptr<MockAbilityConnection>::MakeSptr();
+    AgentHostKey hostKey;
+    hostKey.userId = IPCSkeleton::GetCallingUid() / 200000;
+    hostKey.bundleName = "bundle";
+    hostKey.moduleName = "module";
+    hostKey.abilityName = "ability";
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, callerConnection->AsObject(), "agentA");
+
+    auto session = std::make_shared<AgentHostSession>();
+    session->key = hostKey;
+    session->hostConnection = hostConnection;
+    LowCodeAgentRecord record;
+    record.callerRemote = callerConnection->AsObject();
+    record.callerUid = IPCSkeleton::GetCallingUid();
+    record.hostConnection = hostConnection;
+    record.originalIdentity = "caller.identity";
+    record.isDisconnecting = true;
+    session->agents["agentA"] = record;
+    session->pendingDisconnects[hostConnection->AsObject()] = {
+        BuildPendingDisconnectRecord("agentA", record)
+    };
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+
+    AAFwk::Want baseWant;
+    std::string callerIdentity;
+    EXPECT_EQ(service->VerifyAgentDisconnectRequests({ baseWant }, hostConnection, callerIdentity),
+        AAFwk::ERR_LOW_CODE_AGENT_DISCONNECT_BATCH_MISMATCH);
+}
+
+/**
+* @tc.name  : VerifyLowCodeAgentDisconnectRequests_ShouldRejectMissingCallerRemote
+* @tc.number: VerifyLowCodeAgentDisconnectRequests_006
+* @tc.desc  : Test low-code disconnect verification rejects a pending batch without caller remote material.
+*/
+HWTEST_F(AgentManagerServiceTest, VerifyLowCodeAgentDisconnectRequests_006, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    auto callerConnection = sptr<MockAbilityConnection>::MakeSptr();
+    AgentHostKey hostKey;
+    hostKey.userId = IPCSkeleton::GetCallingUid() / 200000;
+    hostKey.bundleName = "bundle";
+    hostKey.moduleName = "module";
+    hostKey.abilityName = "ability";
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, callerConnection->AsObject(), "agentA");
+
+    auto session = std::make_shared<AgentHostSession>();
+    session->key = hostKey;
+    session->hostConnection = hostConnection;
+    LowCodeAgentRecord record;
+    record.callerRemote = callerConnection->AsObject();
+    record.callerUid = IPCSkeleton::GetCallingUid();
+    record.hostConnection = hostConnection;
+    record.originalIdentity = "caller.identity";
+    record.verificationNonce = 1000000001L;
+    record.isDisconnecting = true;
+    session->agents["agentA"] = record;
+    session->pendingDisconnects[hostConnection->AsObject()] = {
+        BuildPendingDisconnectRecord("agentA", record)
+    };
+    session->pendingDisconnects[hostConnection->AsObject()][0].callerRemote = nullptr;
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+
+    AAFwk::Want baseWant;
+    std::string callerIdentity;
+    EXPECT_EQ(service->VerifyAgentDisconnectRequests({ baseWant }, hostConnection, callerIdentity),
+        AAFwk::ERR_LOW_CODE_AGENT_DISCONNECT_BATCH_MISMATCH);
+}
+
+/**
+* @tc.name  : VerifyLowCodeAgentDisconnectRequests_ShouldRejectCallerRemoteMismatch
+* @tc.number: VerifyLowCodeAgentDisconnectRequests_007
+* @tc.desc  : Test low-code disconnect verification rejects a pending batch owned by another caller remote.
+*/
+HWTEST_F(AgentManagerServiceTest, VerifyLowCodeAgentDisconnectRequests_007, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    auto callerConnection = sptr<MockAbilityConnection>::MakeSptr();
+    auto otherConnection = sptr<MockAbilityConnection>::MakeSptr();
+    AgentHostKey hostKey;
+    hostKey.userId = IPCSkeleton::GetCallingUid() / 200000;
+    hostKey.bundleName = "bundle";
+    hostKey.moduleName = "module";
+    hostKey.abilityName = "ability";
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, callerConnection->AsObject(), "agentA");
+
+    auto session = std::make_shared<AgentHostSession>();
+    session->key = hostKey;
+    session->hostConnection = hostConnection;
+    LowCodeAgentRecord record;
+    record.callerRemote = callerConnection->AsObject();
+    record.callerUid = IPCSkeleton::GetCallingUid();
+    record.hostConnection = hostConnection;
+    record.originalIdentity = "caller.identity";
+    record.verificationNonce = 1000000001L;
+    record.isDisconnecting = true;
+    session->agents["agentA"] = record;
+    session->pendingDisconnects[hostConnection->AsObject()] = {
+        BuildPendingDisconnectRecord("agentA", record)
+    };
+    session->pendingDisconnects[hostConnection->AsObject()][0].callerRemote = otherConnection->AsObject();
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+
+    AAFwk::Want baseWant;
+    std::string callerIdentity;
+    EXPECT_EQ(service->VerifyAgentDisconnectRequests({ baseWant }, hostConnection, callerIdentity),
+        AAFwk::ERR_LOW_CODE_AGENT_DISCONNECT_BATCH_MISMATCH);
+}
+
+/**
+* @tc.name  : ValidateNotifyLowCodeAgentCompleteRequest_001
+* @tc.number: ValidateNotifyLowCodeAgentCompleteRequest_001
+* @tc.desc  : Test ValidateNotifyLowCodeAgentCompleteRequest rejects non-system-app callers.
+*/
+HWTEST_F(AgentManagerServiceTest, ValidateNotifyLowCodeAgentCompleteRequest_001, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    MyFlag::retJudgeCallerIsAllowedToUseSystemAPI = false;
+    int32_t callingUid = 0;
+    EXPECT_EQ(service->ValidateNotifyLowCodeAgentCompleteRequest("agentA", callingUid),
+        AAFwk::ERR_NOT_SYSTEM_APP);
+    MyFlag::retJudgeCallerIsAllowedToUseSystemAPI = true;
+}
+
+/**
+* @tc.name  : ValidateNotifyLowCodeAgentCompleteRequest_002
+* @tc.number: ValidateNotifyLowCodeAgentCompleteRequest_002
+* @tc.desc  : Test ValidateNotifyLowCodeAgentCompleteRequest rejects callers without CONNECT_AGENT permission.
+*/
+HWTEST_F(AgentManagerServiceTest, ValidateNotifyLowCodeAgentCompleteRequest_002, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    MyFlag::retJudgeCallerIsAllowedToUseSystemAPI = true;
+    MyFlag::retVerifyConnectAgentPermission = false;
+    int32_t callingUid = 0;
+    EXPECT_EQ(service->ValidateNotifyLowCodeAgentCompleteRequest("agentA", callingUid),
+        ERR_PERMISSION_DENIED);
+    MyFlag::retVerifyConnectAgentPermission = true;
+}
+
+/**
+* @tc.name  : ValidateNotifyLowCodeAgentCompleteRequest_003
+* @tc.number: ValidateNotifyLowCodeAgentCompleteRequest_003
+* @tc.desc  : Test ValidateNotifyLowCodeAgentCompleteRequest rejects an empty agentId.
+*/
+HWTEST_F(AgentManagerServiceTest, ValidateNotifyLowCodeAgentCompleteRequest_003, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    MyFlag::retJudgeCallerIsAllowedToUseSystemAPI = true;
+    MyFlag::retVerifyConnectAgentPermission = true;
+    int32_t callingUid = 0;
+    EXPECT_EQ(service->ValidateNotifyLowCodeAgentCompleteRequest("", callingUid),
+        AAFwk::INVALID_PARAMETERS_ERR);
+}
+
+/**
+* @tc.name  : ValidateNotifyLowCodeAgentCompleteRequest_004
+* @tc.number: ValidateNotifyLowCodeAgentCompleteRequest_004
+* @tc.desc  : Test ValidateNotifyLowCodeAgentCompleteRequest succeeds and fills callingUid for a valid request.
+*/
+HWTEST_F(AgentManagerServiceTest, ValidateNotifyLowCodeAgentCompleteRequest_004, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    MyFlag::retJudgeCallerIsAllowedToUseSystemAPI = true;
+    MyFlag::retVerifyConnectAgentPermission = true;
+    int32_t callingUid = 0;
+    EXPECT_EQ(service->ValidateNotifyLowCodeAgentCompleteRequest("agentA", callingUid), ERR_OK);
+    EXPECT_EQ(callingUid, IPCSkeleton::GetCallingUid());
+}
+
+/**
+* @tc.name  : HasOtherAgentForCallerLocked_001
+* @tc.number: HasOtherAgentForCallerLocked_001
+* @tc.desc  : Test HasOtherAgentForCallerLocked returns true when another agent shares the same callerRemote.
+*/
+HWTEST_F(AgentManagerServiceTest, HasOtherAgentForCallerLocked_001, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    auto callerConnection = sptr<MockAbilityConnection>::MakeSptr();
+    auto callerRemote = callerConnection->AsObject();
+    auto session = std::make_shared<AgentHostSession>();
+    LowCodeAgentRecord recordA;
+    recordA.callerRemote = callerRemote;
+    recordA.callerUid = IPCSkeleton::GetCallingUid();
+    session->agents["agentA"] = recordA;
+    LowCodeAgentRecord recordB;
+    recordB.callerRemote = callerRemote;
+    recordB.callerUid = IPCSkeleton::GetCallingUid();
+    session->agents["agentB"] = recordB;
+    EXPECT_TRUE(AgentConnectManager::GetInstance().HasOtherAgentForCallerLocked(*session, "agentA", callerRemote));
+}
+
+/**
+* @tc.name  : HasOtherAgentForCallerLocked_002
+* @tc.number: HasOtherAgentForCallerLocked_002
+* @tc.desc  : Test HasOtherAgentForCallerLocked returns false when no other agent shares the callerRemote.
+*/
+HWTEST_F(AgentManagerServiceTest, HasOtherAgentForCallerLocked_002, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    auto callerConnection = sptr<MockAbilityConnection>::MakeSptr();
+    auto callerRemote = callerConnection->AsObject();
+    auto session = std::make_shared<AgentHostSession>();
+    LowCodeAgentRecord recordA;
+    recordA.callerRemote = callerRemote;
+    recordA.callerUid = IPCSkeleton::GetCallingUid();
+    session->agents["agentA"] = recordA;
+    EXPECT_FALSE(AgentConnectManager::GetInstance().HasOtherAgentForCallerLocked(*session, "agentA", callerRemote));
+}
+
+/**
+* @tc.name  : BuildAgentHostKey_003
+* @tc.number: BuildAgentHostKey_003
+* @tc.desc  : Test BuildAgentHostKey extracts userId from callingUid and appIndex/bundle/module/ability from Want.
+*/
+HWTEST_F(AgentManagerServiceTest, BuildAgentHostKey_003, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    constexpr int32_t testUid = 200000 * 3 + 5; // userId = 3
+    Want want;
+    want.SetElementName("", "test.bundle", "TestAbility", "test.module");
+    want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 2);
+    auto key = service->BuildAgentHostKey(want, testUid);
+    EXPECT_EQ(key.userId, 3);
+    EXPECT_EQ(key.appIndex, 2);
+    EXPECT_EQ(key.bundleName, "test.bundle");
+    EXPECT_EQ(key.moduleName, "test.module");
+    EXPECT_EQ(key.abilityName, "TestAbility");
+}
+
+/**
+* @tc.name  : BuildAgentHostKey_004
+* @tc.number: BuildAgentHostKey_004
+* @tc.desc  : Test BuildAgentHostKey defaults appIndex to 0 when Want omits PARAM_APP_CLONE_INDEX_KEY.
+*/
+HWTEST_F(AgentManagerServiceTest, BuildAgentHostKey_004, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    Want want;
+    want.SetElementName("", "test.bundle", "TestAbility", "test.module");
+    auto key = service->BuildAgentHostKey(want, 200000);
+    EXPECT_EQ(key.appIndex, 0);
+    EXPECT_EQ(key.userId, 1);
+}
+
+/**
+* @tc.name  : PrepareLowCodeDisconnectLocked_001
+* @tc.number: PrepareLowCodeDisconnectLocked_001
+* @tc.desc  : Test PrepareLowCodeDisconnectLocked rejects when the caller is not tracked.
+*/
+HWTEST_F(AgentManagerServiceTest, PrepareLowCodeDisconnectLocked_001, TestSize.Level1)
+{
+    auto callerConnection = sptr<MockAbilityConnection>::MakeSptr();
+    AgentDisconnectRequest request;
+    EXPECT_EQ(AgentConnectManager::GetInstance().PrepareAgentDisconnectRequest(
+        callerConnection, IPCSkeleton::GetCallingUid(), request),
+        ERR_INVALID_VALUE);
+}
+
+/**
+* @tc.name  : PrepareLowCodeDisconnectLocked_002
+* @tc.number: PrepareLowCodeDisconnectLocked_002
+* @tc.desc  : Test PrepareLowCodeDisconnectLocked reports alreadyDisconnecting when the tracked connection is mid-disconnect.
+*/
+HWTEST_F(AgentManagerServiceTest, PrepareLowCodeDisconnectLocked_002, TestSize.Level1)
+{
+    auto callerConnection = sptr<MockAbilityConnection>::MakeSptr();
+    auto callerRemote = callerConnection->AsObject();
+    TrackedConnectionRecord record;
+    record.isLowCode = true;
+    record.isDisconnecting = true;
+    AgentConnectManager::GetInstance().trackedConnections_[callerRemote] = record;
+    AgentDisconnectRequest request;
+    EXPECT_EQ(AgentConnectManager::GetInstance().PrepareAgentDisconnectRequest(
+        callerConnection, IPCSkeleton::GetCallingUid(), request), ERR_OK);
+    EXPECT_TRUE(request.alreadyDisconnecting);
+}
+
+/**
+* @tc.name  : PrepareLowCodeDisconnectLocked_003
+* @tc.number: PrepareLowCodeDisconnectLocked_003
+* @tc.desc  : Test PrepareLowCodeDisconnectLocked rejects when the host session is missing.
+*/
+HWTEST_F(AgentManagerServiceTest, PrepareLowCodeDisconnectLocked_003, TestSize.Level1)
+{
+    auto callerConnection = sptr<MockAbilityConnection>::MakeSptr();
+    auto callerRemote = callerConnection->AsObject();
+    AgentHostKey hostKey;
+    hostKey.bundleName = "missing.bundle";
+    TrackedConnectionRecord record;
+    record.isLowCode = true;
+    record.isDisconnecting = false;
+    record.hostKey = hostKey;
+    AgentConnectManager::GetInstance().trackedConnections_[callerRemote] = record;
+    AgentDisconnectRequest request;
+    EXPECT_EQ(AgentConnectManager::GetInstance().PrepareAgentDisconnectRequest(
+        callerConnection, IPCSkeleton::GetCallingUid(), request),
+        ERR_INVALID_VALUE);
+}
+
+/**
+* @tc.name  : PrepareAgentDisconnectRequest_LowCodeMarksBatchImmediately
+* @tc.number: PrepareAgentDisconnectRequest_004
+* @tc.desc  : Test low-code disconnect preparation marks the tracked record and AgentId batch in one manager transaction.
+*/
+HWTEST_F(AgentManagerServiceTest, PrepareAgentDisconnectRequest_004, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    MyFlag::retGetAgentCardByAgentId = ERR_OK;
+    MyFlag::agentCardType = static_cast<int32_t>(AgentCardType::LOW_CODE);
+    MyFlag::agentCardBundleName = "lowcode.bundle";
+    MyFlag::agentCardAbilityName = "LowCodeExtAbility";
+    MyFlag::agentCardModuleName = "entry";
+
+    auto connection = sptr<MockAbilityConnection>::MakeSptr();
+    sptr<TestAgentReceiver> receiver = new TestAgentReceiver();
+    AgentHostKey hostKey;
+    for (const auto &agentId : { std::string("agentA"), std::string("agentB") }) {
+        AAFwk::Want want;
+        want.SetParam(AGENTID_KEY, agentId);
+        want.SetElementName("", "lowcode.bundle", "LowCodeExtAbility", "entry");
+        EXPECT_EQ(service->ConnectAgentExtensionAbility(want, connection), ERR_OK);
+        ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+        hostKey = AgentConnectManager::GetInstance().agentHostSessions_.begin()->first;
+        service->HandleAgentHostConnectDone(
+            BuildHostConnectDoneRequest(hostKey, connection->AsObject(), agentId, receiver->AsObject()));
+    }
+
+    AgentDisconnectRequest request;
+    EXPECT_EQ(AgentConnectManager::GetInstance().PrepareAgentDisconnectRequest(
+        connection, IPCSkeleton::GetCallingUid(), request), ERR_OK);
+    EXPECT_TRUE(request.isLowCode);
+    ASSERT_EQ(request.lowCodeTargets.size(), 1);
+    EXPECT_EQ(request.lowCodeTargets[0].agentIds, (std::set<std::string> { "agentA", "agentB" }));
+    ASSERT_NE(request.lowCodeTargets[0].hostConnection, nullptr);
+    EXPECT_EQ(request.lowCodeTargets[0].hostConnection->pendingDisconnectAgentIds_,
+        (std::set<std::string> { "agentA", "agentB" }));
+    auto storedSession = AgentConnectManager::GetInstance().agentHostSessions_.begin()->second;
+    auto pendingIter = storedSession->pendingDisconnects.find(request.lowCodeTargets[0].hostConnection->AsObject());
+    ASSERT_NE(pendingIter, storedSession->pendingDisconnects.end());
+    ASSERT_EQ(pendingIter->second.size(), 2u);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_[connection->AsObject()].isDisconnecting);
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+    const auto &agents = AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents;
+    ASSERT_TRUE(agents.count("agentA") > 0);
+    ASSERT_TRUE(agents.count("agentB") > 0);
+    EXPECT_TRUE(agents.at("agentA").isDisconnecting);
+    EXPECT_TRUE(agents.at("agentB").isDisconnecting);
+
+    AgentDisconnectRequest duplicateRequest;
+    EXPECT_EQ(AgentConnectManager::GetInstance().PrepareAgentDisconnectRequest(
+        connection, IPCSkeleton::GetCallingUid(), duplicateRequest), ERR_OK);
+    EXPECT_TRUE(duplicateRequest.alreadyDisconnecting);
+}
+
+/**
+* @tc.name  : RestoreLowCodeDisconnectingState_KeepTrackedFlagForRemainingTargets
+* @tc.number: RestoreLowCodeDisconnectingState_001
+* @tc.desc  : Test failed-target rollback preserves tracked disconnecting state while another AgentId remains pending.
+*/
+HWTEST_F(AgentManagerServiceTest, RestoreLowCodeDisconnectingState_001, TestSize.Level1)
+{
+    auto callerConnection = sptr<MockAbilityConnection>::MakeSptr();
+    auto callerRemote = callerConnection->AsObject();
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(AgentHostKey(), callerRemote, "agentA");
+    AgentHostKey hostKey;
+    hostKey.userId = 1;
+    hostKey.bundleName = "lowcode.bundle";
+    hostKey.moduleName = "entry";
+    hostKey.abilityName = "LowCodeExtAbility";
+
+    TrackedConnectionRecord trackedRecord;
+    trackedRecord.isLowCode = true;
+    trackedRecord.isDisconnecting = true;
+    trackedRecord.hostKey = hostKey;
+    AgentConnectManager::GetInstance().trackedConnections_[callerRemote] = trackedRecord;
+
+    auto session = std::make_shared<AgentHostSession>();
+    session->key = hostKey;
+    session->hostConnection = hostConnection;
+    LowCodeAgentRecord agentA;
+    agentA.callerRemote = callerRemote;
+    agentA.callerUid = IPCSkeleton::GetCallingUid();
+    agentA.hostConnection = hostConnection;
+    agentA.originalIdentity = "caller.identity";
+    agentA.verificationNonce = 1000000001L;
+    agentA.isDisconnecting = true;
+    LowCodeAgentRecord agentB = agentA;
+    agentB.verificationNonce = 1000000002L;
+    session->agents["agentA"] = agentA;
+    session->agents["agentB"] = agentB;
+    session->pendingDisconnects[hostConnection->AsObject()] = {
+        BuildPendingDisconnectRecord("agentA", agentA),
+        BuildPendingDisconnectRecord("agentB", agentB)
+    };
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+
+    AgentConnectManager::GetInstance().RestoreLowCodeDisconnectingState(hostKey, callerRemote, { "agentA" });
+    EXPECT_FALSE(AgentConnectManager::GetInstance().agentHostSessions_[hostKey]->agents["agentA"].isDisconnecting);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_[hostKey]->agents["agentB"].isDisconnecting);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_[callerRemote].isDisconnecting);
+    auto storedSessionAfterFirstRestore = AgentConnectManager::GetInstance().agentHostSessions_[hostKey];
+    auto &pendingRecords = storedSessionAfterFirstRestore->pendingDisconnects[hostConnection->AsObject()];
+    ASSERT_EQ(pendingRecords.size(), 1u);
+    EXPECT_EQ(pendingRecords[0].agentId, "agentB");
+
+    AgentConnectManager::GetInstance().RestoreLowCodeDisconnectingState(hostKey, callerRemote, { "agentB" });
+    EXPECT_FALSE(AgentConnectManager::GetInstance().trackedConnections_[callerRemote].isDisconnecting);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_[hostKey]->pendingDisconnects.empty());
+}
+
+/**
+* @tc.name  : PrepareLowCodeCompleteLocked_001
+* @tc.number: PrepareLowCodeCompleteLocked_001
+* @tc.desc  : Test PrepareLowCodeCompleteLocked fails when the agent owner is not registered.
+*/
+HWTEST_F(AgentManagerServiceTest, PrepareLowCodeCompleteLocked_001, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    LowCodeCompleteRequest request;
+    EXPECT_EQ(AgentConnectManager::GetInstance().PrepareLowCodeComplete("absentAgent", IPCSkeleton::GetCallingUid(), request),
+        AAFwk::ERR_INVALID_AGENT_CARD_ID);
+}
+
+/**
+* @tc.name  : PrepareLowCodeCompleteLocked_002
+* @tc.number: PrepareLowCodeCompleteLocked_002
+* @tc.desc  : Test PrepareLowCodeCompleteLocked is a no-op (ERR_OK) when the agent is already disconnecting.
+*/
+HWTEST_F(AgentManagerServiceTest, PrepareLowCodeCompleteLocked_002, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    auto callerConnection = sptr<MockAbilityConnection>::MakeSptr();
+    auto callerRemote = callerConnection->AsObject();
+    auto session = std::make_shared<AgentHostSession>();
+    AgentHostKey hostKey;
+    hostKey.bundleName = "test.bundle";
+    session->key = hostKey;
+    LowCodeAgentRecord record;
+    record.callerRemote = callerRemote;
+    record.callerUid = IPCSkeleton::GetCallingUid();
+    record.isDisconnecting = true;
+    session->agents["agentA"] = record;
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+    AgentConnectManager::GetInstance().agentOwners_[{record.callerUid, "agentA"}] = session;
+
+    LowCodeCompleteRequest request;
+    EXPECT_EQ(AgentConnectManager::GetInstance().PrepareLowCodeComplete("agentA", record.callerUid, request), ERR_OK);
+    EXPECT_EQ(request.hostConnection, nullptr);
+}
+
+/**
+* @tc.name  : CollectLowCodeAgentIdsLocked_001
+* @tc.number: CollectLowCodeAgentIdsLocked_001
+* @tc.desc  : Test low-code AgentIds are derived from the host session instead of tracked connection state.
+*/
+HWTEST_F(AgentManagerServiceTest, CollectLowCodeAgentIdsLocked_001, TestSize.Level1)
+{
+    auto callerConnection = sptr<MockAbilityConnection>::MakeSptr();
+    auto otherConnection = sptr<MockAbilityConnection>::MakeSptr();
+    auto callerRemote = callerConnection->AsObject();
+    auto otherRemote = otherConnection->AsObject();
+    AgentHostSession session;
+    LowCodeAgentRecord recordA;
+    recordA.callerRemote = callerRemote;
+    session.agents["agentA"] = recordA;
+    LowCodeAgentRecord recordB;
+    recordB.callerRemote = callerRemote;
+    session.agents["agentB"] = recordB;
+    LowCodeAgentRecord recordC;
+    recordC.callerRemote = otherRemote;
+    session.agents["agentC"] = recordC;
+
+    auto agentIds = AgentConnectManager::GetInstance().CollectLowCodeAgentIdsLocked(session, callerRemote);
+    EXPECT_EQ(agentIds.size(), 2u);
+    EXPECT_EQ(agentIds.count("agentA"), 1u);
+    EXPECT_EQ(agentIds.count("agentB"), 1u);
+    EXPECT_EQ(agentIds.count("agentC"), 0u);
+}
+
+// ===================== agent_manager_service.cpp branches =====================
+
+/**
+* @tc.name  : BuildStandardQuotaKey_001
+* @tc.number: BuildStandardQuotaKey_001
+* @tc.desc  : Test BuildStandardQuotaKey builds a non-low-code key from Want + agentId + callingUid.
+*/
+HWTEST_F(AgentManagerServiceTest, BuildStandardQuotaKey_001, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    Want want;
+    want.SetElementName("", "test.bundle", "TestAbility", "test.module");
+    auto key = service->BuildStandardQuotaKey(want, "agentA", 200000);
+    EXPECT_FALSE(key.isLowCode);
+    EXPECT_EQ(key.agentId, "agentA");
+    EXPECT_EQ(key.hostKey.bundleName, "test.bundle");
+}
+
+/**
+* @tc.name  : AdmitStandardAgentConnectionLocked_001
+* @tc.number: AdmitStandardAgentConnectionLocked_001
+* @tc.desc  : Test AdmitStandardAgentConnectionLocked admits a new quota key and increments its count.
+*/
+HWTEST_F(AgentManagerServiceTest, AdmitStandardAgentConnectionLocked_001, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    AgentConnectManager::GetInstance().callerQuotas_.clear();
+    AgentQuotaKey key;
+    key.agentId = "agentA";
+    key.isLowCode = false;
+    int32_t callerUid = IPCSkeleton::GetCallingUid();
+    EXPECT_EQ(AgentConnectManager::GetInstance().AdmitStandardAgentConnectionLocked(callerUid, key), ERR_OK);
+    ASSERT_EQ(AgentConnectManager::GetInstance().callerQuotas_[callerUid].count(key), 1u);
+    EXPECT_EQ(AgentConnectManager::GetInstance().callerQuotas_[callerUid][key], 1);
+}
+
+/**
+* @tc.name  : AdmitStandardAgentConnectionLocked_002
+* @tc.number: AdmitStandardAgentConnectionLocked_002
+* @tc.desc  : Test AdmitStandardAgentConnectionLocked rejects when the caller already has 5 distinct quota keys.
+*/
+HWTEST_F(AgentManagerServiceTest, AdmitStandardAgentConnectionLocked_002, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    AgentConnectManager::GetInstance().callerQuotas_.clear();
+    int32_t callerUid = IPCSkeleton::GetCallingUid();
+    for (int i = 0; i < 5; ++i) {
+        AgentQuotaKey key;
+        key.agentId = "agent" + std::to_string(i);
+        key.isLowCode = false;
+        AgentConnectManager::GetInstance().callerQuotas_[callerUid][key] = 1;
+    }
+    AgentQuotaKey sixth;
+    sixth.agentId = "agent5";
+    sixth.isLowCode = false;
+    EXPECT_EQ(AgentConnectManager::GetInstance().AdmitStandardAgentConnectionLocked(callerUid, sixth),
+        AAFwk::ERR_MAX_AGENT_CONNECTIONS_REACHED);
+}
+
+/**
+* @tc.name  : AdmitStandardAgentConnectionLocked_003
+* @tc.number: AdmitStandardAgentConnectionLocked_003
+* @tc.desc  : Test AdmitStandardAgentConnectionLocked admits a duplicate key without counting it as new.
+*/
+HWTEST_F(AgentManagerServiceTest, AdmitStandardAgentConnectionLocked_003, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    AgentConnectManager::GetInstance().callerQuotas_.clear();
+    int32_t callerUid = IPCSkeleton::GetCallingUid();
+    for (int i = 0; i < 5; ++i) {
+        AgentQuotaKey key;
+        key.agentId = "agent" + std::to_string(i);
+        key.isLowCode = false;
+        AgentConnectManager::GetInstance().callerQuotas_[callerUid][key] = 1;
+    }
+    // Re-admit an existing key — should succeed because it's already in the set.
+    AgentQuotaKey existing;
+    existing.agentId = "agent0";
+    existing.isLowCode = false;
+    EXPECT_EQ(AgentConnectManager::GetInstance().AdmitStandardAgentConnectionLocked(callerUid, existing), ERR_OK);
+    EXPECT_EQ(AgentConnectManager::GetInstance().callerQuotas_[callerUid][existing], 2);
+}
+
+/**
+* @tc.name  : ReleaseCallerQuotaLocked_001
+* @tc.number: ReleaseCallerQuotaLocked_001
+* @tc.desc  : Test ReleaseCallerQuotaLocked decrements and removes a quota key when count reaches zero.
+*/
+HWTEST_F(AgentManagerServiceTest, ReleaseCallerQuotaLocked_001, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    AgentConnectManager::GetInstance().callerQuotas_.clear();
+    int32_t callerUid = IPCSkeleton::GetCallingUid();
+    AgentQuotaKey key;
+    key.agentId = "agentA";
+    key.isLowCode = false;
+    AgentConnectManager::GetInstance().callerQuotas_[callerUid][key] = 1;
+    AgentConnectManager::GetInstance().ReleaseCallerQuotaLocked(callerUid, key);
+    EXPECT_EQ(AgentConnectManager::GetInstance().callerQuotas_[callerUid].count(key), 0u);
+}
+
+/**
+* @tc.name  : TryConsumeConnectPreflight_001
+* @tc.number: TryConsumeConnectPreflight_001
+* @tc.desc  : Test TryConsumeConnectPreflight returns false when the Want has no verification nonce.
+*/
+HWTEST_F(AgentManagerServiceTest, TryConsumeConnectPreflight_001, TestSize.Level1)
+{
+    AgentConnectManager::GetInstance().connectPreflights_.clear();
+    Want want;
+    auto result = AgentConnectManager::GetInstance().TryConsumeConnectPreflight(BuildPreflightConsumeRequest(
+        want, IPCSkeleton::GetCallingUid(), IPCSkeleton::GetCallingUid() / BASE_USER_RANGE_FOR_TEST));
+    EXPECT_FALSE(result.matched);
+}
+
+/**
+* @tc.name  : TryConsumeConnectPreflight_002
+* @tc.number: TryConsumeConnectPreflight_002
+* @tc.desc  : Test TryConsumeConnectPreflight returns false for a nonce that was never registered.
+*/
+HWTEST_F(AgentManagerServiceTest, TryConsumeConnectPreflight_002, TestSize.Level1)
+{
+    AgentConnectManager::GetInstance().connectPreflights_.clear();
+    Want want;
+    SetAgentVerificationNonceParam(want, 99999);
+    auto result = AgentConnectManager::GetInstance().TryConsumeConnectPreflight(BuildPreflightConsumeRequest(
+        want, IPCSkeleton::GetCallingUid(), IPCSkeleton::GetCallingUid() / BASE_USER_RANGE_FOR_TEST));
+    EXPECT_FALSE(result.matched);
+}
+
+/**
+* @tc.name  : RegisterConnectPreflight_001
+* @tc.number: RegisterConnectPreflight_001
+* @tc.desc  : Test RegisterConnectPreflight stores a record and returns a positive nonce that can be consumed.
+*/
+HWTEST_F(AgentManagerServiceTest, RegisterConnectPreflight_001, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    AgentConnectManager::GetInstance().connectPreflights_.clear();
+    Want connectWant;
+    connectWant.SetElementName("", "test.bundle", "TestAbility", "test.module");
+    connectWant.SetParam(AGENTID_KEY, std::string("agentA"));
+    int32_t callerUid = IPCSkeleton::GetCallingUid();
+    AgentCard card;
+    card.type = AgentCardType::APP;
+    int64_t nonce = service->RegisterConnectPreflight(connectWant, "agentA", card, callerUid);
+    EXPECT_GT(nonce, 0);
+    ASSERT_EQ(AgentConnectManager::GetInstance().connectPreflights_.size(), 1u);
+
+    // Consume it back with a matching Want.
+    Want consumer;
+    consumer.SetElementName("", "test.bundle", "TestAbility", "test.module");
+    consumer.SetParam(AGENTID_KEY, std::string("agentA"));
+    SetAgentVerificationNonceParam(consumer, nonce);
+    auto result = AgentConnectManager::GetInstance().TryConsumeConnectPreflight(BuildPreflightConsumeRequest(
+        consumer, callerUid, callerUid / BASE_USER_RANGE_FOR_TEST));
+    EXPECT_TRUE(result.matched);
+    EXPECT_EQ(result.agentId, "agentA");
+    EXPECT_EQ(result.card.type, AgentCardType::APP);
+    // Preflight is consumed (erased).
+    EXPECT_TRUE(AgentConnectManager::GetInstance().connectPreflights_.empty());
+}
+
+/**
+* @tc.name  : RegisterConnectPreflight_KeyUsesFixedWidthNonce
+* @tc.number: RegisterConnectPreflight_002
+* @tc.desc  : Test connect preflight storage uses int64_t keys and accepts high-width nonce values.
+*/
+HWTEST_F(AgentManagerServiceTest, RegisterConnectPreflight_002, TestSize.Level1)
+{
+    using PreflightMap = std::decay_t<decltype(AgentConnectManager::GetInstance().connectPreflights_)>;
+    static_assert(std::is_same<PreflightMap::key_type, int64_t>::value);
+
+    constexpr int64_t nonce = std::numeric_limits<int64_t>::max() - 19;
+    AgentConnectManager::GetInstance().connectPreflights_.clear();
+    AgentConnectPreflightRegisterRequest request;
+    request.connectWant.SetElementName("", "test.bundle", "TestAbility", "test.module");
+    request.connectWant.SetParam(AGENTID_KEY, std::string("agentA"));
+    request.agentId = "agentA";
+    request.card.type = AgentCardType::APP;
+    request.callerUid = IPCSkeleton::GetCallingUid();
+    request.callerUserId = request.callerUid / BASE_USER_RANGE_FOR_TEST;
+
+    auto result = AgentConnectManager::GetInstance().RegisterConnectPreflight(request, []() {
+        return std::numeric_limits<int64_t>::max() - 19;
+    });
+
+    EXPECT_EQ(result.nonce, nonce);
+    ASSERT_EQ(AgentConnectManager::GetInstance().connectPreflights_.size(), 1u);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().connectPreflights_.count(nonce) > 0);
+    Want consumer = request.connectWant;
+    SetAgentVerificationNonceParam(consumer, nonce);
+    auto consumeResult = AgentConnectManager::GetInstance().TryConsumeConnectPreflight(
+        BuildPreflightConsumeRequest(consumer, request.callerUid, request.callerUserId));
+    EXPECT_TRUE(consumeResult.matched);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().connectPreflights_.empty());
+}
+
+/**
+* @tc.name  : GenerateVerificationNonce_001
+* @tc.number: GenerateVerificationNonce_001
+* @tc.desc  : Test secure verification nonce generation returns a positive fixed-width nonce.
+*/
+HWTEST_F(AgentManagerServiceTest, GenerateVerificationNonce_001, TestSize.Level1)
+{
+    int64_t nonce = GenerateVerificationNonce();
+    EXPECT_GT(nonce, 0);
+}
+
+/**
+* @tc.name  : TryConsumeConnectPreflight_003
+* @tc.number: TryConsumeConnectPreflight_003
+* @tc.desc  : Test TryConsumeConnectPreflight rejects a caller-uid mismatch and erases the preflight.
+*/
+HWTEST_F(AgentManagerServiceTest, TryConsumeConnectPreflight_003, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    AgentConnectManager::GetInstance().connectPreflights_.clear();
+    Want connectWant;
+    connectWant.SetElementName("", "test.bundle", "TestAbility", "test.module");
+    connectWant.SetParam(AGENTID_KEY, std::string("agentA"));
+    AgentCard card;
+    int64_t nonce = service->RegisterConnectPreflight(connectWant, "agentA", card, 1000);
+    EXPECT_GT(nonce, 0);
+
+    Want consumer;
+    consumer.SetElementName("", "test.bundle", "TestAbility", "test.module");
+    consumer.SetParam(AGENTID_KEY, std::string("agentA"));
+    SetAgentVerificationNonceParam(consumer, nonce);
+    // Different caller uid => rejected and erased.
+    auto result = AgentConnectManager::GetInstance().TryConsumeConnectPreflight(
+        BuildPreflightConsumeRequest(consumer, 2000, 2000 / BASE_USER_RANGE_FOR_TEST));
+    EXPECT_FALSE(result.matched);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().connectPreflights_.empty());
+}
+
+/**
+* @tc.name  : TryConsumeConnectPreflight_004
+* @tc.number: TryConsumeConnectPreflight_004
+* @tc.desc  : Test TryConsumeConnectPreflight rejects a caller-user mismatch and erases the preflight.
+*/
+HWTEST_F(AgentManagerServiceTest, TryConsumeConnectPreflight_004, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    AgentConnectManager::GetInstance().connectPreflights_.clear();
+    Want connectWant;
+    connectWant.SetElementName("", "test.bundle", "TestAbility", "test.module");
+    connectWant.SetParam(AGENTID_KEY, std::string("agentA"));
+    AgentCard card;
+    int32_t callerUid = 1000;
+    int64_t nonce = service->RegisterConnectPreflight(connectWant, "agentA", card, callerUid);
+    EXPECT_GT(nonce, 0);
+
+    Want consumer;
+    consumer.SetElementName("", "test.bundle", "TestAbility", "test.module");
+    consumer.SetParam(AGENTID_KEY, std::string("agentA"));
+    SetAgentVerificationNonceParam(consumer, nonce);
+    auto result = AgentConnectManager::GetInstance().TryConsumeConnectPreflight(BuildPreflightConsumeRequest(
+        consumer, callerUid, callerUid / BASE_USER_RANGE_FOR_TEST + 1));
+    EXPECT_FALSE(result.matched);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().connectPreflights_.empty());
+}
+
+/**
+* @tc.name  : ValidateConnectAgentCaller_001
+* @tc.number: ValidateConnectAgentCaller_001
+* @tc.desc  : Test ValidateConnectAgentCaller fails when the caller lacks connect-agent permission.
+*/
+HWTEST_F(AgentManagerServiceTest, ValidateConnectAgentCaller_001, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    MyFlag::retVerifyConnectAgentPermission = false;
+    int32_t callerUid = 0;
+    EXPECT_NE(service->ValidateConnectAgentCaller(callerUid), ERR_OK);
+    MyFlag::retVerifyConnectAgentPermission = true;
+}
+
+/**
+* @tc.name  : ValidateConnectAgentCaller_002
+* @tc.number: ValidateConnectAgentCaller_002
+* @tc.desc  : Test ValidateConnectAgentCaller succeeds and fills callerUid for a permitted, foreground caller.
+*/
+HWTEST_F(AgentManagerServiceTest, ValidateConnectAgentCaller_002, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    MyFlag::retVerifyConnectAgentPermission = true;
+    MyFlag::processState = AppExecFwk::AppProcessState::APP_STATE_FOREGROUND;
+    int32_t callerUid = 0;
+    EXPECT_EQ(service->ValidateConnectAgentCaller(callerUid), ERR_OK);
+    EXPECT_EQ(callerUid, IPCSkeleton::GetCallingUid());
+}
+
+/**
+* @tc.name  : TryConsumeConnectPreflight_005
+* @tc.number: TryConsumeConnectPreflight_005
+* @tc.desc  : Test TryConsumeConnectPreflight rejects a target mismatch and erases the preflight.
+*/
+HWTEST_F(AgentManagerServiceTest, TryConsumeConnectPreflight_005, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    AgentConnectManager::GetInstance().connectPreflights_.clear();
+    Want connectWant;
+    connectWant.SetElementName("", "test.bundle", "TestAbility", "test.module");
+    connectWant.SetParam(AGENTID_KEY, std::string("agentA"));
+    AgentCard card;
+    int32_t callerUid = 1000;
+    int64_t nonce = service->RegisterConnectPreflight(connectWant, "agentA", card, callerUid);
+    EXPECT_GT(nonce, 0);
+
+    // Same nonce and caller uid, but a different target element => target mismatch, erased.
+    Want consumer;
+    consumer.SetElementName("", "other.bundle", "OtherAbility", "other.module");
+    consumer.SetParam(AGENTID_KEY, std::string("agentA"));
+    SetAgentVerificationNonceParam(consumer, nonce);
+    auto result = AgentConnectManager::GetInstance().TryConsumeConnectPreflight(
+        BuildPreflightConsumeRequest(consumer, callerUid, callerUid / BASE_USER_RANGE_FOR_TEST));
+    EXPECT_FALSE(result.matched);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().connectPreflights_.empty());
+}
+
+/**
+* @tc.name  : ConnectAgentExtensionAbility_035
+* @tc.number: ConnectAgentExtensionAbility_035
+* @tc.desc  : Test low-code host-global 100-limit rejects a second caller when the host is already full
+*/
+HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_035, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    MyFlag::retGetAgentCardByAgentId = ERR_OK;
+    MyFlag::agentCardType = static_cast<int32_t>(AgentCardType::LOW_CODE);
+    MyFlag::agentCardBundleName = "lowcode.bundle";
+    MyFlag::agentCardAbilityName = "LowCodeExtAbility";
+    MyFlag::agentCardModuleName = "entry";
+
+    AgentHostKey hostKey;
+    hostKey.userId = IPCSkeleton::GetCallingUid() / 200000;
+    hostKey.bundleName = "lowcode.bundle";
+    hostKey.moduleName = "entry";
+    hostKey.abilityName = "LowCodeExtAbility";
+    auto session = std::make_shared<AgentHostSession>();
+    session->key = hostKey;
+    session->hostUid = IPCSkeleton::GetCallingUid();
+    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "");
+    session->isConnected = true;
+    session->remoteObject = sptr<TestAgentReceiver>(new TestAgentReceiver())->AsObject();
+    session->element = AppExecFwk::ElementName("", "lowcode.bundle", "LowCodeExtAbility", "entry");
+    // Pre-fill the host with 100 agents owned by a different caller uid.
+    constexpr int32_t OTHER_CALLER_UID = 9999;
+    for (size_t i = 0; i < LOW_CODE_HOST_LIMIT_PROBE_COUNT; i++) {
+        std::string agentId = "agent" + std::to_string(i);
+        session->agents[agentId] = LowCodeAgentRecord { nullptr, OTHER_CALLER_UID, false };
+        AgentConnectManager::GetInstance().agentOwners_[{OTHER_CALLER_UID, agentId}] = session;
+    }
+    AgentConnectManager::GetInstance().agentHostSessions_[hostKey] = session;
+    ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.size(),
+        LOW_CODE_HOST_LIMIT_PROBE_COUNT);
+
+    // A second, different caller connects on the full host => rejected by the host-global limit.
+    AAFwk::Want overflowWant;
+    overflowWant.SetParam(AGENTID_KEY, std::string("agentOverflow"));
+    overflowWant.SetElementName("", "lowcode.bundle", "LowCodeExtAbility", "entry");
+    auto overflowConnection = sptr<MockAbilityConnection>::MakeSptr();
+    EXPECT_EQ(service->ConnectAgentExtensionAbility(overflowWant, overflowConnection),
+        AAFwk::ERR_MAX_AGENT_CONNECTIONS_REACHED);
+    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 0);
+    // Pre-existing 100 agents remain; the second caller added none.
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentOwners_.size(), LOW_CODE_HOST_LIMIT_PROBE_COUNT);
 }
 } // namespace AgentRuntime
 } // namespace OHOS

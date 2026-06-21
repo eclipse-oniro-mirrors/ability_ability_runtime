@@ -75,21 +75,36 @@ public:
         return 0;
     }
 
+    virtual int32_t GetAgentCardTypeForConnect(AAFwk::Want &, int32_t &)
+    {
+        return 0;
+    }
+
     virtual int32_t ConnectServiceExtensionAbility(const sptr<IRemoteObject> &callerToken, const AAFwk::Want &want,
         const sptr<AAFwk::IAbilityConnection> &connection)
     {
         return 0;
     }
 
-    virtual int32_t DisconnectServiceExtensionAbility(const sptr<IRemoteObject> &callerToken,
-        const sptr<AAFwk::IAbilityConnection> &connection)
+    virtual int32_t DisconnectServiceExtensionAbility(const sptr<IRemoteObject> &,
+        const sptr<AAFwk::IAbilityConnection> &)
     {
-        (void)callerToken;
-        (void)connection;
         return 0;
     }
 
     virtual int32_t NotifyLowCodeAgentComplete(const std::string &agentId)
+    {
+        return 0;
+    }
+
+    virtual int32_t VerifyAgentConnectRequest(const AAFwk::Want &,
+        const sptr<AAFwk::IAbilityConnection> &, std::string &)
+    {
+        return 0;
+    }
+
+    virtual int32_t VerifyAgentDisconnectRequests(const std::vector<AAFwk::Want> &,
+        const sptr<AAFwk::IAbilityConnection> &, std::string &)
     {
         return 0;
     }

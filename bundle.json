@@ -127,7 +127,7 @@
       "build": {
         "sub_component": [
           "//foundation/ability/ability_runtime/agent_runtime_framework/interfaces/inner_api:agent_fwk",
-          "//foundation/ability/ability_runtime/agent_runtime_framework/services:agent_services_target",
+          "//foundation/ability/ability_runtime/agent_runtime_framework/services/agentmgr:agentmgr",
           "//foundation/ability/ability_runtime/cli_tool_framework/etc/profile:aimgr_cfg",
           "//foundation/ability/ability_runtime/cli_tool_framework/etc/profile:aimgr_trust",
           "//foundation/ability/ability_runtime/cli_tool_framework/frameworks:cli_tool_framework_packages",

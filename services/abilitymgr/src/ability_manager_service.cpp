@@ -24,12 +24,14 @@
 #include "ability_connect_manager.h"
 #include "ability_errors_util.h"
 #include "ability_manager_radar.h"
-#include "agent_extension_connection_constants.h"
 #include "ability_manager_xcollie.h"
 #include "ability_start_by_call_helper.h"
 #include "ability_start_with_wait_observer_utils.h"
 #include "ability_start_with_wait_observer_manager.h"
 #include "accesstoken_kit.h"
+#include "agent_card.h"
+#include "agent_extension_connection_constants.h"
+#include "agent_manager_client.h"
 #include "app_utils.h"
 #include "app_exit_reason_data_manager.h"
 #include "app_mgr_constants.h"
@@ -132,6 +134,8 @@
 #endif // SUPPORT_UPMS
 #include "uri_utils.h"
 #include "user_controller/user_controller.h"
+#include "utils/agent_ability_util.h"
+#include "utils/agent_caller_identity_util.h"
 #include "utils/ability_permission_util.h"
 #include "utils/dump_utils.h"
 #include "utils/exit_reason_util.h"
@@ -5890,7 +5894,26 @@ int32_t AbilityManagerService::ConnectAbilityCommon(
     XCOLLIE_TIMER_LESS_IGNORE(__PRETTY_FUNCTION__, !want.GetDeviceId().empty());
     TAG_LOGI(AAFwkTag::SERVICE_EXT, "element: %{public}s/%{public}s",
         want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str());
-    CheckExtensionRateLimit(want);
+    int result = AgentAbilityUtil::CheckAgentConnectEntry(want, extensionType);
+    if (result != ERR_OK) {
+        return result;
+    }
+    Want checkedWant = want;
+    std::string agentCallerIdentity;
+    if (AgentAbilityUtil::IsAgentExtensionType(extensionType)) {
+        result = IN_PROCESS_CALL(AgentRuntime::AgentManagerClient::GetInstance().VerifyAgentConnectRequest(
+            checkedWant, connect, agentCallerIdentity));
+        if (result != ERR_OK) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "AGENT connect is not confirmed by AgentMgr: %{public}d", result);
+            return result;
+        }
+    }
+    AgentCallerIdentityScope agentCallerIdentityScope;
+    result = agentCallerIdentityScope.ApplyIfNeeded(extensionType, agentCallerIdentity);
+    if (result != ERR_OK) {
+        return result;
+    }
+    CheckExtensionRateLimit(checkedWant);
     if (extensionType == AppExecFwk::ExtensionAbilityType::MODULAR_OBJECT) {
         auto ret = ModularObjectUtils::CheckRateLimit();
         if (ret != ERR_OK) {
@@ -5899,24 +5922,19 @@ int32_t AbilityManagerService::ConnectAbilityCommon(
     }
     CHECK_POINTER_AND_RETURN(connect, ERR_INVALID_VALUE);
     CHECK_POINTER_AND_RETURN(connect->AsObject(), ERR_INVALID_VALUE);
-    if (extensionType != AppExecFwk::ExtensionAbilityType::UI_SERVICE && want.HasParameter(UISERVICEHOSTPROXY_KEY)) {
+    if (extensionType != AppExecFwk::ExtensionAbilityType::UI_SERVICE &&
+        checkedWant.HasParameter(UISERVICEHOSTPROXY_KEY)) {
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "error to have UISERVICEHOSTPROXY_KEY");
-        return ERR_WRONG_INTERFACE_CALL;
-    }
-    if (extensionType != AppExecFwk::ExtensionAbilityType::AGENT &&
-        want.HasParameter(AgentRuntime::AGENTEXTENSIONHOSTPROXY_KEY)) {
-        TAG_LOGE(AAFwkTag::SERVICE_EXT, "error to have AGENTEXTENSIONHOSTPROXY_KEY");
         return ERR_WRONG_INTERFACE_CALL;
     }
     if (extensionType == AppExecFwk::ExtensionAbilityType::SERVICE && IsCrossUserCall(userId)) {
         CHECK_CALLER_IS_SYSTEM_APP;
     }
-    EventInfo eventInfo = BuildEventInfo(want, userId);
+    EventInfo eventInfo = BuildEventInfo(checkedWant, userId);
 	eventInfo.lifeCycle = LIFE_CYCLE_CONNECT;
 
-    int result;
 #ifdef WITH_DLP
-    result = CheckDlpForExtension(want, callerToken, userId, eventInfo, EventName::CONNECT_SERVICE_ERROR);
+    result = CheckDlpForExtension(checkedWant, callerToken, userId, eventInfo, EventName::CONNECT_SERVICE_ERROR);
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "checkDlpForExtension error");
         return result;
@@ -5924,8 +5942,8 @@ int32_t AbilityManagerService::ConnectAbilityCommon(
 #endif // WITH_DLP
 
     auto shouldBlockFunc = [aams = shared_from_this()]() { return aams->ShouldBlockAllAppStart(); };
-    AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(want, 0, GetValidUserId(userId), false, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(checkedWant, 0, GetValidUserId(userId), false,
+        nullptr, shouldBlockFunc);
     interceptorParam.fromConnect = true;
     result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
         interceptorExecuter_->DoProcess(interceptorParam);
@@ -5943,7 +5961,7 @@ int32_t AbilityManagerService::ConnectAbilityCommon(
 
     int32_t validUserId = GetValidUserId(userId);
 
-    if (AbilityUtil::IsStartFreeInstall(want)) {
+    if (AbilityUtil::IsStartFreeInstall(checkedWant)) {
         CHECK_POINTER_AND_RETURN(freeInstallManager_, ERR_INVALID_VALUE);
         TAG_LOGD(AAFwkTag::SERVICE_EXT, "is start free install");
         std::string localDeviceId;
@@ -5959,7 +5977,7 @@ int32_t AbilityManagerService::ConnectAbilityCommon(
             return ERR_INVALID_VALUE;
         }
         result = freeInstallManager_->ConnectFreeInstall(
-            want, validUserId, callerToken, localDeviceId, extensionType);
+            checkedWant, validUserId, callerToken, localDeviceId, extensionType);
         if (result != ERR_OK) {
             if (extensionType == AppExecFwk::ExtensionAbilityType::UI_SERVICE) {
                 eventInfo.errReason = "ConnectFreeInstall error";
@@ -5972,7 +5990,7 @@ int32_t AbilityManagerService::ConnectAbilityCommon(
         }
     }
 
-    Want abilityWant = want;
+    Want abilityWant = checkedWant;
     AbilityRequest abilityRequest;
     std::string uri = abilityWant.GetUri().ToString();
     bool isFileUri = (abilityWant.GetUri().GetScheme() == "file");
@@ -6252,6 +6270,10 @@ int32_t AbilityManagerService::ConnectLocalAbility(const Want &want, const int32
 
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "generate request error");
+        return result;
+    }
+    result = AgentAbilityUtil::CheckConnectAgentResolvedTarget(extensionType, abilityRequest.abilityInfo);
+    if (result != ERR_OK) {
         return result;
     }
     result = CheckPermissionForUIService(extensionType, want, abilityRequest);

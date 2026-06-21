@@ -24,6 +24,7 @@ bool MyFlag::retVerifyConnectAgentPermission = true;
 bool MyFlag::retVerifyGetAgentCardPermission = true;
 bool MyFlag::retJudgeCallerIsAllowedToUseSystemAPI = true;
 bool MyFlag::retVerifyModifyAgentCardPermission = true;
+bool MyFlag::retCheckSpecificSystemAbilityAccessPermission = true;
 }
 
 namespace AAFwk {
@@ -45,6 +46,11 @@ bool PermissionVerification::VerifyCallingPermission(const std::string &permissi
 bool PermissionVerification::JudgeCallerIsAllowedToUseSystemAPI() const
 {
     return AgentRuntime::MyFlag::retJudgeCallerIsAllowedToUseSystemAPI;
+}
+
+bool PermissionVerification::CheckSpecificSystemAbilityAccessPermission(const std::string &) const
+{
+    return AgentRuntime::MyFlag::retCheckSpecificSystemAbilityAccessPermission;
 }
 }  // namespace AAFwk
 }  // namespace OHOS

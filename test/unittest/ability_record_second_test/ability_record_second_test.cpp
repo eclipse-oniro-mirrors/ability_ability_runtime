@@ -44,6 +44,10 @@ const std::string TEST_PARAMS_STREAM = "ability.params.stream";
 const std::string UIEXTENSION_ABILITY_ID = "ability.want.params.uiExtensionAbilityId";
 const std::string UIEXTENSION_ROOT_HOST_PID = "ability.want.params.uiExtensionRootHostPid";
 const std::string DEBUG_APP = "debugApp";
+const std::string TEST_AGENT_EXTENSION_HOST_PROXY_KEY = "ohos.agentruntime.params.AgentExtensionHostProxy";
+const std::string TEST_AGENT_ID_KEY = "ohos.agentruntime.params.AgentId";
+const std::string TEST_AGENT_CARD_TYPE_KEY = "ohos.agentruntime.params.AgentCardType";
+const std::string TEST_AGENT_VERIFICATION_NONCE_KEY = "ohos.agentruntime.params.AgentVerificationNonce";
 constexpr int32_t DMS_UID = 5522;
 constexpr int32_t INVALID_USER_ID = 100;
 }
@@ -1062,16 +1066,22 @@ HWTEST_F(AbilityRecordSecondTest, AbilityRecord_SetWant_008, TestSize.Level1)
  * SubFunction: SetWant
  * FunctionPoints: NA
  * EnvConditions: NA
- * CaseDescription: Verify AbilityRecord SetWant removes AGENTEXTENSIONHOSTPROXY_KEY
+ * CaseDescription: Verify AbilityRecord SetWant removes AGENT internal want params
  */
 HWTEST_F(AbilityRecordSecondTest, AbilityRecord_SetWant_009, TestSize.Level1)
 {
     std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
     abilityRecord->isLaunching_ = false;
     Want want;
-    want.SetParam("ohos.agentruntime.params.AgentExtensionHostProxy", true);
+    want.SetParam(TEST_AGENT_EXTENSION_HOST_PROXY_KEY, true);
+    want.SetParam(TEST_AGENT_ID_KEY, std::string("testAgent"));
+    want.SetParam(TEST_AGENT_CARD_TYPE_KEY, 1);
+    want.SetParam(TEST_AGENT_VERIFICATION_NONCE_KEY, 1000000000L);
     abilityRecord->SetWant(want);
-    EXPECT_FALSE(abilityRecord->want_.HasParameter("ohos.agentruntime.params.AgentExtensionHostProxy"));
+    EXPECT_FALSE(abilityRecord->want_.HasParameter(TEST_AGENT_EXTENSION_HOST_PROXY_KEY));
+    EXPECT_FALSE(abilityRecord->want_.HasParameter(TEST_AGENT_ID_KEY));
+    EXPECT_FALSE(abilityRecord->want_.HasParameter(TEST_AGENT_CARD_TYPE_KEY));
+    EXPECT_FALSE(abilityRecord->want_.HasParameter(TEST_AGENT_VERIFICATION_NONCE_KEY));
 }
 
 /*

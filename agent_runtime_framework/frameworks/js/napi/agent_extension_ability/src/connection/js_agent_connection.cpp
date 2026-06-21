@@ -41,7 +41,7 @@ void RemoveAgentConnection(int64_t connectId)
     TAG_LOGD(AAFwkTag::SER_ROUTER, "RemoveAgentConnection, connectId: %{public}s", std::to_string(connectId).c_str());
     std::lock_guard<std::recursive_mutex> lock(g_agentConnectsLock_);
     auto item = std::find_if(g_agentConnects.begin(), g_agentConnects.end(),
-        [&connectId](const auto &obj) {
+        [connectId](const auto &obj) {
             return connectId == obj.first.id;
         });
     if (item != g_agentConnects.end()) {
@@ -52,6 +52,20 @@ void RemoveAgentConnection(int64_t connectId)
         g_agentConnects.erase(item);
     } else {
         TAG_LOGD(AAFwkTag::SER_ROUTER, "Connection not found");
+    }
+}
+
+void EraseAgentConnection(int64_t connectId)
+{
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "EraseAgentConnection, connectId: %{public}s",
+        std::to_string(connectId).c_str());
+    std::lock_guard<std::recursive_mutex> lock(g_agentConnectsLock_);
+    auto item = std::find_if(g_agentConnects.begin(), g_agentConnects.end(),
+        [connectId](const auto &obj) {
+            return connectId == obj.first.id;
+        });
+    if (item != g_agentConnects.end()) {
+        g_agentConnects.erase(item);
     }
 }
 
@@ -84,7 +98,7 @@ void FindAgentConnection(int64_t connectId, sptr<JSAgentConnection> &connection)
     TAG_LOGD(AAFwkTag::SER_ROUTER, "FindAgentConnection by id: %{public}s", std::to_string(connectId).c_str());
     std::lock_guard<std::recursive_mutex> lock(g_agentConnectsLock_);
     auto item = std::find_if(g_agentConnects.begin(), g_agentConnects.end(),
-        [&connectId](const auto &obj) {
+        [connectId](const auto &obj) {
             return connectId == obj.first.id;
         });
     if (item != g_agentConnects.end()) {
@@ -93,22 +107,58 @@ void FindAgentConnection(int64_t connectId, sptr<JSAgentConnection> &connection)
     }
 }
 
-void FindAgentConnection(napi_env env, AAFwk::Want &want, napi_value callback,
+void FindAgentConnection(napi_env env, const AAFwk::Want &want, napi_value callback,
     sptr<JSAgentConnection> &connection)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "FindAgentConnection by want+callback");
     std::lock_guard<std::recursive_mutex> lock(g_agentConnectsLock_);
     auto item = std::find_if(g_agentConnects.begin(), g_agentConnects.end(),
         [&want, env, callback](const auto &obj) {
-        std::string exstingId = obj.first.want.GetStringParam(AGENTID_KEY);
-        std::string agentId = want.GetStringParam(AGENTID_KEY);
         bool wantEquals = obj.first.want.GetElement() == want.GetElement() &&
-            !exstingId.empty() && !agentId.empty() && exstingId == agentId;
+            obj.first.want.GetStringParam(AGENTID_KEY) == want.GetStringParam(AGENTID_KEY);
         std::unique_ptr<NativeReference> &tempCallbackPtr = obj.second->GetJsConnectionObject();
         bool callbackObjectEquals =
             JSAgentConnection::IsJsCallbackObjectEquals(env, tempCallbackPtr, callback);
         return wantEquals && callbackObjectEquals;
     });
+    if (item == g_agentConnects.end()) {
+        TAG_LOGD(AAFwkTag::SER_ROUTER, "Connection not found");
+        return;
+    }
+    connection = item->second;
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "Found connection");
+}
+
+void FindAgentConnectionCandidatesByTarget(napi_env env, const AAFwk::Want &want, napi_value callback,
+    std::vector<sptr<JSAgentConnection>> &candidates)
+{
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "FindAgentConnectionCandidatesByTarget");
+    std::lock_guard<std::recursive_mutex> lock(g_agentConnectsLock_);
+    for (const auto &obj : g_agentConnects) {
+        bool wantEquals = obj.first.want.GetElement() == want.GetElement();
+        std::unique_ptr<NativeReference> &tempCallbackPtr = obj.second->GetJsConnectionObject();
+        bool callbackObjectEquals =
+            JSAgentConnection::IsJsCallbackObjectEquals(env, tempCallbackPtr, callback);
+        if (wantEquals && callbackObjectEquals) {
+            candidates.emplace_back(obj.second);
+        }
+    }
+}
+
+void FindAgentConnectionByTargetAndCardType(napi_env env, const AAFwk::Want &want, napi_value callback,
+    int32_t agentCardType, sptr<JSAgentConnection> &connection)
+{
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "FindAgentConnectionByTargetAndCardType");
+    std::lock_guard<std::recursive_mutex> lock(g_agentConnectsLock_);
+    auto item = std::find_if(g_agentConnects.begin(), g_agentConnects.end(),
+        [&want, env, callback, agentCardType](const auto &obj) {
+            bool cardTypeEquals = obj.first.want.GetIntParam(AGENT_CARD_TYPE_KEY, -1) == agentCardType;
+            bool wantEquals = obj.first.want.GetElement() == want.GetElement();
+            std::unique_ptr<NativeReference> &tempCallbackPtr = obj.second->GetJsConnectionObject();
+            bool callbackObjectEquals =
+                JSAgentConnection::IsJsCallbackObjectEquals(env, tempCallbackPtr, callback);
+            return cardTypeEquals && wantEquals && callbackObjectEquals;
+        });
     if (item == g_agentConnects.end()) {
         TAG_LOGD(AAFwkTag::SER_ROUTER, "Connection not found");
         return;
@@ -130,6 +180,7 @@ JSAgentConnection::~JSAgentConnection()
     TAG_LOGI(AAFwkTag::SER_ROUTER, "~JSAgentConnection destructor");
     serviceHostStub_ = nullptr;
     napiAsyncTask_ = nullptr;
+    disconnectAsyncTask_ = nullptr;
     ReleaseNativeReference(serviceProxyObject_.release());
 }
 
@@ -157,14 +208,18 @@ void JSAgentConnection::HandleOnAbilityConnectDone(const AppExecFwk::ElementName
     const sptr<IRemoteObject> &remoteObject, int resultCode)
 {
     TAG_LOGI(AAFwkTag::SER_ROUTER, "HandleOnAbilityConnectDone, resultCode: %{public}d", resultCode);
-    if (napiAsyncTask_ == nullptr) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "napiAsyncTask_ is null");
+    bool hasPrimaryTask = napiAsyncTask_ != nullptr;
+    bool hasDuplicatedPendingTask = !duplicatedPendingTaskList_.empty();
+    if (!hasPrimaryTask && !hasDuplicatedPendingTask) {
+        TAG_LOGD(AAFwkTag::SER_ROUTER, "No pending connect task");
         return;
     }
     if (resultCode != static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_OK)) {
         napi_value error = CreateJsErrorByNativeErr(env_, resultCode, "",
             AbilityRuntime::GetInnerErrorMsg(AbilityRuntime::AbilityInnerErrorMsg::CONNECT_AGENT_EXTENSION_FAILED));
-        napiAsyncTask_->Reject(env_, error);
+        if (hasPrimaryTask) {
+            napiAsyncTask_->Reject(env_, error);
+        }
         RejectDuplicatedPendingTask(env_, error);
         napiAsyncTask_ = nullptr;
         AgentConnectionUtils::RemoveAgentConnection(connectionId_);
@@ -184,14 +239,18 @@ void JSAgentConnection::HandleOnAbilityConnectDone(const AppExecFwk::ElementName
             static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER), "",
             AbilityRuntime::GetInnerErrorMsg(
                 AbilityRuntime::AbilityInnerErrorMsg::OPERATION_FAILED));
-        napiAsyncTask_->Reject(env_, error);
+        if (hasPrimaryTask) {
+            napiAsyncTask_->Reject(env_, error);
+        }
         RejectDuplicatedPendingTask(env_, error);
         napiAsyncTask_ = nullptr;
         AgentConnectionUtils::RemoveAgentConnection(connectionId_);
         return;
     }
     SetProxyObject(proxy);
-    napiAsyncTask_->ResolveWithNoError(env_, proxy);
+    if (hasPrimaryTask) {
+        napiAsyncTask_->ResolveWithNoError(env_, proxy);
+    }
     ResolveDuplicatedPendingTask(env_, proxy);
     napiAsyncTask_ = nullptr;
 }
@@ -218,6 +277,8 @@ void JSAgentConnection::HandleOnAbilityDisconnectDone(const AppExecFwk::ElementN
     int resultCode)
 {
     TAG_LOGI(AAFwkTag::SER_ROUTER, "HandleOnAbilityDisconnectDone, resultCode: %{public}d", resultCode);
+    AgentConnectionUtils::EraseAgentConnection(connectionId_);
+    SetDisconnecting(false);
     if (napiAsyncTask_ != nullptr) {
         napi_value innerError = CreateJsErrorByNativeErr(env_,
             static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER), "",
@@ -226,10 +287,22 @@ void JSAgentConnection::HandleOnAbilityDisconnectDone(const AppExecFwk::ElementN
         RejectDuplicatedPendingTask(env_, innerError);
         napiAsyncTask_ = nullptr;
     }
+    sptr<JSAgentConnection> connection(this);
+    if (disconnectCompleteHandler_ != nullptr) {
+        disconnectCompleteHandler_(connection);
+    }
+    if (disconnectAsyncTask_ != nullptr) {
+        if (resultCode == static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_OK)) {
+            disconnectAsyncTask_->ResolveWithNoError(env_, CreateJsUndefined(env_));
+        } else {
+            disconnectAsyncTask_->Reject(env_, CreateJsErrorByNativeErr(env_, resultCode));
+        }
+        disconnectAsyncTask_ = nullptr;
+    }
 
     // release connect
     CallObjectMethod("onDisconnect", nullptr, 0);
-    AgentConnectionUtils::RemoveAgentConnection(connectionId_);
+    RemoveConnectionObject();
 }
 
 void JSAgentConnection::SetProxyObject(napi_value proxy)
@@ -256,10 +329,52 @@ void JSAgentConnection::SetNapiAsyncTask(std::shared_ptr<AbilityRuntime::NapiAsy
     napiAsyncTask_ = task;
 }
 
+void JSAgentConnection::SetDisconnectAsyncTask(const std::shared_ptr<AbilityRuntime::NapiAsyncTask> &task)
+{
+    disconnectAsyncTask_ = task;
+}
+
 void JSAgentConnection::AddDuplicatedPendingTask(std::unique_ptr<AbilityRuntime::NapiAsyncTask> &task)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "AddDuplicatedPendingTask");
     duplicatedPendingTaskList_.push_back(std::move(task));
+}
+
+void JSAgentConnection::AddReconnectPendingTask(const AAFwk::Want &want,
+    std::unique_ptr<AbilityRuntime::NapiAsyncTask> &task)
+{
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "AddReconnectPendingTask");
+    if (task == nullptr) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(stateLock_);
+    if (reconnectPendingTaskList_.empty()) {
+        reconnectWant_ = want;
+    }
+    reconnectPendingTaskList_.push_back(std::move(task));
+}
+
+bool JSAgentConnection::TakeReconnectPendingTasks(AAFwk::Want &want,
+    std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> &tasks)
+{
+    std::lock_guard<std::mutex> lock(stateLock_);
+    if (reconnectPendingTaskList_.empty()) {
+        return false;
+    }
+    want = reconnectWant_;
+    tasks = std::move(reconnectPendingTaskList_);
+    reconnectPendingTaskList_.clear();
+    return true;
+}
+
+void JSAgentConnection::AdoptDuplicatedPendingTasks(
+    std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> &&tasks)
+{
+    for (auto &task : tasks) {
+        if (task != nullptr) {
+            duplicatedPendingTaskList_.push_back(std::move(task));
+        }
+    }
 }
 
 void JSAgentConnection::ResolveDuplicatedPendingTask(napi_env env, napi_value proxy)
@@ -466,6 +581,23 @@ bool JSAgentConnection::IsJsCallbackObjectEquals(napi_env env,
         return false;
     }
     return isEqual;
+}
+
+void JSAgentConnection::SetDisconnecting(bool disconnecting)
+{
+    std::lock_guard<std::mutex> lock(stateLock_);
+    disconnecting_ = disconnecting;
+}
+
+bool JSAgentConnection::IsDisconnecting()
+{
+    std::lock_guard<std::mutex> lock(stateLock_);
+    return disconnecting_;
+}
+
+void JSAgentConnection::SetDisconnectCompleteHandler(DisconnectCompleteHandler handler)
+{
+    disconnectCompleteHandler_ = std::move(handler);
 }
 } // namespace AgentRuntime
 } // namespace OHOS
