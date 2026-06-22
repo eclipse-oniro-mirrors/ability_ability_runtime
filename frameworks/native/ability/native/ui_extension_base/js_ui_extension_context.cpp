@@ -619,6 +619,7 @@ napi_value JsUIExtensionContext::HandleTerminateSelfWithResultInEmbeddableMode(n
     };
 
     // Call C++ layer new method for embeddable mode
+    extensionContext->SetTerminating(true);
     extensionContext->TerminateSelfWithResultAndAnimation(resultCode, want, std::move(callback));
 
     TAG_LOGI(AAFwkTag::UI_EXT, "HandleTerminateSelfWithResultInEmbeddableMode end");
@@ -670,6 +671,7 @@ napi_value JsUIExtensionContext::HandleTerminateSelfInEmbeddableMode(napi_env en
         }
     };
 
+    extensionContext->SetTerminating(true);
     extensionContext->TerminateSelfWithAnimation(std::move(callback));
 
     TAG_LOGD(AAFwkTag::UI_EXT, "HandleTerminateSelfInEmbeddableMode end");
@@ -686,6 +688,7 @@ napi_value JsUIExtensionContext::HandleTerminateSelfInNonEmbeddableMode(napi_env
             *innerErrCode = static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT);
             return;
         }
+        context->SetTerminating(true);
         *innerErrCode = context->TerminateSelf();
     };
     NapiAsyncTask::CompleteCallback complete =
