@@ -14,6 +14,7 @@
  */
 
 #include <cstring>
+#include <mutex>
 #include "cj_error_manager_ffi.h"
 #include "cj_error_observer.h"
 #include "application_data_manager.h"
@@ -30,6 +31,8 @@ namespace {
     constexpr const char* ON_OFF_TYPE = "error";
     int32_t g_serialNumber = 0;
     std::shared_ptr<ErrorObserver> g_observer;
+    std::mutex g_errorMtx;
+    std::mutex g_loopMtx;
 
     struct CJLoopObserver {
         std::shared_ptr<OHOS::AppExecFwk::EventRunner> mainRunner;
@@ -47,6 +50,7 @@ RetDataI32 FfiOHOSErrorManagerOn(char* onType, CErrorObserver observer)
         TAG_LOGE(AAFwkTag::APPKIT, "FfiOHOSErrorManagerOn failed.");
         return ret;
     }
+    std::lock_guard<std::mutex> lock(g_errorMtx);
     int32_t observerId = g_serialNumber;
     if (g_serialNumber < INT32_MAX) {
         g_serialNumber++;
@@ -77,6 +81,7 @@ int FfiOHOSErrorManagerOff(char* offType, int observerId)
         return ret;
     }
 
+    std::lock_guard<std::mutex> lock(g_errorMtx);
     TAG_LOGI(AAFwkTag::APPKIT, "Unregister errorObserver called.");
     if (g_observer == nullptr || !g_observer->RemoveObserverObject(observerId)) {
         ret = ERROR_CODE_INVALID_ID;
@@ -94,8 +99,13 @@ int FfiOHOSErrorManagerOff(char* offType, int observerId)
 
 static void CallbackTimeout(int64_t timeout)
 {
-    if (g_loopObserver != nullptr && g_loopObserver->callbackOnLoopTimeout != nullptr) {
-        g_loopObserver->callbackOnLoopTimeout(timeout);
+    std::shared_ptr<CJLoopObserver> observer;
+    {
+        std::lock_guard<std::mutex> lock(g_loopMtx);
+        observer = g_loopObserver;
+    }
+    if (observer != nullptr && observer->callbackOnLoopTimeout != nullptr) {
+        observer->callbackOnLoopTimeout(timeout);
     }
 }
 
@@ -110,18 +120,21 @@ int32_t FfiOHOSErrorManagerLoopObserverOn(int64_t timeout, CLoopObserver observe
         TAG_LOGE(AAFwkTag::APPKIT, "Param invalid, timeout<=0");
         return ERR_PARAM;
     }
-    if (g_loopObserver == nullptr) {
-        g_loopObserver = std::make_shared<CJLoopObserver>();
+    {
+        std::lock_guard<std::mutex> lock(g_loopMtx);
+        if (g_loopObserver == nullptr) {
+            g_loopObserver = std::make_shared<CJLoopObserver>();
+        }
+        if (observer.callbackOnLoopTimeout != nullptr) {
+            g_loopObserver->callbackOnLoopTimeout = CJLambda::Create(observer.callbackOnLoopTimeout);
+        }
+        g_loopObserver->mainRunner = OHOS::AppExecFwk::EventRunner::GetMainEventRunner();
+        if (g_loopObserver->mainRunner == nullptr) {
+            return ERR_PARAM;
+        }
+        g_loopObserver->mainRunner->SetTimeout(timeout);
+        g_loopObserver->mainRunner->SetTimeoutCallback(CallbackTimeout);
     }
-    if (observer.callbackOnLoopTimeout != nullptr) {
-        g_loopObserver->callbackOnLoopTimeout = CJLambda::Create(observer.callbackOnLoopTimeout);
-    }
-    g_loopObserver->mainRunner = OHOS::AppExecFwk::EventRunner::GetMainEventRunner();
-    if (g_loopObserver->mainRunner == nullptr) {
-        return ERR_PARAM;
-    }
-    g_loopObserver->mainRunner->SetTimeout(timeout);
-    g_loopObserver->mainRunner->SetTimeoutCallback(CallbackTimeout);
     return SUCCESS_CODE;
 }
 
@@ -132,10 +145,13 @@ int32_t FfiOHOSErrorManagerLoopObserverOff()
         TAG_LOGE(AAFwkTag::APPKIT, "not mainThread");
         return ERROR_CODE_INVALID_CALLER;
     }
-    if (g_loopObserver) {
-        g_loopObserver.reset();
-        g_loopObserver = nullptr;
-        TAG_LOGI(AAFwkTag::APPKIT, "LoopObserverOff success");
+    {
+        std::lock_guard<std::mutex> lock(g_loopMtx);
+        if (g_loopObserver) {
+            g_loopObserver.reset();
+            g_loopObserver = nullptr;
+            TAG_LOGI(AAFwkTag::APPKIT, "LoopObserverOff success");
+        }
     }
     return SUCCESS_CODE;
 }
