@@ -94,7 +94,7 @@ private:
     std::string ParseIOValue(std::string ioStr);
     std::string GetProcessIOStr();
     int64_t GetFreezeCurrentTime();
-    bool IsBlockTimeInGCPeriod(uint64_t halfTime, uint64_t blockTime,
+    bool IsFreezeTimeInGCPeriod(uint64_t halfTime, uint64_t blockTime,
         uint64_t lastStartTime, uint64_t lastEndTime);
     bool CheckBlockInGC(const std::string& faultName, uint64_t lastStartTime, uint64_t lastEndTime);
     bool CheckSharedGC(std::string lastType);
