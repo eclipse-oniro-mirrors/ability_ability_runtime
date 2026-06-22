@@ -277,12 +277,19 @@ void DumpRuntimeHelper::DumpJsHeap(const OHOS::AppExecFwk::JsHeapDumpInfo &info)
         WriteCheckList(checkList);
     }
 
-    if (info.needSnapshot && language == OHOS::AbilityRuntime::Runtime::Language::JS) {
+    if (info.needSnapshot) {
         OHOS::AbilityRuntime::Runtime::JsHeapDumpParam param;
         param.isFullGC = info.needGc;
         param.isBinary = info.needBinary;
         param.isClearNodeIdCache = info.needClearNodeIdCache;
         param.isProcDump = info.needProcDump;
+        if (appInfo_ != nullptr) {
+            param.languageEnv = appInfo_->arkTSMode;
+        } else {
+            param.languageEnv = OHOS::AbilityRuntime::CODE_LANGUAGE_ARKTS_1_0;
+        }
+        TAG_LOGI(AAFwkTag::APPKIT, "DumpJsHeap snapshot, language: %{public}d, languageEnv: %{public}s",
+            static_cast<int>(language), param.languageEnv.c_str());
         runtime->DumpHeapSnapshot(info.tid, param);
         return;
     }
