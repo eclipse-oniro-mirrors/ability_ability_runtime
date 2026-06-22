@@ -44,6 +44,7 @@ const int VALID_RECORD_ID = 100;
 const int INVALID_RECORD_ID = -1;
 constexpr const char* KEY_REQUEST_ID = "com.ohos.param.requestId";
 constexpr const char* LOCAL_BUNDLE_NAME = "com.test.demo";
+constexpr const char* REMOTE_BUNDLE_NAME = "com.remote.demo";
 
 class FreeInstallBundleMgrService : public OHOS::MockBundleManagerService {
 public:
@@ -442,11 +443,17 @@ HWTEST_F(FreeInstallTest, FreeInstall_ConnectFreeInstall_002, TestSize.Level1)
     ElementName element("", LOCAL_BUNDLE_NAME, "MainAbility");
     want.SetElement(element);
     want.SetParam(Want::PARAM_RESV_START_TIME, std::string("0"));
+    Want crossBundleWant;
+    ElementName crossBundleElement("", REMOTE_BUNDLE_NAME, "MainAbility");
+    crossBundleWant.SetElement(crossBundleElement);
+    crossBundleWant.SetParam(Want::PARAM_RESV_START_TIME, std::string("0"));
     const int32_t userId = 1;
     int serviceRes = freeInstallManager_->ConnectFreeInstall(
         want, userId, nullptr, "", AppExecFwk::ExtensionAbilityType::SERVICE);
+    int crossBundleServiceRes = freeInstallManager_->ConnectFreeInstall(
+        crossBundleWant, userId, nullptr, "", AppExecFwk::ExtensionAbilityType::SERVICE);
     int agentRes = freeInstallManager_->ConnectFreeInstall(
-        want, userId, nullptr, "", AppExecFwk::ExtensionAbilityType::AGENT);
+        crossBundleWant, userId, nullptr, "", AppExecFwk::ExtensionAbilityType::AGENT);
     bundleMgrHelper->bundleMgr_ = bundleMgrBackup;
     AppMgrUtil::appMgr_ = appMgrBackup;
     bool callerCanBypassPermission = SupportSystemAbilityPermission::IsSupportSaCallPermission() ||
@@ -459,6 +466,8 @@ HWTEST_F(FreeInstallTest, FreeInstall_ConnectFreeInstall_002, TestSize.Level1)
         EXPECT_EQ(serviceRes, ERR_OK);
         EXPECT_NE(agentRes, INVALID_PARAMETERS_ERR);
     }
+    EXPECT_EQ(crossBundleServiceRes, INVALID_PARAMETERS_ERR);
+    EXPECT_NE(agentRes, INVALID_PARAMETERS_ERR);
     EXPECT_TRUE(freeInstallManager_->freeInstallList_.empty());
 }
 
