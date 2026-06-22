@@ -326,6 +326,8 @@ public:
     bool GetBundleInfo(
         const std::string& bundleName, const BundleFlag flag, BundleInfo& bundleInfo, int32_t userId) override;
     int GetUidByBundleName(const std::string& bundleName, int32_t userId, int32_t appCloneIndex) override;
+    ErrCode GetAppClonePreference(const std::string &bundleName, int32_t userId,
+        AppClonePreference &preference) override;
 
     bool CheckWantEntity(const AAFwk::Want&, AbilityInfo&);
 
@@ -360,6 +362,13 @@ public:
     }
 
 public:
+    static void ResetAppClonePreference();
+    static ErrCode getAppClonePreferenceRet_;
+    static AppClonePreference appClonePreference_;
+    static std::string lastClonePreferenceBundleName_;
+    static int32_t lastClonePreferenceUserId_;
+    static int32_t getAppClonePreferenceCallCount_;
+
     using QueryAbilityInfoFunType =
         std::function<bool(std::string bundleName, AbilityInfo& abilityInfo, ElementName& elementTemp)>;
     std::map<std::string, QueryAbilityInfoFunType> abilityInfoMap_;

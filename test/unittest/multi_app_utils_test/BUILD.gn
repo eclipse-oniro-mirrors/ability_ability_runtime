@@ -27,6 +27,7 @@ ohos_unittest("multi_app_utils_test") {
   branch_protector_ret = "pac_ret"
   include_dirs = [
     "include",
+    "mock/include",
     "${ability_runtime_services_path}/abilitymgr/include/utils",
     "${ability_runtime_services_path}/abilitymgr/include",
     "${ability_runtime_services_path}/appmgr/include",
@@ -34,8 +35,11 @@ ohos_unittest("multi_app_utils_test") {
     "${ability_runtime_test_path}/mock/services_appmgr_test/include",
   ]
 
+  configs = [ "${ability_runtime_services_path}/abilitymgr:abilityms_config" ]
+
   sources = [
     "${ability_runtime_services_path}/abilitymgr/src/utils/multi_app_utils.cpp",
+    "mock/src/mock_bundle_mgr_helper.cpp",
     "multi_app_utils_test.cpp",
     "src/mock_app_mgr_service.cpp",
     "src/mock_app_mgr_utils.cpp",
@@ -57,6 +61,7 @@ ohos_unittest("multi_app_utils_test") {
     "hilog:libhilog",
     "init:libbegetutil",
     "ipc:ipc_core",
+    "samgr:samgr_proxy",
   ]
   if (ability_runtime_child_process) {
     defines = [ "SUPPORT_CHILD_PROCESS" ]

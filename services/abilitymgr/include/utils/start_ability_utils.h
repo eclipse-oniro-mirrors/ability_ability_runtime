@@ -64,6 +64,7 @@ struct StartAbilityUtils {
 
     static bool IsCallFromAncoShellOrBroker(const sptr<IRemoteObject> &callerToken);
     static void SetTargetCloneIndexInSameBundle(const Want &want, sptr<IRemoteObject> callerToken);
+    static void ResolveTargetAppCloneIndex(const Want &want, sptr<IRemoteObject> callerToken, int32_t userId);
     static int32_t StartUIAbilitiesProcessAppIndex(Want &want,
         sptr<IRemoteObject> callerToken, int32_t &appIndex);
     static int32_t HandleSelfRedirection(bool isFromOpenLink,

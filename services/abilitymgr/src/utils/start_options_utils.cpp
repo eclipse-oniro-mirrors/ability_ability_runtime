@@ -78,7 +78,7 @@ int32_t StartOptionsUtils::CheckProcessOptionsInner(const Want &want, const Star
         return ERR_OK;
     }
 
-    StartAbilityUtils::SetTargetCloneIndexInSameBundle(want, callerToken);
+    StartAbilityUtils::ResolveTargetAppCloneIndex(want, callerToken, userId);
     int32_t appIndex = 0;
     appIndex = !StartAbilityUtils::GetAppIndex(want, callerToken, appIndex) ? 0 : appIndex;
     CHECK_TRUE_RETURN_RET(!DelayedSingleton<AbilityManagerService>::GetInstance()->CheckCallingTokenId(

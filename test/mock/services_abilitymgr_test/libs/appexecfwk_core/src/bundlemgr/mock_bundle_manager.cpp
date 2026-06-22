@@ -27,6 +27,21 @@ const int32_t USER_ID_U1000 = 1000;
 }
 using namespace OHOS::AAFwk;
 
+ErrCode BundleMgrService::getAppClonePreferenceRet_ = ERR_OK;
+AppClonePreference BundleMgrService::appClonePreference_ = {};
+std::string BundleMgrService::lastClonePreferenceBundleName_ = "";
+int32_t BundleMgrService::lastClonePreferenceUserId_ = -1;
+int32_t BundleMgrService::getAppClonePreferenceCallCount_ = 0;
+
+void BundleMgrService::ResetAppClonePreference()
+{
+    getAppClonePreferenceRet_ = ERR_OK;
+    appClonePreference_ = {};
+    lastClonePreferenceBundleName_ = "";
+    lastClonePreferenceUserId_ = -1;
+    getAppClonePreferenceCallCount_ = 0;
+}
+
 bool BundleMgrProxy::QueryAbilityInfo(const AAFwk::Want& want, AbilityInfo& abilityInfo)
 {
     ElementName eleName = want.GetElement();
@@ -208,6 +223,16 @@ bool BundleMgrService::CheckWantEntity(const AAFwk::Want& want, AbilityInfo& abi
 int BundleMgrService::GetUidByBundleName(const std::string& bundleName, int32_t userId, int32_t appCloneIndex)
 {
     return USER_ID_U1000;
+}
+
+ErrCode BundleMgrService::GetAppClonePreference(const std::string &bundleName, int32_t userId,
+    AppClonePreference &preference)
+{
+    ++getAppClonePreferenceCallCount_;
+    lastClonePreferenceBundleName_ = bundleName;
+    lastClonePreferenceUserId_ = userId;
+    preference = appClonePreference_;
+    return getAppClonePreferenceRet_;
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS
