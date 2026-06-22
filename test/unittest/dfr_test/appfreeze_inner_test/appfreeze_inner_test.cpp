@@ -23,6 +23,7 @@
 #include "xcollie/watchdog.h"
 #include "parameter.h"
 #include "parameters.h"
+#include "ohos_application.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -766,6 +767,53 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetBundleNameByApplication_001, Test
     appfreezeInner->SetApplicationInfo(applicationInfo);
     bundleName = appfreezeInner->GetBundleNameByApplication();
     EXPECT_EQ(bundleName, "test_bundle");
+}
+
+/**
+ * @tc.number: AppfreezeInner_ChangeFaultDateInfo_LifecycleTimeout_001
+ * @tc.name: ChangeFaultDateInfo lifecycle timeout logic
+ * @tc.desc: Verify LIFECYCLE_HALF_TIMEOUT and LIFECYCLE_TIMEOUT reportLifecycleToFreeze logic.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_ChangeFaultDateInfo_LifecycleTimeout_001, TestSize.Level1)
+{
+    appfreezeInner->SetReportLifeCycleAsAppfreeze(true);
+
+    FaultData halfTimeoutData;
+    halfTimeoutData.errorObject.name = AppFreezeType::LIFECYCLE_HALF_TIMEOUT;
+    appfreezeInner->ChangeFaultDateInfo(halfTimeoutData, "test_half");
+    EXPECT_TRUE(halfTimeoutData.reportLifecycleToFreeze);
+
+    FaultData timeoutData;
+    timeoutData.errorObject.name = AppFreezeType::LIFECYCLE_TIMEOUT;
+    appfreezeInner->SetReportLifeCycleAsAppfreeze(false);
+    appfreezeInner->ChangeFaultDateInfo(timeoutData, "test_timeout");
+    EXPECT_TRUE(!timeoutData.reportLifecycleToFreeze);
+
+    appfreezeInner->SetReportLifeCycleAsAppfreeze(true);
+    FaultData timeoutTrue;
+    timeoutTrue.errorObject.name = AppFreezeType::LIFECYCLE_TIMEOUT;
+    appfreezeInner->ChangeFaultDateInfo(timeoutTrue, "test_get_report_true");
+    EXPECT_TRUE(timeoutTrue.reportLifecycleToFreeze);
+}
+
+/**
+ * @tc.number: AppfreezeInner_SetAppfreezeApplication_001
+ * @tc.name: SetAppfreezeApplication
+ * @tc.desc: Verify that SetAppfreezeApplication works correctly.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_SetAppfreezeApplication_001, TestSize.Level1)
+{
+    appfreezeInner->application_ = nullptr;
+    appfreezeInner->SetAppfreezeApplication(nullptr);
+    EXPECT_TRUE(appfreezeInner->application_ == nullptr);
+
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    EXPECT_TRUE(application != nullptr);
+    appfreezeInner->SetAppfreezeApplication(application);
+    EXPECT_TRUE(appfreezeInner->application_ != nullptr);
+    EXPECT_TRUE(appfreezeInner->application_ == application);
+
+    appfreezeInner->application_ = nullptr;
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

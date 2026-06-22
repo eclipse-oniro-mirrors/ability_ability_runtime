@@ -14,6 +14,7 @@
  */
 #ifndef OHOS_ABILITY_ABILITY_APPFREEZE_LOG_CLIENT_H
 #define OHOS_ABILITY_ABILITY_APPFREEZE_LOG_CLIENT_H
+#include <atomic>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -103,13 +104,14 @@ private:
 
     static std::mutex singletonMutex_;
     static std::shared_ptr<AppfreezeInner> instance_;
-    bool isAppDebug_ = false;
-    bool isInForeground_ = true;
-    bool isEnableMainThreadSample_ = false;
-    bool reportLifecycleToFreeze_ = false;
+    std::atomic<bool> isAppDebug_{false};
+    std::atomic<bool> isInForeground_{true};
+    std::atomic<bool> isEnableMainThreadSample_{false};
+    std::atomic<bool> reportLifecycleToFreeze_{false};
     std::mutex handlingMutex_;
     std::list<FaultData> handlinglist_;
     std::shared_ptr<AAFwk::TaskHandlerWrap> appfreezeInnerTaskHandler_;
+    std::mutex applicationMutex_;
     std::shared_ptr<OHOSApplication> application_ = nullptr;
 
     ffrt::mutex mainStackMutex_;
