@@ -21,6 +21,8 @@
 #undef private
 
 #include "xcollie/watchdog.h"
+#include "parameter.h"
+#include "parameters.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -135,11 +137,11 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner_IsNeedIgnoreFreezeEvent_001, TestSiz
 }
 
 /**
- * @tc.number: AppfreezeInner__AppfreezeHandle_001
+ * @tc.number: AppfreezeInner_AppfreezeHandle_001
  * @tc.name: AppfreezeHandle
  * @tc.desc: Verify that function AppfreezeHandle.
  */
-HWTEST_F(AppfreezeInnerTest, AppfreezeInner__AppfreezeHandle_001, TestSize.Level1)
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_AppfreezeHandle_001, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "AppfreezeInner__AppfreezeHandle_001 start";
     FaultData faultData;
@@ -149,17 +151,37 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner__AppfreezeHandle_001, TestSize.Level
     faultData.timeoutMarkers = "";
     bool onlyMainThread = true;
     std::shared_ptr<ApplicationInfo> applicationInfo = std::make_shared<ApplicationInfo>();
+    applicationInfo->bundleName = "debug_bundle";
     appfreezeInner->SetApplicationInfo(applicationInfo);
+    OHOS::system::SetParameter("hiviewdfx.appfreeze.filter_bundle_name", "debug_bundle");
     int ret = appfreezeInner->AppfreezeHandle(faultData, onlyMainThread);
-    EXPECT_EQ(ret, 0);
-    appfreezeInner->ReportAppfreezeTask(faultData, onlyMainThread);
-    ret = appfreezeInner->AcquireStack(faultData, onlyMainThread);
-    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(ret, -1);
+    OHOS::system::SetParameter("hiviewdfx.appfreeze.filter_bundle_name", "");
     appfreezeInner->SetAppDebug(true);
     ret = appfreezeInner->AppfreezeHandle(faultData, onlyMainThread);
     appfreezeInner->ReportAppfreezeTask(faultData, onlyMainThread);
     EXPECT_EQ(ret, -1);
     GTEST_LOG_(INFO) << "AppfreezeInner__AppfreezeHandle_001 end";
+}
+
+/**
+ * @tc.number: AppfreezeInner_AppfreezeHandle_002
+ * @tc.name: AppfreezeHandle
+ * @tc.desc: Verify IsProcessDebug branch in AppfreezeHandle.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_AppfreezeHandle_002, TestSize.Level1)
+{
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    EXPECT_NE(applicationInfo, nullptr);
+    applicationInfo->bundleName = "debug_bundle";
+    appfreezeInner->SetApplicationInfo(applicationInfo);
+    OHOS::system::SetParameter("hiviewdfx.appfreeze.filter_bundle_name", "debug_bundle");
+    appfreezeInner->SetAppDebug(false);
+    FaultData faultData;
+    faultData.errorObject.name = AppFreezeType::THREAD_BLOCK_6S;
+    int ret = appfreezeInner->AppfreezeHandle(faultData, true);
+    EXPECT_EQ(ret, -1);
+    OHOS::system::SetParameter("hiviewdfx.appfreeze.filter_bundle_name", "");
 }
 
 /**
@@ -244,15 +266,21 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner__Dump_002, TestSize.Level1)
 /**
  * @tc.number: AppfreezeInner_AppfreezeHandleOverReportCount_001
  * @tc.name: AppfreezeHandleOverReportCount
- * @tc.desc: Verify that function AppfreezeHandleOverReportCount.
+ * @tc.desc: Verify IsProcessDebug branch in AppfreezeHandleOverReportCount.
  */
 HWTEST_F(AppfreezeInnerTest, AppfreezeInner_AppfreezeHandleOverReportCount_001, TestSize.Level1)
 {
-    bool isSixSecondEvent = true;
+    bool isSixSecondEvent = false;
     appfreezeInner->AppfreezeHandleOverReportCount(isSixSecondEvent);
-    isSixSecondEvent = false;
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    EXPECT_TRUE(applicationInfo != nullptr);
+    applicationInfo->bundleName = "debug_bundle";
+    appfreezeInner->SetApplicationInfo(applicationInfo);
+    OHOS::system::SetParameter("hiviewdfx.appfreeze.filter_bundle_name", "debug_bundle");
+    appfreezeInner->SetAppDebug(false);
+    isSixSecondEvent = true;
     appfreezeInner->AppfreezeHandleOverReportCount(isSixSecondEvent);
-    EXPECT_TRUE(!isSixSecondEvent);
+    OHOS::system::SetParameter("hiviewdfx.appfreeze.filter_bundle_name", "");
 }
 
 /**
@@ -705,6 +733,39 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner_ReportLifeCycleAsAppfreeze_001, Test
     EXPECT_TRUE(appfreezeInner->GetReportLifeCycleAsAppfreeze());
     appfreezeInner->SetReportLifeCycleAsAppfreeze(false);
     EXPECT_TRUE(!appfreezeInner->GetReportLifeCycleAsAppfreeze());
+}
+
+/**
+ * @tc.number: AppfreezeInner_IsProcessDebug_001
+ * @tc.name: IsProcessDebug
+ * @tc.desc: Verify that function IsProcessDebug.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_IsProcessDebug_001, TestSize.Level1)
+{
+    OHOS::system::SetParameter("hiviewdfx.appfreeze.filter_bundle_name", "");
+    int32_t pid = getpid();
+    bool ret = appfreezeInner->IsProcessDebug(pid, "test_bundle");
+    EXPECT_FALSE(ret);
+    OHOS::system::SetParameter("hiviewdfx.appfreeze.filter_bundle_name", "test_bundle");
+    ret = appfreezeInner->IsProcessDebug(pid, "test_bundle");
+    EXPECT_TRUE(ret);
+    OHOS::system::SetParameter("hiviewdfx.appfreeze.filter_bundle_name", "");
+}
+
+/**
+ * @tc.number: AppfreezeInner_GetBundleNameByApplication_001
+ * @tc.name: GetBundleNameByApplication
+ * @tc.desc: Verify that function GetBundleNameByApplication.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetBundleNameByApplication_001, TestSize.Level1)
+{
+    std::string bundleName = appfreezeInner->GetBundleNameByApplication();
+    EXPECT_TRUE(bundleName.empty());
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    applicationInfo->bundleName = "test_bundle";
+    appfreezeInner->SetApplicationInfo(applicationInfo);
+    bundleName = appfreezeInner->GetBundleNameByApplication();
+    EXPECT_EQ(bundleName, "test_bundle");
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

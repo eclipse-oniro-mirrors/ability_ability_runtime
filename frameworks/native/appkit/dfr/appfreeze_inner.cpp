@@ -123,6 +123,31 @@ bool AppfreezeInner::IsHandleAppfreeze()
     return !isAppDebug_;
 }
 
+bool AppfreezeInner::IsProcessDebug(int32_t pid, std::string bundleName)
+{
+    const int buffSize = 128;
+    char paramBundle[buffSize] = {0};
+    GetParameter("hiviewdfx.appfreeze.filter_bundle_name", "", paramBundle, buffSize - 1);
+    std::string debugBundle(paramBundle);
+
+    if (bundleName.compare(debugBundle) == 0) {
+        TAG_LOGI(AAFwkTag::APPDFR, "filtration %{public}s_%{public}s not exit",
+            debugBundle.c_str(), bundleName.c_str());
+        return true;
+    }
+    return false;
+}
+
+std::string AppfreezeInner::GetBundleNameByApplication()
+{
+    auto applicationInfo = applicationInfo_.lock();
+    if (applicationInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::APPDFR, "null applicationInfo_");
+        return "";
+    }
+    return applicationInfo->bundleName;
+}
+
 std::string AppfreezeInner::GetProcStatm(int32_t pid)
 {
     std::string procStatm;
@@ -538,8 +563,10 @@ void AppfreezeInner::AppfreezeHandleOverReportCount(bool isSixSecondEvent)
         }
         faultData.errorObject.name = AppFreezeType::THREAD_BLOCK_3S;
     }
-    if (!IsHandleAppfreeze()) {
-        NotifyANR(faultData);
+    std::string bundleName = GetBundleNameByApplication();
+    if (!IsHandleAppfreeze() || IsProcessDebug(pid, bundleName)) {
+        TAG_LOGW(AAFwkTag::APPDFR, "don't report event and kill, pid:%{public}d, bundleName:%{public}s",
+            pid, bundleName.c_str());
         return;
     }
     std::string msgContent;
@@ -595,8 +622,11 @@ void AppfreezeInner::ReportAppfreezeTask(const FaultData& faultData, bool onlyMa
 
 int AppfreezeInner::AppfreezeHandle(const FaultData& faultData, bool onlyMainThread)
 {
-    if (!IsHandleAppfreeze()) {
-        NotifyANR(faultData);
+    int32_t pid = static_cast<int32_t>(getpid());
+    std::string bundleName = GetBundleNameByApplication();
+    if (!IsHandleAppfreeze() || IsProcessDebug(pid, bundleName)) {
+        TAG_LOGW(AAFwkTag::APPDFR, "don't report event and kill, pid:%{public}d, bundleName:%{public}s",
+            pid, bundleName.c_str());
         return -1;
     }
     auto watchdogTask = [faultData, onlyMainThread, this] { this->ReportAppfreezeTask(faultData, onlyMainThread); };
