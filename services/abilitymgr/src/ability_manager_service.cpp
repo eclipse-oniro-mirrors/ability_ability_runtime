@@ -9984,6 +9984,7 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
         TAG_LOGW(AAFwkTag::ABILITYMGR, "specifiedFullTokenId only support for DMS");
         specifiedFullTokenId = 0;
     }
+    EventInfo eventInfo = BuildEventInfo(want, accountId);
     if (AppUtils::GetInstance().IsForbidStart()) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "forbid start: %{public}s", want.GetBundle().c_str());
         return INNER_ERR;
@@ -9992,6 +9993,8 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
     TAG_LOGD(AAFwkTag::ABILITYMGR, "call");
     int paramCheckResult = AbilityStartByCallHelper::CheckParam(connect, errMsg);
     if (paramCheckResult != ERR_OK) {
+        AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, paramCheckResult,
+            "startAbilityByCall check param failed");
         return paramCheckResult;
     }
 
@@ -10002,18 +10005,23 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
     if (VerifyAccountPermission(accountId) == CHECK_PERMISSION_FAILED) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "%{public}s: permission verification failed", __func__);
         errMsg = "verify account permission failed";
+        AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, CHECK_PERMISSION_FAILED,
+            "startAbilityByCall verify account permission failed");
         return CHECK_PERMISSION_FAILED;
     }
 
     auto abilityRecord = Token::GetAbilityRecordByToken(callerToken);
     if (abilityRecord && !JudgeSelfCalled(abilityRecord)) {
         errMsg = "verify account permission failed";
+        AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, CHECK_PERMISSION_FAILED,
+            "startAbilityByCall verify caller permission failed");
         return CHECK_PERMISSION_FAILED;
     }
     if (accountId == U0_USER_ID) {
         accountId = DEFAULT_INVAL_VALUE;
     }
     int32_t oriValidUserId = GetValidUserId(accountId);
+    eventInfo.userId = oriValidUserId;
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
     CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), oriValidUserId),
         RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
@@ -10022,11 +10030,15 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
     int32_t appIndex = 0;
     if (!StartAbilityUtils::GetAppIndex(want, callerToken, appIndex)) {
         errMsg = "app index is error";
+        AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, ERR_APP_CLONE_INDEX_INVALID,
+            "startAbilityByCall get app index failed");
         return ERR_APP_CLONE_INDEX_INVALID;
     }
     auto checkRet = AbilityPermissionUtil::GetInstance().CheckMultiInstanceAndAppClone(const_cast<Want &>(want),
         oriValidUserId, appIndex, callerToken, false);
     if (checkRet != ERR_OK) {
+        AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, checkRet,
+            "startAbilityByCall check multi instance and app clone failed");
         return checkRet;
     }
 
@@ -10043,16 +10055,23 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
         interceptorExecuter_->DoProcess(interceptorParam);
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "interceptorExecuter_ null or doProcess error");
+        AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, result,
+            "startAbilityByCall interceptor doProcess error");
         return result;
     }
 
     if (CheckIfOperateRemote(want)) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "start remote ability by call");
-        return StartRemoteAbilityByCall(want, callerToken, connect->AsObject());
+        result = StartRemoteAbilityByCall(want, callerToken, connect->AsObject());
+        AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, result,
+            "startAbilityByCall start remote ability failed");
+        return result;
     }
 
     if (!JudgeMultiUserConcurrency(oriValidUserId)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "multi-user non-concurrent unsatisfied");
+        AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, ERR_CROSS_USER,
+            "startAbilityByCall multi-user non-concurrent unsatisfied");
         return ERR_CROSS_USER;
     }
 
@@ -10067,16 +10086,22 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
     result = GenerateAbilityRequest(want, -1, abilityRequest, callerToken, oriValidUserId);
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "generate ability request error");
+        AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, result,
+            "startAbilityByCall generate ability request error");
         return result;
     }
 
     abilityRequest.userId = oriValidUserId;
     if (!HandleExecuteSAInterceptor(want, callerToken, abilityRequest, result)) {
+        AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, result,
+            "startAbilityByCall execute SA interceptor failed");
         return result;
     }
 
     if (!abilityRequest.abilityInfo.isStageBasedModel) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "target ability not stage base model");
+        AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, RESOLVE_CALL_ABILITY_VERSION_ERR,
+            "startAbilityByCall target ability not stage base model");
         return RESOLVE_CALL_ABILITY_VERSION_ERR;
     }
 
@@ -10084,6 +10109,8 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "checkStartByCallPermission fail, result:%{public}d", result);
         errMsg = "CheckStartByCallPermission failed";
+        AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, result,
+            "startAbilityByCall checkStartByCallPermission failed");
         return result;
     }
 
@@ -10097,6 +10124,8 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
     if (result != ERR_OK) {
         errMsg = "afterCheckParam is nullptr";
         TAG_LOGE(AAFwkTag::ABILITYMGR, "afterCheckExecuter_ null or doProcess error");
+        AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, result,
+            "startAbilityByCall afterCheckExecuter doProcess error");
         return result;
     }
     auto callerTokenId = IPCSkeleton::GetCallingTokenID();
@@ -10107,9 +10136,14 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
         if (uiAbilityManager == nullptr) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "uiAbilityManager null, userId is invalid:%{public}d", oriValidUserId);
             errMsg = "uiAbilityManager null, userId is invalid";
+            AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, ERR_INVALID_VALUE,
+                "startAbilityByCall uiAbilityManager null");
             return ERR_INVALID_VALUE;
         }
-        return uiAbilityManager->ResolveLocked(abilityRequest, errMsg);
+        result = uiAbilityManager->ResolveLocked(abilityRequest, errMsg);
+        AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, result,
+            "startAbilityByCall resolve locked failed");
+        return result;
     }
 
     auto missionListMgr = GetMissionListManagerByUserId(oriValidUserId);
