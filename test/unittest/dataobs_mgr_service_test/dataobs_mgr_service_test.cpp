@@ -996,5 +996,73 @@ HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_RegisterObserver_051
     SetSelfTokenID(originalToken);
     TAG_LOGI(AAFwkTag::DBOBSMGR, "AaFwk_DataObsMgrServiceTest_RegisterObserver_0510 end");
 }
+
+/**
+ * @tc.name: AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0100
+ * @tc.desc: Test RegisterObserver with uri size exceeding threshold, registration still succeeds
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.step:
+ *     1. Define a long Uri whose string size > 256
+ *     2. Call RegisterObserver
+ *     3. Verify return value is SUCCESS (only fault report, no block)
+ */
+HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::DBOBSMGR, "AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0100 start");
+    auto dataObsMgrServer = std::make_shared<DataObsMgrService>();
+    const sptr<MockDataAbilityObserverStub> dataobsAbility(new (std::nothrow) MockDataAbilityObserverStub());
+    std::string longUriStr = "dataability://device_id/com.domainname.dataability.persondata/person/" +
+        std::string(260, 'a');
+    Uri uri(longUriStr);
+    int32_t ret = dataObsMgrServer->RegisterObserver(uri, dataobsAbility);
+    EXPECT_EQ(ret, SUCCESS);
+    testing::Mock::AllowLeak(dataobsAbility);
+    TAG_LOGI(AAFwkTag::DBOBSMGR, "AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0100 end");
+}
+
+/**
+ * @tc.name: AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0200
+ * @tc.desc: Test CheckAndReportUriSizeFault with normal uri size, return SUCCESS
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.step:
+ *     1. Define a normal Uri whose string size <= 256
+ *     2. Call CheckAndReportUriSizeFault
+ *     3. Verify return value is SUCCESS
+ */
+HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::DBOBSMGR, "AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0200 start");
+    auto dataObsMgrServer = std::make_shared<DataObsMgrService>();
+    std::string normalUriStr = "dataability://device_id/com.domainname.dataability.persondata/person/10";
+    Uri uri(normalUriStr);
+    int32_t ret = dataObsMgrServer->CheckAndReportUriSizeFault(uri, 0, __FUNCTION__);
+    EXPECT_EQ(ret, SUCCESS);
+    TAG_LOGI(AAFwkTag::DBOBSMGR, "AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0200 end");
+}
+
+/**
+ * @tc.name: AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0300
+ * @tc.desc: Test RegisterObserverExt with uri size exceeding threshold, registration still succeeds
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.step:
+ *     1. Define a long Uri whose string size > 256
+ *     2. Call RegisterObserverExt
+ *     3. Verify return value is SUCCESS (only fault report, no block)
+ */
+HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::DBOBSMGR, "AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0300 start");
+    auto dataObsMgrServer = std::make_shared<DataObsMgrService>();
+    std::string longUriStr = "dataobs://authority/" + std::string(260, 'b');
+    Uri uri(longUriStr);
+    const sptr<MockDataAbilityObserverStub> dataobsAbility(new (std::nothrow) MockDataAbilityObserverStub());
+    Status ret = dataObsMgrServer->RegisterObserverExt(uri, dataobsAbility, false);
+    EXPECT_EQ(ret, SUCCESS);
+    testing::Mock::AllowLeak(dataobsAbility);
+    TAG_LOGI(AAFwkTag::DBOBSMGR, "AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0300 end");
+}
 }  // namespace AAFwk
 }  // namespace OHOS

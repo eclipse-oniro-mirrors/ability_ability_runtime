@@ -182,6 +182,22 @@ bool DataObsMgrService::IsDataMgrService(uint32_t tokenId, int32_t uid)
     return true;
 }
 
+// Check uri size and report fault when exceeds threshold, only for data collection, does not block registration.
+int32_t DataObsMgrService::CheckAndReportUriSizeFault(const Uri &uri, uint32_t tokenId, const std::string &callingFunc)
+{
+    std::string uriStr = uri.ToString();
+    if (uriStr.size() > URI_SIZE_THRESHOLD) {
+        std::string uriAnis = CommonUtils::Anonymous(uriStr);
+        std::string appendix = uriAnis + " " + callingFunc + " uriSize:" + std::to_string(uriStr.size());
+        TAG_LOGE(AAFwkTag::DBOBSMGR, "uri size exceeded, size:%{public}zu, token:%{public}u, uri:%{public}s",
+            uriStr.size(), tokenId, uriAnis.c_str());
+        // The 4th parameter of ReportExtensionFault is not used, all info is packed into the 3rd parameter.
+        DataShare::DataSharePermission::ReportExtensionFault(DATAOBS_URI_SIZE_EXCEEDED, tokenId, appendix, uriAnis);
+        return DATAOBS_URI_SIZE_EXCEEDED;
+    }
+    return SUCCESS;
+}
+
 // Check wheather calling process has system permission, with some providers who allow calls from non-system app.
 // Existing function IsCallingPermissionValid checks based on an option passed from client, which is not reliable
 // in some situation. Try use this function for system permission checking instead.
@@ -422,12 +438,12 @@ int32_t DataObsMgrService::RegisterObserverInner(const Uri &uri, sptr<IDataAbili
             return status;
         }
     }
+    CheckAndReportUriSizeFault(uri, token, __FUNCTION__);
     status = ConstructRegisterObserver(uri, dataObserver, token, userId, pid);
     if (status != NO_ERROR) {
         LOG_ERROR("register failed:%{public}d,uri:%{public}s", status, CommonUtils::Anonymous(uri.ToString()).c_str());
-        return status;
     }
-    return NO_ERROR;
+    return status;
 }
 
 int DataObsMgrService::UnregisterObserver(const Uri &uri, sptr<IDataAbilityObserver> dataObserver, int32_t userId,
@@ -637,6 +653,7 @@ Status DataObsMgrService::RegisterObserverExt(const Uri &uri, sptr<IDataAbilityO
     info.pid = IPCSkeleton::GetCallingPid();
 
     auto innerUri = uri;
+    CheckAndReportUriSizeFault(innerUri, tokenId, __FUNCTION__);
     return dataObsMgrInnerExt_->HandleRegisterObserver(innerUri, dataObserver, info, isDescendants);
 }
 
