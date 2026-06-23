@@ -517,6 +517,12 @@ bool DataObsMgrService::IsTaskOverLimit()
     return false;
 }
 
+void DataObsMgrService::ReduceTaskCount()
+{
+    std::lock_guard<ffrt::mutex> lck(taskCountMutex_);
+    --taskCount_;
+}
+
 void DataObsMgrService::SubmitNotifyChangeTask(Uri &uri, int32_t userId, std::string readPermission, ObserverInfo &info)
 {
     ChangeInfo changeInfo = { ChangeInfo::ChangeType::OTHER, { uri } };
@@ -744,13 +750,10 @@ std::pair<Status, std::vector<NotifyInfo>> DataObsMgrService::MakeNotifyInfos(Ch
 
 Status DataObsMgrService::NotifyChangeExt(const ChangeInfo &changeInfo, DataObsOption opt)
 {
-    if (handler_ == nullptr) {
-        TAG_LOGE(AAFwkTag::DBOBSMGR, "null handler");
-        return DATAOBS_SERVICE_HANDLER_IS_NULL;
-    }
-    if (dataObsMgrInner_ == nullptr || dataObsMgrInnerExt_ == nullptr) {
-        LOG_ERROR("dataObsMgrInner_:%{public}d or null dataObsMgrInnerExt", dataObsMgrInner_ == nullptr);
-        return DATAOBS_SERVICE_INNER_IS_NULL;
+    if (handler_ == nullptr || dataObsMgrInner_ == nullptr || dataObsMgrInnerExt_ == nullptr) {
+        LOG_ERROR("handler_: %{public}d, dataObsMgrInner: %{public}d, dataObsMgrInnerExt: %{public}d",
+            handler_ == nullptr, dataObsMgrInner_ == nullptr, dataObsMgrInnerExt_ == nullptr);
+        return handler_ == nullptr ? DATAOBS_SERVICE_HANDLER_IS_NULL : DATAOBS_SERVICE_INNER_IS_NULL;
     }
     if (!IsCallingPermissionValid(opt)) {
         return DATAOBS_NOT_SYSTEM_APP;
@@ -761,20 +764,23 @@ Status DataObsMgrService::NotifyChangeExt(const ChangeInfo &changeInfo, DataObsO
         LOG_ERROR("GetCallingUserId fail, type:%{public}d, userId:%{public}d", changeInfo.changeType_, userId);
         return DATAOBS_INVALID_USERID;
     }
+    if (IsTaskOverLimit()) {
+        return DATAOBS_SERVICE_TASK_LIMMIT;
+    }
     ChangeInfo changes;
     Status result = DeepCopyChangeInfo(changeInfo, changes);
     if (result != SUCCESS) {
         LOG_ERROR("copy data failed,changeType:%{public}ud,uris num:%{public}zu,null data:%{public}d,size:%{public}ud",
             changeInfo.changeType_, changeInfo.uris_.size(), changeInfo.data_ == nullptr, changeInfo.size_);
+        ReduceTaskCount();
         return result;
-    }
-    if (IsTaskOverLimit()) {
-        return DATAOBS_SERVICE_TASK_LIMMIT;
     }
     std::vector<NotifyInfo> notifyInfo;
     std::tie (result, notifyInfo) = MakeNotifyInfos(changes, opt, tokenId, userId);
     if (changes.uris_.empty()) {
         TAG_LOGE(AAFwkTag::DBOBSMGR, "uris_ is empty");
+        delete [] static_cast<uint8_t *>(changes.data_);
+        ReduceTaskCount();
         return result;
     }
     handler_->SubmitTask([this, changes, userId, tokenId, notifyInfo]() {
@@ -787,8 +793,7 @@ Status DataObsMgrService::NotifyChangeExt(const ChangeInfo &changeInfo, DataObsO
             count++;
         }
         delete [] static_cast<uint8_t *>(changes.data_);
-        std::lock_guard<ffrt::mutex> lck(taskCountMutex_);
-        --taskCount_;
+        ReduceTaskCount();
     });
     return SUCCESS;
 }

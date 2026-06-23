@@ -274,6 +274,49 @@ HWTEST_F(DataObsMgrServiceSecondTest, DataObsMgrServiceSecondTest_NotifyChangeEx
 
 /*
  * Feature: DataObsMgrService
+ * Function: NotifyChangeExt
+ * SubFunction: NA
+ * FunctionPoints: DataObsMgrService NotifyChangeExt
+ * EnvConditions: NA
+ * CaseDescription: Verify that the DataObsMgrService NotifyChangeExt is abnormal.
+ */
+HWTEST_F(DataObsMgrServiceSecondTest, DataObsMgrServiceSecondTest_NotifyChangeExt_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DataObsMgrServiceSecondTest_NotifyChangeExt_0500 start");
+    const int testVal = static_cast<int>(DATAOBS_SERVICE_HANDLER_IS_NULL);
+    Uri uri("dataobs://authority/com.domainname.dataability.persondata/ person/10");
+    auto dataObsMgrServer = std::make_shared<DataObsMgrService>();
+    dataObsMgrServer->handler_ = nullptr;
+
+    EXPECT_EQ(testVal, dataObsMgrServer->NotifyChangeExt({ ChangeInfo::ChangeType::UPDATE, { uri } }));
+    TAG_LOGI(AAFwkTag::TEST, "DataObsMgrServiceSecondTest_NotifyChangeExt_0500 end");
+}
+
+/*
+ * Feature: DataObsMgrService
+ * Function: NotifyChangeExt
+ * SubFunction: NA
+ * FunctionPoints: DataObsMgrService NotifyChangeExt
+ * EnvConditions: NA
+ * CaseDescription: Verify that the DataObsMgrService NotifyChangeExt is abnormal.
+ */
+HWTEST_F(DataObsMgrServiceSecondTest, DataObsMgrServiceSecondTest_NotifyChangeExt_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DataObsMgrServiceSecondTest_NotifyChangeExt_0600 start");
+    const int testVal = static_cast<int>(DATAOBS_SERVICE_INNER_IS_NULL);
+    Uri uri("dataobs://authority/com.domainname.dataability.persondata/ person/10");
+    auto dataObsMgrServer = std::make_shared<DataObsMgrService>();
+    dataObsMgrServer->Init();
+    auto tmp = dataObsMgrServer->dataObsMgrInner_;
+    dataObsMgrServer->dataObsMgrInner_ = nullptr;
+
+    EXPECT_EQ(testVal, dataObsMgrServer->NotifyChangeExt({ ChangeInfo::ChangeType::UPDATE, { uri } }));
+    dataObsMgrServer->dataObsMgrInner_ = tmp;
+    TAG_LOGI(AAFwkTag::TEST, "DataObsMgrServiceSecondTest_NotifyChangeExt_0600 end");
+}
+
+/*
+ * Feature: DataObsMgrService
  * Function: NotifyProcessObserver
  * SubFunction: NA
  * FunctionPoints: DataObsMgrService NotifyProcessObserver
