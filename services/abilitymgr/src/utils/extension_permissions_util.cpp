@@ -17,6 +17,7 @@
 
 #include "hilog_tag_wrapper.h"
 #include "hilog_wrapper.h"
+#include "permission_constants.h"
 #include "permission_verification.h"
 
 namespace OHOS {
@@ -45,6 +46,9 @@ bool ExtensionPermissionsUtil::CheckSAPermission(const AppExecFwk::ExtensionAbil
     } else if (extensionType == AppExecFwk::ExtensionAbilityType::PARTNER_AGENT) {
         return PermissionVerification::GetInstance()->VerifyCallingPermission(
             "ohos.permission.CONNECT_PARTNER_EXTENSION", specifyTokenId);
+    } else if (extensionType == AppExecFwk::ExtensionAbilityType::AGENT) {
+        return PermissionVerification::GetInstance()->VerifyCallingPermission(
+            PermissionConstants::PERMISSION_CONNECT_AGENT, specifyTokenId);
     }
     if (PermissionVerification::GetInstance()->IsShellCallByTokenId(specifyTokenId)) {
         return true;

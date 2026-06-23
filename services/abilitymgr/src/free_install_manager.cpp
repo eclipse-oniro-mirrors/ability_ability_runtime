@@ -26,6 +26,7 @@
 #include "permission_constants.h"
 #include "start_ability_utils.h"
 #include "support_system_ability_permission.h"
+#include "utils/agent_ability_util.h"
 #include "utils/app_mgr_util.h"
 #include "uri_utils.h"
 #ifdef SUPPORT_SCREEN
@@ -572,21 +573,35 @@ int FreeInstallManager::ConnectFreeInstall(const Want &want, int32_t userId,
     }
 
     auto isSaCall = AAFwk::PermissionVerification::GetInstance()->IsSACall();
-    bool isAgentConnect = extensionType == AppExecFwk::ExtensionAbilityType::AGENT;
+    bool isAgentConnect = AgentAbilityUtil::IsAgentExtensionType(extensionType);
+    bool isVerifiedAgentCaller = false;
+    if (isAgentConnect && isSaCall) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "SA free install AGENT connect is unsupported");
+        return CHECK_PERMISSION_FAILED;
+    }
+
     if (!isSaCall) {
-        std::string wantAbilityName = want.GetElement().GetAbilityName();
-        std::string wantBundleName = want.GetBundle();
+        const std::string wantAbilityName = want.GetElement().GetAbilityName();
+        const std::string wantBundleName = want.GetBundle();
         if (wantBundleName.empty() || wantAbilityName.empty()) {
             TAG_LOGE(AAFwkTag::FREE_INSTALL, "wantBundleName or wantAbilityName empty.");
             return INVALID_PARAMETERS_ERR;
         }
+        if (isAgentConnect) {
+            if (!PermissionVerification::GetInstance()->VerifyCallingPermission(
+                PermissionConstants::PERMISSION_CONNECT_AGENT)) {
+                TAG_LOGE(AAFwkTag::SER_ROUTER, "caller lacks CONNECT_AGENT permission");
+                return CHECK_PERMISSION_FAILED;
+            }
+            isVerifiedAgentCaller = true;
+        }
+    }
+
+    if (!isSaCall && !isAgentConnect) {
         int callerUid = IPCSkeleton::GetCallingUid();
         std::string localBundleName;
         auto res = IN_PROCESS_CALL(bundleMgrHelper->GetNameForUid(callerUid, localBundleName));
-        bool allowCrossBundleAgentConnect = isAgentConnect &&
-            AAFwk::PermissionVerification::GetInstance()->VerifyCallingPermission(
-                PermissionConstants::PERMISSION_CONNECT_AGENT);
-        if (res != ERR_OK || (localBundleName != wantBundleName && !allowCrossBundleAgentConnect)) {
+        if (res != ERR_OK || localBundleName != want.GetBundle()) {
             TAG_LOGE(AAFwkTag::FREE_INSTALL, "not local BundleName");
             return INVALID_PARAMETERS_ERR;
         }
@@ -598,13 +613,32 @@ int FreeInstallManager::ConnectFreeInstall(const Want &want, int32_t userId,
         "bundleName: %{public}s, moduleName: %{public}s, abilityName: %{public}s, userId: %{public}d",
         want.GetBundle().c_str(), want.GetModuleName().c_str(),
         want.GetElement().GetAbilityName().c_str(), userId);
-    if (!IN_PROCESS_CALL(bundleMgrHelper->QueryAbilityInfo(
-        want, AppExecFwk::AbilityInfoFlag::GET_ABILITY_INFO_WITH_APPLICATION, userId, abilityInfo)) &&
-        !IN_PROCESS_CALL(bundleMgrHelper->QueryExtensionAbilityInfos(
-            want, AppExecFwk::AbilityInfoFlag::GET_ABILITY_INFO_WITH_APPLICATION, userId, extensionInfos))) {
+    bool queryAbilityResult = IN_PROCESS_CALL(bundleMgrHelper->QueryAbilityInfo(
+        want, AppExecFwk::AbilityInfoFlag::GET_ABILITY_INFO_WITH_APPLICATION, userId, abilityInfo));
+    bool queryExtensionResult = false;
+    if (!queryAbilityResult) {
+        queryExtensionResult = IN_PROCESS_CALL(bundleMgrHelper->QueryExtensionAbilityInfos(
+            want, AppExecFwk::AbilityInfoFlag::GET_ABILITY_INFO_WITH_APPLICATION, userId, extensionInfos));
+    }
+    bool hasAgentExtension = false;
+    for (const auto &extensionInfo : extensionInfos) {
+        if (AgentAbilityUtil::IsAgentExtensionInfo(extensionInfo)) {
+            hasAgentExtension = true;
+            break;
+        }
+    }
+    if (isAgentConnect && (queryAbilityResult || (queryExtensionResult && !hasAgentExtension))) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "AGENT connect resolved non-agent target");
+        return ERR_WRONG_INTERFACE_CALL;
+    }
+    bool needStartFreeInstall = !queryAbilityResult && !queryExtensionResult;
+    if (isAgentConnect && AgentAbilityUtil::HasAtomicServiceAgentExtensionInfo(extensionInfos)) {
+        needStartFreeInstall = true;
+    }
+    if (needStartFreeInstall) {
         TAG_LOGI(AAFwkTag::FREE_INSTALL, "try to StartFreeInstall");
         auto param = std::make_shared<FreeInstallParams>();
-        param->skipStartFreeInstallPermissionCheck = isAgentConnect;
+        param->skipStartFreeInstallPermissionCheck = isVerifiedAgentCaller;
         int result = StartFreeInstall(want, userId, DEFAULT_INVAL_VALUE, callerToken, param);
         if (result) {
             TAG_LOGE(AAFwkTag::FREE_INSTALL, "startFreeInstall error");
