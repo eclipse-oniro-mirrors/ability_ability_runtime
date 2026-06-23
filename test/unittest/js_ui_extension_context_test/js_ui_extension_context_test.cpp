@@ -1325,7 +1325,7 @@ HWTEST_F(UIExtensionContextTest, TerminateSelfWithResultEmbeddable_0300, TestSiz
 // ==================== IsTerminating flag Tests ====================
 
 // HandleTerminateSelfInEmbeddableMode: terminateSelf must set the IsTerminating flag synchronously
-HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_TerminateSelf_SetsTerminating_Embeddable, TestSize.Level1)
+HWTEST_F(UIExtensionContextTest, UIExtensionContext_TerminateSelf_SetsTerminating_Embeddable, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "TerminateSelf_SetsTerminating_Embeddable start";
     HandleScope handleScope(env_);
