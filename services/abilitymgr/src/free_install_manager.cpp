@@ -594,16 +594,14 @@ int FreeInstallManager::ConnectFreeInstall(const Want &want, int32_t userId,
                 return CHECK_PERMISSION_FAILED;
             }
             isVerifiedAgentCaller = true;
-        }
-    }
-
-    if (!isSaCall && !isAgentConnect) {
-        int callerUid = IPCSkeleton::GetCallingUid();
-        std::string localBundleName;
-        auto res = IN_PROCESS_CALL(bundleMgrHelper->GetNameForUid(callerUid, localBundleName));
-        if (res != ERR_OK || localBundleName != want.GetBundle()) {
-            TAG_LOGE(AAFwkTag::FREE_INSTALL, "not local BundleName");
-            return INVALID_PARAMETERS_ERR;
+        } else {
+            int callerUid = IPCSkeleton::GetCallingUid();
+            std::string localBundleName;
+            auto res = IN_PROCESS_CALL(bundleMgrHelper->GetNameForUid(callerUid, localBundleName));
+            if (res != ERR_OK || localBundleName != want.GetBundle()) {
+                TAG_LOGE(AAFwkTag::FREE_INSTALL, "not local BundleName");
+                return INVALID_PARAMETERS_ERR;
+            }
         }
     }
 
@@ -627,15 +625,17 @@ int FreeInstallManager::ConnectFreeInstall(const Want &want, int32_t userId,
             break;
         }
     }
-    if (isAgentConnect && (queryAbilityResult || (queryExtensionResult && !hasAgentExtension))) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "AGENT connect resolved non-agent target");
-        return ERR_WRONG_INTERFACE_CALL;
+    if (isAgentConnect) {
+        if (queryAbilityResult || (queryExtensionResult && !hasAgentExtension)) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "AGENT connect resolved non-agent target");
+            return ERR_WRONG_INTERFACE_CALL;
+        }
+        if (hasAgentExtension) {
+            TAG_LOGI(AAFwkTag::SER_ROUTER, "agent already exists, no free-install");
+            return ERR_OK;
+        }
     }
-    bool needStartFreeInstall = !queryAbilityResult && !queryExtensionResult;
-    if (isAgentConnect && AgentAbilityUtil::HasAtomicServiceAgentExtensionInfo(extensionInfos)) {
-        needStartFreeInstall = true;
-    }
-    if (needStartFreeInstall) {
+    if (!queryAbilityResult && !queryExtensionResult) {
         TAG_LOGI(AAFwkTag::FREE_INSTALL, "try to StartFreeInstall");
         auto param = std::make_shared<FreeInstallParams>();
         param->skipStartFreeInstallPermissionCheck = isVerifiedAgentCaller;
