@@ -285,7 +285,7 @@ export default class SelectorServiceExtensionAbility extends extension {
 
   onConfigurationUpdate(config): void {
     console.debug(TAG, 'configuration is : ' + JSON.stringify(config));
-    if (!globalThis.params.isDefaultSelector) {
+    if (!globalThis.params || !globalThis.params.isDefaultSelector) {
       console.debug(TAG, 'device is not phone');
       return;
     }
@@ -299,6 +299,10 @@ export default class SelectorServiceExtensionAbility extends extension {
       }
     } catch (error) {
       console.error(TAG, 'Failed to getDefaultDisplaySync callback. Code: ' + JSON.stringify(error));
+    }
+    if (!globalThis.position) {
+      console.error(TAG, 'globalThis.position is invalid, skip moveWindow');
+      return;
     }
     let navigationBarRect = {
       left: globalThis.position.offsetX,
