@@ -26,6 +26,7 @@
 #include "hilog_tag_wrapper.h"
 #include "in_process_call_wrapper.h"
 #include "iservice_registry.h"
+#include "permission_constants.h"
 #include "permission_verification.h"
 #include "system_ability_definition.h"
 #ifdef SUPPORT_UPMS
@@ -95,6 +96,15 @@ int32_t SkillExecuteManager::CheckSkillPermission(const AppExecFwk::SkillInfo &s
     if (!permVerif->IsSACall()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "direct caller is not SA");
         return ERR_NOT_SYSTEM_APP;
+    }
+
+    if (Security::AccessToken::AccessTokenKit::VerifyAccessToken(callerTokenId,
+        PermissionConstants::PERMISSION_START_INVISIBLE_ABILITY, false) ==
+        AppExecFwk::Constants::PERMISSION_GRANTED) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR,
+            "caller has START_INVISIBLE_ABILITY, skip skill permission check, skill:%{public}s",
+            skillInfo.skillName.c_str());
+        return ERR_OK;
     }
 
     for (const auto &permission : skillInfo.permissions) {
