@@ -40,8 +40,8 @@ interface ICliToolManager {
         [in] ICliToolManagerScheduler scheduler);
     void BatchQueryPermissionBySubCommand([in] List<Command> cmds, [out] List<CommandPermission> cmdPermissions);
     void RegisterFunction([in] FunctionInfo function);
-    void GetFunctionInfo([in] String funcNamespace, [in] String functionName, [out] FunctionInfo function);
-    void UnregisterFunction([in] String funcNamespace, [in] String functionName);
-    void UnregisterIntentFunctionsByNamespace([in] String funcNamespace);
+    void GetFunctionInfo([in] String functionNamespace, [in] String functionName, [out] FunctionInfo function);
+    void UnregisterFunction([in] String functionNamespace, [in] String functionName);
+    void UnregisterIntentFunctionsByNamespace([in] String functionNamespace);
     void GetAllFunctions([out] FunctionInfo[] functions);
 }

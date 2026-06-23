@@ -107,23 +107,23 @@ public:
      * @param function Output FunctionInfo
      * @return ErrCode ERR_OK on success
      */
-    ErrCode GetFunctionInfo(const std::string &funcNamespace, const std::string &functionName,
+    ErrCode GetFunctionInfo(const std::string &functionNamespace, const std::string &functionName,
         FunctionInfo &function);
 
     /**
      * @brief Unregister a function
-     * @param funcNamespace Namespace
+     * @param functionNamespace Namespace
      * @param functionName Function name
      * @return ErrCode ERR_OK on success
      */
-    ErrCode UnregisterFunction(const std::string &funcNamespace, const std::string &functionName);
+    ErrCode UnregisterFunction(const std::string &functionNamespace, const std::string &functionName);
 
     /**
      * @brief Batch unregister intentFunctions by namespace
-     * @param funcNamespace Namespace to delete all functions from
+     * @param functionNamespace Namespace to delete all functions from
      * @return ErrCode ERR_OK on success
      */
-    ErrCode UnregisterIntentFunctionsByNamespace(const std::string &funcNamespace);
+    ErrCode UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace);
 
     /**
      * @brief Get all functions

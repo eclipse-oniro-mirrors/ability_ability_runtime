@@ -19,10 +19,10 @@ public:
     int32_t GetAllToolInfos(ToolsRawData &tools) override;
     int32_t RegisterTool(const ToolInfo &tool) override;
     int32_t RegisterFunction(const FunctionInfo &function) override;
-    int32_t GetFunctionInfo(const std::string &funcNamespace, const std::string &functionName,
+    int32_t GetFunctionInfo(const std::string &functionNamespace, const std::string &functionName,
         FunctionInfo &function) override;
-    int32_t UnregisterFunction(const std::string &funcNamespace, const std::string &functionName) override;
-    int32_t UnregisterIntentFunctionsByNamespace(const std::string &funcNamespace) override;
+    int32_t UnregisterFunction(const std::string &functionNamespace, const std::string &functionName) override;
+    int32_t UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace) override;
     int32_t GetAllFunctions(std::vector<FunctionInfo> &functions) override;
     int32_t ExecTool(const ExecToolParam &param, const std::string &eventId,
         const sptr<ICliToolManagerScheduler> &scheduler) override;

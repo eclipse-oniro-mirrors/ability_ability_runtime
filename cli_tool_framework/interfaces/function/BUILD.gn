@@ -14,10 +14,38 @@
 import("//build/ohos.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
-group("cli_tool_framework_packages") {
-  deps = [
-    "${cli_tool_framework_path}/frameworks/js/napi/cli_tool_manager:climanager_napi",
-    "${cli_tool_framework_path}/frameworks/js/napi/function_manager:functionmanager_napi",
-    "${cli_tool_framework_path}/frameworks/js/napi/script_manager:scriptmanager_napi",
+config("function_info_config") {
+  visibility = [ ":*" ]
+  include_dirs = [
+    "include",
+    "${ability_runtime_services_path}/common/include",
   ]
+}
+
+ohos_source_set("function_info") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  public_configs = [ ":function_info_config" ]
+
+  include_dirs = [
+    "include",
+    "${ability_runtime_services_path}/common/include",
+  ]
+
+  sources = [
+    "src/function_info.cpp",
+  ]
+
+  external_deps = [
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "json:nlohmann_json_static",
+  ]
+
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
 }

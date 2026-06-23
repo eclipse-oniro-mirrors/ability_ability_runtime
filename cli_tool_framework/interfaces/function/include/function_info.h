@@ -37,7 +37,8 @@ enum class FunctionType : int32_t {
 class FunctionInfo : public Parcelable {
 public:
     std::string functionName;
-    std::string funcNamespace;
+    std::string functionNamespace;
+    std::string version;
     std::string description;
     std::string inputSchema;
     std::string outputSchema;

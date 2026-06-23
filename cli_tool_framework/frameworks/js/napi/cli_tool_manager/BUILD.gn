@@ -80,6 +80,7 @@ ohos_shared_library("climanager_napi") {
     "include",
     "${ability_runtime_path}/interfaces/kits/native/ability/ability_runtime",
     "${cli_tool_framework_path}/interfaces/cli_tool/include",
+    "${cli_tool_framework_path}/interfaces/function/include",
   ]
 
   sources = [

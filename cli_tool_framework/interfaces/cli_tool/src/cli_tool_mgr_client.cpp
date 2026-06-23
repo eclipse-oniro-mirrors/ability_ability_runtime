@@ -189,7 +189,7 @@ ErrCode CliToolMGRClient::RegisterFunction(const FunctionInfo &function)
     return proxy->RegisterFunction(function);
 }
 
-ErrCode CliToolMGRClient::GetFunctionInfo(const std::string &funcNamespace, const std::string &functionName,
+ErrCode CliToolMGRClient::GetFunctionInfo(const std::string &functionNamespace, const std::string &functionName,
     FunctionInfo &function)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
@@ -198,10 +198,10 @@ ErrCode CliToolMGRClient::GetFunctionInfo(const std::string &funcNamespace, cons
         TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
         return GET_CLI_TOOL_MGR_SERVICE_FAILED;
     }
-    return proxy->GetFunctionInfo(funcNamespace, functionName, function);
+    return proxy->GetFunctionInfo(functionNamespace, functionName, function);
 }
 
-ErrCode CliToolMGRClient::UnregisterFunction(const std::string &funcNamespace, const std::string &functionName)
+ErrCode CliToolMGRClient::UnregisterFunction(const std::string &functionNamespace, const std::string &functionName)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto proxy = GetCliToolMgrProxy();
@@ -209,10 +209,10 @@ ErrCode CliToolMGRClient::UnregisterFunction(const std::string &funcNamespace, c
         TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
         return GET_CLI_TOOL_MGR_SERVICE_FAILED;
     }
-    return proxy->UnregisterFunction(funcNamespace, functionName);
+    return proxy->UnregisterFunction(functionNamespace, functionName);
 }
 
-ErrCode CliToolMGRClient::UnregisterIntentFunctionsByNamespace(const std::string &funcNamespace)
+ErrCode CliToolMGRClient::UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto proxy = GetCliToolMgrProxy();
@@ -220,7 +220,7 @@ ErrCode CliToolMGRClient::UnregisterIntentFunctionsByNamespace(const std::string
         TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
         return GET_CLI_TOOL_MGR_SERVICE_FAILED;
     }
-    return proxy->UnregisterIntentFunctionsByNamespace(funcNamespace);
+    return proxy->UnregisterIntentFunctionsByNamespace(functionNamespace);
 }
 
 ErrCode CliToolMGRClient::GetAllFunctions(std::vector<FunctionInfo> &functions)

@@ -120,23 +120,23 @@ public:
      * @param function Output FunctionInfo
      * @return int32_t ERR_OK if found, error code otherwise
      */
-    int32_t GetFunctionInfo(const std::string &funcNamespace, const std::string &functionName,
+    int32_t GetFunctionInfo(const std::string &functionNamespace, const std::string &functionName,
         FunctionInfo &function) override;
 
     /**
      * @brief Unregister a function
-     * @param funcNamespace Namespace
+     * @param functionNamespace Namespace
      * @param functionName Function name
      * @return int32_t ERR_OK on success, error code otherwise
      */
-    int32_t UnregisterFunction(const std::string &funcNamespace, const std::string &functionName) override;
+    int32_t UnregisterFunction(const std::string &functionNamespace, const std::string &functionName) override;
 
     /**
      * @brief Batch unregister intentFunctions by namespace
-     * @param funcNamespace Namespace to delete all functions from
+     * @param functionNamespace Namespace to delete all functions from
      * @return int32_t ERR_OK on success, error code otherwise
      */
-    int32_t UnregisterIntentFunctionsByNamespace(const std::string &funcNamespace) override;
+    int32_t UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace) override;
 
     /**
      * @brief Get all functions

@@ -43,6 +43,17 @@ ToolSummary BuildToolSummary(const std::string &name)
     summary.description = "mock summary";
     return summary;
 }
+
+FunctionInfo BuildFunctionInfo(const std::string &ns, const std::string &name)
+{
+    FunctionInfo function;
+    function.functionName = name;
+    function.functionNamespace = ns;
+    function.version = "1.0.0";
+    function.description = "mock function";
+    function.functionType = FunctionType::INTENT_FUNCTION;
+    return function;
+}
 } // namespace
 
 class MockSessionCallback : public SessionEventCallback {
@@ -522,6 +533,106 @@ HWTEST_F(CliToolMGRClientTest, ExecCmd_0600, TestSize.Level1)
         CliToolMgrClientFlag::lastEventId, result), ERR_OK);
     // sessionInfo was not set, so receivedSession keeps default empty state
     EXPECT_TRUE(receivedSession.sessionId.empty());
+}
+/**
+ * @tc.name: FunctionInterfaces_0100
+ * @tc.desc: Test function register/query/getAll success paths
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, FunctionInterfaces_0100, TestSize.Level1)
+{
+    SetMockService();
+    CliToolMgrClientFlag::functionInfos = {BuildFunctionInfo("test_ns", "test_function")};
+
+    // RegisterFunction
+    FunctionInfo function = BuildFunctionInfo("register_ns", "register_function");
+    EXPECT_EQ(CliToolMGRClient::GetInstance().RegisterFunction(function), ERR_OK);
+
+    // GetFunctionInfo
+    FunctionInfo retrievedFunction;
+    EXPECT_EQ(CliToolMGRClient::GetInstance().GetFunctionInfo("test_ns", "test_function", retrievedFunction), ERR_OK);
+    EXPECT_EQ(retrievedFunction.functionName, "test_function");
+    EXPECT_EQ(retrievedFunction.functionNamespace, "test_ns");
+
+    // GetAllFunctions
+    std::vector<FunctionInfo> functions;
+    EXPECT_EQ(CliToolMGRClient::GetInstance().GetAllFunctions(functions), ERR_OK);
+    ASSERT_EQ(functions.size(), 2);
+}
+
+/**
+ * @tc.name: FunctionInterfaces_0200
+ * @tc.desc: Test function interfaces error paths
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, FunctionInterfaces_0200, TestSize.Level1)
+{
+    SetMockService();
+    CliToolMgrClientFlag::retRegisterFunction = ERR_INVALID_VALUE;
+    CliToolMgrClientFlag::retGetFunctionInfo = ERR_INVALID_VALUE;
+    CliToolMgrClientFlag::retGetAllFunctions = ERR_INVALID_VALUE;
+    CliToolMgrClientFlag::retUnregisterFunction = ERR_INVALID_VALUE;
+
+    FunctionInfo function = BuildFunctionInfo("error_ns", "error_function");
+    EXPECT_EQ(CliToolMGRClient::GetInstance().RegisterFunction(function), ERR_INVALID_VALUE);
+
+    FunctionInfo retrievedFunction;
+    EXPECT_EQ(CliToolMGRClient::GetInstance().GetFunctionInfo("error_ns", "error_function", retrievedFunction),
+        ERR_INVALID_VALUE);
+
+    std::vector<FunctionInfo> functions;
+    EXPECT_EQ(CliToolMGRClient::GetInstance().GetAllFunctions(functions), ERR_INVALID_VALUE);
+
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterFunction("error_ns", "error_function"), ERR_INVALID_VALUE);
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterIntentFunctionsByNamespace("error_ns"), ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: FunctionInterfaces_0300
+ * @tc.desc: Test function interfaces with null proxy
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, FunctionInterfaces_0300, TestSize.Level1)
+{
+    CliToolMgrClientFlag::nullSystemAbility = true;
+
+    FunctionInfo function = BuildFunctionInfo("null_ns", "null_function");
+    FunctionInfo retrievedFunction;
+    std::vector<FunctionInfo> functions;
+
+    EXPECT_EQ(CliToolMGRClient::GetInstance().RegisterFunction(function), GET_CLI_TOOL_MGR_SERVICE_FAILED);
+    EXPECT_EQ(CliToolMGRClient::GetInstance().GetFunctionInfo("null_ns", "null_function", retrievedFunction),
+        GET_CLI_TOOL_MGR_SERVICE_FAILED);
+    EXPECT_EQ(CliToolMGRClient::GetInstance().GetAllFunctions(functions), GET_CLI_TOOL_MGR_SERVICE_FAILED);
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterFunction("null_ns", "null_function"),
+        GET_CLI_TOOL_MGR_SERVICE_FAILED);
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterIntentFunctionsByNamespace("null_ns"),
+        GET_CLI_TOOL_MGR_SERVICE_FAILED);
+}
+
+/**
+ * @tc.name: UnregisterFunction_0100
+ * @tc.desc: Test unregister function success path
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, UnregisterFunction_0100, TestSize.Level1)
+{
+    SetMockService();
+    CliToolMgrClientFlag::functionInfos = {BuildFunctionInfo("unreg_ns", "unreg_function")};
+
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterFunction("unreg_ns", "unreg_function"), ERR_OK);
+}
+
+/**
+ * @tc.name: UnregisterIntentFunctionsByNamespace_0100
+ * @tc.desc: Test unregister functions by namespace success path
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, UnregisterIntentFunctionsByNamespace_0100, TestSize.Level1)
+{
+    SetMockService();
+
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterIntentFunctionsByNamespace("intent_ns"), ERR_OK);
 }
 
 } // namespace CliTool

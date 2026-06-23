@@ -19,6 +19,7 @@ group("unittest") {
   deps = [
     "cli_common_util_test:cli_common_util_test",
     "cli_event_reply_manager_test:cli_event_reply_manager_test",
+    "cli_function_data_manager_test:cli_function_data_manager_test",
     "cli_tool_data_manager_test:cli_tool_data_manager_test",
     "cli_tool_event_test:cli_tool_event_test",
     "cli_tool_mgr_client_test:cli_tool_mgr_client_test",
@@ -30,6 +31,7 @@ group("unittest") {
     "exec_options_test:exec_options_test",
     "exec_result_test:exec_result_test",
     "exec_tool_param_test:exec_tool_param_test",
+    "function_info_test:function_info_test",
     "io_monitor_test:io_monitor_test",
     "permission_query_util_test:permission_query_util_test",
     "process_manager_test:process_manager_test",

@@ -22,6 +22,17 @@ public:
 
     static void Reset();
 };
+
+class CliFunctionDataManagerMock {
+public:
+    static int32_t registerFunctionResult;
+    static int32_t unregisterFunctionResult;
+    static int32_t getFunctionResult;
+    static int32_t getAllFunctionsResult;
+    static int32_t unregisterByNamespaceResult;
+
+    static void Reset();
+};
 } // namespace CliTool
 } // namespace OHOS
 
