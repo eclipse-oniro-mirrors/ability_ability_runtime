@@ -37,8 +37,16 @@ std::shared_ptr<Context> GetStageModeContext(ani_env* env, ani_object object)
         TAG_LOGE(AAFwkTag::APPMGR, "Object_GetField_Long failed, status: %{public}d", status);
         return nullptr;
     }
+    if (nativeContextLong == 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "nativeContext is null");
+        return nullptr;
+    }
     auto weakContext = reinterpret_cast<std::weak_ptr<Context>*>(nativeContextLong);
-    return weakContext != nullptr ? weakContext->lock() : nullptr;
+    if (weakContext == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "weakContext is null");
+        return nullptr;
+    }
+    return weakContext->lock();
 }
 } // namespace AbilityRuntime
 } // namespace OHOS
