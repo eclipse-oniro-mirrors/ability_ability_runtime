@@ -63,6 +63,10 @@ namespace wantConstant {
     EMBEDDED_FULL = 1,
     EMBEDDED_HALF = 2
   }
+
+  export enum Action {
+    ACTION_SEND_TO_DATA = 'ohos.want.action.sendToData'
+  }
 }
 
 export default wantConstant;
