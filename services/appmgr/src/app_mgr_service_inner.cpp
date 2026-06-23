@@ -9227,8 +9227,8 @@ int32_t AppMgrServiceInner::SubmitDfxFaultTask(const FaultData &faultData, const
         "pid:%{public}d", faultData.errorObject.name.c_str(), bundleName.c_str(), pid);
     bool isFrozen = AbilityRuntime::FreezeUtil::GetInstance().IsFrozen(pid);
     AppfreezeManager::AppInfo info = {
-        .pid = pid,
         .isFrozen = isFrozen,
+        .pid = pid,
         .uid = callerUid,
         .bundleName = bundleName,
         .processName = processName,
