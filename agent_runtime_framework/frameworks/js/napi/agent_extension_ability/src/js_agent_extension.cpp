@@ -501,13 +501,6 @@ void JsAgentExtension::BindContext(napi_env env, napi_value obj, std::shared_ptr
         return;
     }
     auto workContext = new (std::nothrow) std::weak_ptr<Context>(std::static_pointer_cast<Context>(context));
-    napi_coerce_to_native_binding_object(
-        env, contextObj, DetachCallbackFunc, AttachAgentExtensionContext, workContext, nullptr);
-    SetJsAgentExtensionContext(env, contextObj, context);
-    TAG_LOGD(AAFwkTag::SER_ROUTER, "Bind");
-    context->Bind(jsRuntime_, shellContextRef_.get());
-    napi_set_named_property(env, obj, "context", contextObj);
-
     auto res = napi_wrap(env, contextObj, workContext,
         [](napi_env, void* data, void*) {
             delete static_cast<std::weak_ptr<Context>*>(data);
@@ -518,6 +511,12 @@ void JsAgentExtension::BindContext(napi_env env, napi_value obj, std::shared_ptr
         delete workContext;
         return;
     }
+    napi_coerce_to_native_binding_object(
+        env, contextObj, DetachCallbackFunc, AttachAgentExtensionContext, workContext, nullptr);
+    SetJsAgentExtensionContext(env, contextObj, context);
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "Bind");
+    context->Bind(jsRuntime_, shellContextRef_.get());
+    napi_set_named_property(env, obj, "context", contextObj);
     TAG_LOGD(AAFwkTag::SER_ROUTER, "end");
 }
 
