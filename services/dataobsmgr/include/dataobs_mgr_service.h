@@ -125,6 +125,7 @@ private:
         uint32_t tokenId, int32_t userId);
     void SubmitNotifyChangeTask(Uri &uri, int32_t userId, std::string readPermission,
         ObserverInfo &info);
+    void ReduceTaskCount();
 private:
     static constexpr std::uint32_t TASK_COUNT_MAX = 50;
     ffrt::mutex taskCountMutex_;
