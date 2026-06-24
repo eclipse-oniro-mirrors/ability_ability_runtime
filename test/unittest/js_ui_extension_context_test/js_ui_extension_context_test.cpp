@@ -1465,52 +1465,52 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_TerminateSelf
     GTEST_LOG_(INFO) << "TerminateSelf_SetsTerminating_NonEmbeddable end";
 }
 
- // HandleTerminateSelfInEmbeddableMode: native completion is dispatched through the N-API event loop
- HWTEST_F(UIExtensionContextTest, UIExtensionContext_HandleTerminateSelfEmbeddable_0400, TestSize.Level1)
- {
-	 GTEST_LOG_(INFO) << "HandleTerminateSelfEmbeddable_0400 start";
-	 HandleScope handleScope(env_);
- 
-	 abilityContextImpl_->SetScreenMode(AAFwk::EMBEDDED_FULL_SCREEN_MODE);
-	 bool callbackInvoked = false;
-	 napi_value callbackFunc = nullptr;
-	 ASSERT_EQ(napi_create_function(env_, "callback", NAPI_AUTO_LENGTH, MarkCallbackInvoked,
-		 &callbackInvoked, &callbackFunc), napi_ok);
- 
-	 auto result = jsUIExtensionContext_->HandleTerminateSelfInEmbeddableMode(
-		 env_, callbackFunc, abilityContextImpl_);
-	 EXPECT_NE(result, nullptr);
-	 EXPECT_FALSE(callbackInvoked);
- 
-	 auto engine = reinterpret_cast<ArkNativeEngine *>(env_);
-	 RunNowait(engine->GetUVLoop());
-	 EXPECT_TRUE(callbackInvoked);
-	 GTEST_LOG_(INFO) << "HandleTerminateSelfEmbeddable_0400 end";
- }
+// HandleTerminateSelfInEmbeddableMode: native completion is dispatched through the N-API event loop
+HWTEST_F(UIExtensionContextTest, UIExtensionContext_HandleTerminateSelfEmbeddable_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HandleTerminateSelfEmbeddable_0400 start";
+    HandleScope handleScope(env_);
+
+    abilityContextImpl_->SetScreenMode(AAFwk::EMBEDDED_FULL_SCREEN_MODE);
+    bool callbackInvoked = false;
+    napi_value callbackFunc = nullptr;
+    ASSERT_EQ(napi_create_function(env_, "callback", NAPI_AUTO_LENGTH, MarkCallbackInvoked,
+        &callbackInvoked, &callbackFunc), napi_ok);
+
+    auto result = jsUIExtensionContext_->HandleTerminateSelfInEmbeddableMode(
+        env_, callbackFunc, abilityContextImpl_);
+    EXPECT_NE(result, nullptr);
+    EXPECT_FALSE(callbackInvoked);
+
+    auto engine = reinterpret_cast<ArkNativeEngine *>(env_);
+    RunNowait(engine->GetUVLoop());
+    EXPECT_TRUE(callbackInvoked);
+    GTEST_LOG_(INFO) << "HandleTerminateSelfEmbeddable_0400 end";
+}
 
 
- // HandleTerminateSelfWithResultInEmbeddableMode: transfer failure is dispatched through the N-API event loop
- HWTEST_F(UIExtensionContextTest, TerminateSelfWithResultEmbeddable_0400, TestSize.Level1)
- {
-	 GTEST_LOG_(INFO) << "TerminateSelfWithResultEmbeddable_0400 start";
-	 HandleScope handleScope(env_);
- 
-	 abilityContextImpl_->SetScreenMode(AAFwk::EMBEDDED_FULL_SCREEN_MODE);
-	 bool callbackInvoked = false;
-	 napi_value callbackFunc = nullptr;
-	 ASSERT_EQ(napi_create_function(env_, "callback", NAPI_AUTO_LENGTH, MarkCallbackInvoked,
-		 &callbackInvoked, &callbackFunc), napi_ok);
- 
-	 AAFwk::Want want;
-	 auto result = jsUIExtensionContext_->HandleTerminateSelfWithResultInEmbeddableMode(
-		 env_, callbackFunc, abilityContextImpl_, 0, want);
-	 EXPECT_NE(result, nullptr);
-	 EXPECT_FALSE(callbackInvoked);
- 
-	 auto engine = reinterpret_cast<ArkNativeEngine *>(env_);
-	 RunNowait(engine->GetUVLoop());
-	 EXPECT_TRUE(callbackInvoked);
-	 GTEST_LOG_(INFO) << "TerminateSelfWithResultEmbeddable_0400 end";
- }
+// HandleTerminateSelfWithResultInEmbeddableMode: transfer failure is dispatched through the N-API event loop
+HWTEST_F(UIExtensionContextTest, TerminateSelfWithResultEmbeddable_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "TerminateSelfWithResultEmbeddable_0400 start";
+    HandleScope handleScope(env_);
+
+    abilityContextImpl_->SetScreenMode(AAFwk::EMBEDDED_FULL_SCREEN_MODE);
+    bool callbackInvoked = false;
+    napi_value callbackFunc = nullptr;
+    ASSERT_EQ(napi_create_function(env_, "callback", NAPI_AUTO_LENGTH, MarkCallbackInvoked,
+        &callbackInvoked, &callbackFunc), napi_ok);
+
+    AAFwk::Want want;
+    auto result = jsUIExtensionContext_->HandleTerminateSelfWithResultInEmbeddableMode(
+        env_, callbackFunc, abilityContextImpl_, 0, want);
+    EXPECT_NE(result, nullptr);
+    EXPECT_FALSE(callbackInvoked);
+
+    auto engine = reinterpret_cast<ArkNativeEngine *>(env_);
+    RunNowait(engine->GetUVLoop());
+    EXPECT_TRUE(callbackInvoked);
+    GTEST_LOG_(INFO) << "TerminateSelfWithResultEmbeddable_0400 end";
+}
 }  // namespace AAFwk
 }  // namespace OHOS
