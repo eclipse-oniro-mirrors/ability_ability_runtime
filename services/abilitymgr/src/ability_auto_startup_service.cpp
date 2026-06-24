@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -259,8 +259,7 @@ int32_t AbilityAutoStartupService::GetAutoStartupStatusForSelf(uint32_t callerTo
 int32_t AbilityAutoStartupService::QueryAllAutoStartupApplicationsWithoutPermission(
     std::vector<AutoStartupInfo> &infoList, int32_t userId)
 {
-    if (!AAFwk::AppUtils::GetInstance().IsEnterpriseDeviceType() &&
-        !AAFwk::AppUtils::GetInstance().IsProductAppbootSettingEnabled()) {
+    if (!AAFwk::AppUtils::GetInstance().IsAutoStartupSupported()) {
         TAG_LOGE(AAFwkTag::AUTO_STARTUP, "Disabled config");
         return ERR_NOT_SUPPORTED_PRODUCT_TYPE;
     }
@@ -572,7 +571,7 @@ std::shared_ptr<AppExecFwk::BundleMgrClient> AbilityAutoStartupService::GetBundl
 
 int32_t AbilityAutoStartupService::CheckPermissionForSystem()
 {
-    if (!AAFwk::AppUtils::GetInstance().IsProductAppbootSettingEnabled()) {
+    if (!AAFwk::AppUtils::GetInstance().IsAutoStartupSupported()) {
         TAG_LOGE(AAFwkTag::AUTO_STARTUP, "Disabled config");
         return ERR_NOT_SUPPORTED_PRODUCT_TYPE;
     }
@@ -588,20 +587,6 @@ int32_t AbilityAutoStartupService::CheckPermissionForSystem()
         return CHECK_PERMISSION_FAILED;
     }
 
-    return ERR_OK;
-}
-
-int32_t AbilityAutoStartupService::CheckPermissionForSelf(const std::string &bundleName)
-{
-    if (!AAFwk::AppUtils::GetInstance().IsProductAppbootSettingEnabled()) {
-        TAG_LOGE(AAFwkTag::AUTO_STARTUP, "Disabled config");
-        return ERR_NOT_SUPPORTED_PRODUCT_TYPE;
-    }
-
-    if (!CheckSelfApplication(bundleName)) {
-        TAG_LOGE(AAFwkTag::AUTO_STARTUP, "Not self application");
-        return ERR_NOT_SELF_APPLICATION;
-    }
     return ERR_OK;
 }
 

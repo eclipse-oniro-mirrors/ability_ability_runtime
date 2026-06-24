@@ -52,7 +52,7 @@ bool AppUtils::IsProductAppbootSettingEnabled()
     return true;
 }
 
-bool AppUtils::IsEnterpriseDeviceType()
+bool AppUtils::IsAutoStartupSupported()
 {
     return true;
 }

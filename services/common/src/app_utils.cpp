@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -90,6 +90,8 @@ constexpr const char* RESTART_APP_WITH_WINDOW = "persist.sys.abilityms.restart_a
 constexpr const char* SUPPORT_NATIVE_UI_ABILITY = "persist.sys.abilityms.support_native_ui_ability";
 constexpr const char* PRODUCT_APPBOOT_SETTING_ENABLED = "const.product.appboot.setting.enabled";
 constexpr const char* IS_ENTERPRISE_DEVICE_TYPE = "const.edm.is_enterprise_device";
+constexpr const char* IS_EDM_ENABLE = "persist.edm.edm_enable";
+constexpr const char* SUPPORT_AUTO_STARTUP = "const.abilityms.enable_auto_startup";
 constexpr const char* SUPPORT_DELAYED_PROCESS_EXIT = "const.abilityms.support_delayed_process_exit";
 // Support prepare terminate
 constexpr int32_t PREPARE_TERMINATE_ENABLE_SIZE = 6;
@@ -908,14 +910,17 @@ bool AppUtils::IsSupportDelayedProcessExit()
     return isSupportDelayedProcessExit_.value;
 }
 
-bool AppUtils::IsEnterpriseDeviceType()
+bool AppUtils::IsAutoStartupSupported()
 {
-    if (!isEnterpriseDeviceType_.isLoaded) {
-        isEnterpriseDeviceType_.value = system::GetBoolParameter(IS_ENTERPRISE_DEVICE_TYPE, false);
-        isEnterpriseDeviceType_.isLoaded = true;
+    if (!isAutoStartupSupported_.isLoaded) {
+        isAutoStartupSupported_.value =
+            system::GetBoolParameter(IS_ENTERPRISE_DEVICE_TYPE, false) ||
+            system::GetBoolParameter(IS_EDM_ENABLE, false) ||
+            system::GetBoolParameter(SUPPORT_AUTO_STARTUP, false);
+        isAutoStartupSupported_.isLoaded = true;
     }
-    TAG_LOGD(AAFwkTag::DEFAULT, "IsEnterpriseDeviceType: %{public}d", isEnterpriseDeviceType_.value);
-    return isEnterpriseDeviceType_.value;
+    TAG_LOGD(AAFwkTag::DEFAULT, "IsAutoStartupSupported: %{public}d", isAutoStartupSupported_.value);
+    return isAutoStartupSupported_.value;
 }
 
 bool AppUtils::IsProductAppbootSettingEnabled()

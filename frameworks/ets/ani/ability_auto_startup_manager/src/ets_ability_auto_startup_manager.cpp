@@ -82,7 +82,7 @@ ani_boolean EtsAbilityAutoStartupManager::IsAutoStartupSupported(ani_env *env)
         TAG_LOGE(AAFwkTag::AUTO_STARTUP, "null env");
         return ANI_FALSE;
     }
-    return AAFwk::AppUtils::GetInstance().IsProductAppbootSettingEnabled() ? ANI_TRUE : ANI_FALSE;
+    return AAFwk::AppUtils::GetInstance().IsAutoStartupSupported() ? ANI_TRUE : ANI_FALSE;
 }
 
 void EtsAbilityAutoStartupManager::AutoStartupInfoCheck(
