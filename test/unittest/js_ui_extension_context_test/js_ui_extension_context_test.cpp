@@ -1321,5 +1321,137 @@ HWTEST_F(UIExtensionContextTest, TerminateSelfWithResultEmbeddable_0300, TestSiz
     }
     GTEST_LOG_(INFO) << "TerminateSelfWithResultEmbeddable_0300 end";
 }
+
+// ==================== IsTerminating flag Tests ====================
+
+// HandleTerminateSelfInEmbeddableMode: terminateSelf must set the IsTerminating flag synchronously
+HWTEST_F(UIExtensionContextTest, UIExtensionContext_TerminateSelf_SetsTerminating_Embeddable, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "TerminateSelf_SetsTerminating_Embeddable start";
+    HandleScope handleScope(env_);
+
+    abilityContextImpl_->SetScreenMode(1); // EMBEDDED_FULL_SCREEN_MODE
+    EXPECT_FALSE(abilityContextImpl_->IsTerminating());
+
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelf(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelf", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_value argv[] = {};
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_ZERO, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_ok);
+
+    // SetTerminating(true) runs synchronously in HandleTerminateSelfInEmbeddableMode before returning
+    EXPECT_TRUE(abilityContextImpl_->IsTerminating());
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+
+    GTEST_LOG_(INFO) << "TerminateSelf_SetsTerminating_Embeddable end";
+}
+
+// HandleTerminateSelfWithResultInEmbeddableMode: terminateSelfWithResult must set the IsTerminating flag
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_TerminateSelfWithResult_SetsTerminating_Embeddable,
+    TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "TerminateSelfWithResult_SetsTerminating_Embeddable start";
+    HandleScope handleScope(env_);
+
+    abilityContextImpl_->SetScreenMode(1); // EMBEDDED_FULL_SCREEN_MODE
+    EXPECT_FALSE(abilityContextImpl_->IsTerminating());
+
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelfWithResult(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    // Create ability result
+    napi_value resultObject = nullptr;
+    napi_create_object(env_, &resultObject);
+    napi_value resultCode = nullptr;
+    napi_create_int32(env_, 100, &resultCode);
+    napi_set_named_property(env_, resultObject, "resultCode", resultCode);
+    AAFwk::Want want;
+    napi_value jsWant = AppExecFwk::CreateJsWant(env_, want);
+    napi_set_named_property(env_, resultObject, "want", jsWant);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelfWithResult", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_value argv[] = { resultObject };
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_ONE, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_ok);
+
+    // SetTerminating(true) runs synchronously in HandleTerminateSelfWithResultInEmbeddableMode before returning
+    EXPECT_TRUE(abilityContextImpl_->IsTerminating());
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+
+    GTEST_LOG_(INFO) << "TerminateSelfWithResult_SetsTerminating_Embeddable end";
+}
+
+// HandleTerminateSelfInNonEmbeddableMode: terminateSelf must set the IsTerminating flag.
+// SetTerminating(true) runs in the NapiAsyncTask execute callback (worker thread), so the loop
+// is pumped with a bounded wait until the flag flips.
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_TerminateSelf_SetsTerminating_NonEmbeddable,
+    TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "TerminateSelf_SetsTerminating_NonEmbeddable start";
+    HandleScope handleScope(env_);
+
+    // Default screenMode is non-embeddable (IDLE_SCREEN_MODE)
+    EXPECT_NE(abilityContextImpl_->GetScreenMode(), 1);
+    EXPECT_NE(abilityContextImpl_->GetScreenMode(), 2);
+    EXPECT_FALSE(abilityContextImpl_->IsTerminating());
+
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelf(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelf", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_value argv[] = {};
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_ZERO, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_ok);
+
+    // SetTerminating(true) runs on the worker thread inside the execute callback; pump until it takes effect
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    bool isTerminating = false;
+    for (int32_t i = 0; i < 5; ++i) {
+        RunNowait(loop);
+        if (abilityContextImpl_->IsTerminating()) {
+            isTerminating = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(isTerminating);
+
+    GTEST_LOG_(INFO) << "TerminateSelf_SetsTerminating_NonEmbeddable end";
+}
 }  // namespace AAFwk
 }  // namespace OHOS
