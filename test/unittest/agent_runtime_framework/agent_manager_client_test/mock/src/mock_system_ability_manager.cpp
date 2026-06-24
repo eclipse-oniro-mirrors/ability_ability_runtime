@@ -18,21 +18,22 @@
 #include "mock_my_flag.h"
 
 namespace OHOS {
-int AgentRuntime::MyFlag::retLoadSystemAbility = 0;
-bool AgentRuntime::MyFlag::shouldCallback = true;
-sptr<IRemoteObject> AgentRuntime::MyFlag::agentMgr = nullptr;
+namespace AgentRuntime {
+    sptr<IRemoteObject> MyFlag::agentMgr = nullptr;
+}
 namespace AAFwk {
 int32_t MockSystemAbilityManager::LoadSystemAbility(int32_t systemAbilityId,
     const sptr<ISystemAbilityLoadCallback> &callback)
 {
-    if (OHOS::AgentRuntime::MyFlag::retLoadSystemAbility != 0) {
-        return OHOS::AgentRuntime::MyFlag::retLoadSystemAbility;
-    }
-
-    if (OHOS::AgentRuntime::MyFlag::shouldCallback) {
-        callback->OnLoadSystemAbilitySuccess(systemAbilityId, OHOS::AgentRuntime::MyFlag::agentMgr);
-    }
     return 0;
+}
+
+sptr<IRemoteObject> MockSystemAbilityManager::GetSystemAbility(int32_t systemAbilityId)
+{
+    if (OHOS::AgentRuntime::MyFlag::nullSystemAbility) {
+        return nullptr;
+    }
+    return OHOS::AgentRuntime::MyFlag::agentMgr;
 }
 } // namespace AAFwk
 }  // namespace OHOS

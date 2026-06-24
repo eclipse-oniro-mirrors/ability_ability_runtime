@@ -64,9 +64,8 @@ HWTEST_F(UriPermissionManagerTest, ConnectUriPermService_001, TestSize.Level1)
         new (std::nothrow) AppExecFwk::MockSystemAbilityManager();
     ASSERT_NE(mockSystemAbilityManager, nullptr);
     SystemAbilityManagerClient::GetInstance().systemAbilityManager_ = mockSystemAbilityManager;
-    EXPECT_CALL(*mockSystemAbilityManager,
-        LoadSystemAbility(::testing::An<int32_t>(), ::testing::An<const sptr<ISystemAbilityLoadCallback>&>()))
-        .WillOnce(::testing::Return(1));
+    EXPECT_CALL(*mockSystemAbilityManager, GetSystemAbility(::testing::An<int32_t>()))
+        .WillOnce(::testing::Return(nullptr));
     auto& upmc = AAFwk::UriPermissionManagerClient::GetInstance();
     auto ret = upmc.ConnectUriPermService();
     EXPECT_EQ(ret, nullptr);
@@ -85,11 +84,9 @@ HWTEST_F(UriPermissionManagerTest, ConnectUriPermService_002, TestSize.Level1)
         new (std::nothrow) AppExecFwk::MockSystemAbilityManager();
     ASSERT_NE(mockSystemAbilityManager, nullptr);
     SystemAbilityManagerClient::GetInstance().systemAbilityManager_ = mockSystemAbilityManager;
-    EXPECT_CALL(*mockSystemAbilityManager,
-        LoadSystemAbility(::testing::An<int32_t>(), ::testing::An<const sptr<ISystemAbilityLoadCallback>&>()))
-        .WillOnce(::testing::Return(0));
+    EXPECT_CALL(*mockSystemAbilityManager, GetSystemAbility(::testing::An<int32_t>()))
+        .WillOnce(::testing::Return(nullptr));
     auto& upmc = AAFwk::UriPermissionManagerClient::GetInstance();
-    upmc.saLoadFinished_ = true;
     auto ret = upmc.ConnectUriPermService();
     EXPECT_EQ(ret, nullptr);
     SystemAbilityManagerClient::GetInstance().systemAbilityManager_ = nullptr;
@@ -103,10 +100,16 @@ HWTEST_F(UriPermissionManagerTest, ConnectUriPermService_002, TestSize.Level1)
  */
 HWTEST_F(UriPermissionManagerTest, LoadUriPermService_001, TestSize.Level1)
 {
+    sptr<AppExecFwk::MockSystemAbilityManager> mockSystemAbilityManager =
+        new (std::nothrow) AppExecFwk::MockSystemAbilityManager();
+    ASSERT_NE(mockSystemAbilityManager, nullptr);
+    SystemAbilityManagerClient::GetInstance().systemAbilityManager_ = mockSystemAbilityManager;
+    EXPECT_CALL(*mockSystemAbilityManager, GetSystemAbility(::testing::An<int32_t>()))
+        .WillOnce(::testing::Return(nullptr));
     auto& upmc = AAFwk::UriPermissionManagerClient::GetInstance();
-    upmc.saLoadFinished_ = true;
     auto ret = upmc.LoadUriPermService();
-    EXPECT_TRUE(ret);
+    EXPECT_FALSE(ret);
+    SystemAbilityManagerClient::GetInstance().systemAbilityManager_ = nullptr;
 }
 
 /*

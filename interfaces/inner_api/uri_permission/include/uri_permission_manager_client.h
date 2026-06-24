@@ -182,9 +182,6 @@ private:
 
 private:
     std::mutex mutex_;
-    std::mutex saLoadMutex_;
-    std::condition_variable loadSaVariable_;
-    bool saLoadFinished_ = false;
     sptr<IUriPermissionManager> uriPermMgr_ = nullptr;
     std::atomic_bool isUriPermServiceStarted_ = false;
 };

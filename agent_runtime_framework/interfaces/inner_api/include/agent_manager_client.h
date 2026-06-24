@@ -16,7 +16,6 @@
 #ifndef OHOS_AGENT_RUNTIME_AGENT_MANAGER_CLIENT_H
 #define OHOS_AGENT_RUNTIME_AGENT_MANAGER_CLIENT_H
 
-#include <condition_variable>
 #include <functional>
 #include <memory>
 
@@ -89,9 +88,6 @@ private:
     };
 
 private:
-    std::condition_variable loadSaCondition_;
-    std::mutex loadSaMutex_;
-    bool loadSaFinished_;
     std::mutex mutex_;
     sptr<IAgentManager> agentMgr_ = nullptr;
 };
