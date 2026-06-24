@@ -328,7 +328,7 @@ void UIExtensionContext::TerminateSelfWithResultAndAnimation(int32_t resultCode,
 
 ErrCode UIExtensionContext::TerminateSelfInner(int32_t terminateRequestId)
 {
-    TAG_LOGD(AAFwkTag::UI_EXT, "TerminateSelfInner (embeddable), terminateRequestId=%{public}d", terminateRequestId);
+    TAG_LOGI(AAFwkTag::UI_EXT, "TerminateSelfInner (embeddable), terminateRequestId=%{public}d", terminateRequestId);
 
     // Check if this request has already been handled, and get request in one lock
     PendingTerminateRequest request;
