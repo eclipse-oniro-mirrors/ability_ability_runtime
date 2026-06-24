@@ -45,11 +45,18 @@ bool ParseInputSchema(const nlohmann::json &json, std::string &output)
         return true;
     }
     const auto &inputSchema = json["inputSchema"];
-    if (inputSchema.is_object()) {
-        output = inputSchema.dump();
+    if (inputSchema.is_string()) {
+        output = inputSchema.get<std::string>();
+        if (!output.empty()) {
+            nlohmann::json parsed = nlohmann::json::parse(output, nullptr, false);
+            if (parsed.is_discarded()) {
+                TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: inputSchema is not valid JSON");
+                return false;
+            }
+        }
         return true;
     }
-    TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: inputSchema must be a JSON object");
+    TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: inputSchema must be a string");
     return false;
 }
 
@@ -59,11 +66,18 @@ bool ParseOutputSchema(const nlohmann::json &json, std::string &output)
         return true;
     }
     const auto &outputSchema = json["outputSchema"];
-    if (outputSchema.is_object()) {
-        output = outputSchema.dump();
+    if (outputSchema.is_string()) {
+        output = outputSchema.get<std::string>();
+        if (!output.empty()) {
+            nlohmann::json parsed = nlohmann::json::parse(output, nullptr, false);
+            if (parsed.is_discarded()) {
+                TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: outputSchema is not valid JSON");
+                return false;
+            }
+        }
         return true;
     }
-    TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: outputSchema must be a JSON object");
+    TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: outputSchema must be a string");
     return false;
 }
 
@@ -97,8 +111,12 @@ bool FunctionInfo::Marshalling(Parcel &parcel) const
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Write functionName failed");
         return false;
     }
-    if (!parcel.WriteString(funcNamespace)) {
+    if (!parcel.WriteString(functionNamespace)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Write namespace failed");
+        return false;
+    }
+    if (!parcel.WriteString(version)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Write version failed");
         return false;
     }
     if (!parcel.WriteString(description)) {
@@ -129,8 +147,12 @@ FunctionInfo *FunctionInfo::Unmarshalling(Parcel &parcel)
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Read functionName failed");
         return nullptr;
     }
-    if (!parcel.ReadString(function->funcNamespace)) {
+    if (!parcel.ReadString(function->functionNamespace)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Read namespace failed");
+        return nullptr;
+    }
+    if (!parcel.ReadString(function->version)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Read version failed");
         return nullptr;
     }
     if (!parcel.ReadString(function->description)) {
@@ -163,7 +185,8 @@ FunctionInfo *FunctionInfo::Unmarshalling(Parcel &parcel)
 bool FunctionInfo::ParseFromJson(const nlohmann::json &json, FunctionInfo &function)
 {
     return ParseRequiredStringField(json, "functionName", function.functionName) &&
-           ParseRequiredStringField(json, "namespace", function.funcNamespace) &&
+           ParseRequiredStringField(json, "functionNamespace", function.functionNamespace) &&
+           ParseRequiredStringField(json, "version", function.version, true) &&
            ParseRequiredStringField(json, "description", function.description, true) &&
            ParseInputSchema(json, function.inputSchema) &&
            ParseOutputSchema(json, function.outputSchema) &&
@@ -175,25 +198,16 @@ nlohmann::json FunctionInfo::ParseToJson() const
     nlohmann::json j;
 
     j["functionName"] = functionName;
-    j["namespace"] = funcNamespace;
+    j["functionNamespace"] = functionNamespace;
+    j["version"] = version;
     j["description"] = description;
 
     if (!inputSchema.empty()) {
-        nlohmann::json inputSchemaJson = nlohmann::json::parse(inputSchema, nullptr, false);
-        if (!inputSchemaJson.is_discarded()) {
-            j["inputSchema"] = inputSchemaJson;
-        } else {
-            j["inputSchema"] = inputSchema;
-        }
+        j["inputSchema"] = inputSchema;
     }
 
     if (!outputSchema.empty()) {
-        nlohmann::json outputSchemaJson = nlohmann::json::parse(outputSchema, nullptr, false);
-        if (!outputSchemaJson.is_discarded()) {
-            j["outputSchema"] = outputSchemaJson;
-        } else {
-            j["outputSchema"] = outputSchema;
-        }
+        j["outputSchema"] = outputSchema;
     }
 
     j["functionType"] = static_cast<int32_t>(functionType);
@@ -208,7 +222,7 @@ bool FunctionInfo::Validate(const FunctionInfo &function)
         return false;
     }
 
-    if (function.funcNamespace.empty()) {
+    if (function.functionNamespace.empty()) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: namespace is empty");
         return false;
     }

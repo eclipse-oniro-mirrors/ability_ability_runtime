@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "function_info.h"
 #include "tool_info.h"
 #include "tool_summary.h"
 
@@ -27,6 +28,21 @@ public:
     int32_t RegisterTool(const ToolInfo &tool);
     int32_t JsonArrayToTools(const std::string &jsonStr, std::vector<ToolInfo> &tools);
     int32_t GetToolByName(const std::string &name, ToolInfo &toolInfo);
+};
+
+class CliFunctionDataManager {
+public:
+    CliFunctionDataManager() noexcept;
+    ~CliFunctionDataManager();
+
+    static CliFunctionDataManager &GetInstance();
+    int32_t RegisterFunction(const FunctionInfo &function);
+    int32_t GetFunctionByName(const std::string &functionNamespace, const std::string &functionName,
+        FunctionInfo &function);
+    int32_t UnregisterFunction(const std::string &functionNamespace, const std::string &functionName);
+    int32_t UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace);
+    int32_t GetAllFunctions(std::vector<FunctionInfo> &functions);
+    int32_t EnsureFunctionsInitialized();
 };
 } // namespace CliTool
 } // namespace OHOS

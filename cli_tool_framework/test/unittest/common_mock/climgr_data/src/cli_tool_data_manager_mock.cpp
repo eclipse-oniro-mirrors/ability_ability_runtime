@@ -8,6 +8,7 @@
 #include "../include/cli_tool_data_manager.h"
 #include "cli_error_code.h"
 #include "tool_info.h"
+#include "function_info.h"
 
 namespace OHOS {
 namespace CliTool {
@@ -24,6 +25,22 @@ void CliToolDataManagerMock::Reset()
     subCommandName = "build";
     toolPermissions.clear();
     subCommandPermissions.clear();
+}
+
+// CliFunctionDataManagerMock
+int32_t CliFunctionDataManagerMock::registerFunctionResult = ERR_OK;
+int32_t CliFunctionDataManagerMock::unregisterFunctionResult = ERR_OK;
+int32_t CliFunctionDataManagerMock::getFunctionResult = ERR_OK;
+int32_t CliFunctionDataManagerMock::getAllFunctionsResult = ERR_OK;
+int32_t CliFunctionDataManagerMock::unregisterByNamespaceResult = ERR_OK;
+
+void CliFunctionDataManagerMock::Reset()
+{
+    registerFunctionResult = ERR_OK;
+    unregisterFunctionResult = ERR_OK;
+    getFunctionResult = ERR_OK;
+    getAllFunctionsResult = ERR_OK;
+    unregisterByNamespaceResult = ERR_OK;
 }
 
 CliToolDataManager::CliToolDataManager() noexcept = default;
@@ -92,5 +109,48 @@ int32_t CliToolDataManager::GetToolByName(const std::string &name, ToolInfo &too
     }
     return ERR_OK;
 }
+
+// CliFunctionDataManager mock implementations
+CliFunctionDataManager::CliFunctionDataManager() noexcept = default;
+
+CliFunctionDataManager::~CliFunctionDataManager() = default;
+
+CliFunctionDataManager &CliFunctionDataManager::GetInstance()
+{
+    static CliFunctionDataManager instance;
+    return instance;
+}
+
+int32_t CliFunctionDataManager::RegisterFunction(const FunctionInfo &)
+{
+    return CliFunctionDataManagerMock::registerFunctionResult;
+}
+
+int32_t CliFunctionDataManager::GetFunctionByName(const std::string &, const std::string &, FunctionInfo &)
+{
+    return CliFunctionDataManagerMock::getFunctionResult;
+}
+
+int32_t CliFunctionDataManager::UnregisterFunction(const std::string &, const std::string &)
+{
+    return CliFunctionDataManagerMock::unregisterFunctionResult;
+}
+
+int32_t CliFunctionDataManager::UnregisterIntentFunctionsByNamespace(const std::string &)
+{
+    return CliFunctionDataManagerMock::unregisterByNamespaceResult;
+}
+
+int32_t CliFunctionDataManager::GetAllFunctions(std::vector<FunctionInfo> &functions)
+{
+    functions.clear();
+    return CliFunctionDataManagerMock::getAllFunctionsResult;
+}
+
+int32_t CliFunctionDataManager::EnsureFunctionsInitialized()
+{
+    return ERR_OK;
+}
+
 } // namespace CliTool
 } // namespace OHOS

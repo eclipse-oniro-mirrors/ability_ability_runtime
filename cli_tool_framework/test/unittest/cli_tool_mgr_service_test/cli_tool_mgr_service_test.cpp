@@ -29,6 +29,7 @@
 #define protected public
 #define private public
 #include "cli_tool_manager_service.h"
+#include "cli_function_data_manager.h"
 #undef private
 #undef protected
 
@@ -39,15 +40,18 @@
 #include "cli_tool_data_manager_mock.h"
 #include "event_dispatcher.h"
 #include "exec_options.h"
+#include "function_info.h"
 #include "ipc_skeleton.h"
 #include "nativetoken_kit.h"
 #include "skill/skill_execute_result.h"
 #include "string_wrapper.h"
 #include "token_setproc.h"
 #include "tokenid_kit.h"
+#include "accesstoken_kit.h"
 #include "tool_info.h"
 #include "tool_util.h"
 #include "want_params.h"
+#include "hilog_tag_wrapper.h"
 
 using namespace testing::ext;
 using namespace OHOS::CliTool;
@@ -130,6 +134,7 @@ void CliToolManagerServiceTest::SetUp()
     service_ = CliToolManagerService::GetInstance();
     service_->interfaceCalledCount_.store(0);
     CliToolDataManagerMock::Reset();
+    CliFunctionDataManagerMock::Reset();
     EventDispatcher::GetInstance().ClearAll();
     std::lock_guard<ffrt::mutex> guard(service_->sessionsMutex_);
     service_->sessionRecords_.clear();
@@ -140,6 +145,7 @@ void CliToolManagerServiceTest::TearDown()
 {
     service_->interfaceCalledCount_.store(0);
     CliToolDataManagerMock::Reset();
+    CliFunctionDataManagerMock::Reset();
     EventDispatcher::GetInstance().ClearAll();
     std::lock_guard<ffrt::mutex> guard(service_->sessionsMutex_);
     service_->sessionRecords_.clear();
@@ -163,14 +169,14 @@ void CliToolManagerServiceTest::RegisterTestTool(const std::string& name, const 
  */
 HWTEST_F(CliToolManagerServiceTest, GetInstance_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_GetInstance_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetInstance_0100 start");
 
     auto instance1 = CliToolManagerService::GetInstance();
     auto instance2 = CliToolManagerService::GetInstance();
 
     EXPECT_EQ(instance1.GetRefPtr(), instance2.GetRefPtr());
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_GetInstance_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetInstance_0100 end");
 }
 
 /**
@@ -180,7 +186,7 @@ HWTEST_F(CliToolManagerServiceTest, GetInstance_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, Init_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_Init_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_Init_0100 start");
 
     auto oldMonitor = service_->ioMonitor_;
     bool oldInitialized = service_->initialized_;
@@ -202,7 +208,7 @@ HWTEST_F(CliToolManagerServiceTest, Init_0100, TestSize.Level1)
     service_->ioMonitor_ = oldMonitor;
     service_->initialized_ = oldInitialized;
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_Init_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_Init_0100 end");
 }
 
 /**
@@ -212,7 +218,7 @@ HWTEST_F(CliToolManagerServiceTest, Init_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, OnIdle_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_OnIdle_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_OnIdle_0100 start");
 
     SystemAbilityOnDemandReason idleReason;
 
@@ -227,7 +233,7 @@ HWTEST_F(CliToolManagerServiceTest, OnIdle_0100, TestSize.Level1)
     service_->AddSessionRecord(record);
     EXPECT_EQ(service_->OnIdle(idleReason), -1);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_OnIdle_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_OnIdle_0100 end");
 }
 
 /**
@@ -237,7 +243,7 @@ HWTEST_F(CliToolManagerServiceTest, OnIdle_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, IOMonitorSendMessage_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_IOMonitorSendMessage_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_IOMonitorSendMessage_0100 start");
 
     constexpr int32_t sendCount = 1200;
     constexpr const char* sessionId = "test_session";
@@ -295,7 +301,7 @@ HWTEST_F(CliToolManagerServiceTest, IOMonitorSendMessage_0100, TestSize.Level1)
     }
     close(stdinPipe[0]);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_IOMonitorSendMessage_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_IOMonitorSendMessage_0100 end");
 }
 
 /**
@@ -305,7 +311,7 @@ HWTEST_F(CliToolManagerServiceTest, IOMonitorSendMessage_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, SubscribeSession_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_SubscribeSession_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SubscribeSession_0100 start");
 
     auto runningRecord = std::make_shared<SessionRecord>();
     runningRecord->sessionId = "running_session";
@@ -314,7 +320,7 @@ HWTEST_F(CliToolManagerServiceTest, SubscribeSession_0100, TestSize.Level1)
     int32_t runningRet = service_->SubscribeSession(runningRecord->sessionId, "running_subscription", nullptr);
     EXPECT_TRUE(runningRet == ERR_NO_INIT || runningRet == ERR_NOT_SYSTEM_APP || runningRet == ERR_PERMISSION_DENIED);
     if (runningRet != ERR_NO_INIT) {
-        GTEST_LOG_(INFO) << "CliToolManagerService_SubscribeSession_0100 skipped status gate checks";
+        TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SubscribeSession_0100 skipped status gate checks");
         return;
     }
 
@@ -338,7 +344,7 @@ HWTEST_F(CliToolManagerServiceTest, SubscribeSession_0100, TestSize.Level1)
     EXPECT_EQ(service_->SubscribeSession(failedRecord->sessionId, "failed_subscription", nullptr),
         ERR_CLI_SESSION_NOT_FOUND);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_SubscribeSession_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SubscribeSession_0100 end");
 }
 
 /**
@@ -348,7 +354,7 @@ HWTEST_F(CliToolManagerServiceTest, SubscribeSession_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ExecTool_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_0100 start");
 
     auto cliQuantity = CcmUtil::GetInstance().GetCliConcurrencyLimit();
     for (int32_t i = 0; i < cliQuantity; ++i) {
@@ -362,7 +368,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0100, TestSize.Level1)
     EXPECT_EQ(result, ERR_SESSION_LIMIT_EXCEEDED);
     EXPECT_EQ(service_->sessionRecords_.size(), static_cast<size_t>(cliQuantity));
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_0100 end");
 }
 
 /**
@@ -372,7 +378,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ExecTool_0110, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0110 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_0110 start");
 
     auto cliQuantity = CcmUtil::GetInstance().GetCliConcurrencyLimit();
     for (int32_t i = 0; i < cliQuantity; ++i) {
@@ -387,7 +393,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0110, TestSize.Level1)
     int32_t result = service_->ExecTool(param, "event_exec_limit", scheduler);
     EXPECT_TRUE(result == ERR_SESSION_LIMIT_EXCEEDED || IsPermissionGateResult(result));
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0110 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_0110 end");
 }
 
 /**
@@ -397,7 +403,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0110, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ValidateSessionLimit_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ValidateSessionLimit_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateSessionLimit_0100 start");
 
     EXPECT_EQ(service_->ValidateSessionLimit(), ERR_OK);
 
@@ -410,7 +416,7 @@ HWTEST_F(CliToolManagerServiceTest, ValidateSessionLimit_0100, TestSize.Level1)
 
     EXPECT_EQ(service_->ValidateSessionLimit(), ERR_SESSION_LIMIT_EXCEEDED);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ValidateSessionLimit_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateSessionLimit_0100 end");
 }
 
 /**
@@ -420,7 +426,7 @@ HWTEST_F(CliToolManagerServiceTest, ValidateSessionLimit_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ExecTool_0200, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0200 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_0200 start");
 
     ExecToolParam param;
     param.toolName = "non_existent_tool";
@@ -432,7 +438,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0200, TestSize.Level1)
 
     EXPECT_TRUE(result == ERR_TOOL_NOT_EXIST || IsPermissionGateResult(result));
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0200 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_0200 end");
 }
 
 /**
@@ -442,7 +448,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0200, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareTool_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ValidateAndPrepareTool_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateAndPrepareTool_0100 start");
 
     ExecToolParam param;
     param.toolName = "prepare_tool";
@@ -462,7 +468,7 @@ HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareTool_0100, TestSize.Level1
         EXPECT_FALSE(sandboxConfig.empty());
     }
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ValidateAndPrepareTool_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateAndPrepareTool_0100 end");
 }
 
 /**
@@ -472,7 +478,7 @@ HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareTool_0100, TestSize.Level1
  */
 HWTEST_F(CliToolManagerServiceTest, ExecTool_0300, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0300 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_0300 start");
 
     ExecToolParam param;
     param.toolName = "";
@@ -484,7 +490,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0300, TestSize.Level1)
 
     EXPECT_TRUE(result == ERR_TOOL_NOT_EXIST || IsPermissionGateResult(result));
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0300 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_0300 end");
 }
 
 /**
@@ -494,7 +500,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0300, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ExecTool_0400, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0400 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_0400 start");
 
     auto oldMonitor = service_->ioMonitor_;
     service_->ioMonitor_ = nullptr;
@@ -510,7 +516,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0400, TestSize.Level1)
     EXPECT_TRUE(result == ERR_NO_INIT || result == ERR_NOT_HAP || IsPermissionGateResult(result));
     service_->ioMonitor_ = oldMonitor;
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0400 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_0400 end");
 }
 
 /**
@@ -520,7 +526,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0400, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ExecTool_0500, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0500 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_0500 start");
 
     ToolInfo toolInfo;
     toolInfo.name = "test_tool_subcmd";
@@ -540,7 +546,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0500, TestSize.Level1)
 
     EXPECT_EQ(result, ERR_TOOL_NOT_EXIST);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0500 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_0500 end");
 }
 
 // ==================== Permission Validation Tests ====================
@@ -552,13 +558,13 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0500, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ValidateExecToolPermissions_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ValidateExecToolPermissions_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateExecToolPermissions_0100 start");
 
     int32_t result = service_->ValidateExecToolPermissions();
 
     EXPECT_TRUE(result == ERR_OK || IsPermissionGateResult(result));
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ValidateExecToolPermissions_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateExecToolPermissions_0100 end");
 }
 
 /**
@@ -568,7 +574,7 @@ HWTEST_F(CliToolManagerServiceTest, ValidateExecToolPermissions_0100, TestSize.L
  */
 HWTEST_F(CliToolManagerServiceTest, GetAllToolInfos_Permission_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_GetAllToolInfos_Permission_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetAllToolInfos_Permission_0100 start");
 
     // Note: In unit test environment, the caller is typically a system app with permissions
     // This test verifies the method completes successfully when permissions are granted
@@ -578,7 +584,7 @@ HWTEST_F(CliToolManagerServiceTest, GetAllToolInfos_Permission_0100, TestSize.Le
     // In test environment, should succeed or return appropriate error
     EXPECT_TRUE(result == ERR_OK || result == ERR_NOT_SYSTEM_APP || result == ERR_PERMISSION_DENIED);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_GetAllToolInfos_Permission_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetAllToolInfos_Permission_0100 end");
 }
 
 /**
@@ -588,7 +594,7 @@ HWTEST_F(CliToolManagerServiceTest, GetAllToolInfos_Permission_0100, TestSize.Le
  */
 HWTEST_F(CliToolManagerServiceTest, GetAllToolSummaries_Permission_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_GetAllToolSummaries_Permission_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetAllToolSummaries_Permission_0100 start");
 
     std::vector<ToolSummary> summaries;
     int32_t result = service_->GetAllToolSummaries(summaries);
@@ -596,7 +602,7 @@ HWTEST_F(CliToolManagerServiceTest, GetAllToolSummaries_Permission_0100, TestSiz
     // In test environment, should succeed or return appropriate error
     EXPECT_TRUE(result == ERR_OK || result == ERR_NOT_SYSTEM_APP || result == ERR_PERMISSION_DENIED);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_GetAllToolSummaries_Permission_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetAllToolSummaries_Permission_0100 end");
 }
 
 /**
@@ -606,7 +612,7 @@ HWTEST_F(CliToolManagerServiceTest, GetAllToolSummaries_Permission_0100, TestSiz
  */
 HWTEST_F(CliToolManagerServiceTest, GetToolInfoByName_Permission_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_GetToolInfoByName_Permission_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetToolInfoByName_Permission_0100 start");
 
     ToolInfo tool;
     int32_t result = service_->GetToolInfoByName("test_tool", tool);
@@ -616,7 +622,7 @@ HWTEST_F(CliToolManagerServiceTest, GetToolInfoByName_Permission_0100, TestSize.
     EXPECT_TRUE(result == ERR_OK || result == ERR_NOT_SYSTEM_APP || result == ERR_PERMISSION_DENIED ||
                 result == ERR_NO_INIT || result == ERR_TOOL_NOT_EXIST);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_GetToolInfoByName_Permission_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetToolInfoByName_Permission_0100 end");
 }
 
 /**
@@ -626,7 +632,7 @@ HWTEST_F(CliToolManagerServiceTest, GetToolInfoByName_Permission_0100, TestSize.
  */
 HWTEST_F(CliToolManagerServiceTest, QueryPermission_Required_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_QueryPermission_Required_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_QueryPermission_Required_0100 start");
 
     // This test documents that the following methods require:
     // 1. Caller must be a system app
@@ -640,7 +646,7 @@ HWTEST_F(CliToolManagerServiceTest, QueryPermission_Required_0100, TestSize.Leve
     // In production, if caller is not system app: returns ERR_NOT_SYSTEM_APP
     // If caller lacks permission: returns ERR_PERMISSION_DENIED
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_QueryPermission_Required_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_QueryPermission_Required_0100 end");
 }
 
 /**
@@ -650,13 +656,13 @@ HWTEST_F(CliToolManagerServiceTest, QueryPermission_Required_0100, TestSize.Leve
  */
 HWTEST_F(CliToolManagerServiceTest, AppStateObserver_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_AppStateObserver_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_AppStateObserver_0100 start");
 
     sptr<CliToolAppStateObserver> observer = new CliToolAppStateObserver("test.bundle", nullptr);
 
     EXPECT_NE(observer->AsObject(), nullptr);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_AppStateObserver_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_AppStateObserver_0100 end");
 }
 
 /**
@@ -666,7 +672,7 @@ HWTEST_F(CliToolManagerServiceTest, AppStateObserver_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, AppStateObserver_0200, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_AppStateObserver_0200 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_AppStateObserver_0200 start");
 
     std::string diedBundleName;
     pid_t diedPid = 0;
@@ -683,7 +689,7 @@ HWTEST_F(CliToolManagerServiceTest, AppStateObserver_0200, TestSize.Level1)
     EXPECT_EQ(diedBundleName, "test.bundle");
     EXPECT_EQ(diedPid, 1001);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_AppStateObserver_0200 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_AppStateObserver_0200 end");
 }
 
 /**
@@ -693,7 +699,7 @@ HWTEST_F(CliToolManagerServiceTest, AppStateObserver_0200, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, SessionRecord_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_SessionRecord_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SessionRecord_0100 start");
 
     {
         std::lock_guard<ffrt::mutex> guard(service_->sessionsMutex_);
@@ -709,7 +715,7 @@ HWTEST_F(CliToolManagerServiceTest, SessionRecord_0100, TestSize.Level1)
     service_->RemoveSessionRecord("normal_session");
     EXPECT_EQ(service_->GetSessionRecord("normal_session"), nullptr);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_SessionRecord_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SessionRecord_0100 end");
 }
 
 /**
@@ -719,7 +725,7 @@ HWTEST_F(CliToolManagerServiceTest, SessionRecord_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, SessionRecord_0200, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_SessionRecord_0200 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SessionRecord_0200 start");
 
     auto firstRecord = std::make_shared<SessionRecord>();
     firstRecord->sessionId = "first_session";
@@ -738,7 +744,7 @@ HWTEST_F(CliToolManagerServiceTest, SessionRecord_0200, TestSize.Level1)
     EXPECT_NE(std::find(records.begin(), records.end(), firstRecord), records.end());
     EXPECT_NE(std::find(records.begin(), records.end(), secondRecord), records.end());
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_SessionRecord_0200 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SessionRecord_0200 end");
 }
 
 /**
@@ -748,7 +754,7 @@ HWTEST_F(CliToolManagerServiceTest, SessionRecord_0200, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, CreateSessionRecord_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_CreateSessionRecord_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_CreateSessionRecord_0100 start");
 
     ExecToolParam param;
     param.toolName = "create_tool";
@@ -766,7 +772,7 @@ HWTEST_F(CliToolManagerServiceTest, CreateSessionRecord_0100, TestSize.Level1)
     EXPECT_FALSE(record->Background());
     EXPECT_GT(record->startTime, 0);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_CreateSessionRecord_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_CreateSessionRecord_0100 end");
 }
 
 /**
@@ -776,7 +782,7 @@ HWTEST_F(CliToolManagerServiceTest, CreateSessionRecord_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, SessionRecords_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_SessionRecords_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SessionRecords_0100 start");
 
     auto record = std::make_shared<SessionRecord>();
     record->sessionId = "session_records_live";
@@ -797,7 +803,7 @@ HWTEST_F(CliToolManagerServiceTest, SessionRecords_0100, TestSize.Level1)
     service_->RemoveSessionRecord(record->sessionId);
     EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_SessionRecords_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SessionRecords_0100 end");
 }
 
 /**
@@ -807,7 +813,7 @@ HWTEST_F(CliToolManagerServiceTest, SessionRecords_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, TryDispatchSkillSession_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_TryDispatchSkillSession_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_TryDispatchSkillSession_0100 start");
 
     ToolInfo toolInfo;
     bool dispatched = true;
@@ -832,7 +838,7 @@ HWTEST_F(CliToolManagerServiceTest, TryDispatchSkillSession_0100, TestSize.Level
     EXPECT_NE(normalizedParam.args.GetStringParam("skillName"), "");
     EXPECT_NE(queryResult, ERR_INVALID_VALUE);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_TryDispatchSkillSession_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_TryDispatchSkillSession_0100 end");
 }
 
 /**
@@ -842,7 +848,7 @@ HWTEST_F(CliToolManagerServiceTest, TryDispatchSkillSession_0100, TestSize.Level
  */
 HWTEST_F(CliToolManagerServiceTest, HandleProcessYieldTimeout_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleProcessYieldTimeout_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleProcessYieldTimeout_0100 start");
 
     service_->HandleProcessYieldTimeout("missing_session");
 
@@ -857,7 +863,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleProcessYieldTimeout_0100, TestSize.Lev
     EXPECT_TRUE(record->Background());
     EXPECT_NE(service_->GetSessionRecord(record->sessionId), nullptr);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleProcessYieldTimeout_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleProcessYieldTimeout_0100 end");
 }
 
 /**
@@ -867,7 +873,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleProcessYieldTimeout_0100, TestSize.Lev
  */
 HWTEST_F(CliToolManagerServiceTest, HandleProcessYieldTimeout_0200, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleProcessYieldTimeout_0200 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleProcessYieldTimeout_0200 start");
 
     auto record = std::make_shared<SessionRecord>();
     record->sessionId = "yield_background_session";
@@ -880,7 +886,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleProcessYieldTimeout_0200, TestSize.Lev
     EXPECT_TRUE(record->Background());
     EXPECT_NE(service_->GetSessionRecord(record->sessionId), nullptr);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleProcessYieldTimeout_0200 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleProcessYieldTimeout_0200 end");
 }
 
 /**
@@ -890,7 +896,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleProcessYieldTimeout_0200, TestSize.Lev
  */
 HWTEST_F(CliToolManagerServiceTest, HandleProcessTimeout_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleProcessTimeout_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleProcessTimeout_0100 start");
 
     service_->HandleProcessTimeout("missing_session");
 
@@ -908,7 +914,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleProcessTimeout_0100, TestSize.Level1)
     EXPECT_TRUE(record->Background());
     EXPECT_NE(service_->GetSessionRecord(record->sessionId), nullptr);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleProcessTimeout_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleProcessTimeout_0100 end");
 }
 
 /**
@@ -918,7 +924,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleProcessTimeout_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, HandleProcessTimeout_0200, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleProcessTimeout_0200 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleProcessTimeout_0200 start");
 
     auto record = std::make_shared<SessionRecord>();
     record->sessionId = "timeout_foreground_session";
@@ -935,7 +941,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleProcessTimeout_0200, TestSize.Level1)
     EXPECT_TRUE(record->Background());
     EXPECT_NE(service_->GetSessionRecord(record->sessionId), nullptr);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleProcessTimeout_0200 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleProcessTimeout_0200 end");
 }
 
 /**
@@ -945,7 +951,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleProcessTimeout_0200, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, HandleSkillSessionTimeout_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleSkillSessionTimeout_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleSkillSessionTimeout_0100 start");
 
     service_->HandleSkillSessionTimeout("missing_session");
 
@@ -962,7 +968,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleSkillSessionTimeout_0100, TestSize.Lev
     EXPECT_EQ(record->GetState(), SessionState::FAILED);
     EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleSkillSessionTimeout_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleSkillSessionTimeout_0100 end");
 }
 
 /**
@@ -972,7 +978,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleSkillSessionTimeout_0100, TestSize.Lev
  */
 HWTEST_F(CliToolManagerServiceTest, HandleSkillSessionTimeout_0200, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleSkillSessionTimeout_0200 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleSkillSessionTimeout_0200 start");
 
     auto record = std::make_shared<SessionRecord>();
     record->sessionId = "skill_timeout_foreground_session";
@@ -988,7 +994,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleSkillSessionTimeout_0200, TestSize.Lev
     EXPECT_EQ(record->GetState(), SessionState::FAILED);
     EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleSkillSessionTimeout_0200 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleSkillSessionTimeout_0200 end");
 }
 
 /**
@@ -998,7 +1004,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleSkillSessionTimeout_0200, TestSize.Lev
  */
 HWTEST_F(CliToolManagerServiceTest, HandleOutputClosed_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleOutputClosed_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleOutputClosed_0100 start");
 
     service_->HandleOutputClosed("missing_session", true);
 
@@ -1012,7 +1018,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleOutputClosed_0100, TestSize.Level1)
     EXPECT_TRUE(record->OutputDrained());
     EXPECT_NE(service_->GetSessionRecord(record->sessionId), nullptr);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleOutputClosed_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleOutputClosed_0100 end");
 }
 
 /**
@@ -1022,7 +1028,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleOutputClosed_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, HandleOutputClosed_0200, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleOutputClosed_0200 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleOutputClosed_0200 start");
 
     auto record = std::make_shared<SessionRecord>();
     record->sessionId = "closed_finalize_session";
@@ -1035,7 +1041,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleOutputClosed_0200, TestSize.Level1)
     service_->HandleOutputClosed(record->sessionId, false);
     EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleOutputClosed_0200 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleOutputClosed_0200 end");
 }
 
 /**
@@ -1045,7 +1051,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleOutputClosed_0200, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, FinalizeBackgroundSession_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_FinalizeBackgroundSession_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_FinalizeBackgroundSession_0100 start");
 
     service_->FinalizeBackgroundSession(nullptr);
 
@@ -1064,7 +1070,7 @@ HWTEST_F(CliToolManagerServiceTest, FinalizeBackgroundSession_0100, TestSize.Lev
     service_->FinalizeBackgroundSession(record);
     EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_FinalizeBackgroundSession_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_FinalizeBackgroundSession_0100 end");
 }
 
 /**
@@ -1074,7 +1080,7 @@ HWTEST_F(CliToolManagerServiceTest, FinalizeBackgroundSession_0100, TestSize.Lev
  */
 HWTEST_F(CliToolManagerServiceTest, FinalizeBackgroundSession_0200, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_FinalizeBackgroundSession_0200 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_FinalizeBackgroundSession_0200 start");
 
     auto oldMonitor = service_->ioMonitor_;
     service_->ioMonitor_ = IOMonitor::Create();
@@ -1099,7 +1105,7 @@ HWTEST_F(CliToolManagerServiceTest, FinalizeBackgroundSession_0200, TestSize.Lev
     service_->ioMonitor_->Stop();
     service_->ioMonitor_ = oldMonitor;
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_FinalizeBackgroundSession_0200 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_FinalizeBackgroundSession_0200 end");
 }
 
 /**
@@ -1109,7 +1115,7 @@ HWTEST_F(CliToolManagerServiceTest, FinalizeBackgroundSession_0200, TestSize.Lev
  */
 HWTEST_F(CliToolManagerServiceTest, HandleBackgroundSessionReply_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleBackgroundSessionReply_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleBackgroundSessionReply_0100 start");
 
     auto record = std::make_shared<SessionRecord>();
     record->sessionId = "background_reply_session";
@@ -1121,7 +1127,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleBackgroundSessionReply_0100, TestSize.
 
     EXPECT_EQ(record->GetState(), SessionState::SPAWNING);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleBackgroundSessionReply_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleBackgroundSessionReply_0100 end");
 }
 
 /**
@@ -1131,7 +1137,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleBackgroundSessionReply_0100, TestSize.
  */
 HWTEST_F(CliToolManagerServiceTest, RegisterSessionWithMonitors_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_RegisterSessionWithMonitors_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_RegisterSessionWithMonitors_0100 start");
 
     auto oldMonitor = service_->ioMonitor_;
     service_->ioMonitor_ = nullptr;
@@ -1147,7 +1153,7 @@ HWTEST_F(CliToolManagerServiceTest, RegisterSessionWithMonitors_0100, TestSize.L
 
     service_->ioMonitor_ = oldMonitor;
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_RegisterSessionWithMonitors_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_RegisterSessionWithMonitors_0100 end");
 }
 
 /**
@@ -1157,7 +1163,7 @@ HWTEST_F(CliToolManagerServiceTest, RegisterSessionWithMonitors_0100, TestSize.L
  */
 HWTEST_F(CliToolManagerServiceTest, RegisterSessionWithMonitors_0101, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_RegisterSessionWithMonitors_0101 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_RegisterSessionWithMonitors_0101 start");
 
     int stdoutPipe[2] = {-1, -1};
     int stderrPipe[2] = {-1, -1};
@@ -1189,7 +1195,7 @@ HWTEST_F(CliToolManagerServiceTest, RegisterSessionWithMonitors_0101, TestSize.L
     close(stderrPipe[1]);
     close(stdinPipe[0]);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_RegisterSessionWithMonitors_0101 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_RegisterSessionWithMonitors_0101 end");
 }
 
 /**
@@ -1199,7 +1205,7 @@ HWTEST_F(CliToolManagerServiceTest, RegisterSessionWithMonitors_0101, TestSize.L
  */
 HWTEST_F(CliToolManagerServiceTest, RegisterSessionWithMonitors_0200, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_RegisterSessionWithMonitors_0200 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_RegisterSessionWithMonitors_0200 start");
 
     int stdoutPipe[2] = {-1, -1};
     int stderrPipe[2] = {-1, -1};
@@ -1229,7 +1235,7 @@ HWTEST_F(CliToolManagerServiceTest, RegisterSessionWithMonitors_0200, TestSize.L
     close(stderrPipe[1]);
     close(stdinPipe[0]);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_RegisterSessionWithMonitors_0200 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_RegisterSessionWithMonitors_0200 end");
 }
 
 /**
@@ -1239,7 +1245,7 @@ HWTEST_F(CliToolManagerServiceTest, RegisterSessionWithMonitors_0200, TestSize.L
  */
 HWTEST_F(CliToolManagerServiceTest, RegisterSessionWithMonitors_0300, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_RegisterSessionWithMonitors_0300 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_RegisterSessionWithMonitors_0300 start");
 
     int stdoutPipe[2] = {-1, -1};
     int stderrPipe[2] = {-1, -1};
@@ -1272,7 +1278,7 @@ HWTEST_F(CliToolManagerServiceTest, RegisterSessionWithMonitors_0300, TestSize.L
     close(stderrPipe[1]);
     close(stdinPipe[0]);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_RegisterSessionWithMonitors_0300 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_RegisterSessionWithMonitors_0300 end");
 }
 
 /**
@@ -1282,7 +1288,7 @@ HWTEST_F(CliToolManagerServiceTest, RegisterSessionWithMonitors_0300, TestSize.L
  */
 HWTEST_F(CliToolManagerServiceTest, HandleSkillSessionComplete_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleSkillSessionComplete_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleSkillSessionComplete_0100 start");
 
     CliSessionInfo session;
     session.sessionId = "missing_skill_session";
@@ -1302,7 +1308,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleSkillSessionComplete_0100, TestSize.Le
     service_->HandleSkillSessionComplete(record->sessionId, 0, 0, record->eventId, ERR_OK, session);
     EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleSkillSessionComplete_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleSkillSessionComplete_0100 end");
 }
 
 /**
@@ -1312,7 +1318,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleSkillSessionComplete_0100, TestSize.Le
  */
 HWTEST_F(CliToolManagerServiceTest, SkillCallbackAdapter_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_SkillCallbackAdapter_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SkillCallbackAdapter_0100 start");
 
     AppExecFwk::SkillExecuteResult result;
     SkillCallbackAdapter missingAdapter("missing_callback_session",
@@ -1334,7 +1340,7 @@ HWTEST_F(CliToolManagerServiceTest, SkillCallbackAdapter_0100, TestSize.Level1)
     EXPECT_EQ(record->GetState(), SessionState::COMPLETED);
     EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_SkillCallbackAdapter_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SkillCallbackAdapter_0100 end");
 }
 
 /**
@@ -1344,7 +1350,7 @@ HWTEST_F(CliToolManagerServiceTest, SkillCallbackAdapter_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, WaitPid_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_WaitPid_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_WaitPid_0100 start");
 
     service_->WaitPid(12345, 0, 0);
 
@@ -1360,7 +1366,7 @@ HWTEST_F(CliToolManagerServiceTest, WaitPid_0100, TestSize.Level1)
     EXPECT_TRUE(record->HasProcessExited());
     EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_WaitPid_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_WaitPid_0100 end");
 }
 
 /**
@@ -1370,7 +1376,7 @@ HWTEST_F(CliToolManagerServiceTest, WaitPid_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, WaitPid_0200, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_WaitPid_0200 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_WaitPid_0200 start");
 
     auto record = std::make_shared<SessionRecord>();
     record->sessionId = "unmatched_waitpid_session";
@@ -1387,7 +1393,7 @@ HWTEST_F(CliToolManagerServiceTest, WaitPid_0200, TestSize.Level1)
     EXPECT_EQ(service_->GetSessionRecord(record->sessionId), record);
     EXPECT_FALSE(record->HasProcessExited());
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_WaitPid_0200 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_WaitPid_0200 end");
 }
 
 /**
@@ -1397,12 +1403,12 @@ HWTEST_F(CliToolManagerServiceTest, WaitPid_0200, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ClearSession_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ClearSession_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ClearSession_0100 start");
 
     int32_t result = service_->ClearSession("nonexistent_session");
     EXPECT_TRUE(result == ERR_CLI_SESSION_NOT_FOUND || IsPermissionGateResult(result));
     if (IsPermissionGateResult(result)) {
-        GTEST_LOG_(INFO) << "CliToolManagerService_ClearSession_0100 skipped session gate checks";
+        TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ClearSession_0100 skipped session gate checks");
         return;
     }
 
@@ -1413,7 +1419,7 @@ HWTEST_F(CliToolManagerServiceTest, ClearSession_0100, TestSize.Level1)
     service_->AddSessionRecord(record);
     EXPECT_EQ(service_->ClearSession("completed_session"), ERR_CLI_SESSION_NOT_FOUND);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ClearSession_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ClearSession_0100 end");
 }
 
 /**
@@ -1423,7 +1429,7 @@ HWTEST_F(CliToolManagerServiceTest, ClearSession_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ClearSession_0200, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ClearSession_0200 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ClearSession_0200 start");
 
     auto record = std::make_shared<SessionRecord>();
     record->sessionId = "clear_skill_session";
@@ -1438,7 +1444,7 @@ HWTEST_F(CliToolManagerServiceTest, ClearSession_0200, TestSize.Level1)
         EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
     }
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ClearSession_0200 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ClearSession_0200 end");
 }
 
 /**
@@ -1448,7 +1454,7 @@ HWTEST_F(CliToolManagerServiceTest, ClearSession_0200, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ClearSession_0300, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ClearSession_0300 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ClearSession_0300 start");
 
     auto record = std::make_shared<SessionRecord>();
     record->sessionId = "clear_cli_not_kill_session";
@@ -1465,7 +1471,7 @@ HWTEST_F(CliToolManagerServiceTest, ClearSession_0300, TestSize.Level1)
         EXPECT_NE(service_->GetSessionRecord(record->sessionId), nullptr);
     }
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ClearSession_0300 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ClearSession_0300 end");
 }
 
 /**
@@ -1475,13 +1481,13 @@ HWTEST_F(CliToolManagerServiceTest, ClearSession_0300, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, QuerySession_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_QuerySession_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_QuerySession_0100 start");
 
     CliSessionInfo session;
     int32_t result = service_->QuerySession("missing_session", session);
     EXPECT_TRUE(result == ERR_CLI_SESSION_NOT_FOUND || IsPermissionGateResult(result));
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_QuerySession_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_QuerySession_0100 end");
 }
 
 /**
@@ -1491,7 +1497,7 @@ HWTEST_F(CliToolManagerServiceTest, QuerySession_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, QuerySession_0200, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_QuerySession_0200 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_QuerySession_0200 start");
 
     auto record = std::make_shared<SessionRecord>();
     record->sessionId = "query_owned_session";
@@ -1509,7 +1515,7 @@ HWTEST_F(CliToolManagerServiceTest, QuerySession_0200, TestSize.Level1)
         EXPECT_EQ(session.status, "running");
     }
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_QuerySession_0200 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_QuerySession_0200 end");
 }
 
 /**
@@ -1519,7 +1525,7 @@ HWTEST_F(CliToolManagerServiceTest, QuerySession_0200, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, SessionOwner_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_SessionOwner_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SessionOwner_0100 start");
 
     auto record = std::make_shared<SessionRecord>();
     record->sessionId = "owned_by_other_process";
@@ -1540,7 +1546,7 @@ HWTEST_F(CliToolManagerServiceTest, SessionOwner_0100, TestSize.Level1)
     int32_t sendResult = service_->SendMessage(record->sessionId, "input", "event", scheduler);
     EXPECT_EQ(sendResult, ERR_PERMISSION_DENIED);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_SessionOwner_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SessionOwner_0100 end");
 }
 
 /**
@@ -1550,7 +1556,7 @@ HWTEST_F(CliToolManagerServiceTest, SessionOwner_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, SessionOwner_0200, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_SessionOwner_0200 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SessionOwner_0200 start");
 
     EXPECT_FALSE(service_->IsSessionOwner(nullptr, "SessionOwner_0200"));
 
@@ -1564,7 +1570,7 @@ HWTEST_F(CliToolManagerServiceTest, SessionOwner_0200, TestSize.Level1)
     otherRecord->callerPid = IPCSkeleton::GetCallingPid() + 1;
     EXPECT_FALSE(service_->IsSessionOwner(otherRecord, "SessionOwner_0200"));
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_SessionOwner_0200 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SessionOwner_0200 end");
 }
 
 /**
@@ -1574,7 +1580,7 @@ HWTEST_F(CliToolManagerServiceTest, SessionOwner_0200, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, SessionOwner_0300, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_SessionOwner_0300 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SessionOwner_0300 start");
 
     auto clearRecord = std::make_shared<SessionRecord>();
     clearRecord->sessionId = "owner_clear_skill_session";
@@ -1619,7 +1625,7 @@ HWTEST_F(CliToolManagerServiceTest, SessionOwner_0300, TestSize.Level1)
     EXPECT_EQ(sendResult, ERR_CLI_SEND_MESSAGE);
     service_->ioMonitor_ = oldMonitor;
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_SessionOwner_0300 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SessionOwner_0300 end");
 }
 
 /**
@@ -1629,18 +1635,18 @@ HWTEST_F(CliToolManagerServiceTest, SessionOwner_0300, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, SubscribeSession_0200, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_SubscribeSession_0200 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SubscribeSession_0200 start");
 
     int32_t result = service_->SubscribeSession("", "sub1", nullptr);
     EXPECT_TRUE(result == ERR_INVALID_PARAM || IsPermissionGateResult(result));
     if (IsPermissionGateResult(result)) {
-        GTEST_LOG_(INFO) << "CliToolManagerService_SubscribeSession_0200 skipped argument/session gate checks";
+        TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SubscribeSession_0200 skipped argument/session gate checks");
         return;
     }
     EXPECT_EQ(service_->SubscribeSession("session", "", nullptr), ERR_INVALID_PARAM);
     EXPECT_EQ(service_->SubscribeSession("missing", "sub1", nullptr), ERR_CLI_SESSION_NOT_FOUND);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_SubscribeSession_0200 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SubscribeSession_0200 end");
 }
 
 /**
@@ -1650,13 +1656,13 @@ HWTEST_F(CliToolManagerServiceTest, SubscribeSession_0200, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, UnsubscribeSession_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_UnsubscribeSession_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_UnsubscribeSession_0100 start");
 
     int32_t result = service_->UnsubscribeSession("session", "subscription");
 
     EXPECT_TRUE(result == ERR_OK || result == ERR_NO_INIT || IsPermissionGateResult(result));
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_UnsubscribeSession_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_UnsubscribeSession_0100 end");
 }
 
 /**
@@ -1666,7 +1672,7 @@ HWTEST_F(CliToolManagerServiceTest, UnsubscribeSession_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, SendMessage_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_SendMessage_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SendMessage_0100 start");
 
     auto oldMonitor = service_->ioMonitor_;
     service_->ioMonitor_ = nullptr;
@@ -1681,7 +1687,7 @@ HWTEST_F(CliToolManagerServiceTest, SendMessage_0100, TestSize.Level1)
     EXPECT_TRUE(result == ERR_CLI_SEND_MESSAGE || IsPermissionGateResult(result));
     if (IsPermissionGateResult(result)) {
         service_->ioMonitor_ = oldMonitor;
-        GTEST_LOG_(INFO) << "CliToolManagerService_SendMessage_0100 skipped message gate checks";
+        TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SendMessage_0100 skipped message gate checks");
         return;
     }
 
@@ -1704,7 +1710,7 @@ HWTEST_F(CliToolManagerServiceTest, SendMessage_0100, TestSize.Level1)
 
     service_->ioMonitor_ = oldMonitor;
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_SendMessage_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SendMessage_0100 end");
 }
 
 /**
@@ -1714,7 +1720,7 @@ HWTEST_F(CliToolManagerServiceTest, SendMessage_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, HandleOutputDrained_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleOutputDrained_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleOutputDrained_0100 start");
 
     service_->HandleOutputDrained("missing_session");
 
@@ -1725,7 +1731,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleOutputDrained_0100, TestSize.Level1)
     service_->HandleOutputDrained(record->sessionId);
     EXPECT_NE(service_->GetSessionRecord(record->sessionId), nullptr);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleOutputDrained_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleOutputDrained_0100 end");
 }
 
 /**
@@ -1735,7 +1741,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleOutputDrained_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, HandleOutputDrained_0200, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleOutputDrained_0200 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleOutputDrained_0200 start");
 
     auto record = std::make_shared<SessionRecord>();
     record->sessionId = "drained_finalize_session";
@@ -1748,7 +1754,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleOutputDrained_0200, TestSize.Level1)
 
     EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_HandleOutputDrained_0200 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_HandleOutputDrained_0200 end");
 }
 
 /**
@@ -1758,7 +1764,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleOutputDrained_0200, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, OnProcessDied_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_OnProcessDied_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_OnProcessDied_0100 start");
 
     auto matchingRecord = std::make_shared<SessionRecord>();
     matchingRecord->sessionId = "matching_died_session";
@@ -1780,7 +1786,7 @@ HWTEST_F(CliToolManagerServiceTest, OnProcessDied_0100, TestSize.Level1)
     EXPECT_EQ(service_->GetSessionRecord(matchingRecord->sessionId), nullptr);
     EXPECT_EQ(service_->GetSessionRecord(otherRecord->sessionId), otherRecord);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_OnProcessDied_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_OnProcessDied_0100 end");
 }
 
 /**
@@ -1790,7 +1796,7 @@ HWTEST_F(CliToolManagerServiceTest, OnProcessDied_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, RegisterAppStateObserver_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_RegisterAppStateObserver_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_RegisterAppStateObserver_0100 start");
 
     sptr<CliToolAppStateObserver> observer = new CliToolAppStateObserver("registered.bundle", nullptr);
     service_->bundleObservers_["registered.bundle"] = observer;
@@ -1800,7 +1806,7 @@ HWTEST_F(CliToolManagerServiceTest, RegisterAppStateObserver_0100, TestSize.Leve
     EXPECT_EQ(service_->bundleObservers_.size(), 1);
     EXPECT_EQ(service_->bundleObservers_["registered.bundle"].GetRefPtr(), observer.GetRefPtr());
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_RegisterAppStateObserver_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_RegisterAppStateObserver_0100 end");
 }
 
 /**
@@ -1810,7 +1816,7 @@ HWTEST_F(CliToolManagerServiceTest, RegisterAppStateObserver_0100, TestSize.Leve
  */
 HWTEST_F(CliToolManagerServiceTest, BatchQueryPermission_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_BatchQueryPermission_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_BatchQueryPermission_0100 start");
 
     std::vector<CommandPermission> cmdPermissions;
     EXPECT_EQ(service_->BatchQueryPermissionBySubCommand({}, cmdPermissions), ERR_INVALID_PARAM);
@@ -1818,7 +1824,7 @@ HWTEST_F(CliToolManagerServiceTest, BatchQueryPermission_0100, TestSize.Level1)
     std::vector<Command> tooManyCommands(100);
     EXPECT_EQ(service_->BatchQueryPermissionBySubCommand(tooManyCommands, cmdPermissions), ERR_INVALID_PARAM);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_BatchQueryPermission_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_BatchQueryPermission_0100 end");
 }
 
 /**
@@ -1828,7 +1834,7 @@ HWTEST_F(CliToolManagerServiceTest, BatchQueryPermission_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, BatchQueryPermission_0200, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_BatchQueryPermission_0200 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_BatchQueryPermission_0200 start");
 
     Command command;
     command.toolName = "query_tool";
@@ -1839,7 +1845,7 @@ HWTEST_F(CliToolManagerServiceTest, BatchQueryPermission_0200, TestSize.Level1)
 
     EXPECT_TRUE(result == ERR_OK || result == ERR_NOT_SA_CALLER || result == ERR_PERMISSION_DENIED);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_BatchQueryPermission_0200 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_BatchQueryPermission_0200 end");
 }
 
 /**
@@ -1849,7 +1855,7 @@ HWTEST_F(CliToolManagerServiceTest, BatchQueryPermission_0200, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, SkillSession_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_SkillSession_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SkillSession_0100 start");
 
     ToolInfo toolInfo;
     bool dispatched = true;
@@ -1866,7 +1872,7 @@ HWTEST_F(CliToolManagerServiceTest, SkillSession_0100, TestSize.Level1)
         ERR_INVALID_VALUE);
     EXPECT_FALSE(dispatched);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_SkillSession_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SkillSession_0100 end");
 }
 
 /**
@@ -1876,7 +1882,7 @@ HWTEST_F(CliToolManagerServiceTest, SkillSession_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, OnStop_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_OnStop_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_OnStop_0100 start");
 
     auto record = std::make_shared<SessionRecord>();
     record->sessionId = "stop_session";
@@ -1889,7 +1895,7 @@ HWTEST_F(CliToolManagerServiceTest, OnStop_0100, TestSize.Level1)
     EXPECT_FALSE(service_->initialized_);
     EXPECT_TRUE(service_->sessionRecords_.empty());
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_OnStop_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_OnStop_0100 end");
 }
 
 /**
@@ -1899,13 +1905,13 @@ HWTEST_F(CliToolManagerServiceTest, OnStop_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, RegisterTool_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_RegisterTool_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_RegisterTool_0100 start");
 
     ToolInfo tool;
     tool.name = "ohos-test";
     EXPECT_EQ(service_->RegisterTool(tool), ERR_PERMISSION_DENIED);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_RegisterTool_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_RegisterTool_0100 end");
 }
 
 /**
@@ -1915,7 +1921,7 @@ HWTEST_F(CliToolManagerServiceTest, RegisterTool_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ExecTool_0600, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0600 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_0600 start");
 
     ExecToolParam param;
     param.toolName = "ohos-nonexistent_tool";
@@ -1924,7 +1930,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0600, TestSize.Level1)
     int32_t result = service_->ExecTool(param, "event_exec_0600", nullptr);
     EXPECT_TRUE(result == ERR_NO_INIT || IsPermissionGateResult(result));
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0600 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_0600 end");
 }
 
 /**
@@ -1934,7 +1940,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0600, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ExecTool_0700, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0700 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_0700 start");
 
     ExecToolParam param;
     param.toolName = "ohos-arkTSScript";
@@ -1943,7 +1949,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0700, TestSize.Level1)
     int32_t result = service_->ExecTool(param, "event_exec_skill_invalid", scheduler);
     EXPECT_TRUE(result == ERR_INVALID_VALUE || IsPermissionGateResult(result));
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0700 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_0700 end");
 }
 
 // ==================== ValidateAndPrepareCmd Tests ====================
@@ -1955,7 +1961,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0700, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareCmd_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ValidateAndPrepareCmd_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateAndPrepareCmd_0100 start");
 
     ExecCmdParam param;
     param.cmd = "echo hello";
@@ -1967,7 +1973,7 @@ HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareCmd_0100, TestSize.Level1)
         sandboxConfig, bundleName);
     EXPECT_EQ(result, ERR_INVALID_PARAM);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ValidateAndPrepareCmd_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateAndPrepareCmd_0100 end");
 }
 
 /**
@@ -1977,7 +1983,7 @@ HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareCmd_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareCmd_0200, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ValidateAndPrepareCmd_0200 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateAndPrepareCmd_0200 start");
 
     ExecCmdParam param;
     param.cmd = "echo hello";
@@ -1989,7 +1995,7 @@ HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareCmd_0200, TestSize.Level1)
         sandboxConfig, bundleName);
     EXPECT_EQ(result, ERR_INVALID_PARAM);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ValidateAndPrepareCmd_0200 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateAndPrepareCmd_0200 end");
 }
 
 /**
@@ -1999,7 +2005,7 @@ HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareCmd_0200, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareCmd_0300, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ValidateAndPrepareCmd_0300 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateAndPrepareCmd_0300 start");
 
     ExecCmdParam param;
     param.cmd = "ls /data";
@@ -2012,7 +2018,7 @@ HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareCmd_0300, TestSize.Level1)
         sandboxConfig, bundleName);
     EXPECT_TRUE(result == ERR_OK || result == ERR_NOT_HAP);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ValidateAndPrepareCmd_0300 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateAndPrepareCmd_0300 end");
 }
 
 /**
@@ -2022,7 +2028,7 @@ HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareCmd_0300, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareCmd_0400, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ValidateAndPrepareCmd_0400 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateAndPrepareCmd_0400 start");
 
     ExecCmdParam param;
     param.cmd = "echo hello";
@@ -2036,7 +2042,7 @@ HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareCmd_0400, TestSize.Level1)
         sandboxConfig, bundleName);
     EXPECT_EQ(result, ERR_INVALID_PARAM);
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ValidateAndPrepareCmd_0400 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateAndPrepareCmd_0400 end");
 }
 
 // ==================== ExecCmd Tests ====================
@@ -2048,7 +2054,7 @@ HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareCmd_0400, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ExecCmd_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0100 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_0100 start");
 
     ExecCmdParam param;
     param.cmd = "echo test";
@@ -2059,7 +2065,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_0100, TestSize.Level1)
     EXPECT_TRUE(result == ERR_NO_INIT || result == ERR_NOT_HAP ||
         result == ERR_INVALID_PARAM || IsPermissionGateResult(result));
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0100 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_0100 end");
 }
 
 /**
@@ -2069,7 +2075,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_0100, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ExecCmd_0200, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0200 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_0200 start");
 
     ExecCmdParam param;
     param.cmd = "echo test";
@@ -2077,7 +2083,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_0200, TestSize.Level1)
 
     EXPECT_TRUE(result == ERR_NO_INIT || IsPermissionGateResult(result));
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0200 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_0200 end");
 }
 
 /**
@@ -2087,7 +2093,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_0200, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ExecCmd_0300, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0300 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_0300 start");
 
     auto cliQuantity = CcmUtil::GetInstance().GetCliConcurrencyLimit();
     for (int32_t i = 0; i < cliQuantity; ++i) {
@@ -2104,7 +2110,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_0300, TestSize.Level1)
 
     EXPECT_TRUE(result == ERR_SESSION_LIMIT_EXCEEDED || IsPermissionGateResult(result));
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0300 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_0300 end");
 }
 
 /**
@@ -2114,7 +2120,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_0300, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ExecCmd_0400, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0400 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_0400 start");
 
     ExecCmdParam param;
     param.cmd = "echo test";
@@ -2124,7 +2130,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_0400, TestSize.Level1)
 
     EXPECT_TRUE(result == ERR_INVALID_PARAM || IsPermissionGateResult(result));
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0400 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_0400 end");
 }
 
 /**
@@ -2134,7 +2140,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_0400, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ExecCmd_0500, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0500 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_0500 start");
 
     auto oldMonitor = service_->ioMonitor_;
     service_->ioMonitor_ = nullptr;
@@ -2155,7 +2161,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_0500, TestSize.Level1)
 
     service_->ioMonitor_ = oldMonitor;
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0500 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_0500 end");
 }
 
 /**
@@ -2165,7 +2171,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_0500, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ExecCmd_0600, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0600 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_0600 start");
 
     ExecCmdParam param;
     param.cmd = "echo test";
@@ -2179,7 +2185,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_0600, TestSize.Level1)
     // or earlier gates may reject: ERR_NOT_HAP (sandbox config fails) or permission gate
     EXPECT_TRUE(result == ERR_INVALID_PARAM || result == ERR_NOT_HAP || IsPermissionGateResult(result));
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0600 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_0600 end");
 }
 
 /**
@@ -2189,7 +2195,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_0600, TestSize.Level1)
  */
 HWTEST_F(CliToolManagerServiceTest, ExecCmd_0700, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0700 start";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_0700 start");
 
     ExecCmdParam param;
     param.cmd = "echo test";
@@ -2203,8 +2209,297 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_0700, TestSize.Level1)
     // yieldMs (50000) > timeout * 1000 (1000) with background=false triggers ERR_INVALID_PARAM
     EXPECT_TRUE(result == ERR_INVALID_PARAM || IsPermissionGateResult(result));
 
-    GTEST_LOG_(INFO) << "CliToolManagerService_ExecCmd_0700 end";
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_0700 end");
 }
 
+/**
+ * @tc.name: CliToolManagerService_RegisterFunction_0100
+ * @tc.desc: Test RegisterFunction with valid function
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, RegisterFunction_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_RegisterFunction_0100 start");
+
+    FunctionInfo function;
+    function.functionName = "test_function";
+    function.functionNamespace = "test_ns";
+    function.functionType = FunctionType::INTENT_FUNCTION;
+
+    // Mock returns ERR_OK by default
+    int32_t ret = service_->RegisterFunction(function);
+
+    EXPECT_EQ(ret, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_RegisterFunction_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_RegisterFunction_0200
+ * @tc.desc: Test RegisterFunction with invalid function
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, RegisterFunction_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_RegisterFunction_0200 start");
+
+    FunctionInfo function;
+    function.functionName = "";
+    function.functionNamespace = "test_ns";
+    function.functionType = FunctionType::INTENT_FUNCTION;
+
+    int32_t ret = service_->RegisterFunction(function);
+
+    EXPECT_EQ(ret, ERR_INVALID_PARAM);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_RegisterFunction_0200 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_RegisterFunction_0300
+ * @tc.desc: Test RegisterFunction with non-FOUNDATION UID (permission denied)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, RegisterFunction_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_RegisterFunction_0300 start");
+
+    // Set callingUid to non-FOUNDATION_UID
+    IPCSkeleton::callingUid = 9999;
+
+    FunctionInfo function;
+    function.functionName = "test_function";
+    function.functionNamespace = "test_ns";
+    function.functionType = FunctionType::INTENT_FUNCTION;
+
+    int32_t ret = service_->RegisterFunction(function);
+
+    EXPECT_EQ(ret, ERR_PERMISSION_DENIED);
+
+    // Reset to default FOUNDATION_UID
+    IPCSkeleton::Reset();
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_RegisterFunction_0300 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_GetFunctionInfo_0100
+ * @tc.desc: Test GetFunctionInfo success path
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetFunctionInfo_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetFunctionInfo_0100 start");
+
+    // First register a function
+    FunctionInfo function;
+    function.functionName = "get_test_function";
+    function.functionNamespace = "get_test_ns";
+    function.functionType = FunctionType::INTENT_FUNCTION;
+    service_->RegisterFunction(function);
+
+    // Then get it
+    FunctionInfo retrievedFunction;
+    int32_t ret = service_->GetFunctionInfo("get_test_ns", "get_test_function", retrievedFunction);
+
+    // Mock returns ERR_OK by default
+    EXPECT_EQ(ret, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetFunctionInfo_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_GetFunctionInfo_0200
+ * @tc.desc: Test GetFunctionInfo with non-existent function
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetFunctionInfo_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetFunctionInfo_0200 start");
+
+    FunctionInfo function;
+    int32_t ret = service_->GetFunctionInfo("non_existent_ns", "non_existent_function", function);
+
+    // With mocked FOUNDATION_UID, should pass permission check and reach data manager
+    // Mock returns ERR_OK by default (even for non-existent, as it's a simple mock)
+    EXPECT_EQ(ret, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetFunctionInfo_0200 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_UnregisterFunction_0100
+ * @tc.desc: Test UnregisterFunction success path
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, UnregisterFunction_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_UnregisterFunction_0100 start");
+
+    // First register a function
+    FunctionInfo function;
+    function.functionName = "unreg_test_function";
+    function.functionNamespace = "unreg_test_ns";
+    function.functionType = FunctionType::INTENT_FUNCTION;
+    service_->RegisterFunction(function);
+
+    // Then unregister it
+    int32_t ret = service_->UnregisterFunction("unreg_test_ns", "unreg_test_function");
+
+    // Mock returns ERR_OK by default
+    EXPECT_EQ(ret, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_UnregisterFunction_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_UnregisterFunction_0200
+ * @tc.desc: Test UnregisterFunction with non-existent function
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, UnregisterFunction_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_UnregisterFunction_0200 start");
+
+    int32_t ret = service_->UnregisterFunction("non_existent_ns", "non_existent_function");
+
+    // Mock returns ERR_OK by default
+    EXPECT_EQ(ret, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_UnregisterFunction_0200 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_UnregisterIntentFunctionsByNamespace_0100
+ * @tc.desc: Test UnregisterIntentFunctionsByNamespace success path
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, UnregisterIntentFunctionsByNamespace_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_UnregisterIntentFunctionsByNamespace_0100 start");
+
+    int32_t ret = service_->UnregisterIntentFunctionsByNamespace("test_intent_ns");
+
+    // Mock returns ERR_OK by default
+    EXPECT_EQ(ret, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_UnregisterIntentFunctionsByNamespace_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_UnregisterFunction_0300
+ * @tc.desc: Test UnregisterFunction with non-FOUNDATION UID (permission denied)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, UnregisterFunction_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_UnregisterFunction_0300 start");
+
+    // Set callingUid to non-FOUNDATION_UID
+    IPCSkeleton::callingUid = 9999;
+
+    int32_t ret = service_->UnregisterFunction("test_ns", "test_function");
+
+    EXPECT_EQ(ret, ERR_PERMISSION_DENIED);
+
+    // Reset to default FOUNDATION_UID
+    IPCSkeleton::Reset();
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_UnregisterFunction_0300 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_UnregisterIntentFunctionsByNamespace_0200
+ * @tc.desc: Test UnregisterIntentFunctionsByNamespace with non-FOUNDATION UID (permission denied)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, UnregisterIntentFunctionsByNamespace_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_UnregisterIntentFunctionsByNamespace_0200 start");
+
+    // Set callingUid to non-FOUNDATION_UID
+    IPCSkeleton::callingUid = 9999;
+
+    int32_t ret = service_->UnregisterIntentFunctionsByNamespace("test_ns");
+
+    EXPECT_EQ(ret, ERR_PERMISSION_DENIED);
+
+    // Reset to default FOUNDATION_UID
+    IPCSkeleton::Reset();
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_UnregisterIntentFunctionsByNamespace_0200 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_GetAllFunctions_0100
+ * @tc.desc: Test GetAllFunctions success path
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetAllFunctions_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetAllFunctions_0100 start");
+
+    // First register some functions
+    FunctionInfo function1;
+    function1.functionName = "all_test_function1";
+    function1.functionNamespace = "all_test_ns";
+    function1.functionType = FunctionType::INTENT_FUNCTION;
+    service_->RegisterFunction(function1);
+
+    FunctionInfo function2;
+    function2.functionName = "all_test_function2";
+    function2.functionNamespace = "all_test_ns";
+    function2.functionType = FunctionType::INTENT_FUNCTION;
+    service_->RegisterFunction(function2);
+
+    // Then get all functions
+    std::vector<FunctionInfo> functions;
+    int32_t ret = service_->GetAllFunctions(functions);
+
+    // May succeed or return ERR_NO_INIT
+    // With mocked permissions returning true, should not get permission errors
+    EXPECT_TRUE(ret == ERR_OK || ret == ERR_NO_INIT);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetAllFunctions_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_FunctionInterfaces_0100
+ * @tc.desc: Test function interfaces with mock returning ERR_NO_INIT
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, FunctionInterfaces_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_FunctionInterfaces_0100 start");
+
+    // Set mock to return ERR_NO_INIT to simulate KVStore not ready
+    CliFunctionDataManagerMock::registerFunctionResult = ERR_NO_INIT;
+    CliFunctionDataManagerMock::getFunctionResult = ERR_NO_INIT;
+    CliFunctionDataManagerMock::unregisterFunctionResult = ERR_NO_INIT;
+    CliFunctionDataManagerMock::unregisterByNamespaceResult = ERR_NO_INIT;
+    CliFunctionDataManagerMock::getAllFunctionsResult = ERR_NO_INIT;
+
+    FunctionInfo function;
+    function.functionName = "null_kv_function";
+    function.functionNamespace = "null_kv_ns";
+    function.functionType = FunctionType::INTENT_FUNCTION;
+
+    EXPECT_EQ(service_->RegisterFunction(function), ERR_NO_INIT);
+
+    FunctionInfo retrievedFunction;
+    EXPECT_EQ(service_->GetFunctionInfo("null_kv_ns", "null_kv_function", retrievedFunction), ERR_NO_INIT);
+
+    EXPECT_EQ(service_->UnregisterFunction("null_kv_ns", "null_kv_function"), ERR_NO_INIT);
+
+    EXPECT_EQ(service_->UnregisterIntentFunctionsByNamespace("null_kv_ns"), ERR_NO_INIT);
+
+    std::vector<FunctionInfo> functions;
+    EXPECT_EQ(service_->GetAllFunctions(functions), ERR_NO_INIT);
+
+    // Reset mock to default values
+    CliFunctionDataManagerMock::Reset();
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_FunctionInterfaces_0100 end");
+}
 } // namespace CliTool
 } // namespace OHOS

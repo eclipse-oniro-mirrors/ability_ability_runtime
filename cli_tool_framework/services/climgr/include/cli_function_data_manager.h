@@ -44,28 +44,28 @@ public:
 
     /**
      * @brief Get function by namespace and functionName from KVStore
-     * @param funcNamespace Namespace
+     * @param functionNamespace Namespace
      * @param functionName Function name
      * @param function Output FunctionInfo
      * @return int32_t ERR_OK if found, error code otherwise
      */
-    int32_t GetFunctionByName(const std::string &funcNamespace, const std::string &functionName,
+    int32_t GetFunctionByName(const std::string &functionNamespace, const std::string &functionName,
         FunctionInfo &function);
 
     /**
      * @brief Unregister a function from database
-     * @param funcNamespace Namespace
+     * @param functionNamespace Namespace
      * @param functionName Function name
      * @return int32_t ERR_OK on success, error code otherwise
      */
-    int32_t UnregisterFunction(const std::string &funcNamespace, const std::string &functionName);
+    int32_t UnregisterFunction(const std::string &functionNamespace, const std::string &functionName);
 
     /**
      * @brief Batch unregister intentFunctions by namespace
-     * @param funcNamespace Namespace to delete all functions from
+     * @param functionNamespace Namespace to delete all functions from
      * @return int32_t ERR_OK on success, error code otherwise
      */
-    int32_t UnregisterIntentFunctionsByNamespace(const std::string &funcNamespace);
+    int32_t UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace);
 
     /**
      * @brief Get all functions from database
@@ -113,20 +113,20 @@ private:
 
     /**
      * @brief Generate KVStore key from namespace and functionName
-     * @param funcNamespace Namespace
+     * @param functionNamespace Namespace
      * @param functionName Function name
      * @return std::string Generated key string
      */
-    static std::string GenerateFunctionKey(const std::string &funcNamespace, const std::string &functionName);
+    static std::string GenerateFunctionKey(const std::string &functionNamespace, const std::string &functionName);
 
     /**
      * @brief Check if a KVStore entry matches the given namespace
      * @param entryValue The KVStore entry value (JSON string)
-     * @param funcNamespace The namespace to match against
+     * @param functionNamespace The namespace to match against
      * @return bool true if the entry's namespace matches
      */
     static bool MatchesIntentFunctionNamespace(const DistributedKv::Value &entryValue,
-        const std::string &funcNamespace);
+        const std::string &functionNamespace);
 
     DistributedKv::DistributedKvDataManager dataManager_;
     std::shared_ptr<DistributedKv::SingleKvStore> kvStorePtr_;

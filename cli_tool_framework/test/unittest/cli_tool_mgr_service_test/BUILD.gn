@@ -24,14 +24,15 @@ ohos_unittest("cli_tool_mgr_service_test") {
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
     "${ability_runtime_path}/test/unittest/cli_tool_mgr/cli_tool_mgr_service_test",
     "${cli_tool_framework_path}/interfaces/cli_tool/include",
+    "${cli_tool_framework_path}/interfaces/function/include",
     "${cli_tool_framework_path}/services/climgr/include",
     "${cli_tool_framework_path}/services/common/include",
+    "${cli_tool_framework_path}/test/unittest/cli_tool_mgr_service_test/mock/include",
     "${cli_tool_framework_path}/test/unittest/common_mock/climgr_data/include",
   ]
 
   sources = [
     "cli_tool_mgr_service_test.cpp",
-    "${cli_tool_framework_path}/services/climgr/src/cli_function_data_manager.cpp",
     "${cli_tool_framework_path}/services/climgr/src/cli_tool_app_state_observer.cpp",
     "${cli_tool_framework_path}/services/climgr/src/cli_tool_manager_service.cpp",
     "${cli_tool_framework_path}/services/climgr/src/event_dispatcher.cpp",
@@ -41,6 +42,8 @@ ohos_unittest("cli_tool_mgr_service_test") {
     "${cli_tool_framework_path}/services/climgr/src/session_record.cpp",
     "${cli_tool_framework_path}/services/climgr/src/tool_util.cpp",
     "${cli_tool_framework_path}/services/common/src/ccm_util.cpp",
+    "mock/src/accesstoken_kit.cpp",
+    "mock/src/ipc_skeleton.cpp",
     "permission_util_mock.cpp",
     "${cli_tool_framework_path}/test/unittest/common_mock/climgr_data/src/cli_tool_data_manager_mock.cpp",
   ]

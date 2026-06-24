@@ -36,6 +36,7 @@ config("cli_tool_client_config") {
     "include",
     "${ability_runtime_innerkits_path}/ability_manager/include",
     "${ability_runtime_services_path}/common/include",
+    "${cli_tool_framework_path}/interfaces/function/include",
     "${target_gen_dir}",
   ]
 }
@@ -64,7 +65,6 @@ ohos_shared_library("cli_tool_client") {
     "src/sub_command_info.cpp",
     "src/tool_info.cpp",
     "src/tool_summary.cpp",
-    "src/function_info.cpp",
   ]
   output_values = get_target_outputs(":cli_tool_manager_interface")
   sources += filter_include(output_values, [ "*.cpp" ])
@@ -72,6 +72,7 @@ ohos_shared_library("cli_tool_client") {
 
   deps = [
     ":cli_tool_manager_interface",
+    "${cli_tool_framework_path}/interfaces/function:function_info",
   ]
 
   external_deps = [

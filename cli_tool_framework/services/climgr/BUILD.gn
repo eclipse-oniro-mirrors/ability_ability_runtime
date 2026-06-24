@@ -21,6 +21,7 @@ config("clisa_config") {
     "../common/include",
     "${ability_runtime_services_path}/common/include",
     "${cli_tool_framework_path}/interfaces/cli_tool/include",
+    "${cli_tool_framework_path}/interfaces/function/include",
   ]
 
   cflags = []
@@ -59,6 +60,7 @@ ohos_shared_library("climgr") {
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",
+    "${cli_tool_framework_path}/interfaces/function:function_info",
   ]
 
   external_deps = [
