@@ -348,9 +348,6 @@ int AbilityManagerStub::OnRemoteRequestInnerSeventh(uint32_t code, MessageParcel
     if (interfaceCode == AbilityManagerInterfaceCode::EXECUTE_INTENT_FOR_DISTRIBUTED) {
         return ExecuteIntentForDistributedInner(data, reply);
     }
-    if (interfaceCode == AbilityManagerInterfaceCode::EXECUTE_INTENT_BY_FUNCTION_CALL) {
-        return ExecuteIntentByFunctionCallInner(data, reply);
-    }
     if (interfaceCode == AbilityManagerInterfaceCode::START_SELF_UI_ABILITY_BY_APP_CONTEXT) {
         return StartSelfUIAbilityByAppContextInner(data, reply);
     }
@@ -393,6 +390,9 @@ int AbilityManagerStub::OnRemoteRequestInnerEighth(uint32_t code, MessageParcel 
     }
     if (interfaceCode == AbilityManagerInterfaceCode::UNREGISTER_MISSION_LISTENER) {
         return UnRegisterMissionListenerInner(data, reply);
+    }
+    if (interfaceCode == AbilityManagerInterfaceCode::EXECUTE_INTENT_BY_FUNCTION_CALL) {
+        return ExecuteIntentByFunctionCallInner(data, reply);
     }
     return ERR_CODE_NOT_EXIST;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -37,7 +37,14 @@ bool ConvertFromConfigIntent(const std::vector<AbilityRuntime::InsightIntentInfo
 bool RegisterInsightIntentFunctions(
     const AbilityRuntime::ExtractInsightIntentProfileInfoVec &profileInfos,
     const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
-    const std::string &bundleName = "");
+    const std::string &bundleName,
+    uint32_t versionCode);
+
+bool RegisterInsightIntentFunctions(
+    const std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos,
+    const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
+    const std::string &bundleName,
+    uint32_t versionCode);
 
 bool UnregisterInsightIntentFunctions(const std::string &bundleName);
 

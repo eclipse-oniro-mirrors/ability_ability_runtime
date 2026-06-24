@@ -268,18 +268,5 @@ void InsightIntentDbCache::BackupRdb()
     std::lock_guard<std::mutex> lock(genericInfosMutex_);
     DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->BackupRdb();
 }
-
-bool InsightIntentDbCache::HasFunctionByName(uint32_t versionCode,
-    const std::string &bundleName, const int32_t userId)
-{
-    return false;
-}
-
-void InsightIntentDbCache::SaveFunctionVersion(const std::string &bundleName,
-    uint32_t versionCode, const int32_t userId) {}
-
-void InsightIntentDbCache::DeleteFunctionVersion(const std::string &bundleName, const int32_t userId) {}
-
-void InsightIntentDbCache::LoadFunctionVersionMap(const int32_t userId) {}
 } // namespace AbilityRuntime
 } // namespace OHOS

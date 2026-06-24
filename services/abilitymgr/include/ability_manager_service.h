@@ -3304,6 +3304,8 @@ private:
 
     bool IsCrossUserCall(int32_t userId) const;
 
+    int32_t CheckCrossUserPermission(int32_t targetUserId);
+
     int32_t RequestDialogServiceInner(const Want &want, const sptr<IRemoteObject> &callerToken,
         int requestCode, int32_t userId);
 

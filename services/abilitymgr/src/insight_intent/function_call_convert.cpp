@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -70,13 +70,13 @@ namespace {
 void VerifyRegisterFunction(CliToolMGRClient &client, const FunctionInfo &func)
 {
     FunctionInfo queryResult;
-    auto queryRet = client.GetFunctionInfo(func.funcNamespace, func.functionName, queryResult);
+    auto queryRet = client.GetFunctionInfo(func.functionNamespace, func.functionName, queryResult);
     if (queryRet == ERR_OK) {
         TAG_LOGI(AAFwkTag::CLI_TOOL, "verify register success: %{public}s/%{public}s",
-            func.funcNamespace.c_str(), func.functionName.c_str());
+            func.functionNamespace.c_str(), func.functionName.c_str());
     } else {
         TAG_LOGW(AAFwkTag::CLI_TOOL, "verify register failed: %{public}s/%{public}s, ret: %{public}d",
-            func.funcNamespace.c_str(), func.functionName.c_str(), queryRet);
+            func.functionNamespace.c_str(), func.functionName.c_str(), queryRet);
     }
 }
 
@@ -85,11 +85,11 @@ void RegisterOrUpdateFunction(CliToolMGRClient &client, const FunctionInfo &func
     auto ret = client.RegisterFunction(func);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "register function failed: %{public}s/%{public}s, ret: %{public}d",
-            func.funcNamespace.c_str(), func.functionName.c_str(), ret);
+            func.functionNamespace.c_str(), func.functionName.c_str(), ret);
         return;
     }
     TAG_LOGI(AAFwkTag::CLI_TOOL, "registered function: %{public}s/%{public}s",
-        func.funcNamespace.c_str(), func.functionName.c_str());
+        func.functionNamespace.c_str(), func.functionName.c_str());
     VerifyRegisterFunction(client, func);
 }
 } // namespace
@@ -104,7 +104,7 @@ bool ConvertFromExtractProfile(const AbilityRuntime::ExtractInsightIntentProfile
         }
         FunctionInfo func;
         func.functionName = info.functionName.empty() ? info.intentName : info.functionName;
-        func.funcNamespace = info.bundleName;
+        func.functionNamespace = info.bundleName;
         func.description = info.displayDescription;
         func.inputSchema = info.parameters;
         func.outputSchema = info.result;
@@ -134,7 +134,7 @@ bool ConvertFromExtractIntentInfo(const std::vector<AbilityRuntime::ExtractInsig
             func.inputSchema = funcInfo.parameters;
         }
         func.functionName = functionName.empty() ? info.genericInfo.intentName : functionName;
-        func.funcNamespace = info.genericInfo.bundleName;
+        func.functionNamespace = info.genericInfo.bundleName;
         func.description = info.displayDescription;
         func.outputSchema = info.result;
         func.functionType = FunctionType::INTENT_FUNCTION;
@@ -154,7 +154,7 @@ bool ConvertFromConfigIntent(const std::vector<AbilityRuntime::InsightIntentInfo
 
         FunctionInfo func;
         func.functionName = info.intentName;
-        func.funcNamespace = info.bundleName;
+        func.functionNamespace = info.bundleName;
         func.description = info.displayDescription;
         func.functionType = FunctionType::INTENT_FUNCTION;
 
@@ -180,45 +180,61 @@ bool ConvertFromConfigIntent(const std::vector<AbilityRuntime::InsightIntentInfo
             func.outputSchema = outputSchema.dump();
         }
 
+        IntentOptionDefaults defaults;
+        defaults.moduleName = info.moduleName;
+        defaults.abilityName = info.uiAbilityIntentInfo.abilityName;
+        AddInsightIntentOptions(func, defaults);
+
         functions.emplace_back(std::move(func));
     }
     return true;
 }
 
-void ApplyConfigIntentOptions(std::vector<FunctionInfo> &functions,
-    const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos)
-{
-    for (size_t i = 0; i < functions.size() && i < configInfos.size(); ++i) {
-        IntentOptionDefaults defaults;
-        defaults.moduleName = configInfos[i].moduleName;
-        defaults.abilityName = configInfos[i].uiAbilityIntentInfo.abilityName;
-        AddInsightIntentOptions(functions[i], defaults);
-    }
-}
-
 bool RegisterInsightIntentFunctions(
     const AbilityRuntime::ExtractInsightIntentProfileInfoVec &profileInfos,
     const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
-    const std::string &bundleName)
+    const std::string &bundleName,
+    uint32_t versionCode)
 {
     std::vector<FunctionInfo> functions;
     ConvertFromExtractProfile(profileInfos, functions);
-    size_t profileFuncCount = functions.size();
     ConvertFromConfigIntent(configInfos, functions);
-    if (functions.size() > profileFuncCount) {
-        std::vector<FunctionInfo> configFuncs(functions.begin() + profileFuncCount, functions.end());
-        ApplyConfigIntentOptions(configFuncs, configInfos);
-        std::copy(configFuncs.begin(), configFuncs.end(), functions.begin() + profileFuncCount);
-    }
-
     if (functions.empty()) {
         return true;
     }
 
     for (auto &func : functions) {
-        if (func.funcNamespace.empty() && !bundleName.empty()) {
-            func.funcNamespace = bundleName;
+        if (func.functionNamespace.empty() && !bundleName.empty()) {
+            func.functionNamespace = bundleName;
         }
+        func.version = std::to_string(versionCode);
+    }
+
+    auto &client = CliToolMGRClient::GetInstance();
+    for (const auto &func : functions) {
+        RegisterOrUpdateFunction(client, func);
+    }
+    return true;
+}
+
+bool RegisterInsightIntentFunctions(
+    const std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos,
+    const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
+    const std::string &bundleName,
+    uint32_t versionCode)
+{
+    std::vector<FunctionInfo> functions;
+    ConvertFromExtractIntentInfo(intentInfos, functions);
+    ConvertFromConfigIntent(configInfos, functions);
+    if (functions.empty()) {
+        return true;
+    }
+
+    for (auto &func : functions) {
+        if (func.functionNamespace.empty() && !bundleName.empty()) {
+            func.functionNamespace = bundleName;
+        }
+        func.version = std::to_string(versionCode);
     }
 
     auto &client = CliToolMGRClient::GetInstance();

@@ -15,6 +15,8 @@
 
 #include "insight_intent_sys_event_receiver.h"
 
+#include <unordered_map>
+
 #include "extract_insight_intent_profile.h"
 #include "common_event_support.h"
 #include "function_call_convert.h"
@@ -37,7 +39,7 @@ InsightIntentSysEventReceiver::InsightIntentSysEventReceiver(const EventFwk::Com
 {
 }
 
-void InsightIntentSysEventReceiver::SaveInsightIntentInfos(const std::string &bundleName, const std::string &moduleName,
+bool InsightIntentSysEventReceiver::SaveInsightIntentInfos(const std::string &bundleName, const std::string &moduleName,
     uint32_t versionCode, int32_t userId)
 {
     std::vector<std::string> moduleNameVec;
@@ -50,9 +52,10 @@ void InsightIntentSysEventReceiver::SaveInsightIntentInfos(const std::string &bu
     auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
     if (bundleMgrHelper == nullptr) {
         TAG_LOGE(AAFwkTag::INTENT, "null bundleMgrHelper");
-        return;
+        return false;
     }
 
+    bool anySaved = false;
     OHOS::SplitStr(moduleName, ",", moduleNameVec);
     for (std::string moduleNameLocal : moduleNameVec) {
         // Get json profile firstly
@@ -88,13 +91,44 @@ void InsightIntentSysEventReceiver::SaveInsightIntentInfos(const std::string &bu
                 "userId: %{public}d", bundleName.c_str(), moduleNameLocal.c_str(), userId);
             continue;
         }
-        CliTool::RegisterInsightIntentFunctions(infos, configIntentInfos, bundleName);
-        DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->SaveFunctionVersion(
-            bundleName, versionCode, userId);
+        anySaved = true;
 
         TAG_LOGI(AAFwkTag::INTENT, "save intent info success, bundleName: %{public}s, moduleName: %{public}s, "
             "userId: %{public}d", bundleName.c_str(), moduleNameLocal.c_str(), userId);
     }
+    return anySaved;
+}
+
+void InsightIntentSysEventReceiver::RegisterAllFunctions(
+    const std::vector<std::pair<std::string, uint32_t>> &newBundles,
+    const std::vector<ExtractInsightIntentInfo> &allIntentInfos,
+    const std::vector<InsightIntentInfo> &allConfigInfos)
+{
+    TAG_LOGI(AAFwkTag::INTENT, "register all functions, bundles:%{public}zu intent:%{public}zu config:%{public}zu",
+        newBundles.size(), allIntentInfos.size(), allConfigInfos.size());
+    std::unordered_map<std::string, std::vector<ExtractInsightIntentInfo>> intentByBundle;
+    std::unordered_map<std::string, std::vector<InsightIntentInfo>> configByBundle;
+    for (const auto &info : allIntentInfos) {
+        intentByBundle[info.genericInfo.bundleName].push_back(info);
+    }
+    for (const auto &info : allConfigInfos) {
+        configByBundle[info.bundleName].push_back(info);
+    }
+    for (const auto &entry : newBundles) {
+        const auto &bundleName = entry.first;
+        const auto &intentIt = intentByBundle.find(bundleName);
+        const auto &configIt = configByBundle.find(bundleName);
+        bool noIntent = intentIt == intentByBundle.end() || intentIt->second.empty();
+        bool noConfig = configIt == configByBundle.end() || configIt->second.empty();
+        if (noIntent && noConfig) {
+            TAG_LOGW(AAFwkTag::INTENT, "register skip empty bundle:%{public}s", bundleName.c_str());
+            continue;
+        }
+        const auto &intents = noIntent ? std::vector<ExtractInsightIntentInfo>{} : intentIt->second;
+        const auto &configs = noConfig ? std::vector<InsightIntentInfo>{} : configIt->second;
+        CliTool::RegisterInsightIntentFunctions(intents, configs, bundleName, entry.second);
+    }
+    TAG_LOGI(AAFwkTag::INTENT, "register all functions done");
 }
 
 void InsightIntentSysEventReceiver::DeleteInsightIntent(const std::string &bundleName,
@@ -112,22 +146,41 @@ void InsightIntentSysEventReceiver::DeleteInsightIntent(const std::string &bundl
         DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(
             bundleName, moduleName, userId);
         CliTool::UnregisterInsightIntentFunctions(bundleName);
-        DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->DeleteFunctionVersion(
-            bundleName, userId);
     }
+}
+
+int32_t InsightIntentSysEventReceiver::ResolveLoadUserId(int32_t userId)
+{
+    if (userId != -1) {
+        return userId;
+    }
+    int32_t current = AppExecFwk::OsAccountManagerWrapper::GetCurrentActiveAccountId();
+    if (current == 0) {
+        TAG_LOGI(AAFwkTag::INTENT, "use MAIN_USER_ID(%{public}d) instead of current userId: (%{public}d)",
+            MAIN_USER_ID, current);
+        return MAIN_USER_ID;
+    }
+    return current;
+}
+
+void InsightIntentSysEventReceiver::BackupAndScheduleRegister(
+    std::vector<std::pair<std::string, uint32_t>> &&newBundles, int32_t userId)
+{
+    DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
+    auto self = shared_from_this();
+    auto task = [self, newBundles = std::move(newBundles), userId]() {
+        std::vector<ExtractInsightIntentInfo> allIntentInfos;
+        std::vector<InsightIntentInfo> allConfigInfos;
+        DelayedSingleton<InsightIntentDbCache>::GetInstance()->
+            GetAllInsightIntentInfo(userId, allIntentInfos, allConfigInfos);
+        self->RegisterAllFunctions(newBundles, allIntentInfos, allConfigInfos);
+    };
+    ffrt::submit(task);
 }
 
 void InsightIntentSysEventReceiver::LoadInsightIntentInfos(int32_t userId)
 {
-    if (userId == -1) {
-        userId = AppExecFwk::OsAccountManagerWrapper::GetCurrentActiveAccountId();
-        if (userId == 0) {
-            TAG_LOGI(AAFwkTag::INTENT, "use MAIN_USER_ID(%{public}d) instead of current userId: (%{public}d)",
-                     MAIN_USER_ID, userId);
-            userId = MAIN_USER_ID;
-        }
-    }
-
+    userId = ResolveLoadUserId(userId);
     DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->InitInsightIntentCache(userId);
 
     auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
@@ -144,22 +197,25 @@ void InsightIntentSysEventReceiver::LoadInsightIntentInfos(int32_t userId)
         return;
     }
 
-    bool hasNewIntent = false;
+    std::vector<std::pair<std::string, uint32_t>> newBundles;
     for (auto &bundleInfo : bundleInfos) {
         bool rdbHas = DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->
             HasInsightIntentByName(bundleInfo.versionCode, bundleInfo.name, userId);
-        bool funcHas = DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->
-            HasFunctionByName(bundleInfo.versionCode, bundleInfo.name, userId);
-        if (rdbHas && funcHas) {
+        if (rdbHas) {
+            newBundles.emplace_back(bundleInfo.name, bundleInfo.versionCode);
             continue;
         }
+        bool anySaved = false;
         for (const auto &hapInfo : bundleInfo.hapModuleInfos) {
-            SaveInsightIntentInfos(bundleInfo.name, hapInfo.moduleName, bundleInfo.versionCode, userId);
-            hasNewIntent = true;
+            anySaved = SaveInsightIntentInfos(bundleInfo.name, hapInfo.moduleName,
+                bundleInfo.versionCode, userId) || anySaved;
+        }
+        if (anySaved) {
+            newBundles.emplace_back(bundleInfo.name, bundleInfo.versionCode);
         }
     }
-    if (hasNewIntent) {
-        DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
+    if (!newBundles.empty()) {
+        BackupAndScheduleRegister(std::move(newBundles), userId);
     }
 }
 

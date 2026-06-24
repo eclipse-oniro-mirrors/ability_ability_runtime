@@ -19,6 +19,7 @@
 #include "insight_intent_host_client.h"
 #include "iservice_registry.h"
 #include "message_parcel.h"
+#include "string_ex.h"
 #include "system_ability_definition.h"
 
 #include "ability_manager_errors.h"
@@ -28,12 +29,10 @@ namespace OHOS {
 namespace AAFwk {
 
 namespace {
+// IPC interface token for AbilityManagerService. Must match the descriptor
+// declared by DECLARE_INTERFACE_DESCRIPTOR(IAbilityManager) in
+// interfaces/inner_api/ability_manager/include/ability_manager_interface.h.
 constexpr const char *PERMISSION_DESC = "ohos.aafwk.AbilityManager";
-
-std::u16string ToUtf16(const std::string &str)
-{
-    return std::u16string(str.begin(), str.end());
-}
 }
 
 IntentClient &IntentClient::GetInstance()
@@ -90,7 +89,7 @@ int32_t IntentClient::SendExecuteRequest(uint64_t key, const sptr<IRemoteObject>
     MessageParcel data;
     MessageParcel reply;
     MessageOption option;
-    if (!data.WriteInterfaceToken(ToUtf16(PERMISSION_DESC))) {
+    if (!data.WriteInterfaceToken(Str8ToStr16(PERMISSION_DESC))) {
         TAG_LOGE(AAFwkLogTag::INTENT, "write interface token failed");
         return INNER_ERR;
     }

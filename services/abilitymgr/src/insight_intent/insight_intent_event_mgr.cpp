@@ -45,8 +45,6 @@ void InsightIntentEventMgr::DeleteInsightIntent(const std::string &bundleName, c
             bundleName, moduleName, userId);
         DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
         CliTool::UnregisterInsightIntentFunctions(bundleName);
-        DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->DeleteFunctionVersion(
-            bundleName, userId);
     }
 
     return;
@@ -108,7 +106,7 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
             // save database
             DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->SaveInsightIntentTotalInfo(
                 bundleName, moduleNameLocal, userId, bundleInfo.versionCode, infos, configIntentInfos);
-            CliTool::RegisterInsightIntentFunctions(infos, configIntentInfos, bundleName);
+            CliTool::RegisterInsightIntentFunctions(infos, configIntentInfos, bundleName, bundleInfo.versionCode);
         }
         DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
     });
@@ -146,8 +144,6 @@ void InsightIntentEventMgr::DeleteInsightIntentEvent(const AppExecFwk::ElementNa
     }
     DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
     CliTool::UnregisterInsightIntentFunctions(bundleName);
-    DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->DeleteFunctionVersion(
-        bundleName, userId);
     TAG_LOGI(AAFwkTag::INTENT, "delete intent info success, bundleName: %{public}s, "
         "moduleName: %{public}s, userId: %{public}d", bundleName.c_str(), moduleName.c_str(), userId);
 }

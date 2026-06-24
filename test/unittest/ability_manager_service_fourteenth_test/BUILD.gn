@@ -70,6 +70,7 @@ ohos_unittest("ability_manager_service_fourteenth_test") {
     "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
     "//prebuilts/jdk/jdk8/linux-x86/include",
     "//prebuilts/jdk/jdk8/linux-x86/include/linux",
+    "${cli_tool_framework_path}/interfaces/function/include",
   ]
 
   sources = [
