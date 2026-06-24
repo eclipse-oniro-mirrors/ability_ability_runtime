@@ -1418,6 +1418,17 @@ void JsRuntime::DumpHeapSnapshot(uint32_t tid, const OHOS::AbilityRuntime::Runti
     dumpOption.isSync = false;
     dumpOption.isClearNodeIdCache = param.isClearNodeIdCache;
     dumpOption.isProcDump = param.isProcDump;
+    if (param.languageEnv == CODE_LANGUAGE_ARKTS_1_0) {
+        dumpOption.languageEnv = panda::ecmascript::LanguageEnv::DYNAMIC;
+    } else if (param.languageEnv == CODE_LANGUAGE_ARKTS_1_2) {
+        dumpOption.languageEnv = panda::ecmascript::LanguageEnv::STATIC;
+    } else if (param.languageEnv == CODE_LANGUAGE_ARKTS_HYBRID) {
+        dumpOption.languageEnv = panda::ecmascript::LanguageEnv::HYBRID;
+    } else {
+        dumpOption.languageEnv = panda::ecmascript::LanguageEnv::DYNAMIC;
+    }
+    TAG_LOGI(AAFwkTag::JSRUNTIME, "DumpHeapSnapshot languageEnv: %{public}u",
+        static_cast<uint8_t>(dumpOption.languageEnv));
     DFXJSNApi::DumpHeapSnapshot(vm, dumpOption, tid);
 }
 

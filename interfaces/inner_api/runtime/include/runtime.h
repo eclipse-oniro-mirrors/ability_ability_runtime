@@ -112,6 +112,7 @@ public:
         bool isBinary = false;
         bool isClearNodeIdCache = false;
         bool isProcDump = false;
+        std::string languageEnv = CODE_LANGUAGE_ARKTS_1_0;
     };
 
     static std::unique_ptr<Runtime> Create(Options &options);

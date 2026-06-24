@@ -461,6 +461,17 @@ bool ETSRuntime::Initialize(const Options &options, std::unique_ptr<Runtime> &js
     return true;
 }
 
+void ETSRuntime::DumpHeapSnapshot(uint32_t tid, const OHOS::AbilityRuntime::Runtime::JsHeapDumpParam &param)
+{
+    TAG_LOGI(AAFwkTag::APPKIT, "ETSRuntime delegate DumpHeapSnapshot, languageEnv: %{public}s",
+        param.languageEnv.c_str());
+    if (jsRuntime_ != nullptr) {
+        jsRuntime_->DumpHeapSnapshot(tid, param);
+    } else {
+        TAG_LOGE(AAFwkTag::APPKIT, "ETSRuntime::DumpHeapSnapshot null jsRuntime_");
+    }
+}
+
 void ETSRuntime::ForceFullGC(uint32_t tid)
 {
     auto env = GetAniEnv();

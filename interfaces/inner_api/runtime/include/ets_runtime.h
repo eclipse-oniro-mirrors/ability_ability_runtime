@@ -82,6 +82,7 @@ public:
     void ForceFullGC(uint32_t tid) override;
     void XGC();
     void DumpHeapSnapshot(uint32_t tid, bool isFullGC, bool isBinary = false) override {};
+    void DumpHeapSnapshot(uint32_t tid, const JsHeapDumpParam &param) override;
     void DumpCpuProfile() override {};
     void AllowCrossThreadExecution() override {};
     void GetHeapPrepare() override {};
