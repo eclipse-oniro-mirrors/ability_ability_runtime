@@ -237,6 +237,7 @@ ohos_unittest("ability_manager_service_thirteenth_test") {
     "ability_manager_service_thirteenth_test.cpp",
     "mock/src/mock_ability_record.cpp",
     "mock/src/mock_accesstoken_kit.cpp",
+    "mock/src/mock_app_mgr_client.cpp",
     "mock/src/mock_app_scheduler.cpp",
     "mock/src/mock_app_utils.cpp",
     "mock/src/mock_data_ability_manager.cpp",

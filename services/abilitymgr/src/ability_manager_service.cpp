@@ -6145,6 +6145,12 @@ int32_t AbilityManagerService::ConnectLocalAbility(const Want &want, const int32
         return result;
     }
 
+    result = CheckPermissionForAgentExtension(extensionType, want, abilityRequest);
+    if (result != ERR_OK) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "fail to validate connect agent request");
+        return result;
+    }
+
     auto abilityInfo = abilityRequest.abilityInfo;
     threadLocalInfo.SetStartAbilityInfo(abilityInfo);
     if (abilityInfo.isStageBasedModel) {
@@ -12566,6 +12572,48 @@ bool AbilityManagerService::IsDmsSameAPP(const AbilityRequest &abilityRequest)
         return true;
     }
     return false;
+}
+
+int32_t AbilityManagerService::CheckPermissionForAgentExtension(AppExecFwk::ExtensionAbilityType extensionType,
+        const Want &want, const AbilityRequest &abilityRequest)
+{
+    AppExecFwk::ExtensionAbilityType targetExtType = abilityRequest.abilityInfo.extensionAbilityType;
+    if (targetExtType != AppExecFwk::ExtensionAbilityType::AGENT &&
+        extensionType != AppExecFwk::ExtensionAbilityType::AGENT) {
+        return ERR_OK;
+    }
+    if (targetExtType != extensionType) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "not same extensionType");
+        return ERR_WRONG_INTERFACE_CALL;
+    }
+    if (!want.HasParameter(AgentRuntime::AGENTEXTENSIONHOSTPROXY_KEY)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "need AGENTEXTENSIONHOSTPROXY_KEY connect AGENT");
+        return ERR_WRONG_INTERFACE_CALL;
+    }
+    // Reject unauthorized callers before doing any stateful work.
+    if (!AAFwk::PermissionVerification::GetInstance()->JudgeCallerIsAllowedToUseSystemAPI()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "caller no system-app, can not use system-api");
+        return AAFwk::ERR_NOT_SYSTEM_APP;
+    }
+    if (!AAFwk::PermissionVerification::GetInstance()->VerifyCallingPermission(
+        AAFwk::PermissionConstants::PERMISSION_CONNECT_AGENT)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "Permission verification failed");
+        return ERR_PERMISSION_DENIED;
+    }
+    // Only foreground apps are allowed to initiate agent connects.
+    auto callerPid = IPCSkeleton::GetCallingPid();
+    AppExecFwk::RunningProcessInfo processInfo;
+    auto ret = IN_PROCESS_CALL(DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance()->GetRunningProcessInfoByPid(
+        callerPid, processInfo));
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "get process failed: %{public}d", ret);
+        return ret;
+    }
+    if (processInfo.state_ != AppExecFwk::AppProcessState::APP_STATE_FOREGROUND) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "not foreground app");
+        return AAFwk::NOT_TOP_ABILITY;
+    }
+    return ERR_OK;
 }
 
 int AbilityManagerService::CheckCallServiceExtensionPermission(const AbilityRequest &abilityRequest)

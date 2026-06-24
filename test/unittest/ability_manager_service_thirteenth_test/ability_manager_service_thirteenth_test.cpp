@@ -19,6 +19,7 @@
 #include "hilog_tag_wrapper.h"
 #include "insight_intent_db_cache.h"
 #include "insight_intent_execute_manager.h"
+#include "agent_extension_connection_constants.h"
 #include "mission_list_manager.h"
 #include "mock_my_status.h"
 #include "sub_managers_helper.h"
@@ -96,7 +97,7 @@ sptr<Token> AbilityManagerServiceThirteenthTest::MockToken(AbilityType abilityTy
  * Name: ConnectAbilityCommon_001
  * Function: ConnectAbilityCommon
  * SubFunction: NA
- * FunctionPoints: Verify ConnectAbilityCommon forwards AGENT extension type to ConnectFreeInstall
+ * FunctionPoints: Verify ConnectAbilityCommon forwards AGENT extension type to ConnectFreeInstall.
  */
 HWTEST_F(AbilityManagerServiceThirteenthTest, ConnectAbilityCommon_001, TestSize.Level1)
 {
@@ -106,6 +107,12 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, ConnectAbilityCommon_001, TestSize
     status.fimConnectExtensionType_ = -1;
     status.fimConnectLocalDeviceId_.clear();
     status.softbusGetLocalNodeDeviceInfo_ = ERR_OK;
+    // AGENT permission is validated later in ConnectLocalAbility via CheckPermissionForAgentExtension;
+    // the free-install path returns early before that check is reached.
+    status.perJudgeCallerIsAllowedToUseSystemAPI_ = true;
+    status.permPermission_ = 1;
+    status.amcGetProcessInfoRet_ = ERR_OK;
+    status.amcProcessState_ = AppProcessState::APP_STATE_FOREGROUND;
 
     auto abilityMs = std::make_shared<AbilityManagerService>();
     ASSERT_NE(abilityMs, nullptr);
@@ -128,6 +135,251 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, ConnectAbilityCommon_001, TestSize
     EXPECT_EQ(status.fimConnectLocalDeviceId_, "0");
 }
 #endif // SUPPORT_RECORDER_DSOFTBUS
+
+/*
+ * Feature: AbilityManagerService
+ * Name: ConnectAbilityCommon_002
+ * Function: ConnectAbilityCommon
+ * SubFunction: NA
+ * FunctionPoints: Verify ConnectAbilityCommon rejects a non-AGENT connect carrying AGENTEXTENSIONHOSTPROXY_KEY.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, ConnectAbilityCommon_002, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    abilityMs->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+
+    Want want;
+    ElementName element("", "com.test.demo", "MainAbility");
+    want.SetElement(element);
+    want.SetParam(AgentRuntime::AGENTEXTENSIONHOSTPROXY_KEY, true);
+    auto connect = sptr<InsightIntentExecuteConnection>::MakeSptr();
+    auto callerToken = MockToken(AbilityType::PAGE);
+
+    auto ret = abilityMs->ConnectAbilityCommon(
+        want, connect, callerToken, ExtensionAbilityType::SERVICE, DEFAULT_INVAL_VALUE, false);
+    EXPECT_EQ(ret, ERR_WRONG_INTERFACE_CALL);
+}
+
+#ifdef SUPPORT_RECORDER_DSOFTBUS
+/*
+ * Feature: AbilityManagerService
+ * Name: ConnectAbilityCommon_003
+ * Function: ConnectAbilityCommon
+ * SubFunction: NA
+ * FunctionPoints: Verify ConnectAbilityCommon lets AGENT type carry AGENTEXTENSIONHOSTPROXY_KEY and reach free-install.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, ConnectAbilityCommon_003, TestSize.Level1)
+{
+    auto &status = MyStatus::GetInstance();
+    status.fimConnectFreeInstallCalled_ = false;
+    status.fimConnectFreeInstall_ = CHECK_PERMISSION_FAILED;
+    status.fimConnectExtensionType_ = -1;
+    status.fimConnectLocalDeviceId_.clear();
+    status.softbusGetLocalNodeDeviceInfo_ = ERR_OK;
+
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    abilityMs->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    abilityMs->freeInstallManager_ = std::make_shared<FreeInstallManager>();
+    ASSERT_NE(abilityMs->freeInstallManager_, nullptr);
+
+    Want want;
+    ElementName element("", "com.test.demo", "MainAbility");
+    want.SetElement(element);
+    want.SetParam(AgentRuntime::AGENTEXTENSIONHOSTPROXY_KEY, true);
+    want.AddFlags(Want::FLAG_INSTALL_ON_DEMAND);
+    auto connect = sptr<InsightIntentExecuteConnection>::MakeSptr();
+    auto callerToken = MockToken(AbilityType::PAGE);
+
+    auto ret = abilityMs->ConnectAbilityCommon(
+        want, connect, callerToken, ExtensionAbilityType::AGENT, DEFAULT_INVAL_VALUE, false);
+    EXPECT_EQ(ret, CHECK_PERMISSION_FAILED);
+    EXPECT_TRUE(status.fimConnectFreeInstallCalled_);
+    EXPECT_EQ(status.fimConnectExtensionType_, static_cast<int32_t>(ExtensionAbilityType::AGENT));
+}
+#endif // SUPPORT_RECORDER_DSOFTBUS
+
+/*
+ * Feature: AbilityManagerService
+ * Name: CheckPermissionForAgentExtension_001
+ * Function: CheckPermissionForAgentExtension
+ * SubFunction: NA
+ * FunctionPoints: Verify CheckPermissionForAgentExtension skips checks when neither side is AGENT.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, CheckPermissionForAgentExtension_001, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    Want want;
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.extensionAbilityType = ExtensionAbilityType::SERVICE;
+    auto ret = abilityMs->CheckPermissionForAgentExtension(ExtensionAbilityType::SERVICE, want, abilityRequest);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: CheckPermissionForAgentExtension_002
+ * Function: CheckPermissionForAgentExtension
+ * SubFunction: NA
+ * FunctionPoints: Verify CheckPermissionForAgentExtension rejects mismatched AGENT extension type.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, CheckPermissionForAgentExtension_002, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    Want want;
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.extensionAbilityType = ExtensionAbilityType::AGENT;
+    auto ret = abilityMs->CheckPermissionForAgentExtension(ExtensionAbilityType::SERVICE, want, abilityRequest);
+    EXPECT_EQ(ret, ERR_WRONG_INTERFACE_CALL);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: CheckPermissionForAgentExtension_003
+ * Function: CheckPermissionForAgentExtension
+ * SubFunction: NA
+ * FunctionPoints: Verify CheckPermissionForAgentExtension rejects AGENT connect without AGENTEXTENSIONHOSTPROXY_KEY.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, CheckPermissionForAgentExtension_003, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    Want want;
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.extensionAbilityType = ExtensionAbilityType::AGENT;
+    auto ret = abilityMs->CheckPermissionForAgentExtension(ExtensionAbilityType::AGENT, want, abilityRequest);
+    EXPECT_EQ(ret, ERR_WRONG_INTERFACE_CALL);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: CheckPermissionForAgentExtension_004
+ * Function: CheckPermissionForAgentExtension
+ * SubFunction: NA
+ * FunctionPoints: Verify CheckPermissionForAgentExtension rejects non-system-api callers.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, CheckPermissionForAgentExtension_004, TestSize.Level1)
+{
+    auto &status = MyStatus::GetInstance();
+    status.perJudgeCallerIsAllowedToUseSystemAPI_ = false;
+
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    Want want;
+    want.SetParam(AgentRuntime::AGENTEXTENSIONHOSTPROXY_KEY, true);
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.extensionAbilityType = ExtensionAbilityType::AGENT;
+    auto ret = abilityMs->CheckPermissionForAgentExtension(ExtensionAbilityType::AGENT, want, abilityRequest);
+    EXPECT_EQ(ret, ERR_NOT_SYSTEM_APP);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: CheckPermissionForAgentExtension_005
+ * Function: CheckPermissionForAgentExtension
+ * SubFunction: NA
+ * FunctionPoints: Verify CheckPermissionForAgentExtension rejects callers without PERMISSION_CONNECT_AGENT.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, CheckPermissionForAgentExtension_005, TestSize.Level1)
+{
+    auto &status = MyStatus::GetInstance();
+    status.perJudgeCallerIsAllowedToUseSystemAPI_ = true;
+    status.permPermission_ = 0;
+
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    Want want;
+    want.SetParam(AgentRuntime::AGENTEXTENSIONHOSTPROXY_KEY, true);
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.extensionAbilityType = ExtensionAbilityType::AGENT;
+    auto ret = abilityMs->CheckPermissionForAgentExtension(ExtensionAbilityType::AGENT, want, abilityRequest);
+    EXPECT_EQ(ret, ERR_PERMISSION_DENIED);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: CheckPermissionForAgentExtension_006
+ * Function: CheckPermissionForAgentExtension
+ * SubFunction: NA
+ * FunctionPoints: Verify CheckPermissionForAgentExtension propagates GetRunningProcessInfoByPid failure.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, CheckPermissionForAgentExtension_006, TestSize.Level1)
+{
+    auto &status = MyStatus::GetInstance();
+    status.perJudgeCallerIsAllowedToUseSystemAPI_ = true;
+    status.permPermission_ = 1;
+    status.amcGetProcessInfoRet_ = ERR_INVALID_VALUE;
+
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    Want want;
+    want.SetParam(AgentRuntime::AGENTEXTENSIONHOSTPROXY_KEY, true);
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.extensionAbilityType = ExtensionAbilityType::AGENT;
+    auto ret = abilityMs->CheckPermissionForAgentExtension(ExtensionAbilityType::AGENT, want, abilityRequest);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: CheckPermissionForAgentExtension_007
+ * Function: CheckPermissionForAgentExtension
+ * SubFunction: NA
+ * FunctionPoints: Verify CheckPermissionForAgentExtension rejects background callers.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, CheckPermissionForAgentExtension_007, TestSize.Level1)
+{
+    auto &status = MyStatus::GetInstance();
+    status.perJudgeCallerIsAllowedToUseSystemAPI_ = true;
+    status.permPermission_ = 1;
+    status.amcGetProcessInfoRet_ = ERR_OK;
+    status.amcProcessState_ = AppProcessState::APP_STATE_BACKGROUND;
+
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    Want want;
+    want.SetParam(AgentRuntime::AGENTEXTENSIONHOSTPROXY_KEY, true);
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.extensionAbilityType = ExtensionAbilityType::AGENT;
+    auto ret = abilityMs->CheckPermissionForAgentExtension(ExtensionAbilityType::AGENT, want, abilityRequest);
+    EXPECT_EQ(ret, NOT_TOP_ABILITY);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: CheckPermissionForAgentExtension_008
+ * Function: CheckPermissionForAgentExtension
+ * SubFunction: NA
+ * FunctionPoints: Verify CheckPermissionForAgentExtension returns ERR_OK when all checks pass.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, CheckPermissionForAgentExtension_008, TestSize.Level1)
+{
+    auto &status = MyStatus::GetInstance();
+    status.perJudgeCallerIsAllowedToUseSystemAPI_ = true;
+    status.permPermission_ = 1;
+    status.amcGetProcessInfoRet_ = ERR_OK;
+    status.amcProcessState_ = AppProcessState::APP_STATE_FOREGROUND;
+
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    Want want;
+    want.SetParam(AgentRuntime::AGENTEXTENSIONHOSTPROXY_KEY, true);
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.extensionAbilityType = ExtensionAbilityType::AGENT;
+    auto ret = abilityMs->CheckPermissionForAgentExtension(ExtensionAbilityType::AGENT, want, abilityRequest);
+    EXPECT_EQ(ret, ERR_OK);
+}
 
 /*
  * Feature: AbilityManagerService
