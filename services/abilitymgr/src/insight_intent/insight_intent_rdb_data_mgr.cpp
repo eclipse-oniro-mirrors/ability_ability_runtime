@@ -315,6 +315,7 @@ bool InsightIntentRdbDataMgr::QueryAllData(std::unordered_map<std::string, std::
 void InsightIntentRdbDataMgr::BackupRdb()
 {
     TAG_LOGI(AAFwkTag::INTENT, "%{public}s backup start", intentRdbConfig_.dbName.c_str());
+    std::lock_guard<std::mutex> lock(rdbStoreMutex_);
     if (!IsIntentRdbLoaded()) {
         TAG_LOGE(AAFwkTag::INTENT, "null IntentRdbStore");
         return;
