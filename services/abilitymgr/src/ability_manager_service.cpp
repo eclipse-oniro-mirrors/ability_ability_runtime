@@ -10031,7 +10031,7 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
     if (!StartAbilityUtils::GetAppIndex(want, callerToken, appIndex)) {
         errMsg = "app index is error";
         AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, ERR_APP_CLONE_INDEX_INVALID,
-            "startAbilityByCall get app index failed");
+            "startAbilityByCall app index is invalid");
         return ERR_APP_CLONE_INDEX_INVALID;
     }
     auto checkRet = AbilityPermissionUtil::GetInstance().CheckMultiInstanceAndAppClone(const_cast<Want &>(want),
@@ -10094,7 +10094,7 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
     abilityRequest.userId = oriValidUserId;
     if (!HandleExecuteSAInterceptor(want, callerToken, abilityRequest, result)) {
         AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, result,
-            "startAbilityByCall execute SA interceptor failed");
+            "startAbilityByCall SA interceptor");
         return result;
     }
 
