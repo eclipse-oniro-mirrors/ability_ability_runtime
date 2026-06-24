@@ -168,7 +168,7 @@ void UIExtensionContext::ExecuteTerminationWithTimeout(const sptr<IRemoteObject>
     // Execute termination
     ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->TerminateAbility(token, -1, nullptr);
 
-    // Notify callback
+    // Notify callback. Runtime bindings are responsible for dispatching to their owning thread.
     if (request.callback) {
         request.callback(err);
     }
