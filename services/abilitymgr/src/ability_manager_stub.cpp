@@ -391,6 +391,9 @@ int AbilityManagerStub::OnRemoteRequestInnerEighth(uint32_t code, MessageParcel 
     if (interfaceCode == AbilityManagerInterfaceCode::UNREGISTER_MISSION_LISTENER) {
         return UnRegisterMissionListenerInner(data, reply);
     }
+    if (interfaceCode == AbilityManagerInterfaceCode::EXECUTE_INTENT_BY_FUNCTION_CALL) {
+        return ExecuteIntentByFunctionCallInner(data, reply);
+    }
     return ERR_CODE_NOT_EXIST;
 }
 
@@ -4314,6 +4317,37 @@ int32_t AbilityManagerStub::ExecuteIntentForDistributedInner(MessageParcel &data
     uint64_t specifiedFullTokenId = data.ReadUint64();
     
     auto result = ExecuteIntentForDistributed(*want, srcDeviceId, requestCode, specifiedFullTokenId);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write result fail");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int32_t AbilityManagerStub::ExecuteIntentByFunctionCallInner(MessageParcel &data, MessageParcel &reply)
+{
+    uint64_t key = data.ReadUint64();
+    sptr<IRemoteObject> callerToken = data.ReadRemoteObject();
+    if (callerToken == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "null callerToken");
+        return ERR_INVALID_VALUE;
+    }
+    std::string bundleName = data.ReadString();
+    if (bundleName.empty()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "bundleName empty");
+        return ERR_INVALID_VALUE;
+    }
+    std::string intentName = data.ReadString();
+    if (intentName.empty()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "intentName empty");
+        return ERR_INVALID_VALUE;
+    }
+    std::unique_ptr<WantParams> wantParam(data.ReadParcelable<WantParams>());
+    if (wantParam == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "wantParam null");
+        return ERR_INVALID_VALUE;
+    }
+    auto result = ExecuteIntentByFunctionCall(key, callerToken, bundleName, intentName, *wantParam);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write result fail");
         return ERR_INVALID_VALUE;

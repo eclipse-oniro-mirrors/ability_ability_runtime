@@ -1546,6 +1546,18 @@ public:
         uint64_t requestCode, uint64_t specifiedFullTokenId = 0) override;
 
     /**
+     * @brief Execute intent by function call with simplified parameters.
+     * @param key The callback key for result notification.
+     * @param callerToken Caller ability token.
+     * @param bundleName The target bundle name.
+     * @param intentName The insight intent name.
+     * @param wantParam The execution arguments.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t ExecuteIntentByFunctionCall(uint64_t key, const sptr<IRemoteObject> &callerToken,
+        const std::string &bundleName, const std::string &intentName, const WantParams &wantParam) override;
+
+    /**
      * @brief Query entity.
      * @param key The key of intent executing client.
      * @param callerToken Caller ability token.

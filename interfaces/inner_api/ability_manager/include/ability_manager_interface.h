@@ -2034,6 +2034,22 @@ public:
         const InsightIntentExecuteParam &param) = 0;
 
     /**
+      * @brief Execute intent by function call with simplified parameters.
+      *
+      * @param key The callback key for result notification.
+      * @param callerToken The caller ability token.
+      * @param bundleName The target bundle name.
+      * @param intentName The insight intent name.
+      * @param wantParam The execution arguments.
+      * @return Returns ERR_OK on success, others on failure.
+      */
+    virtual int32_t ExecuteIntentByFunctionCall(uint64_t key, const sptr<IRemoteObject> &callerToken,
+        const std::string &bundleName, const std::string &intentName, const WantParams &wantParam)
+    {
+        return 0;
+    }
+
+    /**
       * @brief Execute intent for distributed scenario.
       *
       * @param want The want containing intent execution information.

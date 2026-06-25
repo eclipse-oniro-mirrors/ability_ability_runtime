@@ -15,6 +15,8 @@
 
 #include "insight_intent_db_cache.h"
 
+#include <algorithm>
+
 namespace OHOS {
 namespace AbilityRuntime {
 InsightIntentDbCache::InsightIntentDbCache()
@@ -202,6 +204,11 @@ void InsightIntentDbCache::GetInsightIntentGenericInfoByName(const std::string &
         std::lock_guard<std::mutex> lock(genericInfosMutex_);
         if (intentGenericInfos_.find(bundleName) != intentGenericInfos_.end()) {
             genericInfos = intentGenericInfos_[bundleName];
+            std::sort(genericInfos.begin(), genericInfos.end(),
+                [](const auto &a, const auto &b) {
+                    return a.moduleName == b.moduleName ? a.intentName < b.intentName
+                                                        : a.moduleName < b.moduleName;
+                });
         }
         return;
     }
@@ -217,6 +224,11 @@ void InsightIntentDbCache::GetInsightIntentGenericInfoByName(const std::string &
         ExtractInsightIntentInfo info = totalInfos.at(i);
         genericInfos.push_back(info.genericInfo);
     }
+    std::sort(genericInfos.begin(), genericInfos.end(),
+        [](const auto &a, const auto &b) {
+            return a.moduleName == b.moduleName ? a.intentName < b.intentName
+                                                : a.moduleName < b.moduleName;
+        });
 }
 
 void InsightIntentDbCache::GetInsightIntentGenericInfo(const std::string &bundleName, const std::string &moduleName,

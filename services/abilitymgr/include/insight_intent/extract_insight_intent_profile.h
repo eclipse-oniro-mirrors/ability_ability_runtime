@@ -129,6 +129,12 @@ struct ExtractInsightIntentGenericInfo {
         return std::get<T>(data);
     }
 
+    template<typename T>
+    const T& get() const
+    {
+        return std::get<T>(data);
+    }
+
 private:
     template<typename T>
     static InfoType TypeInfo()

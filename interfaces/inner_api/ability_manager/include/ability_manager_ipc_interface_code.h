@@ -495,6 +495,9 @@ enum class AbilityManagerInterfaceCode {
 
     EXECUTE_INTENT_FOR_DISTRIBUTED = 1145,
 
+    // Execute intent by function call (1146)
+    EXECUTE_INTENT_BY_FUNCTION_CALL = 1146,
+
     // ipc id 2001-3000 for tools
     // ipc id for dumping state (2001)
     DUMP_STATE = 2001,

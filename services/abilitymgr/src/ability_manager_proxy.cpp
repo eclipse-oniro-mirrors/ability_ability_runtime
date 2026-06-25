@@ -5808,6 +5808,46 @@ int32_t AbilityManagerProxy::ExecuteIntentForDistributed(const Want &want, const
     return reply.ReadInt32();
 }
 
+int32_t AbilityManagerProxy::ExecuteIntentByFunctionCall(uint64_t key, const sptr<IRemoteObject> &callerToken,
+    const std::string &bundleName, const std::string &intentName, const WantParams &wantParam)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "called");
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write token fail");
+        return INNER_ERR;
+    }
+    if (!data.WriteUint64(key)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write key fail");
+        return INNER_ERR;
+    }
+    if (!data.WriteRemoteObject(callerToken)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write callerToken fail");
+        return INNER_ERR;
+    }
+    if (!data.WriteString(bundleName)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write bundleName fail");
+        return INNER_ERR;
+    }
+    if (!data.WriteString(intentName)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write intentName fail");
+        return INNER_ERR;
+    }
+    if (!data.WriteParcelable(&wantParam)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write wantParam fail");
+        return INNER_ERR;
+    }
+    int32_t error = SendRequest(
+        AbilityManagerInterfaceCode::EXECUTE_INTENT_BY_FUNCTION_CALL, data, reply, option);
+    if (error != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "request err:%{public}d", error);
+        return error;
+    }
+    return reply.ReadInt32();
+}
+
 int32_t AbilityManagerProxy::QueryEntityInfo(uint64_t key, sptr<IRemoteObject> callerToken,
     const InsightIntentQueryParam &param)
 {

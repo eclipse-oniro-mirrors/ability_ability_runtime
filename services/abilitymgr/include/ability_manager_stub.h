@@ -310,6 +310,7 @@ private:
     int32_t DetachAppDebugInner(MessageParcel &data, MessageParcel &reply);
     int32_t ExecuteIntentInner(MessageParcel &data, MessageParcel &reply);
     int32_t ExecuteIntentForDistributedInner(MessageParcel &data, MessageParcel &reply);
+    int32_t ExecuteIntentByFunctionCallInner(MessageParcel &data, MessageParcel &reply);
 
     int32_t QueryEntityInner(MessageParcel &data, MessageParcel &reply);
 

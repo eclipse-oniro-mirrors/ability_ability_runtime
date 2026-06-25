@@ -19,9 +19,11 @@ module_output_path = "ability_runtime/ability_runtime/mstabilitymgrservice"
 ohos_moduletest("ability_manager_service_dump_test") {
   module_out_path = module_output_path
 
-  include_dirs = [ 
+  include_dirs = [
     "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/appexecfwk_core/include",
     "${ability_runtime_innerkits_path}/ability_manager/include/ui_extension",
+    "${ability_runtime_innerkits_path}/ability_manager/include/insight_intent",
+    "${cli_tool_framework_path}/interfaces/function/include",
   ]
 
   sources = [ "ability_manager_service_dump_test.cpp" ]

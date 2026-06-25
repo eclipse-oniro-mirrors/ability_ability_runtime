@@ -19,6 +19,7 @@
 #include "insight_intent_db_cache.h"
 #include "ability_manager_errors.h"
 #include "bundle_mgr_helper.h"
+#include "function_call_convert.h"
 #include "hilog_tag_wrapper.h"
 #include "in_process_call_wrapper.h"
 #include "extract_insight_intent_profile.h"
@@ -43,6 +44,7 @@ void InsightIntentEventMgr::DeleteInsightIntent(const std::string &bundleName, c
         DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(
             bundleName, moduleName, userId);
         DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
+        CliTool::UnregisterInsightIntentFunctions(bundleName);
     }
 
     return;
@@ -104,6 +106,7 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
             // save database
             DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->SaveInsightIntentTotalInfo(
                 bundleName, moduleNameLocal, userId, bundleInfo.versionCode, infos, configIntentInfos);
+            CliTool::RegisterInsightIntentFunctions(infos, configIntentInfos, bundleName, bundleInfo.versionCode);
         }
         DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
     });
@@ -140,6 +143,7 @@ void InsightIntentEventMgr::DeleteInsightIntentEvent(const AppExecFwk::ElementNa
         return;
     }
     DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
+    CliTool::UnregisterInsightIntentFunctions(bundleName);
     TAG_LOGI(AAFwkTag::INTENT, "delete intent info success, bundleName: %{public}s, "
         "moduleName: %{public}s, userId: %{public}d", bundleName.c_str(), moduleName.c_str(), userId);
 }

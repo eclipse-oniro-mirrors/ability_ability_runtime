@@ -135,7 +135,9 @@ abilityms_files = [
   "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_rdb_storage_mgr.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_utils.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/insight_intent/extract_insight_intent_profile.cpp",
+  "${ability_runtime_services_path}/abilitymgr/src/insight_intent/function_call_convert.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_event_mgr.cpp",
+  "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_matcher.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_sys_event_receiver.cpp",
 
   #skill execution
