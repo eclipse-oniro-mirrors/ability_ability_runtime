@@ -28,7 +28,7 @@
 
 namespace OHOS {
 namespace AppExecFwk {
-using GetMemLeakStringFunc = bool (*)(int, char **, size_t);
+using GetMemLeakStringFunc = bool (*)(int, char **, size_t, int *);
 
 class DumpRuntimeHelper : public std::enable_shared_from_this<DumpRuntimeHelper> {
 public:
