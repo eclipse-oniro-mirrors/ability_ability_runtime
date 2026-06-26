@@ -436,18 +436,23 @@ bool DumpRuntimeHelper::GetDumpResult(std::string &dumpResult)
         return false;
     }
     char* buf = nullptr;
-    bool ret = func(TYPE_TXT, &buf, MEM_LEAK_MAX_SIZE);
-    if (!ret) {
-        TAG_LOGE(AAFwkTag::APPKIT, "TYPE_TXT Error");
-    } else if (buf != nullptr && *buf != '\0') {
-        dumpResult = buf;
-        TAG_LOGI(AAFwkTag::APPKIT, "TYPE_TXT finish, size:%{public}zu", dumpResult.size());
+    int outLen = 0;
+    bool ret = func(TYPE_TXT, &buf, MEM_LEAK_MAX_SIZE, &outLen);
+    if (!ret || buf == nullptr || outLen <= 0) {
+        TAG_LOGE(AAFwkTag::APPKIT, "TYPE_TXT Error, ret:%{public}d, outLen:%{public}d", ret, outLen);
+        free(buf);
+        if (handle != nullptr) {
+            dlclose(handle);
+        }
+        return false;
     }
+    dumpResult.assign(buf, static_cast<size_t>(outLen));
+    TAG_LOGI(AAFwkTag::APPKIT, "TYPE_TXT finish, size:%{public}zu", dumpResult.size());
     free(buf);
     if (handle != nullptr) {
         dlclose(handle);
     }
-    return ret;
+    return true;
 }
 
 bool DumpRuntimeHelper::GetSnapshot(int fd)
@@ -458,28 +463,32 @@ bool DumpRuntimeHelper::GetSnapshot(int fd)
         return false;
     }
     char* buf = nullptr;
-    bool ret = func(TYPE_SNAPSHOT, &buf, MEM_LEAK_MAX_SIZE);
-    if (!ret) {
-        TAG_LOGE(AAFwkTag::APPKIT, "TYPE_SNAPSHOT Error");
-    } else if (buf != nullptr) {
-        size_t len = strlen(buf);
-        lseek(fd, 0, SEEK_END);
-        ssize_t written = write(fd, buf, len);
-        if (written < 0) {
-            TAG_LOGE(AAFwkTag::APPKIT, "write snapshot failed, errno:%{public}d", errno);
-            free(buf);
-            if (handle != nullptr) {
-                dlclose(handle);
-            }
-            return false;
+    int outLen = 0;
+    bool ret = func(TYPE_SNAPSHOT, &buf, MEM_LEAK_MAX_SIZE, &outLen);
+    if (!ret || buf == nullptr || outLen <= 0) {
+        TAG_LOGE(AAFwkTag::APPKIT, "TYPE_SNAPSHOT Error, ret:%{public}d, outLen:%{public}d", ret, outLen);
+        free(buf);
+        if (handle != nullptr) {
+            dlclose(handle);
         }
-        TAG_LOGI(AAFwkTag::APPKIT, "TYPE_SNAPSHOT finish");
+        return false;
     }
+    lseek(fd, 0, SEEK_END);
+    ssize_t written = write(fd, buf, static_cast<size_t>(outLen));
+    if (written < 0) {
+        TAG_LOGE(AAFwkTag::APPKIT, "write snapshot failed, errno:%{public}d", errno);
+        free(buf);
+        if (handle != nullptr) {
+            dlclose(handle);
+        }
+        return false;
+    }
+    TAG_LOGI(AAFwkTag::APPKIT, "TYPE_SNAPSHOT finish, outLen:%{public}d", outLen);
     free(buf);
     if (handle != nullptr) {
         dlclose(handle);
     }
-    return ret;
+    return true;
 }
 
 void DumpRuntimeHelper::DumpKmpKotlinHeap(const OHOS::AppExecFwk::MemDumpInfo &info)
