@@ -144,6 +144,7 @@ void Clean(ani_env *env, ani_object object)
     }
     if (ptr != 0) {
         delete reinterpret_cast<std::weak_ptr<Context> *>(ptr);
+        (void)env->Object_SetFieldByName_Long(object, "ptr", 0);
     }
     ani_long nativePtr = 0;
     status = env->Object_GetFieldByName_Long(object, "nativePtr", &nativePtr);
@@ -153,6 +154,7 @@ void Clean(ani_env *env, ani_object object)
     }
     if (nativePtr != 0) {
         delete reinterpret_cast<EtsBaseContext *>(nativePtr);
+        (void)env->Object_SetFieldByName_Long(object, "nativePtr", 0);
     }
 }
 
@@ -173,23 +175,13 @@ bool SetNativeContextLong(ani_env *env, ani_object aniObj, ani_long nativeContex
         return false;
     }
     ani_method method = nullptr;
-    if ((status = env->Class_FindMethod(contextCls, "<ctor>", ":", &method)) != ANI_OK ||
-        method == nullptr) {
-        TAG_LOGE(AAFwkTag::APPKIT, "ctor FindMethod status: %{public}d, or null method", status);
-        return false;
-    }
-    ani_object contextObj = nullptr;
-    if ((status = env->Object_New(contextCls, method, &contextObj)) != ANI_OK || contextObj == nullptr) {
-        TAG_LOGE(AAFwkTag::APPKIT, "Object_New status: %{public}d, or null contextObj", status);
-        return false;
-    }
     if ((status = env->Class_FindMethod(contextCls, "setEtsContextPtr", "l:", &method)) != ANI_OK ||
         method == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "setEtsContextPtr FindMethod status: %{public}d, or null method", status);
         return false;
     }
-    if ((status = env->Object_CallMethod_Void(contextObj, method, nativeContextLong)) != ANI_OK) {
-        TAG_LOGE(AAFwkTag::APPKIT, "call contextObj method failed, status: %{public}d", status);
+    if ((status = env->Object_CallMethod_Void(aniObj, method, nativeContextLong)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPKIT, "call setEtsContextPtr on aniObj failed, status: %{public}d", status);
         return false;
     }
     return true;
@@ -420,8 +412,16 @@ std::shared_ptr<Context> GetBaseContext(ani_env *env, ani_object aniObj)
         TAG_LOGE(AAFwkTag::APPKIT, "status: %{public}d", status);
         return nullptr;
     }
+    if (nativeContextLong == 0) {
+        TAG_LOGE(AAFwkTag::APPKIT, "nativeContext is null");
+        return nullptr;
+    }
     auto weakContext = reinterpret_cast<std::weak_ptr<Context>*>(nativeContextLong);
-    return weakContext != nullptr ? weakContext->lock() : nullptr;
+    if (weakContext == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "weakContext is null");
+        return nullptr;
+    }
+    return weakContext->lock();
 }
 
 ani_object CreateModuleResourceManagerSync(ani_env *env, ani_object aniObj,
