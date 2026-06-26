@@ -82,6 +82,24 @@ bool IsContextEmbeddable(const std::shared_ptr<AbilityRuntime::Context>& context
     return IsEmbeddableStart(screenMode);
 }
 
+TerminateSelfResultCallback CreateTerminateSelfResultCallback(
+    napi_env env, const std::shared_ptr<NapiAsyncTask> &asyncTask)
+{
+    return [env, asyncTask](ErrCode errCode) {
+        auto task = [env, asyncTask, errCode]() {
+            HandleScope handleScope(env);
+            if (errCode == ERR_OK) {
+                asyncTask->Resolve(env, CreateJsUndefined(env));
+            } else {
+                asyncTask->Reject(env, CreateJsErrorByNativeErr(env, errCode));
+            }
+        };
+        if (napi_send_event(env, std::move(task), napi_eprio_immediate) != napi_ok) {
+            TAG_LOGE(AAFwkTag::UI_EXT, "Send terminate result to JS thread failed");
+        }
+    };
+}
+
 } // namespace
 
 static std::map<UIExtensionConnectionKey, sptr<JSUIExtensionConnection>, key_compare> g_connects;
@@ -608,15 +626,7 @@ napi_value JsUIExtensionContext::HandleTerminateSelfWithResultInEmbeddableMode(n
         return result;
     }
 
-    // Create callback with shared_ptr capture to extend lifetime
-    auto callback = [env, asyncTask](ErrCode errCode) {
-        TAG_LOGI(AAFwkTag::UI_EXT, "terminateSelfWithResult callback (embeddable mode), errCode=%{public}d", errCode);
-        if (errCode == ERR_OK) {
-            asyncTask->Resolve(env, CreateJsUndefined(env));
-        } else {
-            asyncTask->Reject(env, CreateJsErrorByNativeErr(env, errCode));
-        }
-    };
+    auto callback = CreateTerminateSelfResultCallback(env, asyncTask);
 
     // Call C++ layer new method for embeddable mode
     extensionContext->SetTerminating(true);
@@ -662,14 +672,7 @@ napi_value JsUIExtensionContext::HandleTerminateSelfInEmbeddableMode(napi_env en
         return result;
     }
 
-    auto callback = [env, asyncTask](ErrCode errCode) {
-        TAG_LOGI(AAFwkTag::UI_EXT, "terminateSelf callback (embeddable mode), errCode=%{public}d", errCode);
-        if (errCode == ERR_OK) {
-            asyncTask->Resolve(env, CreateJsUndefined(env));
-        } else {
-            asyncTask->Reject(env, CreateJsErrorByNativeErr(env, errCode));
-        }
-    };
+    auto callback = CreateTerminateSelfResultCallback(env, asyncTask);
 
     extensionContext->SetTerminating(true);
     extensionContext->TerminateSelfWithAnimation(std::move(callback));

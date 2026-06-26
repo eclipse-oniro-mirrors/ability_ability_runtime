@@ -168,7 +168,7 @@ void UIExtensionContext::ExecuteTerminationWithTimeout(const sptr<IRemoteObject>
     // Execute termination
     ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->TerminateAbility(token, -1, nullptr);
 
-    // Notify callback
+    // Notify callback. Runtime bindings are responsible for dispatching to their owning thread.
     if (request.callback) {
         request.callback(err);
     }
@@ -328,7 +328,7 @@ void UIExtensionContext::TerminateSelfWithResultAndAnimation(int32_t resultCode,
 
 ErrCode UIExtensionContext::TerminateSelfInner(int32_t terminateRequestId)
 {
-    TAG_LOGD(AAFwkTag::UI_EXT, "TerminateSelfInner (embeddable), terminateRequestId=%{public}d", terminateRequestId);
+    TAG_LOGI(AAFwkTag::UI_EXT, "TerminateSelfInner (embeddable), terminateRequestId=%{public}d", terminateRequestId);
 
     // Check if this request has already been handled, and get request in one lock
     PendingTerminateRequest request;
