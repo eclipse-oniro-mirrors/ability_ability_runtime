@@ -179,6 +179,7 @@ void NapiUncaughtExceptionCallback::CallbackTask(napi_value& obj)
     AppendStackTrace(errorStack, summary, isCangjieError);
     AppendAsyncStack(obj, summary);
     AppendModuleStack(obj, summary);
+    AppendSoLoadFailure(obj, summary);
 
     if (env_ != nullptr) {
         summary += DFXJSNApi::GetExtraJSCrashMessage(reinterpret_cast<NativeEngine*>(env_)->GetEcmaVm());
@@ -267,6 +268,32 @@ void NapiUncaughtExceptionCallback::AppendModuleStack(const napi_value& obj, std
     }
     
     TAG_LOGD(AAFwkTag::JSENV, "AppendModuleImportStack success, moduleStack: %s", moduleStack.c_str());
+}
+
+void NapiUncaughtExceptionCallback::AppendSoLoadFailure(const napi_value& obj, std::string& summary)
+{
+    std::string soLoadFailureInfo = GetNativeStrFromJsTaggedObj(obj, "nativeModuleErrorInfo");
+    if (soLoadFailureInfo.empty()) {
+        TAG_LOGD(AAFwkTag::JSENV, "So Load Failure info is empty");
+        return;
+    }
+    
+    summary += "NativeModuleErrorInfo:\n";
+    std::istringstream iss(soLoadFailureInfo);
+    std::string line;
+    int index = 1; // The count starts from 1
+    bool isFirstLine = true;
+    while (std::getline(iss, line)) {
+        if (!line.empty()) {
+            if (isFirstLine) {
+                summary += line + "\n";
+                isFirstLine = false;
+            } else {
+                summary += "#" + std::to_string(index++) + " " + line + "\n";
+            }
+        }
+    }
+    TAG_LOGD(AAFwkTag::JSENV, "AppendSoLoadFailure success, soLoadFailureInfo: %s", soLoadFailureInfo.c_str());
 }
 
 void NapiUncaughtExceptionCallback::AppendExtraInfo(std::string& errorMsg)

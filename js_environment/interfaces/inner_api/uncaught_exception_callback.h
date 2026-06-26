@@ -79,6 +79,8 @@ private:
 
     void AppendModuleStack(const napi_value& obj, std::string& summary);
 
+    void AppendSoLoadFailure(const napi_value& obj, std::string& summary);
+
     void AppendExtraInfo(std::string& errorMsg);
 };
 } // namespace JsEnv
