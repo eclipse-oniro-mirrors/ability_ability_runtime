@@ -370,7 +370,7 @@ int DataAbilityRecord::KillBoundClientProcesses()
     }
 
     for (auto it = clients_.begin(); it != clients_.end(); ++it) {
-        if (it->tryBind && it->isNotHap == false) {
+        if (it->tryBind && !it->isNotHap) {
             auto clientAbilityRecord = Token::GetAbilityRecordByToken(it->client);
             CHECK_POINTER_CONTINUE(clientAbilityRecord);
             TAG_LOGI(AAFwkTag::DATA_ABILITY,
@@ -419,7 +419,7 @@ void DataAbilityRecord::Dump() const
     int i = 0;
 
     for (auto it = clients_.begin(); it != clients_.end(); ++it) {
-        if (it->isNotHap == false) {
+        if (!it->isNotHap) {
             auto clientAbilityRecord = Token::GetAbilityRecordByToken(it->client);
             CHECK_POINTER_CONTINUE(clientAbilityRecord);
             TAG_LOGI(AAFwkTag::DATA_ABILITY, "  %{public}2d '%{public}s|%{public}s' - tryBind: %{public}s",
@@ -449,7 +449,7 @@ void DataAbilityRecord::Dump(std::vector<std::string> &info) const
     info.emplace_back("    Clients: " + std::to_string(clients_.size()));
 
     for (auto &&client : clients_) {
-        if (client.isNotHap == false) {
+        if (!client.isNotHap) {
             auto clientAbilityRecord = Token::GetAbilityRecordByToken(client.client);
             CHECK_POINTER_CONTINUE(clientAbilityRecord);
             info.emplace_back("     > " + clientAbilityRecord->GetAbilityInfo().bundleName + "/" +

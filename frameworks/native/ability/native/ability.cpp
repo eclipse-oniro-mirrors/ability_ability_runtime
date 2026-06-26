@@ -615,7 +615,7 @@ void Ability::OnBackPressed()
         return;
     }
 
-    if (abilityInfo_->isLauncherAbility == false) {
+    if (!abilityInfo_->isLauncherAbility) {
         TAG_LOGD(AAFwkTag::ABILITY, "not Launcher");
         TerminateAbility();
     }

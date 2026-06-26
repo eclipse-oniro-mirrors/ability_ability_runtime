@@ -1501,7 +1501,7 @@ bool JSAbilityDelegator::ParseArrayStringValue(
         return false;
     }
     bool isArray = false;
-    if (napi_is_array(env, array, &isArray) != napi_ok || isArray == false) {
+    if (napi_is_array(env, array, &isArray) != napi_ok || !isArray) {
         TAG_LOGE(AAFwkTag::DELEGATOR, "not array");
         return false;
     }

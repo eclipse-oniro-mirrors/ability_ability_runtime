@@ -413,7 +413,7 @@ void JsUIServiceExtension::OnCommand(const AAFwk::Want &want, bool restart, int 
 bool JsUIServiceExtension::CreateWindowIfNeeded()
 {
 #ifdef SUPPORT_GRAPHICS
-    if (firstRequest_ == false) {
+    if (!firstRequest_) {
         return true;
     }
     firstRequest_ = false;

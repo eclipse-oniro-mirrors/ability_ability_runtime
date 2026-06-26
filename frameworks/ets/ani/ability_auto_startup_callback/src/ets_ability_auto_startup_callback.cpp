@@ -103,7 +103,7 @@ void EtsAbilityAutoStartupCallback::Unregister(ani_object value)
         TAG_LOGE(AAFwkTag::AUTO_STARTUP, "null env");
         return;
     }
-    if (env->Reference_IsUndefined(value, &isUndefined) != ANI_OK || isUndefined == true) {
+    if (env->Reference_IsUndefined(value, &isUndefined) != ANI_OK || isUndefined) {
         TAG_LOGD(AAFwkTag::AUTO_STARTUP, "invalid callback, clear all callback");
         for (auto &callback : callbacks_) {
             env->GlobalReference_Delete(callback);

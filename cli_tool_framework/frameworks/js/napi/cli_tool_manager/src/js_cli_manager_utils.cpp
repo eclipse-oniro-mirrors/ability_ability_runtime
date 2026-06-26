@@ -376,7 +376,7 @@ bool ParseArrayStringValue(napi_env env, napi_value array, std::vector<std::stri
         return false;
     }
     bool isArray = false;
-    if (napi_is_array(env, array, &isArray) != napi_ok || isArray == false) {
+    if (napi_is_array(env, array, &isArray) != napi_ok || !isArray) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "not array");
         return false;
     }

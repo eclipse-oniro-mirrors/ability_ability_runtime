@@ -2854,7 +2854,7 @@ void EtsAbilityContext::OnSetMissionContinueState(ani_env *env, ani_object aniOb
     }
     int state = 0;
     bool result = AAFwk::AniEnumConvertUtil::EnumConvert_EtsToNative(env, stateObj, state);
-    if (result == false) {
+    if (!result) {
         TAG_LOGE(AAFwkTag::CONTEXT, "Unwrap state failed");
         AppExecFwk::AsyncCallback(env, callbackObj,
             EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM), nullptr);

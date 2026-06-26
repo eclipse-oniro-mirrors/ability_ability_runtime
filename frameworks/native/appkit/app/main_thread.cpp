@@ -2617,7 +2617,7 @@ void MainThread::HandleUpdateApplicationInfoInstalled(const ApplicationInfo &app
             abilityInfo.bundleName = appInfo.bundleName;
             abilityInfo.package = moduleName;
             HapModuleInfo hapModuleInfo;
-            if (bundleMgrHelper->GetHapModuleInfo(abilityInfo, hapModuleInfo) == false) {
+            if (!bundleMgrHelper->GetHapModuleInfo(abilityInfo, hapModuleInfo)) {
                 TAG_LOGE(AAFwkTag::APPKIT, "GetHapModuleInfo failed");
                 return;
             }

@@ -79,7 +79,7 @@ public:
         }
 
         bool needNotify = std::find_if(connections_.begin(), connections_.end(),
-            [](const std::pair<sptr<IRemoteObject>, bool>& pair)->bool {return pair.second == false;})
+            [](const std::pair<sptr<IRemoteObject>, bool>& pair)->bool {return !pair.second;})
             == connections_.end();
 
         auto it = connections_.find(connection);
@@ -118,7 +118,7 @@ public:
             return false;
         }
         it = std::find_if(connections_.begin(), connections_.end(),
-            [](const std::pair<sptr<IRemoteObject>, bool>& pair)->bool {return pair.second == false;});
+            [](const std::pair<sptr<IRemoteObject>, bool>& pair)->bool {return !pair.second;});
         if (it == connections_.end()) {
             event.suspendedEvent = true;
             return true;
@@ -142,7 +142,7 @@ public:
         }
         (*it).second = true;
         it = std::find_if(connections_.begin(), connections_.end(),
-            [](const std::pair<sptr<IRemoteObject>, bool>& pair)->bool {return pair.second == false;});
+            [](const std::pair<sptr<IRemoteObject>, bool>& pair)->bool {return !pair.second;});
 
         return it == connections_.end();
     }
@@ -159,7 +159,7 @@ public:
         }
 
         bool needNotify = std::find_if(connections_.begin(), connections_.end(),
-            [](const std::pair<sptr<IRemoteObject>, bool>& pair)->bool {return pair.second == false;})
+            [](const std::pair<sptr<IRemoteObject>, bool>& pair)->bool {return !pair.second;})
             == connections_.end();
 
         (*it).second = false;
@@ -172,7 +172,7 @@ public:
             std::lock_guard guard(connectionsMutex_);
             auto it = std::find_if(connections_.begin(), connections_.end(),
                 [](const std::pair<sptr<IRemoteObject>, bool
-                    >& pair) {return pair.second == false;});
+                    >& pair) {return !pair.second;});
             if (it == connections_.end()) {
                 data.isSuspended = true;
             }

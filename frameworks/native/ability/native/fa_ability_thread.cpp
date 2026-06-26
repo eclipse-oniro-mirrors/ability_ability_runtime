@@ -130,7 +130,7 @@ std::string FAAbilityThread::CreateAbilityName(const std::shared_ptr<AppExecFwk:
     if (abilityInfo->type == AppExecFwk::AbilityType::SERVICE) {
 #endif
 #ifdef SUPPORT_GRAPHICS
-        if (abilityInfo->formEnabled == true) {
+        if (abilityInfo->formEnabled) {
             abilityName = ACE_FORM_ABILITY_NAME;
         } else {
 #endif

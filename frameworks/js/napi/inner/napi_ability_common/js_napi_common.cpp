@@ -127,7 +127,7 @@ napi_value JsNapiCommon::JsConnectAbility(napi_env env, napi_callback_info info,
         errorVal = static_cast<int32_t>(NAPI_ERR_ABILITY_TYPE_INVALID);
     }
 
-    if (errorVal != static_cast<int32_t>(NAPI_ERR_NO_ERROR) || result == false) {
+    if (errorVal != static_cast<int32_t>(NAPI_ERR_NO_ERROR) || !result) {
         if (HandleJsConnectAbilityError(env, connectionCallback, want, errorVal) == CreateJsUndefined(env)) {
             return CreateJsUndefined(env);
         };

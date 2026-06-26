@@ -798,8 +798,8 @@ void ETSRuntime::StartDebugMode(const DebugOption dOption)
         (int socketFd, std::string option) {
         TAG_LOGI(AAFwkTag::ETSRUNTIME, "HdcRegister msg, fd= %{public}d, option= %{public}s", socketFd, option.c_str());
         // system is debuggable when const.secure is false and const.debuggable is true
-        bool isSystemDebuggable = system::GetBoolParameter("const.secure", true) == false &&
-            system::GetBoolParameter("const.debuggable", false) == true;
+        bool isSystemDebuggable = !system::GetBoolParameter("const.secure", true) &&
+            system::GetBoolParameter("const.debuggable", false);
         // Don't start any server if (system not in debuggable mode) and app is release version
         // Starting ConnectServer in release app on debuggable system is only for debug mode, not for profiling mode.
         if ((!isSystemDebuggable) && appProvisionType == AppExecFwk::Constants::APP_PROVISION_TYPE_RELEASE) {

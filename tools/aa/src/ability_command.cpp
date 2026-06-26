@@ -551,7 +551,7 @@ ErrCode AbilityManagerShellCommand::RunAsDumpsysCommand()
     std::string args;
     for (auto it = argList_.begin(); it != argList_.end(); it++) {
         if (*it == "-c" || *it == "--client") {
-            if (isClient == false) {
+            if (!isClient) {
                 isClient = true;
             } else {
                 result = OHOS::ERR_INVALID_VALUE;
@@ -570,7 +570,7 @@ ErrCode AbilityManagerShellCommand::RunAsDumpsysCommand()
                 resultReceiver_.append(HELP_MSG_DUMPSYS);
                 return result;
             }
-            if (isUserID == false) {
+            if (!isUserID) {
                 isUserID = true;
             } else {
                 result = OHOS::ERR_INVALID_VALUE;
@@ -609,7 +609,7 @@ ErrCode AbilityManagerShellCommand::RunAsDumpsysCommand()
                 return result;
             }
             case 'a': {
-                if (isfirstCommand == false) {
+                if (!isfirstCommand) {
                     isfirstCommand = true;
                 } else {
                     result = OHOS::ERR_INVALID_VALUE;
@@ -621,7 +621,7 @@ ErrCode AbilityManagerShellCommand::RunAsDumpsysCommand()
                 break;
             }
             case 'l': {
-                if (isfirstCommand == false) {
+                if (!isfirstCommand) {
                     isfirstCommand = true;
                 } else {
                     // 'aa dump -i 10 -element -lastpage'
@@ -638,7 +638,7 @@ ErrCode AbilityManagerShellCommand::RunAsDumpsysCommand()
                 break;
             }
             case 'i': {
-                if (isfirstCommand == false) {
+                if (!isfirstCommand) {
                     isfirstCommand = true;
                     int abilityRecordId = DEFAULT_INVAL_VALUE;
                     (void)StrToInt(optarg, abilityRecordId);
@@ -660,7 +660,7 @@ ErrCode AbilityManagerShellCommand::RunAsDumpsysCommand()
                 break;
             }
             case 'e': {
-                if (isfirstCommand == false && optarg == nullptr) {
+                if (!isfirstCommand && optarg == nullptr) {
                     isfirstCommand = true;
                 } else {
                     // 'aa dumpsys -i 10 -element'
@@ -675,7 +675,7 @@ ErrCode AbilityManagerShellCommand::RunAsDumpsysCommand()
                 break;
             }
             case 'p': {
-                if (isfirstCommand == false && optarg == nullptr) {
+                if (!isfirstCommand && optarg == nullptr) {
                     isfirstCommand = true;
                 } else {
                     result = OHOS::ERR_INVALID_VALUE;
@@ -687,7 +687,7 @@ ErrCode AbilityManagerShellCommand::RunAsDumpsysCommand()
                 break;
             }
             case 'r': {
-                if (isfirstCommand == false && optarg == nullptr) {
+                if (!isfirstCommand && optarg == nullptr) {
                     isfirstCommand = true;
                 } else {
                     // 'aa dump -i 10 -render'
@@ -705,7 +705,7 @@ ErrCode AbilityManagerShellCommand::RunAsDumpsysCommand()
                 break;
             }
             case 'd': {
-                if (isfirstCommand == false && optarg == nullptr) {
+                if (!isfirstCommand && optarg == nullptr) {
                     isfirstCommand = true;
                 } else {
                     result = OHOS::ERR_INVALID_VALUE;

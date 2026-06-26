@@ -89,7 +89,7 @@ void CliToolManagerService::HandleProcessTimeout(const std::string &sessionId)
     auto oldBackground = record->SetBackground(true);
     TAG_LOGI(AAFwkTag::CLI_TOOL, "HandleProcessTimeout: sessionId=%{public}s, background=%{public}d",
         sessionId.c_str(), oldBackground);
-    if (oldBackground == false) {
+    if (!oldBackground) {
         CliSessionInfo session;
         record->BuildSessionInfo(session);
         EventDispatcher::GetInstance().DispatchExecToolReplyEvent(
@@ -111,7 +111,7 @@ void CliToolManagerService::HandleProcessYieldTimeout(const std::string &session
     auto oldBackground = record->SetBackground(true);
     TAG_LOGI(AAFwkTag::CLI_TOOL, "HandleProcessYieldTimeout: sessionId=%{public}s, background=%{public}d",
         sessionId.c_str(), oldBackground);
-    if (oldBackground == false) {
+    if (!oldBackground) {
         CliSessionInfo session;
         record->BuildSessionInfo(session);
         EventDispatcher::GetInstance().DispatchExecToolReplyEvent(
@@ -161,7 +161,7 @@ void CliToolManagerService::FinalizeBackgroundSession(const std::shared_ptr<Sess
     }
 
     auto oldBackground = record->SetBackground(true);
-    if (oldBackground == false) {
+    if (!oldBackground) {
         CliSessionInfo session;
         record->BuildSessionInfo(session);
         EventDispatcher::GetInstance().DispatchExecToolReplyEvent(
@@ -404,8 +404,8 @@ void CliToolManagerService::DelayUnloadTask()
 bool CliToolManagerService::RegisterSessionWithMonitors(const std::shared_ptr<SessionRecord> &record,
     const ExecOptions &options)
 {
-    if (ioMonitor_ == nullptr || ioMonitor_->RegisterSession(
-        record->sessionId, record->stdoutPipe[0], record->stderrPipe[0], record->stdinPipe[1]) == false) {
+    if (ioMonitor_ == nullptr || !ioMonitor_->RegisterSession(
+        record->sessionId, record->stdoutPipe[0], record->stderrPipe[0], record->stdinPipe[1])) {
         close(record->stdoutPipe[0]);
         close(record->stderrPipe[0]);
         close(record->stdinPipe[1]);
@@ -414,7 +414,7 @@ bool CliToolManagerService::RegisterSessionWithMonitors(const std::shared_ptr<Se
         return false;
     }
 
-    if (options.background == false && options.yieldMs != 0) {
+    if (!options.background && options.yieldMs != 0) {
         PostExecToolTask(options.yieldMs, record->sessionId, false);
     }
     if (record->timeoutMs != 0) {
@@ -696,7 +696,7 @@ int32_t CliToolManagerService::SetupAndStartSession(const ExecToolParam &param, 
     }
     AddSessionRecord(record);
 
-    if (RegisterSessionWithMonitors(record, param.options) == false) {
+    if (!RegisterSessionWithMonitors(record, param.options)) {
         ProcessManager::GetInstance().Killpg(record->processId);
         RemoveSessionRecord(record->sessionId);
         return ERR_NO_INIT;
@@ -837,7 +837,7 @@ int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::str
         RemoveSessionRecord(record->sessionId);
         return createRet;
     }
-    if (RegisterSessionWithMonitors(record, param.options) == false) {
+    if (!RegisterSessionWithMonitors(record, param.options)) {
         ProcessManager::GetInstance().Killpg(record->processId);
         RemoveSessionRecord(record->sessionId);
         return ERR_NO_INIT;
@@ -1359,7 +1359,7 @@ void CliToolManagerService::HandleSkillSessionComplete(const std::string &sessio
     }
 
     auto oldBackground = record->SetBackground(true);
-    if (oldBackground == false) {
+    if (!oldBackground) {
         EventDispatcher::GetInstance().DispatchExecToolReplyEvent(callerPid, callerUid, eventId, ERR_OK, session);
     }
 
@@ -1381,7 +1381,7 @@ void CliToolManagerService::HandleSkillSessionTimeout(const std::string &session
     record->SetState(SessionState::FAILED);
 
     auto oldBackground = record->SetBackground(true);
-    if (oldBackground == false) {
+    if (!oldBackground) {
         CliSessionInfo session;
         record->BuildSessionInfo(session);
         EventDispatcher::GetInstance().DispatchExecToolReplyEvent(

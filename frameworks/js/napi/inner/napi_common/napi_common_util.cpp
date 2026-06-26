@@ -46,7 +46,7 @@ bool IsArrayForNapiValue(napi_env env, napi_value param, uint32_t &arraySize)
     bool isArray = false;
     arraySize = 0;
 
-    if (napi_is_array(env, param, &isArray) != napi_ok || isArray == false) {
+    if (napi_is_array(env, param, &isArray) != napi_ok || !isArray) {
         return false;
     }
 
@@ -697,7 +697,7 @@ napi_value GetPropertyValueByPropertyName(
     napi_env env, napi_value jsObject, const char *propertyName, napi_valuetype expectType)
 {
     napi_value value = nullptr;
-    if (IsExistsByPropertyName(env, jsObject, propertyName) == false) {
+    if (!IsExistsByPropertyName(env, jsObject, propertyName)) {
         return nullptr;
     }
 
