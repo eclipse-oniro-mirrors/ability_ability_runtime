@@ -287,5 +287,89 @@ HWTEST_F(QuickFixManagerServiceTest, RevokeQuickFix_0300, TestSize.Level1)
 
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
 }
+
+/**
+ * @tc.name: ApplyQuickFix_0600
+ * @tc.desc: test ApplyQuickFix
+ * @tc.type: FUNC
+ */
+HWTEST_F(QuickFixManagerServiceTest, ApplyQuickFix_0600, TestSize.Level1)
+{
+    MyFlag::isAllowedToUseSystemAPIFlag_ = false;
+    MyFlag::verifyCallingPermissionFlag_ = false;
+    std::vector<std::string> quickFixFiles;
+    auto ret = quickFixMs_->ApplyQuickFix(quickFixFiles);
+    EXPECT_EQ(ret, QUICK_FIX_NOT_SYSTEM_APP);
+
+    MyFlag::verifyCallingPermissionFlag_ = true;
+    ret = quickFixMs_->ApplyQuickFix(quickFixFiles);
+    EXPECT_EQ(ret, QUICK_FIX_CONNECT_FAILED);
+}
+
+/**
+ * @tc.name: ApplyQuickFix_0700
+ * @tc.desc: test ApplyQuickFix
+ * @tc.type: FUNC
+ */
+HWTEST_F(QuickFixManagerServiceTest, ApplyQuickFix_0700, TestSize.Level1)
+{
+    MyFlag::isAllowedToUseSystemAPIFlag_ = true;
+    MyFlag::isVerifyInstallBundlePermission_ = true;
+    std::vector<std::string> quickFixFiles;
+    auto ret = quickFixMs_->ApplyQuickFix(quickFixFiles);
+    EXPECT_EQ(ret, QUICK_FIX_CONNECT_FAILED);
+
+    MyFlag::isVerifyInstallBundlePermission_ = false;
+    MyFlag::verifyCallingPermissionFlag_ = false;
+    ret = quickFixMs_->ApplyQuickFix(quickFixFiles);
+    EXPECT_EQ(ret, QUICK_FIX_VERIFY_PERMISSION_FAILED);
+
+    MyFlag::verifyCallingPermissionFlag_ = true;
+    ret = quickFixMs_->ApplyQuickFix(quickFixFiles);
+    EXPECT_EQ(ret, QUICK_FIX_CONNECT_FAILED);
+}
+
+/**
+ * @tc.name: GetApplyedQuickFixInfo_0400
+ * @tc.desc: test GetApplyedQuickFixInfo
+ * @tc.type: FUNC
+ */
+HWTEST_F(QuickFixManagerServiceTest, GetApplyedQuickFixInfo_0400, TestSize.Level1)
+{
+    MyFlag::isAllowedToUseSystemAPIFlag_ = false;
+    MyFlag::verifyCallingPermissionFlag_ = false;
+    std::string bundleName = "test bundleName";
+    ApplicationQuickFixInfo quickFixFileInfo;
+    auto ret = quickFixMs_->GetApplyedQuickFixInfo(bundleName, quickFixFileInfo);
+    EXPECT_EQ(ret, QUICK_FIX_NOT_SYSTEM_APP);
+
+    MyFlag::verifyCallingPermissionFlag_ = true;
+    ret = quickFixMs_->GetApplyedQuickFixInfo(bundleName, quickFixFileInfo);
+    EXPECT_EQ(ret, QUICK_FIX_GET_BUNDLE_INFO_FAILED);
+}
+
+/**
+ * @tc.name: GetApplyedQuickFixInfo_0500
+ * @tc.desc: test GetApplyedQuickFixInfo
+ * @tc.type: FUNC
+ */
+HWTEST_F(QuickFixManagerServiceTest, GetApplyedQuickFixInfo_0500, TestSize.Level1)
+{
+    MyFlag::isAllowedToUseSystemAPIFlag_ = true;
+    MyFlag::isVerifyPrivilegedPermission_ = true;
+    std::string bundleName = "test bundleName";
+    ApplicationQuickFixInfo quickFixFileInfo;
+    auto ret = quickFixMs_->GetApplyedQuickFixInfo(bundleName, quickFixFileInfo);
+    EXPECT_EQ(ret, QUICK_FIX_GET_BUNDLE_INFO_FAILED);
+
+    MyFlag::isVerifyPrivilegedPermission_ = false;
+    MyFlag::verifyCallingPermissionFlag_ = false;
+    ret = quickFixMs_->GetApplyedQuickFixInfo(bundleName, quickFixFileInfo);
+    EXPECT_EQ(ret, QUICK_FIX_VERIFY_PERMISSION_FAILED);
+
+    MyFlag::verifyCallingPermissionFlag_ = true;
+    ret = quickFixMs_->GetApplyedQuickFixInfo(bundleName, quickFixFileInfo);
+    EXPECT_EQ(ret, QUICK_FIX_GET_BUNDLE_INFO_FAILED);
+}
 } // namespace AppExecFwk
 } // namespace OHOS

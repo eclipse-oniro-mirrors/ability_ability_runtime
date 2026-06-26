@@ -2636,5 +2636,22 @@ HWTEST_F(AppMgrServiceTest, IsChildProcessSupported_0100, TestSize.Level1)
     auto ret = appMgrService->IsChildProcessSupported(false, isSupported);
     EXPECT_EQ(ret, ERR_INVALID_OPERATION);
 }
+
+/**
+ * @tc.name: ClearUpApplicationData_0100
+ * @tc.desc: test ClearUpApplicationData
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, ClearUpApplicationData_0100, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    ASSERT_NE(appMgrService, nullptr);
+    appMgrService->SetInnerService(std::make_shared<AppMgrServiceInner>());
+    appMgrService->taskHandler_ = taskHandler_;
+    appMgrService->eventHandler_ = std::make_shared<AMSEventHandler>(taskHandler_, appMgrService->appMgrServiceInner_);
+    std::string bundleName = "bundleName";
+    auto ret = appMgrService->ClearUpApplicationData(bundleName, 0);
+    EXPECT_EQ(ret, AAFwk::CHECK_PERMISSION_FAILED);
+}
 } // namespace AppExecFwk
 } // namespace OHOS

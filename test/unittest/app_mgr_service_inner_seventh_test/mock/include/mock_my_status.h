@@ -101,6 +101,7 @@ public:
     int getSpawnClientCall_ = 0;
     // app spawn client
     int32_t startProcess_ = ERR_OK;
+    bool getApplicationInfoWithAppIndexRet_ = false;
 private:
     MyStatus() = default;
 };

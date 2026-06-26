@@ -1810,6 +1810,10 @@ public:
     int32_t EnableDelayedProcessExit(int32_t pid, bool enabled);
     
     void CancelDelayedExitTask(int32_t pid);
+
+    int32_t CheckAppProvisionType(
+        const std::string &bundleName, int32_t callerUid, int32_t appCloneIndex, int32_t userId);
+
 private:
     int32_t ForceKillApplicationInner(const std::string &bundleName, const int userId = -1,
         const int appIndex = 0);
