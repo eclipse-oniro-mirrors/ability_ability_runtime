@@ -188,7 +188,7 @@ private:
     int32_t ValidateExecToolPermissions();
     int32_t ValidateSessionLimit();
     int32_t ValidateAndPrepareTool(const ExecToolParam &param, uint32_t tokenId,
-        ToolInfo &toolInfo, std::string &sandboxConfig, std::string &bundleName);
+        ToolInfo &toolInfo, std::string &sandboxConfig, std::string &bundleName, std::string& detail);
 
     int32_t ValidateAndPrepareCmd(const ExecCmdParam &param, uint32_t tokenId,
         std::string &sandboxConfig, std::string &bundleName);

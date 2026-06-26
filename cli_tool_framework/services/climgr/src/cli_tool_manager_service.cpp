@@ -22,6 +22,7 @@
 #include "app_mgr_client.h"
 #include "ccm_util.h"
 #include "cli_error_code.h"
+#include "cli_event_report.h"
 #include "cli_tool_app_state_observer.h"
 #include "cli_function_data_manager.h"
 #include "event_dispatcher.h"
@@ -86,6 +87,19 @@ void CliToolManagerService::HandleProcessTimeout(const std::string &sessionId)
     TAG_LOGI(AAFwkTag::CLI_TOOL, "HandleProcessTimeout: sessionId=%{public}s", sessionId.c_str());
     record->SetTimeout(true);
     record->SetState(SessionState::CANCELLING);
+
+    // Set end time for timeout reporting
+    record->SetTerminalResult(0, 0);
+
+    // Report timeout event
+    int64_t durationMs = record->GetEndTimeMs() - record->startTime;
+    std::string bundleName;
+    auto tokenId = static_cast<AccessToken::AccessTokenID>(IPCSkeleton::GetCallingTokenID());
+    AppExecFwk::BundleInfo bundleInfo;
+    if (ToolUtil::GetBundleInfoByTokenId(tokenId, bundleInfo)) {
+        bundleName = bundleInfo.name;
+    }
+    ReportCliTimeout(bundleName, record->toolName, std::to_string(durationMs));
 
     auto oldBackground = record->SetBackground(true);
     TAG_LOGI(AAFwkTag::CLI_TOOL, "HandleProcessTimeout: sessionId=%{public}s, background=%{public}d",
@@ -654,14 +668,14 @@ int32_t CliToolManagerService::ValidateSessionLimit()
 }
 
 int32_t CliToolManagerService::ValidateAndPrepareTool(const ExecToolParam &param, uint32_t tokenId,
-    ToolInfo &toolInfo, std::string &sandboxConfig, std::string &bundleName)
+    ToolInfo &toolInfo, std::string &sandboxConfig, std::string &bundleName, std::string& detail)
 {
     if (CliToolDataManager::GetInstance().GetToolByName(param.toolName, toolInfo) != ERR_OK) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Tool not found");
         return ERR_TOOL_NOT_EXIST;
     }
 
-    auto checkPramRet = ToolUtil::ValidateProperties(toolInfo, const_cast<ExecToolParam &>(param), tokenId);
+    auto checkPramRet = ToolUtil::ValidateProperties(toolInfo, const_cast<ExecToolParam &>(param), tokenId, detail);
     if (checkPramRet != ERR_OK) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Input schema validation failed");
         return checkPramRet;
@@ -677,7 +691,8 @@ int32_t CliToolManagerService::ValidateAndPrepareTool(const ExecToolParam &param
 int32_t CliToolManagerService::ValidateAndPrepareCmd(const ExecCmdParam &param, uint32_t tokenId,
     std::string &sandboxConfig, std::string &bundleName)
 {
-    auto checkPramRet = ToolUtil::ValidateExecOptionsProperties(const_cast<ExecOptions &>(param.options));
+    std::string detail;
+    auto checkPramRet = ToolUtil::ValidateExecOptionsProperties(const_cast<ExecOptions &>(param.options), detail);
     if (checkPramRet != ERR_OK) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Input execoptions validation failed");
         return checkPramRet;
@@ -772,12 +787,24 @@ int32_t CliToolManagerService::ExecTool(const ExecToolParam &param, const std::s
     InterfaceCallCounter counter(interfaceCalledCount_);
     TAG_LOGI(AAFwkTag::CLI_TOOL, "ExecTool called: toolName=%{public}s, subcommand=%{public}s",
         param.toolName.c_str(), param.subcommand.c_str());
+
+    std::string bundleName;
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+
+    // Get bundle name for event reporting
+    AppExecFwk::BundleInfo bundleInfo;
+    if (ToolUtil::GetBundleInfoByTokenId(tokenId, bundleInfo)) {
+        bundleName = bundleInfo.name;
+    }
+
     if (auto ret = ValidateExecToolPermissions(); ret != ERR_OK) {
+        ReportCliExecuteFailed(bundleName, param.toolName, GetFailureReason(ret));
         return ret;
     }
     int32_t callerPid = IPCSkeleton::GetCallingPid();
     int32_t callerUid = IPCSkeleton::GetCallingUid();
     if (!EventDispatcher::GetInstance().SetScheduler(callerPid, callerUid, scheduler)) {
+        ReportCliExecuteFailed(bundleName, param.toolName, GetFailureReason(ERR_NO_INIT));
         return ERR_NO_INIT;
     }
 
@@ -785,6 +812,7 @@ int32_t CliToolManagerService::ExecTool(const ExecToolParam &param, const std::s
     bool dispatched = false;
     auto skillRet = TryDispatchSkillSession(param, eventId, toolInfo, dispatched);
     if (skillRet != ERR_OK) {
+        ReportCliExecuteFailed(bundleName, param.toolName, GetFailureReason(skillRet));
         return skillRet;
     }
     if (dispatched) {
@@ -792,17 +820,22 @@ int32_t CliToolManagerService::ExecTool(const ExecToolParam &param, const std::s
     }
 
     if (auto ret = ValidateSessionLimit(); ret != ERR_OK) {
+        ReportCliExecuteFailed(bundleName, param.toolName, GetFailureReason(ret));
         return ret;
     }
 
-    auto tokenId = IPCSkeleton::GetCallingTokenID();
     std::string sandboxConfig;
-    std::string bundleName;
-    if (auto ret = ValidateAndPrepareTool(param, tokenId, toolInfo, sandboxConfig, bundleName); ret != ERR_OK) {
+    std::string detail;
+    if (auto ret = ValidateAndPrepareTool(param, tokenId, toolInfo, sandboxConfig, bundleName, detail); ret != ERR_OK) {
+        ReportCliExecuteFailed(bundleName, param.toolName, GetFailureReason(ret), detail);
         return ret;
     }
 
-    return SetupAndStartSession(param, eventId, toolInfo, sandboxConfig, bundleName);
+    auto ret = SetupAndStartSession(param, eventId, toolInfo, sandboxConfig, bundleName);
+    if (ret != ERR_OK) {
+        ReportCliExecuteFailed(bundleName, param.toolName, GetFailureReason(ret));
+    }
+    return ret;
 }
 
 int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::string &eventId,
@@ -900,11 +933,34 @@ void CliToolManagerService::WaitPid(pid_t pid, int32_t status, int32_t sig)
     }
     AccessToken::AccessTokenKit::DeleteToolTokenByPid(pid);
     TAG_LOGI(AAFwkTag::CLI_TOOL, "WaitPid delete tool pid:%{public}d", pid);
+
     if (record) {
+        // Get bundle name for event reporting
+        std::string bundleName;
+        auto tokenId = static_cast<AccessToken::AccessTokenID>(IPCSkeleton::GetCallingTokenID());
+        AppExecFwk::BundleInfo bundleInfo;
+        if (ToolUtil::GetBundleInfoByTokenId(tokenId, bundleInfo)) {
+            bundleName = bundleInfo.name;
+        }
+
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "WaitPid: found record for pid=%{public}d, toolName=%{public}s",
+            pid, record->toolName.c_str());
+
+        int32_t termSignal = 0;
+        if (WIFSIGNALED(status)) {
+            termSignal = WTERMSIG(status);
+            TAG_LOGI(AAFwkTag::CLI_TOOL, "WaitPid: process killed by signal=%{public}d", termSignal);
+            if (termSignal != 0 && termSignal != SIGTERM && termSignal != SIGHUP && termSignal != SIGCHLD) {
+                ReportCliSignal(record->toolName, std::to_string(termSignal));
+            }
+        }
+
         record->SetTerminalResult(status, sig);
         if (record->OutputDrained()) {
             FinalizeBackgroundSession(record);
         }
+    } else {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "WaitPid: no record found for pid=%{public}d", pid);
     }
 }
 

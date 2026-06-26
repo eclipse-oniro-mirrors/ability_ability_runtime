@@ -19,6 +19,7 @@ group("unittest") {
   deps = [
     "cli_common_util_test:cli_common_util_test",
     "cli_event_reply_manager_test:cli_event_reply_manager_test",
+    "cli_event_report_test:cli_event_report_test",
     "cli_function_data_manager_test:cli_function_data_manager_test",
     "cli_tool_data_manager_test:cli_tool_data_manager_test",
     "cli_tool_event_test:cli_tool_event_test",

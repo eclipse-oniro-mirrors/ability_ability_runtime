@@ -521,3 +521,15 @@ EXTENSION_RUNNING_TIMEOUT:
   RUNNING_DURATION: {type: INT64, arrsize: 5, desc: running duration list in seconds}
   STILL_ALIVE: {type: BOOL, arrsize: 5, desc: still alive flag list}
   CNT: {type: INT32, arrsize: 5, desc: occurrence count list}
+
+# CLI tool event
+
+EXECUTE_CLI_FAILED:
+  __BASE: {type: FAULT, level: MINOR, tag: cli, desc: execute CLI tool failed}
+  TYPE: {type: INT32, desc: failure type}
+  BUNDLE_NAME: {type: STRING, desc: caller bundle name}
+  CLI_NAME: {type: STRING, desc: CLI tool name}
+  REASON: {type: STRING, desc: failure reason}
+  DETAIL: {type: STRING, desc: failure detail}
+  DURATION_MS: {type: INT64, desc: timeout duration in milliseconds}
+  SIGNAL_NUM: {type: INT32, desc: signal number}
