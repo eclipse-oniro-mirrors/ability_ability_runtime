@@ -15,6 +15,7 @@
 
 #include "shell_command_executor.h"
 
+#include <cctype>
 #include <chrono>
 #include <cinttypes>
 #include <iostream>
@@ -81,7 +82,7 @@ bool ShellCommandExecutor::DoWork()
     }
     
     if (!CheckCommand()) {
-        TAG_LOGE(AAFwkTag::AA_TOOL, "Invalid command");
+        TAG_LOGE(AAFwkTag::AA_TOOL, "Invalid command, cmd: \"%{public}s\"", cmd_.data());
         return false;
     }
 
@@ -127,13 +128,49 @@ bool ShellCommandExecutor::DoWork()
 
 bool ShellCommandExecutor::CheckCommand()
 {
-    std::istringstream iss(cmd_);
+    std::string strippedCmd = StripParamQuotes(cmd_);
+    std::istringstream iss(strippedCmd);
     std::string firstCommand = "";
     iss >> firstCommand;
-    if (ShellCommandConfigLoader::commands_.find(firstCommand) != ShellCommandConfigLoader::commands_.end()) {
-        return true;
+    if (ShellCommandConfigLoader::commands_.find(firstCommand) == ShellCommandConfigLoader::commands_.end()) {
+        TAG_LOGE(AAFwkTag::AA_TOOL, "Command not in whitelist: %{public}s", firstCommand.c_str());
+        return false;
     }
-    return false;
+
+    for (char c : strippedCmd) {
+        if (!IsAllowedChar(c)) {
+            TAG_LOGE(AAFwkTag::AA_TOOL, "Forbidden char in command: %{public}s", strippedCmd.c_str());
+            return false;
+        }
+    }
+    return true;
+}
+
+std::string ShellCommandExecutor::StripParamQuotes(const std::string& cmd) const
+{
+    const size_t MIN_QUOTED_LEN = 2;
+    std::istringstream iss(cmd);
+    std::string token;
+    std::string result;
+    bool first = true;
+    while (iss >> token) {
+        if ((token.front() == '\'' && token.back() == '\'' && token.size() >= MIN_QUOTED_LEN) ||
+            (token.front() == '"' && token.back() == '"' && token.size() >= MIN_QUOTED_LEN)) {
+            token = token.substr(1, token.size() - MIN_QUOTED_LEN);
+        }
+        if (!first) {
+            result += ' ';
+        }
+        result += token;
+        first = false;
+    }
+    return result;
+}
+
+bool ShellCommandExecutor::IsAllowedChar(char c) const
+{
+    return std::isalnum(c) || c == '_' || c == '-' || c == '.' || c == '/' || c == ' ' || c == '\t'
+        || c == '#' || c == ':' || c == '=';
 }
 }  // namespace AAFwk
 }  // namespace OHOS

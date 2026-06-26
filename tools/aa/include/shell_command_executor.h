@@ -50,6 +50,8 @@ public:
 private:
     bool DoWork();
     bool CheckCommand();
+    bool IsAllowedChar(char c) const;
+    std::string StripParamQuotes(const std::string& cmd) const;
 private:
     bool isDone_ = false;
     int64_t timeoutSec_ = 0;
