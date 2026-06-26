@@ -4054,8 +4054,7 @@ int32_t AbilityManagerService::StartExtensionAbility(const Want &want, const spt
         }
     }
     InsightIntentExecuteParam::RemoveInsightIntent(const_cast<Want &>(want));
-    if (extensionType == AppExecFwk::ExtensionAbilityType::VPN ||
-        extensionType == AppExecFwk::ExtensionAbilityType::UI_SERVICE ||
+    if (extensionType == AppExecFwk::ExtensionAbilityType::UI_SERVICE ||
         extensionType == AppExecFwk::ExtensionAbilityType::APP_SERVICE) {
         return StartExtensionAbilityInner(want, callerToken, userId, extensionType, false);
     }
@@ -4066,9 +4065,6 @@ int AbilityManagerService::ImplicitStartExtensionAbility(const Want &want, const
     int32_t userId, AppExecFwk::ExtensionAbilityType extensionType)
 {
     InsightIntentExecuteParam::RemoveInsightIntent(const_cast<Want &>(want));
-    if (extensionType == AppExecFwk::ExtensionAbilityType::VPN) {
-        return StartExtensionAbilityInner(want, callerToken, userId, extensionType, false, true);
-    }
     return StartExtensionAbilityInner(want, callerToken, userId, extensionType, true, true);
 }
 
@@ -4927,8 +4923,7 @@ int AbilityManagerService::StopExtensionAbility(const Want &want, const sptr<IRe
     TAG_LOGI(AAFwkTag::SERVICE_EXT,
         "bundlename:%{public}s, ability:%{public}s, userId:%{public}d",
         want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(), userId);
-    if (extensionType != AppExecFwk::ExtensionAbilityType::VPN &&
-        extensionType != AppExecFwk::ExtensionAbilityType::APP_SERVICE) {
+    if (extensionType != AppExecFwk::ExtensionAbilityType::APP_SERVICE) {
         CHECK_CALLER_IS_SYSTEM_APP;
     }
     EventInfo eventInfo = BuildEventInfo(want, userId);
