@@ -102,9 +102,9 @@ public:
         (const sptr<ISessionLifecycleListener>& listener), (override));
     MOCK_METHOD(sptr<IRemoteObject>, AsObject, (), (override));
     MOCK_METHOD(WMError, RegisterWindowManagerAgent,
-        (WindowManagerAgentType type, const sptr<IWindowManagerAgent>& agent), (override));
+        (WindowManagerAgentType type, const sptr<IWindowManagerAgent>& agent, int32_t instanceUserId), (override));
     MOCK_METHOD(WMError, UnregisterWindowManagerAgent,
-        (WindowManagerAgentType type, const sptr<IWindowManagerAgent>& agent), (override));
+        (WindowManagerAgentType type, const sptr<IWindowManagerAgent>& agent, int32_t instanceUserId), (override));
     MOCK_METHOD(void, GetFocusWindowInfo, (FocusChangeInfo& focusInfo, DisplayId displayId), (override));
     MOCK_METHOD(WMError, CheckWindowId, (int32_t windowId, int32_t& pid), (override));
     MOCK_METHOD(WMError, CheckUIExtensionCreation,
