@@ -51,6 +51,13 @@ char** VectorToCArrString(const std::vector<std::string>& vec)
     }
     for (size_t i = 0; i < vec.size(); i++) {
         result[i] = CreateCStringFromString(vec[i]);
+        if (result[i] == nullptr && !vec[i].empty()) {
+            for (size_t j = 0; j < i; j++) {
+                free(result[j]);
+            }
+            free(result);
+            return nullptr;
+        }
     }
     return result;
 }
