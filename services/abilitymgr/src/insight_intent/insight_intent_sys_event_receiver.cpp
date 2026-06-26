@@ -102,7 +102,8 @@ bool InsightIntentSysEventReceiver::SaveInsightIntentInfos(const std::string &bu
 void InsightIntentSysEventReceiver::RegisterAllFunctions(
     const std::vector<std::pair<std::string, uint32_t>> &newBundles,
     const std::vector<ExtractInsightIntentInfo> &allIntentInfos,
-    const std::vector<InsightIntentInfo> &allConfigInfos)
+    const std::vector<InsightIntentInfo> &allConfigInfos,
+    const std::unordered_map<std::string, std::set<std::string>> &bundleToEntryModules)
 {
     TAG_LOGI(AAFwkTag::INTENT, "register all functions, bundles:%{public}zu intent:%{public}zu config:%{public}zu",
         newBundles.size(), allIntentInfos.size(), allConfigInfos.size());
@@ -124,8 +125,16 @@ void InsightIntentSysEventReceiver::RegisterAllFunctions(
             TAG_LOGW(AAFwkTag::INTENT, "register skip empty bundle:%{public}s", bundleName.c_str());
             continue;
         }
-        const auto &intents = noIntent ? std::vector<ExtractInsightIntentInfo>{} : intentIt->second;
-        const auto &configs = noConfig ? std::vector<InsightIntentInfo>{} : configIt->second;
+        std::vector<ExtractInsightIntentInfo> intents =
+            noIntent ? std::vector<ExtractInsightIntentInfo>{} : intentIt->second;
+        std::vector<InsightIntentInfo> configs =
+            noConfig ? std::vector<InsightIntentInfo>{} : configIt->second;
+        std::set<std::string> emptyEntry;
+        const auto &entryIt = bundleToEntryModules.find(bundleName);
+        const auto &entryModules = entryIt == bundleToEntryModules.end() ? emptyEntry : entryIt->second;
+        CliTool::IntentFilterUtil filter(entryModules);
+        filter.FilterAndDedup(intents);
+        filter.FilterAndDedup(configs);
         CliTool::RegisterInsightIntentFunctions(intents, configs, bundleName, entry.second);
     }
     TAG_LOGI(AAFwkTag::INTENT, "register all functions done");
@@ -164,16 +173,18 @@ int32_t InsightIntentSysEventReceiver::ResolveLoadUserId(int32_t userId)
 }
 
 void InsightIntentSysEventReceiver::BackupAndScheduleRegister(
-    std::vector<std::pair<std::string, uint32_t>> &&newBundles, int32_t userId)
+    std::vector<std::pair<std::string, uint32_t>> &&newBundles,
+    std::unordered_map<std::string, std::set<std::string>> &&bundleToEntryModules, int32_t userId)
 {
     DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
     auto self = shared_from_this();
-    auto task = [self, newBundles = std::move(newBundles), userId]() {
+    auto task = [self, newBundles = std::move(newBundles),
+                 bundleToEntryModules = std::move(bundleToEntryModules), userId]() {
         std::vector<ExtractInsightIntentInfo> allIntentInfos;
         std::vector<InsightIntentInfo> allConfigInfos;
         DelayedSingleton<InsightIntentDbCache>::GetInstance()->
             GetAllInsightIntentInfo(userId, allIntentInfos, allConfigInfos);
-        self->RegisterAllFunctions(newBundles, allIntentInfos, allConfigInfos);
+        self->RegisterAllFunctions(newBundles, allIntentInfos, allConfigInfos, bundleToEntryModules);
     };
     ffrt::submit(task);
 }
@@ -198,7 +209,15 @@ void InsightIntentSysEventReceiver::LoadInsightIntentInfos(int32_t userId)
     }
 
     std::vector<std::pair<std::string, uint32_t>> newBundles;
+    std::unordered_map<std::string, std::set<std::string>> bundleToEntryModules;
     for (auto &bundleInfo : bundleInfos) {
+        std::set<std::string> entries;
+        for (const auto &hap : bundleInfo.hapModuleInfos) {
+            if (hap.moduleType == AppExecFwk::ModuleType::ENTRY) {
+                entries.insert(hap.moduleName);
+            }
+        }
+        bundleToEntryModules[bundleInfo.name] = std::move(entries);
         bool rdbHas = DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->
             HasInsightIntentByName(bundleInfo.versionCode, bundleInfo.name, userId);
         if (rdbHas) {
@@ -215,7 +234,7 @@ void InsightIntentSysEventReceiver::LoadInsightIntentInfos(int32_t userId)
         }
     }
     if (!newBundles.empty()) {
-        BackupAndScheduleRegister(std::move(newBundles), userId);
+        BackupAndScheduleRegister(std::move(newBundles), std::move(bundleToEntryModules), userId);
     }
 }
 

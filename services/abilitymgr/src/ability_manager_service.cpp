@@ -14350,117 +14350,6 @@ int32_t AbilityManagerService::ExecuteIntentForDistributed(const Want &want, con
     return ExecuteIntentCommon(nullptr, paramCopy, callerBundlename, options);
 }
 
-namespace {
-constexpr const char* INSIGHT_INTENT_OPTIONS_KEY = "ohos.insightIntent.options";
-constexpr const char* INSIGHT_INTENT_OPT_EXECUTE_MODE = "executeMode";
-constexpr const char* INSIGHT_INTENT_OPT_URIS = "uris";
-constexpr const char* INSIGHT_INTENT_OPT_FLAGS = "flags";
-
-void ApplyExecuteMode(const std::string &modeStr, std::shared_ptr<InsightIntentExecuteParam> &param)
-{
-    if (modeStr.empty()) {
-        return;
-    }
-    static const std::unordered_map<std::string, AppExecFwk::ExecuteMode> MODE_MAP = {
-        {"UI_ABILITY_FOREGROUND", AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND},
-        {"UI_ABILITY_BACKGROUND", AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND},
-        {"UI_EXTENSION_ABILITY", AppExecFwk::ExecuteMode::UI_EXTENSION_ABILITY},
-        {"SERVICE_EXTENSION_ABILITY", AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY},
-    };
-    auto it = MODE_MAP.find(modeStr);
-    if (it != MODE_MAP.end()) {
-        param->executeMode_ = it->second;
-        return;
-    }
-    char *end = nullptr;
-    long val = std::strtol(modeStr.c_str(), &end, 10);
-    if (end != modeStr.c_str() && *end == '\0') {
-        param->executeMode_ = static_cast<int32_t>(val);
-    }
-}
-
-void ApplyUris(const WantParams &options, std::shared_ptr<InsightIntentExecuteParam> &param)
-{
-    IArray *ao = IArray::Query(options.GetParam(INSIGHT_INTENT_OPT_URIS));
-    if (ao == nullptr || !AAFwk::Array::IsStringArray(ao)) {
-        return;
-    }
-    std::vector<std::string> uris;
-    AAFwk::Array::ForEach(ao, [&uris](IInterface *object) {
-        if (object == nullptr) {
-            return;
-        }
-        IString *value = IString::Query(object);
-        if (value != nullptr) {
-            uris.push_back(String::Unbox(value));
-        }
-    });
-    if (!uris.empty()) {
-        param->uris_ = std::move(uris);
-    }
-}
-
-void ApplyFlags(const std::string &flagsStr, std::shared_ptr<InsightIntentExecuteParam> &param)
-{
-    if (flagsStr.empty()) {
-        return;
-    }
-    char *end = nullptr;
-    long val = std::strtol(flagsStr.c_str(), &end, 0);
-    if (end != flagsStr.c_str() && *end == '\0') {
-        param->flags_ = static_cast<int32_t>(val);
-    }
-}
-
-void ApplyInsightIntentOptionsFromWantParam(const WantParams &wantParam,
-    std::shared_ptr<InsightIntentExecuteParam> &param)
-{
-    if (!wantParam.HasParam(INSIGHT_INTENT_OPTIONS_KEY)) {
-        return;
-    }
-    auto options = wantParam.GetWantParams(INSIGHT_INTENT_OPTIONS_KEY);
-    ApplyExecuteMode(options.GetStringParam(INSIGHT_INTENT_OPT_EXECUTE_MODE), param);
-    ApplyUris(options, param);
-    ApplyFlags(options.GetStringParam(INSIGHT_INTENT_OPT_FLAGS), param);
-}
-
-std::shared_ptr<InsightIntentExecuteParam> BuildInsightIntentExecuteParam(
-    const std::string &bundleName, const std::string &intentName,
-    const AbilityRuntime::ExtractInsightIntentGenericInfo &matchedInfo,
-    const std::string &abilityName, int32_t executeMode,
-    int32_t callerUserId, const WantParams &wantParam)
-{
-    auto param = std::make_shared<InsightIntentExecuteParam>();
-    param->bundleName_ = bundleName;
-    param->moduleName_ = matchedInfo.moduleName;
-    param->abilityName_ = abilityName;
-    param->insightIntentName_ = intentName;
-    param->executeMode_ = executeMode;
-    param->userId_ = callerUserId;
-    param->insightIntentParam_ = std::make_shared<WantParams>(wantParam);
-    ApplyInsightIntentOptionsFromWantParam(wantParam, param);
-    return param;
-}
-
-int32_t ResolveMatchedIntent(const std::string &bundleName, const std::string &intentName,
-    int32_t callerUserId, AbilityRuntime::ExtractInsightIntentGenericInfo &matchedInfo,
-    std::string &abilityName, int32_t &executeMode)
-{
-    int32_t ret = AbilityRuntime::InsightIntentMatcher::GetMatchedIntentInfo(
-        bundleName, intentName, callerUserId, matchedInfo);
-    if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::INTENT, "GetMatchedIntentInfo failed, ret: %{public}d", ret);
-        return ret;
-    }
-    ret = AbilityRuntime::InsightIntentMatcher::ParseIntentExecuteMode(matchedInfo, abilityName, executeMode);
-    if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::INTENT, "ParseIntentExecuteMode failed, ret: %{public}d", ret);
-        return ret;
-    }
-    return ERR_OK;
-}
-} // namespace
-
 int32_t AbilityManagerService::CheckCrossUserPermission(int32_t targetUserId)
 {
     if (!IsCrossUserCall(targetUserId)) {
@@ -14484,32 +14373,29 @@ int32_t AbilityManagerService::ExecuteIntentByFunctionCall(uint64_t key,
     TAG_LOGI(AAFwkTag::INTENT, "called, bundleName: %{public}s, intentName: %{public}s",
         bundleName.c_str(), intentName.c_str());
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    if (!AAFwk::PermissionVerification::GetInstance()->IsSACall()) {
-        TAG_LOGE(AAFwkTag::INTENT, "caller is not SA");
-        return CHECK_PERMISSION_FAILED;
-    }
     if (bundleName.empty() || intentName.empty()) {
         TAG_LOGE(AAFwkTag::INTENT, "invalid params, bundleName or intentName empty");
         return ERR_INVALID_VALUE;
     }
 
-    AbilityRuntime::ExtractInsightIntentGenericInfo matchedInfo;
     int32_t callerUserId = AbilityRuntime::UserController::GetInstance().GetCallerUserId();
-    std::string abilityName;
-    int32_t executeMode = 0;
-    int32_t ret = ResolveMatchedIntent(bundleName, intentName, callerUserId,
-        matchedInfo, abilityName, executeMode);
+    std::vector<AbilityRuntime::ExtractInsightIntentGenericInfo> candidates;
+    int32_t ret = AbilityRuntime::InsightIntentMatcher::GetMatchedIntentInfos(
+        bundleName, intentName, callerUserId, candidates);
     if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::INTENT, "GetMatchedIntentInfos failed, ret: %{public}d", ret);
         return ret;
     }
 
-    auto param = BuildInsightIntentExecuteParam(bundleName, intentName, matchedInfo,
-        abilityName, executeMode, callerUserId, wantParam);
-
-    bool openLinkExecuteFlag = matchedInfo.decoratorType == AbilityRuntime::INSIGHT_INTENTS_DECORATOR_TYPE_LINK;
-    bool ignoreAbilityName = openLinkExecuteFlag ||
-        (matchedInfo.decoratorType == AbilityRuntime::INSIGHT_INTENTS_DECORATOR_TYPE_PAGE) ||
-        (matchedInfo.decoratorType == AbilityRuntime::INSIGHT_INTENTS_DECORATOR_TYPE_FUNCTION);
+    AbilityRuntime::InsightIntentParamParser::ParseResult parseResult;
+    ret = paramParser_.Build(bundleName, intentName, wantParam, candidates, callerUserId, parseResult);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::INTENT, "param parser build failed, ret: %{public}d", ret);
+        return ret;
+    }
+    auto param = parseResult.param;
+    bool openLinkExecuteFlag = parseResult.openLinkExecuteFlag;
+    bool ignoreAbilityName = parseResult.ignoreAbilityName;
 
     ret = CheckCrossUserPermission(param->userId_);
     if (ret != ERR_OK) {
@@ -14523,7 +14409,7 @@ int32_t AbilityManagerService::ExecuteIntentByFunctionCall(uint64_t key,
         return ret;
     }
 
-    AbilityRuntime::ExecuteIntentCommonOptions options(ignoreAbilityName, matchedInfo, key);
+    AbilityRuntime::ExecuteIntentCommonOptions options(ignoreAbilityName, parseResult.representative, key);
     TAG_LOGI(AAFwkTag::INTENT, "dispatch to ExecuteIntentCommon, ignoreAbilityName: %{public}d, "
         "openLink: %{public}d, callerBundle: %{public}s",
         ignoreAbilityName, openLinkExecuteFlag, callerBundleName.c_str());

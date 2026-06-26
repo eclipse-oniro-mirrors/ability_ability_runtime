@@ -69,6 +69,8 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
         std::string profile;
         AbilityRuntime::ExtractInsightIntentProfileInfoVec infos = {};
         std::vector<InsightIntentInfo> configIntentInfos = {};
+        AbilityRuntime::ExtractInsightIntentProfileInfoVec allInfos = {};
+        std::vector<InsightIntentInfo> allConfigInfos = {};
 
         auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
         if (bundleMgrHelper == nullptr) {
@@ -82,6 +84,13 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
             TAG_LOGE(AAFwkTag::INTENT, "get bundle info failed");
             return;
         }
+        std::set<std::string> entryModules;
+        for (const auto &hap : bundleInfo.hapModuleInfos) {
+            if (hap.moduleType == AppExecFwk::ModuleType::ENTRY) {
+                entryModules.insert(hap.moduleName);
+            }
+        }
+        CliTool::IntentFilterUtil intentFilter(std::move(entryModules));
         OHOS::SplitStr(moduleName, ",", moduleNameVec);
         for (std::string moduleNameLocal : moduleNameVec) { // Get json profile firstly
             ret = IN_PROCESS_CALL(bundleMgrHelper->GetJsonProfile(AppExecFwk::INTENT_PROFILE,
@@ -106,8 +115,19 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
             // save database
             DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->SaveInsightIntentTotalInfo(
                 bundleName, moduleNameLocal, userId, bundleInfo.versionCode, infos, configIntentInfos);
-            CliTool::RegisterInsightIntentFunctions(infos, configIntentInfos, bundleName, bundleInfo.versionCode);
+            for (const auto &item : infos.insightIntents) {
+                allInfos.insightIntents.push_back(item);
+            }
+            for (const auto &item : configIntentInfos) {
+                allConfigInfos.push_back(item);
+            }
         }
+        if (allInfos.insightIntents.empty() && allConfigInfos.empty()) {
+            return;
+        }
+        intentFilter.FilterAndDedup(allInfos);
+        intentFilter.FilterAndDedup(allConfigInfos);
+        CliTool::RegisterInsightIntentFunctions(allInfos, allConfigInfos, bundleName, bundleInfo.versionCode);
         DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
     });
 }

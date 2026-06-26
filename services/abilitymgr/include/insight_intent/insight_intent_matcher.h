@@ -17,6 +17,7 @@
 #define OHOS_ABILITY_RUNTIME_INSIGHT_INTENT_MATCHER_H
 
 #include <string>
+#include <vector>
 
 #include "extract_insight_intent_profile.h"
 #include "insight_intent_profile.h"
@@ -25,12 +26,11 @@ namespace OHOS {
 namespace AbilityRuntime {
 class InsightIntentMatcher {
 public:
-    static int32_t GetMatchedIntentInfo(const std::string &bundleName, const std::string &intentName,
-        int32_t userId, ExtractInsightIntentGenericInfo &matchedInfo);
+    // 返回所有 intentName 匹配项（跨 module / 跨装饰器）。
+    static int32_t GetMatchedIntentInfos(const std::string &bundleName, const std::string &intentName,
+        int32_t userId, std::vector<ExtractInsightIntentGenericInfo> &matchedInfos);
     static void ConvertConfigToGenericInfo(const InsightIntentInfo &config,
         ExtractInsightIntentGenericInfo &generic);
-    static int32_t ParseIntentExecuteMode(const ExtractInsightIntentGenericInfo &matchedInfo,
-        std::string &abilityName, int32_t &executeMode);
 };
 } // namespace AbilityRuntime
 } // namespace OHOS
