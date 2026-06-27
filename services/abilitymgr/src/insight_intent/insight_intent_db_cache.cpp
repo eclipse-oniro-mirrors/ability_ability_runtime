@@ -17,6 +17,8 @@
 
 #include <algorithm>
 
+#include "function_call_convert.h"
+
 namespace OHOS {
 namespace AbilityRuntime {
 InsightIntentDbCache::InsightIntentDbCache()
@@ -265,6 +267,41 @@ void InsightIntentDbCache::GetAllInsightIntentInfo(const int32_t userId, std::ve
         TAG_LOGE(AAFwkTag::INTENT, "LoadIntentData failed");
         return;
     }
+}
+
+namespace {
+template <typename T, typename BundleGetter>
+void ApplyFilterPerBundle(std::vector<T> &items,
+    const std::unordered_map<std::string, std::set<std::string>> &bundleToEntryModules,
+    BundleGetter getBundleName)
+{
+    std::unordered_map<std::string, std::vector<T>> byBundle;
+    for (const auto &item : items) {
+        byBundle[getBundleName(item)].push_back(item);
+    }
+    items.clear();
+    for (auto &entry : byBundle) {
+        std::set<std::string> emptyEntry;
+        auto it = bundleToEntryModules.find(entry.first);
+        const auto &entryModules = it == bundleToEntryModules.end() ? emptyEntry : it->second;
+        CliTool::IntentFilterUtil filter(entryModules);
+        filter.FilterAndDedup(entry.second);
+        for (auto &i : entry.second) {
+            items.push_back(std::move(i));
+        }
+    }
+}
+} // namespace
+
+void InsightIntentDbCache::GetAllInsightIntentInfoForRegister(const int32_t userId,
+    const std::unordered_map<std::string, std::set<std::string>> &bundleToEntryModules,
+    std::vector<ExtractInsightIntentInfo> &infos, std::vector<InsightIntentInfo> &configInfos)
+{
+    GetAllInsightIntentInfo(userId, infos, configInfos);
+    ApplyFilterPerBundle(infos, bundleToEntryModules,
+        [](const ExtractInsightIntentInfo &i) { return i.genericInfo.bundleName; });
+    ApplyFilterPerBundle(configInfos, bundleToEntryModules,
+        [](const InsightIntentInfo &i) { return i.bundleName; });
 }
 
 void InsightIntentDbCache::GetAllConfigInsightIntentInfo(

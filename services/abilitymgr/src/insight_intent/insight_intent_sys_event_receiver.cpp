@@ -102,8 +102,7 @@ bool InsightIntentSysEventReceiver::SaveInsightIntentInfos(const std::string &bu
 void InsightIntentSysEventReceiver::RegisterAllFunctions(
     const std::vector<std::pair<std::string, uint32_t>> &newBundles,
     const std::vector<ExtractInsightIntentInfo> &allIntentInfos,
-    const std::vector<InsightIntentInfo> &allConfigInfos,
-    const std::unordered_map<std::string, std::set<std::string>> &bundleToEntryModules)
+    const std::vector<InsightIntentInfo> &allConfigInfos)
 {
     TAG_LOGI(AAFwkTag::INTENT, "register all functions, bundles:%{public}zu intent:%{public}zu config:%{public}zu",
         newBundles.size(), allIntentInfos.size(), allConfigInfos.size());
@@ -125,16 +124,8 @@ void InsightIntentSysEventReceiver::RegisterAllFunctions(
             TAG_LOGW(AAFwkTag::INTENT, "register skip empty bundle:%{public}s", bundleName.c_str());
             continue;
         }
-        std::vector<ExtractInsightIntentInfo> intents =
-            noIntent ? std::vector<ExtractInsightIntentInfo>{} : intentIt->second;
-        std::vector<InsightIntentInfo> configs =
-            noConfig ? std::vector<InsightIntentInfo>{} : configIt->second;
-        std::set<std::string> emptyEntry;
-        const auto &entryIt = bundleToEntryModules.find(bundleName);
-        const auto &entryModules = entryIt == bundleToEntryModules.end() ? emptyEntry : entryIt->second;
-        CliTool::IntentFilterUtil filter(entryModules);
-        filter.FilterAndDedup(intents);
-        filter.FilterAndDedup(configs);
+        const auto &intents = noIntent ? std::vector<ExtractInsightIntentInfo>{} : intentIt->second;
+        const auto &configs = noConfig ? std::vector<InsightIntentInfo>{} : configIt->second;
         CliTool::RegisterInsightIntentFunctions(intents, configs, bundleName, entry.second);
     }
     TAG_LOGI(AAFwkTag::INTENT, "register all functions done");
@@ -182,9 +173,9 @@ void InsightIntentSysEventReceiver::BackupAndScheduleRegister(
                  bundleToEntryModules = std::move(bundleToEntryModules), userId]() {
         std::vector<ExtractInsightIntentInfo> allIntentInfos;
         std::vector<InsightIntentInfo> allConfigInfos;
-        DelayedSingleton<InsightIntentDbCache>::GetInstance()->
-            GetAllInsightIntentInfo(userId, allIntentInfos, allConfigInfos);
-        self->RegisterAllFunctions(newBundles, allIntentInfos, allConfigInfos, bundleToEntryModules);
+        DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetAllInsightIntentInfoForRegister(
+            userId, bundleToEntryModules, allIntentInfos, allConfigInfos);
+        self->RegisterAllFunctions(newBundles, allIntentInfos, allConfigInfos);
     };
     ffrt::submit(task);
 }

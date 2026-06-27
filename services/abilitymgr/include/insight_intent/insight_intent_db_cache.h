@@ -19,6 +19,8 @@
 #include <mutex>
 #include <set>
 #include <singleton.h>
+#include <string>
+#include <unordered_map>
 #include <vector>
 #include "insight_intent_rdb_storage_mgr.h"
 
@@ -37,6 +39,11 @@ public:
         const std::string &intentName, const int32_t userId, ExtractInsightIntentGenericInfo &genericInfo);
     void GetAllInsightIntentInfo(const int32_t userId, std::vector<ExtractInsightIntentInfo> &infos,
         std::vector<InsightIntentInfo> &configInfos);
+    // 取全量后按规则 1+2+3 过滤+去重（规则 2 需要 bundleToEntryModules 提供 entry module 信息）。
+    // 输出 vector 已按胜出代表收缩，调用方无需再做 FilterAndDedup。
+    void GetAllInsightIntentInfoForRegister(const int32_t userId,
+        const std::unordered_map<std::string, std::set<std::string>> &bundleToEntryModules,
+        std::vector<ExtractInsightIntentInfo> &infos, std::vector<InsightIntentInfo> &configInfos);
     void GetInsightIntentInfoByName(const std::string &bundleName, const int32_t userId,
         std::vector<ExtractInsightIntentInfo> &infos);
     void GetConfigInsightIntentInfoByName(const std::string &bundleName, const int32_t userId,
