@@ -308,7 +308,7 @@ void BaseExtensionRecord::ConnectAbilityWithWant(const Want &want)
 
 void BaseExtensionRecord::ConnectAbility()
 {
-    TAG_LOGI(AAFwkTag::SERVICE_EXT, "%{public}s called.", __func__);
+    TAG_LOGI(AAFwkTag::SERVICE_EXT, "ConnectAbility");
     Want want = GetWant();
     UpdateDmsCallerInfo(want);
     ConnectAbilityWithWant(want);

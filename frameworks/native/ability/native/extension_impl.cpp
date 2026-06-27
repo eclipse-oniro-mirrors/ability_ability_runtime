@@ -84,7 +84,7 @@ void ExtensionImpl::HandleExtensionTransaction(const Want &want, const AAFwk::Li
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     PreHandleExtensionParam(const_cast<AAFwk::Want &>(want));
-    TAG_LOGI(AAFwkTag::EXT, "%{public}s; %{public}d; %{public}d; %{public}d",
+    TAG_LOGI(AAFwkTag::EXT, "%{public}s;%{public}d;%{public}d;%{public}d",
         want.GetElement().GetAbilityName().c_str(), lifecycleState_, targetState.state, targetState.isNewWant);
     if (lifecycleState_ == targetState.state) {
         TAG_LOGE(AAFwkTag::EXT, "lifecycle state equal");

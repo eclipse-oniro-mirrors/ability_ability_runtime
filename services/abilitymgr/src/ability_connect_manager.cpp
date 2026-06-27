@@ -992,7 +992,7 @@ int AbilityConnectManager::CleanupConnectionAndTerminateIfNeeded(std::shared_ptr
     if (abilityRecord->GetAbilityInfo().extensionAbilityType == AppExecFwk::ExtensionAbilityType::UI_SERVICE) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "don't terminate uiservice");
     } else {
-        TAG_LOGI(AAFwkTag::EXT, "terminate or cache");
+        TAG_LOGI(AAFwkTag::EXT, "term or cache");
         TerminateOrCacheAbility(abilityRecord);
     }
 

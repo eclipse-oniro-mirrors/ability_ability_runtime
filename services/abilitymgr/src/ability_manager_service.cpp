@@ -4365,7 +4365,7 @@ int32_t AbilityManagerService::StartExtensionAbilityInner(const Want &want, cons
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGI(AAFwkTag::SERVICE_EXT,
-        "Start extension ability come, bundlename: %{public}s, ability is %{public}s, userId is %{public}d",
+        "StartExt,bundle:%{public}s,ability:%{public}s,u:%{public}d",
         want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(), userId);
     CheckExtensionRateLimit(want);
     if (checkSystemCaller) {

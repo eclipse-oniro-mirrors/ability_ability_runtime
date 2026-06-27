@@ -218,7 +218,7 @@ ErrCode ConnectionManager::DisconnectAbility(const sptr<IRemoteObject>& connectC
         sptr<AbilityConnection> abilityConnection = item->first.abilityConnection;
         if (item->second.empty()) {
             item = abilityConnections_.erase(item);
-            TAG_LOGI(AAFwkTag::CONNECTION, "no callback left, disconnectAbility");
+            TAG_LOGI(AAFwkTag::CONNECTION, "no callback,disconnect");
             auto ret = AAFwk::AbilityManagerClient::GetInstance()->DisconnectAbility(abilityConnection);
             if (ret != ERR_OK) {
                 TAG_LOGE(AAFwkTag::CONNECTION, "disconnect err:%{public}d", ret);
@@ -232,7 +232,7 @@ ErrCode ConnectionManager::DisconnectAbility(const sptr<IRemoteObject>& connectC
         }
     }
     if (!found) {
-        TAG_LOGE(AAFwkTag::CONNECTION, "not find conn");
+        TAG_LOGE(AAFwkTag::CONNECTION, "not find");
         return AAFwk::CONNECTION_NOT_EXIST;
     }
     return ERR_OK;

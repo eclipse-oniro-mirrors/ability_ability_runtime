@@ -87,7 +87,7 @@ void AmsMgrScheduler::LoadAbility(const std::shared_ptr<AbilityInfo> &abilityInf
         return;
     }
     PerfProfile::GetInstance().SetAbilityLoadStartTime(GetTickCount());
-    TAG_LOGI(AAFwkTag::PROCESSMGR, "SubmitLoadTask: %{public}s-%{public}s", abilityInfo->bundleName.c_str(),
+    TAG_LOGI(AAFwkTag::PROCESSMGR, "Load:%{public}s-%{public}s", abilityInfo->bundleName.c_str(),
         abilityInfo->name.c_str());
     std::function<void()> loadAbilityFunc = [amsMgrServiceInner = amsMgrServiceInner_,
         abilityInfo, appInfo, want, loadParam]() {

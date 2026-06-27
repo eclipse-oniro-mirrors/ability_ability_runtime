@@ -1064,12 +1064,12 @@ private:
         NapiAsyncTask::CompleteCallback complete = [connection, connectId, innerErrorCode](napi_env env,
             NapiAsyncTask& task, int32_t status) {
             if (*innerErrorCode == 0) {
-                TAG_LOGI(AAFwkTag::SERVICE_EXT, "Connect ability success");
+                TAG_LOGI(AAFwkTag::SERVICE_EXT, "Connect succ");
                 task.ResolveWithNoError(env, CreateJsUndefined(env));
                 return;
             }
 
-            TAG_LOGE(AAFwkTag::SERVICE_EXT, "Connect ability failed");
+            TAG_LOGE(AAFwkTag::SERVICE_EXT, "Connect fail");
             int32_t errcode = static_cast<int32_t>(AbilityRuntime::GetJsErrorCodeByNativeError(*innerErrorCode));
             if (errcode) {
                 connection->CallJsFailed(errcode);
@@ -1215,7 +1215,7 @@ private:
     void FindConnection(AAFwk::Want& want, sptr<JSServiceExtensionConnection>& connection, int64_t& connectId,
         int32_t &accountId) const
     {
-        TAG_LOGI(AAFwkTag::SERVICE_EXT, "Disconnect ability:%{public}d",
+        TAG_LOGI(AAFwkTag::SERVICE_EXT, "Disconnect:%{public}d",
             static_cast<int32_t>(connectId));
         std::lock_guard guard(g_connectsMutex);
         auto item = std::find_if(g_connects.begin(),
