@@ -16,10 +16,8 @@
 #include "function_call_convert.h"
 
 #include <algorithm>
-#include <map>
 #include <optional>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -78,20 +76,6 @@ struct FilterCandidate {
     std::string intentName;
     std::string moduleName;
     std::string abilityName;
-    bool isUIAbility = false;
-};
-
-struct CandidateOrdering {
-    bool operator()(const FilterCandidate &a, const FilterCandidate &b) const
-    {
-        if (a.moduleName != b.moduleName) {
-            return a.moduleName < b.moduleName;
-        }
-        if (a.isUIAbility != b.isUIAbility) {
-            return a.isUIAbility;
-        }
-        return a.abilityName < b.abilityName;
-    }
 };
 
 bool HasExecuteMode(const std::vector<std::string> &modes, const std::string &target)
@@ -112,10 +96,8 @@ std::optional<FilterCandidate> ExtractFromProfileInfo(
     bool isServiceExt = !info.abilityName.empty() && HasExecuteMode(info.executeMode, "serviceextension");
     if (isBgUiAbility) {
         c.abilityName = info.uiAbility;
-        c.isUIAbility = true;
     } else if (isServiceExt) {
         c.abilityName = info.abilityName;
-        c.isUIAbility = false;
     } else {
         return std::nullopt;
     }
@@ -138,10 +120,8 @@ std::optional<FilterCandidate> ExtractFromConfigInfo(
             AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND) != ui.supportExecuteMode.end();
     if (isBgUiAbility) {
         c.abilityName = ui.abilityName;
-        c.isUIAbility = true;
     } else if (!se.abilityName.empty()) {
         c.abilityName = se.abilityName;
-        c.isUIAbility = false;
     } else {
         return std::nullopt;
     }
@@ -159,7 +139,6 @@ std::optional<FilterCandidate> ExtractFromGenericInfo(
     c.intentName = g.intentName;
     c.moduleName = g.moduleName;
     if (g.currentType == AbilityRuntime::InfoType::Function) {
-        c.isUIAbility = false;
         c.abilityName.clear();
         return c;
     }
@@ -167,12 +146,10 @@ std::optional<FilterCandidate> ExtractFromGenericInfo(
         const auto &entry = g.get<AbilityRuntime::InsightIntentEntryInfo>();
         for (auto mode : entry.executeMode) {
             if (mode == AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND) {
-                c.isUIAbility = true;
                 c.abilityName = entry.abilityName;
                 return c;
             }
             if (mode == AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY) {
-                c.isUIAbility = false;
                 c.abilityName = entry.abilityName;
                 return c;
             }
@@ -181,28 +158,35 @@ std::optional<FilterCandidate> ExtractFromGenericInfo(
     return std::nullopt;
 }
 
-// 按候选分 intentName 分组，每组按 CandidateOrdering 选出胜出者的原容器索引。
-std::map<std::string, size_t> GroupAndPickWinners(
-    const std::vector<std::optional<FilterCandidate>> &cands)
+// 规则 1 过滤（丢弃 ExtractFrom* 返回 nullopt 的项）+ 按 (moduleName, abilityName) 字典序排序。
+// 排序保证 KVStore 后写覆盖语义下同名意图的覆盖顺序确定。
+template <typename T, typename Extractor>
+void FilterAndSort(std::vector<T> &items, Extractor extract)
 {
-    std::unordered_map<std::string, std::vector<size_t>> groups;
-    for (size_t i = 0; i < cands.size(); ++i) {
-        if (cands[i].has_value()) {
-            groups[cands[i]->intentName].push_back(i);
+    std::vector<T> kept;
+    kept.reserve(items.size());
+    std::vector<FilterCandidate> cands;
+    cands.reserve(items.size());
+    for (auto &item : items) {
+        if (auto c = extract(item); c.has_value()) {
+            cands.push_back(*c);
+            kept.push_back(std::move(item));
         }
     }
-    std::map<std::string, size_t> winners;
-    for (const auto &entry : groups) {
-        const auto &idxs = entry.second;
-        size_t winner = idxs[0];
-        for (size_t i = 1; i < idxs.size(); ++i) {
-            if (CandidateOrdering{}(*cands[idxs[i]], *cands[winner])) {
-                winner = idxs[i];
-            }
-        }
-        winners[entry.first] = winner;
+    std::vector<size_t> idx(kept.size());
+    for (size_t i = 0; i < kept.size(); ++i) {
+        idx[i] = i;
     }
-    return winners;
+    std::sort(idx.begin(), idx.end(), [&cands](size_t a, size_t b) {
+        if (cands[a].moduleName != cands[b].moduleName) {
+            return cands[a].moduleName < cands[b].moduleName;
+        }
+        return cands[a].abilityName < cands[b].abilityName;
+    });
+    items.clear();
+    for (size_t i : idx) {
+        items.push_back(std::move(kept[i]));
+    }
 }
 } // namespace
 
@@ -336,8 +320,8 @@ bool RegisterInsightIntentFunctions(
     uint32_t versionCode)
 {
     std::vector<FunctionInfo> functions;
-    ConvertFromExtractProfile(profileInfos, functions);
     ConvertFromConfigIntent(configInfos, functions);
+    ConvertFromExtractProfile(profileInfos, functions);
     if (functions.empty()) {
         return true;
     }
@@ -363,8 +347,8 @@ bool RegisterInsightIntentFunctions(
     uint32_t versionCode)
 {
     std::vector<FunctionInfo> functions;
-    ConvertFromExtractIntentInfo(intentInfos, functions);
     ConvertFromConfigIntent(configInfos, functions);
+    ConvertFromExtractIntentInfo(intentInfos, functions);
     if (functions.empty()) {
         return true;
     }
@@ -403,69 +387,17 @@ bool UnregisterInsightIntentFunctions(const std::string &bundleName)
 
 void IntentFilterUtil::FilterProfile(AbilityRuntime::ExtractInsightIntentProfileInfoVec &profileInfos)
 {
-    auto &items = profileInfos.insightIntents;
-    std::vector<std::optional<FilterCandidate>> cands;
-    cands.reserve(items.size());
-    for (const auto &item : items) {
-        cands.push_back(ExtractFromProfileInfo(item));
-    }
-    auto winners = GroupAndPickWinners(cands);
-    std::set<size_t> keepIdx;
-    for (const auto &w : winners) {
-        keepIdx.insert(w.second);
-    }
-    std::vector<AbilityRuntime::ExtractInsightIntentProfileInfo> kept;
-    kept.reserve(keepIdx.size());
-    for (size_t i = 0; i < items.size(); ++i) {
-        if (keepIdx.count(i) > 0) {
-            kept.emplace_back(std::move(items[i]));
-        }
-    }
-    items = std::move(kept);
+    FilterAndSort(profileInfos.insightIntents, ExtractFromProfileInfo);
 }
 
 void IntentFilterUtil::FilterConfig(std::vector<AbilityRuntime::InsightIntentInfo> &configInfos)
 {
-    std::vector<std::optional<FilterCandidate>> cands;
-    cands.reserve(configInfos.size());
-    for (const auto &item : configInfos) {
-        cands.push_back(ExtractFromConfigInfo(item));
-    }
-    auto winners = GroupAndPickWinners(cands);
-    std::set<size_t> keepIdx;
-    for (const auto &w : winners) {
-        keepIdx.insert(w.second);
-    }
-    std::vector<AbilityRuntime::InsightIntentInfo> kept;
-    kept.reserve(keepIdx.size());
-    for (size_t i = 0; i < configInfos.size(); ++i) {
-        if (keepIdx.count(i) > 0) {
-            kept.emplace_back(std::move(configInfos[i]));
-        }
-    }
-    configInfos = std::move(kept);
+    FilterAndSort(configInfos, ExtractFromConfigInfo);
 }
 
-void IntentFilterUtil::FilterAndDedup(std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos)
+void IntentFilterUtil::FilterGeneric(std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos)
 {
-    std::vector<std::optional<FilterCandidate>> cands;
-    cands.reserve(intentInfos.size());
-    for (const auto &item : intentInfos) {
-        cands.push_back(ExtractFromGenericInfo(item));
-    }
-    auto winners = GroupAndPickWinners(cands);
-    std::set<size_t> keepIdx;
-    for (const auto &w : winners) {
-        keepIdx.insert(w.second);
-    }
-    std::vector<AbilityRuntime::ExtractInsightIntentInfo> kept;
-    kept.reserve(keepIdx.size());
-    for (size_t i = 0; i < intentInfos.size(); ++i) {
-        if (keepIdx.count(i) > 0) {
-            kept.emplace_back(std::move(intentInfos[i]));
-        }
-    }
-    intentInfos = std::move(kept);
+    FilterAndSort(intentInfos, ExtractFromGenericInfo);
 }
 
 } // namespace CliTool
