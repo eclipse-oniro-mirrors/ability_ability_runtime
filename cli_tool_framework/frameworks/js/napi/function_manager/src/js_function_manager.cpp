@@ -38,6 +38,8 @@ constexpr int32_t INDEX_ZERO = 0;
 constexpr int32_t INDEX_ONE = 1;
 constexpr int32_t INDEX_TWO = 2;
 constexpr int32_t INDEX_THREE = 3;
+constexpr int32_t INDEX_FOUR = 4;
+constexpr int32_t ERR_CONTEXT_NOT_ABILITY = 16000020;
 
 struct InvokeFunctionTsfnContext {
     napi_deferred deferred = nullptr;
@@ -71,7 +73,7 @@ void InvokeFunctionCallJs(napi_env env, napi_value jsCb, void *context, void *da
         napi_value jsResult = CreateJsInvokeResult(env, result->resultCode,
             result->result, result->message);
         if (jsResult != nullptr) {
-        napi_resolve_deferred(env, ctx->deferred, jsResult);
+            napi_resolve_deferred(env, ctx->deferred, jsResult);
         }
         napi_value jsError = CreateCliJsErrorByNativeErr(env, ERR_INNER_PARAM_INVALID);
         napi_reject_deferred(env, ctx->deferred, jsError);
@@ -81,6 +83,97 @@ void InvokeFunctionCallJs(napi_env env, napi_value jsCb, void *context, void *da
     }
     napi_release_threadsafe_function(ctx->tsfn, napi_tsfn_release);
     delete result;
+}
+
+struct InvokeFunctionArgs {
+    std::string funcNamespace;
+    std::string functionName;
+    AAFwk::WantParams wantParams;
+};
+
+bool IsUIAbilityContext(napi_env env, napi_value value)
+{
+    if (value == nullptr) {
+        return false;
+    }
+    napi_valuetype valueType = napi_undefined;
+    napi_typeof(env, value, &valueType);
+    if (valueType != napi_object) {
+        return false;
+    }
+    // The contextType lives on the native impl object: value.__context_impl__.contextType
+    napi_value contextImpl = nullptr;
+    napi_get_named_property(env, value, "__context_impl__", &contextImpl);
+    napi_valuetype implValueType = napi_undefined;
+    napi_typeof(env, contextImpl, &implValueType);
+    if (implValueType != napi_object) {
+        return false;
+    }
+    napi_value contextType = nullptr;
+    napi_get_named_property(env, contextImpl, "contextType", &contextType);
+    napi_valuetype typeValueType = napi_undefined;
+    napi_typeof(env, contextType, &typeValueType);
+    if (typeValueType != napi_string) {
+        return false;
+    }
+    std::string typeStr;
+    if (!AppExecFwk::UnwrapStringFromJS2(env, contextType, typeStr)) {
+        return false;
+    }
+    return typeStr == "UIAbilityContext";
+}
+
+bool ValidateOptions(napi_env env, napi_value options)
+{
+    if (options == nullptr) {
+        return true;
+    }
+    napi_valuetype optionsType = napi_undefined;
+    napi_typeof(env, options, &optionsType);
+    if (optionsType == napi_undefined || optionsType == napi_null) {
+        return true;
+    }
+    if (optionsType != napi_object) {
+        return false;
+    }
+    napi_value contextValue = nullptr;
+    napi_get_named_property(env, options, "context", &contextValue);
+    napi_valuetype contextType = napi_undefined;
+    napi_typeof(env, contextValue, &contextType);
+    if (contextType == napi_undefined || contextType == napi_null) {
+        return true;  // context field absent / null: nothing to validate
+    }
+    if (!IsUIAbilityContext(env, contextValue)) {
+        return false;
+    }
+    return true;
+}
+
+bool ParseInvokeFunctionArgs(napi_env env, size_t argc, napi_value *argv, InvokeFunctionArgs &out)
+{
+    if (argc < INDEX_THREE) {
+        ThrowTooFewParametersError(env);
+        return false;
+    }
+    if (!AppExecFwk::UnwrapStringFromJS2(env, argv[INDEX_ZERO], out.funcNamespace) ||
+        out.funcNamespace.empty()) {
+        ThrowInvalidParamError(env, "functionNamespace is required");
+        return false;
+    }
+    if (!AppExecFwk::UnwrapStringFromJS2(env, argv[INDEX_ONE], out.functionName) ||
+        out.functionName.empty()) {
+        ThrowInvalidParamError(env, "functionName is required");
+        return false;
+    }
+    if (!AppExecFwk::UnwrapWantParams(env, argv[INDEX_TWO], out.wantParams)) {
+        ThrowInvalidParamError(env, "args is required");
+        return false;
+    }
+    if (argc >= INDEX_FOUR && !ValidateOptions(env, argv[INDEX_THREE])) {
+        ThrowInvalidParamError(env, "option invalid");
+        return false;
+    }
+    return true;
 }
 } // namespace
 
@@ -142,30 +235,10 @@ napi_value JSFunctionManager::OnInvokeFunction(napi_env env, size_t argc, napi_v
 {
     TAG_LOGI(AAFwkTag::CLI_TOOL, "JSFunctionManager::OnInvokeFunction called");
     HandleEscape handleEscape(env);
-    if (argc < INDEX_THREE) {
-        ThrowTooFewParametersError(env);
-        return CreateJsUndefined(env);
-    }
 
-    // Parse funcNamespace
-    std::string funcNamespace;
-    if (!AppExecFwk::UnwrapStringFromJS2(env, argv[INDEX_ZERO], funcNamespace) || funcNamespace.empty()) {
-        ThrowInvalidParamError(env, "functionNamespace is required");
-        return CreateJsUndefined(env);
-    }
-
-    // Parse function name
-    std::string functionName;
-    if (!AppExecFwk::UnwrapStringFromJS2(env, argv[INDEX_ONE], functionName) || functionName.empty()) {
-        ThrowInvalidParamError(env, "functionName is required");
-        return CreateJsUndefined(env);
-    }
-
-    // Parse args → WantParams
-    AAFwk::WantParams wantParams;
-    if (!AppExecFwk::UnwrapWantParams(env, argv[INDEX_TWO], wantParams)) {
-        ThrowInvalidParamError(env, "args is required");
-        return CreateJsUndefined(env);
+    InvokeFunctionArgs args;
+    if (!ParseInvokeFunctionArgs(env, argc, argv, args)) {
+        return CreateJsUndefined(env);  // validation already threw a JS exception
     }
 
     // Create promise
@@ -208,7 +281,7 @@ napi_value JSFunctionManager::OnInvokeFunction(napi_env env, size_t argc, napi_v
         }
     };
 
-    InvokeFunctionExecutor::Create()->Execute(funcNamespace, functionName, wantParams, bridge);
+    InvokeFunctionExecutor::Create()->Execute(args.funcNamespace, args.functionName, args.wantParams, bridge);
 
     return handleEscape.Escape(promise);
 }
