@@ -15,12 +15,8 @@
 
 #include "invoke_function_callback_client.h"
 
-#include "array_wrapper.h"
 #include "cli_error_code.h"
 #include "hilog_tag_wrapper.h"
-#include "int_wrapper.h"
-#include "string_wrapper.h"
-#include "want_params_wrapper.h"
 
 namespace OHOS {
 namespace CliTool {
@@ -43,25 +39,10 @@ void InvokeFunctionCallbackClient::ProcessInsightIntentExecute(int32_t resultCod
         return;
     }
     InvokeFunctionResult out;
-    out.success = (resultCode == 0);
+    out.invokeSuccess = (resultCode == 0);
     out.errorCode = (resultCode == 0) ? 0 : ERR_FUNCTION_EXECUTE_FAILED;
     out.resultCode = executeResult.code;  // app-level code drives InvokeResult
-    auto resultParams = std::make_shared<AAFwk::WantParams>();
-    resultParams->SetParam("flags", AAFwk::Integer::Box(executeResult.flags));
-    if (!executeResult.uris.empty()) {
-        auto uriSize = executeResult.uris.size();
-        sptr<AAFwk::IArray> uriArray = new (std::nothrow) AAFwk::Array(uriSize, AAFwk::g_IID_IString);
-        if (uriArray != nullptr) {
-            for (std::size_t i = 0; i < uriSize; i++) {
-                uriArray->Set(i, AAFwk::String::Box(executeResult.uris[i]));
-            }
-            resultParams->SetParam("uris", uriArray);
-        }
-    }
-    if (executeResult.result != nullptr) {
-        resultParams->SetParam("result", AAFwk::WantParamWrapper::Box(*executeResult.result));
-    }
-    out.result = resultParams;
+    out.result = executeResult.BuildFunctionResult();
     if (callback_) {
         callback_(out);
     }

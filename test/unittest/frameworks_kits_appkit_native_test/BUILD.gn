@@ -1315,6 +1315,7 @@ ohos_unittest("startup_manager_mock_test") {
   ]
 
   external_deps = [
+    "ability_base:base",
     "ability_base:zuri",
     "c_utils:utils",
     "config_policy:configpolicy_util",

@@ -37,6 +37,8 @@ static const std::map<CliManagerErrorCode, std::string> ERROR_MSG_MAP = {
 };
 
 static const std::map<int32_t, CliManagerErrorCode> NATIVE_TO_BUSINESS_ERROR_MAP = {
+    {OHOS::ERR_PERMISSION_DENIED, CliManagerErrorCode::ERROR_PERMISSION_DENIED},
+    {AAFwk::ERR_NOT_SYSTEM_APP, CliManagerErrorCode::ERROR_NOT_SYSTEM_APP},
     {ERR_PERMISSION_DENIED, CliManagerErrorCode::ERROR_PERMISSION_DENIED},
     {ERR_NOT_SYSTEM_APP, CliManagerErrorCode::ERROR_NOT_SYSTEM_APP},
     {ERR_INVALID_PARAM, CliManagerErrorCode::ERROR_INVALID_PARAM},

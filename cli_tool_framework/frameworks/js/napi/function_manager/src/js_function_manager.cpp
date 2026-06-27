@@ -56,19 +56,25 @@ void InvokeFunctionFinalize(napi_env env, void *finalizeData, void *finalizeHint
 
 void InvokeFunctionCallJs(napi_env env, napi_value jsCb, void *context, void *data)
 {
-    if (env == nullptr || context == nullptr || data == nullptr) {
+    auto *result = static_cast<InvokeFunctionResult *>(data);
+    if (result == nullptr) {
+        return;
+    }
+    if (env == nullptr || context == nullptr) {
+        delete result;
         return;
     }
     auto *ctx = static_cast<InvokeFunctionTsfnContext *>(context);
-    // The executor delivers a pure-C++ InvokeFunctionResult; copy it onto the heap
-    // here as the tsfn payload and own its lifetime in this callback.
-    auto *result = static_cast<InvokeFunctionResult *>(data);
     HandleScope handleScope(env);
 
-    if (result->success) {
+    if (result->invokeSuccess) {
         napi_value jsResult = CreateJsInvokeResult(env, result->resultCode,
             result->result, result->message);
+        if (jsResult != nullptr) {
         napi_resolve_deferred(env, ctx->deferred, jsResult);
+        }
+        napi_value jsError = CreateCliJsErrorByNativeErr(env, ERR_INNER_PARAM_INVALID);
+        napi_reject_deferred(env, ctx->deferred, jsError);
     } else {
         napi_value jsError = CreateCliJsErrorByNativeErr(env, result->errorCode);
         napi_reject_deferred(env, ctx->deferred, jsError);
@@ -144,14 +150,14 @@ napi_value JSFunctionManager::OnInvokeFunction(napi_env env, size_t argc, napi_v
     // Parse funcNamespace
     std::string funcNamespace;
     if (!AppExecFwk::UnwrapStringFromJS2(env, argv[INDEX_ZERO], funcNamespace) || funcNamespace.empty()) {
-        ThrowInvalidParamError(env, "funcNamespace is required");
+        ThrowInvalidParamError(env, "functionNamespace is required");
         return CreateJsUndefined(env);
     }
 
     // Parse function name
     std::string functionName;
     if (!AppExecFwk::UnwrapStringFromJS2(env, argv[INDEX_ONE], functionName) || functionName.empty()) {
-        ThrowInvalidParamError(env, "name is required");
+        ThrowInvalidParamError(env, "functionName is required");
         return CreateJsUndefined(env);
     }
 
@@ -165,7 +171,12 @@ napi_value JSFunctionManager::OnInvokeFunction(napi_env env, size_t argc, napi_v
     // Create promise
     napi_value promise = nullptr;
     napi_deferred deferred = nullptr;
-    napi_create_promise(env, &deferred, &promise);
+    napi_status promiseStatus = napi_create_promise(env, &deferred, &promise);
+    if (promiseStatus != napi_ok) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create promise");
+        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        return CreateJsUndefined(env);
+    }
 
     // Create threadsafe function context
     auto tsfnContext = std::make_shared<InvokeFunctionTsfnContext>();
@@ -191,7 +202,10 @@ napi_value JSFunctionManager::OnInvokeFunction(napi_env env, size_t argc, napi_v
     // logic and is fully decoupled from napi.
     InvokeResultCallback bridge = [tsfnContext](const InvokeFunctionResult &outcome) {
         auto *data = new InvokeFunctionResult(outcome);
-        napi_call_threadsafe_function(tsfnContext->tsfn, data, napi_tsfn_nonblocking);
+        napi_status status = napi_call_threadsafe_function(tsfnContext->tsfn, data, napi_tsfn_nonblocking);
+        if (status != napi_ok) {
+            delete data;
+        }
     };
 
     InvokeFunctionExecutor::Create()->Execute(funcNamespace, functionName, wantParams, bridge);

@@ -34,7 +34,7 @@ namespace CliTool {
  * tested without an N-API environment.
  */
 struct InvokeFunctionResult {
-    bool success = false;                              // framework resultCode == 0 (Promise decision)
+    bool invokeSuccess = false;
     int32_t errorCode = 0;                             // native err code, used on the reject path
     int32_t resultCode = 0;                            // executeResult.code (app business level)
     std::shared_ptr<AAFwk::WantParams> result;         // business data carried into InvokeResult.data

@@ -61,7 +61,7 @@ void InvokeFunctionExecutor::ReportError(int32_t errorCode)
         return;  // already settled by the normal callback or another failure
     }
     InvokeFunctionResult out;
-    out.success = false;
+    out.invokeSuccess = false;
     out.errorCode = errorCode;
     if (callback_) {
         callback_(out);
@@ -103,10 +103,8 @@ void InvokeFunctionExecutor::DoExecute(const std::string &funcNamespace, const s
     if (err != ERR_OK) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "ExecuteIntentByFunctionCall failed: %{public}d", err);
         int32_t reportErr = ERR_FUNCTION_EXECUTE_FAILED;
-        if (err == OHOS::ERR_PERMISSION_DENIED) {
-            reportErr = ERR_PERMISSION_DENIED;
-        } else if (err == OHOS::AAFwk::ERR_NOT_SYSTEM_APP) {
-            reportErr = ERR_NOT_SYSTEM_APP;
+        if (err == OHOS::ERR_PERMISSION_DENIED || err == OHOS::AAFwk::ERR_NOT_SYSTEM_APP) {
+            reportErr = err;
         }
         ReportError(reportErr);
     }

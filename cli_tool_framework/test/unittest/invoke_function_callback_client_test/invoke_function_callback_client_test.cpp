@@ -75,7 +75,7 @@ HWTEST_F(InvokeFunctionCallbackClientTest, InvokeFunctionCallbackClient_Success_
     client_->ProcessInsightIntentExecute(0, BuildIntentResult(0));
     ASSERT_EQ(callCount_, 1);
     ASSERT_TRUE(captured_.has_value());
-    EXPECT_TRUE(captured_->success);
+    EXPECT_TRUE(captured_->invokeSuccess);
     EXPECT_EQ(captured_->errorCode, 0);
     EXPECT_EQ(captured_->resultCode, 0);
     ASSERT_NE(captured_->result, nullptr);
@@ -98,7 +98,7 @@ HWTEST_F(InvokeFunctionCallbackClientTest, InvokeFunctionCallbackClient_AppBusin
     client_->ProcessInsightIntentExecute(0, BuildIntentResult(APP_CODE_42));
     ASSERT_EQ(callCount_, 1);
     ASSERT_TRUE(captured_.has_value());
-    EXPECT_TRUE(captured_->success);                  // framework delivery succeeded
+    EXPECT_TRUE(captured_->invokeSuccess);                  // framework delivery succeeded
     EXPECT_EQ(captured_->errorCode, 0);
     EXPECT_EQ(captured_->resultCode, APP_CODE_42);    // app business-level code passes through
 }
@@ -114,7 +114,7 @@ HWTEST_F(InvokeFunctionCallbackClientTest, InvokeFunctionCallbackClient_Framewor
     client_->ProcessInsightIntentExecute(1, BuildIntentResult(0));
     ASSERT_EQ(callCount_, 1);
     ASSERT_TRUE(captured_.has_value());
-    EXPECT_FALSE(captured_->success);
+    EXPECT_FALSE(captured_->invokeSuccess);
     EXPECT_EQ(captured_->errorCode, ERR_FUNCTION_EXECUTE_FAILED);
     EXPECT_EQ(captured_->resultCode, 0);  // app code untouched on the framework-failure path
 }
@@ -167,7 +167,7 @@ HWTEST_F(InvokeFunctionCallbackClientTest, InvokeFunctionCallbackClient_OnlyOnce
     client_->ProcessInsightIntentExecute(1, BuildIntentResult(0));
     EXPECT_EQ(callCount_, 1);
     ASSERT_TRUE(captured_.has_value());
-    EXPECT_TRUE(captured_->success);  // first winner's result is retained
+    EXPECT_TRUE(captured_->invokeSuccess);  // first winner's result is retained
 }
 
 /**
