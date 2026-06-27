@@ -72,10 +72,17 @@ void AddInsightIntentOptions(FunctionInfo &func, const IntentOptionDefaults &def
     func.inputSchema = schema.dump();
 }
 
-struct FilterCandidate {
+struct RegisterSortKey {
     std::string intentName;
     std::string moduleName;
     std::string abilityName;
+    bool operator<(const RegisterSortKey &o) const
+    {
+        if (moduleName != o.moduleName) {
+            return moduleName < o.moduleName;
+        }
+        return abilityName < o.abilityName;
+    }
 };
 
 bool HasExecuteMode(const std::vector<std::string> &modes, const std::string &target)
@@ -83,13 +90,13 @@ bool HasExecuteMode(const std::vector<std::string> &modes, const std::string &ta
     return std::find(modes.begin(), modes.end(), target) != modes.end();
 }
 
-std::optional<FilterCandidate> ExtractFromProfileInfo(
+std::optional<RegisterSortKey> ExtractFromProfileInfo(
     const AbilityRuntime::ExtractInsightIntentProfileInfo &info)
 {
     if (info.intentName.empty() || info.moduleName.empty()) {
         return std::nullopt;
     }
-    FilterCandidate c;
+    RegisterSortKey c;
     c.intentName = info.intentName;
     c.moduleName = info.moduleName;
     bool isBgUiAbility = !info.uiAbility.empty() && HasExecuteMode(info.executeMode, "background");
@@ -104,13 +111,13 @@ std::optional<FilterCandidate> ExtractFromProfileInfo(
     return c;
 }
 
-std::optional<FilterCandidate> ExtractFromConfigInfo(
+std::optional<RegisterSortKey> ExtractFromConfigInfo(
     const AbilityRuntime::InsightIntentInfo &info)
 {
     if (info.intentName.empty() || info.moduleName.empty()) {
         return std::nullopt;
     }
-    FilterCandidate c;
+    RegisterSortKey c;
     c.intentName = info.intentName;
     c.moduleName = info.moduleName;
     const auto &ui = info.uiAbilityIntentInfo;
@@ -128,14 +135,14 @@ std::optional<FilterCandidate> ExtractFromConfigInfo(
     return c;
 }
 
-std::optional<FilterCandidate> ExtractFromGenericInfo(
+std::optional<RegisterSortKey> ExtractFromGenericInfo(
     const AbilityRuntime::ExtractInsightIntentInfo &info)
 {
     const auto &g = info.genericInfo;
     if (g.intentName.empty() || g.moduleName.empty()) {
         return std::nullopt;
     }
-    FilterCandidate c;
+    RegisterSortKey c;
     c.intentName = g.intentName;
     c.moduleName = g.moduleName;
     if (g.currentType == AbilityRuntime::InfoType::Function) {
@@ -158,34 +165,24 @@ std::optional<FilterCandidate> ExtractFromGenericInfo(
     return std::nullopt;
 }
 
-// 规则 1 过滤（丢弃 ExtractFrom* 返回 nullopt 的项）+ 按 (moduleName, abilityName) 字典序排序。
-// 排序保证 KVStore 后写覆盖语义下同名意图的覆盖顺序确定。
+// 为注册路径预处理意图列表：
+//   1) 规则 1 过滤（丢弃非"后台 UIAbility / ServiceExtension"的项，由 extract 返回 nullopt 表达）
+//   2) 按 (moduleName, abilityName) 字典序排序，保证 KVStore 后写覆盖语义下同名意图的覆盖顺序确定
 template <typename T, typename Extractor>
-void FilterAndSort(std::vector<T> &items, Extractor extract)
+void PrepareForRegister(std::vector<T> &items, Extractor extract)
 {
-    std::vector<T> kept;
-    kept.reserve(items.size());
-    std::vector<FilterCandidate> cands;
-    cands.reserve(items.size());
+    std::vector<std::pair<RegisterSortKey, T>> qualified;
+    qualified.reserve(items.size());
     for (auto &item : items) {
-        if (auto c = extract(item); c.has_value()) {
-            cands.push_back(*c);
-            kept.push_back(std::move(item));
+        if (auto key = extract(item); key.has_value()) {
+            qualified.emplace_back(*key, std::move(item));
         }
     }
-    std::vector<size_t> idx(kept.size());
-    for (size_t i = 0; i < kept.size(); ++i) {
-        idx[i] = i;
-    }
-    std::sort(idx.begin(), idx.end(), [&cands](size_t a, size_t b) {
-        if (cands[a].moduleName != cands[b].moduleName) {
-            return cands[a].moduleName < cands[b].moduleName;
-        }
-        return cands[a].abilityName < cands[b].abilityName;
-    });
+    std::sort(qualified.begin(), qualified.end(),
+        [](const auto &a, const auto &b) { return a.first < b.first; });
     items.clear();
-    for (size_t i : idx) {
-        items.push_back(std::move(kept[i]));
+    for (auto &p : qualified) {
+        items.push_back(std::move(p.second));
     }
 }
 } // namespace
@@ -387,17 +384,17 @@ bool UnregisterInsightIntentFunctions(const std::string &bundleName)
 
 void IntentFilterUtil::FilterProfile(AbilityRuntime::ExtractInsightIntentProfileInfoVec &profileInfos)
 {
-    FilterAndSort(profileInfos.insightIntents, ExtractFromProfileInfo);
+    PrepareForRegister(profileInfos.insightIntents, ExtractFromProfileInfo);
 }
 
 void IntentFilterUtil::FilterConfig(std::vector<AbilityRuntime::InsightIntentInfo> &configInfos)
 {
-    FilterAndSort(configInfos, ExtractFromConfigInfo);
+    PrepareForRegister(configInfos, ExtractFromConfigInfo);
 }
 
 void IntentFilterUtil::FilterGeneric(std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos)
 {
-    FilterAndSort(intentInfos, ExtractFromGenericInfo);
+    PrepareForRegister(intentInfos, ExtractFromGenericInfo);
 }
 
 } // namespace CliTool
