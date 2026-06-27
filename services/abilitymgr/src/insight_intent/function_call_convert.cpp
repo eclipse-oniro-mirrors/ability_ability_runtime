@@ -397,5 +397,33 @@ void IntentFilterUtil::FilterGeneric(std::vector<AbilityRuntime::ExtractInsightI
     PrepareForRegister(intentInfos, ExtractFromGenericInfo);
 }
 
+bool BatchRegisterInsightIntentFunctions(
+    const std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos,
+    const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
+    const std::unordered_map<std::string, uint32_t> &bundleVersionMap,
+    int32_t &successCount)
+{
+    successCount = 0;
+    std::vector<FunctionInfo> functions;
+    ConvertFromConfigIntent(configInfos, functions);
+    ConvertFromExtractIntentInfo(intentInfos, functions);
+    if (functions.empty()) {
+        return true;
+    }
+    for (auto &func : functions) {
+        auto it = bundleVersionMap.find(func.functionNamespace);
+        if (it != bundleVersionMap.end()) {
+            func.version = std::to_string(it->second);
+        }
+    }
+    auto &client = CliToolMGRClient::GetInstance();
+    int32_t ret = client.BatchRegisterFunctions(functions, successCount);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "batch register failed, ret=%{public}d, success=%{public}d",
+            ret, successCount);
+    }
+    return ret == ERR_OK;
+}
+
 } // namespace CliTool
 } // namespace OHOS
