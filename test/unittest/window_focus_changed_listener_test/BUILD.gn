@@ -34,11 +34,13 @@ ohos_unittest("window_focus_changed_listener_test") {
     "${ability_runtime_services_path}/common/src/queue_task_handler_wrap.cpp",
     "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/appexecfwk_core/src/appmgr/mock_app_scheduler.cpp",
     "window_focus_changed_listener_test.cpp",
+    "mock/src/bundle_mgr_helper.cpp",
   ]
 
   cflags = []
 
   include_dirs = [
+    "mock/include",
     "${ability_runtime_path}/services/abilitymgr/include",
     "${ability_runtime_test_path}/mock/frameworks_kits_ability_native_test/include",
     "${ability_runtime_test_path}/mock/services_appmgr_test/include",
@@ -67,7 +69,6 @@ ohos_unittest("window_focus_changed_listener_test") {
     "${ability_runtime_native_path}/ability/native:auto_startup_callback",
     "${ability_runtime_native_path}/ability/native:ui_extension",
     "${ability_runtime_native_path}/appkit:app_context",
-    "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_native_path}/appkit:appkit_native",
     "${ability_runtime_path}/utils/server/startup:startup_util",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
