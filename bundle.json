@@ -173,7 +173,7 @@
           "//foundation/ability/ability_runtime/agent_runtime_framework/frameworks/native/agent_extension:agent_extension_module",
           "//foundation/ability/ability_runtime/agent_runtime_framework/frameworks/native/agent_ui_extension_ability:agent_ui_extension_module"
         ],
-        "inner_api": [
+        "inner_kits": [
           {
             "header": {
               "header_base": "//foundation/ability/ability_runtime/interfaces/inner_api/deps_wrapper/include",

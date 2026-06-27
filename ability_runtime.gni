@@ -13,6 +13,8 @@
 
 import("//build/ohos.gni")
 
+
+
 ability_runtime_path = "//foundation/ability/ability_runtime"
 ability_runtime_napi_path = "${ability_runtime_path}/frameworks/js/napi"
 ability_base_path = "//foundation/ability/ability_base"
