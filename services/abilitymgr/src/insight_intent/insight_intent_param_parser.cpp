@@ -42,6 +42,7 @@ constexpr const char *INSIGHT_INTENT_OPT_DEVICE_ID = "deviceId";
 
 constexpr int DECIMAL_BASE = 10;
 constexpr int AUTO_BASE = 0;
+constexpr int32_t INVALID_USER_ID = -1;
 
 bool ParseInt(const std::string &str, int base, int32_t &out)
 {
@@ -218,7 +219,9 @@ void InsightIntentParamParser::ResolveFlags(const AAFwk::WantParams &opts, int32
 void InsightIntentParamParser::ResolveUserId(const AAFwk::WantParams &opts,
     int32_t callerUserId, int32_t &out) const
 {
-    out = callerUserId;
+    // 默认 -1，由 InsightIntentExecuteManager::CheckAndUpdateParam 兜底为 calling UID 推算 userId，
+    // 与 ExecuteIntent 路径行为一致。options.userId 显式指定时覆写。
+    out = INVALID_USER_ID;
     std::string userIdStr = opts.GetStringParam(INSIGHT_INTENT_OPT_USER_ID);
     int32_t val = 0;
     if (ParseInt(userIdStr, DECIMAL_BASE, val)) {

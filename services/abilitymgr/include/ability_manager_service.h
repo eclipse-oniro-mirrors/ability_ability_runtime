@@ -3635,6 +3635,10 @@ private:
         const std::shared_ptr<InsightIntentExecuteParam> &param, const std::string &callerBundleName,
         const AbilityRuntime::ExecuteIntentCommonOptions &infos);
     void SetRemoteIntentTimeout(uint64_t insightIntentId);
+    // 分布式意图派发：flood attack 检查 + PERMISSION_EXECUTE_DISTRIBUTED_INTENT 校验 +
+    // GenerateWant + dmsClient.StartRemoteIntent。deviceId 为空时不应调本函数。
+    int32_t DispatchDistributedIntent(const std::shared_ptr<InsightIntentExecuteParam> &param,
+        const AbilityRuntime::ExtractInsightIntentGenericInfo &infos);
     void GetCallerUidAndToken(const std::string &bundleName, int32_t userId,
         int32_t &callerUid, uint32_t &accessToken);
     bool IsDmsSameAPP(const AbilityRequest &abilityRequest);
