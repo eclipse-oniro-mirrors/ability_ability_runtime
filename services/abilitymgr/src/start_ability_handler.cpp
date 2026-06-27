@@ -25,7 +25,7 @@ namespace OHOS {
 namespace AAFwk {
 bool StartAbilityParams::IsCallerSandboxApp()
 {
-    return GetCallerAppIndex() > AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX;
+    return AbilityRuntime::GlobalConstant::IsDlpIndex(GetCallerAppIndex());
 }
 
 #ifdef WITH_DLP

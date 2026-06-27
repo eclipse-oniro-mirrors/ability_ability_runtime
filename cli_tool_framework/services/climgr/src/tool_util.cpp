@@ -190,6 +190,12 @@ bool ToolUtil::GenerateSandboxConfig(const ExecToolParam &param, AccessToken::Ac
     config["cliName"] = param.toolName;
     config["subCliName"] = param.subcommand;
     config["type"] = "cli";
+    nlohmann::json envConfig;
+    envConfig["ohos_cli_callerBundleName"] = bundleInfo.name;
+    envConfig["ohos_cli_callerUid"] = std::to_string(IPCSkeleton::GetCallingUid());
+    envConfig["ohos_cli_callerTokenId"] = std::to_string(IPCSkeleton::GetCallingTokenID());
+    config["env"] = envConfig;
+
     sandboxConfig = config.dump();
     bundleName = bundleInfo.name;
     TAG_LOGI(AAFwkTag::CLI_TOOL, "bundleName:%{public}s, gid:%{public}d, cliName:%{public}s, subCliName:%{public}s",

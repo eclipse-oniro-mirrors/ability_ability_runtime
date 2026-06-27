@@ -22,6 +22,7 @@
 #include "mock_ability_connect_callback.h"
 #include "mock_ability_token.h"
 #include "mock_sa_interceptor_stub.h"
+#include "sandbox_clone_params.h"
 
 using namespace testing::ext;
 using namespace testing;
@@ -5223,6 +5224,98 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_SetGamePreLaunchCompleteTime
     // Verify the result was written to reply
     int32_t result = reply.ReadInt32();
     EXPECT_EQ(result, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerStub
+ * Function: OnRemoteRequest
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub StartSandboxCloneAbilityInner via OnRemoteRequest
+ * EnvConditions: code is START_SANDBOX_CLONE_ABILITY
+ * CaseDescription: Verify dispatching START_SANDBOX_CLONE_ABILITY through OnRemoteRequest
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSandboxCloneAbility_OnRemote_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerStub_StartSandboxCloneAbility_OnRemote_0100 start");
+
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    ASSERT_TRUE(data.WriteParcelable(&want));
+
+    SandboxCloneParams params;
+    params.callerBundleName = "com.caller.bundle";
+    params.callerUid = 10001;
+    params.callerTokenId = 123456;
+    ASSERT_TRUE(data.WriteParcelable(&params));
+
+    EXPECT_CALL(*stub_, StartSandboxCloneAbility(_, _)).WillOnce(Return(ERR_OK));
+    int res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::START_SANDBOX_CLONE_ABILITY), data, reply, option);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerStub_StartSandboxCloneAbility_OnRemote_0100 end");
+}
+
+/*
+ * Feature: AbilityManagerStub
+ * Function: StartSandboxCloneAbilityInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub StartSandboxCloneAbilityInner
+ * EnvConditions: NA
+ * CaseDescription: Verify StartSandboxCloneAbilityInner with null want
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSandboxCloneAbilityInner_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerStub_StartSandboxCloneAbilityInner_0100 start");
+
+    MessageParcel data;
+    MessageParcel reply;
+    WriteInterfaceToken(data);
+
+    // Write empty want (nullptr)
+    ASSERT_TRUE(data.WriteParcelable(static_cast<Want*>(nullptr)));
+
+    auto result = stub_->StartSandboxCloneAbilityInner(data, reply);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerStub_StartSandboxCloneAbilityInner_0100 end");
+}
+
+/*
+ * Feature: AbilityManagerStub
+ * Function: StartSandboxCloneAbilityInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub StartSandboxCloneAbilityInner
+ * EnvConditions: NA
+ * CaseDescription: Verify StartSandboxCloneAbilityInner with null params
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSandboxCloneAbilityInner_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerStub_StartSandboxCloneAbilityInner_0200 start");
+
+    MessageParcel data;
+    MessageParcel reply;
+    WriteInterfaceToken(data);
+
+    // Write valid want
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    ASSERT_TRUE(data.WriteParcelable(&want));
+
+    // Write empty params (nullptr)
+    ASSERT_TRUE(data.WriteParcelable(static_cast<SandboxCloneParams*>(nullptr)));
+
+    auto result = stub_->StartSandboxCloneAbilityInner(data, reply);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerStub_StartSandboxCloneAbilityInner_0200 end");
 }
 
 /*

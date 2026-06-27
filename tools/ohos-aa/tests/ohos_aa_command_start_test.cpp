@@ -557,3 +557,175 @@ HWTEST_F(OhosAaCommandStartTest, Ohos_Aa_Command_Start_2400, Function | MediumTe
     std::string result = cmd.ExecCommand();
     EXPECT_NE(result.find("start ability successfully"), std::string::npos);
 }
+
+/**
+ * @tc.number: Ohos_Aa_Command_Start_2500
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify start with valid sandboxCloneIndex parameter.
+ */
+HWTEST_F(OhosAaCommandStartTest, Ohos_Aa_Command_Start_2500, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ohos_Aa_Command_Start_2500");
+
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)cmd_.c_str(),
+        (char*)"--abilityname",
+        (char*)STRING_ABILITY_NAME.c_str(),
+        (char*)"--bundlename",
+        (char*)STRING_BUNDLE_NAME.c_str(),
+        (char*)"--sandboxCloneIndex",
+        (char*)"2000",
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    ClawAaShellCommand cmd(argc, argv);
+    cmd.CreateErrorInfoMap();
+    std::string result = cmd.ExecCommand();
+    EXPECT_NE(result.find("start ability successfully"), std::string::npos);
+}
+
+/**
+ * @tc.number: Ohos_Aa_Command_Start_2600
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify start with sandboxCloneIndex at max boundary (3000).
+ */
+HWTEST_F(OhosAaCommandStartTest, Ohos_Aa_Command_Start_2600, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ohos_Aa_Command_Start_2600");
+
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)cmd_.c_str(),
+        (char*)"--abilityname",
+        (char*)STRING_ABILITY_NAME.c_str(),
+        (char*)"--bundlename",
+        (char*)STRING_BUNDLE_NAME.c_str(),
+        (char*)"--sandboxCloneIndex",
+        (char*)"3000",
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    ClawAaShellCommand cmd(argc, argv);
+    cmd.CreateErrorInfoMap();
+    std::string result = cmd.ExecCommand();
+    EXPECT_NE(result.find("start ability successfully"), std::string::npos);
+}
+
+/**
+ * @tc.number: Ohos_Aa_Command_Start_2700
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify start with sandboxCloneIndex at mid-range (2500).
+ */
+HWTEST_F(OhosAaCommandStartTest, Ohos_Aa_Command_Start_2700, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ohos_Aa_Command_Start_2700");
+
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)cmd_.c_str(),
+        (char*)"--abilityname",
+        (char*)STRING_ABILITY_NAME.c_str(),
+        (char*)"--bundlename",
+        (char*)STRING_BUNDLE_NAME.c_str(),
+        (char*)"--sandboxCloneIndex",
+        (char*)"2500",
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    ClawAaShellCommand cmd(argc, argv);
+    cmd.CreateErrorInfoMap();
+    std::string result = cmd.ExecCommand();
+    EXPECT_NE(result.find("start ability successfully"), std::string::npos);
+}
+
+/**
+ * @tc.number: Ohos_Aa_Command_Start_2800
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify start with invalid non-numeric sandboxCloneIndex
+ */
+HWTEST_F(OhosAaCommandStartTest, Ohos_Aa_Command_Start_2800, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ohos_Aa_Command_Start_2800");
+
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)cmd_.c_str(),
+        (char*)"--abilityname",
+        (char*)STRING_ABILITY_NAME.c_str(),
+        (char*)"--bundlename",
+        (char*)STRING_BUNDLE_NAME.c_str(),
+        (char*)"--sandboxCloneIndex",
+        (char*)"abc",
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    ClawAaShellCommand cmd(argc, argv);
+    cmd.CreateErrorInfoMap();
+    std::string result = cmd.ExecCommand();
+    EXPECT_NE(result.find("Invalid"), std::string::npos);
+}
+
+/**
+ * @tc.number: Ohos_Aa_Command_Start_2900
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify start with sandboxCloneIndex and creatorBundle together.
+ */
+HWTEST_F(OhosAaCommandStartTest, Ohos_Aa_Command_Start_2900, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ohos_Aa_Command_Start_2900");
+
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)cmd_.c_str(),
+        (char*)"--abilityname",
+        (char*)STRING_ABILITY_NAME.c_str(),
+        (char*)"--bundlename",
+        (char*)STRING_BUNDLE_NAME.c_str(),
+        (char*)"--sandboxCloneIndex",
+        (char*)"2001",
+        (char*)"--creatorBundle",
+        (char*)"com.creator.bundle",
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    ClawAaShellCommand cmd(argc, argv);
+    cmd.CreateErrorInfoMap();
+    std::string result = cmd.ExecCommand();
+    EXPECT_NE(result.find("start ability successfully"), std::string::npos);
+}
+
+/**
+ * @tc.number: Ohos_Aa_Command_Start_3000
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify start with sandboxCloneIndex and moduleName together.
+ */
+HWTEST_F(OhosAaCommandStartTest, Ohos_Aa_Command_Start_3000, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ohos_Aa_Command_Start_3000");
+
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)cmd_.c_str(),
+        (char*)"--abilityname",
+        (char*)STRING_ABILITY_NAME.c_str(),
+        (char*)"--bundlename",
+        (char*)STRING_BUNDLE_NAME.c_str(),
+        (char*)"--modulename",
+        (char*)STRING_MODULE_NAME.c_str(),
+        (char*)"--sandboxCloneIndex",
+        (char*)"2002",
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    ClawAaShellCommand cmd(argc, argv);
+    cmd.CreateErrorInfoMap();
+    std::string result = cmd.ExecCommand();
+    EXPECT_NE(result.find("start ability successfully"), std::string::npos);
+}

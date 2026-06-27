@@ -39,6 +39,7 @@
 #include "start_params_by_SCB.h"
 #include "system_ability_definition.h"
 #include "ability_util.h"
+#include "global_constant.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -1310,6 +1311,102 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityBySCB_001, TestSize.Leve
     auto ret = abilityMs_->StartUIAbilityBySCB(nullptr, params, isColdStart);
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartUIAbilityBySCB_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: HandleSandboxCloneLaunch
+ * FunctionPoints: AbilityManagerService HandleSandboxCloneLaunch parses caller info and returns ERR_OK
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, HandleSandboxCloneLaunch_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest HandleSandboxCloneLaunch_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    sptr<SessionInfo> sessionInfo = new (std::nothrow) SessionInfo();
+    ASSERT_NE(sessionInfo, nullptr);
+    sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::CLI_CALLER_BUNDLE_NAME,
+        std::string("com.test.caller"));
+    sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::CLI_CALLER_TOKEN_ID, std::string("123456"));
+
+    auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
+    ASSERT_NE(sandboxCloneParams, nullptr);
+    EventInfo eventInfo;
+    // Without SANDBOX_CLONE_INDEX, ProcessSandboxCloneLaunch short-circuits to ERR_OK.
+    auto ret = abilityMs->HandleSandboxCloneLaunch(sessionInfo, sandboxCloneParams, TEST_VALID_USER_ID, eventInfo);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(sandboxCloneParams->callerBundleName, "com.test.caller");
+    EXPECT_EQ(sandboxCloneParams->callerTokenId, 123456u);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest HandleSandboxCloneLaunch_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: HandleSandboxCloneLaunch
+ * FunctionPoints: AbilityManagerService HandleSandboxCloneLaunch uses default 0 when callerTokenId is empty
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, HandleSandboxCloneLaunch_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest HandleSandboxCloneLaunch_002 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    sptr<SessionInfo> sessionInfo = new (std::nothrow) SessionInfo();
+    ASSERT_NE(sessionInfo, nullptr);
+    sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::CLI_CALLER_BUNDLE_NAME,
+        std::string("com.test.caller"));
+    // CLI_CALLER_TOKEN_ID is not set, GetStringParam returns empty -> callerTokenId defaults to 0.
+
+    auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
+    ASSERT_NE(sandboxCloneParams, nullptr);
+    EventInfo eventInfo;
+    auto ret = abilityMs->HandleSandboxCloneLaunch(sessionInfo, sandboxCloneParams, TEST_VALID_USER_ID, eventInfo);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(sandboxCloneParams->callerBundleName, "com.test.caller");
+    EXPECT_EQ(sandboxCloneParams->callerTokenId, 0u);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest HandleSandboxCloneLaunch_002 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: HandleSandboxCloneLaunch
+ * FunctionPoints: AbilityManagerService HandleSandboxCloneLaunch falls back to 0 on invalid callerTokenId
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, HandleSandboxCloneLaunch_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest HandleSandboxCloneLaunch_003 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    sptr<SessionInfo> sessionInfo = new (std::nothrow) SessionInfo();
+    ASSERT_NE(sessionInfo, nullptr);
+    // A non-numeric token id makes std::from_chars fail, so callerTokenId falls back to 0.
+    sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::CLI_CALLER_TOKEN_ID, std::string("invalid_token"));
+
+    auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
+    ASSERT_NE(sandboxCloneParams, nullptr);
+    EventInfo eventInfo;
+    auto ret = abilityMs->HandleSandboxCloneLaunch(sessionInfo, sandboxCloneParams, TEST_VALID_USER_ID, eventInfo);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(sandboxCloneParams->callerTokenId, 0u);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest HandleSandboxCloneLaunch_003 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: HandleSandboxCloneLaunch
+ * FunctionPoints: AbilityManagerService HandleSandboxCloneLaunch propagates error on invalid sandbox clone index
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, HandleSandboxCloneLaunch_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest HandleSandboxCloneLaunch_004 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    sptr<SessionInfo> sessionInfo = new (std::nothrow) SessionInfo();
+    ASSERT_NE(sessionInfo, nullptr);
+    // Valid sandbox clone index range is [2000, 3000]; an out-of-range value is rejected.
+    sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, 100);
+
+    auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
+    ASSERT_NE(sandboxCloneParams, nullptr);
+    EventInfo eventInfo;
+    auto ret = abilityMs->HandleSandboxCloneLaunch(sessionInfo, sandboxCloneParams, TEST_VALID_USER_ID, eventInfo);
+    EXPECT_EQ(ret, ERR_SANDBOX_CLONE_INDEX_INVALID);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest HandleSandboxCloneLaunch_004 end");
 }
 
 /*

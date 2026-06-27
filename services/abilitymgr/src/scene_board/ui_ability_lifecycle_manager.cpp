@@ -795,6 +795,21 @@ int UIAbilityLifecycleManager::NotifySCBToStartUIAbility(AbilityRequest &ability
         sessionInfo->persistentId = persistentId;
         sessionInfo->reuse = reuse;
     }
+    // Store isWebSandBoxClone and appIndex in want for SCB callback.
+    if (abilityRequest.isWebSandBoxClone) {
+        sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::IS_WEB_SANDBOX_CLONE,
+            abilityRequest.isWebSandBoxClone);
+        sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX,
+            abilityRequest.abilityInfo.applicationInfo.appIndex);
+        std::string callerBundleName = abilityRequest.want.GetStringParam(
+            AbilityRuntime::GlobalConstant::CLI_CALLER_BUNDLE_NAME);
+        std::string callerTokenId = abilityRequest.want.GetStringParam(
+            AbilityRuntime::GlobalConstant::CLI_CALLER_TOKEN_ID);
+        sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::CLI_CALLER_BUNDLE_NAME, callerBundleName);
+        sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::CLI_CALLER_TOKEN_ID, callerTokenId);
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "WebSandBoxClone params: bundle = %{public}s, tokenId = %{public}s",
+            callerBundleName.c_str(), callerTokenId.c_str());
+    }
     sessionInfo->userId = userId_;
     sessionInfo->isAtomicService = (abilityInfo.applicationInfo.bundleType == AppExecFwk::BundleType::ATOMIC_SERVICE);
     TAG_LOGI(AAFwkTag::ABILITYMGR,

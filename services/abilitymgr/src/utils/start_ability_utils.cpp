@@ -43,12 +43,13 @@ thread_local int32_t StartAbilityUtils::ermsResultCode = ERMS_ISALLOW_RESULTCODE
 thread_local bool StartAbilityUtils::isWantWithAppCloneIndex = false;
 thread_local bool StartAbilityUtils::ermsSupportBackToCallerFlag = false;
 thread_local bool StartAbilityUtils::startSpecifiedBySCB = false;
+thread_local bool StartAbilityUtils::isSandBoxClone = false;
 
 bool StartAbilityUtils::GetAppIndex(const Want &want, sptr<IRemoteObject> callerToken, int32_t &appIndex)
 {
     auto abilityRecord = Token::GetAbilityRecordByToken(callerToken);
     if (abilityRecord && abilityRecord->GetApplicationInfo().bundleName == want.GetBundle() &&
-        abilityRecord->GetAppIndex() > AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
+        AbilityRuntime::GlobalConstant::IsDlpIndex(abilityRecord->GetAppIndex())) {
         appIndex = abilityRecord->GetAppIndex();
         return true;
     }
@@ -137,6 +138,10 @@ StartAbilityInfoWrap::StartAbilityInfoWrap(const Want &want, int32_t validUserId
     if (StartAbilityUtils::startAbilityInfo != nullptr) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "startAbilityInfo created");
     }
+    if (StartAbilityUtils::isSandBoxClone) {
+        return;
+    }
+
     Want localWant = want;
     if (!StartAbilityUtils::IsCallFromAncoShellOrBroker(callerToken)) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "not call from anco or broker.");
@@ -184,6 +189,7 @@ StartAbilityInfoWrap::StartAbilityInfoWrap()
     StartAbilityUtils::ermsResultCode = ERMS_ISALLOW_RESULTCODE;
     StartAbilityUtils::isWantWithAppCloneIndex = false;
     StartAbilityUtils::ermsSupportBackToCallerFlag = false;
+    StartAbilityUtils::isSandBoxClone = false;
 }
 
 StartAbilityInfoWrap::~StartAbilityInfoWrap()
@@ -196,6 +202,7 @@ StartAbilityInfoWrap::~StartAbilityInfoWrap()
     StartAbilityUtils::ermsResultCode = ERMS_ISALLOW_RESULTCODE;
     StartAbilityUtils::isWantWithAppCloneIndex = false;
     StartAbilityUtils::ermsSupportBackToCallerFlag = false;
+    StartAbilityUtils::isSandBoxClone = false;
 }
 
 void StartAbilityInfoWrap::SetStartAbilityInfo(const AppExecFwk::AbilityInfo& abilityInfo)
@@ -205,6 +212,8 @@ void StartAbilityInfoWrap::SetStartAbilityInfo(const AppExecFwk::AbilityInfo& ab
     }
     StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
     StartAbilityUtils::startAbilityInfo->abilityInfo = abilityInfo;
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "SetStartAbilityInfo: cache set, bundle = %{public}s, appIndex = %{public}d",
+        abilityInfo.bundleName.c_str(), abilityInfo.applicationInfo.appIndex);
 }
 
 namespace {
@@ -432,6 +441,8 @@ void StartAbilityUtils::SetTargetCloneIndexInSameBundle(const Want &want, sptr<I
     int32_t appIndex = callerRecord->GetApplicationInfo().appIndex;
     if (appIndex >= 0 && appIndex < AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
         (const_cast<Want &>(want)).SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, appIndex);
+    } else if (AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(appIndex)) {
+        (const_cast<Want &>(want)).SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, appIndex);
     }
 }
 

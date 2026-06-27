@@ -115,6 +115,7 @@ ohos_shared_library("ability_manager") {
     "${ability_runtime_services_path}/abilitymgr/src/skill/skill_execute_result.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/start_params_by_SCB.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/start_specified_ability_params.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/sandbox_clone_params.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/system_ability_token_callback_stub.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/ui_extension/preload_ui_extension_execute_callback_proxy.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/ui_extension/preload_ui_extension_execute_callback_stub.cpp",

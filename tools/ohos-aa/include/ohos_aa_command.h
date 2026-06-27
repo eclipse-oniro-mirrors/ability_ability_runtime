@@ -60,6 +60,8 @@ const std::string HELP_MSG_START = "ohos-aa start - Start an ability on the syst
     "  --abilityname <abilityname>                              Ability name to be started\n"
     "  --bundlename <bundlename>                                bundle name to be started\n"
     "  --modulename <modulename>                                module name to be started\n"
+    "  --sandboxCloneIndex <sandboxCloneIndex>                  sandbox clone index for launching sandbox clone application (range: 2000-3000)\n"
+    "  --creatorBundle <creatorBundle>                          creator bundle name for sandbox clone application\n"
     "  --uri <uri>                                              URI for implicit startup\n"
     "  --action <action>                                        action for implicit startup\n"
     "  --entity <entity>                                        entity for implicit startup\n"
@@ -116,7 +118,9 @@ enum OptionType {
     OPTION_ENTITY,
     OPTION_HELP,
     OPTION_TYPE,
-    OPTION_TIME
+    OPTION_TIME,
+    OPTION_SANDBOX_CLONE_INDEX,      // Sandbox clone index for clone application
+    OPTION_CREATOR_BUNDLE    // Creator bundle name (untrusted, from command line)
 };
 
 const std::string SHORT_OPTIONS = "";
@@ -135,6 +139,8 @@ struct option LONG_OPTIONS[] = {
     {"ps", required_argument, 0, OPTION_PARAMETER_STRING},
     {"pb", required_argument, 0, OPTION_PARAMETER_BOOL},
     {"psn", required_argument, 0, OPTION_PARAMETER_NULL_STRING},
+    {"sandboxCloneIndex", required_argument, 0, OPTION_SANDBOX_CLONE_INDEX},
+    {"creatorBundle", required_argument, 0, OPTION_CREATOR_BUNDLE},
     {0, 0, 0, 0}
 };
 }
@@ -178,6 +184,7 @@ private:
     void FormatOutputForWithWait(const Want &want, const AbilityStartWithWaitObserverData& data);
 
     bool startAbilityWithWaitFlag_ = false;
+    bool StartSandboxCloneAbilityFlag_ = false;
     std::map<int32_t, AaToolErrorInfo> errorInfoMap_;
 };
 }  // namespace AAFwk

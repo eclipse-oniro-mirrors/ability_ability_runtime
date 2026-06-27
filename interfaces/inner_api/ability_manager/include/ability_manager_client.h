@@ -1131,6 +1131,15 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     ErrCode StartAbilityForPrelaunch(const Want &want, const int32_t frameNum = 0);
+
+    /**
+     * StartSandboxCloneAbility - Start sandbox clone ability.
+     * @param want The want of the ability to start.
+     * @param params Parameters containing caller information.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode StartSandboxCloneAbility(const Want &want, const SandboxCloneParams &params);
+
     /**
      * CallRequestDone, after invoke callRequest, ability will call this interface to return callee.
      *
