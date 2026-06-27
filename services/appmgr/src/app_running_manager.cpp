@@ -1017,7 +1017,7 @@ void AppRunningManager::TerminateAbility(const sptr<IRemoteObject> &token, bool 
 #endif //SUPPORT_SCREEN
     auto isLauncherApp = appRecord->GetApplicationInfo()->isLauncherApp;
     auto isKeepAliveApp = appRecord->IsKeepAliveApp();
-    TAG_LOGI(AAFwkTag::PROCESSMGR, "terminate isLast:%{public}d,isLastAgentAbility:%{public}d,keepAlive:%{public}d",
+    TAG_LOGI(AAFwkTag::PROCESSMGR, "term isLast:%{public}d,%{public}d alive:%{public}d",
         isLastAbility, isLastAgentAbility, isKeepAliveApp);
     if ((isLastAbility || isLastAgentAbility) && !isKeepAliveApp && !isLauncherApp) {
         auto cacheProcMgr = DelayedSingleton<CacheProcessManager>::GetInstance();

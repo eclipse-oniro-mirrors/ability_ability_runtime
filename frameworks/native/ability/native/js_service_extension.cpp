@@ -738,7 +738,7 @@ napi_value JsServiceExtension::CallObjectMethod(const char* name, napi_value con
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "get '%{public}s' from ServiceExtension obj failed", name);
         return nullptr;
     }
-    TAG_LOGI(AAFwkTag::SERVICE_EXT, "CallFunc(%{public}s)", name);
+    TAG_LOGI(AAFwkTag::SERVICE_EXT, "Call(%{public}s)", name);
     napi_value result = nullptr;
     napi_status status = napi_call_function(env, obj, method, argc, argv, &result);
     if (status != napi_ok) {

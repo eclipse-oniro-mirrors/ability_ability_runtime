@@ -115,12 +115,12 @@ int ConnectionRecord::DisconnectAbility()
             TAG_LOGI(AAFwkTag::CONNECTION, "Disconnect %{public}s ability, set correct want", extName);
             targetService_->DisconnectAbilityWithWant(GetConnectWant());
         } else {
-            TAG_LOGI(AAFwkTag::CONNECTION, "DisconnectAbility %{public}s called", abilityInfo.name.c_str());
+            TAG_LOGI(AAFwkTag::CONNECTION, "Disconnect %{public}s", abilityInfo.name.c_str());
             targetService_->DisconnectAbility();
         }
     } else {
         TAG_LOGI(AAFwkTag::CONNECTION,
-            "current connection count: %{public}zu, %{public}s:%{public}s no need disconnect, just remove",
+            "current:%{public}zu,%{public}s:%{public}s,remove",
             connectNums, abilityInfo.bundleName.c_str(), abilityInfo.name.c_str());
         targetService_->RemoveConnectRecordFromList(shared_from_this());
         SetConnectState(ConnectionState::DISCONNECTED);
@@ -170,7 +170,7 @@ void ConnectionRecord::CompleteConnect()
         });
     }
     DelayedSingleton<ConnectionStateManager>::GetInstance()->AddConnection(shared_from_this());
-    TAG_LOGI(AAFwkTag::CONNECTION, "connectState:%{public}d", state_);
+    TAG_LOGI(AAFwkTag::CONNECTION, "state:%{public}d", state_);
 }
 
 void ConnectionRecord::CompleteConnectAndOnlyCallConnectDone()
