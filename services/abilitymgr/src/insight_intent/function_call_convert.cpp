@@ -79,15 +79,11 @@ struct FilterCandidate {
     std::string moduleName;
     std::string abilityName;
     bool isUIAbility = false;
-    bool isEntryModule = false;
 };
 
 struct CandidateOrdering {
     bool operator()(const FilterCandidate &a, const FilterCandidate &b) const
     {
-        if (a.isEntryModule != b.isEntryModule) {
-            return a.isEntryModule;
-        }
         if (a.moduleName != b.moduleName) {
             return a.moduleName < b.moduleName;
         }
@@ -104,8 +100,7 @@ bool HasExecuteMode(const std::vector<std::string> &modes, const std::string &ta
 }
 
 std::optional<FilterCandidate> ExtractFromProfileInfo(
-    const AbilityRuntime::ExtractInsightIntentProfileInfo &info,
-    const std::set<std::string> &entryModuleNames)
+    const AbilityRuntime::ExtractInsightIntentProfileInfo &info)
 {
     if (info.intentName.empty() || info.moduleName.empty()) {
         return std::nullopt;
@@ -113,7 +108,6 @@ std::optional<FilterCandidate> ExtractFromProfileInfo(
     FilterCandidate c;
     c.intentName = info.intentName;
     c.moduleName = info.moduleName;
-    c.isEntryModule = entryModuleNames.count(info.moduleName) > 0;
     bool isBgUiAbility = !info.uiAbility.empty() && HasExecuteMode(info.executeMode, "background");
     bool isServiceExt = !info.abilityName.empty() && HasExecuteMode(info.executeMode, "serviceextension");
     if (isBgUiAbility) {
@@ -129,8 +123,7 @@ std::optional<FilterCandidate> ExtractFromProfileInfo(
 }
 
 std::optional<FilterCandidate> ExtractFromConfigInfo(
-    const AbilityRuntime::InsightIntentInfo &info,
-    const std::set<std::string> &entryModuleNames)
+    const AbilityRuntime::InsightIntentInfo &info)
 {
     if (info.intentName.empty() || info.moduleName.empty()) {
         return std::nullopt;
@@ -138,7 +131,6 @@ std::optional<FilterCandidate> ExtractFromConfigInfo(
     FilterCandidate c;
     c.intentName = info.intentName;
     c.moduleName = info.moduleName;
-    c.isEntryModule = entryModuleNames.count(info.moduleName) > 0;
     const auto &ui = info.uiAbilityIntentInfo;
     const auto &se = info.serviceExtensionIntentInfo;
     bool isBgUiAbility = !ui.abilityName.empty() &&
@@ -157,8 +149,7 @@ std::optional<FilterCandidate> ExtractFromConfigInfo(
 }
 
 std::optional<FilterCandidate> ExtractFromGenericInfo(
-    const AbilityRuntime::ExtractInsightIntentInfo &info,
-    const std::set<std::string> &entryModuleNames)
+    const AbilityRuntime::ExtractInsightIntentInfo &info)
 {
     const auto &g = info.genericInfo;
     if (g.intentName.empty() || g.moduleName.empty()) {
@@ -167,7 +158,6 @@ std::optional<FilterCandidate> ExtractFromGenericInfo(
     FilterCandidate c;
     c.intentName = g.intentName;
     c.moduleName = g.moduleName;
-    c.isEntryModule = entryModuleNames.count(g.moduleName) > 0;
     if (g.currentType == AbilityRuntime::InfoType::Function) {
         c.isUIAbility = false;
         c.abilityName.clear();
@@ -411,17 +401,13 @@ bool UnregisterInsightIntentFunctions(const std::string &bundleName)
     return true;
 }
 
-IntentFilterUtil::IntentFilterUtil(std::set<std::string> entryModuleNames)
-    : entryModuleNames_(std::move(entryModuleNames))
-{}
-
-void IntentFilterUtil::FilterAndDedup(AbilityRuntime::ExtractInsightIntentProfileInfoVec &profileInfos)
+void IntentFilterUtil::FilterProfile(AbilityRuntime::ExtractInsightIntentProfileInfoVec &profileInfos)
 {
     auto &items = profileInfos.insightIntents;
     std::vector<std::optional<FilterCandidate>> cands;
     cands.reserve(items.size());
     for (const auto &item : items) {
-        cands.push_back(ExtractFromProfileInfo(item, entryModuleNames_));
+        cands.push_back(ExtractFromProfileInfo(item));
     }
     auto winners = GroupAndPickWinners(cands);
     std::set<size_t> keepIdx;
@@ -438,12 +424,12 @@ void IntentFilterUtil::FilterAndDedup(AbilityRuntime::ExtractInsightIntentProfil
     items = std::move(kept);
 }
 
-void IntentFilterUtil::FilterAndDedup(std::vector<AbilityRuntime::InsightIntentInfo> &configInfos)
+void IntentFilterUtil::FilterConfig(std::vector<AbilityRuntime::InsightIntentInfo> &configInfos)
 {
     std::vector<std::optional<FilterCandidate>> cands;
     cands.reserve(configInfos.size());
     for (const auto &item : configInfos) {
-        cands.push_back(ExtractFromConfigInfo(item, entryModuleNames_));
+        cands.push_back(ExtractFromConfigInfo(item));
     }
     auto winners = GroupAndPickWinners(cands);
     std::set<size_t> keepIdx;
@@ -465,7 +451,7 @@ void IntentFilterUtil::FilterAndDedup(std::vector<AbilityRuntime::ExtractInsight
     std::vector<std::optional<FilterCandidate>> cands;
     cands.reserve(intentInfos.size());
     for (const auto &item : intentInfos) {
-        cands.push_back(ExtractFromGenericInfo(item, entryModuleNames_));
+        cands.push_back(ExtractFromGenericInfo(item));
     }
     auto winners = GroupAndPickWinners(cands);
     std::set<size_t> keepIdx;

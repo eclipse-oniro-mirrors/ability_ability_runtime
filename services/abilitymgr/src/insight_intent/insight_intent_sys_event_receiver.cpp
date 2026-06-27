@@ -164,17 +164,15 @@ int32_t InsightIntentSysEventReceiver::ResolveLoadUserId(int32_t userId)
 }
 
 void InsightIntentSysEventReceiver::BackupAndScheduleRegister(
-    std::vector<std::pair<std::string, uint32_t>> &&newBundles,
-    std::unordered_map<std::string, std::set<std::string>> &&bundleToEntryModules, int32_t userId)
+    std::vector<std::pair<std::string, uint32_t>> &&newBundles, int32_t userId)
 {
     DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
     auto self = shared_from_this();
-    auto task = [self, newBundles = std::move(newBundles),
-                 bundleToEntryModules = std::move(bundleToEntryModules), userId]() {
+    auto task = [self, newBundles = std::move(newBundles), userId]() {
         std::vector<ExtractInsightIntentInfo> allIntentInfos;
         std::vector<InsightIntentInfo> allConfigInfos;
         DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetAllInsightIntentInfoForRegister(
-            userId, bundleToEntryModules, allIntentInfos, allConfigInfos);
+            userId, allIntentInfos, allConfigInfos);
         self->RegisterAllFunctions(newBundles, allIntentInfos, allConfigInfos);
     };
     ffrt::submit(task);
@@ -200,15 +198,7 @@ void InsightIntentSysEventReceiver::LoadInsightIntentInfos(int32_t userId)
     }
 
     std::vector<std::pair<std::string, uint32_t>> newBundles;
-    std::unordered_map<std::string, std::set<std::string>> bundleToEntryModules;
     for (auto &bundleInfo : bundleInfos) {
-        std::set<std::string> entries;
-        for (const auto &hap : bundleInfo.hapModuleInfos) {
-            if (hap.moduleType == AppExecFwk::ModuleType::ENTRY) {
-                entries.insert(hap.moduleName);
-            }
-        }
-        bundleToEntryModules[bundleInfo.name] = std::move(entries);
         bool rdbHas = DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->
             HasInsightIntentByName(bundleInfo.versionCode, bundleInfo.name, userId);
         if (rdbHas) {
@@ -225,7 +215,7 @@ void InsightIntentSysEventReceiver::LoadInsightIntentInfos(int32_t userId)
         }
     }
     if (!newBundles.empty()) {
-        BackupAndScheduleRegister(std::move(newBundles), std::move(bundleToEntryModules), userId);
+        BackupAndScheduleRegister(std::move(newBundles), userId);
     }
 }
 

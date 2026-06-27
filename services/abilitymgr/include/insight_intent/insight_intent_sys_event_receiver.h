@@ -16,9 +16,6 @@
 #ifndef OHOS_ABILITY_RUNTIME_INSIGHT_INTENT_SYS_EVENT_RECEIVER_H
 #define OHOS_ABILITY_RUNTIME_INSIGHT_INTENT_SYS_EVENT_RECEIVER_H
 
-#include <set>
-#include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -47,8 +44,7 @@ private:
     void DeleteInsightIntent(const std::string &bundleName, const std::string &moduleName, int32_t userId);
     void LoadInsightIntentInfos(int32_t userId = -1);
     int32_t ResolveLoadUserId(int32_t userId);
-    void BackupAndScheduleRegister(std::vector<std::pair<std::string, uint32_t>> &&newBundles,
-        std::unordered_map<std::string, std::set<std::string>> &&bundleToEntryModules, int32_t userId);
+    void BackupAndScheduleRegister(std::vector<std::pair<std::string, uint32_t>> &&newBundles, int32_t userId);
     void DeleteInsightIntentInfoByUserId(int32_t userId);
     void HandleBundleScanFinished();
     void HandleUserSwitched(const EventFwk::CommonEventData &data);

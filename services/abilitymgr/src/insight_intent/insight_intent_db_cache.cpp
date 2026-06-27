@@ -16,6 +16,7 @@
 #include "insight_intent_db_cache.h"
 
 #include <algorithm>
+#include <type_traits>
 
 #include "function_call_convert.h"
 
@@ -271,9 +272,7 @@ void InsightIntentDbCache::GetAllInsightIntentInfo(const int32_t userId, std::ve
 
 namespace {
 template <typename T, typename BundleGetter>
-void ApplyFilterPerBundle(std::vector<T> &items,
-    const std::unordered_map<std::string, std::set<std::string>> &bundleToEntryModules,
-    BundleGetter getBundleName)
+void ApplyFilterPerBundle(std::vector<T> &items, BundleGetter getBundleName)
 {
     std::unordered_map<std::string, std::vector<T>> byBundle;
     for (const auto &item : items) {
@@ -281,11 +280,12 @@ void ApplyFilterPerBundle(std::vector<T> &items,
     }
     items.clear();
     for (auto &entry : byBundle) {
-        std::set<std::string> emptyEntry;
-        auto it = bundleToEntryModules.find(entry.first);
-        const auto &entryModules = it == bundleToEntryModules.end() ? emptyEntry : it->second;
-        CliTool::IntentFilterUtil filter(entryModules);
-        filter.FilterAndDedup(entry.second);
+        CliTool::IntentFilterUtil filter;
+        if constexpr (std::is_same_v<T, ExtractInsightIntentInfo>) {
+            filter.FilterGeneric(entry.second);
+        } else {
+            filter.FilterConfig(entry.second);
+        }
         for (auto &i : entry.second) {
             items.push_back(std::move(i));
         }
@@ -294,13 +294,12 @@ void ApplyFilterPerBundle(std::vector<T> &items,
 } // namespace
 
 void InsightIntentDbCache::GetAllInsightIntentInfoForRegister(const int32_t userId,
-    const std::unordered_map<std::string, std::set<std::string>> &bundleToEntryModules,
     std::vector<ExtractInsightIntentInfo> &infos, std::vector<InsightIntentInfo> &configInfos)
 {
     GetAllInsightIntentInfo(userId, infos, configInfos);
-    ApplyFilterPerBundle(infos, bundleToEntryModules,
+    ApplyFilterPerBundle(infos,
         [](const ExtractInsightIntentInfo &i) { return i.genericInfo.bundleName; });
-    ApplyFilterPerBundle(configInfos, bundleToEntryModules,
+    ApplyFilterPerBundle(configInfos,
         [](const InsightIntentInfo &i) { return i.bundleName; });
 }
 
