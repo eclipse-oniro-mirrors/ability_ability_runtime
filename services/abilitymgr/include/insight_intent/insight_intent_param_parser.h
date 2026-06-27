@@ -41,15 +41,7 @@ public:
         int32_t callerUserId, ParseResult &out);
 
 private:
-    void PickActiveCandidates(std::vector<ExtractInsightIntentGenericInfo> &active,
-        bool &ignoreAbilityName, bool &openLinkExecuteFlag) const;
     std::shared_ptr<AAFwk::WantParams> ExtractOptions(const AAFwk::WantParams &wantParam) const;
-    void ResolveModuleName(const AAFwk::WantParams &opts,
-        const std::vector<ExtractInsightIntentGenericInfo> &active, std::string &out) const;
-    void ResolveExecuteMode(const AAFwk::WantParams &opts,
-        const std::vector<ExtractInsightIntentGenericInfo> &active, int32_t &out) const;
-    void ResolveAbilityName(const AAFwk::WantParams &opts,
-        const std::vector<ExtractInsightIntentGenericInfo> &active, std::string &out) const;
     void ResolveUris(const AAFwk::WantParams &opts, std::vector<std::string> &out) const;
     void ResolveFlags(const AAFwk::WantParams &opts, int32_t &out) const;
     void ResolveUserId(const AAFwk::WantParams &opts, int32_t callerUserId, int32_t &out) const;

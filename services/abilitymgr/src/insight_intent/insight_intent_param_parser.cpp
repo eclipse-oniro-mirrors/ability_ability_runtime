@@ -15,16 +15,15 @@
 
 #include "insight_intent_param_parser.h"
 
-#include <algorithm>
 #include <cctype>
 #include <cerrno>
 #include <cstdlib>
 #include <cstdint>
-#include <set>
 #include <unordered_map>
 
 #include "ability_manager_errors.h"
 #include "array_wrapper.h"
+#include "function_call_convert.h"
 #include "hilog_tag_wrapper.h"
 #include "string_wrapper.h"
 
@@ -44,20 +43,6 @@ constexpr const char *INSIGHT_INTENT_OPT_DEVICE_ID = "deviceId";
 constexpr int DECIMAL_BASE = 10;
 constexpr int AUTO_BASE = 0;
 
-std::string GetAlphaFirstString(std::vector<std::string> vals)
-{
-    if (vals.empty()) {
-        return "";
-    }
-    std::sort(vals.begin(), vals.end());
-    return vals.front();
-}
-
-int32_t ExecuteModeToInt(AppExecFwk::ExecuteMode mode)
-{
-    return static_cast<int32_t>(mode);
-}
-
 bool ParseInt(const std::string &s, int base, int32_t &out)
 {
     if (s.empty()) {
@@ -76,7 +61,8 @@ bool ParseInt(const std::string &s, int base, int32_t &out)
     return true;
 }
 
-std::string GetAbilityName(const ExtractInsightIntentGenericInfo &c)
+// 从代表候选的 variant 提取 abilityName（Entry/Page/Form 三种装饰器有 abilityName 字段）。
+std::string GetAbilityNameFromRep(const ExtractInsightIntentGenericInfo &c)
 {
     if (c.currentType == InfoType::Entry) {
         return c.get<InsightIntentEntryInfo>().abilityName;
@@ -90,22 +76,39 @@ std::string GetAbilityName(const ExtractInsightIntentGenericInfo &c)
     return "";
 }
 
-void CollectExecuteModes(const ExtractInsightIntentGenericInfo &c, std::set<int32_t> &out)
+// 从代表候选的 variant 提取 executeMode（Entry 取 executeMode 首个；Function 强制 SE）。
+int32_t GetExecuteModeFromRep(const ExtractInsightIntentGenericInfo &c)
 {
     if (c.currentType == InfoType::Entry) {
-        for (auto m : c.get<InsightIntentEntryInfo>().executeMode) {
-            out.insert(ExecuteModeToInt(m));
+        const auto &entry = c.get<InsightIntentEntryInfo>();
+        if (!entry.executeMode.empty()) {
+            return static_cast<int32_t>(entry.executeMode.front());
         }
-        return;
     }
     if (c.currentType == InfoType::Function) {
-        out.insert(ExecuteModeToInt(AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY));
-        return;
+        return static_cast<int32_t>(AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY);
     }
-    if (c.currentType == InfoType::Link || c.currentType == InfoType::Page ||
-        c.currentType == InfoType::Form) {
-        out.insert(ExecuteModeToInt(AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND));
+    return static_cast<int32_t>(AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND);
+}
+
+// options.executeMode 字符串映射 + 数字解析；空字符串返回 false 表示未覆写。
+bool ResolveExecuteModeFromOption(const std::string &s, int32_t &out)
+{
+    if (s.empty()) {
+        return false;
     }
+    static const std::unordered_map<std::string, int32_t> MODE_MAP = {
+        {"UI_ABILITY_FOREGROUND", static_cast<int32_t>(AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND)},
+        {"UI_ABILITY_BACKGROUND", static_cast<int32_t>(AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND)},
+        {"UI_EXTENSION_ABILITY", static_cast<int32_t>(AppExecFwk::ExecuteMode::UI_EXTENSION_ABILITY)},
+        {"SERVICE_EXTENSION_ABILITY", static_cast<int32_t>(AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY)},
+    };
+    auto it = MODE_MAP.find(s);
+    if (it != MODE_MAP.end()) {
+        out = it->second;
+        return true;
+    }
+    return ParseInt(s, DECIMAL_BASE, out);
 }
 } // namespace
 
@@ -118,11 +121,27 @@ int32_t InsightIntentParamParser::Build(const std::string &bundleName, const std
         return ERR_INVALID_VALUE;
     }
 
-    std::vector<ExtractInsightIntentGenericInfo> active = candidates;
-    PickActiveCandidates(active, out.ignoreAbilityName, out.openLinkExecuteFlag);
-    if (!active.empty()) {
-        out.representative = active.front();
+    // 规则 1 过滤 + 按 (moduleName, abilityName) 字典序排序。与注册侧 IntentFilterUtil::FilterGeneric 一致。
+    // 取末条作为代表，等价于注册侧 KVStore last-wins 覆盖语义。
+    std::vector<ExtractInsightIntentInfo> wrapped;
+    wrapped.reserve(candidates.size());
+    for (const auto &c : candidates) {
+        ExtractInsightIntentInfo info;
+        info.genericInfo = c;
+        wrapped.push_back(std::move(info));
     }
+    CliTool::IntentFilterUtil filter;
+    filter.FilterGeneric(wrapped);
+    if (wrapped.empty()) {
+        TAG_LOGE(AAFwkTag::INTENT, "no qualified candidate after rule-1 filter");
+        return ERR_INVALID_VALUE;
+    }
+    const auto &rep = wrapped.back().genericInfo;
+    out.representative = rep;
+    out.ignoreAbilityName = rep.decoratorType == INSIGHT_INTENTS_DECORATOR_TYPE_LINK
+        || rep.decoratorType == INSIGHT_INTENTS_DECORATOR_TYPE_PAGE
+        || rep.decoratorType == INSIGHT_INTENTS_DECORATOR_TYPE_FUNCTION;
+    out.openLinkExecuteFlag = rep.decoratorType == INSIGHT_INTENTS_DECORATOR_TYPE_LINK;
 
     auto options = ExtractOptions(wantParam);
 
@@ -133,9 +152,19 @@ int32_t InsightIntentParamParser::Build(const std::string &bundleName, const std
     param->userId_ = callerUserId;
     param->displayId_ = AppExecFwk::INVALID_DISPLAY_ID;
 
-    ResolveModuleName(*options, active, param->moduleName_);
-    ResolveExecuteMode(*options, active, param->executeMode_);
-    ResolveAbilityName(*options, active, param->abilityName_);
+    // 字段从代表取，options 显式指定时覆写。
+    std::string optModuleName = options->GetStringParam(INSIGHT_INTENT_OPT_MODULE_NAME);
+    param->moduleName_ = optModuleName.empty() ? rep.moduleName : optModuleName;
+
+    std::string optAbilityName = options->GetStringParam(INSIGHT_INTENT_OPT_ABILITY_NAME);
+    param->abilityName_ = optAbilityName.empty() ? GetAbilityNameFromRep(rep) : optAbilityName;
+
+    int32_t optMode = 0;
+    param->executeMode_ = ResolveExecuteModeFromOption(options->GetStringParam(INSIGHT_INTENT_OPT_EXECUTE_MODE),
+        optMode)
+        ? optMode
+        : GetExecuteModeFromRep(rep);
+
     ResolveUris(*options, param->uris_);
     ResolveFlags(*options, param->flags_);
     ResolveUserId(*options, callerUserId, param->userId_);
@@ -146,30 +175,6 @@ int32_t InsightIntentParamParser::Build(const std::string &bundleName, const std
     return ERR_OK;
 }
 
-void InsightIntentParamParser::PickActiveCandidates(std::vector<ExtractInsightIntentGenericInfo> &active,
-    bool &ignoreAbilityName, bool &openLinkExecuteFlag) const
-{
-    ignoreAbilityName = false;
-    openLinkExecuteFlag = false;
-    if (active.empty()) {
-        return;
-    }
-    auto minIt = std::min_element(active.begin(), active.end(),
-        [](const ExtractInsightIntentGenericInfo &a, const ExtractInsightIntentGenericInfo &b) {
-            return a.decoratorType < b.decoratorType;
-        });
-    std::string activeDecorator = minIt->decoratorType;
-    active.erase(std::remove_if(active.begin(), active.end(),
-        [&activeDecorator](const ExtractInsightIntentGenericInfo &c) {
-            return c.decoratorType != activeDecorator;
-        }), active.end());
-
-    ignoreAbilityName = activeDecorator == INSIGHT_INTENTS_DECORATOR_TYPE_LINK
-        || activeDecorator == INSIGHT_INTENTS_DECORATOR_TYPE_PAGE
-        || activeDecorator == INSIGHT_INTENTS_DECORATOR_TYPE_FUNCTION;
-    openLinkExecuteFlag = activeDecorator == INSIGHT_INTENTS_DECORATOR_TYPE_LINK;
-}
-
 std::shared_ptr<AAFwk::WantParams> InsightIntentParamParser::ExtractOptions(
     const AAFwk::WantParams &wantParam) const
 {
@@ -177,75 +182,6 @@ std::shared_ptr<AAFwk::WantParams> InsightIntentParamParser::ExtractOptions(
         return std::make_shared<AAFwk::WantParams>();
     }
     return std::make_shared<AAFwk::WantParams>(wantParam.GetWantParams(INSIGHT_INTENT_OPTIONS_KEY));
-}
-
-void InsightIntentParamParser::ResolveModuleName(const AAFwk::WantParams &opts,
-    const std::vector<ExtractInsightIntentGenericInfo> &active, std::string &out) const
-{
-    std::string opt = opts.GetStringParam(INSIGHT_INTENT_OPT_MODULE_NAME);
-    if (!opt.empty()) {
-        out = std::move(opt);
-        return;
-    }
-    std::vector<std::string> names;
-    for (const auto &c : active) {
-        if (!c.moduleName.empty()) {
-            names.push_back(c.moduleName);
-        }
-    }
-    out = GetAlphaFirstString(std::move(names));
-}
-
-void InsightIntentParamParser::ResolveExecuteMode(const AAFwk::WantParams &opts,
-    const std::vector<ExtractInsightIntentGenericInfo> &active, int32_t &out) const
-{
-    std::string opt = opts.GetStringParam(INSIGHT_INTENT_OPT_EXECUTE_MODE);
-    if (!opt.empty()) {
-        static const std::unordered_map<std::string, int32_t> MODE_MAP = {
-            {"UI_ABILITY_FOREGROUND", ExecuteModeToInt(AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND)},
-            {"UI_ABILITY_BACKGROUND", ExecuteModeToInt(AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND)},
-            {"UI_EXTENSION_ABILITY", ExecuteModeToInt(AppExecFwk::ExecuteMode::UI_EXTENSION_ABILITY)},
-            {"SERVICE_EXTENSION_ABILITY", ExecuteModeToInt(AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY)},
-        };
-        auto it = MODE_MAP.find(opt);
-        if (it != MODE_MAP.end()) {
-            out = it->second;
-            return;
-        }
-        if (ParseInt(opt, DECIMAL_BASE, out)) {
-            return;
-        }
-    }
-
-    std::set<int32_t> modeSet;
-    for (const auto &c : active) {
-        CollectExecuteModes(c, modeSet);
-    }
-    if (modeSet.size() > 1) {
-        out = ExecuteModeToInt(AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND);
-    } else if (modeSet.size() == 1) {
-        out = *modeSet.begin();
-    } else {
-        out = ExecuteModeToInt(AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND);
-    }
-}
-
-void InsightIntentParamParser::ResolveAbilityName(const AAFwk::WantParams &opts,
-    const std::vector<ExtractInsightIntentGenericInfo> &active, std::string &out) const
-{
-    std::string opt = opts.GetStringParam(INSIGHT_INTENT_OPT_ABILITY_NAME);
-    if (!opt.empty()) {
-        out = std::move(opt);
-        return;
-    }
-    std::vector<std::string> names;
-    for (const auto &c : active) {
-        std::string name = GetAbilityName(c);
-        if (!name.empty()) {
-            names.push_back(name);
-        }
-    }
-    out = GetAlphaFirstString(std::move(names));
 }
 
 void InsightIntentParamParser::ResolveUris(const AAFwk::WantParams &opts,
