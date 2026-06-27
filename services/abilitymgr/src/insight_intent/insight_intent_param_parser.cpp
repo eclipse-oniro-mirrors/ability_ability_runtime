@@ -137,7 +137,7 @@ int32_t InsightIntentParamParser::Build(const std::string &bundleName, const std
         return ERR_INVALID_VALUE;
     }
     const auto &rep = wrapped.back().genericInfo;
-    out.representative = rep;
+    out.matchedInfo = rep;
     out.ignoreAbilityName = rep.decoratorType == INSIGHT_INTENTS_DECORATOR_TYPE_LINK
         || rep.decoratorType == INSIGHT_INTENTS_DECORATOR_TYPE_PAGE
         || rep.decoratorType == INSIGHT_INTENTS_DECORATOR_TYPE_FUNCTION;

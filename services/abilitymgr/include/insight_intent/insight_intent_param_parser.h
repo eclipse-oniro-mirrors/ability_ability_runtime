@@ -32,7 +32,7 @@ public:
         std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> param;
         bool ignoreAbilityName = false;
         bool openLinkExecuteFlag = false;
-        ExtractInsightIntentGenericInfo representative;
+        ExtractInsightIntentGenericInfo matchedInfo;
     };
 
     int32_t Build(const std::string &bundleName, const std::string &intentName,

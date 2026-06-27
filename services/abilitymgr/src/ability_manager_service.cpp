@@ -14409,7 +14409,7 @@ int32_t AbilityManagerService::ExecuteIntentByFunctionCall(uint64_t key,
         return ret;
     }
 
-    AbilityRuntime::ExecuteIntentCommonOptions options(ignoreAbilityName, parseResult.representative, key);
+    AbilityRuntime::ExecuteIntentCommonOptions options(ignoreAbilityName, parseResult.matchedInfo, key);
     TAG_LOGI(AAFwkTag::INTENT, "dispatch to ExecuteIntentCommon, ignoreAbilityName: %{public}d, "
         "openLink: %{public}d, callerBundle: %{public}s",
         ignoreAbilityName, openLinkExecuteFlag, callerBundleName.c_str());
