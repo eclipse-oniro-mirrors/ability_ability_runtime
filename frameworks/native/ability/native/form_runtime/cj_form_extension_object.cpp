@@ -155,8 +155,11 @@ void CJFormExtensionObject::OnChangeFormVisibility(const std::map<int64_t, int32
         return;
     }
     int64_t i = 0;
+    std::vector<std::string> keyStrings;
+    keyStrings.reserve(formEventsMap.size());
     for (auto& item : formEventsMap) {
-        keysHead[i] = const_cast<char*>(std::to_string(item.first).c_str());
+        keyStrings.push_back(std::to_string(item.first));
+        keysHead[i] = const_cast<char*>(keyStrings.back().c_str());
         valuesHead[i] = item.second;
         i++;
     }
