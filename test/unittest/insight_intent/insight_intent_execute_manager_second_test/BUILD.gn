@@ -25,6 +25,7 @@ ohos_unittest("insight_intent_execute_manager_second_test") {
     "${ability_runtime_services_path}/abilitymgr/include/insight_intent",
     "${ability_runtime_services_path}/common/include",
     "${ability_runtime_test_path}/mock/services_appmgr_test/include",
+    "${cli_tool_framework_path}/interfaces/function/include",
   ]
 
   sources = [
@@ -56,6 +57,7 @@ ohos_unittest("insight_intent_execute_manager_second_test") {
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_services_path}/common:app_util",
     "${ability_runtime_services_path}/common:perm_verification",
+    "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",
   ]
 
   external_deps = [
