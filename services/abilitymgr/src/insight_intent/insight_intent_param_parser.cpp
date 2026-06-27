@@ -43,15 +43,15 @@ constexpr const char *INSIGHT_INTENT_OPT_DEVICE_ID = "deviceId";
 constexpr int DECIMAL_BASE = 10;
 constexpr int AUTO_BASE = 0;
 
-bool ParseInt(const std::string &s, int base, int32_t &out)
+bool ParseInt(const std::string &str, int base, int32_t &out)
 {
-    if (s.empty()) {
+    if (str.empty()) {
         return false;
     }
     errno = 0;
     char *end = nullptr;
-    long long val = std::strtoll(s.c_str(), &end, base);
-    if (end == s.c_str() || *end != '\0' || errno == ERANGE) {
+    long long val = std::strtoll(str.c_str(), &end, base);
+    if (end == str.c_str() || *end != '\0' || errno == ERANGE) {
         return false;
     }
     if (val < INT32_MIN || val > INT32_MAX) {
@@ -62,39 +62,39 @@ bool ParseInt(const std::string &s, int base, int32_t &out)
 }
 
 // 从代表候选的 variant 提取 abilityName（Entry/Page/Form 三种装饰器有 abilityName 字段）。
-std::string GetAbilityNameFromRep(const ExtractInsightIntentGenericInfo &c)
+std::string GetAbilityNameFromMatched(const ExtractInsightIntentGenericInfo &info)
 {
-    if (c.currentType == InfoType::Entry) {
-        return c.get<InsightIntentEntryInfo>().abilityName;
+    if (info.currentType == InfoType::Entry) {
+        return info.get<InsightIntentEntryInfo>().abilityName;
     }
-    if (c.currentType == InfoType::Page) {
-        return c.get<InsightIntentPageInfo>().uiAbility;
+    if (info.currentType == InfoType::Page) {
+        return info.get<InsightIntentPageInfo>().uiAbility;
     }
-    if (c.currentType == InfoType::Form) {
-        return c.get<InsightIntentFormInfo>().abilityName;
+    if (info.currentType == InfoType::Form) {
+        return info.get<InsightIntentFormInfo>().abilityName;
     }
     return "";
 }
 
 // 从代表候选的 variant 提取 executeMode（Entry 取 executeMode 首个；Function 强制 SE）。
-int32_t GetExecuteModeFromRep(const ExtractInsightIntentGenericInfo &c)
+int32_t GetExecuteModeFromMatched(const ExtractInsightIntentGenericInfo &info)
 {
-    if (c.currentType == InfoType::Entry) {
-        const auto &entry = c.get<InsightIntentEntryInfo>();
+    if (info.currentType == InfoType::Entry) {
+        const auto &entry = info.get<InsightIntentEntryInfo>();
         if (!entry.executeMode.empty()) {
             return static_cast<int32_t>(entry.executeMode.front());
         }
     }
-    if (c.currentType == InfoType::Function) {
+    if (info.currentType == InfoType::Function) {
         return static_cast<int32_t>(AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY);
     }
     return static_cast<int32_t>(AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND);
 }
 
 // options.executeMode 字符串映射 + 数字解析；空字符串返回 false 表示未覆写。
-bool ResolveExecuteModeFromOption(const std::string &s, int32_t &out)
+bool ResolveExecuteModeFromOption(const std::string &str, int32_t &out)
 {
-    if (s.empty()) {
+    if (str.empty()) {
         return false;
     }
     static const std::unordered_map<std::string, int32_t> MODE_MAP = {
@@ -103,12 +103,12 @@ bool ResolveExecuteModeFromOption(const std::string &s, int32_t &out)
         {"UI_EXTENSION_ABILITY", static_cast<int32_t>(AppExecFwk::ExecuteMode::UI_EXTENSION_ABILITY)},
         {"SERVICE_EXTENSION_ABILITY", static_cast<int32_t>(AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY)},
     };
-    auto it = MODE_MAP.find(s);
+    auto it = MODE_MAP.find(str);
     if (it != MODE_MAP.end()) {
         out = it->second;
         return true;
     }
-    return ParseInt(s, DECIMAL_BASE, out);
+    return ParseInt(str, DECIMAL_BASE, out);
 }
 } // namespace
 
@@ -125,9 +125,9 @@ int32_t InsightIntentParamParser::Build(const std::string &bundleName, const std
     // 取末条作为代表，等价于注册侧 KVStore last-wins 覆盖语义。
     std::vector<ExtractInsightIntentInfo> wrapped;
     wrapped.reserve(candidates.size());
-    for (const auto &c : candidates) {
+    for (const auto &candidate : candidates) {
         ExtractInsightIntentInfo info;
-        info.genericInfo = c;
+        info.genericInfo = candidate;
         wrapped.push_back(std::move(info));
     }
     CliTool::IntentFilterUtil filter;
@@ -136,12 +136,12 @@ int32_t InsightIntentParamParser::Build(const std::string &bundleName, const std
         TAG_LOGE(AAFwkTag::INTENT, "no qualified candidate after rule-1 filter");
         return ERR_INVALID_VALUE;
     }
-    const auto &rep = wrapped.back().genericInfo;
-    out.matchedInfo = rep;
-    out.ignoreAbilityName = rep.decoratorType == INSIGHT_INTENTS_DECORATOR_TYPE_LINK
-        || rep.decoratorType == INSIGHT_INTENTS_DECORATOR_TYPE_PAGE
-        || rep.decoratorType == INSIGHT_INTENTS_DECORATOR_TYPE_FUNCTION;
-    out.openLinkExecuteFlag = rep.decoratorType == INSIGHT_INTENTS_DECORATOR_TYPE_LINK;
+    const auto &matched = wrapped.back().genericInfo;
+    out.matchedInfo = matched;
+    out.ignoreAbilityName = matched.decoratorType == INSIGHT_INTENTS_DECORATOR_TYPE_LINK
+        || matched.decoratorType == INSIGHT_INTENTS_DECORATOR_TYPE_PAGE
+        || matched.decoratorType == INSIGHT_INTENTS_DECORATOR_TYPE_FUNCTION;
+    out.openLinkExecuteFlag = matched.decoratorType == INSIGHT_INTENTS_DECORATOR_TYPE_LINK;
 
     auto options = ExtractOptions(wantParam);
 
@@ -154,16 +154,16 @@ int32_t InsightIntentParamParser::Build(const std::string &bundleName, const std
 
     // 字段从代表取，options 显式指定时覆写。
     std::string optModuleName = options->GetStringParam(INSIGHT_INTENT_OPT_MODULE_NAME);
-    param->moduleName_ = optModuleName.empty() ? rep.moduleName : optModuleName;
+    param->moduleName_ = optModuleName.empty() ? matched.moduleName : optModuleName;
 
     std::string optAbilityName = options->GetStringParam(INSIGHT_INTENT_OPT_ABILITY_NAME);
-    param->abilityName_ = optAbilityName.empty() ? GetAbilityNameFromRep(rep) : optAbilityName;
+    param->abilityName_ = optAbilityName.empty() ? GetAbilityNameFromMatched(matched) : optAbilityName;
 
     int32_t optMode = 0;
     param->executeMode_ = ResolveExecuteModeFromOption(options->GetStringParam(INSIGHT_INTENT_OPT_EXECUTE_MODE),
         optMode)
         ? optMode
-        : GetExecuteModeFromRep(rep);
+        : GetExecuteModeFromMatched(matched);
 
     ResolveUris(*options, param->uris_);
     ResolveFlags(*options, param->flags_);
