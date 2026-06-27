@@ -116,7 +116,8 @@ napi_value JsAbilityAutoStartupManager::OnRegisterAutoStartupCallback(napi_env e
         jsAutoStartupCallback_ = new (std::nothrow) JsAbilityAutoStartupCallBack(env);
         if (jsAutoStartupCallback_ == nullptr) {
             TAG_LOGE(AAFwkTag::AUTO_STARTUP, "null jsAutoStartupCallback_");
-            ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+            ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_CALLBACK_FAILED));
             return CreateJsUndefined(env);
         }
 
@@ -161,7 +162,8 @@ napi_value JsAbilityAutoStartupManager::OnUnregisterAutoStartupCallback(napi_env
 
     if (jsAutoStartupCallback_ == nullptr) {
         TAG_LOGE(AAFwkTag::AUTO_STARTUP, "null jsAutoStartupCallback_");
-        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::CALLBACK_NOT_REGISTERED));
         return CreateJsUndefined(env);
     }
 
@@ -373,7 +375,7 @@ napi_value JsAbilityAutoStartupManager::OnGetAutoStartupStatusForSelf(napi_env e
             if (errCode == AbilityErrorCode::ERROR_CODE_CAPABILITY_NOT_SUPPORT) {
                 task.Reject(env, CreateJsError(env, errCode));
             } else {
-                task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+                task.Reject(env, CreateJsErrorByNativeErr(env, *ret));
             }
             return;
         }

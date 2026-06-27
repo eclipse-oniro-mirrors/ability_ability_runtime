@@ -59,6 +59,7 @@ ohos_shared_library("app_manager_ani") {
     "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_native_path}/appkit:app_context",
     "${ability_runtime_path}/frameworks/ets/ani/ani_common:ani_common",
+    "${ability_runtime_native_path}/ability/native:ability_business_error",
   ]
 
   external_deps = [

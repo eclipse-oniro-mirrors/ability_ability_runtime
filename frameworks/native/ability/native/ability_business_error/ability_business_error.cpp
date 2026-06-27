@@ -230,6 +230,22 @@ constexpr const char* ERROR_MSG_RESTORE_WINDOW_STAGE_FAILED =
     "Internal error. Failed to restore the window stage. Check the local storage object and try again.";
 constexpr const char* ERROR_MSG_WRAP_ABILITY_RESULT_FAILED =
     "Internal error. Failed to create the ability result. Check the returned Want and try again.";
+constexpr const char* ERROR_MSG_GET_APPMS_FAILED =
+    "Internal error. Failed to obtain the application manager service. Try again later.";
+constexpr const char* ERROR_MSG_GET_ABILITYMS_FAILED =
+    "Internal error. Failed to obtain the ability manager service. Try again later.";
+constexpr const char* ERROR_MSG_CREATE_OBSERVER_FAILED =
+    "Internal error. Failed to create the observer object. Try again later.";
+constexpr const char* ERROR_MSG_CONNECTION_NOT_FOUND =
+    "Internal error. The specified connection does not exist. Check the connection object and try again.";
+constexpr const char* ERROR_MSG_INVALID_RET_CODE =
+    "Internal error. Failed to obtain the result code. Try again later.";
+constexpr const char* ERROR_MSG_CREATE_CALLBACK_FAILED =
+    "Internal error. Failed to create the callback object. Try again later.";
+constexpr const char* ERROR_MSG_CALLBACK_NOT_REGISTERED =
+    "Internal error. The callback has not been registered. Register the callback first.";
+constexpr const char* ERROR_MSG_START_CHILD_PROCESS_FAILED =
+    "Internal error. Failed to start the child process. Check the process parameters and try again.";
 constexpr const char* ERROR_MSG_QUERY_ATOMIC_SERVICE_STARTUP_RULE_FAILED =
     "Internal error. Failed to query the atomic service startup rule. Try again later.";
 constexpr const char* ERROR_MSG_RESTART_SELF_ATOMIC_SERVICE_FAILED =
@@ -565,6 +581,14 @@ static std::unordered_map<AbilityInnerErrorMsg, const char*> INNER_ERROR_MSG_BY_
     {AbilityInnerErrorMsg::OPERATION_FAILED, ERROR_MSG_OPERATION_FAILED},
     {AbilityInnerErrorMsg::RESTORE_WINDOW_STAGE_FAILED, ERROR_MSG_RESTORE_WINDOW_STAGE_FAILED},
     {AbilityInnerErrorMsg::WRAP_ABILITY_RESULT_FAILED, ERROR_MSG_WRAP_ABILITY_RESULT_FAILED},
+    {AbilityInnerErrorMsg::GET_APPMS_FAILED, ERROR_MSG_GET_APPMS_FAILED},
+    {AbilityInnerErrorMsg::GET_ABILITYMS_FAILED, ERROR_MSG_GET_ABILITYMS_FAILED},
+    {AbilityInnerErrorMsg::CREATE_OBSERVER_FAILED, ERROR_MSG_CREATE_OBSERVER_FAILED},
+    {AbilityInnerErrorMsg::CONNECTION_NOT_FOUND, ERROR_MSG_CONNECTION_NOT_FOUND},
+    {AbilityInnerErrorMsg::INVALID_RET_CODE, ERROR_MSG_INVALID_RET_CODE},
+    {AbilityInnerErrorMsg::CREATE_CALLBACK_FAILED, ERROR_MSG_CREATE_CALLBACK_FAILED},
+    {AbilityInnerErrorMsg::CALLBACK_NOT_REGISTERED, ERROR_MSG_CALLBACK_NOT_REGISTERED},
+    {AbilityInnerErrorMsg::START_CHILD_PROCESS_FAILED, ERROR_MSG_START_CHILD_PROCESS_FAILED},
     {AbilityInnerErrorMsg::QUERY_ATOMIC_SERVICE_STARTUP_RULE_FAILED,
         ERROR_MSG_QUERY_ATOMIC_SERVICE_STARTUP_RULE_FAILED},
     {AbilityInnerErrorMsg::RESTART_SELF_ATOMIC_SERVICE_FAILED, ERROR_MSG_RESTART_SELF_ATOMIC_SERVICE_FAILED},
