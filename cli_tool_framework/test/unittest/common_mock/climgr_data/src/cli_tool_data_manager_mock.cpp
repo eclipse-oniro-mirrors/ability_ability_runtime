@@ -147,6 +147,13 @@ int32_t CliFunctionDataManager::GetAllFunctions(std::vector<FunctionInfo> &funct
     return CliFunctionDataManagerMock::getAllFunctionsResult;
 }
 
+int32_t CliFunctionDataManager::BatchRegisterFunctions(const std::vector<FunctionInfo> &functions,
+    int32_t &successCount)
+{
+    successCount = functions.size();
+    return ERR_OK;
+}
+
 int32_t CliFunctionDataManager::EnsureFunctionsInitialized()
 {
     return ERR_OK;

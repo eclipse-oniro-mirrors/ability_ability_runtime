@@ -142,6 +142,47 @@ int32_t CliFunctionDataManager::RegisterFunction(const FunctionInfo &function)
     return ERR_OK;
 }
 
+int32_t CliFunctionDataManager::BatchRegisterFunctions(const std::vector<FunctionInfo> &functions,
+    int32_t &successCount)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions called: %{public}zu functions",
+        functions.size());
+
+    if (functions.empty()) {
+        successCount = 0;
+        return ERR_INVALID_PARAM;
+    }
+
+    // Acquire lock only for KVStore operations
+    std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
+
+    if (!CheckKvStore()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "KVStore not ready");
+        successCount = 0;
+        return ERR_NO_INIT;
+    }
+
+    successCount = 0;
+    int32_t failedCount = 0;
+
+    for (const auto &function : functions) {
+        int32_t ret = StoreFunction(function);
+        if (ret != ERR_OK) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "Failed to store function: %{public}s/%{public}s, ret=%{public}d",
+                function.functionNamespace.c_str(), function.functionName.c_str(), ret);
+            failedCount++;
+        } else {
+            successCount++;
+        }
+    }
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions completed: success=%{public}d, failed=%{public}d",
+        successCount, failedCount);
+
+    // Return ERR_OK if at least one function was registered successfully
+    return (successCount > 0) ? ERR_OK : ERR_INVALID_PARAM;
+}
+
 int32_t CliFunctionDataManager::GetFunctionByName(const std::string &functionNamespace,
     const std::string &functionName, FunctionInfo &function)
 {

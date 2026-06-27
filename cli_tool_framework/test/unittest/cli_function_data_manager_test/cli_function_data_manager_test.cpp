@@ -951,5 +951,149 @@ HWTEST_F(CliFunctionDataManagerTest, FunctionInfo_Validate_004, TestSize.Level1)
     TAG_LOGI(AAFwkTag::CLI_TOOL, "FunctionInfo_Validate_004 end");
 }
 
+// ==================== BatchRegisterFunctions Tests ====================
+
+/**
+ * @tc.name: CliFunctionDataManager_BatchRegisterFunctions_001
+ * @tc.desc: Test BatchRegisterFunctions with multiple valid functions
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_BatchRegisterFunctions_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_BatchRegisterFunctions_001 start");
+
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    CliFunctionDataManager::GetInstance().kvStorePtr_ = mockStore;
+
+    std::vector<FunctionInfo> functions;
+    for (int i = 0; i < 3; i++) {
+        FunctionInfo function;
+        function.functionName = "batch_func_" + std::to_string(i);
+        function.functionNamespace = "batch_ns";
+        function.functionType = FunctionType::INTENT_FUNCTION;
+        functions.push_back(function);
+    }
+
+    int32_t successCount = 0;
+    int32_t ret = CliFunctionDataManager::GetInstance().BatchRegisterFunctions(functions, successCount);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(successCount, 3);
+    EXPECT_TRUE(mockStore->HasMockData("batch_ns/batch_func_0"));
+    EXPECT_TRUE(mockStore->HasMockData("batch_ns/batch_func_1"));
+    EXPECT_TRUE(mockStore->HasMockData("batch_ns/batch_func_2"));
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_BatchRegisterFunctions_001 end");
+}
+
+/**
+ * @tc.name: CliFunctionDataManager_BatchRegisterFunctions_002
+ * @tc.desc: Test BatchRegisterFunctions with empty vector
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_BatchRegisterFunctions_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_BatchRegisterFunctions_002 start");
+
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    CliFunctionDataManager::GetInstance().kvStorePtr_ = mockStore;
+
+    std::vector<FunctionInfo> functions;
+    int32_t successCount = 0;
+    int32_t ret = CliFunctionDataManager::GetInstance().BatchRegisterFunctions(functions, successCount);
+
+    EXPECT_EQ(ret, ERR_INVALID_PARAM);
+    EXPECT_EQ(successCount, 0);
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_BatchRegisterFunctions_002 end");
+}
+
+/**
+ * @tc.name: CliFunctionDataManager_BatchRegisterFunctions_003
+ * @tc.desc: Test BatchRegisterFunctions with KVStore Put failure
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_BatchRegisterFunctions_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_BatchRegisterFunctions_003 start");
+
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    mockStore->Put_ = DistributedKv::Status::ERROR;
+    CliFunctionDataManager::GetInstance().kvStorePtr_ = mockStore;
+
+    std::vector<FunctionInfo> functions;
+    for (int i = 0; i < 3; i++) {
+        FunctionInfo function;
+        function.functionName = "fail_batch_func_" + std::to_string(i);
+        function.functionNamespace = "fail_batch_ns";
+        function.functionType = FunctionType::INTENT_FUNCTION;
+        functions.push_back(function);
+    }
+
+    int32_t successCount = 0;
+    int32_t ret = CliFunctionDataManager::GetInstance().BatchRegisterFunctions(functions, successCount);
+
+    EXPECT_EQ(ret, ERR_INVALID_PARAM);
+    EXPECT_EQ(successCount, 0);
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_BatchRegisterFunctions_003 end");
+}
+
+/**
+ * @tc.name: CliFunctionDataManager_BatchRegisterFunctions_004
+ * @tc.desc: Test BatchRegisterFunctions with null KVStore
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_BatchRegisterFunctions_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_BatchRegisterFunctions_004 start");
+
+    CliFunctionDataManager::GetInstance().kvStorePtr_ = nullptr;
+
+    std::vector<FunctionInfo> functions;
+    FunctionInfo function;
+    function.functionName = "null_test_func";
+    function.functionNamespace = "null_test_ns";
+    function.functionType = FunctionType::INTENT_FUNCTION;
+    functions.push_back(function);
+
+    int32_t successCount = 0;
+    int32_t ret = CliFunctionDataManager::GetInstance().BatchRegisterFunctions(functions, successCount);
+
+    EXPECT_EQ(ret, ERR_NO_INIT);
+    EXPECT_EQ(successCount, 0);
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_BatchRegisterFunctions_004 end");
+}
+
+/**
+ * @tc.name: CliFunctionDataManager_BatchRegisterFunctions_005
+ * @tc.desc: Test BatchRegisterFunctions with single function
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_BatchRegisterFunctions_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_BatchRegisterFunctions_005 start");
+
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    CliFunctionDataManager::GetInstance().kvStorePtr_ = mockStore;
+
+    std::vector<FunctionInfo> functions;
+    FunctionInfo function;
+    function.functionName = "single_batch_func";
+    function.functionNamespace = "single_batch_ns";
+    function.functionType = FunctionType::INTENT_FUNCTION;
+    functions.push_back(function);
+
+    int32_t successCount = 0;
+    int32_t ret = CliFunctionDataManager::GetInstance().BatchRegisterFunctions(functions, successCount);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(successCount, 1);
+    EXPECT_TRUE(mockStore->HasMockData("single_batch_ns/single_batch_func"));
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_BatchRegisterFunctions_005 end");
+}
+
 } // namespace CliTool
 } // namespace OHOS

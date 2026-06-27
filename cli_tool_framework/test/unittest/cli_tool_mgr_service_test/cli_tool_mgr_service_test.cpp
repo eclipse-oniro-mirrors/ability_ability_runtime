@@ -2283,6 +2283,152 @@ HWTEST_F(CliToolManagerServiceTest, RegisterFunction_0300, TestSize.Level1)
 }
 
 /**
+ * @tc.name: CliToolManagerService_BatchRegisterFunctions_0100
+ * @tc.desc: Test BatchRegisterFunctions with valid functions
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, BatchRegisterFunctions_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_BatchRegisterFunctions_0100 start");
+
+    IPCSkeleton::SetCallingTokenID(TOKEN_NATIVE);
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID);
+
+    std::vector<FunctionInfo> functions;
+    for (int i = 0; i < 3; i++) {
+        FunctionInfo function;
+        function.functionName = "batch_test_func_" + std::to_string(i);
+        function.functionNamespace = "batch_test_ns";
+        function.functionType = FunctionType::INTENT_FUNCTION;
+        functions.push_back(function);
+    }
+
+    int32_t successCount = 0;
+    int32_t ret = service_->BatchRegisterFunctions(functions, successCount);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(successCount, 3);
+
+    IPCSkeleton::Reset();
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_BatchRegisterFunctions_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_BatchRegisterFunctions_0200
+ * @tc.desc: Test BatchRegisterFunctions with empty vector
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, BatchRegisterFunctions_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_BatchRegisterFunctions_0200 start");
+
+    IPCSkeleton::SetCallingTokenID(TOKEN_NATIVE);
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID);
+
+    std::vector<FunctionInfo> functions;
+    int32_t successCount = 0;
+    int32_t ret = service_->BatchRegisterFunctions(functions, successCount);
+
+    EXPECT_EQ(ret, ERR_INVALID_PARAM);
+    EXPECT_EQ(successCount, 0);
+
+    IPCSkeleton::Reset();
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_BatchRegisterFunctions_0200 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_BatchRegisterFunctions_0300
+ * @tc.desc: Test BatchRegisterFunctions with non-FOUNDATION UID (permission denied)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, BatchRegisterFunctions_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_BatchRegisterFunctions_0300 start");
+
+    IPCSkeleton::SetCallingTokenID(TOKEN_NATIVE);
+    IPCSkeleton::SetCallingUid(9999); // Non-FOUNDATION UID
+
+    std::vector<FunctionInfo> functions;
+    FunctionInfo function;
+    function.functionName = "test_func";
+    function.functionNamespace = "test_ns";
+    function.functionType = FunctionType::INTENT_FUNCTION;
+    functions.push_back(function);
+
+    int32_t successCount = 0;
+    int32_t ret = service_->BatchRegisterFunctions(functions, successCount);
+
+    EXPECT_EQ(ret, ERR_PERMISSION_DENIED);
+    EXPECT_EQ(successCount, 0);
+
+    IPCSkeleton::Reset();
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_BatchRegisterFunctions_0300 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_BatchRegisterFunctions_0400
+ * @tc.desc: Test BatchRegisterFunctions with non-SA token (permission denied)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, BatchRegisterFunctions_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_BatchRegisterFunctions_0400 start");
+
+    IPCSkeleton::SetCallingTokenID(TOKEN_HAP); // Non-SA token
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID);
+
+    std::vector<FunctionInfo> functions;
+    FunctionInfo function;
+    function.functionName = "test_func";
+    function.functionNamespace = "test_ns";
+    function.functionType = FunctionType::INTENT_FUNCTION;
+    functions.push_back(function);
+
+    int32_t successCount = 0;
+    int32_t ret = service_->BatchRegisterFunctions(functions, successCount);
+
+    EXPECT_EQ(ret, ERR_PERMISSION_DENIED);
+    EXPECT_EQ(successCount, 0);
+
+    IPCSkeleton::Reset();
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_BatchRegisterFunctions_0400 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_BatchRegisterFunctions_0500
+ * @tc.desc: Test BatchRegisterFunctions with invalid function info
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, BatchRegisterFunctions_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_BatchRegisterFunctions_0500 start");
+
+    IPCSkeleton::SetCallingTokenID(TOKEN_NATIVE);
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID);
+
+    std::vector<FunctionInfo> functions;
+    FunctionInfo function;
+    function.functionName = ""; // Invalid: empty name
+    function.functionNamespace = "test_ns";
+    function.functionType = FunctionType::INTENT_FUNCTION;
+    functions.push_back(function);
+
+    int32_t successCount = 0;
+    int32_t ret = service_->BatchRegisterFunctions(functions, successCount);
+
+    EXPECT_EQ(ret, ERR_INVALID_PARAM); // No valid functions to register
+    EXPECT_EQ(successCount, 0);
+
+    IPCSkeleton::Reset();
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_BatchRegisterFunctions_0500 end");
+}
+
+/**
  * @tc.name: CliToolManagerService_GetFunctionInfo_0100
  * @tc.desc: Test GetFunctionInfo success path
  * @tc.type: FUNC
