@@ -1736,6 +1736,10 @@ void AbilityRecord::UpdateConnectWant()
 {
 }
 
+void AbilityRecord::SetDebugApp(bool isDebugApp)
+{
+}
+
 void AbilityRecord::RemoveConnectWant()
 {
 }

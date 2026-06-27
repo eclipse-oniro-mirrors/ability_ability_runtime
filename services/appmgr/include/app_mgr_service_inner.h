@@ -1210,6 +1210,8 @@ public:
      */
     int32_t GetBundleNameByPid(const int32_t pid, std::string &bundleName, int32_t &uid);
 
+    bool IsMainProcessDebug(int32_t uid);
+
     /**
      * Notify Fault Data
      *

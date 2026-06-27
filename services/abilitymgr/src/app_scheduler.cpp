@@ -716,6 +716,12 @@ bool AppScheduler::IsAttachDebug(const std::string &bundleName)
     return ERR_OK;
 }
 
+bool AppScheduler::IsMainProcessDebug(int32_t uid)
+{
+    CHECK_POINTER_AND_RETURN(appMgrClient_, false);
+    return appMgrClient_->IsMainProcessDebug(uid);
+}
+
 void AppScheduler::ClearProcessByToken(sptr<IRemoteObject> token) const
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);

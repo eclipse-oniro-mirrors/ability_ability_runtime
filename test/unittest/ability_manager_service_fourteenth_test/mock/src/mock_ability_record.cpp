@@ -1693,6 +1693,10 @@ void AbilityRecord::SetDebugUIExtension()
 {
 }
 
+void AbilityRecord::SetDebugApp(bool isDebugApp)
+{
+}
+
 void AbilityRecord::NotifyAbilityRequestFailure(const std::string &requestId, const AppExecFwk::ElementName &element,
     const std::string &message)
 {

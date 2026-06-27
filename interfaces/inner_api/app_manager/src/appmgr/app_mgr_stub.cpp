@@ -199,6 +199,8 @@ int32_t AppMgrStub::OnRemoteRequestInnerSecond(uint32_t code, MessageParcel &dat
             return HandleReportDumpMemResult(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::GET_RUNNING_MULTIAPP_INFO_BY_BUNDLENAME):
             return HandleGetRunningMultiAppInfoByBundleName(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::IS_MAIN_PROCESS_DEBUG):
+            return HandleIsMainProcessDebug(data, reply);
     }
     return INVALID_FD;
 }
@@ -1465,6 +1467,17 @@ int32_t AppMgrStub::HandleIsSharedBundleRunning(MessageParcel &data, MessageParc
     std::string bundleName = data.ReadString();
     uint32_t versionCode = data.ReadUint32();
     bool result = IsSharedBundleRunning(bundleName, versionCode);
+    if (!reply.WriteBool(result)) {
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleIsMainProcessDebug(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    int32_t uid = data.ReadInt32();
+    bool result = IsMainProcessDebug(uid);
     if (!reply.WriteBool(result)) {
         return ERR_INVALID_VALUE;
     }

@@ -135,6 +135,7 @@ private:
     int32_t HandleSetContinuousTaskProcess(MessageParcel &data, MessageParcel &reply);
 #endif
     int32_t HandleIsSharedBundleRunning(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleIsMainProcessDebug(MessageParcel &data, MessageParcel &reply);
     int32_t HandleStartNativeProcessForDebugger(MessageParcel &data, MessageParcel &reply);
     int32_t HandleNotifyFault(MessageParcel &data, MessageParcel &reply);
     int32_t HandleNotifyFaultBySA(MessageParcel &data, MessageParcel &reply);

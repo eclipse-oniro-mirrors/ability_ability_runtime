@@ -661,6 +661,13 @@ public:
     bool IsAttachDebug(const std::string &bundleName);
 
     /**
+     * @brief Query whether the main process of the app (identified by uid) is in debug mode.
+     * @param uid The application uid.
+     * @return Returns true if the main process is in debug mode, false otherwise.
+     */
+    bool IsMainProcessDebug(int32_t uid);
+
+    /**
      * To clear the process by ability token.
      *
      * @param token the unique identification to the ability.

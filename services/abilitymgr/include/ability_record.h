@@ -648,6 +648,7 @@ public:
 
     void SetAttachDebug(const bool isAttachDebug);
     void SetAssertDebug(bool isAssertDebug);
+    void SetDebugApp(bool isDebugApp);
     int32_t CreateModalUIExtension(const Want &want);
 
     AppExecFwk::ElementName GetElementName() const;

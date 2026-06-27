@@ -1495,6 +1495,15 @@ int32_t AppMgrService::GetBundleNameByPid(const int32_t pid, std::string &bundle
     return appMgrServiceInner_->GetBundleNameByPid(pid, bundleName, uid);
 }
 
+bool AppMgrService::IsMainProcessDebug(int32_t uid)
+{
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "not ready");
+        return false;
+    }
+    return appMgrServiceInner_->IsMainProcessDebug(uid);
+}
+
 int32_t AppMgrService::GetRunningProcessInfoByPid(const pid_t pid, OHOS::AppExecFwk::RunningProcessInfo &info)
 {
     if (!IsReady()) {
