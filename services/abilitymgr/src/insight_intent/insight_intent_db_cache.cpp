@@ -16,9 +16,6 @@
 #include "insight_intent_db_cache.h"
 
 #include <algorithm>
-#include <type_traits>
-
-#include "function_call_convert.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -268,39 +265,6 @@ void InsightIntentDbCache::GetAllInsightIntentInfo(const int32_t userId, std::ve
         TAG_LOGE(AAFwkTag::INTENT, "LoadIntentData failed");
         return;
     }
-}
-
-namespace {
-template <typename T, typename BundleGetter>
-void ApplyFilterPerBundle(std::vector<T> &items, BundleGetter getBundleName)
-{
-    std::unordered_map<std::string, std::vector<T>> byBundle;
-    for (const auto &item : items) {
-        byBundle[getBundleName(item)].push_back(item);
-    }
-    items.clear();
-    for (auto &entry : byBundle) {
-        CliTool::IntentFilterUtil filter;
-        if constexpr (std::is_same_v<T, ExtractInsightIntentInfo>) {
-            filter.FilterGeneric(entry.second);
-        } else {
-            filter.FilterConfig(entry.second);
-        }
-        for (auto &i : entry.second) {
-            items.push_back(std::move(i));
-        }
-    }
-}
-} // namespace
-
-void InsightIntentDbCache::GetAllInsightIntentInfoForRegister(const int32_t userId,
-    std::vector<ExtractInsightIntentInfo> &infos, std::vector<InsightIntentInfo> &configInfos)
-{
-    GetAllInsightIntentInfo(userId, infos, configInfos);
-    ApplyFilterPerBundle(infos,
-        [](const ExtractInsightIntentInfo &i) { return i.genericInfo.bundleName; });
-    ApplyFilterPerBundle(configInfos,
-        [](const InsightIntentInfo &i) { return i.bundleName; });
 }
 
 void InsightIntentDbCache::GetAllConfigInsightIntentInfo(

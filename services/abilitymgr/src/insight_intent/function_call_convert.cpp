@@ -319,9 +319,15 @@ bool RegisterInsightIntentFunctions(
     const std::string &bundleName,
     uint32_t versionCode)
 {
+    IntentFilterUtil filter;
+    auto filteredConfig = configInfos;
+    filter.FilterConfig(filteredConfig);
+    auto filteredProfile = profileInfos;
+    filter.FilterProfile(filteredProfile);
+
     std::vector<FunctionInfo> functions;
-    ConvertFromConfigIntent(configInfos, functions);
-    ConvertFromExtractProfile(profileInfos, functions);
+    ConvertFromConfigIntent(filteredConfig, functions);
+    ConvertFromExtractProfile(filteredProfile, functions);
     if (functions.empty()) {
         return true;
     }
@@ -346,9 +352,15 @@ bool RegisterInsightIntentFunctions(
     const std::string &bundleName,
     uint32_t versionCode)
 {
+    IntentFilterUtil filter;
+    auto filteredConfig = configInfos;
+    filter.FilterConfig(filteredConfig);
+    auto filteredIntent = intentInfos;
+    filter.FilterGeneric(filteredIntent);
+
     std::vector<FunctionInfo> functions;
-    ConvertFromConfigIntent(configInfos, functions);
-    ConvertFromExtractIntentInfo(intentInfos, functions);
+    ConvertFromConfigIntent(filteredConfig, functions);
+    ConvertFromExtractIntentInfo(filteredIntent, functions);
     if (functions.empty()) {
         return true;
     }

@@ -84,7 +84,6 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
             TAG_LOGE(AAFwkTag::INTENT, "get bundle info failed");
             return;
         }
-        CliTool::IntentFilterUtil intentFilter;
         OHOS::SplitStr(moduleName, ",", moduleNameVec);
         for (std::string moduleNameLocal : moduleNameVec) { // Get json profile firstly
             ret = IN_PROCESS_CALL(bundleMgrHelper->GetJsonProfile(AppExecFwk::INTENT_PROFILE,
@@ -119,8 +118,6 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
         if (allInfos.insightIntents.empty() && allConfigInfos.empty()) {
             return;
         }
-        intentFilter.FilterProfile(allInfos);
-        intentFilter.FilterConfig(allConfigInfos);
         CliTool::RegisterInsightIntentFunctions(allInfos, allConfigInfos, bundleName, bundleInfo.versionCode);
         DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
     });

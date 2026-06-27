@@ -36,9 +36,6 @@ public:
         const std::string &intentName, const int32_t userId, ExtractInsightIntentGenericInfo &genericInfo);
     void GetAllInsightIntentInfo(const int32_t userId, std::vector<ExtractInsightIntentInfo> &infos,
         std::vector<InsightIntentInfo> &configInfos);
-    // 取全量后按规则 1+2+3 过滤+去重。输出 vector 已按胜出代表收缩，调用方无需再做 Filter。
-    void GetAllInsightIntentInfoForRegister(const int32_t userId,
-        std::vector<ExtractInsightIntentInfo> &infos, std::vector<InsightIntentInfo> &configInfos);
     void GetInsightIntentInfoByName(const std::string &bundleName, const int32_t userId,
         std::vector<ExtractInsightIntentInfo> &infos);
     void GetConfigInsightIntentInfoByName(const std::string &bundleName, const int32_t userId,
