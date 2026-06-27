@@ -118,6 +118,9 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
         if (allInfos.insightIntents.empty() && allConfigInfos.empty()) {
             return;
         }
+        CliTool::IntentFilterUtil intentFilter;
+        intentFilter.FilterProfile(allInfos);
+        intentFilter.FilterConfig(allConfigInfos);
         CliTool::RegisterInsightIntentFunctions(allInfos, allConfigInfos, bundleName, bundleInfo.versionCode);
         DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
     });

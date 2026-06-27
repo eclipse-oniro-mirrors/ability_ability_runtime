@@ -171,8 +171,8 @@ void InsightIntentSysEventReceiver::BackupAndScheduleRegister(
     auto task = [self, newBundles = std::move(newBundles), userId]() {
         std::vector<ExtractInsightIntentInfo> allIntentInfos;
         std::vector<InsightIntentInfo> allConfigInfos;
-        DelayedSingleton<InsightIntentDbCache>::GetInstance()->
-            GetAllInsightIntentInfo(userId, allIntentInfos, allConfigInfos);
+        DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetAllInsightIntentInfoForRegister(
+            userId, allIntentInfos, allConfigInfos);
         self->RegisterAllFunctions(newBundles, allIntentInfos, allConfigInfos);
     };
     ffrt::submit(task);
