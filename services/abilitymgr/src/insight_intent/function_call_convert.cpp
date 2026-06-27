@@ -417,7 +417,7 @@ bool BatchRegisterInsightIntentFunctions(
         }
     }
     auto &client = CliToolMGRClient::GetInstance();
-    int32_t ret = client.BatchRegisterFunctions(functions, successCount);
+    ErrCode ret = client.BatchRegisterFunctions(functions, successCount);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "batch register failed, ret=%{public}d, success=%{public}d",
             ret, successCount);
