@@ -14378,6 +14378,14 @@ int32_t AbilityManagerService::ExecuteIntentByFunctionCall(uint64_t key,
         return ERR_INVALID_VALUE;
     }
 
+    // 清理 wantParam 中残留的意图参数（INSIGHT_INTENT_* 系列），避免下游派发携带。
+    // 参考 StartAbility 路径（line 754 等）调用 RemoveInsightIntent。
+    AAFwk::WantParams cleanedParams = wantParam;
+    AAFwk::Want cleanedWant;
+    cleanedWant.SetParams(cleanedParams);
+    AppExecFwk::InsightIntentExecuteParam::RemoveInsightIntent(cleanedWant);
+    const AAFwk::WantParams &wantParamCleaned = cleanedWant.GetParams();
+
     int32_t callerUserId = AbilityRuntime::UserController::GetInstance().GetCallerUserId();
     std::vector<AbilityRuntime::ExtractInsightIntentGenericInfo> candidates;
     int32_t ret = AbilityRuntime::InsightIntentMatcher::GetMatchedIntentInfos(
@@ -14388,7 +14396,7 @@ int32_t AbilityManagerService::ExecuteIntentByFunctionCall(uint64_t key,
     }
 
     AbilityRuntime::InsightIntentParamParser::ParseResult parseResult;
-    ret = paramParser_.Build(bundleName, intentName, wantParam, candidates, callerUserId, parseResult);
+    ret = paramParser_.Build(bundleName, intentName, wantParamCleaned, candidates, callerUserId, parseResult);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "param parser build failed, ret: %{public}d", ret);
         return ret;
