@@ -14366,6 +14366,26 @@ int32_t AbilityManagerService::CheckCrossUserPermission(int32_t targetUserId)
     return ERR_OK;
 }
 
+int32_t AbilityManagerService::PrepareFunctionCallParam(const std::string &bundleName,
+    const std::string &intentName, const WantParams &wantParam, int32_t callerUserId,
+    AbilityRuntime::InsightIntentParamParser::ParseResult &parseResult)
+{
+    AAFwk::WantParams cleanedParams = wantParam;
+    AAFwk::Want cleanedWant;
+    cleanedWant.SetParams(cleanedParams);
+    AppExecFwk::InsightIntentExecuteParam::RemoveInsightIntent(cleanedWant);
+    const AAFwk::WantParams &wantParamCleaned = cleanedWant.GetParams();
+
+    std::vector<AbilityRuntime::ExtractInsightIntentGenericInfo> candidates;
+    int32_t ret = AbilityRuntime::InsightIntentMatcher::GetMatchedIntentInfos(
+        bundleName, intentName, callerUserId, candidates);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::INTENT, "GetMatchedIntentInfos failed, ret: %{public}d", ret);
+        return ret;
+    }
+    return paramParser_.Build(bundleName, intentName, wantParamCleaned, candidates, callerUserId, parseResult);
+}
+
 int32_t AbilityManagerService::ExecuteIntentByFunctionCall(uint64_t key,
     const sptr<IRemoteObject> &callerToken, const std::string &bundleName,
     const std::string &intentName, const WantParams &wantParam)
@@ -14378,27 +14398,10 @@ int32_t AbilityManagerService::ExecuteIntentByFunctionCall(uint64_t key,
         return ERR_INVALID_VALUE;
     }
 
-    // 清理 wantParam 中残留的意图参数（INSIGHT_INTENT_* 系列），避免下游派发携带。
-    // 参考 StartAbility 路径（line 754 等）调用 RemoveInsightIntent。
-    AAFwk::WantParams cleanedParams = wantParam;
-    AAFwk::Want cleanedWant;
-    cleanedWant.SetParams(cleanedParams);
-    AppExecFwk::InsightIntentExecuteParam::RemoveInsightIntent(cleanedWant);
-    const AAFwk::WantParams &wantParamCleaned = cleanedWant.GetParams();
-
     int32_t callerUserId = AbilityRuntime::UserController::GetInstance().GetCallerUserId();
-    std::vector<AbilityRuntime::ExtractInsightIntentGenericInfo> candidates;
-    int32_t ret = AbilityRuntime::InsightIntentMatcher::GetMatchedIntentInfos(
-        bundleName, intentName, callerUserId, candidates);
-    if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::INTENT, "GetMatchedIntentInfos failed, ret: %{public}d", ret);
-        return ret;
-    }
-
     AbilityRuntime::InsightIntentParamParser::ParseResult parseResult;
-    ret = paramParser_.Build(bundleName, intentName, wantParamCleaned, candidates, callerUserId, parseResult);
+    int32_t ret = PrepareFunctionCallParam(bundleName, intentName, wantParam, callerUserId, parseResult);
     if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::INTENT, "param parser build failed, ret: %{public}d", ret);
         return ret;
     }
     auto param = parseResult.param;

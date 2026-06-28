@@ -3639,6 +3639,10 @@ private:
     // GenerateWant + dmsClient.StartRemoteIntent。deviceId 为空时不应调本函数。
     int32_t DispatchDistributedIntent(const std::shared_ptr<InsightIntentExecuteParam> &param,
         const AbilityRuntime::ExtractInsightIntentGenericInfo &infos);
+    // 清理 wantParam 残留意图参数 + 意图候选匹配 + parser.Build 组装执行参数。
+    int32_t PrepareFunctionCallParam(const std::string &bundleName, const std::string &intentName,
+        const WantParams &wantParam, int32_t callerUserId,
+        AbilityRuntime::InsightIntentParamParser::ParseResult &parseResult);
     void GetCallerUidAndToken(const std::string &bundleName, int32_t userId,
         int32_t &callerUid, uint32_t &accessToken);
     bool IsDmsSameAPP(const AbilityRequest &abilityRequest);
