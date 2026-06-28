@@ -180,7 +180,7 @@ int32_t CliFunctionDataManager::BatchRegisterFunctions(const std::vector<Functio
         successCount, failedCount);
 
     // Return ERR_OK if at least one function was registered successfully
-    return (successCount > 0) ? ERR_OK : ERR_INVALID_PARAM;
+    return (successCount > 0) ? ERR_OK : ERR_KVSTORE_ERROR;
 }
 
 int32_t CliFunctionDataManager::GetFunctionByName(const std::string &functionNamespace,
