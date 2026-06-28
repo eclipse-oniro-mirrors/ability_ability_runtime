@@ -274,8 +274,8 @@ void IntentFilterUtil::FilterConfig(std::vector<AbilityRuntime::InsightIntentInf
     std::sort(qualified.begin(), qualified.end(),
         [](const auto &a, const auto &b) { return a.first < b.first; });
     configInfos.clear();
-    for (auto &p : qualified) {
-        configInfos.push_back(std::move(p.second));
+    for (auto &item : qualified) {
+        configInfos.push_back(std::move(item.second));
     }
 }
 
@@ -283,15 +283,15 @@ void IntentFilterUtil::FilterGeneric(std::vector<AbilityRuntime::ExtractInsightI
 {
     std::vector<std::pair<RegisterSortKey, AbilityRuntime::ExtractInsightIntentInfo>> qualified;
     for (auto &info : intentInfos) {
-        const auto &g = info.genericInfo;
-        if (g.intentName.empty() || g.moduleName.empty()) {
+        const auto &generic = info.genericInfo;
+        if (generic.intentName.empty() || generic.moduleName.empty()) {
             continue;
         }
-        RegisterSortKey key { g.moduleName, "" };
-        if (g.currentType == AbilityRuntime::InfoType::Function) {
+        RegisterSortKey key { generic.moduleName, "" };
+        if (generic.currentType == AbilityRuntime::InfoType::Function) {
             // Function 装饰器 = SE，通过规则 1
-        } else if (g.currentType == AbilityRuntime::InfoType::Entry) {
-            const auto &entry = g.get<AbilityRuntime::InsightIntentEntryInfo>();
+        } else if (generic.currentType == AbilityRuntime::InfoType::Entry) {
+            const auto &entry = generic.get<AbilityRuntime::InsightIntentEntryInfo>();
             bool ok = false;
             for (auto mode : entry.executeMode) {
                 if (mode == AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND ||
@@ -312,8 +312,8 @@ void IntentFilterUtil::FilterGeneric(std::vector<AbilityRuntime::ExtractInsightI
     std::sort(qualified.begin(), qualified.end(),
         [](const auto &a, const auto &b) { return a.first < b.first; });
     intentInfos.clear();
-    for (auto &p : qualified) {
-        intentInfos.push_back(std::move(p.second));
+    for (auto &item : qualified) {
+        intentInfos.push_back(std::move(item.second));
     }
 }
 
