@@ -74,9 +74,9 @@ void InvokeFunctionCallJs(napi_env env, napi_value jsCb, void *context, void *da
             result->result, result->message);
         if (jsResult != nullptr) {
             napi_resolve_deferred(env, ctx->deferred, jsResult);
+        } else {
+            napi_reject_deferred(env, ctx->deferred, CreateCliJsErrorByNativeErr(env, ERR_INNER_PARAM_INVALID));
         }
-        napi_value jsError = CreateCliJsErrorByNativeErr(env, ERR_INNER_PARAM_INVALID);
-        napi_reject_deferred(env, ctx->deferred, jsError);
     } else {
         napi_value jsError = CreateCliJsErrorByNativeErr(env, result->errorCode);
         napi_reject_deferred(env, ctx->deferred, jsError);

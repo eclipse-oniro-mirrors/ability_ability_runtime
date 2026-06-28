@@ -176,8 +176,6 @@ HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_TypeNotSupported_050
  * @tc.name: InvokeFunctionExecutor_IntentPermissionDenied_0600
  * @tc.desc: Step 3 ExecuteIntentByFunctionCall fails with the common
  *           OHOS::ERR_PERMISSION_DENIED
- *           -> mapped to the cli ERR_PERMISSION_DENIED business code, not the
- *           generic EXECUTE_FAILED.
  * @tc.type: FUNC
  */
 HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_IntentPermissionDenied_0600, TestSize.Level1)
@@ -186,7 +184,7 @@ HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_IntentPermissionDeni
     auto capture = Run();
     ASSERT_TRUE(WaitForResult(capture));
     EXPECT_FALSE(capture->result.invokeSuccess);
-    EXPECT_EQ(capture->result.errorCode, ERR_PERMISSION_DENIED);
+    EXPECT_EQ(capture->result.errorCode, OHOS::ERR_PERMISSION_DENIED);
 }
 
 /**
@@ -238,6 +236,20 @@ HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_ReportedExactlyOnce_
     EXPECT_TRUE(capture->result.invokeSuccess);  // the first (winning) outcome is retained
 }
 
+/**
+ * @tc.name: InvokeFunctionExecutor_1000
+ * @tc.desc: Step 3 ExecuteIntentByFunctionCall fails with the common
+ *           AAFwk::ERR_NOT_SYSTEM_APP
+ * @tc.type: FUNC
+ */
+HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_1000, TestSize.Level1)
+{
+    AAFwk::IntentClient::GetInstance().mockStatus_ = OHOS::AAFwk::ERR_NOT_SYSTEM_APP;
+    auto capture = Run();
+    ASSERT_TRUE(WaitForResult(capture));
+    EXPECT_FALSE(capture->result.invokeSuccess);
+    EXPECT_EQ(capture->result.errorCode, OHOS::AAFwk::ERR_NOT_SYSTEM_APP);
+}
 } // namespace
 } // namespace CliTool
 } // namespace OHOS
