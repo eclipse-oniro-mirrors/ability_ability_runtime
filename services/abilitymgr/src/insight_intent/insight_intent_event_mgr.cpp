@@ -118,10 +118,17 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
         if (allInfos.insightIntents.empty() && allConfigInfos.empty()) {
             return;
         }
+        std::vector<AbilityRuntime::ExtractInsightIntentInfo> genericInfos;
+        for (const auto &profileInfo : allInfos.insightIntents) {
+            AbilityRuntime::ExtractInsightIntentInfo generic;
+            if (AbilityRuntime::ExtractInsightIntentProfile::ProfileInfoFormat(profileInfo, generic)) {
+                genericInfos.push_back(std::move(generic));
+            }
+        }
         CliTool::IntentFilterUtil intentFilter;
-        intentFilter.FilterProfile(allInfos);
+        intentFilter.FilterGeneric(genericInfos);
         intentFilter.FilterConfig(allConfigInfos);
-        CliTool::RegisterInsightIntentFunctions(allInfos, allConfigInfos, bundleName, bundleInfo.versionCode);
+        CliTool::RegisterInsightIntentFunctions(genericInfos, allConfigInfos, bundleName, bundleInfo.versionCode);
         DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
     });
 }

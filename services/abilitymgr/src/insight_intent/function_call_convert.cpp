@@ -16,7 +16,6 @@
 #include "function_call_convert.h"
 
 #include <algorithm>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -72,7 +71,6 @@ void AddInsightIntentOptions(FunctionInfo &func, const IntentOptionDefaults &def
 }
 
 struct RegisterSortKey {
-    std::string intentName;
     std::string moduleName;
     std::string abilityName;
     bool operator<(const RegisterSortKey &o) const
@@ -84,120 +82,44 @@ struct RegisterSortKey {
     }
 };
 
-bool HasExecuteMode(const std::vector<std::string> &modes, const std::string &target)
+std::string GetFunctionNameFromGeneric(const AbilityRuntime::ExtractInsightIntentInfo &info)
 {
-    return std::find(modes.begin(), modes.end(), target) != modes.end();
+    if (info.genericInfo.currentType == AbilityRuntime::InfoType::Function) {
+        return info.genericInfo.get<AbilityRuntime::InsightIntentFunctionInfo>().functionName;
+    }
+    return "";
 }
 
-std::optional<RegisterSortKey> ExtractFromProfileInfo(
-    const AbilityRuntime::ExtractInsightIntentProfileInfo &info)
+std::string GetInputSchemaFromGeneric(const AbilityRuntime::ExtractInsightIntentInfo &info)
 {
-    if (info.intentName.empty() || info.moduleName.empty()) {
-        return std::nullopt;
+    switch (info.genericInfo.currentType) {
+        case AbilityRuntime::InfoType::Link:
+            return info.genericInfo.get<AbilityRuntime::InsightIntentLinkInfo>().parameters;
+        case AbilityRuntime::InfoType::Page:
+            return info.genericInfo.get<AbilityRuntime::InsightIntentPageInfo>().parameters;
+        case AbilityRuntime::InfoType::Entry:
+            return info.genericInfo.get<AbilityRuntime::InsightIntentEntryInfo>().parameters;
+        case AbilityRuntime::InfoType::Function:
+            return info.genericInfo.get<AbilityRuntime::InsightIntentFunctionInfo>().parameters;
+        case AbilityRuntime::InfoType::Form:
+            return info.genericInfo.get<AbilityRuntime::InsightIntentFormInfo>().parameters;
+        default:
+            return "";
     }
-    RegisterSortKey c;
-    c.intentName = info.intentName;
-    c.moduleName = info.moduleName;
-    bool isBgUiAbility = !info.uiAbility.empty() && HasExecuteMode(info.executeMode, "background");
-    bool isServiceExt = !info.abilityName.empty() && HasExecuteMode(info.executeMode, "serviceextension");
-    if (isBgUiAbility) {
-        c.abilityName = info.uiAbility;
-    } else if (isServiceExt) {
-        c.abilityName = info.abilityName;
-    } else {
-        return std::nullopt;
-    }
-    return c;
 }
 
-std::optional<RegisterSortKey> ExtractFromConfigInfo(
-    const AbilityRuntime::InsightIntentInfo &info)
+IntentOptionDefaults MakeDefaultsFromGeneric(const AbilityRuntime::ExtractInsightIntentInfo &info)
 {
-    if (info.intentName.empty() || info.moduleName.empty()) {
-        return std::nullopt;
+    IntentOptionDefaults defaults;
+    defaults.moduleName = info.genericInfo.moduleName;
+    if (info.genericInfo.currentType == AbilityRuntime::InfoType::Entry) {
+        defaults.abilityName = info.genericInfo.get<AbilityRuntime::InsightIntentEntryInfo>().abilityName;
+    } else if (info.genericInfo.currentType == AbilityRuntime::InfoType::Page) {
+        defaults.abilityName = info.genericInfo.get<AbilityRuntime::InsightIntentPageInfo>().uiAbility;
+    } else if (info.genericInfo.currentType == AbilityRuntime::InfoType::Form) {
+        defaults.abilityName = info.genericInfo.get<AbilityRuntime::InsightIntentFormInfo>().abilityName;
     }
-    RegisterSortKey c;
-    c.intentName = info.intentName;
-    c.moduleName = info.moduleName;
-    const auto &ui = info.uiAbilityIntentInfo;
-    const auto &se = info.serviceExtensionIntentInfo;
-    bool isBgUiAbility = !ui.abilityName.empty() &&
-        std::find(ui.supportExecuteMode.begin(), ui.supportExecuteMode.end(),
-            AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND) != ui.supportExecuteMode.end();
-    if (isBgUiAbility) {
-        c.abilityName = ui.abilityName;
-    } else if (!se.abilityName.empty()) {
-        c.abilityName = se.abilityName;
-    } else {
-        return std::nullopt;
-    }
-    return c;
-}
-
-std::optional<RegisterSortKey> ExtractFromGenericInfo(
-    const AbilityRuntime::ExtractInsightIntentInfo &info)
-{
-    const auto &g = info.genericInfo;
-    if (g.intentName.empty() || g.moduleName.empty()) {
-        return std::nullopt;
-    }
-    RegisterSortKey c;
-    c.intentName = g.intentName;
-    c.moduleName = g.moduleName;
-    if (g.currentType == AbilityRuntime::InfoType::Function) {
-        c.abilityName.clear();
-        return c;
-    }
-    if (g.currentType == AbilityRuntime::InfoType::Entry) {
-        const auto &entry = g.get<AbilityRuntime::InsightIntentEntryInfo>();
-        for (auto mode : entry.executeMode) {
-            if (mode == AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND) {
-                c.abilityName = entry.abilityName;
-                return c;
-            }
-            if (mode == AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY) {
-                c.abilityName = entry.abilityName;
-                return c;
-            }
-        }
-    }
-    return std::nullopt;
-}
-
-// 为注册路径预处理意图列表：
-//   1) 规则 1 过滤（丢弃非"后台 UIAbility / ServiceExtension"的项，由 extract 返回 nullopt 表达）
-//   2) 按 (moduleName, abilityName) 字典序排序，保证 KVStore 后写覆盖语义下同名意图的覆盖顺序确定
-template <typename T, typename Extractor>
-void PrepareForRegister(std::vector<T> &items, Extractor extract)
-{
-    std::vector<std::pair<RegisterSortKey, T>> qualified;
-    qualified.reserve(items.size());
-    for (auto &item : items) {
-        if (auto key = extract(item); key.has_value()) {
-            qualified.emplace_back(*key, std::move(item));
-        }
-    }
-    std::sort(qualified.begin(), qualified.end(),
-        [](const auto &a, const auto &b) { return a.first < b.first; });
-    items.clear();
-    for (auto &p : qualified) {
-        items.push_back(std::move(p.second));
-    }
-}
-} // namespace
-
-namespace {
-void VerifyRegisterFunction(CliToolMGRClient &client, const FunctionInfo &func)
-{
-    FunctionInfo queryResult;
-    auto queryRet = client.GetFunctionInfo(func.functionNamespace, func.functionName, queryResult);
-    if (queryRet == ERR_OK) {
-        TAG_LOGI(AAFwkTag::CLI_TOOL, "verify register success: %{public}s/%{public}s",
-            func.functionNamespace.c_str(), func.functionName.c_str());
-    } else {
-        TAG_LOGW(AAFwkTag::CLI_TOOL, "verify register failed: %{public}s/%{public}s, ret: %{public}d",
-            func.functionNamespace.c_str(), func.functionName.c_str(), queryRet);
-    }
+    return defaults;
 }
 
 void RegisterOrUpdateFunction(CliToolMGRClient &client, const FunctionInfo &func)
@@ -213,30 +135,6 @@ void RegisterOrUpdateFunction(CliToolMGRClient &client, const FunctionInfo &func
 }
 } // namespace
 
-bool ConvertFromExtractProfile(const AbilityRuntime::ExtractInsightIntentProfileInfoVec &profileInfos,
-    std::vector<FunctionInfo> &functions)
-{
-    for (const auto &info : profileInfos.insightIntents) {
-        if (info.intentName.empty()) {
-            TAG_LOGW(AAFwkTag::CLI_TOOL, "empty intentName");
-            continue;
-        }
-        FunctionInfo func;
-        func.functionName = info.functionName.empty() ? info.intentName : info.functionName;
-        func.functionNamespace = info.bundleName;
-        func.description = info.displayDescription;
-        func.inputSchema = info.parameters;
-        func.outputSchema = info.result;
-        func.functionType = FunctionType::INTENT_FUNCTION;
-        IntentOptionDefaults defaults;
-        defaults.moduleName = info.moduleName;
-        defaults.abilityName = info.uiAbility.empty() ? info.abilityName : info.uiAbility;
-        AddInsightIntentOptions(func, defaults);
-        functions.emplace_back(std::move(func));
-    }
-    return true;
-}
-
 bool ConvertFromExtractIntentInfo(const std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos,
     std::vector<FunctionInfo> &functions)
 {
@@ -246,17 +144,14 @@ bool ConvertFromExtractIntentInfo(const std::vector<AbilityRuntime::ExtractInsig
             continue;
         }
         FunctionInfo func;
-        std::string functionName;
-        if (info.genericInfo.currentType == AbilityRuntime::InfoType::Function) {
-            auto &funcInfo = info.genericInfo.get<AbilityRuntime::InsightIntentFunctionInfo>();
-            functionName = funcInfo.functionName;
-            func.inputSchema = funcInfo.parameters;
-        }
+        std::string functionName = GetFunctionNameFromGeneric(info);
         func.functionName = functionName.empty() ? info.genericInfo.intentName : functionName;
         func.functionNamespace = info.genericInfo.bundleName;
         func.description = info.displayDescription;
+        func.inputSchema = GetInputSchemaFromGeneric(info);
         func.outputSchema = info.result;
         func.functionType = FunctionType::INTENT_FUNCTION;
+        AddInsightIntentOptions(func, MakeDefaultsFromGeneric(info));
         functions.emplace_back(std::move(func));
     }
     return true;
@@ -310,33 +205,6 @@ bool ConvertFromConfigIntent(const std::vector<AbilityRuntime::InsightIntentInfo
 }
 
 bool RegisterInsightIntentFunctions(
-    const AbilityRuntime::ExtractInsightIntentProfileInfoVec &profileInfos,
-    const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
-    const std::string &bundleName,
-    uint32_t versionCode)
-{
-    std::vector<FunctionInfo> functions;
-    ConvertFromConfigIntent(configInfos, functions);
-    ConvertFromExtractProfile(profileInfos, functions);
-    if (functions.empty()) {
-        return true;
-    }
-
-    for (auto &func : functions) {
-        if (func.functionNamespace.empty() && !bundleName.empty()) {
-            func.functionNamespace = bundleName;
-        }
-        func.version = std::to_string(versionCode);
-    }
-
-    auto &client = CliToolMGRClient::GetInstance();
-    for (const auto &func : functions) {
-        RegisterOrUpdateFunction(client, func);
-    }
-    return true;
-}
-
-bool RegisterInsightIntentFunctions(
     const std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos,
     const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
     const std::string &bundleName,
@@ -381,19 +249,72 @@ bool UnregisterInsightIntentFunctions(const std::string &bundleName)
     return true;
 }
 
-void IntentFilterUtil::FilterProfile(AbilityRuntime::ExtractInsightIntentProfileInfoVec &profileInfos)
-{
-    PrepareForRegister(profileInfos.insightIntents, ExtractFromProfileInfo);
-}
-
 void IntentFilterUtil::FilterConfig(std::vector<AbilityRuntime::InsightIntentInfo> &configInfos)
 {
-    PrepareForRegister(configInfos, ExtractFromConfigInfo);
+    std::vector<std::pair<RegisterSortKey, AbilityRuntime::InsightIntentInfo>> qualified;
+    for (auto &info : configInfos) {
+        if (info.intentName.empty() || info.moduleName.empty()) {
+            continue;
+        }
+        const auto &ui = info.uiAbilityIntentInfo;
+        const auto &se = info.serviceExtensionIntentInfo;
+        RegisterSortKey key { info.moduleName, "" };
+        bool isBgUiAbility = !ui.abilityName.empty() &&
+            std::find(ui.supportExecuteMode.begin(), ui.supportExecuteMode.end(),
+                AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND) != ui.supportExecuteMode.end();
+        if (isBgUiAbility) {
+            key.abilityName = ui.abilityName;
+        } else if (!se.abilityName.empty()) {
+            key.abilityName = se.abilityName;
+        } else {
+            continue;
+        }
+        qualified.emplace_back(std::move(key), std::move(info));
+    }
+    std::sort(qualified.begin(), qualified.end(),
+        [](const auto &a, const auto &b) { return a.first < b.first; });
+    configInfos.clear();
+    for (auto &p : qualified) {
+        configInfos.push_back(std::move(p.second));
+    }
 }
 
 void IntentFilterUtil::FilterGeneric(std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos)
 {
-    PrepareForRegister(intentInfos, ExtractFromGenericInfo);
+    std::vector<std::pair<RegisterSortKey, AbilityRuntime::ExtractInsightIntentInfo>> qualified;
+    for (auto &info : intentInfos) {
+        const auto &g = info.genericInfo;
+        if (g.intentName.empty() || g.moduleName.empty()) {
+            continue;
+        }
+        RegisterSortKey key { g.moduleName, "" };
+        if (g.currentType == AbilityRuntime::InfoType::Function) {
+            // Function 装饰器 = SE，通过规则 1
+        } else if (g.currentType == AbilityRuntime::InfoType::Entry) {
+            const auto &entry = g.get<AbilityRuntime::InsightIntentEntryInfo>();
+            bool ok = false;
+            for (auto mode : entry.executeMode) {
+                if (mode == AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND ||
+                    mode == AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY) {
+                    key.abilityName = entry.abilityName;
+                    ok = true;
+                    break;
+                }
+            }
+            if (!ok) {
+                continue;
+            }
+        } else {
+            continue;
+        }
+        qualified.emplace_back(std::move(key), std::move(info));
+    }
+    std::sort(qualified.begin(), qualified.end(),
+        [](const auto &a, const auto &b) { return a.first < b.first; });
+    intentInfos.clear();
+    for (auto &p : qualified) {
+        intentInfos.push_back(std::move(p.second));
+    }
 }
 
 bool BatchRegisterInsightIntentFunctions(
