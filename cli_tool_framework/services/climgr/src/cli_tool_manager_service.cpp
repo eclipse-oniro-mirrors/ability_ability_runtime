@@ -502,8 +502,11 @@ int32_t CliToolManagerService::RegisterFunction(const FunctionInfo &function)
     InterfaceCallCounter counter(interfaceCalledCount_);
 
     auto callingUid = IPCSkeleton::GetCallingUid();
-    if (callingUid != FOUNDATION_UID) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "RegisterFunction: Permission denied, callingUid=%{public}d", callingUid);
+    auto callerToken = IPCSkeleton::GetCallingTokenID();
+    if (callingUid != FOUNDATION_UID ||
+        Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken) !=
+        Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "RegisterFunction: Permission denied, uid=%{public}d", callingUid);
         return ERR_PERMISSION_DENIED;
     }
 
@@ -523,6 +526,60 @@ int32_t CliToolManagerService::RegisterFunction(const FunctionInfo &function)
     return ERR_OK;
 }
 
+int32_t CliToolManagerService::BatchRegisterFunctions(const std::vector<FunctionInfo> &functions,
+    int32_t &successCount)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions called: %{public}zu functions",
+        functions.size());
+
+    InterfaceCallCounter counter(interfaceCalledCount_);
+
+    auto callingUid = IPCSkeleton::GetCallingUid();
+    auto callerToken = IPCSkeleton::GetCallingTokenID();
+    if (callingUid != FOUNDATION_UID ||
+        Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken) !=
+        Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions: Permission denied, uid=%{public}d, tokenType=%{public}d",
+            callingUid, static_cast<int32_t>(
+                Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken)));
+        successCount = 0;
+        return ERR_PERMISSION_DENIED;
+    }
+
+    if (functions.empty()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions: functions vector is empty");
+        successCount = 0;
+        return ERR_INVALID_PARAM;
+    }
+
+    std::vector<FunctionInfo> validFunctions;
+    validFunctions.reserve(functions.size());
+    for (const auto &function : functions) {
+        if (!FunctionInfo::Validate(function)) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "Invalid function info, will skip: %{public}s/%{public}s",
+                function.functionNamespace.c_str(), function.functionName.c_str());
+        } else {
+            validFunctions.push_back(function);
+        }
+    }
+
+    if (validFunctions.empty()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "No valid functions to register");
+        successCount = 0;
+        return ERR_INVALID_PARAM;
+    }
+
+    int32_t ret = CliFunctionDataManager::GetInstance().BatchRegisterFunctions(validFunctions, successCount);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions: Failed, ret=%{public}d", ret);
+        return ret;
+    }
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully batch registered functions: success=%{public}d/%{public}zu",
+        successCount, validFunctions.size());
+    return ERR_OK;
+}
+
 int32_t CliToolManagerService::GetFunctionInfo(const std::string &functionNamespace,
     const std::string &functionName, FunctionInfo &function)
 {
@@ -531,8 +588,12 @@ int32_t CliToolManagerService::GetFunctionInfo(const std::string &functionNamesp
     InterfaceCallCounter counter(interfaceCalledCount_);
 
     auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
-    if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetFunctionInfo: Not system app");
+    auto callerToken = IPCSkeleton::GetCallingTokenID();
+    bool isSystemApp = AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId);
+    bool isSA = Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken) ==
+        Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE;
+    if (!isSystemApp && !isSA) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetFunctionInfo: Not system app nor SA");
         return ERR_NOT_SYSTEM_APP;
     }
 
@@ -561,8 +622,11 @@ int32_t CliToolManagerService::UnregisterFunction(const std::string &functionNam
     InterfaceCallCounter counter(interfaceCalledCount_);
 
     auto callingUid = IPCSkeleton::GetCallingUid();
-    if (callingUid != FOUNDATION_UID) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "UnregisterFunction: Permission denied, callingUid=%{public}d", callingUid);
+    auto callerToken = IPCSkeleton::GetCallingTokenID();
+    if (callingUid != FOUNDATION_UID ||
+        Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken) !=
+        Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "UnregisterFunction: Permission denied, uid=%{public}d", callingUid);
         return ERR_PERMISSION_DENIED;
     }
 
@@ -583,8 +647,11 @@ int32_t CliToolManagerService::UnregisterIntentFunctionsByNamespace(const std::s
     InterfaceCallCounter counter(interfaceCalledCount_);
 
     auto callingUid = IPCSkeleton::GetCallingUid();
-    if (callingUid != FOUNDATION_UID) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespace: Permission denied, callingUid=%{public}d",
+    auto callerToken = IPCSkeleton::GetCallingTokenID();
+    if (callingUid != FOUNDATION_UID ||
+        Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken) !=
+        Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespace: Permission denied, uid=%{public}d",
             callingUid);
         return ERR_PERMISSION_DENIED;
     }
@@ -606,8 +673,12 @@ int32_t CliToolManagerService::GetAllFunctions(std::vector<FunctionInfo> &functi
     InterfaceCallCounter counter(interfaceCalledCount_);
 
     auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
-    if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllFunctions: Not system app");
+    auto callerToken = IPCSkeleton::GetCallingTokenID();
+    bool isSystemApp = AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId);
+    bool isSA = Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken) ==
+        Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE;
+    if (!isSystemApp && !isSA) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllFunctions: Not system app nor SA");
         return ERR_NOT_SYSTEM_APP;
     }
 

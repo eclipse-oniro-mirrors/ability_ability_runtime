@@ -16,6 +16,9 @@
 #ifndef OHOS_ABILITY_RUNTIME_INSIGHT_INTENT_SYS_EVENT_RECEIVER_H
 #define OHOS_ABILITY_RUNTIME_INSIGHT_INTENT_SYS_EVENT_RECEIVER_H
 
+#include <utility>
+#include <vector>
+
 #include "common_event_data.h"
 #include "common_event_subscriber.h"
 #include "common_event_subscribe_info.h"

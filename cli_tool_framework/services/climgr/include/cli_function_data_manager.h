@@ -43,6 +43,14 @@ public:
     int32_t RegisterFunction(const FunctionInfo &function);
 
     /**
+     * @brief Batch register functions to database
+     * @param functions Vector of FunctionInfo to register
+     * @param successCount Output count of successfully registered functions
+     * @return int32_t ERR_OK on success, error code otherwise
+     */
+    int32_t BatchRegisterFunctions(const std::vector<FunctionInfo> &functions, int32_t &successCount);
+
+    /**
      * @brief Get function by namespace and functionName from KVStore
      * @param functionNamespace Namespace
      * @param functionName Function name

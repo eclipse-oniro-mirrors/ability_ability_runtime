@@ -16,6 +16,8 @@ int32_t CliToolMgrClientFlag::retGetToolInfoByName = ERR_OK;
 int32_t CliToolMgrClientFlag::retGetAllToolInfos = ERR_OK;
 int32_t CliToolMgrClientFlag::retRegisterTool = ERR_OK;
 int32_t CliToolMgrClientFlag::retRegisterFunction = ERR_OK;
+int32_t CliToolMgrClientFlag::retBatchRegisterFunctions = ERR_OK;
+int32_t CliToolMgrClientFlag::batchRegisterFunctionsSuccessCount = 0;
 int32_t CliToolMgrClientFlag::retGetFunctionInfo = ERR_OK;
 int32_t CliToolMgrClientFlag::retUnregisterFunction = ERR_OK;
 int32_t CliToolMgrClientFlag::retGetAllFunctions = ERR_OK;
@@ -46,6 +48,8 @@ void CliToolMgrClientFlag::Reset()
     retGetAllToolInfos = ERR_OK;
     retRegisterTool = ERR_OK;
     retRegisterFunction = ERR_OK;
+    retBatchRegisterFunctions = ERR_OK;
+    batchRegisterFunctionsSuccessCount = 0;
     retGetFunctionInfo = ERR_OK;
     retUnregisterFunction = ERR_OK;
     retGetAllFunctions = ERR_OK;
@@ -101,6 +105,18 @@ int32_t MockCliToolMgrService::RegisterFunction(const FunctionInfo &function)
 {
     CliToolMgrClientFlag::functionInfos.push_back(function);
     return CliToolMgrClientFlag::retRegisterFunction;
+}
+
+int32_t MockCliToolMgrService::BatchRegisterFunctions(const std::vector<FunctionInfo> &functions,
+    int32_t &successCount)
+{
+    for (const auto &function : functions) {
+        CliToolMgrClientFlag::functionInfos.push_back(function);
+    }
+    successCount = CliToolMgrClientFlag::batchRegisterFunctionsSuccessCount > 0 ?
+        CliToolMgrClientFlag::batchRegisterFunctionsSuccessCount :
+        static_cast<int32_t>(functions.size());
+    return CliToolMgrClientFlag::retBatchRegisterFunctions;
 }
 
 int32_t MockCliToolMgrService::GetFunctionInfo(const std::string &, const std::string &,

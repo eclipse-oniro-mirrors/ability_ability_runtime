@@ -145,6 +145,7 @@ ohos_unittest("ability_manager_service_fourteenth_test") {
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/function_call_convert.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_event_mgr.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_matcher.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_param_parser.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_sys_event_receiver.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/interceptor/ability_interceptor_executer.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/interceptor/ability_jump_interceptor.cpp",

@@ -101,6 +101,14 @@ public:
     ErrCode RegisterFunction(const FunctionInfo &function);
 
     /**
+     * @brief Batch register functions
+     * @param functions Vector of FunctionInfo to register
+     * @param successCount Output count of successfully registered functions
+     * @return ErrCode ERR_OK on success
+     */
+    ErrCode BatchRegisterFunctions(const std::vector<FunctionInfo> &functions, int32_t &successCount);
+
+    /**
      * @brief Get function information by bundleName and functionName
      * @param bundleName Bundle name
      * @param functionName Function name

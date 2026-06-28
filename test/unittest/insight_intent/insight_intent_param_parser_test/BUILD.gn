@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Copyright (c) 2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -14,26 +14,17 @@
 import("//build/test.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
-ohos_unittest("insight_intent_execute_manager_test") {
+ohos_unittest("insight_intent_param_parser_test") {
   module_out_path = "ability_runtime/ability_runtime/insight_intent"
-
-  cflags_cc = []
-
-  include_dirs = [
-    "${ability_runtime_innerkits_path}/app_manager/include/appmgr",
-    "${cli_tool_framework_path}/interfaces/function/include",
-  ]
 
   sources = [
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/extract_insight_intent_profile.cpp",
-    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_db_cache.cpp",
-    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_execute_manager.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/function_call_convert.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_execute_result.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_param_parser.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_profile.cpp",
-    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_rdb_data_mgr.cpp",
-    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_rdb_storage_mgr.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/hmsf_utils.cpp",
-    "insight_intent_execute_manager_test.cpp",
-    "insight_intent_utils_mock.cpp",
+    "insight_intent_param_parser_test.cpp",
   ]
 
   configs = [ "${ability_runtime_services_path}/abilitymgr:abilityms_config" ]
@@ -43,34 +34,30 @@ ohos_unittest("insight_intent_execute_manager_test") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
 
+  include_dirs = [
+    "${ability_runtime_services_path}/abilitymgr/include",
+    "${ability_runtime_services_path}/abilitymgr/include/insight_intent",
+    "${ability_runtime_innerkits_path}/ability_manager/include",
+    "${ability_runtime_innerkits_path}/ability_manager/include/insight_intent",
+  ]
+
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
-    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
-    "${ability_runtime_native_path}/ability/native:ability_observer_ipc",
-    "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
     "${ability_runtime_services_path}/common:app_util",
-    "${ability_runtime_services_path}/common:perm_verification",
-    "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",
   ]
 
   external_deps = [
     "ability_base:want",
-    "ability_base:zuri",
-    "bundle_framework:libappexecfwk_common",
     "c_utils:utils",
-    "ffrt:libffrt",
-    "googletest:gmock_main",
     "googletest:gtest_main",
     "hilog:libhilog",
-    "hisysevent:libhisysevent",
     "ipc:ipc_core",
-    "napi:ace_napi",
-    "samgr:samgr_proxy",
+    "nlohmann_json:nlohmann_json",
   ]
 }
 
 group("unittest") {
   testonly = true
-  deps = [ ":insight_intent_execute_manager_test" ]
+  deps = [ ":insight_intent_param_parser_test" ]
 }

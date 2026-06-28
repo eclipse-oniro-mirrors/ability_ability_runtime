@@ -246,6 +246,10 @@ HWTEST_F(CliToolMGRClientTest, NullProxyInterfaces_0100, TestSize.Level1)
         GET_CLI_TOOL_MGR_SERVICE_FAILED);
     EXPECT_EQ(CliToolMGRClient::GetInstance().BatchQueryPermissionBySubCommand(commands, permissions),
         GET_CLI_TOOL_MGR_SERVICE_FAILED);
+    std::vector<FunctionInfo> functions;
+    int32_t successCount = 0;
+    EXPECT_EQ(CliToolMGRClient::GetInstance().BatchRegisterFunctions(functions, successCount),
+        GET_CLI_TOOL_MGR_SERVICE_FAILED);
 }
 
 /**
@@ -633,6 +637,78 @@ HWTEST_F(CliToolMGRClientTest, UnregisterIntentFunctionsByNamespace_0100, TestSi
     SetMockService();
 
     EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterIntentFunctionsByNamespace("intent_ns"), ERR_OK);
+}
+
+/**
+ * @tc.name: BatchRegisterFunctions_0100
+ * @tc.desc: Test BatchRegisterFunctions success path
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, BatchRegisterFunctions_0100, TestSize.Level1)
+{
+    SetMockService();
+    CliToolMgrClientFlag::retBatchRegisterFunctions = ERR_OK;
+    CliToolMgrClientFlag::batchRegisterFunctionsSuccessCount = 3;
+
+    std::vector<FunctionInfo> functions;
+    functions.push_back(BuildFunctionInfo("test_ns", "func1"));
+    functions.push_back(BuildFunctionInfo("test_ns", "func2"));
+    functions.push_back(BuildFunctionInfo("test_ns", "func3"));
+
+    int32_t successCount = 0;
+    EXPECT_EQ(CliToolMGRClient::GetInstance().BatchRegisterFunctions(functions, successCount), ERR_OK);
+    EXPECT_EQ(successCount, 3);
+}
+
+/**
+ * @tc.name: BatchRegisterFunctions_0200
+ * @tc.desc: Test BatchRegisterFunctions error path
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, BatchRegisterFunctions_0200, TestSize.Level1)
+{
+    SetMockService();
+    CliToolMgrClientFlag::retBatchRegisterFunctions = ERR_INVALID_VALUE;
+
+    std::vector<FunctionInfo> functions;
+    functions.push_back(BuildFunctionInfo("error_ns", "func1"));
+
+    int32_t successCount = 0;
+    EXPECT_EQ(CliToolMGRClient::GetInstance().BatchRegisterFunctions(functions, successCount), ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: BatchRegisterFunctions_0300
+ * @tc.desc: Test BatchRegisterFunctions with null proxy
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, BatchRegisterFunctions_0300, TestSize.Level1)
+{
+    CliToolMgrClientFlag::nullSystemAbility = true;
+
+    std::vector<FunctionInfo> functions;
+    functions.push_back(BuildFunctionInfo("null_ns", "func1"));
+
+    int32_t successCount = 0;
+    EXPECT_EQ(CliToolMGRClient::GetInstance().BatchRegisterFunctions(functions, successCount),
+        GET_CLI_TOOL_MGR_SERVICE_FAILED);
+}
+
+/**
+ * @tc.name: BatchRegisterFunctions_0400
+ * @tc.desc: Test BatchRegisterFunctions with empty vector (mock returns 0 successCount)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, BatchRegisterFunctions_0400, TestSize.Level1)
+{
+    SetMockService();
+    CliToolMgrClientFlag::retBatchRegisterFunctions = ERR_OK;
+    CliToolMgrClientFlag::batchRegisterFunctionsSuccessCount = 0;
+
+    std::vector<FunctionInfo> functions;  // Empty vector
+    int32_t successCount = -1;  // Initialize to non-zero
+    EXPECT_EQ(CliToolMGRClient::GetInstance().BatchRegisterFunctions(functions, successCount), ERR_OK);
+    EXPECT_EQ(successCount, 0);
 }
 
 } // namespace CliTool

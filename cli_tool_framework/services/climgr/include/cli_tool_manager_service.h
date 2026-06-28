@@ -114,6 +114,14 @@ public:
     int32_t RegisterFunction(const FunctionInfo &function) override;
 
     /**
+     * @brief Batch register functions
+     * @param functions Vector of FunctionInfo to register
+     * @param successCount Output count of successfully registered functions
+     * @return int32_t ERR_OK on success, error code otherwise
+     */
+    int32_t BatchRegisterFunctions(const std::vector<FunctionInfo> &functions, int32_t &successCount) override;
+
+    /**
      * @brief Get function information by bundleName and functionName
      * @param bundleName Bundle name
      * @param functionName Function name

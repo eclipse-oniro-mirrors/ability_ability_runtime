@@ -189,6 +189,18 @@ ErrCode CliToolMGRClient::RegisterFunction(const FunctionInfo &function)
     return proxy->RegisterFunction(function);
 }
 
+ErrCode CliToolMGRClient::BatchRegisterFunctions(const std::vector<FunctionInfo> &functions,
+    int32_t &successCount)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto proxy = GetCliToolMgrProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
+        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
+    }
+    return proxy->BatchRegisterFunctions(functions, successCount);
+}
+
 ErrCode CliToolMGRClient::GetFunctionInfo(const std::string &functionNamespace, const std::string &functionName,
     FunctionInfo &function)
 {

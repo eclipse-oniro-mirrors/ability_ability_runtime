@@ -17,6 +17,8 @@
 
 #include <algorithm>
 
+#include "function_call_convert.h"
+
 namespace OHOS {
 namespace AbilityRuntime {
 InsightIntentDbCache::InsightIntentDbCache()
@@ -265,6 +267,15 @@ void InsightIntentDbCache::GetAllInsightIntentInfo(const int32_t userId, std::ve
         TAG_LOGE(AAFwkTag::INTENT, "LoadIntentData failed");
         return;
     }
+}
+
+void InsightIntentDbCache::GetAllInsightIntentInfoForRegister(const int32_t userId,
+    std::vector<ExtractInsightIntentInfo> &infos, std::vector<InsightIntentInfo> &configInfos)
+{
+    GetAllInsightIntentInfo(userId, infos, configInfos);
+    CliTool::IntentFilterUtil filter;
+    filter.FilterGeneric(infos);
+    filter.FilterConfig(configInfos);
 }
 
 void InsightIntentDbCache::GetAllConfigInsightIntentInfo(

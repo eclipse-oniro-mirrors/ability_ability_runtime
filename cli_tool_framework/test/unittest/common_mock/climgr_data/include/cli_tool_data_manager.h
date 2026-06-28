@@ -42,6 +42,7 @@ public:
     int32_t UnregisterFunction(const std::string &functionNamespace, const std::string &functionName);
     int32_t UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace);
     int32_t GetAllFunctions(std::vector<FunctionInfo> &functions);
+    int32_t BatchRegisterFunctions(const std::vector<FunctionInfo> &functions, int32_t &successCount);
     int32_t EnsureFunctionsInitialized();
 };
 } // namespace CliTool

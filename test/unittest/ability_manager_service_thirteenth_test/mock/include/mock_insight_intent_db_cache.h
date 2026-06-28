@@ -39,6 +39,8 @@ public:
         const std::string &intentName, const int32_t userId, ExtractInsightIntentGenericInfo &genericInfos);
     void GetAllInsightIntentInfo(const int32_t userId, std::vector<ExtractInsightIntentInfo> &infos,
         std::vector<InsightIntentInfo> &configInfos);
+    void GetAllInsightIntentInfoForRegister(const int32_t userId,
+        std::vector<ExtractInsightIntentInfo> &infos, std::vector<InsightIntentInfo> &configInfos);
     void GetAllConfigInsightIntentInfo(
         const int32_t userId, std::vector<InsightIntentInfo> &configInfos);
     void GetInsightIntentInfoByName(const std::string &bundleName, const int32_t userId,

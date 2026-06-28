@@ -57,6 +57,7 @@
 #include "iacquire_share_data_callback_interface.h"
 #include "interceptor/ability_interceptor_executer.h"
 #include "insight_intent_event_mgr.h"
+#include "insight_intent_param_parser.h"
 #include "insight_intent_profile.h"
 #include "intent_exemption_info.h"
 #include "iremote_object.h"
@@ -3653,6 +3654,10 @@ private:
         const std::shared_ptr<InsightIntentExecuteParam> &param, const std::string &callerBundleName,
         const AbilityRuntime::ExecuteIntentCommonOptions &infos);
     void SetRemoteIntentTimeout(uint64_t insightIntentId);
+    // 清理 wantParam 残留意图参数 + 意图候选匹配 + parser.Build 组装执行参数。
+    int32_t PrepareFunctionCallParam(const std::string &bundleName, const std::string &intentName,
+        const WantParams &wantParam, int32_t callerUserId,
+        AbilityRuntime::InsightIntentParamParser::ParseResult &parseResult);
     void GetCallerUidAndToken(const std::string &bundleName, int32_t userId,
         int32_t &callerUid, uint32_t &accessToken);
     bool IsDmsSameAPP(const AbilityRequest &abilityRequest);
@@ -3677,6 +3682,8 @@ private:
 #endif
     std::shared_ptr<AbilityInterceptorExecuter> interceptorExecuter_;
     std::shared_ptr<AbilityInterceptorExecuter> afterCheckExecuter_;
+
+    AbilityRuntime::InsightIntentParamParser paramParser_;
 
     std::unordered_map<int32_t, int64_t> appRecoveryHistory_; // uid:time
     std::unordered_map<int32_t, sptr<IAbilityManagerCollaborator>> collaboratorMap_;
