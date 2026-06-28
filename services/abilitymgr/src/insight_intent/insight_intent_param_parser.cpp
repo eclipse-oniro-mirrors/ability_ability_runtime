@@ -102,6 +102,10 @@ bool ResolveExecuteModeFromOption(const std::string &str, int32_t &out)
         {"UI_ABILITY_BACKGROUND", static_cast<int32_t>(AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND)},
         {"UI_EXTENSION_ABILITY", static_cast<int32_t>(AppExecFwk::ExecuteMode::UI_EXTENSION_ABILITY)},
         {"SERVICE_EXTENSION_ABILITY", static_cast<int32_t>(AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY)},
+        {"foreground", static_cast<int32_t>(AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND)},
+        {"background", static_cast<int32_t>(AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND)},
+        {"uiextension", static_cast<int32_t>(AppExecFwk::ExecuteMode::UI_EXTENSION_ABILITY)},
+        {"serviceextension", static_cast<int32_t>(AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY)},
     };
     auto it = MODE_MAP.find(str);
     if (it != MODE_MAP.end()) {
