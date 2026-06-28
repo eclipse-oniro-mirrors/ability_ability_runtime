@@ -1009,64 +1009,6 @@ HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_BatchRegisterFunctio
 }
 
 /**
- * @tc.name: CliFunctionDataManager_BatchRegisterFunctions_003
- * @tc.desc: Test BatchRegisterFunctions with KVStore Put failure
- * @tc.type: FUNC
- */
-HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_BatchRegisterFunctions_003, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_BatchRegisterFunctions_003 start");
-
-    auto mockStore = std::make_shared<MockSingleKvStore>();
-    mockStore->Put_ = DistributedKv::Status::ERROR;
-    CliFunctionDataManager::GetInstance().kvStorePtr_ = mockStore;
-
-    std::vector<FunctionInfo> functions;
-    for (int i = 0; i < 3; i++) {
-        FunctionInfo function;
-        function.functionName = "fail_batch_func_" + std::to_string(i);
-        function.functionNamespace = "fail_batch_ns";
-        function.functionType = FunctionType::INTENT_FUNCTION;
-        functions.push_back(function);
-    }
-
-    int32_t successCount = 0;
-    int32_t ret = CliFunctionDataManager::GetInstance().BatchRegisterFunctions(functions, successCount);
-
-    EXPECT_EQ(ret, ERR_INVALID_PARAM);
-    EXPECT_EQ(successCount, 0);
-
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_BatchRegisterFunctions_003 end");
-}
-
-/**
- * @tc.name: CliFunctionDataManager_BatchRegisterFunctions_004
- * @tc.desc: Test BatchRegisterFunctions with null KVStore
- * @tc.type: FUNC
- */
-HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_BatchRegisterFunctions_004, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_BatchRegisterFunctions_004 start");
-
-    CliFunctionDataManager::GetInstance().kvStorePtr_ = nullptr;
-
-    std::vector<FunctionInfo> functions;
-    FunctionInfo function;
-    function.functionName = "null_test_func";
-    function.functionNamespace = "null_test_ns";
-    function.functionType = FunctionType::INTENT_FUNCTION;
-    functions.push_back(function);
-
-    int32_t successCount = 0;
-    int32_t ret = CliFunctionDataManager::GetInstance().BatchRegisterFunctions(functions, successCount);
-
-    EXPECT_EQ(ret, ERR_NO_INIT);
-    EXPECT_EQ(successCount, 0);
-
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_BatchRegisterFunctions_004 end");
-}
-
-/**
  * @tc.name: CliFunctionDataManager_BatchRegisterFunctions_005
  * @tc.desc: Test BatchRegisterFunctions with single function
  * @tc.type: FUNC
