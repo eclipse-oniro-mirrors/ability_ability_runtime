@@ -31,6 +31,13 @@ config("abilityms_exception_config") {
   cflags_cc = [ "-fexceptions" ]
 }
 
+# 暴露 cli_tool function include 路径给依赖 abilityms 的目标（包括所有 TDD）。
+# insight_intent_db_cache.cpp 通过 function_call_convert.h 间接 include function_info.h，
+# 所有编 insight_intent_db_cache.cpp 的测试都需要这个路径。
+config("abilityms_cli_tool_function_include") {
+  include_dirs = [ "${cli_tool_framework_path}/interfaces/function/include" ]
+}
+
 config("abilityms_config") {
   include_dirs = [
     "include/",
@@ -136,6 +143,7 @@ ohos_shared_library("abilityms") {
     ":abilityms_config",
     ":abilityms_exception_config",
   ]
+  public_configs = [ ":abilityms_cli_tool_function_include" ]
   include_dirs = [
     "${ability_runtime_services_path}/appdfr/include",
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_service_extension_ability/connection",
