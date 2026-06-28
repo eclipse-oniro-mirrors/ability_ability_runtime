@@ -46,7 +46,6 @@ private:
     void ResolveFlags(const AAFwk::WantParams &opts, int32_t &out) const;
     void ResolveUserId(const AAFwk::WantParams &opts, int32_t callerUserId, int32_t &out) const;
     void ResolveDisplayId(const AAFwk::WantParams &opts, int32_t &out) const;
-    void ResolveDeviceId(const AAFwk::WantParams &opts, std::string &out) const;
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

@@ -3635,10 +3635,6 @@ private:
         const std::shared_ptr<InsightIntentExecuteParam> &param, const std::string &callerBundleName,
         const AbilityRuntime::ExecuteIntentCommonOptions &infos);
     void SetRemoteIntentTimeout(uint64_t insightIntentId);
-    // 分布式意图派发：flood attack 检查 + PERMISSION_EXECUTE_DISTRIBUTED_INTENT 校验 +
-    // GenerateWant + dmsClient.StartRemoteIntent。deviceId 为空时不应调本函数。
-    int32_t DispatchDistributedIntent(const std::shared_ptr<InsightIntentExecuteParam> &param,
-        const AbilityRuntime::ExtractInsightIntentGenericInfo &infos);
     // 清理 wantParam 残留意图参数 + 意图候选匹配 + parser.Build 组装执行参数。
     int32_t PrepareFunctionCallParam(const std::string &bundleName, const std::string &intentName,
         const WantParams &wantParam, int32_t callerUserId,

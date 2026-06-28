@@ -14406,7 +14406,7 @@ int32_t AbilityManagerService::ExecuteIntentByFunctionCall(uint64_t key,
     }
     auto param = parseResult.param;
     bool openLinkExecuteFlag = parseResult.openLinkExecuteFlag;
-    bool ignoreAbilityName = parseResult.ignoreAbilityName || !param->deviceId_.empty();
+    bool ignoreAbilityName = parseResult.ignoreAbilityName;
 
     ret = CheckCrossUserPermission(param->userId_);
     if (ret != ERR_OK) {
@@ -14420,11 +14420,6 @@ int32_t AbilityManagerService::ExecuteIntentByFunctionCall(uint64_t key,
         return ret;
     }
 
-    if (!param->deviceId_.empty()) {
-        TAG_LOGI(AAFwkTag::INTENT, "dispatch to distributed intent, deviceId: %{private}s",
-            param->deviceId_.c_str());
-        return DispatchDistributedIntent(param, parseResult.matchedInfo);
-    }
     AbilityRuntime::ExecuteIntentCommonOptions options(ignoreAbilityName, parseResult.matchedInfo, key);
     TAG_LOGI(AAFwkTag::INTENT, "dispatch to ExecuteIntentCommon, ignoreAbilityName: %{public}d, "
         "openLink: %{public}d, callerBundle: %{public}s",
@@ -14622,48 +14617,6 @@ void AbilityManagerService::SetRemoteIntentTimeout(uint64_t insightIntentId)
         std::move(ffrtTaskHandle));
     std::lock_guard<ffrt::mutex> lock(remoteTaskHandlesMutex_);
     remoteTaskHandles_.emplace(insightIntentId, taskHandle);
-}
-
-int32_t AbilityManagerService::DispatchDistributedIntent(
-    const std::shared_ptr<InsightIntentExecuteParam> &param,
-    const AbilityRuntime::ExtractInsightIntentGenericInfo &infos)
-{
-    if (IsFloodAttackByCallerUid(IPCSkeleton::GetCallingUid())) {
-        TAG_LOGW(AAFwkTag::INTENT, "distributed intent flood attack");
-        DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->RemoveExecuteIntent(
-            param->insightIntentId_);
-        return INNER_ERR;
-    }
-    bool hasDistributedPermission = PermissionVerification::GetInstance()->VerifyCallingPermission(
-        PermissionConstants::PERMISSION_EXECUTE_DISTRIBUTED_INTENT);
-    if (!hasDistributedPermission) {
-        TAG_LOGE(AAFwkTag::INTENT, "distributed intent permission denied");
-        return CHECK_PERMISSION_FAILED;
-    }
-    Want want;
-    auto genRet = InsightIntentExecuteManager::GenerateWant(param, infos, want);
-    if (genRet != ERR_OK) {
-        TAG_LOGE(AAFwkTag::INTENT, "GenerateWant failed: %{public}d", genRet);
-        DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->RemoveExecuteIntent(
-            param->insightIntentId_);
-        return genRet;
-    }
-    TAG_LOGI(AAFwkTag::INTENT, "GenerateWant success for distributed intent");
-    IntentCallerInfo callerInfo;
-    callerInfo.callerUid = IPCSkeleton::GetCallingUid();
-    callerInfo.requestCode = param->insightIntentId_;
-    callerInfo.accessToken = IPCSkeleton::GetCallingTokenID();
-    sptr<IRemoteObject> callback = new (std::nothrow) AAFwk::RemoteIntentResultCallback();
-    DistributedClient dmsClient;
-    want.SetDeviceId(param->deviceId_);
-    if (dmsClient.StartRemoteIntent(want, callerInfo, callback) != ERR_OK) {
-        TAG_LOGE(AAFwkTag::INTENT, "StartRemoteIntent failed");
-        DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->RemoveExecuteIntent(
-            param->insightIntentId_);
-        return ERR_INTENT_CONNECTION_FAILED;
-    }
-    SetRemoteIntentTimeout(param->insightIntentId_);
-    return ERR_OK;
 }
 
 void AbilityManagerService::RemoveIntentTimeout(uint64_t insightIntentId)

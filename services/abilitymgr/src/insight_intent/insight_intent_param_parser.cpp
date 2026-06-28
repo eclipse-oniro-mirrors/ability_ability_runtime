@@ -38,7 +38,6 @@ constexpr const char *INSIGHT_INTENT_OPT_URIS = "uris";
 constexpr const char *INSIGHT_INTENT_OPT_FLAGS = "flags";
 constexpr const char *INSIGHT_INTENT_OPT_USER_ID = "userId";
 constexpr const char *INSIGHT_INTENT_OPT_DISPLAY_ID = "displayId";
-constexpr const char *INSIGHT_INTENT_OPT_DEVICE_ID = "deviceId";
 
 constexpr int DECIMAL_BASE = 10;
 constexpr int AUTO_BASE = 0;
@@ -170,7 +169,7 @@ int32_t InsightIntentParamParser::Build(const std::string &bundleName, const std
     ResolveFlags(*options, param->flags_);
     ResolveUserId(*options, callerUserId, param->userId_);
     ResolveDisplayId(*options, param->displayId_);
-    ResolveDeviceId(*options, param->deviceId_);
+    // deviceId 不再从 options 解析，保持默认空串（本机），分布式支持暂未启用。
 
     out.param = param;
     return ERR_OK;
@@ -236,15 +235,6 @@ void InsightIntentParamParser::ResolveDisplayId(const AAFwk::WantParams &opts, i
     int32_t val = 0;
     if (ParseInt(displayIdStr, DECIMAL_BASE, val)) {
         out = val;
-    }
-}
-
-void InsightIntentParamParser::ResolveDeviceId(const AAFwk::WantParams &opts, std::string &out) const
-{
-    out.clear();
-    std::string dev = opts.GetStringParam(INSIGHT_INTENT_OPT_DEVICE_ID);
-    if (!dev.empty()) {
-        out = std::move(dev);
     }
 }
 } // namespace AbilityRuntime
