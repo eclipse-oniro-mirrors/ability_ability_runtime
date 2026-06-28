@@ -108,7 +108,7 @@ bool ResolveExecuteModeFromOption(const std::string &str, int32_t &out)
         out = it->second;
         return true;
     }
-    return ParseInt(str, DECIMAL_BASE, out);
+    return false;
 }
 } // namespace
 

@@ -90,6 +90,23 @@ std::string GetFunctionNameFromGeneric(const AbilityRuntime::ExtractInsightInten
     return "";
 }
 
+// 检查 Entry 装饰器的 executeMode 是否含 BG UIAbility 或 SE。通过则填 outAbility 并返回 true。
+bool IsQualifiedEntry(const AbilityRuntime::ExtractInsightIntentGenericInfo &generic, std::string &outAbility)
+{
+    if (generic.currentType != AbilityRuntime::InfoType::Entry) {
+        return false;
+    }
+    const auto &entry = generic.get<AbilityRuntime::InsightIntentEntryInfo>();
+    for (auto mode : entry.executeMode) {
+        if (mode == AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND ||
+            mode == AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY) {
+            outAbility = entry.abilityName;
+            return true;
+        }
+    }
+    return false;
+}
+
 std::string GetInputSchemaFromGeneric(const AbilityRuntime::ExtractInsightIntentInfo &info)
 {
     switch (info.genericInfo.currentType) {
@@ -288,23 +305,7 @@ void IntentFilterUtil::FilterGeneric(std::vector<AbilityRuntime::ExtractInsightI
             continue;
         }
         RegisterSortKey key { generic.moduleName, "" };
-        if (generic.currentType == AbilityRuntime::InfoType::Function) {
-            // Function 装饰器 = SE，通过规则 1
-        } else if (generic.currentType == AbilityRuntime::InfoType::Entry) {
-            const auto &entry = generic.get<AbilityRuntime::InsightIntentEntryInfo>();
-            bool ok = false;
-            for (auto mode : entry.executeMode) {
-                if (mode == AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND ||
-                    mode == AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY) {
-                    key.abilityName = entry.abilityName;
-                    ok = true;
-                    break;
-                }
-            }
-            if (!ok) {
-                continue;
-            }
-        } else {
+        if (!IsQualifiedEntry(generic, key.abilityName)) {
             continue;
         }
         qualified.emplace_back(std::move(key), std::move(info));
@@ -338,10 +339,10 @@ bool BatchRegisterInsightIntentFunctions(
     }
     // Binder IPC 单次事务有容量限制（~1MB mmap，安全阈值 < 200KB）。
     // 单条 FunctionInfo 约 1-3KB（inputSchema 为主），每批 50 条约 100KB 在安全范围内。
-    constexpr size_t MAX_BATCH_SIZE = 50;
+    constexpr size_t maxBatchSize = 50;
     auto &client = CliToolMGRClient::GetInstance();
-    for (size_t offset = 0; offset < functions.size(); offset += MAX_BATCH_SIZE) {
-        size_t end = std::min(offset + MAX_BATCH_SIZE, functions.size());
+    for (size_t offset = 0; offset < functions.size(); offset += maxBatchSize) {
+        size_t end = std::min(offset + maxBatchSize, functions.size());
         std::vector<FunctionInfo> batch(functions.begin() + offset, functions.begin() + end);
         int32_t batchSuccess = 0;
         ErrCode ret = client.BatchRegisterFunctions(batch, batchSuccess);
@@ -353,8 +354,6 @@ bool BatchRegisterInsightIntentFunctions(
         }
     }
     return true;
-}
-    return ret == ERR_OK;
 }
 
 } // namespace CliTool

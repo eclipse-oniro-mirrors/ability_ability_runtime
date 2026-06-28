@@ -592,7 +592,6 @@ int32_t CliToolManagerService::GetFunctionInfo(const std::string &functionNamesp
     bool isSystemApp = AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId);
     bool isSA = Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken) ==
         Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE;
-
     if (!isSystemApp && !isSA) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "GetFunctionInfo: Not system app nor SA");
         return ERR_NOT_SYSTEM_APP;
@@ -678,7 +677,6 @@ int32_t CliToolManagerService::GetAllFunctions(std::vector<FunctionInfo> &functi
     bool isSystemApp = AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId);
     bool isSA = Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken) ==
         Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE;
-
     if (!isSystemApp && !isSA) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllFunctions: Not system app nor SA");
         return ERR_NOT_SYSTEM_APP;
