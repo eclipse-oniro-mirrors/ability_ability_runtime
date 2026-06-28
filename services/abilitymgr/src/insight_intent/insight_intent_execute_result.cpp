@@ -15,7 +15,11 @@
 
 #include "insight_intent_execute_result.h"
 
+#include "array_wrapper.h"
+#include "int_wrapper.h"
 #include "nlohmann/json.hpp"
+#include "string_wrapper.h"
+#include "want_params_wrapper.h"
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -201,6 +205,26 @@ std::string InsightIntentExecuteResult::ToJsonString() const
 bool InsightIntentExecuteResult::CheckResult(std::shared_ptr<const WantParams> result)
 {
     return true;
+}
+
+std::shared_ptr<WantParams> InsightIntentExecuteResult::BuildFunctionResult() const
+{
+    auto resultParams = std::make_shared<WantParams>();
+    resultParams->SetParam(KEY_FLAGS, OHOS::AAFwk::Integer::Box(flags));
+    if (!uris.empty()) {
+        auto uriSize = uris.size();
+        sptr<OHOS::AAFwk::IArray> uriArray = sptr<AAFwk::Array>::MakeSptr(uriSize, AAFwk::g_IID_IString);
+        if (uriArray != nullptr) {
+            for (std::size_t i = 0; i < uriSize; i++) {
+                uriArray->Set(i, OHOS::AAFwk::String::Box(uris[i]));
+            }
+            resultParams->SetParam(KEY_URIS, uriArray);
+        }
+    }
+    if (result != nullptr) {
+        resultParams->SetParam(KEY_RESULT, OHOS::AAFwk::WantParamWrapper::Box(*result));
+    }
+    return resultParams;
 }
 } // namespace AppExecFwk
 } // namespace OHOS

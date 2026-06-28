@@ -65,6 +65,7 @@ ohos_fuzztest("AbilityMgrInsightIntentUtilsFuzzTest") {
   ]
 
   external_deps = [
+    "ability_base:base",
     "ability_base:want",
     "ability_base:zuri",
     "bundle_framework:libappexecfwk_common",
