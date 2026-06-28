@@ -15111,15 +15111,24 @@ int32_t AbilityManagerService::ExecuteInAppSkill(const std::string &bundleName, 
         skillInfo, want, userId, requestCode, targetType, arkTSPath, funcName, skillArgs);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "generate skill want failed");
+        DelayedSingleton<SkillExecuteManager>::GetInstance()->OnLaunchFailed(requestCode, ret);
         return ret;
     }
 
     // 5. Launch target based on type
     uint32_t skillCallerTokenId = IPCSkeleton::GetCallingTokenID();
+    int32_t launchRet = ERR_OK;
     if (targetType == AppExecFwk::ExtensionAbilityType::SERVICE) {
-        return StartExtensionAbilityWithSkill(want, userId, skillCallerTokenId);
+        launchRet = StartExtensionAbilityWithSkill(want, userId, skillCallerTokenId);
+    } else {
+        launchRet = StartAbilityByCallWithSkill(want, nullptr, userId, skillCallerTokenId);
     }
-    return StartAbilityByCallWithSkill(want, nullptr, userId, skillCallerTokenId);
+    if (launchRet == ERR_OK) {
+        DelayedSingleton<SkillExecuteManager>::GetInstance()->OnLaunchCompleted(requestCode);
+    } else {
+        DelayedSingleton<SkillExecuteManager>::GetInstance()->OnLaunchFailed(requestCode, launchRet);
+    }
+    return launchRet;
 }
 
 int32_t AbilityManagerService::ExecuteInAppSkillWithTokenId(const AppExecFwk::SkillExecuteRequest &request,
@@ -15166,14 +15175,23 @@ int32_t AbilityManagerService::ExecuteInAppSkillWithTokenId(const AppExecFwk::Sk
         request.scriptPath, request.functionName, request.skillArgs);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "generate skill want failed");
+        DelayedSingleton<SkillExecuteManager>::GetInstance()->OnLaunchFailed(requestCode, ret);
         return ret;
     }
 
     // 5. Launch target based on type
+    int32_t launchRet = ERR_OK;
     if (targetType == AppExecFwk::ExtensionAbilityType::SERVICE) {
-        return StartExtensionAbilityWithSkill(want, userId, request.callerTokenId);
+        launchRet = StartExtensionAbilityWithSkill(want, userId, request.callerTokenId);
+    } else {
+        launchRet = StartAbilityByCallWithSkill(want, nullptr, userId, request.callerTokenId);
     }
-    return StartAbilityByCallWithSkill(want, nullptr, userId, request.callerTokenId);
+    if (launchRet == ERR_OK) {
+        DelayedSingleton<SkillExecuteManager>::GetInstance()->OnLaunchCompleted(requestCode);
+    } else {
+        DelayedSingleton<SkillExecuteManager>::GetInstance()->OnLaunchFailed(requestCode, launchRet);
+    }
+    return launchRet;
 }
 
 int32_t AbilityManagerService::StartAbilityByCallWithSkill(const Want &want,
