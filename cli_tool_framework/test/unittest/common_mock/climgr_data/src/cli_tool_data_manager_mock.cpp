@@ -75,11 +75,6 @@ int32_t CliToolDataManager::QueryToolSummaries(std::vector<ToolSummary> &summari
     return ERR_OK;
 }
 
-int32_t CliToolDataManager::RegisterTool(const ToolInfo &)
-{
-    return ERR_OK;
-}
-
 int32_t CliToolDataManager::JsonArrayToTools(const std::string &, std::vector<ToolInfo> &tools)
 {
     tools.clear();

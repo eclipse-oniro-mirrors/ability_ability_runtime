@@ -87,13 +87,6 @@ public:
     ErrCode GetAllToolInfos(std::vector<ToolInfo> &tools);
 
     /**
-     * @brief Register a CLI tool
-     * @param tool ToolInfo to register
-     * @return ErrCode ERR_OK on success
-     */
-    ErrCode RegisterTool(const ToolInfo &tool);
-
-    /**
      * @brief Register a function
      * @param function FunctionInfo to register
      * @return ErrCode ERR_OK on success
