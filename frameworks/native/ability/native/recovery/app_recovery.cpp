@@ -553,7 +553,7 @@ bool AppRecovery::GetMissionIds(std::string path, std::vector<int32_t> &missionI
     }
     struct dirent *ptr;
     while ((ptr = readdir(dir)) != nullptr) {
-        if (ptr == nullptr) {
+        if (ptr == nullptr) { //
             TAG_LOGE(AAFwkTag::RECOVERY, "null ptr");
             closedir(dir);
             return false;
@@ -622,7 +622,7 @@ bool AppRecovery::IsEtsAPP()
 
 panda::ecmascript::EcmaVM* AppRecovery::GetVMFromAbility(const std::shared_ptr<AbilityRuntime::UIAbility>& abilityPtr)
 {
-    if (!abilityPtr) {
+    if (!abilityPtr) { //
         return nullptr;
     }
     OHOS::AbilityRuntime::JsUIAbility& jsAbility = static_cast<AbilityRuntime::JsUIAbility&>(*abilityPtr);
