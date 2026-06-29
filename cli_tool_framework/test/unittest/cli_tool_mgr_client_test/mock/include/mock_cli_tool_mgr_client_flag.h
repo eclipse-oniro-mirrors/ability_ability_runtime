@@ -23,7 +23,6 @@ public:
     static int32_t retGetAllToolSummaries;
     static int32_t retGetToolInfoByName;
     static int32_t retGetAllToolInfos;
-    static int32_t retRegisterTool;
     static int32_t retRegisterFunction;
     static int32_t retBatchRegisterFunctions;
     static int32_t batchRegisterFunctionsSuccessCount;

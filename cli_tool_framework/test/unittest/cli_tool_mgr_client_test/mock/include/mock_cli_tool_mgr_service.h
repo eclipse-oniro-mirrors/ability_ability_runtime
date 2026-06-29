@@ -17,7 +17,6 @@ public:
     int32_t GetAllToolSummaries(std::vector<ToolSummary> &summaries) override;
     int32_t GetToolInfoByName(const std::string &name, ToolInfo &tool) override;
     int32_t GetAllToolInfos(ToolsRawData &tools) override;
-    int32_t RegisterTool(const ToolInfo &tool) override;
     int32_t RegisterFunction(const FunctionInfo &function) override;
     int32_t BatchRegisterFunctions(const std::vector<FunctionInfo> &functions,
         int32_t &successCount) override;

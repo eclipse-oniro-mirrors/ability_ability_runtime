@@ -104,8 +104,6 @@ public:
     void SetUp();
     void TearDown();
 
-    void RegisterTestTool(const std::string& name, const std::string& schema);
-
     sptr<CliToolManagerService> service_;
 };
 
@@ -151,16 +149,6 @@ void CliToolManagerServiceTest::TearDown()
     std::lock_guard<ffrt::mutex> guard(service_->sessionsMutex_);
     service_->sessionRecords_.clear();
     service_->bundleObservers_.clear();
-}
-
-void CliToolManagerServiceTest::RegisterTestTool(const std::string& name, const std::string& schema)
-{
-    ToolInfo tool;
-    tool.name = name;
-    tool.description = "Test tool: " + name;
-    tool.executablePath = "/system/bin/" + name;
-    tool.inputSchema = schema;
-    CliToolDataManager::GetInstance().RegisterTool(tool);
 }
 
 /**
@@ -1955,22 +1943,6 @@ HWTEST_F(CliToolManagerServiceTest, OnStop_0100, TestSize.Level1)
     EXPECT_TRUE(service_->sessionRecords_.empty());
 
     TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_OnStop_0100 end");
-}
-
-/**
- * @tc.name: CliToolManagerService_RegisterTool_0100
- * @tc.desc: Test RegisterTool returns permission denied (system API only)
- * @tc.type: FUNC
- */
-HWTEST_F(CliToolManagerServiceTest, RegisterTool_0100, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_RegisterTool_0100 start");
-
-    ToolInfo tool;
-    tool.name = "ohos-test";
-    EXPECT_EQ(service_->RegisterTool(tool), ERR_PERMISSION_DENIED);
-
-    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_RegisterTool_0100 end");
 }
 
 /**

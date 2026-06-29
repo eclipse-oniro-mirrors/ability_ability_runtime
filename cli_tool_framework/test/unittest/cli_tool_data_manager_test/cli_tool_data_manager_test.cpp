@@ -728,57 +728,6 @@ HWTEST_F(CliToolDataManagerTest, CliToolDataManager_QueryToolSummaries_002, Test
     EXPECT_EQ(summaries[0].description, "Summary desc");
 }
 
-// ==================== RegisterTool Tests ====================
-
-/**
- * @tc.name: CliToolDataManager_RegisterTool_001
- * @tc.desc: Test RegisterTool with valid tool
- * @tc.type: FUNC
- */
-HWTEST_F(CliToolDataManagerTest, CliToolDataManager_RegisterTool_001, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_RegisterTool_001 start");
-
-    auto& dataManager = CliToolDataManager::GetInstance();
-    ToolInfo tool;
-    tool.name = "ohos-register_test";
-    tool.version = "1.0.0";
-    tool.description = "Register test tool";
-    tool.executablePath = "/bin/register_test";
-    tool.inputSchema = "{}";
-    tool.outputSchema = "{}";
-
-    int32_t ret = dataManager.RegisterTool(tool);
-
-    // May succeed or return error if KVStore not ready
-    EXPECT_TRUE(ret == 0 || ret == ERR_KVSTORE_NOT_READY);
-
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_RegisterTool_001 end");
-}
-
-/**
- * @tc.name: CliToolDataManager_RegisterTool_002
- * @tc.desc: Test RegisterTool stores tool into mocked KVStore
- * @tc.type: FUNC
- */
-HWTEST_F(CliToolDataManagerTest, CliToolDataManager_RegisterTool_002, TestSize.Level1)
-{
-    auto mockStore = std::make_shared<MockSingleKvStore>();
-    CliToolDataManager::GetInstance().kvStorePtr_ = mockStore;
-    ToolInfo tool;
-    tool.name = "ohos-register_mock";
-    tool.version = "1.0.0";
-    tool.description = "Register mock";
-    tool.executablePath = "/bin/register_mock";
-    tool.inputSchema = "{}";
-    tool.outputSchema = "{}";
-
-    int32_t ret = CliToolDataManager::GetInstance().RegisterTool(tool);
-
-    EXPECT_EQ(ret, ERR_OK);
-    EXPECT_TRUE(mockStore->HasMockData("ohos-register_mock"));
-}
-
 // ==================== EnsureToolsLoaded Tests ====================
 
 /**
@@ -972,35 +921,6 @@ HWTEST_F(CliToolDataManagerTest, CliToolDataManager_GetInstance_001, TestSize.Le
     EXPECT_EQ(&instance1, &instance2);
 
     TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_GetInstance_001 end");
-}
-
-// ==================== StoreTool Tests ====================
-
-/**
- * @tc.name: CliToolDataManager_StoreTool_001
- * @tc.desc: Test StoreTool with valid tool
- * @tc.type: FUNC
- */
-HWTEST_F(CliToolDataManagerTest, CliToolDataManager_StoreTool_001, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_StoreTool_001 start");
-
-    auto& dataManager = CliToolDataManager::GetInstance();
-    ToolInfo tool;
-    tool.name = "ohos-store_test";
-    tool.version = "1.0.0";
-    tool.description = "Store test";
-    tool.executablePath = "/bin/store_test";
-    tool.inputSchema = "{}";
-    tool.outputSchema = "{}";
-
-    // RegisterTool internally calls StoreTool
-    int32_t ret = dataManager.RegisterTool(tool);
-
-    // May succeed or return error if KVStore not ready
-    EXPECT_TRUE(ret == 0 || ret == ERR_KVSTORE_NOT_READY);
-
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_StoreTool_001 end");
 }
 
 // ==================== CheckKvStore Tests ====================
@@ -1198,40 +1118,6 @@ HWTEST_F(CliToolDataManagerTest, CliToolDataManager_QueryToolSummaries_0100, Tes
     EXPECT_EQ(dataManager.QueryToolSummaries(summaries), ERR_OK);
 
     TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_QueryToolSummaries_0100 end");
-}
-
-// ==================== RegisterTool Tests ====================
-
-/**
- * @tc.name: CliToolDataManager_RegisterTool_0100
- * @tc.desc: Test RegisterTool with null KV and with valid tool
- * @tc.type: FUNC
- */
-HWTEST_F(CliToolDataManagerTest, CliToolDataManager_RegisterTool_0100, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_RegisterTool_0100 start");
-
-    auto& dataManager = CliToolDataManager::GetInstance();
-
-    // Null KV store may be initialized lazily by CheckKvStore.
-    dataManager.kvStorePtr_ = nullptr;
-    ToolInfo tool;
-    tool.name = "ohos-register_tool";
-    tool.version = "1.0.0";
-    tool.description = "test";
-    tool.executablePath = "/bin/test";
-    tool.inputSchema = R"({"type":"object"})";
-    tool.outputSchema = R"({"type":"object"})";
-    int32_t ret = dataManager.RegisterTool(tool);
-    EXPECT_TRUE(ret == ERR_OK || ret == ERR_KVSTORE_NOT_READY);
-
-    // valid registration
-    auto mockStore = std::make_shared<MockSingleKvStore>();
-    dataManager.kvStorePtr_ = mockStore;
-    EXPECT_EQ(dataManager.RegisterTool(tool), ERR_OK);
-    EXPECT_TRUE(mockStore->HasMockData("ohos-register_tool"));
-
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_RegisterTool_0100 end");
 }
 
 } // namespace CliTool

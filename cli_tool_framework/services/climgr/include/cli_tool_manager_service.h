@@ -74,11 +74,6 @@ public:
     int32_t GetToolInfoByName(const std::string &name, ToolInfo &tool) override;
 
     /**
-     * @brief Register a CLI tool
-     */
-    int32_t RegisterTool(const ToolInfo &tool) override;
-
-    /**
      * @brief Execute a CLI tool with key-value pairs (convenience method).
      * @param param The CLI tool param.
      * @param objectCallback The callback RemoteObject.

@@ -502,12 +502,6 @@ int32_t CliToolManagerService::GetToolInfoByName(const std::string &name, ToolIn
     return CliToolDataManager::GetInstance().GetToolByName(name, tool);
 }
 
-int32_t CliToolManagerService::RegisterTool(const ToolInfo &tool)
-{
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "RegisterTool called, tool name='%{public}s'", tool.name.c_str());
-    return ERR_PERMISSION_DENIED;
-}
-
 int32_t CliToolManagerService::RegisterFunction(const FunctionInfo &function)
 {
     TAG_LOGD(AAFwkTag::CLI_TOOL, "RegisterFunction called: %{public}s/%{public}s",

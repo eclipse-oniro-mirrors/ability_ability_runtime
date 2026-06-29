@@ -14,7 +14,6 @@ namespace CliTool {
 int32_t CliToolMgrClientFlag::retGetAllToolSummaries = ERR_OK;
 int32_t CliToolMgrClientFlag::retGetToolInfoByName = ERR_OK;
 int32_t CliToolMgrClientFlag::retGetAllToolInfos = ERR_OK;
-int32_t CliToolMgrClientFlag::retRegisterTool = ERR_OK;
 int32_t CliToolMgrClientFlag::retRegisterFunction = ERR_OK;
 int32_t CliToolMgrClientFlag::retBatchRegisterFunctions = ERR_OK;
 int32_t CliToolMgrClientFlag::batchRegisterFunctionsSuccessCount = 0;
@@ -46,7 +45,6 @@ void CliToolMgrClientFlag::Reset()
     retGetAllToolSummaries = ERR_OK;
     retGetToolInfoByName = ERR_OK;
     retGetAllToolInfos = ERR_OK;
-    retRegisterTool = ERR_OK;
     retRegisterFunction = ERR_OK;
     retBatchRegisterFunctions = ERR_OK;
     batchRegisterFunctionsSuccessCount = 0;
@@ -94,11 +92,6 @@ int32_t MockCliToolMgrService::GetAllToolInfos(ToolsRawData &tools)
         ToolsRawData::FromToolInfoVec(CliToolMgrClientFlag::toolInfos, tools);
     }
     return CliToolMgrClientFlag::retGetAllToolInfos;
-}
-
-int32_t MockCliToolMgrService::RegisterTool(const ToolInfo &)
-{
-    return CliToolMgrClientFlag::retRegisterTool;
 }
 
 int32_t MockCliToolMgrService::RegisterFunction(const FunctionInfo &function)

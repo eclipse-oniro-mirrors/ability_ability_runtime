@@ -25,7 +25,6 @@ public:
     int32_t GetAllTools(std::vector<ToolInfo> &tools);
     int32_t GetAllToolsRawData(ToolsRawData &tools);
     int32_t QueryToolSummaries(std::vector<ToolSummary> &summaries);
-    int32_t RegisterTool(const ToolInfo &tool);
     int32_t JsonArrayToTools(const std::string &jsonStr, std::vector<ToolInfo> &tools);
     int32_t GetToolByName(const std::string &name, ToolInfo &toolInfo);
 };

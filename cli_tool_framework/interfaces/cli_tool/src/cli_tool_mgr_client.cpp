@@ -167,17 +167,6 @@ ErrCode CliToolMGRClient::GetAllToolInfos(std::vector<ToolInfo> &tools)
     return ToolsRawData::ToToolInfoVec(rawData, tools);
 }
 
-ErrCode CliToolMGRClient::RegisterTool(const ToolInfo &tool)
-{
-    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    auto proxy = GetCliToolMgrProxy();
-    if (proxy == nullptr) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
-        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
-    }
-    return proxy->RegisterTool(tool);
-}
-
 ErrCode CliToolMGRClient::RegisterFunction(const FunctionInfo &function)
 {
     TAG_LOGI(AAFwkTag::CLI_TOOL, "RegisterFunction: %{public}s/%{public}s",

@@ -30,7 +30,6 @@ interface ICliToolManager {
     void GetAllToolSummaries([out] ToolSummary[] summaries);
     void GetToolInfoByName([in] String name, [out] ToolInfo tool);
     void GetAllToolInfos([out] ToolsRawData tools);
-    void RegisterTool([in] ToolInfo tool);
     void ExecTool([in] ExecToolParam param, [in] String eventId, [in] ICliToolManagerScheduler scheduler);
     void ExecCmd([in] ExecCmdParam param, [in] String eventId, [in] ICliToolManagerScheduler scheduler, [in] String subscriptionId);
     void SubscribeSession([in] String sessionId, [in] String subscriptionId, [in] ICliToolManagerScheduler scheduler);
