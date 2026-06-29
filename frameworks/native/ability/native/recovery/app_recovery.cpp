@@ -620,11 +620,8 @@ panda::ecmascript::EcmaVM* AppRecovery::GetVMFromAbility(const std::shared_ptr<A
     if (!abilityPtr) {
         return nullptr;
     }
-    auto* jsAbility = dynamic_cast<AbilityRuntime::JsUIAbility*>(abilityPtr.get());
-    if (!jsAbility) {
-        return nullptr;
-    }
-    AbilityRuntime::JsRuntime& runtime = const_cast<AbilityRuntime::JsRuntime&>(jsAbility->GetJsRuntime());
+    OHOS::AbilityRuntime::JsUIAbility& jsAbility = static_cast<AbilityRuntime::JsUIAbility&>(*abilityPtr);
+    AbilityRuntime::JsRuntime& runtime = const_cast<AbilityRuntime::JsRuntime&>(jsAbility.GetJsRuntime());
     return runtime.GetEcmaVm();
 }
 
