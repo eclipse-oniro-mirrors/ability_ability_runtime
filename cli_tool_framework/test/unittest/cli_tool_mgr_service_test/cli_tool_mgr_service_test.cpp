@@ -42,6 +42,7 @@
 #include "exec_options.h"
 #include "function_info.h"
 #include "ipc_skeleton.h"
+#include "io_monitor.h"
 #include "nativetoken_kit.h"
 #include "skill/skill_execute_result.h"
 #include "string_wrapper.h"
@@ -76,7 +77,7 @@ bool IsPermissionGateResult(int32_t result)
 {
     return result == ERR_NOT_SYSTEM_APP || result == ERR_PERMISSION_DENIED;
 }
-}
+} // namespace {
 
 class TestScheduler : public CliToolManagerSchedulerStub {
 public:
@@ -455,13 +456,14 @@ HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareTool_0100, TestSize.Level1
     ToolInfo toolInfo;
     std::string sandboxConfig;
     std::string bundleName;
+    std::string detail;
 
     EXPECT_EQ(service_->ValidateAndPrepareTool(param, IPCSkeleton::GetCallingTokenID(),
-        toolInfo, sandboxConfig, bundleName), ERR_TOOL_NOT_EXIST);
+        toolInfo, sandboxConfig, bundleName, detail), ERR_TOOL_NOT_EXIST);
 
     CliToolDataManagerMock::getToolByNameResult = ERR_OK;
     int32_t result = service_->ValidateAndPrepareTool(param, IPCSkeleton::GetCallingTokenID(),
-        toolInfo, sandboxConfig, bundleName);
+        toolInfo, sandboxConfig, bundleName, detail);
     EXPECT_TRUE(result == ERR_OK || result == ERR_NOT_HAP);
     if (result == ERR_OK) {
         EXPECT_EQ(toolInfo.name, param.toolName);
@@ -542,7 +544,8 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0500, TestSize.Level1)
     param.subcommand = "invalid_subcmd";
     param.challenge = "test_challenge";
 
-    int32_t result = ToolUtil::ValidateProperties(toolInfo, param, 0);
+    std::string detail;
+    int32_t result = ToolUtil::ValidateProperties(toolInfo, param, 0, detail);
 
     EXPECT_EQ(result, ERR_TOOL_NOT_EXIST);
 
@@ -1397,6 +1400,62 @@ HWTEST_F(CliToolManagerServiceTest, WaitPid_0200, TestSize.Level1)
 }
 
 /**
+ * @tc.name: CliToolManagerService_WaitPid_0300
+ * @tc.desc: Test WaitPid reports signal for abnormal termination (SIGKILL)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, WaitPid_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_WaitPid_0300 start";
+
+    auto record = std::make_shared<SessionRecord>();
+    record->sessionId = "signal_kill_session";
+    record->processId = 56789;
+    record->toolName = "test_tool";
+    record->MarkStdoutClosed();
+    record->MarkStderrClosed();
+    service_->AddSessionRecord(record);
+
+    // Simulate process killed by SIGKILL (signal 9)
+    int status = 0;
+    status = (9 << 8) | 0x7f; // WIFSIGNALED(status) = true, WTERMSIG(status) = 9
+    service_->WaitPid(record->processId, status, SIGCHLD);
+
+    EXPECT_TRUE(record->HasProcessExited());
+    EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_WaitPid_0300 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_WaitPid_0400
+ * @tc.desc: Test WaitPid ignores normal termination signals (SIGTERM)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, WaitPid_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_WaitPid_0400 start";
+
+    auto record = std::make_shared<SessionRecord>();
+    record->sessionId = "signal_term_session";
+    record->processId = 67890;
+    record->toolName = "test_tool";
+    record->MarkStdoutClosed();
+    record->MarkStderrClosed();
+    service_->AddSessionRecord(record);
+
+    // Simulate process terminated by SIGTERM (signal 15) - should not report
+    int status = 0;
+    status = (15 << 8) | 0x7f; // WIFSIGNALED(status) = true, WTERMSIG(status) = 15
+    service_->WaitPid(record->processId, status, SIGCHLD);
+
+    EXPECT_TRUE(record->HasProcessExited());
+    EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_WaitPid_0400 end";
+}
+
+/**
  * @tc.name: CliToolManagerService_ClearSession_0100
  * @tc.desc: Test ClearSession with missing session
  * @tc.type: FUNC
@@ -1950,6 +2009,68 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0700, TestSize.Level1)
     EXPECT_TRUE(result == ERR_INVALID_VALUE || IsPermissionGateResult(result));
 
     TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_0700 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecTool_0800
+ * @tc.desc: Test ExecTool succeeds when SetupAndStartSession returns ERR_OK
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecTool_0800, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0800 start";
+
+    CliToolDataManagerMock::getToolByNameResult = ERR_OK;
+
+    // Create IOMonitor to ensure RegisterSessionWithMonitors succeeds
+    service_->ioMonitor_ = IOMonitor::Create();
+
+    ExecToolParam param;
+    param.toolName = "ohos-success_tool";
+
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecTool(param, "event_exec_success", scheduler);
+
+    EXPECT_EQ(result, ERR_NOT_HAP);
+
+    // Clean up
+    if (service_->ioMonitor_ != nullptr) {
+        service_->ioMonitor_->Stop();
+        service_->ioMonitor_ = nullptr;
+    }
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0800 end";
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecTool_0900
+ * @tc.desc: Test ExecTool reports event when SetupAndStartSession fails (true branch at line 822)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecTool_0900, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0900 start";
+
+    CliToolDataManagerMock::getToolByNameResult = ERR_OK;
+
+    // Create IOMonitor (won't be reached due to CreateChildProcess failure)
+    service_->ioMonitor_ = IOMonitor::Create();
+
+    ExecToolParam param;
+    param.toolName = "ohos-fail_tool";
+
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecTool(param, "event_exec_fail", scheduler);
+
+    EXPECT_EQ(result, ERR_NOT_HAP);
+
+    // Clean up
+    if (service_->ioMonitor_ != nullptr) {
+        service_->ioMonitor_->Stop();
+        service_->ioMonitor_ = nullptr;
+    }
+
+    GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0900 end";
 }
 
 // ==================== ValidateAndPrepareCmd Tests ====================

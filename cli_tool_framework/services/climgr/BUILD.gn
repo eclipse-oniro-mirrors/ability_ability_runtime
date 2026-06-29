@@ -61,6 +61,8 @@ ohos_shared_library("climgr") {
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",
     "${cli_tool_framework_path}/interfaces/function:function_info",
+    "${ability_runtime_services_path}/common:hisysevent_report",
+    "../common:cli_common",
   ]
 
   external_deps = [
@@ -72,6 +74,7 @@ ohos_shared_library("climgr") {
     "c_utils:utils",
     "ffrt:libffrt",
     "hilog:libhilog",
+    "hisysevent:libhisysevent",
     "init:libbegetutil",
     "ipc:ipc_single",
     "json:nlohmann_json_static",

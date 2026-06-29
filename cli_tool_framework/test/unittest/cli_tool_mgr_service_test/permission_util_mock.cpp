@@ -21,5 +21,6 @@ bool PermissionUtil::VerifyAccessToken(Security::AccessToken::AccessTokenID, con
 {
     return true;
 }
+
 } // namespace CliTool
 } // namespace OHOS

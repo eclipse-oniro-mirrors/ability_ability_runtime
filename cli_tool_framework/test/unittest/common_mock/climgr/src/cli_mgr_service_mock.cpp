@@ -250,7 +250,8 @@ int32_t PermissionQueryUtil::BatchQueryPermissions(
     return ERR_OK;
 }
 
-int32_t ToolUtil::ValidateProperties(const ToolInfo &, ExecToolParam &, Security::AccessToken::AccessTokenID)
+int32_t ToolUtil::ValidateProperties(const ToolInfo &, ExecToolParam &,
+    Security::AccessToken::AccessTokenID, std::string&)
 {
     return ERR_OK;
 }

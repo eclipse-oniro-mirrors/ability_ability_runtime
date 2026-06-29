@@ -28,6 +28,7 @@
 #include "bundle_info.h"
 #include "bundle_mgr_helper.h"
 #include "cli_error_code.h"
+#include "cli_event_report.h"
 #include "exec_cmd_param.h"
 #include "exec_tool_param.h"
 #include "hilog_tag_wrapper.h"
@@ -50,7 +51,7 @@ constexpr int64_t MAX_TIMEOUT = 30 * 60; // 30 m
 constexpr size_t PREFIX_DOUBLE_DASH_LEN = 2;
 }
 int32_t ToolUtil::ValidateProperties(const ToolInfo &toolInfo, ExecToolParam &param,
-    AccessToken::AccessTokenID tokenId)
+    AccessToken::AccessTokenID tokenId, std::string& detail)
 {
     if (!param.subcommand.empty()) {
         if (!toolInfo.hasSubCommand) {
@@ -61,17 +62,18 @@ int32_t ToolUtil::ValidateProperties(const ToolInfo &toolInfo, ExecToolParam &pa
         auto search = toolInfo.subcommands.find(param.subcommand);
         if (search == toolInfo.subcommands.end()) {
             TAG_LOGE(AAFwkTag::CLI_TOOL, "not have subcommand, %{public}s", param.subcommand.c_str());
+            detail = DETAIL_SUBCOMMAND_NOT_FOUND;
             return ERR_TOOL_NOT_EXIST;
         }
     }
 
-    auto res = ValidateExecOptionsProperties(param.options);
+    auto res = ValidateExecOptionsProperties(param.options, detail);
     if (res != ERR_OK) {
         return res;
     }
 
     if (param.subcommand.empty()) {
-        return ValidateInputSchemaProperties(toolInfo.inputSchema, param.args);
+        return ValidateInputSchemaProperties(toolInfo.inputSchema, param.args, detail);
     }
 
     auto it = toolInfo.subcommands.find(param.subcommand);
@@ -79,23 +81,26 @@ int32_t ToolUtil::ValidateProperties(const ToolInfo &toolInfo, ExecToolParam &pa
         TAG_LOGW(AAFwkTag::CLI_TOOL, "GetSubCommandInfo failed: subcommand=%{public}s", param.subcommand.c_str());
         return ERR_INVALID_PARAM;
     }
-    return ValidateInputSchemaProperties(it->second.inputSchema, param.args);
+    return ValidateInputSchemaProperties(it->second.inputSchema, param.args, detail);
 }
 
-int32_t ToolUtil::ValidateExecOptionsProperties(ExecOptions &options)
+int32_t ToolUtil::ValidateExecOptionsProperties(ExecOptions &options, std::string& detail)
 {
     if (options.timeout < 0 || options.yieldMs < 0) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "yieldMs or timeout < 0");
+        detail = (options.timeout < 0) ? DETAIL_TIMEOUT_NEGATIVE : DETAIL_YIELD_MS_NEGATIVE;
         return ERR_INVALID_PARAM;
     }
 
     if (options.timeout > MAX_TIMEOUT) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Excessively large timeout");
+        detail = DETAIL_TIMEOUT_EXCEEDS_LIMIT;
         return ERR_INVALID_PARAM;
     }
 
     if (!options.background && options.yieldMs > options.timeout * MILLISECOND_COEFFICIENT) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "yieldTime exceeds timeout.");
+        detail = DETAIL_YIELD_EXCEEDS_TIMEOUT;
         return ERR_INVALID_PARAM;
     }
 
@@ -103,7 +108,7 @@ int32_t ToolUtil::ValidateExecOptionsProperties(ExecOptions &options)
 }
 
 int32_t ToolUtil::ValidateInputSchemaProperties(const std::string &inputSchema,
-    const AAFwk::WantParams &args)
+    const AAFwk::WantParams &args, std::string& detail)
 {
     if (args.IsEmpty()) {
         TAG_LOGI(AAFwkTag::CLI_TOOL, "args is empty");
@@ -112,6 +117,7 @@ int32_t ToolUtil::ValidateInputSchemaProperties(const std::string &inputSchema,
 
     if (inputSchema.empty()) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "inputSchema is empty");
+        detail = DETAIL_INPUT_SCHEMA_EMPTY;
         return ERR_INVALID_PARAM;
     }
 
@@ -135,6 +141,7 @@ int32_t ToolUtil::ValidateInputSchemaProperties(const std::string &inputSchema,
         }
         if (!properties.contains(key)) {
             TAG_LOGE(AAFwkTag::CLI_TOOL, "args key '%{public}s' not found in properties", key.c_str());
+            detail = DETAIL_PARAM_NOT_FOUND;
             return ERR_INVALID_PARAM;
         }
 
@@ -149,6 +156,7 @@ int32_t ToolUtil::ValidateInputSchemaProperties(const std::string &inputSchema,
             if (!ValidateParamType(value, expectedType, propertySchema, key)) {
                 TAG_LOGE(AAFwkTag::CLI_TOOL, "args key '%{public}s' type mismatch, expected: %{public}s",
                     key.c_str(), expectedType.c_str());
+                detail = DETAIL_PARAM_TYPE_MISMATCH;
                 return ERR_INVALID_PARAM;
             }
         }

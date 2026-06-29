@@ -74,7 +74,8 @@ int32_t ValidateToolProperties(const std::string &inputSchema, const std::string
     if (!subcommand.empty() && subcommand != "build" && subcommand != "clean" && subcommand != "deploy") {
         return ERR_TOOL_NOT_EXIST;
     }
-    return ToolUtil::ValidateInputSchemaProperties(inputSchema, ConvertToWantParams(args));
+    std::string detail;
+    return ToolUtil::ValidateInputSchemaProperties(inputSchema, ConvertToWantParams(args), detail);
 }
 } // namespace
 
@@ -599,7 +600,8 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_TypeValidation_0100, TestSi
     args.SetParam("target", AAFwk::String::Box("192.168.1.1"));
     args.SetParam("output", AAFwk::String::Box("/tmp/output.txt"));
 
-    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args);
+    std::string detail;
+    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args, detail);
 
     EXPECT_EQ(result, ERR_OK);
 
@@ -623,7 +625,8 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_TypeValidation_0200, TestSi
     AAFwk::WantParams args;
     args.SetParam("verbose", AAFwk::String::Box("true"));  // Wrong: string instead of boolean
 
-    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args);
+    std::string detail;
+    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args, detail);
 
     EXPECT_EQ(result, ERR_INVALID_PARAM);
 
@@ -649,7 +652,8 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_TypeValidation_0300, TestSi
     args.SetParam("verbose", AAFwk::Boolean::Box(true));
     args.SetParam("force", AAFwk::Boolean::Box(false));
 
-    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args);
+    std::string detail;
+    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args, detail);
 
     EXPECT_EQ(result, ERR_OK);
 
@@ -675,7 +679,8 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_TypeValidation_0400, TestSi
     args.SetParam("timeout", AAFwk::Integer::Box(5000));
     args.SetParam("port", AAFwk::Integer::Box(8080));
 
-    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args);
+    std::string detail;
+    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args, detail);
 
     EXPECT_EQ(result, ERR_OK);
 
@@ -699,7 +704,8 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_TypeValidation_0500, TestSi
     AAFwk::WantParams args;
     args.SetParam("timeout", AAFwk::String::Box("5000"));  // Wrong: string instead of integer
 
-    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args);
+    std::string detail;
+    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args, detail);
 
     EXPECT_EQ(result, ERR_INVALID_PARAM);
 
@@ -723,7 +729,8 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_TypeValidation_0600, TestSi
     AAFwk::WantParams args;
     args.SetParam("rate", AAFwk::Double::Box(3.14));
 
-    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args);
+    std::string detail;
+    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args, detail);
 
     EXPECT_EQ(result, ERR_OK);
 
@@ -753,7 +760,8 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_TypeValidation_0700, TestSi
         args.SetParam("ports", array);
     }
 
-    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args);
+    std::string detail;
+    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args, detail);
 
     EXPECT_EQ(result, ERR_OK);
 
@@ -777,7 +785,8 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_TypeValidation_0800, TestSi
     AAFwk::WantParams args;
     args.SetParam("ports", AAFwk::String::Box("80,443,8080"));  // Wrong: string instead of array
 
-    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args);
+    std::string detail;
+    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args, detail);
 
     EXPECT_EQ(result, ERR_INVALID_PARAM);
 
@@ -803,7 +812,8 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_TypeValidation_0900, TestSi
     nestedConfig.SetParam("key", AAFwk::String::Box("value"));
     args.SetParam("config", AAFwk::WantParamWrapper::Box(nestedConfig));
 
-    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args);
+    std::string detail;
+    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args, detail);
 
     EXPECT_EQ(result, ERR_OK);
 
@@ -838,7 +848,8 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_TypeValidation_1000, TestSi
         args.SetParam("ports", array);
     }
 
-    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args);
+    std::string detail;
+    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args, detail);
 
     EXPECT_EQ(result, ERR_OK);
 
@@ -862,7 +873,8 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_TypeValidation_1100, TestSi
     AAFwk::WantParams args;
     args.SetParam("target", AAFwk::String::Box("192.168.1.1"));
 
-    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args);
+    std::string detail;
+    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args, detail);
 
     // Should pass because no type is specified
     EXPECT_EQ(result, ERR_OK);
@@ -880,8 +892,9 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_TypeValidation_1200, TestSi
     AAFwk::WantParams args;
     args.SetParam("target", AAFwk::String::Box("device"));
 
+    std::string detail;
     EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(
-        R"({"properties":{"target":{"type":123}}})", args), ERR_INVALID_PARAM);
+        R"({"properties":{"target":{"type":123}}})", args, detail), ERR_INVALID_PARAM);
 }
 
 /**
@@ -921,7 +934,8 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_NestedObject_0100, TestSize
     appParams.SetParam("env", AAFwk::WantParamWrapper::Box(envParams));
     args.SetParam("app", AAFwk::WantParamWrapper::Box(appParams));
 
-    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args);
+    std::string detail;
+    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args, detail);
 
     EXPECT_EQ(result, ERR_OK);
 
@@ -954,7 +968,8 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_NestedObject_0200, TestSize
     appParams.SetParam("version", AAFwk::Integer::Box(100));  // Wrong: integer instead of string
     args.SetParam("app", AAFwk::WantParamWrapper::Box(appParams));
 
-    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args);
+    std::string detail;
+    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args, detail);
 
     EXPECT_EQ(result, ERR_OK);
 
@@ -988,7 +1003,8 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_NestedObject_0300, TestSize
     // Missing required "port" property
     args.SetParam("server", AAFwk::WantParamWrapper::Box(serverParams));
 
-    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args);
+    std::string detail;
+    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args, detail);
 
     EXPECT_EQ(result, ERR_OK);
 
@@ -1037,7 +1053,8 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_NestedObject_0400, TestSize
     configParams.SetParam("app", AAFwk::WantParamWrapper::Box(appParams));
     args.SetParam("config", AAFwk::WantParamWrapper::Box(configParams));
 
-    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args);
+    std::string detail;
+    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args, detail);
 
     EXPECT_EQ(result, ERR_OK);
 
@@ -1072,7 +1089,8 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_ArrayItems_0100, TestSize.L
         args.SetParam("ports", array);
     }
 
-    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args);
+    std::string detail;
+    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args, detail);
 
     EXPECT_EQ(result, ERR_OK);
 
@@ -1105,7 +1123,8 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_ArrayItems_0200, TestSize.L
         args.SetParam("ports", array);
     }
 
-    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args);
+    std::string detail;
+    int32_t result = ToolUtil::ValidateInputSchemaProperties(schema, args, detail);
 
     EXPECT_EQ(result, ERR_INVALID_PARAM);
 
@@ -1127,10 +1146,11 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_ArrayItems_0300, TestSize.L
     array->Set(0, AAFwk::String::Box("value").GetRefPtr());
     args.SetParam("values", array);
 
+    std::string detail;
     EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(
-        R"({"properties":{"values":{"type":"array"}}})", args), ERR_OK);
+        R"({"properties":{"values":{"type":"array"}}})", args, detail), ERR_OK);
     EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(
-        R"({"properties":{"values":{"type":"array","items":{"description":"any"}}}})", args), ERR_OK);
+        R"({"properties":{"values":{"type":"array","items":{"description":"any"}}}})", args, detail), ERR_OK);
 
     GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_ArrayItems_0300 end";
 }
@@ -1148,8 +1168,9 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_ArrayItems_0400, TestSize.L
     array->Set(0, AAFwk::String::Box("value").GetRefPtr());
     args.SetParam("values", array);
 
+    std::string detail;
     EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(
-        R"({"properties":{"values":{"type":"array","items":{"type":123}}}})", args), ERR_INVALID_PARAM);
+        R"({"properties":{"values":{"type":"array","items":{"type":123}}}})", args, detail), ERR_INVALID_PARAM);
 }
 
 /**
@@ -1164,7 +1185,8 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_1100, TestSize.Level1)
     AAFwk::WantParams args;
     args.SetParam("target", AAFwk::String::Box("device"));
 
-    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties("", args), ERR_INVALID_PARAM);
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties("", args, detail), ERR_INVALID_PARAM);
 
     GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_1100 end";
 }
@@ -1181,7 +1203,8 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_1200, TestSize.Level1)
     AAFwk::WantParams args;
     args.SetParam("target", AAFwk::String::Box("device"));
 
-    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties("{invalid json}", args), ERR_NO_INIT);
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties("{invalid json}", args, detail), ERR_NO_INIT);
 
     GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_1200 end";
 }
@@ -1200,7 +1223,8 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_1300, TestSize.Level1)
     args.SetParam("target", AAFwk::String::Box("device"));
 
     std::string schema = R"({"properties":{"help":{"type":"boolean"},"target":{"type":"string"}}})";
-    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(schema, args), ERR_INVALID_PARAM);
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(schema, args, detail), ERR_INVALID_PARAM);
 
     GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_1300 end";
 }
@@ -1218,7 +1242,8 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_1400, TestSize.Level1)
     args.SetParam("target", AAFwk::String::Box("device"));
 
     std::string schema = R"({"properties":{"target":{"type":"custom"}}})";
-    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(schema, args), ERR_OK);
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(schema, args, detail), ERR_OK);
 
     GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_1400 end";
 }
@@ -1580,31 +1605,32 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_1500, TestSize.Level1)
     AAFwk::WantParams args;
     args.SetParam("key", AAFwk::String::Box("val"));
 
+    std::string detail;
     // non-empty args with empty schema
-    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties("", args), ERR_INVALID_PARAM);
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties("", args, detail), ERR_INVALID_PARAM);
 
     // invalid JSON schema
-    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties("{bad}", args), ERR_NO_INIT);
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties("{bad}", args, detail), ERR_NO_INIT);
 
     // schema missing properties
-    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(R"({"type":"object"})", args), ERR_INVALID_PARAM);
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(R"({"type":"object"})", args, detail), ERR_INVALID_PARAM);
 
     // help alone -> OK
     AAFwk::WantParams helpArgs;
     helpArgs.SetParam("help", AAFwk::String::Box(""));
     EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(
-        R"({"properties":{}})", helpArgs), ERR_OK);
+        R"({"properties":{}})", helpArgs, detail), ERR_OK);
 
     // help plus another arg -> error
     AAFwk::WantParams helpPlusArgs;
     helpPlusArgs.SetParam("help", AAFwk::String::Box(""));
     helpPlusArgs.SetParam("extra", AAFwk::String::Box("val"));
     EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(
-        R"({"properties":{}})", helpPlusArgs), ERR_INVALID_PARAM);
+        R"({"properties":{}})", helpPlusArgs, detail), ERR_INVALID_PARAM);
 
     // arg key not in schema properties
     EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(
-        R"({"properties":{"other":{"type":"string"}}})", args), ERR_INVALID_PARAM);
+        R"({"properties":{"other":{"type":"string"}}})", args, detail), ERR_INVALID_PARAM);
 
     GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_1500 end";
 }
@@ -1634,27 +1660,28 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_1600, TestSize.Level1)
     validArgs.SetParam("str", AAFwk::String::Box("hello"));
     validArgs.SetParam("bool", AAFwk::Boolean::Box(true));
     validArgs.SetParam("int", AAFwk::Integer::Box(42));
-    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(schema, validArgs), ERR_OK);
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(schema, validArgs, detail), ERR_OK);
 
     // type mismatch: bool where string expected
     AAFwk::WantParams mismatchArgs;
     mismatchArgs.SetParam("str", AAFwk::Boolean::Box(true));
-    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(schema, mismatchArgs), ERR_INVALID_PARAM);
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(schema, mismatchArgs, detail), ERR_INVALID_PARAM);
 
     // type mismatch: string where bool expected
     AAFwk::WantParams mismatchArgs2;
     mismatchArgs2.SetParam("bool", AAFwk::String::Box("not_bool"));
-    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(schema, mismatchArgs2), ERR_INVALID_PARAM);
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(schema, mismatchArgs2, detail), ERR_INVALID_PARAM);
 
     // type mismatch: string where int expected
     AAFwk::WantParams mismatchArgs3;
     mismatchArgs3.SetParam("int", AAFwk::String::Box("not_int"));
-    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(schema, mismatchArgs3), ERR_INVALID_PARAM);
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(schema, mismatchArgs3, detail), ERR_INVALID_PARAM);
 
     // unknown type returns true (accepted)
     AAFwk::WantParams unknownArgs;
     unknownArgs.SetParam("unknown_type", AAFwk::String::Box("anything"));
-    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(schema, unknownArgs), ERR_OK);
+    EXPECT_EQ(ToolUtil::ValidateInputSchemaProperties(schema, unknownArgs, detail), ERR_OK);
 
     GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_1600 end";
 }
@@ -1675,7 +1702,8 @@ HWTEST_F(ToolUtilTest, ValidateExecOptionsProperties_0100, TestSize.Level1)
     options.yieldMs = 0;
     options.background = false;
 
-    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options), ERR_OK);
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options, detail), ERR_OK);
 
     GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0100 end";
 }
@@ -1693,7 +1721,8 @@ HWTEST_F(ToolUtilTest, ValidateExecOptionsProperties_0200, TestSize.Level1)
     options.timeout = -1;
     options.yieldMs = 0;
 
-    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options), ERR_INVALID_PARAM);
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options, detail), ERR_INVALID_PARAM);
 
     GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0200 end";
 }
@@ -1711,7 +1740,8 @@ HWTEST_F(ToolUtilTest, ValidateExecOptionsProperties_0300, TestSize.Level1)
     options.timeout = 30;
     options.yieldMs = -1;
 
-    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options), ERR_INVALID_PARAM);
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options, detail), ERR_INVALID_PARAM);
 
     GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0300 end";
 }
@@ -1729,11 +1759,12 @@ HWTEST_F(ToolUtilTest, ValidateExecOptionsProperties_0400, TestSize.Level1)
     options.timeout = 1801; // MAX_TIMEOUT = 30 * 60 = 1800
     options.yieldMs = 0;
 
-    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options), ERR_INVALID_PARAM);
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options, detail), ERR_INVALID_PARAM);
 
     // Boundary: exactly MAX_TIMEOUT should pass
     options.timeout = 1800;
-    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options), ERR_OK);
+    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options, detail), ERR_OK);
 
     GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0400 end";
 }
@@ -1752,7 +1783,8 @@ HWTEST_F(ToolUtilTest, ValidateExecOptionsProperties_0500, TestSize.Level1)
     options.timeout = 1;            // 1 second
     options.yieldMs = 50000;        // 50 seconds > 1 * 1000 = 1000 ms
 
-    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options), ERR_INVALID_PARAM);
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options, detail), ERR_INVALID_PARAM);
 
     GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0500 end";
 }
@@ -1772,7 +1804,8 @@ HWTEST_F(ToolUtilTest, ValidateExecOptionsProperties_0600, TestSize.Level1)
     options.yieldMs = 50000;
 
     // Background mode skips the yieldMs > timeout check
-    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options), ERR_OK);
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options, detail), ERR_OK);
 
     GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0600 end";
 }
@@ -1792,11 +1825,12 @@ HWTEST_F(ToolUtilTest, ValidateExecOptionsProperties_0700, TestSize.Level1)
     options.yieldMs = 10000; // exactly timeout * 1000
 
     // yieldMs > timeout * 1000 is the check, so equal should pass
-    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options), ERR_OK);
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options, detail), ERR_OK);
 
     // yieldMs just one ms over should fail
     options.yieldMs = 10001;
-    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options), ERR_INVALID_PARAM);
+    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options, detail), ERR_INVALID_PARAM);
 
     GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0700 end";
 }
@@ -1814,7 +1848,8 @@ HWTEST_F(ToolUtilTest, ValidateExecOptionsProperties_0800, TestSize.Level1)
     options.timeout = -5;
     options.yieldMs = -10;
 
-    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options), ERR_INVALID_PARAM);
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ValidateExecOptionsProperties(options, detail), ERR_INVALID_PARAM);
 
     GTEST_LOG_(INFO) << "ToolUtil_ValidateExecOptionsProperties_0800 end";
 }
