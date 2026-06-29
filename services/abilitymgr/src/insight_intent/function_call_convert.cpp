@@ -324,8 +324,10 @@ void IntentFilterUtil::FilterGeneric(std::vector<AbilityRuntime::ExtractInsightI
         }
         RegisterSortKey key { generic.moduleName, "" };
         if (generic.currentType != AbilityRuntime::InfoType::Function &&
+            generic.currentType != AbilityRuntime::InfoType::Page &&
+            generic.currentType != AbilityRuntime::InfoType::Link &&
             !IsQualifiedEntry(generic, key.abilityName)) {
-            TAG_LOGW(AAFwkTag::CLI_TOOL, "generic intent dropped: not Function or qualified Entry, "
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "generic intent dropped: not Function/Page/Link or qualified Entry, "
                 "intentName:%{public}s moduleName:%{public}s decoratorType:%{public}s",
                 generic.intentName.c_str(), generic.moduleName.c_str(), generic.decoratorType.c_str());
             continue;
