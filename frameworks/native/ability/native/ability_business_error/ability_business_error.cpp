@@ -269,6 +269,25 @@ constexpr const char* ERROR_MSG_SET_PROCESS_CACHE_FAILED =
     "Internal error. Failed to set the process cache state. Try again later.";
 constexpr const char* ERROR_MSG_UI_ABILITY_OBJ_NULL =
     "Internal error. The UIAbility object is not available. Verify the ability is active and try again.";
+constexpr const char* ERROR_MSG_CONNECTION_NOT_FOUND =
+    "Internal error. The service connection does not exist. Check the connection ID.";
+constexpr const char* ERROR_MSG_SEND_DATA_FAILED =
+    "Internal error. Failed to send data to the extension.";
+constexpr const char* ERROR_MSG_LOAD_CONTENT_FAILED =
+    "Internal error. Failed to load the UI content.";
+constexpr const char* ERROR_MSG_SET_WINDOW_BACKGROUND_COLOR_FAILED =
+    "Internal error. Failed to set the window background color.";
+constexpr const char* ERROR_MSG_SET_WINDOW_PRIVACY_MODE_FAILED =
+    "Internal error. Failed to set the window privacy mode.";
+constexpr const char* ERROR_MSG_CREATE_MODAL_UI_EXTENSION_FAILED =
+    "Internal error. Failed to create the modal UI extension. ";
+constexpr const char* ERROR_MSG_TRANSFER_ABILITY_RESULT_FAILED =
+    "Internal error. Failed to transfer the ability result. ";
+constexpr const char* ERROR_MSG_INVALID_SESSION =
+    "Internal error. The UIExtension content session is invalid or has been destroyed. "
+    "Ensure the session is active before calling this method.";
+constexpr const char* ERROR_MSG_UI_SERVICE_PROXY_NOT_FOUND =
+    "Internal error. The UIService is not available.";
 
 // follow ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST of appexecfwk_errors.h in bundle_framework
 constexpr int32_t ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST = 8521220;
@@ -580,6 +599,15 @@ static std::unordered_map<AbilityInnerErrorMsg, const char*> INNER_ERROR_MSG_BY_
     {AbilityInnerErrorMsg::GET_PROCESS_INFO_FAILED, ERROR_MSG_GET_PROCESS_INFO_FAILED},
     {AbilityInnerErrorMsg::SET_PROCESS_CACHE_FAILED, ERROR_MSG_SET_PROCESS_CACHE_FAILED},
     {AbilityInnerErrorMsg::UI_ABILITY_OBJ_NULL, ERROR_MSG_UI_ABILITY_OBJ_NULL},
+    {AbilityInnerErrorMsg::CONNECTION_NOT_FOUND, ERROR_MSG_CONNECTION_NOT_FOUND},
+    {AbilityInnerErrorMsg::SEND_DATA_FAILED, ERROR_MSG_SEND_DATA_FAILED},
+    {AbilityInnerErrorMsg::LOAD_CONTENT_FAILED, ERROR_MSG_LOAD_CONTENT_FAILED},
+    {AbilityInnerErrorMsg::SET_WINDOW_BACKGROUND_COLOR_FAILED, ERROR_MSG_SET_WINDOW_BACKGROUND_COLOR_FAILED},
+    {AbilityInnerErrorMsg::SET_WINDOW_PRIVACY_MODE_FAILED, ERROR_MSG_SET_WINDOW_PRIVACY_MODE_FAILED},
+    {AbilityInnerErrorMsg::CREATE_MODAL_UI_EXTENSION_FAILED, ERROR_MSG_CREATE_MODAL_UI_EXTENSION_FAILED},
+    {AbilityInnerErrorMsg::TRANSFER_ABILITY_RESULT_FAILED, ERROR_MSG_TRANSFER_ABILITY_RESULT_FAILED},
+    {AbilityInnerErrorMsg::INVALID_SESSION, ERROR_MSG_INVALID_SESSION},
+    {AbilityInnerErrorMsg::UI_SERVICE_PROXY_NOT_FOUND, ERROR_MSG_UI_SERVICE_PROXY_NOT_FOUND},
 };
 }
 

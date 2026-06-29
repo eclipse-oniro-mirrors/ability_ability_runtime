@@ -290,7 +290,8 @@ napi_value JsUIExtensionContentSession::OnGetUIExtensionHostWindowProxy(napi_env
     CHECK_IS_SYSTEM_APP;
     if (sessionInfo_ == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "null sessionInfo");
-        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_SESSION));
         return CreateJsUndefined(env);
     }
 
@@ -315,7 +316,8 @@ napi_value JsUIExtensionContentSession::OnGetUIExtensionWindowProxy(napi_env env
     TAG_LOGD(AAFwkTag::UI_EXT, "called");
     if (sessionInfo_ == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "null sessionInfo");
-        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_SESSION));
         return CreateJsUndefined(env);
     }
 
@@ -544,7 +546,8 @@ napi_value JsUIExtensionContentSession::OnTerminateSelf(napi_env env, NapiCallba
         [sessionInfo = sessionInfo_](napi_env env, NapiAsyncTask& task, int32_t status) {
             HandleScope handleScope(env);
             if (sessionInfo == nullptr) {
-                task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+                task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_SESSION)));
                 return;
             }
             auto errorCode = AAFwk::AbilityManagerClient::GetInstance()->TerminateUIExtensionAbility(sessionInfo);
@@ -605,7 +608,8 @@ napi_value JsUIExtensionContentSession::OnSendData(napi_env env, NapiCallbackInf
 
     if (uiWindow_ == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "null uiWindow_");
-        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_SESSION));
         return CreateJsUndefined(env);
     }
 
@@ -614,7 +618,8 @@ napi_value JsUIExtensionContentSession::OnSendData(napi_env env, NapiCallbackInf
         TAG_LOGD(AAFwkTag::UI_EXT, "TransferExtensionData success");
     } else {
         TAG_LOGE(AAFwkTag::UI_EXT, "TransferExtensionData failed, ret=%{public}d", ret);
-        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::SEND_DATA_FAILED));
     }
     return CreateJsUndefined(env);
 }
@@ -638,7 +643,8 @@ napi_value JsUIExtensionContentSession::OnSetReceiveDataCallback(napi_env env, N
     if (!isRegistered) {
         if (uiWindow_ == nullptr) {
             TAG_LOGE(AAFwkTag::UI_EXT, "null uiWindow_");
-            ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+            ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_SESSION));
             return CreateJsUndefined(env);
         }
         receiveDataCallback_ = std::make_shared<CallbackWrapper>();
@@ -686,7 +692,8 @@ napi_value JsUIExtensionContentSession::OnSetReceiveDataForResultCallback(napi_e
     if (!isSyncRegistered) {
         if (uiWindow_ == nullptr) {
             TAG_LOGE(AAFwkTag::UI_EXT, "null uiWindow_");
-            ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+            ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_SESSION));
             return CreateJsUndefined(env);
         }
         receiveDataForResultCallback_ = std::make_shared<CallbackWrapper>();
@@ -746,7 +753,8 @@ napi_value JsUIExtensionContentSession::OnLoadContent(napi_env env, NapiCallback
     }
     if (uiWindow_ == nullptr || sessionInfo_ == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "null uiWindow_ or sessionInfo_");
-        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_SESSION));
         return CreateJsUndefined(env);
     }
 
@@ -762,7 +770,8 @@ napi_value JsUIExtensionContentSession::OnLoadContent(napi_env env, NapiCallback
         TAG_LOGD(AAFwkTag::UI_EXT, "NapiSetUIContent success");
     } else {
         TAG_LOGE(AAFwkTag::UI_EXT, "NapiSetUIContent failed, ret=%{public}d", ret);
-        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::LOAD_CONTENT_FAILED));
     }
     return CreateJsUndefined(env);
 }
@@ -797,7 +806,8 @@ napi_value JsUIExtensionContentSession::OnLoadContentByName(napi_env env, NapiCa
 
     if (uiWindow_ == nullptr || sessionInfo_ == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "uiWindow or sessionInfo is null");
-        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_SESSION));
         return CreateJsUndefined(env);
     }
 
@@ -811,7 +821,8 @@ napi_value JsUIExtensionContentSession::OnLoadContentByName(napi_env env, NapiCa
     auto ret = uiWindow_->NapiSetUIContentByName(name, env, storage, Rosen::BackupAndRestoreType::NONE, parentToken);
     if (ret != Rosen::WMError::WM_OK) {
         TAG_LOGE(AAFwkTag::UI_EXT, "NapiSetUIContentByName failed, ret: %{public}d", ret);
-        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::LOAD_CONTENT_FAILED));
         return CreateJsUndefined(env);
     }
 
@@ -838,7 +849,8 @@ napi_value JsUIExtensionContentSession::OnSetWindowBackgroundColor(napi_env env,
 
     if (uiWindow_ == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "null uiWindow_ ");
-        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_SESSION));
         return CreateJsUndefined(env);
     }
     Rosen::WMError ret = uiWindow_->SetBackgroundColor(color);
@@ -846,7 +858,8 @@ napi_value JsUIExtensionContentSession::OnSetWindowBackgroundColor(napi_env env,
         TAG_LOGD(AAFwkTag::UI_EXT, "SetBackgroundColor success");
     } else {
         TAG_LOGE(AAFwkTag::UI_EXT, "SetBackgroundColor failed, ret=%{public}d", ret);
-        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::SET_WINDOW_BACKGROUND_COLOR_FAILED));
     }
     return CreateJsUndefined(env);
 }
@@ -880,14 +893,16 @@ napi_value JsUIExtensionContentSession::OnSetWindowPrivacyMode(napi_env env, Nap
         HandleScope handleScope(env);
         if (uiWindow == nullptr) {
             TAG_LOGE(AAFwkTag::UI_EXT, "null uiWindow");
-            task->Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+            task->Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_SESSION)));
             return;
         }
         auto ret = uiWindow->SetPrivacyMode(isPrivacyMode);
         if (ret == Rosen::WMError::WM_OK) {
             task->ResolveWithNoError(env, CreateJsUndefined(env));
         } else {
-            task->Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+            task->Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                GetInnerErrorMsg(AbilityInnerErrorMsg::SET_WINDOW_PRIVACY_MODE_FAILED)));
         }
         delete task;
     };
@@ -931,7 +946,8 @@ napi_value JsUIExtensionContentSession::OnStartAbilityByType(napi_env env, NapiC
         (napi_env env, NapiAsyncTask& task, int32_t status) {
             HandleScope handleScope(env);
             if (uiWindow == nullptr || uiWindow->GetUIContent() == nullptr) {
-                task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+                task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_SESSION)));
                 return;
             }
 #ifdef SUPPORT_SCREEN
@@ -962,7 +978,8 @@ napi_value JsUIExtensionContentSession::OnStartAbilityByType(napi_env env, NapiC
             Ace::ModalUIExtensionConfig config;
             int32_t sessionId = uiWindow->GetUIContent()->CreateModalUIExtension(want, callback, config);
             if (sessionId == 0) {
-                task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+                task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_MODAL_UI_EXTENSION_FAILED)));
             } else {
                 uiExtensionCallback->SetUIContent(uiWindow->GetUIContent());
                 uiExtensionCallback->SetSessionId(sessionId);
@@ -1190,12 +1207,14 @@ void JsUIExtensionContentSession::SetCallbackForTerminateWithResult(int32_t resu
 
             if (uiWindow == nullptr) {
                 TAG_LOGE(AAFwkTag::UI_EXT, "null uiWindow");
-                task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+                task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_SESSION)));
                 return;
             }
             auto ret = uiWindow->TransferAbilityResult(resultCode, want);
             if (ret != Rosen::WMError::WM_OK) {
-                task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+                task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::TRANSFER_ABILITY_RESULT_FAILED)));
                 return;
             }
             auto errorCode = AAFwk::AbilityManagerClient::GetInstance()->TerminateUIExtensionAbility(sessionInfo);
