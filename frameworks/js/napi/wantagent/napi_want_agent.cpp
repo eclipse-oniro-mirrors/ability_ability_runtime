@@ -575,7 +575,7 @@ void JsWantAgent::SetOnGetBundleNameCallback(std::shared_ptr<WantAgent> wantAgen
     auto retCode = std::make_shared<int32_t>(NO_ERROR);
     auto bundleName = std::make_shared<std::string>();
     execute = [wantAgent, retCode, bundleName] () {
-        TAG_LOGI(AAFwkTag::WANTAGENT, "get bundle name callback");
+        TAG_LOGD(AAFwkTag::WANTAGENT, "get bundle name callback");
         *retCode = WantAgentHelper::GetBundleName(wantAgent, *bundleName);
     };
     complete = [retCode, bundleName](napi_env env, NapiAsyncTask &task, int32_t status) {

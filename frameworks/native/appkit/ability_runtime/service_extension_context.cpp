@@ -208,17 +208,17 @@ ErrCode ServiceExtensionContext::StopServiceExtensionAbility(const AAFwk::Want& 
 ErrCode ServiceExtensionContext::ConnectAbilityWithAccount(
     const AAFwk::Want &want, int32_t accountId, const sptr<AbilityConnectCallback> &connectCallback) const
 {
-    TAG_LOGI(AAFwkTag::APPKIT, "begin");
+    TAG_LOGD(AAFwkTag::APPKIT, "begin");
     ErrCode ret =
         ConnectionManager::GetInstance().ConnectAbilityWithAccount(token_, want, accountId, connectCallback);
-    TAG_LOGI(AAFwkTag::APPKIT, "ConnectAbilityWithAccount ErrorCode = %{public}d", ret);
+    TAG_LOGI(AAFwkTag::APPKIT, "ConAbiWithAcc:%{public}d", ret);
     return ret;
 }
 
 ErrCode ServiceExtensionContext::DisconnectAbility(const AAFwk::Want &want,
     const sptr<AbilityConnectCallback> &connectCallback, int32_t accountId) const
 {
-    TAG_LOGI(AAFwkTag::APPKIT, "Disconnect c:%{public}s, t:%{public}s",
+    TAG_LOGI(AAFwkTag::APPKIT, "DisCon %{public}s,%{public}s",
         GetAbilityInfo() == nullptr ? "" : GetAbilityInfo()->name.c_str(), want.GetElement().GetAbilityName().c_str());
     ErrCode ret =
         ConnectionManager::GetInstance().DisconnectAbility(token_, want, connectCallback, accountId);

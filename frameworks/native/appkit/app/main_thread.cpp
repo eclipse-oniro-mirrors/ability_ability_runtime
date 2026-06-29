@@ -850,7 +850,7 @@ void MainThread::ScheduleLaunchAbility(const AbilityInfo &info, const sptr<IRemo
     const std::shared_ptr<AAFwk::Want> &want, int32_t abilityRecordId, const std::shared_ptr<AppUpdateInfo> updateInfo)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    TAG_LOGI(AAFwkTag::APPKIT, "%{public}s called, ability %{public}s, type is %{public}d.",
+    TAG_LOGI(AAFwkTag::APPKIT, "%{public}s called,ability %{public}s,%{public}d",
         __func__, info.name.c_str(), info.type);
 
     bool skipAbilityStageLifecycle = false;
@@ -1902,8 +1902,8 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
         options.enableWarmStartupSmartGC =
             (appLaunchData.GetAppPreloadMode() == AppExecFwk::PreloadMode::PRE_MAKE ||
              appLaunchData.GetAppPreloadMode() == AppExecFwk::PreloadMode::PRELOAD_MODULE);
-        TAG_LOGI(AAFwkTag::APPKIT, "SmartGC: process is start. enable warm startup SmartGC: %{public}d"
-            " version:%{public}u", static_cast<int32_t>(options.enableWarmStartupSmartGC), bundleInfo.versionCode);
+        TAG_LOGI(AAFwkTag::APPKIT, "SmartGC:%{public}d version:%{public}u",
+            static_cast<int32_t>(options.enableWarmStartupSmartGC), bundleInfo.versionCode);
         auto perfCmd = appLaunchData.GetPerfCmd();
         auto findPos = perfCmd.find(BASE_LINE_PERFCMD);
         if (findPos != std::string::npos && (appLaunchData.GetDebugFromLocal() || isDeveloperMode_)) {
@@ -2850,7 +2850,7 @@ void MainThread::HandleLaunchAbility(const std::shared_ptr<AbilityLocalRecord> &
 
     UpdateWorkProcessInfo(updateInfo);
     if (needNotifyApplicationPreAbilityCreate) {
-        TAG_LOGI(AAFwkTag::APPKIT, "NotifyApplicationPreAbilityCreate");
+        TAG_LOGI(AAFwkTag::APPKIT, "NtfyAppPreAbiCreate");
         AppExecFwk::AppImageObserverManager::GetInstance().NotifyApplicationPreAbilityCreate();
     }
 
@@ -2981,7 +2981,7 @@ void MainThread::HandleCleanAbility(const sptr<IRemoteObject> &token, bool isCac
         TAG_LOGE(AAFwkTag::APPKIT, "null applicationInfo");
         return;
     }
-    TAG_LOGI(AAFwkTag::APPKIT, "Handle clean ability start, app is %{public}s.", applicationInfo_->name.c_str());
+    TAG_LOGD(AAFwkTag::APPKIT, "Handle clean ability start, app is %{public}s.", applicationInfo_->name.c_str());
 
     if (!IsApplicationReady()) {
         TAG_LOGE(AAFwkTag::APPKIT, "should launch application first");
