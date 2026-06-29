@@ -227,10 +227,14 @@ bool RegisterInsightIntentFunctions(
     const std::string &bundleName,
     uint32_t versionCode)
 {
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "register intents, bundle:%{public}s intent:%{public}zu config:%{public}zu",
+        bundleName.c_str(), intentInfos.size(), configInfos.size());
     std::vector<FunctionInfo> functions;
     ConvertFromConfigIntent(configInfos, functions);
     ConvertFromExtractIntentInfo(intentInfos, functions);
     if (functions.empty()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "no functions to register after convert, bundle:%{public}s",
+            bundleName.c_str());
         return true;
     }
 
@@ -268,9 +272,13 @@ bool UnregisterInsightIntentFunctions(const std::string &bundleName)
 
 void IntentFilterUtil::FilterConfig(std::vector<AbilityRuntime::InsightIntentInfo> &configInfos)
 {
+    size_t inputCount = configInfos.size();
     std::vector<std::pair<RegisterSortKey, AbilityRuntime::InsightIntentInfo>> qualified;
     for (auto &info : configInfos) {
         if (info.intentName.empty() || info.moduleName.empty()) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "config intent dropped: empty intentName or moduleName, "
+                "intentName:%{public}s moduleName:%{public}s",
+                info.intentName.c_str(), info.moduleName.c_str());
             continue;
         }
         const auto &ui = info.uiAbilityIntentInfo;
@@ -284,6 +292,10 @@ void IntentFilterUtil::FilterConfig(std::vector<AbilityRuntime::InsightIntentInf
         } else if (!se.abilityName.empty()) {
             key.abilityName = se.abilityName;
         } else {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "config intent dropped: not BG UIAbility or SE, "
+                "intentName:%{public}s moduleName:%{public}s uiAbility:%{public}s seAbility:%{public}s",
+                info.intentName.c_str(), info.moduleName.c_str(),
+                ui.abilityName.c_str(), se.abilityName.c_str());
             continue;
         }
         qualified.emplace_back(std::move(key), std::move(info));
@@ -294,18 +306,28 @@ void IntentFilterUtil::FilterConfig(std::vector<AbilityRuntime::InsightIntentInf
     for (auto &item : qualified) {
         configInfos.push_back(std::move(item.second));
     }
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FilterConfig: %{public}zu -> %{public}zu (dropped %{public}zu)",
+        inputCount, configInfos.size(), inputCount - configInfos.size());
 }
 
 void IntentFilterUtil::FilterGeneric(std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos)
 {
+    size_t inputCount = intentInfos.size();
     std::vector<std::pair<RegisterSortKey, AbilityRuntime::ExtractInsightIntentInfo>> qualified;
     for (auto &info : intentInfos) {
         const auto &generic = info.genericInfo;
         if (generic.intentName.empty() || generic.moduleName.empty()) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "generic intent dropped: empty intentName or moduleName, "
+                "intentName:%{public}s moduleName:%{public}s",
+                generic.intentName.c_str(), generic.moduleName.c_str());
             continue;
         }
         RegisterSortKey key { generic.moduleName, "" };
-        if (!IsQualifiedEntry(generic, key.abilityName)) {
+        if (generic.currentType != AbilityRuntime::InfoType::Function &&
+            !IsQualifiedEntry(generic, key.abilityName)) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "generic intent dropped: not Function or qualified Entry, "
+                "intentName:%{public}s moduleName:%{public}s decoratorType:%{public}s",
+                generic.intentName.c_str(), generic.moduleName.c_str(), generic.decoratorType.c_str());
             continue;
         }
         qualified.emplace_back(std::move(key), std::move(info));
@@ -316,6 +338,8 @@ void IntentFilterUtil::FilterGeneric(std::vector<AbilityRuntime::ExtractInsightI
     for (auto &item : qualified) {
         intentInfos.push_back(std::move(item.second));
     }
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FilterGeneric: %{public}zu -> %{public}zu (dropped %{public}zu)",
+        inputCount, intentInfos.size(), inputCount - intentInfos.size());
 }
 
 bool BatchRegisterInsightIntentFunctions(

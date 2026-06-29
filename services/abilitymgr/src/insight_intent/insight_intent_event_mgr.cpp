@@ -121,6 +121,8 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
         if (allInfos.insightIntents.empty() && allConfigInfos.empty()) {
             return;
         }
+        TAG_LOGI(AAFwkTag::INTENT, "collected intents for register, profile:%{public}zu config:%{public}zu, "
+            "bundle:%{public}s", allInfos.insightIntents.size(), allConfigInfos.size(), bundleName.c_str());
         std::vector<AbilityRuntime::ExtractInsightIntentInfo> genericInfos;
         for (const auto &profileInfo : allInfos.insightIntents) {
             AbilityRuntime::ExtractInsightIntentInfo generic;
@@ -129,8 +131,12 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
             }
         }
         CliTool::IntentFilterUtil intentFilter;
+        TAG_LOGI(AAFwkTag::INTENT, "before filter, generic:%{public}zu config:%{public}zu",
+            genericInfos.size(), allConfigInfos.size());
         intentFilter.FilterGeneric(genericInfos);
         intentFilter.FilterConfig(allConfigInfos);
+        TAG_LOGI(AAFwkTag::INTENT, "after filter, generic:%{public}zu config:%{public}zu, bundle:%{public}s",
+            genericInfos.size(), allConfigInfos.size(), bundleName.c_str());
         CliTool::RegisterInsightIntentFunctions(genericInfos, allConfigInfos, bundleName, bundleInfo.versionCode);
         DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
     });
