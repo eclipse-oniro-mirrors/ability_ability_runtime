@@ -238,6 +238,8 @@ constexpr const char* ERROR_MSG_SERVICE_UNAVAILABLE =
     "Internal error. Service unavailable. Try again later.";
 constexpr const char* ERROR_MSG_OPERATION_FAILED =
     "Internal error. Operation failed. Try again later.";
+constexpr const char* ERROR_MSG_MEMORY_ALLOC_FAILED =
+    "Internal error. Memory allocation failed. Try again later.";
 constexpr const char* ERROR_MSG_TIMEOUT =
     "Internal error. Operation timed out. Try again later.";
 constexpr const char* ERROR_MSG_IPC_FAILED =
@@ -259,6 +261,10 @@ constexpr const char* ERROR_MSG_OBSERVER_CREATE_FAILED =
     "Internal error. Failed to create the observer.";
 constexpr const char* ERROR_MSG_OBSERVER_NOT_EXIST =
     "Internal error. The observer does not exist. Register the observer first.";
+constexpr const char* ERROR_MSG_REGISTER_OBSERVER_FAILED =
+    "Internal error. Failed to register the observer. Try again later.";
+constexpr const char* ERROR_MSG_UNREGISTER_OBSERVER_FAILED =
+    "Internal error. Failed to unregister the observer. Try again later.";
 constexpr const char* ERROR_MSG_RESTART_APP_FAILED =
     "Internal error. Failed to restart the application. Try again later.";
 constexpr const char* ERROR_MSG_CREATE_PROCESS_INFO_ARRAY_FAILED =
@@ -288,6 +294,12 @@ constexpr const char* ERROR_MSG_INVALID_SESSION =
     "Ensure the session is active before calling this method.";
 constexpr const char* ERROR_MSG_UI_SERVICE_PROXY_NOT_FOUND =
     "Internal error. The UIService is not available.";
+constexpr const char* ERROR_MSG_QUERY_KEEP_ALIVE_BUNDLES_FAILED =
+    "Internal error. Failed to query keep-alive bundles. Try again later.";
+constexpr const char* ERROR_MSG_TERMINATE_MISSION_FAILED =
+    "Internal error. Failed to terminate the mission. Try again later.";
+constexpr const char* ERROR_MSG_SET_KEEP_ALIVE_FAILED =
+    "Internal error. Failed to set the keep-alive status. Try again later.";
 
 // follow ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST of appexecfwk_errors.h in bundle_framework
 constexpr int32_t ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST = 8521220;
@@ -582,6 +594,7 @@ static std::unordered_map<int32_t, const char*> INNER_ERROR_MSG_BY_NATIVE_CODE {
 static std::unordered_map<AbilityInnerErrorMsg, const char*> INNER_ERROR_MSG_BY_SCENE {
     {AbilityInnerErrorMsg::SERVICE_UNAVAILABLE, ERROR_MSG_SERVICE_UNAVAILABLE},
     {AbilityInnerErrorMsg::OPERATION_FAILED, ERROR_MSG_OPERATION_FAILED},
+    {AbilityInnerErrorMsg::MEMORY_ALLOC_FAILED, ERROR_MSG_MEMORY_ALLOC_FAILED},
     {AbilityInnerErrorMsg::RESTORE_WINDOW_STAGE_FAILED, ERROR_MSG_RESTORE_WINDOW_STAGE_FAILED},
     {AbilityInnerErrorMsg::WRAP_ABILITY_RESULT_FAILED, ERROR_MSG_WRAP_ABILITY_RESULT_FAILED},
     {AbilityInnerErrorMsg::QUERY_ATOMIC_SERVICE_STARTUP_RULE_FAILED,
@@ -594,6 +607,8 @@ static std::unordered_map<AbilityInnerErrorMsg, const char*> INNER_ERROR_MSG_BY_
     {AbilityInnerErrorMsg::RELOAD_IN_MODAL_RESULT_NULL, ERROR_MSG_RELOAD_IN_MODAL_RESULT_NULL},
     {AbilityInnerErrorMsg::OBSERVER_CREATE_FAILED, ERROR_MSG_OBSERVER_CREATE_FAILED},
     {AbilityInnerErrorMsg::OBSERVER_NOT_EXIST, ERROR_MSG_OBSERVER_NOT_EXIST},
+    {AbilityInnerErrorMsg::REGISTER_OBSERVER_FAILED, ERROR_MSG_REGISTER_OBSERVER_FAILED},
+    {AbilityInnerErrorMsg::UNREGISTER_OBSERVER_FAILED, ERROR_MSG_UNREGISTER_OBSERVER_FAILED},
     {AbilityInnerErrorMsg::RESTART_APP_FAILED, ERROR_MSG_RESTART_APP_FAILED},
     {AbilityInnerErrorMsg::CREATE_PROCESS_INFO_ARRAY_FAILED, ERROR_MSG_CREATE_PROCESS_INFO_ARRAY_FAILED},
     {AbilityInnerErrorMsg::GET_PROCESS_INFO_FAILED, ERROR_MSG_GET_PROCESS_INFO_FAILED},
@@ -608,6 +623,9 @@ static std::unordered_map<AbilityInnerErrorMsg, const char*> INNER_ERROR_MSG_BY_
     {AbilityInnerErrorMsg::TRANSFER_ABILITY_RESULT_FAILED, ERROR_MSG_TRANSFER_ABILITY_RESULT_FAILED},
     {AbilityInnerErrorMsg::INVALID_SESSION, ERROR_MSG_INVALID_SESSION},
     {AbilityInnerErrorMsg::UI_SERVICE_PROXY_NOT_FOUND, ERROR_MSG_UI_SERVICE_PROXY_NOT_FOUND},
+    {AbilityInnerErrorMsg::QUERY_KEEP_ALIVE_BUNDLES_FAILED, ERROR_MSG_QUERY_KEEP_ALIVE_BUNDLES_FAILED},
+    {AbilityInnerErrorMsg::TERMINATE_MISSION_FAILED, ERROR_MSG_TERMINATE_MISSION_FAILED},
+    {AbilityInnerErrorMsg::SET_KEEP_ALIVE_FAILED, ERROR_MSG_SET_KEEP_ALIVE_FAILED},
 };
 }
 
