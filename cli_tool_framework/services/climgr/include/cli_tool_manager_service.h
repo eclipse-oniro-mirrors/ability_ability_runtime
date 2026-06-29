@@ -147,11 +147,11 @@ public:
     int32_t UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace) override;
 
     /**
-     * @brief Get all functions
-     * @param functions Output vector of FunctionInfo
+     * @brief Get all functions via raw data (for large data transfer)
+     * @param functions Output FunctionsRawData
      * @return int32_t ERR_OK on success, error code otherwise
      */
-    int32_t GetAllFunctions(std::vector<FunctionInfo> &functions) override;
+    int32_t GetAllFunctions(FunctionsRawData &functions) override;
 
 protected:
     void OnStart() override;

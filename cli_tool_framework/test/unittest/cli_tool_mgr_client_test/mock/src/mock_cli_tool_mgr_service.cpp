@@ -141,9 +141,9 @@ int32_t MockCliToolMgrService::UnregisterIntentFunctionsByNamespace(const std::s
     return CliToolMgrClientFlag::retUnregisterFunction;
 }
 
-int32_t MockCliToolMgrService::GetAllFunctions(std::vector<FunctionInfo> &functions)
+int32_t MockCliToolMgrService::GetAllFunctions(FunctionsRawData &functions)
 {
-    functions = CliToolMgrClientFlag::functionInfos;
+    FunctionsRawData::FromFunctionInfoVec(CliToolMgrClientFlag::functionInfos, functions);
     return CliToolMgrClientFlag::retGetAllFunctions;
 }
 

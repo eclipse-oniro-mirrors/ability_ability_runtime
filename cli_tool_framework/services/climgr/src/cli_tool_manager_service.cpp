@@ -496,7 +496,7 @@ int32_t CliToolManagerService::RegisterTool(const ToolInfo &tool)
 
 int32_t CliToolManagerService::RegisterFunction(const FunctionInfo &function)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "RegisterFunction called: %{public}s/%{public}s",
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "RegisterFunction called: %{public}s/%{public}s",
         function.functionNamespace.c_str(), function.functionName.c_str());
 
     InterfaceCallCounter counter(interfaceCalledCount_);
@@ -529,7 +529,7 @@ int32_t CliToolManagerService::RegisterFunction(const FunctionInfo &function)
 int32_t CliToolManagerService::BatchRegisterFunctions(const std::vector<FunctionInfo> &functions,
     int32_t &successCount)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions called: %{public}zu functions",
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions called: %{public}zu functions",
         functions.size());
 
     InterfaceCallCounter counter(interfaceCalledCount_);
@@ -583,7 +583,7 @@ int32_t CliToolManagerService::BatchRegisterFunctions(const std::vector<Function
 int32_t CliToolManagerService::GetFunctionInfo(const std::string &functionNamespace,
     const std::string &functionName, FunctionInfo &function)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "GetFunctionInfo called: %{public}s/%{public}s",
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "GetFunctionInfo called: %{public}s/%{public}s",
         functionNamespace.c_str(), functionName.c_str());
     InterfaceCallCounter counter(interfaceCalledCount_);
 
@@ -617,7 +617,7 @@ int32_t CliToolManagerService::GetFunctionInfo(const std::string &functionNamesp
 int32_t CliToolManagerService::UnregisterFunction(const std::string &functionNamespace,
     const std::string &functionName)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterFunction called: %{public}s/%{public}s",
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "UnregisterFunction called: %{public}s/%{public}s",
         functionNamespace.c_str(), functionName.c_str());
     InterfaceCallCounter counter(interfaceCalledCount_);
 
@@ -643,7 +643,7 @@ int32_t CliToolManagerService::UnregisterFunction(const std::string &functionNam
 
 int32_t CliToolManagerService::UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespace called: %{public}s", functionNamespace.c_str());
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespace called: %{public}s", functionNamespace.c_str());
     InterfaceCallCounter counter(interfaceCalledCount_);
 
     auto callingUid = IPCSkeleton::GetCallingUid();
@@ -667,9 +667,9 @@ int32_t CliToolManagerService::UnregisterIntentFunctionsByNamespace(const std::s
     return ERR_OK;
 }
 
-int32_t CliToolManagerService::GetAllFunctions(std::vector<FunctionInfo> &functions)
+int32_t CliToolManagerService::GetAllFunctions(FunctionsRawData &functions)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "GetAllFunctions called");
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "GetAllFunctions called");
     InterfaceCallCounter counter(interfaceCalledCount_);
 
     auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
@@ -688,13 +688,15 @@ int32_t CliToolManagerService::GetAllFunctions(std::vector<FunctionInfo> &functi
         return ERR_PERMISSION_DENIED;
     }
 
-    int32_t ret = CliFunctionDataManager::GetInstance().GetAllFunctions(functions);
+    std::vector<FunctionInfo> functionList;
+    int32_t ret = CliFunctionDataManager::GetInstance().GetAllFunctions(functionList);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllFunctions: Failed to get functions, ret=%{public}d", ret);
         return ret;
     }
 
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully got all functions: %{public}zu", functions.size());
+    FunctionsRawData::FromFunctionInfoVec(functionList, functions);
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully got all functions (raw): %{public}zu", functionList.size());
     return ERR_OK;
 }
 
