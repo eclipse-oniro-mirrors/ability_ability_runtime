@@ -36,12 +36,10 @@ constexpr const char *INSIGHT_INTENT_OPT_EXECUTE_MODE = "executeMode";
 constexpr const char *INSIGHT_INTENT_OPT_ABILITY_NAME = "abilityName";
 constexpr const char *INSIGHT_INTENT_OPT_URIS = "uris";
 constexpr const char *INSIGHT_INTENT_OPT_FLAGS = "flags";
-constexpr const char *INSIGHT_INTENT_OPT_USER_ID = "userId";
-constexpr const char *INSIGHT_INTENT_OPT_DISPLAY_ID = "displayId";
 
 constexpr int DECIMAL_BASE = 10;
 constexpr int AUTO_BASE = 0;
-constexpr int32_t INVALID_USER_ID = -1;
+constexpr int32_t DEFAULT_USER_ID = -1;
 
 bool ParseInt(const std::string &str, int base, int32_t &out)
 {
@@ -153,10 +151,9 @@ int32_t InsightIntentParamParser::Build(const std::string &bundleName, const std
     param->bundleName_ = bundleName;
     param->insightIntentName_ = intentName;
     param->insightIntentParam_ = std::make_shared<AAFwk::WantParams>(wantParam);
-    param->userId_ = callerUserId;
+    param->userId_ = DEFAULT_USER_ID;
     param->displayId_ = AppExecFwk::INVALID_DISPLAY_ID;
 
-    // 字段从代表取，options 显式指定时覆写。
     std::string optModuleName = options->GetStringParam(INSIGHT_INTENT_OPT_MODULE_NAME);
     param->moduleName_ = optModuleName.empty() ? matched.moduleName : optModuleName;
 
@@ -171,9 +168,6 @@ int32_t InsightIntentParamParser::Build(const std::string &bundleName, const std
 
     ResolveUris(*options, param->uris_);
     ResolveFlags(*options, param->flags_);
-    ResolveUserId(*options, callerUserId, param->userId_);
-    ResolveDisplayId(*options, param->displayId_);
-    // deviceId 不再从 options 解析，保持默认空串（本机），分布式支持暂未启用。
 
     out.param = param;
     return ERR_OK;
@@ -215,29 +209,6 @@ void InsightIntentParamParser::ResolveFlags(const AAFwk::WantParams &opts, int32
     std::string flagsStr = opts.GetStringParam(INSIGHT_INTENT_OPT_FLAGS);
     int32_t val = 0;
     if (ParseInt(flagsStr, AUTO_BASE, val)) {
-        out = val;
-    }
-}
-
-void InsightIntentParamParser::ResolveUserId(const AAFwk::WantParams &opts,
-    int32_t callerUserId, int32_t &out) const
-{
-    // 默认 -1，由 InsightIntentExecuteManager::CheckAndUpdateParam 兜底为 calling UID 推算 userId，
-    // 与 ExecuteIntent 路径行为一致。options.userId 显式指定时覆写。
-    out = INVALID_USER_ID;
-    std::string userIdStr = opts.GetStringParam(INSIGHT_INTENT_OPT_USER_ID);
-    int32_t val = 0;
-    if (ParseInt(userIdStr, DECIMAL_BASE, val)) {
-        out = val;
-    }
-}
-
-void InsightIntentParamParser::ResolveDisplayId(const AAFwk::WantParams &opts, int32_t &out) const
-{
-    out = AppExecFwk::INVALID_DISPLAY_ID;
-    std::string displayIdStr = opts.GetStringParam(INSIGHT_INTENT_OPT_DISPLAY_ID);
-    int32_t val = 0;
-    if (ParseInt(displayIdStr, DECIMAL_BASE, val)) {
         out = val;
     }
 }

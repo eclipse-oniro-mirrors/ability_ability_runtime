@@ -40,8 +40,6 @@ void BuildOptionsSchema(nlohmann::json &schema, const IntentOptionDefaults &defa
     optionsParam["properties"]["executeMode"] = {{"type", "string"}, {"default", "background"}};
     optionsParam["properties"]["moduleName"] = {{"type", "string"}, {"default", defaults.moduleName}};
     optionsParam["properties"]["abilityName"] = {{"type", "string"}, {"default", defaults.abilityName}};
-    optionsParam["properties"]["displayId"] = {{"type", "integer"}};
-    optionsParam["properties"]["userId"] = {{"type", "integer"}};
     optionsParam["properties"]["uris"]["type"] = "array";
     optionsParam["properties"]["uris"]["items"] = {{"type", "string"}};
     optionsParam["properties"]["flags"] = {{"type", "string"}};

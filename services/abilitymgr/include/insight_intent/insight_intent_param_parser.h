@@ -44,8 +44,6 @@ private:
     std::shared_ptr<AAFwk::WantParams> ExtractOptions(const AAFwk::WantParams &wantParam) const;
     void ResolveUris(const AAFwk::WantParams &opts, std::vector<std::string> &out) const;
     void ResolveFlags(const AAFwk::WantParams &opts, int32_t &out) const;
-    void ResolveUserId(const AAFwk::WantParams &opts, int32_t callerUserId, int32_t &out) const;
-    void ResolveDisplayId(const AAFwk::WantParams &opts, int32_t &out) const;
 };
 } // namespace AbilityRuntime
 } // namespace OHOS
