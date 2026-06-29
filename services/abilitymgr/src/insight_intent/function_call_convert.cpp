@@ -361,23 +361,13 @@ bool BatchRegisterInsightIntentFunctions(
             func.version = std::to_string(it->second);
         }
     }
-    // Binder IPC 单次事务有容量限制（~1MB mmap，安全阈值 < 200KB）。
-    // 单条 FunctionInfo 约 1-3KB（inputSchema 为主），每批 50 条约 100KB 在安全范围内。
-    constexpr size_t maxBatchSize = 50;
     auto &client = CliToolMGRClient::GetInstance();
-    for (size_t offset = 0; offset < functions.size(); offset += maxBatchSize) {
-        size_t end = std::min(offset + maxBatchSize, functions.size());
-        std::vector<FunctionInfo> batch(functions.begin() + offset, functions.begin() + end);
-        int32_t batchSuccess = 0;
-        ErrCode ret = client.BatchRegisterFunctions(batch, batchSuccess);
-        successCount += batchSuccess;
-        if (ret != ERR_OK) {
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "batch register failed at offset %{public}zu, ret=%{public}d",
-                offset, ret);
-            return false;
-        }
+    ErrCode ret = client.BatchRegisterFunctions(functions, successCount);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "batch register failed, ret=%{public}d, success=%{public}d",
+            ret, successCount);
     }
-    return true;
+    return ret == ERR_OK;
 }
 
 } // namespace CliTool

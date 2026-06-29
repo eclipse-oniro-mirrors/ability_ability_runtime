@@ -119,7 +119,7 @@ public:
      * @param successCount Output count of successfully registered functions
      * @return int32_t ERR_OK on success, error code otherwise
      */
-    int32_t BatchRegisterFunctions(const std::vector<FunctionInfo> &functions, int32_t &successCount) override;
+    int32_t BatchRegisterFunctions(const FunctionsRawData &functions, int32_t &successCount) override;
 
     /**
      * @brief Get function information by bundleName and functionName
