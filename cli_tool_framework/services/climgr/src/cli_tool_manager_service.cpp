@@ -544,15 +544,8 @@ int32_t CliToolManagerService::BatchRegisterFunctions(const FunctionsRawData &fu
     int32_t &successCount)
 {
     successCount = 0;
-    std::vector<FunctionInfo> functionList;
-    int32_t convertRet = FunctionsRawData::ToFunctionInfoVec(functions, functionList);
-    if (convertRet != ERR_OK || functionList.empty()) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions: failed to deserialize rawdata, ret=%{public}d",
-            convertRet);
-        return ERR_INVALID_PARAM;
-    }
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions called: %{public}zu functions",
-        functionList.size());
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions called: %{public}u bytes",
+        functions.size);
 
     InterfaceCallCounter counter(interfaceCalledCount_);
 
@@ -565,6 +558,13 @@ int32_t CliToolManagerService::BatchRegisterFunctions(const FunctionsRawData &fu
             callingUid, static_cast<int32_t>(
                 Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken)));
         return ERR_PERMISSION_DENIED;
+    }
+
+    std::vector<FunctionInfo> functionList;
+    FunctionsRawData::ToFunctionInfoVec(functions, functionList);
+    if (functionList.empty()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions: functions vector is empty");
+        return ERR_INVALID_PARAM;
     }
 
     std::vector<FunctionInfo> validFunctions;
