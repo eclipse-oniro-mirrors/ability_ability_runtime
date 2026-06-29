@@ -113,6 +113,9 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
             }
             for (const auto &item : configIntentInfos) {
                 allConfigInfos.push_back(item);
+                if (allConfigInfos.back().moduleName.empty()) {
+                    allConfigInfos.back().moduleName = moduleNameLocal;
+                }
             }
         }
         if (allInfos.insightIntents.empty() && allConfigInfos.empty()) {
