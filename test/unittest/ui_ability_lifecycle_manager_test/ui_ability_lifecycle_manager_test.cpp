@@ -7391,7 +7391,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, EnableListForSCBRecovery_001, TestSize.L
 
 /**
  * @tc.name: IsUIAbilityAlreadyExist_0001
- * @tc.desc: In STANDARD launch mode if a record with same ability exists return ERROR_UIABILITY_IS_ALREADY_EXIST
+ * @tc.desc: In SINGLETON launch mode if a record with same ability exists return ERROR_UIABILITY_IS_ALREADY_EXIST
  * @tc.type: FUNC
  */
 HWTEST_F(UIAbilityLifecycleManagerTest, IsUIAbilityAlreadyExist_0001, TestSize.Level1)
@@ -7408,7 +7408,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, IsUIAbilityAlreadyExist_0001, TestSize.L
     abilityRequest.abilityInfo.name = abilityName;
     abilityRequest.abilityInfo.bundleName = bundleName;
     abilityRequest.abilityInfo.moduleName = moduleName;
-    abilityRequest.abilityInfo.launchMode = AppExecFwk::LaunchMode::STANDARD;
+    abilityRequest.abilityInfo.launchMode = AppExecFwk::LaunchMode::SINGLETON;
     abilityRequest.sessionInfo = new SessionInfo();
     abilityRequest.sessionInfo->instanceKey = instanceKey;
     auto record = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
@@ -7418,7 +7418,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, IsUIAbilityAlreadyExist_0001, TestSize.L
 
     Want want;
     want.SetElementName("device", bundleName, abilityName, moduleName);
-    auto ret = mgr->IsUIAbilityAlreadyExist(want, "", appIndex, instanceKey, AppExecFwk::LaunchMode::STANDARD);
+    auto ret = mgr->IsUIAbilityAlreadyExist(want, "", appIndex, instanceKey, AppExecFwk::LaunchMode::SINGLETON);
     EXPECT_EQ(ret, ERROR_UIABILITY_IS_ALREADY_EXIST);
 }
 
@@ -7481,7 +7481,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, IsUIAbilityAlreadyExist_0003, TestSize.L
     record->SetAppIndex(0);
     record->SetInstanceKey("key");
     mgr->sessionAbilityMap_[5] = record;
-    ret = mgr->IsUIAbilityAlreadyExist(want, "flag", 0, "key", AppExecFwk::LaunchMode::STANDARD);
+    ret = mgr->IsUIAbilityAlreadyExist(want, "flag", 0, "key", AppExecFwk::LaunchMode::SINGLETON);
     EXPECT_EQ(ret, ERR_OK);
 }
 

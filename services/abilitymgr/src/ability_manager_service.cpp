@@ -2483,7 +2483,8 @@ int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const St
             !startOptions.processOptions->isRestartKeepAlive &&
             !ProcessOptions::IsAttachToStatusBarItemMode(startOptions.processOptions->processMode) &&
             currentProcessName != START_SELF_UI_ABILITY_IN_CHILD_PROCESS_FLAG &&
-            !startOptions.processOptions->isStartFromNDK) {
+            !startOptions.processOptions->isStartFromNDK &&
+            startOptions.processOptions->selfPid == -1) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "processMode is not attach to status bar item.");
             AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, ERR_ABILITY_ALREADY_RUNNING,
                 "processMode is not attach to status bar item");
