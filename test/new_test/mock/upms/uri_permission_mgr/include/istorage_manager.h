@@ -52,17 +52,6 @@ public:
         return 0;
     }
 
-    virtual int32_t NotifyMtpMounted(const std::string &id, const std::string &path,
-        const std::string &desc, const std::string &uuid) override
-    {
-        return 0;
-    }
-
-    virtual int32_t NotifyMtpUnmounted(const std::string &id, const std::string &path, const bool isBadRemove) override
-    {
-        return 0;
-    }
-
     virtual int32_t GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t &freeSize) override
     {
         return 0;
@@ -111,99 +100,6 @@ public:
     }
 
     virtual int32_t GetCurrentBundleStats(BundleStats &bundleStats, uint32_t statFlag) override
-    {
-        return 0;
-    }
-
-    virtual int32_t NotifyVolumeCreated(const VolumeCore& vc) override
-    {
-        return 0;
-    }
-
-    virtual int32_t NotifyVolumeMounted(const std::string &volumeId, const std::string &fsTypeStr,
-        const std::string &fsUuid, const std::string &path, const std::string &description) override
-    {
-        return 0;
-    }
-
-    virtual int32_t NotifyVolumeDamaged(const std::string &volumeId,
-        const std::string &fsTypeStr, const std::string &fsUuid,
-        const std::string &path, const std::string &description) override
-    {
-        return 0;
-    }
-
-    virtual int32_t NotifyVolumeStateChanged(const std::string &volumeId, uint32_t state) override
-    {
-        return 0;
-    }
-
-    virtual int32_t Mount(const std::string &volumeId) override
-    {
-        return 0;
-    }
-
-    virtual int32_t Unmount(const std::string &volumeId) override
-    {
-        return 0;
-    }
-
-    virtual int32_t TryToFix(const std::string &volumeId) override
-    {
-        return 0;
-    }
-
-    virtual int32_t GetAllVolumes(std::vector<VolumeExternal> &vecOfVol) override
-    {
-        return 0;
-    }
-
-    virtual int32_t NotifyDiskCreated(const Disk& disk) override
-    {
-        return 0;
-    }
-
-    virtual int32_t NotifyDiskDestroyed(const std::string &diskId) override
-    {
-        return 0;
-    }
-
-    virtual int32_t Partition(const std::string &diskId, int32_t type) override
-    {
-        return 0;
-    }
-
-    virtual int32_t GetAllDisks(std::vector<Disk> &vecOfDisk) override
-    {
-        return 0;
-    }
-
-    virtual int32_t GetVolumeByUuid(const std::string &fsUuid, VolumeExternal &vc) override
-    {
-        return 0;
-    }
-
-    virtual int32_t GetVolumeById(const std::string &volumeId, VolumeExternal &vc) override
-    {
-        return 0;
-    }
-
-    virtual int32_t SetVolumeDescription(const std::string &fsUuid, const std::string &description) override
-    {
-        return 0;
-    }
-
-    virtual int32_t Format(const std::string &volumeId, const std::string &fsType) override
-    {
-        return 0;
-    }
-
-    virtual int32_t GetDiskById(const std::string &diskId, Disk &disk) override
-    {
-        return 0;
-    }
-
-    virtual int32_t QueryUsbIsInUse(const std::string &diskPath, bool &isInUse)
     {
         return 0;
     }
