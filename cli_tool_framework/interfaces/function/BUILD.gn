@@ -19,6 +19,7 @@ config("function_info_config") {
   include_dirs = [
     "include",
     "${ability_runtime_services_path}/common/include",
+    "${cli_tool_framework_path}/interfaces/cli_tool/include",
   ]
 }
 
@@ -34,6 +35,7 @@ ohos_source_set("function_info") {
   include_dirs = [
     "include",
     "${ability_runtime_services_path}/common/include",
+    "${cli_tool_framework_path}/interfaces/cli_tool/include",
   ]
 
   sources = [
@@ -41,6 +43,7 @@ ohos_source_set("function_info") {
   ]
 
   external_deps = [
+    "c_utils:utils",
     "hilog:libhilog",
     "ipc:ipc_single",
     "json:nlohmann_json_static",

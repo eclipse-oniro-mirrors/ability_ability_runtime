@@ -25,7 +25,7 @@ public:
         FunctionInfo &function) override;
     int32_t UnregisterFunction(const std::string &functionNamespace, const std::string &functionName) override;
     int32_t UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace) override;
-    int32_t GetAllFunctions(std::vector<FunctionInfo> &functions) override;
+    int32_t GetAllFunctions(FunctionsRawData &functions) override;
     int32_t ExecTool(const ExecToolParam &param, const std::string &eventId,
         const sptr<ICliToolManagerScheduler> &scheduler) override;
     int32_t ExecCmd(const ExecCmdParam &param, const std::string &eventId,

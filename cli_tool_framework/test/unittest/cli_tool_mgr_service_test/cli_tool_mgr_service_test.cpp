@@ -2720,8 +2720,8 @@ HWTEST_F(CliToolManagerServiceTest, GetAllFunctions_0100, TestSize.Level1)
     service_->RegisterFunction(function2);
 
     // Then get all functions
-    std::vector<FunctionInfo> functions;
-    int32_t ret = service_->GetAllFunctions(functions);
+    FunctionsRawData rawData;
+    int32_t ret = service_->GetAllFunctions(rawData);
 
     // May succeed or return ERR_NO_INIT
     // With mocked permissions returning true, should not get permission errors
@@ -2760,8 +2760,8 @@ HWTEST_F(CliToolManagerServiceTest, FunctionInterfaces_0100, TestSize.Level1)
 
     EXPECT_EQ(service_->UnregisterIntentFunctionsByNamespace("null_kv_ns"), ERR_NO_INIT);
 
-    std::vector<FunctionInfo> functions;
-    EXPECT_EQ(service_->GetAllFunctions(functions), ERR_NO_INIT);
+    FunctionsRawData rawData;
+    EXPECT_EQ(service_->GetAllFunctions(rawData), ERR_NO_INIT);
 
     // Reset mock to default values
     CliFunctionDataManagerMock::Reset();

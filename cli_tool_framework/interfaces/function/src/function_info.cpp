@@ -15,10 +15,18 @@
 
 #include "function_info.h"
 
+#include <cstring>
 #include <memory>
+#include <securec.h>
+#include <sstream>
 #include <nlohmann/json.hpp>
 
+#include "cli_error_code.h"
 #include "hilog_tag_wrapper.h"
+
+namespace {
+constexpr uint32_t MAX_FUNCTION_INFO_COUNT = 10000;  // Maximum number of functions in single transfer
+}
 
 namespace OHOS {
 namespace CliTool {
@@ -244,6 +252,97 @@ bool FunctionInfo::Validate(const FunctionInfo &function)
     }
 
     return true;
+}
+
+// ==================== FunctionsRawData Implementation ====================
+
+FunctionsRawData::~FunctionsRawData()
+{
+    if (data != nullptr && isMalloc) {
+        free(const_cast<void*>(data));
+        isMalloc = false;
+        data = nullptr;
+    }
+}
+
+int32_t FunctionsRawData::RawDataCpy(const void *readdata)
+{
+    if (readdata == nullptr || size == 0) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "null data or zero size");
+        return ERR_INVALID_VALUE;
+    }
+    void* newData = malloc(size);
+    if (newData == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "malloc failed");
+        return ERR_INVALID_VALUE;
+    }
+    if (memcpy_s(newData, size, readdata, size) != EOK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "memcpy_s failed");
+        free(newData);
+        return ERR_INVALID_VALUE;
+    }
+    if (data != nullptr && isMalloc) {
+        free(const_cast<void*>(data));
+        data = nullptr;
+    }
+    data = newData;
+    isMalloc = true;
+    return ERR_OK;
+}
+
+void FunctionsRawData::FromFunctionInfoVec(const std::vector<FunctionInfo> &functions, FunctionsRawData &rawData)
+{
+    std::stringstream ss;
+    uint32_t count = functions.size();
+    ss.write(reinterpret_cast<const char*>(&count), sizeof(count));
+
+    for (uint32_t i = 0; i < count; ++i) {
+        std::string dumped = functions[i].ParseToJson().dump();
+        uint32_t strLen = dumped.length();
+        ss.write(reinterpret_cast<const char*>(&strLen), sizeof(strLen));
+        ss.write(dumped.c_str(), strLen);
+    }
+    std::string result = ss.str();
+    rawData.ownedData = std::move(result);
+    rawData.data = rawData.ownedData.data();
+    rawData.size = rawData.ownedData.size();
+    rawData.isMalloc = false;
+}
+
+int32_t FunctionsRawData::ToFunctionInfoVec(const FunctionsRawData &rawData, std::vector<FunctionInfo> &functions)
+{
+    std::stringstream ss;
+    ss.write(reinterpret_cast<const char *>(rawData.data), rawData.size);
+    ss.seekg(0, std::ios::beg);
+    uint32_t ssLength = static_cast<uint32_t>(ss.str().length());
+    uint32_t count = 0;
+    ss.read(reinterpret_cast<char *>(&count), sizeof(count));
+    if (count > MAX_FUNCTION_INFO_COUNT) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "functions exceed maxSize %{public}d, count: %{public}d",
+            MAX_FUNCTION_INFO_COUNT, count);
+        return ERR_INVALID_VALUE;
+    }
+    functions.resize(count);
+    for (uint32_t i = 0; i < count; ++i) {
+        uint32_t functionSize = 0;
+        ss.read(reinterpret_cast<char *>(&functionSize), sizeof(functionSize));
+        if (functionSize > ssLength - static_cast<uint32_t>(ss.tellg())) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "functionSize:%{public}u is invalid", functionSize);
+            return ERR_INVALID_VALUE;
+        }
+        std::string functionStr(functionSize, '\0');
+        ss.read(functionStr.data(), functionSize);
+        nlohmann::json j = nlohmann::json::parse(functionStr, nullptr, false);
+        if (j.is_discarded()) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to parse JSON for function %{public}d", i);
+            return ERR_JSON_PARSE_FAILED;
+        }
+        if (!FunctionInfo::ParseFromJson(j, functions[i])) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to parse FunctionInfo from JSON for function %{public}d", i);
+            return ERR_JSON_PARSE_FAILED;
+        }
+    }
+    return ERR_OK;
 }
 
 } // namespace CliTool
