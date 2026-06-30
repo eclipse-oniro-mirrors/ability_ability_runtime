@@ -105,6 +105,12 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
                 continue;
             }
 
+            // backfill moduleName before save, so both RDB and KVStore see the correct value
+            for (auto &item : configIntentInfos) {
+                if (item.moduleName.empty()) {
+                    item.moduleName = moduleNameLocal;
+                }
+            }
             // save database
             DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->SaveInsightIntentTotalInfo(
                 bundleName, moduleNameLocal, userId, bundleInfo.versionCode, infos, configIntentInfos);
@@ -113,9 +119,6 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
             }
             for (const auto &item : configIntentInfos) {
                 allConfigInfos.push_back(item);
-                if (allConfigInfos.back().moduleName.empty()) {
-                    allConfigInfos.back().moduleName = moduleNameLocal;
-                }
             }
         }
         if (allInfos.insightIntents.empty() && allConfigInfos.empty()) {
