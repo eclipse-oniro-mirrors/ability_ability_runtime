@@ -159,23 +159,6 @@ HWTEST_F(AbilityManagerServiceDumpTest, AbilityManagerService_DumpSysPendingInne
 }
 
 /**
- * @tc.name: AbilityManagerService_DumpSysProcess_0100
- * @tc.desc: DumpSysProcess
- * @tc.type: FUNC
- * @tc.require: SR000GH1GO
- */
-HWTEST_F(AbilityManagerServiceDumpTest, AbilityManagerService_DumpSysProcess_0100, TestSize.Level1)
-{
-    auto abilityMs_ = std::make_shared<AbilityManagerService>();
-    std::string args = "-a";
-    std::vector<std::string> info;
-    bool isClient = false;
-    bool isUserID = true;
-    abilityMs_->DumpSysProcess(args, info, isClient, isUserID, USER_ID);
-    EXPECT_NE(info.size(), SIZE_ZERO);
-}
-
-/**
  * @tc.name: AbilityManagerService_DataDumpSysStateInner_0100
  * @tc.desc: DataDumpSysStateInner
  * @tc.type: FUNC

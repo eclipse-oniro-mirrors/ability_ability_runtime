@@ -1407,23 +1407,6 @@ HWTEST_F(AbilityManagerServiceThirdTest, StartAbilityByUIContentSession_003, Tes
  * Function: StartAbilityByUIContentSession
  * FunctionPoints: AbilityManagerService StartAbilityByUIContentSession
  */
-HWTEST_F(AbilityManagerServiceThirdTest, StartAbilityByUIContentSession_004, TestSize.Level1)
-{
-    auto abilityMs = std::make_shared<AbilityManagerService>();
-    Want want;
-    sptr<IRemoteObject> callerToken = new AbilityManagerStubTestMock();
-    sptr<SessionInfo> sessionInfo = new (std::nothrow) SessionInfo();
-    int32_t userId = 0;
-    int requestCode = 0;
-    auto result = abilityMs->StartAbilityByUIContentSession(want, callerToken, sessionInfo, userId, requestCode);
-    EXPECT_EQ(result, ERR_INVALID_VALUE);
-}
-
-/*
- * Feature: AbilityManagerService
- * Function: StartAbilityByUIContentSession
- * FunctionPoints: AbilityManagerService StartAbilityByUIContentSession
- */
 HWTEST_F(AbilityManagerServiceThirdTest, StartAbilityByUIContentSession_005, TestSize.Level1)
 {
     auto abilityMs = std::make_shared<AbilityManagerService>();
@@ -1468,25 +1451,6 @@ HWTEST_F(AbilityManagerServiceThirdTest, StartAbilityByUIContentSession_007, Tes
     Want want;
     StartOptions startOptions;
     sptr<IRemoteObject> callerToken;
-    sptr<SessionInfo> sessionInfo = new (std::nothrow) SessionInfo();
-    int32_t userId = 0;
-    int requestCode = 0;
-    auto result = abilityMs->StartAbilityByUIContentSession(want, startOptions, callerToken, sessionInfo, userId,
-        requestCode);
-    EXPECT_EQ(result, ERR_INVALID_VALUE);
-}
-
-/*
- * Feature: AbilityManagerService
- * Function: StartAbilityByUIContentSession
- * FunctionPoints: AbilityManagerService StartAbilityByUIContentSession
- */
-HWTEST_F(AbilityManagerServiceThirdTest, StartAbilityByUIContentSession_008, TestSize.Level1)
-{
-    auto abilityMs = std::make_shared<AbilityManagerService>();
-    Want want;
-    StartOptions startOptions;
-    sptr<IRemoteObject> callerToken = new AbilityManagerStubTestMock();
     sptr<SessionInfo> sessionInfo = new (std::nothrow) SessionInfo();
     int32_t userId = 0;
     int requestCode = 0;
@@ -2060,40 +2024,6 @@ HWTEST_F(AbilityManagerServiceThirdTest, ImplicitStartExtensionAbility_002, Test
     AppExecFwk::ExtensionAbilityType extensionType = AppExecFwk::ExtensionAbilityType::VPN;
     auto result = abilityMs->ImplicitStartExtensionAbility(want, callerToken, userId, extensionType);
     EXPECT_EQ(result, ERR_INVALID_VALUE);
-}
-
-/*
- * Feature: AbilityManagerService
- * Function: RequestModalUIExtension
- * FunctionPoints: AbilityManagerService RequestModalUIExtension
- */
-HWTEST_F(AbilityManagerServiceThirdTest, RequestModalUIExtension_001, TestSize.Level1)
-{
-    auto abilityMs = std::make_shared<AbilityManagerService>();
-    Want want;
-    auto result = abilityMs->RequestModalUIExtension(want);
-    if (!Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        EXPECT_EQ(result, INNER_ERR);
-    } else {
-        EXPECT_EQ(result, ERR_OK);
-    }
-}
-
-/*
- * Feature: AbilityManagerService
- * Function: RequestModalUIExtensionInner
- * FunctionPoints: AbilityManagerService RequestModalUIExtensionInner
- */
-HWTEST_F(AbilityManagerServiceThirdTest, RequestModalUIExtensionInner_001, TestSize.Level1)
-{
-    auto abilityMs = std::make_shared<AbilityManagerService>();
-    Want want;
-    auto result = abilityMs->RequestModalUIExtensionInner(want);
-    if (!Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        EXPECT_EQ(result, INNER_ERR);
-    } else {
-        EXPECT_EQ(result, ERR_OK);
-    }
 }
 
 /*

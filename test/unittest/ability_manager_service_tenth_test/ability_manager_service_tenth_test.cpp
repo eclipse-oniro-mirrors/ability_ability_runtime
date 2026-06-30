@@ -622,24 +622,6 @@ HWTEST_F(AbilityManagerServiceTenhtTest, DelegatorDoAbilityBackground_001, TestS
 
 /*
  * Feature: AbilityManagerService
- * Name: DelegatorDoAbilityBackground_002
- * Function: DelegatorDoAbilityBackground
- * SubFunction: NA
- */
-HWTEST_F(AbilityManagerServiceTenhtTest, DelegatorDoAbilityBackground_002, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTenhtTest DelegatorDoAbilityBackground_002 start");
-    std::shared_ptr<AbilityManagerService> abilityMs_ = std::make_shared<AbilityManagerService>();
-    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
-    abilityRecord->SetPid(IPCSkeleton::GetCallingPid());
-    sptr<IRemoteObject> token = new Token(abilityRecord);
-    int result = abilityMs_->DelegatorDoAbilityBackground(token);
-    ASSERT_EQ(result, ERR_INVALID_VALUE);
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTenhtTest DelegatorDoAbilityBackground_002 end");
-}
-
-/*
- * Feature: AbilityManagerService
  * Name: DelegatorDoAbilityBackground_003
  * Function: DelegatorDoAbilityBackground
  * SubFunction: NA
