@@ -15,6 +15,8 @@
 
 #include "insight_intent_event_mgr.h"
 
+#include <unordered_map>
+
 #include "insight_intent_sys_event_receiver.h"
 #include "insight_intent_db_cache.h"
 #include "ability_manager_errors.h"
@@ -140,7 +142,13 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
         intentFilter.FilterConfig(allConfigInfos);
         TAG_LOGI(AAFwkTag::INTENT, "after filter, generic:%{public}zu config:%{public}zu, bundle:%{public}s",
             genericInfos.size(), allConfigInfos.size(), bundleName.c_str());
-        CliTool::RegisterInsightIntentFunctions(genericInfos, allConfigInfos, bundleName, bundleInfo.versionCode);
+        std::unordered_map<std::string, uint32_t> bundleVersionMap;
+        bundleVersionMap[bundleName] = bundleInfo.versionCode;
+        int32_t successCount = 0;
+        CliTool::BatchRegisterInsightIntentFunctions(
+            genericInfos, allConfigInfos, bundleVersionMap, successCount);
+        TAG_LOGI(AAFwkTag::INTENT, "batch register done, success: %{public}d, bundle:%{public}s",
+            successCount, bundleName.c_str());
         DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
     });
 }
