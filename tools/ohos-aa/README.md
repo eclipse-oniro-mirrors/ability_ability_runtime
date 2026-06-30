@@ -26,7 +26,7 @@ tools/ohos-aa/
 
 | 子命令 | 作用 | 可选参数 | 所需权限 |
 |--------|------|----------|----------|
-| `start` | 启动一个 Ability 组件 | `--abilityname`、`--bundlename`、`--modulename`、`--uri`、`--action`、`--entity`、`--type`、`--time`、`--pi`、`--ps`、`--pb`、`--psn`、`--help` | `ohos.permission.cli.START_ABILITY` |
+| `start` | 启动一个 Ability 组件 | `--abilityname`、`--bundlename`、`--modulename`、`--uri`、`--action`、`--entity`、`--type`、`--time`、`--pi`、`--ps`、`--pb`、`--psn`、`--sandboxCloneIndex`、`--creatorBundle`、`--help` | `ohos.permission.cli.START_ABILITY` |
 | `force-stop` | 强制停止指定应用及其进程 | `--bundlename`、`--help` | `ohos.permission.cli.KILL_APP_PROCESSES` |
 | `--help` / `help` | 显示帮助信息 | 无 | 无 |
 
@@ -46,6 +46,8 @@ tools/ohos-aa/
 | `--ps <json>` | string | 字符串参数键值对，JSON 格式，如 `'{"key1":"value1","key2":"value2"}'` |
 | `--pb <json>` | string | 布尔参数键值对，JSON 格式，如 `'{"key1":true,"key2":false}'` |
 | `--psn <type>` | string | 空键对应的字符串类型值 |
+| `--sandboxCloneIndex <index>` | integer  | 待启动的沙箱分身应用的索引（取值范围：2000-3000）|
+| `--creatorBundle <name>` | string | 沙箱分身应用的创建方包名 |
 | `--help` | flag | 显示 start 子命令帮助信息 |
 
 > **注意**：显式启动时 `--abilityname` 和 `--bundlename` 必须同时提供。仅提供 `--abilityname` 而未提供 `--bundlename` 将导致错误。
