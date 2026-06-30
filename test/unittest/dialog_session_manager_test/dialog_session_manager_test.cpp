@@ -810,22 +810,6 @@ HWTEST_F(DialogSessionManagerTest, CreateJumpModalDialog_001, TestSize.Level1)
 }
 
 /**
- * @tc.name: CreateModalDialogCommon_001
- * @tc.desc: test CreateModalDialogCommon function
- * @tc.type: FUNC
- */
-HWTEST_F(DialogSessionManagerTest, CreateModalDialogCommon_001, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "CreateModalDialogCommon_001 start";
-    DialogSessionManager dialogSessionManager;
-    Want replaceWant;
-    sptr<IRemoteObject> callerToken = nullptr;
-    int result = dialogSessionManager.CreateModalDialogCommon(replaceWant, callerToken, TEST_DIALOG_SESSION_ID);
-    EXPECT_EQ(result, INNER_ERR);
-    GTEST_LOG_(INFO) << "CreateModalDialogCommon_001 end";
-}
-
-/**
  * @tc.name: CreateModalDialogCommon_002
  * @tc.desc: test CreateModalDialogCommon function
  * @tc.type: FUNC

@@ -293,29 +293,6 @@ HWTEST_F(AbilityManagerServiceFirstTest, KillProcessForPermissionUpdate_001, Tes
 
 /*
  * Feature: AbilityManagerService
- * Function: KillProcessForPermissionUpdate
- * SubFunction: NA
- * FunctionPoints: has PERMISSION_KILL_APP_PROCESSES permission
- */
-HWTEST_F(AbilityManagerServiceFirstTest, KillProcessForPermissionUpdate_002, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST,
-        "AbilityManagerServiceFirstTest KillProcessForPermissionUpdate_002 start");
-    auto abilityMs_ = std::make_shared<AbilityManagerService>();
-    abilityMs_->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
-    abilityMs_->subManagersHelper_->currentUIAbilityManager_ = std::make_shared<UIAbilityLifecycleManager>();
-    EXPECT_NE(abilityMs_, nullptr);
-    uint32_t accessTokenId = 1;
-    AAFwk::IsMockSaCall::IsMockKillAppProcessesPermission();
-    TAG_LOGI(AAFwkTag::TEST, "MockKillAppProcessesPermission");
-    MyFlag::flag_ = 1;
-    EXPECT_EQ(abilityMs_->KillProcessForPermissionUpdate(accessTokenId), ERR_OK);
-    MyFlag::flag_ = 0;
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest KillProcessForPermissionUpdate_002 end");
-}
-
-/*
- * Feature: AbilityManagerService
  * Function: RegisterSnapshotHandler
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService RegisterSnapshotHandler

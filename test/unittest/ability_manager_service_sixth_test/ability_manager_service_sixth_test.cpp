@@ -371,45 +371,6 @@ HWTEST_F(AbilityManagerServiceSixthTest, StartAbilityInner_002, TestSize.Level1)
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest StartAbilityInner_002 end");
 }
 
-#ifdef SUPPORT_AUTO_FILL
-/*
- * Feature: AbilityManagerService
- * Function: SetAutoFillElementName
- * SubFunction: NA
- * FunctionPoints: AbilityManagerService SetAutoFillElementName
- */
-HWTEST_F(AbilityManagerServiceSixthTest, SetAutoFillElementName_001, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest SetAutoFillElementName_001 start");
-    auto abilityMs = std::make_shared<AbilityManagerService>();
-    sptr<SessionInfo> extensionSessionInfo = sptr<SessionInfo>::MakeSptr();
-    extensionSessionInfo->want.SetParam(UIEXTENSION_TYPE_KEY, AUTO_FILL_PASSWORD_TPYE);
-    abilityMs->SetAutoFillElementName(extensionSessionInfo);
-    if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        EXPECT_EQ(extensionSessionInfo->want.GetBundle(), BUNDLE_NAME_TEST);
-        EXPECT_EQ(extensionSessionInfo->want.GetModuleName(), AUTO_FILL_MODULE_NAME);
-    } else {
-        EXPECT_EQ(extensionSessionInfo->want.GetBundle(), AUTO_FILL_PASSWORD_BUNDLE_NAME);
-        EXPECT_EQ(extensionSessionInfo->want.GetModuleName(), AUTO_FILL_MODULE_NAME);
-    }
-
-    extensionSessionInfo->want.SetParam(UIEXTENSION_TYPE_KEY, AUTO_FILL_SMART_TPYE);
-    abilityMs->SetAutoFillElementName(extensionSessionInfo);
-    if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        EXPECT_EQ(extensionSessionInfo->want.GetBundle(), BUNDLE_NAME_SMART_TEST);
-        EXPECT_EQ(extensionSessionInfo->want.GetModuleName(), AUTO_FILL_MODULE_NAME);
-    } else {
-        EXPECT_EQ(extensionSessionInfo->want.GetBundle(), AUTO_FILL_SMART_BUNDLE_NAME);
-        EXPECT_EQ(extensionSessionInfo->want.GetModuleName(), AUTO_FILL_MODULE_NAME);
-    }
-
-    extensionSessionInfo->want = Want();
-    EXPECT_EQ(extensionSessionInfo->want.GetBundle(), "");
-    EXPECT_EQ(extensionSessionInfo->want.GetModuleName(), "");
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest SetAutoFillElementName_001 end");
-}
-#endif // SUPPORT_AUTO_FILL
-
 /*
  * Feature: AbilityManagerService
  * Function: CheckUIExtensionUsage

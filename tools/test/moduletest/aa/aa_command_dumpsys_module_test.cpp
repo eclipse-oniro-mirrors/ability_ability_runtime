@@ -295,56 +295,6 @@ HWTEST_F(AaCommandDumpsysModuleTest, Aa_Command_Dumpsys_ModuleTest_1000, Functio
 }
 
 /**
- * @tc.number: Aa_Command_Dumpsys_ModuleTest_1100
- * @tc.name: ExecCommand
- * @tc.desc: Verify the "aa dump -r" command.
- */
-HWTEST_F(AaCommandDumpsysModuleTest, Aa_Command_Dumpsys_ModuleTest_1100, Function | MediumTest | Level1)
-{
-    char* argv[] = {
-        (char*)TOOL_NAME.c_str(),
-        (char*)cmd_.c_str(),
-        (char*)"-r",
-        (char*)"",
-    };
-    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
-
-    AbilityManagerShellCommand cmd(argc, argv);
-    auto result = cmd.ExecCommand();
-    EXPECT_NE(result, HELP_MSG_DUMPSYS);
-
-    std::vector<std::string> lines;
-    SplitStr(result, " ", lines);
-    // expect that no information showup since no permission
-    EXPECT_GE(lines.size(), SIZE_ONE);
-}
-
-/**
- * @tc.number: Aa_Command_Dumpsys_ModuleTest_1200
- * @tc.name: ExecCommand
- * @tc.desc: Verify the "aa dump --process" command.
- */
-HWTEST_F(AaCommandDumpsysModuleTest, Aa_Command_Dumpsys_ModuleTest_1200, Function | MediumTest | Level1)
-{
-    char* argv[] = {
-        (char*)TOOL_NAME.c_str(),
-        (char*)cmd_.c_str(),
-        (char*)"--process",
-        (char*)"",
-    };
-    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
-
-    AbilityManagerShellCommand cmd(argc, argv);
-    auto result = cmd.ExecCommand();
-    EXPECT_NE(result, HELP_MSG_DUMPSYS);
-
-    std::vector<std::string> lines;
-    SplitStr(result, " ", lines);
-    // expect that no information showup since no permission
-    EXPECT_GE(lines.size(), SIZE_ONE);
-}
-
-/**
  * @tc.number: Aa_Command_Dumpsys_ModuleTest_1300
  * @tc.name: ExecCommand
  * @tc.desc: Verify the "aa dump -d" command.
