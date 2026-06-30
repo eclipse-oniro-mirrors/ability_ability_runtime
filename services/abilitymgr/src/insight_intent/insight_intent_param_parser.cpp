@@ -199,6 +199,10 @@ void InsightIntentParamParser::ResolveUris(const AAFwk::WantParams &opts,
         }
     });
     if (!uris.empty()) {
+        for (size_t i = 0; i < uris.size(); i++) {
+            TAG_LOGI(AAFwkTag::INTENT, "ResolveUris: index=%{public}zu uri=%{public}s",
+                i, uris[i].c_str());
+        }
         out = std::move(uris);
     }
 }
