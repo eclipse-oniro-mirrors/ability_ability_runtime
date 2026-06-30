@@ -304,8 +304,8 @@ void IntentFilterUtil::FilterConfig(std::vector<AbilityRuntime::InsightIntentInf
     for (auto &item : qualified) {
         configInfos.push_back(std::move(item.second));
     }
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "FilterConfig: %{public}zu -> %{public}zu (dropped %{public}zu)",
-        inputCount, configInfos.size(), inputCount - configInfos.size());
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FilterConfig: input=%{public}zu output=%{public}zu",
+        inputCount, configInfos.size());
 }
 
 void IntentFilterUtil::FilterGeneric(std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos)
@@ -338,8 +338,8 @@ void IntentFilterUtil::FilterGeneric(std::vector<AbilityRuntime::ExtractInsightI
     for (auto &item : qualified) {
         intentInfos.push_back(std::move(item.second));
     }
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "FilterGeneric: %{public}zu -> %{public}zu (dropped %{public}zu)",
-        inputCount, intentInfos.size(), inputCount - intentInfos.size());
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FilterGeneric: input=%{public}zu output=%{public}zu",
+        inputCount, intentInfos.size());
 }
 
 bool BatchRegisterInsightIntentFunctions(
