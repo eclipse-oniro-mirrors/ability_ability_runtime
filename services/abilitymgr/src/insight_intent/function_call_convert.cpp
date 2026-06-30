@@ -42,7 +42,7 @@ void BuildOptionsSchema(nlohmann::json &schema, const IntentOptionDefaults &defa
     optionsParam["properties"]["abilityName"] = {{"type", "string"}, {"default", defaults.abilityName}};
     optionsParam["properties"]["uris"]["type"] = "array";
     optionsParam["properties"]["uris"]["items"] = {{"type", "string"}};
-    optionsParam["properties"]["flags"] = {{"type", "string"}};
+    optionsParam["properties"]["flags"] = {{"type", "integer"}};
     schema["properties"]["ohos.insightIntent.options"] = optionsParam;
 }
 

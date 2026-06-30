@@ -38,7 +38,6 @@ constexpr const char *INSIGHT_INTENT_OPT_URIS = "uris";
 constexpr const char *INSIGHT_INTENT_OPT_FLAGS = "flags";
 
 constexpr int DECIMAL_BASE = 10;
-constexpr int AUTO_BASE = 0;
 constexpr int32_t DEFAULT_USER_ID = -1;
 
 bool ParseInt(const std::string &str, int base, int32_t &out)
@@ -206,11 +205,7 @@ void InsightIntentParamParser::ResolveUris(const AAFwk::WantParams &opts,
 
 void InsightIntentParamParser::ResolveFlags(const AAFwk::WantParams &opts, int32_t &out) const
 {
-    std::string flagsStr = opts.GetStringParam(INSIGHT_INTENT_OPT_FLAGS);
-    int32_t val = 0;
-    if (ParseInt(flagsStr, AUTO_BASE, val)) {
-        out = val;
-    }
+    out = opts.GetIntParam(INSIGHT_INTENT_OPT_FLAGS, 0);
 }
 } // namespace AbilityRuntime
 } // namespace OHOS
