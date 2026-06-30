@@ -15,6 +15,7 @@
 
 #include "ets_dialog_session.h"
 
+#include "ability_business_error.h"
 #include "ability_manager_client.h"
 #include "ani_common_ability_state_data.h"
 #include "ani_common_util.h"
@@ -61,7 +62,8 @@ static void SendDialogResult(
     isAllow = static_cast<bool>(etsIsAllow);
     auto errorCode =
         AAFwk::AbilityManagerClient::GetInstance()->SendDialogResult(want, dialogSessionId, isAllow);
-    AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateErrorByNativeErr(env, errorCode), nullptr);
+    AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateErrorByNativeErr(env, errorCode, "",
+        GetInnerErrorMsg(AbilityInnerErrorMsg::SEND_DIALOG_RESULT_FAILED)), nullptr);
 }
 
 static ani_object GetDialogSessionInfo(ani_env *env, ani_string etsDialogSessionId)
@@ -88,7 +90,14 @@ static ani_object GetDialogSessionInfo(ani_env *env, ani_string etsDialogSession
         return AppExecFwk::CreateEtsNull(env);
     }
 #endif // SUPPORT_SCREEN
-    return AppExecFwk::WrapDialogSessionInfo(env, *dialogSessionInfo);
+    ani_object dialogSessionInfoObj = AppExecFwk::WrapDialogSessionInfo(env, *dialogSessionInfo);
+    if (dialogSessionInfoObj == nullptr) {
+        EtsErrorUtil::ThrowError(env, EtsErrorUtil::CreateErrorByNativeErr(env,
+            static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER), "",
+            GetInnerErrorMsg(AbilityInnerErrorMsg::GET_DIALOG_SESSION_INFO_FAILED)));
+        return AppExecFwk::CreateEtsNull(env);
+    }
+    return dialogSessionInfoObj;
 }
 
 void EtsDialogSessionInit(ani_env *env)
