@@ -356,6 +356,9 @@ bool BatchRegisterInsightIntentFunctions(
         return true;
     }
     for (auto &func : functions) {
+        if (func.functionNamespace.empty() && bundleVersionMap.size() == 1) {
+            func.functionNamespace = bundleVersionMap.begin()->first;
+        }
         auto it = bundleVersionMap.find(func.functionNamespace);
         if (it != bundleVersionMap.end()) {
             func.version = std::to_string(it->second);
