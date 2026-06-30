@@ -60,6 +60,7 @@ ErrCode EcologicalRuleInterceptor::DoProcess(AbilityInterceptorParam param)
     int ret = IN_PROCESS_CALL(AbilityEcologicalRuleMgrServiceClient::GetInstance()->QueryStartExperience(newWant,
         callerInfo, rule));
     if (ret != ERR_OK) {
+        StartAbilityUtils::ermsSupportBackToCallerFlag = true;
         TAG_LOGD(AAFwkTag::ECOLOGICAL_RULE, "check ecological rule failed");
         return ERR_OK;
     }
