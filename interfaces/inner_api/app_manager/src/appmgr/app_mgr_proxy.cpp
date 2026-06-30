@@ -1568,6 +1568,27 @@ bool AppMgrProxy::IsSharedBundleRunning(const std::string &bundleName, uint32_t 
     return reply.ReadBool();
 }
 
+bool AppMgrProxy::IsMainProcessDebug(int32_t uid)
+{
+    MessageParcel data;
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write interface token failed.");
+        return false;
+    }
+    if (!data.WriteInt32(uid)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "uid write failed.");
+        return false;
+    }
+    MessageParcel reply;
+    MessageOption option;
+    auto ret = SendRequest(AppMgrInterfaceCode::IS_MAIN_PROCESS_DEBUG, data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGW(AAFwkTag::APPMGR, "SendRequest failed, error code: %{public}d", ret);
+        return false;
+    }
+    return reply.ReadBool();
+}
+
 int32_t AppMgrProxy::StartNativeProcessForDebugger(const AAFwk::Want &want)
 {
     MessageParcel data;

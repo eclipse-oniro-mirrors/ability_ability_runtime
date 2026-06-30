@@ -3295,6 +3295,17 @@ void AbilityConnectManager::GetOrCreateServiceRecord(const AbilityRequest &abili
             targetService->SetCreateByConnectMode();
         }
         SetServiceAfterNewCreate(abilityRequest, *targetService);
+        // Sync debug flag from main process for AGENT extension
+        if (abilityRequest.abilityInfo.extensionAbilityType == AppExecFwk::ExtensionAbilityType::AGENT &&
+            abilityRequest.appInfo.appProvisionType == AppExecFwk::Constants::APP_PROVISION_TYPE_DEBUG) {
+            bool isMainProcessDebug = IN_PROCESS_CALL(DelayedSingleton<AppScheduler>::GetInstance()->IsMainProcessDebug(
+                abilityRequest.appInfo.uid));
+            if (isMainProcessDebug) {
+                targetService->SetDebugApp(true);
+                TAG_LOGD(AAFwkTag::EXT, "AGENT extension inherit debug from main process, ability:%{public}s",
+                    abilityRequest.abilityInfo.name.c_str());
+            }
+        }
         isLoadedAbility = false;
 
         auto setupRet = HandleExtensionSetup(abilityRequest, targetService, serviceKey);

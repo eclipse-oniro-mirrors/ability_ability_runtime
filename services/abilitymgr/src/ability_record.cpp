@@ -3263,6 +3263,14 @@ void AbilityRecord::SetDebugUIExtension()
     launchDebugInfo_.debugApp = true;
 }
 
+void AbilityRecord::SetDebugApp(bool isDebugApp)
+{
+    std::lock_guard guard(wantLock_);
+    want_.SetParam(AbilityConfig::DEBUG_APP, isDebugApp);
+    launchDebugInfo_.isDebugAppSet = true;
+    launchDebugInfo_.debugApp = isDebugApp;
+}
+
 void AbilityRecord::NotifyAbilitiesRequestDone(const std::string &requestKey, int32_t resultCode)
 {
     CHECK_POINTER(lifecycleDeal_);

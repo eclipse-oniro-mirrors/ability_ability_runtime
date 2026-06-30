@@ -531,6 +531,15 @@ AppMgrResultCode AppMgrClient::GetProcessRunningInfosByUserId(std::vector<Runnin
     return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
 }
 
+bool AppMgrClient::IsMainProcessDebug(int32_t uid)
+{
+    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
+    if (service == nullptr) {
+        return false;
+    }
+    return service->IsMainProcessDebug(uid);
+}
+
 AppMgrResultCode AppMgrClient::GetProcessRunningInfosByAccessTokenId(uint32_t accessTokenId,
     std::vector<RunningProcessInfo> &info)
 {

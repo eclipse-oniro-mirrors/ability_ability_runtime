@@ -4730,13 +4730,6 @@ std::shared_ptr<AppRunningRecord> AppMgrServiceInner::CreateAppRunningRecord(
         appRecord->SetNativeStart(want->GetBoolParam("native", false));
         appRecord->SetDebugFromLocal(want->GetBoolParam(DEBUG_FROM, false));
     }
-    if (abilityInfo != nullptr && abilityInfo->extensionAbilityType == AppExecFwk::ExtensionAbilityType::AGENT &&
-        appInfo != nullptr && appInfo->appProvisionType == AppExecFwk::Constants::APP_PROVISION_TYPE_DEBUG) {
-            auto mainAppRecord = appRunningManager_->FindMainProcessAppRunningRecord(appInfo->uid);
-            if (mainAppRecord && mainAppRecord->IsDebug()) {
-                appRecord->SetDebugApp(true);
-            }
-        }
     return appRecord;
 }
 
@@ -9878,6 +9871,23 @@ int32_t AppMgrServiceInner::GetBundleNameByPid(const int32_t pid, std::string &b
     bundleName = callerRecord->GetBundleName();
     uid = callerRecord->GetUid();
     return ERR_OK;
+}
+
+bool AppMgrServiceInner::IsMainProcessDebug(int32_t uid)
+{
+    if (IPCSkeleton::GetCallingUid() != FOUNDATION_UID) {
+        TAG_LOGW(AAFwkTag::APPMGR, "not foundation call");
+        return false;
+    }
+    if (appRunningManager_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "appRunningManager_ null");
+        return false;
+    }
+    auto mainAppRecord = appRunningManager_->FindMainProcessAppRunningRecord(uid);
+    if (mainAppRecord && mainAppRecord->IsDebug()) {
+        return true;
+    }
+    return false;
 }
 
 void AppMgrServiceInner::KillRenderProcess(const std::shared_ptr<AppRunningRecord> &appRecord) {
