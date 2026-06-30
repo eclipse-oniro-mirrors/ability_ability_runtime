@@ -73,7 +73,8 @@ std::string GetAbilityNameFromMatched(const ExtractInsightIntentGenericInfo &inf
     return "";
 }
 
-// 从代表候选的 variant 提取 executeMode（Entry 取 executeMode 首个；Function 强制 SE）。
+// Extract executeMode from representative candidate variant.
+// Entry: first value from executeMode vector; Function: forced to UI_ABILITY_BACKGROUND.
 int32_t GetExecuteModeFromMatched(const ExtractInsightIntentGenericInfo &info)
 {
     if (info.currentType == InfoType::Entry) {
@@ -83,7 +84,7 @@ int32_t GetExecuteModeFromMatched(const ExtractInsightIntentGenericInfo &info)
         }
     }
     if (info.currentType == InfoType::Function) {
-        return static_cast<int32_t>(AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY);
+        return static_cast<int32_t>(AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND);
     }
     return static_cast<int32_t>(AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND);
 }
