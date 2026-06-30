@@ -30,6 +30,7 @@
 #include "uri_permission_manager_stub.h"
 #include "uri_permission_raw_data.h"
 #include "access_token.h"
+#include "dynamic_feature_manager.h"
 
 #ifdef ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER
 #include "policy_info.h"

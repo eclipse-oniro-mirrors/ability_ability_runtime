@@ -20,6 +20,8 @@
 #include "ipc_skeleton.h"
 #include "iservice_registry.h"
 #include "system_ability_definition.h"
+#include "dynamic_feature_manager.h"
+#include "feature/idynamic_feature.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -75,6 +77,10 @@ bool UriPermissionManagerService::Init()
     if (impl_ == nullptr) {
         impl_ = new UriPermissionManagerStubImpl();
     }
+#ifdef ABILITY_RUNTIME_MEDIA_LIBRARY_ENABLE
+    // Register dynamically-loadable dependency plugins (design ADR-1).
+    DynamicFeatureManager::GetInstance().Register(FeatureId::MEDIA, "libupms_media_ext.z.so");
+#endif // ABILITY_RUNTIME_MEDIA_LIBRARY_ENABLE
     ready_ = true;
     return true;
 }
