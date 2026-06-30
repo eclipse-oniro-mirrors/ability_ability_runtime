@@ -22,6 +22,7 @@
 #include "app_mgr_client.h"
 #include "ccm_util.h"
 #include "cli_error_code.h"
+#include "cli_event_report.h"
 #include "cli_tool_app_state_observer.h"
 #include "cli_function_data_manager.h"
 #include "event_dispatcher.h"
@@ -86,6 +87,19 @@ void CliToolManagerService::HandleProcessTimeout(const std::string &sessionId)
     TAG_LOGI(AAFwkTag::CLI_TOOL, "HandleProcessTimeout: sessionId=%{public}s", sessionId.c_str());
     record->SetTimeout(true);
     record->SetState(SessionState::CANCELLING);
+
+    // Set end time for timeout reporting
+    record->SetTerminalResult(0, 0);
+
+    // Report timeout event
+    int64_t durationMs = record->GetEndTimeMs() - record->startTime;
+    std::string bundleName;
+    auto tokenId = static_cast<AccessToken::AccessTokenID>(IPCSkeleton::GetCallingTokenID());
+    AppExecFwk::BundleInfo bundleInfo;
+    if (ToolUtil::GetBundleInfoByTokenId(tokenId, bundleInfo)) {
+        bundleName = bundleInfo.name;
+    }
+    ReportCliTimeout(bundleName, record->toolName, std::to_string(durationMs));
 
     auto oldBackground = record->SetBackground(true);
     TAG_LOGI(AAFwkTag::CLI_TOOL, "HandleProcessTimeout: sessionId=%{public}s, background=%{public}d",
@@ -488,22 +502,19 @@ int32_t CliToolManagerService::GetToolInfoByName(const std::string &name, ToolIn
     return CliToolDataManager::GetInstance().GetToolByName(name, tool);
 }
 
-int32_t CliToolManagerService::RegisterTool(const ToolInfo &tool)
-{
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "RegisterTool called, tool name='%{public}s'", tool.name.c_str());
-    return ERR_PERMISSION_DENIED;
-}
-
 int32_t CliToolManagerService::RegisterFunction(const FunctionInfo &function)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "RegisterFunction called: %{public}s/%{public}s",
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "RegisterFunction called: %{public}s/%{public}s",
         function.functionNamespace.c_str(), function.functionName.c_str());
 
     InterfaceCallCounter counter(interfaceCalledCount_);
 
     auto callingUid = IPCSkeleton::GetCallingUid();
-    if (callingUid != FOUNDATION_UID) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "RegisterFunction: Permission denied, callingUid=%{public}d", callingUid);
+    auto callerToken = IPCSkeleton::GetCallingTokenID();
+    if (callingUid != FOUNDATION_UID ||
+        Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken) !=
+        Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "RegisterFunction: Permission denied, uid=%{public}d", callingUid);
         return ERR_PERMISSION_DENIED;
     }
 
@@ -523,16 +534,74 @@ int32_t CliToolManagerService::RegisterFunction(const FunctionInfo &function)
     return ERR_OK;
 }
 
+int32_t CliToolManagerService::BatchRegisterFunctions(const std::vector<FunctionInfo> &functions,
+    int32_t &successCount)
+{
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions called: %{public}zu functions",
+        functions.size());
+
+    InterfaceCallCounter counter(interfaceCalledCount_);
+
+    auto callingUid = IPCSkeleton::GetCallingUid();
+    auto callerToken = IPCSkeleton::GetCallingTokenID();
+    if (callingUid != FOUNDATION_UID ||
+        Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken) !=
+        Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions: Permission denied, uid=%{public}d, tokenType=%{public}d",
+            callingUid, static_cast<int32_t>(
+                Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken)));
+        successCount = 0;
+        return ERR_PERMISSION_DENIED;
+    }
+
+    if (functions.empty()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions: functions vector is empty");
+        successCount = 0;
+        return ERR_INVALID_PARAM;
+    }
+
+    std::vector<FunctionInfo> validFunctions;
+    validFunctions.reserve(functions.size());
+    for (const auto &function : functions) {
+        if (!FunctionInfo::Validate(function)) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "Invalid function info, will skip: %{public}s/%{public}s",
+                function.functionNamespace.c_str(), function.functionName.c_str());
+        } else {
+            validFunctions.push_back(function);
+        }
+    }
+
+    if (validFunctions.empty()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "No valid functions to register");
+        successCount = 0;
+        return ERR_INVALID_PARAM;
+    }
+
+    int32_t ret = CliFunctionDataManager::GetInstance().BatchRegisterFunctions(validFunctions, successCount);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions: Failed, ret=%{public}d", ret);
+        return ret;
+    }
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully batch registered functions: success=%{public}d/%{public}zu",
+        successCount, validFunctions.size());
+    return ERR_OK;
+}
+
 int32_t CliToolManagerService::GetFunctionInfo(const std::string &functionNamespace,
     const std::string &functionName, FunctionInfo &function)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "GetFunctionInfo called: %{public}s/%{public}s",
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "GetFunctionInfo called: %{public}s/%{public}s",
         functionNamespace.c_str(), functionName.c_str());
     InterfaceCallCounter counter(interfaceCalledCount_);
 
     auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
-    if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetFunctionInfo: Not system app");
+    auto callerToken = IPCSkeleton::GetCallingTokenID();
+    bool isSystemApp = AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId);
+    bool isSA = Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken) ==
+        Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE;
+    if (!isSystemApp && !isSA) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetFunctionInfo: Not system app nor SA");
         return ERR_NOT_SYSTEM_APP;
     }
 
@@ -556,13 +625,16 @@ int32_t CliToolManagerService::GetFunctionInfo(const std::string &functionNamesp
 int32_t CliToolManagerService::UnregisterFunction(const std::string &functionNamespace,
     const std::string &functionName)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterFunction called: %{public}s/%{public}s",
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "UnregisterFunction called: %{public}s/%{public}s",
         functionNamespace.c_str(), functionName.c_str());
     InterfaceCallCounter counter(interfaceCalledCount_);
 
     auto callingUid = IPCSkeleton::GetCallingUid();
-    if (callingUid != FOUNDATION_UID) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "UnregisterFunction: Permission denied, callingUid=%{public}d", callingUid);
+    auto callerToken = IPCSkeleton::GetCallingTokenID();
+    if (callingUid != FOUNDATION_UID ||
+        Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken) !=
+        Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "UnregisterFunction: Permission denied, uid=%{public}d", callingUid);
         return ERR_PERMISSION_DENIED;
     }
 
@@ -579,12 +651,15 @@ int32_t CliToolManagerService::UnregisterFunction(const std::string &functionNam
 
 int32_t CliToolManagerService::UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespace called: %{public}s", functionNamespace.c_str());
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespace called: %{public}s", functionNamespace.c_str());
     InterfaceCallCounter counter(interfaceCalledCount_);
 
     auto callingUid = IPCSkeleton::GetCallingUid();
-    if (callingUid != FOUNDATION_UID) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespace: Permission denied, callingUid=%{public}d",
+    auto callerToken = IPCSkeleton::GetCallingTokenID();
+    if (callingUid != FOUNDATION_UID ||
+        Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken) !=
+        Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespace: Permission denied, uid=%{public}d",
             callingUid);
         return ERR_PERMISSION_DENIED;
     }
@@ -600,14 +675,18 @@ int32_t CliToolManagerService::UnregisterIntentFunctionsByNamespace(const std::s
     return ERR_OK;
 }
 
-int32_t CliToolManagerService::GetAllFunctions(std::vector<FunctionInfo> &functions)
+int32_t CliToolManagerService::GetAllFunctions(FunctionsRawData &functions)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "GetAllFunctions called");
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "GetAllFunctions called");
     InterfaceCallCounter counter(interfaceCalledCount_);
 
     auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
-    if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllFunctions: Not system app");
+    auto callerToken = IPCSkeleton::GetCallingTokenID();
+    bool isSystemApp = AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId);
+    bool isSA = Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken) ==
+        Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE;
+    if (!isSystemApp && !isSA) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllFunctions: Not system app nor SA");
         return ERR_NOT_SYSTEM_APP;
     }
 
@@ -617,13 +696,15 @@ int32_t CliToolManagerService::GetAllFunctions(std::vector<FunctionInfo> &functi
         return ERR_PERMISSION_DENIED;
     }
 
-    int32_t ret = CliFunctionDataManager::GetInstance().GetAllFunctions(functions);
+    std::vector<FunctionInfo> functionList;
+    int32_t ret = CliFunctionDataManager::GetInstance().GetAllFunctions(functionList);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllFunctions: Failed to get functions, ret=%{public}d", ret);
         return ret;
     }
 
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully got all functions: %{public}zu", functions.size());
+    FunctionsRawData::FromFunctionInfoVec(functionList, functions);
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully got all functions (raw): %{public}zu", functionList.size());
     return ERR_OK;
 }
 
@@ -654,14 +735,14 @@ int32_t CliToolManagerService::ValidateSessionLimit()
 }
 
 int32_t CliToolManagerService::ValidateAndPrepareTool(const ExecToolParam &param, uint32_t tokenId,
-    ToolInfo &toolInfo, std::string &sandboxConfig, std::string &bundleName)
+    ToolInfo &toolInfo, std::string &sandboxConfig, std::string &bundleName, std::string& detail)
 {
     if (CliToolDataManager::GetInstance().GetToolByName(param.toolName, toolInfo) != ERR_OK) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Tool not found");
         return ERR_TOOL_NOT_EXIST;
     }
 
-    auto checkPramRet = ToolUtil::ValidateProperties(toolInfo, const_cast<ExecToolParam &>(param), tokenId);
+    auto checkPramRet = ToolUtil::ValidateProperties(toolInfo, const_cast<ExecToolParam &>(param), tokenId, detail);
     if (checkPramRet != ERR_OK) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Input schema validation failed");
         return checkPramRet;
@@ -677,7 +758,8 @@ int32_t CliToolManagerService::ValidateAndPrepareTool(const ExecToolParam &param
 int32_t CliToolManagerService::ValidateAndPrepareCmd(const ExecCmdParam &param, uint32_t tokenId,
     std::string &sandboxConfig, std::string &bundleName)
 {
-    auto checkPramRet = ToolUtil::ValidateExecOptionsProperties(const_cast<ExecOptions &>(param.options));
+    std::string detail;
+    auto checkPramRet = ToolUtil::ValidateExecOptionsProperties(const_cast<ExecOptions &>(param.options), detail);
     if (checkPramRet != ERR_OK) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Input execoptions validation failed");
         return checkPramRet;
@@ -772,12 +854,24 @@ int32_t CliToolManagerService::ExecTool(const ExecToolParam &param, const std::s
     InterfaceCallCounter counter(interfaceCalledCount_);
     TAG_LOGI(AAFwkTag::CLI_TOOL, "ExecTool called: toolName=%{public}s, subcommand=%{public}s",
         param.toolName.c_str(), param.subcommand.c_str());
+
+    std::string bundleName;
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+
+    // Get bundle name for event reporting
+    AppExecFwk::BundleInfo bundleInfo;
+    if (ToolUtil::GetBundleInfoByTokenId(tokenId, bundleInfo)) {
+        bundleName = bundleInfo.name;
+    }
+
     if (auto ret = ValidateExecToolPermissions(); ret != ERR_OK) {
+        ReportCliExecuteFailed(bundleName, param.toolName, GetFailureReason(ret));
         return ret;
     }
     int32_t callerPid = IPCSkeleton::GetCallingPid();
     int32_t callerUid = IPCSkeleton::GetCallingUid();
     if (!EventDispatcher::GetInstance().SetScheduler(callerPid, callerUid, scheduler)) {
+        ReportCliExecuteFailed(bundleName, param.toolName, GetFailureReason(ERR_NO_INIT));
         return ERR_NO_INIT;
     }
 
@@ -785,6 +879,7 @@ int32_t CliToolManagerService::ExecTool(const ExecToolParam &param, const std::s
     bool dispatched = false;
     auto skillRet = TryDispatchSkillSession(param, eventId, toolInfo, dispatched);
     if (skillRet != ERR_OK) {
+        ReportCliExecuteFailed(bundleName, param.toolName, GetFailureReason(skillRet));
         return skillRet;
     }
     if (dispatched) {
@@ -792,17 +887,22 @@ int32_t CliToolManagerService::ExecTool(const ExecToolParam &param, const std::s
     }
 
     if (auto ret = ValidateSessionLimit(); ret != ERR_OK) {
+        ReportCliExecuteFailed(bundleName, param.toolName, GetFailureReason(ret));
         return ret;
     }
 
-    auto tokenId = IPCSkeleton::GetCallingTokenID();
     std::string sandboxConfig;
-    std::string bundleName;
-    if (auto ret = ValidateAndPrepareTool(param, tokenId, toolInfo, sandboxConfig, bundleName); ret != ERR_OK) {
+    std::string detail;
+    if (auto ret = ValidateAndPrepareTool(param, tokenId, toolInfo, sandboxConfig, bundleName, detail); ret != ERR_OK) {
+        ReportCliExecuteFailed(bundleName, param.toolName, GetFailureReason(ret), detail);
         return ret;
     }
 
-    return SetupAndStartSession(param, eventId, toolInfo, sandboxConfig, bundleName);
+    auto ret = SetupAndStartSession(param, eventId, toolInfo, sandboxConfig, bundleName);
+    if (ret != ERR_OK) {
+        ReportCliExecuteFailed(bundleName, param.toolName, GetFailureReason(ret));
+    }
+    return ret;
 }
 
 int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::string &eventId,
@@ -900,11 +1000,34 @@ void CliToolManagerService::WaitPid(pid_t pid, int32_t status, int32_t sig)
     }
     AccessToken::AccessTokenKit::DeleteToolTokenByPid(pid);
     TAG_LOGI(AAFwkTag::CLI_TOOL, "WaitPid delete tool pid:%{public}d", pid);
+
     if (record) {
+        // Get bundle name for event reporting
+        std::string bundleName;
+        auto tokenId = static_cast<AccessToken::AccessTokenID>(IPCSkeleton::GetCallingTokenID());
+        AppExecFwk::BundleInfo bundleInfo;
+        if (ToolUtil::GetBundleInfoByTokenId(tokenId, bundleInfo)) {
+            bundleName = bundleInfo.name;
+        }
+
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "WaitPid: found record for pid=%{public}d, toolName=%{public}s",
+            pid, record->toolName.c_str());
+
+        int32_t termSignal = 0;
+        if (WIFSIGNALED(status)) {
+            termSignal = WTERMSIG(status);
+            TAG_LOGI(AAFwkTag::CLI_TOOL, "WaitPid: process killed by signal=%{public}d", termSignal);
+            if (termSignal != 0 && termSignal != SIGTERM && termSignal != SIGHUP && termSignal != SIGCHLD) {
+                ReportCliSignal(record->toolName, std::to_string(termSignal));
+            }
+        }
+
         record->SetTerminalResult(status, sig);
         if (record->OutputDrained()) {
             FinalizeBackgroundSession(record);
         }
+    } else {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "WaitPid: no record found for pid=%{public}d", pid);
     }
 }
 

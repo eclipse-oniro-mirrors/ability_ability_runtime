@@ -14,6 +14,7 @@
  */
 
 #include "accesstoken_kit.h"
+#include "ipc_skeleton.h"
 
 namespace OHOS {
 namespace Security {
@@ -21,8 +22,11 @@ namespace AccessToken {
 
 ATokenTypeEnum AccessTokenKit::GetTokenTypeFlag(uint64_t tokenID)
 {
-    (void)tokenID;
-    return ATokenTypeEnum::TOKEN_NATIVE;
+    // Return TOKEN_NATIVE for native tokens, TOKEN_HAP for others
+    if (tokenID == TOKEN_NATIVE) {
+        return ATokenTypeEnum::TOKEN_NATIVE;
+    }
+    return ATokenTypeEnum::TOKEN_HAP;
 }
 
 int32_t AccessTokenKit::VerifyAccessToken(AccessTokenID tokenID, const std::string &permissionName, bool crossIpc)

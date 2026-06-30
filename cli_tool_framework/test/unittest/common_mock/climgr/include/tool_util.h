@@ -27,8 +27,8 @@ class ToolInfo;
 class ToolUtil {
 public:
     static int32_t ValidateProperties(const ToolInfo &toolInfo, ExecToolParam &param,
-        Security::AccessToken::AccessTokenID tokenId);
-    static int32_t ValidateExecOptionsProperties(ExecOptions &options);
+        Security::AccessToken::AccessTokenID tokenId, std::string& detail);
+    static int32_t ValidateExecOptionsProperties(ExecOptions &options, std::string& detail);
     static std::string GenerateCliSessionId(const std::string &name, std::shared_ptr<SessionRecord> record);
     static bool GenerateSandboxConfig(const ExecToolParam &param, Security::AccessToken::AccessTokenID tokenId,
         std::string &sandboxConfig, std::string &bundleName);

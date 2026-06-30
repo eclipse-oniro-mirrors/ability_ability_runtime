@@ -25,7 +25,6 @@ public:
     int32_t GetAllTools(std::vector<ToolInfo> &tools);
     int32_t GetAllToolsRawData(ToolsRawData &tools);
     int32_t QueryToolSummaries(std::vector<ToolSummary> &summaries);
-    int32_t RegisterTool(const ToolInfo &tool);
     int32_t JsonArrayToTools(const std::string &jsonStr, std::vector<ToolInfo> &tools);
     int32_t GetToolByName(const std::string &name, ToolInfo &toolInfo);
 };
@@ -42,6 +41,7 @@ public:
     int32_t UnregisterFunction(const std::string &functionNamespace, const std::string &functionName);
     int32_t UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace);
     int32_t GetAllFunctions(std::vector<FunctionInfo> &functions);
+    int32_t BatchRegisterFunctions(const std::vector<FunctionInfo> &functions, int32_t &successCount);
     int32_t EnsureFunctionsInitialized();
 };
 } // namespace CliTool

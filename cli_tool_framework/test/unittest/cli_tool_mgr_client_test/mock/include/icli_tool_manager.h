@@ -25,13 +25,14 @@ public:
     virtual int32_t GetAllToolSummaries(std::vector<ToolSummary> &summaries) = 0;
     virtual int32_t GetToolInfoByName(const std::string &name, ToolInfo &tool) = 0;
     virtual int32_t GetAllToolInfos(ToolsRawData &tools) = 0;
-    virtual int32_t RegisterTool(const ToolInfo &tool) = 0;
     virtual int32_t RegisterFunction(const FunctionInfo &function) = 0;
+    virtual int32_t BatchRegisterFunctions(const std::vector<FunctionInfo> &functions,
+        int32_t &successCount) = 0;
     virtual int32_t GetFunctionInfo(const std::string &functionNamespace, const std::string &functionName,
         FunctionInfo &function) = 0;
     virtual int32_t UnregisterFunction(const std::string &functionNamespace, const std::string &functionName) = 0;
     virtual int32_t UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace) = 0;
-    virtual int32_t GetAllFunctions(std::vector<FunctionInfo> &functions) = 0;
+    virtual int32_t GetAllFunctions(FunctionsRawData &functions) = 0;
     virtual int32_t ExecTool(const ExecToolParam &param, const std::string &eventId,
         const sptr<ICliToolManagerScheduler> &scheduler) = 0;
     virtual int32_t ExecCmd(const ExecCmdParam &param, const std::string &eventId,

@@ -300,16 +300,9 @@ void ChildMainThread::HandleLoadNative()
         return;
     }
     ChildProcessManager &childProcessMgr = ChildProcessManager::GetInstance();
-    AbilityRuntime::Runtime::DebugOption debugOption;
-    childProcessMgr.SetAppSpawnForkDebugOption(debugOption, processInfo_);
-    TAG_LOGD(AAFwkTag::APPKIT, "StartDebugMode, isStartWithDebug is %{public}d, processName is %{public}s, "
-        "isDebugApp is %{public}d, isStartWithNative is %{public}d", processInfo_->isStartWithDebug,
-        processInfo_->processName.c_str(), processInfo_->isDebugApp, processInfo_->isStartWithNative);
-    AbilityRuntime::NativeRuntime::StartDebugMode(debugOption, processInfo_->bundleName);
     childProcessMgr.LoadNativeLibWithArgs(nativeLibModuleName_, processInfo_->srcEntry, processInfo_->entryFunc,
         processArgs_);
     TAG_LOGD(AAFwkTag::APPKIT, "HandleLoadNative end.");
-    AbilityRuntime::NativeRuntime::StopDebugMode();
     ExitProcessSafely();
 }
 
@@ -412,14 +405,7 @@ void ChildMainThread::HandleRunNativeProc(const sptr<IRemoteObject> &mainProcess
     }
 
     ChildProcessManager &childProcessMgr = ChildProcessManager::GetInstance();
-    AbilityRuntime::Runtime::DebugOption debugOption;
-    childProcessMgr.SetAppSpawnForkDebugOption(debugOption, processInfo_);
-    TAG_LOGD(AAFwkTag::APPKIT, "StartDebugMode, isStartWithDebug is %{public}d, processName is %{public}s, "
-        "isDebugApp is %{public}d, isStartWithNative is %{public}d", processInfo_->isStartWithDebug,
-        processInfo_->processName.c_str(), processInfo_->isDebugApp, processInfo_->isStartWithNative);
-    AbilityRuntime::NativeRuntime::StartDebugMode(debugOption, processInfo_->bundleName);
     childProcessMgr.LoadNativeLib(nativeLibModuleName_, processInfo_->srcEntry, mainProcessCb);
-    AbilityRuntime::NativeRuntime::StopDebugMode();
     ExitProcessSafely();
 }
 

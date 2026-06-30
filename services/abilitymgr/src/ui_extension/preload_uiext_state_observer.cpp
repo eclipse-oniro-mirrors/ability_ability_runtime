@@ -38,7 +38,7 @@ void PreLoadUIExtStateObserver::OnProcessDied(const AppExecFwk::ProcessData &pro
         }
         extensionRecord->UnloadUIExtensionAbility();
     } else {
-        TAG_LOGW(AAFwkTag::UI_EXT, "extensionRecord null");
+        TAG_LOGW(AAFwkTag::UI_EXT, "null");
     }
 }
 

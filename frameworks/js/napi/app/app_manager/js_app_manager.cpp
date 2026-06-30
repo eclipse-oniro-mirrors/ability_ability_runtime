@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <mutex>
 
+#include "ability_business_error.h"
 #include "ability_manager_interface.h"
 #include "ability_manager_errors.h"
 #include "app_mgr_interface.h"
@@ -32,7 +33,6 @@
 #include "event_runner.h"
 #include "napi_common_util.h"
 #include "js_app_state_observer.h"
-#include "ability_business_error.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -188,8 +188,8 @@ private:
                 if (observer == nullptr || appManager == nullptr) {
                     TAG_LOGE(AAFwkTag::APPMGR, "null observer or appMgr");
                     task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-                        observer == nullptr ? GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_OBSERVER_FAILED) :
-                        GetInnerErrorMsg(AbilityInnerErrorMsg::GET_APPMS_FAILED)));
+                        observer == nullptr ? GetInnerErrorMsg(AbilityInnerErrorMsg::MEMORY_ALLOC_FAILED) :
+                        GetInnerErrorMsg(AbilityInnerErrorMsg::SERVICE_UNAVAILABLE)));
                     return;
                 }
                 int32_t ret = appManager->UnregisterApplicationStateObserver(observer);
@@ -228,7 +228,7 @@ private:
                 if (appManager == nullptr) {
                     TAG_LOGE(AAFwkTag::APPMGR, "null appMgr");
                     task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-                        GetInnerErrorMsg(AbilityInnerErrorMsg::GET_APPMS_FAILED)));
+                        GetInnerErrorMsg(AbilityInnerErrorMsg::SERVICE_UNAVAILABLE)));
                     return;
                 }
                 std::vector<AppExecFwk::AppStateData> list;
@@ -337,10 +337,10 @@ private:
                 task.Reject(env, CreateJsError(env, errCode, "Invalidate params."));
                 return;
             }
-if (abilityManager == nullptr) {
+            if (abilityManager == nullptr) {
                     TAG_LOGW(AAFwkTag::APPMGR, "null abilityMgr");
                     task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-                        GetInnerErrorMsg(AbilityInnerErrorMsg::GET_ABILITYMS_FAILED)));
+                        GetInnerErrorMsg(AbilityInnerErrorMsg::SERVICE_UNAVAILABLE)));
                     return;
                 }
             auto ret = abilityManager->KillProcess(bundleName);
@@ -386,7 +386,7 @@ if (abilityManager == nullptr) {
             if (appManager == nullptr) {
                 TAG_LOGW(AAFwkTag::APPMGR, "null appMgr");
                 task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-                    GetInnerErrorMsg(AbilityInnerErrorMsg::GET_APPMS_FAILED)));
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::SERVICE_UNAVAILABLE)));
                 return;
             }
             auto ret = appManager->ClearUpApplicationData(bundleName, 0);
@@ -468,7 +468,7 @@ if (abilityManager == nullptr) {
 if (abilityManager == nullptr) {
                 TAG_LOGW(AAFwkTag::APPMGR, "null abilityMgr");
                 task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-                    GetInnerErrorMsg(AbilityInnerErrorMsg::GET_ABILITYMS_FAILED)));
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::SERVICE_UNAVAILABLE)));
                 return;
             }
             int32_t memorySize = abilityManager->GetAppMemorySize();
@@ -501,7 +501,7 @@ if (abilityManager == nullptr) {
 if (abilityManager == nullptr) {
                 TAG_LOGW(AAFwkTag::APPMGR, "null abilityMgr");
                 task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-                    GetInnerErrorMsg(AbilityInnerErrorMsg::GET_ABILITYMS_FAILED)));
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::SERVICE_UNAVAILABLE)));
                 return;
             }
             bool ret = abilityManager->IsRamConstrainedDevice();

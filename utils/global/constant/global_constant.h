@@ -19,6 +19,26 @@
 namespace OHOS::AbilityRuntime {
 namespace GlobalConstant {
 constexpr int32_t MAX_APP_CLONE_INDEX = 1000;
+constexpr int32_t MIN_SANDBOX_CLONE_INDEX = 2000;
+constexpr int32_t MAX_SANDBOX_CLONE_INDEX = 3000;
+
+// Helper functions to determine index type
+constexpr bool IsAppCloneIndex(int32_t index)
+{
+    return index >= 0 && index <= MAX_APP_CLONE_INDEX;
+}
+
+constexpr bool IsSandboxCloneIndex(int32_t index)
+{
+    return index >= MIN_SANDBOX_CLONE_INDEX && index <= MAX_SANDBOX_CLONE_INDEX;
+}
+
+constexpr bool IsDlpIndex(int32_t index)
+{
+    // DLP indices are those that are neither AppClone nor SandboxClone
+    // AppClone: [0~1000], SandboxClone: [2000~3000], DLP: other ranges
+    return !IsAppCloneIndex(index) && !IsSandboxCloneIndex(index);
+}
 
 constexpr int32_t TIMEOUT_UNIT_TIME = 1000;
 constexpr int32_t TIMEOUT_UNIT_TIME_MICRO = 1000 * 1000;
@@ -66,6 +86,13 @@ constexpr int32_t TYPE_OTHERS = 2;
 #endif
 
 constexpr int32_t MIGRATE_CLIENT_TIMEOUT_MULTIPLE = 3;
+
+// Sandbox clone related parameter
+constexpr const char* SANDBOX_CLONE_INDEX = "ohos.ability.cli.sandBoxCloneIndex";
+constexpr const char* CLI_CALLER_BUNDLE_NAME = "ohos.ability.cli.callerBundleName";
+constexpr const char* CLI_CALLER_TOKEN_ID = "ohos.ability.cli.callerTokenId";
+constexpr const char* IS_WEB_SANDBOX_CLONE = "ohos.ability.params.isWebSandBoxClone";
+constexpr const char* CREATOR_BUNDLE_NAME = "ohos.ability.cli.creatorBundleName";
 
 constexpr int32_t GetLoadTimeOutBase()
 {

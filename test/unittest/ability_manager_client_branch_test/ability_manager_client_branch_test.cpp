@@ -33,6 +33,7 @@
 #include "mission_snapshot.h"
 #include "snapshot.h"
 #include "start_params_by_SCB.h"
+#include "sandbox_clone_params.h"
 
 using namespace testing::ext;
 using namespace testing;
@@ -2901,6 +2902,149 @@ HWTEST_F(AbilityManagerClientBranchTest, ResumeExtensionAbility, TestSize.Level1
 HWTEST_F(AbilityManagerClientBranchTest, RegisterSAInterceptor_0100, TestSize.Level1)
 {
     EXPECT_EQ(client_->RegisterSAInterceptor(nullptr), ERR_OK);
+}
+
+/*
+ * Feature: AbilityManagerClient
+ * Function: StartSandboxCloneAbility
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerClient StartSandboxCloneAbility
+ * EnvConditions: NA
+ * CaseDescription: Verify the StartSandboxCloneAbility call with valid parameters
+ */
+HWTEST_F(AbilityManagerClientBranchTest, StartSandboxCloneAbility_001, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    SandboxCloneParams params;
+    params.callerBundleName = "com.caller.bundle";
+    params.callerUid = 1314;
+    params.callerTokenId = 123456;
+
+    EXPECT_CALL(*mock_, StartSandboxCloneAbility(_, _))
+        .Times(1)
+        .WillOnce(Return(ERR_OK));
+    auto result = client_->StartSandboxCloneAbility(want, params);
+    EXPECT_EQ(ERR_OK, result);
+}
+
+/*
+ * Feature: AbilityManagerClient
+ * Function: StartSandboxCloneAbility
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerClient StartSandboxCloneAbility
+ * EnvConditions: NA
+ * CaseDescription: Verify the StartSandboxCloneAbility call with error return
+ */
+HWTEST_F(AbilityManagerClientBranchTest, StartSandboxCloneAbility_002, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    SandboxCloneParams params;
+    params.callerBundleName = "com.caller.bundle";
+    params.callerUid = 10001;
+    params.callerTokenId = 123456;
+
+    EXPECT_CALL(*mock_, StartSandboxCloneAbility(_, _))
+        .Times(1)
+        .WillOnce(Return(ERR_PERMISSION_DENIED));
+    auto result = client_->StartSandboxCloneAbility(want, params);
+    EXPECT_EQ(ERR_PERMISSION_DENIED, result);
+}
+
+/*
+ * Feature: AbilityManagerClient
+ * Function: StartSandboxCloneAbility
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerClient StartSandboxCloneAbility
+ * EnvConditions: NA
+ * CaseDescription: Verify the StartSandboxCloneAbility call with empty bundle name
+ */
+HWTEST_F(AbilityManagerClientBranchTest, StartSandboxCloneAbility_003, TestSize.Level1)
+{
+    Want want;
+    SandboxCloneParams params;
+    params.callerBundleName = "";
+    params.callerUid = 10001;
+    params.callerTokenId = 123456;
+
+    EXPECT_CALL(*mock_, StartSandboxCloneAbility(_, _))
+        .Times(1)
+        .WillOnce(Return(ERR_INVALID_VALUE));
+    auto result = client_->StartSandboxCloneAbility(want, params);
+    EXPECT_EQ(ERR_INVALID_VALUE, result);
+}
+
+/*
+ * Feature: AbilityManagerClient
+ * Function: StartSandboxCloneAbility
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerClient StartSandboxCloneAbility
+ * EnvConditions: NA
+ * CaseDescription: Verify the StartSandboxCloneAbility call with negative UID
+ */
+HWTEST_F(AbilityManagerClientBranchTest, StartSandboxCloneAbility_004, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    SandboxCloneParams params;
+    params.callerBundleName = "com.caller.bundle";
+    params.callerUid = -1;
+    params.callerTokenId = 123456;
+
+    EXPECT_CALL(*mock_, StartSandboxCloneAbility(_, _))
+        .Times(1)
+        .WillOnce(Return(ERR_OK));
+    auto result = client_->StartSandboxCloneAbility(want, params);
+    EXPECT_EQ(ERR_OK, result);
+}
+
+/*
+ * Feature: AbilityManagerClient
+ * Function: StartSandboxCloneAbility
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerClient StartSandboxCloneAbility
+ * EnvConditions: NA
+ * CaseDescription: Verify the StartSandboxCloneAbility call with zero token ID
+ */
+HWTEST_F(AbilityManagerClientBranchTest, StartSandboxCloneAbility_005, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    SandboxCloneParams params;
+    params.callerBundleName = "com.caller.bundle";
+    params.callerUid = 10001;
+    params.callerTokenId = 0;
+
+    EXPECT_CALL(*mock_, StartSandboxCloneAbility(_, _))
+        .Times(1)
+        .WillOnce(Return(ERR_OK));
+    auto result = client_->StartSandboxCloneAbility(want, params);
+    EXPECT_EQ(ERR_OK, result);
+}
+
+/*
+ * Feature: AbilityManagerClient
+ * Function: StartSandboxCloneAbility
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerClient StartSandboxCloneAbility
+ * EnvConditions: NA
+ * CaseDescription: Verify the StartSandboxCloneAbility call with maximum values
+ */
+HWTEST_F(AbilityManagerClientBranchTest, StartSandboxCloneAbility_006, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    SandboxCloneParams params;
+    params.callerBundleName = "com.caller.bundle";
+    params.callerUid = INT32_MAX;
+    params.callerTokenId = UINT32_MAX;
+
+    EXPECT_CALL(*mock_, StartSandboxCloneAbility(_, _))
+        .Times(1)
+        .WillOnce(Return(ERR_OK));
+    auto result = client_->StartSandboxCloneAbility(want, params);
+    EXPECT_EQ(ERR_OK, result);
 }
 
 /**

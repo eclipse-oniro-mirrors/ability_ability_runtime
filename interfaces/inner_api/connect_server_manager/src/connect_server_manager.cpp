@@ -159,7 +159,7 @@ void ConnectServerManager::StoreDebuggerInfo(int32_t tid, void* vm, const panda:
     }
 
     if (!isConnected_) {
-        TAG_LOGW(AAFwkTag::JSRUNTIME, "not Connected");
+        TAG_LOGW(AAFwkTag::JSRUNTIME, "disCon");
         return;
     }
 
@@ -308,7 +308,7 @@ void ConnectServerManager::RemoveInstance(int32_t instanceId)
     }
     
     if (!isConnected_) {
-        TAG_LOGW(AAFwkTag::JSRUNTIME, "not Connected");
+        TAG_LOGW(AAFwkTag::JSRUNTIME, "disCon");
         return;
     }
 

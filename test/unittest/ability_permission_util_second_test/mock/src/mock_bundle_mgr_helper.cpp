@@ -336,6 +336,13 @@ ErrCode BundleMgrHelper::QueryCloneAbilityInfo(
     return ERR_OK;
 }
 
+ErrCode BundleMgrHelper::QuerySandboxCloneAbilityInfo(const std::string &creatorBundleName,
+    const ElementName &element, int32_t flags, int32_t sandBoxCloneIndex,
+    AbilityInfo &abilityInfo, int32_t userId)
+{
+    return ERR_OK;
+}
+
 ErrCode BundleMgrHelper::GetCloneBundleInfo(
     const std::string& bundleName, int32_t flags, int32_t appCloneIndex, BundleInfo& bundleInfo, int32_t userId)
 {

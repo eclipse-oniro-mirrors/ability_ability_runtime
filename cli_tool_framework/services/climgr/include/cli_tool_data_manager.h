@@ -65,13 +65,6 @@ public:
     int32_t QueryToolSummaries(std::vector<ToolSummary> &summaries);
 
     /**
-     * @brief Register a tool to database
-     * @param tool ToolInfo to register
-     * @return int32_t ERR_OK on success, error code otherwise
-     */
-    int32_t RegisterTool(const ToolInfo &tool);
-
-    /**
      * @brief Convert JSON array string to ToolInfo vector
      * @param jsonStr Input JSON array string
      * @param tools Output ToolInfo vector

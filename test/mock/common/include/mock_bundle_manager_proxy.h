@@ -51,6 +51,9 @@ public:
         AppExecFwk::ExtensionAbilityInfo &extensionAbilityInfo));
     MOCK_METHOD5(QueryCloneAbilityInfo, ErrCode(const AppExecFwk::ElementName &element, int32_t flags,
         int32_t appIndex, AppExecFwk::AbilityInfo &abilityInfo, int32_t userId));
+    MOCK_METHOD6(QuerySandboxCloneAbilityInfo, ErrCode(const std::string &creatorBundleName,
+        const AppExecFwk::ElementName &element, int32_t flags, int32_t sandBoxCloneIndex,
+        AppExecFwk::AbilityInfo &abilityInfo, int32_t userId));
     MOCK_METHOD4(QueryExtensionAbilityInfos, bool(const Want&, const int32_t&, const int32_t&,
         std::vector<AppExecFwk::ExtensionAbilityInfo> &extensionInfos));
     MOCK_METHOD3(QueryAbilityInfoByUri, bool(const std::string&, int32_t, AppExecFwk::AbilityInfo&));

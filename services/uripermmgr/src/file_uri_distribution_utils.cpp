@@ -281,7 +281,8 @@ int32_t FUDUtils::GetTokenIdByBundleName(const std::string &bundleName, int32_t 
         tokenId = bundleInfo.applicationInfo.accessTokenId;
         return ERR_OK;
     }
-    if (appIndex <= AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
+    if (AbilityRuntime::GlobalConstant::IsAppCloneIndex(appIndex) ||
+        AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(appIndex)) {
         auto bundleFlag = static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION);
         if (IN_PROCESS_CALL(bms->GetCloneBundleInfo(bundleName, bundleFlag, appIndex, bundleInfo, userId)) != ERR_OK) {
             TAG_LOGW(AAFwkTag::URIPERMMGR, "Failed GetCloneBundleInfo");
@@ -325,7 +326,7 @@ bool FUDUtils::IsSandboxApp(uint32_t tokenId)
             TAG_LOGE(AAFwkTag::URIPERMMGR, "GetHapTokenInfo failed, ret:%{public}d", ret);
             return false;
         }
-        return hapInfo.instIndex > AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX;
+        return AbilityRuntime::GlobalConstant::IsDlpIndex(hapInfo.instIndex);
     }
     return false;
 }

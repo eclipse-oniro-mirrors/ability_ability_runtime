@@ -466,7 +466,7 @@ bool AbilityAutoStartupService::GetBundleInfo(const std::string &bundleName, int
             TAG_LOGE(AAFwkTag::AUTO_STARTUP, "get bundleInfo fail");
             return false;
         }
-    } else if (appIndex <= GlobalConstant::MAX_APP_CLONE_INDEX) {
+    } else if (GlobalConstant::IsAppCloneIndex(appIndex) || GlobalConstant::IsSandboxCloneIndex(appIndex)) {
         auto bundleFlag = static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION) +
             static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_ABILITY) +
             static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_EXTENSION_ABILITY) +

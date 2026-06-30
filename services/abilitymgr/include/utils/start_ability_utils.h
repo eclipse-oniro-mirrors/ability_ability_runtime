@@ -22,6 +22,7 @@
 #include "ability_info.h"
 #include "extension_ability_info.h"
 #include "irequest_start_ability_callback.h"
+#include "sandbox_clone_params.h"
 #include "start_specified_ability_params.h"
 #include "want.h"
 
@@ -80,6 +81,7 @@ struct StartAbilityUtils {
     static thread_local bool isWantWithAppCloneIndex;
     static thread_local bool ermsSupportBackToCallerFlag;
     static thread_local bool startSpecifiedBySCB;
+    static thread_local bool isSandBoxClone;
 };
 
 struct StartAbilityInfoWrap {
@@ -115,6 +117,7 @@ struct StartAbilityWrapParam {
     std::string specifiedFlag;
     bool isGamePrelaunch = false;
     sptr<IRequestStartAbilityCallback> requestCallback = nullptr;
+    std::shared_ptr<SandboxCloneParams> sandboxCloneParams = nullptr;
 };
 }
 }

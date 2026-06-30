@@ -16,6 +16,8 @@
 #ifndef OHOS_ABILITY_RUNTIME_FUNCTION_CALL_CONVERT_H
 #define OHOS_ABILITY_RUNTIME_FUNCTION_CALL_CONVERT_H
 
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "function_info.h"
@@ -25,20 +27,11 @@
 namespace OHOS {
 namespace CliTool {
 
-bool ConvertFromExtractProfile(const AbilityRuntime::ExtractInsightIntentProfileInfoVec &profileInfos,
-    std::vector<FunctionInfo> &functions);
-
 bool ConvertFromExtractIntentInfo(const std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos,
     std::vector<FunctionInfo> &functions);
 
 bool ConvertFromConfigIntent(const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
     std::vector<FunctionInfo> &functions);
-
-bool RegisterInsightIntentFunctions(
-    const AbilityRuntime::ExtractInsightIntentProfileInfoVec &profileInfos,
-    const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
-    const std::string &bundleName,
-    uint32_t versionCode);
 
 bool RegisterInsightIntentFunctions(
     const std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos,
@@ -47,6 +40,27 @@ bool RegisterInsightIntentFunctions(
     uint32_t versionCode);
 
 bool UnregisterInsightIntentFunctions(const std::string &bundleName);
+
+// 批量注册（开关机场景）：跨 bundle 收集 FunctionInfo 一次性写入 KVStore，
+// 减少开机阶段 IPC 次数。bundleVersionMap 提供 functionNamespace(bundleName) → versionCode 映射。
+// successCount 返回服务端实际写入条数。依赖 CliToolMGRClient::BatchRegisterFunctions。
+bool BatchRegisterInsightIntentFunctions(
+    const std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos,
+    const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
+    const std::unordered_map<std::string, uint32_t> &bundleVersionMap,
+    int32_t &successCount);
+
+// 工具类：调用方在调 RegisterInsightIntentFunctions 之前预处理意图列表。
+// 规则 1：丢弃非"后台 UIAbility / ServiceExtension"的意图。
+// 规则 2：同 intentName 跨多个 moduleName 时，按 moduleName 字典序首。
+// 规则 3：同 moduleName + intentName 多 ability 时，UIAbility 优先，否则 abilityName 字典序首。
+class IntentFilterUtil {
+public:
+    IntentFilterUtil() = default;
+
+    void FilterConfig(std::vector<AbilityRuntime::InsightIntentInfo> &configInfos);
+    void FilterGeneric(std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos);
+};
 
 } // namespace CliTool
 } // namespace OHOS

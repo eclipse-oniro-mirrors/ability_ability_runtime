@@ -19,8 +19,10 @@ ohos_unittest("insight_intent_execute_manager_test") {
 
   cflags_cc = []
 
-  include_dirs =
-      [ "${ability_runtime_innerkits_path}/app_manager/include/appmgr" ]
+  include_dirs = [
+    "${ability_runtime_innerkits_path}/app_manager/include/appmgr",
+    "${cli_tool_framework_path}/interfaces/function/include",
+  ]
 
   sources = [
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/extract_insight_intent_profile.cpp",
@@ -49,6 +51,7 @@ ohos_unittest("insight_intent_execute_manager_test") {
     "${ability_runtime_services_path}/abilitymgr:abilityms",
     "${ability_runtime_services_path}/common:app_util",
     "${ability_runtime_services_path}/common:perm_verification",
+    "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",
   ]
 
   external_deps = [

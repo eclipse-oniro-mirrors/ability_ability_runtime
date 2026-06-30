@@ -25,6 +25,7 @@
 #include "irequest_start_ability_callback.h"
 #include "launch_param.h"
 #include "process_options.h"
+#include "sandbox_clone_params.h"
 #include "session_info.h"
 #include "start_options.h"
 #include "start_specified_ability_params.h"
@@ -76,6 +77,7 @@ struct AbilityRequest {
     std::shared_ptr<ProcessOptions> processOptions = nullptr;
     std::shared_ptr<StartWindowOption> startWindowOption = nullptr;
     std::shared_ptr<StartSpecifiedAbilityParams> startSpecifiedParams = nullptr;
+    std::shared_ptr<SandboxCloneParams> sandboxCloneParams = nullptr;
     sptr<UIExtensionAbilityConnectInfo> uiExtensionAbilityConnectInfo = nullptr;
 
     int64_t restartTime = 0;
@@ -105,6 +107,7 @@ struct AbilityRequest {
     bool isFromIcon = false;
     bool isShellCall = false;
     bool isTargetPlugin = false;
+    bool isWebSandBoxClone = false;  // Indicates web sandbox clone launch
     // ERMS embedded atomic service
     bool isQueryERMS = false;
     bool isEmbeddedAllowed = false;

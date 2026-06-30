@@ -678,7 +678,8 @@ bool BundleMgrHelper::GetApplicationInfoWithAppIndex(
         if (bundleMgr->GetApplicationInfo(appName, AppExecFwk::BundleFlag::GET_BUNDLE_DEFAULT, userId, appInfo)) {
             return true;
         }
-    } else if (appIndex <= AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
+    } else if (AbilityRuntime::GlobalConstant::IsAppCloneIndex(appIndex) ||
+               AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(appIndex)) {
         if (bundleMgr->GetCloneBundleInfo(appName,
             static_cast<int32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION),
             appIndex, bundleInfo, userId) == ERR_OK) {
@@ -983,6 +984,25 @@ ErrCode BundleMgrHelper::QueryCloneAbilityInfo(const ElementName &element, int32
     RecordCostTimeUtil timeRecord("QueryCloneAbilityInfo");
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto ret = bundleMgr->QueryCloneAbilityInfo(element, flags, appCloneIndex, abilityInfo, userId);
+    SetAbilityProcessEmpty(abilityInfo);
+    return ret;
+}
+
+ErrCode BundleMgrHelper::QuerySandboxCloneAbilityInfo(const std::string &creatorBundleName,
+    const ElementName &element, int32_t flags, int32_t sandBoxCloneIndex,
+    AbilityInfo &abilityInfo, int32_t userId)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "called");
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        return ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR;
+    }
+
+    RecordCostTimeUtil timeRecord("QuerySandboxCloneAbilityInfo");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto ret = bundleMgr->QuerySandboxCloneAbilityInfo(creatorBundleName, element, flags,
+        sandBoxCloneIndex, abilityInfo, userId);
     SetAbilityProcessEmpty(abilityInfo);
     return ret;
 }

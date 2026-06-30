@@ -2185,6 +2185,15 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int StartSelfUIAbilityByAppContext(const Want &want) override;
+
+    /**
+     * StartSandboxCloneAbility - Start sandbox clone ability.
+     * @param want The want of the ability to start.
+     * @param params Parameters containing caller information.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t StartSandboxCloneAbility(const Want &want, const SandboxCloneParams &params) override;
+
 private:
     template <typename T>
     int GetParcelableInfos(MessageParcel &reply, std::vector<T> &parcelableInfos);

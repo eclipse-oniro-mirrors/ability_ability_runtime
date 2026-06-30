@@ -230,14 +230,6 @@ constexpr const char* ERROR_MSG_RESTORE_WINDOW_STAGE_FAILED =
     "Internal error. Failed to restore the window stage. Check the local storage object and try again.";
 constexpr const char* ERROR_MSG_WRAP_ABILITY_RESULT_FAILED =
     "Internal error. Failed to create the ability result. Check the returned Want and try again.";
-constexpr const char* ERROR_MSG_GET_APPMS_FAILED =
-    "Internal error. Failed to obtain the application manager service. Try again later.";
-constexpr const char* ERROR_MSG_GET_ABILITYMS_FAILED =
-    "Internal error. Failed to obtain the ability manager service. Try again later.";
-constexpr const char* ERROR_MSG_CREATE_OBSERVER_FAILED =
-    "Internal error. Failed to create the observer object. Try again later.";
-constexpr const char* ERROR_MSG_CONNECTION_NOT_FOUND =
-    "Internal error. The specified connection does not exist. Check the connection object and try again.";
 constexpr const char* ERROR_MSG_INVALID_RET_CODE =
     "Internal error. Failed to obtain the result code. Try again later.";
 constexpr const char* ERROR_MSG_CREATE_CALLBACK_FAILED =
@@ -254,6 +246,8 @@ constexpr const char* ERROR_MSG_SERVICE_UNAVAILABLE =
     "Internal error. Service unavailable. Try again later.";
 constexpr const char* ERROR_MSG_OPERATION_FAILED =
     "Internal error. Operation failed. Try again later.";
+constexpr const char* ERROR_MSG_MEMORY_ALLOC_FAILED =
+    "Internal error. Memory allocation failed. Try again later.";
 constexpr const char* ERROR_MSG_TIMEOUT =
     "Internal error. Operation timed out. Try again later.";
 constexpr const char* ERROR_MSG_IPC_FAILED =
@@ -275,6 +269,10 @@ constexpr const char* ERROR_MSG_OBSERVER_CREATE_FAILED =
     "Internal error. Failed to create the observer.";
 constexpr const char* ERROR_MSG_OBSERVER_NOT_EXIST =
     "Internal error. The observer does not exist. Register the observer first.";
+constexpr const char* ERROR_MSG_REGISTER_OBSERVER_FAILED =
+    "Internal error. Failed to register the observer. Try again later.";
+constexpr const char* ERROR_MSG_UNREGISTER_OBSERVER_FAILED =
+    "Internal error. Failed to unregister the observer. Try again later.";
 constexpr const char* ERROR_MSG_RESTART_APP_FAILED =
     "Internal error. Failed to restart the application. Try again later.";
 constexpr const char* ERROR_MSG_CREATE_PROCESS_INFO_ARRAY_FAILED =
@@ -285,6 +283,31 @@ constexpr const char* ERROR_MSG_SET_PROCESS_CACHE_FAILED =
     "Internal error. Failed to set the process cache state. Try again later.";
 constexpr const char* ERROR_MSG_UI_ABILITY_OBJ_NULL =
     "Internal error. The UIAbility object is not available. Verify the ability is active and try again.";
+constexpr const char* ERROR_MSG_CONNECTION_NOT_FOUND =
+    "Internal error. The service connection does not exist. Check the connection ID.";
+constexpr const char* ERROR_MSG_SEND_DATA_FAILED =
+    "Internal error. Failed to send data to the extension.";
+constexpr const char* ERROR_MSG_LOAD_CONTENT_FAILED =
+    "Internal error. Failed to load the UI content.";
+constexpr const char* ERROR_MSG_SET_WINDOW_BACKGROUND_COLOR_FAILED =
+    "Internal error. Failed to set the window background color.";
+constexpr const char* ERROR_MSG_SET_WINDOW_PRIVACY_MODE_FAILED =
+    "Internal error. Failed to set the window privacy mode.";
+constexpr const char* ERROR_MSG_CREATE_MODAL_UI_EXTENSION_FAILED =
+    "Internal error. Failed to create the modal UI extension. ";
+constexpr const char* ERROR_MSG_TRANSFER_ABILITY_RESULT_FAILED =
+    "Internal error. Failed to transfer the ability result. ";
+constexpr const char* ERROR_MSG_INVALID_SESSION =
+    "Internal error. The UIExtension content session is invalid or has been destroyed. "
+    "Ensure the session is active before calling this method.";
+constexpr const char* ERROR_MSG_UI_SERVICE_PROXY_NOT_FOUND =
+    "Internal error. The UIService is not available.";
+constexpr const char* ERROR_MSG_QUERY_KEEP_ALIVE_BUNDLES_FAILED =
+    "Internal error. Failed to query keep-alive bundles. Try again later.";
+constexpr const char* ERROR_MSG_TERMINATE_MISSION_FAILED =
+    "Internal error. Failed to terminate the mission. Try again later.";
+constexpr const char* ERROR_MSG_SET_KEEP_ALIVE_FAILED =
+    "Internal error. Failed to set the keep-alive status. Try again later.";
 
 // follow ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST of appexecfwk_errors.h in bundle_framework
 constexpr int32_t ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST = 8521220;
@@ -579,12 +602,9 @@ static std::unordered_map<int32_t, const char*> INNER_ERROR_MSG_BY_NATIVE_CODE {
 static std::unordered_map<AbilityInnerErrorMsg, const char*> INNER_ERROR_MSG_BY_SCENE {
     {AbilityInnerErrorMsg::SERVICE_UNAVAILABLE, ERROR_MSG_SERVICE_UNAVAILABLE},
     {AbilityInnerErrorMsg::OPERATION_FAILED, ERROR_MSG_OPERATION_FAILED},
+    {AbilityInnerErrorMsg::MEMORY_ALLOC_FAILED, ERROR_MSG_MEMORY_ALLOC_FAILED},
     {AbilityInnerErrorMsg::RESTORE_WINDOW_STAGE_FAILED, ERROR_MSG_RESTORE_WINDOW_STAGE_FAILED},
     {AbilityInnerErrorMsg::WRAP_ABILITY_RESULT_FAILED, ERROR_MSG_WRAP_ABILITY_RESULT_FAILED},
-    {AbilityInnerErrorMsg::GET_APPMS_FAILED, ERROR_MSG_GET_APPMS_FAILED},
-    {AbilityInnerErrorMsg::GET_ABILITYMS_FAILED, ERROR_MSG_GET_ABILITYMS_FAILED},
-    {AbilityInnerErrorMsg::CREATE_OBSERVER_FAILED, ERROR_MSG_CREATE_OBSERVER_FAILED},
-    {AbilityInnerErrorMsg::CONNECTION_NOT_FOUND, ERROR_MSG_CONNECTION_NOT_FOUND},
     {AbilityInnerErrorMsg::INVALID_RET_CODE, ERROR_MSG_INVALID_RET_CODE},
     {AbilityInnerErrorMsg::CREATE_CALLBACK_FAILED, ERROR_MSG_CREATE_CALLBACK_FAILED},
     {AbilityInnerErrorMsg::CALLBACK_NOT_REGISTERED, ERROR_MSG_CALLBACK_NOT_REGISTERED},
@@ -599,11 +619,25 @@ static std::unordered_map<AbilityInnerErrorMsg, const char*> INNER_ERROR_MSG_BY_
     {AbilityInnerErrorMsg::RELOAD_IN_MODAL_RESULT_NULL, ERROR_MSG_RELOAD_IN_MODAL_RESULT_NULL},
     {AbilityInnerErrorMsg::OBSERVER_CREATE_FAILED, ERROR_MSG_OBSERVER_CREATE_FAILED},
     {AbilityInnerErrorMsg::OBSERVER_NOT_EXIST, ERROR_MSG_OBSERVER_NOT_EXIST},
+    {AbilityInnerErrorMsg::REGISTER_OBSERVER_FAILED, ERROR_MSG_REGISTER_OBSERVER_FAILED},
+    {AbilityInnerErrorMsg::UNREGISTER_OBSERVER_FAILED, ERROR_MSG_UNREGISTER_OBSERVER_FAILED},
     {AbilityInnerErrorMsg::RESTART_APP_FAILED, ERROR_MSG_RESTART_APP_FAILED},
     {AbilityInnerErrorMsg::CREATE_PROCESS_INFO_ARRAY_FAILED, ERROR_MSG_CREATE_PROCESS_INFO_ARRAY_FAILED},
     {AbilityInnerErrorMsg::GET_PROCESS_INFO_FAILED, ERROR_MSG_GET_PROCESS_INFO_FAILED},
     {AbilityInnerErrorMsg::SET_PROCESS_CACHE_FAILED, ERROR_MSG_SET_PROCESS_CACHE_FAILED},
     {AbilityInnerErrorMsg::UI_ABILITY_OBJ_NULL, ERROR_MSG_UI_ABILITY_OBJ_NULL},
+    {AbilityInnerErrorMsg::CONNECTION_NOT_FOUND, ERROR_MSG_CONNECTION_NOT_FOUND},
+    {AbilityInnerErrorMsg::SEND_DATA_FAILED, ERROR_MSG_SEND_DATA_FAILED},
+    {AbilityInnerErrorMsg::LOAD_CONTENT_FAILED, ERROR_MSG_LOAD_CONTENT_FAILED},
+    {AbilityInnerErrorMsg::SET_WINDOW_BACKGROUND_COLOR_FAILED, ERROR_MSG_SET_WINDOW_BACKGROUND_COLOR_FAILED},
+    {AbilityInnerErrorMsg::SET_WINDOW_PRIVACY_MODE_FAILED, ERROR_MSG_SET_WINDOW_PRIVACY_MODE_FAILED},
+    {AbilityInnerErrorMsg::CREATE_MODAL_UI_EXTENSION_FAILED, ERROR_MSG_CREATE_MODAL_UI_EXTENSION_FAILED},
+    {AbilityInnerErrorMsg::TRANSFER_ABILITY_RESULT_FAILED, ERROR_MSG_TRANSFER_ABILITY_RESULT_FAILED},
+    {AbilityInnerErrorMsg::INVALID_SESSION, ERROR_MSG_INVALID_SESSION},
+    {AbilityInnerErrorMsg::UI_SERVICE_PROXY_NOT_FOUND, ERROR_MSG_UI_SERVICE_PROXY_NOT_FOUND},
+    {AbilityInnerErrorMsg::QUERY_KEEP_ALIVE_BUNDLES_FAILED, ERROR_MSG_QUERY_KEEP_ALIVE_BUNDLES_FAILED},
+    {AbilityInnerErrorMsg::TERMINATE_MISSION_FAILED, ERROR_MSG_TERMINATE_MISSION_FAILED},
+    {AbilityInnerErrorMsg::SET_KEEP_ALIVE_FAILED, ERROR_MSG_SET_KEEP_ALIVE_FAILED},
 };
 }
 

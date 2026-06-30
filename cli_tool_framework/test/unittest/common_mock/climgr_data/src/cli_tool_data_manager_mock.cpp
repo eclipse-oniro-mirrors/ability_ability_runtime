@@ -75,11 +75,6 @@ int32_t CliToolDataManager::QueryToolSummaries(std::vector<ToolSummary> &summari
     return ERR_OK;
 }
 
-int32_t CliToolDataManager::RegisterTool(const ToolInfo &)
-{
-    return ERR_OK;
-}
-
 int32_t CliToolDataManager::JsonArrayToTools(const std::string &, std::vector<ToolInfo> &tools)
 {
     tools.clear();
@@ -145,6 +140,13 @@ int32_t CliFunctionDataManager::GetAllFunctions(std::vector<FunctionInfo> &funct
 {
     functions.clear();
     return CliFunctionDataManagerMock::getAllFunctionsResult;
+}
+
+int32_t CliFunctionDataManager::BatchRegisterFunctions(const std::vector<FunctionInfo> &functions,
+    int32_t &successCount)
+{
+    successCount = functions.size();
+    return ERR_OK;
 }
 
 int32_t CliFunctionDataManager::EnsureFunctionsInitialized()

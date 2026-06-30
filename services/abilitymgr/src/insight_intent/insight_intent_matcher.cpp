@@ -31,16 +31,16 @@ int32_t GetValidUserId(int32_t userId)
 }
 } // namespace
 
-int32_t InsightIntentMatcher::GetMatchedIntentInfo(const std::string &bundleName,
-    const std::string &intentName, int32_t userId, ExtractInsightIntentGenericInfo &matchedInfo)
+int32_t InsightIntentMatcher::GetMatchedIntentInfos(const std::string &bundleName,
+    const std::string &intentName, int32_t userId, std::vector<ExtractInsightIntentGenericInfo> &matchedInfos)
 {
+    matchedInfos.clear();
     std::vector<ExtractInsightIntentGenericInfo> allInfos;
     DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentGenericInfoByName(
         bundleName, GetValidUserId(userId), allInfos);
     for (const auto &info : allInfos) {
         if (info.intentName == intentName) {
-            matchedInfo = info;
-            return ERR_OK;
+            matchedInfos.push_back(info);
         }
     }
 
@@ -49,14 +49,18 @@ int32_t InsightIntentMatcher::GetMatchedIntentInfo(const std::string &bundleName
         bundleName, GetValidUserId(userId), configInfos);
     for (const auto &config : configInfos) {
         if (config.intentName == intentName) {
-            ConvertConfigToGenericInfo(config, matchedInfo);
-            return ERR_OK;
+            ExtractInsightIntentGenericInfo generic;
+            ConvertConfigToGenericInfo(config, generic);
+            matchedInfos.push_back(std::move(generic));
         }
     }
 
-    TAG_LOGD(AAFwkTag::INTENT, "intent not found: %{public}s/%{public}s",
-        bundleName.c_str(), intentName.c_str());
-    return ERR_INVALID_VALUE;
+    if (matchedInfos.empty()) {
+        TAG_LOGD(AAFwkTag::INTENT, "intent not found: %{public}s/%{public}s",
+            bundleName.c_str(), intentName.c_str());
+        return ERR_INVALID_VALUE;
+    }
+    return ERR_OK;
 }
 
 void InsightIntentMatcher::ConvertConfigToGenericInfo(const InsightIntentInfo &config,
@@ -87,35 +91,6 @@ void InsightIntentMatcher::ConvertConfigToGenericInfo(const InsightIntentInfo &c
         form.abilityName = config.formIntentInfo.abilityName;
         form.formName = config.formIntentInfo.formName;
     }
-}
-
-int32_t InsightIntentMatcher::ParseIntentExecuteMode(const ExtractInsightIntentGenericInfo &matchedInfo,
-    std::string &abilityName, int32_t &executeMode)
-{
-    executeMode = AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND;
-    if (matchedInfo.currentType == InfoType::Entry) {
-        auto &entryInfo = matchedInfo.get<InsightIntentEntryInfo>();
-        abilityName = entryInfo.abilityName;
-        if (!entryInfo.executeMode.empty()) {
-            executeMode = static_cast<int32_t>(entryInfo.executeMode.front());
-        }
-    } else if (matchedInfo.currentType == InfoType::Function) {
-        executeMode = static_cast<int32_t>(AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY);
-    } else if (matchedInfo.currentType == InfoType::Page) {
-        auto &pageInfo = matchedInfo.get<InsightIntentPageInfo>();
-        abilityName = pageInfo.uiAbility;
-    } else if (matchedInfo.currentType == InfoType::Form) {
-        auto &formInfo = matchedInfo.get<InsightIntentFormInfo>();
-        abilityName = formInfo.abilityName;
-    } else if (matchedInfo.currentType == InfoType::Link) {
-        abilityName = "";
-    }
-    if (abilityName.empty() && matchedInfo.currentType != InfoType::Link &&
-        matchedInfo.currentType != InfoType::Function) {
-        TAG_LOGE(AAFwkTag::INTENT, "abilityName empty");
-        return ERR_INVALID_VALUE;
-    }
-    return ERR_OK;
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

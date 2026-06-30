@@ -49,6 +49,8 @@ public:
     std::string ToJsonString() const;
     // Check result returned by intent executor
     static bool CheckResult(std::shared_ptr<const WantParams> result);
+
+    std::shared_ptr<WantParams> BuildFunctionResult() const;
 };
 } // namespace AppExecFwk
 } // namespace OHOS

@@ -412,26 +412,6 @@ int32_t CliToolDataManager::QueryToolSummaries(std::vector<ToolSummary> &summari
     return ERR_OK;
 }
 
-int32_t CliToolDataManager::RegisterTool(const ToolInfo &tool)
-{
-    std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "RegisterTool called: %{public}s", tool.name.c_str());
-
-    if (!CheckKvStore()) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "KVStore not ready");
-        return ERR_KVSTORE_NOT_READY;
-    }
-
-    int32_t ret = StoreTool(tool);
-    if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to store tool: %{public}d", ret);
-        return ret;
-    }
-
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully registered tool: %{public}s", tool.name.c_str());
-    return ERR_OK;
-}
-
 DistributedKv::Status CliToolDataManager::RestoreKvStore(DistributedKv::Status status)
 {
     if (status == DistributedKv::Status::DATA_CORRUPTED) {

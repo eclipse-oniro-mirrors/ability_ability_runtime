@@ -18,6 +18,7 @@
 #include "function_info.h"
 #include "hilog_tag_wrapper.h"
 #include "napi_common_util.h"
+#include "napi_common_want.h"
 
 using namespace OHOS::AbilityRuntime;
 
@@ -55,6 +56,30 @@ napi_value CreateJsFunctionInfo(napi_env env, const FunctionInfo &function)
         napi_set_named_property(env, jsObj, "outputSchema", jsOutputSchema);
     }
 
+    return jsObj;
+}
+
+napi_value CreateJsInvokeResult(napi_env env, int32_t resultCode,
+    const std::shared_ptr<AAFwk::WantParams> &result, const std::string &message)
+{
+    napi_value jsObj = nullptr;
+    napi_status status = napi_create_object(env, &jsObj);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create JS InvokeResult");
+        return nullptr;
+    }
+
+    // Unified contract: resultCode is the single authority for `success`.
+    napi_set_named_property(env, jsObj, "success", AppExecFwk::WrapBoolToJS(env, resultCode == 0));
+
+    if (result != nullptr) {
+        napi_value jsData = AppExecFwk::CreateJsWantParams(env, *result);
+        if (jsData != nullptr) {
+            napi_set_named_property(env, jsObj, "data", jsData);
+        }
+    }
+    napi_set_named_property(env, jsObj, "errorCode", AppExecFwk::WrapInt32ToJS(env, resultCode));
+    napi_set_named_property(env, jsObj, "message", AppExecFwk::WrapStringToJS(env, message));
     return jsObj;
 }
 

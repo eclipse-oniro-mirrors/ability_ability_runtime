@@ -333,6 +333,9 @@ int AbilityManagerStub::OnRemoteRequestInnerSeventh(uint32_t code, MessageParcel
     if (interfaceCode == AbilityManagerInterfaceCode::GET_PENDING_WANT_TYPE) {
         return GetPendingWantTypeInner(data, reply);
     }
+    if (interfaceCode == AbilityManagerInterfaceCode::START_SANDBOX_CLONE_ABILITY) {
+        return StartSandboxCloneAbilityInner(data, reply);
+    }
     if (interfaceCode == AbilityManagerInterfaceCode::REGISTER_CANCEL_LISTENER) {
         return RegisterCancelListenerInner(data, reply);
     }
@@ -2095,8 +2098,8 @@ int AbilityManagerStub::CloseUIAbilityBySCBInner(MessageParcel &data, MessagePar
     if (data.ReadBool()) {
         sessionInfo = data.ReadParcelable<SessionInfo>();
     }
-    uint32_t sceneFlag = data.ReadUint32();
     bool isUserRequestedExit = data.ReadBool();
+    uint32_t sceneFlag = data.ReadUint32();
     int32_t result = CloseUIAbilityBySCB(sessionInfo, isUserRequestedExit, sceneFlag);
     reply.WriteInt32(result);
     return NO_ERROR;
@@ -5857,6 +5860,25 @@ int32_t AbilityManagerStub::StartSelfUIAbilityByAppContextInner(MessageParcel &d
         return ERR_INVALID_VALUE;
     }
     int32_t result = StartSelfUIAbilityByAppContext(*want);
+    reply.WriteInt32(result);
+    return NO_ERROR;
+}
+
+int32_t AbilityManagerStub::StartSandboxCloneAbilityInner(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "StartSandboxCloneAbility stub called");
+    std::shared_ptr<Want> want(data.ReadParcelable<Want>());
+    if (want == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "want null");
+        return ERR_INVALID_VALUE;
+    }
+    std::shared_ptr<SandboxCloneParams> params(data.ReadParcelable<SandboxCloneParams>());
+    if (params == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "params null");
+        return ERR_INVALID_VALUE;
+    }
+
+    int32_t result = StartSandboxCloneAbility(*want, *params);
     reply.WriteInt32(result);
     return NO_ERROR;
 }

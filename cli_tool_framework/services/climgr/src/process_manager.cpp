@@ -26,7 +26,10 @@
 #include <unistd.h>
 #include <utility>
 
+#include "bundle_info.h"
+#include "bundle_mgr_helper.h"
 #include "cli_error_code.h"
+#include "cli_event_report.h"
 #include "exec_cmd_param.h"
 #include "exec_tool_param.h"
 #include "hilog_tag_wrapper.h"
@@ -110,12 +113,28 @@ int32_t ProcessManager::CreateChildProcess(const ExecToolParam &param, const std
 {
     if (CreatePipes(*record) == false) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create pipes");
+        // Report process creation failure
+        std::string bundleName;
+        auto tokenId = static_cast<AccessToken::AccessTokenID>(IPCSkeleton::GetCallingTokenID());
+        AppExecFwk::BundleInfo bundleInfo;
+        if (ToolUtil::GetBundleInfoByTokenId(tokenId, bundleInfo)) {
+            bundleName = bundleInfo.name;
+        }
+        ReportCliExecuteFailed(bundleName, param.toolName, REASON_PROCESS_CREATE_FAILED);
         return ERR_NO_INIT;
     }
     pid_t pid = fork();
     if (pid < 0) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to fork: %{public}d", errno);
         CloseAllPipes(*record);
+        // Report process creation failure
+        std::string bundleName;
+        auto tokenId = static_cast<AccessToken::AccessTokenID>(IPCSkeleton::GetCallingTokenID());
+        AppExecFwk::BundleInfo bundleInfo;
+        if (ToolUtil::GetBundleInfoByTokenId(tokenId, bundleInfo)) {
+            bundleName = bundleInfo.name;
+        }
+        ReportCliExecuteFailed(bundleName, param.toolName, REASON_PROCESS_CREATE_FAILED);
         return ERR_NO_INIT;
     }
 

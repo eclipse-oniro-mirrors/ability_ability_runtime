@@ -41,6 +41,7 @@
 #include "ipc_skeleton.h"
 #include "lifecycle_deal.h"
 #include "lifecycle_state_info.h"
+#include "sandbox_clone_params.h"
 #include "session_info.h"
 #include "ui_extension_window_command.h"
 #include "uri.h"
@@ -541,6 +542,10 @@ public:
     void SetStartSetting(const std::shared_ptr<AbilityStartSetting> &setting);
     std::shared_ptr<AbilityStartSetting> GetStartSetting() const;
 
+    void SetSandboxCloneParams(const std::shared_ptr<SandboxCloneParams> &params);
+    std::shared_ptr<SandboxCloneParams> GetSandboxCloneParams() const;
+    void InitSandboxCloneParams(const AbilityRequest &abilityRequest);
+
     void SetRestarting(const bool isRestart);
     void SetRestarting(const bool isRestart, int32_t canReStartCount);
     int32_t GetRestartCount() const;
@@ -954,6 +959,7 @@ protected:
     bool isPluginAbility_ = false;
     bool isPrelaunch_ = false;
     std::atomic<bool> isGameSAPreLaunch_ = false;
+    std::shared_ptr<SandboxCloneParams> sandboxCloneParams_ = nullptr;
 
     int32_t uiExtensionAbilityId_ = 0;                // uiextension ability id
     int32_t uid_ = 0;

@@ -1122,7 +1122,7 @@ void ContextImpl::GetOverlayPath(std::shared_ptr<Global::Resource::ResourceManag
     std::vector<AppExecFwk::OverlayModuleInfo> overlayModuleInfos;
     auto res = GetOverlayModuleInfos(bundleName, moduleName, overlayModuleInfos);
     if (res != ERR_OK) {
-        TAG_LOGE(AAFwkTag::APPKIT, "Get overlay paths from bms failed.");
+        TAG_LOGD(AAFwkTag::APPKIT, "Get overlay paths from bms failed.");
     }
     if (overlayModuleInfos.size() == 0) {
         if (!resourceManager->AddResource(loadPath.c_str())) {

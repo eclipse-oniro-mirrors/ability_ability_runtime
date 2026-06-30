@@ -15,8 +15,14 @@
 
 #include "function_call_convert.h"
 
+#include <algorithm>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include "cli_tool_mgr_client.h"
 #include "hilog_tag_wrapper.h"
+#include "insight_intent_execute_param.h"
 
 namespace OHOS {
 namespace CliTool {
@@ -34,9 +40,8 @@ void BuildOptionsSchema(nlohmann::json &schema, const IntentOptionDefaults &defa
     optionsParam["properties"]["executeMode"] = {{"type", "string"}, {"default", "background"}};
     optionsParam["properties"]["moduleName"] = {{"type", "string"}, {"default", defaults.moduleName}};
     optionsParam["properties"]["abilityName"] = {{"type", "string"}, {"default", defaults.abilityName}};
-    optionsParam["properties"]["displayId"] = {{"type", "integer"}, {"default", 0}};
-    optionsParam["properties"]["userId"] = {{"type", "integer"}, {"default", 100}};
-    optionsParam["properties"]["deviceId"] = {{"type", "string"}, {"default", "local"}};
+    optionsParam["properties"]["displayId"] = {{"type", "integer"}};
+    optionsParam["properties"]["userId"] = {{"type", "integer"}};
     optionsParam["properties"]["uris"]["type"] = "array";
     optionsParam["properties"]["uris"]["items"] = {{"type", "string"}};
     optionsParam["properties"]["flags"] = {{"type", "string"}};
@@ -64,20 +69,74 @@ void AddInsightIntentOptions(FunctionInfo &func, const IntentOptionDefaults &def
     BuildOptionsSchema(schema, defaults);
     func.inputSchema = schema.dump();
 }
-} // namespace
 
-namespace {
-void VerifyRegisterFunction(CliToolMGRClient &client, const FunctionInfo &func)
-{
-    FunctionInfo queryResult;
-    auto queryRet = client.GetFunctionInfo(func.functionNamespace, func.functionName, queryResult);
-    if (queryRet == ERR_OK) {
-        TAG_LOGI(AAFwkTag::CLI_TOOL, "verify register success: %{public}s/%{public}s",
-            func.functionNamespace.c_str(), func.functionName.c_str());
-    } else {
-        TAG_LOGW(AAFwkTag::CLI_TOOL, "verify register failed: %{public}s/%{public}s, ret: %{public}d",
-            func.functionNamespace.c_str(), func.functionName.c_str(), queryRet);
+struct RegisterSortKey {
+    std::string moduleName;
+    std::string abilityName;
+    bool operator<(const RegisterSortKey &o) const
+    {
+        if (moduleName != o.moduleName) {
+            return moduleName < o.moduleName;
+        }
+        return abilityName < o.abilityName;
     }
+};
+
+std::string GetFunctionNameFromGeneric(const AbilityRuntime::ExtractInsightIntentInfo &info)
+{
+    if (info.genericInfo.currentType == AbilityRuntime::InfoType::Function) {
+        return info.genericInfo.get<AbilityRuntime::InsightIntentFunctionInfo>().functionName;
+    }
+    return "";
+}
+
+// 检查 Entry 装饰器的 executeMode 是否含 BG UIAbility 或 SE。通过则填 outAbility 并返回 true。
+bool IsQualifiedEntry(const AbilityRuntime::ExtractInsightIntentGenericInfo &generic, std::string &outAbility)
+{
+    if (generic.currentType != AbilityRuntime::InfoType::Entry) {
+        return false;
+    }
+    const auto &entry = generic.get<AbilityRuntime::InsightIntentEntryInfo>();
+    for (auto mode : entry.executeMode) {
+        if (mode == AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND ||
+            mode == AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY) {
+            outAbility = entry.abilityName;
+            return true;
+        }
+    }
+    return false;
+}
+
+std::string GetInputSchemaFromGeneric(const AbilityRuntime::ExtractInsightIntentInfo &info)
+{
+    switch (info.genericInfo.currentType) {
+        case AbilityRuntime::InfoType::Link:
+            return info.genericInfo.get<AbilityRuntime::InsightIntentLinkInfo>().parameters;
+        case AbilityRuntime::InfoType::Page:
+            return info.genericInfo.get<AbilityRuntime::InsightIntentPageInfo>().parameters;
+        case AbilityRuntime::InfoType::Entry:
+            return info.genericInfo.get<AbilityRuntime::InsightIntentEntryInfo>().parameters;
+        case AbilityRuntime::InfoType::Function:
+            return info.genericInfo.get<AbilityRuntime::InsightIntentFunctionInfo>().parameters;
+        case AbilityRuntime::InfoType::Form:
+            return info.genericInfo.get<AbilityRuntime::InsightIntentFormInfo>().parameters;
+        default:
+            return "";
+    }
+}
+
+IntentOptionDefaults MakeDefaultsFromGeneric(const AbilityRuntime::ExtractInsightIntentInfo &info)
+{
+    IntentOptionDefaults defaults;
+    defaults.moduleName = info.genericInfo.moduleName;
+    if (info.genericInfo.currentType == AbilityRuntime::InfoType::Entry) {
+        defaults.abilityName = info.genericInfo.get<AbilityRuntime::InsightIntentEntryInfo>().abilityName;
+    } else if (info.genericInfo.currentType == AbilityRuntime::InfoType::Page) {
+        defaults.abilityName = info.genericInfo.get<AbilityRuntime::InsightIntentPageInfo>().uiAbility;
+    } else if (info.genericInfo.currentType == AbilityRuntime::InfoType::Form) {
+        defaults.abilityName = info.genericInfo.get<AbilityRuntime::InsightIntentFormInfo>().abilityName;
+    }
+    return defaults;
 }
 
 void RegisterOrUpdateFunction(CliToolMGRClient &client, const FunctionInfo &func)
@@ -90,33 +149,8 @@ void RegisterOrUpdateFunction(CliToolMGRClient &client, const FunctionInfo &func
     }
     TAG_LOGI(AAFwkTag::CLI_TOOL, "registered function: %{public}s/%{public}s",
         func.functionNamespace.c_str(), func.functionName.c_str());
-    VerifyRegisterFunction(client, func);
 }
 } // namespace
-
-bool ConvertFromExtractProfile(const AbilityRuntime::ExtractInsightIntentProfileInfoVec &profileInfos,
-    std::vector<FunctionInfo> &functions)
-{
-    for (const auto &info : profileInfos.insightIntents) {
-        if (info.intentName.empty()) {
-            TAG_LOGW(AAFwkTag::CLI_TOOL, "empty intentName");
-            continue;
-        }
-        FunctionInfo func;
-        func.functionName = info.functionName.empty() ? info.intentName : info.functionName;
-        func.functionNamespace = info.bundleName;
-        func.description = info.displayDescription;
-        func.inputSchema = info.parameters;
-        func.outputSchema = info.result;
-        func.functionType = FunctionType::INTENT_FUNCTION;
-        IntentOptionDefaults defaults;
-        defaults.moduleName = info.moduleName;
-        defaults.abilityName = info.uiAbility.empty() ? info.abilityName : info.uiAbility;
-        AddInsightIntentOptions(func, defaults);
-        functions.emplace_back(std::move(func));
-    }
-    return true;
-}
 
 bool ConvertFromExtractIntentInfo(const std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos,
     std::vector<FunctionInfo> &functions)
@@ -127,17 +161,14 @@ bool ConvertFromExtractIntentInfo(const std::vector<AbilityRuntime::ExtractInsig
             continue;
         }
         FunctionInfo func;
-        std::string functionName;
-        if (info.genericInfo.currentType == AbilityRuntime::InfoType::Function) {
-            auto &funcInfo = info.genericInfo.get<AbilityRuntime::InsightIntentFunctionInfo>();
-            functionName = funcInfo.functionName;
-            func.inputSchema = funcInfo.parameters;
-        }
+        std::string functionName = GetFunctionNameFromGeneric(info);
         func.functionName = functionName.empty() ? info.genericInfo.intentName : functionName;
         func.functionNamespace = info.genericInfo.bundleName;
         func.description = info.displayDescription;
+        func.inputSchema = GetInputSchemaFromGeneric(info);
         func.outputSchema = info.result;
         func.functionType = FunctionType::INTENT_FUNCTION;
+        AddInsightIntentOptions(func, MakeDefaultsFromGeneric(info));
         functions.emplace_back(std::move(func));
     }
     return true;
@@ -191,41 +222,14 @@ bool ConvertFromConfigIntent(const std::vector<AbilityRuntime::InsightIntentInfo
 }
 
 bool RegisterInsightIntentFunctions(
-    const AbilityRuntime::ExtractInsightIntentProfileInfoVec &profileInfos,
-    const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
-    const std::string &bundleName,
-    uint32_t versionCode)
-{
-    std::vector<FunctionInfo> functions;
-    ConvertFromExtractProfile(profileInfos, functions);
-    ConvertFromConfigIntent(configInfos, functions);
-    if (functions.empty()) {
-        return true;
-    }
-
-    for (auto &func : functions) {
-        if (func.functionNamespace.empty() && !bundleName.empty()) {
-            func.functionNamespace = bundleName;
-        }
-        func.version = std::to_string(versionCode);
-    }
-
-    auto &client = CliToolMGRClient::GetInstance();
-    for (const auto &func : functions) {
-        RegisterOrUpdateFunction(client, func);
-    }
-    return true;
-}
-
-bool RegisterInsightIntentFunctions(
     const std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos,
     const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
     const std::string &bundleName,
     uint32_t versionCode)
 {
     std::vector<FunctionInfo> functions;
-    ConvertFromExtractIntentInfo(intentInfos, functions);
     ConvertFromConfigIntent(configInfos, functions);
+    ConvertFromExtractIntentInfo(intentInfos, functions);
     if (functions.empty()) {
         return true;
     }
@@ -259,6 +263,96 @@ bool UnregisterInsightIntentFunctions(const std::string &bundleName)
     }
     TAG_LOGI(AAFwkTag::CLI_TOOL, "unregistered functions for bundle: %{public}s, count: %{public}d",
         bundleName.c_str(), ret);
+    return true;
+}
+
+void IntentFilterUtil::FilterConfig(std::vector<AbilityRuntime::InsightIntentInfo> &configInfos)
+{
+    std::vector<std::pair<RegisterSortKey, AbilityRuntime::InsightIntentInfo>> qualified;
+    for (auto &info : configInfos) {
+        if (info.intentName.empty() || info.moduleName.empty()) {
+            continue;
+        }
+        const auto &ui = info.uiAbilityIntentInfo;
+        const auto &se = info.serviceExtensionIntentInfo;
+        RegisterSortKey key { info.moduleName, "" };
+        bool isBgUiAbility = !ui.abilityName.empty() &&
+            std::find(ui.supportExecuteMode.begin(), ui.supportExecuteMode.end(),
+                AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND) != ui.supportExecuteMode.end();
+        if (isBgUiAbility) {
+            key.abilityName = ui.abilityName;
+        } else if (!se.abilityName.empty()) {
+            key.abilityName = se.abilityName;
+        } else {
+            continue;
+        }
+        qualified.emplace_back(std::move(key), std::move(info));
+    }
+    std::sort(qualified.begin(), qualified.end(),
+        [](const auto &a, const auto &b) { return a.first < b.first; });
+    configInfos.clear();
+    for (auto &item : qualified) {
+        configInfos.push_back(std::move(item.second));
+    }
+}
+
+void IntentFilterUtil::FilterGeneric(std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos)
+{
+    std::vector<std::pair<RegisterSortKey, AbilityRuntime::ExtractInsightIntentInfo>> qualified;
+    for (auto &info : intentInfos) {
+        const auto &generic = info.genericInfo;
+        if (generic.intentName.empty() || generic.moduleName.empty()) {
+            continue;
+        }
+        RegisterSortKey key { generic.moduleName, "" };
+        if (!IsQualifiedEntry(generic, key.abilityName)) {
+            continue;
+        }
+        qualified.emplace_back(std::move(key), std::move(info));
+    }
+    std::sort(qualified.begin(), qualified.end(),
+        [](const auto &a, const auto &b) { return a.first < b.first; });
+    intentInfos.clear();
+    for (auto &item : qualified) {
+        intentInfos.push_back(std::move(item.second));
+    }
+}
+
+bool BatchRegisterInsightIntentFunctions(
+    const std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos,
+    const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
+    const std::unordered_map<std::string, uint32_t> &bundleVersionMap,
+    int32_t &successCount)
+{
+    successCount = 0;
+    std::vector<FunctionInfo> functions;
+    ConvertFromConfigIntent(configInfos, functions);
+    ConvertFromExtractIntentInfo(intentInfos, functions);
+    if (functions.empty()) {
+        return true;
+    }
+    for (auto &func : functions) {
+        auto it = bundleVersionMap.find(func.functionNamespace);
+        if (it != bundleVersionMap.end()) {
+            func.version = std::to_string(it->second);
+        }
+    }
+    // Binder IPC 单次事务有容量限制（~1MB mmap，安全阈值 < 200KB）。
+    // 单条 FunctionInfo 约 1-3KB（inputSchema 为主），每批 50 条约 100KB 在安全范围内。
+    constexpr size_t maxBatchSize = 50;
+    auto &client = CliToolMGRClient::GetInstance();
+    for (size_t offset = 0; offset < functions.size(); offset += maxBatchSize) {
+        size_t end = std::min(offset + maxBatchSize, functions.size());
+        std::vector<FunctionInfo> batch(functions.begin() + offset, functions.begin() + end);
+        int32_t batchSuccess = 0;
+        ErrCode ret = client.BatchRegisterFunctions(batch, batchSuccess);
+        successCount += batchSuccess;
+        if (ret != ERR_OK) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "batch register failed at offset %{public}zu, ret=%{public}d",
+                offset, ret);
+            return false;
+        }
+    }
     return true;
 }
 

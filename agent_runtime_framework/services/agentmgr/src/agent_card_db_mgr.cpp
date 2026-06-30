@@ -290,7 +290,7 @@ DistributedKv::Value AgentCardDbMgr::ConvertValue(const std::vector<StoredAgentC
         { JSON_KEY_CARDS, jsonArray },
     };
     DistributedKv::Value value(root.dump());
-    TAG_LOGD(AAFwkTag::SER_ROUTER, "value: %{public}s", value.ToString().c_str());
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "value: %{private}s", value.ToString().c_str());
     return value;
 }
 
@@ -301,7 +301,7 @@ DistributedKv::Key AgentCardDbMgr::ConvertKey(const std::string &bundleName, int
         { JSON_KEY_USER_ID, userId },
     };
     DistributedKv::Key key(jsonObject.dump());
-    TAG_LOGD(AAFwkTag::SER_ROUTER, "key: %{public}s", key.ToString().c_str());
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "key: %{private}s", key.ToString().c_str());
     return key;
 }
 } // namespace AgentRuntime

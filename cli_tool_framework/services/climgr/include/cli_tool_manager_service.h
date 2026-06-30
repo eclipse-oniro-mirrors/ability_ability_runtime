@@ -74,11 +74,6 @@ public:
     int32_t GetToolInfoByName(const std::string &name, ToolInfo &tool) override;
 
     /**
-     * @brief Register a CLI tool
-     */
-    int32_t RegisterTool(const ToolInfo &tool) override;
-
-    /**
      * @brief Execute a CLI tool with key-value pairs (convenience method).
      * @param param The CLI tool param.
      * @param objectCallback The callback RemoteObject.
@@ -114,6 +109,14 @@ public:
     int32_t RegisterFunction(const FunctionInfo &function) override;
 
     /**
+     * @brief Batch register functions
+     * @param functions Vector of FunctionInfo to register
+     * @param successCount Output count of successfully registered functions
+     * @return int32_t ERR_OK on success, error code otherwise
+     */
+    int32_t BatchRegisterFunctions(const std::vector<FunctionInfo> &functions, int32_t &successCount) override;
+
+    /**
      * @brief Get function information by bundleName and functionName
      * @param bundleName Bundle name
      * @param functionName Function name
@@ -139,11 +142,11 @@ public:
     int32_t UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace) override;
 
     /**
-     * @brief Get all functions
-     * @param functions Output vector of FunctionInfo
+     * @brief Get all functions via raw data (for large data transfer)
+     * @param functions Output FunctionsRawData
      * @return int32_t ERR_OK on success, error code otherwise
      */
-    int32_t GetAllFunctions(std::vector<FunctionInfo> &functions) override;
+    int32_t GetAllFunctions(FunctionsRawData &functions) override;
 
 protected:
     void OnStart() override;
@@ -188,7 +191,7 @@ private:
     int32_t ValidateExecToolPermissions();
     int32_t ValidateSessionLimit();
     int32_t ValidateAndPrepareTool(const ExecToolParam &param, uint32_t tokenId,
-        ToolInfo &toolInfo, std::string &sandboxConfig, std::string &bundleName);
+        ToolInfo &toolInfo, std::string &sandboxConfig, std::string &bundleName, std::string& detail);
 
     int32_t ValidateAndPrepareCmd(const ExecCmdParam &param, uint32_t tokenId,
         std::string &sandboxConfig, std::string &bundleName);

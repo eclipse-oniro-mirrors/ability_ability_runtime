@@ -17,7 +17,6 @@
 #define OHOS_INSIGHT_INTENT_DB_CACHE_H
 
 #include <mutex>
-#include <set>
 #include <singleton.h>
 #include <vector>
 #include "insight_intent_rdb_storage_mgr.h"
@@ -37,6 +36,10 @@ public:
         const std::string &intentName, const int32_t userId, ExtractInsightIntentGenericInfo &genericInfo);
     void GetAllInsightIntentInfo(const int32_t userId, std::vector<ExtractInsightIntentInfo> &infos,
         std::vector<InsightIntentInfo> &configInfos);
+    // 取全量后按规则 1 过滤（丢弃非"后台 UIAbility / ServiceExtension"）+ 按 (moduleName, abilityName) 排序。
+    // 输出 vector 已处理完毕，调用方拿到的数据可直接注册（无需再调 IntentFilterUtil）。
+    void GetAllInsightIntentInfoForRegister(const int32_t userId,
+        std::vector<ExtractInsightIntentInfo> &infos, std::vector<InsightIntentInfo> &configInfos);
     void GetInsightIntentInfoByName(const std::string &bundleName, const int32_t userId,
         std::vector<ExtractInsightIntentInfo> &infos);
     void GetConfigInsightIntentInfoByName(const std::string &bundleName, const int32_t userId,

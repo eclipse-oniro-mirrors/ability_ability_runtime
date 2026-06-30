@@ -51,6 +51,7 @@ ohos_shared_library("intent_client") {
   branch_protector_ret = "pac_ret"
 
   external_deps = [
+    "ability_base:base",
     "ability_base:want",
     "c_utils:utils",
     "eventhandler:libeventhandler",

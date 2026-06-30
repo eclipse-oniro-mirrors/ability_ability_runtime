@@ -24,6 +24,8 @@ ohos_shared_library("functionmanager_napi") {
   include_dirs = [
     "include",
     "${ability_runtime_path}/interfaces/kits/native/ability/ability_runtime",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native",
+    "${ability_runtime_innerkits_path}/ability_manager/include",
     "${cli_tool_framework_path}/frameworks/js/napi/cli_tool_manager/include",
     "${cli_tool_framework_path}/interfaces/cli_tool/include",
     "${cli_tool_framework_path}/interfaces/function/include",
@@ -31,6 +33,8 @@ ohos_shared_library("functionmanager_napi") {
 
   sources = [
     "src/function_manager_module.cpp",
+    "src/invoke_function_callback_client.cpp",
+    "src/invoke_function_executor.cpp",
     "src/js_function_manager.cpp",
     "src/js_function_manager_utils.cpp",
   ]
@@ -39,6 +43,7 @@ ohos_shared_library("functionmanager_napi") {
     "${ability_runtime_innerkits_path}/error_utils:ability_runtime_error_util",
     "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_napi_path}/inner/napi_common:napi_common",
+    "${ability_runtime_path}/interfaces/inner_api/insight_intent/intent_client:intent_client",
     "${cli_tool_framework_path}/frameworks/js/napi/cli_tool_manager:cli_manager_error_utils_src",
     "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",
     "${cli_tool_framework_path}/interfaces/function:function_info",
@@ -46,7 +51,9 @@ ohos_shared_library("functionmanager_napi") {
 
   external_deps = [
     "ability_base:base",
+    "ability_base:want",
     "c_utils:utils",
+    "ffrt:libffrt",
     "hilog:libhilog",
     "ipc:ipc_single",
     "napi:ace_napi",

@@ -109,6 +109,9 @@ public:
     ErrCode GetLaunchWantForBundle(const std::string &bundleName, Want &want, int32_t userId);
     ErrCode QueryCloneAbilityInfo(const ElementName &element, int32_t flags, int32_t appCloneIndex,
         AbilityInfo &abilityInfo, int32_t userId);
+    ErrCode QuerySandboxCloneAbilityInfo(const std::string &creatorBundleName,
+        const ElementName &element, int32_t flags, int32_t sandBoxCloneIndex,
+        AbilityInfo &abilityInfo, int32_t userId);
     ErrCode GetCloneBundleInfo(const std::string &bundleName, int32_t flags, int32_t appCloneIndex,
         BundleInfo &bundleInfo, int32_t userId);
     ErrCode QueryCloneExtensionAbilityInfoWithAppIndex(const ElementName &element, int32_t flags, int32_t appCloneIndex,

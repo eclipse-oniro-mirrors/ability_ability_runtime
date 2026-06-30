@@ -106,29 +106,18 @@ void InsightIntentSysEventReceiver::RegisterAllFunctions(
 {
     TAG_LOGI(AAFwkTag::INTENT, "register all functions, bundles:%{public}zu intent:%{public}zu config:%{public}zu",
         newBundles.size(), allIntentInfos.size(), allConfigInfos.size());
-    std::unordered_map<std::string, std::vector<ExtractInsightIntentInfo>> intentByBundle;
-    std::unordered_map<std::string, std::vector<InsightIntentInfo>> configByBundle;
-    for (const auto &info : allIntentInfos) {
-        intentByBundle[info.genericInfo.bundleName].push_back(info);
+    if (allIntentInfos.empty() && allConfigInfos.empty()) {
+        TAG_LOGW(AAFwkTag::INTENT, "register skip: no intent data");
+        return;
     }
-    for (const auto &info : allConfigInfos) {
-        configByBundle[info.bundleName].push_back(info);
-    }
+    std::unordered_map<std::string, uint32_t> bundleVersionMap;
     for (const auto &entry : newBundles) {
-        const auto &bundleName = entry.first;
-        const auto &intentIt = intentByBundle.find(bundleName);
-        const auto &configIt = configByBundle.find(bundleName);
-        bool noIntent = intentIt == intentByBundle.end() || intentIt->second.empty();
-        bool noConfig = configIt == configByBundle.end() || configIt->second.empty();
-        if (noIntent && noConfig) {
-            TAG_LOGW(AAFwkTag::INTENT, "register skip empty bundle:%{public}s", bundleName.c_str());
-            continue;
-        }
-        const auto &intents = noIntent ? std::vector<ExtractInsightIntentInfo>{} : intentIt->second;
-        const auto &configs = noConfig ? std::vector<InsightIntentInfo>{} : configIt->second;
-        CliTool::RegisterInsightIntentFunctions(intents, configs, bundleName, entry.second);
+        bundleVersionMap[entry.first] = entry.second;
     }
-    TAG_LOGI(AAFwkTag::INTENT, "register all functions done");
+    int32_t successCount = 0;
+    CliTool::BatchRegisterInsightIntentFunctions(
+        allIntentInfos, allConfigInfos, bundleVersionMap, successCount);
+    TAG_LOGI(AAFwkTag::INTENT, "register all functions done, success: %{public}d", successCount);
 }
 
 void InsightIntentSysEventReceiver::DeleteInsightIntent(const std::string &bundleName,
@@ -171,8 +160,8 @@ void InsightIntentSysEventReceiver::BackupAndScheduleRegister(
     auto task = [self, newBundles = std::move(newBundles), userId]() {
         std::vector<ExtractInsightIntentInfo> allIntentInfos;
         std::vector<InsightIntentInfo> allConfigInfos;
-        DelayedSingleton<InsightIntentDbCache>::GetInstance()->
-            GetAllInsightIntentInfo(userId, allIntentInfos, allConfigInfos);
+        DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetAllInsightIntentInfoForRegister(
+            userId, allIntentInfos, allConfigInfos);
         self->RegisterAllFunctions(newBundles, allIntentInfos, allConfigInfos);
     };
     ffrt::submit(task);

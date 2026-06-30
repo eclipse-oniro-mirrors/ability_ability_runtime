@@ -69,6 +69,8 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
         std::string profile;
         AbilityRuntime::ExtractInsightIntentProfileInfoVec infos = {};
         std::vector<InsightIntentInfo> configIntentInfos = {};
+        AbilityRuntime::ExtractInsightIntentProfileInfoVec allInfos = {};
+        std::vector<InsightIntentInfo> allConfigInfos = {};
 
         auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
         if (bundleMgrHelper == nullptr) {
@@ -106,8 +108,27 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
             // save database
             DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->SaveInsightIntentTotalInfo(
                 bundleName, moduleNameLocal, userId, bundleInfo.versionCode, infos, configIntentInfos);
-            CliTool::RegisterInsightIntentFunctions(infos, configIntentInfos, bundleName, bundleInfo.versionCode);
+            for (const auto &item : infos.insightIntents) {
+                allInfos.insightIntents.push_back(item);
+            }
+            for (const auto &item : configIntentInfos) {
+                allConfigInfos.push_back(item);
+            }
         }
+        if (allInfos.insightIntents.empty() && allConfigInfos.empty()) {
+            return;
+        }
+        std::vector<AbilityRuntime::ExtractInsightIntentInfo> genericInfos;
+        for (const auto &profileInfo : allInfos.insightIntents) {
+            AbilityRuntime::ExtractInsightIntentInfo generic;
+            if (AbilityRuntime::ExtractInsightIntentProfile::ProfileInfoFormat(profileInfo, generic)) {
+                genericInfos.push_back(std::move(generic));
+            }
+        }
+        CliTool::IntentFilterUtil intentFilter;
+        intentFilter.FilterGeneric(genericInfos);
+        intentFilter.FilterConfig(allConfigInfos);
+        CliTool::RegisterInsightIntentFunctions(genericInfos, allConfigInfos, bundleName, bundleInfo.versionCode);
         DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
     });
 }

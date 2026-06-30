@@ -795,6 +795,21 @@ int UIAbilityLifecycleManager::NotifySCBToStartUIAbility(AbilityRequest &ability
         sessionInfo->persistentId = persistentId;
         sessionInfo->reuse = reuse;
     }
+    // Store isWebSandBoxClone and appIndex in want for SCB callback.
+    if (abilityRequest.isWebSandBoxClone) {
+        sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::IS_WEB_SANDBOX_CLONE,
+            abilityRequest.isWebSandBoxClone);
+        sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX,
+            abilityRequest.abilityInfo.applicationInfo.appIndex);
+        std::string callerBundleName = abilityRequest.want.GetStringParam(
+            AbilityRuntime::GlobalConstant::CLI_CALLER_BUNDLE_NAME);
+        std::string callerTokenId = abilityRequest.want.GetStringParam(
+            AbilityRuntime::GlobalConstant::CLI_CALLER_TOKEN_ID);
+        sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::CLI_CALLER_BUNDLE_NAME, callerBundleName);
+        sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::CLI_CALLER_TOKEN_ID, callerTokenId);
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "WebSandBoxClone params: bundle = %{public}s, tokenId = %{public}s",
+            callerBundleName.c_str(), callerTokenId.c_str());
+    }
     sessionInfo->userId = userId_;
     sessionInfo->isAtomicService = (abilityInfo.applicationInfo.bundleType == AppExecFwk::BundleType::ATOMIC_SERVICE);
     TAG_LOGI(AAFwkTag::ABILITYMGR,
@@ -4252,7 +4267,7 @@ int UIAbilityLifecycleManager::ChangeAbilityVisibility(sptr<IRemoteObject> token
     CHECK_POINTER_AND_RETURN(callerSessionInfo, ERR_INVALID_VALUE);
     CHECK_POINTER_AND_RETURN(callerSessionInfo->sessionToken, ERR_INVALID_VALUE);
     auto callerSession = iface_cast<Rosen::ISession>(callerSessionInfo->sessionToken);
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "got callerSession, call ChangeSessionVisibilityWithStatusBar()");
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "callerSession ChangeSessionVisibilityWithStatusBar, isShow:%{public}d", isShow);
     CHECK_POINTER_AND_RETURN(callerSession, ERR_INVALID_VALUE);
     return static_cast<int>(callerSession->ChangeSessionVisibilityWithStatusBar(callerSessionInfo, isShow));
 }
@@ -4863,6 +4878,9 @@ ErrCode UIAbilityLifecycleManager::IsUIAbilityAlreadyExist(const Want &want,
     const std::string &specifiedFlag, int32_t appIndex,
     const std::string &instanceKey, AppExecFwk::LaunchMode launchMode)
 {
+    if (launchMode == AppExecFwk::LaunchMode::STANDARD) {
+        return ERR_OK;
+    }
     std::unordered_map<int32_t, UIAbilityRecordPtr> tempSessionAbilityMap;
     {
         std::lock_guard<ffrt::mutex> guard(sessionLock_);

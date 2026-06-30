@@ -200,6 +200,12 @@ void InsightIntentDbCache::GetAllInsightIntentInfo(const int32_t userId, std::ve
     configInfos.emplace_back(cfg);
 }
 
+void InsightIntentDbCache::GetAllInsightIntentInfoForRegister(const int32_t userId,
+    std::vector<ExtractInsightIntentInfo> &infos, std::vector<InsightIntentInfo> &configInfos)
+{
+    GetAllInsightIntentInfo(userId, infos, configInfos);
+}
+
 void InsightIntentDbCache::GetAllConfigInsightIntentInfo(
     const int32_t userId, std::vector<InsightIntentInfo> &configInfos)
 {

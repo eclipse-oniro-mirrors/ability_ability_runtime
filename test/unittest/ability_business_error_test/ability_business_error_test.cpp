@@ -191,7 +191,34 @@ HWTEST_F(AbilityBusinessErrorTest, GetInnerErrorMsg_0100, TestSize.Level2)
 }
 
 /**
- * @tc.name: GetAgentManagerErrorMsg_0100
+ * @tc.name: GetInnerErrorMsg_0200
+ * @tc.desc: Verify all new AbilityInnerErrorMsg enum values return specific non-generic messages.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityBusinessErrorTest, GetInnerErrorMsg_0200, TestSize.Level2)
+{
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::CONNECTION_NOT_FOUND),
+        "Internal error. The service connection does not exist. Check the connection ID.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::SEND_DATA_FAILED),
+        "Internal error. Failed to send data to the extension.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::LOAD_CONTENT_FAILED),
+        "Internal error. Failed to load the UI content.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::SET_WINDOW_BACKGROUND_COLOR_FAILED),
+        "Internal error. Failed to set the window background color.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::SET_WINDOW_PRIVACY_MODE_FAILED),
+        "Internal error. Failed to set the window privacy mode.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_MODAL_UI_EXTENSION_FAILED),
+        "Internal error. Failed to create the modal UI extension. ");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::TRANSFER_ABILITY_RESULT_FAILED),
+        "Internal error. Failed to transfer the ability result. ");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_SESSION),
+        "Internal error. The UIExtension content session is invalid or has been destroyed. "
+        "Ensure the session is active before calling this method.");
+    EXPECT_EQ(GetInnerErrorMsg(AbilityInnerErrorMsg::UI_SERVICE_PROXY_NOT_FOUND),
+        "Internal error. The UIService is not available.");
+}
+
+/**
  * @tc.desc: Verify agentManager operation policy selects centralized messages without replacing mapped errors.
  * @tc.type: FUNC
  */
