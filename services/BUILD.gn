@@ -23,7 +23,6 @@ group("ams_target") {
   if (ability_runtime_upms) {
     deps += [ "uripermmgr:libupms" ]
     # Dynamically-loaded plugins (dlopen'd by libupms at runtime, design ADR-1/4).
-    deps += [ "uripermmgr/plugins/fileuri_ext:libupms_fileuri_ext" ]
     deps += [ "uripermmgr/plugins/storage_ext:libupms_storage_ext" ]
     if (ability_runtime_media_library_enable) {
       deps += [ "uripermmgr/plugins/media_ext:libupms_media_ext" ]

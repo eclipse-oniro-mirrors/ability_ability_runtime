@@ -38,7 +38,9 @@
 #include "file_uri_distribution_utils.h"
 #include "uri_permission_manager_client.h"
 #include "uri_permission_manager_stub_impl.h"
+#include "dynamic_feature_manager.h"
 #undef private
+#include "mock_dynamic_features.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -77,6 +79,12 @@ void UriPermissionImplTest::SetUp()
     MockSystemAbilityManager::isNullptr = false;
     AbilityManagerClient::collaborator_ = nullptr;
     AbilityManagerClient::isNullInstance = false;
+    static MockStorageShareFeature g_mockStorage;
+    auto &reg = DynamicFeatureManager::GetInstance().registry_;
+    auto &se = reg[FeatureId::STORAGE];
+    se.destroy = nullptr;
+    se.instance.reset(&g_mockStorage);
+    se.loaded = true;
 }
 
 void UriPermissionImplTest::TearDown() {}
@@ -747,41 +755,11 @@ HWTEST_F(UriPermissionImplTest, UPMS_RevokeMapUriPermission_002, TestSize.Level1
     EXPECT_EQ(recordExists, true);
 }
 
-/*
- * Feature: URIPermissionManagerService
- * Function: ConnectManager
- * SubFunction: NA
- * FunctionPoints: URIPermissionManagerService ConnectManager
- */
-HWTEST_F(UriPermissionImplTest, Upms_ConnectManager_001, TestSize.Level1)
-{
-    auto upms = std::make_unique<UriPermissionManagerStubImpl>();
-    ASSERT_NE(upms, nullptr);
-    MyFlag::flag_ |= MyFlag::IS_SA_CALL;
-    SystemAbilityManagerClient::nullptrFlag = true;
-    sptr<StorageManager::IStorageManager> storageManager = nullptr;
-    upms->ConnectManager(storageManager, -1);
-    SystemAbilityManagerClient::nullptrFlag = false;
-    EXPECT_EQ(storageManager, nullptr);
-}
-
-/*
- * Feature: URIPermissionManagerService
- * Function: ConnectManager
- * SubFunction: NA
- * FunctionPoints: URIPermissionManagerService ConnectManager
- */
-HWTEST_F(UriPermissionImplTest, Upms_ConnectManager_002, TestSize.Level1)
-{
-    auto upms = std::make_unique<UriPermissionManagerStubImpl>();
-    ASSERT_NE(upms, nullptr);
-    MyFlag::flag_ |= MyFlag::IS_SA_CALL;
-    MockSystemAbilityManager::isNullptr = true;
-    sptr<StorageManager::IStorageManager> storageManager = nullptr;
-    upms->ConnectManager(storageManager, -1);
-    MockSystemAbilityManager::isNullptr = false;
-    EXPECT_EQ(storageManager, nullptr);
-}
+// Upms_ConnectManager_001/002 removed: stub_impl no longer uses
+// ConnectManager<IStorageManager> (storage path moved to IStorageShareFeature
+// plugin via DynamicFeatureManager::Acquire); the IStorageManager direct-connect
+// path these cases exercised is gone, and ConnectManager<IStorageManager> is no
+// longer instantiated in stub_impl.cpp.
 
 /*
  * Feature: URIPermissionManagerService
@@ -1540,7 +1518,6 @@ HWTEST_F(UriPermissionImplTest, GrantUriPermissionPrivileged_005, TestSize.Level
         stringUris.push_back(uri.ToString());
     }
     const std::vector<std::string> stringUriVec = stringUris;
-    upms->storageManager_ = new StorageManager::StorageManagerServiceMock();
     StorageManager::StorageManagerServiceMock::isZero = false;
     int32_t funcResult = -1;
     MyFlag::isUriTypeValid_ = true;
@@ -1706,7 +1683,6 @@ HWTEST_F(UriPermissionImplTest, GrantUriPermissionPrivileged_011, TestSize.Level
     }
     UriPermissionRawData rawData;
     upmc.StringVecToRawData(stringUris, rawData);
-    upms->storageManager_ = new StorageManager::StorageManagerServiceMock();
     StorageManager::StorageManagerServiceMock::isZero = false;
     int32_t funcResult = -1;
     MyFlag::isUriTypeValid_ = true;

@@ -37,6 +37,7 @@ ohos_unittest("uri_permission_impl_test") {
 
   sources = [
     "${ability_runtime_path}/services/uripermmgr/src/batch_uri.cpp",
+    "${ability_runtime_path}/services/uripermmgr/src/dynamic_feature_manager.cpp",
     "${ability_runtime_path}/services/uripermmgr/src/file_permission_manager.cpp",
     "${ability_runtime_path}/services/uripermmgr/src/tokenid_permission.cpp",
     "${ability_runtime_path}/services/uripermmgr/src/uri_permission_manager_stub_impl.cpp",
@@ -79,6 +80,7 @@ ohos_unittest("uri_permission_impl_test") {
     "bundle_framework:appexecfwk_core",
     "cJSON:cjson",
     "c_utils:utils",
+    "ffrt:libffrt",
     "googletest:gmock_main",
     "googletest:gtest_main",
     "hilog:libhilog",
@@ -162,6 +164,7 @@ ohos_unittest("uri_permission_manager_stub_impl_test") {
     "cJSON:cjson",
     "c_utils:utils",
     "common_event_service:cesfwk_core",
+    "ffrt:libffrt",
     "common_event_service:cesfwk_innerkits",
     "data_share:datashare_consumer",
     "eventhandler:libeventhandler",

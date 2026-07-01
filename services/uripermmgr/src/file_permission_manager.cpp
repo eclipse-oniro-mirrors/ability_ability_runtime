@@ -18,8 +18,7 @@
 #include <dlfcn.h>
 
 #include "accesstoken_kit.h"
-#include "dynamic_feature_manager.h"
-#include "feature/ifile_uri_feature.h"
+#include "file_uri.h"
 #include "hilog_tag_wrapper.h"
 #include "ipc_skeleton.h"
 #include "permission_constants.h"
@@ -149,12 +148,8 @@ static bool CheckFileManagerUriPermission(TokenIdPermission &tokenPermission,
 
 PolicyInfo FilePermissionManager::GetPathPolicyInfoFromUri(Uri &uri, uint32_t flag, const std::string &bundleName)
 {
-    auto scope = DynamicFeatureManager::GetInstance().Acquire(FeatureId::FILEURI);
-    auto *feature = scope.Get<IFileUriFeature>();
-    std::string path;
-    if (feature != nullptr) {
-        path = feature->GetRealPathBySA(uri.ToString(), bundleName);
-    }
+    AppFileService::ModuleFileUri::FileUri fileUri(uri.ToString());
+    std::string path = fileUri.GetRealPathBySA(bundleName);
     PolicyInfo policyInfo;
     policyInfo.path = path;
     policyInfo.mode = (flag & (OperationMode::READ_MODE | OperationMode::WRITE_MODE));

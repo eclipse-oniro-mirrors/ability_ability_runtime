@@ -24,8 +24,10 @@
 #include "uri_permission_manager_client.h"
 #include "uri_permission_manager_stub_impl.h"
 #include "ability_manager_errors.h"
+#include "dynamic_feature_manager.h"
 #undef private
 #undef protected
+#include "mock_dynamic_features.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -52,6 +54,12 @@ void UriPermissionManagerStubImplTest::SetUp()
 {
     MyFlag::Init();
     IAbilityManagerCollaborator::verifyResult = 0;
+    static MockStorageShareFeature g_mockStorage;
+    auto &reg = DynamicFeatureManager::GetInstance().registry_;
+    auto &se = reg[FeatureId::STORAGE];
+    se.destroy = nullptr;
+    se.instance.reset(&g_mockStorage);
+    se.loaded = true;
 }
 
 void UriPermissionManagerStubImplTest::TearDown() {}

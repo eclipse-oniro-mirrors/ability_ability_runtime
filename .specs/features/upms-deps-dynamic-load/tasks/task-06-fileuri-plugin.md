@@ -1,6 +1,6 @@
-# Task 06 — fileuri 插件 .so + 调用点改造（Phase 2，含 task-04 broker retrofit）
+# Task 06 — fileuri 插件 .so + 调用点改造（Phase 2，DESCOPED）
 
-> item: `upms-deps-dynamic-load` | depends on: task-01 | mode: 直接实现 | status: ✅ 完成（编译通过）
+> item: `upms-deps-dynamic-load` | depends on: task-01 | mode: 直接实现 | status: ❌ DESCOPED（2026-07-01 范围调整：只处理 media+storage，fileuri 暂不处理；已实现的 fileuri_ext 插件目录 + ifile_uri_feature.h + file_permission_manager retrofit 已全部回退，libupms 恢复直链 fileuri_native，service/BUILD.gn 移除 FILEURI 注册/插件 deps）
 > 规则来源：[design.md](../design.md) ADR-1/2/4/5；[spec.md](../spec.md) AC-1/2/3/9/10。
 > 承接 [task-04](task-04-broker-retrofit.md) broker retrofit：file_permission_manager 的 fileuri 依赖由本插件承担。
 

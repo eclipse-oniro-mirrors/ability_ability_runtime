@@ -20,20 +20,16 @@
 | [task-02-media-plugin](tasks/task-02-media-plugin.md) | `plugins/media_ext/` + media 调用点改造 + BUILD.gn | task-01 | media 插件 .so 构建；media 路径经接口工作；AC-2/3/4 |
 | [task-03-dead-deps](tasks/task-03-dead-deps.md) | `BUILD.gn` external_deps 移除 ~11 | task-01 | 逐个 build 验证通过；UT 全绿 |
 
-### Phase 2（broker retrofit + 独占候选）
-| 任务 | 文件范围 | 依赖 | 完成标准 |
-|------|---------|------|---------|
-| task-04-broker-retrofit | `plugins/broker_ext/` + `file_permission_manager.cpp` 改造 | task-01 | broker 接入框架；AC-9 |
-| task-05-storage-plugin | `plugins/storage_ext/` + storage 调用点改造 | task-01 | storage 插件；AC-1/2/3 |
-| task-06-fileuri-plugin | `plugins/fileuri_ext/` + fileuri 调用点改造 | task-01 | fileuri 插件；AC-1/2/3 |
-| task-07-exclusivity-verify | `/proc/<pid>/maps` 实测 | task-02/04/05/06 | AC-10 逐插件独占性判定 |
+### Phase 2（storage 插件 + 独占实测）
+> ⚠️ 2026-07-01 范围调整：原 Phase 2 含 broker(fileuri)/storage/fileuri 三插件，现**只保留 storage**；task-04(broker retrofit)/task-06(fileuri) DESCOPED（fileuri 暂不插件化，libupms 直链 fileuri_native，file_permission_manager 直调 FileUri）。
 
-### Phase 3（共享库，模块化）
 | 任务 | 文件范围 | 依赖 | 完成标准 |
 |------|---------|------|---------|
-| task-08-identity-plugin | `plugins/identity_ext/`（bundle+access+ability_manager） | task-01 | identity 插件；AC-2/3/4（零内存收益，模块化） |
-| task-09-sandbox-plugin | `plugins/sandbox_ext/` | task-01 | sandbox 插件；AC-2/3/4 |
-| task-10-udmf-plugin | `plugins/udmf_ext/` | task-01 | udmf 插件；AC-2/3/4 |
+| [task-05-storage-plugin](tasks/task-05-storage-plugin.md) | `plugins/storage_ext/` + storage 调用点改造 | task-01 | storage 插件；AC-1/2/3 |
+| task-07-exclusivity-verify | `/proc/<pid>/maps` 实测 | task-02/05 | AC-10 media+storage 逐插件独占性判定 |
+
+### ~~Phase 3（共享库，模块化）~~ — DESCOPED
+> 2026-07-01 范围调整：identity/sandbox/udmf 暂不处理（共享库零近期内存收益，模块化非本次目标）。task-08/09/10 DESCOPED。
 
 > Phase 2/3 任务卡在各自启动时编写（避免过早细化）；本计划先详化 Phase 1。
 
@@ -42,8 +38,8 @@
 ```
 Phase 1:  task-01 框架 ─┬─▶ task-02 media 插件 ─▶ task-07(部分) media 独占实测
                         └─▶ task-03 死依赖清理(并行)
-Phase 2:  task-01 ─▶ task-04 broker retrofit ─▶ task-05 storage ─▶ task-06 fileuri ─▶ task-07 独占实测
-Phase 3:  task-01 ─▶ task-08 identity ─▶ task-09 sandbox ─▶ task-10 udmf（可并行）
+Phase 2:  task-01 ─▶ task-05 storage ─▶ task-07 独占实测(media+storage)
+[DESCOPED] task-04 broker/fileuri retrofit、task-06 fileuri 插件、Phase 3(identity/sandbox/udmf) — 2026-07-01 范围调整，暂不处理
 ```
 
 ## 4. 文件范围（Phase 1，精确）

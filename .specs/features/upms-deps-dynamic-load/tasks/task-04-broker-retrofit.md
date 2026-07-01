@@ -1,6 +1,6 @@
-# Task 04 — broker retrofit（Phase 2，已与 task-06 合并实现）
+# Task 04 — broker retrofit（Phase 2，DESCOPED）
 
-> item: `upms-deps-dynamic-load` | depends on: task-01 | mode: 直接实现 | status: ✅ 完成（编译通过）
+> item: `upms-deps-dynamic-load` | depends on: task-01 | mode: 直接实现 | status: ❌ DESCOPED（2026-07-01 范围调整：只处理 media+storage，fileuri/broker 及其 retrofit 暂不处理；已实现的 file_permission_manager IFileUriFeature retrofit 已回退为直调 FileUri）
 > 规则来源：[design.md](../design.md) ADR-5；[spec.md](../spec.md) AC-9。
 > ⚠️ 实现期 decision：原计划建独立 `plugins/broker_ext/` + 改造 `file_permission_manager.cpp`。实际评估后，`file_permission_manager` 的可动态化依赖仅 `app_file_service:fileuri_native`（`GetRealPathBySA`），无独立 broker 逻辑需封装。故 **不另建 broker_ext**，该依赖直接由 [task-06](task-06-fileuri-plugin.md) 的 `IFileUriFeature` 插件承担。ADR-5 "broker retrofit" 由 fileuri 插件达成。
 

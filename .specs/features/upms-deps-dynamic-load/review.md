@@ -154,3 +154,62 @@ libupms `external_deps`/`deps` 死依赖清理完成，**13 项移除 / 1 项保
 - UT 全绿（AC-7）待 mock 方案（与 Phase 1/2 R-test 同款阻塞）。
 - 运行时 `/proc/maps` 收益观测待设备（条件性，非硬门槛）。
 - static lib (`libupms_static`) 死依赖未清理（仍链 storage/fileuri/data_share/configuration/cesfwk/init 等，供既有测试）——待 UT mock 方案后一并清理。
+
+---
+
+## 10. UT mock 方案（AC-4/AC-7）— 2026-07-01
+
+### 10.1 方案（不改源代码）
+DynamicFeatureManager 是单例 + `registry_` private。生产代码**不**加测试注入口（review §2 RegisterInstance 已按 YAGNI 去除，本次不重新引入——尊重"不改源代码"约束）。改用**测试侧 `#define private public`** 访问 `DynamicFeatureManager::GetInstance().registry_`，直接注入 mock feature instance（`instance.reset(&mock)` + `destroy=nullptr` + `loaded=true`）。Acquire 天然用注入 instance（`loaded=true` 跳过 LoadLocked/dlopen）；NoOpDestroy（deleter fn=nullptr）不 delete mock（mock 为 static 对象，进程生命）。符合现有测试模式（file_permission_manager_test/uri_permission_impl_test 已用 `#define private public`）。
+
+### 10.2 mock feature 类
+新增 `test/unittest/uri_permission_impl_test/mock/include/mock_dynamic_features.h`（header-only）：
+- `MockStorageShareFeature : IStorageShareFeature`——复刻原 `StorageManagerServiceMock::CreateShareFile` 的 `isZero` 逻辑（resVec.assign ERR_OK/-1）+ `DeleteShareFile` 返回 ERR_OK。
+- `MockFileUriFeature : IFileUriFeature`——`GetRealPathBySA` 返回 uriString（policyInfo.path 非空）。
+- `MockMediaPermFeature : IMediaPermFeature`——简单返回（media flag 开时用）。
+
+### 10.3 测试侧改动
+| 文件 | 改动 |
+|------|------|
+| `uri_permission_impl_test/BUILD.gn` | sources +`dynamic_feature_manager.cpp`；external_deps +`ffrt:libffrt` |
+| `uri_permission_impl_test.cpp` | include `dynamic_feature_manager.h`（`#define private public` 下）+ `mock_dynamic_features.h`；SetUp 注入 g_mockStorage/g_mockFileUri 到 `registry_`；删 2 处 `upms->storageManager_=`（成员已删，改用 isZero 驱动 g_mockStorage）；删 `Upms_ConnectManager_001/002`（`ConnectManager<IStorageManager>` 特化不再实例化，过时） |
+| `uri_permission_manager_stub_impl_test/BUILD.gn` | external_deps +`ffrt:libffrt` |
+| `uri_permission_manager_stub_impl_test.cpp` | include `dynamic_feature_manager.h`（`#define private public` 下）+ `mock_dynamic_features.h`；SetUp 注入 g_mockStorage/g_mockFileUri |
+| `services/uripermmgr/BUILD.gn` | `libupms_static` external_deps +`ffrt:libffrt`（**Phase 1 task-01 遗漏修复**：dynamic_feature_manager.cpp 用 ffrt，shared 加了但 static 漏；构建配置补全，非源代码逻辑变更） |
+
+### 10.4 验证 ✅（编译通过）
+- ✅ `uri_permission_impl_test` build success + binary 生成（11M）
+- ✅ `uri_permission_manager_stub_impl_test` build success + binary 生成
+- rules passed
+
+### 10.5 遗留
+- **跑测试需设备**：`run -t UT -tp uripermmgr`（无设备环境，仅编译验证）。mock 行为（isZero/null path）需与原用例期望对齐，可能需设备跑后微调。
+- **mock 行为对齐**：`MockFileUriFeature.GetRealPathBySA` 返回 uriString——可能与原 FileUri 真实路径解析语义有偏差，跑测试后按失败用例微调。
+- **框架单测（AC-3/5/6/8）**：Register/Acquire/UnloadIdle/RAII/延时 Arm/Cancel 的独立单测未新增（现有测试覆盖 stub_impl/file_permission_manager 路径，框架本身单测待补）。
+- **static lib 死依赖**：libupms_static 仍链 storage/fileuri/data_share/configuration/cesfwk/init 等（供测试），未清理（task-03 只清 shared）。
+
+---
+
+## 11. 范围调整（2026-07-01）：只 media + storage
+
+### 11.1 决策
+本次 SSD 内存优化范围裁剪：**只处理 media + storage 两个插件**，fileuri/broker/identity/sandbox/udmf 暂不处理（DESCOPED）。依据：
+- fileuri_native 间接引入 os_account 独占链（768K，见 §12 分析），但 fileuri 独占性需设备实测且改造收益不确定 → 暂缓。
+- storage_manager_sa_proxy 是薄 IPC proxy（239K，无传递独占链），独占性弱但改造简单 → 保留。
+- identity/sandbox/udmf 共享库零近期内存收益（ADR-8）→ Phase 3 descoped。
+
+### 11.2 代码回退（fileuri）
+- `file_permission_manager.cpp`：恢复直调 `AppFileService::ModuleFileUri::FileUri`（回退 IFileUriFeature retrofit，删 dynamic_feature_manager.h include）。
+- 删 `plugins/fileuri_ext/` + `include/feature/ifile_uri_feature.h`（工作树 D，原已 commit）。
+- `libupms BUILD.gn`：恢复 `app_file_service:fileuri_native` external_deps（主库直链）。
+- `service.cpp`：移除 `Register(FeatureId::FILEURI, ...)`。
+- `services/BUILD.gn`：移除 `fileuri_ext` 插件 deps。
+- UT：`mock_dynamic_features.h` 删 `MockFileUriFeature` + include；两测试 SetUp 删 FILEURI 注入。
+
+### 11.3 验证 ✅
+- libupms + libupms_storage_ext + uri_permission_impl_test + uri_permission_manager_stub_impl_test 全 **build success**（2026-07-01，3:00）。
+- fileuri_native 恢复直链 + file_permission_manager 直调 + storage 保留插件化，编译通过。
+
+### 11.4 DESCOPED 项
+- task-04（broker/fileuri retrofit）、task-06（fileuri 插件）、Phase 3（identity/sandbox/udmf）— 见 execution-plan §2/§3。
+- `idynamic_feature.h` 的 FeatureId enum 占位（BROKER/FILEURI/IDENTITY/SANDBOX/UDMF）保留，不影响编译（未来恢复可用）。

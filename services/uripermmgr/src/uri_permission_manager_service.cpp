@@ -81,7 +81,6 @@ bool UriPermissionManagerService::Init()
     // Register dynamically-loadable dependency plugins (design ADR-1).
     DynamicFeatureManager::GetInstance().Register(FeatureId::MEDIA, "libupms_media_ext.z.so");
 #endif // ABILITY_RUNTIME_MEDIA_LIBRARY_ENABLE
-    DynamicFeatureManager::GetInstance().Register(FeatureId::FILEURI, "libupms_fileuri_ext.z.so");
     DynamicFeatureManager::GetInstance().Register(FeatureId::STORAGE, "libupms_storage_ext.z.so");
     ready_ = true;
     return true;
