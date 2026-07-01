@@ -534,11 +534,12 @@ int32_t CliToolManagerService::RegisterFunction(const FunctionInfo &function)
     return ERR_OK;
 }
 
-int32_t CliToolManagerService::BatchRegisterFunctions(const std::vector<FunctionInfo> &functions,
+int32_t CliToolManagerService::BatchRegisterFunctions(const FunctionsRawData &functions,
     int32_t &successCount)
 {
-    TAG_LOGD(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions called: %{public}zu functions",
-        functions.size());
+    successCount = 0;
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions called: %{public}u bytes",
+        functions.size);
 
     InterfaceCallCounter counter(interfaceCalledCount_);
 
@@ -550,19 +551,19 @@ int32_t CliToolManagerService::BatchRegisterFunctions(const std::vector<Function
         TAG_LOGE(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions: Permission denied, uid=%{public}d, tokenType=%{public}d",
             callingUid, static_cast<int32_t>(
                 Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken)));
-        successCount = 0;
         return ERR_PERMISSION_DENIED;
     }
 
-    if (functions.empty()) {
+    std::vector<FunctionInfo> functionList;
+    FunctionsRawData::ToFunctionInfoVec(functions, functionList);
+    if (functionList.empty()) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions: functions vector is empty");
-        successCount = 0;
         return ERR_INVALID_PARAM;
     }
 
     std::vector<FunctionInfo> validFunctions;
-    validFunctions.reserve(functions.size());
-    for (const auto &function : functions) {
+    validFunctions.reserve(functionList.size());
+    for (const auto &function : functionList) {
         if (!FunctionInfo::Validate(function)) {
             TAG_LOGW(AAFwkTag::CLI_TOOL, "Invalid function info, will skip: %{public}s/%{public}s",
                 function.functionNamespace.c_str(), function.functionName.c_str());

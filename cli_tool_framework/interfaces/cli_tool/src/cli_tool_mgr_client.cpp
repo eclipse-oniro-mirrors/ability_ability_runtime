@@ -190,7 +190,9 @@ ErrCode CliToolMGRClient::BatchRegisterFunctions(const std::vector<FunctionInfo>
         TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
         return GET_CLI_TOOL_MGR_SERVICE_FAILED;
     }
-    return proxy->BatchRegisterFunctions(functions, successCount);
+    FunctionsRawData rawData;
+    FunctionsRawData::FromFunctionInfoVec(functions, rawData);
+    return proxy->BatchRegisterFunctions(rawData, successCount);
 }
 
 ErrCode CliToolMGRClient::GetFunctionInfo(const std::string &functionNamespace, const std::string &functionName,

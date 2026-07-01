@@ -40,11 +40,9 @@ void BuildOptionsSchema(nlohmann::json &schema, const IntentOptionDefaults &defa
     optionsParam["properties"]["executeMode"] = {{"type", "string"}, {"default", "background"}};
     optionsParam["properties"]["moduleName"] = {{"type", "string"}, {"default", defaults.moduleName}};
     optionsParam["properties"]["abilityName"] = {{"type", "string"}, {"default", defaults.abilityName}};
-    optionsParam["properties"]["displayId"] = {{"type", "integer"}};
-    optionsParam["properties"]["userId"] = {{"type", "integer"}};
     optionsParam["properties"]["uris"]["type"] = "array";
     optionsParam["properties"]["uris"]["items"] = {{"type", "string"}};
-    optionsParam["properties"]["flags"] = {{"type", "string"}};
+    optionsParam["properties"]["flags"] = {{"type", "integer"}};
     schema["properties"]["ohos.insightIntent.options"] = optionsParam;
 }
 
@@ -227,10 +225,14 @@ bool RegisterInsightIntentFunctions(
     const std::string &bundleName,
     uint32_t versionCode)
 {
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "register intents, bundle:%{public}s intent:%{public}zu config:%{public}zu",
+        bundleName.c_str(), intentInfos.size(), configInfos.size());
     std::vector<FunctionInfo> functions;
     ConvertFromConfigIntent(configInfos, functions);
     ConvertFromExtractIntentInfo(intentInfos, functions);
     if (functions.empty()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "no functions to register after convert, bundle:%{public}s",
+            bundleName.c_str());
         return true;
     }
 
@@ -268,9 +270,13 @@ bool UnregisterInsightIntentFunctions(const std::string &bundleName)
 
 void IntentFilterUtil::FilterConfig(std::vector<AbilityRuntime::InsightIntentInfo> &configInfos)
 {
+    size_t inputCount = configInfos.size();
     std::vector<std::pair<RegisterSortKey, AbilityRuntime::InsightIntentInfo>> qualified;
     for (auto &info : configInfos) {
         if (info.intentName.empty() || info.moduleName.empty()) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "config intent dropped: empty intentName or moduleName, "
+                "intentName:%{public}s moduleName:%{public}s",
+                info.intentName.c_str(), info.moduleName.c_str());
             continue;
         }
         const auto &ui = info.uiAbilityIntentInfo;
@@ -284,6 +290,10 @@ void IntentFilterUtil::FilterConfig(std::vector<AbilityRuntime::InsightIntentInf
         } else if (!se.abilityName.empty()) {
             key.abilityName = se.abilityName;
         } else {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "config intent dropped: not BG UIAbility or SE, "
+                "intentName:%{public}s moduleName:%{public}s uiAbility:%{public}s seAbility:%{public}s",
+                info.intentName.c_str(), info.moduleName.c_str(),
+                ui.abilityName.c_str(), se.abilityName.c_str());
             continue;
         }
         qualified.emplace_back(std::move(key), std::move(info));
@@ -294,18 +304,30 @@ void IntentFilterUtil::FilterConfig(std::vector<AbilityRuntime::InsightIntentInf
     for (auto &item : qualified) {
         configInfos.push_back(std::move(item.second));
     }
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FilterConfig: input=%{public}zu output=%{public}zu",
+        inputCount, configInfos.size());
 }
 
 void IntentFilterUtil::FilterGeneric(std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos)
 {
+    size_t inputCount = intentInfos.size();
     std::vector<std::pair<RegisterSortKey, AbilityRuntime::ExtractInsightIntentInfo>> qualified;
     for (auto &info : intentInfos) {
         const auto &generic = info.genericInfo;
         if (generic.intentName.empty() || generic.moduleName.empty()) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "generic intent dropped: empty intentName or moduleName, "
+                "intentName:%{public}s moduleName:%{public}s",
+                generic.intentName.c_str(), generic.moduleName.c_str());
             continue;
         }
         RegisterSortKey key { generic.moduleName, "" };
-        if (!IsQualifiedEntry(generic, key.abilityName)) {
+        if (generic.currentType != AbilityRuntime::InfoType::Function &&
+            generic.currentType != AbilityRuntime::InfoType::Page &&
+            generic.currentType != AbilityRuntime::InfoType::Link &&
+            !IsQualifiedEntry(generic, key.abilityName)) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "generic intent dropped: not Function/Page/Link or qualified Entry, "
+                "intentName:%{public}s moduleName:%{public}s decoratorType:%{public}s",
+                generic.intentName.c_str(), generic.moduleName.c_str(), generic.decoratorType.c_str());
             continue;
         }
         qualified.emplace_back(std::move(key), std::move(info));
@@ -316,6 +338,8 @@ void IntentFilterUtil::FilterGeneric(std::vector<AbilityRuntime::ExtractInsightI
     for (auto &item : qualified) {
         intentInfos.push_back(std::move(item.second));
     }
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FilterGeneric: input=%{public}zu output=%{public}zu",
+        inputCount, intentInfos.size());
 }
 
 bool BatchRegisterInsightIntentFunctions(
@@ -332,28 +356,21 @@ bool BatchRegisterInsightIntentFunctions(
         return true;
     }
     for (auto &func : functions) {
+        if (func.functionNamespace.empty() && bundleVersionMap.size() == 1) {
+            func.functionNamespace = bundleVersionMap.begin()->first;
+        }
         auto it = bundleVersionMap.find(func.functionNamespace);
         if (it != bundleVersionMap.end()) {
             func.version = std::to_string(it->second);
         }
     }
-    // Binder IPC 单次事务有容量限制（~1MB mmap，安全阈值 < 200KB）。
-    // 单条 FunctionInfo 约 1-3KB（inputSchema 为主），每批 50 条约 100KB 在安全范围内。
-    constexpr size_t maxBatchSize = 50;
     auto &client = CliToolMGRClient::GetInstance();
-    for (size_t offset = 0; offset < functions.size(); offset += maxBatchSize) {
-        size_t end = std::min(offset + maxBatchSize, functions.size());
-        std::vector<FunctionInfo> batch(functions.begin() + offset, functions.begin() + end);
-        int32_t batchSuccess = 0;
-        ErrCode ret = client.BatchRegisterFunctions(batch, batchSuccess);
-        successCount += batchSuccess;
-        if (ret != ERR_OK) {
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "batch register failed at offset %{public}zu, ret=%{public}d",
-                offset, ret);
-            return false;
-        }
+    ErrCode ret = client.BatchRegisterFunctions(functions, successCount);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "batch register failed, ret=%{public}d, success=%{public}d",
+            ret, successCount);
     }
-    return true;
+    return ret == ERR_OK;
 }
 
 } // namespace CliTool

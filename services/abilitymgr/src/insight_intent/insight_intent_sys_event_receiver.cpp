@@ -162,6 +162,8 @@ void InsightIntentSysEventReceiver::BackupAndScheduleRegister(
         std::vector<InsightIntentInfo> allConfigInfos;
         DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetAllInsightIntentInfoForRegister(
             userId, allIntentInfos, allConfigInfos);
+        TAG_LOGI(AAFwkTag::INTENT, "GetAllForRegister done, intent:%{public}zu config:%{public}zu bundles:%{public}zu",
+            allIntentInfos.size(), allConfigInfos.size(), newBundles.size());
         self->RegisterAllFunctions(newBundles, allIntentInfos, allConfigInfos);
     };
     ffrt::submit(task);

@@ -26,7 +26,7 @@ public:
     virtual int32_t GetToolInfoByName(const std::string &name, ToolInfo &tool) = 0;
     virtual int32_t GetAllToolInfos(ToolsRawData &tools) = 0;
     virtual int32_t RegisterFunction(const FunctionInfo &function) = 0;
-    virtual int32_t BatchRegisterFunctions(const std::vector<FunctionInfo> &functions,
+    virtual int32_t BatchRegisterFunctions(const FunctionsRawData &functions,
         int32_t &successCount) = 0;
     virtual int32_t GetFunctionInfo(const std::string &functionNamespace, const std::string &functionName,
         FunctionInfo &function) = 0;

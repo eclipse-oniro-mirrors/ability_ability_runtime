@@ -15,6 +15,8 @@
 
 #include "insight_intent_event_mgr.h"
 
+#include <unordered_map>
+
 #include "insight_intent_sys_event_receiver.h"
 #include "insight_intent_db_cache.h"
 #include "ability_manager_errors.h"
@@ -105,6 +107,12 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
                 continue;
             }
 
+            // backfill moduleName before save, so both RDB and KVStore see the correct value
+            for (auto &item : configIntentInfos) {
+                if (item.moduleName.empty()) {
+                    item.moduleName = moduleNameLocal;
+                }
+            }
             // save database
             DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->SaveInsightIntentTotalInfo(
                 bundleName, moduleNameLocal, userId, bundleInfo.versionCode, infos, configIntentInfos);
@@ -118,6 +126,8 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
         if (allInfos.insightIntents.empty() && allConfigInfos.empty()) {
             return;
         }
+        TAG_LOGI(AAFwkTag::INTENT, "collected intents for register, profile:%{public}zu config:%{public}zu, "
+            "bundle:%{public}s", allInfos.insightIntents.size(), allConfigInfos.size(), bundleName.c_str());
         std::vector<AbilityRuntime::ExtractInsightIntentInfo> genericInfos;
         for (const auto &profileInfo : allInfos.insightIntents) {
             AbilityRuntime::ExtractInsightIntentInfo generic;
@@ -126,9 +136,19 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
             }
         }
         CliTool::IntentFilterUtil intentFilter;
+        TAG_LOGI(AAFwkTag::INTENT, "before filter, generic:%{public}zu config:%{public}zu",
+            genericInfos.size(), allConfigInfos.size());
         intentFilter.FilterGeneric(genericInfos);
         intentFilter.FilterConfig(allConfigInfos);
-        CliTool::RegisterInsightIntentFunctions(genericInfos, allConfigInfos, bundleName, bundleInfo.versionCode);
+        TAG_LOGI(AAFwkTag::INTENT, "after filter, generic:%{public}zu config:%{public}zu, bundle:%{public}s",
+            genericInfos.size(), allConfigInfos.size(), bundleName.c_str());
+        std::unordered_map<std::string, uint32_t> bundleVersionMap;
+        bundleVersionMap[bundleName] = bundleInfo.versionCode;
+        int32_t successCount = 0;
+        CliTool::BatchRegisterInsightIntentFunctions(
+            genericInfos, allConfigInfos, bundleVersionMap, successCount);
+        TAG_LOGI(AAFwkTag::INTENT, "batch register done, success: %{public}d, bundle:%{public}s",
+            successCount, bundleName.c_str());
         DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
     });
 }

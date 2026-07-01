@@ -14571,8 +14571,8 @@ int32_t AbilityManagerService::ExecuteIntentByFunctionCall(uint64_t key,
     const sptr<IRemoteObject> &callerToken, const std::string &bundleName,
     const std::string &intentName, const WantParams &wantParam)
 {
-    TAG_LOGI(AAFwkTag::INTENT, "called, bundleName: %{public}s, intentName: %{public}s",
-        bundleName.c_str(), intentName.c_str());
+    TAG_LOGI(AAFwkTag::INTENT, "called, bundleName: %{public}s, intentName: %{public}s, wantParam: %{public}s",
+        bundleName.c_str(), intentName.c_str(), wantParam.ToString().c_str());
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (bundleName.empty() || intentName.empty()) {
         TAG_LOGE(AAFwkTag::INTENT, "invalid params, bundleName or intentName empty");
