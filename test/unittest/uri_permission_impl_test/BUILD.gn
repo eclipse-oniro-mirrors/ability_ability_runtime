@@ -54,6 +54,7 @@ ohos_unittest("uri_permission_impl_test") {
     "mock/src/mock_permission_verification.cpp",
     "mock/src/mock_udmf_utils.cpp",
     "batch_uri_test.cpp",
+    "dynamic_feature_manager_test.cpp",
     "file_permission_manager_test.cpp",
     "uri_permission_impl_test.cpp",
   ]
