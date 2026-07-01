@@ -5,7 +5,7 @@
 
 | id | type | complexity | stage | title |
 |----|------|-----------|-------|-------|
-| features/upms-deps-dynamic-load | feature | 复杂 | Stage 3 (Phase 2 代码完成+编译通过：broker/storage/fileuri；待 UT+AC-10+Phase 3) | UPMS (SA 183) 依赖插件框架动态加载/卸载降内存 |
+| features/upms-deps-dynamic-load | feature | 复杂 | Stage 3 (Phase 2 + task-03 死依赖清理13项完成+编译通过；待 UT+AC-10+Phase 3) | UPMS (SA 183) 依赖插件框架动态加载/卸载降内存 |
 
 ## Stage 图例
 - **Stage 1 Define** — proposal.md 基线

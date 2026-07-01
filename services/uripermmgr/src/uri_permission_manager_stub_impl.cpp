@@ -32,7 +32,6 @@
 #ifdef ABILITY_RUNTIME_MEDIA_LIBRARY_ENABLE
 #include "media_permission_manager.h"
 #endif // ABILITY_RUNTIME_MEDIA_LIBRARY_ENABLE
-#include "parameter.h"
 #include "permission_constants.h"
 #include "permission_verification.h"
 #ifdef ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER

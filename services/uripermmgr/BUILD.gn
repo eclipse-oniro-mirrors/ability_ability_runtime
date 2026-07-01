@@ -68,24 +68,17 @@ ohos_shared_library("libupms") {
   ]
 
   external_deps = [
-    "ability_base:configuration",
     "ability_base:want",
     "ability_base:zuri",
     "access_token:libaccesstoken_sdk",
     "access_token:libtokenid_sdk",
-    "background_task_mgr:bgtaskmgr_innerkits",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
-    "common_event_service:cesfwk_core",
-    "common_event_service:cesfwk_innerkits",
-    "eventhandler:libeventhandler",
     "ffrt:libffrt",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
-    "init:libbeget_proxy",
-    "init:libbegetutil",
     "ipc:ipc_core",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
@@ -96,10 +89,6 @@ ohos_shared_library("libupms") {
     external_deps += [ "sandbox_manager:libsandbox_manager_sdk" ]
     defines += [ "ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER" ]
   }
-  if (ability_runtime_graphics) {
-    external_deps += [ "i18n:intl_util" ]
-  }
-
   if (ability_runtime_media_library_enable) {
     sources += [ "src/media_permission_manager.cpp" ]
     defines += [ "ABILITY_RUNTIME_MEDIA_LIBRARY_ENABLE" ]
