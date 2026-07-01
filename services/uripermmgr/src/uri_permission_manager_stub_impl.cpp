@@ -19,6 +19,8 @@
 #include "ability_manager_client.h"
 #include "accesstoken_kit.h"
 #include "app_utils.h"
+#include "dynamic_feature_manager.h"
+#include "feature/istorage_share_feature.h"
 #include "file_uri_distribution_utils.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
@@ -710,24 +712,6 @@ void UriPermissionManagerStubImpl::RemoveContentTokenIdRecord(uint32_t tokenId)
     contentTokenIdSet_.erase(tokenId);
 }
 
-void UriPermissionManagerStubImpl::StringVecToRawData(const std::vector<std::string> &stringVec,
-    StorageFileRawData &rawData)
-{
-    std::stringstream ss;
-    uint32_t stringCount = stringVec.size();
-    ss.write(reinterpret_cast<const char*>(&stringCount), sizeof(stringCount));
-
-    for (uint32_t i = 0; i < stringCount; ++i) {
-        uint32_t strLen = stringVec[i].length();
-        ss.write(reinterpret_cast<const char*>(&strLen), sizeof(strLen));
-        ss.write(stringVec[i].c_str(), strLen);
-    }
-    std::string result = ss.str();
-    rawData.ownedData = std::move(result);
-    rawData.data = rawData.ownedData.data();
-    rawData.size = rawData.ownedData.size();
-}
-
 int32_t UriPermissionManagerStubImpl::GrantBatchUriPermissionImpl(const std::vector<std::string> &uriVec,
     uint32_t flag, TokenId callerTokenId, TokenId targetTokenId)
 {
@@ -738,15 +722,16 @@ int32_t UriPermissionManagerStubImpl::GrantBatchUriPermissionImpl(const std::vec
     TAG_LOGI(AAFwkTag::URIPERMMGR, "privileged uris: %{public}zu", uriVec.size());
     // only reserve read and write file flag
     flag &= FLAG_READ_WRITE_URI;
-    ConnectManager(storageManager_, STORAGE_MANAGER_MANAGER_ID);
-    if (storageManager_ == nullptr) {
-        TAG_LOGE(AAFwkTag::URIPERMMGR, "null ConnectManager");
-        return INNER_ERR;
-    }
     std::vector<int32_t> resVec;
-    StorageFileRawData uriRawData;
-    StringVecToRawData(uriVec, uriRawData);
-    storageManager_->CreateShareFile(uriRawData, targetTokenId, flag, resVec);
+    {
+        auto scope = DynamicFeatureManager::GetInstance().Acquire(FeatureId::STORAGE);
+        auto *storageFeature = scope.Get<IStorageShareFeature>();
+        if (storageFeature == nullptr) {
+            TAG_LOGE(AAFwkLogTag::URIPERMMGR, "null storage feature");
+            return INNER_ERR;
+        }
+        storageFeature->CreateShareFile(uriVec, targetTokenId, flag, resVec);
+    }
     if (resVec.size() == 0) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "CreateShareFile failed, storageManager resVec empty");
         return INNER_ERR;
@@ -1589,16 +1574,15 @@ int32_t UriPermissionManagerStubImpl::RevokeMapUriPermissionManually(uint32_t ca
 int32_t UriPermissionManagerStubImpl::DeleteShareFile(uint32_t targetTokenId, const std::vector<std::string> &uriVec)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    ConnectManager(storageManager_, STORAGE_MANAGER_MANAGER_ID);
-    if (storageManager_ == nullptr) {
-        TAG_LOGE(AAFwkTag::URIPERMMGR, "null StorageManager");
+    auto scope = DynamicFeatureManager::GetInstance().Acquire(FeatureId::STORAGE);
+    auto *storageFeature = scope.Get<IStorageShareFeature>();
+    if (storageFeature == nullptr) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "null storage feature");
         return INNER_ERR;
     }
-    StorageFileRawData uriRawData;
-    StringVecToRawData(uriVec, uriRawData);
-    auto ret = storageManager_->DeleteShareFile(targetTokenId, uriRawData);
+    auto ret = storageFeature->DeleteShareFile(targetTokenId, uriVec);
     if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::URIPERMMGR, "DeleteShareFile failed:%{public}d", ret);
+        TAG_LOGE(AAFwkLogTag::URIPERMMGR, "DeleteShareFile failed:%{public}d", ret);
     }
     return ret;
 }

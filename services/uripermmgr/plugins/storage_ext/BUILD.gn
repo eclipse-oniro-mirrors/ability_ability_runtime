@@ -1,0 +1,53 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/ability/ability_runtime/ability_runtime.gni")
+
+# Dynamically-loadable plugin backing IStorageShareFeature (FeatureId::STORAGE).
+# libupms dlopen's this .so on demand and dlclose's it on idle (design ADR-1/2/4).
+# All storage_service usage (IStorageManager proxy + death recipient) lives here.
+ohos_shared_library("libupms_storage_ext") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    cfi_policy = "adaptive"
+    debug = false
+  }
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "storage_ext.cpp",
+    "storage_share_feature_impl.cpp",
+  ]
+
+  include_dirs = [
+    ".",
+    "../../include",
+  ]
+
+  deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+    "samgr:samgr_proxy",
+    "storage_service:storage_manager_sa_proxy",
+  ]
+
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}

@@ -20,7 +20,7 @@
 ## Stage 状态
 - [x] **Stage 1 Define** — Approved 2026-06-28
 - [x] **Stage 2 Specify** — Approved 2026-06-28（复杂层 design+spec+gates/specify 13/13；阶段：media→P1、broker→P2）
-- [~] **Stage 3 Implement** — Phase 1 代码完成 + **编译验证通过**（libupms✓ + libupms_media_ext✓ + 符号导出✓，见 review.md §4/§5）；待 UT mock + AC-10 实测
+- [~] **Stage 3 Implement** — Phase 1 + Phase 2 代码完成 + **编译验证通过**（libupms✓ + media/storage/fileuri 三插件✓ + 符号导出✓ + 主库死依赖清理 storage_service/fileuri_native，见 review.md §4/§5/§8）；待 UT mock + AC-10 实测 + Phase 3
 - [ ] Stage 4 Release
 
 ## 基线关键约束（一句话）
