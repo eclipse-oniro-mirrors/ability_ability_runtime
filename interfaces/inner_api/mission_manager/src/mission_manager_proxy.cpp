@@ -230,6 +230,10 @@ int MissionManagerProxy::UnRegisterMissionListener(const sptr<IMissionListener> 
 int MissionManagerProxy::RegisterMissionListener(const std::string &deviceId,
     const sptr<IRemoteMissionListener> &listener)
 {
+    if (!listener) {
+        TAG_LOGE(AAFwkTag::MISSION, "listener null");
+        return INVALID_PARAMETERS_ERR;
+    }
     MessageParcel data;
     MessageParcel reply;
     MessageOption option;
@@ -257,6 +261,10 @@ int MissionManagerProxy::RegisterMissionListener(const std::string &deviceId,
 int MissionManagerProxy::UnRegisterMissionListener(const std::string &deviceId,
     const sptr<IRemoteMissionListener> &listener)
 {
+    if (!listener) {
+        TAG_LOGE(AAFwkTag::MISSION, "listener null");
+        return INVALID_PARAMETERS_ERR;
+    }
     MessageParcel data;
     MessageParcel reply;
     MessageOption option;

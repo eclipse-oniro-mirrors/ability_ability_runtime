@@ -64,7 +64,12 @@ export default class EntryAbility extends UIAbility {
     hilog.info(DOMAIN, TAG, '%{public}s', 'Ability onCreate');
     restartWant = want;
     const INSIGHT_INTENT_DEBUG = 'ai_insightintent_debug'
-    const settingStatus: string = settings.getValueSync(this.context, INSIGHT_INTENT_DEBUG, 'default', settings.domainName.USER_SECURITY);
+    let settingStatus = 'default';
+    try {
+      settingStatus = settings.getValueSync(this.context, INSIGHT_INTENT_DEBUG, 'default', settings.domainName.USER_SECURITY);
+    } catch (err) {
+      hilog.error(DOMAIN, TAG, 'Failed to getValueSync. Cause: %{public}s', JSON.stringify(err));
+    }
     if (settingStatus !== 'true') {
       try {
         this.context.terminateSelf();
