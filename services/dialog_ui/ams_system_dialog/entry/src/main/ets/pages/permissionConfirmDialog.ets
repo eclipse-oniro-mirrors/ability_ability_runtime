@@ -39,9 +39,13 @@ struct PermissionConfirmDialog {
     console.info(this.TAG, 'click confirm app');
     globalThis.preferences.putSync('isdialogconfirmpermission', 'true')
     globalThis.preferences.flush();
-    router.replaceUrl({
-      url: globalThis.currentURL,
-    })
+    try {
+      router.replaceUrl({
+        url: globalThis.currentURL,
+      })
+    } catch (err) {
+      console.error(this.TAG, 'Failed to replaceUrl. Cause: ' + JSON.stringify(err));
+    }
   }
 
   build() {

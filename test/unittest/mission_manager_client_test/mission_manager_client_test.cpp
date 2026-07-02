@@ -502,6 +502,40 @@ HWTEST_F(MissionManagerClientTest, UnRegisterMissionListener_0200, TestSize.Leve
 }
 
 /**
+ * @tc.name: MissionManagerClient_RegisterMissionListener_0300
+ * @tc.desc: RegisterMissionListener with null remote listener
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(MissionManagerClientTest, RegisterMissionListener_0300, TestSize.Level1)
+{
+    EXPECT_TRUE(client_ != nullptr);
+    std::string deviceId = "123";
+    sptr<IRemoteMissionListener> listener = nullptr;
+    auto result = client_->RegisterMissionListener(deviceId, listener);
+    if (!Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
+        EXPECT_EQ(result, INVALID_PARAMETERS_ERR);
+    }
+}
+
+/**
+ * @tc.name: MissionManagerClient_UnRegisterMissionListener_0300
+ * @tc.desc: UnRegisterMissionListener with null remote listener
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(MissionManagerClientTest, UnRegisterMissionListener_0300, TestSize.Level1)
+{
+    EXPECT_TRUE(client_ != nullptr);
+    std::string deviceId = "123";
+    sptr<IRemoteMissionListener> listener = nullptr;
+    auto result = client_->UnRegisterMissionListener(deviceId, listener);
+    if (!Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
+        EXPECT_EQ(result, INVALID_PARAMETERS_ERR);
+    }
+}
+
+/**
  * @tc.name: MissionManagerClient_GetMissionInfos_0100
  * @tc.desc: GetMissionInfos
  * @tc.type: FUNC
