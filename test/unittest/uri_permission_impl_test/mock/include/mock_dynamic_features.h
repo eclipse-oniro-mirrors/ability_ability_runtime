@@ -53,20 +53,62 @@ public:
     inline static int32_t revokeRet = ERR_OK; // RevokeUriPermission return
     inline static bool checkRet = false;      // CheckUriPermission per-uri result
 
+    // Last-call parameter capture (for forwarder pass-through assertions).
+    inline static std::vector<std::string> lastCheckUris;
+    inline static uint32_t lastCheckCallerTokenId = 0;
+    inline static uint32_t lastCheckFlag = 0;
+    inline static std::vector<std::string> lastGrantUris;
+    inline static uint32_t lastGrantFlag = 0;
+    inline static uint32_t lastGrantCallerTokenId = 0;
+    inline static uint32_t lastGrantTargetTokenId = 0;
+    inline static int32_t lastGrantHideSensitiveType = 0;
+    inline static uint32_t lastRevokeCallerTokenId = 0;
+    inline static uint32_t lastRevokeTargetTokenId = 0;
+    inline static std::string lastRevokeUri;
+
+    static void Reset()
+    {
+        grantRet = ERR_OK;
+        revokeRet = ERR_OK;
+        checkRet = false;
+        lastCheckUris.clear();
+        lastCheckCallerTokenId = 0;
+        lastCheckFlag = 0;
+        lastGrantUris.clear();
+        lastGrantFlag = 0;
+        lastGrantCallerTokenId = 0;
+        lastGrantTargetTokenId = 0;
+        lastGrantHideSensitiveType = 0;
+        lastRevokeCallerTokenId = 0;
+        lastRevokeTargetTokenId = 0;
+        lastRevokeUri.clear();
+    }
+
     std::vector<bool> CheckUriPermission(const std::vector<std::string> &uriVec, uint32_t callerTokenId,
         uint32_t flag) override
     {
+        lastCheckUris = uriVec;
+        lastCheckCallerTokenId = callerTokenId;
+        lastCheckFlag = flag;
         return std::vector<bool>(uriVec.size(), checkRet);
     }
 
     int32_t GrantUriPermission(const std::vector<std::string> &uris, uint32_t flag, uint32_t callerTokenId,
         uint32_t targetTokenId, int32_t hideSensitiveType) override
     {
+        lastGrantUris = uris;
+        lastGrantFlag = flag;
+        lastGrantCallerTokenId = callerTokenId;
+        lastGrantTargetTokenId = targetTokenId;
+        lastGrantHideSensitiveType = hideSensitiveType;
         return grantRet;
     }
 
     int32_t RevokeUriPermission(uint32_t callerTokenId, uint32_t targetTokenId, const std::string &uri) override
     {
+        lastRevokeCallerTokenId = callerTokenId;
+        lastRevokeTargetTokenId = targetTokenId;
+        lastRevokeUri = uri;
         return revokeRet;
     }
 };

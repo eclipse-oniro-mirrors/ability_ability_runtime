@@ -211,10 +211,68 @@ ohos_unittest("upms_udmf_utils_test") {
   cflags_cc = []
 }
 
+ohos_unittest("media_permission_manager_test") {
+  module_out_path = module_output_path
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+    blocklist = "../../cfi_blocklist.txt"
+  }
+  branch_protector_ret = "pac_ret"
+  include_dirs = [
+    "mock/include",
+  ]
+
+  sources = [
+    "media_permission_manager_test.cpp",
+  ]
+
+  configs = [
+    "${ability_runtime_innerkits_path}/app_manager:appmgr_sdk_config",
+    "${ability_runtime_innerkits_path}/uri_permission:uripermkit_public_config",
+  ]
+
+  deps = [
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
+    "${ability_runtime_innerkits_path}/uri_permission:uri_permission_mgr",
+    "${ability_runtime_native_path}/appkit:appkit_manager_helper",
+    "${ability_runtime_services_path}/common:app_util",
+    "${ability_runtime_services_path}/common:perm_verification",
+    "${ability_runtime_services_path}/uripermmgr:libupms_static",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "ability_base:zuri",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libnativetoken",
+    "access_token:libtoken_setproc",
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+  ]
+  if (ability_runtime_feature_sandboxmanager) {
+    defines = [ "ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER" ]
+  }
+  if (ability_runtime_udmf_enable) {
+    defines += [ "ABILITY_RUNTIME_UDMF_ENABLE" ]
+  }
+  cflags_cc = []
+  if (os_dlp_part_enabled) {
+    cflags_cc += [ "-DWITH_DLP" ]
+  }
+}
+
 group("unittest") {
   testonly = true
 
   deps = [
+    ":media_permission_manager_test",
     ":upms_udmf_utils_test",
     ":uri_permission_impl_test",
     ":uri_permission_manager_stub_impl_test",
