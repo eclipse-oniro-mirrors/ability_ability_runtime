@@ -15,9 +15,7 @@
 
 #include <gtest/gtest.h>
 
-#define private public
 #include "dynamic_feature_manager.h"
-#undef private
 
 using namespace testing;
 using namespace testing::ext;

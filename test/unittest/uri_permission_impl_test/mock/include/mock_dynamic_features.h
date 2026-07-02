@@ -52,25 +52,31 @@ public:
     }
 };
 
-// Mock IMediaPermFeature: simple success/false returns (only used when
-// ABILITY_RUNTIME_MEDIA_LIBRARY_ENABLE is defined in the test build).
+// Mock IMediaPermFeature: configurable via static grantRet/revokeRet/checkRet
+// (driven by test cases). Used when ABILITY_RUNTIME_MEDIA_LIBRARY_ENABLE is on
+// (libupms_static compiles media path; stub_impl_test injects this mock into
+// DynamicFeatureManager::registry_[MEDIA] to bypass dlopen).
 class MockMediaPermFeature : public IMediaPermFeature {
 public:
+    inline static int32_t grantRet = ERR_OK;  // GrantUriPermission return
+    inline static int32_t revokeRet = ERR_OK; // RevokeUriPermission return
+    inline static bool checkRet = false;      // CheckUriPermission per-uri result
+
     std::vector<bool> CheckUriPermission(const std::vector<std::string> &uriVec, uint32_t callerTokenId,
         uint32_t flag) override
     {
-        return std::vector<bool>(uriVec.size(), false);
+        return std::vector<bool>(uriVec.size(), checkRet);
     }
 
     int32_t GrantUriPermission(const std::vector<std::string> &uris, uint32_t flag, uint32_t callerTokenId,
         uint32_t targetTokenId, int32_t hideSensitiveType) override
     {
-        return ERR_OK;
+        return grantRet;
     }
 
     int32_t RevokeUriPermission(uint32_t callerTokenId, uint32_t targetTokenId, const std::string &uri) override
     {
-        return ERR_OK;
+        return revokeRet;
     }
 };
 }  // namespace AAFwk

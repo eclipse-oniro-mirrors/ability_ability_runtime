@@ -17,7 +17,7 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 # Dynamically-loadable plugin backing IStorageShareFeature (FeatureId::STORAGE).
 # libupms dlopen's this .so on demand and dlclose's it on idle (design ADR-1/2/4).
 # All storage_service usage (IStorageManager proxy + death recipient) lives here.
-ohos_shared_library("libupms_storage_ext") {
+ohos_shared_library("upms_storage_ext") {
   sanitize = {
     cfi = true
     cfi_cross_dso = true

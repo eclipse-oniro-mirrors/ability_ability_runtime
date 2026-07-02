@@ -105,6 +105,11 @@ ohos_unittest("uri_permission_impl_test") {
   if (os_dlp_part_enabled) {
     cflags_cc += [ "-DWITH_DLP" ]
   }
+
+  cflags = [
+    "-Dprivate = public",
+    "-Dprotected = public",
+  ]
 }
 
 ohos_unittest("uri_permission_manager_stub_impl_test") {

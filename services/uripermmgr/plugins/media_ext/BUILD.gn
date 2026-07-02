@@ -17,7 +17,7 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 # Dynamically-loadable plugin backing IMediaPermFeature (FeatureId::MEDIA).
 # libupms dlopen's this .so on demand and dlclose's it on idle (design ADR-1/2/4).
 # All media_library usage lives here so libupms no longer links media_library.
-ohos_shared_library("libupms_media_ext") {
+ohos_shared_library("upms_media_ext") {
   sanitize = {
     cfi = true
     cfi_cross_dso = true

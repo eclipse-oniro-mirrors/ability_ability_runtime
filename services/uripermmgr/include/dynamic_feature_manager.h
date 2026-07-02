@@ -32,11 +32,6 @@ class DynamicFeatureManager;
 
 // RAII scope that keeps a feature plugin loaded and borrows its interface pointer.
 //
-// Usage:
-//   auto scope = DynamicFeatureManager::GetInstance().Acquire(FeatureId::MEDIA);
-//   auto* f = scope.Get<IMediaPermFeature>();
-//   if (f != nullptr) { f->Method(...); }
-//
 // The borrowed pointer is valid ONLY while this scope is alive (the .so stays loaded
 // because the scope holds an active reference for that feature). When the LAST scope
 // for a feature releases, a per-feature idle timer is (re)armed; when it fires with no
@@ -114,7 +109,7 @@ private:
     struct Entry {
         std::string soname;
         void* handle = nullptr;
-        std::unique_ptr<IDynamicFeature, DestroyDeleter> instance{nullptr, DestroyDeleter{}};  // plugin-factory-owned (empty by default)
+        std::unique_ptr<IDynamicFeature, DestroyDeleter> instance{nullptr, DestroyDeleter{}};
         CreateFn create = nullptr;
         DestroyFn destroy = nullptr;
         bool loaded = false;
