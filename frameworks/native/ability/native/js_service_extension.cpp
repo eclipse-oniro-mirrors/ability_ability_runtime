@@ -21,6 +21,7 @@
 #include "ability_handler.h"
 #include "ability_info.h"
 #include "ability_manager_client.h"
+#include "ability_manager_errors.h"
 #include "configuration_utils.h"
 #include "display_util.h"
 #include "freeze_util.h"
@@ -43,6 +44,8 @@
 #include "napi_common_util.h"
 #include "skill/skill_execute_param.h"
 #include "skill/skill_execute_result.h"
+#include "string_wrapper.h"
+#include "want_params.h"
 #ifdef SUPPORT_GRAPHICS
 #include "iservice_registry.h"
 #include "system_ability_definition.h"
@@ -729,25 +732,60 @@ void JsServiceExtension::ExecuteSkill(const AAFwk::Want &want,
     }
     napi_env env = jsRuntime_.GetNapiEnv();
     if (env == nullptr) {
-        TAG_LOGE(AAFwkTag::SERVICE_EXT, "null napi env, skill will time out");
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "null napi env");
+        ReportSkillError(param->requestCode_, ERR_TIMED_OUT,
+            "napi env unavailable, js runtime not ready");
         return;
     }
     napi_value jsObj = nullptr;
     napi_value method = LoadSkillFunction(param, jsObj);
     if (method == nullptr) {
-        TAG_LOGE(AAFwkTag::SERVICE_EXT, "func not found in any srcEntry:%{public}s", param->functionName_.c_str());
+        std::string errMsg = "skill function '" + param->functionName_ +
+            "' not found in srcEntries: [" + param->SrcEntriesToString() + "]";
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "%{public}s", errMsg.c_str());
+        ReportSkillError(param->requestCode_, ERR_TIMED_OUT, errMsg);
         return;
     }
     auto args = BuildSkillCallArgs(env, param);
     napi_value result = nullptr;
     napi_status status = napi_call_function(env, jsObj, method, args.size(), args.data(), &result);
     if (status != napi_ok) {
-        TAG_LOGE(AAFwkTag::SERVICE_EXT, "napi_call_function failed, status:%{public}d func:%{public}s",
-            status, param->functionName_.c_str());
+        std::string errMsg = "napi_call_function status=" + std::to_string(status) +
+            " func=" + param->functionName_;
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "%{public}s", errMsg.c_str());
+        ReportSkillError(param->requestCode_, ERR_TIMED_OUT, errMsg);
+        return;
+    }
+    bool hasPending = false;
+    napi_is_exception_pending(env, &hasPending);
+    if (hasPending) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT,
+            "skill function threw exception, func:%{public}s", param->functionName_.c_str());
+        ReportSkillError(param->requestCode_, ERR_TIMED_OUT,
+            "skill function threw exception during execution");
         return;
     }
     TAG_LOGD(AAFwkTag::SERVICE_EXT,
         "ExecuteSkill dispatched, requestCode:%{public}s", param->requestCode_.c_str());
+}
+
+void JsServiceExtension::ReportSkillError(const std::string &requestCode,
+    int32_t errCode, const std::string &errMsg)
+{
+    auto context = GetContext();
+    if (context == nullptr || context->GetToken() == nullptr) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT,
+            "ReportSkillError: null context or token, requestCode:%{public}s", requestCode.c_str());
+        return;
+    }
+    AppExecFwk::SkillExecuteResult result;
+    result.code = errCode;
+    if (!errMsg.empty()) {
+        result.result = std::make_shared<AAFwk::WantParams>();
+        result.result->SetParam(AppExecFwk::SKILL_ERROR_MSG_KEY, AAFwk::String::Box(errMsg));
+    }
+    AAFwk::AbilityManagerClient::GetInstance()->ExecuteSkillDone(
+        context->GetToken(), requestCode, errCode, result);
 }
 
 napi_value JsServiceExtension::CallObjectMethod(const char* name, napi_value const* argv, size_t argc)

@@ -52,6 +52,8 @@ constexpr char SKILL_EXECUTE_PARAM_HAP_PATH[] = "ohos.skill.executeParam.hapPath
 constexpr char SKILL_EXECUTE_PARAM_REQUEST_CODE[] = "ohos.skill.executeParam.requestCode";
 constexpr char SKILL_EXECUTE_PARAM_CALLER_TOKEN_ID[] = "ohos.skill.executeParam.callerTokenId";
 
+constexpr char SKILL_ERROR_MSG_KEY[] = "ohos.skill.error.message";
+
 class SkillExecuteParam : public Parcelable {
 public:
     SkillExecuteParam() = default;
@@ -70,6 +72,18 @@ public:
         const std::shared_ptr<AAFwk::WantParams> &skillArgs = nullptr,
         const std::vector<std::string> &srcEntries = {},
         const std::string &requestCode = "", const std::string &hapPath = "");
+
+    std::string SrcEntriesToString() const
+    {
+        std::string result;
+        for (size_t i = 0; i < srcEntries_.size(); ++i) {
+            if (i > 0) {
+                result += ",";
+            }
+            result += srcEntries_[i];
+        }
+        return result;
+    }
 
     std::string bundleName_;
     std::string moduleName_;
