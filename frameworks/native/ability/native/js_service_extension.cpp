@@ -659,7 +659,7 @@ bool JsServiceExtension::TryLoadSkillEntry(const std::string &srcEntry,
     }
     srcPath.erase(pos);
     srcPath.append(".abc");
-    skillModuleRef_ = jsRuntime_.LoadModule(param->moduleName_, srcPath, param->hapPath_, true);
+    skillModuleRef_ = jsRuntime_.LoadModule(param->moduleName_, srcPath, param->hapPath_, true, false, srcEntry);
     if (skillModuleRef_ == nullptr) {
         TAG_LOGW(AAFwkTag::SERVICE_EXT, "LoadModule failed, path:%{public}s", srcPath.c_str());
         return false;
