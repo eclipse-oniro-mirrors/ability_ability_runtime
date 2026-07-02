@@ -197,8 +197,9 @@ HWTEST_F(PermissionQueryUtilTest, QuerySingleCommand_EmptyToolName, TestSize.Lev
     Command cmd;
     cmd.toolName = "";
     std::vector<std::string> permissions;
+    bool isLockScreenExecutionAllowed = false;
 
-    int32_t ret = PermissionQueryUtil::QuerySingleCommand(cmd, permissions);
+    int32_t ret = PermissionQueryUtil::QuerySingleCommand(cmd, permissions, isLockScreenExecutionAllowed);
 
     EXPECT_EQ(ret, ERR_TOOL_NOT_EXIST);
     EXPECT_EQ(permissions.size(), 0u);
@@ -213,8 +214,9 @@ HWTEST_F(PermissionQueryUtilTest, QuerySingleCommand_ToolNotExist, TestSize.Leve
 {
     Command cmd = CreateTestCommand("non_existent_tool");
     std::vector<std::string> permissions;
+    bool isLockScreenExecutionAllowed = false;
 
-    int32_t ret = PermissionQueryUtil::QuerySingleCommand(cmd, permissions);
+    int32_t ret = PermissionQueryUtil::QuerySingleCommand(cmd, permissions, isLockScreenExecutionAllowed);
 
     EXPECT_EQ(ret, ERR_TOOL_NOT_EXIST);
     EXPECT_EQ(permissions.size(), 0u);
@@ -229,10 +231,12 @@ HWTEST_F(PermissionQueryUtilTest, QuerySingleCommand_MainCommandSuccess, TestSiz
 {
     CliToolDataManagerMock::getToolByNameResult = ERR_OK;
     CliToolDataManagerMock::toolPermissions = {TEST_PERMISSION_1, TEST_PERMISSION_2};
+    CliToolDataManagerMock::toolIsLockScreenExecEnabled = true;
     Command cmd = CreateTestCommand(TEST_TOOL_NAME);
     std::vector<std::string> permissions;
+    bool isLockScreenExecutionAllowed = false;
 
-    int32_t ret = PermissionQueryUtil::QuerySingleCommand(cmd, permissions);
+    int32_t ret = PermissionQueryUtil::QuerySingleCommand(cmd, permissions, isLockScreenExecutionAllowed);
 
     EXPECT_EQ(ret, ERR_OK);
     EXPECT_EQ(permissions.size(), 2u);
@@ -251,10 +255,12 @@ HWTEST_F(PermissionQueryUtilTest, QuerySingleCommand_SubCommandSuccess, TestSize
     CliToolDataManagerMock::toolHasSubCommand = true;
     CliToolDataManagerMock::subCommandName = TEST_SUBCOMMAND;
     CliToolDataManagerMock::subCommandPermissions = {TEST_PERMISSION_2};
+    CliToolDataManagerMock::toolIsLockScreenExecEnabled = true;
     Command cmd = CreateTestCommand(TEST_TOOL_NAME, TEST_SUBCOMMAND);
     std::vector<std::string> permissions;
+    bool isLockScreenExecutionAllowed = false;
 
-    int32_t ret = PermissionQueryUtil::QuerySingleCommand(cmd, permissions);
+    int32_t ret = PermissionQueryUtil::QuerySingleCommand(cmd, permissions, isLockScreenExecutionAllowed);
 
     EXPECT_EQ(ret, ERR_OK);
     ASSERT_EQ(permissions.size(), 1u);
@@ -272,8 +278,9 @@ HWTEST_F(PermissionQueryUtilTest, QuerySingleCommand_NoSubCommand, TestSize.Leve
     CliToolDataManagerMock::toolHasSubCommand = false;
     Command cmd = CreateTestCommand(TEST_TOOL_NAME, TEST_SUBCOMMAND);
     std::vector<std::string> permissions = {TEST_PERMISSION_1};
+    bool isLockScreenExecutionAllowed = false;
 
-    int32_t ret = PermissionQueryUtil::QuerySingleCommand(cmd, permissions);
+    int32_t ret = PermissionQueryUtil::QuerySingleCommand(cmd, permissions, isLockScreenExecutionAllowed);
 
     EXPECT_EQ(ret, ERR_TOOL_NOT_EXIST);
 }
@@ -288,8 +295,9 @@ HWTEST_F(PermissionQueryUtilTest, QuerySingleCommand_DbError, TestSize.Level1)
     CliToolDataManagerMock::getToolByNameResult = ERR_NO_INIT;
     Command cmd = CreateTestCommand(TEST_TOOL_NAME);
     std::vector<std::string> permissions;
+    bool isLockScreenExecutionAllowed = false;
 
-    int32_t ret = PermissionQueryUtil::QuerySingleCommand(cmd, permissions);
+    int32_t ret = PermissionQueryUtil::QuerySingleCommand(cmd, permissions, isLockScreenExecutionAllowed);
 
     EXPECT_EQ(ret, ERR_NO_INIT);
 }
@@ -323,8 +331,10 @@ HWTEST_F(PermissionQueryUtilTest, BuildCommandPermission_CreatesCorrectObject, T
     Command cmd = CreateTestCommand(TEST_TOOL_NAME, TEST_SUBCOMMAND);
     std::vector<std::string> permissions = {TEST_PERMISSION_1, TEST_PERMISSION_2};
     int32_t queryRet = QueryResult::SUCCESS;
+    bool isLockScreenExecutionAllowed = true;
 
-    CommandPermission cmdPerm = PermissionQueryUtil::BuildCommandPermission(cmd, permissions, queryRet);
+    CommandPermission cmdPerm = PermissionQueryUtil::BuildCommandPermission(cmd, permissions, queryRet,
+        isLockScreenExecutionAllowed);
 
     EXPECT_EQ(cmdPerm.cmd.toolName, TEST_TOOL_NAME);
     EXPECT_EQ(cmdPerm.cmd.subCommand, TEST_SUBCOMMAND);
@@ -332,6 +342,7 @@ HWTEST_F(PermissionQueryUtilTest, BuildCommandPermission_CreatesCorrectObject, T
     EXPECT_EQ(cmdPerm.permissions.size(), 2u);
     EXPECT_EQ(cmdPerm.permissions[0], TEST_PERMISSION_1);
     EXPECT_EQ(cmdPerm.permissions[1], TEST_PERMISSION_2);
+    EXPECT_TRUE(cmdPerm.isLockScreenExecutionAllowed);
 }
 
 /**
@@ -344,13 +355,16 @@ HWTEST_F(PermissionQueryUtilTest, BuildCommandPermission_EmptyPermissions, TestS
     Command cmd = CreateTestCommand(TEST_TOOL_NAME);
     std::vector<std::string> permissions;
     int32_t queryRet = QueryResult::COMMAND_NOT_EXIST;
+    bool isLockScreenExecutionAllowed = false;
 
-    CommandPermission cmdPerm = PermissionQueryUtil::BuildCommandPermission(cmd, permissions, queryRet);
+    CommandPermission cmdPerm = PermissionQueryUtil::BuildCommandPermission(cmd, permissions, queryRet,
+        isLockScreenExecutionAllowed);
 
     EXPECT_EQ(cmdPerm.cmd.toolName, TEST_TOOL_NAME);
     EXPECT_EQ(cmdPerm.cmd.subCommand, "");
     EXPECT_EQ(cmdPerm.queryRet, QueryResult::COMMAND_NOT_EXIST);
     EXPECT_EQ(cmdPerm.permissions.size(), 0u);
+    EXPECT_FALSE(cmdPerm.isLockScreenExecutionAllowed);
 }
 } // namespace CliTool
 } // namespace OHOS

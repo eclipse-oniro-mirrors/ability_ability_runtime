@@ -19,6 +19,7 @@ struct Command {
 struct CommandPermission {
     Command cmd;
     std::vector<std::string> permissions;
+    bool isLockScreenExecutionAllowed = false;
     int32_t queryRet = 0;
 };
 } // namespace CliTool
