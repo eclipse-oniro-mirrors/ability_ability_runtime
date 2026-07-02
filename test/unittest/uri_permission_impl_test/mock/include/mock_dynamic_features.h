@@ -21,17 +21,12 @@
 #include "ability_manager_errors.h"
 #include "feature/imedia_perm_feature.h"
 #include "feature/istorage_share_feature.h"
-#include "mock_storage_manager_service.h"
 
 namespace OHOS {
 namespace AAFwk {
-
-// Mock IStorageShareFeature: replicates the former StorageManagerServiceMock
-// CreateShareFile/DeleteShareFile behaviour (isZero-driven) so stub_impl paths
-// going through DynamicFeatureManager::Acquire(STORAGE) get a working mock
-// without dlopen'ing the real plugin .so.
 class MockStorageShareFeature : public IStorageShareFeature {
 public:
+    inline static bool isZero = true;
     void CreateShareFile(const std::vector<std::string> &uris, uint32_t targetTokenId, uint32_t flag,
         std::vector<int32_t> &resVec) override
     {
@@ -39,7 +34,7 @@ public:
         if (size <= 0) {
             return; // resVec stays empty; caller detects failure
         }
-        if (StorageManager::StorageManagerServiceMock::isZero) {
+        if (isZero) {
             resVec.assign(size, ERR_OK);
         } else {
             resVec.assign(size, -1);
@@ -52,10 +47,6 @@ public:
     }
 };
 
-// Mock IMediaPermFeature: configurable via static grantRet/revokeRet/checkRet
-// (driven by test cases). Used when ABILITY_RUNTIME_MEDIA_LIBRARY_ENABLE is on
-// (libupms_static compiles media path; stub_impl_test injects this mock into
-// DynamicFeatureManager::registry_[MEDIA] to bypass dlopen).
 class MockMediaPermFeature : public IMediaPermFeature {
 public:
     inline static int32_t grantRet = ERR_OK;  // GrantUriPermission return

@@ -54,7 +54,7 @@ void UriPermissionManagerStubImplTest::SetUp()
 {
     MyFlag::Init();
     IAbilityManagerCollaborator::verifyResult = 0;
-    StorageManager::StorageManagerServiceMock::isZero = true; // default: CreateShareFile succeeds
+    MockStorageShareFeature::isZero = true; // default: CreateShareFile succeeds
     MockMediaPermFeature::grantRet = ERR_OK;                  // default: media grant succeeds
     static MockMediaPermFeature g_mockMedia;
     static MockStorageShareFeature g_mockStorage;
@@ -266,7 +266,7 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermission_004, TestSiz
 HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantBatchUriPermissionImpl_001, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    StorageManager::StorageManagerServiceMock::isZero = false; // CreateShareFile returns failures
+    MockStorageShareFeature::isZero = false; // CreateShareFile returns failures
     std::vector<std::string> uriVec;
     uriVec.push_back("file://test");
     uint32_t flag = 1;
@@ -284,7 +284,7 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantBatchUriPermissionImpl_001
 HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantBatchUriPermissionImpl_002, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    StorageManager::StorageManagerServiceMock::isZero = true; // CreateShareFile succeeds
+    MockStorageShareFeature::isZero = true; // CreateShareFile succeeds
     std::vector<std::string> uriVec;
     uriVec.push_back("file://test");
     uint32_t flag = 1;
@@ -424,7 +424,7 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_00
 HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivilegedInner_001, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    StorageManager::StorageManagerServiceMock::isZero = false; // storage share-file fails -> INNER_ERR
+    MockStorageShareFeature::isZero = false; // storage share-file fails -> INNER_ERR
     Uri uri("content");
     std::vector<Uri> uriVec;
     uriVec.push_back(uri);
