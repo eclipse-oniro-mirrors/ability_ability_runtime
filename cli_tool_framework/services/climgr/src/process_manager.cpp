@@ -111,7 +111,7 @@ int32_t ProcessManager::CreateChildProcess(const ExecToolParam &param, const std
     const ToolInfo &toolInfo, std::shared_ptr<SessionRecord> record,
     const std::vector<std::shared_ptr<SessionRecord>> &fatherSessionRecords) const
 {
-    if (CreatePipes(*record) == false) {
+    if (!CreatePipes(*record)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create pipes");
         // Report process creation failure
         std::string bundleName;
@@ -190,7 +190,7 @@ int32_t ProcessManager::CreateShellProcess(const ExecCmdParam &param, const std:
     std::shared_ptr<SessionRecord> record,
     const std::vector<std::shared_ptr<SessionRecord>> &fatherSessionRecords) const
 {
-    if (CreatePipes(*record) == false) {
+    if (!CreatePipes(*record)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create pipes");
         return ERR_NO_INIT;
     }

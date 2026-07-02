@@ -1031,7 +1031,7 @@ bool ETSEnvironment::SetHspAbcFiles(ani_env *env, ani_object abcObj)
 
     ani_status status = ANI_ERROR;
     ani_array strRefArray = nullptr;
-    if (ConvertHspPathToAniArray(env, hspPathListAdd, strRefArray) == false) {
+    if (!ConvertHspPathToAniArray(env, hspPathListAdd, strRefArray)) {
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "ConvertHspPathToAniArray failed");
         return false;
     }

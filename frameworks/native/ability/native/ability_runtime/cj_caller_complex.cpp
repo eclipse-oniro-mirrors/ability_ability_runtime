@@ -318,7 +318,7 @@ int32_t CjCallerComplex::SetOnRemoteStateChanged(const std::function<void(const 
 bool CjCallerComplex::ChangeCurrentState(OBJSTATE state)
 {
     auto ret = false;
-    if (stateMechanismMutex_.try_lock() == false) {
+    if (!stateMechanismMutex_.try_lock()) {
         TAG_LOGE(AAFwkTag::DEFAULT, "mutex try_lock false");
         return ret;
     }

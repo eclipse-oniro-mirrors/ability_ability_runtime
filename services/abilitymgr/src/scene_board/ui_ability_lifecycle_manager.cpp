@@ -572,7 +572,7 @@ void UIAbilityLifecycleManager::AddCallerRecord(AbilityRequest &abilityRequest, 
 
 void UIAbilityLifecycleManager::SendKeyEvent(const AbilityRequest &abilityRequest) const
 {
-    if (abilityRequest.abilityInfo.visible == false) {
+    if (!abilityRequest.abilityInfo.visible) {
         EventInfo eventInfo;
         eventInfo.abilityName = abilityRequest.abilityInfo.name;
         eventInfo.bundleName = abilityRequest.abilityInfo.bundleName;

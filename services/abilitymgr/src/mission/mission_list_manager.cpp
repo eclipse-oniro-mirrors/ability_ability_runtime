@@ -597,7 +597,7 @@ bool MissionListManager::CreateOrReusedMissionInfo(const AbilityRequest &ability
 
     BuildInnerMissionInfo(info, missionName, abilityRequest);
     auto abilityRecord = GetAbilityRecordByNameFromCurrentMissionLists(abilityRequest.want.GetElement());
-    if (reUsedMissionInfo == false && abilityRecord != nullptr) {
+    if (!reUsedMissionInfo && abilityRecord != nullptr) {
         int32_t getAbilityNumber = 0;
         getAbilityNumber = GetAbilityNumber(abilityRequest.want.GetElement());
         TAG_LOGD(AAFwkTag::ABILITYMGR, "GetAbilityNumber:%{public}d.", getAbilityNumber);

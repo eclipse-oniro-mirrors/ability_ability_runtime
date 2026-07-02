@@ -80,7 +80,7 @@ ErrCode AbilityProcess::StartAbility(Ability *ability, CallAbilityParam param, C
     TAG_LOGI(AAFwkTag::ABILITY, "window mode:%{public}d", windowMode);
 #endif
     ErrCode err = ERR_OK;
-    if (param.forResultOption == true) {
+    if (param.forResultOption) {
         if (param.setting == nullptr) {
             TAG_LOGI(AAFwkTag::ABILITY, "null param.setting");
             param.want.SetParam(Want::PARAM_RESV_FOR_RESULT, true);

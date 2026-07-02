@@ -1600,7 +1600,7 @@ int32_t AppRunningManager::NotifyLoadRepairPatch(const std::string &bundleName, 
             }
         }
     }
-    return loadSucceed == true ? ERR_OK : result;
+    return loadSucceed ? ERR_OK : result;
 }
 
 int32_t AppRunningManager::NotifyHotReloadPage(const std::string &bundleName, const sptr<IQuickFixCallback> &callback)
@@ -1631,7 +1631,7 @@ int32_t AppRunningManager::NotifyHotReloadPage(const std::string &bundleName, co
             }
         }
     }
-    return reloadPageSucceed == true ? ERR_OK : result;
+    return reloadPageSucceed ? ERR_OK : result;
 }
 
 int32_t AppRunningManager::NotifyUnLoadRepairPatch(const std::string &bundleName,
@@ -1663,7 +1663,7 @@ int32_t AppRunningManager::NotifyUnLoadRepairPatch(const std::string &bundleName
             }
         }
     }
-    return unLoadSucceed == true ? ERR_OK : result;
+    return unLoadSucceed ? ERR_OK : result;
 }
 
 bool AppRunningManager::IsApplicationFirstForeground(const AppRunningRecord &foregroundingRecord)

@@ -504,7 +504,7 @@ int32_t PendingWantManager::PendingWantPublishCommonEvent(
 
     bool result = IN_PROCESS_CALL(DelayedSingleton<EventFwk::CommonEvent>::GetInstance()->PublishCommonEvent(
         eventData, eventPublishData, nullptr, publisherUid, callerTokenId));
-    return ((result == true) ? ERR_OK : (-1));
+    return (result ? ERR_OK : (-1));
 }
 
 int32_t PendingWantManager::PendingRecordIdCreate()

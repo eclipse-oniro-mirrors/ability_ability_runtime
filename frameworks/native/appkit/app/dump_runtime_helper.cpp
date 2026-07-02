@@ -336,7 +336,7 @@ void DumpRuntimeHelper::DumpCjHeap(const OHOS::AppExecFwk::CjHeapDumpInfo &info)
         TAG_LOGE(AAFwkTag::APPKIT, "null cjEnv");
         return;
     }
-    if (info.needSnapshot == true) {
+    if (info.needSnapshot) {
         int32_t fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::CJ_HEAP_SNAPSHOT));
         if (fd < 0) {
             TAG_LOGE(AAFwkTag::APPKIT, "fd:%{public}d.\n", fd);
@@ -346,7 +346,7 @@ void DumpRuntimeHelper::DumpCjHeap(const OHOS::AppExecFwk::CjHeapDumpInfo &info)
         close(fd);
         return;
     }
-    if (info.needGc == true) {
+    if (info.needGc) {
         cjEnv->forceFullGC();
     }
 #endif

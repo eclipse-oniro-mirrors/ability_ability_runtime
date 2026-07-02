@@ -5165,7 +5165,7 @@ int32_t AppMgrServiceInner::KillProcessesByPids(const std::vector<int32_t> &pids
             }
             continue;
         }
-        if (subProcess == false) {
+        if (!subProcess) {
             continue;
         }
         ret = KillSubProcessBypid(pid, reason);

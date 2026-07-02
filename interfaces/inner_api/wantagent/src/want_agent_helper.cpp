@@ -333,7 +333,7 @@ ErrCode WantAgentHelper::IsEquals(
     if (agent->IsLocal() != otherAgent->IsLocal()) {
         return NOTEQ;
     }
-    if (agent->IsLocal() == true && otherAgent->IsLocal() == true) {
+    if (agent->IsLocal() && otherAgent->IsLocal()) {
         return LocalPendingWant::IsEquals(agent->GetLocalPendingWant(), otherAgent->GetLocalPendingWant());
     }
 

@@ -176,7 +176,7 @@ void IOMonitor::UnregisterSession(const std::string &sessionId)
     }
 
     for (const auto &[fd, info] : fdsToClose) {
-        if (info.isStdin == false) {
+        if (!info.isStdin) {
             epoll_ctl(epollFd_, EPOLL_CTL_DEL, fd, nullptr);
         }
         close(fd);

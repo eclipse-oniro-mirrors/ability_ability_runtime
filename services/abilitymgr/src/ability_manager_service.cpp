@@ -1727,7 +1727,7 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
             afterCheckExecuter_->DoProcess(afterCheckParam);
         bool isReplaceWantExist = newWant.GetBoolParam("queryWantFromErms", false);
         newWant.RemoveParam("queryWantFromErms");
-        if (result != ERR_OK && isReplaceWantExist == false) {
+        if (result != ERR_OK && !isReplaceWantExist) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "doProcess failed or replaceWant absent");
             AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, result, "doProcess failed or replaceWant absent");
             return result;
@@ -2569,7 +2569,7 @@ int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const St
         afterCheckExecuter_->DoProcess(afterCheckParam);
     bool isReplaceWantExist = newWant.GetBoolParam("queryWantFromErms", false);
     newWant.RemoveParam("queryWantFromErms");
-    if (result != ERR_OK && isReplaceWantExist == false) {
+    if (result != ERR_OK && !isReplaceWantExist) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "doProcess failed or replaceWant absent");
         AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, result, "doProcess failed or replaceWant absent");
         return result;
@@ -3392,7 +3392,7 @@ int AbilityManagerService::StartUIAbilityBySCBDefault(sptr<SessionInfo> sessionI
         bool isReplaceWantExist = newWant.GetBoolParam("queryWantFromErms", false);
         newWant.RemoveParam("queryWantFromErms");
         if (result != ERR_OK) {
-            if (isReplaceWantExist == false) {
+            if (!isReplaceWantExist) {
                 TAG_LOGE(AAFwkTag::ABILITYMGR, "doProcess failed or replaceWant absent");
                 AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, result,
                     "doProcess failed or replaceWant absent", true);
@@ -13738,7 +13738,7 @@ int AbilityManagerService::VerifyPermission(const std::string &permission, int p
         return CHECK_PERMISSION_FAILED;
     }
     for (auto it = bundleInfo.abilityInfos.begin(); it != bundleInfo.abilityInfos.end(); ++it) {
-        if (it->isStageBasedModel == true) {
+        if (it->isStageBasedModel) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "only support fa mode");
             return CHECK_PERMISSION_FAILED;
         }
@@ -16940,7 +16940,7 @@ int AbilityManagerService::StartUIAbilityByPreInstallInner(sptr<SessionInfo> ses
         afterCheckExecuter_->DoProcess(afterCheckParam);
     bool isReplaceWantExist = newWant.GetBoolParam("queryWantFromErms", false);
     newWant.RemoveParam("queryWantFromErms");
-    if (result != ERR_OK && isReplaceWantExist == false) {
+    if (result != ERR_OK && !isReplaceWantExist) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "doProcess failed or replaceWant absent");
         return result;
     }
