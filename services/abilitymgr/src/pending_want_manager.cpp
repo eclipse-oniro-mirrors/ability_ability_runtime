@@ -767,6 +767,10 @@ int32_t PendingWantManager::GetWantSenderInfo(const sptr<IWantSender> &target, s
     wantSenderInfo.appIndex = record->GetKey()->GetAppIndex();
     wantSenderInfo.userId = record->GetKey()->GetUserId();
     info.reset(new (std::nothrow) WantSenderInfo(wantSenderInfo));
+    if (info == nullptr) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "null info");
+        return ERR_INVALID_VALUE;
+    }
     return NO_ERROR;
 }
 
