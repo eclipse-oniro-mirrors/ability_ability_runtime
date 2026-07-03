@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,27 +13,25 @@
  * limitations under the License.
  */
 
-#ifndef MOCK_MY_STATUS_H
-#define MOCK_MY_STATUS_H
+#ifndef OHOS_ABILITY_RUNTIME_MOCK_BUNDLE_MGR_HELPER_STATUS_H
+#define OHOS_ABILITY_RUNTIME_MOCK_BUNDLE_MGR_HELPER_STATUS_H
 
-#include "bundle_mgr_interface.h"
-#include "running_process_info.h"
+#include <string>
+
+#include "app_clone_preference.h"
+#include "errors.h"
 
 namespace OHOS {
 namespace AAFwk {
-class MyStatus {
-public:
-    static MyStatus& GetInstance();
-    ~MyStatus() = default;
-    bool retValue_ = false;
-    OHOS::AppExecFwk::RunningProcessInfo processInfo_;
-    ErrCode getAppClonePreferenceRet_ = ERR_OK;
-    OHOS::AppExecFwk::AppClonePreference appClonePreference_;
-    std::string lastClonePreferenceBundleName_;
-    int32_t lastClonePreferenceUserId_ = -1;
-private:
-    MyStatus() = default;
+struct MockBundleMgrHelperStatus {
+    static void Reset();
+
+    static ErrCode getAppClonePreferenceRet_;
+    static AppExecFwk::AppClonePreference appClonePreference_;
+    static std::string lastClonePreferenceBundleName_;
+    static int32_t lastClonePreferenceUserId_;
+    static bool returnNullHelper_;
 };
 }  // namespace AAFwk
 }  // namespace OHOS
-#endif // MOCK_MY_STATUS_H
+#endif  // OHOS_ABILITY_RUNTIME_MOCK_BUNDLE_MGR_HELPER_STATUS_H

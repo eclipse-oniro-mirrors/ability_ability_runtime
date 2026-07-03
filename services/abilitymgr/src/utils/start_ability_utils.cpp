@@ -22,10 +22,12 @@
 #include "app_utils.h"
 #include "global_constant.h"
 #include "hitrace_meter.h"
-#include "startup_util.h"
-#include "permission_verification.h"
-#include "permission_constants.h"
 #include "ipc_skeleton.h"
+#include "multi_app_utils.h"
+#include "permission_constants.h"
+#include "permission_verification.h"
+#include "server_constant.h"
+#include "startup_util.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -33,6 +35,12 @@ namespace {
 constexpr int32_t ERMS_ISALLOW_RESULTCODE = 10;
 constexpr const char* PARAM_RESV_ANCO_CALLER_UID = "ohos.anco.param.callerUid";
 constexpr const char* PARAM_RESV_ANCO_CALLER_BUNDLENAME = "ohos.anco.param.callerBundleName";
+
+bool HasAppInstanceSelector(const Want &want)
+{
+    return want.HasParameter(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY) ||
+        want.HasParameter(AbilityRuntime::ServerConstant::DLP_INDEX);
+}
 }
 thread_local std::shared_ptr<StartAbilityInfo> StartAbilityUtils::startAbilityInfo;
 thread_local std::shared_ptr<StartAbilityInfo> StartAbilityUtils::callerAbilityInfo;
@@ -443,6 +451,26 @@ void StartAbilityUtils::SetTargetCloneIndexInSameBundle(const Want &want, sptr<I
         (const_cast<Want &>(want)).SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, appIndex);
     } else if (AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(appIndex)) {
         (const_cast<Want &>(want)).SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, appIndex);
+    }
+}
+
+void StartAbilityUtils::ResolveTargetAppCloneIndex(const Want &want, sptr<IRemoteObject> callerToken, int32_t userId)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (HasAppInstanceSelector(want)) {
+        return;
+    }
+
+    SetTargetCloneIndexInSameBundle(want, callerToken);
+    if (HasAppInstanceSelector(want)) {
+        return;
+    }
+
+    int32_t appIndex = 0;
+    if (MultiAppUtils::GetPreferredAppCloneIndex(want.GetBundle(), userId, appIndex)) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "resolve app clone preference, bundle:%{public}s appIndex:%{public}d",
+            want.GetBundle().c_str(), appIndex);
+        (const_cast<Want &>(want)).SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, appIndex);
     }
 }
 

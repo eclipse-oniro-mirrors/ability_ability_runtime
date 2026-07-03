@@ -43,6 +43,9 @@ public:
     bool isHiddenStart_ = false;
     int32_t retHiddenStartSupported_ = 0;
     bool isStartOptionsWithProcessOptions_ = false;
+    int32_t setTargetCloneIndexCallCount_ = 0;
+    int32_t resolveTargetAppCloneIndexCallCount_ = 0;
+    int32_t resolveTargetAppCloneIndexUserId_ = -1;
 };
 }  // namespace AAFwk
 }  // namespace OHOS
