@@ -726,7 +726,8 @@ void EtsAppManager::GetAppMemorySize(ani_env *env, ani_object callback)
         TAG_LOGE(AAFwkTag::APPMGR, "abilityManager null ptr");
         AppExecFwk::AsyncCallback(env, callback,
             AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env,
-            static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER)),
+            static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityRuntime::AbilityInnerErrorMsg::SERVICE_UNAVAILABLE)),
             AppExecFwk::CreateInt(env, ERR_FAILURE));
         return;
     }
@@ -751,7 +752,8 @@ void EtsAppManager::IsRamConstrainedDevice(ani_env *env, ani_object callback)
         TAG_LOGE(AAFwkTag::APPMGR, "abilityManager null ptr");
         AppExecFwk::AsyncCallback(env, callback,
             AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env,
-            static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER)),
+            static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityRuntime::AbilityInnerErrorMsg::SERVICE_UNAVAILABLE)),
             AppExecFwk::CreateBoolean(env, false));
         return;
     }
@@ -776,7 +778,8 @@ void EtsAppManager::IsRunningInStabilityTest(ani_env *env, ani_object callback)
         TAG_LOGE(AAFwkTag::APPMGR, "abilityManager null ptr");
         AppExecFwk::AsyncCallback(env, callback,
             AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env,
-            static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER)),
+            static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityRuntime::AbilityInnerErrorMsg::SERVICE_UNAVAILABLE)),
             AppExecFwk::CreateBoolean(env, false));
         return;
     }
@@ -819,10 +822,10 @@ void EtsAppManager::KillProcessesByBundleNameInner(ani_env *env, ani_object call
         TAG_LOGE(AAFwkTag::APPMGR, "abilityManager null ptr");
         AppExecFwk::AsyncCallback(env, callback,
             AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env,
-            static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER)), nullptr);
+            static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityRuntime::AbilityInnerErrorMsg::SERVICE_UNAVAILABLE)), nullptr);
         return;
     }
-    ani_status status = ANI_OK;
     std::string bundleName;
     if (!AppExecFwk::GetStdString(env, etsBundleName, bundleName)) {
         TAG_LOGE(AAFwkTag::APPMGR, "GetStdString Failed");
@@ -832,6 +835,7 @@ void EtsAppManager::KillProcessesByBundleNameInner(ani_env *env, ani_object call
         return;
     }
     int32_t appIndex = 0;
+    ani_status status = ANI_OK;
     ani_boolean isUndefined = false;
     if ((status = env->Reference_IsUndefined(etsAppIndex, &isUndefined)) != ANI_OK) {
         TAG_LOGE(AAFwkTag::APPMGR, "Failed to check undefined status : %{public}d", status);
@@ -1180,7 +1184,7 @@ void EtsAppManager::NativeSetKeepAliveForBundle(ani_env *env, ani_string aniBund
             EtsErrorUtil::CreateInvalidParamError(env, "Parse param bundleName failed, must be a string."), nullptr);
         return;
     }
-    TAG_LOGD(AAFwkTag::APPMGR, "KillProcessWithAccount aniUserId:%{public}d", aniUserId);
+    TAG_LOGD(AAFwkTag::APPMGR, "NativeSetKeepAliveForBundle aniUserId:%{public}d", aniUserId);
     int32_t innerErrCode = abilityManager->SetApplicationKeepAlive(bundleName, aniUserId, enable);
     TAG_LOGD(AAFwkTag::APPMGR, "innerErrCode:%{public}d", innerErrCode);
     AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(
@@ -1560,7 +1564,8 @@ void EtsAppManager::GetKeepAliveAppServiceExtensions(ani_env *env, ani_object ca
         TAG_LOGE(AAFwkTag::APPMGR, "null abilityManager");
         AppExecFwk::AsyncCallback(env, callback,
             AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env,
-            static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER)), emptyArray);
+            static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityRuntime::AbilityInnerErrorMsg::SERVICE_UNAVAILABLE)), emptyArray);
         return;
     }
     innerErrCode = abilityManager->QueryKeepAliveAppServiceExtensions(*infoList);
@@ -1604,7 +1609,8 @@ void EtsAppManager::SetKeepAliveForAppServiceExtension(ani_env *env, ani_string 
         TAG_LOGE(AAFwkTag::APPMGR, "null abilityManager");
         AppExecFwk::AsyncCallback(env, callback,
             AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env,
-            static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER)), nullptr);
+            static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityRuntime::AbilityInnerErrorMsg::SERVICE_UNAVAILABLE)), nullptr);
         return;
     }
     int32_t innerErrCode = abilityManager->SetAppServiceExtensionKeepAlive(bundleName, enable);

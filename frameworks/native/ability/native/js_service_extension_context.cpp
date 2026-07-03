@@ -18,6 +18,7 @@
 #include <chrono>
 #include <cstdint>
 
+#include "ability_business_error.h"
 #include "ability_manager_client.h"
 #include "ability_runtime/js_caller_complex.h"
 #include "hilog_tag_wrapper.h"
@@ -1200,7 +1201,7 @@ private:
                 } else if (*innerErrCode == static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT)) {
                     task.Reject(env, CreateJsError(env, *innerErrCode, "Context is released"));
                 } else if (*innerErrCode == static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER)) {
-                    task.Reject(env, CreateJsError(env, *innerErrCode, "not found connection"));
+                    task.Reject(env, CreateJsError(env, *innerErrCode, "null connection"));
                 } else {
                     task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrCode));
                 }
@@ -1649,7 +1650,8 @@ private:
             HandleScope handleScope(env);
             if (!retCode) {
                 TAG_LOGE(AAFwkTag::SERVICE_EXT, "StartAbility failed");
-                task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+                task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_RET_CODE)));
                 return;
             }
             if (*retCode == 0) {

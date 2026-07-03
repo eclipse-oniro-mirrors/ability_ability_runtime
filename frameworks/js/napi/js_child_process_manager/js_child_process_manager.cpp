@@ -17,6 +17,7 @@
 
 #include <unistd.h>
 
+#include "ability_business_error.h"
 #include "child_process_manager.h"
 #include "child_process_manager_error_utils.h"
 #include "hilog_tag_wrapper.h"
@@ -172,7 +173,8 @@ private:
             [pid, innerErrorCode](napi_env env, NapiAsyncTask &task, int32_t status) {
             if (!pid || !innerErrorCode) {
                 TAG_LOGE(AAFwkTag::PROCESSMGR, "null innerErrorCode or pid");
-                task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+                task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::START_CHILD_PROCESS_FAILED)));
                 return;
             }
             if (*innerErrorCode == ChildProcessManagerErrorCode::ERR_OK) {
@@ -333,7 +335,8 @@ private:
             [pid, innerErrorCode](napi_env env, NapiAsyncTask &task, int32_t status) {
             if (!pid || !innerErrorCode) {
                 TAG_LOGE(AAFwkTag::PROCESSMGR, "null pid or innerErrorCode");
-                task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+                task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::START_CHILD_PROCESS_FAILED)));
                 return;
             }
             if (*innerErrorCode == ChildProcessManagerErrorCode::ERR_OK) {

@@ -129,7 +129,8 @@ void EtsAbilityAutoStartupManager::OnRegisterAutoStartupCallback(
     etsAutoStartupCallback_ = new (std::nothrow) EtsAbilityAutoStartupCallback(aniVM);
     if (etsAutoStartupCallback_ == nullptr) {
         TAG_LOGE(AAFwkTag::AUTO_STARTUP, "null etsAutoStartupCallback_");
-        EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        EtsErrorUtil::ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_CALLBACK_FAILED));
         return;
     }
     auto ret = AbilityManagerClient::GetInstance()->RegisterAutoStartupSystemCallback(
@@ -166,7 +167,8 @@ void EtsAbilityAutoStartupManager::OnUnregisterAutoStartupCallback(
 
     if (etsAutoStartupCallback_ == nullptr) {
         TAG_LOGE(AAFwkTag::AUTO_STARTUP, "null etsAutoStartupCallback_");
-        EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        EtsErrorUtil::ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::CALLBACK_NOT_REGISTERED));
         return;
     }
 
