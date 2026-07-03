@@ -242,6 +242,7 @@ bool AppRecovery::ExecuteFreezeCallbackWithVMSafety(const std::shared_ptr<OHOS::
     if (!abilityPtr) {
         return false;
     }
+
     if (IsEtsAPP() && this->freezeCallback) {
         this->freezeCallback();
         TAG_LOGW(AAFwkTag::RECOVERY, "Freeze callback execution completed");

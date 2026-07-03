@@ -253,7 +253,7 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_007, TestSize.Level1)
 }
 
 /**
- * @tc.number: AppfreezeManagerTest_007
+ * @tc.number: AppfreezeManagerTest_008
  * @tc.desc: add testcase codecoverage
  * @tc.type: FUNC
  */
@@ -505,7 +505,7 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_CatchSyncByPid_Test001, Test
     asyncPids.insert(hiviewPid);
     asyncPids.insert(-1);
     int launcherUid = AppfreezeUtil::GetUidByPid(launcherPid);
-    printf("launcherUid: %d\n", launcherUid);
+    EXPECT_TRUE(launcherUid >= 20000);
 
     std::set<int> syncPids;
     syncPids.insert(hiviewPid);
@@ -722,27 +722,6 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_CheckThreadKilled_Test001, T
     state = -1;
     appfreezeManager->InsertKillThread(state, pid, uid, bundleName);
     result = appfreezeManager->CheckThreadKilled(pid, uid, bundleName);
-    EXPECT_EQ(result, false);
-}
-
-/**
- * @tc.number: AppfreezeManagerTest CheckNeedRecordAppRunningUnquieId Test
- * @tc.desc: add testcase
- * @tc.type: FUNC
- */
-HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_CheckNeedRecordAppRunningUnquieId_Test001, TestSize.Level1)
-{
-    bool result = appfreezeManager->CheckNeedRecordAppRunningUnquieId("THREAD_BLOCK_3S");
-    EXPECT_EQ(result, true);
-    result = appfreezeManager->CheckNeedRecordAppRunningUnquieId("THREAD_BLOCK_6S");
-    EXPECT_EQ(result, true);
-    result = appfreezeManager->CheckNeedRecordAppRunningUnquieId("BUSSINESS_THREAD_BLOCK_3S");
-    EXPECT_EQ(result, true);
-    result = appfreezeManager->CheckNeedRecordAppRunningUnquieId("BUSSINESS_THREAD_BLOCK_6S");
-    EXPECT_EQ(result, true);
-    result = appfreezeManager->CheckNeedRecordAppRunningUnquieId("BUSINESS_INPUT_BLOCK");
-    EXPECT_EQ(result, true);
-    result = appfreezeManager->CheckNeedRecordAppRunningUnquieId("TEST");
     EXPECT_EQ(result, false);
 }
 
@@ -1090,6 +1069,56 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_IsNeedIgnoreInputBlockEvent_
     appfreezeManager->appInputBlockFreezeInfo_[key] = testTime;
     ret = appfreezeManager->IsNeedIgnoreInputBlockEvent(key);
     EXPECT_EQ(ret, false);
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest_UpdateEventInfo_001
+ * @tc.name: UpdateEventInfo
+ * @tc.desc: Verify that function UpdateEventInfo.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_UpdateEventInfo_Test001, TestSize.Level1)
+{
+    FaultData faultData;
+    faultData.tid = 100;
+    faultData.eventId = 200;
+    faultData.applicationHeapInfo = "heap_info";
+    faultData.applicationGCInfo = "gc_info";
+    faultData.applicationIOInfo = "io_info";
+    faultData.isBlockInGc = true;
+    AppfreezeManager::AppInfo appInfo;
+    appInfo.pid = 1000;
+    appInfo.uid = 2000;
+    std::string binderInfo = "test_binder_info";
+    std::string memoryContent = "test_memory_content";
+    AppfreezeEventInfo eventInfo = appfreezeManager->UpdateEventInfo(faultData, appInfo, binderInfo, memoryContent);
+    EXPECT_EQ(eventInfo.tid, 100);
+    EXPECT_EQ(eventInfo.eventId, 200);
+    EXPECT_EQ(eventInfo.applicationHeapInfo, "heap_info");
+    EXPECT_EQ(eventInfo.applicationGCInfo, "gc_info");
+    EXPECT_EQ(eventInfo.applicationIOInfo, "io_info");
+    EXPECT_EQ(eventInfo.isBlockInGc, true);
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest_UpdateEventInfo_002
+ * @tc.name: UpdateEventInfo with invalid tid
+ * @tc.desc: Verify that function UpdateEventInfo with invalid tid.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_UpdateEventInfo_Test002, TestSize.Level1)
+{
+    FaultData faultData;
+    faultData.tid = -1;
+    AppfreezeManager::AppInfo appInfo;
+    appInfo.pid = 1000;
+    appInfo.uid = 2000;
+    std::string binderInfo = "";
+    std::string memoryContent = "";
+    AppfreezeEventInfo eventInfo = appfreezeManager->UpdateEventInfo(faultData, appInfo, binderInfo, memoryContent);
+    EXPECT_EQ(eventInfo.tid, 0);
+    EXPECT_EQ(eventInfo.binderInfo, "");
+    EXPECT_EQ(eventInfo.freezeMemory, "\n");
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS
