@@ -1035,6 +1035,9 @@ int AbilityManagerStub::OnRemoteRequestInnerTwentySecond(uint32_t code, MessageP
     if (interfaceCode == AbilityManagerInterfaceCode::EXECUTE_SKILL_DONE_WITH_TOKEN) {
         return ExecuteSkillDoneWithTokenInner(data, reply);
     }
+    if (interfaceCode == AbilityManagerInterfaceCode::NOTIFY_SKILL_FUNCTION_INVOKED) {
+        return NotifySkillFunctionInvokedInner(data, reply);
+    }
     if (interfaceCode == AbilityManagerInterfaceCode::QUERY_SKILL_TYPE) {
         return QuerySkillTypeInner(data, reply);
     }
@@ -5833,6 +5836,20 @@ int32_t AbilityManagerStub::ExecuteSkillDoneWithTokenInner(MessageParcel &data, 
     int32_t ret = ExecuteSkillDone(token, requestCode, resultCode, *result);
     reply.WriteInt32(ret);
     delete result;
+    return NO_ERROR;
+}
+
+int32_t AbilityManagerStub::NotifySkillFunctionInvokedInner(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "notify skill function invoked stub");
+    auto token = data.ReadRemoteObject();
+    if (token == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "null token");
+        return ERR_INVALID_VALUE;
+    }
+    std::string requestCode = data.ReadString();
+    int32_t ret = NotifySkillFunctionInvoked(token, requestCode);
+    reply.WriteInt32(ret);
     return NO_ERROR;
 }
 

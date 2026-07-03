@@ -2773,6 +2773,7 @@ void JsUIAbility::ExecuteSkill(const AAFwk::Want &want,
             "skill function threw exception during execution");
         return;
     }
+    AAFwk::AbilityManagerClient::GetInstance()->NotifySkillFunctionInvoked(token_, param->requestCode_);
     TAG_LOGD(AAFwkTag::UIABILITY,
         "ExecuteSkill dispatched, waiting completeArkTSScriptInApp, requestCode:%{public}s",
         param->requestCode_.c_str());

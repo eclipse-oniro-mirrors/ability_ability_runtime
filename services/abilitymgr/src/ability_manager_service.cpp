@@ -15123,9 +15123,7 @@ int32_t AbilityManagerService::ExecuteInAppSkill(const std::string &bundleName, 
     } else {
         launchRet = StartAbilityByCallWithSkill(want, nullptr, userId, skillCallerTokenId);
     }
-    if (launchRet == ERR_OK) {
-        DelayedSingleton<SkillExecuteManager>::GetInstance()->OnLaunchCompleted(requestCode);
-    } else {
+    if (launchRet != ERR_OK) {
         DelayedSingleton<SkillExecuteManager>::GetInstance()->OnLaunchFailed(requestCode, launchRet);
     }
     return launchRet;
@@ -15186,9 +15184,7 @@ int32_t AbilityManagerService::ExecuteInAppSkillWithTokenId(const AppExecFwk::Sk
     } else {
         launchRet = StartAbilityByCallWithSkill(want, nullptr, userId, request.callerTokenId);
     }
-    if (launchRet == ERR_OK) {
-        DelayedSingleton<SkillExecuteManager>::GetInstance()->OnLaunchCompleted(requestCode);
-    } else {
+    if (launchRet != ERR_OK) {
         DelayedSingleton<SkillExecuteManager>::GetInstance()->OnLaunchFailed(requestCode, launchRet);
     }
     return launchRet;
@@ -15268,6 +15264,21 @@ int32_t AbilityManagerService::ExecuteSkillDone(const sptr<IRemoteObject> &token
         TAG_LOGE(AAFwkTag::ABILITYMGR, "ExecuteSkillDone failed, ret:%{public}d", ret);
     }
     return ret;
+}
+
+int32_t AbilityManagerService::NotifySkillFunctionInvoked(const sptr<IRemoteObject> &token,
+    const std::string &requestCode)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR,
+        "notify skill function invoked, requestCode:%{public}s", requestCode.c_str());
+    auto abilityRecord = Token::GetAbilityRecordByToken(token);
+    CHECK_POINTER_AND_RETURN_LOG(abilityRecord, ERR_INVALID_VALUE, "Ability record is nullptr.");
+    if (!JudgeSelfCalled(abilityRecord)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "not self called");
+        return CHECK_PERMISSION_FAILED;
+    }
+    DelayedSingleton<SkillExecuteManager>::GetInstance()->OnLaunchCompleted(requestCode);
+    return ERR_OK;
 }
 
 int32_t AbilityManagerService::QuerySkillType(const std::string &bundleName, const std::string &moduleName,

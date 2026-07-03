@@ -765,6 +765,11 @@ void JsServiceExtension::ExecuteSkill(const AAFwk::Want &want,
             "skill function threw exception during execution");
         return;
     }
+    auto context = GetContext();
+    if (context != nullptr && context->GetToken() != nullptr) {
+        AAFwk::AbilityManagerClient::GetInstance()->NotifySkillFunctionInvoked(
+            context->GetToken(), param->requestCode_);
+    }
     TAG_LOGD(AAFwkTag::SERVICE_EXT,
         "ExecuteSkill dispatched, requestCode:%{public}s", param->requestCode_.c_str());
 }
