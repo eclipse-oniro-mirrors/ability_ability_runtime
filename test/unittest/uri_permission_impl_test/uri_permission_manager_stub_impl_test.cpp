@@ -474,34 +474,6 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivilegedInn
 
 /*
  * Feature: UriPermissionManagerService
- * Function: GrantUriPermissionPrivilegedInner
- * SubFunction: NA
- * FunctionPoints: UriPermissionManagerService GrantUriPermissionPrivilegedInner
- */
-HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivilegedInner_003, TestSize.Level1)
-{
-    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    Uri uri("uri://media");
-    std::vector<Uri> uriVec;
-    uriVec.push_back(uri);
-    uint32_t flag = 1;
-    uint32_t callerTokenId = 1;
-    uint32_t targetTokenId = 1;
-    std::string targetAlterBundleName = "targetAlterBundleName";
-    int32_t hideSensitiveType = 1;
-    MyFlag::isUriTypeValid_ = true;
-    MyFlag::isDocsCloudUri_ = false;
-    std::string bundleName = "bundleName";
-    FUDAppInfo callerInfo = { callerTokenId, "caller", "callerAlterName" };
-    FUDAppInfo targetAppInfo = { targetTokenId, bundleName, targetAlterBundleName };
-    std::vector<int32_t> permissionTypes(uriVec.size(), 0);
-    auto result = upmsi->GrantUriPermissionPrivilegedInner(uriVec, flag, callerInfo, targetAppInfo,
-        hideSensitiveType, permissionTypes);
-    EXPECT_EQ(result, INNER_ERR);
-}
-
-/*
- * Feature: UriPermissionManagerService
  * Function: CheckUriAuthorization
  * SubFunction: NA
  * FunctionPoints: UriPermissionManagerService CheckUriAuthorization

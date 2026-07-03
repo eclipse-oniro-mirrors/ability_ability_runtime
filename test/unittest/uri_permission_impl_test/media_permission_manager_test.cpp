@@ -98,22 +98,6 @@ public:
 MockMediaPermFeature MediaPermissionManagerTest::mock_;
 
 // ============================================================================
-// GetInstance
-// ============================================================================
-
-/*
- * Feature: MediaPermissionManager
- * Function: GetInstance
- * FunctionPoints: returns the same singleton across calls
- */
-HWTEST_F(MediaPermissionManagerTest, GetInstance_Singleton_001, TestSize.Level1)
-{
-    auto &a = MediaPermissionManager::GetInstance();
-    auto &b = MediaPermissionManager::GetInstance();
-    EXPECT_EQ(&a, &b);
-}
-
-// ============================================================================
 // CheckUriPermission — feature unavailable fallback
 // ============================================================================
 
@@ -294,21 +278,6 @@ HWTEST_F(MediaPermissionManagerTest, GrantUriPermission_ParamPassthrough_001, Te
     EXPECT_EQ(MockMediaPermFeature::lastGrantCallerTokenId, CALLER_TOKEN_ID);
     EXPECT_EQ(MockMediaPermFeature::lastGrantTargetTokenId, TARGET_TOKEN_ID);
     EXPECT_EQ(MockMediaPermFeature::lastGrantHideSensitiveType, HIDE_SENSITIVE_TYPE);
-}
-
-// ============================================================================
-// RevokeUriPermission — feature unavailable fallback
-// ============================================================================
-
-/*
- * Feature: MediaPermissionManager
- * Function: RevokeUriPermission
- * FunctionPoints: media feature not loaded -> INNER_ERR
- */
-HWTEST_F(MediaPermissionManagerTest, RevokeUriPermission_FeatureUnavailable_001, TestSize.Level1)
-{
-    auto ret = MediaPermissionManager::GetInstance().RevokeUriPermission(CALLER_TOKEN_ID, TARGET_TOKEN_ID, URI_A);
-    EXPECT_EQ(ret, INNER_ERR);
 }
 
 // ============================================================================

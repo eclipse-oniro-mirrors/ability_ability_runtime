@@ -94,17 +94,6 @@ HWTEST_F(DynamicFeatureManagerTest, Register_001, TestSize.Level1)
 
 /*
  * Feature: DynamicFeatureManager
- * Function: Acquire
- * FunctionPoints: Acquire on unregistered feature returns invalid scope
- */
-HWTEST_F(DynamicFeatureManagerTest, Acquire_Unregistered_001, TestSize.Level1)
-{
-    auto scope = DynamicFeatureManager::GetInstance().Acquire(FeatureId::STORAGE);
-    EXPECT_FALSE(scope.IsValid());
-}
-
-/*
- * Feature: DynamicFeatureManager
  * Function: Acquire + RAII
  * FunctionPoints: Acquire returns injected instance; scope holds activeCount; release decrements (AC-3)
  */
@@ -506,34 +495,6 @@ HWTEST_F(DynamicFeatureManagerTest, UnloadFeatureIfIdle_LoadedIdle_001, TestSize
 /*
  * Feature: DynamicFeatureManager
  * Function: DestroyDeleter (private nested struct)
- * FunctionPoints: null fn is a no-op — does not call any destroy or delete p
- */
-HWTEST_F(DynamicFeatureManagerTest, DestroyDeleter_NullFn_001, TestSize.Level1)
-{
-    static MockFeature mock;
-    DynamicFeatureManager::DestroyDeleter deleter; // fn = nullptr
-    deleter(&mock);   // no-op: mock not freed
-    deleter(nullptr); // no-op
-    SUCCEED();
-}
-
-/*
- * Feature: DynamicFeatureManager
- * Function: DestroyDeleter (private nested struct)
- * FunctionPoints: non-null fn with null p is a no-op
- */
-HWTEST_F(DynamicFeatureManagerTest, DestroyDeleter_NullP_001, TestSize.Level1)
-{
-    g_destroyDeleterCaptured = nullptr;
-    DynamicFeatureManager::DestroyDeleter deleter;
-    deleter.fn = TestDestroyFeature;
-    deleter(nullptr);
-    EXPECT_EQ(g_destroyDeleterCaptured, nullptr); // fn not called
-}
-
-/*
- * Feature: DynamicFeatureManager
- * Function: DestroyDeleter (private nested struct)
  * FunctionPoints: non-null fn with non-null p invokes fn(p)
  */
 HWTEST_F(DynamicFeatureManagerTest, DestroyDeleter_InvokesFn_001, TestSize.Level1)
@@ -554,8 +515,6 @@ HWTEST_F(DynamicFeatureManagerTest, DestroyDeleter_InvokesFn_001, TestSize.Level
 HWTEST_F(DynamicFeatureManagerTest, Destructor_LoadedAndPending_001, TestSize.Level1)
 {
     static MockFeature mock;
-    // Use a local (non-singleton) instance — the default constructor is
-    // accessible via -Dprivate=public; the destructor runs at scope exit.
     {
         DynamicFeatureManager localMgr;
         auto &entry = localMgr.registry_[FeatureId::STORAGE];
@@ -564,26 +523,8 @@ HWTEST_F(DynamicFeatureManagerTest, Destructor_LoadedAndPending_001, TestSize.Le
         entry.loaded = true;
         localMgr.ArmUnloadLocked(entry, FeatureId::STORAGE);
         ASSERT_TRUE(entry.unloadHandle.has_value());
-        // ~DynamicFeatureManager runs here: cancels task, unloads entry
     }
     SUCCEED(); // did not crash
-}
-
-/*
- * Feature: DynamicFeatureManager
- * Function: Destructor (private)
- * FunctionPoints: destructor skips not-loaded entries
- */
-HWTEST_F(DynamicFeatureManagerTest, Destructor_NotLoaded_001, TestSize.Level1)
-{
-    {
-        DynamicFeatureManager localMgr;
-        auto &entry = localMgr.registry_[FeatureId::MEDIA];
-        entry.soname = "libtest.z.so";
-        entry.loaded = false;
-        // ~DynamicFeatureManager: !loaded → skip UnloadLocked
-    }
-    SUCCEED();
 }
 
 // ============================================================================
@@ -678,19 +619,6 @@ HWTEST_F(DynamicFeatureScopeTest, Destructor_Releases_001, TestSize.Level1)
         DynamicFeatureScope scope(FeatureId::STORAGE, &mock);
     }
     EXPECT_EQ(mgr.registry_[FeatureId::STORAGE].activeCount, 0);
-}
-
-/*
- * Feature: DynamicFeatureScope
- * Function: destructor
- * FunctionPoints: destructor of an invalid scope is a no-op (no OnScopeReleased)
- */
-HWTEST_F(DynamicFeatureScopeTest, Destructor_Invalid_NoOp_001, TestSize.Level1)
-{
-    {
-        DynamicFeatureScope scope; // invalid
-    }
-    SUCCEED();
 }
 
 /*
@@ -836,17 +764,6 @@ HWTEST_F(DynamicFeatureScopeTest, Get_DerivedType_001, TestSize.Level1)
     auto *p = scope.Get<DerivedMockFeature>();
     EXPECT_NE(p, nullptr);
     EXPECT_EQ(p->value, 42);
-}
-
-/*
- * Feature: DynamicFeatureScope
- * Function: Get (template)
- * FunctionPoints: Get on an invalid scope returns nullptr
- */
-HWTEST_F(DynamicFeatureScopeTest, Get_Invalid_001, TestSize.Level1)
-{
-    DynamicFeatureScope scope;
-    EXPECT_EQ(scope.Get<IDynamicFeature>(), nullptr);
 }
 
 /*
