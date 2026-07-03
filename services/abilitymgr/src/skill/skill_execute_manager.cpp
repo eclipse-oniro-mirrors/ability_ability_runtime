@@ -196,46 +196,53 @@ int32_t SkillExecuteManager::ExecuteSkillDone(const std::string &requestCode, in
     TAG_LOGD(AAFwkTag::ABILITYMGR,
         "execute skill done, requestCode:%{public}s code:%{public}d",
         requestCode.c_str(), resultCode);
-    std::lock_guard<ffrt::mutex> lock(mutex_);
-    auto it = records_.find(requestCode);
-    if (it == records_.end()) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "record not found, requestCode:%{public}s", requestCode.c_str());
-        return ERR_CODE_INVALID_ID;
-    }
 
-    auto record = it->second;
-    if (record->targetBundleName != callerBundleName) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR,
-            "bundleName %{public}s and %{public}s mismatch",
-            callerBundleName.c_str(), record->targetBundleName.c_str());
-        return ERR_INVALID_VALUE;
-    }
-    if (record->state != SkillExecuteState::EXECUTING) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid state:%{public}d", static_cast<int>(record->state));
-        return ERR_INVALID_VALUE;
-    }
+    sptr<ISkillExecuteCallback> callback;
+    {
+        std::lock_guard<ffrt::mutex> lock(mutex_);
+        auto it = records_.find(requestCode);
+        if (it == records_.end()) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "record not found, requestCode:%{public}s",
+                requestCode.c_str());
+            return ERR_CODE_INVALID_ID;
+        }
+
+        auto record = it->second;
+        if (record->targetBundleName != callerBundleName) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR,
+                "bundleName %{public}s and %{public}s mismatch",
+                callerBundleName.c_str(), record->targetBundleName.c_str());
+            return ERR_INVALID_VALUE;
+        }
+        if (record->state != SkillExecuteState::EXECUTING) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid state:%{public}d", static_cast<int>(record->state));
+            return ERR_INVALID_VALUE;
+        }
 
 #ifdef SUPPORT_UPMS
-    if (!result.uris.empty() && !record->callerBundleName.empty()) {
-        std::vector<Uri> uriList;
-        for (const auto &uriStr : result.uris) {
-            uriList.emplace_back(uriStr);
+        if (!result.uris.empty() && !record->callerBundleName.empty()) {
+            std::vector<Uri> uriList;
+            for (const auto &uriStr : result.uris) {
+                uriList.emplace_back(uriStr);
+            }
+            auto &uriPermClient = UriPermissionManagerClient::GetInstance();
+            auto ret = uriPermClient.GrantUriPermission(
+                uriList, result.flags, record->callerBundleName, 0, record->callerTokenId);
+            if (ret != ERR_OK) {
+                TAG_LOGE(AAFwkTag::ABILITYMGR, "GrantUriPermission failed, ret:%{public}d", ret);
+            }
         }
-        auto &uriPermClient = UriPermissionManagerClient::GetInstance();
-        auto ret = uriPermClient.GrantUriPermission(
-            uriList, result.flags, record->callerBundleName, 0, record->callerTokenId);
-        if (ret != ERR_OK) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "GrantUriPermission failed, ret:%{public}d", ret);
-        }
-    }
 #endif
 
-    RemoveSkillExecuteTimeoutLocked(record->requestCodeSeq);
-    record->state = SkillExecuteState::EXECUTE_DONE;
-    if (record->callback != nullptr) {
-        record->callback->OnExecuteDone(requestCode, resultCode, result);
+        RemoveSkillExecuteTimeoutLocked(record->requestCodeSeq);
+        record->state = SkillExecuteState::EXECUTE_DONE;
+        callback = record->callback;
+        RemoveRecord(requestCode);
     }
-    RemoveRecord(requestCode);
+
+    if (callback != nullptr) {
+        callback->OnExecuteDone(requestCode, resultCode, result);
+    }
     return ERR_OK;
 }
 
@@ -364,33 +371,38 @@ void SkillExecuteManager::RemoveSkillExecuteTimeoutLocked(uint64_t requestCodeSe
 void SkillExecuteManager::OnTimeout(int64_t requestCodeSeq)
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "called, seq:%{public}" PRId64, requestCodeSeq);
+
+    sptr<ISkillExecuteCallback> callback;
     std::string requestCode;
     {
         std::lock_guard<ffrt::mutex> lock(mutex_);
         auto seqIt = seqToRequestCodeMap_.find(requestCodeSeq);
         if (seqIt == seqToRequestCodeMap_.end()) {
-            TAG_LOGW(AAFwkTag::ABILITYMGR, "seq not found");
+            TAG_LOGW(AAFwkTag::ABILITYMGR, "seq not found, seq:%{public}" PRId64, requestCodeSeq);
             return;
         }
         requestCode = seqIt->second;
         seqToRequestCodeMap_.erase(seqIt);
+
+        auto it = records_.find(requestCode);
+        if (it == records_.end()) {
+            return;
+        }
+        auto &record = it->second;
+        if (record->state != SkillExecuteState::EXECUTING) {
+            return;
+        }
+
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "skill execute timed out, req:%{public}s", requestCode.c_str());
+        record->state = SkillExecuteState::TIMED_OUT;
+        callback = record->callback;
+        RemoveRecord(requestCode);
     }
-    std::lock_guard<ffrt::mutex> lock(mutex_);
-    auto it = records_.find(requestCode);
-    if (it == records_.end()) {
-        return;
-    }
-    auto record = it->second;
-    if (record->state != SkillExecuteState::EXECUTING) {
-        return;
-    }
-    TAG_LOGW(AAFwkTag::ABILITYMGR, "skill execute timed out, req:%{public}s", requestCode.c_str());
-    record->state = SkillExecuteState::TIMED_OUT;
-    if (record->callback != nullptr) {
+
+    if (callback != nullptr) {
         AppExecFwk::SkillExecuteResult emptyResult;
-        record->callback->OnExecuteDone(requestCode, ERR_TIMED_OUT, emptyResult);
+        callback->OnExecuteDone(requestCode, ERR_TIMED_OUT, emptyResult);
     }
-    RemoveRecord(requestCode);
 }
 
 } // namespace AAFwk
