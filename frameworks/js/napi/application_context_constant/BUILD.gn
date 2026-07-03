@@ -24,6 +24,8 @@ ohos_shared_library("contextconstant_napi") {
   external_deps = [
     "c_utils:utils",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   relative_install_dir = "module/app/ability"

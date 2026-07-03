@@ -51,6 +51,8 @@ ohos_shared_library("autofillmanager_napi") {
     "ipc:ipc_single",
     "json:nlohmann_json_static",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {

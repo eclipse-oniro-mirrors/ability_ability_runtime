@@ -69,6 +69,8 @@ template("delegator") {
       "napi:ace_napi",
       "runtime_core:ani",
       "runtime_core:ani_helpers",
+      "libuv:uv",
+      "node:node_header_notice",
     ]
 
     cflags_cc = []

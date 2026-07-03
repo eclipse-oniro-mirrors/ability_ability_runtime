@@ -40,6 +40,8 @@ ohos_shared_library("ability_runtime_error_util") {
     "c_utils:utils",
     "hilog:libhilog",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   innerapi_tags = [ "platformsdk" ]

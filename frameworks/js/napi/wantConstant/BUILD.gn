@@ -25,6 +25,8 @@ ohos_shared_library("wantconstant") {
   external_deps = [
     "hilog:libhilog",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   cflags_cc = []

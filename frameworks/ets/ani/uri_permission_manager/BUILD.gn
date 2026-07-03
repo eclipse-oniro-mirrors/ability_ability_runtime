@@ -77,6 +77,8 @@ ohos_shared_library("uri_permission_manager_ani_kit") {
     "json:nlohmann_json_static",
     "napi:ace_napi",
     "runtime_core:ani",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   public_external_deps = [ "ability_base:configuration" ]

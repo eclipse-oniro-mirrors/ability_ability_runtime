@@ -32,7 +32,11 @@ ohos_shared_library("agentextensionability") {
     "${agent_runtime_framework_path}/frameworks/js/js/agent_extension_ability:agent_extension_ability_js",
   ]
 
-  external_deps = [ "napi:ace_napi" ]
+  external_deps = [
+    "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
+  ]
 
   defines = [ "ENABLE_ERRCODE" ]
 
@@ -87,6 +91,8 @@ ohos_shared_library("js_agent_connection") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   subsystem_name = "ability"
@@ -157,6 +163,8 @@ ohos_shared_library("js_agent_extension") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   subsystem_name = "ability"

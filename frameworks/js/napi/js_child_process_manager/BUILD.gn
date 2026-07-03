@@ -39,6 +39,8 @@ ohos_shared_library("childprocessmanager_napi") {
     "ipc:ipc_capi",
     "ipc:ipc_core",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_child_process) {

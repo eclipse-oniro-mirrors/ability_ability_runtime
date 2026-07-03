@@ -35,6 +35,8 @@ ohos_shared_library("errorcode_napi") {
   external_deps = [
     "hilog:libhilog",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   relative_install_dir = "module/ability"

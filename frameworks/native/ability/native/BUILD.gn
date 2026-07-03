@@ -193,6 +193,8 @@ ohos_shared_library("abilitykit_utils") {
     "json:nlohmann_json_static",
     "napi:ace_napi",
     "resource_management:global_resmgr",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   public_external_deps = [
@@ -272,6 +274,9 @@ ohos_shared_library("configuration_helper") {
     "json:nlohmann_json_static",
     "napi:ace_napi",
     "resource_management:global_resmgr",
+    "libuv:uv",
+    "node:node_header_notice",
+    "ets_runtime:libark_jsruntime",
   ]
 
   if (ability_runtime_graphics) {
@@ -398,6 +403,8 @@ ohos_shared_library("abilitykit_native") {
     "resource_management:global_resmgr",
     "samgr:samgr_proxy",
     "window_manager:windowstage_kit",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   defines = []
@@ -533,6 +540,8 @@ ohos_shared_library("ability_observer_ipc") {
     "ipc:ipc_core",
     "napi:ace_napi",
     "samgr:samgr_proxy",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   subsystem_name = "ability"
@@ -588,6 +597,8 @@ ohos_shared_library("cj_abilitykit_native_ffi") {
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
     "window_manager:libwm",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (!(host_os == "linux" && host_cpu == "arm64")) {
@@ -684,6 +695,8 @@ ohos_shared_library("extensionkit_native") {
     "ipc:ipc_napi",
     "json:nlohmann_json_static",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   public_external_deps = [
@@ -756,6 +769,8 @@ ohos_shared_library("cj_extensionkit_native") {
     "napi:ace_napi",
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   public_external_deps = [ "bundle_framework:appexecfwk_core" ]
@@ -825,6 +840,8 @@ ohos_shared_library("insight_intent_executor") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   subsystem_name = "ability"
@@ -890,6 +907,8 @@ ohos_shared_library("insight_intent_executor_ani") {
     "napi:ace_napi",
     "runtime_core:ani",
     "window_manager:libwm",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   subsystem_name = "ability"
@@ -945,6 +964,8 @@ ohos_shared_library("cj_insight_intent_executor") {
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
     "window_manager:libwm",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
@@ -1285,6 +1306,8 @@ ohos_shared_library("ability_thread") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   defines = []
@@ -1364,6 +1387,8 @@ ohos_shared_library("ets_form_extension") {
       "ipc:rpc_taihe",
       "napi:ace_napi",
       "runtime_core:ani",
+      "libuv:uv",
+      "node:node_header_notice",
     ]
 
     if (form_fwk_enable) {
@@ -1432,6 +1457,8 @@ ohos_shared_library("form_extension") {
       "ipc:ipc_napi",
       "napi:ace_napi",
       "runtime_core:ani",
+      "libuv:uv",
+      "node:node_header_notice",
     ]
 
     if (form_fwk_enable) {
@@ -1507,6 +1534,8 @@ ohos_shared_library("cj_form_extension") {
       "napi:ace_napi",
       "napi:cj_bind_ffi",
       "napi:cj_bind_native",
+      "libuv:uv",
+      "node:node_header_notice",
     ]
 
     if (form_fwk_enable) {
@@ -1557,6 +1586,8 @@ ohos_shared_library("form_extension_module") {
     "window_manager:libwm",
     "form_fwk:form_render_info",
     "form_fwk:form_common_info",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -1624,6 +1655,8 @@ ohos_shared_library("service_extension") {
     "napi:ace_napi",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (defined(hiviewdfx_runtime_api_metrics_enable) && hiviewdfx_runtime_api_metrics_enable) {
@@ -1845,6 +1878,8 @@ ohos_shared_library("ui_service_extension_connection") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   subsystem_name = "ability"
@@ -1903,6 +1938,8 @@ ohos_shared_library("ui_service_extension_connection_ani") {
     "runtime_core:ani",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   subsystem_name = "ability"
@@ -1985,6 +2022,8 @@ ohos_shared_library("ui_service_extension") {
     "napi:ace_napi",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   public_external_deps = []
@@ -2088,6 +2127,8 @@ ohos_shared_library("ui_service_extension_ani") {
     "ipc:ipc_napi",
     "ipc:rpc_taihe",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:windowstageani_kit",
@@ -2171,6 +2212,8 @@ ohos_shared_library("ui_service_extension_module") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -2346,6 +2389,8 @@ ohos_shared_library("service_extension_module") {
     "ipc:ipc_single",
     "json:nlohmann_json_static",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -2546,6 +2591,8 @@ ohos_shared_library("ui_extension") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
     "window_manager:embeddablewindowstage_kit",
     "window_manager:extensionwindow_napi",
     "window_manager:windowstage_kit",
@@ -2642,6 +2689,8 @@ ohos_shared_library("photo_editor_extension_ani") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
     "window_manager:embeddablewindowstage_kit",
     "window_manager:embeddablewindowstageani_kit",
     "window_manager:extensionwindow_napi",
@@ -2865,6 +2914,8 @@ ohos_shared_library("ui_extension_module") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
     "window_manager:libwm",
   ]
   if (ability_runtime_graphics) {
@@ -2929,6 +2980,8 @@ ohos_shared_library("share_extension") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (cj_frontend) {
@@ -3041,6 +3094,8 @@ ohos_shared_library("action_extension") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (cj_frontend) {
@@ -3129,6 +3184,8 @@ ohos_shared_library("share_extension_module") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -3197,6 +3254,8 @@ ohos_shared_library("action_extension_module") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -3328,6 +3387,8 @@ ohos_shared_library("embedded_ui_extension") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (cj_frontend) {
@@ -3434,6 +3495,8 @@ ohos_shared_library("embedded_ui_extension_module") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -3493,6 +3556,8 @@ ohos_shared_library("auto_fill_extension") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
   if (ability_runtime_auto_fill) {
     sources += [
@@ -3647,6 +3712,8 @@ ohos_shared_library("auto_fill_extension_module") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
     "window_manager:libwm",
   ]
   if (ability_runtime_auto_fill) {
@@ -3727,6 +3794,8 @@ ohos_shared_library("photo_editor_extension") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (cj_frontend) {
@@ -3835,6 +3904,8 @@ ohos_shared_library("photo_editor_extension_module") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -3908,6 +3979,8 @@ ohos_shared_library("app_service_extension") {
     "napi:ace_napi",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -3964,6 +4037,8 @@ ohos_shared_library("app_service_extension_module") {
     "ipc:ipc_napi",
     "json:nlohmann_json_static",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -4042,6 +4117,8 @@ ohos_shared_library("modular_object_extension") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   innerapi_tags = [ "platformsdk" ]
@@ -4086,6 +4163,8 @@ ohos_shared_library("modular_object_extension") {
     "ipc:ipc_napi",
     "json:nlohmann_json_static",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {

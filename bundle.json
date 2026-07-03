@@ -121,7 +121,9 @@
             "zlib",
             "hiperf",
             "hiprofiler",
-            "taihe_ffi_gen"
+            "taihe_ffi_gen",
+            "node",
+            "libuv"
           ]
       },
       "build": {
