@@ -130,6 +130,7 @@ private:
 struct OH_AbilityRuntime_ModularObjectDispatcher {
     OHOS::sptr<OHOS::IRemoteObject> proxy = nullptr;
     std::shared_ptr<OHOS::AbilityRuntime::ModObjDispatcherMetadataManager> metadataManager;
+    OHOS::sptr<OHOS::IRemoteObject::DeathRecipient> deathRecipient;
 };
 
 struct OH_AbilityRuntime_ModularObjectDispatcher_TypeDescriptor {

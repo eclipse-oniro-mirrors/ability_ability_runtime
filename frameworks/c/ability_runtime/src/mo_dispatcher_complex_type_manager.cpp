@@ -1722,6 +1722,15 @@ void ModObjDispatcherComplexTypeManager::RegisterStructMetadata(const std::vecto
     }
 }
 
+void ModObjDispatcherComplexTypeManager::UnregisterStructMetadata(const std::vector<MoStructMeta>& structs)
+{
+    std::lock_guard<std::mutex> lock(g_structMetaMutex);
+    for (const auto& structMeta : structs) {
+        g_structFieldTypes.erase(structMeta.name);
+        g_structFieldOrder.erase(structMeta.name);
+    }
+}
+
 bool ModObjDispatcherComplexTypeManager::GetStructFieldType(const std::string& structName, const std::string& fieldName,
     std::shared_ptr<MoTypeInfo>* fieldType)
 {

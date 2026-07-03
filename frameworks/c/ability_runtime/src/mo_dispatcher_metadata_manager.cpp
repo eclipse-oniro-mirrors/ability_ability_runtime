@@ -281,6 +281,27 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::EnsureLoaded(OHOS::IRe
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 
+// -------- ClearCache --------
+
+void ModObjDispatcherMetadataManager::ClearCache()
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!loaded_) {
+        return;
+    }
+    ModObjDispatcherComplexTypeManager::UnregisterStructMetadata(structs_);
+    loaded_ = false;
+    version_.clear();
+    mainServiceInterface_.clear();
+    interfaces_.clear();
+    enums_.clear();
+    structs_.clear();
+    nameToMemberId_.clear();
+    memberIdToName_.clear();
+    memberIdToMethod_.clear();
+    TAG_LOGI(AAFwkTag::EXT, "ClearCache: metadata cache cleared");
+}
+
 // -------- RequestMetadataJson --------
 
 AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::RequestMetadataJson(OHOS::IRemoteObject* proxy,
