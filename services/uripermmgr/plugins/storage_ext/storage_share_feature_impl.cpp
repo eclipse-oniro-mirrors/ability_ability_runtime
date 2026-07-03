@@ -34,6 +34,9 @@ StorageShareFeatureImpl::~StorageShareFeatureImpl()
         storageManager_->AsObject()->RemoveDeathRecipient(deathRecipient_);
     }
     storageManager_ = nullptr;
+    if (deathRecipient_ != nullptr) {
+        deathRecipient_->owner_ = nullptr;
+    }
     deathRecipient_ = nullptr;
 }
 
@@ -70,7 +73,7 @@ sptr<StorageManager::IStorageManager> StorageShareFeatureImpl::GetStorageManager
         storageManager_ = nullptr;
         return nullptr;
     }
-    deathRecipient_ = new StorageDeathRecipient(this);
+    deathRecipient_ = sptr<StorageDeathRecipient>::MakeSptr(this);
     storageManager_->AsObject()->AddDeathRecipient(deathRecipient_);
     return storageManager_;
 }

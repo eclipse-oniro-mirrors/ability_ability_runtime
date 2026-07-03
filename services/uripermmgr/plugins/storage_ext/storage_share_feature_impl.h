@@ -49,7 +49,8 @@ private:
         void OnRemoteDied(const wptr<IRemoteObject> &remote) override;
 
     private:
-        StorageShareFeatureImpl *owner_;
+        friend class StorageShareFeatureImpl;
+        StorageShareFeatureImpl *owner_ = nullptr;
     };
 
     sptr<StorageManager::IStorageManager> GetStorageManager();

@@ -80,6 +80,8 @@ ohos_unittest("uri_permission_impl_test") {
     "ffrt:libffrt",
     "googletest:gmock_main",
     "googletest:gtest_main",
+    "hisysevent:libhisysevent",
+    "ipc:ipc_core",
     "storage_service:storage_manager_sa_proxy",
   ]
   if (ability_runtime_feature_sandboxmanager) {
@@ -153,6 +155,7 @@ ohos_unittest("uri_permission_manager_stub_impl_test") {
     "googletest:gmock_main",
     "googletest:gtest_main",
     "hilog:libhilog",
+    "hisysevent:libhisysevent",
     "ipc:ipc_core",
   ]
   if (ability_runtime_feature_sandboxmanager) {
@@ -266,6 +269,10 @@ ohos_unittest("media_permission_manager_test") {
   if (os_dlp_part_enabled) {
     cflags_cc += [ "-DWITH_DLP" ]
   }
+  cflags = [
+    "-Dprivate = public",
+    "-Dprotected = public",
+  ]
 }
 
 group("unittest") {

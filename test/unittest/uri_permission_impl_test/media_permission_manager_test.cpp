@@ -19,14 +19,8 @@
 #include <vector>
 
 #include "ability_manager_errors.h"
-
-#define private public
-#define protected public
 #include "dynamic_feature_manager.h"
 #include "media_permission_manager.h"
-#undef private
-#undef protected
-
 #include "mock_dynamic_features.h"
 
 using namespace testing;

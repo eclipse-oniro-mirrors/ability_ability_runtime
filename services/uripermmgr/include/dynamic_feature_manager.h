@@ -113,7 +113,7 @@ private:
         CreateFn create = nullptr;
         DestroyFn destroy = nullptr;
         bool loaded = false;
-        int activeCount = 0;      // active DynamicFeatureScope count for this feature
+        int32_t activeCount = 0;      // active DynamicFeatureScope count for this feature
         std::optional<ffrt::task_handle> unloadHandle;  // per-feature idle-unload task
     };
 
