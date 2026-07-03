@@ -192,14 +192,14 @@ ErrCode AppMgrService::Init()
     if (FAILED(openErr)) {
         TAG_LOGW(AAFwkTag::APPMGR, "fail, errCode: %{public}08x", openErr);
     }
-    if (!Publish(this)) {
-        TAG_LOGE(AAFwkTag::APPMGR, " publish fail");
-        return ERR_APPEXECFWK_SERVICE_NOT_CONNECTED;
-    }
     amsMgrScheduler_ = new (std::nothrow) AmsMgrScheduler(appMgrServiceInner_, taskHandler_);
     if (!amsMgrScheduler_) {
         TAG_LOGE(AAFwkTag::APPMGR, "init failed");
         return ERR_INVALID_OPERATION;
+    }
+    if (!Publish(this)) {
+        TAG_LOGE(AAFwkTag::APPMGR, " publish fail");
+        return ERR_APPEXECFWK_SERVICE_NOT_CONNECTED;
     }
     TAG_LOGI(AAFwkTag::APPMGR, "init success");
     return ERR_OK;
