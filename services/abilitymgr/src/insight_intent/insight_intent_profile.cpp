@@ -16,6 +16,7 @@
 #include "insight_intent_profile.h"
 
 #include "hilog_tag_wrapper.h"
+#include "intent_json_safe_get.h"
 #include "json_util.h"
 
 namespace OHOS {
@@ -189,7 +190,7 @@ void ProcessIntputParams(const nlohmann::json &jsonObject,
             g_parseResult = ERR_INVALID_VALUE;
             break;
         }
-        insightIntentInfo.inputParams.emplace_back(param.dump());
+        insightIntentInfo.inputParams.emplace_back(SafeDump(param));
     }
 }
 
@@ -217,7 +218,7 @@ void ProcessOutputParams(const nlohmann::json &jsonObject,
             g_parseResult = ERR_INVALID_VALUE;
             break;
         }
-        insightIntentInfo.outputParams.emplace_back(param.dump());
+        insightIntentInfo.outputParams.emplace_back(SafeDump(param));
     }
 }
 
@@ -329,7 +330,7 @@ void from_json(const nlohmann::json &jsonObject, InsightIntentProfileInfo &insig
     ProcessOutputParams(jsonObject, insightIntentInfo, g_parseResult);
     if (jsonObject.find(INSIGHT_INTENT_ENTITES) != jsonObjectEnd) {
         if (jsonObject.at(INSIGHT_INTENT_ENTITES).is_object()) {
-            insightIntentInfo.cfgEntities =  jsonObject[INSIGHT_INTENT_ENTITES].dump();
+            insightIntentInfo.cfgEntities = SafeDump(jsonObject[INSIGHT_INTENT_ENTITES]);
         } else {
             TAG_LOGE(AAFwkTag::INTENT, "type error: cfgEntities not object");
             g_parseResult = ERR_INVALID_VALUE;
@@ -413,13 +414,16 @@ bool InsightIntentProfile::TransformTo(const std::string &profileStr, std::vecto
         TAG_LOGE(AAFwkTag::INTENT, "discarded jsonObject");
         return false;
     }
-    TAG_LOGD(AAFwkTag::INTENT, "jsonObject : %{public}s", jsonObject.dump().c_str());
+    TAG_LOGD(AAFwkTag::INTENT, "jsonObject : %{public}s", SafeDump(jsonObject, 200).c_str());
 
     InsightIntentProfileInfoVec profileInfos;
     {
         std::lock_guard<std::mutex> lock(g_mutex);
         g_parseResult = ERR_OK;
-        profileInfos = jsonObject.get<InsightIntentProfileInfoVec>();
+        if (!SafeJsonGet(jsonObject, profileInfos, "InsightIntentProfileInfoVec")) {
+            g_parseResult = ERR_OK;
+            return false;
+        }
         if (g_parseResult != ERR_OK) {
             TAG_LOGE(AAFwkTag::INTENT, "g_parseResult :%{public}d", g_parseResult);
             int32_t ret = g_parseResult;
@@ -527,7 +531,7 @@ bool InsightIntentProfile::ToJson(const InsightIntentInfo &info, nlohmann::json 
     }
 
     jsonObject[INSIGHT_INTENTS] = nlohmann::json::array({ subJsonObject });
-    TAG_LOGD(AAFwkTag::INTENT, "to json string: %{public}s", jsonObject.dump().c_str());
+    TAG_LOGD(AAFwkTag::INTENT, "to json string: %{public}s", SafeDump(jsonObject, 200).c_str());
     return true;
 }
 } // namespace AbilityRuntime
