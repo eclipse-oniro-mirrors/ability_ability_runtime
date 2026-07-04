@@ -1166,6 +1166,16 @@ enum {
     ERR_MOE_CROSS_APP_IN_PROCESS = 2099417,
 
     /**
+     * Result (2099418) for evict file type error (not ending with .so/.hap/.hsp).
+     */
+    ERR_EVICT_FILE_TYPE = 2099418,
+
+    /**
+     * Result (2099419) for failed to parse memory_optimizer.json configuration file.
+     */
+    ERR_EVICT_CONFIG_PARSE = 2099419,
+
+    /**
      * Native error(3000000) for target bundle not exist.
      */
     ERR_CODE_NOT_EXIST = 3000000,

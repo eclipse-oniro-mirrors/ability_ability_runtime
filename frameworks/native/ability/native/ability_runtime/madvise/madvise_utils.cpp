@@ -29,9 +29,15 @@
 #include <string>
 #include <vector>
 
+#include "ability_manager_errors.h"
+#include "bundle_info.h"
+#include "bundle_mgr_helper.h"
+#include "errors.h"
+#include "extractor.h"
 #include "hilog_tag_wrapper.h"
 #include "json_utils.h"
 #include "nlohmann/json.hpp"
+#include "singleton.h"
 #include "vma_utils.h"
 
 namespace {
@@ -332,6 +338,142 @@ int32_t MadviseWithConfigFile(const char* bundleName)
         return -1;
     }
     return ApplyMadviseWithConfig(bundleName, config);
+}
+
+namespace {
+inline bool EndsWith(const std::string& name, const std::string& suffix)
+{
+    return name.size() > suffix.size() &&
+        name.compare(name.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
+
+constexpr const char* MEMORY_OPTIMIZER_CONFIG_PATH = "resources/rawfile/memory_optimizer.json";
+constexpr const char* EVICT_FILE_PAGES_KEY = "evictFilePages";
+
+// Resolves the calling process's own hap module infos via the bundle manager.
+bool GetCallerHapModules(std::vector<AppExecFwk::HapModuleInfo> &hapModules)
+{
+    auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
+    if (bundleMgrHelper == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITY, "bundleMgrHelper is null");
+        return false;
+    }
+    auto flag = static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_HAP_MODULE);
+    AppExecFwk::BundleInfo bundleInfo;
+    if (bundleMgrHelper->GetBundleInfoForSelf(flag, bundleInfo) != ERR_OK) {
+        TAG_LOGE(AAFwkTag::ABILITY, "GetBundleInfoForSelf failed");
+        return false;
+    }
+    hapModules = std::move(bundleInfo.hapModuleInfos);
+    return true;
+}
+
+// Reads resources/rawfile/memory_optimizer.json from the hap and appends the
+// evictFilePages entries to outNames. Returns false on any read/parse failure.
+bool ReadEvictFilesFromHap(const std::string &hapPath, std::vector<std::string> &outNames)
+{
+    std::string loadPath = AbilityBase::ExtractorUtil::GetLoadFilePath(hapPath);
+    bool newCreate = false;
+    auto extractor = AbilityBase::ExtractorUtil::GetExtractor(loadPath, newCreate);
+    if (extractor == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITY, "extractor is null for hapPath");
+        return false;
+    }
+    std::unique_ptr<uint8_t[]> data;
+    size_t len = 0;
+    if (!extractor->ExtractToBufByName(MEMORY_OPTIMIZER_CONFIG_PATH, data, len)) {
+        TAG_LOGE(AAFwkTag::ABILITY, "read memory_optimizer.json failed");
+        return false;
+    }
+    std::string configStr(data.get(), data.get() + len);
+    nlohmann::json configJson = nlohmann::json::parse(configStr, nullptr, false);
+    if (configJson.is_discarded() || !configJson.contains(EVICT_FILE_PAGES_KEY) ||
+        !configJson[EVICT_FILE_PAGES_KEY].is_array()) {
+        TAG_LOGE(AAFwkTag::ABILITY, "invalid memory_optimizer.json: missing or non-array evictFilePages");
+        return false;
+    }
+    if (configJson[EVICT_FILE_PAGES_KEY].empty()) {
+        TAG_LOGE(AAFwkTag::ABILITY, "empty evictFilePages array in memory_optimizer.json");
+        return false;
+    }
+    for (auto &item : configJson[EVICT_FILE_PAGES_KEY]) {
+        if (!item.is_string()) {
+            TAG_LOGE(AAFwkTag::ABILITY, "evictFilePages contains non-string entry");
+            return false;
+        }
+        outNames.push_back(item.get<std::string>());
+    }
+    return true;
+}
+} // namespace
+
+int32_t EvictFilePages(const std::vector<std::string>& fileNames)
+{
+    if (fileNames.empty()) {
+        TAG_LOGD(AAFwkTag::ABILITY, "EvictFilePages: empty file list");
+        return ERR_INVALID_VALUE;
+    }
+    TAG_LOGD(AAFwkTag::ABILITY, "EvictFilePages called for %{public}zu files", fileNames.size());
+    int32_t successCount = 0;
+    std::vector<std::string> vmaNames;
+    for (const auto& name : fileNames) {
+        if (name.empty()) {
+            continue;
+        }
+        if (EndsWith(name, ".so")) {
+            TAG_LOGD(AAFwkTag::ABILITY, "Applying ELF madvise for: %{public}s", name.c_str());
+            if (MadviseSingleLibrary(name.c_str())) {
+                successCount++;
+            }
+        } else {
+            TAG_LOGD(AAFwkTag::ABILITY, "Adding VMA madvise for: %{public}s", name.c_str());
+            vmaNames.push_back(name);
+        }
+    }
+    if (!vmaNames.empty()) {
+        successCount += MadviseGeneralFiles(vmaNames);
+    }
+    TAG_LOGI(AAFwkTag::ABILITY, "EvictFilePages completed: %{public}d/%{public}zu files succeeded",
+        successCount, fileNames.size());
+    return successCount;
+}
+
+bool IsValidEvictFileName(const std::string& name)
+{
+    return EndsWith(name, ".so") || EndsWith(name, ".hap") || EndsWith(name, ".hsp");
+}
+
+ErrCode EvictModuleFilePages(const std::vector<std::string>& moduleNames)
+{
+    if (moduleNames.empty()) {
+        return ERR_INVALID_VALUE;
+    }
+    std::vector<AppExecFwk::HapModuleInfo> hapModules;
+    if (!GetCallerHapModules(hapModules)) {
+        TAG_LOGE(AAFwkTag::ABILITY, "failed to get caller hap modules");
+        return AAFwk::ERR_EVICT_CONFIG_PARSE;
+    }
+    std::vector<std::string> allNames;
+    for (const auto& moduleName : moduleNames) {
+        auto it = std::find_if(hapModules.begin(), hapModules.end(),
+            [&moduleName](const AppExecFwk::HapModuleInfo& m) { return m.moduleName == moduleName; });
+        if (it == hapModules.end()) {
+            TAG_LOGE(AAFwkTag::ABILITY, "moduleName not found: %{public}s", moduleName.c_str());
+            return AAFwk::ERR_EVICT_CONFIG_PARSE;
+        }
+        if (!ReadEvictFilesFromHap(it->hapPath, allNames)) {
+            TAG_LOGE(AAFwkTag::ABILITY, "read config failed for module: %{public}s", moduleName.c_str());
+            return AAFwk::ERR_EVICT_CONFIG_PARSE;
+        }
+    }
+    for (const auto& name : allNames) {
+        if (!IsValidEvictFileName(name)) {
+            TAG_LOGE(AAFwkTag::ABILITY, "invalid file type in config: %{public}s", name.c_str());
+            return AAFwk::ERR_EVICT_FILE_TYPE;
+        }
+    }
+    EvictFilePages(allNames);
+    return ERR_OK;
 }
 } // namespace MadviseUtil
 } // namespace AbilityRuntime

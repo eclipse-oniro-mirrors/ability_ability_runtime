@@ -28,6 +28,8 @@ ohos_unittest("ability_madvise_utils_test") {
   include_dirs = [
     "${ability_runtime_path}/services/common/include",
     "${ability_runtime_native_path}/ability/native/ability_runtime/madvise",
+    "${ability_runtime_innerkits_path}/ability_manager/include",
+    "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
   ]
 
   sources = [
@@ -38,15 +40,22 @@ ohos_unittest("ability_madvise_utils_test") {
   ]
 
   deps = [
+    "${ability_runtime_native_path}/ability/native:ability_business_error",
+    "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_services_path}/common:app_util",
   ]
 
   external_deps = [
+    "ability_base:extractortool",
+    "ability_base:want",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "config_policy:configpolicy_util",
     "googletest:gmock_main",
     "googletest:gtest_main",
     "hilog:libhilog",
+    "ipc:ipc_core",
     "json:nlohmann_json_static",
   ]
 }

@@ -331,6 +331,12 @@ enum class AbilityErrorCode {
 
     ERROR_CODE_DELAYED_PROCESS_EXIT_HAS_OTHER_UIABILITY = 16000162,
 
+    // File type error. File name does not end with .so, .hap, or .hsp.
+    ERROR_CODE_FILE_TYPE_ERROR = 16000163,
+
+    // Failed to parse configuration file.
+    ERROR_CODE_EVICT_CONFIG_PARSE_ERROR = 16000164,
+
     // target bundle is not in u1
     ERROR_CODE_NO_U1 = 16000204,
 
