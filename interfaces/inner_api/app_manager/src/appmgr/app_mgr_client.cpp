@@ -660,16 +660,6 @@ AppMgrResultCode AppMgrClient::DumpHeapMemory(const int32_t pid, OHOS::AppExecFw
     return AppMgrResultCode(service->DumpHeapMemory(pid, mallocInfo));
 }
 
-AppMgrResultCode AppMgrClient::DumpJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
-{
-    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
-    if (service == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "DumpJsHandleMap: service is nullptr");
-        return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
-    }
-    return AppMgrResultCode(service->DumpJsHandleMap(info));
-}
-
 AppMgrResultCode AppMgrClient::DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info)
 {
     sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
@@ -678,6 +668,16 @@ AppMgrResultCode AppMgrClient::DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo
         return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
     }
     return AppMgrResultCode(service->DumpJsHeapMemory(info));
+}
+
+AppMgrResultCode AppMgrClient::DumpJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
+{
+    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
+    if (service == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "DumpJsHandleMap: service is nullptr");
+        return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
+    }
+    return AppMgrResultCode(service->DumpJsHandleMap(info));
 }
 
 AppMgrResultCode AppMgrClient::DumpCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info)

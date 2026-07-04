@@ -270,15 +270,6 @@ public:
     virtual int32_t DumpHeapMemory(const int32_t pid, OHOS::AppExecFwk::MallocInfo &mallocInfo) override;
 
     /**
-     * DumpJsHandleMap, call DumpJsHandleMap() through proxy project.
-     * dump the application's jshandle map info.
-     *
-     * @param info, pid tid
-     * @return ERR_OK ,return back success, others fail.
-     */
-    virtual int32_t DumpJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info) override;
-
-    /**
      * DumpJsHeapMemory, call DumpJsHeapMemory() through proxy project.
      * triggerGC and dump the application's jsheap memory info.
      *
@@ -286,6 +277,15 @@ public:
      * @return ERR_OK ,return back success, others fail.
      */
     virtual int32_t DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info) override;
+
+    /**
+     * DumpJsHandleMap, call DumpJsHandleMap() through proxy project.
+     * dump the application's jshandle map info.
+     *
+     * @param info, pid tid
+     * @return ERR_OK ,return back success, others fail.
+     */
+    virtual int32_t DumpJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info) override;
 
     /**
      * DumpCjHeapMemory, call DumpCjHeapMemory() through proxy project.

@@ -116,7 +116,7 @@ public:
      *
      * @return
      */
-    virtual void ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info) {};
+    virtual void ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info) {}
 
     /**
      * ScheduleCjHeapMemory, call ScheduleCjHeapMemory() through proxy project,
