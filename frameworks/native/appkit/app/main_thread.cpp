@@ -1067,6 +1067,22 @@ void MainThread::HandleJsHeapMemory(const OHOS::AppExecFwk::JsHeapDumpInfo &info
     helper->DumpJsHeap(info);
 }
 
+void MainThread::HandleJsHandleMap(const OHOS::AppExecFwk::JsHandleMapInfo &info)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "called");
+    if (mainHandler_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null mainHandler");
+        return;
+    }
+    auto app = applicationForDump_.lock();
+    if (app == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null app");
+        return;
+    }
+    auto helper = std::make_shared<DumpRuntimeHelper>(app, applicationInfo_);
+    helper->DumpJsHandleMap(info);
+}
+
 void MainThread::HandleCjHeapMemory(const OHOS::AppExecFwk::CjHeapDumpInfo &info)
 {
     TAG_LOGD(AAFwkTag::APPKIT, "called");
