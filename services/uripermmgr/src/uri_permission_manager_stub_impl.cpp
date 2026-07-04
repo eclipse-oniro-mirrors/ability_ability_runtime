@@ -1795,6 +1795,10 @@ ErrCode UriPermissionManagerStubImpl::RawDataToStringVec(const UriPermissionRawD
     ss.write(reinterpret_cast<const char *>(rawData.data), rawData.size);
     uint32_t stringVecSize = 0;
     ss.read(reinterpret_cast<char *>(&stringVecSize), sizeof(stringVecSize));
+    if (!ss.good()) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "read stringVecSize failed");
+        return ERR_DEAD_OBJECT;
+    }
     if (stringVecSize == 0 || stringVecSize > MAX_URI_COUNT) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "uriVec empty or exceed maxSize %{public}d, stringVecSize: %{public}d",
             MAX_URI_COUNT, stringVecSize);
@@ -1804,13 +1808,21 @@ ErrCode UriPermissionManagerStubImpl::RawDataToStringVec(const UriPermissionRawD
     for (uint32_t i = 0; i < stringVecSize; ++i) {
         uint32_t strLen = 0;
         ss.read(reinterpret_cast<char *>(&strLen), sizeof(strLen));
-        if (strLen > ssLength - static_cast<uint32_t>(ss.tellg())) {
+        if (!ss.good()) {
+            TAG_LOGE(AAFwkTag::URIPERMMGR, "read strLen failed");
+            return ERR_DEAD_OBJECT;
+        }
+        if (ss.tellg() < 0 || strLen > ssLength - static_cast<uint32_t>(ss.tellg())) {
             TAG_LOGE(AAFwkTag::URIPERMMGR, "string length:%{public}u is invalid", strLen);
             return ERR_DEAD_OBJECT;
         }
         std::string str;
         str.resize(strLen);
         ss.read(&str[0], strLen);
+        if (!ss.good()) {
+            TAG_LOGE(AAFwkTag::URIPERMMGR, "read string content failed, strLen:%{public}u", strLen);
+            return ERR_DEAD_OBJECT;
+        }
         stringVec.emplace_back(str);
     }
     return ERR_OK;
