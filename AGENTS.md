@@ -210,3 +210,33 @@
 - 验证命令和结果
 - 兼容性、权限、DFX 或跨设备影响（如相关）
 - 遗留风险或后续项
+
+## 5. 代码检视
+
+当用户表达"检视一下代码""帮我审一下""做一次 code review""深度扫描""安全审计""查高危 bug""接口审计"等检视意图时，**不要凭记忆审查**——从代码检视工作台出发：
+
+**入口**：[`skills/codecheck/README.md`](skills/codecheck/README.md)
+
+该 README 是检视的导航与编排中枢，按以下顺序使用：
+
+1. **先读 README**：了解每个子 skill 的检视维度、触发场景、输出格式，以及按场景选择的 skill 组合表。
+2. **界定范围**：明确目标路径或 Kit、检视重点（通用/安全/高危 bug/API/外部输入）。未明确时向用户确认。
+3. **调用子 skill**：读对应子目录的 `SKILL.md` 按其工作流执行。通用检视默认走 `deep-scan {path}`（一次拿 bug+logic+security 三维度）；接口/SDK 变更补 `api-audit`；服务侧 IPC/持久化密集区补 `external-input-audit`。
+4. **合并报告**：把各 skill 产出汇总为一份 `codecheck_report_<scope>_<YYYYMMDD>.md`，跨维度去重后按 P0/P1/P1 排序。报告结构见 README 的 Step 4。
+
+### 检视维度速查
+
+| 维度 | 子 skill | 何时用 |
+|------|---------|--------|
+| 高影响缺陷（崩溃/挂死/OOM/UAF/死锁/泄漏） | `high-impact-bug-audit` | 通用检视、合入前排查 |
+| 逻辑影响与一致性 | `logic_analyzer` | 变更影响评估、状态机/边界 |
+| 安全/商用前审查 | `security_review` | 安全专项、商用前 |
+| 外部输入→持久化健壮性 | `external-input-audit` | 服务侧、IPC/DB/文件密集区 |
+| 对外 API 一致性 | `api-audit` | 接口/SDK 变更、Kit 级审计 |
+| 三层编排（bug+logic+security） | `deep-scan` | 通用深度扫描的默认入口 |
+
+### 检视约束
+
+- **静态语言实现默认排除**（`frameworks/ets/ani/`、`frameworks/ets/ets/`、`frameworks/cj/ffi/`、`ets_*.cpp`、`cj_*.cpp`），除非用户明确要求包含。
+- **证据要求**：每条发现可追溯到 `file:line` + 触发路径，不收无证据的代码气味项。
+- **检视阶段不改源码**：只产出报告与建议；修复由用户确认后另起任务，并回到本 AGENTS.md 的 Constraints/Verification 章节执行。
