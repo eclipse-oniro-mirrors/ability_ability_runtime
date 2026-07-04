@@ -59,6 +59,10 @@ OHOS::sptr<OHOS::AppExecFwk::IAppMgr> GetAppManagerInstance()
 {
     OHOS::sptr<OHOS::ISystemAbilityManager> systemAbilityManager =
         OHOS::SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (systemAbilityManager == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "system ability manager is null");
+        return nullptr;
+    }
     OHOS::sptr<OHOS::IRemoteObject> appObject = systemAbilityManager->GetSystemAbility(OHOS::APP_MGR_SERVICE_ID);
     return OHOS::iface_cast<OHOS::AppExecFwk::IAppMgr>(appObject);
 }
@@ -246,7 +250,14 @@ private:
         }
 
         if (observerForeground_->IsEmpty()) {
-            int32_t ret = GetAppManagerInstance()->RegisterAbilityForegroundStateObserver(observerForeground_);
+            auto appMgr = GetAppManagerInstance();
+            if (appMgr == nullptr) {
+                TAG_LOGE(AAFwkTag::ABILITYMGR, "app manager instance is null");
+                ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::SERVICE_UNAVAILABLE));
+                return CreateJsUndefined(env);
+            }
+            int32_t ret = appMgr->RegisterAbilityForegroundStateObserver(observerForeground_);
             if (ret != NO_ERROR) {
                 TAG_LOGE(AAFwkTag::ABILITYMGR, "error: %{public}d", ret);
                 ThrowErrorByNativeErr(env, ret);
@@ -364,7 +375,14 @@ private:
         }
 
         if (observerForeground_->IsEmpty()) {
-            int32_t ret = GetAppManagerInstance()->UnregisterAbilityForegroundStateObserver(observerForeground_);
+            auto appMgr = GetAppManagerInstance();
+            if (appMgr == nullptr) {
+                TAG_LOGE(AAFwkTag::ABILITYMGR, "app manager instance is null");
+                ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::SERVICE_UNAVAILABLE));
+                return CreateJsUndefined(env);
+            }
+            int32_t ret = appMgr->UnregisterAbilityForegroundStateObserver(observerForeground_);
             if (ret != NO_ERROR) {
                 TAG_LOGE(AAFwkTag::ABILITYMGR, "error: %{public}d", ret);
                 ThrowErrorByNativeErr(env, ret);
@@ -483,7 +501,17 @@ private:
 
             complete = [changeConfig](napi_env env, NapiAsyncTask& task, int32_t status) {
                 HandleScope handleScope(env);
-                auto errcode = GetAppManagerInstance()->UpdateConfiguration(changeConfig);
+                auto appMgr = GetAppManagerInstance();
+                if (appMgr == nullptr) {
+                    TAG_LOGE(AAFwkTag::ABILITYMGR, "app manager instance is null");
+#ifdef ENABLE_ERRCODE
+                    task.Reject(env, CreateJsError(env, GetJsErrorCodeByNativeError(AAFwk::INNER_ERR)));
+#else
+                    task.Reject(env, CreateJsError(env, AAFwk::INNER_ERR, "app manager instance is null."));
+#endif
+                    return;
+                }
+                auto errcode = appMgr->UpdateConfiguration(changeConfig);
                 if (errcode == 0) {
 #ifdef ENABLE_ERRCODE
                     task.ResolveWithNoError(env, CreateJsUndefined(env));

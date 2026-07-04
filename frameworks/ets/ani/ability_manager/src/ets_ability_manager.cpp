@@ -749,7 +749,13 @@ void EtsAbilityManager::NativeAcquireShareData(ani_env *env, ani_int aniMissionI
     }
     int32_t missionId = aniMissionId;
     ani_ref callbackRef = nullptr;
-    env->GlobalReference_Create(callbackObj, &callbackRef);
+    ani_status status = env->GlobalReference_Create(callbackObj, &callbackRef);
+    if (status != ANI_OK || callbackRef == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "GlobalReference_Create failed or null callbackRef, status: %{public}d", status);
+        AppExecFwk::AsyncCallback(env, callbackObj,
+            EtsErrorUtil::CreateErrorByNativeErr(env, AAFwk::INNER_ERR), nullptr);
+        return;
+    }
 
     auto shareDataCallbackStub = CreateShareDataCallbackStub(env, callbackRef);
     if (shareDataCallbackStub == nullptr) {
@@ -999,7 +1005,12 @@ void EtsAbilityManager::NativePreloadUIExtensionAbility(ani_env *env, ani_object
         return;
     }
     ani_ref callbackRef = nullptr;
-    env->GlobalReference_Create(callback, &callbackRef);
+    status = env->GlobalReference_Create(callback, &callbackRef);
+    if (status != ANI_OK || callbackRef == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "GlobalReference_Create failed or null callbackRef, status: %{public}d", status);
+        EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        return;
+    }
     PreloadTask task = [etsVm, callbackRef](int32_t preloadId, int32_t innerErrCode) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "start async callback");
         bool isAttachThread = false;
