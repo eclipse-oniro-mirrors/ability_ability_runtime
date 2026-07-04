@@ -47,13 +47,7 @@ inline std::string SafeDump(const nlohmann::json &jsonObject, size_t maxLen = 0)
 {
     try {
         auto s = jsonObject.dump();
-        if (maxLen > 0 && s.size() > maxLen) {
-            return s.substr(0, maxLen) + "...(truncated)";
-        }
-        return s;
-    } catch (const std::exception &e) {
-        TAG_LOGW(AAFwkTag::INTENT, "dump failed: %{public}s", e.what());
-        return "<dump_failed>";
+        return (maxLen > 0 && s.size() > maxLen) ? s.substr(0, maxLen) + "..." : s;
     } catch (...) {
         return "<dump_failed>";
     }
@@ -63,13 +57,10 @@ inline bool SafeDumpTo(const nlohmann::json &jsonObject, std::string &out)
 {
     try {
         out = jsonObject.dump();
-        return true;
-    } catch (const std::exception &e) {
-        TAG_LOGW(AAFwkTag::INTENT, "dump failed: %{public}s", e.what());
-        return false;
     } catch (...) {
         return false;
     }
+    return true;
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

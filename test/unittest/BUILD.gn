@@ -428,6 +428,7 @@ group("unittest") {
       "insight_intent_profile_test:unittest",
       "insight_intent_rdb_data_manager_test:unittest",
       "insight_intent_rdb_storage_mgr_test:unittest",
+      "insight_intent_safe_get_test:unittest",
       "js_ability_context_test:unittest",
       "js_ability_stage_context_test:unittest",
       "js_app_service_extension_test:unittest",

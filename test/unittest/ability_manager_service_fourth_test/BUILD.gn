@@ -75,7 +75,7 @@ ohos_unittest("ability_manager_service_fourth_test") {
     "mock/src/mock_permission_verification.cpp",
   ]
 
-  configs = [ "${ability_runtime_services_path}/abilitymgr:abilityms_config" ]
+  configs = [ "${ability_runtime_services_path}/abilitymgr:abilityms_config", "//build/config/compiler:exceptions" ]
 
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",

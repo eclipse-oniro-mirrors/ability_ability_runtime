@@ -40,7 +40,7 @@ ohos_unittest("insight_intent_sys_event_receiver_test") {
     #"insight_intent_utils_mock.cpp",
   ]
 
-  configs = [ "${ability_runtime_services_path}/abilitymgr:abilityms_config" ]
+  configs = [ "${ability_runtime_services_path}/abilitymgr:abilityms_config", "//build/config/compiler:exceptions" ]
 
   cflags = [
     "-Dprivate=public",

@@ -47,7 +47,10 @@ ohos_unittest("ability_bundle_event_callback_test") {
     "ability_bundle_event_callback_test.cpp",
   ]
 
-  configs = [ "${ability_runtime_test_path}/mock/services_abilitymgr_test:aafwk_mock_config" ]
+  configs = [
+    "${ability_runtime_test_path}/mock/services_abilitymgr_test:aafwk_mock_config",
+    "//build/config/compiler:exceptions",
+  ]
 
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",

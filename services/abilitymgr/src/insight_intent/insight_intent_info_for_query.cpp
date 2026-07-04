@@ -108,6 +108,25 @@ void to_json(nlohmann::json& jsonObject, const PageInfoForQuery &info)
     };
 }
 
+void FillExecuteModesFromJson(const nlohmann::json &modeArray,
+    std::vector<AppExecFwk::ExecuteMode> &outModes,
+    const std::map<std::string, AppExecFwk::ExecuteMode> &modeMap)
+{
+    for (const auto &modeStr : modeArray) {
+        if (!modeStr.is_string()) {
+            TAG_LOGE(AAFwkTag::INTENT, "modestr not string");
+            continue;
+        }
+        auto it = modeMap.find(modeStr.get<std::string>());
+        if (it != modeMap.end()) {
+            outModes.push_back(it->second);
+        } else {
+            TAG_LOGW(AAFwkTag::INTENT, "Unknown ExecuteMode: %{public}s",
+                SafeDump(modeStr, 50).c_str());
+        }
+    }
+}
+
 void from_json(const nlohmann::json &jsonObject, EntryInfoForQuery &entryInfo)
 {
     TAG_LOGD(AAFwkTag::INTENT, "EntryInfoForQuery from json");
@@ -124,20 +143,7 @@ void from_json(const nlohmann::json &jsonObject, EntryInfoForQuery &entryInfo)
             TAG_LOGE(AAFwkTag::INTENT, "executeMode is not array");
             g_parseResult = ERR_INVALID_VALUE;
         } else {
-            for (const auto &modeStr : modeArray) {
-                if (!modeStr.is_string()) {
-                    TAG_LOGE(AAFwkTag::INTENT, "modestr not string");
-                    continue;
-                }
-                std::string modeStrValue = modeStr.get<std::string>();
-                auto it = STRING_EXECUTE_MODE_MAP.find(modeStrValue);
-                if (it != STRING_EXECUTE_MODE_MAP.end()) {
-                    entryInfo.executeMode.push_back(it->second);
-                } else {
-                    TAG_LOGW(AAFwkTag::INTENT, "Unknown ExecuteMode: %{public}s",
-                        SafeDump(modeStr, 50).c_str());
-                }
-            }
+            FillExecuteModesFromJson(modeArray, entryInfo.executeMode, STRING_EXECUTE_MODE_MAP);
         }
     }
 }
@@ -260,20 +266,7 @@ void from_json(const nlohmann::json &jsonObject, UIAbilityIntentInfoForQuery &in
             TAG_LOGE(AAFwkTag::INTENT, "executeMode is not array");
             g_parseResult = ERR_INVALID_VALUE;
         } else {
-            for (const auto &modeStr : modeArray) {
-                if (!modeStr.is_string()) {
-                    TAG_LOGE(AAFwkTag::INTENT, "modestr not string");
-                    continue;
-                }
-                std::string modeStrValue = modeStr.get<std::string>();
-                auto it = executeModeMap.find(modeStrValue);
-                if (it != executeModeMap.end()) {
-                    info.supportExecuteMode.push_back(it->second);
-                } else {
-                    TAG_LOGW(AAFwkTag::INTENT, "Unknown ExecuteMode: %{public}s",
-                        SafeDump(modeStr, 50).c_str());
-                }
-            }
+            FillExecuteModesFromJson(modeArray, info.supportExecuteMode, executeModeMap);
         }
     }
 }

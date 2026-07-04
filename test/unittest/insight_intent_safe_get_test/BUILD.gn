@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Copyright (c) 2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -11,13 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("//build/ohos.gni")
 import("//build/test.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 module_output_path = "ability_runtime/ability_runtime/abilitymgr"
 
-ohos_unittest("insight_intent_db_cache_test") {
+ohos_unittest("insight_intent_safe_get_test") {
   configs = ["//build/config/compiler:exceptions"]
   sanitize = {
     cfi = true
@@ -29,14 +28,16 @@ ohos_unittest("insight_intent_db_cache_test") {
 
   include_dirs = [
     "${ability_runtime_abilitymgr_path}/include",
+    "${ability_runtime_abilitymgr_path}/include/insight_intent",
     "${ability_runtime_abilitymgr_path}/src",
+    "${ability_runtime_innerkits_path}/ability_manager/include",
+    "${ability_runtime_innerkits_path}/ability_manager/include/insight_intent",
   ]
 
   sources = [
+    "insight_intent_safe_get_test.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/extract_insight_intent_profile.cpp",
-    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_db_cache.cpp",
-    "insight_intent_db_cache_test.cpp",
-    "mock_insight_intent_rdb_storage_mgr.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_profile.cpp",
   ]
 
   deps = [
@@ -46,22 +47,17 @@ ohos_unittest("insight_intent_db_cache_test") {
 
   external_deps = [
     "ability_base:want",
-    "ability_base:zuri",
-    "access_token:libaccesstoken_sdk",
     "bundle_framework:libappexecfwk_common",
     "c_utils:utils",
-    "common_event_service:cesfwk_innerkits",
     "ffrt:libffrt",
-    "googletest:gmock_main",
-    "googletest:gtest_main",
     "hilog:libhilog",
     "ipc:ipc_core",
-    "relational_store:native_rdb",
+    "json:nlohmann_json_static",
   ]
 }
 
 group("unittest") {
   testonly = true
 
-  deps = [ ":insight_intent_db_cache_test" ]
+  deps = [ ":insight_intent_safe_get_test" ]
 }

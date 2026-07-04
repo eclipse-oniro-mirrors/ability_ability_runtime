@@ -48,7 +48,7 @@ ohos_fuzztest("AbilityMgrInsightIntentExecuteManagerFuzzTest") {
     "abilitymgrinsightintentexecutemanager_fuzzer.cpp",
   ]
 
-  configs = [ "${ability_runtime_services_path}/abilitymgr:abilityms_config" ]
+  configs = [ "${ability_runtime_services_path}/abilitymgr:abilityms_config", "//build/config/compiler:exceptions" ]
 
   cflags = []
   if (target_cpu == "arm") {
