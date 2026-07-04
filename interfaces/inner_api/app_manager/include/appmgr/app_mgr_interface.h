@@ -338,6 +338,15 @@ public:
     virtual void AddAbilityStageDone(const int32_t recordId) = 0;
 
     /**
+     * DumpJsHeapMemory, call DumpJsHeapMemory() through proxy project.
+     * triggerGC and dump the application's jsheap memory info.
+     *
+     * @param info, pid tid needGc needSnapshot
+     * @return ERR_OK ,return back success, others fail.
+     */
+    virtual int DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info) = 0;
+
+    /**
      * DumpJsHandleMap, call DumpJsHandleMap() through proxy project.
      * dump the application's jshandle map info.
      *
@@ -348,15 +357,6 @@ public:
     {
         return 0;
     }
-
-    /**
-     * DumpJsHeapMemory, call DumpJsHeapMemory() through proxy project.
-     * triggerGC and dump the application's jsheap memory info.
-     *
-     * @param info, pid tid needGc needSnapshot
-     * @return ERR_OK ,return back success, others fail.
-     */
-    virtual int DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info) = 0;
 
     /**
      * DumpCjHeapMemory, call DumpCjHeapMemory() through proxy project.
