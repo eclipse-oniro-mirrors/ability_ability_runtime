@@ -216,6 +216,70 @@ HWTEST_F(FilePermissionManagerTest, CheckDocsUriPermission_003, TestSize.Level1)
 }
 
 /*
+ * Feature: CheckDocsUriPermission
+ * Function: CheckDocsUriPermission
+ * SubFunction: NA
+ * FunctionPoints: APPDATA_URI case-insensitive validation blocks FILE_ACCESS_MANAGER bypass
+ */
+HWTEST_F(FilePermissionManagerTest, CheckDocsUriPermission_004, TestSize.Level1)
+{
+    TokenIdPermission caller(0);
+    MyFlag::permissionFileAccessManager_ = true;
+    MyFlag::permissionSandboxAccessManager_ = false;
+    std::string appDataPath = "/storage/Users/currentUser/Appdata/el2/base/";
+    bool ret = FilePermissionManager::CheckDocsUriPermission(caller, appDataPath);
+    ASSERT_FALSE(ret);
+}
+
+/*
+ * Feature: CheckDocsUriPermission
+ * Function: CheckDocsUriPermission
+ * SubFunction: NA
+ * FunctionPoints: APPDATA_URI case-insensitive validation blocks all-uppercase variant
+ */
+HWTEST_F(FilePermissionManagerTest, CheckDocsUriPermission_005, TestSize.Level1)
+{
+    TokenIdPermission caller(0);
+    MyFlag::permissionFileAccessManager_ = true;
+    MyFlag::permissionSandboxAccessManager_ = false;
+    std::string appDataPath = "/storage/Users/currentUser/APPDATA/el2/base/";
+    bool ret = FilePermissionManager::CheckDocsUriPermission(caller, appDataPath);
+    ASSERT_FALSE(ret);
+}
+
+/*
+ * Feature: CheckDocsUriPermission
+ * Function: CheckDocsUriPermission
+ * SubFunction: NA
+ * FunctionPoints: APPDATA_URI case-variant path still grantable via SandboxAccess
+ */
+HWTEST_F(FilePermissionManagerTest, CheckDocsUriPermission_006, TestSize.Level1)
+{
+    TokenIdPermission caller(0);
+    MyFlag::permissionFileAccessManager_ = true;
+    MyFlag::permissionSandboxAccessManager_ = true;
+    std::string appDataPath = "/storage/Users/currentUser/Appdata/el2/base/test.txt";
+    bool ret = FilePermissionManager::CheckDocsUriPermission(caller, appDataPath);
+    ASSERT_TRUE(ret);
+}
+
+/*
+ * Feature: CheckDocsUriPermission
+ * Function: CheckDocsUriPermission
+ * SubFunction: NA
+ * FunctionPoints: APPDATA_URI exact-case behavior unchanged when sandbox denied
+ */
+HWTEST_F(FilePermissionManagerTest, CheckDocsUriPermission_007, TestSize.Level1)
+{
+    TokenIdPermission caller(0);
+    MyFlag::permissionFileAccessManager_ = true;
+    MyFlag::permissionSandboxAccessManager_ = false;
+    std::string appDataPath = "/storage/Users/currentUser/appdata/el2/base/";
+    bool ret = FilePermissionManager::CheckDocsUriPermission(caller, appDataPath);
+    ASSERT_FALSE(ret);
+}
+
+/*
  * Feature: InitDlSymbol
  * Function: InitDlSymbol
  * SubFunction: NA
