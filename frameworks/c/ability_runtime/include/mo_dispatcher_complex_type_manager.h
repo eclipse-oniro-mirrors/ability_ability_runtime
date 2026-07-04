@@ -110,6 +110,7 @@ public:
     static bool VariantEquals(const MoVariantStorage& lhs, const OH_AbilityRuntime_ModObjDispatcher_Variant* rhs);
 
     static void RegisterStructMetadata(const std::vector<MoStructMeta>& structs);
+    static void UnregisterStructMetadata(const std::vector<MoStructMeta>& structs);
     static bool GetStructFieldType(const std::string& structName, const std::string& fieldName,
         std::shared_ptr<MoTypeInfo>* fieldType);
     static bool GetStructFieldNames(const std::string& structName, std::vector<std::string>* fieldNames);
