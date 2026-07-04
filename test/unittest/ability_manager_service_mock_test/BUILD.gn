@@ -69,7 +69,10 @@ ohos_unittest("ability_manager_service_mock_test") {
     "mock/src/mock_udmf_utils.cpp",
   ]
 
-  configs = [ "${ability_runtime_services_path}/abilitymgr:abilityms_config", "//build/config/compiler:exceptions" ]
+  configs = [
+    "${ability_runtime_services_path}/abilitymgr:abilityms_config",
+    "//build/config/compiler:exceptions",
+  ]
 
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_start_setting",

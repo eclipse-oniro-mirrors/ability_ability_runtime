@@ -41,7 +41,10 @@ ohos_unittest("insight_intent_utils_test") {
     "insight_intent_utils_test.cpp",
   ]
 
-  configs = [ "${ability_runtime_services_path}/abilitymgr:abilityms_config", "//build/config/compiler:exceptions" ]
+  configs = [
+    "${ability_runtime_services_path}/abilitymgr:abilityms_config",
+    "//build/config/compiler:exceptions",
+  ]
 
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",

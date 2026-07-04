@@ -28,7 +28,10 @@ ohos_unittest("insight_intent_execute_callback_stub_test") {
     "insight_intent_execute_callback_stub_test.cpp",
   ]
 
-  configs = [ "${ability_runtime_services_path}/abilitymgr:abilityms_config", "//build/config/compiler:exceptions" ]
+  configs = [
+    "${ability_runtime_services_path}/abilitymgr:abilityms_config",
+    "//build/config/compiler:exceptions",
+  ]
 
   cflags = [
     "-Dprivate=public",
