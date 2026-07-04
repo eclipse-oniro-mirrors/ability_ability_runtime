@@ -122,7 +122,7 @@ void FillExecuteModesFromJson(const nlohmann::json &modeArray,
             outModes.push_back(it->second);
         } else {
             TAG_LOGW(AAFwkTag::INTENT, "Unknown ExecuteMode: %{public}s",
-                SafeDump(modeStr, 50).c_str());
+                SafeDump(modeStr, DUMP_TOKEN_MAX_LEN).c_str());
         }
     }
 }

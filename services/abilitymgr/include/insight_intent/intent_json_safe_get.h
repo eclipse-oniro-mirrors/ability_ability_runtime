@@ -25,6 +25,9 @@
 namespace OHOS {
 namespace AbilityRuntime {
 
+constexpr size_t DUMP_TOKEN_MAX_LEN = 50;   // single short token; longest ExecuteMode value is 26 chars
+constexpr size_t DUMP_LOG_MAX_LEN = 1000;   // full JSON debug dump, bounded for hilog readability
+
 template<typename T>
 bool SafeJsonGet(const nlohmann::json &jsonObject, T &out, const char *tag)
 {

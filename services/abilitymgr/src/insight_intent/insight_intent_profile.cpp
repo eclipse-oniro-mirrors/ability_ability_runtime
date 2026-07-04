@@ -414,7 +414,7 @@ bool InsightIntentProfile::TransformTo(const std::string &profileStr, std::vecto
         TAG_LOGE(AAFwkTag::INTENT, "discarded jsonObject");
         return false;
     }
-    TAG_LOGD(AAFwkTag::INTENT, "jsonObject : %{public}s", SafeDump(jsonObject, 200).c_str());
+    TAG_LOGD(AAFwkTag::INTENT, "jsonObject : %{public}s", SafeDump(jsonObject, DUMP_LOG_MAX_LEN).c_str());
 
     InsightIntentProfileInfoVec profileInfos;
     {
@@ -426,10 +426,8 @@ bool InsightIntentProfile::TransformTo(const std::string &profileStr, std::vecto
         }
         if (g_parseResult != ERR_OK) {
             TAG_LOGE(AAFwkTag::INTENT, "g_parseResult :%{public}d", g_parseResult);
-            int32_t ret = g_parseResult;
-            // need recover parse result to ERR_OK
             g_parseResult = ERR_OK;
-            return ret;
+            return false;
         }
     }
 
@@ -531,7 +529,7 @@ bool InsightIntentProfile::ToJson(const InsightIntentInfo &info, nlohmann::json 
     }
 
     jsonObject[INSIGHT_INTENTS] = nlohmann::json::array({ subJsonObject });
-    TAG_LOGD(AAFwkTag::INTENT, "to json string: %{public}s", SafeDump(jsonObject, 200).c_str());
+    TAG_LOGD(AAFwkTag::INTENT, "to json string: %{public}s", SafeDump(jsonObject, DUMP_LOG_MAX_LEN).c_str());
     return true;
 }
 } // namespace AbilityRuntime

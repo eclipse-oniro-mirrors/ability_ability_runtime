@@ -702,7 +702,7 @@ bool ExtractInsightIntentProfile::ToJson(const ExtractInsightIntentProfileInfo &
     }
 
     jsonObject[INSIGHT_INTENTS] = nlohmann::json::array({ subJsonObject });
-    TAG_LOGD(AAFwkTag::INTENT, "to json string: %{public}s", SafeDump(jsonObject, 200).c_str());
+    TAG_LOGD(AAFwkTag::INTENT, "to json string: %{public}s", SafeDump(jsonObject, DUMP_LOG_MAX_LEN).c_str());
     return true;
 }
 

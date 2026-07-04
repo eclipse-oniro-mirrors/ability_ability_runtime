@@ -33,6 +33,8 @@ ohos_unittest("extract_insight_intent_profile_test") {
 
   sources = [ "extract_insight_intent_profile_test.cpp" ]
 
+  configs = ["//build/config/compiler:exceptions"]
+
   deps = [
     "${ability_runtime_abilitymgr_path}/:abilityms",
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
