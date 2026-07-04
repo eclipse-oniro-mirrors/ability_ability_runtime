@@ -22,8 +22,11 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <sys/wait.h>
 #include <thread>
 #include <unistd.h>
+#include <cerrno>
+#include <csignal>
 #include <vector>
 
 #define protected public
@@ -146,9 +149,14 @@ void CliToolManagerServiceTest::TearDown()
     CliToolDataManagerMock::Reset();
     CliFunctionDataManagerMock::Reset();
     EventDispatcher::GetInstance().ClearAll();
-    std::lock_guard<ffrt::mutex> guard(service_->sessionsMutex_);
-    service_->sessionRecords_.clear();
-    service_->bundleObservers_.clear();
+    {
+        std::lock_guard<ffrt::mutex> guard(service_->sessionsMutex_);
+        service_->sessionRecords_.clear();
+        service_->bundleObservers_.clear();
+    }
+    // Safety net (outside sessionsMutex_: StopReaper joins the reaper, whose WaitPid takes sessionsMutex_):
+    // stop the reaper if a test started it and did not stop it. No-op if never started.
+    service_->StopReaper();
 }
 
 /**
@@ -194,6 +202,7 @@ HWTEST_F(CliToolManagerServiceTest, Init_0100, TestSize.Level1)
     if (initializedMonitor != nullptr) {
         initializedMonitor->Stop();
     }
+    service_->StopReaper();  // stop the reaper spawned by Init() so no joinable std::thread lingers past the test
     service_->ioMonitor_ = oldMonitor;
     service_->initialized_ = oldInitialized;
 
@@ -1832,6 +1841,10 @@ HWTEST_F(CliToolManagerServiceTest, OnProcessDied_0100, TestSize.Level1)
     EXPECT_EQ(service_->sessionRecords_.find("leak_died_session"), service_->sessionRecords_.end());
     EXPECT_EQ(service_->GetSessionRecord(matchingRecord->sessionId), nullptr);
     EXPECT_EQ(service_->GetSessionRecord(otherRecord->sessionId), otherRecord);
+    EXPECT_EQ(matchingRecord->GetState(), SessionState::SPAWNING);
+    EXPECT_FALSE(matchingRecord->HasProcessExited());
+    EXPECT_EQ(matchingRecord->GetTerminalStatus(), 0);
+    EXPECT_TRUE(matchingRecord->TryClaimCleanup());
 
     TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_OnProcessDied_0100 end");
 }
@@ -2750,6 +2763,158 @@ HWTEST_F(CliToolManagerServiceTest, FunctionInterfaces_0100, TestSize.Level1)
     CliFunctionDataManagerMock::Reset();
 
     TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_FunctionInterfaces_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_PostExecToolTask_0100
+ * @tc.desc: Test PostExecToolTask routes isTimeout=true to HandleProcessTimeout on the ffrt worker
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, PostExecToolTask_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_PostExecToolTask_0100 start");
+
+    auto record = std::make_shared<SessionRecord>();
+    record->sessionId = "postexec_timeout_session";
+    record->eventId = "postexec_timeout_event";
+    // nonexistent process-group id, same convention as HandleProcessTimeout_* tests, so Killpg is a safe no-op.
+    record->processId = 999999;
+    record->SetBackground(true);
+    service_->AddSessionRecord(record);
+
+    // PostExecToolTask defers the timeout task to an ffrt worker (ffrt::submit with delay 0). Poll for the
+    // observable state mutation produced by HandleProcessTimeout (SetTimeout + SetState(CANCELLING)).
+    service_->PostExecToolTask(0, record->sessionId, true);
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (record->GetState() != SessionState::CANCELLING && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+
+    EXPECT_EQ(record->GetState(), SessionState::CANCELLING);
+    EXPECT_TRUE(record->Timeout());
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_PostExecToolTask_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_PostExecToolTask_0200
+ * @tc.desc: Test PostExecToolTask routes isTimeout=false to HandleProcessYieldTimeout on the ffrt worker
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, PostExecToolTask_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_PostExecToolTask_0200 start");
+
+    auto record = std::make_shared<SessionRecord>();
+    record->sessionId = "postexec_yield_session";
+    record->eventId = "postexec_yield_event";
+    record->SetBackground(false);
+    service_->AddSessionRecord(record);
+
+    // isTimeout=false routes to HandleProcessYieldTimeout, which promotes the session to background.
+    service_->PostExecToolTask(0, record->sessionId, false);
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (!record->Background() && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+
+    EXPECT_TRUE(record->Background());
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_PostExecToolTask_0200 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_SigchldHandler_0100
+ * @tc.desc: Test sigchld_handler preserves errno across a wake-byte write (or skip when no reaper pipe is active)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, SigchldHandler_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SigchldHandler_0100 start");
+
+    // With the self-pipe design the handler only writes one wake byte (skipped when no reaper pipe is active,
+    // e.g. after TearDown's StopReaper) and does not call waitpid; the leading drain only reaps any stray
+    // children from prior tests. The assertion verifies errno save/restore regardless of whether the write ran.
+    while (waitpid(-1, nullptr, WNOHANG) > 0) { }
+
+    const int32_t sentinelErrno = 42;
+    errno = sentinelErrno;
+    CliToolManagerService::sigchld_handler(SIGCHLD);
+    EXPECT_EQ(errno, sentinelErrno);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SigchldHandler_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_OnProcessDied_0200
+ * @tc.desc: Test OnProcessDied collects a live processId into activePids and kills it after releasing the lock
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, OnProcessDied_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_OnProcessDied_0200 start");
+
+    const int32_t diedPid = 2003;
+    auto matchingRecord = std::make_shared<SessionRecord>();
+    matchingRecord->sessionId = "active_died_session";
+    matchingRecord->callerPid = diedPid;
+    // nonexistent process-group id (same convention as HandleProcessTimeout_* tests) so the post-lock
+    // ProcessManager::Killpg targets nothing real (ESRCH) while still exercising the activePids branch.
+    matchingRecord->processId = 999999;
+    auto otherRecord = std::make_shared<SessionRecord>();
+    otherRecord->sessionId = "other_active_died_session";
+    otherRecord->callerPid = 2004;
+    {
+        std::lock_guard<ffrt::mutex> guard(service_->sessionsMutex_);
+        service_->sessionRecords_["leak_active_died_session"] = nullptr;
+        service_->sessionRecords_[matchingRecord->sessionId] = matchingRecord;
+        service_->sessionRecords_[otherRecord->sessionId] = otherRecord;
+    }
+
+    service_->OnProcessDied("test.bundle", diedPid);
+
+    EXPECT_EQ(service_->sessionRecords_.find("leak_active_died_session"), service_->sessionRecords_.end());
+    EXPECT_EQ(service_->GetSessionRecord(matchingRecord->sessionId), nullptr);
+    EXPECT_EQ(service_->GetSessionRecord(otherRecord->sessionId), otherRecord);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_OnProcessDied_0200 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_OnProcessDied_0300
+ * @tc.desc: Test OnProcessDied kills every matching caller session (collect-then-kill, not only the first)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, OnProcessDied_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_OnProcessDied_0300 start");
+
+    const int32_t diedPid = 2005;
+    auto recA = std::make_shared<SessionRecord>();
+    recA->sessionId = "multi_died_session_a";
+    recA->callerPid = diedPid;
+    recA->processId = 999999;
+    auto recB = std::make_shared<SessionRecord>();
+    recB->sessionId = "multi_died_session_b";
+    recB->callerPid = diedPid;
+    recB->processId = 999998;
+    auto otherRecord = std::make_shared<SessionRecord>();
+    otherRecord->sessionId = "multi_died_other_session";
+    otherRecord->callerPid = 2006;
+    {
+        std::lock_guard<ffrt::mutex> guard(service_->sessionsMutex_);
+        service_->sessionRecords_[recA->sessionId] = recA;
+        service_->sessionRecords_[recB->sessionId] = recB;
+        service_->sessionRecords_[otherRecord->sessionId] = otherRecord;
+    }
+
+    service_->OnProcessDied("test.bundle", diedPid);
+
+    EXPECT_EQ(service_->GetSessionRecord(recA->sessionId), nullptr);
+    EXPECT_EQ(service_->GetSessionRecord(recB->sessionId), nullptr);
+    EXPECT_EQ(service_->GetSessionRecord(otherRecord->sessionId), otherRecord);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_OnProcessDied_0300 end");
 }
 } // namespace CliTool
 } // namespace OHOS
