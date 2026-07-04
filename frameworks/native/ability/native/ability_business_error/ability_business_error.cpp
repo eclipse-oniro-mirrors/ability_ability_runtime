@@ -312,6 +312,12 @@ constexpr const char* ERROR_MSG_SET_KEEP_ALIVE_FAILED =
 // follow ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST of appexecfwk_errors.h in bundle_framework
 constexpr int32_t ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST = 8521220;
 
+constexpr const char* ERROR_MSG_FILE_TYPE_ERROR =
+    "File type error. File name does not end with .so, .hap, or .hsp.";
+
+constexpr const char* ERROR_MSG_EVICT_CONFIG_PARSE_ERROR =
+    "Failed to parse configuration file.";
+
 static std::unordered_map<AbilityErrorCode, const char*> ERR_CODE_MAP = {
     { AbilityErrorCode::ERROR_OK, ERROR_MSG_OK },
     { AbilityErrorCode::ERROR_CODE_PERMISSION_DENIED, ERROR_MSG_PERMISSION_DENIED },
@@ -319,6 +325,8 @@ static std::unordered_map<AbilityErrorCode, const char*> ERR_CODE_MAP = {
     { AbilityErrorCode::ERROR_CODE_INVALID_PARAM, ERROR_MSG_INVALID_PARAM },
     { AbilityErrorCode::ERROR_CODE_CAPABILITY_NOT_SUPPORT, ERROR_MSG_CAPABILITY_NOT_SUPPORT },
     { AbilityErrorCode::ERROR_CODE_INNER, ERROR_MSG_INNER },
+    { AbilityErrorCode::ERROR_CODE_FILE_TYPE_ERROR, ERROR_MSG_FILE_TYPE_ERROR },
+    { AbilityErrorCode::ERROR_CODE_EVICT_CONFIG_PARSE_ERROR, ERROR_MSG_EVICT_CONFIG_PARSE_ERROR },
     { AbilityErrorCode::ERROR_CODE_RESOLVE_ABILITY, ERROR_MSG_RESOLVE_ABILITY },
     { AbilityErrorCode::ERROR_CODE_INVALID_ABILITY_TYPE, ERROR_MSG_INVALID_ABILITY_TYPE },
     { AbilityErrorCode::ERROR_CODE_INVALID_ID, ERROR_MSG_INVALID_ID },
@@ -436,6 +444,8 @@ static std::unordered_map<int32_t, AbilityErrorCode> INNER_TO_JS_ERROR_CODE_MAP 
     {CHECK_PERMISSION_FAILED, AbilityErrorCode::ERROR_CODE_PERMISSION_DENIED},
     {ERR_PERMISSION_DENIED, AbilityErrorCode::ERROR_CODE_PERMISSION_DENIED},
     {ERR_NOT_SYSTEM_APP, AbilityErrorCode::ERROR_CODE_NOT_SYSTEM_APP},
+    {ERR_EVICT_FILE_TYPE, AbilityErrorCode::ERROR_CODE_FILE_TYPE_ERROR},
+    {ERR_EVICT_CONFIG_PARSE, AbilityErrorCode::ERROR_CODE_EVICT_CONFIG_PARSE_ERROR},
     {RESOLVE_ABILITY_ERR, AbilityErrorCode::ERROR_CODE_RESOLVE_ABILITY},
     {ERR_WRONG_INTERFACE_CALL, AbilityErrorCode::ERROR_CODE_INVALID_ABILITY_TYPE},
     {TARGET_ABILITY_NOT_SERVICE, AbilityErrorCode::ERROR_CODE_INVALID_ABILITY_TYPE},

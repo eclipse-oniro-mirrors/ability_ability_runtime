@@ -86,6 +86,7 @@ group("napi_packages") {
     "${ability_runtime_napi_path}/js_mission_manager:missionmanager",
     "${ability_runtime_napi_path}/kiosk_manager:kioskmanager",
     "${ability_runtime_napi_path}/kiosk_manager:kioskmanager_napi",
+    "${ability_runtime_napi_path}/memory_optimizer:appmemoryoptimizer_napi",
     "${ability_runtime_napi_path}/mission_manager:distributedmissionmanager",
     "${ability_runtime_napi_path}/mission_manager:missionmanager_napi",
     "${ability_runtime_napi_path}/particleAbility:particleability",

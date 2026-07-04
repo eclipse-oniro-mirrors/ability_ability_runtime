@@ -14,60 +14,43 @@
 import("//build/ohos.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
-config("madvise_public_config") {
-  visibility = [ ":*" ]
-  include_dirs = [
-    "${ability_runtime_path}/frameworks/native/ability/native/ability_runtime/madvise",
-    "${ability_runtime_services_path}/common/include",
-  ]
-  defines = [ "AMS_LOG_TAG = \"Madvise\"" ]
-  defines += [ "AMS_LOG_DOMAIN = 0xD001300" ]
-}
-
-ohos_shared_library("ability_madvise") {
-  branch_protector_ret = "pac_ret"
-
+ohos_shared_library("appmemoryoptimizer_napi") {
   sanitize = {
+    integer_overflow = true
+    ubsan = true
+    boundary_sanitize = true
     cfi = true
     cfi_cross_dso = true
     cfi_vcall_icall_only = true
+    cfi_policy = "adaptive"
     debug = false
   }
+  branch_protector_ret = "pac_ret"
 
   sources = [
-    "madvise_utils.cpp",
-    "vma_utils.cpp",
+    "js_memory_optimizer.cpp",
+    "memory_optimizer_module.cpp",
   ]
 
-  configs = [
-    ":madvise_public_config",
-    "${ability_runtime_services_path}/common:optimize_config",
-  ]
-
-  public_configs = [ ":madvise_public_config" ]
-
-  include_dirs = [
-    "${ability_runtime_innerkits_path}/ability_manager/include",
-    "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
-  ]
+  configs = [ "${ability_runtime_services_path}/common:common_config" ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/runtime:runtime",
+    "${ability_runtime_native_path}/ability/native/ability_runtime/madvise:ability_madvise",
     "${ability_runtime_native_path}/ability/native:ability_business_error",
-    "${ability_runtime_native_path}/appkit:appkit_manager_helper",
+    "${ability_runtime_napi_path}/inner/napi_common:napi_common",
     "${ability_runtime_services_path}/common:app_util",
   ]
 
   external_deps = [
-    "ability_base:extractortool",
-    "ability_base:want",
-    "bundle_framework:appexecfwk_base",
-    "bundle_framework:appexecfwk_core",
+    "access_token:libtokenid_sdk",
     "c_utils:utils",
-    "config_policy:configpolicy_util",
     "hilog:libhilog",
     "ipc:ipc_core",
-    "json:nlohmann_json_static",
+    "napi:ace_napi",
   ]
+
+  relative_install_dir = "module/app/ability"
 
   subsystem_name = "ability"
   part_name = "ability_runtime"
