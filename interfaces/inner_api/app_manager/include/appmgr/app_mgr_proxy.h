@@ -17,6 +17,7 @@
 #define OHOS_ABILITY_RUNTIME_APP_MGR_PROXY_H
 
 #include "app_jsheap_mem_info.h"
+#include "app_jshandle_map_info.h"
 #include "app_cjheap_mem_info.h"
 #include "app_malloc_info.h"
 #include "app_mgr_interface.h"
@@ -267,6 +268,15 @@ public:
      * @return ERR_OK ,return back success，others fail.
      */
     virtual int32_t DumpHeapMemory(const int32_t pid, OHOS::AppExecFwk::MallocInfo &mallocInfo) override;
+
+    /**
+     * DumpJsHandleMap, call DumpJsHandleMap() through proxy project.
+     * dump the application's jshandle map info.
+     *
+     * @param info, pid tid
+     * @return ERR_OK ,return back success, others fail.
+     */
+    virtual int32_t DumpJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info) override;
 
     /**
      * DumpJsHeapMemory, call DumpJsHeapMemory() through proxy project.

@@ -235,6 +235,8 @@ int32_t AppMgrStub::OnRemoteRequestInnerThird(uint32_t code, MessageParcel &data
             return HandleUpdateConfigurationMultiUser(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::GET_CONFIGURATION_BY_USERID):
             return HandleGetConfigurationByUserId(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::DUMP_JSHANDLE_MAP_PROCESS):
+            return HandleDumpJsHandleMap(data, reply);
     }
     return INVALID_FD;
 }
@@ -893,6 +895,23 @@ int32_t AppMgrStub::HandleDumpJsHeapMemory(MessageParcel &data, MessageParcel &r
         return ERR_INVALID_VALUE;
     }
     auto result = DumpJsHeapMemory(*info);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write result error");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleDumpJsHandleMap(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "AppMgrStub::HandleDumpJsHandleMap.");
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::unique_ptr<JsHandleMapInfo> info(data.ReadParcelable<JsHandleMapInfo>());
+    if (info == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "AppMgrStub read configuration error");
+        return ERR_INVALID_VALUE;
+    }
+    auto result = DumpJsHandleMap(*info);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::APPMGR, "write result error");
         return ERR_INVALID_VALUE;

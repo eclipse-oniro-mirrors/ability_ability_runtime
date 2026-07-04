@@ -473,5 +473,10 @@ bool AppRunningManager::CheckAppRunningRecordIsLast(const std::shared_ptr<AppRun
 {
     return true;
 }
+
+int32_t AppRunningManager::DumpJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
+{
+    return ERR_OK;
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

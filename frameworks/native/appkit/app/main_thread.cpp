@@ -675,6 +675,29 @@ void MainThread::ScheduleJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info)
 
 /**
  *
+ * @brief the application dump jshandle map.
+ *
+ * @param info, pid, tid.
+ */
+void MainThread::ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
+{
+    TAG_LOGI(AAFwkTag::APPKIT, "pid: %{public}d, tid: %{public}d", info.pid, info.tid);
+    wptr<MainThread> weak = this;
+    auto task = [weak, info]() {
+        auto appThread = weak.promote();
+        if (appThread == nullptr) {
+            TAG_LOGE(AAFwkTag::APPKIT, "null appThread");
+            return;
+        }
+        appThread->HandleJsHandleMap(info);
+    };
+    if (!mainHandler_->PostTask(task, "MainThread:HandleJsHandleMap")) {
+        TAG_LOGE(AAFwkTag::APPKIT, "PostTask HandleJsHandleMap failed");
+    }
+}
+
+/**
+ *
  * @brief the application triggerGC and dump cjheap memory.
  *
  * @param info, pid, tid, needGC, needSnapshot.

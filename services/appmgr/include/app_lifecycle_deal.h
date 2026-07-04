@@ -24,6 +24,7 @@
 #include "want.h"
 #include "app_malloc_info.h"
 #include "app_jsheap_mem_info.h"
+#include "app_jshandle_map_info.h"
 #include "app_cjheap_mem_info.h"
 #include "app_mem_dump_info.h"
 #include "mem_dump_callback_interface.h"
@@ -143,6 +144,16 @@ public:
      * @return
      */
     void ScheduleJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info);
+
+    /**
+     * ScheduleJsHandleMap, call ScheduleJsHandleMap() through proxy project,
+     * dump the application's jshandle map info.
+     *
+     * @param info, pid, tid
+     *
+     * @return
+     */
+    void ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info);
 
     /**
      * ScheduleCjHeapMemory, call ScheduleCjHeapMemory() through proxy project,
