@@ -681,7 +681,7 @@ void MainThread::ScheduleJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info)
  */
 void MainThread::ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
 {
-    TAG_LOGI(AAFwkTag::APPKIT, "pid: %{public}d, tid: %{public}d", info.pid, info.tid);
+    TAG_LOGI(AAFwkTag::APPKIT, "pid: %{public}u, tid: %{public}u", info.pid, info.tid);
     wptr<MainThread> weak = this;
     auto task = [weak, info]() {
         auto appThread = weak.promote();

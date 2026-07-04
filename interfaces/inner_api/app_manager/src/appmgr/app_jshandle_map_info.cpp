@@ -32,7 +32,7 @@ JsHandleMapInfo *JsHandleMapInfo::Unmarshalling(Parcel &parcel)
     }
     if (!parcel.ReadUint32(info->pid) || !parcel.ReadUint32(info->tid)) {
         TAG_LOGE(AAFwkTag::APPMGR, "read param fail");
-        default info;
+        delete info;
         return nullptr;
     }
     return info;
