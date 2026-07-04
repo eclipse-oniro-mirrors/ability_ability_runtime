@@ -103,6 +103,8 @@ ohos_shared_library("ability_runtime") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
     "samgr:samgr_proxy",
   ]
 

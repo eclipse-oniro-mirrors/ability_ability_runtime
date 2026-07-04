@@ -29,6 +29,8 @@ ohos_shared_library("napi_base_context") {
     "napi:ace_napi",
     "form_fwk:form_render_info",
     "form_fwk:form_common_info",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   public_external_deps = [

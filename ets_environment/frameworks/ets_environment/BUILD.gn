@@ -64,6 +64,9 @@ ohos_shared_library("ets_environment") {
     "runtime_core:ani",
     "runtime_core:libarkruntime",
     "runtime_core:common_interfaces_header",
+    "ets_runtime:libark_jsruntime",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {

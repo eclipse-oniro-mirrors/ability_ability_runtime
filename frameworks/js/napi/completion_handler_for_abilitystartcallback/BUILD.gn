@@ -37,6 +37,8 @@ ohos_shared_library("completionhandlerforabilitystartcallback") {
     "hilog:libhilog",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   relative_install_dir = "module/app/ability"

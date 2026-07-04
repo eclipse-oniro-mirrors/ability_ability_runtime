@@ -54,6 +54,8 @@ ohos_shared_library("js_environment") {
     "ffrt:libffrt",
     "hilog:libhilog",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {

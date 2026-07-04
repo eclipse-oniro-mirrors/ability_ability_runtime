@@ -55,6 +55,7 @@ ohos_shared_library("featureability") {
     "ipc:ipc_core",
     "libuv:uv",
     "napi:ace_napi",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {

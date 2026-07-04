@@ -236,6 +236,8 @@ ohos_shared_library("appkit_native") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "storage_service:storage_manager_acl",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
   public_external_deps = [ "ability_base:configuration" ]
 
@@ -519,6 +521,8 @@ ohos_shared_library("app_context") {
     "resource_management:global_resmgr",
     "samgr:samgr_proxy",
     "icu:shared_icuuc",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
   public_external_deps = [
     "ability_base:configuration",
@@ -594,6 +598,8 @@ ohos_shared_library("app_context_utils") {
     "napi:ace_napi",
     "resource_management:global_resmgr",
     "resource_management:resmgr_napi_core",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   public_external_deps = [ "ability_base:configuration" ]
@@ -671,6 +677,8 @@ ohos_shared_library("appkit_delegator") {
     "json:nlohmann_json_static",
     "napi:ace_napi",
     "samgr:samgr_proxy",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   public_external_deps = [ "ability_base:configuration" ]
@@ -755,6 +763,8 @@ ohos_shared_library("test_runner_ani") {
     "napi:ace_napi",
     "runtime_core:ani",
     "samgr:samgr_proxy",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   public_external_deps = [ "ability_base:configuration" ]
@@ -838,6 +848,8 @@ ohos_shared_library("application_context_manager") {
   external_deps = [
     "hilog:libhilog",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   public_configs = [ ":application_context_manager_config" ]
@@ -940,6 +952,8 @@ ohos_shared_library("appkit_child") {
     "ipc:ipc_capi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   defines = [ "SUPPORT_CHILD_PROCESS" ]

@@ -55,6 +55,7 @@ ohos_shared_library("napi_wantagent_common") {
     "ipc:ipc_single",
     "libuv:uv",
     "napi:ace_napi",
+    "node:node_header_notice",
   ]
 
   innerapi_tags = [ "platformsdk" ]
