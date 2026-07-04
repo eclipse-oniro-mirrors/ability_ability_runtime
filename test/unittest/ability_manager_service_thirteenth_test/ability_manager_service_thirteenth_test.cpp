@@ -129,10 +129,10 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, ConnectAbilityCommon_001, TestSize
 
     auto ret = abilityMs->ConnectAbilityCommon(
         want, connect, callerToken, ExtensionAbilityType::AGENT, DEFAULT_INVAL_VALUE, false);
-    EXPECT_EQ(ret, CHECK_PERMISSION_FAILED);
-    EXPECT_TRUE(status.fimConnectFreeInstallCalled_);
-    EXPECT_EQ(status.fimConnectExtensionType_, static_cast<int32_t>(ExtensionAbilityType::AGENT));
-    EXPECT_EQ(status.fimConnectLocalDeviceId_, "0");
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_FALSE(status.fimConnectFreeInstallCalled_);
+    EXPECT_EQ(status.fimConnectExtensionType_, -1);
+    EXPECT_TRUE(status.fimConnectLocalDeviceId_.empty());
 }
 #endif // SUPPORT_RECORDER_DSOFTBUS
 
@@ -167,7 +167,7 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, ConnectAbilityCommon_002, TestSize
  * Name: ConnectAbilityCommon_003
  * Function: ConnectAbilityCommon
  * SubFunction: NA
- * FunctionPoints: Verify ConnectAbilityCommon lets AGENT type carry AGENTEXTENSIONHOSTPROXY_KEY and reach free-install.
+ * FunctionPoints: Verify ConnectAbilityCommon rejects AGENT when AGENTID_KEY is missing even if AGENTEXTENSIONHOSTPROXY_KEY is present.
  */
 HWTEST_F(AbilityManagerServiceThirteenthTest, ConnectAbilityCommon_003, TestSize.Level1)
 {
@@ -194,9 +194,9 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, ConnectAbilityCommon_003, TestSize
 
     auto ret = abilityMs->ConnectAbilityCommon(
         want, connect, callerToken, ExtensionAbilityType::AGENT, DEFAULT_INVAL_VALUE, false);
-    EXPECT_EQ(ret, CHECK_PERMISSION_FAILED);
-    EXPECT_TRUE(status.fimConnectFreeInstallCalled_);
-    EXPECT_EQ(status.fimConnectExtensionType_, static_cast<int32_t>(ExtensionAbilityType::AGENT));
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_FALSE(status.fimConnectFreeInstallCalled_);
+    EXPECT_EQ(status.fimConnectExtensionType_, -1);
 }
 #endif // SUPPORT_RECORDER_DSOFTBUS
 

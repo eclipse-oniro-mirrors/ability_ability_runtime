@@ -17,6 +17,7 @@
 #define OHOS_AGENT_RUNTIME_JS_AGENT_CONNECTION_H
 
 #include <map>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <vector>
@@ -60,6 +61,13 @@ namespace AgentConnectionUtils {
 void RemoveAgentConnection(int64_t connectId);
 
 /**
+ * Erase agent connection from registry without releasing the callback object.
+ *
+ * @param connectId The connection ID to erase.
+ */
+void EraseAgentConnection(int64_t connectId);
+
+/**
  * Insert agent connection into registry.
  *
  * @param connection The connection object to insert.
@@ -84,8 +92,14 @@ void FindAgentConnection(int64_t connectId, sptr<JSAgentConnection> &connection)
  * @param callback The callback object to match.
  * @param connection Output parameter for the found connection.
  */
-void FindAgentConnection(napi_env env, AAFwk::Want &want, napi_value callback,
+void FindAgentConnection(napi_env env, const AAFwk::Want &want, napi_value callback,
     sptr<JSAgentConnection> &connection);
+
+void FindAgentConnectionCandidatesByTarget(napi_env env, const AAFwk::Want &want, napi_value callback,
+    std::vector<sptr<JSAgentConnection>> &candidates);
+
+void FindAgentConnectionByTargetAndCardType(napi_env env, const AAFwk::Want &want, napi_value callback,
+    int32_t agentCardType, sptr<JSAgentConnection> &connection);
 }
 
 class JsAgentConnectorStubImpl;
@@ -97,6 +111,8 @@ class JsAgentConnectorStubImpl;
  */
 class JSAgentConnection : public AbilityRuntime::AbilityConnectCallback {
 public:
+    using DisconnectCompleteHandler = std::function<void(const sptr<JSAgentConnection>&)>;
+
     /**
      * Constructor.
      *
@@ -159,6 +175,8 @@ public:
      */
     void SetNapiAsyncTask(std::shared_ptr<AbilityRuntime::NapiAsyncTask> &task);
 
+    void SetDisconnectAsyncTask(const std::shared_ptr<AbilityRuntime::NapiAsyncTask> &task);
+
     /**
      * Add a duplicated pending task.
      * Used when multiple connection requests are made for the same extension.
@@ -166,6 +184,13 @@ public:
      * @param task The unique pointer to the pending async task.
      */
     void AddDuplicatedPendingTask(std::unique_ptr<AbilityRuntime::NapiAsyncTask> &task);
+
+    void AddReconnectPendingTask(const AAFwk::Want &want, std::unique_ptr<AbilityRuntime::NapiAsyncTask> &task);
+
+    bool TakeReconnectPendingTasks(AAFwk::Want &want,
+        std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> &tasks);
+
+    void AdoptDuplicatedPendingTasks(std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> &&tasks);
 
     /**
      * Resolve all duplicated pending tasks with the proxy.
@@ -224,6 +249,8 @@ public:
      */
     void SetJsConnectionObject(napi_value jsConnectionObject);
 
+    napi_env GetEnv() const { return env_; }
+
     /**
      * Get the JS connection object.
      *
@@ -267,6 +294,12 @@ public:
      */
     int64_t GetConnectionId() { return connectionId_; }
 
+    void SetDisconnecting(bool disconnecting);
+
+    bool IsDisconnecting();
+
+    void SetDisconnectCompleteHandler(DisconnectCompleteHandler handler);
+
     /**
      * Release a native reference.
      *
@@ -308,6 +341,11 @@ private:
     std::shared_ptr<AbilityRuntime::NapiAsyncTask> napiAsyncTask_;
 
     /**
+     * The async task for the disconnect promise.
+     */
+    std::shared_ptr<AbilityRuntime::NapiAsyncTask> disconnectAsyncTask_;
+
+    /**
      * The proxy object returned to JavaScript.
      */
     std::unique_ptr<NativeReference> serviceProxyObject_;
@@ -316,6 +354,12 @@ private:
      * List of pending tasks for duplicate connection requests.
      */
     std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> duplicatedPendingTaskList_;
+
+    std::mutex stateLock_;
+    bool disconnecting_ = false;
+    AAFwk::Want reconnectWant_;
+    std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> reconnectPendingTaskList_;
+    DisconnectCompleteHandler disconnectCompleteHandler_;
 };
 
 } // namespace AgentRuntime

@@ -18,6 +18,7 @@
 
 #include <functional>
 #include <memory>
+#include <vector>
 
 #include "iagent_manager.h"
 
@@ -69,6 +70,14 @@ public:
      * @brief Releases the active LOW_CODE agent marker once the caller reports completion.
      */
     int32_t NotifyLowCodeAgentComplete(const std::string &agentId);
+
+    int32_t GetAgentCardTypeForConnect(AAFwk::Want &want, int32_t &cardType);
+
+    int32_t VerifyAgentConnectRequest(const AAFwk::Want &want,
+        const sptr<AAFwk::IAbilityConnection> &connection, std::string &callerIdentity);
+
+    int32_t VerifyAgentDisconnectRequests(const std::vector<AAFwk::Want> &wants,
+        const sptr<AAFwk::IAbilityConnection> &connection, std::string &callerIdentity);
 
 private:
     sptr<IAgentManager> GetAgentMgrProxy();

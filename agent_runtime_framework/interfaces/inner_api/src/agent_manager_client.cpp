@@ -178,6 +178,38 @@ int32_t AgentManagerClient::NotifyLowCodeAgentComplete(const std::string &agentI
     return agentMgr->NotifyLowCodeAgentComplete(agentId);
 }
 
+int32_t AgentManagerClient::GetAgentCardTypeForConnect(AAFwk::Want &want, int32_t &cardType)
+{
+    auto agentMgr = GetAgentMgrProxy();
+    if (agentMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null agentmgr");
+        return ERR_NULL_AGENT_MGR_PROXY;
+    }
+    return agentMgr->GetAgentCardTypeForConnect(want, cardType);
+}
+
+int32_t AgentManagerClient::VerifyAgentConnectRequest(const AAFwk::Want &want,
+    const sptr<AAFwk::IAbilityConnection> &connection, std::string &callerIdentity)
+{
+    auto agentMgr = GetAgentMgrProxy();
+    if (agentMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null agentmgr");
+        return ERR_NULL_AGENT_MGR_PROXY;
+    }
+    return agentMgr->VerifyAgentConnectRequest(want, connection, callerIdentity);
+}
+
+int32_t AgentManagerClient::VerifyAgentDisconnectRequests(const std::vector<AAFwk::Want> &wants,
+    const sptr<AAFwk::IAbilityConnection> &connection, std::string &callerIdentity)
+{
+    auto agentMgr = GetAgentMgrProxy();
+    if (agentMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null agentmgr");
+        return ERR_NULL_AGENT_MGR_PROXY;
+    }
+    return agentMgr->VerifyAgentDisconnectRequests(wants, connection, callerIdentity);
+}
+
 sptr<IAgentManager> AgentManagerClient::GetAgentMgrProxy()
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);

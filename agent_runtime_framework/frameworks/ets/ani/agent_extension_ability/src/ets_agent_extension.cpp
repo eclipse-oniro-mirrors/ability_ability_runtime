@@ -54,6 +54,12 @@ constexpr const char *ON_CONNECT_SIGNATURE =
 constexpr const char *ON_DISCONNECT_SIGNATURE =
     "C{@ohos.app.ability.Want.Want}C{application.AgentHostProxy.AgentHostProxy}:";
 constexpr const char *VOID_SIGNATURE = ":";
+
+void RemoveAgentWantParams(AAFwk::Want &want)
+{
+    want.RemoveParam(AGENT_CARD_TYPE_KEY);
+    want.RemoveParam(AGENT_VERIFICATION_NONCE_KEY);
+}
 } // namespace
 
 EtsAgentExtension::EtsAgentExtension(ETSRuntime& etsRuntime) : etsRuntime_(etsRuntime) {}
@@ -133,7 +139,7 @@ void EtsAgentExtension::OnStart(const AAFwk::Want &want)
         TAG_LOGE(AAFwkTag::SER_ROUTER, "env not found");
         return;
     }
-    ani_ref wantRef = OHOS::AppExecFwk::WrapWant(env, want);
+    ani_ref wantRef = WrapWant(env, want);
     if (wantRef == nullptr) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null wantRef");
         return;
@@ -170,7 +176,7 @@ sptr<IRemoteObject> EtsAgentExtension::OnConnect(const AAFwk::Want &want,
         return nullptr;
     }
 
-    ani_object aniWant = AppExecFwk::WrapWant(env, want);
+    ani_object aniWant = WrapWant(env, want);
     if (aniWant == nullptr) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null aniWant");
         return nullptr;
@@ -186,7 +192,8 @@ sptr<IRemoteObject> EtsAgentExtension::OnConnect(const AAFwk::Want &want,
         stubObject = extensionStub_->AsObject();
     }
 
-    if (hostProxyMap_.find(hostProxy) != hostProxyMap_.end()) {
+    auto hostProxyKey = BuildAgentRemoteObjectKey(hostProxy);
+    if (hostProxyMap_.find(hostProxyKey) != hostProxyMap_.end()) {
         TAG_LOGI(AAFwkTag::SER_ROUTER, "hostProxy exist");
         return stubObject;
     }
@@ -207,7 +214,7 @@ sptr<IRemoteObject> EtsAgentExtension::OnConnect(const AAFwk::Want &want,
         TAG_LOGE(AAFwkTag::SER_ROUTER, "GlobalReference_Create failed status: %{public}d", status);
         return nullptr;
     }
-    hostProxyMap_[hostProxy] = connectorProxyRef;
+    hostProxyMap_[hostProxyKey] = connectorProxyRef;
     TAG_LOGD(AAFwkTag::SER_ROUTER, "end");
     return stubObject;
 }
@@ -228,13 +235,13 @@ void EtsAgentExtension::OnDisconnect(const AAFwk::Want &want,
         TAG_LOGW(AAFwkTag::SER_ROUTER, "null hostProxy");
         return;
     }
-    ani_object aniWant = AppExecFwk::WrapWant(env, want);
+    ani_object aniWant = WrapWant(env, want);
     if (aniWant == nullptr) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null aniWant");
         return;
     }
     ani_ref etsHostProxy = nullptr;
-    auto iter = hostProxyMap_.find(hostProxy);
+    auto iter = hostProxyMap_.find(BuildAgentRemoteObjectKey(hostProxy));
     if (iter != hostProxyMap_.end()) {
         if (iter->second != nullptr) {
             etsHostProxy = iter->second;
@@ -278,7 +285,7 @@ void EtsAgentExtension::HandleSendData(sptr<IRemoteObject> hostProxy, const std:
         return;
     }
     ani_ref etsHostProxy = nullptr;
-    auto iter = hostProxyMap_.find(hostProxy);
+    auto iter = hostProxyMap_.find(BuildAgentRemoteObjectKey(hostProxy));
     if (iter != hostProxyMap_.end()) {
         if (iter->second != nullptr) {
             etsHostProxy = iter->second;
@@ -317,7 +324,7 @@ void EtsAgentExtension::HandleAuthorize(sptr<IRemoteObject> hostProxy, const std
         return;
     }
     ani_ref etsHostProxy = nullptr;
-    auto iter = hostProxyMap_.find(hostProxy);
+    auto iter = hostProxyMap_.find(BuildAgentRemoteObjectKey(hostProxy));
     if (iter != hostProxyMap_.end()) {
         if (iter->second != nullptr) {
             etsHostProxy = iter->second;
@@ -364,6 +371,13 @@ void EtsAgentExtension::HandleAgentInvoked(const std::string &agentId)
     }
     CallObjectMethod("onAgentInvoked", ON_AGENT_INVOKED_SIGNATURE, agentIdRef);
     AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);
+}
+
+ani_object EtsAgentExtension::WrapWant(ani_env *env, const AAFwk::Want &want)
+{
+    AAFwk::Want etsWant = want;
+    RemoveAgentWantParams(etsWant);
+    return AppExecFwk::WrapWant(env, etsWant);
 }
 
 void EtsAgentExtension::CallObjectMethod(const char *name, const char *signature, ...)

@@ -123,6 +123,7 @@ ohos_shared_library("agent_manager") {
   include_dirs = [
     "${ability_runtime_innerkits_path}/ability_manager/include",
     "${ability_runtime_services_path}/common/include",
+    "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
   ]
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
   public_configs = [ ":agent_manager_config" ]

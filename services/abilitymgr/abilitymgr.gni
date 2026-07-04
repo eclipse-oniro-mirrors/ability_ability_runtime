@@ -183,6 +183,7 @@ abilityms_files = [
   "src/utils/request_id_util.cpp",
   "src/utils/ability_event_util.cpp",
   "src/utils/agent_ability_util.cpp",
+  "src/utils/agent_caller_identity_util.cpp",
   "src/utils/ability_permission_util.cpp",
   "src/utils/app_mgr_util.cpp",
   "src/utils/dms_util.cpp",

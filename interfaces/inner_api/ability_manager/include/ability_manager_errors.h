@@ -1128,6 +1128,9 @@ enum {
     // Result (2099218) for duplicate active LOW_CODE agent invocation.
     ERR_LOW_CODE_AGENT_ALREADY_ACTIVE = 2099218,
 
+    // Result (2099219) for inconsistent LOW_CODE agent disconnect batch state.
+    ERR_LOW_CODE_AGENT_DISCONNECT_BATCH_MISMATCH = 2099219,
+
     /**
      * Result (2099220) for pid has been reused.
      */

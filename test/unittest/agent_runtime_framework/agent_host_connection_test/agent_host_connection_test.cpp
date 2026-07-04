@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 
 #define private public
+#include "agent_connect_manager.h"
 #include "agent_manager_service.h"
 #include "agent_host_connection.h"
 #undef private
@@ -91,11 +92,7 @@ public:
         MyFlag::retConnectAbilityWithExtensionType = ERR_OK;
         MyFlag::retDisconnectAbility = ERR_OK;
         MyFlag::extensionAbilityUid = IPCSkeleton::GetCallingUid();
-        auto service = AgentManagerService::GetInstance();
-        service->trackedConnections_.clear();
-        service->callerConnectionCounts_.clear();
-        service->agentHostSessions_.clear();
-        service->agentOwners_.clear();
+        AgentConnectManager::GetInstance().Clear();
     }
 };
 
@@ -106,7 +103,7 @@ public:
 */
 HWTEST_F(AgentHostConnectionTest, OnAbilityConnectDone_001, TestSize.Level1)
 {
-    auto service = AgentManagerService::GetInstance();
+    auto &manager = AgentConnectManager::GetInstance();
     AgentHostKey hostKey;
     hostKey.userId = IPCSkeleton::GetCallingUid() / 200000;
     hostKey.bundleName = "lowcode.bundle";
@@ -118,25 +115,24 @@ HWTEST_F(AgentHostConnectionTest, OnAbilityConnectDone_001, TestSize.Level1)
     auto session = std::make_shared<AgentHostSession>();
     session->key = hostKey;
     session->hostUid = IPCSkeleton::GetCallingUid();
-    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey);
+    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, callerRemote, "agentA");
     session->callerConnections[callerRemote] = callback;
-    session->agents["agentA"] = LowCodeAgentRecord { callerRemote, true };
-    service->agentHostSessions_[hostKey] = session;
-    service->agentOwners_[{session->hostUid, "agentA"}] = session;
+    session->agents["agentA"] = LowCodeAgentRecord { callerRemote, IPCSkeleton::GetCallingUid(), true,
+        session->hostConnection };
+    manager.agentHostSessions_[hostKey] = session;
+    manager.agentOwners_[{session->hostUid, "agentA"}] = session;
 
     auto hostConnection = session->hostConnection;
     ASSERT_NE(hostConnection, nullptr);
+    hostConnection->AddPendingConnectAgent("agentA");
     sptr<TestAgentReceiver> receiver = new TestAgentReceiver();
     AppExecFwk::ElementName element("", "lowcode.bundle", "LowCodeExtAbility", "entry");
 
     hostConnection->OnAbilityConnectDone(element, receiver->AsObject(), ERR_OK);
 
-    EXPECT_EQ(receiver->agentInvokedCount, 1);
-    ASSERT_EQ(receiver->invokedAgentIds.size(), 1);
-    EXPECT_EQ(receiver->invokedAgentIds[0], "agentA");
     EXPECT_EQ(callback->connectDoneCount, 1);
-    ASSERT_EQ(service->agentHostSessions_.size(), 1);
-    EXPECT_TRUE(service->agentHostSessions_.begin()->second->isConnected);
+    ASSERT_EQ(manager.agentHostSessions_.size(), 1);
+    EXPECT_TRUE(manager.agentHostSessions_.begin()->second->isConnected);
 }
 
 /**
@@ -152,17 +148,17 @@ HWTEST_F(AgentHostConnectionTest, OnAbilityConnectDone_002, TestSize.Level1)
     hostKey.moduleName = "entry";
     hostKey.abilityName = "LowCodeExtAbility";
 
-    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey);
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "");
     ASSERT_NE(hostConnection, nullptr);
+    hostConnection->AddPendingConnectAgent("agentA");
     AppExecFwk::ElementName element("", "lowcode.bundle", "LowCodeExtAbility", "entry");
     sptr<TestAgentReceiver> receiver = new TestAgentReceiver();
 
     hostConnection->OnAbilityConnectDone(element, receiver->AsObject(), ERR_OK);
 
-    EXPECT_TRUE(AgentManagerService::GetInstance()->agentHostSessions_.empty());
-    EXPECT_TRUE(AgentManagerService::GetInstance()->agentOwners_.empty());
-    EXPECT_TRUE(AgentManagerService::GetInstance()->trackedConnections_.empty());
-    EXPECT_TRUE(AgentManagerService::GetInstance()->callerConnectionCounts_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentOwners_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
 }
 
 /**
@@ -172,25 +168,25 @@ HWTEST_F(AgentHostConnectionTest, OnAbilityConnectDone_002, TestSize.Level1)
 */
 HWTEST_F(AgentHostConnectionTest, OnAbilityConnectDone_003, TestSize.Level1)
 {
-    auto service = AgentManagerService::GetInstance();
+    auto &manager = AgentConnectManager::GetInstance();
     AgentHostKey hostKey;
     hostKey.userId = IPCSkeleton::GetCallingUid() / 200000;
     hostKey.bundleName = "lowcode.bundle";
     hostKey.moduleName = "entry";
     hostKey.abilityName = "LowCodeExtAbility";
-    service->agentHostSessions_[hostKey] = nullptr;
+    manager.agentHostSessions_[hostKey] = nullptr;
 
-    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey);
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "");
     ASSERT_NE(hostConnection, nullptr);
+    hostConnection->AddPendingConnectAgent("agentA");
     AppExecFwk::ElementName element("", "lowcode.bundle", "LowCodeExtAbility", "entry");
     sptr<TestAgentReceiver> receiver = new TestAgentReceiver();
 
     hostConnection->OnAbilityConnectDone(element, receiver->AsObject(), ERR_OK);
 
-    EXPECT_TRUE(service->agentHostSessions_.empty());
-    EXPECT_TRUE(service->agentOwners_.empty());
-    EXPECT_TRUE(service->trackedConnections_.empty());
-    EXPECT_TRUE(service->callerConnectionCounts_.empty());
+    EXPECT_TRUE(manager.agentHostSessions_.empty());
+    EXPECT_TRUE(manager.agentOwners_.empty());
+    EXPECT_TRUE(manager.trackedConnections_.empty());
 }
 
 /**
@@ -200,7 +196,7 @@ HWTEST_F(AgentHostConnectionTest, OnAbilityConnectDone_003, TestSize.Level1)
 */
 HWTEST_F(AgentHostConnectionTest, OnAbilityConnectDone_004, TestSize.Level1)
 {
-    auto service = AgentManagerService::GetInstance();
+    auto &manager = AgentConnectManager::GetInstance();
     AgentHostKey hostKey;
     hostKey.userId = IPCSkeleton::GetCallingUid() / 200000;
     hostKey.bundleName = "lowcode.bundle";
@@ -212,32 +208,32 @@ HWTEST_F(AgentHostConnectionTest, OnAbilityConnectDone_004, TestSize.Level1)
     auto session = std::make_shared<AgentHostSession>();
     session->key = hostKey;
     session->hostUid = IPCSkeleton::GetCallingUid();
-    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey);
+    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, callerRemote, "agentA");
     session->callerConnections[callerRemote] = callback;
-    session->agents["agentA"] = LowCodeAgentRecord { callerRemote, true };
-    service->agentHostSessions_[hostKey] = session;
-    service->agentOwners_[{session->hostUid, "agentA"}] = session;
-    AgentManagerService::TrackedConnectionRecord record;
+    session->agents["agentA"] = LowCodeAgentRecord { callerRemote, IPCSkeleton::GetCallingUid(), true,
+        session->hostConnection };
+    manager.agentHostSessions_[hostKey] = session;
+    manager.agentOwners_[{session->hostUid, "agentA"}] = session;
+    TrackedConnectionRecord record;
     record.callerUid = IPCSkeleton::GetCallingUid();
     record.callerRemote = callerRemote;
     record.serviceConnection = session->hostConnection;
     record.hostKey = hostKey;
     record.isLowCode = true;
-    service->trackedConnections_[callerRemote] = record;
-    service->callerConnectionCounts_[record.callerUid] = 1;
+    manager.trackedConnections_[callerRemote] = record;
 
     auto hostConnection = session->hostConnection;
     ASSERT_NE(hostConnection, nullptr);
+    hostConnection->AddPendingConnectAgent("agentA");
     AppExecFwk::ElementName element("", "lowcode.bundle", "LowCodeExtAbility", "entry");
 
     hostConnection->OnAbilityConnectDone(element, nullptr, ERR_INVALID_VALUE);
 
     EXPECT_EQ(callback->connectDoneCount, 1);
     EXPECT_EQ(callback->lastConnectResultCode, ERR_INVALID_VALUE);
-    EXPECT_TRUE(service->agentHostSessions_.empty());
-    EXPECT_TRUE(service->agentOwners_.empty());
-    EXPECT_TRUE(service->trackedConnections_.empty());
-    EXPECT_TRUE(service->callerConnectionCounts_.empty());
+    EXPECT_TRUE(manager.agentHostSessions_.empty());
+    EXPECT_TRUE(manager.agentOwners_.empty());
+    EXPECT_TRUE(manager.trackedConnections_.empty());
 }
 
 /**
@@ -247,7 +243,7 @@ HWTEST_F(AgentHostConnectionTest, OnAbilityConnectDone_004, TestSize.Level1)
 */
 HWTEST_F(AgentHostConnectionTest, OnAbilityConnectDone_005, TestSize.Level1)
 {
-    auto service = AgentManagerService::GetInstance();
+    auto &manager = AgentConnectManager::GetInstance();
     AgentHostKey hostKey;
     hostKey.userId = IPCSkeleton::GetCallingUid() / 200000;
     hostKey.bundleName = "lowcode.bundle";
@@ -259,14 +255,16 @@ HWTEST_F(AgentHostConnectionTest, OnAbilityConnectDone_005, TestSize.Level1)
     auto session = std::make_shared<AgentHostSession>();
     session->key = hostKey;
     session->hostUid = IPCSkeleton::GetCallingUid();
-    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey);
+    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, callerRemote, "agentA");
     session->callerConnections[callerRemote] = callback;
-    session->agents["agentA"] = LowCodeAgentRecord { callerRemote, true };
-    service->agentHostSessions_[hostKey] = session;
-    service->agentOwners_[{session->hostUid, "agentA"}] = session;
+    session->agents["agentA"] = LowCodeAgentRecord { callerRemote, IPCSkeleton::GetCallingUid(), true,
+        session->hostConnection };
+    manager.agentHostSessions_[hostKey] = session;
+    manager.agentOwners_[{session->hostUid, "agentA"}] = session;
 
     auto hostConnection = session->hostConnection;
     ASSERT_NE(hostConnection, nullptr);
+    hostConnection->AddPendingConnectAgent("agentA");
     AppExecFwk::ElementName element("", "lowcode.bundle", "LowCodeExtAbility", "entry");
     auto nonReceiverRemote = sptr<MockAbilityConnection>::MakeSptr()->AsObject();
 
@@ -274,8 +272,47 @@ HWTEST_F(AgentHostConnectionTest, OnAbilityConnectDone_005, TestSize.Level1)
 
     EXPECT_EQ(callback->connectDoneCount, 1);
     EXPECT_EQ(callback->lastConnectResultCode, ERR_OK);
-    ASSERT_EQ(service->agentHostSessions_.size(), 1);
-    EXPECT_TRUE(service->agentHostSessions_.begin()->second->isConnected);
+    ASSERT_EQ(manager.agentHostSessions_.size(), 1);
+    EXPECT_TRUE(manager.agentHostSessions_.begin()->second->isConnected);
+}
+
+/**
+* @tc.name  : OnAbilityConnectDone_006
+* @tc.number: OnAbilityConnectDone_006
+* @tc.desc  : Test empty pending connect completion is ignored instead of falling back to the construction agentId
+*/
+HWTEST_F(AgentHostConnectionTest, OnAbilityConnectDone_006, TestSize.Level1)
+{
+    auto &manager = AgentConnectManager::GetInstance();
+    AgentHostKey hostKey;
+    hostKey.userId = IPCSkeleton::GetCallingUid() / 200000;
+    hostKey.bundleName = "lowcode.bundle";
+    hostKey.moduleName = "entry";
+    hostKey.abilityName = "LowCodeExtAbility";
+
+    auto callback = sptr<MockAbilityConnection>::MakeSptr();
+    auto callerRemote = callback->AsObject();
+    auto session = std::make_shared<AgentHostSession>();
+    session->key = hostKey;
+    session->hostUid = IPCSkeleton::GetCallingUid();
+    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, callerRemote, "agentA");
+    session->callerConnections[callerRemote] = callback;
+    session->agents["agentA"] = LowCodeAgentRecord { callerRemote, IPCSkeleton::GetCallingUid(), true,
+        session->hostConnection };
+    manager.agentHostSessions_[hostKey] = session;
+    manager.agentOwners_[{session->hostUid, "agentA"}] = session;
+
+    ASSERT_NE(session->hostConnection, nullptr);
+    sptr<TestAgentReceiver> receiver = new TestAgentReceiver();
+    AppExecFwk::ElementName element("", "lowcode.bundle", "LowCodeExtAbility", "entry");
+
+    session->hostConnection->OnAbilityConnectDone(element, receiver->AsObject(), ERR_OK);
+
+    EXPECT_EQ(callback->connectDoneCount, 0);
+    ASSERT_EQ(manager.agentHostSessions_.size(), 1);
+    EXPECT_FALSE(manager.agentHostSessions_.begin()->second->isConnected);
+    ASSERT_EQ(manager.agentHostSessions_.begin()->second->agents.size(), 1u);
+    EXPECT_TRUE(manager.agentHostSessions_.begin()->second->agents["agentA"].isPending);
 }
 
 /**
@@ -286,6 +323,7 @@ HWTEST_F(AgentHostConnectionTest, OnAbilityConnectDone_005, TestSize.Level1)
 HWTEST_F(AgentHostConnectionTest, OnAbilityDisconnectDone_001, TestSize.Level1)
 {
     auto service = AgentManagerService::GetInstance();
+    auto &manager = AgentConnectManager::GetInstance();
     AgentHostKey hostKey;
     hostKey.userId = IPCSkeleton::GetCallingUid() / 200000;
     hostKey.bundleName = "lowcode.bundle";
@@ -297,32 +335,45 @@ HWTEST_F(AgentHostConnectionTest, OnAbilityDisconnectDone_001, TestSize.Level1)
     auto session = std::make_shared<AgentHostSession>();
     session->key = hostKey;
     session->hostUid = IPCSkeleton::GetCallingUid();
-    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey);
+    session->hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, callerRemote, "agentA");
     session->callerConnections[callerRemote] = callback;
-    session->agents["agentA"] = LowCodeAgentRecord { callerRemote, false };
-    service->agentHostSessions_[hostKey] = session;
-    service->agentOwners_[{session->hostUid, "agentA"}] = session;
-    AgentManagerService::TrackedConnectionRecord record;
+    session->agents["agentA"] = LowCodeAgentRecord { callerRemote, IPCSkeleton::GetCallingUid(), false,
+        session->hostConnection };
+    session->agents["agentA"].isDisconnecting = true;
+    session->agents["agentA"].originalIdentity = "caller.identity";
+    session->agents["agentA"].verificationNonce = 1000000001L;
+    LowCodePendingDisconnectRecord pending;
+    pending.agentId = "agentA";
+    pending.callerRemote = callerRemote;
+    pending.originalIdentity = "caller.identity";
+    pending.verificationNonce = 1000000001L;
+    session->pendingDisconnects[session->hostConnection->AsObject()] = { pending };
+    manager.agentHostSessions_[hostKey] = session;
+    manager.agentOwners_[{session->hostUid, "agentA"}] = session;
+    TrackedConnectionRecord record;
     record.callerUid = IPCSkeleton::GetCallingUid();
     record.callerRemote = callerRemote;
     record.serviceConnection = session->hostConnection;
     record.hostKey = hostKey;
     record.isLowCode = true;
-    service->trackedConnections_[callerRemote] = record;
-    service->callerConnectionCounts_[record.callerUid] = 1;
+    manager.trackedConnections_[callerRemote] = record;
 
     auto hostConnection = session->hostConnection;
     ASSERT_NE(hostConnection, nullptr);
     AppExecFwk::ElementName element("", "lowcode.bundle", "LowCodeExtAbility", "entry");
     sptr<TestAgentReceiver> receiver = new TestAgentReceiver();
-    service->HandleAgentHostConnectDone(hostKey, element, receiver->AsObject(), ERR_OK);
+    AgentHostConnectDoneRequest request;
+    request.hostKey = hostKey;
+    request.element = element;
+    request.remoteObject = receiver->AsObject();
+    request.resultCode = ERR_OK;
+    service->HandleAgentHostConnectDone(request);
 
     hostConnection->OnAbilityDisconnectDone(element, ERR_OK);
 
     EXPECT_EQ(callback->disconnectDoneCount, 1);
-    EXPECT_TRUE(service->agentHostSessions_.empty());
-    EXPECT_TRUE(service->agentOwners_.empty());
-    EXPECT_TRUE(service->callerConnectionCounts_.empty());
+    EXPECT_TRUE(manager.agentHostSessions_.empty());
+    EXPECT_TRUE(manager.agentOwners_.empty());
 }
 
 /**
@@ -338,16 +389,15 @@ HWTEST_F(AgentHostConnectionTest, OnAbilityDisconnectDone_002, TestSize.Level1)
     hostKey.moduleName = "entry";
     hostKey.abilityName = "LowCodeExtAbility";
 
-    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey);
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "");
     ASSERT_NE(hostConnection, nullptr);
     AppExecFwk::ElementName element("", "lowcode.bundle", "LowCodeExtAbility", "entry");
 
     hostConnection->OnAbilityDisconnectDone(element, ERR_OK);
 
-    EXPECT_TRUE(AgentManagerService::GetInstance()->agentHostSessions_.empty());
-    EXPECT_TRUE(AgentManagerService::GetInstance()->agentOwners_.empty());
-    EXPECT_TRUE(AgentManagerService::GetInstance()->trackedConnections_.empty());
-    EXPECT_TRUE(AgentManagerService::GetInstance()->callerConnectionCounts_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentOwners_.empty());
+    EXPECT_TRUE(AgentConnectManager::GetInstance().trackedConnections_.empty());
 }
 
 /**
@@ -357,24 +407,209 @@ HWTEST_F(AgentHostConnectionTest, OnAbilityDisconnectDone_002, TestSize.Level1)
 */
 HWTEST_F(AgentHostConnectionTest, OnAbilityDisconnectDone_003, TestSize.Level1)
 {
-    auto service = AgentManagerService::GetInstance();
+    auto &manager = AgentConnectManager::GetInstance();
     AgentHostKey hostKey;
     hostKey.userId = IPCSkeleton::GetCallingUid() / 200000;
     hostKey.bundleName = "lowcode.bundle";
     hostKey.moduleName = "entry";
     hostKey.abilityName = "LowCodeExtAbility";
-    service->agentHostSessions_[hostKey] = nullptr;
+    manager.agentHostSessions_[hostKey] = nullptr;
 
-    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey);
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "");
     ASSERT_NE(hostConnection, nullptr);
     AppExecFwk::ElementName element("", "lowcode.bundle", "LowCodeExtAbility", "entry");
 
     hostConnection->OnAbilityDisconnectDone(element, ERR_OK);
 
-    EXPECT_TRUE(service->agentHostSessions_.empty());
-    EXPECT_TRUE(service->agentOwners_.empty());
-    EXPECT_TRUE(service->trackedConnections_.empty());
-    EXPECT_TRUE(service->callerConnectionCounts_.empty());
+    EXPECT_TRUE(manager.agentHostSessions_.empty());
+    EXPECT_TRUE(manager.agentOwners_.empty());
+    EXPECT_TRUE(manager.trackedConnections_.empty());
+}
+
+/**
+* @tc.name  : AddPendingConnectAgent_001
+* @tc.number: AddPendingConnectAgent_001
+* @tc.desc  : AddPendingConnectAgent skips an empty agentId and leaves the queue empty.
+*/
+HWTEST_F(AgentHostConnectionTest, AddPendingConnectAgent_001, TestSize.Level1)
+{
+    AgentHostKey hostKey;
+    hostKey.bundleName = "lowcode.bundle";
+    hostKey.moduleName = "entry";
+    hostKey.abilityName = "LowCodeExtAbility";
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "initial");
+    ASSERT_NE(hostConnection, nullptr);
+
+    hostConnection->AddPendingConnectAgent("");
+    EXPECT_TRUE(hostConnection->pendingConnectAgentIds_.empty());
+}
+
+/**
+* @tc.name  : AddPendingConnectAgent_002
+* @tc.number: AddPendingConnectAgent_002
+* @tc.desc  : AddPendingConnectAgent appends a non-empty agentId to the back of the queue.
+*/
+HWTEST_F(AgentHostConnectionTest, AddPendingConnectAgent_002, TestSize.Level1)
+{
+    AgentHostKey hostKey;
+    hostKey.bundleName = "lowcode.bundle";
+    hostKey.moduleName = "entry";
+    hostKey.abilityName = "LowCodeExtAbility";
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "initial");
+    ASSERT_NE(hostConnection, nullptr);
+
+    hostConnection->AddPendingConnectAgent("agent-1");
+    hostConnection->AddPendingConnectAgent("agent-2");
+    ASSERT_EQ(hostConnection->pendingConnectAgentIds_.size(), 2u);
+    EXPECT_EQ(hostConnection->pendingConnectAgentIds_.front(), "agent-1");
+    EXPECT_EQ(hostConnection->pendingConnectAgentIds_.back(), "agent-2");
+}
+
+/**
+* @tc.name  : RemovePendingConnectAgent_001
+* @tc.number: RemovePendingConnectAgent_001
+* @tc.desc  : RemovePendingConnectAgent removes only the matching agentId and leaves others in order.
+*/
+HWTEST_F(AgentHostConnectionTest, RemovePendingConnectAgent_001, TestSize.Level1)
+{
+    AgentHostKey hostKey;
+    hostKey.bundleName = "lowcode.bundle";
+    hostKey.moduleName = "entry";
+    hostKey.abilityName = "LowCodeExtAbility";
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "initial");
+    ASSERT_NE(hostConnection, nullptr);
+    hostConnection->AddPendingConnectAgent("agent-1");
+    hostConnection->AddPendingConnectAgent("agent-2");
+
+    hostConnection->RemovePendingConnectAgent("agent-1");
+    ASSERT_EQ(hostConnection->pendingConnectAgentIds_.size(), 1u);
+    EXPECT_EQ(hostConnection->pendingConnectAgentIds_.front(), "agent-2");
+
+    // Removing a non-existent agentId is a no-op.
+    hostConnection->RemovePendingConnectAgent("absent");
+    EXPECT_EQ(hostConnection->pendingConnectAgentIds_.size(), 1u);
+}
+
+/**
+* @tc.name  : SetPendingDisconnectAgents_001
+* @tc.number: SetPendingDisconnectAgents_001
+* @tc.desc  : SetPendingDisconnectAgents replaces the existing pending-disconnect set.
+*/
+HWTEST_F(AgentHostConnectionTest, SetPendingDisconnectAgents_001, TestSize.Level1)
+{
+    AgentHostKey hostKey;
+    hostKey.bundleName = "lowcode.bundle";
+    hostKey.moduleName = "entry";
+    hostKey.abilityName = "LowCodeExtAbility";
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "initial");
+    ASSERT_NE(hostConnection, nullptr);
+    hostConnection->SetPendingDisconnectAgents({ "stale-1", "stale-2" });
+    ASSERT_EQ(hostConnection->pendingDisconnectAgentIds_.size(), 2u);
+
+    hostConnection->SetPendingDisconnectAgents({ "fresh-1" });
+    ASSERT_EQ(hostConnection->pendingDisconnectAgentIds_.size(), 1u);
+    EXPECT_EQ(*hostConnection->pendingDisconnectAgentIds_.begin(), "fresh-1");
+}
+
+/**
+* @tc.name  : ClearPendingDisconnectAgents_001
+* @tc.number: ClearPendingDisconnectAgents_001
+* @tc.desc  : ClearPendingDisconnectAgents empties a non-empty pending-disconnect set.
+*/
+HWTEST_F(AgentHostConnectionTest, ClearPendingDisconnectAgents_001, TestSize.Level1)
+{
+    AgentHostKey hostKey;
+    hostKey.bundleName = "lowcode.bundle";
+    hostKey.moduleName = "entry";
+    hostKey.abilityName = "LowCodeExtAbility";
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "initial");
+    ASSERT_NE(hostConnection, nullptr);
+    hostConnection->SetPendingDisconnectAgents({ "agent-1", "agent-2" });
+    ASSERT_FALSE(hostConnection->pendingDisconnectAgentIds_.empty());
+
+    hostConnection->ClearPendingDisconnectAgents();
+    EXPECT_TRUE(hostConnection->pendingDisconnectAgentIds_.empty());
+}
+
+/**
+* @tc.name  : TakePendingConnectAgent_001
+* @tc.number: TakePendingConnectAgent_001
+* @tc.desc  : TakePendingConnectAgent on an empty queue returns empty instead of the construction agentId.
+*/
+HWTEST_F(AgentHostConnectionTest, TakePendingConnectAgent_001, TestSize.Level1)
+{
+    AgentHostKey hostKey;
+    hostKey.bundleName = "lowcode.bundle";
+    hostKey.moduleName = "entry";
+    hostKey.abilityName = "LowCodeExtAbility";
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "fallback-id");
+    ASSERT_NE(hostConnection, nullptr);
+    EXPECT_TRUE(hostConnection->pendingConnectAgentIds_.empty());
+
+    std::string taken = hostConnection->TakePendingConnectAgent();
+    EXPECT_TRUE(taken.empty());
+}
+
+/**
+* @tc.name  : TakePendingConnectAgent_002
+* @tc.number: TakePendingConnectAgent_002
+* @tc.desc  : TakePendingConnectAgent pops the front of a non-empty queue in FIFO order.
+*/
+HWTEST_F(AgentHostConnectionTest, TakePendingConnectAgent_002, TestSize.Level1)
+{
+    AgentHostKey hostKey;
+    hostKey.bundleName = "lowcode.bundle";
+    hostKey.moduleName = "entry";
+    hostKey.abilityName = "LowCodeExtAbility";
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "fallback-id");
+    ASSERT_NE(hostConnection, nullptr);
+    hostConnection->AddPendingConnectAgent("first");
+    hostConnection->AddPendingConnectAgent("second");
+
+    EXPECT_EQ(hostConnection->TakePendingConnectAgent(), "first");
+    EXPECT_EQ(hostConnection->TakePendingConnectAgent(), "second");
+    EXPECT_TRUE(hostConnection->pendingConnectAgentIds_.empty());
+}
+
+/**
+* @tc.name  : TakePendingDisconnectAgents_001
+* @tc.number: TakePendingDisconnectAgents_001
+* @tc.desc  : TakePendingDisconnectAgents does not fall back to the construction agentId.
+*/
+HWTEST_F(AgentHostConnectionTest, TakePendingDisconnectAgents_001, TestSize.Level1)
+{
+    AgentHostKey hostKey;
+    hostKey.bundleName = "lowcode.bundle";
+    hostKey.moduleName = "entry";
+    hostKey.abilityName = "LowCodeExtAbility";
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "sole-agent");
+    ASSERT_NE(hostConnection, nullptr);
+    EXPECT_TRUE(hostConnection->pendingDisconnectAgentIds_.empty());
+
+    std::set<std::string> taken = hostConnection->TakePendingDisconnectAgents();
+    EXPECT_TRUE(taken.empty());
+}
+
+/**
+* @tc.name  : TakePendingDisconnectAgents_002
+* @tc.number: TakePendingDisconnectAgents_002
+* @tc.desc  : TakePendingDisconnectAgents with a non-empty set swaps and returns the contents.
+*/
+HWTEST_F(AgentHostConnectionTest, TakePendingDisconnectAgents_002, TestSize.Level1)
+{
+    AgentHostKey hostKey;
+    hostKey.bundleName = "lowcode.bundle";
+    hostKey.moduleName = "entry";
+    hostKey.abilityName = "LowCodeExtAbility";
+    auto hostConnection = sptr<AgentHostConnection>::MakeSptr(hostKey, nullptr, "fallback");
+    ASSERT_NE(hostConnection, nullptr);
+    hostConnection->SetPendingDisconnectAgents({ "agent-1", "agent-2" });
+
+    std::set<std::string> taken = hostConnection->TakePendingDisconnectAgents();
+    ASSERT_EQ(taken.size(), 2u);
+    EXPECT_EQ(taken.count("agent-1"), 1u);
+    EXPECT_EQ(taken.count("agent-2"), 1u);
+    EXPECT_TRUE(hostConnection->pendingDisconnectAgentIds_.empty());
 }
 }  // namespace AgentRuntime
 }  // namespace OHOS

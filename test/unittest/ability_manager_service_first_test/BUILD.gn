@@ -95,6 +95,8 @@ ohos_unittest("ability_manager_service_first_test") {
     "${ability_runtime_services_path}/common:task_handler_wrap",
     "${ability_runtime_services_path}/common:user_controller",
     "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/aakit:aakit_mock",
+    "${agent_runtime_framework_path}/interfaces/inner_api:agent_manager",
+    "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection:agent_extension_connection",
   ]
 
   external_deps = [
