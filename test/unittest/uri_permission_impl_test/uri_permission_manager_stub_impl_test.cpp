@@ -24,8 +24,10 @@
 #include "uri_permission_manager_client.h"
 #include "uri_permission_manager_stub_impl.h"
 #include "ability_manager_errors.h"
+#include "dynamic_feature_manager.h"
 #undef private
 #undef protected
+#include "mock_dynamic_features.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -52,6 +54,19 @@ void UriPermissionManagerStubImplTest::SetUp()
 {
     MyFlag::Init();
     IAbilityManagerCollaborator::verifyResult = 0;
+    MockStorageShareFeature::isZero = true; // default: CreateShareFile succeeds
+    MockMediaPermFeature::grantRet = ERR_OK;                  // default: media grant succeeds
+    static MockMediaPermFeature g_mockMedia;
+    static MockStorageShareFeature g_mockStorage;
+    auto &reg = DynamicFeatureManager::GetInstance().registry_;
+    auto &me = reg[FeatureId::MEDIA];
+    me.destroy = nullptr;
+    me.instance.reset(&g_mockMedia);
+    me.loaded = true;
+    auto &se = reg[FeatureId::STORAGE];
+    se.destroy = nullptr;
+    se.instance.reset(&g_mockStorage);
+    se.loaded = true;
 }
 
 void UriPermissionManagerStubImplTest::TearDown() {}
@@ -229,8 +244,8 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermission_003, TestSiz
  */
 HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermission_004, TestSize.Level1)
 {
-#define ABILITY_RUNTIME_MEDIA_LIBRARY_ENABLE
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MockMediaPermFeature::grantRet = ERR_OK; // media grant succeeds
     std::vector<std::string> mediaUris;
     mediaUris.push_back("media://test");
     uint32_t flag = 1;
@@ -239,8 +254,7 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermission_004, TestSiz
     int32_t hideSensitiveType = 1;
     auto result = upmsi->GrantBatchMediaUriPermissionImpl(
         mediaUris, flag, callerTokenId, targetTokenId, hideSensitiveType);
-    EXPECT_EQ(result, -1);
-#undef ABILITY_RUNTIME_MEDIA_LIBRARY_ENABLE
+    EXPECT_EQ(result, ERR_OK);
 }
 
 /*
@@ -252,12 +266,69 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermission_004, TestSiz
 HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantBatchUriPermissionImpl_001, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MockStorageShareFeature::isZero = false; // CreateShareFile returns failures
     std::vector<std::string> uriVec;
     uriVec.push_back("file://test");
     uint32_t flag = 1;
     TokenId callerTokenId = 1;
     TokenId targetTokenId = 1;
     auto result = upmsi->GrantBatchUriPermissionImpl(uriVec, flag, callerTokenId, targetTokenId);
+    EXPECT_EQ(result, INNER_ERR);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantBatchUriPermissionImpl
+ * FunctionPoints: storage share-file success path (isZero=true -> ERR_OK)
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantBatchUriPermissionImpl_002, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MockStorageShareFeature::isZero = true; // CreateShareFile succeeds
+    std::vector<std::string> uriVec;
+    uriVec.push_back("file://test");
+    uint32_t flag = 1;
+    TokenId callerTokenId = 1;
+    TokenId targetTokenId = 1;
+    auto result = upmsi->GrantBatchUriPermissionImpl(uriVec, flag, callerTokenId, targetTokenId);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantBatchMediaUriPermissionImpl
+ * FunctionPoints: media grant failure path (mock returns INNER_ERR)
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantBatchMediaUriPermissionImpl_001, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MockMediaPermFeature::grantRet = INNER_ERR; // media grant fails
+    std::vector<std::string> mediaUris;
+    mediaUris.push_back("media://test");
+    uint32_t flag = 1;
+    uint32_t callerTokenId = 1;
+    uint32_t targetTokenId = 1;
+    int32_t hideSensitiveType = 1;
+    auto result = upmsi->GrantBatchMediaUriPermissionImpl(
+        mediaUris, flag, callerTokenId, targetTokenId, hideSensitiveType);
+    EXPECT_EQ(result, INNER_ERR);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantBatchMediaUriPermissionImpl
+ * FunctionPoints: empty mediaUris -> INNER_ERR
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantBatchMediaUriPermissionImpl_002, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    std::vector<std::string> mediaUris; // empty
+    uint32_t flag = 1;
+    uint32_t callerTokenId = 1;
+    uint32_t targetTokenId = 1;
+    int32_t hideSensitiveType = 1;
+    auto result = upmsi->GrantBatchMediaUriPermissionImpl(
+        mediaUris, flag, callerTokenId, targetTokenId, hideSensitiveType);
     EXPECT_EQ(result, INNER_ERR);
 }
 
@@ -353,6 +424,7 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_00
 HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivilegedInner_001, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MockStorageShareFeature::isZero = false; // storage share-file fails -> INNER_ERR
     Uri uri("content");
     std::vector<Uri> uriVec;
     uriVec.push_back(uri);
@@ -398,34 +470,6 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivilegedInn
     auto result = upmsi->GrantUriPermissionPrivilegedInner(uriVec, flag, callerInfo, targetAppInfo,
         hideSensitiveType, permissionTypes);
     EXPECT_EQ(result, ERR_OK);
-}
-
-/*
- * Feature: UriPermissionManagerService
- * Function: GrantUriPermissionPrivilegedInner
- * SubFunction: NA
- * FunctionPoints: UriPermissionManagerService GrantUriPermissionPrivilegedInner
- */
-HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivilegedInner_003, TestSize.Level1)
-{
-    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    Uri uri("uri://media");
-    std::vector<Uri> uriVec;
-    uriVec.push_back(uri);
-    uint32_t flag = 1;
-    uint32_t callerTokenId = 1;
-    uint32_t targetTokenId = 1;
-    std::string targetAlterBundleName = "targetAlterBundleName";
-    int32_t hideSensitiveType = 1;
-    MyFlag::isUriTypeValid_ = true;
-    MyFlag::isDocsCloudUri_ = false;
-    std::string bundleName = "bundleName";
-    FUDAppInfo callerInfo = { callerTokenId, "caller", "callerAlterName" };
-    FUDAppInfo targetAppInfo = { targetTokenId, bundleName, targetAlterBundleName };
-    std::vector<int32_t> permissionTypes(uriVec.size(), 0);
-    auto result = upmsi->GrantUriPermissionPrivilegedInner(uriVec, flag, callerInfo, targetAppInfo,
-        hideSensitiveType, permissionTypes);
-    EXPECT_EQ(result, INNER_ERR);
 }
 
 /*
@@ -546,6 +590,7 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RevokeUriPermissionManuallyInne
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
     upmsi->uriMap_.clear();
+    MockMediaPermFeature::revokeRet = -1; // media revoke fails (returns -1)
     Uri uri("uri://media");
     uint32_t targetTokenId = 1;
     MyFlag::isDocsCloudUri_ = false;

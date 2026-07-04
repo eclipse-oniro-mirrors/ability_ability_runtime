@@ -22,5 +22,9 @@ group("ams_target") {
   ]
   if (ability_runtime_upms) {
     deps += [ "uripermmgr:libupms" ]
+    deps += [ "uripermmgr/plugins/storage_ext:upms_storage_ext" ]
+    if (ability_runtime_media_library_enable) {
+      deps += [ "uripermmgr/plugins/media_ext:upms_media_ext" ]
+    }
   }
 }
