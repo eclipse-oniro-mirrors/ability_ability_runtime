@@ -30,8 +30,11 @@ JsHandleMapInfo *JsHandleMapInfo::Unmarshalling(Parcel &parcel)
         TAG_LOGE(AAFwkTag::APPMGR, "info nullptr");
         return nullptr;
     }
-    info->pid = parcel.ReadUint32();
-    info->tid = parcel.ReadUint32();
+    if (!parcel.ReadUint32(info->pid) || !parcel.ReadUint32(info->tid)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "read param fail");
+        default info;
+        return nullptr;
+    }
     return info;
 }
 } // namespace AppExecFwk
