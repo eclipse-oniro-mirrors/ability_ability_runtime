@@ -20,6 +20,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -175,7 +176,21 @@ private:
 
     enum class ServiceRunningState { STATE_NOT_START, STATE_RUNNING };
 
+    /**
+     * @brief Initialize service-side signal handling and I/O callbacks.
+     *
+     * Installs a minimal async-signal-safe SIGCHLD handler that only writes one wake byte to a non-blocking
+     * pipe, then spawns a dedicated reaper thread (ReaperLoop) that owns all waitpid()/WaitPid()/Killpg() work
+     * in normal (non-signal) context. I/O callbacks look up the singleton and return when it is unavailable.
+     */
     void Init();
+
+    /**
+     * @brief Schedule delayed unloading of the CLI manager system ability.
+     *
+     * The service is unloaded only when no IPC call is active, no session remains, and no observed caller process
+     * is still tracked. Otherwise a new delayed check is scheduled.
+     */
     void DelayUnloadTask();
 
     std::shared_ptr<SessionRecord> CreateSessionRecord(const ExecToolParam &param, const std::string &eventId);
@@ -202,7 +217,7 @@ private:
         const std::string &eventId, const ToolInfo &toolInfo, bool &dispatched);
     int32_t SetupAndStartSkillSession(const ExecToolParam &param,
         const std::string &eventId, const ToolInfo &toolInfo);
-    int32_t ValidateSkillTypeFromParam(const ExecToolParam &param, int32_t &skillType);
+    int32_t ValidateSkillTypeFromParam(ExecToolParam &param, int32_t &skillType);
     int32_t ValidateSkillType(const std::string &bundleName,
         const std::string &moduleName, const std::string &skillName, int32_t &skillType);
     void HandleSkillSessionComplete(const std::string &sessionId, int32_t callerPid, int32_t callerUid,
@@ -223,6 +238,14 @@ private:
 
     static void sigchld_handler(int32_t sig);
 
+    // Dedicated thread that owns all SIGCHLD reaping and post-exit cleanup. The signal handler only writes one
+    // wake byte to reapPipeWriteFd_; all waitpid()/WaitPid()/Killpg() work runs here in normal (non-signal)
+    // context, so locks, IPC, and HiSysEvent are safe.
+    void ReaperLoop();
+    // Bounded teardown of the reaper subsystem: installs SIG_IGN, stops the loop, wakes + joins the reaper, and
+    // closes the pipe. Idempotent (no-op if the reaper was never started).
+    void StopReaper();
+
     void PostExecToolTask(int64_t time, const std::string &sessionId, bool isTimeout);
     void WaitPid(pid_t pid, int32_t status, int32_t sig);
     void RegisterAppStateObserver(const std::string &bundleName, pid_t callerPid);
@@ -233,6 +256,16 @@ private:
 
     bool initialized_ = false;
     std::shared_ptr<IOMonitor> ioMonitor_ = nullptr;
+
+    // ---- SIGCHLD self-pipe + dedicated reaper thread ----
+    // reapPipeWriteFd_ is static+atomic so the static signal handler can reach it directly WITHOUT calling
+    // GetInstance() (which locks the non-recursive g_mutex and would re-enter/deadlock from signal context).
+    static std::atomic<int> reapPipeWriteFd_;
+    int reapPipeReadFd_ = -1;                 // touched only by the reaper thread + Init/StopReaper
+    std::thread reaperThread_;
+    std::atomic<bool> reaperRunning_{false};
+    std::atomic<bool> reaperStarted_{false};  // start-guard, mirrors IOMonitor::Start running_.exchange(true)
+    static constexpr int32_t REAP_POLL_TIMEOUT_MS = 100;  // bounds lost-wake recovery, NOT reaping latency
 
     std::atomic<int32_t> interfaceCalledCount_ = 0;
     ffrt::mutex sessionsMutex_;
@@ -256,7 +289,6 @@ private:
     int32_t callerUid_;
     std::string eventId_;
 };
-
 } // namespace CliTool
 } // namespace OHOS
 
