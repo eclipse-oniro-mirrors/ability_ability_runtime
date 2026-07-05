@@ -299,7 +299,7 @@ int32_t FUDUtils::GetTokenIdByBundleName(const std::string &bundleName, int32_t 
     return ERR_OK;
 }
 
-bool FUDUtils::GenerateFUDAppInfo(FUDAppInfo &info)
+bool FUDUtils::GenerateFUDAppInfo(FUDAppInfo &info, bool supportSA)
 {
     auto tokenType = Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(info.tokenId);
     if (tokenType == Security::AccessToken::ATokenTypeEnum::TOKEN_HAP) {
@@ -312,6 +312,11 @@ bool FUDUtils::GenerateFUDAppInfo(FUDAppInfo &info)
         info.userId = hapInfo.userID;
         info.bundleName = hapInfo.bundleName;
         return GetDirByBundleNameAndAppIndex(hapInfo.bundleName, hapInfo.instIndex, info.alterBundleName);
+    }
+    if (supportSA && tokenType == Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE) {
+        info.isSA = true;
+        info.userId = DEFAULT_USER_ID;
+        return true;
     }
     return false;
 }

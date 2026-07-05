@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -109,7 +109,7 @@ bool FUDUtils::IsDocsCloudUri(Uri &uri)
     return MyFlag::isDocsCloudUri_;
 }
 
-bool FUDUtils::GenerateFUDAppInfo(FUDAppInfo &info)
+bool FUDUtils::GenerateFUDAppInfo(FUDAppInfo &info, bool supportSA)
 {
     if (!MyFlag::generateFUDAppInfoResults_.empty()) {
         auto result = MyFlag::generateFUDAppInfoResults_.front();
@@ -120,12 +120,14 @@ bool FUDUtils::GenerateFUDAppInfo(FUDAppInfo &info)
         info.bundleName = result.bundleName.empty() ?
             MyFlag::upmsUtilsBundleName_ : result.bundleName;
         info.userId = result.userId;
+        info.isSA = result.isSA;
         return result.success;
     }
 
     info.alterBundleName = MyFlag::upmsUtilsAlterBundleName_;
     info.bundleName = MyFlag::upmsUtilsBundleName_;
     info.userId = MyFlag::fudAppInfoUserId_;
+    info.isSA = false;
     return MyFlag::fudUtilsGenerateFUDAppInfoRet_;
 }
 

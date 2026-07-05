@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -50,11 +50,13 @@ struct FUDAppInfoMockResult {
     int32_t userId;
     std::string alterBundleName;
     std::string bundleName;
+    bool isSA = false;
 
-    FUDAppInfoMockResult() : success(false), userId(-1), alterBundleName(""), bundleName("") {}
+    FUDAppInfoMockResult() : success(false), userId(-1), alterBundleName(""), bundleName(""), isSA(false) {}
 
-    FUDAppInfoMockResult(bool s, int32_t uid, const std::string& alterName = "", const std::string& bName = "")
-        : success(s), userId(uid), alterBundleName(alterName), bundleName(bName) {}
+    FUDAppInfoMockResult(bool s, int32_t uid, const std::string& alterName = "", const std::string& bName = "",
+                         bool sa = false)
+        : success(s), userId(uid), alterBundleName(alterName), bundleName(bName), isSA(sa) {}
 };
 
 class MyFlag {

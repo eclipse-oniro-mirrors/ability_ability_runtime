@@ -49,6 +49,7 @@ namespace OHOS {
 namespace AAFwk {
 namespace {
 constexpr int32_t ERR_OK = 0;
+constexpr int32_t U0_USER_ID = 0;
 constexpr uint32_t FLAG_READ_WRITE_URI = Want::FLAG_AUTH_READ_URI_PERMISSION | Want::FLAG_AUTH_WRITE_URI_PERMISSION;
 constexpr uint32_t FLAG_WRITE_URI = Want::FLAG_AUTH_WRITE_URI_PERMISSION;
 constexpr uint32_t FLAG_READ_URI = Want::FLAG_AUTH_READ_URI_PERMISSION;
@@ -309,13 +310,13 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermission(const std::vector<std::
 }
 
 int32_t UriPermissionManagerStubImpl::CheckGrantUriPermissionParamsWithTokenId(
-    const std::vector<std::string>& uriVec, uint32_t flag, uint32_t targetTokenId)
+    const std::vector<std::string>& uriVec, uint32_t flag, uint32_t oriCallerTokenId, uint32_t targetTokenId)
 {
-    if (!PermissionVerification::GetInstance()->IsSACall()) {
-        TAG_LOGE(AAFwkTag::URIPERMMGR, "not SA call");
-        return ERR_NOT_SYSTEM_APP;
+    if (!PermissionVerification::GetInstance()->VerifyPermissionByTokenId(IPCSkeleton::GetCallingTokenID(),
+        PermissionConstants::PERMISSION_GRANT_URI_PERMISSION_PRIVILEGED)) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "No GRANT_URI_PERMISSION_PRIVILEGED permission");
+        return CHECK_PERMISSION_FAILED;
     }
-
     auto checkRet = CheckCalledBySandBox();
     if (checkRet != ERR_OK) {
         return checkRet;
@@ -328,48 +329,12 @@ int32_t UriPermissionManagerStubImpl::CheckGrantUriPermissionParamsWithTokenId(
         TAG_LOGE(AAFwkTag::URIPERMMGR, "uriVec out of range: %{public}zu", uriVec.size());
         return ERR_URI_LIST_OUT_OF_RANGE;
     }
+    if (oriCallerTokenId == 0) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "oriCallerTokenId is 0");
+        return ERR_UPMS_INVALID_CALLER_TOKENID;
+    }
     if (targetTokenId == 0) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "targetTokenId is 0");
-        return ERR_UPMS_INVALID_TARGET_TOKENID;
-    }
-    return ERR_OK;
-}
-
-int32_t UriPermissionManagerStubImpl::GetCallerTokenIdAndUserId(
-    uint32_t oriCallerTokenId, uint32_t& callerTokenId, int32_t& callerUserId)
-{
-    auto permissionName = PermissionConstants::PERMISSION_GRANT_URI_PERMISSION_PRIVILEGED;
-    bool hasPrivilegedPermission = PermissionVerification::GetInstance()->
-        VerifyPermissionByTokenId(IPCSkeleton::GetCallingTokenID(), permissionName);
-    if (hasPrivilegedPermission && oriCallerTokenId != 0) {
-        FUDAppInfo oriCallerInfo;
-        oriCallerInfo.tokenId = oriCallerTokenId;
-        if (!FUDUtils::GenerateFUDAppInfo(oriCallerInfo)) {
-            TAG_LOGE(AAFwkTag::URIPERMMGR, "oriCallerTokenId invalid");
-            return ERR_UPMS_INVALID_CALLER_TOKENID;
-        }
-        callerTokenId = oriCallerTokenId;
-        callerUserId = oriCallerInfo.userId;
-    } else {
-        callerTokenId = IPCSkeleton::GetCallingTokenID();
-        callerUserId = FUDUtils::GetCurrentAccountId();
-    }
-    return ERR_OK;
-}
-
-int32_t UriPermissionManagerStubImpl::CheckTargetTokenIdAndUserConstraint(
-    uint32_t targetTokenId, int32_t callerUserId, FUDAppInfo& targetInfo)
-{
-    targetInfo.tokenId = targetTokenId;
-    if (!FUDUtils::GenerateFUDAppInfo(targetInfo)) {
-        TAG_LOGE(AAFwkTag::URIPERMMGR, "targetTokenId invalid");
-        return ERR_UPMS_INVALID_TARGET_TOKENID;
-    }
-    int32_t targetUserId = targetInfo.userId;
-    if (callerUserId != targetUserId) {
-        TAG_LOGE(AAFwkTag::URIPERMMGR,
-            "callerUserId(%{public}d) != targetUserId(%{public}d), not support cross user",
-            callerUserId, targetUserId);
         return ERR_UPMS_INVALID_TARGET_TOKENID;
     }
     return ERR_OK;
@@ -379,47 +344,41 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermission(const std::vector<std::
     uint32_t flag, uint32_t targetTokenId, uint32_t oriCallerTokenId, int32_t& funcResult)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    TAG_LOGI(AAFwkTag::URIPERMMGR,
-        "GrantUriPermission: targetTokenId:%{public}u, oriCallerTokenId:%{public}u, flag:%{public}u, uris:%{public}zu",
+    TAG_LOGI(AAFwkTag::URIPERMMGR, "target:%{public}u,oriCaller:%{public}u,flag:%{public}u,uris:%{public}zu",
         targetTokenId, oriCallerTokenId, flag, uriVec.size());
-    auto ret = CheckGrantUriPermissionParamsWithTokenId(uriVec, flag, targetTokenId);
+    auto ret = CheckGrantUriPermissionParamsWithTokenId(uriVec, flag, oriCallerTokenId, targetTokenId);
     if (ret != ERR_OK) {
         return WrapErrorCode(ret, funcResult);
     }
-    uint32_t callerTokenId = 0;
-    int32_t curUserId = -1;
-    ret = GetCallerTokenIdAndUserId(oriCallerTokenId, callerTokenId, curUserId);
-    if (ret != ERR_OK) {
-        return WrapErrorCode(ret, funcResult);
+    FUDAppInfo callerInfo = { .tokenId = oriCallerTokenId };
+    if (!FUDUtils::GenerateFUDAppInfo(callerInfo, true)) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "oriCallerTokenId invalid");
+        return ERR_UPMS_INVALID_CALLER_TOKENID;
     }
-    FUDAppInfo targetInfo;
-    ret = CheckTargetTokenIdAndUserConstraint(targetTokenId, curUserId, targetInfo);
-    if (ret != ERR_OK) {
-        return WrapErrorCode(ret, funcResult);
+    FUDAppInfo targetInfo = { .tokenId = targetTokenId };
+    if (!FUDUtils::GenerateFUDAppInfo(targetInfo)) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "targetTokenId invalid");
+        return ERR_UPMS_INVALID_TARGET_TOKENID;
     }
-    TAG_LOGI(AAFwkTag::URIPERMMGR,
-        "GrantUriPermission: callerTokenId:%{public}u, callerUserId:%{public}d, targetUserId:%{public}d",
-        callerTokenId, curUserId, targetInfo.userId);
-    std::string callerAlterableBundleName = "";
-    FUDUtils::GetAlterableBundleNameByTokenId(callerTokenId, callerAlterableBundleName);
-    FUDAppInfo callerInfo = {
-        .tokenId = callerTokenId,
-        .alterBundleName = callerAlterableBundleName,
-        .userId = curUserId
-    };
-    FUDUtils::GetAlterableBundleNameByTokenId(targetTokenId, targetInfo.alterBundleName);
+    // Cross-user is allowed only when either side is a native SA (isSA) or runs at U0 (system app).
+    if (callerInfo.userId != targetInfo.userId && !callerInfo.isSA &&
+        callerInfo.userId != U0_USER_ID && targetInfo.userId != U0_USER_ID) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "callerUserId(%{public}d) != targetUserId(%{public}d), not support cross user",
+            callerInfo.userId, targetInfo.userId);
+        return ERR_UPMS_INVALID_TARGET_TOKENID;
+    }
     BatchUri batchUri;
     auto rwMode = (flag | FLAG_READ_URI) & (FLAG_READ_WRITE_URI | FLAG_PERSIST_URI);
     bool haveSandboxAccessPermission = PermissionVerification::GetInstance()->
-        VerifyPermissionByTokenId(callerTokenId,
+        VerifyPermissionByTokenId(callerInfo.tokenId,
         PermissionConstants::PERMISSION_SANDBOX_ACCESS_MANAGER);
     if (batchUri.Init(uriVec, rwMode, callerInfo.alterBundleName, targetInfo.alterBundleName,
         haveSandboxAccessPermission) == 0) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "All uri is invalid");
         return WrapErrorCode(ERR_CODE_INVALID_URI_TYPE, funcResult);
     }
-    auto checkRet = CheckUriPermission(batchUri, flag, callerTokenId,
-        callerInfo.alterBundleName, targetTokenId);
+    auto checkRet = CheckUriPermission(batchUri, flag, callerInfo.tokenId,
+        callerInfo.alterBundleName, targetInfo.tokenId);
     if (checkRet != ERR_OK) {
         if (!FUDUtils::IsUdmfOrPasteboardCall() || batchUri.contentUris.empty()) {
             return WrapErrorCode(checkRet, funcResult);
@@ -1135,7 +1094,8 @@ int32_t UriPermissionManagerStubImpl::CheckGrantUriPermissionByKeyParams(const s
         TAG_LOGE(AAFwkTag::URIPERMMGR, "targetTokenId invalid");
         return ERR_UPMS_INVALID_TARGET_TOKENID;
     }
-    if (callerAppInfo.userId != targetAppInfo.userId) {
+    if (callerAppInfo.userId != targetAppInfo.userId && callerAppInfo.userId != U0_USER_ID &&
+        targetAppInfo.userId != U0_USER_ID) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "not support cross user");
         return ERR_UPMS_INVALID_TARGET_TOKENID;
     }

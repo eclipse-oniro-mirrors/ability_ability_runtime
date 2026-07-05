@@ -224,11 +224,7 @@ private:
 
     // Helper functions for new GrantUriPermission interface
     int32_t CheckGrantUriPermissionParamsWithTokenId(const std::vector<std::string>& uriVec,
-        uint32_t flag, uint32_t targetTokenId);
-    int32_t GetCallerTokenIdAndUserId(uint32_t oriCallerTokenId, uint32_t& callerTokenId,
-        int32_t& callerUserId);
-    int32_t CheckTargetTokenIdAndUserConstraint(uint32_t targetTokenId, int32_t callerUserId,
-        FUDAppInfo& targetInfo);
+        uint32_t flag, uint32_t oriCallerTokenId, uint32_t targetTokenId);
 
     int32_t RevokePolicyUriPermissionManually(uint32_t callerTokenId, uint32_t targetTokenId, Uri &uri);
 
