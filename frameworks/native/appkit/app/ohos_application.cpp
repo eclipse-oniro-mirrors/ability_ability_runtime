@@ -411,7 +411,9 @@ void OHOSApplication::OnHyperSnapUpdate()
 
 void OHOSApplication::AddAbility(std::shared_ptr<AbilityRuntime::AbilityStage> abilityStage,
     const sptr<IRemoteObject> &token,
-    const std::shared_ptr<AppExecFwk::AbilityLocalRecord> &abilityRecord)
+    const std::shared_ptr<AppExecFwk::AbilityLocalRecord> &abilityRecord,
+    const std::function<void(const std::shared_ptr<AbilityRuntime::Context> &)> &callback,
+    bool &isAsyncCallback)
 {
     if (abilityStage == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "null abilityStage");
@@ -427,8 +429,7 @@ void OHOSApplication::AddAbility(std::shared_ptr<AbilityRuntime::AbilityStage> a
     }
     if (!abilityStage->IsAbilityCreated()) {
         if (!abilityStage->IsSkipAbilityStageLifecycle()) {
-            TAG_LOGI(AAFwkTag::APPKIT, "OnAboutToCreateAbility");
-            abilityStage->OnAboutToCreateAbility();
+            abilityStage->OnAboutToCreateAbility(isAsyncCallback, callback);
         }
         abilityStage->MarkAbilityCreated();
     }
@@ -659,7 +660,7 @@ std::shared_ptr<AbilityRuntime::Context> OHOSApplication::AddAbilityStage(
         TAG_LOGE(AAFwkTag::APPKIT, "null token");
         return nullptr;
     }
-    AddAbility(abilityStage, token, abilityRecord);
+    AddAbility(abilityStage, token, abilityRecord, callback, isAsyncCallback);
     return abilityStage->GetContext();
 }
 
@@ -734,11 +735,14 @@ const std::function<void()> OHOSApplication::CreateSecondStartupCallbackForRecor
             TAG_LOGE(AAFwkTag::APPKIT, "null abilityInfo");
             return;
         }
-
         std::string moduleName = abilityInfo->moduleName;
-        ohosApplication->AutoStartupDone(abilityRecord, abilityStage, moduleName);
+        bool isAsyncCallback = false;
+        ohosApplication->AutoStartupDone(abilityRecord, abilityStage, moduleName, callback, isAsyncCallback);
         if (callback == nullptr) {
             TAG_LOGE(AAFwkTag::APPKIT, "null callback");
+            return;
+        }
+        if (isAsyncCallback) {
             return;
         }
         callback(abilityStage->GetContext());
@@ -819,7 +823,9 @@ const std::function<void()> OHOSApplication::CreateSecondStartupCallbackForHap(
 }
 
 void OHOSApplication::AutoStartupDone(const std::shared_ptr<AbilityLocalRecord> &abilityRecord,
-    const std::shared_ptr<AbilityRuntime::AbilityStage> &abilityStage, const std::string &moduleName)
+    const std::shared_ptr<AbilityRuntime::AbilityStage> &abilityStage, const std::string &moduleName,
+    const std::function<void(const std::shared_ptr<AbilityRuntime::Context> &)> &callback,
+    bool &isAsyncCallback)
 {
     if (abilityStage == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "null abilityStage");
@@ -839,7 +845,7 @@ void OHOSApplication::AutoStartupDone(const std::shared_ptr<AbilityLocalRecord> 
         TAG_LOGE(AAFwkTag::APPKIT, "null token");
         return;
     }
-    AddAbility(abilityStage, token, abilityRecord);
+    AddAbility(abilityStage, token, abilityRecord, callback, isAsyncCallback);
 }
 
 void OHOSApplication::AutoStartupDone(

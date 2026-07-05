@@ -62,7 +62,8 @@ public:
 
     void OnLaunchFromHyperSnap() override;
 
-    void OnAboutToCreateAbility() override;
+    void OnAboutToCreateAbility(bool &isAsyncCallback,
+        const std::function<void(const std::shared_ptr<AbilityRuntime::Context> &)> &callback) const override;
 
     void OnConfigurationUpdated(const AppExecFwk::Configuration& configuration) override;
 
@@ -72,6 +73,7 @@ public:
         bool &isAsyncCallback, const std::shared_ptr<Context> &stageContext, bool preAbilityStageLoad) override;
 
 private:
+    bool CheckPromise(napi_value result) const;
     napi_value CallObjectMethod(
         const char* name, bool &hasCaughtException, napi_value const * argv = nullptr, size_t argc = 0) const;
 

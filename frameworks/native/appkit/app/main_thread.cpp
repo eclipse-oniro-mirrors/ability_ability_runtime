@@ -4321,7 +4321,6 @@ int32_t MainThread::ScheduleDumpFfrt(std::string& result)
 
 int32_t MainThread::ScheduleDumpArkWeb(const std::string &customArgs, std::string &result)
 {
-    TAG_LOGI(AAFwkTag::APPKIT, "ScheduleDumpArkWeb");
     return DumpArkWebHelper::DumpArkWeb(customArgs, result);
 }
 

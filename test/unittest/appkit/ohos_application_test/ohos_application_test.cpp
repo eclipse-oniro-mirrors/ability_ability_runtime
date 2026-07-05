@@ -2004,10 +2004,11 @@ HWTEST_F(OHOSApplicationTest, AddAbility_ShouldDonothingWhenInputIsInvalid, Test
     ASSERT_NE(ohosApplication, nullptr);
     auto abilityStage = std::make_shared<AbilityRuntime::AbilityStage>();
     ASSERT_NE(abilityStage, nullptr);
-    ohosApplication->AddAbility(nullptr, nullptr, nullptr);
-    ohosApplication->AddAbility(abilityStage, nullptr, nullptr);
+    bool isAsyncCallback = false;
+    ohosApplication->AddAbility(nullptr, nullptr, nullptr, nullptr, isAsyncCallback);
+    ohosApplication->AddAbility(abilityStage, nullptr, nullptr, nullptr, isAsyncCallback);
     sptr<Notification::MockIRemoteObject> token = new (std::nothrow) Notification::MockIRemoteObject();
-    ohosApplication->AddAbility(abilityStage, token, nullptr);
+    ohosApplication->AddAbility(abilityStage, token, nullptr, nullptr, isAsyncCallback);
     EXPECT_FALSE(abilityStage->ContainsAbility());
     GTEST_LOG_(INFO) << "AddAbility_ShouldDonothingWhenInputIsInvalid end.";
 }
@@ -2025,8 +2026,9 @@ HWTEST_F(OHOSApplicationTest, AddAbility_ShouldAddAbilityToAbilityStageWhenInput
     auto abilityStage = std::make_shared<AbilityRuntime::AbilityStage>();
     ASSERT_NE(abilityStage, nullptr);
     sptr<Notification::MockIRemoteObject> token = new (std::nothrow) Notification::MockIRemoteObject();
-    auto abilityRecord = std::make_shared<AbilityLocalRecord>(nullptr, token, nullptr, 0);
-    ohosApplication->AddAbility(abilityStage, token, abilityRecord);
+    auto abilityRecord =  std::make_shared<AbilityLocalRecord>(nullptr, token, nullptr, 0);
+    bool isAsyncCallback = false;
+    ohosApplication->AddAbility(abilityStage, token, abilityRecord, nullptr, isAsyncCallback);
     EXPECT_TRUE(abilityStage->ContainsAbility());
 
     abilityStage->RemoveAbility(token);
@@ -2035,12 +2037,12 @@ HWTEST_F(OHOSApplicationTest, AddAbility_ShouldAddAbilityToAbilityStageWhenInput
         std::make_shared<AbilityRuntime::ApplicationContext>();
     ASSERT_NE(abilityRuntimeContext, nullptr);
     ohosApplication->SetApplicationContext(abilityRuntimeContext);
-    ohosApplication->AddAbility(abilityStage, token, abilityRecord);
+    ohosApplication->AddAbility(abilityStage, token, abilityRecord, nullptr, isAsyncCallback);
     EXPECT_TRUE(abilityStage->ContainsAbility());
 
     abilityStage->RemoveAbility(token);
     EXPECT_FALSE(abilityStage->ContainsAbility());
-    ohosApplication->AddAbility(abilityStage, token, abilityRecord);
+    ohosApplication->AddAbility(abilityStage, token, abilityRecord, nullptr, isAsyncCallback);
     EXPECT_TRUE(abilityStage->ContainsAbility());
     GTEST_LOG_(INFO) << "AddAbility_ShouldAddAbilityToAbilityStageWhenInputIsValid end.";
 }
@@ -2064,8 +2066,9 @@ HWTEST_F(OHOSApplicationTest, AddAbility_0200, TestSize.Level1)
     auto abilityRecord = std::make_shared<AbilityLocalRecord>(nullptr, token, nullptr, 0);
     ASSERT_NE(abilityRecord, nullptr);
 
-    EXPECT_CALL(*abilityStage, OnAboutToCreateAbility()).Times(0);
-    ohosApplication->AddAbility(abilityStage, token, abilityRecord);
+    bool isAsyncCallbackFlag = false;
+    EXPECT_CALL(*abilityStage, OnAboutToCreateAbility(_, _)).Times(0);
+    ohosApplication->AddAbility(abilityStage, token, abilityRecord, nullptr, isAsyncCallbackFlag);
     EXPECT_TRUE(abilityStage->ContainsAbility());
     GTEST_LOG_(INFO) << "AddAbility_0200 end.";
 }

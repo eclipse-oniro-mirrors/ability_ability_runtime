@@ -54,7 +54,8 @@ public:
 
     void OnLaunchFromHyperSnap() override;
 
-    void OnAboutToCreateAbility() override;
+    void OnAboutToCreateAbility(bool &isAsyncCallback,
+        const std::function<void(const std::shared_ptr<AbilityRuntime::Context> &)> &callback) const override;
 
     static void OnAcceptWantCallback(ani_env *env, ani_object aniObj, ani_string aniResult);
 

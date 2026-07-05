@@ -240,7 +240,9 @@ public:
     void SetAppEnv(const std::vector<AppEnvironment>& appEnvironments);
 
     void AutoStartupDone(const std::shared_ptr<AbilityLocalRecord> &abilityRecord,
-        const std::shared_ptr<AbilityRuntime::AbilityStage> &abilityStage, const std::string &moduleName);
+        const std::shared_ptr<AbilityRuntime::AbilityStage> &abilityStage, const std::string &moduleName,
+        const std::function<void(const std::shared_ptr<AbilityRuntime::Context> &)> &callback,
+        bool &isAsyncCallback);
 
     void AutoStartupDone(const std::shared_ptr<AbilityRuntime::AbilityStage> &abilityStage,
         const AppExecFwk::HapModuleInfo &hapModuleInfo);
@@ -323,7 +325,9 @@ private:
 
     void AddAbility(std::shared_ptr<AbilityRuntime::AbilityStage> abilityStage,
         const sptr<IRemoteObject> &token,
-        const std::shared_ptr<AppExecFwk::AbilityLocalRecord> &abilityRecord);
+        const std::shared_ptr<AppExecFwk::AbilityLocalRecord> &abilityRecord,
+        const std::function<void(const std::shared_ptr<AbilityRuntime::Context> &)> &callback,
+        bool &isAsyncCallback);
 
 #ifdef SUPPORT_SCREEN
     void RegisterGetAllUIAbilitiesCallback(
