@@ -132,8 +132,11 @@ std::string AbilityStage::OnNewProcessRequest(const AAFwk::Want &want,
 void AbilityStage::OnLaunchFromHyperSnap()
 {}
 
-void AbilityStage::OnAboutToCreateAbility()
-{}
+void AbilityStage::OnAboutToCreateAbility(bool &isAsyncCallback,
+    const std::function<void(const std::shared_ptr<AbilityRuntime::Context> &)> &callback) const
+{
+    isAsyncCallback = false;
+}
 
 void AbilityStage::OnConfigurationUpdated(const AppExecFwk::Configuration& configuration)
 {}

@@ -405,11 +405,12 @@ void ETSAbilityStage::OnLaunchFromHyperSnap()
     FreezeUtil::GetInstance().AddAppLifecycleEvent(0, "ETSAbilityStage::OnLaunchFromHyperSnap end");
 }
 
-void ETSAbilityStage::OnAboutToCreateAbility()
+void ETSAbilityStage::OnAboutToCreateAbility(bool &isAsyncCallback,
+    const std::function<void(const std::shared_ptr<AbilityRuntime::Context> &)> &callback) const
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::APPKIT, "OnAboutToCreateAbility called");
-    AbilityStage::OnAboutToCreateAbility();
+    AbilityStage::OnAboutToCreateAbility(isAsyncCallback, callback);
 
     FreezeUtil::GetInstance().AddAppLifecycleEvent(0, "ETSAbilityStage::OnAboutToCreateAbility begin");
     CallObjectMethod(false, "onAboutToCreateAbility", ":");
