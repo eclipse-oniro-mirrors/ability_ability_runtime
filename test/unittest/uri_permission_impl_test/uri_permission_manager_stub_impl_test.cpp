@@ -724,6 +724,159 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RawDataToStringVec_003, TestSiz
 
 /*
  * Feature: UriPermissionManagerService
+ * Function: RawDataToStringVec
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerService RawDataToStringVec - oversized input
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RawDataToStringVec_004, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    UriPermissionRawData rawData;
+    uint8_t dummy = 0;
+    rawData.data = &dummy;
+    rawData.size = 128 * 1024 * 1024 + 1; // greater than MAX_IPC_RAW_DATA_SIZE
+    std::vector<std::string> stringVec;
+    auto result = upmsi->RawDataToStringVec(rawData, stringVec);
+    EXPECT_EQ(result, ERR_DEAD_OBJECT);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: RawDataToStringVec
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerService RawDataToStringVec - happy path
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RawDataToStringVec_005, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    auto &upmc = AAFwk::UriPermissionManagerClient::GetInstance();
+    std::vector<std::string> strArray;
+    strArray.emplace_back(POLICY_INFO_PATH);
+    strArray.emplace_back("file://docs/a/b/c.txt");
+    UriPermissionRawData rawData;
+    upmc.StringVecToRawData(strArray, rawData);
+    UriPermissionRawData stubRawData;
+    stubRawData.size = rawData.size;
+    EXPECT_EQ(stubRawData.RawDataCpy(rawData.data), ERR_NONE);
+    std::vector<std::string> stringVec;
+    auto result = upmsi->RawDataToStringVec(stubRawData, stringVec);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(stringVec.size(), strArray.size());
+    EXPECT_EQ(stringVec[0], strArray[0]);
+    EXPECT_EQ(stringVec[1], strArray[1]);
+}
+
+/*
+ * Feature: UriPermissionManagerClient
+ * Function: RawDataToBoolVec
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerClient RawDataToBoolVec - null data
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmc_RawDataToBoolVec_001, TestSize.Level1)
+{
+    auto &upmc = AAFwk::UriPermissionManagerClient::GetInstance();
+    UriPermissionRawData rawData;
+    rawData.data = nullptr;
+    rawData.size = 10;
+    std::vector<bool> boolVec(2, false);
+    EXPECT_FALSE(upmc.RawDataToBoolVec(rawData, boolVec));
+}
+
+/*
+ * Feature: UriPermissionManagerClient
+ * Function: RawDataToBoolVec
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerClient RawDataToBoolVec - zero size
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmc_RawDataToBoolVec_002, TestSize.Level1)
+{
+    auto &upmc = AAFwk::UriPermissionManagerClient::GetInstance();
+    UriPermissionRawData rawData;
+    uint8_t dummy = 0;
+    rawData.data = &dummy;
+    rawData.size = 0;
+    std::vector<bool> boolVec(2, false);
+    EXPECT_FALSE(upmc.RawDataToBoolVec(rawData, boolVec));
+}
+
+/*
+ * Feature: UriPermissionManagerClient
+ * Function: RawDataToBoolVec
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerClient RawDataToBoolVec - oversized input
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmc_RawDataToBoolVec_003, TestSize.Level1)
+{
+    auto &upmc = AAFwk::UriPermissionManagerClient::GetInstance();
+    UriPermissionRawData rawData;
+    uint8_t dummy = 0;
+    rawData.data = &dummy;
+    rawData.size = 128 * 1024 * 1024 + 1; // greater than MAX_IPC_RAW_DATA_SIZE
+    std::vector<bool> boolVec(2, false);
+    EXPECT_FALSE(upmc.RawDataToBoolVec(rawData, boolVec));
+}
+
+/*
+ * Feature: UriPermissionManagerClient
+ * Function: RawDataToBoolVec
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerClient RawDataToBoolVec - truncated data
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmc_RawDataToBoolVec_004, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    auto &upmc = AAFwk::UriPermissionManagerClient::GetInstance();
+    // Use enough elements so OFFSET (30) leaves count readable but bool bytes missing
+    std::vector<bool> srcVec(50, true);
+    std::vector<char> charVec;
+    UriPermissionRawData rawData;
+    upmsi->BoolVecToRawData(srcVec, rawData, charVec);
+    rawData.size -= OFFSET; // truncate to trigger read failure inside loop
+    std::vector<bool> boolVec(srcVec.size(), false);
+    EXPECT_FALSE(upmc.RawDataToBoolVec(rawData, boolVec));
+}
+
+/*
+ * Feature: UriPermissionManagerClient
+ * Function: RawDataToBoolVec
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerClient RawDataToBoolVec - count mismatch
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmc_RawDataToBoolVec_005, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    auto &upmc = AAFwk::UriPermissionManagerClient::GetInstance();
+    std::vector<bool> srcVec = {true, false, true};
+    std::vector<char> charVec;
+    UriPermissionRawData rawData;
+    upmsi->BoolVecToRawData(srcVec, rawData, charVec);
+    std::vector<bool> boolVec(srcVec.size() + 1, false); // wrong size on purpose
+    EXPECT_FALSE(upmc.RawDataToBoolVec(rawData, boolVec));
+}
+
+/*
+ * Feature: UriPermissionManagerClient
+ * Function: RawDataToBoolVec
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerClient RawDataToBoolVec - happy path
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmc_RawDataToBoolVec_006, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    auto &upmc = AAFwk::UriPermissionManagerClient::GetInstance();
+    std::vector<bool> srcVec = {true, false, true, true, false};
+    std::vector<char> charVec;
+    UriPermissionRawData rawData;
+    upmsi->BoolVecToRawData(srcVec, rawData, charVec);
+    std::vector<bool> boolVec(srcVec.size(), false);
+    EXPECT_TRUE(upmc.RawDataToBoolVec(rawData, boolVec));
+    for (size_t i = 0; i < srcVec.size(); ++i) {
+        EXPECT_EQ(boolVec[i], srcVec[i]);
+    }
+}
+
+/*
+ * Feature: UriPermissionManagerService
  * Function: RawDataToPolicyInfo
  * SubFunction: NA
  * FunctionPoints: UriPermissionManagerService RawDataToPolicyInfo
@@ -747,6 +900,95 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RawDataToPolicyInfo_001, TestSi
     std::vector<PolicyInfo> policy;
     auto result = upmsi->RawDataToPolicyInfo(stubPolicyRawData, policy);
     EXPECT_EQ(result, INVALID_PARAMETERS_ERR);
+#endif
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: RawDataToPolicyInfo
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerService RawDataToPolicyInfo - null data
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RawDataToPolicyInfo_002, TestSize.Level1)
+{
+#ifdef ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    UriPermissionRawData policyRawData;
+    policyRawData.data = nullptr;
+    policyRawData.size = 10;
+    std::vector<PolicyInfo> policy;
+    auto result = upmsi->RawDataToPolicyInfo(policyRawData, policy);
+    EXPECT_EQ(result, ERR_DEAD_OBJECT);
+#endif
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: RawDataToPolicyInfo
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerService RawDataToPolicyInfo - zero size
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RawDataToPolicyInfo_003, TestSize.Level1)
+{
+#ifdef ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    UriPermissionRawData policyRawData;
+    uint8_t dummy = 0;
+    policyRawData.data = &dummy;
+    policyRawData.size = 0;
+    std::vector<PolicyInfo> policy;
+    auto result = upmsi->RawDataToPolicyInfo(policyRawData, policy);
+    EXPECT_EQ(result, ERR_DEAD_OBJECT);
+#endif
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: RawDataToPolicyInfo
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerService RawDataToPolicyInfo - oversized input
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RawDataToPolicyInfo_004, TestSize.Level1)
+{
+#ifdef ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    UriPermissionRawData policyRawData;
+    uint8_t dummy = 0;
+    policyRawData.data = &dummy;
+    policyRawData.size = 128 * 1024 * 1024 + 1; // greater than MAX_IPC_RAW_DATA_SIZE
+    std::vector<PolicyInfo> policy;
+    auto result = upmsi->RawDataToPolicyInfo(policyRawData, policy);
+    EXPECT_EQ(result, ERR_DEAD_OBJECT);
+#endif
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: RawDataToPolicyInfo
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerService RawDataToPolicyInfo - happy path
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RawDataToPolicyInfo_005, TestSize.Level1)
+{
+#ifdef ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    auto &upmc = AAFwk::UriPermissionManagerClient::GetInstance();
+    PolicyInfo policyInfo;
+    policyInfo.path = POLICY_INFO_PATH;
+    policyInfo.mode = 1;
+    std::vector<PolicyInfo> policyInfoArray;
+    policyInfoArray.push_back(policyInfo);
+    UriPermissionRawData policyRawData;
+    upmc.PolicyInfoToRawData(policyInfoArray, policyRawData);
+    UriPermissionRawData stubPolicyRawData;
+    stubPolicyRawData.size = policyRawData.size;
+    EXPECT_EQ(stubPolicyRawData.RawDataCpy(policyRawData.data), ERR_NONE);
+    std::vector<PolicyInfo> policy;
+    auto result = upmsi->RawDataToPolicyInfo(stubPolicyRawData, policy);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(policy.size(), policyInfoArray.size());
+    EXPECT_EQ(policy[0].path, policyInfoArray[0].path);
+    EXPECT_EQ(policy[0].mode, policyInfoArray[0].mode);
 #endif
 }
 

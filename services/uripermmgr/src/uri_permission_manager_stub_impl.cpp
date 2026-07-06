@@ -1736,6 +1736,10 @@ ErrCode UriPermissionManagerStubImpl::RawDataToStringVec(const UriPermissionRawD
     }
     std::stringstream ss;
     ss.write(reinterpret_cast<const char *>(rawData.data), rawData.size);
+    if (!ss.good()) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "write rawData to stream failed, size:%{public}u", rawData.size);
+        return ERR_DEAD_OBJECT;
+    }
     uint32_t stringVecSize = 0;
     ss.read(reinterpret_cast<char *>(&stringVecSize), sizeof(stringVecSize));
     if (!ss.good()) {
@@ -1808,12 +1812,28 @@ ErrCode UriPermissionManagerStubImpl::Active(const UriPermissionRawData& policyR
 ErrCode UriPermissionManagerStubImpl::RawDataToPolicyInfo(const UriPermissionRawData& policyRawData,
     std::vector<PolicyInfo>& policy)
 {
+    if (policyRawData.data == nullptr) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "null policyRawData data");
+        return ERR_DEAD_OBJECT;
+    }
+    if (policyRawData.size == 0 || policyRawData.size > MAX_IPC_RAW_DATA_SIZE) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "policyRawData size invalid: %{public}u", policyRawData.size);
+        return ERR_DEAD_OBJECT;
+    }
     std::stringstream ss;
     ss.write(reinterpret_cast<const char *>(policyRawData.data), policyRawData.size);
+    if (!ss.good()) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "write policyRawData to stream failed, size:%{public}u", policyRawData.size);
+        return ERR_DEAD_OBJECT;
+    }
     ss.seekg(0, std::ios::beg);
     uint32_t ssLength = static_cast<uint32_t>(ss.str().length());
     uint32_t policyInfoSize = 0;
     ss.read(reinterpret_cast<char *>(&policyInfoSize), sizeof(policyInfoSize));
+    if (!ss.good()) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "read policyInfoSize failed");
+        return ERR_DEAD_OBJECT;
+    }
     if (policyInfoSize == 0 || policyInfoSize > MAX_URI_COUNT) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "policy empty or exceed maxSize %{public}d, policyInfoSize: %{public}d",
             MAX_URI_COUNT, policyInfoSize);
@@ -1822,14 +1842,26 @@ ErrCode UriPermissionManagerStubImpl::RawDataToPolicyInfo(const UriPermissionRaw
     for (uint32_t i = 0; i < policyInfoSize; ++i) {
         uint32_t pathLen = 0;
         ss.read(reinterpret_cast<char *>(&pathLen), sizeof(pathLen));
-        if (pathLen > ssLength - static_cast<uint32_t>(ss.tellg())) {
-            TAG_LOGE(AAFwkTag::URIPERMMGR, "path eln:%{public}u is invalid", pathLen);
+        if (!ss.good()) {
+            TAG_LOGE(AAFwkTag::URIPERMMGR, "read pathLen failed");
+            return ERR_DEAD_OBJECT;
+        }
+        if (ss.tellg() < 0 || pathLen > ssLength - static_cast<uint32_t>(ss.tellg())) {
+            TAG_LOGE(AAFwkTag::URIPERMMGR, "path len:%{public}u is invalid", pathLen);
             return INVALID_PARAMETERS_ERR;
         }
         PolicyInfo info;
         info.path.resize(pathLen);
         ss.read(info.path.data(), pathLen);
+        if (!ss.good()) {
+            TAG_LOGE(AAFwkTag::URIPERMMGR, "read path content failed, pathLen:%{public}u", pathLen);
+            return ERR_DEAD_OBJECT;
+        }
         ss.read(reinterpret_cast<char *>(&info.mode), sizeof(info.mode));
+        if (!ss.good()) {
+            TAG_LOGE(AAFwkTag::URIPERMMGR, "read policy mode failed");
+            return ERR_DEAD_OBJECT;
+        }
         policy.emplace_back(info);
     }
     return ERR_OK;
