@@ -1670,7 +1670,7 @@ HWTEST_F(WantAgentHelperTest, WantAgentHelper_6740, Function | MediumTest | Leve
 {
     nlohmann::json jsonObject;
     jsonObject["extraInfo"] = { { "extraInfoValue", R"( {"ohos.want.paramsStringEnvelope":{}} )" } };
-    EXPECT_TRUE(WantAgentHelper::HasWantParamsEnvelope(jsonObject.dump()));
+    EXPECT_FALSE(WantAgentHelper::HasWantParamsEnvelope(jsonObject.dump()));
 
     jsonObject["extraInfo"] = { { "extraInfoValue", "legacy want params" } };
     EXPECT_FALSE(WantAgentHelper::HasWantParamsEnvelope(jsonObject.dump()));
