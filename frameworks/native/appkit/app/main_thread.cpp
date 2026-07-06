@@ -1515,7 +1515,7 @@ CJEventReportInfo MainThread::CreateCjEventReportInfo(const std::string &bundleN
                 OHOS::AppExecFwk::CjHeapDumpInfo cjHeapInfo;
                 cjHeapInfo.needSnapshot = true;
                 cjHeapInfo.needGc = false;
-                cjHeapInfo.pid = getpid();
+                cjHeapInfo.pid = static_cast<uint32_t>(getpid());
                 shared_this->HandleCjHeapMemory(cjHeapInfo);
             }
         };
