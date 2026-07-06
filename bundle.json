@@ -122,8 +122,7 @@
             "hiperf",
             "hiprofiler",
             "taihe_ffi_gen",
-            "node",
-            "libuv"
+            "node"
           ]
       },
       "build": {
