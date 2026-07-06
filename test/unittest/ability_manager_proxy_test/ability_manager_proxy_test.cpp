@@ -1985,7 +1985,7 @@ HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_StartUserTest_001, TestSiz
     Want want;
     sptr<IRemoteObject> observer = nullptr;
     auto res = proxy_->StartUserTest(want, observer);
-    EXPECT_EQ(res, INNER_ERR);
+    EXPECT_EQ(res, ERR_NATIVE_IPC_PARCEL_FAILED);
 }
 
 /*
@@ -2149,7 +2149,7 @@ HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_FreeInstallAbilityFromRemo
     int32_t userId = 0;
     int requestCode = 0;
     auto res = proxy_->FreeInstallAbilityFromRemote(want, callback, userId, requestCode);
-    EXPECT_EQ(res, INNER_ERR);
+    EXPECT_EQ(res, ERR_NATIVE_IPC_PARCEL_FAILED);
 }
 
 /*
