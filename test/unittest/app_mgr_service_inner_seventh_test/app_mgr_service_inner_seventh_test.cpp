@@ -969,7 +969,7 @@ HWTEST_F(AppMgrServiceInnerSeventhTest, DumpJsHandleMap_001, TestSize.Level1)
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
 
     info.pid = 1;
-    int32_t ret = appMgrServiceInner->DumpJsHandleMap(info);
+    ret = appMgrServiceInner->DumpJsHandleMap(info);
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
     TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_001 end");
 }
