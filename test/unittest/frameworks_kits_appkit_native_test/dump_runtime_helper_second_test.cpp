@@ -135,6 +135,45 @@ HWTEST_F(DumpRuntimeHelperTestSecond, DumpJsHeap_0400, TestSize.Level1)
 }
 
 /**
+ * @tc.number: DumpJsHandleMap_0100
+ * @tc.name: DumpJsHandleMap
+ * @tc.desc: Test whether DumpJsHandleMap and are called normally.
+ */
+HWTEST_F(DumpRuntimeHelperTestSecond, DumpJsHandleMap_0100, TestSize.Level1)
+{
+    std::shared_ptr<OHOSApplication> application = nullptr;
+    auto helper = std::make_shared<DumpRuntimeHelper>(application);
+    OHOS::AppExecFwk::JsHandleMapInfo info;
+    info.tid = 1;
+    helper->DumpJsHandleMap(info);
+    EXPECT_EQ(application, nullptr);
+}
+
+/**
+ * @tc.number: DumpJsHandleMap_0200
+ * @tc.name: DumpJsHandleMap
+ * @tc.desc: Test whether DumpJsHandleMap and are called normally.
+ */
+HWTEST_F(DumpRuntimeHelperTestSecond, DumpJsHandleMap_0200, TestSize.Level1)
+{
+    std::shared_ptr<OHOSApplication> application = std::shared_ptr<OHOSApplication>(
+        ApplicationLoader::GetInstance().GetApplicationByName());
+    std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
+    auto helper = std::make_shared<DumpRuntimeHelper>(application, appInfo);
+    OHOS::AppExecFwk::JsHandleMapInfo info;
+    info.tid = 1;
+    helper->DumpJsHandleMap(info);
+    EXPECT_NE(application, nullptr);
+
+    AbilityRuntime::Runtime::Options options;
+    auto runtime = AbilityRuntime::Runtime::Create(options);
+    application->SetRuntime(std::move(runtime));
+    helper = std::make_shared<DumpRuntimeHelper>(application);
+    helper->DumpJsHandleMap(info);
+    EXPECT_NE(application, nullptr);
+}
+
+/**
  * @tc.number: GetCheckList_0500
  * @tc.name: GetCheckList
  * @tc.desc: Test whether GetCheckList and are called normally.

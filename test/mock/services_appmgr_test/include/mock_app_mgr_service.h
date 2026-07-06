@@ -153,6 +153,7 @@ public:
     MOCK_METHOD1(CancelDelayedExitTask, void(int32_t pid));
     MOCK_METHOD2(DumpMem, int32_t(MemDumpInfo &info, sptr<IMemDumpCallback> callback));
     MOCK_METHOD2(ReportDumpMemResult, int32_t(sptr<IMemDumpCallback>, const std::string&));
+    MOCK_METHOD2(DumpJsHandleMap, int32_t(OHSH::AppExecFwk::JsHandleMapInfo &));
     virtual int StartUserTestProcess(
         const AAFwk::Want &want, const sptr<IRemoteObject> &observer, const BundleInfo &bundleInfo, int32_t userId)
     {
