@@ -1533,4 +1533,152 @@ HWTEST_F(WantAgentHelperTest, GetWantFromProxy_0100, TestSize.Level1)
     auto want = WantAgentHelper::GetWantFromProxy(wantAgent);
     EXPECT_EQ(want, nullptr);
 }
+
+/*
+ * @tc.number    : WantAgentHelper_6700
+ * @tc.name      : WantAgentHelper ToStringWithEnvelope
+ * @tc.desc      : Test ToStringWithEnvelope uses WantParamWrapperJson without changing ToString format.
+ */
+HWTEST_F(WantAgentHelperTest, WantAgentHelper_6700, Function | MediumTest | Level1)
+{
+    std::shared_ptr<Want> want = std::make_shared<Want>();
+    ElementName element("device", "bundleName", "abilityNameToJson");
+    want->SetElement(element);
+    WantAgentInfo wantAgentInfo;
+    wantAgentInfo.wants_.emplace_back(want);
+    wantAgentInfo.operationType_ = WantAgentConstant::OperationType::START_ABILITY;
+    wantAgentInfo.requestCode_ = 10;
+    std::shared_ptr<WantParams> wParams = std::make_shared<WantParams>();
+    wParams->SetParam("key", Boolean::Box(true));
+    wantAgentInfo.extraInfo_ = wParams;
+    auto wantAgent = WantAgentHelper::GetWantAgent(wantAgentInfo);
+    ASSERT_NE(wantAgent, nullptr);
+
+    auto legacyString = WantAgentHelper::ToString(wantAgent);
+    auto jsonString = WantAgentHelper::ToStringWithEnvelope(wantAgent);
+    ASSERT_FALSE(legacyString.empty());
+    ASSERT_FALSE(jsonString.empty());
+
+    auto legacyObject = nlohmann::json::parse(legacyString, nullptr, false);
+    auto jsonObject = nlohmann::json::parse(jsonString, nullptr, false);
+    ASSERT_FALSE(legacyObject.is_discarded());
+    ASSERT_FALSE(jsonObject.is_discarded());
+    auto legacyExtraInfo = legacyObject.at("extraInfo").at("extraInfoValue").get<std::string>();
+    auto jsonExtraInfo = jsonObject.at("extraInfo").at("extraInfoValue").get<std::string>();
+    EXPECT_EQ(legacyExtraInfo.find("ohos.want.paramsStringEnvelope"), std::string::npos);
+    EXPECT_NE(jsonExtraInfo.find("ohos.want.paramsStringEnvelope"), std::string::npos);
+    EXPECT_FALSE(WantAgentHelper::HasWantParamsEnvelope(legacyString));
+    EXPECT_TRUE(WantAgentHelper::HasWantParamsEnvelope(jsonString));
+}
+
+/*
+ * @tc.number    : WantAgentHelper_6710
+ * @tc.name      : WantAgentHelper FromStringWithEnvelope
+ * @tc.desc      : Test FromStringWithEnvelope restores WantAgent from WantParamWrapperJson extraInfo.
+ */
+HWTEST_F(WantAgentHelperTest, WantAgentHelper_6710, Function | MediumTest | Level1)
+{
+    std::shared_ptr<Want> want = std::make_shared<Want>();
+    ElementName element("device", "bundleName", "abilityNameFromJson");
+    want->SetElement(element);
+    WantAgentInfo wantAgentInfo;
+    wantAgentInfo.wants_.emplace_back(want);
+    wantAgentInfo.operationType_ = WantAgentConstant::OperationType::START_ABILITY;
+    wantAgentInfo.requestCode_ = 10;
+    std::shared_ptr<WantParams> wParams = std::make_shared<WantParams>();
+    wParams->SetParam("key", Boolean::Box(true));
+    wantAgentInfo.extraInfo_ = wParams;
+    auto wantAgent = WantAgentHelper::GetWantAgent(wantAgentInfo);
+    ASSERT_NE(wantAgent, nullptr);
+
+    auto jsonString = WantAgentHelper::ToStringWithEnvelope(wantAgent);
+    auto restoredWantAgent = WantAgentHelper::FromStringWithEnvelope(jsonString);
+    ASSERT_NE(restoredWantAgent, nullptr);
+
+    auto restoredWant = WantAgentHelper::GetWant(restoredWantAgent);
+    ASSERT_NE(restoredWant, nullptr);
+    auto value = restoredWant->GetParams().GetParam("key");
+    auto boolValue = IBoolean::Query(value);
+    ASSERT_NE(boolValue, nullptr);
+    EXPECT_TRUE(Boolean::Unbox(boolValue));
+}
+
+/*
+ * @tc.number    : WantAgentHelper_6720
+ * @tc.name      : WantAgentHelper ToStringWithEnvelope invalid input
+ * @tc.desc      : Test ToStringWithEnvelope invalid agent branches.
+ */
+HWTEST_F(WantAgentHelperTest, WantAgentHelper_6720, Function | MediumTest | Level1)
+{
+    EXPECT_TRUE(WantAgentHelper::ToStringWithEnvelope(nullptr).empty());
+
+    auto wantAgentWithoutPendingWant = std::make_shared<WantAgent>(std::shared_ptr<PendingWant>(nullptr));
+    EXPECT_TRUE(WantAgentHelper::ToStringWithEnvelope(wantAgentWithoutPendingWant).empty());
+
+    auto pendingWantWithoutTarget = std::make_shared<PendingWant>(sptr<IWantSender>(nullptr));
+    auto wantAgentWithoutInfo = std::make_shared<WantAgent>(pendingWantWithoutTarget);
+    EXPECT_TRUE(WantAgentHelper::ToStringWithEnvelope(wantAgentWithoutInfo).empty());
+}
+
+/*
+ * @tc.number    : WantAgentHelper_6730
+ * @tc.name      : WantAgentHelper FromStringWithEnvelope invalid input
+ * @tc.desc      : Test FromStringWithEnvelope invalid string and malformed field branches.
+ */
+HWTEST_F(WantAgentHelperTest, WantAgentHelper_6730, Function | MediumTest | Level1)
+{
+    EXPECT_EQ(WantAgentHelper::FromStringWithEnvelope(""), nullptr);
+    EXPECT_EQ(WantAgentHelper::FromStringWithEnvelope("{"), nullptr);
+    EXPECT_EQ(WantAgentHelper::FromStringWithEnvelope(R"({"requestCode":"bad","wants":[]})"),
+        nullptr);
+    EXPECT_EQ(WantAgentHelper::FromStringWithEnvelope(R"({"wants":[100]})"), nullptr);
+
+    Want want;
+    ElementName element("device", "bundleName", "abilityNameFromJsonInvalid");
+    want.SetElement(element);
+    const auto originParamSize = want.GetParams().Size();
+    nlohmann::json jsonObject;
+    jsonObject["requestCode"] = 6730;
+    jsonObject["operationType"] = static_cast<int32_t>(WantAgentConstant::OperationType::START_ABILITY);
+    jsonObject["flags"] = static_cast<int32_t>(FLAG_UPDATE_CURRENT);
+    jsonObject["userId"] = -1;
+    jsonObject["appIndex"] = "bad";
+    jsonObject["wants"] = nlohmann::json::array({ want.ToString() });
+    jsonObject["extraInfo"] = { { "extraInfoValue", "invalid want params json" } };
+
+    auto wantAgent = WantAgentHelper::FromStringWithEnvelope(jsonObject.dump());
+    ASSERT_NE(wantAgent, nullptr);
+    auto restoredWant = WantAgentHelper::GetWant(wantAgent);
+    ASSERT_NE(restoredWant, nullptr);
+    EXPECT_EQ(restoredWant->GetParams().Size(), originParamSize);
+
+    jsonObject["requestCode"] = 6731;
+    jsonObject["extraInfo"] = "bad";
+    EXPECT_NE(WantAgentHelper::FromStringWithEnvelope(jsonObject.dump()), nullptr);
+
+    jsonObject["requestCode"] = 6732;
+    jsonObject["extraInfo"] = { { "extraInfoValue", 100 } };
+    EXPECT_NE(WantAgentHelper::FromStringWithEnvelope(jsonObject.dump()), nullptr);
+}
+
+/*
+ * @tc.number    : WantAgentHelper_6740
+ * @tc.name      : WantAgentHelper HasWantParamsEnvelope
+ * @tc.desc      : Test HasWantParamsEnvelope dispatches only when extraInfoValue uses WantParamWrapperJson envelope.
+ */
+HWTEST_F(WantAgentHelperTest, WantAgentHelper_6740, Function | MediumTest | Level1)
+{
+    nlohmann::json jsonObject;
+    jsonObject["extraInfo"] = { { "extraInfoValue", R"( {"ohos.want.paramsStringEnvelope":{}} )" } };
+    EXPECT_FALSE(WantAgentHelper::HasWantParamsEnvelope(jsonObject.dump()));
+
+    jsonObject["extraInfo"] = { { "extraInfoValue", "legacy want params" } };
+    EXPECT_FALSE(WantAgentHelper::HasWantParamsEnvelope(jsonObject.dump()));
+
+    EXPECT_FALSE(WantAgentHelper::HasWantParamsEnvelope(""));
+    EXPECT_FALSE(WantAgentHelper::HasWantParamsEnvelope("{"));
+    EXPECT_FALSE(WantAgentHelper::HasWantParamsEnvelope(R"({"extraInfo":"bad"})"));
+    EXPECT_FALSE(WantAgentHelper::HasWantParamsEnvelope(R"({"extraInfo":{"extraInfoValue":100}})"));
+    EXPECT_FALSE(WantAgentHelper::HasWantParamsEnvelope(R"({"wants":[]})"));
+}
 }  // namespace OHOS::AbilityRuntime::WantAgent
