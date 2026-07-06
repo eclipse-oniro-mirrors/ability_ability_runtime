@@ -4066,7 +4066,7 @@ int AbilityManagerProxy::StartAbilityByCallWithErrMsg(const Want &want, const sp
     if (!data.WriteParcelable(&want)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "want write fail");
         errMsg = "want write fail";
-        return ERR_INVALID_VALUE;
+        return ERR_NATIVE_IPC_PARCEL_FAILED;
     }
     if (connect == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "resolve fail, null connect");
