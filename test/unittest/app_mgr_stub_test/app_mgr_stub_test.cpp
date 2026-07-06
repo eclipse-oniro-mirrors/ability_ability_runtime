@@ -1588,6 +1588,32 @@ HWTEST_F(AppMgrStubTest, HandleDumpMem_002, TestSize.Level1)
 }
 
 /**
+ * @tc.name: HandleDumpJsHandleMap_001
+ * @tc.desc: Handle dump js handle map test.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleDumpJsHandleMap_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    WriteInterfaceToken(data);
+    JsHandleMapInfo info;
+    info.pid = 1;
+    info.tid = 1;
+    data.WriteParcelable(&info);
+
+    EXPECT_CALL(*mockAppMgrService_, DumpJsHandleMap(_)).Times(1);
+
+    auto result = mockAppMgrService_->OnRemoteRequest(
+        static_cast<uint32_t>(AppMgrInterfaceCode::DUMP_JSHANDLE_MAP_PROCESS), data, reply, option);
+    EXPECT_EQ(result, NO_ERROR);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
  * @tc.name: HandleReportDumpMemResult_001
  * @tc.desc: Handle report dump mem result with valid callback.
  * @tc.type: FUNC

@@ -201,6 +201,32 @@ HWTEST_F(AppMgrServiceThirdTest, DumpJsHeapMemory_001, TestSize.Level1)
 
 /*
  * Feature: AppMgrService
+ * Function: DumpJsHandleMap
+ * SubFunction: NA
+ * FunctionPoints: AppMgrService DumpJsHandleMap
+ * EnvConditions: NA
+ * CaseDescription: Verify DumpJsHandleMap
+ */
+HWTEST_F(AppMgrServiceThirdTest, DumpJsHandleMap_001, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    ASSERT_NE(appMgrService, nullptr);
+    appMgrService->SetInnerService(nullptr);
+    OHOS::AppExecFwk::JsHandleMapInfo info;
+    info.pid = 1;
+    info.tid = 1;
+    int32_t res = appMgrService->DumpJsHandleMap(info);
+    EXPECT_EQ(res, ERR_INVALID_OPERATION);
+
+    appMgrService->SetInnerService(std::make_shared<AppMgrServiceInner>());
+    appMgrService->taskHandler_ = taskHandler_;
+    appMgrService->eventHandler_ = std::make_shared<AMSEventHandler>(taskHandler_, appMgrService->appMgrServiceInner_);
+    res = appMgrService->DumpJsHandleMap(info);
+    EXPECT_NE(res, ERR_INVALID_OPERATION);
+}
+
+/*
+ * Feature: AppMgrService
  * Function: DumpCjHeapMemory
  * SubFunction: NA
  * FunctionPoints: AppMgrService DumpCjHeapMemory
