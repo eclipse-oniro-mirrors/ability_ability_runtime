@@ -60,6 +60,16 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsWindowMode(AbilityRunt
     return startOptions->GetStartOptionsWindowMode(windowMode);
 }
 
+AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsWindowModeValue(AbilityRuntime_StartOptions *startOptions,
+    AbilityRuntime_WindowMode *windowMode)
+{
+    if (startOptions == nullptr || windowMode == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null startOptions or windowMode");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    return startOptions->GetStartOptionsWindowMode(*windowMode);
+}
+
 AbilityRuntime_ErrorCode OH_AbilityRuntime_SetStartOptionsDisplayId(AbilityRuntime_StartOptions *startOptions,
     int32_t displayId)
 {
@@ -78,6 +88,16 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsDisplayId(AbilityRunti
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return startOptions->GetStartOptionsDisplayId(displayId);
+}
+
+AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsDisplayIdValue(AbilityRuntime_StartOptions *startOptions,
+    int32_t *displayId)
+{
+    if (startOptions == nullptr || displayId == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null startOptions or displayId");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    return startOptions->GetStartOptionsDisplayId(*displayId);
 }
 
 AbilityRuntime_ErrorCode OH_AbilityRuntime_SetStartOptionsWithAnimation(AbilityRuntime_StartOptions *startOptions,
@@ -100,6 +120,16 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsWithAnimation(AbilityR
     return startOptions->GetStartOptionsWithAnimation(withAnimation);
 }
 
+AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsWithAnimationValue(AbilityRuntime_StartOptions *startOptions,
+    bool *withAnimation)
+{
+    if (startOptions == nullptr || withAnimation == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null startOptions or withAnimation");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    return startOptions->GetStartOptionsWithAnimation(*withAnimation);
+}
+
 AbilityRuntime_ErrorCode OH_AbilityRuntime_SetStartOptionsWindowLeft(AbilityRuntime_StartOptions *startOptions,
     int32_t windowLeft)
 {
@@ -119,7 +149,18 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsWindowLeft(AbilityRunt
     }
     return startOptions->GetStartOptionsWindowLeft(windowLeft);
 }
-    
+
+AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsWindowLeftValue(AbilityRuntime_StartOptions *startOptions,
+    int32_t *windowLeft)
+{
+    if (startOptions == nullptr || windowLeft == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null startOptions or windowLeft");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    *windowLeft = 0;
+    return startOptions->GetStartOptionsWindowLeft(*windowLeft);
+}
+
 AbilityRuntime_ErrorCode OH_AbilityRuntime_SetStartOptionsWindowTop(AbilityRuntime_StartOptions *startOptions,
     int32_t windowTop)
 {
@@ -138,6 +179,17 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsWindowTop(AbilityRunti
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return startOptions->GetStartOptionsWindowTop(windowTop);
+}
+
+AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsWindowTopValue(AbilityRuntime_StartOptions *startOptions,
+    int32_t *windowTop)
+{
+    if (startOptions == nullptr || windowTop == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null startOptions or windowTop");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    *windowTop = 0;
+    return startOptions->GetStartOptionsWindowTop(*windowTop);
 }
 
 AbilityRuntime_ErrorCode OH_AbilityRuntime_SetStartOptionsWindowHeight(AbilityRuntime_StartOptions *startOptions,
@@ -160,6 +212,17 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsWindowHeight(AbilityRu
     return startOptions->GetStartOptionsWindowHeight(windowHeight);
 }
 
+AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsWindowHeightValue(AbilityRuntime_StartOptions *startOptions,
+    int32_t *windowHeight)
+{
+    if (startOptions == nullptr || windowHeight == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null startOptions or windowHeight");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    *windowHeight = 0;
+    return startOptions->GetStartOptionsWindowHeight(*windowHeight);
+}
+
 AbilityRuntime_ErrorCode OH_AbilityRuntime_SetStartOptionsWindowWidth(AbilityRuntime_StartOptions *startOptions,
     int32_t windowWidth)
 {
@@ -180,6 +243,17 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsWindowWidth(AbilityRun
     return startOptions->GetStartOptionsWindowWidth(windowWidth);
 }
 
+AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsWindowWidthValue(AbilityRuntime_StartOptions *startOptions,
+    int32_t *windowWidth)
+{
+    if (startOptions == nullptr || windowWidth == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null startOptions or windowWidth");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    *windowWidth = 0;
+    return startOptions->GetStartOptionsWindowWidth(*windowWidth);
+}
+
 AbilityRuntime_ErrorCode OH_AbilityRuntime_SetStartOptionsStartVisibility(AbilityRuntime_StartOptions *startOptions,
     AbilityRuntime_StartVisibility startVisibility)
 {
@@ -198,6 +272,16 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsStartVisibility(Abilit
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return startOptions->GetStartOptionsStartVisibility(startVisibility);
+}
+
+AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsStartVisibilityValue(
+    AbilityRuntime_StartOptions *startOptions, AbilityRuntime_StartVisibility *startVisibility)
+{
+    if (startOptions == nullptr || startVisibility == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null startOptions or startVisibility");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    return startOptions->GetStartOptionsStartVisibility(*startVisibility);
 }
 
 AbilityRuntime_ErrorCode OH_AbilityRuntime_SetStartOptionsStartWindowIcon(AbilityRuntime_StartOptions *startOptions,
@@ -240,6 +324,17 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundC
     return startOptions->GetStartOptionsStartWindowBackgroundColor(startWindowBackgroundColor, size);
 }
 
+AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColorValue(
+    AbilityRuntime_StartOptions *startOptions, char **startWindowBackgroundColor, size_t *size)
+{
+    if (startOptions == nullptr || startWindowBackgroundColor == nullptr || size == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null startOptions or startWindowBackgroundColor or size");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    *size = 0;
+    return startOptions->GetStartOptionsStartWindowBackgroundColor(startWindowBackgroundColor, *size);
+}
+
 AbilityRuntime_ErrorCode OH_AbilityRuntime_SetStartOptionsSupportedWindowModes(
     AbilityRuntime_StartOptions *startOptions, AbilityRuntime_SupportedWindowMode *supportedWindowModes,
     size_t size)
@@ -262,6 +357,18 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsSupportedWindowModes(
     return startOptions->GetStartOptionsSupportedWindowModes(supportedWindowModes, size);
 }
 
+AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsSupportedWindowModesValue(
+    AbilityRuntime_StartOptions *startOptions, AbilityRuntime_SupportedWindowMode **supportedWindowModes,
+    size_t *size)
+{
+    if (startOptions == nullptr || supportedWindowModes == nullptr || size == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null startOptions or supportedWindowModes or size");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    *size = 0;
+    return startOptions->GetStartOptionsSupportedWindowModes(supportedWindowModes, *size);
+}
+
 AbilityRuntime_ErrorCode OH_AbilityRuntime_SetStartOptionsMinWindowWidth(
     AbilityRuntime_StartOptions *startOptions, int32_t minWindowWidth)
 {
@@ -280,6 +387,17 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsMinWindowWidth(
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return startOptions->GetStartOptionsMinWindowWidth(minWindowWidth);
+}
+
+AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsMinWindowWidthValue(
+    AbilityRuntime_StartOptions *startOptions, int32_t *minWindowWidth)
+{
+    if (startOptions == nullptr || minWindowWidth == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null startOptions or minWindowWidth");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    *minWindowWidth = 0;
+    return startOptions->GetStartOptionsMinWindowWidth(*minWindowWidth);
 }
 
 AbilityRuntime_ErrorCode OH_AbilityRuntime_SetStartOptionsMaxWindowWidth(
@@ -302,6 +420,17 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsMaxWindowWidth(
     return startOptions->GetStartOptionsMaxWindowWidth(maxWindowWidth);
 }
 
+AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsMaxWindowWidthValue(
+    AbilityRuntime_StartOptions *startOptions, int32_t *maxWindowWidth)
+{
+    if (startOptions == nullptr || maxWindowWidth == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null startOptions or maxWindowWidth");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    *maxWindowWidth = 0;
+    return startOptions->GetStartOptionsMaxWindowWidth(*maxWindowWidth);
+}
+
 AbilityRuntime_ErrorCode OH_AbilityRuntime_SetStartOptionsMinWindowHeight(
     AbilityRuntime_StartOptions *startOptions, int32_t minWindowHeight)
 {
@@ -322,6 +451,17 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsMinWindowHeight(
     return startOptions->GetStartOptionsMinWindowHeight(minWindowHeight);
 }
 
+AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsMinWindowHeightValue(
+    AbilityRuntime_StartOptions *startOptions, int32_t *minWindowHeight)
+{
+    if (startOptions == nullptr || minWindowHeight == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null startOptions or minWindowHeight");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    *minWindowHeight = 0;
+    return startOptions->GetStartOptionsMinWindowHeight(*minWindowHeight);
+}
+
 AbilityRuntime_ErrorCode OH_AbilityRuntime_SetStartOptionsMaxWindowHeight(
     AbilityRuntime_StartOptions *startOptions, int32_t maxWindowHeight)
 {
@@ -340,6 +480,17 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsMaxWindowHeight(
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     return startOptions->GetStartOptionsMaxWindowHeight(maxWindowHeight);
+}
+
+AbilityRuntime_ErrorCode OH_AbilityRuntime_GetStartOptionsMaxWindowHeightValue(
+    AbilityRuntime_StartOptions *startOptions, int32_t *maxWindowHeight)
+{
+    if (startOptions == nullptr || maxWindowHeight == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null startOptions or maxWindowHeight");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    *maxWindowHeight = 0;
+    return startOptions->GetStartOptionsMaxWindowHeight(*maxWindowHeight);
 }
 
 #ifdef __cplusplus
