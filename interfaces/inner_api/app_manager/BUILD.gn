@@ -80,6 +80,7 @@ ohos_shared_library("app_manager") {
     "src/appmgr/app_foreground_state_observer_stub.cpp",
     "src/appmgr/app_mem_dump_info.cpp",
     "src/appmgr/app_jsheap_mem_info.cpp",
+    "src/appmgr/app_jshandle_map_info.cpp",
     "src/appmgr/app_launch_data.cpp",
     "src/appmgr/app_malloc_info.cpp",
     "src/appmgr/app_mgr_client.cpp",

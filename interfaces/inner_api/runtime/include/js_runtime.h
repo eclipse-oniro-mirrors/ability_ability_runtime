@@ -102,6 +102,7 @@ public:
     void ForceFullGC(uint32_t tid) override;
     void DumpHeapSnapshot(uint32_t tid, bool isFullGC, bool isBinary = false) override;
     void DumpHeapSnapshot(uint32_t tid, const OHOS::AbilityRuntime::Runtime::JsHeapDumpParam &param) override;
+    void DumpJsHandleMap() override;
     void AllowCrossThreadExecution() override;
     void GetHeapPrepare() override;
     void NotifyApplicationState(bool isBackground) override;

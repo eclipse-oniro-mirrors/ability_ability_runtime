@@ -449,6 +449,21 @@ HWTEST_F(MainThreadTest, ScheduleNotifyLoadRepairPatch_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: ScheduleJsHandleMap_0100
+ * @tc.desc: schedule jshadle map.
+ * @tc.type: FUNC
+ * @tc.require: issueI581VW
+ */
+HWTEST_F(MainThreadTest, ScheduleJsHandleMap_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    OHOS::AppExecFwk::JsHandleMapInfo info;
+    info.pid = 1;
+    mainThread_->ScheduleJsHandleMap(info);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
  * @tc.name: ScheduleNotifyHotReloadPage_0100
  * @tc.desc: schedule notify ace hot reload page.
  * @tc.type: FUNC
@@ -1606,6 +1621,28 @@ HWTEST_F(MainThreadTest, HandleDumpHeap_0100, TestSize.Level1)
 
     mainThread_->mainHandler_ = nullptr;
     mainThread_->HandleDumpHeap(isPrivate);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/*
+ * Feature: MainThread
+ * Function: HandleDumpJsHandleMap
+ * SubFunction: NA
+ * FunctionPoints: MainThread HandleDumpJsHandleMap
+ * EnvConditions: NA
+ * CaseDescription: Verify HandleDumpJsHandleMap
+ */
+HWTEST_F(MainThreadTest, HandleDumpJsHandleMap_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    OHOS::AppExecFwk::JsHandleMapInfo info;
+    info.pid = 1;
+    info.tid = 0;
+    ASSERT_NE(mainThread_, nullptr);
+    mainThread_->HandleJsHandleMap(info);
+
+    mainThread_->mainHandler_ = nullptr;
+    mainThread_->HandleJsHandleMap(info);
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
 }
 

@@ -53,6 +53,7 @@
 #include "system_memory_attr.h"
 #include "want.h"
 #include "app_jsheap_mem_info.h"
+#include "app_jshandle_map_info.h"
 #include "app_cjheap_mem_info.h"
 #include "running_multi_info.h"
 #include "native_child_notify_interface.h"
@@ -344,6 +345,18 @@ public:
      * @return ERR_OK ,return back success, others fail.
      */
     virtual int DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info) = 0;
+
+    /**
+     * DumpJsHandleMap, call DumpJsHandleMap() through proxy project.
+     * dump the application's jshandle map info.
+     *
+     * @param info, pid tid
+     * @return ERR_OK ,return back success, others fail.
+     */
+    virtual int DumpJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
+    {
+        return 0;
+    }
 
     /**
      * DumpCjHeapMemory, call DumpCjHeapMemory() through proxy project.

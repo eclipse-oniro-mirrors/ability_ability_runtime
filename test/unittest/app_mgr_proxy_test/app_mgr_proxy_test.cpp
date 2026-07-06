@@ -1034,6 +1034,30 @@ HWTEST_F(AppMgrProxyTest, AppMgrProxy_DumpHeapMemory_001, TestSize.Level0)
 }
 
 /**
+ * @tc.name: AppMgrProxy_DumpJsHandleMap_001
+ * @tc.desc: DumpJsHandleMap
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, AppMgrProxy_DumpJsHandleMap_001, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "AppMgrProxy_DumpJsHandleMap_001 start";
+
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mockAppMgrService_.GetRefPtr(), &MockAppMgrService::InvokeSendRequest));
+
+    OHOS::AppExecFwk::JsHandleMapInfo info;
+    info.pid = 1;
+    info.tid = 1;
+    appMgrProxy_->DumpJsHandleMap(info);
+
+    EXPECT_EQ(
+        mockAppMgrService_->code_, static_cast<uint32_t>(AppMgrInterfaceCode::DUMP_JSHANDLE_MAP_PROCESS));
+
+    GTEST_LOG_(INFO) << "AppMgrProxy_DumpJsHandleMap_001 end";
+}
+
+/**
  * @tc.name: UpdateProcessMemoryState_001
  * @tc.desc: UpdateProcessMemoryState.
  * @tc.type: FUNC

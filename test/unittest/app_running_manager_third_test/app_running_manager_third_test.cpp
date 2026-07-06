@@ -439,6 +439,33 @@ HWTEST_F(AppRunningManagerThirdTest, AppRunningManager_DumpJsHeapMemory_0100, Te
 }
 
 /**
+ * @tc.name: AppRunningManager_DumpJsHeapMemory_0100
+ * @tc.desc: Test DumpJsHandleMap
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerThirdTest, AppRunningManager_DumpJsHandleMap_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppRunningManager_DumpJsHandleMap_0100 start");
+    auto appRunningManager = std::make_shared<AppRunningManager>();
+    EXPECT_NE(appRunningManager, nullptr);
+    OHOS::AppExecFwk::JsHandleMapInfo info;
+    info.pid = 0;
+    auto ret = appRunningManager->DumpJsHandleMap(info);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+
+    info.pid = 1;
+    auto recordId = AppRecordId::Create();
+    auto record = appRunningManager->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    record->appInfo_ = std::make_shared<ApplicationInfo>();
+    record->priorityObject_ = std::make_shared<PriorityObject>();
+    record->priorityObject_->pid_ = 1;
+    appRunningManager->appRunningRecordMap_.emplace(recordId, record);
+    ret = appRunningManager->DumpJsHandleMap(info);
+    EXPECT_EQ(ret, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "AppRunningManager_DumpJsHandleMap_0100 end");
+}
+
+/**
  * @tc.name: AppRunningManager_DumpCjHeapMemory_0100
  * @tc.desc: Test DumpCjHeapMemory
  * @tc.type: FUNC

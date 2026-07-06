@@ -772,6 +772,22 @@ HWTEST_F(AppMgrClientTest, AppMgrClient_ReportDumpMemResult_001, TestSize.Level2
 }
 
 /**
+ * @tc.name: AppMgrClient_DumpJsHandleMap_001
+ * @tc.desc: DumpJsHandleMap.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrClientTest, AppMgrClient_DumpJsHandleMap_001, TestSize.Level2)
+{
+    auto appMgrClient = std::make_unique<AppMgrClient>();
+    auto result = appMgrClient->ConnectAppMgrService();
+    EXPECT_EQ(result, AppMgrResultCode::RESULT_OK);
+
+    OHOS::AppExecFwk::JsHandleMapInfo info;
+    info.pid = 1;
+    EXPECT_EQ(appMgrClient->DumpJsHandleMap(info), AppMgrResultCode::RESULT_OK);
+}
+
+/**
  * @tc.name: AppMgrClient_NotifyMemoryLevel_001
  * @tc.desc: NotifyMemoryLevel.
  * @tc.type: FUNC

@@ -17,6 +17,7 @@
 #define OHOS_ABILITY_RUNTIME_DUMP_RUNTIME_HELPER_H
 
 #include "app_jsheap_mem_info.h"
+#include "app_jshandle_map_info.h"
 #include "app_cjheap_mem_info.h"
 #include "app_mem_dump_info.h"
 #include "mem_dump_callback_interface.h"
@@ -38,6 +39,7 @@ public:
     ~DumpRuntimeHelper() = default;
     void SetAppFreezeFilterCallback();
     void DumpJsHeap(const OHOS::AppExecFwk::JsHeapDumpInfo &info);
+    void DumpJsHandleMap(const OHOS::AppExecFwk::JsHandleMapInfo &info);
     void DumpCjHeap(const OHOS::AppExecFwk::CjHeapDumpInfo &info);
     void DumpMem(const OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback);
 private:

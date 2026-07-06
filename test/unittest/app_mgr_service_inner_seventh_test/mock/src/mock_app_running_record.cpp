@@ -1439,5 +1439,9 @@ bool AppRunningRecord::HasAgentExtensionAbility()
 void AppRunningRecord::GetAllAbilityInfos(std::vector<AppExecFwk::AbilityStateData> &infos)
 {
 }
+
+void AppRunningRecord::ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
+{
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

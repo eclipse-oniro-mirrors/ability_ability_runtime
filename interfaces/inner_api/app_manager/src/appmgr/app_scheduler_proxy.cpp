@@ -176,6 +176,27 @@ void AppSchedulerProxy::ScheduleJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &i
     }
 }
 
+void AppSchedulerProxy::ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "AppSchedulerProxy::ScheduleJsHandleMap start");
+    uint32_t operation = static_cast<uint32_t>(IAppScheduler::Message::SCHEDULE_JSHANDLE_MAP_APPLICATION_TRANSACTION);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_ASYNC);
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "AppSchedulerProxy !WriteInterfaceToken.");
+        return;
+    }
+    if (!data.WriteParcelable(&info)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write pid failed");
+        return;
+    }
+    int32_t ret = SendTransactCmd(operation, data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::APPMGR, "SendRequest is failed, error code: %{public}d", ret);
+    }
+}
+
 void AppSchedulerProxy::ScheduleCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "AppSchedulerProxy::ScheduleCjHeapMemory start");
