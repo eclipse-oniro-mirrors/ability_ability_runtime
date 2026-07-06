@@ -61,7 +61,8 @@ public:
     virtual std::string OnNewProcessRequest(const AAFwk::Want &want,
         AppExecFwk::AbilityTransactionCallbackInfo<std::string> *callbackInfo, bool &isAsyn);
     virtual void OnLaunchFromHyperSnap();
-    virtual void OnAboutToCreateAbility();
+    virtual void OnAboutToCreateAbility(bool &isAsyncCallback,
+        const std::function<void(const std::shared_ptr<AbilityRuntime::Context> &)> &callback) const;
     virtual void Init(const std::shared_ptr<Context> &context,
         const std::weak_ptr<AppExecFwk::OHOSApplication> application);
     virtual void LoadModule(const AppExecFwk::HapModuleInfo &hapModuleInfo);

@@ -137,6 +137,24 @@ napi_value OnStringPromiseCallback(napi_env env, napi_callback_info info)
     data = nullptr;
     return nullptr;
 }
+
+napi_value OnAboutToCreateAbilityPromiseCallback(napi_env env, napi_callback_info info)
+{
+    TAG_LOGI(AAFwkTag::APPKIT, "OnAboutToCreateAbilityPromiseCallback begin");
+    void *data = nullptr;
+    size_t argc = ARGC_MAX_COUNT;
+    napi_value argv[ARGC_MAX_COUNT] = {nullptr};
+    NAPI_CALL_NO_THROW(napi_get_cb_info(env, info, &argc, argv, nullptr, &data), nullptr);
+    auto *callbackInfo = static_cast<AppExecFwk::AbilityTransactionCallbackInfo<void> *>(data);
+    if (callbackInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null callbackInfo");
+        return nullptr;
+    }
+    callbackInfo->Call();
+    AppExecFwk::AbilityTransactionCallbackInfo<void>::Destroy(callbackInfo);
+    TAG_LOGI(AAFwkTag::APPKIT, "OnAboutToCreateAbilityPromiseCallback end");
+    return nullptr;
+}
 } // namespace
 
 bool JsAbilityStage::UseCommonChunk(const AppExecFwk::HapModuleInfo& hapModuleInfo)
@@ -323,24 +341,56 @@ void JsAbilityStage::OnLaunchFromHyperSnap()
     FreezeUtil::GetInstance().AddAppLifecycleEvent(0, "JsAbilityStage::OnLaunchFromHyperSnap end");
 }
 
-void JsAbilityStage::OnAboutToCreateAbility()
+void JsAbilityStage::OnAboutToCreateAbility(bool &isAsyncCallback,
+    const std::function<void(const std::shared_ptr<AbilityRuntime::Context> &)> &callback) const
 {
-    AbilityStage::OnAboutToCreateAbility();
-
+    AbilityStage::OnAboutToCreateAbility(isAsyncCallback, callback);
     if (!jsAbilityStageObj_) {
         TAG_LOGW(AAFwkTag::APPKIT, "Not found AbilityStage.js");
         return;
     }
-
     HandleScope handleScope(jsRuntime_);
     auto env = jsRuntime_.GetNapiEnv();
-
     napi_value obj = jsAbilityStageObj_->GetNapiValue();
     if (!CheckTypeForNapiValue(env, obj, napi_object)) {
         TAG_LOGE(AAFwkTag::APPKIT, "get object failed");
         return;
     }
-
+    napi_value methodOnAboutToCreateAbilityAsync = nullptr;
+    napi_status status = napi_get_named_property(env, obj, "onAboutToCreateAbilityAsync",
+        &methodOnAboutToCreateAbilityAsync);
+    if (status == napi_ok && methodOnAboutToCreateAbilityAsync != nullptr &&
+            CheckTypeForNapiValue(env, methodOnAboutToCreateAbilityAsync, napi_function)) {
+        bool hasCaughtException = false;
+        FreezeUtil::GetInstance().AddAppLifecycleEvent(0, "JsAbilityStage::OnAboutToCreateAbilityAsync begin");
+        napi_value result = CallObjectMethod("onAboutToCreateAbilityAsync", hasCaughtException, nullptr, 0);
+        FreezeUtil::GetInstance().AddAppLifecycleEvent(0, "JsAbilityStage::OnAboutToCreateAbilityAsync end");
+        if (!CheckPromise(result)) {
+            TAG_LOGI(AAFwkTag::APPKIT, "OnAboutToCreateAbilityAsync check promise false");
+            return;
+        }
+        napi_value then = nullptr;
+        napi_get_named_property(env, result, "then", &then);
+        if (then == nullptr) {
+            TAG_LOGI(AAFwkTag::APPKIT, "OnAboutToCreateAbilityAsync null then for promise");
+            return;
+        }
+        auto *callbackInfo = AppExecFwk::AbilityTransactionCallbackInfo<void>::Create();
+        if (callbackInfo == nullptr) {
+            TAG_LOGI(AAFwkTag::APPKIT, "OnAboutToCreateAbilityAsync null callbackInfo");
+            return;
+        }
+        callbackInfo->Push([callback, context = GetContext()](void) {
+            callback(context);
+        });
+        napi_value promiseCallback = nullptr;
+        napi_create_function(env, "promiseCallback", strlen("promiseCallback"),
+            OnAboutToCreateAbilityPromiseCallback, callbackInfo, &promiseCallback);
+        napi_value argv[1] = { promiseCallback };
+        napi_call_function(env, result, then, 1, argv, nullptr);
+        isAsyncCallback = true;
+        return;
+    }
     napi_value methodOnAboutToCreateAbility = nullptr;
     napi_get_named_property(env, obj, "onAboutToCreateAbility", &methodOnAboutToCreateAbility);
     if (methodOnAboutToCreateAbility == nullptr) {
@@ -351,6 +401,22 @@ void JsAbilityStage::OnAboutToCreateAbility()
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     napi_call_function(env, obj, methodOnAboutToCreateAbility, 0, nullptr, nullptr);
     FreezeUtil::GetInstance().AddAppLifecycleEvent(0, "JsAbilityStage::OnAboutToCreateAbility end");
+}
+
+bool JsAbilityStage::CheckPromise(napi_value result) const
+{
+    if (result == nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "null result");
+        return false;
+    }
+    auto env = jsRuntime_.GetNapiEnv();
+    bool isPromise = false;
+    napi_is_promise(env, result, &isPromise);
+    if (!isPromise) {
+        TAG_LOGD(AAFwkTag::UIABILITY, "result is not promise");
+        return false;
+    }
+    return true;
 }
 
 bool JsAbilityStage::OnPrepareTerminate(
