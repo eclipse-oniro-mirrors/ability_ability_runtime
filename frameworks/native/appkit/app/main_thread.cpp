@@ -2761,7 +2761,6 @@ bool MainThread::PrepareAbilityDelegator(const std::shared_ptr<UserTestRecord> &
                 application_->GetAppContext(), std::move(interopTestRunner), record->observer);
             AbilityDelegatorRegistry::RegisterInstance(interopDelegator, args, targetLanguage);
             interopDelegator->SetApiTargetVersion(targetVersion);
-            interopDelegator->Prepare();
         }
     } else { // FA model
         TAG_LOGD(AAFwkTag::APPKIT, "FA model");
