@@ -114,6 +114,9 @@ public:
     ErrCode GrantUriPermission(const std::vector<std::string>& uriVec, uint32_t flag,
         uint32_t targetTokenId, uint32_t oriCallerTokenId, int32_t& funcResult) override;
 
+    ErrCode GrantUriPermission(const UriPermissionRawData& rawData, uint32_t flag,
+        uint32_t targetTokenId, uint32_t oriCallerTokenId, int32_t& funcResult) override;
+
     ErrCode GrantUriPermissionByKeyAsCaller(const std::string &key, uint32_t flag, uint32_t callerTokenId,
         uint32_t targetTokenId, int32_t &funcResult) override;
 

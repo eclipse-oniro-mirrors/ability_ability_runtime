@@ -190,11 +190,26 @@ int32_t UriPermissionManagerClient::GrantUriPermission(const std::vector<std::st
         TAG_LOGE(AAFwkTag::URIPERMMGR, "null uriPermMgr");
         return INNER_ERR;
     }
+    bool isWriteUriByRawData = CheckUseRawData();
+    ErrCode res = INNER_ERR;
     int32_t funcResult = INNER_ERR;
-    auto ret = uriPermMgr->GrantUriPermission(uriVec, flag, targetTokenId, oriCallerTokenId,
-        funcResult);
-    if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::URIPERMMGR, "IPC failed, error:%{public}d", ret);
+    if (isWriteUriByRawData) {
+        UriPermissionRawData rawData;
+        StringVecToRawData(uriVec, rawData);
+        if (rawData.size > MAX_IPC_RAW_DATA_SIZE) {
+            TAG_LOGE(AAFwkTag::URIPERMMGR, "rawData is too large");
+            return INNER_ERR;
+        }
+        res = uriPermMgr->GrantUriPermission(rawData, flag, targetTokenId, oriCallerTokenId, funcResult);
+        if (res != ERR_OK) {
+            TAG_LOGE(AAFwkTag::URIPERMMGR, "IPC failed, error:%{public}d", res);
+            return INNER_ERR;
+        }
+        return funcResult;
+    }
+    res = uriPermMgr->GrantUriPermission(uriVec, flag, targetTokenId, oriCallerTokenId, funcResult);
+    if (res != ERR_OK) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "IPC failed, error:%{public}d", res);
         return INNER_ERR;
     }
     return funcResult;
