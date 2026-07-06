@@ -356,7 +356,7 @@ HWTEST_F(AppLifecycleDealTest, ScheduleJsHandleMap_001, TestSize.Level1)
     appLifeCycle->SetApplicationClient(mockAppScheduler);
     OHOS::AppExecFwk::JsHandleMapInfo info;
     info.pid = 1;
-    EXPECT_CALL(*mockAppScheduler, ScheduleJsHeapMemory(_)).Times(1);
+    EXPECT_CALL(*mockAppScheduler, ScheduleJsHandleMap(_)).Times(1);
     appLifeCycle->ScheduleJsHandleMap(info);
 }
 
