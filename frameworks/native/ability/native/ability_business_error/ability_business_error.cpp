@@ -308,6 +308,24 @@ constexpr const char* ERROR_MSG_TERMINATE_MISSION_FAILED =
     "Internal error. Failed to terminate the mission. Try again later.";
 constexpr const char* ERROR_MSG_SET_KEEP_ALIVE_FAILED =
     "Internal error. Failed to set the keep-alive status. Try again later.";
+constexpr const char* ERROR_MSG_GRANT_URI_PERMISSION_FAILED =
+    "Internal error. Failed to grant URI permission. Try again later.";
+constexpr const char* ERROR_MSG_GRANT_URI_PERMISSION_BY_KEY_FAILED =
+    "Internal error. Failed to grant URI permission by key. Try again later.";
+constexpr const char* ERROR_MSG_GRANT_URI_PERMISSION_AS_CALLER_FAILED =
+    "Internal error. Failed to grant URI permission as caller. Try again later.";
+constexpr const char* ERROR_MSG_REVOKE_URI_PERMISSION_FAILED =
+    "Internal error. Failed to revoke URI permission. Try again later.";
+constexpr const char* ERROR_MSG_GET_ABILITY_RUNNING_INFOS_FAILED =
+    "Internal error. Failed to get ability running information. Try again later.";
+constexpr const char* ERROR_MSG_GET_TOP_ABILITY_FAILED =
+    "Internal error. Failed to get the top ability. Try again later.";
+constexpr const char* ERROR_MSG_ACQUIRE_SHARE_DATA_FAILED =
+    "Internal error. Failed to acquire share data. Try again later.";
+constexpr const char* ERROR_MSG_GET_DIALOG_SESSION_INFO_FAILED =
+    "Internal error. Failed to get dialog session information. Try again later.";
+constexpr const char* ERROR_MSG_SEND_DIALOG_RESULT_FAILED =
+    "Internal error. Failed to send the dialog result. Try again later.";
 
 // follow ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST of appexecfwk_errors.h in bundle_framework
 constexpr int32_t ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST = 8521220;
@@ -648,6 +666,15 @@ static std::unordered_map<AbilityInnerErrorMsg, const char*> INNER_ERROR_MSG_BY_
     {AbilityInnerErrorMsg::QUERY_KEEP_ALIVE_BUNDLES_FAILED, ERROR_MSG_QUERY_KEEP_ALIVE_BUNDLES_FAILED},
     {AbilityInnerErrorMsg::TERMINATE_MISSION_FAILED, ERROR_MSG_TERMINATE_MISSION_FAILED},
     {AbilityInnerErrorMsg::SET_KEEP_ALIVE_FAILED, ERROR_MSG_SET_KEEP_ALIVE_FAILED},
+    {AbilityInnerErrorMsg::GRANT_URI_PERMISSION_FAILED, ERROR_MSG_GRANT_URI_PERMISSION_FAILED},
+    {AbilityInnerErrorMsg::GRANT_URI_PERMISSION_BY_KEY_FAILED, ERROR_MSG_GRANT_URI_PERMISSION_BY_KEY_FAILED},
+    {AbilityInnerErrorMsg::GRANT_URI_PERMISSION_AS_CALLER_FAILED, ERROR_MSG_GRANT_URI_PERMISSION_AS_CALLER_FAILED},
+    {AbilityInnerErrorMsg::REVOKE_URI_PERMISSION_FAILED, ERROR_MSG_REVOKE_URI_PERMISSION_FAILED},
+    {AbilityInnerErrorMsg::GET_ABILITY_RUNNING_INFOS_FAILED, ERROR_MSG_GET_ABILITY_RUNNING_INFOS_FAILED},
+    {AbilityInnerErrorMsg::GET_TOP_ABILITY_FAILED, ERROR_MSG_GET_TOP_ABILITY_FAILED},
+    {AbilityInnerErrorMsg::ACQUIRE_SHARE_DATA_FAILED, ERROR_MSG_ACQUIRE_SHARE_DATA_FAILED},
+    {AbilityInnerErrorMsg::GET_DIALOG_SESSION_INFO_FAILED, ERROR_MSG_GET_DIALOG_SESSION_INFO_FAILED},
+    {AbilityInnerErrorMsg::SEND_DIALOG_RESULT_FAILED, ERROR_MSG_SEND_DIALOG_RESULT_FAILED},
 };
 }
 

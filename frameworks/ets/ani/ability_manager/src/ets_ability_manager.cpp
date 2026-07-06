@@ -67,8 +67,7 @@ constexpr int32_t ERR_FAILURE = -1;
 const std::string MAX_UINT64_VALUE = "18446744073709551615";
 std::shared_ptr<AppExecFwk::EventHandler> mainHandler_ = nullptr;
 
-sptr<AAFwk::AcquireShareDataCallbackStub> CreateShareDataCallbackStub(
-    ani_env *env, ani_ref callbackRef)
+sptr<AAFwk::AcquireShareDataCallbackStub> CreateShareDataCallbackStub(ani_env *env, ani_ref callbackRef)
 {
     if (env == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null env");
@@ -98,7 +97,8 @@ sptr<AAFwk::AcquireShareDataCallbackStub> CreateShareDataCallbackStub(
             }
             if (resultCode != 0) {
                 AppExecFwk::AsyncCallback(env, static_cast<ani_object>(callbackRef),
-                    EtsErrorUtil::CreateErrorByNativeErr(env, resultCode), nullptr);
+                    EtsErrorUtil::CreateErrorByNativeErr(env, resultCode, "",
+                        GetInnerErrorMsg(AbilityInnerErrorMsg::ACQUIRE_SHARE_DATA_FAILED)), nullptr);
                 env->GlobalReference_Delete(callbackRef);
                 return;
             }
@@ -106,7 +106,8 @@ sptr<AAFwk::AcquireShareDataCallbackStub> CreateShareDataCallbackStub(
             if (wantParamRef == nullptr) {
                 TAG_LOGE(AAFwkTag::ABILITYMGR, "null wantParamRef");
                 AppExecFwk::AsyncCallback(env, static_cast<ani_object>(callbackRef),
-                    EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER), nullptr);
+                    EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                        "", GetInnerErrorMsg(AbilityInnerErrorMsg::ACQUIRE_SHARE_DATA_FAILED)), nullptr);
                 env->GlobalReference_Delete(callbackRef);
                 return;
             }
@@ -310,8 +311,8 @@ void EtsAbilityManager::GetTopAbility(ani_env *env, ani_object callback)
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null elementNameobj");
         resultCode = ERR_FAILURE;
     }
-    AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateErrorByNativeErr(env, resultCode),
-        elementNameobj);
+    AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateErrorByNativeErr(env, resultCode, "",
+        GetInnerErrorMsg(AbilityInnerErrorMsg::GET_TOP_ABILITY_FAILED)), elementNameobj);
     return;
 }
 
@@ -341,7 +342,8 @@ void EtsAbilityManager::GetAbilityRunningInfos(ani_env *env, ani_object callback
     auto errcode = AAFwk::AbilityManagerClient::GetInstance()->GetAbilityRunningInfos(infos);
     ani_object retObject = nullptr;
     AbilityManagerEts::WrapAbilityRunningInfoArray(env, retObject, infos);
-    AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateErrorByNativeErr(env, errcode), retObject);
+    AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateErrorByNativeErr(env, errcode, "",
+        GetInnerErrorMsg(AbilityInnerErrorMsg::GET_ABILITY_RUNNING_INFOS_FAILED)), retObject);
 }
 
 void EtsAbilityManager::IsEmbeddedOpenAllowedCheck(ani_env *env, ani_object contextObj)
@@ -761,7 +763,8 @@ void EtsAbilityManager::NativeAcquireShareData(ani_env *env, ani_int aniMissionI
     if (shareDataCallbackStub == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null shareDataCallbackStub");
         AppExecFwk::AsyncCallback(env, callbackObj,
-            EtsErrorUtil::CreateErrorByNativeErr(env, AAFwk::INNER_ERR), nullptr);
+            EtsErrorUtil::CreateErrorByNativeErr(env, AAFwk::INNER_ERR, "",
+                GetInnerErrorMsg(AbilityInnerErrorMsg::ACQUIRE_SHARE_DATA_FAILED)), nullptr);
         env->GlobalReference_Delete(callbackRef);
         return;
     }
@@ -777,7 +780,8 @@ void EtsAbilityManager::NativeAcquireShareData(ani_env *env, ani_int aniMissionI
     if (err != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "error: %{public}d", err);
         AppExecFwk::AsyncCallback(env, callbackObj,
-            EtsErrorUtil::CreateErrorByNativeErr(env, err), nullptr);
+            EtsErrorUtil::CreateErrorByNativeErr(env, err, "",
+                GetInnerErrorMsg(AbilityInnerErrorMsg::ACQUIRE_SHARE_DATA_FAILED)), nullptr);
         env->GlobalReference_Delete(callbackRef);
     }
 }
