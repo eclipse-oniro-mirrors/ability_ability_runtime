@@ -1046,7 +1046,7 @@ HWTEST_F(AppMgrProxyTest, AppMgrProxy_DumpJsHandleMap_001, TestSize.Level0)
         .Times(1)
         .WillOnce(Invoke(mockAppMgrService_.GetRefPtr(), &MockAppMgrService::InvokeSendRequest));
 
-    OHOS::AppExecFwk::JsHandleMapInfo &info;
+    OHOS::AppExecFwk::JsHandleMapInfo info;
     info.pid = 1;
     info.tid = 1;
     appMgrProxy_->DumpJsHandleMap(info);
