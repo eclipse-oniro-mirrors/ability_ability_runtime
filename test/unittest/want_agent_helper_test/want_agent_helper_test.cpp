@@ -1521,4 +1521,16 @@ HWTEST_F(WantAgentHelperTest, CreateLocalWantAgent_0500, TestSize.Level1)
     EXPECT_EQ(getTypeResult, ERR_OK);
     EXPECT_EQ(operationType, static_cast<int32_t>(WantAgentConstant::OperationType::SEND_COMMON_EVENT));
 }
+
+/**
+ * @tc.name: GetWantFromProxy_0100
+ * @tc.desc: Test GetWantFromProxy with null WantAgent
+ * @tc.type: FUNC
+ */
+HWTEST_F(WantAgentHelperTest, GetWantFromProxy_0100, TestSize.Level1)
+{
+    std::shared_ptr<WantAgent> wantAgent(nullptr);
+    auto want = WantAgentHelper::GetWantFromProxy(wantAgent);
+    EXPECT_EQ(want, nullptr);
+}
 }  // namespace OHOS::AbilityRuntime::WantAgent
