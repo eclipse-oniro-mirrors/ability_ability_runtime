@@ -469,6 +469,9 @@ void JsUIAbility::SetAbilityContext(std::shared_ptr<AbilityInfo> abilityInfo,
     }
     auto workContext = new std::weak_ptr<AbilityRuntime::AbilityContext>(abilityContext_);
 
+    // napi_coerce_to_native_binding_object registers detach/attach callbacks for worker thread
+    // transitions. DetachNewAbilityContext creates a NEW weak_ptr copy (does not free the original),
+    // and DetachFinalizeAbilityContext frees that copy. This is complementary to napi_wrap below.
     auto coerceStatus = napi_coerce_to_native_binding_object(
         env, contextObj, DetachNewAbilityContext, AttachJsAbilityContext, workContext, nullptr);
     if (coerceStatus != napi_ok) {
@@ -482,6 +485,10 @@ void JsUIAbility::SetAbilityContext(std::shared_ptr<AbilityInfo> abilityInfo,
     if (abilityRecovery_ != nullptr) {
         abilityRecovery_->SetJsAbility(reinterpret_cast<uintptr_t>(workContext));
     }
+    // napi_wrap registers the finalize callback to free the original workContext on GC.
+    // This coexists with coerce above: coerce uses the native binding slot for worker
+    // detach/attach, while wrap uses the wrap slot for final cleanup. workContext is freed
+    // exactly once here; detached copies are freed by DetachFinalizeAbilityContext.
     napi_status status = napi_wrap(env, contextObj, workContext,
         [](napi_env, void *data, void *hint) {
             delete static_cast<std::weak_ptr<AbilityRuntime::AbilityContext> *>(data);

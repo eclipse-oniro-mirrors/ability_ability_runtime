@@ -473,7 +473,11 @@ ErrCode AbilityManagerShellCommand::RunAsStartAbility()
     int32_t userId = DEFAULT_INVAL_VALUE;
     ErrCode result = MakeWantFromCmd(want, windowMode, userId);
     if (result == OHOS::ERR_OK) {
-        int windowModeKey = std::atoi(windowMode.c_str());
+        int windowModeKey = 0;
+        auto res = std::from_chars(windowMode.c_str(), windowMode.c_str() + windowMode.size(), windowModeKey);
+        if (res.ec != std::errc() || windowModeKey <= 0) {
+            TAG_LOGD(AAFwkTag::AA_TOOL, "Invalid or non-positive window mode: %{public}s", windowMode.c_str());
+        }
         if (windowModeKey > 0) {
             auto setting = AbilityStartSetting::GetEmptySetting();
             if (setting != nullptr) {
@@ -791,14 +795,14 @@ ErrCode AbilityManagerShellCommand::RunAsForceStop()
         std::string opt = argv_[index];
         if (opt == "-p") {
             index++;
-            if (index <= argc_) {
+            if (index < argc_) {
                 TAG_LOGD(AAFwkTag::AA_TOOL, "argv_[%{public}d]: %{public}s", index, argv_[index]);
                 std::string inputPid = argv_[index];
                 pid = ConvertPid(inputPid);
             }
         } else if (opt == "-r") {
             index++;
-            if (index <= argc_) {
+            if (index < argc_) {
                 TAG_LOGD(AAFwkTag::AA_TOOL, "argv_[%{public}d]: %{public}s", index, argv_[index]);
                 inputReason = argv_[index];
                 reason = AbilityToolConvertUtil::ConvertExitReason(inputReason);
@@ -807,7 +811,7 @@ ErrCode AbilityManagerShellCommand::RunAsForceStop()
     }
 
     TAG_LOGI(AAFwkTag::AA_TOOL, "pid %{public}d, reason %{public}s", pid, inputReason.c_str());
-    if (pid != 0 && reason != Reason::REASON_UNKNOWN) {
+    if (pid > 0 && reason != Reason::REASON_UNKNOWN) {
         ExitReason exitReason = {reason, "aa force-stop"};
         exitReason.killId = HiviewDFX::ProcessKillReason::KillEventId::REASON_AA_FORCE_STOP;
         if (AbilityManagerClient::GetInstance()->RecordProcessExitReason(pid, exitReason) != ERR_OK) {
@@ -830,7 +834,7 @@ ErrCode AbilityManagerShellCommand::RunAsForceStop()
 
 pid_t AbilityManagerShellCommand::ConvertPid(std::string& inputPid)
 {
-    pid_t pid = 0;
+    pid_t pid = -1;
     auto res = std::from_chars(inputPid.c_str(), inputPid.c_str() + inputPid.size(), pid);
     if (res.ec != std::errc()) {
         TAG_LOGE(AAFwkTag::AA_TOOL, "pid stoi(%{public}s) failed", inputPid.c_str());

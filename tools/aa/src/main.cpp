@@ -60,5 +60,5 @@ int main(int argc, char* argv[])
         std::cout << cmd.ExecCommand();
     }
     fflush(stdout);
-    _exit(0);
+    return 0;
 }
