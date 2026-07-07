@@ -1486,5 +1486,9 @@ bool AppRunningRecord::IsLastAgentExtensionAbility(const sptr<IRemoteObject> &to
 void AppRunningRecord::GetAllAbilityInfos(std::vector<AppExecFwk::AbilityStateData> &infos)
 {
 }
+
+void AppRunningRecord::ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
+{
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

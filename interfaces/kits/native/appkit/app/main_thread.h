@@ -22,6 +22,7 @@
 
 #include "ability_record_mgr.h"
 #include "app_jsheap_mem_info.h"
+#include "app_jshandle_map_info.h"
 #include "app_cjheap_mem_info.h"
 #include "app_malloc_info.h"
 #include "app_mgr_interface.h"
@@ -222,6 +223,14 @@ public:
      * @param info, pid, tid, needGc, needSnapshot.
      */
     void ScheduleJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info) override;
+
+    /**
+     *
+     * @brief dump the application's jshandle map info.
+     *
+     * @param info, pid, tid, needGc, needSnapshot.
+     */
+    void ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info) override;
 
     /**
      *
@@ -440,6 +449,8 @@ private:
     void HandleScheduleNewProcessRequest(const AAFwk::Want &want, const std::string &moduleName);
 
     void HandleJsHeapMemory(const OHOS::AppExecFwk::JsHeapDumpInfo &info);
+
+    void HandleJsHandleMap(const OHOS::AppExecFwk::JsHandleMapInfo &info);
 
     void HandleCjHeapMemory(const OHOS::AppExecFwk::CjHeapDumpInfo &info);
 

@@ -1449,6 +1449,14 @@ void JsRuntime::DumpHeapSnapshot(uint32_t tid, const OHOS::AbilityRuntime::Runti
     DFXJSNApi::DumpHeapSnapshot(vm, dumpOption, tid);
 }
 
+void JsRuntime::DumpJsHandleMap()
+{
+    TAG_LOGI(AAFwkTag::JSRUNTIME, "DumpJsHandleMap");
+    auto vm = GetEcmaVm();
+    CHECK_POINTER(vm);
+    DFXJSNApi::GetHandleNodeIdMap(vm);
+}
+
 size_t JsRuntime::GetHeapTotalSize()
 {
     auto vm = GetEcmaVm();

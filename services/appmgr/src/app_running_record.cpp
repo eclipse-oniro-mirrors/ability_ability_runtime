@@ -694,6 +694,13 @@ void AppRunningRecord::ScheduleJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &in
     }
 }
 
+void AppRunningRecord::ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
+{
+    if (appLifeCycleDeal_) {
+        appLifeCycleDeal_->ScheduleJsHandleMap(info);
+    }
+}
+
 void AppRunningRecord::ScheduleCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info)
 {
     if (appLifeCycleDeal_) {
