@@ -91,6 +91,7 @@ private:
     int patchVersionCode_ = 0;
     bool isRunning_ = false;
     bool isSoContained_ = false;
+    int32_t callerUid_ = 0;
 };
 } // namespace AAFwk
 } // namespace OHOS
