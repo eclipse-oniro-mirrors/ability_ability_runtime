@@ -687,7 +687,11 @@ CliSessionInfo ToolUtil::BuildSkillSessionInfo(const std::string &sessionId,
     session.toolName = "ohos-arkTSScript";
     session.status = (resultCode == ERR_OK) ? "completed" : "failed";
     session.result = std::make_shared<ExecResult>();
-    session.result->exitCode = skillResult.code;
+    int32_t exitCode = skillResult.code;
+    if (exitCode == 0 && resultCode != ERR_OK) {
+        exitCode = resultCode;
+    }
+    session.result->exitCode = exitCode;
     if (skillResult.result != nullptr) {
         session.result->outputText = skillResult.result->ToString();
         if (resultCode != ERR_OK) {

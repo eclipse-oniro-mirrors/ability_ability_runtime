@@ -402,6 +402,7 @@ void SkillExecuteManager::OnTimeout(int64_t requestCodeSeq)
 
     if (callback != nullptr) {
         AppExecFwk::SkillExecuteResult emptyResult;
+        emptyResult.code = ERR_TIMED_OUT;
         callback->OnExecuteDone(requestCode, ERR_TIMED_OUT, emptyResult);
     }
 }
@@ -466,6 +467,7 @@ void SkillExecuteManager::OnLaunchFailed(const std::string &requestCode, int32_t
     record->state = SkillExecuteState::REMOTE_DIED;
     if (record->callback != nullptr) {
         AppExecFwk::SkillExecuteResult emptyResult;
+        emptyResult.code = errCode;
         record->callback->OnExecuteDone(requestCode, errCode, emptyResult);
     }
     RemoveRecord(requestCode);
@@ -497,6 +499,7 @@ void SkillExecuteManager::OnTargetProcessDied(const std::string &bundleName)
         record->state = SkillExecuteState::REMOTE_DIED;
         if (record->callback != nullptr) {
             AppExecFwk::SkillExecuteResult emptyResult;
+            emptyResult.code = ERR_SKILL_EXECUTE_TARGET_DIED;
             record->callback->OnExecuteDone(requestCode, ERR_SKILL_EXECUTE_TARGET_DIED, emptyResult);
         }
         RemoveRecord(requestCode);
