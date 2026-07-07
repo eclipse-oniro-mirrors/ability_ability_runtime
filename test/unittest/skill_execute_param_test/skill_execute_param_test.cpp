@@ -508,5 +508,61 @@ HWTEST_F(SkillExecuteParamTest, CallerTokenId_WriteAndRead_0200, TestSize.Level1
     EXPECT_EQ(result, 0U);
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
+
+/**
+ * @tc.name: SrcEntriesToString_0100
+ * @tc.desc: Test SrcEntriesToString returns empty string when srcEntries is empty.
+ * @tc.type: FUNC
+ */
+HWTEST_F(SkillExecuteParamTest, SrcEntriesToString_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    SkillExecuteParam param;
+    EXPECT_TRUE(param.srcEntries_.empty());
+    EXPECT_EQ(param.SrcEntriesToString(), "");
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: SrcEntriesToString_0200
+ * @tc.desc: Test SrcEntriesToString returns the single entry unchanged when only one exists.
+ * @tc.type: FUNC
+ */
+HWTEST_F(SkillExecuteParamTest, SrcEntriesToString_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    SkillExecuteParam param;
+    param.srcEntries_ = { TEST_SRC_ENTRY };
+    EXPECT_EQ(param.SrcEntriesToString(), TEST_SRC_ENTRY);
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: SrcEntriesToString_0300
+ * @tc.desc: Test SrcEntriesToString joins multiple entries with comma.
+ * @tc.type: FUNC
+ */
+HWTEST_F(SkillExecuteParamTest, SrcEntriesToString_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    SkillExecuteParam param;
+    param.srcEntries_ = { "./ets/entry/PlayMusic.ts", "./ets/entry/StopMusic.ts" };
+    EXPECT_EQ(param.SrcEntriesToString(), "./ets/entry/PlayMusic.ts,./ets/entry/StopMusic.ts");
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: SrcEntriesToString_0400
+ * @tc.desc: Test SrcEntriesToString preserves entries containing spaces without trimming.
+ * @tc.type: FUNC
+ */
+HWTEST_F(SkillExecuteParamTest, SrcEntriesToString_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    SkillExecuteParam param;
+    param.srcEntries_ = { "  spaced entry  ", "normal" };
+    EXPECT_EQ(param.SrcEntriesToString(), "  spaced entry  ,normal");
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
 } // namespace AppExecFwk
 } // namespace OHOS
