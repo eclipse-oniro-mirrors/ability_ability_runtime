@@ -3920,5 +3920,104 @@ HWTEST_F(AbilityConnectManagerTest, Agent_GetServiceKey_ShouldUseHostKeyForLowCo
     EXPECT_EQ(lowCodeKeyA, lowCodeA.want.GetElement().GetURI());
 }
 
+/*
+ * Feature: AbilityConnectManager
+ * Function: OnStartSpecifiedProcessResponse
+ * SubFunction: OnStartSpecifiedProcessResponse
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify OnStartSpecifiedProcessResponse leaves queue untouched when requestId mismatch.
+ */
+HWTEST_F(AbilityConnectManagerTest, AAFwk_AbilityMS_OnStartSpecifiedProcessResponse_002, TestSize.Level1)
+{
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    AbilityConnectManager::LoadAbilityContext context;
+    context.loadParam = std::make_shared<AbilityRuntime::LoadParam>();
+    context.abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    context.appInfo = std::make_shared<AppExecFwk::ApplicationInfo>();
+    context.want = std::make_shared<Want>();
+
+    const int32_t queuedRequestId = 1;
+    const int32_t mismatchedRequestId = 999;
+    connectManager->loadAbilityQueue_.push_back({ { queuedRequestId, context } });
+    connectManager->OnStartSpecifiedProcessResponse("flag", mismatchedRequestId);
+
+    EXPECT_EQ(connectManager->loadAbilityQueue_.size(), 1u);
+    EXPECT_TRUE(context.want->GetStringParam("ohoSpecifiedProcessFlag").empty());
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: OnStartSpecifiedProcessResponse
+ * SubFunction: OnStartSpecifiedProcessResponse
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify OnStartSpecifiedProcessResponse pops invalid context without crash.
+ */
+HWTEST_F(AbilityConnectManagerTest, AAFwk_AbilityMS_OnStartSpecifiedProcessResponse_003, TestSize.Level1)
+{
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    AbilityConnectManager::LoadAbilityContext context;
+
+    const int32_t requestId = 1;
+    connectManager->loadAbilityQueue_.push_back({ { requestId, context } });
+    connectManager->OnStartSpecifiedProcessResponse("flag", requestId);
+
+    EXPECT_TRUE(connectManager->loadAbilityQueue_.empty());
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: OnStartSpecifiedProcessTimeoutResponse
+ * SubFunction: OnStartSpecifiedProcessTimeoutResponse
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify OnStartSpecifiedProcessTimeoutResponse leaves queue untouched when requestId mismatch.
+ */
+HWTEST_F(AbilityConnectManagerTest, AAFwk_AbilityMS_OnStartSpecifiedProcessTimeoutResponse_002, TestSize.Level1)
+{
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    AbilityConnectManager::LoadAbilityContext context;
+    context.loadParam = std::make_shared<AbilityRuntime::LoadParam>();
+    context.abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    context.appInfo = std::make_shared<AppExecFwk::ApplicationInfo>();
+    context.want = std::make_shared<Want>();
+
+    const int32_t queuedRequestId = 2;
+    const int32_t mismatchedRequestId = 999;
+    connectManager->loadAbilityQueue_.push_back({ { queuedRequestId, context } });
+    connectManager->OnStartSpecifiedProcessTimeoutResponse(mismatchedRequestId);
+
+    EXPECT_EQ(connectManager->loadAbilityQueue_.size(), 1u);
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: OnStartSpecifiedProcessTimeoutResponse
+ * SubFunction: OnStartSpecifiedProcessTimeoutResponse
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify OnStartSpecifiedProcessTimeoutResponse pops invalid context without crash.
+ */
+HWTEST_F(AbilityConnectManagerTest, AAFwk_AbilityMS_OnStartSpecifiedProcessTimeoutResponse_003, TestSize.Level1)
+{
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    AbilityConnectManager::LoadAbilityContext context;
+
+    const int32_t requestId = 2;
+    connectManager->loadAbilityQueue_.push_back({ { requestId, context } });
+    connectManager->OnStartSpecifiedProcessTimeoutResponse(requestId);
+
+    EXPECT_TRUE(connectManager->loadAbilityQueue_.empty());
+}
+
 }  // namespace AAFwk
 }  // namespace OHOS
