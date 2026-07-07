@@ -26,10 +26,10 @@ namespace AppExecFwk {
 constexpr const char* DEFAULT_NAMESPACE = "default";
 AbilityNativeThread::~AbilityNativeThread()
 {
-    // Clean up resources
+    NotifyProcessExit();
     if (nativeThread_.joinable()) {
-        TAG_LOGW(AAFwkTag::ABILITY, "Native thread is still running, forcing detach");
-        nativeThread_.detach();
+        TAG_LOGI(AAFwkTag::ABILITY, "Waiting for native thread to finish");
+        nativeThread_.join();
     }
 
     if (moduleHandle_ != nullptr) {
