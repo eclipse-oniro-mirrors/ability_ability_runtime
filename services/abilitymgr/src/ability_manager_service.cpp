@@ -754,6 +754,7 @@ int AbilityManagerService::StartAbility(const Want &want, int32_t userId, int re
         return ERR_NOT_SUPPORTED_PRODUCT_TYPE;
     }
     InsightIntentExecuteParam::RemoveInsightIntent(const_cast<Want &>(want));
+    SkillExecuteParam::RemoveSkillParam(const_cast<Want &>(want));
     AbilityUtil::RemoveShowModeKey(const_cast<Want &>(want));
     EventInfo eventInfo = BuildEventInfo(want, userId);
     eventInfo.calleeId = static_cast<int32_t>(CalleeId::START_ABILITY);
@@ -807,6 +808,7 @@ int AbilityManagerService::StartAbilityWithRemoveIntentFlag(const StartAbilityWr
     if (param.removeInsightIntentFlag) {
         InsightIntentExecuteParam::RemoveInsightIntent(const_cast<Want &>(param.want));
     }
+    SkillExecuteParam::RemoveSkillParam(const_cast<Want &>(param.want));
 #ifdef SUPPORT_SCREEN
     DmsUtil::GetInstance().UpdateFlagForCollaboration(param.want);
 #endif
@@ -862,6 +864,7 @@ int AbilityManagerService::StartAbilityWithSpecifyTokenIdInner(const Want &want,
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     InsightIntentExecuteParam::RemoveInsightIntent(const_cast<Want &>(want));
+    SkillExecuteParam::RemoveSkillParam(const_cast<Want &>(want));
     AbilityUtil::RemoveShowModeKey(const_cast<Want &>(want));
     auto flags = want.GetFlags();
     EventInfo eventInfo = BuildEventInfo(want, userId);
@@ -1060,6 +1063,7 @@ int AbilityManagerService::StartAbilityOnlyUIAbility(const Want &want, const spt
 
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     InsightIntentExecuteParam::RemoveInsightIntent(const_cast<Want &>(want));
+    SkillExecuteParam::RemoveSkillParam(const_cast<Want &>(want));
     AbilityUtil::RemoveShowModeKey(const_cast<Want &>(want));
     auto flags = want.GetFlags();
     EventInfo eventInfo = BuildEventInfo(want, DEFAULT_INVAL_VALUE);
@@ -1436,6 +1440,7 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
 
     if (AbilityUtil::HandleDlpApp(param.want)) {
         InsightIntentExecuteParam::RemoveInsightIntent(param.want);
+        SkillExecuteParam::RemoveSkillParam(param.want);
         result = StartExtensionAbilityInner(param.want, param.callerToken, param.userId,
             AppExecFwk::ExtensionAbilityType::SERVICE, false, false, true, param.isStartAsCaller);
         AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, result, "StartExtensionAbilityInner failed");
@@ -1862,6 +1867,7 @@ int AbilityManagerService::StartAbilityByConnectManager(const Want& want, const 
     }
     TAG_LOGD(AAFwkTag::ABILITYMGR, "start service or extension, name is %{public}s", abilityInfo.name.c_str());
     InsightIntentExecuteParam::RemoveInsightIntent(const_cast<Want &>(want));
+    SkillExecuteParam::RemoveSkillParam(const_cast<Want &>(want));
     return connectManager->StartAbility(abilityRequest);
 }
 
@@ -2291,6 +2297,7 @@ int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const St
         CHECK_CALLER_IS_SYSTEM_APP;
     }
     InsightIntentExecuteParam::RemoveInsightIntent(const_cast<Want &>(want));
+    SkillExecuteParam::RemoveSkillParam(const_cast<Want &>(want));
     eventInfo.calleeId = static_cast<int32_t>(CalleeId::START_ABILITY_FOR_OPTION_INNER);
     SendAbilityEvent(EventName::START_ABILITY, HISYSEVENT_BEHAVIOR, eventInfo);
     if (!DlpUtils::AccessCheck(callerToken, want) ||
@@ -2846,6 +2853,7 @@ int32_t AbilityManagerService::StartUIAbilitiesHandleWant(const Want &want, sptr
     if (!want.HasParameter(AppExecFwk::INSIGHT_INTENT_EXECUTE_OPENLINK_FLAG)) {
         InsightIntentExecuteParam::RemoveInsightIntent(const_cast<Want &>(want));
     }
+    SkillExecuteParam::RemoveSkillParam(const_cast<Want &>(want));
 
 #ifdef SUPPORT_SCREEN
     DmsUtil::GetInstance().UpdateFlagForCollaboration(want);
@@ -4168,6 +4176,7 @@ int32_t AbilityManagerService::StartExtensionAbility(const Want &want, const spt
         }
     }
     InsightIntentExecuteParam::RemoveInsightIntent(const_cast<Want &>(want));
+    SkillExecuteParam::RemoveSkillParam(const_cast<Want &>(want));
     if (extensionType == AppExecFwk::ExtensionAbilityType::UI_SERVICE ||
         extensionType == AppExecFwk::ExtensionAbilityType::APP_SERVICE) {
         return StartExtensionAbilityInner(want, callerToken, userId, extensionType, false);
@@ -4179,6 +4188,7 @@ int AbilityManagerService::ImplicitStartExtensionAbility(const Want &want, const
     int32_t userId, AppExecFwk::ExtensionAbilityType extensionType)
 {
     InsightIntentExecuteParam::RemoveInsightIntent(const_cast<Want &>(want));
+    SkillExecuteParam::RemoveSkillParam(const_cast<Want &>(want));
     return StartExtensionAbilityInner(want, callerToken, userId, extensionType, true, true);
 }
 
@@ -15256,6 +15266,11 @@ int32_t AbilityManagerService::ExecuteSkillDone(const sptr<IRemoteObject> &token
     if (!JudgeSelfCalled(abilityRecord)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "not self called");
         return CHECK_PERMISSION_FAILED;
+    }
+    Want want = abilityRecord->GetWant();
+    if (SkillExecuteParam::IsSkillExecute(want)) {
+        SkillExecuteParam::RemoveSkillParam(want);
+        abilityRecord->SetWant(want);
     }
     std::string bundleName = abilityRecord->GetAbilityInfo().bundleName;
     auto ret = DelayedSingleton<SkillExecuteManager>::GetInstance()->ExecuteSkillDone(

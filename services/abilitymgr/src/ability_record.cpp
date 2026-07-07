@@ -59,6 +59,7 @@
 #include "user_controller/user_controller.h"
 #include "utils/state_utils.h"
 #include "utils/ability_event_util.h"
+#include "skill/skill_execute_param.h"
 #ifdef SUPPORT_GRAPHICS
 #include "image_source.h"
 #endif
@@ -447,6 +448,7 @@ void AbilityRecord::ForegroundAbility(uint32_t sceneFlag)
     {
         std::lock_guard guard(wantLock_);
         InsightIntentExecuteParam::RemoveInsightIntent(want_);
+        SkillExecuteParam::RemoveSkillParam(want_);
         isLaunching_ = false;
     }
 }
@@ -473,6 +475,7 @@ void AbilityRecord::ForegroundUIExtensionAbility(uint32_t sceneFlag)
     {
         std::lock_guard guard(wantLock_);
         InsightIntentExecuteParam::RemoveInsightIntent(want_);
+        SkillExecuteParam::RemoveSkillParam(want_);
         isLaunching_ = false;
     }
 }
