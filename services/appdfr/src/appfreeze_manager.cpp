@@ -709,7 +709,6 @@ std::map<int, std::list<AppfreezeManager::PeerBinderInfo>> AppfreezeManager::Bin
         }
         isBinderMatchup = (!isBinderMatchup && line.find("free_async_space") != line.npos) ? true : isBinderMatchup;
         std::vector<std::string> strList = GetFileToList(line);
-
         if (isBinderMatchup) {
             if (line.find("free_async_space") == line.npos && strList.size() == ARR_SIZE &&
                 std::atoll(strList[FREE_ASYNC_INDEX].c_str()) < FREE_ASYNC_MAX) {

@@ -118,6 +118,7 @@ int AppfreezeEventReport::LogThreadBlockEvent(const std::string &name, HiSysEven
     hisyseventReport->InsertParam(EVENT_APP_RUNNING_UNIQUE_ID, eventInfo.appRunningUniqueId);
     hisyseventReport->InsertParam(EVENT_FREEZE_MEMORY, eventInfo.freezeMemory);
     hisyseventReport->InsertParam(EVENT_MAIN_STACK, eventInfo.mainStack);
+    hisyseventReport->InsertParam(EVENT_TRACE_ID, eventInfo.hitraceInfo);
     hisyseventReport->InsertParam(EVENT_FREEZE_INFO_PATH, eventInfo.freezeInfoFile);
     hisyseventReport->InsertParam(EVENT_ENABLE_MAINTHREAD_SAMPLE, eventInfo.enableFreeze);
     hisyseventReport->InsertParam(EVENT_FOREGROUND, eventInfo.foregroundState);
