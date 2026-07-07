@@ -7027,5 +7027,364 @@ HWTEST_F(AppMgrServiceInnerTest, LoadAbility_ReusePidDefault_001, TestSize.Level
     EXPECT_NE(appMgrServiceInner->appRunningManager_, nullptr);
     TAG_LOGI(AAFwkTag::TEST, "LoadAbility_ReusePidDefault_001 end");
 }
+
+/**
+ * @tc.name: SnapshotStartReport_001
+ * @tc.desc: Test SnapshotStartReport with appVersionName parameter
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, SnapshotStartReport_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto serviceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(serviceInner, nullptr);
+
+    int32_t uid = 1001;
+    std::string bundleName = "com.example.test";
+    std::string appVersionName = "1.0.0";
+    int32_t result = 0;
+    std::string reason = "";
+
+    serviceInner->SnapshotStartReport(uid, bundleName, appVersionName, result, reason);
+
+    EXPECT_FALSE(serviceInner->imageStartReportMap_.empty());
+    std::string bundleVersionName = bundleName + "_" + std::to_string(uid) + "@" + appVersionName;
+    auto iter = serviceInner->imageStartReportMap_.find(bundleVersionName);
+    EXPECT_NE(iter, serviceInner->imageStartReportMap_.end());
+    EXPECT_EQ(iter->second.first, 1);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: SnapshotStartReport_002
+ * @tc.desc: Test SnapshotStartReport with non-zero result
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, SnapshotStartReport_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto serviceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(serviceInner, nullptr);
+
+    int32_t uid = 1002;
+    std::string bundleName = "com.example.test2";
+    std::string appVersionName = "2.0.0";
+    int32_t result = -1;
+    std::string reason = "error";
+
+    serviceInner->SnapshotStartReport(uid, bundleName, appVersionName, result, reason);
+
+    EXPECT_TRUE(serviceInner->imageStartReportMap_.empty());
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: SnapshotStartReport_003
+ * @tc.desc: Test SnapshotStartReport with multiple calls
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, SnapshotStartReport_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto serviceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(serviceInner, nullptr);
+
+    int32_t uid = 1003;
+    std::string bundleName = "com.example.test3";
+    std::string appVersionName = "3.0.0";
+    int32_t result = 0;
+    std::string reason = "";
+
+    serviceInner->SnapshotStartReport(uid, bundleName, appVersionName, result, reason);
+    serviceInner->SnapshotStartReport(uid, bundleName, appVersionName, result, reason);
+
+    std::string bundleVersionName = bundleName + "_" + std::to_string(uid) + "@" + appVersionName;
+    auto iter = serviceInner->imageStartReportMap_.find(bundleVersionName);
+    EXPECT_NE(iter, serviceInner->imageStartReportMap_.end());
+    EXPECT_EQ(iter->second.first, 2);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: SnapshotStartReport_004
+ * @tc.desc: Test SnapshotStartReport with different bundle versions
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, SnapshotStartReport_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto serviceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(serviceInner, nullptr);
+
+    serviceInner->SnapshotStartReport(1004, "com.example.test4", "1.0.0", 0, "");
+    serviceInner->SnapshotStartReport(1005, "com.example.test4", "2.0.0", 0, "");
+
+    EXPECT_EQ(serviceInner->imageStartReportMap_.size(), 2);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: SnapshotErrorReport_001
+ * @tc.desc: Test SnapshotErrorReport with appVersionName parameter
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, SnapshotErrorReport_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto serviceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(serviceInner, nullptr);
+
+    int32_t uid = 2001;
+    std::string bundleName = "com.example.errortest";
+    std::string appVersionName = "1.0.0";
+    int32_t result = -1;
+    std::string reason = "test error";
+
+    serviceInner->SnapshotErrorReport(uid, bundleName, appVersionName, result, reason);
+
+    EXPECT_FALSE(serviceInner->imageStartReportMap_.empty());
+    std::string bundleVersionName = bundleName + "_" + std::to_string(uid) + "@" + appVersionName;
+    auto iter = serviceInner->imageStartReportMap_.find(bundleVersionName);
+    EXPECT_NE(iter, serviceInner->imageStartReportMap_.end());
+    EXPECT_EQ(iter->second.second, 1);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: SnapshotErrorReport_002
+ * @tc.desc: Test SnapshotErrorReport with empty appVersionName
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, SnapshotErrorReport_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto serviceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(serviceInner, nullptr);
+
+    int32_t uid = 2002;
+    std::string bundleName = "com.example.errortest2";
+    std::string appVersionName = "";
+    int32_t result = -1;
+    std::string reason = "test error";
+
+    serviceInner->SnapshotErrorReport(uid, bundleName, appVersionName, result, reason);
+
+    EXPECT_FALSE(serviceInner->imageStartReportMap_.empty());
+    std::string bundleVersionName = bundleName + "_" + std::to_string(uid) + "@" + appVersionName;
+    auto iter = serviceInner->imageStartReportMap_.find(bundleVersionName);
+    EXPECT_NE(iter, serviceInner->imageStartReportMap_.end());
+    EXPECT_EQ(iter->second.second, 1);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: SnapshotErrorReport_003
+ * @tc.desc: Test SnapshotErrorReport with multiple calls
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, SnapshotErrorReport_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto serviceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(serviceInner, nullptr);
+
+    int32_t uid = 2003;
+    std::string bundleName = "com.example.errortest3";
+    std::string appVersionName = "1.0.0";
+    int32_t result = -1;
+    std::string reason = "test error";
+
+    serviceInner->SnapshotErrorReport(uid, bundleName, appVersionName, result, reason);
+    serviceInner->SnapshotErrorReport(uid, bundleName, appVersionName, result, reason);
+
+    std::string bundleVersionName = bundleName + "_" + std::to_string(uid) + "@" + appVersionName;
+    auto iter = serviceInner->imageStartReportMap_.find(bundleVersionName);
+    EXPECT_NE(iter, serviceInner->imageStartReportMap_.end());
+    EXPECT_EQ(iter->second.second, 2);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: SnapshotStartReportAndErrorReport_001
+ * @tc.desc: Test SnapshotStartReport and SnapshotErrorReport together
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, SnapshotStartReportAndErrorReport_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto serviceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(serviceInner, nullptr);
+
+    std::string bundleName = "com.example.mixedtest";
+    std::string appVersionName = "1.0.0";
+
+    serviceInner->SnapshotStartReport(3001, bundleName, appVersionName, 0, "");
+    serviceInner->SnapshotStartReport(3002, bundleName, appVersionName, 0, "");
+    serviceInner->SnapshotErrorReport(3003, bundleName, appVersionName, -1, "error");
+
+    std::string bundleVersionName1 = bundleName + "_3001@" + appVersionName;
+    std::string bundleVersionName2 = bundleName + "_3002@" + appVersionName;
+    std::string bundleVersionName3 = bundleName + "_3003@" + appVersionName;
+
+    auto iter1 = serviceInner->imageStartReportMap_.find(bundleVersionName1);
+    EXPECT_NE(iter1, serviceInner->imageStartReportMap_.end());
+    EXPECT_EQ(iter1->second.first, 1);
+
+    auto iter2 = serviceInner->imageStartReportMap_.find(bundleVersionName2);
+    EXPECT_NE(iter2, serviceInner->imageStartReportMap_.end());
+    EXPECT_EQ(iter2->second.first, 1);
+
+    auto iter3 = serviceInner->imageStartReportMap_.find(bundleVersionName3);
+    EXPECT_NE(iter3, serviceInner->imageStartReportMap_.end());
+    EXPECT_EQ(iter3->second.second, 1);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: ImageStartReportMapStructure_001
+ * @tc.desc: Test imageStartReportMap_ data structure change
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, ImageStartReportMapStructure_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto serviceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(serviceInner, nullptr);
+
+    std::string bundleName = "com.example.structuretest";
+    std::string appVersionName = "1.0.0";
+    std::string bundleVersionName = bundleName + "_4001@" + appVersionName;
+
+    serviceInner->imageStartReportMap_.emplace(bundleVersionName, std::make_pair(0, 0));
+
+    auto iter = serviceInner->imageStartReportMap_.find(bundleVersionName);
+    EXPECT_NE(iter, serviceInner->imageStartReportMap_.end());
+    EXPECT_EQ(iter->second.first, 0);
+    EXPECT_EQ(iter->second.second, 0);
+
+    iter->second.first = 5;
+    iter->second.second = 3;
+
+    EXPECT_EQ(iter->second.first, 5);
+    EXPECT_EQ(iter->second.second, 3);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: ImageStartReportMapStructure_002
+ * @tc.desc: Test imageStartReportMap_ with multiple entries
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, ImageStartReportMapStructure_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto serviceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(serviceInner, nullptr);
+
+    serviceInner->imageStartReportMap_["app1@1.0.0"] = std::make_pair(10, 2);
+    serviceInner->imageStartReportMap_["app1@2.0.0"] = std::make_pair(5, 1);
+    serviceInner->imageStartReportMap_["app2@1.0.0"] = std::make_pair(8, 0);
+
+    EXPECT_EQ(serviceInner->imageStartReportMap_.size(), 3);
+    EXPECT_EQ(serviceInner->imageStartReportMap_["app1@1.0.0"].first, 10);
+    EXPECT_EQ(serviceInner->imageStartReportMap_["app1@1.0.0"].second, 2);
+    EXPECT_EQ(serviceInner->imageStartReportMap_["app1@2.0.0"].first, 5);
+    EXPECT_EQ(serviceInner->imageStartReportMap_["app1@2.0.0"].second, 1);
+    EXPECT_EQ(serviceInner->imageStartReportMap_["app2@1.0.0"].first, 8);
+    EXPECT_EQ(serviceInner->imageStartReportMap_["app2@1.0.0"].second, 0);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: SubmitDestroyImageTask_001
+ * @tc.desc: Test SubmitDestroyImageTask with appVersionName retrieval
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, SubmitDestroyImageTask_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto serviceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(serviceInner, nullptr);
+
+    BundleInfo bundleInfo;
+    auto appRecord = serviceInner->appRunningManager_->CreateAppRunningRecord(
+        applicationInfo_, "com.example.destroytest", bundleInfo, "");
+    ASSERT_NE(appRecord, nullptr);
+    appRecord->SetUid(1001);
+
+    serviceInner->SubmitDestroyImageTask(appRecord, 1, "test exit");
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: SubmitDestroyImageTask_002
+ * @tc.desc: Test SubmitDestroyImageTask with null appRecord
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, SubmitDestroyImageTask_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto serviceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(serviceInner, nullptr);
+
+    serviceInner->SubmitDestroyImageTask(nullptr, 1, "test exit");
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: SubmitDestroyImageTask_003
+ * @tc.desc: Test SubmitDestroyImageTask with reason = 0
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, SubmitDestroyImageTask_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto serviceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(serviceInner, nullptr);
+
+    BundleInfo bundleInfo;
+    auto appRecord = serviceInner->appRunningManager_->CreateAppRunningRecord(
+        applicationInfo_, "com.example.destroytest2", bundleInfo, "");
+    ASSERT_NE(appRecord, nullptr);
+    appRecord->SetUid(1002);
+
+    serviceInner->SubmitDestroyImageTask(appRecord, 0, "normal exit");
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: SubmitDestroyImageTask_004
+ * @tc.desc: Test SubmitDestroyImageTask with non-zero reason
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, SubmitDestroyImageTask_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto serviceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(serviceInner, nullptr);
+
+    BundleInfo bundleInfo;
+    auto appRecord = serviceInner->appRunningManager_->CreateAppRunningRecord(
+        applicationInfo_, "com.example.destroytest3", bundleInfo, "");
+    ASSERT_NE(appRecord, nullptr);
+    appRecord->SetUid(1003);
+
+    serviceInner->SubmitDestroyImageTask(appRecord, -1, "error exit");
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
 } // namespace AppExecFwk
 } // namespace OHOS

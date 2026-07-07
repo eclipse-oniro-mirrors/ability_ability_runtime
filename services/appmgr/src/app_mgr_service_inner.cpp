@@ -45,6 +45,7 @@
 #include "appfreeze_manager.h"
 #include "application_state_filter.h"
 #include "application_state_observer_stub.h"
+#include "hisysevent.h"
 #include "appspawn_util.h"
 #include "bundle_constants.h"
 #include "bundle_mgr_helper.h"
@@ -1471,7 +1472,7 @@ int32_t AppMgrServiceInner::TryToUseImageInfo(std::shared_ptr<AbilityInfo> abili
     }
     appRecord = CreateAppRunningRecordFromImageInfo(imageInfo);
     if (appRecord == nullptr) {
-        SnapshotErrorReport(appInfo->uid, appInfo->bundleName, -1, "appRecord not exist");
+        SnapshotErrorReport(appInfo->uid, appInfo->bundleName, appInfo->versionName, -1, "appRecord not exist");
         return ERR_OK;
     }
     int32_t workPid = -1;
@@ -1497,7 +1498,7 @@ int32_t AppMgrServiceInner::TryToUseImageInfo(std::shared_ptr<AbilityInfo> abili
         DelayedSingleton<AppStateObserverManager>::GetInstance()->OnForkAllWorkProcessFailed(imageInfo, errCode);
         appRunningManager_->RemoveAppRunningRecordById(appRecord->GetRecordId());
         appRecord = nullptr;
-        SnapshotErrorReport(-1, appInfo->bundleName, errCode, "forkall failed");
+        SnapshotErrorReport(-1, appInfo->bundleName, appInfo->versionName, errCode, "forkall failed");
         return ERR_OK;
     }
     TAG_LOGI(AAFwkTag::APPMGR, "fork from image success, imagePid:%{public}d, workpid:%{public}d", imageInfo->imagePid,
@@ -1516,53 +1517,76 @@ int32_t AppMgrServiceInner::TryToUseImageInfo(std::shared_ptr<AbilityInfo> abili
         innerService->OnAppStateChanged(appRecord, ApplicationState::APP_STATE_SET_COLD_START, false, false, false);
     }, ffrt::task_attr().name("AppStateChangedNotify")
     .timeout(AbilityRuntime::GlobalConstant::DEFAULT_FFRT_TASK_TIMEOUT));
-    SnapshotStartReport(appRecord->GetUid(), appInfo->bundleName, 0, "");
+    SnapshotStartReport(appRecord->GetUid(), appInfo->bundleName, appInfo->versionName, 0, "");
     return ERR_OK;
 }
 
-void AppMgrServiceInner::SnapshotStartReport(int32_t uid, const std:: string &bundleName, int32_t result,
-    const std::string &reason)
+void AppMgrServiceInner::SnapshotStartReport(int32_t uid, const std::string &bundleName,
+    const std::string &appVersionName, int32_t result, const std::string &reason)
 {
     if (result != 0) {
         return;
     }
-    std::lock_guard guard(imageReportLock_);
-    auto iter = imageStartReportMap_.find(bundleName);
-    if (iter == imageStartReportMap_.end()) {
-        imageStartReportMap_.emplace(bundleName, 0);
-    }
-    imageStartReportMap_[bundleName]++;
-    imageStartCount_++;
-
+    std::string bundleVersionName = bundleName + "_" + std::to_string(uid) + "@" + appVersionName;
+    std::map<std::string, std::pair<int32_t, int32_t>> reportMap;
     auto now = std::chrono::steady_clock::now();
-    if (now - lastReportTime_ < REPORT_INTERVAL && imageStartCount_ < REPORT_THRESHOLD) {
-        return;
+    {
+        std::lock_guard<std::mutex> guard(imageReportLock_);
+        auto iter = imageStartReportMap_.find(bundleVersionName);
+        if (iter == imageStartReportMap_.end()) {
+            imageStartReportMap_.emplace(bundleVersionName, std::make_pair(0, 0));
+        }
+        imageStartReportMap_[bundleVersionName].first++;
+        imageStartCount_++;
+
+        if (now - lastReportTime_ < REPORT_INTERVAL && imageStartCount_ < REPORT_THRESHOLD) {
+            return;
+        }
+        reportMap.swap(imageStartReportMap_);
+        lastReportTime_ = now;
+        imageStartCount_ = 0;
     }
 
     AAFwk::SnapshotInfo snapshotInfo;
     snapshotInfo.snapshotEvent = "ImageStart";
-    for (auto& item: imageStartReportMap_) {
-        if (item.second != 0) {
-            snapshotInfo.snapshotReason += item.first + ":" + std::to_string(item.second) + ";";
+    for (const auto &item : reportMap) {
+        if (item.second.first > 0 || item.second.second > 0) {
+            snapshotInfo.snapshotReason += item.first + ":" + std::to_string(item.second.first) + "|" +
+                std::to_string(item.second.second) + ";";
         }
     }
-    snapshotInfo.snapshotReason += "=" + std::to_string(imageStartCount_);
+    TAG_LOGD(AAFwkTag::APPMGR,
+        "SnapshotStartReport: event=%{public}s, reason=%{public}s",
+        snapshotInfo.snapshotEvent.c_str(), snapshotInfo.snapshotReason.c_str());
     AAFwk::EventReport::SendSnapshotEvent(AAFwk::EventName::SNAPSHOT_REPORT, snapshotInfo);
-    lastReportTime_ = now;
-    imageStartReportMap_.clear();
-    imageStartCount_ = 0;
 }
 
-void AppMgrServiceInner::SnapshotErrorReport(int32_t uid, const std::string &bundleName, int32_t result,
-    const std::string &reason)
+void AppMgrServiceInner::SnapshotErrorReport(int32_t uid, const std::string &bundleName,
+    const std::string &appVersionName, int32_t result, const std::string &reason)
 {
+    std::string bundleVersionName = bundleName + "_" + std::to_string(uid) + "@" + appVersionName;
+    {
+        std::lock_guard<std::mutex> guard(imageReportLock_);
+        auto iter = imageStartReportMap_.find(bundleVersionName);
+        if (iter == imageStartReportMap_.end()) {
+            imageStartReportMap_.emplace(bundleVersionName, std::make_pair(0, 0));
+        }
+        imageStartReportMap_[bundleVersionName].second++;
+    }
+
     AAFwk::SnapshotInfo snapshotInfo;
     snapshotInfo.uid = uid;
     snapshotInfo.bundleName = bundleName;
+    snapshotInfo.appVersionName = appVersionName;
     snapshotInfo.snapshotCond = "";
     snapshotInfo.snapshotEvent = "ImageStartError";
     snapshotInfo.snapshotResult = result;
     snapshotInfo.snapshotReason = reason;
+    TAG_LOGI(AAFwkTag::APPMGR,
+        "SnapshotErrorReport: uid=%{public}d, bundleName=%{public}s, appVersionName=%{public}s, "
+        "result=%{public}d, reason=%{public}s",
+        snapshotInfo.uid, snapshotInfo.bundleName.c_str(), snapshotInfo.appVersionName.c_str(),
+        snapshotInfo.snapshotResult, snapshotInfo.snapshotReason.c_str());
     AAFwk::EventReport::SendSnapshotEvent(AAFwk::EventName::SNAPSHOT_REPORT, snapshotInfo);
 }
 
@@ -8066,7 +8090,51 @@ int AppMgrServiceInner::GetApplicationInfoByProcessID(const int pid, AppExecFwk:
     return ERR_OK;
 }
 
-void AppMgrServiceInner::SubmitDestroyImageTask(const std::shared_ptr<AppRunningRecord> appRecord,
+std::string AppMgrServiceInner::GetImageReportAppVersionName(const std::string &bundleName, int32_t userId)
+{
+    if (remoteClientManager_ == nullptr) {
+        TAG_LOGW(AAFwkTag::APPMGR, "remote client manager null");
+        return "";
+    }
+    auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
+    if (bundleMgrHelper == nullptr) {
+        TAG_LOGW(AAFwkTag::APPMGR, "get bundle manager helper fail");
+        return "";
+    }
+
+    BundleInfo bundleInfo;
+    int32_t flags =
+        static_cast<int32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION) |
+        static_cast<int32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_EXTENSION_ABILITY) |
+        static_cast<int32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_HAP_MODULE) |
+        static_cast<int32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_REQUESTED_PERMISSION);
+    int32_t bundleMgrResult = IN_PROCESS_CALL(bundleMgrHelper->GetBundleInfoV9(bundleName, flags, bundleInfo, userId));
+    return bundleMgrResult == ERR_OK ? bundleInfo.versionName : "";
+}
+
+void AppMgrServiceInner::SendDestroyImageEvent(const std::shared_ptr<AppRunningRecord> &appRecord,
+    const std::string &bundleName, const std::string &appVersionName, int32_t reason, const std::string &exitMsg)
+{
+    if (appRecord == nullptr) {
+        TAG_LOGW(AAFwkTag::APPMGR, "appRecord null");
+        return;
+    }
+    auto imageInfo = GetImageInfo(appRecord);
+    if (imageInfo == nullptr || imageInfo->imagePid <= 0 || reason == 0) {
+        return;
+    }
+    std::string imageName = imageInfo->imageName.empty() ? bundleName : imageInfo->imageName;
+    HiSysEventWrite(HiviewDFX::HiSysEvent::Domain::HM_KERNEL, "SNAPSHOT_REPORT",
+        HiviewDFX::HiSysEvent::EventType::STATISTIC, "BUNDLE_NAME", imageName, "UID", appRecord->GetUid(),
+        "COND", "AppExit", "EVENT", "DestroyImage", "RESULT", reason, "REASON", exitMsg, "VERSION_NAME",
+        appVersionName);
+    TAG_LOGD(AAFwkTag::APPMGR, "HiSysEventWrite for image app exit: %{public}s, reason=%{public}d, "
+        "exitMsg=%{public}s, appVersionName=%{public}s", imageName.c_str(), reason, exitMsg.c_str(),
+        appVersionName.c_str());
+}
+
+void AppMgrServiceInner::SubmitDestroyImageTask(
+    const std::shared_ptr<AppRunningRecord> appRecord,
     const int32_t reason, const std::string &exitMsg)
 {
     if (taskHandler_ == nullptr || appRecord == nullptr) {
@@ -8082,6 +8150,8 @@ void AppMgrServiceInner::SubmitDestroyImageTask(const std::shared_ptr<AppRunning
     }
     TAG_LOGI(AAFwkTag::APPMGR, "submit DestroyImageTask, %{public}s_%{public}d_%{public}d, reason=%{public}d "
             "exitMsg=%{public}s", bundleName.c_str(), userId, appIndex, reason, exitMsg.c_str());
+    SendDestroyImageEvent(appRecord, bundleName, GetImageReportAppVersionName(bundleName, userId), reason, exitMsg);
+
     auto task = [appRecord, innerService = shared_from_this()]() {
         innerService->DestroyImageForFault(appRecord);
     };
