@@ -533,7 +533,7 @@ HWTEST_F(AbilityManagerClientTest, KillProcessWithPrepareTerminateDone_0100, Tes
  */
 HWTEST_F(AbilityManagerClientTest, StartAbilityByCallWithErrMsg_0100, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "StartAbilityByCallWithErrMsg_0100 start");
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityByCallWithErrMsg_0100 start.");
     Want want;
     sptr<IAbilityConnection> connect = sptr<MockIAbilityConnection>::MakeSptr();
     int32_t accountId = 0x001;
@@ -543,7 +543,7 @@ HWTEST_F(AbilityManagerClientTest, StartAbilityByCallWithErrMsg_0100, TestSize.L
     auto result = AbilityManagerClient::GetInstance()->StartAbilityByCallWithErrMsg(want,
         connect, callToken, accountId, errMsg);
     EXPECT_EQ(result, ERR_OK);
-    TAG_LOGI(AAFwkTag::TEST, "StartAbilityByCallWithErrMsg_0100 end");
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityByCallWithErrMsg_0100 end.");
 }
 
 /**
