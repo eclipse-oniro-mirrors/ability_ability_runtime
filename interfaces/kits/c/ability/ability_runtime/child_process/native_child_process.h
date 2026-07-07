@@ -16,6 +16,8 @@
 #ifndef OHOS_ABILITY_RUNTIME_C_NATIVE_CHILD_PROCESS_H
 #define OHOS_ABILITY_RUNTIME_C_NATIVE_CHILD_PROCESS_H
 
+#include <stdbool.h>
+
 #include "ipc_cparcel.h"
 
 /**

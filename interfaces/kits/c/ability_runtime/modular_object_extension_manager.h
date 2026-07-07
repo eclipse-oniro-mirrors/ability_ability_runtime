@@ -36,6 +36,7 @@
 #ifndef ABILITY_RUNTIME_MODULAR_OBJECT_EXTENSION_MANAGER_H
 #define ABILITY_RUNTIME_MODULAR_OBJECT_EXTENSION_MANAGER_H
 
+#include <stdbool.h>
 #include <stddef.h>
 
 #include "ability_runtime_common.h"
