@@ -14,6 +14,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <sstream>
 
 #include "ability_manager_client.h"
 #include "mock_my_flag.h"
@@ -37,6 +38,21 @@ namespace AAFwk {
 namespace {
 constexpr int OFFSET = 30;
 const std::string POLICY_INFO_PATH = "file://com.example.app1001/data/storage/el2/base/haps/entry/files/test_001.txt";
+
+void BuildRawDataFromUriVec(const std::vector<std::string>& uriVec, UriPermissionRawData& rawData)
+{
+    std::stringstream ss;
+    uint32_t count = uriVec.size();
+    ss.write(reinterpret_cast<const char*>(&count), sizeof(count));
+    for (const auto& uri : uriVec) {
+        uint32_t len = uri.length();
+        ss.write(reinterpret_cast<const char*>(&len), sizeof(len));
+        ss.write(uri.c_str(), len);
+    }
+    rawData.ownedData = ss.str();
+    rawData.data = rawData.ownedData.data();
+    rawData.size = rawData.ownedData.size();
+}
 }
 class UriPermissionManagerStubImplTest : public testing::Test {
 public:
@@ -401,6 +417,7 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_00
 HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_002, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true; // bypass early permission check to exercise rawData path
     UriPermissionRawData rawData;
     rawData.data = nullptr;
     uint32_t flag = 1;
@@ -413,6 +430,57 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_00
         hideSensitiveType, funcResult);
     EXPECT_EQ(funcResult, ERR_DEAD_OBJECT);
     EXPECT_EQ(result, ERR_DEAD_OBJECT);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermissionPrivileged (rawData)
+ * SubFunction: NA
+ * FunctionPoints: rawData path - permission check runs before rawData deserialization
+ *                 (DoS hardening: unauthorized caller cannot trigger large allocation)
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_RawData_EarlyCheck, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = false;
+    UriPermissionRawData rawData;
+    rawData.data = nullptr; // would normally yield ERR_DEAD_OBJECT; permission check must short-circuit first
+    uint32_t flag = 1;
+    const std::string targetBundleName = "";
+    int32_t appIndex = 1;
+    uint32_t initiatorTokenId = 1;
+    int32_t hideSensitiveType = 1;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermissionPrivileged(rawData, flag, targetBundleName, appIndex, initiatorTokenId,
+        hideSensitiveType, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermissionPrivileged (rawData)
+ * SubFunction: NA
+ * FunctionPoints: rawData path - deserialization succeeds and delegate runs
+ *                 (forces delegate failure via GetTokenIdByBundleName to confirm deserialization success)
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_RawData_DeserOk, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true; // bypass early check
+    MyFlag::getTokenIdByBundleNameStatus_ = ERR_UPMS_INVALID_TARGET_TOKENID; // force delegate failure
+    UriPermissionRawData rawData;
+    BuildRawDataFromUriVec({"file://test/file.txt"}, rawData);
+    uint32_t flag = 1;
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 0;
+    int32_t hideSensitiveType = 1;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermissionPrivileged(rawData, flag, targetBundleName, appIndex, initiatorTokenId,
+        hideSensitiveType, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_UPMS_INVALID_TARGET_TOKENID); // echoes the forced delegate failure
 }
 
 /*
@@ -498,6 +566,7 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_CheckUriAuthorization_001, Test
 HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_CheckUriAuthorization_002, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isPrivilegedSACall_ = true; // bypass early permission check to exercise rawData path
     UriPermissionRawData rawData;
     rawData.data = nullptr;
     uint32_t flag = 1;
@@ -505,6 +574,47 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_CheckUriAuthorization_002, Test
     UriPermissionRawData funcResult;
     auto result = upmsi->CheckUriAuthorization(rawData, flag, tokenId, funcResult);
     EXPECT_EQ(result, ERR_DEAD_OBJECT);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: CheckUriAuthorization (rawData)
+ * SubFunction: NA
+ * FunctionPoints: rawData path - permission check runs before rawData deserialization
+ *                 (DoS hardening: unauthorized caller cannot trigger large allocation)
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_CheckUriAuthorization_RawData_EarlyCheck, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isPrivilegedSACall_ = false;
+    UriPermissionRawData rawData;
+    rawData.data = nullptr; // would normally yield ERR_DEAD_OBJECT; permission check must short-circuit first
+    uint32_t flag = 1;
+    uint32_t tokenId = 1;
+    UriPermissionRawData funcResult;
+    auto result = upmsi->CheckUriAuthorization(rawData, flag, tokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK); // matches string-vector behavior: silent all-false on permission denial
+    EXPECT_GT(funcResult.size, 0u);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: CheckUriAuthorization (rawData)
+ * SubFunction: NA
+ * FunctionPoints: rawData path - deserialization succeeds and delegate produces result vector
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_CheckUriAuthorization_RawData_DeserializationOk, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isPrivilegedSACall_ = true; // bypass early check
+    UriPermissionRawData rawData;
+    BuildRawDataFromUriVec({"file://test/file.txt"}, rawData);
+    uint32_t flag = 1;
+    uint32_t tokenId = 100;
+    UriPermissionRawData funcResult;
+    auto result = upmsi->CheckUriAuthorization(rawData, flag, tokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_GT(funcResult.size, 0u); // BoolVecToRawData wrote the result vector
 }
 
 /*
@@ -1421,6 +1531,188 @@ HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_011, Te
     // Cross-user check is bypassed because caller.userId == U0_USER_ID (system app at U0).
     EXPECT_EQ(result, ERR_OK);
     EXPECT_EQ(funcResult, ERR_CODE_INVALID_URI_TYPE);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermission (rawData) with targetTokenId
+ * SubFunction: NA
+ * FunctionPoints: rawData path - null data short-circuits to ERR_DEAD_OBJECT
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_RawData_001, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    UriPermissionRawData rawData;
+    rawData.data = nullptr;
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 100;
+    uint32_t oriCallerTokenId = 200;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(rawData, flag, targetTokenId, oriCallerTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_DEAD_OBJECT);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermission (rawData) with targetTokenId
+ * SubFunction: NA
+ * FunctionPoints: rawData path - missing PERMISSION_GRANT_URI_PERMISSION_PRIVILEGED
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_RawData_002, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = false;
+    UriPermissionRawData rawData;
+    BuildRawDataFromUriVec({"file://test/file.txt"}, rawData);
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 100;
+    uint32_t oriCallerTokenId = 200;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(rawData, flag, targetTokenId, oriCallerTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermission (rawData) with targetTokenId
+ * SubFunction: NA
+ * FunctionPoints: rawData path - permission check runs before rawData deserialization
+ *                 (DoS hardening: unauthorized caller cannot trigger large allocation)
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_RawData_002a, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = false;
+    UriPermissionRawData rawData;
+    rawData.data = nullptr; // would normally yield ERR_DEAD_OBJECT; permission check must short-circuit first
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 100;
+    uint32_t oriCallerTokenId = 200;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(rawData, flag, targetTokenId, oriCallerTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermission (rawData) with targetTokenId
+ * SubFunction: NA
+ * FunctionPoints: rawData path - oriCallerTokenId == 0 is rejected
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_RawData_003, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    UriPermissionRawData rawData;
+    BuildRawDataFromUriVec({"file://test/file.txt"}, rawData);
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 100;
+    uint32_t oriCallerTokenId = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(rawData, flag, targetTokenId, oriCallerTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_UPMS_INVALID_CALLER_TOKENID);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermission (rawData) with targetTokenId
+ * SubFunction: NA
+ * FunctionPoints: rawData path - oversized stringVecSize header is rejected
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_RawData_004, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    UriPermissionRawData rawData;
+    std::stringstream ss;
+    uint32_t fakeCount = 300000; // > MAX_URI_COUNT (200000)
+    ss.write(reinterpret_cast<const char*>(&fakeCount), sizeof(fakeCount));
+    rawData.ownedData = ss.str();
+    rawData.data = rawData.ownedData.data();
+    rawData.size = rawData.ownedData.size();
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 100;
+    uint32_t oriCallerTokenId = 200;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(rawData, flag, targetTokenId, oriCallerTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_URI_LIST_OUT_OF_RANGE);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermission (rawData) with targetTokenId
+ * SubFunction: NA
+ * FunctionPoints: rawData path - valid payload delegates to normal handler and reaches BatchUri check
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_RawData_005, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    MyFlag::isSandboxAppRet_ = false;
+    // Both caller and target on the same user so the cross-user check passes.
+    MyFlag::PushGenerateFUDAppInfoResult(true, 100);
+    MyFlag::PushGenerateFUDAppInfoResult(true, 100);
+    UriPermissionRawData rawData;
+    BuildRawDataFromUriVec({"http://test/file.txt"}, rawData); // non-file scheme -> BatchUri.Init returns 0
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 200;
+    uint32_t oriCallerTokenId = 1001;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(rawData, flag, targetTokenId, oriCallerTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_CODE_INVALID_URI_TYPE);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermission (rawData) with targetBundleName
+ * SubFunction: NA
+ * FunctionPoints: rawData path - permission check runs before rawData deserialization
+ *                 (DoS hardening: unauthorized caller cannot trigger large allocation)
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermission_RawData_BundleName_EarlyCheck, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isSAOrSystemAppCall_ = false;
+    UriPermissionRawData rawData;
+    rawData.data = nullptr; // would normally yield ERR_DEAD_OBJECT; permission check must short-circuit first
+    uint32_t flag = 1;
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(rawData, flag, targetBundleName, appIndex, initiatorTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_NOT_SYSTEM_APP);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermission (rawData) with targetBundleName
+ * SubFunction: NA
+ * FunctionPoints: rawData path - deserialization succeeds and delegate runs (flag validation path)
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermission_RawData_BundleName_DeserializationOk, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isSAOrSystemAppCall_ = true; // bypass early check
+    MyFlag::isSandboxAppRet_ = false;
+    UriPermissionRawData rawData;
+    BuildRawDataFromUriVec({"file://test/file.txt"}, rawData);
+    uint32_t flag = 0; // invalid flag bypasses early IsSAOrSystemAppCall but fails delegate's flag check
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(rawData, flag, targetBundleName, appIndex, initiatorTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_CODE_INVALID_URI_FLAG); // proves deserialization succeeded and delegate ran
 }
 
 }  // namespace AAFwk

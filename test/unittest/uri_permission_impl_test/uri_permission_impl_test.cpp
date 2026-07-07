@@ -491,7 +491,7 @@ HWTEST_F(UriPermissionImplTest, Upms_GrantUriPermission_017, TestSize.Level1)
     auto upms = std::make_shared<UriPermissionManagerStubImpl>();
     ASSERT_NE(upms, nullptr);
     auto& upmc = AAFwk::UriPermissionManagerClient::GetInstance();
-    MyFlag::flag_ &= (~MyFlag::IS_SA_CALL);
+    MyFlag::flag_ |= MyFlag::IS_SA_CALL;
     auto uriStr = "file://com.example.test/data/storage/el2/base/haps/entry/files/test_A.txt";
     std::vector<std::string> uriStrVec(200000 + 1, uriStr);
 
@@ -519,7 +519,7 @@ HWTEST_F(UriPermissionImplTest, Upms_GrantUriPermission_018, TestSize.Level1)
     auto upms = std::make_shared<UriPermissionManagerStubImpl>();
     ASSERT_NE(upms, nullptr);
     auto& upmc = AAFwk::UriPermissionManagerClient::GetInstance();
-    MyFlag::flag_ &= (~MyFlag::IS_SA_CALL);
+    MyFlag::flag_ |= MyFlag::IS_SA_CALL;
     std::vector<std::string> uriStrVec;
 
     UriPermissionRawData rawData;
@@ -2610,10 +2610,10 @@ HWTEST_F(UriPermissionImplTest, Upmsi_CheckGrantUriPermissionByKeyParams_001, Te
     ASSERT_NE(upms, nullptr);
     const std::string key = "";
     uint32_t flag = 0;
-    FUDAppInfo calerAppInfo = { .tokenId = 1001 };
+    FUDAppInfo callerAppInfo = { .tokenId = 1001 };
     FUDAppInfo targetAppInfo = { .tokenId = 1002 };
     std::vector<std::string> uris;
-    auto ret = upms->CheckGrantUriPermissionByKeyParams(key, flag, calerAppInfo, targetAppInfo, uris);
+    auto ret = upms->CheckGrantUriPermissionByKeyParams(key, flag, callerAppInfo, targetAppInfo, uris);
     EXPECT_EQ(ret, ERR_CODE_INVALID_URI_FLAG);
 }
 
@@ -2629,10 +2629,10 @@ HWTEST_F(UriPermissionImplTest, Upmsi_CheckGrantUriPermissionByKeyParams_002, Te
     ASSERT_NE(upms, nullptr);
     const std::string key = "";
     uint32_t flag = 1;
-    FUDAppInfo calerAppInfo = { .tokenId = 1001 };
+    FUDAppInfo callerAppInfo = { .tokenId = 1001 };
     FUDAppInfo targetAppInfo = { .tokenId = 1001 };
     std::vector<std::string> uris;
-    auto ret = upms->CheckGrantUriPermissionByKeyParams(key, flag, calerAppInfo, targetAppInfo, uris);
+    auto ret = upms->CheckGrantUriPermissionByKeyParams(key, flag, callerAppInfo, targetAppInfo, uris);
     EXPECT_EQ(ret, ERR_UPMS_INVALID_TARGET_TOKENID);
 }
 
@@ -2648,11 +2648,11 @@ HWTEST_F(UriPermissionImplTest, Upmsi_CheckGrantUriPermissionByKeyParams_003, Te
     ASSERT_NE(upms, nullptr);
     const std::string key = "";
     uint32_t flag = 1;
-    FUDAppInfo calerAppInfo = { .tokenId = 1001 };
+    FUDAppInfo callerAppInfo = { .tokenId = 1001 };
     FUDAppInfo targetAppInfo = { .tokenId = 1002 };
     std::vector<std::string> uris;
     MyFlag::fudUtilsGenerateFUDAppInfoRet_ = false;
-    auto ret = upms->CheckGrantUriPermissionByKeyParams(key, flag, calerAppInfo, targetAppInfo, uris);
+    auto ret = upms->CheckGrantUriPermissionByKeyParams(key, flag, callerAppInfo, targetAppInfo, uris);
     EXPECT_EQ(ret, ERR_UPMS_INVALID_CALLER_TOKENID);
 }
 
@@ -2668,11 +2668,11 @@ HWTEST_F(UriPermissionImplTest, Upmsi_CheckGrantUriPermissionByKeyParams_004, Te
     ASSERT_NE(upms, nullptr);
     const std::string key = "";
     uint32_t flag = 1;
-    FUDAppInfo calerAppInfo = { .tokenId = 1001 };
+    FUDAppInfo callerAppInfo = { .tokenId = 1001 };
     FUDAppInfo targetAppInfo = { .tokenId = 1002 };
     std::vector<std::string> uris;
     MyFlag::processUdmfKeyRet_ = INNER_ERR;
-    auto ret = upms->CheckGrantUriPermissionByKeyParams(key, flag, calerAppInfo, targetAppInfo, uris);
+    auto ret = upms->CheckGrantUriPermissionByKeyParams(key, flag, callerAppInfo, targetAppInfo, uris);
     EXPECT_EQ(ret, ERR_UPMS_GET_FILE_URIS_BY_KEY_FAILED);
 }
 
@@ -2688,10 +2688,10 @@ HWTEST_F(UriPermissionImplTest, Upmsi_CheckGrantUriPermissionByKeyParams_005, Te
     ASSERT_NE(upms, nullptr);
     const std::string key = "";
     uint32_t flag = 1;
-    FUDAppInfo calerAppInfo = { .tokenId = 1001 };
+    FUDAppInfo callerAppInfo = { .tokenId = 1001 };
     FUDAppInfo targetAppInfo = { .tokenId = 1002 };
     std::vector<std::string> uris;
-    auto ret = upms->CheckGrantUriPermissionByKeyParams(key, flag, calerAppInfo, targetAppInfo, uris);
+    auto ret = upms->CheckGrantUriPermissionByKeyParams(key, flag, callerAppInfo, targetAppInfo, uris);
     EXPECT_EQ(ret, ERR_OK);
 }
 
@@ -2707,13 +2707,76 @@ HWTEST_F(UriPermissionImplTest, Upmsi_CheckGrantUriPermissionByKeyParams_006, Te
     ASSERT_NE(upms, nullptr);
     const std::string key = "";
     uint32_t flag = 1;
-    FUDAppInfo calerAppInfo = { .tokenId = 1001 };
+    FUDAppInfo callerAppInfo = { .tokenId = 1001 };
     FUDAppInfo targetAppInfo = { .tokenId = 1002 };
     MyFlag::PushGenerateFUDAppInfoResult(true, 1);
     MyFlag::PushGenerateFUDAppInfoResult(true, 2);
     std::vector<std::string> uris;
-    auto ret = upms->CheckGrantUriPermissionByKeyParams(key, flag, calerAppInfo, targetAppInfo, uris);
+    auto ret = upms->CheckGrantUriPermissionByKeyParams(key, flag, callerAppInfo, targetAppInfo, uris);
     EXPECT_EQ(ret, ERR_UPMS_INVALID_TARGET_TOKENID);
+}
+
+/*
+ * Feature: UriPermissionManagerStubImpl
+ * Function: CheckGrantUriPermissionByKeyParams
+ * SubFunction: NA
+ * FunctionPoints: target GenerateFUDAppInfo failed
+ */
+HWTEST_F(UriPermissionImplTest, Upmsi_CheckGrantUriPermissionByKeyParams_007, TestSize.Level1)
+{
+    auto upms = std::make_unique<UriPermissionManagerStubImpl>();
+    ASSERT_NE(upms, nullptr);
+    const std::string key = "";
+    uint32_t flag = 1;
+    FUDAppInfo callerAppInfo = { .tokenId = 1001 };
+    FUDAppInfo targetAppInfo = { .tokenId = 1002 };
+    MyFlag::PushGenerateFUDAppInfoResult(true, 1);
+    MyFlag::PushGenerateFUDAppInfoResult(false, -1);
+    std::vector<std::string> uris;
+    auto ret = upms->CheckGrantUriPermissionByKeyParams(key, flag, callerAppInfo, targetAppInfo, uris);
+    EXPECT_EQ(ret, ERR_UPMS_INVALID_TARGET_TOKENID);
+}
+
+/*
+ * Feature: UriPermissionManagerStubImpl
+ * Function: CheckGrantUriPermissionByKeyParams
+ * SubFunction: NA
+ * FunctionPoints: cross user (caller U0 vs target non-U0) rejected
+ */
+HWTEST_F(UriPermissionImplTest, Upmsi_CheckGrantUriPermissionByKeyParams_008, TestSize.Level1)
+{
+    auto upms = std::make_unique<UriPermissionManagerStubImpl>();
+    ASSERT_NE(upms, nullptr);
+    const std::string key = "";
+    uint32_t flag = 1;
+    FUDAppInfo callerAppInfo = { .tokenId = 1001 };
+    FUDAppInfo targetAppInfo = { .tokenId = 1002 };
+    MyFlag::PushGenerateFUDAppInfoResult(true, 0);
+    MyFlag::PushGenerateFUDAppInfoResult(true, 100);
+    std::vector<std::string> uris;
+    auto ret = upms->CheckGrantUriPermissionByKeyParams(key, flag, callerAppInfo, targetAppInfo, uris);
+    EXPECT_EQ(ret, ERR_UPMS_INVALID_TARGET_TOKENID);
+}
+
+/*
+ * Feature: UriPermissionManagerStubImpl
+ * Function: CheckGrantUriPermissionByKeyParams
+ * SubFunction: NA
+ * FunctionPoints: same user (both U0) granted past cross-user check
+ */
+HWTEST_F(UriPermissionImplTest, Upmsi_CheckGrantUriPermissionByKeyParams_009, TestSize.Level1)
+{
+    auto upms = std::make_unique<UriPermissionManagerStubImpl>();
+    ASSERT_NE(upms, nullptr);
+    const std::string key = "";
+    uint32_t flag = 1;
+    FUDAppInfo callerAppInfo = { .tokenId = 1001 };
+    FUDAppInfo targetAppInfo = { .tokenId = 1002 };
+    MyFlag::PushGenerateFUDAppInfoResult(true, 0);
+    MyFlag::PushGenerateFUDAppInfoResult(true, 0);
+    std::vector<std::string> uris;
+    auto ret = upms->CheckGrantUriPermissionByKeyParams(key, flag, callerAppInfo, targetAppInfo, uris);
+    EXPECT_EQ(ret, ERR_OK);
 }
 
 /*

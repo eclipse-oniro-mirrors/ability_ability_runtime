@@ -390,9 +390,37 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermission(const std::vector<std::
 }
 
 ErrCode UriPermissionManagerStubImpl::GrantUriPermission(const UriPermissionRawData& rawData, uint32_t flag,
+    uint32_t targetTokenId, uint32_t oriCallerTokenId, int32_t& funcResult)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (!PermissionVerification::GetInstance()->VerifyPermissionByTokenId(IPCSkeleton::GetCallingTokenID(),
+        PermissionConstants::PERMISSION_GRANT_URI_PERMISSION_PRIVILEGED)) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "No GRANT_URI_PERMISSION_PRIVILEGED permission");
+        return WrapErrorCode(CHECK_PERMISSION_FAILED, funcResult);
+    }
+    std::vector<std::string> uriVec;
+    auto res = RawDataToStringVec(rawData, uriVec);
+    if (res != ERR_OK) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "raw data to vec failed");
+        funcResult = res;
+        return ERR_OK;
+    }
+    auto errCode = GrantUriPermission(uriVec, flag, targetTokenId, oriCallerTokenId, funcResult);
+    if (errCode != ERR_OK) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "GrantUriPermission failed, errCode:%{public}d", errCode);
+        return errCode;
+    }
+    return ERR_OK;
+}
+
+ErrCode UriPermissionManagerStubImpl::GrantUriPermission(const UriPermissionRawData& rawData, uint32_t flag,
     const std::string& targetBundleName, int32_t appIndex, uint32_t initiatorTokenId, int32_t& funcResult)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (!FUDUtils::IsSAOrSystemAppCall()) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "not SA/SystemApp");
+        return WrapErrorCode(ERR_NOT_SYSTEM_APP, funcResult);
+    }
     std::vector<std::string> uriVec;
     auto res = RawDataToStringVec(rawData, uriVec);
     if (res != ERR_OK) {
@@ -811,6 +839,11 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermissionPrivileged(const UriPerm
     const std::string& targetBundleName, int32_t appIndex, uint32_t initiatorTokenId, int32_t hideSensitiveType,
     int32_t& funcResult)
 {
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto checkRes = CheckGrantUriPermissionPrivileged(IPCSkeleton::GetCallingTokenID(), flag);
+    if (checkRes != ERR_OK) {
+        return WrapErrorCode(checkRes, funcResult);
+    }
     std::vector<std::string> uriStrVec;
     auto res = RawDataToStringVec(rawData, uriStrVec);
     if (res != ERR_OK) {
@@ -1094,8 +1127,7 @@ int32_t UriPermissionManagerStubImpl::CheckGrantUriPermissionByKeyParams(const s
         TAG_LOGE(AAFwkTag::URIPERMMGR, "targetTokenId invalid");
         return ERR_UPMS_INVALID_TARGET_TOKENID;
     }
-    if (callerAppInfo.userId != targetAppInfo.userId && callerAppInfo.userId != U0_USER_ID &&
-        targetAppInfo.userId != U0_USER_ID) {
+    if (callerAppInfo.userId != targetAppInfo.userId) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "not support cross user");
         return ERR_UPMS_INVALID_TARGET_TOKENID;
     }
@@ -1215,6 +1247,13 @@ ErrCode UriPermissionManagerStubImpl::CheckUriAuthorization(const UriPermissionR
     uint32_t tokenId, UriPermissionRawData& funcResult)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (!FUDUtils::IsPrivilegedSACall()) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "no permission call");
+        std::vector<char> resultCharVec;
+        std::vector<bool> defaultFalseResult(1, false);
+        BoolVecToRawData(defaultFalseResult, funcResult, resultCharVec);
+        return ERR_OK;
+    }
     std::vector<std::string> uriStringVec;
     std::vector<char> resultCharVec;
     auto res = RawDataToStringVec(rawData, uriStringVec);
