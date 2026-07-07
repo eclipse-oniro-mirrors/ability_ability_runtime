@@ -165,8 +165,14 @@ export default class SelectorServiceExtensionAbility extends extension {
       if (globalThis.params && globalThis.params.hapList && globalThis.params.hapList.length) {
         lineNums = globalThis.params.hapList.length;
       }
+      globalThis.lineNums = lineNums;
       globalThis.position = PositionUtils.getSelectorDialogPosition(lineNums);
+
       display.on('change', (data: number) => {
+        if (!globalThis.position) {
+          console.error(TAG, 'globalThis.position is invalid in display change callback, skip');
+          return;
+        }
         let position = PositionUtils.getSelectorDialogPosition(lineNums);
         if (position.offsetX !== globalThis.position.offsetX || position.offsetY !== globalThis.position.offsetY) {
           win.moveTo(position.offsetX, position.offsetY);
@@ -177,7 +183,7 @@ export default class SelectorServiceExtensionAbility extends extension {
         globalThis.position = position;
       });
     } catch (exception) {
-      console.error('Failed to register callback. Code: ' + JSON.stringify(exception));
+      console.error(TAG, 'Failed to register display change callback. Code: ' + JSON.stringify(exception));
     }
     try {
       let displayClass = display.getDefaultDisplaySync();
@@ -292,11 +298,7 @@ export default class SelectorServiceExtensionAbility extends extension {
     try {
       let displayClass = display.getDefaultDisplaySync();
       console.debug(TAG, 'display is' + JSON.stringify(displayClass));
-      if (displayClass.orientation === display.Orientation.PORTRAIT || displayClass.orientation === display.Orientation.PORTRAIT_INVERTED) {
-        globalThis.position = globalThis.verticalPosition;
-      } else {
-        globalThis.position = globalThis.landScapePosition;
-      }
+      globalThis.position = PositionUtils.getSelectorDialogPosition(globalThis.lineNums);
     } catch (error) {
       console.error(TAG, 'Failed to getDefaultDisplaySync callback. Code: ' + JSON.stringify(error));
     }
