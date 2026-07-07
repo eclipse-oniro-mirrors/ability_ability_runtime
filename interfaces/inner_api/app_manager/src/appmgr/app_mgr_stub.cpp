@@ -908,7 +908,7 @@ int32_t AppMgrStub::HandleDumpJsHandleMap(MessageParcel &data, MessageParcel &re
     HITRACE_METER(HITRACE_TAG_APP);
     std::unique_ptr<JsHandleMapInfo> info(data.ReadParcelable<JsHandleMapInfo>());
     if (info == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "AppMgrStub read configuration error");
+        TAG_LOGE(AAFwkTag::APPMGR, "AppMgrStub read JsHandleMapInfo error");
         return ERR_INVALID_VALUE;
     }
     auto result = DumpJsHandleMap(*info);

@@ -188,7 +188,7 @@ void AppSchedulerProxy::ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &i
         return;
     }
     if (!data.WriteParcelable(&info)) {
-        TAG_LOGE(AAFwkTag::APPMGR, "write pid failed");
+        TAG_LOGE(AAFwkTag::APPMGR, "write info failed");
         return;
     }
     int32_t ret = SendTransactCmd(operation, data, reply, option);

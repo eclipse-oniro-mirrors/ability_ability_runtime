@@ -459,6 +459,7 @@ HWTEST_F(MainThreadTest, ScheduleJsHandleMap_0100, TestSize.Level1)
     TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
     OHOS::AppExecFwk::JsHandleMapInfo info;
     info.pid = 1;
+    ASSERT_TRUE(mainThread_ != nullptr);
     mainThread_->ScheduleJsHandleMap(info);
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
 }
