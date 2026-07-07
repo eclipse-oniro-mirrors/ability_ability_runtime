@@ -356,9 +356,14 @@ GpuHookSize ApplicationDataManager::ParseGpuHookSize(const std::string &gpuHookS
             continue;
         }
 
-        Range firstRange = {typeObj["first"][0].get<uint64_t>(), typeObj["first"][1].get<uint64_t>()};
-        Range secondRange = {typeObj["second"][0].get<uint64_t>(), typeObj["second"][1].get<uint64_t>()};
-        gpuHookSize[type] = HookSize{firstRange, secondRange};
+        try {
+            Range firstRange = {typeObj["first"][0].get<uint64_t>(), typeObj["first"][1].get<uint64_t>()};
+            Range secondRange = {typeObj["second"][0].get<uint64_t>(), typeObj["second"][1].get<uint64_t>()};
+            gpuHookSize[type] = HookSize{firstRange, secondRange};
+        } catch (const nlohmann::json::exception &e) {
+            TAG_LOGE(AAFwkTag::APPKIT, "Failed to parse gpuHookSize type %{public}s: %{public}s", type.c_str(), e.what());
+            continue;
+        }
     }
 
     return gpuHookSize;
