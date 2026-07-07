@@ -2664,12 +2664,10 @@ bool JsUIAbility::TryLoadSkillEntry(const std::string &srcEntry,
     }
     std::string srcPath(param->moduleName_ + "/" + srcEntry);
     auto pos = srcPath.rfind('.');
-    if (pos == std::string::npos) {
-        TAG_LOGW(AAFwkTag::UIABILITY, "skip srcEntry, no extension:%{public}s", srcEntry.c_str());
-        return false;
+    if (pos != std::string::npos) {
+        srcPath.erase(pos);
+        srcPath.append(".abc");
     }
-    srcPath.erase(pos);
-    srcPath.append(".abc");
     skillModuleRef_ = jsRuntime_.LoadModule(param->moduleName_, srcPath, param->hapPath_, true, false, srcEntry);
     if (skillModuleRef_ == nullptr) {
         TAG_LOGW(AAFwkTag::UIABILITY, "LoadModule failed, path:%{public}s", srcPath.c_str());
