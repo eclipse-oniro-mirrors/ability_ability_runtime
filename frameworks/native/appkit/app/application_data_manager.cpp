@@ -396,9 +396,8 @@ void ApplicationDataManager::LogGpuHookSize(const GpuHookSize &gpuHookSize)
         TAG_LOGD(
             AAFwkTag::APPKIT, "gpuHookSize type: %{public}s, first: [%{public}" PRIu64 ", %{public}" PRIu64
             "], second: [%{public}" PRIu64 ", %{public}" PRIu64 "]",
-            type.c_str(), static_cast<unsigned long long>(firstRange.first),
-            static_cast<unsigned long long>(firstRange.second), static_cast<unsigned long long>(secondRange.first),
-            static_cast<unsigned long long>(secondRange.second));
+            type.c_str(), static_cast<uint64_t>(firstRange.first), static_cast<uint64_t>(firstRange.second),
+            static_cast<uint64_t>(secondRange.first), static_cast<uint64_t>(secondRange.second));
     }
 }
 
