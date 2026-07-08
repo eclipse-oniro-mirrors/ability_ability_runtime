@@ -332,6 +332,13 @@ GpuHookSize ApplicationDataManager::ParseGpuHookSize(const std::string &gpuHookS
         return gpuHookSize;
     }
 
+    constexpr size_t MAX_GPU_HOOK_SIZE_STR_LEN = 4096;
+    constexpr size_t MAX_GPU_HOOK_ENTRIES = 64;
+    if (gpuHookSizeStr.size() > MAX_GPU_HOOK_SIZE_STR_LEN) {
+        TAG_LOGE(AAFwkTag::APPKIT, "gpuHookSize string too long: %{public}zu", gpuHookSizeStr.size());
+        return gpuHookSize;
+    }
+
     nlohmann::json jsonObj;
     try {
         jsonObj = nlohmann::json::parse(gpuHookSizeStr);
@@ -353,7 +360,7 @@ GpuHookSize ApplicationDataManager::ParseGpuHookSize(const std::string &gpuHookS
 
             if (!typeObj["first"][0].is_number_unsigned() || !typeObj["first"][1].is_number_unsigned() ||
                 !typeObj["second"][0].is_number_unsigned() || !typeObj["second"][1].is_number_unsigned()) {
-                TAG_LOGE(AAFwkTag::APPKIT, "Invalid gpuHookSize type %{public}s: array elements must be unsigned numbers",
+                TAG_LOGE(AAFwkTag::APPKIT, "Invalid gpuHookSize type %{public}s: array elements must unsigned numbers",
                          type.c_str());
                 continue;
             }
@@ -397,6 +404,8 @@ void ApplicationDataManager::LogGpuHookSize(const GpuHookSize &gpuHookSize)
 
 void ApplicationDataManager::NotifyAppTelemetry(AppTelemetryLeakType atLeakType, const std::string &gpuHookSizeStr)
 {
+    GpuHookSize gpuHookSize = ParseGpuHookSize(gpuHookSizeStr);
+    LogGpuHookSize(gpuHookSize);
     std::lock_guard<std::mutex> lock(resourceMutex_);
     if (resourceOverlimitCB_ == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "resourceOverlimitCB_ is nullptr");
@@ -405,10 +414,8 @@ void ApplicationDataManager::NotifyAppTelemetry(AppTelemetryLeakType atLeakType,
     AppTelemetryObject atObj{
         .atLeakType = atLeakType,
         .runningId = DFX_GetAppRunningUniqueId(),
-        .gpuHookSize = ParseGpuHookSize(gpuHookSizeStr),
+        .gpuHookSize = gpuHookSize,
     };
-
-    LogGpuHookSize(atObj.gpuHookSize);
 
     TAG_LOGI(AAFwkTag::APPKIT, "start callback resource overlimit");
     resourceOverlimitCB_(atObj);
