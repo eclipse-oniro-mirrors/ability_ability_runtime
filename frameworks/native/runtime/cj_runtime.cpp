@@ -178,6 +178,15 @@ void CJRuntime::SetPackageName(std::string srcEntryName)
     packageName_ = srcEntryName.substr(0, srcEntryName.find_last_of("."));
 }
 
+void CJRuntime::SetMainNAPIEnv(void* env)
+{
+    auto runtime = OHOS::CJEnv::LoadInstance();
+    if (!runtime) {
+        return;
+    }
+    runtime->setMainNAPIEnv(env);
+}
+
 void CJRuntime::SetSanitizerVersion(SanitizerKind kind)
 {
     auto cjEnv = OHOS::CJEnv::LoadInstance();

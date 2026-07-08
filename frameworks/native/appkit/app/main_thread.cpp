@@ -2008,6 +2008,15 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
         auto bundleName = appInfo.bundleName;
         auto versionCode = appInfo.versionCode;
 #ifdef CJ_FRONTEND
+        void* mainEnv = nullptr;
+        if (runtime->GetLanguage() == AbilityRuntime::Runtime::Language::ETS) {
+            auto& etsRuntime = static_cast<AbilityRuntime::ETSRuntime&>(*runtime);
+            auto& jsRuntime = static_cast<AbilityRuntime::JsRuntime&>(*etsRuntime.GetJsRuntime());
+            mainEnv = jsRuntime.GetNapiEnv();
+        } else if (runtime->GetLanguage() == AbilityRuntime::Runtime::Language::JS) {
+            mainEnv = (static_cast<AbilityRuntime::JsRuntime&>(*runtime)).GetNapiEnv();
+        }
+        AbilityRuntime::CJRuntime::SetMainNAPIEnv(mainEnv);
         if (!isCJApp) {
 #endif
             if (IsEtsAPP(appInfo)) {

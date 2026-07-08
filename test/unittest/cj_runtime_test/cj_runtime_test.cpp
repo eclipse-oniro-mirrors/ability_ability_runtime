@@ -184,5 +184,17 @@ HWTEST_F(CjRuntimeTest, RegisterOOMHandler_002, TestSize.Level1)
     EXPECT_NE(instance, nullptr);
 }
 
+/**
+ * @tc.name: CJRuntime_SetMainNAPIEnv_001
+ * @tc.desc: CjRuntime test for SetMainNAPIEnv
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjRuntimeTest, CJRuntime_SetMainNAPIEnv_001, TestSize.Level1)
+{
+    int a = 0;
+    CJRuntime::SetMainNAPIEnv(&a);
+    EXPECT_EQ(CJEnv::LoadInstance()->getMainNAPIEnv(), &a);
+}
+
 }  // namespace Runtime
 }  // namespace OHOS
