@@ -14498,6 +14498,11 @@ std::string AbilityManagerService::InsightIntentGetcallerBundleName()
 
 int32_t AbilityManagerService::StartAbilityWithServiceMatch(const InsightIntentExecuteParam &param, int32_t userId, int requestCode)
 {
+    if (!AAFwk::PermissionVerification::GetInstance()->JudgeCallerIsAllowedToUseSystemAPI()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "permission verification failed, not system-app or sa");
+        return ERR_NOT_SYSTEM_APP;
+    }
+
     AAFwk::Want want;
     AppExecFwk::ElementName element("", param.bundleName_, param.abilityName_);
     want.SetElement(element);
