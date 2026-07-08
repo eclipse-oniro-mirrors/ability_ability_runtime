@@ -2898,6 +2898,12 @@ public:
     {
         return ERR_OK;
     }
+
+    virtual int32_t NotifySkillFunctionInvoked(const sptr<IRemoteObject> &token,
+        const std::string &requestCode)
+    {
+        return ERR_OK;
+    }
 };
 }  // namespace AAFwk
 }  // namespace OHOS

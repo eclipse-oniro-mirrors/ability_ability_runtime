@@ -1243,5 +1243,35 @@ HWTEST_F(AbilityManagerProxySixthTest, AbilityManagerProxy_QuerySkillType_002, T
     auto res = proxy_->QuerySkillType("bundle", "module", "skill", skillType);
     EXPECT_EQ(res, -1);
 }
+
+/**
+ * @tc.name: AbilityManagerProxy_NotifySkillFunctionInvoked_001
+ * @tc.desc: NotifySkillFunctionInvoked with SendRequest success
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxySixthTest, AbilityManagerProxy_NotifySkillFunctionInvoked_001, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
+    sptr<IRemoteObject> token = sptr<MockAbilityToken>::MakeSptr();
+    auto res = proxy_->NotifySkillFunctionInvoked(token, "requestCode");
+    EXPECT_EQ(res, 0);
+}
+
+/**
+ * @tc.name: AbilityManagerProxy_NotifySkillFunctionInvoked_002
+ * @tc.desc: NotifySkillFunctionInvoked with SendRequest failure
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxySixthTest, AbilityManagerProxy_NotifySkillFunctionInvoked_002, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(-1));
+    sptr<IRemoteObject> token = sptr<MockAbilityToken>::MakeSptr();
+    auto res = proxy_->NotifySkillFunctionInvoked(token, "requestCode");
+    EXPECT_EQ(res, -1);
+}
 } // namespace AAFwk
 } // namespace OHOS

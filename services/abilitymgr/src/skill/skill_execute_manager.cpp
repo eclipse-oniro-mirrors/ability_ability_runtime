@@ -16,6 +16,7 @@
 #include "skill_execute_manager.h"
 
 #include <cinttypes>
+#include <vector>
 
 #include "ability_event_handler.h"
 #include "ability_manager_errors.h"
@@ -185,6 +186,7 @@ std::string SkillExecuteManager::CreateExecuteRecord(const sptr<IRemoteObject> &
 
     records_[requestCode] = record;
     PostSkillExecuteTimeout(requestCode, currentSeq);
+    EnsureAppStateObserverRegistered();
     TAG_LOGD(AAFwkTag::ABILITYMGR,
         "create execute record, requestCode:%{public}s", requestCode.c_str());
     return requestCode;
@@ -234,7 +236,6 @@ int32_t SkillExecuteManager::ExecuteSkillDone(const std::string &requestCode, in
         }
 #endif
 
-        RemoveSkillExecuteTimeoutLocked(record->requestCodeSeq);
         record->state = SkillExecuteState::EXECUTE_DONE;
         callback = record->callback;
         RemoveRecord(requestCode);
@@ -401,7 +402,107 @@ void SkillExecuteManager::OnTimeout(int64_t requestCodeSeq)
 
     if (callback != nullptr) {
         AppExecFwk::SkillExecuteResult emptyResult;
+        emptyResult.code = ERR_TIMED_OUT;
         callback->OnExecuteDone(requestCode, ERR_TIMED_OUT, emptyResult);
+    }
+}
+
+void SkillExecuteManager::EnsureAppStateObserverRegistered()
+{
+    if (appStateObserver_ != nullptr) {
+        return;
+    }
+    auto appManager = AppMgrUtil::GetAppMgr();
+    if (appManager == nullptr) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "null appManager, will retry on next record");
+        return;
+    }
+    auto observer = sptr<SkillAppStateObserver>::MakeSptr(
+        [](const std::string &bundleName) {
+            DelayedSingleton<SkillExecuteManager>::GetInstance()->OnTargetProcessDied(bundleName);
+        });
+    if (observer == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "new SkillAppStateObserver failed");
+        return;
+    }
+    auto err = appManager->RegisterApplicationStateObserver(observer);
+    if (err != ERR_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "register app state observer err:%{public}d", err);
+        return;
+    }
+    appStateObserver_ = observer;
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "app state observer registered");
+}
+
+void SkillExecuteManager::OnLaunchCompleted(const std::string &requestCode)
+{
+    std::lock_guard<ffrt::mutex> lock(mutex_);
+    auto it = records_.find(requestCode);
+    if (it == records_.end()) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR,
+            "OnLaunchCompleted: record gone, req:%{public}s", requestCode.c_str());
+        return;
+    }
+    RemoveSkillExecuteTimeoutLocked(it->second->requestCodeSeq);
+    TAG_LOGD(AAFwkTag::ABILITYMGR,
+        "launch completed, keep record for async result, req:%{public}s", requestCode.c_str());
+}
+
+void SkillExecuteManager::OnLaunchFailed(const std::string &requestCode, int32_t errCode)
+{
+    std::lock_guard<ffrt::mutex> lock(mutex_);
+    auto it = records_.find(requestCode);
+    if (it == records_.end()) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR,
+            "OnLaunchFailed: record gone, req:%{public}s", requestCode.c_str());
+        return;
+    }
+    auto record = it->second;
+    RemoveSkillExecuteTimeoutLocked(record->requestCodeSeq);
+    if (record->state != SkillExecuteState::EXECUTING) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR,
+            "OnLaunchFailed: invalid state:%{public}d", static_cast<int>(record->state));
+        return;
+    }
+    record->state = SkillExecuteState::REMOTE_DIED;
+    if (record->callback != nullptr) {
+        AppExecFwk::SkillExecuteResult emptyResult;
+        emptyResult.code = errCode;
+        record->callback->OnExecuteDone(requestCode, errCode, emptyResult);
+    }
+    RemoveRecord(requestCode);
+}
+
+void SkillExecuteManager::OnTargetProcessDied(const std::string &bundleName)
+{
+    std::lock_guard<ffrt::mutex> lock(mutex_);
+    std::vector<std::string> hitCodes;
+    for (const auto &entry : records_) {
+        const auto &record = entry.second;
+        if (record->targetBundleName == bundleName &&
+            record->state == SkillExecuteState::EXECUTING) {
+            hitCodes.push_back(entry.first);
+        }
+    }
+    if (hitCodes.empty()) {
+        return;
+    }
+    TAG_LOGW(AAFwkTag::ABILITYMGR,
+        "target process died, bundle:%{public}s, hit %{public}zu record(s)",
+        bundleName.c_str(), hitCodes.size());
+    for (const auto &requestCode : hitCodes) {
+        auto it = records_.find(requestCode);
+        if (it == records_.end()) {
+            continue;
+        }
+        auto record = it->second;
+        record->state = SkillExecuteState::REMOTE_DIED;
+        if (record->callback != nullptr) {
+            AppExecFwk::SkillExecuteResult emptyResult;
+            emptyResult.code = ERR_SKILL_EXECUTE_TARGET_DIED;
+            record->callback->OnExecuteDone(requestCode, ERR_SKILL_EXECUTE_TARGET_DIED, emptyResult);
+        }
+        RemoveRecord(requestCode);
     }
 }
 

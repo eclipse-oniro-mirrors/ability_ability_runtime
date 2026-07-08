@@ -2859,6 +2859,15 @@ ErrCode AbilityManagerClient::ExecuteSkillDone(sptr<IRemoteObject> token, const 
     return abms->ExecuteSkillDone(token, requestCode, resultCode, result);
 }
 
+ErrCode AbilityManagerClient::NotifySkillFunctionInvoked(sptr<IRemoteObject> token,
+    const std::string &requestCode)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "called");
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    return abms->NotifySkillFunctionInvoked(token, requestCode);
+}
+
 ErrCode AbilityManagerClient::QuerySkillType(const std::string &bundleName, const std::string &moduleName,
     const std::string &skillName, int32_t &skillType)
 {

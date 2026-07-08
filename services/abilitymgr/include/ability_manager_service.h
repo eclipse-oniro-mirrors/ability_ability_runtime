@@ -2245,6 +2245,9 @@ public:
     int32_t ExecuteSkillDone(const sptr<IRemoteObject> &token, const std::string &requestCode,
         int32_t resultCode, const AppExecFwk::SkillExecuteResult &result) override;
 
+    int32_t NotifySkillFunctionInvoked(const sptr<IRemoteObject> &token,
+        const std::string &requestCode) override;
+
     int32_t QuerySkillType(const std::string &bundleName, const std::string &moduleName,
         const std::string &skillName, int32_t &skillType) override;
 

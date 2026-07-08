@@ -35,7 +35,9 @@
 #include "ipc_skeleton.h"
 #include "permission_util.h"
 #include "session_record.h"
+#include "skill_execute_param.h"
 #include "skill_execute_result.h"
+#include "string_wrapper.h"
 #include "tool_info.h"
 #include "want_params.h"
 #include "want_params_wrapper.h"
@@ -661,6 +663,22 @@ std::shared_ptr<AAFwk::WantParams> ToolUtil::FilterSkillArgs(const AAFwk::WantPa
     return skillArgs;
 }
 
+namespace {
+std::string ExtractSkillErrorMsg(const AAFwk::WantParams &params)
+{
+    const auto &all = params.GetParams();
+    auto it = all.find(AppExecFwk::SKILL_ERROR_MSG_KEY);
+    if (it == all.end() || it->second == nullptr) {
+        return "";
+    }
+    auto *iStr = AAFwk::IString::Query(it->second);
+    if (iStr == nullptr) {
+        return "";
+    }
+    return AAFwk::String::Unbox(iStr);
+}
+} // namespace
+
 CliSessionInfo ToolUtil::BuildSkillSessionInfo(const std::string &sessionId,
     int32_t resultCode, const AppExecFwk::SkillExecuteResult &skillResult)
 {
@@ -669,9 +687,18 @@ CliSessionInfo ToolUtil::BuildSkillSessionInfo(const std::string &sessionId,
     session.toolName = "ohos-arkTSScript";
     session.status = (resultCode == ERR_OK) ? "completed" : "failed";
     session.result = std::make_shared<ExecResult>();
-    session.result->exitCode = skillResult.code;
+    int32_t exitCode = skillResult.code;
+    if (exitCode == 0 && resultCode != ERR_OK) {
+        exitCode = resultCode;
+    }
+    session.result->exitCode = exitCode;
     if (skillResult.result != nullptr) {
         session.result->outputText = skillResult.result->ToString();
+        if (resultCode != ERR_OK) {
+            session.result->errorText = ExtractSkillErrorMsg(*(skillResult.result));
+        }
+    } else if (resultCode != ERR_OK) {
+        session.result->errorText = "skill execute failed, code=" + std::to_string(resultCode);
     }
     return session;
 }

@@ -450,6 +450,7 @@ private:
     int32_t ExecuteInAppSkillInner(MessageParcel &data, MessageParcel &reply);
     int32_t ExecuteInAppSkillWithTokenIdInner(MessageParcel &data, MessageParcel &reply);
     int32_t ExecuteSkillDoneWithTokenInner(MessageParcel &data, MessageParcel &reply);
+    int32_t NotifySkillFunctionInvokedInner(MessageParcel &data, MessageParcel &reply);
     int32_t QuerySkillTypeInner(MessageParcel &data, MessageParcel &reply);
     int32_t StartSelfUIAbilityByAppContextInner(MessageParcel &data, MessageParcel &reply);
     int32_t StartSandboxCloneAbilityInner(MessageParcel &data, MessageParcel &reply);

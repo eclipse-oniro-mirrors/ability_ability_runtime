@@ -5598,5 +5598,55 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSelf_OnRemote_0100, Tes
     EXPECT_EQ(res, NO_ERROR);
     EXPECT_EQ(reply.ReadInt32(), ERR_OK);
 }
+
+/*
+ * Feature: AbilityManagerService
+ * Function: OnRemoteRequest
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub NotifySkillFunctionInvokedInner
+ * EnvConditions: code is NOTIFY_SKILL_FUNCTION_INVOKED
+ * CaseDescription: Verify dispatching NOTIFY_SKILL_FUNCTION_INVOKED with valid token and requestCode
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_NotifySkillFunctionInvoked_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    auto token = sptr<AppExecFwk::MockAbilityToken>::MakeSptr();
+    data.WriteRemoteObject(token);
+    data.WriteString("requestCode_0100");
+
+    EXPECT_CALL(*stub_, NotifySkillFunctionInvoked(_, _)).WillOnce(Return(ERR_OK));
+    int res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::NOTIFY_SKILL_FUNCTION_INVOKED), data, reply, option);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: OnRemoteRequest
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub NotifySkillFunctionInvokedInner
+ * EnvConditions: code is NOTIFY_SKILL_FUNCTION_INVOKED with null token
+ * CaseDescription: Verify null token is rejected before reaching the service
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_NotifySkillFunctionInvoked_0200, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    data.WriteRemoteObject(nullptr);
+    data.WriteString("requestCode_0200");
+
+    EXPECT_CALL(*stub_, NotifySkillFunctionInvoked(_, _)).Times(0);
+    int res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::NOTIFY_SKILL_FUNCTION_INVOKED), data, reply, option);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+}
 } // namespace AAFwk
 } // namespace OHOS

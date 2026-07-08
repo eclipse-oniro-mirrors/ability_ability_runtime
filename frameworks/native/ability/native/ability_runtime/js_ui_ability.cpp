@@ -22,6 +22,7 @@
 #include "ability_business_error.h"
 #include "ability_delegator_registry.h"
 #include "ability_manager_client.h"
+#include "ability_manager_errors.h"
 #include "ability_recovery.h"
 #include "ability_start_setting.h"
 #include "app_recovery.h"
@@ -2670,13 +2671,11 @@ bool JsUIAbility::TryLoadSkillEntry(const std::string &srcEntry,
     }
     std::string srcPath(param->moduleName_ + "/" + srcEntry);
     auto pos = srcPath.rfind('.');
-    if (pos == std::string::npos) {
-        TAG_LOGW(AAFwkTag::UIABILITY, "skip srcEntry, no extension:%{public}s", srcEntry.c_str());
-        return false;
+    if (pos != std::string::npos) {
+        srcPath.erase(pos);
+        srcPath.append(".abc");
     }
-    srcPath.erase(pos);
-    srcPath.append(".abc");
-    skillModuleRef_ = jsRuntime_.LoadModule(param->moduleName_, srcPath, param->hapPath_, true);
+    skillModuleRef_ = jsRuntime_.LoadModule(param->moduleName_, srcPath, param->hapPath_, true, false, srcEntry);
     if (skillModuleRef_ == nullptr) {
         TAG_LOGW(AAFwkTag::UIABILITY, "LoadModule failed, path:%{public}s", srcPath.c_str());
         return false;
@@ -2746,26 +2745,54 @@ void JsUIAbility::ExecuteSkill(const AAFwk::Want &want,
     }
     napi_env env = jsRuntime_.GetNapiEnv();
     if (env == nullptr) {
-        TAG_LOGE(AAFwkTag::UIABILITY, "null napi env, skill will time out");
+        TAG_LOGE(AAFwkTag::UIABILITY, "null napi env");
+        ReportSkillError(param->requestCode_, ERR_TIMED_OUT,
+            "napi env unavailable, js runtime not ready");
         return;
     }
     napi_value jsObj = nullptr;
     napi_value method = LoadSkillFunction(param, jsObj);
     if (method == nullptr) {
-        TAG_LOGE(AAFwkTag::UIABILITY, "func not found in any srcEntry:%{public}s", param->functionName_.c_str());
+        std::string errMsg = "skill function '" + param->functionName_ +
+            "' not found in srcEntries: [" + param->SrcEntriesToString() + "]";
+        TAG_LOGE(AAFwkTag::UIABILITY, "%{public}s", errMsg.c_str());
+        ReportSkillError(param->requestCode_, ERR_TIMED_OUT, errMsg);
         return;
     }
     auto args = BuildSkillCallArgs(env, param);
     napi_value result = nullptr;
     napi_status status = napi_call_function(env, jsObj, method, args.size(), args.data(), &result);
     if (status != napi_ok) {
-        TAG_LOGE(AAFwkTag::UIABILITY, "napi_call_function failed, status:%{public}d func:%{public}s",
-            status, param->functionName_.c_str());
+        std::string errMsg = "napi_call_function status=" + std::to_string(status) +
+            " func=" + param->functionName_;
+        TAG_LOGE(AAFwkTag::UIABILITY, "%{public}s", errMsg.c_str());
+        ReportSkillError(param->requestCode_, ERR_TIMED_OUT, errMsg);
         return;
     }
+    bool hasPending = false;
+    napi_is_exception_pending(env, &hasPending);
+    if (hasPending) {
+        TAG_LOGE(AAFwkTag::UIABILITY,
+            "skill function threw exception, func:%{public}s", param->functionName_.c_str());
+        ReportSkillError(param->requestCode_, ERR_TIMED_OUT,
+            "skill function threw exception during execution");
+        return;
+    }
+    AAFwk::AbilityManagerClient::GetInstance()->NotifySkillFunctionInvoked(token_, param->requestCode_);
     TAG_LOGD(AAFwkTag::UIABILITY,
         "ExecuteSkill dispatched, waiting completeArkTSScriptInApp, requestCode:%{public}s",
         param->requestCode_.c_str());
+}
+
+void JsUIAbility::ReportSkillError(const std::string &requestCode, int32_t errCode, const std::string &errMsg)
+{
+    AppExecFwk::SkillExecuteResult result;
+    result.code = errCode;
+    if (!errMsg.empty()) {
+        result.result = std::make_shared<AAFwk::WantParams>();
+        result.result->SetParam(AppExecFwk::SKILL_ERROR_MSG_KEY, AAFwk::String::Box(errMsg));
+    }
+    AAFwk::AbilityManagerClient::GetInstance()->ExecuteSkillDone(token_, requestCode, errCode, result);
 }
 
 void JsUIAbility::RegisterDelayResultCallback(const std::shared_ptr<InsightIntentExecuteParam> &executeParam)

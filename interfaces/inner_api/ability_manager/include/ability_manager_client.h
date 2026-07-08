@@ -2298,6 +2298,8 @@ public:
     ErrCode ExecuteSkillDone(sptr<IRemoteObject> token, const std::string &requestCode,
         int32_t resultCode, const AppExecFwk::SkillExecuteResult &result);
 
+    ErrCode NotifySkillFunctionInvoked(sptr<IRemoteObject> token, const std::string &requestCode);
+
     ErrCode QuerySkillType(const std::string &bundleName, const std::string &moduleName,
         const std::string &skillName, int32_t &skillType);
 
