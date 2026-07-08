@@ -393,8 +393,8 @@ void ApplicationDataManager::LogGpuHookSize(const GpuHookSize &gpuHookSize)
         const Range &firstRange = hookSize.first;
         const Range &secondRange = hookSize.second;
         TAG_LOGD(
-            AAFwkTag::APPKIT,
-            "gpuHookSize type: %{public}s, first: [%{public}llu, %{public}llu], second: [%{public}llu, %{public}llu]",
+            AAFwkTag::APPKIT, "gpuHookSize type: %{public}s, first: [%{public}" PRIu64 ", %{public}" PRIu64
+            "], second: [%{public}" PRIu64 ", %{public}" PRIu64 "]",
             type.c_str(), static_cast<unsigned long long>(firstRange.first),
             static_cast<unsigned long long>(firstRange.second), static_cast<unsigned long long>(secondRange.first),
             static_cast<unsigned long long>(secondRange.second));
