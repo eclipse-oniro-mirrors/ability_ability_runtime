@@ -340,6 +340,11 @@ GpuHookSize ApplicationDataManager::ParseGpuHookSize(const std::string &gpuHookS
         return gpuHookSize;
     }
 
+    if (!jsonObj.is_object()) {
+        TAG_LOGE(AAFwkTag::APPKIT, "Invalid gpuHookSize json: not an object");
+        return gpuHookSize;
+    }
+
     for (auto it = jsonObj.begin(); it != jsonObj.end(); ++it) {
         const std::string &type = it.key();
         const auto &typeObj = it.value();
@@ -358,7 +363,8 @@ GpuHookSize ApplicationDataManager::ParseGpuHookSize(const std::string &gpuHookS
 
         if (!typeObj["first"][0].is_number_unsigned() || !typeObj["first"][1].is_number_unsigned() ||
             !typeObj["second"][0].is_number_unsigned() || !typeObj["second"][1].is_number_unsigned()) {
-            TAG_LOGE(AAFwkTag::APPKIT, "Invalid gpuHookSize type %{public}s: array elements must be unsigned numbers", type.c_str());
+            TAG_LOGE(AAFwkTag::APPKIT, "Invalid gpuHookSize type %{public}s: array elements must be unsigned numbers",
+                                       type.c_str());
             continue;
         }
 
