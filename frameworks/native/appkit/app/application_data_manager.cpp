@@ -356,14 +356,15 @@ GpuHookSize ApplicationDataManager::ParseGpuHookSize(const std::string &gpuHookS
             continue;
         }
 
-        try {
-            Range firstRange = {typeObj["first"][0].get<uint64_t>(), typeObj["first"][1].get<uint64_t>()};
-            Range secondRange = {typeObj["second"][0].get<uint64_t>(), typeObj["second"][1].get<uint64_t>()};
-            gpuHookSize[type] = HookSize{firstRange, secondRange};
-        } catch (const nlohmann::json::exception &e) {
-            TAG_LOGE(AAFwkTag::APPKIT, "Failed to parse gpuHookSize type %{public}s: %{public}s", type.c_str(), e.what());
+        if (!typeObj["first"][0].is_number_unsigned() || !typeObj["first"][1].is_number_unsigned() ||
+            !typeObj["second"][0].is_number_unsigned() || !typeObj["second"][1].is_number_unsigned()) {
+            TAG_LOGE(AAFwkTag::APPKIT, "Invalid gpuHookSize type %{public}s: array elements must be unsigned numbers", type.c_str());
             continue;
         }
+
+        Range firstRange = {typeObj["first"][0].get<uint64_t>(), typeObj["first"][1].get<uint64_t>()};
+        Range secondRange = {typeObj["second"][0].get<uint64_t>(), typeObj["second"][1].get<uint64_t>()};
+        gpuHookSize[type] = HookSize{firstRange, secondRange};
     }
 
     return gpuHookSize;
