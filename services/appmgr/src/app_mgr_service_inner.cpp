@@ -9593,6 +9593,7 @@ FaultData AppMgrServiceInner::ConvertDataTypes(const AppFaultDataBySA &faultData
     newfaultData.leakObject.detailInfo.ashmemSize = faultData.leakObject.detailInfo.ashmemSize;
     newfaultData.leakObject.detailInfo.otherSize = faultData.leakObject.detailInfo.otherSize;
     newfaultData.atLeakType = faultData.atLeakType;
+    newfaultData.gpuHookSize = faultData.gpuHookSize;
     if (appRunningManager_) {
         std::string appRunningUniqueId;
         int32_t ret = appRunningManager_->GetAppRunningUniqueIdByPid(faultData.pid, appRunningUniqueId);

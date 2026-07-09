@@ -380,7 +380,7 @@ HWTEST_F(ApplicationDataManagerTest, ApplicationDataManager_NotifyAppTelemetry_0
 
     ApplicationDataManager::GetInstance().resourceOverlimitCB_ = nullptr;
 
-    ApplicationDataManager::GetInstance().NotifyAppTelemetry(ATLT_PSS);
+    ApplicationDataManager::GetInstance().NotifyAppTelemetry(ATLT_PSS, "");
 
     GTEST_LOG_(INFO) << "ApplicationDataManager_NotifyAppTelemetry_001 end";
 }
@@ -409,7 +409,7 @@ HWTEST_F(ApplicationDataManagerTest, ApplicationDataManager_NotifyAppTelemetry_0
     ApplicationDataManager::GetInstance().RegisterResourceObserver(
         params, callback);
 
-    ApplicationDataManager::GetInstance().NotifyAppTelemetry(ATLT_PSS);
+    ApplicationDataManager::GetInstance().NotifyAppTelemetry(ATLT_PSS, "");
 
     EXPECT_TRUE(gCallbackInvoked);
     EXPECT_EQ(gReceivedLeakType, ATLT_PSS);
@@ -441,7 +441,7 @@ HWTEST_F(ApplicationDataManagerTest, ApplicationDataManager_NotifyAppTelemetry_0
     ApplicationDataManager::GetInstance().RegisterResourceObserver(
         params, callback);
 
-    ApplicationDataManager::GetInstance().NotifyAppTelemetry(ATLT_GPU);
+    ApplicationDataManager::GetInstance().NotifyAppTelemetry(ATLT_GPU, "");
 
     EXPECT_TRUE(gCallbackInvoked);
     EXPECT_EQ(gReceivedLeakType, ATLT_GPU);
@@ -473,7 +473,7 @@ HWTEST_F(ApplicationDataManagerTest, ApplicationDataManager_NotifyAppTelemetry_0
     ApplicationDataManager::GetInstance().RegisterResourceObserver(
         params, callback);
 
-    ApplicationDataManager::GetInstance().NotifyAppTelemetry(ATLT_FD);
+    ApplicationDataManager::GetInstance().NotifyAppTelemetry(ATLT_FD, "");
 
     EXPECT_TRUE(gCallbackInvoked);
     EXPECT_EQ(gReceivedLeakType, ATLT_FD);
@@ -505,7 +505,7 @@ HWTEST_F(ApplicationDataManagerTest, ApplicationDataManager_NotifyAppTelemetry_0
     ApplicationDataManager::GetInstance().RegisterResourceObserver(
         params, callback);
 
-    ApplicationDataManager::GetInstance().NotifyAppTelemetry(ATLT_RSS_ARK_TS);
+    ApplicationDataManager::GetInstance().NotifyAppTelemetry(ATLT_RSS_ARK_TS, "");
 
     EXPECT_TRUE(gCallbackInvoked);
     EXPECT_EQ(gReceivedLeakType, ATLT_RSS_ARK_TS);
@@ -536,9 +536,9 @@ HWTEST_F(ApplicationDataManagerTest, ApplicationDataManager_NotifyAppTelemetry_0
     ApplicationDataManager::GetInstance().RegisterResourceObserver(
         params, callback);
 
-    ApplicationDataManager::GetInstance().NotifyAppTelemetry(ATLT_PSS);
-    ApplicationDataManager::GetInstance().NotifyAppTelemetry(ATLT_GPU);
-    ApplicationDataManager::GetInstance().NotifyAppTelemetry(ATLT_FD);
+    ApplicationDataManager::GetInstance().NotifyAppTelemetry(ATLT_PSS, "");
+    ApplicationDataManager::GetInstance().NotifyAppTelemetry(ATLT_GPU, "");
+    ApplicationDataManager::GetInstance().NotifyAppTelemetry(ATLT_FD, "");
 
     EXPECT_EQ(gCallbackCount, 3);
 
@@ -565,9 +565,9 @@ HWTEST_F(ApplicationDataManagerTest, ApplicationDataManager_NotifyAppTelemetry_0
     ApplicationDataManager::GetInstance().RegisterResourceObserver(
         params, callback);
 
-    std::thread t1([]() { ApplicationDataManager::GetInstance().NotifyAppTelemetry(ATLT_PSS); });
-    std::thread t2([]() { ApplicationDataManager::GetInstance().NotifyAppTelemetry(ATLT_PSS); });
-    std::thread t3([]() { ApplicationDataManager::GetInstance().NotifyAppTelemetry(ATLT_PSS); });
+    std::thread t1([]() { ApplicationDataManager::GetInstance().NotifyAppTelemetry(ATLT_PSS, ""); });
+    std::thread t2([]() { ApplicationDataManager::GetInstance().NotifyAppTelemetry(ATLT_PSS, ""); });
+    std::thread t3([]() { ApplicationDataManager::GetInstance().NotifyAppTelemetry(ATLT_PSS, ""); });
 
     t1.join();
     t2.join();
@@ -614,6 +614,153 @@ HWTEST_F(ApplicationDataManagerTest, ApplicationDataManager_AppTelemetryObject_0
     EXPECT_EQ(atObj.runningId, "test_running_id_12345");
 
     GTEST_LOG_(INFO) << "ApplicationDataManager_AppTelemetryObject_001 end";
+}
+
+/**
+* @tc.number: ApplicationDataManager_ParseGpuHookSize_001
+* @tc.name: ApplicationDataManager ParseGpuHookSize EmptyString
+* @tc.desc: Test ParseGpuHookSize with empty string
+*/
+HWTEST_F(ApplicationDataManagerTest, ApplicationDataManager_ParseGpuHookSize_001,
+         Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "ApplicationDataManager_ParseGpuHookSize_001 start";
+
+    GpuHookSize result = ApplicationDataManager::GetInstance().ParseGpuHookSize("");
+    EXPECT_TRUE(result.empty());
+
+    GTEST_LOG_(INFO) << "ApplicationDataManager_ParseGpuHookSize_001 end";
+}
+
+/**
+* @tc.number: ApplicationDataManager_ParseGpuHookSize_002
+* @tc.name: ApplicationDataManager ParseGpuHookSize InvalidJson
+* @tc.desc: Test ParseGpuHookSize with invalid JSON string
+*/
+HWTEST_F(ApplicationDataManagerTest, ApplicationDataManager_ParseGpuHookSize_002,
+         Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "ApplicationDataManager_ParseGpuHookSize_002 start";
+
+    GpuHookSize result = ApplicationDataManager::GetInstance().ParseGpuHookSize("invalid json");
+    EXPECT_TRUE(result.empty());
+
+    GTEST_LOG_(INFO) << "ApplicationDataManager_ParseGpuHookSize_002 end";
+}
+
+/**
+* @tc.number: ApplicationDataManager_ParseGpuHookSize_003
+* @tc.name: ApplicationDataManager ParseGpuHookSize ValidJson
+* @tc.desc: Test ParseGpuHookSize with valid JSON string
+*/
+HWTEST_F(ApplicationDataManagerTest, ApplicationDataManager_ParseGpuHookSize_003,
+         Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "ApplicationDataManager_ParseGpuHookSize_003 start";
+
+    std::string jsonStr = R"({"type1": {"first": [100, 200], "second": [300, 400]}})";
+    GpuHookSize result = ApplicationDataManager::GetInstance().ParseGpuHookSize(jsonStr);
+
+    EXPECT_EQ(result.size(), 1);
+    EXPECT_NE(result.find("type1"), result.end());
+    EXPECT_EQ(result["type1"].first.first, 100);
+    EXPECT_EQ(result["type1"].first.second, 200);
+    EXPECT_EQ(result["type1"].second.first, 300);
+    EXPECT_EQ(result["type1"].second.second, 400);
+
+    GTEST_LOG_(INFO) << "ApplicationDataManager_ParseGpuHookSize_003 end";
+}
+
+/**
+* @tc.number: ApplicationDataManager_ParseGpuHookSize_004
+* @tc.name: ApplicationDataManager ParseGpuHookSize MultipleTypes
+* @tc.desc: Test ParseGpuHookSize with multiple GPU types
+*/
+HWTEST_F(ApplicationDataManagerTest, ApplicationDataManager_ParseGpuHookSize_004,
+         Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "ApplicationDataManager_ParseGpuHookSize_004 start";
+
+    std::string jsonStr = R"({
+        "type1": {"first": [100, 200], "second": [300, 400]},
+        "type2": {"first": [500, 600], "second": [700, 800]},
+        "type3": {"first": [900, 1000], "second": [1100, 1200]}
+    })";
+    GpuHookSize result = ApplicationDataManager::GetInstance().ParseGpuHookSize(jsonStr);
+
+    EXPECT_EQ(result.size(), 3);
+    EXPECT_NE(result.find("type1"), result.end());
+    EXPECT_NE(result.find("type2"), result.end());
+    EXPECT_NE(result.find("type3"), result.end());
+
+    EXPECT_EQ(result["type1"].first.first, 100);
+    EXPECT_EQ(result["type1"].first.second, 200);
+    EXPECT_EQ(result["type2"].first.first, 500);
+    EXPECT_EQ(result["type2"].first.second, 600);
+    EXPECT_EQ(result["type3"].first.first, 900);
+    EXPECT_EQ(result["type3"].first.second, 1000);
+
+    GTEST_LOG_(INFO) << "ApplicationDataManager_ParseGpuHookSize_004 end";
+}
+
+/**
+* @tc.number: ApplicationDataManager_ParseGpuHookSize_005
+* @tc.name: ApplicationDataManager ParseGpuHookSize MalformedJson
+* @tc.desc: Test ParseGpuHookSize with malformed JSON (missing fields)
+*/
+HWTEST_F(ApplicationDataManagerTest, ApplicationDataManager_ParseGpuHookSize_005,
+         Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "ApplicationDataManager_ParseGpuHookSize_005 start";
+
+    std::string jsonStr = R"({"type1": {"first": [100, 200]}})";
+    GpuHookSize result = ApplicationDataManager::GetInstance().ParseGpuHookSize(jsonStr);
+    EXPECT_TRUE(result.empty());
+
+    jsonStr = R"({"type1": {"first": [100], "second": [300, 400]}})";
+    result = ApplicationDataManager::GetInstance().ParseGpuHookSize(jsonStr);
+    EXPECT_TRUE(result.empty());
+
+    jsonStr = R"({"type1": {"first": [100, 200], "second": [300]}})";
+    result = ApplicationDataManager::GetInstance().ParseGpuHookSize(jsonStr);
+    EXPECT_TRUE(result.empty());
+
+    GTEST_LOG_(INFO) << "ApplicationDataManager_ParseGpuHookSize_005 end";
+}
+
+/**
+* @tc.number: ApplicationDataManager_LogGpuHookSize_001
+* @tc.name: ApplicationDataManager LogGpuHookSize Empty
+* @tc.desc: Test LogGpuHookSize with empty data
+*/
+HWTEST_F(ApplicationDataManagerTest, ApplicationDataManager_LogGpuHookSize_001,
+         Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "ApplicationDataManager_LogGpuHookSize_001 start";
+
+    GpuHookSize gpuHookSize;
+    ApplicationDataManager::GetInstance().LogGpuHookSize(gpuHookSize);
+
+    GTEST_LOG_(INFO) << "ApplicationDataManager_LogGpuHookSize_001 end";
+}
+
+/**
+* @tc.number: ApplicationDataManager_LogGpuHookSize_002
+* @tc.name: ApplicationDataManager LogGpuHookSize ValidData
+* @tc.desc: Test LogGpuHookSize with valid data
+*/
+HWTEST_F(ApplicationDataManagerTest, ApplicationDataManager_LogGpuHookSize_002,
+         Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "ApplicationDataManager_LogGpuHookSize_002 start";
+
+    GpuHookSize gpuHookSize;
+    gpuHookSize["type1"] = {{100, 200}, {300, 400}};
+    gpuHookSize["type2"] = {{500, 600}, {700, 800}};
+
+    ApplicationDataManager::GetInstance().LogGpuHookSize(gpuHookSize);
+
+    GTEST_LOG_(INFO) << "ApplicationDataManager_LogGpuHookSize_002 end";
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

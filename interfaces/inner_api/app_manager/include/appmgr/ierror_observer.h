@@ -17,6 +17,8 @@
 #define OHOS_ABILITY_RUNTIME_IERROR_OBSERVER_H
 
 #include <string>
+#include <map>
+#include <utility>
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -46,6 +48,10 @@ enum AppTelemetryLeakType {
     ATLT_RSS_NATIVE_HEAP = 1 << static_cast<int>(LeakType::RSS_NATIVE_HEAP),
 };
 
+using Range = std::pair<uint64_t, uint64_t>;
+using HookSize = std::pair<Range, Range>;
+using GpuHookSize = std::map<std::string, HookSize>;
+
 struct LeakDetailInfo {
     unsigned long arktsSize = 0;
     unsigned long nativeSize = 0;
@@ -64,6 +70,7 @@ struct LeakObject {
 struct AppTelemetryObject {
     AppTelemetryLeakType atLeakType;
     std::string runningId;
+    GpuHookSize gpuHookSize;
 };
 
 class IErrorObserver {

@@ -76,8 +76,10 @@ private:
     static std::string GetFuncNameFromError(napi_env env, napi_value error);
     DISALLOW_COPY_AND_MOVE(ApplicationDataManager);
     bool WriteSandBoxXattr(RegisterResourceParams params);
-    void NotifyAppTelemetry(AppTelemetryLeakType atLeakType);
+    void NotifyAppTelemetry(AppTelemetryLeakType atLeakType, const std::string &gpuHookSizeStr);
     bool NotifyLeakObject(const LeakObject &leakObj);
+    GpuHookSize ParseGpuHookSize(const std::string &gpuHookSizeStr);
+    void LogGpuHookSize(const GpuHookSize &gpuHookSize);
     std::shared_ptr<IErrorObserver> errorObserver_;
     std::atomic_bool isUncatchable_;
     LeakObserverFunction leakObserver_ = nullptr;

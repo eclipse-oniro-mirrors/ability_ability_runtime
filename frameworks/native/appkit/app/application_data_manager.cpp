@@ -17,6 +17,7 @@
 
 #include <dfx_signal_handler.h>
 #include <sys/xattr.h>
+#include <nlohmann/json.hpp>
 #include "app_recovery.h"
 #include "hilog_tag_wrapper.h"
 #include "native_engine.h"
@@ -24,8 +25,9 @@
 namespace OHOS {
 namespace AppExecFwk {
 namespace {
-    constexpr size_t STACK_MAX_SZIE = 1024;
-    constexpr size_t AT_SKIP_SZIE = 3;
+    constexpr size_t STACK_MAX_SIZE = 1024;
+    constexpr size_t AT_SKIP_SIZE = 3;
+    constexpr size_t PAIR_SIZE = 2;
     constexpr const char* TASK_POOL_THREAD = "Taskpool Thread";
     constexpr const char *RSRC_OBSV_PATH = "/data/storage/el2/base/cache/rawheap";
     constexpr const char *RSRC_OBSV_XATTR = "user.resource_observer";
@@ -165,14 +167,14 @@ std::string ApplicationDataManager::GetFuncNameFromError(napi_env env, napi_valu
     }
 
     napi_value stack;
-    if (napi_get_named_property(env, error, "stack", &stack) != napi_ok ||stack == nullptr) {
+    if (napi_get_named_property(env, error, "stack", &stack) != napi_ok || stack == nullptr) {
         return TASK_POOL_THREAD;
     }
 
     std::string rawStack;
     size_t rawStackSize = 0;
     napi_get_value_string_utf8(env, stack, nullptr, 0, &rawStackSize);
-    rawStackSize = std::min(rawStackSize, STACK_MAX_SZIE);
+    rawStackSize = std::min(rawStackSize, STACK_MAX_SIZE);
     rawStack.reserve(rawStackSize + 1);
     rawStack.resize(rawStackSize);
     napi_get_value_string_utf8(env, stack, rawStack.data(), rawStack.size() + 1, &rawStackSize);
@@ -185,7 +187,7 @@ std::string ApplicationDataManager::GetFuncNameFromError(napi_env env, napi_valu
     if (endPos == std::string::npos) {
         return TASK_POOL_THREAD;
     }
-    size_t startPos = pos + AT_SKIP_SZIE;
+    size_t startPos = pos + AT_SKIP_SIZE;
     if (endPos <= startPos + 1) {
         return TASK_POOL_THREAD;
     }
@@ -230,7 +232,7 @@ bool ApplicationDataManager::NotifyUncaughtException(const ExceptionParams &para
             }
             napi_valuetype valueType = napi_undefined;
             napi_typeof(napiEnv, valueStr, &valueType);
- 
+
             if (valueType == napi_string) {
                 size_t nameSize = 0;
                 napi_get_value_string_utf8(napiEnv, valueStr, nullptr, 0, &nameSize);
@@ -270,7 +272,6 @@ void ApplicationDataManager::RegisterHasOnErrorCallback(HasOnErrorCallback hasOn
     std::lock_guard<std::mutex> lock(hasOnErrorCallbackMutex_);
     hasOnErrorCallback_ = hasOnErrorCallback;
 }
-
 
 bool ApplicationDataManager::GetHasOnErrorCallback()
 {
@@ -317,23 +318,104 @@ bool ApplicationDataManager::WriteSandBoxXattr(RegisterResourceParams params)
     threshold = std::to_string(params.thresholdRNH);
     ret = ret && (setxattr(RSRC_OBSV_PATH, RSRC_OBSV_TRSHD_XATTR_RNH, threshold.c_str(), threshold.length(), 0) == 0);
     if (!ret) {
-        TAG_LOGE(AAFwkTag::APPKIT, "failed write threshold, path: %{public}s, err: %{public}s",
-                 RSRC_OBSV_PATH, strerror(errno));
+        TAG_LOGE(AAFwkTag::APPKIT, "failed write threshold, path: %{public}s, err: %{public}s", RSRC_OBSV_PATH,
+                 strerror(errno));
     }
     return ret;
 }
- 
-void ApplicationDataManager::NotifyAppTelemetry(AppTelemetryLeakType atLeakType)
+
+GpuHookSize ApplicationDataManager::ParseGpuHookSize(const std::string &gpuHookSizeStr)
 {
+    GpuHookSize gpuHookSize;
+
+    if (gpuHookSizeStr.empty()) {
+        return gpuHookSize;
+    }
+
+    constexpr size_t MAX_GPU_HOOK_SIZE_STR_LEN = 4096;
+    constexpr size_t MAX_GPU_HOOK_ENTRIES = 64;
+    if (gpuHookSizeStr.size() > MAX_GPU_HOOK_SIZE_STR_LEN) {
+        TAG_LOGE(AAFwkTag::APPKIT, "gpuHookSize string too long: %{public}zu", gpuHookSizeStr.size());
+        return gpuHookSize;
+    }
+
+    nlohmann::json jsonObj;
+    try {
+        jsonObj = nlohmann::json::parse(gpuHookSizeStr);
+        for (auto it = jsonObj.begin(); it != jsonObj.end(); ++it) {
+            const std::string &type = it.key();
+            const auto &typeObj = it.value();
+
+            if (!typeObj.contains("first") || !typeObj.contains("second")) {
+                continue;
+            }
+
+            if (!typeObj["first"].is_array() || !typeObj["second"].is_array()) {
+                continue;
+            }
+
+            if (typeObj["first"].size() != PAIR_SIZE || typeObj["second"].size() != PAIR_SIZE) {
+                continue;
+            }
+
+            if (!typeObj["first"][0].is_number_unsigned() || !typeObj["first"][1].is_number_unsigned() ||
+                !typeObj["second"][0].is_number_unsigned() || !typeObj["second"][1].is_number_unsigned()) {
+                TAG_LOGE(AAFwkTag::APPKIT, "Invalid gpuHookSize type %{public}s: array elements must unsigned numbers",
+                         type.c_str());
+                continue;
+            }
+
+            Range firstRange = {typeObj["first"][0].get<uint64_t>(), typeObj["first"][1].get<uint64_t>()};
+            Range secondRange = {typeObj["second"][0].get<uint64_t>(), typeObj["second"][1].get<uint64_t>()};
+            gpuHookSize[type] = HookSize{firstRange, secondRange};
+        }
+    } catch (const nlohmann::json::exception &e) {
+        TAG_LOGE(AAFwkTag::APPKIT, "Failed to parse gpuHookSize json: %{public}s", e.what());
+        return gpuHookSize;
+    }
+
+    return gpuHookSize;
+}
+
+void ApplicationDataManager::LogGpuHookSize(const GpuHookSize &gpuHookSize)
+{
+    if (!HiLogIsLoggable(static_cast<uint32_t>(AAFwkTag::APPKIT), GetTagInfoFromDomainId(AAFwkTag::APPKIT),
+                         LOG_DEBUG)) {
+        return;
+    }
+    if (gpuHookSize.empty()) {
+        TAG_LOGD(AAFwkTag::APPKIT, "gpuHookSize is empty");
+        return;
+    }
+
+    for (const auto &entry : gpuHookSize) {
+        const std::string &type = entry.first;
+        const HookSize &hookSize = entry.second;
+        const Range &firstRange = hookSize.first;
+        const Range &secondRange = hookSize.second;
+        TAG_LOGD(
+            AAFwkTag::APPKIT, "gpuHookSize type: %{public}s, first: [%{public}" PRIu64 ", %{public}" PRIu64
+            "], second: [%{public}" PRIu64 ", %{public}" PRIu64 "]",
+            type.c_str(), static_cast<uint64_t>(firstRange.first), static_cast<uint64_t>(firstRange.second),
+            static_cast<uint64_t>(secondRange.first), static_cast<uint64_t>(secondRange.second));
+    }
+}
+
+void ApplicationDataManager::NotifyAppTelemetry(AppTelemetryLeakType atLeakType, const std::string &gpuHookSizeStr)
+{
+    GpuHookSize gpuHookSize = ParseGpuHookSize(gpuHookSizeStr);
+    LogGpuHookSize(gpuHookSize);
     std::lock_guard<std::mutex> lock(resourceMutex_);
     if (resourceOverlimitCB_ == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "resourceOverlimitCB_ is nullptr");
         return;
     }
-    AppTelemetryObject atObj {
+    AppTelemetryObject atObj{
         .atLeakType = atLeakType,
         .runningId = DFX_GetAppRunningUniqueId(),
+        .gpuHookSize = gpuHookSize,
     };
+
     TAG_LOGI(AAFwkTag::APPKIT, "start callback resource overlimit");
     resourceOverlimitCB_(atObj);
 }
@@ -344,7 +426,7 @@ void ApplicationDataManager::NotifyAppFault(const FaultData &faultData)
         return;
     }
     if (faultData.faultType == FaultDataType::APP_TELEMETRY) {
-        NotifyAppTelemetry(faultData.atLeakType);
+        NotifyAppTelemetry(faultData.atLeakType, faultData.gpuHookSize);
         return;
     }
     if (faultData.faultType == FaultDataType::RESOURCE_CONTROL) {
