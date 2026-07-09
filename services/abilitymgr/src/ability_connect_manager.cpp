@@ -2620,7 +2620,7 @@ std::string AbilityConnectManager::GetServiceKey(const std::shared_ptr<BaseExten
         serviceKey = serviceKey + std::to_string(service->GetIntParam(FRS_APP_INDEX, 0));
     } else if (service->GetAbilityInfo().extensionAbilityType == AppExecFwk::ExtensionAbilityType::AGENT &&
         service->GetWant().GetIntParam(AgentRuntime::AGENT_CARD_TYPE_KEY, -1) !=
-            static_cast<int32_t>(AgentRuntime::AgentCardType::LOW_CODE)) {
+        static_cast<int32_t>(AgentRuntime::AgentCardType::LOW_CODE)) {
         serviceKey = serviceKey + service->GetStringParam(AgentRuntime::AGENTID_KEY);
     } else if (service->GetAbilityInfo().extensionAbilityType ==
                AppExecFwk::ExtensionAbilityType::MODULAR_OBJECT) {
@@ -3027,18 +3027,32 @@ void AbilityConnectManager::MoveToTerminatingMap(const std::shared_ptr<BaseExten
     std::lock_guard lock(serviceMapMutex_);
     terminatingExtensionList_.push_back(abilityRecord);
     std::string serviceKey = GetServiceKey(abilityRecord);
+    // Cross-ref token/recordId with ScheduleDisconnectAbilityDone to confirm low-code host's shared token teardown
+    TAG_LOGI(AAFwkTag::EXT, "MoveToTerminatingMap: recordId=%{public}d bundle=%{public}s ability=%{public}s",
+        abilityRecord->GetRecordId(), abilityRecord->GetInfoBundleName().c_str(),
+        abilityRecord->GetInfoAbilityName().c_str());
     NotifyExtensionTerminated(abilityRecord);
-    if (serviceMap_.erase(serviceKey) == 0) {
+    // Identity-guarded erase: only erase slot held by THIS record. GetServiceKey(record) may differ from its
+    // AddToServiceMap key (host LOW_CODE -> bare URI vs AbilityRequest cardType); erasing the wrong key evicts an
+    // alive sibling's slot, orphaning its token so later ScheduleDisconnectAbilityDone fails VerificationAllToken
+    auto slotIt = serviceMap_.find(serviceKey);
+    if (slotIt != serviceMap_.end()) {
+        if (slotIt->second == abilityRecord) {
+            serviceMap_.erase(slotIt);
+        } else {
+            TAG_LOGW(AAFwkTag::EXT, "phantom key skip: serviceKey=%{public}s held by a different record "
+                "(terminating recordId=%{public}d); erase skipped to keep the alive sibling",
+                serviceKey.c_str(), abilityRecord->GetRecordId());
+        }
+    } else {
         TAG_LOGW(AAFwkTag::EXT, "Unknown: %{public}s/%{public}s",
-            abilityRecord->GetInfoBundleName().c_str(),
-            abilityRecord->GetInfoAbilityName().c_str());
+            abilityRecord->GetInfoBundleName().c_str(), abilityRecord->GetInfoAbilityName().c_str());
     }
     TAG_LOGD(AAFwkTag::EXT, "ServiceMap remove, size:%{public}zu", serviceMap_.size());
     AbilityCacheManager::GetInstance().Remove(abilityRecord);
     if (IsSpecialAbility(abilityRecord->GetAbilityInfo())) {
         TAG_LOGI(AAFwkTag::EXT, "moving ability: %{public}s/%{public}s",
-            abilityRecord->GetInfoBundleName().c_str(),
-            abilityRecord->GetInfoAbilityName().c_str());
+            abilityRecord->GetInfoBundleName().c_str(), abilityRecord->GetInfoAbilityName().c_str());
     }
 }
 
@@ -3402,8 +3416,7 @@ void AbilityConnectManager::GetOrCreateServiceRecord(const AbilityRequest &abili
     if (noReuse && targetService) {
         if (IsSpecialAbility(abilityRequest.abilityInfo)) {
             TAG_LOGI(AAFwkTag::EXT, "removing ability: %{public}s/%{public}s",
-                element.GetBundleName().c_str(),
-                element.GetAbilityName().c_str());
+                element.GetBundleName().c_str(), element.GetAbilityName().c_str());
         }
         RemoveServiceFromMapSafe(serviceKey);
     }

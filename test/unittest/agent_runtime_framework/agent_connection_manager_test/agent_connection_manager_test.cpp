@@ -120,6 +120,7 @@ void AgentConnectionManagerTest::SetUp(void)
     MyFlag::onAbilityDisconnectDoneCount = 0;
     MyFlag::isOnAbilityConnectDoneCalled = false;
     MyFlag::isOnAbilityDisconnectDoneCalled = false;
+    MyFlag::reportConnectionLeakEventCount = 0;
 }
 
 void AgentConnectionManagerTest::TearDown(void)
@@ -783,6 +784,107 @@ HWTEST_F(AgentConnectionManagerTest, AgentConnection_OnAbilityDisconnectDone_004
     connection->OnAbilityDisconnectDone(element, resultCode);
 
     EXPECT_TRUE(MyFlag::isOnAbilityDisconnectDoneCalled);
+    EXPECT_EQ(connection->GetConnectionState(), CONNECTION_STATE_DISCONNECTED);
+}
+
+/**
+* @tc.name  : OnAbilityConnectDone_ShouldSetDisconnected_WhenResultCodeIsFailure
+* @tc.number: AgentConnection_OnAbilityConnectDone_005
+* @tc.desc  : Test OnAbilityConnectDone tears down as DISCONNECTED on a non-OK result code
+*/
+HWTEST_F(AgentConnectionManagerTest, AgentConnection_OnAbilityConnectDone_005, TestSize.Level1)
+{
+    Want want;
+    want.SetParam(AGENTID_KEY, std::string("testAgent"));
+    want.SetElementName("", "test.bundle", "test.ability", "test.module");
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+
+    sptr<MockAbilityConnectCallback> callback1 = new MockAbilityConnectCallback();
+    sptr<MockAbilityConnectCallback> callback2 = new MockAbilityConnectCallback();
+    AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want, callback1);
+    AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want, callback2);
+
+    sptr<AgentConnection> connection =
+        AgentConnectionManager::GetInstance().agentConnections_.begin()->first.agentConnection;
+
+    AppExecFwk::ElementName element;
+    element.SetBundleName("test.bundle");
+    sptr<IRemoteObject> remoteObj = sptr<MockIRemoteObject>::MakeSptr();
+    // A non-OK result code models a connect that failed before establishing.
+    int32_t resultCode = 16000050;
+
+    MyFlag::isOnAbilityConnectDoneCalled = false;
+    connection->OnAbilityConnectDone(element, remoteObj, resultCode);
+
+    // G4: non-OK result must NOT mark CONNECTED; stale record would replay failure to later connects
+    // via HandleExistingConnectionLocked -> tear down DISCONNECTED.
+    EXPECT_TRUE(MyFlag::isOnAbilityConnectDoneCalled);
+    EXPECT_EQ(connection->GetConnectionState(), CONNECTION_STATE_DISCONNECTED);
+    EXPECT_EQ(connection->GetResultCode(), resultCode);
+}
+
+/**
+* @tc.name  : OnAbilityDisconnectDone_ShouldReportLeak_WhenConnectionWasEstablished
+* @tc.number: AgentConnection_OnAbilityDisconnectDone_005
+* @tc.desc  : Test OnAbilityDisconnectDone reports a leak when DIED arrives after the connection was established
+*/
+HWTEST_F(AgentConnectionManagerTest, AgentConnection_OnAbilityDisconnectDone_005, TestSize.Level1)
+{
+    Want want;
+    want.SetParam(AGENTID_KEY, std::string("testAgent"));
+    want.SetElementName("", "test.bundle", "test.ability", "test.module");
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+    AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want, callback);
+
+    sptr<AgentConnection> connection =
+        AgentConnectionManager::GetInstance().agentConnections_.begin()->first.agentConnection;
+    // Simulate an established connection before the target died.
+    connection->SetConnectionState(CONNECTION_STATE_CONNECTED);
+
+    AppExecFwk::ElementName element;
+    element.SetBundleName("test.bundle");
+    int32_t resultCode = DIED;
+
+    MyFlag::reportConnectionLeakEventCount = 0;
+    connection->OnAbilityDisconnectDone(element, resultCode);
+
+    // G3: established connection died before explicit disconnect -> report leak for attribution.
+    EXPECT_EQ(MyFlag::reportConnectionLeakEventCount, 1);
+    EXPECT_TRUE(AgentConnectionManager::GetInstance().agentConnections_.empty());
+    EXPECT_EQ(connection->GetConnectionState(), CONNECTION_STATE_DISCONNECTED);
+}
+
+/**
+* @tc.name  : OnAbilityDisconnectDone_ShouldNotReportLeak_WhenConnectNeverEstablished
+* @tc.number: AgentConnection_OnAbilityDisconnectDone_006
+* @tc.desc  : No leak when DIED arrives before connect established (connect timeout)
+*/
+HWTEST_F(AgentConnectionManagerTest, AgentConnection_OnAbilityDisconnectDone_006, TestSize.Level1)
+{
+    Want want;
+    want.SetParam(AGENTID_KEY, std::string("testAgent"));
+    want.SetElementName("", "test.bundle", "test.ability", "test.module");
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+    AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want, callback);
+
+    sptr<AgentConnection> connection =
+        AgentConnectionManager::GetInstance().agentConnections_.begin()->first.agentConnection;
+    // Still CONNECTING (never established) when target dies/times out.
+
+    AppExecFwk::ElementName element;
+    element.SetBundleName("test.bundle");
+    int32_t resultCode = DIED;
+
+    MyFlag::reportConnectionLeakEventCount = 0;
+    connection->OnAbilityDisconnectDone(element, resultCode);
+
+    // G3: target died before connect established (connect failure, not a leak); no leak reported.
+    EXPECT_EQ(MyFlag::reportConnectionLeakEventCount, 0);
+    EXPECT_TRUE(AgentConnectionManager::GetInstance().agentConnections_.empty());
     EXPECT_EQ(connection->GetConnectionState(), CONNECTION_STATE_DISCONNECTED);
 }
 

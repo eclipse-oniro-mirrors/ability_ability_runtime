@@ -20,6 +20,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <vector>
 
 #include "ability_connect_callback.h"
@@ -98,8 +99,17 @@ void FindAgentConnection(napi_env env, const AAFwk::Want &want, napi_value callb
 void FindAgentConnectionCandidatesByTarget(napi_env env, const AAFwk::Want &want, napi_value callback,
     std::vector<sptr<JSAgentConnection>> &candidates);
 
-void FindAgentConnectionByTargetAndCardType(napi_env env, const AAFwk::Want &want, napi_value callback,
-    int32_t agentCardType, sptr<JSAgentConnection> &connection);
+/**
+ * Existing low-code host connection reusable for a different AgentId.
+ * Same-AgentId duplicates use FindAgentConnection.
+ */
+void FindReusableLowCodeAgentConnection(napi_env env, const AAFwk::Want &want, napi_value callback,
+    sptr<JSAgentConnection> &connection);
+
+/**
+ * Mirrors an AgentManagerService low-code completion into the local JS connection registry.
+ */
+void CompleteLowCodeAgent(const std::string &agentId);
 }
 
 class JsAgentConnectorStubImpl;
@@ -111,7 +121,9 @@ class JsAgentConnectorStubImpl;
  */
 class JSAgentConnection : public AbilityRuntime::AbilityConnectCallback {
 public:
-    using DisconnectCompleteHandler = std::function<void(const sptr<JSAgentConnection>&)>;
+    using DisconnectCompleteHandler = std::function<void(const wptr<JSAgentConnection>&)>;
+    using ConnectCompleteHandler =
+        std::function<void(napi_env env, napi_value proxy, const wptr<JSAgentConnection>&)>;
 
     /**
      * Constructor.
@@ -187,8 +199,20 @@ public:
 
     void AddReconnectPendingTask(const AAFwk::Want &want, std::unique_ptr<AbilityRuntime::NapiAsyncTask> &task);
 
-    bool TakeReconnectPendingTasks(AAFwk::Want &want,
+    // every queued reconnect keeps its own Want; drain registers each non-first AgentId.
+    bool TakeReconnectPendingTasks(std::vector<AAFwk::Want> &wants,
         std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> &tasks);
+
+    // non-first low-code reconnects staged for Reuse after the fresh host connects.
+    void AddPendingLowCodeReuseTask(const AAFwk::Want &want, std::unique_ptr<AbilityRuntime::NapiAsyncTask> task);
+    bool TakePendingLowCodeReuseTasks(std::vector<AAFwk::Want> &wants,
+        std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> &tasks);
+    void RejectPendingLowCodeReuseTasks(napi_env env, napi_value error);
+
+    // Reject primary/duplicated/staged low-code tasks, clear primary async task, remove connection.
+    // Public: DoConnectAgentExtensionAbility (js_agent_manager.cpp) rejects staged reuse on AgentManagerService
+    // connect failure.
+    void RejectConnectAndCleanup(napi_env env, napi_value error, bool hasPrimaryTask);
 
     void AdoptDuplicatedPendingTasks(std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> &&tasks);
 
@@ -207,6 +231,17 @@ public:
      * @param error The error object to reject with.
      */
     void RejectDuplicatedPendingTask(napi_env env, napi_value error);
+
+    // Isolated low-code without-proxy reuse slots (different AgentId on a connecting host). Separate from
+    // duplicatedPendingTaskList_: a failed reuse rejects only its own task, never a sibling's.
+    void AddLowCodeProxyReuseTask(std::shared_ptr<AbilityRuntime::NapiAsyncTask> task);
+    // Reject only the given task (by identity) and erase it; never touches sibling reuses.
+    void RejectLowCodeProxyReuseTask(napi_env env, napi_value error,
+        const std::shared_ptr<AbilityRuntime::NapiAsyncTask> &task);
+    // Resolve all waiting low-code reuse tasks with the proxy (host just connected) and clear.
+    void ResolveLowCodeProxyReuseTasks(napi_env env, napi_value proxy);
+    // Reject all waiting low-code reuse tasks (host connect failed) and clear.
+    void RejectLowCodeProxyReuseTasks(napi_env env, napi_value error);
 
     /**
      * Called when agent extension sends data.
@@ -298,7 +333,31 @@ public:
 
     bool IsDisconnecting();
 
+    /**
+     * Insert a low-code AgentId on this shared host. True only if newly inserted; failed reuse rolls back
+     * without touching siblings.
+     */
+    bool AddLowCodeAgentId(const std::string &agentId);
+
+    /**
+     * Remove one low-code AgentId. True if it was the last active one on this connection.
+     */
+    bool RemoveLowCodeAgentId(const std::string &agentId);
+
+    /**
+     * Whether this connection owns the given low-code AgentId.
+     */
+    bool HasLowCodeAgentId(const std::string &agentId);
+
+    /**
+     * Whether this connection still has any active low-code AgentId.
+     */
+    bool HasAnyLowCodeAgentId();
+
     void SetDisconnectCompleteHandler(DisconnectCompleteHandler handler);
+
+    // invoked from HandleOnAbilityConnectDone to register staged non-first AgentIds via Reuse.
+    void SetConnectCompleteHandler(ConnectCompleteHandler handler);
 
     /**
      * Release a native reference.
@@ -323,6 +382,12 @@ private:
         const sptr<IRemoteObject> &remoteObject, int resultCode);
 
     void HandleOnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int resultCode);
+
+    // Returns true when the connect flow must abort (no pending task, or result failure).
+    bool AbortOnConnectError(napi_env env, int resultCode, bool hasPrimaryTask, bool hasDuplicatedPendingTask);
+    // Build the JS receiver proxy for the just-connected host; nullptr (after cleanup) on failure.
+    napi_value BuildAgentReceiverProxy(napi_env env, const sptr<IRemoteObject> &remoteObject,
+        bool hasPrimaryTask);
 
 protected:
     napi_env env_;
@@ -354,12 +419,19 @@ private:
      * List of pending tasks for duplicate connection requests.
      */
     std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> duplicatedPendingTaskList_;
+    // low-code reuse tasks awaiting host proxy; shared_ptr so Reuse complete callback and container co-own
+    // (reject-by-identity).
+    std::vector<std::shared_ptr<AbilityRuntime::NapiAsyncTask>> lowCodeProxyReuseTasks_;
 
     std::mutex stateLock_;
     bool disconnecting_ = false;
-    AAFwk::Want reconnectWant_;
+    std::set<std::string> lowCodeAgentIds_;
+    std::vector<AAFwk::Want> reconnectWants_;
     std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> reconnectPendingTaskList_;
+    std::vector<AAFwk::Want> pendingLowCodeReuseWants_;
+    std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> pendingLowCodeReuseTaskList_;
     DisconnectCompleteHandler disconnectCompleteHandler_;
+    ConnectCompleteHandler connectCompleteHandler_;
 };
 
 } // namespace AgentRuntime

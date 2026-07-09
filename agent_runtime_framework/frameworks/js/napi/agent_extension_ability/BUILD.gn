@@ -66,6 +66,7 @@ ohos_shared_library("js_agent_connection") {
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ability_runtime",
     "${ability_runtime_services_path}/common/include",
     "${agent_runtime_framework_path}/frameworks/native/agent_extension/include",
+    "${agent_runtime_framework_path}/interfaces/inner_api/include",
     "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
   ]
 
@@ -81,6 +82,7 @@ ohos_shared_library("js_agent_connection") {
     "${ability_runtime_napi_path}/inner/napi_common:napi_common",
     "${ability_runtime_native_path}/ability/native:ability_business_error",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
+    "${agent_runtime_framework_path}/interfaces/inner_api:agent_fwk",
     "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection:agent_extension_connection",
   ]
 

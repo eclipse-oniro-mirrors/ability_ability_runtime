@@ -14,6 +14,7 @@
  */
 
 #include "connection_manager.h"
+#include "mock_my_flag.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -24,6 +25,8 @@ ConnectionManager &ConnectionManager::GetInstance()
 }
 
 void ConnectionManager::ReportConnectionLeakEvent(const int pid, const int tid)
-{}
+{
+    OHOS::AgentRuntime::MyFlag::reportConnectionLeakEventCount++;
+}
 } // namespace AbilityRuntime
 } // namespace OHOS

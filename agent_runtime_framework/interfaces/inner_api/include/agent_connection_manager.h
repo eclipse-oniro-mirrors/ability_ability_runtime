@@ -83,7 +83,6 @@ struct AgentConnectionInfo {
         auto now = std::chrono::steady_clock::now().time_since_epoch();
         connectingTime = std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
     }
-
 };
 
 using AgentConnectionRecord =
