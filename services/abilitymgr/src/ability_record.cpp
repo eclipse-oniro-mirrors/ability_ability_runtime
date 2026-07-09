@@ -1003,7 +1003,8 @@ void AbilityRecord::SetAbilityStateInner(AbilityState state)
             int32_t persistentId = sessionInfo->persistentId;
             switch (state) {
                 case AbilityState::BACKGROUNDING: {
-                    ret = collaborator->NotifyMoveMissionToBackground(persistentId, GetOwnerMissionUserId());
+                    ret = collaborator->NotifyMoveMissionToBackground(persistentId, GetOwnerMissionUserId(),
+                        isFromScreenOffBackground_);
                     break;
                 }
                 case AbilityState::TERMINATING: {
@@ -1024,7 +1025,8 @@ void AbilityRecord::SetAbilityStateInner(AbilityState state)
                 break;
             }
             case AbilityState::BACKGROUNDING: {
-                ret = collaborator->NotifyMoveMissionToBackground(missionId_, GetOwnerMissionUserId());
+                ret = collaborator->NotifyMoveMissionToBackground(missionId_, GetOwnerMissionUserId(),
+                    isFromScreenOffBackground_);
                 break;
             }
             case AbilityState::TERMINATING: {
