@@ -938,9 +938,12 @@ void AgentManagerService::HandleAgentHostConnectDone(const AgentHostConnectDoneR
 void AgentManagerService::HandleAgentHostDisconnectDone(const AgentHostDisconnectDoneRequest &request)
 {
     auto result = AgentConnectManager::GetInstance().HandleAgentHostDisconnectDone(request);
-    if (result.releaseConnection && result.callback != nullptr) {
-        result.callback->OnAbilityDisconnectDone(request.element, request.resultCode);
-        AgentConnectManager::GetInstance().HandleConnectionDone(result.callback, request.resultCode, true);
+    for (const auto &callback : result.callbacks) {
+        if (callback == nullptr) {
+            continue;
+        }
+        callback->OnAbilityDisconnectDone(request.element, request.resultCode);
+        AgentConnectManager::GetInstance().HandleConnectionDone(callback, request.resultCode, true);
     }
     ScheduleNextLowCodeHostDisconnect(request.hostKey);
 }

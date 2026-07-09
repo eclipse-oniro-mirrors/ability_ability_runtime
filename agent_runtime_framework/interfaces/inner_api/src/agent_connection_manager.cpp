@@ -53,9 +53,15 @@ void AgentConnection::OnAbilityConnectDone(
             return;
         }
 
-        SetRemoteObject(remoteObject);
         SetResultCode(resultCode);
-        SetConnectionState(CONNECTION_STATE_CONNECTED);
+        if (resultCode == ERR_OK) {
+            SetRemoteObject(remoteObject);
+            SetConnectionState(CONNECTION_STATE_CONNECTED);
+        } else {
+            // Connect failed before establishing: mark DISCONNECTED, not CONNECTED; a stale CONNECTED record
+            // replays the failure via HandleExistingConnectionLocked.
+            SetConnectionState(CONNECTION_STATE_DISCONNECTED);
+        }
     }
     sptr<AgentConnection> connection(this);
     if (AgentConnectionManager::GetInstance().DisconnectNonexistentService(element, connection)) {
@@ -76,8 +82,11 @@ void AgentConnection::OnAbilityDisconnectDone(const AppExecFwk::ElementName &ele
         "OnAbilityDisconnectDone, bundleName:%{public}s, abilityName:%{public}s, resultCode:%{public}d",
         element.GetBundleName().c_str(), element.GetAbilityName().c_str(), resultCode);
     std::vector<sptr<AbilityConnectCallback>> callbacks;
+    bool priorEstablished = false;
     {
         std::lock_guard<std::mutex> lock(agentMutex_);
+        // Track if connection was CONNECTED before teardown (timed-out / target-died-before-connect never was).
+        priorEstablished = GetConnectionState() == CONNECTION_STATE_CONNECTED;
         SetConnectionState(CONNECTION_STATE_DISCONNECTED);
         callbacks = GetCallbackList();
         TAG_LOGI(AAFwkTag::SER_ROUTER,
@@ -94,8 +103,15 @@ void AgentConnection::OnAbilityDisconnectDone(const AppExecFwk::ElementName &ele
         sptr<AgentConnection> connection(this);
         bool ret = AgentConnectionManager::GetInstance().RemoveConnection(connection);
         if (ret) {
-            ConnectionManager::GetInstance().ReportConnectionLeakEvent(getpid(), gettid());
-            TAG_LOGI(AAFwkTag::SER_ROUTER, "not disconnected");
+            if (priorEstablished) {
+                // Established connection, target died before explicit disconnect: report leak for attribution.
+                ConnectionManager::GetInstance().ReportConnectionLeakEvent(getpid(), gettid());
+                TAG_LOGI(AAFwkTag::SER_ROUTER, "not disconnected");
+            } else {
+                // Target died/timed out before connect established: connect failure, not an
+                // established-connection leak.
+                TAG_LOGI(AAFwkTag::SER_ROUTER, "connect failed before established");
+            }
         }
         resultCode = DIED + 1;
     }

@@ -27,6 +27,7 @@ int32_t MyFlag::onAbilityConnectDoneCount = 0;
 int32_t MyFlag::onAbilityDisconnectDoneCount = 0;
 bool MyFlag::isOnAbilityConnectDoneCalled = false;
 bool MyFlag::isOnAbilityDisconnectDoneCalled = false;
+int32_t MyFlag::reportConnectionLeakEventCount = 0;
 
 AgentManagerClient &AgentManagerClient::GetInstance()
 {
