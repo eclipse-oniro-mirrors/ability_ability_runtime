@@ -67,7 +67,6 @@ ohos_shared_library("mission_manager") {
     "ability_base:want",
     "bundle_framework:appexecfwk_base",
     "c_utils:utils",
-    "c_utils:utilsbase",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
     "image_framework:image_native",
