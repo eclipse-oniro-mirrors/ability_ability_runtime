@@ -39,6 +39,8 @@ constexpr const char* ERR_CODE = "errCode";
 constexpr const char* VIEW_DATA = "viewData";
 constexpr const char* TYPE = "type";
 constexpr const char* TRIGGER_TYPE = "triggerType";
+constexpr const int32_t MinPublicAutoFillType = static_cast<int32_t>(AbilityBase::AutoFillType::UNSPECIFIED);
+constexpr const int32_t MaxPublicAutoFillType = static_cast<int32_t>(AbilityBase::AutoFillType::NEW_PASSWORD);
 }
 using namespace AppExecFwk;
 
@@ -218,7 +220,8 @@ bool UnwrapPageNodeInfo(napi_env env, napi_value jsValue, AbilityBase::PageNodeI
     }
 
     int32_t int32Value = 0;
-    if (!UnwrapInt32ByPropertyName(env, jsValue, AUTO_FILL_TYPE, int32Value)) {
+    if (!UnwrapInt32ByPropertyName(env, jsValue, AUTO_FILL_TYPE, int32Value) || int32Value < MinPublicAutoFillType ||
+        int32Value > MaxPublicAutoFillType) {
         TAG_LOGE(AAFwkTag::AUTOFILLMGR, "parameter error");
         errorMsg = "Parameter error. The type of pageNodeInfo.autoFillType must be AutoFillType";
         return false;
@@ -325,8 +328,9 @@ bool UnwrapFillRequest(napi_env env, napi_value jsValue, AutoFill::AutoFillReque
         return false;
     }
 
-    int32_t int32Value;
-    if (!UnwrapInt32ByPropertyName(env, jsValue, TYPE, int32Value)) {
+    int32_t int32Value = 0;
+    if (!UnwrapInt32ByPropertyName(env, jsValue, TYPE, int32Value) || int32Value < MinPublicAutoFillType ||
+        int32Value > MaxPublicAutoFillType) {
         TAG_LOGE(AAFwkTag::AUTOFILLMGR, "parameter error");
         errorMsg = "Parameter error. The type of request.autoFillType must be AutoFillType";
         return false;

@@ -36,9 +36,10 @@ constexpr static char WANT_PARAMS_EXTENSION_TYPE_KEY[] = "ability.want.params.ui
 constexpr static char WANT_PARAMS_AUTO_FILL_TYPE_KEY[] = "ability.want.params.AutoFillType";
 constexpr static char AUTO_FILL_MANAGER_THREAD[] = "AutoFillManager";
 constexpr static uint32_t AUTO_FILL_REQUEST_TIME_OUT_VALUE = 1000;
-constexpr static uint32_t AUTO_FILL_UI_EXTENSION_SESSION_ID_INVALID = 0;
+constexpr static int32_t AUTO_FILL_UI_EXTENSION_SESSION_ID_INVALID = -1;
 constexpr static uint32_t MILL_TO_MICRO = 1000;
 constexpr static char WANT_PARAMS_AUTO_FILL_TRIGGER_TYPE_KEY[] = "ability.want.params.AutoFillTriggerType";
+constexpr static int32_t NODE_ID_INVALID = -1;
 #endif //SUPPORT_GRAPHICS
 } // namespace
 #ifdef SUPPORT_GRAPHICS
@@ -210,6 +211,13 @@ int32_t AutoFillManager::CreateAutoFillExtension(Ace::UIContent *uiContent,
         AutoFillManagerUtil::ConvertToPopupUIExtensionConfig(request.config, popupConfig);
         if (!isSmartAutoFill) {
             popupConfig.isAutoCancel = false;
+        }
+        // set nodeId to 0 when config nodeId invalid
+        if (popupConfig.nodeId == NODE_ID_INVALID) {
+            popupConfig.nodeId = 0;
+        }
+        if (!popupConfig.targetSize.has_value()) {
+            popupConfig.targetSize = {};
         }
         sessionId = uiContent->CreateCustomPopupUIExtension(want, callback, popupConfig);
     } else if (autoFillWindowType == AutoFill::AutoFillWindowType::MODAL_WINDOW) {
