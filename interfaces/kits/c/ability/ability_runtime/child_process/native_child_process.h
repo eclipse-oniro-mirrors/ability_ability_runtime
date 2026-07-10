@@ -163,8 +163,7 @@ Ability_ChildProcessConfigs* OH_Ability_CreateChildProcessConfigs();
  *
  * @param configs Pointer to the child process configs object to be destroyed.
  * After this call, the pointer becomes invalid and must not be used.
- * Passing nullptr is allowed and will be ignored.
- * @return Returns {@link NCP_NO_ERROR} if the operation is successful or if the input is nullptr.
+ * @return Returns {@link NCP_NO_ERROR} if the operation is successful.
  *         Returns {@link NCP_ERR_INVALID_PARAM} if the input parameters are invalid.
  * @since 20
  */
@@ -225,9 +224,9 @@ Ability_NativeChildProcess_ErrCode OH_Ability_ChildProcessConfigs_SetProcessName
  * a valid IPC stub pointer.\n
  * For details, see {@link Ability_NativeChildProcess_ErrCode}.
  * @param remoteProxy Pointer to the IPC object of the child process. If an exception occurs, the value may be nullptr.
- * The object must be released by calling {@link OH_IPCRemoteProxy_Destory} when it is no longer needed.
+ * The object must be released by calling {@link OH_IPCRemoteProxy_Destroy} when it is no longer needed.
  * @see OH_Ability_CreateNativeChildProcess
- * @see OH_IPCRemoteProxy_Destory
+ * @see OH_IPCRemoteProxy_Destroy
  * @since 12
  */
 typedef void (*OH_Ability_OnNativeChildProcessStarted)(int errCode, OHIPCRemoteProxy *remoteProxy);
