@@ -34,6 +34,7 @@ struct RegisterResourceParams {
     int thresholdFd { INT_MAX };
     int thresholdRAT { INT_MAX };  // rss_ark_ts
     int thresholdRNH { INT_MAX };  // rss_native_heap
+    int thresholdKH { INT_MAX };  // kmp_heap
 };
 typedef void (*EtsErrorCallback)(const AppExecFwk::ErrorObject &errorObj);
 class ApplicationDataManager {
