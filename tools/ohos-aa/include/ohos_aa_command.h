@@ -184,7 +184,7 @@ private:
     void FormatOutputForWithWait(const Want &want, const AbilityStartWithWaitObserverData& data);
 
     bool startAbilityWithWaitFlag_ = false;
-    bool StartSandboxCloneAbilityFlag_ = false;
+    bool startSandboxCloneAbilityFlag_ = false;
     std::map<int32_t, AaToolErrorInfo> errorInfoMap_;
 };
 }  // namespace AAFwk

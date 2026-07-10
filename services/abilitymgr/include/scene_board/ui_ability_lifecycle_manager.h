@@ -864,6 +864,14 @@ private:
      */
     int NotifySCBPendingActivation(sptr<SessionInfo> &sessionInfo,
         const AbilityRequest &abilityRequest, std::string &errMsg);
+
+    /**
+     * @brief Store sandbox clone params (isWebSandBoxClone, sandboxCloneIndex, caller info) into
+     *        sessionInfo->want for the SCB callback.
+     * @param sessionInfo The session info to be updated
+     * @param abilityRequest The ability request carrying the sandbox clone flag and caller info
+     */
+    void SetSandboxCloneParamsForSession(sptr<SessionInfo> &sessionInfo, const AbilityRequest &abilityRequest);
     void CreateSessionConfigurations(std::vector<sptr<SessionInfo>> &sessionInfoList, int primaryWindowId,
         std::vector<Rosen::PendingSessionActivationConfig> &configList, sptr<SessionInfo> sessionInfo);
 
