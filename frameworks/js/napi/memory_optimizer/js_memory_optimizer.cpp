@@ -78,7 +78,7 @@ napi_value JsMemoryOptimizer::OnEvictFilePages(napi_env env, NapiCallbackInfo &i
     }
 
     std::vector<std::string> fileNames;
-    if (!AppExecFwk::UnwrapArrayStringFromJS(env, info.argv[INDEX_ZERO], fileNames)) {
+    if (!AppExecFwk::UnwrapArrayStringFromJSFix(env, info.argv[INDEX_ZERO], fileNames)) {
         TAG_LOGE(AAFwkTag::ABILITY, "parse fileNames failed");
         ThrowInvalidParamError(env, "Parameter error. Parse fileNames failed.");
         return CreateJsUndefined(env);
@@ -130,7 +130,7 @@ napi_value JsMemoryOptimizer::OnEvictModuleFilePages(napi_env env, NapiCallbackI
     }
 
     std::vector<std::string> moduleNames;
-    if (!AppExecFwk::UnwrapArrayStringFromJS(env, info.argv[INDEX_ZERO], moduleNames)) {
+    if (!AppExecFwk::UnwrapArrayStringFromJSFix(env, info.argv[INDEX_ZERO], moduleNames)) {
         TAG_LOGE(AAFwkTag::ABILITY, "parse moduleNames failed");
         ThrowInvalidParamError(env, "Parameter error. Parse moduleNames failed.");
         return CreateJsUndefined(env);
