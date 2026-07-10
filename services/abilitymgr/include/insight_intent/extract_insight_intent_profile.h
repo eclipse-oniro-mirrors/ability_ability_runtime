@@ -230,12 +230,12 @@ struct ExtractInsightIntentProfileInfoVec {
 };
 
 struct ExecuteIntentCommonOptions {
-    bool ignoreAbilityName;
+    bool ignoreAbilityName = false;
     ExtractInsightIntentGenericInfo infos;
-    uint64_t key;
+    uint64_t key = 0;
     std::string srcDeviceId;
-    uint64_t requestCode;
-    uint64_t specifiedFullTokenId;
+    uint64_t requestCode = 0;
+    uint64_t specifiedFullTokenId = 0;
     ExecuteIntentCommonOptions(bool ignoreAbilityName, const ExtractInsightIntentGenericInfo &infos,
         uint64_t key): ignoreAbilityName(ignoreAbilityName), infos(infos), key(key){};
 };
