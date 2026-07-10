@@ -17,6 +17,7 @@
 #define OHOS_ABILITY_RUNTIME_SKILL_EXECUTE_MANAGER_H
 
 #include <map>
+#include <sys/types.h>
 #include "app_mgr_util.h"
 #include "application_state_observer_stub.h"
 #include "bundle_skill/skill_info.h"
@@ -61,7 +62,7 @@ public:
 
     void OnLaunchCompleted(const std::string &requestCode);
     void OnLaunchFailed(const std::string &requestCode, int32_t errCode);
-    void OnTargetProcessDied(const std::string &bundleName);
+    void OnTargetProcessDied(const std::string &bundleName, pid_t pid);
 
 private:
     class CallerDeathRecipient : public IRemoteObject::DeathRecipient {
@@ -81,7 +82,7 @@ private:
 
     class SkillAppStateObserver : public AppExecFwk::ApplicationStateObserverStub {
     public:
-        using ProcessDiedHandler = std::function<void(const std::string &)>;
+        using ProcessDiedHandler = std::function<void(const std::string &, pid_t)>;
         explicit SkillAppStateObserver(ProcessDiedHandler handler) : handler_(std::move(handler)) {}
         ~SkillAppStateObserver() = default;
         void OnForegroundApplicationChanged(const AppExecFwk::AppStateData &) override {}
@@ -93,7 +94,7 @@ private:
         void OnProcessDied(const AppExecFwk::ProcessData &processData) override
         {
             if (handler_ != nullptr) {
-                handler_(processData.bundleName);
+                handler_(processData.bundleName, processData.pid);
             }
         }
     private:

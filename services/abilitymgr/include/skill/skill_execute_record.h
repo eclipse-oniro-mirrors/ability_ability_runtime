@@ -17,6 +17,7 @@
 #define OHOS_ABILITY_RUNTIME_SKILL_EXECUTE_RECORD_H
 
 #include <string>
+#include <sys/types.h>
 
 #include "iremote_object.h"
 #include "skill/skill_execute_callback_interface.h"
@@ -40,6 +41,7 @@ struct SkillExecuteRecord {
     std::string callerBundleName;
     uint32_t callerTokenId = 0;
     uint64_t requestCodeSeq = 0;
+    pid_t targetPid = 0;
     SkillExecuteState state = SkillExecuteState::UNKNOWN;
     sptr<ISkillExecuteCallback> callback = nullptr;
 };

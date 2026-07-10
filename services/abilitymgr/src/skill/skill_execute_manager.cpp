@@ -26,6 +26,7 @@
 #include "bundle_mgr_helper.h"
 #include "hilog_tag_wrapper.h"
 #include "in_process_call_wrapper.h"
+#include "ipc_skeleton.h"
 #include "iservice_registry.h"
 #include "permission_constants.h"
 #include "permission_verification.h"
@@ -418,8 +419,8 @@ void SkillExecuteManager::EnsureAppStateObserverRegistered()
         return;
     }
     auto observer = sptr<SkillAppStateObserver>::MakeSptr(
-        [](const std::string &bundleName) {
-            DelayedSingleton<SkillExecuteManager>::GetInstance()->OnTargetProcessDied(bundleName);
+        [](const std::string &bundleName, pid_t pid) {
+            DelayedSingleton<SkillExecuteManager>::GetInstance()->OnTargetProcessDied(bundleName, pid);
         });
     if (observer == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "new SkillAppStateObserver failed");
@@ -436,6 +437,7 @@ void SkillExecuteManager::EnsureAppStateObserverRegistered()
 
 void SkillExecuteManager::OnLaunchCompleted(const std::string &requestCode)
 {
+    pid_t callerPid = IPCSkeleton::GetCallingPid();
     std::lock_guard<ffrt::mutex> lock(mutex_);
     auto it = records_.find(requestCode);
     if (it == records_.end()) {
@@ -443,9 +445,11 @@ void SkillExecuteManager::OnLaunchCompleted(const std::string &requestCode)
             "OnLaunchCompleted: record gone, req:%{public}s", requestCode.c_str());
         return;
     }
+    it->second->targetPid = callerPid;
     RemoveSkillExecuteTimeoutLocked(it->second->requestCodeSeq);
     TAG_LOGD(AAFwkTag::ABILITYMGR,
-        "launch completed, keep record for async result, req:%{public}s", requestCode.c_str());
+        "launch completed, pid:%{public}d, keep record for async result, req:%{public}s",
+        callerPid, requestCode.c_str());
 }
 
 void SkillExecuteManager::OnLaunchFailed(const std::string &requestCode, int32_t errCode)
@@ -473,13 +477,15 @@ void SkillExecuteManager::OnLaunchFailed(const std::string &requestCode, int32_t
     RemoveRecord(requestCode);
 }
 
-void SkillExecuteManager::OnTargetProcessDied(const std::string &bundleName)
+void SkillExecuteManager::OnTargetProcessDied(const std::string &bundleName, pid_t pid)
 {
     std::lock_guard<ffrt::mutex> lock(mutex_);
     std::vector<std::string> hitCodes;
     for (const auto &entry : records_) {
         const auto &record = entry.second;
+        // pid 未就绪（OnLaunchCompleted 前）跳过，依赖 timeout 兜底
         if (record->targetBundleName == bundleName &&
+            record->targetPid != 0 && record->targetPid == pid &&
             record->state == SkillExecuteState::EXECUTING) {
             hitCodes.push_back(entry.first);
         }
@@ -488,8 +494,8 @@ void SkillExecuteManager::OnTargetProcessDied(const std::string &bundleName)
         return;
     }
     TAG_LOGW(AAFwkTag::ABILITYMGR,
-        "target process died, bundle:%{public}s, hit %{public}zu record(s)",
-        bundleName.c_str(), hitCodes.size());
+        "target process died, bundle:%{public}s pid:%{public}d, hit %{public}zu record(s)",
+        bundleName.c_str(), pid, hitCodes.size());
     for (const auto &requestCode : hitCodes) {
         auto it = records_.find(requestCode);
         if (it == records_.end()) {
