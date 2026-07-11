@@ -131,7 +131,8 @@ ani_object CreateEtsPhotoEditorExtensionContext(
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "Failed to create etsServiceExtensionContext");
         return nullptr;
     }
-    auto photoEditorContextPtr = new std::weak_ptr<PhotoEditorExtensionContext> (workContext->GetAbilityContext());
+    auto photoEditorContextPtr = std::make_unique<std::weak_ptr<PhotoEditorExtensionContext>>(
+        workContext->GetAbilityContext());
 
     if ((status = env->Object_New(cls, method, &contextObj, (ani_long)workContext.release())) != ANI_OK||
         contextObj == nullptr) {
@@ -139,10 +140,11 @@ ani_object CreateEtsPhotoEditorExtensionContext(
         return nullptr;
     }
 
-    if (!ContextUtil::SetNativeContextLong(env, contextObj, (ani_long)(photoEditorContextPtr))) {
+    if (!ContextUtil::SetNativeContextLong(env, contextObj, (ani_long)(photoEditorContextPtr.get()))) {
         TAG_LOGE(AAFwkTag::UI_EXT, "Failed to setNativeContext long");
         return nullptr;
     }
+    photoEditorContextPtr.release();
    
     ContextUtil::CreateEtsBaseContext(env, cls, contextObj, context);
     CreateEtsExtensionContext(env, cls, contextObj, context, context->GetAbilityInfo());
