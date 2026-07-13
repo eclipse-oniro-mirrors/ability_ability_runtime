@@ -616,7 +616,7 @@ int AbilityConnectManager::DisconnectAbilityLocked(const sptr<IAbilityConnection
                     break;
                 }
             } else if (connectRecord->GetDirectCallerTokenId() != IPCSkeleton::GetCallingTokenID() &&
-                static_cast<uint32_t>(IPCSkeleton::GetSelfTokenID() != IPCSkeleton::GetCallingTokenID())) {
+                IPCSkeleton::GetSelfTokenID() != IPCSkeleton::GetCallingTokenID()) {
                 TAG_LOGW(AAFwkTag::EXT, "inconsistent caller");
                 continue;
             }
@@ -659,7 +659,7 @@ int32_t AbilityConnectManager::SuspendExtensionAbilityLocked(const sptr<IAbility
     for (auto &connectRecord : connectRecordList) {
         if (connectRecord) {
             if (connectRecord->GetDirectCallerTokenId() != IPCSkeleton::GetCallingTokenID() &&
-                static_cast<uint32_t>(IPCSkeleton::GetSelfTokenID() != IPCSkeleton::GetCallingTokenID())) {
+                IPCSkeleton::GetSelfTokenID() != IPCSkeleton::GetCallingTokenID()) {
                 TAG_LOGW(AAFwkTag::EXT, "inconsistent caller");
                 continue;
             }
@@ -693,7 +693,7 @@ int32_t AbilityConnectManager::ResumeExtensionAbilityLocked(const sptr<IAbilityC
     for (auto &connectRecord : connectRecordList) {
         if (connectRecord) {
             if (connectRecord->GetDirectCallerTokenId() != IPCSkeleton::GetCallingTokenID() &&
-                static_cast<uint32_t>(IPCSkeleton::GetSelfTokenID() != IPCSkeleton::GetCallingTokenID())) {
+                IPCSkeleton::GetSelfTokenID() != IPCSkeleton::GetCallingTokenID()) {
                 TAG_LOGW(AAFwkTag::EXT, "inconsistent caller");
                 continue;
             }
@@ -951,6 +951,7 @@ void AbilityConnectManager::ProcessEliminateAbilityRecord(std::shared_ptr<BaseEx
 
 void AbilityConnectManager::TerminateOrCacheAbility(std::shared_ptr<BaseExtensionRecord> abilityRecord)
 {
+    CHECK_POINTER(abilityRecord);
     if (abilityRecord->IsSceneBoard()) {
         return;
     }
@@ -1391,9 +1392,23 @@ void AbilityConnectManager::OnStartSpecifiedProcessResponse(const std::string &f
     if (!loadAbilityQueue_.empty()) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "OnStartSpecifiedProcessResponse LoadAbility");
         auto &front = loadAbilityQueue_.front();
-        front[requestId].want->SetParam(PARAM_SPECIFIED_PROCESS_FLAG, flag);
-        DelayedSingleton<AppScheduler>::GetInstance()->LoadAbility(*front[requestId].loadParam,
-            *(front[requestId].abilityInfo), *(front[requestId].appInfo), *(front[requestId].want));
+        auto it = front.find(requestId);
+        if (it == front.end()) {
+            TAG_LOGW(AAFwkTag::ABILITYMGR,
+                "OnStartSpecifiedProcessResponse requestId not in front: %{public}d", requestId);
+            return;
+        }
+        auto &context = it->second;
+        if (context.want == nullptr || context.loadParam == nullptr ||
+            context.abilityInfo == nullptr || context.appInfo == nullptr) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR,
+                "OnStartSpecifiedProcessResponse invalid context, requestId: %{public}d", requestId);
+            loadAbilityQueue_.pop_front();
+            return;
+        }
+        context.want->SetParam(PARAM_SPECIFIED_PROCESS_FLAG, flag);
+        DelayedSingleton<AppScheduler>::GetInstance()->LoadAbility(*context.loadParam,
+            *context.abilityInfo, *context.appInfo, *context.want);
         loadAbilityQueue_.pop_front();
     }
 }
@@ -1405,8 +1420,22 @@ void AbilityConnectManager::OnStartSpecifiedProcessTimeoutResponse(int32_t reque
 
     if (!loadAbilityQueue_.empty()) {
         auto &front = loadAbilityQueue_.front();
-        DelayedSingleton<AppScheduler>::GetInstance()->LoadAbility(*(front[requestId].loadParam),
-            *(front[requestId].abilityInfo), *(front[requestId].appInfo), *(front[requestId].want));
+        auto it = front.find(requestId);
+        if (it == front.end()) {
+            TAG_LOGW(AAFwkTag::ABILITYMGR,
+                "OnStartSpecifiedProcessTimeoutResponse requestId not in front: %{public}d", requestId);
+            return;
+        }
+        auto &context = it->second;
+        if (context.loadParam == nullptr || context.abilityInfo == nullptr ||
+            context.appInfo == nullptr || context.want == nullptr) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR,
+                "OnStartSpecifiedProcessTimeoutResponse invalid context, requestId: %{public}d", requestId);
+            loadAbilityQueue_.pop_front();
+            return;
+        }
+        DelayedSingleton<AppScheduler>::GetInstance()->LoadAbility(*context.loadParam,
+            *context.abilityInfo, *context.appInfo, *context.want);
         loadAbilityQueue_.pop_front();
     }
 }
@@ -3299,6 +3328,7 @@ int32_t AbilityConnectManager::UpdateKeepAliveEnableState(const std::string &bun
 std::shared_ptr<BaseExtensionRecord> AbilityConnectManager::GetUIExtensionBySessionFromServiceMap(
     const sptr<SessionInfo> &sessionInfo)
 {
+    CHECK_POINTER_AND_RETURN(sessionInfo, nullptr);
     int32_t persistentId = sessionInfo->persistentId;
     auto IsMatch = [persistentId](auto service) {
         if (!service.second) {
