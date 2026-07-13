@@ -1330,7 +1330,7 @@ HWTEST_F(AbilityManagerServiceFourthTest, HandleSandboxCloneLaunch_001, TestSize
 
     auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
     ASSERT_NE(sandboxCloneParams, nullptr);
-    EventInfo eventInfo;
+    auto eventInfo = std::make_shared<EventInfo>();
     // Without SANDBOX_CLONE_INDEX, ProcessSandboxCloneLaunch short-circuits to ERR_OK.
     auto ret = abilityMs->HandleSandboxCloneLaunch(sessionInfo, sandboxCloneParams, TEST_VALID_USER_ID, eventInfo);
     EXPECT_EQ(ret, ERR_OK);
@@ -1356,7 +1356,7 @@ HWTEST_F(AbilityManagerServiceFourthTest, HandleSandboxCloneLaunch_002, TestSize
 
     auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
     ASSERT_NE(sandboxCloneParams, nullptr);
-    EventInfo eventInfo;
+    auto eventInfo = std::make_shared<EventInfo>();
     auto ret = abilityMs->HandleSandboxCloneLaunch(sessionInfo, sandboxCloneParams, TEST_VALID_USER_ID, eventInfo);
     EXPECT_EQ(ret, ERR_OK);
     EXPECT_EQ(sandboxCloneParams->callerBundleName, "com.test.caller");
@@ -1380,7 +1380,7 @@ HWTEST_F(AbilityManagerServiceFourthTest, HandleSandboxCloneLaunch_003, TestSize
 
     auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
     ASSERT_NE(sandboxCloneParams, nullptr);
-    EventInfo eventInfo;
+    auto eventInfo = std::make_shared<EventInfo>();
     auto ret = abilityMs->HandleSandboxCloneLaunch(sessionInfo, sandboxCloneParams, TEST_VALID_USER_ID, eventInfo);
     EXPECT_EQ(ret, ERR_OK);
     EXPECT_EQ(sandboxCloneParams->callerTokenId, 0u);
@@ -1403,7 +1403,7 @@ HWTEST_F(AbilityManagerServiceFourthTest, HandleSandboxCloneLaunch_004, TestSize
 
     auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
     ASSERT_NE(sandboxCloneParams, nullptr);
-    EventInfo eventInfo;
+    auto eventInfo = std::make_shared<EventInfo>();
     auto ret = abilityMs->HandleSandboxCloneLaunch(sessionInfo, sandboxCloneParams, TEST_VALID_USER_ID, eventInfo);
     EXPECT_EQ(ret, ERR_SANDBOX_CLONE_INDEX_INVALID);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest HandleSandboxCloneLaunch_004 end");
