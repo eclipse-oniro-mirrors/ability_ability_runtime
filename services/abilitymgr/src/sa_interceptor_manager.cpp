@@ -68,7 +68,7 @@ int32_t SAInterceptorManager::AddSAInterceptor(sptr<ISAInterceptor> interceptor)
     return ERR_OK;
 }
 
-int32_t SAInterceptorManager::RemoveSAInterceptor(sptr<ISAInterceptor> interceptor)
+int32_t SAInterceptorManager::RemoveSAInterceptor(sptr<IRemoteObject> interceptor)
 {
     if (interceptor == nullptr) {
         TAG_LOGE(AAFwkTag::SA_INTERCEPTOR, "null interceptor");
