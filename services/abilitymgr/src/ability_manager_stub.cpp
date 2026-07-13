@@ -357,9 +357,6 @@ int AbilityManagerStub::OnRemoteRequestInnerSeventh(uint32_t code, MessageParcel
     if (interfaceCode == AbilityManagerInterfaceCode::START_SELF_UI_ABILITY_IN_CHILD_PROCESS) {
         return StartSelfUIAbilityInChildProcessInner(data, reply);
     }
-    if (interfaceCode == AbilityManagerInterfaceCode::UNREGISTER_SA_INTERCEPTOR) {
-        return UnregisterSAInterceptorInner(data, reply);
-    }
     return ERR_CODE_NOT_EXIST;
 }
 
@@ -399,6 +396,9 @@ int AbilityManagerStub::OnRemoteRequestInnerEighth(uint32_t code, MessageParcel 
     }
     if (interfaceCode == AbilityManagerInterfaceCode::EXECUTE_INTENT_BY_FUNCTION_CALL) {
         return ExecuteIntentByFunctionCallInner(data, reply);
+    }
+    if (interfaceCode == AbilityManagerInterfaceCode::UNREGISTER_SA_INTERCEPTOR) {
+        return UnregisterSAInterceptorInner(data, reply);
     }
     return ERR_CODE_NOT_EXIST;
 }
