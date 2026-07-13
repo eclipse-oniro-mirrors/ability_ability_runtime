@@ -9735,7 +9735,7 @@ int32_t AppMgrServiceInner::IsAppRunning(const std::string &bundleName, int32_t 
         TAG_LOGE(AAFwkTag::APPMGR, "permission verification fail");
         return ERR_PERMISSION_DENIED;
     }
-    if (appCloneIndex < 0 || AbilityRuntime::GlobalConstant::IsDlpIndex(appCloneIndex)) {
+    if (appCloneIndex < 0 || appCloneIndex > AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
         TAG_LOGE(AAFwkTag::APPMGR, "appCloneIndex invalid");
         return AAFwk::ERR_APP_CLONE_INDEX_INVALID;
     }
@@ -9782,7 +9782,7 @@ int32_t AppMgrServiceInner::IsAppRunning(const std::string &bundleName, int32_t 
         TAG_LOGE(AAFwkTag::APPMGR, "permission verification fail");
         return ERR_PERMISSION_DENIED;
     }
-    if (appCloneIndex < 0 || AbilityRuntime::GlobalConstant::IsDlpIndex(appCloneIndex)) {
+    if (appCloneIndex < 0 || appCloneIndex > AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
         TAG_LOGI(AAFwkTag::APPMGR, "appCloneIndex invalid");
         appCloneIndex = -1;
     }
