@@ -1539,9 +1539,9 @@ bool AppfreezeManager::CheckPreloadUIExtension(const std::string& message, const
     return false;
 }
 
-bool AppfreezeManager::CheckProcessExit(const std::string& eventName, bool foreground)
+bool AppfreezeManager::CheckProcessExit(const std::string& processName, const std::string& eventName, bool foreground)
 {
-    return foreground || (eventName != AppFreezeType::THREAD_BLOCK_6S);
+    return foreground || eventName != AppFreezeType::THREAD_BLOCK_6S || processName == "com.ohos.sceneboard";
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS
