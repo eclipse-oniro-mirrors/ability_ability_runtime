@@ -2670,6 +2670,8 @@ public:
      */
     virtual int32_t RegisterSAInterceptor(sptr<AbilityRuntime::ISAInterceptor> interceptor) override;
 
+    virtual int32_t UnregisterSAInterceptor(sptr<IRemoteObject> interceptor) override;
+
     virtual int32_t NotifyStartupExceptionBySCB(int32_t requestId) override;
 
     /**

@@ -1018,6 +1018,11 @@ enum {
     ERR_INVALID_FD = 2097403,
 
     /**
+     * Result (2097404) for all apps are blocked from starting due to deep frozen .
+     */
+    ERR_LOW_MEM_SAINTERCEPTOR_START_BLOCK = 2097404,
+
+    /**
      * Result (2098000-2098049) Error code refinement INVALID_VALUE.
      */
     ERR_REFINEMENT_INVALID_VALUE_BEGIN = 2098000,

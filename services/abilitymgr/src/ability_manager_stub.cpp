@@ -357,6 +357,9 @@ int AbilityManagerStub::OnRemoteRequestInnerSeventh(uint32_t code, MessageParcel
     if (interfaceCode == AbilityManagerInterfaceCode::START_SELF_UI_ABILITY_IN_CHILD_PROCESS) {
         return StartSelfUIAbilityInChildProcessInner(data, reply);
     }
+    if (interfaceCode == AbilityManagerInterfaceCode::UNREGISTER_SA_INTERCEPTOR) {
+        return UnregisterSAInterceptorInner(data, reply);
+    }
     return ERR_CODE_NOT_EXIST;
 }
 
@@ -5534,6 +5537,22 @@ int32_t AbilityManagerStub::RegisterSAInterceptorInner(MessageParcel &data, Mess
         return ERR_NULL_SA_INTERCEPTOR_EXECUTER;
     }
     int32_t result = RegisterSAInterceptor(interceptor);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "Fail to write result.");
+        return ERR_WRITE_RESULT_CODE_FAILED;
+    }
+    return NO_ERROR;
+}
+
+int32_t AbilityManagerStub::UnregisterSAInterceptorInner(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "call UnregisterSaInterceptorInner");
+    sptr<IRemoteObject> interceptor = data.ReadRemoteObject();
+    if (interceptor == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "interceptor is null.");
+        return ERR_NULL_SA_INTERCEPTOR_EXECUTER;
+    }
+    int32_t result = UnregisterSAInterceptor(interceptor);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Fail to write result.");
         return ERR_WRITE_RESULT_CODE_FAILED;

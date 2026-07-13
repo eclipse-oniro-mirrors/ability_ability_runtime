@@ -2682,6 +2682,11 @@ public:
         return 0;
     }
 
+    virtual int32_t UnregisterSAInterceptor(sptr<IRemoteObject> interceptor)
+    {
+        return 0;
+    }
+
     virtual int32_t SetOnNewWantSkipScenarios(sptr<IRemoteObject> callerToken, int32_t scenarios)
     {
         return 0;

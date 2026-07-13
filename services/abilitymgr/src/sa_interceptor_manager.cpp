@@ -68,6 +68,29 @@ int32_t SAInterceptorManager::AddSAInterceptor(sptr<ISAInterceptor> interceptor)
     return ERR_OK;
 }
 
+int32_t SAInterceptorManager::RemoveSAInterceptor(sptr<ISAInterceptor> interceptor)
+{
+    if (interceptor == nullptr) {
+        TAG_LOGE(AAFwkTag::SA_INTERCEPTOR, "null interceptor");
+        return AAFwk::ERR_NULL_SA_INTERCEPTOR_EXECUTER;
+    }
+ 
+    auto observerObj = interceptor->AsObject();
+    std::lock_guard<std::mutex> lock(saInterceptorLock_);
+    for (auto interceptorIter = saInterceptors_.begin(); interceptorIter != saInterceptors_.end(); interceptorIter++) {
+        if (*interceptorIter && (*interceptorIter)->AsObject() == observerObj) {
+            if (observerObj && deathRecipient_) {
+                observerObj->RemoveDeathRecipient(deathRecipient_);
+            }
+            saInterceptors_.erase(interceptorIter);
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "interceptor removed");
+            return ERR_OK;
+        }
+    }
+    TAG_LOGW(AAFwkTag::ABILITYMGR, "interceptor not found");
+    return ERR_OK;
+}
+
 bool SAInterceptorManager::SAInterceptorListIsEmpty()
 {
     std::lock_guard<std::mutex> lock(saInterceptorLock_);

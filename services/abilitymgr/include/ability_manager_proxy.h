@@ -2047,6 +2047,8 @@ public:
      */
     virtual ErrCode RegisterSAInterceptor(sptr<AbilityRuntime::ISAInterceptor> interceptor) override;
 
+    virtual ErrCode UnregisterSAInterceptor(sptr<IRemoteObject> interceptor) override;
+
     /**
      * SuspendExtensionAbility, suspend session with service ability.
      *
