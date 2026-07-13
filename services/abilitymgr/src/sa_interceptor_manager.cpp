@@ -87,7 +87,7 @@ int32_t SAInterceptorManager::RemoveSAInterceptor(sptr<IRemoteObject> intercepto
         }
     }
     TAG_LOGE(AAFwkTag::ABILITYMGR, "interceptor not found");
-    return ERR_OK;
+    return AAFwk::ERR_SA_INTERCEPTOR_NOT_EXIST;
 }
 
 bool SAInterceptorManager::SAInterceptorListIsEmpty()

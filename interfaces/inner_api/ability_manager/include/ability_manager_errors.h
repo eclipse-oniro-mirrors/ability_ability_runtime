@@ -939,6 +939,11 @@ enum {
     ERR_PRELOAD_NOT_ENTRY_MODULE = 2097368,
 
     /**
+     * Result (2097369) for sa interceptor not found when unregister.
+     */
+    ERR_SA_INTERCEPTOR_NOT_EXIST = 2097369,
+
+    /**
      * Result (2097370-2097379) for StartUIAbilities Error.
      */
     START_UI_ABILITIES_NOT_SUPPORT_DLP = 2097370,
