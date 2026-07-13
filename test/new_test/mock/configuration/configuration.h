@@ -28,7 +28,7 @@ class Configuration final: public Parcelable {
 public:
     Configuration();
 
-    void CompareDifferent(std::vector<std::string> &diffKeyV, const Configuration &other) {}
+    void CompareDifferent(std::vector<std::string> &diffKeyV, const Configuration &other) const {}
 
     void Merge(const std::vector<std::string> &diffKeyV, const Configuration &other) {}
 
