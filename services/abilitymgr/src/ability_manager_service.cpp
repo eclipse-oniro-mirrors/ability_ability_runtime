@@ -18449,13 +18449,8 @@ int32_t AbilityManagerService::UnregisterSAInterceptor(sptr<IRemoteObject> inter
         TAG_LOGE(AAFwkTag::ABILITYMGR, "no permission call");
         return CHECK_PERMISSION_FAILED;
     }
- 
-    auto ISAInterceptor = iface_cast<AbilityRuntime::ISAInterceptor>(interceptor);
-    if (ISAInterceptor == nullptr) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "ISAInterceptor cast failed");
-        return ERR_NULL_SA_INTERCEPTOR_EXECUTER;
-    }
-    return SAInterceptorManager::GetInstance().RemoveSAInterceptor(ISAInterceptor);
+
+    return SAInterceptorManager::GetInstance().RemoveSAInterceptor(interceptor);
 }
 
 bool AbilityManagerService::HandleExecuteSAInterceptor(const Want &want, sptr<IRemoteObject> callerToken,
@@ -18476,7 +18471,7 @@ bool AbilityManagerService::HandleExecuteSAInterceptor(const Want &want, sptr<IR
         return false;
     }
 
-    if (ret != ERR_OK || rule.type == RuleType::NOT_ALLOW_FROZEN) {
+    if (rule.type == RuleType::NOT_ALLOW_FROZEN) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "sa lowmem forzen interceptor OnCheckStarting failed");
         result = static_cast<int32_t>(ERR_LOW_MEM_SAINTERCEPTOR_START_BLOCK);
         return false;

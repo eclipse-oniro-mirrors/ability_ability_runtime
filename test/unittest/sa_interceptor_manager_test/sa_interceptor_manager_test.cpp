@@ -85,6 +85,27 @@ HWTEST_F(SAInterceptorManagerTest, AddSAInterceptor_0100, TestSize.Level1)
 }
 
 /*
+ * @tc.number: RemoveSAInterceptor_0100
+ * @tc.name: RemoveSAInterceptor
+ * @tc.desc: Verify RemoveSAInterceptor with null interceptor and non-exist interceptor
+ */
+HWTEST_F(SAInterceptorManagerTest, RemoveSAInterceptor_0100, TestSize.Level1)
+{
+    SAInterceptorManager::GetInstance().saInterceptors_.clear();
+    int32_t result = SAInterceptorManager::GetInstance().RemoveSAInterceptor(nullptr);
+    EXPECT_EQ(result, ERR_NULL_SA_INTERCEPTOR_EXECUTER);
+    sptr<ISAInterceptor> interceptor = new MockSAInterceptor();
+    result = SAInterceptorManager::GetInstance().RemoveSAInterceptor(interceptor->AsObject());
+    EXPECT_EQ(result, ERR_SA_INTERCEPTOR_NOT_EXIST);
+    result = SAInterceptorManager::GetInstance().AddSAInterceptor(interceptor);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(SAInterceptorManager::GetInstance().saInterceptors_.size(), 1);
+    result = SAInterceptorManager::GetInstance().RemoveSAInterceptor(interceptor->AsObject());
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(SAInterceptorManager::GetInstance().saInterceptors_.size(), 0);
+}
+
+/*
  * @tc.number: ExecuteSAInterceptor_0100
  * @tc.name: ExecuteSAInterceptor
  * @tc.desc: Verify ExecuteSAInterceptor functionality
