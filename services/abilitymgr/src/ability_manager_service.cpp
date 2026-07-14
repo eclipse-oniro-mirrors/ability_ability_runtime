@@ -6940,7 +6940,7 @@ sptr<IWantSender> AbilityManagerService::GetWantSenderByUserId(const WantSenderI
             appIndex = wantSenderInfo.appIndex;
             appUid = (uid >= 0) ? uid : GetUidByCloneBundleInfo(bundleName, callerUid, userId, appIndex);
         } else if (uid >= 0) {
-            if (DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->
+            if (AppExecFwk::OsAccountManagerWrapper::
                 GetOsAccountLocalIdFromUid(callerUid, userId) != 0) {
                 TAG_LOGE(AAFwkTag::WANTAGENT, "getOsAccountLocalIdFromUid failed uid=%{public}d", callerUid);
                 return nullptr;
@@ -6990,7 +6990,7 @@ sptr<IWantSender> AbilityManagerService::GetWantSender(
     CHECK_POINTER_AND_RETURN(bms, nullptr);
 
     int32_t bundleMgrResult = 0;
-    if (DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->
+    if (AppExecFwk::OsAccountManagerWrapper::
         GetOsAccountLocalIdFromUid(callerUid, userId) != 0) {
         TAG_LOGE(AAFwkTag::WANTAGENT, "getOsAccountLocalIdFromUid failed uid=%{public}d", callerUid);
         return nullptr;
@@ -13785,7 +13785,7 @@ int AbilityManagerService::VerifyPermission(const std::string &permission, int p
     }
 
     int account = -1;
-    DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->GetOsAccountLocalIdFromUid(uid, account);
+    AppExecFwk::OsAccountManagerWrapper::GetOsAccountLocalIdFromUid(uid, account);
     TAG_LOGD(AAFwkTag::ABILITYMGR, "bundleName: %{public}s, account: %{private}d", bundleName.c_str(), account);
     AppExecFwk::ApplicationInfo appInfo;
     if (!IN_PROCESS_CALL(bms->GetApplicationInfo(bundleName, AppExecFwk::BundleFlag::GET_BUNDLE_DEFAULT,
@@ -14093,8 +14093,7 @@ bool AbilityManagerService::ProcessLowMemoryKill(int32_t pid, const ExitReason &
 bool AbilityManagerService::ProcessLowMemoryKillUIExtension(int32_t pid, int32_t uid)
 {
     int32_t userId = INVALID_USER_ID;
-    auto ret = DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()
-        ->GetOsAccountLocalIdFromUid(uid, userId);
+    auto ret = AppExecFwk::OsAccountManagerWrapper::GetOsAccountLocalIdFromUid(uid, userId);
     if (ret == 0) {
         auto uiExtManager = GetUIExtensionAbilityManagerByUserId(userId);
         if (uiExtManager != nullptr && uiExtManager->IsUIExtensionStarting(uid, pid)) {

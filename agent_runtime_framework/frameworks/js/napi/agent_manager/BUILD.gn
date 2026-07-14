@@ -51,6 +51,8 @@ ohos_shared_library("js_agent_manager_utils") {
 }
 
 ohos_shared_library("agentmanager_napi") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     cfi = true
     cfi_cross_dso = true

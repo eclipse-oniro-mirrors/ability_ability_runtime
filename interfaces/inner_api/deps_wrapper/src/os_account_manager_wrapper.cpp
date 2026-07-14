@@ -108,13 +108,7 @@ ErrCode OsAccountManagerWrapper::RemoveOsAccount(const int id)
 int32_t OsAccountManagerWrapper::GetCurrentActiveAccountId()
 {
     std::vector<int32_t> accountIds;
-    auto instance = DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance();
-    if (instance == nullptr) {
-        TAG_LOGE(AAFwkTag::DEFAULT, "Get OsAccountManager Failed");
-        return 0;
-    }
-
-    ErrCode ret = instance->QueryActiveOsAccountIds(accountIds);
+    ErrCode ret = QueryActiveOsAccountIds(accountIds);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::DEFAULT, "Query active id failed. ret: %{public}d", ret);
         return 0;

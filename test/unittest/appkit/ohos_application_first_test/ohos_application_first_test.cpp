@@ -69,6 +69,7 @@ void OHOSApplicationFirstTest::SetUp()
 
 void OHOSApplicationFirstTest::TearDown()
 {
+    abilityStages_.clear();
     ohosApplication_ = nullptr;
 }
 
@@ -104,6 +105,7 @@ HWTEST_F(OHOSApplicationFirstTest, CleanEmptyAbilityStage_0200, TestSize.Level2)
     EXPECT_FALSE(ohosApplication_->abilityStages_.empty());
     ohosApplication_->CleanEmptyAbilityStage();
     EXPECT_TRUE(ohosApplication_->abilityStages_.empty());
+    abilityStages_.clear();
     TAG_LOGI(AAFwkTag::TEST, "CleanEmptyAbilityStage_0200 end");
 }
 
@@ -128,6 +130,7 @@ HWTEST_F(OHOSApplicationFirstTest, CleanEmptyAbilityStage_0300, TestSize.Level2)
     EXPECT_FALSE(ohosApplication_->abilityStages_.empty());
     ohosApplication_->CleanEmptyAbilityStage();
     EXPECT_TRUE(ohosApplication_->abilityStages_.empty());
+    abilityStages_.clear();
     TAG_LOGI(AAFwkTag::TEST, "CleanEmptyAbilityStage_0300 end");
 }
 

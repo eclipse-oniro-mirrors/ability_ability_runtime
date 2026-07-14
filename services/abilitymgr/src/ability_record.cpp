@@ -2967,7 +2967,7 @@ void AbilityRecord::NotifyMissionBindPid()
 int32_t AbilityRecord::GetCurrentAccountId() const
 {
     std::vector<int32_t> osActiveAccountIds;
-    ErrCode ret = DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->
+    ErrCode ret = AppExecFwk::OsAccountManagerWrapper::
             QueryActiveOsAccountIds(osActiveAccountIds);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "queryActiveOsAccountIds failed");

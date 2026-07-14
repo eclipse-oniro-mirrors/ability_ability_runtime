@@ -35,10 +35,15 @@ ohos_unittest("AmsAppMgrClientTest") {
     "ams_app_mgr_client_test.cpp",
   ]
 
-  include_dirs = [ "${ability_runtime_test_path}/mock/common/include" ]
+  include_dirs = [
+    "${ability_runtime_test_path}/mock/common/include",
+    "${ability_runtime_test_path}/mock/services_appmgr_test/include",
+  ]
 
-  configs =
-      [ "${ability_runtime_innerkits_path}/app_manager:appmgr_sdk_config" ]
+  configs = [
+    "${ability_runtime_innerkits_path}/app_manager:appmgr_sdk_config",
+    "${ability_runtime_services_path}/appmgr:appmgr_config",
+  ]
   cflags = []
   if (target_cpu == "arm") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
@@ -46,32 +51,32 @@ ohos_unittest("AmsAppMgrClientTest") {
   deps = [
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_path}/utils/server/startup:startup_util",
-    "${ability_runtime_services_path}/common:perm_verification",
-    "${ability_runtime_test_path}/unittest:appmgr_test_source",
   ]
 
   external_deps = [
+    "ability_base:base",
     "ability_base:configuration",
     "ability_base:want",
     "access_token:libnativetoken",
     "access_token:libtoken_setproc",
     "appspawn:appspawn_client",
+    "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
-    "cJSON:cjson",
     "c_utils:utils",
-    "common_event_service:cesfwk_innerkits",
     "ffrt:libffrt",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
     "ipc:ipc_core",
-    "safwk:system_ability_fwk",
+    "json:nlohmann_json_static",
     "samgr:samgr_proxy",
-    "selinux_adapter:librestorecon",
   ]
 
+  defines = [ "AMS_LOG_TAG=\"AppMgrService\"" ]
   if (ability_runtime_child_process) {
-    defines = [ "SUPPORT_CHILD_PROCESS" ]
+    defines += [ "SUPPORT_CHILD_PROCESS" ]
   }
   if (ability_runtime_graphics) {
     external_deps += [ "window_manager:libwm" ]

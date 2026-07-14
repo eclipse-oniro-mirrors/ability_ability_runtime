@@ -16,6 +16,13 @@ import("//build/test.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 ohos_unittest("quick_fix_manager_service_second_test") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
   module_out_path = "ability_runtime/ability_runtime/quick_fix"
 
   include_dirs = [
