@@ -1622,79 +1622,6 @@ HWTEST_F(AbilityManagerServiceThirdTest, StartAbilityAsCallerDetails_003, TestSi
 
 /*
  * Feature: AbilityManagerService
- * Function: StartAbilityPublicPrechainCheck
- * FunctionPoints: AbilityManagerService StartAbilityPublicPrechainCheck
- */
-HWTEST_F(AbilityManagerServiceThirdTest, StartAbilityPublicPrechainCheck_001, TestSize.Level1)
-{
-    auto abilityMs = std::make_shared<AbilityManagerService>();
-    Want want;
-    StartAbilityParams startParams(const_cast<Want &>(want));
-    auto result = abilityMs->StartAbilityPublicPrechainCheck(startParams);
-    EXPECT_EQ(result, ERR_OK);
-}
-
-/*
- * Feature: AbilityManagerService
- * Function: StartAbilityPrechainInterceptor
- * FunctionPoints: AbilityManagerService StartAbilityPrechainInterceptor
- */
-HWTEST_F(AbilityManagerServiceThirdTest, StartAbilityPrechainInterceptor_001, TestSize.Level1)
-{
-    auto abilityMs = std::make_shared<AbilityManagerService>();
-    Want want;
-    StartAbilityParams startParams(const_cast<Want &>(want));
-    auto result = abilityMs->StartAbilityPrechainInterceptor(startParams);
-    EXPECT_EQ(result, ERR_INVALID_VALUE);
-}
-
-/*
- * Feature: AbilityManagerService
- * Function: StartAbilityInChain
- * FunctionPoints: AbilityManagerService StartAbilityInChain
- */
-HWTEST_F(AbilityManagerServiceThirdTest, StartAbilityInChain_001, TestSize.Level1)
-{
-    auto abilityMs = std::make_shared<AbilityManagerService>();
-    Want want;
-    StartAbilityParams startParams(const_cast<Want &>(want));
-    int result = 0;
-    auto ret = abilityMs->StartAbilityInChain(startParams, result);
-    EXPECT_EQ(ret, ERR_OK);
-}
-
-/*
- * Feature: AbilityManagerService
- * Function: StartAbilityWrap
- * FunctionPoints: AbilityManagerService StartAbilityWrap
- */
-HWTEST_F(AbilityManagerServiceThirdTest, StartAbilityWrap_001, TestSize.Level1)
-{
-    auto abilityMs = std::make_shared<AbilityManagerService>();
-    Want want;
-    sptr<IRemoteObject> callerToken;
-    int requestCode = 0;
-    int32_t userId = 0;
-    bool isStartAsCaller = true;
-    uint32_t specifyToken = 0;
-    bool isForegroundToRestartApp = true;
-    bool isImplicit = true;
-    StartAbilityWrapParam startAbilityWrapParam = {
-        .want = want,
-        .callerToken = callerToken,
-        .requestCode = requestCode,
-        .userId = userId,
-        .isStartAsCaller = isStartAsCaller,
-        .specifyTokenId = specifyToken,
-        .isForegroundToRestartApp = isForegroundToRestartApp,
-        .isImplicit = isImplicit,
-    };
-    auto result = abilityMs->StartAbilityWrap(startAbilityWrapParam);
-    EXPECT_EQ(result, ERR_NULL_INTERCEPTOR_EXECUTER);
-}
-
-/*
- * Feature: AbilityManagerService
  * Function: SetReserveInfo
  * FunctionPoints: AbilityManagerService SetReserveInfo
  */
@@ -1758,27 +1685,6 @@ HWTEST_F(AbilityManagerServiceThirdTest, StartUIAbilityForOptionWrap_001, TestSi
     bool isImplicit = true;
     auto result = abilityMs->StartUIAbilityForOptionWrap(want, startOptions, callerToken, false, userId, requestCode,
         callerTokenId, isImplicit);
-    EXPECT_EQ(result, ERR_NULL_INTERCEPTOR_EXECUTER);
-}
-
-/*
- * Feature: AbilityManagerService
- * Function: StartAbilityForOptionWrap
- * FunctionPoints: AbilityManagerService StartAbilityForOptionWrap
- */
-HWTEST_F(AbilityManagerServiceThirdTest, StartAbilityForOptionWrap_001, TestSize.Level1)
-{
-    auto abilityMs = std::make_shared<AbilityManagerService>();
-    Want want;
-    StartOptions startOptions;
-    const sptr<IRemoteObject> callerToken;
-    int32_t userId = 0;
-    int requestCode = 0;
-    bool isStartAsCaller = true;
-    uint32_t callerTokenId = 0;
-    bool isImplicit = true;
-    auto result = abilityMs->StartAbilityForOptionWrap(want, startOptions, callerToken, false, userId, requestCode,
-        isStartAsCaller, callerTokenId, isImplicit);
     EXPECT_EQ(result, ERR_NULL_INTERCEPTOR_EXECUTER);
 }
 

@@ -817,7 +817,7 @@ int32_t ImplicitStartProcessor::ImplicitStartAbilityInner(const Want &targetWant
                 .isImplicit = true,
                 .requestCallback = request.requestCallback,
             };
-            result = abilityMgr->StartAbilityWrap(startAbilityWrapParam);
+            result = abilityMgr->StartAbilityInner(startAbilityWrapParam);
             break;
     }
 

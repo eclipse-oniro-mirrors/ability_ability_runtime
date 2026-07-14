@@ -193,8 +193,6 @@ ohos_unittest("ability_manager_service_thirteenth_test") {
     "${ability_runtime_services_path}/abilitymgr/src/screen_lock/unlock_screen_callback.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/screen_lock/unlock_screen_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/sender_info.cpp",
-    "${ability_runtime_services_path}/abilitymgr/src/start_ability_handler.cpp",
-    "${ability_runtime_services_path}/abilitymgr/src/start_ability_handler/start_ability_sandbox_savefile.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/start_options.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/system_dialog_scheduler.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/ui_extension/preload_uiext_state_observer.cpp",

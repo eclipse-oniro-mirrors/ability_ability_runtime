@@ -434,23 +434,6 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, GetUserScreenUnlockCallback_001, Test
 
 /*
  * Feature: AbilityManagerService
- * Function: StartAbilityJust
- * SubFunction: NA
- * FunctionPoints: AbilityManagerService StartAbilityJust
- */
-HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityJust_001, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityJust_001 start");
-    auto abilityMs_ = std::make_shared<AbilityManagerService>();
-    AbilityRequest abilityRequest;
-    int32_t validUserId = 0;
-    auto retCode = abilityMs_->StartAbilityJust(abilityRequest, validUserId);
-    EXPECT_EQ(retCode, ERR_INVALID_VALUE);
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityJust_001 end");
-}
-
-/*
- * Feature: AbilityManagerService
  * Function: StartUser
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService StartUser

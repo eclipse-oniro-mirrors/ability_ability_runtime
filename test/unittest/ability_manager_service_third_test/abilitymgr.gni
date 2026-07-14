@@ -73,10 +73,6 @@ abilityms_files = [
   "${ability_runtime_services_path}/abilitymgr/src/window_focus_changed_listener.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/window_visibility_changed_listener.cpp",
 
-  # start ability handler
-  "${ability_runtime_services_path}/abilitymgr/src/start_ability_handler.cpp",
-  "${ability_runtime_services_path}/abilitymgr/src/start_ability_handler/start_ability_sandbox_savefile.cpp",
-
   # new ability manager service here
   "${ability_runtime_services_path}/abilitymgr/src/ui_extension/preload_uiext_state_observer.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/ui_extension_record/ui_extension_record.cpp",
