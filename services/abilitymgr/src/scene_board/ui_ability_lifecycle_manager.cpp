@@ -721,6 +721,27 @@ bool UIAbilityLifecycleManager::AddStartCallerTimestamp(int32_t callerUid)
     return true;
 }
 
+void UIAbilityLifecycleManager::SetSandboxCloneParamsForSession(sptr<SessionInfo> &sessionInfo,
+    const AbilityRequest &abilityRequest)
+{
+    if (sessionInfo == nullptr || !abilityRequest.isWebSandBoxClone) {
+        return;
+    }
+    // Store isWebSandBoxClone and appIndex in want for SCB callback.
+    sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::IS_WEB_SANDBOX_CLONE,
+        abilityRequest.isWebSandBoxClone);
+    sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX,
+        abilityRequest.abilityInfo.applicationInfo.appIndex);
+    std::string callerBundleName = abilityRequest.want.GetStringParam(
+        AbilityRuntime::GlobalConstant::CLI_CALLER_BUNDLE_NAME);
+    std::string callerTokenId = abilityRequest.want.GetStringParam(
+        AbilityRuntime::GlobalConstant::CLI_CALLER_TOKEN_ID);
+    sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::CLI_CALLER_BUNDLE_NAME, callerBundleName);
+    sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::CLI_CALLER_TOKEN_ID, callerTokenId);
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "WebSandBoxClone params: bundle = %{public}s, tokenId = %{public}s",
+        callerBundleName.c_str(), callerTokenId.c_str());
+}
+
 int UIAbilityLifecycleManager::NotifySCBToStartUIAbility(AbilityRequest &abilityRequest)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
@@ -796,20 +817,7 @@ int UIAbilityLifecycleManager::NotifySCBToStartUIAbility(AbilityRequest &ability
         sessionInfo->reuse = reuse;
     }
     // Store isWebSandBoxClone and appIndex in want for SCB callback.
-    if (abilityRequest.isWebSandBoxClone) {
-        sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::IS_WEB_SANDBOX_CLONE,
-            abilityRequest.isWebSandBoxClone);
-        sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX,
-            abilityRequest.abilityInfo.applicationInfo.appIndex);
-        std::string callerBundleName = abilityRequest.want.GetStringParam(
-            AbilityRuntime::GlobalConstant::CLI_CALLER_BUNDLE_NAME);
-        std::string callerTokenId = abilityRequest.want.GetStringParam(
-            AbilityRuntime::GlobalConstant::CLI_CALLER_TOKEN_ID);
-        sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::CLI_CALLER_BUNDLE_NAME, callerBundleName);
-        sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::CLI_CALLER_TOKEN_ID, callerTokenId);
-        TAG_LOGD(AAFwkTag::ABILITYMGR, "WebSandBoxClone params: bundle = %{public}s, tokenId = %{public}s",
-            callerBundleName.c_str(), callerTokenId.c_str());
-    }
+    SetSandboxCloneParamsForSession(sessionInfo, abilityRequest);
     sessionInfo->userId = userId_;
     sessionInfo->isAtomicService = (abilityInfo.applicationInfo.bundleType == AppExecFwk::BundleType::ATOMIC_SERVICE);
     TAG_LOGI(AAFwkTag::ABILITYMGR,
@@ -4558,6 +4566,8 @@ void UIAbilityLifecycleManager::StartSpecifiedRequest(SpecifiedRequest &specifie
             }
             sessionInfo->requestCode = request.requestCode;
             sessionInfo->userId = userId_;
+            // Store isWebSandBoxClone and appIndex in want for SCB callback.
+            SetSandboxCloneParamsForSession(sessionInfo, request);
             TAG_LOGI(AAFwkTag::ABILITYMGR, "StartSpecifiedRequest cold");
             std::string errMsg;
             auto result = NotifySCBPendingActivation(sessionInfo, request, errMsg);

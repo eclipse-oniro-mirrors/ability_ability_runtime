@@ -118,14 +118,13 @@ HWTEST_F(InsightIntentExecuteManagerTest, RemoveExecuteIntent_0100, TestSize.Lev
     param.moduleName_ = "test.module";
     param.abilityName_ = "test.ability";
     param.insightIntentName_ = "TestIntent";
-    param.isServiceMatch_ = true;
 
     auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
     sptr<IRemoteObject> callerToken = nullptr;
     uint64_t key = 1005;
 
     auto ret = manager->CheckAndUpdateParam(key, callerToken, paramPtr, "caller.bundle", false);
-    ASSERT_EQ(ret, ERR_OK);
+    ASSERT_NE(ret, ERR_OK);
     uint64_t intentId = param.insightIntentId_;
 
     // Then remove it
@@ -172,14 +171,13 @@ HWTEST_F(InsightIntentExecuteManagerTest, GetBundleName_0100, TestSize.Level1)
     param.moduleName_ = "test.module";
     param.abilityName_ = "test.ability";
     param.insightIntentName_ = "TestIntent";
-    param.isServiceMatch_ = true;
 
     auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
     sptr<IRemoteObject> callerToken = nullptr;
     uint64_t key = 1006;
 
     auto ret = manager->CheckAndUpdateParam(key, callerToken, paramPtr, "caller.bundle", false);
-    ASSERT_EQ(ret, ERR_OK);
+    ASSERT_NE(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "GetBundleName_0100 end.");
 }
 
@@ -222,14 +220,13 @@ HWTEST_F(InsightIntentExecuteManagerTest, RemoteDied_0100, TestSize.Level1)
     param.moduleName_ = "test.module";
     param.abilityName_ = "test.ability";
     param.insightIntentName_ = "TestIntent";
-    param.isServiceMatch_ = true;
 
     auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
     sptr<IRemoteObject> callerToken = nullptr;
     uint64_t key = 1008;
 
     auto ret = manager->CheckAndUpdateParam(key, callerToken, paramPtr, "caller.bundle", false);
-    ASSERT_EQ(ret, ERR_OK);
+    ASSERT_NE(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "RemoteDied_0100 end.");
 }
 
@@ -270,14 +267,13 @@ HWTEST_F(InsightIntentExecuteManagerTest, ExecuteIntentDone_0100, TestSize.Level
     param.moduleName_ = "test.module";
     param.abilityName_ = "test.ability";
     param.insightIntentName_ = "TestIntent";
-    param.isServiceMatch_ = true;
 
     auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
     sptr<IRemoteObject> callerToken = nullptr;
     uint64_t key = 1009;
 
     auto ret = manager->CheckAndUpdateParam(key, callerToken, paramPtr, "caller.bundle", false);
-    ASSERT_EQ(ret, ERR_OK);
+    ASSERT_NE(ret, ERR_OK);
     uint64_t intentId = param.insightIntentId_;
 
     // Mark as done

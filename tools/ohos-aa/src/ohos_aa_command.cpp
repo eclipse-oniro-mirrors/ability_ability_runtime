@@ -315,7 +315,7 @@ ErrCode ClawAaShellCommand::RunAsStartAbility()
     if (result == OHOS::ERR_OK) {
         if (startAbilityWithWaitFlag_) {
             result = StartAbilityWithWait(want);
-        } else if (StartSandboxCloneAbilityFlag_) {
+        } else if (startSandboxCloneAbilityFlag_) {
             SandboxCloneParams params;
             // Get caller info from environment variables (set by SA-CLI via config["env"])
             if (const char* envCallerUid = std::getenv("ohos_cli_callerUid")) {
@@ -953,7 +953,7 @@ ErrCode ClawAaShellCommand::MakeWantFromCmd(Want& want, int32_t& userId)
                     }
                     sandBoxCloneIndex = std::stoi(sandBoxCloneIndexStr);
                     hasSandBoxCloneIndex = true;
-                    StartSandboxCloneAbilityFlag_ = true;
+                    startSandboxCloneAbilityFlag_ = true;
                     TAG_LOGI(AAFwkTag::AA_TOOL, "sandBoxCloneIndex = %{public}d, Flag_ set to true", sandBoxCloneIndex);
                 }
                 break;

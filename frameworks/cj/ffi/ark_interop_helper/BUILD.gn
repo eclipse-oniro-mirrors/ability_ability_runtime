@@ -28,6 +28,7 @@ ohos_shared_library("ark_interop_helper_ffi") {
     "ipc:ipc_single",
     "napi:ace_napi",
     "napi:ark_interop",
+    "node:node_header_notice",
   ]
   sanitize = {
     cfi = true

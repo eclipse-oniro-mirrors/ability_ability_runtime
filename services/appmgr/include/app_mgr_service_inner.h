@@ -22,6 +22,7 @@
 #include <regex>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "ability_debug_response_interface.h"
@@ -1112,6 +1113,9 @@ public:
 
     void SubmitDestroyImageTask(const std::shared_ptr<AppRunningRecord>,
         const int32_t reason, const std::string &exitMsg);
+    std::string GetImageReportAppVersionName(const std::string &bundleName, int32_t userId);
+    void SendDestroyImageEvent(const std::shared_ptr<AppRunningRecord> &appRecord, const std::string &bundleName,
+        const std::string &appVersionName, int32_t reason, const std::string &exitMsg);
 
     /**
      * Record process exit reason to appRunningRecord
@@ -2455,8 +2459,11 @@ private:
         const std::string& specifiedProcessFlag, const std::string& customProcessFlag,
         std::shared_ptr<AppRunningRecord>& appRecord);
 
-    void SnapshotStartReport(int32_t uid, const std::string &bundleName, int32_t result, const std::string &reason);
-    void SnapshotErrorReport(int32_t uid, const std::string &bundleName, int32_t result, const std::string &reason);
+    void SnapshotStartReport(int32_t uid, const std::string &bundleName, const std::string &appVersionName,
+        int32_t result, const std::string &reason);
+
+    void SnapshotErrorReport(int32_t uid, const std::string &bundleName, const std::string &appVersionName,
+        int32_t result, const std::string &reason);
 
     void MarkTemplateProcess(const std::shared_ptr<AppRunningRecord> &appRecord, std::string bundleName);
     void UnMarkTemplateProcess(int32_t templatePid);
@@ -2535,7 +2542,7 @@ private:
     std::mutex imageSerialLock_;
 
     std::mutex imageReportLock_;
-    std::map<std::string, int32_t> imageStartReportMap_;
+    std::map<std::string, std::pair<int32_t, int32_t>> imageStartReportMap_;
     std::chrono::steady_clock::time_point lastReportTime_ = std::chrono::steady_clock::now();
     int32_t imageStartCount_ {0};
 };

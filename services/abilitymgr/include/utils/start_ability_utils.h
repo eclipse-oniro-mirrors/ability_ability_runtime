@@ -110,7 +110,6 @@ struct StartAbilityWrapParam {
     bool isFreeInstallFromService = false;
     bool removeInsightIntentFlag = false;
     bool isFromOpenLink = false;
-    bool isServiceMatch = false;
     uint64_t specifiedFullTokenId = 0;
     std::shared_ptr<StartSpecifiedAbilityParams> startSpecifiedParams = nullptr;
     std::string hostBundleName;

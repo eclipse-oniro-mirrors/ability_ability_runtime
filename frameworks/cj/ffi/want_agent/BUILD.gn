@@ -77,6 +77,7 @@ ohos_shared_library("cj_want_agent_ffi") {
     "napi:ace_napi",
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
+    "node:node_header_notice",
   ]
 
   sources = [

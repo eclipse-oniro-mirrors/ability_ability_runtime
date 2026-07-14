@@ -200,7 +200,8 @@ int32_t AbilityManagerCollaboratorProxy::NotifyLoadAbility(
     return NO_ERROR;
 }
 
-int32_t AbilityManagerCollaboratorProxy::NotifyMoveMissionToBackground(int32_t missionId, int32_t userId)
+int32_t AbilityManagerCollaboratorProxy::NotifyMoveMissionToBackground(int32_t missionId, int32_t userId,
+    bool isFromScreenOffBackground)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -216,6 +217,10 @@ int32_t AbilityManagerCollaboratorProxy::NotifyMoveMissionToBackground(int32_t m
     }
     if (!data.WriteInt32(userId)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "userId write fail");
+        return ERR_INVALID_OPERATION;
+    }
+    if (!data.WriteBool(isFromScreenOffBackground)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "isFromScreenOffBackground write fail");
         return ERR_INVALID_OPERATION;
     }
     int32_t ret = SendTransactCmd(
