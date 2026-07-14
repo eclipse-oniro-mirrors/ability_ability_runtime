@@ -33,6 +33,7 @@ public:
     static SAInterceptorManager &GetInstance();
 
     int32_t AddSAInterceptor(sptr<ISAInterceptor> interceptor);
+    int32_t RemoveSAInterceptor(sptr<IRemoteObject> interceptor);
     int32_t ExecuteSAInterceptor(const std::string &params, Rule &rule);
 
     void OnObserverDied(const wptr<IRemoteObject> &remote);

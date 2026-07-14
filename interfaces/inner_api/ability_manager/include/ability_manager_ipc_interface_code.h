@@ -779,6 +779,9 @@ enum class AbilityManagerInterfaceCode {
 
     // notify JS function was successfully invoked by napi_call_function
     NOTIFY_SKILL_FUNCTION_INVOKED = 6177,
+
+    // unregister sa interceptor
+    UNREGISTER_SA_INTERCEPTOR = 6178,
 };
 }  // namespace AAFwk
 }  // namespace OHOS

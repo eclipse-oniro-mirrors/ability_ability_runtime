@@ -2666,6 +2666,14 @@ ErrCode AbilityManagerClient::RegisterSAInterceptor(sptr<AbilityRuntime::ISAInte
     return abms->RegisterSAInterceptor(interceptor);
 }
 
+ErrCode AbilityManagerClient::UnregisterSAInterceptor(sptr<IRemoteObject> interceptor)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "call UnregisterSAInterceptor");
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    return abms->UnregisterSAInterceptor(interceptor);
+}
+
 ErrCode AbilityManagerClient::SuspendExtensionAbility(sptr<IAbilityConnection> connect)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
