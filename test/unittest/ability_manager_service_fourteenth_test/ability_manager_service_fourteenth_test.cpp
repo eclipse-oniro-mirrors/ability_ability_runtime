@@ -1858,7 +1858,7 @@ HWTEST_F(AbilityManagerServiceFourteenthTest, StartAbilityByOEExt_001, TestSize.
 /**
  * @tc.number: StartAbilityByOEExt_005
  * @tc.name: StartAbilityByOEExt
- * @tc.desc: Test StartAbilityByOEExt when ValidateCaller returns ERR_OK, falls through to StartAbilityWrap
+ * @tc.desc: Test StartAbilityByOEExt when ValidateCaller returns ERR_OK
  */
 HWTEST_F(AbilityManagerServiceFourteenthTest, StartAbilityByOEExt_005, TestSize.Level1)
 {

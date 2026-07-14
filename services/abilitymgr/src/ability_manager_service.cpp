@@ -113,7 +113,6 @@
 #ifdef SUPPORT_RECORDER_DSOFTBUS
 #include "softbus_bus_center.h"
 #endif
-#include "start_ability_handler/start_ability_sandbox_savefile.h"
 #include "start_ability_utils.h"
 #include "start_options_utils.h"
 #include "startup_util.h"
@@ -776,8 +775,8 @@ int AbilityManagerService::StartAbility(const Want &want, int32_t userId, int re
         .userId = userId,
         .specifiedFullTokenId = specifiedFullTokenId,
     };
-    int32_t ret = StartAbilityWrap(startAbilityWrapParam);
-    AAFWK::ContinueRadar::GetInstance().ClickIconStartAbility("StartAbilityWrap", want.GetFlags(), ret);
+    int32_t ret = StartAbilityInner(startAbilityWrapParam);
+    AAFWK::ContinueRadar::GetInstance().ClickIconStartAbility("StartAbilityInner", want.GetFlags(), ret);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "StartAbilityError:%{public}d", eventInfo->errCode);
     }
@@ -845,7 +844,7 @@ int32_t AbilityManagerService::StartAbilityByFreeInstall(const StartAbilityWrapP
 
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Start ability come, ability is %{public}s, userId is %{public}d",
         param.want.GetAbilityNameRef().c_str(), param.userId);
-    int32_t ret = StartAbilityWrap(param);
+    int32_t ret = StartAbilityInner(const_cast<StartAbilityWrapParam &>(param));
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "StartAbilityByFreeInstall error:%{public}d", ret);
     }
@@ -897,7 +896,7 @@ int AbilityManagerService::StartAbilityWithSpecifyTokenIdInner(const Want &want,
         .userId = userId,
         .specifyTokenId = specifyTokenId,
     };
-    int32_t ret = StartAbilityWrap(startAbilityWrapParam);
+    int32_t ret = StartAbilityInner(startAbilityWrapParam);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startAbility with specified token error:%{public}d", ret);
     }
@@ -975,7 +974,7 @@ int32_t AbilityManagerService::StartAbilityByOEExt(const Want &want,
         .isStartByOEExt = true,
         .specifiedFlag = specifiedFlag,
     };
-    return StartAbilityWrap(startAbilityWrapParam);
+    return StartAbilityInner(startAbilityWrapParam);
 }
 
 int AbilityManagerService::StartAbilityByUIContentSession(const Want &want, const sptr<IRemoteObject> &callerToken,
@@ -1092,7 +1091,7 @@ int AbilityManagerService::StartAbilityOnlyUIAbility(const Want &want, const spt
         .specifyTokenId = specifyTokenId,
         .isUIAbilityOnly = true,
     };
-    int32_t ret = StartAbilityWrap(startAbilityWrapParam);
+    int32_t ret = StartAbilityInner(startAbilityWrapParam);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "StartAbilityOnlyUIAbility error:%{public}d", ret);
     }
@@ -1164,7 +1163,7 @@ int AbilityManagerService::StartAbilityAsCallerDetails(const Want &want, const s
         .isAppCloneSelector = isAppCloneSelector,
         .requestCallback = callback,
     };
-    int32_t ret = StartAbilityWrap(startAbilityWrapParam);
+    int32_t ret = StartAbilityInner(startAbilityWrapParam);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "start ability as caller failed:%{public}d", ret);
         if (callback != nullptr) {
@@ -1173,82 +1172,6 @@ int AbilityManagerService::StartAbilityAsCallerDetails(const Want &want, const s
         }
     }
     return ret;
-}
-
-int AbilityManagerService::StartAbilityPublicPrechainCheck(StartAbilityParams &params)
-{
-    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    // 1. CheckCallerToken
-    if (params.callerToken != nullptr && !VerificationAllToken(params.callerToken)) {
-        auto isSpecificSA = AAFwk::PermissionVerification::GetInstance()->
-            CheckSpecificSystemAbilityAccessPermission(DMS_PROCESS_NAME);
-        if (!isSpecificSA) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "verificationAllToken failed");
-            return ERR_INVALID_CALLER;
-        }
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "caller specific system ability");
-    }
-
-    // 2. validUserId, multi-user
-    if (!JudgeMultiUserConcurrency(params.GetValidUserId())) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "multi-user non-concurrent unsatisfied");
-        return ERR_CROSS_USER;
-    }
-
-    return ERR_OK;
-}
-
-int AbilityManagerService::StartAbilityPrechainInterceptor(StartAbilityParams &params)
-{
-    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    auto shouldBlockFunc = [aams = shared_from_this()]() { return aams->ShouldBlockAllAppStart(); };
-    AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(params.want, params.requestCode,
-        params.GetValidUserId(), true, nullptr, shouldBlockFunc);
-    auto interceptorResult = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
-        interceptorExecuter_->DoProcess(interceptorParam);
-    if (interceptorResult != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "interceptorExecuter_ null or doProcess error");
-        return interceptorResult;
-    }
-
-    return ERR_OK;
-}
-
-bool AbilityManagerService::StartAbilityInChain(StartAbilityParams &params, int &result)
-{
-    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    if (!StartAbilitySandboxSavefile::GetInstance().MatchStartRequest(params)) {
-        return false;
-    }
-
-    result = StartAbilityPublicPrechainCheck(params);
-    if (result != ERR_OK) {
-        return true;
-    }
-    result = StartAbilityPrechainInterceptor(params);
-    if (result != ERR_OK) {
-        return true;
-    }
-    result = StartAbilitySandboxSavefile::GetInstance().HandleStartRequest(params);
-    return true;
-}
-
-int AbilityManagerService::StartAbilityWrap(const StartAbilityWrapParam &startAbilityWrapParam)
-{
-    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    StartAbilityParams startParams(const_cast<Want &>(startAbilityWrapParam.want));
-    startParams.callerToken = startAbilityWrapParam.callerToken;
-    startParams.userId = startAbilityWrapParam.userId;
-    startParams.requestCode = startAbilityWrapParam.requestCode;
-    startParams.isStartAsCaller = startAbilityWrapParam.isStartAsCaller;
-    startParams.SetValidUserId(GetValidUserId(startAbilityWrapParam.userId));
-
-    int result = ERR_OK;
-    if (StartAbilityInChain(startParams, result)) {
-        return result;
-    }
-
-    return StartAbilityInner(const_cast<StartAbilityWrapParam &>(startAbilityWrapParam));
 }
 
 void AbilityManagerService::SetReserveInfo(const std::string &linkString, AbilityRequest& abilityRequest)
@@ -1932,17 +1855,6 @@ int AbilityManagerService::StartAbilityDetails(const Want &want, const AbilitySt
         return ERR_UNLOCK_SCREEN_FAILED_IN_DEVELOPER_MODE;
     }
     AbilityUtil::RemoveWantKey(const_cast<Want &>(want));
-    StartAbilityParams startParams(const_cast<Want &>(want));
-    startParams.callerToken = callerToken;
-    startParams.userId = userId;
-    startParams.requestCode = requestCode;
-    startParams.SetValidUserId(GetValidUserId(userId));
-
-    int result = ERR_OK;
-    if (StartAbilityInChain(startParams, result)) {
-        AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result, "StartAbilityInChain failed");
-        return result;
-    }
 
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Start ability setting.");
@@ -1996,7 +1908,7 @@ int AbilityManagerService::StartAbilityDetails(const Want &want, const AbilitySt
     auto shouldBlockFunc = [aams = shared_from_this()]() { return aams->ShouldBlockAllAppStart(); };
     AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(want, requestCode, validUserId,
         true, nullptr, shouldBlockFunc);
-    result = interceptorExecuter_ == nullptr ? ERR_NULL_INTERCEPTOR_EXECUTER :
+    auto result = interceptorExecuter_ == nullptr ? ERR_NULL_INTERCEPTOR_EXECUTER :
         interceptorExecuter_->DoProcess(interceptorParam);
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "interceptorExecuter_ null or doProcess error:%{public}d", result);
@@ -2181,7 +2093,7 @@ int AbilityManagerService::StartUIAbilityForOptionWrap(const Want &want, const S
         TAG_LOGE(AAFwkTag::ABILITYMGR, "check process oprions failed: %{public}d", ret);
         return ret;
     }
-    return StartAbilityForOptionWrap(want, options, callerToken, isPendingWantCaller, userId, requestCode, false,
+    return StartAbilityForOptionInner(want, options, callerToken, isPendingWantCaller, userId, requestCode, false,
         callerTokenId, isImplicit, isCallByShortcut, isCallByDelayed);
 }
 
@@ -2200,7 +2112,7 @@ int AbilityManagerService::StartAbilityAsCaller(const Want &want, const StartOpt
     AbilityUtil::RemoveWantKey(const_cast<Want &>(want));
     AAFwk::Want newWant = want;
     UpdateCallerInfoUtil::GetInstance().UpdateAsCallerSourceInfo(newWant, asCallerSourceToken, callerToken);
-    return StartAbilityForOptionWrap(newWant, startOptions, callerToken, false, userId, requestCode, true);
+    return StartAbilityForOptionInner(newWant, startOptions, callerToken, false, userId, requestCode, true);
 }
 
 int AbilityManagerService::StartAbilityForResultAsCaller(
@@ -2232,7 +2144,7 @@ int AbilityManagerService::StartAbilityForResultAsCaller(
         .userId = userId,
         .isStartAsCaller = true,
     };
-    return StartAbilityWrap(startAbilityWrapParam);
+    return StartAbilityInner(startAbilityWrapParam);
 }
 
 int AbilityManagerService::StartAbilityForResultAsCaller(const Want &want, const StartOptions &startOptions,
@@ -2256,29 +2168,8 @@ int AbilityManagerService::StartAbilityForResultAsCaller(const Want &want, const
     CHECK_POINTER_AND_RETURN(connectManager, ERR_NO_INIT);
     auto asCallerSourceToken = connectManager->GetUIExtensionSourceToken(callerToken);
     UpdateCallerInfoUtil::GetInstance().UpdateAsCallerSourceInfo(newWant, asCallerSourceToken, callerToken);
-    return StartAbilityForOptionWrap(newWant, startOptions, callerToken, false, userId, requestCode, true);
-}
 
-int AbilityManagerService::StartAbilityForOptionWrap(const Want &want, const StartOptions &startOptions,
-    const sptr<IRemoteObject> &callerToken, bool isPendingWantCaller, int32_t userId, int requestCode,
-    bool isStartAsCaller, uint32_t callerTokenId, bool isImplicit, bool isCallByShortcut, bool isCallByDelayed)
-{
-    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    StartAbilityParams startParams(const_cast<Want &>(want));
-    startParams.callerToken = callerToken;
-    startParams.userId = userId;
-    startParams.requestCode = requestCode;
-    startParams.isStartAsCaller = isStartAsCaller;
-    startParams.startOptions = &startOptions;
-    startParams.SetValidUserId(GetValidUserId(userId));
-
-    int result = ERR_OK;
-    if (StartAbilityInChain(startParams, result)) {
-        return result;
-    }
-
-    return StartAbilityForOptionInner(want, startOptions, callerToken, isPendingWantCaller, userId, requestCode,
-        isStartAsCaller, callerTokenId, isImplicit, isCallByShortcut, isCallByDelayed);
+    return StartAbilityForOptionInner(newWant, startOptions, callerToken, false, userId, requestCode, true);
 }
 
 int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const StartOptions &startOptions,
@@ -10454,28 +10345,6 @@ int AbilityManagerService::StartAbilityForPrelaunch(const Want &want, const int3
     return uiAbilityManager->PrelaunchAbilityLocked(abilityRequest, frameNum);
 }
 
-int AbilityManagerService::StartAbilityJust(AbilityRequest &abilityRequest, int32_t validUserId)
-{
-    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "call");
-    UpdateCallerInfoUtil::GetInstance().UpdateCallerInfo(abilityRequest.want, abilityRequest.callerToken);
-    if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto uiAbilityManager = GetUIAbilityManagerByUserId(validUserId);
-        CHECK_POINTER_AND_RETURN(uiAbilityManager, ERR_INVALID_VALUE);
-        std::string errMsg;
-        return uiAbilityManager->ResolveLocked(abilityRequest, errMsg);
-    }
-
-    auto missionListMgr = GetMissionListManagerByUserId(validUserId);
-    if (missionListMgr == nullptr) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "missionListMgr null designated userId=%{public}d", validUserId);
-        return ERR_INVALID_VALUE;
-    }
-    ReportEventToRSS(abilityRequest.abilityInfo, abilityRequest.callerToken);
-
-    return missionListMgr->ResolveLocked(abilityRequest);
-}
-
 int AbilityManagerService::ReleaseCall(
     const sptr<IAbilityConnection> &connect, const AppExecFwk::ElementName &element)
 {
@@ -13867,7 +13736,6 @@ int32_t AbilityManagerService::NotifySaveAsResult(const Want &want, int resultCo
         return checkResult;
     }
 
-    StartAbilitySandboxSavefile::GetInstance().HandleResult(want, resultCode, requestCode);
     return ERR_OK;
 }
 
@@ -14525,8 +14393,8 @@ int32_t AbilityManagerService::StartAbilityWithServiceMatch(const InsightIntentE
         .requestCode = requestCode,
         .userId = userId,
     };
-    int32_t ret = StartAbilityWrap(startAbilityWrapParam);
-    AAFWK::ContinueRadar::GetInstance().ClickIconStartAbility("StartAbilityWrap", want.GetFlags(), ret);
+    int32_t ret = StartAbilityInner(startAbilityWrapParam);
+    AAFWK::ContinueRadar::GetInstance().ClickIconStartAbility("StartAbilityInner", want.GetFlags(), ret);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "StartAbilityError:%{public}d", eventInfo->errCode);
     }
@@ -14988,7 +14856,7 @@ int32_t AbilityManagerService::StartAbilityWithInsightIntent(const Want &want, i
         .userId = userId,
         .specifiedFullTokenId = specifiedFullTokenId,
     };
-    int32_t ret = StartAbilityWrap(startAbilityWrapParam);
+    int32_t ret = StartAbilityInner(startAbilityWrapParam);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "StartAbilityError:%{public}d", ret);
     }
@@ -16096,7 +15964,7 @@ int32_t AbilityManagerService::RestartApp(const AAFwk::Want &want, bool isAppRec
         .want = want,
         .isForegroundToRestartApp = true,
     };
-    result = StartAbilityWrap(startAbilityWrapParam);
+    result = StartAbilityInner(startAbilityWrapParam);
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startAbility error");
         return result;
@@ -18033,7 +17901,7 @@ int32_t AbilityManagerService::StartUIAbilityWithCallback(const Want &want, sptr
         .isUIAbilityOnly = true,
         .requestCallback = effectiveCallback,
     };
-    int32_t ret = StartAbilityWrap(startAbilityWrapParam);
+    int32_t ret = StartAbilityInner(startAbilityWrapParam);
     if (ret != ERR_OK && effectiveCallback != nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "ret: %{public}d, callback request ability", ret);
         effectiveCallback->OnRequestStartAbilityResult(false);

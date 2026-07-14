@@ -71,7 +71,6 @@
 #include "resident_process_manager.h"
 #include "sandbox_clone_params.h"
 #include "scene_board/ui_ability_lifecycle_manager.h"
-#include "start_ability_handler.h"
 #include "sub_managers_helper.h"
 #include "system_ability.h"
 #include "task_handler_wrap.h"
@@ -1394,14 +1393,6 @@ public:
     virtual int StartAbilityForPrelaunch(const Want &want, const int32_t frameNum) override;
 
     /**
-     * As abilityRequest is prepared, just execute starting ability procedure.
-     * By now, this is only used by start_ability_sandbox_savefile.
-     * @param abilityRequest, Prepared with all info for starting a ability.
-     * @param validUserId, Valid user id.
-     */
-    int StartAbilityJust(AbilityRequest &abilityRequest, int32_t validUserId);
-
-    /**
      * CallRequestDone, after invoke callRequest, ability will call this interface to return callee.
      *
      * @param token, ability's token.
@@ -1433,8 +1424,6 @@ public:
 
     int32_t StartAbilityByFreeInstall(const StartAbilityWrapParam &param);
 
-    int StartAbilityWrap(const StartAbilityWrapParam &startAbilityWrapParam);
-
     int StartAbilityInner(StartAbilityWrapParam &param);
 
     int32_t StartExtensionAbilityInner(
@@ -1453,11 +1442,6 @@ public:
     int PreloadUIExtensionAbilityInner(const Want &want, std::string &bundleName,
         int32_t userId = DEFAULT_INVAL_VALUE, int32_t hostPid = DEFAULT_INVAL_VALUE,
         int32_t requestCode = DEFAULT_INVAL_VALUE);
-
-    int StartAbilityForOptionWrap(const Want &want, const StartOptions &startOptions,
-        const sptr<IRemoteObject> &callerToken, bool isPendingWantCaller, int32_t userId = DEFAULT_INVAL_VALUE,
-        int requestCode = DEFAULT_INVAL_VALUE, bool isStartAsCaller = false, uint32_t callerTokenId = 0,
-        bool isImplicit = false, bool isCallByShortcut = false, bool isCallByDelayed = false);
 
     int StartAbilityForOptionInner(
         const Want &want,
@@ -3002,9 +2986,6 @@ private:
     int DisconnectRemoteAbility(const sptr<IRemoteObject> &connect);
     int PreLoadAppDataAbilities(const std::string &bundleName, const int32_t userId);
     void PreLoadAppDataAbilitiesTask(const std::string &bundleName, const int32_t userId);
-    int StartAbilityPublicPrechainCheck(StartAbilityParams &params);
-    int StartAbilityPrechainInterceptor(StartAbilityParams &params);
-    bool StartAbilityInChain(StartAbilityParams &params, int &result);
     void InitWindowVisibilityChangedListener();
     void FreeWindowVisibilityChangedListener();
     bool CheckProcessIsBackground(int32_t pid, AbilityState currentState);

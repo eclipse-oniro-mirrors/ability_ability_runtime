@@ -26,7 +26,6 @@
 #include "mock_app_mgr_service.h"
 #include "mock_parameters.h"
 #include "mock_scene_board_judgement.h"
-#include "start_ability_handler.h"
 #include "start_params_by_SCB.h"
 #include "session/host/include/session.h"
 
@@ -50,7 +49,6 @@ constexpr int32_t TWO = 2;
 constexpr int32_t DLP_APP_INDEX = 1001;
 constexpr uint32_t TEST_VALUE_ONE = 1;
 const std::string TEST_STRING_VALUE_1 = "1";
-const std::string TEST_CREATE_FILE = "ohos.want.action.CREATE_FILE";
 const std::string TEST_BUNDLE_NAME = "com.example.test";
 const std::string TEST_ABILITY_NAME = "com.example.test.MainAbility";
 const std::string TEST_MODULE_NAME = "entry";
@@ -372,43 +370,6 @@ HWTEST_F(AbilityManagerServiceEighthTest, StartAbilityOnlyUIAbility_001, TestSiz
     result = abilityMs_->StartAbilityOnlyUIAbility(want, callerToken, specifyTokenId);
     EXPECT_EQ(result, ERR_INVALID_CONTINUATION_FLAG);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest StartAbilityOnlyUIAbility_001 end");
-}
-
-/*
- * Feature: AbilityManagerService
- * Name: StartAbilityInChainTest_001
- * Function: StartAbilityInChain
- * SubFunction: NA
- */
-HWTEST_F(AbilityManagerServiceEighthTest, StartAbilityInChainTest_001, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest StartAbilityInChainTest_001 start");
-    Want want;
-    int result = ERR_OK;
-    bool ret = false;
-    sptr<IRemoteObject> callerToken = nullptr;
-    StartAbilityParams params(want);
-    params.callerToken = callerToken;
-    ret = abilityMs_->StartAbilityInChain(params, result);
-    EXPECT_FALSE(ret);
-    want.SetAction(TEST_CREATE_FILE);
-    std::string key = "startMode";
-    std::string value = "save";
-    want.SetParam(key, value);
-    StartAbilityParams params2(want);
-    params2.callerToken = callerToken;
-    params2.callerAppIndex = DLP_APP_INDEX;
-    ret = abilityMs_->StartAbilityInChain(params2, result);
-    EXPECT_TRUE(ret);
-    const int32_t userId = -1;
-    std::shared_ptr<AbilityRecord> callerAbilityRecord = GetAbilityRecord();
-    callerAbilityRecord->Init(AbilityRequest());
-    sptr<IRemoteObject> callerToken1 = callerAbilityRecord->GetToken();
-    params2.callerToken = callerToken1;
-    params2.userId = userId;
-    ret = abilityMs_->StartAbilityInChain(params2, result);
-    EXPECT_TRUE(ret);
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest StartAbilityInChainTest_001 end");
 }
 
 /*
