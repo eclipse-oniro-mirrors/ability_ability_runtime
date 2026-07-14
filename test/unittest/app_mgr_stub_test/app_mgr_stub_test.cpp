@@ -1614,6 +1614,73 @@ HWTEST_F(AppMgrStubTest, HandleDumpJsHandleMap_001, TestSize.Level1)
 }
 
 /**
+ * @tc.name: HandleDumpJsHandleMap_002
+ * @tc.desc: Handle dump js handle map with null parcelable.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleDumpJsHandleMap_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    WriteInterfaceToken(data);
+
+    EXPECT_CALL(*mockAppMgrService_, DumpJsHandleMap(_)).Times(0);
+    auto result = mockAppMgrService_->OnRemoteRequest(
+        static_cast<uint32_t>(AppMgrInterfaceCode::DUMP_JSHANDLE_MAP_PROCESS), data, reply, option);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: JsHandleMapInfo_Marshalling_001
+ * @tc.desc: Test JsHandleMapInfo Marshalling and Unmarshalling.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, JsHandleMapInfo_Marshalling_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    JsHandleMapInfo info;
+    info.pid = 100;
+    info.tid = 200;
+
+    MessageParcel parcel;
+    EXPECT_TRUE(info.Marshalling(parcel));
+
+    auto *readInfo = JsHandleMapInfo::Unmarshalling(parcel);
+    ASSERT_NE(readInfo, nullptr);
+    EXPECT_EQ(readInfo->pid, 100);
+    EXPECT_EQ(readInfo->tid, 200);
+    delete readInfo;
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: JsHandleMapInfo_Marshalling_002
+ * @tc.desc: Test JsHandleMapInfo Marshalling and Unmarshalling with default values.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, JsHandleMapInfo_Marshalling_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    JsHandleMapInfo info;
+
+    MessageParcel parcel;
+    EXPECT_TRUE(info.Marshalling(parcel));
+
+    auto *readInfo = JsHandleMapInfo::Unmarshalling(parcel);
+    ASSERT_NE(readInfo, nullptr);
+    EXPECT_EQ(readInfo->pid, 0);
+    EXPECT_EQ(readInfo->tid, 0);
+    delete readInfo;
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
  * @tc.name: HandleReportDumpMemResult_001
  * @tc.desc: Handle report dump mem result with valid callback.
  * @tc.type: FUNC
