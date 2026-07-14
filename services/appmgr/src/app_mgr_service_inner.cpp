@@ -8587,12 +8587,7 @@ int AppMgrServiceInner::StartRenderProcessImpl(const std::shared_ptr<RenderRecor
     }
 
     int32_t userId = -1;
-    auto osAccountMgr = DelayedSingleton<OsAccountManagerWrapper>::GetInstance();
-    if (osAccountMgr == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "osAccountMgr is nullptr");
-        return ERR_INVALID_VALUE;
-    }
-    int32_t errCode = osAccountMgr->GetOsAccountLocalIdFromUid(appRecord->GetUid(), userId);
+    int32_t errCode = OsAccountManagerWrapper::GetOsAccountLocalIdFromUid(appRecord->GetUid(), userId);
     if (errCode != ERR_OK) {
         TAG_LOGE(AAFwkTag::APPMGR, "GetOsAccountLocalIdFromUid failed,errcode=%{public}d", errCode);
         return errCode;
@@ -10825,12 +10820,7 @@ int32_t AppMgrServiceInner::StartChildProcessImpl(const std::shared_ptr<ChildPro
     int32_t uid = Constants::INVALID_UID;
     if (options.isolationMode && options.isolationUid) {
         int32_t userId = -1;
-        auto osAccountMgr = DelayedSingleton<OsAccountManagerWrapper>::GetInstance();
-        if (osAccountMgr == nullptr) {
-            TAG_LOGE(AAFwkTag::APPMGR, "osAccountMgr is nullptr");
-            return ERR_INVALID_VALUE;
-        }
-        int32_t errCode = osAccountMgr->GetOsAccountLocalIdFromUid(appRecord->GetUid(), userId);
+        int32_t errCode = OsAccountManagerWrapper::GetOsAccountLocalIdFromUid(appRecord->GetUid(), userId);
         if (errCode != ERR_OK) {
             TAG_LOGE(AAFwkTag::APPMGR, "GetOsAccountLocalIdFromUid failed,errcode=%{public}d", errCode);
             return errCode;
@@ -10948,13 +10938,8 @@ int32_t AppMgrServiceInner::GetChildProcessInfoEx(const std::shared_ptr<ChildPro
         TAG_LOGE(AAFwkTag::APPMGR, "bundleMgrHelper null");
         return ERR_NO_INIT;
     }
-    auto osAccountMgr = DelayedSingleton<OsAccountManagerWrapper>::GetInstance();
-    if (osAccountMgr == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "osAccountMgr is nullptr");
-        return ERR_INVALID_VALUE;
-    }
     int32_t userId = -1;
-    errCode = osAccountMgr->GetOsAccountLocalIdFromUid(appRecord->GetUid(), userId);
+    errCode = OsAccountManagerWrapper::GetOsAccountLocalIdFromUid(appRecord->GetUid(), userId);
     if (errCode != ERR_OK) {
         TAG_LOGE(AAFwkTag::APPMGR, "GetOsAccountLocalIdFromUid failed,errcode=%{public}d", errCode);
         return errCode;
@@ -11005,13 +10990,8 @@ int32_t AppMgrServiceInner::GetChildProcessInfo(const std::shared_ptr<ChildProce
         TAG_LOGE(AAFwkTag::APPMGR, "no appRecord");
         return ERR_NAME_NOT_FOUND;
     }
-    auto osAccountMgr = DelayedSingleton<OsAccountManagerWrapper>::GetInstance();
-    if (osAccountMgr == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "osAccountMgr is nullptr");
-        return ERR_INVALID_VALUE;
-    }
     int32_t userId = -1;
-    int errCode = osAccountMgr->GetOsAccountLocalIdFromUid(appRecord->GetUid(), userId);
+    int errCode = OsAccountManagerWrapper::GetOsAccountLocalIdFromUid(appRecord->GetUid(), userId);
     if (errCode != ERR_OK) {
         TAG_LOGE(AAFwkTag::APPMGR, "GetOsAccountLocalIdFromUid failed,errcode=%{public}d", errCode);
         return errCode;
@@ -12453,14 +12433,13 @@ int32_t AppMgrServiceInner::GetSupportedProcessCachePids(const std::string &bund
     std::vector<int32_t> &pidList)
 {
     auto cachePrcoMgr = DelayedSingleton<CacheProcessManager>::GetInstance();
-    auto osAccountMgr = DelayedSingleton<OsAccountManagerWrapper>::GetInstance();
-    if (cachePrcoMgr == nullptr || osAccountMgr == nullptr || appRunningManager_ == nullptr) {
+    if (cachePrcoMgr == nullptr || appRunningManager_ == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "inner manager null");
         return AAFwk::INNER_ERR;
     }
     pidList.clear();
     int32_t callderUserId = -1;
-    int32_t getOsAccountRet = osAccountMgr->GetOsAccountLocalIdFromUid(IPCSkeleton::GetCallingUid(), callderUserId);
+    int32_t getOsAccountRet = OsAccountManagerWrapper::GetOsAccountLocalIdFromUid(IPCSkeleton::GetCallingUid(), callderUserId);
     if (getOsAccountRet != 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "get caller local id fail. ret: %{public}d", getOsAccountRet);
         return AAFwk::INNER_ERR;
@@ -12472,7 +12451,7 @@ int32_t AppMgrServiceInner::GetSupportedProcessCachePids(const std::string &bund
             continue;
         }
         int32_t procUserId = -1;
-        int32_t procGetOsAccountRet = osAccountMgr->GetOsAccountLocalIdFromUid(appRecord->GetUid(), procUserId);
+        int32_t procGetOsAccountRet = OsAccountManagerWrapper::GetOsAccountLocalIdFromUid(appRecord->GetUid(), procUserId);
         if (appRecord->GetBundleName() == bundleName && procGetOsAccountRet == 0 &&
             procUserId == callderUserId && cachePrcoMgr->IsAppSupportProcessCache(appRecord) &&
             appRecord->GetPriorityObject() != nullptr) {

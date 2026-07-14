@@ -35,6 +35,8 @@ gen_js_obj("test_runner_abc") {
 }
 
 ohos_shared_library("testrunner_napi") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "test_runner_module.cpp" ]
 
   deps = [

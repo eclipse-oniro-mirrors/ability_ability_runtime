@@ -35,6 +35,8 @@ gen_js_obj("environment_callback_abc") {
 }
 
 ohos_shared_library("environmentcallback") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "environment_callback_module.cpp" ]
 
   deps = [

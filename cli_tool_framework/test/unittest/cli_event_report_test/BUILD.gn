@@ -18,6 +18,11 @@ module_output_path = "ability_runtime/ability_runtime/clitool"
 
 ohos_unittest("cli_event_report_test") {
   module_out_path = module_output_path
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
 
   sources = [
     "cli_event_report_test.cpp",
@@ -54,4 +59,4 @@ ohos_unittest("cli_event_report_test") {
 group("unittest") {
   testonly = true
   deps = [ ":cli_event_report_test" ]
-}
+}

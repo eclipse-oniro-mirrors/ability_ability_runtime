@@ -519,7 +519,7 @@ bool AppRunningManager::GetPidsByUserId(int32_t userId, std::list<pid_t> &pids)
         const auto &appRecord = item.second;
         if (appRecord) {
             int32_t id = -1;
-            if ((DelayedSingleton<OsAccountManagerWrapper>::GetInstance()->
+            if ((OsAccountManagerWrapper::
                 GetOsAccountLocalIdFromUid(appRecord->GetUid(), id) == 0) && (id == userId)) {
                 TAG_LOGD(AAFwkTag::APPMGR, "GetOsAccountLocalIdFromUid id: %{public}d", id);
                 pid_t pid = appRecord->GetPid();
@@ -543,7 +543,7 @@ bool AppRunningManager::GetProcessInfosByUserId(int32_t userId, std::list<Simple
             continue;
         }
         int32_t id = -1;
-        if ((DelayedSingleton<OsAccountManagerWrapper>::GetInstance()->
+        if ((OsAccountManagerWrapper::
             GetOsAccountLocalIdFromUid(appRecord->GetUid(), id) == 0) && (id == userId)) {
             TAG_LOGD(AAFwkTag::APPMGR, "GetOsAccountLocalIdFromUid id: %{public}d", id);
             pid_t pid = appRecord->GetPid();

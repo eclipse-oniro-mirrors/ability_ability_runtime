@@ -35,6 +35,8 @@ gen_js_obj("action_extension_ability_abc") {
 }
 
 ohos_shared_library("actionextensionability_napi") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "action_extension_ability_module.cpp" ]
 
   deps = [

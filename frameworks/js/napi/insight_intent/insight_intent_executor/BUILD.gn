@@ -35,6 +35,8 @@ gen_js_obj("insight_intent_executor_abc") {
 }
 
 ohos_shared_library("insightintentexecutor_napi") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "insight_intent_executor_module.cpp" ]
 
   deps = [

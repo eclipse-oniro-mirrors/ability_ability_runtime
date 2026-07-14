@@ -83,7 +83,9 @@ void JsAutoFillExtensionTest::SetUp()
 }
 
 void JsAutoFillExtensionTest::TearDown()
-{}
+{
+    jsAutoFillExtension_ = nullptr;
+}
 
 void JsAutoFillExtensionTest::CreateJsAutoFillExtension()
 {

@@ -274,8 +274,7 @@ int32_t ModularObjectUtils::GetCallerAppInfo(AppExecFwk::ApplicationInfo &caller
         return INNER_ERR;
     }
     int32_t callerUserId = -1;
-    auto osAccountRet = DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()
-        ->GetOsAccountLocalIdFromUid(callingUid, callerUserId);
+    auto osAccountRet = AppExecFwk::OsAccountManagerWrapper::GetOsAccountLocalIdFromUid(callingUid, callerUserId);
     if (osAccountRet != 0) {
         TAG_LOGE(AAFwkTag::EXT, "getUserId fail, callingUid: %{public}d, ret:%{public}d", callingUid, osAccountRet);
         return INNER_ERR;

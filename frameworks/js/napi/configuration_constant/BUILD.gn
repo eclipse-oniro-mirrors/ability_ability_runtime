@@ -14,6 +14,8 @@
 import("//build/ohos.gni")
 
 ohos_shared_library("configurationconstant_napi") {
+  branch_protector_ret = "pac_ret"
+
   include_dirs = []
 
   sources = [ "configuration_constant_napi_module.cpp" ]
@@ -34,6 +36,8 @@ ohos_shared_library("configurationconstant_napi") {
 }
 
 ohos_shared_library("configurationconstant") {
+  branch_protector_ret = "pac_ret"
+
   include_dirs = []
 
   sources = [ "configuration_constant_module.cpp" ]

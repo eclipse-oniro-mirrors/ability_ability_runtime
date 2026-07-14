@@ -35,6 +35,8 @@ gen_js_obj("extension_context_abc") {
 }
 
 ohos_shared_library("extensioncontext_napi") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "extension_context_module.cpp" ]
 
   deps = [

@@ -133,7 +133,7 @@ int32_t AppExitReasonDataManager::SetAppExitReason(const std::string &bundleName
 int32_t AppExitReasonDataManager::DeleteAppExitReason(const std::string &bundleName, int32_t uid, int32_t appIndex)
 {
     int32_t userId;
-    if (DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->
+    if (AppExecFwk::OsAccountManagerWrapper::
         GetOsAccountLocalIdFromUid(uid, userId) != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "get GetOsAccountLocalIdFromUid failed");
         return ERR_INVALID_VALUE;
