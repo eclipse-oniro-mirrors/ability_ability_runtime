@@ -2286,5 +2286,24 @@ HWTEST_F(JsRuntimeTest, DumpHeapSnapshot_1800, TestSize.Level1)
     EXPECT_TRUE(jsRuntime != nullptr);
     TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_1800 end");
 }
+
+/**
+ * @tc.name: LoadSystemModule_0200
+ * @tc.desc: LoadSystemModule returns nullptr when methodRequireNapiRef_ is null.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, LoadSystemModule_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "LoadSystemModule_0200 start");
+
+    auto savedRef = std::move(jsRuntimePtr->methodRequireNapiRef_);
+    jsRuntimePtr->methodRequireNapiRef_ = nullptr;
+    std::string moduleName = "TestSystemModule";
+    auto ref = jsRuntimePtr->LoadSystemModule(moduleName, nullptr, 0);
+    EXPECT_EQ(ref, nullptr);
+    jsRuntimePtr->methodRequireNapiRef_ = std::move(savedRef);
+
+    TAG_LOGI(AAFwkTag::TEST, "LoadSystemModule_0200 end");
+}
 } // namespace AbilityRuntime
 } // namespace OHOS
