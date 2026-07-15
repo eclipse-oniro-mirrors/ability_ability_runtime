@@ -64,9 +64,7 @@ private:
     static bool CheckAppListenedEvents(const std::string &path);
     static bool SetDirXattr(const std::string &path, const std::string &name, const std::string &value);
     static bool GetDirXattr(const std::string &path, const std::string &name, std::string &value);
-    static bool IsFileExists(const std::string &file);
-    static bool CreateDir(const std::string &path);
-    static void CreateDirDelay(const std::string &path);
+    static void WriteRunningIdDelay();
     static void WriteRunningId();
     static bool CheckOomdumpSwitch();
     static bool Check2CQuota();
