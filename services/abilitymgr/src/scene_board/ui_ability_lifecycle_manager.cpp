@@ -1219,11 +1219,15 @@ int32_t UIAbilityLifecycleManager::NotifyCancelGamePreLaunch(const sptr<IRemoteO
         return ERR_INVALID_VALUE;
     }
 
+    if (IPCSkeleton::GetCallingUid() != abilityRecord->GetUid()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "caller uid not match ability record uid, not allowed");
+        return CHECK_PERMISSION_FAILED;
+    }
+
     if (!abilityRecord->IsGameSAPreLaunch()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Ability is not a game SA prelaunch");
         return ERR_NOT_GAME_PRELOAD_STATE;
     }
-
     // Kill the process
     auto pid = abilityRecord->GetPid();
     std::vector<pid_t> pids = { pid };
@@ -1247,6 +1251,12 @@ int32_t UIAbilityLifecycleManager::NotifyCompleteGamePreLaunch(const sptr<IRemot
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Failed to get ability record by token");
         return ERR_INVALID_VALUE;
     }
+
+    if (IPCSkeleton::GetCallingUid() != abilityRecord->GetUid()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "caller uid not match ability record uid, not allowed");
+        return CHECK_PERMISSION_FAILED;
+    }
+
     if (!abilityRecord->IsGameSAPreLaunch()) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "Ability is not a game SA prelaunch");
         return ERR_NOT_GAME_PRELOAD_STATE;
