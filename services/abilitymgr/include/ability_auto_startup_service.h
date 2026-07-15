@@ -174,6 +174,7 @@ private:
     std::shared_ptr<AppExecFwk::BundleMgrClient> GetBundleMgrClient();
     int32_t CheckPermissionForSystem();
     int32_t CheckPermissionForEDM();
+    int32_t VerifyCrossUserAccountPermission(const AutoStartupAbilityData &abilityData);
     int32_t InnerApplicationAutoStartupByEDM(const AutoStartupInfo &info, bool isSet, bool flag);
     int32_t GetAbilityInfo(const AutoStartupInfo &info, AutoStartupAbilityData &abilityData);
     int32_t CheckHiddenStartConditions(bool isHiddenStart, const AutoStartupAbilityData &abilityData);
