@@ -19,6 +19,7 @@ namespace OHOS {
 namespace AAFwk {
 namespace {
 constexpr const char* PERMISSION_FILE_ACCESS_MANAGER = "ohos.permission.FILE_ACCESS_MANAGER";
+constexpr const char* PERMISSION_AGENT_FILE_ACCESS = "ohos.permission.AGENT_FILE_ACCESS";
 constexpr const char* PERMISSION_WRITE_IMAGEVIDEO = "ohos.permission.WRITE_IMAGEVIDEO";
 constexpr const char* PERMISSION_READ_IMAGEVIDEO = "ohos.permission.READ_IMAGEVIDEO";
 constexpr const char* PERMISSION_WRITE_AUDIO = "ohos.permission.WRITE_AUDIO";
@@ -40,6 +41,9 @@ bool PermissionVerification::VerifyPermissionByTokenId(const int &tokenId, const
     }
     if (permissionName == PERMISSION_FILE_ACCESS_MANAGER) {
         return MyFlag::permissionFileAccessManager_;
+    }
+    if (permissionName == PERMISSION_AGENT_FILE_ACCESS) {
+        return MyFlag::permissionAgentFileAccess_;
     }
     if (permissionName == PERMISSION_WRITE_IMAGEVIDEO) {
         return MyFlag::permissionWriteImageVideo_ || MyFlag::permissionAllMedia_;
