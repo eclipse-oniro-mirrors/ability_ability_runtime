@@ -48,16 +48,6 @@ napi_value JsMemoryOptimizer::EvictModuleFilePages(napi_env env, napi_callback_i
     GET_NAPI_INFO_AND_CALL(env, info, JsMemoryOptimizer, OnEvictModuleFilePages);
 }
 
-bool JsMemoryOptimizer::CheckCallerIsSystemApp()
-{
-    auto selfToken = IPCSkeleton::GetSelfTokenID();
-    if (!Security::AccessToken::TokenIdKit::IsSystemAppByFullTokenID(selfToken)) {
-        TAG_LOGE(AAFwkTag::ABILITY, "not system app");
-        return false;
-    }
-    return true;
-}
-
 napi_value JsMemoryOptimizer::OnEvictFilePages(napi_env env, NapiCallbackInfo &info)
 {
     TAG_LOGD(AAFwkTag::ABILITY, "called");
@@ -69,11 +59,6 @@ napi_value JsMemoryOptimizer::OnEvictFilePages(napi_env env, NapiCallbackInfo &i
     if (info.argc < ARGC_ONE) {
         TAG_LOGE(AAFwkTag::ABILITY, "invalid argc");
         ThrowTooFewParametersError(env);
-        return CreateJsUndefined(env);
-    }
-    if (!CheckCallerIsSystemApp()) {
-        TAG_LOGE(AAFwkTag::ABILITY, "not system app");
-        ThrowError(env, AbilityErrorCode::ERROR_CODE_NOT_SYSTEM_APP);
         return CreateJsUndefined(env);
     }
 
@@ -121,11 +106,6 @@ napi_value JsMemoryOptimizer::OnEvictModuleFilePages(napi_env env, NapiCallbackI
     if (info.argc < ARGC_ONE) {
         TAG_LOGE(AAFwkTag::ABILITY, "invalid argc");
         ThrowTooFewParametersError(env);
-        return CreateJsUndefined(env);
-    }
-    if (!CheckCallerIsSystemApp()) {
-        TAG_LOGE(AAFwkTag::ABILITY, "not system app");
-        ThrowError(env, AbilityErrorCode::ERROR_CODE_NOT_SYSTEM_APP);
         return CreateJsUndefined(env);
     }
 
