@@ -280,16 +280,126 @@ HWTEST_F(JsRuntimeTest, JsRuntimeDumpHeapSnapshotTest_0100, TestSize.Level2)
 
 /**
  * @tc.name: JsRuntimeDumpJsHandleMapTest_0100
- * @tc.desc: JsRuntime test for JsRuntimeDumpJsHandleMap.
+ * @tc.desc: JsRuntime test for DumpJsHandleMap with default-constructed runtime (no jsEnv_).
  * @tc.type: FUNC
  */
 HWTEST_F(JsRuntimeTest, JsRuntimeDumpJsHandleMapTest_0100, TestSize.Level2)
 {
-    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap start");
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0100 start");
     std::unique_ptr<JsRuntime> jsRuntime = std::make_unique<AbilityRuntime::JsRuntime>();
+    ASSERT_NE(jsRuntime, nullptr);
+    EXPECT_EQ(jsRuntime->GetEcmaVm(), nullptr);
     jsRuntime->DumpJsHandleMap();
-    EXPECT_TRUE(jsRuntime != nullptr);
-    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap end");
+    EXPECT_EQ(jsRuntime->GetEcmaVm(), nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0100 end");
+}
+
+/**
+ * @tc.name: JsRuntimeDumpJsHandleMapTest_0200
+ * @tc.desc: JsRuntime test for DumpJsHandleMap when jsEnv_ is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, JsRuntimeDumpJsHandleMapTest_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0200 start");
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    ASSERT_NE(jsRuntime, nullptr);
+    jsRuntime->jsEnv_ = nullptr;
+    EXPECT_EQ(jsRuntime->GetEcmaVm(), nullptr);
+    jsRuntime->DumpJsHandleMap();
+    EXPECT_EQ(jsRuntime->GetEcmaVm(), nullptr);
+    jsRuntime.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0200 end");
+}
+
+/**
+ * @tc.name: JsRuntimeDumpJsHandleMapTest_0300
+ * @tc.desc: JsRuntime test for DumpJsHandleMap when jsEnv_ exists but vm_ is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, JsRuntimeDumpJsHandleMapTest_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0300 start");
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    ASSERT_NE(jsRuntime, nullptr);
+    jsRuntime->jsEnv_ = std::make_shared<JsEnv::JsEnvironment>();
+    jsRuntime->jsEnv_->vm_ = nullptr;
+    EXPECT_EQ(jsRuntime->GetEcmaVm(), nullptr);
+    jsRuntime->DumpJsHandleMap();
+    EXPECT_EQ(jsRuntime->GetEcmaVm(), nullptr);
+    jsRuntime.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0300 end");
+}
+
+/**
+ * @tc.name: JsRuntimeDumpJsHandleMapTest_0400
+ * @tc.desc: JsRuntime test for DumpJsHandleMap with valid VM.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, JsRuntimeDumpJsHandleMapTest_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0400 start");
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    ASSERT_NE(jsRuntime, nullptr);
+    jsRuntime->jsEnv_ = std::make_shared<JsEnv::JsEnvironment>();
+    panda::RuntimeOption pandaOption;
+    jsRuntime->jsEnv_->vm_ = panda::JSNApi::CreateJSVM(pandaOption);
+    ASSERT_NE(jsRuntime->jsEnv_->vm_, nullptr);
+    EXPECT_NE(jsRuntime->GetEcmaVm(), nullptr);
+    jsRuntime->DumpJsHandleMap();
+    EXPECT_NE(jsRuntime->GetEcmaVm(), nullptr);
+    panda::JSNApi::DestroyJSVM(jsRuntime->jsEnv_->vm_);
+    jsRuntime->jsEnv_->vm_ = nullptr;
+    jsRuntime.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0400 end");
+}
+
+/**
+ * @tc.name: JsRuntimeDumpJsHandleMapTest_0500
+ * @tc.desc: JsRuntime test for DumpJsHandleMap called through Runtime base class pointer.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, JsRuntimeDumpJsHandleMapTest_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0500 start");
+    std::unique_ptr<Runtime> runtime = std::make_unique<JsRuntime>();
+    ASSERT_NE(runtime, nullptr);
+    auto* jsRuntime = static_cast<JsRuntime*>(runtime.get());
+    EXPECT_EQ(jsRuntime->GetEcmaVm(), nullptr);
+    runtime->DumpJsHandleMap();
+    EXPECT_EQ(jsRuntime->GetEcmaVm(), nullptr);
+    runtime.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0500 end");
+}
+
+/**
+ * @tc.name: JsRuntimeDumpJsHandleMapTest_0600
+ * @tc.desc: JsRuntime test for DumpJsHandleMap with JsRuntime created by Create().
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, JsRuntimeDumpJsHandleMapTest_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0600 start");
+    Runtime::Options options;
+    options.bundleName = TEST_BUNDLE_NAME;
+    options.codePath = TEST_CODE_PATH;
+    options.loadAce = false;
+    options.isBundle = true;
+    options.preload = false;
+    std::shared_ptr<AppExecFwk::EventRunner> eventRunner = AppExecFwk::EventRunner::Create(TEST_ABILITY_NAME);
+    options.eventRunner = eventRunner;
+    auto jsRuntime = JsRuntime::Create(options);
+    ASSERT_NE(jsRuntime, nullptr);
+    EXPECT_NE(jsRuntime->GetEcmaVm(), nullptr);
+    jsRuntime->DumpJsHandleMap();
+    EXPECT_NE(jsRuntime->GetEcmaVm(), nullptr);
+    jsRuntime.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0600 end");
 }
 
 /**
@@ -2285,6 +2395,25 @@ HWTEST_F(JsRuntimeTest, DumpHeapSnapshot_1800, TestSize.Level1)
     jsRuntime->DumpHeapSnapshot(tid, param);
     EXPECT_TRUE(jsRuntime != nullptr);
     TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_1800 end");
+}
+
+/**
+ * @tc.name: LoadSystemModule_0200
+ * @tc.desc: LoadSystemModule returns nullptr when methodRequireNapiRef_ is null.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, LoadSystemModule_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "LoadSystemModule_0200 start");
+
+    auto savedRef = std::move(jsRuntimePtr->methodRequireNapiRef_);
+    jsRuntimePtr->methodRequireNapiRef_ = nullptr;
+    std::string moduleName = "TestSystemModule";
+    auto ref = jsRuntimePtr->LoadSystemModule(moduleName, nullptr, 0);
+    EXPECT_EQ(ref, nullptr);
+    jsRuntimePtr->methodRequireNapiRef_ = std::move(savedRef);
+
+    TAG_LOGI(AAFwkTag::TEST, "LoadSystemModule_0200 end");
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

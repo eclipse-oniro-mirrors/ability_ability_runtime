@@ -15,13 +15,11 @@
 
 #include <gtest/gtest.h>
 #include "parcel.h"
-#include "sender_info.h"
 #define private public
 #define protected public
 #include "wants_info.h"
 #undef private
 #undef protected
-#include "want_receiver_stub.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -38,23 +36,9 @@ public:
     static void TearDownTestCase();
     void SetUp();
     void TearDown();
-    static constexpr int TEST_WAIT_TIME = 100000;
-    class CancelReceiver : public AAFwk::WantReceiverStub {
-    public:
-        int performReceiveCount = 0;
-        void Send(const int32_t resultCode) override;
-        void PerformReceive(const AAFwk::Want& want, int resultCode, const std::string& data,
-            const AAFwk::WantParams& extras, bool serialized, bool sticky, int sendingUser) override;
-    };
 
 public:
 };
-
-void WantsInfoTest::CancelReceiver::Send(const int32_t resultCode)
-{}
-void WantsInfoTest::CancelReceiver::PerformReceive(const AAFwk::Want& want, int resultCode, const std::string& data,
-    const AAFwk::WantParams& extras, bool serialized, bool sticky, int sendingUser)
-{}
 
 void WantsInfoTest::SetUpTestCase()
 {}

@@ -216,6 +216,7 @@ constexpr int32_t APP_ALIVE_TIME_MS = 1000;  // Allow background startup within 
 constexpr int32_t REGISTER_FOCUS_DELAY = 5000;
 constexpr size_t OFFSET = 32;
 constexpr int32_t PENG_LAI_UID = 7655;
+constexpr int32_t TASKMGR_UID = 7005;
 constexpr int32_t RSS_UID = 1096;
 constexpr const char* IS_DELEGATOR_CALL = "isDelegatorCall";
 
@@ -3345,6 +3346,9 @@ int AbilityManagerService::StartUIAbilityBySCBDefault(sptr<SessionInfo> sessionI
     sessionInfo->want.RemoveParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX);
     sessionInfo->want.RemoveParam(AbilityRuntime::GlobalConstant::CLI_CALLER_BUNDLE_NAME);
     sessionInfo->want.RemoveParam(AbilityRuntime::GlobalConstant::CLI_CALLER_TOKEN_ID);
+    if (!HandleExecuteSAInterceptor(sessionInfo->want, sessionInfo->callerToken, abilityRequest, result)) {
+        return result;
+    }
     if (sessionInfo->want.GetBoolParam(ServerConstant::IS_CALL_BY_SCB, true)) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "interceptorExecuter_ called");
         (sessionInfo->want).RemoveParam(IS_CALLING_FROM_DMS);
@@ -3360,9 +3364,6 @@ int AbilityManagerService::StartUIAbilityBySCBDefault(sptr<SessionInfo> sessionI
         }
         abilityRequest.userId = currentUserId;
         abilityRequest.sessionInfo = sessionInfo;
-        if (!HandleExecuteSAInterceptor(sessionInfo->want, sessionInfo->callerToken, abilityRequest, result)) {
-            return result;
-        }
     }
     if (sessionInfo->want.GetBoolParam(ServerConstant::IS_CALL_BY_SCB, true)) {
         if (sessionInfo->startSetting != nullptr) {
@@ -6939,7 +6940,7 @@ sptr<IWantSender> AbilityManagerService::GetWantSenderByUserId(const WantSenderI
             appIndex = wantSenderInfo.appIndex;
             appUid = (uid >= 0) ? uid : GetUidByCloneBundleInfo(bundleName, callerUid, userId, appIndex);
         } else if (uid >= 0) {
-            if (DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->
+            if (AppExecFwk::OsAccountManagerWrapper::
                 GetOsAccountLocalIdFromUid(callerUid, userId) != 0) {
                 TAG_LOGE(AAFwkTag::WANTAGENT, "getOsAccountLocalIdFromUid failed uid=%{public}d", callerUid);
                 return nullptr;
@@ -6989,7 +6990,7 @@ sptr<IWantSender> AbilityManagerService::GetWantSender(
     CHECK_POINTER_AND_RETURN(bms, nullptr);
 
     int32_t bundleMgrResult = 0;
-    if (DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->
+    if (AppExecFwk::OsAccountManagerWrapper::
         GetOsAccountLocalIdFromUid(callerUid, userId) != 0) {
         TAG_LOGE(AAFwkTag::WANTAGENT, "getOsAccountLocalIdFromUid failed uid=%{public}d", callerUid);
         return nullptr;
@@ -13784,7 +13785,7 @@ int AbilityManagerService::VerifyPermission(const std::string &permission, int p
     }
 
     int account = -1;
-    DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->GetOsAccountLocalIdFromUid(uid, account);
+    AppExecFwk::OsAccountManagerWrapper::GetOsAccountLocalIdFromUid(uid, account);
     TAG_LOGD(AAFwkTag::ABILITYMGR, "bundleName: %{public}s, account: %{private}d", bundleName.c_str(), account);
     AppExecFwk::ApplicationInfo appInfo;
     if (!IN_PROCESS_CALL(bms->GetApplicationInfo(bundleName, AppExecFwk::BundleFlag::GET_BUNDLE_DEFAULT,
@@ -14092,8 +14093,7 @@ bool AbilityManagerService::ProcessLowMemoryKill(int32_t pid, const ExitReason &
 bool AbilityManagerService::ProcessLowMemoryKillUIExtension(int32_t pid, int32_t uid)
 {
     int32_t userId = INVALID_USER_ID;
-    auto ret = DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()
-        ->GetOsAccountLocalIdFromUid(uid, userId);
+    auto ret = AppExecFwk::OsAccountManagerWrapper::GetOsAccountLocalIdFromUid(uid, userId);
     if (ret == 0) {
         auto uiExtManager = GetUIExtensionAbilityManagerByUserId(userId);
         if (uiExtManager != nullptr && uiExtManager->IsUIExtensionStarting(uid, pid)) {
@@ -18433,12 +18433,23 @@ std::shared_ptr<AbilityInterceptorExecuter> AbilityManagerService::GetAbilityInt
 int32_t AbilityManagerService::RegisterSAInterceptor(sptr<AbilityRuntime::ISAInterceptor> interceptor)
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "call RegisterSaInterceptor, callingPid:%{public}d", IPCSkeleton::GetCallingPid());
-    if (IPCSkeleton::GetCallingUid() != PENG_LAI_UID) {
+    if (IPCSkeleton::GetCallingUid() != PENG_LAI_UID && IPCSkeleton::GetCallingUid() != TASKMGR_UID) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "no permission call");
         return CHECK_PERMISSION_FAILED;
     }
 
     return SAInterceptorManager::GetInstance().AddSAInterceptor(interceptor);
+}
+
+int32_t AbilityManagerService::UnregisterSAInterceptor(sptr<IRemoteObject> interceptor)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "call UnregisterSaInterceptor");
+    if (IPCSkeleton::GetCallingUid() != TASKMGR_UID) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "no permission call");
+        return CHECK_PERMISSION_FAILED;
+    }
+
+    return SAInterceptorManager::GetInstance().RemoveSAInterceptor(interceptor);
 }
 
 bool AbilityManagerService::HandleExecuteSAInterceptor(const Want &want, sptr<IRemoteObject> callerToken,
@@ -18456,6 +18467,12 @@ bool AbilityManagerService::HandleExecuteSAInterceptor(const Want &want, sptr<IR
     if (ret != ERR_OK || rule.type == RuleType::NOT_ALLOW) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "sa interceptor OnCheckStarting failed");
         result = static_cast<int32_t>(ERROR_SA_INTERCEPTOR_START_FAILED);
+        return false;
+    }
+
+    if (rule.type == RuleType::NOT_ALLOW_FROZEN) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "sa lowmem forzen interceptor OnCheckStarting failed");
+        result = static_cast<int32_t>(ERR_LOW_MEM_SAINTERCEPTOR_START_BLOCK);
         return false;
     }
 

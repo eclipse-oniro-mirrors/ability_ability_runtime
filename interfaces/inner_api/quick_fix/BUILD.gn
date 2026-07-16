@@ -41,6 +41,14 @@ config("quickfix_config") {
 }
 
 ohos_shared_library("quickfix_manager") {
+  branch_protector_ret = "pac_ret"
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
   include_dirs = [ "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper" ]
   configs = [
     "${ability_runtime_services_path}/common:common_config",

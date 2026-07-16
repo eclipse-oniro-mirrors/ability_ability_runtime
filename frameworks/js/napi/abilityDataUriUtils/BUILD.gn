@@ -35,6 +35,8 @@ gen_js_obj("ability_data_uri_utils_abc") {
 }
 
 ohos_shared_library("datauriutils") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "ability_data_uri_utils_module.cpp" ]
 
   deps = [

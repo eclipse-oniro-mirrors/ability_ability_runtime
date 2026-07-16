@@ -198,6 +198,7 @@ private:
     std::string codePath_;
     std::string moduleName_;
     std::unique_ptr<NativeReference> methodRequireNapiRef_;
+    // Keep the reference
     std::unordered_map<std::string, NativeReference*> modules_;
     std::shared_ptr<JsEnv::JsEnvironment> jsEnv_ = nullptr;
     uint32_t instanceId_ = 0;

@@ -145,7 +145,7 @@ void UserController::SetFreezingNewUserId(int32_t userId)
 bool UserController::IsExistOsAccount(int32_t userId) const
 {
     bool isExist = false;
-    auto errCode = DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->IsOsAccountExists(userId,
+    auto errCode = AppExecFwk::OsAccountManagerWrapper::IsOsAccountExists(userId,
         isExist);
     return (errCode == 0) && isExist;
 }

@@ -64,8 +64,6 @@ ohos_unittest("modular_object_connect_test") {
     "${ability_runtime_services_path}/common:task_handler_wrap",
     "${ability_runtime_path}/utils/server/startup:startup_util",
     "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/aakit:aakit_mock",
-    "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/appexecfwk_core:appexecfwk_appmgr_mock",
-    "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/appexecfwk_core:appexecfwk_bundlemgr_mock",
   ]
 
   external_deps = [

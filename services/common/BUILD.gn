@@ -107,6 +107,11 @@ config("tdd_config") {
 #build so
 ohos_shared_library("perm_verification") {
   branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
 
   include_dirs = [ "${ability_runtime_utils_path}/server/constant" ]
 
@@ -183,6 +188,11 @@ ohos_static_library("perm_verification_static") {
 
 ohos_shared_library("task_handler_wrap") {
   branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
 
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
   public_configs = [ ":common_config" ]
@@ -290,6 +300,11 @@ ohos_static_library("hisysevent_report_static") {
 
 ohos_shared_library("app_util") {
   branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
 
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
   public_configs = [ ":common_config" ]

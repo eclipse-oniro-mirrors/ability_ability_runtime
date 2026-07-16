@@ -88,6 +88,12 @@ ohos_shared_library("quickfixms") {
 
 # Note: Just for test
 ohos_static_library("quickfixms_static") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  branch_protector_ret = "pac_ret"
   include_dirs = [ "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper" ]
   configs = [ "${ability_runtime_services_path}/common:common_config" ]
   public_configs = [ ":quickfixms_config" ]

@@ -36,6 +36,7 @@ ohos_shared_library("climgr") {
     cfi_cross_dso = true
     debug = false
   }
+  branch_protector_ret = "pac_ret"
   shlib_type = "sa"
   configs = [ ":clisa_config" ]
   include_dirs = [ "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper" ]

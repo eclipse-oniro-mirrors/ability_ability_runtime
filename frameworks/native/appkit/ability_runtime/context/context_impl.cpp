@@ -839,12 +839,7 @@ int ContextImpl::GetCurrentAccountId() const
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     int userId = 0;
-    auto instance = DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance();
-    if (instance == nullptr) {
-        TAG_LOGE(AAFwkTag::APPKIT, "null instance");
-        return userId;
-    }
-    instance->GetOsAccountLocalIdFromProcess(userId);
+    AppExecFwk::OsAccountManagerWrapper::GetOsAccountLocalIdFromProcess(userId);
     TAG_LOGD(AAFwkTag::APPKIT, "userId: %{public}d", userId);
     return userId;
 }
@@ -853,12 +848,7 @@ int ContextImpl::GetCurrentActiveAccountId() const
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     std::vector<int> accountIds;
-    auto instance = DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance();
-    if (instance == nullptr) {
-        TAG_LOGE(AAFwkTag::APPKIT, "null instance");
-        return 0;
-    }
-    ErrCode ret = instance->QueryActiveOsAccountIds(accountIds);
+    ErrCode ret = AppExecFwk::OsAccountManagerWrapper::QueryActiveOsAccountIds(accountIds);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::APPKIT, "ContextImpl::GetCurrentActiveAccountId error. ret: %{public}d", ret);
         return 0;

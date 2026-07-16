@@ -7848,6 +7848,35 @@ ErrCode AbilityManagerProxy::RegisterSAInterceptor(sptr<AbilityRuntime::ISAInter
     return reply.ReadInt32();
 }
 
+ErrCode AbilityManagerProxy::UnregisterSAInterceptor(sptr<IRemoteObject> interceptor)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "call UnregisterSAInterceptor");
+    if (!interceptor) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "interceptor null");
+        return ERR_NULL_SA_INTERCEPTOR_EXECUTER;
+    }
+ 
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+ 
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "writeInterfaceToken failed");
+        return ERR_WRITE_INTERFACE_TOKEN_FAILED;
+    }
+    if (!data.WriteRemoteObject(interceptor)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "interceptor write failed.");
+        return ERR_WRITE_SA_INTERCEPTOR_FAILED;
+    }
+ 
+    auto error = SendRequest(AbilityManagerInterfaceCode::UNREGISTER_SA_INTERCEPTOR, data, reply, option);
+    if (error != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "Send request error: %{public}d", error);
+        return error;
+    }
+    return reply.ReadInt32();
+}
+
 int32_t AbilityManagerProxy::QueryKeepAliveAppServiceExtensions(std::vector<KeepAliveInfo> &list)
 {
     MessageParcel data;

@@ -16,6 +16,8 @@ import("//build/ohos.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 ohos_shared_library("agent_fwk") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -50,6 +52,8 @@ ohos_shared_library("agent_fwk") {
 }
 
 ohos_shared_library("agent_connection_manager") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -114,6 +118,8 @@ config("agent_manager_config") {
 }
 
 ohos_shared_library("agent_manager") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     cfi = true
     cfi_cross_dso = true

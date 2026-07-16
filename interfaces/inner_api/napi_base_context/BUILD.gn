@@ -19,6 +19,8 @@ config("napi_context_base_public_config") {
 }
 
 ohos_shared_library("napi_base_context") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "src/napi_base_context.cpp" ]
 
   configs = []

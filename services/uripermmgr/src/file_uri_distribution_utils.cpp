@@ -110,7 +110,7 @@ bool FUDUtils::CheckAndCreateEventInfo(uint32_t callerTokenId, uint32_t targetTo
 int32_t FUDUtils::GetCurrentAccountId()
 {
     std::vector<int32_t> osActiveAccountIds;
-    auto ret = DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->QueryActiveOsAccountIds(
+    auto ret = AppExecFwk::OsAccountManagerWrapper::QueryActiveOsAccountIds(
         osActiveAccountIds);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "QueryActiveOsAccountIds error. ret: %{public}d", ret);

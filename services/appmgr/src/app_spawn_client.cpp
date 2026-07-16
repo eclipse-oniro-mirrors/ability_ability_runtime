@@ -465,14 +465,8 @@ int32_t AppSpawnClient::SetUserIdInfo(const AppSpawnStartMsg &startMsg, AppSpawn
     if (startMsg.uid < 0) {
         return ERR_INVALID_VALUE;
     }
-    auto osAccountMgr = DelayedSingleton<OsAccountManagerWrapper>::GetInstance();
-    if (osAccountMgr == nullptr) {
-        TAG_LOGW(AAFwkTag::APPMGR, "osAccountMgr is nullptr");
-        return ERR_NULL_OBJECT;
-    }
-
     int32_t userId = -1;
-    auto errCode = osAccountMgr->GetOsAccountLocalIdFromUid(startMsg.uid, userId);
+    auto errCode = OsAccountManagerWrapper::GetOsAccountLocalIdFromUid(startMsg.uid, userId);
     if (errCode != ERR_OK) {
         TAG_LOGW(AAFwkTag::APPMGR, "GetOsAccountLocalIdFromUid failed, uid=%{public}d, errcode=%{public}d",
             startMsg.uid, errCode);

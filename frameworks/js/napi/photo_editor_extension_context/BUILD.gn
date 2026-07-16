@@ -36,6 +36,8 @@ gen_js_obj("photo_editor_extension_context_abc") {
 }
 
 ohos_shared_library("photoeditorextensioncontext_napi") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     integer_overflow = true
     ubsan = true
