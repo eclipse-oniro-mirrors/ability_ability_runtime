@@ -82,6 +82,7 @@ ohos_unittest("uri_permission_impl_test") {
     "googletest:gtest_main",
     "hisysevent:libhisysevent",
     "ipc:ipc_core",
+    "selinux_adapter:librestorecon",
     "storage_service:storage_manager_sa_proxy",
   ]
   if (ability_runtime_feature_sandboxmanager) {
