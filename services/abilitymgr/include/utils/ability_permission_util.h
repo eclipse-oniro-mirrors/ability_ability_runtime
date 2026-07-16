@@ -31,6 +31,16 @@ struct RunningProcessInfo;
 namespace AAFwk {
 struct AbilityRequest;
 
+struct access_token_hap_query_op {
+    uint32_t tokenId;
+    uint64_t hapTokenId;
+};
+
+#define ACCESS_TOKENID_IOCTL_BASE 'A'
+#define GET_CLOSEST_HAP_TOKENID 9
+#define ACCESS_TOKENID_GET_CLOSEST_HAP_TOKENID \
+    _IOW(ACCESS_TOKENID_IOCTL_BASE, GET_CLOSEST_HAP_TOKENID, struct access_token_hap_query_op)
+
 /**
  * @class Want
  * the struct to open abilities.
@@ -70,6 +80,8 @@ public:
      * @return Whether the caller is delegator.
      */
     bool IsDelegatorCall(const AppExecFwk::RunningProcessInfo &processInfo, const AbilityRequest &abilityRequest) const;
+
+    int32_t GetClosestHapTokenId(uint32_t tokenId, uint32_t &hapTokenId);
 
     /**
      * IsDominateScreen, check dominate screen.
@@ -137,6 +149,8 @@ private:
      *
      */
     ~AbilityPermissionUtil() = default;
+
+    std::optional<int32_t> GetAccessTokenIdFd();
 
     /**
      * CheckMultiInstance, check multi-instance.

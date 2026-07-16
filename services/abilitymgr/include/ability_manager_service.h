@@ -3427,6 +3427,18 @@ private:
     int32_t SetBackgroundCall(const AppExecFwk::RunningProcessInfo &processInfo,
         const AbilityRequest &abilityRequest, bool &isBackgroundCall) const;
 
+    /**
+     * @brief Resolve background-call permission for an unknown caller process: the caller has no ability
+     *        record and GetRunningProcessInfoByPid found no top-level app process. Resolves, in order:
+     *        the calling token's background-start permission; the parent process resolved via child pid;
+     *        the host process resolved from the caller's tool token (AccessTokenKit::GetHostTokenId).
+     *        Only used on the non-selector path.
+     * @param callerPid The IPC calling pid.
+     * @param isBackgroundCall Out-param, set to false when the call is allowed to proceed.
+     * @return ERR_OK when allowed, ERR_INVALID_VALUE when rejected.
+     */
+    int32_t ResolveUnknownCallerBackgroundCall(pid_t callerPid, bool &isBackgroundCall) const;
+
     int CheckUIExtensionUsage(AppExecFwk::UIExtensionUsage uiExtensionUsage,
         AppExecFwk::ExtensionAbilityType extensionType);
 
