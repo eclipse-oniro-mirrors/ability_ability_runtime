@@ -35,7 +35,7 @@ class EcologicalRuleInterceptor : public IAbilityInterceptor {
 public:
     EcologicalRuleInterceptor() = default;
     ~EcologicalRuleInterceptor() = default;
-    ErrCode DoProcess(AbilityInterceptorParam param) override;
+    ErrCode DoProcess(const AbilityInterceptorParam &param) override;
     bool DoProcess(Want &want, int32_t userId);
     virtual void SetTaskHandler(std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler) override
     {

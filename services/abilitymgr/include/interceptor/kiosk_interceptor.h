@@ -22,7 +22,7 @@ namespace OHOS {
 namespace AAFwk {
 class KioskInterceptor : public IAbilityInterceptor {
 public:
-    ErrCode DoProcess(AbilityInterceptorParam param) override;
+    ErrCode DoProcess(const AbilityInterceptorParam &param) override;
 };
 } // namespace AAFwk
 } // namespace OHOS

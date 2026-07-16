@@ -231,7 +231,7 @@ std::vector<Uri> UriUtils::GetPermissionedUriList(const std::vector<std::string>
 bool UriUtils::GetUriListFromWant(Want &want, std::vector<std::string> &uriVec)
 {
     // remove uris out of 500
-    auto uriStr = want.GetUri().ToString();
+    auto uriStr = want.GetUriRef().ToString();
     uriVec = want.GetStringArrayParam(AbilityConfig::PARAMS_STREAM);
     if (uriVec.empty() && uriStr.empty()) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "uriVec empty.");

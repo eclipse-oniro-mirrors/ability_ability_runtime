@@ -60,13 +60,13 @@ int32_t OEExtensionUtils::ValidateCaller(
         return ERR_INVALID_CALLER;
     }
 
-    if (want.GetBundle() != abilityInfo.bundleName) {
+    if (want.GetBundleNameRef() != abilityInfo.bundleName) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "want bundleName %{public}s does not match caller bundleName %{public}s",
-            want.GetBundle().c_str(), abilityInfo.bundleName.c_str());
+            want.GetBundleNameRef().c_str(), abilityInfo.bundleName.c_str());
         return INVALID_PARAMETERS_ERR;
     }
 
-    if (want.GetElement().GetAbilityName().empty()) {
+    if (want.GetAbilityNameRef().empty()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "want abilityName is empty");
         return INVALID_PARAMETERS_ERR;
     }

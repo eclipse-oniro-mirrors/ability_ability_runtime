@@ -25,7 +25,7 @@ bool CloneForAccountUtil::ProcessAppIndex(Want &want, int32_t userId, bool isExt
 {
     want.RemoveParam(Want::PARAM_APP_CLONE_INDEX_KEY);
 
-    if (want.GetElement().GetAbilityName().empty()) {
+    if (want.GetAbilityNameRef().empty()) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "implicit start, skip");
         return true;
     }

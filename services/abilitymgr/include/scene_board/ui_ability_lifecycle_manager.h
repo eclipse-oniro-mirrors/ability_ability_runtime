@@ -59,7 +59,7 @@ struct SpecifiedRequest {
     bool isCold = false;
     bool preCreateProcessName = false;
 
-    SpecifiedRequest(int32_t requestId, AbilityRequest request) : requestId(requestId), abilityRequest(request) {}
+    SpecifiedRequest(int32_t requestId, const AbilityRequest &request) : requestId(requestId), abilityRequest(request) {}
 };
 
 struct AbilitiesRequest {

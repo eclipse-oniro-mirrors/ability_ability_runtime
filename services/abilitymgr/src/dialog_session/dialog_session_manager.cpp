@@ -424,7 +424,7 @@ int DialogSessionManager::CreateImplicitSelectorModalDialog(AbilityRequest &abil
 
     sessionWant.SetParam("deviceType", OHOS::system::GetDeviceType());
     sessionWant.SetParam("userId", userId);
-    sessionWant.SetParam("action", abilityRequest.want.GetAction());
+    sessionWant.SetParam("action", abilityRequest.want.GetActionRef());
     sessionWant.SetParam("wantType", abilityRequest.want.GetType());
     sessionWant.SetParam("uri", abilityRequest.want.GetUriString());
     sessionWant.SetParam("entities", abilityRequest.want.GetEntities());

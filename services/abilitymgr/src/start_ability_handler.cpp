@@ -99,9 +99,9 @@ EventInfo StartAbilityParams::BuildEventInfo()
 {
     EventInfo eventInfo;
     eventInfo.userId = userId;
-    eventInfo.bundleName = want.GetElement().GetBundleName();
-    eventInfo.moduleName = want.GetElement().GetModuleName();
-    eventInfo.abilityName = want.GetElement().GetAbilityName();
+    eventInfo.bundleName = want.GetBundleNameRef();
+    eventInfo.moduleName = want.GetModuleNameRef();
+    eventInfo.abilityName = want.GetAbilityNameRef();
     return eventInfo;
 }
 } // namespace AAFwk
