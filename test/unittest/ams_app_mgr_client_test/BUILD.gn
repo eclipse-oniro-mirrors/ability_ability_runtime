@@ -72,6 +72,7 @@ ohos_unittest("AmsAppMgrClientTest") {
     "ipc:ipc_core",
     "json:nlohmann_json_static",
     "samgr:samgr_proxy",
+    "selinux_adapter:librestorecon",
   ]
 
   defines = [ "AMS_LOG_TAG=\"AppMgrService\"" ]

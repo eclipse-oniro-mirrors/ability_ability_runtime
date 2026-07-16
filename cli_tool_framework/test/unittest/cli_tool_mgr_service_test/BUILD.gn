@@ -86,6 +86,7 @@ ohos_unittest("cli_tool_mgr_service_test") {
     "ipc:ipc_core",
     "json:nlohmann_json_static",
     "kv_store:distributeddata_inner",
+    "selinux_adapter:librestorecon",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
   ]
