@@ -813,6 +813,13 @@ public:
     bool IsMainProcessDebug(int32_t uid);
 
     /**
+     * @brief Query whether the corresponding process of the app (identified by abilityInfo) is in attach debug mode.
+     * @param abilityInfo The ability info used to locate the corresponding process.
+     * @return Returns true if the corresponding process is in attach debug mode, false otherwise.
+     */
+    bool IsCorrespondingProcessAttachDebug(const AbilityInfo &abilityInfo);
+
+    /**
      * @brief Set resident process enable status.
      * @param bundleName The application bundle name.
      * @param enable The current updated enable status.

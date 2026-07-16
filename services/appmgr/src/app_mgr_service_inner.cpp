@@ -9908,6 +9908,43 @@ bool AppMgrServiceInner::IsMainProcessDebug(int32_t uid)
     return false;
 }
 
+bool AppMgrServiceInner::IsCorrespondingProcessAttachDebug(const AbilityInfo &abilityInfo)
+{
+    if (IPCSkeleton::GetCallingUid() != FOUNDATION_UID) {
+        TAG_LOGW(AAFwkTag::APPMGR, "not foundation call");
+        return false;
+    }
+    bool isAgentUI = AAFwk::UIExtensionWrapper::IsAgentUIExtension(abilityInfo.extensionAbilityType);
+    if (!isAgentUI && abilityInfo.extensionAbilityType != AppExecFwk::ExtensionAbilityType::AGENT) {
+        TAG_LOGD(AAFwkTag::APPMGR, "Not agentUI or agent extension");
+        return false;
+    }
+    if (!CheckRemoteClient() || !appRunningManager_) {
+        TAG_LOGE(AAFwkTag::APPMGR, "nullptr");
+        return false;
+    }
+    auto appInfo = std::make_shared<ApplicationInfo>(abilityInfo.applicationInfo);
+    int32_t appIndex = abilityInfo.appIndex;
+    BundleInfo bundleInfo;
+    HapModuleInfo hapModuleInfo;
+    if (!GetBundleAndHapInfo(abilityInfo, appInfo, bundleInfo, hapModuleInfo, appIndex)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetBundleAndHapInfo failed");
+        return false;
+    }
+    auto abilityInfoPtr = std::make_shared<AbilityInfo>(abilityInfo);
+    std::string processName = appInfo->bundleName + ":" + AGENT_EXTENSION_TYPE;;
+    std::string customProcessFlag = "";
+    TAG_LOGD(AAFwkTag::APPMGR, "processName: %{public}s, customProcessFlag: %{public}s",
+        processName.c_str(), customProcessFlag.c_str());
+    auto appRecord = appRunningManager_->CheckAppRunningRecordIsExist(appInfo->name,
+        processName, appInfo->uid, bundleInfo, "", nullptr, "", customProcessFlag);
+    if (appRecord == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "appRecord nullptr");
+        return false;
+    }
+    return appRecord->IsAttachDebug();
+}
+
 void AppMgrServiceInner::KillRenderProcess(const std::shared_ptr<AppRunningRecord> &appRecord) {
     if (appRecord == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "appRecord null");

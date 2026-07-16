@@ -1222,6 +1222,8 @@ public:
 
     bool IsMainProcessDebug(int32_t uid);
 
+    bool IsCorrespondingProcessAttachDebug(const AbilityInfo &abilityInfo);
+
     /**
      * Notify Fault Data
      *

@@ -701,6 +701,16 @@ public:
         return false;
     }
 
+    /**
+     * @brief Query whether the corresponding process of the app (identified by abilityInfo) is in attach debug mode.
+     * @param abilityInfo The ability info used to locate the corresponding process.
+     * @return Returns true if the corresponding process is in attach debug mode, false otherwise.
+     */
+    virtual bool IsCorrespondingProcessAttachDebug(const AbilityInfo &abilityInfo)
+    {
+        return false;
+    }
+
    /**
      * start native process for debugger.
      *

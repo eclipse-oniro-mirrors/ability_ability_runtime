@@ -475,6 +475,8 @@ int32_t AppMgrStub::OnRemoteRequestInnerNinth(uint32_t code, MessageParcel &data
             return HandleEnableDelayedProcessExit(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::CANCEL_DELAYED_EXIT_TASK):
             return HandleCancelDelayedExitTask(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::IS_CORRESPONDING_PROCESS_ATTACH_DEBUG):
+            return HandleIsCorrespondingProcessAttachDebug(data, reply);
     }
     return INVALID_FD;
 }
@@ -1497,6 +1499,21 @@ int32_t AppMgrStub::HandleIsMainProcessDebug(MessageParcel &data, MessageParcel 
     HITRACE_METER(HITRACE_TAG_APP);
     int32_t uid = data.ReadInt32();
     bool result = IsMainProcessDebug(uid);
+    if (!reply.WriteBool(result)) {
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleIsCorrespondingProcessAttachDebug(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::unique_ptr<AbilityInfo> abilityInfo(data.ReadParcelable<AbilityInfo>());
+    if (abilityInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "abilityInfo is nullptr");
+        return ERR_INVALID_VALUE;
+    }
+    bool result = IsCorrespondingProcessAttachDebug(*abilityInfo);
     if (!reply.WriteBool(result)) {
         return ERR_INVALID_VALUE;
     }
