@@ -36,6 +36,7 @@
 #endif // SUPPORT_SCREEN
 
 using OHOS::Security::AccessToken::AccessTokenKit;
+using OHOS::Security::AccessToken::HapTokenInfo;
 
 namespace OHOS {
 namespace AAFwk {
@@ -62,6 +63,19 @@ AbilityPermissionUtil &AbilityPermissionUtil::GetInstance()
 {
     static AbilityPermissionUtil instance;
     return instance;
+}
+
+int32_t AbilityPermissionUtil::GetClosestHapTokenId(uint32_t tokenId, uint32_t &hapTokenId)
+{
+    HapTokenInfo hapInfo;
+    int32_t ret = AccessTokenKit::GetHapTokenInfo(tokenId, hapInfo);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "failed to get hap token info: %{public}d", ret);
+        hapTokenId = 0;
+        return ERR_INVALID_VALUE;
+    }
+    hapTokenId = hapInfo.tokenID;
+    return ERR_OK;
 }
 
 inline bool AbilityPermissionUtil::IsDelegatorCall(const AppExecFwk::RunningProcessInfo &processInfo,
@@ -122,6 +136,13 @@ bool AbilityPermissionUtil::IsDominateScreen(const Want &want, bool isPendingWan
             }
         } else if (IsStartSelfUIAbility()) {
             TAG_LOGI(AAFwkTag::ABILITYMGR, "caller from capi.");
+            return false;
+        }
+        // Bypass screen-domination when the caller resolves to a hap token (e.g. ohos-aa acting on
+        // behalf of a hap application): a resolvable hap token is not a dominate-screen caller.
+        uint32_t hapTokenId = 0;
+        if (GetClosestHapTokenId(IPCSkeleton::GetCallingTokenID(), hapTokenId) == ERR_OK && hapTokenId != 0) {
+            TAG_LOGD(AAFwkTag::ABILITYMGR, "caller resolves to a hap token, not dominate screen.");
             return false;
         }
         TAG_LOGE(AAFwkTag::ABILITYMGR, "dominate screen.");

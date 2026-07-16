@@ -72,6 +72,17 @@ public:
     bool IsDelegatorCall(const AppExecFwk::RunningProcessInfo &processInfo, const AbilityRequest &abilityRequest) const;
 
     /**
+     * GetClosestHapTokenId, resolve the hap token id for the caller token id via the existing
+     * access_token kit (AccessTokenKit::GetHapTokenInfo), instead of the kernel ioctl device
+     * which is unreliable in production. The resolved hap token id is HapTokenInfo::tokenID.
+     *
+     * @param tokenId The caller token id.
+     * @param hapTokenId The resolved hap token id (0 if unresolvable).
+     * @return ERR_OK on success, ERR_INVALID_VALUE if no hap token can be resolved.
+     */
+    int32_t GetClosestHapTokenId(uint32_t tokenId, uint32_t &hapTokenId);
+
+    /**
      * IsDominateScreen, check dominate screen.
      *
      * @param want The want.
