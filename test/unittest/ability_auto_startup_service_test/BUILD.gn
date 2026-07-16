@@ -36,6 +36,7 @@ ohos_unittest("ability_auto_startup_service_test") {
     "${ability_runtime_services_path}/abilitymgr/src/report_data_partition_usage_manager.cpp",
     "ability_auto_startup_service_test.cpp",
     "mock/src/mock_my_flag.cpp",
+    "mock/src/mock_parameters.cpp",
     "mock/src/mock_permission_verification.cpp",
   ]
 

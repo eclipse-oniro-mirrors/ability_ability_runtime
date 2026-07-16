@@ -25,6 +25,7 @@ ohos_unittest("ability_auto_startup_service_second_test") {
     "${ability_runtime_abilitymgr_path}/include",
     "${ability_runtime_services_path}/common/include",
     "mock/include",
+    "${ability_runtime_path}/test/mock/mock_sa_call",
     "${ability_runtime_path}frameworks/simulator/common/include",
     "${ability_runtime_path}/utils/server/startup/include",
   ]

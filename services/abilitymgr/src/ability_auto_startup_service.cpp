@@ -122,6 +122,12 @@ int32_t AbilityAutoStartupService::SetApplicationAutoStartup(const AutoStartupIn
         return code;
     }
 
+    // Check cross-user permission with the real userId from BundleManager
+    code = VerifyCrossUserAccountPermission(abilityData);
+    if (code != ERR_OK) {
+        return code;
+    }
+
     AutoStartupInfo fullInfo(info);
     fullInfo.abilityTypeName = abilityData.abilityTypeName;
     fullInfo.setterUserId = abilityData.setterUserId;
@@ -180,6 +186,12 @@ int32_t AbilityAutoStartupService::CancelApplicationAutoStartup(const AutoStartu
 
     AutoStartupAbilityData abilityData;
     code = GetAbilityInfo(info, abilityData);
+    if (code != ERR_OK) {
+        return code;
+    }
+
+    // Check cross-user permission with the real userId from BundleManager
+    code = VerifyCrossUserAccountPermission(abilityData);
     if (code != ERR_OK) {
         return code;
     }
@@ -645,6 +657,11 @@ int32_t AbilityAutoStartupService::SetApplicationAutoStartupByEDM(const AutoStar
     if (errorCode != ERR_OK) {
         return errorCode;
     }
+    // Check cross-user permission with the real userId from BundleManager
+    errorCode = VerifyCrossUserAccountPermission(abilityData);
+    if (errorCode != ERR_OK) {
+        return errorCode;
+    }
     AutoStartupInfo fullInfo(info);
     fullInfo.abilityTypeName = abilityData.abilityTypeName;
     fullInfo.accessTokenId = abilityData.accessTokenId;
@@ -664,6 +681,11 @@ int32_t AbilityAutoStartupService::CancelApplicationAutoStartupByEDM(const AutoS
     }
     AutoStartupAbilityData abilityData;
     errorCode = GetAbilityInfo(info, abilityData);
+    if (errorCode != ERR_OK) {
+        return errorCode;
+    }
+    // Check cross-user permission with the real userId from BundleManager
+    errorCode = VerifyCrossUserAccountPermission(abilityData);
     if (errorCode != ERR_OK) {
         return errorCode;
     }
@@ -718,6 +740,29 @@ int32_t AbilityAutoStartupService::CheckPermissionForEDM()
         TAG_LOGE(AAFwkTag::AUTO_STARTUP, "verify PERMISSION_MANAGE_APP_BOOT_INTERNAL fail");
         return CHECK_PERMISSION_FAILED;
     }
+
+    return ERR_OK;
+}
+
+int32_t AbilityAutoStartupService::VerifyCrossUserAccountPermission(const AutoStartupAbilityData &abilityData)
+{
+    // When setterUserId is U0 or U1, allow directly
+    if (abilityData.setterUserId == U0_USER_ID || abilityData.setterUserId == U1_USER_ID) {
+        TAG_LOGD(AAFwkTag::AUTO_STARTUP, "setterUserId is U0 or U1, allow");
+        return ERR_OK;
+    }
+
+    // If setterUserId is not U0/U1 and setterUserId != userId, need to verify cross-user permission
+    if (abilityData.setterUserId != abilityData.userId) {
+        int32_t code = AAFwk::PermissionVerification::GetInstance()->VerifyAccountPermission();
+        if (code != ERR_OK) {
+            TAG_LOGE(AAFwkTag::AUTO_STARTUP,
+                "VerifyAccountPermission failed, setterUserId: %{public}d, userId: %{public}d",
+                abilityData.setterUserId, abilityData.userId);
+            return code;
+        }
+    }
+
     return ERR_OK;
 }
 

@@ -17,15 +17,17 @@
 
 #include "ability_auto_startup_data_manager.h"
 #include "ability_auto_startup_service.h"
+#include "ability_manager_errors.h"
 #include "app_utils.h"
 #include "auto_startup_callback_stub.h"
 #include "auto_startup_callback_proxy.h"
+#include "hilog_tag_wrapper.h"
 #include "mock_bundle_mgr_helper.h"
 #include "mock_my_flag.h"
 #include "mock_parameters.h"
 #include "mock_permission_verification.h"
+#include "mock_sa_call.h"
 #include "mock_single_kv_store.h"
-#include "ability_manager_errors.h"
 
 namespace {
 constexpr int32_t BASE_USER_RANGE = 200000;

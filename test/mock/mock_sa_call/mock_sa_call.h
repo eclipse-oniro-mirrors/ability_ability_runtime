@@ -254,6 +254,25 @@ public:
         OHOS::Security::AccessToken::AccessTokenKit::ReloadNativeTokenInfo();
         delete[] perms;
     }
+
+    static void IsMockResetPermission()
+    {
+        uint64_t tokenId;
+        NativeTokenInfoParams infoInstance = {
+            .dcapsNum = 0,
+            .permsNum = 0,
+            .aclsNum = 0,
+            .dcaps = nullptr,
+            .perms = nullptr,
+            .acls = nullptr,
+            .aplStr = "system_core",
+        };
+
+        infoInstance.processName = "test_reset";
+        tokenId = GetAccessTokenId(&infoInstance);
+        SetSelfTokenID(tokenId);
+        OHOS::Security::AccessToken::AccessTokenKit::ReloadNativeTokenInfo();
+    }
 };
 }  // namespace OHOS::AAFwk
 #endif // UNITTEST_OHOS_ABILITY_RUNTIME_IS_SA_CALL_TEST_H
