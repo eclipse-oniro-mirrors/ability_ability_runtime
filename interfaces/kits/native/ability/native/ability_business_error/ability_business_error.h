@@ -90,6 +90,9 @@ enum class AbilityErrorCode {
     // the context is not ability context.
     ERR_ABILITY_RUNTIME_EXTERNAL_NOT_ABILITY_CONTEXT = 16000020,
 
+    // the module name does not exist.
+    ERROR_CODE_INVALID_MODULENAME = 16000021,
+
     // free install network abnormal.
     ERROR_CODE_NETWORK_ABNORMAL = 16000051,
 

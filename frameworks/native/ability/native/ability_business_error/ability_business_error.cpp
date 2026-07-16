@@ -42,6 +42,7 @@ constexpr const char* ERROR_MSG_WUKONG_MODE = "An ability cannot be started or s
 constexpr const char* ERROR_MSG_CONTINUATION_FLAG =
     "The call with the continuation and prepare continuation flag is forbidden.";
 constexpr const char* ERROR_MSG_INVALID_CONTEXT = "The context does not exist.";
+constexpr const char* ERROR_MSG_INVALID_MODULENAME = "The module name does not exist.";
 constexpr const char* ERROR_MSG_CONTROLLED = "The application is controlled.";
 constexpr const char* ERROR_MSG_EDM_CONTROLLED = "The application is controlled by EDM.";
 constexpr const char* ERROR_MSG_NETWORK_ABNORMAL = "Network error.";
@@ -362,6 +363,7 @@ static std::unordered_map<AbilityErrorCode, const char*> ERR_CODE_MAP = {
     { AbilityErrorCode::ERROR_CODE_WUKONG_MODE, ERROR_MSG_WUKONG_MODE },
     { AbilityErrorCode::ERROR_CODE_CONTINUATION_FLAG, ERROR_MSG_CONTINUATION_FLAG },
     { AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT, ERROR_MSG_INVALID_CONTEXT },
+    { AbilityErrorCode::ERROR_CODE_INVALID_MODULENAME, ERROR_MSG_INVALID_MODULENAME },
     { AbilityErrorCode::ERROR_CODE_CONTROLLED, ERROR_MSG_CONTROLLED },
     { AbilityErrorCode::ERROR_CODE_EDM_CONTROLLED, ERROR_MSG_EDM_CONTROLLED },
     { AbilityErrorCode::ERROR_CODE_NETWORK_ABNORMAL, ERROR_MSG_NETWORK_ABNORMAL },

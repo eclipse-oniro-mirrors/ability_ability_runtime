@@ -26,6 +26,8 @@ public:
         ani_object contextObj, ani_string bundleName, ani_string moduleName, ani_object callback);
     static void CreateModuleContextCheck(ani_env *env,
         ani_object contextObj, ani_string moduleName, ani_object bundleName);
+    static ani_object CreateModuleContextSync(ani_env *env,
+        ani_object contextObj, ani_string moduleName);
     static void CreateBundleContext(ani_env *env,
         ani_object contextObj, ani_string bundleName, ani_object callback);
     static void CreateBundleContextCheck(ani_env *env,
