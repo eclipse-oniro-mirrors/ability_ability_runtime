@@ -51,7 +51,7 @@ StartAbilitySandboxSavefile &StartAbilitySandboxSavefile::GetInstance()
 
 bool StartAbilitySandboxSavefile::MatchStartRequest(StartAbilityParams &params)
 {
-    if (params.IsCallerSandboxApp() && params.want.GetAction() == "ohos.want.action.CREATE_FILE" &&
+    if (params.IsCallerSandboxApp() && params.want.GetActionRef() == "ohos.want.action.CREATE_FILE" &&
         params.want.GetStringParam("startMode") == "save") {
         return true;
     }

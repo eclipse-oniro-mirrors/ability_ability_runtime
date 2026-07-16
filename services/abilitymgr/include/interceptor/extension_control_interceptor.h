@@ -26,7 +26,7 @@ class ExtensionControlInterceptor : public IAbilityInterceptor {
 public:
     ExtensionControlInterceptor() = default;
     ~ExtensionControlInterceptor() = default;
-    ErrCode DoProcess(AbilityInterceptorParam param) override;
+    ErrCode DoProcess(const AbilityInterceptorParam &param) override;
 private:
     bool IsExtensionStartThirdPartyAppEnable(std::string extensionTypeName, std::string targetBundleName);
     bool IsExtensionStartServiceEnable(std::string extensionTypeName, std::string targetUri);

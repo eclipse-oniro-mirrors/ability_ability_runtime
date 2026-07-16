@@ -147,7 +147,7 @@ void PendingWantKey::GetAllBundleNames(std::vector<std::string> &bundleNames)
 {
     std::lock_guard<std::mutex> lock(wantsInfosMutex_);
     for (const auto &wantInfo : allWantsInfos_) {
-        bundleNames.emplace_back(wantInfo.want.GetBundle());
+        bundleNames.emplace_back(wantInfo.want.GetBundleNameRef());
     }
 }
 

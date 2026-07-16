@@ -371,7 +371,7 @@ void UpdateCallerInfoUtil::ClearProtectedWantParam(Want &want)
 {
     if (want.HasParameter(HIDE_SENSITIVE_TYPE)) {
         EventInfo eventInfo;
-        std::string bundleName = want.GetBundle();
+        const auto &bundleName = want.GetBundleNameRef();
         int32_t callerUid = IPCSkeleton::GetCallingUid();
         std::string callerBundleName;
         auto bundleMgr = AbilityUtil::GetBundleManagerHelper();

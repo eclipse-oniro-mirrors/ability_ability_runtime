@@ -3591,7 +3591,7 @@ private:
 
     bool ShouldPreventStartAbility(const AbilityRequest &abilityRequest);
 
-    void PrintStartAbilityInfo(AppExecFwk::AbilityInfo callerInfo, AppExecFwk::AbilityInfo calledInfo);
+    void PrintStartAbilityInfo(const AppExecFwk::AbilityInfo &callerInfo, const AppExecFwk::AbilityInfo &calledInfo);
 
     bool IsInWhiteList(const std::string &callerBundleName, const std::string &calleeBundleName,
         const std::string &calleeAbilityName);

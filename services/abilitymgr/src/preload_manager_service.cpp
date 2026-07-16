@@ -105,7 +105,7 @@ int32_t PreloadManagerService::LaunchGameCustomized(const std::string &bundleNam
     }
 
     StartAbilityWrapParam startAbilityWrapParam;
-    startAbilityWrapParam.want = launchWant;
+    startAbilityWrapParam.want = std::move(launchWant);
     startAbilityWrapParam.userId = userId;
     startAbilityWrapParam.isGamePrelaunch = true;
     return DelayedSingleton<AbilityManagerService>::GetInstance()->StartAbilityInner(startAbilityWrapParam);

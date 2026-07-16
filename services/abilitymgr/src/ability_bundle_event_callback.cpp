@@ -50,10 +50,10 @@ void AbilityBundleEventCallback::OnReceiveEvent(const EventFwk::CommonEventData 
     }
     const Want& want = eventData.GetWant();
     // action contains the change type of haps.
-    std::string action = want.GetAction();
+    std::string action = want.GetActionRef();
     int32_t installType = want.GetIntParam(TYPE, 0);
-    std::string bundleName = want.GetElement().GetBundleName();
-    std::string moduleName = want.GetElement().GetModuleName();
+    std::string bundleName = want.GetBundleNameRef();
+    std::string moduleName = want.GetModuleNameRef();
     auto tokenId = static_cast<uint32_t>(want.GetIntParam(KEY_TOKEN, 0));
     int uid = want.GetIntParam(KEY_UID, 0);
     auto bundleType = want.GetIntParam(BUNDLE_TYPE, 0);

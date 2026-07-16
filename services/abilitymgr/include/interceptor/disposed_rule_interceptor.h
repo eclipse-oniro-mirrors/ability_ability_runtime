@@ -33,7 +33,7 @@ public:
     ~DisposedRuleInterceptor() = default;
     static std::string GenerateTimeoutTaskName(int32_t uid);
     static std::string GenerateEventTaskName(int32_t uid);
-    ErrCode DoProcess(AbilityInterceptorParam param) override;
+    ErrCode DoProcess(const AbilityInterceptorParam &param) override;
     void SetTaskHandler(std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler) override
     {
         taskHandler_ = taskHandler;

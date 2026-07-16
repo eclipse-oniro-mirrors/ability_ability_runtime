@@ -141,13 +141,13 @@ int AbilityConnectManager::StopServiceAbility(const AbilityRequest &abilityReque
 int AbilityConnectManager::StartAbilityLocked(const AbilityRequest &abilityRequest)
 {
     if (AppUtils::GetInstance().IsForbidStart()) {
-        TAG_LOGW(AAFwkTag::EXT, "forbid start: %{public}s", abilityRequest.want.GetBundle().c_str());
+        TAG_LOGW(AAFwkTag::EXT, "forbid start: %{public}s", abilityRequest.want.GetBundleNameRef().c_str());
         return INNER_ERR;
     }
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::EXT, "bundle/ability:%{public}s/%{public}s",
-        abilityRequest.want.GetBundle().c_str(),
-        abilityRequest.want.GetElement().GetAbilityName().c_str());
+        abilityRequest.want.GetBundleNameRef().c_str(),
+        abilityRequest.want.GetAbilityNameRef().c_str());
 
     int32_t ret = AbilityPermissionUtil::GetInstance().CheckMultiInstanceKeyForExtension(abilityRequest);
     if (ret != ERR_OK) {
@@ -202,8 +202,8 @@ void AbilityConnectManager::EnqueueStartServiceReq(const AbilityRequest &ability
         abilityUri = serviceUri;
     }
     TAG_LOGI(AAFwkTag::EXT, "abilityUri: %{public}s/%{public}s",
-        abilityRequest.want.GetBundle().c_str(),
-        abilityRequest.want.GetElement().GetAbilityName().c_str());
+        abilityRequest.want.GetBundleNameRef().c_str(),
+        abilityRequest.want.GetAbilityNameRef().c_str());
     auto reqListIt = startServiceReqList_.find(abilityUri);
     if (reqListIt != startServiceReqList_.end()) {
         reqListIt->second->push_back(abilityRequest);
@@ -1545,7 +1545,7 @@ void AbilityConnectManager::HandleRestartResidentTask(const AbilityRequest &abil
     auto findRestartResidentTask = [&srcElement](const AbilityRequest &requestInfo) {
         auto dstElement = requestInfo.want.GetElement();
         return (dstElement.GetBundleName() == srcElement.GetBundleName() &&
-            dstElement.GetModuleName() == srcElement.GetModuleName() &&
+            dstElement.GetModuleNameRef() == srcElement.GetModuleNameRef() &&
             dstElement.GetAbilityName() == srcElement.GetAbilityName());
     };
     auto findIter = find_if(restartResidentTaskList_.begin(), restartResidentTaskList_.end(), findRestartResidentTask);
@@ -2595,7 +2595,7 @@ void AbilityConnectManager::RestartAbility(const std::shared_ptr<BaseExtensionRe
         auto findRestartResidentTask = [&srcElement](const AbilityRequest &abilityRequest) {
             auto dstElement = abilityRequest.want.GetElement();
             return (srcElement.GetBundleName() == dstElement.GetBundleName() &&
-                srcElement.GetModuleName() == dstElement.GetModuleName() &&
+                srcElement.GetModuleNameRef() == dstElement.GetModuleNameRef() &&
                 srcElement.GetAbilityName() == dstElement.GetAbilityName());
         };
         auto findIter = find_if(restartResidentTaskList_.begin(), restartResidentTaskList_.end(),

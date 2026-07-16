@@ -200,9 +200,9 @@ void ModalSystemAssertUIExtension::AssertDialogConnection::OnAbilityConnectDone(
     MessageOption option;
     data.WriteInt32(MESSAGE_PARCEL_KEY_SIZE);
     data.WriteString16(u"bundleName");
-    data.WriteString16(Str8ToStr16(want_.GetElement().GetBundleName()));
+    data.WriteString16(Str8ToStr16(want_.GetBundleNameRef()));
     data.WriteString16(u"abilityName");
-    data.WriteString16(Str8ToStr16(want_.GetElement().GetAbilityName()));
+    data.WriteString16(Str8ToStr16(want_.GetAbilityNameRef()));
     data.WriteString16(u"parameters");
     nlohmann::json param;
     param[UIEXTENSION_TYPE_KEY] = want_.GetStringParam(UIEXTENSION_TYPE_KEY);

@@ -2158,19 +2158,19 @@ Want AbilityRecord::GetWant() const
 std::string AbilityRecord::GetAbilityName() const
 {
     std::lock_guard guard(wantLock_);
-    return want_.GetElement().GetAbilityName();
+    return want_.GetAbilityNameRef();
 }
 
 std::string AbilityRecord::GetBundleName() const
 {
     std::lock_guard guard(wantLock_);
-    return want_.GetBundle();
+    return want_.GetBundleNameRef();
 }
 
 std::string AbilityRecord::GetModuleName() const
 {
     std::lock_guard guard(wantLock_);
-    return want_.GetModuleName();
+    return want_.GetModuleNameRef();
 }
 
 std::string AbilityRecord::GetStringParam(const std::string &key) const

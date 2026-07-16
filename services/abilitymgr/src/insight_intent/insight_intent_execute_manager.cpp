@@ -191,7 +191,7 @@ int32_t InsightIntentExecuteManager::CheckAndUpdateWant(Want &want, ExecuteMode 
     }
     uint64_t intentId = 0;
     ElementName elementName = want.GetElement();
-    result = AddRecord(0, nullptr, want.GetBundle(), intentId, callerBundleName);
+    result = AddRecord(0, nullptr, want.GetBundleNameRef(), intentId, callerBundleName);
     if (result != ERR_OK) {
         return result;
     }
@@ -228,7 +228,7 @@ int32_t InsightIntentExecuteManager::UpdateEntryDecoratorParams(Want &want, Exec
         userId = IPCSkeleton::GetCallingUid() / AppExecFwk::Constants::BASE_USER_RANGE;
     }
     DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->GetInsightIntentInfo(
-        want.GetBundle(), want.GetModuleName(), intentName, userId, info);
+        want.GetBundleNameRef(), want.GetModuleNameRef(), intentName, userId, info);
     if (info.genericInfo.decoratorType != AbilityRuntime::INSIGHT_INTENTS_DECORATOR_TYPE_ENTRY) {
         TAG_LOGW(AAFwkTag::INTENT, "decorator %{public}s misMatch", info.genericInfo.decoratorType.c_str());
         return ERR_INVALID_VALUE;
@@ -244,7 +244,7 @@ int32_t InsightIntentExecuteManager::UpdateEntryDecoratorParams(Want &want, Exec
         TAG_LOGE(AAFwkTag::INTENT, "execute mode mismatch");
         return ERR_INVALID_VALUE;
     }
-    if (want.GetElement().GetAbilityName() != info.genericInfo.get<InsightIntentEntryInfo>().abilityName) {
+    if (want.GetAbilityNameRef() != info.genericInfo.get<InsightIntentEntryInfo>().abilityName) {
         TAG_LOGE(AAFwkTag::INTENT, "ability name mismatch");
         return ERR_INVALID_VALUE;
     }

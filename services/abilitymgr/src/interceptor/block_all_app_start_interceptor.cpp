@@ -19,7 +19,7 @@
 
 namespace OHOS {
 namespace AAFwk {
-ErrCode BlockAllAppStartInterceptor::DoProcess(AbilityInterceptorParam param)
+ErrCode BlockAllAppStartInterceptor::DoProcess(const AbilityInterceptorParam &param)
 {
     if (param.shouldBlockAllAppStartFunc_ == nullptr) {
         TAG_LOGE(AAFwkTag::ECOLOGICAL_RULE, "shouldBlockAllAppStartFunc_ is nullptr");

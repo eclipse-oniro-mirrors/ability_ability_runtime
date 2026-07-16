@@ -49,7 +49,7 @@ std::string DisposedRuleInterceptor::GenerateEventTaskName(int32_t uid)
     return UNREGISTER_EVENT_TASK + std::to_string(uid);
 }
 
-ErrCode DisposedRuleInterceptor::DoProcess(AbilityInterceptorParam param)
+ErrCode DisposedRuleInterceptor::DoProcess(const AbilityInterceptorParam &param)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Call");
     AppExecFwk::DisposedRule disposedRule;
@@ -66,7 +66,7 @@ ErrCode DisposedRuleInterceptor::DoProcess(AbilityInterceptorParam param)
             TAG_LOGE(AAFwkTag::ABILITYMGR, "skip dispose rule");
             return AbilityUtil::EdmErrorType(disposedRule.isEdm);
         }
-        if (disposedRule.want->GetBundle() == param.want.GetBundle()) {
+        if (disposedRule.want->GetBundle() == param.want.GetBundleNameRef()) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "no dispose want, with same bundleName");
             return AbilityUtil::EdmErrorType(disposedRule.isEdm);
         }
@@ -111,7 +111,7 @@ bool DisposedRuleInterceptor::CheckControl(const Want &want, int32_t userId,
     }
 
     // get disposed status
-    std::string bundleName = want.GetBundle();
+    const auto &bundleName = want.GetBundleNameRef();
     auto appControlMgr = bundleMgrHelper->GetAppControlProxy();
     if (appControlMgr == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null appControlMgr");
@@ -156,11 +156,11 @@ bool DisposedRuleInterceptor::FindBlockDisposedRule(const Want &want,
             }
             continue;
         }
-        std::string moduleName = want.GetElement().GetModuleName();
-        std::string abilityName = want.GetElement().GetAbilityName();
+        const auto &moduleName = want.GetModuleNameRef();
+        const auto &abilityName = want.GetAbilityNameRef();
         auto iter = std::find_if(rule.elementList.begin(), rule.elementList.end(),
             [moduleName, abilityName](const AppExecFwk::ElementName &elementName) {
-                return moduleName == elementName.GetModuleName() && abilityName == elementName.GetAbilityName();
+                return moduleName == elementName.GetModuleNameRef() && abilityName == elementName.GetAbilityName();
             });
         if ((rule.controlType == AppExecFwk::ControlType::ALLOWED_LIST && iter == rule.elementList.end()) ||
             (rule.controlType == AppExecFwk::ControlType::DISALLOWED_LIST && iter != rule.elementList.end())) {
@@ -219,7 +219,7 @@ ErrCode DisposedRuleInterceptor::StartNonBlockRule(const Want &want, AppExecFwk:
             disposedObserver->AddAbilityKey(moduleName, abilityName);
 
             std::vector<std::string> bundleNameList;
-            bundleNameList.push_back(want.GetBundle());
+            bundleNameList.push_back(want.GetBundleNameRef());
             int32_t ret =
                 IN_PROCESS_CALL(appManager->RegisterApplicationStateObserver(disposedObserver, bundleNameList));
             if (ret != 0) {
@@ -252,7 +252,7 @@ bool DisposedRuleInterceptor::ValidateNonBlockRule(const Want &want, const AppEx
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null want");
         return false;
     }
-    if (disposedRule.want->GetBundle() == want.GetBundle()) {
+    if (disposedRule.want->GetBundle() == want.GetBundleNameRef()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "no dispose app with same bundleName");
         return false;
     }
@@ -310,9 +310,9 @@ void DisposedRuleInterceptor::SetInterceptInfo(const Want &want, AppExecFwk::Dis
         return;
     }
     if (disposedRule.want->GetBoolParam(IS_FROM_PARENTCONTROL, false)) {
-        disposedRule.want->SetParam(INTERCEPT_BUNDLE_NAME, want.GetElement().GetBundleName());
-        disposedRule.want->SetParam(INTERCEPT_ABILITY_NAME, want.GetElement().GetAbilityName());
-        disposedRule.want->SetParam(INTERCEPT_MODULE_NAME, want.GetElement().GetModuleName());
+        disposedRule.want->SetParam(INTERCEPT_BUNDLE_NAME, want.GetBundleNameRef());
+        disposedRule.want->SetParam(INTERCEPT_ABILITY_NAME, want.GetAbilityNameRef());
+        disposedRule.want->SetParam(INTERCEPT_MODULE_NAME, want.GetModuleNameRef());
     }
 }
 

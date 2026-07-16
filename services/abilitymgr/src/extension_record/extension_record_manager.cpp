@@ -239,7 +239,7 @@ int32_t ExtensionRecordManager::GetOrCreateExtensionRecord(const AAFwk::AbilityR
         auto wantEle = abilityRequest.want.GetElement();
         std::string abilityName = wantEle.GetAbilityName();
         std::string bundleName = wantEle.GetBundleName();
-        std::string moduleName = wantEle.GetModuleName();
+        std::string moduleName = wantEle.GetModuleNameRef();
         auto extensionRecordMapKey = std::make_tuple(abilityName, bundleName, moduleName, hostPid);
         RemovePreloadUIExtensionRecord(extensionRecordMapKey);
         HandlePreloadUIExtensionLoaded(extensionRecord);
@@ -492,7 +492,7 @@ bool ExtensionRecordManager::IsPreloadExtensionRecord(const AAFwk::AbilityReques
     auto wantEle = abilityRequest.want.GetElement();
     std::string abilityName = wantEle.GetAbilityName();
     std::string bundleName = wantEle.GetBundleName();
-    std::string moduleName = wantEle.GetModuleName();
+    std::string moduleName = wantEle.GetModuleNameRef();
     auto extensionRecordMapKey = std::make_tuple(abilityName, bundleName, moduleName, hostPid);
     TAG_LOGD(AAFwkTag::ABILITYMGR, "hostBundleName: %{public}d, bundleName: %{public}s",
         hostPid, bundleName.c_str());

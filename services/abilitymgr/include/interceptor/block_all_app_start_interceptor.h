@@ -24,7 +24,7 @@ class BlockAllAppStartInterceptor : public IAbilityInterceptor {
 public:
     BlockAllAppStartInterceptor() = default;
     ~BlockAllAppStartInterceptor() = default;
-    ErrCode DoProcess(AbilityInterceptorParam param) override;
+    ErrCode DoProcess(const AbilityInterceptorParam &param) override;
     virtual void SetTaskHandler(std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler) override
     {
         return;

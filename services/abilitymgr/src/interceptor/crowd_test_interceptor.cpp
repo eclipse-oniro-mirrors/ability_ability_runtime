@@ -29,7 +29,7 @@ constexpr const char* MARKET_CROWD_TEST_UIEXTENSION_ABILITY_NAME = "TestAppUseEn
 constexpr const char* APP_BUNDLE_NAME = "appBundleName";
 const std::string UIEXTENSION_SYS_COMMON_UI = "sys/commonUI";
 }
-ErrCode CrowdTestInterceptor::DoProcess(AbilityInterceptorParam param)
+ErrCode CrowdTestInterceptor::DoProcess(const AbilityInterceptorParam &param)
 {
     if (StartAbilityUtils::skipCrowTest) {
         StartAbilityUtils::skipCrowTest = false;
@@ -62,11 +62,11 @@ ErrCode CrowdTestInterceptor::DoProcess(AbilityInterceptorParam param)
                 replaceWant.SetParam(UIEXTENSION_TYPE_KEY, UIEXTENSION_SYS_COMMON_UI);
                 replaceWant.SetElementName(appGalleryBundleName, MARKET_CROWD_TEST_UIEXTENSION_ABILITY_NAME);
                 replaceWant.SetParam(UIEXTENSION_MODAL_TYPE, 1);
-                replaceWant.SetParam(APP_BUNDLE_NAME, param.want.GetBundle());
+                replaceWant.SetParam(APP_BUNDLE_NAME, param.want.GetBundleNameRef());
                 ret = IN_PROCESS_CALL(systemUIExtension->CreateModalUIExtension(replaceWant)) ? ERR_OK : INNER_ERR;
             } else {
                 ret = IN_PROCESS_CALL(AbilityUtil::StartAppgallery(
-                    param.want.GetBundle(), param.requestCode, param.userId, ACTION_MARKET_CROWDTEST));
+                    param.want.GetBundleNameRef(), param.requestCode, param.userId, ACTION_MARKET_CROWDTEST));
             }
 
             if (ret != ERR_OK) {
@@ -84,7 +84,7 @@ bool CrowdTestInterceptor::CheckCrowdtest(const Want &want, int32_t userId)
 {
     // get crowdtest status and time
     AppExecFwk::ApplicationInfo appInfo;
-    if (!StartAbilityUtils::GetApplicationInfo(want.GetBundle(), userId, appInfo)) {
+    if (!StartAbilityUtils::GetApplicationInfo(want.GetBundleNameRef(), userId, appInfo)) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "GetAppInfo failed");
         return false;
     }

@@ -91,8 +91,8 @@ bool AbilityPermissionUtil::IsDominateScreen(const Want &want, bool isPendingWan
             return false;
         }
         // add temporarily
-        std::string bundleName = want.GetElement().GetBundleName();
-        std::string abilityName = want.GetElement().GetAbilityName();
+        const auto &bundleName = want.GetBundleNameRef();
+        const auto &abilityName = want.GetAbilityNameRef();
         bool withoutSettings = bundleName.find(SETTINGS) == std::string::npos &&
             abilityName.find(SETTINGS) == std::string::npos;
         if (withoutSettings && AppUtils::GetInstance().IsAllowStartAbilityWithoutCallerToken(bundleName, abilityName)) {
@@ -139,7 +139,7 @@ int32_t AbilityPermissionUtil::CheckMultiInstanceAndAppClone(Want &want, int32_t
     AppExecFwk::ApplicationInfo appInfo;
     auto isSupportMultiInstance = AppUtils::GetInstance().IsSupportMultiInstance();
     if (isSupportMultiInstance) {
-        if (!StartAbilityUtils::GetApplicationInfo(want.GetBundle(), userId, appInfo)) {
+        if (!StartAbilityUtils::GetApplicationInfo(want.GetBundleNameRef(), userId, appInfo)) {
             TAG_LOGI(AAFwkTag::ABILITYMGR, "implicit start");
             return ERR_OK;
         }
@@ -177,7 +177,7 @@ int32_t AbilityPermissionUtil::CheckMultiInstance(Want &want, sptr<IRemoteObject
     }
     auto callerRecord = Token::GetAbilityRecordByToken(callerToken);
     std::vector<std::string> instanceKeyArray;
-    auto result = IN_PROCESS_CALL(appMgr->GetAllRunningInstanceKeysByBundleName(want.GetBundle(), instanceKeyArray));
+    auto result = IN_PROCESS_CALL(appMgr->GetAllRunningInstanceKeysByBundleName(want.GetBundleNameRef(), instanceKeyArray));
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Failed to get instance key");
         return ERR_INVALID_VALUE;
@@ -185,7 +185,7 @@ int32_t AbilityPermissionUtil::CheckMultiInstance(Want &want, sptr<IRemoteObject
     auto instanceKey = want.GetStringParam(Want::APP_INSTANCE_KEY);
     auto isCreating = want.GetBoolParam(Want::CREATE_APP_INSTANCE_KEY, false);
     // in-app launch
-    if ((callerRecord != nullptr && callerRecord->GetAbilityInfo().bundleName == want.GetBundle()) ||
+    if ((callerRecord != nullptr && callerRecord->GetAbilityInfo().bundleName == want.GetBundleNameRef()) ||
         IsStartSelfUIAbility()) {
         if (isCreating) {
             if (!instanceKey.empty()) {
@@ -258,7 +258,7 @@ int32_t AbilityPermissionUtil::CheckMultiInstanceKeyForExtension(const AbilityRe
         TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid extension type");
         return ERR_INVALID_EXTENSION_TYPE;
     }
-    if (!MultiInstanceUtils::IsInstanceKeyExist(abilityRequest.want.GetBundle(), instanceKey)) {
+    if (!MultiInstanceUtils::IsInstanceKeyExist(abilityRequest.want.GetBundleNameRef(), instanceKey)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "key not found");
         return ERR_INVALID_APP_INSTANCE_KEY;
     }
