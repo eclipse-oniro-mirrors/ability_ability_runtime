@@ -180,7 +180,7 @@ HWTEST_F(DumpRuntimeHelperTestSecond, DumpJsHandleMap_0200, TestSize.Level1)
 /**
  * @tc.number: DumpJsHandleMap_0300
  * @tc.name: DumpJsHandleMap
- * @tc.desc: Test DumpJsHandleMap when runtime language is not JS or ETS.
+ * @tc.desc: Test DumpJsHandleMap when Runtime::Create returns nullptr for UNKNOWN language.
  */
 HWTEST_F(DumpRuntimeHelperTestSecond, DumpJsHandleMap_0300, TestSize.Level1)
 {
@@ -190,9 +190,9 @@ HWTEST_F(DumpRuntimeHelperTestSecond, DumpJsHandleMap_0300, TestSize.Level1)
     AbilityRuntime::Runtime::Options options;
     options.lang = AbilityRuntime::Runtime::Language::UNKNOWN;
     auto runtime = AbilityRuntime::Runtime::Create(options);
+    EXPECT_EQ(runtime, nullptr);
     application->SetRuntime(std::move(runtime));
-    ASSERT_NE(application->GetRuntime(), nullptr);
-    EXPECT_EQ(application->GetRuntime()->GetLanguage(), AbilityRuntime::Runtime::Language::UNKNOWN);
+    EXPECT_EQ(application->GetRuntime(), nullptr);
     auto helper = std::make_shared<DumpRuntimeHelper>(application);
     OHOS::AppExecFwk::JsHandleMapInfo info;
     info.tid = 1;
