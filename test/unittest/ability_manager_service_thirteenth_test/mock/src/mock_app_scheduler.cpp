@@ -359,6 +359,11 @@ bool AppScheduler::IsMainProcessDebug(int32_t uid)
     return false;
 }
 
+bool AppScheduler::IsCorrespondingProcessAttachDebug(const AppExecFwk::AbilityInfo &abilityInfo)
+{
+    return false;
+}
+
 void AppScheduler::OnCacheExitInfo(uint32_t accessTokenId, const AppExecFwk::RunningProcessInfo &exitInfo,
     const std::string &bundleName, const std::vector<std::string> &abilityNames,
     const std::vector<std::string> &uiExtensionNames) {}

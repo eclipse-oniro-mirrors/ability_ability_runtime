@@ -540,6 +540,15 @@ bool AppMgrClient::IsMainProcessDebug(int32_t uid)
     return service->IsMainProcessDebug(uid);
 }
 
+bool AppMgrClient::IsCorrespondingProcessAttachDebug(const AbilityInfo &abilityInfo)
+{
+    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
+    if (service == nullptr) {
+        return false;
+    }
+    return service->IsCorrespondingProcessAttachDebug(abilityInfo);
+}
+
 AppMgrResultCode AppMgrClient::GetProcessRunningInfosByAccessTokenId(uint32_t accessTokenId,
     std::vector<RunningProcessInfo> &info)
 {

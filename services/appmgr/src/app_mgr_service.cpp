@@ -1512,6 +1512,15 @@ bool AppMgrService::IsMainProcessDebug(int32_t uid)
     return appMgrServiceInner_->IsMainProcessDebug(uid);
 }
 
+bool AppMgrService::IsCorrespondingProcessAttachDebug(const AbilityInfo &abilityInfo)
+{
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "not ready");
+        return false;
+    }
+    return appMgrServiceInner_->IsCorrespondingProcessAttachDebug(abilityInfo);
+}
+
 int32_t AppMgrService::GetRunningProcessInfoByPid(const pid_t pid, OHOS::AppExecFwk::RunningProcessInfo &info)
 {
     if (!IsReady()) {

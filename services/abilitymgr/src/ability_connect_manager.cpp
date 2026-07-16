@@ -1322,7 +1322,7 @@ void AbilityConnectManager::LoadAbility(const std::shared_ptr<BaseExtensionRecor
     }
     int32_t loadTimeoutFinal =
         AmsConfigurationParameter::GetInstance().GetAppStartTimeoutTime() * GetLoadTimeout(loadTimeout);
-    if (!abilityRecord->IsDebugApp()) {
+    if (!abilityRecord->IsDebug()) {
         TAG_LOGD(AAFwkTag::EXT, "IsDebug is false, here is not debug app");
         PostLoadTimeoutTask(abilityRecord, loadTimeoutFinal);
     }
@@ -1573,7 +1573,11 @@ void AbilityConnectManager::PostTimeOutTask(const std::shared_ptr<BaseExtensionR
 {
     CHECK_POINTER(abilityRecord);
     CHECK_POINTER(taskHandler_);
-
+    if (abilityRecord->IsDebug()) {
+        TAG_LOGD(AAFwkTag::EXT, "Debug task: %{public}s/%{public}s" PRId64,
+            abilityRecord->GetAbilityInfo().bundleName.c_str(), abilityRecord->GetAbilityInfo().name.c_str());
+        return;
+    }
     std::string taskName;
     auto recordId = abilityRecord->GetAbilityRecordId();
     TAG_LOGD(AAFwkTag::EXT, "task: %{public}s/%{public}s, %{public}d, %{public}" PRId64,
@@ -3422,6 +3426,13 @@ void AbilityConnectManager::GetOrCreateServiceRecord(const AbilityRequest &abili
                 TAG_LOGD(AAFwkTag::EXT, "AGENT extension inherit debug from main process, ability:%{public}s",
                     abilityRequest.abilityInfo.name.c_str());
             }
+            bool isAttachDebug = IN_PROCESS_CALL(
+                DelayedSingleton<AppScheduler>::GetInstance()->IsCorrespondingProcessAttachDebug(
+                    abilityRequest.abilityInfo));
+            targetService->SetAttachDebug(isAttachDebug);
+            TAG_LOGD(AAFwkTag::EXT, "AGENT extension sync attach debug from corresponding process, "
+                "ability:%{public}s, isAttachDebug:%{public}d",
+                abilityRequest.abilityInfo.name.c_str(), isAttachDebug);
         }
         isLoadedAbility = false;
 

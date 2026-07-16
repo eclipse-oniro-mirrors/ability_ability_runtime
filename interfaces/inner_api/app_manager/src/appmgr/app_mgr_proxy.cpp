@@ -1609,6 +1609,27 @@ bool AppMgrProxy::IsMainProcessDebug(int32_t uid)
     return reply.ReadBool();
 }
 
+bool AppMgrProxy::IsCorrespondingProcessAttachDebug(const AbilityInfo &abilityInfo)
+{
+    MessageParcel data;
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write interface token failed.");
+        return false;
+    }
+    if (!data.WriteParcelable(&abilityInfo)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "abilityInfo write failed.");
+        return false;
+    }
+    MessageParcel reply;
+    MessageOption option;
+    auto ret = SendRequest(AppMgrInterfaceCode::IS_CORRESPONDING_PROCESS_ATTACH_DEBUG, data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGW(AAFwkTag::APPMGR, "SendRequest failed, error code: %{public}d", ret);
+        return false;
+    }
+    return reply.ReadBool();
+}
+
 int32_t AppMgrProxy::StartNativeProcessForDebugger(const AAFwk::Want &want)
 {
     MessageParcel data;

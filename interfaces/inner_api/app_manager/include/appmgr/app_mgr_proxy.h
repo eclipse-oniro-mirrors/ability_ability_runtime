@@ -552,6 +552,13 @@ public:
     virtual bool IsMainProcessDebug(int32_t uid) override;
 
     /**
+     * @brief Query whether the corresponding process of the app (identified by abilityInfo) is in attach debug mode.
+     * @param abilityInfo The ability info used to locate the corresponding process.
+     * @return Returns true if the corresponding process is in attach debug mode, false otherwise.
+     */
+    virtual bool IsCorrespondingProcessAttachDebug(const AbilityInfo &abilityInfo) override;
+
+    /**
      * start native process for debugger.
      *
      * @param want param to start a process.
