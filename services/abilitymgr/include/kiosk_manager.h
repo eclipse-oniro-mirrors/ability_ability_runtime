@@ -48,6 +48,7 @@ private:
     DISALLOW_COPY_AND_MOVE(KioskManager);
     int32_t ExitKioskModeInner(const std::string &bundleName, sptr<IRemoteObject> callerToken,
         bool isFoundation);
+    int32_t VerifyUpdatePermissions();
     bool IsInKioskModeInner();
     void NotifyKioskModeChanged(bool isInKioskMode, const std::string &bundleName, int32_t kioskBundleUid);
     bool IsInWhiteListInner(const std::string &bundleName);

@@ -63,7 +63,7 @@ void KioskManager::OnAppStop(const AppInfo &info)
     }
 }
 
-int32_t KioskManager::UpdateKioskApplicationList(const std::vector<std::string> &appList)
+int32_t KioskManager::VerifyUpdatePermissions()
 {
     if (!system::GetBoolParameter(KIOSK_MODE_ENABLED, false)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Disabled config");
@@ -80,6 +80,16 @@ int32_t KioskManager::UpdateKioskApplicationList(const std::vector<std::string> 
         TAG_LOGE(AAFwkTag::ABILITYMGR, "not MANAGE_EDM_POLICY permission");
         return CHECK_PERMISSION_FAILED;
     }
+    return ERR_OK;
+}
+
+int32_t KioskManager::UpdateKioskApplicationList(const std::vector<std::string> &appList)
+{
+    auto permRet = VerifyUpdatePermissions();
+    if (permRet != ERR_OK) {
+        return permRet;
+    }
+
     bool needExit = false;
     std::string exitBundleName;
     sptr<IRemoteObject> exitToken;
@@ -95,10 +105,17 @@ int32_t KioskManager::UpdateKioskApplicationList(const std::vector<std::string> 
         }
     }
     if (needExit) {
-        auto ret = ExitKioskModeInner(exitBundleName, exitToken, true);
-        if (ret != ERR_OK) {
-            return ret;
+        auto exitRet = ExitKioskModeInner(exitBundleName, exitToken, true);
+        if (exitRet != ERR_OK) {
+            return exitRet;
         }
+    }
+    auto sceneSessionManager = Rosen::SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+    CHECK_POINTER_AND_RETURN_LOG(sceneSessionManager, INNER_ERR, "sceneSessionManager is nullptr");
+    auto ret = static_cast<int>(sceneSessionManager->UpdateKioskAppList(appList));
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "UpdateKioskAppList failed: %{public}d", ret);
+        return ret;
     }
     {
         std::lock_guard<std::mutex> lock(kioskManagerMutex_);
@@ -107,9 +124,6 @@ int32_t KioskManager::UpdateKioskApplicationList(const std::vector<std::string> 
             whitelist_.insert(app);
         }
     }
-    auto sceneSessionManager = Rosen::SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
-    CHECK_POINTER_AND_RETURN_LOG(sceneSessionManager, INNER_ERR, "sceneSessionManager is nullptr");
-    sceneSessionManager->UpdateKioskAppList(appList);
     return ERR_OK;
 }
 
@@ -183,7 +197,7 @@ int32_t KioskManager::ExitKioskModeInner(const std::string &bundleName, sptr<IRe
         }
 
         if (!isFoundation && kioskStatus_.kioskBundleUid_ != IPCSkeleton::GetCallingUid()) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "bundleName %{public}s is not the currently kiosk app", bundleName.c_str());
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "bundleName %{public}s is not the currently kiosk app", bundleName.c_str());
             return ERR_NOT_IN_KIOSK_MODE;
         }
 
