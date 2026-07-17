@@ -182,8 +182,10 @@ bool AppUtils::IsRescueMode()
 {
     if (!isRescueMode_.isLoaded) {
         isRescueMode_.value = (system::GetParameter("soc.boot.mode", "") == "rescue");
-        TAG_LOGW(AAFwkTag::DEFAULT, "is in rescue mode");
+        TAG_LOGI(AAFwkTag::DEFAULT, "rescue mode: %{public}s", isRescueMode_.value ? "true" : "false");
+        isRescueMode_.isLoaded = true;
     }
+
     return isRescueMode_.value;
 }
 
@@ -193,7 +195,12 @@ int32_t AppUtils::GetTimeoutUnitTimeRatio()
         timeoutUnitTimeRatio_.value = system::GetIntParameter<int32_t>(TIMEOUT_UNIT_TIME_RATIO, 1);
         if (IsRescueMode()) {
             TAG_LOGI(AAFwkTag::DEFAULT, "rescue mode: increase timeout radio");
-            timeoutUnitTimeRatio_.value *= RESCUE_MODE_TIMEOUT_RADIO;
+            if (timeoutUnitTimeRatio_.value <= INT32_MAX / RESCUE_MODE_TIMEOUT_RATIO) {
+                timeoutUnitTimeRatio_.value *= RESCUE_MODE_TIMEOUT_RADIO;
+            } else {
+                TAG_LOGW(AAFwkTag::DEFAULT, "rescue mode: ratio too large, clamp to max");
+                timeoutUnitTimeRatio_.value = INT32_MAX;
+            }
         }
         timeoutUnitTimeRatio_.isLoaded = true;
     }
