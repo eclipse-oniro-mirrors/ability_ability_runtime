@@ -108,6 +108,11 @@ class WindowPidVisibilityChangedListener;
 using LoadAbilityTaskFunc = std::function<void()>;
 constexpr int32_t BASE_USER_RANGE = 200000;
 
+inline int32_t GetUserIdByUid(int32_t uid)
+{
+    return uid / BASE_USER_RANGE;
+}
+
 // for child process isolation
 constexpr int32_t START_ID_FOR_CHILD_PROCESS_ISOLATION = 110000;
 constexpr int32_t END_ID_FOR_CHILD_PROCESS_ISOLATION = 119999;

@@ -96,66 +96,31 @@ bool AppStateFilter::Match(const AppStateFilter& filter)
     return false;
 }
 
-std::unordered_map<ApplicationState, FilterAppStateType> APPLICATION_STATE_TO_FILTER_MAP = {
-    {ApplicationState::APP_STATE_CREATE, FilterAppStateType::CREATE},
-    {ApplicationState::APP_STATE_FOREGROUND, FilterAppStateType::FOREGROUND},
-    {ApplicationState::APP_STATE_BACKGROUND, FilterAppStateType::BACKGROUND},
-    {ApplicationState::APP_STATE_TERMINATED, FilterAppStateType::DESTROY},
-    {ApplicationState::APP_STATE_READY, FilterAppStateType::READY},
-    {ApplicationState::APP_STATE_FOCUS, FilterAppStateType::FOCUS},
-    {ApplicationState::APP_STATE_END, FilterAppStateType::END},
-    {ApplicationState::APP_STATE_SET_COLD_START, FilterAppStateType::SET_COLD_START},
-    {ApplicationState::APP_STATE_CACHED, FilterAppStateType::CACHED},
-    {ApplicationState::APP_STATE_PRE_FOREGROUND, FilterAppStateType::PRE_FOREGROUND},
-};
-
-std::unordered_map<AppProcessState, FilterProcessStateType> APP_PROCESS_STATE_TO_FILTER_MAP = {
-    {AppProcessState::APP_STATE_CREATE, FilterProcessStateType::CREATE},
-    {AppProcessState::APP_STATE_FOREGROUND, FilterProcessStateType::FOREGROUND},
-    {AppProcessState::APP_STATE_BACKGROUND, FilterProcessStateType::BACKGROUND},
-    {AppProcessState::APP_STATE_TERMINATED, FilterProcessStateType::DESTROY},
-    {AppProcessState::APP_STATE_READY, FilterProcessStateType::READY},
-    {AppProcessState::APP_STATE_FOCUS, FilterProcessStateType::FOCUS},
-    {AppProcessState::APP_STATE_END, FilterProcessStateType::END},
-    {AppProcessState::APP_STATE_CACHED, FilterProcessStateType::CACHED},
-    {AppProcessState::APP_STATE_PRE_FOREGROUND, FilterProcessStateType::PRE_FOREGROUND},
-};
-
-std::unordered_map<AbilityState, FilterAbilityStateType> ABILITY_STATE_TO_FILTER_MAP = {
-    {AbilityState::ABILITY_STATE_CREATE, FilterAbilityStateType::CREATE},
-    {AbilityState::ABILITY_STATE_FOREGROUND, FilterAbilityStateType::FOREGROUND},
-    {AbilityState::ABILITY_STATE_BACKGROUND, FilterAbilityStateType::BACKGROUND},
-    {AbilityState::ABILITY_STATE_TERMINATED, FilterAbilityStateType::DESTROY},
-    {AbilityState::ABILITY_STATE_READY, FilterAbilityStateType::READY},
-    {AbilityState::ABILITY_STATE_FOCUS, FilterAbilityStateType::FOCUS},
-    {AbilityState::ABILITY_STATE_END, FilterAbilityStateType::END},
-    {AbilityState::ABILITY_STATE_CONNECTED, FilterAbilityStateType::CONNECTED},
-    {AbilityState::ABILITY_STATE_DISCONNECTED, FilterAbilityStateType::DISCONNECTED},
-};
-
-std::unordered_map<ExtensionState, FilterAbilityStateType> EXTENSION_STATE_TO_FILTER_MAP = {
-    {ExtensionState::EXTENSION_STATE_CREATE, FilterAbilityStateType::CREATE},
-    {ExtensionState::EXTENSION_STATE_READY, FilterAbilityStateType::READY},
-    {ExtensionState::EXTENSION_STATE_CONNECTED, FilterAbilityStateType::CONNECTED},
-    {ExtensionState::EXTENSION_STATE_DISCONNECTED, FilterAbilityStateType::DISCONNECTED},
-    {ExtensionState::EXTENSION_STATE_TERMINATED, FilterAbilityStateType::DESTROY},
-    {ExtensionState::EXTENSION_STATE_FOREGROUND, FilterAbilityStateType::FOREGROUND},
-    {ExtensionState::EXTENSION_STATE_BACKGROUND, FilterAbilityStateType::BACKGROUND},
-};
-
-std::unordered_map<BundleType, FilterBundleType> BUNDLE_TYPE_TO_FILTER_MAP = {
-    {BundleType::APP, FilterBundleType::APP},
-    {BundleType::ATOMIC_SERVICE, FilterBundleType::ATOMIC_SERVICE},
-    {BundleType::SHARED, FilterBundleType::SHARED},
-    {BundleType::APP_SERVICE_FWK, FilterBundleType::APP_SERVICE_FWK},
-    {BundleType::APP_PLUGIN, FilterBundleType::APP_PLUGIN},
-};
-
 FilterAppStateType GetFilterTypeFromApplicationState(ApplicationState state)
 {
-    auto it = APPLICATION_STATE_TO_FILTER_MAP.find(state);
-    if (it != APPLICATION_STATE_TO_FILTER_MAP.end()) {
-        return it->second;
+    switch (state) {
+        case ApplicationState::APP_STATE_CREATE:
+            return FilterAppStateType::CREATE;
+        case ApplicationState::APP_STATE_FOREGROUND:
+            return FilterAppStateType::FOREGROUND;
+        case ApplicationState::APP_STATE_BACKGROUND:
+            return FilterAppStateType::BACKGROUND;
+        case ApplicationState::APP_STATE_TERMINATED:
+            return FilterAppStateType::DESTROY;
+        case ApplicationState::APP_STATE_READY:
+            return FilterAppStateType::READY;
+        case ApplicationState::APP_STATE_FOCUS:
+            return FilterAppStateType::FOCUS;
+        case ApplicationState::APP_STATE_END:
+            return FilterAppStateType::END;
+        case ApplicationState::APP_STATE_SET_COLD_START:
+            return FilterAppStateType::SET_COLD_START;
+        case ApplicationState::APP_STATE_CACHED:
+            return FilterAppStateType::CACHED;
+        case ApplicationState::APP_STATE_PRE_FOREGROUND:
+            return FilterAppStateType::PRE_FOREGROUND;
+        default:
+            break;
     }
     TAG_LOGE(AAFwkTag::APPMGR, "get FilterType from ApplicationState failed");
     return FilterAppStateType::NONE;
@@ -163,9 +128,27 @@ FilterAppStateType GetFilterTypeFromApplicationState(ApplicationState state)
 
 FilterProcessStateType GetFilterTypeFromAppProcessState(AppProcessState state)
 {
-    auto it = APP_PROCESS_STATE_TO_FILTER_MAP.find(state);
-    if (it != APP_PROCESS_STATE_TO_FILTER_MAP.end()) {
-        return it->second;
+    switch (state) {
+        case AppProcessState::APP_STATE_CREATE:
+            return FilterProcessStateType::CREATE;
+        case AppProcessState::APP_STATE_FOREGROUND:
+            return FilterProcessStateType::FOREGROUND;
+        case AppProcessState::APP_STATE_BACKGROUND:
+            return FilterProcessStateType::BACKGROUND;
+        case AppProcessState::APP_STATE_TERMINATED:
+            return FilterProcessStateType::DESTROY;
+        case AppProcessState::APP_STATE_READY:
+            return FilterProcessStateType::READY;
+        case AppProcessState::APP_STATE_FOCUS:
+            return FilterProcessStateType::FOCUS;
+        case AppProcessState::APP_STATE_END:
+            return FilterProcessStateType::END;
+        case AppProcessState::APP_STATE_CACHED:
+            return FilterProcessStateType::CACHED;
+        case AppProcessState::APP_STATE_PRE_FOREGROUND:
+            return FilterProcessStateType::PRE_FOREGROUND;
+        default:
+            break;
     }
     TAG_LOGE(AAFwkTag::APPMGR, "get FilterType from AppProcessState failed");
     return FilterProcessStateType::NONE;
@@ -173,9 +156,27 @@ FilterProcessStateType GetFilterTypeFromAppProcessState(AppProcessState state)
 
 FilterAbilityStateType GetFilterTypeFromAbilityState(AbilityState state)
 {
-    auto it = ABILITY_STATE_TO_FILTER_MAP.find(state);
-    if (it != ABILITY_STATE_TO_FILTER_MAP.end()) {
-        return it->second;
+    switch (state) {
+        case AbilityState::ABILITY_STATE_CREATE:
+            return FilterAbilityStateType::CREATE;
+        case AbilityState::ABILITY_STATE_FOREGROUND:
+            return FilterAbilityStateType::FOREGROUND;
+        case AbilityState::ABILITY_STATE_BACKGROUND:
+            return FilterAbilityStateType::BACKGROUND;
+        case AbilityState::ABILITY_STATE_TERMINATED:
+            return FilterAbilityStateType::DESTROY;
+        case AbilityState::ABILITY_STATE_READY:
+            return FilterAbilityStateType::READY;
+        case AbilityState::ABILITY_STATE_FOCUS:
+            return FilterAbilityStateType::FOCUS;
+        case AbilityState::ABILITY_STATE_END:
+            return FilterAbilityStateType::END;
+        case AbilityState::ABILITY_STATE_CONNECTED:
+            return FilterAbilityStateType::CONNECTED;
+        case AbilityState::ABILITY_STATE_DISCONNECTED:
+            return FilterAbilityStateType::DISCONNECTED;
+        default:
+            break;
     }
     TAG_LOGE(AAFwkTag::APPMGR, "get FilterType from AbilityState failed");
     return FilterAbilityStateType::NONE;
@@ -183,9 +184,23 @@ FilterAbilityStateType GetFilterTypeFromAbilityState(AbilityState state)
 
 FilterAbilityStateType GetFilterTypeFromExtensionState(ExtensionState state)
 {
-    auto it = EXTENSION_STATE_TO_FILTER_MAP.find(state);
-    if (it != EXTENSION_STATE_TO_FILTER_MAP.end()) {
-        return it->second;
+    switch (state) {
+        case ExtensionState::EXTENSION_STATE_CREATE:
+            return FilterAbilityStateType::CREATE;
+        case ExtensionState::EXTENSION_STATE_READY:
+            return FilterAbilityStateType::READY;
+        case ExtensionState::EXTENSION_STATE_CONNECTED:
+            return FilterAbilityStateType::CONNECTED;
+        case ExtensionState::EXTENSION_STATE_DISCONNECTED:
+            return FilterAbilityStateType::DISCONNECTED;
+        case ExtensionState::EXTENSION_STATE_TERMINATED:
+            return FilterAbilityStateType::DESTROY;
+        case ExtensionState::EXTENSION_STATE_FOREGROUND:
+            return FilterAbilityStateType::FOREGROUND;
+        case ExtensionState::EXTENSION_STATE_BACKGROUND:
+            return FilterAbilityStateType::BACKGROUND;
+        default:
+            break;
     }
     TAG_LOGE(AAFwkTag::APPMGR, "get FilterType from AbilityState failed");
     return FilterAbilityStateType::NONE;
@@ -193,9 +208,19 @@ FilterAbilityStateType GetFilterTypeFromExtensionState(ExtensionState state)
 
 FilterBundleType GetFilterTypeFromBundleType(BundleType state)
 {
-    auto it = BUNDLE_TYPE_TO_FILTER_MAP.find(state);
-    if (it != BUNDLE_TYPE_TO_FILTER_MAP.end()) {
-        return it->second;
+    switch (state) {
+        case BundleType::APP:
+            return FilterBundleType::APP;
+        case BundleType::ATOMIC_SERVICE:
+            return FilterBundleType::ATOMIC_SERVICE;
+        case BundleType::SHARED:
+            return FilterBundleType::SHARED;
+        case BundleType::APP_SERVICE_FWK:
+            return FilterBundleType::APP_SERVICE_FWK;
+        case BundleType::APP_PLUGIN:
+            return FilterBundleType::APP_PLUGIN;
+        default:
+            break;
     }
     TAG_LOGE(AAFwkTag::APPMGR, "get FilterType from BundleType failed");
     return FilterBundleType::NONE;
