@@ -105,7 +105,7 @@ constexpr const char* NORMAL_RESIDENT_APPS = "normal_resident_apps";
 constexpr const char* ON_NEW_PROCESS_ENABLE_LIST_PATH = "etc/ability_runtime/on_new_process_enable_list.json";
 constexpr const char* ON_NEW_PROCESS_ENABLE_LIST = "onNewProcessEnableList";
 constexpr const char* HYBRIDSPAWN_UNIFIED = "persist.appspawn.hybridspawn.unified";
-constexpr int32_t RESCUE_MODE_TIMEOUT_RADIO = 5;
+constexpr int32_t RESCUE_MODE_TIMEOUT_RATIO = 5;
 }
 
 AppUtils::~AppUtils() {}
@@ -194,9 +194,9 @@ int32_t AppUtils::GetTimeoutUnitTimeRatio()
     if (!timeoutUnitTimeRatio_.isLoaded) {
         timeoutUnitTimeRatio_.value = system::GetIntParameter<int32_t>(TIMEOUT_UNIT_TIME_RATIO, 1);
         if (IsRescueMode()) {
-            TAG_LOGI(AAFwkTag::DEFAULT, "rescue mode: increase timeout radio");
+            TAG_LOGI(AAFwkTag::DEFAULT, "rescue mode: increase timeout ratio");
             if (timeoutUnitTimeRatio_.value <= INT32_MAX / RESCUE_MODE_TIMEOUT_RATIO) {
-                timeoutUnitTimeRatio_.value *= RESCUE_MODE_TIMEOUT_RADIO;
+                timeoutUnitTimeRatio_.value *= RESCUE_MODE_TIMEOUT_RATIO;
             } else {
                 TAG_LOGW(AAFwkTag::DEFAULT, "rescue mode: ratio too large, clamp to max");
                 timeoutUnitTimeRatio_.value = INT32_MAX;
