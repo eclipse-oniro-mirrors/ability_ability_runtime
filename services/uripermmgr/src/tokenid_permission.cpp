@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,6 +15,8 @@
 
 #include "tokenid_permission.h"
 
+#include "accesstoken_kit.h"
+#include "hilog_tag_wrapper.h"
 #include "permission_constants.h"
 #include "permission_verification.h"
 
@@ -31,12 +33,36 @@ bool TokenIdPermission::VerifyProxyAuthorizationUriPermission()
     return haveProxyAuthorizationUriPermission_;
 }
 
+bool TokenIdPermission::CheckIsPermissionRequestedByTokenId(uint32_t tokenId,
+    const std::string &permissionName, bool isSystemGrant)
+{
+    std::vector<Security::AccessToken::PermissionStateFull> reqPermList;
+    int32_t ret = Security::AccessToken::AccessTokenKit::GetReqPermissions(tokenId, reqPermList, isSystemGrant);
+    if (ret != Security::AccessToken::AccessTokenKitRet::RET_SUCCESS) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "GetReqPermissions failed, ret: %{public}d", ret);
+        return false;
+    }
+    for (const auto &perm : reqPermList) {
+        if (perm.permissionName == permissionName) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool TokenIdPermission::VerifyFileAccessManagerPermission()
 {
     if (!initFileAccessManagerPermission_) {
         initFileAccessManagerPermission_ = true;
-        haveFileAccessManagerPermission_ = PermissionVerification::GetInstance()->VerifyPermissionByTokenId(
-            tokenId_, PermissionConstants::PERMISSION_FILE_ACCESS_MANAGER);
+        bool declaredAgentFileAccess = CheckIsPermissionRequestedByTokenId(
+            tokenId_, PermissionConstants::PERMISSION_AGENT_FILE_ACCESS, false);
+        if (declaredAgentFileAccess) {
+            haveFileAccessManagerPermission_ = PermissionVerification::GetInstance()->VerifyPermissionByTokenId(
+                tokenId_, PermissionConstants::PERMISSION_AGENT_FILE_ACCESS);
+        } else {
+            haveFileAccessManagerPermission_ = PermissionVerification::GetInstance()->VerifyPermissionByTokenId(
+                tokenId_, PermissionConstants::PERMISSION_FILE_ACCESS_MANAGER);
+        }
     }
     return haveFileAccessManagerPermission_;
 }

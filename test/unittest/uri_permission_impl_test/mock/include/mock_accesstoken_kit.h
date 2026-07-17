@@ -19,6 +19,7 @@
 #include "access_token.h"
 #include "native_token_info.h"
 #include "hap_token_info.h"
+#include "permission_state_full.h"
 
 namespace OHOS {
 namespace Security {
@@ -31,6 +32,9 @@ public:
     static int GetNativeTokenInfo(AccessTokenID tokenID, NativeTokenInfo &nativeTokenInfoRes);
 
     static int GetHapTokenInfo(AccessTokenID tokenID, HapTokenInfo &hapInfo);
+
+    static int GetReqPermissions(AccessTokenID tokenID, std::vector<PermissionStateFull> &reqPermList,
+        bool isSystemGrant);
 };
 } // namespace AccessToken
 } // namespace Security
