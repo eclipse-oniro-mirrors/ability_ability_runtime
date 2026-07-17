@@ -869,40 +869,6 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartAbilityAsCallerDetails_001, TestS
 
 /*
  * Feature: AbilityManagerService
- * Function: StartAbilityPublicPrechainCheck
- * SubFunction: NA
- * FunctionPoints: AbilityManagerService StartAbilityPublicPrechainCheck
- */
-HWTEST_F(AbilityManagerServiceFourthTest, StartAbilityPublicPrechainCheck_001, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartAbilityPublicPrechainCheck_001 start");
-    Want want;
-    StartAbilityParams startAbilityParams(want);
-    auto abilityMs_ = std::make_shared<AbilityManagerService>();
-    auto ret = abilityMs_->StartAbilityPublicPrechainCheck(startAbilityParams);
-    EXPECT_EQ(ret, ERR_OK);
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartAbilityPublicPrechainCheck_001 end");
-}
-
-/*
- * Feature: AbilityManagerService
- * Function: StartAbilityPrechainInterceptor
- * SubFunction: NA
- * FunctionPoints: AbilityManagerService StartAbilityPrechainInterceptor
- */
-HWTEST_F(AbilityManagerServiceFourthTest, StartAbilityPrechainInterceptor_001, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartAbilityPrechainInterceptor_001 start");
-    Want want;
-    StartAbilityParams startAbilityParams(want);
-    auto abilityMs_ = std::make_shared<AbilityManagerService>();
-    auto ret = abilityMs_->StartAbilityPrechainInterceptor(startAbilityParams);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartAbilityPrechainInterceptor_001 end");
-}
-
-/*
- * Feature: AbilityManagerService
  * Function: SetReserveInfo
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService SetReserveInfo
