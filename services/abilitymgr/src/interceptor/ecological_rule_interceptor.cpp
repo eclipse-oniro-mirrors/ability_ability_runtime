@@ -115,7 +115,8 @@ bool EcologicalRuleInterceptor::DoProcess(Want &want, int32_t userId)
     auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
     CHECK_POINTER_AND_RETURN(bundleMgrHelper, false);
     Want launchWant;
-    auto errCode = IN_PROCESS_CALL(bundleMgrHelper->GetLaunchWantForBundle(want.GetBundleNameRef(), launchWant, userId));
+    auto errCode = IN_PROCESS_CALL(bundleMgrHelper->GetLaunchWantForBundle(want.GetBundleNameRef(),
+        launchWant, userId));
     if (errCode != ERR_OK) {
         TAG_LOGE(AAFwkTag::ECOLOGICAL_RULE, "GetLaunchWantForBundle err: %{public}d", errCode);
         return false;
@@ -156,7 +157,8 @@ ErrCode EcologicalRuleInterceptor::QueryAtomicServiceStartupRule(Want &want, spt
     auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
     CHECK_POINTER_AND_RETURN(bundleMgrHelper, BMS_NOT_CONNECTED);
     Want launchWant;
-    auto errCode = IN_PROCESS_CALL(bundleMgrHelper->GetLaunchWantForBundle(want.GetBundleNameRef(), launchWant, userId));
+    auto errCode = IN_PROCESS_CALL(bundleMgrHelper->GetLaunchWantForBundle(want.GetBundleNameRef(),
+        launchWant, userId));
     CHECK_RET_RETURN_RET(errCode, "GetLaunchWantForBundle failed");
     want.SetElement(launchWant.GetElement());
 

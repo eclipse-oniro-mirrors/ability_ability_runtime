@@ -523,8 +523,10 @@ int32_t FreeInstallManager::UpdateElementName(Want &want, int32_t userId) const
     auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
     CHECK_POINTER_AND_RETURN(bundleMgrHelper, ERR_INVALID_VALUE);
     Want launchWant;
-    TAG_LOGD(AAFwkTag::FREE_INSTALL, "bundleName: %{public}s, userId: %{public}d", want.GetBundleNameRef().c_str(), userId);
-    auto errCode = IN_PROCESS_CALL(bundleMgrHelper->GetLaunchWantForBundle(want.GetBundleNameRef(), launchWant, userId));
+    TAG_LOGD(AAFwkTag::FREE_INSTALL, "bundleName: %{public}s, userId: %{public}d",
+        want.GetBundleNameRef().c_str(), userId);
+    auto errCode = IN_PROCESS_CALL(bundleMgrHelper->GetLaunchWantForBundle(want.GetBundleNameRef(),
+        launchWant, userId));
     if (errCode != ERR_OK) {
         return errCode;
     }
