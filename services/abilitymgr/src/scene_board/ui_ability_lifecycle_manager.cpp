@@ -3107,7 +3107,8 @@ int32_t UIAbilityLifecycleManager::StartSpecifiedProcessRequest(const AbilityReq
         abilityInfo.applicationInfo.multiAppMode.multiAppModeType == AppExecFwk::MultiAppModeType::MULTI_INSTANCE &&
         isCreating && sceneSessionManager != nullptr) {
         std::string instanceKey;
-        Rosen::WMError ret = sceneSessionManager->CreateNewInstanceKey(abilityRequest.want.GetBundleNameRef(), instanceKey);
+        Rosen::WMError ret = sceneSessionManager->CreateNewInstanceKey(abilityRequest.want.GetBundleNameRef(),
+            instanceKey);
         if (ret != Rosen::WMError::WM_OK) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "create new instance error:%{public}d", ret);
             return ERR_CREATE_INSTANCE_KEY_FAILED;
