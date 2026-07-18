@@ -278,7 +278,7 @@ void InsightIntentSysEventReceiver::HandleUserRemove(const EventFwk::CommonEvent
 void InsightIntentSysEventReceiver::OnReceiveEvent(const EventFwk::CommonEventData &data)
 {
     const AAFwk::Want &want = data.GetWant();
-    std::string action = want.GetAction();
+    const auto &action = want.GetActionRef();
     TAG_LOGI(AAFwkTag::INTENT, "the action: %{public}s", action.c_str());
 
     if (action == EventFwk::CommonEventSupport::COMMON_EVENT_BUNDLE_SCAN_FINISHED) {

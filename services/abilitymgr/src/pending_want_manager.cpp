@@ -65,7 +65,7 @@ sptr<IWantSender> PendingWantManager::GetWantSender(int32_t callingUid, int32_t 
     if (wantSenderInfo.type != static_cast<int32_t>(OperationType::SEND_COMMON_EVENT) &&
         !isSystemApp && !AAFwk::PermissionVerification::GetInstance()->IsSACall()) {
         for (auto it = info.allWants.begin(); it != info.allWants.end();) {
-        if (info.bundleName != it->want.GetBundle()) {
+        if (info.bundleName != it->want.GetBundleNameRef()) {
                 it = info.allWants.erase(it);
             } else {
                 it->want.RemoveParam("ohos.extra.param.key.appCloneIndex");
@@ -403,7 +403,7 @@ int32_t PendingWantManager::DeviceIdDetermine(const Want &want, const sptr<Start
     int32_t result = ERR_OK;
     std::string localDeviceId;
     DelayedSingleton<AbilityManagerService>::GetInstance()->GetLocalDeviceId(localDeviceId);
-    if (want.GetElement().GetDeviceID() == "" || want.GetElement().GetDeviceID() == localDeviceId) {
+    if (want.GetDeviceIdRef() == "" || want.GetDeviceIdRef() == localDeviceId) {
         if (!startOptions) {
             result = DelayedSingleton<AbilityManagerService>::GetInstance()->StartAbilityWithSpecifyTokenIdInner(
                 want, callerToken, callerTokenId, true, userId, requestCode);
@@ -491,9 +491,9 @@ int32_t PendingWantManager::PendingWantPublishCommonEvent(
 
     CommonEventPublishInfo eventPublishData;
 
-    if (!want.GetBundle().empty()) {
-        TAG_LOGI(AAFwkTag::WANTAGENT, "eventPublishData set bundleName: %{public}s", want.GetBundle().c_str());
-        eventPublishData.SetBundleName(want.GetBundle());
+    if (!want.GetBundleNameRef().empty()) {
+        TAG_LOGI(AAFwkTag::WANTAGENT, "eventPublishData set bundleName: %{public}s", want.GetBundleNameRef().c_str());
+        eventPublishData.SetBundleName(want.GetBundleNameRef());
     }
 
     if (!senderInfo.requiredPermission.empty()) {
@@ -913,8 +913,8 @@ void PendingWantManager::Dump(std::vector<std::string> &info)
         info.push_back(dumpInfo);
         auto Wants = pendingKey->GetAllWantsInfos();
         for (const auto &Want : Wants) {
-            dumpInfo = "          uri [" + Want.want.GetElement().GetDeviceID() + "//" +
-                Want.want.GetElement().GetBundleName() + "/" + Want.want.GetElement().GetAbilityName() + "]";
+            dumpInfo = "          uri [" + Want.want.GetDeviceIdRef() + "//" +
+                Want.want.GetBundleNameRef() + "/" + Want.want.GetAbilityNameRef() + "]";
             info.push_back(dumpInfo);
             dumpInfo = "          resolved types [" + Want.resolvedTypes + "]";
             info.push_back(dumpInfo);
@@ -948,8 +948,8 @@ void PendingWantManager::DumpByRecordId(std::vector<std::string> &info, const st
             info.push_back(dumpInfo);
             auto Wants = pendingKey->GetAllWantsInfos();
             for (const auto& Want : Wants) {
-                dumpInfo = "          uri [" + Want.want.GetElement().GetDeviceID() + "//" +
-                    Want.want.GetElement().GetBundleName() + "/" + Want.want.GetElement().GetAbilityName() + "]";
+                dumpInfo = "          uri [" + Want.want.GetDeviceIdRef() + "//" +
+                    Want.want.GetBundleNameRef() + "/" + Want.want.GetAbilityNameRef() + "]";
                 info.push_back(dumpInfo);
                 dumpInfo = "          resolved types [" + Want.resolvedTypes + "]";
                 info.push_back(dumpInfo);

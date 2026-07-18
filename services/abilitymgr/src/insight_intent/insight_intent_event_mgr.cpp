@@ -55,7 +55,7 @@ void InsightIntentEventMgr::DeleteInsightIntent(const std::string &bundleName, c
 void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementName &elementName, int32_t userId)
 {
     auto bundleName = elementName.GetBundleName();
-    auto moduleName = elementName.GetModuleName();
+    auto moduleName = elementName.GetModuleNameRef();
     if (bundleName.empty() || moduleName.empty()) {
         TAG_LOGW(AAFwkTag::INTENT, "input param empty, bundleName: %{public}s", bundleName.c_str());
         return;
@@ -158,7 +158,7 @@ void InsightIntentEventMgr::DeleteInsightIntentEvent(const AppExecFwk::ElementNa
 {
     ErrCode ret;
     auto bundleName = elementName.GetBundleName();
-    auto moduleName = elementName.GetModuleName();
+    auto moduleName = elementName.GetModuleNameRef();
     if (bundleName.empty()) {
         TAG_LOGE(AAFwkTag::INTENT, "input bundleName empty, bundleName: %{public}s, moduleName: %{public}s",
             bundleName.c_str(), moduleName.c_str());

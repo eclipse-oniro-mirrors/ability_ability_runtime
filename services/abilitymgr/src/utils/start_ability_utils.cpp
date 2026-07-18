@@ -56,7 +56,7 @@ thread_local bool StartAbilityUtils::isSandBoxClone = false;
 bool StartAbilityUtils::GetAppIndex(const Want &want, sptr<IRemoteObject> callerToken, int32_t &appIndex)
 {
     auto abilityRecord = Token::GetAbilityRecordByToken(callerToken);
-    if (abilityRecord && abilityRecord->GetApplicationInfo().bundleName == want.GetBundle() &&
+    if (abilityRecord && abilityRecord->GetApplicationInfo().bundleName == want.GetBundleNameRef() &&
         AbilityRuntime::GlobalConstant::IsDlpIndex(abilityRecord->GetAppIndex())) {
         appIndex = abilityRecord->GetAppIndex();
         return true;
@@ -119,7 +119,7 @@ std::vector<int32_t> StartAbilityUtils::GetCloneAppIndexes(const std::string &bu
 int32_t StartAbilityUtils::CheckAppProvisionMode(const Want& want, int32_t userId, sptr<IRemoteObject> callerToken)
 {
     auto abilityInfo = StartAbilityUtils::startAbilityInfo;
-    if (!abilityInfo || abilityInfo->GetAppBundleName() != want.GetBundle()) {
+    if (!abilityInfo || abilityInfo->GetAppBundleName() != want.GetBundleNameRef()) {
         int32_t appIndex = 0;
         if (!GetAppIndex(want, callerToken, appIndex)) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid app clone index");
@@ -253,7 +253,7 @@ std::shared_ptr<StartAbilityInfo> QueryAbilityInfo(const Want &want, int32_t use
             TAG_LOGI(AAFwkTag::ABILITYMGR, "hostBundleName: %{public}s", hostBundleName.c_str());
             auto element = want.GetElement();
             auto pluginRet = IN_PROCESS_CALL(bms->GetPluginAbilityInfo(hostBundleName, element.GetBundleName(),
-                element.GetModuleName(), element.GetAbilityName(), userId, request->abilityInfo));
+                element.GetModuleNameRef(), element.GetAbilityName(), userId, request->abilityInfo));
             if (pluginRet != ERR_OK) {
                 TAG_LOGW(AAFwkTag::ABILITYMGR, "GetPluginAbilityInfo failed %{public}d", pluginRet);
                 request->status = RESOLVE_ABILITY_ERR;
@@ -438,7 +438,7 @@ void StartAbilityUtils::SetTargetCloneIndexInSameBundle(const Want &want, sptr<I
 {
     auto callerRecord = Token::GetAbilityRecordByToken(callerToken);
     CHECK_POINTER(callerRecord);
-    if (callerRecord->GetAbilityInfo().bundleName != want.GetBundle()) {
+    if (callerRecord->GetAbilityInfo().bundleName != want.GetBundleNameRef()) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "not the same bundle");
         return;
     }
@@ -467,9 +467,9 @@ void StartAbilityUtils::ResolveTargetAppCloneIndex(const Want &want, sptr<IRemot
     }
 
     int32_t appIndex = 0;
-    if (MultiAppUtils::GetPreferredAppCloneIndex(want.GetBundle(), userId, appIndex)) {
+    if (MultiAppUtils::GetPreferredAppCloneIndex(want.GetBundleNameRef(), userId, appIndex)) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "resolve app clone preference, bundle:%{public}s appIndex:%{public}d",
-            want.GetBundle().c_str(), appIndex);
+            want.GetBundleNameRef().c_str(), appIndex);
         (const_cast<Want &>(want)).SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, appIndex);
     }
 }

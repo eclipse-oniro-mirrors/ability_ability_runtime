@@ -89,9 +89,9 @@ bool ImplicitStartProcessor::IsImplicitStartAction(const Want &want)
         return false;
     }
 
-    if (want.GetAction() != BLACK_ACTION_SELECT_DATA &&
+    if (want.GetActionRef() != BLACK_ACTION_SELECT_DATA &&
         !want.HasParameter(AppExecFwk::INSIGHT_INTENT_EXECUTE_OPENLINK_FLAG)) {//intent openlink do not Implicit compare
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "implicit start, action:%{public}s", want.GetAction().data());
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "implicit start, action:%{public}s", want.GetActionRef().data());
         return true;
     }
 
@@ -429,7 +429,7 @@ int ImplicitStartProcessor::ImplicitStartAG(int32_t userId, AbilityRequest &requ
     std::vector<DialogAppInfo> &dialogAppInfos, GenerateRequestParam &genReqParam, bool &queryAGSuccess)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "%{public}s", __func__);
-    std::string linkUri = request.want.GetUri().ToString();
+    std::string linkUri = request.want.GetUriRef().ToString();
     Want agWant;
     auto ret = 0;
     ret = OHOS::AppDomainVerify::AppDomainVerifyMgrClient::GetInstance()->QueryAppDetailsWant(linkUri, agWant);
@@ -438,7 +438,7 @@ int ImplicitStartProcessor::ImplicitStartAG(int32_t userId, AbilityRequest &requ
         return ret;
     }
     queryAGSuccess = true;
-    request.want = agWant;
+    request.want = std::move(agWant);
     genReqParam.fromImplicitStartAG = true;
     return GenerateAbilityRequestByAction(userId, request, dialogAppInfos, genReqParam);
 }
@@ -552,7 +552,7 @@ int ImplicitStartProcessor::GenerateAbilityRequestByAction(int32_t userId, Abili
     Want implicitwant;
     std::string typeName = MatchTypeAndUri(request.want);
 
-    implicitwant.SetAction(request.want.GetAction());
+    implicitwant.SetAction(request.want.GetActionRef());
     implicitwant.SetType(TYPE_ONLY_MATCH_WILDCARD);
     std::vector<AppExecFwk::AbilityInfo> implicitAbilityInfos;
     std::vector<AppExecFwk::ExtensionAbilityInfo> implicitExtensionInfos;
@@ -628,7 +628,7 @@ int ImplicitStartProcessor::GenerateAbilityRequestByAction(int32_t userId, Abili
 int ImplicitStartProcessor::GenerateAbilityRequestByAppIndexes(int32_t userId, AbilityRequest &request,
     std::vector<DialogAppInfo> &dialogAppInfos)
 {
-    auto appIndexes = StartAbilityUtils::GetCloneAppIndexes(request.want.GetBundle(), userId);
+    auto appIndexes = StartAbilityUtils::GetCloneAppIndexes(request.want.GetBundleNameRef(), userId);
     if (appIndexes.size() > AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "too large appIndexes");
         return ERR_TOO_LARGE_APPINDEXES;
@@ -643,7 +643,7 @@ int ImplicitStartProcessor::GenerateAbilityRequestByAppIndexes(int32_t userId, A
         AppExecFwk::AbilityInfo abilityInfo;
         TAG_LOGD(AAFwkTag::ABILITYMGR,
             "abilityName: %{public}s, appIndex: %{public}d, userId: %{public}d",
-            request.want.GetElement().GetAbilityName().c_str(), appIndex, userId);
+            request.want.GetAbilityNameRef().c_str(), appIndex, userId);
         IN_PROCESS_CALL_WITHOUT_RET(bms->QueryCloneAbilityInfo(request.want.GetElement(), abilityInfoFlag, appIndex,
             abilityInfo, userId));
         if (abilityInfo.name.empty() || abilityInfo.bundleName.empty()) {
@@ -720,7 +720,7 @@ int ImplicitStartProcessor::QueryBmsAppInfos(AbilityRequest &request, int32_t us
         want.SetElementName(appInfos[0], queryAbilityName);
 
         TAG_LOGD(AAFwkTag::ABILITYMGR,
-            "abilityName: %{public}s, userId: %{public}d", want.GetElement().GetAbilityName().c_str(), userId);
+            "abilityName: %{public}s, userId: %{public}d", want.GetAbilityNameRef().c_str(), userId);
         IN_PROCESS_CALL_WITHOUT_RET(bundleMgrHelper->QueryAbilityInfo(want, abilityInfoFlag,
             userId, abilityInfo));
         if (!abilityInfo.name.empty() && !abilityInfo.bundleName.empty() && !abilityInfo.moduleName.empty()) {
@@ -762,7 +762,7 @@ std::vector<std::string> ImplicitStartProcessor::SplitStr(const std::string& str
 bool ImplicitStartProcessor::CheckImplicitStartExtensionIsValid(const AbilityRequest &request,
     const AppExecFwk::ExtensionAbilityInfo &extensionInfo)
 {
-    if (!request.want.GetBundle().empty()) {
+    if (!request.want.GetBundleNameRef().empty()) {
         return true;
     }
     TAG_LOGD(
@@ -817,7 +817,7 @@ int32_t ImplicitStartProcessor::ImplicitStartAbilityInner(const Want &targetWant
                 .isImplicit = true,
                 .requestCallback = request.requestCallback,
             };
-            result = abilityMgr->StartAbilityWrap(startAbilityWrapParam);
+            result = abilityMgr->StartAbilityInner(startAbilityWrapParam);
             break;
     }
 
@@ -831,7 +831,7 @@ int ImplicitStartProcessor::CallStartAbilityInner(int32_t userId,
     eventInfo.userId = userId;
     auto element = want.GetElement();
     eventInfo.bundleName = element.GetBundleName();
-    eventInfo.moduleName = element.GetModuleName();
+    eventInfo.moduleName = element.GetModuleNameRef();
     eventInfo.abilityName = element.GetAbilityName();
 
     if (callType == AbilityCallType::INVALID_TYPE) {
@@ -904,7 +904,7 @@ void ImplicitStartProcessor::GetEcologicalCallerInfo(const Want &want, ErmsCalle
         return;
     }
 
-    std::string targetBundleName = want.GetBundle();
+    const auto &targetBundleName = want.GetBundleNameRef();
     AppExecFwk::ApplicationInfo targetAppInfo;
     TAG_LOGD(AAFwkTag::ABILITYMGR,
         "targetBundleName: %{public}s, userId: %{public}d", targetBundleName.c_str(), userId);
@@ -1047,7 +1047,7 @@ void ImplicitStartProcessor::SetTargetLinkInfo(const std::vector<AppExecFwk::Ski
             if (want.GetBoolParam(OPEN_LINK_APP_LINKING_ONLY, false)) {
                 want.SetParam("send_to_erms_targetLinkType", AbilityCallerInfo::LINK_TYPE_UNIVERSAL_LINK);
             } else if ((iter.scheme == "https" || iter.scheme == "http") &&
-                want.GetAction().compare(ACTION_VIEW) == 0) {
+                want.GetActionRef().compare(ACTION_VIEW) == 0) {
                 want.SetParam("send_to_erms_targetLinkType", AbilityCallerInfo::LINK_TYPE_WEB_LINK);
             } else {
                 want.SetParam("send_to_erms_targetLinkType", AbilityCallerInfo::LINK_TYPE_DEEP_LINK);
@@ -1079,7 +1079,7 @@ bool ImplicitStartProcessor::IsActionImplicitStart(const Want &want, bool findDe
         return false;
     }
 
-    if (want.GetBundle() != "") {
+    if (want.GetBundleNameRef() != "") {
         return false;
     }
 

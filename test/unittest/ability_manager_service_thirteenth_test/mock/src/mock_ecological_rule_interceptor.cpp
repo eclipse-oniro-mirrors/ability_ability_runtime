@@ -19,7 +19,7 @@
 namespace OHOS {
 namespace AAFwk {
 
-ErrCode EcologicalRuleInterceptor::DoProcess(AbilityInterceptorParam param)
+ErrCode EcologicalRuleInterceptor::DoProcess(const AbilityInterceptorParam &param)
 {
     return ERR_OK;
 }

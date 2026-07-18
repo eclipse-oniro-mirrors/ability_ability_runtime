@@ -145,7 +145,7 @@ void ConnectionRecord::CompleteConnect()
     targetService_->SetAbilityState(AbilityState::ACTIVE);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "Connect,%{public}s", targetService_->GetAbilityInfo().name.c_str());
     const AppExecFwk::AbilityInfo &abilityInfo = targetService_->GetAbilityInfo();
-    AppExecFwk::ElementName element(targetService_->GetWant().GetDeviceId(), abilityInfo.bundleName,
+    AppExecFwk::ElementName element(targetService_->GetWant().GetDeviceIdRef(), abilityInfo.bundleName,
         abilityInfo.name, abilityInfo.moduleName);
     auto remoteObject = targetService_->GetConnRemoteObject();
     auto callback = GetAbilityConnectCallback();
@@ -198,7 +198,7 @@ void ConnectionRecord::CompleteConnectAndOnlyCallConnectDone()
     CHECK_POINTER(targetService_);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "CompleteConnect,%{public}s", targetService_->GetAbilityInfo().name.c_str());
     const AppExecFwk::AbilityInfo &abilityInfo = targetService_->GetAbilityInfo();
-    AppExecFwk::ElementName element(targetService_->GetWant().GetDeviceId(), abilityInfo.bundleName,
+    AppExecFwk::ElementName element(targetService_->GetWant().GetDeviceIdRef(), abilityInfo.bundleName,
         abilityInfo.name, abilityInfo.moduleName);
     auto remoteObject = targetService_->GetConnRemoteObject();
     auto callback = GetAbilityConnectCallback();
@@ -287,7 +287,7 @@ void ConnectionRecord::CompleteDisconnect(int resultCode, bool isCallerDied, boo
     }
     CHECK_POINTER(targetService_);
     const AppExecFwk::AbilityInfo &abilityInfo = targetService_->GetAbilityInfo();
-    AppExecFwk::ElementName element(targetService_->GetWant().GetDeviceId(), abilityInfo.bundleName,
+    AppExecFwk::ElementName element(targetService_->GetWant().GetDeviceIdRef(), abilityInfo.bundleName,
         abilityInfo.name, abilityInfo.moduleName);
     auto code = isTargetDied ? (resultCode - 1) : resultCode;
     auto onDisconnectDoneTask = [connCallback = GetAbilityConnectCallback(), element, code,
@@ -447,7 +447,7 @@ void ConnectionRecord::CompleteLowCodeAgentInvocation(const Want &want, const sp
 {
     CHECK_POINTER(targetService_);
     const AppExecFwk::AbilityInfo &abilityInfo = targetService_->GetAbilityInfo();
-    AppExecFwk::ElementName element(targetService_->GetWant().GetDeviceId(), abilityInfo.bundleName,
+    AppExecFwk::ElementName element(targetService_->GetWant().GetDeviceIdRef(), abilityInfo.bundleName,
         abilityInfo.name, abilityInfo.moduleName);
     auto remoteObject = targetService_->GetConnRemoteObject();
     if (remoteObject == nullptr) {

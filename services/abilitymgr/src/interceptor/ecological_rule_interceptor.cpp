@@ -31,7 +31,7 @@ constexpr const char* BUNDLE_NAME_SCENEBOARD = "com.ohos.sceneboard";
 constexpr int32_t ERMS_ISALLOW_RESULTCODE = 10;
 constexpr int32_t ERMS_ISALLOW_EMBED_RESULTCODE = 1;
 }
-ErrCode EcologicalRuleInterceptor::DoProcess(AbilityInterceptorParam param)
+ErrCode EcologicalRuleInterceptor::DoProcess(const AbilityInterceptorParam &param)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (NoNeedErms(param)) {
@@ -86,7 +86,7 @@ bool EcologicalRuleInterceptor::NoNeedErms(const AbilityInterceptorParam &param)
         return true;
     }
     if (param.want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME) ==
-        param.want.GetBundle()) {
+        param.want.GetBundleNameRef()) {
         TAG_LOGD(AAFwkTag::ECOLOGICAL_RULE, "same bundle");
         StartAbilityUtils::ermsSupportBackToCallerFlag = true;
         return true;
@@ -101,7 +101,7 @@ bool EcologicalRuleInterceptor::NoNeedErms(const AbilityInterceptorParam &param)
 bool EcologicalRuleInterceptor::DoProcess(Want &want, int32_t userId)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    if (want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME) == want.GetBundle()) {
+    if (want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME) == want.GetBundleNameRef()) {
         TAG_LOGD(AAFwkTag::ECOLOGICAL_RULE, "same bundle");
         StartAbilityUtils::ermsSupportBackToCallerFlag = true;
         return true;
@@ -115,7 +115,8 @@ bool EcologicalRuleInterceptor::DoProcess(Want &want, int32_t userId)
     auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
     CHECK_POINTER_AND_RETURN(bundleMgrHelper, false);
     Want launchWant;
-    auto errCode = IN_PROCESS_CALL(bundleMgrHelper->GetLaunchWantForBundle(want.GetBundle(), launchWant, userId));
+    auto errCode = IN_PROCESS_CALL(bundleMgrHelper->GetLaunchWantForBundle(want.GetBundleNameRef(),
+        launchWant, userId));
     if (errCode != ERR_OK) {
         TAG_LOGE(AAFwkTag::ECOLOGICAL_RULE, "GetLaunchWantForBundle err: %{public}d", errCode);
         return false;
@@ -148,7 +149,7 @@ ErrCode EcologicalRuleInterceptor::QueryAtomicServiceStartupRule(Want &want, spt
     int32_t userId, AtomicServiceStartupRule &rule, sptr<Want> &replaceWant)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    CHECK_TRUE_RETURN_RET(want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME) == want.GetBundle(),
+    CHECK_TRUE_RETURN_RET(want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME) == want.GetBundleNameRef(),
         ERR_INVALID_CALLER, "same bundle");
     std::string supportErms = OHOS::system::GetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "true");
     CHECK_TRUE_RETURN_RET(supportErms == "false", ERR_CAPABILITY_NOT_SUPPORT, "not support erms");
@@ -156,7 +157,8 @@ ErrCode EcologicalRuleInterceptor::QueryAtomicServiceStartupRule(Want &want, spt
     auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
     CHECK_POINTER_AND_RETURN(bundleMgrHelper, BMS_NOT_CONNECTED);
     Want launchWant;
-    auto errCode = IN_PROCESS_CALL(bundleMgrHelper->GetLaunchWantForBundle(want.GetBundle(), launchWant, userId));
+    auto errCode = IN_PROCESS_CALL(bundleMgrHelper->GetLaunchWantForBundle(want.GetBundleNameRef(),
+        launchWant, userId));
     CHECK_RET_RETURN_RET(errCode, "GetLaunchWantForBundle failed");
     want.SetElement(launchWant.GetElement());
 
@@ -201,8 +203,8 @@ void EcologicalRuleInterceptor::GetEcologicalTargetInfo(const Want &want,
     callerInfo.targetLinkFeature = want.GetStringParam("send_to_erms_targetLinkFeature");
     callerInfo.targetLinkType = want.GetIntParam("send_to_erms_targetLinkType", 0);
     if (StartAbilityUtils::startAbilityInfo &&
-        StartAbilityUtils::startAbilityInfo->abilityInfo.bundleName == want.GetBundle() &&
-        StartAbilityUtils::startAbilityInfo->abilityInfo.name == want.GetElement().GetAbilityName()) {
+        StartAbilityUtils::startAbilityInfo->abilityInfo.bundleName == want.GetBundleNameRef() &&
+        StartAbilityUtils::startAbilityInfo->abilityInfo.name == want.GetAbilityNameRef()) {
         AppExecFwk::AbilityInfo targetAbilityInfo = StartAbilityUtils::startAbilityInfo->abilityInfo;
         callerInfo.targetAppDistType = targetAbilityInfo.applicationInfo.appDistributionType;
         callerInfo.targetAppProvisionType = targetAbilityInfo.applicationInfo.appProvisionType;
@@ -293,7 +295,7 @@ void EcologicalRuleInterceptor::InitErmsCallerInfo(const Want &want,
     }
 
     callerInfo.userId = userId;
-    if (want.GetBundle().empty() && abilityInfo != nullptr) {
+    if (want.GetBundleNameRef().empty() && abilityInfo != nullptr) {
         callerInfo.targetBundleName = abilityInfo->bundleName;
     }
 

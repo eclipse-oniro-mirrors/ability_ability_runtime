@@ -50,7 +50,7 @@ std::string MultiInstanceUtils::GetValidExtensionInstanceKey(const AbilityReques
 std::string MultiInstanceUtils::GetSelfCallerInstanceKey(const AbilityRequest &abilityRequest)
 {
     auto callerRecord = Token::GetAbilityRecordByToken(abilityRequest.callerToken);
-    if (callerRecord && callerRecord->GetAbilityInfo().bundleName == abilityRequest.want.GetBundle()) {
+    if (callerRecord && callerRecord->GetAbilityInfo().bundleName == abilityRequest.want.GetBundleNameRef()) {
         return callerRecord->GetInstanceKey();
     }
     return "";

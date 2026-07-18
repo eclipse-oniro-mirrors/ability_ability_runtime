@@ -159,7 +159,7 @@ bool AbilityCacheManager::IsRecInfoSame(const AbilityRequest& abilityRequest,
 {
     return abilityRecord != nullptr &&
         abilityRequest.abilityInfo.moduleName == abilityRecord->GetAbilityInfo().moduleName &&
-        abilityRequest.want.GetElement().GetAbilityName() == abilityRecord->GetAbilityName();
+        abilityRequest.want.GetAbilityNameRef() == abilityRecord->GetAbilityName();
 }
 
 std::shared_ptr<BaseExtensionRecord> AbilityCacheManager::GetAbilityRecInProcList(const AbilityRequest &abilityRequest)

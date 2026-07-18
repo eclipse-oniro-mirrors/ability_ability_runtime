@@ -24,7 +24,7 @@
 namespace OHOS {
 namespace AAFwk {
 
-ErrCode ExtensionControlInterceptor::DoProcess(AbilityInterceptorParam param)
+ErrCode ExtensionControlInterceptor::DoProcess(const AbilityInterceptorParam &param)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "call.");
     if (param.callerToken == nullptr) {
@@ -124,7 +124,7 @@ bool ExtensionControlInterceptor::GetCallerAbilityInfo(const AbilityInterceptorP
     if (StartAbilityUtils::GetCallerAbilityInfo(param.callerToken, callerAbilityInfo)) {
         if (callerAbilityInfo.type != AppExecFwk::AbilityType::EXTENSION ||
             callerAbilityInfo.extensionAbilityType == AppExecFwk::ExtensionAbilityType::SERVICE ||
-            callerAbilityInfo.bundleName == param.want.GetBundle()) {
+            callerAbilityInfo.bundleName == param.want.GetBundleNameRef()) {
             TAG_LOGD(AAFwkTag::ABILITYMGR, "not other extension.");
             return true;
         }
@@ -145,8 +145,8 @@ bool ExtensionControlInterceptor::GetTargetAbilityInfo(const AbilityInterceptorP
     AppExecFwk::AbilityInfo& targetAbilityInfo)
 {
     if (StartAbilityUtils::startAbilityInfo != nullptr &&
-        StartAbilityUtils::startAbilityInfo->abilityInfo.bundleName == param.want.GetBundle() &&
-        StartAbilityUtils::startAbilityInfo->abilityInfo.name == param.want.GetElement().GetAbilityName()) {
+        StartAbilityUtils::startAbilityInfo->abilityInfo.bundleName == param.want.GetBundleNameRef() &&
+        StartAbilityUtils::startAbilityInfo->abilityInfo.name == param.want.GetAbilityNameRef()) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "targetAbilityInfo get from startAbiiltyInfo");
         targetAbilityInfo = StartAbilityUtils::startAbilityInfo->abilityInfo;
     } else {

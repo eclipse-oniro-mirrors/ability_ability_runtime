@@ -869,40 +869,6 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartAbilityAsCallerDetails_001, TestS
 
 /*
  * Feature: AbilityManagerService
- * Function: StartAbilityPublicPrechainCheck
- * SubFunction: NA
- * FunctionPoints: AbilityManagerService StartAbilityPublicPrechainCheck
- */
-HWTEST_F(AbilityManagerServiceFourthTest, StartAbilityPublicPrechainCheck_001, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartAbilityPublicPrechainCheck_001 start");
-    Want want;
-    StartAbilityParams startAbilityParams(want);
-    auto abilityMs_ = std::make_shared<AbilityManagerService>();
-    auto ret = abilityMs_->StartAbilityPublicPrechainCheck(startAbilityParams);
-    EXPECT_EQ(ret, ERR_OK);
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartAbilityPublicPrechainCheck_001 end");
-}
-
-/*
- * Feature: AbilityManagerService
- * Function: StartAbilityPrechainInterceptor
- * SubFunction: NA
- * FunctionPoints: AbilityManagerService StartAbilityPrechainInterceptor
- */
-HWTEST_F(AbilityManagerServiceFourthTest, StartAbilityPrechainInterceptor_001, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartAbilityPrechainInterceptor_001 start");
-    Want want;
-    StartAbilityParams startAbilityParams(want);
-    auto abilityMs_ = std::make_shared<AbilityManagerService>();
-    auto ret = abilityMs_->StartAbilityPrechainInterceptor(startAbilityParams);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartAbilityPrechainInterceptor_001 end");
-}
-
-/*
- * Feature: AbilityManagerService
  * Function: SetReserveInfo
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService SetReserveInfo
@@ -1330,7 +1296,7 @@ HWTEST_F(AbilityManagerServiceFourthTest, HandleSandboxCloneLaunch_001, TestSize
 
     auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
     ASSERT_NE(sandboxCloneParams, nullptr);
-    EventInfo eventInfo;
+    auto eventInfo = std::make_shared<EventInfo>();
     // Without SANDBOX_CLONE_INDEX, ProcessSandboxCloneLaunch short-circuits to ERR_OK.
     auto ret = abilityMs->HandleSandboxCloneLaunch(sessionInfo, sandboxCloneParams, TEST_VALID_USER_ID, eventInfo);
     EXPECT_EQ(ret, ERR_OK);
@@ -1356,7 +1322,7 @@ HWTEST_F(AbilityManagerServiceFourthTest, HandleSandboxCloneLaunch_002, TestSize
 
     auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
     ASSERT_NE(sandboxCloneParams, nullptr);
-    EventInfo eventInfo;
+    auto eventInfo = std::make_shared<EventInfo>();
     auto ret = abilityMs->HandleSandboxCloneLaunch(sessionInfo, sandboxCloneParams, TEST_VALID_USER_ID, eventInfo);
     EXPECT_EQ(ret, ERR_OK);
     EXPECT_EQ(sandboxCloneParams->callerBundleName, "com.test.caller");
@@ -1380,7 +1346,7 @@ HWTEST_F(AbilityManagerServiceFourthTest, HandleSandboxCloneLaunch_003, TestSize
 
     auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
     ASSERT_NE(sandboxCloneParams, nullptr);
-    EventInfo eventInfo;
+    auto eventInfo = std::make_shared<EventInfo>();
     auto ret = abilityMs->HandleSandboxCloneLaunch(sessionInfo, sandboxCloneParams, TEST_VALID_USER_ID, eventInfo);
     EXPECT_EQ(ret, ERR_OK);
     EXPECT_EQ(sandboxCloneParams->callerTokenId, 0u);
@@ -1403,7 +1369,7 @@ HWTEST_F(AbilityManagerServiceFourthTest, HandleSandboxCloneLaunch_004, TestSize
 
     auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
     ASSERT_NE(sandboxCloneParams, nullptr);
-    EventInfo eventInfo;
+    auto eventInfo = std::make_shared<EventInfo>();
     auto ret = abilityMs->HandleSandboxCloneLaunch(sessionInfo, sandboxCloneParams, TEST_VALID_USER_ID, eventInfo);
     EXPECT_EQ(ret, ERR_SANDBOX_CLONE_INDEX_INVALID);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest HandleSandboxCloneLaunch_004 end");

@@ -246,7 +246,7 @@ bool InsightIntentExecuteParam::GenerateFromWant(const AAFwk::Want &want,
 
     AppExecFwk::ElementName elementName = want.GetElement();
     executeParam.bundleName_ = elementName.GetBundleName();
-    executeParam.moduleName_ = elementName.GetModuleName();
+    executeParam.moduleName_ = elementName.GetModuleNameRef();
     executeParam.abilityName_ = elementName.GetAbilityName();
     executeParam.insightIntentName_ = wantParams.GetStringParam(INSIGHT_INTENT_EXECUTE_PARAM_NAME);
     executeParam.insightIntentId_ = insightIntentId;

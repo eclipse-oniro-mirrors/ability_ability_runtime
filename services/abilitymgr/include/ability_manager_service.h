@@ -71,7 +71,6 @@
 #include "resident_process_manager.h"
 #include "sandbox_clone_params.h"
 #include "scene_board/ui_ability_lifecycle_manager.h"
-#include "start_ability_handler.h"
 #include "sub_managers_helper.h"
 #include "system_ability.h"
 #include "task_handler_wrap.h"
@@ -1394,14 +1393,6 @@ public:
     virtual int StartAbilityForPrelaunch(const Want &want, const int32_t frameNum) override;
 
     /**
-     * As abilityRequest is prepared, just execute starting ability procedure.
-     * By now, this is only used by start_ability_sandbox_savefile.
-     * @param abilityRequest, Prepared with all info for starting a ability.
-     * @param validUserId, Valid user id.
-     */
-    int StartAbilityJust(AbilityRequest &abilityRequest, int32_t validUserId);
-
-    /**
      * CallRequestDone, after invoke callRequest, ability will call this interface to return callee.
      *
      * @param token, ability's token.
@@ -1433,8 +1424,6 @@ public:
 
     int32_t StartAbilityByFreeInstall(const StartAbilityWrapParam &param);
 
-    int StartAbilityWrap(const StartAbilityWrapParam &startAbilityWrapParam);
-
     int StartAbilityInner(StartAbilityWrapParam &param);
 
     int32_t StartExtensionAbilityInner(
@@ -1453,11 +1442,6 @@ public:
     int PreloadUIExtensionAbilityInner(const Want &want, std::string &bundleName,
         int32_t userId = DEFAULT_INVAL_VALUE, int32_t hostPid = DEFAULT_INVAL_VALUE,
         int32_t requestCode = DEFAULT_INVAL_VALUE);
-
-    int StartAbilityForOptionWrap(const Want &want, const StartOptions &startOptions,
-        const sptr<IRemoteObject> &callerToken, bool isPendingWantCaller, int32_t userId = DEFAULT_INVAL_VALUE,
-        int requestCode = DEFAULT_INVAL_VALUE, bool isStartAsCaller = false, uint32_t callerTokenId = 0,
-        bool isImplicit = false, bool isCallByShortcut = false, bool isCallByDelayed = false);
 
     int StartAbilityForOptionInner(
         const Want &want,
@@ -2976,7 +2960,7 @@ private:
     int StartUIAbilityBySCBDefault(sptr<SessionInfo> sessionInfo, AbilityRuntime::StartParamsBySCB &params,
         bool &isColdStart);
     int HandleSandboxCloneLaunch(sptr<SessionInfo> sessionInfo, std::shared_ptr<SandboxCloneParams> &sandboxCloneParams,
-        int32_t currentUserId, EventInfo &eventInfo);
+        int32_t currentUserId, std::shared_ptr<EventInfo> eventInfo);
     int StartUIAbilityByPreInstallInner(sptr<SessionInfo> sessionInfo, uint32_t specifyTokenId,
         AbilityRuntime::StartParamsBySCB &params, bool &isColdStart);
     int32_t PreStartInner(const FreeInstallInfo& taskInfo);
@@ -3002,9 +2986,6 @@ private:
     int DisconnectRemoteAbility(const sptr<IRemoteObject> &connect);
     int PreLoadAppDataAbilities(const std::string &bundleName, const int32_t userId);
     void PreLoadAppDataAbilitiesTask(const std::string &bundleName, const int32_t userId);
-    int StartAbilityPublicPrechainCheck(StartAbilityParams &params);
-    int StartAbilityPrechainInterceptor(StartAbilityParams &params);
-    bool StartAbilityInChain(StartAbilityParams &params, int &result);
     void InitWindowVisibilityChangedListener();
     void FreeWindowVisibilityChangedListener();
     bool CheckProcessIsBackground(int32_t pid, AbilityState currentState);
@@ -3308,7 +3289,7 @@ private:
 
     int AddStartControlParam(Want &want, const sptr<IRemoteObject> &callerToken);
 
-    AAFwk::EventInfo BuildEventInfo(const Want &want, int32_t userId);
+    std::shared_ptr<AAFwk::EventInfo> BuildEventInfo(const Want &want, int32_t userId);
 
     ErrCode IsUIAbilityAlreadyExist(const Want &want, const std::string &specifiedFlag,
         int32_t appIndex, const std::string &instanceKey, AppExecFwk::LaunchMode launchMode);
@@ -3591,7 +3572,7 @@ private:
 
     bool ShouldPreventStartAbility(const AbilityRequest &abilityRequest);
 
-    void PrintStartAbilityInfo(AppExecFwk::AbilityInfo callerInfo, AppExecFwk::AbilityInfo calledInfo);
+    void PrintStartAbilityInfo(const AppExecFwk::AbilityInfo &callerInfo, const AppExecFwk::AbilityInfo &calledInfo);
 
     bool IsInWhiteList(const std::string &callerBundleName, const std::string &calleeBundleName,
         const std::string &calleeAbilityName);
