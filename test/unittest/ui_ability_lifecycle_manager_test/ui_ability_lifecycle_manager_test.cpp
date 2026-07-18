@@ -4778,6 +4778,81 @@ HWTEST_F(UIAbilityLifecycleManagerTest, CheckProperties_003, TestSize.Level1)
 #endif // WITH_DLP
 
 /**
+ * @tc.name: UIAbilityLifecycleManager_CheckProperties_0400
+ * @tc.desc: CheckProperties with isWebSandBoxClone, appIndex from applicationInfo matches and launchMode matches.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CheckProperties_004, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_unique<UIAbilityLifecycleManager>();
+    EXPECT_NE(uiAbilityLifecycleManager, nullptr);
+    Want want;
+    AbilityRequest abilityRequest;
+    abilityRequest.want = want;
+    abilityRequest.isWebSandBoxClone = true;
+    abilityRequest.abilityInfo.launchMode = AppExecFwk::LaunchMode::SPECIFIED;
+    abilityRequest.abilityInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.moduleName = "entry";
+    abilityRequest.abilityInfo.applicationInfo.appIndex = 1;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    abilityRecord->SetAppIndex(1);
+    AppExecFwk::LaunchMode launchMode = AppExecFwk::LaunchMode::SPECIFIED;
+    auto ret = uiAbilityLifecycleManager->CheckProperties(abilityRecord, abilityRequest, launchMode);
+    EXPECT_EQ(ret, true);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_CheckProperties_0500
+ * @tc.desc: CheckProperties with isWebSandBoxClone, appIndex from applicationInfo mismatches the record.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CheckProperties_005, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_unique<UIAbilityLifecycleManager>();
+    EXPECT_NE(uiAbilityLifecycleManager, nullptr);
+    Want want;
+    AbilityRequest abilityRequest;
+    abilityRequest.want = want;
+    abilityRequest.isWebSandBoxClone = true;
+    abilityRequest.abilityInfo.launchMode = AppExecFwk::LaunchMode::SPECIFIED;
+    abilityRequest.abilityInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.moduleName = "entry";
+    abilityRequest.abilityInfo.applicationInfo.appIndex = 2;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    abilityRecord->SetAppIndex(1);
+    AppExecFwk::LaunchMode launchMode = AppExecFwk::LaunchMode::SPECIFIED;
+    auto ret = uiAbilityLifecycleManager->CheckProperties(abilityRecord, abilityRequest, launchMode);
+    EXPECT_EQ(ret, false);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_CheckProperties_0600
+ * @tc.desc: CheckProperties with isWebSandBoxClone, launchMode mismatches.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CheckProperties_006, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_unique<UIAbilityLifecycleManager>();
+    EXPECT_NE(uiAbilityLifecycleManager, nullptr);
+    Want want;
+    AbilityRequest abilityRequest;
+    abilityRequest.want = want;
+    abilityRequest.isWebSandBoxClone = true;
+    abilityRequest.abilityInfo.launchMode = AppExecFwk::LaunchMode::SPECIFIED;
+    abilityRequest.abilityInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.moduleName = "entry";
+    abilityRequest.abilityInfo.applicationInfo.appIndex = 1;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    abilityRecord->SetAppIndex(1);
+    AppExecFwk::LaunchMode launchMode = AppExecFwk::LaunchMode::STANDARD;
+    auto ret = uiAbilityLifecycleManager->CheckProperties(abilityRecord, abilityRequest, launchMode);
+    EXPECT_EQ(ret, false);
+}
+
+/**
  * @tc.name: UIAbilityLifecycleManager_ResolveAbility_0100
  * @tc.desc: ResolveAbility
  * @tc.type: FUNC

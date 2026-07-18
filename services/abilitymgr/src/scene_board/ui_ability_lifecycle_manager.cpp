@@ -727,6 +727,8 @@ void UIAbilityLifecycleManager::SetSandboxCloneParamsForSession(sptr<SessionInfo
     if (sessionInfo == nullptr || !abilityRequest.isWebSandBoxClone) {
         return;
     }
+    sessionInfo->want.SetParam(AbilityRuntime::ServerConstant::DLP_INDEX,
+        abilityRequest.abilityInfo.applicationInfo.appIndex);
     // Store isWebSandBoxClone and appIndex in want for SCB callback.
     sessionInfo->want.SetParam(AbilityRuntime::GlobalConstant::IS_WEB_SANDBOX_CLONE,
         abilityRequest.isWebSandBoxClone);
@@ -2656,7 +2658,11 @@ bool UIAbilityLifecycleManager::CheckProperties(const UIAbilityRecordPtr &abilit
     CHECK_POINTER_RETURN_BOOL(abilityRecord);
     const auto& abilityInfo = abilityRecord->GetAbilityInfo();
     int32_t appIndex = 0;
-    (void)AbilityRuntime::StartupUtil::GetAppIndex(abilityRequest.want, appIndex);
+    if (abilityRequest.isWebSandBoxClone) {
+        appIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
+    } else {
+        (void)AbilityRuntime::StartupUtil::GetAppIndex(abilityRequest.want, appIndex);
+    }
     auto instanceKey = abilityRequest.want.GetStringParam(Want::APP_INSTANCE_KEY);
     return abilityInfo.launchMode == launchMode && abilityRequest.abilityInfo.name == abilityInfo.name &&
         abilityRequest.abilityInfo.bundleName == abilityInfo.bundleName &&
