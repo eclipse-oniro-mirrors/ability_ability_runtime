@@ -18772,6 +18772,10 @@ int32_t AbilityManagerService::SetAppRecoveryFlag(const sptr<IRemoteObject>& tok
         TAG_LOGE(AAFwkTag::UI_EXT,"AbilityRecord not found for given token");
         return ERR_INVALID_VALUE;
     }
+    if (!JudgeSelfCalled(abilityRecord)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "permission deny");
+        return ERR_INVALID_VALUE;
+    }
     abilityRecord->SetAppRecoveryFlag(flag);
     HandleRecoveryRecipient(abilityRecord, token);
     return ERR_OK;
