@@ -506,8 +506,10 @@ bool AbilityManagerService::Init()
     InitAppSpawnMsgPipe();
     insightIntentEventMgr_ = std::make_shared<AbilityRuntime::InsightIntentEventMgr>();
     insightIntentEventMgr_->SubscribeSysEventReceiver();
-    modularObjectExtensionEventMgr_ = std::make_shared<AbilityRuntime::ModularObjectExtensionEventMgr>();
-    modularObjectExtensionEventMgr_->SubscribeSysEventReceiver();
+    if (AppUtils::GetInstance().IsSupportModularObjectExtension()) {
+        modularObjectExtensionEventMgr_ = std::make_shared<AbilityRuntime::ModularObjectExtensionEventMgr>();
+        modularObjectExtensionEventMgr_->SubscribeSysEventReceiver();
+    }
     ReportDataPartitionUsageManager::SendReportDataPartitionUsageEvent();
     DelayedSingleton<AAFwk::ExtensionRunningTimeoutMonitor>::GetInstance()->StartMonitor();
     DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance()->StartMonitor();
