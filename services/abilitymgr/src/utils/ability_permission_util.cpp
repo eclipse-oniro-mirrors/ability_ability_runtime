@@ -15,6 +15,11 @@
 
 #include "utils/ability_permission_util.h"
 
+#include <fcntl.h>
+#include <mutex>
+#include <sys/ioctl.h>
+#include <unistd.h>
+
 #include "ability_info.h"
 #include "ability_manager_errors.h"
 #include "ability_util.h"
@@ -46,6 +51,7 @@ constexpr int32_t BASE_USER_RANGE = 200000;
 constexpr int32_t INDEX_PID = 0;
 constexpr int32_t INDEX_TOKENID = 1;
 constexpr int32_t INDEX_COUNT = 2;
+int32_t g_accessTokenIdFd = -1;
 }
 
 StartSelfUIAbilityRecordGuard::StartSelfUIAbilityRecordGuard(pid_t pid, int32_t tokenId) : pid_(pid)
@@ -62,6 +68,44 @@ AbilityPermissionUtil &AbilityPermissionUtil::GetInstance()
 {
     static AbilityPermissionUtil instance;
     return instance;
+}
+
+std::optional<int32_t> AbilityPermissionUtil::GetAccessTokenIdFd()
+{
+    static std::mutex mtx;
+    std::lock_guard<std::mutex> lk(mtx);
+    if (g_accessTokenIdFd != -1) {
+        return g_accessTokenIdFd;
+    }
+    g_accessTokenIdFd = open("/dev/access_token_id", O_RDWR);
+    if (g_accessTokenIdFd == -1) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "failed to open access token id: %{public}s", strerror(errno));
+        return std::nullopt;
+    }
+    return g_accessTokenIdFd;
+}
+
+int32_t AbilityPermissionUtil::GetClosestHapTokenId(uint32_t tokenId, uint32_t &hapTokenId)
+{
+    if (!(tokenId & 0x800000)) { // if tokenId is 0, the hapTokenId is also 0
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "already hap token id");
+        hapTokenId = tokenId;
+        return ERR_OK;
+    }
+    auto fd = GetAccessTokenIdFd();
+    if (!fd.has_value()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "null fd");
+        return ERR_INVALID_VALUE;
+    }
+    access_token_hap_query_op in { tokenId, 0 };
+    int32_t ret = ioctl(fd.value(), ACCESS_TOKENID_GET_CLOSEST_HAP_TOKENID, reinterpret_cast<unsigned long>(&in));
+    if (ret < 0) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "failed to get closest hap token id: %{public}d, %{public}s",
+            ret, strerror(errno));
+        return ERR_INVALID_VALUE;
+    }
+    hapTokenId = static_cast<uint32_t>(in.hapTokenId);
+    return ERR_OK;
 }
 
 inline bool AbilityPermissionUtil::IsDelegatorCall(const AppExecFwk::RunningProcessInfo &processInfo,
@@ -122,6 +166,13 @@ bool AbilityPermissionUtil::IsDominateScreen(const Want &want, bool isPendingWan
             }
         } else if (IsStartSelfUIAbility()) {
             TAG_LOGI(AAFwkTag::ABILITYMGR, "caller from capi.");
+            return false;
+        }
+        // Bypass screen-domination when the caller resolves to a hap token (e.g. ohos-aa acting on
+        // behalf of a hap application): a resolvable hap token is not a dominate-screen caller.
+        uint32_t hapTokenId = 0;
+        if (GetClosestHapTokenId(IPCSkeleton::GetCallingTokenID(), hapTokenId) == ERR_OK && hapTokenId != 0) {
+            TAG_LOGD(AAFwkTag::ABILITYMGR, "caller resolves to a hap token, not dominate screen.");
             return false;
         }
         TAG_LOGE(AAFwkTag::ABILITYMGR, "dominate screen.");
