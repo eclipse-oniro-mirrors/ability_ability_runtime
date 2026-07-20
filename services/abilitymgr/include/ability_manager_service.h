@@ -56,6 +56,7 @@
 #include "free_install_manager.h"
 #include "iacquire_share_data_callback_interface.h"
 #include "interceptor/ability_interceptor_executer.h"
+#include "interceptor/block_all_app_start_interceptor.h"
 #include "insight_intent_event_mgr.h"
 #include "insight_intent_param_parser.h"
 #include "insight_intent_profile.h"
@@ -3389,6 +3390,9 @@ private:
         const int32_t oriValidUserId);
 
     void InitInterceptor();
+    void InitBlockAllAppStartInterceptorCallbacks();
+    ErrCode ExecuteBlockAllAppStartInterceptor();
+    ErrCode ExecuteBlockAllAppStartInterceptor(AbilityRequest& abilityRequest, int32_t validUserId);
     void InitInterceptorForScreenUnlock();
     void UpdateScreenUnlockInterceptor(int32_t userId);
     void InitPushTask();
@@ -3668,6 +3672,7 @@ private:
 #endif
     std::shared_ptr<AbilityInterceptorExecuter> interceptorExecuter_;
     std::shared_ptr<AbilityInterceptorExecuter> afterCheckExecuter_;
+    std::shared_ptr<BlockAllAppStartInterceptor> blockAllAppStartInterceptor_;
 
     AbilityRuntime::InsightIntentParamParser paramParser_;
 
