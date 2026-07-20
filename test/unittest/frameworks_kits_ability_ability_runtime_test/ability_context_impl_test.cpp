@@ -694,6 +694,68 @@ HWTEST_F(AbilityContextImplTest, Ability_Context_Impl_StartAbilityForResult_0200
 }
 
 /**
+ * @tc.number: Ability_Context_Impl_GenerateRequestCode_0100
+ * @tc.name: GenerateRequestCode
+ * @tc.desc: Verify requestCode increments correctly
+ */
+HWTEST_F(AbilityContextImplTest, Ability_Context_Impl_GenerateRequestCode_0100, Function | MediumTest | Level1)
+{
+    auto code1 = context_->GenerateRequestCode();
+    auto code2 = context_->GenerateRequestCode();
+    auto code3 = context_->GenerateRequestCode();
+    EXPECT_GT(code1, 0);
+    EXPECT_GT(code2, code1);
+    EXPECT_GT(code3, code2);
+}
+
+/**
+ * @tc.number: Ability_Context_Impl_StartAbilityForResult_NoRequestCode_0100
+ * @tc.name: StartAbilityForResult without requestCode
+ * @tc.desc: Start Ability For Result without requestCode
+ */
+HWTEST_F(AbilityContextImplTest, Ability_Context_Impl_StartAbilityForResult_NoRequestCode_0100,
+    Function | MediumTest | Level1)
+{
+    AAFwk::Want want;
+    RuntimeTask task = [](const int32_t count, const Want& want, bool isInner)
+    { GTEST_LOG_(INFO) << "Ability_Context_Impl_StartAbilityForResult_NoRequestCode_0100 task called"; };
+    auto ret = context_->StartAbilityForResult(want, std::move(task));
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: Ability_Context_Impl_StartAbilityForResult_NoRequestCode_0200
+ * @tc.name: StartAbilityForResult with StartOptions without requestCode
+ * @tc.desc: Start Ability For Result with StartOptions without requestCode
+ */
+HWTEST_F(AbilityContextImplTest, Ability_Context_Impl_StartAbilityForResult_NoRequestCode_0200,
+    Function | MediumTest | Level1)
+{
+    AAFwk::Want want;
+    AAFwk::StartOptions startOptions;
+    RuntimeTask task = [](const int32_t count, const Want& want, bool isInner)
+    { GTEST_LOG_(INFO) << "Ability_Context_Impl_StartAbilityForResult_NoRequestCode_0200 task called"; };
+    auto ret = context_->StartAbilityForResult(want, startOptions, std::move(task));
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: Ability_Context_Impl_StartAbilityForResultWithAccount_NoRequestCode_0100
+ * @tc.name: StartAbilityForResultWithAccount without requestCode
+ * @tc.desc: Start Ability For Result With Account without requestCode
+ */
+HWTEST_F(AbilityContextImplTest, Ability_Context_Impl_StartAbilityForResultWithAccount_NoRequestCode_0100,
+    Function | MediumTest | Level1)
+{
+    AAFwk::Want want;
+    int32_t accountId = 1;
+    RuntimeTask task = [](const int32_t count, const Want& want, bool isInner)
+    { GTEST_LOG_(INFO) << "StartAbilityForResultWithAccount_NoRequestCode_0100 task called"; };
+    auto ret = context_->StartAbilityForResultWithAccount(want, accountId, std::move(task));
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
  * @tc.number: Ability_Context_Impl_StartAbilityWithAccount_0100
  * @tc.name: StartAbilityWithAccount
  * @tc.desc: Start Ability With Account

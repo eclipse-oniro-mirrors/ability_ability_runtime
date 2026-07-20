@@ -160,6 +160,29 @@ public:
     virtual ErrCode StartAbilityForResultWithAccount(const AAFwk::Want &Want, int accountId,
         const AAFwk::StartOptions &startOptions, int requestCode, RuntimeTask &&task) = 0;
 
+    virtual ErrCode StartAbilityForResult(const AAFwk::Want &want, RuntimeTask &&task)
+    {
+        return ERR_OK;
+    }
+
+    virtual ErrCode StartAbilityForResultWithAccount(
+        const AAFwk::Want &want, int accountId, RuntimeTask &&task)
+    {
+        return ERR_OK;
+    }
+
+    virtual ErrCode StartAbilityForResult(const AAFwk::Want &want, const AAFwk::StartOptions &startOptions,
+        RuntimeTask &&task)
+    {
+        return ERR_OK;
+    }
+
+    virtual ErrCode StartAbilityForResultWithAccount(const AAFwk::Want &want, int accountId,
+        const AAFwk::StartOptions &startOptions, RuntimeTask &&task)
+    {
+        return ERR_OK;
+    }
+
     virtual ErrCode StartServiceExtensionAbility(const AAFwk::Want &want, int32_t accountId = -1) = 0;
 
     virtual ErrCode StartUIServiceExtensionAbility(const AAFwk::Want &want, int32_t accountId = -1) = 0;
@@ -182,6 +205,11 @@ public:
 
     virtual ErrCode OpenAtomicService(AAFwk::Want& want, const AAFwk::StartOptions &options, int requestCode,
         RuntimeTask &&task) = 0;
+
+    virtual ErrCode OpenAtomicService(AAFwk::Want& want, const AAFwk::StartOptions &options, RuntimeTask &&task)
+    {
+        return ERR_OK;
+    }
 
     virtual ErrCode AddFreeInstallObserver(const sptr<AbilityRuntime::IFreeInstallObserver> &observer) = 0;
 
@@ -490,6 +518,10 @@ public:
     virtual void SetTerminating(bool state) = 0;
     virtual void InsertResultCallbackTask(int requestCode, RuntimeTask&& task) = 0;
     virtual void RemoveResultCallbackTask(int requestCode) = 0;
+    virtual int32_t RegisterResultCallback(RuntimeTask&& task)
+    {
+        return 0;
+    }
     using SelfType = AbilityContext;
     static const size_t CONTEXT_TYPE_ID;
 
