@@ -48,16 +48,6 @@ napi_value JsMemoryOptimizer::EvictModuleFilePages(napi_env env, napi_callback_i
     GET_NAPI_INFO_AND_CALL(env, info, JsMemoryOptimizer, OnEvictModuleFilePages);
 }
 
-bool JsMemoryOptimizer::CheckCallerIsSystemApp()
-{
-    auto selfToken = IPCSkeleton::GetSelfTokenID();
-    if (!Security::AccessToken::TokenIdKit::IsSystemAppByFullTokenID(selfToken)) {
-        TAG_LOGE(AAFwkTag::ABILITY, "not system app");
-        return false;
-    }
-    return true;
-}
-
 napi_value JsMemoryOptimizer::OnEvictFilePages(napi_env env, NapiCallbackInfo &info)
 {
     TAG_LOGD(AAFwkTag::ABILITY, "called");
@@ -71,14 +61,9 @@ napi_value JsMemoryOptimizer::OnEvictFilePages(napi_env env, NapiCallbackInfo &i
         ThrowTooFewParametersError(env);
         return CreateJsUndefined(env);
     }
-    if (!CheckCallerIsSystemApp()) {
-        TAG_LOGE(AAFwkTag::ABILITY, "not system app");
-        ThrowError(env, AbilityErrorCode::ERROR_CODE_NOT_SYSTEM_APP);
-        return CreateJsUndefined(env);
-    }
 
     std::vector<std::string> fileNames;
-    if (!AppExecFwk::UnwrapArrayStringFromJS(env, info.argv[INDEX_ZERO], fileNames)) {
+    if (!AppExecFwk::UnwrapArrayStringFromJSFix(env, info.argv[INDEX_ZERO], fileNames)) {
         TAG_LOGE(AAFwkTag::ABILITY, "parse fileNames failed");
         ThrowInvalidParamError(env, "Parameter error. Parse fileNames failed.");
         return CreateJsUndefined(env);
@@ -123,14 +108,9 @@ napi_value JsMemoryOptimizer::OnEvictModuleFilePages(napi_env env, NapiCallbackI
         ThrowTooFewParametersError(env);
         return CreateJsUndefined(env);
     }
-    if (!CheckCallerIsSystemApp()) {
-        TAG_LOGE(AAFwkTag::ABILITY, "not system app");
-        ThrowError(env, AbilityErrorCode::ERROR_CODE_NOT_SYSTEM_APP);
-        return CreateJsUndefined(env);
-    }
 
     std::vector<std::string> moduleNames;
-    if (!AppExecFwk::UnwrapArrayStringFromJS(env, info.argv[INDEX_ZERO], moduleNames)) {
+    if (!AppExecFwk::UnwrapArrayStringFromJSFix(env, info.argv[INDEX_ZERO], moduleNames)) {
         TAG_LOGE(AAFwkTag::ABILITY, "parse moduleNames failed");
         ThrowInvalidParamError(env, "Parameter error. Parse moduleNames failed.");
         return CreateJsUndefined(env);

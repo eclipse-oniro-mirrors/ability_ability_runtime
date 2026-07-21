@@ -40,11 +40,6 @@ void EtsMemoryOptimizer::EvictFilePagesCheck(ani_env *env, ani_object fileNamesO
     if (env == nullptr) {
         return;
     }
-    if (!AppExecFwk::CheckCallerIsSystemApp()) {
-        TAG_LOGE(AAFwkTag::ABILITY, "not system app");
-        EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_NOT_SYSTEM_APP);
-        return;
-    }
     std::vector<std::string> fileNames;
     if (!AppExecFwk::UnwrapArrayString(env, fileNamesObj, fileNames)) {
         TAG_LOGE(AAFwkTag::ABILITY, "parse fileNames failed");
@@ -85,11 +80,6 @@ void EtsMemoryOptimizer::EvictModuleFilePagesCheck(ani_env *env, ani_object modu
 {
     TAG_LOGD(AAFwkTag::ABILITY, "called EvictModuleFilePagesCheck");
     if (env == nullptr) {
-        return;
-    }
-    if (!AppExecFwk::CheckCallerIsSystemApp()) {
-        TAG_LOGE(AAFwkTag::ABILITY, "not system app");
-        EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_NOT_SYSTEM_APP);
         return;
     }
     std::vector<std::string> moduleNames;

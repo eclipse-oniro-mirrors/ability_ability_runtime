@@ -284,6 +284,26 @@ bool UnwrapStringFromJS2(napi_env env, napi_value param, std::string &value)
     return rev;
 }
 
+bool UnwrapStringFromJSFix(napi_env env, napi_value param, std::string &value)
+{
+    value.clear();
+    size_t size = 0;
+    if (napi_get_value_string_utf8(env, param, nullptr, 0, &size) != napi_ok) {
+        return false;
+    }
+    if (size == 0) {
+        return true;
+    }
+    value.resize(size);
+    size_t written = 0;
+    if (napi_get_value_string_utf8(env, param, value.data(), size + 1, &written) != napi_ok) {
+        value.clear();
+        return false;
+    }
+    value.resize(written);
+    return true;
+}
+
 napi_value WrapArrayInt32ToJS(napi_env env, const std::vector<int> &value)
 {
     TAG_LOGD(AAFwkTag::JSNAPI, "called");
@@ -565,6 +585,28 @@ bool UnwrapArrayStringFromJS(napi_env env, napi_value param, std::vector<std::st
         }
 
         value.push_back(natValue);
+    }
+    return true;
+}
+
+bool UnwrapArrayStringFromJSFix(napi_env env, napi_value param, std::vector<std::string> &value)
+{
+    uint32_t arraySize = 0;
+    if (!IsArrayForNapiValue(env, param, arraySize)) {
+        return false;
+    }
+
+    value.clear();
+    for (uint32_t i = 0; i < arraySize; i++) {
+        napi_value jsValue = nullptr;
+        if (napi_get_element(env, param, i, &jsValue) != napi_ok) {
+            return false;
+        }
+        std::string natValue;
+        if (!UnwrapStringFromJSFix(env, jsValue, natValue)) {
+            return false;
+        }
+        value.push_back(std::move(natValue));
     }
     return true;
 }

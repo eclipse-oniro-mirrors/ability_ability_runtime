@@ -65,6 +65,7 @@ ohos_shared_library("ability_madvise") {
     "c_utils:utils",
     "config_policy:configpolicy_util",
     "hilog:libhilog",
+    "hitrace:hitrace_meter",
     "ipc:ipc_core",
     "json:nlohmann_json_static",
   ]

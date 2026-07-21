@@ -35,6 +35,7 @@
 #include "errors.h"
 #include "extractor.h"
 #include "hilog_tag_wrapper.h"
+#include "hitrace_meter.h"
 #include "json_utils.h"
 #include "nlohmann/json.hpp"
 #include "singleton.h"
@@ -150,6 +151,7 @@ MadviseConfig LoadConfigFromFile()
 
 int32_t ApplyMadviseWithConfig(const char* bundleName, const MadviseConfig& config)
 {
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (!bundleName || strlen(bundleName) == 0) {
         TAG_LOGE(AAFwkTag::ABILITY, "Invalid bundle name: null or empty");
         return 0;
@@ -197,6 +199,7 @@ struct MadviseData {
 
 static int32_t MadvisePhdrCallback(struct dl_phdr_info *info, size_t size, void *data)
 {
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (!info || !data || !info->dlpi_phdr) {
         return 0;
     }
@@ -250,6 +253,7 @@ namespace AbilityRuntime {
 namespace MadviseUtil {
 bool MadviseSingleLibrary(const char* libName)
 {
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (!libName || strlen(libName) == 0) {
         TAG_LOGE(AAFwkTag::ABILITY, "Invalid library name: empty string");
         return false;
@@ -265,6 +269,7 @@ bool MadviseSingleLibrary(const char* libName)
 
 static bool ApplyMadviseToRegion(const OHOS::AbilityRuntime::VmaUtil::VMARegion& region, const char* filename)
 {
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (strlen(region.perms) < PERMS_LEN) {
         TAG_LOGI(AAFwkTag::ABILITY, "Skipping invalid perms: %{public}s", region.perms);
         return false;
@@ -293,6 +298,7 @@ static bool ApplyMadviseToRegion(const OHOS::AbilityRuntime::VmaUtil::VMARegion&
 
 static int32_t ProcessVmaRegions(const std::vector<OHOS::AbilityRuntime::VmaUtil::VMARegion>& regions)
 {
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (regions.empty()) {
         return 0;
     }
@@ -310,6 +316,7 @@ static int32_t ProcessVmaRegions(const std::vector<OHOS::AbilityRuntime::VmaUtil
 
 int32_t MadviseGeneralFiles(const std::vector<std::string>& filenames)
 {
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (filenames.empty()) {
         TAG_LOGE(AAFwkTag::ABILITY, "Filename list is empty");
         return 0;
@@ -409,6 +416,7 @@ bool ReadEvictFilesFromHap(const std::string &hapPath, std::vector<std::string> 
 
 int32_t EvictFilePages(const std::vector<std::string>& fileNames)
 {
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (fileNames.empty()) {
         TAG_LOGD(AAFwkTag::ABILITY, "EvictFilePages: empty file list");
         return ERR_INVALID_VALUE;
@@ -445,6 +453,7 @@ bool IsValidEvictFileName(const std::string& name)
 
 ErrCode EvictModuleFilePages(const std::vector<std::string>& moduleNames)
 {
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (moduleNames.empty()) {
         return ERR_INVALID_VALUE;
     }
