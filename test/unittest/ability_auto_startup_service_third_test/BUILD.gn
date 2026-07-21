@@ -68,6 +68,7 @@ ohos_unittest("ability_auto_startup_service_third_test") {
     "ipc:ipc_core",
     "kv_store:distributeddata_inner",
     "safwk:api_cache_manager",
+    "selinux_adapter:librestorecon",
     "window_manager:libdm",
     "window_manager:libwsutils",
   ]

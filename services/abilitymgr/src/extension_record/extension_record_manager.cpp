@@ -23,6 +23,7 @@
 #include "ui_extension_record.h"
 #include "ui_extension_record_factory.h"
 #include "ui_extension_wrapper.h"
+#include "app_scheduler.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -610,6 +611,17 @@ int32_t ExtensionRecordManager::GetOrCreateExtensionRecordInner(const AAFwk::Abi
     result = SetAbilityProcessName(abilityRequest, abilityRecord, extensionRecord);
     if (result != ERR_OK) {
         return result;
+    }
+    bool isAgentUI =
+        AAFwk::UIExtensionWrapper::IsAgentUIExtension(abilityRequest.abilityInfo.extensionAbilityType);
+    if (isAgentUI) {
+        bool isAttachDebug = IN_PROCESS_CALL(
+            DelayedSingleton<AAFwk::AppScheduler>::GetInstance()->IsCorrespondingProcessAttachDebug(
+                abilityRequest.abilityInfo));
+        abilityRecord->SetAttachDebug(isAttachDebug);
+        TAG_LOGD(AAFwkTag::EXT, "AGENT_UI extension sync attach debug from corresponding process, "
+            "ability:%{public}s, isAttachDebug:%{public}d",
+            abilityRequest.abilityInfo.name.c_str(), isAttachDebug);
     }
     TAG_LOGD(AAFwkTag::ABILITYMGR,
         "extensionRecordId: %{public}d, extensionProcessMode:%{public}d, process: %{public}s",

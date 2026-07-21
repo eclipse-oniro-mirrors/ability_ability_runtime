@@ -1032,6 +1032,34 @@ HWTEST_F(ExtensionRecordManagerSecondTest, SetAbilityProcessName_0200, TestSize.
 }
 
 /**
+ * @tc.name: GetOrCreateExtensionRecordInner_AgentUIAttachDebug_0100
+ * @tc.desc: Test AGENT_UI extension sync attach debug flag from app scheduler.
+ * @tc.type: FUNC
+ * @tc.require: issue
+ */
+HWTEST_F(ExtensionRecordManagerSecondTest, GetOrCreateExtensionRecordInner_AgentUIAttachDebug_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    auto extRecordMgr = std::make_shared<ExtensionRecordManager>(0);
+    ASSERT_NE(extRecordMgr, nullptr);
+
+    AAFwk::AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.test.agentui";
+    abilityRequest.abilityInfo.name = "AgentUIAbility";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::EXTENSION;
+    abilityRequest.abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT_UI;
+
+    std::string hostBundleName = "com.test.agentui";
+    std::shared_ptr<ExtensionRecord> outExtRecord;
+    bool isLoaded = false;
+    int32_t ret = extRecordMgr->GetOrCreateExtensionRecordInner(abilityRequest, hostBundleName, outExtRecord, isLoaded);
+    EXPECT_EQ(ret, ERR_OK);
+    ASSERT_NE(outExtRecord, nullptr);
+    ASSERT_NE(outExtRecord->abilityRecord_, nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
  * @tc.name: StartAbility_0100
  * @tc.desc: Test StartAbility return value
  * @tc.type: FUNC
