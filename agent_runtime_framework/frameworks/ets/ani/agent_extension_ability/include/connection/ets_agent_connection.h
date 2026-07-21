@@ -20,6 +20,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <vector>
 
 #include "ability_connect_callback.h"
@@ -97,8 +98,24 @@ void FindAgentConnection(ani_env *env, const AAFwk::Want &want, ani_object callb
 void FindAgentConnectionCandidatesByTarget(ani_env *env, const AAFwk::Want &want, ani_object callback,
     std::vector<sptr<EtsAgentConnection>> &candidates);
 
-void FindAgentConnectionByTargetAndCardType(ani_env *env, const AAFwk::Want &want, ani_object callback,
-    int32_t agentCardType, sptr<EtsAgentConnection> &connection);
+/**
+ * Low-code host connection that can accept a different AgentId (same-AgentId dupes go to FindAgentConnection);
+ * for shared-host reuse or reconnect queuing while the old host disconnects.
+ */
+void FindReusableLowCodeAgentConnection(ani_env *env, const AAFwk::Want &want, ani_object callback,
+    sptr<EtsAgentConnection> &connection);
+
+/**
+ * Mirror AgentMgr low-code completion into the local ETS registry.
+ */
+void CompleteLowCodeAgent(const std::string &agentId);
+
+/**
+ * Re-enqueue reconnect only if candidate is still registered and disconnecting; false if a concurrent
+ * disconnect-done already erased/drained it (caller fresh-connects).
+ */
+bool QueueReconnectIfActive(ani_env *env, const AAFwk::Want &want, ani_object asyncCallback,
+    const sptr<EtsAgentConnection> &candidate);
 }
 
 class EtsAgentConnectorStubImpl;
@@ -110,7 +127,9 @@ class EtsAgentConnectorStubImpl;
  */
 class EtsAgentConnection : public AbilityRuntime::AbilityConnectCallback {
 public:
-    using DisconnectCompleteHandler = std::function<void(const sptr<EtsAgentConnection>&)>;
+    using DisconnectCompleteHandler = std::function<void(const wptr<EtsAgentConnection>&)>;
+    using ConnectCompleteHandler =
+        std::function<void(ani_env *env, ani_object proxy, const wptr<EtsAgentConnection>&)>;
 
     /**
      * Constructor.
@@ -189,7 +208,17 @@ public:
 
     void AddReconnectPendingCallback(ani_env *env, const AAFwk::Want &want, ani_object asyncCallback);
 
-    bool TakeReconnectPendingCallbacks(AAFwk::Want &want, std::vector<ani_ref> &callbacks);
+    // Enqueue a pre-created global ref without touching the ANI env (QueueReconnectIfActive).
+    void EnqueueReconnectPendingCallback(const AAFwk::Want &want, ani_ref callback);
+
+    // Each queued reconnect keeps its own Want; drain registers each non-first AgentId.
+    bool TakeReconnectPendingCallbacks(std::vector<AAFwk::Want> &wants, std::vector<ani_ref> &callbacks);
+
+    // Non-first low-code reconnects staged for Reuse after the fresh host connects.
+    void AddPendingLowCodeReuseItem(const AAFwk::Want &want, ani_ref callback);
+    bool TakePendingLowCodeReuseItems(std::vector<AAFwk::Want> &wants, std::vector<ani_ref> &callbacks);
+    void RejectPendingLowCodeReuseItems(
+        ani_env *env, int32_t error, AbilityRuntime::AbilityInnerErrorMsg fallbackMessage);
 
     void AdoptDuplicatedPendingCallbacks(std::vector<ani_ref> &&callbacks);
 
@@ -208,6 +237,22 @@ public:
      * @param error The error code.
      */
     void RejectDuplicatedPendingCallbacks(
+        ani_env *env, int32_t error, AbilityRuntime::AbilityInnerErrorMsg fallbackMessage);
+
+    // Isolated low-code reuse slots (different AgentId on a still-connecting host), separate from
+    // duplicatedPendingCallbacks_; registered before Reuse IPC so host-connect-done finds it (no orphan);
+    // failed reuse rejects only its own AgentId.
+    void AddLowCodeProxyReuseCallback(ani_env *env, ani_object asyncCallback, const std::string &agentId);
+    // Remove+release this AgentId's own callback (Reuse failed); false if host-connect-done already
+    // drained+resolved it (caller must skip to avoid double-settle).
+    bool RemoveLowCodeProxyReuseCallback(ani_env *env, const std::string &agentId);
+    // Resolve this AgentId's own callback with the proxy if still waiting (host connected during Reuse IPC); no-op if
+    // host-connect-done already drained+resolved it. Closes GetProxyObject->Add TOCTOU orphan on post-Reuse re-check.
+    void SettleLowCodeProxyReuseCallbackIfPending(ani_env *env, const std::string &agentId, ani_object proxy);
+    // Resolve all waiting low-code reuse callbacks with the proxy (host just connected) + release.
+    void ResolveLowCodeProxyReuseCallbacks(ani_env *env, ani_object proxyObj);
+    // Reject all waiting low-code reuse callbacks (host connect failed) + release.
+    void RejectLowCodeProxyReuseCallbacks(
         ani_env *env, int32_t error, AbilityRuntime::AbilityInnerErrorMsg fallbackMessage);
 
     /**
@@ -294,7 +339,32 @@ public:
 
     bool IsDisconnecting();
 
+    /**
+     * Add an active low-code AgentId to this shared host connection.
+     * Returns true only when a new AgentId was inserted; failed reuse rolls back the registration without siblings.
+     */
+    bool AddLowCodeAgentId(const std::string &agentId);
+
+    /**
+     * Remove one active low-code AgentId from this connection.
+     * Returns true when the removed AgentId was the last active one.
+     */
+    bool RemoveLowCodeAgentId(const std::string &agentId);
+
+    /**
+     * Whether this connection owns the given low-code AgentId.
+     */
+    bool HasLowCodeAgentId(const std::string &agentId);
+
+    /**
+     * Whether this connection still has any active low-code AgentId.
+     */
+    bool HasAnyLowCodeAgentId();
+
     void SetDisconnectCompleteHandler(DisconnectCompleteHandler handler);
+
+    // From HandleOnAbilityConnectDone: register staged non-first AgentIds via Reuse.
+    void SetConnectCompleteHandler(ConnectCompleteHandler handler);
 
 private:
     /**
@@ -327,6 +397,20 @@ private:
      * @param resultCode The result code of disconnection.
      */
     void HandleOnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int resultCode);
+
+    // Build the ETS receiver proxy for the freshly connected host; nullptr on failure.
+    ani_object BuildAgentReceiverProxy(ani_env *env, const sptr<IRemoteObject> &remoteObject);
+    // Report connect error, reject every pending batch, release primary callback, remove connection,
+    // detach ANI env (exactly one DetachAniEnv).
+    void FailConnectAndCleanup(ani_env *env, ani_ref primaryCallback, bool hasPrimaryCallback,
+        int32_t error, AbilityRuntime::AbilityInnerErrorMsg fallbackMessage, bool isAttachThread);
+    // Resolve the primary callback + duplicated pending callbacks against the connected proxy.
+    void ApplyConnectProxy(ani_env *env, ani_ref primaryCallback, bool hasPrimaryCallback, ani_object proxy);
+    // Handle no-callback / resultCode-failure / proxy-failure cleanup; returns nullptr once DetachAniEnv has run,
+    // on success applies the proxy and returns it.
+    ani_object DispatchConnectResult(ani_env *env, const sptr<IRemoteObject> &remoteObject,
+        int resultCode, ani_ref primaryCallback, bool hasPrimaryCallback, bool hasDuplicatedPendingCallback,
+        bool isAttachThread);
 
 private:
     ani_vm *etsVm_ = nullptr;
@@ -362,12 +446,20 @@ private:
      * List of pending callbacks for duplicate connection requests.
      */
     std::vector<ani_ref> duplicatedPendingCallbacks_;
+    // Low-code without-proxy reuse callbacks awaiting the host proxy; parallel agentIds vector so a failed reuse
+    // removes only its own callback by AgentId.
+    std::vector<std::string> lowCodeProxyReuseAgentIds_;
+    std::vector<ani_ref> lowCodeProxyReuseCallbacks_;
 
     std::mutex stateLock_;
     bool disconnecting_ = false;
-    AAFwk::Want reconnectWant_;
+    std::set<std::string> lowCodeAgentIds_;
+    std::vector<AAFwk::Want> reconnectWants_;
     std::vector<ani_ref> reconnectPendingCallbacks_;
+    std::vector<AAFwk::Want> pendingLowCodeReuseWants_;
+    std::vector<ani_ref> pendingLowCodeReuseCallbacks_;
     DisconnectCompleteHandler disconnectCompleteHandler_;
+    ConnectCompleteHandler connectCompleteHandler_;
 };
 } // namespace AgentRuntime
 } // namespace OHOS

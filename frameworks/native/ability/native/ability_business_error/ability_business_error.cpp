@@ -266,6 +266,8 @@ constexpr const char* ERROR_MSG_AGENT_EXTENSION_CONNECTION_ENDED =
 constexpr const char* ERROR_MSG_DISCONNECT_AGENT_EXTENSION_NOT_EXIST =
     "Internal error. The agent extension connection does not exist. "
     "Use an AgentProxy returned by connectAgentExtensionAbility.";
+constexpr const char* ERROR_MSG_CONNECT_AGENT_EXTENSION_NOT_EXIST =
+    "Internal error. The agent extension connection is not ready. Retry connectAgentExtensionAbility.";
 constexpr const char* ERROR_MSG_TRANSFER_EXTENSION_DATA_FAILED =
     "Internal error. Failed to transfer extension data to the window. Try again later.";
 constexpr const char* ERROR_MSG_UI_WINDOW_NULL =
@@ -764,6 +766,9 @@ std::string GetAgentManagerErrorMsg(int32_t errCode, AgentManagerErrorOperation 
     if (errCode == CONNECTION_NOT_EXIST) {
         if (operation == AgentManagerErrorOperation::DISCONNECT_AGENT_EXTENSION) {
             return ERROR_MSG_DISCONNECT_AGENT_EXTENSION_NOT_EXIST;
+        }
+        if (operation == AgentManagerErrorOperation::CONNECT_AGENT_EXTENSION) {
+            return ERROR_MSG_CONNECT_AGENT_EXTENSION_NOT_EXIST;
         }
         if (operation == AgentManagerErrorOperation::COMPLETE_LOW_CODE_AGENT) {
             return GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED);

@@ -20,6 +20,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <vector>
 
 #include "agent_connect_manager_types.h"
 #include "agent_host_connection_types.h"
@@ -129,6 +130,7 @@ private:
         AgentCallerDeathRequest &request);
     void RemoveLowCodeAgentLocked(AgentHostSession &session, const std::string &agentId,
         const LowCodeAgentRecord &record);
+    std::vector<sptr<AAFwk::IAbilityConnection>> TearDownHostSessionLocked(const AgentHostKey &hostKey);
     void AddPendingLowCodeDisconnectRecordLocked(AgentHostSession &session,
         const sptr<AgentHostConnection> &hostConnection, const std::string &agentId,
         const LowCodeAgentRecord &record, bool cleanupOnFailure = false);

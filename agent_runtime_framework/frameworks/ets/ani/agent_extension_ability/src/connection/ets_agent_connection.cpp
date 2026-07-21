@@ -17,6 +17,7 @@
 
 #include "ability_business_error.h"
 #include "ability_connect_callback.h"
+#include "agent_card.h"
 #include "agent_extension_connection_constants.h"
 #include "ani_common_util.h"
 #include "ani_common_want.h"
@@ -30,7 +31,8 @@ namespace AgentRuntime {
 namespace {
 // Registry for agent connections
 static std::map<ConnectionKey, sptr<EtsAgentConnection>, KeyCompare> g_agentConnects;
-static std::recursive_mutex g_agentConnectsLock_;
+// Plain non-recursive mutex: lock holders are leaves; never call AgentConnectionUtils under it (deadlock).
+static std::mutex g_agentConnectsLock_;
 static int64_t g_agentSerialNumber = 0;
 
 constexpr const char *SIGNATURE_AGENT_EXTENSION_CALLBACK =
@@ -53,6 +55,47 @@ bool IsConnectionCallbackObjectEquals(
     connection->ReleaseObjectReference(env, tempCallbackRef);
     return callbackObjectEquals;
 }
+
+bool IsLowCodeRecord(const AAFwk::Want &want)
+{
+    return want.GetIntParam(AGENT_CARD_TYPE_KEY, -1) == static_cast<int32_t>(AgentCardType::LOW_CODE);
+}
+
+bool IsSameAgentCard(const AAFwk::Want &recordWant, const AAFwk::Want &want)
+{
+    const std::string agentId = want.GetStringParam(AGENTID_KEY);
+    return !agentId.empty() && recordWant.GetBundle() == want.GetBundle() &&
+        recordWant.GetStringParam(AGENTID_KEY) == agentId;
+}
+
+// Duplicate match (post AgentMgr canonicalization): bundle+AgentId identifies the AgentCard.
+// Low-code uses the per-connection AgentId set (one host, many AgentIds).
+bool IsAgentConnectionMatch(const ConnectionKey &key, const sptr<EtsAgentConnection> &connection,
+    const AAFwk::Want &want)
+{
+    if (connection == nullptr || !IsSameAgentCard(key.want, want)) {
+        return false;
+    }
+    if (!IsLowCodeRecord(key.want)) {
+        return true;
+    }
+    std::string agentId = want.GetStringParam(AGENTID_KEY);
+    return connection->HasLowCodeAgentId(agentId) || connection->IsDisconnecting();
+}
+
+// Low-code host reuse: only a different AgentId; same active AgentId stays duplicate path or AgentMgr rejection.
+bool IsReusableLowCodeConnection(const ConnectionKey &key, const sptr<EtsAgentConnection> &connection,
+    const AAFwk::Want &want)
+{
+    if (connection == nullptr || !IsLowCodeRecord(key.want) || !(key.want.GetElement() == want.GetElement())) {
+        return false;
+    }
+    std::string agentId = want.GetStringParam(AGENTID_KEY);
+    if (connection->HasLowCodeAgentId(agentId)) {
+        return false;
+    }
+    return connection->HasAnyLowCodeAgentId() || connection->IsDisconnecting();
+}
 } // namespace
 
 namespace AgentConnectionUtils {
@@ -60,7 +103,7 @@ void RemoveAgentConnection(int64_t connectId)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "RemoveAgentConnection, connectId: %{public}s",
         std::to_string(connectId).c_str());
-    std::lock_guard<std::recursive_mutex> lock(g_agentConnectsLock_);
+    std::lock_guard<std::mutex> lock(g_agentConnectsLock_);
     auto item = std::find_if(g_agentConnects.begin(), g_agentConnects.end(),
         [connectId](const auto &obj) {
             return connectId == obj.first.id;
@@ -82,7 +125,7 @@ void EraseAgentConnection(int64_t connectId)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "EraseAgentConnection, connectId: %{public}s",
         std::to_string(connectId).c_str());
-    std::lock_guard<std::recursive_mutex> lock(g_agentConnectsLock_);
+    std::lock_guard<std::mutex> lock(g_agentConnectsLock_);
     auto item = std::find_if(g_agentConnects.begin(), g_agentConnects.end(),
         [connectId](const auto &obj) {
             return connectId == obj.first.id;
@@ -96,7 +139,7 @@ void EraseAgentConnection(int64_t connectId)
 int64_t InsertAgentConnection(sptr<EtsAgentConnection> connection, const AAFwk::Want &want)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "InsertAgentConnection");
-    std::lock_guard<std::recursive_mutex> lock(g_agentConnectsLock_);
+    std::lock_guard<std::mutex> lock(g_agentConnectsLock_);
     if (connection == nullptr) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null connection");
         return -1;
@@ -121,7 +164,7 @@ void FindAgentConnection(int64_t connectId, sptr<EtsAgentConnection> &connection
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "FindAgentConnection by id: %{public}s",
         std::to_string(connectId).c_str());
-    std::lock_guard<std::recursive_mutex> lock(g_agentConnectsLock_);
+    std::lock_guard<std::mutex> lock(g_agentConnectsLock_);
     auto item = std::find_if(g_agentConnects.begin(), g_agentConnects.end(),
         [connectId](const auto &obj) {
             return connectId == obj.first.id;
@@ -136,13 +179,14 @@ void FindAgentConnection(ani_env *env, const AAFwk::Want &want, ani_object callb
     sptr<EtsAgentConnection> &connection)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "FindAgentConnection by want+callback");
-    std::lock_guard<std::recursive_mutex> lock(g_agentConnectsLock_);
+    std::lock_guard<std::mutex> lock(g_agentConnectsLock_);
     auto item = std::find_if(g_agentConnects.begin(), g_agentConnects.end(),
         [&want, env, callback](const auto &obj) {
-        bool wantEquals = obj.first.want.GetElement() == want.GetElement() &&
-            obj.first.want.GetStringParam(AGENTID_KEY) == want.GetStringParam(AGENTID_KEY);
+        if (!IsAgentConnectionMatch(obj.first, obj.second, want)) {
+            return false;
+        }
         bool callbackObjectEquals = IsConnectionCallbackObjectEquals(env, obj.second, callback);
-        return wantEquals && callbackObjectEquals;
+        return callbackObjectEquals;
     });
     if (item == g_agentConnects.end()) {
         TAG_LOGD(AAFwkTag::SER_ROUTER, "Connection not found");
@@ -156,7 +200,7 @@ void FindAgentConnectionCandidatesByTarget(ani_env *env, const AAFwk::Want &want
     std::vector<sptr<EtsAgentConnection>> &candidates)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "FindAgentConnectionCandidatesByTarget");
-    std::lock_guard<std::recursive_mutex> lock(g_agentConnectsLock_);
+    std::lock_guard<std::mutex> lock(g_agentConnectsLock_);
     for (const auto &obj : g_agentConnects) {
         bool wantEquals = obj.first.want.GetElement() == want.GetElement();
         bool callbackObjectEquals = IsConnectionCallbackObjectEquals(env, obj.second, callback);
@@ -166,17 +210,17 @@ void FindAgentConnectionCandidatesByTarget(ani_env *env, const AAFwk::Want &want
     }
 }
 
-void FindAgentConnectionByTargetAndCardType(ani_env *env, const AAFwk::Want &want, ani_object callback,
-    int32_t agentCardType, sptr<EtsAgentConnection> &connection)
+void FindReusableLowCodeAgentConnection(ani_env *env, const AAFwk::Want &want, ani_object callback,
+    sptr<EtsAgentConnection> &connection)
 {
-    TAG_LOGD(AAFwkTag::SER_ROUTER, "FindAgentConnectionByTargetAndCardType");
-    std::lock_guard<std::recursive_mutex> lock(g_agentConnectsLock_);
+    std::lock_guard<std::mutex> lock(g_agentConnectsLock_);
     auto item = std::find_if(g_agentConnects.begin(), g_agentConnects.end(),
-        [&want, env, callback, agentCardType](const auto &obj) {
-            bool cardTypeEquals = obj.first.want.GetIntParam(AGENT_CARD_TYPE_KEY, -1) == agentCardType;
-            bool wantEquals = obj.first.want.GetElement() == want.GetElement();
+        [&want, env, callback](const auto &obj) {
+            if (!IsReusableLowCodeConnection(obj.first, obj.second, want)) {
+                return false;
+            }
             bool callbackObjectEquals = IsConnectionCallbackObjectEquals(env, obj.second, callback);
-            return cardTypeEquals && wantEquals && callbackObjectEquals;
+            return callbackObjectEquals;
         });
     if (item == g_agentConnects.end()) {
         TAG_LOGD(AAFwkTag::SER_ROUTER, "Connection not found");
@@ -185,7 +229,151 @@ void FindAgentConnectionByTargetAndCardType(ani_env *env, const AAFwk::Want &wan
     connection = item->second;
     TAG_LOGD(AAFwkTag::SER_ROUTER, "Found connection");
 }
+
+// Local cleanup after AgentMgr completion; removing the last AgentId makes reconnect wait for disconnect settlement.
+void CompleteLowCodeAgent(const std::string &agentId)
+{
+    std::lock_guard<std::mutex> lock(g_agentConnectsLock_);
+    for (const auto &obj : g_agentConnects) {
+        if (obj.second == nullptr || !obj.second->HasLowCodeAgentId(agentId)) {
+            continue;
+        }
+        if (obj.second->RemoveLowCodeAgentId(agentId)) {
+            TAG_LOGI(AAFwkTag::SER_ROUTER, "last low-code AgentId removed -> disconnecting: %{public}s",
+                agentId.c_str());
+            obj.second->SetDisconnecting(true);
+        }
+    }
+}
+
+static bool IsQueueReconnectArgsValid(ani_env *env, ani_object asyncCallback,
+    const sptr<EtsAgentConnection> &candidate)
+{
+    return env != nullptr && asyncCallback != nullptr && candidate != nullptr;
+}
+
+// pre-condition: caller holds g_agentConnectsLock_.
+static bool IsCandidateStillRegistered(const sptr<EtsAgentConnection> &candidate)
+{
+    for (const auto &obj : g_agentConnects) {
+        if (obj.second != nullptr && obj.second.GetRefPtr() == candidate.GetRefPtr()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool TryEnqueueReconnect(const AAFwk::Want &want, const sptr<EtsAgentConnection> &candidate,
+    ani_ref globalRef)
+{
+    bool queued = false;
+    std::lock_guard<std::mutex> lock(g_agentConnectsLock_);
+    bool stillRegistered = IsCandidateStillRegistered(candidate);
+    if (stillRegistered && candidate->IsDisconnecting()) {
+        candidate->EnqueueReconnectPendingCallback(want, globalRef);
+        queued = true;
+    }
+    return queued;
+}
+
+// disconnect-done (binder thread): revalidate+enqueue under registry lock so concurrent
+// erase/drain cannot orphan the callback.
+bool QueueReconnectIfActive(ani_env *env, const AAFwk::Want &want, ani_object asyncCallback,
+    const sptr<EtsAgentConnection> &candidate)
+{
+    if (!IsQueueReconnectArgsValid(env, asyncCallback, candidate)) {
+        return false;
+    }
+    ani_ref globalRef = nullptr;
+    ani_status status = env->GlobalReference_Create(asyncCallback, &globalRef);
+    if (status != ANI_OK || globalRef == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "QueueReconnectIfActive GlobalReference_Create failed: %{public}d", status);
+        return false;
+    }
+    bool queued = TryEnqueueReconnect(want, candidate, globalRef);
+    if (!queued) {
+        env->GlobalReference_Delete(globalRef);
+        TAG_LOGI(AAFwkTag::SER_ROUTER, "QueueReconnectIfActive: connection raced with teardown, fresh connect");
+    }
+    return queued;
+}
 } // namespace AgentConnectionUtils
+
+// Build ETS receiver proxy for the freshly connected host; nullptr on failure.
+ani_object EtsAgentConnection::BuildAgentReceiverProxy(ani_env *env,
+    const sptr<IRemoteObject> &remoteObject)
+{
+    sptr<EtsAgentConnectorStubImpl> hostStub = GetServiceHostStub();
+    sptr<IRemoteObject> hostProxy = nullptr;
+    if (hostStub != nullptr) {
+        hostProxy = hostStub->AsObject();
+    }
+    return EtsAgentReceiverProxy::CreateEtsAgentReceiverProxy(env, remoteObject,
+        GetConnectionId(), hostProxy);
+}
+
+// Reports connect error, rejects all pending callback batches, removes connection, DetachAniEnv (exactly one).
+void EtsAgentConnection::FailConnectAndCleanup(ani_env *env, ani_ref primaryCallback,
+    bool hasPrimaryCallback, int32_t error, AbilityRuntime::AbilityInnerErrorMsg fallbackMessage,
+    bool isAttachThread)
+{
+    if (hasPrimaryCallback) {
+        AppExecFwk::AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER,
+            reinterpret_cast<ani_object>(primaryCallback),
+            AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env, error, "",
+                AbilityRuntime::GetInnerErrorMsg(fallbackMessage)), nullptr);
+    }
+    RejectDuplicatedPendingCallbacks(env, error, fallbackMessage);
+    RejectLowCodeProxyReuseCallbacks(env, error, fallbackMessage);
+    RejectPendingLowCodeReuseItems(env, error, fallbackMessage);
+    if (hasPrimaryCallback) {
+        ReleaseObjectReference(env, primaryCallback);
+    }
+    AgentConnectionUtils::RemoveAgentConnection(GetConnectionId());
+    AppExecFwk::DetachAniEnv(GetEtsVm(), isAttachThread);
+}
+
+// Resolves primary + duplicated pending callbacks against the connected proxy.
+void EtsAgentConnection::ApplyConnectProxy(ani_env *env, ani_ref primaryCallback,
+    bool hasPrimaryCallback, ani_object proxy)
+{
+    SetProxyObject(proxy);
+    if (hasPrimaryCallback) {
+        AppExecFwk::AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER,
+            reinterpret_cast<ani_object>(primaryCallback),
+            AbilityRuntime::EtsErrorUtil::CreateError(env,
+                static_cast<AbilityRuntime::AbilityErrorCode>(AbilityRuntime::AbilityErrorCode::ERROR_OK)),
+            proxy);
+    }
+    ResolveDuplicatedPendingCallbacks(env, proxy);
+    ResolveLowCodeProxyReuseCallbacks(env, proxy);
+}
+
+// No-callback/failure cleanup (returns nullptr after DetachAniEnv); on success applies proxy and returns it.
+ani_object EtsAgentConnection::DispatchConnectResult(ani_env *env,
+    const sptr<IRemoteObject> &remoteObject, int resultCode, ani_ref primaryCallback,
+    bool hasPrimaryCallback, bool hasDuplicatedPendingCallback, bool isAttachThread)
+{
+    if (!hasPrimaryCallback && !hasDuplicatedPendingCallback) {
+        AppExecFwk::DetachAniEnv(GetEtsVm(), isAttachThread);
+        return nullptr;
+    }
+    if (resultCode != static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_OK)) {
+        FailConnectAndCleanup(env, primaryCallback, hasPrimaryCallback, resultCode,
+            AbilityRuntime::AbilityInnerErrorMsg::CONNECT_AGENT_EXTENSION_FAILED, isAttachThread);
+        return nullptr;
+    }
+    ani_object proxy = BuildAgentReceiverProxy(env, remoteObject);
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "CreateEtsAgentReceiverProxy failed");
+        int32_t errorCode = static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);
+        FailConnectAndCleanup(env, primaryCallback, hasPrimaryCallback, errorCode,
+            AbilityRuntime::AbilityInnerErrorMsg::OPERATION_FAILED, isAttachThread);
+        return nullptr;
+    }
+    ApplyConnectProxy(env, primaryCallback, hasPrimaryCallback, proxy);
+    return proxy;
+}
 
 EtsAgentConnection::EtsAgentConnection(ani_vm *etsVm) : etsVm_(etsVm)
 {
@@ -204,6 +392,8 @@ EtsAgentConnection::~EtsAgentConnection()
     ani_ref etsConnectionObject = nullptr;
     std::vector<ani_ref> duplicatedPendingCallbacks;
     std::vector<ani_ref> reconnectPendingCallbacks;
+    std::vector<ani_ref> pendingLowCodeReuseCallbacks;
+    std::vector<ani_ref> lowCodeProxyReuseCallbacks;
     {
         std::lock_guard<std::mutex> lock(stateLock_);
         serviceProxyObject = serviceProxyObject_;
@@ -216,7 +406,12 @@ EtsAgentConnection::~EtsAgentConnection()
         etsConnectionObject_ = nullptr;
         duplicatedPendingCallbacks = std::move(duplicatedPendingCallbacks_);
         reconnectPendingCallbacks = std::move(reconnectPendingCallbacks_);
+        pendingLowCodeReuseCallbacks = std::move(pendingLowCodeReuseCallbacks_);
+        lowCodeProxyReuseCallbacks = std::move(lowCodeProxyReuseCallbacks_);
+        lowCodeProxyReuseAgentIds_.clear();
+        pendingLowCodeReuseWants_.clear();
         disconnectCompleteHandler_ = nullptr;
+        connectCompleteHandler_ = nullptr;
     }
     ReleaseObjectReference(serviceProxyObject);
     ReleaseObjectReference(aniAsyncCallback);
@@ -226,6 +421,12 @@ EtsAgentConnection::~EtsAgentConnection()
         ReleaseObjectReference(callback);
     }
     for (auto &callback : reconnectPendingCallbacks) {
+        ReleaseObjectReference(callback);
+    }
+    for (auto &callback : pendingLowCodeReuseCallbacks) {
+        ReleaseObjectReference(callback);
+    }
+    for (auto &callback : lowCodeProxyReuseCallbacks) {
         ReleaseObjectReference(callback);
     }
 }
@@ -256,69 +457,22 @@ void EtsAgentConnection::HandleOnAbilityConnectDone(
         hasDuplicatedPendingCallback = !duplicatedPendingCallbacks_.empty();
     }
     bool hasPrimaryCallback = primaryCallback != nullptr;
-    if (!hasPrimaryCallback && !hasDuplicatedPendingCallback) {
-        TAG_LOGD(AAFwkTag::SER_ROUTER, "No pending connect callback");
-        AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);
-        return;
-    }
-    if (resultCode != static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_OK)) {
-        if (hasPrimaryCallback) {
-            AppExecFwk::AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER,
-                reinterpret_cast<ani_object>(primaryCallback),
-                AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env, resultCode, "",
-                    AbilityRuntime::GetInnerErrorMsg(
-                        AbilityRuntime::AbilityInnerErrorMsg::CONNECT_AGENT_EXTENSION_FAILED)),
-                nullptr);
-        }
-        RejectDuplicatedPendingCallbacks(
-            env, resultCode, AbilityRuntime::AbilityInnerErrorMsg::CONNECT_AGENT_EXTENSION_FAILED);
-        if (hasPrimaryCallback) {
-            ReleaseObjectReference(env, primaryCallback);
-        }
-        AgentConnectionUtils::RemoveAgentConnection(connectionId_);
-        AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);
-        return;
-    }
-
-    sptr<EtsAgentConnectorStubImpl> hostStub = GetServiceHostStub();
-    sptr<IRemoteObject> hostProxy = nullptr;
-    if (hostStub != nullptr) {
-        hostProxy = hostStub->AsObject();
-    }
-
-    ani_object proxy = EtsAgentReceiverProxy::CreateEtsAgentReceiverProxy(env, remoteObject,
-        connectionId_, hostProxy);
+    ani_object proxy = DispatchConnectResult(env, remoteObject, resultCode,
+        primaryCallback, hasPrimaryCallback, hasDuplicatedPendingCallback, isAttachThread);
     if (proxy == nullptr) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "CreateEtsAgentReceiverProxy failed");
-        int32_t errorCode = static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);
-        if (hasPrimaryCallback) {
-            AppExecFwk::AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER,
-                reinterpret_cast<ani_object>(primaryCallback),
-                AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env, errorCode, "",
-                    AbilityRuntime::GetInnerErrorMsg(
-                        AbilityRuntime::AbilityInnerErrorMsg::OPERATION_FAILED)),
-                nullptr);
-        }
-        RejectDuplicatedPendingCallbacks(
-            env, errorCode, AbilityRuntime::AbilityInnerErrorMsg::OPERATION_FAILED);
-        if (hasPrimaryCallback) {
-            ReleaseObjectReference(env, primaryCallback);
-        }
-        AgentConnectionUtils::RemoveAgentConnection(connectionId_);
-        AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);
         return;
     }
-
-    SetProxyObject(proxy);
-    if (hasPrimaryCallback) {
-        AppExecFwk::AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER,
-            reinterpret_cast<ani_object>(primaryCallback),
-            AbilityRuntime::EtsErrorUtil::CreateError(env,
-                static_cast<AbilityRuntime::AbilityErrorCode>(AbilityRuntime::AbilityErrorCode::ERROR_OK)),
-            proxy);
+    // Host connected: register staged non-first AgentIds via Reuse, then resolve.
+    {
+        ConnectCompleteHandler handler;
+        {
+            std::lock_guard<std::mutex> lock(stateLock_);
+            handler = connectCompleteHandler_;
+        }
+        if (handler != nullptr) {
+            handler(env, proxy, wptr<EtsAgentConnection>(this));
+        }
     }
-
-    ResolveDuplicatedPendingCallbacks(env, proxy);
     if (hasPrimaryCallback) {
         ReleaseObjectReference(env, primaryCallback);
     }
@@ -345,14 +499,42 @@ void EtsAgentConnection::HandleOnAbilityDisconnectDone(const AppExecFwk::Element
         return;
     }
 
-    sptr<EtsAgentConnection> connection(this);
+    // Disconnect-done while connect pending (target died/timed out): reject pending connect + coalesced
+    // requests with ERROR_CODE_INNER (16000050), matching DispatchConnectResult's failure path else the promise hangs.
+    ani_ref connectAsyncCallback = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(stateLock_);
+        connectAsyncCallback = aniAsyncCallback_;
+        aniAsyncCallback_ = nullptr;
+    }
+    if (connectAsyncCallback != nullptr) {
+        TAG_LOGI(AAFwkTag::SER_ROUTER, "connect ended before established, reject pending connect callbacks");
+        ani_object error = AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env,
+            static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER), "",
+            AbilityRuntime::GetInnerErrorMsg(AbilityRuntime::AbilityInnerErrorMsg::CONNECT_AGENT_EXTENSION_FAILED));
+        AppExecFwk::AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER,
+            reinterpret_cast<ani_object>(connectAsyncCallback), error, nullptr);
+        RejectDuplicatedPendingCallbacks(env,
+            static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER),
+            AbilityRuntime::AbilityInnerErrorMsg::CONNECT_AGENT_EXTENSION_FAILED);
+        // Reject staged low-code reuse (Mechanism A) queued while CONNECTING -- host never came up, drain never runs
+        // (would hang). Mechanism B (lowCodeProxyReuseCallbacks_) rejected too (no-op once H1 stops feeding it).
+        RejectLowCodeProxyReuseCallbacks(env,
+            static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER),
+            AbilityRuntime::AbilityInnerErrorMsg::CONNECT_AGENT_EXTENSION_FAILED);
+        RejectPendingLowCodeReuseItems(env,
+            static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER),
+            AbilityRuntime::AbilityInnerErrorMsg::CONNECT_AGENT_EXTENSION_FAILED);
+        ReleaseObjectReference(env, connectAsyncCallback);
+    }
+
     DisconnectCompleteHandler disconnectCompleteHandler;
     {
         std::lock_guard<std::mutex> lock(stateLock_);
         disconnectCompleteHandler = disconnectCompleteHandler_;
     }
     if (disconnectCompleteHandler != nullptr) {
-        disconnectCompleteHandler(connection);
+        disconnectCompleteHandler(wptr<EtsAgentConnection>(this));
     }
 
     ani_ref disconnectAsyncCallback = nullptr;
@@ -596,23 +778,76 @@ void EtsAgentConnection::AddReconnectPendingCallback(ani_env *env, const AAFwk::
         TAG_LOGE(AAFwkTag::SER_ROUTER, "GlobalReference_Create failed status: %{public}d", status);
         return;
     }
-    std::lock_guard<std::mutex> lock(stateLock_);
-    if (reconnectPendingCallbacks_.empty()) {
-        reconnectWant_ = want;
-    }
-    reconnectPendingCallbacks_.push_back(globalRef);
+    EnqueueReconnectPendingCallback(want, globalRef);
 }
 
-bool EtsAgentConnection::TakeReconnectPendingCallbacks(AAFwk::Want &want, std::vector<ani_ref> &callbacks)
+void EtsAgentConnection::EnqueueReconnectPendingCallback(const AAFwk::Want &want, ani_ref callback)
+{
+    if (callback == nullptr) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(stateLock_);
+    // Remember every queued Want (not just the first) so drain registers each AgentId.
+    reconnectWants_.push_back(want);
+    reconnectPendingCallbacks_.push_back(callback);
+}
+
+bool EtsAgentConnection::TakeReconnectPendingCallbacks(std::vector<AAFwk::Want> &wants,
+    std::vector<ani_ref> &callbacks)
 {
     std::lock_guard<std::mutex> lock(stateLock_);
     if (reconnectPendingCallbacks_.empty()) {
         return false;
     }
-    want = reconnectWant_;
+    wants = std::move(reconnectWants_);
     callbacks = std::move(reconnectPendingCallbacks_);
+    reconnectWants_.clear();
     reconnectPendingCallbacks_.clear();
     return true;
+}
+
+void EtsAgentConnection::AddPendingLowCodeReuseItem(const AAFwk::Want &want, ani_ref callback)
+{
+    if (callback == nullptr) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(stateLock_);
+    pendingLowCodeReuseWants_.push_back(want);
+    pendingLowCodeReuseCallbacks_.push_back(callback);
+}
+
+bool EtsAgentConnection::TakePendingLowCodeReuseItems(std::vector<AAFwk::Want> &wants,
+    std::vector<ani_ref> &callbacks)
+{
+    std::lock_guard<std::mutex> lock(stateLock_);
+    if (pendingLowCodeReuseCallbacks_.empty()) {
+        return false;
+    }
+    wants = std::move(pendingLowCodeReuseWants_);
+    callbacks = std::move(pendingLowCodeReuseCallbacks_);
+    pendingLowCodeReuseWants_.clear();
+    pendingLowCodeReuseCallbacks_.clear();
+    return true;
+}
+
+void EtsAgentConnection::RejectPendingLowCodeReuseItems(
+    ani_env *env, int32_t error, AbilityRuntime::AbilityInnerErrorMsg fallbackMessage)
+{
+    std::vector<AAFwk::Want> wants;
+    std::vector<ani_ref> callbacks;
+    if (!TakePendingLowCodeReuseItems(wants, callbacks)) {
+        return;
+    }
+    for (auto &callback : callbacks) {
+        if (callback == nullptr) {
+            continue;
+        }
+        AppExecFwk::AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER,
+            reinterpret_cast<ani_object>(callback),
+            AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(
+                env, error, "", AbilityRuntime::GetInnerErrorMsg(fallbackMessage)), nullptr);
+        ReleaseObjectReference(env, callback);
+    }
 }
 
 void EtsAgentConnection::AdoptDuplicatedPendingCallbacks(std::vector<ani_ref> &&callbacks)
@@ -660,6 +895,119 @@ void EtsAgentConnection::RejectDuplicatedPendingCallbacks(
     }
     TAG_LOGD(AAFwkTag::SER_ROUTER, "RejectDuplicatedPendingCallbacks, size: %{public}zu",
         callbacks.size());
+    for (auto &callback : callbacks) {
+        if (callback == nullptr) {
+            continue;
+        }
+        AppExecFwk::AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER,
+            reinterpret_cast<ani_object>(callback),
+            AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(
+                env, error, "", AbilityRuntime::GetInnerErrorMsg(fallbackMessage)), nullptr);
+        ReleaseObjectReference(env, callback);
+    }
+}
+
+void EtsAgentConnection::AddLowCodeProxyReuseCallback(ani_env *env, ani_object asyncCallback,
+    const std::string &agentId)
+{
+    if (env == nullptr || asyncCallback == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "env or asyncCallback is null");
+        return;
+    }
+    ani_ref globalRef = nullptr;
+    ani_status status = env->GlobalReference_Create(asyncCallback, &globalRef);
+    if (status != ANI_OK || globalRef == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "GlobalReference_Create failed status: %{public}d", status);
+        return;
+    }
+    std::lock_guard<std::mutex> lock(stateLock_);
+    lowCodeProxyReuseAgentIds_.push_back(agentId);
+    lowCodeProxyReuseCallbacks_.push_back(globalRef);
+}
+
+bool EtsAgentConnection::RemoveLowCodeProxyReuseCallback(ani_env *env, const std::string &agentId)
+{
+    // Remove+release ONLY this AgentId's callback (Reuse failed). Returns false when host-connect-done
+    // already drained+resolved it, so caller skips rejecting (avoid double-settle).
+    ani_ref callback = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(stateLock_);
+        for (size_t i = 0; i < lowCodeProxyReuseAgentIds_.size(); ++i) {
+            if (lowCodeProxyReuseAgentIds_[i] == agentId) {
+                callback = lowCodeProxyReuseCallbacks_[i];
+                lowCodeProxyReuseCallbacks_.erase(lowCodeProxyReuseCallbacks_.begin() + i);
+                lowCodeProxyReuseAgentIds_.erase(lowCodeProxyReuseAgentIds_.begin() + i);
+                break;
+            }
+        }
+    }
+    if (callback == nullptr) {
+        return false;
+    }
+    ReleaseObjectReference(env, callback);
+    return true;
+}
+
+void EtsAgentConnection::SettleLowCodeProxyReuseCallbackIfPending(ani_env *env,
+    const std::string &agentId, ani_object proxy)
+{
+    // Atomically remove this AgentId's awaiting-proxy callback: resolve+release if found, else no-op
+    // (no double-settle; host-connect-done drained it). Post-Reuse re-check when host up during sync Reuse IPC.
+    ani_ref callback = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(stateLock_);
+        for (size_t i = 0; i < lowCodeProxyReuseAgentIds_.size(); ++i) {
+            if (lowCodeProxyReuseAgentIds_[i] == agentId) {
+                callback = lowCodeProxyReuseCallbacks_[i];
+                lowCodeProxyReuseCallbacks_.erase(lowCodeProxyReuseCallbacks_.begin() + i);
+                lowCodeProxyReuseAgentIds_.erase(lowCodeProxyReuseAgentIds_.begin() + i);
+                break;
+            }
+        }
+    }
+    if (callback == nullptr) {
+        return;
+    }
+    AppExecFwk::AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER,
+        reinterpret_cast<ani_object>(callback),
+        AbilityRuntime::EtsErrorUtil::CreateError(env,
+            static_cast<AbilityRuntime::AbilityErrorCode>(AbilityRuntime::AbilityErrorCode::ERROR_OK)),
+        proxy);
+    ReleaseObjectReference(env, callback);
+}
+
+void EtsAgentConnection::ResolveLowCodeProxyReuseCallbacks(ani_env *env, ani_object proxyObj)
+{
+    std::vector<ani_ref> callbacks;
+    {
+        std::lock_guard<std::mutex> lock(stateLock_);
+        callbacks = std::move(lowCodeProxyReuseCallbacks_);
+        lowCodeProxyReuseCallbacks_.clear();
+        lowCodeProxyReuseAgentIds_.clear();
+    }
+    for (auto &callback : callbacks) {
+        if (callback == nullptr) {
+            continue;
+        }
+        AppExecFwk::AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER,
+            reinterpret_cast<ani_object>(callback),
+            AbilityRuntime::EtsErrorUtil::CreateError(env,
+                static_cast<AbilityRuntime::AbilityErrorCode>(AbilityRuntime::AbilityErrorCode::ERROR_OK)),
+            proxyObj);
+        ReleaseObjectReference(env, callback);
+    }
+}
+
+void EtsAgentConnection::RejectLowCodeProxyReuseCallbacks(
+    ani_env *env, int32_t error, AbilityRuntime::AbilityInnerErrorMsg fallbackMessage)
+{
+    std::vector<ani_ref> callbacks;
+    {
+        std::lock_guard<std::mutex> lock(stateLock_);
+        callbacks = std::move(lowCodeProxyReuseCallbacks_);
+        lowCodeProxyReuseCallbacks_.clear();
+        lowCodeProxyReuseAgentIds_.clear();
+    }
     for (auto &callback : callbacks) {
         if (callback == nullptr) {
             continue;
@@ -815,10 +1163,40 @@ bool EtsAgentConnection::IsDisconnecting()
     return disconnecting_;
 }
 
+bool EtsAgentConnection::AddLowCodeAgentId(const std::string &agentId)
+{
+    std::lock_guard<std::mutex> lock(stateLock_);
+    return lowCodeAgentIds_.insert(agentId).second;
+}
+
+bool EtsAgentConnection::RemoveLowCodeAgentId(const std::string &agentId)
+{
+    std::lock_guard<std::mutex> lock(stateLock_);
+    return lowCodeAgentIds_.erase(agentId) > 0 && lowCodeAgentIds_.empty();
+}
+
+bool EtsAgentConnection::HasLowCodeAgentId(const std::string &agentId)
+{
+    std::lock_guard<std::mutex> lock(stateLock_);
+    return lowCodeAgentIds_.find(agentId) != lowCodeAgentIds_.end();
+}
+
+bool EtsAgentConnection::HasAnyLowCodeAgentId()
+{
+    std::lock_guard<std::mutex> lock(stateLock_);
+    return !lowCodeAgentIds_.empty();
+}
+
 void EtsAgentConnection::SetDisconnectCompleteHandler(DisconnectCompleteHandler handler)
 {
     std::lock_guard<std::mutex> lock(stateLock_);
     disconnectCompleteHandler_ = std::move(handler);
+}
+
+void EtsAgentConnection::SetConnectCompleteHandler(ConnectCompleteHandler handler)
+{
+    std::lock_guard<std::mutex> lock(stateLock_);
+    connectCompleteHandler_ = std::move(handler);
 }
 } // namespace AgentRuntime
 } // namespace OHOS

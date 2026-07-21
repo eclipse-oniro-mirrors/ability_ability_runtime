@@ -158,8 +158,7 @@ struct AgentHostDisconnectDoneRequest {
 };
 
 struct AgentHostDisconnectDoneResult {
-    sptr<AAFwk::IAbilityConnection> callback = nullptr;
-    bool releaseConnection = false;
+    std::vector<sptr<AAFwk::IAbilityConnection>> callbacks;
 };
 
 struct AgentStandardConnectRequest {
