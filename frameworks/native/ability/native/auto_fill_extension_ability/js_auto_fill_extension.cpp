@@ -147,7 +147,7 @@ void JsAutoFillExtension::Init(const std::shared_ptr<AbilityLocalRecord> &record
     }
     std::string srcPath(abilityInfo_->moduleName + "/");
     srcPath.append(abilityInfo_->srcEntrance);
-    srcPath.erase(srcPath.rfind('.'));
+    RemoveFileExtension(srcPath);
     srcPath.append(".abc");
 
     std::string moduleName(abilityInfo_->moduleName);

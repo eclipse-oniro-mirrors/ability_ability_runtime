@@ -52,9 +52,7 @@ bool JsChildProcess::Init(const std::shared_ptr<ChildProcessStartInfo> &info)
         return false;
     }
     std::string srcPath = info->srcEntry;
-    if (srcPath.rfind(".") != std::string::npos) {
-        srcPath.erase(srcPath.rfind("."));
-    }
+    RemoveFileExtension(srcPath);
     srcPath.append(".abc");
     std::string moduleName(info->moduleName);
     moduleName.append("::").append(info->name);
