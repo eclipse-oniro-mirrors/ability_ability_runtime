@@ -123,7 +123,12 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
                 allConfigInfos.push_back(item);
             }
         }
+        // bundle 更新可能删除部分意图,先清空 KVStore 中该 bundle 的全部 function,
+        // 避免 BatchRegisterInsightIntentFunctions 增量写入后旧 function 残留
+        CliTool::UnregisterInsightIntentFunctions(bundleName);
         if (allInfos.insightIntents.empty() && allConfigInfos.empty()) {
+            TAG_LOGI(AAFwkTag::INTENT, "no intent in new version, cleared stale functions, bundle:%{public}s",
+                bundleName.c_str());
             return;
         }
         TAG_LOGI(AAFwkTag::INTENT, "collected intents for register, profile:%{public}zu config:%{public}zu, "
