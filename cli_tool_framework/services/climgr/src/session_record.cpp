@@ -95,7 +95,7 @@ bool SessionRecord::OutputDrained() const
         stderrClosed_.load(std::memory_order_acquire);
 }
 
-bool SessionRecord::BeginCleanup()
+bool SessionRecord::TryClaimCleanup()
 {
     bool expected = false;
     return cleanupStarted_.compare_exchange_strong(expected, true, std::memory_order_acq_rel);

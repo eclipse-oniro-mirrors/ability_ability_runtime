@@ -52,7 +52,7 @@ constexpr int32_t MILLISECOND_COEFFICIENT = 1000;
 constexpr int64_t MAX_TIMEOUT = 30 * 60; // 30 m
 constexpr size_t PREFIX_DOUBLE_DASH_LEN = 2;
 }
-int32_t ToolUtil::ValidateProperties(const ToolInfo &toolInfo, ExecToolParam &param,
+int32_t ToolUtil::ValidateProperties(const ToolInfo &toolInfo, const ExecToolParam &param,
     AccessToken::AccessTokenID tokenId, std::string& detail)
 {
     if (!param.subcommand.empty()) {
@@ -86,7 +86,7 @@ int32_t ToolUtil::ValidateProperties(const ToolInfo &toolInfo, ExecToolParam &pa
     return ValidateInputSchemaProperties(it->second.inputSchema, param.args, detail);
 }
 
-int32_t ToolUtil::ValidateExecOptionsProperties(ExecOptions &options, std::string& detail)
+int32_t ToolUtil::ValidateExecOptionsProperties(const ExecOptions &options, std::string& detail)
 {
     if (options.timeout < 0 || options.yieldMs < 0) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "yieldMs or timeout < 0");

@@ -78,7 +78,12 @@ public:
     void MarkStderrClosed();
     bool OutputDrained() const;
 
-    bool BeginCleanup();
+    /**
+     * @brief Atomically claim responsibility for cleaning this session.
+     *
+     * @return true if this caller is the first cleanup owner, false if cleanup has already been claimed.
+     */
+    bool TryClaimCleanup();
 
     void AppendOutput(bool isStdout, const std::string &data);
 

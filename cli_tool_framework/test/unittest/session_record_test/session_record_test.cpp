@@ -51,8 +51,8 @@ HWTEST_F(SessionRecordTest, SessionRecord_State_0100, TestSize.Level1)
     EXPECT_FALSE(record.SetBackground(true));
     EXPECT_TRUE(record.Background());
 
-    EXPECT_TRUE(record.BeginCleanup());
-    EXPECT_FALSE(record.BeginCleanup());
+    EXPECT_TRUE(record.TryClaimCleanup());
+    EXPECT_FALSE(record.TryClaimCleanup());
 }
 
 /**
