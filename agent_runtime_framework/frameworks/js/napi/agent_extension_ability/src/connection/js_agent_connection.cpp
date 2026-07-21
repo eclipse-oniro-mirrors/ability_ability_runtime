@@ -274,7 +274,6 @@ void JSAgentConnection::RejectConnectAndCleanup(napi_env env, napi_value error, 
         napiAsyncTask_->Reject(env, error);
     }
     RejectDuplicatedPendingTask(env, error);
-    RejectLowCodeProxyReuseTasks(env, error);
     RejectPendingLowCodeReuseTasks(env, error);
     napiAsyncTask_ = nullptr;
     AgentConnectionUtils::RemoveAgentConnection(connectionId_);
@@ -337,7 +336,6 @@ void JSAgentConnection::HandleOnAbilityConnectDone(const AppExecFwk::ElementName
         napiAsyncTask_->ResolveWithNoError(env_, proxy);
     }
     ResolveDuplicatedPendingTask(env_, proxy);
-    ResolveLowCodeProxyReuseTasks(env_, proxy);
     // host connected: register staged non-first AgentIds via Reuse and resolve them.
     {
         ConnectCompleteHandler handler;
@@ -385,9 +383,8 @@ void JSAgentConnection::HandleOnAbilityDisconnectDone(const AppExecFwk::ElementN
             AbilityRuntime::GetInnerErrorMsg(AbilityRuntime::AbilityInnerErrorMsg::CONNECT_AGENT_EXTENSION_FAILED));
         napiAsyncTask_->Reject(env_, innerError);
         RejectDuplicatedPendingTask(env_, innerError);
-        // Reject Mechanism A (staged low-code reuse queued while host CONNECTING): host never came up,
-        // drain never runs, promises hang. Mechanism B (lowCodeProxyReuseTasks_) too; no-op once H1 stops feeding.
-        RejectLowCodeProxyReuseTasks(env_, innerError);
+        // Reject staged low-code reuse queued while host CONNECTING: host never came up, drain never runs,
+        // promises hang.
         RejectPendingLowCodeReuseTasks(env_, innerError);
         napiAsyncTask_ = nullptr;
     }
@@ -440,6 +437,7 @@ void JSAgentConnection::SetDisconnectAsyncTask(const std::shared_ptr<AbilityRunt
 void JSAgentConnection::AddDuplicatedPendingTask(std::unique_ptr<AbilityRuntime::NapiAsyncTask> &task)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "AddDuplicatedPendingTask");
+    std::lock_guard<std::mutex> lock(stateLock_);
     duplicatedPendingTaskList_.push_back(std::move(task));
 }
 
@@ -512,6 +510,7 @@ void JSAgentConnection::RejectPendingLowCodeReuseTasks(napi_env env, napi_value 
 void JSAgentConnection::AdoptDuplicatedPendingTasks(
     std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> &&tasks)
 {
+    std::lock_guard<std::mutex> lock(stateLock_);
     for (auto &task : tasks) {
         if (task != nullptr) {
             duplicatedPendingTaskList_.push_back(std::move(task));
@@ -521,69 +520,34 @@ void JSAgentConnection::AdoptDuplicatedPendingTasks(
 
 void JSAgentConnection::ResolveDuplicatedPendingTask(napi_env env, napi_value proxy)
 {
-    TAG_LOGD(AAFwkTag::SER_ROUTER, "ResolveDuplicatedPendingTask, count: %{public}zu",
-        duplicatedPendingTaskList_.size());
-    for (auto &task : duplicatedPendingTaskList_) {
+    std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> tasks;
+    {
+        std::lock_guard<std::mutex> lock(stateLock_);
+        tasks = std::move(duplicatedPendingTaskList_);
+        duplicatedPendingTaskList_.clear();
+    }
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "ResolveDuplicatedPendingTask, count: %{public}zu", tasks.size());
+    for (auto &task : tasks) {
         if (task != nullptr) {
             task->ResolveWithNoError(env, proxy);
         }
     }
-    duplicatedPendingTaskList_.clear();
 }
 
 void JSAgentConnection::RejectDuplicatedPendingTask(napi_env env, napi_value error)
 {
-    TAG_LOGD(AAFwkTag::SER_ROUTER, "RejectDuplicatedPendingTask, count: %{public}zu",
-        duplicatedPendingTaskList_.size());
-    for (auto &task : duplicatedPendingTaskList_) {
+    std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> tasks;
+    {
+        std::lock_guard<std::mutex> lock(stateLock_);
+        tasks = std::move(duplicatedPendingTaskList_);
+        duplicatedPendingTaskList_.clear();
+    }
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "RejectDuplicatedPendingTask, count: %{public}zu", tasks.size());
+    for (auto &task : tasks) {
         if (task != nullptr) {
             task->Reject(env, error);
         }
     }
-    duplicatedPendingTaskList_.clear();
-}
-
-void JSAgentConnection::AddLowCodeProxyReuseTask(std::shared_ptr<AbilityRuntime::NapiAsyncTask> task)
-{
-    lowCodeProxyReuseTasks_.push_back(std::move(task));
-}
-
-void JSAgentConnection::RejectLowCodeProxyReuseTask(napi_env env, napi_value error,
-    const std::shared_ptr<AbilityRuntime::NapiAsyncTask> &task)
-{
-    // Reject only this request's own task (identity match), erase it; never touch sibling reuses
-    // awaiting the host proxy.
-    auto it = std::find_if(lowCodeProxyReuseTasks_.begin(), lowCodeProxyReuseTasks_.end(),
-        [&task](const std::shared_ptr<AbilityRuntime::NapiAsyncTask> &t) { return t.get() == task.get(); });
-    if (it != lowCodeProxyReuseTasks_.end()) {
-        if (*it != nullptr) {
-            (*it)->Reject(env, error);
-        }
-        lowCodeProxyReuseTasks_.erase(it);
-    } else if (task != nullptr) {
-        // Host-connect-done already drained+resolved this slot before the failure reply; do not double-settle.
-        TAG_LOGW(AAFwkTag::SER_ROUTER, "low-code reuse task already resolved before failure reply");
-    }
-}
-
-void JSAgentConnection::ResolveLowCodeProxyReuseTasks(napi_env env, napi_value proxy)
-{
-    for (auto &task : lowCodeProxyReuseTasks_) {
-        if (task != nullptr) {
-            task->ResolveWithNoError(env, proxy);
-        }
-    }
-    lowCodeProxyReuseTasks_.clear();
-}
-
-void JSAgentConnection::RejectLowCodeProxyReuseTasks(napi_env env, napi_value error)
-{
-    for (auto &task : lowCodeProxyReuseTasks_) {
-        if (task != nullptr) {
-            task->Reject(env, error);
-        }
-    }
-    lowCodeProxyReuseTasks_.clear();
 }
 
 int32_t JSAgentConnection::OnSendData(const std::string &data)
