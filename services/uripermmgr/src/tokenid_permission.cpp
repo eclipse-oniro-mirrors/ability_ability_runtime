@@ -54,8 +54,9 @@ bool TokenIdPermission::VerifyFileAccessManagerPermission()
 {
     if (!initFileAccessManagerPermission_) {
         initFileAccessManagerPermission_ = true;
-        bool declaredAgentFileAccess = CheckIsPermissionRequestedByTokenId(
-            tokenId_, PermissionConstants::PERMISSION_AGENT_FILE_ACCESS, false);
+        bool declaredAgentFileAccess = CheckIsPermissionRequestedByTokenId(tokenId_,
+            PermissionConstants::PERMISSION_AGENT_FILE_ACCESS, false) &&
+            PermissionVerification::GetInstance()->IsSystemAppCallByTokenId(tokenId_);
         if (declaredAgentFileAccess) {
             haveFileAccessManagerPermission_ = PermissionVerification::GetInstance()->VerifyPermissionByTokenId(
                 tokenId_, PermissionConstants::PERMISSION_AGENT_FILE_ACCESS);
