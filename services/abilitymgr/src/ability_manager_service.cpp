@@ -3271,6 +3271,7 @@ int AbilityManagerService::StartUIAbilityBySCBDefault(sptr<SessionInfo> sessionI
     int32_t appIndex = 0;
     auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
     if (sessionInfo->want.HasParameter(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX)) {
+        sessionInfo->want.RemoveParam(AbilityRuntime::ServerConstant::DLP_INDEX);
         appIndex = sessionInfo->want.GetIntParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, 0);
         auto cloneRet = HandleSandboxCloneLaunch(sessionInfo, sandboxCloneParams, currentUserId, eventInfo);
         if (cloneRet != ERR_OK) {
