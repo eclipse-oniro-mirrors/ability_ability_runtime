@@ -113,28 +113,14 @@ int32_t ProcessManager::CreateChildProcess(const ExecToolParam &param, const std
 {
     if (!CreatePipes(*record)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create pipes");
-        // Report process creation failure
-        std::string bundleName;
-        auto tokenId = static_cast<AccessToken::AccessTokenID>(IPCSkeleton::GetCallingTokenID());
-        AppExecFwk::BundleInfo bundleInfo;
-        if (ToolUtil::GetBundleInfoByTokenId(tokenId, bundleInfo)) {
-            bundleName = bundleInfo.name;
-        }
-        ReportCliExecuteFailed(bundleName, param.toolName, REASON_PROCESS_CREATE_FAILED);
+        ReportCliExecuteFailed(record->callerBundleName, param.toolName, REASON_PROCESS_CREATE_FAILED);
         return ERR_NO_INIT;
     }
     pid_t pid = fork();
     if (pid < 0) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to fork: %{public}d", errno);
         CloseAllPipes(*record);
-        // Report process creation failure
-        std::string bundleName;
-        auto tokenId = static_cast<AccessToken::AccessTokenID>(IPCSkeleton::GetCallingTokenID());
-        AppExecFwk::BundleInfo bundleInfo;
-        if (ToolUtil::GetBundleInfoByTokenId(tokenId, bundleInfo)) {
-            bundleName = bundleInfo.name;
-        }
-        ReportCliExecuteFailed(bundleName, param.toolName, REASON_PROCESS_CREATE_FAILED);
+        ReportCliExecuteFailed(record->callerBundleName, param.toolName, REASON_PROCESS_CREATE_FAILED);
         return ERR_NO_INIT;
     }
 

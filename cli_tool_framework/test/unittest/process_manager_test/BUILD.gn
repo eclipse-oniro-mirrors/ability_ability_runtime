@@ -36,7 +36,6 @@ ohos_unittest("process_manager_test") {
 
   sources = [
     "process_manager_test.cpp",
-    "${cli_tool_framework_path}/services/common/src/cli_event_report.cpp",
     "${cli_tool_framework_path}/services/climgr/src/process_manager.cpp",
     "${cli_tool_framework_path}/services/climgr/src/tool_util.cpp",
     "${cli_tool_framework_path}/services/common/src/permission_util.cpp",
@@ -52,6 +51,7 @@ ohos_unittest("process_manager_test") {
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_path}/cli_tool_framework/interfaces/cli_tool:cli_tool_client",
     "${ability_runtime_path}/cli_tool_framework/services/climgr:climgr",
+    "${cli_tool_framework_path}/services/common:cli_common",
     "${ability_runtime_services_path}/common:hisysevent_report_static",
   ]
 

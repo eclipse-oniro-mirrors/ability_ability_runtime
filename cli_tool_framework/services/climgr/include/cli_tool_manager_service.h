@@ -237,6 +237,7 @@ private:
     static sptr<CliToolManagerService> instance_;
 
     static void sigchld_handler(int32_t sig);
+    static void ExitSignalHandler(int32_t sig);
 
     // Dedicated thread that owns all SIGCHLD reaping and post-exit cleanup. The signal handler only writes one
     // wake byte to reapPipeWriteFd_; all waitpid()/WaitPid()/Killpg() work runs here in normal (non-signal)
