@@ -70,6 +70,15 @@ inline constexpr size_t ArraySize(T (&)[N]) noexcept
     return N;
 }
 
+inline void RemoveFileExtension(std::string& path)
+{
+    auto lastDot = path.rfind('.');
+    auto lastSep = path.rfind('/');
+    if (lastDot != std::string::npos && (lastSep == std::string::npos || lastDot > lastSep)) {
+        path.erase(lastDot);
+    }
+}
+
 inline napi_value CreateJsUndefined(napi_env env)
 {
     napi_value result = nullptr;

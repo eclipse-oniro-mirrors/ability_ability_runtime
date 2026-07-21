@@ -2378,7 +2378,7 @@ void MainThread::ProcessMainAbility(const AbilityInfo &info, const std::unique_p
         }
         srcPath.append("/");
         srcPath.append(info.srcEntrance);
-        srcPath.erase(srcPath.rfind("."));
+        AbilityRuntime::RemoveFileExtension(srcPath);
         srcPath.append(".abc");
         TAG_LOGD(AAFwkTag::UIABILITY, "jsAbility srcPath: %{public}s", srcPath.c_str());
     }

@@ -236,7 +236,7 @@ void JsAbilityStage::LoadModule(const AppExecFwk::HapModuleInfo &hapModuleInfo)
     } else if (!hapModuleInfo.srcEntrance.empty()) {
         srcPath.append("/");
         srcPath.append(hapModuleInfo.srcEntrance);
-        srcPath.erase(srcPath.rfind("."));
+        RemoveFileExtension(srcPath);
         srcPath.append(".abc");
         std::unique_ptr<NativeReference> moduleObj = jsRuntime_.LoadModule(moduleName, srcPath, hapModuleInfo.hapPath,
             hapModuleInfo.compileMode == AppExecFwk::CompileMode::ES_MODULE, commonChunkFlag);
