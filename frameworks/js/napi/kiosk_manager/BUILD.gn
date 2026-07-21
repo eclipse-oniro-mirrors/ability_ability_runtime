@@ -16,6 +16,7 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 template("kioskmanager") {
   ohos_shared_library(target_name) {
+    branch_protector_ret = "pac_ret"
     sanitize = {
       cfi = true
       cfi_cross_dso = true

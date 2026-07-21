@@ -16,6 +16,7 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 template("abilitymanager") {
   ohos_shared_library(target_name) {
+    branch_protector_ret = "pac_ret"
     forward_variables_from(invoker, [ "relative_install_dir" ])
 
     configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
