@@ -43,6 +43,7 @@ constexpr int32_t INDEX_ONE = 1;
 constexpr int32_t MAX_KILL_PROCESS_PID_COUNT = 100;
 constexpr int32_t MAX_UPDATE_CONFIG_SIZE = 100;
 constexpr int32_t MAX_WANT_LIST_SIZE = 4;
+constexpr int32_t INVALID_USER_ID = -1;
 } // namespace
 AbilityManagerStub::AbilityManagerStub()
 {}
@@ -2462,8 +2463,12 @@ int AbilityManagerStub::ContinueAbilityInner(MessageParcel &data, MessageParcel 
     std::string deviceId = data.ReadString();
     int32_t missionId = data.ReadInt32();
     uint32_t versionCode = data.ReadUint32();
+    int32_t userId = INVALID_USER_ID;
+    if (!data.ReadInt32(userId)) {
+        userId = INVALID_USER_ID;
+    }
     AAFWK::ContinueRadar::GetInstance().SaveDataContinue("ContinueAbility");
-    int32_t result = ContinueAbility(deviceId, missionId, versionCode);
+    int32_t result = ContinueAbility(deviceId, missionId, versionCode, userId);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "result=%{public}d", result);
     return result;
 }

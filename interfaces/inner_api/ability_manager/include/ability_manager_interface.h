@@ -1100,7 +1100,8 @@ public:
         return 0;
     }
 
-    virtual int ContinueAbility(const std::string &deviceId, int32_t missionId, uint32_t versionCode) = 0;
+    virtual int ContinueAbility(const std::string &deviceId, int32_t missionId, uint32_t versionCode,
+        int32_t userId = -1) = 0;
 
     virtual int StartContinuation(const Want &want, const sptr<IRemoteObject> &abilityToken, int32_t status) = 0;
 
