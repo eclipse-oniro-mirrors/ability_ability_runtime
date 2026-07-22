@@ -3510,19 +3510,13 @@ bool AbilityManagerService::IsDmsAlive() const
 
 void AbilityManagerService::AppUpgradeCompleted(int32_t uid, int32_t installType)
 {
-    if (!AAFwk::PermissionVerification::GetInstance()->IsSACall()) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "not sa call");
+    auto userId = uid / BASE_USER_RANGE;
+    if (!VerifyPermissionAndUserForUpgrade(uid, userId)) {
         return;
     }
 
     auto bms = AbilityUtil::GetBundleManagerHelper();
     CHECK_POINTER(bms);
-    auto userId = uid / BASE_USER_RANGE;
-    if (userId != U0_USER_ID && userId != U1_USER_ID &&
-        !AbilityRuntime::UserController::GetInstance().IsForegroundUser(userId)) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "not current user");
-        return;
-    }
 
     AppExecFwk::BundleInfo bundleInfo;
     std::string bundleName;
@@ -3544,11 +3538,13 @@ void AbilityManagerService::AppUpgradeCompleted(int32_t uid, int32_t installType
 
     KeepAliveType type = KeepAliveType::UNSPECIFIED;
     if (!KeepAliveUtils::IsKeepAliveBundle(bundleInfo, userId, type)) {
-        TAG_LOGW(AAFwkTag::ABILITYMGR, "not keep-alive application");
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "not keep-alive application uid: %{public}d", uid);
         return;
     }
 
     std::vector<AppExecFwk::BundleInfo> bundleInfos = { bundleInfo };
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "keep-alive upgrade completed uid: %{public}d, keepAliveType: %{public}d, "
+        "installType: %{public}d", uid, type, installType);
     if (type == KeepAliveType::THIRD_PARTY && installType == INSTALL_TYPE_UPGRADE) {
         KeepAliveProcessManager::GetInstance().StartKeepAliveAfterAppUpgrade(bundleInfos, uid);
         if (IN_PROCESS_CALL(KeepAliveProcessManager::GetInstance().CheckNeedRestartAfterUpgrade(uid))) {
@@ -3563,6 +3559,23 @@ void AbilityManagerService::AppUpgradeCompleted(int32_t uid, int32_t installType
             residentProcessManager->StartResidentProcess(bundleInfos);
         }
     }
+}
+
+bool AbilityManagerService::VerifyPermissionAndUserForUpgrade(int32_t uid, int32_t userId) const
+{
+    if (!AAFwk::PermissionVerification::GetInstance()->IsSACall()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "Permission denied: not SA call, uid=%{public}d", uid);
+        return false;
+    }
+
+    if (userId != U0_USER_ID && userId != U1_USER_ID &&
+        !AbilityRuntime::UserController::GetInstance().IsForegroundUser(userId)) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "Invalid user for upgrade: userId=%{public}d, uid=%{public}d",
+            userId, uid);
+        return false;
+    }
+
+    return true;
 }
 
 int32_t AbilityManagerService::RecordAppExitReason(const ExitReason &exitReason)

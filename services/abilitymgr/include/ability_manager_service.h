@@ -1878,6 +1878,14 @@ public:
     void AppUpgradeCompleted(int32_t uid, int32_t installType);
 
     /**
+     * Verify permission and user for app upgrade.
+     * @param uid The uid of the app.
+     * @param userId The userId.
+     * @return Returns true if verification passed, others false.
+     */
+    bool VerifyPermissionAndUserForUpgrade(int32_t uid, int32_t userId) const;
+
+    /**
      * Record app exit reason.
      * @param exitReason The reason of app exit.
      * @return Returns ERR_OK on success, others on failure.
