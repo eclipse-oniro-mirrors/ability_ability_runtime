@@ -1323,6 +1323,10 @@ napi_value JsWantAgent::CreateJsCompletedData(napi_env env, const CompletedDispa
     }
 
     napi_value jsWantAgent = OHOS::AppExecFwk::WrapWantAgent(env, pWantAgent, nullptr);
+    if (jsWantAgent == nullptr) {
+        delete pWantAgent;
+        pWantAgent = nullptr;
+    }
     napi_set_named_property(env, objValue, "info", jsWantAgent);
     napi_set_named_property(env, objValue, "want", CreateJsWant(env, data.GetWant()));
     napi_set_named_property(env, objValue, "finalCode", CreateJsValue(env, data.GetResultCode()));
