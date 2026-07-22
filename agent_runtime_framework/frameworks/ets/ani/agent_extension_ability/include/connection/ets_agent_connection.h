@@ -239,22 +239,6 @@ public:
     void RejectDuplicatedPendingCallbacks(
         ani_env *env, int32_t error, AbilityRuntime::AbilityInnerErrorMsg fallbackMessage);
 
-    // Isolated low-code reuse slots (different AgentId on a still-connecting host), separate from
-    // duplicatedPendingCallbacks_; registered before Reuse IPC so host-connect-done finds it (no orphan);
-    // failed reuse rejects only its own AgentId.
-    void AddLowCodeProxyReuseCallback(ani_env *env, ani_object asyncCallback, const std::string &agentId);
-    // Remove+release this AgentId's own callback (Reuse failed); false if host-connect-done already
-    // drained+resolved it (caller must skip to avoid double-settle).
-    bool RemoveLowCodeProxyReuseCallback(ani_env *env, const std::string &agentId);
-    // Resolve this AgentId's own callback with the proxy if still waiting (host connected during Reuse IPC); no-op if
-    // host-connect-done already drained+resolved it. Closes GetProxyObject->Add TOCTOU orphan on post-Reuse re-check.
-    void SettleLowCodeProxyReuseCallbackIfPending(ani_env *env, const std::string &agentId, ani_object proxy);
-    // Resolve all waiting low-code reuse callbacks with the proxy (host just connected) + release.
-    void ResolveLowCodeProxyReuseCallbacks(ani_env *env, ani_object proxyObj);
-    // Reject all waiting low-code reuse callbacks (host connect failed) + release.
-    void RejectLowCodeProxyReuseCallbacks(
-        ani_env *env, int32_t error, AbilityRuntime::AbilityInnerErrorMsg fallbackMessage);
-
     /**
      * Called when agent extension sends data.
      * Schedules async task to call ETS onData callback.
@@ -409,8 +393,7 @@ private:
     // Handle no-callback / resultCode-failure / proxy-failure cleanup; returns nullptr once DetachAniEnv has run,
     // on success applies the proxy and returns it.
     ani_object DispatchConnectResult(ani_env *env, const sptr<IRemoteObject> &remoteObject,
-        int resultCode, ani_ref primaryCallback, bool hasPrimaryCallback, bool hasDuplicatedPendingCallback,
-        bool isAttachThread);
+        int resultCode, ani_ref primaryCallback, bool hasPrimaryCallback, bool isAttachThread);
 
 private:
     ani_vm *etsVm_ = nullptr;
@@ -446,10 +429,6 @@ private:
      * List of pending callbacks for duplicate connection requests.
      */
     std::vector<ani_ref> duplicatedPendingCallbacks_;
-    // Low-code without-proxy reuse callbacks awaiting the host proxy; parallel agentIds vector so a failed reuse
-    // removes only its own callback by AgentId.
-    std::vector<std::string> lowCodeProxyReuseAgentIds_;
-    std::vector<ani_ref> lowCodeProxyReuseCallbacks_;
 
     std::mutex stateLock_;
     bool disconnecting_ = false;

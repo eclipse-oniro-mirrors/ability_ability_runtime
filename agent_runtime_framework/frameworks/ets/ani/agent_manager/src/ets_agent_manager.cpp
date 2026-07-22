@@ -962,8 +962,6 @@ void EtsAgentManager::ConnectAgentExtensionAbility(ani_env *env, ani_object aniW
         // Sync connect failed: host never connects, drain never runs -> reject staged (no hang).
         connection->RejectDuplicatedPendingCallbacks(env, innerErrorCode,
             AbilityRuntime::AbilityInnerErrorMsg::CONNECT_AGENT_EXTENSION_FAILED);
-        connection->RejectLowCodeProxyReuseCallbacks(env, innerErrorCode,
-            AbilityRuntime::AbilityInnerErrorMsg::CONNECT_AGENT_EXTENSION_FAILED);
         connection->RejectPendingLowCodeReuseItems(env, innerErrorCode,
             AbilityRuntime::AbilityInnerErrorMsg::CONNECT_AGENT_EXTENSION_FAILED);
         AgentConnectionUtils::RemoveAgentConnection(connectionId);

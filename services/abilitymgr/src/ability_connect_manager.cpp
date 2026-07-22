@@ -2620,7 +2620,7 @@ std::string AbilityConnectManager::GetServiceKey(const std::shared_ptr<BaseExten
         serviceKey = serviceKey + std::to_string(service->GetIntParam(FRS_APP_INDEX, 0));
     } else if (service->GetAbilityInfo().extensionAbilityType == AppExecFwk::ExtensionAbilityType::AGENT &&
         service->GetWant().GetIntParam(AgentRuntime::AGENT_CARD_TYPE_KEY, -1) !=
-        static_cast<int32_t>(AgentRuntime::AgentCardType::LOW_CODE)) {
+            static_cast<int32_t>(AgentRuntime::AgentCardType::LOW_CODE)) {
         serviceKey = serviceKey + service->GetStringParam(AgentRuntime::AGENTID_KEY);
     } else if (service->GetAbilityInfo().extensionAbilityType ==
                AppExecFwk::ExtensionAbilityType::MODULAR_OBJECT) {

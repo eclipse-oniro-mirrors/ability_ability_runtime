@@ -232,17 +232,6 @@ public:
      */
     void RejectDuplicatedPendingTask(napi_env env, napi_value error);
 
-    // Isolated low-code without-proxy reuse slots (different AgentId on a connecting host). Separate from
-    // duplicatedPendingTaskList_: a failed reuse rejects only its own task, never a sibling's.
-    void AddLowCodeProxyReuseTask(std::shared_ptr<AbilityRuntime::NapiAsyncTask> task);
-    // Reject only the given task (by identity) and erase it; never touches sibling reuses.
-    void RejectLowCodeProxyReuseTask(napi_env env, napi_value error,
-        const std::shared_ptr<AbilityRuntime::NapiAsyncTask> &task);
-    // Resolve all waiting low-code reuse tasks with the proxy (host just connected) and clear.
-    void ResolveLowCodeProxyReuseTasks(napi_env env, napi_value proxy);
-    // Reject all waiting low-code reuse tasks (host connect failed) and clear.
-    void RejectLowCodeProxyReuseTasks(napi_env env, napi_value error);
-
     /**
      * Called when agent extension sends data.
      * Schedules async task to call JavaScript onData callback.
@@ -419,9 +408,6 @@ private:
      * List of pending tasks for duplicate connection requests.
      */
     std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> duplicatedPendingTaskList_;
-    // low-code reuse tasks awaiting host proxy; shared_ptr so Reuse complete callback and container co-own
-    // (reject-by-identity).
-    std::vector<std::shared_ptr<AbilityRuntime::NapiAsyncTask>> lowCodeProxyReuseTasks_;
 
     std::mutex stateLock_;
     bool disconnecting_ = false;
