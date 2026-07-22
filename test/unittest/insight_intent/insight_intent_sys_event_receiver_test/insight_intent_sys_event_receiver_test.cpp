@@ -388,5 +388,38 @@ HWTEST_F(InsightIntentSysEventReceiverTest, HandleUserSwitched_CacheInitialized_
     sysEventReceiver->OnReceiveEvent(data);
     EXPECT_EQ(sysEventReceiver->lastUserId_, OTHER_USER_ID);
 }
+
+/**
+ * @tc.name: InsightIntentSysEventReceiverTest_UpdateInsightIntentEvent_0012
+ * @tc.desc: Regression test for bundle-update path. UpdateInsightIntentEvent must clear
+ *           stale KVStore functions before BatchRegisterInsightIntentFunctions so removed
+ *           intents do not linger when the new version declares fewer intents than the old.
+ *           Host limitation: BundleMgrHelper / CliToolMGRClient IPC unavailable in host env,
+ *           so this case verifies code-path reachability and no-crash only. End-to-end data
+ *           correctness is covered by integration tests.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentSysEventReceiverTest, UpdateInsightIntentEvent_0012, TestSize.Level1)
+{
+    // invalid userId: parameter guard rejects before ffrt task is submitted
+    AppExecFwk::ElementName elementInvalidUser("", TEST_BUNDLE_NAME, "MainAbility", TEST_MODULE_NAME);
+    InsightIntentEventMgr::UpdateInsightIntentEvent(elementInvalidUser, INVALID_USER_ID);
+
+    // empty bundleName: parameter guard rejects
+    AppExecFwk::ElementName elementEmptyBundle("", INVALID_BUNDLE_NAME, "MainAbility", TEST_MODULE_NAME);
+    InsightIntentEventMgr::UpdateInsightIntentEvent(elementEmptyBundle, MAIN_USER_ID);
+
+    // non-existent bundle: GetBundleInfoV9 fails inside ffrt task, early-returns
+    AppExecFwk::ElementName elementNonExist("", "com.nonexistent.bundle", "MainAbility", TEST_MODULE_NAME);
+    InsightIntentEventMgr::UpdateInsightIntentEvent(elementNonExist, MAIN_USER_ID);
+
+    // multi-module: exercises moduleName split loop inside ffrt task
+    AppExecFwk::ElementName elementMulti("", TEST_BUNDLE_NAME, "MainAbility", MULTI_MODULE_NAME);
+    InsightIntentEventMgr::UpdateInsightIntentEvent(elementMulti, MAIN_USER_ID);
+
+    // valid-looking input: exercises full path until BundleMgrHelper IPC fails in host env
+    AppExecFwk::ElementName elementValid("", TEST_BUNDLE_NAME, "MainAbility", TEST_MODULE_NAME);
+    InsightIntentEventMgr::UpdateInsightIntentEvent(elementValid, MAIN_USER_ID);
+}
 } // namespace AbilityRuntime
 } // namespace OHOS
