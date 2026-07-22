@@ -80,6 +80,7 @@ ohos_unittest("agent_host_connection_test") {
     "googletest:gtest_main",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
+    "init:libbegetutil",
     "ipc:ipc_core",
     "json:nlohmann_json_static",
     "kv_store:distributeddata_inner",

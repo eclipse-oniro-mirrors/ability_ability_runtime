@@ -19,6 +19,7 @@
 
 #include "ability_manager_errors.h"
 #include "accesstoken_kit.h"
+#include "app_utils.h"
 #include "exit_info_data_manager.h"
 #include "ffrt.h"
 #include "hitrace_meter.h"
@@ -87,6 +88,10 @@ bool AppExitReasonDataManager::CheckKvStore()
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     AAFwk::RecordCostTimeUtil timeRecord("CheckKvStore");
     TAG_LOGD(AAFwkTag::ABILITYMGR, "AppExitReasonDataManager::CheckKvStore start");
+    if (AAFwk::AppUtils::GetInstance().IsBopdOrRescueMode()) {
+        TAG_LOGW(AAFwkTag::SER_ROUTER, "Skip KvStore operation in bopd or rescue mode");
+        return false;
+    }
     if (kvStorePtr_ != nullptr) {
         return true;
     }

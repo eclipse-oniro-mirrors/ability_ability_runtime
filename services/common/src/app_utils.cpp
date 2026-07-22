@@ -990,5 +990,30 @@ bool AppUtils::IsSupportNativeUIAbility()
     TAG_LOGD(AAFwkTag::DEFAULT, "IsSupportNativeUIAbility: %{public}d", isSupportNativeUIAbility_.value);
     return isSupportNativeUIAbility_.value;
 }
+
+bool AppUtils::IsBopdMode()
+{
+    const std::unordered_set<std::string> bopdModeSet = {
+        "0x2",
+        "0x3",
+        "0x6",
+        "0x7",
+        "0xa",
+        "0xe",
+        "0xf",
+    };
+    auto mode = system::GetParameter("ohos.boot.bopd.mode", "NA");
+    return bopdModeSet.find(mode) != bopdModeSet.end();
+}
+
+bool AppUtils::IsBopdOrRescueMode()
+{
+    if (!isBopdOrRescueMode_.isLoaded) {
+        isBopdOrRescueMode_.value = (IsBopdMode() || system::GetParameter("soc.boot.mode", "") == "rescue");
+        isBopdOrRescueMode_.isLoaded = true;
+    }
+    TAG_LOGD(AAFwkTag::DEFAULT, "IsBopdOrRescueMode: %{public}d", isBopdOrRescueMode_.value);
+    return isBopdOrRescueMode_.value;
+}
 }  // namespace AAFwk
 }  // namespace OHOS

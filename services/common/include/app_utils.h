@@ -381,6 +381,13 @@ public:
     bool IsSupportNativeUIAbility();
 
     bool IsSupportDelayedProcessExit();
+
+    /**
+     * IsBopdOrRescueMode, check if system is in bopd or rescue mode.
+     *
+     * @return Whether system is in bopd or rescue mode.
+     */
+    bool IsBopdOrRescueMode();
 private:
     /**
      * LoadResidentProcessInExtremeMemory, load resident process in extreme low memory.
@@ -437,6 +444,12 @@ private:
     void LoadOnNewProcessEnableList();
 
     /**
+     * IsBopdMode, check bopd mode.
+     *
+     */
+    bool IsBopdMode();
+
+    /**
      * AppUtils, private constructor.
      *
      */
@@ -475,6 +488,7 @@ private:
     volatile DeviceConfiguration<bool> isHybridSpawnUnified_ = {false, false};
     volatile DeviceConfiguration<bool> isSupportNativeUIAbility_ = {false, false};
     volatile DeviceConfiguration<bool> isSupportDelayedProcessExit_ = {false, false};
+    volatile DeviceConfiguration<bool> isBopdOrRescueMode_ = {false, false};
     DeviceConfiguration<std::vector<std::pair<std::string, std::string>>>
         residentProcessInExtremeMemory_ = {false, {}};
     std::mutex residentProcessInExtremeMemoryMutex_;

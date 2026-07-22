@@ -33,6 +33,7 @@ public:
     bool InOnNewProcessEnableList(const std::string &bundleName);
     bool IsProductAppbootSettingEnabled();
     bool IsAutoStartupSupported();
+    bool IsBopdOrRescueMode();
 
 private:
     AppUtils();
