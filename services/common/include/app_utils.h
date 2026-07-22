@@ -355,6 +355,8 @@ public:
 
     bool IsForbidStart();
 
+    bool IsRescueMode();
+
     bool IsSupportRestartAppWithWindow();
 
     bool IsSupportAllowDebugPermission();
@@ -466,6 +468,7 @@ private:
     volatile DeviceConfiguration<bool> isSupportStartAbilities_ = {false, false};
     volatile DeviceConfiguration<bool> isPreloadApplicationEnabled_ = {false, false};
     volatile DeviceConfiguration<bool> isForbidStart_ = {true, false};
+    volatile DeviceConfiguration<bool> isRescueMode_ = {false, false};
     volatile DeviceConfiguration<bool> isSupportRestartAppWithWindow_ = {false, false};
     volatile DeviceConfiguration<bool> isSupportAllowDebugPermission_ = {false, false};
     volatile DeviceConfiguration<bool> isStartUIAbilityInCurrentProcess_ = {false, false};
