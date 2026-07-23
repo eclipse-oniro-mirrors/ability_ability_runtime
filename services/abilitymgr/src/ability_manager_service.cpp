@@ -7319,6 +7319,7 @@ void AbilityManagerService::CancelWantSenderByFlags(const sptr<IWantSender> &sen
     } else {
         pendingWantManager = GetCurrentPendingWantManager();
     }
+    CHECK_POINTER(pendingWantManager);
 
     auto bms = AbilityUtil::GetBundleManagerHelper();
     CHECK_POINTER(bms);
