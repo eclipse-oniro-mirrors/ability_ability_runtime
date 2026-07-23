@@ -2875,6 +2875,16 @@ HWTEST_F(AbilityManagerClientBranchTest, RegisterSAInterceptor, TestSize.Level1)
 }
 
 /**
+ * @tc.name: UnregisterSAInterceptor
+ * @tc.desc: UnregisterSAInterceptor
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, UnregisterSAInterceptor, TestSize.Level1)
+{
+    EXPECT_EQ(client_->UnregisterSAInterceptor(nullptr), ERR_OK);
+}
+
+/**
  * @tc.name: SuspendExtensionAbility
  * @tc.desc: SuspendExtensionAbility
  * @tc.type: FUNC
@@ -2902,6 +2912,16 @@ HWTEST_F(AbilityManagerClientBranchTest, ResumeExtensionAbility, TestSize.Level1
 HWTEST_F(AbilityManagerClientBranchTest, RegisterSAInterceptor_0100, TestSize.Level1)
 {
     EXPECT_EQ(client_->RegisterSAInterceptor(nullptr), ERR_OK);
+}
+
+/**
+ * @tc.name: UnregisterSAInterceptor_0100
+ * @tc.desc: UnregisterSAInterceptor
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, UnregisterSAInterceptor_0100, TestSize.Level1)
+{
+    EXPECT_EQ(client_->UnregisterSAInterceptor(nullptr), ERR_OK);
 }
 
 /*

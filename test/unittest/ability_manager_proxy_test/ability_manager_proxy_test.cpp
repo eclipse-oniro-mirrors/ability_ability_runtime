@@ -3320,6 +3320,26 @@ HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_RegisterSAInterceptor_001,
 
 /*
  * Feature: AbilityManagerService
+ * Function: UnregisterSAInterceptor
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService UnregisterSAInterceptor
+ * EnvConditions: NA
+ * CaseDescription: UnregisterSAInterceptor
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_UnregisterSAInterceptor_001, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
+    auto res = proxy_->UnregisterSAInterceptor(nullptr);
+    EXPECT_EQ(res, ERR_NULL_SA_INTERCEPTOR_EXECUTER);
+    sptr<AbilityRuntime::ISAInterceptor> interceptor = new AbilityRuntime::MockSAInterceptorStub(0);
+    res = proxy_->UnregisterSAInterceptor(interceptor->AsObject());
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: StartSelfUIAbilityInCurrentProcess
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService StartSelfUIAbilityInCurrentProcess
