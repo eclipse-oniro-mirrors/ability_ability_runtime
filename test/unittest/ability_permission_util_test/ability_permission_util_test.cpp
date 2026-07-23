@@ -955,31 +955,33 @@ HWTEST_F(AbilityPermissionUtilTest, IsDominateScreen_1400, TestSize.Level2)
 
 /**
  * @tc.name: GetClosestHapTokenId_0100
- * @tc.desc: a hap token (no 0x800000 bit) short-circuits to itself
+ * @tc.desc: a hap token id is unresolved without the ATM service -> ERR_INVALID_VALUE, out-param 0
  */
 HWTEST_F(AbilityPermissionUtilTest, GetClosestHapTokenId_0100, TestSize.Level2)
 {
-    uint32_t tokenId = 0x12345; // no 0x800000 bit -> already a hap token
+    uint32_t tokenId = 0x12345; // a hap token id
     uint32_t hapTokenId = 0;
-    EXPECT_EQ(AbilityPermissionUtil::GetInstance().GetClosestHapTokenId(tokenId, hapTokenId), ERR_OK);
-    EXPECT_EQ(hapTokenId, tokenId);
+    // Resolution now goes through the access_token kit (IPC); with no ATM service in the
+    // unit-test env it fail-closes to ERR_INVALID_VALUE and zeroes the out-param.
+    EXPECT_EQ(AbilityPermissionUtil::GetInstance().GetClosestHapTokenId(tokenId, hapTokenId), ERR_INVALID_VALUE);
+    EXPECT_EQ(hapTokenId, 0);
 }
 
 /**
  * @tc.name: GetClosestHapTokenId_0200
- * @tc.desc: tokenId 0 short-circuits; hapTokenId is 0
+ * @tc.desc: tokenId 0 (invalid) -> ERR_INVALID_VALUE, out-param zeroed
  */
 HWTEST_F(AbilityPermissionUtilTest, GetClosestHapTokenId_0200, TestSize.Level2)
 {
     uint32_t tokenId = 0;
     uint32_t hapTokenId = 1; // ensure it gets overwritten
-    EXPECT_EQ(AbilityPermissionUtil::GetInstance().GetClosestHapTokenId(tokenId, hapTokenId), ERR_OK);
-    EXPECT_EQ(hapTokenId, tokenId);
+    EXPECT_EQ(AbilityPermissionUtil::GetInstance().GetClosestHapTokenId(tokenId, hapTokenId), ERR_INVALID_VALUE);
+    EXPECT_EQ(hapTokenId, 0);
 }
 
 /**
  * @tc.name: GetClosestHapTokenId_0300
- * @tc.desc: a non-hap token (0x800000 bit) takes the ioctl path; with no /dev/access_token_id
+ * @tc.desc: a non-hap token (0x800000 bit) takes the access_token kit path; with no ATM service
  *          (or an unresolvable token) it fails
  */
 HWTEST_F(AbilityPermissionUtilTest, GetClosestHapTokenId_0300, TestSize.Level2)
@@ -990,23 +992,20 @@ HWTEST_F(AbilityPermissionUtilTest, GetClosestHapTokenId_0300, TestSize.Level2)
 }
 
 /**
- * @tc.name: IsDominateScreen_HapBypass_0100
- * @tc.desc: gate open + default want -> reaches the hap bypass; expected result is derived from
- *           GetClosestHapTokenId of the actual calling token, so this is env-independent (passes
- *           whether the calling token is a hap, 0, or a non-hap that does/doesn't resolve)
+ * @tc.name: GetClosestHapTokenId_0400
+ * @tc.desc: the actual calling token is unresolvable without the ATM service -> ERR_INVALID_VALUE,
+ *           out-param zeroed (env-independent: any calling token fail-closes without the service)
  */
-HWTEST_F(AbilityPermissionUtilTest, IsDominateScreen_HapBypass_0100, TestSize.Level2)
+HWTEST_F(AbilityPermissionUtilTest, GetClosestHapTokenId_0400, TestSize.Level2)
 {
     MyFlag::flag_ = 0;
     AppUtils::isAllowStartAbilityWithoutCallerToken = false;
     PermissionVerification::retVerifyStartSelfUIAbility = false;
     uint32_t callingTokenId = IPCSkeleton::GetCallingTokenID();
-    uint32_t hapTokenId = 0;
+    uint32_t hapTokenId = 1;
     int32_t hapRet = AbilityPermissionUtil::GetInstance().GetClosestHapTokenId(callingTokenId, hapTokenId);
-    bool expectBypass = (hapRet == ERR_OK && hapTokenId != 0);
-    Want want;
-    bool ret = AbilityPermissionUtil::GetInstance().IsDominateScreen(want, false);
-    EXPECT_EQ(ret, !expectBypass);
+    EXPECT_EQ(hapRet, ERR_INVALID_VALUE);
+    EXPECT_EQ(hapTokenId, 0);
 }
 
 /**
