@@ -2640,7 +2640,7 @@ HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityWithInsightIntent_0100, Tes
     int requestCode = 0;
     auto abilityMs = std::make_shared<AbilityManagerService>();
     auto res = abilityMs->StartAbilityWithInsightIntent(want, userId, requestCode);
-    EXPECT_EQ(res, CHECK_PERMISSION_FAILED);
+    EXPECT_EQ(res, ERR_INVALID_CALLER);
 }
 
 /**
