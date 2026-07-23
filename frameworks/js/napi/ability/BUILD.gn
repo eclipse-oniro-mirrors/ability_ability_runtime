@@ -35,6 +35,7 @@ gen_js_obj("ability_abc") {
 
 template("ohos_ability_napi") {
   ohos_shared_library(target_name) {
+    branch_protector_ret = "pac_ret"
     forward_variables_from(invoker, [ "relative_install_dir" ])
 
     if (defined(invoker.defines)) {
