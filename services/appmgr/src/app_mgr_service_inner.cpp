@@ -2722,6 +2722,10 @@ bool AppMgrServiceInner::GetBundleAndHapInfo(const AbilityInfo &abilityInfo,
     int32_t appIndex) const
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (appInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "appInfo null");
+        return false;
+    }
     auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
     if (bundleMgrHelper == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "bundleMgrHelper null");
