@@ -115,13 +115,13 @@ private:
     void HandleOnAppStopped(const std::shared_ptr<AppRunningRecord> &appRecord);
     void HandleStateChangedNotifyObserver(const AbilityStateData abilityStateData, bool isAbility,
         bool isFromWindowFocusChanged, BundleType bundleType = BundleType::APP);
-    void HandleOnAppProcessCreated(const std::shared_ptr<AppRunningRecord> &appRecord, bool isPreload);
+    void HandleOnAppProcessCreated(const ProcessData &data, BundleType bundleType);
     void HandleOnRenderProcessCreated(const std::shared_ptr<RenderRecord> &renderRecord, const bool isPreload);
 #ifdef SUPPORT_CHILD_PROCESS
     void HandleOnChildProcessCreated(std::shared_ptr<ChildProcessRecord> childRecord);
 #endif // SUPPORT_CHILD_PROCESS
-    void HandleOnAppProcessDied(const std::shared_ptr<AppRunningRecord> &appRecord);
-    void HandleOnRenderProcessDied(const std::shared_ptr<RenderRecord> &RenderRecord);
+    void HandleOnAppProcessDied(const ProcessData &data, BundleType bundleType);
+    void HandleOnRenderProcessDied(const std::shared_ptr<RenderRecord> &renderRecord);
 #ifdef SUPPORT_CHILD_PROCESS
     void HandleOnChildProcessDied(std::shared_ptr<ChildProcessRecord> childRecord);
 #endif // SUPPORT_CHILD_PROCESS
@@ -149,10 +149,10 @@ private:
     AppStateData WrapAppStateData(const std::shared_ptr<AppRunningRecord> &appRecord,
         const ApplicationState state, bool isFromWindowFocusChanged = false);
     void HandleOnProcessCreated(const ProcessData &data, BundleType bundleType = BundleType::APP);
-    void HandleOnProcessStateChanged(const std::shared_ptr<AppRunningRecord> &appRecord,
-        bool isFromWindowFocusChanged = false, bool isByCall = false, bool isFromScreenOffBackground = false);
+    void HandleOnProcessStateChanged(const ProcessData &data, BundleType bundleType,
+        ApplicationState state, bool isByCall);
     void HandleOnProcessDied(const ProcessData &data, BundleType bundleType = BundleType::APP);
-    void HandleOnProcessResued(const std::shared_ptr<AppRunningRecord> &appRecord);
+    void HandleOnProcessResued(const ProcessData &data, BundleType bundleType);
     void HandleOnPageShow(const PageStateData pageStateData);
     void HandleOnPageHide(const PageStateData pageStateData);
     void HandleOnAppCacheStateChanged(const std::shared_ptr<AppRunningRecord> &appRecord, ApplicationState state);
