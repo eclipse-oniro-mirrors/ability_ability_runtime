@@ -23,6 +23,9 @@
 #include "ets_agent_extension_stub_impl.h"
 #include "ets_native_reference.h"
 
+#include <mutex>
+#include <map>
+
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -140,6 +143,7 @@ private:
     std::shared_ptr<AbilityHandler> handler_ = nullptr;
     sptr<EtsAgentExtensionStubImpl> extensionStub_;
     std::map<AgentRemoteObjectKey, ani_ref> hostProxyMap_;
+    std::mutex hostProxyMapMutex_;
     ani_vm *etsVm_ = nullptr;
 };
 }  // namespace AgentRuntime
