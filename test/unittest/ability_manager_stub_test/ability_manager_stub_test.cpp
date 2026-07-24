@@ -651,6 +651,37 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_RegisterSAInterceptor_OnRemo
  * Function: OnRemoteRequest
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService OnRemoteRequest
+ * EnvConditions: code is UNREGISTER_SA_INTERCEPTOR
+ * CaseDescription: Verify that unregistering an SA interceptor handles null and valid interceptors
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_UnregisterSAInterceptor_OnRemote_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    int res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::UNREGISTER_SA_INTERCEPTOR),
+        data, reply, option);
+    EXPECT_EQ(res, ERR_NULL_SA_INTERCEPTOR_EXECUTER);
+
+    MessageParcel data2;
+    MessageParcel reply2;
+    WriteInterfaceToken(data2);
+    sptr<AbilityRuntime::ISAInterceptor> interceptor = new AbilityRuntime::MockSAInterceptorStub(0);
+    EXPECT_TRUE(data2.WriteRemoteObject(interceptor->AsObject()));
+    res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::UNREGISTER_SA_INTERCEPTOR),
+        data2, reply2, option);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: OnRemoteRequest
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService OnRemoteRequest
  * EnvConditions: code is SEND_LOCAL_PENDING_WANT_SENDER
  * CaseDescription: Verify that sending a local want sender succeeds
  */
@@ -4686,6 +4717,25 @@ HWTEST_F(AbilityManagerStubTest, RegisterSAInterceptorInner_0100, TestSize.Level
     sptr<AbilityRuntime::ISAInterceptor> interceptor = new AbilityRuntime::MockSAInterceptorStub(0);
     EXPECT_EQ(data.WriteRemoteObject(interceptor->AsObject()), true);
     ret = stub_->RegisterSAInterceptorInner(data, reply);
+    EXPECT_EQ(ret, NO_ERROR);
+    TAG_LOGI(AAFwkTag::TEST, "end");
+}
+
+ /**
+ * @tc.name: UnregisterSAInterceptorInner_0100
+ * @tc.desc: UnregisterSAInterceptorInner
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerStubTest, UnregisterSAInterceptorInner_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin");
+    MessageParcel data;
+    MessageParcel reply;
+    auto ret = stub_->UnregisterSAInterceptorInner(data, reply);
+    EXPECT_EQ(ret, ERR_NULL_SA_INTERCEPTOR_EXECUTER);
+    sptr<AbilityRuntime::ISAInterceptor> interceptor = new AbilityRuntime::MockSAInterceptorStub(0);
+    EXPECT_EQ(data.WriteRemoteObject(interceptor->AsObject()), true);
+    ret = stub_->UnregisterSAInterceptorInner(data, reply);
     EXPECT_EQ(ret, NO_ERROR);
     TAG_LOGI(AAFwkTag::TEST, "end");
 }

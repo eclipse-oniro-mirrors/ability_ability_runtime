@@ -218,6 +218,12 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     dataParcel11.RewindRead(0);
     abilityMgrStub->RegisterSAInterceptorInner(dataParcel11, reply1);
 
+    MessageParcel dataParcel11a;
+    dataParcel11a.WriteInterfaceToken(ABILITYMGR_INTERFACE_TOKEN);
+    dataParcel11a.WriteBuffer(data, size);
+    dataParcel11a.RewindRead(0);
+    abilityMgrStub->UnregisterSAInterceptorInner(dataParcel11a, reply1);
+
     MessageParcel dataParcel12;
     dataParcel12.WriteInterfaceToken(ABILITYMGR_INTERFACE_TOKEN);
     dataParcel12.WriteBuffer(data, size);
