@@ -1990,6 +1990,7 @@ sptr<SessionInfo> UIAbilityLifecycleManager::CreateSessionInfo(const AbilityRequ
     sessionInfo->startWindowOption = abilityRequest.startWindowOption;
     sessionInfo->supportWindowModes = abilityRequest.supportWindowModes;
     sessionInfo->splitRatioPreference = abilityRequest.startOptions.GetSplitRatioPreference();
+    sessionInfo->windowCreateParams = abilityRequest.startOptions.windowCreateParams_;
     if (abilityRequest.startSetting != nullptr) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "Assign start setting to session.");
         sessionInfo->startSetting = abilityRequest.startSetting;
