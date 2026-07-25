@@ -221,19 +221,6 @@ void CliToolManagerService::Init()
         sigemptyset(&sa.sa_mask);
         sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;  // no SA_NOCLDWAIT: it would suppress the wake we rely on
         sigaction(SIGCHLD, &sa, nullptr);
-        
-        struct sigaction saExit = {};
-        saExit.sa_handler = CliToolManagerService::ExitSignalHandler;
-        sigemptyset(&saExit.sa_mask);
-        saExit.sa_flags = SA_RESTART;
-        sigaction(SIGTERM, &saExit, nullptr);
-        sigaction(SIGHUP, &saExit, nullptr);
-        sigaction(SIGINT, &saExit, nullptr);
-        sigaction(SIGQUIT, &saExit, nullptr);
-        sigaction(SIGABRT, &saExit, nullptr);
-        sigaction(SIGBUS, &saExit, nullptr);
-        sigaction(SIGFPE, &saExit, nullptr);
-        sigaction(SIGSEGV, &saExit, nullptr);
 
         if (reapPipeReadFd_ >= 0) {
             reaperRunning_.store(true, std::memory_order_release);
@@ -1189,30 +1176,6 @@ void CliToolManagerService::StopReaper()
     if (writeFd >= 0) {
         close(writeFd);
     }
-}
-
-void CliToolManagerService::ExitSignalHandler(int32_t sig)
-{
-    TAG_LOGD(AAFwkTag::CLI_TOOL,
-        "CliToolManagerService killed by signal=%{public}d", sig);
-
-    if (sig != 0 && sig != SIGTERM && sig != SIGHUP && sig != SIGCHLD) {
-        auto instance = CliToolManagerService::GetInstance();
-        if (instance != nullptr) {
-            std::lock_guard<ffrt::mutex> guard(instance->sessionsMutex_);
-            for (const auto &entry : instance->sessionRecords_) {
-                const auto &record = entry.second;
-                if (record == nullptr || record->toolName.empty()) {
-                    continue;
-                }
-                ReportCliSignal(record->toolName, std::to_string(sig));
-            }
-        }
-    }
-
-    // Restore default disposition and re-raise so the process actually terminates.
-    signal(sig, SIG_DFL);
-    raise(sig);
 }
 
 void CliToolManagerService::OnProcessDied(const std::string &bundleName, pid_t diedPid)
