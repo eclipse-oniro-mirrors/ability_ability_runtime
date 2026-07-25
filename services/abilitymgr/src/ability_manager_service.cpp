@@ -16,6 +16,7 @@
 #include "ability_manager_service.h"
 
 #include <charconv>
+#include <dlfcn.h>
 #include <sys/epoll.h>
 #include <unordered_map>
 
@@ -6427,12 +6428,14 @@ bool AbilityManagerService::CheckSupportVpn(const AppExecFwk::AbilityInfo& abili
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "vpnPermissionIf is nullptr");
         return false;
     }
-    static auto requestVpnPermission =
-        reinterpret_cast<RequestVpnPermission>(dlsym(vpnPermissionIf, "RequestVpnPermission"));
-    if (requestVpnPermission == nullptr) {
-        TAG_LOGE(AAFwkTag::SERVICE_EXT, "requestVpnPermission is nullptr");
+    static void* vpnPermissionSym = dlsym(vpnPermissionIf, "RequestVpnPermission");
+    if (vpnPermissionSym == nullptr) {
+        const char* dlsymErr = dlerror();
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "dlsym RequestVpnPermission failed, err: %{public}s",
+            dlsymErr != nullptr ? dlsymErr : "unknown");
         return false;
     }
+    static auto requestVpnPermission = reinterpret_cast<RequestVpnPermission>(vpnPermissionSym);
     // LCOV_EXCL_STOP
     requestVpnPermission(callerUid, bundleName, abilityInfo.name, isAuthorized);
     TAG_LOGI(AAFwkTag::SERVICE_EXT, "allow uid: %{public}d, bundleName: %{public}s, abilityName: %{public}s,"

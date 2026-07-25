@@ -140,12 +140,14 @@ void ExtensionRunningTimeoutMonitor::OnExtensionTerminated(int32_t extensionReco
 void ExtensionRunningTimeoutMonitor::StartMonitor()
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "start extension running timeout monitor");
+    isMonitoring_.store(true);
     SubmitPeriodicTask();
 }
 
 void ExtensionRunningTimeoutMonitor::StopMonitor()
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "stop extension running timeout monitor");
+    isMonitoring_.store(false);
     auto taskHandler = TaskHandlerWrap::GetFfrtHandler();
     if (taskHandler != nullptr) {
         taskHandler->CancelTask(PERIODIC_TASK_NAME);
@@ -163,8 +165,16 @@ void ExtensionRunningTimeoutMonitor::SubmitPeriodicTask()
     auto task = []() {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "extension timeout periodic task triggered");
         auto monitor = DelayedSingleton<ExtensionRunningTimeoutMonitor>::GetInstance();
+        if (!monitor->isMonitoring_.load()) {
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "monitor not running, skip periodic cycle");
+            return;
+        }
         monitor->CheckAliveExtensions();
         monitor->ReportTimeoutEvents();
+        if (!monitor->isMonitoring_.load()) {
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "monitor not running after cycle, skip reschedule");
+            return;
+        }
         monitor->SubmitPeriodicTask();
     };
     taskHandler->SubmitTask(task, PERIODIC_TASK_NAME, REPORT_INTERVAL_MS);
@@ -192,10 +202,14 @@ void ExtensionRunningTimeoutMonitor::ReportTimeoutEvents()
     std::vector<int32_t> cnts;
 
     for (const auto &event : eventsToReport) {
+        size_t checkpoint = extensionTypePtrs.size();
         if (!CopyStringParam(event.extensionTypeName, stringBuffers, extensionTypePtrs) ||
             !CopyStringParam(event.bundleName, stringBuffers, bundleNamePtrs) ||
             !CopyStringParam(event.abilityName, stringBuffers, abilityNamePtrs)) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "strcpy_s failed for event string");
+            extensionTypePtrs.resize(checkpoint);
+            bundleNamePtrs.resize(checkpoint);
+            abilityNamePtrs.resize(checkpoint);
             continue;
         }
         runningDurations.push_back(event.runningDuration);
