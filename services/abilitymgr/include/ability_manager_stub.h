@@ -74,6 +74,12 @@ public:
 
     virtual void CancelWantSenderByFlags(const sptr<IWantSender> &sender, uint32_t flags);
 
+protected:
+    // Strip InsightIntent and Skill params from Want at IPC boundary.
+    // Use for ALL Want reads EXCEPT legal InsightIntent execution channels
+    // (ExecuteIntentForDistributedInner, StartAbilityByInsightIntentInner).
+    void SanitizeWantParams(Want &want);
+
 private:
     int TerminateAbilityInner(MessageParcel &data, MessageParcel &reply);
     int BackToCallerInner(MessageParcel &data, MessageParcel &reply);
