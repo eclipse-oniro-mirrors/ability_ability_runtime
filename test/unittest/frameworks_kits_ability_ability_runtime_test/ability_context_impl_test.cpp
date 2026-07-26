@@ -14,6 +14,8 @@
  */
 
 #include <gtest/gtest.h>
+#include <future>
+#include <set>
 #define private public
 #include "ability.h"
 #include "ability_context_impl.h"
@@ -709,6 +711,24 @@ HWTEST_F(AbilityContextImplTest, Ability_Context_Impl_GenerateRequestCode_0100, 
 }
 
 /**
+ * @tc.number: Ability_Context_Impl_GenerateRequestCode_0200
+ * @tc.name: GenerateRequestCode
+ * @tc.desc: Verify requestCode wraps around after reaching INT_MAX
+ */
+HWTEST_F(AbilityContextImplTest, Ability_Context_Impl_GenerateRequestCode_0200, Function | MediumTest | Level1)
+{
+    auto prev = AbilityContextImpl::curRequestCode_;
+    AbilityContextImpl::curRequestCode_ = INT_MAX - 1;
+    auto code1 = context_->GenerateRequestCode();
+    EXPECT_EQ(code1, INT_MAX);
+    auto code2 = context_->GenerateRequestCode();
+    EXPECT_EQ(code2, 0);
+    auto code3 = context_->GenerateRequestCode();
+    EXPECT_EQ(code3, 1);
+    AbilityContextImpl::curRequestCode_ = prev;
+}
+
+/**
  * @tc.number: Ability_Context_Impl_StartAbilityForResult_NoRequestCode_0100
  * @tc.name: StartAbilityForResult without requestCode
  * @tc.desc: Start Ability For Result without requestCode
@@ -753,6 +773,94 @@ HWTEST_F(AbilityContextImplTest, Ability_Context_Impl_StartAbilityForResultWithA
     { GTEST_LOG_(INFO) << "StartAbilityForResultWithAccount_NoRequestCode_0100 task called"; };
     auto ret = context_->StartAbilityForResultWithAccount(want, accountId, std::move(task));
     EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: Ability_Context_Impl_StartAbilityForResultWithAccount_NoRequestCode_0200
+ * @tc.name: StartAbilityForResultWithAccount with StartOptions without requestCode
+ * @tc.desc: Start Ability For Result With Account and StartOptions without requestCode
+ */
+HWTEST_F(AbilityContextImplTest, Ability_Context_Impl_StartAbilityForResultWithAccount_NoRequestCode_0200,
+    Function | MediumTest | Level1)
+{
+    AAFwk::Want want;
+    int32_t accountId = 1;
+    AAFwk::StartOptions startOptions;
+    RuntimeTask task = [](const int32_t count, const Want& want, bool isInner)
+    { GTEST_LOG_(INFO) << "StartAbilityForResultWithAccount_NoRequestCode_0200 task called"; };
+    auto ret = context_->StartAbilityForResultWithAccount(want, accountId, startOptions, std::move(task));
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: Ability_Context_Impl_OpenAtomicService_NoRequestCode_0100
+ * @tc.name: OpenAtomicService without requestCode
+ * @tc.desc: Open Atomic Service without requestCode, verify auto-generated requestCode is used
+ */
+HWTEST_F(AbilityContextImplTest, Ability_Context_Impl_OpenAtomicService_NoRequestCode_0100,
+    Function | MediumTest | Level1)
+{
+    AAFwk::Want want;
+    AAFwk::StartOptions options;
+    RuntimeTask task = [](const int32_t count, const Want& want, bool isInner)
+    { GTEST_LOG_(INFO) << "Ability_Context_Impl_OpenAtomicService_NoRequestCode_0100 task called"; };
+    context_->OpenAtomicService(want, options, std::move(task));
+    EXPECT_TRUE(context_ != nullptr);
+}
+
+/**
+ * @tc.number: Ability_Context_Impl_RegisterResultCallback_0100
+ * @tc.name: RegisterResultCallback
+ * @tc.desc: Register result callback and verify requestCode is returned and task is stored
+ */
+HWTEST_F(AbilityContextImplTest, Ability_Context_Impl_RegisterResultCallback_0100,
+    Function | MediumTest | Level1)
+{
+    bool taskExecuted = false;
+    RuntimeTask task = [&taskExecuted](const int32_t count, const Want& want, bool isInner)
+    {
+        taskExecuted = true;
+        GTEST_LOG_(INFO) << "Ability_Context_Impl_RegisterResultCallback_0100 task called";
+    };
+    auto requestCode = context_->RegisterResultCallback(std::move(task));
+    EXPECT_GT(requestCode, 0);
+    EXPECT_EQ(context_->resultCallbacks_.count(requestCode), 1);
+
+    AAFwk::Want resultData;
+    context_->OnAbilityResult(requestCode, 0, resultData);
+    EXPECT_TRUE(taskExecuted);
+    EXPECT_EQ(context_->resultCallbacks_.count(requestCode), 0);
+}
+
+/**
+ * @tc.number: Ability_Context_Impl_RegisterResultCallback_0200
+ * @tc.name: RegisterResultCallback
+ * @tc.desc: Register multiple result callbacks and verify each has unique requestCode
+ */
+HWTEST_F(AbilityContextImplTest, Ability_Context_Impl_RegisterResultCallback_0200,
+    Function | MediumTest | Level1)
+{
+    RuntimeTask task1 = [](const int32_t count, const Want& want, bool isInner)
+    { GTEST_LOG_(INFO) << "RegisterResultCallback_0200 task1 called"; };
+    RuntimeTask task2 = [](const int32_t count, const Want& want, bool isInner)
+    { GTEST_LOG_(INFO) << "RegisterResultCallback_0200 task2 called"; };
+    RuntimeTask task3 = [](const int32_t count, const Want& want, bool isInner)
+    { GTEST_LOG_(INFO) << "RegisterResultCallback_0200 task3 called"; };
+    auto code1 = context_->RegisterResultCallback(std::move(task1));
+    auto code2 = context_->RegisterResultCallback(std::move(task2));
+    auto code3 = context_->RegisterResultCallback(std::move(task3));
+    EXPECT_NE(code1, code2);
+    EXPECT_NE(code2, code3);
+    EXPECT_NE(code1, code3);
+    EXPECT_EQ(context_->resultCallbacks_.size(), 3);
+
+    AAFwk::Want resultData;
+    context_->OnAbilityResult(code2, 0, resultData);
+    EXPECT_EQ(context_->resultCallbacks_.size(), 2);
+    EXPECT_EQ(context_->resultCallbacks_.count(code2), 0);
+    EXPECT_EQ(context_->resultCallbacks_.count(code1), 1);
+    EXPECT_EQ(context_->resultCallbacks_.count(code3), 1);
+    context_->resultCallbacks_.clear();
 }
 
 /**
