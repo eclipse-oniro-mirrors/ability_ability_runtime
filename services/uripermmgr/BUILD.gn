@@ -22,8 +22,10 @@ config("upms_config") {
     "${ability_runtime_utils_path}/global/constant",
   ]
   cflags = []
+  defines = []
   if (target_cpu == "arm") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
+    defines += [ "APP_USE_ARM" ]
   }
 }
 
