@@ -42,7 +42,7 @@ constexpr const char* ERROR_MSG_WUKONG_MODE = "An ability cannot be started or s
 constexpr const char* ERROR_MSG_CONTINUATION_FLAG =
     "The call with the continuation and prepare continuation flag is forbidden.";
 constexpr const char* ERROR_MSG_INVALID_CONTEXT = "The context does not exist.";
-constexpr const char* ERROR_MSG_INVALID_MODULENAME = "The module name does not exist.";
+constexpr const char* ERROR_MSG_INVALID_MODULENAME = "Invalid moduleName.";
 constexpr const char* ERROR_MSG_CONTROLLED = "The application is controlled.";
 constexpr const char* ERROR_MSG_EDM_CONTROLLED = "The application is controlled by EDM.";
 constexpr const char* ERROR_MSG_NETWORK_ABNORMAL = "Network error.";
