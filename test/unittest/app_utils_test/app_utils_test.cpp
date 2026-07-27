@@ -1136,5 +1136,33 @@ HWTEST_F(AppUtilsTest, IsSupportDelayedProcessExit_0300, TestSize.Level2)
     appUtils.isSupportDelayedProcessExit_.value = false;
     EXPECT_FALSE(appUtils.IsSupportDelayedProcessExit());
 }
+
+/**
+ * @tc.number: IsBopdOrRescueMode_0100
+ * @tc.desc: Test IsBopdOrRescueMode when already loaded with true
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppUtilsTest, IsBopdOrRescueMode_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsBopdOrRescueMode_0100 called.");
+    auto &appUtils = AAFwk::AppUtils::GetInstance();
+    appUtils.isBopdOrRescueMode_.isLoaded = true;
+    appUtils.isBopdOrRescueMode_.value = true;
+    EXPECT_TRUE(appUtils.IsBopdOrRescueMode());
+}
+
+/**
+ * @tc.number: IsBopdOrRescueMode_0200
+ * @tc.desc: Test IsBopdOrRescueMode when already loaded with false
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppUtilsTest, IsBopdOrRescueMode_0200, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsBopdOrRescueMode_0200 called.");
+    auto &appUtils = AAFwk::AppUtils::GetInstance();
+    appUtils.isBopdOrRescueMode_.isLoaded = true;
+    appUtils.isBopdOrRescueMode_.value = false;
+    EXPECT_FALSE(appUtils.IsBopdOrRescueMode());
+}
 }  // namespace AbilityRuntime
 }  // namespace OHOS

@@ -97,6 +97,10 @@ AgentManagerService::~AgentManagerService()
 void AgentManagerService::OnStart() noexcept
 {
     TAG_LOGI(AAFwkTag::SER_ROUTER, "agentmgr start");
+    if (AgentRuntime::IsBopdOrRescueMode()) {
+        TAG_LOGW(AAFwkTag::SER_ROUTER, "Skip init agentmgr in bopd or rescue mode");
+        return;
+    }
     Init();
     if (!Publish(AgentManagerService::GetInstance())) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "Publish failed");

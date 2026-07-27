@@ -65,5 +65,10 @@ bool AppUtils::IsAutoStartupSupported()
 {
     return true;
 }
+
+bool AppUtils::IsBopdOrRescueMode()
+{
+    return false;
+}
 }  // namespace AAFwk
 }  // namespace OHOS

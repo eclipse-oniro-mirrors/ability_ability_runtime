@@ -26,6 +26,8 @@ namespace AgentRuntime {
 int64_t GenerateVerificationNonce();
 bool IsMatchedAgentCardTarget(const AAFwk::Want &want, const AgentCard &card);
 void NormalizeAgentConnectWant(AAFwk::Want &connectWant, const AgentCard &card);
+bool IsBopdOrRescueMode();
+bool IsBopdMode();
 } // namespace AgentRuntime
 } // namespace OHOS
 

@@ -18,8 +18,12 @@
 #include <cerrno>
 #include <cstddef>
 #include <limits>
+#include <unordered_set>
 
 #include <sys/random.h>
+
+#include "hilog_tag_wrapper.h"
+#include "parameters.h"
 
 namespace OHOS {
 namespace AgentRuntime {
@@ -79,6 +83,28 @@ void NormalizeAgentConnectWant(AAFwk::Want &connectWant, const AgentCard &card)
         element.SetModuleName(card.appInfo->moduleName);
         connectWant.SetElement(element);
     }
+}
+
+bool IsBopdMode()
+{
+    const std::unordered_set<std::string> bopdModeSet = {
+        "0x2",
+        "0x3",
+        "0x6",
+        "0x7",
+        "0xa",
+        "0xe",
+        "0xf",
+    };
+    auto mode = system::GetParameter("ohos.boot.bopd.mode", "NA");
+    return bopdModeSet.find(mode) != bopdModeSet.end();
+}
+
+bool IsBopdOrRescueMode()
+{
+    bool isBopdOrRescue = (IsBopdMode() || system::GetParameter("soc.boot.mode", "") == "rescue");
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "IsBopdOrRescueMode: %{public}d", isBopdOrRescue);
+    return isBopdOrRescue;
 }
 } // namespace AgentRuntime
 } // namespace OHOS
