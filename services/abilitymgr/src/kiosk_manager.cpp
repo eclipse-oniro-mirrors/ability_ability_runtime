@@ -282,6 +282,12 @@ bool KioskManager::IsKioskBundleUid(int32_t uid)
     return uid == kioskStatus_.kioskBundleUid_;
 }
 
+bool KioskManager::ShouldIntercept(const std::string &bundleName)
+{
+    std::lock_guard<std::mutex> lock(kioskManagerMutex_);
+    return IsInKioskModeInner() && !IsInWhiteListInner(bundleName);
+}
+
 void KioskManager::NotifyKioskModeChanged(bool isInKioskMode, const std::string &bundleName,
     int32_t kioskBundleUid)
 {

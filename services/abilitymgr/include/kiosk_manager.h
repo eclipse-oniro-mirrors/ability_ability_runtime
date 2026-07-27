@@ -42,6 +42,7 @@ public:
     void FilterDialogAppInfos(std::vector<DialogAppInfo> &dialogAppInfos);
     void FilterAbilityInfos(std::vector<AppExecFwk::AbilityInfo> &abilityInfos);
     bool IsKioskBundleUid(int32_t uid);
+    bool ShouldIntercept(const std::string &bundleName);
 
 private:
     KioskManager() = default;

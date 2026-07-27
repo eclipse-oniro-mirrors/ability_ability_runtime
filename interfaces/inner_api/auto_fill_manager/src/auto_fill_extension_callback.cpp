@@ -300,8 +300,9 @@ void AutoFillExtensionCallback::HandleTimeOut()
 uint32_t AutoFillExtensionCallback::GenerateCallbackId()
 {
     static std::atomic<uint32_t> callbackId(0);
-    ++callbackId;
-    return callbackId.load();
+    uint32_t id = callbackId.fetch_add(1) + 1;
+    // Handle overflow: if id wraps to 0, return 1 instead
+    return (id != 0) ? id : 1;
 }
 
 uint32_t AutoFillExtensionCallback::GetCallbackId() const

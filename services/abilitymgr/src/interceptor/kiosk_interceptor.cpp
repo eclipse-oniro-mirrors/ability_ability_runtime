@@ -30,13 +30,9 @@ int KioskInterceptor::DoProcess(const AbilityInterceptorParam &param)
         return ERR_OK;
     }
 #endif
-
     auto& kioskManager = KioskManager::GetInstance();
-    if (!kioskManager.IsInKioskMode()) {
-        return ERR_OK;
-    }
     const auto& bundleName = param.want.GetBundleNameRef();
-    if (!kioskManager.IsInWhiteList(bundleName)) {
+    if (kioskManager.ShouldIntercept(bundleName)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "intercept ability start, bundle %{public}s not in kiosk whitelist",
             bundleName.c_str());
         return ERR_KIOSK_MODE_NOT_IN_WHITELIST;
