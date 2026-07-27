@@ -30,6 +30,7 @@ enum class AutoStartupSetterType : int32_t {
     UNSPECIFIED = -1,
     SYSTEM = 0,
     USER = 1,
+    MAX
 };
 
 /**

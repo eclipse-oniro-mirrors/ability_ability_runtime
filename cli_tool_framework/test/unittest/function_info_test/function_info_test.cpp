@@ -817,6 +817,62 @@ HWTEST_F(FunctionInfoTest, FunctionInfo_ParseFromJson_1600, TestSize.Level1)
     TAG_LOGI(AAFwkTag::TEST, "FunctionInfo_ParseFromJson_1600 end");
 }
 
+/**
+ * @tc.name: FunctionInfo_ParseFromJson_1700
+ * @tc.desc: Test ParseFromJson with functionType exceeding INT64_MAX (number_unsigned storage). A naive
+ *           get<number_integer_t>() would throw out_of_range and crash the process; this guards the branch.
+ * @tc.type: FUNC
+ */
+HWTEST_F(FunctionInfoTest, FunctionInfo_ParseFromJson_1700, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FunctionInfo_ParseFromJson_1700 start");
+
+    // INT64_MAX + 1: parsed into number_unsigned storage, so is_number_integer() is true but
+    // get<number_integer_t>() would throw. Must be rejected, not crash.
+    nlohmann::json json = R"({
+        "functionName": "overflowType",
+        "functionNamespace": "com.test.overflow",
+        "functionType": 9223372036854775808,
+        "version": "1.0.0",
+        "description": ""
+    })"_json;
+
+    FunctionInfo function;
+    bool result = FunctionInfo::ParseFromJson(json, function);
+
+    EXPECT_FALSE(result);
+
+    TAG_LOGI(AAFwkTag::TEST, "FunctionInfo_ParseFromJson_1700 end");
+}
+
+/**
+ * @tc.name: FunctionInfo_ParseFromJson_1800
+ * @tc.desc: Test ParseFromJson with functionType exceeding INT32_MAX but within INT64 range
+ *           (number_integer storage). The original get<int32_t>() would throw out_of_range and crash.
+ * @tc.type: FUNC
+ */
+HWTEST_F(FunctionInfoTest, FunctionInfo_ParseFromJson_1800, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FunctionInfo_ParseFromJson_1800 start");
+
+    // 9999999999 > INT32_MAX but < INT64_MAX: stored as number_integer. get<int32_t>() would throw;
+    // must be rejected after reading the full-precision value.
+    nlohmann::json json = R"({
+        "functionName": "int32Overflow",
+        "functionNamespace": "com.test.int32overflow",
+        "functionType": 9999999999,
+        "version": "1.0.0",
+        "description": ""
+    })"_json;
+
+    FunctionInfo function;
+    bool result = FunctionInfo::ParseFromJson(json, function);
+
+    EXPECT_FALSE(result);
+
+    TAG_LOGI(AAFwkTag::TEST, "FunctionInfo_ParseFromJson_1800 end");
+}
+
 // ==================== ParseToJson Tests ====================
 
 /**

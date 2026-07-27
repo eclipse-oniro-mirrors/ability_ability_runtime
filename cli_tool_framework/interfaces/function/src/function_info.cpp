@@ -15,6 +15,7 @@
 
 #include "function_info.h"
 
+#include <cstdint>
 #include <cstring>
 #include <memory>
 #include <securec.h>
@@ -23,9 +24,12 @@
 
 #include "cli_error_code.h"
 #include "hilog_tag_wrapper.h"
+#include "raw_data_utils.h"
 
 namespace {
-constexpr uint32_t MAX_FUNCTION_INFO_COUNT = 10000;  // Maximum number of functions in single transfer
+constexpr uint32_t MAX_FUNCTION_INFO_COUNT = 200 * 1000;  // Maximum number of function info (200 * 1000)
+constexpr uint32_t MAX_SCHEMA_STRING_LENGTH = 16 * 1024;  // Maximum length of inputSchema/outputSchema (16KB)
+constexpr uint32_t MAX_RAW_DATA_SIZE = 128 * 1024 * 1024;  // Shared memory cap for FunctionsRawData (128MB)
 }
 
 namespace OHOS {
@@ -56,6 +60,11 @@ bool ParseInputSchema(const nlohmann::json &json, std::string &output)
     if (inputSchema.is_string()) {
         output = inputSchema.get<std::string>();
         if (!output.empty()) {
+            if (output.size() > MAX_SCHEMA_STRING_LENGTH) {
+                TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: inputSchema too long: %{public}u, max: %{public}u",
+                    static_cast<uint32_t>(output.size()), MAX_SCHEMA_STRING_LENGTH);
+                return false;
+            }
             nlohmann::json parsed = nlohmann::json::parse(output, nullptr, false);
             if (parsed.is_discarded()) {
                 TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: inputSchema is not valid JSON");
@@ -77,6 +86,12 @@ bool ParseOutputSchema(const nlohmann::json &json, std::string &output)
     if (outputSchema.is_string()) {
         output = outputSchema.get<std::string>();
         if (!output.empty()) {
+            if (output.size() > MAX_SCHEMA_STRING_LENGTH) {
+                TAG_LOGE(AAFwkTag::CLI_TOOL,
+                    "ParseFromJson failed: outputSchema too long: %{public}u, max: %{public}u",
+                    static_cast<uint32_t>(output.size()), MAX_SCHEMA_STRING_LENGTH);
+                return false;
+            }
             nlohmann::json parsed = nlohmann::json::parse(output, nullptr, false);
             if (parsed.is_discarded()) {
                 TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: outputSchema is not valid JSON");
@@ -100,14 +115,24 @@ bool ParseFunctionType(const nlohmann::json &json, FunctionType &output)
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Invalid functionType type in JSON, must be integer");
         return false;
     }
-    int32_t typeValue = functionType.get<int32_t>();
-    if (typeValue >= 0 && typeValue < static_cast<int32_t>(FunctionType::END)) {
-        output = static_cast<FunctionType>(typeValue);
+    if (functionType.is_number_unsigned()) {
+        auto val = functionType.get<nlohmann::json::number_unsigned_t>();
+        if (val >= static_cast<decltype(val)>(FunctionType::END)) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "Invalid functionType value: %{public}llu, out of range [0, %{public}d)",
+                static_cast<unsigned long long>(val), static_cast<int32_t>(FunctionType::END));
+            return false;
+        }
+        output = static_cast<FunctionType>(val);
         return true;
     }
-    TAG_LOGE(AAFwkTag::CLI_TOOL, "Invalid functionType value: %{public}d, out of range [0, %{public}d)",
-        typeValue, static_cast<int32_t>(FunctionType::END));
-    return false;
+    auto val = functionType.get<nlohmann::json::number_integer_t>();
+    if (val < 0 || val >= static_cast<decltype(val)>(FunctionType::END)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Invalid functionType value: %{public}lld, out of range [0, %{public}d)",
+            static_cast<long long>(val), static_cast<int32_t>(FunctionType::END));
+        return false;
+    }
+    output = static_cast<FunctionType>(val);
+    return true;
 }
 
 } // namespace
@@ -236,6 +261,11 @@ bool FunctionInfo::Validate(const FunctionInfo &function)
     }
 
     if (!function.inputSchema.empty()) {
+        if (function.inputSchema.size() > MAX_SCHEMA_STRING_LENGTH) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: inputSchema too long: %{public}u, max: %{public}u",
+                static_cast<uint32_t>(function.inputSchema.size()), MAX_SCHEMA_STRING_LENGTH);
+            return false;
+        }
         nlohmann::json inputSchemaJson = nlohmann::json::parse(function.inputSchema, nullptr, false);
         if (inputSchemaJson.is_discarded()) {
             TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: inputSchema is not valid JSON");
@@ -244,6 +274,11 @@ bool FunctionInfo::Validate(const FunctionInfo &function)
     }
 
     if (!function.outputSchema.empty()) {
+        if (function.outputSchema.size() > MAX_SCHEMA_STRING_LENGTH) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: outputSchema too long: %{public}u, max: %{public}u",
+                static_cast<uint32_t>(function.outputSchema.size()), MAX_SCHEMA_STRING_LENGTH);
+            return false;
+        }
         nlohmann::json outputSchemaJson = nlohmann::json::parse(function.outputSchema, nullptr, false);
         if (outputSchemaJson.is_discarded()) {
             TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: outputSchema is not valid JSON");
@@ -271,6 +306,10 @@ int32_t FunctionsRawData::RawDataCpy(const void *readdata)
         TAG_LOGE(AAFwkTag::CLI_TOOL, "null data or zero size");
         return ERR_INVALID_VALUE;
     }
+    if (size > MAX_RAW_DATA_SIZE) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "raw data size too large: %{public}u, max: %{public}u", size, MAX_RAW_DATA_SIZE);
+        return ERR_INVALID_VALUE;
+    }
     void* newData = malloc(size);
     if (newData == nullptr) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "malloc failed");
@@ -290,8 +329,13 @@ int32_t FunctionsRawData::RawDataCpy(const void *readdata)
     return ERR_OK;
 }
 
-void FunctionsRawData::FromFunctionInfoVec(const std::vector<FunctionInfo> &functions, FunctionsRawData &rawData)
+int32_t FunctionsRawData::FromFunctionInfoVec(const std::vector<FunctionInfo> &functions, FunctionsRawData &rawData)
 {
+    if (functions.size() > MAX_FUNCTION_INFO_COUNT) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "FromFunctionInfoVec exceed max count %{public}u, count: %{public}zu",
+            MAX_FUNCTION_INFO_COUNT, functions.size());
+        return ERR_INVALID_VALUE;
+    }
     std::stringstream ss;
     uint32_t count = functions.size();
     ss.write(reinterpret_cast<const char*>(&count), sizeof(count));
@@ -307,16 +351,25 @@ void FunctionsRawData::FromFunctionInfoVec(const std::vector<FunctionInfo> &func
     rawData.data = rawData.ownedData.data();
     rawData.size = rawData.ownedData.size();
     rawData.isMalloc = false;
+    return ERR_OK;
 }
 
 int32_t FunctionsRawData::ToFunctionInfoVec(const FunctionsRawData &rawData, std::vector<FunctionInfo> &functions)
 {
+    if (rawData.data == nullptr || rawData.size == 0) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ToFunctionInfoVec failed: null data or zero size");
+        return ERR_INVALID_VALUE;
+    }
     std::stringstream ss;
     ss.write(reinterpret_cast<const char *>(rawData.data), rawData.size);
     ss.seekg(0, std::ios::beg);
     uint32_t ssLength = static_cast<uint32_t>(ss.str().length());
+
     uint32_t count = 0;
-    ss.read(reinterpret_cast<char *>(&count), sizeof(count));
+    if (!ReadRaw(ss, &count, sizeof(count))) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to read count, stream state invalid");
+        return ERR_INVALID_VALUE;
+    }
     if (count > MAX_FUNCTION_INFO_COUNT) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "functions exceed maxSize %{public}d, count: %{public}d",
             MAX_FUNCTION_INFO_COUNT, count);
@@ -324,22 +377,10 @@ int32_t FunctionsRawData::ToFunctionInfoVec(const FunctionsRawData &rawData, std
     }
     functions.resize(count);
     for (uint32_t i = 0; i < count; ++i) {
-        uint32_t functionSize = 0;
-        ss.read(reinterpret_cast<char *>(&functionSize), sizeof(functionSize));
-        if (functionSize > ssLength - static_cast<uint32_t>(ss.tellg())) {
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "functionSize:%{public}u is invalid", functionSize);
-            return ERR_INVALID_VALUE;
-        }
-        std::string functionStr(functionSize, '\0');
-        ss.read(functionStr.data(), functionSize);
-        nlohmann::json j = nlohmann::json::parse(functionStr, nullptr, false);
-        if (j.is_discarded()) {
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to parse JSON for function %{public}d", i);
-            return ERR_JSON_PARSE_FAILED;
-        }
-        if (!FunctionInfo::ParseFromJson(j, functions[i])) {
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to parse FunctionInfo from JSON for function %{public}d", i);
-            return ERR_JSON_PARSE_FAILED;
+        int32_t ret = ReadOneItem<FunctionInfo>(ss, ssLength, functions[i], false, ERR_JSON_PARSE_FAILED);
+        if (ret != ERR_OK) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "ReadOneItem failed, index: %{public}u, ret: %{public}d", i, ret);
+            return ret;
         }
     }
     return ERR_OK;

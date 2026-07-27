@@ -33,6 +33,32 @@ const std::string JSON_KEY_APP_TYPE = "appType";
 const std::string JSON_KEY_SETTER = "setter";
 const std::string JSON_KEY_SETTERID = "setterId";
 const std::string JSON_KEY_POLICY = "policy";
+
+/**
+ * @brief Parse and validate enum value from JSON object.
+ * @tparam EnumType The enum type with UNSPECIFIED as lower bound and MAX as upper sentinel.
+ * @param jsonObject The JSON object to parse from.
+ * @param key The JSON key to read.
+ * @param defaultValue The default value if validation fails.
+ * @param fieldName The field name for error logging.
+ * @return The parsed and validated enum value.
+ */
+template <typename EnumType>
+EnumType ParseEnum(const nlohmann::json &jsonObject, const std::string &key,
+    EnumType defaultValue, const std::string &fieldName)
+{
+    if (!jsonObject.contains(key) || !jsonObject[key].is_number()) {
+        return defaultValue;
+    }
+
+    int32_t value = jsonObject.at(key).get<int32_t>();
+    if (value < static_cast<int32_t>(EnumType::UNSPECIFIED) ||
+        value >= static_cast<int32_t>(EnumType::MAX)) {
+        TAG_LOGE(AAFwkTag::KEEP_ALIVE, "Invalid %{public}s: %{public}d", fieldName.c_str(), value);
+        return defaultValue;
+    }
+    return static_cast<EnumType>(value);
+}
 } // namespace
 const DistributedKv::AppId AbilityKeepAliveDataManager::APP_ID = { "keep_alive_storage" };
 const DistributedKv::StoreId AbilityKeepAliveDataManager::STORE_ID = { "keep_alive_infos" };
@@ -50,6 +76,7 @@ AbilityKeepAliveDataManager::~AbilityKeepAliveDataManager()
     std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
     if (kvStorePtr_ != nullptr) {
         dataManager_.CloseKvStore(APP_ID, kvStorePtr_);
+        kvStorePtr_ = nullptr;
     }
 }
 
@@ -128,30 +155,24 @@ int32_t AbilityKeepAliveDataManager::InsertKeepAliveData(const KeepAliveInfo &in
 
     TAG_LOGD(AAFwkTag::KEEP_ALIVE,
         "bundleName: %{public}s, userId: %{public}d, appType: %{public}d, setter: %{public}d",
-        info.bundleName.c_str(), info.userId, info.appType, info.setter);
-    {
-        std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
-        if (!CheckKvStore()) {
-            TAG_LOGE(AAFwkTag::KEEP_ALIVE, "null kvStore");
-            return ERR_NO_INIT;
-        }
-    }
+        info.bundleName.c_str(), info.userId, static_cast<int32_t>(info.appType),
+        static_cast<int32_t>(info.setter));
 
     DistributedKv::Key key = ConvertKeepAliveDataToKey(info);
     DistributedKv::Value value = ConvertKeepAliveStatusToValue(info);
     DistributedKv::Status status;
     {
         std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
-        status = kvStorePtr_->Put(key, value);
-    }
-
-    if (status != DistributedKv::Status::SUCCESS) {
-        TAG_LOGE(AAFwkTag::KEEP_ALIVE, "kvStore insert error: %{public}d", status);
-        {
-            std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
-            status = RestoreKvStore(status);
+        if (!CheckKvStore()) {
+            TAG_LOGE(AAFwkTag::KEEP_ALIVE, "null kvStore");
+            return ERR_NO_INIT;
         }
-        return ERR_INVALID_OPERATION;
+        status = kvStorePtr_->Put(key, value);
+        if (status != DistributedKv::Status::SUCCESS) {
+            TAG_LOGE(AAFwkTag::KEEP_ALIVE, "kvStore insert error: %{public}d", status);
+            status = RestoreKvStore(status);
+            return ERR_INVALID_OPERATION;
+        }
     }
     return ERR_OK;
 }
@@ -165,28 +186,23 @@ int32_t AbilityKeepAliveDataManager::DeleteKeepAliveData(const KeepAliveInfo &in
 
     TAG_LOGD(AAFwkTag::KEEP_ALIVE,
         "bundleName: %{public}s, userId: %{public}d, appType: %{public}d, setter: %{public}d",
-        info.bundleName.c_str(), info.userId, info.appType, info.setter);
+        info.bundleName.c_str(), info.userId, static_cast<int32_t>(info.appType),
+        static_cast<int32_t>(info.setter));
+
+    std::vector<DistributedKv::Entry> allEntries;
+    DistributedKv::Status status = DistributedKv::Status::SUCCESS;
     {
         std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
         if (!CheckKvStore()) {
             TAG_LOGE(AAFwkTag::KEEP_ALIVE, "null kvStore");
             return ERR_NO_INIT;
         }
-    }
-
-    std::vector<DistributedKv::Entry> allEntries;
-    DistributedKv::Status status = DistributedKv::Status::SUCCESS;
-    {
-        std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
         status = kvStorePtr_->GetEntries(nullptr, allEntries);
-    }
-    if (status != DistributedKv::Status::SUCCESS) {
-        TAG_LOGE(AAFwkTag::KEEP_ALIVE, "GetEntries error: %{public}d", status);
-        {
-            std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
+        if (status != DistributedKv::Status::SUCCESS) {
+            TAG_LOGE(AAFwkTag::KEEP_ALIVE, "GetEntries error: %{public}d", status);
             status = RestoreKvStore(status);
+            return ERR_INVALID_OPERATION;
         }
-        return ERR_INVALID_OPERATION;
     }
 
     for (const auto &item : allEntries) {
@@ -194,14 +210,11 @@ int32_t AbilityKeepAliveDataManager::DeleteKeepAliveData(const KeepAliveInfo &in
             {
                 std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
                 status = kvStorePtr_->Delete(item.key);
-            }
-            if (status != DistributedKv::Status::SUCCESS) {
-                TAG_LOGE(AAFwkTag::KEEP_ALIVE, "kvStore delete error: %{public}d", status);
-                {
-                    std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
+                if (status != DistributedKv::Status::SUCCESS) {
+                    TAG_LOGE(AAFwkTag::KEEP_ALIVE, "kvStore delete error: %{public}d", status);
                     status = RestoreKvStore(status);
+                    return ERR_INVALID_OPERATION;
                 }
-                return ERR_INVALID_OPERATION;
             }
         }
     }
@@ -220,6 +233,9 @@ KeepAliveStatus AbilityKeepAliveDataManager::QueryKeepAliveData(const KeepAliveI
 
     TAG_LOGD(AAFwkTag::KEEP_ALIVE,
         "bundleName: %{public}s, userId: %{public}d", info.bundleName.c_str(), info.userId);
+
+    std::vector<DistributedKv::Entry> allEntries;
+    DistributedKv::Status status = DistributedKv::Status::SUCCESS;
     {
         std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
         if (!CheckKvStore()) {
@@ -227,22 +243,13 @@ KeepAliveStatus AbilityKeepAliveDataManager::QueryKeepAliveData(const KeepAliveI
             kaStatus.code = ERR_NO_INIT;
             return kaStatus;
         }
-    }
-
-    std::vector<DistributedKv::Entry> allEntries;
-    DistributedKv::Status status = DistributedKv::Status::SUCCESS;
-    {
-        std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
         status = kvStorePtr_->GetEntries(nullptr, allEntries);
-    }
-    if (status != DistributedKv::Status::SUCCESS) {
-        TAG_LOGE(AAFwkTag::KEEP_ALIVE, "GetEntries error: %{public}d", status);
-        {
-            std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
+        if (status != DistributedKv::Status::SUCCESS) {
+            TAG_LOGE(AAFwkTag::KEEP_ALIVE, "GetEntries error: %{public}d", status);
             status = RestoreKvStore(status);
+            kaStatus.code = ERR_INVALID_OPERATION;
+            return kaStatus;
         }
-        kaStatus.code = ERR_INVALID_OPERATION;
-        return kaStatus;
     }
 
     kaStatus.code = ERR_NAME_NOT_FOUND;
@@ -267,28 +274,23 @@ int32_t AbilityKeepAliveDataManager::QueryKeepAliveApplications(
 
     TAG_LOGD(AAFwkTag::KEEP_ALIVE,
         "bundleName: %{public}s, userId: %{public}d, appType: %{public}d, setter: %{public}d",
-        queryParam.bundleName.c_str(), queryParam.userId, queryParam.appType, queryParam.setter);
+        queryParam.bundleName.c_str(), queryParam.userId, static_cast<int32_t>(queryParam.appType),
+        static_cast<int32_t>(queryParam.setter));
+
+    std::vector<DistributedKv::Entry> allEntries;
+    DistributedKv::Status status = DistributedKv::Status::SUCCESS;
     {
         std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
         if (!CheckKvStore()) {
             TAG_LOGE(AAFwkTag::KEEP_ALIVE, "null kvStore");
             return ERR_NO_INIT;
         }
-    }
-
-    std::vector<DistributedKv::Entry> allEntries;
-    DistributedKv::Status status = DistributedKv::Status::SUCCESS;
-    {
-        std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
         status = kvStorePtr_->GetEntries(nullptr, allEntries);
-    }
-    if (status != DistributedKv::Status::SUCCESS) {
-        TAG_LOGE(AAFwkTag::KEEP_ALIVE, "GetEntries: %{public}d", status);
-        {
-            std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
+        if (status != DistributedKv::Status::SUCCESS) {
+            TAG_LOGE(AAFwkTag::KEEP_ALIVE, "GetEntries: %{public}d", status);
             status = RestoreKvStore(status);
+            return ERR_INVALID_OPERATION;
         }
-        return ERR_INVALID_OPERATION;
     }
 
     for (const auto &item : allEntries) {
@@ -304,27 +306,21 @@ int32_t AbilityKeepAliveDataManager::QueryKeepAliveApplications(
 int32_t AbilityKeepAliveDataManager::DeleteKeepAliveDataWithSetterId(const KeepAliveInfo &info)
 {
     TAG_LOGD(AAFwkTag::KEEP_ALIVE, "setterId: %{public}d", info.setterId);
+
+    std::vector<DistributedKv::Entry> allEntries;
+    DistributedKv::Status status = DistributedKv::Status::SUCCESS;
     {
         std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
         if (!CheckKvStore()) {
             TAG_LOGE(AAFwkTag::KEEP_ALIVE, "null kvStore");
             return ERR_NO_INIT;
         }
-    }
-
-    std::vector<DistributedKv::Entry> allEntries;
-    DistributedKv::Status status = DistributedKv::Status::SUCCESS;
-    {
-        std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
         status = kvStorePtr_->GetEntries(nullptr, allEntries);
-    }
-    if (status != DistributedKv::Status::SUCCESS) {
-        TAG_LOGE(AAFwkTag::KEEP_ALIVE, "GetEntries error: %{public}d", status);
-        {
-            std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
+        if (status != DistributedKv::Status::SUCCESS) {
+            TAG_LOGE(AAFwkTag::KEEP_ALIVE, "GetEntries error: %{public}d", status);
             status = RestoreKvStore(status);
+            return ERR_INVALID_OPERATION;
         }
-        return ERR_INVALID_OPERATION;
     }
 
     for (const auto &item : allEntries) {
@@ -332,14 +328,11 @@ int32_t AbilityKeepAliveDataManager::DeleteKeepAliveDataWithSetterId(const KeepA
             {
                 std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
                 status = kvStorePtr_->Delete(item.key);
-            }
-            if (status != DistributedKv::Status::SUCCESS) {
-                TAG_LOGE(AAFwkTag::KEEP_ALIVE, "kvStore delete error: %{public}d", status);
-                {
-                    std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
+                if (status != DistributedKv::Status::SUCCESS) {
+                    TAG_LOGE(AAFwkTag::KEEP_ALIVE, "kvStore delete error: %{public}d", status);
                     status = RestoreKvStore(status);
+                    return ERR_INVALID_OPERATION;
                 }
-                return ERR_INVALID_OPERATION;
             }
         }
     }
@@ -368,15 +361,16 @@ void AbilityKeepAliveDataManager::ConvertKeepAliveStatusFromValue(const Distribu
         TAG_LOGE(AAFwkTag::KEEP_ALIVE, "parse jsonObject fail");
         return;
     }
-    if (jsonObject.contains(JSON_KEY_SETTER) && jsonObject[JSON_KEY_SETTER].is_number()) {
-        status.setter = KeepAliveSetter(jsonObject.at(JSON_KEY_SETTER).get<int32_t>());
-    }
+
+    status.setter = ParseEnum<KeepAliveSetter>(jsonObject, JSON_KEY_SETTER,
+        KeepAliveSetter::UNSPECIFIED, "setter");
+
     if (jsonObject.contains(JSON_KEY_SETTERID) && jsonObject[JSON_KEY_SETTERID].is_number()) {
         status.setterId = jsonObject.at(JSON_KEY_SETTERID).get<int32_t>();
     }
-    if (jsonObject.contains(JSON_KEY_POLICY) && jsonObject[JSON_KEY_POLICY].is_number()) {
-        status.policy = KeepAlivePolicy(jsonObject.at(JSON_KEY_POLICY).get<int32_t>());
-    }
+
+    status.policy = ParseEnum<KeepAlivePolicy>(jsonObject, JSON_KEY_POLICY,
+        KeepAlivePolicy::UNSPECIFIED, "policy");
 }
 
 DistributedKv::Key AbilityKeepAliveDataManager::ConvertKeepAliveDataToKey(const KeepAliveInfo &info)
@@ -411,20 +405,15 @@ KeepAliveInfo AbilityKeepAliveDataManager::ConvertKeepAliveInfoFromKey(const Dis
         info.userId = jsonObject.at(JSON_KEY_USERID).get<int32_t>();
     }
 
-    if (jsonObject.contains(JSON_KEY_APP_TYPE) && jsonObject[JSON_KEY_APP_TYPE].is_number()) {
-        info.appType = KeepAliveAppType(jsonObject.at(JSON_KEY_APP_TYPE).get<int32_t>());
-    }
-
-    if (jsonObject.contains(JSON_KEY_SETTER) && jsonObject[JSON_KEY_SETTER].is_number()) {
-        info.setter = KeepAliveSetter(jsonObject.at(JSON_KEY_SETTER).get<int32_t>());
-    }
+    info.appType = ParseEnum<KeepAliveAppType>(jsonObject, JSON_KEY_APP_TYPE,
+        KeepAliveAppType::UNSPECIFIED, "appType");
+    info.setter = ParseEnum<KeepAliveSetter>(jsonObject, JSON_KEY_SETTER,
+        KeepAliveSetter::UNSPECIFIED, "setter");
+    info.policy = ParseEnum<KeepAlivePolicy>(jsonObject, JSON_KEY_POLICY,
+        KeepAlivePolicy::UNSPECIFIED, "policy");
 
     if (jsonObject.contains(JSON_KEY_SETTERID) && jsonObject[JSON_KEY_SETTERID].is_number()) {
         info.setterId = jsonObject.at(JSON_KEY_SETTERID).get<int32_t>();
-    }
-
-    if (jsonObject.contains(JSON_KEY_POLICY) && jsonObject[JSON_KEY_POLICY].is_number()) {
-        info.policy = KeepAlivePolicy(jsonObject.at(JSON_KEY_POLICY).get<int32_t>());
     }
 
     return info;

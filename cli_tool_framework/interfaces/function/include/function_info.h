@@ -86,8 +86,9 @@ public:
      * @brief Convert vector of FunctionInfo to FunctionsRawData
      * @param functions Input vector of FunctionInfo
      * @param rawData Output FunctionsRawData
+     * @return int32_t ERR_OK on success, ERR_INVALID_VALUE if count exceeds the maximum
      */
-    static void FromFunctionInfoVec(const std::vector<FunctionInfo> &functions, FunctionsRawData &rawData);
+    static int32_t FromFunctionInfoVec(const std::vector<FunctionInfo> &functions, FunctionsRawData &rawData);
 
     /**
      * @brief Convert FunctionsRawData to vector of FunctionInfo

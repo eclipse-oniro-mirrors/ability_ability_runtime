@@ -2096,79 +2096,79 @@ HWTEST_F(KeepAliveProcessManagerTest, CheckPermission_002, TestSize.Level1)
 
 /*
  * Feature:  KeepAliveProcessManager
- * Function: SaveAppSeriviceRestartAfterUpgrade
+ * Function: SaveAppServiceRestartAfterUpgrade
  * SubFunction: NA
- * FunctionPoints:SaveAppSeriviceRestartAfterUpgrade
+ * FunctionPoints:SaveAppServiceRestartAfterUpgrade
  * EnvConditions: NA
- * CaseDescription: Verify SaveAppSeriviceRestartAfterUpgrade
+ * CaseDescription: Verify SaveAppServiceRestartAfterUpgrade
  */
-HWTEST_F(KeepAliveProcessManagerTest, SaveAppSeriviceRestartAfterUpgrade_001, TestSize.Level1)
+HWTEST_F(KeepAliveProcessManagerTest, SaveAppServiceRestartAfterUpgrade_001, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "SaveAppSeriviceRestartAfterUpgrade_001 start";
+    GTEST_LOG_(INFO) << "SaveAppServiceRestartAfterUpgrade_001 start";
     int32_t uid = 1;
     std::string bundleName = "testBundleName";
     system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, true);
     AbilityKeepAliveService::callIsKeepAliveResult = false;
     auto keepAliveProcessManager = std::make_shared<KeepAliveProcessManager>();
-    keepAliveProcessManager->SaveAppSeriviceRestartAfterUpgrade(bundleName, uid);
+    keepAliveProcessManager->SaveAppServiceRestartAfterUpgrade(bundleName, uid);
     EXPECT_TRUE(AppMgrClient::isKeepAliveAppservice);
-    GTEST_LOG_(INFO) << "SaveAppSeriviceRestartAfterUpgrade_001 end";
+    GTEST_LOG_(INFO) << "SaveAppServiceRestartAfterUpgrade_001 end";
 }
 
 /*
  * Feature:  KeepAliveProcessManager
- * Function: SaveAppSeriviceRestartAfterUpgrade
+ * Function: SaveAppServiceRestartAfterUpgrade
  * SubFunction: NA
- * FunctionPoints:SaveAppSeriviceRestartAfterUpgrade
+ * FunctionPoints:SaveAppServiceRestartAfterUpgrade
  * EnvConditions: NA
- * CaseDescription: Verify SaveAppSeriviceRestartAfterUpgrade
+ * CaseDescription: Verify SaveAppServiceRestartAfterUpgrade
  */
-HWTEST_F(KeepAliveProcessManagerTest, SaveAppSeriviceRestartAfterUpgrade_002, TestSize.Level1)
+HWTEST_F(KeepAliveProcessManagerTest, SaveAppServiceRestartAfterUpgrade_002, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "SaveAppSeriviceRestartAfterUpgrade_002 start";
+    GTEST_LOG_(INFO) << "SaveAppServiceRestartAfterUpgrade_002 start";
     int32_t uid = 1;
     std::string bundleName = "testBundleName";
     system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, true);
     AbilityKeepAliveService::callIsKeepAliveResult = true;
     auto keepAliveProcessManager = std::make_shared<KeepAliveProcessManager>();
-    keepAliveProcessManager->SaveAppSeriviceRestartAfterUpgrade(bundleName, uid);
+    keepAliveProcessManager->SaveAppServiceRestartAfterUpgrade(bundleName, uid);
     EXPECT_TRUE(AppMgrClient::isKeepAliveAppservice);
-    GTEST_LOG_(INFO) << "SaveAppSeriviceRestartAfterUpgrade_002 end";
+    GTEST_LOG_(INFO) << "SaveAppServiceRestartAfterUpgrade_002 end";
 }
 
 /*
  * Feature:  KeepAliveProcessManager
- * Function: SaveAppSeriviceRestartAfterUpgrade
+ * Function: SaveAppServiceRestartAfterUpgrade
  * SubFunction: NA
- * FunctionPoints:SaveAppSeriviceRestartAfterUpgrade
+ * FunctionPoints:SaveAppServiceRestartAfterUpgrade
  * EnvConditions: NA
- * CaseDescription: Verify SaveAppSeriviceRestartAfterUpgrade
+ * CaseDescription: Verify SaveAppServiceRestartAfterUpgrade
  */
-HWTEST_F(KeepAliveProcessManagerTest, SaveAppSeriviceRestartAfterUpgrade_003, TestSize.Level1)
+HWTEST_F(KeepAliveProcessManagerTest, SaveAppServiceRestartAfterUpgrade_003, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "SaveAppSeriviceRestartAfterUpgrade_003 start";
+    GTEST_LOG_(INFO) << "SaveAppServiceRestartAfterUpgrade_003 start";
     int32_t uid = 1;
     std::string bundleName = "testBundleName";
     system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, true);
     AbilityKeepAliveService::callIsKeepAliveResult = true;
     AppMgrClient::ret = 0;
     auto keepAliveProcessManager = std::make_shared<KeepAliveProcessManager>();
-    keepAliveProcessManager->SaveAppSeriviceRestartAfterUpgrade(bundleName, uid);
+    keepAliveProcessManager->SaveAppServiceRestartAfterUpgrade(bundleName, uid);
     EXPECT_TRUE(AppMgrClient::isKeepAliveAppservice);
-    GTEST_LOG_(INFO) << "SaveAppSeriviceRestartAfterUpgrade_003 end";
+    GTEST_LOG_(INFO) << "SaveAppServiceRestartAfterUpgrade_003 end";
 }
 
 /*
  * Feature:  KeepAliveProcessManager
- * Function: SaveAppSeriviceRestartAfterUpgrade
+ * Function: SaveAppServiceRestartAfterUpgrade
  * SubFunction: NA
- * FunctionPoints:SaveAppSeriviceRestartAfterUpgrade
+ * FunctionPoints:SaveAppServiceRestartAfterUpgrade
  * EnvConditions: NA
- * CaseDescription: Verify SaveAppSeriviceRestartAfterUpgrade
+ * CaseDescription: Verify SaveAppServiceRestartAfterUpgrade
  */
-HWTEST_F(KeepAliveProcessManagerTest, SaveAppSeriviceRestartAfterUpgrade_004, TestSize.Level1)
+HWTEST_F(KeepAliveProcessManagerTest, SaveAppServiceRestartAfterUpgrade_004, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "SaveAppSeriviceRestartAfterUpgrade_004 start";
+    GTEST_LOG_(INFO) << "SaveAppServiceRestartAfterUpgrade_004 start";
     int32_t uid = 1;
     std::string bundleName = "testBundleName";
     system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, true);
@@ -2179,22 +2179,22 @@ HWTEST_F(KeepAliveProcessManagerTest, SaveAppSeriviceRestartAfterUpgrade_004, Te
     info.isKeepAliveAppService = false;
     AppMgrClient::infos = { info };
     auto keepAliveProcessManager = std::make_shared<KeepAliveProcessManager>();
-    keepAliveProcessManager->SaveAppSeriviceRestartAfterUpgrade(bundleName, uid);
+    keepAliveProcessManager->SaveAppServiceRestartAfterUpgrade(bundleName, uid);
     EXPECT_TRUE(AppMgrClient::isKeepAliveAppservice);
-    GTEST_LOG_(INFO) << "SaveAppSeriviceRestartAfterUpgrade_004 end";
+    GTEST_LOG_(INFO) << "SaveAppServiceRestartAfterUpgrade_004 end";
 }
 
 /*
  * Feature:  KeepAliveProcessManager
- * Function: SaveAppSeriviceRestartAfterUpgrade
+ * Function: SaveAppServiceRestartAfterUpgrade
  * SubFunction: NA
- * FunctionPoints:SaveAppSeriviceRestartAfterUpgrade
+ * FunctionPoints:SaveAppServiceRestartAfterUpgrade
  * EnvConditions: NA
- * CaseDescription: Verify SaveAppSeriviceRestartAfterUpgrade
+ * CaseDescription: Verify SaveAppServiceRestartAfterUpgrade
  */
-HWTEST_F(KeepAliveProcessManagerTest, SaveAppSeriviceRestartAfterUpgrade_005, TestSize.Level1)
+HWTEST_F(KeepAliveProcessManagerTest, SaveAppServiceRestartAfterUpgrade_005, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "SaveAppSeriviceRestartAfterUpgrade_005 start";
+    GTEST_LOG_(INFO) << "SaveAppServiceRestartAfterUpgrade_005 start";
     int32_t uid = 1;
     std::string bundleName = "testBundleName";
     system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, true);
@@ -2205,22 +2205,22 @@ HWTEST_F(KeepAliveProcessManagerTest, SaveAppSeriviceRestartAfterUpgrade_005, Te
     info.isKeepAliveAppService = false;
     AppMgrClient::infos = { info };
     auto keepAliveProcessManager = std::make_shared<KeepAliveProcessManager>();
-    keepAliveProcessManager->SaveAppSeriviceRestartAfterUpgrade(bundleName, uid);
+    keepAliveProcessManager->SaveAppServiceRestartAfterUpgrade(bundleName, uid);
     EXPECT_TRUE(AppMgrClient::isKeepAliveAppservice);
-    GTEST_LOG_(INFO) << "SaveAppSeriviceRestartAfterUpgrade_005 end";
+    GTEST_LOG_(INFO) << "SaveAppServiceRestartAfterUpgrade_005 end";
 }
 
 /*
  * Feature:  KeepAliveProcessManager
- * Function: SaveAppSeriviceRestartAfterUpgrade
+ * Function: SaveAppServiceRestartAfterUpgrade
  * SubFunction: NA
- * FunctionPoints:SaveAppSeriviceRestartAfterUpgrade
+ * FunctionPoints:SaveAppServiceRestartAfterUpgrade
  * EnvConditions: NA
- * CaseDescription: Verify SaveAppSeriviceRestartAfterUpgrade
+ * CaseDescription: Verify SaveAppServiceRestartAfterUpgrade
  */
-HWTEST_F(KeepAliveProcessManagerTest, SaveAppSeriviceRestartAfterUpgrade_006, TestSize.Level1)
+HWTEST_F(KeepAliveProcessManagerTest, SaveAppServiceRestartAfterUpgrade_006, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "SaveAppSeriviceRestartAfterUpgrade_006 start";
+    GTEST_LOG_(INFO) << "SaveAppServiceRestartAfterUpgrade_006 start";
     int32_t uid = 1;
     std::string bundleName = "testBundleName";
     system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, true);
@@ -2231,22 +2231,22 @@ HWTEST_F(KeepAliveProcessManagerTest, SaveAppSeriviceRestartAfterUpgrade_006, Te
     info.isKeepAliveAppService = true;
     AppMgrClient::infos = { info };
     auto keepAliveProcessManager = std::make_shared<KeepAliveProcessManager>();
-    keepAliveProcessManager->SaveAppSeriviceRestartAfterUpgrade(bundleName, uid);
+    keepAliveProcessManager->SaveAppServiceRestartAfterUpgrade(bundleName, uid);
     EXPECT_TRUE(AppMgrClient::isKeepAliveAppservice);
-    GTEST_LOG_(INFO) << "SaveAppSeriviceRestartAfterUpgrade_006 end";
+    GTEST_LOG_(INFO) << "SaveAppServiceRestartAfterUpgrade_006 end";
 }
 
 /*
  * Feature:  KeepAliveProcessManager
- * Function: SaveAppSeriviceRestartAfterUpgrade
+ * Function: SaveAppServiceRestartAfterUpgrade
  * SubFunction: NA
- * FunctionPoints:SaveAppSeriviceRestartAfterUpgrade
+ * FunctionPoints:SaveAppServiceRestartAfterUpgrade
  * EnvConditions: NA
- * CaseDescription: Verify SaveAppSeriviceRestartAfterUpgrade
+ * CaseDescription: Verify SaveAppServiceRestartAfterUpgrade
  */
-HWTEST_F(KeepAliveProcessManagerTest, SaveAppSeriviceRestartAfterUpgrade_007, TestSize.Level1)
+HWTEST_F(KeepAliveProcessManagerTest, SaveAppServiceRestartAfterUpgrade_007, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "SaveAppSeriviceRestartAfterUpgrade_007 start";
+    GTEST_LOG_(INFO) << "SaveAppServiceRestartAfterUpgrade_007 start";
     int32_t uid = 1;
     std::string bundleName = "testBundleName";
     system::SetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, true);
@@ -2257,9 +2257,9 @@ HWTEST_F(KeepAliveProcessManagerTest, SaveAppSeriviceRestartAfterUpgrade_007, Te
     info.isKeepAliveAppService = true;
     AppMgrClient::infos = { info };
     auto keepAliveProcessManager = std::make_shared<KeepAliveProcessManager>();
-    keepAliveProcessManager->SaveAppSeriviceRestartAfterUpgrade(bundleName, uid);
+    keepAliveProcessManager->SaveAppServiceRestartAfterUpgrade(bundleName, uid);
     EXPECT_FALSE(AppMgrClient::isKeepAliveAppservice);
-    GTEST_LOG_(INFO) << "SaveAppSeriviceRestartAfterUpgrade_007 end";
+    GTEST_LOG_(INFO) << "SaveAppServiceRestartAfterUpgrade_007 end";
 }
 
 /*

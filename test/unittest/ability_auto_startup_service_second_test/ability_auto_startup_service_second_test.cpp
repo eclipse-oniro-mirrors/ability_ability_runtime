@@ -117,8 +117,8 @@ HWTEST_F(AbilityAutoStartupServiceSecondTest, RegisterAutoStartupSystemCallback_
 
     MyFlag::flag_ = 1;
     system::SetBoolParameter("", true);
-    MockEdmAbilityAutoStartupListener stub;
-    sptr<IRemoteObject> callback = stub.AsObject();
+    sptr<MockEdmAbilityAutoStartupListener> stub = new MockEdmAbilityAutoStartupListener();
+    sptr<IRemoteObject> callback = stub->AsObject();
     int32_t result = abilityAutoStartupService->RegisterAutoStartupSystemCallback(nullptr);
     EXPECT_EQ(result, 0);
     EXPECT_EQ(abilityAutoStartupService->callbackVector_.size(), 1);
@@ -171,6 +171,9 @@ HWTEST_F(AbilityAutoStartupServiceSecondTest, CheckAutoStartupData_002, TestSize
     bundleName = "isFoundIsFalse";
     result = abilityAutoStartupService->CheckAutoStartupData(bundleName, BASE_USER_RANGE);
     EXPECT_EQ(result, 0);
+
+    // Clear kvStorePtr_ to avoid calling CloseKvStore in destructor
+    DelayedSingleton<AbilityAutoStartupDataManager>::GetInstance()->kvStorePtr_ = nullptr;
 
     GTEST_LOG_(INFO) << "CheckAutoStartupData_002 end";
 }
@@ -274,6 +277,9 @@ HWTEST_F(AbilityAutoStartupServiceSecondTest, InnerApplicationAutoStartupByEDM_0
 
     result = abilityAutoStartupService->InnerApplicationAutoStartupByEDM(autoStartupInfo, false, false);
     EXPECT_EQ(result, 0);
+
+    // Clear kvStorePtr_ to avoid calling CloseKvStore in destructor
+    DelayedSingleton<AbilityAutoStartupDataManager>::GetInstance()->kvStorePtr_ = nullptr;
 
     GTEST_LOG_(INFO) << "InnerApplicationAutoStartupByEDM_004 end";
 }
@@ -593,6 +599,9 @@ HWTEST_F(AbilityAutoStartupServiceSecondTest, CancelApplicationAutoStartup_003, 
     GTEST_LOG_(INFO) << "CancelApplicationAutoStartup_003 start";
     auto abilityAutoStartupService = std::make_shared<AbilityAutoStartupService>();
     EXPECT_NE(abilityAutoStartupService, nullptr);
+    auto kvStorePtr = std::make_shared<MockSingleKvStore>();
+    EXPECT_NE(kvStorePtr, nullptr);
+    DelayedSingleton<AbilityAutoStartupDataManager>::GetInstance()->kvStorePtr_ = kvStorePtr;
     MyFlag::flag_ = 1;
     system::SetBoolParameter("", true);
     AutoStartupInfo info;
@@ -605,6 +614,8 @@ HWTEST_F(AbilityAutoStartupServiceSecondTest, CancelApplicationAutoStartup_003, 
     info.setterType = AutoStartupSetterType::USER;
     int32_t result = abilityAutoStartupService->CancelApplicationAutoStartup(info);
     ASSERT_EQ(result, ERR_NAME_NOT_FOUND);
+    // Clear kvStorePtr_ to avoid calling CloseKvStore in destructor
+    DelayedSingleton<AbilityAutoStartupDataManager>::GetInstance()->kvStorePtr_ = nullptr;
     MyFlag::flag_ = 0;
     system::SetBoolParameter("", false);
     GTEST_LOG_(INFO) << "CancelApplicationAutoStartup_003 end";
@@ -745,8 +756,8 @@ HWTEST_F(AbilityAutoStartupServiceSecondTest, ExecuteCallbacks_001, TestSize.Lev
     EXPECT_NE(abilityAutoStartupService, nullptr);
     MyFlag::flag_ = 1;
     system::SetBoolParameter("", true);
-    MockEdmAbilityAutoStartupListener stub;
-    sptr<IRemoteObject> callback = stub.AsObject();
+    sptr<MockEdmAbilityAutoStartupListener> stub = new MockEdmAbilityAutoStartupListener();
+    sptr<IRemoteObject> callback = stub->AsObject();
     AutoStartupInfo info;
     info.userId = 0;
     info.setterUserId = 1;
@@ -776,8 +787,8 @@ HWTEST_F(AbilityAutoStartupServiceSecondTest, ExecuteCallbacks_002, TestSize.Lev
     EXPECT_NE(abilityAutoStartupService, nullptr);
     MyFlag::flag_ = 1;
     system::SetBoolParameter("", true);
-    MockEdmAbilityAutoStartupListener stub;
-    sptr<IRemoteObject> callback = stub.AsObject();
+    sptr<MockEdmAbilityAutoStartupListener> stub = new MockEdmAbilityAutoStartupListener();
+    sptr<IRemoteObject> callback = stub->AsObject();
     AutoStartupInfo info;
     info.userId = 0;
     info.setterUserId = 1;
@@ -807,8 +818,8 @@ HWTEST_F(AbilityAutoStartupServiceSecondTest, ExecuteCallbacks_003, TestSize.Lev
     EXPECT_NE(abilityAutoStartupService, nullptr);
     MyFlag::flag_ = 1;
     system::SetBoolParameter("", true);
-    MockEdmAbilityAutoStartupListener stub;
-    sptr<IRemoteObject> callback = stub.AsObject();
+    sptr<MockEdmAbilityAutoStartupListener> stub = new MockEdmAbilityAutoStartupListener();
+    sptr<IRemoteObject> callback = stub->AsObject();
     AutoStartupInfo info;
     info.userId = 1;
     info.setterUserId = 101;
@@ -1050,6 +1061,9 @@ HWTEST_F(AbilityAutoStartupServiceSecondTest, CancelApplicationAutoStartupByEDM_
     GTEST_LOG_(INFO) << "CancelApplicationAutoStartupByEDM_001 start";
     auto abilityAutoStartupService = std::make_shared<AbilityAutoStartupService>();
     EXPECT_NE(abilityAutoStartupService, nullptr);
+    auto kvStorePtr = std::make_shared<MockSingleKvStore>();
+    EXPECT_NE(kvStorePtr, nullptr);
+    DelayedSingleton<AbilityAutoStartupDataManager>::GetInstance()->kvStorePtr_ = kvStorePtr;
     MyFlag::flag_ = 1;
     AutoStartupInfo info;
     info.bundleName = "hapAbilityInfoVisible";
@@ -1061,6 +1075,8 @@ HWTEST_F(AbilityAutoStartupServiceSecondTest, CancelApplicationAutoStartupByEDM_
     info.setterType = AutoStartupSetterType::SYSTEM;
     int32_t result = abilityAutoStartupService->CancelApplicationAutoStartupByEDM(info, false);
     ASSERT_EQ(result, ERR_OK);
+    // Clear kvStorePtr_ to avoid calling CloseKvStore in destructor
+    DelayedSingleton<AbilityAutoStartupDataManager>::GetInstance()->kvStorePtr_ = nullptr;
     MyFlag::flag_ = 0;
     GTEST_LOG_(INFO) << "CancelApplicationAutoStartupByEDM_001 end";
 }
@@ -1230,6 +1246,9 @@ HWTEST_F(AbilityAutoStartupServiceSecondTest, QueryAllAutoStartupApplications_00
     system::SetBoolParameter("", true);
     auto abilityAutoStartupService = std::make_shared<AbilityAutoStartupService>();
     EXPECT_NE(abilityAutoStartupService, nullptr);
+    auto kvStorePtr = std::make_shared<MockSingleKvStore>();
+    EXPECT_NE(kvStorePtr, nullptr);
+    DelayedSingleton<AbilityAutoStartupDataManager>::GetInstance()->kvStorePtr_ = kvStorePtr;
     AutoStartupInfo info;
     info.bundleName = "hapAbilityInfoVisible";
     info.moduleName = "moduleNameTest";
@@ -1244,6 +1263,8 @@ HWTEST_F(AbilityAutoStartupServiceSecondTest, QueryAllAutoStartupApplications_00
     int32_t userId = 100;
     result = abilityAutoStartupService->QueryAllAutoStartupApplications(infoList, userId);
     EXPECT_EQ(result, ERR_OK);
+    // Clear kvStorePtr_ to avoid calling CloseKvStore in destructor
+    DelayedSingleton<AbilityAutoStartupDataManager>::GetInstance()->kvStorePtr_ = nullptr;
     MyFlag::flag_ = 0;
     system::SetBoolParameter("", false);
     GTEST_LOG_(INFO) << "AbilityAutoStartupServiceSecondTest QueryAllAutoStartupApplications_003 end";
