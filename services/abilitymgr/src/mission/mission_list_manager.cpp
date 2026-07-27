@@ -2856,6 +2856,7 @@ void MissionListManager::HandleAbilityDiedByDefault(std::shared_ptr<AbilityRecor
     auto missionList = mission->GetMissionList();
     CHECK_POINTER_LOG(missionList, "Fail to get mission list.");
 
+    CHECK_POINTER_LOG(launcherList_, "launcherList_ is null.");
     std::shared_ptr<AbilityRecord> launcherRoot = launcherList_->GetLauncherRoot();
     bool isLauncherActive = (launcherRoot &&
         (launcherRoot->IsAbilityState(FOREGROUND) || launcherRoot->IsAbilityState(FOREGROUNDING)));
