@@ -14838,6 +14838,7 @@ int32_t AbilityManagerService::PrepareFunctionCallParam(const std::string &bundl
     AAFwk::Want cleanedWant;
     cleanedWant.SetParams(cleanedParams);
     AppExecFwk::InsightIntentExecuteParam::RemoveInsightIntent(cleanedWant);
+    SkillExecuteParam::RemoveSkillParam(cleanedWant);
     const AAFwk::WantParams &wantParamCleaned = cleanedWant.GetParams();
 
     std::vector<AbilityRuntime::ExtractInsightIntentGenericInfo> candidates;
