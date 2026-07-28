@@ -71,6 +71,7 @@
 #include "last_exit_detail_info.h"
 #include "os_account_manager.h"
 #include "app_native_spawn_manager.h"
+#include "app_pidfd_manager.h"
 #ifdef SUPPORT_SCREEN
 #include "locale_config.h"
 #endif
@@ -527,6 +528,7 @@ void AppMgrServiceInner::Init()
         .timeout(AbilityRuntime::GlobalConstant::DEFAULT_FFRT_TASK_TIMEOUT));
     AppNativeSpawnManager::GetInstance().InitNativeSpawnMsgPipe(appRunningManager_);
     AppHybridSpawnManager::GetInstance().InitHybridSpawnMsgPipe(weak_from_this());
+    AppPidFdManager::GetInstance().Init(weak_from_this(), taskHandler_);
 }
 
 AppMgrServiceInner::~AppMgrServiceInner()
@@ -6475,16 +6477,6 @@ void AppMgrServiceInner::OnRemoteDied(const wptr<IRemoteObject> &remote, bool is
     bool isImageProcess)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "On remote died.");
-    if (isRenderProcess) {
-        OnRenderRemoteDied(remote);
-        return;
-    }
-#ifdef SUPPORT_CHILD_PROCESS
-    if (isChildProcess) {
-        OnChildProcessRemoteDied(remote);
-        return;
-    }
-#endif // SUPPORT_CHILD_PROCESS
 
     if (isImageProcess) {
         OnImageProcessRemoteDied(remote);
@@ -8455,7 +8447,7 @@ int AppMgrServiceInner::StartRenderProcess(const pid_t hostPid, const std::strin
                 auto scheduler = iter.second->GetScheduler();
                 if (scheduler) {
                     TAG_LOGW(AAFwkTag::APPMGR, "null render, renderPid:%{public}d", renderPid);
-                    OnRenderRemoteDied(scheduler->AsObject());
+                    OnRenderProcessExited(renderPid);
                 }
             }
         }
@@ -8514,13 +8506,10 @@ void AppMgrServiceInner::AttachRenderProcess(const pid_t pid, const sptr<IRender
     }
     CheckRenderAttachTimeout(renderRecord);
 
-    sptr<AppDeathRecipient> appDeathRecipient = new AppDeathRecipient();
-    appDeathRecipient->SetTaskHandler(taskHandler_);
-    appDeathRecipient->SetAppMgrServiceInner(shared_from_this());
-    appDeathRecipient->SetIsRenderProcess(true);
+    // Process death is now monitored by AppPidFdManager (pidfd), so the binder
+    // AppDeathRecipient is no longer registered here. SetScheduler is still
+    // needed to send NotifyBrowserFd to the render process.
     renderRecord->SetScheduler(scheduler);
-    renderRecord->SetDeathRecipient(appDeathRecipient);
-    renderRecord->RegisterDeathRecipient();
 
     TAG_LOGI(AAFwkTag::APPMGR, "attachRenderProcess_%{public}d, notify fd", pid);
     // notify fd to render process
@@ -8641,6 +8630,7 @@ int AppMgrServiceInner::StartRenderProcessImpl(const std::shared_ptr<RenderRecor
     renderRecord->SetPid(pid);
     renderRecord->SetUid(renderUid);
     renderRecord->SetProcessName(startMsg.procName);
+    AppPidFdManager::GetInstance().AddWatcher(pid, PidFdType::RENDER);
     if (isGPU) {
         renderRecord->SetProcessType(ProcessType::GPU);
         appRecord->SetGPUPid(pid);
@@ -8761,14 +8751,30 @@ void AppMgrServiceInner::RemoveRenderRecordNoAttach(const std::shared_ptr<AppRun
     }
 }
 
-void AppMgrServiceInner::OnRenderRemoteDied(const wptr<IRemoteObject> &remote)
+void AppMgrServiceInner::RemoveRenderProcessIsolationUid(int32_t uid)
 {
-    TAG_LOGW(AAFwkTag::APPMGR, "on render remote died");
-    if (appRunningManager_) {
-        auto renderRecord = appRunningManager_->OnRemoteRenderDied(remote);
-        if (renderRecord) {
-            OnRenderProcessDied(renderRecord);
-        }
+    std::lock_guard<ffrt::mutex> lock(renderProcessIsolationUidSetLock_);
+    TAG_LOGD(AAFwkTag::APPMGR, "erase %{public}d", uid);
+    renderProcessIsolationUidSet_.erase(uid);
+}
+
+void AppMgrServiceInner::OnRenderProcessDied(std::shared_ptr<RenderRecord> renderProcessRecord)
+{
+    if (renderProcessRecord) {
+        RemoveRenderProcessIsolationUid(renderProcessRecord->GetUid());
+        DelayedSingleton<AppStateObserverManager>::GetInstance()->OnRenderProcessDied(renderProcessRecord);
+    }
+}
+
+void AppMgrServiceInner::OnRenderProcessExited(pid_t pid)
+{
+    if (!appRunningManager_) {
+        TAG_LOGE(AAFwkTag::APPMGR, "appRunningManager_ is null");
+        return;
+    }
+    auto renderRecord = appRunningManager_->OnRenderProcessExitedByPid(pid);
+    if (renderRecord) {
+        OnRenderProcessDied(renderRecord);
     }
 }
 
@@ -10906,6 +10912,7 @@ int32_t AppMgrServiceInner::StartChildProcessImpl(const std::shared_ptr<ChildPro
         childProcessRecord->SetUid(startMsg.uid);
         appRecord->AddChildProcessRecord(pid, childProcessRecord);
     }
+    AppPidFdManager::GetInstance().AddWatcher(pid, PidFdType::CHILD);
     TAG_LOGI(AAFwkTag::APPMGR, "start childProcess success,pid:%{public}d,hostPid:%{public}d,uid:%{public}d,"
         "processName:%{public}s", pid, childProcessRecord->GetHostPid(), startMsg.uid,
         childProcessRecord->GetProcessName().c_str());
@@ -11084,13 +11091,10 @@ void AppMgrServiceInner::AttachChildProcess(const pid_t pid, const sptr<IChildSc
     }
     CheckChildProcessAttachTimeout(childRecord);
 
-    sptr<AppDeathRecipient> appDeathRecipient = new AppDeathRecipient();
-    appDeathRecipient->SetTaskHandler(taskHandler_);
-    appDeathRecipient->SetAppMgrServiceInner(shared_from_this());
-    appDeathRecipient->SetIsChildProcess(true);
+    // Process death is now monitored by AppPidFdManager (pidfd), so the binder
+    // AppDeathRecipient is no longer registered here. SetScheduler is still
+    // needed to send commands (ScheduleLoadChild / ScheduleRunNativeProc).
     childRecord->SetScheduler(childScheduler);
-    childRecord->SetDeathRecipient(appDeathRecipient);
-    childRecord->RegisterDeathRecipient();
 
     if (childRecord->GetChildProcessType() != CHILD_PROCESS_TYPE_NATIVE) {
         childScheduler->ScheduleLoadChild();
@@ -11123,21 +11127,6 @@ void AppMgrServiceInner::CheckChildProcessAttachTimeout(std::shared_ptr<ChildPro
         ProcessStartFailedReason::ATTACH_TIMEOUT, elapsedMs);
 }
 
-void AppMgrServiceInner::RemoveRenderProcessIsolationUid(int32_t uid)
-{
-    std::lock_guard<ffrt::mutex> lock(renderProcessIsolationUidSetLock_);
-    TAG_LOGD(AAFwkTag::APPMGR, "erase %{public}d", uid);
-    renderProcessIsolationUidSet_.erase(uid);
-}
-
-void AppMgrServiceInner::OnRenderProcessDied(std::shared_ptr<RenderRecord> renderProcessRecord)
-{
-    if (renderProcessRecord) {
-        RemoveRenderProcessIsolationUid(renderProcessRecord->GetUid());
-        DelayedSingleton<AppStateObserverManager>::GetInstance()->OnRenderProcessDied(renderProcessRecord);
-    }
-}
-
 void AppMgrServiceInner::RemoveChildProcessIsolationUid(int32_t uid)
 {
     std::lock_guard<ffrt::mutex> lock(childProcessIsolationUidSetLock_);
@@ -11153,12 +11142,14 @@ void AppMgrServiceInner::OnChildProcessDied(std::shared_ptr<ChildProcessRecord> 
     }
 }
 
-void AppMgrServiceInner::OnChildProcessRemoteDied(const wptr<IRemoteObject> &remote)
+void AppMgrServiceInner::OnChildProcessExited(pid_t pid)
 {
-    if (appRunningManager_) {
-        auto childRecord = appRunningManager_->OnChildProcessRemoteDied(remote);
-        OnChildProcessDied(childRecord);
+    if (!appRunningManager_) {
+        TAG_LOGE(AAFwkTag::APPMGR, "appRunningManager_ is null");
+        return;
     }
+    auto childRecord = appRunningManager_->OnChildProcessExitedByPid(pid);
+    OnChildProcessDied(childRecord);
 }
 
 void AppMgrServiceInner::KillChildProcess(const std::shared_ptr<AppRunningRecord> &appRecord) {
@@ -11202,7 +11193,6 @@ void AppMgrServiceInner::ExitChildProcessSafelyByChildPid(const pid_t pid)
         return;
     }
     childRecord->ScheduleExitProcessSafely();
-    childRecord->RemoveDeathRecipient();
     int64_t startTime = SystemTimeMillisecond();
     std::list<pid_t> pids;
     pids.push_back(pid);
@@ -11213,7 +11203,6 @@ void AppMgrServiceInner::ExitChildProcessSafelyByChildPid(const pid_t pid)
         OnChildProcessDied(childRecord);
         return;
     }
-    childRecord->RegisterDeathRecipient();
     TAG_LOGI(AAFwkTag::APPMGR, "kill child process, childPid:%{public}d, childUid:%{public}d",
         pid, childRecord->GetUid());
     int32_t result = KillProcessByPid(pid, "ExitChildProcessSafelyByChildPid");
