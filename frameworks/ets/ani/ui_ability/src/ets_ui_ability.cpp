@@ -555,6 +555,8 @@ void EtsUIAbility::OnStart(const Want &want, sptr<AAFwk::SessionInfo> sessionInf
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::UIABILITY, "ability: %{public}s", GetAbilityName().c_str());
     UIAbility::OnStart(want, sessionInfo);
+    isPrelaunch_ = sessionInfo != nullptr && sessionInfo->isPrelaunch;
+    frameNum_ = sessionInfo != nullptr ? sessionInfo->frameNum : 0;
 
     if (!etsAbilityObj_) {
         TAG_LOGE(AAFwkTag::UIABILITY, "not found Ability.js");
@@ -566,6 +568,16 @@ void EtsUIAbility::OnStart(const Want &want, sptr<AAFwk::SessionInfo> sessionInf
         return;
     }
     OnStartInner(env, want, sessionInfo);
+#ifdef SUPPORT_SCREEN
+    if (scene_ == nullptr && sessionInfo != nullptr && sessionInfo->isPrelaunch) {
+        TAG_LOGI(AAFwkTag::UIABILITY, "OnStart: prelaunch, create scene for onWindowStageCreate");
+        if (abilityContext_ == nullptr || sceneListener_ == nullptr) {
+            TAG_LOGE(AAFwkTag::UIABILITY, "null abilityContext or sceneListener_");
+            return;
+        }
+        DoOnForegroundForSceneIsNull(want);
+    }
+#endif
     TAG_LOGD(AAFwkTag::UIABILITY, "OnStart end");
 }
 
@@ -857,6 +869,15 @@ void EtsUIAbility::OnSceneCreated()
         EtsAbilityLifecycleCallbackArgs stage(etsWindowStageObj_);
         applicationContext->DispatchOnWindowStageCreate(ability, stage);
         DISPATCH_WINDOW_INTEROP(OnWindowStageCreate, applicationContext, etsRuntime_, ability, stage);
+    }
+
+    if (isPrelaunch_ && frameNum_ < 0) {
+        auto window = scene_->GetMainWindow();
+        if (window != nullptr) {
+            TAG_LOGI(AAFwkTag::UIABILITY, "SetBackgroundForceFlushVsync bundle:%{public}s ability:%{public}s",
+                abilityInfo_->bundleName.c_str(), GetAbilityName().c_str());
+            window->SetBackgroundForceFlushVsync();
+        }
     }
 }
 

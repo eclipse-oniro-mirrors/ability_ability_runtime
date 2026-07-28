@@ -379,6 +379,8 @@ private:
     std::shared_ptr<AppExecFwk::ETSNativeReference> shellContextRef_;
     std::shared_ptr<AppExecFwk::ETSNativeReference> etsAbilityObj_;
     static std::once_flag singletonFlag_;
+    bool isPrelaunch_ = false;
+    int32_t frameNum_ = 0;
 };
 } // namespace AbilityRuntime
 } // namespace OHOS
