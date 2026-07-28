@@ -357,6 +357,8 @@ public:
      */
     virtual void OnLoadAbilityFinished(uint64_t callbackId, int32_t pid) override;
 
+    virtual int32_t SchedulePreTemplateProcessDeepFrozen() override;
+
 private:
     bool WriteInterfaceToken(MessageParcel &data);
     void ScheduleMemoryCommon(const int32_t level, const uint32_t operation, bool isShellCall = false);

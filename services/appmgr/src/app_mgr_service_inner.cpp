@@ -959,6 +959,40 @@ int32_t AppMgrServiceInner::KillImageProcess(uint64_t checkpointId)
     return ERR_OK;
 }
 
+int32_t AppMgrServiceInner::HandlePreTemplateProcessDeepFrozen(int32_t pid)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
+    TAG_LOGI(AAFwkTag::APPMGR, "HandlePreTemplateProcessDeepFrozen, pid:%{public}d", pid);
+    if (pid < 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "invalid pid");
+        return ERR_INVALID_VALUE;
+    }
+    auto appRecord = GetAppRunningRecordByPid(pid);
+    if (appRecord == nullptr) {
+        return ERR_INVALID_VALUE;
+    }
+    appRecord->PreTemplateProcessDeepFrozen();
+    return ERR_OK;
+}
+
+void AppMgrServiceInner::HandleNotifyTemplateProcessReadyDone(int32_t pid)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
+    TAG_LOGI(AAFwkTag::APPMGR, "HandleNotifyTemplateProcessReadyDone, pid:%{public}d", pid);
+    auto appRecord = GetAppRunningRecordByPid(pid);
+    if (appRecord == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "appRecord is nullptr");
+        return;
+    }
+    if (appRecord->GetImageProcessType() != ImageProcessType::TEMPLATE) {
+        TAG_LOGE(AAFwkTag::APPMGR, "not template process, skip report");
+        return;
+    }
+    int32_t uid = appRecord->GetUid();
+    std::string bundleName = appRecord->GetBundleName();
+    AAFwk::ResSchedUtil::GetInstance().ReportTemplateProcessReadyToRSS(pid, uid, bundleName);
+}
+
 int32_t AppMgrServiceInner::HandleForkAll(int32_t pid)
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);

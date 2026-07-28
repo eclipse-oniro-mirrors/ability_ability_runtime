@@ -83,6 +83,22 @@ void ResSchedUtil::ReportForkAllEventToRSS(int32_t imagePid, int32_t orginalPid,
 #endif
 }
 
+void ResSchedUtil::ReportTemplateProcessReadyToRSS(int32_t pid, int32_t uid, const std::string &bundleName)
+{
+#ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
+    uint32_t resType = ResourceSchedule::ResType::RES_TYPE_IMAGE_PROCESS_STATE_CHANGED;
+    std::unordered_map<std::string, std::string> eventParams {
+        { "pid", std::to_string(pid) },
+        { "uid", std::to_string(uid) },
+        { "bundleName", bundleName }
+    };
+    TAG_LOGI(AAFwkTag::DEFAULT, "ReportTemplateProcessReadyToRSS: pid:%{public}d uid:%{public}d bundleName:%{public}s",
+        pid, uid, bundleName.c_str());
+    ResourceSchedule::ResSchedClient::GetInstance().ReportData(resType,
+        ResourceSchedule::ResType::TEMPLATE_PROCESS_READY, eventParams);
+#endif
+}
+
 void ResSchedUtil::ReportGameClickToRSS(const std::string &bundleName, int32_t pid, int32_t uid)
 {
 #ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE

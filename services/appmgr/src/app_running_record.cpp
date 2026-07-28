@@ -2175,6 +2175,16 @@ int32_t AppRunningRecord::NotifyAppFault(const FaultData &faultData)
     return appLifeCycleDeal_->NotifyAppFault(faultData);
 }
 
+int32_t AppRunningRecord::PreTemplateProcessDeepFrozen()
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    if (!appLifeCycleDeal_) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null appLifeCycleDeal_");
+        return ERR_INVALID_VALUE;
+    }
+    return appLifeCycleDeal_->PreTemplateProcessDeepFrozen();
+}
+
 bool AppRunningRecord::IsAbilitiesBackground()
 {
     std::lock_guard<ffrt::mutex> hapModulesLock(hapModulesLock_);

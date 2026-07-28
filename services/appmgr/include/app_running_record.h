@@ -893,6 +893,7 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     int32_t NotifyAppFault(const FaultData &faultData);
+    int32_t PreTemplateProcessDeepFrozen();
 #ifdef SUPPORT_SCREEN
     void ChangeWindowVisibility(const sptr<OHOS::Rosen::WindowVisibilityInfo> &info);
     void OnWindowVisibilityChanged(const std::vector<sptr<OHOS::Rosen::WindowVisibilityInfo>> &windowVisibilityInfos);

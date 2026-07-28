@@ -1062,5 +1062,21 @@ void AppSchedulerProxy::OnLoadAbilityFinished(uint64_t callbackId, int32_t pid)
         TAG_LOGW(AAFwkTag::APPMGR, "SendRequest is wrong, error code: %{public}d", ret);
     }
 }
+int32_t AppSchedulerProxy::SchedulePreTemplateProcessDeepFrozen()
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_ASYNC);
+    if (!WriteInterfaceToken(data)) {
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret = SendTransactCmd(
+        static_cast<uint32_t>(IAppScheduler::Message::SCHEDULE_PRE_TEMPLATE_PROCESS_DEEP_FROZEN), data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Send request failed with error code: %{public}d", ret);
+        return ret;
+    }
+    return ERR_OK;
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

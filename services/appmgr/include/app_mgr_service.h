@@ -94,6 +94,10 @@ public:
 
     virtual int32_t NotifyTemplateProcessDeepFrozen(int32_t pid) override;
 
+    virtual int32_t PreTemplateProcessDeepFrozen(int32_t pid) override;
+
+    virtual int32_t NotifyTemplateProcessReadyDone() override;
+
     /**
      * ApplicationForegrounded, call ApplicationForegrounded() through proxy object,
      * set the application to Foreground State.

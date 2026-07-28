@@ -803,6 +803,11 @@ int32_t AppRunningRecord::NotifyAppFault(const FaultData &faultData)
     return 0;
 }
 
+int32_t AppRunningRecord::PreTemplateProcessDeepFrozen()
+{
+    return 0;
+}
+
 bool AppRunningRecord::IsAbilitiesBackground()
 {
     return false;

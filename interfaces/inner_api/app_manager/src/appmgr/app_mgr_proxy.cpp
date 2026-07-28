@@ -158,6 +158,37 @@ int32_t AppMgrProxy::NotifyTemplateProcessDeepFrozen(int32_t pid)
     return reply.ReadInt32();
 }
 
+int32_t AppMgrProxy::PreTemplateProcessDeepFrozen(int32_t pid)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_ASYNC);
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write interface token failed.");
+        return IPC_PROXY_ERR;
+    }
+    PARCEL_UTIL_WRITE_RET_INT(data, Int32, pid);
+
+    PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::PRE_TEMPLATE_PROCESS_DEEP_FROZEN, data, reply, option);
+    return NO_ERROR;
+}
+
+int32_t AppMgrProxy::NotifyTemplateProcessReadyDone()
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_ASYNC);
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write interface token failed.");
+        return IPC_PROXY_ERR;
+    }
+
+    PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::NOTIFY_TEMPLATE_PROCESS_READY_DONE, data, reply, option);
+    return NO_ERROR;
+}
+
 void AppMgrProxy::ApplicationForegrounded(const int32_t recordId)
 {
     MessageParcel data;

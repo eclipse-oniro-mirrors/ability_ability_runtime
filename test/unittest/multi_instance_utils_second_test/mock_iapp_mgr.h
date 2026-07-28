@@ -160,6 +160,11 @@ public:
 
     virtual void AddAbilityStageDone(const int32_t recordId) {}
 
+    virtual int32_t NotifyTemplateProcessReadyDone()
+    {
+        return 0;
+    }
+
     virtual int DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo& info)
     {
         return 0;

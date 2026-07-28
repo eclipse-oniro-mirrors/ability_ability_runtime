@@ -337,6 +337,8 @@ public:
      */
     void SetWatchdogBackgroundStatusRunning(bool status);
 
+    int32_t PreTemplateProcessDeepFrozen();
+
 private:
     mutable std::mutex schedulerMutex_;
     sptr<IAppScheduler> appThread_ = nullptr;

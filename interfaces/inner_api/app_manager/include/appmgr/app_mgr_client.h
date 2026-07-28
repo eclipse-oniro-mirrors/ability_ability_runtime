@@ -1029,6 +1029,10 @@ public:
 
     int32_t NotifyTemplateProcessDeepFrozen(int32_t pid);
 
+    int32_t PreTemplateProcessDeepFrozen(int32_t pid);
+
+    int32_t NotifyTemplateProcessReadyDone();
+
     /**
      * @brief set support process cache by self
      */
