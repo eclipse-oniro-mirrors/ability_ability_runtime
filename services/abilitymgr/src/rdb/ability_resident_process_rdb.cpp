@@ -15,6 +15,7 @@
 
 #include "ability_resident_process_rdb.h"
 
+#include "app_utils.h"
 #include "hilog_tag_wrapper.h"
 #include "parser_util.h"
 #include <charconv>
@@ -99,6 +100,11 @@ int32_t AmsResidentProcessRdbCallBack::onCorruption(std::string databaseFile)
 
 int32_t AmsResidentProcessRdb::Init()
 {
+    if (AAFwk::AppUtils::GetInstance().IsBopdOrRescueMode()) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "Skip database operation in bopd or rescue mode");
+        return Rdb_Init_Err;
+    }
+
     if (rdbMgr_ != nullptr) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "rdb mgr existed");
         return Rdb_OK;
