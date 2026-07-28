@@ -14,7 +14,7 @@
  */
 import AbilityStateData from 'application.AbilityStateData';
 
-interface AbilityForegroundStateObserver {
+export interface AbilityForegroundStateObserver {
   onAbilityStateChanged(abilityStateData: AbilityStateData): void;
 }
 
