@@ -24,7 +24,7 @@ namespace OHOS {
 namespace AppExecFwk {
 namespace {
 const string EMPTY = "";
-const std::regex INTEGER_REGEX("^[-+]?([0-9]+)([.]([0-9]+))?$");
+const std::regex INTEGER_REGEX("^[-+]?[0-9]+$");
 const int BUFFER_LEN = 64;
 const char *SEPARATOR = "/";
 };  // namespace
