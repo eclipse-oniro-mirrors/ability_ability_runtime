@@ -19,6 +19,12 @@
 #include "agent_extension.h"
 #include "agent_remote_object_key.h"
 
+#ifdef SUPPORT_GRAPHICS
+#include "display_manager.h"
+#include "system_ability_status_change_stub.h"
+#include "window_manager.h"
+#endif
+
 namespace OHOS {
 namespace AbilityRuntime {
     class Runtime;
@@ -89,10 +95,23 @@ public:
     /**
      * @brief Called when this extension enters the <b>STATE_STOP</b> state.
      *
-     * The extension in the <b>STATE_STOP</b> is being destroyed.
+     * The extension in the <b>STATE_STOP</b> state is being destroyed.
      * You can override this function to implement your own processing logic.
      */
     virtual void OnStop() override;
+
+    /**
+     * @brief Called when the system configuration is updated.
+     *
+     * @param configuration Indicates the updated configuration information.
+     */
+    void OnConfigurationUpdated(const AppExecFwk::Configuration& configuration) override;
+
+    /**
+     * @brief Called when configuration changed, including system configuration and window configuration.
+     *
+     */
+    void ConfigurationUpdated();
 
     /**
      * @brief Called when client send data to extension.
@@ -137,11 +156,56 @@ private:
 
     void ReleaseHostProxyReference(std::unique_ptr<NativeReference> &hostProxyRef);
 
+    bool HasScreenDensityBeenSet(std::shared_ptr<Global::Resource::ResourceManager> resourceManager);
+    void ListenWMS();
+
     JsRuntime& jsRuntime_;
     std::unique_ptr<NativeReference> jsObj_;
     std::shared_ptr<NativeReference> shellContextRef_ = nullptr;
     sptr<JsAgentExtensionStubImpl> extensionStub_;
     std::map<AgentRemoteObjectKey, std::unique_ptr<NativeReference>> hostProxyMap_;
+
+#ifdef SUPPORT_GRAPHICS
+protected:
+    class JsAgentExtensionDisplayListener : public Rosen::IDisplayInfoChangedListener {
+    public:
+        explicit JsAgentExtensionDisplayListener(const std::weak_ptr<JsAgentExtension>& jsAgentExtension)
+        {
+            jsAgentExtension_ = jsAgentExtension;
+        }
+
+        void OnDisplayInfoChange(const sptr<IRemoteObject>& token, Rosen::DisplayId displayId, float density,
+            Rosen::DisplayOrientation orientation) override
+        {
+            auto sptr = jsAgentExtension_.lock();
+            if (sptr != nullptr) {
+                sptr->OnDisplayInfoChange(token, displayId, density, orientation);
+            }
+        }
+
+    private:
+        std::weak_ptr<JsAgentExtension> jsAgentExtension_;
+    };
+
+    void OnDisplayInfoChange(const sptr<IRemoteObject>& token, Rosen::DisplayId displayId, float density,
+        Rosen::DisplayOrientation orientation);
+
+private:
+    class SystemAbilityStatusChangeListener : public OHOS::SystemAbilityStatusChangeStub {
+    public:
+        SystemAbilityStatusChangeListener(sptr<JsAgentExtensionDisplayListener> displayListener,
+            const sptr<IRemoteObject> & token): tmpDisplayListener_(displayListener), token_(token) {};
+        virtual void OnAddSystemAbility(int32_t systemAbilityId, const std::string& deviceId) override;
+        virtual void OnRemoveSystemAbility(int32_t systemAbilityId, const std::string& deviceId) override {}
+
+    private:
+        sptr<JsAgentExtensionDisplayListener> tmpDisplayListener_ = nullptr;
+        sptr<IRemoteObject> token_ = nullptr;
+    };
+
+    sptr<JsAgentExtensionDisplayListener> displayListener_ = nullptr;
+    sptr<SystemAbilityStatusChangeListener> saStatusChangeListener_ = nullptr;
+#endif
 };
 }  // namespace AgentRuntime
 }  // namespace OHOS
