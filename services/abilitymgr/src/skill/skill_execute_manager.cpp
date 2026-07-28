@@ -100,15 +100,6 @@ int32_t SkillExecuteManager::CheckSkillPermission(const AppExecFwk::SkillInfo &s
         return ERR_NOT_SYSTEM_APP;
     }
 
-    if (Security::AccessToken::AccessTokenKit::VerifyAccessToken(callerTokenId,
-        PermissionConstants::PERMISSION_START_INVISIBLE_ABILITY, false) ==
-        AppExecFwk::Constants::PERMISSION_GRANTED) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR,
-            "caller has START_INVISIBLE_ABILITY, skip skill permission check, skill:%{public}s",
-            skillInfo.skillName.c_str());
-        return ERR_OK;
-    }
-
     for (const auto &permission : skillInfo.permissions) {
         if (permission.empty()) {
             continue;
