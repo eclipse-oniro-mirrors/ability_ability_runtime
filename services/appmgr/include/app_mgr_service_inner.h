@@ -1102,6 +1102,14 @@ public:
 
     virtual int GetRenderProcessTerminationStatus(pid_t renderPid, int &status);
 
+    /**
+     * @brief Called (via pidfd, dispatched on the appmgr task queue) when a
+     * spawned render process exits. Replaces the binder OnRemoteDied path for
+     * render processes; the cleanup logic is unchanged.
+     * @param pid render process pid.
+     */
+    void OnRenderProcessExited(pid_t pid);
+
     int VerifyKillProcessPermission(const sptr<IRemoteObject> &token) const;
 
     int VerifyAccountPermission(const std::string &permissionName, const int userId) const;
@@ -1503,6 +1511,14 @@ public:
      * @param pid child process pid.
      */
     virtual void ExitChildProcessSafelyByChildPid(const pid_t pid);
+
+    /**
+     * @brief Called (via pidfd, dispatched on the appmgr task queue) when a
+     * spawned child process exits. Replaces the binder OnRemoteDied path for
+     * child processes; the cleanup logic is unchanged.
+     * @param pid child process pid.
+     */
+    void OnChildProcessExited(pid_t pid);
 
     /**
      * Start native child process, callde by ChildProcessManager.
@@ -2059,7 +2075,9 @@ private:
     void SetRenderStartMsg(AppSpawnStartMsg &startMsg, std::shared_ptr<RenderRecord> renderRecord,
         const int32_t renderUid, const bool isGPU);
 
-    void OnRenderRemoteDied(const wptr<IRemoteObject> &remote);
+    void RemoveRenderProcessIsolationUid(int32_t uid);
+
+    void OnRenderProcessDied(std::shared_ptr<RenderRecord> renderProcessRecord);
 
     void OnImageProcessRemoteDied(const wptr<IRemoteObject> &remote);
 
@@ -2106,15 +2124,9 @@ private:
     int32_t GetChildProcessInfoEx(const std::shared_ptr<ChildProcessRecord> childProcessRecord,
         const std::shared_ptr<AppRunningRecord> appRecord, ChildProcessInfo &info);
 
-    void RemoveRenderProcessIsolationUid(int32_t uid);
-
-    void OnRenderProcessDied(std::shared_ptr<RenderRecord> renderProcessRecord);
-
     void RemoveChildProcessIsolationUid(int32_t uid);
-    
-    void OnChildProcessDied(std::shared_ptr<ChildProcessRecord> childProcessRecord);
 
-    void OnChildProcessRemoteDied(const wptr<IRemoteObject> &remote);
+    void OnChildProcessDied(std::shared_ptr<ChildProcessRecord> childProcessRecord);
 
     /**
      * kill all child processed of a main process

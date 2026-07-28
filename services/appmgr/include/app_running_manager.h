@@ -382,7 +382,6 @@ public:
 
     void ClipStringContent(const std::regex &re, const std::string &source, std::string &afterCutStr);
     std::shared_ptr<AppRunningRecord> GetAppRunningRecordByRenderPid(const pid_t pid);
-    std::shared_ptr<RenderRecord> OnRemoteRenderDied(const wptr<IRemoteObject> &remote);
     bool GetAppRunningStateByBundleName(const std::string &bundleName);
     int32_t NotifyLoadRepairPatch(const std::string &bundleName, const sptr<IQuickFixCallback> &callback);
     int32_t NotifyHotReloadPage(const std::string &bundleName, const sptr<IQuickFixCallback> &callback);
@@ -419,9 +418,11 @@ public:
 
 #ifdef SUPPORT_CHILD_PROCESS
     std::shared_ptr<AppRunningRecord> GetAppRunningRecordByChildProcessPid(const pid_t pid);
-    std::shared_ptr<ChildProcessRecord> OnChildProcessRemoteDied(const wptr<IRemoteObject> &remote);
+    std::shared_ptr<ChildProcessRecord> OnChildProcessExitedByPid(pid_t pid);
     bool IsChildProcessReachLimit(uint32_t accessTokenId, bool multiProcessFeature);
 #endif //SUPPORT_CHILD_PROCESS
+
+    std::shared_ptr<RenderRecord> OnRenderProcessExitedByPid(pid_t pid);
 
     /**
      * @brief Obtain number of app through bundlename.
