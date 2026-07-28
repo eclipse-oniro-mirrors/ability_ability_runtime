@@ -163,6 +163,10 @@ sptr<AppExecFwk::IAppMgr> EtsAppManager::GetAppManagerInstance()
 {
     sptr<ISystemAbilityManager> systemAbilityManager =
         SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (systemAbilityManager == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "systemAbilityManager is null");
+        return nullptr;
+    }
     sptr<IRemoteObject> appObject = systemAbilityManager->GetSystemAbility(APP_MGR_SERVICE_ID);
     return iface_cast<AppExecFwk::IAppMgr>(appObject);
 }
@@ -171,6 +175,10 @@ sptr<AAFwk::IAbilityManager> EtsAppManager::GetAbilityManagerInstance()
 {
     sptr<ISystemAbilityManager> systemAbilityManager =
         SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (systemAbilityManager == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "systemAbilityManager is null");
+        return nullptr;
+    }
     sptr<IRemoteObject> abilityObject =
         systemAbilityManager->GetSystemAbility(ABILITY_MGR_SERVICE_ID);
     return iface_cast<AAFwk::IAbilityManager>(abilityObject);
@@ -1039,6 +1047,10 @@ void EtsAppManager::NativeGetSupportedProcessCachePids(ani_env *env, ani_string 
         TAG_LOGE(AAFwkTag::APPMGR, "env null ptr");
         return;
     }
+    if (callback == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "callback null ptr");
+        return;
+    }
     ani_object emptyArray = CreateEmptyAniArray(env);
     sptr<AppExecFwk::IAppMgr> appMgr = GetAppManagerInstance();
     if (appMgr == nullptr) {
@@ -1351,7 +1363,7 @@ void EtsAppManager::OnOnAppForegroundState(ani_env *env, ani_string type, ani_ob
     }
     std::string strType;
     if (!OHOS::AppExecFwk::GetStdString(env, type, strType)
-        && strType != ON_OFF_TYPE_APP_FOREGROUND_STATE) {
+        || strType != ON_OFF_TYPE_APP_FOREGROUND_STATE) {
         TAG_LOGE(AAFwkTag::APPMGR, "GetStdString failed");
         EtsErrorUtil::ThrowInvalidParamError(env,
             "Parse param observer failed, must be a AppForegroundStateObserver.");
@@ -1448,7 +1460,7 @@ void EtsAppManager::OnOffAppForegroundState(ani_env *env, ani_string type, ani_o
         return;
     }
     std::string strType;
-    if (!OHOS::AppExecFwk::GetStdString(env, type, strType) && strType != ON_OFF_TYPE_APP_FOREGROUND_STATE) {
+    if (!OHOS::AppExecFwk::GetStdString(env, type, strType) || strType != ON_OFF_TYPE_APP_FOREGROUND_STATE) {
         TAG_LOGE(AAFwkTag::APPMGR, "GetStdString failed");
         EtsErrorUtil::ThrowInvalidParamError(env,
             "Parse param observer failed, must be a AppForegroundStateObserver.");

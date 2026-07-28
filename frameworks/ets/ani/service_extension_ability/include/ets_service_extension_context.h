@@ -37,13 +37,13 @@ public:
         const AppExecFwk::ElementName &element, const sptr<IRemoteObject> &remoteObject, int32_t resultCode) override;
     void OnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int32_t resultCode) override;
     void CallEtsFailed(int32_t errorCode);
-    void SetConnectionId(int32_t id);
-    int32_t GetConnectionId() { return connectionId_; }
+    void SetConnectionId(int64_t id);
+    int64_t GetConnectionId() { return connectionId_; }
     void SetConnectionRef(ani_object connectOptionsObj);
     void RemoveConnectionObject();
 protected:
     ani_vm *etsVm_ = nullptr;
-    int32_t connectionId_ = -1;
+    int64_t connectionId_ = -1;
     ani_ref stsConnectionRef_ = nullptr;
 };
 
