@@ -579,7 +579,7 @@ bool DialogSessionManager::IsCreateCloneSelectorDialog(const std::string &bundle
     return false;
 #else
     if (StartAbilityUtils::isWantWithAppCloneIndex || StartAbilityUtils::isSandBoxClone) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "no clone index");
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "with clone index");
         StartAbilityUtils::isWantWithAppCloneIndex = false;
         return false;
     }

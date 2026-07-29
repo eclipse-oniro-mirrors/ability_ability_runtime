@@ -101,6 +101,7 @@ int32_t CliFunctionDataManager::EnsureFunctionsInitialized()
         return ERR_OK;
     }
 
+    std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
     if (!CheckKvStore()) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "KVStore not ready for functions initialization");
         return ERR_NO_INIT;

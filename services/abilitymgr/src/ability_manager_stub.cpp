@@ -2150,7 +2150,7 @@ int AbilityManagerStub::CloseUIAbilityBySCBInner(MessageParcel &data, MessagePar
 int AbilityManagerStub::GetWantSenderInner(MessageParcel &data, MessageParcel &reply)
 {
     if (AAFwk::AppUtils::GetInstance().IsForbidStart()) {
-        TAG_LOGW(AAFwkTag::APPMGR, "forbid start: GetWantSenderInner");
+        TAG_LOGW(AAFwkTag::WANTAGENT, "forbid start: GetWantSenderInner");
         return AAFwk::INNER_ERR;
     }
     std::unique_ptr<WantSenderInfo> wantSenderInfo(data.ReadParcelable<WantSenderInfo>());
@@ -4062,7 +4062,7 @@ int32_t AbilityManagerStub::KillProcessWithReasonInner(MessageParcel &data, Mess
     int32_t pid = data.ReadInt32();
     std::unique_ptr<ExitReason> reason(data.ReadParcelable<ExitReason>());
     if (reason == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "reason null");
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "reason null");
         return ERR_INVALID_VALUE;
     }
     int32_t result = KillProcessWithReason(pid, *reason);

@@ -20,6 +20,7 @@
 #include <sstream>
 
 #include "hilog_tag_wrapper.h"
+#include "raw_data_utils.h"
 #include "securec.h"
 
 namespace OHOS {
@@ -496,12 +497,20 @@ void ToolsRawData::FromToolInfoVec(const std::vector<ToolInfo> &tools, ToolsRawD
 
 int32_t ToolsRawData::ToToolInfoVec(const ToolsRawData &rawData, std::vector<ToolInfo> &tools)
 {
+    if (rawData.data == nullptr || rawData.size == 0) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ToToolInfoVec failed: null data or zero size");
+        return ERR_INVALID_VALUE;
+    }
     std::stringstream ss;
     ss.write(reinterpret_cast<const char *>(rawData.data), rawData.size);
     ss.seekg(0, std::ios::beg);
     uint32_t ssLength = static_cast<uint32_t>(ss.str().length());
+
     uint32_t count = 0;
-    ss.read(reinterpret_cast<char *>(&count), sizeof(count));
+    if (!ReadRaw(ss, &count, sizeof(count))) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to read count, stream state invalid");
+        return ERR_INVALID_VALUE;
+    }
     if (count > MAX_TOOL_INFO_COUNT) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "tools exceed maxSize %{public}d, count: %{public}d",
             MAX_TOOL_INFO_COUNT, count);
@@ -509,22 +518,10 @@ int32_t ToolsRawData::ToToolInfoVec(const ToolsRawData &rawData, std::vector<Too
     }
     tools.resize(count);
     for (uint32_t i = 0; i < count; ++i) {
-        uint32_t toolSize = 0;
-        ss.read(reinterpret_cast<char *>(&toolSize), sizeof(toolSize));
-        if (toolSize > ssLength - static_cast<uint32_t>(ss.tellg())) {
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "toolSize:%{public}u is invalid", toolSize);
-            return ERR_INVALID_VALUE;
-        }
-        std::string toolStr(toolSize, '\0');
-        ss.read(toolStr.data(), toolSize);
-        nlohmann::json jsonObject = nlohmann::json::parse(toolStr, nullptr, false, true);
-        if (jsonObject.is_discarded()) {
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "json parse failed, index: %{public}u", i);
-            return ERR_INVALID_VALUE;
-        }
-        if (!ToolInfo::ParseFromJson(jsonObject, tools[i])) {
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed, index: %{public}u", i);
-            return ERR_INVALID_VALUE;
+        int32_t ret = ReadOneItem<ToolInfo>(ss, ssLength, tools[i], true, ERR_INVALID_VALUE);
+        if (ret != ERR_OK) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "ReadOneItem failed, index: %{public}u, ret: %{public}d", i, ret);
+            return ret;
         }
     }
     return ERR_OK;

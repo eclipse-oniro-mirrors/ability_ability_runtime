@@ -39,6 +39,10 @@ int RecordAppExitReason(int exitReason, const char *exitMsg)
 
 int RecordAppWithReason(int pid, int uid, int exitReason, int killId, const char *exitMsg)
 {
+    if (exitReason < static_cast<int>(OHOS::AAFwk::Reason::REASON_MIN) ||
+        exitReason > static_cast<int>(OHOS::AAFwk::Reason::REASON_MAX)) {
+        return -1;
+    }
     OHOS::AAFwk::Reason reason = static_cast<OHOS::AAFwk::Reason>(exitReason);
     std::string exitMsgStr = (exitMsg != nullptr) ? std::string(exitMsg) : std::string();
     OHOS::AAFwk::ExitReasonCompability exitReasonData = { reason, exitMsgStr };

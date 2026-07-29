@@ -43,7 +43,26 @@ constexpr const char* HIDDEN_START_AUTOSTARTUP = "hiddenStartAutoStartup";
 
 AbilityAutoStartupService::AbilityAutoStartupService() {}
 
-AbilityAutoStartupService::~AbilityAutoStartupService() {}
+AbilityAutoStartupService::~AbilityAutoStartupService()
+{
+    {
+        std::lock_guard<std::mutex> deathLock(deathRecipientsMutex_);
+        for (auto &entry : deathRecipients_) {
+            if (entry.first != nullptr && entry.second != nullptr) {
+                wptr<IRemoteObject> weakCallback = entry.first;
+                auto callback = weakCallback.promote();
+                if (callback != nullptr) {
+                    callback->RemoveDeathRecipient(entry.second);
+                }
+            }
+        }
+        deathRecipients_.clear();
+    }
+    {
+        std::lock_guard<std::mutex> lock(autoStartUpMutex_);
+        callbackVector_.clear();
+    }
+}
 
 int32_t AbilityAutoStartupService::RegisterAutoStartupSystemCallback(const sptr<IRemoteObject> &callback)
 {
@@ -81,9 +100,9 @@ int32_t AbilityAutoStartupService::UnregisterAutoStartupSystemCallback(const spt
         return code;
     }
 
+    bool isFound = false;
     {
         std::lock_guard<std::mutex> lock(autoStartUpMutex_);
-        bool isFound = false;
         auto item = callbackVector_.begin();
         while (item != callbackVector_.end()) {
             if (*item == callback) {
@@ -95,6 +114,16 @@ int32_t AbilityAutoStartupService::UnregisterAutoStartupSystemCallback(const spt
         }
         if (!isFound) {
             TAG_LOGD(AAFwkTag::AUTO_STARTUP, "Callback not exist");
+        }
+    }
+
+    // Clean up death recipients if callback was found and is not null
+    if (isFound && callback != nullptr) {
+        std::lock_guard<std::mutex> deathLock(deathRecipientsMutex_);
+        auto iter = deathRecipients_.find(callback);
+        if (iter != deathRecipients_.end()) {
+            callback->RemoveDeathRecipient(iter->second);
+            deathRecipients_.erase(iter);
         }
     }
     return ERR_OK;
@@ -443,7 +472,7 @@ std::string AbilityAutoStartupService::GetSelfApplicationBundleName()
 bool AbilityAutoStartupService::CheckSelfApplication(const std::string &bundleName)
 {
     TAG_LOGD(AAFwkTag::AUTO_STARTUP, "Called, bundleName: %{public}s", bundleName.c_str());
-    return GetSelfApplicationBundleName() == bundleName ? true : false;
+    return GetSelfApplicationBundleName() == bundleName;
 }
 
 int32_t AbilityAutoStartupService::GetValidUserId(int32_t userId)

@@ -2030,7 +2030,7 @@ ErrCode AbilityManagerClient::KillProcessWithPrepareTerminate(const std::vector<
 
 ErrCode AbilityManagerClient::KillProcessWithReason(int32_t pid, const ExitReason &reason)
 {
-    TAG_LOGE(AAFwkTag::ABILITYMGR, "kill pid:%{public}d, reason:%{public}d, subReason:%{public}d, exitMsg:%{public}s",
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "kill pid:%{public}d, reason:%{public}d, subReason:%{public}d, exitMsg:%{public}s",
         pid, reason.reason, reason.subReason, reason.exitMsg.c_str());
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);

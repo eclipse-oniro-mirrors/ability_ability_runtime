@@ -191,7 +191,11 @@ ErrCode CliToolMGRClient::BatchRegisterFunctions(const std::vector<FunctionInfo>
         return GET_CLI_TOOL_MGR_SERVICE_FAILED;
     }
     FunctionsRawData rawData;
-    FunctionsRawData::FromFunctionInfoVec(functions, rawData);
+    int32_t ret = FunctionsRawData::FromFunctionInfoVec(functions, rawData);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "FromFunctionInfoVec failed: %{public}d", ret);
+        return ret;
+    }
     return proxy->BatchRegisterFunctions(rawData, successCount);
 }
 

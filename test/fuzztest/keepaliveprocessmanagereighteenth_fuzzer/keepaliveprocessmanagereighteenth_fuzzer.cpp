@@ -40,7 +40,7 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     FuzzedDataProvider fdp(data, size);
     bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
     uid = fdp.ConsumeIntegral<int32_t>();
-    KeepAliveProcessManager::GetInstance().SaveAppSeriviceRestartAfterUpgrade(bundleName, uid);
+    KeepAliveProcessManager::GetInstance().SaveAppServiceRestartAfterUpgrade(bundleName, uid);
     return true;
 }
 }

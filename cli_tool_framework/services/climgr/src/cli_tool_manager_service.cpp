@@ -767,7 +767,11 @@ int32_t CliToolManagerService::GetAllFunctions(FunctionsRawData &functions)
         return ret;
     }
 
-    FunctionsRawData::FromFunctionInfoVec(functionList, functions);
+    ret = FunctionsRawData::FromFunctionInfoVec(functionList, functions);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "FromFunctionInfoVec failed: %{public}d", ret);
+        return ret;
+    }
     TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully got all functions (raw): %{public}zu", functionList.size());
     return ERR_OK;
 }
