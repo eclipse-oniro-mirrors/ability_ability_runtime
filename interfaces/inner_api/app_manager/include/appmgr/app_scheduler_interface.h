@@ -376,6 +376,11 @@ public:
 
     virtual void ScheduleUpdateWorkProcessInfo(std::shared_ptr<AppUpdateInfo> updateInfo) {}
 
+    virtual int32_t SchedulePreTemplateProcessDeepFrozen()
+    {
+        return 0;
+    }
+
     enum class Message {
         SCHEDULE_FOREGROUND_APPLICATION_TRANSACTION = 0,
         SCHEDULE_BACKGROUND_APPLICATION_TRANSACTION,
@@ -416,6 +421,7 @@ public:
         SCHEDULE_UPDATE_WORK_PROCESS_INFO,
         SCHEDULE_MEM_APPLICATION_TRANSACTION,
         SCHEDULE_JSHANDLE_MAP_APPLICATION_TRANSACTION,
+        SCHEDULE_PRE_TEMPLATE_PROCESS_DEEP_FROZEN,
     };
 };
 }  // namespace AppExecFwk

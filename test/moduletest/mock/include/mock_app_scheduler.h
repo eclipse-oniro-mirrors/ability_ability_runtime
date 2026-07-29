@@ -46,6 +46,7 @@ public:
     MOCK_METHOD0(ScheduleLowMemory, void());
     MOCK_METHOD1(ScheduleNotifyAppFault, int32_t(const FaultData &));
     MOCK_METHOD2(ScheduleChangeAppGcState, int32_t(int32_t state, int32_t tid));
+    MOCK_METHOD0(SchedulePreTemplateProcessDeepFrozen, int32_t());
     MOCK_METHOD1(RegisterAppDebugListener, int32_t(const sptr<AppExecFwk::IAppDebugListener> &listener));
     MOCK_METHOD1(UnregisterAppDebugListener, int32_t(const sptr<AppExecFwk::IAppDebugListener> &listener));
     MOCK_METHOD2(AttachAppDebug, int32_t(const std::string &bundleName, bool isDebugFromLocal));

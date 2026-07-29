@@ -40,6 +40,7 @@ public:
     MOCK_METHOD1(SetAppFreezingTime, void(int time));
     MOCK_METHOD1(GetAppFreezingTime, void(int& time));
     MOCK_METHOD1(AddAbilityStageDone, void(const int32_t recordId));
+    MOCK_METHOD0(NotifyTemplateProcessReadyDone, int32_t());
     MOCK_METHOD1(StartupResidentProcess, void(const std::vector<AppExecFwk::BundleInfo>& bundleInfos));
     MOCK_METHOD1(NotifyMemoryLevel, int(int32_t level));
     MOCK_METHOD1(NotifyProcMemoryLevel, int32_t(const std::map<pid_t, MemoryLevel> &procLevelMap));

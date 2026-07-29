@@ -78,6 +78,7 @@ public:
     MOCK_METHOD(void, ReportForkAllEventToRSS,
         (int32_t imagePid, int32_t orginalPid,
         std::shared_ptr<AbilityInfo> abilityInfo, int32_t forkAllState), ());
+    MOCK_METHOD(void, ReportTemplateProcessReadyToRSS, (int32_t pid, int32_t uid, const std::string &bundleName), ());
 };
 } // namespace AAFwk
 } // namespace OHOS

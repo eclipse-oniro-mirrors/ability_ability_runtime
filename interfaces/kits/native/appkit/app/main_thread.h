@@ -360,6 +360,7 @@ public:
         const sptr<IQuickFixCallback> &callback, const int32_t recordId) override;
 
     int32_t ScheduleNotifyAppFault(const FaultData &faultData) override;
+    int32_t SchedulePreTemplateProcessDeepFrozen() override;
 #ifdef CJ_FRONTEND
     CJUncaughtExceptionInfo CreateCjExceptionInfo(const std::string &bundleName, uint32_t versionCode,
         const std::string &hapPath, const std::string &appRunningId);
@@ -709,6 +710,7 @@ private:
     static void HandleSignal(int signal, siginfo_t *siginfo, void *context);
 
     void NotifyAppFault(const FaultData &faultData);
+    void NotifyPreTemplateProcessDeepFrozen();
 
     void OnOverlayChanged(const EventFwk::CommonEventData &data,
         const std::shared_ptr<Global::Resource::ResourceManager> &resourceManager, const std::string &bundleName,
@@ -753,6 +755,14 @@ private:
     int32_t OnAttachLocalDebug(bool isDebugFromLocal);
 
     void HandleConfigByPlugin(Configuration &config, BundleInfo &bundleInfo);
+
+    void DelayedReportNotifyFFRTToRss();
+    void NotifyFFRTSnapshot(int32_t snapshotState);
+
+    void BeforeHandleRequest() override;
+
+    std::mutex needNotifyFFRTNewIpcMutex_;
+    bool needToNotifyFFRTForNewIpc_ = false;
 
 #if defined(NWEB) && defined(NWEB_GRAPHIC)
     void HandleNWebPreload();

@@ -349,6 +349,8 @@ public:
     ImageError DestroyImageForFault(std::shared_ptr<AppRunningRecord> appRecord);
     int32_t HandleForkAll(int32_t pid);
     ImageError HandleForkAllInner(std::shared_ptr<AppRunningRecord> appRecord, int32_t pid);
+    int32_t HandlePreTemplateProcessDeepFrozen(int32_t pid);
+    void HandleNotifyTemplateProcessReadyDone(int32_t pid);
     void HandleMakeImageTimeout(const std::string& bundleName, const std::string& abilityName,
         int32_t userId, int32_t appIndex);
     void CheckMakeImageState(std::shared_ptr<AppRunningRecord> appRecord, ImageError error);

@@ -76,6 +76,7 @@ public:
     void ReportForkAllEventToRSS(int32_t imagePid, int32_t orginalPid,
         std::shared_ptr<AbilityInfo> abilityInfo, int32_t forkAllState);
     void ReportGameClickToRSS(const std::string &bundleName, int32_t pid, int32_t uid);
+    void ReportTemplateProcessReadyToRSS(int32_t pid, int32_t uid, const std::string &bundleName);
 private:
     ResSchedUtil() = default;
     ~ResSchedUtil() = default;

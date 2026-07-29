@@ -455,6 +455,10 @@ int32_t AppMgrStub::OnRemoteRequestInnerEighth(uint32_t code, MessageParcel &dat
             return HandleDestroyImage(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::NOTIFY_TEMPLATE_PROCESS_DEEP_FROZEN):
             return HandleNotifyTemplateProcessDeepFrozen(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::PRE_TEMPLATE_PROCESS_DEEP_FROZEN):
+            return HandlePreTemplateProcessDeepFrozen(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::NOTIFY_TEMPLATE_PROCESS_READY_DONE):
+            return HandleNotifyTemplateProcessReadyDone(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_IMAGE_PROCESS_STATE_OBSERVER):
             return HandleRegisterImageProcessStateObserver(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::IS_CHILD_PROCESS_SUPPORTED):
@@ -575,6 +579,31 @@ int32_t AppMgrStub::HandleNotifyTemplateProcessDeepFrozen(MessageParcel &data, M
     TAG_LOGD(AAFwkTag::APPMGR, "called");
     int32_t pid = data.ReadInt32();
     auto result = NotifyTemplateProcessDeepFrozen(pid);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write result failed.");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandlePreTemplateProcessDeepFrozen(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    int32_t pid = data.ReadInt32();
+    auto result = PreTemplateProcessDeepFrozen(pid);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write result failed.");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleNotifyTemplateProcessReadyDone(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    auto result = NotifyTemplateProcessReadyDone();
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::APPMGR, "Write result failed.");
         return ERR_APPEXECFWK_PARCEL_ERROR;

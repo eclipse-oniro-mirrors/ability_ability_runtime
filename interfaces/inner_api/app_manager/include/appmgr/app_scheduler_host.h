@@ -75,6 +75,7 @@ private:
     int32_t HandleSetWatchdogBackgroundStatus(MessageParcel &data, MessageParcel &reply);
     int32_t HandleOnLoadAbilityFinished(MessageParcel &data, MessageParcel &reply);
     int32_t HandleScheduleUpdateWorkProcessInfo(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleSchedulePreTemplateProcessDeepFrozen(MessageParcel &data, MessageParcel &reply);
     int32_t OnRemoteRequestInner(uint32_t code, MessageParcel &data,
         MessageParcel &reply, MessageOption &option);
     int32_t OnRemoteRequestInnerFirst(uint32_t code, MessageParcel &data,
@@ -84,6 +85,9 @@ private:
     int32_t OnRemoteRequestInnerThird(uint32_t code, MessageParcel &data,
         MessageParcel &reply, MessageOption &option);
     DISALLOW_COPY_AND_MOVE(AppSchedulerHost);
+
+protected:
+    virtual void BeforeHandleRequest() {}
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

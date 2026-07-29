@@ -113,6 +113,16 @@ public:
         return 0;
     }
 
+    virtual int32_t PreTemplateProcessDeepFrozen(int32_t pid)
+    {
+        return 0;
+    }
+
+    virtual int32_t NotifyTemplateProcessReadyDone()
+    {
+        return 0;
+    }
+
     /**
      * ApplicationForegrounded, call ApplicationForegrounded() through proxy object,
      * set the application to Foreground State.

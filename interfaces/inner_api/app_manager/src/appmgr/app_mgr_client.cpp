@@ -1648,6 +1648,24 @@ int32_t AppMgrClient::NotifyTemplateProcessDeepFrozen(int32_t pid)
     return service->NotifyTemplateProcessDeepFrozen(pid);
 }
 
+int32_t AppMgrClient::PreTemplateProcessDeepFrozen(int32_t pid)
+{
+    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
+    if (service == nullptr) {
+        return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
+    }
+    return service->PreTemplateProcessDeepFrozen(pid);
+}
+
+int32_t AppMgrClient::NotifyTemplateProcessReadyDone()
+{
+    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
+    if (service == nullptr) {
+        return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
+    }
+    return service->NotifyTemplateProcessReadyDone();
+}
+
 int32_t AppMgrClient::SetSupportedProcessCacheSelf(bool isSupport)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "Called");

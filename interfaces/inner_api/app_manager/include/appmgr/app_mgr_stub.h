@@ -83,6 +83,8 @@ private:
     int32_t HandleMakeImage(MessageParcel &data, MessageParcel &reply);
     int32_t HandleDestroyImage(MessageParcel &data, MessageParcel &reply);
     int32_t HandleNotifyTemplateProcessDeepFrozen(MessageParcel &data, MessageParcel &reply);
+    int32_t HandlePreTemplateProcessDeepFrozen(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleNotifyTemplateProcessReadyDone(MessageParcel &data, MessageParcel &reply);
 #ifdef SUPPORT_CHILD_PROCESS
     int32_t HandleGetAllChildrenProcesses(MessageParcel &data, MessageParcel &reply);
 #endif  // SUPPORT_CHILD_PROCESS
