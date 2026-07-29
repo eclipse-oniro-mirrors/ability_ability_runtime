@@ -16,6 +16,7 @@
 #include "cli_event_report.h"
 
 #include "bool_wrapper.h"
+#include "charconv"
 #include "cli_error_code.h"
 #include "hilog_tag_wrapper.h"
 #include "hisysevent_report.h"
@@ -25,6 +26,20 @@
 
 namespace OHOS {
 namespace CliTool {
+
+namespace {
+    // Safe string to integer conversion using std::from_chars
+    template<typename T>
+    T ParseInt(const std::string& str)
+    {
+        if (str.empty()) {
+            return 0;
+        }
+        T value = 0;
+        auto result = std::from_chars(str.data(), str.data() + str.size(), value);
+        return (result.ec == std::errc()) ? value : 0;
+    }
+}
 
 std::string GetEffectiveCliName(const std::string& cliName)
 {
@@ -65,7 +80,7 @@ void ReportCliTimeout(const std::string& bundleName, const std::string& cliName,
     report.InsertParam(PARAM_TYPE, TYPE_TIMEOUT);
     report.InsertParam(PARAM_BUNDLE_NAME, bundleName);
     report.InsertParam(PARAM_CLI_NAME, effectiveCliName);
-    report.InsertParam(PARAM_DURATION_MS, static_cast<int64_t>(std::stoll(durationMs)));
+    report.InsertParam(PARAM_DURATION_MS, ParseInt<int64_t>(durationMs));
 
     int32_t ret = report.Report(DOMAIN_CLI_TOOL, EVENT_CLI_EXECUTE_FAILED, HISYSEVENT_FAULT);
     TAG_LOGD(AAFwkTag::CLI_TOOL, "Report CLI_TIMEOUT: type=%{public}d, bundle=%{public}s, cli=%{public}s, "
@@ -82,7 +97,7 @@ void ReportCliSignal(const std::string& cliName, const std::string& signalNum)
 
     report.InsertParam(PARAM_TYPE, TYPE_SIGNAL);
     report.InsertParam(PARAM_CLI_NAME, effectiveCliName);
-    report.InsertParam(PARAM_SIGNAL_NUM, static_cast<int32_t>(std::stoi(signalNum)));
+    report.InsertParam(PARAM_SIGNAL_NUM, ParseInt<int32_t>(signalNum));
 
     int32_t ret = report.Report(DOMAIN_CLI_TOOL, EVENT_CLI_EXECUTE_FAILED, HISYSEVENT_FAULT);
     TAG_LOGD(AAFwkTag::CLI_TOOL,
