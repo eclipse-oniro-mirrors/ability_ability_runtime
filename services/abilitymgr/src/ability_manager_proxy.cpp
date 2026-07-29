@@ -7846,32 +7846,6 @@ ErrCode AbilityManagerProxy::RegisterSAInterceptor(sptr<AbilityRuntime::ISAInter
     return reply.ReadInt32();
 }
 
-int32_t AbilityManagerProxy::QueryKeepAliveAppServiceExtensions(std::vector<KeepAliveInfo> &list)
-{
-    MessageParcel data;
-    if (!WriteInterfaceToken(data)) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "writeInterfaceToken fail");
-        return INNER_ERR;
-    }
-
-    MessageParcel reply;
-    MessageOption option;
-    auto ret = SendRequest(AbilityManagerInterfaceCode::GET_APP_SERVICE_EXTENSIONS_KEEP_ALIVE,
-        data, reply, option);
-    if (ret != NO_ERROR) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "request error: %{public}d", ret);
-        return ret;
-    }
-
-    ret = GetParcelableInfos<KeepAliveInfo>(reply, list);
-    if (ret != NO_ERROR) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "GetParcelableInfos error: %{public}d", ret);
-        return ret;
-    }
-
-    return reply.ReadInt32();
-}
-
 ErrCode AbilityManagerProxy::UnregisterSAInterceptor(sptr<IRemoteObject> interceptor)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "call UnregisterSAInterceptor");
@@ -7898,6 +7872,32 @@ ErrCode AbilityManagerProxy::UnregisterSAInterceptor(sptr<IRemoteObject> interce
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Send request error: %{public}d", error);
         return error;
     }
+    return reply.ReadInt32();
+}
+
+int32_t AbilityManagerProxy::QueryKeepAliveAppServiceExtensions(std::vector<KeepAliveInfo> &list)
+{
+    MessageParcel data;
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "writeInterfaceToken fail");
+        return INNER_ERR;
+    }
+
+    MessageParcel reply;
+    MessageOption option;
+    auto ret = SendRequest(AbilityManagerInterfaceCode::GET_APP_SERVICE_EXTENSIONS_KEEP_ALIVE,
+        data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "request error: %{public}d", ret);
+        return ret;
+    }
+
+    ret = GetParcelableInfos<KeepAliveInfo>(reply, list);
+    if (ret != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "GetParcelableInfos error: %{public}d", ret);
+        return ret;
+    }
+
     return reply.ReadInt32();
 }
 
