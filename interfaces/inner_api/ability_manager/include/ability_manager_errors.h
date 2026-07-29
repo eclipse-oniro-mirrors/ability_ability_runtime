@@ -939,6 +939,11 @@ enum {
     ERR_PRELOAD_NOT_ENTRY_MODULE = 2097368,
 
     /**
+     * Result (2097369) for sa interceptor not found when unregister.
+     */
+    ERR_SA_INTERCEPTOR_NOT_EXIST = 2097369,
+
+    /**
      * Result (2097370-2097379) for StartUIAbilities Error.
      */
     START_UI_ABILITIES_NOT_SUPPORT_DLP = 2097370,
@@ -1016,6 +1021,11 @@ enum {
      * Result (2097403) The args of fd is invalid.
      */
     ERR_INVALID_FD = 2097403,
+
+    /**
+     * Result (2097404) for all apps are blocked from starting due to deep frozen .
+     */
+    ERR_LOW_MEM_SAINTERCEPTOR_START_BLOCK = 2097404,
 
     /**
      * Result (2098000-2098049) Error code refinement INVALID_VALUE.

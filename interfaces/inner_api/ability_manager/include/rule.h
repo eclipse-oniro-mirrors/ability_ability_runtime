@@ -25,7 +25,8 @@ namespace AbilityRuntime {
 enum class RuleType {
     ALLOW = 0,
     NOT_ALLOW,
-    USER_SELECTION
+    USER_SELECTION,
+    NOT_ALLOW_FROZEN
 };
 
 /**
