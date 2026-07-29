@@ -28,6 +28,8 @@
 #include "ability_manager_errors.h"
 #include "ability_scheduler.h"
 #include "ability_util.h"
+#include "agent_card.h"
+#include "agent_extension_connection_constants.h"
 #include "bundlemgr/mock_bundle_manager.h"
 #include "hilog_tag_wrapper.h"
 #include "mock_ability_connect_callback.h"
@@ -3728,6 +3730,34 @@ HWTEST_F(AbilityConnectManagerTest, AAFwk_AbilityMS_ScheduleDisconnectAbilityDon
     EXPECT_EQ(res, CONNECTION_NOT_EXIST);
 }
 
+/*
+ * Feature: AbilityConnectManager
+ * Function: ScheduleDisconnectAbilityDoneLocked
+ * SubFunction: ScheduleDisconnectAbilityDoneLocked
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify AgentExtension can finish disconnect while inactive
+ */
+HWTEST_F(AbilityConnectManagerTest, AAFwk_AbilityMS_ScheduleDisconnectAbilityDoneLocked_013, TestSize.Level1)
+{
+    std::shared_ptr<AbilityConnectManager> connectManager = std::make_shared<AbilityConnectManager>(0);
+    std::shared_ptr<BaseExtensionRecord> abilityRecord = serviceRecord_;
+    OHOS::sptr<IAbilityConnection> callback = new AbilityConnectCallback();
+    std::shared_ptr<ConnectionRecord> connection =
+        std::make_shared<ConnectionRecord>(abilityRecord->GetToken(), abilityRecord, callback, nullptr);
+    sptr<IRemoteObject> token = abilityRecord->GetToken();
+    connection->SetConnectState(ConnectionState::DISCONNECTING);
+    abilityRecord->abilityInfo_.type = AbilityType::EXTENSION;
+    abilityRecord->abilityInfo_.extensionAbilityType = ExtensionAbilityType::AGENT;
+    abilityRecord->SetAbilityState(AbilityState::INACTIVE);
+    abilityRecord->connRecordList_.push_back(connection);
+    connectManager->serviceMap_.emplace(AbilityConnectManager::GetServiceKey(abilityRecord), abilityRecord);
+
+    int res = connectManager->ScheduleDisconnectAbilityDoneLocked(token);
+    EXPECT_EQ(res, ERR_OK);
+    EXPECT_TRUE(abilityRecord->GetConnectRecordList().empty());
+}
+
 /**
  * @tc.name: SetExtensionLoadParam_ShouldSetReusePidWhenClientPidValidAndInProcess
  * @tc.desc: Test reusePid is set when clientPid > 0 and isInProcess
@@ -3803,6 +3833,191 @@ HWTEST_F(AbilityConnectManagerTest,
     EXPECT_EQ(loadParam.reusePid, -1);
 }
 
+/**
+ * @tc.name: Agent_DisconnectingRecord_ShouldNotBeDuplicateEligible
+ * @tc.desc: Test AGENT reconnect does not treat a disconnecting old record as duplicate
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityConnectManagerTest, Agent_DisconnectingRecord_ShouldNotBeDuplicateEligible, TestSize.Level1)
+{
+    auto connectManager = std::make_shared<TestAbilityConnectManager>(0);
+    auto abilityRecord = InitAbilityRecord();
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->abilityInfo_.type = AbilityType::EXTENSION;
+    abilityRecord->abilityInfo_.extensionAbilityType = ExtensionAbilityType::AGENT;
+    auto callback = new AbilityConnectCallback();
+    auto disconnectingRecord = ConnectionRecord::CreateConnectionRecord(
+        abilityRecord->GetToken(), abilityRecord, callback, connectManager);
+    ASSERT_NE(disconnectingRecord, nullptr);
+    disconnectingRecord->SetConnectState(ConnectionState::DISCONNECTING);
+    AbilityConnectManager::ConnectListType connectRecordList;
+    connectRecordList.push_back(disconnectingRecord);
+
+    auto duplicate = connectManager->GetAbilityConnectedRecordFromRecordList(abilityRecord, connectRecordList);
+
+    EXPECT_EQ(duplicate, nullptr);
+}
+
+/**
+ * @tc.name: Agent_TerminatingRecord_ShouldBeRecreatedForConnect
+ * @tc.desc: Test AGENT connect recreates record instead of reusing a terminating stale record
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityConnectManagerTest, Agent_TerminatingRecord_ShouldBeRecreatedForConnect, TestSize.Level1)
+{
+    auto connectManager = std::make_shared<TestAbilityConnectManager>(0);
+    auto abilityRequest = GenerateAbilityRequest("device", "AgentExtAbility", "agentapp", "agent.bundle", "entry");
+    abilityRequest.abilityInfo.type = AbilityType::EXTENSION;
+    abilityRequest.abilityInfo.extensionAbilityType = ExtensionAbilityType::AGENT;
+    abilityRequest.want.SetParam(AgentRuntime::AGENTID_KEY, std::string("agentA"));
+    abilityRequest.want.SetParam(AgentRuntime::AGENT_CARD_TYPE_KEY,
+        static_cast<int32_t>(AgentRuntime::AgentCardType::APP));
+
+    auto staleRecord = BaseExtensionRecord::CreateBaseExtensionRecord(abilityRequest);
+    ASSERT_NE(staleRecord, nullptr);
+    staleRecord->SetAbilityState(AbilityState::TERMINATING);
+    auto serviceKey = AbilityConnectManager::GetServiceKey(abilityRequest);
+    connectManager->serviceMap_.emplace(serviceKey, staleRecord);
+
+    std::shared_ptr<BaseExtensionRecord> targetService = nullptr;
+    bool isLoadedAbility = true;
+    connectManager->GetOrCreateServiceRecord(abilityRequest, true, targetService, isLoadedAbility);
+
+    ASSERT_NE(targetService, nullptr);
+    EXPECT_NE(targetService, staleRecord);
+    EXPECT_FALSE(isLoadedAbility);
+    EXPECT_EQ(connectManager->serviceMap_[serviceKey], targetService);
+}
+
+/**
+ * @tc.name: Agent_GetServiceKey_ShouldUseHostKeyForLowCode
+ * @tc.desc: Test standard Agent service key includes AgentId while low-code service key uses host identity only
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityConnectManagerTest, Agent_GetServiceKey_ShouldUseHostKeyForLowCode, TestSize.Level1)
+{
+    auto standardA = GenerateAbilityRequest("device", "AgentExtAbility", "agentapp", "agent.bundle", "entry");
+    standardA.abilityInfo.type = AbilityType::EXTENSION;
+    standardA.abilityInfo.extensionAbilityType = ExtensionAbilityType::AGENT;
+    standardA.want.SetParam(AgentRuntime::AGENTID_KEY, std::string("agentA"));
+    standardA.want.SetParam(AgentRuntime::AGENT_CARD_TYPE_KEY, static_cast<int32_t>(AgentRuntime::AgentCardType::APP));
+    auto standardB = standardA;
+    standardB.want.SetParam(AgentRuntime::AGENTID_KEY, std::string("agentB"));
+
+    auto lowCodeA = standardA;
+    lowCodeA.want.SetParam(AgentRuntime::AGENT_CARD_TYPE_KEY,
+        static_cast<int32_t>(AgentRuntime::AgentCardType::LOW_CODE));
+    auto lowCodeB = lowCodeA;
+    lowCodeB.want.SetParam(AgentRuntime::AGENTID_KEY, std::string("agentB"));
+
+    auto standardKeyA = AbilityConnectManager::GetServiceKey(standardA);
+    auto standardKeyB = AbilityConnectManager::GetServiceKey(standardB);
+    auto lowCodeKeyA = AbilityConnectManager::GetServiceKey(lowCodeA);
+    auto lowCodeKeyB = AbilityConnectManager::GetServiceKey(lowCodeB);
+
+    EXPECT_NE(standardKeyA, standardKeyB);
+    EXPECT_EQ(lowCodeKeyA, lowCodeKeyB);
+    EXPECT_EQ(lowCodeKeyA, lowCodeA.want.GetElement().GetURI());
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: OnStartSpecifiedProcessResponse
+ * SubFunction: OnStartSpecifiedProcessResponse
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify OnStartSpecifiedProcessResponse leaves queue untouched when requestId mismatch.
+ */
+HWTEST_F(AbilityConnectManagerTest, AAFwk_AbilityMS_OnStartSpecifiedProcessResponse_002, TestSize.Level1)
+{
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    AbilityConnectManager::LoadAbilityContext context;
+    context.loadParam = std::make_shared<AbilityRuntime::LoadParam>();
+    context.abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    context.appInfo = std::make_shared<AppExecFwk::ApplicationInfo>();
+    context.want = std::make_shared<Want>();
+
+    const int32_t queuedRequestId = 1;
+    const int32_t mismatchedRequestId = 999;
+    connectManager->loadAbilityQueue_.push_back({ { queuedRequestId, context } });
+    connectManager->OnStartSpecifiedProcessResponse("flag", mismatchedRequestId);
+
+    EXPECT_EQ(connectManager->loadAbilityQueue_.size(), 1u);
+    EXPECT_TRUE(context.want->GetStringParam("ohoSpecifiedProcessFlag").empty());
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: OnStartSpecifiedProcessResponse
+ * SubFunction: OnStartSpecifiedProcessResponse
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify OnStartSpecifiedProcessResponse pops invalid context without crash.
+ */
+HWTEST_F(AbilityConnectManagerTest, AAFwk_AbilityMS_OnStartSpecifiedProcessResponse_003, TestSize.Level1)
+{
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    AbilityConnectManager::LoadAbilityContext context;
+
+    const int32_t requestId = 1;
+    connectManager->loadAbilityQueue_.push_back({ { requestId, context } });
+    connectManager->OnStartSpecifiedProcessResponse("flag", requestId);
+
+    EXPECT_TRUE(connectManager->loadAbilityQueue_.empty());
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: OnStartSpecifiedProcessTimeoutResponse
+ * SubFunction: OnStartSpecifiedProcessTimeoutResponse
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify OnStartSpecifiedProcessTimeoutResponse leaves queue untouched when requestId mismatch.
+ */
+HWTEST_F(AbilityConnectManagerTest, AAFwk_AbilityMS_OnStartSpecifiedProcessTimeoutResponse_002, TestSize.Level1)
+{
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    AbilityConnectManager::LoadAbilityContext context;
+    context.loadParam = std::make_shared<AbilityRuntime::LoadParam>();
+    context.abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    context.appInfo = std::make_shared<AppExecFwk::ApplicationInfo>();
+    context.want = std::make_shared<Want>();
+
+    const int32_t queuedRequestId = 2;
+    const int32_t mismatchedRequestId = 999;
+    connectManager->loadAbilityQueue_.push_back({ { queuedRequestId, context } });
+    connectManager->OnStartSpecifiedProcessTimeoutResponse(mismatchedRequestId);
+
+    EXPECT_EQ(connectManager->loadAbilityQueue_.size(), 1u);
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: OnStartSpecifiedProcessTimeoutResponse
+ * SubFunction: OnStartSpecifiedProcessTimeoutResponse
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify OnStartSpecifiedProcessTimeoutResponse pops invalid context without crash.
+ */
+HWTEST_F(AbilityConnectManagerTest, AAFwk_AbilityMS_OnStartSpecifiedProcessTimeoutResponse_003, TestSize.Level1)
+{
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    AbilityConnectManager::LoadAbilityContext context;
+
+    const int32_t requestId = 2;
+    connectManager->loadAbilityQueue_.push_back({ { requestId, context } });
+    connectManager->OnStartSpecifiedProcessTimeoutResponse(requestId);
+
+    EXPECT_TRUE(connectManager->loadAbilityQueue_.empty());
+}
 
 }  // namespace AAFwk
 }  // namespace OHOS

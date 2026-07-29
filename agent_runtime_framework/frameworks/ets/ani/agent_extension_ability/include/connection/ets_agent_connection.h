@@ -17,8 +17,10 @@
 #define OHOS_AGENT_RUNTIME_ETS_AGENT_CONNECTION_H
 
 #include <map>
+#include <functional>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <vector>
 
 #include "ability_connect_callback.h"
@@ -59,6 +61,13 @@ namespace AgentConnectionUtils {
 void RemoveAgentConnection(int64_t connectId);
 
 /**
+ * Erase agent connection from registry without releasing the callback object.
+ *
+ * @param connectId The connection ID to erase.
+ */
+void EraseAgentConnection(int64_t connectId);
+
+/**
  * Insert agent connection into registry.
  *
  * @param connection The connection object to insert.
@@ -83,8 +92,30 @@ void FindAgentConnection(int64_t connectId, sptr<EtsAgentConnection> &connection
  * @param callback The callback object to match.
  * @param connection Output parameter for the found connection.
  */
-void FindAgentConnection(ani_env *env, AAFwk::Want &want, ani_object callback,
+void FindAgentConnection(ani_env *env, const AAFwk::Want &want, ani_object callback,
     sptr<EtsAgentConnection> &connection);
+
+void FindAgentConnectionCandidatesByTarget(ani_env *env, const AAFwk::Want &want, ani_object callback,
+    std::vector<sptr<EtsAgentConnection>> &candidates);
+
+/**
+ * Low-code host connection that can accept a different AgentId (same-AgentId dupes go to FindAgentConnection);
+ * for shared-host reuse or reconnect queuing while the old host disconnects.
+ */
+void FindReusableLowCodeAgentConnection(ani_env *env, const AAFwk::Want &want, ani_object callback,
+    sptr<EtsAgentConnection> &connection);
+
+/**
+ * Mirror AgentMgr low-code completion into the local ETS registry.
+ */
+void CompleteLowCodeAgent(const std::string &agentId);
+
+/**
+ * Re-enqueue reconnect only if candidate is still registered and disconnecting; false if a concurrent
+ * disconnect-done already erased/drained it (caller fresh-connects).
+ */
+bool QueueReconnectIfActive(ani_env *env, const AAFwk::Want &want, ani_object asyncCallback,
+    const sptr<EtsAgentConnection> &candidate);
 }
 
 class EtsAgentConnectorStubImpl;
@@ -96,6 +127,10 @@ class EtsAgentConnectorStubImpl;
  */
 class EtsAgentConnection : public AbilityRuntime::AbilityConnectCallback {
 public:
+    using DisconnectCompleteHandler = std::function<void(const wptr<EtsAgentConnection>&)>;
+    using ConnectCompleteHandler =
+        std::function<void(ani_env *env, ani_object proxy, const wptr<EtsAgentConnection>&)>;
+
     /**
      * Constructor.
      *
@@ -145,11 +180,11 @@ public:
     void SetProxyObject(ani_object proxy);
 
     /**
-     * Get the proxy object.
+     * Get a caller-owned snapshot reference of the proxy object.
      *
-     * @return Returns the ANI reference of the proxy object.
+     * @return Returns a temporary ANI global reference of the proxy object.
      */
-    ani_ref GetProxyObject();
+    ani_ref GetProxyObject(ani_env *env);
 
     /**
      * Set the ANI async callback for promise resolution.
@@ -158,13 +193,34 @@ public:
      */
     void SetAniAsyncCallback(ani_object asyncCallback);
 
+    void SetDisconnectAsyncCallback(ani_env *env, ani_object asyncCallback);
+
+    void ClearDisconnectAsyncCallback(ani_env *env);
+
     /**
      * Add a duplicated pending callback.
      * Used when multiple connection requests are made for the same extension.
      *
+     * @param env The ANI environment.
      * @param duplicatedCallback The callback object from ETS.
      */
-    void AddDuplicatedPendingCallback(ani_object duplicatedCallback);
+    void AddDuplicatedPendingCallback(ani_env *env, ani_object duplicatedCallback);
+
+    void AddReconnectPendingCallback(ani_env *env, const AAFwk::Want &want, ani_object asyncCallback);
+
+    // Enqueue a pre-created global ref without touching the ANI env (QueueReconnectIfActive).
+    void EnqueueReconnectPendingCallback(const AAFwk::Want &want, ani_ref callback);
+
+    // Each queued reconnect keeps its own Want; drain registers each non-first AgentId.
+    bool TakeReconnectPendingCallbacks(std::vector<AAFwk::Want> &wants, std::vector<ani_ref> &callbacks);
+
+    // Non-first low-code reconnects staged for Reuse after the fresh host connects.
+    void AddPendingLowCodeReuseItem(const AAFwk::Want &want, ani_ref callback);
+    bool TakePendingLowCodeReuseItems(std::vector<AAFwk::Want> &wants, std::vector<ani_ref> &callbacks);
+    void RejectPendingLowCodeReuseItems(
+        ani_env *env, int32_t error, AbilityRuntime::AbilityInnerErrorMsg fallbackMessage);
+
+    void AdoptDuplicatedPendingCallbacks(std::vector<ani_ref> &&callbacks);
 
     /**
      * Resolve all duplicated pending callbacks with the proxy.
@@ -225,11 +281,12 @@ public:
     void SetEtsConnectionCallback(ani_object callback);
 
     /**
-     * Get the ETS connection callback object.
+     * Create a temporary global reference to the ETS connection callback object.
      *
-     * @return Returns the ETS connection callback reference.
+     * @param env The ANI environment.
+     * @return Returns a caller-owned global reference, or nullptr on failure.
      */
-    ani_ref GetEtsConnectionObject() { return etsConnectionObject_; }
+    ani_ref GetEtsConnectionObject(ani_env *env);
 
     /**
      * Remove the connection object.
@@ -254,9 +311,44 @@ public:
      */
     void ReleaseObjectReference(ani_env *env, ani_ref etsObjRef);
 
-    void SetConnectionId(int32_t id) { connectionId_ = id; }
+    void ReleaseObjectReference(ani_ref etsObjRef);
 
-    int32_t GetConnectionId() { return connectionId_; }
+    void SetConnectionId(int64_t id) { connectionId_ = id; }
+
+    int64_t GetConnectionId() { return connectionId_; }
+
+    ani_vm *GetEtsVm() const { return etsVm_; }
+
+    void SetDisconnecting(bool disconnecting);
+
+    bool IsDisconnecting();
+
+    /**
+     * Add an active low-code AgentId to this shared host connection.
+     * Returns true only when a new AgentId was inserted; failed reuse rolls back the registration without siblings.
+     */
+    bool AddLowCodeAgentId(const std::string &agentId);
+
+    /**
+     * Remove one active low-code AgentId from this connection.
+     * Returns true when the removed AgentId was the last active one.
+     */
+    bool RemoveLowCodeAgentId(const std::string &agentId);
+
+    /**
+     * Whether this connection owns the given low-code AgentId.
+     */
+    bool HasLowCodeAgentId(const std::string &agentId);
+
+    /**
+     * Whether this connection still has any active low-code AgentId.
+     */
+    bool HasAnyLowCodeAgentId();
+
+    void SetDisconnectCompleteHandler(DisconnectCompleteHandler handler);
+
+    // From HandleOnAbilityConnectDone: register staged non-first AgentIds via Reuse.
+    void SetConnectCompleteHandler(ConnectCompleteHandler handler);
 
 private:
     /**
@@ -290,7 +382,18 @@ private:
      */
     void HandleOnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int resultCode);
 
-    void ReleaseObjectReference(ani_ref etsObjRef);
+    // Build the ETS receiver proxy for the freshly connected host; nullptr on failure.
+    ani_object BuildAgentReceiverProxy(ani_env *env, const sptr<IRemoteObject> &remoteObject);
+    // Report connect error, reject every pending batch, release primary callback, remove connection,
+    // detach ANI env (exactly one DetachAniEnv).
+    void FailConnectAndCleanup(ani_env *env, ani_ref primaryCallback, bool hasPrimaryCallback,
+        int32_t error, AbilityRuntime::AbilityInnerErrorMsg fallbackMessage, bool isAttachThread);
+    // Resolve the primary callback + duplicated pending callbacks against the connected proxy.
+    void ApplyConnectProxy(ani_env *env, ani_ref primaryCallback, bool hasPrimaryCallback, ani_object proxy);
+    // Handle no-callback / resultCode-failure / proxy-failure cleanup; returns nullptr once DetachAniEnv has run,
+    // on success applies the proxy and returns it.
+    ani_object DispatchConnectResult(ani_env *env, const sptr<IRemoteObject> &remoteObject,
+        int resultCode, ani_ref primaryCallback, bool hasPrimaryCallback, bool isAttachThread);
 
 private:
     ani_vm *etsVm_ = nullptr;
@@ -308,6 +411,11 @@ private:
     ani_ref aniAsyncCallback_ = nullptr;
 
     /**
+     * The async callback stored from ETS for disconnect promise resolution.
+     */
+    ani_ref disconnectAsyncCallback_ = nullptr;
+
+    /**
      * The ETS connection callback object.
      */
     ani_ref etsConnectionObject_ = nullptr;
@@ -321,6 +429,16 @@ private:
      * List of pending callbacks for duplicate connection requests.
      */
     std::vector<ani_ref> duplicatedPendingCallbacks_;
+
+    std::mutex stateLock_;
+    bool disconnecting_ = false;
+    std::set<std::string> lowCodeAgentIds_;
+    std::vector<AAFwk::Want> reconnectWants_;
+    std::vector<ani_ref> reconnectPendingCallbacks_;
+    std::vector<AAFwk::Want> pendingLowCodeReuseWants_;
+    std::vector<ani_ref> pendingLowCodeReuseCallbacks_;
+    DisconnectCompleteHandler disconnectCompleteHandler_;
+    ConnectCompleteHandler connectCompleteHandler_;
 };
 } // namespace AgentRuntime
 } // namespace OHOS

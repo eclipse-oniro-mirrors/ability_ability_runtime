@@ -22,6 +22,7 @@
 #include "ability_business_error.h"
 #include "ability_delegator_registry.h"
 #include "ability_manager_client.h"
+#include "ability_manager_errors.h"
 #include "ability_recovery.h"
 #include "ability_start_setting.h"
 #include "app_recovery.h"
@@ -374,7 +375,7 @@ void JsUIAbility::Init(std::shared_ptr<AppExecFwk::AbilityLocalRecord> record,
         }
         srcPath.append("/");
         srcPath.append(abilityInfo->srcEntrance);
-        srcPath.erase(srcPath.rfind("."));
+        RemoveFileExtension(srcPath);
         srcPath.append(".abc");
         TAG_LOGD(AAFwkTag::UIABILITY, "jsAbility srcPath: %{public}s", srcPath.c_str());
     }
@@ -469,6 +470,9 @@ void JsUIAbility::SetAbilityContext(std::shared_ptr<AbilityInfo> abilityInfo,
     }
     auto workContext = new std::weak_ptr<AbilityRuntime::AbilityContext>(abilityContext_);
 
+    // napi_coerce_to_native_binding_object registers detach/attach callbacks for worker thread
+    // transitions. DetachNewAbilityContext creates a NEW weak_ptr copy (does not free the original),
+    // and DetachFinalizeAbilityContext frees that copy. This is complementary to napi_wrap below.
     auto coerceStatus = napi_coerce_to_native_binding_object(
         env, contextObj, DetachNewAbilityContext, AttachJsAbilityContext, workContext, nullptr);
     if (coerceStatus != napi_ok) {
@@ -482,6 +486,10 @@ void JsUIAbility::SetAbilityContext(std::shared_ptr<AbilityInfo> abilityInfo,
     if (abilityRecovery_ != nullptr) {
         abilityRecovery_->SetJsAbility(reinterpret_cast<uintptr_t>(workContext));
     }
+    // napi_wrap registers the finalize callback to free the original workContext on GC.
+    // This coexists with coerce above: coerce uses the native binding slot for worker
+    // detach/attach, while wrap uses the wrap slot for final cleanup. workContext is freed
+    // exactly once here; detached copies are freed by DetachFinalizeAbilityContext.
     napi_status status = napi_wrap(env, contextObj, workContext,
         [](napi_env, void *data, void *hint) {
             delete static_cast<std::weak_ptr<AbilityRuntime::AbilityContext> *>(data);
@@ -2663,13 +2671,11 @@ bool JsUIAbility::TryLoadSkillEntry(const std::string &srcEntry,
     }
     std::string srcPath(param->moduleName_ + "/" + srcEntry);
     auto pos = srcPath.rfind('.');
-    if (pos == std::string::npos) {
-        TAG_LOGW(AAFwkTag::UIABILITY, "skip srcEntry, no extension:%{public}s", srcEntry.c_str());
-        return false;
+    if (pos != std::string::npos) {
+        srcPath.erase(pos);
+        srcPath.append(".abc");
     }
-    srcPath.erase(pos);
-    srcPath.append(".abc");
-    skillModuleRef_ = jsRuntime_.LoadModule(param->moduleName_, srcPath, param->hapPath_, true);
+    skillModuleRef_ = jsRuntime_.LoadModule(param->moduleName_, srcPath, param->hapPath_, true, false, srcEntry);
     if (skillModuleRef_ == nullptr) {
         TAG_LOGW(AAFwkTag::UIABILITY, "LoadModule failed, path:%{public}s", srcPath.c_str());
         return false;
@@ -2739,26 +2745,54 @@ void JsUIAbility::ExecuteSkill(const AAFwk::Want &want,
     }
     napi_env env = jsRuntime_.GetNapiEnv();
     if (env == nullptr) {
-        TAG_LOGE(AAFwkTag::UIABILITY, "null napi env, skill will time out");
+        TAG_LOGE(AAFwkTag::UIABILITY, "null napi env");
+        ReportSkillError(param->requestCode_, ERR_TIMED_OUT,
+            "napi env unavailable, js runtime not ready");
         return;
     }
     napi_value jsObj = nullptr;
     napi_value method = LoadSkillFunction(param, jsObj);
     if (method == nullptr) {
-        TAG_LOGE(AAFwkTag::UIABILITY, "func not found in any srcEntry:%{public}s", param->functionName_.c_str());
+        std::string errMsg = "skill function '" + param->functionName_ +
+            "' not found in srcEntries: [" + param->SrcEntriesToString() + "]";
+        TAG_LOGE(AAFwkTag::UIABILITY, "%{public}s", errMsg.c_str());
+        ReportSkillError(param->requestCode_, ERR_TIMED_OUT, errMsg);
         return;
     }
     auto args = BuildSkillCallArgs(env, param);
     napi_value result = nullptr;
     napi_status status = napi_call_function(env, jsObj, method, args.size(), args.data(), &result);
     if (status != napi_ok) {
-        TAG_LOGE(AAFwkTag::UIABILITY, "napi_call_function failed, status:%{public}d func:%{public}s",
-            status, param->functionName_.c_str());
+        std::string errMsg = "napi_call_function status=" + std::to_string(status) +
+            " func=" + param->functionName_;
+        TAG_LOGE(AAFwkTag::UIABILITY, "%{public}s", errMsg.c_str());
+        ReportSkillError(param->requestCode_, ERR_TIMED_OUT, errMsg);
         return;
     }
+    bool hasPending = false;
+    napi_is_exception_pending(env, &hasPending);
+    if (hasPending) {
+        TAG_LOGE(AAFwkTag::UIABILITY,
+            "skill function threw exception, func:%{public}s", param->functionName_.c_str());
+        ReportSkillError(param->requestCode_, ERR_TIMED_OUT,
+            "skill function threw exception during execution");
+        return;
+    }
+    AAFwk::AbilityManagerClient::GetInstance()->NotifySkillFunctionInvoked(token_, param->requestCode_);
     TAG_LOGD(AAFwkTag::UIABILITY,
         "ExecuteSkill dispatched, waiting completeArkTSScriptInApp, requestCode:%{public}s",
         param->requestCode_.c_str());
+}
+
+void JsUIAbility::ReportSkillError(const std::string &requestCode, int32_t errCode, const std::string &errMsg)
+{
+    AppExecFwk::SkillExecuteResult result;
+    result.code = errCode;
+    if (!errMsg.empty()) {
+        result.result = std::make_shared<AAFwk::WantParams>();
+        result.result->SetParam(AppExecFwk::SKILL_ERROR_MSG_KEY, AAFwk::String::Box(errMsg));
+    }
+    AAFwk::AbilityManagerClient::GetInstance()->ExecuteSkillDone(token_, requestCode, errCode, result);
 }
 
 void JsUIAbility::RegisterDelayResultCallback(const std::shared_ptr<InsightIntentExecuteParam> &executeParam)

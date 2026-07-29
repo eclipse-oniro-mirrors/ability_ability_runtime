@@ -50,11 +50,13 @@ public:
         const sptr<IRemoteObject> &remoteObject,
         int resultCode) override
     {
+        MyFlag::onAbilityConnectDoneCount++;
         MyFlag::isOnAbilityConnectDoneCalled = true;
     }
 
     void OnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int resultCode) override
     {
+        MyFlag::onAbilityDisconnectDoneCount++;
         MyFlag::isOnAbilityDisconnectDoneCalled = true;
     }
 };
@@ -69,14 +71,26 @@ public:
         const sptr<IRemoteObject> &remoteObject,
         int resultCode) override
     {
+        MyFlag::onAbilityConnectDoneCount++;
         MyFlag::isOnAbilityConnectDoneCalled = true;
     }
 
     void OnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int resultCode) override
     {
+        MyFlag::onAbilityDisconnectDoneCount++;
         MyFlag::isOnAbilityDisconnectDoneCalled = true;
     }
 };
+
+Want BuildAgentConnectionWant(const std::string &agentId, const sptr<IRemoteObject> &hostProxy,
+    const std::string &moduleName = "test.module")
+{
+    Want want;
+    want.SetParam(AGENTID_KEY, agentId);
+    want.SetParam(AGENTEXTENSIONHOSTPROXY_KEY, hostProxy);
+    want.SetElementName("", "test.bundle", "test.ability", moduleName);
+    return want;
+}
 }
 
 namespace OHOS {
@@ -102,8 +116,11 @@ void AgentConnectionManagerTest::SetUp(void)
     MyFlag::retDisconnectAgentExtensionAbility = ERR_OK;
     MyFlag::retConnectServiceExtensionAbility = ERR_OK;
     MyFlag::retDisconnectServiceExtensionAbility = ERR_OK;
+    MyFlag::onAbilityConnectDoneCount = 0;
+    MyFlag::onAbilityDisconnectDoneCount = 0;
     MyFlag::isOnAbilityConnectDoneCalled = false;
     MyFlag::isOnAbilityDisconnectDoneCalled = false;
+    MyFlag::reportConnectionLeakEventCount = 0;
 }
 
 void AgentConnectionManagerTest::TearDown(void)
@@ -119,6 +136,30 @@ HWTEST_F(AgentConnectionManagerTest, GetInstance_001, TestSize.Level1)
     auto &instance1 = AgentConnectionManager::GetInstance();
     auto &instance2 = AgentConnectionManager::GetInstance();
     EXPECT_EQ(&instance1, &instance2);
+}
+
+/**
+* @tc.name  : AgentConnectionList_ShouldStoreRecordsWithoutOrderingKey
+* @tc.number: AgentConnectionList_001
+* @tc.desc  : Test framework connection records do not require map ordering
+*/
+HWTEST_F(AgentConnectionManagerTest, AgentConnectionList_001, TestSize.Level1)
+{
+    AAFwk::Operation receiver;
+    receiver.SetBundleName("test.bundle");
+    receiver.SetModuleName("test.module");
+    receiver.SetAbilityName("test.ability");
+    sptr<AgentConnection> connection = sptr<AgentConnection>::MakeSptr();
+    AgentConnectionInfo left("agentA", receiver, connection);
+    AgentConnectionInfo right("agentB", receiver, connection);
+    AgentConnectionList records;
+
+    records.emplace_back(left, std::vector<sptr<AbilityConnectCallback>> {});
+    records.emplace_back(right, std::vector<sptr<AbilityConnectCallback>> {});
+
+    ASSERT_EQ(records.size(), static_cast<size_t>(2));
+    EXPECT_EQ(records[0].first.agentId, "agentA");
+    EXPECT_EQ(records[1].first.agentId, "agentB");
 }
 
 /**
@@ -292,6 +333,32 @@ HWTEST_F(AgentConnectionManagerTest, DisconnectAgentExtensionAbility_005, TestSi
 
     auto result = AgentConnectionManager::GetInstance().DisconnectAgentExtensionAbility(callback1);
     EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+* @tc.name  : ConnectAgentExtensionAbility_ShouldNotDuplicateSameCallback
+* @tc.number: ConnectAgentExtensionAbility_007
+* @tc.desc  : Test duplicate connect with the same callback keeps one owner and disconnect reaches AgentMgr.
+*/
+HWTEST_F(AgentConnectionManagerTest, ConnectAgentExtensionAbility_007, TestSize.Level1)
+{
+    Want want;
+    want.SetParam(AGENTID_KEY, std::string("testAgent"));
+    want.SetElementName("", "test.bundle", "test.ability", "test.module");
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+    EXPECT_EQ(AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want, callback), ERR_OK);
+    EXPECT_EQ(AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want, callback), ERR_OK);
+
+    auto &connections = AgentConnectionManager::GetInstance().agentConnections_;
+    ASSERT_EQ(connections.size(), static_cast<size_t>(1));
+    EXPECT_EQ(connections.front().second.size(), static_cast<size_t>(1));
+
+    MyFlag::retDisconnectAgentExtensionAbility = ERR_INVALID_VALUE;
+    auto result = AgentConnectionManager::GetInstance().DisconnectAgentExtensionAbility(callback);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    EXPECT_FALSE(MyFlag::isOnAbilityDisconnectDoneCalled);
 }
 
 /**
@@ -721,6 +788,107 @@ HWTEST_F(AgentConnectionManagerTest, AgentConnection_OnAbilityDisconnectDone_004
 }
 
 /**
+* @tc.name  : OnAbilityConnectDone_ShouldSetDisconnected_WhenResultCodeIsFailure
+* @tc.number: AgentConnection_OnAbilityConnectDone_005
+* @tc.desc  : Test OnAbilityConnectDone tears down as DISCONNECTED on a non-OK result code
+*/
+HWTEST_F(AgentConnectionManagerTest, AgentConnection_OnAbilityConnectDone_005, TestSize.Level1)
+{
+    Want want;
+    want.SetParam(AGENTID_KEY, std::string("testAgent"));
+    want.SetElementName("", "test.bundle", "test.ability", "test.module");
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+
+    sptr<MockAbilityConnectCallback> callback1 = new MockAbilityConnectCallback();
+    sptr<MockAbilityConnectCallback> callback2 = new MockAbilityConnectCallback();
+    AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want, callback1);
+    AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want, callback2);
+
+    sptr<AgentConnection> connection =
+        AgentConnectionManager::GetInstance().agentConnections_.begin()->first.agentConnection;
+
+    AppExecFwk::ElementName element;
+    element.SetBundleName("test.bundle");
+    sptr<IRemoteObject> remoteObj = sptr<MockIRemoteObject>::MakeSptr();
+    // A non-OK result code models a connect that failed before establishing.
+    int32_t resultCode = 16000050;
+
+    MyFlag::isOnAbilityConnectDoneCalled = false;
+    connection->OnAbilityConnectDone(element, remoteObj, resultCode);
+
+    // G4: non-OK result must NOT mark CONNECTED; stale record would replay failure to later connects
+    // via HandleExistingConnectionLocked -> tear down DISCONNECTED.
+    EXPECT_TRUE(MyFlag::isOnAbilityConnectDoneCalled);
+    EXPECT_EQ(connection->GetConnectionState(), CONNECTION_STATE_DISCONNECTED);
+    EXPECT_EQ(connection->GetResultCode(), resultCode);
+}
+
+/**
+* @tc.name  : OnAbilityDisconnectDone_ShouldReportLeak_WhenConnectionWasEstablished
+* @tc.number: AgentConnection_OnAbilityDisconnectDone_005
+* @tc.desc  : Test OnAbilityDisconnectDone reports a leak when DIED arrives after the connection was established
+*/
+HWTEST_F(AgentConnectionManagerTest, AgentConnection_OnAbilityDisconnectDone_005, TestSize.Level1)
+{
+    Want want;
+    want.SetParam(AGENTID_KEY, std::string("testAgent"));
+    want.SetElementName("", "test.bundle", "test.ability", "test.module");
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+    AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want, callback);
+
+    sptr<AgentConnection> connection =
+        AgentConnectionManager::GetInstance().agentConnections_.begin()->first.agentConnection;
+    // Simulate an established connection before the target died.
+    connection->SetConnectionState(CONNECTION_STATE_CONNECTED);
+
+    AppExecFwk::ElementName element;
+    element.SetBundleName("test.bundle");
+    int32_t resultCode = DIED;
+
+    MyFlag::reportConnectionLeakEventCount = 0;
+    connection->OnAbilityDisconnectDone(element, resultCode);
+
+    // G3: established connection died before explicit disconnect -> report leak for attribution.
+    EXPECT_EQ(MyFlag::reportConnectionLeakEventCount, 1);
+    EXPECT_TRUE(AgentConnectionManager::GetInstance().agentConnections_.empty());
+    EXPECT_EQ(connection->GetConnectionState(), CONNECTION_STATE_DISCONNECTED);
+}
+
+/**
+* @tc.name  : OnAbilityDisconnectDone_ShouldNotReportLeak_WhenConnectNeverEstablished
+* @tc.number: AgentConnection_OnAbilityDisconnectDone_006
+* @tc.desc  : No leak when DIED arrives before connect established (connect timeout)
+*/
+HWTEST_F(AgentConnectionManagerTest, AgentConnection_OnAbilityDisconnectDone_006, TestSize.Level1)
+{
+    Want want;
+    want.SetParam(AGENTID_KEY, std::string("testAgent"));
+    want.SetElementName("", "test.bundle", "test.ability", "test.module");
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+    AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want, callback);
+
+    sptr<AgentConnection> connection =
+        AgentConnectionManager::GetInstance().agentConnections_.begin()->first.agentConnection;
+    // Still CONNECTING (never established) when target dies/times out.
+
+    AppExecFwk::ElementName element;
+    element.SetBundleName("test.bundle");
+    int32_t resultCode = DIED;
+
+    MyFlag::reportConnectionLeakEventCount = 0;
+    connection->OnAbilityDisconnectDone(element, resultCode);
+
+    // G3: target died before connect established (connect failure, not a leak); no leak reported.
+    EXPECT_EQ(MyFlag::reportConnectionLeakEventCount, 0);
+    EXPECT_TRUE(AgentConnectionManager::GetInstance().agentConnections_.empty());
+    EXPECT_EQ(connection->GetConnectionState(), CONNECTION_STATE_DISCONNECTED);
+}
+
+/**
 * @tc.name  : RemoveConnection_ShouldSkipAndContinue_WhenConnectionDoesNotMatch
 * @tc.number: RemoveConnection_002
 * @tc.desc  : Test RemoveConnection skips non-matching connections (L198 coverage)
@@ -1006,6 +1174,132 @@ HWTEST_F(AgentConnectionManagerTest, MatchConnection_006, TestSize.Level1)
 }
 
 /**
+* @tc.name  : MatchLowCodeReuseConnection_ShouldIgnoreAgentId_WhenHostAndTargetMatch
+* @tc.number: MatchLowCodeReuseConnection_001
+* @tc.desc  : Test low-code reuse matches by host proxy and target instead of agentId
+*/
+HWTEST_F(AgentConnectionManagerTest, MatchLowCodeReuseConnection_001, TestSize.Level1)
+{
+    sptr<IRemoteObject> hostProxy = sptr<MockIRemoteObject>::MakeSptr();
+    Want storedWant = BuildAgentConnectionWant("agentA", hostProxy);
+    Want reuseWant = BuildAgentConnectionWant("agentB", hostProxy);
+
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+    EXPECT_EQ(AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(storedWant, callback), ERR_OK);
+
+    auto &connectionEntry = *AgentConnectionManager::GetInstance().agentConnections_.begin();
+    EXPECT_FALSE(AgentConnectionManager::GetInstance().MatchConnection("agentB", reuseWant, connectionEntry));
+    EXPECT_TRUE(AgentConnectionManager::GetInstance().MatchLowCodeReuseConnection(reuseWant, connectionEntry));
+}
+
+/**
+* @tc.name  : MatchLowCodeReuseConnection_ShouldReturnFalse_WhenHostProxyMissing
+* @tc.number: MatchLowCodeReuseConnection_002
+* @tc.desc  : Test low-code reuse requires the framework host proxy
+*/
+HWTEST_F(AgentConnectionManagerTest, MatchLowCodeReuseConnection_002, TestSize.Level1)
+{
+    sptr<IRemoteObject> hostProxy = sptr<MockIRemoteObject>::MakeSptr();
+    Want storedWant = BuildAgentConnectionWant("agentA", hostProxy);
+    Want reuseWant = BuildAgentConnectionWant("agentB", nullptr);
+
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+    EXPECT_EQ(AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(storedWant, callback), ERR_OK);
+
+    auto &connectionEntry = *AgentConnectionManager::GetInstance().agentConnections_.begin();
+    EXPECT_FALSE(AgentConnectionManager::GetInstance().MatchLowCodeReuseConnection(reuseWant, connectionEntry));
+}
+
+/**
+* @tc.name  : ReuseLowCodeAgentExtensionAbility_ShouldReturnNotExist_WhenCallbackDiffers
+* @tc.number: ReuseLowCodeAgentExtensionAbility_001
+* @tc.desc  : Test low-code reuse is scoped to the existing framework connection callback
+*/
+HWTEST_F(AgentConnectionManagerTest, ReuseLowCodeAgentExtensionAbility_001, TestSize.Level1)
+{
+    sptr<IRemoteObject> hostProxy = sptr<MockIRemoteObject>::MakeSptr();
+    Want storedWant = BuildAgentConnectionWant("agentA", hostProxy);
+    Want reuseWant = BuildAgentConnectionWant("agentB", hostProxy);
+
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+    sptr<MockAbilityConnectCallback> differentCallback = new MockAbilityConnectCallback();
+    EXPECT_EQ(AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(storedWant, callback), ERR_OK);
+
+    auto ret = AgentConnectionManager::GetInstance().ReuseLowCodeAgentExtensionAbility(reuseWant, differentCallback);
+    EXPECT_EQ(ret, AAFwk::CONNECTION_NOT_EXIST);
+}
+
+/**
+* @tc.name  : ReuseLowCodeAgentExtensionAbility_ShouldReuse_WhenCallbackHostAndTargetMatch
+* @tc.number: ReuseLowCodeAgentExtensionAbility_002
+* @tc.desc  : Test low-code reuse forwards through the stored common AgentConnection
+*/
+HWTEST_F(AgentConnectionManagerTest, ReuseLowCodeAgentExtensionAbility_002, TestSize.Level1)
+{
+    sptr<IRemoteObject> hostProxy = sptr<MockIRemoteObject>::MakeSptr();
+    Want storedWant = BuildAgentConnectionWant("agentA", hostProxy);
+    Want reuseWant = BuildAgentConnectionWant("agentB", hostProxy);
+
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+    EXPECT_EQ(AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(storedWant, callback), ERR_OK);
+
+    auto ret = AgentConnectionManager::GetInstance().ReuseLowCodeAgentExtensionAbility(reuseWant, callback);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(AgentConnectionManager::GetInstance().agentConnections_.size(), static_cast<size_t>(1));
+}
+
+/**
+* @tc.name  : ReplayLowCodeConnectDoneIfReady_ShouldNotNotify_WhenConnectionIsConnecting
+* @tc.number: ReplayLowCodeConnectDoneIfReady_001
+* @tc.desc  : Test replay waits until the shared host connection is connected
+*/
+HWTEST_F(AgentConnectionManagerTest, ReplayLowCodeConnectDoneIfReady_001, TestSize.Level1)
+{
+    sptr<IRemoteObject> hostProxy = sptr<MockIRemoteObject>::MakeSptr();
+    Want storedWant = BuildAgentConnectionWant("agentA", hostProxy);
+    Want reuseWant = BuildAgentConnectionWant("agentB", hostProxy);
+
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+    EXPECT_EQ(AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(storedWant, callback), ERR_OK);
+
+    MyFlag::onAbilityConnectDoneCount = 0;
+    AgentConnectionManager::GetInstance().ReplayLowCodeConnectDoneIfReady(reuseWant, callback);
+    EXPECT_EQ(MyFlag::onAbilityConnectDoneCount, 0);
+}
+
+/**
+* @tc.name  : ReplayLowCodeConnectDoneIfReady_ShouldNotify_WhenConnectionIsConnected
+* @tc.number: ReplayLowCodeConnectDoneIfReady_002
+* @tc.desc  : Test replay delivers the cached connected state for a reused low-code connection
+*/
+HWTEST_F(AgentConnectionManagerTest, ReplayLowCodeConnectDoneIfReady_002, TestSize.Level1)
+{
+    sptr<IRemoteObject> hostProxy = sptr<MockIRemoteObject>::MakeSptr();
+    sptr<IRemoteObject> remoteObj = sptr<MockIRemoteObject>::MakeSptr();
+    Want storedWant = BuildAgentConnectionWant("agentA", hostProxy);
+    Want reuseWant = BuildAgentConnectionWant("agentB", hostProxy);
+
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+    EXPECT_EQ(AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(storedWant, callback), ERR_OK);
+
+    auto &connectionEntry = *AgentConnectionManager::GetInstance().agentConnections_.begin();
+    connectionEntry.first.agentConnection->SetConnectionState(CONNECTION_STATE_CONNECTED);
+    connectionEntry.first.agentConnection->SetRemoteObject(remoteObj);
+    connectionEntry.first.agentConnection->SetResultCode(ERR_OK);
+
+    MyFlag::onAbilityConnectDoneCount = 0;
+    AgentConnectionManager::GetInstance().ReplayLowCodeConnectDoneIfReady(reuseWant, callback);
+    EXPECT_EQ(MyFlag::onAbilityConnectDoneCount, 1);
+    EXPECT_TRUE(MyFlag::isOnAbilityConnectDoneCalled);
+}
+
+/**
 * @tc.name  : IsConnectingTimeout_ShouldReturnFalse_WhenConnectingTimeIsZero
 * @tc.number: IsConnectingTimeout_001
 * @tc.desc  : Test IsConnectingTimeout returns false when connectingTime is 0
@@ -1241,6 +1535,32 @@ HWTEST_F(AgentConnectionManagerTest, ConnectAbilityInner_002, TestSize.Level1)
 }
 
 /**
+* @tc.name  : ConnectAbilityInner_ShouldNotReuseConnection_WhenModuleNamePresenceDiffers
+* @tc.number: ConnectAbilityInner_004
+* @tc.desc  : Test omitted moduleName and explicit moduleName are not framework-local duplicates
+*/
+HWTEST_F(AgentConnectionManagerTest, ConnectAbilityInner_004, TestSize.Level1)
+{
+    sptr<IRemoteObject> remoteObj = sptr<MockIRemoteObject>::MakeSptr();
+    Want wantWithoutModule;
+    wantWithoutModule.SetParam(AGENTID_KEY, std::string("testAgent"));
+    wantWithoutModule.SetParam(AGENTEXTENSIONHOSTPROXY_KEY, remoteObj);
+    wantWithoutModule.SetElementName("", "test.bundle", "test.ability", "");
+
+    Want wantWithModule;
+    wantWithModule.SetParam(AGENTID_KEY, std::string("testAgent"));
+    wantWithModule.SetParam(AGENTEXTENSIONHOSTPROXY_KEY, remoteObj);
+    wantWithModule.SetElementName("", "test.bundle", "test.ability", "entry");
+
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+    EXPECT_EQ(AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(wantWithoutModule, callback), ERR_OK);
+    EXPECT_EQ(AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(wantWithModule, callback), ERR_OK);
+
+    EXPECT_EQ(AgentConnectionManager::GetInstance().agentConnections_.size(), static_cast<size_t>(2));
+}
+
+/**
 * @tc.name  : ConnectAbilityInner_ShouldRemoveConnection_WhenStateIsDisconnected (L394 coverage)
 * @tc.number: ConnectAbilityInner_003
 * @tc.desc  : Test ConnectAbilityInner removes disconnected connection and creates new one
@@ -1266,6 +1586,31 @@ HWTEST_F(AgentConnectionManagerTest, ConnectAbilityInner_003, TestSize.Level1)
 
     // Should create a new connection
     EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+ * @tc.name      ConnectAbilityInner_NullAgentConnection_001
+ * @tc.desc      When an existing connection entry has a null agentConnection, HandleExistingConnectionLocked
+ *               must return ERR_INVALID_CALLER instead of proceeding.
+ */
+HWTEST_F(AgentConnectionManagerTest, ConnectAbilityInner_NullAgentConnection_001, TestSize.Level1)
+{
+    Want want;
+    want.SetParam(AGENTID_KEY, std::string("nullConnAgent"));
+    want.SetElementName("", "test.bundle", "test.ability", "test.module");
+
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+    sptr<MockAbilityConnectCallback> callback1 = new MockAbilityConnectCallback();
+    AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want, callback1);
+    ASSERT_EQ(AgentConnectionManager::GetInstance().agentConnections_.size(), static_cast<size_t>(1));
+
+    // Null out the agentConnection to exercise the null-guard in HandleExistingConnectionLocked.
+    auto &connectionEntry = *AgentConnectionManager::GetInstance().agentConnections_.begin();
+    connectionEntry.first.agentConnection = nullptr;
+
+    sptr<MockAbilityConnectCallback> callback2 = new MockAbilityConnectCallback();
+    auto result = AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want, callback2);
+    EXPECT_EQ(result, AAFwk::ERR_INVALID_CALLER);
 }
 } // namespace AgentRuntime
 } // namespace OHOS

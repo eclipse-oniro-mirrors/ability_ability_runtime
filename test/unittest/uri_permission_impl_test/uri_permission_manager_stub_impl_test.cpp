@@ -14,6 +14,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <sstream>
 
 #include "ability_manager_client.h"
 #include "mock_my_flag.h"
@@ -24,8 +25,10 @@
 #include "uri_permission_manager_client.h"
 #include "uri_permission_manager_stub_impl.h"
 #include "ability_manager_errors.h"
+#include "dynamic_feature_manager.h"
 #undef private
 #undef protected
+#include "mock_dynamic_features.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -35,6 +38,21 @@ namespace AAFwk {
 namespace {
 constexpr int OFFSET = 30;
 const std::string POLICY_INFO_PATH = "file://com.example.app1001/data/storage/el2/base/haps/entry/files/test_001.txt";
+
+void BuildRawDataFromUriVec(const std::vector<std::string>& uriVec, UriPermissionRawData& rawData)
+{
+    std::stringstream ss;
+    uint32_t count = uriVec.size();
+    ss.write(reinterpret_cast<const char*>(&count), sizeof(count));
+    for (const auto& uri : uriVec) {
+        uint32_t len = uri.length();
+        ss.write(reinterpret_cast<const char*>(&len), sizeof(len));
+        ss.write(uri.c_str(), len);
+    }
+    rawData.ownedData = ss.str();
+    rawData.data = rawData.ownedData.data();
+    rawData.size = rawData.ownedData.size();
+}
 }
 class UriPermissionManagerStubImplTest : public testing::Test {
 public:
@@ -52,6 +70,19 @@ void UriPermissionManagerStubImplTest::SetUp()
 {
     MyFlag::Init();
     IAbilityManagerCollaborator::verifyResult = 0;
+    MockStorageShareFeature::isZero = true; // default: CreateShareFile succeeds
+    MockMediaPermFeature::grantRet = ERR_OK;                  // default: media grant succeeds
+    static MockMediaPermFeature g_mockMedia;
+    static MockStorageShareFeature g_mockStorage;
+    auto &reg = DynamicFeatureManager::GetInstance().registry_;
+    auto &me = reg[FeatureId::MEDIA];
+    me.destroy = nullptr;
+    me.instance.reset(&g_mockMedia);
+    me.loaded = true;
+    auto &se = reg[FeatureId::STORAGE];
+    se.destroy = nullptr;
+    se.instance.reset(&g_mockStorage);
+    se.loaded = true;
 }
 
 void UriPermissionManagerStubImplTest::TearDown() {}
@@ -229,8 +260,8 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermission_003, TestSiz
  */
 HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermission_004, TestSize.Level1)
 {
-#define ABILITY_RUNTIME_MEDIA_LIBRARY_ENABLE
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MockMediaPermFeature::grantRet = ERR_OK; // media grant succeeds
     std::vector<std::string> mediaUris;
     mediaUris.push_back("media://test");
     uint32_t flag = 1;
@@ -239,8 +270,7 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermission_004, TestSiz
     int32_t hideSensitiveType = 1;
     auto result = upmsi->GrantBatchMediaUriPermissionImpl(
         mediaUris, flag, callerTokenId, targetTokenId, hideSensitiveType);
-    EXPECT_EQ(result, -1);
-#undef ABILITY_RUNTIME_MEDIA_LIBRARY_ENABLE
+    EXPECT_EQ(result, ERR_OK);
 }
 
 /*
@@ -252,12 +282,69 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermission_004, TestSiz
 HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantBatchUriPermissionImpl_001, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MockStorageShareFeature::isZero = false; // CreateShareFile returns failures
     std::vector<std::string> uriVec;
     uriVec.push_back("file://test");
     uint32_t flag = 1;
     TokenId callerTokenId = 1;
     TokenId targetTokenId = 1;
     auto result = upmsi->GrantBatchUriPermissionImpl(uriVec, flag, callerTokenId, targetTokenId);
+    EXPECT_EQ(result, INNER_ERR);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantBatchUriPermissionImpl
+ * FunctionPoints: storage share-file success path (isZero=true -> ERR_OK)
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantBatchUriPermissionImpl_002, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MockStorageShareFeature::isZero = true; // CreateShareFile succeeds
+    std::vector<std::string> uriVec;
+    uriVec.push_back("file://test");
+    uint32_t flag = 1;
+    TokenId callerTokenId = 1;
+    TokenId targetTokenId = 1;
+    auto result = upmsi->GrantBatchUriPermissionImpl(uriVec, flag, callerTokenId, targetTokenId);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantBatchMediaUriPermissionImpl
+ * FunctionPoints: media grant failure path (mock returns INNER_ERR)
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantBatchMediaUriPermissionImpl_001, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MockMediaPermFeature::grantRet = INNER_ERR; // media grant fails
+    std::vector<std::string> mediaUris;
+    mediaUris.push_back("media://test");
+    uint32_t flag = 1;
+    uint32_t callerTokenId = 1;
+    uint32_t targetTokenId = 1;
+    int32_t hideSensitiveType = 1;
+    auto result = upmsi->GrantBatchMediaUriPermissionImpl(
+        mediaUris, flag, callerTokenId, targetTokenId, hideSensitiveType);
+    EXPECT_EQ(result, INNER_ERR);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantBatchMediaUriPermissionImpl
+ * FunctionPoints: empty mediaUris -> INNER_ERR
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantBatchMediaUriPermissionImpl_002, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    std::vector<std::string> mediaUris; // empty
+    uint32_t flag = 1;
+    uint32_t callerTokenId = 1;
+    uint32_t targetTokenId = 1;
+    int32_t hideSensitiveType = 1;
+    auto result = upmsi->GrantBatchMediaUriPermissionImpl(
+        mediaUris, flag, callerTokenId, targetTokenId, hideSensitiveType);
     EXPECT_EQ(result, INNER_ERR);
 }
 
@@ -330,6 +417,7 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_00
 HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_002, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true; // bypass early permission check to exercise rawData path
     UriPermissionRawData rawData;
     rawData.data = nullptr;
     uint32_t flag = 1;
@@ -346,6 +434,57 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_00
 
 /*
  * Feature: UriPermissionManagerService
+ * Function: GrantUriPermissionPrivileged (rawData)
+ * SubFunction: NA
+ * FunctionPoints: rawData path - permission check runs before rawData deserialization
+ *                 (DoS hardening: unauthorized caller cannot trigger large allocation)
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_RawData_EarlyCheck, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = false;
+    UriPermissionRawData rawData;
+    rawData.data = nullptr; // would normally yield ERR_DEAD_OBJECT; permission check must short-circuit first
+    uint32_t flag = 1;
+    const std::string targetBundleName = "";
+    int32_t appIndex = 1;
+    uint32_t initiatorTokenId = 1;
+    int32_t hideSensitiveType = 1;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermissionPrivileged(rawData, flag, targetBundleName, appIndex, initiatorTokenId,
+        hideSensitiveType, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermissionPrivileged (rawData)
+ * SubFunction: NA
+ * FunctionPoints: rawData path - deserialization succeeds and delegate runs
+ *                 (forces delegate failure via GetTokenIdByBundleName to confirm deserialization success)
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_RawData_DeserOk, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true; // bypass early check
+    MyFlag::getTokenIdByBundleNameStatus_ = ERR_UPMS_INVALID_TARGET_TOKENID; // force delegate failure
+    UriPermissionRawData rawData;
+    BuildRawDataFromUriVec({"file://test/file.txt"}, rawData);
+    uint32_t flag = 1;
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 0;
+    int32_t hideSensitiveType = 1;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermissionPrivileged(rawData, flag, targetBundleName, appIndex, initiatorTokenId,
+        hideSensitiveType, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_UPMS_INVALID_TARGET_TOKENID); // echoes the forced delegate failure
+}
+
+/*
+ * Feature: UriPermissionManagerService
  * Function: GrantUriPermissionPrivilegedInner
  * SubFunction: NA
  * FunctionPoints: UriPermissionManagerService GrantUriPermissionPrivilegedInner
@@ -353,6 +492,7 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_00
 HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivilegedInner_001, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MockStorageShareFeature::isZero = false; // storage share-file fails -> INNER_ERR
     Uri uri("content");
     std::vector<Uri> uriVec;
     uriVec.push_back(uri);
@@ -402,34 +542,6 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivilegedInn
 
 /*
  * Feature: UriPermissionManagerService
- * Function: GrantUriPermissionPrivilegedInner
- * SubFunction: NA
- * FunctionPoints: UriPermissionManagerService GrantUriPermissionPrivilegedInner
- */
-HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivilegedInner_003, TestSize.Level1)
-{
-    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    Uri uri("uri://media");
-    std::vector<Uri> uriVec;
-    uriVec.push_back(uri);
-    uint32_t flag = 1;
-    uint32_t callerTokenId = 1;
-    uint32_t targetTokenId = 1;
-    std::string targetAlterBundleName = "targetAlterBundleName";
-    int32_t hideSensitiveType = 1;
-    MyFlag::isUriTypeValid_ = true;
-    MyFlag::isDocsCloudUri_ = false;
-    std::string bundleName = "bundleName";
-    FUDAppInfo callerInfo = { callerTokenId, "caller", "callerAlterName" };
-    FUDAppInfo targetAppInfo = { targetTokenId, bundleName, targetAlterBundleName };
-    std::vector<int32_t> permissionTypes(uriVec.size(), 0);
-    auto result = upmsi->GrantUriPermissionPrivilegedInner(uriVec, flag, callerInfo, targetAppInfo,
-        hideSensitiveType, permissionTypes);
-    EXPECT_EQ(result, INNER_ERR);
-}
-
-/*
- * Feature: UriPermissionManagerService
  * Function: CheckUriAuthorization
  * SubFunction: NA
  * FunctionPoints: UriPermissionManagerService CheckUriAuthorization
@@ -454,6 +566,7 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_CheckUriAuthorization_001, Test
 HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_CheckUriAuthorization_002, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isPrivilegedSACall_ = true; // bypass early permission check to exercise rawData path
     UriPermissionRawData rawData;
     rawData.data = nullptr;
     uint32_t flag = 1;
@@ -461,6 +574,47 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_CheckUriAuthorization_002, Test
     UriPermissionRawData funcResult;
     auto result = upmsi->CheckUriAuthorization(rawData, flag, tokenId, funcResult);
     EXPECT_EQ(result, ERR_DEAD_OBJECT);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: CheckUriAuthorization (rawData)
+ * SubFunction: NA
+ * FunctionPoints: rawData path - permission check runs before rawData deserialization
+ *                 (DoS hardening: unauthorized caller cannot trigger large allocation)
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_CheckUriAuthorization_RawData_EarlyCheck, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isPrivilegedSACall_ = false;
+    UriPermissionRawData rawData;
+    rawData.data = nullptr; // would normally yield ERR_DEAD_OBJECT; permission check must short-circuit first
+    uint32_t flag = 1;
+    uint32_t tokenId = 1;
+    UriPermissionRawData funcResult;
+    auto result = upmsi->CheckUriAuthorization(rawData, flag, tokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK); // matches string-vector behavior: silent all-false on permission denial
+    EXPECT_GT(funcResult.size, 0u);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: CheckUriAuthorization (rawData)
+ * SubFunction: NA
+ * FunctionPoints: rawData path - deserialization succeeds and delegate produces result vector
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_CheckUriAuthorization_RawData_DeserializationOk, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isPrivilegedSACall_ = true; // bypass early check
+    UriPermissionRawData rawData;
+    BuildRawDataFromUriVec({"file://test/file.txt"}, rawData);
+    uint32_t flag = 1;
+    uint32_t tokenId = 100;
+    UriPermissionRawData funcResult;
+    auto result = upmsi->CheckUriAuthorization(rawData, flag, tokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_GT(funcResult.size, 0u); // BoolVecToRawData wrote the result vector
 }
 
 /*
@@ -546,6 +700,7 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RevokeUriPermissionManuallyInne
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
     upmsi->uriMap_.clear();
+    MockMediaPermFeature::revokeRet = -1; // media revoke fails (returns -1)
     Uri uri("uri://media");
     uint32_t targetTokenId = 1;
     MyFlag::isDocsCloudUri_ = false;
@@ -679,6 +834,159 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RawDataToStringVec_003, TestSiz
 
 /*
  * Feature: UriPermissionManagerService
+ * Function: RawDataToStringVec
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerService RawDataToStringVec - oversized input
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RawDataToStringVec_004, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    UriPermissionRawData rawData;
+    uint8_t dummy = 0;
+    rawData.data = &dummy;
+    rawData.size = 128 * 1024 * 1024 + 1; // greater than MAX_IPC_RAW_DATA_SIZE
+    std::vector<std::string> stringVec;
+    auto result = upmsi->RawDataToStringVec(rawData, stringVec);
+    EXPECT_EQ(result, ERR_DEAD_OBJECT);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: RawDataToStringVec
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerService RawDataToStringVec - happy path
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RawDataToStringVec_005, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    auto &upmc = AAFwk::UriPermissionManagerClient::GetInstance();
+    std::vector<std::string> strArray;
+    strArray.emplace_back(POLICY_INFO_PATH);
+    strArray.emplace_back("file://docs/a/b/c.txt");
+    UriPermissionRawData rawData;
+    upmc.StringVecToRawData(strArray, rawData);
+    UriPermissionRawData stubRawData;
+    stubRawData.size = rawData.size;
+    EXPECT_EQ(stubRawData.RawDataCpy(rawData.data), ERR_NONE);
+    std::vector<std::string> stringVec;
+    auto result = upmsi->RawDataToStringVec(stubRawData, stringVec);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(stringVec.size(), strArray.size());
+    EXPECT_EQ(stringVec[0], strArray[0]);
+    EXPECT_EQ(stringVec[1], strArray[1]);
+}
+
+/*
+ * Feature: UriPermissionManagerClient
+ * Function: RawDataToBoolVec
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerClient RawDataToBoolVec - null data
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmc_RawDataToBoolVec_001, TestSize.Level1)
+{
+    auto &upmc = AAFwk::UriPermissionManagerClient::GetInstance();
+    UriPermissionRawData rawData;
+    rawData.data = nullptr;
+    rawData.size = 10;
+    std::vector<bool> boolVec(2, false);
+    EXPECT_FALSE(upmc.RawDataToBoolVec(rawData, boolVec));
+}
+
+/*
+ * Feature: UriPermissionManagerClient
+ * Function: RawDataToBoolVec
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerClient RawDataToBoolVec - zero size
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmc_RawDataToBoolVec_002, TestSize.Level1)
+{
+    auto &upmc = AAFwk::UriPermissionManagerClient::GetInstance();
+    UriPermissionRawData rawData;
+    uint8_t dummy = 0;
+    rawData.data = &dummy;
+    rawData.size = 0;
+    std::vector<bool> boolVec(2, false);
+    EXPECT_FALSE(upmc.RawDataToBoolVec(rawData, boolVec));
+}
+
+/*
+ * Feature: UriPermissionManagerClient
+ * Function: RawDataToBoolVec
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerClient RawDataToBoolVec - oversized input
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmc_RawDataToBoolVec_003, TestSize.Level1)
+{
+    auto &upmc = AAFwk::UriPermissionManagerClient::GetInstance();
+    UriPermissionRawData rawData;
+    uint8_t dummy = 0;
+    rawData.data = &dummy;
+    rawData.size = 128 * 1024 * 1024 + 1; // greater than MAX_IPC_RAW_DATA_SIZE
+    std::vector<bool> boolVec(2, false);
+    EXPECT_FALSE(upmc.RawDataToBoolVec(rawData, boolVec));
+}
+
+/*
+ * Feature: UriPermissionManagerClient
+ * Function: RawDataToBoolVec
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerClient RawDataToBoolVec - truncated data
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmc_RawDataToBoolVec_004, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    auto &upmc = AAFwk::UriPermissionManagerClient::GetInstance();
+    // Use enough elements so OFFSET (30) leaves count readable but bool bytes missing
+    std::vector<bool> srcVec(50, true);
+    std::vector<char> charVec;
+    UriPermissionRawData rawData;
+    upmsi->BoolVecToRawData(srcVec, rawData, charVec);
+    rawData.size -= OFFSET; // truncate to trigger read failure inside loop
+    std::vector<bool> boolVec(srcVec.size(), false);
+    EXPECT_FALSE(upmc.RawDataToBoolVec(rawData, boolVec));
+}
+
+/*
+ * Feature: UriPermissionManagerClient
+ * Function: RawDataToBoolVec
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerClient RawDataToBoolVec - count mismatch
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmc_RawDataToBoolVec_005, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    auto &upmc = AAFwk::UriPermissionManagerClient::GetInstance();
+    std::vector<bool> srcVec = {true, false, true};
+    std::vector<char> charVec;
+    UriPermissionRawData rawData;
+    upmsi->BoolVecToRawData(srcVec, rawData, charVec);
+    std::vector<bool> boolVec(srcVec.size() + 1, false); // wrong size on purpose
+    EXPECT_FALSE(upmc.RawDataToBoolVec(rawData, boolVec));
+}
+
+/*
+ * Feature: UriPermissionManagerClient
+ * Function: RawDataToBoolVec
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerClient RawDataToBoolVec - happy path
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmc_RawDataToBoolVec_006, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    auto &upmc = AAFwk::UriPermissionManagerClient::GetInstance();
+    std::vector<bool> srcVec = {true, false, true, true, false};
+    std::vector<char> charVec;
+    UriPermissionRawData rawData;
+    upmsi->BoolVecToRawData(srcVec, rawData, charVec);
+    std::vector<bool> boolVec(srcVec.size(), false);
+    EXPECT_TRUE(upmc.RawDataToBoolVec(rawData, boolVec));
+    for (size_t i = 0; i < srcVec.size(); ++i) {
+        EXPECT_EQ(boolVec[i], srcVec[i]);
+    }
+}
+
+/*
+ * Feature: UriPermissionManagerService
  * Function: RawDataToPolicyInfo
  * SubFunction: NA
  * FunctionPoints: UriPermissionManagerService RawDataToPolicyInfo
@@ -702,6 +1010,95 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RawDataToPolicyInfo_001, TestSi
     std::vector<PolicyInfo> policy;
     auto result = upmsi->RawDataToPolicyInfo(stubPolicyRawData, policy);
     EXPECT_EQ(result, INVALID_PARAMETERS_ERR);
+#endif
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: RawDataToPolicyInfo
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerService RawDataToPolicyInfo - null data
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RawDataToPolicyInfo_002, TestSize.Level1)
+{
+#ifdef ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    UriPermissionRawData policyRawData;
+    policyRawData.data = nullptr;
+    policyRawData.size = 10;
+    std::vector<PolicyInfo> policy;
+    auto result = upmsi->RawDataToPolicyInfo(policyRawData, policy);
+    EXPECT_EQ(result, ERR_DEAD_OBJECT);
+#endif
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: RawDataToPolicyInfo
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerService RawDataToPolicyInfo - zero size
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RawDataToPolicyInfo_003, TestSize.Level1)
+{
+#ifdef ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    UriPermissionRawData policyRawData;
+    uint8_t dummy = 0;
+    policyRawData.data = &dummy;
+    policyRawData.size = 0;
+    std::vector<PolicyInfo> policy;
+    auto result = upmsi->RawDataToPolicyInfo(policyRawData, policy);
+    EXPECT_EQ(result, ERR_DEAD_OBJECT);
+#endif
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: RawDataToPolicyInfo
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerService RawDataToPolicyInfo - oversized input
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RawDataToPolicyInfo_004, TestSize.Level1)
+{
+#ifdef ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    UriPermissionRawData policyRawData;
+    uint8_t dummy = 0;
+    policyRawData.data = &dummy;
+    policyRawData.size = 128 * 1024 * 1024 + 1; // greater than MAX_IPC_RAW_DATA_SIZE
+    std::vector<PolicyInfo> policy;
+    auto result = upmsi->RawDataToPolicyInfo(policyRawData, policy);
+    EXPECT_EQ(result, ERR_DEAD_OBJECT);
+#endif
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: RawDataToPolicyInfo
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerService RawDataToPolicyInfo - happy path
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RawDataToPolicyInfo_005, TestSize.Level1)
+{
+#ifdef ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    auto &upmc = AAFwk::UriPermissionManagerClient::GetInstance();
+    PolicyInfo policyInfo;
+    policyInfo.path = POLICY_INFO_PATH;
+    policyInfo.mode = 1;
+    std::vector<PolicyInfo> policyInfoArray;
+    policyInfoArray.push_back(policyInfo);
+    UriPermissionRawData policyRawData;
+    upmc.PolicyInfoToRawData(policyInfoArray, policyRawData);
+    UriPermissionRawData stubPolicyRawData;
+    stubPolicyRawData.size = policyRawData.size;
+    EXPECT_EQ(stubPolicyRawData.RawDataCpy(policyRawData.data), ERR_NONE);
+    std::vector<PolicyInfo> policy;
+    auto result = upmsi->RawDataToPolicyInfo(stubPolicyRawData, policy);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(policy.size(), policyInfoArray.size());
+    EXPECT_EQ(policy[0].path, policyInfoArray[0].path);
+    EXPECT_EQ(policy[0].mode, policyInfoArray[0].mode);
 #endif
 }
 
@@ -782,17 +1179,18 @@ HWTEST_F(UriPermissionManagerStubImplTest, CheckProxyUriPermission_003, TestSize
  * Feature: UriPermissionManagerService
  * Function: CheckGrantUriPermissionParamsWithTokenId
  * SubFunction: NA
- * FunctionPoints: CheckGrantUriPermissionParamsWithTokenId - not SA call
+ * FunctionPoints: CheckGrantUriPermissionParamsWithTokenId - no GRANT_URI_PERMISSION_PRIVILEGED permission
  */
 HWTEST_F(UriPermissionManagerStubImplTest, CheckGrantUriPermissionParamsWithTokenId_001, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    MyFlag::isSACall_ = false;
+    MyFlag::permissionPrivileged_ = false;
     std::vector<std::string> uriVec = {"file://test/file.txt"};
     uint32_t flag = 1;
-    uint32_t targetTokenId = 100;
-    auto result = upmsi->CheckGrantUriPermissionParamsWithTokenId(uriVec, flag, targetTokenId);
-    EXPECT_EQ(result, ERR_NOT_SYSTEM_APP);
+    uint32_t oriCallerTokenId = 100;
+    uint32_t targetTokenId = 200;
+    auto result = upmsi->CheckGrantUriPermissionParamsWithTokenId(uriVec, flag, oriCallerTokenId, targetTokenId);
+    EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
 }
 
 /*
@@ -804,11 +1202,12 @@ HWTEST_F(UriPermissionManagerStubImplTest, CheckGrantUriPermissionParamsWithToke
 HWTEST_F(UriPermissionManagerStubImplTest, CheckGrantUriPermissionParamsWithTokenId_002, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    MyFlag::isSACall_ = true;
+    MyFlag::permissionPrivileged_ = true;
     std::vector<std::string> uriVec = {"file://test/file.txt"};
     uint32_t flag = 0;
-    uint32_t targetTokenId = 100;
-    auto result = upmsi->CheckGrantUriPermissionParamsWithTokenId(uriVec, flag, targetTokenId);
+    uint32_t oriCallerTokenId = 100;
+    uint32_t targetTokenId = 200;
+    auto result = upmsi->CheckGrantUriPermissionParamsWithTokenId(uriVec, flag, oriCallerTokenId, targetTokenId);
     EXPECT_EQ(result, ERR_CODE_INVALID_URI_FLAG);
 }
 
@@ -821,11 +1220,12 @@ HWTEST_F(UriPermissionManagerStubImplTest, CheckGrantUriPermissionParamsWithToke
 HWTEST_F(UriPermissionManagerStubImplTest, CheckGrantUriPermissionParamsWithTokenId_003, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    MyFlag::isSACall_ = true;
+    MyFlag::permissionPrivileged_ = true;
     std::vector<std::string> uriVec = {};
     uint32_t flag = 1;
-    uint32_t targetTokenId = 100;
-    auto result = upmsi->CheckGrantUriPermissionParamsWithTokenId(uriVec, flag, targetTokenId);
+    uint32_t oriCallerTokenId = 100;
+    uint32_t targetTokenId = 200;
+    auto result = upmsi->CheckGrantUriPermissionParamsWithTokenId(uriVec, flag, oriCallerTokenId, targetTokenId);
     EXPECT_EQ(result, ERR_URI_LIST_OUT_OF_RANGE);
 }
 
@@ -838,11 +1238,12 @@ HWTEST_F(UriPermissionManagerStubImplTest, CheckGrantUriPermissionParamsWithToke
 HWTEST_F(UriPermissionManagerStubImplTest, CheckGrantUriPermissionParamsWithTokenId_004, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    MyFlag::isSACall_ = true;
+    MyFlag::permissionPrivileged_ = true;
     std::vector<std::string> uriVec = {"file://test/file.txt"};
     uint32_t flag = 1;
+    uint32_t oriCallerTokenId = 100;
     uint32_t targetTokenId = 0;
-    auto result = upmsi->CheckGrantUriPermissionParamsWithTokenId(uriVec, flag, targetTokenId);
+    auto result = upmsi->CheckGrantUriPermissionParamsWithTokenId(uriVec, flag, oriCallerTokenId, targetTokenId);
     EXPECT_EQ(result, ERR_UPMS_INVALID_TARGET_TOKENID);
 }
 
@@ -855,144 +1256,34 @@ HWTEST_F(UriPermissionManagerStubImplTest, CheckGrantUriPermissionParamsWithToke
 HWTEST_F(UriPermissionManagerStubImplTest, CheckGrantUriPermissionParamsWithTokenId_005, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    MyFlag::isSACall_ = true;
+    MyFlag::permissionPrivileged_ = true;
     std::vector<std::string> uriVec = {"file://test/file.txt"};
     uint32_t flag = 1;
-    uint32_t targetTokenId = 100;
-    auto result = upmsi->CheckGrantUriPermissionParamsWithTokenId(uriVec, flag, targetTokenId);
-    EXPECT_EQ(result, ERR_OK);
-}
-
-/*
- * Feature: UriPermissionManagerService
- * Function: GetCallerTokenIdAndUserId
- * SubFunction: NA
- * FunctionPoints: GetCallerTokenIdAndUserId - without privileged permission
- */
-HWTEST_F(UriPermissionManagerStubImplTest, GetCallerTokenIdAndUserId_001, TestSize.Level1)
-{
-    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    MyFlag::permissionPrivileged_ = false;
-    uint32_t oriCallerTokenId = 0;
-    uint32_t callerTokenId = 0;
-    int32_t callerUserId = 0;
-    auto result = upmsi->GetCallerTokenIdAndUserId(oriCallerTokenId, callerTokenId, callerUserId);
-    EXPECT_EQ(result, ERR_OK);
-    EXPECT_GT(callerTokenId, 0);
-    EXPECT_GE(callerUserId, 0);
-}
-
-/*
- * Feature: UriPermissionManagerService
- * Function: GetCallerTokenIdAndUserId
- * SubFunction: NA
- * FunctionPoints: GetCallerTokenIdAndUserId - with privileged permission and valid oriCallerTokenId
- */
-HWTEST_F(UriPermissionManagerStubImplTest, GetCallerTokenIdAndUserId_002, TestSize.Level1)
-{
-    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    MyFlag::permissionPrivileged_ = true;
-    MyFlag::fudUtilsGenerateFUDAppInfoRet_ = true;
-    MyFlag::fudAppInfoUserId_ = 100;
     uint32_t oriCallerTokenId = 100;
-    uint32_t callerTokenId = 0;
-    int32_t callerUserId = 0;
-    auto result = upmsi->GetCallerTokenIdAndUserId(oriCallerTokenId, callerTokenId, callerUserId);
+    uint32_t targetTokenId = 200;
+    auto result = upmsi->CheckGrantUriPermissionParamsWithTokenId(uriVec, flag, oriCallerTokenId, targetTokenId);
     EXPECT_EQ(result, ERR_OK);
-    EXPECT_EQ(callerTokenId, 100);
-    EXPECT_EQ(callerUserId, 100);
 }
 
-/*
- * Feature: UriPermissionManagerService
- * Function: GetCallerTokenIdAndUserId
- * SubFunction: NA
- * FunctionPoints: GetCallerTokenIdAndUserId - with privileged permission but invalid oriCallerTokenId
- */
-HWTEST_F(UriPermissionManagerStubImplTest, GetCallerTokenIdAndUserId_003, TestSize.Level1)
-{
-    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    MyFlag::permissionPrivileged_ = true;
-    MyFlag::fudUtilsGenerateFUDAppInfoRet_ = false;
-    uint32_t oriCallerTokenId = 100;
-    uint32_t callerTokenId = 0;
-    int32_t callerUserId = 0;
-    auto result = upmsi->GetCallerTokenIdAndUserId(oriCallerTokenId, callerTokenId, callerUserId);
-    EXPECT_EQ(result, ERR_UPMS_INVALID_CALLER_TOKENID);
-}
-
-/*
- * Feature: UriPermissionManagerService
- * Function: CheckTargetTokenIdAndUserConstraint
- * SubFunction: NA
- * FunctionPoints: CheckTargetTokenIdAndUserConstraint - invalid targetTokenId
- */
-HWTEST_F(UriPermissionManagerStubImplTest, CheckTargetTokenIdAndUserConstraint_001, TestSize.Level1)
-{
-    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    MyFlag::fudUtilsGenerateFUDAppInfoRet_ = false;
-    uint32_t targetTokenId = 100;
-    int32_t callerUserId = 100;
-    FUDAppInfo targetInfo;
-    auto result = upmsi->CheckTargetTokenIdAndUserConstraint(targetTokenId, callerUserId, targetInfo);
-    EXPECT_EQ(result, ERR_UPMS_INVALID_TARGET_TOKENID);
-}
-
-/*
- * Feature: UriPermissionManagerService
- * Function: CheckTargetTokenIdAndUserConstraint
- * SubFunction: NA
- * FunctionPoints: CheckTargetTokenIdAndUserConstraint - cross user
- */
-HWTEST_F(UriPermissionManagerStubImplTest, CheckTargetTokenIdAndUserConstraint_002, TestSize.Level1)
-{
-    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    MyFlag::fudUtilsGenerateFUDAppInfoRet_ = true;
-    MyFlag::fudAppInfoUserId_ = 200;
-    uint32_t targetTokenId = 100;
-    int32_t callerUserId = 100;
-    FUDAppInfo targetInfo;
-    auto result = upmsi->CheckTargetTokenIdAndUserConstraint(targetTokenId, callerUserId, targetInfo);
-    EXPECT_EQ(result, ERR_UPMS_INVALID_TARGET_TOKENID);
-}
-
-/*
- * Feature: UriPermissionManagerService
- * Function: CheckTargetTokenIdAndUserConstraint
- * SubFunction: NA
- * FunctionPoints: CheckTargetTokenIdAndUserConstraint - valid params
- */
-HWTEST_F(UriPermissionManagerStubImplTest, CheckTargetTokenIdAndUserConstraint_003, TestSize.Level1)
-{
-    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    MyFlag::fudUtilsGenerateFUDAppInfoRet_ = true;
-    MyFlag::fudAppInfoUserId_ = 100;
-    uint32_t targetTokenId = 100;
-    int32_t callerUserId = 100;
-    FUDAppInfo targetInfo;
-    auto result = upmsi->CheckTargetTokenIdAndUserConstraint(targetTokenId, callerUserId, targetInfo);
-    EXPECT_EQ(result, ERR_OK);
-    EXPECT_EQ(targetInfo.userId, 100);
-}
 
 /*
  * Feature: UriPermissionManagerService
  * Function: GrantUriPermission with targetTokenId
  * SubFunction: NA
- * FunctionPoints: GrantUriPermission - not SA call
+ * FunctionPoints: GrantUriPermission - missing PERMISSION_GRANT_URI_PERMISSION_PRIVILEGED
  */
 HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_001, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    MyFlag::isSACall_ = false;
+    MyFlag::permissionPrivileged_ = false;
     std::vector<std::string> uriVec = {"file://test/file.txt"};
     uint32_t flag = 1;
     uint32_t targetTokenId = 100;
-    uint32_t oriCallerTokenId = 0;
+    uint32_t oriCallerTokenId = 200;
     int32_t funcResult = 0;
     auto result = upmsi->GrantUriPermission(uriVec, flag, targetTokenId, oriCallerTokenId, funcResult);
     EXPECT_EQ(result, ERR_OK);
-    EXPECT_EQ(funcResult, ERR_NOT_SYSTEM_APP);
+    EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
 }
 
 /*
@@ -1004,11 +1295,11 @@ HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_001, Te
 HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_002, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    MyFlag::isSACall_ = true;
+    MyFlag::permissionPrivileged_ = true;
     std::vector<std::string> uriVec = {"file://test/file.txt"};
     uint32_t flag = 0;
     uint32_t targetTokenId = 100;
-    uint32_t oriCallerTokenId = 0;
+    uint32_t oriCallerTokenId = 200;
     int32_t funcResult = 0;
     auto result = upmsi->GrantUriPermission(uriVec, flag, targetTokenId, oriCallerTokenId, funcResult);
     EXPECT_EQ(result, ERR_OK);
@@ -1024,11 +1315,11 @@ HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_002, Te
 HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_003, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    MyFlag::isSACall_ = true;
+    MyFlag::permissionPrivileged_ = true;
     std::vector<std::string> uriVec = {"file://test/file.txt"};
     uint32_t flag = 1;
     uint32_t targetTokenId = 0;
-    uint32_t oriCallerTokenId = 0;
+    uint32_t oriCallerTokenId = 200;
     int32_t funcResult = 0;
     auto result = upmsi->GrantUriPermission(uriVec, flag, targetTokenId, oriCallerTokenId, funcResult);
     EXPECT_EQ(result, ERR_OK);
@@ -1044,7 +1335,6 @@ HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_003, Te
 HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_004, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    MyFlag::isSACall_ = true;
     MyFlag::permissionPrivileged_ = true;
     MyFlag::fudUtilsGenerateFUDAppInfoRet_ = false;
     std::vector<std::string> uriVec = {"file://test/file.txt"};
@@ -1053,8 +1343,8 @@ HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_004, Te
     uint32_t oriCallerTokenId = 200;
     int32_t funcResult = 0;
     auto result = upmsi->GrantUriPermission(uriVec, flag, targetTokenId, oriCallerTokenId, funcResult);
-    EXPECT_EQ(result, ERR_OK);
-    EXPECT_EQ(funcResult, ERR_UPMS_INVALID_CALLER_TOKENID);
+    EXPECT_EQ(result, ERR_UPMS_INVALID_CALLER_TOKENID);
+    EXPECT_EQ(funcResult, 0);
 }
 
 /*
@@ -1066,18 +1356,17 @@ HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_004, Te
 HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_005, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    MyFlag::isSACall_ = true;
-    MyFlag::permissionPrivileged_ = false;
+    MyFlag::permissionPrivileged_ = true;
     MyFlag::PushGenerateFUDAppInfoResult(true, 100);
     MyFlag::PushGenerateFUDAppInfoResult(true, 200);
     std::vector<std::string> uriVec = {"file://test/file.txt"};
     uint32_t flag = 1;
     uint32_t targetTokenId = 100;
-    uint32_t oriCallerTokenId = 0;
+    uint32_t oriCallerTokenId = 200;
     int32_t funcResult = 0;
     auto result = upmsi->GrantUriPermission(uriVec, flag, targetTokenId, oriCallerTokenId, funcResult);
-    EXPECT_EQ(result, ERR_OK);
-    EXPECT_EQ(funcResult, ERR_UPMS_INVALID_TARGET_TOKENID);
+    EXPECT_EQ(result, ERR_UPMS_INVALID_TARGET_TOKENID);
+    EXPECT_EQ(funcResult, 0);
 }
 
 /*
@@ -1089,16 +1378,341 @@ HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_005, Te
 HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_006, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    MyFlag::isSACall_ = true;
+    MyFlag::permissionPrivileged_ = true;
     MyFlag::isSandboxAppRet_ = true;
     std::vector<std::string> uriVec = {"file://test/file.txt"};
     uint32_t flag = 1;
     uint32_t targetTokenId = 100;
-    uint32_t oriCallerTokenId = 0;
+    uint32_t oriCallerTokenId = 200;
     int32_t funcResult = 0;
     auto result = upmsi->GrantUriPermission(uriVec, flag, targetTokenId, oriCallerTokenId, funcResult);
     EXPECT_EQ(result, ERR_OK);
     EXPECT_EQ(funcResult, ERR_CODE_GRANT_URI_PERMISSION);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: CheckGrantUriPermissionParamsWithTokenId
+ * SubFunction: NA
+ * FunctionPoints: CheckGrantUriPermissionParamsWithTokenId - oriCallerTokenId is 0
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, CheckGrantUriPermissionParamsWithTokenId_006, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    MyFlag::isSandboxAppRet_ = false;
+    std::vector<std::string> uriVec = {"file://test/file.txt"};
+    uint32_t flag = 1;
+    uint32_t oriCallerTokenId = 0;
+    uint32_t targetTokenId = 200;
+    auto result = upmsi->CheckGrantUriPermissionParamsWithTokenId(uriVec, flag, oriCallerTokenId, targetTokenId);
+    EXPECT_EQ(result, ERR_UPMS_INVALID_CALLER_TOKENID);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermission with targetTokenId
+ * SubFunction: NA
+ * FunctionPoints: GrantUriPermission - cross user constraint check
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_007, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    MyFlag::fudUtilsGenerateFUDAppInfoRet_ = true;
+
+    MyFlag::generateFUDAppInfoResults_.clear();
+    MyFlag::generateFUDAppInfoResults_.push_back(FUDAppInfoMockResult(true, 100));
+    MyFlag::generateFUDAppInfoResults_.push_back(FUDAppInfoMockResult(true, 200));
+
+    std::vector<std::string> uriVec = {"file://test/file.txt"};
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 200;
+    uint32_t oriCallerTokenId = 100;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(uriVec, flag, targetTokenId, oriCallerTokenId, funcResult);
+    EXPECT_EQ(result, ERR_UPMS_INVALID_TARGET_TOKENID);
+    EXPECT_EQ(funcResult, 0);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermission with targetTokenId
+ * SubFunction: NA
+ * FunctionPoints: GrantUriPermission - permission check failed
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_008, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = false;
+    std::vector<std::string> uriVec = {"file://test/file.txt"};
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 200;
+    uint32_t oriCallerTokenId = 100;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(uriVec, flag, targetTokenId, oriCallerTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermission with targetTokenId
+ * SubFunction: NA
+ * FunctionPoints: GrantUriPermission - SA caller (isSA=true) bypasses cross-user check
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_009, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    MyFlag::isSandboxAppRet_ = false;
+    // Caller: native SA (isSA=true, userId=0)
+    MyFlag::generateFUDAppInfoResults_.push_back(FUDAppInfoMockResult(true, 0, "", "", true));
+    // Target: HAP on user 100 (different from caller's U0)
+    MyFlag::PushGenerateFUDAppInfoResult(true, 100);
+    // Non-file scheme guarantees BatchUri.Init returns 0 so we can isolate the cross-user bypass.
+    std::vector<std::string> uriVec = {"http://test/file.txt"};
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 200;
+    uint32_t oriCallerTokenId = 1001;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(uriVec, flag, targetTokenId, oriCallerTokenId, funcResult);
+    // Cross-user check is bypassed by caller.isSA; BatchUri.Init then rejects non-file URI.
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_CODE_INVALID_URI_TYPE);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermission with targetTokenId
+ * SubFunction: NA
+ * FunctionPoints: GrantUriPermission - SA caller with invalid target
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_010, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    // Caller: SA
+    MyFlag::generateFUDAppInfoResults_.push_back(FUDAppInfoMockResult(true, 0, "", "", true));
+    // Target: invalid (GenerateFUDAppInfo returns false)
+    MyFlag::generateFUDAppInfoResults_.push_back(FUDAppInfoMockResult(false, -1));
+    std::vector<std::string> uriVec = {"file://test/file.txt"};
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 1002;
+    uint32_t oriCallerTokenId = 1001;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(uriVec, flag, targetTokenId, oriCallerTokenId, funcResult);
+    EXPECT_EQ(result, ERR_UPMS_INVALID_TARGET_TOKENID);
+    EXPECT_EQ(funcResult, 0);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermission with targetTokenId
+ * SubFunction: NA
+ * FunctionPoints: GrantUriPermission - U0 system-app caller (isSA=false, userId=0) bypasses cross-user
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_011, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    MyFlag::isSandboxAppRet_ = false;
+    // Caller: U0 system app (isSA=false, userId=0) - not SA but runs at U0.
+    MyFlag::generateFUDAppInfoResults_.push_back(FUDAppInfoMockResult(true, 0));
+    // Target: HAP on user 100 (different from caller's U0).
+    MyFlag::PushGenerateFUDAppInfoResult(true, 100);
+    // Non-file scheme guarantees BatchUri.Init returns 0 so we can isolate the cross-user bypass.
+    std::vector<std::string> uriVec = {"http://test/file.txt"};
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 200;
+    uint32_t oriCallerTokenId = 1001;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(uriVec, flag, targetTokenId, oriCallerTokenId, funcResult);
+    // Cross-user check is bypassed because caller.userId == U0_USER_ID (system app at U0).
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_CODE_INVALID_URI_TYPE);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermission (rawData) with targetTokenId
+ * SubFunction: NA
+ * FunctionPoints: rawData path - null data short-circuits to ERR_DEAD_OBJECT
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_RawData_001, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    UriPermissionRawData rawData;
+    rawData.data = nullptr;
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 100;
+    uint32_t oriCallerTokenId = 200;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(rawData, flag, targetTokenId, oriCallerTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_DEAD_OBJECT);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermission (rawData) with targetTokenId
+ * SubFunction: NA
+ * FunctionPoints: rawData path - missing PERMISSION_GRANT_URI_PERMISSION_PRIVILEGED
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_RawData_002, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = false;
+    UriPermissionRawData rawData;
+    BuildRawDataFromUriVec({"file://test/file.txt"}, rawData);
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 100;
+    uint32_t oriCallerTokenId = 200;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(rawData, flag, targetTokenId, oriCallerTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermission (rawData) with targetTokenId
+ * SubFunction: NA
+ * FunctionPoints: rawData path - permission check runs before rawData deserialization
+ *                 (DoS hardening: unauthorized caller cannot trigger large allocation)
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_RawData_002a, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = false;
+    UriPermissionRawData rawData;
+    rawData.data = nullptr; // would normally yield ERR_DEAD_OBJECT; permission check must short-circuit first
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 100;
+    uint32_t oriCallerTokenId = 200;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(rawData, flag, targetTokenId, oriCallerTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermission (rawData) with targetTokenId
+ * SubFunction: NA
+ * FunctionPoints: rawData path - oriCallerTokenId == 0 is rejected
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_RawData_003, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    UriPermissionRawData rawData;
+    BuildRawDataFromUriVec({"file://test/file.txt"}, rawData);
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 100;
+    uint32_t oriCallerTokenId = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(rawData, flag, targetTokenId, oriCallerTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_UPMS_INVALID_CALLER_TOKENID);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermission (rawData) with targetTokenId
+ * SubFunction: NA
+ * FunctionPoints: rawData path - oversized stringVecSize header is rejected
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_RawData_004, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    UriPermissionRawData rawData;
+    std::stringstream ss;
+    uint32_t fakeCount = 300000; // > MAX_URI_COUNT (200000)
+    ss.write(reinterpret_cast<const char*>(&fakeCount), sizeof(fakeCount));
+    rawData.ownedData = ss.str();
+    rawData.data = rawData.ownedData.data();
+    rawData.size = rawData.ownedData.size();
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 100;
+    uint32_t oriCallerTokenId = 200;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(rawData, flag, targetTokenId, oriCallerTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_URI_LIST_OUT_OF_RANGE);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermission (rawData) with targetTokenId
+ * SubFunction: NA
+ * FunctionPoints: rawData path - valid payload delegates to normal handler and reaches BatchUri check
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermissionWithTokenId_RawData_005, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    MyFlag::isSandboxAppRet_ = false;
+    // Both caller and target on the same user so the cross-user check passes.
+    MyFlag::PushGenerateFUDAppInfoResult(true, 100);
+    MyFlag::PushGenerateFUDAppInfoResult(true, 100);
+    UriPermissionRawData rawData;
+    BuildRawDataFromUriVec({"http://test/file.txt"}, rawData); // non-file scheme -> BatchUri.Init returns 0
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 200;
+    uint32_t oriCallerTokenId = 1001;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(rawData, flag, targetTokenId, oriCallerTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_CODE_INVALID_URI_TYPE);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermission (rawData) with targetBundleName
+ * SubFunction: NA
+ * FunctionPoints: rawData path - permission check runs before rawData deserialization
+ *                 (DoS hardening: unauthorized caller cannot trigger large allocation)
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermission_RawData_BundleName_EarlyCheck, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isSAOrSystemAppCall_ = false;
+    UriPermissionRawData rawData;
+    rawData.data = nullptr; // would normally yield ERR_DEAD_OBJECT; permission check must short-circuit first
+    uint32_t flag = 1;
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(rawData, flag, targetBundleName, appIndex, initiatorTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_NOT_SYSTEM_APP);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermission (rawData) with targetBundleName
+ * SubFunction: NA
+ * FunctionPoints: rawData path - deserialization succeeds and delegate runs (flag validation path)
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermission_RawData_BundleName_DeserializationOk, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isSAOrSystemAppCall_ = true; // bypass early check
+    MyFlag::isSandboxAppRet_ = false;
+    UriPermissionRawData rawData;
+    BuildRawDataFromUriVec({"file://test/file.txt"}, rawData);
+    uint32_t flag = 0; // invalid flag bypasses early IsSAOrSystemAppCall but fails delegate's flag check
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(rawData, flag, targetBundleName, appIndex, initiatorTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_CODE_INVALID_URI_FLAG); // proves deserialization succeeded and delegate ran
 }
 
 }  // namespace AAFwk

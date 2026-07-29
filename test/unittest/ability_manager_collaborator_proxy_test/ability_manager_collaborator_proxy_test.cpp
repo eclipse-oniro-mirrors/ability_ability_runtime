@@ -133,7 +133,8 @@ HWTEST_F(AbilityManagerCollaboratorProxyTest, NotifyMoveMissionToBackground_0100
         .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerCollaboratorStubMock::InvokeSendRequest));
     int32_t missionId = 0;
     int32_t userId = 100;
-    int32_t res = proxy_->NotifyMoveMissionToBackground(missionId, userId);
+    bool isFromScreenOffBackground = false;
+    int32_t res = proxy_->NotifyMoveMissionToBackground(missionId, userId, isFromScreenOffBackground);
     EXPECT_EQ(res, NO_ERROR);
     EXPECT_EQ(static_cast<uint32_t>(IAbilityManagerCollaborator::NOTIFY_MOVE_MISSION_TO_BACKGROUND), mock_->GetCode());
 }

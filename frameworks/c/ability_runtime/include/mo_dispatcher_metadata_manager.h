@@ -34,6 +34,11 @@ public:
 
     AbilityRuntime_ErrorCode EnsureLoaded(OHOS::IRemoteObject* proxy);
 
+    // Clear all cached metadata and reset loaded state.
+    // Called when the remote proxy dies to release cached memory.
+    // The metadataManager object itself remains valid; only its cached data is released.
+    void ClearCache();
+
     AbilityRuntime_ErrorCode QueryMainServiceInterfaceMemberIds(const char** names, uint32_t count,
         uint32_t* memberIds) const;
 

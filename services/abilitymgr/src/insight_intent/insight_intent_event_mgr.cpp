@@ -55,7 +55,7 @@ void InsightIntentEventMgr::DeleteInsightIntent(const std::string &bundleName, c
 void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementName &elementName, int32_t userId)
 {
     auto bundleName = elementName.GetBundleName();
-    auto moduleName = elementName.GetModuleName();
+    auto moduleName = elementName.GetModuleNameRef();
     if (bundleName.empty() || moduleName.empty()) {
         TAG_LOGW(AAFwkTag::INTENT, "input param empty, bundleName: %{public}s", bundleName.c_str());
         return;
@@ -123,7 +123,11 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
                 allConfigInfos.push_back(item);
             }
         }
+        // bundle 更新可能删除部分意图,先清空 KVStore 中该 bundle 的全部 function,
+        // 避免 BatchRegisterInsightIntentFunctions 增量写入后旧 function 残留
         if (allInfos.insightIntents.empty() && allConfigInfos.empty()) {
+            TAG_LOGI(AAFwkTag::INTENT, "no intent in new version, cleared stale functions, bundle:%{public}s",
+                bundleName.c_str());
             return;
         }
         TAG_LOGI(AAFwkTag::INTENT, "collected intents for register, profile:%{public}zu config:%{public}zu, "
@@ -158,7 +162,7 @@ void InsightIntentEventMgr::DeleteInsightIntentEvent(const AppExecFwk::ElementNa
 {
     ErrCode ret;
     auto bundleName = elementName.GetBundleName();
-    auto moduleName = elementName.GetModuleName();
+    auto moduleName = elementName.GetModuleNameRef();
     if (bundleName.empty()) {
         TAG_LOGE(AAFwkTag::INTENT, "input bundleName empty, bundleName: %{public}s, moduleName: %{public}s",
             bundleName.c_str(), moduleName.c_str());

@@ -2030,7 +2030,7 @@ ErrCode AbilityManagerClient::KillProcessWithPrepareTerminate(const std::vector<
 
 ErrCode AbilityManagerClient::KillProcessWithReason(int32_t pid, const ExitReason &reason)
 {
-    TAG_LOGE(AAFwkTag::ABILITYMGR, "kill pid:%{public}d, reason:%{public}d, subReason:%{public}d, exitMsg:%{public}s",
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "kill pid:%{public}d, reason:%{public}d, subReason:%{public}d, exitMsg:%{public}s",
         pid, reason.reason, reason.subReason, reason.exitMsg.c_str());
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
@@ -2445,7 +2445,7 @@ ErrCode AbilityManagerClient::TerminateMission(int32_t missionId)
 
 ErrCode AbilityManagerClient::BlockAllAppStart(bool flag)
 {
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "call");
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "BlockAllAppStart called, flag: %{public}d", flag);
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_INVALID_VALUE(abms);
     return abms->BlockAllAppStart(flag);
@@ -2666,6 +2666,14 @@ ErrCode AbilityManagerClient::RegisterSAInterceptor(sptr<AbilityRuntime::ISAInte
     return abms->RegisterSAInterceptor(interceptor);
 }
 
+ErrCode AbilityManagerClient::UnregisterSAInterceptor(sptr<IRemoteObject> interceptor)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "call UnregisterSAInterceptor");
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    return abms->UnregisterSAInterceptor(interceptor);
+}
+
 ErrCode AbilityManagerClient::SuspendExtensionAbility(sptr<IAbilityConnection> connect)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
@@ -2857,6 +2865,15 @@ ErrCode AbilityManagerClient::ExecuteSkillDone(sptr<IRemoteObject> token, const 
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
     return abms->ExecuteSkillDone(token, requestCode, resultCode, result);
+}
+
+ErrCode AbilityManagerClient::NotifySkillFunctionInvoked(sptr<IRemoteObject> token,
+    const std::string &requestCode)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "called");
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    return abms->NotifySkillFunctionInvoked(token, requestCode);
 }
 
 ErrCode AbilityManagerClient::QuerySkillType(const std::string &bundleName, const std::string &moduleName,

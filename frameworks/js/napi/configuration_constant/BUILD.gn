@@ -14,6 +14,8 @@
 import("//build/ohos.gni")
 
 ohos_shared_library("configurationconstant_napi") {
+  branch_protector_ret = "pac_ret"
+
   include_dirs = []
 
   sources = [ "configuration_constant_napi_module.cpp" ]
@@ -24,6 +26,8 @@ ohos_shared_library("configurationconstant_napi") {
     "c_utils:utils",
     "napi:ace_napi",
     "resource_management:global_resmgr",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   relative_install_dir = "module/application"
@@ -32,6 +36,8 @@ ohos_shared_library("configurationconstant_napi") {
 }
 
 ohos_shared_library("configurationconstant") {
+  branch_protector_ret = "pac_ret"
+
   include_dirs = []
 
   sources = [ "configuration_constant_module.cpp" ]
@@ -42,6 +48,8 @@ ohos_shared_library("configurationconstant") {
     "c_utils:utils",
     "napi:ace_napi",
     "resource_management:global_resmgr",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   defines = [ "ENABLE_ERRCODE" ]

@@ -722,6 +722,12 @@ bool AppScheduler::IsMainProcessDebug(int32_t uid)
     return appMgrClient_->IsMainProcessDebug(uid);
 }
 
+bool AppScheduler::IsCorrespondingProcessAttachDebug(const AppExecFwk::AbilityInfo &abilityInfo)
+{
+    CHECK_POINTER_AND_RETURN(appMgrClient_, false);
+    return appMgrClient_->IsCorrespondingProcessAttachDebug(abilityInfo);
+}
+
 void AppScheduler::ClearProcessByToken(sptr<IRemoteObject> token) const
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);

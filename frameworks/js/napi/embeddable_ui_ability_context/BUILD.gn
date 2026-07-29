@@ -36,6 +36,8 @@ gen_js_obj("embeddable_ui_ability_context_abc") {
 }
 
 ohos_shared_library("embeddableuiabilitycontext_napi") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "embeddable_ui_ability_context_module.cpp" ]
 
   deps = [

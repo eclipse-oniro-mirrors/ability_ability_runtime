@@ -196,7 +196,7 @@ private:
      * @return Returns the connection object, or nullptr on failure.
      */
     sptr<JSAgentConnection> CreateAgentConnection(napi_env env,
-        AAFwk::Want &want, const std::string &agentId, napi_value callbackObject);
+        AAFwk::Want &want, napi_value callbackObject);
 
     /**
      * Schedule the agent connection asynchronously.

@@ -78,6 +78,7 @@ constexpr const char *EVENT_PARTITION_NAME_KEY = "PARTITION_NAME";
 constexpr const char *EVENT_REMAIN_PARTITION_SIZE_KEY = "REMAIN_PARTITION_SIZE";
 constexpr const char *EVENT_IMAGE_UID = "UID";
 constexpr const char *EVENT_IMAGE_BUNDLE_NAME = "BUNDLE_NAME";
+constexpr const char *EVENT_IMAGE_VERSION_NAME = "VERSION_NAME";
 constexpr const char *EVENT_IMAGE_COND = "COND";
 constexpr const char *EVENT_IMAGE_EVENT = "EVENT";
 constexpr const char *EVENT_IMAGE_REASON = "REASON";
@@ -863,6 +864,14 @@ void EventReport::SendAppStartupErrorEvent(
 
 void EventReport::SendSnapshotEvent(const EventName &eventName, const SnapshotInfo &snapshotInfo)
 {
+    TAG_LOGD(AAFwkTag::DEFAULT,
+        "SendSnapshotEvent: uid=%{public}d, bundleName=%{public}s, appVersionName=%{public}s, "
+        "snapshotCond=%{public}s, snapshotEvent=%{public}s, snapshotResult=%{public}d, "
+        "snapshotReason=%{public}s",
+        snapshotInfo.uid, snapshotInfo.bundleName.c_str(), snapshotInfo.appVersionName.c_str(),
+        snapshotInfo.snapshotCond.c_str(), snapshotInfo.snapshotEvent.c_str(),
+        snapshotInfo.snapshotResult, snapshotInfo.snapshotReason.c_str());
+
     std::string name = ConvertEventName(eventName);
     if (name == INVALID_EVENT_NAME) {
         TAG_LOGE(AAFwkTag::DEFAULT, "invalid eventName");
@@ -871,6 +880,7 @@ void EventReport::SendSnapshotEvent(const EventName &eventName, const SnapshotIn
     auto hisyseventReport = std::make_shared<HisyseventReport>(10);
     hisyseventReport->InsertParam(EVENT_IMAGE_UID, snapshotInfo.uid);
     hisyseventReport->InsertParam(EVENT_IMAGE_BUNDLE_NAME, snapshotInfo.bundleName);
+    hisyseventReport->InsertParam(EVENT_IMAGE_VERSION_NAME, snapshotInfo.appVersionName);
     hisyseventReport->InsertParam(EVENT_IMAGE_COND, snapshotInfo.snapshotCond);
     hisyseventReport->InsertParam(EVENT_IMAGE_EVENT, snapshotInfo.snapshotEvent);
     hisyseventReport->InsertParam(EVENT_IMAGE_RESULT, snapshotInfo.snapshotResult);

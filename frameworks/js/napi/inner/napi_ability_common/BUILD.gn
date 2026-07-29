@@ -19,6 +19,8 @@ config("napi_ability_common_public_config") {
 }
 
 ohos_shared_library("napi_ability_common") {
+  branch_protector_ret = "pac_ret"
+
   public_configs = [
     ":napi_ability_common_public_config",
     "${ability_runtime_native_path}/ability/native:ability_public_config",

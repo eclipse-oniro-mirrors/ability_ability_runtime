@@ -34,6 +34,8 @@ gen_js_obj("callee_abc") {
 }
 
 ohos_shared_library("callee_napi") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "callee_module.cpp" ]
 
   deps = [

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -32,6 +32,7 @@
 #include "process_options.h"
 #include "session/host/include/session.h"
 #include "session_info.h"
+#include "global_constant.h"
 #include "startup_util.h"
 #define private public
 #define protected public
@@ -1219,6 +1220,78 @@ HWTEST_F(UIAbilityLifecycleManagerSecondTest, BackToCallerAbilityWithResultLocke
 
     auto ret = mgr->BackToCallerAbilityWithResultLocked(currentSessionInfo, callerAbilityRecord);
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_SetSandboxCloneParamsForSession_0100
+ * @tc.desc: SetSandboxCloneParamsForSession with null sessionInfo returns early without crash.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, SetSandboxCloneParamsForSession_001, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    sptr<SessionInfo> sessionInfo = nullptr;
+    AbilityRequest abilityRequest;
+    abilityRequest.isWebSandBoxClone = true;
+
+    mgr->SetSandboxCloneParamsForSession(sessionInfo, abilityRequest);
+
+    EXPECT_EQ(sessionInfo, nullptr);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_SetSandboxCloneParamsForSession_0200
+ * @tc.desc: SetSandboxCloneParamsForSession with isWebSandBoxClone false sets no params.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, SetSandboxCloneParamsForSession_002, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    ASSERT_NE(sessionInfo, nullptr);
+    AbilityRequest abilityRequest;
+    abilityRequest.isWebSandBoxClone = false;
+    abilityRequest.abilityInfo.applicationInfo.appIndex = 2000;
+
+    mgr->SetSandboxCloneParamsForSession(sessionInfo, abilityRequest);
+
+    EXPECT_FALSE(sessionInfo->want.GetBoolParam(
+        AbilityRuntime::GlobalConstant::IS_WEB_SANDBOX_CLONE, false));
+    EXPECT_EQ(sessionInfo->want.GetIntParam(
+        AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, -1), -1);
+    EXPECT_TRUE(sessionInfo->want.GetStringParam(
+        AbilityRuntime::GlobalConstant::CLI_CALLER_BUNDLE_NAME).empty());
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_SetSandboxCloneParamsForSession_0300
+ * @tc.desc: SetSandboxCloneParamsForSession with isWebSandBoxClone true stores all params into sessionInfo->want.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, SetSandboxCloneParamsForSession_003, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    ASSERT_NE(sessionInfo, nullptr);
+    AbilityRequest abilityRequest;
+    abilityRequest.isWebSandBoxClone = true;
+    abilityRequest.abilityInfo.applicationInfo.appIndex = 2000;
+    const std::string callerBundleName = "com.test.cli.caller";
+    const std::string callerTokenId = "537919265";
+    abilityRequest.want.SetParam(AbilityRuntime::GlobalConstant::CLI_CALLER_BUNDLE_NAME, callerBundleName);
+    abilityRequest.want.SetParam(AbilityRuntime::GlobalConstant::CLI_CALLER_TOKEN_ID, callerTokenId);
+
+    mgr->SetSandboxCloneParamsForSession(sessionInfo, abilityRequest);
+
+    EXPECT_TRUE(sessionInfo->want.GetBoolParam(
+        AbilityRuntime::GlobalConstant::IS_WEB_SANDBOX_CLONE, false));
+    EXPECT_EQ(sessionInfo->want.GetIntParam(
+        AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, -1),
+        abilityRequest.abilityInfo.applicationInfo.appIndex);
+    EXPECT_EQ(sessionInfo->want.GetStringParam(
+        AbilityRuntime::GlobalConstant::CLI_CALLER_BUNDLE_NAME), callerBundleName);
+    EXPECT_EQ(sessionInfo->want.GetStringParam(
+        AbilityRuntime::GlobalConstant::CLI_CALLER_TOKEN_ID), callerTokenId);
 }
 
 /**

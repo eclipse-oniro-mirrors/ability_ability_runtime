@@ -129,6 +129,8 @@ ohos_shared_library("ani_common") {
     "runtime_core:ani",
     "runtime_core:ani_helpers",
     "window_manager:ani_window_animation_utils",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   innerapi_tags = [ "platformsdk" ]

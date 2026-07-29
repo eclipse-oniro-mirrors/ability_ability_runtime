@@ -35,6 +35,8 @@ gen_js_obj("ability_lifecycle_callback_abc") {
 }
 
 ohos_shared_library("abilitylifecyclecallback") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "ability_lifecycle_callback_module.cpp" ]
 
   deps = [

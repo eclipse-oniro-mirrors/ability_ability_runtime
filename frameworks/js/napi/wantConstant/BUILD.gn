@@ -15,6 +15,8 @@ import("//build/ohos.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 ohos_shared_library("wantconstant") {
+  branch_protector_ret = "pac_ret"
+
   include_dirs = [ "${ability_runtime_services_path}/common/include" ]
 
   sources = [
@@ -25,6 +27,8 @@ ohos_shared_library("wantconstant") {
   external_deps = [
     "hilog:libhilog",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   cflags_cc = []
@@ -39,6 +43,8 @@ ohos_shared_library("wantconstant") {
 }
 
 ohos_shared_library("wantconstant_napi") {
+  branch_protector_ret = "pac_ret"
+
   include_dirs = [ "${ability_runtime_services_path}/common/include" ]
 
   sources = [

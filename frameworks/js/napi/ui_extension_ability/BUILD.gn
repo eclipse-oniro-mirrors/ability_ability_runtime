@@ -35,6 +35,8 @@ gen_js_obj("ui_extension_ability_abc") {
 }
 
 ohos_shared_library("uiextensionability_napi") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "ui_extension_ability_module.cpp" ]
 
   deps = [

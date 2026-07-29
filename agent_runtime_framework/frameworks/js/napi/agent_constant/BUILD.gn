@@ -36,6 +36,8 @@ ohos_shared_library("agentconstant_napi") {
     "c_utils:utils",
     "json:nlohmann_json_static",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   relative_install_dir = "module/app/agent"

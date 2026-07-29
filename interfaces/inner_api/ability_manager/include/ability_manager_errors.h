@@ -939,6 +939,11 @@ enum {
     ERR_PRELOAD_NOT_ENTRY_MODULE = 2097368,
 
     /**
+     * Result (2097369) for sa interceptor not found when unregister.
+     */
+    ERR_SA_INTERCEPTOR_NOT_EXIST = 2097369,
+
+    /**
      * Result (2097370-2097379) for StartUIAbilities Error.
      */
     START_UI_ABILITIES_NOT_SUPPORT_DLP = 2097370,
@@ -1016,6 +1021,11 @@ enum {
      * Result (2097403) The args of fd is invalid.
      */
     ERR_INVALID_FD = 2097403,
+
+    /**
+     * Result (2097404) for all apps are blocked from starting due to deep frozen .
+     */
+    ERR_LOW_MEM_SAINTERCEPTOR_START_BLOCK = 2097404,
 
     /**
      * Result (2098000-2098049) Error code refinement INVALID_VALUE.
@@ -1128,10 +1138,18 @@ enum {
     // Result (2099218) for duplicate active LOW_CODE agent invocation.
     ERR_LOW_CODE_AGENT_ALREADY_ACTIVE = 2099218,
 
+    // Result (2099219) for inconsistent LOW_CODE agent disconnect batch state.
+    ERR_LOW_CODE_AGENT_DISCONNECT_BATCH_MISMATCH = 2099219,
+
     /**
      * Result (2099220) for pid has been reused.
      */
     ERR_PID_HAS_BEEN_REUSED = 2099220,
+
+    /**
+     * Result (2099221) for skill execute target process died.
+     */
+    ERR_SKILL_EXECUTE_TARGET_DIED = 2099221,
 
     /**
      * Result (2099411) for not support screen.
@@ -1164,6 +1182,16 @@ enum {
      * Result (2099417) for IN_PROCESS mode does not allow cross-application connection.
      */
     ERR_MOE_CROSS_APP_IN_PROCESS = 2099417,
+
+    /**
+     * Result (2099418) for evict file type error (not ending with .so/.hap/.hsp).
+     */
+    ERR_EVICT_FILE_TYPE = 2099418,
+
+    /**
+     * Result (2099419) for failed to parse memory_optimizer.json configuration file.
+     */
+    ERR_EVICT_CONFIG_PARSE = 2099419,
 
     /**
      * Native error(3000000) for target bundle not exist.

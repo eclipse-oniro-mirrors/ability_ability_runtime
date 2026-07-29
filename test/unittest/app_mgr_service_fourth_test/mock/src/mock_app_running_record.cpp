@@ -271,6 +271,10 @@ void AppRunningRecord::ScheduleJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &in
 {
 }
 
+void AppRunningRecord::ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
+{
+}
+
 void AppRunningRecord::ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback)
 {
 }
@@ -786,6 +790,11 @@ int32_t AppRunningRecord::NotifyUnLoadRepairPatch(const std::string &bundleName,
 }
 
 int32_t AppRunningRecord::NotifyAppFault(const FaultData &faultData)
+{
+    return 0;
+}
+
+int32_t AppRunningRecord::PreTemplateProcessDeepFrozen()
 {
     return 0;
 }

@@ -378,6 +378,16 @@ public:
     {
         return E_OK;
     }
+
+    virtual int32_t MountDlpFuse(const std::string &dstPath, int32_t &fuseFd) override
+    {
+        return E_OK;
+    }
+
+    virtual int32_t UMountDlpFuse(const std::string &dstPath) override
+    {
+        return E_OK;
+    }
 };
 
 bool StorageManagerServiceMock::isZero = true;

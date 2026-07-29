@@ -19,6 +19,7 @@
 
 #include "ability_manager_errors.h"
 #include "accesstoken_kit.h"
+#include "app_utils.h"
 #include "exit_info_data_manager.h"
 #include "ffrt.h"
 #include "hitrace_meter.h"
@@ -87,6 +88,10 @@ bool AppExitReasonDataManager::CheckKvStore()
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     AAFwk::RecordCostTimeUtil timeRecord("CheckKvStore");
     TAG_LOGD(AAFwkTag::ABILITYMGR, "AppExitReasonDataManager::CheckKvStore start");
+    if (AAFwk::AppUtils::GetInstance().IsBopdOrRescueMode()) {
+        TAG_LOGW(AAFwkTag::SER_ROUTER, "Skip KvStore operation in bopd or rescue mode");
+        return false;
+    }
     if (kvStorePtr_ != nullptr) {
         return true;
     }
@@ -133,7 +138,7 @@ int32_t AppExitReasonDataManager::SetAppExitReason(const std::string &bundleName
 int32_t AppExitReasonDataManager::DeleteAppExitReason(const std::string &bundleName, int32_t uid, int32_t appIndex)
 {
     int32_t userId;
-    if (DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->
+    if (AppExecFwk::OsAccountManagerWrapper::
         GetOsAccountLocalIdFromUid(uid, userId) != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "get GetOsAccountLocalIdFromUid failed");
         return ERR_INVALID_VALUE;

@@ -42,6 +42,7 @@ const std::string HELP_MSG = "usage: aa <command> <options>\n"
     "  attach                      attach application to enter debug mode\n"
     "  detach                      detach application to exit debug mode\n"
     "  send-memory-level           send memory level to application by pid \n"
+    "  pre-start                   prestart ability with options \n"
 #ifdef ABILITY_COMMAND_FOR_TEST
     "  test                        start the test framework with options\n"
     "  ApplicationNotResponding     Pass in pid with options\n"

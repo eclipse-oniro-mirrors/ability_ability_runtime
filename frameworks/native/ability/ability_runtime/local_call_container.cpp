@@ -464,13 +464,7 @@ void CallerConnection::OnRemoteStateChanged(const AppExecFwk::ElementName &eleme
 int32_t LocalCallContainer::GetCurrentUserId()
 {
     if (currentUserId_ == DEFAULT_INVAL_VALUE) {
-        auto osAccount = DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance();
-        if (osAccount == nullptr) {
-            TAG_LOGE(AAFwkTag::LOCAL_CALL, "null osAccount");
-            return DEFAULT_INVAL_VALUE;
-        }
-
-        osAccount->GetOsAccountLocalIdFromProcess(currentUserId_);
+        AppExecFwk::OsAccountManagerWrapper::GetOsAccountLocalIdFromProcess(currentUserId_);
     }
     TAG_LOGD(AAFwkTag::LOCAL_CALL, "currentUserId %{public}d", currentUserId_);
     return currentUserId_;

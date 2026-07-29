@@ -63,6 +63,7 @@ public:
     MOCK_METHOD1(ClearUpApplicationDataBySelf, int32_t(int32_t userId));
     MOCK_METHOD1(StartupResidentProcess, void(const std::vector<AppExecFwk::BundleInfo>& bundleInfos));
     MOCK_METHOD1(AddAbilityStageDone, void(const int32_t recordId));
+    MOCK_METHOD0(NotifyTemplateProcessReadyDone, int32_t());
     MOCK_METHOD0(PreStartNWebSpawnProcess, int());
     MOCK_METHOD6(StartRenderProcess, int(const std::string&, int32_t, int32_t, int32_t, pid_t&, bool));
     MOCK_METHOD1(AttachRenderProcess, void(const sptr<IRemoteObject>& renderScheduler));

@@ -235,6 +235,8 @@ int32_t AppMgrStub::OnRemoteRequestInnerThird(uint32_t code, MessageParcel &data
             return HandleUpdateConfigurationMultiUser(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::GET_CONFIGURATION_BY_USERID):
             return HandleGetConfigurationByUserId(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::DUMP_JSHANDLE_MAP_PROCESS):
+            return HandleDumpJsHandleMap(data, reply);
     }
     return INVALID_FD;
 }
@@ -453,6 +455,10 @@ int32_t AppMgrStub::OnRemoteRequestInnerEighth(uint32_t code, MessageParcel &dat
             return HandleDestroyImage(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::NOTIFY_TEMPLATE_PROCESS_DEEP_FROZEN):
             return HandleNotifyTemplateProcessDeepFrozen(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::PRE_TEMPLATE_PROCESS_DEEP_FROZEN):
+            return HandlePreTemplateProcessDeepFrozen(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::NOTIFY_TEMPLATE_PROCESS_READY_DONE):
+            return HandleNotifyTemplateProcessReadyDone(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_IMAGE_PROCESS_STATE_OBSERVER):
             return HandleRegisterImageProcessStateObserver(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::IS_CHILD_PROCESS_SUPPORTED):
@@ -473,6 +479,8 @@ int32_t AppMgrStub::OnRemoteRequestInnerNinth(uint32_t code, MessageParcel &data
             return HandleEnableDelayedProcessExit(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::CANCEL_DELAYED_EXIT_TASK):
             return HandleCancelDelayedExitTask(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::IS_CORRESPONDING_PROCESS_ATTACH_DEBUG):
+            return HandleIsCorrespondingProcessAttachDebug(data, reply);
     }
     return INVALID_FD;
 }
@@ -571,6 +579,31 @@ int32_t AppMgrStub::HandleNotifyTemplateProcessDeepFrozen(MessageParcel &data, M
     TAG_LOGD(AAFwkTag::APPMGR, "called");
     int32_t pid = data.ReadInt32();
     auto result = NotifyTemplateProcessDeepFrozen(pid);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write result failed.");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandlePreTemplateProcessDeepFrozen(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    int32_t pid = data.ReadInt32();
+    auto result = PreTemplateProcessDeepFrozen(pid);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write result failed.");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleNotifyTemplateProcessReadyDone(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    auto result = NotifyTemplateProcessReadyDone();
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::APPMGR, "Write result failed.");
         return ERR_APPEXECFWK_PARCEL_ERROR;
@@ -893,6 +926,23 @@ int32_t AppMgrStub::HandleDumpJsHeapMemory(MessageParcel &data, MessageParcel &r
         return ERR_INVALID_VALUE;
     }
     auto result = DumpJsHeapMemory(*info);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write result error");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleDumpJsHandleMap(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "AppMgrStub::HandleDumpJsHandleMap.");
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::unique_ptr<JsHandleMapInfo> info(data.ReadParcelable<JsHandleMapInfo>());
+    if (info == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "AppMgrStub read JsHandleMapInfo error");
+        return ERR_INVALID_VALUE;
+    }
+    auto result = DumpJsHandleMap(*info);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::APPMGR, "write result error");
         return ERR_INVALID_VALUE;
@@ -1478,6 +1528,21 @@ int32_t AppMgrStub::HandleIsMainProcessDebug(MessageParcel &data, MessageParcel 
     HITRACE_METER(HITRACE_TAG_APP);
     int32_t uid = data.ReadInt32();
     bool result = IsMainProcessDebug(uid);
+    if (!reply.WriteBool(result)) {
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleIsCorrespondingProcessAttachDebug(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::unique_ptr<AbilityInfo> abilityInfo(data.ReadParcelable<AbilityInfo>());
+    if (abilityInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "abilityInfo is nullptr");
+        return ERR_INVALID_VALUE;
+    }
+    bool result = IsCorrespondingProcessAttachDebug(*abilityInfo);
     if (!reply.WriteBool(result)) {
         return ERR_INVALID_VALUE;
     }

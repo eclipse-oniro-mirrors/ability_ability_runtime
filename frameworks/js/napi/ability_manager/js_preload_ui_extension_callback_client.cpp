@@ -25,9 +25,22 @@ namespace AbilityRuntime {
 using namespace OHOS::AppExecFwk;
 JsPreloadUIExtensionCallbackClient::~JsPreloadUIExtensionCallbackClient()
 {
-    if (callbackRef_ != nullptr) {
-        napi_delete_reference(env_, callbackRef_);
-        callbackRef_ = nullptr;
+    if (callbackRef_ == nullptr || env_ == nullptr) {
+        return;
+    }
+    napi_env env = env_;
+    napi_ref ref = callbackRef_;
+    callbackRef_ = nullptr;
+    auto deleteTask = [env, ref]() {
+        napi_status status = napi_delete_reference(env, ref);
+        if (status != napi_ok) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "napi_delete_reference failed: %{public}d", status);
+        }
+    };
+    if (napi_send_event(env, deleteTask, napi_eprio_high) != napi_ok) {
+        // Never call napi_delete_reference on the current (Binder) thread; if the JS event loop is
+        // unavailable, leak the reference rather than risk a cross-thread N-API call.
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "napi_send_event failed, skip cross-thread reference release");
     }
 }
 

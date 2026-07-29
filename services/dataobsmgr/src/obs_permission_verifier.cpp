@@ -42,7 +42,7 @@ bool ObsPermissionVerifier::VerifyPermission(uint32_t listenerTokenId, int32_t u
         return true;
     }
     Uri uriTemp = uri;
-    std::vector<std::string> listenerGroupIds = GetGroupInfosFromCache(listenerCallingName, userId, uri.ToString());
+    std::vector<std::string> listenerGroupIds = GetGroupInfosFromCache(listenerCallingName, userId);
     for (auto &groupId : listenerGroupIds) {
         if (uriTemp.GetAuthority() == groupId) {
             return true;
@@ -78,10 +78,9 @@ std::pair<bool, std::string> ObsPermissionVerifier::GetCallingInfo(uint32_t call
     return {isSA, callingName};
 }
 
-std::vector<std::string> ObsPermissionVerifier::GetGroupInfosFromCache(const std::string &bundleName,
-    int32_t userId, const std::string &uri)
+std::vector<std::string> ObsPermissionVerifier::GetGroupInfosFromCache(const std::string &bundleName, int32_t userId)
 {
-    std::string key = uri;
+    std::string key = bundleName + ":" + std::to_string(userId);
     {
         std::shared_lock<std::shared_mutex> readLock(groupsIdMutex_);
         auto it = std::find_if(groupsIdCache_.begin(), groupsIdCache_.end(),

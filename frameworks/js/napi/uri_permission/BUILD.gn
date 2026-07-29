@@ -15,6 +15,8 @@
 import("//build/ohos.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 ohos_shared_library("uripermissionmanager_napi") {
+  branch_protector_ret = "pac_ret"
+
   sources = [
     "js_uri_perm_mgr.cpp",
     "native_module.cpp",
@@ -31,6 +33,7 @@ ohos_shared_library("uripermissionmanager_napi") {
     "${ability_runtime_innerkits_path}/error_utils:ability_runtime_error_util",
     "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_napi_path}/inner/napi_common:napi_common",
+    "${ability_runtime_native_path}/ability/native:ability_business_error",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
   ]
 

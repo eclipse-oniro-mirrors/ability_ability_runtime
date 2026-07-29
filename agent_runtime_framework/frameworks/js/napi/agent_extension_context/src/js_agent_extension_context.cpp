@@ -51,6 +51,30 @@ public:
 private:
     std::weak_ptr<AgentExtensionContext> context_;
 };
+
+bool SetAgentExtensionContextNativePointer(napi_env env, napi_value object,
+    std::unique_ptr<JsAgentExtensionContext> &jsContext)
+{
+    HandleScope handleScope(env);
+    napi_value holder = nullptr;
+    napi_status status = napi_create_object(env, &holder);
+    if (status != napi_ok || holder == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "napi_create_object failed: %{public}d", status);
+        return false;
+    }
+    status = napi_set_named_property(env, object, AGENT_EXTENSION_CONTEXT_NAME, holder);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "napi_set_named_property failed: %{public}d", status);
+        return false;
+    }
+    status = napi_wrap(env, holder, jsContext.get(), JsAgentExtensionContext::Finalizer, nullptr, nullptr);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "napi_wrap failed: %{public}d", status);
+        return false;
+    }
+    jsContext.release();
+    return true;
+}
 }
 
 void SetJsAgentExtensionContext(napi_env env, napi_value value, std::shared_ptr<AgentExtensionContext> context)
@@ -61,8 +85,9 @@ void SetJsAgentExtensionContext(napi_env env, napi_value value, std::shared_ptr<
     }
 
     auto jsContext = std::make_unique<JsAgentExtensionContext>(context);
-    SetNamedNativePointer(
-        env, value, AGENT_EXTENSION_CONTEXT_NAME, jsContext.release(), JsAgentExtensionContext::Finalizer);
+    if (!SetAgentExtensionContextNativePointer(env, value, jsContext)) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "SetAgentExtensionContextNativePointer failed");
+    }
 }
 
 napi_value CreateJsAgentExtensionContext(napi_env env, std::shared_ptr<AgentExtensionContext> context)

@@ -18,6 +18,12 @@ module_output_path = "ability_runtime/ability_runtime/appmgrservice"
 
 ohos_unittest("app_scheduler_host_test") {
   module_out_path = module_output_path
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+    blocklist = "../../cfi_blocklist.txt"
+  }
 
   configs = [
     "${ability_runtime_services_path}/common:common_config",

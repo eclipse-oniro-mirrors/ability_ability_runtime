@@ -2941,5 +2941,135 @@ HWTEST_F(AppMgrServiceInnerSecondTest, IsMainProcessDebug_006, TestSize.Level1)
     TAG_LOGI(AAFwkTag::TEST, "IsMainProcessDebug_006 end");
 }
 
+/**
+ * @tc.name: IsCorrespondingProcessAttachDebug_001
+ * @tc.desc: Test IsCorrespondingProcessAttachDebug when caller is not foundation process, should return false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerSecondTest, IsCorrespondingProcessAttachDebug_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsCorrespondingProcessAttachDebug_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
+    IPCSkeleton::SetCallingUid(0); // not foundation uid
+    AbilityInfo abilityInfo;
+    abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    EXPECT_FALSE(appMgrServiceInner->IsCorrespondingProcessAttachDebug(abilityInfo));
+    TAG_LOGI(AAFwkTag::TEST, "IsCorrespondingProcessAttachDebug_001 end");
+}
+
+/**
+ * @tc.name: IsCorrespondingProcessAttachDebug_002
+ * @tc.desc: Test IsCorrespondingProcessAttachDebug when extension type is not agent, should return false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerSecondTest, IsCorrespondingProcessAttachDebug_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsCorrespondingProcessAttachDebug_002 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID); // foundation call
+    AbilityInfo abilityInfo;
+    // default extensionAbilityType is not AGENT or AgentUI
+    EXPECT_FALSE(appMgrServiceInner->IsCorrespondingProcessAttachDebug(abilityInfo));
+    TAG_LOGI(AAFwkTag::TEST, "IsCorrespondingProcessAttachDebug_002 end");
+}
+
+/**
+ * @tc.name: IsCorrespondingProcessAttachDebug_003
+ * @tc.desc: Test IsCorrespondingProcessAttachDebug when remoteClientManager_ is nullptr, should return false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerSecondTest, IsCorrespondingProcessAttachDebug_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsCorrespondingProcessAttachDebug_003 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    appMgrServiceInner->remoteClientManager_ = nullptr;
+    appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID); // foundation call
+    AbilityInfo abilityInfo;
+    abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    EXPECT_FALSE(appMgrServiceInner->IsCorrespondingProcessAttachDebug(abilityInfo));
+    TAG_LOGI(AAFwkTag::TEST, "IsCorrespondingProcessAttachDebug_003 end");
+}
+
+/**
+ * @tc.name: IsCorrespondingProcessAttachDebug_004
+ * @tc.desc: Test IsCorrespondingProcessAttachDebug when spawn client is nullptr, should return false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerSecondTest, IsCorrespondingProcessAttachDebug_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsCorrespondingProcessAttachDebug_004 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    appMgrServiceInner->remoteClientManager_ = std::make_shared<RemoteClientManager>();
+    appMgrServiceInner->remoteClientManager_->SetSpawnClient(nullptr);
+    appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID); // foundation call
+    AbilityInfo abilityInfo;
+    abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    EXPECT_FALSE(appMgrServiceInner->IsCorrespondingProcessAttachDebug(abilityInfo));
+    TAG_LOGI(AAFwkTag::TEST, "IsCorrespondingProcessAttachDebug_004 end");
+}
+
+/**
+ * @tc.name: IsCorrespondingProcessAttachDebug_005
+ * @tc.desc: Test IsCorrespondingProcessAttachDebug when bundle manager helper is nullptr, should return false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerSecondTest, IsCorrespondingProcessAttachDebug_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsCorrespondingProcessAttachDebug_005 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    appMgrServiceInner->remoteClientManager_ = std::make_shared<RemoteClientManager>();
+    // spawn client is created by RemoteClientManager constructor, but bundle manager helper is not set
+    appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID); // foundation call
+    AbilityInfo abilityInfo;
+    abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    EXPECT_FALSE(appMgrServiceInner->IsCorrespondingProcessAttachDebug(abilityInfo));
+    TAG_LOGI(AAFwkTag::TEST, "IsCorrespondingProcessAttachDebug_005 end");
+}
+
+/**
+ * @tc.name: IsCorrespondingProcessAttachDebug_006
+ * @tc.desc: Test IsCorrespondingProcessAttachDebug when appRunningManager_ is nullptr, should return false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerSecondTest, IsCorrespondingProcessAttachDebug_006, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsCorrespondingProcessAttachDebug_006 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    appMgrServiceInner->remoteClientManager_ = std::make_shared<RemoteClientManager>();
+    appMgrServiceInner->remoteClientManager_->SetBundleManagerHelper(bundleMgrHelper_);
+    appMgrServiceInner->appRunningManager_ = nullptr;
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID); // foundation call
+    AbilityInfo abilityInfo;
+    abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    EXPECT_FALSE(appMgrServiceInner->IsCorrespondingProcessAttachDebug(abilityInfo));
+    TAG_LOGI(AAFwkTag::TEST, "IsCorrespondingProcessAttachDebug_006 end");
+}
+
+/**
+ * @tc.name: IsCorrespondingProcessAttachDebug_007
+ * @tc.desc: Test IsCorrespondingProcessAttachDebug when GetBundleAndHapInfo fails, should return false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerSecondTest, IsCorrespondingProcessAttachDebug_007, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsCorrespondingProcessAttachDebug_007 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    appMgrServiceInner->remoteClientManager_ = std::make_shared<RemoteClientManager>();
+    appMgrServiceInner->remoteClientManager_->SetBundleManagerHelper(bundleMgrHelper_);
+    appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID); // foundation call
+    AbilityInfo abilityInfo;
+    abilityInfo.bundleName = "com.test.attachdebug";
+    abilityInfo.applicationInfo.bundleName = "com.test.attachdebug";
+    abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    EXPECT_FALSE(appMgrServiceInner->IsCorrespondingProcessAttachDebug(abilityInfo));
+    TAG_LOGI(AAFwkTag::TEST, "IsCorrespondingProcessAttachDebug_007 end");
+}
+
 } // namespace AppExecFwk
 } // namespace OHOS

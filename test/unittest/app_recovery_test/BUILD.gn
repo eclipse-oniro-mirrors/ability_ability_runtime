@@ -68,7 +68,6 @@ ohos_unittest("AppRecoveryUnitTest") {
     "faultloggerd:libdfx_dumpcatcher",
     "form_fwk:fmskit_native",
     "form_fwk:form_common_info",
-    "form_fwk:form_manager",
     "form_fwk:form_render_info",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
@@ -82,7 +81,7 @@ ohos_unittest("AppRecoveryUnitTest") {
     "window_manager:windowstage_kit",
   ]
   if (hichecker_enabled) {
-    external_deps += [ "hichecker:libhichecker" ]
+    external_deps += [ "hichecker:libhichecker" ] 
   }
 }
 
@@ -134,7 +133,6 @@ ohos_unittest("AbilityRecoveryUnitTest") {
     "faultloggerd:libdfx_dumpcatcher",
     "form_fwk:fmskit_native",
     "form_fwk:form_common_info",
-    "form_fwk:form_manager",
     "form_fwk:form_render_info",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
@@ -148,7 +146,7 @@ ohos_unittest("AbilityRecoveryUnitTest") {
     "window_manager:windowstage_kit",
   ]
   if (hichecker_enabled) {
-    external_deps += [ "hichecker:libhichecker" ]
+    external_deps += [ "hichecker:libhichecker" ] 
   }
 }
 

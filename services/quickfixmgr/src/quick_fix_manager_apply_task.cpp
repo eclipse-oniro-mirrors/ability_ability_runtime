@@ -25,6 +25,8 @@
 #include "quick_fix_error_utils.h"
 #include "quick_fix_manager_service.h"
 #include "quick_fix/quick_fix_status_callback_host.h"
+#include "common_event_publish_info.h"
+#include "ipc_skeleton.h"
 #include "want.h"
 
 namespace OHOS {
@@ -313,6 +315,7 @@ void QuickFixManagerApplyTask::Run(const std::vector<std::string> &quickFixFiles
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGI(AAFwkTag::QUICKFIX, "Run apply task");
     taskType_ = TaskType::QUICK_FIX_APPLY;
+    callerUid_ = IPCSkeleton::GetCallingUid();
     PostDeployQuickFixTask(quickFixFiles, isDebug, isReplace, isCheckDebugApp);
 }
 
@@ -321,6 +324,7 @@ void QuickFixManagerApplyTask::RunRevoke()
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGI(AAFwkTag::QUICKFIX, "Run apply revoke task");
     taskType_ = TaskType::QUICK_FIX_REVOKE;
+    callerUid_ = IPCSkeleton::GetCallingUid();
     PostRevokeQuickFixTask();
 }
 
@@ -645,7 +649,14 @@ void QuickFixManagerApplyTask::NotifyApplyStatus(int32_t resultCode)
     want.SetParam(BUNDLE_NAME, bundleName_);
 
     EventFwk::CommonEventData commonData {want};
-    EventFwk::CommonEventManager::PublishCommonEvent(commonData);
+    EventFwk::CommonEventPublishInfo publishInfo;
+    publishInfo.SetBundleName(bundleName_);
+    std::vector<int32_t> subscriberUids;
+    subscriberUids.emplace_back(callerUid_);
+    publishInfo.SetSubscriberUid(subscriberUids);
+    publishInfo.SetSubscriberType(EventFwk::SubscriberType::SYSTEM_SUBSCRIBER_TYPE);
+    publishInfo.SetValidationRule(EventFwk::ValidationRule::OR);
+    EventFwk::CommonEventManager::PublishCommonEvent(commonData, publishInfo);
 }
 
 void QuickFixManagerApplyTask::PostNotifyLoadRepairPatchTask()

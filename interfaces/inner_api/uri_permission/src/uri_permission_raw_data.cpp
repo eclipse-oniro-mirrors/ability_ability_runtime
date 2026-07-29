@@ -19,27 +19,28 @@
 
 namespace OHOS {
 namespace AAFwk {
+namespace {
+constexpr uint32_t MAX_RAW_DATA_SIZE = 128 * 1024 * 1024; // 128M
+}
+
 int32_t UriPermissionRawData::RawDataCpy(const void* readdata)
 {
-    if (readdata == nullptr || size == 0) {
+    if (readdata == nullptr || size == 0 || size > MAX_RAW_DATA_SIZE) {
         return ERR_INVALID_DATA;
     }
     void* newData = malloc(size);
-    isMalloc = true;
     if (newData == nullptr) {
-        isMalloc = false;
         return ERR_INVALID_DATA;
     }
     if (memcpy_s(newData, size, readdata, size) != EOK) {
         free(newData);
-        isMalloc = false;
         return ERR_INVALID_DATA;
     }
-    if (data != nullptr) {
+    if (data != nullptr && isMalloc) {
         free(const_cast<void*>(data));
-        data = nullptr;
     }
     data = newData;
+    isMalloc = true;
     return ERR_NONE;
 }
 

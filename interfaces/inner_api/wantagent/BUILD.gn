@@ -88,6 +88,8 @@ ohos_shared_library("wantagent_innerkits") {
     "ipc:ipc_core",
     "napi:ace_napi",
     "samgr:samgr_proxy",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   public_external_deps = [

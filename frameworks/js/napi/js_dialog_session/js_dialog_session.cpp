@@ -15,6 +15,7 @@
 
 #include "js_dialog_session.h"
 
+#include "ability_business_error.h"
 #include "ability_manager_client.h"
 #include "hilog_tag_wrapper.h"
 #include "js_error_utils.h"
@@ -78,7 +79,14 @@ private:
             return CreateJsUndefined(env);
         }
 #endif // SUPPORT_SCREEN
-        return OHOS::AppExecFwk::WrapDialogSessionInfo(env, *dialogSessionInfo);
+        napi_value dialogSessionInfoObj = OHOS::AppExecFwk::WrapDialogSessionInfo(env, *dialogSessionInfo);
+        if (dialogSessionInfoObj == nullptr) {
+            napi_throw(env, CreateJsErrorByNativeErr(env,
+                static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER), "",
+                GetInnerErrorMsg(AbilityInnerErrorMsg::GET_DIALOG_SESSION_INFO_FAILED)));
+            return CreateJsUndefined(env);
+        }
+        return dialogSessionInfoObj;
     }
 
     napi_value OnSendDialogResult(napi_env env, NapiCallbackInfo& info)
@@ -114,7 +122,8 @@ private:
             HandleScope handleScope(env);
             auto errorcode = AbilityManagerClient::GetInstance()->SendDialogResult(want, dialogSessionId, isAllow);
             if (errorcode) {
-                task.Reject(env, CreateJsError(env, errorcode, "Send dialog result failed"));
+                task.Reject(env, CreateJsErrorByNativeErr(env, errorcode, "",
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::SEND_DIALOG_RESULT_FAILED)));
             } else {
                 task.ResolveWithNoError(env, CreateJsUndefined(env));
             }

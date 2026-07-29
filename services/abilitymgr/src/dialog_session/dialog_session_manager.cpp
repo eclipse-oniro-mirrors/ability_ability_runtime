@@ -424,7 +424,7 @@ int DialogSessionManager::CreateImplicitSelectorModalDialog(AbilityRequest &abil
 
     sessionWant.SetParam("deviceType", OHOS::system::GetDeviceType());
     sessionWant.SetParam("userId", userId);
-    sessionWant.SetParam("action", abilityRequest.want.GetAction());
+    sessionWant.SetParam("action", abilityRequest.want.GetActionRef());
     sessionWant.SetParam("wantType", abilityRequest.want.GetType());
     sessionWant.SetParam("uri", abilityRequest.want.GetUriString());
     sessionWant.SetParam("entities", abilityRequest.want.GetEntities());
@@ -578,8 +578,8 @@ bool DialogSessionManager::IsCreateCloneSelectorDialog(const std::string &bundle
     StartAbilityUtils::isWantWithAppCloneIndex = false;
     return false;
 #else
-    if (StartAbilityUtils::isWantWithAppCloneIndex) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "no clone index");
+    if (StartAbilityUtils::isWantWithAppCloneIndex || StartAbilityUtils::isSandBoxClone) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "with clone index");
         StartAbilityUtils::isWantWithAppCloneIndex = false;
         return false;
     }

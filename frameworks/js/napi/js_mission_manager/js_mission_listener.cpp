@@ -63,12 +63,20 @@ void JsMissionListener::AddJsListenerObject(int32_t listenerId, napi_value jsLis
     napi_ref ref = nullptr;
     if (isSync) {
         std::lock_guard<std::mutex> lock(jsListenerObjectMapLock_);
-        napi_create_reference(env_, jsListenerObject, 1, &ref);
+        napi_status status = napi_create_reference(env_, jsListenerObject, 1, &ref);
+        if (status != napi_ok || ref == nullptr) {
+            TAG_LOGE(AAFwkTag::MISSION, "create reference failed, status:%{public}d", status);
+            return;
+        }
         jsListenerObjectMapSync_.emplace(
             listenerId, std::shared_ptr<NativeReference>(reinterpret_cast<NativeReference*>(ref)));
     } else {
         std::lock_guard<std::mutex> lock(jsListenerObjectMapLock_);
-        napi_create_reference(env_, jsListenerObject, 1, &ref);
+        napi_status status = napi_create_reference(env_, jsListenerObject, 1, &ref);
+        if (status != napi_ok || ref == nullptr) {
+            TAG_LOGE(AAFwkTag::MISSION, "create reference failed, status:%{public}d", status);
+            return;
+        }
         jsListenerObjectMap_.emplace(
             listenerId, std::shared_ptr<NativeReference>(reinterpret_cast<NativeReference*>(ref)));
     }
@@ -120,13 +128,20 @@ void JsMissionListener::CallJsMethodInner(const std::string &methodName, int32_t
 {
     // jsListenerObjectMap_ may be changed in env_->CallFunction()
     HandleScope handleScope(env_);
-    auto tmpMap = jsListenerObjectMap_;
+    std::map<int32_t, std::shared_ptr<NativeReference>> tmpMap;
+    {
+        std::lock_guard<std::mutex> lock(jsListenerObjectMapLock_);
+        tmpMap = jsListenerObjectMap_;
+    }
     for (auto &item : tmpMap) {
         napi_value obj = (item.second)->GetNapiValue();
         napi_value argv[] = { CreateJsValue(env_, missionId) };
         CallJsFunction(obj, methodName.c_str(), argv, ARGC_ONE);
     }
-    tmpMap = jsListenerObjectMapSync_;
+    {
+        std::lock_guard<std::mutex> lock(jsListenerObjectMapLock_);
+        tmpMap = jsListenerObjectMapSync_;
+    }
     for (auto &item : tmpMap) {
         napi_value obj = (item.second)->GetNapiValue();
         napi_value argv[] = { CreateJsValue(env_, missionId) };
@@ -195,7 +210,11 @@ void JsMissionListener::CallJsMissionIconUpdated(int32_t missionId, const std::s
     napi_value nativeMissionId = CreateJsValue(env_, missionId);
     auto nativeIcon = Media::PixelMapNapi::CreatePixelMap(env_, icon);
 
-    auto tmpMap = jsListenerObjectMap_;
+    std::map<int32_t, std::shared_ptr<NativeReference>> tmpMap;
+    {
+        std::lock_guard<std::mutex> lock(jsListenerObjectMapLock_);
+        tmpMap = jsListenerObjectMap_;
+    }
     for (auto &item : tmpMap) {
         napi_value obj = (item.second)->GetNapiValue();
         if (obj == nullptr) {

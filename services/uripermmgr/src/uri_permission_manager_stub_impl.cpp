@@ -19,6 +19,8 @@
 #include "ability_manager_client.h"
 #include "accesstoken_kit.h"
 #include "app_utils.h"
+#include "dynamic_feature_manager.h"
+#include "feature/istorage_share_feature.h"
 #include "file_uri_distribution_utils.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
@@ -30,7 +32,6 @@
 #ifdef ABILITY_RUNTIME_MEDIA_LIBRARY_ENABLE
 #include "media_permission_manager.h"
 #endif // ABILITY_RUNTIME_MEDIA_LIBRARY_ENABLE
-#include "parameter.h"
 #include "permission_constants.h"
 #include "permission_verification.h"
 #ifdef ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER
@@ -48,6 +49,7 @@ namespace OHOS {
 namespace AAFwk {
 namespace {
 constexpr int32_t ERR_OK = 0;
+constexpr int32_t U0_USER_ID = 0;
 constexpr uint32_t FLAG_READ_WRITE_URI = Want::FLAG_AUTH_READ_URI_PERMISSION | Want::FLAG_AUTH_WRITE_URI_PERMISSION;
 constexpr uint32_t FLAG_WRITE_URI = Want::FLAG_AUTH_WRITE_URI_PERMISSION;
 constexpr uint32_t FLAG_READ_URI = Want::FLAG_AUTH_READ_URI_PERMISSION;
@@ -308,13 +310,13 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermission(const std::vector<std::
 }
 
 int32_t UriPermissionManagerStubImpl::CheckGrantUriPermissionParamsWithTokenId(
-    const std::vector<std::string>& uriVec, uint32_t flag, uint32_t targetTokenId)
+    const std::vector<std::string>& uriVec, uint32_t flag, uint32_t oriCallerTokenId, uint32_t targetTokenId)
 {
-    if (!PermissionVerification::GetInstance()->IsSACall()) {
-        TAG_LOGE(AAFwkTag::URIPERMMGR, "not SA call");
-        return ERR_NOT_SYSTEM_APP;
+    if (!PermissionVerification::GetInstance()->VerifyPermissionByTokenId(IPCSkeleton::GetCallingTokenID(),
+        PermissionConstants::PERMISSION_GRANT_URI_PERMISSION_PRIVILEGED)) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "No GRANT_URI_PERMISSION_PRIVILEGED permission");
+        return CHECK_PERMISSION_FAILED;
     }
-
     auto checkRet = CheckCalledBySandBox();
     if (checkRet != ERR_OK) {
         return checkRet;
@@ -327,48 +329,12 @@ int32_t UriPermissionManagerStubImpl::CheckGrantUriPermissionParamsWithTokenId(
         TAG_LOGE(AAFwkTag::URIPERMMGR, "uriVec out of range: %{public}zu", uriVec.size());
         return ERR_URI_LIST_OUT_OF_RANGE;
     }
+    if (oriCallerTokenId == 0) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "oriCallerTokenId is 0");
+        return ERR_UPMS_INVALID_CALLER_TOKENID;
+    }
     if (targetTokenId == 0) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "targetTokenId is 0");
-        return ERR_UPMS_INVALID_TARGET_TOKENID;
-    }
-    return ERR_OK;
-}
-
-int32_t UriPermissionManagerStubImpl::GetCallerTokenIdAndUserId(
-    uint32_t oriCallerTokenId, uint32_t& callerTokenId, int32_t& callerUserId)
-{
-    auto permissionName = PermissionConstants::PERMISSION_GRANT_URI_PERMISSION_PRIVILEGED;
-    bool hasPrivilegedPermission = PermissionVerification::GetInstance()->
-        VerifyPermissionByTokenId(IPCSkeleton::GetCallingTokenID(), permissionName);
-    if (hasPrivilegedPermission && oriCallerTokenId != 0) {
-        FUDAppInfo oriCallerInfo;
-        oriCallerInfo.tokenId = oriCallerTokenId;
-        if (!FUDUtils::GenerateFUDAppInfo(oriCallerInfo)) {
-            TAG_LOGE(AAFwkTag::URIPERMMGR, "oriCallerTokenId invalid");
-            return ERR_UPMS_INVALID_CALLER_TOKENID;
-        }
-        callerTokenId = oriCallerTokenId;
-        callerUserId = oriCallerInfo.userId;
-    } else {
-        callerTokenId = IPCSkeleton::GetCallingTokenID();
-        callerUserId = FUDUtils::GetCurrentAccountId();
-    }
-    return ERR_OK;
-}
-
-int32_t UriPermissionManagerStubImpl::CheckTargetTokenIdAndUserConstraint(
-    uint32_t targetTokenId, int32_t callerUserId, FUDAppInfo& targetInfo)
-{
-    targetInfo.tokenId = targetTokenId;
-    if (!FUDUtils::GenerateFUDAppInfo(targetInfo)) {
-        TAG_LOGE(AAFwkTag::URIPERMMGR, "targetTokenId invalid");
-        return ERR_UPMS_INVALID_TARGET_TOKENID;
-    }
-    int32_t targetUserId = targetInfo.userId;
-    if (callerUserId != targetUserId) {
-        TAG_LOGE(AAFwkTag::URIPERMMGR,
-            "callerUserId(%{public}d) != targetUserId(%{public}d), not support cross user",
-            callerUserId, targetUserId);
         return ERR_UPMS_INVALID_TARGET_TOKENID;
     }
     return ERR_OK;
@@ -378,47 +344,41 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermission(const std::vector<std::
     uint32_t flag, uint32_t targetTokenId, uint32_t oriCallerTokenId, int32_t& funcResult)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    TAG_LOGI(AAFwkTag::URIPERMMGR,
-        "GrantUriPermission: targetTokenId:%{public}u, oriCallerTokenId:%{public}u, flag:%{public}u, uris:%{public}zu",
+    TAG_LOGI(AAFwkTag::URIPERMMGR, "target:%{public}u,oriCaller:%{public}u,flag:%{public}u,uris:%{public}zu",
         targetTokenId, oriCallerTokenId, flag, uriVec.size());
-    auto ret = CheckGrantUriPermissionParamsWithTokenId(uriVec, flag, targetTokenId);
+    auto ret = CheckGrantUriPermissionParamsWithTokenId(uriVec, flag, oriCallerTokenId, targetTokenId);
     if (ret != ERR_OK) {
         return WrapErrorCode(ret, funcResult);
     }
-    uint32_t callerTokenId = 0;
-    int32_t curUserId = -1;
-    ret = GetCallerTokenIdAndUserId(oriCallerTokenId, callerTokenId, curUserId);
-    if (ret != ERR_OK) {
-        return WrapErrorCode(ret, funcResult);
+    FUDAppInfo callerInfo = { .tokenId = oriCallerTokenId };
+    if (!FUDUtils::GenerateFUDAppInfo(callerInfo, true)) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "oriCallerTokenId invalid");
+        return ERR_UPMS_INVALID_CALLER_TOKENID;
     }
-    FUDAppInfo targetInfo;
-    ret = CheckTargetTokenIdAndUserConstraint(targetTokenId, curUserId, targetInfo);
-    if (ret != ERR_OK) {
-        return WrapErrorCode(ret, funcResult);
+    FUDAppInfo targetInfo = { .tokenId = targetTokenId };
+    if (!FUDUtils::GenerateFUDAppInfo(targetInfo)) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "targetTokenId invalid");
+        return ERR_UPMS_INVALID_TARGET_TOKENID;
     }
-    TAG_LOGI(AAFwkTag::URIPERMMGR,
-        "GrantUriPermission: callerTokenId:%{public}u, callerUserId:%{public}d, targetUserId:%{public}d",
-        callerTokenId, curUserId, targetInfo.userId);
-    std::string callerAlterableBundleName = "";
-    FUDUtils::GetAlterableBundleNameByTokenId(callerTokenId, callerAlterableBundleName);
-    FUDAppInfo callerInfo = {
-        .tokenId = callerTokenId,
-        .alterBundleName = callerAlterableBundleName,
-        .userId = curUserId
-    };
-    FUDUtils::GetAlterableBundleNameByTokenId(targetTokenId, targetInfo.alterBundleName);
+    // Cross-user is allowed only when either side is a native SA (isSA) or runs at U0 (system app).
+    if (callerInfo.userId != targetInfo.userId && !callerInfo.isSA &&
+        callerInfo.userId != U0_USER_ID && targetInfo.userId != U0_USER_ID) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "callerUserId(%{public}d) != targetUserId(%{public}d), not support cross user",
+            callerInfo.userId, targetInfo.userId);
+        return ERR_UPMS_INVALID_TARGET_TOKENID;
+    }
     BatchUri batchUri;
     auto rwMode = (flag | FLAG_READ_URI) & (FLAG_READ_WRITE_URI | FLAG_PERSIST_URI);
     bool haveSandboxAccessPermission = PermissionVerification::GetInstance()->
-        VerifyPermissionByTokenId(callerTokenId,
+        VerifyPermissionByTokenId(callerInfo.tokenId,
         PermissionConstants::PERMISSION_SANDBOX_ACCESS_MANAGER);
     if (batchUri.Init(uriVec, rwMode, callerInfo.alterBundleName, targetInfo.alterBundleName,
         haveSandboxAccessPermission) == 0) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "All uri is invalid");
         return WrapErrorCode(ERR_CODE_INVALID_URI_TYPE, funcResult);
     }
-    auto checkRet = CheckUriPermission(batchUri, flag, callerTokenId,
-        callerInfo.alterBundleName, targetTokenId);
+    auto checkRet = CheckUriPermission(batchUri, flag, callerInfo.tokenId,
+        callerInfo.alterBundleName, targetInfo.tokenId);
     if (checkRet != ERR_OK) {
         if (!FUDUtils::IsUdmfOrPasteboardCall() || batchUri.contentUris.empty()) {
             return WrapErrorCode(checkRet, funcResult);
@@ -430,9 +390,37 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermission(const std::vector<std::
 }
 
 ErrCode UriPermissionManagerStubImpl::GrantUriPermission(const UriPermissionRawData& rawData, uint32_t flag,
+    uint32_t targetTokenId, uint32_t oriCallerTokenId, int32_t& funcResult)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (!PermissionVerification::GetInstance()->VerifyPermissionByTokenId(IPCSkeleton::GetCallingTokenID(),
+        PermissionConstants::PERMISSION_GRANT_URI_PERMISSION_PRIVILEGED)) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "No GRANT_URI_PERMISSION_PRIVILEGED permission");
+        return WrapErrorCode(CHECK_PERMISSION_FAILED, funcResult);
+    }
+    std::vector<std::string> uriVec;
+    auto res = RawDataToStringVec(rawData, uriVec);
+    if (res != ERR_OK) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "raw data to vec failed");
+        funcResult = res;
+        return ERR_OK;
+    }
+    auto errCode = GrantUriPermission(uriVec, flag, targetTokenId, oriCallerTokenId, funcResult);
+    if (errCode != ERR_OK) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "GrantUriPermission failed, errCode:%{public}d", errCode);
+        return errCode;
+    }
+    return ERR_OK;
+}
+
+ErrCode UriPermissionManagerStubImpl::GrantUriPermission(const UriPermissionRawData& rawData, uint32_t flag,
     const std::string& targetBundleName, int32_t appIndex, uint32_t initiatorTokenId, int32_t& funcResult)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (!FUDUtils::IsSAOrSystemAppCall()) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "not SA/SystemApp");
+        return WrapErrorCode(ERR_NOT_SYSTEM_APP, funcResult);
+    }
     std::vector<std::string> uriVec;
     auto res = RawDataToStringVec(rawData, uriVec);
     if (res != ERR_OK) {
@@ -710,24 +698,6 @@ void UriPermissionManagerStubImpl::RemoveContentTokenIdRecord(uint32_t tokenId)
     contentTokenIdSet_.erase(tokenId);
 }
 
-void UriPermissionManagerStubImpl::StringVecToRawData(const std::vector<std::string> &stringVec,
-    StorageFileRawData &rawData)
-{
-    std::stringstream ss;
-    uint32_t stringCount = stringVec.size();
-    ss.write(reinterpret_cast<const char*>(&stringCount), sizeof(stringCount));
-
-    for (uint32_t i = 0; i < stringCount; ++i) {
-        uint32_t strLen = stringVec[i].length();
-        ss.write(reinterpret_cast<const char*>(&strLen), sizeof(strLen));
-        ss.write(stringVec[i].c_str(), strLen);
-    }
-    std::string result = ss.str();
-    rawData.ownedData = std::move(result);
-    rawData.data = rawData.ownedData.data();
-    rawData.size = rawData.ownedData.size();
-}
-
 int32_t UriPermissionManagerStubImpl::GrantBatchUriPermissionImpl(const std::vector<std::string> &uriVec,
     uint32_t flag, TokenId callerTokenId, TokenId targetTokenId)
 {
@@ -738,15 +708,16 @@ int32_t UriPermissionManagerStubImpl::GrantBatchUriPermissionImpl(const std::vec
     TAG_LOGI(AAFwkTag::URIPERMMGR, "privileged uris: %{public}zu", uriVec.size());
     // only reserve read and write file flag
     flag &= FLAG_READ_WRITE_URI;
-    ConnectManager(storageManager_, STORAGE_MANAGER_MANAGER_ID);
-    if (storageManager_ == nullptr) {
-        TAG_LOGE(AAFwkTag::URIPERMMGR, "null ConnectManager");
-        return INNER_ERR;
-    }
     std::vector<int32_t> resVec;
-    StorageFileRawData uriRawData;
-    StringVecToRawData(uriVec, uriRawData);
-    storageManager_->CreateShareFile(uriRawData, targetTokenId, flag, resVec);
+    {
+        auto scope = DynamicFeatureManager::GetInstance().Acquire(FeatureId::STORAGE);
+        auto *storageFeature = scope.Get<IStorageShareFeature>();
+        if (storageFeature == nullptr) {
+            TAG_LOGE(AAFwkLogTag::URIPERMMGR, "null storage feature");
+            return INNER_ERR;
+        }
+        storageFeature->CreateShareFile(uriVec, targetTokenId, flag, resVec);
+    }
     if (resVec.size() == 0) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "CreateShareFile failed, storageManager resVec empty");
         return INNER_ERR;
@@ -868,6 +839,11 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermissionPrivileged(const UriPerm
     const std::string& targetBundleName, int32_t appIndex, uint32_t initiatorTokenId, int32_t hideSensitiveType,
     int32_t& funcResult)
 {
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto checkRes = CheckGrantUriPermissionPrivileged(IPCSkeleton::GetCallingTokenID(), flag);
+    if (checkRes != ERR_OK) {
+        return WrapErrorCode(checkRes, funcResult);
+    }
     std::vector<std::string> uriStrVec;
     auto res = RawDataToStringVec(rawData, uriStrVec);
     if (res != ERR_OK) {
@@ -1271,6 +1247,13 @@ ErrCode UriPermissionManagerStubImpl::CheckUriAuthorization(const UriPermissionR
     uint32_t tokenId, UriPermissionRawData& funcResult)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (!FUDUtils::IsPrivilegedSACall()) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "no permission call");
+        std::vector<char> resultCharVec;
+        std::vector<bool> defaultFalseResult(1, false);
+        BoolVecToRawData(defaultFalseResult, funcResult, resultCharVec);
+        return ERR_OK;
+    }
     std::vector<std::string> uriStringVec;
     std::vector<char> resultCharVec;
     auto res = RawDataToStringVec(rawData, uriStringVec);
@@ -1589,16 +1572,15 @@ int32_t UriPermissionManagerStubImpl::RevokeMapUriPermissionManually(uint32_t ca
 int32_t UriPermissionManagerStubImpl::DeleteShareFile(uint32_t targetTokenId, const std::vector<std::string> &uriVec)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    ConnectManager(storageManager_, STORAGE_MANAGER_MANAGER_ID);
-    if (storageManager_ == nullptr) {
-        TAG_LOGE(AAFwkTag::URIPERMMGR, "null StorageManager");
+    auto scope = DynamicFeatureManager::GetInstance().Acquire(FeatureId::STORAGE);
+    auto *storageFeature = scope.Get<IStorageShareFeature>();
+    if (storageFeature == nullptr) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "null storage feature");
         return INNER_ERR;
     }
-    StorageFileRawData uriRawData;
-    StringVecToRawData(uriVec, uriRawData);
-    auto ret = storageManager_->DeleteShareFile(targetTokenId, uriRawData);
+    auto ret = storageFeature->DeleteShareFile(targetTokenId, uriVec);
     if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::URIPERMMGR, "DeleteShareFile failed:%{public}d", ret);
+        TAG_LOGE(AAFwkLogTag::URIPERMMGR, "DeleteShareFile failed:%{public}d", ret);
     }
     return ret;
 }
@@ -1793,8 +1775,16 @@ ErrCode UriPermissionManagerStubImpl::RawDataToStringVec(const UriPermissionRawD
     }
     std::stringstream ss;
     ss.write(reinterpret_cast<const char *>(rawData.data), rawData.size);
+    if (!ss.good()) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "write rawData to stream failed, size:%{public}u", rawData.size);
+        return ERR_DEAD_OBJECT;
+    }
     uint32_t stringVecSize = 0;
     ss.read(reinterpret_cast<char *>(&stringVecSize), sizeof(stringVecSize));
+    if (!ss.good()) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "read stringVecSize failed");
+        return ERR_DEAD_OBJECT;
+    }
     if (stringVecSize == 0 || stringVecSize > MAX_URI_COUNT) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "uriVec empty or exceed maxSize %{public}d, stringVecSize: %{public}d",
             MAX_URI_COUNT, stringVecSize);
@@ -1804,13 +1794,21 @@ ErrCode UriPermissionManagerStubImpl::RawDataToStringVec(const UriPermissionRawD
     for (uint32_t i = 0; i < stringVecSize; ++i) {
         uint32_t strLen = 0;
         ss.read(reinterpret_cast<char *>(&strLen), sizeof(strLen));
-        if (strLen > ssLength - static_cast<uint32_t>(ss.tellg())) {
+        if (!ss.good()) {
+            TAG_LOGE(AAFwkTag::URIPERMMGR, "read strLen failed");
+            return ERR_DEAD_OBJECT;
+        }
+        if (ss.tellg() < 0 || strLen > ssLength - static_cast<uint32_t>(ss.tellg())) {
             TAG_LOGE(AAFwkTag::URIPERMMGR, "string length:%{public}u is invalid", strLen);
             return ERR_DEAD_OBJECT;
         }
         std::string str;
         str.resize(strLen);
         ss.read(&str[0], strLen);
+        if (!ss.good()) {
+            TAG_LOGE(AAFwkTag::URIPERMMGR, "read string content failed, strLen:%{public}u", strLen);
+            return ERR_DEAD_OBJECT;
+        }
         stringVec.emplace_back(str);
     }
     return ERR_OK;
@@ -1853,12 +1851,28 @@ ErrCode UriPermissionManagerStubImpl::Active(const UriPermissionRawData& policyR
 ErrCode UriPermissionManagerStubImpl::RawDataToPolicyInfo(const UriPermissionRawData& policyRawData,
     std::vector<PolicyInfo>& policy)
 {
+    if (policyRawData.data == nullptr) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "null policyRawData data");
+        return ERR_DEAD_OBJECT;
+    }
+    if (policyRawData.size == 0 || policyRawData.size > MAX_IPC_RAW_DATA_SIZE) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "policyRawData size invalid: %{public}u", policyRawData.size);
+        return ERR_DEAD_OBJECT;
+    }
     std::stringstream ss;
     ss.write(reinterpret_cast<const char *>(policyRawData.data), policyRawData.size);
+    if (!ss.good()) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "write policyRawData to stream failed, size:%{public}u", policyRawData.size);
+        return ERR_DEAD_OBJECT;
+    }
     ss.seekg(0, std::ios::beg);
     uint32_t ssLength = static_cast<uint32_t>(ss.str().length());
     uint32_t policyInfoSize = 0;
     ss.read(reinterpret_cast<char *>(&policyInfoSize), sizeof(policyInfoSize));
+    if (!ss.good()) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "read policyInfoSize failed");
+        return ERR_DEAD_OBJECT;
+    }
     if (policyInfoSize == 0 || policyInfoSize > MAX_URI_COUNT) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "policy empty or exceed maxSize %{public}d, policyInfoSize: %{public}d",
             MAX_URI_COUNT, policyInfoSize);
@@ -1867,14 +1881,26 @@ ErrCode UriPermissionManagerStubImpl::RawDataToPolicyInfo(const UriPermissionRaw
     for (uint32_t i = 0; i < policyInfoSize; ++i) {
         uint32_t pathLen = 0;
         ss.read(reinterpret_cast<char *>(&pathLen), sizeof(pathLen));
-        if (pathLen > ssLength - static_cast<uint32_t>(ss.tellg())) {
-            TAG_LOGE(AAFwkTag::URIPERMMGR, "path eln:%{public}u is invalid", pathLen);
+        if (!ss.good()) {
+            TAG_LOGE(AAFwkTag::URIPERMMGR, "read pathLen failed");
+            return ERR_DEAD_OBJECT;
+        }
+        if (ss.tellg() < 0 || pathLen > ssLength - static_cast<uint32_t>(ss.tellg())) {
+            TAG_LOGE(AAFwkTag::URIPERMMGR, "path len:%{public}u is invalid", pathLen);
             return INVALID_PARAMETERS_ERR;
         }
         PolicyInfo info;
         info.path.resize(pathLen);
         ss.read(info.path.data(), pathLen);
+        if (!ss.good()) {
+            TAG_LOGE(AAFwkTag::URIPERMMGR, "read path content failed, pathLen:%{public}u", pathLen);
+            return ERR_DEAD_OBJECT;
+        }
         ss.read(reinterpret_cast<char *>(&info.mode), sizeof(info.mode));
+        if (!ss.good()) {
+            TAG_LOGE(AAFwkTag::URIPERMMGR, "read policy mode failed");
+            return ERR_DEAD_OBJECT;
+        }
         policy.emplace_back(info);
     }
     return ERR_OK;

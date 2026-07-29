@@ -17,19 +17,18 @@
 #define MOCK_OHOS_ABILITY_RUNTIME_OS_ACCOUNT_MANAGER_WRAPPER_H
 
 #include "errors.h"
-#include "singleton.h"
 #include "oh_mock_utils.h"
 
 namespace OHOS {
 namespace AppExecFwk {
-class OsAccountManagerWrapper : public DelayedSingleton<OsAccountManagerWrapper> {
+class OsAccountManagerWrapper {
 public:
-    ErrCode GetOsAccountLocalIdFromUid(const int32_t uid, int32_t &id)
+    static ErrCode GetOsAccountLocalIdFromUid(const int32_t uid, int32_t &id)
     {
         return 0;
     }
 
-    OH_MOCK_METHOD_WITH_OUTPUT_1(ErrCode, isOsAccountExists, OsAccountManagerWrapper,
+    OH_MOCK_METHOD_WITH_DECORATOR_AND_OUTPUT_1(static, ErrCode, isOsAccountExists, OsAccountManagerWrapper,
         IsOsAccountExists, const int, bool& isOsAccountExists);
 };
 } // namespace AppExecFwk

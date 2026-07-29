@@ -88,7 +88,7 @@ AbilityScreenUnlockEventSubscriber::AbilityScreenUnlockEventSubscriber(
 void AbilityScreenUnlockEventSubscriber::OnReceiveEvent(const EventFwk::CommonEventData &data)
 {
     const AAFwk::Want &want = data.GetWant();
-    std::string action = want.GetAction();
+    const auto &action = want.GetActionRef();
     TAG_LOGD(AAFwkTag::ABILITYMGR, "The action: %{public}s.", action.c_str());
     if (action != EventFwk::CommonEventSupport::COMMON_EVENT_SCREEN_UNLOCKED) {
         return;
@@ -119,7 +119,7 @@ AbilityUserUnlockEventSubscriber::AbilityUserUnlockEventSubscriber(
 void AbilityUserUnlockEventSubscriber::OnReceiveEvent(const EventFwk::CommonEventData &data)
 {
     const AAFwk::Want &want = data.GetWant();
-    std::string action = want.GetAction();
+    const auto &action = want.GetActionRef();
     TAG_LOGD(AAFwkTag::ABILITYMGR, "The action: %{public}s.", action.c_str());
     if (action != EventFwk::CommonEventSupport::COMMON_EVENT_USER_UNLOCKED) {
         return;

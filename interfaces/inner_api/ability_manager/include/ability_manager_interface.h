@@ -2682,6 +2682,11 @@ public:
         return 0;
     }
 
+    virtual int32_t UnregisterSAInterceptor(sptr<IRemoteObject> interceptor)
+    {
+        return 0;
+    }
+
     virtual int32_t SetOnNewWantSkipScenarios(sptr<IRemoteObject> callerToken, int32_t scenarios)
     {
         return 0;
@@ -2895,6 +2900,12 @@ public:
 
     virtual int32_t ExecuteSkillDone(const sptr<IRemoteObject> &token, const std::string &requestCode,
         int32_t resultCode, const AppExecFwk::SkillExecuteResult &result)
+    {
+        return ERR_OK;
+    }
+
+    virtual int32_t NotifySkillFunctionInvoked(const sptr<IRemoteObject> &token,
+        const std::string &requestCode)
     {
         return ERR_OK;
     }

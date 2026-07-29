@@ -16,6 +16,7 @@
 #include "file_permission_manager.h"
 
 #include <dlfcn.h>
+#include <strings.h>
 
 #include "accesstoken_kit.h"
 #include "file_uri.h"
@@ -33,6 +34,12 @@ constexpr int32_t PERMISSION_GRANTED = 1;
 constexpr int32_t PERMISSION_DENIED = 2;
 constexpr const char* URI_CHECK_SO_NAME = "libams_broker_ext.z.so";
 constexpr const char* URI_CHECK_FUNC_NAME = "CheckCollaboratorUriPermission";
+
+bool StartsWithIgnoreCase(const std::string &path, const std::string &prefix)
+{
+    return path.size() >= prefix.size() &&
+        strncasecmp(path.c_str(), prefix.c_str(), prefix.size()) == 0;
+}
 }
 const std::string FILE_MANAGER_AUTHORITY = "docs";
 const std::string STORAGE_URI = "/storage";
@@ -93,7 +100,7 @@ DllWrapper& FilePermissionManager::GetDllWrapper()
 
 bool FilePermissionManager::CheckDocsUriPermission(TokenIdPermission &tokenPermission, const std::string &path)
 {
-    if (path.find(APPDATA_URI) == 0) {
+    if (StartsWithIgnoreCase(path, APPDATA_URI)) {
         return tokenPermission.VerifySandboxAccessPermission();
     }
 
@@ -109,7 +116,7 @@ bool FilePermissionManager::CheckDocsUriPermission(TokenIdPermission &tokenPermi
         }
     }
 
-    if (path.find(STORAGE_URI) == 0 && path.find(APPDATA_URI) != 0) {
+    if (path.find(STORAGE_URI) == 0) {
         return tokenPermission.VerifyFileAccessManagerPermission();
     }
     return false;

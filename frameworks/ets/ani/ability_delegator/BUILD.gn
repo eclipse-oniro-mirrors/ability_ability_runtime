@@ -79,6 +79,8 @@ ohos_shared_library("ability_delegator_registry_ani_kit") {
     "napi:ace_napi",
     "runtime_core:ani",
     "runtime_core:ani_helpers",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   innerapi_tags = [ "platformsdk" ]

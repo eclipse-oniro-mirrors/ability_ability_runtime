@@ -694,6 +694,13 @@ void AppRunningRecord::ScheduleJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &in
     }
 }
 
+void AppRunningRecord::ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
+{
+    if (appLifeCycleDeal_) {
+        appLifeCycleDeal_->ScheduleJsHandleMap(info);
+    }
+}
+
 void AppRunningRecord::ScheduleCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info)
 {
     if (appLifeCycleDeal_) {
@@ -2166,6 +2173,16 @@ int32_t AppRunningRecord::NotifyAppFault(const FaultData &faultData)
         return ERR_INVALID_VALUE;
     }
     return appLifeCycleDeal_->NotifyAppFault(faultData);
+}
+
+int32_t AppRunningRecord::PreTemplateProcessDeepFrozen()
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    if (!appLifeCycleDeal_) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null appLifeCycleDeal_");
+        return ERR_INVALID_VALUE;
+    }
+    return appLifeCycleDeal_->PreTemplateProcessDeepFrozen();
 }
 
 bool AppRunningRecord::IsAbilitiesBackground()

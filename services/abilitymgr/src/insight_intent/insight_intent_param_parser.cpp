@@ -15,6 +15,7 @@
 
 #include "insight_intent_param_parser.h"
 
+#include <algorithm>
 #include <cctype>
 #include <cerrno>
 #include <cstdlib>
@@ -74,12 +75,26 @@ std::string GetAbilityNameFromMatched(const ExtractInsightIntentGenericInfo &inf
 }
 
 // Extract executeMode from representative candidate variant.
-// Entry: first value from executeMode vector; Function: forced to UI_ABILITY_BACKGROUND.
+// Entry: prefer UI_ABILITY_BACKGROUND when supported, else first of executeMode vector;
+// Function: forced to UI_ABILITY_BACKGROUND.
 int32_t GetExecuteModeFromMatched(const ExtractInsightIntentGenericInfo &info)
 {
     if (info.currentType == InfoType::Entry) {
         const auto &entry = info.get<InsightIntentEntryInfo>();
         if (!entry.executeMode.empty()) {
+            if (entry.executeMode.size() == 1) {
+                return static_cast<int32_t>(entry.executeMode.front());
+            }
+            auto it = std::find(entry.executeMode.begin(), entry.executeMode.end(),
+                AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND);
+            if (it != entry.executeMode.end()) {
+                return static_cast<int32_t>(AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND);
+            }
+            it = std::find(entry.executeMode.begin(), entry.executeMode.end(),
+                AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY);
+            if (it != entry.executeMode.end()) {
+                return static_cast<int32_t>(AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY);
+            }
             return static_cast<int32_t>(entry.executeMode.front());
         }
     }

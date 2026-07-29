@@ -15,20 +15,10 @@
 
 #include "os_account_manager_wrapper.h"
 
-#include <memory>
 #include "mock_my_status.h"
 
 namespace OHOS {
 namespace AppExecFwk {
-std::shared_ptr<OsAccountManagerWrapper> OsAccountManagerWrapper::GetInstance()
-{
-    static std::shared_ptr<OsAccountManagerWrapper> instance = std::make_shared<OsAccountManagerWrapper>();
-    if (MyStatus::GetInstance().instanceStatus_) {
-        return instance;
-    }
-    return nullptr;
-}
-
 ErrCode OsAccountManagerWrapper::GetOsAccountLocalIdFromProcess(int& id)
 {
     id = 0;

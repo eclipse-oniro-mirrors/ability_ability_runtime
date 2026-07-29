@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -20,10 +20,12 @@
 #include <vector>
 #include "uri.h"
 
-#include "media_permission_helper.h"
-
 namespace OHOS {
 namespace AAFwk {
+// Thin forwarder: media_library usage now lives in the dynamically-loaded
+// plugin (libupms_media_ext.z.so, IMediaPermFeature). This class keeps the
+// historical MediaPermissionManager API used by stub_impl, delegating each
+// call through DynamicFeatureManager (design ADR-1/3, task-02).
 class MediaPermissionManager {
 public:
     static MediaPermissionManager &GetInstance();
@@ -37,9 +39,6 @@ public:
 
 private:
     MediaPermissionManager();
-    Media::MediaPermissionHelper *GetMediaPermissionHelper();
-    Media::PhotoPermissionType FlagToFileOpenMode(uint32_t flag);
-    Media::HideSensitiveType ConvertHideSensitiveType(int32_t hideSensitiveType);
 };
 
 }  // OHOS

@@ -103,7 +103,7 @@ void AbilityManagerServiceAccountTest::SetUpTestCase()
     GTEST_LOG_(INFO) << "AbilityManagerServiceAccountTest SetUpTestCase called";
     OHOS::DelayedSingleton<SaMgrClient>::GetInstance()->RegisterSystemAbility(
         OHOS::BUNDLE_MGR_SERVICE_SYS_ABILITY_ID, new BundleMgrService());
-    DelayedSingleton<OsAccountManagerWrapper>::GetInstance()->
+    OsAccountManagerWrapper::
         CreateOsAccount("testAccount", newUserId);
     abilityMs_ = OHOS::DelayedSingleton<AbilityManagerService>::GetInstance();
     abilityMs_->OnStart();
@@ -117,7 +117,7 @@ void AbilityManagerServiceAccountTest::TearDownTestCase()
     abilityMs_->OnStop();
     OHOS::DelayedSingleton<SaMgrClient>::DestroyInstance();
     OHOS::DelayedSingleton<AbilityManagerService>::DestroyInstance();
-    DelayedSingleton<OsAccountManagerWrapper>::GetInstance()->RemoveOsAccount(newUserId);
+    OsAccountManagerWrapper::RemoveOsAccount(newUserId);
 }
 
 void AbilityManagerServiceAccountTest::SetUp()

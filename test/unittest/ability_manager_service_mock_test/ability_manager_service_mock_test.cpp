@@ -396,7 +396,6 @@ HWTEST_F(AbilityManagerServiceMockTest, ExecuteIntentCommon_0200, TestSize.Level
     ASSERT_NE(abilityMs, nullptr);
 
     auto param = std::make_shared<AppExecFwk::InsightIntentExecuteParam>();
-    param->isServiceMatch_ = true;
     param->bundleName_ = "";
     param->moduleName_ = "test.entry";
     param->abilityName_ = "MainAbility";
@@ -419,7 +418,6 @@ HWTEST_F(AbilityManagerServiceMockTest, ExecuteIntentCommon_0300, TestSize.Level
     ASSERT_NE(abilityMs, nullptr);
 
     auto param = std::make_shared<AppExecFwk::InsightIntentExecuteParam>();
-    param->isServiceMatch_ = true;
     param->bundleName_ = "test.bundleName";
     param->moduleName_ = "test.entry";
     param->abilityName_ = "ability1";
@@ -438,7 +436,7 @@ HWTEST_F(AbilityManagerServiceMockTest, ExecuteIntentCommon_0300, TestSize.Level
 
     param->executeMode_ = AppExecFwk::ExecuteMode::UI_EXTENSION_ABILITY;
     ret = abilityMs->ExecuteIntentCommon(nullptr, param, "", options);
-    EXPECT_EQ(ret, ERR_INVALID_OPERATION);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
 
     param->executeMode_ = AppExecFwk::ExecuteMode::SERVICE_EXTENSION_ABILITY;
     ret = abilityMs->ExecuteIntentCommon(nullptr, param, "", options);

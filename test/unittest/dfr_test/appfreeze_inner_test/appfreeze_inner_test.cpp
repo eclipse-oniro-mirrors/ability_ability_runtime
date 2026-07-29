@@ -21,6 +21,7 @@
 #undef private
 
 #include "xcollie/watchdog.h"
+#include "dfx_jsnapi.h"
 #include "parameter.h"
 #include "parameters.h"
 #include "ohos_application.h"
@@ -49,9 +50,7 @@ void AppfreezeInnerTest::SetUpTestCase(void)
 {}
 
 void AppfreezeInnerTest::TearDownTestCase(void)
-{
-    AppfreezeInner::DestroyInstance();
-}
+{}
 
 void AppfreezeInnerTest::SetUp(void)
 {
@@ -713,10 +712,10 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInnerTest_GetApplicationInfo_002, TestSize
 }
 
 /**
- * @tc.number: AppfreezeInnerTest
- * @tc.name: add test
- * @tc.desc: TransformHicollieFaultNumber Test.
- */
+* @tc.number: AppfreezeInnerTest
+* @tc.name: add test
+* @tc.desc: TransformHicollieFaultNumber Test.
+*/
 HWTEST_F(AppfreezeInnerTest, AppfreezeInnerTest_TransformHicollieFaultNumber_001, TestSize.Level1)
 {
     const int businessInputBlockType = 7;
@@ -734,6 +733,245 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner_ReportLifeCycleAsAppfreeze_001, Test
     EXPECT_TRUE(appfreezeInner->GetReportLifeCycleAsAppfreeze());
     appfreezeInner->SetReportLifeCycleAsAppfreeze(false);
     EXPECT_TRUE(!appfreezeInner->GetReportLifeCycleAsAppfreeze());
+}
+
+/**
+ * @tc.number: AppfreezeInner_LogFormatGC_001
+ * @tc.name: LogFormatGC
+ * @tc.desc: Verify that function LogFormatGC.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_LogFormatGC_001, TestSize.Level1)
+{
+    panda::GCStatistic gCStatistic;
+    gCStatistic.count = 10;
+    gCStatistic.maxPause = 100;
+    gCStatistic.minPause = 10;
+    gCStatistic.averagePause = 50;
+    gCStatistic.lastStartTime = 1000;
+    gCStatistic.lastEndTime = 1100;
+    gCStatistic.lastType = "test_type";
+    std::string ret = appfreezeInner->LogFormatGC(gCStatistic);
+    EXPECT_TRUE(!ret.empty());
+    EXPECT_NE(ret.find("count:10"), std::string::npos);
+    EXPECT_NE(ret.find("maxPause:100"), std::string::npos);
+    EXPECT_NE(ret.find("minPause:10"), std::string::npos);
+    EXPECT_NE(ret.find("averagePause:50"), std::string::npos);
+    EXPECT_NE(ret.find("lastStartTime:1000"), std::string::npos);
+    EXPECT_NE(ret.find("lastEndTime:1100"), std::string::npos);
+    EXPECT_NE(ret.find("lastType:test_type"), std::string::npos);
+}
+
+/**
+ * @tc.number: AppfreezeInner_ParseIOValue_001
+ * @tc.name: ParseIOValue
+ * @tc.desc: Verify that function ParseIOValue.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_ParseIOValue_001, TestSize.Level1)
+{
+    appfreezeInner->GetProcessIOStr();
+    std::string ioStr = "read_bytes: 1234\nwrite_bytes: 5678";
+    std::string ret = appfreezeInner->ParseIOValue(ioStr);
+    EXPECT_TRUE(!ret.empty());
+    EXPECT_NE(ret.find("read_bytes"), std::string::npos);
+    EXPECT_NE(ret.find("1234"), std::string::npos);
+    EXPECT_NE(ret.find("write_bytes"), std::string::npos);
+    EXPECT_NE(ret.find("5678"), std::string::npos);
+}
+
+/**
+ * @tc.number: AppfreezeInner_ParseIOValue_002
+ * @tc.name: ParseIOValue with empty string
+ * @tc.desc: Verify that function ParseIOValue with empty string.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_ParseIOValue_002, TestSize.Level1)
+{
+    std::string ioStr = "";
+    std::string ret = appfreezeInner->ParseIOValue(ioStr);
+    EXPECT_TRUE(ret.empty());
+}
+
+/**
+ * @tc.number: AppfreezeInner_ParseIOValue_003
+ * @tc.name: ParseIOValue with invalid format
+ * @tc.desc: Verify that function ParseIOValue with invalid format.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_ParseIOValue_003, TestSize.Level1)
+{
+    std::string ioStr = "invalid_line_without_colon\nanother_invalid_line";
+    std::string ret = appfreezeInner->ParseIOValue(ioStr);
+    EXPECT_TRUE(ret.empty());
+}
+
+/**
+ * @tc.number: AppfreezeInner_ParseIOValue_004
+ * @tc.name: ParseIOValue with empty lines
+ * @tc.desc: Verify that function ParseIOValue with empty lines.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_ParseIOValue_004, TestSize.Level1)
+{
+    std::string ioStr = "\n\nread_bytes: 1234\n\nwrite_bytes: 5678\n";
+    std::string ret = appfreezeInner->ParseIOValue(ioStr);
+    EXPECT_TRUE(!ret.empty());
+}
+
+/**
+ * @tc.number: AppfreezeInner_GetFreezeCurrentTime_001
+ * @tc.name: GetFreezeCurrentTime
+ * @tc.desc: Verify that function GetFreezeCurrentTime.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetFreezeCurrentTime_001, TestSize.Level1)
+{
+    int64_t time1 = appfreezeInner->GetFreezeCurrentTime();
+    EXPECT_TRUE(time1 > 0);
+    usleep(1000);
+    int64_t time2 = appfreezeInner->GetFreezeCurrentTime();
+    EXPECT_TRUE(time2 >= time1);
+    EXPECT_TRUE(time2 - time1 < 10);
+}
+
+/**
+ * @tc.number: AppfreezeInner_IsFreezeTimeInGCPeriod_001
+ * @tc.name: IsFreezeTimeInGCPeriod
+ * @tc.desc: Verify that function IsFreezeTimeInGCPeriod with valid period.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_IsFreezeTimeInGCPeriod_001, TestSize.Level1)
+{
+    uint64_t halfTime = 1000;
+    uint64_t blockTime = 2000;
+    uint64_t lastStartTime = 900;
+    uint64_t lastEndTime = 100;
+    bool ret = appfreezeInner->IsFreezeTimeInGCPeriod(halfTime, blockTime, lastStartTime, lastEndTime);
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.number: AppfreezeInner_IsFreezeTimeInGCPeriod_002
+ * @tc.name: IsFreezeTimeInGCPeriod with no overlap
+ * @tc.desc: Verify that function IsFreezeTimeInGCPeriod
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_IsFreezeTimeInGCPeriod_002, TestSize.Level1)
+{
+    uint64_t halfTime = 1000;
+    uint64_t blockTime = 2000;
+    uint64_t lastStartTime = 3000;
+    uint64_t lastEndTime = 4000;
+    bool ret = appfreezeInner->IsFreezeTimeInGCPeriod(halfTime, blockTime, lastStartTime, lastEndTime);
+    EXPECT_FALSE(ret);
+    ret = appfreezeInner->IsFreezeTimeInGCPeriod(0, 0, 0, 0);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.number: AppfreezeInner_IsFreezeTimeInGCPeriod_003
+ * @tc.name: IsFreezeTimeInGCPeriod with invalid time range
+ * @tc.desc: Verify that function IsFreezeTimeInGCPeriod.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_IsFreezeTimeInGCPeriod_003, TestSize.Level1)
+{
+    uint64_t halfTime = 2000;
+    uint64_t blockTime = 1000;
+    uint64_t lastStartTime = 900;
+    uint64_t lastEndTime = 2100;
+    bool ret = appfreezeInner->IsFreezeTimeInGCPeriod(halfTime, blockTime, lastStartTime, lastEndTime);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.number: AppfreezeInner_IsFreezeTimeInGCPeriod_004
+ * @tc.name: IsFreezeTimeInGCPeriod with invalid GC time range
+ * @tc.desc: Verify that function IsFreezeTimeInGCPeriod with invalid GC time range.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_IsFreezeTimeInGCPeriod_004, TestSize.Level1)
+{
+    uint64_t halfTime = 1000;
+    uint64_t blockTime = 2000;
+    uint64_t lastStartTime = 2100;
+    uint64_t lastEndTime = 900;
+    bool ret = appfreezeInner->IsFreezeTimeInGCPeriod(halfTime, blockTime, lastStartTime, lastEndTime);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.number: AppfreezeInner_CheckBlockInGC_001
+ * @tc.name: CheckBlockInGC with THREAD_BLOCK_6S
+ * @tc.desc: Verify that function CheckBlockInGC with THREAD_BLOCK_6S.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_CheckBlockInGC_001, TestSize.Level1)
+{
+    uint64_t lastStartTime = 1000;
+    uint64_t lastEndTime = 2000;
+    bool ret = appfreezeInner->CheckBlockInGC(AppFreezeType::THREAD_BLOCK_3S, lastStartTime, lastEndTime);
+    EXPECT_FALSE(ret);
+
+    // Simulate: THREAD_BLOCK_3S happened at (now - 100), THREAD_BLOCK_6S happens at now
+    // GC period is [now - 200, now + 100], which contains [now - 100, now]
+    uint64_t now = static_cast<uint64_t>(appfreezeInner->GetFreezeCurrentTime());
+    appfreezeInner->threadBlock3STime_ = now - 100;
+    lastEndTime = now - 400;
+    lastStartTime = now - 200;
+    ret = appfreezeInner->CheckBlockInGC(AppFreezeType::THREAD_BLOCK_6S, lastStartTime, lastEndTime);
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.number: AppfreezeInner_CheckBlockInGC_003
+ * @tc.name: CheckBlockInGC with LIFECYCLE_TIMEOUT
+ * @tc.desc: Verify that function CheckBlockInGC with LIFECYCLE_TIMEOUT.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_CheckBlockInGC_003, TestSize.Level1)
+{
+    uint64_t lastStartTime = 1000;
+    uint64_t lastEndTime = 2000;
+    bool ret = appfreezeInner->CheckBlockInGC(AppFreezeType::LIFECYCLE_HALF_TIMEOUT, lastStartTime, lastEndTime);
+    EXPECT_FALSE(ret);
+
+    uint64_t now = static_cast<uint64_t>(appfreezeInner->GetFreezeCurrentTime());
+    appfreezeInner->lifeCycleHalfTime_ = now - 100;
+    lastEndTime = now - 400;
+    lastStartTime = now - 200;
+    ret = appfreezeInner->CheckBlockInGC(AppFreezeType::LIFECYCLE_TIMEOUT, lastStartTime, lastEndTime);
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.number: AppfreezeInner_CheckBlockInGC_005
+ * @tc.name: CheckBlockInGC with APP_INPUT_BLOCK
+ * @tc.desc: Verify that function CheckBlockInGC with APP_INPUT_BLOCK.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_CheckBlockInGC_005, TestSize.Level1)
+{
+    uint64_t now = static_cast<uint64_t>(appfreezeInner->GetFreezeCurrentTime());
+    // GC period should contain the input block period [now - 8000, now]
+    uint64_t lastStartTime = now - 10000;  // GC starts before input block
+    uint64_t lastEndTime = now - 20000;     // GC ends after input block
+    bool ret = appfreezeInner->CheckBlockInGC(AppFreezeType::APP_INPUT_BLOCK, lastStartTime, lastEndTime);
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.number: AppfreezeInner_CheckBlockInGC_006
+ * @tc.name: CheckBlockInGC with unknown fault name
+ * @tc.desc: Verify that function CheckBlockInGC with unknown fault name.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_CheckBlockInGC_006, TestSize.Level1)
+{
+    uint64_t lastStartTime = 1000;
+    uint64_t lastEndTime = 2000;
+    bool ret = appfreezeInner->CheckBlockInGC("UNKNOWN_FAULT", lastStartTime, lastEndTime);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.number: AppfreezeInner_CheckGCType_001
+ * @tc.name: CheckGCType
+ * @tc.desc: Verify that function CheckGCType.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_CheckGCType_001, TestSize.Level1)
+{
+    bool ret = appfreezeInner->CheckGCType("Shared GC");
+    EXPECT_FALSE(ret);
+    ret = appfreezeInner->CheckGCType("OTHER");
+    EXPECT_TRUE(ret);
 }
 
 /**

@@ -34,6 +34,8 @@ gen_js_obj("context_abc") {
 }
 
 ohos_shared_library("context_napi") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "context_module.cpp" ]
 
   cflags = [

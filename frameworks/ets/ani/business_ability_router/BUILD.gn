@@ -64,6 +64,8 @@ ohos_shared_library("businessabilityrouter_ani") {
     "napi:ace_napi",
     "runtime_core:ani",
     "samgr:samgr_proxy",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   cflags_cc = []

@@ -22,7 +22,7 @@
 
 namespace OHOS {
 namespace AAFwk {
-int KioskInterceptor::DoProcess(AbilityInterceptorParam param)
+int KioskInterceptor::DoProcess(const AbilityInterceptorParam &param)
 {
 #ifdef SUPPORT_SCREEN
     if (ImplicitStartProcessor::IsImplicitStartAction(param.want)) {
@@ -30,13 +30,9 @@ int KioskInterceptor::DoProcess(AbilityInterceptorParam param)
         return ERR_OK;
     }
 #endif
-
     auto& kioskManager = KioskManager::GetInstance();
-    if (!kioskManager.IsInKioskMode()) {
-        return ERR_OK;
-    }
-    auto bundleName = param.want.GetBundle();
-    if (!kioskManager.IsInWhiteList(bundleName)) {
+    const auto& bundleName = param.want.GetBundleNameRef();
+    if (kioskManager.ShouldIntercept(bundleName)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "intercept ability start, bundle %{public}s not in kiosk whitelist",
             bundleName.c_str());
         return ERR_KIOSK_MODE_NOT_IN_WHITELIST;

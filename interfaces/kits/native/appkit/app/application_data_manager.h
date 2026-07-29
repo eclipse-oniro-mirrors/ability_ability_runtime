@@ -34,6 +34,7 @@ struct RegisterResourceParams {
     int thresholdFd { INT_MAX };
     int thresholdRAT { INT_MAX };  // rss_ark_ts
     int thresholdRNH { INT_MAX };  // rss_native_heap
+    int thresholdKH { INT_MAX };  // kmp_heap
 };
 typedef void (*EtsErrorCallback)(const AppExecFwk::ErrorObject &errorObj);
 class ApplicationDataManager {
@@ -76,8 +77,10 @@ private:
     static std::string GetFuncNameFromError(napi_env env, napi_value error);
     DISALLOW_COPY_AND_MOVE(ApplicationDataManager);
     bool WriteSandBoxXattr(RegisterResourceParams params);
-    void NotifyAppTelemetry(AppTelemetryLeakType atLeakType);
+    void NotifyAppTelemetry(AppTelemetryLeakType atLeakType, const std::string &gpuHookSizeStr);
     bool NotifyLeakObject(const LeakObject &leakObj);
+    GpuHookSize ParseGpuHookSize(const std::string &gpuHookSizeStr);
+    void LogGpuHookSize(const GpuHookSize &gpuHookSize);
     std::shared_ptr<IErrorObserver> errorObserver_;
     std::atomic_bool isUncatchable_;
     LeakObserverFunction leakObserver_ = nullptr;

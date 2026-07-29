@@ -132,28 +132,47 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_SetStartOptionsWindow
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowMode_001
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowMode
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowModeValue_001
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowModeValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowMode_001, TestSize.Level2)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowModeValue_001, TestSize.Level2)
 {
     AbilityRuntime_WindowMode windowMode;
-    AbilityRuntime_ErrorCode errorCode = OH_AbilityRuntime_GetStartOptionsWindowMode(nullptr, windowMode);
+    AbilityRuntime_ErrorCode errorCode = OH_AbilityRuntime_GetStartOptionsWindowModeValue(nullptr, &windowMode);
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID, errorCode);
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowMode_002
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowMode
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowModeValue_002
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowModeValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowMode_002, TestSize.Level2)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowModeValue_002, TestSize.Level2)
 {
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
     AbilityRuntime_ErrorCode result = OH_AbilityRuntime_SetStartOptionsWindowMode(startOptions,
         ABILITY_RUNTIME_WINDOW_MODE_FULL_SCREEN);
     // Assuming SetStartOptionsWindowMode returns ABILITY_RUNTIME_OK on success
+    EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
+
+    AbilityRuntime_WindowMode windowMode;
+    AbilityRuntime_ErrorCode errorCode = OH_AbilityRuntime_GetStartOptionsWindowModeValue(startOptions, &windowMode);
+    EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, errorCode);
+    EXPECT_EQ(ABILITY_RUNTIME_WINDOW_MODE_FULL_SCREEN, windowMode);
+    OH_AbilityRuntime_DestroyStartOptions(&startOptions);
+}
+
+/**
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowModeReference_001
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowMode with C++ reference output
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowModeReference_001, TestSize.Level2)
+{
+    AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
+    AbilityRuntime_ErrorCode result = OH_AbilityRuntime_SetStartOptionsWindowMode(startOptions,
+        ABILITY_RUNTIME_WINDOW_MODE_FULL_SCREEN);
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
 
     AbilityRuntime_WindowMode windowMode;
@@ -219,29 +238,29 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_SetStartOptionsDispla
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsDisplayId_001
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsDisplayId
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsDisplayIdValue_001
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsDisplayIdValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsDisplayId_001, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsDisplayIdValue_001, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = nullptr;
     int32_t displayId;
 
     // Act
-    AbilityRuntime_ErrorCode result = OH_AbilityRuntime_GetStartOptionsDisplayId(startOptions, displayId);
+    AbilityRuntime_ErrorCode result = OH_AbilityRuntime_GetStartOptionsDisplayIdValue(startOptions, &displayId);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID, result);
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsDisplayId_002
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsDisplayId
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsDisplayIdValue_002
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsDisplayIdValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsDisplayId_002, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsDisplayIdValue_002, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
@@ -252,7 +271,7 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsDispla
     int32_t displayId;
 
     // Act
-    result = OH_AbilityRuntime_GetStartOptionsDisplayId(startOptions, displayId);
+    result = OH_AbilityRuntime_GetStartOptionsDisplayIdValue(startOptions, &displayId);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
@@ -261,11 +280,11 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsDispla
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsDisplayId_003
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsDisplayId
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsDisplayIdValue_003
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsDisplayIdValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsDisplayId_003, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsDisplayIdValue_003, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
@@ -276,7 +295,7 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsDispla
     int32_t displayId;
 
     // Act
-    result = OH_AbilityRuntime_GetStartOptionsDisplayId(startOptions, displayId);
+    result = OH_AbilityRuntime_GetStartOptionsDisplayIdValue(startOptions, &displayId);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
@@ -337,29 +356,29 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_SetStartOptionsWithAn
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsWithAnimation_001
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsWithAnimation
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsWithAnimationValue_001
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsWithAnimationValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWithAnimation_001, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWithAnimationValue_001, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = nullptr;
     bool withAnimation;
 
     // Act
-    AbilityRuntime_ErrorCode result = OH_AbilityRuntime_GetStartOptionsWithAnimation(startOptions, withAnimation);
+    AbilityRuntime_ErrorCode result = OH_AbilityRuntime_GetStartOptionsWithAnimationValue(startOptions, &withAnimation);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID, result);
 }
  
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsWithAnimation_002
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsWithAnimation
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsWithAnimationValue_002
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsWithAnimationValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWithAnimation_002, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWithAnimationValue_002, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
@@ -370,7 +389,7 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWithAn
     bool withAnimation;
 
     // Act
-    result = OH_AbilityRuntime_GetStartOptionsWithAnimation(startOptions, withAnimation);
+    result = OH_AbilityRuntime_GetStartOptionsWithAnimationValue(startOptions, &withAnimation);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
@@ -379,11 +398,11 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWithAn
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsWithAnimation_003
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsWithAnimation
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsWithAnimationValue_003
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsWithAnimationValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWithAnimation_003, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWithAnimationValue_003, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
@@ -394,7 +413,7 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWithAn
     bool withAnimation;
 
     // Act
-    result = OH_AbilityRuntime_GetStartOptionsWithAnimation(startOptions, withAnimation);
+    result = OH_AbilityRuntime_GetStartOptionsWithAnimationValue(startOptions, &withAnimation);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
@@ -458,29 +477,29 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_SetStartOptionsWindow
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowLeft_001
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowLeft
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowLeftValue_001
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowLeftValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowLeft_001, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowLeftValue_001, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = nullptr;
     int32_t windowLeft;
 
     // Act
-    AbilityRuntime_ErrorCode result = OH_AbilityRuntime_GetStartOptionsWindowLeft(startOptions, windowLeft);
+    AbilityRuntime_ErrorCode result = OH_AbilityRuntime_GetStartOptionsWindowLeftValue(startOptions, &windowLeft);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID, result);
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowLeft_002
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowLeft
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowLeftValue_002
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowLeftValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowLeft_002, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowLeftValue_002, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
@@ -491,7 +510,7 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindow
     int32_t windowLeft;
 
     // Act
-    result = OH_AbilityRuntime_GetStartOptionsWindowLeft(startOptions, windowLeft);
+    result = OH_AbilityRuntime_GetStartOptionsWindowLeftValue(startOptions, &windowLeft);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
@@ -500,11 +519,11 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindow
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowLeft_003
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowLeft
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowLeftValue_003
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowLeftValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowLeft_003, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowLeftValue_003, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
@@ -515,7 +534,7 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindow
     int32_t windowLeft;
 
     // Act
-    result = OH_AbilityRuntime_GetStartOptionsWindowLeft(startOptions, windowLeft);
+    result = OH_AbilityRuntime_GetStartOptionsWindowLeftValue(startOptions, &windowLeft);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
@@ -579,29 +598,29 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_SetStartOptionsWindow
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowTop_001
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowTop
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowTopValue_001
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowTopValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowTop_001, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowTopValue_001, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = nullptr;
     int32_t windowTop;
 
     // Act
-    AbilityRuntime_ErrorCode result = OH_AbilityRuntime_GetStartOptionsWindowTop(startOptions, windowTop);
+    AbilityRuntime_ErrorCode result = OH_AbilityRuntime_GetStartOptionsWindowTopValue(startOptions, &windowTop);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID, result);
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowTop_002
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowTop
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowTopValue_002
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowTopValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowTop_002, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowTopValue_002, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
@@ -612,7 +631,7 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindow
     int32_t windowTop;
 
     // Act
-    result = OH_AbilityRuntime_GetStartOptionsWindowTop(startOptions, windowTop);
+    result = OH_AbilityRuntime_GetStartOptionsWindowTopValue(startOptions, &windowTop);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
@@ -621,11 +640,11 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindow
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowTop_003
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowTop
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowTopValue_003
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowTopValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowTop_003, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowTopValue_003, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
@@ -636,7 +655,7 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindow
     int32_t windowTop;
 
     // Act
-    result = OH_AbilityRuntime_GetStartOptionsWindowTop(startOptions, windowTop);
+    result = OH_AbilityRuntime_GetStartOptionsWindowTopValue(startOptions, &windowTop);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
@@ -700,29 +719,29 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_SetStartOptionsWindow
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowHeight_001
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowHeight
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowHeightValue_001
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowHeightValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowHeight_001, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowHeightValue_001, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = nullptr;
     int32_t windowHeight;
 
     // Act
-    AbilityRuntime_ErrorCode result = OH_AbilityRuntime_GetStartOptionsWindowHeight(startOptions, windowHeight);
+    AbilityRuntime_ErrorCode result = OH_AbilityRuntime_GetStartOptionsWindowHeightValue(startOptions, &windowHeight);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID, result);
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowHeight_002
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowHeight
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowHeightValue_002
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowHeightValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowHeight_002, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowHeightValue_002, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
@@ -733,7 +752,7 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindow
     int32_t windowHeight;
 
     // Act
-    result = OH_AbilityRuntime_GetStartOptionsWindowHeight(startOptions, windowHeight);
+    result = OH_AbilityRuntime_GetStartOptionsWindowHeightValue(startOptions, &windowHeight);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
@@ -742,11 +761,11 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindow
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowHeight_003
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowHeight
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowHeightValue_003
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowHeightValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowHeight_003, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowHeightValue_003, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
@@ -757,7 +776,7 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindow
     int32_t windowHeight;
 
     // Act
-    result = OH_AbilityRuntime_GetStartOptionsWindowHeight(startOptions, windowHeight);
+    result = OH_AbilityRuntime_GetStartOptionsWindowHeightValue(startOptions, &windowHeight);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
@@ -821,29 +840,29 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_SetStartOptionsWindow
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowWidth_001
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowWidth
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowWidthValue_001
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowWidthValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowWidth_001, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowWidthValue_001, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = nullptr;
     int32_t windowWidth;
 
     // Act
-    AbilityRuntime_ErrorCode result = OH_AbilityRuntime_GetStartOptionsWindowWidth(startOptions, windowWidth);
+    AbilityRuntime_ErrorCode result = OH_AbilityRuntime_GetStartOptionsWindowWidthValue(startOptions, &windowWidth);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID, result);
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowWidth_002
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowWidth
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowWidthValue_002
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowWidthValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowWidth_002, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowWidthValue_002, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
@@ -854,7 +873,7 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindow
     int32_t windowWidth;
 
     // Act
-    result = OH_AbilityRuntime_GetStartOptionsWindowWidth(startOptions, windowWidth);
+    result = OH_AbilityRuntime_GetStartOptionsWindowWidthValue(startOptions, &windowWidth);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
@@ -863,11 +882,11 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindow
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowWidth_003
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowWidth
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsWindowWidthValue_003
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsWindowWidthValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowWidth_003, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindowWidthValue_003, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
@@ -878,7 +897,7 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsWindow
     int32_t windowWidth;
 
     // Act
-    result = OH_AbilityRuntime_GetStartOptionsWindowWidth(startOptions, windowWidth);
+    result = OH_AbilityRuntime_GetStartOptionsWindowWidthValue(startOptions, &windowWidth);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
@@ -914,29 +933,30 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_SetStartOptionsStartV
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsStartVisibility_001
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsStartVisibility
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsStartVisibilityValue_001
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsStartVisibilityValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsStartVisibility_001, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsStartVisibilityValue_001, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = nullptr;
     AbilityRuntime_StartVisibility startVisibility;
 
     // Act
-    AbilityRuntime_ErrorCode result = OH_AbilityRuntime_GetStartOptionsStartVisibility(startOptions, startVisibility);
+    AbilityRuntime_ErrorCode result =
+        OH_AbilityRuntime_GetStartOptionsStartVisibilityValue(startOptions, &startVisibility);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID, result);
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsStartVisibility_002
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsStartVisibility
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsStartVisibilityValue_002
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsStartVisibilityValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsStartVisibility_002, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsStartVisibilityValue_002, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
@@ -948,29 +968,30 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsStartV
     AbilityRuntime_StartVisibility startVisibility;
 
     // Act
-    result = OH_AbilityRuntime_GetStartOptionsStartVisibility(startOptions, startVisibility);
+    result = OH_AbilityRuntime_GetStartOptionsStartVisibilityValue(startOptions, &startVisibility);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
     EXPECT_EQ(AbilityRuntime_StartVisibility::ABILITY_RUNTIME_SHOW_UPON_START, startVisibility);
     OH_AbilityRuntime_DestroyStartOptions(&startOptions);
 
-    result = OH_AbilityRuntime_GetStartOptionsStartVisibility(startOptions, startVisibility);
+    result = OH_AbilityRuntime_GetStartOptionsStartVisibilityValue(startOptions, &startVisibility);
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID, result);
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsStartVisibility_003
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsStartVisibility
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsStartVisibilityValue_003
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsStartVisibilityValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsStartVisibility_003, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsStartVisibilityValue_003, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
     AbilityRuntime_StartVisibility startVisibility;
 
-    AbilityRuntime_ErrorCode result = OH_AbilityRuntime_GetStartOptionsStartVisibility(startOptions, startVisibility);
+    AbilityRuntime_ErrorCode result =
+        OH_AbilityRuntime_GetStartOptionsStartVisibilityValue(startOptions, &startVisibility);
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID, result);
 }
 
@@ -982,8 +1003,8 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsStartV
 HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_SetStartOptionsMinWindowWidth_001, TestSize.Level1)
 {
     AbilityRuntime_StartOptions* startOptions = nullptr;
-    int32_t minMinWindowWidth = 100;
-    EXPECT_EQ(OH_AbilityRuntime_SetStartOptionsMinWindowWidth(startOptions, minMinWindowWidth),
+    int32_t minWindowWidth = 100;
+    EXPECT_EQ(OH_AbilityRuntime_SetStartOptionsMinWindowWidth(startOptions, minWindowWidth),
         ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
 }
 
@@ -995,9 +1016,9 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_SetStartOptionsMinWin
 HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_SetStartOptionsMinWindowWidth_002, TestSize.Level1)
 {
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
-    int32_t minMinWindowWidth = 100;
-    EXPECT_EQ(OH_AbilityRuntime_SetStartOptionsMinWindowWidth(startOptions, minMinWindowWidth),
-        startOptions->SetStartOptionsMinWindowWidth(minMinWindowWidth));
+    int32_t minWindowWidth = 100;
+    EXPECT_EQ(OH_AbilityRuntime_SetStartOptionsMinWindowWidth(startOptions, minWindowWidth),
+        startOptions->SetStartOptionsMinWindowWidth(minWindowWidth));
     OH_AbilityRuntime_DestroyStartOptions(&startOptions);
 }
 
@@ -1009,9 +1030,9 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_SetStartOptionsMinWin
 HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_SetStartOptionsMinWindowWidth_003, TestSize.Level1)
 {
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
-    int32_t minMinWindowWidth = -100;
-    EXPECT_EQ(OH_AbilityRuntime_SetStartOptionsMinWindowWidth(startOptions, minMinWindowWidth),
-        startOptions->SetStartOptionsMinWindowWidth(minMinWindowWidth));
+    int32_t minWindowWidth = -100;
+    EXPECT_EQ(OH_AbilityRuntime_SetStartOptionsMinWindowWidth(startOptions, minWindowWidth),
+        startOptions->SetStartOptionsMinWindowWidth(minWindowWidth));
     OH_AbilityRuntime_DestroyStartOptions(&startOptions);
 }
 
@@ -1023,36 +1044,37 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_SetStartOptionsMinWin
 HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_SetStartOptionsMinWindowWidth_004, TestSize.Level1)
 {
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
-    int32_t minMinWindowWidth = 0;
-    EXPECT_EQ(OH_AbilityRuntime_SetStartOptionsMinWindowWidth(startOptions, minMinWindowWidth),
-        startOptions->SetStartOptionsMinWindowWidth(minMinWindowWidth));
+    int32_t minWindowWidth = 0;
+    EXPECT_EQ(OH_AbilityRuntime_SetStartOptionsMinWindowWidth(startOptions, minWindowWidth),
+        startOptions->SetStartOptionsMinWindowWidth(minWindowWidth));
     OH_AbilityRuntime_DestroyStartOptions(&startOptions);
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsMinWindowWidth_001
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsMinWindowWidth
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsMinWindowWidthValue_001
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsMinWindowWidthValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMinWindowWidth_001, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMinWindowWidthValue_001, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = nullptr;
-    int32_t minMinWindowWidth;
+    int32_t minWindowWidth;
 
     // Act
-    AbilityRuntime_ErrorCode result = OH_AbilityRuntime_GetStartOptionsMinWindowWidth(startOptions, minMinWindowWidth);
+    AbilityRuntime_ErrorCode result =
+        OH_AbilityRuntime_GetStartOptionsMinWindowWidthValue(startOptions, &minWindowWidth);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID, result);
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsMinWindowWidth_002
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsMinWindowWidth
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsMinWindowWidthValue_002
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsMinWindowWidthValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMinWindowWidth_002, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMinWindowWidthValue_002, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
@@ -1060,23 +1082,23 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMinWin
     // Assuming OH_AbilityRuntime_SetStartOptionsWindowMode returns success
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
 
-    int32_t minMinWindowWidth;
+    int32_t minWindowWidth;
 
     // Act
-    result = OH_AbilityRuntime_GetStartOptionsMinWindowWidth(startOptions, minMinWindowWidth);
+    result = OH_AbilityRuntime_GetStartOptionsMinWindowWidthValue(startOptions, &minWindowWidth);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
-    EXPECT_EQ(100, minMinWindowWidth);
+    EXPECT_EQ(100, minWindowWidth);
     OH_AbilityRuntime_DestroyStartOptions(&startOptions);
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsMinWindowWidth_003
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsMinWindowWidth
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsMinWindowWidthValue_003
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsMinWindowWidthValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMinWindowWidth_003, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMinWindowWidthValue_003, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
@@ -1084,14 +1106,14 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMinWin
     // Assuming OH_AbilityRuntime_SetStartOptionsWindowMode returns success
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
 
-    int32_t minMinWindowWidth;
+    int32_t minWindowWidth;
 
     // Act
-    result = OH_AbilityRuntime_GetStartOptionsMinWindowWidth(startOptions, minMinWindowWidth);
+    result = OH_AbilityRuntime_GetStartOptionsMinWindowWidthValue(startOptions, &minWindowWidth);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
-    EXPECT_EQ(-100, minMinWindowWidth);
+    EXPECT_EQ(-100, minWindowWidth);
     OH_AbilityRuntime_DestroyStartOptions(&startOptions);
 }
 
@@ -1151,29 +1173,30 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_SetStartOptionsMaxWin
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsMaxWindowWidth_001
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsMaxWindowWidth
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsMaxWindowWidthValue_001
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsMaxWindowWidthValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMaxWindowWidth_001, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMaxWindowWidthValue_001, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = nullptr;
     int32_t maxWindowWidth;
 
     // Act
-    AbilityRuntime_ErrorCode result = OH_AbilityRuntime_GetStartOptionsMaxWindowWidth(startOptions, maxWindowWidth);
+    AbilityRuntime_ErrorCode result =
+        OH_AbilityRuntime_GetStartOptionsMaxWindowWidthValue(startOptions, &maxWindowWidth);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID, result);
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsMaxWindowWidth_002
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsMaxWindowWidth
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsMaxWindowWidthValue_002
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsMaxWindowWidthValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMaxWindowWidth_002, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMaxWindowWidthValue_002, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
@@ -1184,7 +1207,7 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMaxWin
     int32_t maxWindowWidth;
 
     // Act
-    result = OH_AbilityRuntime_GetStartOptionsMaxWindowWidth(startOptions, maxWindowWidth);
+    result = OH_AbilityRuntime_GetStartOptionsMaxWindowWidthValue(startOptions, &maxWindowWidth);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
@@ -1193,11 +1216,11 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMaxWin
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsMaxWindowWidth_003
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsMaxWindowWidth
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsMaxWindowWidthValue_003
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsMaxWindowWidthValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMaxWindowWidth_003, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMaxWindowWidthValue_003, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
@@ -1208,7 +1231,7 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMaxWin
     int32_t maxWindowWidth;
 
     // Act
-    result = OH_AbilityRuntime_GetStartOptionsMaxWindowWidth(startOptions, maxWindowWidth);
+    result = OH_AbilityRuntime_GetStartOptionsMaxWindowWidthValue(startOptions, &maxWindowWidth);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
@@ -1272,29 +1295,30 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_SetStartOptionsMaxWin
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsMaxWindowHeight_001
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsMaxWindowHeight
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsMaxWindowHeightValue_001
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsMaxWindowHeightValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMaxWindowHeight_001, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMaxWindowHeightValue_001, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = nullptr;
     int32_t maxWindowHeight;
 
     // Act
-    AbilityRuntime_ErrorCode result = OH_AbilityRuntime_GetStartOptionsMaxWindowHeight(startOptions, maxWindowHeight);
+    AbilityRuntime_ErrorCode result =
+        OH_AbilityRuntime_GetStartOptionsMaxWindowHeightValue(startOptions, &maxWindowHeight);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID, result);
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsMaxWindowHeight_002
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsMaxWindowHeight
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsMaxWindowHeightValue_002
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsMaxWindowHeightValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMaxWindowHeight_002, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMaxWindowHeightValue_002, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
@@ -1305,7 +1329,7 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMaxWin
     int32_t maxWindowHeight;
 
     // Act
-    result = OH_AbilityRuntime_GetStartOptionsMaxWindowHeight(startOptions, maxWindowHeight);
+    result = OH_AbilityRuntime_GetStartOptionsMaxWindowHeightValue(startOptions, &maxWindowHeight);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
@@ -1314,11 +1338,11 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMaxWin
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsMaxWindowHeight_003
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsMaxWindowHeight
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsMaxWindowHeightValue_003
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsMaxWindowHeightValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMaxWindowHeight_003, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMaxWindowHeightValue_003, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
@@ -1329,7 +1353,7 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMaxWin
     int32_t maxWindowHeight;
 
     // Act
-    result = OH_AbilityRuntime_GetStartOptionsMaxWindowHeight(startOptions, maxWindowHeight);
+    result = OH_AbilityRuntime_GetStartOptionsMaxWindowHeightValue(startOptions, &maxWindowHeight);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
@@ -1393,29 +1417,30 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_SetStartOptionsMinWin
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsMinWindowHeight_001
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsMinWindowHeight
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsMinWindowHeightValue_001
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsMinWindowHeightValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMinWindowHeight_001, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMinWindowHeightValue_001, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = nullptr;
     int32_t minWindowHeight;
 
     // Act
-    AbilityRuntime_ErrorCode result = OH_AbilityRuntime_GetStartOptionsMinWindowHeight(startOptions, minWindowHeight);
+    AbilityRuntime_ErrorCode result =
+        OH_AbilityRuntime_GetStartOptionsMinWindowHeightValue(startOptions, &minWindowHeight);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID, result);
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsMinWindowHeight_002
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsMinWindowHeight
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsMinWindowHeightValue_002
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsMinWindowHeightValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMinWindowHeight_002, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMinWindowHeightValue_002, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
@@ -1426,7 +1451,7 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMinWin
     int32_t minWindowHeight;
 
     // Act
-    result = OH_AbilityRuntime_GetStartOptionsMinWindowHeight(startOptions, minWindowHeight);
+    result = OH_AbilityRuntime_GetStartOptionsMinWindowHeightValue(startOptions, &minWindowHeight);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
@@ -1435,11 +1460,11 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMinWin
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsMinWindowHeight_003
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsMinWindowHeight
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsMinWindowHeightValue_003
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsMinWindowHeightValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMinWindowHeight_003, TestSize.Level1)
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMinWindowHeightValue_003, TestSize.Level1)
 {
     // Arrange
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
@@ -1450,7 +1475,7 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsMinWin
     int32_t minWindowHeight;
 
     // Act
-    result = OH_AbilityRuntime_GetStartOptionsMinWindowHeight(startOptions, minWindowHeight);
+    result = OH_AbilityRuntime_GetStartOptionsMinWindowHeightValue(startOptions, &minWindowHeight);
 
     // Assert
     EXPECT_EQ(ABILITY_RUNTIME_ERROR_CODE_NO_ERROR, result);
@@ -1653,27 +1678,27 @@ HWTEST_F(AbilityRuntimeStartOptionsTest,
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColor_001
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColor
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColorValue_001
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColorValue
  * @tc.type: FUNC
  */
 HWTEST_F(AbilityRuntimeStartOptionsTest,
-    OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColor_001, TestSize.Level1)
+    OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColorValue_001, TestSize.Level1)
 {
     AbilityRuntime_StartOptions *startOptions = nullptr;
     char *startWindowBackgroundColor;
     size_t size;
-    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColor(
-        startOptions, &startWindowBackgroundColor, size), ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColorValue(
+        startOptions, &startWindowBackgroundColor, &size), ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColor_002
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColor
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColorValue_002
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColorValue
  * @tc.type: FUNC
  */
 HWTEST_F(AbilityRuntimeStartOptionsTest,
-    OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColor_002, TestSize.Level1)
+    OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColorValue_002, TestSize.Level1)
 {
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
     EXPECT_NE(startOptions, nullptr);
@@ -1685,8 +1710,8 @@ HWTEST_F(AbilityRuntimeStartOptionsTest,
 
     char *startWindowBackgroundColor = nullptr;
     size_t size = 0;
-    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColor(startOptions,
-        &startWindowBackgroundColor, size), ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColorValue(startOptions,
+        &startWindowBackgroundColor, &size), ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
     EXPECT_EQ(strcmp(startWindowBackgroundColor, originalStartWindowBackgroundColor), 0);
     EXPECT_EQ(size, strlen(originalStartWindowBackgroundColor));
     free(startWindowBackgroundColor);
@@ -1694,12 +1719,12 @@ HWTEST_F(AbilityRuntimeStartOptionsTest,
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColor_003
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColor
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColorValue_003
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColorValue
  * @tc.type: FUNC
  */
 HWTEST_F(AbilityRuntimeStartOptionsTest,
-    OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColor_003, TestSize.Level1)
+    OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColorValue_003, TestSize.Level1)
 {
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
     EXPECT_NE(startOptions, nullptr);
@@ -1711,8 +1736,8 @@ HWTEST_F(AbilityRuntimeStartOptionsTest,
 
     char *startWindowBackgroundColor = nullptr;
     size_t size = 0;
-    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColor(
-        startOptions, &startWindowBackgroundColor, size), ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColorValue(
+        startOptions, &startWindowBackgroundColor, &size), ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
     EXPECT_EQ(size, 0);
     OH_AbilityRuntime_DestroyStartOptions(&startOptions);
 }
@@ -1807,24 +1832,26 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_SetStartOptionsSuppor
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsSupportedWindowModes_001
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsSupportedWindowModes
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsSupportedWindowModesValue_001
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsSupportedWindowModesValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsSupportedWindowModes_001, TestSize.Level1)
+HWTEST_F(
+    AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsSupportedWindowModesValue_001, TestSize.Level1)
 {
     AbilityRuntime_SupportedWindowMode *supportedWindowModes = nullptr;
     size_t size = 0;
-    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsSupportedWindowModes(nullptr, &supportedWindowModes, size),
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsSupportedWindowModesValue(nullptr, &supportedWindowModes, &size),
         ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsSupportedWindowModes_002
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsSupportedWindowModes
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsSupportedWindowModesValue_002
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsSupportedWindowModesValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsSupportedWindowModes_002, TestSize.Level1)
+HWTEST_F(
+    AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsSupportedWindowModesValue_002, TestSize.Level1)
 {
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
     EXPECT_NE(startOptions, nullptr);
@@ -1839,7 +1866,8 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsSuppor
     // Act
     AbilityRuntime_SupportedWindowMode *newSupportWindowModes = nullptr;
     size_t newSize = 0;
-    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsSupportedWindowModes(startOptions, &newSupportWindowModes, newSize),
+    EXPECT_EQ(
+        OH_AbilityRuntime_GetStartOptionsSupportedWindowModesValue(startOptions, &newSupportWindowModes, &newSize),
         ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
     EXPECT_NE(newSupportWindowModes, nullptr);
     EXPECT_EQ(newSize, 1);
@@ -1848,11 +1876,12 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsSuppor
 }
 
 /**
- * @tc.name: OH_AbilityRuntime_GetStartOptionsSupportedWindowModes_003
- * @tc.desc: OH_AbilityRuntime_GetStartOptionsSupportedWindowModes
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsSupportedWindowModesValue_003
+ * @tc.desc: OH_AbilityRuntime_GetStartOptionsSupportedWindowModesValue
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsSupportedWindowModes_003, TestSize.Level1)
+HWTEST_F(
+    AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsSupportedWindowModesValue_003, TestSize.Level1)
 {
     AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
     EXPECT_NE(startOptions, nullptr);
@@ -1860,10 +1889,130 @@ HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsSuppor
     // Act
     AbilityRuntime_SupportedWindowMode *newSupportWindowModes = nullptr;
     size_t newSize = 0;
-    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsSupportedWindowModes(startOptions, &newSupportWindowModes, newSize),
+    EXPECT_EQ(
+        OH_AbilityRuntime_GetStartOptionsSupportedWindowModesValue(startOptions, &newSupportWindowModes, &newSize),
         ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
     EXPECT_EQ(newSupportWindowModes, nullptr);
     EXPECT_EQ(newSize, 0);
+    OH_AbilityRuntime_DestroyStartOptions(&startOptions);
+}
+
+/**
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsNullOutput_001
+ * @tc.desc: OH_AbilityRuntime_GetStartOptions with null output pointers
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsNullOutput_001, TestSize.Level1)
+{
+    AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
+    ASSERT_NE(startOptions, nullptr);
+
+    char *startWindowBackgroundColor = nullptr;
+    size_t size = 0;
+    AbilityRuntime_SupportedWindowMode *supportedWindowModes = nullptr;
+
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsWindowModeValue(startOptions, nullptr),
+        ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsDisplayIdValue(startOptions, nullptr),
+        ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsWithAnimationValue(startOptions, nullptr),
+        ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsWindowLeftValue(startOptions, nullptr),
+        ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsWindowTopValue(startOptions, nullptr),
+        ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsWindowHeightValue(startOptions, nullptr),
+        ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsWindowWidthValue(startOptions, nullptr),
+        ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsStartVisibilityValue(startOptions, nullptr),
+        ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColorValue(startOptions, nullptr, &size),
+        ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColorValue(
+        startOptions, &startWindowBackgroundColor, nullptr), ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsSupportedWindowModesValue(startOptions, nullptr, &size),
+        ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsSupportedWindowModesValue(startOptions, &supportedWindowModes, nullptr),
+        ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsMinWindowWidthValue(startOptions, nullptr),
+        ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsMaxWindowWidthValue(startOptions, nullptr),
+        ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsMinWindowHeightValue(startOptions, nullptr),
+        ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsMaxWindowHeightValue(startOptions, nullptr),
+        ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+
+    OH_AbilityRuntime_DestroyStartOptions(&startOptions);
+}
+
+/**
+ * @tc.name: OH_AbilityRuntime_GetStartOptionsNeverSet_001
+ * @tc.desc: Value getters keep existing never-set semantics.
+ *           Out-params are seeded with a non-zero sentinel to detect an unwritten result.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityRuntimeStartOptionsTest, OH_AbilityRuntime_GetStartOptionsNeverSet_001, TestSize.Level1)
+{
+    AbilityRuntime_StartOptions *startOptions = OH_AbilityRuntime_CreateStartOptions();
+    ASSERT_NE(startOptions, nullptr);
+
+    const int32_t SENTINEL = 0x7F;
+    int32_t windowLeft = SENTINEL;
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsWindowLeftValue(startOptions, &windowLeft),
+        ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
+    EXPECT_EQ(0, windowLeft);
+
+    int32_t windowTop = SENTINEL;
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsWindowTopValue(startOptions, &windowTop),
+        ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
+    EXPECT_EQ(0, windowTop);
+
+    int32_t windowHeight = SENTINEL;
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsWindowHeightValue(startOptions, &windowHeight),
+        ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
+    EXPECT_EQ(0, windowHeight);
+
+    int32_t windowWidth = SENTINEL;
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsWindowWidthValue(startOptions, &windowWidth),
+        ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
+    EXPECT_EQ(0, windowWidth);
+
+    int32_t minWindowWidth = SENTINEL;
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsMinWindowWidthValue(startOptions, &minWindowWidth),
+        ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
+    EXPECT_EQ(0, minWindowWidth);
+
+    int32_t maxWindowWidth = SENTINEL;
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsMaxWindowWidthValue(startOptions, &maxWindowWidth),
+        ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
+    EXPECT_EQ(0, maxWindowWidth);
+
+    int32_t minWindowHeight = SENTINEL;
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsMinWindowHeightValue(startOptions, &minWindowHeight),
+        ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
+    EXPECT_EQ(0, minWindowHeight);
+
+    int32_t maxWindowHeight = SENTINEL;
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsMaxWindowHeightValue(startOptions, &maxWindowHeight),
+        ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
+    EXPECT_EQ(0, maxWindowHeight);
+
+    char *startWindowBackgroundColor = nullptr;
+    size_t colorSize = 0x7F;
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsStartWindowBackgroundColorValue(
+        startOptions, &startWindowBackgroundColor, &colorSize), ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+    EXPECT_EQ(nullptr, startWindowBackgroundColor);
+    EXPECT_EQ(static_cast<size_t>(0), colorSize);
+
+    AbilityRuntime_SupportedWindowMode *supportedWindowModes = nullptr;
+    size_t modesSize = 0x7F;
+    EXPECT_EQ(OH_AbilityRuntime_GetStartOptionsSupportedWindowModesValue(
+        startOptions, &supportedWindowModes, &modesSize), ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
+    EXPECT_EQ(nullptr, supportedWindowModes);
+    EXPECT_EQ(static_cast<size_t>(0), modesSize);
+
     OH_AbilityRuntime_DestroyStartOptions(&startOptions);
 }
 }  // namespace AppExecFwk

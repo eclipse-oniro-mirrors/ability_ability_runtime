@@ -1813,6 +1813,9 @@ public:
     virtual int32_t ExecuteSkillDone(const sptr<IRemoteObject> &token, const std::string &requestCode,
         int32_t resultCode, const AppExecFwk::SkillExecuteResult &result) override;
 
+    virtual int32_t NotifySkillFunctionInvoked(const sptr<IRemoteObject> &token,
+        const std::string &requestCode) override;
+
     /**
      * Set keep-alive flag for application under a specific user.
      * @param bundleName Bundle name.
@@ -2043,6 +2046,8 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual ErrCode RegisterSAInterceptor(sptr<AbilityRuntime::ISAInterceptor> interceptor) override;
+
+    virtual ErrCode UnregisterSAInterceptor(sptr<IRemoteObject> interceptor) override;
 
     /**
      * SuspendExtensionAbility, suspend session with service ability.

@@ -96,6 +96,13 @@ public:
         const AAFwk::StartOptions &startOptions, int requestCode, RuntimeTask &&task) override;
     ErrCode StartAbilityForResult(const AAFwk::Want &want, const AAFwk::StartOptions &startOptions,
         int requestCode, RuntimeTask &&task) override;
+    ErrCode StartAbilityForResult(const AAFwk::Want &want, RuntimeTask &&task) override;
+    ErrCode StartAbilityForResultWithAccount(
+        const AAFwk::Want &want, int accountId, RuntimeTask &&task) override;
+    ErrCode StartAbilityForResult(const AAFwk::Want &want, const AAFwk::StartOptions &startOptions,
+        RuntimeTask &&task) override;
+    ErrCode StartAbilityForResultWithAccount(const AAFwk::Want &want, int accountId,
+        const AAFwk::StartOptions &startOptions, RuntimeTask &&task) override;
     ErrCode StartUIServiceExtensionAbility(const AAFwk::Want &want, int32_t accountId = -1) override;
     ErrCode StartServiceExtensionAbility(const Want &want, int32_t accountId = -1) override;
     ErrCode StopServiceExtensionAbility(const Want& want, int32_t accountId = -1) override;
@@ -262,12 +269,16 @@ public:
 
     ErrCode OpenAtomicService(AAFwk::Want& want, const AAFwk::StartOptions &options, int requestCode,
         RuntimeTask &&task) override;
+    ErrCode OpenAtomicService(AAFwk::Want& want, const AAFwk::StartOptions &options,
+        RuntimeTask &&task) override;
 
     void RegisterAbilityLifecycleObserver(const std::shared_ptr<AppExecFwk::ILifecycleObserver> &observer) override;
 
     void UnregisterAbilityLifecycleObserver(const std::shared_ptr<AppExecFwk::ILifecycleObserver> &observer) override;
 
     void InsertResultCallbackTask(int requestCode, RuntimeTask&& task) override;
+
+    int32_t RegisterResultCallback(RuntimeTask&& task) override;
 
     void RemoveResultCallbackTask(int requestCode) override;
 
@@ -446,6 +457,9 @@ private:
     std::shared_ptr<AppExecFwk::Configuration> abilityConfiguration_ = nullptr;
     bool isHook_ = false;
     bool hookOff_ = false;
+    static int32_t curRequestCode_;
+    static std::mutex requestCodeMutex_;
+    int32_t GenerateRequestCode();
 
     static void RequestDialogResultJSThreadWorker(uv_work_t* work, int status);
     void OnAbilityResultInner(int requestCode, int resultCode, const AAFwk::Want &resultData);

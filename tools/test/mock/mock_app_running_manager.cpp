@@ -287,7 +287,7 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::GetAppRunningRecordByRender
     return nullptr;
 }
 
-std::shared_ptr<RenderRecord> AppRunningManager::OnRemoteRenderDied(const wptr<IRemoteObject> &remote)
+std::shared_ptr<RenderRecord> AppRunningManager::OnRenderProcessExitedByPid(pid_t pid)
 {
     return nullptr;
 }
@@ -371,7 +371,7 @@ bool AppRunningManager::IsChildProcessReachLimit(uint32_t accessTokenId, bool mu
     return true;
 }
 
-std::shared_ptr<ChildProcessRecord> AppRunningManager::OnChildProcessRemoteDied(const wptr<IRemoteObject> &remote)
+std::shared_ptr<ChildProcessRecord> AppRunningManager::OnChildProcessExitedByPid(pid_t pid)
 {
     return nullptr;
 }
@@ -472,6 +472,11 @@ int32_t AppRunningManager::CheckIsKiaProcess(pid_t pid, bool &isKia)
 bool AppRunningManager::CheckAppRunningRecordIsLast(const std::shared_ptr<AppRunningRecord> &appRecord)
 {
     return true;
+}
+
+int32_t AppRunningManager::DumpJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
+{
+    return ERR_OK;
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

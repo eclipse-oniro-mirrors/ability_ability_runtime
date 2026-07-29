@@ -190,11 +190,26 @@ int32_t UriPermissionManagerClient::GrantUriPermission(const std::vector<std::st
         TAG_LOGE(AAFwkTag::URIPERMMGR, "null uriPermMgr");
         return INNER_ERR;
     }
+    bool isWriteUriByRawData = CheckUseRawData();
+    ErrCode res = INNER_ERR;
     int32_t funcResult = INNER_ERR;
-    auto ret = uriPermMgr->GrantUriPermission(uriVec, flag, targetTokenId, oriCallerTokenId,
-        funcResult);
-    if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::URIPERMMGR, "IPC failed, error:%{public}d", ret);
+    if (isWriteUriByRawData) {
+        UriPermissionRawData rawData;
+        StringVecToRawData(uriVec, rawData);
+        if (rawData.size > MAX_IPC_RAW_DATA_SIZE) {
+            TAG_LOGE(AAFwkTag::URIPERMMGR, "rawData is too large");
+            return INNER_ERR;
+        }
+        res = uriPermMgr->GrantUriPermission(rawData, flag, targetTokenId, oriCallerTokenId, funcResult);
+        if (res != ERR_OK) {
+            TAG_LOGE(AAFwkTag::URIPERMMGR, "IPC failed, error:%{public}d", res);
+            return INNER_ERR;
+        }
+        return funcResult;
+    }
+    res = uriPermMgr->GrantUriPermission(uriVec, flag, targetTokenId, oriCallerTokenId, funcResult);
+    if (res != ERR_OK) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "IPC failed, error:%{public}d", res);
         return INNER_ERR;
     }
     return funcResult;
@@ -467,11 +482,27 @@ int32_t UriPermissionManagerClient::ClearPermissionTokenByMap(uint32_t tokenId)
 
 bool UriPermissionManagerClient::RawDataToBoolVec(const UriPermissionRawData& rawData, std::vector<bool>& boolVec)
 {
+    if (rawData.data == nullptr) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "null data");
+        return false;
+    }
+    if (rawData.size == 0 || rawData.size > MAX_IPC_RAW_DATA_SIZE) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "size invalid: %{public}u", rawData.size);
+        return false;
+    }
     std::stringstream ss;
     ss.write(reinterpret_cast<const char *>(rawData.data), rawData.size);
+    if (!ss.good()) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "write rawData to stream failed, size:%{public}u", rawData.size);
+        return false;
+    }
     ss.seekg(0, std::ios::beg);
     uint32_t boolCount = 0;
     ss.read(reinterpret_cast<char*>(&boolCount), sizeof(boolCount));
+    if (!ss.good()) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "read boolCount failed");
+        return false;
+    }
     if (boolCount != boolVec.size()) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "vector size not match");
         return false;
@@ -484,6 +515,10 @@ bool UriPermissionManagerClient::RawDataToBoolVec(const UriPermissionRawData& ra
     for (uint32_t i = 0; i < boolCount; ++i) {
         char resChar;
         ss.read(reinterpret_cast<char *>(&resChar), sizeof(resChar));
+        if (!ss.good()) {
+            TAG_LOGE(AAFwkTag::URIPERMMGR, "read bool char failed, index:%{public}u", i);
+            return false;
+        }
         boolVec.at(i) = (resChar != 0);
     }
     return true;

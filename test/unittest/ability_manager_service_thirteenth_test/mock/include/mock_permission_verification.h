@@ -50,7 +50,7 @@ public:
 
     bool IsShellCallByTokenId(uint32_t callerTokenId) const;
 
-    bool CheckSpecificSystemAbilityAccessPermission() const;
+    bool CheckSpecificSystemAbilityAccessPermission(const std::string &processName) const;
 
     bool VerifyRunningInfoPerm() const;
 

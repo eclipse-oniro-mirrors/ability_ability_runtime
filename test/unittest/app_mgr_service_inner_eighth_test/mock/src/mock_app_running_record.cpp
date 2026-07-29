@@ -803,6 +803,11 @@ int32_t AppRunningRecord::NotifyAppFault(const FaultData &faultData)
     return 0;
 }
 
+int32_t AppRunningRecord::PreTemplateProcessDeepFrozen()
+{
+    return 0;
+}
+
 bool AppRunningRecord::IsAbilitiesBackground()
 {
     return false;
@@ -1437,6 +1442,10 @@ bool AppRunningRecord::HasAgentExtensionAbility()
 }
 
 void AppRunningRecord::GetAllAbilityInfos(std::vector<AppExecFwk::AbilityStateData> &infos)
+{
+}
+
+void AppRunningRecord::ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
 {
 }
 }  // namespace AppExecFwk

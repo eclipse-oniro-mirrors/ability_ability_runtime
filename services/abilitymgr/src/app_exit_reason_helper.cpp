@@ -47,7 +47,7 @@ int32_t AppExitReasonHelper::RecordAppWithReason(int32_t pid, int32_t uid, const
             TAG_LOGE(AAFwkTag::ABILITYMGR, "GetNameAndIndexForUid failed, ret: %{public}d", ret);
             return ret;
         }
-        int32_t getOsAccountRet = DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->
+        int32_t getOsAccountRet = AppExecFwk::OsAccountManagerWrapper::
             GetOsAccountLocalIdFromUid(uid, userId);
         if (getOsAccountRet != ERR_OK) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "get GetOsAccountLocalIdFromUid failed. ret: %{public}d", getOsAccountRet);
@@ -80,7 +80,8 @@ int32_t AppExitReasonHelper::RecordAppWithReasonInner(const ExitReasonCompabilit
     int32_t extensionResultCode = RecordProcessExtensionExitReason(
         processInfo.pid_, bundleName, exitReason, processInfo, false);
     if (extensionResultCode != ERR_OK) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "not record extension reason: %{public}d", extensionResultCode);
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "record extension reason failed. bundleName: %{public}s, ret: %{public}d",
+            bundleName.c_str(), extensionResultCode);
     }
 
     int32_t ret = DelayedSingleton<AppScheduler>::GetInstance()->NotifyAppMgrRecordExitReasonCompability(
@@ -143,8 +144,12 @@ int32_t AppExitReasonHelper::RecordAppExitReason(const ExitReason &exitReason)
     int32_t pid = exitReason.reason != Reason::REASON_CPP_CRASH ? IPCSkeleton::GetCallingPid() : NO_PID;
     AppExecFwk::RunningProcessInfo processInfo;
     int32_t userId = -1;
-    int32_t getOsAccountRet = DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->
+    int32_t getOsAccountRet = AppExecFwk::OsAccountManagerWrapper::
         GetOsAccountLocalIdFromUid(uid, userId);
+    if (getOsAccountRet != ERR_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "get GetOsAccountLocalIdFromUid failed. ret: %{public}d", getOsAccountRet);
+        return getOsAccountRet;
+    }
     GetRunningProcessInfo(pid, userId, bundleName, processInfo);
     int32_t resultCode = RecordProcessExtensionExitReason(pid, bundleName, exitReason, processInfo, false);
     if (resultCode != ERR_OK) {
@@ -163,10 +168,6 @@ int32_t AppExitReasonHelper::RecordAppExitReason(const ExitReason &exitReason)
     if (abilityList.empty()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "abilityLists empty");
         return ERR_GET_ACTIVE_ABILITY_LIST_EMPTY;
-    }
-    if (getOsAccountRet != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "get GetOsAccountLocalIdFromUid failed. ret: %{public}d", getOsAccountRet);
-        return ERR_INVALID_VALUE;
     }
     TAG_LOGD(AAFwkTag::ABILITYMGR,
         "userId: %{public}d, bundleName: %{public}s, appIndex: %{public}d", userId, bundleName.c_str(), appIndex);
@@ -195,7 +196,7 @@ int32_t AppExitReasonHelper::RecordProcessExitReasonForTimeout(const AppExecFwk:
     }
 
     int32_t targetUserId;
-    int32_t getOsAccountRet = DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->
+    int32_t getOsAccountRet = AppExecFwk::OsAccountManagerWrapper::
         GetOsAccountLocalIdFromUid(uid, targetUserId);
     if (getOsAccountRet != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "get GetOsAccountLocalIdFromUid failed. ret: %{public}d", getOsAccountRet);
@@ -249,7 +250,7 @@ int32_t AppExitReasonHelper::RecordAppExitReason(const std::string &bundleName, 
     const ExitReason &exitReason)
 {
     int32_t userId;
-    int32_t getOsAccountRet = DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->
+    int32_t getOsAccountRet = AppExecFwk::OsAccountManagerWrapper::
         GetOsAccountLocalIdFromUid(uid, userId);
     if (getOsAccountRet != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "get GetOsAccountLocalIdFromUid failed. ret: %{public}d", getOsAccountRet);
@@ -287,7 +288,7 @@ int32_t AppExitReasonHelper::RecordProcessExitReason(const int32_t pid, const st
     }
 
     int32_t targetUserId;
-    int32_t getOsAccountRet = DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->
+    int32_t getOsAccountRet = AppExecFwk::OsAccountManagerWrapper::
         GetOsAccountLocalIdFromUid(uid, targetUserId);
     if (getOsAccountRet != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "get GetOsAccountLocalIdFromUid failed. ret: %{public}d", getOsAccountRet);
@@ -364,7 +365,7 @@ int32_t AppExitReasonHelper::AddAppExitReason(const std::string &bundleName, int
     const ExitReasonCompability &exitReason)
 {
     int32_t userId = -1;
-    int32_t getOsAccountRet = DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->
+    int32_t getOsAccountRet = AppExecFwk::OsAccountManagerWrapper::
         GetOsAccountLocalIdFromUid(uid, userId);
     if (getOsAccountRet != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "get GetOsAccountLocalIdFromUid failed. ret: %{public}d", getOsAccountRet);
@@ -425,7 +426,7 @@ void AppExitReasonHelper::GetActiveAbilityList(int32_t uid, std::vector<std::str
     const int32_t pid)
 {
     int32_t targetUserId;
-    int32_t getOsAccountRet = DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->
+    int32_t getOsAccountRet = AppExecFwk::OsAccountManagerWrapper::
         GetOsAccountLocalIdFromUid(uid, targetUserId);
     if (getOsAccountRet != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "get GetOsAccountLocalIdFromUid failed. ret: %{public}d", getOsAccountRet);
@@ -456,7 +457,7 @@ void AppExitReasonHelper::GetActiveAbilityListFromUIAbilityManager(int32_t uid, 
 {
     CHECK_POINTER(subManagersHelper_);
     int32_t targetUserId;
-    int32_t getOsAccountRet = DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->
+    int32_t getOsAccountRet = AppExecFwk::OsAccountManagerWrapper::
         GetOsAccountLocalIdFromUid(uid, targetUserId);
     if (getOsAccountRet != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "get GetOsAccountLocalIdFromUid failed. ret: %{public}d", getOsAccountRet);

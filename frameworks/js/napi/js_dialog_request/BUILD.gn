@@ -19,6 +19,8 @@ config("dialog_request_external_config") {
 }
 
 ohos_shared_library("dialogrequest_napi") {
+  branch_protector_ret = "pac_ret"
+
   sources = [
     "js_dialog_request.cpp",
     "js_dialog_request_callback.cpp",

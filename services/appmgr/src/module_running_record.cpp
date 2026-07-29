@@ -28,6 +28,9 @@ namespace OHOS {
 namespace AppExecFwk {
 namespace {
 const std::string ABILITY_OWNER_USERID = "AbilityMS_Owner_UserId";
+constexpr int32_t BUNDLE_INFO_FLAG_WITH_APP_HAP =
+    static_cast<int32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION) |
+    static_cast<int32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_HAP_MODULE);
 }
 ModuleRunningRecord::ModuleRunningRecord(
     const std::shared_ptr<ApplicationInfo> &info, const std::shared_ptr<AMSEventHandler> &eventHandler)
@@ -384,12 +387,10 @@ void ModuleRunningRecord::GetHapModuleInfo(HapModuleInfo &info)
     TAG_LOGD(AAFwkTag::APPMGR, "userId: %{public}d, bundleName: %{public}s, appIndex: %{public}d", userId,
         appInfo_->bundleName.c_str(), appIndex_);
     int32_t bundleMgrResult;
-    auto flag = static_cast<int32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION) |
-            static_cast<int32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_HAP_MODULE);
     if (AbilityRuntime::GlobalConstant::IsAppCloneIndex(appIndex_) ||
         AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(appIndex_)) {
         bundleMgrResult = IN_PROCESS_CALL(bundleMgrHelper->GetCloneBundleInfo(appInfo_->bundleName,
-            flag, appIndex_, bundleInfo, userId));
+            BUNDLE_INFO_FLAG_WITH_APP_HAP, appIndex_, bundleInfo, userId));
     } else {
         bundleMgrResult = IN_PROCESS_CALL(bundleMgrHelper->GetSandboxBundleInfo(appInfo_->bundleName,
             appIndex_, userId, bundleInfo));

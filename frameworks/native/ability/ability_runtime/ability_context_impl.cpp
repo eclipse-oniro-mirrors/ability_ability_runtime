@@ -73,6 +73,8 @@ constexpr const char* IS_WINDOWMODE_FOLLOWHOST = "ohos.uec.params.isWindowModeFo
 constexpr const char* USE_GLOBAL_UICONTENT = "ohos.uec.params.useGlobalUIContent";
 constexpr const int32_t ERR_NOT_SUPPORTED = -2;
 const std::string JSON_KEY_ERR_MSG = "errMsg";
+int32_t AbilityContextImpl::curRequestCode_ = 0;
+std::mutex AbilityContextImpl::requestCodeMutex_;
 
 struct RequestResult {
     int32_t resultCode {0};
@@ -331,6 +333,36 @@ ErrCode AbilityContextImpl::StartAbilityForResultWithAccount(
         }
     }
     return err;
+}
+
+int32_t AbilityContextImpl::GenerateRequestCode()
+{
+    std::lock_guard lock(requestCodeMutex_);
+    curRequestCode_ = (curRequestCode_ == INT_MAX) ? 0 : (curRequestCode_ + 1);
+    return curRequestCode_;
+}
+
+ErrCode AbilityContextImpl::StartAbilityForResult(const AAFwk::Want& want, RuntimeTask&& task)
+{
+    return StartAbilityForResult(want, GenerateRequestCode(), std::move(task));
+}
+
+ErrCode AbilityContextImpl::StartAbilityForResultWithAccount(
+    const AAFwk::Want& want, int accountId, RuntimeTask&& task)
+{
+    return StartAbilityForResultWithAccount(want, accountId, GenerateRequestCode(), std::move(task));
+}
+
+ErrCode AbilityContextImpl::StartAbilityForResult(const AAFwk::Want& want,
+    const AAFwk::StartOptions& startOptions, RuntimeTask&& task)
+{
+    return StartAbilityForResult(want, startOptions, GenerateRequestCode(), std::move(task));
+}
+
+ErrCode AbilityContextImpl::StartAbilityForResultWithAccount(
+    const AAFwk::Want& want, int accountId, const AAFwk::StartOptions& startOptions, RuntimeTask&& task)
+{
+    return StartAbilityForResultWithAccount(want, accountId, startOptions, GenerateRequestCode(), std::move(task));
 }
 
 ErrCode AbilityContextImpl::StartUIServiceExtensionAbility(const AAFwk::Want& want, int32_t accountId)
@@ -1014,6 +1046,13 @@ void AbilityContextImpl::RemoveResultCallbackTask(int requestCode)
     resultCallbacks_.erase(requestCode);
 }
 
+int32_t AbilityContextImpl::RegisterResultCallback(RuntimeTask &&task)
+{
+    auto requestCode = GenerateRequestCode();
+    resultCallbacks_.insert(make_pair(requestCode, std::move(task)));
+    return requestCode;
+}
+
 #ifdef SUPPORT_SCREEN
 void AbilityContextImpl::GetWindowRect(int32_t &left, int32_t &top, int32_t &width, int32_t &height)
 {
@@ -1344,6 +1383,12 @@ ErrCode AbilityContextImpl::OpenAtomicService(AAFwk::Want& want, const AAFwk::St
         }
     }
     return err;
+}
+
+ErrCode AbilityContextImpl::OpenAtomicService(AAFwk::Want& want, const AAFwk::StartOptions &options,
+    RuntimeTask &&task)
+{
+    return OpenAtomicService(want, options, GenerateRequestCode(), std::move(task));
 }
 
 void AbilityContextImpl::SetRestoreEnabled(bool enabled)

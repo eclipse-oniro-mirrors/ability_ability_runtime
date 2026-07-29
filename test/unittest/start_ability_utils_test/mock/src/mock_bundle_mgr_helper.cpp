@@ -33,5 +33,15 @@ bool BundleMgrHelper::GetApplicationInfo(
     return AAFwk::MyStatus::GetInstance().retValue_;
 }
 
+ErrCode BundleMgrHelper::GetAppClonePreference(const std::string &bundleName, int32_t userId,
+    AppClonePreference &preference)
+{
+    auto &status = AAFwk::MyStatus::GetInstance();
+    status.lastClonePreferenceBundleName_ = bundleName;
+    status.lastClonePreferenceUserId_ = userId;
+    preference = status.appClonePreference_;
+    return status.getAppClonePreferenceRet_;
+}
+
 } // namespace AppExecFwk
 } // namespace OHOS

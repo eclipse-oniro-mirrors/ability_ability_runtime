@@ -91,6 +91,7 @@ constexpr const char* SUPPORT_NATIVE_UI_ABILITY = "persist.sys.abilityms.support
 constexpr const char* PRODUCT_APPBOOT_SETTING_ENABLED = "const.product.appboot.setting.enabled";
 constexpr const char* IS_ENTERPRISE_DEVICE_TYPE = "const.edm.is_enterprise_device";
 constexpr const char* IS_EDM_ENABLE = "persist.edm.edm_enable";
+constexpr const char* IS_DEVELOPER_MODE = "security.developermode.state";
 constexpr const char* SUPPORT_AUTO_STARTUP = "const.abilityms.enable_auto_startup";
 constexpr const char* SUPPORT_DELAYED_PROCESS_EXIT = "const.abilityms.support_delayed_process_exit";
 // Support prepare terminate
@@ -104,6 +105,7 @@ constexpr const char* NORMAL_RESIDENT_APPS = "normal_resident_apps";
 constexpr const char* ON_NEW_PROCESS_ENABLE_LIST_PATH = "etc/ability_runtime/on_new_process_enable_list.json";
 constexpr const char* ON_NEW_PROCESS_ENABLE_LIST = "onNewProcessEnableList";
 constexpr const char* HYBRIDSPAWN_UNIFIED = "persist.appspawn.hybridspawn.unified";
+constexpr int32_t RESCUE_MODE_TIMEOUT_RATIO = 5;
 }
 
 AppUtils::~AppUtils() {}
@@ -176,10 +178,30 @@ bool AppUtils::IsSupportAncoApp()
     return isSupportAncoApp_.value;
 }
 
+bool AppUtils::IsRescueMode()
+{
+    if (!isRescueMode_.isLoaded) {
+        isRescueMode_.value = (system::GetParameter("soc.boot.mode", "") == "rescue");
+        TAG_LOGI(AAFwkTag::DEFAULT, "rescue mode: %{public}s", isRescueMode_.value ? "true" : "false");
+        isRescueMode_.isLoaded = true;
+    }
+
+    return isRescueMode_.value;
+}
+
 int32_t AppUtils::GetTimeoutUnitTimeRatio()
 {
     if (!timeoutUnitTimeRatio_.isLoaded) {
         timeoutUnitTimeRatio_.value = system::GetIntParameter<int32_t>(TIMEOUT_UNIT_TIME_RATIO, 1);
+        if (IsRescueMode()) {
+            TAG_LOGI(AAFwkTag::DEFAULT, "rescue mode: increase timeout ratio");
+            if (timeoutUnitTimeRatio_.value <= INT32_MAX / RESCUE_MODE_TIMEOUT_RATIO) {
+                timeoutUnitTimeRatio_.value *= RESCUE_MODE_TIMEOUT_RATIO;
+            } else {
+                TAG_LOGW(AAFwkTag::DEFAULT, "rescue mode: ratio too large, clamp to max");
+                timeoutUnitTimeRatio_.value = INT32_MAX;
+            }
+        }
         timeoutUnitTimeRatio_.isLoaded = true;
     }
     TAG_LOGD(AAFwkTag::DEFAULT, "called %{public}d", timeoutUnitTimeRatio_.value);
@@ -915,7 +937,7 @@ bool AppUtils::IsAutoStartupSupported()
     if (!isAutoStartupSupported_.isLoaded) {
         isAutoStartupSupported_.value =
             system::GetBoolParameter(IS_ENTERPRISE_DEVICE_TYPE, false) ||
-            system::GetBoolParameter(IS_EDM_ENABLE, false) ||
+            (system::GetBoolParameter(IS_EDM_ENABLE, false) && system::GetBoolParameter(IS_DEVELOPER_MODE, false)) ||
             system::GetBoolParameter(SUPPORT_AUTO_STARTUP, false);
         isAutoStartupSupported_.isLoaded = true;
     }
@@ -988,6 +1010,31 @@ bool AppUtils::IsSupportNativeUIAbility()
     }
     TAG_LOGD(AAFwkTag::DEFAULT, "IsSupportNativeUIAbility: %{public}d", isSupportNativeUIAbility_.value);
     return isSupportNativeUIAbility_.value;
+}
+
+bool AppUtils::IsBopdMode()
+{
+    const std::unordered_set<std::string> bopdModeSet = {
+        "0x2",
+        "0x3",
+        "0x6",
+        "0x7",
+        "0xa",
+        "0xe",
+        "0xf",
+    };
+    auto mode = system::GetParameter("ohos.boot.bopd.mode", "NA");
+    return bopdModeSet.find(mode) != bopdModeSet.end();
+}
+
+bool AppUtils::IsBopdOrRescueMode()
+{
+    if (!isBopdOrRescueMode_.isLoaded) {
+        isBopdOrRescueMode_.value = (IsBopdMode() || system::GetParameter("soc.boot.mode", "") == "rescue");
+        isBopdOrRescueMode_.isLoaded = true;
+    }
+    TAG_LOGD(AAFwkTag::DEFAULT, "IsBopdOrRescueMode: %{public}d", isBopdOrRescueMode_.value);
+    return isBopdOrRescueMode_.value;
 }
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -709,7 +709,6 @@ std::map<int, std::list<AppfreezeManager::PeerBinderInfo>> AppfreezeManager::Bin
         }
         isBinderMatchup = (!isBinderMatchup && line.find("free_async_space") != line.npos) ? true : isBinderMatchup;
         std::vector<std::string> strList = GetFileToList(line);
-
         if (isBinderMatchup) {
             if (line.find("free_async_space") == line.npos && strList.size() == ARR_SIZE &&
                 std::atoll(strList[FREE_ASYNC_INDEX].c_str()) < FREE_ASYNC_MAX) {
@@ -1540,9 +1539,9 @@ bool AppfreezeManager::CheckPreloadUIExtension(const std::string& message, const
     return false;
 }
 
-bool AppfreezeManager::CheckProcessExit(const std::string& eventName, bool foreground)
+bool AppfreezeManager::CheckProcessExit(const std::string& processName, const std::string& eventName, bool foreground)
 {
-    return foreground || (eventName != AppFreezeType::THREAD_BLOCK_6S);
+    return foreground || eventName != AppFreezeType::THREAD_BLOCK_6S || processName == "com.ohos.sceneboard";
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

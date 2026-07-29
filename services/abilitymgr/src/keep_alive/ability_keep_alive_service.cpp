@@ -60,6 +60,7 @@ int32_t AbilityKeepAliveService::SetKeepAliveTrue(const KeepAliveInfo &info)
         return AbilityKeepAliveDataManager::GetInstance().InsertKeepAliveData(info);
     }
 
+    // check if the app is already set by a higher priority setter
     if (static_cast<int32_t>(status.setter) <= static_cast<int32_t>(info.setter)) {
         TAG_LOGI(AAFwkTag::KEEP_ALIVE, "app is already set");
         return ERR_OK;
@@ -105,10 +106,7 @@ void AbilityKeepAliveService::GetValidUserId(int32_t &userId)
     if (userId >= 0) {
         return;
     }
-
-    if (userId < 0) {
-        userId = AbilityRuntime::UserController::GetInstance().GetCallerUserId();
-    }
+    userId = AbilityRuntime::UserController::GetInstance().GetCallerUserId();
 }
 
 bool AbilityKeepAliveService::IsKeepAliveApp(const std::string &bundleName, int32_t userId)

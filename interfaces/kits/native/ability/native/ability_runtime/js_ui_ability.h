@@ -394,6 +394,7 @@ public:
         napi_env env, napi_value &outJsObj, napi_value &method);
     std::vector<napi_value> BuildSkillCallArgs(napi_env env,
         const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param);
+    void ReportSkillError(const std::string &requestCode, int32_t errCode, const std::string &errMsg);
 
     /**
      * @brief Called when startAbility request failed.

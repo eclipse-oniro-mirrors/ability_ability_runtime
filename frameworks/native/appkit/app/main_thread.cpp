@@ -158,6 +158,9 @@ constexpr int32_t UNSPECIFIED_USERID = -2;
 constexpr int32_t JS_ERROR_EXIT = -2;
 constexpr int32_t TIME_OUT = 120;
 constexpr int32_t DEFAULT_SLEEP_TIME = 100000;
+constexpr int32_t REPORT_TEMPLATE_PROCESS_READY_DELAY_TIME = 2000;
+constexpr int32_t SNAPSHOT_START = 0;
+constexpr int32_t SNAPSHOT_FAILURE = 1;
 
 enum class SignalType {
     SIGNAL_JSHEAP_OLD,
@@ -213,6 +216,8 @@ const char* PRELOAD_APP_STARTUP = "PreloadAppStartup";
 const int32_t TYPE_RESERVE = 1;
 const int32_t TYPE_OTHERS = 2;
 constexpr int32_t FOUNDATION_UID = 5523;
+const char* FFRT_LIBRARY_PATH = "/system/lib64/ndk/libffrt.so";
+const char* FFRT_NOTIFY_SNAPSHOT_FUNC = "ffrt_notify_snapshot";
 
 #if defined(NWEB) && defined(NWEB_GRAPHIC)
 const std::string NWEB_SURFACE_NODE_NAME = "nwebPreloadSurface";
@@ -675,6 +680,29 @@ void MainThread::ScheduleJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info)
 
 /**
  *
+ * @brief the application dump jshandle map.
+ *
+ * @param info, pid, tid.
+ */
+void MainThread::ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
+{
+    TAG_LOGI(AAFwkTag::APPKIT, "pid: %{public}u, tid: %{public}u", info.pid, info.tid);
+    wptr<MainThread> weak = this;
+    auto task = [weak, info]() {
+        auto appThread = weak.promote();
+        if (appThread == nullptr) {
+            TAG_LOGE(AAFwkTag::APPKIT, "null appThread");
+            return;
+        }
+        appThread->HandleJsHandleMap(info);
+    };
+    if (!mainHandler_->PostTask(task, "MainThread:HandleJsHandleMap")) {
+        TAG_LOGE(AAFwkTag::APPKIT, "PostTask HandleJsHandleMap failed");
+    }
+}
+
+/**
+ *
  * @brief the application triggerGC and dump cjheap memory.
  *
  * @param info, pid, tid, needGC, needSnapshot.
@@ -1042,6 +1070,22 @@ void MainThread::HandleJsHeapMemory(const OHOS::AppExecFwk::JsHeapDumpInfo &info
     }
     auto helper = std::make_shared<DumpRuntimeHelper>(app, applicationInfo_);
     helper->DumpJsHeap(info);
+}
+
+void MainThread::HandleJsHandleMap(const OHOS::AppExecFwk::JsHandleMapInfo &info)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "called");
+    if (mainHandler_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null mainHandler");
+        return;
+    }
+    auto app = applicationForDump_.lock();
+    if (app == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null app");
+        return;
+    }
+    auto helper = std::make_shared<DumpRuntimeHelper>(app, applicationInfo_);
+    helper->DumpJsHandleMap(info);
 }
 
 void MainThread::HandleCjHeapMemory(const OHOS::AppExecFwk::CjHeapDumpInfo &info)
@@ -1515,7 +1559,7 @@ CJEventReportInfo MainThread::CreateCjEventReportInfo(const std::string &bundleN
                 OHOS::AppExecFwk::CjHeapDumpInfo cjHeapInfo;
                 cjHeapInfo.needSnapshot = true;
                 cjHeapInfo.needGc = false;
-                cjHeapInfo.pid = getpid();
+                cjHeapInfo.pid = static_cast<uint32_t>(getpid());
                 shared_this->HandleCjHeapMemory(cjHeapInfo);
             }
         };
@@ -1969,6 +2013,15 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
         auto bundleName = appInfo.bundleName;
         auto versionCode = appInfo.versionCode;
 #ifdef CJ_FRONTEND
+        void* mainEnv = nullptr;
+        if (runtime->GetLanguage() == AbilityRuntime::Runtime::Language::ETS) {
+            auto& etsRuntime = static_cast<AbilityRuntime::ETSRuntime&>(*runtime);
+            auto& jsRuntime = static_cast<AbilityRuntime::JsRuntime&>(*etsRuntime.GetJsRuntime());
+            mainEnv = jsRuntime.GetNapiEnv();
+        } else if (runtime->GetLanguage() == AbilityRuntime::Runtime::Language::JS) {
+            mainEnv = (static_cast<AbilityRuntime::JsRuntime&>(*runtime)).GetNapiEnv();
+        }
+        AbilityRuntime::CJRuntime::SetMainNAPIEnv(mainEnv);
         if (!isCJApp) {
 #endif
             if (IsEtsAPP(appInfo)) {
@@ -2330,7 +2383,7 @@ void MainThread::ProcessMainAbility(const AbilityInfo &info, const std::unique_p
         }
         srcPath.append("/");
         srcPath.append(info.srcEntrance);
-        srcPath.erase(srcPath.rfind("."));
+        AbilityRuntime::RemoveFileExtension(srcPath);
         srcPath.append(".abc");
         TAG_LOGD(AAFwkTag::UIABILITY, "jsAbility srcPath: %{public}s", srcPath.c_str());
     }
@@ -2761,7 +2814,6 @@ bool MainThread::PrepareAbilityDelegator(const std::shared_ptr<UserTestRecord> &
                 application_->GetAppContext(), std::move(interopTestRunner), record->observer);
             AbilityDelegatorRegistry::RegisterInstance(interopDelegator, args, targetLanguage);
             interopDelegator->SetApiTargetVersion(targetVersion);
-            interopDelegator->Prepare();
         }
     } else { // FA model
         TAG_LOGD(AAFwkTag::APPKIT, "FA model");
@@ -4321,7 +4373,6 @@ int32_t MainThread::ScheduleDumpFfrt(std::string& result)
 
 int32_t MainThread::ScheduleDumpArkWeb(const std::string &customArgs, std::string &result)
 {
-    TAG_LOGI(AAFwkTag::APPKIT, "ScheduleDumpArkWeb");
     return DumpArkWebHelper::DumpArkWeb(customArgs, result);
 }
 
@@ -4614,6 +4665,76 @@ void MainThread::ScheduleUpdateWorkProcessInfo(std::shared_ptr<AppUpdateInfo> up
     };
     if (!mainHandler_->PostTask(task, "MainThread:ScheduleUpdateWorkProcessInfo")) {
         TAG_LOGE(AAFwkTag::APPKIT, "PostTask task failed");
+    }
+}
+
+int32_t MainThread::SchedulePreTemplateProcessDeepFrozen()
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "called");
+    wptr<MainThread> weak = this;
+    if (mainHandler_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null mainHandler");
+        return ERR_INVALID_VALUE;
+    }
+    auto task = [weak]() {
+        auto appThread = weak.promote();
+        if (appThread == nullptr) {
+            TAG_LOGE(AAFwkTag::APPKIT, "null appThread");
+            return;
+        }
+        appThread->NotifyPreTemplateProcessDeepFrozen();
+    };
+    if (!mainHandler_->PostTask(task, "MainThread:SchedulePreTemplateProcessDeepFrozen")) {
+        TAG_LOGE(AAFwkTag::APPKIT, "PostTask task failed");
+    }
+    return NO_ERROR;
+}
+
+void MainThread::NotifyPreTemplateProcessDeepFrozen()
+{
+    TAG_LOGI(AAFwkTag::APPMGR, "pre template process deep frozen");
+    DelayedReportNotifyFFRTToRss();
+}
+
+void MainThread::NotifyFFRTSnapshot(int32_t snapshotState)
+{
+    void* handle = dlopen(FFRT_LIBRARY_PATH, RTLD_LAZY);
+    if (handle == nullptr) {
+        TAG_LOGW(AAFwkTag::APPKIT, "dlopen %{public}s failed, reason: %{public}s", FFRT_LIBRARY_PATH, dlerror());
+        return;
+    }
+    auto ffrtNotifySnapshot = reinterpret_cast<void (*)(int32_t)>(dlsym(handle, FFRT_NOTIFY_SNAPSHOT_FUNC));
+    if (ffrtNotifySnapshot == nullptr) {
+        dlclose(handle);
+        TAG_LOGE(AAFwkTag::APPKIT, "dlsym %{public}s failed", FFRT_NOTIFY_SNAPSHOT_FUNC);
+        return;
+    }
+    ffrtNotifySnapshot(snapshotState);
+    dlclose(handle);
+}
+
+void MainThread::DelayedReportNotifyFFRTToRss()
+{
+    NotifyFFRTSnapshot(SNAPSHOT_START);
+    {
+        std::lock_guard<std::mutex> lock(needNotifyFFRTNewIpcMutex_);
+        needToNotifyFFRTForNewIpc_ = true;
+    }
+    TAG_LOGI(AAFwkTag::APPKIT, "After notify ffrt snapshot start");
+    std::this_thread::sleep_for(std::chrono::milliseconds(REPORT_TEMPLATE_PROCESS_READY_DELAY_TIME));
+    TAG_LOGI(AAFwkTag::APPKIT, "template process ready");
+    if (appMgr_ != nullptr) {
+        appMgr_->NotifyTemplateProcessReadyDone();
+    }
+}
+
+void MainThread::BeforeHandleRequest()
+{
+    std::lock_guard<std::mutex> lock(needNotifyFFRTNewIpcMutex_);
+    if (needToNotifyFFRTForNewIpc_) {
+        TAG_LOGI(AAFwkTag::APPKIT, "new ipc after start make image, notify ffrt");
+        NotifyFFRTSnapshot(SNAPSHOT_FAILURE);
+        needToNotifyFFRTForNewIpc_ = false;
     }
 }
 

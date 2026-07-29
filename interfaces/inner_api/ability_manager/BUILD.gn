@@ -65,6 +65,16 @@ config("ability_manager_public_config") {
 ohos_shared_library("ability_manager") {
   use_exceptions = true
   branch_protector_ret = "pac_ret"
+  sanitize = {
+    integer_overflow = true
+    ubsan = true
+    boundary_sanitize = true
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    cfi_policy = "adaptive"
+    debug = false
+  }
 
   sources = [
     "${ability_runtime_native_path}/ability/native/data_ability_operation.cpp",
@@ -270,6 +280,12 @@ ohos_shared_library("ability_start_options") {
 ohos_shared_library("mission_info") {
   branch_protector_ret = "pac_ret"
 
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
   sources = [
     "${ability_runtime_services_path}/abilitymgr/src/mission/mission_info.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/mission/mission_snapshot.cpp",
@@ -300,6 +316,8 @@ ohos_shared_library("mission_info") {
 }
 
 ohos_shared_library("ability_manager_c") {
+  branch_protector_ret = "pac_ret"
+
   include_dirs = [ "include" ]
   sources = [ "src/ability_manager_client_c.cpp" ]
   libs = []
@@ -319,6 +337,12 @@ ohos_shared_library("ability_manager_c") {
 
 ohos_shared_library("ability_start_setting") {
   branch_protector_ret = "pac_ret"
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
 
   sources = [
     "${ability_runtime_services_path}/abilitymgr/src/ability_start_setting.cpp",
@@ -417,6 +441,12 @@ ohos_shared_library("start_window_option") {
 
 ohos_shared_library("ability_connect_callback_stub") {
   branch_protector_ret = "pac_ret"
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
 
   defines = [ "AMS_LOG_TAG = \"Ability\"" ]
   defines += [ "AMS_LOG_DOMAIN = 0xD001300" ]

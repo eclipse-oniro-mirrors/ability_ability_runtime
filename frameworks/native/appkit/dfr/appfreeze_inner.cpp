@@ -382,13 +382,13 @@ void AppfreezeInner::GetApplicationInfo(FaultData& faultData)
     faultData.applicationIOInfo = GetProcessIOStr();
     panda::GCStatistic gCStatistic = jsRuntime->GetGCStatistic();
     faultData.applicationGCInfo = LogFormatGC(gCStatistic);
-    faultData.isBlockInGc = CheckSharedGC(gCStatistic.lastType) &&
+    faultData.isBlockInGc = CheckGCType(gCStatistic.lastType) &&
         CheckBlockInGC(faultData.errorObject.name, gCStatistic.lastStartTime, gCStatistic.lastEndTime);
     TAG_LOGI(AAFwkTag::APPDFR, "heap info: %{public}s, process lifeTime: %{public}s",
         faultData.applicationHeapInfo.c_str(), faultData.processLifeTime.c_str());
 }
 
-bool AppfreezeInner::CheckSharedGC(std::string lastType)
+bool AppfreezeInner::CheckGCType(std::string lastType)
 {
     return lastType != GC_SHARED_GC_TYPE;
 }
@@ -405,12 +405,13 @@ bool AppfreezeInner::IsFreezeTimeInGCPeriod(uint64_t halfTime, uint64_t blockTim
     if (halfTime == 0 || blockTime == 0 || lastStartTime == 0 || lastEndTime == 0) {
         return false;
     }
+
     if (halfTime > blockTime) {
         return false;
     }
 
     TAG_LOGD(AAFwkTag::APPDFR, "GC Period halfTime: %{public}" PRIu64 ", blockTime: %{public}" PRIu64 " "
-        "lastStartTime: %{public}" PRIu64 ", lastStartTime: %{public}" PRIu64".",
+        "lastStartTime: %{public}" PRIu64 ", lastEndTime: %{public}" PRIu64".",
         halfTime, blockTime, lastStartTime, lastEndTime);
     return (halfTime >= lastStartTime && lastEndTime < lastStartTime);
 }

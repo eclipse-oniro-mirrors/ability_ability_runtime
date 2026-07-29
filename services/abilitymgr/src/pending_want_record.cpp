@@ -33,9 +33,9 @@ void SendTriggerFailedEvent(const Want &want, int32_t appIndex, int32_t userId,
     int32_t errCode, const std::string errMsg)
 {
     EventInfo eventInfo;
-    eventInfo.bundleName = want.GetElement().GetBundleName();
-    eventInfo.moduleName = want.GetElement().GetModuleName();
-    eventInfo.abilityName = want.GetElement().GetAbilityName();
+    eventInfo.bundleName = want.GetBundleNameRef();
+    eventInfo.moduleName = want.GetModuleNameRef();
+    eventInfo.abilityName = want.GetAbilityNameRef();
     eventInfo.appIndex = appIndex;
     eventInfo.errCode = errCode;
     eventInfo.errMsg = errMsg;
@@ -131,7 +131,7 @@ int32_t PendingWantRecord::ExecuteOperation(
 {
     TAG_LOGI(AAFwkTag::WANTAGENT,
         "start ability type:%{public}d, bundleName: %{public}s, ability: %{public}s, userId: %{public}d",
-        key_->GetType(), want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(), key_->GetUserId());
+        key_->GetType(), want.GetBundleNameRef().c_str(), want.GetAbilityNameRef().c_str(), key_->GetUserId());
     int32_t res = NO_ERROR;
     int32_t userId = key_->GetUserId();
     if (userId <= 0 || userId > AccountSA::Constants::MAX_USER_ID) {
@@ -222,7 +222,7 @@ void PendingWantRecord::BuildSendWant(SenderInfo &senderInfo, Want &want)
         want.AddFlags(key_->GetFlags());
     }
     WantParams wantParams = want.GetParams();
-    auto sendInfoWantParams = senderInfo.want.GetParams().GetParams();
+    const auto &sendInfoWantParams = senderInfo.want.GetParams().GetParams();
     for (auto mapIter = sendInfoWantParams.begin(); mapIter != sendInfoWantParams.end(); mapIter++) {
         std::string sendInfoWantParamKey = mapIter->first;
         if (want.GetParams().GetParam(sendInfoWantParamKey) == nullptr) {
@@ -232,15 +232,15 @@ void PendingWantRecord::BuildSendWant(SenderInfo &senderInfo, Want &want)
 
     if (!wantParams.HasParam(Want::PARAM_APP_CLONE_INDEX_KEY)) {
         int32_t appIndex = key_->GetAppIndex();
-        if (GetUid() != INVALID_UID && !want.GetBundle().empty()) {
-            if (GetAppIndexbyUid(GetUid(), want.GetBundle(), appIndex) != ERR_OK) {
+        if (GetUid() != INVALID_UID && !want.GetBundleNameRef().empty()) {
+            if (GetAppIndexbyUid(GetUid(), want.GetBundleNameRef(), appIndex) != ERR_OK) {
                 TAG_LOGE(AAFwkTag::WANTAGENT, "getAppIndex failed, srcBundleName: %{public}s, uid: %{public}d",
-                    want.GetBundle().c_str(), GetUid());
+                    want.GetBundleNameRef().c_str(), GetUid());
             }
         }
         wantParams.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, Integer::Box(appIndex));
     }
-    CheckAppInstanceKey(want.GetBundle(), wantParams);
+    CheckAppInstanceKey(want.GetBundleNameRef(), wantParams);
     want.SetParams(wantParams);
 }
 

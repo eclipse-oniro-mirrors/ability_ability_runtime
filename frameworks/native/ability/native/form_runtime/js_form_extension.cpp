@@ -381,7 +381,7 @@ void JsFormExtension::GetSrcPath(std::string &srcPath)
     if (!Extension::abilityInfo_->srcEntrance.empty()) {
         srcPath.append(Extension::abilityInfo_->moduleName + "/");
         srcPath.append(Extension::abilityInfo_->srcEntrance);
-        srcPath.erase(srcPath.rfind('.'));
+        RemoveFileExtension(srcPath);
         srcPath.append(".abc");
     }
 }

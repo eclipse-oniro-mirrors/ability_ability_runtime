@@ -58,6 +58,7 @@ ohos_shared_library("libappms") {
     "src/app_mgr_service_event_handler.cpp",
     "src/app_mgr_service_inner.cpp",
     "src/app_native_spawn_manager.cpp",
+    "src/app_pidfd_manager.cpp",
     "src/app_preloader.cpp",
     "src/app_refresh_recipient.cpp",
     "src/app_running_manager.cpp",

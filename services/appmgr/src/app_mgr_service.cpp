@@ -82,6 +82,7 @@ constexpr const char* TASK_APPLICATION_TERMINATED = "ApplicationTerminatedTask";
 constexpr const char* TASK_ABILITY_CLEANED = "AbilityCleanedTask";
 constexpr const char* TASK_STARTUP_RESIDENT_PROCESS = "StartupResidentProcess";
 constexpr const char* TASK_ADD_ABILITY_STAGE_DONE = "AddAbilityStageDone";
+constexpr const char* TASK_NOTIFY_TEMPLATE_PROCESS_READY_DONE = "NotifyTemplateProcessReadyDone";
 constexpr const char* TASK_START_USER_TEST_PROCESS = "StartUserTestProcess";
 constexpr const char* TASK_FINISH_USER_TEST = "FinishUserTest";
 constexpr const char* TASK_ATTACH_RENDER_PROCESS = "AttachRenderTask";
@@ -192,14 +193,14 @@ ErrCode AppMgrService::Init()
     if (FAILED(openErr)) {
         TAG_LOGW(AAFwkTag::APPMGR, "fail, errCode: %{public}08x", openErr);
     }
-    if (!Publish(this)) {
-        TAG_LOGE(AAFwkTag::APPMGR, " publish fail");
-        return ERR_APPEXECFWK_SERVICE_NOT_CONNECTED;
-    }
     amsMgrScheduler_ = new (std::nothrow) AmsMgrScheduler(appMgrServiceInner_, taskHandler_);
     if (!amsMgrScheduler_) {
         TAG_LOGE(AAFwkTag::APPMGR, "init failed");
         return ERR_INVALID_OPERATION;
+    }
+    if (!Publish(this)) {
+        TAG_LOGE(AAFwkTag::APPMGR, " publish fail");
+        return ERR_APPEXECFWK_SERVICE_NOT_CONNECTED;
     }
     TAG_LOGI(AAFwkTag::APPMGR, "init success");
     return ERR_OK;
@@ -336,6 +337,33 @@ int32_t AppMgrService::NotifyTemplateProcessDeepFrozen(int32_t pid)
         .taskName_ = "NotifyTemplateProcessDeepFrozenTask",
         .taskQos_ = AAFwk::TaskQoS::USER_INTERACTIVE
     });
+    return ERR_OK;
+}
+
+int32_t AppMgrService::PreTemplateProcessDeepFrozen(int32_t pid)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "not ready");
+        return ERR_INVALID_OPERATION;
+    }
+    if (IPCSkeleton::GetCallingUid() != RESOURCE_MANAGER_UID) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "not rss");
+        return AAFwk::CHECK_PERMISSION_FAILED;
+    }
+    appMgrServiceInner_->HandlePreTemplateProcessDeepFrozen(pid);
+    return ERR_OK;
+}
+
+int32_t AppMgrService::NotifyTemplateProcessReadyDone()
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "not ready");
+        return ERR_INVALID_OPERATION;
+    }
+    pid_t callingPid = IPCSkeleton::GetCallingPid();
+    appMgrServiceInner_->HandleNotifyTemplateProcessReadyDone(callingPid);
     return ERR_OK;
 }
 
@@ -684,6 +712,14 @@ int32_t AppMgrService::DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info)
         return ERR_INVALID_OPERATION;
     }
     return appMgrServiceInner_->DumpJsHeapMemory(info);
+}
+
+int32_t AppMgrService::DumpJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
+{
+    if (!IsReady() || !HasDumpPermission()) {
+        return ERR_INVALID_OPERATION;
+    }
+    return appMgrServiceInner_->DumpJsHandleMap(info);
 }
 
 int32_t AppMgrService::DumpCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info)
@@ -1502,6 +1538,15 @@ bool AppMgrService::IsMainProcessDebug(int32_t uid)
         return false;
     }
     return appMgrServiceInner_->IsMainProcessDebug(uid);
+}
+
+bool AppMgrService::IsCorrespondingProcessAttachDebug(const AbilityInfo &abilityInfo)
+{
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "not ready");
+        return false;
+    }
+    return appMgrServiceInner_->IsCorrespondingProcessAttachDebug(abilityInfo);
 }
 
 int32_t AppMgrService::GetRunningProcessInfoByPid(const pid_t pid, OHOS::AppExecFwk::RunningProcessInfo &info)

@@ -159,6 +159,11 @@ napi_value JsApplication::CreateModuleContext(napi_env env, napi_callback_info i
     GET_NAPI_INFO_AND_CALL(env, info, JsApplication, OnCreateModuleContext);
 }
 
+napi_value JsApplication::CreateModuleContextSync(napi_env env, napi_callback_info info)
+{
+    GET_NAPI_INFO_AND_CALL(env, info, JsApplication, OnCreateModuleContextSync);
+}
+
 napi_value JsApplication::CreateBundleContext(napi_env env, napi_callback_info info)
 {
     GET_NAPI_INFO_AND_CALL(env, info, JsApplication, OnCreateBundleContext);
@@ -413,6 +418,56 @@ napi_value JsApplication::OnCreateModuleContext(napi_env env, NapiCallbackInfo &
         env, CreateAsyncTaskWithLastParam(env, nullptr, std::move(execute), std::move(complete), &result));
 
     return handleEscape.Escape(result);
+}
+
+napi_value JsApplication::OnCreateModuleContextSync(napi_env env, NapiCallbackInfo &info)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "Called");
+    HandleEscape handleEscape(env);
+    if (info.argc < ARGC_TWO) {
+        TAG_LOGE(AAFwkTag::APPKIT, "invalid argc");
+        ThrowTooFewParametersError(env);
+        return CreateJsUndefined(env);
+    }
+    bool stageMode = false;
+    napi_status status = OHOS::AbilityRuntime::IsStageContext(env, info.argv[ARGC_ZERO], stageMode);
+    if (status != napi_ok || !stageMode) {
+        TAG_LOGE(AAFwkTag::APPKIT, "not stageMode");
+        ThrowInvalidParamError(env, "Parse param context failed, must be a context of stageMode.");
+        return CreateJsUndefined(env);
+    }
+    auto context = OHOS::AbilityRuntime::GetStageModeContext(env, info.argv[ARGC_ZERO]);
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null context");
+        AbilityRuntimeErrorUtil::Throw(env, ERR_ABILITY_RUNTIME_EXTERNAL_CONTEXT_NOT_EXIST);
+        return CreateJsUndefined(env);
+    }
+    auto inputContextPtr = Context::ConvertTo<Context>(context);
+    if (inputContextPtr == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "Convert to context failed");
+        AbilityRuntimeErrorUtil::Throw(env, ERR_ABILITY_RUNTIME_EXTERNAL_CONTEXT_NOT_EXIST);
+        return CreateJsUndefined(env);
+    }
+    std::string moduleName = "";
+    if (!ConvertFromJsValue(env, info.argv[ARGC_ONE], moduleName)) {
+        TAG_LOGE(AAFwkTag::APPKIT, "Parse failed");
+        ThrowInvalidParamError(env, "Parse param moduleName failed, moduleName must be string.");
+        return CreateJsUndefined(env);
+    }
+    std::shared_ptr<ContextImpl> contextImpl = std::make_shared<ContextImpl>();
+    if (contextImpl == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null contextImpl");
+        ThrowInvalidParamError(env, "create context failed.");
+        return CreateJsUndefined(env);
+    }
+    contextImpl->SetProcessName(context->GetProcessName());
+    auto moduleContext = contextImpl->CreateModuleContext(moduleName, inputContextPtr);
+    if (moduleContext == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "failed to create context");
+        AbilityRuntimeErrorUtil::Throw(env, ERR_ABILITY_RUNTIME_EXTERNAL_INVALID_MODULENAME);
+        return CreateJsUndefined(env);
+    }
+    return handleEscape.Escape(CreateJsContext(env, moduleContext));
 }
 
 bool JsApplication::CheckCallerIsSystemApp()
@@ -735,6 +790,9 @@ napi_value ApplicationInit(napi_env env, napi_value exportObj)
 
     BindNativeFunction(env, exportObj, "createModuleContext", moduleName,
         JsApplication::CreateModuleContext);
+
+    BindNativeFunction(env, exportObj, "createModuleContextSync", moduleName,
+        JsApplication::CreateModuleContextSync);
 
     BindNativeFunction(env, exportObj, "createBundleContext", moduleName,
         JsApplication::CreateBundleContext);

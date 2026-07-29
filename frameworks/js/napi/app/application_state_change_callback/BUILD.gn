@@ -37,6 +37,8 @@ gen_js_obj("application_state_change_callback_abc") {
 }
 
 ohos_shared_library("applicationstatechangecallback") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "application_state_change_callback_module.cpp" ]
 
   deps = [

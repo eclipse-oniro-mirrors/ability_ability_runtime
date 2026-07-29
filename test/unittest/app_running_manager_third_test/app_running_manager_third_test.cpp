@@ -114,46 +114,51 @@ public:
 };
 
 /**
- * @tc.name: AppRunningManager_OnChildProcessRemoteDied_0100
- * @tc.desc: Test OnChildProcessRemoteDied
+ * @tc.name: AppRunningManager_OnChildProcessExitedByPid_0100
+ * @tc.desc: Test OnChildProcessExitedByPid
  * @tc.type: FUNC
  */
-HWTEST_F(AppRunningManagerThirdTest, AppRunningManager_OnChildProcessRemoteDied_0100, TestSize.Level1)
+HWTEST_F(AppRunningManagerThirdTest, AppRunningManager_OnChildProcessExitedByPid_0100, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "AppRunningManager_OnChildProcessRemoteDied_0100 start");
+    TAG_LOGI(AAFwkTag::TEST, "AppRunningManager_OnChildProcessExitedByPid_0100 start");
     auto appRunningManager = std::make_shared<AppRunningManager>();
-    wptr<IRemoteObject> remote = nullptr;
-    EXPECT_EQ(appRunningManager->OnChildProcessRemoteDied(remote), nullptr);
+    // invalid pid
+    EXPECT_EQ(appRunningManager->OnChildProcessExitedByPid(0), nullptr);
+    EXPECT_EQ(appRunningManager->OnChildProcessExitedByPid(-1), nullptr);
 
-    sptr<IRemoteObject> remoteObject = MockToken();
-    wptr<IRemoteObject> remote1(remoteObject);
     ChildProcessRequest request;
     request.srcEntry = "./ets/AProcess.ts";
     auto appRunningRecord = std::make_shared<AppRunningRecord>(appInfo_, USR_ID_100, PROCESS_NAME);
     EXPECT_NE(appRunningRecord, nullptr);
     auto childRecord = ChildProcessRecord::CreateChildProcessRecord(USR_ID_100, request, appRunningRecord);
     EXPECT_NE(childRecord, nullptr);
-    childRecord->scheduler_ = new (std::nothrow) MockIChildScheduler();
-    EXPECT_NE(childRecord->scheduler_, nullptr);
-    appRunningRecord->childProcessRecordMap_.emplace(PID, childRecord);
-    appRunningManager->appRunningRecordMap_.emplace(PID, appRunningRecord);
-    EXPECT_EQ(appRunningManager->OnChildProcessRemoteDied(remote1), nullptr);
 
+    // no app record for the pid
+    EXPECT_EQ(appRunningManager->OnChildProcessExitedByPid(PID), nullptr);
+
+    // appRecord null in map
     appRunningManager->appRunningRecordMap_.clear();
     appRunningRecord = nullptr;
     appRunningManager->appRunningRecordMap_.emplace(PID, appRunningRecord);
-    EXPECT_EQ(appRunningManager->OnChildProcessRemoteDied(remote1), nullptr);
+    EXPECT_EQ(appRunningManager->OnChildProcessExitedByPid(PID), nullptr);
 
+    // appRecord valid, childProcessRecordMap empty
     appRunningRecord = std::make_shared<AppRunningRecord>(appInfo_, USR_ID_100, PROCESS_NAME);
     appRunningManager->appRunningRecordMap_.clear();
     appRunningManager->appRunningRecordMap_.emplace(PID, appRunningRecord);
     appRunningRecord->childProcessRecordMap_.clear();
-    EXPECT_EQ(appRunningManager->OnChildProcessRemoteDied(remote1), nullptr);
+    EXPECT_EQ(appRunningManager->OnChildProcessExitedByPid(PID), nullptr);
 
-    childRecord = nullptr;
-    appRunningRecord->childProcessRecordMap_.emplace(PID, childRecord);
-    EXPECT_EQ(appRunningManager->OnChildProcessRemoteDied(remote1), nullptr);
-    TAG_LOGI(AAFwkTag::TEST, "AppRunningManager_OnChildProcessRemoteDied_0100 end");
+    // childRecord null for the pid
+    appRunningRecord->childProcessRecordMap_.emplace(PID, nullptr);
+    EXPECT_EQ(appRunningManager->OnChildProcessExitedByPid(PID), nullptr);
+
+    // childRecord present but for a different pid -> not found
+    appRunningRecord->childProcessRecordMap_.clear();
+    appRunningRecord->childProcessRecordMap_.emplace(PID + 1, childRecord);
+    EXPECT_EQ(appRunningManager->OnChildProcessExitedByPid(PID), nullptr);
+    appRunningManager->appRunningRecordMap_.clear();
+    TAG_LOGI(AAFwkTag::TEST, "AppRunningManager_OnChildProcessExitedByPid_0100 end");
 }
 
 /**
@@ -436,6 +441,33 @@ HWTEST_F(AppRunningManagerThirdTest, AppRunningManager_DumpJsHeapMemory_0100, Te
     ret = appRunningManager->DumpJsHeapMemory(info);
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "AppRunningManager_DumpJsHeapMemory_0100 end");
+}
+
+/**
+ * @tc.name: AppRunningManager_DumpJsHeapMemory_0100
+ * @tc.desc: Test DumpJsHandleMap
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerThirdTest, AppRunningManager_DumpJsHandleMap_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppRunningManager_DumpJsHandleMap_0100 start");
+    auto appRunningManager = std::make_shared<AppRunningManager>();
+    EXPECT_NE(appRunningManager, nullptr);
+    OHOS::AppExecFwk::JsHandleMapInfo info;
+    info.pid = 0;
+    auto ret = appRunningManager->DumpJsHandleMap(info);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+
+    info.pid = 1;
+    auto recordId = AppRecordId::Create();
+    auto record = appRunningManager->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    record->appInfo_ = std::make_shared<ApplicationInfo>();
+    record->priorityObject_ = std::make_shared<PriorityObject>();
+    record->priorityObject_->pid_ = 1;
+    appRunningManager->appRunningRecordMap_.emplace(recordId, record);
+    ret = appRunningManager->DumpJsHandleMap(info);
+    EXPECT_EQ(ret, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "AppRunningManager_DumpJsHandleMap_0100 end");
 }
 
 /**

@@ -229,5 +229,27 @@ HWTEST_F(DataUriUtilsTest, DataUriUtilsTest_0400, Level1)
     dataUriUtils.UriUpateLastPath(uri3, empty);
     GTEST_LOG_(INFO) << "DataUriUtilsTest_0400 end";
 }
+
+/**
+ * @tc.number: DataUriUtilsTest_0500
+ * @tc.name: DataUriUtilsTest
+ * @tc.desc: Test floating-point path segments are not treated as integer ids.
+ */
+HWTEST_F(DataUriUtilsTest, DataUriUtilsTest_0500, Level1)
+{
+    GTEST_LOG_(INFO) << "DataUriUtilsTest_0500 start";
+    DataUriUtils dataUriUtils;
+    Uri uri("scheme://authority/path1/path2/12.5?id = 1&name = mingming&old#fragment");
+
+    EXPECT_FALSE(dataUriUtils.IsNumber("12.5"));
+    EXPECT_FALSE(dataUriUtils.IsNumber("+0.0"));
+    EXPECT_FALSE(dataUriUtils.IsNumber("-1.0"));
+    EXPECT_FALSE(dataUriUtils.IsAttachedId(uri));
+    EXPECT_EQ(dataUriUtils.GetId(uri), NEGATIVE);
+    EXPECT_EQ(dataUriUtils.DeleteId(uri).ToString(), uri.ToString());
+    EXPECT_EQ(dataUriUtils.UpdateId(uri, THOUSAND).ToString(), uri.ToString());
+
+    GTEST_LOG_(INFO) << "DataUriUtilsTest_0500 end";
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

@@ -16,6 +16,7 @@
 #include "skill_execute_manager.h"
 
 #include <cinttypes>
+#include <vector>
 
 #include "ability_event_handler.h"
 #include "ability_manager_errors.h"
@@ -25,6 +26,7 @@
 #include "bundle_mgr_helper.h"
 #include "hilog_tag_wrapper.h"
 #include "in_process_call_wrapper.h"
+#include "ipc_skeleton.h"
 #include "iservice_registry.h"
 #include "permission_constants.h"
 #include "permission_verification.h"
@@ -96,15 +98,6 @@ int32_t SkillExecuteManager::CheckSkillPermission(const AppExecFwk::SkillInfo &s
     if (!permVerif->IsSACall()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "direct caller is not SA");
         return ERR_NOT_SYSTEM_APP;
-    }
-
-    if (Security::AccessToken::AccessTokenKit::VerifyAccessToken(callerTokenId,
-        PermissionConstants::PERMISSION_START_INVISIBLE_ABILITY, false) ==
-        AppExecFwk::Constants::PERMISSION_GRANTED) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR,
-            "caller has START_INVISIBLE_ABILITY, skip skill permission check, skill:%{public}s",
-            skillInfo.skillName.c_str());
-        return ERR_OK;
     }
 
     for (const auto &permission : skillInfo.permissions) {
@@ -185,6 +178,7 @@ std::string SkillExecuteManager::CreateExecuteRecord(const sptr<IRemoteObject> &
 
     records_[requestCode] = record;
     PostSkillExecuteTimeout(requestCode, currentSeq);
+    EnsureAppStateObserverRegistered();
     TAG_LOGD(AAFwkTag::ABILITYMGR,
         "create execute record, requestCode:%{public}s", requestCode.c_str());
     return requestCode;
@@ -234,7 +228,6 @@ int32_t SkillExecuteManager::ExecuteSkillDone(const std::string &requestCode, in
         }
 #endif
 
-        RemoveSkillExecuteTimeoutLocked(record->requestCodeSeq);
         record->state = SkillExecuteState::EXECUTE_DONE;
         callback = record->callback;
         RemoveRecord(requestCode);
@@ -401,7 +394,112 @@ void SkillExecuteManager::OnTimeout(int64_t requestCodeSeq)
 
     if (callback != nullptr) {
         AppExecFwk::SkillExecuteResult emptyResult;
+        emptyResult.code = ERR_TIMED_OUT;
         callback->OnExecuteDone(requestCode, ERR_TIMED_OUT, emptyResult);
+    }
+}
+
+void SkillExecuteManager::EnsureAppStateObserverRegistered()
+{
+    if (appStateObserver_ != nullptr) {
+        return;
+    }
+    auto appManager = AppMgrUtil::GetAppMgr();
+    if (appManager == nullptr) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "null appManager, will retry on next record");
+        return;
+    }
+    auto observer = sptr<SkillAppStateObserver>::MakeSptr(
+        [](const std::string &bundleName, pid_t pid) {
+            DelayedSingleton<SkillExecuteManager>::GetInstance()->OnTargetProcessDied(bundleName, pid);
+        });
+    if (observer == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "new SkillAppStateObserver failed");
+        return;
+    }
+    auto err = appManager->RegisterApplicationStateObserver(observer);
+    if (err != ERR_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "register app state observer err:%{public}d", err);
+        return;
+    }
+    appStateObserver_ = observer;
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "app state observer registered");
+}
+
+void SkillExecuteManager::OnLaunchCompleted(const std::string &requestCode)
+{
+    pid_t callerPid = IPCSkeleton::GetCallingPid();
+    std::lock_guard<ffrt::mutex> lock(mutex_);
+    auto it = records_.find(requestCode);
+    if (it == records_.end()) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR,
+            "OnLaunchCompleted: record gone, req:%{public}s", requestCode.c_str());
+        return;
+    }
+    it->second->targetPid = callerPid;
+    RemoveSkillExecuteTimeoutLocked(it->second->requestCodeSeq);
+    TAG_LOGD(AAFwkTag::ABILITYMGR,
+        "launch completed, pid:%{public}d, keep record for async result, req:%{public}s",
+        callerPid, requestCode.c_str());
+}
+
+void SkillExecuteManager::OnLaunchFailed(const std::string &requestCode, int32_t errCode)
+{
+    std::lock_guard<ffrt::mutex> lock(mutex_);
+    auto it = records_.find(requestCode);
+    if (it == records_.end()) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR,
+            "OnLaunchFailed: record gone, req:%{public}s", requestCode.c_str());
+        return;
+    }
+    auto record = it->second;
+    RemoveSkillExecuteTimeoutLocked(record->requestCodeSeq);
+    if (record->state != SkillExecuteState::EXECUTING) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR,
+            "OnLaunchFailed: invalid state:%{public}d", static_cast<int>(record->state));
+        return;
+    }
+    record->state = SkillExecuteState::REMOTE_DIED;
+    if (record->callback != nullptr) {
+        AppExecFwk::SkillExecuteResult emptyResult;
+        emptyResult.code = errCode;
+        record->callback->OnExecuteDone(requestCode, errCode, emptyResult);
+    }
+    RemoveRecord(requestCode);
+}
+
+void SkillExecuteManager::OnTargetProcessDied(const std::string &bundleName, pid_t pid)
+{
+    std::lock_guard<ffrt::mutex> lock(mutex_);
+    std::vector<std::string> hitCodes;
+    for (const auto &entry : records_) {
+        const auto &record = entry.second;
+        // pid 未就绪（OnLaunchCompleted 前）跳过，依赖 timeout 兜底
+        if (record->targetBundleName == bundleName &&
+            record->targetPid != 0 && record->targetPid == pid &&
+            record->state == SkillExecuteState::EXECUTING) {
+            hitCodes.push_back(entry.first);
+        }
+    }
+    if (hitCodes.empty()) {
+        return;
+    }
+    TAG_LOGW(AAFwkTag::ABILITYMGR,
+        "target process died, bundle:%{public}s pid:%{public}d, hit %{public}zu record(s)",
+        bundleName.c_str(), pid, hitCodes.size());
+    for (const auto &requestCode : hitCodes) {
+        auto it = records_.find(requestCode);
+        if (it == records_.end()) {
+            continue;
+        }
+        auto record = it->second;
+        record->state = SkillExecuteState::REMOTE_DIED;
+        if (record->callback != nullptr) {
+            AppExecFwk::SkillExecuteResult emptyResult;
+            emptyResult.code = ERR_SKILL_EXECUTE_TARGET_DIED;
+            record->callback->OnExecuteDone(requestCode, ERR_SKILL_EXECUTE_TARGET_DIED, emptyResult);
+        }
+        RemoveRecord(requestCode);
     }
 }
 

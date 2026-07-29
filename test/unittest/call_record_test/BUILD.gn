@@ -40,18 +40,19 @@ ohos_unittest("call_record_test") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
   deps = [
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
-    "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/appexecfwk_core:appexecfwk_appmgr_mock",
   ]
 
   external_deps = [
     "ability_base:configuration",
     "ability_base:want",
+    "c_utils:utils",
     "ffrt:libffrt",
     "googletest:gmock_main",
     "hilog:libhilog",
-    "napi:ace_napi",
+    "ipc:ipc_single",
     "samgr:samgr_proxy",
   ]
 

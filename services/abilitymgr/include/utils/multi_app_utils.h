@@ -34,6 +34,16 @@ public:
      * @param appIndex The resultant application index.
      */
     static void GetRunningMultiAppIndex(const std::string &bundleName, int32_t uid, int32_t &appIndex);
+
+    /**
+     * GetPreferredAppCloneIndex, get the preferred app index configured by bundle manager.
+     *
+     * @param bundleName The bundle name of the app.
+     * @param userId The user ID.
+     * @param appIndex The preferred application index, 0 for main app.
+     * @return Returns true if a valid main app or clone app preference is found.
+     */
+    static bool GetPreferredAppCloneIndex(const std::string &bundleName, int32_t userId, int32_t &appIndex);
 };
 }  // namespace AAFwk
 }  // namespace OHOS

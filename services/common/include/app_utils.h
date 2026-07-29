@@ -355,6 +355,8 @@ public:
 
     bool IsForbidStart();
 
+    bool IsRescueMode();
+
     bool IsSupportRestartAppWithWindow();
 
     bool IsSupportAllowDebugPermission();
@@ -381,6 +383,13 @@ public:
     bool IsSupportNativeUIAbility();
 
     bool IsSupportDelayedProcessExit();
+
+    /**
+     * IsBopdOrRescueMode, check if system is in bopd or rescue mode.
+     *
+     * @return Whether system is in bopd or rescue mode.
+     */
+    bool IsBopdOrRescueMode();
 private:
     /**
      * LoadResidentProcessInExtremeMemory, load resident process in extreme low memory.
@@ -437,6 +446,12 @@ private:
     void LoadOnNewProcessEnableList();
 
     /**
+     * IsBopdMode, check bopd mode.
+     *
+     */
+    bool IsBopdMode();
+
+    /**
      * AppUtils, private constructor.
      *
      */
@@ -466,6 +481,7 @@ private:
     volatile DeviceConfiguration<bool> isSupportStartAbilities_ = {false, false};
     volatile DeviceConfiguration<bool> isPreloadApplicationEnabled_ = {false, false};
     volatile DeviceConfiguration<bool> isForbidStart_ = {true, false};
+    volatile DeviceConfiguration<bool> isRescueMode_ = {false, false};
     volatile DeviceConfiguration<bool> isSupportRestartAppWithWindow_ = {false, false};
     volatile DeviceConfiguration<bool> isSupportAllowDebugPermission_ = {false, false};
     volatile DeviceConfiguration<bool> isStartUIAbilityInCurrentProcess_ = {false, false};
@@ -475,6 +491,7 @@ private:
     volatile DeviceConfiguration<bool> isHybridSpawnUnified_ = {false, false};
     volatile DeviceConfiguration<bool> isSupportNativeUIAbility_ = {false, false};
     volatile DeviceConfiguration<bool> isSupportDelayedProcessExit_ = {false, false};
+    volatile DeviceConfiguration<bool> isBopdOrRescueMode_ = {false, false};
     DeviceConfiguration<std::vector<std::pair<std::string, std::string>>>
         residentProcessInExtremeMemory_ = {false, {}};
     std::mutex residentProcessInExtremeMemoryMutex_;

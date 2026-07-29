@@ -696,5 +696,38 @@ HWTEST_F(WatchdogTest, WatchdogTest_SetReportLifeCycleAsAppfreeze_000, TestSize.
     EXPECT_NE(watchdog_, nullptr);
     watchdog_->SetReportLifeCycleAsAppfreeze();
 }
+
+/**
+ * @tc.number: WatchdogTest_Timer_LastBackGroundWatchTime_001
+ * @tc.name: Timer
+ * @tc.desc: Verify Timer updates lastBackGroundWatchTime_ when interval exceeds limit.
+ */
+HWTEST_F(WatchdogTest, WatchdogTest_Timer_LastBackGroundWatchTime_001, TestSize.Level1)
+{
+    watchdog_->lastBackGroundWatchTime_ = 0;
+    watchdog_->stopWatchdog_ = false;
+    watchdog_->needReport_ = true;
+    watchdog_->SetAppMainThreadState(false);
+    watchdog_->Timer();
+    EXPECT_TRUE(watchdog_->lastBackGroundWatchTime_ >= 0);
+}
+
+/**
+ * @tc.number: WatchdogTest_Timer_LastBackGroundWatchTime_002
+ * @tc.name: Timer
+ * @tc.desc: Verify Timer does not update lastBackGroundWatchTime_ when interval is small.
+ */
+HWTEST_F(WatchdogTest, WatchdogTest_Timer_LastBackGroundWatchTime_002, TestSize.Level1)
+{
+    int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::
+        system_clock::now().time_since_epoch()).count();
+    watchdog_->lastBackGroundWatchTime_ = now - 1000;
+    watchdog_->stopWatchdog_ = false;
+    watchdog_->needReport_ = true;
+    watchdog_->SetAppMainThreadState(false);
+    int64_t before = watchdog_->lastBackGroundWatchTime_;
+    watchdog_->Timer();
+    EXPECT_EQ(watchdog_->lastBackGroundWatchTime_, before);
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

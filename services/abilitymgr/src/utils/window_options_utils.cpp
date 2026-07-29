@@ -53,7 +53,7 @@ void WindowOptionsUtils::SetWindowPositionAndSize(Want& want,
     bool withAnimation = startOptions.GetWithAnimation();
     auto abilityRecord = Token::GetAbilityRecordByToken(callerToken);
     if (!withAnimation && abilityRecord != nullptr &&
-        abilityRecord->GetAbilityInfo().bundleName == want.GetBundle()) {
+        abilityRecord->GetAbilityInfo().bundleName == want.GetBundleNameRef()) {
         want.SetParam(Want::PARAM_RESV_WITH_ANIMATION, withAnimation);
     }
 }

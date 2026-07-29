@@ -23,9 +23,8 @@ namespace OHOS {
 namespace AppExecFwk {
 
 class OsAccountManagerWrapper {
-    DECLARE_DELAYED_SINGLETON(OsAccountManagerWrapper);
 public:
-    int32_t GetOsAccountLocalIdFromUid(int32_t uid, int32_t &id)
+    static int32_t GetOsAccountLocalIdFromUid(int32_t uid, int32_t &id)
     {
         if (MockFlag::getOsAccountRet != 0) {
             return MockFlag::getOsAccountRet;

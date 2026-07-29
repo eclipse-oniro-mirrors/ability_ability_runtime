@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,6 +19,7 @@ namespace OHOS {
 namespace AAFwk {
 namespace {
 constexpr const char* PERMISSION_FILE_ACCESS_MANAGER = "ohos.permission.FILE_ACCESS_MANAGER";
+constexpr const char* PERMISSION_AGENT_FILE_ACCESS = "ohos.permission.AGENT_FILE_ACCESS";
 constexpr const char* PERMISSION_WRITE_IMAGEVIDEO = "ohos.permission.WRITE_IMAGEVIDEO";
 constexpr const char* PERMISSION_READ_IMAGEVIDEO = "ohos.permission.READ_IMAGEVIDEO";
 constexpr const char* PERMISSION_WRITE_AUDIO = "ohos.permission.WRITE_AUDIO";
@@ -40,6 +41,9 @@ bool PermissionVerification::VerifyPermissionByTokenId(const int &tokenId, const
     }
     if (permissionName == PERMISSION_FILE_ACCESS_MANAGER) {
         return MyFlag::permissionFileAccessManager_;
+    }
+    if (permissionName == PERMISSION_AGENT_FILE_ACCESS) {
+        return MyFlag::permissionAgentFileAccess_;
     }
     if (permissionName == PERMISSION_WRITE_IMAGEVIDEO) {
         return MyFlag::permissionWriteImageVideo_ || MyFlag::permissionAllMedia_;
@@ -92,6 +96,10 @@ bool PermissionVerification::IsSACall() const
     return (MyFlag::flag_ & MyFlag::FLAG::IS_SA_CALL);
 }
 bool PermissionVerification::IsSystemAppCall() const
+{
+    return MyFlag::IsSystemAppCall_;
+}
+bool PermissionVerification::IsSystemAppCallByTokenId(uint32_t callerTokenId) const
 {
     return MyFlag::IsSystemAppCall_;
 }

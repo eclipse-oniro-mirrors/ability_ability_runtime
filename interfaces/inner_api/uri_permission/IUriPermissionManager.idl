@@ -33,6 +33,8 @@ interface OHOS.AAFwk.IUriPermissionManager {
         [in] int hideSensitiveType);
     int GrantUriPermission([in] String[] uriVec, [in] unsigned int flag,
         [in] unsigned int targetTokenId, [in] unsigned int oriCallerTokenId);
+    int GrantUriPermission([in] UriPermissionRawData rawData, [in] unsigned int flag,
+        [in] unsigned int targetTokenId, [in] unsigned int oriCallerTokenId);
     int GrantUriPermissionByKey([in] String key, [in] unsigned int flag, [in] unsigned int targetTokenId);
     int GrantUriPermissionByKeyAsCaller([in] String key, [in] unsigned int flag,
         [in] unsigned int callerTokenId, [in] unsigned int targetTokenId);

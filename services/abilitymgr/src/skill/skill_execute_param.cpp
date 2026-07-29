@@ -152,7 +152,7 @@ bool SkillExecuteParam::GenerateFromWant(const AAFwk::Want &want, SkillExecutePa
 
 bool SkillExecuteParam::RemoveSkillParam(AAFwk::Want &want)
 {
-    auto params = want.GetParams();
+    const auto &params = want.GetParams();
     auto argsKeysStr = params.GetStringParam(SKILL_EXECUTE_PARAM_ARGS_KEYS);
     auto srcCountStr = params.GetStringParam(SKILL_EXECUTE_PARAM_SRC_ENTRIES_COUNT);
 

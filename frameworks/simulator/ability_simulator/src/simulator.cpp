@@ -966,7 +966,7 @@ void SimulatorImpl::GetPkgContextInfoListMap(const std::map<std::string, std::st
 {
     for (auto it = contextInfoMap.begin(); it != contextInfoMap.end(); it++) {
         std::vector<std::vector<std::string>> pkgContextInfoList;
-        auto jsonObject = nlohmann::json::parse(it->second);
+        auto jsonObject = nlohmann::json::parse(it->second, nullptr, false);
         if (jsonObject.is_discarded()) {
             TAG_LOGE(AAFwkTag::JSRUNTIME, "moduleName: %{public}s parse json error", it->first.c_str());
             continue;

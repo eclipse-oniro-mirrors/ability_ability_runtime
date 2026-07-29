@@ -60,6 +60,7 @@ ohos_unittest("uri_perm_mgr_test") {
     "access_token:libtokenid_sdk",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
+    "ffrt:libffrt",
     "googletest:gtest_main",
     "hilog:libhilog",
     "hisysevent:libhisysevent",

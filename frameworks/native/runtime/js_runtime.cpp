@@ -1155,7 +1155,11 @@ std::unique_ptr<NativeReference> JsRuntime::LoadModule(const std::string& module
         }
 
         napi_ref tmpRef = nullptr;
-        napi_create_reference(env, classValue, 1, &tmpRef);
+        napi_status status = napi_create_reference(env, classValue, 1, &tmpRef);
+        if (status != napi_ok || tmpRef == nullptr) {
+            TAG_LOGE(AAFwkTag::JSRUNTIME, "create reference failed");
+            return std::unique_ptr<NativeReference>();
+        }
         modules_.emplace(modulePath, reinterpret_cast<NativeReference*>(tmpRef));
     }
 
@@ -1179,6 +1183,11 @@ std::unique_ptr<NativeReference> JsRuntime::LoadSystemModule(
     CHECK_POINTER_AND_RETURN(env, std::unique_ptr<NativeReference>());
 
     HandleScope handleScope(*this);
+
+    if (methodRequireNapiRef_ == nullptr) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "null methodRequireNapiRef_");
+        return std::unique_ptr<NativeReference>();
+    }
 
     napi_value className = nullptr;
     napi_create_string_utf8(env, moduleName.c_str(), moduleName.length(), &className);
@@ -1265,7 +1274,24 @@ std::unique_ptr<AbilityBase::FileMapper> JsRuntime::ExecuteSecureWithOhmUrl(cons
     }
     return safeData;
 }
+std::shared_ptr<AbilityBase::FileMapper> JsRuntime::GetOrCreateSafeData(std::shared_ptr<Extractor> extractor,
+    const std::string &modulePath)
+{
+    //modulePath = BUNDLE_INSTALL_PATH + moduleName_ + MERGE_ABC_PATH
+    auto it = safeDataMap_.find(modulePath);
+    if (it != safeDataMap_.end()) {
+        return it->second;
+    }
 
+    std::shared_ptr<AbilityBase::FileMapper> safeData = extractor->GetSafeData(modulePath);
+    if (!safeData) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "null safeData");
+        return nullptr ;
+    }
+    //because extractor->GetSafeData will reload abc file,so need cache.
+    safeDataMap_.emplace(modulePath, safeData);
+    return safeData;
+}
 bool JsRuntime::RunScript(const std::string& srcPath, const std::string& hapPath, bool useCommonChunk,
     const std::string& srcEntrance)
 {
@@ -1302,7 +1328,7 @@ bool JsRuntime::RunScript(const std::string& srcPath, const std::string& hapPath
     auto func = [&](std::string modulePath, const std::string abcPath) {
         bool useSafeMempry = apiTargetVersion_ == 0 || apiTargetVersion_ > API8;
         if (!extractor->IsHapCompress(modulePath) && useSafeMempry) {
-            auto safeData = extractor->GetSafeData(modulePath);
+            auto safeData = isBundle_ ? extractor->GetSafeData(modulePath) : GetOrCreateSafeData(extractor, modulePath);
             if (!safeData) {
                 TAG_LOGE(AAFwkTag::JSRUNTIME, "null safeData");
                 return false;
@@ -1432,6 +1458,14 @@ void JsRuntime::DumpHeapSnapshot(uint32_t tid, const OHOS::AbilityRuntime::Runti
     DFXJSNApi::DumpHeapSnapshot(vm, dumpOption, tid);
 }
 
+void JsRuntime::DumpJsHandleMap()
+{
+    TAG_LOGI(AAFwkTag::JSRUNTIME, "DumpJsHandleMap");
+    auto vm = GetEcmaVm();
+    CHECK_POINTER(vm);
+    DFXJSNApi::GetHandleNodeIdMap(vm);
+}
+
 size_t JsRuntime::GetHeapTotalSize()
 {
     auto vm = GetEcmaVm();
@@ -1529,6 +1563,10 @@ void JsRuntime::PreloadSystemModule(const std::string& moduleName)
     HandleScope handleScope(*this);
     auto env = GetNapiEnv();
     CHECK_POINTER(env);
+    if (methodRequireNapiRef_ == nullptr) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "null methodRequireNapiRef_");
+        return;
+    }
     napi_value className = nullptr;
     napi_create_string_utf8(env, moduleName.c_str(), moduleName.length(), &className);
     napi_value globalObj = nullptr;

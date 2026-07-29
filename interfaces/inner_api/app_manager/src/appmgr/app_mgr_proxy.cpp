@@ -48,7 +48,7 @@ void AppMgrProxy::AttachApplication(const sptr<IRemoteObject> &obj)
 {
     MessageParcel data;
     MessageParcel reply;
-    MessageOption option(MessageOption::TF_SYNC);
+    MessageOption option(MessageOption::TF_SYNC | MessageOption::TF_IMAGE);
     if (!WriteInterfaceToken(data)) {
         return;
     }
@@ -85,7 +85,7 @@ void AppMgrProxy::PreloadModuleFinished(const int32_t recordId)
     TAG_LOGD(AAFwkTag::APPMGR, "PreloadModuleFinished called");
     MessageParcel data;
     MessageParcel reply;
-    MessageOption option(MessageOption::TF_ASYNC);
+    MessageOption option(MessageOption::TF_ASYNC | MessageOption::TF_IMAGE);
     if (!WriteInterfaceToken(data)) {
         TAG_LOGE(AAFwkTag::APPMGR, "PreloadModuleFinished write interface token failed");
         return;
@@ -156,6 +156,37 @@ int32_t AppMgrProxy::NotifyTemplateProcessDeepFrozen(int32_t pid)
 
     PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::NOTIFY_TEMPLATE_PROCESS_DEEP_FROZEN, data, reply, option);
     return reply.ReadInt32();
+}
+
+int32_t AppMgrProxy::PreTemplateProcessDeepFrozen(int32_t pid)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_ASYNC);
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write interface token failed.");
+        return IPC_PROXY_ERR;
+    }
+    PARCEL_UTIL_WRITE_RET_INT(data, Int32, pid);
+
+    PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::PRE_TEMPLATE_PROCESS_DEEP_FROZEN, data, reply, option);
+    return NO_ERROR;
+}
+
+int32_t AppMgrProxy::NotifyTemplateProcessReadyDone()
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_ASYNC);
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write interface token failed.");
+        return IPC_PROXY_ERR;
+    }
+
+    PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::NOTIFY_TEMPLATE_PROCESS_READY_DONE, data, reply, option);
+    return NO_ERROR;
 }
 
 void AppMgrProxy::ApplicationForegrounded(const int32_t recordId)
@@ -270,11 +301,13 @@ int32_t AppMgrProxy::GetAllRunningProcesses(std::vector<RunningProcessInfo> &inf
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     MessageParcel data;
     MessageParcel reply;
-    MessageOption option(MessageOption::TF_SYNC);
+    MessageOption option(MessageOption::TF_SYNC | MessageOption::TF_IMAGE);
     if (!WriteInterfaceToken(data)) {
         return ERR_FLATTEN_OBJECT;
     }
-    if (!SendTransactCmd(AppMgrInterfaceCode::APP_GET_ALL_RUNNING_PROCESSES, data, reply)) {
+    int32_t result = SendRequest(AppMgrInterfaceCode::APP_GET_ALL_RUNNING_PROCESSES, data, reply, option);
+    if (result != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::APPMGR, "receive error transact code %{public}d in transact cmd", result);
         return ERR_NULL_OBJECT;
     }
     auto error = GetParcelableInfos<RunningProcessInfo>(reply, info);
@@ -282,7 +315,7 @@ int32_t AppMgrProxy::GetAllRunningProcesses(std::vector<RunningProcessInfo> &inf
         TAG_LOGE(AAFwkTag::APPMGR, "GetParcelableInfos fail, error: %{public}d", error);
         return error;
     }
-    int result = reply.ReadInt32();
+    result = reply.ReadInt32();
     return result;
 }
 
@@ -476,11 +509,14 @@ int32_t AppMgrProxy::GetProcessRunningInformation(RunningProcessInfo &info)
 {
     MessageParcel data;
     MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC | MessageOption::TF_IMAGE);
 
     if (!WriteInterfaceToken(data)) {
         return ERR_FLATTEN_OBJECT;
     }
-    if (!SendTransactCmd(AppMgrInterfaceCode::APP_GET_PROCESS_RUNNING_INFORMATION, data, reply)) {
+    int32_t result = SendRequest(AppMgrInterfaceCode::APP_GET_PROCESS_RUNNING_INFORMATION, data, reply, option);
+    if (result != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::APPMGR, "receive error transact code %{public}d in transact cmd", result);
         return ERR_NULL_OBJECT;
     }
     std::unique_ptr<RunningProcessInfo> infoReply(reply.ReadParcelable<RunningProcessInfo>());
@@ -565,6 +601,21 @@ int32_t AppMgrProxy::DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info)
     PARCEL_UTIL_WRITE_RET_INT(data, Parcelable, &info);
 
     PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::DUMP_JSHEAP_MEMORY_PROCESS, data, reply, option);
+    return reply.ReadInt32();
+}
+
+int32_t AppMgrProxy::DumpJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "AppMgrProxy::DumpJsHandleMap.");
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    if (!WriteInterfaceToken(data)) {
+        return ERR_FLATTEN_OBJECT;
+    }
+    PARCEL_UTIL_WRITE_RET_INT(data, Parcelable, &info);
+
+    PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::DUMP_JSHANDLE_MAP_PROCESS, data, reply, option);
     return reply.ReadInt32();
 }
 
@@ -1589,6 +1640,27 @@ bool AppMgrProxy::IsMainProcessDebug(int32_t uid)
     return reply.ReadBool();
 }
 
+bool AppMgrProxy::IsCorrespondingProcessAttachDebug(const AbilityInfo &abilityInfo)
+{
+    MessageParcel data;
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write interface token failed.");
+        return false;
+    }
+    if (!data.WriteParcelable(&abilityInfo)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "abilityInfo write failed.");
+        return false;
+    }
+    MessageParcel reply;
+    MessageOption option;
+    auto ret = SendRequest(AppMgrInterfaceCode::IS_CORRESPONDING_PROCESS_ATTACH_DEBUG, data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGW(AAFwkTag::APPMGR, "SendRequest failed, error code: %{public}d", ret);
+        return false;
+    }
+    return reply.ReadBool();
+}
+
 int32_t AppMgrProxy::StartNativeProcessForDebugger(const AAFwk::Want &want)
 {
     MessageParcel data;
@@ -2387,7 +2459,7 @@ int32_t AppMgrProxy::SetSupportedProcessCacheSelf(bool isSupport)
     PARCEL_UTIL_WRITE_RET_INT(data, Bool, isSupport);
 
     MessageParcel reply;
-    MessageOption option;
+    MessageOption option(MessageOption::TF_IMAGE);
 
     PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::SET_SUPPORTED_PROCESS_CACHE_SELF, data, reply, option);
     return reply.ReadInt32();

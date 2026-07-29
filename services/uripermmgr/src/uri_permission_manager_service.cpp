@@ -20,9 +20,20 @@
 #include "ipc_skeleton.h"
 #include "iservice_registry.h"
 #include "system_ability_definition.h"
+#include "dynamic_feature_manager.h"
+#include "feature/idynamic_feature.h"
 
 namespace OHOS {
 namespace AAFwk {
+namespace {
+#ifdef APP_USE_ARM
+constexpr const char *STORAGE_PLUGIN_PATH = "/system/lib/libupms_storage_ext.z.so";
+constexpr const char *MEDIA_PLUGIN_PATH = "/system/lib/libupms_media_ext.z.so";
+#else
+constexpr const char *STORAGE_PLUGIN_PATH = "/system/lib64/libupms_storage_ext.z.so";
+constexpr const char *MEDIA_PLUGIN_PATH = "/system/lib64/libupms_media_ext.z.so";
+#endif
+}
 const bool REGISTER_RESULT =
     SystemAbility::MakeAndRegisterAbility(DelayedSingleton<UriPermissionManagerService>::GetInstance().get());
 
@@ -75,6 +86,11 @@ bool UriPermissionManagerService::Init()
     if (impl_ == nullptr) {
         impl_ = new UriPermissionManagerStubImpl();
     }
+#ifdef ABILITY_RUNTIME_MEDIA_LIBRARY_ENABLE
+    // Register dynamically-loadable dependency plugins (design ADR-1).
+    DynamicFeatureManager::GetInstance().Register(FeatureId::MEDIA, MEDIA_PLUGIN_PATH);
+#endif // ABILITY_RUNTIME_MEDIA_LIBRARY_ENABLE
+    DynamicFeatureManager::GetInstance().Register(FeatureId::STORAGE, STORAGE_PLUGIN_PATH);
     ready_ = true;
     return true;
 }

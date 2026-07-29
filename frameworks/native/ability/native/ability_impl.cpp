@@ -53,7 +53,7 @@ void AbilityImpl::Init(const std::shared_ptr<OHOSApplication> &application,
     isStageBasedModel_ = info && info->isStageBasedModel;
 #ifdef SUPPORT_SCREEN
     if (info && info->type == AbilityType::PAGE) {
-        ability_->SetSceneListener(sptr<WindowLifeCycleImpl>(new WindowLifeCycleImpl(token_, shared_from_this())));
+        ability_->SetSceneListener(sptr<WindowLifeCycleImpl>::MakeSptr(token_, shared_from_this()));
     }
 #endif
     ability_->Init(record->GetAbilityInfo(), application, handler, token);

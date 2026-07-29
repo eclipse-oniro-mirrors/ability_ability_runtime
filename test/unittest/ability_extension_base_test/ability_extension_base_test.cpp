@@ -29,8 +29,6 @@
 #include "mock_ability_token.h"
 #include "ohos_application.h"
 #include "extension_context.h"
-#include "js_runtime.h"
-#include "js_extension_common.h"
 #include "want.h"
 
 using namespace testing::ext;
@@ -38,6 +36,12 @@ using OHOS::AppExecFwk::ElementName;
 
 namespace OHOS {
 namespace AbilityRuntime {
+class MockExtensionCommon : public ExtensionCommon {
+public:
+    void OnConfigurationUpdated(const std::shared_ptr<AppExecFwk::Configuration> &configuration) override {}
+    void OnMemoryLevel(int level) override {}
+};
+
 class AbilityExtensionBaseTest : public testing::Test {
 public:
     static void SetUpTestCase();
@@ -232,11 +236,8 @@ HWTEST_F(AbilityExtensionBaseTest, SetExtensionCommon_0100, TestSize.Level1)
     ExtensionBase<ExtensionContext> extensionBase;
     extensionBase.Init(record, application, handler, token);
 
-    Runtime::Options options;
-    std::unique_ptr<Runtime> jsRuntime = JsRuntime::Create(options);
-    std::unique_ptr<NativeReference> jsObj;
-    extensionBase.SetExtensionCommon(JsExtensionCommon::Create(
-        static_cast<JsRuntime&>(*jsRuntime), static_cast<NativeReference&>(*jsObj), nullptr));
+    auto common = std::make_shared<MockExtensionCommon>();
+    extensionBase.SetExtensionCommon(common);
     EXPECT_NE(extensionBase.extensionCommon_, nullptr);
 
     TAG_LOGI(AAFwkTag::TEST, "SetExtensionCommon end");

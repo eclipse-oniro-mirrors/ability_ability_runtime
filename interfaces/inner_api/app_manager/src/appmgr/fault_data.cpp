@@ -155,6 +155,9 @@ bool FaultData::ReadLeakContent(Parcel &parcel)
     RETURN_FALSE_AND_WRITE_LOG_IF_TRUE(!parcel.ReadUint64(atltValue), "atLeakType read uint64 failed.");
     atLeakType = static_cast<AppTelemetryLeakType>(atltValue);
 
+    RETURN_FALSE_AND_WRITE_LOG_IF_TRUE(!parcel.ReadString(strValue), "GpuHookSize read string failed.");
+    gpuHookSize = strValue;
+
     return true;
 }
 
@@ -215,8 +218,13 @@ bool FaultData::WriteLeakContent(Parcel &parcel) const
 
     uint64_t atltValue = static_cast<uint64_t>(atLeakType);
     RETURN_FALSE_AND_WRITE_LOG_WITH_ONE_ARG_IF_TRUE(!parcel.WriteUint64(atltValue),
-        "LeakDetailInfo atltValue [%{public}" PRIu64 "] write uint64 failed.", atltValue
+        "atltValue [%{public}" PRIu64 "] write uint64 failed.", atltValue
     );
+
+    RETURN_FALSE_AND_WRITE_LOG_WITH_ONE_ARG_IF_TRUE(!parcel.WriteString(gpuHookSize),
+        "gpuHookSize [%{public}s] write string failed.", gpuHookSize.c_str()
+    );
+
     return true;
 }
 
@@ -488,6 +496,10 @@ bool AppFaultDataBySA::ReadLeakContent(Parcel &parcel)
     RETURN_FALSE_AND_WRITE_LOG_IF_TRUE(!parcel.ReadUint64(sizeValue), "LeakDetailInfo otherSize read uint64 failed.");
     atLeakType = static_cast<AppTelemetryLeakType>(sizeValue);
 
+    std::string strValue;
+    RETURN_FALSE_AND_WRITE_LOG_IF_TRUE(!parcel.ReadString(strValue), "GpuHookSize read string failed.");
+    gpuHookSize = strValue;
+
     return true;
 }
 
@@ -547,6 +559,9 @@ bool AppFaultDataBySA::WriteLeakContent(Parcel &parcel) const
         "atltValue [%{public}" PRIu64 "] write uint64 failed.", atltValue
     );
 
+    RETURN_FALSE_AND_WRITE_LOG_WITH_ONE_ARG_IF_TRUE(!parcel.WriteString(gpuHookSize),
+        "gpuHookSize [%{public}s] write string failed.", gpuHookSize.c_str()
+    );
     return true;
 }
 

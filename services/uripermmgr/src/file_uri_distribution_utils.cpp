@@ -110,7 +110,7 @@ bool FUDUtils::CheckAndCreateEventInfo(uint32_t callerTokenId, uint32_t targetTo
 int32_t FUDUtils::GetCurrentAccountId()
 {
     std::vector<int32_t> osActiveAccountIds;
-    auto ret = DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->QueryActiveOsAccountIds(
+    auto ret = AppExecFwk::OsAccountManagerWrapper::QueryActiveOsAccountIds(
         osActiveAccountIds);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "QueryActiveOsAccountIds error. ret: %{public}d", ret);
@@ -299,7 +299,7 @@ int32_t FUDUtils::GetTokenIdByBundleName(const std::string &bundleName, int32_t 
     return ERR_OK;
 }
 
-bool FUDUtils::GenerateFUDAppInfo(FUDAppInfo &info)
+bool FUDUtils::GenerateFUDAppInfo(FUDAppInfo &info, bool supportSA)
 {
     auto tokenType = Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(info.tokenId);
     if (tokenType == Security::AccessToken::ATokenTypeEnum::TOKEN_HAP) {
@@ -312,6 +312,11 @@ bool FUDUtils::GenerateFUDAppInfo(FUDAppInfo &info)
         info.userId = hapInfo.userID;
         info.bundleName = hapInfo.bundleName;
         return GetDirByBundleNameAndAppIndex(hapInfo.bundleName, hapInfo.instIndex, info.alterBundleName);
+    }
+    if (supportSA && tokenType == Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE) {
+        info.isSA = true;
+        info.userId = DEFAULT_USER_ID;
+        return true;
     }
     return false;
 }

@@ -439,7 +439,7 @@ std::shared_ptr<MissionListManagerInterface> SubManagersHelper::GetMissionListMa
 {
     int32_t userId = INVALID_USER_ID;
     int32_t getOsAccountRet =
-        DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->GetOsAccountLocalIdFromUid(uid, userId);
+        AppExecFwk::OsAccountManagerWrapper::GetOsAccountLocalIdFromUid(uid, userId);
     if (getOsAccountRet != 0) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "GetOsAccountLocalIdFromUid() failed. ret: %{public}d", getOsAccountRet);
         return nullptr;
@@ -479,7 +479,7 @@ std::shared_ptr<UIAbilityLifecycleManager> SubManagersHelper::GetUIAbilityManage
 {
     int32_t userId = INVALID_USER_ID;
     int32_t getOsAccountRet =
-        DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->GetOsAccountLocalIdFromUid(uid, userId);
+        AppExecFwk::OsAccountManagerWrapper::GetOsAccountLocalIdFromUid(uid, userId);
     if (getOsAccountRet != 0) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "GetOsAccountLocalIdFromUid() failed. ret: %{public}d", getOsAccountRet);
         return nullptr;
@@ -496,7 +496,7 @@ void SubManagersHelper::UninstallApp(const std::string &bundleName, int32_t uid)
 {
     int32_t userId = INVALID_USER_ID;
     int32_t getOsAccountRet =
-        DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->GetOsAccountLocalIdFromUid(uid, userId);
+        AppExecFwk::OsAccountManagerWrapper::GetOsAccountLocalIdFromUid(uid, userId);
     if (getOsAccountRet != 0) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "GetOsAccountLocalIdFromUid() failed. ret: %{public}d", getOsAccountRet);
         return;

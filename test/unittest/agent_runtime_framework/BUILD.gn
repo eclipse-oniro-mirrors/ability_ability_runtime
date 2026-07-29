@@ -22,18 +22,22 @@ group("unittest") {
     "agent_card_mgr_test:agent_card_mgr_test",
     "agent_card_test:agent_card_test",
     "agent_card_utils_test:agent_card_utils_test",
+    "agent_connect_manager_test:agent_connect_manager_test",
+    "agent_connect_manager_types_test:agent_connect_manager_types_test",
     "agent_connection_manager_test:agent_connection_manager_test",
     "agent_connector_proxy_test:agent_connector_proxy_test",
     "agent_connector_stub_test:agent_connector_stub_test",
     "agent_host_connection_test:agent_host_connection_test",
     "agent_load_callback_test:agent_load_callback_test",
+    "agent_manager_caller_identity_test:agent_manager_caller_identity_test",
     "agent_manager_client_test:agent_manager_client_test",
     "agent_manager_service_test:agent_manager_service_test",
     "agent_receiver_proxy_test:agent_receiver_proxy_test",
     "agent_receiver_stub_test:agent_receiver_stub_test",
+    "agent_remote_object_key_test:agent_remote_object_key_test",
     "agent_service_connection_test:agent_service_connection_test",
+    "agent_utils_test:agent_utils_test",
     "js_agent_extension_stub_impl_test:js_agent_extension_stub_impl_test",
     "sem_ver_test:sem_ver_test",
   ]
 }
-

@@ -24,6 +24,28 @@ using OHOS::AbilityRuntime::ModObjDispatcherParamCodec;
 using OHOS::MessageOption;
 using OHOS::MessageParcel;
 
+namespace OHOS::AbilityRuntime {
+// Death recipient that clears cached metadata when the remote proxy dies.
+// Holds weak_ptr to avoid extending metadataManager lifetime beyond the dispatcher.
+class ProxyDeathRecipient : public IRemoteObject::DeathRecipient {
+public:
+    explicit ProxyDeathRecipient(std::weak_ptr<ModObjDispatcherMetadataManager> metadataManager)
+        : metadataManager_(std::move(metadataManager)) {}
+    ~ProxyDeathRecipient() override = default;
+    void OnRemoteDied(const wptr<IRemoteObject> &remote) override
+    {
+        auto mgr = metadataManager_.lock();
+        if (mgr != nullptr) {
+            TAG_LOGI(AAFwkTag::EXT, "Remote proxy died, clearing metadata cache");
+            mgr->ClearCache();
+        }
+    }
+
+private:
+    std::weak_ptr<ModObjDispatcherMetadataManager> metadataManager_;
+};
+} // namespace OHOS::AbilityRuntime
+
 namespace {
 AbilityRuntime_ErrorCode CopyStringToBuffer(const std::string& src, char* dst, uint32_t max)
 {
@@ -53,6 +75,13 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_CreateMainServiceIns
     }
     dispatcher->proxy = remoteProxy->remote;
     dispatcher->metadataManager = std::make_shared<ModObjDispatcherMetadataManager>();
+    // Register death recipient to auto-release cached metadata when the remote peer dies.
+    // Uses weak_ptr so the recipient does not extend metadataManager's lifetime.
+    dispatcher->deathRecipient = OHOS::sptr<OHOS::AbilityRuntime::ProxyDeathRecipient>::MakeSptr(
+        dispatcher->metadataManager);
+    if (dispatcher->proxy != nullptr && dispatcher->deathRecipient != nullptr) {
+        dispatcher->proxy->AddDeathRecipient(dispatcher->deathRecipient);
+    }
     *ppModObjDispatcher = dispatcher;
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
@@ -82,7 +111,12 @@ void OH_AbilityRuntime_ModObjDispatcher_Release(OH_AbilityRuntime_ModObjDispatch
     if (ppModObjDispatcher == nullptr || *ppModObjDispatcher == nullptr) {
         return;
     }
-    delete *ppModObjDispatcher;
+    auto* dispatcher = *ppModObjDispatcher;
+    if (dispatcher->proxy != nullptr && dispatcher->deathRecipient != nullptr) {
+        dispatcher->proxy->RemoveDeathRecipient(dispatcher->deathRecipient);
+    }
+    dispatcher->deathRecipient = nullptr;
+    delete dispatcher;
     *ppModObjDispatcher = nullptr;
 }
 

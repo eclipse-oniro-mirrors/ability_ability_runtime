@@ -17,6 +17,13 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 module_output_path = "ability_runtime/ability_runtime/clitool"
 
 ohos_unittest("cli_tool_mgr_service_test") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
   module_out_path = module_output_path
 
   include_dirs = [
@@ -42,7 +49,6 @@ ohos_unittest("cli_tool_mgr_service_test") {
     "${cli_tool_framework_path}/services/climgr/src/session_record.cpp",
     "${cli_tool_framework_path}/services/climgr/src/tool_util.cpp",
     "${cli_tool_framework_path}/services/common/src/ccm_util.cpp",
-    "${cli_tool_framework_path}/services/common/src/cli_event_report.cpp",
     "mock/src/accesstoken_kit.cpp",
     "mock/src/ipc_skeleton.cpp",
     "permission_util_mock.cpp",
@@ -59,6 +65,7 @@ ohos_unittest("cli_tool_mgr_service_test") {
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",
+    "${cli_tool_framework_path}/services/common:cli_common",
     "${ability_runtime_services_path}/common:hisysevent_report_static",
   ]
 
@@ -79,6 +86,7 @@ ohos_unittest("cli_tool_mgr_service_test") {
     "ipc:ipc_core",
     "json:nlohmann_json_static",
     "kv_store:distributeddata_inner",
+    "selinux_adapter:librestorecon",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
   ]

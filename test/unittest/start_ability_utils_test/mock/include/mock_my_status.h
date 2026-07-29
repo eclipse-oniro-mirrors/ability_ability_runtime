@@ -16,6 +16,7 @@
 #ifndef MOCK_MY_STATUS_H
 #define MOCK_MY_STATUS_H
 
+#include "bundle_mgr_interface.h"
 #include "running_process_info.h"
 
 namespace OHOS {
@@ -26,6 +27,10 @@ public:
     ~MyStatus() = default;
     bool retValue_ = false;
     OHOS::AppExecFwk::RunningProcessInfo processInfo_;
+    ErrCode getAppClonePreferenceRet_ = ERR_OK;
+    OHOS::AppExecFwk::AppClonePreference appClonePreference_;
+    std::string lastClonePreferenceBundleName_;
+    int32_t lastClonePreferenceUserId_ = -1;
 private:
     MyStatus() = default;
 };

@@ -21,6 +21,8 @@ gen_js_src_binary("caller") {
 }
 
 ohos_shared_library("caller_napi") {
+  branch_protector_ret = "pac_ret"
+
   if (is_mingw) {
     defines = [ "WINDOWS_PLATFORM" ]
   } else {

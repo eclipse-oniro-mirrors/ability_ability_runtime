@@ -16,14 +16,14 @@
 #ifndef OHOS_ABILITY_RUNTIME_OS_ACCOUNT_MANAGER_WRAPPER_H
 #define OHOS_ABILITY_RUNTIME_OS_ACCOUNT_MANAGER_WRAPPER_H
 
+#include <string>
 #include <vector>
 
 #include "errors.h"
-#include "singleton.h"
 
 namespace OHOS {
 namespace AppExecFwk {
-class OsAccountManagerWrapper : public DelayedSingleton<OsAccountManagerWrapper> {
+class OsAccountManagerWrapper {
 public:
     OsAccountManagerWrapper() {};
     virtual ~OsAccountManagerWrapper() {};
@@ -34,7 +34,7 @@ public:
      * @param ids The local IDs of all activated OS accounts.
      * @return error code, ERR_OK on success, others on failure.
      */
-    ErrCode QueryActiveOsAccountIds(std::vector<int32_t>& ids);
+    static ErrCode QueryActiveOsAccountIds(std::vector<int32_t>& ids);
 
     /**
      * @brief Gets the local ID of an OS account from the process UID
@@ -43,7 +43,7 @@ public:
      * @param id The local ID of the OS account associated with the specified UID.
      * @return error code, ERR_OK on success, others on failure.
      */
-    ErrCode GetOsAccountLocalIdFromUid(const int32_t uid, int32_t& id);
+    static ErrCode GetOsAccountLocalIdFromUid(const int32_t uid, int32_t& id);
 
     /**
      * @brief Gets the local ID of the current OS account.
@@ -51,7 +51,7 @@ public:
      * @param id The local ID of the current OS account.
      * @return error code, ERR_OK on success, others on failure.
      */
-    ErrCode GetOsAccountLocalIdFromProcess(int& id);
+    static ErrCode GetOsAccountLocalIdFromProcess(int& id);
 
     /**
      * @brief Checks whether the specified OS account exists.
@@ -60,7 +60,7 @@ public:
      * @param isOsAccountExists Indicates whether the specified OS account exists.
      * @return error code, ERR_OK on success, others on failure.
      */
-    ErrCode IsOsAccountExists(const int id, bool& isOsAccountExists);
+    static ErrCode IsOsAccountExists(const int id, bool& isOsAccountExists);
 
     /**
      * @brief Creates an OS account using the local name and account type.
@@ -69,7 +69,7 @@ public:
      * @param osAccountUserId The local id of the created OS account.
      * @return error code, ERR_OK on success, others on failure.
      */
-    ErrCode CreateOsAccount(const std::string& name, int32_t& osAccountUserId);
+    static ErrCode CreateOsAccount(const std::string& name, int32_t& osAccountUserId);
 
     /**
      * @brief Removes an OS account based on its local ID.
@@ -77,7 +77,7 @@ public:
      * @param id The local ID of the OS account.
      * @return error code, ERR_OK on success, others on failure.
      */
-    ErrCode RemoveOsAccount(const int id);
+    static ErrCode RemoveOsAccount(const int id);
 
     /**
      * @brief Get the current active user ID.

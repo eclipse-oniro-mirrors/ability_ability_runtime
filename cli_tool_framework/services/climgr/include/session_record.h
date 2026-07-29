@@ -50,6 +50,7 @@ public:
 
     int32_t callerPid = -1;
     int32_t callerUid = -1;
+    std::string callerBundleName = "";
     std::string sessionId = "";
     std::string toolName = "";
     std::string eventId = "";
@@ -78,7 +79,12 @@ public:
     void MarkStderrClosed();
     bool OutputDrained() const;
 
-    bool BeginCleanup();
+    /**
+     * @brief Atomically claim responsibility for cleaning this session.
+     *
+     * @return true if this caller is the first cleanup owner, false if cleanup has already been claimed.
+     */
+    bool TryClaimCleanup();
 
     void AppendOutput(bool isStdout, const std::string &data);
 

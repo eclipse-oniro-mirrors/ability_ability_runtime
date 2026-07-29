@@ -22,6 +22,7 @@
 #include <regex>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "ability_debug_response_interface.h"
@@ -82,6 +83,7 @@
 #include "task_handler_wrap.h"
 #include "want.h"
 #include "app_jsheap_mem_info.h"
+#include "app_jshandle_map_info.h"
 #include "app_cjheap_mem_info.h"
 #include "running_multi_info.h"
 #include "multi_user_config_mgr.h"
@@ -107,6 +109,11 @@ class WindowVisibilityChangedListener;
 class WindowPidVisibilityChangedListener;
 using LoadAbilityTaskFunc = std::function<void()>;
 constexpr int32_t BASE_USER_RANGE = 200000;
+
+inline int32_t GetUserIdByUid(int32_t uid)
+{
+    return uid / BASE_USER_RANGE;
+}
 
 // for child process isolation
 constexpr int32_t START_ID_FOR_CHILD_PROCESS_ISOLATION = 110000;
@@ -342,6 +349,8 @@ public:
     ImageError DestroyImageForFault(std::shared_ptr<AppRunningRecord> appRecord);
     int32_t HandleForkAll(int32_t pid);
     ImageError HandleForkAllInner(std::shared_ptr<AppRunningRecord> appRecord, int32_t pid);
+    int32_t HandlePreTemplateProcessDeepFrozen(int32_t pid);
+    void HandleNotifyTemplateProcessReadyDone(int32_t pid);
     void HandleMakeImageTimeout(const std::string& bundleName, const std::string& abilityName,
         int32_t userId, int32_t appIndex);
     void CheckMakeImageState(std::shared_ptr<AppRunningRecord> appRecord, ImageError error);
@@ -646,6 +655,15 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int32_t DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info);
+
+    /**
+     * DumpJsHandleMap, call DumpJsHandleMap() through proxy project.
+     * dump the application's jshandle map info.
+     *
+     * @param info, pid tid
+     * @return ERR_OK ,return back success, others fail.
+     */
+    virtual int32_t DumpJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info);
 
     /**
      * DumpCjHeapMemory, call DumpCjHeapMemory() through proxy project.
@@ -1086,6 +1104,14 @@ public:
 
     virtual int GetRenderProcessTerminationStatus(pid_t renderPid, int &status);
 
+    /**
+     * @brief Called (via pidfd, dispatched on the appmgr task queue) when a
+     * spawned render process exits. Replaces the binder OnRemoteDied path for
+     * render processes; the cleanup logic is unchanged.
+     * @param pid render process pid.
+     */
+    void OnRenderProcessExited(pid_t pid);
+
     int VerifyKillProcessPermission(const sptr<IRemoteObject> &token) const;
 
     int VerifyAccountPermission(const std::string &permissionName, const int userId) const;
@@ -1102,6 +1128,9 @@ public:
 
     void SubmitDestroyImageTask(const std::shared_ptr<AppRunningRecord>,
         const int32_t reason, const std::string &exitMsg);
+    std::string GetImageReportAppVersionName(const std::string &bundleName, int32_t userId);
+    void SendDestroyImageEvent(const std::shared_ptr<AppRunningRecord> &appRecord, const std::string &bundleName,
+        const std::string &appVersionName, int32_t reason, const std::string &exitMsg);
 
     /**
      * Record process exit reason to appRunningRecord
@@ -1211,6 +1240,8 @@ public:
     int32_t GetBundleNameByPid(const int32_t pid, std::string &bundleName, int32_t &uid);
 
     bool IsMainProcessDebug(int32_t uid);
+
+    bool IsCorrespondingProcessAttachDebug(const AbilityInfo &abilityInfo);
 
     /**
      * Notify Fault Data
@@ -1482,6 +1513,14 @@ public:
      * @param pid child process pid.
      */
     virtual void ExitChildProcessSafelyByChildPid(const pid_t pid);
+
+    /**
+     * @brief Called (via pidfd, dispatched on the appmgr task queue) when a
+     * spawned child process exits. Replaces the binder OnRemoteDied path for
+     * child processes; the cleanup logic is unchanged.
+     * @param pid child process pid.
+     */
+    void OnChildProcessExited(pid_t pid);
 
     /**
      * Start native child process, callde by ChildProcessManager.
@@ -2038,7 +2077,9 @@ private:
     void SetRenderStartMsg(AppSpawnStartMsg &startMsg, std::shared_ptr<RenderRecord> renderRecord,
         const int32_t renderUid, const bool isGPU);
 
-    void OnRenderRemoteDied(const wptr<IRemoteObject> &remote);
+    void RemoveRenderProcessIsolationUid(int32_t uid);
+
+    void OnRenderProcessDied(std::shared_ptr<RenderRecord> renderProcessRecord);
 
     void OnImageProcessRemoteDied(const wptr<IRemoteObject> &remote);
 
@@ -2085,15 +2126,9 @@ private:
     int32_t GetChildProcessInfoEx(const std::shared_ptr<ChildProcessRecord> childProcessRecord,
         const std::shared_ptr<AppRunningRecord> appRecord, ChildProcessInfo &info);
 
-    void RemoveRenderProcessIsolationUid(int32_t uid);
-
-    void OnRenderProcessDied(std::shared_ptr<RenderRecord> renderProcessRecord);
-
     void RemoveChildProcessIsolationUid(int32_t uid);
-    
-    void OnChildProcessDied(std::shared_ptr<ChildProcessRecord> childProcessRecord);
 
-    void OnChildProcessRemoteDied(const wptr<IRemoteObject> &remote);
+    void OnChildProcessDied(std::shared_ptr<ChildProcessRecord> childProcessRecord);
 
     /**
      * kill all child processed of a main process
@@ -2445,8 +2480,11 @@ private:
         const std::string& specifiedProcessFlag, const std::string& customProcessFlag,
         std::shared_ptr<AppRunningRecord>& appRecord);
 
-    void SnapshotStartReport(int32_t uid, const std::string &bundleName, int32_t result, const std::string &reason);
-    void SnapshotErrorReport(int32_t uid, const std::string &bundleName, int32_t result, const std::string &reason);
+    void SnapshotStartReport(int32_t uid, const std::string &bundleName, const std::string &appVersionName,
+        int32_t result, const std::string &reason);
+
+    void SnapshotErrorReport(int32_t uid, const std::string &bundleName, const std::string &appVersionName,
+        int32_t result, const std::string &reason);
 
     void MarkTemplateProcess(const std::shared_ptr<AppRunningRecord> &appRecord, std::string bundleName);
     void UnMarkTemplateProcess(int32_t templatePid);
@@ -2525,7 +2563,7 @@ private:
     std::mutex imageSerialLock_;
 
     std::mutex imageReportLock_;
-    std::map<std::string, int32_t> imageStartReportMap_;
+    std::map<std::string, std::pair<int32_t, int32_t>> imageStartReportMap_;
     std::chrono::steady_clock::time_point lastReportTime_ = std::chrono::steady_clock::now();
     int32_t imageStartCount_ {0};
 };

@@ -15,11 +15,16 @@
 
 #include "native_ability_wrapper.h"
 
+#include <cstdint>
 #include <cstring>
 
 #include "hilog_tag_wrapper.h"
 #include "ability_native_thread.h"
 #include "securec.h"
+
+namespace {
+constexpr int32_t MIN_BUFFER_SIZE = 37; // UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx + '\0'
+}
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,7 +36,6 @@ extern "C" {
 AbilityRuntime_ErrorCode OH_AbilityRuntime_GetAbilityInstanceId(
     const AbilityRuntime_NativeAbilityWrapper* nativeAbilityWrapper, char* buffer, const int32_t bufferSize)
 {
-    constexpr int32_t MIN_BUFFER_SIZE = 37; // UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx + '\0'
     if (nativeAbilityWrapper == nullptr || buffer == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "Invalid parameter: nativeAbilityWrapper or buffer is null");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
@@ -76,7 +80,12 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetAbilityName(
         return ABILITY_RUNTIME_ERROR_CODE_ABILITY_WRAPPER_INVALID;
     }
 
-    int32_t nameLength = static_cast<int32_t>(nativeAbilityWrapper->abilityName.length());
+    size_t nameLen = nativeAbilityWrapper->abilityName.length();
+    if (nameLen > static_cast<size_t>(INT32_MAX)) {
+        TAG_LOGE(AAFwkTag::APPKIT, "Ability name too long, length: %{public}zu", nameLen);
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    int32_t nameLength = static_cast<int32_t>(nameLen);
 
     // If buffer is null, return the required buffer size
     if (buffer == nullptr) {

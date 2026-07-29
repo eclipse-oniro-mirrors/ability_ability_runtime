@@ -22,6 +22,7 @@
 
 #include "ability_record_mgr.h"
 #include "app_jsheap_mem_info.h"
+#include "app_jshandle_map_info.h"
 #include "app_cjheap_mem_info.h"
 #include "app_malloc_info.h"
 #include "app_mgr_interface.h"
@@ -225,6 +226,14 @@ public:
 
     /**
      *
+     * @brief dump the application's jshandle map info.
+     *
+     * @param info, pid, tid, needGc, needSnapshot.
+     */
+    void ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info) override;
+
+    /**
+     *
      * @brief triggerGC and dump the application's cjheap memory info.
      *
      * @param info, pid, needGc, needSnapshot.
@@ -351,6 +360,7 @@ public:
         const sptr<IQuickFixCallback> &callback, const int32_t recordId) override;
 
     int32_t ScheduleNotifyAppFault(const FaultData &faultData) override;
+    int32_t SchedulePreTemplateProcessDeepFrozen() override;
 #ifdef CJ_FRONTEND
     CJUncaughtExceptionInfo CreateCjExceptionInfo(const std::string &bundleName, uint32_t versionCode,
         const std::string &hapPath, const std::string &appRunningId);
@@ -440,6 +450,8 @@ private:
     void HandleScheduleNewProcessRequest(const AAFwk::Want &want, const std::string &moduleName);
 
     void HandleJsHeapMemory(const OHOS::AppExecFwk::JsHeapDumpInfo &info);
+
+    void HandleJsHandleMap(const OHOS::AppExecFwk::JsHandleMapInfo &info);
 
     void HandleCjHeapMemory(const OHOS::AppExecFwk::CjHeapDumpInfo &info);
 
@@ -698,6 +710,7 @@ private:
     static void HandleSignal(int signal, siginfo_t *siginfo, void *context);
 
     void NotifyAppFault(const FaultData &faultData);
+    void NotifyPreTemplateProcessDeepFrozen();
 
     void OnOverlayChanged(const EventFwk::CommonEventData &data,
         const std::shared_ptr<Global::Resource::ResourceManager> &resourceManager, const std::string &bundleName,
@@ -742,6 +755,14 @@ private:
     int32_t OnAttachLocalDebug(bool isDebugFromLocal);
 
     void HandleConfigByPlugin(Configuration &config, BundleInfo &bundleInfo);
+
+    void DelayedReportNotifyFFRTToRss();
+    void NotifyFFRTSnapshot(int32_t snapshotState);
+
+    void BeforeHandleRequest() override;
+
+    std::mutex needNotifyFFRTNewIpcMutex_;
+    bool needToNotifyFFRTForNewIpc_ = false;
 
 #if defined(NWEB) && defined(NWEB_GRAPHIC)
     void HandleNWebPreload();

@@ -36,6 +36,7 @@
 #endif // SUPPORT_SCREEN
 
 using OHOS::Security::AccessToken::AccessTokenKit;
+using OHOS::Security::AccessToken::HapTokenInfo;
 
 namespace OHOS {
 namespace AAFwk {
@@ -62,6 +63,19 @@ AbilityPermissionUtil &AbilityPermissionUtil::GetInstance()
 {
     static AbilityPermissionUtil instance;
     return instance;
+}
+
+int32_t AbilityPermissionUtil::GetClosestHapTokenId(uint32_t tokenId, uint32_t &hapTokenId)
+{
+    HapTokenInfo hapInfo;
+    int32_t ret = AccessTokenKit::GetHapTokenInfo(tokenId, hapInfo);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "failed to get hap token info: %{public}d", ret);
+        hapTokenId = 0;
+        return ERR_INVALID_VALUE;
+    }
+    hapTokenId = hapInfo.tokenID;
+    return ERR_OK;
 }
 
 inline bool AbilityPermissionUtil::IsDelegatorCall(const AppExecFwk::RunningProcessInfo &processInfo,
@@ -91,8 +105,8 @@ bool AbilityPermissionUtil::IsDominateScreen(const Want &want, bool isPendingWan
             return false;
         }
         // add temporarily
-        std::string bundleName = want.GetElement().GetBundleName();
-        std::string abilityName = want.GetElement().GetAbilityName();
+        const auto &bundleName = want.GetBundleNameRef();
+        const auto &abilityName = want.GetAbilityNameRef();
         bool withoutSettings = bundleName.find(SETTINGS) == std::string::npos &&
             abilityName.find(SETTINGS) == std::string::npos;
         if (withoutSettings && AppUtils::GetInstance().IsAllowStartAbilityWithoutCallerToken(bundleName, abilityName)) {
@@ -124,6 +138,13 @@ bool AbilityPermissionUtil::IsDominateScreen(const Want &want, bool isPendingWan
             TAG_LOGI(AAFwkTag::ABILITYMGR, "caller from capi.");
             return false;
         }
+        // Bypass screen-domination when the caller resolves to a hap token (e.g. ohos-aa acting on
+        // behalf of a hap application): a resolvable hap token is not a dominate-screen caller.
+        uint32_t hapTokenId = 0;
+        if (GetClosestHapTokenId(IPCSkeleton::GetCallingTokenID(), hapTokenId) == ERR_OK && hapTokenId != 0) {
+            TAG_LOGD(AAFwkTag::ABILITYMGR, "caller resolves to a hap token, not dominate screen.");
+            return false;
+        }
         TAG_LOGE(AAFwkTag::ABILITYMGR, "dominate screen.");
         return true;
     }
@@ -139,7 +160,7 @@ int32_t AbilityPermissionUtil::CheckMultiInstanceAndAppClone(Want &want, int32_t
     AppExecFwk::ApplicationInfo appInfo;
     auto isSupportMultiInstance = AppUtils::GetInstance().IsSupportMultiInstance();
     if (isSupportMultiInstance) {
-        if (!StartAbilityUtils::GetApplicationInfo(want.GetBundle(), userId, appInfo)) {
+        if (!StartAbilityUtils::GetApplicationInfo(want.GetBundleNameRef(), userId, appInfo)) {
             TAG_LOGI(AAFwkTag::ABILITYMGR, "implicit start");
             return ERR_OK;
         }
@@ -177,7 +198,8 @@ int32_t AbilityPermissionUtil::CheckMultiInstance(Want &want, sptr<IRemoteObject
     }
     auto callerRecord = Token::GetAbilityRecordByToken(callerToken);
     std::vector<std::string> instanceKeyArray;
-    auto result = IN_PROCESS_CALL(appMgr->GetAllRunningInstanceKeysByBundleName(want.GetBundle(), instanceKeyArray));
+    auto result = IN_PROCESS_CALL(appMgr->GetAllRunningInstanceKeysByBundleName(want.GetBundleNameRef(),
+        instanceKeyArray));
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Failed to get instance key");
         return ERR_INVALID_VALUE;
@@ -185,7 +207,7 @@ int32_t AbilityPermissionUtil::CheckMultiInstance(Want &want, sptr<IRemoteObject
     auto instanceKey = want.GetStringParam(Want::APP_INSTANCE_KEY);
     auto isCreating = want.GetBoolParam(Want::CREATE_APP_INSTANCE_KEY, false);
     // in-app launch
-    if ((callerRecord != nullptr && callerRecord->GetAbilityInfo().bundleName == want.GetBundle()) ||
+    if ((callerRecord != nullptr && callerRecord->GetAbilityInfo().bundleName == want.GetBundleNameRef()) ||
         IsStartSelfUIAbility()) {
         if (isCreating) {
             if (!instanceKey.empty()) {
@@ -258,7 +280,7 @@ int32_t AbilityPermissionUtil::CheckMultiInstanceKeyForExtension(const AbilityRe
         TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid extension type");
         return ERR_INVALID_EXTENSION_TYPE;
     }
-    if (!MultiInstanceUtils::IsInstanceKeyExist(abilityRequest.want.GetBundle(), instanceKey)) {
+    if (!MultiInstanceUtils::IsInstanceKeyExist(abilityRequest.want.GetBundleNameRef(), instanceKey)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "key not found");
         return ERR_INVALID_APP_INSTANCE_KEY;
     }

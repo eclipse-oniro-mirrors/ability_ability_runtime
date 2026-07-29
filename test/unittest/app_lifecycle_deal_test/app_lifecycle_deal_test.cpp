@@ -344,6 +344,39 @@ HWTEST_F(AppLifecycleDealTest, ScheduleJsHeapMemory_001, TestSize.Level1)
 }
 
 /**
+ * @tc.name: ScheduleJsHandleMap_001
+ * @tc.desc: Test the normal state of ScheduleJsHandleMap
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppLifecycleDealTest, ScheduleJsHandleMap_001, TestSize.Level1)
+{
+    TAG_LOGD(AAFwkTag::TEST, "ScheduleJsHandleMap_001 start.");
+    auto appLifeCycle = std::make_shared<AppLifeCycleDeal>();
+    sptr<MockAppScheduler> mockAppScheduler = new (std::nothrow) MockAppScheduler();
+    appLifeCycle->SetApplicationClient(mockAppScheduler);
+    OHOS::AppExecFwk::JsHandleMapInfo info;
+    info.pid = 1;
+    EXPECT_CALL(*mockAppScheduler, ScheduleJsHandleMap(_)).Times(1);
+    appLifeCycle->ScheduleJsHandleMap(info);
+}
+
+/**
+ * @tc.name: ScheduleJsHandleMap_002
+ * @tc.desc: Test ScheduleJsHandleMap when appThread is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppLifecycleDealTest, ScheduleJsHandleMap_002, TestSize.Level1)
+{
+    TAG_LOGD(AAFwkTag::TEST, "ScheduleJsHandleMap_002 start.");
+    auto appLifeCycle = std::make_shared<AppLifeCycleDeal>();
+    OHOS::AppExecFwk::JsHandleMapInfo info;
+    info.pid = 1;
+    appLifeCycle->ScheduleJsHandleMap(info);
+    EXPECT_EQ(appLifeCycle->GetApplicationClient(), nullptr);
+    TAG_LOGD(AAFwkTag::TEST, "ScheduleJsHandleMap_002 end.");
+}
+
+/**
  * @tc.name: ScheduleClearPageStack_001
  * @tc.desc: Test the normal state of ScheduleClearPageStack
  * @tc.type: FUNC

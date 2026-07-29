@@ -303,7 +303,7 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::GetAppRunningRecordByRender
     return AAFwk::MyStatus::GetInstance().getAppRunningRecordByRenderPid_;
 }
 
-std::shared_ptr<RenderRecord> AppRunningManager::OnRemoteRenderDied(const wptr<IRemoteObject> &remote)
+std::shared_ptr<RenderRecord> AppRunningManager::OnRenderProcessExitedByPid(pid_t pid)
 {
     return nullptr;
 }
@@ -388,7 +388,7 @@ bool AppRunningManager::IsChildProcessReachLimit(uint32_t accessTokenId, bool mu
     return AAFwk::MyStatus::GetInstance().isChildProcessReachLimit_;
 }
 
-std::shared_ptr<ChildProcessRecord> AppRunningManager::OnChildProcessRemoteDied(const wptr<IRemoteObject> &remote)
+std::shared_ptr<ChildProcessRecord> AppRunningManager::OnChildProcessExitedByPid(pid_t pid)
 {
     return nullptr;
 }
@@ -501,6 +501,11 @@ bool AppRunningManager::CheckAppRunningRecordIsLast(const std::shared_ptr<AppRun
 }
 
 int32_t AppRunningManager::GetAllAbilityInfos(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos)
+{
+    return ERR_OK;
+}
+
+int32_t AppRunningManager::DumpJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
 {
     return ERR_OK;
 }

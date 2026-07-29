@@ -27,6 +27,7 @@ struct FUDAppInfo {
     std::string bundleName;
     std::string alterBundleName;
     int32_t userId = -1;
+    bool isSA = false;
 };
 class FUDUtils {
 public:
@@ -49,7 +50,7 @@ public:
     static bool CheckUriTypeIsValid(Uri &uri);
     static bool GetBundleApiTargetVersion(const std::string &bundleName, int32_t &targetApiVersion);
     static bool IsDocsCloudUri(Uri &uri);
-    static bool GenerateFUDAppInfo(FUDAppInfo &info);
+    static bool GenerateFUDAppInfo(FUDAppInfo &info, bool supportSA = false);
     static bool IsUdmfOrPasteboardCall();
     static bool IsDFSCall();
     static bool IsSandboxApp(uint32_t tokenId);

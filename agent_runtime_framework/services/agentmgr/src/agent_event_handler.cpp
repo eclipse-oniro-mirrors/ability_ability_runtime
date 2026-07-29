@@ -15,14 +15,12 @@
 
 #include "agent_event_handler.h"
 
-#include "agent_manager_service.h"
 #include "hilog_tag_wrapper.h"
 
 namespace OHOS {
 namespace AgentRuntime {
-AgentEventHandler::AgentEventHandler(
-    const std::shared_ptr<AAFwk::TaskHandlerWrap> &taskHandler, const std::weak_ptr<AgentManagerService> &server)
-    : AAFwk::EventHandlerWrap(taskHandler), server_(server)
+AgentEventHandler::AgentEventHandler(const std::shared_ptr<AAFwk::TaskHandlerWrap> &taskHandler)
+    : AAFwk::EventHandlerWrap(taskHandler)
 {
     TAG_LOGI(AAFwkTag::SER_ROUTER, "init AgentEventHandler");
 }

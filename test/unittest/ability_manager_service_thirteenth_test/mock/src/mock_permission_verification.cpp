@@ -45,7 +45,7 @@ bool PermissionVerification::IsShellCallByTokenId(uint32_t callerTokenId) const
 {
     return (MyStatus::GetInstance().permPermission_ & FLAG::IS_SHELL_CALL);
 }
-bool PermissionVerification::CheckSpecificSystemAbilityAccessPermission() const
+bool PermissionVerification::CheckSpecificSystemAbilityAccessPermission(const std::string &processName) const
 {
     return !!(MyStatus::GetInstance().permPermission_);
 }

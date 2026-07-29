@@ -83,6 +83,8 @@ private:
     int32_t HandleMakeImage(MessageParcel &data, MessageParcel &reply);
     int32_t HandleDestroyImage(MessageParcel &data, MessageParcel &reply);
     int32_t HandleNotifyTemplateProcessDeepFrozen(MessageParcel &data, MessageParcel &reply);
+    int32_t HandlePreTemplateProcessDeepFrozen(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleNotifyTemplateProcessReadyDone(MessageParcel &data, MessageParcel &reply);
 #ifdef SUPPORT_CHILD_PROCESS
     int32_t HandleGetAllChildrenProcesses(MessageParcel &data, MessageParcel &reply);
 #endif  // SUPPORT_CHILD_PROCESS
@@ -118,6 +120,7 @@ private:
     int32_t HandleUnregisterConfigurationObserver(MessageParcel &data, MessageParcel &reply);
     int32_t HandleDumpHeapMemory(MessageParcel &data, MessageParcel &reply);
     int32_t HandleDumpJsHeapMemory(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleDumpJsHandleMap(MessageParcel &data, MessageParcel &reply);
     int32_t HandleDumpCjHeapMemory(MessageParcel &data, MessageParcel &reply);
     int32_t HandleDumpMem(MessageParcel &data, MessageParcel &reply);
     int32_t HandleReportDumpMemResult(MessageParcel &data, MessageParcel &reply);
@@ -136,6 +139,7 @@ private:
 #endif
     int32_t HandleIsSharedBundleRunning(MessageParcel &data, MessageParcel &reply);
     int32_t HandleIsMainProcessDebug(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleIsCorrespondingProcessAttachDebug(MessageParcel &data, MessageParcel &reply);
     int32_t HandleStartNativeProcessForDebugger(MessageParcel &data, MessageParcel &reply);
     int32_t HandleNotifyFault(MessageParcel &data, MessageParcel &reply);
     int32_t HandleNotifyFaultBySA(MessageParcel &data, MessageParcel &reply);

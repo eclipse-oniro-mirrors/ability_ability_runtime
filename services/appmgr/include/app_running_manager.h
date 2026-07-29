@@ -24,6 +24,7 @@
 #include "ability_info.h"
 #include "app_debug_listener_interface.h"
 #include "app_jsheap_mem_info.h"
+#include "app_jshandle_map_info.h"
 #include "app_cjheap_mem_info.h"
 #include "app_malloc_info.h"
 #include "app_mem_info.h"
@@ -312,6 +313,15 @@ public:
     int32_t DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info);
 
     /**
+     * DumpJsHandleMap, call DumpJsHandleMap() through proxy project.
+     * dump the application's jshandle map info.
+     *
+     * @param info, pid tid
+     * @return ERR_OK ,return back success, others fail.
+     */
+    int32_t DumpJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info);
+
+    /**
      * DumpCjHeapMemory, call DumpCjHeapMemory() through proxy project.
      * triggerGC and dump the application's cjheap memory info.
      *
@@ -372,7 +382,6 @@ public:
 
     void ClipStringContent(const std::regex &re, const std::string &source, std::string &afterCutStr);
     std::shared_ptr<AppRunningRecord> GetAppRunningRecordByRenderPid(const pid_t pid);
-    std::shared_ptr<RenderRecord> OnRemoteRenderDied(const wptr<IRemoteObject> &remote);
     bool GetAppRunningStateByBundleName(const std::string &bundleName);
     int32_t NotifyLoadRepairPatch(const std::string &bundleName, const sptr<IQuickFixCallback> &callback);
     int32_t NotifyHotReloadPage(const std::string &bundleName, const sptr<IQuickFixCallback> &callback);
@@ -409,9 +418,11 @@ public:
 
 #ifdef SUPPORT_CHILD_PROCESS
     std::shared_ptr<AppRunningRecord> GetAppRunningRecordByChildProcessPid(const pid_t pid);
-    std::shared_ptr<ChildProcessRecord> OnChildProcessRemoteDied(const wptr<IRemoteObject> &remote);
+    std::shared_ptr<ChildProcessRecord> OnChildProcessExitedByPid(pid_t pid);
     bool IsChildProcessReachLimit(uint32_t accessTokenId, bool multiProcessFeature);
 #endif //SUPPORT_CHILD_PROCESS
+
+    std::shared_ptr<RenderRecord> OnRenderProcessExitedByPid(pid_t pid);
 
     /**
      * @brief Obtain number of app through bundlename.

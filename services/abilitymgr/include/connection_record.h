@@ -16,6 +16,8 @@
 #ifndef OHOS_ABILITY_RUNTIME_CONNECTION_RECORD_H
 #define OHOS_ABILITY_RUNTIME_CONNECTION_RECORD_H
 
+#include <cstdint>
+#include <list>
 #include <mutex>
 #include "ability_connect_callback_interface.h"
 #include "base_extension_record.h"
@@ -142,6 +144,10 @@ public:
      */
     void ScheduleConnectAbilityDone();
 
+    bool IsLowCodeAgentConnect() const;
+
+    void QueueLowCodeAgentInvocation(const Want &want, const sptr<IAbilityConnection> &callback);
+
     /**
      * cancel connect timeout task.
      *
@@ -177,8 +183,19 @@ public:
 
     void SetConnectWant(const Want &want);
     Want GetConnectWant() const;
+
 private:
+    struct LowCodeAgentInvocation {
+        Want want;
+        sptr<IAbilityConnection> callback;
+    };
+
     void ScheduleDisconnectTimeout();
+    void NotifyLowCodeAgentInvoked(const sptr<IRemoteObject> &remoteObject);
+    void NotifyLowCodeAgentInvoked(const sptr<IRemoteObject> &remoteObject, const Want &want);
+    bool IsLowCodeAgentWant(const Want &want) const;
+    void CompleteLowCodeAgentInvocation(const Want &want, const sptr<IAbilityConnection> &callback);
+    void FlushPendingLowCodeAgentInvocations();
     void SetDirectCallerInfo();
 
     static int64_t connectRecordId;
@@ -188,6 +205,8 @@ private:
     std::shared_ptr<BaseExtensionRecord> targetService_ = nullptr; // target:service need to be connected
     mutable std::mutex callbackMutex_;
     sptr<IAbilityConnection> connCallback_ = nullptr;        // service connect callback
+    mutable std::mutex pendingLowCodeMutex_;
+    std::list<LowCodeAgentInvocation> pendingLowCodeInvocations_;
     std::weak_ptr<AbilityConnectManager> abilityConnectManager_;
     std::string callerName_;                           // caller bundleName or processName
     std::atomic<int32_t> recordId_ = 0;                // record id
@@ -198,7 +217,6 @@ private:
     int32_t directCallerPid_ = 0;                      // direct caller pid
     uint32_t directCallerTokenId_ = 0;                 // direct caller token id
     std::string directCallerName_;                     // direct caller bundleName or processName
-
     DISALLOW_COPY_AND_MOVE(ConnectionRecord);
 };
 }  // namespace AAFwk

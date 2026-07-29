@@ -90,6 +90,9 @@ enum class AbilityErrorCode {
     // the context is not ability context.
     ERR_ABILITY_RUNTIME_EXTERNAL_NOT_ABILITY_CONTEXT = 16000020,
 
+    // the module name does not exist.
+    ERROR_CODE_INVALID_MODULENAME = 16000021,
+
     // free install network abnormal.
     ERROR_CODE_NETWORK_ABNORMAL = 16000051,
 
@@ -331,6 +334,12 @@ enum class AbilityErrorCode {
 
     ERROR_CODE_DELAYED_PROCESS_EXIT_HAS_OTHER_UIABILITY = 16000162,
 
+    // File type error. File name does not end with .so, .hap, or .hsp.
+    ERROR_CODE_FILE_TYPE_ERROR = 16000163,
+
+    // Failed to parse configuration file.
+    ERROR_CODE_EVICT_CONFIG_PARSE_ERROR = 16000164,
+
     // target bundle is not in u1
     ERROR_CODE_NO_U1 = 16000204,
 
@@ -375,6 +384,15 @@ enum class AbilityInnerErrorMsg {
     QUERY_KEEP_ALIVE_BUNDLES_FAILED,
     TERMINATE_MISSION_FAILED,
     SET_KEEP_ALIVE_FAILED,
+    GRANT_URI_PERMISSION_FAILED,
+    GRANT_URI_PERMISSION_BY_KEY_FAILED,
+    GRANT_URI_PERMISSION_AS_CALLER_FAILED,
+    REVOKE_URI_PERMISSION_FAILED,
+    GET_ABILITY_RUNNING_INFOS_FAILED,
+    GET_TOP_ABILITY_FAILED,
+    ACQUIRE_SHARE_DATA_FAILED,
+    GET_DIALOG_SESSION_INFO_FAILED,
+    SEND_DIALOG_RESULT_FAILED,
 };
 
 enum class AgentManagerErrorOperation {

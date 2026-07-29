@@ -33,10 +33,6 @@ using namespace OHOS::AppExecFwk;
 namespace OHOS {
 namespace AAFwk {
 namespace {
-const std::string INTERCEPT_PARAMETERS = "intercept_parammeters";
-const std::string INTERCEPT_BUNDLE_NAME = "intercept_bundleName";
-const std::string INTERCEPT_ABILITY_NAME = "intercept_abilityName";
-const std::string INTERCEPT_MODULE_NAME = "intercept_moduleName";
 const std::string IS_FROM_PARENTCONTROL = "ohos.ability.isFromParentControl";
 }
 

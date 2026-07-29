@@ -986,6 +986,7 @@ void CJEnvironment::SetSanitizerKindRuntimeVersion(SanitizerKind kind)
 
 CJEnvMethods* CJEnvironment::CreateEnvMethods()
 {
+    static void* mainNAPIEnv = nullptr;
     static CJEnvMethods gCJEnvMethods {
         .initCJAppNS = [](const std::string& path) {
             // to keep compatibility with older version
@@ -1047,6 +1048,12 @@ CJEnvMethods* CJEnvironment::CreateEnvMethods()
         },
         .registerEventHandler = [](const CJEventReportInfo& handle) {
             return CJEnvironment::GetInstance()->RegisterEventHandler(handle);
+        },
+        .setMainNAPIEnv = [](void* env) {
+            mainNAPIEnv = env;
+        },
+        .getMainNAPIEnv = []() {
+            return mainNAPIEnv;
         },
     };
     return &gCJEnvMethods;

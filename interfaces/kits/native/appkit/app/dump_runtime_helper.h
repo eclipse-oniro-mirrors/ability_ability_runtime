@@ -17,6 +17,7 @@
 #define OHOS_ABILITY_RUNTIME_DUMP_RUNTIME_HELPER_H
 
 #include "app_jsheap_mem_info.h"
+#include "app_jshandle_map_info.h"
 #include "app_cjheap_mem_info.h"
 #include "app_mem_dump_info.h"
 #include "mem_dump_callback_interface.h"
@@ -38,6 +39,7 @@ public:
     ~DumpRuntimeHelper() = default;
     void SetAppFreezeFilterCallback();
     void DumpJsHeap(const OHOS::AppExecFwk::JsHeapDumpInfo &info);
+    void DumpJsHandleMap(const OHOS::AppExecFwk::JsHandleMapInfo &info);
     void DumpCjHeap(const OHOS::AppExecFwk::CjHeapDumpInfo &info);
     void DumpMem(const OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback);
 private:
@@ -62,9 +64,7 @@ private:
     static bool CheckAppListenedEvents(const std::string &path);
     static bool SetDirXattr(const std::string &path, const std::string &name, const std::string &value);
     static bool GetDirXattr(const std::string &path, const std::string &name, std::string &value);
-    static bool IsFileExists(const std::string &file);
-    static bool CreateDir(const std::string &path);
-    static void CreateDirDelay(const std::string &path);
+    static void WriteRunningIdDelay();
     static void WriteRunningId();
     static bool CheckOomdumpSwitch();
     static bool Check2CQuota();

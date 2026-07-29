@@ -20,6 +20,8 @@ config("ani_context_base_public_config") {
 }
 
 ohos_shared_library("ani_base_context") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     cfi = true
     cfi_cross_dso = true

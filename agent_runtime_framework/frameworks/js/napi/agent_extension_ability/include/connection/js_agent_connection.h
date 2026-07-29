@@ -17,8 +17,10 @@
 #define OHOS_AGENT_RUNTIME_JS_AGENT_CONNECTION_H
 
 #include <map>
+#include <functional>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <vector>
 
 #include "ability_connect_callback.h"
@@ -60,6 +62,13 @@ namespace AgentConnectionUtils {
 void RemoveAgentConnection(int64_t connectId);
 
 /**
+ * Erase agent connection from registry without releasing the callback object.
+ *
+ * @param connectId The connection ID to erase.
+ */
+void EraseAgentConnection(int64_t connectId);
+
+/**
  * Insert agent connection into registry.
  *
  * @param connection The connection object to insert.
@@ -84,8 +93,23 @@ void FindAgentConnection(int64_t connectId, sptr<JSAgentConnection> &connection)
  * @param callback The callback object to match.
  * @param connection Output parameter for the found connection.
  */
-void FindAgentConnection(napi_env env, AAFwk::Want &want, napi_value callback,
+void FindAgentConnection(napi_env env, const AAFwk::Want &want, napi_value callback,
     sptr<JSAgentConnection> &connection);
+
+void FindAgentConnectionCandidatesByTarget(napi_env env, const AAFwk::Want &want, napi_value callback,
+    std::vector<sptr<JSAgentConnection>> &candidates);
+
+/**
+ * Existing low-code host connection reusable for a different AgentId.
+ * Same-AgentId duplicates use FindAgentConnection.
+ */
+void FindReusableLowCodeAgentConnection(napi_env env, const AAFwk::Want &want, napi_value callback,
+    sptr<JSAgentConnection> &connection);
+
+/**
+ * Mirrors an AgentManagerService low-code completion into the local JS connection registry.
+ */
+void CompleteLowCodeAgent(const std::string &agentId);
 }
 
 class JsAgentConnectorStubImpl;
@@ -97,6 +121,10 @@ class JsAgentConnectorStubImpl;
  */
 class JSAgentConnection : public AbilityRuntime::AbilityConnectCallback {
 public:
+    using DisconnectCompleteHandler = std::function<void(const wptr<JSAgentConnection>&)>;
+    using ConnectCompleteHandler =
+        std::function<void(napi_env env, napi_value proxy, const wptr<JSAgentConnection>&)>;
+
     /**
      * Constructor.
      *
@@ -159,6 +187,8 @@ public:
      */
     void SetNapiAsyncTask(std::shared_ptr<AbilityRuntime::NapiAsyncTask> &task);
 
+    void SetDisconnectAsyncTask(const std::shared_ptr<AbilityRuntime::NapiAsyncTask> &task);
+
     /**
      * Add a duplicated pending task.
      * Used when multiple connection requests are made for the same extension.
@@ -166,6 +196,25 @@ public:
      * @param task The unique pointer to the pending async task.
      */
     void AddDuplicatedPendingTask(std::unique_ptr<AbilityRuntime::NapiAsyncTask> &task);
+
+    void AddReconnectPendingTask(const AAFwk::Want &want, std::unique_ptr<AbilityRuntime::NapiAsyncTask> &task);
+
+    // every queued reconnect keeps its own Want; drain registers each non-first AgentId.
+    bool TakeReconnectPendingTasks(std::vector<AAFwk::Want> &wants,
+        std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> &tasks);
+
+    // non-first low-code reconnects staged for Reuse after the fresh host connects.
+    void AddPendingLowCodeReuseTask(const AAFwk::Want &want, std::unique_ptr<AbilityRuntime::NapiAsyncTask> task);
+    bool TakePendingLowCodeReuseTasks(std::vector<AAFwk::Want> &wants,
+        std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> &tasks);
+    void RejectPendingLowCodeReuseTasks(napi_env env, napi_value error);
+
+    // Reject primary/duplicated/staged low-code tasks, clear primary async task, remove connection.
+    // Public: DoConnectAgentExtensionAbility (js_agent_manager.cpp) rejects staged reuse on AgentManagerService
+    // connect failure.
+    void RejectConnectAndCleanup(napi_env env, napi_value error, bool hasPrimaryTask);
+
+    void AdoptDuplicatedPendingTasks(std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> &&tasks);
 
     /**
      * Resolve all duplicated pending tasks with the proxy.
@@ -224,6 +273,8 @@ public:
      */
     void SetJsConnectionObject(napi_value jsConnectionObject);
 
+    napi_env GetEnv() const { return env_; }
+
     /**
      * Get the JS connection object.
      *
@@ -267,6 +318,36 @@ public:
      */
     int64_t GetConnectionId() { return connectionId_; }
 
+    void SetDisconnecting(bool disconnecting);
+
+    bool IsDisconnecting();
+
+    /**
+     * Insert a low-code AgentId on this shared host. True only if newly inserted; failed reuse rolls back
+     * without touching siblings.
+     */
+    bool AddLowCodeAgentId(const std::string &agentId);
+
+    /**
+     * Remove one low-code AgentId. True if it was the last active one on this connection.
+     */
+    bool RemoveLowCodeAgentId(const std::string &agentId);
+
+    /**
+     * Whether this connection owns the given low-code AgentId.
+     */
+    bool HasLowCodeAgentId(const std::string &agentId);
+
+    /**
+     * Whether this connection still has any active low-code AgentId.
+     */
+    bool HasAnyLowCodeAgentId();
+
+    void SetDisconnectCompleteHandler(DisconnectCompleteHandler handler);
+
+    // invoked from HandleOnAbilityConnectDone to register staged non-first AgentIds via Reuse.
+    void SetConnectCompleteHandler(ConnectCompleteHandler handler);
+
     /**
      * Release a native reference.
      *
@@ -291,6 +372,12 @@ private:
 
     void HandleOnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int resultCode);
 
+    // Returns true when the connect flow must abort (no pending task, or result failure).
+    bool AbortOnConnectError(napi_env env, int resultCode, bool hasPrimaryTask, bool hasDuplicatedPendingTask);
+    // Build the JS receiver proxy for the just-connected host; nullptr (after cleanup) on failure.
+    napi_value BuildAgentReceiverProxy(napi_env env, const sptr<IRemoteObject> &remoteObject,
+        bool hasPrimaryTask);
+
 protected:
     napi_env env_;
     int64_t connectionId_ = -1;
@@ -308,6 +395,11 @@ private:
     std::shared_ptr<AbilityRuntime::NapiAsyncTask> napiAsyncTask_;
 
     /**
+     * The async task for the disconnect promise.
+     */
+    std::shared_ptr<AbilityRuntime::NapiAsyncTask> disconnectAsyncTask_;
+
+    /**
      * The proxy object returned to JavaScript.
      */
     std::unique_ptr<NativeReference> serviceProxyObject_;
@@ -316,6 +408,16 @@ private:
      * List of pending tasks for duplicate connection requests.
      */
     std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> duplicatedPendingTaskList_;
+
+    std::mutex stateLock_;
+    bool disconnecting_ = false;
+    std::set<std::string> lowCodeAgentIds_;
+    std::vector<AAFwk::Want> reconnectWants_;
+    std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> reconnectPendingTaskList_;
+    std::vector<AAFwk::Want> pendingLowCodeReuseWants_;
+    std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> pendingLowCodeReuseTaskList_;
+    DisconnectCompleteHandler disconnectCompleteHandler_;
+    ConnectCompleteHandler connectCompleteHandler_;
 };
 
 } // namespace AgentRuntime

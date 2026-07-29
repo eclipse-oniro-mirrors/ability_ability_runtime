@@ -42,6 +42,7 @@ constexpr const char* ERROR_MSG_WUKONG_MODE = "An ability cannot be started or s
 constexpr const char* ERROR_MSG_CONTINUATION_FLAG =
     "The call with the continuation and prepare continuation flag is forbidden.";
 constexpr const char* ERROR_MSG_INVALID_CONTEXT = "The context does not exist.";
+constexpr const char* ERROR_MSG_INVALID_MODULENAME = "The module name does not exist.";
 constexpr const char* ERROR_MSG_CONTROLLED = "The application is controlled.";
 constexpr const char* ERROR_MSG_EDM_CONTROLLED = "The application is controlled by EDM.";
 constexpr const char* ERROR_MSG_NETWORK_ABNORMAL = "Network error.";
@@ -226,6 +227,12 @@ constexpr const char* ERROR_MSG_ERR_NATIVE_ABILITY_STATE_CHECK_FAILED =
     "Internal error. The ability state is invalid. Ensure the ability is active and try again.";
 constexpr const char* ERROR_MSG_ERR_URI_LIST_OUT_OF_RANGE =
     "Internal error. The URI list exceeds the supported size. Reduce the number of URIs and try again.";
+constexpr const char* ERROR_MSG_ERR_FREQ_START_ABILITY =
+    "Internal error. Ability start frequency limit exceeded. Try again later.";
+constexpr const char* ERROR_MSG_CALLER_IS_KILLING =
+    "Internal error. The caller ability is being terminated. Try again later.";
+constexpr const char* ERROR_MSG_NOT_GAME_PRELOAD_STATE =
+    "Internal error. The application is not in the game prelaunch state. Try again later.";
 constexpr const char* ERROR_MSG_RESTORE_WINDOW_STAGE_FAILED =
     "Internal error. Failed to restore the window stage. Check the local storage object and try again.";
 constexpr const char* ERROR_MSG_WRAP_ABILITY_RESULT_FAILED =
@@ -259,6 +266,8 @@ constexpr const char* ERROR_MSG_AGENT_EXTENSION_CONNECTION_ENDED =
 constexpr const char* ERROR_MSG_DISCONNECT_AGENT_EXTENSION_NOT_EXIST =
     "Internal error. The agent extension connection does not exist. "
     "Use an AgentProxy returned by connectAgentExtensionAbility.";
+constexpr const char* ERROR_MSG_CONNECT_AGENT_EXTENSION_NOT_EXIST =
+    "Internal error. The agent extension connection is not ready. Retry connectAgentExtensionAbility.";
 constexpr const char* ERROR_MSG_TRANSFER_EXTENSION_DATA_FAILED =
     "Internal error. Failed to transfer extension data to the window. Try again later.";
 constexpr const char* ERROR_MSG_UI_WINDOW_NULL =
@@ -308,9 +317,33 @@ constexpr const char* ERROR_MSG_TERMINATE_MISSION_FAILED =
     "Internal error. Failed to terminate the mission. Try again later.";
 constexpr const char* ERROR_MSG_SET_KEEP_ALIVE_FAILED =
     "Internal error. Failed to set the keep-alive status. Try again later.";
+constexpr const char* ERROR_MSG_GRANT_URI_PERMISSION_FAILED =
+    "Internal error. Failed to grant URI permission. Try again later.";
+constexpr const char* ERROR_MSG_GRANT_URI_PERMISSION_BY_KEY_FAILED =
+    "Internal error. Failed to grant URI permission by key. Try again later.";
+constexpr const char* ERROR_MSG_GRANT_URI_PERMISSION_AS_CALLER_FAILED =
+    "Internal error. Failed to grant URI permission as caller. Try again later.";
+constexpr const char* ERROR_MSG_REVOKE_URI_PERMISSION_FAILED =
+    "Internal error. Failed to revoke URI permission. Try again later.";
+constexpr const char* ERROR_MSG_GET_ABILITY_RUNNING_INFOS_FAILED =
+    "Internal error. Failed to get ability running information. Try again later.";
+constexpr const char* ERROR_MSG_GET_TOP_ABILITY_FAILED =
+    "Internal error. Failed to get the top ability. Try again later.";
+constexpr const char* ERROR_MSG_ACQUIRE_SHARE_DATA_FAILED =
+    "Internal error. Failed to acquire share data. Try again later.";
+constexpr const char* ERROR_MSG_GET_DIALOG_SESSION_INFO_FAILED =
+    "Internal error. Failed to get dialog session information. Try again later.";
+constexpr const char* ERROR_MSG_SEND_DIALOG_RESULT_FAILED =
+    "Internal error. Failed to send the dialog result. Try again later.";
 
 // follow ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST of appexecfwk_errors.h in bundle_framework
 constexpr int32_t ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST = 8521220;
+
+constexpr const char* ERROR_MSG_FILE_TYPE_ERROR =
+    "File type error. File name does not end with .so, .hap, or .hsp.";
+
+constexpr const char* ERROR_MSG_EVICT_CONFIG_PARSE_ERROR =
+    "Failed to parse configuration file.";
 
 static std::unordered_map<AbilityErrorCode, const char*> ERR_CODE_MAP = {
     { AbilityErrorCode::ERROR_OK, ERROR_MSG_OK },
@@ -319,6 +352,8 @@ static std::unordered_map<AbilityErrorCode, const char*> ERR_CODE_MAP = {
     { AbilityErrorCode::ERROR_CODE_INVALID_PARAM, ERROR_MSG_INVALID_PARAM },
     { AbilityErrorCode::ERROR_CODE_CAPABILITY_NOT_SUPPORT, ERROR_MSG_CAPABILITY_NOT_SUPPORT },
     { AbilityErrorCode::ERROR_CODE_INNER, ERROR_MSG_INNER },
+    { AbilityErrorCode::ERROR_CODE_FILE_TYPE_ERROR, ERROR_MSG_FILE_TYPE_ERROR },
+    { AbilityErrorCode::ERROR_CODE_EVICT_CONFIG_PARSE_ERROR, ERROR_MSG_EVICT_CONFIG_PARSE_ERROR },
     { AbilityErrorCode::ERROR_CODE_RESOLVE_ABILITY, ERROR_MSG_RESOLVE_ABILITY },
     { AbilityErrorCode::ERROR_CODE_INVALID_ABILITY_TYPE, ERROR_MSG_INVALID_ABILITY_TYPE },
     { AbilityErrorCode::ERROR_CODE_INVALID_ID, ERROR_MSG_INVALID_ID },
@@ -330,6 +365,7 @@ static std::unordered_map<AbilityErrorCode, const char*> ERR_CODE_MAP = {
     { AbilityErrorCode::ERROR_CODE_WUKONG_MODE, ERROR_MSG_WUKONG_MODE },
     { AbilityErrorCode::ERROR_CODE_CONTINUATION_FLAG, ERROR_MSG_CONTINUATION_FLAG },
     { AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT, ERROR_MSG_INVALID_CONTEXT },
+    { AbilityErrorCode::ERROR_CODE_INVALID_MODULENAME, ERROR_MSG_INVALID_MODULENAME },
     { AbilityErrorCode::ERROR_CODE_CONTROLLED, ERROR_MSG_CONTROLLED },
     { AbilityErrorCode::ERROR_CODE_EDM_CONTROLLED, ERROR_MSG_EDM_CONTROLLED },
     { AbilityErrorCode::ERROR_CODE_NETWORK_ABNORMAL, ERROR_MSG_NETWORK_ABNORMAL },
@@ -436,6 +472,8 @@ static std::unordered_map<int32_t, AbilityErrorCode> INNER_TO_JS_ERROR_CODE_MAP 
     {CHECK_PERMISSION_FAILED, AbilityErrorCode::ERROR_CODE_PERMISSION_DENIED},
     {ERR_PERMISSION_DENIED, AbilityErrorCode::ERROR_CODE_PERMISSION_DENIED},
     {ERR_NOT_SYSTEM_APP, AbilityErrorCode::ERROR_CODE_NOT_SYSTEM_APP},
+    {ERR_EVICT_FILE_TYPE, AbilityErrorCode::ERROR_CODE_FILE_TYPE_ERROR},
+    {ERR_EVICT_CONFIG_PARSE, AbilityErrorCode::ERROR_CODE_EVICT_CONFIG_PARSE_ERROR},
     {RESOLVE_ABILITY_ERR, AbilityErrorCode::ERROR_CODE_RESOLVE_ABILITY},
     {ERR_WRONG_INTERFACE_CALL, AbilityErrorCode::ERROR_CODE_INVALID_ABILITY_TYPE},
     {TARGET_ABILITY_NOT_SERVICE, AbilityErrorCode::ERROR_CODE_INVALID_ABILITY_TYPE},
@@ -587,6 +625,9 @@ static std::unordered_map<int32_t, const char*> INNER_ERROR_MSG_BY_NATIVE_CODE {
     {ERR_AAFWK_PARCEL_FAIL, ERROR_MSG_ERR_AAFWK_PARCEL_FAIL},
     {ERR_REACH_UPPER_LIMIT, ERROR_MSG_ERR_REACH_UPPER_LIMIT},
     {ERR_AAFWK_INVALID_WINDOW_MODE, ERROR_MSG_ERR_AAFWK_INVALID_WINDOW_MODE},
+    {ERR_FREQ_START_ABILITY, ERROR_MSG_ERR_FREQ_START_ABILITY},
+    {ERR_CALLER_IS_KILLING, ERROR_MSG_CALLER_IS_KILLING},
+    {ERR_NOT_GAME_PRELOAD_STATE, ERROR_MSG_NOT_GAME_PRELOAD_STATE},
     {ERR_CONNECT_ERMS_FAILED, ERROR_MSG_SERVICE_UNAVAILABLE},
     {ERR_NATIVE_IPC_PARCEL_FAILED, ERROR_MSG_IPC_FAILED},
     {ERR_NATIVE_ABILITY_NOT_FOUND, ERROR_MSG_ERR_NATIVE_ABILITY_NOT_FOUND},
@@ -638,6 +679,15 @@ static std::unordered_map<AbilityInnerErrorMsg, const char*> INNER_ERROR_MSG_BY_
     {AbilityInnerErrorMsg::QUERY_KEEP_ALIVE_BUNDLES_FAILED, ERROR_MSG_QUERY_KEEP_ALIVE_BUNDLES_FAILED},
     {AbilityInnerErrorMsg::TERMINATE_MISSION_FAILED, ERROR_MSG_TERMINATE_MISSION_FAILED},
     {AbilityInnerErrorMsg::SET_KEEP_ALIVE_FAILED, ERROR_MSG_SET_KEEP_ALIVE_FAILED},
+    {AbilityInnerErrorMsg::GRANT_URI_PERMISSION_FAILED, ERROR_MSG_GRANT_URI_PERMISSION_FAILED},
+    {AbilityInnerErrorMsg::GRANT_URI_PERMISSION_BY_KEY_FAILED, ERROR_MSG_GRANT_URI_PERMISSION_BY_KEY_FAILED},
+    {AbilityInnerErrorMsg::GRANT_URI_PERMISSION_AS_CALLER_FAILED, ERROR_MSG_GRANT_URI_PERMISSION_AS_CALLER_FAILED},
+    {AbilityInnerErrorMsg::REVOKE_URI_PERMISSION_FAILED, ERROR_MSG_REVOKE_URI_PERMISSION_FAILED},
+    {AbilityInnerErrorMsg::GET_ABILITY_RUNNING_INFOS_FAILED, ERROR_MSG_GET_ABILITY_RUNNING_INFOS_FAILED},
+    {AbilityInnerErrorMsg::GET_TOP_ABILITY_FAILED, ERROR_MSG_GET_TOP_ABILITY_FAILED},
+    {AbilityInnerErrorMsg::ACQUIRE_SHARE_DATA_FAILED, ERROR_MSG_ACQUIRE_SHARE_DATA_FAILED},
+    {AbilityInnerErrorMsg::GET_DIALOG_SESSION_INFO_FAILED, ERROR_MSG_GET_DIALOG_SESSION_INFO_FAILED},
+    {AbilityInnerErrorMsg::SEND_DIALOG_RESULT_FAILED, ERROR_MSG_SEND_DIALOG_RESULT_FAILED},
 };
 }
 
@@ -716,6 +766,9 @@ std::string GetAgentManagerErrorMsg(int32_t errCode, AgentManagerErrorOperation 
     if (errCode == CONNECTION_NOT_EXIST) {
         if (operation == AgentManagerErrorOperation::DISCONNECT_AGENT_EXTENSION) {
             return ERROR_MSG_DISCONNECT_AGENT_EXTENSION_NOT_EXIST;
+        }
+        if (operation == AgentManagerErrorOperation::CONNECT_AGENT_EXTENSION) {
+            return ERROR_MSG_CONNECT_AGENT_EXTENSION_NOT_EXIST;
         }
         if (operation == AgentManagerErrorOperation::COMPLETE_LOW_CODE_AGENT) {
             return GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED);

@@ -72,6 +72,7 @@ ohos_shared_library("napi_common") {
     "napi:ace_napi",
     "samgr:samgr_proxy",
     "window_manager:window_animation_utils",
+    "node:node_header_notice",
   ]
 
   public_external_deps = [

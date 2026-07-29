@@ -30,6 +30,8 @@ config("ohos_aa_command_exception_config") {
 }
 
 ohos_static_library("ohos_aa_cli_source_set") {
+  branch_protector_ret = "pac_ret"
+
   sources = [
     "src/ohos_aa_command.cpp",
     "${ability_runtime_path}/tools/aa/src/ability_start_with_observer.cpp",

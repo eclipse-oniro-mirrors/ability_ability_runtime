@@ -150,6 +150,26 @@ HWTEST_F(AppMgrServiceInnerSeventhTest, GetBundleAndHapInfo_002, TestSize.Level1
 }
 
 /**
+ * @tc.name: GetBundleAndHapInfo_003
+ * @tc.desc: test GetBundleAndHapInfo when appInfo is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerSeventhTest, GetBundleAndHapInfo_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetBundleAndHapInfo_003 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().getBundleManagerHelper_ = std::make_shared<BundleMgrHelper>();
+    AbilityInfo abilityInfo;
+    std::shared_ptr<ApplicationInfo> appInfo = nullptr;
+    BundleInfo bundleInfo;
+    HapModuleInfo hapModuleInfo;
+    int32_t appIndex = 0;
+    bool ret = appMgrServiceInner->GetBundleAndHapInfo(abilityInfo, appInfo, bundleInfo, hapModuleInfo, appIndex);
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "GetBundleAndHapInfo_003 end");
+}
+
+/**
  * @tc.name: UpdateApplicationInfoInstalled_001
  * @tc.desc: test UpdateApplicationInfoInstalled_001
  * @tc.type: FUNC
@@ -949,6 +969,50 @@ HWTEST_F(AppMgrServiceInnerSeventhTest, DumpJsHeapMemory_002, TestSize.Level1)
     int32_t ret = appMgrServiceInner->DumpJsHeapMemory(info);
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "DumpJsHeapMemory_002 end");
+}
+
+/**
+* @tc.name: DumpJsHandleMap_001
+* @tc.desc: test DumpJsHandleMap_001
+* @tc.type: FUNC
+*/
+HWTEST_F(AppMgrServiceInnerSeventhTest, DumpJsHandleMap_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().isSACall_ = true;
+    appMgrServiceInner->appRunningManager_ = nullptr;
+
+    OHOS::AppExecFwk::JsHandleMapInfo info;
+    info.pid = 0;
+    int32_t ret = appMgrServiceInner->DumpJsHandleMap(info);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+
+    info.pid = 1;
+    ret = appMgrServiceInner->DumpJsHandleMap(info);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_001 end");
+}
+
+/**
+* @tc.name: DumpJsHandleMap_002
+* @tc.desc: test DumpJsHandleMap when caller is not SA
+* @tc.type: FUNC
+*/
+HWTEST_F(AppMgrServiceInnerSeventhTest, DumpJsHandleMap_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_002 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    bool originalIsSACall = AAFwk::MyStatus::GetInstance().isSACall_;
+    AAFwk::MyStatus::GetInstance().isSACall_ = false;
+
+    OHOS::AppExecFwk::JsHandleMapInfo info;
+    info.pid = 1;
+    int32_t ret = appMgrServiceInner->DumpJsHandleMap(info);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+
+    AAFwk::MyStatus::GetInstance().isSACall_ = originalIsSACall;
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_002 end");
 }
 
 /**

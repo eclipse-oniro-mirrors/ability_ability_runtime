@@ -458,7 +458,7 @@ HWTEST_F(AbilityManagerServiceNinthTest, StartAbilityWithServiceMatch_002, TestS
     EXPECT_NE(abilityMs_, nullptr);
     InsightIntentExecuteParam param;
     param.bundleName_ = "com.example.test";
-    param.abilityName_ = "com.example.test.MainAbility";
+    param.abilityName_ = "MainAbility";
     param.moduleName_ = "entry";
     param.insightIntentParam_ = std::make_shared<WantParams>();
     int32_t userId = 100;
@@ -500,7 +500,7 @@ HWTEST_F(AbilityManagerServiceNinthTest, ExecuteIntentWithServiceMatch_002, Test
     EXPECT_NE(abilityMs_, nullptr);
     InsightIntentExecuteParam param;
     param.bundleName_ = "com.example.test";
-    param.abilityName_ = "com.example.test.MainAbility";
+    param.abilityName_ = "MainAbility";
     param.moduleName_ = "entry";
     param.insightIntentParam_ = std::make_shared<WantParams>();
     auto result = abilityMs_->ExecuteIntent(0, nullptr, param);

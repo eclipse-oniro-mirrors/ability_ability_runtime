@@ -34,15 +34,20 @@ napi_value JsAgentReceiverProxy::CreateJsAgentReceiverProxy(napi_env env,
         std::to_string(connectionId).c_str());
     HandleEscape handleEscape(env);
     napi_value object = nullptr;
-    napi_create_object(env, &object);
-    if (object == nullptr) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "Failed to create object");
+    napi_status status = napi_create_object(env, &object);
+    if (status != napi_ok || object == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "Failed to create object, status: %{public}d", status);
         return CreateJsUndefined(env);
     }
 
     std::unique_ptr<JsAgentReceiverProxy> proxy = std::make_unique<JsAgentReceiverProxy>(impl, connectorProxy);
     proxy->SetConnectionId(connectionId);
-    napi_wrap(env, object, proxy.release(), Finalizer, nullptr, nullptr);
+    status = napi_wrap(env, object, proxy.get(), Finalizer, nullptr, nullptr);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "napi_wrap failed %{public}d", status);
+        return CreateJsUndefined(env);
+    }
+    proxy.release();
 
     const char *moduleName = "JsAgentReceiverProxy";
     BindNativeFunction(env, object, "sendData", moduleName, JsAgentReceiverProxy::SendData);

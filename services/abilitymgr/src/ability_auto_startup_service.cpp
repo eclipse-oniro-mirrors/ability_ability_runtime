@@ -43,7 +43,26 @@ constexpr const char* HIDDEN_START_AUTOSTARTUP = "hiddenStartAutoStartup";
 
 AbilityAutoStartupService::AbilityAutoStartupService() {}
 
-AbilityAutoStartupService::~AbilityAutoStartupService() {}
+AbilityAutoStartupService::~AbilityAutoStartupService()
+{
+    {
+        std::lock_guard<std::mutex> deathLock(deathRecipientsMutex_);
+        for (auto &entry : deathRecipients_) {
+            if (entry.first != nullptr && entry.second != nullptr) {
+                wptr<IRemoteObject> weakCallback = entry.first;
+                auto callback = weakCallback.promote();
+                if (callback != nullptr) {
+                    callback->RemoveDeathRecipient(entry.second);
+                }
+            }
+        }
+        deathRecipients_.clear();
+    }
+    {
+        std::lock_guard<std::mutex> lock(autoStartUpMutex_);
+        callbackVector_.clear();
+    }
+}
 
 int32_t AbilityAutoStartupService::RegisterAutoStartupSystemCallback(const sptr<IRemoteObject> &callback)
 {
@@ -81,9 +100,9 @@ int32_t AbilityAutoStartupService::UnregisterAutoStartupSystemCallback(const spt
         return code;
     }
 
+    bool isFound = false;
     {
         std::lock_guard<std::mutex> lock(autoStartUpMutex_);
-        bool isFound = false;
         auto item = callbackVector_.begin();
         while (item != callbackVector_.end()) {
             if (*item == callback) {
@@ -95,6 +114,16 @@ int32_t AbilityAutoStartupService::UnregisterAutoStartupSystemCallback(const spt
         }
         if (!isFound) {
             TAG_LOGD(AAFwkTag::AUTO_STARTUP, "Callback not exist");
+        }
+    }
+
+    // Clean up death recipients if callback was found and is not null
+    if (isFound && callback != nullptr) {
+        std::lock_guard<std::mutex> deathLock(deathRecipientsMutex_);
+        auto iter = deathRecipients_.find(callback);
+        if (iter != deathRecipients_.end()) {
+            callback->RemoveDeathRecipient(iter->second);
+            deathRecipients_.erase(iter);
         }
     }
     return ERR_OK;
@@ -118,6 +147,12 @@ int32_t AbilityAutoStartupService::SetApplicationAutoStartup(const AutoStartupIn
 
     AutoStartupAbilityData abilityData;
     code = GetAbilityInfo(info, abilityData);
+    if (code != ERR_OK) {
+        return code;
+    }
+
+    // Check cross-user permission with the real userId from BundleManager
+    code = VerifyCrossUserAccountPermission(abilityData);
     if (code != ERR_OK) {
         return code;
     }
@@ -180,6 +215,12 @@ int32_t AbilityAutoStartupService::CancelApplicationAutoStartup(const AutoStartu
 
     AutoStartupAbilityData abilityData;
     code = GetAbilityInfo(info, abilityData);
+    if (code != ERR_OK) {
+        return code;
+    }
+
+    // Check cross-user permission with the real userId from BundleManager
+    code = VerifyCrossUserAccountPermission(abilityData);
     if (code != ERR_OK) {
         return code;
     }
@@ -431,7 +472,7 @@ std::string AbilityAutoStartupService::GetSelfApplicationBundleName()
 bool AbilityAutoStartupService::CheckSelfApplication(const std::string &bundleName)
 {
     TAG_LOGD(AAFwkTag::AUTO_STARTUP, "Called, bundleName: %{public}s", bundleName.c_str());
-    return GetSelfApplicationBundleName() == bundleName ? true : false;
+    return GetSelfApplicationBundleName() == bundleName;
 }
 
 int32_t AbilityAutoStartupService::GetValidUserId(int32_t userId)
@@ -645,6 +686,11 @@ int32_t AbilityAutoStartupService::SetApplicationAutoStartupByEDM(const AutoStar
     if (errorCode != ERR_OK) {
         return errorCode;
     }
+    // Check cross-user permission with the real userId from BundleManager
+    errorCode = VerifyCrossUserAccountPermission(abilityData);
+    if (errorCode != ERR_OK) {
+        return errorCode;
+    }
     AutoStartupInfo fullInfo(info);
     fullInfo.abilityTypeName = abilityData.abilityTypeName;
     fullInfo.accessTokenId = abilityData.accessTokenId;
@@ -664,6 +710,11 @@ int32_t AbilityAutoStartupService::CancelApplicationAutoStartupByEDM(const AutoS
     }
     AutoStartupAbilityData abilityData;
     errorCode = GetAbilityInfo(info, abilityData);
+    if (errorCode != ERR_OK) {
+        return errorCode;
+    }
+    // Check cross-user permission with the real userId from BundleManager
+    errorCode = VerifyCrossUserAccountPermission(abilityData);
     if (errorCode != ERR_OK) {
         return errorCode;
     }
@@ -718,6 +769,29 @@ int32_t AbilityAutoStartupService::CheckPermissionForEDM()
         TAG_LOGE(AAFwkTag::AUTO_STARTUP, "verify PERMISSION_MANAGE_APP_BOOT_INTERNAL fail");
         return CHECK_PERMISSION_FAILED;
     }
+
+    return ERR_OK;
+}
+
+int32_t AbilityAutoStartupService::VerifyCrossUserAccountPermission(const AutoStartupAbilityData &abilityData)
+{
+    // When setterUserId is U0 or U1, allow directly
+    if (abilityData.setterUserId == U0_USER_ID || abilityData.setterUserId == U1_USER_ID) {
+        TAG_LOGD(AAFwkTag::AUTO_STARTUP, "setterUserId is U0 or U1, allow");
+        return ERR_OK;
+    }
+
+    // If setterUserId is not U0/U1 and setterUserId != userId, need to verify cross-user permission
+    if (abilityData.setterUserId != abilityData.userId) {
+        int32_t code = AAFwk::PermissionVerification::GetInstance()->VerifyAccountPermission();
+        if (code != ERR_OK) {
+            TAG_LOGE(AAFwkTag::AUTO_STARTUP,
+                "VerifyAccountPermission failed, setterUserId: %{public}d, userId: %{public}d",
+                abilityData.setterUserId, abilityData.userId);
+            return code;
+        }
+    }
+
     return ERR_OK;
 }
 

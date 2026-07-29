@@ -44,6 +44,7 @@ public:
     static bool retVerifyGetAgentCardPermission;
     static bool retJudgeCallerIsAllowedToUseSystemAPI;
     static bool retVerifyModifyAgentCardPermission;
+    static bool retCheckSpecificSystemAbilityAccessPermission;
     static int32_t retRegisterAgentCard;
     static int32_t retUpdateAgentCard;
     static int32_t retDeleteAgentCard;

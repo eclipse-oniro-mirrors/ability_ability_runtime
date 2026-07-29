@@ -450,7 +450,7 @@ HWTEST_F(AbilityManagerProxyFifthTest, StartContinuation_0100, TestSize.Level1)
     sptr<IRemoteObject> abilityToken = nullptr;
     int32_t status = 1;
     auto res1 = proxy_->StartContinuation(want, abilityToken, status);
-    EXPECT_EQ(res1, INNER_ERR);
+    EXPECT_EQ(res1, ERR_NATIVE_IPC_PARCEL_FAILED);
 
     sptr<IRemoteObject> abilityToken2 = new IRemoteObjectMocker();
     EXPECT_CALL(*mock_, SendRequest(_, _, _, _)).WillOnce(Return(INVALID_PARAMETERS_ERR));

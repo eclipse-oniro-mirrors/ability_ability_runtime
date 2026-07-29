@@ -78,6 +78,7 @@ struct EventInfo {
 struct SnapshotInfo {
     int32_t uid = -1;
     std::string bundleName = "";
+    std::string appVersionName = ""; // 应用的版本
     std::string snapshotCond = ""; // 事件触发场景(例如xxx事件触发了镜像制作，目前几个打点不涉及，后续新增打点会使用)
     std::string snapshotEvent = ""; // 镜像相关事件,例如镜像制作，镜像启动等
     int32_t snapshotResult = 0; // 结果返回值

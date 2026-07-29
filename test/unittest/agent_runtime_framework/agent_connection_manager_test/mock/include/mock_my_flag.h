@@ -26,8 +26,12 @@ public:
     static int32_t retDisconnectAgentExtensionAbility;
     static int32_t retConnectServiceExtensionAbility;
     static int32_t retDisconnectServiceExtensionAbility;
+    static int32_t onAbilityConnectDoneCount;
+    static int32_t onAbilityDisconnectDoneCount;
     static bool isOnAbilityConnectDoneCalled;
     static bool isOnAbilityDisconnectDoneCalled;
+    // Counts ConnectionManager::ReportConnectionLeakEvent invocations (leak-gating coverage).
+    static int32_t reportConnectionLeakEventCount;
 };
 }  // namespace AgentRuntime
 }  // namespace OHOS

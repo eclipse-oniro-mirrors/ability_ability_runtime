@@ -1212,29 +1212,34 @@ HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_DumpArkWeb_0300, TestSiz
 }
 
 /**
- * @tc.name: AppRunningManager_OnRemoteRenderDied_0100
- * @tc.desc: Test the state of OnRemoteRenderDied
+ * @tc.name: AppRunningManager_OnRenderProcessExitedByPid_0100
+ * @tc.desc: Test the state of OnRenderProcessExitedByPid
  * @tc.type: FUNC
  */
-HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_OnRemoteRenderDied_0100, TestSize.Level1)
+HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_OnRenderProcessExitedByPid_0100, TestSize.Level1)
 {
     auto appRunningManager = std::make_shared<AppRunningManager>();
     EXPECT_NE(appRunningManager, nullptr);
 
-    auto ret = appRunningManager->OnRemoteRenderDied(nullptr);
+    // invalid pid
+    auto ret = appRunningManager->OnRenderProcessExitedByPid(0);
+    EXPECT_EQ(ret, nullptr);
+    ret = appRunningManager->OnRenderProcessExitedByPid(-1);
     EXPECT_EQ(ret, nullptr);
 
-    OHOS::sptr<IRemoteObject> remote = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    // no app record for the pid
+    int32_t pid = 1;
     appRunningManager->appRunningRecordMap_.clear();
-    int32_t recordId = 0;
-    ret  = appRunningManager->OnRemoteRenderDied(remote);
+    ret = appRunningManager->OnRenderProcessExitedByPid(pid);
     EXPECT_EQ(ret, nullptr);
 
+    // app record exists, but no render record for the pid
     std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
     auto appRunningRecord = std::make_shared<AppRunningRecord>(appInfo, RECORD_ID, PROCESS_NAME);
     appRunningRecord->appLifeCycleDeal_ = std::make_shared<AppLifeCycleDeal>();
-    appRunningManager->appRunningRecordMap_.insert(make_pair(recordId, appRunningRecord));
-    ret = appRunningManager->OnRemoteRenderDied(remote);
+    appRunningManager->appRunningRecordMap_.clear();
+    appRunningManager->appRunningRecordMap_.insert(std::make_pair(0, appRunningRecord));
+    ret = appRunningManager->OnRenderProcessExitedByPid(pid);
     EXPECT_EQ(ret, nullptr);
 }
 

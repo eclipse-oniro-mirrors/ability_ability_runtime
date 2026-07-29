@@ -670,7 +670,7 @@ HWTEST_F(KioskManagerTest, UpdateKioskApplicationList_003, TestSize.Level1) {
     MyFlag::permissionFlag_ = true;
     std::vector<std::string> appList;
     KioskManager::GetInstance().kioskStatus_.isKioskMode_ = true;
-    KioskManager::GetInstance().NotifyKioskModeChanged(true);
+    KioskManager::GetInstance().NotifyKioskModeChanged(true, "", 0);
     std::string bundleName = "com.test.demo";
     appList.emplace_back(bundleName);
     KioskManager::GetInstance().kioskStatus_.kioskBundleName_ = bundleName;
@@ -689,7 +689,7 @@ HWTEST_F(KioskManagerTest, ExitKioskModeInner_002, TestSize.Level1) {
     auto callerToken = MockToken(AbilityType::PAGE);
     std::string bundleName = "com.test.demo";
     KioskManager::GetInstance().whitelist_.emplace(bundleName);
-    KioskManager::GetInstance().NotifyKioskModeChanged(false);
+    KioskManager::GetInstance().NotifyKioskModeChanged(false, bundleName, 0);
     AppInfo appInfo;
     appInfo.bundleName = bundleName;
     appInfo.state = AppState::BEGIN;

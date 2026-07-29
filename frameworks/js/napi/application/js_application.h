@@ -32,6 +32,7 @@ public:
 
     static void Finalizer(napi_env env, void *data, void *hint);
     static napi_value CreateModuleContext(napi_env env, napi_callback_info info);
+    static napi_value CreateModuleContextSync(napi_env env, napi_callback_info info);
     static napi_value CreateBundleContext(napi_env env, napi_callback_info info);
     static napi_value GetApplicationContext(napi_env env, napi_callback_info info);
     static napi_value GetApplicationContextInstance(napi_env env, napi_callback_info info);
@@ -44,6 +45,7 @@ public:
 
 private:
     napi_value OnCreateModuleContext(napi_env env, NapiCallbackInfo &info);
+    napi_value OnCreateModuleContextSync(napi_env env, NapiCallbackInfo &info);
     napi_value OnCreateBundleContext(napi_env env, NapiCallbackInfo &info);
     napi_value OnCreatePluginModuleContext(napi_env env, NapiCallbackInfo &info);
     napi_value OnCreatePluginModuleContextForBundle(napi_env env, NapiCallbackInfo &info);

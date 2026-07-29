@@ -35,7 +35,9 @@
 #include "ipc_skeleton.h"
 #include "permission_util.h"
 #include "session_record.h"
+#include "skill_execute_param.h"
 #include "skill_execute_result.h"
+#include "string_wrapper.h"
 #include "tool_info.h"
 #include "want_params.h"
 #include "want_params_wrapper.h"
@@ -50,7 +52,7 @@ constexpr int32_t MILLISECOND_COEFFICIENT = 1000;
 constexpr int64_t MAX_TIMEOUT = 30 * 60; // 30 m
 constexpr size_t PREFIX_DOUBLE_DASH_LEN = 2;
 }
-int32_t ToolUtil::ValidateProperties(const ToolInfo &toolInfo, ExecToolParam &param,
+int32_t ToolUtil::ValidateProperties(const ToolInfo &toolInfo, const ExecToolParam &param,
     AccessToken::AccessTokenID tokenId, std::string& detail)
 {
     if (!param.subcommand.empty()) {
@@ -84,7 +86,7 @@ int32_t ToolUtil::ValidateProperties(const ToolInfo &toolInfo, ExecToolParam &pa
     return ValidateInputSchemaProperties(it->second.inputSchema, param.args, detail);
 }
 
-int32_t ToolUtil::ValidateExecOptionsProperties(ExecOptions &options, std::string& detail)
+int32_t ToolUtil::ValidateExecOptionsProperties(const ExecOptions &options, std::string& detail)
 {
     if (options.timeout < 0 || options.yieldMs < 0) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "yieldMs or timeout < 0");
@@ -233,6 +235,7 @@ bool ToolUtil::GenerateCmdSandboxConfig(const ExecCmdParam &param, AccessToken::
         config["workdir"] = param.workDir;
     }
     config["env"] = param.env;
+    config["nsFlags"] = {"pid"};
     sandboxConfig = config.dump();
     bundleName = bundleInfo.name;
     TAG_LOGI(AAFwkTag::CLI_TOOL, "bundleName:%{public}s, gid:%{public}d", bundleInfo.name.c_str(), bundleInfo.gid);
@@ -661,6 +664,22 @@ std::shared_ptr<AAFwk::WantParams> ToolUtil::FilterSkillArgs(const AAFwk::WantPa
     return skillArgs;
 }
 
+namespace {
+std::string ExtractSkillErrorMsg(const AAFwk::WantParams &params)
+{
+    const auto &all = params.GetParams();
+    auto it = all.find(AppExecFwk::SKILL_ERROR_MSG_KEY);
+    if (it == all.end() || it->second == nullptr) {
+        return "";
+    }
+    auto *iStr = AAFwk::IString::Query(it->second);
+    if (iStr == nullptr) {
+        return "";
+    }
+    return AAFwk::String::Unbox(iStr);
+}
+} // namespace
+
 CliSessionInfo ToolUtil::BuildSkillSessionInfo(const std::string &sessionId,
     int32_t resultCode, const AppExecFwk::SkillExecuteResult &skillResult)
 {
@@ -669,9 +688,18 @@ CliSessionInfo ToolUtil::BuildSkillSessionInfo(const std::string &sessionId,
     session.toolName = "ohos-arkTSScript";
     session.status = (resultCode == ERR_OK) ? "completed" : "failed";
     session.result = std::make_shared<ExecResult>();
-    session.result->exitCode = skillResult.code;
+    int32_t exitCode = skillResult.code;
+    if (exitCode == 0 && resultCode != ERR_OK) {
+        exitCode = resultCode;
+    }
+    session.result->exitCode = exitCode;
     if (skillResult.result != nullptr) {
         session.result->outputText = skillResult.result->ToString();
+        if (resultCode != ERR_OK) {
+            session.result->errorText = ExtractSkillErrorMsg(*(skillResult.result));
+        }
+    } else if (resultCode != ERR_OK) {
+        session.result->errorText = "skill execute failed, code=" + std::to_string(resultCode);
     }
     return session;
 }

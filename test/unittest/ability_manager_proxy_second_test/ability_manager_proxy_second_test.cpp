@@ -94,7 +94,8 @@ public:
         const Want &want));
     MOCK_METHOD2(NotifyLoadAbility, int32_t(const AppExecFwk::AbilityInfo &abilityInfo,
         const sptr<SessionInfo> &sessionInfo));
-    MOCK_METHOD2(NotifyMoveMissionToBackground, int32_t(int32_t missionId, int32_t userId));
+    MOCK_METHOD3(NotifyMoveMissionToBackground, int32_t(int32_t missionId, int32_t userId,
+        bool isFromScreenOffBackground));
     MOCK_METHOD2(NotifyMoveMissionToForeground, int32_t(int32_t missionId, int32_t userId));
     MOCK_METHOD2(NotifyTerminateMission, int32_t(int32_t missionId, int32_t userId));
     MOCK_METHOD2(NotifyClearMission, int32_t(int32_t missionId, int32_t userId));

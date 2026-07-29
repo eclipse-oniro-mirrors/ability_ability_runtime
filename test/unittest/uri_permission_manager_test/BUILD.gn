@@ -49,6 +49,7 @@ ohos_unittest("uri_permission_manager_test") {
     "access_token:libnativetoken",
     "access_token:libtoken_setproc",
     "bundle_framework:appexecfwk_core",
+    "ffrt:libffrt",
     "googletest:gmock_main",
     "hilog:libhilog",
     "storage_service:storage_manager_sa_proxy",

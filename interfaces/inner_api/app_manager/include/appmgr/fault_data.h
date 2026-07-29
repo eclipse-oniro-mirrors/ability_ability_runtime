@@ -113,6 +113,7 @@ struct FaultData : public Parcelable {
     LeakObject leakObject;
     std::string callbackLog;
     AppTelemetryLeakType atLeakType;
+    std::string gpuHookSize;
 };
 
 /**
@@ -156,6 +157,7 @@ struct AppFaultDataBySA : public Parcelable {
     std::string processLifeTime;
     LeakObject leakObject;
     AppTelemetryLeakType atLeakType;
+    std::string gpuHookSize;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

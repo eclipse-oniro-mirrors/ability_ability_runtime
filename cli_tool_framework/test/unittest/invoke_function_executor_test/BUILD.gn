@@ -17,6 +17,13 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 module_output_path = "ability_runtime/ability_runtime/clitool"
 
 ohos_unittest("invoke_function_executor_test") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
   module_out_path = module_output_path
 
   # "mock/include" MUST come before the real interfaces/cli_tool/include so the

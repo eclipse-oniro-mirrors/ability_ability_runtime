@@ -80,14 +80,6 @@ struct RegisterSortKey {
     }
 };
 
-std::string GetFunctionNameFromGeneric(const AbilityRuntime::ExtractInsightIntentInfo &info)
-{
-    if (info.genericInfo.currentType == AbilityRuntime::InfoType::Function) {
-        return info.genericInfo.get<AbilityRuntime::InsightIntentFunctionInfo>().functionName;
-    }
-    return "";
-}
-
 // 检查 Entry 装饰器的 executeMode 是否含 BG UIAbility 或 SE。通过则填 outAbility 并返回 true。
 bool IsQualifiedEntry(const AbilityRuntime::ExtractInsightIntentGenericInfo &generic, std::string &outAbility)
 {
@@ -159,8 +151,7 @@ bool ConvertFromExtractIntentInfo(const std::vector<AbilityRuntime::ExtractInsig
             continue;
         }
         FunctionInfo func;
-        std::string functionName = GetFunctionNameFromGeneric(info);
-        func.functionName = functionName.empty() ? info.genericInfo.intentName : functionName;
+        func.functionName = info.genericInfo.intentName;
         func.functionNamespace = info.genericInfo.bundleName;
         func.description = info.displayDescription;
         func.inputSchema = GetInputSchemaFromGeneric(info);

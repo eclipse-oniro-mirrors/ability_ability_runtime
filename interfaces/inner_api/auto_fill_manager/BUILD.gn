@@ -28,6 +28,7 @@ config("auto_fill_manager_public_config") {
 }
 
 ohos_shared_library("auto_fill_manager") {
+  branch_protector_ret = "pac_ret"
   public_configs = [ ":auto_fill_manager_public_config" ]
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
 

@@ -1030,13 +1030,12 @@ bool JsAbilityContext::CreateOpenLinkTask(const napi_env &env, const napi_value 
         isInner ? asyncTask->Reject(env, CreateJsErrorByNativeErr(env, resultCode)) :
             asyncTask->ResolveWithNoError(env, abilityResult);
     };
-    requestCode = GenerateRequestCode();
     auto context = context_.lock();
     if (!context) {
         TAG_LOGW(AAFwkTag::CONTEXT, "null context");
         return false;
     }
-    context->InsertResultCallbackTask(requestCode, std::move(task));
+    requestCode = context->RegisterResultCallback(std::move(task));
     return true;
 }
 
@@ -1471,9 +1470,8 @@ napi_value JsAbilityContext::OnStartAbilityForResult(napi_env env, NapiCallbackI
         asyncTask->Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT));
     } else {
         want.SetParam(Want::PARAM_RESV_FOR_RESULT, true);
-        auto requestCode = GenerateRequestCode();
-        (unwrapArgc == ARGC_ONE) ? context->StartAbilityForResult(want, requestCode, std::move(task)) :
-            context->StartAbilityForResult(want, startOptions, requestCode, std::move(task));
+        (unwrapArgc == ARGC_ONE) ? context->StartAbilityForResult(want, std::move(task)) :
+            context->StartAbilityForResult(want, startOptions, std::move(task));
     }
     TAG_LOGD(AAFwkTag::CONTEXT, "end");
     return result;
@@ -1557,10 +1555,9 @@ napi_value JsAbilityContext::OnStartAbilityForResultWithAccount(napi_env env, Na
         TAG_LOGW(AAFwkTag::CONTEXT, "null context");
         asyncTask->Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT));
     } else {
-        auto requestCode = GenerateRequestCode();
         (unwrapArgc == INDEX_TWO) ? context->StartAbilityForResultWithAccount(
-            want, accountId, requestCode, std::move(task)) : context->StartAbilityForResultWithAccount(
-                want, accountId, startOptions, requestCode, std::move(task));
+            want, accountId, std::move(task)) : context->StartAbilityForResultWithAccount(
+                want, accountId, startOptions, std::move(task));
     }
     TAG_LOGD(AAFwkTag::CONTEXT, "end");
     return result;
@@ -3389,8 +3386,7 @@ napi_value JsAbilityContext::OpenAtomicServiceInner(napi_env env, NapiCallbackIn
         return CreateJsUndefined(env);
     } else {
         want.SetParam(Want::PARAM_RESV_FOR_RESULT, true);
-        auto requestCode = GenerateRequestCode();
-        context->OpenAtomicService(want, options, requestCode, std::move(task));
+        context->OpenAtomicService(want, options, std::move(task));
     }
     TAG_LOGD(AAFwkTag::CONTEXT, "end");
     return result;
@@ -3635,14 +3631,5 @@ napi_value JsAbilityContext::OnSetMissionWindowIcon(napi_env env, NapiCallbackIn
 #endif
 }
 
-int32_t JsAbilityContext::GenerateRequestCode()
-{
-    std::lock_guard lock(requestCodeMutex_);
-    curRequestCode_ = (curRequestCode_ == INT_MAX) ? 0 : (curRequestCode_ + 1);
-    return curRequestCode_;
-}
-
-int32_t JsAbilityContext::curRequestCode_ = 0;
-std::mutex JsAbilityContext::requestCodeMutex_;
 }  // namespace AbilityRuntime
 }  // namespace OHOS

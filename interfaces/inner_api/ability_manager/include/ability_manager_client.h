@@ -2161,6 +2161,8 @@ public:
      */
     ErrCode RegisterSAInterceptor(sptr<AbilityRuntime::ISAInterceptor> interceptor);
 
+    ErrCode UnregisterSAInterceptor(sptr<IRemoteObject> interceptor);
+
     /**
      * SuspendExtensionAbility, suspend session with service ability.
      *
@@ -2297,6 +2299,8 @@ public:
 
     ErrCode ExecuteSkillDone(sptr<IRemoteObject> token, const std::string &requestCode,
         int32_t resultCode, const AppExecFwk::SkillExecuteResult &result);
+
+    ErrCode NotifySkillFunctionInvoked(sptr<IRemoteObject> token, const std::string &requestCode);
 
     ErrCode QuerySkillType(const std::string &bundleName, const std::string &moduleName,
         const std::string &skillName, int32_t &skillType);

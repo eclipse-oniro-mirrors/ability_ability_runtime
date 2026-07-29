@@ -31,6 +31,19 @@ constexpr const char *AGENTEXTENSIONHOSTPROXY_KEY = "ohos.agentruntime.params.Ag
 constexpr const char *AGENTID_KEY = "ohos.agentruntime.params.AgentId";
 
 /**
+ * Key for storing the agent card type in Want parameters.
+ * Used to distinguish normal and low-code agent connection behavior.
+ */
+constexpr const char *AGENT_CARD_TYPE_KEY = "ohos.agentruntime.params.AgentCardType";
+
+/**
+ * Key for storing the AgentMgr-issued verification nonce in Want parameters.
+ * Used only by AMS and AgentMgr to prove the AGENT connect/disconnect request
+ * belongs to AgentMgr's ledger.
+ */
+constexpr const char *AGENT_VERIFICATION_NONCE_KEY = "ohos.agentruntime.params.AgentVerificationNonce";
+
+/**
  * Signature for agent async callback wrapper.
  * Used to identify the AsyncCallbackWrapper class in utils.AgentUtils.
  */

@@ -78,10 +78,6 @@ abilityms_files = [
   "src/window_focus_changed_listener.cpp",
   "src/window_visibility_changed_listener.cpp",
 
-  # start ability handler
-  "src/start_ability_handler.cpp",
-  "src/start_ability_handler/start_ability_sandbox_savefile.cpp",
-
   # new ability manager service here
   "src/ui_extension/ui_extension_ability_manager.cpp",
   "src/ui_extension/preload_uiext_state_observer.cpp",
@@ -183,6 +179,7 @@ abilityms_files = [
   "src/utils/request_id_util.cpp",
   "src/utils/ability_event_util.cpp",
   "src/utils/agent_ability_util.cpp",
+  "src/utils/agent_caller_identity_util.cpp",
   "src/utils/ability_permission_util.cpp",
   "src/utils/app_mgr_util.cpp",
   "src/utils/dms_util.cpp",

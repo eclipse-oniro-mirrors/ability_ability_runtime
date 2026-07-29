@@ -24,8 +24,7 @@ namespace OHOS {
 namespace AppExecFwk {
 class OsAccountManagerWrapper {
 public:
-    static std::shared_ptr<OsAccountManagerWrapper> GetInstance();
-    ErrCode GetOsAccountLocalIdFromProcess(int32_t &id);
+    static ErrCode GetOsAccountLocalIdFromProcess(int32_t &id);
 };
 } // namespace AppExecFwk
 } // namespace OHOS

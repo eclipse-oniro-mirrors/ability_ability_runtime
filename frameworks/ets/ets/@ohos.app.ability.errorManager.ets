@@ -17,6 +17,17 @@ import { BusinessError } from '@ohos.base';
 
 export default namespace errorManager {
     loadLibrary("errorManager_ani");
+    export enum ResourceType {  
+        PSS_MEMORY = 1, 
+        ION_MEMORY = 2,
+        ASHMEM_MEMORY = 3,
+        GPU_MEMORY = 4,
+        FD = 5,
+        THREAD = 6
+    }
+
+    export type ResourceUsageObserver = (resourceType: ResourceType, resourceSize: long, detailInfo?: Record<string, long>) => void;
+    export native function setDefaultResourceUsageObserver(defaultObserver?: ResourceUsageObserver): ResourceUsageObserver;
     export type ErrorHandler = (errObject: Error) => void;
     export native function setDefaultErrorHandler(defaultHandler?: ErrorHandler): ErrorHandler;
 

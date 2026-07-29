@@ -24,12 +24,12 @@
 #include "app_mgr_interface.h"
 #include "batch_uri.h"
 #include "file_uri_distribution_utils.h"
-#include "istorage_manager.h"
 #include "tokenid_permission.h"
 #include "uri.h"
 #include "uri_permission_manager_stub.h"
 #include "uri_permission_raw_data.h"
 #include "access_token.h"
+#include "dynamic_feature_manager.h"
 
 #ifdef ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER
 #include "policy_info.h"
@@ -112,6 +112,9 @@ public:
         int32_t hideSensitiveType, int32_t& funcResult) override;
 
     ErrCode GrantUriPermission(const std::vector<std::string>& uriVec, uint32_t flag,
+        uint32_t targetTokenId, uint32_t oriCallerTokenId, int32_t& funcResult) override;
+
+    ErrCode GrantUriPermission(const UriPermissionRawData& rawData, uint32_t flag,
         uint32_t targetTokenId, uint32_t oriCallerTokenId, int32_t& funcResult) override;
 
     ErrCode GrantUriPermissionByKeyAsCaller(const std::string &key, uint32_t flag, uint32_t callerTokenId,
@@ -224,11 +227,7 @@ private:
 
     // Helper functions for new GrantUriPermission interface
     int32_t CheckGrantUriPermissionParamsWithTokenId(const std::vector<std::string>& uriVec,
-        uint32_t flag, uint32_t targetTokenId);
-    int32_t GetCallerTokenIdAndUserId(uint32_t oriCallerTokenId, uint32_t& callerTokenId,
-        int32_t& callerUserId);
-    int32_t CheckTargetTokenIdAndUserConstraint(uint32_t targetTokenId, int32_t callerUserId,
-        FUDAppInfo& targetInfo);
+        uint32_t flag, uint32_t oriCallerTokenId, uint32_t targetTokenId);
 
     int32_t RevokePolicyUriPermissionManually(uint32_t callerTokenId, uint32_t targetTokenId, Uri &uri);
 
@@ -268,8 +267,6 @@ private:
 
     inline int32_t WrapErrorCode(int32_t errorCode, int32_t &funcRet);
 
-    void StringVecToRawData(const std::vector<std::string> &stringVec, StorageFileRawData &rawData);
-
 #ifdef ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER
     ErrCode Active(const UriPermissionRawData& policyRawData, std::vector<uint32_t>& res, int32_t& funcResult)
         override;
@@ -293,7 +290,6 @@ private:
     std::mutex mgrMutex_;
     std::mutex policyMapMutex_;
     sptr<AppExecFwk::IAppMgr> appMgr_ = nullptr;
-    sptr<StorageManager::IStorageManager> storageManager_ = nullptr;
     std::set<uint32_t> permissionTokenMap_;
     std::mutex ptMapMutex_;
     std::set<uint32_t> contentTokenIdSet_;

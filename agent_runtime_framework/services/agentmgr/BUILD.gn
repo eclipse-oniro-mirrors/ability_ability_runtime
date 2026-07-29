@@ -34,13 +34,19 @@ ohos_shared_library("agentmgr") {
     "${agent_runtime_framework_path}/services/common/include",
   ]
   sources = [
+    "src/agent_manager_caller_identity.cpp",
     "src/agent_bundle_event_callback.cpp",
     "src/agent_card_db_mgr.cpp",
     "src/agent_card_mgr.cpp",
+    "src/agent_connect_manager.cpp",
+    "src/agent_connect_manager_types.cpp",
     "src/agent_event_handler.cpp",
     "src/agent_host_connection.cpp",
     "src/agent_manager_service.cpp",
     "src/agent_service_connection.cpp",
+    "${agent_runtime_framework_path}/services/common/src/agent_card_utils.cpp",
+    "${agent_runtime_framework_path}/services/common/src/sem_ver.cpp",
+    "${agent_runtime_framework_path}/services/common/src/agent_utils.cpp",
   ]
 
   public_configs = []
@@ -55,11 +61,10 @@ ohos_shared_library("agentmgr") {
     "${agent_runtime_framework_path}/interfaces/inner_api:agent_fwk",
     "${agent_runtime_framework_path}/interfaces/inner_api:agent_manager",
     "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection:agent_extension_connection",
-    "${agent_runtime_framework_path}/services/common:agent_card_utils",
-    "${agent_runtime_framework_path}/services/common:agent_semver",
   ]
 
   external_deps = [
+    "ability_base:base",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "bundle_framework:libappexecfwk_common",

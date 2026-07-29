@@ -272,7 +272,7 @@ void BaseExtensionRecord::DumpUIExtensionRootHostInfo(std::vector<std::string> &
 
     std::string dumpInfo = "      root host bundle name [" + hostInfo.elementName_.GetBundleName() + "]";
     info.emplace_back(dumpInfo);
-    dumpInfo = "      root host module name [" + hostInfo.elementName_.GetModuleName() + "]";
+    dumpInfo = "      root host module name [" + hostInfo.elementName_.GetModuleNameRef() + "]";
     info.emplace_back(dumpInfo);
     dumpInfo = "      root host ability name [" + hostInfo.elementName_.GetAbilityName() + "]";
     info.emplace_back(dumpInfo);

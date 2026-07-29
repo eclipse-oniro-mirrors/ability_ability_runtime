@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ability_manager_errors.h"
 #include "mock_permission_verification.h"
 
 namespace OHOS {
@@ -49,7 +50,7 @@ bool PermissionVerification::VerifyDlpPermission(Want &want) const
 }
 int PermissionVerification::VerifyAccountPermission() const
 {
-    return MyFlag::flag_;
+    return MyFlag::flag_ ? ERR_OK : CHECK_PERMISSION_FAILED;
 }
 bool PermissionVerification::VerifyMissionPermission() const
 {

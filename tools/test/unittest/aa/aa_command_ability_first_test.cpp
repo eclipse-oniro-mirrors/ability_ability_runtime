@@ -716,8 +716,7 @@ HWTEST_F(AaCommandFirstTest, AaCommandAbility_ConvertPid_001, Function | MediumT
 
     AbilityManagerShellCommand cmd(argc, argv);
     std::string inputPid;
-    pid_t pid = 0;
-    EXPECT_EQ(cmd.ConvertPid(inputPid), pid);
+    EXPECT_EQ(cmd.ConvertPid(inputPid), -1);
 }
 
 /**
@@ -767,8 +766,7 @@ HWTEST_F(AaCommandFirstTest, AaCommandAbility_ConvertPid_004, Function | MediumT
 
     AbilityManagerShellCommand cmd(argc, argv);
     std::string inputPid = "a";
-    pid_t pid = 0;
-    EXPECT_EQ(cmd.ConvertPid(inputPid), pid);
+    EXPECT_EQ(cmd.ConvertPid(inputPid), -1);
 }
 
 /**

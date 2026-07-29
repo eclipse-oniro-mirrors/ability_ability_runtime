@@ -22,6 +22,8 @@ config("insight_intent_context_public_config") {
 }
 
 ohos_shared_library("insightintentcontext") {
+  branch_protector_ret = "pac_ret"
+
   sources = [
     "insight_intent_context.cpp",
     "js_insight_intent_context.cpp",
@@ -58,6 +60,8 @@ ohos_shared_library("insightintentcontext") {
 }
 
 ohos_shared_library("cj_insightintentcontext") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     integer_overflow = true
     ubsan = true

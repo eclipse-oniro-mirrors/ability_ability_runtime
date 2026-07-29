@@ -35,6 +35,8 @@ gen_js_obj("service_extension_ability_abc") {
 }
 
 ohos_shared_library("serviceextensionability_napi") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "service_extension_ability_napi_module.cpp" ]
 
   deps = [
@@ -50,6 +52,8 @@ ohos_shared_library("serviceextensionability_napi") {
 }
 
 ohos_shared_library("serviceextensionability") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "service_extension_ability_module.cpp" ]
 
   deps = [

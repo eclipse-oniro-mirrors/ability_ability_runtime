@@ -580,20 +580,20 @@ HWTEST_F(AppMgrServiceInnerTenthTest, KillApplicationByRecord_001, TestSize.Leve
 }
 
 /**
- * @tc.name: OnChildProcessRemoteDied_001
- * @tc.desc: Test OnChildProcessRemoteDied function
+ * @tc.name: OnChildProcessExited_001
+ * @tc.desc: Test OnChildProcessExited function
  * @tc.type: FUNC
  */
-HWTEST_F(AppMgrServiceInnerTenthTest, OnChildProcessRemoteDied_001, TestSize.Level2)
+HWTEST_F(AppMgrServiceInnerTenthTest, OnChildProcessExited_001, TestSize.Level2)
 {
-    TAG_LOGI(AAFwkTag::TEST, "OnChildProcessRemoteDied_001 start");
+    TAG_LOGI(AAFwkTag::TEST, "OnChildProcessExited_001 start");
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
     AAFwk::MyStatus::GetInstance().resetRunningRecordFunctionFlag();
     EXPECT_EQ(AAFwk::MyStatus::GetInstance().getChildProcessRecordByPidCall_, 0);
-    appMgrServiceInner->OnChildProcessRemoteDied(nullptr);
+    appMgrServiceInner->OnChildProcessExited(0);
     EXPECT_EQ(AAFwk::MyStatus::GetInstance().getChildProcessRecordByPidCall_, 1);
-    TAG_LOGI(AAFwkTag::TEST, "OnChildProcessRemoteDied_001 end");
+    TAG_LOGI(AAFwkTag::TEST, "OnChildProcessExited_001 end");
 }
 
 /**

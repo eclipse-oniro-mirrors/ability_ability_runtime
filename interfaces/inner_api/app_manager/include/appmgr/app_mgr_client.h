@@ -44,6 +44,7 @@
 #include "system_memory_attr.h"
 #include "want.h"
 #include "app_jsheap_mem_info.h"
+#include "app_jshandle_map_info.h"
 #include "app_cjheap_mem_info.h"
 
 namespace OHOS {
@@ -391,6 +392,15 @@ public:
      * @return ERR_OK ,return back success, others fail.
      */
     virtual AppMgrResultCode DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info);
+
+    /**
+     * DumpJsHandleMap, call DumpJsHandleMap() through proxy project.
+     * dump the application's jshandle map info.
+     *
+     * @param info, pid tid
+     * @return ERR_OK ,return back success, others fail.
+     */
+    virtual AppMgrResultCode DumpJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info);
 
     /**
      * DumpCjHeapMemory, call DumpCjHeapMemory() through proxy project.
@@ -803,6 +813,13 @@ public:
     bool IsMainProcessDebug(int32_t uid);
 
     /**
+     * @brief Query whether the corresponding process of the app (identified by abilityInfo) is in attach debug mode.
+     * @param abilityInfo The ability info used to locate the corresponding process.
+     * @return Returns true if the corresponding process is in attach debug mode, false otherwise.
+     */
+    bool IsCorrespondingProcessAttachDebug(const AbilityInfo &abilityInfo);
+
+    /**
      * @brief Set resident process enable status.
      * @param bundleName The application bundle name.
      * @param enable The current updated enable status.
@@ -1011,6 +1028,10 @@ public:
     int32_t DestroyImage(uint64_t checkpointId, sptr<IImageErrorHandler> errorHandler = nullptr);
 
     int32_t NotifyTemplateProcessDeepFrozen(int32_t pid);
+
+    int32_t PreTemplateProcessDeepFrozen(int32_t pid);
+
+    int32_t NotifyTemplateProcessReadyDone();
 
     /**
      * @brief set support process cache by self

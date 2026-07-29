@@ -28,11 +28,11 @@ namespace OHOS {
 namespace AbilityRuntime {
 namespace {
 #ifdef APP_USE_ARM64
-constexpr char NATIVE_STARTUP_TASK_DIR[] = "system/lib64/nativestartuptask";
+constexpr char NATIVE_STARTUP_TASK_DIR[] = "/system/lib64/nativestartuptask";
 #elif defined(APP_USE_X86_64)
-constexpr char NATIVE_STARTUP_TASK_DIR[] = "system/lib64/nativestartuptask";
+constexpr char NATIVE_STARTUP_TASK_DIR[] = "/system/lib64/nativestartuptask";
 #else
-constexpr char NATIVE_STARTUP_TASK_DIR[] = "system/lib/nativestartuptask";
+constexpr char NATIVE_STARTUP_TASK_DIR[] = "/system/lib/nativestartuptask";
 #endif
 constexpr char PATH_SEPARATOR[] = "/";
 constexpr char LIB_TYPE[] = ".so";

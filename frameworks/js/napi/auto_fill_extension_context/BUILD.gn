@@ -35,6 +35,8 @@ gen_js_obj("auto_fill_extension_context_abc") {
 }
 
 ohos_shared_library("autofillextensioncontext_napi") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "auto_fill_extension_context_module.cpp" ]
 
   deps = [

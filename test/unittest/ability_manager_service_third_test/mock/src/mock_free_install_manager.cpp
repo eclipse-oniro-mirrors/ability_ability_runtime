@@ -85,13 +85,13 @@ void FreeInstallManager::HandleFreeInstallResult(int32_t recordId, FreeInstallIn
 {
 }
 
-void FreeInstallManager::StartAbilityByFreeInstall(FreeInstallInfo &info, std::string &bundleName,
-    std::string &abilityName, std::string &startTime)
+void FreeInstallManager::StartAbilityByFreeInstall(FreeInstallInfo &info, const std::string &bundleName,
+    const std::string &abilityName, const std::string &startTime)
 {
 }
 
-void FreeInstallManager::StartAbilityByPreInstall(int32_t recordId, FreeInstallInfo &info, std::string &bundleName,
-    std::string &abilityName, std::string &startTime)
+void FreeInstallManager::StartAbilityByPreInstall(int32_t recordId, FreeInstallInfo &info,
+    const std::string &bundleName, const std::string &abilityName, const std::string &startTime)
 {
 }
 

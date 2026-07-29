@@ -16,6 +16,7 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 template("errormanager") {
   ohos_shared_library(target_name) {
+    branch_protector_ret = "pac_ret"
     forward_variables_from(invoker, [ "relative_install_dir" ])
 
     if (defined(invoker.defines)) {

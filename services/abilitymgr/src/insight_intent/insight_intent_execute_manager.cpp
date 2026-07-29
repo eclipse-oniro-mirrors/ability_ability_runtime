@@ -146,10 +146,10 @@ int32_t InsightIntentExecuteManager::CheckAndUpdateParam(uint64_t key, const spt
 {
     std::string targetBundleName = (param != nullptr) ? param->bundleName_ : "";
     int32_t result = CheckCallerPermission(specifiedFullTokenId, callerBundleName, targetBundleName);
-    if (result != ERR_OK && (param == nullptr || !param->isServiceMatch_)) {
+    if (result != ERR_OK) {
         return result;
     }
-    if ((!isDistributed && callerToken == nullptr) && (param == nullptr || !param->isServiceMatch_)) {
+    if (!isDistributed && callerToken == nullptr) {
         TAG_LOGE(AAFwkTag::INTENT, "null callerToken");
         return ERR_INVALID_VALUE;
     }
@@ -191,7 +191,7 @@ int32_t InsightIntentExecuteManager::CheckAndUpdateWant(Want &want, ExecuteMode 
     }
     uint64_t intentId = 0;
     ElementName elementName = want.GetElement();
-    result = AddRecord(0, nullptr, want.GetBundle(), intentId, callerBundleName);
+    result = AddRecord(0, nullptr, want.GetBundleNameRef(), intentId, callerBundleName);
     if (result != ERR_OK) {
         return result;
     }
@@ -228,7 +228,7 @@ int32_t InsightIntentExecuteManager::UpdateEntryDecoratorParams(Want &want, Exec
         userId = IPCSkeleton::GetCallingUid() / AppExecFwk::Constants::BASE_USER_RANGE;
     }
     DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->GetInsightIntentInfo(
-        want.GetBundle(), want.GetModuleName(), intentName, userId, info);
+        want.GetBundleNameRef(), want.GetModuleNameRef(), intentName, userId, info);
     if (info.genericInfo.decoratorType != AbilityRuntime::INSIGHT_INTENTS_DECORATOR_TYPE_ENTRY) {
         TAG_LOGW(AAFwkTag::INTENT, "decorator %{public}s misMatch", info.genericInfo.decoratorType.c_str());
         return ERR_INVALID_VALUE;
@@ -244,7 +244,7 @@ int32_t InsightIntentExecuteManager::UpdateEntryDecoratorParams(Want &want, Exec
         TAG_LOGE(AAFwkTag::INTENT, "execute mode mismatch");
         return ERR_INVALID_VALUE;
     }
-    if (want.GetElement().GetAbilityName() != info.genericInfo.get<InsightIntentEntryInfo>().abilityName) {
+    if (want.GetAbilityNameRef() != info.genericInfo.get<InsightIntentEntryInfo>().abilityName) {
         TAG_LOGE(AAFwkTag::INTENT, "ability name mismatch");
         return ERR_INVALID_VALUE;
     }
@@ -643,13 +643,13 @@ int32_t InsightIntentExecuteManager::GenerateWant(
     if (!srcEntry.empty()) {
         want.SetParam(INSIGHT_INTENT_SRC_ENTRY, srcEntry);
     } else if (decoratorInfo.decoratorType == "" && ret == ERR_INSIGHT_INTENT_GET_PROFILE_FAILED &&
-        param->executeMode_ == AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND && !param->isServiceMatch_) {
+        param->executeMode_ == AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND) {
         TAG_LOGI(AAFwkTag::INTENT, "insight intent srcEntry invalid, try free install ondemand");
         std::string startTime = std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch()).count());
         want.SetParam(Want::PARAM_RESV_START_TIME, startTime);
         want.AddFlags(Want::FLAG_INSTALL_ON_DEMAND);
-    } else if (decoratorInfo.decoratorType == "" && !param->isServiceMatch_ && param->deviceId_.empty()) {
+    } else if (decoratorInfo.decoratorType == "" && param->deviceId_.empty()) {
         // decoratorType is empty indicate no decorator
         TAG_LOGE(AAFwkTag::INTENT, "insight intent srcEntry invalid");
         return ERR_INVALID_VALUE;

@@ -46,14 +46,27 @@ ohos_shared_library("ability_madvise") {
 
   public_configs = [ ":madvise_public_config" ]
 
+  include_dirs = [
+    "${ability_runtime_innerkits_path}/ability_manager/include",
+    "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
+  ]
+
   deps = [
+    "${ability_runtime_native_path}/ability/native:ability_business_error",
+    "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_services_path}/common:app_util",
   ]
 
   external_deps = [
-    "config_policy:configpolicy_util",
+    "ability_base:extractortool",
+    "ability_base:want",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
     "c_utils:utils",
+    "config_policy:configpolicy_util",
     "hilog:libhilog",
+    "hitrace:hitrace_meter",
+    "ipc:ipc_core",
     "json:nlohmann_json_static",
   ]
 

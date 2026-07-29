@@ -1003,7 +1003,8 @@ void AbilityRecord::SetAbilityStateInner(AbilityState state)
             int32_t persistentId = sessionInfo->persistentId;
             switch (state) {
                 case AbilityState::BACKGROUNDING: {
-                    ret = collaborator->NotifyMoveMissionToBackground(persistentId, GetOwnerMissionUserId());
+                    ret = collaborator->NotifyMoveMissionToBackground(persistentId, GetOwnerMissionUserId(),
+                        isFromScreenOffBackground_);
                     break;
                 }
                 case AbilityState::TERMINATING: {
@@ -1024,7 +1025,8 @@ void AbilityRecord::SetAbilityStateInner(AbilityState state)
                 break;
             }
             case AbilityState::BACKGROUNDING: {
-                ret = collaborator->NotifyMoveMissionToBackground(missionId_, GetOwnerMissionUserId());
+                ret = collaborator->NotifyMoveMissionToBackground(missionId_, GetOwnerMissionUserId(),
+                    isFromScreenOffBackground_);
                 break;
             }
             case AbilityState::TERMINATING: {
@@ -2136,6 +2138,15 @@ void AbilityRecord::SetWant(const Want &want)
     if (want_.HasParameter(AgentRuntime::AGENTEXTENSIONHOSTPROXY_KEY)) {
         want_.RemoveParam(AgentRuntime::AGENTEXTENSIONHOSTPROXY_KEY);
     }
+    if (want_.HasParameter(AgentRuntime::AGENTID_KEY)) {
+        want_.RemoveParam(AgentRuntime::AGENTID_KEY);
+    }
+    if (want_.HasParameter(AgentRuntime::AGENT_CARD_TYPE_KEY)) {
+        want_.RemoveParam(AgentRuntime::AGENT_CARD_TYPE_KEY);
+    }
+    if (want_.HasParameter(AgentRuntime::AGENT_VERIFICATION_NONCE_KEY)) {
+        want_.RemoveParam(AgentRuntime::AGENT_VERIFICATION_NONCE_KEY);
+    }
 }
 
 Want AbilityRecord::GetWant() const
@@ -2147,19 +2158,19 @@ Want AbilityRecord::GetWant() const
 std::string AbilityRecord::GetAbilityName() const
 {
     std::lock_guard guard(wantLock_);
-    return want_.GetElement().GetAbilityName();
+    return want_.GetAbilityNameRef();
 }
 
 std::string AbilityRecord::GetBundleName() const
 {
     std::lock_guard guard(wantLock_);
-    return want_.GetBundle();
+    return want_.GetBundleNameRef();
 }
 
 std::string AbilityRecord::GetModuleName() const
 {
     std::lock_guard guard(wantLock_);
-    return want_.GetModuleName();
+    return want_.GetModuleNameRef();
 }
 
 std::string AbilityRecord::GetStringParam(const std::string &key) const
@@ -2956,7 +2967,7 @@ void AbilityRecord::NotifyMissionBindPid()
 int32_t AbilityRecord::GetCurrentAccountId() const
 {
     std::vector<int32_t> osActiveAccountIds;
-    ErrCode ret = DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->
+    ErrCode ret = AppExecFwk::OsAccountManagerWrapper::
             QueryActiveOsAccountIds(osActiveAccountIds);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "queryActiveOsAccountIds failed");

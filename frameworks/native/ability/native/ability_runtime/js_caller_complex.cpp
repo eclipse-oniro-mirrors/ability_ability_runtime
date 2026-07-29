@@ -395,17 +395,20 @@ private:
         if (!isCallable) {
             TAG_LOGE(AAFwkTag::DEFAULT, "IsCallable %{public}s", isCallable ? "true" : "false");
             ThrowError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM);
+            return CreateJsUndefined(env);
         }
 
         if (callerCallBackObj_ == nullptr) {
             TAG_LOGE(AAFwkTag::DEFAULT, "null CallBacker");
             ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+            return CreateJsUndefined(env);
         }
 
         auto param1 = info.argv[0];
         if (param1 == nullptr) {
             TAG_LOGE(AAFwkTag::DEFAULT, "null param1");
             ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+            return CreateJsUndefined(env);
         }
 
         napi_ref ref = nullptr;
@@ -435,17 +438,20 @@ private:
         if (!isCallable) {
             TAG_LOGE(AAFwkTag::DEFAULT, "IsCallable %{public}s", isCallable ? "true" : "false");
             ThrowError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM);
+            return CreateJsUndefined(env);
         }
 
         if (callerCallBackObj_ == nullptr) {
             TAG_LOGE(AAFwkTag::DEFAULT, "null callBacker");
             ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+            return CreateJsUndefined(env);
         }
 
         auto param1 = info.argv[0];
         if (param1 == nullptr) {
             TAG_LOGE(AAFwkTag::DEFAULT, "null param1");
             ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+            return CreateJsUndefined(env);
         }
 
         napi_ref ref = nullptr;

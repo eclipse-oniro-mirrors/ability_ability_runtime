@@ -2595,6 +2595,24 @@ HWTEST_F(AbilityManagerServiceSixthTest, QuerySelfModularObjectExtensionInfos_00
 
 /*
  * Feature: AbilityManagerService
+ * Function: Init
+ * FunctionPoints: AbilityManagerService Init
+ */
+HWTEST_F(AbilityManagerServiceSixthTest, Init_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest Init_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    AppUtils::GetInstance().isSupportModularObjectExtension_.isLoaded = true;
+    AppUtils::GetInstance().isSupportModularObjectExtension_.value = false;
+    EXPECT_TRUE(abilityMs->Init());
+    AppUtils::GetInstance().isSupportModularObjectExtension_.value = true;
+    EXPECT_TRUE(abilityMs->Init());
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest Init_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: IsAppCloneOrMultiInstance
  * FunctionPoints: AbilityManagerService IsAppCloneOrMultiInstance
  */

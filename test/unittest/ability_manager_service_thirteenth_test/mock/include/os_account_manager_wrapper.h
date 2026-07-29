@@ -16,24 +16,24 @@
 #ifndef OHOS_ABILITY_RUNTIME_OS_ACCOUNT_MANAGER_WRAPPER_H
 #define OHOS_ABILITY_RUNTIME_OS_ACCOUNT_MANAGER_WRAPPER_H
 
+#include <string>
 #include <vector>
 
 #include "errors.h"
-#include "singleton.h"
 
 namespace OHOS {
 namespace AppExecFwk {
-class OsAccountManagerWrapper : public DelayedSingleton<OsAccountManagerWrapper> {
+class OsAccountManagerWrapper {
 public:
     OsAccountManagerWrapper() {};
     virtual ~OsAccountManagerWrapper() {};
 
-    ErrCode QueryActiveOsAccountIds(std::vector<int32_t>& ids);
-    ErrCode GetOsAccountLocalIdFromUid(const int32_t uid, int32_t& id);
-    ErrCode GetOsAccountLocalIdFromProcess(int& id);
-    ErrCode IsOsAccountExists(const int id, bool& isOsAccountExists);
-    ErrCode CreateOsAccount(const std::string& name, int32_t& osAccountUserId);
-    ErrCode RemoveOsAccount(const int id);
+    static ErrCode QueryActiveOsAccountIds(std::vector<int32_t>& ids);
+    static ErrCode GetOsAccountLocalIdFromUid(const int32_t uid, int32_t& id);
+    static ErrCode GetOsAccountLocalIdFromProcess(int& id);
+    static ErrCode IsOsAccountExists(const int id, bool& isOsAccountExists);
+    static ErrCode CreateOsAccount(const std::string& name, int32_t& osAccountUserId);
+    static ErrCode RemoveOsAccount(const int id);
     static int32_t GetCurrentActiveAccountId();
 };
 } // namespace AppExecFwk

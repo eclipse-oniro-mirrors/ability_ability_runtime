@@ -59,6 +59,7 @@ ohos_unittest("app_mgr_service_inner_tenth_test") {
     "${ability_runtime_services_path}/appmgr/src/app_mgr_event.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_mgr_service.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_mgr_service_inner.cpp",
+    "${ability_runtime_services_path}/appmgr/src/app_pidfd_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_native_spawn_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_refresh_recipient.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_running_status_module.cpp",

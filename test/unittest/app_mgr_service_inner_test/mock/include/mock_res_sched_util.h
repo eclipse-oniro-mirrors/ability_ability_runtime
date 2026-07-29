@@ -32,6 +32,7 @@ public:
     virtual void ReportUIExtensionProcColdStartToRss(
         int32_t extensionAbilityType, int hostPid, const std::string& hostBundleName, const std::string& bundleName,
         const std::string& abilityName, const std::string& moduleName, bool isPreloadUIExtension) = 0;
+    virtual void ReportTemplateProcessReadyToRSS(int32_t pid, int32_t uid, const std::string &bundleName) = 0;
 };
 
 class ResSchedUtil : public ResSchedUtilBase {
@@ -45,6 +46,7 @@ public:
     MOCK_METHOD(void, ReportUIExtensionProcColdStartToRss,
         (int32_t extensionAbilityType, int hostPid, const std::string& hostBundleName, const std::string& bundleName,
         const std::string& abilityName, const std::string& moduleName, bool isPreloadUIExtension), ());
+    MOCK_METHOD(void, ReportTemplateProcessReadyToRSS, (int32_t pid, int32_t uid, const std::string &bundleName), ());
 };
 
 } // namespace AAFwk

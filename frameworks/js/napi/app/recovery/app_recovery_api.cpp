@@ -32,7 +32,6 @@
 #ifdef APPRECOVERY_ENABLE_API_METRICS
 #include "histogram_plugin_macros.h"
 #endif
-
 namespace OHOS {
 namespace AbilityRuntime {
 using namespace OHOS::AppExecFwk;

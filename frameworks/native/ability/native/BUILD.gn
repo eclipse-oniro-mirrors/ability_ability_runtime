@@ -193,6 +193,8 @@ ohos_shared_library("abilitykit_utils") {
     "json:nlohmann_json_static",
     "napi:ace_napi",
     "resource_management:global_resmgr",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   public_external_deps = [
@@ -272,6 +274,9 @@ ohos_shared_library("configuration_helper") {
     "json:nlohmann_json_static",
     "napi:ace_napi",
     "resource_management:global_resmgr",
+    "libuv:uv",
+    "node:node_header_notice",
+    "ets_runtime:libark_jsruntime",
   ]
 
   if (ability_runtime_graphics) {
@@ -398,6 +403,8 @@ ohos_shared_library("abilitykit_native") {
     "resource_management:global_resmgr",
     "samgr:samgr_proxy",
     "window_manager:windowstage_kit",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   defines = []
@@ -533,6 +540,8 @@ ohos_shared_library("ability_observer_ipc") {
     "ipc:ipc_core",
     "napi:ace_napi",
     "samgr:samgr_proxy",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   subsystem_name = "ability"
@@ -588,6 +597,8 @@ ohos_shared_library("cj_abilitykit_native_ffi") {
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
     "window_manager:libwm",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (!(host_os == "linux" && host_cpu == "arm64")) {
@@ -630,6 +641,8 @@ config("extensionkit_public_config") {
 }
 
 ohos_shared_library("extensionkit_native") {
+  branch_protector_ret = "pac_ret"
+
   defines = [ "AMS_LOG_TAG = \"Ability\"" ]
   defines += [ "AMS_LOG_DOMAIN = 0xD001300" ]
   include_dirs = [
@@ -684,6 +697,8 @@ ohos_shared_library("extensionkit_native") {
     "ipc:ipc_napi",
     "json:nlohmann_json_static",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   public_external_deps = [
@@ -708,6 +723,8 @@ ohos_shared_library("extensionkit_native") {
 }
 
 ohos_shared_library("cj_extensionkit_native") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     integer_overflow = true
     ubsan = true
@@ -756,6 +773,8 @@ ohos_shared_library("cj_extensionkit_native") {
     "napi:ace_napi",
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   public_external_deps = [ "bundle_framework:appexecfwk_core" ]
@@ -778,6 +797,8 @@ config("insight_intent_executor_public_config") {
 }
 
 ohos_shared_library("insight_intent_executor") {
+  branch_protector_ret = "pac_ret"
+
   sources = [
     "${ability_runtime_native_path}/ability/native/insight_intent_executor/ets_insight_intent_executor_instance.cpp",
     "${ability_runtime_native_path}/ability/native/insight_intent_executor/insight_intent_delay_result_callback_mgr.cpp",
@@ -825,6 +846,8 @@ ohos_shared_library("insight_intent_executor") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   subsystem_name = "ability"
@@ -832,6 +855,8 @@ ohos_shared_library("insight_intent_executor") {
 }
 
 ohos_shared_library("insight_intent_executor_ani") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -890,6 +915,8 @@ ohos_shared_library("insight_intent_executor_ani") {
     "napi:ace_napi",
     "runtime_core:ani",
     "window_manager:libwm",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   subsystem_name = "ability"
@@ -897,6 +924,8 @@ ohos_shared_library("insight_intent_executor_ani") {
 }
 
 ohos_shared_library("cj_insight_intent_executor") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     integer_overflow = true
     ubsan = true
@@ -945,6 +974,8 @@ ohos_shared_library("cj_insight_intent_executor") {
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
     "window_manager:libwm",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
@@ -1103,6 +1134,8 @@ ohos_shared_library("ui_ability_ani") {
 }
 
 ohos_shared_library("uiabilitykit_native") {
+  branch_protector_ret = "pac_ret"
+
   include_dirs = [
     "${ability_runtime_path}/interfaces/kits/native/ability/native",
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ability_runtime",
@@ -1242,6 +1275,8 @@ ohos_shared_library("uiabilitykit_native") {
 }
 
 ohos_shared_library("ability_thread") {
+  branch_protector_ret = "pac_ret"
+
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
 
   include_dirs = [
@@ -1285,6 +1320,8 @@ ohos_shared_library("ability_thread") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   defines = []
@@ -1309,6 +1346,8 @@ ohos_shared_library("ability_thread") {
 }
 
 ohos_shared_library("ets_form_extension") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     integer_overflow = true
     ubsan = true
@@ -1364,6 +1403,8 @@ ohos_shared_library("ets_form_extension") {
       "ipc:rpc_taihe",
       "napi:ace_napi",
       "runtime_core:ani",
+      "libuv:uv",
+      "node:node_header_notice",
     ]
 
     if (form_fwk_enable) {
@@ -1388,6 +1429,8 @@ ohos_shared_library("ets_form_extension") {
 }
 
 ohos_shared_library("form_extension") {
+  branch_protector_ret = "pac_ret"
+
   defines = [ "AMS_LOG_TAG = \"Ability\"" ]
   defines += [ "AMS_LOG_DOMAIN = 0xD001300" ]
   if (ability_runtime_graphics) {
@@ -1432,6 +1475,8 @@ ohos_shared_library("form_extension") {
       "ipc:ipc_napi",
       "napi:ace_napi",
       "runtime_core:ani",
+      "libuv:uv",
+      "node:node_header_notice",
     ]
 
     if (form_fwk_enable) {
@@ -1457,6 +1502,8 @@ ohos_shared_library("form_extension") {
 }
 
 ohos_shared_library("cj_form_extension") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     integer_overflow = true
     ubsan = true
@@ -1507,6 +1554,8 @@ ohos_shared_library("cj_form_extension") {
       "napi:ace_napi",
       "napi:cj_bind_ffi",
       "napi:cj_bind_native",
+      "libuv:uv",
+      "node:node_header_notice",
     ]
 
     if (form_fwk_enable) {
@@ -1525,6 +1574,8 @@ ohos_shared_library("cj_form_extension") {
 }
 
 ohos_shared_library("form_extension_module") {
+  branch_protector_ret = "pac_ret"
+
   include_dirs = [
     "${ability_runtime_path}/interfaces/inner_api/ability_manager/include",
     "${ability_runtime_path}/interfaces/inner_api/runtime/include",
@@ -1557,6 +1608,8 @@ ohos_shared_library("form_extension_module") {
     "window_manager:libwm",
     "form_fwk:form_render_info",
     "form_fwk:form_common_info",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -1572,6 +1625,8 @@ ohos_shared_library("form_extension_module") {
 }
 
 ohos_shared_library("service_extension") {
+  branch_protector_ret = "pac_ret"
+
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
 
   defines = [ "AMS_LOG_TAG = \"Ability\"" ]
@@ -1624,6 +1679,8 @@ ohos_shared_library("service_extension") {
     "napi:ace_napi",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (defined(hiviewdfx_runtime_api_metrics_enable) && hiviewdfx_runtime_api_metrics_enable) {
@@ -1724,6 +1781,8 @@ ohos_shared_library("app_service_extension_ani") {
 }
 
 ohos_shared_library("service_extension_ani") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -1845,6 +1904,8 @@ ohos_shared_library("ui_service_extension_connection") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   subsystem_name = "ability"
@@ -1903,6 +1964,8 @@ ohos_shared_library("ui_service_extension_connection_ani") {
     "runtime_core:ani",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   subsystem_name = "ability"
@@ -1985,6 +2048,8 @@ ohos_shared_library("ui_service_extension") {
     "napi:ace_napi",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   public_external_deps = []
@@ -2088,6 +2153,8 @@ ohos_shared_library("ui_service_extension_ani") {
     "ipc:ipc_napi",
     "ipc:rpc_taihe",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:windowstageani_kit",
@@ -2171,6 +2238,8 @@ ohos_shared_library("ui_service_extension_module") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -2264,6 +2333,8 @@ ohos_shared_library("continuation_ipc") {
 }
 
 ohos_shared_library("data_ability_helper") {
+  branch_protector_ret = "pac_ret"
+
   include_dirs =
       [ "${ability_runtime_path}/interfaces/kits/native/ability/native" ]
 
@@ -2317,6 +2388,8 @@ ohos_shared_library("data_ability_helper") {
 }
 
 ohos_shared_library("service_extension_module") {
+  branch_protector_ret = "pac_ret"
+
   include_dirs = [
     "${ability_runtime_path}/interfaces/inner_api/ability_manager/include",
     "${ability_runtime_path}/interfaces/inner_api/runtime/include",
@@ -2346,6 +2419,8 @@ ohos_shared_library("service_extension_module") {
     "ipc:ipc_single",
     "json:nlohmann_json_static",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -2381,6 +2456,12 @@ config("ability_business_error_public_config") {
 
 ohos_shared_library("ability_business_error") {
   branch_protector_ret = "pac_ret"
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
 
   sources = [ "${ability_runtime_native_path}/ability/native/ability_business_error/ability_business_error.cpp" ]
 
@@ -2490,6 +2571,8 @@ config("ui_extension_public_config") {
 }
 
 ohos_shared_library("ui_extension") {
+  branch_protector_ret = "pac_ret"
+
   include_dirs = [
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_service_extension_ability/connection",
     "${ability_runtime_path}/frameworks/ets/ani/ui_extension_ability/include",
@@ -2546,6 +2629,8 @@ ohos_shared_library("ui_extension") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
     "window_manager:embeddablewindowstage_kit",
     "window_manager:extensionwindow_napi",
     "window_manager:windowstage_kit",
@@ -2567,6 +2652,8 @@ ohos_shared_library("ui_extension") {
 }
 
 ohos_shared_library("photo_editor_extension_ani") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     integer_overflow = true
     ubsan = true
@@ -2642,6 +2729,8 @@ ohos_shared_library("photo_editor_extension_ani") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
     "window_manager:embeddablewindowstage_kit",
     "window_manager:embeddablewindowstageani_kit",
     "window_manager:extensionwindow_napi",
@@ -2665,6 +2754,8 @@ config("ui_extension_ani_public_config") {
 }
 
 ohos_shared_library("ui_extension_ani") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -2764,6 +2855,8 @@ ohos_shared_library("ui_extension_ani") {
 }
 
 ohos_shared_library("cj_ui_extension") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     integer_overflow = true
     ubsan = true
@@ -2841,6 +2934,8 @@ ohos_shared_library("cj_ui_extension") {
 }
 
 ohos_shared_library("ui_extension_module") {
+  branch_protector_ret = "pac_ret"
+
   include_dirs = [ "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_extension_ability" ]
 
   sources = [ "${ability_runtime_native_path}/ability/native/ui_extension_ability/ui_extension_module_loader.cpp" ]
@@ -2865,6 +2960,8 @@ ohos_shared_library("ui_extension_module") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
     "window_manager:libwm",
   ]
   if (ability_runtime_graphics) {
@@ -2893,6 +2990,8 @@ config("share_extension_config") {
 }
 
 ohos_shared_library("share_extension") {
+  branch_protector_ret = "pac_ret"
+
   configs = [
     ":share_extension_config",
     "${ability_runtime_services_path}/common:optimize_config",
@@ -2929,6 +3028,8 @@ ohos_shared_library("share_extension") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (cj_frontend) {
@@ -2943,6 +3044,8 @@ ohos_shared_library("share_extension") {
 }
 
 ohos_shared_library("cj_share_extension") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     integer_overflow = true
     ubsan = true
@@ -3005,6 +3108,8 @@ config("action_extension_config") {
 }
 
 ohos_shared_library("action_extension") {
+  branch_protector_ret = "pac_ret"
+
   configs = [
     ":action_extension_config",
     "${ability_runtime_services_path}/common:optimize_config",
@@ -3041,6 +3146,8 @@ ohos_shared_library("action_extension") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (cj_frontend) {
@@ -3055,6 +3162,8 @@ ohos_shared_library("action_extension") {
 }
 
 ohos_shared_library("cj_action_extension") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     integer_overflow = true
     ubsan = true
@@ -3104,6 +3213,8 @@ ohos_shared_library("cj_action_extension") {
 }
 
 ohos_shared_library("share_extension_module") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "${ability_runtime_native_path}/ability/native/share_extension_ability/share_extension_module_loader.cpp" ]
 
   configs = [
@@ -3129,6 +3240,8 @@ ohos_shared_library("share_extension_module") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -3146,6 +3259,12 @@ ohos_shared_library("share_extension_module") {
 
 ohos_shared_library("auto_startup_callback") {
   branch_protector_ret = "pac_ret"
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
 
   include_dirs = [ "${ability_runtime_path}/interfaces/kits/native/ability/native/ability_business_error" ]
 
@@ -3172,6 +3291,8 @@ ohos_shared_library("auto_startup_callback") {
 }
 
 ohos_shared_library("action_extension_module") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "${ability_runtime_native_path}/ability/native/action_extension_ability/action_extension_module_loader.cpp" ]
 
   configs = [
@@ -3197,6 +3318,8 @@ ohos_shared_library("action_extension_module") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -3328,6 +3451,8 @@ ohos_shared_library("embedded_ui_extension") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (cj_frontend) {
@@ -3434,6 +3559,8 @@ ohos_shared_library("embedded_ui_extension_module") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -3457,6 +3584,8 @@ config("auto_fill_extension_config") {
 }
 
 ohos_shared_library("auto_fill_extension") {
+  branch_protector_ret = "pac_ret"
+
   public_configs = [ ":auto_fill_extension_config" ]
 
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
@@ -3493,6 +3622,8 @@ ohos_shared_library("auto_fill_extension") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
   if (ability_runtime_auto_fill) {
     sources += [
@@ -3588,6 +3719,8 @@ ohos_shared_library("auto_fill_extension_ani") {
 }
 
 ohos_shared_library("auto_fill_extension_util") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     integer_overflow = true
     ubsan = true
@@ -3622,6 +3755,8 @@ ohos_shared_library("auto_fill_extension_util") {
 }
 
 ohos_shared_library("auto_fill_extension_module") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "${ability_runtime_native_path}/ability/native/auto_fill_extension_ability/auto_fill_extension_module_loader.cpp" ]
 
   configs = [
@@ -3647,6 +3782,8 @@ ohos_shared_library("auto_fill_extension_module") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
     "window_manager:libwm",
   ]
   if (ability_runtime_auto_fill) {
@@ -3678,6 +3815,8 @@ config("photo_editor_extension_config") {
 }
 
 ohos_shared_library("photo_editor_extension") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     integer_overflow = true
     ubsan = true
@@ -3727,6 +3866,8 @@ ohos_shared_library("photo_editor_extension") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (cj_frontend) {
@@ -3742,6 +3883,8 @@ ohos_shared_library("photo_editor_extension") {
 }
 
 ohos_shared_library("cj_photo_editor_extension") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     integer_overflow = true
     ubsan = true
@@ -3802,6 +3945,8 @@ ohos_shared_library("cj_photo_editor_extension") {
 }
 
 ohos_shared_library("photo_editor_extension_module") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     integer_overflow = true
     ubsan = true
@@ -3835,6 +3980,8 @@ ohos_shared_library("photo_editor_extension_module") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -3908,6 +4055,8 @@ ohos_shared_library("app_service_extension") {
     "napi:ace_napi",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -3964,6 +4113,8 @@ ohos_shared_library("app_service_extension_module") {
     "ipc:ipc_napi",
     "json:nlohmann_json_static",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -4042,6 +4193,8 @@ ohos_shared_library("modular_object_extension") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   innerapi_tags = [ "platformsdk" ]
@@ -4086,6 +4239,8 @@ ohos_shared_library("modular_object_extension") {
     "ipc:ipc_napi",
     "json:nlohmann_json_static",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {

@@ -54,6 +54,8 @@ ohos_shared_library("businessabilityrouter") {
     "ipc:ipc_core",
     "napi:ace_napi",
     "samgr:samgr_proxy",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   cflags_cc = []

@@ -164,8 +164,8 @@ std::shared_ptr<Mission> MissionList::GetMissionBySpecifiedFlag(const AAFwk::Wan
 
         std::string srcAbilityName = ability->GetAbilityInfo().name;
         std::string srcBundleName = ability->GetApplicationInfo().bundleName;
-        std::string tarAbilityName = want.GetElement().GetAbilityName();
-        std::string tarBundleName = want.GetElement().GetBundleName();
+        std::string tarAbilityName = want.GetAbilityNameRef();
+        std::string tarBundleName = want.GetBundleNameRef();
         if ((srcBundleName == tarBundleName) &&
             (srcAbilityName == tarAbilityName) &&
             (ability->GetSpecifiedFlag() == flag)) {

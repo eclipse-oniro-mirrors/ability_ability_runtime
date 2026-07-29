@@ -2017,6 +2017,22 @@ ohos_prebuilt_etc("ability_runtime_startup_manager_abc_etc") {
   deps = [ ":ability_runtime_startup_manager_abc" ]
 }
 
+generate_static_abc("ability_runtime_app_memory_optimizer_abc") {
+  base_url = "./"
+  files = [ "./@ohos.app.ability.appMemoryOptimizer.ets" ]
+
+  is_boot_abc = "True"
+  device_dst_file = "/system/framework/ability_runtime_app_memory_optimizer_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_app_memory_optimizer_abc_etc") {
+  source = "$target_out_dir/ability_runtime_app_memory_optimizer_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_app_memory_optimizer_abc" ]
+}
+
 generate_static_abc("ability_runtime_startup_task_executor_abc") {
   base_url = "./"
   files = [ "./appstartup/StartupTaskExecutor.ets" ]
@@ -2227,6 +2243,7 @@ group("ets_packages") {
     ":ability_runtime_startup_config_entry_abc_etc",
     ":ability_runtime_startup_listener_abc_etc",
     ":ability_runtime_startup_manager_abc_etc",
+    ":ability_runtime_app_memory_optimizer_abc_etc",
     ":ability_runtime_startup_task_abc_etc",
     ":ability_runtime_startup_task_executor_abc_etc",
     ":ability_runtime_trigger_info_abc_etc",

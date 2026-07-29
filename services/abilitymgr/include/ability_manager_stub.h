@@ -74,6 +74,12 @@ public:
 
     virtual void CancelWantSenderByFlags(const sptr<IWantSender> &sender, uint32_t flags);
 
+protected:
+    // Strip InsightIntent and Skill params from Want at IPC boundary.
+    // Use for ALL Want reads EXCEPT legal InsightIntent execution channels
+    // (ExecuteIntentForDistributedInner, StartAbilityByInsightIntentInner).
+    void SanitizeWantParams(Want &want);
+
 private:
     int TerminateAbilityInner(MessageParcel &data, MessageParcel &reply);
     int BackToCallerInner(MessageParcel &data, MessageParcel &reply);
@@ -371,6 +377,7 @@ private:
     int32_t StartUIAbilityWithCallbackInner(MessageParcel &data, MessageParcel &reply);
     int32_t RestartSelfAtomicServiceInner(MessageParcel &data, MessageParcel &reply);
     int32_t RegisterSAInterceptorInner(MessageParcel &data, MessageParcel &reply);
+    int32_t UnregisterSAInterceptorInner(MessageParcel &data, MessageParcel &reply);
     int32_t SuspendExtensionAbilityInner(MessageParcel &data, MessageParcel &reply);
     int32_t ResumeExtensionAbilityInner(MessageParcel &data, MessageParcel &reply);
     int32_t SetOnNewWantSkipScenariosInner(MessageParcel &data, MessageParcel &reply);
@@ -450,6 +457,7 @@ private:
     int32_t ExecuteInAppSkillInner(MessageParcel &data, MessageParcel &reply);
     int32_t ExecuteInAppSkillWithTokenIdInner(MessageParcel &data, MessageParcel &reply);
     int32_t ExecuteSkillDoneWithTokenInner(MessageParcel &data, MessageParcel &reply);
+    int32_t NotifySkillFunctionInvokedInner(MessageParcel &data, MessageParcel &reply);
     int32_t QuerySkillTypeInner(MessageParcel &data, MessageParcel &reply);
     int32_t StartSelfUIAbilityByAppContextInner(MessageParcel &data, MessageParcel &reply);
     int32_t StartSandboxCloneAbilityInner(MessageParcel &data, MessageParcel &reply);
