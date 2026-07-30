@@ -8602,6 +8602,28 @@ HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunch_004, TestSiz
 }
 
 /**
+ * @tc.name: NotifyCompleteGamePreLaunch_005
+ * @tc.desc: Test NotifyCompleteGamePreLaunch when caller uid is FOUNDATION_UID, uid check should pass.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunch_005, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest request;
+    request.appInfo.bundleName = "com.example.unittest";
+    request.abilityInfo.name = "MainAbility";
+    request.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    auto record = UIAbilityRecord::CreateAbilityRecord(request);
+    ASSERT_NE(record, nullptr);
+    constexpr int32_t FOUNDATION_UID = 5523;
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID);
+    record->SetUid(100);
+    // Foundation uid should pass uid check, then hit IsGameSAPreLaunch check
+    auto result = mgr->NotifyCompleteGamePreLaunch(record->GetToken());
+    EXPECT_NE(result, CHECK_PERMISSION_FAILED);
+}
+
+/**
  * @tc.name: SetGamePreLaunchCompleteTime_001
  * @tc.desc: Test SetGamePreLaunchCompleteTime with valid completeTime.
  * @tc.type: FUNC
