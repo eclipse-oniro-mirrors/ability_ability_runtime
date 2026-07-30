@@ -50,6 +50,7 @@ ohos_shared_library("apprecovery_napi") {
     "hilog:libhilog",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "node:node_header_notice",
   ]
   if (hiviewdfx_runtime_api_metrics_enable) {
     defines += [ "APPRECOVERY_ENABLE_API_METRICS" ]
