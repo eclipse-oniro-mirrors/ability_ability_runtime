@@ -62,7 +62,8 @@ public:
     void ResumeVM(uint32_t tid) override {}
     void PreloadSystemModule(const std::string &moduleName) override;
     void PreloadMainAbility(const std::string &moduleName, const std::string &srcPath, const std::string &hapPath,
-        bool isEsMode, const std::string &srcEntrance) override {}
+        bool isEsMode, const std::string &srcEntrance) override;
+    bool PopPreloadObj(const std::string &key, std::unique_ptr<AppExecFwk::ETSNativeReference> &obj);
     void PreloadModule(const std::string &moduleName, const std::string &srcPath, const std::string &hapPath,
         bool isEsMode, bool useCommonTrunk) override {}
     void PreloadModule(
@@ -119,6 +120,7 @@ private:
     std::string moduleName_;
     std::unique_ptr<AbilityRuntime::Runtime> jsRuntime_ = nullptr;
     bool debugMode_ = false;
+    std::unordered_map<std::string, std::unique_ptr<AppExecFwk::ETSNativeReference>> preloadList_;
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

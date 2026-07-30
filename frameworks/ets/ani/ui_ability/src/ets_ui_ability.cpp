@@ -403,9 +403,13 @@ void EtsUIAbility::UpdateAbilityObj(
     std::shared_ptr<AbilityInfo> abilityInfo, const std::string &moduleName, const std::string &srcPath)
 {
     std::string key = moduleName + "::" + srcPath;
-    std::unique_ptr<NativeReference> moduleObj = nullptr;
-    etsAbilityObj_ = etsRuntime_.LoadModule(moduleName, srcPath, abilityInfo->hapPath,
-        abilityInfo->compileMode == AppExecFwk::CompileMode::ES_MODULE, false, abilityInfo->srcEntrance);
+    std::unique_ptr<AppExecFwk::ETSNativeReference> moduleObj = nullptr;
+    if (etsRuntime_.PopPreloadObj(key, moduleObj)) {
+        etsAbilityObj_ = std::move(moduleObj);
+    } else {
+        etsAbilityObj_ = etsRuntime_.LoadModule(moduleName, srcPath, abilityInfo->hapPath,
+            abilityInfo->compileMode == AppExecFwk::CompileMode::ES_MODULE, false, abilityInfo->srcEntrance);
+    }
     if (!BindNativeMethods()) {
         TAG_LOGE(AAFwkTag::UIABILITY, "BindNativeMethods failed");
         return;

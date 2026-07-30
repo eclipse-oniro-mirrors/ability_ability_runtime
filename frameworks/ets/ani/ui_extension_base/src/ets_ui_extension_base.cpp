@@ -143,9 +143,15 @@ std::shared_ptr<ExtensionCommon> EtsUIExtensionBase::Init(const std::shared_ptr<
     }
     std::string moduleName(abilityInfo_->moduleName);
     moduleName.append("::").append(abilityInfo_->name);
-    etsObj_ = etsRuntime_.LoadModule(
-        moduleName, srcPath, abilityInfo_->hapPath, abilityInfo_->compileMode == AppExecFwk::CompileMode::ES_MODULE,
-        false, abilityInfo_->srcEntrance);
+    std::string preloadKey = moduleName + "::" + srcPath;
+    std::unique_ptr<AppExecFwk::ETSNativeReference> moduleObj = nullptr;
+    if (etsRuntime_.PopPreloadObj(preloadKey, moduleObj)) {
+        etsObj_ = std::move(moduleObj);
+    } else {
+        etsObj_ = etsRuntime_.LoadModule(
+            moduleName, srcPath, abilityInfo_->hapPath,
+            abilityInfo_->compileMode == AppExecFwk::CompileMode::ES_MODULE, false, abilityInfo_->srcEntrance);
+    }
     if (etsObj_ == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "null etsObj_");
         return nullptr;
