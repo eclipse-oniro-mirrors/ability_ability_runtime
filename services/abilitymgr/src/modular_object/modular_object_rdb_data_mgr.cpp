@@ -18,6 +18,7 @@
 
 #include "modular_object_rdb_data_mgr.h"
 #include "modular_object_rdb_storage_mgr.h"
+#include "app_utils.h"
 #include "hilog_tag_wrapper.h"
 #include "scope_guard.h"
 #include "utils/hmsf_utils.h"
@@ -65,6 +66,11 @@ std::shared_ptr<NativeRdb::RdbStore> ModularObjectExtensionRdbDataMgr::GetRdbSto
 
 int32_t ModularObjectExtensionRdbDataMgr::IsDatabaseReady()
 {
+    if (AAFwk::AppUtils::GetInstance().IsBopdOrRescueMode()) {
+        TAG_LOGW(AAFwkTag::EXT, "Skip Mod database operation in bopd or rescue mode");
+        return NativeRdb::E_ERROR;
+    }
+
     auto store = GetRdbStore();
     if (store == nullptr) {
         return NativeRdb::E_ERROR;

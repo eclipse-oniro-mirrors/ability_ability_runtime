@@ -506,7 +506,8 @@ bool AbilityManagerService::Init()
     InitAppSpawnMsgPipe();
     insightIntentEventMgr_ = std::make_shared<AbilityRuntime::InsightIntentEventMgr>();
     insightIntentEventMgr_->SubscribeSysEventReceiver();
-    if (AppUtils::GetInstance().IsSupportModularObjectExtension()) {
+    if (AppUtils::GetInstance().IsSupportModularObjectExtension() &&
+        !AppUtils::GetInstance().IsBopdOrRescueMode()) {
         modularObjectExtensionEventMgr_ = std::make_shared<AbilityRuntime::ModularObjectExtensionEventMgr>();
         modularObjectExtensionEventMgr_->SubscribeSysEventReceiver();
     }
