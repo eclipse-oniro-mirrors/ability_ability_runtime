@@ -504,6 +504,13 @@ std::shared_ptr<AbilityRuntime::AbilityStageContext> OHOSApplication::CreateAndI
         return nullptr;
     }
 
+    PreloadHybridModule(*moduleInfo);
+    if (runtime_ && (runtime_->GetLanguage() == AbilityRuntime::Runtime::Language::JS)) {
+        static_cast<AbilityRuntime::JsRuntime&>(*runtime_).SetPkgContextInfoJson(
+            moduleInfo->moduleName, moduleInfo->hapPath, moduleInfo->packageName);
+    }
+    SetAppEnv(moduleInfo->appEnvironments);
+
     if (abilityRuntimeContext_->GetApplicationInfo() &&
         abilityRuntimeContext_->GetApplicationInfo()->multiProjects) {
         auto rm = stageContext->CreateModuleContext(hapModuleInfo.moduleName)->GetResourceManager();

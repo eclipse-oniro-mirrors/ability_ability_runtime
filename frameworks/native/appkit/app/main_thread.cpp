@@ -2190,9 +2190,8 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
     }
 #endif
     RunNativeStartupTask(bundleInfo, appLaunchData);
-    if (!IsEtsAPP(appInfo) &&
-        (appLaunchData.IsNeedPreloadModule() ||
-        appLaunchData.GetAppPreloadMode() == AppExecFwk::PreloadMode::PRELOAD_MODULE)) {
+    if (appLaunchData.IsNeedPreloadModule() ||
+        appLaunchData.GetAppPreloadMode() == AppExecFwk::PreloadMode::PRELOAD_MODULE) {
         PreloadModule(bundleInfo, appLaunchData, entryHapModuleInfo, application_->GetRuntime());
         if (appMgr_ == nullptr) {
             TAG_LOGE(AAFwkTag::APPKIT, "null appMgr");
@@ -2383,14 +2382,29 @@ void MainThread::ProcessMainAbility(const AbilityInfo &info, const std::unique_p
         }
         srcPath.append("/");
         srcPath.append(info.srcEntrance);
-        AbilityRuntime::RemoveFileExtension(srcPath);
-        srcPath.append(".abc");
+        // STATIC srcEntrance carries no ".ets" extension (OHM addressing), so rfind may
+        // return npos — guard like the ETS consumers (EtsUIAbility/EtsUIExtension/ETSAbilityStage),
+        // otherwise erase(npos) throws std::out_of_range.
+        auto pos = srcPath.rfind(".");
+        if (pos != std::string::npos) {
+            srcPath.erase(pos);
+            srcPath.append(".abc");
+        }
         TAG_LOGD(AAFwkTag::UIABILITY, "jsAbility srcPath: %{public}s", srcPath.c_str());
     }
 
     std::string moduleName(info.moduleName);
     moduleName.append("::").append(info.name);
     bool isEsmode = info.compileMode == AppExecFwk::CompileMode::ES_MODULE;
+    // HYBRID apps mix JS and ETS modules: route each to the runtime that will later host it
+    // (consistent with AddAbilityStage), so the preloaded module survives the fork-restore lookup.
+    if (application_ != nullptr) {
+        const auto &specifiedRuntime = application_->GetSpecifiedRuntime(info.arkTSMode);
+        if (specifiedRuntime != nullptr) {
+            specifiedRuntime->PreloadMainAbility(moduleName, srcPath, info.hapPath, isEsmode, info.srcEntrance);
+            return;
+        }
+    }
     runtime->PreloadMainAbility(moduleName, srcPath, info.hapPath, isEsmode, info.srcEntrance);
 }
 

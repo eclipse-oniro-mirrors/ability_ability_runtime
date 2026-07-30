@@ -171,8 +171,14 @@ void ETSAbilityStage::LoadModule(const AppExecFwk::HapModuleInfo &hapModuleInfo)
     }
     TAG_LOGD(AAFwkTag::APPKIT, "entry path: %{public}s", hapModuleInfo.srcEntrance.c_str());
     bool esModule = hapModuleInfo.compileMode == AppExecFwk::CompileMode::ES_MODULE;
-    etsAbilityStageObj_ = etsRuntime_.LoadModule(moduleName, srcPath,
-        hapModuleInfo.hapPath, esModule, false, hapModuleInfo.srcEntrance);
+    std::string key = moduleName + "::" + srcPath;
+    std::unique_ptr<AppExecFwk::ETSNativeReference> moduleObj = nullptr;
+    if (etsRuntime_.PopPreloadObj(key, moduleObj)) {
+        etsAbilityStageObj_ = std::move(moduleObj);
+    } else {
+        etsAbilityStageObj_ = etsRuntime_.LoadModule(moduleName, srcPath,
+            hapModuleInfo.hapPath, esModule, false, hapModuleInfo.srcEntrance);
+    }
     SetEtsAbilityStage();
 }
 
