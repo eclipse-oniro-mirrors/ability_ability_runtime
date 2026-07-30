@@ -117,7 +117,12 @@ void CliToolManagerService::HandleProcessTimeout(const std::string &sessionId)
     }
 
     EventDispatcher::GetInstance().DispatchErrorEvent(sessionId, "session timed out");
-    ProcessManager::GetInstance().Killpg(record->processId);
+    if (record->processId > 0) {
+        ProcessManager::GetInstance().Killpg(record->processId);
+    } else {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "HandleProcessTimeout skip Killpg: invalid processId, sessionId=%{public}s",
+            sessionId.c_str());
+    }
 }
 
 void CliToolManagerService::HandleProcessYieldTimeout(const std::string &sessionId)

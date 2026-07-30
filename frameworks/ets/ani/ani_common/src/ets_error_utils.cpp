@@ -37,6 +37,10 @@ void EtsErrorUtil::ThrowError(ani_env *env, ani_object err)
         TAG_LOGE(AAFwkTag::ANI, "null env");
         return;
     }
+    if (err == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "null err");
+        return;
+    }
     env->ThrowError(static_cast<ani_error>(err));
 }
 

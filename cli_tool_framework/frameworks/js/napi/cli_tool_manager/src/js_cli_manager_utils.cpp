@@ -467,7 +467,11 @@ napi_value CreateJsSubCommandInfo(napi_env env, const SubCommandInfo &subcmd)
 
     // Set requirePermissions (array)
     napi_value jsPermissions = nullptr;
-    napi_create_array(env, &jsPermissions);
+    status = napi_create_array(env, &jsPermissions);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "napi_create_array failed, %{public}d", status);
+        return nullptr;
+    }
     for (size_t i = 0; i < subcmd.requirePermissions.size(); i++) {
         napi_value jsPerm = AppExecFwk::WrapStringToJS(env, subcmd.requirePermissions[i]);
         napi_set_element(env, jsPermissions, i, jsPerm);
@@ -484,7 +488,11 @@ napi_value CreateJsSubCommandInfo(napi_env env, const SubCommandInfo &subcmd)
 
     // Set eventTypes (array)
     napi_value jsEventTypes = nullptr;
-    napi_create_array(env, &jsEventTypes);
+    status = napi_create_array(env, &jsEventTypes);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "napi_create_array failed, %{public}d", status);
+        return nullptr;
+    }
     for (size_t i = 0; i < subcmd.eventTypes.size(); i++) {
         napi_value jsEventType = AppExecFwk::WrapStringToJS(env, subcmd.eventTypes[i]);
         napi_set_element(env, jsEventTypes, i, jsEventType);
@@ -568,7 +576,11 @@ napi_value CreateJsToolInfo(napi_env env, const ToolInfo &tool)
 
     // Set requirePermissions (array)
     napi_value jsPermissions = nullptr;
-    napi_create_array(env, &jsPermissions);
+    status = napi_create_array(env, &jsPermissions);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "napi_create_array failed, %{public}d", status);
+        return nullptr;
+    }
     for (size_t i = 0; i < tool.requirePermissions.size(); i++) {
         napi_value jsPerm = AppExecFwk::WrapStringToJS(env, tool.requirePermissions[i]);
         napi_set_element(env, jsPermissions, i, jsPerm);
@@ -585,7 +597,11 @@ napi_value CreateJsToolInfo(napi_env env, const ToolInfo &tool)
 
     // Set eventTypes (array)
     napi_value jsEventTypes = nullptr;
-    napi_create_array(env, &jsEventTypes);
+    status = napi_create_array(env, &jsEventTypes);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "napi_create_array failed, %{public}d", status);
+        return nullptr;
+    }
     for (size_t i = 0; i < tool.eventTypes.size(); i++) {
         napi_value jsEventType = AppExecFwk::WrapStringToJS(env, tool.eventTypes[i]);
         napi_set_element(env, jsEventTypes, i, jsEventType);
