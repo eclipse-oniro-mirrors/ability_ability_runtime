@@ -31,7 +31,10 @@ ohos_unittest("insight_intent_execute_callback_stub_test") {
     "mock/src/ipc_skeleton.cpp",
   ]
 
-  configs = [ "${ability_runtime_services_path}/abilitymgr:abilityms_config" ]
+  configs = [
+    "${ability_runtime_services_path}/abilitymgr:abilityms_config",
+    "//build/config/compiler:exceptions",
+  ]
 
   cflags = [
     "-Dprivate=public",

@@ -18,6 +18,7 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 module_output_path = "ability_runtime/ability_runtime/abilitymgr"
 
 ohos_unittest("insight_intent_db_cache_test") {
+  configs = ["//build/config/compiler:exceptions"]
   sanitize = {
     cfi = true
     cfi_cross_dso = true

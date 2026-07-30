@@ -17,6 +17,7 @@
 
 #include "string_wrapper.h"
 #include "hilog_tag_wrapper.h"
+#include "intent_json_safe_get.h"
 #include "json_util.h"
 
 namespace OHOS {
@@ -107,6 +108,25 @@ void to_json(nlohmann::json& jsonObject, const PageInfoForQuery &info)
     };
 }
 
+void FillExecuteModesFromJson(const nlohmann::json &modeArray,
+    std::vector<AppExecFwk::ExecuteMode> &outModes,
+    const std::map<std::string, AppExecFwk::ExecuteMode> &modeMap)
+{
+    for (const auto &modeStr : modeArray) {
+        if (!modeStr.is_string()) {
+            TAG_LOGE(AAFwkTag::INTENT, "modestr not string");
+            continue;
+        }
+        auto it = modeMap.find(modeStr.get<std::string>());
+        if (it != modeMap.end()) {
+            outModes.push_back(it->second);
+        } else {
+            TAG_LOGW(AAFwkTag::INTENT, "Unknown ExecuteMode: %{public}s",
+                SafeDump(modeStr, DUMP_TOKEN_MAX_LEN).c_str());
+        }
+    }
+}
+
 void from_json(const nlohmann::json &jsonObject, EntryInfoForQuery &entryInfo)
 {
     TAG_LOGD(AAFwkTag::INTENT, "EntryInfoForQuery from json");
@@ -119,18 +139,11 @@ void from_json(const nlohmann::json &jsonObject, EntryInfoForQuery &entryInfo)
         g_parseResult);
     if (jsonObject.find(INSIGHT_INTENT_EXECUTE_MODE) != jsonObjectEnd) {
         const auto &modeArray = jsonObject[INSIGHT_INTENT_EXECUTE_MODE];
-        for (const auto &modeStr : modeArray) {
-            if (!modeStr.is_string()) {
-                TAG_LOGE(AAFwkTag::INTENT, "modestr not string");
-                continue;
-            }
-            std::string modeStrValue = modeStr.get<std::string>();
-            auto it = STRING_EXECUTE_MODE_MAP.find(modeStrValue);
-            if (it != STRING_EXECUTE_MODE_MAP.end()) {
-                entryInfo.executeMode.push_back(it->second);
-            } else {
-                TAG_LOGW(AAFwkTag::INTENT, "Unknown ExecuteMode: %{public}s", modeStr.dump().c_str());
-            }
+        if (!modeArray.is_array()) {
+            TAG_LOGE(AAFwkTag::INTENT, "executeMode is not array");
+            g_parseResult = ERR_INVALID_VALUE;
+        } else {
+            FillExecuteModesFromJson(modeArray, entryInfo.executeMode, STRING_EXECUTE_MODE_MAP);
         }
     }
 }
@@ -249,18 +262,11 @@ void from_json(const nlohmann::json &jsonObject, UIAbilityIntentInfoForQuery &in
 
     if (jsonObject.find(INSIGHT_INTENT_EXECUTE_MODE) != jsonObjectEnd) {
         const auto &modeArray = jsonObject[INSIGHT_INTENT_EXECUTE_MODE];
-        for (const auto &modeStr : modeArray) {
-            if (!modeStr.is_string()) {
-                TAG_LOGE(AAFwkTag::INTENT, "modestr not string");
-                continue;
-            }
-            std::string modeStrValue = modeStr.get<std::string>();
-            auto it = executeModeMap.find(modeStrValue);
-            if (it != executeModeMap.end()) {
-                info.supportExecuteMode.push_back(it->second);
-            } else {
-                TAG_LOGW(AAFwkTag::INTENT, "Unknown ExecuteMode: %{public}s", modeStr.dump().c_str());
-            }
+        if (!modeArray.is_array()) {
+            TAG_LOGE(AAFwkTag::INTENT, "executeMode is not array");
+            g_parseResult = ERR_INVALID_VALUE;
+        } else {
+            FillExecuteModesFromJson(modeArray, info.supportExecuteMode, executeModeMap);
         }
     }
 }
@@ -368,7 +374,7 @@ void ProcessIntputParams(const nlohmann::json &jsonObject,
             g_parseResult = ERR_INVALID_VALUE;
             break;
         }
-        insightIntentInfo.inputParams.emplace_back(param.dump());
+        insightIntentInfo.inputParams.emplace_back(SafeDump(param));
     }
 }
 
@@ -396,7 +402,7 @@ void ProcessOutputParams(const nlohmann::json &jsonObject,
             g_parseResult = ERR_INVALID_VALUE;
             break;
         }
-        insightIntentInfo.outputParams.emplace_back(param.dump());
+        insightIntentInfo.outputParams.emplace_back(SafeDump(param));
     }
 }
 
@@ -553,7 +559,7 @@ void from_json(const nlohmann::json &jsonObject, InsightIntentInfoForQuery &insi
 
     if (jsonObject.find(INSIGHT_INTENT_ENTITES) != jsonObjectEnd) {
         if (jsonObject.at(INSIGHT_INTENT_ENTITES).is_object()) {
-            insightIntentInfo.cfgEntities =  jsonObject[INSIGHT_INTENT_ENTITES].dump();
+            insightIntentInfo.cfgEntities = SafeDump(jsonObject[INSIGHT_INTENT_ENTITES]);
         } else {
             TAG_LOGE(AAFwkTag::INTENT, "type error: cfgEntities not object");
             g_parseResult = ERR_INVALID_VALUE;
@@ -698,12 +704,17 @@ bool InsightIntentInfoForQuery::ReadFromParcel(Parcel &parcel)
     }
     std::lock_guard<std::mutex> lock(g_extraMutex);
     g_parseResult = ERR_OK;
-    *this = jsonObject.get<InsightIntentInfoForQuery>();
+    InsightIntentInfoForQuery tmp;
+    if (!SafeJsonGet(jsonObject, tmp, "InsightIntentInfoForQuery")) {
+        g_parseResult = ERR_OK;
+        return false;
+    }
     if (g_parseResult != ERR_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "parse result: %{public}d", g_parseResult);
         g_parseResult = ERR_OK;
         return false;
     }
+    *this = std::move(tmp);
     return true;
 }
 
@@ -807,7 +818,12 @@ bool InsightIntentInfoForQuery::UnmarshallingVector(
     g_parseResult = ERR_OK;
     infos.clear();
     for (const auto &item : jsonArray) {
-        InsightIntentInfoForQuery info = item.get<InsightIntentInfoForQuery>();
+        InsightIntentInfoForQuery info;
+        if (!SafeJsonGet(item, info, "InsightIntentInfoForQueryListItem")) {
+            TAG_LOGW(AAFwkTag::INTENT, "skip corrupt list item");
+            g_parseResult = ERR_OK;
+            continue;
+        }
         if (g_parseResult != ERR_OK) {
             TAG_LOGE(AAFwkTag::INTENT, "parse result: %{public}d", g_parseResult);
             g_parseResult = ERR_OK;

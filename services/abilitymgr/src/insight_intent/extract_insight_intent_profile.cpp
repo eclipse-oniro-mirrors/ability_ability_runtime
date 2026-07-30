@@ -18,6 +18,7 @@
 #include <algorithm>
 
 #include "hilog_tag_wrapper.h"
+#include "intent_json_safe_get.h"
 #include "json_util.h"
 
 namespace OHOS {
@@ -178,7 +179,7 @@ void from_json(const nlohmann::json &jsonObject, InsightIntentEntityInfo &entity
 
     if (jsonObject.find(INSIGHT_INTENT_ENTITY_PARAMETERS) != jsonObjectEnd) {
         if (jsonObject.at(INSIGHT_INTENT_ENTITY_PARAMETERS).is_object()) {
-            entityInfo.parameters = jsonObject[INSIGHT_INTENT_ENTITY_PARAMETERS].dump();
+            entityInfo.parameters = SafeDump(jsonObject[INSIGHT_INTENT_ENTITY_PARAMETERS]);
         } else {
             TAG_LOGE(AAFwkTag::INTENT, "type error: entity parameters not object");
             g_extraParseResult = ERR_INVALID_VALUE;
@@ -377,7 +378,7 @@ void from_json(const nlohmann::json &jsonObject, ExtractInsightIntentProfileInfo
 
     if (jsonObject.find(INSIGHT_INTENT_PARAMETERS) != jsonObjectEnd) {
         if (jsonObject.at(INSIGHT_INTENT_PARAMETERS).is_object()) {
-            insightIntentInfo.parameters =  jsonObject[INSIGHT_INTENT_PARAMETERS].dump();
+            insightIntentInfo.parameters = SafeDump(jsonObject[INSIGHT_INTENT_PARAMETERS]);
         } else {
             TAG_LOGE(AAFwkTag::INTENT, "type error: parameters not object");
             g_extraParseResult = ERR_INVALID_VALUE;
@@ -386,7 +387,7 @@ void from_json(const nlohmann::json &jsonObject, ExtractInsightIntentProfileInfo
 
     if (jsonObject.find(INSIGHT_INTENT_RESULT) != jsonObjectEnd) {
         if (jsonObject.at(INSIGHT_INTENT_RESULT).is_object()) {
-            insightIntentInfo.result =  jsonObject[INSIGHT_INTENT_RESULT].dump();
+            insightIntentInfo.result = SafeDump(jsonObject[INSIGHT_INTENT_RESULT]);
         } else {
             TAG_LOGE(AAFwkTag::INTENT, "type error: result not object");
             g_extraParseResult = ERR_INVALID_VALUE;
@@ -670,7 +671,10 @@ bool ExtractInsightIntentProfile::TransformTo(const std::string &profileStr,
 
     std::lock_guard<std::mutex> lock(g_extraMutex);
     g_extraParseResult = ERR_OK;
-    intentInfos = jsonObject.get<ExtractInsightIntentProfileInfoVec>();
+    if (!SafeJsonGet(jsonObject, intentInfos, "ExtractInsightIntentProfileInfoVec")) {
+        g_extraParseResult = ERR_OK;
+        return false;
+    }
     if (g_extraParseResult != ERR_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "parse result: %{public}d, profileStr: %{public}s",
             g_extraParseResult, profileStr.c_str());
@@ -698,7 +702,7 @@ bool ExtractInsightIntentProfile::ToJson(const ExtractInsightIntentProfileInfo &
     }
 
     jsonObject[INSIGHT_INTENTS] = nlohmann::json::array({ subJsonObject });
-    TAG_LOGD(AAFwkTag::INTENT, "to json string: %{public}s", jsonObject.dump().c_str());
+    TAG_LOGD(AAFwkTag::INTENT, "to json string: %{public}s", SafeDump(jsonObject, DUMP_LOG_MAX_LEN).c_str());
     return true;
 }
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Copyright (c) 2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -16,7 +16,8 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 module_output_path = "ability_runtime/ability_runtime/abilitymgr"
 
-ohos_unittest("extract_insight_intent_profile_test") {
+ohos_unittest("insight_intent_safe_get_test") {
+  configs = ["//build/config/compiler:exceptions"]
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -27,13 +28,17 @@ ohos_unittest("extract_insight_intent_profile_test") {
 
   include_dirs = [
     "${ability_runtime_abilitymgr_path}/include",
+    "${ability_runtime_abilitymgr_path}/include/insight_intent",
     "${ability_runtime_abilitymgr_path}/src",
-    "${ability_runtime_services_path}/abilitymgr:abilityms",
+    "${ability_runtime_innerkits_path}/ability_manager/include",
+    "${ability_runtime_innerkits_path}/ability_manager/include/insight_intent",
   ]
 
-  sources = [ "extract_insight_intent_profile_test.cpp" ]
-
-  configs = ["//build/config/compiler:exceptions"]
+  sources = [
+    "insight_intent_safe_get_test.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/extract_insight_intent_profile.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_profile.cpp",
+  ]
 
   deps = [
     "${ability_runtime_abilitymgr_path}/:abilityms",
@@ -42,19 +47,17 @@ ohos_unittest("extract_insight_intent_profile_test") {
 
   external_deps = [
     "ability_base:want",
-    "ability_base:zuri",
-    "access_token:libaccesstoken_sdk",
     "bundle_framework:libappexecfwk_common",
     "c_utils:utils",
-    "common_event_service:cesfwk_innerkits",
     "ffrt:libffrt",
     "hilog:libhilog",
     "ipc:ipc_core",
+    "json:nlohmann_json_static",
   ]
 }
 
 group("unittest") {
   testonly = true
 
-  deps = [ ":extract_insight_intent_profile_test" ]
+  deps = [ ":insight_intent_safe_get_test" ]
 }
