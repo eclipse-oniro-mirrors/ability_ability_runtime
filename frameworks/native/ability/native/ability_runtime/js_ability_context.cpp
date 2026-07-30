@@ -3257,33 +3257,28 @@ napi_value JsAbilityContext::OnHideAbility(napi_env env, NapiCallbackInfo& info)
 
 napi_value JsAbilityContext::ChangeAbilityVisibility(napi_env env, NapiCallbackInfo& info, bool isShow)
 {
-    TAG_LOGD(AAFwkTag::CONTEXT, "called");
-    auto innerErrCode = std::make_shared<ErrCode>(ERR_OK);
-    NapiAsyncTask::ExecuteCallback execute =
-        [weak = context_, isShow, innerErrCode]() {
+    TAG_LOGI(AAFwkTag::CONTEXT, "called, isShow:%{public}d", isShow);
+    // use complete only to maintain order
+    NapiAsyncTask::CompleteCallback complete =
+        [weak = context_, isShow](napi_env env, NapiAsyncTask& task, int32_t status) {
+            HandleScope handleScope(env);
             auto context = weak.lock();
             if (!context) {
                 TAG_LOGW(AAFwkTag::CONTEXT, "null context");
-                *innerErrCode = static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT);
+                task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT));
                 return;
             }
-            *innerErrCode = context->ChangeAbilityVisibility(isShow);
-    };
-    NapiAsyncTask::CompleteCallback complete =
-        [innerErrCode](napi_env env, NapiAsyncTask& task, int32_t status) {
-            HandleScope handleScope(env);
-            if (*innerErrCode == ERR_OK) {
+            auto innerErrCode = context->ChangeAbilityVisibility(isShow);
+            if (innerErrCode == ERR_OK) {
                 task.ResolveWithNoError(env, CreateJsUndefined(env));
-            } else if (*innerErrCode == static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT)) {
-                task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT));
             } else {
-                task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrCode));
+                task.Reject(env, CreateJsErrorByNativeErr(env, innerErrCode));
             }
         };
 
     napi_value result = nullptr;
     NapiAsyncTask::ScheduleHighQos("JsAbilityContext::ChangeAbilityVisibility",
-        env, CreateAsyncTaskWithLastParam(env, nullptr, std::move(execute), std::move(complete), &result));
+        env, CreateAsyncTaskWithLastParam(env, nullptr, nullptr, std::move(complete), &result));
     return result;
 }
 
