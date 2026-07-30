@@ -929,6 +929,104 @@ HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_GetFocusedWindowInfo
     GTEST_LOG_(INFO) << "AaFwk_DataObsMgrServiceTest_GetFocusedWindowInfo_0001 end";
 }
 
+/*
+ * Feature: DataObsMgrService with NotifyProcessObserver
+ * Function: IsFocusedApp
+ * SubFunction: NA
+ * FunctionPoints: DataObsMgrService IsFocusedApp
+ * EnvConditions: NA
+ * CaseDescription: Verify that a system ability caller is allowed.
+ */
+HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_IsFocusedApp_0001, TestSize.Level1)
+{
+    auto dataObsMgrServer = DelayedSingleton<DataObsMgrService>::GetInstance();
+    uint32_t tokenId = Security::AccessToken::DEFAULT_TOKEN_VERSION;
+    auto idInner = reinterpret_cast<Security::AccessToken::AccessTokenIDInner *>(&tokenId);
+    idInner->type = Security::AccessToken::TOKEN_NATIVE;
+
+    EXPECT_TRUE(dataObsMgrServer->IsFocusedApp(tokenId));
+}
+
+/*
+ * Feature: DataObsMgrService with NotifyProcessObserver
+ * Function: IsFocusedApp
+ * SubFunction: NA
+ * FunctionPoints: DataObsMgrService IsFocusedApp
+ * EnvConditions: NA
+ * CaseDescription: Verify that a HAP caller with invalid token information is denied.
+ */
+HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_IsFocusedApp_0002, TestSize.Level1)
+{
+    auto dataObsMgrServer = DelayedSingleton<DataObsMgrService>::GetInstance();
+    uint32_t tokenId = Security::AccessToken::DEFAULT_TOKEN_VERSION;
+    auto idInner = reinterpret_cast<Security::AccessToken::AccessTokenIDInner *>(&tokenId);
+    idInner->type = Security::AccessToken::TOKEN_HAP;
+
+    EXPECT_FALSE(dataObsMgrServer->IsFocusedApp(tokenId));
+}
+
+/*
+ * Feature: DataObsMgrService with NotifyProcessObserver
+ * Function: IsFocusedApp
+ * SubFunction: NA
+ * FunctionPoints: DataObsMgrService IsFocusedApp
+ * EnvConditions: NA
+ * CaseDescription: Verify that a non-SA and non-HAP caller is denied.
+ */
+HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_IsFocusedApp_0003, TestSize.Level1)
+{
+    auto dataObsMgrServer = DelayedSingleton<DataObsMgrService>::GetInstance();
+    uint32_t tokenId = Security::AccessToken::DEFAULT_TOKEN_VERSION;
+    auto idInner = reinterpret_cast<Security::AccessToken::AccessTokenIDInner *>(&tokenId);
+    idInner->type = Security::AccessToken::TOKEN_SHELL;
+
+    EXPECT_FALSE(dataObsMgrServer->IsFocusedApp(tokenId));
+}
+
+/*
+ * Feature: DataObsMgrService with NotifyProcessObserver
+ * Function: NotifyProcessObserver
+ * SubFunction: NA
+ * FunctionPoints: DataObsMgrService NotifyProcessObserver
+ * EnvConditions: NA
+ * CaseDescription: Verify that an untrusted HAP caller is denied before starting the progress ability.
+ */
+HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_NotifyProcessObserver_0001, TestSize.Level1)
+{
+    auto dataObsMgrServer = DelayedSingleton<DataObsMgrService>::GetInstance();
+    auto originalToken = GetSelfTokenID();
+    uint32_t tokenId = Security::AccessToken::DEFAULT_TOKEN_VERSION;
+    auto idInner = reinterpret_cast<Security::AccessToken::AccessTokenIDInner *>(&tokenId);
+    idInner->type = Security::AccessToken::TOKEN_HAP;
+    SetSelfTokenID(tokenId);
+
+    EXPECT_EQ(DATAOBS_PERMISSION_DENY, dataObsMgrServer->NotifyProcessObserver("test_progress_key", nullptr));
+
+    SetSelfTokenID(originalToken);
+}
+
+/*
+ * Feature: DataObsMgrService with NotifyProcessObserver
+ * Function: NotifyProcessObserver
+ * SubFunction: NA
+ * FunctionPoints: DataObsMgrService NotifyProcessObserver
+ * EnvConditions: NA
+ * CaseDescription: Verify that a non-SA and non-HAP caller is denied before starting the progress ability.
+ */
+HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_NotifyProcessObserver_0002, TestSize.Level1)
+{
+    auto dataObsMgrServer = DelayedSingleton<DataObsMgrService>::GetInstance();
+    auto originalToken = GetSelfTokenID();
+    uint32_t tokenId = Security::AccessToken::DEFAULT_TOKEN_VERSION;
+    auto idInner = reinterpret_cast<Security::AccessToken::AccessTokenIDInner *>(&tokenId);
+    idInner->type = Security::AccessToken::TOKEN_SHELL;
+    SetSelfTokenID(tokenId);
+
+    EXPECT_EQ(DATAOBS_PERMISSION_DENY, dataObsMgrServer->NotifyProcessObserver("test_progress_key", nullptr));
+
+    SetSelfTokenID(originalToken);
+}
+
 /**
  * @tc.name: AaFwk_DataObsMgrServiceTest_RegisterObserver_0500
  * @tc.desc: Test dataObsMgrServer RegisterObserver calling from process that possess TOKEN_NATIVE

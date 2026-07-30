@@ -141,8 +141,7 @@ public:
      *
      * @return Returns SUCCESS on success, others on failure.
      */
-    Status NotifyProcessObserver(const std::string &key, const sptr<IRemoteObject> &observer,
-        DataObsOption opt = DataObsOption());
+    Status NotifyProcessObserver(const std::string &key, const sptr<IRemoteObject> observer);
 
 private:
     class SystemAbilityStatusChangeListener;
