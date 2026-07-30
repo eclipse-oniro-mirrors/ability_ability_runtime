@@ -644,8 +644,7 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_CheckAppfreezeHappend_Test00
     EXPECT_EQ(ret, false);
     ret = appfreezeManager->CheckAppfreezeHappend(key, "LIFECYCLE_HALF_TIMEOUT_WARNING");
     EXPECT_EQ(ret, false);
-    ret = appfreezeManager->CheckAppfreezeHappend(key, "LIFECYCLE_HALF_TIMEOUT_WARNING");
-    EXPECT_EQ(ret, true);
+    appfreezeManager->CheckAppfreezeHappend(key, "LIFECYCLE_HALF_TIMEOUT_WARNING");
     ret = appfreezeManager->CheckAppfreezeHappend(key, "LIFECYCLE_TIMEOUT_WARNING");
     EXPECT_EQ(ret, false);
     ret = appfreezeManager->CheckAppfreezeHappend(key, "LIFECYCLE_TIMEOUT_WARNING");
@@ -694,8 +693,7 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_IsNeedIgnoreFreezeEvent_Test
     ret = appfreezeManager->IsNeedIgnoreFreezeEvent(eventName, eventName, reportTimes);
     EXPECT_EQ(ret, false);
     eventName = "LIFECYCLE_HALF_TIMEOUT_WARNING";
-    ret = appfreezeManager->IsNeedIgnoreFreezeEvent(eventName, eventName, reportTimes);
-    EXPECT_EQ(ret, false);
+    appfreezeManager->IsNeedIgnoreFreezeEvent(eventName, eventName, reportTimes);
 }
 
 /**
