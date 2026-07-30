@@ -951,7 +951,14 @@ ErrCode ClawAaShellCommand::MakeWantFromCmd(Want& want, int32_t& userId)
                         result = ERR_SANDBOX_CLONE_INDEX_INVALID;
                         break;
                     }
-                    sandBoxCloneIndex = std::stoi(sandBoxCloneIndexStr);
+                    auto res = std::from_chars(sandBoxCloneIndexStr.c_str(),
+                        sandBoxCloneIndexStr.c_str() + sandBoxCloneIndexStr.size(), sandBoxCloneIndex);
+                    if (res.ec != std::errc()) {
+                        TAG_LOGE(AAFwkTag::AA_TOOL, "Invalid sandBoxCloneIndex: %{public}s",
+                            sandBoxCloneIndexStr.c_str());
+                        result = ERR_SANDBOX_CLONE_INDEX_INVALID;
+                        break;
+                    }
                     hasSandBoxCloneIndex = true;
                     startSandboxCloneAbilityFlag_ = true;
                     TAG_LOGI(AAFwkTag::AA_TOOL, "sandBoxCloneIndex = %{public}d, Flag_ set to true", sandBoxCloneIndex);
