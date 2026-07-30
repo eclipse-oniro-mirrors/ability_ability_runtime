@@ -40,6 +40,7 @@
 #include "system_ability.h"
 #include "task_handler_wrap.h"
 #include "app_jsheap_mem_info.h"
+#include "app_jshandle_map_info.h"
 #include "app_cjheap_mem_info.h"
 #include "mem_dump_callback_interface.h"
 
@@ -305,6 +306,15 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int32_t DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info) override;
+
+    /**
+     * DumpJsHandleMap, call DumpJsHandleMap() through proxy project.
+     * dump the application's jshandle map info.
+     *
+     * @param info, pid tid
+     * @return ERR_OK ,return back success, others fail.
+     */
+    virtual int32_t DumpJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info) override;
 
     /**
      * DumpCjHeapMemory, call DumpCJHeapMemory() through proxy project.

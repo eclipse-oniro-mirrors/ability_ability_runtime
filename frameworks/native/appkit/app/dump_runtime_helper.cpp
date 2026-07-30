@@ -298,6 +298,28 @@ void DumpRuntimeHelper::DumpJsHeap(const OHOS::AppExecFwk::JsHeapDumpInfo &info)
     }
 }
 
+void DumpRuntimeHelper::DumpJsHandleMap(const OHOS::AppExecFwk::JsHandleMapInfo &info)
+{
+    (void)info;
+    if (application_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null application");
+        return;
+    }
+    auto &runtime = application_->GetRuntime();
+    if (runtime == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null runtime");
+        return;
+    }
+    auto language = runtime->GetLanguage();
+    if (language != OHOS::AbilityRuntime::Runtime::Language::JS &&
+        language != OHOS::AbilityRuntime::Runtime::Language::ETS) {
+        TAG_LOGE(AAFwkTag::APPKIT, "runtime language is not JS or ETS");
+        return;
+    }
+    TAG_LOGI(AAFwkTag::APPKIT, "DumpJsHandleMap, language: %{public}d", static_cast<int>(language));
+    runtime->DumpJsHandleMap();
+}
+
 void DumpRuntimeHelper::DumpJsHeapGc(const std::unique_ptr<AbilityRuntime::Runtime> &runtime,
     const OHOS::AppExecFwk::JsHeapDumpInfo &info)
 {

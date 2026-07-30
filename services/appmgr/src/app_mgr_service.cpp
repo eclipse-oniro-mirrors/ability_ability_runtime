@@ -686,6 +686,14 @@ int32_t AppMgrService::DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info)
     return appMgrServiceInner_->DumpJsHeapMemory(info);
 }
 
+int32_t AppMgrService::DumpJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
+{
+    if (!IsReady() || !HasDumpPermission()) {
+        return ERR_INVALID_OPERATION;
+    }
+    return appMgrServiceInner_->DumpJsHandleMap(info);
+}
+
 int32_t AppMgrService::DumpCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info)
 {
     if (!IsReady() || !HasDumpPermission()) {

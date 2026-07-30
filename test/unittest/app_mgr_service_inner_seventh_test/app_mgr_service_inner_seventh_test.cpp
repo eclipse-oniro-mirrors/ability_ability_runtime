@@ -952,6 +952,29 @@ HWTEST_F(AppMgrServiceInnerSeventhTest, DumpJsHeapMemory_002, TestSize.Level1)
 }
 
 /**
+* @tc.name: DumpJsHandleMap_001
+* @tc.desc: test DumpJsHandleMap_001
+* @tc.type: FUNC
+*/
+HWTEST_F(AppMgrServiceInnerSeventhTest, DumpJsHandleMap_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().isSACall_ = true;
+    appMgrServiceInner->appRunningManager_ = nullptr;
+
+    OHOS::AppExecFwk::JsHandleMapInfo info;
+    info.pid = 0;
+    int32_t ret = appMgrServiceInner->DumpJsHandleMap(info);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+
+    info.pid = 1;
+    ret = appMgrServiceInner->DumpJsHandleMap(info);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_001 end");
+}
+
+/**
 * @tc.name: GetRunningProcesses_001
 * @tc.desc: test GetRunningProcesses_001
 * @tc.type: FUNC

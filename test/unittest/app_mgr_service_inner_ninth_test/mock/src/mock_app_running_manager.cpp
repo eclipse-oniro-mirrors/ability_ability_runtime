@@ -595,5 +595,10 @@ int32_t AppRunningManager::GetAllAbilityInfos(const int32_t pid, std::vector<App
 {
     return ERR_OK;
 }
+
+int32_t AppRunningManager::DumpJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
+{
+    return ERR_OK;
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

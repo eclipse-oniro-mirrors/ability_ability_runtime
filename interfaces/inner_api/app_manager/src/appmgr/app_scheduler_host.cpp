@@ -144,6 +144,8 @@ int32_t AppSchedulerHost::OnRemoteRequestInnerThird(uint32_t code, MessageParcel
             return HandleDetachAppDebug(data, reply);
         case static_cast<uint32_t>(IAppScheduler::Message::SCHEDULE_JSHEAP_MEMORY_APPLICATION_TRANSACTION):
             return HandleScheduleJsHeapMemory(data, reply);
+        case static_cast<uint32_t>(IAppScheduler::Message::SCHEDULE_JSHANDLE_MAP_APPLICATION_TRANSACTION):
+            return HandleScheduleJsHandleMap(data, reply);
         case static_cast<uint32_t>(IAppScheduler::Message::SCHEDULE_CJHEAP_MEMORY_APPLICATION_TRANSACTION):
             return HandleScheduleCjHeapMemory(data, reply);
         case static_cast<uint32_t>(IAppScheduler::Message::SCHEDULE_MEM_APPLICATION_TRANSACTION):
@@ -231,6 +233,18 @@ int32_t AppSchedulerHost::HandleScheduleJsHeapMemory(MessageParcel &data, Messag
         return ERR_APPEXECFWK_PARCEL_ERROR;
     }
     ScheduleJsHeapMemory(*info);
+    return NO_ERROR;
+}
+
+int32_t AppSchedulerHost::HandleScheduleJsHandleMap(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::unique_ptr<JsHandleMapInfo> info(data.ReadParcelable<JsHandleMapInfo>());
+    if (!info) {
+        TAG_LOGE(AAFwkTag::APPMGR, "ReadParcelable<JsHandleMapInfo> failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    ScheduleJsHandleMap(*info);
     return NO_ERROR;
 }
 
