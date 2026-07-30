@@ -76,10 +76,9 @@ void IOMonitor::Stop()
     if (!running_.exchange(false)) {
         return;
     }
-    if (epollFd_ >= 0) {
-        close(epollFd_);
-        epollFd_ = -1;
-    }
+    // Join the monitor thread BEFORE closing epollFd_. std::thread::join() establishes a
+    // happens-before edge for every access the monitor thread made to epollFd_ (epoll_wait in
+    // MonitorLoop, epoll_ctl in CloseFdLocked), so closing epollFd_ afterwards is race-free.
     if (monitorThread_.joinable()) {
         monitorThread_.join();
     }
@@ -87,6 +86,10 @@ void IOMonitor::Stop()
     std::vector<std::pair<std::string, PendingInput>> failedInputs;
     {
         std::lock_guard<std::mutex> lock(fdMutex_);
+        if (epollFd_ >= 0) {
+            close(epollFd_);
+            epollFd_ = -1;
+        }
         for (const auto &[fd, info] : fdMap_) {
             close(fd);
         }
@@ -159,6 +162,11 @@ void IOMonitor::UnregisterSession(const std::string &sessionId)
         std::lock_guard<std::mutex> lock(fdMutex_);
         for (auto it = fdMap_.begin(); it != fdMap_.end();) {
             if (it->second.sessionId == sessionId) {
+                if (!it->second.isStdin) {
+                    // epoll_ctl reads epollFd_; keep it under fdMutex_ to synchronize with
+                    // Stop()'s close(epollFd_) and RegisterSession()'s epoll_ctl().
+                    epoll_ctl(epollFd_, EPOLL_CTL_DEL, it->first, nullptr);
+                }
                 fdsToClose.emplace_back(it->first, it->second);
                 it = fdMap_.erase(it);
                 continue;
@@ -176,9 +184,6 @@ void IOMonitor::UnregisterSession(const std::string &sessionId)
     }
 
     for (const auto &[fd, info] : fdsToClose) {
-        if (!info.isStdin) {
-            epoll_ctl(epollFd_, EPOLL_CTL_DEL, fd, nullptr);
-        }
         close(fd);
     }
     for (const auto &input : failedInputs) {
@@ -373,10 +378,23 @@ void IOMonitor::ProcessWriteQueue(const std::string &sessionId)
             input = std::move(queueIt->second.pendingInputs.front());
             queueIt->second.pendingInputs.pop_front();
             queueIt->second.pendingBytes -= input.message.size();
-            fd = GetStdinFdLocked(sessionId);
+            // Take a private dup of the stdin fd so UnregisterSession()/Stop() closing the
+            // original cannot invalidate or fd-recycle the handle we write to outside the lock.
+            int stdinFd = GetStdinFdLocked(sessionId);
+            if (stdinFd >= 0) {
+                fd = dup(stdinFd);
+                if (fd < 0) {
+                    TAG_LOGE(AAFwkTag::CLI_TOOL,
+                        "ProcessWriteQueue: dup stdin failed: %{public}s for sessionId=%{public}s",
+                        strerror(errno), sessionId.c_str());
+                }
+            }
         }
 
         bool result = fd >= 0 && WriteMessage(fd, sessionId, input.message);
+        if (fd >= 0) {
+            close(fd);
+        }
         NotifyInputReply(sessionId, input.eventId, result);
         if (!result) {
             std::vector<PendingInput> failedInputs;
@@ -424,6 +442,8 @@ void IOMonitor::MonitorLoop()
 void IOMonitor::HandleReadableFd(int fd)
 {
     FdInfo info;
+    int readFd = fd; // read the original fd directly when dup is unavailable
+    bool ownReadFd = false; // true only when readFd is a private dup we must close
     {
         std::lock_guard<std::mutex> lock(fdMutex_);
         auto it = fdMap_.find(fd);
@@ -431,11 +451,23 @@ void IOMonitor::HandleReadableFd(int fd)
             return;
         }
         info = it->second;
+        // Take a private dup so UnregisterSession()/Stop() closing the original cannot
+        // invalidate or fd-recycle the handle we read from outside the lock. On dup failure
+        // (rare, fd exhaustion) fall back to the original fd to avoid busy-spinning under
+        // level-triggered epoll while still consuming data.
+        int dupFd = dup(fd);
+        if (dupFd >= 0) {
+            readFd = dupFd;
+            ownReadFd = true;
+        } else {
+            TAG_LOGW(AAFwkTag::CLI_TOOL,
+                "HandleReadableFd: dup failed: %{public}s, reading original fd directly", strerror(errno));
+        }
     }
 
     char buffer[CLI_IO_READ_BUFFER_SIZE];
     while (true) {
-        ssize_t bytesRead = read(fd, buffer, sizeof(buffer));
+        ssize_t bytesRead = read(readFd, buffer, sizeof(buffer));
         if (bytesRead > 0) {
             if (outputCallback_) {
                 outputCallback_(info.sessionId, info.isStdout, std::string(buffer, bytesRead));
@@ -444,16 +476,19 @@ void IOMonitor::HandleReadableFd(int fd)
         }
         if (bytesRead == 0) {
             CloseFdLocked(fd, info, true);
-            return;
+            break;
         }
         if (errno == EINTR) {
             continue;
         }
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            return;
+            break;
         }
         CloseFdLocked(fd, info, true);
-        return;
+        break;
+    }
+    if (ownReadFd) {
+        close(readFd);
     }
 }
 
@@ -463,7 +498,9 @@ void IOMonitor::CloseFdLocked(int fd, const FdInfo &info, bool notifyDrained)
     {
         std::lock_guard<std::mutex> lock(fdMutex_);
         auto it = fdMap_.find(fd);
-        if (it == fdMap_.end()) {
+        if (it == fdMap_.end() || it->second.sessionId != info.sessionId) {
+            // fd absent, or its number was recycled to a different session after info was
+            // captured; do not deregister/close a fd that no longer belongs to this session.
             return;
         }
         epoll_ctl(epollFd_, EPOLL_CTL_DEL, fd, nullptr);
