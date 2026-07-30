@@ -1206,6 +1206,7 @@ ohos_shared_library("uiabilitykit_native") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "json:nlohmann_json_static",
+    "node:node_header_notice",
     "resource_management:global_resmgr",
     "samgr:samgr_proxy",
   ]
