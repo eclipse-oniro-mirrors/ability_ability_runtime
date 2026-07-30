@@ -67,6 +67,8 @@ struct CJEnvMethods {
     void (*dumpHeapSnapshot) (int fd) = nullptr;
     void (*forceFullGC) () = nullptr;
     void (*registerEventHandler)(const CJEventReportInfo& reportInfo) = nullptr;
+    void (*setMainNAPIEnv)(void* env) = nullptr;
+    void* (*getMainNAPIEnv)() = nullptr;
 };
 
 class CJEnv {

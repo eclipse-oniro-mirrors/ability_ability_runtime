@@ -41,6 +41,7 @@ public:
     static void SetSanitizerVersion(SanitizerKind kind);
     static bool RegisterCangjieCallback();
     static void SetPackageName(std::string srcEntryName);
+    static void SetMainNAPIEnv(void* env);
     ~CJRuntime() override = default;
 
     Language GetLanguage() const override
