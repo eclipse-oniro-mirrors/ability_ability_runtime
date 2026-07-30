@@ -2161,6 +2161,8 @@ public:
      */
     ErrCode RegisterSAInterceptor(sptr<AbilityRuntime::ISAInterceptor> interceptor);
 
+    ErrCode UnregisterSAInterceptor(sptr<IRemoteObject> interceptor);
+
     /**
      * SuspendExtensionAbility, suspend session with service ability.
      *
