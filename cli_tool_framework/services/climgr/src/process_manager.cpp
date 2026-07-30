@@ -231,6 +231,10 @@ int32_t ProcessManager::CreateShellProcess(const ExecCmdParam &param, const std:
 
 bool ProcessManager::Killpg(pid_t pid) const
 {
+    if (pid <= 0) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "Killpg skipped: invalid pid=%{public}d", pid);
+        return false;
+    }
     int32_t killRet = kill(0 - pid, SIGKILL);
     if (killRet != 0) {
         TAG_LOGW(AAFwkTag::CLI_TOOL, "killpg result:%{public}d", killRet);

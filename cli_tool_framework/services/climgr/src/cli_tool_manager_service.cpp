@@ -327,7 +327,7 @@ void CliToolManagerService::OnStop()
     {
         std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
         for (const auto &[sessionId, record] : sessionRecords_) {
-            if (record != nullptr && record->processId > 0) {
+            if (record != nullptr && record->processId > 0 && !record->HasProcessExited()) {
                 activePids.emplace_back(record->processId);
             }
         }
@@ -1065,6 +1065,7 @@ void CliToolManagerService::WaitPid(pid_t pid, int32_t status, int32_t sig)
             }
             if (pid == iter->second->processId) {
                 record = iter->second;
+                iter->second->processId = -1; // invalidate: reaped pid may be reused by kernel
                 break;
             }
             ++iter;
@@ -1132,7 +1133,6 @@ void CliToolManagerService::ReaperLoop()
             if (inst != nullptr) {
                 inst->WaitPid(pid, status, SIGCHLD);
             }
-            ProcessManager::GetInstance().Killpg(pid);
         }
         // pid == 0 (children exist, none exited) or -1/ECHILD (no children): idle back to poll.
     }
@@ -1210,7 +1210,7 @@ void CliToolManagerService::OnProcessDied(const std::string &bundleName, pid_t d
                 continue;
             }
 
-            if (sessionRecord->processId > 0) {
+            if (sessionRecord->processId > 0 && !sessionRecord->HasProcessExited()) {
                 activePids.emplace_back(sessionRecord->processId);
             }
             iter = sessionRecords_.erase(iter);
@@ -1326,6 +1326,13 @@ int32_t CliToolManagerService::ClearSession(const std::string &sessionId)
         EventDispatcher::GetInstance().DispatchExitEvent(sessionId, 0);
         EventDispatcher::GetInstance().ClearSessionSubscribers(sessionId);
         RemoveSessionRecord(sessionId);
+        return ERR_OK;
+    }
+
+    if (record->processId <= 0) {
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "ClearSession: process already exited, sessionId=%{public}s",
+            sessionId.c_str());
+        record->SetState(SessionState::CANCELLING);
         return ERR_OK;
     }
 
