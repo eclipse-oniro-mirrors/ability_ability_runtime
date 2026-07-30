@@ -1011,6 +1011,11 @@ void EtsAbilityContext::OnStartAbilityForResult(
         return;
     }
     AAFwk::Want want;
+    if (wantObj == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "wantObj is null");
+        EtsErrorUtil::ThrowInvalidParamError(env, "Parse param want failed, must be a Want");
+        return;
+    }
     AppExecFwk::UnwrapWant(env, wantObj, want);
     AAFwk::StartOptions startOptions;
     if (startOptionsObj) {
@@ -2502,6 +2507,11 @@ void EtsAbilityContext::OnRequestDialogService(ani_env *env, ani_object aniObj, 
         return;
     }
     AAFwk::Want want;
+    if (wantObj == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "wantObj is null");
+        EtsErrorUtil::ThrowInvalidParamError(env, "Parse param want failed, must be a Want");
+        return;
+    }
     AppExecFwk::UnwrapWant(env, wantObj, want);
     TAG_LOGD(AAFwkTag::CONTEXT, "target:%{public}s.%{public}s", want.GetBundle().c_str(),
         want.GetElement().GetAbilityName().c_str());
@@ -2984,6 +2994,11 @@ void EtsAbilityContext::OnStartAbilityWithAccount(
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     AAFwk::Want want;
+    if (aniWant == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "want is null");
+        EtsErrorUtil::ThrowInvalidParamError(env, "Parse param want failed, must be a Want");
+        return;
+    }
     AppExecFwk::UnwrapWant(env, aniWant, want);
     InheritWindowMode(want);
     TAG_LOGI(AAFwkTag::CONTEXT, "ability:%{public}s", want.GetElement().GetAbilityName().c_str());

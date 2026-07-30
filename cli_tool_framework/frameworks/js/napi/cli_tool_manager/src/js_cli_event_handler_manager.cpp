@@ -54,10 +54,13 @@ void JsCliEventHandlerManager::EnsureInitialized()
     if (initialized_) {
         return;
     }
-    handler_ = std::make_shared<AppExecFwk::EventHandler>(AppExecFwk::EventRunner::GetMainEventRunner());
-    if (handler_) {
-        initialized_ = true;
+    auto runner = AppExecFwk::EventRunner::GetMainEventRunner();
+    if (runner == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "EnsureInitialized failed due to null main event runner");
+        return;
     }
+    handler_ = std::make_shared<AppExecFwk::EventHandler>(runner);
+    initialized_ = true;
 }
 
 } // namespace CliTool
