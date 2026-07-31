@@ -52,7 +52,7 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     appStateObserverManager->RegisterApplicationStateObserver(observer, bundleNameList);
     appStateObserverManager->UnregisterApplicationStateObserver(observer);
     std::shared_ptr<AppRunningRecord> appRecord;
-    ProcessData processData;
+    auto processData = std::make_shared<ProcessData>();
     BundleType bundleType = BundleType::APP;
     appStateObserverManager->HandleOnAppProcessCreated(processData, bundleType);
     ApplicationState state = ApplicationState::APP_STATE_CREATE;
@@ -64,7 +64,7 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     appStateObserverManager->HandleOnRenderProcessCreated(renderRecord, false);
     appStateObserverManager->HandleOnRenderProcessDied(renderRecord);
     appStateObserverManager->HandleOnProcessCreated(processData);
-    appStateObserverManager->HandleOnProcessStateChanged(processData, bundleType, state, false);
+    appStateObserverManager->HandleOnProcessStateChanged(processData, bundleType, false);
     appStateObserverManager->HandleOnProcessDied(processData);
     AbilityStateData abilityStateData;
     bool isAbility = *data % ENABLE;
