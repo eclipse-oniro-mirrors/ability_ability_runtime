@@ -2,12 +2,12 @@
 
 范围：OpenHarmony 系统框架中涉及 `IRemoteObject` / Stub / Proxy / `IPCSkeleton` / `OnRemoteRequest` / `SendRequest` / `WriteRemoteObject` / `GetSystemAbility` 的 C++、Rust、构建脚本及权限配置文件。
 
-目标：**识别 IPC 调用链中的权限绕过、身份伪造、中继提权与校验逻辑缺陷**，作为 `security_review` 技能在 IPC 场景下的专项补充。
+目标：**识别 IPC 调用链中的权限绕过、身份伪造、中继提权与校验逻辑缺陷**，作为 `security-review` 技能在 IPC 场景下的专项补充。
 
 ## 使用方式
 
 1. 当被审计代码包含 IPC 接口实现、跨进程服务代理或系统能力代理时，本清单必须启用。
-2. 按六个方向逐条核对；每条若存在反例，必须按 `security_review` 输出模板形成正式发现。
+2. 按六个方向逐条核对；每条若存在反例，必须按 `security-review` 输出模板形成正式发现。
 3. 对分布式/跨设备场景，额外关注 F.6.2。
 
 ---

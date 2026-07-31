@@ -1,4 +1,4 @@
-# 已知缺陷模式库（历史 257+ 条已闭环问题单提炼）
+# 已知缺陷模式库
 
 > 用途：安全审计时对历史高发模式做"同类排查"。每个模式给出特征信号（含 grep 线索）、真实历史案例、检查点。
 > 原则：**发现一处，全库横扫**——这些模式在历史上都是批量出现的。
@@ -199,15 +199,147 @@
 - 信任链每个环节（验签→解析→加载→执行）是否都有不可绕过的校验？
 - 所有"豁免/特批"配置逐项上报评审。
 
----
+## G11 生命周期状态机与后台拉起管控
 
-## 附：历史复发热点模块清单
+**特征信号 / grep 线索**
+
+- `onPageHide` / `onDestroy` / `onBackground` 等生命周期回调中存在 `startAbility` / `wantAgent` 拉起链路。
+- 拉起链路（`StartAbilityInner`、`ConnectAbility` 等）无递归深度计数/循环检测，可被构造闭环互相拉起。
+- 应用退至后台时，状态切换非原子（窗口状态与 Ability 状态不同步），可"窗口已隐藏但 Ability 仍在前台"的瞬时态被利用。
+- 杀进程/清理后台逻辑依赖应用主动上报（如 `APP_APPLICATION_TERMINATED`）或仅发 `SIGTERM`，无强制兜底。
+- `RestartApp`、`force-stop` 等接口未校验应用是否真正处于可被杀死的终端状态。
+
+**历史案例**
+
+- 毒王霸屏：恶意应用利用 `onPageHide` 回调中 `wantAgent` 拉起自身，或两个 Ability 死循环互相拉起 → 进程杀不死、无限弹框、桌面卡死冻屏，只能重启。
+- `RestartApp` 在校验应用是否处于后台状态时不严格，应用可在被清理瞬间调用该接口重新拉起自身。
+- 攻击者劫持 `APP_APPLICATION_TERMINATED` 上报接口 → 清空后台时目标 app 免杀；当该 app 处于最后一个后台时，用户手工清理需强制杀两次。
+- 恶意应用借助伪造的长时任务（如数据传输任务）在后台任意时间弹广告窗，元能力 ability 后台管控策略弱于 Android 前台服务限制。
+- `want` 的 `debug` 字段可被外部篡改 → 绕过应用启动超时机制。
+
+**检查点**
+
+- 所有生命周期回调中拉起 Ability 的行为是否被后台管控策略拦截？
+- 拉起链路是否有递归深度上限（如 >3 层即拒绝）或闭环检测？
+- 杀进程逻辑是否不依赖应用主动上报？是否有 `SIGKILL` 强制兜底 + 内核级 cgroup 清理？
+- `RestartApp`、`force-stop` 等管理接口是否校验应用真实状态（非正在清理/非前台）？
+
+* * *
+
+## G12 条件竞争（Race Condition）
+
+**特征信号 / grep 线索**
+
+- 回调容器（`mCancelCallbacks_`、`callProxyRecords_`、`observers_` 等）以 `std::vector` / `std::map` / `std::list` 存储，读写无 `mutex` / `rwlock` 保护。
+- `Handler` / `Proxy` / `sptr` 引用跨线程传递，注册/注销与触发/销毁不在同一线程。
+- `death recipient` 回调与主业务逻辑并发修改同一对象状态。
+- "先检查后使用"（Check-Then-Act）模式：判空后立即使用，期间对象可能被其他线程释放。
+
+**历史案例**
+
+- `pending_want_record.cpp` 中 `mCancelCallbacks_` 存在条件竞争风险。
+- `LocalCallContainer` 中 `callProxyRecords_` 未加锁 → 多线程并发访问导致 UAF 或记录丢失。
+- `AbilityManagerService` 使用 `wmsHandler_` 未上锁 → 窗口生命周期消息与 Ability 状态变更并发触发竞争。
+- AMS 接口存在数据竞争引发的内存破坏问题（多次复发）。
+- `appmgr` 完全信任 binder death notification，close fd 即可实现进程保活（death 通知与状态清理竞争）。
+
+**检查点**
+
+- 所有回调注册/注销/遍历是否收敛到统一线程或有显式锁保护？
+- `Handler` / `Proxy` 引用是否仅在创建线程使用，或已做线程安全设计？
+- 对象销毁前是否确保所有异步回调已注销/等待完成？
+- 命中一处竞争即 grep 全库同类容器（`vector`/`map` + 回调），按文件分组列出。
+
+* * *
+
+## G13 机制设计缺陷（硬编码 / 字段生命周期 / 耦合）
+
+**特征信号 / grep 线索**
+
+- 代码中存在硬编码的包名/uid/服务名白名单（如 `"com.ohos.camera"`、`"com.ohos.launcher"` 等），未走配置化或动态鉴权。
+- `startAbility` / `ConnectAbility` 等入口对 `want` 中的 `resv` 字段、`callerNativeName`、`debug` 等参数未在服务端重置/校验，直接透传至下游。
+- 多个鉴权维度（`AccessToken`、`SELinux`、xpm 标签、uid）由单一服务（如 BMS）集中管控，形成单点失效。
+- 权限框架与业务代码耦合过深：修改 BMS 即可控制所有新启动应用的鉴权 token 和标志。
+
+**历史案例**
+
+- `UriPermissionManagerService` 硬编码 19 个系统应用包名白名单（相机、桌面、应用市场等）→ 这些 app 无需三方授权即可访问任意应用私有目录，现网已被恶意应用利用为跳板。
+- 元能力 15 个 `resv` 字段在 `startAbility` 中未被 reset，与文档不符 → 应用开发者误信任这些字段，造成大批量生态应用无效鉴权。
+- `callerNativeName` 字段在 `startAbility` 中未被 reset → 可跨调用链伪造 caller 身份。
+- `want` 的 `debug` 字段可被外部篡改 → 绕过启动超时机制，攻击者可延长恶意行为窗口。
+- 应用权限标志（AccessToken、SELinux 身份、xpm 标签、uid）均由 BMS 控制 → 控制 BMS 即可控制新启动应用的所有鉴权 token，不符合用户态鉴权模型。
+
+**检查点**
+
+- 白名单是否全部走配置化（如 json/xml）并支持动态审计？硬编码即上报。
+- `startAbility` 等入口是否对 want 中所有非业务必要字段做 reset/过滤？
+- 鉴权 token 的生成、分发、校验是否分散到不同信任域，避免单点服务被攻破后全盘失控？
+- 设计文档与实际代码对字段生命周期的描述是否一致？
+
+* * *
+
+## G14 返回值与异常分支处理
+
+**特征信号 / grep 线索**
+
+- `ReadParcelable` / `iface_cast` / `QueryAbilityInfo` / `GetBundleInfo` 等查询/转换接口返回值未判空即解引用。
+- 异常分支（如 `bundleMgrHelper->QueryAbilityInfo` 失败）打印日志后返回 `true` / `ERR_OK`，而非错误码。
+- `std::stoi` / `std::stol` / JSON 类型转换无 `try-catch` 兜底。
+- NAPI 函数（`napi_create_reference`、`napi_open_handle_scope` 等）调用后未判断返回值和 scope 值。
+
+**历史案例**
+
+- `ability_manager_stub.cpp` 中 `ReadParcelable` 返回空指针未校验即解引用。
+- `distribute_manager.cpp`、`match_manager.cpp` 存在空指针解引用。
+- `bundleMgrHelper->QueryAbilityInfo` 失败分支打印日志但返回 `true` → 异常分支影响正常流程。
+- `render_state_observer_proxy.cpp` 接口异常返回风险。
+- `app_launch_data.cpp`、`app_mgr_proxy.cpp`、`app_mgr_service.cpp` 函数返回值逻辑错误，可能导致功能失效。
+- `ability_manager_client_c.cpp` 空指针解引用。
+- `cj_ability_delegator.cpp`、`user_controller.cpp`、`window_pid_visibility_changed_listener.cpp` 空指针解引用 / map 非法访问。
+- `request_id_util.cpp` 整数上溢。
+
+**检查点**
+
+- 所有 `ReadParcelable` / `iface_cast` 调用点是否都有 `if (xxx == nullptr) return ERR_xxx` 保护？
+- 异常分支是否返回明确的错误码，而非 `true` / `ERR_OK`？
+- 类型转换（`stoi`、`asXXX`）是否有 `try-catch` 或类型前置校验？
+- 命中一处即 grep 全库同族 API，按文件分组列出。
+
+* * *
+
+## G15 UIExtension / 窗口组件暴露面
+
+**特征信号 / grep 线索**
+
+- `UIExtensionComponent` / `WindowExtension` 等组件可被任意三方应用加载，未校验加载者身份。
+- 窗口弹框（如权限弹框、跳转弹框）的显示内容/跳转目标由外部传入参数控制，未做一致性校验。
+- `UIExtensionAbility` 可被循环引用保活（如 A 加载 B、B 加载 A）。
+- 悬浮窗场景下对弹框内容未做防护，可被覆盖/篡改。
+
+**历史案例**
+
+- `UIExtensionComponent` 无法保证界面输入源自用户输入 → 任意三方应用可加载系统 UIExtension 组件并模拟点击，后端 120+ 应用组件存在风险。
+- `amsdialog` 通知弹框未针对悬浮窗场景做防护 → 任意应用可通过悬浮窗篡改跳转申请弹窗内容和选项，实现跳转应用混淆。
+- `JumpInterceptorDialog` 组件暴露，跳转组件名称和界面显示名称由外部传入参数控制 → 恶意应用传入正常跳转目标参数，实际打开截屏/录屏组件。
+- 利用循环引用的 `UIExtensionAbility` 可保活进程，实现无法被杀死的恶意应用。
+- `WindowExtension` 文档声明仅系统应用可用，但实际三方应用也可使用。
+
+**检查点**
+
+- `UIExtension` / `WindowExtension` 加载是否校验调用者身份（非任意三方可加载系统组件）？
+- 弹框/跳转的目标和内容是否由服务端决定，而非完全信任外部传入参数？
+- 窗口层级是否有防覆盖机制（悬浮窗不能覆盖系统弹框）？
+- 循环引用检测：同一进程链中 UIExtension 嵌套深度是否有上限？
+
+* * *
+
+## 附：历史复发热点模块清单（补充）
 
 > 审查涉及以下模块时提高强度，并对同类历史问题做回归确认。
 
 | 模块 | 历史问题特征 |
-|---|---|
-| `want_params_wrapper` / Want 解析族（ability_base） | 单文件 5+ 处空指针、递归栈耗尽、死循环、UAF；开机链路 |
+| --- | --- |
+| `want_params_wrapper` / Want 解析族（ability_base）| 单文件 5+ 处空指针、递归栈耗尽、死循环、UAF；开机链路 |
 | `AbilitymgrEcologicalRuleInterceptor` | 同一 Heap-use-after-free 反复 4+ 次，补丁无效 |
 | `BMSBundleMultiUserInstaller` | 必现 UAF/Abrt 多环境复现 |
 | CLI-SA / `claw_sandbox` / climgr 族 | 鉴权、隔离、日志、竞争全线命中（14+ 条） |
@@ -215,6 +347,15 @@
 | installs / installd 文件操作原语 | 路径穿越、原语暴露、签名链校验缺失 |
 | 包管理反序列化（install_param 等） | 容器大小未校验 → 内存放大/DoS |
 | 各 `*_fuzzer.cpp` 测试代码 | 复制粘贴"重复使用 data"，用例无效 |
+| **want / wantagent 族（ability_base）** | **反序列化无限递归、OOB、参数伪造、DoS；WantParams::ReadFromParcel 反复 crash（20+ 条）** |
+| **amsdialog** | **签名问题、弹窗劫持（悬浮窗覆盖）、调试暴露、JumpInterceptorDialog 参数注入（10+ 条）** |
+| **appmgrservice / appmgr** | **进程管理权限校验缺失（JudgeSandboxByPid、GetProcessMemoryByPid 等）、后台管控绕过、死亡通知竞争（14+ 条）** |
+| **abilitymgr** | **fuzz 异常、接口鉴权遗漏、生态规则拦截器 UAF（12+ 条）** |
+| **uri_permission_manager** | **硬编码白名单、RawDataToStringVec/RawDataToPolicyInfo 未限制循环 → DoS（5+ 条）** |
+| **ui_appearance** | **NAPI 内存泄漏（napi_create_reference、napi_open_handle_scope 异常分支）、SA_Fuzz 导致修复模式/重启（4+ 条）** |
+| **form_fwk / FormMgr** | **JSON 解析未确认 array 类型、FormMgrStub 未做权限管控可 dump formid（4+ 条）** |
+| **service_router_mgr** | **QueryPurposeInfos 信息泄露、StartUIExtensionAbility 转发请求绕过权限校验（3+ 条）** |
+| **ability_record / lifecycle_manager** | **生命周期回调中拉起链路未管控、状态机竞争、敏感信息打印 networkid（5+ 条）** |
 
 ## 附：组件已知漏洞（CVE）排查提示
 

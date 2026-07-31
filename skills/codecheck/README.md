@@ -12,10 +12,10 @@
 |------|---------|---------|------|
 | [`high-impact-bug-audit/`](high-impact-bug-audit/SKILL.md) | 高影响缺陷：崩溃、挂死、OOM、UAF、死锁、数据损坏、资源泄漏、状态污染、权限绕过 | "查高危 bug""P0/P1 风险排查""崩溃/挂死审计" | 按 `影响×可触发性×波及面` 排序的缺陷清单（Confirmed/Likely/Suspicious 分级） |
 | [`logic_analyzer/`](logic_analyzer/SKILL.md) | 逻辑影响：修改的波及路径、逻辑一致性、状态机转换、边界条件、错误处理 | "逻辑分析""这段改动会影响什么""状态机/数据流/控制流检查" | 逻辑影响范围 + 不一致/边界遗漏清单 |
-| [`security_review/`](security_review/SKILL.md) | 商用前安全审查：内存安全、注入、权限、敏感数据、并发、合规 | "安全审查""漏洞扫描""安全审计""商用前 review" | 详尽 `report.md`，按漏洞类型分组 |
+| [`security-review/`](security-review/SKILL.md) | 商用前安全审查：内存安全、注入、权限、敏感数据、并发、合规 | "安全审查""漏洞扫描""安全审计""商用前 review" | 详尽 `report.md`，按漏洞类型分组 |
 | [`external-input-audit/`](external-input-audit/SKILL.md) | "外部输入 → 持久化"全链路健壮性：IPC/HTTP/CLI/配置/网络 → DB/文件/缓存/日志 | "外部输入排查""输入接口审计""持久化安全检查""接口健壮性" | 按 P0/P1/P2 排序的 Excel 风险清单（写入侧+读取侧双维度） |
 | [`api-audit/`](api-audit/SKILL.md) | 对外 API 全量一致性：资料文档×接口定义×框架实现×测试用例完备度，三轮扫描 | "接口审计""API 一致性""测试用例完备度""扫一下 xxxKit" | `<kit>_api_audit.md` + `<kit>_api_audit.csv` 双格式 |
-| [`deep-scan/`](deep-scan/SKILL.md) | **三层编排器**：high-impact-bug-audit → logic_analyzer → security_review | `/deep-scan {path}` 或"对某某路径做深度扫描/全面排查" | 按 P0/P1/P2 排序的 Excel 问题汇总 |
+| [`deep-scan/`](deep-scan/SKILL.md) | **三层编排器**：high-impact-bug-audit → logic_analyzer → security-review | `/deep-scan {path}` 或"对某某路径做深度扫描/全面排查" | 按 P0/P1/P2 排序的 Excel 问题汇总 |
 | [`codecheck-orchestrator/`](codecheck-orchestrator/SKILL.md) | **总编排器**：按范围选 skill 组合（deep-scan + external-input-audit + api-audit），执行后跨维度去重合并为统一报告 | "检视一下代码""帮我审一下""做一次 code review""生成检视报告" | `codecheck_report_<scope>_<YYYYMMDD>.md` 统一报告 |
 
 ### 维度关系图
@@ -37,7 +37,7 @@
         │ 内含三层
    ┌────┴────┬────────────┬──────────────┐
    ▼         ▼            ▼              
-high-impact  logic_      security_       
+high-impact  logic_      security-       
 -bug-audit   analyzer    review          
 ```
 
@@ -60,7 +60,7 @@ high-impact  logic_      security_
 | 场景 | 调用组合 |
 |------|---------|
 | 通用代码检视（最常见） | `codecheck-orchestrator`（按范围自动选 deep-scan ± external-input-audit ± api-audit，并合并报告） |
-| 安全/商用前专项 | `security_review` 单独深入 + `external-input-audit` |
+| 安全/商用前专项 | `security-review` 单独深入 + `external-input-audit` |
 | 接口/SDK 变更 | `api-audit {kit}` + `deep-scan` 覆盖实现侧 |
 | 服务侧健壮性（IPC/持久化密集） | `deep-scan` + `external-input-audit` |
 | 仅逻辑变更影响评估 | `logic_analyzer` 单独 |
@@ -85,7 +85,7 @@ high-impact  logic_      security_
 ## 3. 分维度明细
 ### 3.1 high-impact-bug-audit
 ### 3.2 logic_analyzer
-### 3.3 security_review
+### 3.3 security-review
 ### 3.4 external-input-audit
 ### 3.5 api-audit
 
