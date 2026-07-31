@@ -1098,6 +1098,7 @@ ohos_shared_library("ui_ability_ani") {
     "ipc:ipc_napi",
     "ipc:rpc_taihe",
     "resource_management:global_resmgr",
+    "resource_management:resourceManager_ani",
     "runtime_core:ani",
     "runtime_core:ani_helpers",
     "samgr:samgr_proxy",

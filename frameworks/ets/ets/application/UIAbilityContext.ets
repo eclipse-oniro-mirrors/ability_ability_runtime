@@ -21,7 +21,7 @@ import { BusinessError, AsyncCallback, RecordData } from '@ohos.base';
 import { AbilityResult } from 'ability.abilityResult';
 import { Configuration } from '@ohos.app.ability.Configuration';
 import { ConnectOptions } from 'ability.connectOptions';
-import Context from 'application.Context';
+import Context from './Context';
 import window from '@ohos.window';
 import AsyncCallbackWrapper from '../utils/AbilityUtils';
 import OpenLinkOptions from '@ohos.app.ability.OpenLinkOptions';
@@ -35,6 +35,8 @@ import dialogRequest from '@ohos.app.ability.dialogRequest';
 import image from '@ohos.multimedia.image';
 import { LocalStorage } from '@ohos.arkui.stateManagement';
 import AbilityConstant  from '@ohos.app.ability.AbilityConstant';
+import { ApplicationInfo } from 'bundleManager.ApplicationInfo'
+import resmgr from '@ohos.resourceManager'
 
 export class Cleaner {
   public ptr: long = 0;
@@ -64,6 +66,28 @@ export default class UIAbilityContext extends Context {
   abilityInfo!: AbilityInfo;
   windowStage!: window.WindowStage;
   currentHapModuleInfo!: HapModuleInfo;
+
+  constructor(workContext :long, etsContext: long, appInfoObj:ApplicationInfo, resourceMgrObj:resmgr.ResourceManager,  preferencesDirString:string,  databaseDirString:string , cacheDirString:string,
+  filesDirString:string, tempDirString:string, cloudFileDirString:string, distributedFilesDirString:string, bundleCodeDirString:string, resourceDirString:string,
+  processNameString:string, eventHubNativeContextLong: long, abilityInfoRef:AbilityInfo, configParam:Configuration ,currentHapModuleInfoParam: HapModuleInfo) {
+    super(eventHubNativeContextLong,workContext);
+    this.setEtsAbilityContextPtr(etsContext);
+    this.applicationInfo = appInfoObj;
+    this.resourceManager = resourceMgrObj;
+    this.preferencesDir =preferencesDirString;
+    this.databaseDir =databaseDirString;
+    this.cacheDir = cacheDirString;
+    this.filesDir = filesDirString;
+    this.tempDir=tempDirString;
+    this.cloudFileDir = cloudFileDirString;
+    this.distributedFilesDir = distributedFilesDirString
+    this.bundleCodeDir = bundleCodeDirString;
+    this.resourceDir = resourceDirString;
+    this.processName = processNameString;
+    this.abilityInfo = abilityInfoRef;
+    this.config = configParam;
+    this.currentHapModuleInfo =  currentHapModuleInfoParam;
+  }
 
   private setEtsAbilityContextPtr(ptr: long) {
     if (this.etsAbilityContextPtr == 0) {
