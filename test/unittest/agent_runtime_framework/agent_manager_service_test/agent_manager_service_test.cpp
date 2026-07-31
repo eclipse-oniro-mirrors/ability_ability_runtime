@@ -2077,7 +2077,8 @@ HWTEST_F(AgentManagerServiceTest, DisconnectAgentExtensionAbility_010, TestSize.
     EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.count("agentB") > 0);
     EXPECT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.size(), 2);
     EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.count("agentA") > 0);
-    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents["agentB"].isDisconnecting);
+    EXPECT_TRUE(
+        AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents["agentB"].isDisconnecting);
     EXPECT_EQ(AgentConnectManager::GetInstance().agentOwners_.size(), 2);
     EXPECT_TRUE(AgentConnectManager::GetInstance().agentOwners_.count({ MyFlag::extensionAbilityUid, "agentA" }) > 0);
     EXPECT_EQ(connectionB->disconnectDoneCount, 0);
@@ -2146,7 +2147,8 @@ HWTEST_F(AgentManagerServiceTest, DisconnectAgentExtensionAbility_011, TestSize.
     EXPECT_EQ(connection->connectDoneCount, static_cast<int32_t>(LOW_CODE_HOST_LIMIT_PROBE_COUNT));
     ASSERT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1);
     ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
-    EXPECT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.size(), LOW_CODE_HOST_LIMIT_PROBE_COUNT);
+    EXPECT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.size(),
+        LOW_CODE_HOST_LIMIT_PROBE_COUNT);
     EXPECT_EQ(AgentConnectManager::GetInstance().agentOwners_.size(), LOW_CODE_HOST_LIMIT_PROBE_COUNT);
 
     EXPECT_EQ(service->DisconnectAgentExtensionAbility(connection), ERR_OK);
@@ -3498,7 +3500,8 @@ HWTEST_F(AgentManagerServiceTest, NotifyLowCodeAgentComplete_009, TestSize.Level
 
     EXPECT_EQ(service->NotifyLowCodeAgentComplete("agentA"), ERR_INVALID_VALUE);
     ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
-    EXPECT_FALSE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents["agentA"].isDisconnecting);
+    EXPECT_FALSE(
+        AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents["agentA"].isDisconnecting);
     EXPECT_EQ(AgentConnectManager::GetInstance().trackedConnections_.size(), 1u);
     MyFlag::retDisconnectAbility = ERR_OK;
 }
@@ -3899,7 +3902,6 @@ HWTEST_F(AgentManagerServiceTest, ReleaseTrackedConnection_004, TestSize.Level1)
     auto connection = sptr<MockAbilityConnection>::MakeSptr();
 
     AgentConnectManager::GetInstance().ReleaseTrackedConnection(connection);
-
 }
 
 /**
@@ -4120,7 +4122,8 @@ HWTEST_F(AgentManagerServiceTest, HandleCallerConnectionDied_006, TestSize.Level
 
     EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 1);
     ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
-    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents["agentA"].isDisconnecting);
+    EXPECT_TRUE(
+        AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents["agentA"].isDisconnecting);
     EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->callerConnections.empty());
     EXPECT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.size(), 1u);
     EXPECT_EQ(AgentConnectManager::GetInstance().agentOwners_.size(), 1u);
@@ -4913,8 +4916,8 @@ HWTEST_F(AgentManagerServiceTest, PrepareLowCodeCompleteLocked_001, TestSize.Lev
 {
     auto service = AgentManagerService::GetInstance();
     LowCodeCompleteRequest request;
-    EXPECT_EQ(AgentConnectManager::GetInstance().PrepareLowCodeComplete("absentAgent", IPCSkeleton::GetCallingUid(), request),
-        AAFwk::ERR_INVALID_AGENT_CARD_ID);
+    EXPECT_EQ(AgentConnectManager::GetInstance().PrepareLowCodeComplete("absentAgent",
+        IPCSkeleton::GetCallingUid(), request), AAFwk::ERR_INVALID_AGENT_CARD_ID);
 }
 
 /**

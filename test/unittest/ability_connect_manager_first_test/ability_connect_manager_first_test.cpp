@@ -277,7 +277,8 @@ HWTEST_F(AbilityConnectManagerTest, HandleActiveAbility_006, TestSize.Level1)
     want.SetParam(AgentRuntime::AGENT_CARD_TYPE_KEY, static_cast<int32_t>(AgentRuntime::AgentCardType::LOW_CODE));
     want.SetParam(AgentRuntime::AGENTID_KEY, std::string("lowCodeAgent"));
     OHOS::sptr<IAbilityConnection> callback = new AbilityConnectCallback();
-    auto connectRecord = std::make_shared<ConnectionRecord>(abilityRecord->GetToken(), abilityRecord, callback, nullptr);
+    auto connectRecord =
+        std::make_shared<ConnectionRecord>(abilityRecord->GetToken(), abilityRecord, callback, nullptr);
     connectRecord->SetConnectWant(want);
     connectRecord->SetConnectState(ConnectionState::CONNECTING);
 

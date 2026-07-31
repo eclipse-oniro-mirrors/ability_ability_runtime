@@ -1274,15 +1274,16 @@ AgentHostDisconnectDoneResult AgentConnectManager::HandleAgentHostDisconnectDone
         agentHostSessions_.erase(sessionIter);
         return result;
     }
-    auto callerIter = session->callerConnections.find(request.callerRemote);
-    if (callerIter != session->callerConnections.end()) {
-        result.callback = callerIter->second;
-    }
     auto agentIds = ResolveLowCodeDisconnectDoneAgentIdsLocked(*session, request);
     if (agentIds.empty()) {
-        TAG_LOGW(AAFwkTag::SER_ROUTER, "low-code disconnect done without agent");
+        // Unsolicited host break (empty pending queue, target AgentExt killed/terminated): tear down session,
+        // surface every caller for onDisconnect; release all so reconnect sees no stale agent
+        // (ERR_LOW_CODE_AGENT_ALREADY_ACTIVE).
+        TAG_LOGW(AAFwkTag::SER_ROUTER, "low-code host disconnected unexpectedly, tearing down host session");
+        result.callbacks = TearDownHostSessionLocked(request.hostKey);
         return result;
     }
+    auto callerIter = session->callerConnections.find(request.callerRemote);
     for (const auto &agentId : agentIds) {
         auto agentIter = session->agents.find(agentId);
         if (agentIter == session->agents.end()) {
@@ -1293,11 +1294,13 @@ AgentHostDisconnectDoneResult AgentConnectManager::HandleAgentHostDisconnectDone
         RemoveLowCodeAgentLocked(*session, agentId, record);
         session->agents.erase(agentIter);
     }
-    result.releaseConnection = !std::any_of(session->agents.begin(), session->agents.end(),
+    bool releaseConnection = !std::any_of(session->agents.begin(), session->agents.end(),
         [&request](const auto &agentEntry) {
             return agentEntry.second.callerRemote == request.callerRemote;
         });
-    if (result.releaseConnection && request.callerRemote != nullptr) {
+    if (releaseConnection && callerIter != session->callerConnections.end() &&
+        request.callerRemote != nullptr) {
+        result.callbacks.push_back(callerIter->second);
         session->callerConnections.erase(request.callerRemote);
         ReleaseTrackedConnectionByRemoteLocked(request.callerRemote);
     }
@@ -1305,6 +1308,36 @@ AgentHostDisconnectDoneResult AgentConnectManager::HandleAgentHostDisconnectDone
         agentHostSessions_.erase(sessionIter);
     }
     return result;
+}
+
+std::vector<sptr<AAFwk::IAbilityConnection>> AgentConnectManager::TearDownHostSessionLocked(
+    const AgentHostKey &hostKey)
+{
+    std::vector<sptr<AAFwk::IAbilityConnection>> callbacks;
+    auto sessionIter = agentHostSessions_.find(hostKey);
+    if (sessionIter == agentHostSessions_.end()) {
+        return callbacks;
+    }
+    auto session = sessionIter->second;
+    if (session == nullptr) {
+        agentHostSessions_.erase(sessionIter);
+        return callbacks;
+    }
+    for (const auto &callerEntry : session->callerConnections) {
+        if (callerEntry.second != nullptr) {
+            callbacks.push_back(callerEntry.second);
+        }
+    }
+    // Bulk-release quotas + erase owners once: RemoveLowCodeAgentLocked releases a caller's quota only when they own no
+    // other agent, so multi-agent callers never release (quota leak).
+    ReleaseLowCodeHostQuotasLocked(*session);
+    EraseAgentOwnersLocked(*session);
+    session->agents.clear();
+    for (const auto &callerEntry : session->callerConnections) {
+        ReleaseTrackedConnectionByRemoteLocked(callerEntry.first);
+    }
+    agentHostSessions_.erase(sessionIter);
+    return callbacks;
 }
 
 void AgentConnectManager::RemoveLowCodeAgentLocked(
