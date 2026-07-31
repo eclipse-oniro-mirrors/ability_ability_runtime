@@ -40,11 +40,17 @@ NativeModuleManager* NativeModuleManager::GetInstance()
 }
 
 NativeModule* NativeModuleManager::LoadNativeModule(const char* moduleName, const char* path, bool isAppModule,
-    std::string& errInfo, bool internal, const char* relativePath, std::string* loadErrInfo)
+    std::string& errInfo, bool internal, const char* relativePath)
 {
     if (g_module == nullptr) {
         errInfo = "mock load failed";
     }
     return g_module;
+}
+
+NativeModule* NativeModuleManager::LoadNativeModuleWithErrorInfo(const char* moduleName, const char* path,
+    bool isAppModule, std::string& errInfo, bool internal, const char* relativePath, std::string& loadErrInfo)
+{
+    return LoadNativeModule(moduleName, path, isAppModule, errInfo, internal, relativePath);
 }
 
