@@ -28,11 +28,13 @@ AbilityExperienceRule *AbilityExperienceRule::Unmarshalling(Parcel &in)
     }
 
     if (!in.ReadInt32(rule->resultCode)) {
+        TAG_LOGW(AAFwkTag::ECOLOGICAL_RULE, "read resultCode failed");
         delete rule;
         return nullptr;
     }
 
     if (!in.ReadString(rule->sceneCode)) {
+        TAG_LOGW(AAFwkTag::ECOLOGICAL_RULE, "read sceneCode failed");
         delete rule;
         return nullptr;
     }
