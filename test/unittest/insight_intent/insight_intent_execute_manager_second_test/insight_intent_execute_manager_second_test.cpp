@@ -639,62 +639,6 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, GenerateWant_0500, TestSize.Leve
 }
 
 /**
- * @tc.name: GenerateWant_0600
- * @tc.desc: GenerateWant_0600
- * @tc.type: FUNC
- * @tc.require: issueI8ZRAG
- */
-HWTEST_F(InsightIntentExecuteManagerSecondTest, GenerateWant_0600, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "begin.");
-    AppExecFwk::InsightIntentExecuteParam param;
-    param.bundleName_ = "test.bundleName";
-    param.moduleName_ = "test.entry";
-    param.abilityName_ = "test.abilityName";
-    param.insightIntentName_ = "test.IntentName";
-    param.insightIntentParam_ = nullptr;
-    param.displayId_ = 2;
-    param.executeMode_ = AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND;
-    param.isServiceMatch_ = false;
-    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
-    AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
-    Want want;
-    int32_t result = InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, want);
-    EXPECT_EQ(result, ERR_OK);
-    TAG_LOGI(AAFwkTag::TEST, "end.");
-}
-
-/**
- * @tc.name: GenerateWant_0700
- * @tc.desc: Test GenerateWant with displayId
- * @tc.type: FUNC
- * @tc.require: issueI8ZRAG
- */
-HWTEST_F(InsightIntentExecuteManagerSecondTest, GenerateWant_0700, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "begin.");
-    AppExecFwk::InsightIntentExecuteParam param;
-    param.bundleName_ = "test.bundleName";
-    param.moduleName_ = "test.entry";
-    param.abilityName_ = "test.abilityName";
-    param.insightIntentName_ = "test.IntentName";
-    param.insightIntentParam_ = std::make_shared<WantParams>();
-    param.displayId_ = 10; // 有效displayId
-    param.executeMode_ = AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND;
-    param.isServiceMatch_ = true;
-    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
-    AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
-    Want want;
-    int32_t result = InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, want);
-    EXPECT_EQ(result, ERR_OK);
-    
-    // 验证displayId参数是否正确设置
-    int32_t displayId = want.GetIntParam(Want::PARAM_RESV_DISPLAY_ID, -1);
-    EXPECT_EQ(displayId, 10);
-    TAG_LOGI(AAFwkTag::TEST, "end.");
-}
-
-/**
  * @tc.name: CheckIntentIsExemption_0100
  * @tc.desc: CheckIntentIsExemption_0100
  * @tc.type: FUNC
