@@ -362,8 +362,7 @@ Status DataObsManagerProxy::NotifyChangeExt(const ChangeInfo &changeInfo, DataOb
     return reply.ReadInt32(res) ? static_cast<Status>(res) : IPC_ERROR;
 }
 
-Status DataObsManagerProxy::NotifyProcessObserver(const std::string &key, const sptr<IRemoteObject> &observer,
-    DataObsOption opt)
+Status DataObsManagerProxy::NotifyProcessObserver(const std::string &key, const sptr<IRemoteObject> observer)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -381,10 +380,6 @@ Status DataObsManagerProxy::NotifyProcessObserver(const std::string &key, const 
         TAG_LOGE(AAFwkTag::DBOBSMGR, "write observer error");
         return INVALID_PARAM;
     }
-    if (!WriteObsOpt(data, opt)) {
-        return INVALID_PARAM;
-    }
-
     auto error = SendTransactCmd(IDataObsMgr::NOTIFY_PROCESS, data, reply, option);
     if (error != NO_ERROR) {
         TAG_LOGE(AAFwkTag::DBOBSMGR, "sendRequest error: %{public}d, key:%{public}s", error, key.c_str());

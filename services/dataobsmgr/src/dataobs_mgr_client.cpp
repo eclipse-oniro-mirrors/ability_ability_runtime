@@ -303,8 +303,7 @@ Status DataObsMgrClient::NotifyChangeExt(const ChangeInfo &changeInfo, DataObsOp
     return dataObsManger->NotifyChangeExt(changeInfo, opt);
 }
 
-Status DataObsMgrClient::NotifyProcessObserver(const std::string &key, const sptr<IRemoteObject> &observer,
-    DataObsOption opt)
+Status DataObsMgrClient::NotifyProcessObserver(const std::string &key, const sptr<IRemoteObject> observer)
 {
     if (key.empty() || observer == nullptr) {
         TAG_LOGE(AAFwkTag::DBOBSMGR, "Null observer, key:%{public}s", key.c_str());
@@ -314,7 +313,7 @@ Status DataObsMgrClient::NotifyProcessObserver(const std::string &key, const spt
     if (errCode != SUCCESS) {
         return DATAOBS_SERVICE_NOT_CONNECTED;
     }
-    return dataObsManger->NotifyProcessObserver(key, observer, opt);
+    return dataObsManger->NotifyProcessObserver(key, observer);
 }
 
 void DataObsMgrClient::ResetService()

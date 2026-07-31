@@ -77,8 +77,7 @@ public:
     virtual Status UnregisterObserverExt(sptr<IDataAbilityObserver> dataObserver,
         DataObsOption opt = DataObsOption()) override;
     virtual Status NotifyChangeExt(const ChangeInfo &changeInfo, DataObsOption opt = DataObsOption()) override;
-    virtual Status NotifyProcessObserver(const std::string &key, const sptr<IRemoteObject> &observer,
-        DataObsOption opt = DataObsOption()) override;
+    virtual Status NotifyProcessObserver(const std::string &key, const sptr<IRemoteObject> observer) override;
 
     /**
      * @brief DataObs hidumper.
@@ -102,6 +101,7 @@ private:
     Status DeepCopyChangeInfo(const ChangeInfo &src, ChangeInfo &dst) const;
     FocusedAppInfo GetFocusedWindowInfo() const;
     sptr<IRemoteObject> GetAbilityManagerService() const;
+    bool IsFocusedApp(uint32_t tokenId) const;
     static int32_t GetCallingUserId(uint32_t tokenId);
     static bool IsSystemApp(uint32_t tokenId, uint64_t fullTokenId);
     static bool IsCallingPermissionValid(DataObsOption &opt, int32_t userId, int32_t callingUserId);

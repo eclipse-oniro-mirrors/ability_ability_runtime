@@ -430,35 +430,6 @@ HWTEST_F(DataObsMgrProxyTest, DataObsMgrProxyTest_NotifyProcessObserver_0100, Te
  * Feature: DataObsManagerProxy
  * Function: NotifyProcessObserver
  * SubFunction: NA
- * FunctionPoints: DataObsManagerProxy NotifyProcessObserver with DataObsOption
- * EnvConditions: NA
- * CaseDescription: Verify that the DataObsManagerProxy NotifyProcessObserver with DataObsOption is normal.
- */
-HWTEST_F(DataObsMgrProxyTest, DataObsMgrProxyTest_NotifyProcessObserver_0200, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "DataObsMgrProxyTest_NotifyProcessObserver_0200 start";
-    const int32_t testVal = static_cast<int>(TEST_RETVAL_ONREMOTEREQUEST);
-    const std::string testKey = "test_progress_key_2";
-    sptr<MockDataObsMgrStub> mockDataobsMgrStub(new (std::nothrow) MockDataObsMgrStub());
-    std::shared_ptr<DataObsManagerProxy> dataObsManagerProxy =
-        std::make_shared<DataObsManagerProxy>(mockDataobsMgrStub);
-
-    sptr<IRemoteObject> observer(new (std::nothrow) MockDataObsMgrStub());
-
-    DataObsOption opt(true, false);
-    opt.SetFirstCallerTokenID(11111);
-    opt.SetFirstCallerPid(22222);
-
-    int32_t retVal = dataObsManagerProxy->NotifyProcessObserver(testKey, observer, opt);
-    EXPECT_EQ(testVal, retVal);
-
-    GTEST_LOG_(INFO) << "DataObsMgrProxyTest_NotifyProcessObserver_0200 end";
-}
-
-/*
- * Feature: DataObsManagerProxy
- * Function: NotifyProcessObserver
- * SubFunction: NA
  * FunctionPoints: DataObsManagerProxy NotifyProcessObserver with null observer
  * EnvConditions: NA
  * CaseDescription: Verify that the DataObsManagerProxy NotifyProcessObserver handles null observer.
