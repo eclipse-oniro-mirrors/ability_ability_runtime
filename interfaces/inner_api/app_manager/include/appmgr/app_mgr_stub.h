@@ -118,6 +118,7 @@ private:
     int32_t HandleUnregisterConfigurationObserver(MessageParcel &data, MessageParcel &reply);
     int32_t HandleDumpHeapMemory(MessageParcel &data, MessageParcel &reply);
     int32_t HandleDumpJsHeapMemory(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleDumpJsHandleMap(MessageParcel &data, MessageParcel &reply);
     int32_t HandleDumpCjHeapMemory(MessageParcel &data, MessageParcel &reply);
     int32_t HandleDumpMem(MessageParcel &data, MessageParcel &reply);
     int32_t HandleReportDumpMemResult(MessageParcel &data, MessageParcel &reply);

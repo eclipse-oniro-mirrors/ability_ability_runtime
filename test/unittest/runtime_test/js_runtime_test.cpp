@@ -279,6 +279,20 @@ HWTEST_F(JsRuntimeTest, JsRuntimeDumpHeapSnapshotTest_0100, TestSize.Level2)
 }
 
 /**
+ * @tc.name: JsRuntimeDumpJsHandleMapTest_0100
+ * @tc.desc: JsRuntime test for JsRuntimeDumpJsHandleMap.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, JsRuntimeDumpJsHandleMapTest_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap start");
+    std::unique_ptr<JsRuntime> jsRuntime = std::make_unique<AbilityRuntime::JsRuntime>();
+    jsRuntime->DumpJsHandleMap();
+    EXPECT_TRUE(jsRuntime != nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap end");
+}
+
+/**
  * @tc.name: JsRuntimeGetHeapTotalSizeTest_0100
  * @tc.desc: JsRuntime test for GetHeapTotalSize.
  * @tc.type: FUNC
