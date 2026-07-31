@@ -93,6 +93,8 @@ public:
 
     /**
      * @brief Called when this extension enters the <b>STATE_STOP</b> state.
+     *
+     * You can override this function to implement your own processing logic.
      */
     virtual void OnStop() override;
 
