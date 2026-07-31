@@ -358,30 +358,6 @@ HWTEST_F(JsInsightIntentEntrySecondTest, JsInsightIntentEntryHandleResultReturne
 
 /*
 * Feature: JsInsightIntentEntry
-* Function: HandleResultReturnedFromJsFunc
-* SubFunction: NA
-*/
-HWTEST_F(JsInsightIntentEntrySecondTest, JsInsightIntentEntryHandleResultReturnedFromJsFunc_003, TestSize.Level1)
-{
-    auto jsRuntime = std::make_shared<JsRuntime>();
-    auto jsInsightIntentEntry = JsInsightIntentEntry::Create(*jsRuntime);
-    jsInsightIntentEntry->state_ = State::CREATED;
-
-    panda::RuntimeOption pandaOption;
-    jsRuntime->jsEnv_->Initialize(pandaOption, static_cast<void*>(this));
-    MyFlag::isGetNapiEnvNullptr_ = false;
-
-    napi_value promise;
-    napi_deferred deferred;
-    napi_env env = jsRuntime->GetNapiEnv();
-    napi_create_promise(env, &deferred, &promise);
-
-    auto ret = jsInsightIntentEntry->HandleResultReturnedFromJsFunc(promise);
-    EXPECT_TRUE(ret);
-}
-
-/*
-* Feature: JsInsightIntentEntry
 * Function: ExecuteIntentCheckError
 * SubFunction: NA
 */

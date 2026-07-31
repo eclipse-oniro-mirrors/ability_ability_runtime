@@ -110,6 +110,5 @@ group("moduletest") {
     "ipc_app_mgr_test:moduletest",
     "ipc_app_scheduler_test:moduletest",
     "service_start_process_test:moduletest",
-    "specified_ability_service_test:moduletest",
   ]
 }

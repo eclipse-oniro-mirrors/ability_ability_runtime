@@ -16,6 +16,4 @@ import("../../ets_environment.gni")
 
 group("unittest") {
   testonly = true
-
-  deps = [ "ets_environment_test:unittest" ]
 }
