@@ -77,7 +77,7 @@ git log -1 --format="%s"
 
 ### Step 3.5：补充检查（测试覆盖度 + 编码规范快速检视）
 
-在子 skill 执行完毕后，对变更范围做两项补充检查，结果记入统一报告第 3.6/3.7 节。
+在子 skill 执行完毕后，对变更范围做两项补充检查，结果记入统一报告第 5.6（测试覆盖度）/5.7（编码规范）节。
 
 #### 3.5A 测试覆盖度检查
 
@@ -111,26 +111,45 @@ git log -1 --format="%s"
 
 ### Step 4：合并为统一报告
 
-汇总到 `codecheck_report_<scope>_<YYYYMMDD>.md`（`<scope>` 用路径简写或 Kit 名）。使用以下增强模板：
+汇总到 `codecheck_report_<scope>_<YYYYMMDD>.md`（`<scope>` 用路径简写或 Kit 名）。
+
+**必须使用权威模板**：`skills/codecheck/codecheck_report_TEMPLATE.md`。它是唯一格式基准，保证所有统一报告结构一致、可供门禁脚本解析。模板固定了：
+- 头部 **YAML 报告元数据块**（机器可读，字段名/取值域固定，`risk_level` 仅 `low|medium|high|unknown`，`gate_decision` 仅 `approve|conditional|block|insufficient`）。
+- **固定章节**：1 基本信息 → 2 总体评价（整体评分 / 风险等级 / 上库决策 + 决策依据 + 扣分明细）→ 3 问题统计 → 4 高优先级发现（P0/P1）→ 5 分维度明细 → 6 待跟进 → 7 附录 → 附录 A 门禁规则。
+- **附录 A 评分与决策矩阵**：`评分 = max(0, 100 − (30×P0 + 12×P1 + 5×P2 + 2×P3))`；存在 P0 → block，存在 P1 → conditional，评分 ≥90 → approve，≥70 → conditional，否则 block；必检维度缺失 → insufficient。严重等级统一归一化为 P0–P3。
+
+执行合并时：
+1. 跨维度去重以 `file:line` 为键；同位置多维度命中合并为一条，标注全部维度来源。
+2. 按附录 A 计算 `score` / `risk_level` / `gate_decision`，同时写入 YAML 元数据块与 2.1 表格（两者必须一致）。
+3. 必检维度缺失时，决策为 `insufficient` 并在 `waived_dimensions` 记录用户豁免项。
 
 ```markdown
-# 代码检视报告 — <scope>
+# 代码检视报告 — <scope>（Round <N> / 最新提交）
 
-> 范围：<路径/Kit>   日期：<YYYY-MM-DD>   检视维度：<调用的 skill 列表>
-> commit-id: <40 位完整 SHA>   Change-Id: <I 开头 40 位十六进制>
+~~~yaml   ← 报告元数据块（机器可读，字段按模板）
+codecheck_report: { schema_version, scope, round, commit_id, change_id,
+                    commit_subject, date, dimensions_required,
+                    dimensions_executed, waived_dimensions, findings_total,
+                    findings_by_severity, score, risk_level,
+                    gate_decision, gate_blockers, must_fix, followups }
+~~~
 
----
-
-## 📋 执行摘要 (Executive Summary)
-
-## 3. 分维度明细
-### 3.1 high-impact-bug-audit（经 deep-scan）
-### 3.2 logic_analyzer（经 deep-scan）
-### 3.3 security-review（经 deep-scan）
-### 3.4 external-input-audit
-### 3.5 api-audit
-
+## 1. 基本信息
+## 2. 总体评价        ← 整体评分 / 风险等级 / 上库决策 + 决策依据 + 扣分明细
+## 3. 问题统计        ← 按维度 × P0/P1/P2/P3
+## 4. 高优先级发现（P0/P1，跨维度去重后）
+## 5. 分维度明细       ← 5.1 high-impact-bug-audit（经 deep-scan）
+                        5.2 logic_analyzer（经 deep-scan）
+                        5.3 security-review（经 deep-scan）
+                        5.4 external-input-audit
+                        5.5 api-audit
+                        5.6 测试覆盖度  5.7 编码规范
+## 6. 待跟进（P2/P3 + Suspicious）
+## 7. 附录            ← 变更文件清单 / 检视轨迹 / 原始产出
+## 附录 A             ← 评分与门禁规则（权威定义，勿改）
 ```
+
+完整字段与填写说明见 [`skills/codecheck/codecheck_report_TEMPLATE.md`](../codecheck_report_TEMPLATE.md)。
 
 ### Step 5：交付
 
