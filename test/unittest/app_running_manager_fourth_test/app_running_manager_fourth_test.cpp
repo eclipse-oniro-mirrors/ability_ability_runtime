@@ -1244,6 +1244,37 @@ HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_OnRenderProcessExitedByP
 }
 
 /**
+ * @tc.name: AppRunningManager_OnRenderProcessExitedByPid_0200
+ * @tc.desc: Test OnRenderProcessExitedByPid with a valid render record
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_OnRenderProcessExitedByPid_0200, TestSize.Level1)
+{
+    auto appRunningManager = std::make_shared<AppRunningManager>();
+    ASSERT_NE(appRunningManager, nullptr);
+
+    std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
+    auto hostRecord = std::make_shared<AppRunningRecord>(appInfo, RECORD_ID, PROCESS_NAME);
+    hostRecord->appLifeCycleDeal_ = std::make_shared<AppLifeCycleDeal>();
+    appRunningManager->appRunningRecordMap_.clear();
+    appRunningManager->appRunningRecordMap_.insert(std::make_pair(RECORD_ID, hostRecord));
+
+    pid_t renderPid = 200;
+    int32_t renderUid = 100200;
+    auto renderRecord = std::make_shared<RenderRecord>(
+        100, "renderParam", AAFwk::FdGuard(), AAFwk::FdGuard(), AAFwk::FdGuard(), hostRecord);
+    renderRecord->SetPid(renderPid);
+    renderRecord->SetUid(renderUid);
+    hostRecord->AddRenderRecord(renderRecord);
+    EXPECT_NE(hostRecord->GetRenderRecordByPid(renderPid), nullptr);
+
+    auto ret = appRunningManager->OnRenderProcessExitedByPid(renderPid);
+    ASSERT_NE(ret, nullptr);
+    EXPECT_EQ(ret->GetPid(), renderPid);
+    EXPECT_EQ(hostRecord->GetRenderRecordByPid(renderPid), nullptr);
+}
+
+/**
  * @tc.name: UpdateConfigurationForBackgroundApp_0100
  * @tc.desc: UpdateConfigurationForBackgroundApp.
  * @tc.type: FUNC
