@@ -1934,13 +1934,8 @@ std::shared_ptr<RenderRecord> AppRunningManager::OnRenderProcessExitedByPid(pid_
             if (!pair.second) {
                 return false;
             }
-            auto renderRecordMap = pair.second->GetRenderRecordMap();
-            auto iter = renderRecordMap.find(pid);
-            if (iter == renderRecordMap.end()) {
-                return false;
-            }
-            renderRecord = iter->second;
-            return true;
+            renderRecord = pair.second->GetRenderRecordByPid(pid);
+            return renderRecord != nullptr;
         });
     if (it != appRunningRecordMap_.end()) {
         auto appRecord = it->second;
