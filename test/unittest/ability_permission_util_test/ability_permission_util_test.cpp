@@ -49,7 +49,6 @@ using OHOS::AppExecFwk::MockAppMgrImpl;
 
 namespace OHOS {
 namespace AAFwk {
-bool AppUtils::isAllowStartAbilityWithoutCallerToken = false;
 bool AppUtils::isSupportMultiInstance = false;
 bool AppUtils::isStartOptionsWithAnimation = false;
 bool AppUtils::isPrepareTerminateEnabled = false;
@@ -79,7 +78,6 @@ using namespace AAFwk;
 
 namespace {
 constexpr const char* IS_DELEGATOR_CALL = "isDelegatorCall";
-constexpr const char* SETTINGS = "settings";
 constexpr char INSIGHT_INTENT_EXECUTE_PARAM_NAME[] = "ohos.insightIntent.executeParam.name";
 } // namespace
 
@@ -94,7 +92,6 @@ public:
 void AbilityPermissionUtilTest::SetUpTestCase(void)
 {
     MyFlag::flag_ = 0;
-    AppUtils::isAllowStartAbilityWithoutCallerToken = false;
     BundleMgrHelper::isNullBundleMgrInstance = false;
     BundleMgrHelper::retGetNameForUid = 0;
     BundleMgrHelper::retGetBundleInfo = 0;
@@ -783,24 +780,6 @@ HWTEST_F(AbilityPermissionUtilTest, IsDominateScreen_0500, TestSize.Level2)
 }
 
 /**
- * @tc.name: IsDominateScreen_0600
- * @tc.desc: IsDominateScreen_0600 Test
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(AbilityPermissionUtilTest, IsDominateScreen_0600, TestSize.Level2)
-{
-    TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_0600 start");
-
-    AppUtils::isAllowStartAbilityWithoutCallerToken = true;
-    Want want;
-    bool isPendingWantCaller = false;
-    bool ret = AbilityPermissionUtil::GetInstance().IsDominateScreen(want, isPendingWantCaller);
-    EXPECT_FALSE(ret);
-    TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_0600 end");
-}
-
-/**
  * @tc.name: IsDominateScreen_0700
  * @tc.desc: IsDominateScreen_0700 Test
  * @tc.type: FUNC
@@ -834,66 +813,6 @@ HWTEST_F(AbilityPermissionUtilTest, IsDominateScreen_0800, TestSize.Level2)
     bool ret = AbilityPermissionUtil::GetInstance().IsDominateScreen(want, isPendingWantCaller);
     EXPECT_FALSE(ret);
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_0800 end");
-}
-
-/**
- * @tc.name: IsDominateScreen_0900
- * @tc.desc: IsDominateScreen_0900 Test
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(AbilityPermissionUtilTest, IsDominateScreen_0900, TestSize.Level2)
-{
-    TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_0900 start");
-
-    AppUtils::isAllowStartAbilityWithoutCallerToken = true;
-    BundleMgrHelper::isNullBundleMgrInstance = true;
-    Want want;
-    want.SetElementName(SETTINGS, SETTINGS);
-    bool isPendingWantCaller = false;
-    bool ret = AbilityPermissionUtil::GetInstance().IsDominateScreen(want, isPendingWantCaller);
-    EXPECT_FALSE(ret);
-    TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_0900 end");
-}
-
-/**
- * @tc.name: IsDominateScreen_1000
- * @tc.desc: IsDominateScreen_1000 Test
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(AbilityPermissionUtilTest, IsDominateScreen_1000, TestSize.Level2)
-{
-    TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_1000 start");
-
-    AppUtils::isAllowStartAbilityWithoutCallerToken = true;
-    BundleMgrHelper::retGetNameForUid = -1;
-    Want want;
-    want.SetElementName(SETTINGS, SETTINGS);
-    bool isPendingWantCaller = false;
-    bool ret = AbilityPermissionUtil::GetInstance().IsDominateScreen(want, isPendingWantCaller);
-    EXPECT_FALSE(ret);
-    TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_1000 end");
-}
-
-/**
- * @tc.name: IsDominateScreen_1100
- * @tc.desc: IsDominateScreen_1100 Test
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(AbilityPermissionUtilTest, IsDominateScreen_1100, TestSize.Level2)
-{
-    TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_1100 start");
-
-    AppUtils::isAllowStartAbilityWithoutCallerToken = true;
-    BundleMgrHelper::retBundleInfo.applicationInfo.needAppDetail = true;
-    Want want;
-    want.SetElementName(SETTINGS, SETTINGS);
-    bool isPendingWantCaller = false;
-    bool ret = AbilityPermissionUtil::GetInstance().IsDominateScreen(want, isPendingWantCaller);
-    EXPECT_FALSE(ret);
-    TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_1100 end");
 }
 
 /**
@@ -931,26 +850,6 @@ HWTEST_F(AbilityPermissionUtilTest, IsDominateScreen_1300, TestSize.Level2)
     bool ret = AbilityPermissionUtil::GetInstance().IsDominateScreen(want, isPendingWantCaller);
     EXPECT_FALSE(ret);
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_1300 end");
-}
-
-/**
- * @tc.name: IsDominateScreen_1400
- * @tc.desc: IsDominateScreen_1400 Test
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(AbilityPermissionUtilTest, IsDominateScreen_1400, TestSize.Level2)
-{
-    TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_1400 start");
-
-    AppUtils::isAllowStartAbilityWithoutCallerToken = true;
-    BundleMgrHelper::retGetBundleInfo = -1;
-    Want want;
-    want.SetElementName(SETTINGS, SETTINGS);
-    bool isPendingWantCaller = false;
-    bool ret = AbilityPermissionUtil::GetInstance().IsDominateScreen(want, isPendingWantCaller);
-    EXPECT_FALSE(ret);
-    TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_1400 end");
 }
 
 /**
@@ -999,7 +898,6 @@ HWTEST_F(AbilityPermissionUtilTest, GetClosestHapTokenId_0300, TestSize.Level2)
 HWTEST_F(AbilityPermissionUtilTest, GetClosestHapTokenId_0400, TestSize.Level2)
 {
     MyFlag::flag_ = 0;
-    AppUtils::isAllowStartAbilityWithoutCallerToken = false;
     PermissionVerification::retVerifyStartSelfUIAbility = false;
     uint32_t callingTokenId = IPCSkeleton::GetCallingTokenID();
     uint32_t hapTokenId = 1;

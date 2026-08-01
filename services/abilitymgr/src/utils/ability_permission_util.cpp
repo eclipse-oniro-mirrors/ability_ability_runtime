@@ -42,7 +42,6 @@ namespace OHOS {
 namespace AAFwk {
 namespace {
 constexpr const char* IS_DELEGATOR_CALL = "isDelegatorCall";
-constexpr const char* SETTINGS = "settings";
 constexpr int32_t BASE_USER_RANGE = 200000;
 constexpr int32_t INDEX_PID = 0;
 constexpr int32_t INDEX_TOKENID = 1;
@@ -104,37 +103,7 @@ bool AbilityPermissionUtil::IsDominateScreen(const Want &want, bool isPendingWan
             TAG_LOGD(AAFwkTag::ABILITYMGR, "not dominate screen.");
             return false;
         }
-        // add temporarily
-        const auto &bundleName = want.GetBundleNameRef();
-        const auto &abilityName = want.GetAbilityNameRef();
-        bool withoutSettings = bundleName.find(SETTINGS) == std::string::npos &&
-            abilityName.find(SETTINGS) == std::string::npos;
-        if (withoutSettings && AppUtils::GetInstance().IsAllowStartAbilityWithoutCallerToken(bundleName, abilityName)) {
-            TAG_LOGD(AAFwkTag::ABILITYMGR, "not dominate screen, allow.");
-            return false;
-        } else if (AppUtils::GetInstance().IsAllowStartAbilityWithoutCallerToken(bundleName, abilityName)) {
-            auto bms = AbilityUtil::GetBundleManagerHelper();
-            CHECK_POINTER_RETURN_BOOL(bms);
-            int32_t callerUid = IPCSkeleton::GetCallingUid();
-            std::string callerBundleName;
-            if (IN_PROCESS_CALL(bms->GetNameForUid(callerUid, callerBundleName)) != ERR_OK) {
-                TAG_LOGE(AAFwkTag::ABILITYMGR, "failed to get caller bundle name.");
-                return false;
-            }
-            auto userId = callerUid / BASE_USER_RANGE;
-            AppExecFwk::BundleInfo info;
-            TAG_LOGD(AAFwkTag::ABILITYMGR, "callerBundleName: %{public}s, userId: %{public}d",
-                callerBundleName.c_str(), userId);
-            if (!IN_PROCESS_CALL(
-                bms->GetBundleInfo(callerBundleName, AppExecFwk::BundleFlag::GET_BUNDLE_DEFAULT, info, userId))) {
-                TAG_LOGE(AAFwkTag::ABILITYMGR, "failed to get bundle info.");
-                return false;
-            }
-            if (info.applicationInfo.needAppDetail) {
-                TAG_LOGD(AAFwkTag::ABILITYMGR, "not dominate screen, app detail.");
-                return false;
-            }
-        } else if (IsStartSelfUIAbility()) {
+        if (IsStartSelfUIAbility()) {
             TAG_LOGI(AAFwkTag::ABILITYMGR, "caller from capi.");
             return false;
         }

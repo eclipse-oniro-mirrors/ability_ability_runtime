@@ -28,7 +28,6 @@ namespace AAFwk {
  */
 class AppUtils {
 public:
-    static bool isAllowStartAbilityWithoutCallerToken;
     static bool isSupportMultiInstance;
     static bool isStartOptionsWithAnimation;
     static bool isPrepareTerminateEnabled;
@@ -50,18 +49,6 @@ public:
      *
      */
     ~AppUtils() {}
-
-    /**
-     * IsAllowStartAbilityWithoutCallerToken, check if it allows start ability without caller token.
-     *
-     * @param bundleName The bundle name.
-     * @param abilityName The ability name.
-     * @return Whether it allows start ability without caller token.
-     */
-    bool IsAllowStartAbilityWithoutCallerToken(const std::string& bundleName, const std::string& abilityName)
-    {
-        return isAllowStartAbilityWithoutCallerToken;
-    }
 
     /**
      * IsSupportMultiInstance, check if it supports multi-instance.

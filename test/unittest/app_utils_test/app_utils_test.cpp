@@ -936,22 +936,6 @@ HWTEST_F(AppUtilsTest, AppUtilsTest_3800, TestSize.Level2)
 }
 
 /**
- * @tc.number: AppUtilsTest_3900
- * @tc.desc: Test IsAllowStartAbilityWithoutCallerToken works
- * @tc.type: FUNC
- */
-HWTEST_F(AppUtilsTest, AppUtilsTest_3900, TestSize.Level2)
-{
-    TAG_LOGI(AAFwkTag::TEST, "AppUtilsTest_3900 called.");
-    auto &appUtils = AAFwk::AppUtils::GetInstance();
-    appUtils.startAbilityWithoutCallerToken_.value.emplace_back("bundleName", "abilityName");
-    std::string bundleName = "bundleName";
-    std::string abilityName = "abilityName";
-    auto ret = appUtils.IsAllowStartAbilityWithoutCallerToken(bundleName, abilityName);
-    EXPECT_TRUE(ret);
-}
-
-/**
  * @tc.number: AppUtilsTest_4000
  * @tc.desc: Test IsSupportNativeChildProcess works
  * @tc.type: FUNC

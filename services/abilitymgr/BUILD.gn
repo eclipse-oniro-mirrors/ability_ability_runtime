@@ -661,12 +661,6 @@ ohos_prebuilt_etc("ams_extension_config.json") {
   part_name = "ability_runtime"
 }
 
-ohos_prebuilt_etc("start_ability_without_caller_token.json") {
-  source = "resource/start_ability_without_caller_token.json"
-  subsystem_name = "ability"
-  part_name = "ability_runtime"
-}
-
 ohos_shared_library("mission_list") {
   sanitize = {
     integer_overflow = true
@@ -835,7 +829,6 @@ group("ams_service_config") {
   deps = [
     ":ams_service_config.json",
     ":deeplink_reserve_config.json",
-    ":start_ability_without_caller_token.json",
     ":uiextension_picker_config.json",
     ":ams_extension_config.json",
   ]
