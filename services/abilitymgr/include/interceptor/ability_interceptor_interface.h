@@ -60,7 +60,7 @@ public:
     /**
      * Excute interception processing.
      */
-    virtual ErrCode DoProcess(AbilityInterceptorParam param) = 0;
+    virtual ErrCode DoProcess(const AbilityInterceptorParam &param) = 0;
 
     /**
      * Set handler for async task executing.

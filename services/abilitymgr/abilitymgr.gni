@@ -78,10 +78,6 @@ abilityms_files = [
   "src/window_focus_changed_listener.cpp",
   "src/window_visibility_changed_listener.cpp",
 
-  # start ability handler
-  "src/start_ability_handler.cpp",
-  "src/start_ability_handler/start_ability_sandbox_savefile.cpp",
-
   # new ability manager service here
   "src/ui_extension/ui_extension_ability_manager.cpp",
   "src/ui_extension/preload_uiext_state_observer.cpp",

@@ -44,7 +44,7 @@ bool AbilityInterceptorExecuter::HasInterceptor(std::string interceptorName)
     return iter != interceptorMap_.end();
 }
 
-ErrCode AbilityInterceptorExecuter::DoProcess(AbilityInterceptorParam param)
+ErrCode AbilityInterceptorExecuter::DoProcess(const AbilityInterceptorParam &param)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     int32_t result = ERR_OK;
