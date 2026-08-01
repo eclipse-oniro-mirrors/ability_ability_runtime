@@ -69,31 +69,39 @@ high-impact  logic_      security-
 读对应目录的 `SKILL.md`，按其工作流执行。每个 skill 的输出格式不一致（md/csv/excel），**保留各 skill 原始产出**，不要在中间改写。
 
 ### Step 4：合并为统一报告
-把各 skill 的产出汇总到一份 `codecheck_report_<scope>_<YYYYMMDD>.md`，结构建议：
+把各 skill 的产出汇总到一份 `codecheck_report_<scope>_<YYYYMMDD>.md`。**统一报告用于门禁管控，必须严格套用权威模板**：
+
+> 📄 **权威模板：** [`codecheck_report_TEMPLATE.md`](codecheck_report_TEMPLATE.md)
+> 模板固定了章节顺序（基本信息 → 总体评价 → 问题统计 → 高优先级发现 → 分维度明细 → 待跟进 → 附录）、头部机器可读的 YAML 报告元数据块，以及文末"附录 A"的**评分公式与门禁决策矩阵**。所有 codecheck 报告（编排、deep-scan、单维度）合并后格式保持一致，便于门禁脚本解析与历史对比。
+
+生成要求（门禁校验项）：
+1. 头部 YAML 报告元数据块字段名/取值域固定，`score`/`risk_level`/`gate_decision` 必须按附录 A 的公式与决策矩阵计算，不得自创分值。
+2. 严重等级统一归一化为 P0–P3（各 skill 的 critical/high/medium/low、致命/严重/一般/提示 一律映射后汇总）。
+3. 跨维度去重：同一 `file:line` 被多个 skill 命中时在"高优先级发现"合并为一条，标注维度来源列表。
+4. 必检维度缺失时，门禁决策为 `insufficient`（无法评估），需补齐扫描后重出报告。
+
+简略结构（完整字段见模板）：
 
 ```
-# 代码检视报告 — <scope>
-> 范围：<路径/Kit>   日期：<YYYY-MM-DD>   检视维度：<调用的 skill 列表>
+# 代码检视报告 — <scope>（Round <N> / 最新提交）
 
-## 1. 总览
-- 执行的 skill 与各自发现数
-- P0/P1/P2 统计（如适用）
+~~~yaml   ← 报告元数据块（机器可读，固定字段）
+codecheck_report: { schema_version, scope, round, commit_id, change_id,
+                    commit_subject, date, dimensions_required,
+                    dimensions_executed, waived_dimensions, findings_total,
+                    findings_by_severity, score, risk_level,
+                    gate_decision, gate_blockers, must_fix, followups }
+~~~
 
-## 2. 高优先级发现（P0/P1，跨维度去重后）
-每条：标题 / 维度来源 / 位置(file:line) / 触发路径 / 影响 / 建议 / 证据
-
-## 3. 分维度明细
-### 3.1 high-impact-bug-audit
-### 3.2 logic_analyzer
-### 3.3 security-review
-### 3.4 external-input-audit
-### 3.5 api-audit
-
-## 4. 待跟进（Suspicious / 需进一步确认）
-## 5. 附录：各 skill 原始产出文件路径
+## 1. 基本信息
+## 2. 总体评价     ← 整体评分 / 风险等级 / 上库决策 + 决策依据 + 扣分明细
+## 3. 问题统计     ← 按维度 × P0/P1/P2/P3 汇总
+## 4. 高优先级发现（P0/P1，跨维度去重）
+## 5. 分维度明细   ← 5.1..5.n 对应实际执行维度
+## 6. 待跟进（P2/P3 + Suspicious）
+## 7. 附录         ← 变更文件清单 / 检视轨迹 / 原始产出
+## 附录 A          ← 评分公式与门禁决策矩阵（权威定义）
 ```
-
-跨维度去重时，同一 `file:line` 若被多个 skill 命中，在"高优先级发现"里合并为一条，标注维度来源列表。
 
 ---
 
