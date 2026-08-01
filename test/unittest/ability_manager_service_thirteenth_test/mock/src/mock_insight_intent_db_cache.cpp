@@ -243,6 +243,20 @@ void InsightIntentDbCache::GetInsightIntentInfo(const std::string &bundleName, c
     const std::string &intentName, const int32_t userId, ExtractInsightIntentInfo &info)
 {
     std::lock_guard<std::mutex> lock(genericInfosMutex_);
+    if (intentName == "mockQueryEntryProfile" || intentName == "mockQueryFunctionProfile") {
+        InsightIntentEntityInfo entity;
+        entity.className = "MockQueryEntity";
+        entity.parentClassName = "insightIntent.AppIntentEntity";
+        entity.decoratorFile = "mockQueryEntity.ets";
+        info.entities.emplace_back(entity);
+        if (intentName == "mockQueryEntryProfile") {
+            info.genericInfo.set<InsightIntentEntryInfo>();
+            info.genericInfo.get<InsightIntentEntryInfo>().abilityName = "FeatureAbility";
+        } else {
+            info.genericInfo.set<InsightIntentFunctionInfo>();
+        }
+        return;
+    }
     if (userId != userId_) {
         TAG_LOGE(AAFwkTag::INTENT, "The userId %{public}d. is not the cache userId %{public}d.", userId, userId_);
         return;

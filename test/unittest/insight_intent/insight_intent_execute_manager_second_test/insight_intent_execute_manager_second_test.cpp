@@ -2296,6 +2296,65 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, GenerateQueryEntityWant_0200, Te
 }
 
 /**
+ * @tc.name: GetAbilityNameFromMatched_0100
+ * @tc.desc: Test getting the configured ability name from an entry profile.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, GetAbilityNameFromMatched_0100, TestSize.Level1)
+{
+    AbilityRuntime::ExtractInsightIntentGenericInfo info;
+    info.set<AbilityRuntime::InsightIntentEntryInfo>();
+    info.get<AbilityRuntime::InsightIntentEntryInfo>().abilityName = "FeatureAbility";
+
+    EXPECT_EQ(InsightIntentExecuteManager::GetAbilityNameFromMatched(info), "FeatureAbility");
+}
+
+/**
+ * @tc.name: GetAbilityNameFromMatched_0200
+ * @tc.desc: Test getting the configured UIAbility name from a page profile.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, GetAbilityNameFromMatched_0200, TestSize.Level1)
+{
+    AbilityRuntime::ExtractInsightIntentGenericInfo info;
+    info.set<AbilityRuntime::InsightIntentPageInfo>();
+    info.get<AbilityRuntime::InsightIntentPageInfo>().uiAbility = "PageAbility";
+
+    EXPECT_EQ(InsightIntentExecuteManager::GetAbilityNameFromMatched(info), "PageAbility");
+}
+
+/**
+ * @tc.name: GetAbilityNameFromMatched_0300
+ * @tc.desc: Test getting the configured ability name from a form profile.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, GetAbilityNameFromMatched_0300, TestSize.Level1)
+{
+    AbilityRuntime::ExtractInsightIntentGenericInfo info;
+    info.set<AbilityRuntime::InsightIntentFormInfo>();
+    info.get<AbilityRuntime::InsightIntentFormInfo>().abilityName = "FormAbility";
+
+    EXPECT_EQ(InsightIntentExecuteManager::GetAbilityNameFromMatched(info), "FormAbility");
+}
+
+/**
+ * @tc.name: GetAbilityNameFromMatched_0400
+ * @tc.desc: Test a profile type without an ability name uses the fallback path.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, GetAbilityNameFromMatched_0400, TestSize.Level1)
+{
+    AbilityRuntime::ExtractInsightIntentGenericInfo info;
+    info.set<AbilityRuntime::InsightIntentFunctionInfo>();
+
+    EXPECT_TRUE(InsightIntentExecuteManager::GetAbilityNameFromMatched(info).empty());
+}
+
+/**
  * @tc.name: CheckAndUpdateQueryEntityParam_0800
  * @tc.desc: Test CheckAndUpdateQueryEntityParam with userId set to default value.
  * @tc.type: FUNC

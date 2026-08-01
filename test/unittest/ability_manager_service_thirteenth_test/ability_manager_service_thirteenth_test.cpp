@@ -3200,6 +3200,52 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, GetInsightIntentInfoByBundleName_0
 
 /*
  * Feature: AbilityManagerService
+ * Function: GenerateQueryEntityWant
+ * SubFunction: Use the ability name from matched entry profile
+ * FunctionPoints: GenerateQueryEntityWant
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, GenerateQueryEntityWant_001, TestSize.Level1)
+{
+    auto param = std::make_shared<InsightIntentQueryParam>();
+    param->bundleName_ = "test.bundleName";
+    param->moduleName_ = "test.moduleName";
+    param->intentName_ = "mockQueryEntryProfile";
+    param->className_ = "MockQueryEntity";
+    param->queryEntityParam_.queryType_ = "all";
+
+    Want want;
+    auto ret = InsightIntentExecuteManager::GenerateQueryEntityWant(param, want);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(want.GetElement().GetBundleName(), param->bundleName_);
+    EXPECT_EQ(want.GetElement().GetModuleName(), param->moduleName_);
+    EXPECT_EQ(want.GetElement().GetAbilityName(), "FeatureAbility");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GenerateQueryEntityWant
+ * SubFunction: Fall back to the main element when matched ability name is empty
+ * FunctionPoints: GenerateQueryEntityWant
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, GenerateQueryEntityWant_002, TestSize.Level1)
+{
+    auto param = std::make_shared<InsightIntentQueryParam>();
+    param->bundleName_ = "";
+    param->moduleName_ = "test.moduleName";
+    param->intentName_ = "mockQueryFunctionProfile";
+    param->className_ = "MockQueryEntity";
+    param->queryEntityParam_.queryType_ = "all";
+
+    Want want;
+    auto ret = InsightIntentExecuteManager::GenerateQueryEntityWant(param, want);
+
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_TRUE(want.GetElement().GetAbilityName().empty());
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: GetInsightIntentInfoByBundleName
  * SubFunction: flag is GET_FULL_INSIGHT_INTENT or GET_ENTITY_INFO
  * FunctionPoints: AbilityManagerService GetInsightIntentInfoByBundleName
