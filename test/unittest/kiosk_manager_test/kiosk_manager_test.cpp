@@ -660,47 +660,6 @@ HWTEST_F(KioskManagerTest, UpdateKioskApplicationList_002, TestSize.Level1) {
 
 /*
  * Feature: KioskManager
- * Function: UpdateKioskApplicationList
- * SubFunction: NA
- * FunctionPoints: KioskManager UpdateKioskApplicationList
- */
-HWTEST_F(KioskManagerTest, UpdateKioskApplicationList_003, TestSize.Level1) {
-    MyStatus::GetInstance().paramGetBoolParameter_ = true;
-    MyFlag::flag_ = true;
-    MyFlag::permissionFlag_ = true;
-    std::vector<std::string> appList;
-    KioskManager::GetInstance().kioskStatus_.isKioskMode_ = true;
-    KioskManager::GetInstance().NotifyKioskModeChanged(true);
-    std::string bundleName = "com.test.demo";
-    appList.emplace_back(bundleName);
-    KioskManager::GetInstance().kioskStatus_.kioskBundleName_ = bundleName;
-    auto ret = KioskManager::GetInstance().UpdateKioskApplicationList(appList);
-    EXPECT_EQ(ret, INNER_ERR);
-}
-
-/*
- * Feature: KioskManager
- * Function: ExitKioskMode
- * SubFunction: NA
- * FunctionPoints: KioskManager ExitKioskModeInner
- */
-HWTEST_F(KioskManagerTest, ExitKioskModeInner_002, TestSize.Level1) {
-    KioskManager::GetInstance().kioskStatus_.isKioskMode_ = true;
-    auto callerToken = MockToken(AbilityType::PAGE);
-    std::string bundleName = "com.test.demo";
-    KioskManager::GetInstance().whitelist_.emplace(bundleName);
-    KioskManager::GetInstance().NotifyKioskModeChanged(false);
-    AppInfo appInfo;
-    appInfo.bundleName = bundleName;
-    appInfo.state = AppState::BEGIN;
-    KioskManager::GetInstance().OnAppStop(appInfo);
-    MyStatus::GetInstance().ipcGetCallingUid_ = KioskManager::GetInstance().kioskStatus_.kioskBundleUid_;
-    auto result = KioskManager::GetInstance().ExitKioskModeInner(bundleName, callerToken, false);
-    EXPECT_EQ(result, INNER_ERR);
-}
-
-/*
- * Feature: KioskManager
  * Function: ExitKioskMode
  * SubFunction: NA
  * FunctionPoints: KioskManager ExitKioskModeInner

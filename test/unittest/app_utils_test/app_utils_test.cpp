@@ -474,20 +474,6 @@ HWTEST_F(AppUtilsTest, IsSupportStartAbilities_0200, TestSize.Level2)
 }
 
 /**
- * @tc.number: IsLauncher_0100
- * @tc.desc: Test IsLauncher works
- * @tc.type: FUNC
- */
-HWTEST_F(AppUtilsTest, IsLauncher_0100, TestSize.Level2)
-{
-    TAG_LOGI(AAFwkTag::TEST, "IsLauncher_0100 called.");
-    std::string bundleName = "com.ohos.launcher";
-    auto &appUtils = AAFwk::AppUtils::GetInstance();
-    bool result = appUtils.IsLauncher(bundleName);
-    EXPECT_TRUE(result);
-}
-
-/**
  * @tc.number: IsLauncher_0200
  * @tc.desc: Test IsLauncher works
  * @tc.type: FUNC

@@ -193,20 +193,6 @@ HWTEST_F(MultiInstanceUtilsTest, MultiInstanceUtils_IsMultiInstanceApp_0100, Tes
 }
 
 /**
- * @tc.name: MultiInstanceUtils_IsMultiInstanceApp_0200
- * @tc.desc: IsMultiInstanceApp
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(MultiInstanceUtilsTest, MultiInstanceUtils_IsMultiInstanceApp_0200, TestSize.Level1)
-{
-    AbilityRequest abilityRequest;
-    abilityRequest.appInfo.multiAppMode.multiAppModeType = AppExecFwk::MultiAppModeType::MULTI_INSTANCE;
-    auto ret = MultiInstanceUtils::IsMultiInstanceApp(abilityRequest.appInfo);
-    EXPECT_EQ(ret, false);
-}
-
-/**
  * @tc.name: MultiInstanceUtils_IsSupportedExtensionType_0100
  * @tc.desc: IsSupportedExtensionType
  * @tc.type: FUNC

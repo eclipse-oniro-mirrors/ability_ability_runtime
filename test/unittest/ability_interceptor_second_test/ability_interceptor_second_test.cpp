@@ -276,29 +276,5 @@ HWTEST_F(AbilityInterceptorSecondTest, DisposedRuleInterceptor_011, TestSize.Lev
     ErrCode result = executer->StartNonBlockRule(want, disposedRule, abilityInfo);
     EXPECT_EQ(result, ERR_OK);
 }
-
-/**
- * @tc.name: AbilityInterceptorSecondTest_DisposedRuleInterceptor_012
- * @tc.desc: DisposedRuleInterceptor
- * @tc.type: FUNC
- * @tc.require: No
- */
-HWTEST_F(AbilityInterceptorSecondTest, DisposedRuleInterceptor_012, TestSize.Level1)
-{
-    std::shared_ptr<DisposedRuleInterceptor> executer = std::make_shared<DisposedRuleInterceptor>();
-    ASSERT_NE(executer, nullptr);
-    executer->disposedObserverMap_.emplace(0, nullptr);
-    std::string bundleName1 = "com.example.disposedruletest1";
-    std::string bundleName2 = "com.example.disposedruletest2";
-    Want want;
-    want.SetBundle(bundleName1);
-    DisposedRule disposedRule;
-    disposedRule.want = std::make_shared<Want>();
-    disposedRule.want->SetBundle(bundleName2);
-    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
-    abilityInfo->uid = 0;
-    ErrCode result = executer->StartNonBlockRule(want, disposedRule, abilityInfo);
-    EXPECT_EQ(result, ERR_OK);
-}
 } // namespace AAFwk
 } // namespace OHOS

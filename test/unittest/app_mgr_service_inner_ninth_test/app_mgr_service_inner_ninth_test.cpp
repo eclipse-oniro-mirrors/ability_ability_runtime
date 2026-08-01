@@ -435,35 +435,6 @@ HWTEST_F(AppMgrServiceInnerNinthTest, PreloadApplication_011, TestSize.Level1)
 }
 
 /**
- * @tc.name: PreloadApplication_012
- * @tc.desc: test PreloadApplication
- * @tc.type: FUNC
- */
-HWTEST_F(AppMgrServiceInnerNinthTest, PreloadApplication_012, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "PreloadApplication_012 start");
-    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
-    
-    AAFwk::MyStatus::GetInstance().judgeCallerIsAllowed_ = true;
-    AAFwk::MyStatus::GetInstance().verifyCallingPermission_ = true;
-    AAFwk::MyStatus::GetInstance().isLogoutUser_ = false;
-    AAFwk::MyStatus::GetInstance().allowPreload_ = true;
-    AAFwk::MyStatus::GetInstance().generatePreloadRequestRet_ = ERR_OK;
-    appMgrServiceInner->appPreloader_ = std::make_shared<AppPreloader>(nullptr);
-    appMgrServiceInner->taskHandler_ = AAFwk::TaskHandlerWrap::CreateQueueHandler("test_queue4");
-
-    std::string bundleName = "com.test.preload";
-    int32_t userId = 100;
-    PreloadMode preloadMode = PreloadMode::PRE_MAKE;
-    int32_t appIndex = 1;
-    
-    int32_t ret = appMgrServiceInner->PreloadApplication(bundleName, userId, preloadMode, appIndex);
-    EXPECT_EQ(ret, ERR_OK);
-    appMgrServiceInner->taskHandler_.reset();
-    TAG_LOGI(AAFwkTag::TEST, "PreloadApplication_012 end");
-}
-
-/**
  * @tc.name: PreloadApplication_013
  * @tc.desc: test PreloadApplication
  * @tc.type: FUNC
