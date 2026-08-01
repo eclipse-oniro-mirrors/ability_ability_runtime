@@ -75,13 +75,13 @@ HWTEST_F(NapiUncaughtExceptionCallbackTest, NapiUncaughtExceptionCallbackTest_01
     auto task = [](std::string summary, const JsEnv::ErrorObject errorObj, napi_env env, napi_value exception) {
         summary += "test";
     };
-    NapiUncaughtExceptionCallback callback(task, nullptr, env);
+    NapiUncaughtExceptionCallback callback(task, env);
     ASSERT_EQ(callback.GetNativeStrFromJsTaggedObj(nullptr, "key"), "");
 
     // Test with invalid object
     napi_value object = nullptr;
     napi_create_object(env, &object);
-    NapiUncaughtExceptionCallback callback2(task, nullptr, env);
+    NapiUncaughtExceptionCallback callback2(task, env);
     ASSERT_EQ(callback2.GetNativeStrFromJsTaggedObj(object, "key"), "");
 
     // Test with valid object
@@ -98,7 +98,7 @@ HWTEST_F(NapiUncaughtExceptionCallbackTest, NapiUncaughtExceptionCallbackTest_01
     napi_set_named_property(env, object, "message", nativeErrorMsg);
     napi_set_named_property(env, object, "name", nativeErrorName);
     napi_set_named_property(env, object, "stack", nativeErrorStack);
-    NapiUncaughtExceptionCallback callback3(task, nullptr, env);
+    NapiUncaughtExceptionCallback callback3(task, env);
     ASSERT_EQ(callback3.GetNativeStrFromJsTaggedObj(object, "message"), errorMsg);
     ASSERT_EQ(callback3.GetNativeStrFromJsTaggedObj(object, "name"), errorName);
     ASSERT_EQ(callback3.GetNativeStrFromJsTaggedObj(object, "stack"), errorStack);
@@ -130,7 +130,7 @@ HWTEST_F(NapiUncaughtExceptionCallbackTest, NapiUncaughtExceptionCallbackTest_01
     napi_value valueInt64 = nullptr;
     napi_create_int64(env, 401, &valueInt64);
     napi_set_named_property(env, object, "key", valueInt64);
-    NapiUncaughtExceptionCallback callback(task, nullptr, env);
+    NapiUncaughtExceptionCallback callback(task, env);
     ASSERT_EQ(callback.GetNativeStrFromJsTaggedObj(object, "key"), "401");
 }
 
@@ -154,7 +154,7 @@ HWTEST_F(NapiUncaughtExceptionCallbackTest, NapiUncaughtExceptionCallbackTest_02
     };
     napi_value nullValue = nullptr;
     napi_get_undefined(env, &nullValue);
-    NapiUncaughtExceptionCallback callback(task, nullptr, env);
+    NapiUncaughtExceptionCallback callback(task, env);
     callback(nullValue);
 
     // Test with valid code, and errorStack is empty
@@ -166,7 +166,7 @@ HWTEST_F(NapiUncaughtExceptionCallbackTest, NapiUncaughtExceptionCallbackTest_02
     napi_create_string_utf8(env, errorCode.c_str(), errorCode.length(), &nativeErrorCode);
     napi_set_named_property(env, object, "code", nativeErrorCode);
 
-    NapiUncaughtExceptionCallback callback1(task, nullptr, env);
+    NapiUncaughtExceptionCallback callback1(task, env);
     callback1(object);
 }
 
@@ -200,7 +200,7 @@ HWTEST_F(NapiUncaughtExceptionCallbackTest, NapiUncaughtExceptionCallbackTest_03
     auto task = [](std::string summary, const JsEnv::ErrorObject errorObj, napi_env env, napi_value exception) {
         summary += "test";
     };
-    NapiUncaughtExceptionCallback callback(task, nullptr, env);
+    NapiUncaughtExceptionCallback callback(task, env);
     callback(object);
 }
 
@@ -245,7 +245,7 @@ HWTEST_F(NapiUncaughtExceptionCallbackTest, NapiUncaughtExceptionCallbackTest_04
     napi_set_named_property(env, object, "stack", nativeErrorStack);
     napi_set_named_property(env, object, "errorfunc", nativeErrorFunc);
 
-    NapiUncaughtExceptionCallback callback(task, nullptr, env);
+    NapiUncaughtExceptionCallback callback(task, env);
     callback(object);
 }
 
@@ -286,7 +286,7 @@ HWTEST_F(NapiUncaughtExceptionCallbackTest, NapiUncaughtExceptionCallbackTest_05
     auto task = [](std::string summary, const JsEnv::ErrorObject errorObj, napi_env env, napi_value exception) {
         summary += "test";
     };
-    NapiUncaughtExceptionCallback callback(task, nullptr, env);
+    NapiUncaughtExceptionCallback callback(task, env);
     callback(object);
 
     // disable runtime async stack
@@ -491,7 +491,7 @@ HWTEST_F(NapiUncaughtExceptionCallbackTest, AppendModuleStack_0100, TestSize.Lev
     std::string capturedSummary;
     auto task = [&capturedSummary](std::string summary, const JsEnv::ErrorObject errorObj, napi_env env,
         napi_value exception) { capturedSummary = summary; };
-    NapiUncaughtExceptionCallback callback(task, nullptr, env);
+    NapiUncaughtExceptionCallback callback(task, env);
     callback(errorObj);
 
     // Verify all module lines are present
@@ -547,7 +547,7 @@ HWTEST_F(NapiUncaughtExceptionCallbackTest, CangjieHybridStack, TestSize.Level1)
     napi_get_boolean(env, true, &isCangjieError);
     napi_set_named_property(env, object, "isCangjieErrorObject", isCangjieError);
 
-    NapiUncaughtExceptionCallback callback1(task, nullptr, env);
+    NapiUncaughtExceptionCallback callback1(task, env);
     callback1(object);
 }
 } // namespace AppExecFwk

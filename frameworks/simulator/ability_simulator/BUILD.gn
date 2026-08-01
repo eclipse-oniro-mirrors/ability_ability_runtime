@@ -59,7 +59,6 @@ ohos_shared_library("ability_simulator_inner") {
     sources = [
       "${ability_runtime_native_path}/ability/native/ability_business_error/ability_business_error.cpp",
       "${ability_runtime_native_path}/runtime/js_module_searcher.cpp",
-      "${ability_runtime_path}/js_environment/frameworks/js_environment/src/source_map.cpp",
       "${simulator_path}/napi_module/application/application_module.cpp",
       "${simulator_path}/napi_module/application/js_application.cpp",
       "${simulator_path}/napi_module/application/napi_base_context.cpp",

@@ -147,7 +147,7 @@ public:
                               bool isABC = true);
     static std::shared_ptr<AbilityBase::FileMapper> GetSafeData(const std::string& path, std::string& fileFullName);
 
-    void InitSourceMap(const std::shared_ptr<JsEnv::SourceMapOperator> operatorImpl);
+    void SourceMapInit(const std::string bundleName);
     void InitSourceMap(const std::string hqfFilePath);
     void FreeNativeReference(std::unique_ptr<NativeReference> reference);
     void FreeNativeReference(std::shared_ptr<NativeReference>&& reference);

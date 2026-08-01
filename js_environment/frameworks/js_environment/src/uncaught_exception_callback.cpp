@@ -197,12 +197,7 @@ void NapiUncaughtExceptionCallback::AppendStackTrace(const std::string& errorSta
     if (isCangjieError && HasCangjieHybirdStack()) {
         summary += "Stacktrace:\n" + errorStack;
         std::function translator = [this](std::string& url, int& line, int& column, std::string& packageName)-> bool {
-            if (sourceMapOperator_) {
-                sourceMapOperator_->TranslateUrlPositionBySourceMap(url, line, column, packageName);
-                return true;
-            } else {
-                return false;
-            }
+            return DFXJSNApi::SourceMapTranslateUrlPosition(url, line, column, packageName);
         };
         GetCangjieHybridStack(stackTraceStr, translator);
         summary += "HybridStack:\n" + stackTraceStr;
