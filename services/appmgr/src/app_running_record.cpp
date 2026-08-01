@@ -2716,21 +2716,25 @@ bool AppRunningRecord::isNativeStart() const
 
 void AppRunningRecord::SetExitReason(int32_t reason)
 {
+    std::lock_guard<ffrt::mutex> lock(exitReasonLock_);
     exitReason_ = reason;
 }
 
 int32_t AppRunningRecord::GetExitReason() const
 {
+    std::lock_guard<ffrt::mutex> lock(exitReasonLock_);
     return exitReason_;
 }
 
 void AppRunningRecord::SetExitMsg(const std::string &exitMsg)
 {
+    std::lock_guard<ffrt::mutex> lock(exitMsgLock_);
     exitMsg_ = exitMsg;
 }
 
 std::string AppRunningRecord::GetExitMsg() const
 {
+    std::lock_guard<ffrt::mutex> lock(exitMsgLock_);
     return exitMsg_;
 }
 
@@ -2746,21 +2750,25 @@ int32_t AppRunningRecord::GetKillId() const
 
 void AppRunningRecord::SetKillMsg(const std::string &killMsg)
 {
+    std::lock_guard<ffrt::mutex> lock(killMsgLock_);
     killMsg_ = killMsg;
 }
 
 std::string AppRunningRecord::GetKillMsg() const
 {
+    std::lock_guard<ffrt::mutex> lock(killMsgLock_);
     return killMsg_;
 }
 
 void AppRunningRecord::SetInnerMsg(const std::string &innerMsg)
 {
+    std::lock_guard<ffrt::mutex> lock(innerMsgLock_);
     innerMsg_ = innerMsg;
 }
 
 std::string AppRunningRecord::GetInnerMsg() const
 {
+    std::lock_guard<ffrt::mutex> lock(innerMsgLock_);
     return innerMsg_;
 }
 
