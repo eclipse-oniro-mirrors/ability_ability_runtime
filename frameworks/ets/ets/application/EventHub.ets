@@ -23,6 +23,13 @@ export default class EventHub {
   private dynamicContextEventHub?: ESValue;
   private native getDynamicContextEventHub(): ESValue;
 
+  constructor(ptr: long) {
+    this.nativeContext = ptr;
+  }
+  
+  constructor() {
+  }
+
   on(event: string, callback: Function): void {
     if (!this.eventMap.has(event)) {
       this.eventMap.set(event, []);

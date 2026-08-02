@@ -15,6 +15,7 @@
 
 #include "ani_common_configuration.h"
 
+#include "ability_util.h"
 #include "ani_enum_convert.h"
 #include "configuration_convertor.h"
 #include "hilog_tag_wrapper.h"
@@ -33,109 +34,108 @@ constexpr const char* DIRECTION_ENUM_NAME =
 constexpr const char* DENSITY_ENUM_NAME =
     "@ohos.app.ability.ConfigurationConstant.ConfigurationConstant.ScreenDensity";
 constexpr const char* CONFIGURATION_IMPL_CLASS_NAME = "@ohos.app.ability.Configuration.ConfigurationImpl";
+} // namespace
 
-void SetBasicConfiguration(ani_env *env, ani_object object, const AppExecFwk::Configuration &configuration)
+bool ParseFontScale(const AppExecFwk::Configuration &configuration, double &fontSize, double &fontWeight)
 {
-    if (env == nullptr || object == nullptr) {
-        TAG_LOGE(AAFwkTag::ANI, "null env or object");
-        return;
-    }
-    std::string str = configuration.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE);
-    env->Object_SetPropertyByName_Ref(object, "language", GetAniString(env, str));
-
-    ani_object localeObj = WrapLocale(env, configuration.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_LOCALE));
-    env->Object_SetPropertyByName_Ref(object, "locale", localeObj);
-
-    ani_enum_item colorModeItem = nullptr;
-    OHOS::AAFwk::AniEnumConvertUtil::EnumConvert_NativeToEts(env,
-        COLOR_MODE_ENUM_NAME,
-        ConvertColorMode(configuration.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE)), colorModeItem);
-    env->Object_SetPropertyByName_Ref(object, "colorMode", colorModeItem);
-
-    int32_t displayId = ConvertDisplayId(configuration.GetItem(ConfigurationInner::APPLICATION_DISPLAYID));
-    env->Object_SetPropertyByName_Ref(object, "displayId", CreateLong(env, static_cast<int64_t>(displayId)));
-
-    std::string direction = configuration.GetItem(displayId, ConfigurationInner::APPLICATION_DIRECTION);
-    ani_enum_item directionItem = nullptr;
-    OHOS::AAFwk::AniEnumConvertUtil::EnumConvert_NativeToEts(env,
-        DIRECTION_ENUM_NAME, ConvertDirection(direction),
-        directionItem);
-    env->Object_SetPropertyByName_Ref(object, "direction", directionItem);
-
-    std::string density = configuration.GetItem(displayId, ConfigurationInner::APPLICATION_DENSITYDPI);
-    ani_enum_item densityItem = nullptr;
-    OHOS::AAFwk::AniEnumConvertUtil::EnumConvert_NativeToEts(env,
-        DENSITY_ENUM_NAME, ConvertDensity(density), densityItem);
-    env->Object_SetPropertyByName_Ref(object, "screenDensity", densityItem);
-}
-
-void SetAdditionalConfiguration(ani_env *env, ani_object object, const AppExecFwk::Configuration &configuration)
-{
-    std::string hasPointerDevice = configuration.GetItem(AAFwk::GlobalConfigurationKey::INPUT_POINTER_DEVICE);
-    env->Object_SetPropertyByName_Ref(
-        object, "hasPointerDevice", CreateBoolean(env, hasPointerDevice == "true" ? true : false));
-
-    std::string str = configuration.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_FONT_ID);
-    env->Object_SetPropertyByName_Ref(object, "fontId", GetAniString(env, str));
-
     std::string fontSizeScale = configuration.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_FONT_SIZE_SCALE);
-    try {
-        env->Object_SetPropertyByName_Ref(
-            object, "fontSizeScale", CreateDouble(env, fontSizeScale != "" ? std::stod(fontSizeScale) : 1.0));
-    } catch (...) {
-        TAG_LOGE(AAFwkTag::ANI, "stod(%{public}s) failed", fontSizeScale.c_str());
-        return;
+    if (!fontSizeScale.empty()) {
+        try {
+            fontSize = std::stod(fontSizeScale);
+        } catch (...) {
+            TAG_LOGE(AAFwkTag::ANI, "stod(%{public}s) failed", fontSizeScale.c_str());
+            return false;
+        }
     }
 
     std::string fontWeightScale = configuration.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_FONT_WEIGHT_SCALE);
-    try {
-        env->Object_SetPropertyByName_Ref(
-            object, "fontWeightScale", CreateDouble(env, fontWeightScale != "" ? std::stod(fontWeightScale) : 1.0));
-    } catch (...) {
-        TAG_LOGE(AAFwkTag::ANI, "stod(%{public}s) failed", fontWeightScale.c_str());
-        return;
+    if (!fontWeightScale.empty()) {
+        try {
+            fontWeight = std::stod(fontWeightScale);
+        } catch (...) {
+            TAG_LOGE(AAFwkTag::ANI, "stod(%{public}s) failed", fontWeightScale.c_str());
+            return false;
+        }
     }
-
-    str = configuration.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_MCC);
-    env->Object_SetPropertyByName_Ref(object, "mcc", GetAniString(env, str));
-
-    str = configuration.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_MNC);
-    env->Object_SetPropertyByName_Ref(object, "mnc", GetAniString(env, str));
+    return true;
 }
-} // namespace
 
 ani_object WrapConfiguration(ani_env *env, const AppExecFwk::Configuration &configuration)
 {
-    if (env == nullptr) {
-        TAG_LOGE(AAFwkTag::ANI, "null env");
+    CHECK_POINTER_AND_RETURN_LOG(env, nullptr, "null env");
+
+    std::string language = configuration.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE);
+    auto aniLanguage = GetAniString(env, language);
+    CHECK_POINTER_AND_RETURN_LOG(aniLanguage, nullptr, "null aniLanguage");
+
+    ani_object localeObj = WrapLocale(env, configuration.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_LOCALE));
+    CHECK_POINTER_AND_RETURN_LOG(localeObj, nullptr, "null localeObj");
+
+    ani_enum_item colorModeItem = nullptr;
+    OHOS::AAFwk::AniEnumConvertUtil::EnumConvert_NativeToEts(
+        env,
+        COLOR_MODE_ENUM_NAME,
+        ConvertColorMode(configuration.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE)),
+        colorModeItem);
+    CHECK_POINTER_AND_RETURN_LOG(colorModeItem, nullptr, "null colorModeItem");
+
+    int32_t displayId = ConvertDisplayId(configuration.GetItem(ConfigurationInner::APPLICATION_DISPLAYID));
+    std::string direction = configuration.GetItem(displayId, ConfigurationInner::APPLICATION_DIRECTION);
+    ani_enum_item directionItem = nullptr;
+    OHOS::AAFwk::AniEnumConvertUtil::EnumConvert_NativeToEts(
+        env, DIRECTION_ENUM_NAME, ConvertDirection(direction), directionItem);
+    CHECK_POINTER_AND_RETURN_LOG(directionItem, nullptr, "null directionItem");
+
+    std::string density = configuration.GetItem(displayId, ConfigurationInner::APPLICATION_DENSITYDPI);
+    ani_enum_item densityItem = nullptr;
+    OHOS::AAFwk::AniEnumConvertUtil::EnumConvert_NativeToEts(
+        env, DENSITY_ENUM_NAME, ConvertDensity(density), densityItem);
+    CHECK_POINTER_AND_RETURN_LOG(densityItem, nullptr, "null densityItem");
+
+    std::string hasPointerDevice = configuration.GetItem(AAFwk::GlobalConfigurationKey::INPUT_POINTER_DEVICE);
+    bool hasPointer = hasPointerDevice == "true" ? true : false;
+
+    std::string fontIdStr = configuration.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_FONT_ID);
+    auto aniFontId = GetAniString(env, fontIdStr);
+    CHECK_POINTER_AND_RETURN_LOG(aniFontId, nullptr, "null aniFontId");
+
+    double fontSize = 1.0;
+    double fontWeight = 1.0;
+    if (!ParseFontScale(configuration, fontSize, fontWeight)) {
         return nullptr;
     }
-    ani_class cls = nullptr;
-    ani_status status = env->FindClass(CONFIGURATION_IMPL_CLASS_NAME, &cls);
-    if (status != ANI_OK) {
-        TAG_LOGE(AAFwkTag::ANI, "FindClass status: %{public}d", status);
-        return nullptr;
-    }
-    if (cls == nullptr) {
-        TAG_LOGE(AAFwkTag::ANI, "null Configuration");
-        return nullptr;
-    }
-    ani_method method = nullptr;
-    if ((status = env->Class_FindMethod(cls, "<ctor>", ":", &method)) != ANI_OK) {
-        TAG_LOGE(AAFwkTag::ANI, "Class_FindMethod status: %{public}d", status);
-        return nullptr;
-    }
-    ani_object object = nullptr;
-    if ((status = env->Object_New(cls, method, &object)) != ANI_OK) {
-        TAG_LOGE(AAFwkTag::ANI, "Object_New status: %{public}d", status);
-        return nullptr;
-    }
+
+    auto mcc = configuration.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_MCC);
+    auto aniMcc = GetAniString(env, mcc);
+    CHECK_POINTER_AND_RETURN_LOG(aniMcc, nullptr, "null aniMcc");
+
+    auto mnc = configuration.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_MNC);
+    auto aniMnc = GetAniString(env, mnc);
+    CHECK_POINTER_AND_RETURN_LOG(aniMnc, nullptr, "null aniMnc");
+
+    ani_object object = AppExecFwk::InitAniObjectByCreator(
+        env,
+        CONFIGURATION_IMPL_CLASS_NAME,
+        "C{std.core.String}E{@ohos.app.ability.ConfigurationConstant.ConfigurationConstant.ColorMode}"
+        "E{@ohos.app.ability.ConfigurationConstant.ConfigurationConstant.Direction}E{@ohos.app.ability."
+        "ConfigurationConstant.ConfigurationConstant.ScreenDensity}lzC{std.core.String}ddC{std.core.String}"
+        "C{std.core.String}C{std.core.Intl.Locale}:",
+        aniLanguage,
+        colorModeItem,
+        directionItem,
+        densityItem,
+        (ani_long)displayId,
+        hasPointer,
+        aniFontId,
+        fontSize,
+        fontWeight,
+        aniMcc,
+        aniMnc,
+        localeObj);
     if (object == nullptr) {
         TAG_LOGE(AAFwkTag::ANI, "null object");
         return nullptr;
     }
-    SetBasicConfiguration(env, object, configuration);
-    SetAdditionalConfiguration(env, object, configuration);
     return object;
 }
 

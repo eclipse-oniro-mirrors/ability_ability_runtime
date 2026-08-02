@@ -58,6 +58,7 @@ public:
     explicit EtsAbilityContext(ani_env *env,
         std::shared_ptr<AbilityContext> context) : env_(env), context_(std::move(context)) {}
     ~EtsAbilityContext();
+    std::weak_ptr<AbilityContext> GetContext() { return context_; }
 
     static void StartAbility(ani_env *env, ani_object aniObj, ani_object wantObj, ani_object call);
     static void StartAbilityWithOptions(

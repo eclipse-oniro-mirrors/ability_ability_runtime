@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import BaseContext from 'application.BaseContext'
-import EventHub from 'application.EventHub';
+import BaseContext from './BaseContext'
+import EventHub from './EventHub';
 import ApplicationContext from 'application.ApplicationContext'
 import AsyncCallbackWrapper from '../utils/AbilityUtils';
 import { AsyncCallback } from '@ohos.base';
@@ -55,8 +55,8 @@ export default class Context extends BaseContext {
   distributedFilesDir: string = "";
   bundleCodeDir: string = "";
   resourceDir: string = "";
-  applicationInfo!: ApplicationInfo;
-  resourceManager!: resmgr.ResourceManager;
+  applicationInfo: ApplicationInfo | undefined = undefined;
+  resourceManager: resmgr.ResourceManager | undefined = undefined;
   eventHub: EventHub = new EventHub();
   processName: string = "";
   constructor() {
@@ -70,6 +70,12 @@ export default class Context extends BaseContext {
       this.eventHub = new EventHub();
     }
     this.nativePtr = ptr;
+  }
+
+  constructor(eventHubNativeContext: long, nativeCon: long) {
+    super(nativeCon)
+    this.setEtsContextPtr(nativeCon);
+      this.eventHub = new EventHub(eventHubNativeContext);
   }
 
   private setEtsContextPtr(ptr: long) {

@@ -22,6 +22,7 @@
 #include "running_process_info.h"
 #include "securec.h"
 #include "tokenid_kit.h"
+#include "hitrace_meter.h"
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -36,6 +37,8 @@ constexpr const char* SET_OBJECT_VOID_SIGNATURE = "iY:";
 constexpr const char* CLASSNAME_INNER = "application.ProcessInformation.ProcessInformationInner";
 constexpr const char* ENUMNAME_PROCESS = "@ohos.app.ability.appManager.appManager.ProcessState";
 constexpr const char* ENUMNAME_BUNDLE = "@ohos.bundle.bundleManager.bundleManager.BundleType";
+std::mutex g_aniCreatorsMutex;
+std::unordered_map<std::string, std::pair<ani_class, std::unordered_map<std::string, ani_method>>> globalAniCreators;
 }
 
 bool GetFieldDoubleByName(ani_env *env, ani_object object, const char *name, double &value)
@@ -1654,6 +1657,82 @@ bool CreateArrayObject(ani_env *env, ani_object &object, size_t length)
         return false;
     }
     return true;
+}
+
+ani_status InitAniCreator(ani_env *env, const std::string &aniClassDescriptor, const std::string &aniCtorSignature)
+{
+    ani_status status = ANI_OK;
+    auto aniClassIter = globalAniCreators.find(aniClassDescriptor);
+    if (aniClassIter != globalAniCreators.end()) {
+        auto &aniCtorSignatureMap = aniClassIter->second.second;
+        if (aniCtorSignatureMap.find(aniCtorSignature) != aniCtorSignatureMap.end()) {
+            TAG_LOGD(AAFwkTag::JSRUNTIME, "class %{public}s and its ctor already exist", aniClassDescriptor.c_str());
+            return status;
+        }
+    }
+    bool isNewClassEntry = false;
+    ani_class aniClass = nullptr;
+    if (aniClassIter == globalAniCreators.end()) {
+        status = env->FindClass(aniClassDescriptor.c_str(), &aniClass);
+        if (status != ANI_OK) {
+            TAG_LOGE(
+                AAFwkTag::JSRUNTIME, "class %{public}s not found, ret %{public}d", aniClassDescriptor.c_str(), status);
+            return status;
+        }
+        auto [iter, inserted] = globalAniCreators.emplace(
+            aniClassDescriptor, std::make_pair(aniClass, std::unordered_map<std::string, ani_method>()));
+        if (!inserted) {
+            TAG_LOGE(AAFwkTag::JSRUNTIME, "emplace class %{public}s failed", aniClassDescriptor.c_str());
+            return ANI_ERROR;
+        }
+        aniClassIter = iter;
+        isNewClassEntry = true;
+        auto &newClassEntry = aniClassIter->second;
+        status = env->GlobalReference_Create(static_cast<ani_ref>(newClassEntry.first),
+                                             reinterpret_cast<ani_ref *>(&(newClassEntry.first)));
+        if (status != ANI_OK) {
+            TAG_LOGE(AAFwkTag::JSRUNTIME, "GlobalReference_Create failed ret %{public}d", status);
+            globalAniCreators.erase(aniClassIter);
+            return status;
+        }
+    }
+    aniClass = aniClassIter->second.first;
+    ani_method aniCtorMethod;
+    status = env->Class_FindMethod(aniClass, "<ctor>", aniCtorSignature.c_str(), &aniCtorMethod);
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "find %{public}s ctor failed ret %{public}d", aniClassDescriptor.c_str(), status);
+        if (isNewClassEntry) {
+            env->GlobalReference_Delete(static_cast<ani_ref>(aniClass));
+            globalAniCreators.erase(aniClassIter);
+        }
+        return status;
+    }
+    aniClassIter->second.second.emplace(aniCtorSignature, aniCtorMethod);
+    return status;
+}
+
+ani_object InitAniObjectByCreator(ani_env *env, const std::string &aniClassDescriptor,
+                                  const std::string aniCtorSignature, ...)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, "InitAniObjectByCreator");
+    std::lock_guard<std::mutex> lock(g_aniCreatorsMutex);
+    ani_status status = InitAniCreator(env, aniClassDescriptor, aniCtorSignature);
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "InitAniCreator failed, ret %{public}d", status);
+        return nullptr;
+    }
+    va_list args;
+    va_start(args, aniCtorSignature);
+    auto &creatorEntry = globalAniCreators[aniClassDescriptor];
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, "CreateObjectByCreator");
+    ani_object aniObject;
+    status = env->Object_New_V(creatorEntry.first, creatorEntry.second[aniCtorSignature], &aniObject, args);
+    va_end(args);
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "Object_New_V failed, ret %{public}d", status);
+        return nullptr;
+    }
+    return aniObject;
 }
 } // namespace AppExecFwk
 } // namespace OHOS

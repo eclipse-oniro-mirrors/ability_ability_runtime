@@ -17,6 +17,7 @@
 
 #include <regex>
 
+#include "ability_util.h"
 #include "ani_common_ability_result.h"
 #include "ani_common_configuration.h"
 #include "ani_common_start_options.h"
@@ -35,6 +36,7 @@
 #include "hitrace_meter.h"
 #include "ipc_skeleton.h"
 #include "json_utils.h"
+#include "resourceManager.h"
 #include "tokenid_kit.h"
 #include "want.h"
 #ifdef SUPPORT_GRAPHICS
@@ -53,6 +55,7 @@ std::mutex EtsAbilityContext::requestCodeMutex_;
 namespace {
 static std::once_flag g_bindNativeMethodsFlag;
 std::recursive_mutex g_connectsLock;
+static ani_class g_cached_uiabilitycontext_class = nullptr;
 int64_t g_serialNumber = 0;
 constexpr uint64_t MAX_REQUEST_CODE = (1ULL << 49) - 1;
 constexpr size_t MAX_REQUEST_CODE_LENGTH = 15;
@@ -3089,12 +3092,14 @@ void EtsAbilityContext::OnStartSelf(ani_env *env, ani_object callback)
 namespace {
 bool BindNativeMethods(ani_env *env, ani_class &cls)
 {
-    ani_status status = env->FindClass(UI_ABILITY_CONTEXT_CLASS_NAME, &cls);
-    if (status != ANI_OK) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "FindClass status: %{public}d", status);
-        return false;
-    }
-    std::call_once(g_bindNativeMethodsFlag, [&status, env, cls]() {
+    ani_status status = ANI_OK;
+    std::call_once(g_bindNativeMethodsFlag, [&status, env]() {
+        status = env->FindClass(UI_ABILITY_CONTEXT_CLASS_NAME, &g_cached_uiabilitycontext_class);
+        if (status != ANI_OK) {
+            TAG_LOGE(AAFwkTag::CONTEXT, "FindClass status: %{public}d", status);
+            return;
+        }
+
         std::array functions = {
             ani_native_function { "nativeStartAbilitySync",
                 "C{@ohos.app.ability.Want.Want}C{utils.AbilityUtils.AsyncCallbackWrapper}:",
@@ -3225,9 +3230,10 @@ bool BindNativeMethods(ani_env *env, ani_class &cls)
             ani_native_function { "nativeSetMissionIconCheck", "C{@ohos.multimedia.image.image.PixelMap}:",
                 reinterpret_cast<void *>(EtsAbilityContext::SetMissionIconCheck) },
 #endif
-            ani_native_function { "nativeRevokeDelegator", "C{utils.AbilityUtils.AsyncCallbackWrapper}:",
-                reinterpret_cast<void *>(EtsAbilityContext::RevokeDelegator) },
-            ani_native_function { "nativeStartAbilityForResultWithAccount",
+            ani_native_function{"nativeRevokeDelegator",
+                "C{utils.AbilityUtils.AsyncCallbackWrapper}:",
+                reinterpret_cast<void *>(EtsAbilityContext::RevokeDelegator)},
+            ani_native_function{"nativeStartAbilityForResultWithAccount",
                 "C{@ohos.app.ability.Want.Want}iC{utils.AbilityUtils.AsyncCallbackWrapper}:",
                 reinterpret_cast<void*>(EtsAbilityContext::StartAbilityForResultWithAccount) },
             ani_native_function { "nativeStartAbilityForResultWithAccountCheck", ":",
@@ -3262,7 +3268,8 @@ bool BindNativeMethods(ani_env *env, ani_class &cls)
                 "C{utils.AbilityUtils.AsyncCallbackWrapper}:",
                 reinterpret_cast<void*>(EtsAbilityContext::StartSelf) },
         };
-        if ((status = env->Class_BindNativeMethods(cls, functions.data(), functions.size())) != ANI_OK) {
+        if ((status = env->Class_BindNativeMethods(g_cached_uiabilitycontext_class, functions.data(),
+            functions.size())) != ANI_OK) {
             TAG_LOGE(AAFwkTag::CONTEXT, "Class_BindNativeMethods failed status: %{public}d", status);
             return;
         }
@@ -3285,6 +3292,7 @@ bool BindNativeMethods(ani_env *env, ani_class &cls)
         TAG_LOGE(AAFwkTag::CONTEXT, "Class_BindNativeMethods status: %{public}d", status);
         return false;
     }
+    cls = g_cached_uiabilitycontext_class;
     return true;
 }
 } // namespace
@@ -3300,33 +3308,126 @@ ani_object CreateEtsAbilityContext(ani_env *env, std::shared_ptr<AbilityContext>
         TAG_LOGE(AAFwkTag::CONTEXT, "BindNativeMethods failed");
         return nullptr;
     }
-    ani_object contextObj = EtsAbilityContext::SetEtsAbilityContext(env, context);
-    if (contextObj == nullptr) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "null contextObj");
-        return nullptr;
-    }
-    ContextUtil::CreateEtsBaseContext(env, cls, contextObj, context);
+
+    auto hapModuleInfo = context->GetHapModuleInfo();
+    CHECK_POINTER_AND_RETURN_LOG(hapModuleInfo, nullptr, "null hapModuleInfo");
+    ani_ref hapModuleInfoRef = AppExecFwk::CommonFunAni::ConvertHapModuleInfo(env, *hapModuleInfo);
+    CHECK_POINTER_AND_RETURN_LOG(hapModuleInfoRef, nullptr, "null hapModuleInfoRef");
+
+    auto appInfo = context->GetApplicationInfo();
+    CHECK_POINTER_AND_RETURN_LOG(appInfo, nullptr, "null appInfo");
+    ani_object appInfoObj = AppExecFwk::CommonFunAni::ConvertApplicationInfo(env, *appInfo);
+    CHECK_POINTER_AND_RETURN_LOG(appInfoObj, nullptr, "null appInfoObj");
+
+    auto resourceManager = context->GetResourceManager();
+    ani_object resourceMgrObj = Global::Resource::ResMgrAddon::CreateResMgr(env, "", resourceManager, context);
+    CHECK_POINTER_AND_RETURN_LOG(resourceMgrObj, nullptr, "null resourceMgrObj");
+
+    auto preferencesDir = context->GetPreferencesDir();
+    ani_string preferencesDirString = nullptr;
+    env->String_NewUTF8(preferencesDir.c_str(), preferencesDir.size(), &preferencesDirString);
+    CHECK_POINTER_AND_RETURN_LOG(preferencesDirString, nullptr, "null preferencesDirString");
+
+    auto databaseDir = context->GetDatabaseDir();
+    ani_string databaseDirString = nullptr;
+    env->String_NewUTF8(databaseDir.c_str(), databaseDir.size(), &databaseDirString);
+    CHECK_POINTER_AND_RETURN_LOG(databaseDirString, nullptr, "null databaseDirString");
+
+    auto cacheDir = context->GetCacheDir();
+    ani_string cacheDirString = nullptr;
+    env->String_NewUTF8(cacheDir.c_str(), cacheDir.size(), &cacheDirString);
+    CHECK_POINTER_AND_RETURN_LOG(cacheDirString, nullptr, "null cacheDirString");
+
+    auto filesDir = context->GetFilesDir();
+    ani_string filesDirString = nullptr;
+    env->String_NewUTF8(filesDir.c_str(), filesDir.size(), &filesDirString);
+    CHECK_POINTER_AND_RETURN_LOG(filesDirString, nullptr, "null filesDirString");
+
+    auto tempDir = context->GetTempDir();
+    ani_string tempDirString = nullptr;
+    env->String_NewUTF8(tempDir.c_str(), tempDir.size(), &tempDirString);
+    CHECK_POINTER_AND_RETURN_LOG(tempDirString, nullptr, "null tempDirString");
+
+    auto cloudFileDir = context->GetCloudFileDir();
+    ani_string cloudFileDirString = nullptr;
+    env->String_NewUTF8(cloudFileDir.c_str(), cloudFileDir.size(), &cloudFileDirString);
+    CHECK_POINTER_AND_RETURN_LOG(cloudFileDirString, nullptr, "null cloudFileDirString");
+
+    auto distributedFilesDir = context->GetDistributedFilesDir();
+    ani_string distributedFilesDirString = nullptr;
+    env->String_NewUTF8(distributedFilesDir.c_str(), distributedFilesDir.size(), &distributedFilesDirString);
+    CHECK_POINTER_AND_RETURN_LOG(distributedFilesDirString, nullptr, "null distributedFilesDirString");
+
+    auto bundleCodeDir = context->GetBundleCodeDir();
+    ani_string bundleCodeDirString = nullptr;
+    env->String_NewUTF8(bundleCodeDir.c_str(), bundleCodeDir.size(), &bundleCodeDirString);
+    CHECK_POINTER_AND_RETURN_LOG(bundleCodeDirString, nullptr, "null bundleCodeDirString");
+
+    auto resourceDir = context->GetResourceDir();
+    ani_string resourceDirString = nullptr;
+    env->String_NewUTF8(resourceDir.c_str(), resourceDir.size(), &resourceDirString);
+    CHECK_POINTER_AND_RETURN_LOG(resourceDirString, nullptr, "null resourceDirString");
+
+    auto processName = context->GetProcessName();
+    ani_string processNameString = nullptr;
+    env->String_NewUTF8(processName.c_str(), processName.size(), &processNameString);
+    CHECK_POINTER_AND_RETURN_LOG(processNameString, nullptr, "null processNameString");
+
+    ContextUtil::BindNativeFunction(env);
 
     auto abilityInfo = context->GetAbilityInfo();
-    if (abilityInfo == nullptr) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "null abilityInfo");
-        return nullptr;
-    }
+    CHECK_POINTER_AND_RETURN_LOG(abilityInfo, nullptr, "null abilityInfo");
     ani_ref abilityInfoRef = AppExecFwk::CommonFunAni::ConvertAbilityInfo(env, *abilityInfo);
-    ani_status status = env->Object_SetFieldByName_Ref(contextObj, "abilityInfo", abilityInfoRef);
-    if (status != ANI_OK) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "Object_SetFieldByName_Ref status: %{public}d", status);
-        return nullptr;
-    }
+    CHECK_POINTER_AND_RETURN_LOG(abilityInfoRef, nullptr, "null abilityInfoRef");
 
     auto configuration = context->GetConfiguration();
-    if (configuration == nullptr) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "null configuration");
+    CHECK_POINTER_AND_RETURN_LOG(configuration, nullptr, "null configuration");
+    ani_object configurationObj = AppExecFwk::WrapConfiguration(env, *configuration);
+    CHECK_POINTER_AND_RETURN_LOG(configurationObj, nullptr, "null configurationObj");
+
+    std::unique_ptr<EtsAbilityContext> etsContext = std::make_unique<EtsAbilityContext>(env, context);
+    CHECK_POINTER_AND_RETURN_LOG(etsContext, nullptr, "null etsContext");
+    auto nativeContext = new (std::nothrow) std::weak_ptr<AbilityContext>(etsContext->GetContext());
+    CHECK_POINTER_AND_RETURN_LOG(nativeContext, nullptr, "null nativeContext");
+
+    auto eventHubNativeContext = new (std::nothrow) std::weak_ptr<AbilityRuntime::Context>(context);
+    if (eventHubNativeContext == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null eventHubNativeContext");
+        delete nativeContext;
         return nullptr;
     }
-    ani_object configurationObj = AppExecFwk::WrapConfiguration(env, *configuration);
-    if ((status = env->Object_SetFieldByName_Ref(contextObj, "config", configurationObj)) != ANI_OK) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "Object_SetFieldByName_Ref status: %{public}d", status);
+    auto rowContext = etsContext.release();
+    ani_object contextObj = AppExecFwk::InitAniObjectByCreator(
+        env,
+        UI_ABILITY_CONTEXT_CLASS_NAME,
+        "llC{bundleManager.ApplicationInfo.ApplicationInfo}C{@ohos.resourceManager.resourceManager.ResourceManager}C{"
+        "std.core.String}C{std.core.String}C{std.core.String}C{std.core.String}C{std.core.String}C{std.core.String}C{"
+        "std.core.String}"
+        "C{std.core.String}C{std.core.String}C{std.core.String}lC{bundleManager.AbilityInfo.AbilityInfo}C{@ohos.app."
+        "ability.Configuration.Configuration}C{bundleManager.HapModuleInfo.HapModuleInfo}:",
+        (ani_long)nativeContext,
+        (ani_long)rowContext,
+        reinterpret_cast<ani_ref>(appInfoObj),
+        reinterpret_cast<ani_ref>(resourceMgrObj),
+        preferencesDirString,
+        databaseDirString,
+        cacheDirString,
+        filesDirString,
+        tempDirString,
+        cloudFileDirString,
+        distributedFilesDirString,
+        bundleCodeDirString,
+        resourceDirString,
+        processNameString,
+        (ani_long)eventHubNativeContext,
+        abilityInfoRef,
+        configurationObj,
+        hapModuleInfoRef);
+    if (contextObj == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null contextObj");
+        delete nativeContext;
+        delete eventHubNativeContext;
+        delete rowContext;
         return nullptr;
     }
     return contextObj;
