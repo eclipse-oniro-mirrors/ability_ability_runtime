@@ -39,7 +39,6 @@ ohos_shared_library("js_environment") {
   sources = [
     "${utils_path}/src/js_env_logger.cpp",
     "src/js_environment.cpp",
-    "src/source_map.cpp",
     "src/uncaught_exception_callback.cpp",
   ]
 

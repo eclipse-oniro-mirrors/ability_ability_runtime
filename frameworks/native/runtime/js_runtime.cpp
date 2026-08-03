@@ -62,9 +62,9 @@
 #include "extractor.h"
 #include "replace_intl_module.h"
 #include "system_ability_definition.h"
-#include "source_map.h"
-#include "source_map_operator.h"
+#include "dfx_jsnapi.h"
 #include "worker_info.h"
+#include "ffrt.h"
 
 #ifdef SUPPORT_SCREEN
 #include "hot_reloader.h"
@@ -788,8 +788,7 @@ bool JsRuntime::Initialize(const Options& options)
     }
 
     if (!options.preload) {
-        auto operatorObj = std::make_shared<JsEnv::SourceMapOperator>(options.bundleName);
-        InitSourceMap(operatorObj);
+        SourceMapInit(options.bundleName);
 
         if (options.isUnique) {
             TAG_LOGD(AAFwkTag::JSRUNTIME, "Not supported TimerModule when form render");
@@ -1005,13 +1004,26 @@ void JsRuntime::CreatePluginDefaultNamespace(const std::string &lddictionaries)
     moduleManager->InheritNamespaceEachOther(currentNamespace, pluginDefaultNamespace);
 }
 
-void JsRuntime::InitSourceMap(const std::shared_ptr<JsEnv::SourceMapOperator> operatorObj)
+void JsRuntime::SourceMapInit(const std::string bundleName)
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     CHECK_POINTER(jsEnv_);
-    JsEnv::SourceMap::RegisterReadSourceMapCallback(JsRuntime::ReadSourceMapData);
-    JsEnv::SourceMap::RegisterGetHapPathCallback(JsModuleReader::GetHapPathList);
-    jsEnv_->InitSourceMap(operatorObj);
+
+    auto init = [bundleName]() {
+        DFXJSNApi::SourceMapSetInitStatus(false);
+        std::vector<std::string> hapList;
+        JsModuleReader::GetHapPathList(bundleName, hapList);
+        for (auto &hapInfo : hapList) {
+            if (!hapInfo.empty()) {
+                std::string sourceMapData;
+                JsRuntime::ReadSourceMapData(hapInfo, MERGE_SOURCE_MAP_PATH, sourceMapData);
+                DFXJSNApi::SourceMapSplitSourceMap(sourceMapData);
+            }
+        }
+        DFXJSNApi::SourceMapSetInitStatus(true);
+    };
+
+    ffrt::submit(init, {}, {}, ffrt::task_attr().qos(ffrt::qos_user_initiated));
 }
 
 void JsRuntime::InitSourceMap(const std::string hqfFilePath)
@@ -1024,13 +1036,7 @@ void JsRuntime::InitSourceMap(const std::string hqfFilePath)
     }
     std::string str(soureMapBuffer.begin(), soureMapBuffer.end());
     CHECK_POINTER(jsEnv_);
-    auto sourceMapOperator = jsEnv_->GetSourceMapOperator();
-    if (sourceMapOperator != nullptr) {
-        auto sourceMapObj = sourceMapOperator->GetSourceMapObj();
-        if (sourceMapObj != nullptr) {
-            sourceMapObj->SplitSourceMap(str);
-        }
-    }
+    DFXJSNApi::SourceMapSplitSourceMap(str);
 }
 
 void JsRuntime::Deinitialize()
