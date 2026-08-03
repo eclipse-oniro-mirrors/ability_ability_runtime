@@ -19,6 +19,8 @@ namespace OHOS {
 namespace AAFwk {
 int MyFlag::flag_ = 0;
 bool MyFlag::permissionFileAccessManager_ = false;
+bool MyFlag::permissionAgentFileAccess_ = false;
+bool MyFlag::permissionAgentFileAccessDeclared_ = false;
 bool MyFlag::permissionWriteImageVideo_ = false;
 bool MyFlag::permissionReadImageVideo_ = false;
 bool MyFlag::permissionAllMedia_ = false;

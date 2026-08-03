@@ -69,6 +69,8 @@ public:
     {
         flag_ = 0;
         permissionFileAccessManager_ = false;
+        permissionAgentFileAccess_ = false;
+        permissionAgentFileAccessDeclared_ = false;
         permissionWriteImageVideo_ = false;
         permissionReadImageVideo_ = false;
         permissionAllMedia_ = false;
@@ -126,6 +128,8 @@ public:
 
     static int flag_;
     static bool permissionFileAccessManager_;
+    static bool permissionAgentFileAccess_;
+    static bool permissionAgentFileAccessDeclared_;
     static bool permissionWriteImageVideo_;
     static bool permissionReadImageVideo_;
     static bool permissionWriteAudio_;
