@@ -17,6 +17,13 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 module_output_path = "ability_runtime/ability_runtime/clitool"
 
 ohos_unittest("cli_tool_mgr_service_test") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
   module_out_path = module_output_path
 
   include_dirs = [
@@ -79,6 +86,7 @@ ohos_unittest("cli_tool_mgr_service_test") {
     "ipc:ipc_core",
     "json:nlohmann_json_static",
     "kv_store:distributeddata_inner",
+    "selinux_adapter:librestorecon",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
   ]
