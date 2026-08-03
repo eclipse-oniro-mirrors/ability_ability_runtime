@@ -47,14 +47,20 @@ void CheckStatusBarTask::Cancel()
 
 void CheckStatusBarTask::Run()
 {
-    std::lock_guard<ffrt::mutex> lock(cancelMutex_);
-    if (task_ == nullptr) {
-        TAG_LOGI(AAFwkTag::KEEP_ALIVE, "task is canceled");
-        return;
+    std::function<void()> localTask;
+    {
+        std::lock_guard<ffrt::mutex> lock(cancelMutex_);
+        if (task_ == nullptr) {
+            TAG_LOGI(AAFwkTag::KEEP_ALIVE, "task is canceled");
+            return;
+        }
+        localTask = std::move(task_);
+        task_ = nullptr;
     }
-
     TAG_LOGI(AAFwkTag::KEEP_ALIVE, "run check task");
-    task_();
+    if (localTask) {
+        localTask();
+    }
 }
 
 KeepAliveProcessManager &KeepAliveProcessManager::GetInstance()
