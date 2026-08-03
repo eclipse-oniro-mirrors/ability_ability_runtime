@@ -1,7 +1,7 @@
 # 代码检视报告 — <scope>（Round <N> / 最新提交）
 
-> 统一报告由 codecheck 工作台生成，**用于门禁管控**。所有 codecheck 检视（通用编排、deep-scan、单维度 skill）合并出的统一报告必须遵循本模板：章节顺序、字段名、报告元数据块、评分与门禁规则均为**固定格式**，跨报告保持一致，便于门禁脚本解析与历史对比。
-> 生成入口：[`README.md`](README.md) → Step 4；合并逻辑见 [`codecheck-orchestrator/SKILL.md`](codecheck-orchestrator/SKILL.md)。
+> 统一报告由 codecheck 工作台生成，**用于门禁管控**。所有 codecheck 报告（含 orchestrator 合并出的统一报告、单 scanner 直接产出的统一报告）必须遵循本模板：章节顺序、字段名、报告元数据块、评分与门禁规则均为**固定格式**，跨报告保持一致，便于门禁脚本解析与历史对比。
+> 生成入口：[`README.md`](README.md) → Step 5；合并逻辑见 [`orchestrator/SKILL.md`](orchestrator/SKILL.md)。
 > 权威评分与门禁规则见文末 **附录 A**，生成时必须按其计算，不得自创分值。
 
 ---
@@ -70,7 +70,7 @@ codecheck_report:
 
 **决策依据**（逐条列出，门禁脚本比对 YAML 块复核）：
 - 依据 1：<如 "存在 1 项 P0（F-01），命中附录 A 决策矩阵第 1 行 → block">
-- 依据 2：<如 "必检维度 external-input-audit 未执行且未豁免 → insufficient">
+- 依据 2：<如 "必检维度 input-scanner 未执行且未豁免 → insufficient">
 - 依据 3：<评分项、P1 处置要求、待跟进项数量>
 
 **阻塞项（Gate Blocker）**：
@@ -128,13 +128,13 @@ codecheck_report:
 
 > 保留各 skill 原始结论（可精简字段，不可改判等级）。编号固定：5.1/5.2/… 对应实际执行维度；未执行的维度删除小节或标注"未执行（原因）"。
 
-### 5.1 <维度名，如 Security & Bug（经 deep-scan）>
+### 5.1 <维度名，如 Security & Bug（经 security-scanner）>
 
 | ID | 位置 | 类型 | 概述 | 等级 |
 |----|------|------|------|------|
 | F-01 | `path/file.cpp:123` | <问题类型> | <一句话> | P0 |
 
-### 5.2 <维度名，如 Logic Analyzer（经 deep-scan）>
+### 5.2 <维度名，如 Logic（经 logic-scanner）>
 
 ……
 
@@ -211,9 +211,9 @@ codecheck_report:
 
 | 目标特征 | 必检维度（缺失即 insufficient） |
 |---------|-------------------------------|
-| 通用路径/提交 | `deep-scan`（内含 bug+logic+security 三维度） |
-| `services/` 下、IPC/DB/文件/配置密集区 | `deep-scan` + `external-input-audit` |
-| `interfaces/kits/`、NAPI/ANI/C 绑定、指定 Kit | `api-audit` + 实现侧 `deep-scan` |
+| 通用路径/提交 | `security-scanner` + `logic-scanner`（security-scanner 内含 bug+security 双视角，覆盖崩溃/挂死/OOM/UAF/死锁/权限绕过/敏感数据泄漏等高影响缺陷与安全审查） |
+| `services/` 下、IPC/DB/文件/配置密集区 | `security-scanner` + `logic-scanner` + `input-scanner` |
+| `interfaces/kits/`、NAPI/ANI/C 绑定、指定 Kit | `api-scanner` + 实现侧 `security-scanner` + `logic-scanner` |
 
 ### A.4 格式一致性要求（门禁校验项）
 
