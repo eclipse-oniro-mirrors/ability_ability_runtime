@@ -46,6 +46,17 @@ int AccessTokenKit::GetHapTokenInfo(AccessTokenID tokenID, HapTokenInfo &hapInfo
     }
     return -1;
 }
+
+int AccessTokenKit::GetReqPermissions(AccessTokenID tokenID, std::vector<PermissionStateFull> &reqPermList,
+    bool isSystemGrant)
+{
+    if (MyFlag::permissionAgentFileAccessDeclared_) {
+        PermissionStateFull perm;
+        perm.permissionName = "ohos.permission.AGENT_FILE_ACCESS";
+        reqPermList.push_back(perm);
+    }
+    return 0;
+}
 } // namespace AccessToken
 } // namespace Security
 } // namespace OHOS

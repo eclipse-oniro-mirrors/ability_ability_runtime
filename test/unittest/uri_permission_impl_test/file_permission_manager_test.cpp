@@ -280,6 +280,112 @@ HWTEST_F(FilePermissionManagerTest, CheckDocsUriPermission_007, TestSize.Level1)
 }
 
 /*
+ * Feature: CheckDocsUriPermission
+ * Function: CheckDocsUriPermission
+ * SubFunction: NA
+ * FunctionPoints: AGENT_FILE_ACCESS(B) not declared, A denied -> denied (old A flow)
+ */
+HWTEST_F(FilePermissionManagerTest, CheckDocsUriPermission_AgentFileAccess_001, TestSize.Level1)
+{
+    TokenIdPermission caller(0);
+    MyFlag::permissionFileAccessManager_ = false;
+    MyFlag::permissionAgentFileAccess_ = false;
+    MyFlag::permissionAgentFileAccessDeclared_ = false;
+    std::string path = "/storage/Users/currentUser/files/test.txt";
+    bool ret = FilePermissionManager::CheckDocsUriPermission(caller, path);
+    ASSERT_FALSE(ret);
+}
+
+/*
+ * Feature: CheckDocsUriPermission
+ * Function: CheckDocsUriPermission
+ * SubFunction: NA
+ * FunctionPoints: AGENT_FILE_ACCESS(B) not declared, A granted -> granted (old A flow)
+ */
+HWTEST_F(FilePermissionManagerTest, CheckDocsUriPermission_AgentFileAccess_002, TestSize.Level1)
+{
+    TokenIdPermission caller(0);
+    MyFlag::permissionFileAccessManager_ = true;
+    MyFlag::permissionAgentFileAccess_ = false;
+    MyFlag::permissionAgentFileAccessDeclared_ = false;
+    std::string path = "/storage/Users/currentUser/files/test.txt";
+    bool ret = FilePermissionManager::CheckDocsUriPermission(caller, path);
+    ASSERT_TRUE(ret);
+}
+
+/*
+ * Feature: CheckDocsUriPermission
+ * Function: CheckDocsUriPermission
+ * SubFunction: NA
+ * FunctionPoints: system app, AGENT_FILE_ACCESS(B) declared and granted -> granted (B governs, even if A denied)
+ */
+HWTEST_F(FilePermissionManagerTest, CheckDocsUriPermission_AgentFileAccess_003, TestSize.Level1)
+{
+    TokenIdPermission caller(0);
+    MyFlag::IsSystemAppCall_ = true;
+    MyFlag::permissionFileAccessManager_ = false;
+    MyFlag::permissionAgentFileAccess_ = true;
+    MyFlag::permissionAgentFileAccessDeclared_ = true;
+    std::string path = "/storage/Users/currentUser/files/test.txt";
+    bool ret = FilePermissionManager::CheckDocsUriPermission(caller, path);
+    ASSERT_TRUE(ret);
+}
+
+/*
+ * Feature: CheckDocsUriPermission
+ * Function: CheckDocsUriPermission
+ * SubFunction: NA
+ * FunctionPoints: system app, AGENT_FILE_ACCESS(B) declared but denied -> denied (B governs, even if A granted)
+ */
+HWTEST_F(FilePermissionManagerTest, CheckDocsUriPermission_AgentFileAccess_004, TestSize.Level1)
+{
+    TokenIdPermission caller(0);
+    MyFlag::IsSystemAppCall_ = true;
+    MyFlag::permissionFileAccessManager_ = true;
+    MyFlag::permissionAgentFileAccess_ = false;
+    MyFlag::permissionAgentFileAccessDeclared_ = true;
+    std::string path = "/storage/Users/currentUser/files/test.txt";
+    bool ret = FilePermissionManager::CheckDocsUriPermission(caller, path);
+    ASSERT_FALSE(ret);
+}
+
+/*
+ * Feature: CheckDocsUriPermission
+ * Function: CheckDocsUriPermission
+ * SubFunction: NA
+ * FunctionPoints: non-system app, AGENT_FILE_ACCESS(B) declared and granted but ignored -> denied
+ */
+HWTEST_F(FilePermissionManagerTest, CheckDocsUriPermission_AgentFileAccess_005, TestSize.Level1)
+{
+    TokenIdPermission caller(0);
+    MyFlag::IsSystemAppCall_ = false;
+    MyFlag::permissionFileAccessManager_ = false;
+    MyFlag::permissionAgentFileAccess_ = true;
+    MyFlag::permissionAgentFileAccessDeclared_ = true;
+    std::string path = "/storage/Users/currentUser/files/test.txt";
+    bool ret = FilePermissionManager::CheckDocsUriPermission(caller, path);
+    ASSERT_FALSE(ret);
+}
+
+/*
+ * Feature: CheckDocsUriPermission
+ * Function: CheckDocsUriPermission
+ * SubFunction: NA
+ * FunctionPoints: non-system app, AGENT_FILE_ACCESS(B) declared and granted but ignored -> granted
+ */
+HWTEST_F(FilePermissionManagerTest, CheckDocsUriPermission_AgentFileAccess_006, TestSize.Level1)
+{
+    TokenIdPermission caller(0);
+    MyFlag::IsSystemAppCall_ = false;
+    MyFlag::permissionFileAccessManager_ = true;
+    MyFlag::permissionAgentFileAccess_ = true;
+    MyFlag::permissionAgentFileAccessDeclared_ = true;
+    std::string path = "/storage/Users/currentUser/files/test.txt";
+    bool ret = FilePermissionManager::CheckDocsUriPermission(caller, path);
+    ASSERT_TRUE(ret);
+}
+
+/*
  * Feature: InitDlSymbol
  * Function: InitDlSymbol
  * SubFunction: NA
