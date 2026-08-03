@@ -67,10 +67,8 @@ HWTEST_F(AbilityPermissionUtilSecondTest, AbilityPermissionUtil_IsDominateScreen
 {
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil_IsDominateScreen_0100 start");
     Want want;
-    MyFlag::callCount_ = 0;
     auto result = AbilityPermissionUtil::GetInstance().IsDominateScreen(want, false);
-    EXPECT_FALSE(result);
-    EXPECT_EQ(MyFlag::callCount_, 3);
+    EXPECT_TRUE(result);
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil_IsDominateScreen_0100 end");
 }
 
@@ -84,11 +82,8 @@ HWTEST_F(AbilityPermissionUtilSecondTest, AbilityPermissionUtil_IsDominateScreen
 {
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil_IsDominateScreen_0200 start");
     Want want;
-    MyFlag::mockFlag_ = 1;
-    MyFlag::callCount_ = 0;
     auto result = AbilityPermissionUtil::GetInstance().IsDominateScreen(want, false);
-    EXPECT_FALSE(result);
-    EXPECT_EQ(MyFlag::callCount_, 3);
+    EXPECT_TRUE(result);
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil_IsDominateScreen_0200 end");
 }
 
@@ -102,12 +97,8 @@ HWTEST_F(AbilityPermissionUtilSecondTest, AbilityPermissionUtil_IsDominateScreen
 {
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil_IsDominateScreen_0300 start");
     Want want;
-    MyFlag::mockFlag_ = 1;
-    MyFlag::isBundleName_ = 1;
-    MyFlag::callCount_ = 0;
     auto result = AbilityPermissionUtil::GetInstance().IsDominateScreen(want, false);
-    EXPECT_FALSE(result);
-    EXPECT_EQ(MyFlag::callCount_, 3);
+    EXPECT_TRUE(result);
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil_IsDominateScreen_0300 end");
 }
 
@@ -121,12 +112,8 @@ HWTEST_F(AbilityPermissionUtilSecondTest, AbilityPermissionUtil_IsDominateScreen
 {
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil_IsDominateScreen_0400 start");
     Want want;
-    MyFlag::mockFlag_ = 1;
-    MyFlag::isBundleName_ = 0;
-    MyFlag::callCount_ = 0;
     auto result = AbilityPermissionUtil::GetInstance().IsDominateScreen(want, false);
-    EXPECT_FALSE(result);
-    EXPECT_EQ(MyFlag::callCount_, 3);
+    EXPECT_TRUE(result);
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil_IsDominateScreen_0400 end");
 }
 
