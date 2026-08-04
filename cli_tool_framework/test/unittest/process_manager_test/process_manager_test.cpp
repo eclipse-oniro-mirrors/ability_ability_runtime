@@ -455,6 +455,19 @@ HWTEST_F(ProcessManagerTest, Killpg_0100, TestSize.Level1)
     EXPECT_FALSE(manager.Killpg(999999));
 }
 
+/**
+ * @tc.name: ProcessManager_Killpg_0200
+ * @tc.desc: Test Killpg rejects non-positive pid without calling kill
+ * @tc.type: FUNC
+ */
+HWTEST_F(ProcessManagerTest, Killpg_0200, TestSize.Level1)
+{
+    auto& manager = ProcessManager::GetInstance();
+
+    EXPECT_FALSE(manager.Killpg(0));
+    EXPECT_FALSE(manager.Killpg(-1));
+}
+
 // ==================== CreateShellProcess Tests ====================
 
 /**

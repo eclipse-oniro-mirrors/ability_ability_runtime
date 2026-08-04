@@ -61,6 +61,24 @@ HWTEST_F(CliCommonUtilTest, CcmUtil_GetCliConcurrencyLimit_0100, TestSize.Level1
 }
 
 /**
+ * @tc.name: CcmUtil_GetCliConcurrencyLimit_0200
+ * @tc.desc: Test ccm util falls back to default when system parameter is non-positive
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliCommonUtilTest, CcmUtil_GetCliConcurrencyLimit_0200, TestSize.Level1)
+{
+    auto &ccmUtil = CcmUtil::GetInstance();
+
+    CliCommonMock::intParameterValue = -1;
+    ccmUtil.maxCliQuantity_.isLoaded = false;
+    EXPECT_EQ(ccmUtil.GetCliConcurrencyLimit(), DEFAULT_MAX_CLI_QUANTITY);
+
+    CliCommonMock::intParameterValue = 0;
+    ccmUtil.maxCliQuantity_.isLoaded = false;
+    EXPECT_EQ(ccmUtil.GetCliConcurrencyLimit(), DEFAULT_MAX_CLI_QUANTITY);
+}
+
+/**
  * @tc.name: PermissionUtil_VerifyAccessToken_0200
  * @tc.desc: Test single permission grant and denial branches
  * @tc.type: FUNC

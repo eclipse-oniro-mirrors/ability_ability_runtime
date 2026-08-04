@@ -1453,6 +1453,31 @@ HWTEST_F(CliToolManagerServiceTest, WaitPid_0400, TestSize.Level1)
 }
 
 /**
+ * @tc.name: CliToolManagerService_WaitPid_0500
+ * @tc.desc: Test WaitPid invalidates processId after reaping to prevent PID-reuse misuse
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, WaitPid_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_WaitPid_0500 start");
+
+    auto record = std::make_shared<SessionRecord>();
+    record->sessionId = "invalidate_pid_session";
+    record->processId = 11111;
+    record->MarkStdoutClosed();
+    record->MarkStderrClosed();
+    service_->AddSessionRecord(record);
+
+    service_->WaitPid(record->processId, 0, 0);
+
+    EXPECT_EQ(record->processId, -1);
+    EXPECT_TRUE(record->HasProcessExited());
+    EXPECT_EQ(service_->GetSessionRecord(record->sessionId), nullptr);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_WaitPid_0500 end");
+}
+
+/**
  * @tc.name: CliToolManagerService_ClearSession_0100
  * @tc.desc: Test ClearSession with missing session
  * @tc.type: FUNC
@@ -1528,6 +1553,32 @@ HWTEST_F(CliToolManagerServiceTest, ClearSession_0300, TestSize.Level1)
     }
 
     TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ClearSession_0300 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ClearSession_0400
+ * @tc.desc: Test ClearSession treats already-exited process (processId<=0) as success
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ClearSession_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ClearSession_0400 start");
+
+    auto record = std::make_shared<SessionRecord>();
+    record->sessionId = "clear_already_exited_session";
+    record->callerPid = IPCSkeleton::GetCallingPid();
+    record->sessionType = SessionType::CLI;
+    record->processId = -1;
+    record->SetState(SessionState::RUNNING);
+    service_->AddSessionRecord(record);
+
+    int32_t result = service_->ClearSession(record->sessionId);
+    EXPECT_TRUE(result == ERR_OK || IsPermissionGateResult(result));
+    if (result == ERR_OK) {
+        EXPECT_EQ(record->GetState(), SessionState::CANCELLING);
+    }
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ClearSession_0400 end");
 }
 
 /**
@@ -1956,6 +2007,35 @@ HWTEST_F(CliToolManagerServiceTest, OnStop_0100, TestSize.Level1)
     EXPECT_TRUE(service_->sessionRecords_.empty());
 
     TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_OnStop_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_OnStop_0200
+ * @tc.desc: Test OnStop skips already-exited sessions when collecting active pids
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, OnStop_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_OnStop_0200 start");
+
+    service_->initialized_ = true;
+    auto liveRecord = std::make_shared<SessionRecord>();
+    liveRecord->sessionId = "stop_live_session";
+    liveRecord->processId = 999999;
+    service_->AddSessionRecord(liveRecord);
+
+    auto exitedRecord = std::make_shared<SessionRecord>();
+    exitedRecord->sessionId = "stop_exited_session";
+    exitedRecord->processId = 999998;
+    exitedRecord->SetTerminalResult(0, 0); // mark process exited
+    service_->AddSessionRecord(exitedRecord);
+
+    service_->OnStop();
+
+    EXPECT_FALSE(service_->initialized_);
+    EXPECT_TRUE(service_->sessionRecords_.empty());
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_OnStop_0200 end");
 }
 
 /**
