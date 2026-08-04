@@ -704,5 +704,44 @@ HWTEST_F(UpdateCallerInfoUtilTest, ClearProtectedWantParam_HideSensitiveType_002
     // Verify the parameter value
     EXPECT_EQ(want.GetIntParam(HIDE_SENSITIVE_TYPE, -1), 4);
 }
+
+/**
+ * @tc.name: UpdateCallerInfoByHapTokenId_0001
+ * @tc.desc: Test UpdateCallerInfoByHapTokenId with callerTokenId = 0 (boundary, should early-return
+ *           without modifying Want, leaving baseline value untouched)
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, UpdateCallerInfoByHapTokenId_0001, TestSize.Level1)
+{
+    auto updateCallerUtil = std::make_shared<UpdateCallerInfoUtil>();
+    Want want;
+    want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, std::string("baseline_bundle"));
+
+    // Boundary: callerTokenId = 0, function should log warning and early-return
+    updateCallerUtil->UpdateCallerInfoByHapTokenId(want, 0);
+
+    // Want baseline value must remain (early-return path verified)
+    EXPECT_EQ(want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME), "baseline_bundle");
+}
+
+/**
+ * @tc.name: UpdateCallerInfoByHapTokenId_0002
+ * @tc.desc: Test UpdateCallerInfoByHapTokenId with invalid callerTokenId (GetHapTokenInfo fails,
+ *           should early-return without modifying Want)
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, UpdateCallerInfoByHapTokenId_0002, TestSize.Level1)
+{
+    auto updateCallerUtil = std::make_shared<UpdateCallerInfoUtil>();
+    Want want;
+    want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, std::string("baseline_bundle"));
+
+    // Invalid callerTokenId (no corresponding HAP token in test env): GetHapTokenInfo returns non-ERR_OK,
+    // function should log error and early-return
+    updateCallerUtil->UpdateCallerInfoByHapTokenId(want, 0xFFFFFFFF);
+
+    // Want baseline value must remain (failure-path early-return verified)
+    EXPECT_EQ(want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME), "baseline_bundle");
+}
 } // namespace AAFwk
 } // namespace OHOS
