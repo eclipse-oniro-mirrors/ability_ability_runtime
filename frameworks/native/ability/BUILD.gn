@@ -45,6 +45,7 @@ config("ability_context_public_config") {
 
 ohos_shared_library("ability_context_native") {
   branch_protector_ret = "pac_ret"
+  branch_protector_ret = "bti"
 
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
 

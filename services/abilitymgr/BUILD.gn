@@ -137,6 +137,7 @@ ohos_shared_library("abilityms") {
     debug = false
   }
   branch_protector_ret = "pac_ret"
+  branch_protector_ret = "bti"
   shlib_type = "sa"
   sources = abilityms_files
   cflags_cc = []

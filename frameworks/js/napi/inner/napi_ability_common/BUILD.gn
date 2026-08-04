@@ -20,6 +20,7 @@ config("napi_ability_common_public_config") {
 
 ohos_shared_library("napi_ability_common") {
   branch_protector_ret = "pac_ret"
+  branch_protector_ret = "bti"
 
   public_configs = [
     ":napi_ability_common_public_config",

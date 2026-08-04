@@ -107,6 +107,7 @@ config("tdd_config") {
 #build so
 ohos_shared_library("perm_verification") {
   branch_protector_ret = "pac_ret"
+  branch_protector_ret = "bti"
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -445,6 +446,7 @@ ohos_shared_library("user_controller") {
     debug = false
   }
   branch_protector_ret = "pac_ret"
+  branch_protector_ret = "bti"
 
   include_dirs = [
     "include/user_controller",

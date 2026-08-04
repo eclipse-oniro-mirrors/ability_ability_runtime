@@ -17,6 +17,7 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 ohos_shared_library("agent_fwk") {
   branch_protector_ret = "pac_ret"
+  branch_protector_ret = "bti"
 
   sanitize = {
     cfi = true

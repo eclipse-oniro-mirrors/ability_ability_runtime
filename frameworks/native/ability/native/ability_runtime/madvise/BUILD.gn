@@ -26,6 +26,7 @@ config("madvise_public_config") {
 
 ohos_shared_library("ability_madvise") {
   branch_protector_ret = "pac_ret"
+  branch_protector_ret = "bti"
 
   sanitize = {
     cfi = true
