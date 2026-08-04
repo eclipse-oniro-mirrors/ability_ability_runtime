@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_UPDATE_CALLER_INFO_UTIL_H
 #define OHOS_ABILITY_RUNTIME_UPDATE_CALLER_INFO_UTIL_H
 
+#include <cstdint>
 #include <string>
 #include "caller_info.h"
 #include "want.h"
@@ -32,6 +33,7 @@ public:
         int32_t &callerUid, int32_t &callerPid);
     void UpdateCallerInfo(Want& want, const sptr<IRemoteObject> &callerToken,
         std::shared_ptr<IndirectCallerInfo> indirectCallerInfo = nullptr);
+    void UpdateCallerInfoByHapTokenId(Want& want, uint32_t callerTokenId);
     void UpdateBackToCallerFlag(const sptr<IRemoteObject> &callerToken, Want &want, int32_t requestCode, bool backFlag);
     void UpdateCallerInfoFromToken(Want& want, const sptr<IRemoteObject> &token);
     void UpdateDmsCallerInfo(Want& want, const sptr<IRemoteObject> &callerToken);
