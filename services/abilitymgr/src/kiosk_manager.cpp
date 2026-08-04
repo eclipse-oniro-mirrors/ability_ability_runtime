@@ -139,10 +139,6 @@ int32_t KioskManager::EnterKioskMode(sptr<IRemoteObject> callerToken)
         return INVALID_PARAMETERS_ERR;
     }
     std::string bundleName = record->GetAbilityInfo().bundleName;
-    if (!CheckCallerIsForeground(callerToken)) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "The application is not in the foreground !");
-        return ERR_APP_NOT_IN_FOCUS;
-    }
     int32_t kioskBundleUid = IPCSkeleton::GetCallingUid();
     {
         std::lock_guard<std::mutex> lock(kioskManagerMutex_);
@@ -356,16 +352,6 @@ void KioskManager::RemoveKioskInterceptor()
         return;
     }
     interceptorExecuter->RemoveInterceptor("KioskWhitelist");
-}
-
-bool KioskManager::CheckCallerIsForeground(sptr<IRemoteObject> callerToken)
-{
-    AppExecFwk::RunningProcessInfo processInfo;
-    DelayedSingleton<AppScheduler>::GetInstance()->GetRunningProcessInfoByToken(
-        callerToken, processInfo);
-
-    return processInfo.state_ ==
-           AppExecFwk::AppProcessState::APP_STATE_FOREGROUND;
 }
 } // namespace AAFwk
 } // namespace OHOS

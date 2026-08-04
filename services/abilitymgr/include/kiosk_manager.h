@@ -57,7 +57,6 @@ private:
     std::function<void()> GetExitKioskModeCallback();
     void AddKioskInterceptor();
     void RemoveKioskInterceptor();
-    bool CheckCallerIsForeground(sptr<IRemoteObject> callerToken);
 
     std::unordered_set<std::string> whitelist_;
     KioskStatus kioskStatus_;

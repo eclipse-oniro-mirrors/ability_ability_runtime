@@ -1045,8 +1045,6 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, EnterKioskMode_Fail, TestSize.Level1)
     result = abilityManagerService->EnterKioskMode(callerToken);
     if (!system::GetBoolParameter(KIOSK_MODE_ENABLED, false)) {
         ASSERT_EQ(result, ERR_CAPABILITY_NOT_SUPPORT);
-    } else {
-        ASSERT_EQ(result, ERR_APP_NOT_IN_FOCUS);
     }
 }
 
@@ -1122,8 +1120,6 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, KioskManager_EnterKioskMode_Fail_01, 
     auto result = KioskManager::GetInstance().EnterKioskMode(callerToken);
     if (!system::GetBoolParameter(KIOSK_MODE_ENABLED, false)) {
         ASSERT_EQ(result, ERR_CAPABILITY_NOT_SUPPORT);
-    } else {
-        ASSERT_EQ(result, ERR_APP_NOT_IN_FOCUS);
     }
 }
 
