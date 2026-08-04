@@ -38,6 +38,7 @@ config("extension_manager_config") {
 
 ohos_shared_library("extension_manager") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   sources = [
     "${ability_runtime_services_path}/abilitymgr/src/extension_running_info.cpp",

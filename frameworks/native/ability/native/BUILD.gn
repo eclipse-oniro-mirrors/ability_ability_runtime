@@ -642,6 +642,7 @@ config("extensionkit_public_config") {
 
 ohos_shared_library("extensionkit_native") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   defines = [ "AMS_LOG_TAG = \"Ability\"" ]
   defines += [ "AMS_LOG_DOMAIN = 0xD001300" ]
@@ -1628,6 +1629,7 @@ ohos_shared_library("form_extension_module") {
 
 ohos_shared_library("service_extension") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
 
@@ -2194,6 +2196,7 @@ ohos_shared_library("ui_service_extension_module") {
     debug = false
   }
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   include_dirs = [
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_service_extension_ability",
@@ -2336,6 +2339,7 @@ ohos_shared_library("continuation_ipc") {
 
 ohos_shared_library("data_ability_helper") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   include_dirs =
       [ "${ability_runtime_path}/interfaces/kits/native/ability/native" ]
@@ -4007,6 +4011,7 @@ ohos_shared_library("app_service_extension") {
     debug = false
   }
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
 
@@ -4155,6 +4160,7 @@ ohos_shared_library("modular_object_extension") {
     debug = false
   }
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   configs = [ 
     ":modular_object_extension_config",
@@ -4215,6 +4221,7 @@ ohos_shared_library("modular_object_extension") {
     debug = false
   }
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   sources = [ "${ability_runtime_native_path}/ability/native/modular_object_extension/modular_object_extension_module_loader.cpp" ]
 

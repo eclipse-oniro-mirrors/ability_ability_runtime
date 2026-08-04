@@ -441,6 +441,7 @@ ohos_shared_library("start_window_option") {
 
 ohos_shared_library("ability_connect_callback_stub") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   sanitize = {
     cfi = true

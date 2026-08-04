@@ -76,6 +76,7 @@ config("appkit_public_config") {
 # build so
 ohos_shared_library("appkit_native") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   include_dirs = [
     "native",
@@ -467,6 +468,7 @@ ohos_shared_library("ability_stage_ani") {
 # build so
 ohos_shared_library("app_context") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   include_dirs = [
     "${ability_runtime_path}/ets_environment/interfaces/inner_api",
@@ -787,6 +789,7 @@ config("application_context_manager_config") {
 
 ohos_shared_library("appkit_manager_helper") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   sanitize = {
     cfi = true
@@ -879,6 +882,7 @@ config("image_observer_manager_public_config") {
 
 ohos_shared_library("application_image_observer_manager") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   sanitize = {
     cfi = true
