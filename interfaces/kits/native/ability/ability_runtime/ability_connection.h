@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_ABILITY_CONNECTION_H
 #define OHOS_ABILITY_RUNTIME_ABILITY_CONNECTION_H
 
+#include <atomic>
 #include <mutex>
 #include "ability_connect_callback.h"
 #include "ability_connect_callback_stub.h"
@@ -90,8 +91,8 @@ public:
 private:
     std::vector<sptr<AbilityConnectCallback>> abilityConnectCallbackList_;
     sptr<IRemoteObject> remoteObject_ = nullptr;
-    int resultCode_ = -1;
-    int connectionState_ = CONNECTION_STATE_DISCONNECTED;
+    std::atomic<int> resultCode_ = -1;
+    std::atomic<int> connectionState_ = CONNECTION_STATE_DISCONNECTED;
     std::mutex mutex_;
 };
 } // namespace AbilityRuntime
