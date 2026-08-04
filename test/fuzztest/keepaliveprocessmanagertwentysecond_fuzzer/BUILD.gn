@@ -1,0 +1,132 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#####################hydra-fuzz###################
+import("//build/config/features.gni")
+import("//build/ohos.gni")
+import("//build/test.gni")
+import("//foundation/ability/ability_runtime/ability_runtime.gni")
+module_output_path = "ability_runtime/abilitymgr"
+
+##############################fuzztest##########################################
+ohos_fuzztest("KeepAliveProcessManagerTwentySecondFuzzTest") {
+  module_out_path = module_output_path
+
+  fuzz_config_file =
+      "${ability_runtime_test_path}/fuzztest/keepaliveprocessmanagertwentysecond_fuzzer"
+  include_dirs = [
+    "${ability_runtime_innerkits_path}/ability_manager/include",
+    "${ability_runtime_innerkits_path}/app_manager/include/appmgr",
+    "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
+    "${ability_runtime_services_path}/abilitymgr/include/utils",
+    "${ability_runtime_services_path}/abilitymgr/include/keep_alive",
+    "${ability_runtime_services_path}/common/include",
+    "${ability_runtime_test_path}/fuzztest/",
+  ]
+  cflags = [
+    "-g",
+    "-O0",
+    "-Wno-unused-variable",
+    "-fno-omit-frame-pointer",
+  ]
+  sources = [
+    "${ability_runtime_innerkits_path}/app_manager/src/appmgr/app_mgr_client.cpp",
+    "${ability_runtime_innerkits_path}/app_manager/src/appmgr/app_service_manager.cpp",
+    "${ability_runtime_native_path}/appkit/ability_bundle_manager_helper/bundle_mgr_helper.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/keep_alive/ability_keep_alive_data_manager.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/keep_alive/ability_keep_alive_service.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/keep_alive/keep_alive_info.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/keep_alive/keep_alive_process_manager.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/process_options.cpp",
+    "${ability_runtime_services_path}/common/src/app_utils.cpp",
+    "${ability_runtime_services_path}/common/src/json_utils.cpp",
+    "${ability_runtime_services_path}/common/src/permission_verification.cpp",
+    "${ability_runtime_services_path}/common/src/record_cost_time_util.cpp",
+    "keepaliveprocessmanagertwentysecond_fuzzer.cpp",
+  ]
+
+  configs = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager_public_config",
+    "${ability_runtime_services_path}/abilitymgr:abilityms_config",
+  ]
+
+  deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/ability_manager:mission_info",
+    "${ability_runtime_native_path}/ability/native:abilitykit_native",
+    "${ability_runtime_path}/utils/server/startup:startup_util",
+    "${ability_runtime_services_path}/abilitymgr:abilityms",
+    "${ability_runtime_services_path}/common:app_util",
+    "${ability_runtime_services_path}/common:user_controller",
+  ]
+
+  external_deps = [
+    "ability_base:base",
+    "ability_base:want",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libtokenid_sdk",
+    "background_task_mgr:bgtaskmgr_innerkits",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "common_event_service:cesfwk_core",
+    "common_event_service:cesfwk_innerkits",
+    "config_policy:configpolicy_util",
+    "eventhandler:libeventhandler",
+    "ffrt:libffrt",
+    "hicollie:libhicollie",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "hitrace:hitrace_meter",
+    "init:libbeget_proxy",
+    "input:libmmi-client",
+    "ipc:ipc_core",
+    "kv_store:distributeddata_inner",
+    "napi:ace_napi",
+    "relational_store:native_dataability",
+    "relational_store:native_rdb",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+    "window_manager:libwsutils",
+    "window_manager:scene_session",
+    "window_manager:session_manager_lite",
+  ]
+
+  if (ability_runtime_child_process) {
+    defines = [ "SUPPORT_CHILD_PROCESS" ]
+  }
+
+  if (ability_runtime_graphics) {
+    deps += []
+    external_deps += [
+      "i18n:intl_util",
+      "window_manager:libwm",
+    ]
+  }
+  if (ability_runtime_upms) {
+    deps += [
+      "${ability_runtime_innerkits_path}/uri_permission:uri_permission_mgr",
+    ]
+  }
+}
+
+###############################################################################
+group("fuzztest") {
+  testonly = true
+  deps = []
+  deps += [
+    # deps file
+    ":KeepAliveProcessManagerTwentySecondFuzzTest",
+  ]
+}
+###############################################################################
