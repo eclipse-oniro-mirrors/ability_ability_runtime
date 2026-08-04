@@ -885,7 +885,7 @@ void ETSRuntime::DebuggerConnectionHandler(bool isDebugApp, bool isStartWithDebu
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "null js vm");
         return;
     }
-    g_etsEnvFuncs->NotifyDebugMode(getproctid(), instanceId_, isStartWithDebug, vm);
+    g_etsEnvFuncs->NotifyDebugMode(getproctid(), instanceId_, isStartWithDebug, vm, isDebugApp);
 }
 
 void ETSRuntime::StopDebugMode()
