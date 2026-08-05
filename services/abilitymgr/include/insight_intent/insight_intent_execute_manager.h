@@ -152,6 +152,8 @@ private:
     static int32_t UpdateEntryDecoratorParams(const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param,
         AbilityRuntime::ExtractInsightIntentInfo &info, Want &want);
     static int32_t UpdateEntryDecoratorParams(Want &want, AppExecFwk::ExecuteMode executeMode, int32_t userId);
+    static std::string GetAbilityNameFromMatched(
+        AbilityRuntime::ExtractInsightIntentGenericInfo &info);
     static std::string GetMainElementName(
         const std::string &bundleName, const std::string &moduleName, int32_t userId = -1);
     static std::shared_ptr<AbilityRuntime::InsightIntentEntityInfo> CheckEntityQueryable(
