@@ -1,0 +1,156 @@
+# Ability_Runtime FMEA 知识库
+# 本文件覆盖领域 = Ability_Runtime。读取方：odk-design skill 按 SKILL.md 的领域匹配规则读取对应文件。
+# 分析对象由设计技能根据业务流程中实际导致触发条件的对象填写，不在此预设。
+
+- 触发条件: 启动UIAbility
+  故障模式: 启动失败
+  故障影响: 应用启动失败如应用打不开、点击没反应
+  故障原因: 1. 没有权限、传入参数不合法; 2. 目标应用不存在; 3.拦截器拦截; 4. 隐式匹配未匹配到应用; 5.从后台拉起应用失败; 6. 拉起一个不可见的UIAbility
+  严酷度: 提示
+  恢复措施: 根据错误码信息修改入参；确保传入的应用包名存在； 确保待匹配应用已安装；确保在前台拉起其他应用；确保拉起的目标Ability被配置为可见的
+  关键日志: ability_manager_service/generate ability request local error/doProcess failed/generate request failed
+  大数据打点事件: START_ABILITY_ERROR
+
+- 触发条件: 启动Extension
+  故障模式: 启动Extension失败
+  故障影响: 目标Extension无法拉起
+  故障原因: 1. 发起方UIAbility处于后台，需要申请长时任务; 2. 目标应用不存在; 3. 拦截器拦截; 4. 没有权限、传入参数不合法; 5. 应用处置
+  严酷度: 提示
+  恢复措施: 确保UIAbility在前台，或者申请长时任务；确保传入的应用存在；根据错误码信息修改入参
+  关键日志: without start serviceExtension/generate ability request local error/doProcess failed/ability_manager_service/app is intercepted
+  大数据打点事件: START_EXTENSION_ERROR
+
+- 触发条件: 停止Extension
+  故障模式: 停止Extension失败
+  故障影响: 目标Extension无法销毁
+  故障原因: 1. 不支持跨用户操作; 2. 没有权限; 3. 目标应用不存在
+  严酷度: 提示
+  恢复措施: 确保传入当前用户userId；确保处于前台，或有后台调用或有停止不可见应用权限；确保传入的应用存在
+  关键日志: multi-user non-concurrent unsatisfied/checkOptExtensionAbility error/generate ability request local error
+  大数据打点事件: STOP_EXTENSION_ERROR
+
+- 触发条件: 连接ServiceExtension
+  故障模式: 连接ServiceExtension失败
+  故障影响: 目标Extension无法连接
+  故障原因: 1. 发起方UIAbility处于后台，需要申请长时任务; 2. 目标应用不存在; 3. 拦截器拦截; 4. 没有权限、传入参数不合法; 5. 应用处置
+  严酷度: 提示
+  恢复措施: 确保UIAbility在前台，或者申请长时任务；确保传入的应用包名存在；根据错误码信息修改入参
+  关键日志: without start serviceExtension/generate ability request local error/doProcess failed/ability_manager_service/app is intercepted
+  大数据打点事件: CONNECT_SERVICE_ERROR
+
+- 触发条件: 断开ServiceExtension连接
+  故障模式: 断开ServiceExtension连接失败
+  故障影响: 目标Extension无法断开连接
+  故障原因: 1. 目标连接ID不存在
+  严酷度: 提示
+  恢复措施: 确保传入的连接ID存在
+  关键日志: Disconnect error
+  大数据打点事件: DISCONNECT_SERVICE_ERROR
+
+- 触发条件: 执行意图框架
+  故障模式: 执行失败
+  故障影响: 意图执行失败
+  故障原因: 1. 传入参数不合法; 2. 鉴权失败，非系统api调用，或者无ohos.permission.EXECUTE_INSIGHT_INTENT权限; 3. startAbility失败; 4. 应用InsightIntentExecutor意图执行失败
+  严酷度: 严重
+  恢复措施: 根据错误码信息修改入参；申请对应权限；根据ams报错进一步分析原因后修复；应用修改意图执行实现
+  关键日志: invalid argc、parse on off type failed、invalid param/system-api cannot use、permission ohos.permission.EXECUTE_INSIGHT_INTENT verification failed/ExecuteIntent done, ret:/reject function
+  大数据打点事件: EXECUTE_INSIGHT_INTENT_ERROR
+
+- 触发条件: 启动应用进程
+  故障模式: 进程启动失败
+  故障影响: 创建不了进程
+  故障原因: 1. AppSpawnClient为空; 2. 创建进程启动msg失败，可能查包信息失败; 3. 调用AppSpawn接口孵化进程失败
+  严酷度: 严重
+  恢复措施: 重启设备；重试；重试
+  关键日志: appSpawnClient null/createStartMsg fail/spawn new app fail, errCode
+  大数据打点事件: PROCESS_START_FAILED
+
+- 触发条件: 启动子进程
+  故障模式: 子进程启动失败
+  故障影响: 创建不了子进程
+  故障原因: 1. AppSpawnClient为空; 2. 参数不合法，fd超限; 3. 系统uid资源耗尽; 4. 调用AppSpawn接口孵化进程失败
+  严酷度: 严重
+  恢复措施: 重启设备；应用需要保证传入fd参数合法；重启设备；重试
+  关键日志: spawnClient null/generate renderUid fail/spawn new app fail, errCode
+  大数据打点事件: PROCESS_START_FAILED
+
+- 触发条件: 启动Render进程
+  故障模式: Render进程启动失败
+  故障影响: 创建不了Render进程
+  故障原因: 1. AppSpawnClient为空; 2. 调用AppSpawn接口孵化进程失败; 3. 系统uid资源耗尽
+  严酷度: 严重
+  恢复措施: 重启设备；重试；重启设备
+  关键日志: nwebSpawnClient null/spawn new render process fail/generate renderUid fail
+  大数据打点事件: PROCESS_START_FAILED
+
+- 触发条件: 调度启动任务
+  故障模式: 启动任务调度器失败
+  故障影响: 影响当前应用的启动任务无法执行
+  故障原因: 1. Load module失败
+  严酷度: 一般
+  恢复措施: 重启应用或手动重试
+  关键日志: LoadJsAsyncTaskExecutor failed
+  大数据打点事件: STARTUP_TASK_ERROR
+
+- 触发条件: 解析启动框架配置
+  故障模式: 启动框架配置解析失败
+  故障影响: 影响当前应用的启动任务无法执行
+  故障原因: 1. json配置文件有问题
+  严酷度: 一般
+  恢复措施: 无
+  关键日志: failed to get startup config, profilePath:/bad profile file
+  大数据打点事件: STARTUP_TASK_ERROR
+
+- 触发条件: 预加载so
+  故障模式: 预加载系统、应用so失败
+  故障影响: 影响当前应用的启动任务无法执行
+  故障原因: 1. Load module失败
+  严酷度: 一般
+  恢复措施: 重启应用或手动重试
+  关键日志: "module is null, errInfo:"
+  大数据打点事件: STARTUP_TASK_ERROR
+
+- 触发条件: 执行手动启动任务
+  故障模式: 手动任务超时
+  故障影响: 影响当前应用的启动任务无法执行
+  故障原因: 1. 任务执行时间长
+  严酷度: 一般
+  恢复措施: 重启应用或手动重试
+  关键日志: 无
+  大数据打点事件: APP_STARTUP_ERROR
+
+- 触发条件: 执行自动启动任务
+  故障模式: 自动任务超时
+  故障影响: 影响当前应用的启动任务无法执行
+  故障原因: 1. 任务执行时间长
+  严酷度: 一般
+  恢复措施: 重启应用或手动重试
+  关键日志: 无
+  大数据打点事件: APP_STARTUP_ERROR
+
+- 触发条件: 分享文件URI授权
+  故障模式: 通过StartAbility等方法分享文件，目标应用无法访问
+  故障影响: 目标应用获取的want中uri为空
+  故障原因: 1. want中写了URI授权flag，但是uri字段或paramStream字段是非文件URI; 2. want中写了URI授权flag，但是URI字段或paramStream字段传入了没有权限的媒体库URI; 3. want中写了URI授权flag，但是URI字段或paramStream字段传入了没有权限的沙箱URI; 4. want中写了URI授权flag，但是URI字段或paramStream字段传入了没有权限的Docs URI
+  严酷度: 一般
+  恢复措施: 确保在有授权Flag的情况下，传入的URI是有权限的；确保传入的URI是有权限的媒体URI；确保传入的URI是应用自身的URI；确保有分享docs类型URI的权限
+  关键日志: eraseUri、eraseParamStream/uri is invalid:/Check photo uri permission failed, ret is/Check uri permission failed.
+  大数据打点事件: SHARE_UNPRIVILEGED_FILE_URI
+
+- 触发条件: 调用GrantUriPermissionByKey/ GrantUriPermissionByKeyAsCaller
+  故障模式: GrantUriPermissionByKey/GrantUriPermissionByKeyAsCaller授权失败
+  故障影响: 目标应用无法获取大批量URI并访问
+  故障原因: 1. 传入的Key中URI是无权限的; 2. 调用授权接口失败
+  严酷度: 一般
+  恢复措施: 确保传入的URI为自身有权限的URI；重试
+  关键日志: Not all uri is valid/grant batch uri permission failed/grant media uri permission failed
+  大数据打点事件: SHARE_UNPRIVILEGED_FILE_URI
+
+- 触发条件: 调用GrantUriPermission
+  故障模式: GrantUriPermission授权失败
+  故障影响: 目标应用获取URI后无法访问
+  故障原因: 1. 传入的URI没有权限; 2. 调用媒体库URI授权失败; 3. 沙箱和公共目录URI授权失败
+  严酷度: 一般
+  恢复措施: 确保传入的URI为自身有权限的URI；重试；重试
+  关键日志: All uri is invalid./Check uri permission failed./Grant photo uri permission failed, ret is/Failed to set policy/Grant uri policy failed
+  大数据打点事件: SHARE_UNPRIVILEGED_FILE_URI
