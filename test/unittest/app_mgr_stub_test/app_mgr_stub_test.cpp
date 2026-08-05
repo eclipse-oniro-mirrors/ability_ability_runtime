@@ -1478,11 +1478,9 @@ HWTEST_F(AppMgrStubTest, HandleEnableDelayedProcessExit_0100, TestSize.Level1)
     MessageOption option;
 
     WriteInterfaceToken(data);
-    int32_t pid = 1234;
-    data.WriteInt32(pid);
     data.WriteBool(true);
 
-    EXPECT_CALL(*mockAppMgrService_, EnableDelayedProcessExit(_, _))
+    EXPECT_CALL(*mockAppMgrService_, EnableDelayedProcessExit(_))
         .Times(1)
         .WillOnce(Return(ERR_OK));
 
@@ -1504,11 +1502,9 @@ HWTEST_F(AppMgrStubTest, HandleEnableDelayedProcessExit_0200, TestSize.Level1)
     MessageOption option;
 
     WriteInterfaceToken(data);
-    int32_t pid = 1234;
-    data.WriteInt32(pid);
     data.WriteBool(false);
 
-    EXPECT_CALL(*mockAppMgrService_, EnableDelayedProcessExit(_, _))
+    EXPECT_CALL(*mockAppMgrService_, EnableDelayedProcessExit(_))
         .Times(1)
         .WillOnce(Return(ERR_INVALID_VALUE));
 

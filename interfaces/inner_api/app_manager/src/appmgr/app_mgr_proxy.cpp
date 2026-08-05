@@ -3143,7 +3143,7 @@ int32_t AppMgrProxy::GetAllAbilityInfos(const int32_t pid, std::vector<AppExecFw
     return ret;
 }
 
-int32_t AppMgrProxy::EnableDelayedProcessExit(int32_t pid, bool enabled)
+int32_t AppMgrProxy::EnableDelayedProcessExit(bool enabled)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -3154,7 +3154,6 @@ int32_t AppMgrProxy::EnableDelayedProcessExit(int32_t pid, bool enabled)
         return IPC_PROXY_ERR;
     }
 
-    PARCEL_UTIL_WRITE_RET_INT(data, Int32, pid);
     PARCEL_UTIL_WRITE_RET_INT(data, Bool, enabled);
     PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::ENABLE_DELAYED_PROCESS_EXIT, data, reply, option);
     return reply.ReadInt32();
