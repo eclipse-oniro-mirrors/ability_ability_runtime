@@ -27,6 +27,7 @@
 #include "ability_util.h"
 #include "bundle_mgr_helper.h"
 #include "insight_intent_db_cache.h"
+#include "app_utils.h"
 #include "ffrt.h"
 
 namespace OHOS {
@@ -277,6 +278,11 @@ void InsightIntentSysEventReceiver::HandleUserRemove(const EventFwk::CommonEvent
 
 void InsightIntentSysEventReceiver::OnReceiveEvent(const EventFwk::CommonEventData &data)
 {
+    if (AAFwk::AppUtils::GetInstance().IsBopdOrRescueMode()) {
+        TAG_LOGI(AAFwkTag::INTENT, "BOPD or rescue mode, skip sys event: %{public}s",
+            data.GetWant().GetAction().c_str());
+        return;
+    }
     const AAFwk::Want &want = data.GetWant();
     const auto &action = want.GetActionRef();
     TAG_LOGI(AAFwkTag::INTENT, "the action: %{public}s", action.c_str());
