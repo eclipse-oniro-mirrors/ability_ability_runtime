@@ -48,6 +48,7 @@ ohos_shared_library("page_config_manager") {
     debug = false
   }
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   sources = [ "src/page_config_manager.cpp" ]
 

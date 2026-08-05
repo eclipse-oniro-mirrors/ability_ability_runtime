@@ -25,6 +25,7 @@ config("ani_common_exception_config") {
 
 ohos_shared_library("ani_common") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
   sanitize = {
     cfi = true
     cfi_cross_dso = true
