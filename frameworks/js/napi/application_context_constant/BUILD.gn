@@ -16,6 +16,7 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 ohos_shared_library("contextconstant_napi") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   include_dirs = []
 

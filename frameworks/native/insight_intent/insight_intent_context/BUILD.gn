@@ -23,6 +23,7 @@ config("insight_intent_context_public_config") {
 
 ohos_shared_library("insightintentcontext") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   sources = [
     "insight_intent_context.cpp",

@@ -93,6 +93,7 @@ ohos_shared_library("agent_ui_extension") {
       debug = false
   }
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   configs = [
       ":agent_ui_extension_config",
@@ -154,6 +155,7 @@ ohos_shared_library("agent_ui_extension_module") {
       debug = false
   }
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   include_dirs = [
       "include",

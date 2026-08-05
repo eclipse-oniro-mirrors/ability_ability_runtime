@@ -21,6 +21,7 @@ config("ani_context_base_public_config") {
 
 ohos_shared_library("ani_base_context") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   sanitize = {
     cfi = true
