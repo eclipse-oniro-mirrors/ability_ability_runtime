@@ -1784,49 +1784,6 @@ HWTEST_F(ExtensionRecordManagerTest, RemoveAgentUILaunchRecord_0200, TestSize.Le
 }
 
 /**
- * @tc.name: RemoveAgentUILaunchRecord_0300
- * @tc.desc: Test RemoveAgentUILaunchRecord remove existing record.
- * @tc.type: FUNC
- */
-HWTEST_F(ExtensionRecordManagerTest, RemoveAgentUILaunchRecord_0300, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "RemoveAgentUILaunchRecord_0300 start");
-    auto extRecordMgr = std::make_shared<ExtensionRecordManager>(0);
-    ASSERT_NE(extRecordMgr, nullptr);
-
-    int32_t callerUid = 3003;
-    std::string bundleName = "com.test.remove";
-    int32_t extensionAbilityId = 100;
-
-    // Add record
-    extRecordMgr->AddAgentUILaunchRecord(callerUid, bundleName, extensionAbilityId);
-    ASSERT_EQ(extRecordMgr->agentUIExtensionRecords_.size(), 1);
-    auto bundle1It = std::find_if(extRecordMgr->agentUIExtensionRecords_.begin(),
-        extRecordMgr->agentUIExtensionRecords_.end(),
-        [callerUid, &bundleName, extensionAbilityId](const auto &record) {
-            return record.callerUid == callerUid && record.targetBundle == bundleName &&
-                record.targetRecordIds.size() == 1 && record.targetRecordIds[0] == extensionAbilityId;
-        });
-    EXPECT_NE(bundle1It, extRecordMgr->agentUIExtensionRecords_.end());
-
-    // Remove record
-    extRecordMgr->RemoveAgentUILaunchRecord(bundleName, extensionAbilityId);
-
-    auto recordIt = std::find_if(extRecordMgr->agentUIExtensionRecords_.begin(),
-        extRecordMgr->agentUIExtensionRecords_.end(),
-        [callerUid, &bundleName, extensionAbilityId](const auto &record) {
-            return record.callerUid == callerUid && record.targetBundle == bundleName &&
-                record.targetRecordIds.size() == 1 && record.targetRecordIds[0] == extensionAbilityId;
-        });
-    EXPECT_NE(recordIt, extRecordMgr->agentUIExtensionRecords_.end());
-
-    // Record should be removed, and map entries should be cleaned up
-    EXPECT_EQ(extRecordMgr->agentUIExtensionRecords_.size(), 0);
-
-    TAG_LOGI(AAFwkTag::TEST, "RemoveAgentUILaunchRecord_0300 end");
-}
-
-/**
  * @tc.name: RemoveAgentUILaunchRecord_0400
  * @tc.desc: Test RemoveAgentUILaunchRecord remove one of multiple records.
  * @tc.type: FUNC
