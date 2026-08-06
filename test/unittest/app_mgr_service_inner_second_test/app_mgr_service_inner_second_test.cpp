@@ -684,6 +684,20 @@ HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_NotifyAppFau
 
     FaultData faultData;
     auto ret = appMgrServiceInner->NotifyAppFault(faultData);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+
+    appRecord->SetState(ApplicationState::APP_STATE_END);
+    ret = appMgrServiceInner->NotifyAppFault(faultData);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+
+    appRecord->SetState(ApplicationState::APP_STATE_FOREGROUND);
+    // expect in appfreezeManager return OK
+    AppfreezeManager::GetInstance()->CancelAppFreezeDetect(1, TEST_BUNDLE_NAME);
+    ret = appMgrServiceInner->NotifyAppFault(faultData);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+
+    faultData.errorObject.name = AppFreezeType::LIFECYCLE_HALF_TIMEOUT;
+    ret = appMgrServiceInner->NotifyAppFault(faultData);
     EXPECT_EQ(ret, ERR_OK);
 
     appRecord->SetState(ApplicationState::APP_STATE_END);

@@ -1543,5 +1543,21 @@ bool AppfreezeManager::CheckProcessExit(const std::string& processName, const st
 {
     return foreground || eventName != AppFreezeType::THREAD_BLOCK_6S || processName == "com.ohos.sceneboard";
 }
+
+bool AppfreezeManager::IsValidFreezeTypeName(const std::string& freezeTypeName)
+{
+    return freezeTypeName == AppFreezeType::LIFECYCLE_HALF_TIMEOUT ||
+        freezeTypeName == AppFreezeType::LIFECYCLE_HALF_TIMEOUT_WARNING ||
+        freezeTypeName == AppFreezeType::LIFECYCLE_TIMEOUT ||
+        freezeTypeName == AppFreezeType::LIFECYCLE_TIMEOUT_WARNING ||
+        freezeTypeName == AppFreezeType::APP_LIFECYCLE_TIMEOUT ||
+        freezeTypeName == AppFreezeType::THREAD_BLOCK_3S ||
+        freezeTypeName == AppFreezeType::THREAD_BLOCK_6S ||
+        freezeTypeName == AppFreezeType::APP_INPUT_BLOCK ||
+        freezeTypeName == AppFreezeType::BUSSINESS_THREAD_BLOCK_3S ||
+        freezeTypeName == AppFreezeType::BUSSINESS_THREAD_BLOCK_6S ||
+        freezeTypeName == AppFreezeType::BG_FREEZE_WARNING ||
+        freezeTypeName == AppFreezeType::BUSINESS_INPUT_BLOCK;
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

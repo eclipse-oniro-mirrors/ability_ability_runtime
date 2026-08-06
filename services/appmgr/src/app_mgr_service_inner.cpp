@@ -9420,6 +9420,11 @@ int32_t AppMgrServiceInner::NotifyAppFault(const FaultData &faultData)
         TAG_LOGE(AAFwkTag::APPMGR, "no appRecord, pid:%{public}d", pid);
         return ERR_INVALID_VALUE;
     }
+    std::string eventName = faultData.errorObject.name;
+    if (!AppExecFwk::AppfreezeManager::GetInstance()->IsValidFreezeTypeName(eventName)) {
+        TAG_LOGE(AAFwkTag::APPDFR, "called failed, invalid freeze name: %{public}s", eventName.c_str());
+        return ERR_INVALID_VALUE;
+    }
     if (appRecord->GetState() == ApplicationState::APP_STATE_TERMINATED ||
         appRecord->GetState() == ApplicationState::APP_STATE_END) {
         TAG_LOGE(AAFwkTag::APPMGR, "appfreeze detect end");
@@ -9427,7 +9432,6 @@ int32_t AppMgrServiceInner::NotifyAppFault(const FaultData &faultData)
     }
     int32_t recordId = appRecord->GetRecordId();
     std::string bundleName = appRecord->GetBundleName();
-    std::string eventName = faultData.errorObject.name;
     TAG_LOGW(AAFwkTag::APPDFR, "called, eventName:%{public}s, pid:%{public}d, bundleName:%{public}s, "
         "currentTime:%{public}s", eventName.c_str(), pid, bundleName.c_str(),
         AbilityRuntime::TimeUtil::DefaultCurrentTimeStr().c_str());

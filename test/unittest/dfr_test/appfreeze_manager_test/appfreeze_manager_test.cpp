@@ -1124,5 +1124,134 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_UpdateEventInfo_Test002, Tes
     EXPECT_EQ(eventInfo.binderInfo, "");
     EXPECT_EQ(eventInfo.freezeMemory, "\n");
 }
+
+/**
+ * @tc.number: AppfreezeManagerTest_IsValidFreezeTypeName_001
+ * @tc.desc: Test IsValidFreezeTypeName with valid freeze type names
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_IsValidFreezeTypeName_001, TestSize.Level1)
+{
+    EXPECT_TRUE(appfreezeManager->IsValidFreezeTypeName("LIFECYCLE_HALF_TIMEOUT"));
+    EXPECT_TRUE(appfreezeManager->IsValidFreezeTypeName("LIFECYCLE_HALF_TIMEOUT_WARNING"));
+    EXPECT_TRUE(appfreezeManager->IsValidFreezeTypeName("LIFECYCLE_TIMEOUT"));
+    EXPECT_TRUE(appfreezeManager->IsValidFreezeTypeName("LIFECYCLE_TIMEOUT_WARNING"));
+    EXPECT_TRUE(appfreezeManager->IsValidFreezeTypeName("APP_LIFECYCLE_TIMEOUT"));
+    EXPECT_TRUE(appfreezeManager->IsValidFreezeTypeName("THREAD_BLOCK_3S"));
+    EXPECT_TRUE(appfreezeManager->IsValidFreezeTypeName("THREAD_BLOCK_6S"));
+    EXPECT_TRUE(appfreezeManager->IsValidFreezeTypeName("APP_INPUT_BLOCK"));
+    EXPECT_TRUE(appfreezeManager->IsValidFreezeTypeName("BUSSINESS_THREAD_BLOCK_3S"));
+    EXPECT_TRUE(appfreezeManager->IsValidFreezeTypeName("BUSSINESS_THREAD_BLOCK_6S"));
+    EXPECT_TRUE(appfreezeManager->IsValidFreezeTypeName("BG_FREEZE_WARNING"));
+    EXPECT_TRUE(appfreezeManager->IsValidFreezeTypeName("BUSINESS_INPUT_BLOCK"));
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest_IsValidFreezeTypeName_002
+ * @tc.desc: Test IsValidFreezeTypeName with invalid freeze type names
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_IsValidFreezeTypeName_002, TestSize.Level1)
+{
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("INVALID_TYPE"));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName(""));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("../malicious_path"));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("LIFECYCLE_TIMEOUT_EXTRA"));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("THREAD_BLOCK_3S "));
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest_IsValidFreezeTypeName_003
+ * @tc.desc: Test IsValidFreezeTypeName with case sensitivity
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_IsValidFreezeTypeName_003, TestSize.Level1)
+{
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("lifecycle_timeout"));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("Lifecycle_Timeout"));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("THREAD_block_3s"));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("app_input_block"));
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest_IsValidFreezeTypeName_004
+ * @tc.desc: Test IsValidFreezeTypeName with special characters
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_IsValidFreezeTypeName_004, TestSize.Level1)
+{
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("LIFECYCLE_TIMEOUT\t"));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("\nTHREAD_BLOCK_3S"));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("APP_INPUT_BLOCK\r"));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName(" LIFECYCLE_TIMEOUT"));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("LIFECYCLE_TIMEOUT "));
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest_IsValidFreezeTypeName_005
+ * @tc.desc: Test IsValidFreezeTypeName with partial match and extension
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_IsValidFreezeTypeName_005, TestSize.Level1)
+{
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("LIFECYCLE_TIMEOUT_WARNING_EXTRA"));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("THREAD_BLOCK"));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("THREAD_BLOCK_3"));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("APP_INPUT"));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("_LIFECYCLE_TIMEOUT"));
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest_IsValidFreezeTypeName_006
+ * @tc.desc: Test IsValidFreezeTypeName with injection attacks
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_IsValidFreezeTypeName_006, TestSize.Level1)
+{
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("../../../etc/passwd"));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("LIFECYCLE_TIMEOUT;rm -rf /"));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("THREAD_BLOCK_3S' OR '1'='1"));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("APP_INPUT_BLOCK<script>alert(1)</script>"));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("$(whoami)"));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("`id`"));
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest_IsValidFreezeTypeName_007
+ * @tc.desc: Test IsValidFreezeTypeName with extremely long string
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_IsValidFreezeTypeName_007, TestSize.Level1)
+{
+    std::string longString(1024, 'A');
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName(longString));
+    
+    std::string longValidPrefix = "LIFECYCLE_TIMEOUT" + std::string(1000, 'X');
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName(longValidPrefix));
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest_IsValidFreezeTypeName_008
+ * @tc.desc: Test IsValidFreezeTypeName with null and control characters
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_IsValidFreezeTypeName_008, TestSize.Level1)
+{
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName(std::string("\0", 1)));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("LIFECYCLE\0TIMEOUT"));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName(std::string("THREAD\1BLOCK", 11)));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName(std::string("\x00\x01\x02", 3)));
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest_IsValidFreezeTypeName_009
+ * @tc.desc: Test IsValidFreezeTypeName with unicode and special encoding
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_IsValidFreezeTypeName_009, TestSize.Level1)
+{
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("LIFECYCLE_TIMEOUT%00"));
+    EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("%4c%49%46%45"));
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS
