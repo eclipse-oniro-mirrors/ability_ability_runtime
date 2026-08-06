@@ -10,6 +10,7 @@
 #include <cctype>
 #include <cstring>
 #include <fcntl.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -312,11 +313,9 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::RequestMetadataJson(OH
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
 
-    static const char* TLB_PATH = "/data/storage/el2/base/haps/entry/files/tlb.json";
-
-    int fd = open(TLB_PATH, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+    int fd = memfd_create("mo_dispatcher_tlb", MFD_CLOEXEC);
     if (fd < 0) {
-        TAG_LOGE(AAFwkTag::EXT, "RequestMetadataJson: open tlb.json for write failed, errno=%{public}d", errno);
+        TAG_LOGE(AAFwkTag::EXT, "RequestMetadataJson: memfd_create failed, errno=%{public}d", errno);
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
 
@@ -344,12 +343,9 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::RequestMetadataJson(OH
         return ABILITY_RUNTIME_ERROR_CODE_SEND_REQUEST_FAILED;
     }
 
-    // Server has written JSON to fd, now read it back from the local file
-    close(fd);
-
-    fd = open(TLB_PATH, O_RDONLY);
-    if (fd < 0) {
-        TAG_LOGE(AAFwkTag::EXT, "RequestMetadataJson: open tlb.json for read failed, errno=%{public}d", errno);
+    if (lseek(fd, 0, SEEK_SET) < 0) {
+        TAG_LOGE(AAFwkTag::EXT, "RequestMetadataJson: lseek failed, errno=%{public}d", errno);
+        close(fd);
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     ReadAllFromFd(fd, jsonText);
