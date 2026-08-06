@@ -178,6 +178,24 @@ public:
     {
         return ERR_OK;
     }
+    virtual ErrCode StartAbilityForResult(const AAFwk::Want &want, RuntimeTask &&task)
+    {
+        return ERR_OK;
+    }
+    virtual ErrCode StartAbilityForResult(const AAFwk::Want &want,
+        const AAFwk::StartOptions &startOptions, RuntimeTask &&task)
+    {
+        return ERR_OK;
+    }
+    virtual ErrCode StartAbilityForResultWithAccount(const AAFwk::Want &want, int accountId, RuntimeTask &&task)
+    {
+        return ERR_OK;
+    }
+    virtual ErrCode StartAbilityForResultWithAccount(const AAFwk::Want &want, int accountId,
+        const AAFwk::StartOptions &startOptions, RuntimeTask &&task)
+    {
+        return ERR_OK;
+    }
     virtual ErrCode StartServiceExtensionAbility(const AAFwk::Want &want, int32_t accountId = -1)
     {
         return ERR_OK;
@@ -309,6 +327,10 @@ public:
     }
     virtual ErrCode OpenAtomicService(AAFwk::Want& want,
         const AAFwk::StartOptions &options, int requestCode, RuntimeTask &&task)
+    {
+        return ERR_OK;
+    }
+    virtual ErrCode OpenAtomicService(AAFwk::Want& want, const AAFwk::StartOptions &options, RuntimeTask &&task)
     {
         return ERR_OK;
     }
@@ -534,6 +556,10 @@ public:
     virtual void RemoveResultCallbackTask(int requestCode)
     {
         return;
+    }
+    virtual int32_t RegisterResultCallback(RuntimeTask&& task)
+    {
+        return 0;
     }
     virtual ErrCode AddCompletionHandlerForAtomicService(const std::string &requestId,
         OnAtomicRequestSuccess onRequestSucc, OnAtomicRequestFailure onRequestFail, const std::string &appId)
