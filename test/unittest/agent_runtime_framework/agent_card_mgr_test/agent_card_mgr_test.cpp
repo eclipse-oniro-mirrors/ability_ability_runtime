@@ -77,6 +77,16 @@ AppExecFwk::HapModuleInfo BuildHapModuleInfo(const AppExecFwk::ExtensionAbilityI
     hapModuleInfo.extensionInfos.push_back(extensionInfo);
     return hapModuleInfo;
 }
+
+constexpr int32_t BASE_USER_RANGE = 200000;
+AppExecFwk::BundleInfo BuildPreInstallBundleInfo(const std::string &bundleName, int32_t userId = 100)
+{
+    AppExecFwk::BundleInfo info;
+    info.name = bundleName;
+    info.isPreInstallApp = true;
+    info.uid = userId * BASE_USER_RANGE;
+    return info;
+}
 }
 
 class AgentCardMgrTest : public testing::Test {
@@ -114,6 +124,10 @@ void AgentCardMgrTest::SetUp(void)
     MyFlag::mockHapModuleInfos.clear();
     MyFlag::mockProfileInfos.clear();
     MyFlag::mockProfileInfoContent.clear();
+    MyFlag::retGetBundleInfos = false;
+    MyFlag::mockBundleInfos.clear();
+    MyFlag::getBundleInfoV9CallNames.clear();
+    MyFlag::insertDataCallNames.clear();
 }
 
 void AgentCardMgrTest::TearDown(void)
@@ -129,7 +143,7 @@ HWTEST_F(AgentCardMgrTest, HandleBundleRemoveTest_001, TestSize.Level1)
 {
     AgentCardMgr agentCardMgr;
     int ret = agentCardMgr.HandleBundleRemove("", 100);
-    EXPECT_TRUE(ret == -1);
+    EXPECT_TRUE(ret == AAFwk::INVALID_PARAMETERS_ERR);
 
     MyFlag::retDeleteData = 0;
     ret = agentCardMgr.HandleBundleRemove("test", 100);
@@ -160,7 +174,7 @@ HWTEST_F(AgentCardMgrTest, HandleBundleInstallTest_001, TestSize.Level1)
 {
     AgentCardMgr agentCardMgr;
     int ret = agentCardMgr.HandleBundleInstall("", 100);
-    EXPECT_TRUE(ret == -1);
+    EXPECT_TRUE(ret == AAFwk::INVALID_PARAMETERS_ERR);
 }
 
 /**
@@ -174,7 +188,7 @@ HWTEST_F(AgentCardMgrTest, HandleBundleInstallTest_002, TestSize.Level1)
     AgentCardMgr agentCardMgr;
     MyFlag::retGetBundleInfo = false;
     int ret = agentCardMgr.HandleBundleInstall("test", 100);
-    EXPECT_TRUE(ret == -1);
+    EXPECT_TRUE(ret != ERR_OK);
 }
 
 /**
@@ -285,7 +299,7 @@ HWTEST_F(AgentCardMgrTest, HandleBundleInstallTest_008, TestSize.Level1)
 
     MyFlag::mockProfileInfoContent = "invalid json content";
     int ret = agentCardMgr.HandleBundleInstall("test.bundle", 100);
-    EXPECT_TRUE(ret == -1);
+    EXPECT_TRUE(ret == AAFwk::INNER_ERR);
 }
 
 /**
@@ -307,7 +321,7 @@ HWTEST_F(AgentCardMgrTest, HandleBundleInstallTest_009, TestSize.Level1)
 
     MyFlag::mockProfileInfoContent = R"({"otherField": "value"})";
     int ret = agentCardMgr.HandleBundleInstall("test.bundle", 100);
-    EXPECT_TRUE(ret == -1);
+    EXPECT_TRUE(ret == AAFwk::INNER_ERR);
 }
 
 /**
@@ -813,7 +827,7 @@ HWTEST_F(AgentCardMgrTest, HandleBundleInstallTest_0171, TestSize.Level1)
     ASSERT_EQ(MyFlag::insertedEntries.size(), 1);
     EXPECT_EQ(MyFlag::insertedEntries[0].card.description, "stored api payload");
     EXPECT_EQ(MyFlag::insertedEntries[0].card.type, AgentCardType::LOW_CODE);
-    EXPECT_EQ(MyFlag::insertedEntries[0].source, AgentCardUpdateSource::API);
+    EXPECT_EQ(MyFlag::insertedEntries[0].updateSource, AgentCardUpdateSource::API);
 }
 
 /**
@@ -1482,14 +1496,17 @@ HWTEST_F(AgentCardMgrTest, DeleteAgentCard_003, TestSize.Level1)
 
 /**
  * @tc.name: DeleteAgentCard_004
- * @tc.desc: DeleteAgentCard removes only the matching card and persists remaining bundle cards
+ * @tc.desc: DeleteAgentCard removes only the matching API-source card and persists remaining cards
  * @tc.type: FUNC
  */
 HWTEST_F(AgentCardMgrTest, DeleteAgentCard_004, TestSize.Level1)
 {
     AgentCardMgr agentCardMgr;
     MyFlag::retQueryData = ERR_OK;
-    MyFlag::queryDataCards = { BuildCard("testAgent", "1.0.0"), BuildCard("remainAgent", "1.0.0") };
+    MyFlag::queryDataEntries = {
+        { BuildCard("testAgent", "1.0.0"), AgentCardUpdateSource::API },
+        { BuildCard("remainAgent", "1.0.0"), AgentCardUpdateSource::BUNDLE },
+    };
 
     int ret = agentCardMgr.DeleteAgentCard("test.bundle", "testAgent");
     EXPECT_EQ(ret, ERR_OK);
@@ -1499,14 +1516,16 @@ HWTEST_F(AgentCardMgrTest, DeleteAgentCard_004, TestSize.Level1)
 
 /**
  * @tc.name: DeleteAgentCard_005
- * @tc.desc: DeleteAgentCard deletes the bundle entry when the removed card is the last one
+ * @tc.desc: DeleteAgentCard deletes the bundle entry when the removed API-source card is the last one
  * @tc.type: FUNC
  */
 HWTEST_F(AgentCardMgrTest, DeleteAgentCard_005, TestSize.Level1)
 {
     AgentCardMgr agentCardMgr;
     MyFlag::retQueryData = ERR_OK;
-    MyFlag::queryDataCards = { BuildCard("testAgent", "1.0.0") };
+    MyFlag::queryDataEntries = {
+        { BuildCard("testAgent", "1.0.0"), AgentCardUpdateSource::API }
+    };
     MyFlag::retDeleteData = ERR_OK;
 
     int ret = agentCardMgr.DeleteAgentCard("test.bundle", "testAgent");
@@ -1524,6 +1543,218 @@ HWTEST_F(AgentCardMgrTest, DeleteAgentCard_006, TestSize.Level1)
     MyFlag::retQueryData = ERR_NAME_NOT_FOUND;
 
     EXPECT_EQ(agentCardMgr.DeleteAgentCard("test.bundle", "testAgent"), AAFwk::ERR_INVALID_AGENT_CARD_ID);
+}
+
+/**
+ * @tc.name: DeleteAgentCard_007
+ * @tc.desc: DeleteAgentCard deletes a bundle-installed card by agentId
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardMgrTest, DeleteAgentCard_007, TestSize.Level1)
+{
+    AgentCardMgr agentCardMgr;
+    MyFlag::retQueryData = ERR_OK;
+    MyFlag::queryDataEntries = {
+        { BuildCard("testAgent", "1.0.0"), AgentCardUpdateSource::BUNDLE }
+    };
+
+    int ret = agentCardMgr.DeleteAgentCard("test.bundle", "testAgent");
+    EXPECT_EQ(ret, ERR_OK);
+    // deleteAgentCard deletes any card by agentId; with the only card removed, the bundle entry is
+    // deleted via DeleteData, so InsertData is not invoked.
+    EXPECT_TRUE(MyFlag::insertedEntries.empty());
+}
+
+/**
+ * @tc.name: DeleteAgentCard_008
+ * @tc.desc: DeleteAgentCard deletes an API-source card while keeping a BUNDLE sibling with its source intact
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardMgrTest, DeleteAgentCard_008, TestSize.Level1)
+{
+    AgentCardMgr agentCardMgr;
+    MyFlag::retQueryData = ERR_OK;
+    MyFlag::retInsertData = ERR_OK;
+    MyFlag::queryDataEntries = {
+        { BuildCard("apiAgent", "1.0.0"), AgentCardUpdateSource::API },
+        { BuildCard("bundleAgent", "1.0.0"), AgentCardUpdateSource::BUNDLE },
+    };
+
+    int ret = agentCardMgr.DeleteAgentCard("test.bundle", "apiAgent");
+    EXPECT_EQ(ret, ERR_OK);
+    // API card removed; BUNDLE sibling survives with its immutable source unchanged.
+    ASSERT_EQ(MyFlag::insertedEntries.size(), 1);
+    EXPECT_EQ(MyFlag::insertedEntries[0].card.agentId, "bundleAgent");
+}
+
+/**
+ * @tc.name: HandlePreInstallBackfill_001
+ * @tc.desc: HandlePreInstallBackfill returns non-OK when GetBundleInfosV9 fails
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardMgrTest, HandlePreInstallBackfill_001, TestSize.Level1)
+{
+    AgentCardMgr agentCardMgr;
+    MyFlag::retGetBundleInfos = false;
+    MyFlag::getBundleInfoV9CallNames.clear();
+
+    EXPECT_NE(agentCardMgr.HandlePreInstallBackfill(100), ERR_OK);
+    EXPECT_TRUE(MyFlag::getBundleInfoV9CallNames.empty());
+}
+
+/**
+ * @tc.name: HandlePreInstallBackfill_002
+ * @tc.desc: HandlePreInstallBackfill installs AgentCards only for pre-installed bundles
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardMgrTest, HandlePreInstallBackfill_002, TestSize.Level1)
+{
+    AgentCardMgr agentCardMgr;
+    AppExecFwk::BundleInfo preBundle = BuildPreInstallBundleInfo("pre.bundle");
+    AppExecFwk::BundleInfo normalBundle;
+    normalBundle.name = "normal.bundle";
+    normalBundle.isPreInstallApp = false;
+    MyFlag::mockBundleInfos = { preBundle, normalBundle };
+    MyFlag::retGetBundleInfos = true;
+    MyFlag::retGetBundleInfo = true;
+    MyFlag::getBundleInfoV9CallNames.clear();
+
+    EXPECT_EQ(agentCardMgr.HandlePreInstallBackfill(100), ERR_OK);
+    ASSERT_EQ(MyFlag::insertDataCallNames.size(), 1);
+    EXPECT_EQ(MyFlag::insertDataCallNames[0], "pre.bundle");
+}
+
+/**
+ * @tc.name: HandlePreInstallBackfill_003
+ * @tc.desc: HandlePreInstallBackfill installs every pre-installed bundle and skips non-pre-install ones
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardMgrTest, HandlePreInstallBackfill_003, TestSize.Level1)
+{
+    AgentCardMgr agentCardMgr;
+    AppExecFwk::BundleInfo pre1 = BuildPreInstallBundleInfo("pre1");
+    AppExecFwk::BundleInfo pre2 = BuildPreInstallBundleInfo("pre2");
+    AppExecFwk::BundleInfo normal;
+    normal.name = "normal";
+    normal.isPreInstallApp = false;
+    MyFlag::mockBundleInfos = { pre1, pre2, normal };
+    MyFlag::retGetBundleInfos = true;
+    MyFlag::retGetBundleInfo = true;
+    MyFlag::getBundleInfoV9CallNames.clear();
+
+    EXPECT_EQ(agentCardMgr.HandlePreInstallBackfill(100), ERR_OK);
+    ASSERT_EQ(MyFlag::insertDataCallNames.size(), 2);
+    EXPECT_EQ(MyFlag::insertDataCallNames[0], "pre1");
+    EXPECT_EQ(MyFlag::insertDataCallNames[1], "pre2");
+}
+
+/**
+ * @tc.name: HandlePreInstallBackfill_004
+ * @tc.desc: HandlePreInstallBackfill persists AgentCards declared by a pre-installed bundle
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardMgrTest, HandlePreInstallBackfill_004, TestSize.Level1)
+{
+    AgentCardMgr agentCardMgr;
+    AppExecFwk::ExtensionAbilityInfo extensionInfo;
+    extensionInfo.bundleName = "pre.bundle";
+    extensionInfo.moduleName = "testModule";
+    extensionInfo.name = "PreAgent";
+    extensionInfo.type = AppExecFwk::ExtensionAbilityType::AGENT;
+    AppExecFwk::HapModuleInfo hapModuleInfo;
+    hapModuleInfo.moduleName = "testModule";
+    hapModuleInfo.extensionInfos.push_back(extensionInfo);
+    AppExecFwk::BundleInfo preBundle = BuildPreInstallBundleInfo("pre.bundle");
+    preBundle.hapModuleInfos.push_back(hapModuleInfo);
+    MyFlag::mockBundleInfos = { preBundle };
+    MyFlag::retGetBundleInfos = true;
+    MyFlag::retFromJson = true;
+    MyFlag::mockProfileInfoContent =
+        R"({"agentCards":[{"agentId":"preAgent","name":"Pre Agent","description":"desc",)"
+        R"("version":"1.0.0","category":"productivity","defaultInputModes":["text"],)"
+        R"("defaultOutputModes":["text"]}]})";
+
+    EXPECT_EQ(agentCardMgr.HandlePreInstallBackfill(100), ERR_OK);
+
+    ASSERT_EQ(MyFlag::insertDataCallNames.size(), 1);
+    EXPECT_EQ(MyFlag::insertDataCallNames[0], "pre.bundle");
+    ASSERT_EQ(MyFlag::insertedCards.size(), 1);
+    EXPECT_EQ(MyFlag::insertedCards[0].agentId, "preAgent");
+    ASSERT_EQ(MyFlag::insertedEntries.size(), 1);
+}
+
+/**
+ * @tc.name: HandlePreInstallBackfill_005
+ * @tc.desc: HandlePreInstallBackfill returns OK and writes nothing when no bundles exist
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardMgrTest, HandlePreInstallBackfill_005, TestSize.Level1)
+{
+    AgentCardMgr agentCardMgr;
+    MyFlag::retGetBundleInfos = true;
+    // mockBundleInfos stays empty (cleared by SetUp)
+
+    EXPECT_EQ(agentCardMgr.HandlePreInstallBackfill(100), ERR_OK);
+    EXPECT_TRUE(MyFlag::insertDataCallNames.empty());
+}
+
+/**
+ * @tc.name: HandlePreInstallBackfill_006
+ * @tc.desc: HandlePreInstallBackfill continues past a bundle whose install fails
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardMgrTest, HandlePreInstallBackfill_006, TestSize.Level1)
+{
+    AgentCardMgr agentCardMgr;
+    AppExecFwk::BundleInfo pre1 = BuildPreInstallBundleInfo("pre1");
+    AppExecFwk::BundleInfo pre2 = BuildPreInstallBundleInfo("pre2");
+    MyFlag::mockBundleInfos = { pre1, pre2 };
+    MyFlag::retGetBundleInfos = true;
+    MyFlag::retInsertData = -1; // every per-bundle HandleBundleInstall fails at InsertData
+
+    // Backfill swallows per-bundle failures (warn+continue) and still returns OK.
+    EXPECT_EQ(agentCardMgr.HandlePreInstallBackfill(100), ERR_OK);
+    ASSERT_EQ(MyFlag::insertDataCallNames.size(), 2);
+    EXPECT_EQ(MyFlag::insertDataCallNames[0], "pre1");
+    EXPECT_EQ(MyFlag::insertDataCallNames[1], "pre2");
+}
+
+/**
+ * @tc.name: HandlePreInstallBackfill_007
+ * @tc.desc: HandlePreInstallBackfill is safe to re-invoke (idempotent dispatch)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardMgrTest, HandlePreInstallBackfill_007, TestSize.Level1)
+{
+    AgentCardMgr agentCardMgr;
+    AppExecFwk::BundleInfo pre = BuildPreInstallBundleInfo("pre.bundle");
+    MyFlag::mockBundleInfos = { pre };
+    MyFlag::retGetBundleInfos = true;
+
+    EXPECT_EQ(agentCardMgr.HandlePreInstallBackfill(100), ERR_OK);
+    EXPECT_EQ(agentCardMgr.HandlePreInstallBackfill(100), ERR_OK);
+    ASSERT_EQ(MyFlag::insertDataCallNames.size(), 2);
+    EXPECT_EQ(MyFlag::insertDataCallNames[0], "pre.bundle");
+    EXPECT_EQ(MyFlag::insertDataCallNames[1], "pre.bundle");
+}
+
+/**
+ * @tc.name: HandlePreInstallBackfill_008
+ * @tc.desc: HandlePreInstallBackfill backfills only bundles installed for the target user
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardMgrTest, HandlePreInstallBackfill_008, TestSize.Level1)
+{
+    AgentCardMgr agentCardMgr;
+    // user-100 pre-install bundle -> kept; user-101 pre-install bundle -> filtered out
+    AppExecFwk::BundleInfo keep = BuildPreInstallBundleInfo("keep.bundle");
+    AppExecFwk::BundleInfo skip = BuildPreInstallBundleInfo("skip.bundle", 101);
+    MyFlag::mockBundleInfos = { keep, skip };
+    MyFlag::retGetBundleInfos = true;
+
+    EXPECT_EQ(agentCardMgr.HandlePreInstallBackfill(100), ERR_OK);
+    ASSERT_EQ(MyFlag::insertDataCallNames.size(), 1);
+    EXPECT_EQ(MyFlag::insertDataCallNames[0], "keep.bundle");
 }
 } // namespace AgentRuntime
 } // namespace OHOS

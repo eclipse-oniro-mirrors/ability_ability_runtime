@@ -252,7 +252,7 @@ HWTEST_F(AgentCardDbMgrTest, QueryDataTest_005, TestSize.Level1)
     EXPECT_EQ(ret, ERR_OK);
     ASSERT_EQ(queryCards.size(), 1);
     EXPECT_EQ(queryCards[0].card.agentId, "agent_query_legacy");
-    EXPECT_EQ(queryCards[0].source, AgentCardUpdateSource::BUNDLE);
+    EXPECT_EQ(queryCards[0].updateSource, AgentCardUpdateSource::BUNDLE);
 }
 
 /**
@@ -274,7 +274,7 @@ HWTEST_F(AgentCardDbMgrTest, QueryDataTest_006, TestSize.Level1)
     EXPECT_EQ(ret, ERR_OK);
     ASSERT_EQ(queryCards.size(), 1);
     EXPECT_EQ(queryCards[0].card.agentId, "agent_query_api");
-    EXPECT_EQ(queryCards[0].source, AgentCardUpdateSource::API);
+    EXPECT_EQ(queryCards[0].updateSource, AgentCardUpdateSource::API);
 }
 
 /**
