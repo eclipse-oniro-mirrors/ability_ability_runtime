@@ -21,6 +21,7 @@ ohos_shared_library("agentmgr") {
     debug = false
   }
   branch_protector_ret = "pac_ret"
+  branch_protector_ret = "bti"
 
   include_dirs = [
     "include",
