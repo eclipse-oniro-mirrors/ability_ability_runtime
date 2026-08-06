@@ -17,6 +17,7 @@
 #define OHOS_ABILITY_RUNTIME_BUNDLE_MGR_HELPER_H
 
 #include <singleton.h>
+#include <vector>
 
 #include "bundle_mgr_interface.h"
 
@@ -27,6 +28,7 @@ public:
     DISALLOW_COPY_AND_MOVE(BundleMgrHelper);
 
     ErrCode GetBundleInfoV9(const std::string &bundleName, int32_t flags, BundleInfo &bundleInfo, int32_t userId);
+    ErrCode GetBundleInfosV9(int32_t flags, std::vector<BundleInfo> &bundleInfos, int32_t userId);
 
 private:
     DECLARE_DELAYED_SINGLETON(BundleMgrHelper)

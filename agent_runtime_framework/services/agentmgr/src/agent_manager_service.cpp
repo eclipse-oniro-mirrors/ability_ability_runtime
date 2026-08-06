@@ -121,6 +121,12 @@ void AgentManagerService::OnAddSystemAbility(int32_t systemAbilityId, const std:
         std::string identity = IPCSkeleton::ResetCallingIdentity();
         RegisterBundleEventCallback();
         IPCSkeleton::SetCallingIdentity(identity);
+        // BMS just became ready. BMS completes its bundle scan/load (OnBmsStarting) before it
+        // registers as a SA (AfterBmsStart::RegisterService), so pre-installed apps are already
+        // queryable now. Backfill AgentCards for pre-installed apps whose install events fired
+        // before RegisterBundleEventCallback was registered. Idempotent; offloaded to ffrt so the
+        // samgr listener thread is not blocked by per-bundle BMS + DB work.
+        AgentCardMgr::BackfillPreInstallCards();
     }
 }
 

@@ -29,6 +29,7 @@ std::vector<AgentRuntime::StoredAgentCardEntry> AgentRuntime::MyFlag::queryAllDa
 std::vector<AgentRuntime::AgentCard> AgentRuntime::MyFlag::queryAllDataCards;
 bool AgentRuntime::MyFlag::syncQueryDataWithInsert = false;
 std::mutex AgentRuntime::MyFlag::dbMutex;
+std::vector<std::string> AgentRuntime::MyFlag::insertDataCallNames;
 
 namespace AgentRuntime {
 AgentCardDbMgr &AgentCardDbMgr::GetInstance()
@@ -47,6 +48,7 @@ int32_t AgentCardDbMgr::InsertData(const std::string &bundleName, int32_t userId
     const std::vector<StoredAgentCardEntry> &cards)
 {
     std::lock_guard<std::mutex> lock(MyFlag::dbMutex);
+    MyFlag::insertDataCallNames.push_back(bundleName);
     MyFlag::insertedEntries = cards;
     MyFlag::insertedCards.clear();
     for (const auto &entry : cards) {
