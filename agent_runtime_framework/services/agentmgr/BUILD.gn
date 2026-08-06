@@ -22,6 +22,7 @@ ohos_shared_library("agentmgr") {
   }
   branch_protector_ret = "pac_ret"
   branch_protector_ret = "bti"
+  configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
 
   include_dirs = [
     "include",

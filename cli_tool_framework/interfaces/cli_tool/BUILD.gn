@@ -48,6 +48,7 @@ ohos_shared_library("cli_tool_client") {
     debug = false
   }
   branch_protector_ret = "pac_ret"
+  configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
 
   public_configs = [ ":cli_tool_client_config" ]
 
