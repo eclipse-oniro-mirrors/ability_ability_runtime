@@ -1437,6 +1437,7 @@ ohos_shared_library("ets_form_extension") {
 
 ohos_shared_library("form_extension") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   defines = [ "AMS_LOG_TAG = \"Ability\"" ]
   defines += [ "AMS_LOG_DOMAIN = 0xD001300" ]
