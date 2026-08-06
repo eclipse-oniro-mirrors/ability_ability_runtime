@@ -181,7 +181,7 @@ void CJRuntime::SetPackageName(std::string srcEntryName)
 void CJRuntime::SetMainNAPIEnv(void* env)
 {
     auto runtime = OHOS::CJEnv::LoadInstance();
-    if (!runtime) {
+    if (!runtime || !runtime->setMainNAPIEnv) {
         return;
     }
     runtime->setMainNAPIEnv(env);
