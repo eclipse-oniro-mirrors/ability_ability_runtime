@@ -80,6 +80,7 @@ public:
         int32_t uid = -1;
         // ArkTsCard start
         bool isUnique = false;
+        bool isFormRender = false;
         // ArkTsCard end
         std::shared_ptr<ModuleCheckerDelegate> moduleCheckerDelegate = nullptr;
         int32_t apiTargetVersion = 0;
