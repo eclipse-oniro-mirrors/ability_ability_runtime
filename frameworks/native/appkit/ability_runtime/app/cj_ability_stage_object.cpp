@@ -48,7 +48,7 @@ void RegisterCJAbilityStageFuncs(void (*registerFunc)(CJAbilityStageFuncs* resul
 void RegisterCJAbilityStageFuncsV3(void (*registerFunc)(CJAbilityStageFuncsV3* result))
 {
     if (g_cjAbilityStageFuncsV3.AbilityStageOnConfigurationUpdatedV2 != nullptr) {
-        TAG_LOGE(AAFwkTag::APPKIT, "null AbilityStageOnConfigurationUpdatedV2");
+        TAG_LOGE(AAFwkTag::APPKIT, "repeated registration for AbilityStageFuncsV3");
         return;
     }
 
