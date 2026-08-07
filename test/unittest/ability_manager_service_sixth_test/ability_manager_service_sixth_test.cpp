@@ -371,7 +371,7 @@ HWTEST_F(AbilityManagerServiceSixthTest, StartAbilityInner_002, TestSize.Level1)
     };
     ret = abilityMs->StartAbilityInner(param);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest StartAbilityInner_002 end");
-}     
+}
 
 /*
  * Feature: AbilityManagerService
