@@ -17,6 +17,7 @@
 #include <gtest/hwext/gtest-multithread.h>
 #include <cstdlib>
 #include <fstream>
+#include <vector>
 
 #define private public
 #define protected public
@@ -49,6 +50,22 @@ const std::string TEST_HOST_AOT_ROOT = "/system/app/ark_cache/";
 const std::string TEST_HOST_PRIVATE_HSP_AOT_ROOT = "/data/storage/ark-cache/arm64/";
 const std::string TEST_HOST_AOT_BUNDLE_NAME = "com.example.hostaot";
 const std::string TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME = "com.example.hsp1";
+
+class TestApplicationStateJsRuntime final : public JsRuntime {
+public:
+    void NotifyApplicationState(bool isBackground) override
+    {
+        applicationStates_.emplace_back(isBackground);
+    }
+
+    const std::vector<bool> &GetApplicationStates() const
+    {
+        return applicationStates_;
+    }
+
+private:
+    std::vector<bool> applicationStates_;
+};
 
 std::string GetHostAotAnPath(const std::string &bundleName, const std::string &moduleName)
 {
@@ -975,6 +992,40 @@ HWTEST_F(EtsRuntimeTest, XGC_0100, TestSize.Level2)
     std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
     etsRuntime->XGC();
     ASSERT_NE(etsRuntime, nullptr);
+}
+
+/**
+ * @tc.name: NotifyApplicationState_0100
+ * @tc.desc: EtsRuntimeTest test for NotifyApplicationState when jsRuntime_ is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, NotifyApplicationState_0100, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    etsRuntime->NotifyApplicationState(true);
+    EXPECT_EQ(etsRuntime->GetJsRuntime(), nullptr);
+}
+
+/**
+ * @tc.name: NotifyApplicationState_0200
+ * @tc.desc: EtsRuntimeTest test for foreground and background states.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, NotifyApplicationState_0200, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    std::unique_ptr<Runtime> jsRuntime = std::make_unique<TestApplicationStateJsRuntime>();
+    auto *applicationStateRuntime = static_cast<TestApplicationStateJsRuntime *>(jsRuntime.get());
+    etsRuntime->SetJsRuntime(jsRuntime);
+    ASSERT_NE(etsRuntime->GetJsRuntime(), nullptr);
+
+    etsRuntime->NotifyApplicationState(false);
+    etsRuntime->NotifyApplicationState(true);
+
+    const auto &applicationStates = applicationStateRuntime->GetApplicationStates();
+    ASSERT_EQ(applicationStates.size(), 2U);
+    EXPECT_FALSE(applicationStates[0]);
+    EXPECT_TRUE(applicationStates[1]);
 }
 
 /**
