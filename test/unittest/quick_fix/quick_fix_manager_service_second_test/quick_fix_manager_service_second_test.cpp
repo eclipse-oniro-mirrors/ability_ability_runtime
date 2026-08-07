@@ -371,5 +371,125 @@ HWTEST_F(QuickFixManagerServiceTest, GetApplyedQuickFixInfo_0500, TestSize.Level
     ret = quickFixMs_->GetApplyedQuickFixInfo(bundleName, quickFixFileInfo);
     EXPECT_EQ(ret, QUICK_FIX_GET_BUNDLE_INFO_FAILED);
 }
+
+/**
+ * @tc.name: ApplyQuickFix_0800
+ * @tc.desc: system caller with install permission but bundleMgr proxy null returns CONNECT_FAILED.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerServiceTest, ApplyQuickFix_0800, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    MyFlag::isAllowedToUseSystemAPIFlag_ = true;
+    MyFlag::isVerifyInstallBundlePermission_ = true;
+    MyFlag::isVerifyPrivilegedPermission_ = true;
+    QuickFixUtil::setBundleMgrProxyNull_ = true;
+    std::vector<std::string> quickFixFiles;
+    auto ret = quickFixMs_->ApplyQuickFix(quickFixFiles);
+    QuickFixUtil::setBundleMgrProxyNull_ = false;
+    EXPECT_EQ(ret, QUICK_FIX_CONNECT_FAILED);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: GetApplyedQuickFixInfo_0600
+ * @tc.desc: privileged permission with bundleMgr proxy null returns GET_BUNDLE_INFO_FAILED.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerServiceTest, GetApplyedQuickFixInfo_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    MyFlag::isAllowedToUseSystemAPIFlag_ = true;
+    MyFlag::isVerifyPrivilegedPermission_ = true;
+    QuickFixUtil::setBundleMgrProxyNull_ = true;
+    std::string bundleName = "test bundleName";
+    ApplicationQuickFixInfo quickFixFileInfo;
+    auto ret = quickFixMs_->GetApplyedQuickFixInfo(bundleName, quickFixFileInfo);
+    QuickFixUtil::setBundleMgrProxyNull_ = false;
+    EXPECT_EQ(ret, QUICK_FIX_GET_BUNDLE_INFO_FAILED);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: RevokeQuickFix_0400
+ * @tc.desc: all permissions valid but a task is already running for the bundle returns DEPLOYING_TASK.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerServiceTest, RevokeQuickFix_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    MyFlag::isAllowedToUseSystemAPIFlag_ = true;
+    MyFlag::isVerifyInstallBundlePermission_ = true;
+    MyFlag::isVerifyPrivilegedPermission_ = true;
+    std::string bundleName = "deploying.bundle";
+    auto applyTask = std::make_shared<QuickFixManagerApplyTask>(nullptr, nullptr, nullptr, nullptr);
+    applyTask->InitRevokeTask(bundleName, true);
+    quickFixMs_->AddApplyTask(applyTask);
+    auto ret = quickFixMs_->RevokeQuickFix(bundleName);
+    EXPECT_EQ(ret, QUICK_FIX_DEPLOYING_TASK);
+    quickFixMs_->RemoveApplyTask(applyTask);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: RevokeQuickFix_0500
+ * @tc.desc: all permissions valid but bundleMgr proxy null returns GET_BUNDLE_INFO_FAILED.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerServiceTest, RevokeQuickFix_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    MyFlag::isAllowedToUseSystemAPIFlag_ = true;
+    MyFlag::isVerifyInstallBundlePermission_ = true;
+    MyFlag::isVerifyPrivilegedPermission_ = true;
+    QuickFixUtil::setBundleMgrProxyNull_ = true;
+    std::string bundleName = "test bundleName";
+    auto ret = quickFixMs_->RevokeQuickFix(bundleName);
+    QuickFixUtil::setBundleMgrProxyNull_ = false;
+    EXPECT_EQ(ret, QUICK_FIX_GET_BUNDLE_INFO_FAILED);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: RevokeQuickFix_0600
+ * @tc.desc: all permissions valid, no running task, no proxy returns GET_BUNDLE_INFO_FAILED.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerServiceTest, RevokeQuickFix_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    MyFlag::isAllowedToUseSystemAPIFlag_ = true;
+    MyFlag::isVerifyInstallBundlePermission_ = true;
+    MyFlag::isVerifyPrivilegedPermission_ = true;
+    std::string bundleName = "nonexistent.bundle";
+    auto ret = quickFixMs_->RevokeQuickFix(bundleName);
+    EXPECT_EQ(ret, QUICK_FIX_GET_BUNDLE_INFO_FAILED);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: RevokeQuickFix_0700
+ * @tc.desc: install permission true but privileged false returns VERIFY_PERMISSION_FAILED.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerServiceTest, RevokeQuickFix_0700, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    MyFlag::isAllowedToUseSystemAPIFlag_ = true;
+    MyFlag::isVerifyInstallBundlePermission_ = true;
+    MyFlag::isVerifyPrivilegedPermission_ = false;
+    MyFlag::verifyCallingPermissionFlag_ = true;
+    std::string bundleName = "test bundleName";
+    auto ret = quickFixMs_->RevokeQuickFix(bundleName);
+    EXPECT_EQ(ret, QUICK_FIX_VERIFY_PERMISSION_FAILED);
+    MyFlag::verifyCallingPermissionFlag_ = false;
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
 } // namespace AppExecFwk
 } // namespace OHOS
