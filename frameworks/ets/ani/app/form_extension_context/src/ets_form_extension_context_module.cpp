@@ -396,6 +396,10 @@ napi_value EtsFormExtensionContextModule::AttachFormExtensionContext(napi_env en
     }
 
     auto workContext = new (std::nothrow) std::weak_ptr<FormExtensionContext>(ptr);
+    if (workContext == nullptr) {
+        TAG_LOGE(AAFwkTag::FORM_EXT, "null workContext");
+        return nullptr;
+    }
     status = napi_wrap(env, contextObj, workContext,
         [](napi_env, void *data, void *) {
             TAG_LOGD(AAFwkTag::FORM_EXT, "finalizer for weak_ptr formExtensionContext");
