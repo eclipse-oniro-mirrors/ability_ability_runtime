@@ -45,13 +45,23 @@ namespace {
 constexpr size_t DEFAULT_RECOVERY_MAX_RESTORE_SIZE = 400 * 1024;
 constexpr int32_t CALL_BACK_ERROR = -1;
 
-// APP_RECOVERY hisysevent ( reuse existing event defined in hisysevent.yaml )
+// Reuse PREVENT_START_ABILITY (preserve:true, not uploaded to cloud) to report local-only
+// restore-success signal on the app-side ScheduleRestoreAbilityState path.
+// Field mapping (caller=callee=app itself; CALLEE_BUNDLE_NAME marks event source):
+//   CALLER_UID              <- applicationInfo.uid
+//   CALLER_PID              <- 0 (not applicable)
+//   CALLER_PROCESS_NAME     <- applicationInfo.versionName
+//   CALLER_BUNDLE_NAME      <- bundleName
+//   CALLEE_BUNDLE_NAME      <- "APP_RECOVERY" (fixed source marker)
+//   CALLEE_PROCESS_NAME     <- ability name
+//   EXTENSION_ABILITY_TYPE  <- applicationInfo.versionCode
+//   ABILITY_NAME            <- "RESTORE_SUCCESS" (restore result)
 constexpr const char* RECOVERY_EVENT_DOMAIN = "AAFWK";
-constexpr const char* RECOVERY_EVENT_NAME = "APP_RECOVERY";
-constexpr uint8_t RECOVERY_EVENT_PARAM_COUNT = 6;
+constexpr const char* RECOVERY_EVENT_NAME = "PREVENT_START_ABILITY";
+constexpr uint8_t RECOVERY_EVENT_PARAM_COUNT = 8;
 constexpr size_t RECOVERY_PARAM_NAME_MAX_LEN = 48;
-// RECOVERY_RESULT string values, distinguish restore path from service-side ScheduleRecover path
 constexpr const char* RESTORE_RESULT_SUCCESS = "RESTORE_SUCCESS";
+constexpr const char* RESTORE_EVENT_SOURCE = "APP_RECOVERY";
 
 static void SetHiSysEventParamName(HiSysEventParam &param, const char *name)
 {
@@ -63,8 +73,8 @@ static void SetHiSysEventParamName(HiSysEventParam &param, const char *name)
     param.name[len] = '\0';
 }
 
-// Report APP_RECOVERY hisysevent on ScheduleRestoreAbilityState exit.
-// Reuses the existing APP_RECOVERY event; RECOVERY_RESULT distinguishes the restore sub-path.
+// Report PREVENT_START_ABILITY hisysevent on ScheduleRestoreAbilityState success.
+// Reuses the existing preserve:true event so the signal stays local-only.
 static void ReportRestoreAbilityStateResult(const std::shared_ptr<AbilityInfo> &abilityInfo,
     const std::string &result)
 {
@@ -74,40 +84,50 @@ static void ReportRestoreAbilityStateResult(const std::shared_ptr<AbilityInfo> &
     }
     HiSysEventParam params[RECOVERY_EVENT_PARAM_COUNT] = {};
     uint8_t pos = 0;
-    // APP_UID
+    // CALLER_UID
     params[pos].t = HISYSEVENT_INT32;
     params[pos].v.i32 = static_cast<int32_t>(abilityInfo->applicationInfo.uid);
-    SetHiSysEventParamName(params[pos], "APP_UID");
+    SetHiSysEventParamName(params[pos], "CALLER_UID");
     pos++;
-    // VERSION_CODE
+    // CALLER_PID (not applicable, fixed 0)
     params[pos].t = HISYSEVENT_INT32;
-    params[pos].v.i32 = static_cast<int32_t>(abilityInfo->applicationInfo.versionCode);
-    SetHiSysEventParamName(params[pos], "VERSION_CODE");
+    params[pos].v.i32 = 0;
+    SetHiSysEventParamName(params[pos], "CALLER_PID");
     pos++;
-    // VERSION_NAME
+    // CALLER_PROCESS_NAME <- versionName
     params[pos].t = HISYSEVENT_STRING;
     params[pos].v.s = const_cast<char *>(abilityInfo->applicationInfo.versionName.c_str());
-    SetHiSysEventParamName(params[pos], "VERSION_NAME");
+    SetHiSysEventParamName(params[pos], "CALLER_PROCESS_NAME");
     pos++;
-    // BUNDLE_NAME
+    // CALLER_BUNDLE_NAME
     params[pos].t = HISYSEVENT_STRING;
     params[pos].v.s = const_cast<char *>(abilityInfo->bundleName.c_str());
-    SetHiSysEventParamName(params[pos], "BUNDLE_NAME");
+    SetHiSysEventParamName(params[pos], "CALLER_BUNDLE_NAME");
     pos++;
-    // ABILITY_NAME
+    // CALLEE_BUNDLE_NAME <- fixed source marker
+    params[pos].t = HISYSEVENT_STRING;
+    params[pos].v.s = const_cast<char *>(RESTORE_EVENT_SOURCE);
+    SetHiSysEventParamName(params[pos], "CALLEE_BUNDLE_NAME");
+    pos++;
+    // CALLEE_PROCESS_NAME <- ability name
     params[pos].t = HISYSEVENT_STRING;
     params[pos].v.s = const_cast<char *>(abilityInfo->name.c_str());
-    SetHiSysEventParamName(params[pos], "ABILITY_NAME");
+    SetHiSysEventParamName(params[pos], "CALLEE_PROCESS_NAME");
     pos++;
-    // RECOVERY_RESULT
+    // EXTENSION_ABILITY_TYPE <- versionCode
+    params[pos].t = HISYSEVENT_INT32;
+    params[pos].v.i32 = static_cast<int32_t>(abilityInfo->applicationInfo.versionCode);
+    SetHiSysEventParamName(params[pos], "EXTENSION_ABILITY_TYPE");
+    pos++;
+    // ABILITY_NAME <- restore result
     params[pos].t = HISYSEVENT_STRING;
     params[pos].v.s = const_cast<char *>(result.c_str());
-    SetHiSysEventParamName(params[pos], "RECOVERY_RESULT");
+    SetHiSysEventParamName(params[pos], "ABILITY_NAME");
     pos++;
     int32_t ret = OH_HiSysEvent_Write(RECOVERY_EVENT_DOMAIN, RECOVERY_EVENT_NAME,
         HISYSEVENT_BEHAVIOR, params, pos);
     if (ret != 0) {
-        TAG_LOGW(AAFwkTag::RECOVERY, "report APP_RECOVERY failed, ret=%{public}d, result=%{public}s",
+        TAG_LOGW(AAFwkTag::RECOVERY, "report PREVENT_START_ABILITY failed, ret=%{public}d, result=%{public}s",
             ret, result.c_str());
     }
 }
