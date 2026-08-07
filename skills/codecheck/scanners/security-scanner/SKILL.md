@@ -168,7 +168,7 @@ security 视角：
 
 ### 统一报告（直接被调用时）
 
-直接被调用时，按 [`conventions.md`](../../conventions.md) §5–§13 生成符合 `codecheck_report_TEMPLATE.md` 的统一报告，不再使用本 scanner 自有"安全审计报告"骨架。五档严重度（9-10/7-8/5-6/3-4/1-2）按 §7.2 归一化到 P0–P3 后进入统一报告。本节"发现模板"与"Excel 输出"作为原始发现清单保留，归档到统一报告附录 §7.3。
+直接被调用时，按 [`conventions.md`](../../conventions.md) §5–§13 生成符合 `codecheck_report_TEMPLATE.md` 的统一报告，不再使用本 scanner 自有"安全审计报告"骨架。五档严重度（9-10/7-8/5-6/3-4/1-2）按 §7.2 归一化到 P0–P3 后进入统一报告。本节"发现模板"与"Excel 输出"作为原始发现清单单独交付（见 [`orchestrator/SKILL.md`](../../orchestrator/SKILL.md) Step 7 交付项），不归档入统一报告正文。
 
 ---
 

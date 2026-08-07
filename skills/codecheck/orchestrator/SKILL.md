@@ -80,7 +80,7 @@ ls <path>/frameworks/js/napi/ 2>/dev/null
 
 #### 2.3 告知用户选择结果
 
-写入最终报告"基本信息"节，记录：探测到的信号、决策依据、选定的 scanner 组合。
+选定的 scanner 组合写入报告元数据 YAML 块（dimensions_executed）；探测到的信号、决策依据纳入第 1 节门禁结论一句话结论。
 
 ### Step 3: 并行调度 scanner
 
@@ -126,20 +126,20 @@ ls <path>/frameworks/js/napi/ 2>/dev/null
 
 **必须使用权威模板**。模板固定了：
 - 头部 **YAML 报告元数据块**（机器可读，字段名/取值域固定，`risk_level` 仅 `low|medium|high|unknown`，`gate_decision` 仅 `approve|conditional|block|insufficient`）。
-- **固定章节**：1 基本信息 → 2 总体评价 → 3 问题统计 → 4 高优先级发现（P0/P1）→ 5 分维度明细 → 6 待跟进 → 7 附录 → 附录 A 门禁规则。
-- **附录 A 评分与决策矩阵**：`评分 = max(0, 100 − (30×P0 + 12×P1 + 5×P2 + 2×P3))`；存在 P0 → block，存在 P1 → conditional，评分 ≥90 → approve，≥70 → conditional，否则 block；必检维度缺失 → insufficient。严重等级统一归一化为 P0–P3。
+- **固定章节**：1 门禁结论 → 2 扣分原因 → 3 必须立即处理（P0/P1）→ 4 建议跟进（P2/P3）→ 5 分维度速览 → 6 关键发现详情。评分与门禁规则见 conventions.md §9。
+- **评分与决策矩阵**（见 conventions.md §9）：`评分 = max(0, 100 − (30×P0 + 12×P1 + 5×P2 + 2×P3))`；存在 P0 → block，存在 P1 → conditional，评分 ≥90 → approve，≥70 → conditional，否则 block；必检维度缺失 → insufficient。严重等级统一归一化为 P0–P3。
 
 **执行合并时**：
 1. 跨维度去重以 `file:line` 为第一键；同位置多维度命中合并为一条，标注全部维度来源。
 2. 不同 `file:line` 但同根因 → 由 refuter 在 Step 5 合并。
-3. 按附录 A 计算 `score` / `risk_level` / `gate_decision`，同时写入 YAML 元数据块与 2.1 表格（两者必须一致）。
-4. 必检维度缺失时，决策为 `insufficient` 并在 `waived_dimensions` 记录用户豁免项。
+3. 按 conventions.md §9 计算 `score` / `risk_level` / `gate_decision`，同时写入 YAML 元数据块与第 1 节门禁结论表格（两者必须一致）。
+4. 必检维度缺失时，决策为 `insufficient`；维度无适用面（如文档仅提交无代码）时该维度仍计入 `dimensions_executed` 并在 §5 分维度速览注明 N/A 理由，不计为缺失。
 
 ### Step 7: 交付
 
 向用户交付：
 1. 统一报告路径。
-2. Executive Summary 摘要：各维度通过率、总分、上库决策。
+2. Executive Summary 摘要：各维度结果、总分、上库决策。
 3. Top 高危项（P0 问题）及其阻塞原因。
 4. 各 scanner 原始产出路径（便于深入查阅）。
 5. `refute_log.md` 路径（对抗性验证记录）。
@@ -167,6 +167,6 @@ ls <path>/frameworks/js/napi/ 2>/dev/null
 - **不动代码**：检视阶段只产出报告与建议，不直接改源码；修复由用户确认后另起任务。
 - **Refute 只质疑不发现**：refuter 不能新增任何 scanner 未报告的发现。
 - **Refute 必须有代码证据**：推翻或降级必须引用具体 file:line。
-- **被推翻的发现保留在附录**：最终报告附录增加"已排除发现"小节。
+- **被推翻的发现保留在 refute_log.md**：不进入统一报告正文，仅在 refute_log.md 记录条目和理由，便于人工复核捞回。
 - **P0 推翻需更严格证据**：不能仅凭"极难触发"推翻 P0，必须是"确认不可达"（上游硬 guard 或编译器保证）。
 - **refute_log.md 与最终报告一并交付**。
