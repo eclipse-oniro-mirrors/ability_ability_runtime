@@ -191,6 +191,7 @@ constexpr char PRODUCT_ASSERT_FAULT_DIALOG_ENABLED[] = "persisit.sys.abilityms.s
 constexpr const char* INHERIT_PLUGIN_NAMESPACE = "persist.sys.abilityms.inherit_plugin_namespace";
 constexpr const char* PLUGIN_DEFAULT_NAMESPACE_LDDICTIONARY =
     "persist.sys.abilityms.plugin_default_namespace_lddictionary";
+constexpr const char* FORM_RENDER_SERVICE_NAME = "com.ohos.formrenderservice";
 constexpr char KILL_REASON[] = "Kill Reason:Js Error";
 constexpr const char* KEY_SKIP_ABILITY_STAGE_LIFECYCLE = "ohos.ability.param.skipAbilityStageLifecycle";
 
@@ -1429,19 +1430,17 @@ void MainThread::HandleOnOverlayChanged(const EventFwk::CommonEventData &data,
     }
 }
 
-bool IsNeedLoadLibrary(const std::string &bundleName)
+bool IsNeedLoadLibrary(const std::vector<OHOS::AppExecFwk::Metadata> &metaData, const bool isSystemApp)
 {
-    std::vector<std::string> needLoadLibraryBundleNames{
-        "com.ohos.contactsdataability",
-        "com.ohos.medialibrary.medialibrarydata",
-        "com.ohos.ringtonelibrary.ringtonelibrarydata",
-        "com.ohos.telephonydataability",
-        "com.ohos.FusionSearch",
-        "com.ohos.formrenderservice"
-    };
+    bool loadNativeLibraryForApplication = std::any_of(metaData.begin(), metaData.end(), [](const auto &metaDataItem) {
+        return metaDataItem.name == "ohos.ability.loadNativeLibraryForApplication" && metaDataItem.value == "true";
+    });
+    return loadNativeLibraryForApplication && isSystemApp;
+}
 
-    return std::find(needLoadLibraryBundleNames.begin(), needLoadLibraryBundleNames.end(), bundleName)
-        != needLoadLibraryBundleNames.end();
+bool IsFormRenderService(const std::string &bundleName)
+{
+    return FORM_RENDER_SERVICE_NAME == bundleName;
 }
 
 bool GetBundleForLaunchApplication(std::shared_ptr<BundleMgrHelper> bundleMgrHelper, const std::string &bundleName,
@@ -1747,7 +1746,7 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
     }
 #endif
 
-    if (IsNeedLoadLibrary(bundleName)) {
+    if (IsNeedLoadLibrary(entryHapModuleInfo.metadata, isSystemApp) || IsFormRenderService(bundleName)) {
         std::vector<std::string> localPaths;
         ChangeToLocalPath(bundleName, appInfo.moduleSourceDirs, localPaths);
         LoadAbilityLibrary(localPaths);
