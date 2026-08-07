@@ -229,6 +229,8 @@ public:
 
     bool GetRecoveryInfo();
 
+    void EvaluateRecoveryLaunchReason();
+
 #ifdef SUPPORT_SCREEN
     inline bool IsStartingWindow() const
     {
@@ -1044,6 +1046,7 @@ protected:
     bool isKillForPermissionUpdate_ = false;
     mutable bool isDumpTimeout_ = false;
     bool isPrepareTerminate_ = false;
+    bool hasRecoverInfo_ = false;
 
 #ifdef SUPPORT_SCREEN
     bool isStartingWindow_ = false;

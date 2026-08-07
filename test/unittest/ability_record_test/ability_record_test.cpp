@@ -1518,7 +1518,7 @@ HWTEST_F(AbilityRecordTest, AbilityRecord_CanRestartResident_002, TestSize.Level
  * Function: UpdateRecoveryInfo
  * FunctionPoints: CanRestartResident
  * EnvConditions: NA
- * CaseDescription: Verify whether the UpdateRecoveryInfo interface calls normally.
+ * CaseDescription: Verify UpdateRecoveryInfo only stores flag, does not set want param.
  */
 HWTEST_F(AbilityRecordTest, AbilityRecord_UpdateRecoveryInfo_001, TestSize.Level1)
 {
@@ -1532,13 +1532,82 @@ HWTEST_F(AbilityRecordTest, AbilityRecord_UpdateRecoveryInfo_001, TestSize.Level
  * Function: UpdateRecoveryInfo
  * FunctionPoints: CanRestartResident
  * EnvConditions: NA
- * CaseDescription: Verify whether the UpdateRecoveryInfo interface calls normally.
+ * CaseDescription: Verify UpdateRecoveryInfo(true) stores flag but does not set want param immediately.
  */
 HWTEST_F(AbilityRecordTest, AbilityRecord_UpdateRecoveryInfo_002, TestSize.Level1)
 {
     std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
     abilityRecord->UpdateRecoveryInfo(true);
-    EXPECT_TRUE(abilityRecord->want_.GetBoolParam(Want::PARAM_ABILITY_RECOVERY_RESTART, false));
+    EXPECT_FALSE(abilityRecord->want_.GetBoolParam(Want::PARAM_ABILITY_RECOVERY_RESTART, false));
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: EvaluateRecoveryLaunchReason
+ * FunctionPoints: AppRecovery launch reason evaluation
+ * EnvConditions: NA
+ * CaseDescription: Verify recovery is set when hasRecoverInfo + startByScb + PERFORMANCE_CONTROL.
+ */
+HWTEST_F(AbilityRecordTest, AbilityRecord_EvaluateRecoveryLaunchReason_001, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    abilityRecord->UpdateRecoveryInfo(true);
+    auto setting = AbilityStartSetting::GetEmptySetting();
+    setting->AddProperty(AbilityStartSetting::IS_START_BY_SCB_KEY, "true");
+    abilityRecord->SetStartSetting(setting);
+    abilityRecord->lifeCycleStateInfo_.launchParam.lastExitReason =
+        LastExitReason::LASTEXITREASON_PERFORMANCE_CONTROL;
+    abilityRecord->lifeCycleStateInfo_.launchParam.launchReason =
+        LaunchReason::LAUNCHREASON_START_ABILITY;
+    abilityRecord->EvaluateRecoveryLaunchReason();
+    EXPECT_TRUE(abilityRecord->GetRecoveryInfo());
+    EXPECT_EQ(abilityRecord->lifeCycleStateInfo_.launchParam.launchReason,
+        LaunchReason::LAUNCHREASON_APP_RECOVERY);
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: EvaluateRecoveryLaunchReason
+ * FunctionPoints: AppRecovery launch reason evaluation
+ * EnvConditions: NA
+ * CaseDescription: Verify recovery is skipped when not started by SCB.
+ */
+HWTEST_F(AbilityRecordTest, AbilityRecord_EvaluateRecoveryLaunchReason_002, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    abilityRecord->UpdateRecoveryInfo(true);
+    abilityRecord->lifeCycleStateInfo_.launchParam.lastExitReason =
+        LastExitReason::LASTEXITREASON_PERFORMANCE_CONTROL;
+    abilityRecord->lifeCycleStateInfo_.launchParam.launchReason =
+        LaunchReason::LAUNCHREASON_START_ABILITY;
+    abilityRecord->EvaluateRecoveryLaunchReason();
+    EXPECT_FALSE(abilityRecord->GetRecoveryInfo());
+    EXPECT_EQ(abilityRecord->lifeCycleStateInfo_.launchParam.launchReason,
+        LaunchReason::LAUNCHREASON_START_ABILITY);
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: EvaluateRecoveryLaunchReason
+ * FunctionPoints: AppRecovery launch reason evaluation
+ * EnvConditions: NA
+ * CaseDescription: Verify recovery is skipped when lastExitReason is not PERFORMANCE/RESOURCE_CONTROL.
+ */
+HWTEST_F(AbilityRecordTest, AbilityRecord_EvaluateRecoveryLaunchReason_003, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    abilityRecord->UpdateRecoveryInfo(true);
+    auto setting = AbilityStartSetting::GetEmptySetting();
+    setting->AddProperty(AbilityStartSetting::IS_START_BY_SCB_KEY, "true");
+    abilityRecord->SetStartSetting(setting);
+    abilityRecord->lifeCycleStateInfo_.launchParam.lastExitReason =
+        LastExitReason::LASTEXITREASON_CPP_CRASH;
+    abilityRecord->lifeCycleStateInfo_.launchParam.launchReason =
+        LaunchReason::LAUNCHREASON_START_ABILITY;
+    abilityRecord->EvaluateRecoveryLaunchReason();
+    EXPECT_FALSE(abilityRecord->GetRecoveryInfo());
+    EXPECT_EQ(abilityRecord->lifeCycleStateInfo_.launchParam.launchReason,
+        LaunchReason::LAUNCHREASON_START_ABILITY);
 }
 
 /*
