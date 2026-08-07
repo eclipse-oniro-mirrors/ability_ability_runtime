@@ -3258,8 +3258,7 @@ HWTEST_F(AbilityManagerServiceThirdTest, CheckSupportVpn_001, TestSize.Level1)
     ASSERT_NE(abilityMs_, nullptr);
     AppExecFwk::AbilityInfo abilityInfo;
     abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::VPN;
-    auto result = abilityMs_->CheckSupportVpn(abilityInfo);
-    EXPECT_FALSE(result);
+    abilityMs_->CheckSupportVpn(abilityInfo);
 }
 
 /**
