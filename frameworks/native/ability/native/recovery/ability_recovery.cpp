@@ -52,9 +52,6 @@ constexpr uint8_t RECOVERY_EVENT_PARAM_COUNT = 6;
 constexpr size_t RECOVERY_PARAM_NAME_MAX_LEN = 48;
 // RECOVERY_RESULT string values, distinguish restore path from service-side ScheduleRecover path
 constexpr const char* RESTORE_RESULT_SUCCESS = "RESTORE_SUCCESS";
-constexpr const char* RESTORE_RESULT_FAIL_NOT_ENABLED = "RESTORE_FAIL_NOT_ENABLED";
-constexpr const char* RESTORE_RESULT_FAIL_NOT_SAVE_STATE = "RESTORE_FAIL_NOT_SAVE_STATE";
-constexpr const char* RESTORE_RESULT_FAIL_LOAD_FAILED = "RESTORE_FAIL_LOAD_FAILED";
 
 static void SetHiSysEventParamName(HiSysEventParam &param, const char *name)
 {
@@ -472,19 +469,16 @@ bool AbilityRecovery::ScheduleRestoreAbilityState(StateReason reason, const Want
     auto abilityInfo = abilityInfo_.lock();
     if (!isEnable_) {
         TAG_LOGE(AAFwkTag::RECOVERY, "not enable");
-        ReportRestoreAbilityStateResult(abilityInfo, RESTORE_RESULT_FAIL_NOT_ENABLED);
         return false;
     }
 
     if (!IsSaveAbilityState(reason)) {
         TAG_LOGE(AAFwkTag::RECOVERY, "not save ability state");
-        ReportRestoreAbilityStateResult(abilityInfo, RESTORE_RESULT_FAIL_NOT_SAVE_STATE);
         return false;
     }
 
     if (!LoadSavedState(reason)) {
         TAG_LOGE(AAFwkTag::RECOVERY, "no saved state ");
-        ReportRestoreAbilityStateResult(abilityInfo, RESTORE_RESULT_FAIL_LOAD_FAILED);
         return false;
     }
 
