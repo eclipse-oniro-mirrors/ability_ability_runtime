@@ -337,8 +337,6 @@ void CJAbilityObject::OnConfigurationUpdated(const std::shared_ptr<AppExecFwk::C
     }
     auto cfg = CallConvertConfig(configuration);
     g_cjAbilityFuncs.cjAbilityOnConfigurationUpdate(id_, cfg);
-    free(cfg.mcc);
-    free(cfg.mnc);
 }
 
 void CJAbilityObject::OnMemoryLevel(int32_t level) const
