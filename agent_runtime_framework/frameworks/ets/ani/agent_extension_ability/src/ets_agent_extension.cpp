@@ -16,6 +16,7 @@
 #include "ets_agent_extension.h"
 
 #include "ability_business_error.h"
+#include "ability_handler.h"
 #include "agent_extension.h"
 #include "agent_extension_connection_constants.h"
 #include "agent_extension_context.h"
@@ -23,6 +24,7 @@
 #include "ani_common_configuration.h"
 #include "ani_common_want.h"
 #include "configuration_utils.h"
+#include "display_util.h"
 #include "ets_agent_connector_proxy.h"
 #include "ets_agent_extension_context.h"
 #include "ets_agent_extension_stub_impl.h"
@@ -32,6 +34,12 @@
 #include "ets_runtime.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
+
+#ifdef SUPPORT_GRAPHICS
+#include "iservice_registry.h"
+#include "system_ability_definition.h"
+#include "window_scene.h"
+#endif
 
 #ifdef WINDOWS_PLATFORM
 #define ETS_EXPORT __declspec(dllexport)
@@ -54,6 +62,9 @@ constexpr const char *ON_CONNECT_SIGNATURE =
 constexpr const char *ON_DISCONNECT_SIGNATURE =
     "C{@ohos.app.ability.Want.Want}C{application.AgentHostProxy.AgentHostProxy}:";
 constexpr const char *VOID_SIGNATURE = ":";
+constexpr const char *ON_CONFIGURATION_UPDATE_SIGNATURE = "C{@ohos.app.ability.Configuration.Configuration}:";
+constexpr const char *AGENT_EXTENSION_CONTEXT_CLASS_NAME =
+    "application.AgentExtensionContext.AgentExtensionContext";
 
 void RemoveAgentWantParams(AAFwk::Want &want)
 {
@@ -101,7 +112,6 @@ void EtsAgentExtension::Init(const std::shared_ptr<AbilityLocalRecord> &record,
     moduleName.append("::").append(abilityInfo_->name);
     TAG_LOGD(AAFwkTag::SER_ROUTER, "called, moduleName:%{public}s,srcPath:%{public}s",
         moduleName.c_str(), srcPath.c_str());
-
     etsObj_ = etsRuntime_.LoadModule(
         moduleName, srcPath, abilityInfo_->hapPath, abilityInfo_->compileMode == CompileMode::ES_MODULE,
         false, abilityInfo_->srcEntrance);
@@ -109,7 +119,6 @@ void EtsAgentExtension::Init(const std::shared_ptr<AbilityLocalRecord> &record,
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null etsObj_");
         return;
     }
-
     TAG_LOGD(AAFwkTag::SER_ROUTER, "LoadModule success");
     auto env = etsRuntime_.GetAniEnv();
     if (env == nullptr) {
@@ -127,6 +136,17 @@ void EtsAgentExtension::Init(const std::shared_ptr<AbilityLocalRecord> &record,
     BindContext(env, want);
     SetExtensionCommon(EtsExtensionCommon::Create(
         etsRuntime_, static_cast<AppExecFwk::ETSNativeReference &>(*etsObj_), shellContextRef_));
+    handler_ = handler;
+    auto context = GetContext();
+    auto appContext = Context::GetApplicationContext();
+    if (context != nullptr && appContext != nullptr) {
+        auto appConfig = appContext->GetConfiguration();
+        if (appConfig != nullptr) {
+            TAG_LOGD(AAFwkTag::SER_ROUTER, "Original config dump: %{public}s", appConfig->GetName().c_str());
+            context->SetConfiguration(std::make_shared<Configuration>(*appConfig));
+        }
+    }
+    ListenWMS();
 }
 
 void EtsAgentExtension::OnStart(const AAFwk::Want &want)
@@ -134,10 +154,26 @@ void EtsAgentExtension::OnStart(const AAFwk::Want &want)
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::SER_ROUTER, "call");
     Extension::OnStart(want);
+    auto context = GetContext();
+    if (context != nullptr) {
+#ifdef SUPPORT_GRAPHICS
+        int32_t displayId = AAFwk::DisplayUtil::GetDefaultDisplayId();
+        displayId = want.GetIntParam(Want::PARAM_RESV_DISPLAY_ID, displayId);
+        TAG_LOGD(AAFwkTag::SER_ROUTER, "displayId %{public}d", displayId);
+        auto configUtils = std::make_shared<ConfigurationUtils>();
+        if (!HasScreenDensityBeenSet(context->GetResourceManager())) {
+            TAG_LOGD(AAFwkTag::SER_ROUTER, "call InitDisplayConfig");
+            configUtils->InitDisplayConfig(displayId, context->GetConfiguration(), context->GetResourceManager());
+        }
+#endif //SUPPORT_GRAPHICS
+    }
     auto env = etsRuntime_.GetAniEnv();
     if (env == nullptr) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "env not found");
         return;
+    }
+    if (context != nullptr) {
+        EtsExtensionContext::ConfigurationUpdated(env, shellContextRef_, context->GetConfiguration());
     }
     ani_ref wantRef = WrapWant(env, want);
     if (wantRef == nullptr) {
@@ -155,6 +191,24 @@ void EtsAgentExtension::OnStop()
     TAG_LOGD(AAFwkTag::SER_ROUTER, "call");
     Extension::OnStop();
     CallObjectMethod("onDestroy", VOID_SIGNATURE);
+#ifdef SUPPORT_GRAPHICS
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "UnregisterDisplayInfoChangedListener");
+    auto context = GetContext();
+    if (context == nullptr || context->GetToken() == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null context");
+        return;
+    }
+    Rosen::WindowManager::GetInstance()
+        .UnregisterDisplayInfoChangedListener(context->GetToken(), displayListener_);
+    if (saStatusChangeListener_) {
+        auto saMgr = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+        if (saMgr) {
+            saMgr->UnSubscribeSystemAbility(WINDOW_MANAGER_SERVICE_ID, saStatusChangeListener_);
+        } else {
+            TAG_LOGW(AAFwkTag::SER_ROUTER, "OnStop SaMgr null");
+        }
+    }
+#endif //SUPPORT_GRAPHICS
     TAG_LOGD(AAFwkTag::SER_ROUTER, "end");
 }
 
@@ -465,6 +519,9 @@ void EtsAgentExtension::BindContext(ani_env *env, std::shared_ptr<AAFwk::Want> w
     if (env->Object_SetField_Ref(etsObj_->aniObj, contextField, contextRef) != ANI_OK) {
         TAG_LOGD(AAFwkTag::SER_ROUTER, "Object_SetField_Ref contextObj failed");
     }
+    shellContextRef_ = std::make_shared<AppExecFwk::ETSNativeReference>();
+    shellContextRef_->aniObj = contextObj;
+    shellContextRef_->aniRef = contextRef;
     TAG_LOGD(AAFwkTag::SER_ROUTER, "BindContext end");
 }
 
@@ -480,6 +537,188 @@ void EtsAgentExtension::GetSrcPath(std::string &srcPath)
         }
     }
 }
+
+void EtsAgentExtension::OnConfigurationUpdated(const AppExecFwk::Configuration &configuration)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    Extension::OnConfigurationUpdated(configuration);
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "call");
+    auto context = GetContext();
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null context");
+        return;
+    }
+
+    auto configUtils = std::make_shared<ConfigurationUtils>();
+    configUtils->UpdateGlobalConfig(configuration, context->GetResourceManager());
+    auto contextConfig = context->GetConfiguration();
+    if (contextConfig != nullptr) {
+        TAG_LOGD(AAFwkTag::SER_ROUTER, "Config dump: %{public}s", contextConfig->GetName().c_str());
+        std::vector<std::string> changeKeyV;
+        contextConfig->CompareDifferent(changeKeyV, configuration);
+        if (!changeKeyV.empty()) {
+            contextConfig->Merge(changeKeyV, configuration);
+        }
+        TAG_LOGD(AAFwkTag::SER_ROUTER, "Config dump after merge: %{public}s", contextConfig->GetName().c_str());
+    }
+    ConfigurationUpdated();
+}
+
+void EtsAgentExtension::ConfigurationUpdated()
+{
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "ConfigurationUpdated");
+    auto env = etsRuntime_.GetAniEnv();
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null env");
+        return;
+    }
+    auto context = GetContext();
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null context");
+        return;
+    }
+    auto fullConfig = context->GetConfiguration();
+    if (fullConfig == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null configuration");
+        return;
+    }
+
+    ani_status status = ANI_ERROR;
+    ani_object aniConfiguration = OHOS::AppExecFwk::WrapConfiguration(env, *fullConfig);
+    status = env->Object_CallMethodByName_Void(
+        etsObj_->aniObj, "onConfigurationUpdate", ON_CONFIGURATION_UPDATE_SIGNATURE, aniConfiguration);
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "CALL Object_CallMethod failed, status: %{public}d", status);
+        return;
+    }
+
+    ani_ref contextRef = nullptr;
+    if ((status = env->Object_GetFieldByName_Ref(etsObj_->aniObj, "context", &contextRef)) != ANI_OK ||
+        contextRef == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "Failed to get field, status : %{public}d", status);
+        return;
+    }
+    ani_class cls = nullptr;
+    if ((status = env->FindClass(AGENT_EXTENSION_CONTEXT_CLASS_NAME, &cls)) != ANI_OK || cls == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "Failed to find class, status : %{public}d", status);
+        return;
+    }
+    if ((status = env->Object_SetFieldByName_Ref(reinterpret_cast<ani_object>(contextRef), "config",
+        aniConfiguration)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "Failed to set field, status : %{public}d", status);
+        return;
+    }
+}
+
+void EtsAgentExtension::ListenWMS()
+{
+#ifdef SUPPORT_GRAPHICS
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "RegisterDisplayListener");
+    auto abilityManager = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (abilityManager == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null SaMgr");
+        return;
+    }
+
+    auto etsAgentExtension = std::static_pointer_cast<EtsAgentExtension>(shared_from_this());
+    displayListener_ = sptr<EtsAgentExtensionDisplayListener>::MakeSptr(etsAgentExtension);
+    if (displayListener_ == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null displayListener");
+        return;
+    }
+
+    auto context = GetContext();
+    if (context == nullptr || context->GetToken() == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null context");
+        return;
+    }
+
+    saStatusChangeListener_ =
+        sptr<SystemAbilityStatusChangeListener>::MakeSptr(displayListener_, context->GetToken());
+    if (saStatusChangeListener_ == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null saStatusChangeListener");
+        return;
+    }
+
+    auto ret = abilityManager->SubscribeSystemAbility(WINDOW_MANAGER_SERVICE_ID, saStatusChangeListener_);
+    if (ret != 0) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "subscribe system ability error:%{public}d.", ret);
+    }
+#endif
+}
+
+bool EtsAgentExtension::HasScreenDensityBeenSet(std::shared_ptr<Global::Resource::ResourceManager> resourceManager)
+{
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "call HasScreenDensityBeenSet");
+    std::unique_ptr<Global::Resource::ResConfig> resConfig(Global::Resource::CreateResConfig());
+    if (resConfig == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null resConfig");
+        return false;
+    }
+    if (resourceManager == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null resourceManager");
+        return false;
+    }
+    resourceManager->GetResConfig(*resConfig);
+    return resConfig->GetScreenDensityDpi() != Global::Resource::ScreenDensity::SCREEN_DENSITY_NOT_SET;
+}
+
+#ifdef SUPPORT_GRAPHICS
+void EtsAgentExtension::SystemAbilityStatusChangeListener::OnAddSystemAbility(int32_t systemAbilityId,
+    const std::string& deviceId)
+{
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "systemAbilityId: %{public}d add", systemAbilityId);
+    if (systemAbilityId == WINDOW_MANAGER_SERVICE_ID) {
+        TAG_LOGI(AAFwkTag::SER_ROUTER, "RegisterDisplayInfoChangedListener");
+        Rosen::WindowManager::GetInstance().RegisterDisplayInfoChangedListener(token_, tmpDisplayListener_);
+    }
+}
+
+void EtsAgentExtension::OnDisplayInfoChange(const sptr<IRemoteObject>& token, Rosen::DisplayId displayId,
+    float density, Rosen::DisplayOrientation orientation)
+{
+    TAG_LOGI(AAFwkTag::SER_ROUTER, "displayId: %{public}" PRIu64, displayId);
+    auto context = GetContext();
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null context");
+        return;
+    }
+
+    auto contextConfig = context->GetConfiguration();
+    if (contextConfig == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null contextConfig");
+        return;
+    }
+
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "Config dump: %{public}s", contextConfig->GetName().c_str());
+    bool configChanged = false;
+    auto configUtils = std::make_shared<ConfigurationUtils>();
+    configUtils->UpdateDisplayConfig(displayId, contextConfig, context->GetResourceManager(), configChanged);
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "Config dump after update: %{public}s", contextConfig->GetName().c_str());
+
+    if (configChanged) {
+        auto weakEtsAgentExtension = weak_from_this();
+        auto task = [weakEtsAgentExtension]() {
+            auto extensionSptr = weakEtsAgentExtension.lock();
+            if (!extensionSptr) {
+                TAG_LOGE(AAFwkTag::SER_ROUTER, "null extensionSptr");
+                return;
+            }
+            auto etsAgentExtension = std::static_pointer_cast<EtsAgentExtension>(extensionSptr);
+            if (!etsAgentExtension) {
+                TAG_LOGE(AAFwkTag::SER_ROUTER, "null etsAgentExtension");
+                return;
+            }
+            etsAgentExtension->ConfigurationUpdated();
+        };
+        if (handler_ != nullptr) {
+            handler_->PostTask(task, "EtsAgentExtension:OnChange");
+        }
+    }
+
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "finished");
+}
+#endif
 
 extern "C" ETS_EXPORT AgentExtension* OHOS_CreateEtsAgentExtension(
     const std::unique_ptr<OHOS::AbilityRuntime::Runtime> &runtime)
