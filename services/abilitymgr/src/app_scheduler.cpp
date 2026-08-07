@@ -609,7 +609,7 @@ int32_t AppScheduler::NotifyAppMgrRecordExitReason(int32_t pid, int32_t reason, 
 }
 
 int32_t AppScheduler::NotifyAppMgrRecordExitReasonCompability(
-    int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg)
+    int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg, int32_t reason)
 {
     if (pid <= 0) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "pid is invalid");
@@ -617,7 +617,7 @@ int32_t AppScheduler::NotifyAppMgrRecordExitReasonCompability(
     }
     CHECK_POINTER_AND_RETURN(appMgrClient_, INNER_ERR);
     auto ret = static_cast<int32_t>(IN_PROCESS_CALL(appMgrClient_->NotifyAppMgrRecordExitReasonCompability(
-        pid, killId, killMsg, innerMsg)));
+        pid, killId, killMsg, innerMsg, reason)));
     return ret;
 }
 

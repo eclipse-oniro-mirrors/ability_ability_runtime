@@ -251,10 +251,11 @@ public:
      * @param killId Kill reason enum.
      * @param killMsg Kill message.
      * @param innerMsg Inner message.
+     * @param reason reason enum
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int32_t NotifyAppMgrRecordExitReasonCompability(
-        int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg) override;
+        int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg, int32_t reason) override;
 
     /**
      * Ability attach timeout. If start ability encounter failure, attach timeout to terminate.

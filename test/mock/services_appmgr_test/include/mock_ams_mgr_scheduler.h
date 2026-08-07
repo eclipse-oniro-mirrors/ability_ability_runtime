@@ -60,8 +60,8 @@ public:
     MOCK_METHOD3(GetApplicationInfoByProcessID, int(const int pid, AppExecFwk::ApplicationInfo& application,
         bool& debug));
     MOCK_METHOD3(NotifyAppMgrRecordExitReason, int32_t(int32_t pid, int32_t reason, const std::string &exitMsg));
-    MOCK_METHOD4(NotifyAppMgrRecordExitReasonCompability, int32_t(int32_t pid, int32_t killId,
-        const std::string &killMsg, const std::string &innerMsg));
+    MOCK_METHOD5(NotifyAppMgrRecordExitReasonCompability, int32_t(int32_t pid, int32_t killId,
+        const std::string &killMsg, const std::string &innerMsg, int32_t reason));
     MOCK_METHOD3(GetBundleNameByPid, int32_t(const int pid, std::string &bundleName, int32_t &uid));
     MOCK_METHOD1(RegisterAppDebugListener, int32_t(const sptr<IAppDebugListener> &listener));
     MOCK_METHOD1(UnregisterAppDebugListener, int32_t(const sptr<IAppDebugListener> &listener));
