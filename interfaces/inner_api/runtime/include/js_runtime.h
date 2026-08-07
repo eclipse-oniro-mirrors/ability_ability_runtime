@@ -45,7 +45,6 @@ class FileMapper;
 
 namespace JsEnv {
 class JsEnvironment;
-class SourceMapOperator;
 struct ErrorObject;
 struct UncaughtExceptionInfo;
 using UncatchableTask = std::function<void(std::string summary, const JsEnv::ErrorObject errorObject, napi_env env,
@@ -147,8 +146,8 @@ public:
                               bool isABC = true);
     static std::shared_ptr<AbilityBase::FileMapper> GetSafeData(const std::string& path, std::string& fileFullName);
 
-    void SourceMapInit(const std::string bundleName);
-    void InitSourceMap(const std::string hqfFilePath);
+    void InitSourceMap(const std::string bundleName);
+    void HqfInitSourceMap(const std::string hqfFilePath);
     void FreeNativeReference(std::unique_ptr<NativeReference> reference);
     void FreeNativeReference(std::shared_ptr<NativeReference>&& reference);
     void StartProfiler(const DebugOption debugOption) override;
