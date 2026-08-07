@@ -83,8 +83,8 @@
 git rev-parse HEAD
 # change_id（I 开头 40 位十六进制）
 git log -1 --format="%b" | grep -o 'Change-Id: I[0-9a-f]\{40\}'
-# commit_subject（第一行）
-git log -1 --format="%s"
+# report_id（change_id-R{round}；change_id 为 N/A 时用 commit_id 前 8 位）
+echo "$(git log -1 --format='%b' | grep -o 'Change-Id: I[0-9a-f]\{40\}' || git rev-parse --short=8 HEAD)-R${round}"
 ```
 
 - 非 git 仓库或无 Change-Id：对应字段填 `"N/A"`，并在报告元数据 YAML 块注明。
@@ -152,10 +152,10 @@ ls <path>/frameworks/js/napi/ 2>/dev/null
 
 - `dimensions_executed` = {自身维度名}
 - 计算差集 `missing = dimensions_required − dimensions_executed`
-- 若 `missing ≠ ∅` 且 `missing` 未全部在 `waived_dimensions` 中 → `gate_decision = insufficient`、`risk_level = unknown`
-- 若 `missing = ∅` 或 `missing` 全部已豁免 → 按第 9 节评分矩阵正常判定
-- **必须向用户提示**未执行的必检维度，询问是否豁免；用户不豁免则出 `insufficient` 报告并说明补齐方式（哪些维度需补扫）
-- `waived_dimensions` 只记录用户明确书面豁免的维度，scanner 不得自行豁免
+- 若 `missing ≠ ∅` → `gate_decision = insufficient`、`risk_level = unknown`
+- 若 `missing = ∅` → 按第 9 节评分矩阵正常判定
+- **必须向用户提示**未执行的必检维度；用户不补齐则出 `insufficient` 报告并说明补齐方式（哪些维度需补扫）
+- 维度无适用面时（如文档仅提交无 C++ 代码 → security-scanner 无代码缺陷面），该维度仍计入 `dimensions_executed`，在 §5 分维度速览注明 N/A 理由，不计为 missing
 
 ---
 
@@ -228,16 +228,15 @@ codecheck_report:
   round: <正整数>
   commit_id: "<40 位完整 SHA，来自 §6>"
   change_id: "<Change-Id，I 开头 40 位十六进制，来自 §6>"
-  commit_subject: "<commit message 第一行，来自 §6>"
+  report_id: "<{change_id}-R{round}，change_id 为 N/A 时用 commit_id 前 8 位>"
   date: "<YYYY-MM-DD>"
+  gate_decision: "<approve|conditional|block|insufficient，来自 §9>"
+  risk_level: "<low|medium|high|unknown，来自 §9>"
+  score: <§9 计算结果，0-100>
   dimensions_required: ["<§8 自检得到的必检维度>"]
   dimensions_executed: ["<单 scanner 场景：仅自身维度>"]
-  waived_dimensions: ["<用户明确书面豁免的必检维度，无则 []>"]
   findings_total: <归一化后发现总数>
   findings_by_severity: {P0: <n>, P1: <n>, P2: <n>, P3: <n>}
-  score: <§9 计算结果，0-100>
-  risk_level: "<low|medium|high|unknown，来自 §9>"
-  gate_decision: "<approve|conditional|block|insufficient，来自 §9>"
   gate_blockers: ["<P0 项 ID / 缺失的必检维度，来自 §10>"]
   must_fix: ["<conditional 时填 P1 项 ID，来自 §10>"]
   followups: ["<P2/P3 项 ID，来自 §10>"]
