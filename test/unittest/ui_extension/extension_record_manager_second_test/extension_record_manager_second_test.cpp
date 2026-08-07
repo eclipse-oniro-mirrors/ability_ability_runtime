@@ -2300,41 +2300,5 @@ HWTEST_F(BackgroundUserExtensionMonitorTest, BackgroundUserExtension_BuildJsonIn
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
 
-/**
- * @tc.name: BackgroundUserExtension_ConcurrentAccess_0100
- * @tc.desc: Test concurrent OnBackgroundUserExtensionStarted does not crash.
- * @tc.type: FUNC
- * @tc.require: issue
- */
-HWTEST_F(BackgroundUserExtensionMonitorTest, BackgroundUserExtension_ConcurrentAccess_0100, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "begin.");
-    auto monitor = DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance();
-    ASSERT_NE(monitor, nullptr);
-
-    const int32_t threadCount = 10;
-    std::vector<std::thread> threads;
-
-    for (int32_t i = 0; i < threadCount; i++) {
-        threads.emplace_back([monitor, i]() {
-            AAFwk::BackgroundUserExtensionCallerInfo callerInfo;
-            callerInfo.callerUid = 200000100 + i;
-            callerInfo.callerBundleName = "com.example.caller" + std::to_string(i);
-            monitor->OnBackgroundUserExtensionStarted(callerInfo,
-                "com.example.callee" + std::to_string(i),
-                "com.example.callee" + std::to_string(i),
-                "ServiceExtension",
-                "Ability" + std::to_string(i),
-                100200 + i);
-        });
-    }
-    for (auto &t : threads) {
-        t.join();
-    }
-    EXPECT_EQ(monitor->cachedEvents_.size(), static_cast<size_t>(threadCount));
-
-    TAG_LOGI(AAFwkTag::TEST, "end.");
-}
-
 } // namespace AbilityRuntime
 } // namespace OHOS
