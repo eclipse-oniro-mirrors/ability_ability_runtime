@@ -65,7 +65,7 @@ config("ability_manager_public_config") {
 ohos_shared_library("ability_manager") {
   use_exceptions = true
   branch_protector_ret = "pac_ret"
-  branch_protector_ret = "bti"
+  branch_protector_frt = "bti"
   sanitize = {
     integer_overflow = true
     ubsan = true
@@ -246,7 +246,7 @@ ohos_shared_library("ability_start_options") {
     debug = false
   }
   branch_protector_ret = "pac_ret"
-  branch_protector_ret = "bti"
+  branch_protector_frt = "bti"
 
   include_dirs = [
     "include/",
@@ -281,7 +281,7 @@ ohos_shared_library("ability_start_options") {
 
 ohos_shared_library("mission_info") {
   branch_protector_ret = "pac_ret"
-  branch_protector_ret = "bti"
+  branch_protector_frt = "bti"
 
   sanitize = {
     cfi = true
@@ -340,7 +340,7 @@ ohos_shared_library("ability_manager_c") {
 
 ohos_shared_library("ability_start_setting") {
   branch_protector_ret = "pac_ret"
-  branch_protector_ret = "bti"
+  branch_protector_frt = "bti"
 
   sanitize = {
     cfi = true
@@ -413,7 +413,7 @@ ohos_shared_library("start_window_option") {
     debug = false
   }
   branch_protector_ret = "pac_ret"
-  branch_protector_ret = "bti"
+  branch_protector_frt = "bti"
 
   include_dirs = [
     "include/",
