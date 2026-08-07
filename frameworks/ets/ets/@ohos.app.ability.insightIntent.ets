@@ -26,16 +26,36 @@ namespace insightIntent {
     SERVICE_EXTENSION_ABILITY = 3,
   }
 
+  export interface InteractionUI {
+    interactionUIType: string;
+  }
+
+  export interface InteractionModalUIExtension extends InteractionUI {
+    interactionUIType: 'MODAL_UIEXTENSION';
+    bundleName: string;
+    moduleName: string;
+    abilityName: string;
+    uiExtensionType: string;
+    uri: string;
+    parameters?: Record<string, RecordData>;
+  }
+
+  export interface InteractionInfo {
+    interactionUI?: InteractionUI;
+  }
+
   export interface ExecuteResult {
     code: int;
     result?: Record<string, RecordData>;
     uris?: Array<string>;
     flags?: int;
+    interactionInfo?: InteractionInfo;
   }
 
   export interface IntentResult<T> {
     code: int;
     result?: T;
+    interactionInfo?: InteractionInfo;
   }
 
   export class ExecuteResultInner implements ExecuteResult{
@@ -43,6 +63,25 @@ namespace insightIntent {
     result?: Record<string, RecordData>;
     uris?: Array<string>;
     flags?: int;
+    interactionInfo?: InteractionInfo;
+  }
+
+  export class InteractionUIInner implements InteractionUI {
+    interactionUIType: string = '';
+  }
+
+  export class InteractionModalUIExtensionInner implements InteractionModalUIExtension {
+    interactionUIType: 'MODAL_UIEXTENSION' = 'MODAL_UIEXTENSION';
+    bundleName: string = '';
+    abilityName: string = '';
+    moduleName: string = '';
+    uiExtensionType: string = '';
+    uri: string = '';
+    parameters?: Record<string, RecordData>;
+  }
+
+  export class InteractionInfoInner implements InteractionInfo {
+    interactionUI?: InteractionUI = new InteractionUIInner();
   }
 
   export enum ReturnMode {

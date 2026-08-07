@@ -16,8 +16,10 @@
 #include "js_insight_intent_driver_utils.h"
 
 #include <cstdint>
+#include <memory>
 
 #include "ability_state.h"
+#include "insight_intent_execute_result.h"
 #include "napi_common_want.h"
 #include "napi_remote_object.h"
 #include "js_runtime.h"
@@ -49,6 +51,30 @@ napi_value CreateJsExecuteResult(napi_env env, const AppExecFwk::InsightIntentEx
         napi_set_named_property(env, objValue, "uris", CreateNativeArray(env, result.uris));
     }
     napi_set_named_property(env, objValue, "flags", CreateJsValue(env, result.flags));
+    if (result.interactionInfo != nullptr && result.interactionInfo->interactionUI != nullptr) {
+        napi_value infoObj = nullptr;
+        napi_create_object(env, &infoObj);
+        napi_value uiObj = nullptr;
+        napi_create_object(env, &uiObj);
+        napi_set_named_property(env, uiObj, "interactionUIType",
+            CreateJsValue(env, result.interactionInfo->interactionUI->interactionUIType));
+        if (result.interactionInfo->interactionUI->interactionUIType ==
+            AppExecFwk::INTERACTION_UI_TYPE_MODAL_UIEXTENSION) {
+            auto modalUI = std::static_pointer_cast<AppExecFwk::InteractionModalUIExtension>(
+                result.interactionInfo->interactionUI);
+            napi_set_named_property(env, uiObj, "bundleName", CreateJsValue(env, modalUI->bundleName));
+            napi_set_named_property(env, uiObj, "abilityName", CreateJsValue(env, modalUI->abilityName));
+            napi_set_named_property(env, uiObj, "moduleName", CreateJsValue(env, modalUI->moduleName));
+            napi_set_named_property(env, uiObj, "uiExtensionType", CreateJsValue(env, modalUI->uiExtensionType));
+            napi_set_named_property(env, uiObj, "uri", CreateJsValue(env, modalUI->uri));
+            if (modalUI->parameters != nullptr) {
+                napi_set_named_property(env, uiObj, "parameters",
+                    OHOS::AppExecFwk::CreateJsWantParams(env, *modalUI->parameters));
+            }
+        }
+        napi_set_named_property(env, infoObj, "interactionUI", uiObj);
+        napi_set_named_property(env, objValue, "interactionInfo", infoObj);
+    }
     return handleEscape.Escape(objValue);
 }
 

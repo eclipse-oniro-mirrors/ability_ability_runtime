@@ -54,24 +54,9 @@ namespace {
             params.SetParam(INSIGHT_INTENT_EXECUTE_RESULT, pWantParams);
             ret = window->TransferExtensionData(params);
         } else {
-            WantParams resultParams;
-            resultParams.SetParam("code", AAFwk::Integer::Box(result.code));
-            if (result.result != nullptr) {
-                sptr<AAFwk::IWantParams> pWantParams = WantParamWrapper::Box(*result.result);
-                resultParams.SetParam("result", pWantParams);
-            }
-            auto size = result.uris.size();
-            sptr<IArray> uriArray = new (std::nothrow) Array(size, g_IID_IString);
-            if (uriArray == nullptr) {
-                TAG_LOGE(AAFwkTag::UI_EXT, "new uriArray failed");
-                return ERR_INVALID_VALUE;
-            }
-            for (std::size_t i = 0; i < size; i++) {
-                uriArray->Set(i, String::Box(result.uris[i]));
-            }
-            resultParams.SetParam("uris", uriArray);
-            resultParams.SetParam("flags", AAFwk::Integer::Box(result.flags));
-            sptr<AAFwk::IWantParams> pWantParams = WantParamWrapper::Box(resultParams);
+            auto resultParams = result.BuildFunctionResult();
+            resultParams->SetParam("code", AAFwk::Integer::Box(result.code));
+            sptr<AAFwk::IWantParams> pWantParams = WantParamWrapper::Box(*resultParams);
             params.SetParam(INSIGHT_INTENT_EXECUTE_RESULT, pWantParams);
 
             ret = window->TransferExtensionData(params);

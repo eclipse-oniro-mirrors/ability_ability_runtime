@@ -22,11 +22,54 @@ export default namespace insightIntentProvider {
 
   loadLibraryWithPermissionCheck("insight_intent_provider_ani_kit.z", "@ohos.app.ability.insightIntentProvider")
 
-  export native function nativeSendExecuteResult(instanceId: int, result: insightIntent.ExecuteResult, callback: AsyncCallbackWrapper<void>): void;
-  export native function nativeSendIntentResult(instanceId: int, result: Record<string, RecordData>, callback: AsyncCallbackWrapper<void>): void;
+  export native function nativeSendExecuteResult(
+    instanceId: int, result: insightIntent.ExecuteResult,
+    callback: AsyncCallbackWrapper<void>): void;
+  export native function nativeSendIntentResult(
+    instanceId: int, result: Record<string, RecordData>,
+    callback: AsyncCallbackWrapper<void>): void;
+
+  function createParamError(message: string): BusinessError {
+    let err = new BusinessError();
+    err.code = 401;
+    err.name = 'InvalidInputParameter';
+    err.message = message;
+    return err;
+  }
+
+  function validateInteractionUI(ui: insightIntent.InteractionUI): BusinessError | null {
+    if (!ui.interactionUIType) {
+      return createParamError('interactionUIType is empty');
+    }
+    if (ui.interactionUIType === 'MODAL_UIEXTENSION') {
+      let modal = ui as insightIntent.InteractionModalUIExtension;
+      if (!modal.bundleName || !modal.moduleName || !modal.abilityName ||
+        !modal.uiExtensionType || !modal.uri) {
+        return createParamError('InteractionModalUIExtension missing required field');
+      }
+    }
+    return null;
+  }
+
+  function validateInteractionInfo(result: insightIntent.ExecuteResult): BusinessError | null {
+    let info = result.interactionInfo;
+    if (!info) {
+      return null;
+    }
+    let ui = info?.interactionUI;
+    if (!ui) {
+      return null;
+    }
+    return validateInteractionUI(ui);
+  }
 
   export function sendExecuteResult(instanceId: int, result: insightIntent.ExecuteResult): Promise<void> {
     return new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
+      let validateErr = validateInteractionInfo(result);
+      if (validateErr) {
+        reject(validateErr);
+        return;
+      }
       let asyncCall = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
         if (err == null || err.code == 0) {
           resolve(undefined);

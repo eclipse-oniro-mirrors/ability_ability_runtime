@@ -18,6 +18,7 @@
 #include "hilog_tag_wrapper.h"
 #include "insight_intent_execute_result.h"
 #include "string_wrapper.h"
+#include "want_params_wrapper.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -31,6 +32,15 @@ namespace {
 constexpr const char *KEY_FLAGS = "flags";
 constexpr const char *KEY_URIS = "uris";
 constexpr const char *KEY_RESULT = "result";
+constexpr const char *KEY_INTERACTION_INFO = "interactionInfo";
+constexpr const char *KEY_INTERACTION_UI = "interactionUI";
+constexpr const char *KEY_INTERACTION_UI_TYPE = "interactionUIType";
+constexpr const char *KEY_BUNDLE_NAME = "bundleName";
+constexpr const char *KEY_MODULE_NAME = "moduleName";
+constexpr const char *KEY_ABILITY_NAME = "abilityName";
+constexpr const char *KEY_UI_EXTENSION_TYPE = "uiExtensionType";
+constexpr const char *KEY_URI = "uri";
+constexpr const char *KEY_PARAMETERS = "parameters";
 
 /**
  * @brief Read back the "uris" key and assert it holds exactly @p expected, in order.
@@ -76,7 +86,7 @@ void InsightIntentExecuteResultTest::TearDown()
 
 /**
  * @tc.name: ReadFromParcel_0100
- * @tc.desc: basic function test of get caller info.
+ * @tc.desc: WHEN the parcel is empty THEN ReadFromParcel returns true (absent InteractionInfo tolerated).
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -108,7 +118,7 @@ HWTEST_F(InsightIntentExecuteResultTest, Marshalling_0100, TestSize.Level1)
 
 /**
  * @tc.name: Unmarshalling_0100
- * @tc.desc: basic function test of get caller info.
+ * @tc.desc: WHEN the parcel is empty THEN Unmarshalling returns non-null (absent InteractionInfo tolerated).
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -118,6 +128,31 @@ HWTEST_F(InsightIntentExecuteResultTest, Unmarshalling_0100, TestSize.Level1)
     Parcel parcel;
     auto ret = InsightIntentExecuteResult::Unmarshalling(parcel);
     EXPECT_TRUE(ret != nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: ReadFromParcel_LegacyFormatNoInteractionInfo_0100
+ * @tc.desc: WHEN parcel written by old version (no InteractionInfo block)
+ *           THEN ReadFromParcel succeeds and interactionInfo stays nullptr.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, ReadFromParcel_LegacyFormatNoInteractionInfo_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    Parcel parcel;
+    parcel.WriteInt32(0);
+    parcel.WriteInt32(0);
+    parcel.WriteParcelable(nullptr);
+    parcel.WriteStringVector({});
+    parcel.WriteInt32(0);
+    parcel.WriteBool(false);
+    parcel.WriteBool(false);
+    parcel.WriteInt32(0);
+    InsightIntentExecuteResult result;
+    EXPECT_TRUE(result.ReadFromParcel(parcel));
+    EXPECT_EQ(result.interactionInfo, nullptr);
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
 
@@ -306,6 +341,502 @@ HWTEST_F(InsightIntentExecuteResultTest, BuildFunctionResult_EmptyResult_0800, T
     EXPECT_TRUE(out->HasParam(KEY_FLAGS));
     EXPECT_FALSE(out->HasParam(KEY_URIS));
     TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: CheckInteractionInfo_NullInput_0100
+ * @tc.desc: WHEN interactionUI is nullptr THEN returns true.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, CheckInteractionInfo_NullInput_0100, TestSize.Level1)
+{
+    AppExecFwk::InteractionInfo info;
+    EXPECT_TRUE(InsightIntentExecuteResult::CheckInteractionInfo(info));
+}
+
+/**
+ * @tc.name: CheckInteractionInfo_ValidModalUIExtension_0200
+ * @tc.desc: WHEN interactionUI is a valid InteractionModalUIExtension THEN returns true.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, CheckInteractionInfo_ValidModalUIExtension_0200, TestSize.Level1)
+{
+    auto modal = std::make_shared<AppExecFwk::InteractionModalUIExtension>();
+    modal->interactionUIType = "MODAL_UIEXTENSION";
+    modal->bundleName = "com.test";
+    modal->moduleName = "entry";
+    modal->abilityName = "EntryAbility";
+    modal->uiExtensionType = "testUIExt";
+    modal->uri = "test://uri";
+    AppExecFwk::InteractionInfo info;
+    info.interactionUI = modal;
+    EXPECT_TRUE(InsightIntentExecuteResult::CheckInteractionInfo(info));
+}
+
+/**
+ * @tc.name: CheckInteractionInfo_MissingBundleName_0300
+ * @tc.desc: WHEN InteractionModalUIExtension is missing bundleName THEN returns false.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, CheckInteractionInfo_MissingBundleName_0300, TestSize.Level1)
+{
+    auto modal = std::make_shared<AppExecFwk::InteractionModalUIExtension>();
+    modal->interactionUIType = "MODAL_UIEXTENSION";
+    modal->moduleName = "entry";
+    modal->abilityName = "EntryAbility";
+    modal->uiExtensionType = "testUIExt";
+    modal->uri = "test://uri";
+    AppExecFwk::InteractionInfo info;
+    info.interactionUI = modal;
+    EXPECT_FALSE(InsightIntentExecuteResult::CheckInteractionInfo(info));
+}
+
+/**
+ * @tc.name: CheckInteractionInfo_EmptyUri_0600
+ * @tc.desc: WHEN uri is empty THEN returns true (uri is not validated).
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, CheckInteractionInfo_EmptyUri_0600, TestSize.Level1)
+{
+    auto modal = std::make_shared<AppExecFwk::InteractionModalUIExtension>();
+    modal->interactionUIType = "MODAL_UIEXTENSION";
+    modal->bundleName = "com.test";
+    modal->moduleName = "entry";
+    modal->abilityName = "EntryAbility";
+    modal->uiExtensionType = "testUIExt";
+    AppExecFwk::InteractionInfo info;
+    info.interactionUI = modal;
+    EXPECT_TRUE(InsightIntentExecuteResult::CheckInteractionInfo(info));
+}
+
+/**
+ * @tc.name: CheckInteractionInfo_EmptyUIType_0400
+ * @tc.desc: WHEN interactionUIType is empty THEN returns false.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, CheckInteractionInfo_EmptyUIType_0400, TestSize.Level1)
+{
+    auto ui = std::make_shared<AppExecFwk::InteractionUI>();
+    AppExecFwk::InteractionInfo info;
+    info.interactionUI = ui;
+    EXPECT_FALSE(InsightIntentExecuteResult::CheckInteractionInfo(info));
+}
+
+/**
+ * @tc.name: CheckInteractionInfo_UnknownUIType_0500
+ * @tc.desc: WHEN interactionUIType is unknown THEN returns false.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, CheckInteractionInfo_UnknownUIType_0500, TestSize.Level1)
+{
+    auto ui = std::make_shared<AppExecFwk::InteractionUI>();
+    ui->interactionUIType = "UNKNOWN_TYPE";
+    AppExecFwk::InteractionInfo info;
+    info.interactionUI = ui;
+    EXPECT_FALSE(InsightIntentExecuteResult::CheckInteractionInfo(info));
+}
+
+/**
+ * @tc.name: CheckInteractionInfo_BundleNameTooLong_1300
+ * @tc.desc: WHEN bundleName exceeds MAX_BUNDLE_NAME_LEN THEN returns false.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, CheckInteractionInfo_BundleNameTooLong_1300, TestSize.Level1)
+{
+    auto modal = std::make_shared<AppExecFwk::InteractionModalUIExtension>();
+    modal->interactionUIType = "MODAL_UIEXTENSION";
+    modal->bundleName = std::string(128, 'a');
+    modal->moduleName = "entry";
+    modal->abilityName = "EntryAbility";
+    modal->uiExtensionType = "testUIExt";
+    AppExecFwk::InteractionInfo info;
+    info.interactionUI = modal;
+    EXPECT_FALSE(InsightIntentExecuteResult::CheckInteractionInfo(info));
+}
+
+/**
+ * @tc.name: CheckInteractionInfo_ModuleNameTooLong_1400
+ * @tc.desc: WHEN moduleName exceeds MAX_MODULE_NAME_LEN THEN returns false.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, CheckInteractionInfo_ModuleNameTooLong_1400, TestSize.Level1)
+{
+    auto modal = std::make_shared<AppExecFwk::InteractionModalUIExtension>();
+    modal->interactionUIType = "MODAL_UIEXTENSION";
+    modal->bundleName = "com.test";
+    modal->moduleName = std::string(32, 'm');
+    modal->abilityName = "EntryAbility";
+    modal->uiExtensionType = "testUIExt";
+    AppExecFwk::InteractionInfo info;
+    info.interactionUI = modal;
+    EXPECT_FALSE(InsightIntentExecuteResult::CheckInteractionInfo(info));
+}
+
+/**
+ * @tc.name: CheckInteractionInfo_AbilityNameTooLong_1500
+ * @tc.desc: WHEN abilityName exceeds MAX_ABILITY_NAME_LEN THEN returns false.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, CheckInteractionInfo_AbilityNameTooLong_1500, TestSize.Level1)
+{
+    auto modal = std::make_shared<AppExecFwk::InteractionModalUIExtension>();
+    modal->interactionUIType = "MODAL_UIEXTENSION";
+    modal->bundleName = "com.test";
+    modal->moduleName = "entry";
+    modal->abilityName = std::string(256, 'a');
+    modal->uiExtensionType = "testUIExt";
+    AppExecFwk::InteractionInfo info;
+    info.interactionUI = modal;
+    EXPECT_FALSE(InsightIntentExecuteResult::CheckInteractionInfo(info));
+}
+
+/**
+ * @tc.name: CheckInteractionInfo_UiExtensionTypeTooLong_1600
+ * @tc.desc: WHEN uiExtensionType exceeds MAX_UI_EXTENSION_TYPE_LEN THEN returns false.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, CheckInteractionInfo_UiExtensionTypeTooLong_1600, TestSize.Level1)
+{
+    auto modal = std::make_shared<AppExecFwk::InteractionModalUIExtension>();
+    modal->interactionUIType = "MODAL_UIEXTENSION";
+    modal->bundleName = "com.test";
+    modal->moduleName = "entry";
+    modal->abilityName = "EntryAbility";
+    modal->uiExtensionType = std::string(256, 'u');
+    AppExecFwk::InteractionInfo info;
+    info.interactionUI = modal;
+    EXPECT_FALSE(InsightIntentExecuteResult::CheckInteractionInfo(info));
+}
+
+/**
+ * @tc.name: CheckInteractionInfo_BundleNameCrlf_1700
+ * @tc.desc: WHEN bundleName contains CRLF THEN returns false.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, CheckInteractionInfo_BundleNameCrlf_1700, TestSize.Level1)
+{
+    auto modal = std::make_shared<AppExecFwk::InteractionModalUIExtension>();
+    modal->interactionUIType = "MODAL_UIEXTENSION";
+    modal->bundleName = "com.test\r\n";
+    modal->moduleName = "entry";
+    modal->abilityName = "EntryAbility";
+    modal->uiExtensionType = "testUIExt";
+    AppExecFwk::InteractionInfo info;
+    info.interactionUI = modal;
+    EXPECT_FALSE(InsightIntentExecuteResult::CheckInteractionInfo(info));
+}
+
+/**
+ * @tc.name: CheckInteractionInfo_AbilityNameNullChar_1800
+ * @tc.desc: WHEN abilityName contains null byte THEN returns false.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, CheckInteractionInfo_AbilityNameNullChar_1800, TestSize.Level1)
+{
+    auto modal = std::make_shared<AppExecFwk::InteractionModalUIExtension>();
+    modal->interactionUIType = "MODAL_UIEXTENSION";
+    modal->bundleName = "com.test";
+    modal->moduleName = "entry";
+    modal->abilityName = std::string("EntryAbility");
+    modal->abilityName.append(1, '\0');
+    modal->uiExtensionType = "testUIExt";
+    AppExecFwk::InteractionInfo info;
+    info.interactionUI = modal;
+    EXPECT_FALSE(InsightIntentExecuteResult::CheckInteractionInfo(info));
+}
+
+/**
+ * @tc.name: InteractionInfo_MarshallingUnmarshalling_ModalUIExtension_0600
+ * @tc.desc: WHEN result has InteractionModalUIExtension THEN round-trip preserves fields.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, InteractionInfo_MarshallingUnmarshalling_ModalUIExtension_0600,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    InsightIntentExecuteResult entity;
+    auto modal = std::make_shared<AppExecFwk::InteractionModalUIExtension>();
+    modal->interactionUIType = "MODAL_UIEXTENSION";
+    modal->bundleName = "com.test";
+    modal->abilityName = "MyAbility";
+    modal->moduleName = "entry";
+    modal->uiExtensionType = "modal";
+    modal->uri = "test://uri";
+    auto params = std::make_shared<WantParams>();
+    params->SetParam("pk", String::Box("pv"));
+    modal->parameters = params;
+    entity.interactionInfo = std::make_shared<AppExecFwk::InteractionInfo>();
+    entity.interactionInfo->interactionUI = modal;
+
+    Parcel parcel;
+    EXPECT_TRUE(entity.Marshalling(parcel));
+    auto *restored = InsightIntentExecuteResult::Unmarshalling(parcel);
+    ASSERT_NE(restored, nullptr);
+    ASSERT_NE(restored->interactionInfo, nullptr);
+    ASSERT_NE(restored->interactionInfo->interactionUI, nullptr);
+    EXPECT_EQ(restored->interactionInfo->interactionUI->interactionUIType, "MODAL_UIEXTENSION");
+    auto restoredModal = std::static_pointer_cast<AppExecFwk::InteractionModalUIExtension>(
+        restored->interactionInfo->interactionUI);
+    ASSERT_NE(restoredModal, nullptr);
+    EXPECT_EQ(restoredModal->bundleName, "com.test");
+    EXPECT_EQ(restoredModal->abilityName, "MyAbility");
+    EXPECT_EQ(restoredModal->moduleName, "entry");
+    EXPECT_EQ(restoredModal->uiExtensionType, "modal");
+    EXPECT_EQ(restoredModal->uri, "test://uri");
+    ASSERT_NE(restoredModal->parameters, nullptr);
+    EXPECT_EQ(restoredModal->parameters->GetStringParam("pk"), "pv");
+    delete restored;
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: InteractionInfo_MarshallingUnmarshalling_Null_0700
+ * @tc.desc: WHEN interactionUI is null THEN round-trip preserves null state.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, InteractionInfo_MarshallingUnmarshalling_Null_0700, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    InsightIntentExecuteResult entity;
+    ASSERT_EQ(entity.interactionInfo, nullptr);
+
+    Parcel parcel;
+    EXPECT_TRUE(entity.Marshalling(parcel));
+    auto *restored = InsightIntentExecuteResult::Unmarshalling(parcel);
+    ASSERT_NE(restored, nullptr);
+    EXPECT_EQ(restored->interactionInfo, nullptr);
+    delete restored;
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: InteractionInfo_JsonSerialization_ModalUIExtension_0800
+ * @tc.desc: WHEN result has InteractionModalUIExtension THEN JSON round-trip preserves fields.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, InteractionInfo_JsonSerialization_ModalUIExtension_0800,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    InsightIntentExecuteResult entity;
+    auto modal = std::make_shared<AppExecFwk::InteractionModalUIExtension>();
+    modal->interactionUIType = "MODAL_UIEXTENSION";
+    modal->bundleName = "com.test";
+    modal->abilityName = "MyAbility";
+    modal->moduleName = "entry";
+    modal->uiExtensionType = "modal";
+    modal->uri = "test://uri";
+    auto params = std::make_shared<WantParams>();
+    params->SetParam("pk", String::Box("pv"));
+    modal->parameters = params;
+    entity.interactionInfo = std::make_shared<AppExecFwk::InteractionInfo>();
+    entity.interactionInfo->interactionUI = modal;
+
+    std::string jsonStr = entity.ToJsonString();
+    EXPECT_FALSE(jsonStr.empty());
+
+    InsightIntentExecuteResult restored;
+    restored.FromJsonString(jsonStr);
+    ASSERT_NE(restored.interactionInfo, nullptr);
+    ASSERT_NE(restored.interactionInfo->interactionUI, nullptr);
+    EXPECT_EQ(restored.interactionInfo->interactionUI->interactionUIType, "MODAL_UIEXTENSION");
+    auto restoredModal = std::static_pointer_cast<AppExecFwk::InteractionModalUIExtension>(
+        restored.interactionInfo->interactionUI);
+    ASSERT_NE(restoredModal, nullptr);
+    EXPECT_EQ(restoredModal->bundleName, "com.test");
+    EXPECT_EQ(restoredModal->abilityName, "MyAbility");
+    EXPECT_EQ(restoredModal->moduleName, "entry");
+    EXPECT_EQ(restoredModal->uiExtensionType, "modal");
+    EXPECT_EQ(restoredModal->uri, "test://uri");
+    ASSERT_NE(restoredModal->parameters, nullptr);
+    EXPECT_EQ(restoredModal->parameters->GetStringParam("pk"), "pv");
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: InteractionInfo_JsonSerialization_Null_0900
+ * @tc.desc: WHEN interactionUI is null THEN JSON round-trip preserves null state.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, InteractionInfo_JsonSerialization_Null_0900, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    InsightIntentExecuteResult entity;
+    entity.code = 0;
+    ASSERT_EQ(entity.interactionInfo, nullptr);
+
+    std::string jsonStr = entity.ToJsonString();
+    EXPECT_FALSE(jsonStr.empty());
+
+    InsightIntentExecuteResult restored;
+    restored.FromJsonString(jsonStr);
+    EXPECT_EQ(restored.interactionInfo, nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: BuildFunctionResult_WithInteractionInfo_1000
+ * @tc.desc: WHEN interactionInfo is set THEN BuildFunctionResult emits the key.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, BuildFunctionResult_WithInteractionInfo_1000, TestSize.Level1)
+{
+    auto modal = std::make_shared<AppExecFwk::InteractionModalUIExtension>();
+    modal->interactionUIType = "MODAL_UIEXTENSION";
+    modal->bundleName = "com.test";
+    modal->moduleName = "entry";
+    modal->abilityName = "EntryAbility";
+    modal->uiExtensionType = "testUIExt";
+    modal->uri = "test://uri";
+    auto params = std::make_shared<WantParams>();
+    params->SetParam("pk", String::Box("pv"));
+    modal->parameters = params;
+    InsightIntentExecuteResult entity;
+    entity.interactionInfo = std::make_shared<AppExecFwk::InteractionInfo>();
+    entity.interactionInfo->interactionUI = modal;
+    auto out = entity.BuildFunctionResult();
+    ASSERT_NE(out, nullptr);
+    EXPECT_TRUE(out->HasParam(KEY_INTERACTION_INFO));
+    EXPECT_TRUE(out->HasParam(KEY_FLAGS));
+    auto infoParams = out->GetWantParams(KEY_INTERACTION_INFO);
+    auto uiParams = infoParams.GetWantParams(KEY_INTERACTION_UI);
+    EXPECT_EQ(uiParams.GetStringParam(KEY_URI), "test://uri");
+    EXPECT_EQ(uiParams.GetWantParams(KEY_PARAMETERS).GetStringParam("pk"), "pv");
+}
+
+/**
+ * @tc.name: BuildFunctionResult_NullInteractionInfo_1100
+ * @tc.desc: WHEN interactionInfo is null THEN BuildFunctionResult omits the key.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, BuildFunctionResult_NullInteractionInfo_1100, TestSize.Level1)
+{
+    InsightIntentExecuteResult entity;
+    auto out = entity.BuildFunctionResult();
+    ASSERT_NE(out, nullptr);
+    EXPECT_FALSE(out->HasParam(KEY_INTERACTION_INFO));
+}
+
+/**
+ * @tc.name: FromJsonString_InvalidInteractionInfo_Rejected_1100
+ * @tc.desc: WHEN JSON interactionInfo is invalid (empty bundleName) THEN parse fails.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, FromJsonString_InvalidInteractionInfo_Rejected_1100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    std::string json = R"({"interactionInfo":{"interactionUI":{"interactionUIType":"MODAL_UIEXTENSION"}}})";
+    InsightIntentExecuteResult result;
+    EXPECT_FALSE(result.FromJsonString(json));
+    EXPECT_EQ(result.interactionInfo, nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: FromJsonString_Oversize_Discarded_1900
+ * @tc.desc: WHEN json size exceeds MAX_RESULT_JSON_LEN THEN fields stay default.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, FromJsonString_Oversize_Discarded_1900, TestSize.Level1)
+{
+    std::string huge(1024 * 1024 + 100, 'a');
+    std::string json = R"({"code":1,"uris":[")" + huge + R"("]})";
+    InsightIntentExecuteResult result;
+    EXPECT_FALSE(result.FromJsonString(json));
+    EXPECT_EQ(result.code, 0);
+    EXPECT_EQ(result.interactionInfo, nullptr);
+}
+
+/**
+ * @tc.name: FromJsonString_DeepNesting_Discarded_2000
+ * @tc.desc: WHEN json depth exceeds MAX_RESULT_JSON_DEPTH THEN not parsed.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, FromJsonString_DeepNesting_Discarded_2000, TestSize.Level1)
+{
+    std::string deep;
+    const int depth = 150;
+    for (int i = 0; i < depth; ++i) {
+        deep += '[';
+    }
+    deep += '1';
+    for (int i = 0; i < depth; ++i) {
+        deep += ']';
+    }
+    InsightIntentExecuteResult result;
+    EXPECT_FALSE(result.FromJsonString(deep));
+    EXPECT_EQ(result.interactionInfo, nullptr);
+}
+
+/**
+ * @tc.name: FromJsonString_ValidSmall_Succeeds_2100
+ * @tc.desc: WHEN json is valid and small THEN fields are parsed normally.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, FromJsonString_ValidSmall_Succeeds_2100, TestSize.Level1)
+{
+    std::string json = R"({"code":42,"flags":7})";
+    InsightIntentExecuteResult result;
+    EXPECT_TRUE(result.FromJsonString(json));
+    EXPECT_EQ(result.code, 42);
+    EXPECT_EQ(result.flags, 7);
+}
+
+/**
+ * @tc.name: FromJsonString_NoInteractionInfo_Succeeds_2200
+ * @tc.desc: WHEN json has no interactionInfo THEN parse succeeds (historical compat).
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, FromJsonString_NoInteractionInfo_Succeeds_2200, TestSize.Level1)
+{
+    std::string json = R"({"code":1,"flags":2})";
+    InsightIntentExecuteResult result;
+    EXPECT_TRUE(result.FromJsonString(json));
+    EXPECT_EQ(result.code, 1);
+    EXPECT_EQ(result.flags, 2);
+    EXPECT_EQ(result.interactionInfo, nullptr);
+}
+
+/**
+ * @tc.name: Unmarshalling_InvalidInteractionInfo_Rejected_2400
+ * @tc.desc: WHEN parcel has invalid interactionInfo THEN Unmarshalling returns nullptr.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, Unmarshalling_InvalidInteractionInfo_Rejected_2400, TestSize.Level1)
+{
+    InsightIntentExecuteResult entity;
+    auto modal = std::make_shared<AppExecFwk::InteractionModalUIExtension>();
+    modal->interactionUIType = "MODAL_UIEXTENSION";
+    entity.interactionInfo = std::make_shared<AppExecFwk::InteractionInfo>();
+    entity.interactionInfo->interactionUI = modal;
+    Parcel parcel;
+    EXPECT_TRUE(entity.Marshalling(parcel));
+    auto *restored = InsightIntentExecuteResult::Unmarshalling(parcel);
+    EXPECT_EQ(restored, nullptr);
 }
 
 } // namespace AAFwk

@@ -107,6 +107,9 @@ export class IntentResultWrapper {
     if (intentResult.result !== undefined) {
       record['result'] = intentResult.result as RecordData;
     }
+    if (intentResult.interactionInfo !== undefined) {
+      record['interactionInfo'] = intentResult.interactionInfo as RecordData;
+    }
     return record;
   }
 
@@ -116,6 +119,9 @@ export class IntentResultWrapper {
     };
     if (record['result'] !== undefined) {
       intentResult.result = record['result'] as T;
+    }
+    if (record['interactionInfo'] !== undefined) {
+      intentResult.interactionInfo = record['interactionInfo'] as insightIntent.InteractionInfo;
     }
     return intentResult;
   }

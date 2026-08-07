@@ -75,6 +75,116 @@ bool UnwrapResultOfDecoratorExecuteResult(napi_env env, napi_value param, Insigh
     return true;
 }
 
+bool UnwrapModalUIExtensionFields(napi_env env, napi_value obj,
+    std::shared_ptr<AppExecFwk::InteractionModalUIExtension> &modalUI)
+{
+    if (modalUI == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "null modalUI");
+        return false;
+    }
+    if (!UnwrapStringByPropertyName(env, obj, "bundleName", modalUI->bundleName) ||
+        !UnwrapStringByPropertyName(env, obj, "abilityName", modalUI->abilityName) ||
+        !UnwrapStringByPropertyName(env, obj, "moduleName", modalUI->moduleName) ||
+        !UnwrapStringByPropertyName(env, obj, "uiExtensionType", modalUI->uiExtensionType) ||
+        !UnwrapStringByPropertyName(env, obj, "uri", modalUI->uri)) {
+        TAG_LOGE(AAFwkTag::JSNAPI, "get modal UI extension field fail");
+        return false;
+    }
+    if (!IsExistsByPropertyName(env, obj, "parameters")) {
+        return true;
+    }
+    napi_value params = nullptr;
+    napi_get_named_property(env, obj, "parameters", &params);
+    napi_valuetype vt = napi_undefined;
+    napi_typeof(env, params, &vt);
+    if (vt != napi_object) {
+        return true;
+    }
+    auto wp = std::make_shared<AAFwk::WantParams>();
+    if (!AppExecFwk::UnwrapWantParams(env, params, *wp)) {
+        TAG_LOGE(AAFwkTag::JSNAPI, "unwrap parameters fail");
+        return false;
+    }
+    modalUI->parameters = wp;
+    return true;
+}
+
+bool UnwrapInteractionInfoOfExecuteResult(
+    napi_env env, napi_value param, InsightIntentExecuteResult &executeResult)
+{
+    napi_value intent = nullptr;
+    napi_get_named_property(env, param, "interactionInfo", &intent);
+    napi_valuetype valueType = napi_undefined;
+    napi_typeof(env, intent, &valueType);
+    if (intent == nullptr || valueType == napi_undefined || valueType == napi_null) {
+        return true;
+    }
+    if (valueType != napi_object) {
+        TAG_LOGE(AAFwkTag::JSNAPI, "interactionInfo not object");
+        return false;
+    }
+    napi_value interactionUI = nullptr;
+    napi_get_named_property(env, intent, "interactionUI", &interactionUI);
+    napi_typeof(env, interactionUI, &valueType);
+    if (interactionUI == nullptr || valueType == napi_undefined || valueType == napi_null) {
+        return true;
+    }
+    std::string uiType;
+    if (!UnwrapStringByPropertyName(env, interactionUI, "interactionUIType", uiType)) {
+        TAG_LOGE(AAFwkTag::JSNAPI, "get interactionUIType fail");
+        return false;
+    }
+    if (uiType == INTERACTION_UI_TYPE_MODAL_UIEXTENSION) {
+        auto modalUI = std::make_shared<AppExecFwk::InteractionModalUIExtension>();
+        modalUI->interactionUIType = uiType;
+        if (!UnwrapModalUIExtensionFields(env, interactionUI, modalUI)) {
+            return false;
+        }
+        executeResult.interactionInfo = std::make_shared<AppExecFwk::InteractionInfo>();
+        executeResult.interactionInfo->interactionUI = modalUI;
+    } else {
+        auto ui = std::make_shared<AppExecFwk::InteractionUI>();
+        ui->interactionUIType = uiType;
+        executeResult.interactionInfo = std::make_shared<AppExecFwk::InteractionInfo>();
+        executeResult.interactionInfo->interactionUI = ui;
+    }
+    if (!InsightIntentExecuteResult::CheckInteractionInfo(*executeResult.interactionInfo)) {
+        TAG_LOGE(AAFwkTag::JSNAPI, "Check interactionInfo fail");
+        return false;
+    }
+    return true;
+}
+
+bool UnwrapOptionalFields(
+    napi_env env, napi_value param, InsightIntentExecuteResult &executeResult)
+{
+    if (IsExistsByPropertyName(env, param, "uris")) {
+        std::vector<std::string> uris;
+        if (!UnwrapStringArrayByPropertyName(env, param, "uris", uris)) {
+            TAG_LOGE(AAFwkTag::JSNAPI, "unwrap uris is null");
+            return false;
+        }
+        executeResult.uris = uris;
+    }
+
+    if (IsExistsByPropertyName(env, param, "flags")) {
+        int32_t flags = 0;
+        if (!UnwrapInt32ByPropertyName(env, param, "flags", flags)) {
+            TAG_LOGE(AAFwkTag::JSNAPI, "unwrap flags is null");
+            return false;
+        }
+        executeResult.flags = flags;
+    }
+
+    if (IsExistsByPropertyName(env, param, "interactionInfo")) {
+        if (!UnwrapInteractionInfoOfExecuteResult(env, param, executeResult)) {
+            TAG_LOGE(AAFwkTag::JSNAPI, "unwrap interactionInfo fail");
+            return false;
+        }
+    }
+    return true;
+}
+
 bool UnwrapExecuteResult(
     napi_env env, napi_value param, InsightIntentExecuteResult &executeResult, bool isDecorator)
 {
@@ -107,25 +217,7 @@ bool UnwrapExecuteResult(
         }
     }
 
-    if (IsExistsByPropertyName(env, param, "uris")) {
-        std::vector<std::string> uris;
-        if (!UnwrapStringArrayByPropertyName(env, param, "uris", uris)) {
-            TAG_LOGE(AAFwkTag::JSNAPI, "unwrap uris is null");
-            return false;
-        }
-        executeResult.uris = uris;
-    }
-
-    if (IsExistsByPropertyName(env, param, "flags")) {
-        int32_t flags = 0;
-        if (!UnwrapInt32ByPropertyName(env, param, "flags", flags)) {
-            TAG_LOGE(AAFwkTag::JSNAPI, "unwrap flags is null");
-            return false;
-        }
-        executeResult.flags = flags;
-    }
-
-    return true;
+    return UnwrapOptionalFields(env, param, executeResult);
 }
 }  // namespace AbilityRuntime
 }  // namespace OHOS

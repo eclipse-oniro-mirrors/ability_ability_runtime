@@ -479,7 +479,7 @@ bool EtsUIExtensionBase::ForegroundWindowWithInsightIntent(const AAFwk::Want &wa
             }
             InsightIntentExecuteParam executeParam;
             InsightIntentExecuteParam::GenerateFromWant(want, executeParam);
-            if (result.uris.size() > 0) {
+            if (result.uris.size() > 0 || result.interactionInfo != nullptr) {
                 extension->ExecuteInsightIntentDone(executeParam.insightIntentId_, result);
             }
             extension->PostInsightIntentExecuted(sessionInfo, result, needForeground);
@@ -516,7 +516,10 @@ void EtsUIExtensionBase::PostInsightIntentExecuted(const sptr<AAFwk::SessionInfo
         CallObjectMethod(false, "onForeground", nullptr);
     }
 
-    OnInsightIntentExecuteDone(sessionInfo, result);
+    auto filtered = result;
+    filtered.interactionInfo = nullptr;
+    TAG_LOGW(AAFwkTag::UI_EXT, "filter interactionInfo in window path");
+    OnInsightIntentExecuteDone(sessionInfo, filtered);
 
     if (needForeground) {
         // If need foreground, that means triggered by onForeground.
@@ -580,26 +583,9 @@ void EtsUIExtensionBase::OnInsightIntentExecuteDone(const sptr<AAFwk::SessionInf
 
     WantParams params;
     params.SetParam(INSIGHT_INTENT_EXECUTE_RESULT_CODE, Integer::Box(result.innerErr));
-    WantParams resultParams;
-    resultParams.SetParam("code", Integer::Box(result.code));
-    if (result.result != nullptr) {
-        sptr<AAFwk::IWantParams> pWantParams = WantParamWrapper::Box(*result.result);
-        if (pWantParams != nullptr) {
-            resultParams.SetParam("result", pWantParams);
-        }
-    }
-    auto size = result.uris.size();
-    sptr<IArray> uriArray = new (std::nothrow) Array(size, g_IID_IString);
-    if (uriArray == nullptr) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "new uriArray failed");
-        return;
-    }
-    for (std::size_t i = 0; i < size; i++) {
-        uriArray->Set(i, String::Box(result.uris[i]));
-    }
-    resultParams.SetParam("uris", uriArray);
-    resultParams.SetParam("flags", Integer::Box(result.flags));
-    sptr<AAFwk::IWantParams> pWantParams = WantParamWrapper::Box(resultParams);
+    auto resultParams = result.BuildFunctionResult();
+    resultParams->SetParam("code", Integer::Box(result.code));
+    sptr<AAFwk::IWantParams> pWantParams = WantParamWrapper::Box(*resultParams);
     if (pWantParams != nullptr) {
         params.SetParam(INSIGHT_INTENT_EXECUTE_RESULT, pWantParams);
     }

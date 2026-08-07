@@ -318,9 +318,19 @@ int32_t InsightIntentExecuteManager::ExecuteIntentDone(uint64_t intentId, int32_
         return ERR_INVALID_OPERATION;
     }
     record->state = InsightIntentExecuteState::EXECUTE_DONE;
-    
+
+    AppExecFwk::InsightIntentExecuteResult filteredResult = result;
+    bool isSystemApp = PermissionVerification::GetInstance()
+        ->JudgeCallerIsAllowedToUseSystemAPIByTokenId(accessToken);
+    if (!isSystemApp) {
+        filteredResult.interactionInfo = nullptr;
+        TAG_LOGD(AAFwkTag::INTENT, "filtered interactionInfo for non-system app");
+    }
+
     if (record->isDistributed) {
-        std::string msg = result.ToJsonString();
+        filteredResult.interactionInfo = nullptr;
+        TAG_LOGD(AAFwkTag::INTENT, "filtered interactionInfo for distributed scenario");
+        std::string msg = filteredResult.ToJsonString();
         Want want;
         want.SetElementName(record->deviceId, record->bundleName, "", "");
         IntentCallerInfo callerInfo;
@@ -340,7 +350,7 @@ int32_t InsightIntentExecuteManager::ExecuteIntentDone(uint64_t intentId, int32_
                 " intentId: %{public}" PRIu64 ", records_ size: %{public}zu", intentId, records_.size());
             return ERR_INVALID_VALUE;
         }
-        remoteCallback->OnExecuteDone(record->key, resultCode, result);
+        remoteCallback->OnExecuteDone(record->key, resultCode, filteredResult);
     }
     
     if (record->callerToken != nullptr) {

@@ -45,7 +45,7 @@ bool InsightIntentExecutorMgr::ExecuteInsightIntent(Runtime& runtime, const Insi
     }
 
     auto asyncCallback =
-        [weak = weak_from_this(), intentId = executeParam->insightIntentId_](InsightIntentExecuteResult result) {
+        [weak = weak_from_this(), intentId = executeParam->insightIntentId_](InsightIntentExecuteResult& result) {
             // erase map when called
             TAG_LOGD(AAFwkTag::INTENT, "called");
             auto executorMgr = weak.lock();
