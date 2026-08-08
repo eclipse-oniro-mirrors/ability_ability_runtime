@@ -82,6 +82,7 @@ ohos_unittest("cj_application_context_test") {
     "napi:ace_napi",
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
+    "node:node_header_notice",
     "resource_management:global_resmgr",
     "samgr:samgr_proxy",
     "window_manager:cj_window_ffi",
