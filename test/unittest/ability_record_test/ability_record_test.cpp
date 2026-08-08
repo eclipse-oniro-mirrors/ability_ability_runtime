@@ -1532,13 +1532,13 @@ HWTEST_F(AbilityRecordTest, AbilityRecord_UpdateRecoveryInfo_001, TestSize.Level
  * Function: UpdateRecoveryInfo
  * FunctionPoints: CanRestartResident
  * EnvConditions: NA
- * CaseDescription: Verify UpdateRecoveryInfo(true) stores flag but does not set want param immediately.
+ * CaseDescription: Verify UpdateRecoveryInfo(true) sets want param immediately.
  */
 HWTEST_F(AbilityRecordTest, AbilityRecord_UpdateRecoveryInfo_002, TestSize.Level1)
 {
     std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
     abilityRecord->UpdateRecoveryInfo(true);
-    EXPECT_FALSE(abilityRecord->want_.GetBoolParam(Want::PARAM_ABILITY_RECOVERY_RESTART, false));
+    EXPECT_TRUE(abilityRecord->want_.GetBoolParam(Want::PARAM_ABILITY_RECOVERY_RESTART, false));
 }
 
 /*
@@ -1608,6 +1608,26 @@ HWTEST_F(AbilityRecordTest, AbilityRecord_EvaluateRecoveryLaunchReason_003, Test
     EXPECT_FALSE(abilityRecord->GetRecoveryInfo());
     EXPECT_EQ(abilityRecord->lifeCycleStateInfo_.launchParam.launchReason,
         LaunchReason::LAUNCHREASON_START_ABILITY);
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: EvaluateRecoveryLaunchReason
+ * FunctionPoints: AppRecovery launch reason evaluation
+ * EnvConditions: NA
+ * CaseDescription: Verify EvaluateRecoveryLaunchReason does not clear want param when
+ *                  launchReason is already APP_RECOVERY (app-initiated recovery path).
+ */
+HWTEST_F(AbilityRecordTest, AbilityRecord_EvaluateRecoveryLaunchReason_004, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    abilityRecord->UpdateRecoveryInfo(true);
+    abilityRecord->lifeCycleStateInfo_.launchParam.launchReason =
+        LaunchReason::LAUNCHREASON_APP_RECOVERY;
+    abilityRecord->EvaluateRecoveryLaunchReason();
+    EXPECT_TRUE(abilityRecord->GetRecoveryInfo());
+    EXPECT_EQ(abilityRecord->lifeCycleStateInfo_.launchParam.launchReason,
+        LaunchReason::LAUNCHREASON_APP_RECOVERY);
 }
 
 /*
