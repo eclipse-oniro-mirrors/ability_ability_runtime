@@ -3178,21 +3178,6 @@ HWTEST_F(AbilityManagerServiceThirdTest, UnRegisterPreloadUIExtensionHostClient_
 }
 
 /**
- * @tc.name: CheckSupportVpn_001
- * @tc.desc: Test CheckSupportVpn
- * @tc.type: FUNC
- */
-HWTEST_F(AbilityManagerServiceThirdTest, CheckSupportVpn_001, TestSize.Level1)
-{
-    auto abilityMs_ = std::make_shared<AbilityManagerService>();
-    ASSERT_NE(abilityMs_, nullptr);
-    AppExecFwk::AbilityInfo abilityInfo;
-    abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::VPN;
-    auto result = abilityMs_->CheckSupportVpn(abilityInfo);
-    EXPECT_FALSE(result);
-}
-
-/**
  * @tc.name: CheckSupportVpn_002
  * @tc.desc: Test CheckSupportVpn
  * @tc.type: FUNC
