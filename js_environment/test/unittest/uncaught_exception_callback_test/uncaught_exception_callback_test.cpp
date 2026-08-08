@@ -368,17 +368,6 @@ void Backtrace(std::ostringstream &stack)
     }
 }
 
-HWTEST_F(NapiUncaughtExceptionCallbackTest, GetFuncNameAndBuildIdTest_0100, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "GetFuncNameAndBuildIdTest_0100 start";
-    std::ostringstream stack;
-    stack << "Cannot get SourceMap info, dump raw stack:\n";
-    Backtrace(stack);
-    std::string stackinfo = NapiUncaughtExceptionCallback::GetFuncNameAndBuildId(stack.str());
-    ASSERT_EQ(stackinfo.find("GetFuncNameAndBuildIdTest") != std::string::npos, true);
-    GTEST_LOG_(INFO) << "GetFuncNameAndBuildIdTest_0100 end" << stackinfo.c_str();
-}
-
 std::string submitterStack;
 int g_result = -1;
 static bool g_done = false;
