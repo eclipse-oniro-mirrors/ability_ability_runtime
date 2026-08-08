@@ -4562,7 +4562,13 @@ int32_t AbilityManagerService::StartExtensionAbilityInner(const Want &want, cons
         return ERR_INVALID_VALUE;
     }
     if (!isStartAsCaller) {
-        UpdateCallerInfoUtil::GetInstance().UpdateCallerInfo(abilityRequest.want, callerToken);
+        if (skillCallerTokenId > 0) {
+            UpdateCallerInfoUtil::GetInstance().UpdateCallerInfoByHapTokenId(abilityRequest.want, skillCallerTokenId);
+        } else if (skillCallerTokenId == 0) {
+            UpdateCallerInfoUtil::GetInstance().UpdateCallerInfo(abilityRequest.want, callerToken);
+        } else {
+            return ERR_INVALID_VALUE;
+        }
     }
 
     TAG_LOGD(AAFwkTag::SERVICE_EXT, "Start extension begin, name is %{public}s.", abilityInfo.name.c_str());
@@ -15179,7 +15185,13 @@ int32_t AbilityManagerService::StartAbilityByCallWithSkill(const Want &want,
     std::shared_ptr<AbilityRecord> targetRecord;
     if (IsAbilityStarted(abilityRequest, targetRecord, oriValidUserId)) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "ability already started");
-        UpdateCallerInfoUtil::GetInstance().UpdateCallerInfo(abilityRequest.want, callerToken);
+        if (skillCallerTokenId > 0) {
+            UpdateCallerInfoUtil::GetInstance().UpdateCallerInfoByHapTokenId(abilityRequest.want, skillCallerTokenId);
+        } else if (skillCallerTokenId == 0) {
+            UpdateCallerInfoUtil::GetInstance().UpdateCallerInfo(abilityRequest.want, callerToken);
+        } else {
+            return ERR_INVALID_VALUE;
+        }
         if (targetRecord == nullptr || targetRecord->GetScheduler() == nullptr) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "null scheduler");
             return ERR_INVALID_VALUE;
