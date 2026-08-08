@@ -20,6 +20,7 @@ config("napi_common_public_config") {
 
 ohos_shared_library("napi_common") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   include_dirs = [ 
     "${ability_runtime_napi_path}/featureAbility",
