@@ -2406,14 +2406,15 @@ int32_t AppMgrService::GetAllAbilityInfos(const int32_t pid, std::vector<AppExec
     return appMgrServiceInner_->GetAllAbilityInfos(pid, infos);
 }
 
-int32_t AppMgrService::EnableDelayedProcessExit(int32_t pid, bool enabled)
+int32_t AppMgrService::EnableDelayedProcessExit(bool enabled)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (!IsReady()) {
         TAG_LOGE(AAFwkTag::APPMGR, "Service not ready");
         return ERR_INVALID_OPERATION;
     }
-    return appMgrServiceInner_->EnableDelayedProcessExit(pid, enabled);
+    pid_t callingPid = IPCSkeleton::GetCallingPid();
+    return appMgrServiceInner_->EnableDelayedProcessExit(static_cast<int32_t>(callingPid), enabled);
 }
 
 void AppMgrService::CancelDelayedExitTask(int32_t pid)
@@ -2421,6 +2422,10 @@ void AppMgrService::CancelDelayedExitTask(int32_t pid)
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (!IsReady()) {
         TAG_LOGE(AAFwkTag::APPMGR, "Service not ready");
+        return;
+    }
+    if (!appMgrServiceInner_->IsFoundationCall()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Not foundation call.");
         return;
     }
     appMgrServiceInner_->CancelDelayedExitTask(pid);

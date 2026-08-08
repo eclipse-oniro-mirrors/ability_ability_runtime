@@ -150,7 +150,7 @@ public:
     MOCK_METHOD1(RegisterImageProcessStateObserver, int32_t(const sptr<IImageProcessStateObserver> &observer));
     MOCK_METHOD1(UnregisterImageProcessStateObserver, int32_t(const sptr<IImageProcessStateObserver> &observer));
     MOCK_METHOD2(GetAllAbilityInfos, int32_t(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos));
-    MOCK_METHOD2(EnableDelayedProcessExit, int32_t(int32_t pid, bool enabled));
+    MOCK_METHOD1(EnableDelayedProcessExit, int32_t(bool enabled));
     MOCK_METHOD1(CancelDelayedExitTask, void(int32_t pid));
     MOCK_METHOD2(DumpMem, int32_t(MemDumpInfo &info, sptr<IMemDumpCallback> callback));
     MOCK_METHOD2(ReportDumpMemResult, int32_t(sptr<IMemDumpCallback>, const std::string&));

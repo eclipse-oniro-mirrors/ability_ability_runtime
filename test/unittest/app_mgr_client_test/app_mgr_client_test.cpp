@@ -1951,8 +1951,7 @@ HWTEST_F(AppMgrClientTest, EnableDelayedProcessExit_001, TestSize.Level2)
     auto result = appMgrClient->ConnectAppMgrService();
     EXPECT_EQ(result, AppMgrResultCode::RESULT_OK);
 
-    int32_t pid = 1234;
-    int32_t ret = appMgrClient->EnableDelayedProcessExit(pid, true);
+    int32_t ret = appMgrClient->EnableDelayedProcessExit(true);
     EXPECT_NE(ret, AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED);
 }
 
@@ -1969,8 +1968,7 @@ HWTEST_F(AppMgrClientTest, EnableDelayedProcessExit_002, TestSize.Level2)
     auto result = appMgrClient->ConnectAppMgrService();
     EXPECT_EQ(result, AppMgrResultCode::RESULT_OK);
 
-    int32_t pid = 1234;
-    int32_t ret = appMgrClient->EnableDelayedProcessExit(pid, false);
+    int32_t ret = appMgrClient->EnableDelayedProcessExit(false);
     EXPECT_NE(ret, AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED);
 }
 
