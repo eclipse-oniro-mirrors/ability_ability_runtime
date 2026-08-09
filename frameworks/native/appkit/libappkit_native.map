@@ -26,6 +26,8 @@
       *JsStartupConfig*;
       *MainHandlerDumper*;
       *MainThread*;
+      *IsNeedLoadLibrary*;
+      *IsFormRenderService*;
       *OHOSApplication*;
       *OnCompletedCallback*;
       *StartupConfig*;
