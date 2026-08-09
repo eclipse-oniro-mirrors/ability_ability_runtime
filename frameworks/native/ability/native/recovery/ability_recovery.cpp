@@ -35,6 +35,7 @@
 #include "napi/native_common.h"
 #include "parcel.h"
 #include "recovery_param.h"
+#include "securec.h"
 #include "string_ex.h"
 #include "string_wrapper.h"
 #include "want_params.h"
@@ -69,7 +70,10 @@ static void SetHiSysEventParamName(HiSysEventParam &param, const char *name)
         return;
     }
     size_t len = std::min(std::strlen(name), RECOVERY_PARAM_NAME_MAX_LEN - 1);
-    std::memcpy(param.name, name, len);
+    if (memcpy_s(param.name, RECOVERY_PARAM_NAME_MAX_LEN, name, len) != EOK) {
+        TAG_LOGE(AAFwkTag::RECOVERY, "memcpy_s failed for param name %{public}s", name);
+        return;
+    }
     param.name[len] = '\0';
 }
 
