@@ -17,6 +17,7 @@
 
 #include "ability_manager_errors.h"
 #include "hilog_tag_wrapper.h"
+#include "insight_intent_execute_result.h"
 #include "ipc_skeleton.h"
 #include "want.h"
 #include "insight_intent_execute_callback_interface.h"
@@ -132,5 +133,187 @@ HWTEST_F(InsightIntentExecuteCallbackStubTest, OnExecuteDoneInner_0100, TestSize
     TAG_LOGE(AAFwkTag::TEST, "OnExecuteDoneInner_0100 end.");
 }
 
+/**
+ * @tc.name: OnExecuteDoneInner_0200
+ * @tc.desc: Test OnExecuteDoneInner success path with a complete parcel (key + resultCode + result).
+ */
+HWTEST_F(InsightIntentExecuteCallbackStubTest, OnExecuteDoneInner_0200, TestSize.Level1)
+{
+    TAG_LOGE(AAFwkTag::TEST, "OnExecuteDoneInner_0200 begin.");
+    std::shared_ptr<InsightIntentExecuteCallbackStub> backStub
+        = std::make_shared<InsightIntentExecuteCallbackStubTests>();
+    MessageParcel data;
+    MessageParcel reply;
+    data.WriteUint64(456);
+    data.WriteInt32(0);
+    AppExecFwk::InsightIntentExecuteResult executeResult;
+    data.WriteParcelable(&executeResult);
+    int32_t result = backStub->OnExecuteDoneInner(data, reply);
+    EXPECT_EQ(result, ERR_OK);
+    TAG_LOGE(AAFwkTag::TEST, "OnExecuteDoneInner_0200 end.");
+}
+
+/**
+ * @tc.name: OnRemoteRequest_0300
+ * @tc.desc: Test OnRemoteRequest success path (valid token + foundation uid + target code + complete parcel).
+ */
+HWTEST_F(InsightIntentExecuteCallbackStubTest, OnRemoteRequest_0300, TestSize.Level1)
+{
+    TAG_LOGE(AAFwkTag::TEST, "OnRemoteRequest_0300 begin.");
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID);
+    std::shared_ptr<InsightIntentExecuteCallbackStub> backStub
+        = std::make_shared<InsightIntentExecuteCallbackStubTests>();
+    uint32_t code = IInsightIntentExecuteCallback::ON_INSIGHT_INTENT_EXECUTE_DONE;
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    data.WriteInterfaceToken(APPMGR_INTERFACE_TOKEN);
+    data.WriteUint64(789);
+    data.WriteInt32(0);
+    AppExecFwk::InsightIntentExecuteResult executeResult;
+    data.WriteParcelable(&executeResult);
+    int32_t result = backStub->OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(result, ERR_OK);
+    TAG_LOGE(AAFwkTag::TEST, "OnRemoteRequest_0300 end.");
+}
+
+/**
+ * @tc.name: OnRemoteRequest_0400
+ * @tc.desc: Test OnRemoteRequest with valid token + foundation uid but non-target code (falls back to base).
+ */
+HWTEST_F(InsightIntentExecuteCallbackStubTest, OnRemoteRequest_0400, TestSize.Level1)
+{
+    TAG_LOGE(AAFwkTag::TEST, "OnRemoteRequest_0400 begin.");
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID);
+    std::shared_ptr<InsightIntentExecuteCallbackStub> backStub
+        = std::make_shared<InsightIntentExecuteCallbackStubTests>();
+    uint32_t code = 9999;  // not ON_INSIGHT_INTENT_EXECUTE_DONE
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    data.WriteInterfaceToken(APPMGR_INTERFACE_TOKEN);
+    int32_t result = backStub->OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(result, ERR_INVALID_STATE);
+    EXPECT_NE(result, CHECK_PERMISSION_FAILED);
+    TAG_LOGE(AAFwkTag::TEST, "OnRemoteRequest_0400 end.");
+}
+
+/**
+ * @tc.name: OnRemoteRequest_0500
+ * @tc.desc: Test OnRemoteRequest with wrong interface token (mismatch → ERR_INVALID_STATE).
+ */
+HWTEST_F(InsightIntentExecuteCallbackStubTest, OnRemoteRequest_0500, TestSize.Level1)
+{
+    TAG_LOGE(AAFwkTag::TEST, "OnRemoteRequest_0500 begin.");
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID);
+    std::shared_ptr<InsightIntentExecuteCallbackStub> backStub
+        = std::make_shared<InsightIntentExecuteCallbackStubTests>();
+    uint32_t code = IInsightIntentExecuteCallback::ON_INSIGHT_INTENT_EXECUTE_DONE;
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    data.WriteInterfaceToken(u"ohos.AAFwk.WrongToken");
+    int32_t result = backStub->OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(result, ERR_INVALID_STATE);
+    TAG_LOGE(AAFwkTag::TEST, "OnRemoteRequest_0500 end.");
+}
+
+/**
+ * @tc.name: OnRemoteRequest_0600
+ * @tc.desc: Test OnRemoteRequest with empty parcel (no interface token written).
+ */
+HWTEST_F(InsightIntentExecuteCallbackStubTest, OnRemoteRequest_0600, TestSize.Level1)
+{
+    TAG_LOGE(AAFwkTag::TEST, "OnRemoteRequest_0600 begin.");
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID);
+    std::shared_ptr<InsightIntentExecuteCallbackStub> backStub
+        = std::make_shared<InsightIntentExecuteCallbackStubTests>();
+    uint32_t code = IInsightIntentExecuteCallback::ON_INSIGHT_INTENT_EXECUTE_DONE;
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    int32_t result = backStub->OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(result, ERR_INVALID_STATE);
+    TAG_LOGE(AAFwkTag::TEST, "OnRemoteRequest_0600 end.");
+}
+
+/**
+ * @tc.name: OnExecuteDoneInner_0300
+ * @tc.desc: Test OnExecuteDoneInner with only key written (no resultCode, no result → ERR_INVALID_VALUE).
+ */
+HWTEST_F(InsightIntentExecuteCallbackStubTest, OnExecuteDoneInner_0300, TestSize.Level1)
+{
+    TAG_LOGE(AAFwkTag::TEST, "OnExecuteDoneInner_0300 begin.");
+    std::shared_ptr<InsightIntentExecuteCallbackStub> backStub
+        = std::make_shared<InsightIntentExecuteCallbackStubTests>();
+    MessageParcel data;
+    MessageParcel reply;
+    data.WriteUint64(100);
+    int32_t result = backStub->OnExecuteDoneInner(data, reply);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    TAG_LOGE(AAFwkTag::TEST, "OnExecuteDoneInner_0300 end.");
+}
+
+/**
+ * @tc.name: OnExecuteDoneInner_0400
+ * @tc.desc: Test OnExecuteDoneInner with key + resultCode but null executeResult → ERR_INVALID_VALUE.
+ */
+HWTEST_F(InsightIntentExecuteCallbackStubTest, OnExecuteDoneInner_0400, TestSize.Level1)
+{
+    TAG_LOGE(AAFwkTag::TEST, "OnExecuteDoneInner_0400 begin.");
+    std::shared_ptr<InsightIntentExecuteCallbackStub> backStub
+        = std::make_shared<InsightIntentExecuteCallbackStubTests>();
+    MessageParcel data;
+    MessageParcel reply;
+    data.WriteUint64(200);
+    data.WriteInt32(0);
+    int32_t result = backStub->OnExecuteDoneInner(data, reply);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    TAG_LOGE(AAFwkTag::TEST, "OnExecuteDoneInner_0400 end.");
+}
+
+/**
+ * @tc.name: OnRemoteRequest_0700
+ * @tc.desc: Test OnRemoteRequest success path with non-zero resultCode (error result forwarded).
+ */
+HWTEST_F(InsightIntentExecuteCallbackStubTest, OnRemoteRequest_0700, TestSize.Level1)
+{
+    TAG_LOGE(AAFwkTag::TEST, "OnRemoteRequest_0700 begin.");
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID);
+    std::shared_ptr<InsightIntentExecuteCallbackStub> backStub
+        = std::make_shared<InsightIntentExecuteCallbackStubTests>();
+    uint32_t code = IInsightIntentExecuteCallback::ON_INSIGHT_INTENT_EXECUTE_DONE;
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    data.WriteInterfaceToken(APPMGR_INTERFACE_TOKEN);
+    data.WriteUint64(999);
+    data.WriteInt32(ERR_INVALID_VALUE);
+    AppExecFwk::InsightIntentExecuteResult executeResult;
+    data.WriteParcelable(&executeResult);
+    int32_t result = backStub->OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(result, ERR_OK);
+    TAG_LOGE(AAFwkTag::TEST, "OnRemoteRequest_0700 end.");
+}
+
+/**
+ * @tc.name: OnRemoteRequest_0800
+ * @tc.desc: Test OnRemoteRequest with target code + foundation uid but only token (no payload) → ERR_INVALID_VALUE.
+ */
+HWTEST_F(InsightIntentExecuteCallbackStubTest, OnRemoteRequest_0800, TestSize.Level1)
+{
+    TAG_LOGE(AAFwkTag::TEST, "OnRemoteRequest_0800 begin.");
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID);
+    std::shared_ptr<InsightIntentExecuteCallbackStub> backStub
+        = std::make_shared<InsightIntentExecuteCallbackStubTests>();
+    uint32_t code = IInsightIntentExecuteCallback::ON_INSIGHT_INTENT_EXECUTE_DONE;
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    data.WriteInterfaceToken(APPMGR_INTERFACE_TOKEN);
+    int32_t result = backStub->OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    TAG_LOGE(AAFwkTag::TEST, "OnRemoteRequest_0800 end.");
+}
 } // namespace AAFwk
 } // namespace OHOS
