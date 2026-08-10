@@ -512,11 +512,7 @@ HWTEST_F(AbilityManagerServiceFourthTest, InitDeepLinkReserve_001, TestSize.Leve
 HWTEST_F(AbilityManagerServiceFourthTest, InitInterceptor_001, TestSize.Level1)
 {
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest InitInterceptor_001 start");
-    OHOS::system::SetBoolParameter(OHOS::AppExecFwk::PARAMETER_APP_JUMP_INTERCEPTOR_ENABLE, false);
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
-    abilityMs_->InitInterceptor();
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest InitInterceptor_001 mid");
-    OHOS::system::SetBoolParameter(OHOS::AppExecFwk::PARAMETER_APP_JUMP_INTERCEPTOR_ENABLE, true);
     abilityMs_->InitInterceptor();
     EXPECT_TRUE(abilityMs_ != nullptr);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest InitInterceptor_001 end");
@@ -858,12 +854,6 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartAbilityAsCallerDetails_001, TestS
         want, callerToken, asCallerSourceToken, userId, requestCode, isImplicit);
     EXPECT_EQ(ret1, ERR_INVALID_CALLER);
 
-    string callerPkg{"test"};
-    want.SetParam(AbilityUtil::JUMP_INTERCEPTOR_DIALOG_CALLER_PKG, callerPkg);
-    want.SetElementName("com.ohos.sceneboard", "com.ohos.sceneboard.systemdialog");
-    auto ret2 = abilityMs_->StartAbilityAsCallerDetails(
-        want, callerToken, asCallerSourceToken, userId, requestCode, isImplicit);
-    EXPECT_EQ(ret2, ERR_INVALID_CALLER);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartAbilityAsCallerDetails_001 end");
 }
 

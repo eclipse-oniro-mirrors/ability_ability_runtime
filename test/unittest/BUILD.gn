@@ -147,7 +147,6 @@ group("unittest") {
       "ability_interceptor_second_test:unittest",
       "ability_interceptor_test:unittest",
       "ability_interceptor_third_test:unittest",
-      "ability_jump_interceptor_test:unittest",
       "ability_keep_alive_data_manager_second_test:unittest",
       "ability_keep_alive_data_manager_test:unittest",
       "ability_keep_alive_service_test:unittest",

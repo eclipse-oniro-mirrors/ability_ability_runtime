@@ -67,7 +67,6 @@
 #include "extract_insight_intent_profile.h"
 #include "insight_intent_matcher.h"
 #include "insight_intent_profile.h"
-#include "interceptor/ability_jump_interceptor.h"
 #include "interceptor/block_all_app_start_interceptor.h"
 #include "interceptor/control_interceptor.h"
 #include "interceptor/crowd_test_interceptor.h"
@@ -540,12 +539,6 @@ void AbilityManagerService::InitInterceptor()
     afterCheckExecuter_->AddInterceptor("DisposedRule", std::make_shared<DisposedRuleInterceptor>());
     afterCheckExecuter_->AddInterceptor("EcologicalRule", std::make_shared<EcologicalRuleInterceptor>());
     afterCheckExecuter_->SetTaskHandler(taskHandler_);
-    bool isAppJumpEnabled = OHOS::system::GetBoolParameter(
-        OHOS::AppExecFwk::PARAMETER_APP_JUMP_INTERCEPTOR_ENABLE, false);
-    if (isAppJumpEnabled) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "app jump enabled, add abilityJumpInterceptor");
-        interceptorExecuter_->AddInterceptor("AbilityJump", std::make_shared<AbilityJumpInterceptor>());
-    }
     if (AppUtils::GetInstance().IsStartOptionsWithAnimation()) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "create BlockAllAppStartInterceptor");
         blockAllAppStartInterceptor_ = std::make_shared<BlockAllAppStartInterceptor>();
@@ -1182,14 +1175,6 @@ int AbilityManagerService::StartAbilityAsCallerDetails(const Want &want, const s
     UpdateCallerInfoUtil::GetInstance().UpdateAsCallerSourceInfo(newWant, asCallerSourceToken, callerToken);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "start ability come, ability:%{public}s, userId:%{public}d",
         want.GetAbilityNameRef().c_str(), userId);
-    std::string callerPkg;
-    std::string targetPkg;
-    if (AbilityUtil::CheckJumpInterceptorWant(newWant, callerPkg, targetPkg)) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR,
-            "call from interceptor dialog, callerPkg:%{public}s, targetPkg:%{public}s",
-            callerPkg.c_str(), targetPkg.c_str());
-        AbilityUtil::AddAbilityJumpRuleToBms(callerPkg, targetPkg, GetValidUserId(userId));
-    }
     StartAbilityWrapParam startAbilityWrapParam = {
         .want = newWant,
         .callerToken = callerToken,

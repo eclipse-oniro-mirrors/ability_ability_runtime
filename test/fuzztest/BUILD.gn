@@ -141,8 +141,6 @@ group("fuzztest") {
     "abilitymgrinsightintentexecuteresult_fuzzer:fuzztest",
     "abilitymgrinsightintentutils_fuzzer:fuzztest",
     "abilitymgrinterceptorexecuter_fuzzer:fuzztest",
-    "abilitymgrjumpinterceptor_fuzzer:fuzztest",
-    "abilitymgrjumpinterceptorfirst_fuzzer:fuzztest",
     "abilitymgrrdbparserutil_fuzzer:fuzztest",
     "abilitymgrrest_fuzzer:fuzztest",
     "abilitymgrrestartappmanager_fuzzer:fuzztest",
