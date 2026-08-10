@@ -1524,6 +1524,7 @@ ohos_shared_library("cj_form_extension") {
     cfi_policy = "adaptive"
     debug = false
   }
+  configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
   defines = [ "AMS_LOG_TAG = \"Ability\"" ]
   defines += [ "AMS_LOG_DOMAIN = 0xD001300" ]
   if (ability_runtime_graphics) {
@@ -3506,7 +3507,10 @@ ohos_shared_library("cj_embedded_ui_extension") {
   }
   branch_protector_ret = "pac_ret"
 
-  configs = [ ":embedded_ui_extension_config" ]
+  configs = [
+    ":embedded_ui_extension_config",
+    "${ability_runtime_services_path}/common:optimize_config",
+  ]
 
   sources = [ "${ability_runtime_native_path}/ability/native/embedded_ui_extension_ability/cj_embedded_ui_extension.cpp" ]
 
