@@ -326,7 +326,7 @@ HWTEST_F(DataObsMgrServiceSecondTest, DataObsMgrServiceSecondTest_NotifyChangeEx
 HWTEST_F(DataObsMgrServiceSecondTest, DataObsMgrServiceSecondTest_NotifyProcessObserver_0100, TestSize.Level1)
 {
     TAG_LOGI(AAFwkTag::TEST, "DataObsMgrServiceSecondTest_NotifyProcessObserver_0100 start");
-    const int testVal = static_cast<int>(DATAOBS_PROXY_INNER_ERR);
+    const int testVal = static_cast<int>(DATAOBS_PERMISSION_DENY);
     auto dataObsMgrServer = DelayedSingleton<DataObsMgrService>::GetInstance();
     const std::string key;
     const sptr<IRemoteObject> observer;
