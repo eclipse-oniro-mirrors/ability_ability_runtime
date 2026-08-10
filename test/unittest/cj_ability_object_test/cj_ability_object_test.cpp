@@ -370,7 +370,7 @@ class CjUIExtensionObjectTest : public testing::Test {};
 HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_FFIRegisterCJExtAbilityFuncsV2_001, TestSize.Level1)
 {
     FFIRegisterCJExtAbilityFuncsV2(nullptr);
-    EXPECT_TRUE(true);
+    EXPECT_EQ(g_extFuncsV2, nullptr);
 }
 
 /**

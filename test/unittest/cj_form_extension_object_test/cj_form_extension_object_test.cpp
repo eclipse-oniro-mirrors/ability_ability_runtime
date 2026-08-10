@@ -59,18 +59,6 @@ class CjFormExtensionObjectTest : public testing::Test {
 };
 
 /**
- * @tc.name  : CjFormExtensionObjectTest_FFIRegisterCJFormExtAbilityFuncsV2_001
- * @tc.desc  : Test FFIRegisterCJFormExtAbilityFuncsV2 with nullptr and valid registerFunc,
- *             covers null-check branch and successful registration branch.
- * @tc.type  : FUNC
- */
-HWTEST_F(CjFormExtensionObjectTest, CjFormExtensionObjectTest_FFIRegisterCJFormExtAbilityFuncsV2_001, TestSize.Level1)
-{
-    FFIRegisterCJFormExtAbilityFuncsV2(nullptr);
-    EXPECT_TRUE(true);
-}
-
-/**
  * @tc.name  : CjFormExtensionObjectTest_OnConfigurationUpdateV2_001
  * @tc.desc  : Test OnConfigurationUpdate with V2 registered, covers V2 priority path
  *             with CreateCConfigurationV2 and FreeCConfigurationV2.
