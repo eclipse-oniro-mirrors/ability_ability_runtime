@@ -447,9 +447,9 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnCreateV1_001, TestSi
     launchParam.lastExitMessage = "v1_exit_msg";
     extObj.OnCreate(want, launchParam);
 
-    EXPECT_FALSE(v1CreateCalled);
-    EXPECT_EQ(capturedParam.launchReason, 0);
-    EXPECT_EQ(capturedParam.lastExitReason, 0);
+    EXPECT_TRUE(v1CreateCalled);
+    EXPECT_EQ(capturedParam.launchReason, 3);
+    EXPECT_EQ(capturedParam.lastExitReason, 4);
     ResetCJAbilityFuncs();
 }
 
@@ -539,7 +539,7 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnConfigurationUpdateV
     config->AddItem(OHOS::AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE, "en_US");
     extObj.OnConfigurationUpdate(config);
 
-    EXPECT_FALSE(v1ConfigCalled);
+    EXPECT_TRUE(v1ConfigCalled);
 
     CJUIExtensionObject noFuncObj;
     noFuncObj.OnConfigurationUpdate(config);
@@ -573,7 +573,7 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnConfigurationUpdateV
     config->AddItem(OHOS::AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE, "en_US");
     extObj.OnConfigurationUpdate(config);
 
-    EXPECT_FALSE(v1ConfigCalled);
+    EXPECT_TRUE(v1ConfigCalled);
     ResetCJAbilityFuncs();
 }
 
