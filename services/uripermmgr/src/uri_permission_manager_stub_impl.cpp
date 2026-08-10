@@ -1724,9 +1724,9 @@ int32_t UriPermissionManagerStubImpl::RevokeFileUriPermission(uint32_t tokenId, 
         std::chrono::high_resolution_clock::now().time_since_epoch()).count());
     TAG_LOGI(AAFwkTag::URIPERMMGR, "clear permission, tokenId: %{public}d, timeNow: %{public}" PRIu64 "",
         tokenId, timeNow);
-    auto ret = SandboxManagerKit::UnSetAllPolicyByToken(tokenId, timeNow);
+    auto ret = SandboxManagerKit::UnSetAllPolicyByTokenAsync(tokenId, timeNow);
     if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::URIPERMMGR, "UnsetAllPolicyByToken failed, ret: %{public}d", ret);
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "UnSetAllPolicyByTokenAsync failed, ret: %{public}d", ret);
         return WrapErrorCode(ret, funcResult);
     }
 #endif // ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER
