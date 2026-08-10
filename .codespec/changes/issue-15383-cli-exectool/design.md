@@ -288,6 +288,12 @@ sequenceDiagram
 | 超时与正常退出竞争 | SessionRecord 状态 | 原子状态 + BeginCleanup 单次进入 | 仅一方完成终态派发 |
 | 回调与代理死亡竞争 | Scheduler 代理 | DeathRecipient + mutex | 代理死亡不清会话，仅清代理 |
 
+## DFX 设计
+
+### DFX 故障模式分析
+
+未命中知识库，不涉及。
+
 ### 安全基础检查
 
 > proposal「安全与权限」= 是，本节必填。
