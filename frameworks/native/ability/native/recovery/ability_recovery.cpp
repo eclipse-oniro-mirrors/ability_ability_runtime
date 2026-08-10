@@ -15,8 +15,6 @@
 
 #include "ability_recovery.h"
 
-#include <algorithm>
-#include <cstring>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -28,6 +26,7 @@
 #include "file_ex.h"
 #include "hilog_tag_wrapper.h"
 #include "hisysevent_c.h"
+#include "hisysevent_report.h"
 #include "hitrace_meter.h"
 #include "js_runtime.h"
 #include "js_runtime_utils.h"
@@ -35,7 +34,6 @@
 #include "napi/native_common.h"
 #include "parcel.h"
 #include "recovery_param.h"
-#include "securec.h"
 #include "string_ex.h"
 #include "string_wrapper.h"
 #include "want_params.h"
@@ -59,23 +57,8 @@ constexpr int32_t CALL_BACK_ERROR = -1;
 //   ABILITY_NAME            <- "RESTORE_SUCCESS" (restore result)
 constexpr const char* RECOVERY_EVENT_DOMAIN = "AAFWK";
 constexpr const char* RECOVERY_EVENT_NAME = "PREVENT_START_ABILITY";
-constexpr uint8_t RECOVERY_EVENT_PARAM_COUNT = 8;
-constexpr size_t RECOVERY_PARAM_NAME_MAX_LEN = 48;
 constexpr const char* RESTORE_RESULT_SUCCESS = "RESTORE_SUCCESS";
 constexpr const char* RESTORE_EVENT_SOURCE = "APP_RECOVERY";
-
-static void SetHiSysEventParamName(HiSysEventParam &param, const char *name)
-{
-    if (name == nullptr) {
-        return;
-    }
-    size_t len = std::min(std::strlen(name), RECOVERY_PARAM_NAME_MAX_LEN - 1);
-    if (memcpy_s(param.name, RECOVERY_PARAM_NAME_MAX_LEN, name, len) != EOK) {
-        TAG_LOGE(AAFwkTag::RECOVERY, "memcpy_s failed for param name %{public}s", name);
-        return;
-    }
-    param.name[len] = '\0';
-}
 
 // Report PREVENT_START_ABILITY hisysevent on ScheduleRestoreAbilityState success.
 // Reuses the existing preserve:true event so the signal stays local-only.
@@ -86,50 +69,17 @@ static void ReportRestoreAbilityStateResult(const std::shared_ptr<AbilityInfo> &
         TAG_LOGE(AAFwkTag::RECOVERY, "null abilityInfo");
         return;
     }
-    HiSysEventParam params[RECOVERY_EVENT_PARAM_COUNT] = {};
-    uint8_t pos = 0;
-    // CALLER_UID
-    params[pos].t = HISYSEVENT_INT32;
-    params[pos].v.i32 = static_cast<int32_t>(abilityInfo->applicationInfo.uid);
-    SetHiSysEventParamName(params[pos], "CALLER_UID");
-    pos++;
-    // CALLER_PID (not applicable, fixed 0)
-    params[pos].t = HISYSEVENT_INT32;
-    params[pos].v.i32 = 0;
-    SetHiSysEventParamName(params[pos], "CALLER_PID");
-    pos++;
-    // CALLER_PROCESS_NAME <- versionName
-    params[pos].t = HISYSEVENT_STRING;
-    params[pos].v.s = const_cast<char *>(abilityInfo->applicationInfo.versionName.c_str());
-    SetHiSysEventParamName(params[pos], "CALLER_PROCESS_NAME");
-    pos++;
-    // CALLER_BUNDLE_NAME
-    params[pos].t = HISYSEVENT_STRING;
-    params[pos].v.s = const_cast<char *>(abilityInfo->bundleName.c_str());
-    SetHiSysEventParamName(params[pos], "CALLER_BUNDLE_NAME");
-    pos++;
-    // CALLEE_BUNDLE_NAME <- fixed source marker
-    params[pos].t = HISYSEVENT_STRING;
-    params[pos].v.s = const_cast<char *>(RESTORE_EVENT_SOURCE);
-    SetHiSysEventParamName(params[pos], "CALLEE_BUNDLE_NAME");
-    pos++;
-    // CALLEE_PROCESS_NAME <- ability name
-    params[pos].t = HISYSEVENT_STRING;
-    params[pos].v.s = const_cast<char *>(abilityInfo->name.c_str());
-    SetHiSysEventParamName(params[pos], "CALLEE_PROCESS_NAME");
-    pos++;
-    // EXTENSION_ABILITY_TYPE <- versionCode
-    params[pos].t = HISYSEVENT_INT32;
-    params[pos].v.i32 = static_cast<int32_t>(abilityInfo->applicationInfo.versionCode);
-    SetHiSysEventParamName(params[pos], "EXTENSION_ABILITY_TYPE");
-    pos++;
-    // ABILITY_NAME <- restore result
-    params[pos].t = HISYSEVENT_STRING;
-    params[pos].v.s = const_cast<char *>(result.c_str());
-    SetHiSysEventParamName(params[pos], "ABILITY_NAME");
-    pos++;
-    int32_t ret = OH_HiSysEvent_Write(RECOVERY_EVENT_DOMAIN, RECOVERY_EVENT_NAME,
-        HISYSEVENT_BEHAVIOR, params, pos);
+    auto report = std::make_shared<AAFwk::HisyseventReport>(8);
+    report->InsertParam("CALLER_UID", static_cast<int32_t>(abilityInfo->applicationInfo.uid));
+    report->InsertParam("CALLER_PID", 0); // not applicable
+    report->InsertParam("CALLER_PROCESS_NAME", abilityInfo->applicationInfo.versionName);
+    report->InsertParam("CALLER_BUNDLE_NAME", abilityInfo->bundleName);
+    report->InsertParam("CALLEE_BUNDLE_NAME", RESTORE_EVENT_SOURCE);
+    report->InsertParam("CALLEE_PROCESS_NAME", abilityInfo->name);
+    report->InsertParam("EXTENSION_ABILITY_TYPE",
+        static_cast<int32_t>(abilityInfo->applicationInfo.versionCode));
+    report->InsertParam("ABILITY_NAME", result);
+    int32_t ret = report->Report(RECOVERY_EVENT_DOMAIN, RECOVERY_EVENT_NAME, HISYSEVENT_BEHAVIOR);
     if (ret != 0) {
         TAG_LOGW(AAFwkTag::RECOVERY, "report PREVENT_START_ABILITY failed, ret=%{public}d, result=%{public}s",
             ret, result.c_str());

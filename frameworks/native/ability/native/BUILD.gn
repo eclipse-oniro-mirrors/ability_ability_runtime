@@ -1192,6 +1192,7 @@ ohos_shared_library("uiabilitykit_native") {
     "${ability_runtime_path}/utils/global/common:runtime_utils",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
     "${ability_runtime_services_path}/common:app_util",
+    "${ability_runtime_services_path}/common:hisysevent_report",
   ]
 
   external_deps = [
