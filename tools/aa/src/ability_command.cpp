@@ -2657,7 +2657,7 @@ ErrCode AbilityManagerShellCommand::ParseTestCommandOption(const std::string &op
         params[opt + " " + argKey] = argValue;
     } else if (opt == "-D") {
         params[opt] = DEBUG_VALUE;
-    } else if (opt.at(0) == '-') {
+    } else if (!opt.empty() && opt.at(0) == '-') {
         return TestCommandError("error: unknown option: " + opt + "\n");
     }
     return OHOS::ERR_OK;
