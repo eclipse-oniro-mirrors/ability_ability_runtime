@@ -38,6 +38,8 @@ ohos_shared_library("intent_client") {
 
   public_configs = [ ":intent_client_config" ]
 
+  configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
+
   sanitize = {
     integer_overflow = true
     ubsan = true

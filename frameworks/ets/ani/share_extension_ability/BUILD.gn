@@ -26,6 +26,8 @@ ohos_shared_library("share_extension_ani") {
     debug = false
   }
 
+  configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
+
   include_dirs = [
     "./include",
     "${ability_runtime_path}/interfaces/kits/native/ability/native/share_extension_ability",
