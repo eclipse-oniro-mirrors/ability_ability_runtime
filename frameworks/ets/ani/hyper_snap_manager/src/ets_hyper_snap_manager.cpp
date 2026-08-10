@@ -18,8 +18,14 @@
 #include <unordered_map>
 
 #include "ability_business_error.h"
+#include "ani_common_util.h"
+#include "app_mgr_interface.h"
+#include "errors.h"
 #include "ets_error_utils.h"
 #include "hilog_tag_wrapper.h"
+#include "if_system_ability_manager.h"
+#include "iservice_registry.h"
+#include "system_ability_definition.h"
 #ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
 #include "res_sched_client.h"
 #include "res_type.h"
@@ -29,13 +35,85 @@ namespace OHOS {
 namespace HyperSnapManagerEts {
 namespace {
 constexpr const char *HYPER_SNAP_MANAGER_SPACE_NAME = "@ohos.app.ability.hyperSnapManager.hyperSnapManager";
+// Fully-qualified class name of the ArkTS result object (declared in
+// @ohos.app.ability.hyperSnapManager.ets).
+constexpr const char *HYPER_SNAP_ERROR_INFO_IMPL_CLASS_NAME =
+    "@ohos.app.ability.hyperSnapManager.hyperSnapManager.HyperSnapErrorInfoImpl";
 } // namespace
+
+// Obtain the AppMgrService proxy via SystemAbilityManager. The client side casts the SA
+// remote object to IAppMgr; it never constructs AppMgrProxy directly.
+static sptr<AppExecFwk::IAppMgr> GetAppMgrInstance()
+{
+    auto systemAbilityManager = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (systemAbilityManager == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "GetAppMgrInstance: system ability manager is null");
+        return nullptr;
+    }
+    auto appObject = systemAbilityManager->GetSystemAbility(APP_MGR_SERVICE_ID);
+    return iface_cast<AppExecFwk::IAppMgr>(appObject);
+}
+
+// Build a HyperSnapErrorInfoImpl ArkTS object { code, msg, occurTimeStamp } from the record.
+static ani_object BuildHyperSnapErrorInfo(ani_env *env, const AppExecFwk::HyperSnapErrorRecord &record)
+{
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "BuildHyperSnapErrorInfo: null env");
+        return nullptr;
+    }
+
+    ani_class cls = nullptr;
+    ani_status status = env->FindClass(HYPER_SNAP_ERROR_INFO_IMPL_CLASS_NAME, &cls);
+    if (status != ANI_OK || cls == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "BuildHyperSnapErrorInfo: FindClass failed, status:%{public}d", status);
+        return nullptr;
+    }
+
+    ani_method ctor = nullptr;
+    status = env->Class_FindMethod(cls, "<ctor>", ":", &ctor);
+    if (status != ANI_OK || ctor == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "BuildHyperSnapErrorInfo: find ctor failed, status:%{public}d", status);
+        return nullptr;
+    }
+
+    ani_object object = nullptr;
+    status = env->Object_New(cls, ctor, &object);
+    if (status != ANI_OK || object == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "BuildHyperSnapErrorInfo: Object_New failed, status:%{public}d", status);
+        return nullptr;
+    }
+
+    status = env->Object_SetPropertyByName_Int(object, "code", static_cast<ani_int>(record.code));
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPKIT, "BuildHyperSnapErrorInfo: set code failed, status:%{public}d", status);
+        return nullptr;
+    }
+
+    status = env->Object_SetPropertyByName_Ref(object, "msg", AppExecFwk::GetAniString(env, record.msg));
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPKIT, "BuildHyperSnapErrorInfo: set msg failed, status:%{public}d", status);
+        return nullptr;
+    }
+
+    status = env->Object_SetPropertyByName_Ref(object, "occurTimeStamp",
+        AppExecFwk::GetAniString(env, record.occurTimeStamp));
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPKIT, "BuildHyperSnapErrorInfo: set occurTimeStamp failed, status:%{public}d", status);
+        return nullptr;
+    }
+
+    return object;
+}
 
 class EtsHyperSnapManager final {
 public:
     static void SetHyperSnapEnabled(ani_env *env, ani_boolean enabledFlag);
 
     static void RequestRebuildHyperSnap(ani_env *env);
+
+    // errType: CREATE_SNAPSHOT(0) / FORK_FROM_SNAPSHOT(1). Synchronous: returns the
+    // HyperSnapErrorInfoImpl object on success, throws on parameter/system errors.
+    static ani_object NativeGetLastError(ani_env *env, ani_int errType);
 };
 
 void EtsHyperSnapManager::SetHyperSnapEnabled(ani_env *env, ani_boolean enabledFlag)
@@ -86,6 +164,43 @@ void EtsHyperSnapManager::RequestRebuildHyperSnap(ani_env *env)
 #endif
 }
 
+ani_object EtsHyperSnapManager::NativeGetLastError(ani_env *env, ani_int errType)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "NativeGetLastError called");
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "NativeGetLastError: null env");
+        return nullptr;
+    }
+
+    int32_t typeValue = static_cast<int32_t>(errType);
+    bool paramValid = (typeValue == static_cast<int32_t>(AppExecFwk::ErrorType::CREATE_SNAPSHOT)) ||
+        (typeValue == static_cast<int32_t>(AppExecFwk::ErrorType::FORK_FROM_SNAPSHOT));
+    if (!paramValid) {
+        TAG_LOGE(AAFwkTag::APPKIT, "NativeGetLastError: invalid errType %{public}d", typeValue);
+        AbilityRuntime::EtsErrorUtil::ThrowInvalidParamError(env, "errType must be a valid ErrorType.");
+        return nullptr;
+    }
+
+    auto appMgr = GetAppMgrInstance();
+    if (appMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "NativeGetLastError: failed to get AppMgrService proxy");
+        AbilityRuntime::EtsErrorUtil::ThrowError(env, AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);
+        return nullptr;
+    }
+
+    AppExecFwk::HyperSnapErrorRecord record;
+    int32_t result = appMgr->GetHyperSnapLastError(typeValue, record);
+    if (result != ERR_OK) {
+        TAG_LOGE(AAFwkTag::APPKIT, "NativeGetLastError: IPC failed, result %{public}d", result);
+        AbilityRuntime::EtsErrorUtil::ThrowError(env, AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);
+        return nullptr;
+    }
+
+    TAG_LOGI(AAFwkTag::APPKIT, "NativeGetLastError success, errType:%{public}d, code:%{public}d",
+        typeValue, static_cast<int32_t>(record.code));
+    return BuildHyperSnapErrorInfo(env, record);
+}
+
 void EtsHyperSnapManagerRegisterInit(ani_env *env)
 {
     TAG_LOGD(AAFwkTag::APPKIT, "EtsHyperSnapManagerRegisterInit call");
@@ -109,6 +224,8 @@ void EtsHyperSnapManagerRegisterInit(ani_env *env)
             reinterpret_cast<void *>(EtsHyperSnapManager::SetHyperSnapEnabled)},
         ani_native_function{"nativeRequestRebuildHyperSnap", nullptr,
             reinterpret_cast<void *>(EtsHyperSnapManager::RequestRebuildHyperSnap)},
+        ani_native_function{"nativeGetLastError", nullptr,
+            reinterpret_cast<void *>(EtsHyperSnapManager::NativeGetLastError)},
     };
     status = env->Namespace_BindNativeFunctions(ns, kitFunctions.data(), kitFunctions.size());
     if (status != ANI_OK) {

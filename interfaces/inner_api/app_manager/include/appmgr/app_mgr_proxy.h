@@ -67,6 +67,8 @@ public:
 
     virtual int32_t DestroyImage(uint64_t checkpointId, sptr<IImageErrorHandler> errorHandler = nullptr) override;
 
+    virtual int32_t GetHyperSnapLastError(int32_t errType, HyperSnapErrorRecord &record) override;
+
     virtual int32_t NotifyTemplateProcessDeepFrozen(int32_t pid) override;
 
     virtual int32_t PreTemplateProcessDeepFrozen(int32_t pid) override;

@@ -317,6 +317,28 @@ int32_t AppMgrService::DestroyImage(uint64_t checkpointId, sptr<IImageErrorHandl
     return ERR_OK;
 }
 
+int32_t AppMgrService::GetHyperSnapLastError(int32_t errType, HyperSnapErrorRecord &record)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "GetHyperSnapLastError called, errType: %{public}d", errType);
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError failed: service not ready");
+        return ERR_INVALID_OPERATION;
+    }
+
+    // Convert int32_t to ErrorType
+    ErrorType errorType = static_cast<ErrorType>(errType);
+
+    // Call serviceInner_ method
+    bool success = serviceInner_->GetHyperSnapLastError(errorType, record);
+    if (!success) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError failed: invalid parameter");
+        return ERR_INVALID_VALUE;
+    }
+
+    TAG_LOGD(AAFwkTag::APPMGR, "GetHyperSnapLastError success, code: %{public}d", static_cast<int32_t>(record.code));
+    return ERR_OK;
+}
+
 int32_t AppMgrService::NotifyTemplateProcessDeepFrozen(int32_t pid)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");
