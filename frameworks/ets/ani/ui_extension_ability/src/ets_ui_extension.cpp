@@ -462,7 +462,7 @@ bool EtsUIExtension::ForegroundWindowWithInsightIntent(const AAFwk::Want &want,
 
         InsightIntentExecuteParam executeParam;
         InsightIntentExecuteParam::GenerateFromWant(want, executeParam);
-        if (result.uris.size() > 0) {
+        if (result.uris.size() > 0 || result.interactionInfo != nullptr) {
             uiExtension->ExecuteInsightIntentDone(executeParam.insightIntentId_, result);
         }
         uiExtension->PostInsightIntentExecuted(sessionInfo, result, needForeground);
@@ -522,7 +522,10 @@ void EtsUIExtension::PostInsightIntentExecuted(const sptr<AAFwk::SessionInfo> &s
         CallObjectMethod(false, "onForeground", nullptr);
     }
 
-    OnInsightIntentExecuteDone(sessionInfo, result);
+    auto filtered = result;
+    filtered.interactionInfo = nullptr;
+    TAG_LOGW(AAFwkTag::UI_EXT, "filter interactionInfo in window path");
+    OnInsightIntentExecuteDone(sessionInfo, filtered);
 
     if (needForeground) {
         // If need foreground, that means triggered by onForeground.

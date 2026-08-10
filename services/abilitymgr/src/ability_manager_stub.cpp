@@ -23,6 +23,7 @@
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
 #include "insight_intent_execute_param.h"
+#include "insight_intent_execute_manager.h"
 #include "skill_execute_param.h"
 #include "status_bar_delegate_interface.h"
 #include <iterator>
@@ -4623,6 +4624,10 @@ int32_t AbilityManagerStub::ExecuteInsightIntentDoneInner(MessageParcel &data, M
     std::unique_ptr<InsightIntentExecuteResult> executeResult(data.ReadParcelable<InsightIntentExecuteResult>());
     if (!executeResult) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "executeResult null");
+        InsightIntentExecuteResult errorResult;
+        errorResult.innerErr = AbilityRuntime::InsightIntentInnerErr::INSIGHT_INTENT_EXECUTE_REPLY_FAILED;
+        DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->ExecuteIntentDone(
+            intentId, errorResult.innerErr, errorResult);
         return ERR_INVALID_VALUE;
     }
 

@@ -35,9 +35,13 @@ void RemoteIntentResultCallback::OnIntentResult(uint64_t requestCode, int32_t re
             requestCode, resultCode, errorResult);
     } else {
         AppExecFwk::InsightIntentExecuteResult result;
-        result.FromJsonString(resultMsg);
+        int32_t code = resultCode;
+        if (!result.FromJsonString(resultMsg)) {
+            result.innerErr = AbilityRuntime::InsightIntentInnerErr::INSIGHT_INTENT_EXECUTE_REPLY_FAILED;
+            code = result.innerErr;
+        }
         DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->ExecuteIntentDone(
-            requestCode, resultCode, result);
+            requestCode, code, result);
     }
     auto abilityMgr = DelayedSingleton<AbilityManagerService>::GetInstance();
     if (abilityMgr == nullptr) {
