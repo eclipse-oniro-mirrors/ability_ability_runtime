@@ -621,6 +621,26 @@ HWTEST_F(AbilityRecoveryUnitTest, IsOnForeground_001, TestSize.Level1)
 }
 
 /**
+ * @tc.name: ScheduleRestoreAbilityState_005
+ * @tc.desc: Test ScheduleRestoreAbilityState success path with populated abilityInfo, verify
+ *           hisysevent reporting path does not crash.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityRecoveryUnitTest, ScheduleRestoreAbilityState_005, TestSize.Level1)
+{
+    abilityInfo_->bundleName = "com.test.recovery";
+    abilityInfo_->name = "MainAbility";
+    abilityInfo_->applicationInfo.uid = 10000;
+    abilityInfo_->applicationInfo.versionCode = 1;
+    abilityInfo_->applicationInfo.versionName = "1.0.0";
+    abilityRecovery_->EnableAbilityRecovery(true, RestartFlag::ALWAYS_RESTART, SaveOccasionFlag::SAVE_WHEN_ERROR,
+        SaveModeFlag::SAVE_WITH_SHARED_MEMORY);
+    abilityRecovery_->hasTryLoad_ = true;
+    abilityRecovery_->hasLoaded_ = true;
+    EXPECT_TRUE(abilityRecovery_->ScheduleRestoreAbilityState(StateReason::CPP_CRASH, want_));
+}
+
+/**
  * @tc.name: SaveStateCallback_001
  * @tc.desc: Test SaveStateCallback when enableFlag is false.
  * @tc.type: FUNC

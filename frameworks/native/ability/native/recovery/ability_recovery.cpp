@@ -25,6 +25,8 @@
 #include "context/application_context.h"
 #include "file_ex.h"
 #include "hilog_tag_wrapper.h"
+#include "hisysevent_c.h"
+#include "hisysevent_report.h"
 #include "hitrace_meter.h"
 #include "js_runtime.h"
 #include "js_runtime_utils.h"
@@ -41,6 +43,48 @@ namespace AppExecFwk {
 namespace {
 constexpr size_t DEFAULT_RECOVERY_MAX_RESTORE_SIZE = 400 * 1024;
 constexpr int32_t CALL_BACK_ERROR = -1;
+
+// Reuse PREVENT_START_ABILITY (preserve:true, not uploaded to cloud) to report local-only
+// restore-success signal on the app-side ScheduleRestoreAbilityState path.
+// Field mapping (caller=callee=app itself; CALLEE_BUNDLE_NAME marks event source):
+//   CALLER_UID              <- applicationInfo.uid
+//   CALLER_PID              <- 0 (not applicable)
+//   CALLER_PROCESS_NAME     <- applicationInfo.versionName
+//   CALLER_BUNDLE_NAME      <- bundleName
+//   CALLEE_BUNDLE_NAME      <- "APP_RECOVERY" (fixed source marker)
+//   CALLEE_PROCESS_NAME     <- ability name
+//   EXTENSION_ABILITY_TYPE  <- applicationInfo.versionCode
+//   ABILITY_NAME            <- "RESTORE_SUCCESS" (restore result)
+constexpr const char* RECOVERY_EVENT_DOMAIN = "AAFWK";
+constexpr const char* RECOVERY_EVENT_NAME = "PREVENT_START_ABILITY";
+constexpr const char* RESTORE_RESULT_SUCCESS = "RESTORE_SUCCESS";
+constexpr const char* RESTORE_EVENT_SOURCE = "APP_RECOVERY";
+
+// Report PREVENT_START_ABILITY hisysevent on ScheduleRestoreAbilityState success.
+// Reuses the existing preserve:true event so the signal stays local-only.
+static void ReportRestoreAbilityStateResult(const std::shared_ptr<AbilityInfo> &abilityInfo,
+    const std::string &result)
+{
+    if (abilityInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::RECOVERY, "null abilityInfo");
+        return;
+    }
+    auto report = std::make_shared<AAFwk::HisyseventReport>(8);
+    report->InsertParam("CALLER_UID", static_cast<int32_t>(abilityInfo->applicationInfo.uid));
+    report->InsertParam("CALLER_PID", 0); // not applicable
+    report->InsertParam("CALLER_PROCESS_NAME", abilityInfo->applicationInfo.versionName);
+    report->InsertParam("CALLER_BUNDLE_NAME", abilityInfo->bundleName);
+    report->InsertParam("CALLEE_BUNDLE_NAME", RESTORE_EVENT_SOURCE);
+    report->InsertParam("CALLEE_PROCESS_NAME", abilityInfo->name);
+    report->InsertParam("EXTENSION_ABILITY_TYPE",
+        static_cast<int32_t>(abilityInfo->applicationInfo.versionCode));
+    report->InsertParam("ABILITY_NAME", result);
+    int32_t ret = report->Report(RECOVERY_EVENT_DOMAIN, RECOVERY_EVENT_NAME, HISYSEVENT_BEHAVIOR);
+    if (ret != 0) {
+        TAG_LOGW(AAFwkTag::RECOVERY, "report PREVENT_START_ABILITY failed, ret=%{public}d, result=%{public}s",
+            ret, result.c_str());
+    }
+}
 
 static std::string GetSaveAppCachePath(int32_t savedStateId)
 {
@@ -396,6 +440,7 @@ bool AbilityRecovery::LoadSavedState(StateReason reason)
 bool AbilityRecovery::ScheduleRestoreAbilityState(StateReason reason, const Want &want)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto abilityInfo = abilityInfo_.lock();
     if (!isEnable_) {
         TAG_LOGE(AAFwkTag::RECOVERY, "not enable");
         return false;
@@ -416,6 +461,7 @@ bool AbilityRecovery::ScheduleRestoreAbilityState(StateReason reason, const Want
     for (auto& i : params_.GetParams()) {
         wantCurrent.SetParam(i.first, i.second.GetRefPtr());
     }
+    ReportRestoreAbilityStateResult(abilityInfo, RESTORE_RESULT_SUCCESS);
     return true;
 }
 
