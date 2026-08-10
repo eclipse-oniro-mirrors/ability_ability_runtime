@@ -58,6 +58,21 @@ using namespace OHOS::AbilityRuntime;
 class CjFormExtensionObjectTest : public testing::Test {
 };
 
+static CJFormExtAbilityFuncs* g_formFuncsV1 = nullptr;
+static CJFormExtAbilityFuncsV2* g_formFuncsV2 = nullptr;
+
+static void ResetFormExtAbilityFuncs()
+{
+    if (g_formFuncsV1 != nullptr) {
+        g_formFuncsV1->createCjFormExtAbility = nullptr;
+        g_formFuncsV1 = nullptr;
+    }
+    if (g_formFuncsV2 != nullptr) {
+        g_formFuncsV2->cjFormExtAbilityOnConfigurationUpdateV2 = nullptr;
+        g_formFuncsV2 = nullptr;
+    }
+}
+
 /**
  * @tc.name  : CjFormExtensionObjectTest_OnConfigurationUpdateV2_001
  * @tc.desc  : Test OnConfigurationUpdate with V2 registered, covers V2 priority path
@@ -67,9 +82,9 @@ class CjFormExtensionObjectTest : public testing::Test {
 HWTEST_F(CjFormExtensionObjectTest, CjFormExtensionObjectTest_OnConfigurationUpdateV2_001, TestSize.Level1)
 {
     static bool v2ConfigCalled = false;
-    static OHOS::AbilityRuntime::CJFormExtAbilityFuncsV2* sFuncsV2 = nullptr;
     v2ConfigCalled = false;
     auto registerFunc = [](OHOS::AbilityRuntime::CJFormExtAbilityFuncs* funcs) {
+        g_formFuncsV1 = funcs;
         funcs->createCjFormExtAbility = [](const char* name, FormExtAbilityHandle extAbility) -> int64_t { return 1; };
         funcs->releaseCjFormExtAbility = [](int64_t id) {};
         funcs->cjFormExtAbilityInit = [](int64_t id, FormExtAbilityHandle extAbility) {};
@@ -90,7 +105,7 @@ HWTEST_F(CjFormExtensionObjectTest, CjFormExtensionObjectTest_OnConfigurationUpd
     FFIRegisterCJFormExtAbilityFuncs(registerFunc);
 
     auto registerFuncV2 = [](OHOS::AbilityRuntime::CJFormExtAbilityFuncsV2* funcs) {
-        sFuncsV2 = funcs;
+        g_formFuncsV2 = funcs;
         funcs->cjFormExtAbilityOnConfigurationUpdateV2 =
             [](int64_t id, OHOS::AbilityRuntime::CConfigurationV2 configuration) {
                 v2ConfigCalled = true;
@@ -105,10 +120,7 @@ HWTEST_F(CjFormExtensionObjectTest, CjFormExtensionObjectTest_OnConfigurationUpd
     obj.OnConfigurationUpdate(config);
 
     EXPECT_TRUE(v2ConfigCalled);
-    if (sFuncsV2 != nullptr) {
-        sFuncsV2->cjFormExtAbilityOnConfigurationUpdateV2 = nullptr;
-        sFuncsV2 = nullptr;
-    }
+    ResetFormExtAbilityFuncs();
 }
 
 /**
@@ -122,6 +134,7 @@ HWTEST_F(CjFormExtensionObjectTest, CjFormExtensionObjectTest_OnConfigurationUpd
     static bool v1ConfigCalled = false;
     v1ConfigCalled = false;
     auto registerFunc = [](OHOS::AbilityRuntime::CJFormExtAbilityFuncs* funcs) {
+        g_formFuncsV1 = funcs;
         funcs->createCjFormExtAbility = [](const char* name, FormExtAbilityHandle extAbility) -> int64_t { return 1; };
         funcs->releaseCjFormExtAbility = [](int64_t id) {};
         funcs->cjFormExtAbilityInit = [](int64_t id, FormExtAbilityHandle extAbility) {};
@@ -144,6 +157,7 @@ HWTEST_F(CjFormExtensionObjectTest, CjFormExtensionObjectTest_OnConfigurationUpd
     FFIRegisterCJFormExtAbilityFuncs(registerFunc);
 
     auto resetV2 = [](OHOS::AbilityRuntime::CJFormExtAbilityFuncsV2* funcs) {
+        g_formFuncsV2 = funcs;
         funcs->cjFormExtAbilityOnConfigurationUpdateV2 = nullptr;
     };
     FFIRegisterCJFormExtAbilityFuncsV2(resetV2);
@@ -155,6 +169,7 @@ HWTEST_F(CjFormExtensionObjectTest, CjFormExtensionObjectTest_OnConfigurationUpd
     obj.OnConfigurationUpdate(config);
 
     EXPECT_TRUE(v1ConfigCalled);
+    ResetFormExtAbilityFuncs();
 }
 
 /**
@@ -167,6 +182,7 @@ HWTEST_F(CjFormExtensionObjectTest, CjFormExtensionObjectTest_OnConfigurationUpd
     static bool configCalled = false;
     configCalled = false;
     auto registerFunc = [](OHOS::AbilityRuntime::CJFormExtAbilityFuncs* funcs) {
+        g_formFuncsV1 = funcs;
         funcs->createCjFormExtAbility = [](const char* name, FormExtAbilityHandle extAbility) -> int64_t { return 1; };
         funcs->releaseCjFormExtAbility = [](int64_t id) {};
         funcs->cjFormExtAbilityInit = [](int64_t id, FormExtAbilityHandle extAbility) {};
@@ -186,6 +202,7 @@ HWTEST_F(CjFormExtensionObjectTest, CjFormExtensionObjectTest_OnConfigurationUpd
     FFIRegisterCJFormExtAbilityFuncs(registerFunc);
 
     auto resetV2 = [](OHOS::AbilityRuntime::CJFormExtAbilityFuncsV2* funcs) {
+        g_formFuncsV2 = funcs;
         funcs->cjFormExtAbilityOnConfigurationUpdateV2 = nullptr;
     };
     FFIRegisterCJFormExtAbilityFuncsV2(resetV2);
@@ -195,4 +212,5 @@ HWTEST_F(CjFormExtensionObjectTest, CjFormExtensionObjectTest_OnConfigurationUpd
     auto config = std::make_shared<AppExecFwk::Configuration>();
     obj.OnConfigurationUpdate(config);
     EXPECT_FALSE(configCalled);
+    ResetFormExtAbilityFuncs();
 }
