@@ -170,6 +170,16 @@
 | 新增对外 API | N/A | 确认 N/A（对应用透明） |
 | 授权账本持久化 | N/A | 确认 N/A（账本跨卸载周期保留） |
 
+## DFX 设计
+
+### DFX 故障模式分析
+
+| 分析对象 | 故障模式 | 故障影响 | 故障原因 | 严酷度 | 恢复措施 | 关键日志 | 大数据打点事件 |
+|---------|----------|----------|-------------|---------|---------|---------|---------|
+| URI 授权流程（经插件动态加载的 media/storage/fileuri/broker 权限校验） | 通过StartAbility等方法分享文件，目标应用无法访问 | 目标应用获取的want中uri为空 | 1. want中写了URI授权flag，但是uri字段或paramStream字段是非文件URI; 2. want中写了URI授权flag，但是URI字段或paramStream字段传入了没有权限的媒体库URI; 3. want中写了URI授权flag，但是URI字段或paramStream字段传入了没有权限的沙箱URI; 4. want中写了URI授权flag，但是URI字段或paramStream字段传入了没有权限的Docs URI | 一般 | 确保在有授权Flag的情况下，传入的URI是有权限的；确保传入的URI是有权限的媒体URI；确保传入的URI是应用自身的URI；确保有分享docs类型URI的权限 | eraseUri、eraseParamStream/uri is invalid:/Check photo uri permission failed, ret is/Check uri permission failed. | SHARE_UNPRIVILEGED_FILE_URI |
+| GrantUriPermissionByKey/GrantUriPermissionByKeyAsCaller 授权（经 identity/media 插件） | GrantUriPermissionByKey/GrantUriPermissionByKeyAsCaller授权失败 | 目标应用无法获取大批量URI并访问 | 1. 传入的Key中URI是无权限的; 2. 调用授权接口失败 | 一般 | 确保传入的URI为自身有权限的URI；重试 | Not all uri is valid/grant batch uri permission failed/grant media uri permission failed | SHARE_UNPRIVILEGED_FILE_URI |
+| GrantUriPermission 授权（经 media/sandbox/storage 插件） | GrantUriPermission授权失败 | 目标应用获取URI后无法访问 | 1. 传入的URI没有权限; 2. 调用媒体库URI授权失败; 3. 沙箱和公共目录URI授权失败 | 一般 | 确保传入的URI为自身有权限的URI；重试；重试 | All uri is invalid./Check uri permission failed./Grant photo uri permission failed, ret is/Failed to set policy/Grant uri policy failed | SHARE_UNPRIVILEGED_FILE_URI |
+
 ## 7. 约束 / 风险 / 取舍
 
 | 风险 | 等级 | 缓解 |

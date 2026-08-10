@@ -121,6 +121,10 @@ classDiagram
 - **Concurrency**：TryClaimCleanup 用 atomic<bool> cleanupStarted_ CAS；stdin/stdout/stderr 管道关闭用 atomic 标记；不变量：管道关闭与进程退出顺序不破坏输出回收。
 - **Capacity**：stdoutText_/stderrText_ 各限 MAX_BUFFERED_OUTPUT_BYTES=64KB，TrimBufferedOutput 截断。
 
+## DFX 设计
+
+未命中知识库，不涉及。
+
 ## 安全基础检查
 
 ### 信任边界交叉分析
