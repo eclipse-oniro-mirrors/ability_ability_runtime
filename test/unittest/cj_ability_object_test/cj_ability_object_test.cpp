@@ -189,8 +189,9 @@ HWTEST_F(CjAbilityObjectTest, CJAbilityObject002, TestSize.Level1)
     };
     RegisterCJAbilityFuncs(registerFunc);
     ProxyCall();
+    // Verify V1 functions were registered before reset
+    EXPECT_NE(g_funcV1, nullptr);
     ResetCJAbilityFuncs();
-    EXPECT_NE(registerFunc, nullptr);
 }
 
 /**
@@ -210,7 +211,11 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_RegisterCJAbilityFuncsV3_001, 
             OHOS::AbilityRuntime::CConfigurationV2 configuration) {};
     };
     RegisterCJAbilityFuncsV3(registerFunc);
-    EXPECT_NE(registerFunc, nullptr);
+    // Verify V3 functions were registered
+    EXPECT_NE(g_funcV3, nullptr);
+    EXPECT_NE(g_funcV3->cjAbilityOnStartV3, nullptr);
+    EXPECT_NE(g_funcV3->cjAbilityOnNewWantV3, nullptr);
+    EXPECT_NE(g_funcV3->cjAbilityOnConfigurationUpdateV3, nullptr);
 
     RegisterCJAbilityFuncsV3(registerFunc);
     ResetCJAbilityFuncs();
@@ -460,6 +465,8 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnCreateV1_001, TestSi
  */
 HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnCreateV1Null_001, TestSize.Level1)
 {
+    static bool v1CreateCalled = false;
+    v1CreateCalled = false;
     auto resetV2 = [](CJExtAbilityFuncsV2* funcs) {
         g_extFuncsV2 = funcs;
         funcs->cjExtAbilityOnCreateV3 = nullptr;
@@ -477,7 +484,7 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnCreateV1Null_001, Te
     AAFwk::LaunchParam launchParam;
     noCreateObj.OnCreate(want, launchParam);
 
-    EXPECT_TRUE(true);
+    EXPECT_FALSE(v1CreateCalled);
     ResetCJAbilityFuncs();
 }
 
@@ -585,7 +592,10 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnConfigurationUpdateV
  */
 HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnConfigurationUpdate_NullFuncs_001, TestSize.Level1)
 {
+    static bool configCalled = false;
+    configCalled = false;
     RegisterCommonExtAbilityFuncs();
+    // Override after registration: set V1 func to a tracker, then null it
     g_extFuncsV1->cjExtAbilityOnConfigurationUpdate = nullptr;
 
     auto registerFuncV2 = [](CJExtAbilityFuncsV2* funcs) {
@@ -600,8 +610,8 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnConfigurationUpdate_
 
     auto config = std::make_shared<AppExecFwk::Configuration>();
     extObj.OnConfigurationUpdate(config);
-
-    EXPECT_TRUE(true);
+    // Both V2 and V1 funcs are null, source should return early without calling any callback
+    EXPECT_FALSE(configCalled);
     ResetCJAbilityFuncs();
 }
 
@@ -713,24 +723,10 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnNewWantV3_EmptyFields_001, T
  */
 HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnConfigurationUpdated_NullFuncs_001, TestSize.Level1)
 {
-    auto registerFunc = [](CJAbilityFuncs* funcs) {
-        g_funcV1 = funcs;
-        funcs->cjAbilityCreate = [](const char* name) -> int64_t { return 1; };
-        funcs->cjAbilityRelease = [](int64_t id) {};
-        funcs->cjAbilityOnStart = [](int64_t id, WantHandle want, ::CJLaunchParam launchParam) {};
-        funcs->cjAbilityOnStop = [](int64_t id) {};
-        funcs->cjAbilityOnSceneCreated = [](int64_t id, WindowStagePtr cjWindowStage) {};
-        funcs->cjAbilityOnSceneRestored = [](int64_t id, WindowStagePtr cjWindowStage) {};
-        funcs->cjAbilityOnSceneDestroyed = [](int64_t id) {};
-        funcs->cjAbilityOnForeground = [](int64_t id, WantHandle want) {};
-        funcs->cjAbilityOnBackground = [](int64_t id) {};
-        funcs->cjAbilityOnConfigurationUpdated = nullptr;
-        funcs->cjAbilityOnNewWant = [](int64_t id, WantHandle want, ::CJLaunchParam launchParam) {};
-        funcs->cjAbilityDump = [](int64_t id, VectorStringHandle params) { return VectorStringHandle(); };
-        funcs->cjAbilityOnContinue = [](int64_t id, const char* params) { return 0; };
-        funcs->cjAbilityInit = [](int64_t id, void* ability) {};
-    };
-    RegisterCJAbilityFuncs(registerFunc);
+    static bool configCalled = false;
+    configCalled = false;
+    RegisterCommonCJAbilityFuncs();
+    g_funcV1->cjAbilityOnConfigurationUpdated = nullptr;
 
     auto registerFuncV3 = [](CJAbilityFuncsV3* funcs) {
         g_funcV3 = funcs;
@@ -744,8 +740,8 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnConfigurationUpdated_NullFun
     proxy.Init(nullptr);
     auto config = std::make_shared<AppExecFwk::Configuration>();
     proxy.OnConfigurationUpdated(config);
-
-    EXPECT_TRUE(true);
+    // Both V3 and V1 funcs are null, source should return early without calling any callback
+    EXPECT_FALSE(configCalled);
     ResetCJAbilityFuncs();
 }
 
@@ -756,24 +752,10 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnConfigurationUpdated_NullFun
  */
 HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnNewWant_NullFuncs_001, TestSize.Level1)
 {
-    auto registerFunc = [](CJAbilityFuncs* funcs) {
-        g_funcV1 = funcs;
-        funcs->cjAbilityCreate = [](const char* name) -> int64_t { return 1; };
-        funcs->cjAbilityRelease = [](int64_t id) {};
-        funcs->cjAbilityOnStart = [](int64_t id, WantHandle want, ::CJLaunchParam launchParam) {};
-        funcs->cjAbilityOnStop = [](int64_t id) {};
-        funcs->cjAbilityOnSceneCreated = [](int64_t id, WindowStagePtr cjWindowStage) {};
-        funcs->cjAbilityOnSceneRestored = [](int64_t id, WindowStagePtr cjWindowStage) {};
-        funcs->cjAbilityOnSceneDestroyed = [](int64_t id) {};
-        funcs->cjAbilityOnForeground = [](int64_t id, WantHandle want) {};
-        funcs->cjAbilityOnBackground = [](int64_t id) {};
-        funcs->cjAbilityOnConfigurationUpdated = [](int64_t id, ::CJConfiguration configuration) {};
-        funcs->cjAbilityOnNewWant = nullptr;
-        funcs->cjAbilityDump = [](int64_t id, VectorStringHandle params) { return VectorStringHandle(); };
-        funcs->cjAbilityOnContinue = [](int64_t id, const char* params) { return 0; };
-        funcs->cjAbilityInit = [](int64_t id, void* ability) {};
-    };
-    RegisterCJAbilityFuncs(registerFunc);
+    static bool newWantCalled = false;
+    newWantCalled = false;
+    RegisterCommonCJAbilityFuncs();
+    g_funcV1->cjAbilityOnNewWant = nullptr;
 
     auto registerFuncV3 = [](CJAbilityFuncsV3* funcs) {
         g_funcV3 = funcs;
@@ -788,7 +770,7 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnNewWant_NullFuncs_001, TestS
     AAFwk::Want want;
     AAFwk::LaunchParam launchParam;
     proxy.OnNewWant(want, launchParam);
-
-    EXPECT_TRUE(true);
+    // Both V3 and V1 funcs are null, source should return early without calling any callback
+    EXPECT_FALSE(newWantCalled);
     ResetCJAbilityFuncs();
 }

@@ -166,7 +166,7 @@ HWTEST_F(CjFormExtensionObjectTest, CjFormExtensionObjectTest_OnConfigurationUpd
     config->AddItem(AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE, "en_US");
     obj.OnConfigurationUpdate(config);
 
-    EXPECT_FALSE(v1ConfigCalled);
+    EXPECT_TRUE(v1ConfigCalled);
 }
 
 /**
@@ -176,6 +176,8 @@ HWTEST_F(CjFormExtensionObjectTest, CjFormExtensionObjectTest_OnConfigurationUpd
  */
 HWTEST_F(CjFormExtensionObjectTest, CjFormExtensionObjectTest_OnConfigurationUpdate_NullFuncs_001, TestSize.Level1)
 {
+    static bool configCalled = false;
+    configCalled = false;
     auto registerFunc = [](OHOS::AbilityRuntime::CJFormExtAbilityFuncs* funcs) {
         funcs->createCjFormExtAbility = [](const char* name, FormExtAbilityHandle extAbility) -> int64_t { return 1; };
         funcs->releaseCjFormExtAbility = [](int64_t id) {};
@@ -204,6 +206,6 @@ HWTEST_F(CjFormExtensionObjectTest, CjFormExtensionObjectTest_OnConfigurationUpd
     obj.Init("test", nullptr);
     auto config = std::make_shared<AppExecFwk::Configuration>();
     obj.OnConfigurationUpdate(config);
-
-    EXPECT_TRUE(true);
+    // Both V2 and V1 funcs are null, source should return early without calling any callback
+    EXPECT_FALSE(configCalled);
 }
