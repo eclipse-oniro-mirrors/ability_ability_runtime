@@ -597,6 +597,7 @@ int UIAbilityLifecycleManager::AttachAbilityThread(const sptr<IAbilityScheduler>
     std::lock_guard<ffrt::mutex> guard(sessionLock_);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "lifecycle name: %{public}s", abilityRecord->GetAbilityInfo().name.c_str());
     SyncLoadExitReasonTask(abilityRecord->GetRecordId());
+    abilityRecord->EvaluateRecoveryLaunchReason();
 
     auto callerRecord = abilityRecord->GetCallerRecord(); // this is a pointer
     if (abilityRecord->GetRequestCode() != DEFAULT_REQUEST_CODE &&
@@ -1538,7 +1539,7 @@ void UIAbilityLifecycleManager::UpdateAbilityRecordLaunchReason(
         TAG_LOGD(AAFwkTag::ABILITYMGR, "set launchReasonMessage:%{public}s", value.c_str());
         abilityRecord->SetLaunchReasonMessage(value);
     }
-    if (abilityRequest.IsAppRecovery() || abilityRecord->GetRecoveryInfo()) {
+    if (abilityRequest.IsAppRecovery()) {
         abilityRecord->SetLaunchReason(LaunchReason::LAUNCHREASON_APP_RECOVERY);
         return;
     }

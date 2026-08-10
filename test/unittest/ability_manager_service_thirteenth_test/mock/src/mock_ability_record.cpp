@@ -1173,6 +1173,11 @@ void AbilityRecord::RemoveWindowMode()
 
 void AbilityRecord::UpdateRecoveryInfo(bool hasRecoverInfo)
 {
+    hasRecoverInfo_ = hasRecoverInfo;
+    if (hasRecoverInfo) {
+        std::lock_guard guard(wantLock_);
+        want_.SetParam(Want::PARAM_ABILITY_RECOVERY_RESTART, true);
+    }
 }
 
 bool AbilityRecord::GetRecoveryInfo()
@@ -1180,6 +1185,8 @@ bool AbilityRecord::GetRecoveryInfo()
     std::lock_guard guard(wantLock_);
     return want_.GetBoolParam(Want::PARAM_ABILITY_RECOVERY_RESTART, false);
 }
+
+void AbilityRecord::EvaluateRecoveryLaunchReason() {}
 
 void AbilityRecord::SetStartSetting(const std::shared_ptr<AbilityStartSetting> &setting)
 {

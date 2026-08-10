@@ -2241,10 +2241,10 @@ void AbilityRecord::RemoveWindowMode()
 
 void AbilityRecord::UpdateRecoveryInfo(bool hasRecoverInfo)
 {
+    hasRecoverInfo_ = hasRecoverInfo;
     if (hasRecoverInfo) {
         std::lock_guard guard(wantLock_);
         want_.SetParam(Want::PARAM_ABILITY_RECOVERY_RESTART, true);
-        SetLaunchReason(LaunchReason::LAUNCHREASON_APP_RECOVERY);
     }
 }
 
@@ -2252,6 +2252,34 @@ bool AbilityRecord::GetRecoveryInfo()
 {
     std::lock_guard guard(wantLock_);
     return want_.GetBoolParam(Want::PARAM_ABILITY_RECOVERY_RESTART, false);
+}
+
+void AbilityRecord::EvaluateRecoveryLaunchReason()
+{
+    if (!hasRecoverInfo_) {
+        return;
+    }
+    if (lifeCycleStateInfo_.launchParam.launchReason == LaunchReason::LAUNCHREASON_APP_RECOVERY) {
+        hasRecoverInfo_ = false;
+        return;
+    }
+    auto setting = GetStartSetting();
+    bool isStartByScb = setting != nullptr &&
+        setting->GetProperty(AbilityStartSetting::IS_START_BY_SCB_KEY) == "true";
+    auto lastExitReason = lifeCycleStateInfo_.launchParam.lastExitReason;
+    bool isEligible = isStartByScb &&
+        (lastExitReason == LastExitReason::LASTEXITREASON_PERFORMANCE_CONTROL ||
+        lastExitReason == LastExitReason::LASTEXITREASON_RESOURCE_CONTROL);
+    if (isEligible) {
+        SetLaunchReason(LaunchReason::LAUNCHREASON_APP_RECOVERY);
+    } else {
+        TAG_LOGI(AAFwkTag::ABILITYMGR,
+            "recovery gate failed, isStartByScb=%{public}d, lastExitReason=%{public}d",
+            isStartByScb, static_cast<int32_t>(lastExitReason));
+        std::lock_guard guard(wantLock_);
+        want_.SetParam(Want::PARAM_ABILITY_RECOVERY_RESTART, false);
+    }
+    hasRecoverInfo_ = false;
 }
 
 void AbilityRecord::SetStartSetting(const std::shared_ptr<AbilityStartSetting> &setting)
