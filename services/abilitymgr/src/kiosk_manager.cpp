@@ -70,9 +70,8 @@ int32_t KioskManager::VerifyUpdatePermissions()
         return ERR_CAPABILITY_NOT_SUPPORT;
     }
 
-    if (!PermissionVerification::GetInstance()->IsSystemAppCall() &&
-        !PermissionVerification::GetInstance()->IsSACall()) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "not system app");
+    if (!PermissionVerification::GetInstance()->IsSACall()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "not SA call");
         return ERR_NOT_SYSTEM_APP;
     }
     if (!PermissionVerification::GetInstance()->VerifyCallingPermission(
