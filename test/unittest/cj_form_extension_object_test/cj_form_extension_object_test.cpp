@@ -206,6 +206,5 @@ HWTEST_F(CjFormExtensionObjectTest, CjFormExtensionObjectTest_OnConfigurationUpd
     obj.Init("test", nullptr);
     auto config = std::make_shared<AppExecFwk::Configuration>();
     obj.OnConfigurationUpdate(config);
-    // Both V2 and V1 funcs are null, source should return early without calling any callback
     EXPECT_FALSE(configCalled);
 }

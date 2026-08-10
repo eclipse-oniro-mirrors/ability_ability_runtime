@@ -189,7 +189,6 @@ HWTEST_F(CjAbilityObjectTest, CJAbilityObject002, TestSize.Level1)
     };
     RegisterCJAbilityFuncs(registerFunc);
     ProxyCall();
-    // Verify V1 functions were registered before reset
     EXPECT_NE(g_funcV1, nullptr);
     ResetCJAbilityFuncs();
 }
@@ -211,7 +210,6 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_RegisterCJAbilityFuncsV3_001, 
             OHOS::AbilityRuntime::CConfigurationV2 configuration) {};
     };
     RegisterCJAbilityFuncsV3(registerFunc);
-    // Verify V3 functions were registered
     EXPECT_NE(g_funcV3, nullptr);
     EXPECT_NE(g_funcV3->cjAbilityOnStartV3, nullptr);
     EXPECT_NE(g_funcV3->cjAbilityOnNewWantV3, nullptr);
@@ -435,7 +433,6 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnCreateV1_001, TestSi
     v1CreateCalled = false;
     capturedParam = {};
     RegisterCommonExtAbilityFuncs();
-    // Override OnCreate to capture V1 callback
     g_extFuncsV1->cjExtAbilityOnCreate =
         [](int64_t id, int32_t type, WantHandle want, ::CJLaunchParam param) {
             v1CreateCalled = true;
@@ -610,7 +607,6 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnConfigurationUpdate_
 
     auto config = std::make_shared<AppExecFwk::Configuration>();
     extObj.OnConfigurationUpdate(config);
-    // Both V2 and V1 funcs are null, source should return early without calling any callback
     EXPECT_FALSE(configCalled);
     ResetCJAbilityFuncs();
 }
@@ -740,7 +736,6 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnConfigurationUpdated_NullFun
     proxy.Init(nullptr);
     auto config = std::make_shared<AppExecFwk::Configuration>();
     proxy.OnConfigurationUpdated(config);
-    // Both V3 and V1 funcs are null, source should return early without calling any callback
     EXPECT_FALSE(configCalled);
     ResetCJAbilityFuncs();
 }
@@ -770,7 +765,6 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnNewWant_NullFuncs_001, TestS
     AAFwk::Want want;
     AAFwk::LaunchParam launchParam;
     proxy.OnNewWant(want, launchParam);
-    // Both V3 and V1 funcs are null, source should return early without calling any callback
     EXPECT_FALSE(newWantCalled);
     ResetCJAbilityFuncs();
 }
