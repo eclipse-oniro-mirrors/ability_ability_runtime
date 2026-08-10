@@ -497,9 +497,11 @@ void ToolsRawData::FromToolInfoVec(const std::vector<ToolInfo> &tools, ToolsRawD
 
 int32_t ToolsRawData::ToToolInfoVec(const ToolsRawData &rawData, std::vector<ToolInfo> &tools)
 {
+    // Allow empty data (represents empty tool list)
     if (rawData.data == nullptr || rawData.size == 0) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "ToToolInfoVec failed: null data or zero size");
-        return ERR_INVALID_VALUE;
+        tools.clear();
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "ToToolInfoVec: empty data, returning empty tool list");
+        return ERR_OK;
     }
     std::stringstream ss;
     ss.write(reinterpret_cast<const char *>(rawData.data), rawData.size);

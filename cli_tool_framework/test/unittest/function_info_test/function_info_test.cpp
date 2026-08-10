@@ -20,6 +20,10 @@
 #include "function_info.h"
 #include "hilog_tag_wrapper.h"
 
+namespace {
+constexpr int32_t ERR_OK = 0;
+}  // namespace
+
 using namespace testing::ext;
 
 namespace OHOS {
@@ -1266,6 +1270,100 @@ HWTEST_F(FunctionInfoTest, FunctionInfo_Validate_0900, TestSize.Level1)
     EXPECT_TRUE(FunctionInfo::Validate(function));
 
     TAG_LOGI(AAFwkTag::TEST, "FunctionInfo_Validate_0900 end");
+}
+
+// ==================== FunctionsRawData Tests ====================
+
+/**
+ * @tc.name: FunctionsRawData_ToFunctionInfoVec_EmptyData_0100
+ * @tc.desc: Test FunctionsRawData ToFunctionInfoVec with null data returns empty list
+ * @tc.type: FUNC
+ */
+HWTEST_F(FunctionInfoTest, FunctionsRawData_ToFunctionInfoVec_EmptyData_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FunctionsRawData_ToFunctionInfoVec_EmptyData_0100 start");
+
+    FunctionsRawData rawData;
+    rawData.data = nullptr;
+    rawData.size = 0;
+
+    std::vector<FunctionInfo> functions;
+    int32_t ret = FunctionsRawData::ToFunctionInfoVec(rawData, functions);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(functions.size(), 0u);
+
+    TAG_LOGI(AAFwkTag::TEST, "FunctionsRawData_ToFunctionInfoVec_EmptyData_0100 end");
+}
+
+/**
+ * @tc.name: FunctionsRawData_ToFunctionInfoVec_EmptyData_0200
+ * @tc.desc: Test FunctionsRawData ToFunctionInfoVec with zero size returns empty list
+ * @tc.type: FUNC
+ */
+HWTEST_F(FunctionInfoTest, FunctionsRawData_ToFunctionInfoVec_EmptyData_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FunctionsRawData_ToFunctionInfoVec_EmptyData_0200 start");
+
+    std::string dummyData = "dummy";
+    FunctionsRawData rawData;
+    rawData.ownedData = dummyData;
+    rawData.data = rawData.ownedData.data();
+    rawData.size = 0;
+
+    std::vector<FunctionInfo> functions;
+    int32_t ret = FunctionsRawData::ToFunctionInfoVec(rawData, functions);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(functions.size(), 0u);
+
+    TAG_LOGI(AAFwkTag::TEST, "FunctionsRawData_ToFunctionInfoVec_EmptyData_0200 end");
+}
+
+/**
+ * @tc.name: FunctionsRawData_FromFunctionInfoVec_RoundTrip_0100
+ * @tc.desc: Test FunctionsRawData FromFunctionInfoVec and ToFunctionInfoVec round trip
+ * @tc.type: FUNC
+ */
+HWTEST_F(FunctionInfoTest, FunctionsRawData_FromFunctionInfoVec_RoundTrip_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FunctionsRawData_FromFunctionInfoVec_RoundTrip_0100 start");
+
+    std::vector<FunctionInfo> originalFunctions;
+    FunctionInfo func1;
+    func1.functionName = "testFunction1";
+    func1.functionNamespace = "com.test.namespace1";
+    func1.version = "1.0.0";
+    func1.description = "Test function 1";
+    func1.inputSchema = R"({"type": "object"})";
+    func1.outputSchema = R"({"type": "string"})";
+    func1.functionType = FunctionType::INTENT_FUNCTION;
+    originalFunctions.push_back(func1);
+
+    FunctionInfo func2;
+    func2.functionName = "testFunction2";
+    func2.functionNamespace = "com.test.namespace2";
+    func2.version = "2.0.0";
+    func2.description = "Test function 2";
+    func2.inputSchema = "{}";
+    func2.outputSchema = "{}";
+    func2.functionType = FunctionType::INTENT_FUNCTION;
+    originalFunctions.push_back(func2);
+
+    FunctionsRawData rawData;
+    int32_t ret = FunctionsRawData::FromFunctionInfoVec(originalFunctions, rawData);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_NE(rawData.data, nullptr);
+    EXPECT_GT(rawData.size, 0u);
+
+    std::vector<FunctionInfo> parsedFunctions;
+    ret = FunctionsRawData::ToFunctionInfoVec(rawData, parsedFunctions);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(parsedFunctions.size(), 2u);
+    EXPECT_EQ(parsedFunctions[0].functionName, "testFunction1");
+    EXPECT_EQ(parsedFunctions[1].functionName, "testFunction2");
+
+    TAG_LOGI(AAFwkTag::TEST, "FunctionsRawData_FromFunctionInfoVec_RoundTrip_0100 end");
 }
 
 } // namespace CliTool

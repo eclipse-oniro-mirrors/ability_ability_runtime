@@ -44,7 +44,15 @@ public:
     bool isMalloc = false;
 
     static void FromToolInfoVec(const std::vector<ToolInfo> &tools, ToolsRawData &rawData);
+
+    /**
+     * @brief Convert ToolsRawData to vector of ToolInfo
+     * @param rawData Input ToolsRawData (empty data returns empty vector)
+     * @param tools Output vector of ToolInfo
+     * @return int32_t ERR_OK on success (including empty data), error code otherwise
+     */
     static int32_t ToToolInfoVec(const ToolsRawData &rawData, std::vector<ToolInfo> &tools);
+
     int32_t RawDataCpy(const void *readdata);
     ~ToolsRawData();
 };

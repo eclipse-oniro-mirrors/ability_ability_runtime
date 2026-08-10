@@ -25,7 +25,39 @@ using namespace OHOS::AbilityRuntime;
 namespace OHOS {
 namespace CliTool {
 
-napi_value CreateJsFunctionInfo(napi_env env, const FunctionInfo &function)
+namespace {
+// Helper: set string property with null check and error handling
+inline bool SetStringProperty(napi_env env, napi_value obj, const char* name, const std::string& value)
+{
+    napi_value jsValue = AppExecFwk::WrapStringToJS(env, value);
+    if (jsValue == nullptr || napi_set_named_property(env, obj, name, jsValue) != napi_ok) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to set %{public}s", name);
+        return false;
+    }
+    return true;
+}
+
+// Helper: set generic property with null check and error handling
+inline bool SetProperty(napi_env env, napi_value obj, const char* name, napi_value jsValue)
+{
+    if (jsValue == nullptr || napi_set_named_property(env, obj, name, jsValue) != napi_ok) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to set %{public}s", name);
+        return false;
+    }
+    return true;
+}
+
+// Helper: set optional string property
+inline bool SetOptionalStringProperty(napi_env env, napi_value obj, const char* name, const std::string& value)
+{
+    if (value.empty()) {
+        return true;
+    }
+    return SetStringProperty(env, obj, name, value);
+}
+} // namespace
+
+napi_value CreateJsFunctionInfo(napi_env env, const FunctionInfo& function)
 {
     napi_value jsObj = nullptr;
     napi_status status = napi_create_object(env, &jsObj);
@@ -34,33 +66,20 @@ napi_value CreateJsFunctionInfo(napi_env env, const FunctionInfo &function)
         return nullptr;
     }
 
-    napi_value jsNamespace = AppExecFwk::WrapStringToJS(env, function.functionNamespace);
-    napi_set_named_property(env, jsObj, "functionNamespace", jsNamespace);
-
-    napi_value jsFunctionName = AppExecFwk::WrapStringToJS(env, function.functionName);
-    napi_set_named_property(env, jsObj, "functionName", jsFunctionName);
-
-    napi_value jsVersion = AppExecFwk::WrapStringToJS(env, function.version);
-    napi_set_named_property(env, jsObj, "version", jsVersion);
-
-    napi_value jsDescription = AppExecFwk::WrapStringToJS(env, function.description);
-    napi_set_named_property(env, jsObj, "description", jsDescription);
-
-    if (!function.inputSchema.empty()) {
-        napi_value jsInputSchema = AppExecFwk::WrapStringToJS(env, function.inputSchema);
-        napi_set_named_property(env, jsObj, "inputSchema", jsInputSchema);
-    }
-
-    if (!function.outputSchema.empty()) {
-        napi_value jsOutputSchema = AppExecFwk::WrapStringToJS(env, function.outputSchema);
-        napi_set_named_property(env, jsObj, "outputSchema", jsOutputSchema);
+    if (!SetStringProperty(env, jsObj, "functionNamespace", function.functionNamespace) ||
+        !SetStringProperty(env, jsObj, "functionName", function.functionName) ||
+        !SetStringProperty(env, jsObj, "version", function.version) ||
+        !SetStringProperty(env, jsObj, "description", function.description) ||
+        !SetOptionalStringProperty(env, jsObj, "inputSchema", function.inputSchema) ||
+        !SetOptionalStringProperty(env, jsObj, "outputSchema", function.outputSchema)) {
+        return nullptr;
     }
 
     return jsObj;
 }
 
 napi_value CreateJsInvokeResult(napi_env env, int32_t resultCode,
-    const std::shared_ptr<AAFwk::WantParams> &result, const std::string &message)
+    const std::shared_ptr<AAFwk::WantParams>& result, const std::string& message)
 {
     napi_value jsObj = nullptr;
     napi_status status = napi_create_object(env, &jsObj);
@@ -69,17 +88,25 @@ napi_value CreateJsInvokeResult(napi_env env, int32_t resultCode,
         return nullptr;
     }
 
-    // Unified contract: resultCode is the single authority for `success`.
-    napi_set_named_property(env, jsObj, "success", AppExecFwk::WrapBoolToJS(env, resultCode == 0));
+    napi_value jsSuccess = AppExecFwk::WrapBoolToJS(env, resultCode == 0);
+    if (!SetProperty(env, jsObj, "success", jsSuccess)) {
+        return nullptr;
+    }
 
     if (result != nullptr) {
         napi_value jsData = AppExecFwk::CreateJsWantParams(env, *result);
-        if (jsData != nullptr) {
-            napi_set_named_property(env, jsObj, "data", jsData);
+        if (jsData != nullptr && !SetProperty(env, jsObj, "data", jsData)) {
+            return nullptr;
         }
     }
-    napi_set_named_property(env, jsObj, "errorCode", AppExecFwk::WrapInt32ToJS(env, resultCode));
-    napi_set_named_property(env, jsObj, "message", AppExecFwk::WrapStringToJS(env, message));
+
+    napi_value jsErrorCode = AppExecFwk::WrapInt32ToJS(env, resultCode);
+    napi_value jsMessage = AppExecFwk::WrapStringToJS(env, message);
+    if (!SetProperty(env, jsObj, "errorCode", jsErrorCode) ||
+        !SetProperty(env, jsObj, "message", jsMessage)) {
+        return nullptr;
+    }
+
     return jsObj;
 }
 

@@ -143,6 +143,16 @@ public:
     int32_t UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace) override;
 
     /**
+     * @brief Reset all functions by namespace (delete all existing and add new ones)
+     * @param functionNamespace Namespace to reset functions for
+     * @param functions New function list to replace existing ones
+     * @param successCount Output count of successfully reset functions
+     * @return int32_t ERR_OK on success, error code otherwise
+     */
+    int32_t ResetNamespaceFunctions(const std::string &functionNamespace,
+        const FunctionsRawData &functions, int32_t &successCount) override;
+
+    /**
      * @brief Get all functions via raw data (for large data transfer)
      * @param functions Output FunctionsRawData
      * @return int32_t ERR_OK on success, error code otherwise

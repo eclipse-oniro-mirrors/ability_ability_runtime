@@ -3412,6 +3412,54 @@ HWTEST_F(ToolInfoTest, ToolInfo_Validate_2500, TestSize.Level1)
     GTEST_LOG_(INFO) << "ToolInfo_Validate_2500 end";
 }
 
+// ==================== ToolsRawData Empty Data Tests ====================
+
+/**
+ * @tc.name: ToolsRawData_ToToolInfoVec_EmptyData_0100
+ * @tc.desc: Test ToolsRawData ToToolInfoVec with null data returns empty list
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolsRawData_ToToolInfoVec_EmptyData_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolsRawData_ToToolInfoVec_EmptyData_0100 start";
+
+    ToolsRawData rawData;
+    rawData.data = nullptr;
+    rawData.size = 0;
+
+    std::vector<ToolInfo> tools;
+    int32_t ret = ToolsRawData::ToToolInfoVec(rawData, tools);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(tools.size(), 0u);
+
+    GTEST_LOG_(INFO) << "ToolsRawData_ToToolInfoVec_EmptyData_0100 end";
+}
+
+/**
+ * @tc.name: ToolsRawData_ToToolInfoVec_EmptyData_0200
+ * @tc.desc: Test ToolsRawData ToToolInfoVec with zero size returns empty list
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolsRawData_ToToolInfoVec_EmptyData_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolsRawData_ToToolInfoVec_EmptyData_0200 start";
+
+    std::string dummyData = "dummy";
+    ToolsRawData rawData;
+    rawData.ownedData = dummyData;
+    rawData.data = rawData.ownedData.data();
+    rawData.size = 0;
+
+    std::vector<ToolInfo> tools;
+    int32_t ret = ToolsRawData::ToToolInfoVec(rawData, tools);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(tools.size(), 0u);
+
+    GTEST_LOG_(INFO) << "ToolsRawData_ToToolInfoVec_EmptyData_0200 end";
+}
+
 // ==================== ToolsRawData Round Trip ====================
 
 /**
