@@ -12,8 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define private public
-
 #include <gtest/gtest.h>
 #include <vector>
 
@@ -112,22 +110,22 @@ HWTEST_F(InsightIntentRdbDataManagerTest, InsightIntentRdbDataManager_0200, Func
 {
     IntentRdbConfig intentRdbConfig;
     auto rdbDataCallBack = std::make_shared<IntentRdbOpenCallback>(intentRdbConfig);
-    auto result = rdbDataCallBack->
-        OnCreate(*(DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance()->rdbStore_.get()));
+    auto rdbMgr = DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance();
+    // The store is loaded by an earlier case (0100); guard the dereference so a missing
+    // load fails the test instead of crashing on a null pointer.
+    ASSERT_NE(rdbMgr->rdbStore_, nullptr);
+    auto result = rdbDataCallBack->OnCreate(*(rdbMgr->rdbStore_.get()));
     EXPECT_EQ(result, NativeRdb::E_OK);
 
-    result = rdbDataCallBack->
-        OnOpen(*(DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance()->rdbStore_.get()));
+    result = rdbDataCallBack->OnOpen(*(rdbMgr->rdbStore_.get()));
     EXPECT_EQ(result, NativeRdb::E_OK);
 
     int currentVersion = 1;
     int targetVersion = 2;
-    result = rdbDataCallBack->OnUpgrade(*(DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance()->rdbStore_.get()),
-        currentVersion, targetVersion);
+    result = rdbDataCallBack->OnUpgrade(*(rdbMgr->rdbStore_.get()), currentVersion, targetVersion);
     EXPECT_EQ(result, NativeRdb::E_OK);
 
-    result = rdbDataCallBack->OnDowngrade(*(DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance()->rdbStore_.get()),
-        targetVersion, currentVersion);
+    result = rdbDataCallBack->OnDowngrade(*(rdbMgr->rdbStore_.get()), targetVersion, currentVersion);
     EXPECT_EQ(result, NativeRdb::E_OK);
 
     std::string data = "testKey";

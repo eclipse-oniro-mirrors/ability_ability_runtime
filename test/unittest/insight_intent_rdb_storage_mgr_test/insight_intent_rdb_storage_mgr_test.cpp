@@ -516,8 +516,9 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_026, Tes
 {
     auto mgr = DelayedSingleton<InsightRdbStorageMgr>::GetInstance();
     ASSERT_NE(mgr, nullptr);
-    mgr->BackupRdb();
-    SUCCEED();
+    // BackupRdb delegates to the (mocked) DataMgr BackupRdb, a no-op in this target;
+    // verify the dispatch path is reachable without crash.
+    EXPECT_NO_FATAL_FAILURE(mgr->BackupRdb());
 }
 
 /**

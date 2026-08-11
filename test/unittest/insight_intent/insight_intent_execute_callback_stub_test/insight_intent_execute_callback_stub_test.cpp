@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 
 #include "ability_manager_errors.h"
+#include "global_constant.h"
 #include "hilog_tag_wrapper.h"
 #include "insight_intent_execute_result.h"
 #include "ipc_skeleton.h"
@@ -30,20 +31,39 @@ namespace OHOS {
 namespace AAFwk {
 namespace {
 const std::u16string APPMGR_INTERFACE_TOKEN = u"ohos.AAFwk.IntentExecuteCallback";
-// Must mirror the constant in services/abilitymgr/src/insight_intent/insight_intent_execute_callback_stub.cpp.
-constexpr int32_t FOUNDATION_UID = 5523;
+// Foundation process uid used for trust dispatch; references the shared codebase
+// constant so the test does not carry an independent literal that can drift.
+constexpr int32_t FOUNDATION_UID = OHOS::AbilityRuntime::GlobalConstant::FOUNDATION_UID;
 }  // namespace
 
 // Concrete subclass that satisfies the pure-virtual OnExecuteDone so the stub can
 // be instantiated. Trust dispatch is driven entirely by mock IPCSkeleton state in
-// each test case (SetCallingUid), not by subclassing.
+// each test case (SetCallingUid), not by subclassing. OnExecuteDone captures the
+// forwarded (key, resultCode, executeResult.code) so success-path cases can verify
+// the stub actually forwards the deserialized payload to the callback.
 class InsightIntentExecuteCallbackStubTests : public InsightIntentExecuteCallbackStub {
 public:
     InsightIntentExecuteCallbackStubTests() = default;
-    virtual ~InsightIntentExecuteCallbackStubTests()
-    {}
+    virtual ~InsightIntentExecuteCallbackStubTests() = default;
     void OnExecuteDone(uint64_t key, int32_t resultCode,
-        const AppExecFwk::InsightIntentExecuteResult &executeResult) override {}
+        const AppExecFwk::InsightIntentExecuteResult &executeResult) override
+    {
+        onExecuteDoneCalled_ = true;
+        lastKey_ = key;
+        lastResultCode_ = resultCode;
+        lastExecuteResultCode_ = executeResult.code;
+    }
+
+    bool IsOnExecuteDoneCalled() const { return onExecuteDoneCalled_; }
+    uint64_t GetLastKey() const { return lastKey_; }
+    int32_t GetLastResultCode() const { return lastResultCode_; }
+    int32_t GetLastExecuteResultCode() const { return lastExecuteResultCode_; }
+
+private:
+    bool onExecuteDoneCalled_ = false;
+    uint64_t lastKey_ = 0;
+    int32_t lastResultCode_ = 0;
+    int32_t lastExecuteResultCode_ = 0;
 };
 
 class InsightIntentExecuteCallbackStubTest : public testing::Test {
@@ -140,16 +160,21 @@ HWTEST_F(InsightIntentExecuteCallbackStubTest, OnExecuteDoneInner_0100, TestSize
 HWTEST_F(InsightIntentExecuteCallbackStubTest, OnExecuteDoneInner_0200, TestSize.Level1)
 {
     TAG_LOGE(AAFwkTag::TEST, "OnExecuteDoneInner_0200 begin.");
-    std::shared_ptr<InsightIntentExecuteCallbackStub> backStub
-        = std::make_shared<InsightIntentExecuteCallbackStubTests>();
+    auto backStub = std::make_shared<InsightIntentExecuteCallbackStubTests>();
     MessageParcel data;
     MessageParcel reply;
     data.WriteUint64(456);
     data.WriteInt32(0);
     AppExecFwk::InsightIntentExecuteResult executeResult;
+    executeResult.code = 4567;  // distinct value to verify executeResult round-trips into the callback
     data.WriteParcelable(&executeResult);
     int32_t result = backStub->OnExecuteDoneInner(data, reply);
     EXPECT_EQ(result, ERR_OK);
+    // Verify the stub forwarded (key, resultCode, executeResult.code) to OnExecuteDone.
+    EXPECT_TRUE(backStub->IsOnExecuteDoneCalled());
+    EXPECT_EQ(backStub->GetLastKey(), static_cast<uint64_t>(456));
+    EXPECT_EQ(backStub->GetLastResultCode(), 0);
+    EXPECT_EQ(backStub->GetLastExecuteResultCode(), 4567);
     TAG_LOGE(AAFwkTag::TEST, "OnExecuteDoneInner_0200 end.");
 }
 
@@ -161,8 +186,7 @@ HWTEST_F(InsightIntentExecuteCallbackStubTest, OnRemoteRequest_0300, TestSize.Le
 {
     TAG_LOGE(AAFwkTag::TEST, "OnRemoteRequest_0300 begin.");
     IPCSkeleton::SetCallingUid(FOUNDATION_UID);
-    std::shared_ptr<InsightIntentExecuteCallbackStub> backStub
-        = std::make_shared<InsightIntentExecuteCallbackStubTests>();
+    auto backStub = std::make_shared<InsightIntentExecuteCallbackStubTests>();
     uint32_t code = IInsightIntentExecuteCallback::ON_INSIGHT_INTENT_EXECUTE_DONE;
     MessageParcel data;
     MessageParcel reply;
@@ -171,9 +195,15 @@ HWTEST_F(InsightIntentExecuteCallbackStubTest, OnRemoteRequest_0300, TestSize.Le
     data.WriteUint64(789);
     data.WriteInt32(0);
     AppExecFwk::InsightIntentExecuteResult executeResult;
+    executeResult.code = 7890;  // distinct value to verify executeResult round-trips into the callback
     data.WriteParcelable(&executeResult);
     int32_t result = backStub->OnRemoteRequest(code, data, reply, option);
     EXPECT_EQ(result, ERR_OK);
+    // Verify the full dispatch path forwarded (key, resultCode, executeResult.code) to OnExecuteDone.
+    EXPECT_TRUE(backStub->IsOnExecuteDoneCalled());
+    EXPECT_EQ(backStub->GetLastKey(), static_cast<uint64_t>(789));
+    EXPECT_EQ(backStub->GetLastResultCode(), 0);
+    EXPECT_EQ(backStub->GetLastExecuteResultCode(), 7890);
     TAG_LOGE(AAFwkTag::TEST, "OnRemoteRequest_0300 end.");
 }
 
@@ -280,8 +310,7 @@ HWTEST_F(InsightIntentExecuteCallbackStubTest, OnRemoteRequest_0700, TestSize.Le
 {
     TAG_LOGE(AAFwkTag::TEST, "OnRemoteRequest_0700 begin.");
     IPCSkeleton::SetCallingUid(FOUNDATION_UID);
-    std::shared_ptr<InsightIntentExecuteCallbackStub> backStub
-        = std::make_shared<InsightIntentExecuteCallbackStubTests>();
+    auto backStub = std::make_shared<InsightIntentExecuteCallbackStubTests>();
     uint32_t code = IInsightIntentExecuteCallback::ON_INSIGHT_INTENT_EXECUTE_DONE;
     MessageParcel data;
     MessageParcel reply;
@@ -290,9 +319,15 @@ HWTEST_F(InsightIntentExecuteCallbackStubTest, OnRemoteRequest_0700, TestSize.Le
     data.WriteUint64(999);
     data.WriteInt32(ERR_INVALID_VALUE);
     AppExecFwk::InsightIntentExecuteResult executeResult;
+    executeResult.code = 9991;  // distinct value to verify executeResult round-trips into the callback
     data.WriteParcelable(&executeResult);
     int32_t result = backStub->OnRemoteRequest(code, data, reply, option);
     EXPECT_EQ(result, ERR_OK);
+    // Verify the error-result payload (non-zero resultCode) is still forwarded verbatim.
+    EXPECT_TRUE(backStub->IsOnExecuteDoneCalled());
+    EXPECT_EQ(backStub->GetLastKey(), static_cast<uint64_t>(999));
+    EXPECT_EQ(backStub->GetLastResultCode(), ERR_INVALID_VALUE);
+    EXPECT_EQ(backStub->GetLastExecuteResultCode(), 9991);
     TAG_LOGE(AAFwkTag::TEST, "OnRemoteRequest_0700 end.");
 }
 

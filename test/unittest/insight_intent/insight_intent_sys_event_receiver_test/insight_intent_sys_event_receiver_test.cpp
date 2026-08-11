@@ -78,24 +78,32 @@ HWTEST_F(InsightIntentSysEventReceiverTest, OnReceiveEvent_0001, TestSize.Level1
     auto sysEventReceiver = std::make_shared<AbilityRuntime::InsightIntentSysEventReceiver>(subscribeInfo);
 
     EventFwk::CommonEventData data;
-    data.want_.operation_.action_ = EventFwk::CommonEventSupport::COMMON_EVENT_USER_SWITCHED;
-    data.code_ = 101;
-    sysEventReceiver->OnReceiveEvent(data);
-    EXPECT_NE(sysEventReceiver->lastUserId_, 0);
 
+    // USER_SWITCHED with a valid code synchronously sets lastUserId_ to the switched-in user.
+    sysEventReceiver->lastUserId_ = 0;
+    data.want_.operation_.action_ = EventFwk::CommonEventSupport::COMMON_EVENT_USER_SWITCHED;
+    data.code_ = OTHER_USER_ID;  // 101
+    sysEventReceiver->OnReceiveEvent(data);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, OTHER_USER_ID);
+
+    // BUNDLE_SCAN_FINISHED submits a load task but does not synchronously change lastUserId_.
+    sysEventReceiver->lastUserId_ = 0;
     data.want_.operation_.action_ = EventFwk::CommonEventSupport::COMMON_EVENT_BUNDLE_SCAN_FINISHED;
+    data.code_ = 0;
     sysEventReceiver->OnReceiveEvent(data);
-    EXPECT_NE(sysEventReceiver->lastUserId_, 0);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
 
+    // USER_SWITCHED back to MAIN_USER_ID.
     data.want_.operation_.action_ = EventFwk::CommonEventSupport::COMMON_EVENT_USER_SWITCHED;
-    data.code_ = MAIN_USER_ID;
+    data.code_ = MAIN_USER_ID;  // 100
     sysEventReceiver->OnReceiveEvent(data);
-    EXPECT_NE(sysEventReceiver->lastUserId_, 0);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, MAIN_USER_ID);
 
+    // USER_REMOVED for a non-current user does not change the current lastUserId_.
     data.want_.operation_.action_ = EventFwk::CommonEventSupport::COMMON_EVENT_USER_REMOVED;
-    data.code_ = OTHER_USER_ID;
+    data.code_ = OTHER_USER_ID;  // 101
     sysEventReceiver->OnReceiveEvent(data);
-    EXPECT_NE(sysEventReceiver->lastUserId_, 0);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, MAIN_USER_ID);
 }
 
 /**
@@ -451,7 +459,9 @@ HWTEST_F(InsightIntentSysEventReceiverTest, OnReceiveEvent_BopdMode_0013, TestSi
     sysEventReceiver->OnReceiveEvent(data);
 
     EXPECT_EQ(sysEventReceiver->lastUserId_, MAIN_USER_ID);
+    // Restore the singleton state so subsequent cases are not affected by BOPD mode.
     appUtils.isBopdOrRescueMode_.value = false;
+    appUtils.isBopdOrRescueMode_.isLoaded = false;
 }
 
 /**
