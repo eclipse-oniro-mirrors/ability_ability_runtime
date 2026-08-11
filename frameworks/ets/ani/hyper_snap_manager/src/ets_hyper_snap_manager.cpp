@@ -35,14 +35,10 @@ namespace OHOS {
 namespace HyperSnapManagerEts {
 namespace {
 constexpr const char *HYPER_SNAP_MANAGER_SPACE_NAME = "@ohos.app.ability.hyperSnapManager.hyperSnapManager";
-// Fully-qualified class name of the ArkTS result object (declared in
-// @ohos.app.ability.hyperSnapManager.ets).
 constexpr const char *HYPER_SNAP_ERROR_INFO_IMPL_CLASS_NAME =
     "@ohos.app.ability.hyperSnapManager.hyperSnapManager.HyperSnapErrorInfoImpl";
 } // namespace
 
-// Obtain the AppMgrService proxy via SystemAbilityManager. The client side casts the SA
-// remote object to IAppMgr; it never constructs AppMgrProxy directly.
 static sptr<AppExecFwk::IAppMgr> GetAppMgrInstance()
 {
     auto systemAbilityManager = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
@@ -54,7 +50,6 @@ static sptr<AppExecFwk::IAppMgr> GetAppMgrInstance()
     return iface_cast<AppExecFwk::IAppMgr>(appObject);
 }
 
-// Build a HyperSnapErrorInfoImpl ArkTS object { code, msg, occurTimeStamp } from the record.
 static ani_object BuildHyperSnapErrorInfo(ani_env *env, const AppExecFwk::HyperSnapErrorRecord &record)
 {
     if (env == nullptr) {
@@ -111,8 +106,6 @@ public:
 
     static void RequestRebuildHyperSnap(ani_env *env);
 
-    // errType: CREATE_SNAPSHOT(0) / FORK_FROM_SNAPSHOT(1). Synchronous: returns the
-    // HyperSnapErrorInfoImpl object on success, throws on parameter/system errors.
     static ani_object NativeGetLastError(ani_env *env, ani_int errType);
 };
 

@@ -241,8 +241,8 @@ private:
 
         napi_value resourceName = nullptr;
         napi_create_string_utf8(env, "GetHyperSnapLastError", NAPI_AUTO_LENGTH, &resourceName);
-        napi_status status = napi_create_async_work(env, nullptr, resourceName, GetLastErrorExecute, GetLastErrorComplete,
-            static_cast<void *>(context), &context->work);
+        napi_status status = napi_create_async_work(env, nullptr, resourceName, GetLastErrorExecute,
+            GetLastErrorComplete, static_cast<void *>(context), &context->work);
         if (status != napi_ok) {
             TAG_LOGE(AAFwkTag::APPKIT, "OnGetLastError: failed to create async work");
             delete context;
