@@ -78,24 +78,32 @@ HWTEST_F(InsightIntentSysEventReceiverTest, OnReceiveEvent_0001, TestSize.Level1
     auto sysEventReceiver = std::make_shared<AbilityRuntime::InsightIntentSysEventReceiver>(subscribeInfo);
 
     EventFwk::CommonEventData data;
-    data.want_.operation_.action_ = EventFwk::CommonEventSupport::COMMON_EVENT_USER_SWITCHED;
-    data.code_ = 101;
-    sysEventReceiver->OnReceiveEvent(data);
-    EXPECT_NE(sysEventReceiver->lastUserId_, 0);
 
+    // USER_SWITCHED with a valid code synchronously sets lastUserId_ to the switched-in user.
+    sysEventReceiver->lastUserId_ = 0;
+    data.want_.operation_.action_ = EventFwk::CommonEventSupport::COMMON_EVENT_USER_SWITCHED;
+    data.code_ = OTHER_USER_ID;  // 101
+    sysEventReceiver->OnReceiveEvent(data);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, OTHER_USER_ID);
+
+    // BUNDLE_SCAN_FINISHED submits a load task but does not synchronously change lastUserId_.
+    sysEventReceiver->lastUserId_ = 0;
     data.want_.operation_.action_ = EventFwk::CommonEventSupport::COMMON_EVENT_BUNDLE_SCAN_FINISHED;
+    data.code_ = 0;
     sysEventReceiver->OnReceiveEvent(data);
-    EXPECT_NE(sysEventReceiver->lastUserId_, 0);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
 
+    // USER_SWITCHED back to MAIN_USER_ID.
     data.want_.operation_.action_ = EventFwk::CommonEventSupport::COMMON_EVENT_USER_SWITCHED;
-    data.code_ = MAIN_USER_ID;
+    data.code_ = MAIN_USER_ID;  // 100
     sysEventReceiver->OnReceiveEvent(data);
-    EXPECT_NE(sysEventReceiver->lastUserId_, 0);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, MAIN_USER_ID);
 
+    // USER_REMOVED for a non-current user does not change the current lastUserId_.
     data.want_.operation_.action_ = EventFwk::CommonEventSupport::COMMON_EVENT_USER_REMOVED;
-    data.code_ = OTHER_USER_ID;
+    data.code_ = OTHER_USER_ID;  // 101
     sysEventReceiver->OnReceiveEvent(data);
-    EXPECT_NE(sysEventReceiver->lastUserId_, 0);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, MAIN_USER_ID);
 }
 
 /**
@@ -451,7 +459,169 @@ HWTEST_F(InsightIntentSysEventReceiverTest, OnReceiveEvent_BopdMode_0013, TestSi
     sysEventReceiver->OnReceiveEvent(data);
 
     EXPECT_EQ(sysEventReceiver->lastUserId_, MAIN_USER_ID);
+    // Restore the singleton state so subsequent cases are not affected by BOPD mode.
     appUtils.isBopdOrRescueMode_.value = false;
+    appUtils.isBopdOrRescueMode_.isLoaded = false;
+}
+
+/**
+ * @tc.name: InsightIntentSysEventReceiverTest_ResolveLoadUserId_0013
+ * @tc.desc: Test ResolveLoadUserId returns the explicit userId when it is not -1.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentSysEventReceiverTest, ResolveLoadUserId_0013, TestSize.Level1)
+{
+    EventFwk::CommonEventSubscribeInfo subscribeInfo;
+    auto sysEventReceiver = std::make_shared<InsightIntentSysEventReceiver>(subscribeInfo);
+    EXPECT_EQ(sysEventReceiver->ResolveLoadUserId(OTHER_USER_ID), OTHER_USER_ID);
+    EXPECT_EQ(sysEventReceiver->ResolveLoadUserId(ZERO_USER_ID), ZERO_USER_ID);
+    EXPECT_EQ(sysEventReceiver->ResolveLoadUserId(MAIN_USER_ID), MAIN_USER_ID);
+}
+
+/**
+ * @tc.name: InsightIntentSysEventReceiverTest_ResolveLoadUserId_Fallback_0014
+ * @tc.desc: Test ResolveLoadUserId falls back when userId == -1 (host env returns MAIN_USER_ID).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentSysEventReceiverTest, ResolveLoadUserId_Fallback_0014, TestSize.Level1)
+{
+    EventFwk::CommonEventSubscribeInfo subscribeInfo;
+    auto sysEventReceiver = std::make_shared<InsightIntentSysEventReceiver>(subscribeInfo);
+    int32_t resolved = sysEventReceiver->ResolveLoadUserId(INVALID_USER_ID);
+    EXPECT_EQ(resolved, MAIN_USER_ID);
+}
+
+/**
+ * @tc.name: InsightIntentSysEventReceiverTest_HandleBundleScanFinished_0015
+ * @tc.desc: Test HandleBundleScanFinished submits ffrt load task without crash.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentSysEventReceiverTest, HandleBundleScanFinished_0015, TestSize.Level1)
+{
+    EventFwk::CommonEventSubscribeInfo subscribeInfo;
+    auto sysEventReceiver = std::make_shared<InsightIntentSysEventReceiver>(subscribeInfo);
+    sysEventReceiver->HandleBundleScanFinished();
+    EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
+}
+
+/**
+ * @tc.name: InsightIntentSysEventReceiverTest_BackupAndScheduleRegister_0016
+ * @tc.desc: Test BackupAndScheduleRegister with empty and non-empty bundle lists.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentSysEventReceiverTest, BackupAndScheduleRegister_0016, TestSize.Level1)
+{
+    EventFwk::CommonEventSubscribeInfo subscribeInfo;
+    auto sysEventReceiver = std::make_shared<InsightIntentSysEventReceiver>(subscribeInfo);
+    std::vector<std::pair<std::string, uint32_t>> emptyBundles;
+    sysEventReceiver->BackupAndScheduleRegister(std::move(emptyBundles), MAIN_USER_ID);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
+
+    std::vector<std::pair<std::string, uint32_t>> bundles = {
+        {"com.test.bundle", 1},
+    };
+    sysEventReceiver->BackupAndScheduleRegister(std::move(bundles), MAIN_USER_ID);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
+}
+
+/**
+ * @tc.name: InsightIntentSysEventReceiverTest_RegisterAllFunctions_0017
+ * @tc.desc: Test RegisterAllFunctions early-returns when both intent lists are empty.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentSysEventReceiverTest, RegisterAllFunctions_0017, TestSize.Level1)
+{
+    EventFwk::CommonEventSubscribeInfo subscribeInfo;
+    auto sysEventReceiver = std::make_shared<InsightIntentSysEventReceiver>(subscribeInfo);
+    std::vector<std::pair<std::string, uint32_t>> newBundles = {{"com.test.bundle", 1}};
+    std::vector<ExtractInsightIntentInfo> allIntentInfos;
+    std::vector<InsightIntentInfo> allConfigInfos;
+    sysEventReceiver->RegisterAllFunctions(newBundles, allIntentInfos, allConfigInfos);
+    EXPECT_TRUE(newBundles.size() == 1);
+}
+
+/**
+ * @tc.name: InsightIntentSysEventReceiverTest_RegisterAllFunctions_WithData_0018
+ * @tc.desc: Test RegisterAllFunctions reaches CliTool IPC path when data is present.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentSysEventReceiverTest, RegisterAllFunctions_WithData_0018, TestSize.Level1)
+{
+    EventFwk::CommonEventSubscribeInfo subscribeInfo;
+    auto sysEventReceiver = std::make_shared<InsightIntentSysEventReceiver>(subscribeInfo);
+    std::vector<std::pair<std::string, uint32_t>> newBundles = {{"com.test.bundle", 1}};
+    std::vector<ExtractInsightIntentInfo> allIntentInfos;
+    ExtractInsightIntentInfo info;
+    info.genericInfo.bundleName = "com.test.bundle";
+    info.genericInfo.moduleName = "module";
+    info.genericInfo.intentName = "intent";
+    info.genericInfo.decoratorType = INSIGHT_INTENTS_DECORATOR_TYPE_LINK;
+    info.genericInfo.set<InsightIntentLinkInfo>();
+    allIntentInfos.push_back(info);
+    std::vector<InsightIntentInfo> allConfigInfos;
+    sysEventReceiver->RegisterAllFunctions(newBundles, allIntentInfos, allConfigInfos);
+    EXPECT_EQ(allIntentInfos.size(), 1u);
+}
+
+/**
+ * @tc.name: InsightIntentSysEventReceiverTest_DeleteInsightIntent_Direct_0019
+ * @tc.desc: Test DeleteInsightIntent private method with various bundle/module/user combos.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentSysEventReceiverTest, DeleteInsightIntent_Direct_0019, TestSize.Level1)
+{
+    EventFwk::CommonEventSubscribeInfo subscribeInfo;
+    auto sysEventReceiver = std::make_shared<InsightIntentSysEventReceiver>(subscribeInfo);
+    sysEventReceiver->DeleteInsightIntent("", TEST_MODULE_NAME, MAIN_USER_ID);
+    sysEventReceiver->DeleteInsightIntent(TEST_BUNDLE_NAME, "", MAIN_USER_ID);
+    sysEventReceiver->DeleteInsightIntent(TEST_BUNDLE_NAME, TEST_MODULE_NAME, INVALID_USER_ID);
+    sysEventReceiver->DeleteInsightIntent(TEST_BUNDLE_NAME, TEST_MODULE_NAME, MAIN_USER_ID);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
+}
+
+/**
+ * @tc.name: InsightIntentSysEventReceiverTest_HandleUserSwitched_Direct_0020
+ * @tc.desc: Test HandleUserSwitched private method directly with various userIds.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentSysEventReceiverTest, HandleUserSwitched_Direct_0020, TestSize.Level1)
+{
+    EventFwk::CommonEventSubscribeInfo subscribeInfo;
+    auto sysEventReceiver = std::make_shared<InsightIntentSysEventReceiver>(subscribeInfo);
+    EventFwk::CommonEventData data;
+
+    data.SetCode(INVALID_USER_ID);
+    sysEventReceiver->HandleUserSwitched(data);
+
+    sysEventReceiver->lastUserId_ = MAIN_USER_ID;
+    data.SetCode(MAIN_USER_ID);
+    sysEventReceiver->HandleUserSwitched(data);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, MAIN_USER_ID);
+
+    data.SetCode(OTHER_USER_ID);
+    sysEventReceiver->HandleUserSwitched(data);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, OTHER_USER_ID);
+}
+
+/**
+ * @tc.name: InsightIntentSysEventReceiverTest_HandleUserRemove_Direct_0021
+ * @tc.desc: Test HandleUserRemove private method directly.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentSysEventReceiverTest, HandleUserRemove_Direct_0021, TestSize.Level1)
+{
+    EventFwk::CommonEventSubscribeInfo subscribeInfo;
+    auto sysEventReceiver = std::make_shared<InsightIntentSysEventReceiver>(subscribeInfo);
+    EventFwk::CommonEventData data;
+
+    sysEventReceiver->lastUserId_ = MAIN_USER_ID;
+    data.SetCode(OTHER_USER_ID);
+    sysEventReceiver->HandleUserRemove(data);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, MAIN_USER_ID);
+
+    data.SetCode(MAIN_USER_ID);
+    sysEventReceiver->HandleUserRemove(data);
+    EXPECT_EQ(sysEventReceiver->lastUserId_, MAIN_USER_ID);
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

@@ -103,6 +103,21 @@ bool InsightIntentRdbDataMgr::DeleteDataBeginWithKey(const std::string &key)
     return false;
 }
 
+bool InsightIntentRdbDataMgr::UpdateData(const std::string &key, const std::string &value)
+{
+    return true;
+}
+
+bool InsightIntentRdbDataMgr::QueryAllData(std::unordered_map<std::string, std::string> &datas)
+{
+    return true;
+}
+
+void InsightIntentRdbDataMgr::BackupRdb()
+{
+    return;
+}
+
 IntentRdbOpenCallback::IntentRdbOpenCallback(const IntentRdbConfig &intentRdbConfig)
 {
 }
