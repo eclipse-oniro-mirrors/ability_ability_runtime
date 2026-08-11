@@ -98,5 +98,15 @@ int32_t AgentCardMgr::HandleBundleRemove(const std::string &bundleName, int32_t 
 {
     return ERR_OK;
 }
+
+int32_t AgentCardMgr::HandlePreInstallBackfill(int32_t userId)
+{
+    return ERR_OK;
+}
+
+void AgentCardMgr::BackfillPreInstallCards()
+{
+    // No-op in the service test; the backfill path is covered by agent_card_mgr_test.
+}
 }  // namespace AgentRuntime
 }  // namespace OHOS

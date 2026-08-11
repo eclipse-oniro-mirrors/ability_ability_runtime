@@ -54,7 +54,7 @@ bool ParseStoredEntry(const nlohmann::json &item, StoredAgentCardEntry &entry)
             return false;
         }
         if (item.contains(JSON_KEY_LAST_UPDATE_SOURCE)) {
-            entry.source = ParseUpdateSource(item.at(JSON_KEY_LAST_UPDATE_SOURCE));
+            entry.updateSource = ParseUpdateSource(item.at(JSON_KEY_LAST_UPDATE_SOURCE));
         }
         return true;
     }
@@ -63,7 +63,7 @@ bool ParseStoredEntry(const nlohmann::json &item, StoredAgentCardEntry &entry)
         TAG_LOGE(AAFwkTag::SER_ROUTER, "FromJson failed");
         return false;
     }
-    entry.source = AgentCardUpdateSource::BUNDLE;
+    entry.updateSource = AgentCardUpdateSource::BUNDLE;
     return true;
 }
 
@@ -283,7 +283,7 @@ DistributedKv::Value AgentCardDbMgr::ConvertValue(const std::vector<StoredAgentC
     for (const auto &item : cards) {
         jsonArray.push_back({
             { JSON_KEY_CARD, item.card.ToJson() },
-            { JSON_KEY_LAST_UPDATE_SOURCE, UpdateSourceToString(item.source) },
+            { JSON_KEY_LAST_UPDATE_SOURCE, UpdateSourceToString(item.updateSource) },
         });
     }
     nlohmann::json root = {
