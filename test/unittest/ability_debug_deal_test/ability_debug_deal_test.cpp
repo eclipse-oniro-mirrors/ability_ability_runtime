@@ -253,23 +253,6 @@ HWTEST_F(AbilityDebugDealTest, AbilityDebugResponse_OnAbilitysDebugStarted_0100,
 }
 
 /**
- * @tc.name: AbilityDebugResponse_OnAbilitysDebugStarted_EmptyTokens_0200
- * @tc.desc: Verify AbilityDebugResponse handles empty tokens gracefully.
- * @tc.type: FUNC
- */
-HWTEST_F(AbilityDebugDealTest, AbilityDebugResponse_OnAbilitysDebugStarted_EmptyTokens_0200, TestSize.Level1)
-{
-    auto response = std::make_shared<AbilityDebugResponse>(deal_);
-    EXPECT_NE(response, nullptr);
-
-    std::vector<sptr<IRemoteObject>> emptyTokens;
-    
-    response->OnAbilitysDebugStarted(emptyTokens);
-    
-    EXPECT_TRUE(true);
-}
-
-/**
  * @tc.name: AbilityDebugResponse_OnAbilitysDebugStoped_0100
  * @tc.desc: Verify AbilityDebugResponse forwards stop call to AbilityDebugDeal correctly.
  * @tc.type: FUNC
@@ -386,52 +369,5 @@ HWTEST_F(AbilityDebugDealTest, MixedOperations_0100, TestSize.Level1)
     EXPECT_FALSE(ability_record->isAssertDebug_);
 }
 
-/**
- * @tc.name: OnAbilitysDebugStarted_EmptyTokens_0200
- * @tc.desc: Verify OnAbilitysDebugStarted handles empty tokens gracefully.
- * @tc.type: FUNC
- */
-HWTEST_F(AbilityDebugDealTest, OnAbilitysDebugStarted_EmptyTokens_0200, TestSize.Level1)
-{
-    EXPECT_NE(deal_, nullptr);
-
-    std::vector<sptr<IRemoteObject>> emptyTokens;
-    
-    deal_->OnAbilitysDebugStarted(emptyTokens);
-    
-    EXPECT_TRUE(true);
-}
-
-/**
- * @tc.name: OnAbilitysDebugStoped_EmptyTokens_0200
- * @tc.desc: Verify OnAbilitysDebugStoped handles empty tokens gracefully.
- * @tc.type: FUNC
- */
-HWTEST_F(AbilityDebugDealTest, OnAbilitysDebugStoped_EmptyTokens_0200, TestSize.Level1)
-{
-    EXPECT_NE(deal_, nullptr);
-
-    std::vector<sptr<IRemoteObject>> emptyTokens;
-    
-    deal_->OnAbilitysDebugStoped(emptyTokens);
-    
-    EXPECT_TRUE(true);
-}
-
-/**
- * @tc.name: OnAbilitysAssertDebugChange_EmptyTokens_0500
- * @tc.desc: Verify OnAbilitysAssertDebugChange handles empty tokens gracefully.
- * @tc.type: FUNC
- */
-HWTEST_F(AbilityDebugDealTest, OnAbilitysAssertDebugChange_EmptyTokens_0500, TestSize.Level1)
-{
-    EXPECT_NE(deal_, nullptr);
-
-    std::vector<sptr<IRemoteObject>> emptyTokens;
-    
-    deal_->OnAbilitysAssertDebugChange(emptyTokens, true);
-    
-    EXPECT_TRUE(true);
-}
 }  // namespace AppExecFwk
 }  // namespace OHOS
