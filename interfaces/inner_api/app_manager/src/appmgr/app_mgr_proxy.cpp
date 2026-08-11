@@ -169,13 +169,13 @@ int32_t AppMgrProxy::GetHyperSnapLastError(int32_t errType, HyperSnapErrorRecord
     // Read error message
     if (!reply.ReadString(record.msg)) {
         TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError Read msg failed.");
-        return ERR_IPC_READ_FAILED;
+        return IPC_PROXY_ERR;
     }
 
     // Read timestamp
     if (!reply.ReadString(record.occurTimeStamp)) {
         TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError Read occurTimeStamp failed.");
-        return ERR_IPC_READ_FAILED;
+        return IPC_PROXY_ERR;
     }
 
     TAG_LOGD(AAFwkTag::APPMGR, "GetHyperSnapLastError success, code: %{public}d", code);
