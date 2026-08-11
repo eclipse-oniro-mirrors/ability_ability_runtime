@@ -22,7 +22,6 @@
       *AbilityEventUtil*;
       *AbilityFirstFrameStateObserverManager*;
       *AbilityInterceptorExecuter*;
-      *AbilityJumpInterceptor*;
       *AbilityManagerProxy*;
       *AbilityManagerService*;
       *AbilityManagerStub*;

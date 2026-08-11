@@ -60,7 +60,6 @@ abilityms_files = [
   "${ability_runtime_services_path}/abilitymgr/src/modal_system_dialog/modal_system_dialog_ui_extension.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/hidden_start_observer_manager.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/interceptor/ability_interceptor_executer.cpp",
-  "${ability_runtime_services_path}/abilitymgr/src/interceptor/ability_jump_interceptor.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/interceptor/block_all_app_start_interceptor.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/interceptor/control_interceptor.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/interceptor/crowd_test_interceptor.cpp",

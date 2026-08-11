@@ -65,7 +65,6 @@ abilityms_files = [
   "src/modal_system_dialog/modal_system_dialog_ui_extension.cpp",
   "src/hidden_start_observer_manager.cpp",
   "src/interceptor/ability_interceptor_executer.cpp",
-  "src/interceptor/ability_jump_interceptor.cpp",
   "src/interceptor/block_all_app_start_interceptor.cpp",
   "src/interceptor/control_interceptor.cpp",
   "src/interceptor/crowd_test_interceptor.cpp",

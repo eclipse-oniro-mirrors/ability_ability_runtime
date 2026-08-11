@@ -27,7 +27,6 @@ enum class DialogType {
     DIALOG_ANR = 0,
     DIALOG_TIPS,
     DIALOG_SELECTOR,
-    DIALOG_JUMP_INTERCEPTOR,
 };
 enum class DialogAlign {
     TOP = 0,
@@ -83,7 +82,6 @@ public:
     int GetSelectorDialogWant(const std::vector<DialogAppInfo> &dialogAppInfos, Want &requestWant, Want &targetWant,
         const sptr<IRemoteObject> &callerToken);
     Want GetTipsDialogWant(const sptr<IRemoteObject> &callerToken);
-    Want GetJumpInterceptorDialogWant(Want &targetWant);
     Want GetSwitchUserDialogWant();
     bool GetAssertFaultDialogWant(Want &want);
 

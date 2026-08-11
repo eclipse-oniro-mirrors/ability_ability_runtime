@@ -170,7 +170,6 @@ Provides pluggable behavior for ability starts:
 | `ControlInterceptor` | System-level controls |
 | `DisposedRuleInterceptor` | Rule-based disposal |
 | `BlockAllAppStartInterceptor` | Emergency blocking |
-| `AbilityJumpInterceptor` - Jump-related interception |
 | `ExtensionControlInterceptor` | Extension-specific controls |
 | `CrowdTestInterceptor` | Testing mode control |
 
