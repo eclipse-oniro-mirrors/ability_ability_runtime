@@ -30,7 +30,7 @@ namespace AAFwk {
 namespace {
 constexpr const char* UNREGISTER_EVENT_TASK = "unregister event task";
 constexpr const char* UNREGISTER_TIMEOUT_OBSERVER_TASK = "unregister timeout observer task";
-constexpr int UNREGISTER_OBSERVER_MICRO_SECONDS = 5000;
+constexpr int UNREGISTER_OBSERVER_MILLI_SECONDS = 5000;
 constexpr const char* UIEXTENSION_MODAL_TYPE = "ability.want.params.modalType";
 constexpr const char* INTERCEPT_PARAMETERS = "intercept_parammeters";
 constexpr const char* INTERCEPT_BUNDLE_NAME = "intercept_bundleName";
@@ -240,7 +240,7 @@ ErrCode DisposedRuleInterceptor::StartNonBlockRule(const Want &want, AppExecFwk:
             interceptor->disposedObserverMap_.erase(iter);
         }
     };
-    taskHandler_->SubmitTask(unregisterTask, timeoutTaskName, UNREGISTER_OBSERVER_MICRO_SECONDS);
+    taskHandler_->SubmitTask(unregisterTask, timeoutTaskName, UNREGISTER_OBSERVER_MILLI_SECONDS);
     return ERR_OK;
 }
 
