@@ -43,6 +43,8 @@ public:
     int32_t GetAllFunctions(std::vector<FunctionInfo> &functions);
     int32_t BatchRegisterFunctions(const std::vector<FunctionInfo> &functions, int32_t &successCount);
     int32_t EnsureFunctionsInitialized();
+    int32_t ResetNamespaceFunctions(const std::string &functionNamespace,
+        const std::vector<FunctionInfo> &functions, int32_t &successCount);
 };
 } // namespace CliTool
 } // namespace OHOS

@@ -35,6 +35,8 @@ int32_t CliFunctionDataManagerMock::unregisterFunctionResult = ERR_OK;
 int32_t CliFunctionDataManagerMock::getFunctionResult = ERR_OK;
 int32_t CliFunctionDataManagerMock::getAllFunctionsResult = ERR_OK;
 int32_t CliFunctionDataManagerMock::unregisterByNamespaceResult = ERR_OK;
+int32_t CliFunctionDataManagerMock::resetNamespaceFunctionsResult = ERR_OK;
+int32_t CliFunctionDataManagerMock::resetNamespaceFunctionsSuccessCount = 0;
 
 void CliFunctionDataManagerMock::Reset()
 {
@@ -43,6 +45,8 @@ void CliFunctionDataManagerMock::Reset()
     getFunctionResult = ERR_OK;
     getAllFunctionsResult = ERR_OK;
     unregisterByNamespaceResult = ERR_OK;
+    resetNamespaceFunctionsResult = ERR_OK;
+    resetNamespaceFunctionsSuccessCount = 0;
 }
 
 CliToolDataManager::CliToolDataManager() noexcept = default;
@@ -155,6 +159,15 @@ int32_t CliFunctionDataManager::BatchRegisterFunctions(const std::vector<Functio
 int32_t CliFunctionDataManager::EnsureFunctionsInitialized()
 {
     return ERR_OK;
+}
+
+int32_t CliFunctionDataManager::ResetNamespaceFunctions(const std::string &,
+    const std::vector<FunctionInfo> &functions, int32_t &successCount)
+{
+    successCount = CliFunctionDataManagerMock::resetNamespaceFunctionsSuccessCount > 0 ?
+        CliFunctionDataManagerMock::resetNamespaceFunctionsSuccessCount :
+        static_cast<int32_t>(functions.size());
+    return CliFunctionDataManagerMock::resetNamespaceFunctionsResult;
 }
 
 } // namespace CliTool

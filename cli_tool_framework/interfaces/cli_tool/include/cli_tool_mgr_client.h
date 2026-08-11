@@ -127,6 +127,16 @@ public:
     ErrCode UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace);
 
     /**
+     * @brief Reset all functions by namespace (delete all existing and add new ones)
+     * @param functionNamespace Namespace to reset functions for
+     * @param functions New function list to replace existing ones
+     * @param successCount Output count of successfully reset functions
+     * @return ErrCode ERR_OK on success
+     */
+    ErrCode ResetNamespaceFunctions(const std::string &functionNamespace,
+        const std::vector<FunctionInfo> &functions, int32_t &successCount);
+
+    /**
      * @brief Get all functions
      * @param functions Output vector of FunctionInfo
      * @return ErrCode ERR_OK on success

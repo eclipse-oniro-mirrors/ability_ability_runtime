@@ -576,6 +576,38 @@ HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_UnregisterIntentFunc
     TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_UnregisterIntentFunctionsByNamespace_003 end");
 }
 
+/**
+ * @tc.name: CliFunctionDataManager_UnregisterIntentFunctionsByNamespace_004
+ * @tc.desc: Test UnregisterIntentFunctionsByNamespace preserves non-INTENT_FUNCTION types
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_UnregisterIntentFunctionsByNamespace_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_UnregisterIntentFunctionsByNamespace_004 start");
+
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    // Add INTENT_FUNCTION
+    mockStore->SetMockData("mixed_ns/intent_func", BuildFunctionJson("mixed_ns", "intent_func"));
+    // Add non-INTENT_FUNCTION (type = 1)
+    nlohmann::json otherJson = {
+        {"functionName", "other_func"},
+        {"functionNamespace", "mixed_ns"},
+        {"description", "Other type"},
+        {"functionType", 1},
+        {"version", "1.0"}
+    };
+    mockStore->SetMockData("mixed_ns/other_func", otherJson.dump());
+    CliFunctionDataManager::GetInstance().kvStorePtr_ = mockStore;
+
+    EXPECT_EQ(CliFunctionDataManager::GetInstance().UnregisterIntentFunctionsByNamespace("mixed_ns"), ERR_OK);
+    // INTENT_FUNCTION should be deleted
+    EXPECT_FALSE(mockStore->HasMockData("mixed_ns/intent_func"));
+    // Non-INTENT_FUNCTION should be preserved
+    EXPECT_TRUE(mockStore->HasMockData("mixed_ns/other_func"));
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_UnregisterIntentFunctionsByNamespace_004 end");
+}
+
 // ==================== GetAllFunctions Tests ====================
 
 /**
@@ -686,62 +718,168 @@ HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_GenerateFunctionKey_
     TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_GenerateFunctionKey_002 end");
 }
 
-// ==================== MatchesIntentFunctionNamespace Tests ====================
+// ==================== ExtractNamespaceFromKey Tests ====================
 
 /**
- * @tc.name: CliFunctionDataManager_MatchesIntentFunctionNamespace_001
- * @tc.desc: Test MatchesIntentFunctionNamespace with matching namespace
+ * @tc.name: CliFunctionDataManager_ExtractNamespaceFromKey_001
+ * @tc.desc: Test ExtractNamespaceFromKey with valid key
  * @tc.type: FUNC
  */
-HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_MatchesIntentFunctionNamespace_001, TestSize.Level1)
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_ExtractNamespaceFromKey_001, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_MatchesIntentFunctionNamespace_001 start");
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_ExtractNamespaceFromKey_001 start");
+
+    std::string ns = CliFunctionDataManager::ExtractNamespaceFromKey("test_ns/test_func");
+
+    EXPECT_EQ(ns, "test_ns");
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_ExtractNamespaceFromKey_001 end");
+}
+
+/**
+ * @tc.name: CliFunctionDataManager_ExtractNamespaceFromKey_002
+ * @tc.desc: Test ExtractNamespaceFromKey with invalid key (no separator)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_ExtractNamespaceFromKey_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_ExtractNamespaceFromKey_002 start");
+
+    std::string ns = CliFunctionDataManager::ExtractNamespaceFromKey("invalid_key");
+
+    EXPECT_EQ(ns, "");
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_ExtractNamespaceFromKey_002 end");
+}
+
+/**
+ * @tc.name: CliFunctionDataManager_ExtractNamespaceFromKey_003
+ * @tc.desc: Test ExtractNamespaceFromKey with empty key
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_ExtractNamespaceFromKey_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_ExtractNamespaceFromKey_003 start");
+
+    std::string ns = CliFunctionDataManager::ExtractNamespaceFromKey("");
+
+    EXPECT_EQ(ns, "");
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_ExtractNamespaceFromKey_003 end");
+}
+
+// ==================== KeyMatchesNamespace Tests ====================
+
+/**
+ * @tc.name: CliFunctionDataManager_KeyMatchesNamespace_001
+ * @tc.desc: Test KeyMatchesNamespace with matching namespace
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_KeyMatchesNamespace_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_KeyMatchesNamespace_001 start");
+
+    bool matches = CliFunctionDataManager::KeyMatchesNamespace("test_ns/test_func", "test_ns");
+
+    EXPECT_TRUE(matches);
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_KeyMatchesNamespace_001 end");
+}
+
+/**
+ * @tc.name: CliFunctionDataManager_KeyMatchesNamespace_002
+ * @tc.desc: Test KeyMatchesNamespace with non-matching namespace
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_KeyMatchesNamespace_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_KeyMatchesNamespace_002 start");
+
+    bool matches = CliFunctionDataManager::KeyMatchesNamespace("other_ns/test_func", "test_ns");
+
+    EXPECT_FALSE(matches);
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_KeyMatchesNamespace_002 end");
+}
+
+/**
+ * @tc.name: CliFunctionDataManager_KeyMatchesNamespace_003
+ * @tc.desc: Test KeyMatchesNamespace with invalid key
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_KeyMatchesNamespace_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_KeyMatchesNamespace_003 start");
+
+    bool matches = CliFunctionDataManager::KeyMatchesNamespace("invalid_key", "test_ns");
+
+    EXPECT_FALSE(matches);
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_KeyMatchesNamespace_003 end");
+}
+
+// ==================== IsIntentFunction Tests ====================
+
+/**
+ * @tc.name: CliFunctionDataManager_IsIntentFunction_001
+ * @tc.desc: Test IsIntentFunction with INTENT_FUNCTION type
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_IsIntentFunction_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_IsIntentFunction_001 start");
 
     std::string jsonStr = BuildFunctionJson("test_ns", "test_func", "Test");
     DistributedKv::Value value(jsonStr);
 
-    bool matches = CliFunctionDataManager::MatchesIntentFunctionNamespace(value, "test_ns");
+    bool isIntent = CliFunctionDataManager::IsIntentFunction(value);
 
-    EXPECT_TRUE(matches);
+    EXPECT_TRUE(isIntent);
 
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_MatchesIntentFunctionNamespace_001 end");
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_IsIntentFunction_001 end");
 }
 
 /**
- * @tc.name: CliFunctionDataManager_MatchesIntentFunctionNamespace_002
- * @tc.desc: Test MatchesIntentFunctionNamespace with non-matching namespace
+ * @tc.name: CliFunctionDataManager_IsIntentFunction_002
+ * @tc.desc: Test IsIntentFunction with non-INTENT_FUNCTION type
  * @tc.type: FUNC
  */
-HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_MatchesIntentFunctionNamespace_002, TestSize.Level1)
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_IsIntentFunction_002, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_MatchesIntentFunctionNamespace_002 start");
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_IsIntentFunction_002 start");
 
-    std::string jsonStr = BuildFunctionJson("other_ns", "test_func", "Test");
-    DistributedKv::Value value(jsonStr);
+    nlohmann::json json = {
+        {"functionName", "other_func"},
+        {"functionNamespace", "test_ns"},
+        {"description", "Other type"},
+        {"functionType", 1},  // Not INTENT_FUNCTION (which is 0)
+        {"version", "1.0"}
+    };
+    DistributedKv::Value value(json.dump());
 
-    bool matches = CliFunctionDataManager::MatchesIntentFunctionNamespace(value, "test_ns");
+    bool isIntent = CliFunctionDataManager::IsIntentFunction(value);
 
-    EXPECT_FALSE(matches);
+    EXPECT_FALSE(isIntent);
 
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_MatchesIntentFunctionNamespace_002 end");
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_IsIntentFunction_002 end");
 }
 
 /**
- * @tc.name: CliFunctionDataManager_MatchesIntentFunctionNamespace_003
- * @tc.desc: Test MatchesIntentFunctionNamespace with invalid JSON
+ * @tc.name: CliFunctionDataManager_IsIntentFunction_003
+ * @tc.desc: Test IsIntentFunction with invalid JSON
  * @tc.type: FUNC
  */
-HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_MatchesIntentFunctionNamespace_003, TestSize.Level1)
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_IsIntentFunction_003, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_MatchesIntentFunctionNamespace_003 start");
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_IsIntentFunction_003 start");
 
     DistributedKv::Value value("{invalid json");
 
-    bool matches = CliFunctionDataManager::MatchesIntentFunctionNamespace(value, "test_ns");
+    bool isIntent = CliFunctionDataManager::IsIntentFunction(value);
 
-    EXPECT_FALSE(matches);
+    EXPECT_FALSE(isIntent);
 
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_MatchesIntentFunctionNamespace_003 end");
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_IsIntentFunction_003 end");
 }
 
 // ==================== CheckKvStore Tests ====================
@@ -765,16 +903,16 @@ HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_CheckKvStore_001, Te
     TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_CheckKvStore_001 end");
 }
 
-// ==================== StoreFunction Tests ====================
+// ==================== StoreFunctionNoLock Tests ====================
 
 /**
- * @tc.name: CliFunctionDataManager_StoreFunction_001
- * @tc.desc: Test StoreFunction through RegisterFunction
+ * @tc.name: CliFunctionDataManager_StoreFunctionNoLock_001
+ * @tc.desc: Test StoreFunctionNoLock through RegisterFunction
  * @tc.type: FUNC
  */
-HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_StoreFunction_001, TestSize.Level1)
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_StoreFunctionNoLock_001, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_StoreFunction_001 start");
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_StoreFunctionNoLock_001 start");
 
     auto mockStore = std::make_shared<MockSingleKvStore>();
     CliFunctionDataManager::GetInstance().kvStorePtr_ = mockStore;
@@ -790,17 +928,17 @@ HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_StoreFunction_001, T
     EXPECT_EQ(ret, ERR_OK);
     EXPECT_TRUE(mockStore->HasMockData("store_ns/store_function"));
 
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_StoreFunction_001 end");
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_StoreFunctionNoLock_001 end");
 }
 
 /**
- * @tc.name: CliFunctionDataManager_StoreFunction_002
- * @tc.desc: Test StoreFunction with failed Put operation
+ * @tc.name: CliFunctionDataManager_StoreFunctionNoLock_002
+ * @tc.desc: Test StoreFunctionNoLock with failed Put operation
  * @tc.type: FUNC
  */
-HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_StoreFunction_002, TestSize.Level1)
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_StoreFunctionNoLock_002, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_StoreFunction_002 start");
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_StoreFunctionNoLock_002 start");
 
     auto mockStore = std::make_shared<MockSingleKvStore>();
     mockStore->Put_ = DistributedKv::Status::ERROR;
@@ -815,7 +953,7 @@ HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_StoreFunction_002, T
 
     EXPECT_EQ(ret, ERR_KVSTORE_ERROR);
 
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_StoreFunction_002 end");
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_StoreFunctionNoLock_002 end");
 }
 
 // ==================== RestoreKvStore Tests ====================
@@ -846,7 +984,7 @@ HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_RestoreKvStore_001, 
 
 /**
  * @tc.name: CliFunctionDataManager_RestoreKvStore_002
- * @tc.desc: Test RestoreKvStore with other error status
+ * @tc.desc: Test RestoreKvStore with other error status (void return, no crash)
  * @tc.type: FUNC
  */
 HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_RestoreKvStore_002, TestSize.Level1)
@@ -855,11 +993,12 @@ HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_RestoreKvStore_002, 
 
     auto& dataManager = CliFunctionDataManager::GetInstance();
 
-    // Test with non-DATA_CORRUPTED status - should return as-is without calling KVStore
-    DistributedKv::Status result = dataManager.RestoreKvStore(DistributedKv::Status::INVALID_SCHEMA);
+    // Test with non-DATA_CORRUPTED status - should do nothing without calling KVStore
+    // RestoreKvStore now returns void, just verify it doesn't crash
+    dataManager.RestoreKvStore(DistributedKv::Status::INVALID_SCHEMA);
 
-    // This should always return the input status since it's not DATA_CORRUPTED
-    EXPECT_EQ(result, DistributedKv::Status::INVALID_SCHEMA);
+    // No assertion needed, just verify no crash
+    EXPECT_NO_FATAL_FAILURE();
 
     TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_RestoreKvStore_002 end");
 }
@@ -951,6 +1090,69 @@ HWTEST_F(CliFunctionDataManagerTest, FunctionInfo_Validate_004, TestSize.Level1)
     TAG_LOGI(AAFwkTag::CLI_TOOL, "FunctionInfo_Validate_004 end");
 }
 
+/**
+ * @tc.name: FunctionInfo_Validate_005
+ * @tc.desc: Test FunctionInfo Validate with illegal '/' in functionName
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, FunctionInfo_Validate_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FunctionInfo_Validate_005 start");
+
+    FunctionInfo function;
+    function.functionName = "invalid/func";
+    function.functionNamespace = "test_ns";
+    function.functionType = FunctionType::INTENT_FUNCTION;
+
+    bool valid = FunctionInfo::Validate(function);
+
+    EXPECT_FALSE(valid);
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FunctionInfo_Validate_005 end");
+}
+
+/**
+ * @tc.name: FunctionInfo_Validate_006
+ * @tc.desc: Test FunctionInfo Validate with illegal '/' in functionNamespace
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, FunctionInfo_Validate_006, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FunctionInfo_Validate_006 start");
+
+    FunctionInfo function;
+    function.functionName = "test_func";
+    function.functionNamespace = "invalid/ns";
+    function.functionType = FunctionType::INTENT_FUNCTION;
+
+    bool valid = FunctionInfo::Validate(function);
+
+    EXPECT_FALSE(valid);
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FunctionInfo_Validate_006 end");
+}
+
+/**
+ * @tc.name: FunctionInfo_Validate_007
+ * @tc.desc: Test FunctionInfo Validate with '/' in both fields
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, FunctionInfo_Validate_007, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FunctionInfo_Validate_007 start");
+
+    FunctionInfo function;
+    function.functionName = "bad/func";
+    function.functionNamespace = "bad/ns";
+    function.functionType = FunctionType::INTENT_FUNCTION;
+
+    bool valid = FunctionInfo::Validate(function);
+
+    EXPECT_FALSE(valid);
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FunctionInfo_Validate_007 end");
+}
+
 // ==================== BatchRegisterFunctions Tests ====================
 
 /**
@@ -1035,6 +1237,338 @@ HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_BatchRegisterFunctio
     EXPECT_TRUE(mockStore->HasMockData("single_batch_ns/single_batch_func"));
 
     TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_BatchRegisterFunctions_005 end");
+}
+
+/**
+ * @tc.name: CliFunctionDataManager_BatchRegisterFunctions_003
+ * @tc.desc: Test BatchRegisterFunctions with KVStore failure on first function
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_BatchRegisterFunctions_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_BatchRegisterFunctions_003 start");
+
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    mockStore->Put_ = DistributedKv::Status::ERROR;
+    CliFunctionDataManager::GetInstance().kvStorePtr_ = mockStore;
+
+    std::vector<FunctionInfo> functions;
+    for (int i = 0; i < 3; i++) {
+        FunctionInfo function;
+        function.functionName = "fail_func_" + std::to_string(i);
+        function.functionNamespace = "fail_ns";
+        function.functionType = FunctionType::INTENT_FUNCTION;
+        functions.push_back(function);
+    }
+
+    int32_t successCount = 0;
+    int32_t ret = CliFunctionDataManager::GetInstance().BatchRegisterFunctions(functions, successCount);
+
+    EXPECT_EQ(ret, ERR_KVSTORE_ERROR);
+    EXPECT_EQ(successCount, 0);
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_BatchRegisterFunctions_003 end");
+}
+
+/**
+ * @tc.name: CliFunctionDataManager_BatchRegisterFunctions_004
+ * @tc.desc: Test BatchRegisterFunctions with failure on middle function
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_BatchRegisterFunctions_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_BatchRegisterFunctions_004 start");
+
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    CliFunctionDataManager::GetInstance().kvStorePtr_ = mockStore;
+
+    std::vector<FunctionInfo> functions;
+    for (int i = 0; i < 5; i++) {
+        FunctionInfo function;
+        function.functionName = "partial_func_" + std::to_string(i);
+        function.functionNamespace = "partial_ns";
+        function.functionType = FunctionType::INTENT_FUNCTION;
+        functions.push_back(function);
+    }
+
+    // After 2 successful Put, make the 3rd fail
+    int callCount = 0;
+    mockStore->Put_ = DistributedKv::Status::SUCCESS;
+    mockStore->PutCallback = [&callCount](const DistributedKv::Key&, const DistributedKv::Value&)
+        -> DistributedKv::Status {
+        callCount++;
+        return callCount <= 2 ? DistributedKv::Status::SUCCESS : DistributedKv::Status::ERROR;
+    };
+
+    int32_t successCount = 0;
+    int32_t ret = CliFunctionDataManager::GetInstance().BatchRegisterFunctions(functions, successCount);
+
+    EXPECT_EQ(ret, ERR_KVSTORE_ERROR);
+    EXPECT_EQ(successCount, 2);
+    // First 2 functions should be stored
+    EXPECT_TRUE(mockStore->HasMockData("partial_ns/partial_func_0"));
+    EXPECT_TRUE(mockStore->HasMockData("partial_ns/partial_func_1"));
+    // Remaining functions should not be stored due to early break
+    EXPECT_FALSE(mockStore->HasMockData("partial_ns/partial_func_2"));
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_BatchRegisterFunctions_004 end");
+}
+
+// ==================== ResetNamespaceFunctions Tests ====================
+
+/**
+ * @tc.name: CliFunctionDataManager_ResetNamespaceFunctions_001
+ * @tc.desc: Test ResetNamespaceFunctions with valid namespace and functions
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_ResetNamespaceFunctions_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_ResetNamespaceFunctions_001 start");
+
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    CliFunctionDataManager::GetInstance().kvStorePtr_ = mockStore;
+
+    // Pre-populate with existing functions
+    mockStore->SetMockData("reset_ns/old_func1", BuildFunctionJson("reset_ns", "old_func1"));
+    mockStore->SetMockData("reset_ns/old_func2", BuildFunctionJson("reset_ns", "old_func2"));
+
+    // Create new function list
+    std::vector<FunctionInfo> functions;
+    for (int i = 0; i < 3; i++) {
+        FunctionInfo function;
+        function.functionName = "new_func_" + std::to_string(i);
+        function.functionNamespace = "reset_ns";
+        function.functionType = FunctionType::INTENT_FUNCTION;
+        functions.push_back(function);
+    }
+
+    int32_t successCount = 0;
+    int32_t ret = CliFunctionDataManager::GetInstance().ResetNamespaceFunctions(
+        "reset_ns", functions, successCount);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(successCount, 3);
+    // Old functions should be deleted
+    EXPECT_FALSE(mockStore->HasMockData("reset_ns/old_func1"));
+    EXPECT_FALSE(mockStore->HasMockData("reset_ns/old_func2"));
+    // New functions should be added
+    EXPECT_TRUE(mockStore->HasMockData("reset_ns/new_func_0"));
+    EXPECT_TRUE(mockStore->HasMockData("reset_ns/new_func_1"));
+    EXPECT_TRUE(mockStore->HasMockData("reset_ns/new_func_2"));
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_ResetNamespaceFunctions_001 end");
+}
+
+/**
+ * @tc.name: CliFunctionDataManager_ResetNamespaceFunctions_002
+ * @tc.desc: Test ResetNamespaceFunctions with empty namespace
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_ResetNamespaceFunctions_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_ResetNamespaceFunctions_002 start");
+
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    CliFunctionDataManager::GetInstance().kvStorePtr_ = mockStore;
+
+    std::vector<FunctionInfo> functions;
+    FunctionInfo function;
+    function.functionName = "test_func";
+    function.functionNamespace = "test_ns";
+    function.functionType = FunctionType::INTENT_FUNCTION;
+    functions.push_back(function);
+
+    int32_t successCount = 0;
+    int32_t ret = CliFunctionDataManager::GetInstance().ResetNamespaceFunctions(
+        "", functions, successCount);
+
+    EXPECT_EQ(ret, ERR_INVALID_PARAM);
+    EXPECT_EQ(successCount, 0);
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_ResetNamespaceFunctions_002 end");
+}
+
+/**
+ * @tc.name: CliFunctionDataManager_ResetNamespaceFunctions_003
+ * @tc.desc: Test ResetNamespaceFunctions with empty function list
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_ResetNamespaceFunctions_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_ResetNamespaceFunctions_003 start");
+
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    // Pre-populate with existing functions
+    mockStore->SetMockData("empty_ns/old_func", BuildFunctionJson("empty_ns", "old_func"));
+    CliFunctionDataManager::GetInstance().kvStorePtr_ = mockStore;
+
+    std::vector<FunctionInfo> functions;  // Empty list
+
+    int32_t successCount = 0;
+    int32_t ret = CliFunctionDataManager::GetInstance().ResetNamespaceFunctions(
+        "empty_ns", functions, successCount);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(successCount, 0);
+    // Old function should be deleted
+    EXPECT_FALSE(mockStore->HasMockData("empty_ns/old_func"));
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_ResetNamespaceFunctions_003 end");
+}
+
+/**
+ * @tc.name: CliFunctionDataManager_ResetNamespaceFunctions_004
+ * @tc.desc: Test ResetNamespaceFunctions skips non-INTENT_FUNCTION types
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_ResetNamespaceFunctions_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_ResetNamespaceFunctions_004 start");
+
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    CliFunctionDataManager::GetInstance().kvStorePtr_ = mockStore;
+
+    std::vector<FunctionInfo> functions;
+
+    // Add an INTENT_FUNCTION (should be registered)
+    FunctionInfo intentFunc;
+    intentFunc.functionName = "intent_func";
+    intentFunc.functionNamespace = "mixed_ns";
+    intentFunc.functionType = FunctionType::INTENT_FUNCTION;
+    functions.push_back(intentFunc);
+
+    // Add a non-INTENT_FUNCTION (should be skipped)
+    FunctionInfo otherFunc;
+    otherFunc.functionName = "other_func";
+    otherFunc.functionNamespace = "mixed_ns";
+    otherFunc.functionType = static_cast<FunctionType>(1);  // Different type
+    functions.push_back(otherFunc);
+
+    int32_t successCount = 0;
+    int32_t ret = CliFunctionDataManager::GetInstance().ResetNamespaceFunctions(
+        "mixed_ns", functions, successCount);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(successCount, 1);  // Only INTENT_FUNCTION counted
+    EXPECT_TRUE(mockStore->HasMockData("mixed_ns/intent_func"));
+    EXPECT_FALSE(mockStore->HasMockData("mixed_ns/other_func"));
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_ResetNamespaceFunctions_004 end");
+}
+
+/**
+ * @tc.name: CliFunctionDataManager_ResetNamespaceFunctions_005
+ * @tc.desc: Test ResetNamespaceFunctions with single function
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_ResetNamespaceFunctions_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_ResetNamespaceFunctions_005 start");
+
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    CliFunctionDataManager::GetInstance().kvStorePtr_ = mockStore;
+
+    std::vector<FunctionInfo> functions;
+    FunctionInfo function;
+    function.functionName = "single_reset_func";
+    function.functionNamespace = "single_reset_ns";
+    function.functionType = FunctionType::INTENT_FUNCTION;
+    functions.push_back(function);
+
+    int32_t successCount = 0;
+    int32_t ret = CliFunctionDataManager::GetInstance().ResetNamespaceFunctions(
+        "single_reset_ns", functions, successCount);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(successCount, 1);
+    EXPECT_TRUE(mockStore->HasMockData("single_reset_ns/single_reset_func"));
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_ResetNamespaceFunctions_005 end");
+}
+
+/**
+ * @tc.name: CliFunctionDataManager_ResetNamespaceFunctions_007
+ * @tc.desc: Test ResetNamespaceFunctions preserves old data on add failure
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_ResetNamespaceFunctions_007, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_ResetNamespaceFunctions_007 start");
+
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    CliFunctionDataManager::GetInstance().kvStorePtr_ = mockStore;
+
+    // Pre-populate with existing functions
+    mockStore->SetMockData("preserve_ns/old_func1", BuildFunctionJson("preserve_ns", "old_func1"));
+    mockStore->SetMockData("preserve_ns/old_func2", BuildFunctionJson("preserve_ns", "old_func2"));
+
+    // Make Put fail during AddNewFunctions
+    mockStore->Put_ = DistributedKv::Status::ERROR;
+
+    std::vector<FunctionInfo> functions;
+    for (int i = 0; i < 3; i++) {
+        FunctionInfo function;
+        function.functionName = "new_func_" + std::to_string(i);
+        function.functionNamespace = "preserve_ns";
+        function.functionType = FunctionType::INTENT_FUNCTION;
+        functions.push_back(function);
+    }
+
+    int32_t successCount = 0;
+    int32_t ret = CliFunctionDataManager::GetInstance().ResetNamespaceFunctions(
+        "preserve_ns", functions, successCount);
+
+    // Should fail and return error
+    EXPECT_NE(ret, ERR_OK);
+    EXPECT_EQ(successCount, 0);
+    // Old functions should be preserved (not deleted)
+    EXPECT_TRUE(mockStore->HasMockData("preserve_ns/old_func1"));
+    EXPECT_TRUE(mockStore->HasMockData("preserve_ns/old_func2"));
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_ResetNamespaceFunctions_007 end");
+}
+
+/**
+ * @tc.name: CliFunctionDataManager_ResetNamespaceFunctions_008
+ * @tc.desc: Test ResetNamespaceFunctions only affects specified namespace
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_ResetNamespaceFunctions_008, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_ResetNamespaceFunctions_008 start");
+
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    CliFunctionDataManager::GetInstance().kvStorePtr_ = mockStore;
+
+    // Pre-populate with functions from different namespaces
+    mockStore->SetMockData("target_ns/target_func1", BuildFunctionJson("target_ns", "target_func1"));
+    mockStore->SetMockData("target_ns/target_func2", BuildFunctionJson("target_ns", "target_func2"));
+    mockStore->SetMockData("other_ns/other_func1", BuildFunctionJson("other_ns", "other_func1"));
+    mockStore->SetMockData("other_ns/other_func2", BuildFunctionJson("other_ns", "other_func2"));
+
+    // Only reset target_ns
+    std::vector<FunctionInfo> functions;
+    FunctionInfo function;
+    function.functionName = "new_target_func";
+    function.functionNamespace = "target_ns";
+    function.functionType = FunctionType::INTENT_FUNCTION;
+    functions.push_back(function);
+
+    int32_t successCount = 0;
+    int32_t ret = CliFunctionDataManager::GetInstance().ResetNamespaceFunctions(
+        "target_ns", functions, successCount);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(successCount, 1);
+    // target_ns functions should be replaced
+    EXPECT_FALSE(mockStore->HasMockData("target_ns/target_func1"));
+    EXPECT_FALSE(mockStore->HasMockData("target_ns/target_func2"));
+    EXPECT_TRUE(mockStore->HasMockData("target_ns/new_target_func"));
+    // other_ns functions should be preserved
+    EXPECT_TRUE(mockStore->HasMockData("other_ns/other_func1"));
+    EXPECT_TRUE(mockStore->HasMockData("other_ns/other_func2"));
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_ResetNamespaceFunctions_008 end");
 }
 
 } // namespace CliTool

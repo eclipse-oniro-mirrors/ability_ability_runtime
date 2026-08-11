@@ -744,6 +744,69 @@ int32_t CliToolManagerService::UnregisterIntentFunctionsByNamespace(const std::s
     return ERR_OK;
 }
 
+int32_t CliToolManagerService::ResetNamespaceFunctions(const std::string &functionNamespace,
+    const FunctionsRawData &functions, int32_t &successCount)
+{
+    successCount = 0;
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctions called: %{public}s, %{public}u bytes",
+        functionNamespace.c_str(), functions.size);
+    InterfaceCallCounter counter(interfaceCalledCount_);
+
+    auto callingUid = IPCSkeleton::GetCallingUid();
+    auto callerToken = IPCSkeleton::GetCallingTokenID();
+    if (callingUid != FOUNDATION_UID || Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken) !=
+        Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctions: Permission denied, uid=%{public}d", callingUid);
+        return ERR_PERMISSION_DENIED;
+    }
+
+    if (functionNamespace.empty()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctions: Invalid namespace");
+        return ERR_INVALID_PARAM;
+    }
+
+    std::vector<FunctionInfo> functionList;
+    int32_t ret = FunctionsRawData::ToFunctionInfoVec(functions, functionList);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctions: Failed to parse functions, ret=%{public}d", ret);
+        return ret;
+    }
+
+    if (functionList.empty()) {
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "No functions to update for namespace: %{public}s", functionNamespace.c_str());
+        // Allow empty list - this means delete all existing functions
+    }
+
+    std::vector<FunctionInfo> validFunctions;
+    validFunctions.reserve(functionList.size());
+    for (const auto &function : functionList) {
+        if (!FunctionInfo::Validate(function)) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "Invalid function info, will skip: %{public}s/%{public}s",
+                function.functionNamespace.c_str(), function.functionName.c_str());
+            continue;
+        }
+
+        // Verify namespace matches
+        if (function.functionNamespace != functionNamespace) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctions: Function namespace mismatch: expected=%{public}s,"
+                " got=%{public}s", functionNamespace.c_str(), function.functionNamespace.c_str());
+            return ERR_INVALID_PARAM;
+        }
+        validFunctions.push_back(function);
+    }
+
+    ret = CliFunctionDataManager::GetInstance().ResetNamespaceFunctions(
+        functionNamespace, validFunctions, successCount);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctions: Failed, ret=%{public}d", ret);
+        return ret;
+    }
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully reset functions for namespace: %{public}s, "
+        "successCount=%{public}d/%{public}zu", functionNamespace.c_str(), successCount, validFunctions.size());
+    return ERR_OK;
+}
+
 int32_t CliToolManagerService::GetAllFunctions(FunctionsRawData &functions)
 {
     TAG_LOGD(AAFwkTag::CLI_TOOL, "GetAllFunctions called");

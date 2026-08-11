@@ -26,6 +26,8 @@ public:
     static int32_t retRegisterFunction;
     static int32_t retBatchRegisterFunctions;
     static int32_t batchRegisterFunctionsSuccessCount;
+    static int32_t retResetNamespaceFunctions;
+    static int32_t resetNamespaceFunctionsSuccessCount;
     static int32_t retGetFunctionInfo;
     static int32_t retUnregisterFunction;
     static int32_t retGetAllFunctions;

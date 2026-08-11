@@ -260,6 +260,16 @@ bool FunctionInfo::Validate(const FunctionInfo &function)
         return false;
     }
 
+    if (function.functionName.find('/') != std::string::npos) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: functionName contains illegal character '/'");
+        return false;
+    }
+
+    if (function.functionNamespace.find('/') != std::string::npos) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: functionNamespace contains illegal character '/'");
+        return false;
+    }
+
     if (!function.inputSchema.empty()) {
         if (function.inputSchema.size() > MAX_SCHEMA_STRING_LENGTH) {
             TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: inputSchema too long: %{public}u, max: %{public}u",
@@ -356,9 +366,11 @@ int32_t FunctionsRawData::FromFunctionInfoVec(const std::vector<FunctionInfo> &f
 
 int32_t FunctionsRawData::ToFunctionInfoVec(const FunctionsRawData &rawData, std::vector<FunctionInfo> &functions)
 {
+    // Allow empty data (represents empty function list)
     if (rawData.data == nullptr || rawData.size == 0) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "ToFunctionInfoVec failed: null data or zero size");
-        return ERR_INVALID_VALUE;
+        functions.clear();
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "ToFunctionInfoVec: empty data, returning empty function list");
+        return ERR_OK;
     }
     std::stringstream ss;
     ss.write(reinterpret_cast<const char *>(rawData.data), rawData.size);

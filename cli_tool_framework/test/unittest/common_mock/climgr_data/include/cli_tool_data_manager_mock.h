@@ -31,6 +31,8 @@ public:
     static int32_t getFunctionResult;
     static int32_t getAllFunctionsResult;
     static int32_t unregisterByNamespaceResult;
+    static int32_t resetNamespaceFunctionsResult;
+    static int32_t resetNamespaceFunctionsSuccessCount;
 
     static void Reset();
 };

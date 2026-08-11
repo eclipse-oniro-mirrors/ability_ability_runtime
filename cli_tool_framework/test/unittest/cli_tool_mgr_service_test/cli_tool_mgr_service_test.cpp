@@ -2996,5 +2996,198 @@ HWTEST_F(CliToolManagerServiceTest, OnProcessDied_0300, TestSize.Level1)
 
     TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_OnProcessDied_0300 end");
 }
+
+// ==================== ResetNamespaceFunctions Tests ====================
+
+/**
+ * @tc.name: CliToolManagerService_ResetNamespaceFunctions_0100
+ * @tc.desc: Test ResetNamespaceFunctions with valid namespace and functions
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ResetNamespaceFunctions_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ResetNamespaceFunctions_0100 start");
+
+    CliFunctionDataManagerMock::resetNamespaceFunctionsResult = ERR_OK;
+    CliFunctionDataManagerMock::resetNamespaceFunctionsSuccessCount = 3;
+
+    std::vector<FunctionInfo> functionList;
+    FunctionInfo func1;
+    func1.functionName = "func1";
+    func1.functionNamespace = "test_ns";
+    func1.functionType = FunctionType::INTENT_FUNCTION;
+    func1.version = "1.0";
+    func1.description = "Test function 1";
+    functionList.push_back(func1);
+
+    FunctionInfo func2;
+    func2.functionName = "func2";
+    func2.functionNamespace = "test_ns";
+    func2.functionType = FunctionType::INTENT_FUNCTION;
+    func2.version = "1.0";
+    func2.description = "Test function 2";
+    functionList.push_back(func2);
+
+    FunctionsRawData functions;
+    FunctionsRawData::FromFunctionInfoVec(functionList, functions);
+    int32_t successCount = 0;
+
+    int32_t result = service_->ResetNamespaceFunctions("test_ns", functions, successCount);
+
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(successCount, 3);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ResetNamespaceFunctions_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ResetNamespaceFunctions_0200
+ * @tc.desc: Test ResetNamespaceFunctions with empty namespace
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ResetNamespaceFunctions_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ResetNamespaceFunctions_0200 start");
+
+    std::vector<FunctionInfo> functionList;
+    FunctionsRawData functions;
+    int32_t successCount = 0;
+
+    int32_t result = service_->ResetNamespaceFunctions("", functions, successCount);
+
+    EXPECT_EQ(result, ERR_INVALID_PARAM);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ResetNamespaceFunctions_0200 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ResetNamespaceFunctions_0300
+ * @tc.desc: Test ResetNamespaceFunctions with empty function list
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ResetNamespaceFunctions_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ResetNamespaceFunctions_0300 start");
+
+    CliFunctionDataManagerMock::resetNamespaceFunctionsResult = ERR_OK;
+    CliFunctionDataManagerMock::resetNamespaceFunctionsSuccessCount = 0;
+
+    FunctionsRawData functions;  // Empty
+    int32_t successCount = -1;  // Initialize to non-zero
+
+    int32_t result = service_->ResetNamespaceFunctions("empty_ns", functions, successCount);
+
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(successCount, 0);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ResetNamespaceFunctions_0300 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ResetNamespaceFunctions_0400
+ * @tc.desc: Test ResetNamespaceFunctions with namespace mismatch
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ResetNamespaceFunctions_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ResetNamespaceFunctions_0400 start");
+
+    std::vector<FunctionInfo> functionList;
+    FunctionInfo func;
+    func.functionName = "func1";
+    func.functionNamespace = "wrong_ns";  // Different from parameter
+    func.functionType = FunctionType::INTENT_FUNCTION;
+    func.version = "1.0";
+    func.description = "Test function";
+    functionList.push_back(func);
+
+    FunctionsRawData functions;
+    FunctionsRawData::FromFunctionInfoVec(functionList, functions);
+    int32_t successCount = 0;
+
+    int32_t result = service_->ResetNamespaceFunctions("test_ns", functions, successCount);
+
+    EXPECT_EQ(result, ERR_INVALID_PARAM);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ResetNamespaceFunctions_0400 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ResetNamespaceFunctions_0500
+ * @tc.desc: Test ResetNamespaceFunctions with multiple valid functions
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ResetNamespaceFunctions_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ResetNamespaceFunctions_0500 start");
+
+    CliFunctionDataManagerMock::resetNamespaceFunctionsResult = ERR_OK;
+    CliFunctionDataManagerMock::resetNamespaceFunctionsSuccessCount = 2;
+
+    std::vector<FunctionInfo> functionList;
+    // Valid function 1
+    FunctionInfo func1;
+    func1.functionName = "valid_func1";
+    func1.functionNamespace = "test_ns";
+    func1.functionType = FunctionType::INTENT_FUNCTION;
+    func1.version = "1.0";
+    func1.description = "Valid function 1";
+    functionList.push_back(func1);
+
+    // Valid function 2
+    FunctionInfo func2;
+    func2.functionName = "valid_func2";
+    func2.functionNamespace = "test_ns";
+    func2.functionType = FunctionType::INTENT_FUNCTION;
+    func2.version = "1.0";
+    func2.description = "Valid function 2";
+    functionList.push_back(func2);
+
+    FunctionsRawData functions;
+    FunctionsRawData::FromFunctionInfoVec(functionList, functions);
+    int32_t successCount = 0;
+
+    int32_t result = service_->ResetNamespaceFunctions("test_ns", functions, successCount);
+
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(successCount, 2);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ResetNamespaceFunctions_0500 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ResetNamespaceFunctions_0600
+ * @tc.desc: Test ResetNamespaceFunctions with non-FOUNDATION UID (permission denied)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ResetNamespaceFunctions_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ResetNamespaceFunctions_0600 start");
+
+    // Set callingUid to non-FOUNDATION_UID
+    IPCSkeleton::callingUid = 9999;
+
+    std::vector<FunctionInfo> functionList;
+    FunctionInfo func;
+    func.functionName = "func1";
+    func.functionNamespace = "test_ns";
+    func.functionType = FunctionType::INTENT_FUNCTION;
+    func.version = "1.0";
+    func.description = "Test function";
+    functionList.push_back(func);
+
+    FunctionsRawData functions;
+    FunctionsRawData::FromFunctionInfoVec(functionList, functions);
+    int32_t successCount = 0;
+
+    int32_t result = service_->ResetNamespaceFunctions("test_ns", functions, successCount);
+
+    EXPECT_EQ(result, ERR_PERMISSION_DENIED);
+
+    // Reset to default FOUNDATION_UID
+    IPCSkeleton::Reset();
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ResetNamespaceFunctions_0600 end");
+}
 } // namespace CliTool
 } // namespace OHOS
