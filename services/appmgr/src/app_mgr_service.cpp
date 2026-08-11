@@ -327,7 +327,7 @@ int32_t AppMgrService::GetHyperSnapLastError(int32_t errType, HyperSnapErrorReco
 
     ErrorType errorType = static_cast<ErrorType>(errType);
 
-    bool success = serviceInner_->GetHyperSnapLastError(errorType, record);
+    bool success = appMgrServiceInner_->GetHyperSnapLastError(errorType, record);
     if (!success) {
         TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError failed: invalid parameter");
         return ERR_INVALID_VALUE;
