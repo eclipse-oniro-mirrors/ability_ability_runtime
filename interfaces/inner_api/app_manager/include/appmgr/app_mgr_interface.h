@@ -116,7 +116,10 @@ public:
      * @param record Output parameter for error record
      * @return ERR_OK on success, ERR_INVALID_VALUE on parameter error
      */
-    virtual int32_t GetHyperSnapLastError(int32_t errType, HyperSnapErrorRecord &record) = 0;
+    virtual int32_t GetHyperSnapLastError(int32_t errType, HyperSnapErrorRecord &record)
+    {
+        return 0;
+    }
 
     virtual int32_t NotifyTemplateProcessDeepFrozen(int32_t pid)
     {
