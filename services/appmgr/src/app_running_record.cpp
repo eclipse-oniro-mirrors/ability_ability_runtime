@@ -1709,7 +1709,7 @@ void AppRunningRecord::SetStartupTaskData(const AAFwk::Want &want)
     if (wantParams.HasParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME)) {
         startupTaskData_->insightIntentName = wantParams.GetStringParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME);
     }
-    TAG_LOGD(AAFwkTag::APPMGR, "uri: %{public}s, action: %{public}s, intentName: %{public}s",
+    TAG_LOGD(AAFwkTag::APPMGR, "uri: %{private}s, action: %{public}s, intentName: %{public}s",
         startupTaskData_->uri.c_str(), startupTaskData_->action.c_str(),
         startupTaskData_->insightIntentName.c_str());
 }
