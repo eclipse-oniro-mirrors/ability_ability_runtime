@@ -20,7 +20,10 @@ namespace AppExecFwk {
 ErrCode BundleMgrHelper::GetBundleInfoV9(
     const std::string &bundleName, int32_t flags, BundleInfo &bundleInfo, int32_t userId)
 {
-    return ERR_OK;
+    if (!bundleVersionName_.empty()) {
+        bundleInfo.versionName = bundleVersionName_;
+    }
+    return getBundleInfoV9Result_;
 }
 
 bool BundleMgrHelper::GetHapModuleInfo(const AbilityInfo &abilityInfo, int32_t userId, HapModuleInfo &hapModuleInfo)
@@ -53,5 +56,7 @@ bool BundleMgrHelper::QueryDataGroupInfos(const std::string &bundleName,
 
 bool BundleMgrHelper::hapModuleInfo_ = false;
 bool BundleMgrHelper::dataGroupInfos_ = false;
+ErrCode BundleMgrHelper::getBundleInfoV9Result_ = ERR_OK;
+std::string BundleMgrHelper::bundleVersionName_ = "";
 } // namespace AppExecFwk
 } // namespace OHOS

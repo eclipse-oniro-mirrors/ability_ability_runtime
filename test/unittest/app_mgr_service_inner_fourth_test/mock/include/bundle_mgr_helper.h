@@ -45,6 +45,8 @@ public:
 
     static bool hapModuleInfo_;
     static bool dataGroupInfos_;
+    static ErrCode getBundleInfoV9Result_;
+    static std::string bundleVersionName_;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

@@ -667,6 +667,42 @@ HWTEST_F(AppMgrServiceInnerFourthTest, GetValidUserId_ShouldReturn1WhenInputIs1,
 }
 
 /**
+ * @tc.name: GetImageReportAppVersionName_001
+ * @tc.desc: Test GetImageReportAppVersionName dependency and bundle manager result branches
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, GetImageReportAppVersionName_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetImageReportAppVersionName_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    const std::string bundleName = "com.acts.imagetest";
+    constexpr int32_t userId = 100;
+    appMgrServiceInner->remoteClientManager_ = nullptr;
+    EXPECT_TRUE(appMgrServiceInner->GetImageReportAppVersionName(bundleName, userId).empty());
+
+    appMgrServiceInner->remoteClientManager_ = std::make_shared<RemoteClientManager>();
+    ASSERT_NE(appMgrServiceInner->remoteClientManager_, nullptr);
+    appMgrServiceInner->remoteClientManager_->SetBundleManagerHelper(nullptr);
+    EXPECT_TRUE(appMgrServiceInner->GetImageReportAppVersionName(bundleName, userId).empty());
+
+    auto bundleMgrHelper = std::make_shared<BundleMgrHelper>();
+    ASSERT_NE(bundleMgrHelper, nullptr);
+    appMgrServiceInner->remoteClientManager_->SetBundleManagerHelper(bundleMgrHelper);
+    BundleMgrHelper::bundleVersionName_ = "1.0.0";
+    BundleMgrHelper::getBundleInfoV9Result_ = ERR_OK;
+    EXPECT_EQ(appMgrServiceInner->GetImageReportAppVersionName(bundleName, userId), "1.0.0");
+
+    BundleMgrHelper::getBundleInfoV9Result_ = ERR_INVALID_VALUE;
+    EXPECT_TRUE(appMgrServiceInner->GetImageReportAppVersionName(bundleName, userId).empty());
+    BundleMgrHelper::getBundleInfoV9Result_ = ERR_OK;
+    BundleMgrHelper::bundleVersionName_.clear();
+
+    TAG_LOGI(AAFwkTag::TEST, "GetImageReportAppVersionName_001 end");
+}
+
+/**
  * @tc.name: IsImageInfoExist_ShouldReturnFalseWhenImageInfoNotExist
  * @tc.desc: Test IsImageInfoExist
  * @tc.type: FUNC
