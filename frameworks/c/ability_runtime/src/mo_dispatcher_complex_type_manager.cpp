@@ -30,6 +30,8 @@ std::mutex g_structMetaMutex;
 std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<MoTypeInfo>>> g_structFieldTypes;
 std::unordered_map<std::string, std::vector<std::string>> g_structFieldOrder;
 
+constexpr uint32_t MAX_CONTAINER_SIZE = 100000;
+
 bool IsVariantHandleValid(const OH_AbilityRuntime_ModObjDispatcher_Variant* value)
 {
     switch (value->vt) {
@@ -642,6 +644,10 @@ AbilityRuntime_ErrorCode ModObjDispatcherComplexTypeManager::ArrayCreate(
     }
     if (!IsValidValueTypeForCreate(elementType->vt)) {
         TAG_LOGE(AAFwkTag::EXT, "ArrayCreate: invalid vt=%{public}d", static_cast<int32_t>(elementType->vt));
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    if (size > MAX_CONTAINER_SIZE) {
+        TAG_LOGE(AAFwkTag::EXT, "ArrayCreate: size too large, size=%{public}u", size);
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto typeInfo = MoTypeInfo::FromCTypeInfo(elementType);
