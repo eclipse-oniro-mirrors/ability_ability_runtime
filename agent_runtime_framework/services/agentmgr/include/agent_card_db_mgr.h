@@ -33,7 +33,8 @@ enum class AgentCardUpdateSource : int32_t {
 
 struct StoredAgentCardEntry {
     AgentCard card;
-    AgentCardUpdateSource source = AgentCardUpdateSource::BUNDLE;
+    // Mutable: source of the last update/write to this card (BUNDLE via bundle install, API via API).
+    AgentCardUpdateSource updateSource = AgentCardUpdateSource::BUNDLE;
 };
 
 class AgentCardDbMgr {
