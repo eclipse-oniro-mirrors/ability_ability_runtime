@@ -325,8 +325,6 @@ constexpr const char* NEED_DESTROY_TEMPLATE = "ohos.ability.runtime.needDestroyT
 constexpr const char* PROC_SELF_TASK_PATH = "/proc/self/task/";
 constexpr const char* DLP_INDEX = "ohos.dlp.params.index";
 
-constexpr const char* CHECKPOINT_MONITOR_PATH = "/proc/checkpoint/monitor";
-
 // AppRecovery notify app over limit
 constexpr int32_t APPRECOVERY_NOTIFYAPP_OVER_LIMIT_ID = 3041;
 constexpr const char* REASON_APPRECOVERY_NOTIFYAPP_OVER_LIMIT = "AppRecoveryNotifyAppOverLimit";
@@ -13478,7 +13476,7 @@ std::pair<ImageError, std::string> AppMgrServiceInner::GetCheckpointRestoreError
         return { ImageError::ERR_OK, "" };
     }
 
-    int fd = open(CHECKPOINT_MONITOR_PATH, O_RDWR, 0);
+    int fd = open(TEMPLATE_MONITOR_PATH, O_RDWR, 0);
     if (fd < 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "GetCheckpointRestoreError open file fail: %{public}s", strerror(errno));
         return { ImageError::ERR_OK, "" };
