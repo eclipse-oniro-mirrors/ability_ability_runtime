@@ -16,6 +16,7 @@
 #include "dump_runtime_helper.h"
 
 #include <dfx_signal_handler.h>
+#include <malloc.h>
 #include <sys/statvfs.h>
 #include <sys/stat.h>
 #include <sys/xattr.h>
@@ -429,6 +430,10 @@ void DumpRuntimeHelper::DumpNativeHeap(const OHOS::AppExecFwk::MemDumpInfo &info
 
 GetMemLeakStringFunc DumpRuntimeHelper::LoadMemLeakFunc(void **handle)
 {
+    if (handle == nullptr) {
+        TAG_LOGW(AAFwkTag::APPKIT, "LoadMemLeakFunc handle is null");
+        return nullptr;
+    }
     if (SO_NAME[0] == '\0') {
         TAG_LOGW(AAFwkTag::APPKIT, "mem leak so is unsupported on non-64-bit");
         return nullptr;
@@ -444,9 +449,7 @@ GetMemLeakStringFunc DumpRuntimeHelper::LoadMemLeakFunc(void **handle)
         dlclose(hd);
         return nullptr;
     }
-    if (handle != nullptr) {
-        *handle = hd;
-    }
+    *handle = hd;
     return func;
 }
 
@@ -460,7 +463,8 @@ bool DumpRuntimeHelper::GetDumpResult(std::string &dumpResult)
     char* buf = nullptr;
     int outLen = 0;
     bool ret = func(TYPE_TXT, &buf, MEM_LEAK_MAX_SIZE, &outLen);
-    if (!ret || buf == nullptr || outLen <= 0) {
+    if (!ret || buf == nullptr || outLen <= 0 ||
+        static_cast<size_t>(outLen) > malloc_usable_size(buf)) {
         TAG_LOGE(AAFwkTag::APPKIT, "TYPE_TXT Error, ret:%{public}d, outLen:%{public}d", ret, outLen);
         free(buf);
         if (handle != nullptr) {
@@ -487,7 +491,8 @@ bool DumpRuntimeHelper::GetSnapshot(int fd)
     char* buf = nullptr;
     int outLen = 0;
     bool ret = func(TYPE_SNAPSHOT, &buf, MEM_LEAK_MAX_SIZE, &outLen);
-    if (!ret || buf == nullptr || outLen <= 0) {
+    if (!ret || buf == nullptr || outLen <= 0 ||
+        static_cast<size_t>(outLen) > malloc_usable_size(buf)) {
         TAG_LOGE(AAFwkTag::APPKIT, "TYPE_SNAPSHOT Error, ret:%{public}d, outLen:%{public}d", ret, outLen);
         free(buf);
         if (handle != nullptr) {
@@ -496,14 +501,22 @@ bool DumpRuntimeHelper::GetSnapshot(int fd)
         return false;
     }
     lseek(fd, 0, SEEK_END);
-    ssize_t written = write(fd, buf, static_cast<size_t>(outLen));
-    if (written < 0) {
-        TAG_LOGE(AAFwkTag::APPKIT, "write snapshot failed, errno:%{public}d", errno);
-        free(buf);
-        if (handle != nullptr) {
-            dlclose(handle);
+    size_t total = 0;
+    size_t len = static_cast<size_t>(outLen);
+    while (total < len) {
+        ssize_t written = write(fd, buf + total, len - total);
+        if (written < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            TAG_LOGE(AAFwkTag::APPKIT, "write snapshot failed, errno:%{public}d", errno);
+            free(buf);
+            if (handle != nullptr) {
+                dlclose(handle);
+            }
+            return false;
         }
-        return false;
+        total += static_cast<size_t>(written);
     }
     TAG_LOGI(AAFwkTag::APPKIT, "TYPE_SNAPSHOT finish, outLen:%{public}d", outLen);
     free(buf);
@@ -561,6 +574,10 @@ void DumpRuntimeHelper::DumpArkwebJsHeap(const OHOS::AppExecFwk::MemDumpInfo &in
 #if defined(NWEB)
     TAG_LOGI(AAFwkTag::APPKIT, "dump arkwebjs heaps, renderPid:%{public}u, needDump:%{public}d, "
         "needGc:%{public}d, needRaw:%{public}d", info.renderPid, info.needDump, info.needGc, info.needRaw);
+    if (info.pid == 0 || info.renderPid == 0) {
+        TAG_LOGE(AAFwkTag::APPKIT, "invalid pid:%{public}u, renderPid:%{public}u", info.pid, info.renderPid);
+        return;
+    }
     DumpArkWebHelper::DumpArkWebJSHeap(static_cast<int32_t>(info.pid), static_cast<int32_t>(info.renderPid),
         info.needDump, info.needGc, info.needRaw);
 #endif
