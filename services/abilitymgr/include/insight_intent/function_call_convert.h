@@ -50,6 +50,13 @@ bool BatchRegisterInsightIntentFunctions(
     const std::unordered_map<std::string, uint32_t> &bundleVersionMap,
     int32_t &successCount);
 
+bool BatchUpdateInsightIntentFunctions(
+    const std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos,
+    const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
+    const std::string &bundleName,
+    uint32_t versionCode,
+    int32_t &successCount);
+
 // 工具类：调用方在调 RegisterInsightIntentFunctions 之前预处理意图列表。
 // 规则 1：丢弃非"后台 UIAbility / ServiceExtension"的意图。
 // 规则 2：同 intentName 跨多个 moduleName 时，按 moduleName 字典序首。

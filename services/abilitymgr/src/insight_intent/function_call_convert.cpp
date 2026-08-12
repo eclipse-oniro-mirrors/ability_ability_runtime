@@ -249,12 +249,12 @@ bool UnregisterInsightIntentFunctions(const std::string &bundleName)
     }
     auto &client = CliToolMGRClient::GetInstance();
     auto ret = client.UnregisterIntentFunctionsByNamespace(bundleName);
-    if (ret < 0) {
+    if (ret != ERR_OK) {
         TAG_LOGW(AAFwkTag::CLI_TOOL, "unregister functions failed: %{public}s, ret: %{public}d",
             bundleName.c_str(), ret);
         return false;
     }
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "unregistered functions for bundle: %{public}s, count: %{public}d",
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "unregistered functions for bundle: %{public}s, ret: %{public}d",
         bundleName.c_str(), ret);
     return true;
 }
@@ -362,6 +362,39 @@ bool BatchRegisterInsightIntentFunctions(
             ret, successCount);
     }
     return ret == ERR_OK;
+}
+
+bool BatchUpdateInsightIntentFunctions(
+    const std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos,
+    const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
+    const std::string &bundleName,
+    uint32_t versionCode,
+    int32_t &successCount)
+{
+    successCount = 0;
+    if (bundleName.empty()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "batch update failed: empty bundleName");
+        return false;
+    }
+    std::vector<FunctionInfo> functions;
+    ConvertFromConfigIntent(configInfos, functions);
+    ConvertFromExtractIntentInfo(intentInfos, functions);
+    for (auto &func : functions) {
+        if (func.functionNamespace.empty()) {
+            func.functionNamespace = bundleName;
+        }
+        func.version = std::to_string(versionCode);
+    }
+    auto &client = CliToolMGRClient::GetInstance();
+    ErrCode ret = client.ResetNamespaceFunctions(bundleName, functions, successCount);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "batch update failed, bundle: %{public}s, ret: %{public}d, success: %{public}d",
+            bundleName.c_str(), ret, successCount);
+        return false;
+    }
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "batch update done, bundle: %{public}s, success: %{public}d/%{public}zu",
+        bundleName.c_str(), successCount, functions.size());
+    return true;
 }
 
 } // namespace CliTool
