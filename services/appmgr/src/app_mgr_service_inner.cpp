@@ -8239,7 +8239,12 @@ int32_t AppMgrServiceInner::VerifyKillProcessPermissionCommon() const
     if (isCallingPerm) {
         return ERR_OK;
     }
-
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+    auto isCliToolToken = Security::AccessToken::AccessTokenKit::IsCliToolToken(tokenId);
+    if (isCliToolToken) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Cli tool permission verification fail");
+        return ERR_PERMISSION_DENIED;
+    }
     // VerifyAPL and ohos.permission.CLEAN_BACKGROUND_PROCESSES will be removed on API18
     auto isSaCall = AAFwk::PermissionVerification::GetInstance()->IsSACall();
     auto isShellCall = AAFwk::PermissionVerification::GetInstance()->IsShellCall();
