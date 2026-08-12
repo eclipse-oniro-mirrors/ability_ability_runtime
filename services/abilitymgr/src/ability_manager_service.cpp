@@ -18042,7 +18042,7 @@ int AbilityManagerService::StartAbilityDelayedInner(const Want &want,
     }
     auto appMgr = AppMgrUtil::GetAppMgr();
     if (appMgr != nullptr) {
-        appMgr->CancelDelayedExitTask(callingPid);
+        IN_PROCESS_CALL_WITHOUT_RET(appMgr->CancelDelayedExitTask(callingPid));
     }
     return result;
 }
