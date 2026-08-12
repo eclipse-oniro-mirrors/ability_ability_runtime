@@ -7128,6 +7128,36 @@ HWTEST_F(AppMgrServiceInnerTest, SnapshotStartReport_004, TestSize.Level1)
 }
 
 /**
+ * @tc.name: SnapshotStartReport_005
+ * @tc.desc: Test SnapshotStartReport reaches the threshold and clears aggregated data
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, SnapshotStartReport_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto serviceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(serviceInner, nullptr);
+
+    constexpr int32_t reportThreshold = 10;
+    serviceInner->imageStartReportMap_["empty_record"] = std::make_pair(0, 0);
+    serviceInner->imageStartCount_ = reportThreshold - 1;
+    auto lastReportTime = serviceInner->lastReportTime_;
+
+    serviceInner->SnapshotStartReport(1006, "com.example.threshold", "1.0.0", 0, "");
+
+    EXPECT_TRUE(serviceInner->imageStartReportMap_.empty());
+    EXPECT_EQ(serviceInner->imageStartCount_, 0);
+    EXPECT_GE(serviceInner->lastReportTime_, lastReportTime);
+
+    serviceInner->lastReportTime_ = std::chrono::steady_clock::now() - std::chrono::hours(7);
+    serviceInner->SnapshotStartReport(1007, "com.example.interval", "2.0.0", 0, "");
+    EXPECT_TRUE(serviceInner->imageStartReportMap_.empty());
+    EXPECT_EQ(serviceInner->imageStartCount_, 0);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
  * @tc.name: SnapshotErrorReport_001
  * @tc.desc: Test SnapshotErrorReport with appVersionName parameter
  * @tc.type: FUNC
@@ -7316,13 +7346,26 @@ HWTEST_F(AppMgrServiceInnerTest, SubmitDestroyImageTask_001, TestSize.Level1)
     auto serviceInner = std::make_shared<AppMgrServiceInner>();
     ASSERT_NE(serviceInner, nullptr);
 
+    auto taskHandler = MockTaskHandlerWrap::CreateQueueHandler("destroy_image_task_queue");
+    ASSERT_NE(taskHandler, nullptr);
+    EXPECT_CALL(*taskHandler, SubmitTaskInner(_, _)).WillOnce(Return(nullptr));
+    serviceInner->SetTaskHandler(taskHandler);
+
     BundleInfo bundleInfo;
     auto appRecord = serviceInner->appRunningManager_->CreateAppRunningRecord(
         applicationInfo_, "com.example.destroytest", bundleInfo, "");
     ASSERT_NE(appRecord, nullptr);
     appRecord->SetUid(1001);
 
+    PreloadRequest preloadRequest;
+    serviceInner->PreAddImageInfo(appRecord->GetBundleName(), appRecord->GetUserId(), appRecord->GetAppIndex(),
+        nullptr, preloadRequest);
+    serviceInner->UpdateImageInfo(100, 1, appRecord);
+    serviceInner->remoteClientManager_->SetBundleManagerHelper(nullptr);
+
     serviceInner->SubmitDestroyImageTask(appRecord, 1, "test exit");
+
+    EXPECT_TRUE(serviceInner->IsImageInfoExist(appRecord));
 
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
 }
@@ -7383,6 +7426,49 @@ HWTEST_F(AppMgrServiceInnerTest, SubmitDestroyImageTask_004, TestSize.Level1)
     appRecord->SetUid(1003);
 
     serviceInner->SubmitDestroyImageTask(appRecord, -1, "error exit");
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: SendDestroyImageEvent_001
+ * @tc.desc: Test SendDestroyImageEvent validation and image name branches
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, SendDestroyImageEvent_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto serviceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(serviceInner, nullptr);
+
+    const std::string bundleName = "com.example.destroy.event";
+    serviceInner->SendDestroyImageEvent(nullptr, bundleName, "1.0.0", 1, "null record");
+
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->bundleName = bundleName;
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, APP_DEBUG_INFO_UID, "destroy_event_process");
+    ASSERT_NE(appRecord, nullptr);
+    appRecord->SetUid(1001);
+    appRecord->SetAppIndex(0);
+
+    serviceInner->SendDestroyImageEvent(appRecord, bundleName, "1.0.0", 1, "image not found");
+
+    PreloadRequest preloadRequest;
+    serviceInner->PreAddImageInfo(bundleName, appRecord->GetUserId(), appRecord->GetAppIndex(), nullptr,
+        preloadRequest);
+    auto imageInfo = serviceInner->GetImageInfo(appRecord);
+    ASSERT_NE(imageInfo, nullptr);
+    EXPECT_LE(imageInfo->imagePid, 0);
+    serviceInner->SendDestroyImageEvent(appRecord, bundleName, "1.0.0", 1, "invalid image pid");
+
+    serviceInner->UpdateImageInfo(101, 2, appRecord);
+    imageInfo = serviceInner->GetImageInfo(appRecord);
+    ASSERT_NE(imageInfo, nullptr);
+    EXPECT_EQ(imageInfo->imagePid, 101);
+    serviceInner->SendDestroyImageEvent(appRecord, bundleName, "1.0.0", 0, "normal exit");
+
+    imageInfo->imageName = "custom.image.name";
+    serviceInner->SendDestroyImageEvent(appRecord, bundleName, "1.0.0", 1, "abnormal exit");
 
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
 }
