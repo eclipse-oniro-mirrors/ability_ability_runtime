@@ -43,6 +43,7 @@ public:
     bool verifyCallingPermission_ = false;
     bool isSACall_ = false;
     bool isShellCall_ = false;
+    bool isCliToolToken_ = false;
     std::shared_ptr<AppExecFwk::AppRunningRecord> getAppRunningRecordByPid_ = nullptr;
     std::string getNameForUid_ = "";
     // mock app running manager
