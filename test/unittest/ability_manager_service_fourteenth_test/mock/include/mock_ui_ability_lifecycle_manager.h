@@ -41,7 +41,6 @@ enum class SpecifiedProcessState: u_int8_t {
 };
 
 struct SpecifiedRequest {
-    bool preCreateProcessName = false;
     bool isCold = false;
     SpecifiedProcessState specifiedProcessState = SpecifiedProcessState::STATE_NONE;
     int32_t requestId = 0;
@@ -436,8 +435,6 @@ private:
     int32_t GetReusedStandardPersistentId(const AbilityRequest &abilityRequest, bool &reuse) const;
     int32_t GetReusedCollaboratorPersistentId(const AbilityRequest &abilityRequest, bool &reuse) const;
     std::string GenerateProcessNameForNewProcessMode(const AppExecFwk::AbilityInfo& abilityInfo);
-    void PreCreateProcessName(AbilityRequest &abilityRequest);
-    void UpdateProcessName(const AbilityRequest &abilityRequest, std::shared_ptr<AbilityRecord> &abilityRecord);
     void UpdateAbilityRecordLaunchReason(const AbilityRequest &abilityRequest,
         std::shared_ptr<AbilityRecord> &abilityRecord) const;
     void EraseAbilityRecord(const std::shared_ptr<AbilityRecord> &abilityRecord);

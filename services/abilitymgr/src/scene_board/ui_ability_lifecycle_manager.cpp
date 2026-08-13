@@ -47,6 +47,7 @@
 #include "session/host/include/zidl/session_interface.h"
 #include "start_window_option.h"
 #include "startup_util.h"
+#include "param.h"
 #include "timeout_state_utils.h"
 #include "ui_extension_wrapper.h"
 #include "utils/state_utils.h"
@@ -111,9 +112,15 @@ bool UIAbilityLifecycleManager::ProcessColdStartBranch(AbilityRequest &abilityRe
         }
         return false;
     }
+    AbilityRuntime::StartSpecifiedParam specifiedParam;
+    specifiedParam.requestId = sessionInfo->requestId;
+    specifiedParam.customProcess = abilityRequest.customProcess;
+    if (abilityRequest.processOptions != nullptr) {
+        specifiedParam.processMode = static_cast<int32_t>(abilityRequest.processOptions->processMode);
+        specifiedParam.isPreloadStart = abilityRequest.processOptions->isPreloadStart;
+    }
     DelayedSingleton<AppScheduler>::GetInstance()->StartSpecifiedAbility(abilityRequest.want,
-        abilityRequest.abilityInfo, sessionInfo->requestId, abilityRequest.customProcess,
-        abilityRequest.processOptions ? abilityRequest.processOptions->isPreloadStart : false);
+        abilityRequest.abilityInfo, specifiedParam);
     AddCallerRecord(abilityRequest, sessionInfo, uiAbilityRecord);
     uiAbilityRecord->SetPendingState(AbilityState::FOREGROUND);
     return true;
@@ -467,7 +474,6 @@ UIAbilityRecordPtr UIAbilityLifecycleManager::GenerateAbilityRecord(AbilityReque
         }
         isColdStart = true;
         AbilityStartWithWaitObserverManager::GetInstance().SetColdStartForShellCall(uiAbilityRecord);
-        UpdateProcessName(abilityRequest, uiAbilityRecord);
         if (isSCBRecovery_) {
             coldStartInSCBRecovery_.insert(sessionInfo->persistentId);
         }
@@ -775,7 +781,6 @@ int UIAbilityLifecycleManager::NotifySCBToStartUIAbility(AbilityRequest &ability
     if (ExactSpecified(abilityRequest)) {
         if (abilityRequest.startOptions.GetCurrentProcessName().empty()) {
             auto specifiedRequest = std::make_shared<SpecifiedRequest>(requestId, abilityRequest);
-            specifiedRequest->preCreateProcessName = true;
             AddSpecifiedRequest(specifiedRequest);
             return ERR_OK;
         }
@@ -895,7 +900,6 @@ int UIAbilityLifecycleManager::NotifySCBToStartUIAbilities(std::vector<AbilityRe
         auto requestId = RequestIdUtil::GetRequestId();
         if (abilityInfo.launchMode == AppExecFwk::LaunchMode::SPECIFIED) {
             auto specifiedRequest = std::make_shared<SpecifiedRequest>(requestId, abilityRequest);
-            specifiedRequest->preCreateProcessName = true;
             specifiedRequest->requestListId = abilitiesRequest->requestListId;
             abilitiesRequest->sessionInfoList.emplace_back(requestId, nullptr);
             AddSpecifiedRequest(specifiedRequest);
@@ -1066,7 +1070,6 @@ int32_t UIAbilityLifecycleManager::NotifySCBToRecoveryAfterInterception(const Ab
     int32_t requestId = RequestIdUtil::GetRequestId();
     if (isSpecified && !isPlugin) {
         auto specifiedRequest = std::make_shared<SpecifiedRequest>(requestId, abilityRequest);
-        specifiedRequest->preCreateProcessName = true;
         AddSpecifiedRequest(specifiedRequest);
         return ERR_OK;
     }
@@ -1481,48 +1484,6 @@ void UIAbilityLifecycleManager::EraseAbilityRecord(const UIAbilityRecordPtr &abi
         }
     }
     callRequestCache_.erase(abilityRecord);
-}
-
-std::string UIAbilityLifecycleManager::GenerateProcessNameForNewProcessMode(const AppExecFwk::AbilityInfo& abilityInfo)
-{
-    static uint32_t index = 0;
-    std::string processName = abilityInfo.bundleName + SEPARATOR + abilityInfo.moduleName + SEPARATOR +
-        abilityInfo.name + SEPARATOR + std::to_string(index++);
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "processName: %{public}s", processName.c_str());
-    return processName;
-}
-
-void UIAbilityLifecycleManager::PreCreateProcessName(AbilityRequest &abilityRequest)
-{
-    if (abilityRequest.processOptions == nullptr ||
-        !ProcessOptions::IsNewProcessMode(abilityRequest.processOptions->processMode)) {
-        TAG_LOGD(AAFwkTag::ABILITYMGR, "No need to pre create process name.");
-        return;
-    }
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "create process name in advance");
-    std::string processName = GenerateProcessNameForNewProcessMode(abilityRequest.abilityInfo);
-    abilityRequest.processOptions->processName = processName;
-    abilityRequest.abilityInfo.process = processName;
-}
-
-void UIAbilityLifecycleManager::UpdateProcessName(const AbilityRequest &abilityRequest,
-    UIAbilityRecordPtr &abilityRecord)
-{
-    if (abilityRecord == nullptr || abilityRequest.sessionInfo == nullptr || abilityRequest.isStartByOEExt ||
-        abilityRequest.sessionInfo->processOptions == nullptr ||
-        !ProcessOptions::IsNewProcessMode(abilityRequest.sessionInfo->processOptions->processMode)) {
-        TAG_LOGD(AAFwkTag::ABILITYMGR, "No need to update process name.");
-        return;
-    }
-    std::string processName;
-    if (!abilityRequest.sessionInfo->processOptions->processName.empty()) {
-        TAG_LOGD(AAFwkTag::ABILITYMGR, "The process name has been generated in advance.");
-        processName = abilityRequest.sessionInfo->processOptions->processName;
-    } else {
-        processName = GenerateProcessNameForNewProcessMode(abilityRequest.abilityInfo);
-    }
-    abilityRecord->SetProcessName(processName);
-    abilityRecord->SetCallerSetProcess(true);
 }
 
 void UIAbilityLifecycleManager::UpdateAbilityRecordLaunchReason(
@@ -4568,9 +4529,6 @@ void UIAbilityLifecycleManager::StartSpecifiedRequest(SpecifiedRequest &specifie
         DelayedSingleton<AppScheduler>::GetInstance()->StartSpecifiedProcess(request.want,
             request.abilityInfo, specifiedRequest.requestId);
     } else {
-        if (specifiedRequest.preCreateProcessName) {
-            PreCreateProcessName(request);
-        }
         if (TryProcessHookModule(specifiedRequest, IsHookModule(request))) {
             return;
         }
@@ -4597,9 +4555,15 @@ void UIAbilityLifecycleManager::StartSpecifiedRequest(SpecifiedRequest &specifie
                 return;
             }
         } else {
+            AbilityRuntime::StartSpecifiedParam specifiedParam;
+            specifiedParam.requestId = specifiedRequest.requestId;
+            specifiedParam.customProcess = request.customProcess;
+            if (request.processOptions != nullptr) {
+                specifiedParam.processMode = static_cast<int32_t>(request.processOptions->processMode);
+                specifiedParam.isPreloadStart = request.processOptions->isPreloadStart;
+            }
             DelayedSingleton<AppScheduler>::GetInstance()->StartSpecifiedAbility(request.want,
-                request.abilityInfo, specifiedRequest.requestId, request.customProcess,
-                (request.processOptions ? request.processOptions->isPreloadStart : false));
+                request.abilityInfo, specifiedParam);
         }
     }
     if (request.want.GetBoolParam("debugApp", false) || request.want.GetBoolParam("nativeDebug", false) ||
@@ -4835,8 +4799,10 @@ int32_t UIAbilityLifecycleManager::RevokeDelegator(sptr<IRemoteObject> token)
     if (isSpecified) {
         auto requestId = RequestIdUtil::GetRequestId();
         hookSpecifiedMap_.emplace(requestId, abilityRecord);
+        AbilityRuntime::StartSpecifiedParam specifiedParam;
+        specifiedParam.requestId = requestId;
         DelayedSingleton<AppScheduler>::GetInstance()->StartSpecifiedAbility(abilityRecord->GetWant(),
-            abilityInfo, requestId);
+            abilityInfo, specifiedParam);
         return ERR_OK;
     }
     auto sessionInfo = abilityRecord->GetSessionInfo();

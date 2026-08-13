@@ -20,6 +20,7 @@
 #include "mock_ability_token.h"
 #include "mock_ams_mgr_scheduler.h"
 #include "mock_app_debug_listener_stub.h"
+#include "param.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -424,15 +425,16 @@ HWTEST_F(AmsMgrStubTest, HandleStartSpecifiedAbility_0100, TestSize.Level1)
     abilityInfo.name = "EntryAbility";
     int32_t requestId = 1001;
     std::string customProcess = "com.example.process";
-    bool isWindowStagePreload = true;
+
+    AbilityRuntime::StartSpecifiedParam param;
+    param.requestId = requestId;
+    param.customProcess = customProcess;
 
     data.WriteParcelable(&want);
     data.WriteParcelable(&abilityInfo);
-    data.WriteInt32(requestId);
-    data.WriteString(customProcess);
-    data.WriteBool(isWindowStagePreload);
+    data.WriteParcelable(&param);
 
-    EXPECT_CALL(*mockAmsMgrScheduler_, StartSpecifiedAbility(_, _, requestId, customProcess, true)).Times(1);
+    EXPECT_CALL(*mockAmsMgrScheduler_, StartSpecifiedAbility(_, _, _)).Times(1);
     auto result = mockAmsMgrScheduler_->OnRemoteRequest(
         static_cast<uint32_t>(IAmsMgr::Message::START_SPECIFIED_ABILITY), data, reply, option);
     EXPECT_EQ(result, NO_ERROR);
@@ -451,18 +453,9 @@ HWTEST_F(AmsMgrStubTest, HandleStartSpecifiedAbility_0200, TestSize.Level1)
     MessageOption option(MessageOption::TF_ASYNC);
     WriteInterfaceToken(data);
 
-    AbilityInfo abilityInfo;
-    abilityInfo.bundleName = "com.example.bundle";
-    abilityInfo.name = "EntryAbility";
-    int32_t requestId = 1001;
-    std::string customProcess = "com.example.process";
+    data.WriteBool(false);  // null want indicator
 
-    data.WriteInt32(requestId);
-    data.WriteString(customProcess);
-    data.WriteBool(true);
-    data.WriteParcelable(&abilityInfo);
-
-    EXPECT_CALL(*mockAmsMgrScheduler_, StartSpecifiedAbility(_, _, _, _, _)).Times(0);
+    EXPECT_CALL(*mockAmsMgrScheduler_, StartSpecifiedAbility(_, _, _)).Times(0);
     auto result = mockAmsMgrScheduler_->OnRemoteRequest(
         static_cast<uint32_t>(IAmsMgr::Message::START_SPECIFIED_ABILITY), data, reply, option);
     EXPECT_EQ(result, ERR_INVALID_VALUE);
@@ -482,15 +475,11 @@ HWTEST_F(AmsMgrStubTest, HandleStartSpecifiedAbility_0300, TestSize.Level1)
     WriteInterfaceToken(data);
 
     AAFwk::Want want;
-    int32_t requestId = 1001;
-    std::string customProcess = "com.example.process";
 
     data.WriteParcelable(&want);
-    data.WriteInt32(requestId);
-    data.WriteString(customProcess);
-    data.WriteBool(true);
+    data.WriteBool(false);  // null abilityInfo indicator
 
-    EXPECT_CALL(*mockAmsMgrScheduler_, StartSpecifiedAbility(_, _, _, _, _)).Times(0);
+    EXPECT_CALL(*mockAmsMgrScheduler_, StartSpecifiedAbility(_, _, _)).Times(0);
     auto result = mockAmsMgrScheduler_->OnRemoteRequest(
         static_cast<uint32_t>(IAmsMgr::Message::START_SPECIFIED_ABILITY), data, reply, option);
     EXPECT_EQ(result, ERR_INVALID_VALUE);

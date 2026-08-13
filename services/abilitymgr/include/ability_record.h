@@ -608,8 +608,6 @@ public:
     void SetStartToBackground(const bool flag);
     bool IsStartToForeground() const;
     void SetStartToForeground(const bool flag);
-    bool IsCallerSetProcess() const;
-    void SetCallerSetProcess(const bool flag);
     void SetSessionInfo(sptr<SessionInfo> sessionInfo);
     void UpdateSessionInfo(sptr<IRemoteObject> sessionToken);
     void SetMinimizeReason(bool fromUser);
@@ -922,7 +920,6 @@ protected:
         int32_t byCallCallerSaPid = -1;
     };
     static std::atomic<int64_t> abilityRecordId;
-    std::atomic_bool isCallerSetProcess_ = false;       // new version
     std::atomic_bool backgroundAbilityWindowDelayed_ = false;
     bool isReady_ = false;                            // is ability thread attached?
     bool isWindowStarted_ = false;                     // is window hotstart or coldstart?

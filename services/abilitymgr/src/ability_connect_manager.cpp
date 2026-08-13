@@ -1350,7 +1350,6 @@ void AbilityConnectManager::LoadAbility(const std::shared_ptr<BaseExtensionRecor
     loadParam.token = token;
     loadParam.preToken = perToken;
     loadParam.instanceKey = abilityRecord->GetInstanceKey();
-    loadParam.isCallerSetProcess = abilityRecord->IsCallerSetProcess();
     loadParam.customProcessFlag = abilityRecord->GetCustomProcessFlag();
     loadParam.extensionProcessMode = abilityRecord->GetExtensionProcessMode();
     loadParam.isPreloadUIExtension = isPreloadUIExtension;

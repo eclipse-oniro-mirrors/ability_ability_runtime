@@ -26,6 +26,7 @@
 #include "app_mgr_constants.h"
 #include "app_utils.h"
 #include "hilog_tag_wrapper.h"
+#include "param.h"
 #include "perf_profile.h"
 #include "permission_constants.h"
 #include "permission_verification.h"
@@ -515,7 +516,7 @@ void AmsMgrScheduler::SetAbilityForegroundingFlagToAppRecord(const pid_t pid)
 }
 
 void AmsMgrScheduler::StartSpecifiedAbility(const AAFwk::Want &want, const AppExecFwk::AbilityInfo &abilityInfo,
-    int32_t requestId, const std::string &customProcess, bool isWindowStagePreload)
+    const AbilityRuntime::StartSpecifiedParam &param)
 {
     if (!IsReady()) {
         return;
@@ -526,7 +527,8 @@ void AmsMgrScheduler::StartSpecifiedAbility(const AAFwk::Want &want, const AppEx
         return;
     }
     auto task = [=]() {
-        amsMgrServiceInner_->StartSpecifiedAbility(want, abilityInfo, requestId, customProcess, isWindowStagePreload);
+        AbilityRuntime::StartSpecifiedParam paramCopy = param;
+        amsMgrServiceInner_->StartSpecifiedAbility(want, abilityInfo, paramCopy);
     };
     amsHandler_->SubmitTask(task, {
         .taskName_ = "StartSpecifiedAbility",

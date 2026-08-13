@@ -42,6 +42,7 @@ class Configuration;
 }
 namespace AbilityRuntime {
 struct LoadParam;
+struct StartSpecifiedParam;
 }
 namespace AAFwk {
 /**
@@ -477,7 +478,7 @@ public:
      * @param requestId request id to callback
      */
     void StartSpecifiedAbility(const AAFwk::Want &want, const AppExecFwk::AbilityInfo &abilityInfo,
-        int32_t requestId = 0, const std::string &customProcess = "", bool isWindowStagePreload = false);
+        const AbilityRuntime::StartSpecifiedParam &param);
 
     /**
      * @brief Get running process information.

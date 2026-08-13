@@ -423,7 +423,6 @@ HWTEST_F(UIAbilityLifecycleManagerThirdTest, StartSpecifiedRequest_004, TestSize
 {
     auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     SpecifiedRequest specifiedRequest(0, AbilityRequest());
-    specifiedRequest.preCreateProcessName = true;
     mgr->StartSpecifiedRequest(specifiedRequest);
     EXPECT_TRUE(specifiedRequest.isCold);
 }
@@ -539,30 +538,6 @@ HWTEST_F(UIAbilityLifecycleManagerThirdTest, DispatchBackground_002, TestSize.Le
     auto ret = mgr->DispatchBackground(abilityRecord);
 
     EXPECT_EQ(ret, ERR_OK);
-}
-
-/**
- * @tc.name: UIAbilityLifecycleManager_UpdateProcessName_0200
- * @tc.desc: UpdateProcessName
- * @tc.type: FUNC
- */
-HWTEST_F(UIAbilityLifecycleManagerThirdTest, UpdateProcessName_002, TestSize.Level1)
-{
-    auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
-    EXPECT_NE(uiAbilityLifecycleManager, nullptr);
-    sptr<SessionInfo> sessionInfo = new (std::nothrow) SessionInfo();
-    sessionInfo->processOptions = std::make_shared<ProcessOptions>();
-    EXPECT_NE(sessionInfo->processOptions, nullptr);
-    sessionInfo->processOptions->processMode = ProcessMode::NEW_PROCESS_ATTACH_TO_PARENT;
-    sessionInfo->processOptions->processName = "HeavenlyMe";
-    AbilityRequest abilityRequest;
-    abilityRequest.sessionInfo = sessionInfo;
-    abilityRequest.abilityInfo.bundleName = "com.example.unittest";
-    abilityRequest.abilityInfo.moduleName = "entry";
-    abilityRequest.abilityInfo.name = "MainAbility";
-    auto abilityRecord = InitAbilityRecord();
-    uiAbilityLifecycleManager->UpdateProcessName(abilityRequest, abilityRecord);
-    EXPECT_EQ("HeavenlyMe", abilityRecord->GetProcessName());
 }
 
 /**

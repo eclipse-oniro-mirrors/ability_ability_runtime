@@ -14,6 +14,7 @@
  */
 
 #include "app_scheduler.h"
+#include "param.h"
 
 #include "hilog_tag_wrapper.h"
 #include "ability_util.h"
@@ -208,8 +209,8 @@ int32_t AppScheduler::VerifyKillProcessPermission(const std::string &bundleName)
     return ERR_OK;
 }
 
-void AppScheduler::StartSpecifiedAbility(const AAFwk::Want&, const AppExecFwk::AbilityInfo&, int32_t,
-    const std::string&, bool)
+void AppScheduler::StartSpecifiedAbility(const AAFwk::Want&, const AppExecFwk::AbilityInfo&,
+    const AbilityRuntime::StartSpecifiedParam&)
 {}
 
 int AppScheduler::StartUserTest(

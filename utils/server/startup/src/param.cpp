@@ -95,6 +95,12 @@ bool LoadParam::MarshallingTwo(Parcel &parcel) const
     if (!parcel.WriteInt32(reusePid)) {
         return false;
     }
+    if (!parcel.WriteInt32(processMode)) {
+        return false;
+    }
+    if (!parcel.WriteInt32(requestId)) {
+        return false;
+    }
     return true;
 }
 
@@ -132,6 +138,8 @@ bool LoadParam::ReadFromParcel(Parcel &parcel)
     loadTimeout = parcel.ReadInt32();
     byCallStatus = parcel.ReadInt32();
     reusePid = parcel.ReadInt32();
+    processMode = parcel.ReadInt32();
+    requestId = parcel.ReadInt32();
     return true;
 }
 
@@ -144,4 +152,40 @@ LoadParam *LoadParam::Unmarshalling(Parcel &parcel)
     }
     return loadParam;
 }
+
+bool StartSpecifiedParam::Marshalling(Parcel &parcel) const
+{
+    if (!parcel.WriteInt32(requestId)) {
+        return false;
+    }
+    if (!parcel.WriteString(customProcess)) {
+        return false;
+    }
+    if (!parcel.WriteInt32(processMode)) {
+        return false;
+    }
+    if (!parcel.WriteBool(isPreloadStart)) {
+        return false;
+    }
+    return true;
 }
+
+bool StartSpecifiedParam::ReadFromParcel(Parcel &parcel)
+{
+    requestId = parcel.ReadInt32();
+    customProcess = parcel.ReadString();
+    processMode = parcel.ReadInt32();
+    isPreloadStart = parcel.ReadBool();
+    return true;
+}
+
+StartSpecifiedParam *StartSpecifiedParam::Unmarshalling(Parcel &parcel)
+{
+    StartSpecifiedParam *param = new (std::nothrow) StartSpecifiedParam();
+    if (param && !param->ReadFromParcel(parcel)) {
+        delete param;
+        param = nullptr;
+    }
+    return param;
+}
+}  // namespace OHOS::AbilityRuntime

@@ -21,9 +21,8 @@ namespace OHOS {
 namespace AAFwk {
 bool ProcessOptions::ReadFromParcel(Parcel &parcel)
 {
-    processMode = static_cast<ProcessMode>(parcel.ReadInt32());
-    startupVisibility = static_cast<StartupVisibility>(parcel.ReadInt32());
-    processName = parcel.ReadString();
+    processMode = ConvertInt32ToProcessMode(parcel.ReadInt32());
+    startupVisibility = ConvertInt32ToStartupVisibility(parcel.ReadInt32());
     isRestartKeepAlive = parcel.ReadBool();
     isStartFromNDK = parcel.ReadBool();
     isPreloadStart = parcel.ReadBool();
@@ -56,10 +55,6 @@ bool ProcessOptions::Marshalling(Parcel &parcel) const
     }
     if (!parcel.WriteInt32(static_cast<int32_t>(startupVisibility))) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "StartupVisibility write failed");
-        return false;
-    }
-    if (!parcel.WriteString(processName)) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "ProcessName write failed");
         return false;
     }
     if (!parcel.WriteBool(isRestartKeepAlive)) {

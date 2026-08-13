@@ -660,47 +660,6 @@ HWTEST_F(UIAbilityLifecycleManagerSecondTest, DispatchBackground_001, TestSize.L
 }
 
 /**
- * @tc.name: UIAbilityLifecycleManager_PreCreateProcessName_0100
- * @tc.desc: PreCreateProcessName
- * @tc.type: FUNC
- */
-HWTEST_F(UIAbilityLifecycleManagerSecondTest, PreCreateProcessName_001, TestSize.Level1)
-{
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
-    AbilityRequest abilityRequest;
-    abilityRequest.processOptions = std::make_shared<ProcessOptions>();
-    abilityRequest.processOptions->processMode = ProcessMode::UNSPECIFIED;
-    abilityRequest.processOptions->processName = "fffAAABBBCCCggg";
-
-    mgr->PreCreateProcessName(abilityRequest);
-
-    EXPECT_EQ(abilityRequest.processOptions->processName, "fffAAABBBCCCggg");
-}
-
-/**
- * @tc.name: UIAbilityLifecycleManager_PreCreateProcessName_0200
- * @tc.desc: PreCreateProcessName
- * @tc.type: FUNC
- */
-HWTEST_F(UIAbilityLifecycleManagerSecondTest, PreCreateProcessName_002, TestSize.Level1)
-{
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
-    AbilityRequest abilityRequest;
-    abilityRequest.processOptions = std::make_shared<ProcessOptions>();
-    abilityRequest.processOptions->processMode = ProcessMode::NEW_PROCESS_ATTACH_TO_PARENT;
-    abilityRequest.processOptions->processName = "fffAAABBBCCCggg";
-    abilityRequest.abilityInfo.bundleName = "BHi";
-    abilityRequest.abilityInfo.moduleName = "MHi";
-    abilityRequest.abilityInfo.name = "NHi";
-
-    mgr->PreCreateProcessName(abilityRequest);
-
-    auto processName = abilityRequest.processOptions->processName;
-    auto processNameSub = processName.substr(0, processName.find_last_of(':'));
-    EXPECT_EQ(processNameSub, "BHi:MHi:NHi");
-}
-
-/**
  * @tc.name: UIAbilityLifecycleManager_BackToCallerAbilityWithResult_0700
  * @tc.desc: BackToCallerAbilityWithResult
  * @tc.type: FUNC
