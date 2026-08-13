@@ -610,6 +610,7 @@ public:
     void SetStartToForeground(const bool flag);
     void SetSessionInfo(sptr<SessionInfo> sessionInfo);
     void UpdateSessionInfo(sptr<IRemoteObject> sessionToken);
+    void FillProcessInfoFromSession(AbilityRuntime::LoadParam &loadParam) const;
     void SetMinimizeReason(bool fromUser);
     void SetSceneFlag(uint32_t sceneFlag);
     void SetIsFromScreenOffBackground(bool isFromScreenOffBackground);

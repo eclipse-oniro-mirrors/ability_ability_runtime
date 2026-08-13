@@ -353,11 +353,7 @@ int AbilityRecord::LoadAbility(bool isShellCall, bool isStartupHide, pid_t calli
     loadParam.selfPid = selfPid;
     loadParam.byCallStatus = GetByCallStatus();
     loadParam.isGamePrelaunch = IsGameSAPreLaunch();
-    auto sessionInfo = GetSessionInfo();
-    if (sessionInfo != nullptr && sessionInfo->processOptions != nullptr) {
-        loadParam.processMode = static_cast<int32_t>(sessionInfo->processOptions->processMode);
-        loadParam.requestId = sessionInfo->requestId;
-    }
+    FillProcessInfoFromSession(loadParam);
     auto userId = abilityInfo_.uid / BASE_USER_RANGE;
     bool isMainUIAbility =
         MainElementUtils::IsMainUIAbility(abilityInfo_.bundleName, abilityInfo_.name, userId);
@@ -2457,6 +2453,15 @@ sptr<SessionInfo> AbilityRecord::GetSessionInfo() const
 {
     std::lock_guard guard(sessionLock_);
     return sessionInfo_;
+}
+
+void AbilityRecord::FillProcessInfoFromSession(AbilityRuntime::LoadParam &loadParam) const
+{
+    auto sessionInfo = GetSessionInfo();
+    if (sessionInfo != nullptr && sessionInfo->processOptions != nullptr) {
+        loadParam.processMode = static_cast<int32_t>(sessionInfo->processOptions->processMode);
+        loadParam.requestId = sessionInfo->requestId;
+    }
 }
 
 void AbilityRecord::UpdateSessionInfo(sptr<IRemoteObject> sessionToken)

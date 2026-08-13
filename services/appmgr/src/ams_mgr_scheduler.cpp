@@ -527,8 +527,7 @@ void AmsMgrScheduler::StartSpecifiedAbility(const AAFwk::Want &want, const AppEx
         return;
     }
     auto task = [=]() {
-        AbilityRuntime::StartSpecifiedParam paramCopy = param;
-        amsMgrServiceInner_->StartSpecifiedAbility(want, abilityInfo, paramCopy);
+        amsMgrServiceInner_->StartSpecifiedAbility(want, abilityInfo, param);
     };
     amsHandler_->SubmitTask(task, {
         .taskName_ = "StartSpecifiedAbility",

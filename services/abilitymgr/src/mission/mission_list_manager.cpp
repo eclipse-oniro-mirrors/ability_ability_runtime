@@ -222,11 +222,6 @@ int MissionListManager::StartAbility(const std::shared_ptr<AbilityRecord> &curre
             static_cast<int32_t>(abilityRequest.abilityInfo.launchMode));
         EnqueueWaitingAbilityToFront(abilityRequest);
         AbilityRuntime::StartSpecifiedParam specifiedParam;
-        specifiedParam.customProcess = "";
-        if (abilityRequest.processOptions != nullptr) {
-            specifiedParam.processMode = static_cast<int32_t>(abilityRequest.processOptions->processMode);
-            specifiedParam.isPreloadStart = abilityRequest.processOptions->isPreloadStart;
-        }
         DelayedSingleton<AppScheduler>::GetInstance()->StartSpecifiedAbility(
             abilityRequest.want, abilityRequest.abilityInfo, specifiedParam);
         return 0;

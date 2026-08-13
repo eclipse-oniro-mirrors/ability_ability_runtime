@@ -99,6 +99,19 @@ auto g_deleteLifecycleEventTask = [](const sptr<Token> &token) {
 
 UIAbilityLifecycleManager::UIAbilityLifecycleManager(int32_t userId): userId_(userId) {}
 
+AbilityRuntime::StartSpecifiedParam UIAbilityLifecycleManager::BuildStartSpecifiedParam(
+    const AbilityRequest &request, int32_t requestId)
+{
+    AbilityRuntime::StartSpecifiedParam param;
+    param.requestId = requestId;
+    param.customProcess = request.customProcess;
+    if (request.processOptions != nullptr) {
+        param.processMode = static_cast<int32_t>(request.processOptions->processMode);
+        param.isPreloadStart = request.processOptions->isPreloadStart;
+    }
+    return param;
+}
+
 bool UIAbilityLifecycleManager::ProcessColdStartBranch(AbilityRequest &abilityRequest, sptr<SessionInfo> sessionInfo,
     UIAbilityRecordPtr uiAbilityRecord, bool isColdStart)
 {
@@ -112,13 +125,7 @@ bool UIAbilityLifecycleManager::ProcessColdStartBranch(AbilityRequest &abilityRe
         }
         return false;
     }
-    AbilityRuntime::StartSpecifiedParam specifiedParam;
-    specifiedParam.requestId = sessionInfo->requestId;
-    specifiedParam.customProcess = abilityRequest.customProcess;
-    if (abilityRequest.processOptions != nullptr) {
-        specifiedParam.processMode = static_cast<int32_t>(abilityRequest.processOptions->processMode);
-        specifiedParam.isPreloadStart = abilityRequest.processOptions->isPreloadStart;
-    }
+    auto specifiedParam = BuildStartSpecifiedParam(abilityRequest, sessionInfo->requestId);
     DelayedSingleton<AppScheduler>::GetInstance()->StartSpecifiedAbility(abilityRequest.want,
         abilityRequest.abilityInfo, specifiedParam);
     AddCallerRecord(abilityRequest, sessionInfo, uiAbilityRecord);
@@ -4555,13 +4562,7 @@ void UIAbilityLifecycleManager::StartSpecifiedRequest(SpecifiedRequest &specifie
                 return;
             }
         } else {
-            AbilityRuntime::StartSpecifiedParam specifiedParam;
-            specifiedParam.requestId = specifiedRequest.requestId;
-            specifiedParam.customProcess = request.customProcess;
-            if (request.processOptions != nullptr) {
-                specifiedParam.processMode = static_cast<int32_t>(request.processOptions->processMode);
-                specifiedParam.isPreloadStart = request.processOptions->isPreloadStart;
-            }
+            auto specifiedParam = BuildStartSpecifiedParam(request, specifiedRequest.requestId);
             DelayedSingleton<AppScheduler>::GetInstance()->StartSpecifiedAbility(request.want,
                 request.abilityInfo, specifiedParam);
         }

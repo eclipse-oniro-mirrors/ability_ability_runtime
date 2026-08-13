@@ -29,6 +29,7 @@
 #include "app_utils.h"
 #include "app_mgr_client.h"
 #include "mock_ability_info_callback_stub.h"
+#include "param.h"
 #include "process_options.h"
 #include "session/host/include/session.h"
 #include "session_info.h"
@@ -1765,6 +1766,65 @@ HWTEST_F(UIAbilityLifecycleManagerSecondTest, ExactSpecified_001, TestSize.Level
     abilityRequest.want.SetParam(AAFwk::Want::DESTINATION_PLUGIN_ABILITY, false);
     abilityRequest.abilityInfo.launchMode = AppExecFwk::LaunchMode::SINGLETON;
     EXPECT_FALSE(mgr->ExactSpecified(abilityRequest));
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_BuildStartSpecifiedParam_001
+ * @tc.desc: BuildStartSpecifiedParam with null processOptions keeps defaults
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, BuildStartSpecifiedParam_001, TestSize.Level1)
+{
+    AbilityRequest request;
+    request.customProcess = "com.test.custom";
+    request.processOptions = nullptr;
+
+    auto param = UIAbilityLifecycleManager::BuildStartSpecifiedParam(request, 1001);
+
+    EXPECT_EQ(param.requestId, 1001);
+    EXPECT_EQ(param.customProcess, "com.test.custom");
+    EXPECT_EQ(param.processMode, 0);
+    EXPECT_FALSE(param.isPreloadStart);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_BuildStartSpecifiedParam_002
+ * @tc.desc: BuildStartSpecifiedParam propagates processMode and isPreloadStart
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, BuildStartSpecifiedParam_002, TestSize.Level1)
+{
+    AbilityRequest request;
+    request.customProcess = "";
+    request.processOptions = std::make_shared<ProcessOptions>();
+    request.processOptions->processMode = ProcessMode::NEW_PROCESS_ATTACH_TO_PARENT;
+    request.processOptions->isPreloadStart = true;
+
+    auto param = UIAbilityLifecycleManager::BuildStartSpecifiedParam(request, 2002);
+
+    EXPECT_EQ(param.requestId, 2002);
+    EXPECT_EQ(param.processMode, static_cast<int32_t>(ProcessMode::NEW_PROCESS_ATTACH_TO_PARENT));
+    EXPECT_TRUE(param.isPreloadStart);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_BuildStartSpecifiedParam_003
+ * @tc.desc: BuildStartSpecifiedParam propagates customProcess
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, BuildStartSpecifiedParam_003, TestSize.Level1)
+{
+    AbilityRequest request;
+    request.customProcess = "com.example.proc";
+    request.processOptions = std::make_shared<ProcessOptions>();
+    request.processOptions->processMode = ProcessMode::UNSPECIFIED;
+    request.processOptions->isPreloadStart = false;
+
+    auto param = UIAbilityLifecycleManager::BuildStartSpecifiedParam(request, 0);
+
+    EXPECT_EQ(param.customProcess, "com.example.proc");
+    EXPECT_EQ(param.processMode, static_cast<int32_t>(ProcessMode::UNSPECIFIED));
+    EXPECT_FALSE(param.isPreloadStart);
 }
 }  // namespace AAFwk
 }  // namespace OHOS

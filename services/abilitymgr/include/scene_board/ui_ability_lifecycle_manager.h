@@ -25,6 +25,7 @@
 #include "ability_manager_constants.h"
 #include "ffrt.h"
 #include "isession_handler_interface.h"
+#include "param.h"
 #include "ui_ability_record.h"
 
 namespace OHOS {
@@ -647,10 +648,14 @@ private:
     int32_t GetReusedCollaboratorPersistentId(const AbilityRequest &abilityRequest, bool &reuse) const;
 
     /**
-     * @brief Generate process name for new process mode
-     * @param abilityInfo The ability info to generate name for
-     * @return The generated process name
+     * @brief Build StartSpecifiedParam from an ability request.
+     * @param request The ability request carrying customProcess / processOptions
+     * @param requestId The specified-ability request id (caller-supplied)
+     * @return Populated StartSpecifiedParam
      */
+    static AbilityRuntime::StartSpecifiedParam BuildStartSpecifiedParam(
+        const AbilityRequest &request, int32_t requestId);
+
     /**
      * @brief Update ability record launch reason
      * @param abilityRequest The ability request containing launch info
