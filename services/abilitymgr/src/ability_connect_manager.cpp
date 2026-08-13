@@ -1735,8 +1735,8 @@ void AbilityConnectManager::HandleConnectTimeoutTask(std::shared_ptr<BaseExtensi
 {
     TAG_LOGW(AAFwkTag::EXT, "connect timeout");
     CHECK_POINTER(abilityRecord);
-    auto connectList = abilityRecord->GetConnectRecordList();
     std::lock_guard guard(serialMutex_);
+    auto connectList = abilityRecord->GetConnectRecordList();
     for (const auto &connectRecord : connectList) {
         RemoveExtensionDelayDisconnectTask(connectRecord);
         connectRecord->CancelConnectTimeoutTask();
@@ -2540,7 +2540,10 @@ void AbilityConnectManager::CloseAssertDialog(const std::string &assertSessionId
         return;
     }
     TAG_LOGD(AAFwkTag::EXT, "Terminate assert fault dialog");
-    terminatingExtensionList_.push_back(abilityRecord);
+    {
+        std::lock_guard lock(serviceMapMutex_);
+        terminatingExtensionList_.push_back(abilityRecord);
+    }
     sptr<IRemoteObject> token = abilityRecord->GetToken();
     if (token != nullptr) {
         std::lock_guard lock(serialMutex_);
