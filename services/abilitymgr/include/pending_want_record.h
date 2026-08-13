@@ -37,7 +37,6 @@ public:
         int32_t callerTokenId, const sptr<IRemoteObject> &callerToken, std::shared_ptr<PendingWantKey> key);
     virtual ~PendingWantRecord();
 
-    virtual void Send(SenderInfo &senderInfo);
     virtual void RegisterCancelListener(const sptr<IWantReceiver> &receiver);
     virtual void UnregisterCancelListener(const sptr<IWantReceiver> &receiver);
 

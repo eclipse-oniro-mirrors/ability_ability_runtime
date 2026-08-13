@@ -109,8 +109,6 @@ public:
         iRemoteObjectFlags_ = iRemoteObjectFlags;
     };
 
-    void Send(SenderInfo& senderInfo) override {};
-
 private:
     sptr<IRemoteObject> iRemoteObjectFlags_ = nullptr;
 };

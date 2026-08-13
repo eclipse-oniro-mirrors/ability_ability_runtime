@@ -69,8 +69,6 @@ public:
 
 class WantSenderFuzz : public IWantSender {
 public:
-    void Send(SenderInfo &senderInfo) override {}
-
     int OnRemoteRequest(
         uint32_t code, MessageParcel &data, MessageParcel &reply, MessageOption &option) { return ERR_NONE; };
 
