@@ -324,6 +324,7 @@ export default class ApplicationContext extends Context {
   }
 
   offEnvironment(callbackId: int, callback: AsyncCallback<void>): void {
+    console.log('AbilityKit off environment');
     this.nativeOffEnvironmentCheck();
     let myCall = new AsyncCallbackWrapper<void>(callback);
     taskpool.execute((): void => {
@@ -332,6 +333,7 @@ export default class ApplicationContext extends Context {
   }
 
   offAbilityLifecycle(callbackId: int, callback: AsyncCallback<void>): void {
+    console.log('AbilityKit off abilityLifecycle');
     this.nativeOffAbilityLifecycleCheck();
     let myCall = new AsyncCallbackWrapper<void>(callback);
     taskpool.execute((): void => {
@@ -340,6 +342,7 @@ export default class ApplicationContext extends Context {
   }
 
   offEnvironment(callbackId: int): Promise<void> {
+    console.log('AbilityKit off environment');
     this.nativeOffEnvironmentCheck();
     let p =
       new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
@@ -358,6 +361,7 @@ export default class ApplicationContext extends Context {
   }
 
   offAbilityLifecycle(callbackId: int): Promise<void> {
+    console.log('AbilityKit off abilityLifecycle');
     this.nativeOffAbilityLifecycleCheck();
     let p =
       new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {

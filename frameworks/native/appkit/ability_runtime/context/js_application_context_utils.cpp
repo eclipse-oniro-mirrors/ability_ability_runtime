@@ -1772,7 +1772,7 @@ napi_value JsApplicationContextUtils::OnOffAbilityLifecycle(
                     "callback is nullptr"));
                 return;
             }
-
+            TAG_LOGI(AAFwkTag::APPKIT, "off abilityLifecycle event");
             if (!callback->UnRegister(callbackId, false)) {
                 TAG_LOGE(AAFwkTag::APPKIT, "call UnRegister failed");
                 task.Reject(env, CreateJsError(env, ERR_ABILITY_RUNTIME_EXTERNAL_INVALID_PARAMETER,
@@ -1852,7 +1852,7 @@ napi_value JsApplicationContextUtils::OnOffInteropAbilityLifecycle(
 napi_value JsApplicationContextUtils::OnOffAbilityLifecycleEventSync(
     napi_env env, NapiCallbackInfo& info, int32_t callbackId)
 {
-    TAG_LOGD(AAFwkTag::APPKIT, "called");
+    TAG_LOGI(AAFwkTag::APPKIT, "off abilityLifecycleEvent sync");
 
     auto applicationContext = applicationContext_.lock();
     if (applicationContext == nullptr) {
@@ -1920,7 +1920,7 @@ napi_value JsApplicationContextUtils::OnOffEnvironment(
                 return;
             }
 
-            TAG_LOGD(AAFwkTag::APPKIT, "OnOffEnvironment begin");
+            TAG_LOGI(AAFwkTag::APPKIT, "off environment");
             if (!env_callback->UnRegister(callbackId, false)) {
                 TAG_LOGE(AAFwkTag::APPKIT, "call UnRegister failed");
                 task.Reject(env, CreateJsError(env, ERR_ABILITY_RUNTIME_EXTERNAL_INVALID_PARAMETER,
@@ -1940,7 +1940,7 @@ napi_value JsApplicationContextUtils::OnOffEnvironment(
 napi_value JsApplicationContextUtils::OnOffEnvironmentEventSync(
     napi_env env, NapiCallbackInfo& info, int32_t callbackId)
 {
-    TAG_LOGD(AAFwkTag::APPKIT, "called");
+    TAG_LOGI(AAFwkTag::APPKIT, "off environmentEvent sync");
 
     auto applicationContext = applicationContext_.lock();
     if (applicationContext == nullptr) {
@@ -1987,7 +1987,7 @@ napi_value JsApplicationContextUtils::OnOnApplicationStateChange(
 napi_value JsApplicationContextUtils::OnOffApplicationStateChange(
     napi_env env, NapiCallbackInfo& info)
 {
-    TAG_LOGD(AAFwkTag::APPKIT, "called");
+    TAG_LOGI(AAFwkTag::APPKIT, "off applicationStateChange");
     auto applicationContext = applicationContext_.lock();
     if (applicationContext == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "null applicationContext");

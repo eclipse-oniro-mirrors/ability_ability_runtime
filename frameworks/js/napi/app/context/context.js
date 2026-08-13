@@ -140,6 +140,7 @@ class EventHub {
     if (typeof (event) !== 'string') {
       return;
     }
+    console.log('AbilityKit eventHub off event: ' + event);
     if (this.eventMap[event]) {
       if (callback) {
         let cbArray = this.eventMap[event];

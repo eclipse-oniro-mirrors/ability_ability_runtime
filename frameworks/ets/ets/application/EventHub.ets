@@ -75,6 +75,7 @@ export default class EventHub {
   }
 
   off(event: string, callback: Function): void {
+    console.log('AbilityKit eventHub off event: ' + event);
     this.offByNativeContext(event, callback);
     if (!this.dynamicContextEventHub) {
       this.dynamicContextEventHub = this.getDynamicContextEventHub();
