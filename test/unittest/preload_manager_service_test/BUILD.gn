@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Copyright (c) 2025-2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -31,26 +31,24 @@ ohos_unittest("preload_manager_service_test") {
     "${ability_runtime_innerkits_path}/app_manager/include/appmgr/",
     "${ability_runtime_path}/utils/global/constant",
     "${ability_runtime_services_path}/abilitymgr/include/",
+    "${ability_runtime_services_path}/abilitymgr/include/utils/",
     "${ability_runtime_services_path}/common/include",
   ]
 
   sources = [
-    "preload_manager_service_test.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/preload_manager_service.cpp",
     "mock/src/mock_ability_manager_service.cpp",
     "mock/src/mock_app_scheduler.cpp",
     "mock/src/mock_app_utils.cpp",
     "mock/src/mock_bundle_mgr_helper.cpp",
+    "mock/src/mock_native_ability_util.cpp",
     "mock/src/mock_permission_verification.cpp",
-    "${ability_runtime_services_path}/abilitymgr/src/preload_manager_service.cpp",
+    "preload_manager_service_test.cpp",
   ]
 
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_start_options",
-    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/ability_manager:process_options",
-    "${ability_runtime_innerkits_path}/ability_manager:start_window_option",
-    "${ability_runtime_services_path}/abilitymgr:abilityms",
-    "${ability_runtime_services_path}/common:perm_verification",
   ]
 
   external_deps = [

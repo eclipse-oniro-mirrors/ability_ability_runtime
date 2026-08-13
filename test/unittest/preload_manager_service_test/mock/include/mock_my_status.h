@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -39,7 +39,25 @@ public:
     bool isMultiUserConcurrency_ = false;
     int32_t retStartAbility_ = 0;
     int32_t retPreloadApplicationByPhase_ = 0;
-    int32_t retStartAbilty_ = 0;
+    bool retIsWithNative_ = false;
+    bool retIsDevelopMode_ = false;
+
+    void Reset()
+    {
+        isPreloadApplicationEnabled_ = false;
+        retVerifyPreloadApplicationPermission_ = false;
+        bundleMgrHelper_ = nullptr;
+        retGetLaunchWantForBundle_ = 0;
+        retQueryAbilityInfo_ = false;
+        queryAbilityInfo_ = AppExecFwk::AbilityInfo{};
+        retCheckPreloadAppRecordExist_ = 0;
+        isPreloadApplicationRecordExist_ = false;
+        isMultiUserConcurrency_ = false;
+        retStartAbility_ = 0;
+        retPreloadApplicationByPhase_ = 0;
+        retIsWithNative_ = false;
+        retIsDevelopMode_ = false;
+    }
 };
 } // namespace AAFwk
 } // namespace OHOS
