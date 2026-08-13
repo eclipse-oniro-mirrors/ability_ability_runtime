@@ -43,6 +43,7 @@ enum class LeakType {
  
 enum AppTelemetryLeakType {
     ATLT_PSS = 1 << static_cast<int>(LeakType::PSS_MEMORY),
+    ATLT_DMA = 1 << static_cast<int>(LeakType::ION_MEMORY),
     ATLT_GPU = 1 << static_cast<int>(LeakType::GPU_MEMORY),
     ATLT_FD = 1 << static_cast<int>(LeakType::FD),
     ATLT_RSS_ARK_TS = 1 << static_cast<int>(LeakType::RSS_ARK_TS),
