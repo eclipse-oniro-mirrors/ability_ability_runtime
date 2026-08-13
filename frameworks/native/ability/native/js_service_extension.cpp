@@ -15,6 +15,7 @@
 
 #include "js_service_extension.h"
 
+#include <cctype>
 #include <unordered_set>
 
 #include "ability_business_error.h"
@@ -609,6 +610,49 @@ bool IsBlockedSkillKeyName(const std::string &name)
     };
     return BLOCKED.count(name) > 0;
 }
+
+// Validate a relative path component coming from SkillExecuteParam (moduleName,
+// srcEntry, scriptPath). Block path traversal, absolute paths (covers /proc/self/fd
+// and /dev/fd FD-loading attacks), embedded NUL, and non-whitelisted chars.
+bool IsSafeSkillPath(const std::string &s)
+{
+    if (s.empty() || s.front() == '/') {
+        return false;
+    }
+    if (s.find('\0') != std::string::npos || s.find("..") != std::string::npos) {
+        return false;
+    }
+    for (char c : s) {
+        unsigned char uc = static_cast<unsigned char>(c);
+        if (!std::isalnum(uc) && c != '_' && c != '-' && c != '.' && c != '/') {
+            return false;
+        }
+    }
+    return true;
+}
+
+// Validate hapPath: must be absolute, must not traverse (..), must not target
+// procfs / devfs (FD loading attacks), must not contain embedded NUL or
+// non-whitelisted chars.
+bool IsSafeHapPath(const std::string &s)
+{
+    if (s.empty() || s.front() != '/') {
+        return false;
+    }
+    if (s.find('\0') != std::string::npos || s.find("..") != std::string::npos) {
+        return false;
+    }
+    if (s.find("/proc/") == 0 || s.find("/dev/") == 0) {
+        return false;
+    }
+    for (char c : s) {
+        unsigned char uc = static_cast<unsigned char>(c);
+        if (!std::isalnum(uc) && c != '_' && c != '-' && c != '.' && c != '/') {
+            return false;
+        }
+    }
+    return true;
+}
 } // namespace
 
 napi_value JsServiceExtension::LoadSkillFunction(
@@ -618,6 +662,10 @@ napi_value JsServiceExtension::LoadSkillFunction(
     napi_value method = nullptr;
 
     if (!param->scriptPath_.empty()) {
+        if (!IsSafeSkillPath(param->scriptPath_)) {
+            TAG_LOGW(AAFwkTag::SERVICE_EXT, "invalid scriptPath");
+            return nullptr;
+        }
         auto scriptBase = ExtractBaseName(param->scriptPath_);
         for (const auto &srcEntry : param->srcEntries_) {
             if (ExtractBaseName(srcEntry) != scriptBase) {
@@ -649,6 +697,18 @@ bool JsServiceExtension::TryLoadSkillEntry(const std::string &srcEntry,
     const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param,
     napi_env env, napi_value &outJsObj, napi_value &method)
 {
+    if (param == nullptr) {
+        TAG_LOGW(AAFwkTag::SERVICE_EXT, "param is null");
+        return false;
+    }
+    if (!IsSafeSkillPath(param->moduleName_) || !IsSafeSkillPath(srcEntry)) {
+        TAG_LOGW(AAFwkTag::SERVICE_EXT, "invalid moduleName or srcEntry");
+        return false;
+    }
+    if (!param->hapPath_.empty() && !IsSafeHapPath(param->hapPath_)) {
+        TAG_LOGW(AAFwkTag::SERVICE_EXT, "invalid hapPath");
+        return false;
+    }
     if (IsBlockedSkillKeyName(param->functionName_)) {
         TAG_LOGW(AAFwkTag::SERVICE_EXT, "blocked skill function name:%{public}s",
             param->functionName_.c_str());
