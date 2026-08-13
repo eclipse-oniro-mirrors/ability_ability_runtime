@@ -67,6 +67,8 @@ constexpr const int BASE_TEN = 10;
 constexpr const char SIGN_TERMINAL = '\0';
 constexpr int32_t DEFAULT_CONCURRENT_NUMBER = 1;
 constexpr int32_t HIPROFILER_UID = 3063;
+constexpr int32_t REPORT_TEMPLATE_PROCESS_READY_DELAY_TIME = 2000;
+
 namespace {
 #define CHECK_CALLER_IS_SYSTEM_APP                                                             \
     if (!AAFwk::PermissionVerification::GetInstance()->JudgeCallerIsAllowedToUseSystemAPI()) { \
@@ -363,7 +365,14 @@ int32_t AppMgrService::NotifyTemplateProcessReadyDone()
         return ERR_INVALID_OPERATION;
     }
     pid_t callingPid = IPCSkeleton::GetCallingPid();
-    appMgrServiceInner_->HandleNotifyTemplateProcessReadyDone(callingPid);
+    auto task = [appMgrServiceInner = appMgrServiceInner_, callingPid]() {
+        appMgrServiceInner->HandleNotifyTemplateProcessReadyDone(callingPid);
+    };
+    AAFwk::TaskHandlerWrap::GetFfrtHandler()->SubmitTask(task, AAFwk::TaskAttribute{
+        .taskName_ = TASK_NOTIFY_TEMPLATE_PROCESS_READY_DONE,
+        .delayMillis_ = REPORT_TEMPLATE_PROCESS_READY_DELAY_TIME,
+        .taskQos_ = AAFwk::TaskQoS::USER_INTERACTIVE
+    });
     return ERR_OK;
 }
 

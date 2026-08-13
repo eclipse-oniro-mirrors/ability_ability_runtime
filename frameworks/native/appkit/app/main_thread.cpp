@@ -158,7 +158,6 @@ constexpr int32_t UNSPECIFIED_USERID = -2;
 constexpr int32_t JS_ERROR_EXIT = -2;
 constexpr int32_t TIME_OUT = 120;
 constexpr int32_t DEFAULT_SLEEP_TIME = 100000;
-constexpr int32_t REPORT_TEMPLATE_PROCESS_READY_DELAY_TIME = 2000;
 constexpr int32_t SNAPSHOT_START = 0;
 constexpr int32_t SNAPSHOT_FAILURE = 1;
 
@@ -4734,8 +4733,6 @@ void MainThread::DelayedReportNotifyFFRTToRss()
         needToNotifyFFRTForNewIpc_ = true;
     }
     TAG_LOGI(AAFwkTag::APPKIT, "After notify ffrt snapshot start");
-    std::this_thread::sleep_for(std::chrono::milliseconds(REPORT_TEMPLATE_PROCESS_READY_DELAY_TIME));
-    TAG_LOGI(AAFwkTag::APPKIT, "template process ready");
     if (appMgr_ != nullptr) {
         appMgr_->NotifyTemplateProcessReadyDone();
     }
