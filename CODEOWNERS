@@ -16,6 +16,7 @@ interfaces/inner_api/ability_manager/include/ability_manager_ipc_interface_code.
 interfaces/inner_api/app_manager/include/appmgr/app_mgr_ipc_interface_code.h @ccllee1 @li-weifeng2024 @jsjzju
 services/common/include/ui_extension_utils.h @li-weifeng2024
 services/uripermmgr/ @afwk_helper @dsz2025
+services/appmgr/ @afwk_helper @xialiangwei @jsjzju
 
 [AFWK ABILITY RUNTIME]
 cj_environment/ @afwk_helper
