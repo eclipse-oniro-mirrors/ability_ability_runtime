@@ -954,6 +954,15 @@ int32_t AbilityManagerService::StartAbilityByInsightIntent(const Want &want, con
     }
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     XCOLLIE_TIMER_LESS_IGNORE(__PRETTY_FUNCTION__, !want.GetDeviceIdRef().empty());
+    auto abilityRecord = Token::GetAbilityRecordByToken(callerToken);
+    if (abilityRecord == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "no such bundle matched token");
+        return ERR_INVALID_VALUE;
+    }
+    if (!JudgeSelfCalled(abilityRecord)) {
+        return CHECK_PERMISSION_FAILED;
+    }
+
     const auto &bundleNameFromWant = want.GetBundleNameRef();
     std::string bundleNameFromIntentMgr = "";
     if (DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->
@@ -961,11 +970,7 @@ int32_t AbilityManagerService::StartAbilityByInsightIntent(const Want &want, con
         TAG_LOGE(AAFwkTag::ABILITYMGR, "no such bundle matched intentId");
         return ERR_INVALID_VALUE;
     }
-    auto abilityRecord = Token::GetAbilityRecordByToken(callerToken);
-    if (abilityRecord == nullptr) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "no such bundle matched token");
-        return ERR_INVALID_VALUE;
-    }
+    
     std::string bundleNameFromAbilityRecord = abilityRecord->GetAbilityInfo().bundleName;
     if (!bundleNameFromWant.empty() && bundleNameFromWant == bundleNameFromIntentMgr &&
         bundleNameFromWant == bundleNameFromAbilityRecord) {
