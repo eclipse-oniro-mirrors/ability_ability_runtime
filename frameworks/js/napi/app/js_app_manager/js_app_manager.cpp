@@ -493,6 +493,7 @@ private:
         }
 
         if (argc == ARGC_ONE || (argc == ARGC_TWO && IsParasNullOrUndefined(env, argv[INDEX_ONE]))) {
+            TAG_LOGI(AAFwkTag::APPMGR, "SubEvent op=off_all kit=AbilityKit event=abilityFirstFrameState");
             JSAbilityFirstFrameStateObserverManager::GetInstance()->RemoveAllJsObserverObjects(abilityManager_);
         } else if (argc == ARGC_TWO) {
             JSAbilityFirstFrameStateObserverManager::GetInstance()->RemoveJsObserverObject(abilityManager_,
@@ -586,6 +587,7 @@ private:
             return CreateJsUndefined(env);
         }
         if (argc == ARGC_ONE) {
+            TAG_LOGI(AAFwkTag::APPMGR, "SubEvent op=off_all kit=AbilityKit event=appForegroundState");
             observerForeground_->RemoveAllJsObserverObjects();
         } else if (argc == ARGC_TWO) {
             if (!AppExecFwk::IsTypeForNapiValue(env, argv[INDEX_ONE], napi_object)) {
