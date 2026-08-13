@@ -120,7 +120,8 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
         }
     }
     AbilityInfo abilityInfo;
-    amsMgrScheduler->StartSpecifiedAbility(*want, abilityInfo);
+    AbilityRuntime::StartSpecifiedParam param;
+    amsMgrScheduler->StartSpecifiedAbility(*want, abilityInfo, param);
     int pid = static_cast<int>(GetU32Data(data));
     AppExecFwk::ApplicationInfo application;
     bool debug;

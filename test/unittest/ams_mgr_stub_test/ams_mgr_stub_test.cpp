@@ -453,7 +453,8 @@ HWTEST_F(AmsMgrStubTest, HandleStartSpecifiedAbility_0200, TestSize.Level1)
     MessageOption option(MessageOption::TF_ASYNC);
     WriteInterfaceToken(data);
 
-    data.WriteBool(false);  // null want indicator
+    // ReadParcelable<Want> reads Int32 size first; size=0 means null -> stub returns early.
+    data.WriteInt32(0);
 
     EXPECT_CALL(*mockAmsMgrScheduler_, StartSpecifiedAbility(_, _, _)).Times(0);
     auto result = mockAmsMgrScheduler_->OnRemoteRequest(
@@ -477,7 +478,8 @@ HWTEST_F(AmsMgrStubTest, HandleStartSpecifiedAbility_0300, TestSize.Level1)
     AAFwk::Want want;
 
     data.WriteParcelable(&want);
-    data.WriteBool(false);  // null abilityInfo indicator
+    // ReadParcelable<AbilityInfo> reads Int32 size first; size=0 means null -> stub returns early.
+    data.WriteInt32(0);
 
     EXPECT_CALL(*mockAmsMgrScheduler_, StartSpecifiedAbility(_, _, _)).Times(0);
     auto result = mockAmsMgrScheduler_->OnRemoteRequest(

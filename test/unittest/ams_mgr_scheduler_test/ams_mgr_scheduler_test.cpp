@@ -761,10 +761,11 @@ HWTEST_F(AmsMgrSchedulerTest, StartSpecifiedAbility_001, TestSize.Level2)
     ASSERT_NE(amsMgrScheduler, nullptr);
     Want want;
     AbilityInfo abilityInfo;
-    amsMgrScheduler->StartSpecifiedAbility(want, abilityInfo);
+    AbilityRuntime::StartSpecifiedParam param;
+    amsMgrScheduler->StartSpecifiedAbility(want, abilityInfo, param);
     amsMgrScheduler->amsMgrServiceInner_ = GetMockAppMgrServiceInner();
     amsMgrScheduler->amsHandler_ = GetAmsTaskHandler();
-    amsMgrScheduler->StartSpecifiedAbility(want, abilityInfo);
+    amsMgrScheduler->StartSpecifiedAbility(want, abilityInfo, param);
 }
 
 /*
