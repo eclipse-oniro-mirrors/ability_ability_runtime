@@ -748,5 +748,46 @@ HWTEST_F(AppSpawnClientSecondTest, SetUserIdInfo_004, TestSize.Level2)
     AppSpawnReqMsgFree(reqHandle);
     GTEST_LOG_(INFO) << "SetUserIdInfo_004 end";
 }
+
+// Scenario: Test when startMsg.code is MSG_APP_SPAWN and gids size equals APP_MAX_GIDS but
+// gids + dataGroupInfoList size exceeds APP_MAX_GIDS, VerifyMsg should return false.
+HWTEST_F(AppSpawnClientSecondTest, VerifyMsg_ShouldReturnFalse_WhenGidsPlusDataGroupExceedsMax, TestSize.Level2)
+{
+    AppSpawnClient appSpawnClient;
+    AppSpawnStartMsg startMsg;
+    startMsg.code = MSG_APP_SPAWN;
+    startMsg.uid = 1;
+    startMsg.gid = 1;
+    startMsg.procName = "test";
+    // gids alone equals APP_MAX_GIDS (not greater, so the old buggy check would pass),
+    // but gids + dataGroupInfoList exceeds APP_MAX_GIDS after the fix.
+    for (int32_t i = 0; i < APP_MAX_GIDS; ++i) {
+        startMsg.gids.push_back(i + 1);
+    }
+    DataGroupInfo dgi;
+    dgi.gid = 100;
+    startMsg.dataGroupInfoList.push_back(dgi);
+    EXPECT_FALSE(appSpawnClient.VerifyMsg(startMsg));
+}
+
+// Scenario: Test when startMsg.code is MSG_APP_SPAWN and gids + dataGroupInfoList size
+// equals APP_MAX_GIDS, VerifyMsg should return true (boundary not over-blocked).
+HWTEST_F(AppSpawnClientSecondTest, VerifyMsg_ShouldReturnTrue_WhenGidsPlusDataGroupEqualsMax, TestSize.Level2)
+{
+    AppSpawnClient appSpawnClient;
+    AppSpawnStartMsg startMsg;
+    startMsg.code = MSG_APP_SPAWN;
+    startMsg.uid = 1;
+    startMsg.gid = 1;
+    startMsg.procName = "test";
+    // gids(1) + dataGroupInfoList(APP_MAX_GIDS - 1) == APP_MAX_GIDS, should not be rejected.
+    startMsg.gids.push_back(1);
+    DataGroupInfo dgi;
+    dgi.gid = 100;
+    for (int32_t i = 0; i < APP_MAX_GIDS - 1; ++i) {
+        startMsg.dataGroupInfoList.push_back(dgi);
+    }
+    EXPECT_TRUE(appSpawnClient.VerifyMsg(startMsg));
+}
 } // namespace AppExecFwk
 } // namespace OHOS
