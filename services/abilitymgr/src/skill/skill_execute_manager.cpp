@@ -429,11 +429,21 @@ void SkillExecuteManager::EnsureAppStateObserverRegistered()
 void SkillExecuteManager::OnLaunchCompleted(const std::string &requestCode)
 {
     pid_t callerPid = IPCSkeleton::GetCallingPid();
+    Security::AccessToken::HapTokenInfo hapInfo;
+    if (Security::AccessToken::AccessTokenKit::GetHapTokenInfo(
+        IPCSkeleton::GetCallingTokenID(), hapInfo) != 0) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "OnLaunchCompleted: failed to get hap token info");
+        return;
+    }
     std::lock_guard<ffrt::mutex> lock(mutex_);
     auto it = records_.find(requestCode);
     if (it == records_.end()) {
         TAG_LOGW(AAFwkTag::ABILITYMGR,
             "OnLaunchCompleted: record gone, req:%{public}s", requestCode.c_str());
+        return;
+    }
+    if (it->second->targetBundleName != hapInfo.bundleName) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "OnLaunchCompleted: bundleName mismatch");
         return;
     }
     it->second->targetPid = callerPid;
