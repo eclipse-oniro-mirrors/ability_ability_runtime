@@ -77,6 +77,21 @@ HWTEST_F(MadviseUtilsTest, MadviseSingleLibrary_0200, TestSize.Level2)
 }
 
 /**
+ * @tc.number: MadviseSingleLibrary_0300
+ * @tc.desc: Test MadviseSingleLibrary with nullptr returns false
+ * @tc.type: FUNC
+ */
+HWTEST_F(MadviseUtilsTest, MadviseSingleLibrary_0300, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "MadviseSingleLibrary_0300 start.");
+
+    bool result = MadviseUtil::MadviseSingleLibrary(nullptr);
+    EXPECT_EQ(result, false);
+
+    TAG_LOGI(AAFwkTag::TEST, "MadviseSingleLibrary_0300 end.");
+}
+
+/**
  * @tc.number: MadviseGeneralFiles_0100
  * @tc.desc: Test MadviseGeneralFiles works
  * @tc.type: FUNC
@@ -122,6 +137,37 @@ HWTEST_F(MadviseUtilsTest, MadviseWithConfigFile_0100, TestSize.Level2)
     EXPECT_EQ(result, -1);
 
     TAG_LOGI(AAFwkTag::TEST, "MadviseWithConfigFile_0100 end.");
+}
+
+/**
+ * @tc.number: MadviseWithConfigFile_0200
+ * @tc.desc: Test MadviseWithConfigFile with nullptr returns -1
+ * @tc.type: FUNC
+ */
+HWTEST_F(MadviseUtilsTest, MadviseWithConfigFile_0200, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "MadviseWithConfigFile_0200 start.");
+
+    int32_t result = MadviseUtil::MadviseWithConfigFile(nullptr);
+    EXPECT_EQ(result, -1);
+
+    TAG_LOGI(AAFwkTag::TEST, "MadviseWithConfigFile_0200 end.");
+}
+
+/**
+ * @tc.number: MadviseWithConfigFile_0300
+ * @tc.desc: Test MadviseWithConfigFile with valid bundleName but no config file returns -1
+ * @tc.type: FUNC
+ */
+HWTEST_F(MadviseUtilsTest, MadviseWithConfigFile_0300, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "MadviseWithConfigFile_0300 start.");
+
+    const char* bundleName = "com.test.madvise.nonexistent";
+    int32_t result = MadviseUtil::MadviseWithConfigFile(bundleName);
+    EXPECT_EQ(result, -1);
+
+    TAG_LOGI(AAFwkTag::TEST, "MadviseWithConfigFile_0300 end.");
 }
 
 /**
