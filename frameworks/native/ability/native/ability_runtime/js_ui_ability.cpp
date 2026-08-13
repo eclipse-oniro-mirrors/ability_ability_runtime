@@ -15,7 +15,6 @@
 
 #include "js_ui_ability.h"
 
-#include <cctype>
 #include <cstdlib>
 #include <regex>
 #include <unordered_set>
@@ -39,6 +38,7 @@
 #include "insight_intent_executor_info.h"
 #include "insight_intent_executor_mgr.h"
 #include "insight_intent_execute_param.h"
+#include "skill/skill_path_validator.h"
 #include "interop_object_instance.h"
 #include "js_ability_context.h"
 #include "js_ability_lifecycle_callback.h"
@@ -2646,49 +2646,6 @@ bool IsBlockedSkillKeyName(const std::string &name)
         "valueOf", "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable"
     };
     return BLOCKED.count(name) > 0;
-}
-
-// Validate a relative path component coming from SkillExecuteParam (moduleName,
-// srcEntry, scriptPath). Block path traversal, absolute paths (covers /proc/self/fd
-// and /dev/fd FD-loading attacks), embedded NUL, and non-whitelisted chars.
-bool IsSafeSkillPath(const std::string &s)
-{
-    if (s.empty() || s.front() == '/') {
-        return false;
-    }
-    if (s.find('\0') != std::string::npos || s.find("..") != std::string::npos) {
-        return false;
-    }
-    for (char c : s) {
-        unsigned char uc = static_cast<unsigned char>(c);
-        if (!std::isalnum(uc) && c != '_' && c != '-' && c != '.' && c != '/') {
-            return false;
-        }
-    }
-    return true;
-}
-
-// Validate hapPath: must be absolute, must not traverse (..), must not target
-// procfs / devfs (FD loading attacks), must not contain embedded NUL or
-// non-whitelisted chars.
-bool IsSafeHapPath(const std::string &s)
-{
-    if (s.empty() || s.front() != '/') {
-        return false;
-    }
-    if (s.find('\0') != std::string::npos || s.find("..") != std::string::npos) {
-        return false;
-    }
-    if (s.find("/proc/") == 0 || s.find("/dev/") == 0) {
-        return false;
-    }
-    for (char c : s) {
-        unsigned char uc = static_cast<unsigned char>(c);
-        if (!std::isalnum(uc) && c != '_' && c != '-' && c != '.' && c != '/') {
-            return false;
-        }
-    }
-    return true;
 }
 } // namespace
 
