@@ -2484,8 +2484,16 @@ int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const St
         AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, ERR_INVALID_CONTINUATION_FLAG, "flags not allowed");
         return ERR_INVALID_CONTINUATION_FLAG;
     }
+    std::string dialogSessionId = want.GetStringParam("dialogSessionId");
+    bool isSendDialogResult = false;
+#ifdef SUPPORT_SCREEN
+    auto dialogCallerInfo = DialogSessionManager::GetInstance().GetDialogCallerInfo(dialogSessionId);
+    if (!dialogSessionId.empty() && dialogCallerInfo != nullptr) {
+        isSendDialogResult = true;
+    }
+#endif // SUPPORT_SCREEN
 
-    if (callerToken != nullptr && !VerificationAllToken(callerToken)) {
+    if (callerToken != nullptr && !VerificationAllToken(callerToken) && !isSendDialogResult) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "verify callerToken failed:%{public}d", ERR_INVALID_CALLER);
         AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, ERR_INVALID_CALLER, "verify callerToken failed");
         return ERR_INVALID_CALLER;
@@ -2538,6 +2546,9 @@ int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const St
         auto param = std::make_shared<FreeInstallParams>();
         param->isAsync = true;
         param->specifyTokenId = specifyTokenId;
+        if (StartAbilityUtils::startAbilityInfo != nullptr) {
+            param->accessTokenId = StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.accessTokenId;
+        }
         param->startOptions = std::make_shared<AAFwk::StartOptions>(startOptions);
         result = freeInstallManager_->StartFreeInstall(localWant, validUserId, requestCode, callerToken, param);
         AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result, "StartFreeInstall failed");
@@ -2551,6 +2562,7 @@ int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const St
 
     AbilityRequest abilityRequest;
     abilityRequest.startOptions = startOptions;
+    abilityRequest.callType = AbilityCallType::START_OPTIONS_TYPE;
 #ifdef SUPPORT_SCREEN
     if (ImplicitStartProcessor::IsImplicitStartAction(want)) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "is implicit start action");
@@ -15900,7 +15912,8 @@ int AbilityManagerService::CreateCloneSelectorDialog(AbilityRequest &request, in
     const std::string &replaceWantString)
 {
     CHECK_POINTER_AND_RETURN(implicitStartProcessor_, ERR_IMPLICIT_START_ABILITY_FAIL);
-    auto ret = implicitStartProcessor_->ImplicitStartAbility(request, userId, 0, replaceWantString, true);
+    auto ret = implicitStartProcessor_->ImplicitStartAbility(request, userId,
+        request.want.GetIntParam(Want::PARAM_RESV_WINDOW_MODE, 0), replaceWantString, true);
     return AbilityErrorUtil::ConvertToOriginErrorCode(ret);
 }
 #endif // SUPPORT_SCREEN
@@ -17085,6 +17098,10 @@ int32_t AbilityManagerService::PreStartInner(const FreeInstallInfo& taskInfo)
         .want = want
     };
 
+    if (taskInfo.startOptions != nullptr) {
+        ProcessPreStartOptions(abilityRequest, taskInfo);
+    }
+
     TAG_LOGD(AAFwkTag::ABILITYMGR, "do not start as caller, UpdateCallerInfo");
     UpdateCallerInfoUtil::GetInstance().UpdateCallerInfo(abilityRequest.want, callerToken);
 
@@ -17112,6 +17129,48 @@ int32_t AbilityManagerService::PreStartInner(const FreeInstallInfo& taskInfo)
         taskInfo.want.GetStringParam(Want::PARAM_RESV_START_TIME),
         true);
     return ERR_OK;
+}
+
+void AbilityManagerService::ProcessPreStartOptions(AbilityRequest &abilityRequest, const FreeInstallInfo& taskInfo)
+{
+    auto identity = IPCSkeleton::ResetCallingIdentity();
+    std::string callerIdentity = taskInfo.identity;
+    IPCSkeleton::SetCallingIdentity(callerIdentity);
+
+    const auto &startOptions = *taskInfo.startOptions;
+    abilityRequest.startOptions = startOptions;
+    abilityRequest.processOptions = startOptions.processOptions;
+    if (IPCSkeleton::GetCallingTokenID() == taskInfo.accessTokenId ||
+        AbilityPermissionUtil::GetInstance().IsStartSelfUIAbility()) {
+        abilityRequest.startWindowOption = startOptions.startWindowOption;
+    }
+    abilityRequest.supportWindowModes = startOptions.supportWindowModes_;
+    auto abilityRecord = Token::GetAbilityRecordByToken(taskInfo.callerToken);
+    std::string callerBundleName = abilityRecord ? abilityRecord->GetAbilityInfo().bundleName : "";
+    if (abilityRequest.want.GetBundleNameRef() == callerBundleName) {
+        abilityRequest.hideStartWindow = startOptions.GetHideStartWindow();
+    }
+    if (startOptions.GetDisplayID() == 0) {
+        abilityRequest.want.SetParam(Want::PARAM_RESV_DISPLAY_ID, DisplayUtil::GetDefaultDisplayId());
+    } else {
+        abilityRequest.want.SetParam(Want::PARAM_RESV_DISPLAY_ID, startOptions.GetDisplayID());
+    }
+    abilityRequest.want.RemoveParam(KEY_REQUEST_ID);
+    if (!startOptions.requestId_.empty()) {
+        abilityRequest.want.SetParam(KEY_REQUEST_ID, startOptions.requestId_);
+    }
+    AbilityUtil::ProcessWindowMode(abilityRequest.want, taskInfo.accessTokenId, startOptions.GetWindowMode());
+    WindowOptionsUtils::SetWindowPositionAndSize(abilityRequest.want, taskInfo.callerToken, startOptions);
+    if (PermissionVerification::GetInstance()->IsSystemAppCall()) {
+        bool focused = abilityRequest.want.GetBoolParam(Want::PARAM_RESV_WINDOW_FOCUSED, true);
+        if (focused) {
+            abilityRequest.want.SetParam(Want::PARAM_RESV_WINDOW_FOCUSED, startOptions.GetWindowFocused());
+        }
+    } else {
+        abilityRequest.want.RemoveParam(Want::PARAM_RESV_WINDOW_FOCUSED);
+    }
+
+    IPCSkeleton::SetCallingIdentity(identity);
 }
 
 int32_t AbilityManagerService::StartUIAbilityByPreInstall(const FreeInstallInfo &taskInfo)

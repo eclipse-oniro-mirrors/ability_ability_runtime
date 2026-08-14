@@ -41,6 +41,7 @@ struct FreeInstallInfo {
     int32_t userId = -1;
     int32_t requestCode = -1;
     uint32_t specifyTokenId = 0;
+    uint32_t accessTokenId = 0;
     int resultCode = 0;
     bool isInstalled = false;
     bool isPreStartMissionCalled = false;
@@ -54,6 +55,7 @@ struct FreeInstallParams {
     std::shared_ptr<Want> originalWant = nullptr;
     std::shared_ptr<StartOptions> startOptions = nullptr;
     uint32_t specifyTokenId = 0;
+    uint32_t accessTokenId = 0;
     bool isAsync = false;
     bool isOpenAtomicServiceShortUrl = false;
     bool skipStartFreeInstallPermissionCheck = false;

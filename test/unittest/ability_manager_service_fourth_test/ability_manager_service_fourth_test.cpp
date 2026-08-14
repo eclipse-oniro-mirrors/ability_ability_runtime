@@ -1877,6 +1877,32 @@ HWTEST_F(AbilityManagerServiceFourthTest, GetUserLockedBundleList_001, TestSize.
 
 /*
  * Feature: AbilityManagerService
+ * Function: StartAbilityAsCallerDetails
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityAsCallerDetails with non-implicit start and callback on failure
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, StartAbilityAsCallerDetails_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartAbilityAsCallerDetails_004 start");
+    Want want;
+    auto callerToken = MockToken(AbilityType::PAGE);
+    auto asCallerSourceToken = MockToken(AbilityType::PAGE);
+    int32_t userId = 0;
+    int requestCode = 0;
+    bool isImplicit = false;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    sptr<RequestAbilityImplCallback> callback = new RequestAbilityImplCallback();
+    auto ret = abilityMs_->StartAbilityAsCallerDetails(
+        want, callerToken, asCallerSourceToken, userId, requestCode, isImplicit, false, 0, callback);
+    EXPECT_NE(ret, ERR_OK);
+    EXPECT_EQ(callback->result_, false);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartAbilityAsCallerDetails_004 end");
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: AddToUserLockedBundleList
  * SubFunction: NA
  * FunctionPoints: UserController AddToUserLockedBundleList

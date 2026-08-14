@@ -4565,6 +4565,34 @@ HWTEST_F(UIAbilityLifecycleManagerTest, MoveMissionToFront_004, TestSize.Level1)
 }
 
 /**
+ * @tc.name: UIAbilityLifecycleManager_MoveMissionToFront_0500
+ * @tc.desc: MoveMissionToFront with non-null startOptions
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, MoveMissionToFront_005, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_unique<UIAbilityLifecycleManager>();
+    ASSERT_NE(uiAbilityLifecycleManager, nullptr);
+    int32_t sessionId = 100;
+    auto startOptions = std::make_shared<StartOptions>();
+    ASSERT_NE(startOptions, nullptr);
+    startOptions->SetDisplayID(1);
+    startOptions->SetWindowMode(100);
+    startOptions->SetSplitRatioPreference(1);
+    Rosen::SessionInfo info;
+    uiAbilityLifecycleManager->rootSceneSession_ = new Rosen::Session(info);
+    AbilityRequest abilityRequest;
+    sptr<SessionInfo> sessionInfo = (new SessionInfo());
+    abilityRequest.sessionInfo = sessionInfo;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    uiAbilityLifecycleManager->sessionAbilityMap_.emplace(sessionId, abilityRecord);
+    auto ret = uiAbilityLifecycleManager->MoveMissionToFront(sessionId, startOptions);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(sessionInfo->want.GetIntParam(Want::PARAM_RESV_DISPLAY_ID, -1), 1);
+    EXPECT_EQ(sessionInfo->want.GetIntParam(Want::PARAM_RESV_WINDOW_MODE, -1), 100);
+}
+
+/**
  * @tc.name: UIAbilityLifecycleManager_GetReusedCollaboratorPersistentId_0100
  * @tc.desc: GetReusedCollaboratorPersistentId
  * @tc.type: FUNC

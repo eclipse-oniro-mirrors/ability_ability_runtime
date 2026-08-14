@@ -2982,6 +2982,7 @@ private:
     int StartUIAbilityByPreInstallInner(sptr<SessionInfo> sessionInfo, uint32_t specifyTokenId,
         AbilityRuntime::StartParamsBySCB &params, bool &isColdStart);
     int32_t PreStartInner(const FreeInstallInfo& taskInfo);
+    void ProcessPreStartOptions(AbilityRequest &abilityRequest, const FreeInstallInfo& taskInfo);
     void RemovePreStartSession(const std::string& sessionId);
 
     int32_t ConnectLocalAbility(

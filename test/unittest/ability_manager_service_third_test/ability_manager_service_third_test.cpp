@@ -2540,6 +2540,26 @@ HWTEST_F(AbilityManagerServiceThirdTest, PreStartInner_001, TestSize.Level1)
 
 /*
  * Feature: AbilityManagerService
+ * Function: PreStartInner
+ * FunctionPoints: AbilityManagerService PreStartInner with startOptions
+ */
+HWTEST_F(AbilityManagerServiceThirdTest, PreStartInner_002, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs_, nullptr);
+
+    FreeInstallInfo taskInfo;
+    taskInfo.startOptions = std::make_shared<StartOptions>();
+    ASSERT_NE(taskInfo.startOptions, nullptr);
+    taskInfo.startOptions->SetDisplayID(1);
+    taskInfo.startOptions->SetWindowMode(100);
+    taskInfo.startOptions->requestId_ = "test_request_id";
+    auto result = abilityMs_->PreStartInner(taskInfo);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirdTest PreStartInner_002 call result %{public}d", result);
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: PreStartMission
  * FunctionPoints: PreStartMission
  */
