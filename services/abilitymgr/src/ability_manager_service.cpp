@@ -1802,7 +1802,7 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
     return result;
 }
 
-int32_t AbilityManagerService::StartAbilityForAppCloneSelector(StartAbilityWrapParam &param)
+int32_t AbilityManagerService::StartAbilityForAppCloneSelector(const StartAbilityWrapParam &param)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Call StartAbilityForAppCloneSelector");
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
@@ -1812,19 +1812,27 @@ int32_t AbilityManagerService::StartAbilityForAppCloneSelector(StartAbilityWrapP
     CHECK_POINTER_AND_RETURN_LOG(eventInfo, ERR_INVALID_VALUE, "eventInfo is null");
     int32_t appCloneIndex = DEFAULT_INVALID_VALUE;
 
-    int32_t ret = ValidateAppCloneIndex(param.want, appCloneIndex, eventInfo);
-    if (ret != ERR_OK) {
-        return ret;
+    int32_t appCloneIndexFromWant =
+        param.want.GetIntParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, DEFAULT_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::ABILITYMGR,"bundle=%{public}s, ability=%{public}s, appCloneIndex=%{public}d",
+        param.want.GetBundle().c_str(), param.want.GetElement().GetAbilityName().c_str(), appCloneIndexFromWant);
+
+    // Validate appCloneIndex is in valid range [0, MAX_APP_CLONE_INDEX]
+    if (!GlobalConstant::IsAppCloneIndex(appCloneIndexFromWant)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "appCloneIndex out of valid range [0, %{public}d]: %{public}d",
+            GlobalConstant::MAX_APP_CLONE_INDEX, appCloneIndexFromWant);
+        AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, ERR_APP_CLONE_INDEX_INVALID,
+            "appCloneIndex out of range");
+        return ERR_APP_CLONE_INDEX_INVALID;
     }
-    if (param.callerToken == nullptr) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "callerToken is nullptr");
-        AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, ERR_INVALID_VALUE, "callerToken is nullptr");
-        return ERR_INVALID_VALUE;
-    }
+
+    appCloneIndex = appCloneIndexFromWant;
+    // Use StartAbilityInfoWrap for RAII protection
+    StartAbilityInfoWrap threadLocalInfo(param.want, validUserId, appCloneIndex, param.callerToken);
 
     AbilityRequest abilityRequest;
     AppExecFwk::AbilityInfo abilityInfo;
-    ret = InitializeAppCloneRequest(param, appCloneIndex, abilityRequest, abilityInfo, validUserId);
+    int32_t ret = InitializeAppCloneRequest(param, appCloneIndex, validUserId, abilityRequest, abilityInfo);
     if (ret != ERR_OK) {
         AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, ret, "InitializeAppCloneRequest failed");
         return ret;
@@ -1838,7 +1846,7 @@ int32_t AbilityManagerService::StartAbilityForAppCloneSelector(StartAbilityWrapP
         return ERR_INVALID_VALUE;
     }
 
-    ret = ProcessLaunchReasonAndController(param, abilityRequest, abilityInfo, eventInfo);
+    ret = ProcessLaunchReasonAndController(param, eventInfo, abilityInfo, abilityRequest);
     if (ret != ERR_OK) {
         return ret;
     }
@@ -1850,41 +1858,13 @@ int32_t AbilityManagerService::StartAbilityForAppCloneSelector(StartAbilityWrapP
 
     PreprocessRequestParams(param, abilityRequest);
 
-    return ExecuteAbilityStart(abilityRequest, abilityInfo, abilityRequest.userId, param.isGamePrelaunch, eventInfo);
+    return ExecuteAbilityStart(abilityInfo, abilityRequest.userId, param.isGamePrelaunch, eventInfo, abilityRequest);
 }
 
-int32_t AbilityManagerService::ValidateAppCloneIndex(Want &want, int32_t &appCloneIndex,
-    std::shared_ptr<EventInfo> eventInfo)
-{
-    int32_t appCloneIndexFromWant = want.GetIntParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, DEFAULT_INVALID_VALUE);
-    TAG_LOGI(AAFwkTag::ABILITYMGR,"ValidateAppCloneIndex: bundle=%{public}s, ability=%{public}s, appCloneIndex=%{public}d",
-        want.GetBundle().c_str(), want.GetElement().GetAbilityName().c_str(), appCloneIndexFromWant);
-
-    if (appCloneIndexFromWant == DEFAULT_INVALID_VALUE) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "appCloneIndex not found in want, invalid request");
-        AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, ERR_APP_CLONE_INDEX_INVALID, "appCloneIndex missing");
-        return ERR_APP_CLONE_INDEX_INVALID;
-    }
-
-    // Validate appCloneIndex is in valid range [0, MAX_APP_CLONE_INDEX]
-    if (!GlobalConstant::IsAppCloneIndex(appCloneIndexFromWant)) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "appCloneIndex out of valid range [0, %{public}d]: %{public}d",
-            GlobalConstant::MAX_APP_CLONE_INDEX, appCloneIndexFromWant);
-        AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, ERR_APP_CLONE_INDEX_INVALID, "appCloneIndex out of range");
-        return ERR_APP_CLONE_INDEX_INVALID;
-    }
-
-    appCloneIndex = appCloneIndexFromWant;
-    return ERR_OK;
-}
-
-int32_t AbilityManagerService::InitializeAppCloneRequest(StartAbilityWrapParam &param, int32_t appCloneIndex,
-    AbilityRequest &abilityRequest, AppExecFwk::AbilityInfo &abilityInfo, int32_t validUserId)
+int32_t AbilityManagerService::InitializeAppCloneRequest(const StartAbilityWrapParam &param, int32_t appCloneIndex,
+    int32_t validUserId, AbilityRequest &abilityRequest, AppExecFwk::AbilityInfo &abilityInfo)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Call InitializeAppCloneRequest");
-    // Use StartAbilityInfoWrap for RAII protection
-    StartAbilityInfoWrap threadLocalInfo(param.want, validUserId, appCloneIndex, param.callerToken);
-
     // Generate AbilityRequest with user-selected appCloneIndex
     int32_t result = GenerateAbilityRequest(param.want, param.requestCode, abilityRequest, param.callerToken, validUserId);
     if (result != ERR_OK) {
@@ -1900,24 +1880,22 @@ int32_t AbilityManagerService::InitializeAppCloneRequest(StartAbilityWrapParam &
     return ERR_OK;
 }
 
-int32_t AbilityManagerService::ProcessLaunchReasonAndController(StartAbilityWrapParam &param,
-    AbilityRequest &abilityRequest, AppExecFwk::AbilityInfo &abilityInfo, std::shared_ptr<EventInfo> eventInfo)
+int32_t AbilityManagerService::ProcessLaunchReasonAndController(const StartAbilityWrapParam &param,
+    const std::shared_ptr<EventInfo> eventInfo, const AppExecFwk::AbilityInfo &abilityInfo, AbilityRequest &abilityRequest)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Call ProcessLaunchReasonAndController");
-    if (param.callerToken == nullptr) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "callerToken is nullptr");
-        AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, ERR_INVALID_VALUE, "callerToken is nullptr");
-        return ERR_INVALID_VALUE;
-    }
 
-    auto callerRecord = Token::GetAbilityRecordByToken(param.callerToken);
-    if (callerRecord == nullptr) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "Failed to get callerRecord from callerToken");
-        AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, ERR_INVALID_VALUE, "Get callerRecord failed");
-        return ERR_INVALID_VALUE;
+    uint32_t callerTokenId = 0;
+    if(param.specifyTokenId > 0) {
+        callerTokenId = param.specifyTokenId;
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "StartAbilityForAppCloneSelector use param.specifyTokenId");
+    } else if (param.callerToken != nullptr) {
+        auto callerRecord = Token::GetAbilityRecordByToken(param.callerToken);
+        if (callerRecord != nullptr) {
+            callerTokenId = callerRecord->GetApplicationInfo().accessTokenId;
+            TAG_LOGD(AAFwkTag::ABILITYMGR, "StartAbilityForAppCloneSelector use param.callerToken");
+        }
     }
-
-    uint32_t callerTokenId = callerRecord->GetApplicationInfo().accessTokenId;
     RemoveUnauthorizedLaunchReasonMessage(param.want, abilityRequest, callerTokenId);
 
     if (!IsAbilityControllerStart(param.want, abilityInfo.bundleName)) {
@@ -1929,9 +1907,9 @@ int32_t AbilityManagerService::ProcessLaunchReasonAndController(StartAbilityWrap
     return ERR_OK;
 }
 
-int32_t AbilityManagerService::ExecuteAfterCheckInterceptors(StartAbilityWrapParam &param,
-    AbilityRequest &abilityRequest, AppExecFwk::AbilityInfo &abilityInfo, int32_t appCloneIndex,
-    std::shared_ptr<EventInfo> eventInfo)
+int32_t AbilityManagerService::ExecuteAfterCheckInterceptors(const StartAbilityWrapParam &param,
+    const AbilityRequest &abilityRequest, const AppExecFwk::AbilityInfo &abilityInfo, int32_t appCloneIndex,
+    const std::shared_ptr<EventInfo> eventInfo)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Call ExecuteAfterCheckInterceptors");
     // After-check interceptors using user-selected appIndex
@@ -1952,7 +1930,7 @@ int32_t AbilityManagerService::ExecuteAfterCheckInterceptors(StartAbilityWrapPar
     return ERR_OK;
 }
 
-void AbilityManagerService::PreprocessRequestParams(StartAbilityWrapParam &param,
+void AbilityManagerService::PreprocessRequestParams(const StartAbilityWrapParam &param,
     AbilityRequest &abilityRequest)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Call PreprocessRequestParams");
@@ -1971,8 +1949,8 @@ void AbilityManagerService::PreprocessRequestParams(StartAbilityWrapParam &param
     abilityRequest.want.RemoveParam(PARAM_SPECIFIED_PROCESS_FLAG);
 }
 
-int32_t AbilityManagerService::ExecuteAbilityStart(AbilityRequest &abilityRequest,
-    AppExecFwk::AbilityInfo &abilityInfo, int32_t validUserId, bool isGamePrelaunch, std::shared_ptr<EventInfo> eventInfo)
+int32_t AbilityManagerService::ExecuteAbilityStart(const AppExecFwk::AbilityInfo &abilityInfo, int32_t validUserId,
+    bool isGamePrelaunch, const std::shared_ptr<EventInfo> eventInfo, AbilityRequest &abilityRequest)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Call ExecuteAbilityStart");
     int32_t result = ERR_OK;
