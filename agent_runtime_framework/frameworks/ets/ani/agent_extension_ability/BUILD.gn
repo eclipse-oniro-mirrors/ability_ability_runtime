@@ -104,6 +104,10 @@ ohos_shared_library("ets_agent_extension") {
 
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
 
+  if (ability_runtime_graphics) {
+    defines = [ "SUPPORT_GRAPHICS" ]
+  }
+
   public_configs = []
 
   sources = [
@@ -150,6 +154,14 @@ ohos_shared_library("ets_agent_extension") {
     "runtime_core:ani",
     "samgr:samgr_proxy",
   ]
+
+  if (ability_runtime_graphics) {
+    external_deps += [
+      "window_manager:libdm",
+      "window_manager:libwm",
+      "window_manager:libwsutils",
+    ]
+  }
 
   subsystem_name = "ability"
   part_name = "ability_runtime"
