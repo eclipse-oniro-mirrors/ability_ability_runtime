@@ -1199,6 +1199,7 @@ ohos_shared_library("uiabilitykit_native") {
   external_deps = [
     "ability_base:base",
     "ability_base:configuration",
+    "ability_base:extractortool",
     "ability_base:want",
     "bundle_framework:appexecfwk_base",
     "c_utils:utils",
@@ -1677,6 +1678,7 @@ ohos_shared_library("service_extension") {
 
   external_deps = [
     "ability_base:configuration",
+    "ability_base:extractortool",
     "ability_base:want",
     "ability_base:zuri",
     "bundle_framework:libappexecfwk_common",

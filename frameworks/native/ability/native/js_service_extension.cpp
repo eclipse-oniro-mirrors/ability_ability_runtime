@@ -46,12 +46,15 @@
 #include "skill/skill_execute_result.h"
 #include "string_wrapper.h"
 #include "want_params.h"
+#include "extractor.h"
 #ifdef SUPPORT_GRAPHICS
 #include "iservice_registry.h"
 #include "system_ability_definition.h"
 #include "window_scene.h"
 #endif
 
+using Extractor = OHOS::AbilityBase::Extractor;
+using ExtractorUtil = OHOS::AbilityBase::ExtractorUtil;
 namespace OHOS {
 namespace AbilityRuntime {
 namespace {
@@ -659,6 +662,28 @@ bool JsServiceExtension::TryLoadSkillEntry(const std::string &srcEntry,
     if (pos != std::string::npos) {
         srcPath.erase(pos);
         srcPath.append(".abc");
+    }
+    if (Extension::abilityInfo_ == nullptr || !Extension::abilityInfo_->isStageBasedModel) {
+        TAG_LOGW(AAFwkTag::SERVICE_EXT,
+            "skill load requires stage model, srcEntry:%{public}s", srcEntry.c_str());
+        return false;
+    }
+    if (!param->hapPath_.empty()) {
+        bool newCreate = false;
+        std::string loadPath = ExtractorUtil::GetLoadFilePath(param->hapPath_);
+        std::shared_ptr<Extractor> extractor = ExtractorUtil::GetExtractor(loadPath, newCreate);
+        if (extractor == nullptr) {
+            TAG_LOGW(AAFwkTag::SERVICE_EXT, "get extractor failed, hapPath:%{private}s", param->hapPath_.c_str());
+            return false;
+        }
+        auto slashPos = srcPath.find('/');
+        std::string abcPath = (slashPos != std::string::npos) ? srcPath.substr(slashPos + 1) : srcPath;
+        bool isHapCompressed = extractor->IsHapCompress(abcPath);
+        if (isHapCompressed) {
+            TAG_LOGW(AAFwkTag::SERVICE_EXT,
+                "abc is compressed, not allowed, abcPath:%{public}s", abcPath.c_str());
+            return false;
+        }
     }
     skillModuleRef_ = jsRuntime_.LoadModule(param->moduleName_, srcPath, param->hapPath_, true, false, srcEntry);
     if (skillModuleRef_ == nullptr) {
