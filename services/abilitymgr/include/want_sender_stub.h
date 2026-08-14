@@ -26,14 +26,8 @@ namespace OHOS {
 namespace AAFwk {
 class WantSenderStub : public IRemoteStub<IWantSender> {
 public:
-    WantSenderStub();
-    virtual ~WantSenderStub();
-
-    virtual int OnRemoteRequest(
-        uint32_t code, MessageParcel &data, MessageParcel &reply, MessageOption &option) override;
-
-private:
-    int SendInner(MessageParcel &data, MessageParcel &reply);
+    WantSenderStub() = default;
+    virtual ~WantSenderStub() = default;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

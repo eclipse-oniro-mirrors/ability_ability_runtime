@@ -116,8 +116,6 @@ public:
         iRemoteObjectFlags_ = iRemoteObjectFlags;
     };
 
-    void Send(SenderInfo& senderInfo) override {};
-
     int32_t GetasObjectfunctionFrequency() const
     {
         return asObjectfunctionFrequency;

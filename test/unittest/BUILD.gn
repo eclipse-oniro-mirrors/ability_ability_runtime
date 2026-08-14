@@ -565,7 +565,6 @@ group("unittest") {
       "want_receiver_proxy_test:unittest",
       "want_receiver_stub_test:unittest",
       "want_sender_info_test:unittest",
-      "want_sender_proxy_test:unittest",
       "want_sender_stub_test:unittest",
       "wants_info_test:unittest",
       "window_config_test:unittest",
