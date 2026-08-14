@@ -101,7 +101,7 @@ HWTEST_F(ModularObjectExtensionManagerConnectTest, ReleaseAllExtensionInfos_Null
 {
     GTEST_LOG_(INFO) << "ReleaseAllExtensionInfos_Null_001 start";
     auto ret = OH_AbilityRuntime_ReleaseAllExtensionInfos(nullptr);
-    EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
+    EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
     GTEST_LOG_(INFO) << "ReleaseAllExtensionInfos_Null_001 end";
 }
 
@@ -110,7 +110,7 @@ HWTEST_F(ModularObjectExtensionManagerConnectTest, ReleaseAllExtensionInfos_Null
     GTEST_LOG_(INFO) << "ReleaseAllExtensionInfos_NullPointer_001 start";
     OH_AbilityRuntime_AllModObjExtensionInfosHandle handle = nullptr;
     auto ret = OH_AbilityRuntime_ReleaseAllExtensionInfos(&handle);
-    EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
+    EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
     GTEST_LOG_(INFO) << "ReleaseAllExtensionInfos_NullPointer_001 end";
 }
 

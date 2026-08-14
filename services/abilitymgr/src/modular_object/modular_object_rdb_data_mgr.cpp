@@ -135,8 +135,8 @@ int32_t ModularObjectExtensionRdbDataMgr::QueryData(const std::string &key, std:
 
     auto ret = resultSet->GoToFirstRow();
     if (ret != NativeRdb::E_OK) {
-        TAG_LOGW(AAFwkTag::EXT, "GoToFirstRow failed, ret: %{public}d", ret);
-        return ret;
+        TAG_LOGI(AAFwkTag::EXT, "GoToFirstRow failed, ret: %{public}d", ret);
+        return NativeRdb::E_OK;
     }
     ret = resultSet->GetString(VALUE_INDEX, value);
     if (ret != NativeRdb::E_OK) {
