@@ -16,7 +16,6 @@
 #include "ability_manager_errors.h"
 #include "ability_util.h"
 #include "app_scheduler.h"
-#include "param.h"
 #include "appmgr/app_mgr_constants.h"
 #include "hilog_tag_wrapper.h"
 #include "mock_my_flag.h"

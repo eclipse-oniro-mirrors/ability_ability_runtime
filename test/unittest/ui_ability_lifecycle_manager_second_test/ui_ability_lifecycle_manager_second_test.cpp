@@ -1779,7 +1779,8 @@ HWTEST_F(UIAbilityLifecycleManagerSecondTest, BuildStartSpecifiedParam_001, Test
     request.customProcess = "com.test.custom";
     request.processOptions = nullptr;
 
-    auto param = UIAbilityLifecycleManager::BuildStartSpecifiedParam(request, 1001);
+    AbilityRuntime::StartSpecifiedParam param;
+    UIAbilityLifecycleManager::BuildStartSpecifiedParam(request, 1001, param);
 
     EXPECT_EQ(param.requestId, 1001);
     EXPECT_EQ(param.customProcess, "com.test.custom");
@@ -1800,7 +1801,8 @@ HWTEST_F(UIAbilityLifecycleManagerSecondTest, BuildStartSpecifiedParam_002, Test
     request.processOptions->processMode = ProcessMode::NEW_PROCESS_ATTACH_TO_PARENT;
     request.processOptions->isPreloadStart = true;
 
-    auto param = UIAbilityLifecycleManager::BuildStartSpecifiedParam(request, 2002);
+    AbilityRuntime::StartSpecifiedParam param;
+    UIAbilityLifecycleManager::BuildStartSpecifiedParam(request, 2002, param);
 
     EXPECT_EQ(param.requestId, 2002);
     EXPECT_EQ(param.processMode, static_cast<int32_t>(ProcessMode::NEW_PROCESS_ATTACH_TO_PARENT));
@@ -1820,7 +1822,8 @@ HWTEST_F(UIAbilityLifecycleManagerSecondTest, BuildStartSpecifiedParam_003, Test
     request.processOptions->processMode = ProcessMode::UNSPECIFIED;
     request.processOptions->isPreloadStart = false;
 
-    auto param = UIAbilityLifecycleManager::BuildStartSpecifiedParam(request, 0);
+    AbilityRuntime::StartSpecifiedParam param;
+    UIAbilityLifecycleManager::BuildStartSpecifiedParam(request, 0, param);
 
     EXPECT_EQ(param.customProcess, "com.example.proc");
     EXPECT_EQ(param.processMode, static_cast<int32_t>(ProcessMode::UNSPECIFIED));

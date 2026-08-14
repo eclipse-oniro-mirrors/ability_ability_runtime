@@ -99,17 +99,15 @@ auto g_deleteLifecycleEventTask = [](const sptr<Token> &token) {
 
 UIAbilityLifecycleManager::UIAbilityLifecycleManager(int32_t userId): userId_(userId) {}
 
-AbilityRuntime::StartSpecifiedParam UIAbilityLifecycleManager::BuildStartSpecifiedParam(
-    const AbilityRequest &request, int32_t requestId)
+void UIAbilityLifecycleManager::BuildStartSpecifiedParam(
+    const AbilityRequest &request, int32_t requestId, AbilityRuntime::StartSpecifiedParam &param)
 {
-    AbilityRuntime::StartSpecifiedParam param;
     param.requestId = requestId;
     param.customProcess = request.customProcess;
     if (request.processOptions != nullptr) {
         param.processMode = static_cast<int32_t>(request.processOptions->processMode);
         param.isPreloadStart = request.processOptions->isPreloadStart;
     }
-    return param;
 }
 
 bool UIAbilityLifecycleManager::ProcessColdStartBranch(AbilityRequest &abilityRequest, sptr<SessionInfo> sessionInfo,
@@ -125,7 +123,8 @@ bool UIAbilityLifecycleManager::ProcessColdStartBranch(AbilityRequest &abilityRe
         }
         return false;
     }
-    auto specifiedParam = BuildStartSpecifiedParam(abilityRequest, sessionInfo->requestId);
+    AbilityRuntime::StartSpecifiedParam specifiedParam;
+    BuildStartSpecifiedParam(abilityRequest, sessionInfo->requestId, specifiedParam);
     DelayedSingleton<AppScheduler>::GetInstance()->StartSpecifiedAbility(abilityRequest.want,
         abilityRequest.abilityInfo, specifiedParam);
     AddCallerRecord(abilityRequest, sessionInfo, uiAbilityRecord);
@@ -4562,7 +4561,8 @@ void UIAbilityLifecycleManager::StartSpecifiedRequest(SpecifiedRequest &specifie
                 return;
             }
         } else {
-            auto specifiedParam = BuildStartSpecifiedParam(request, specifiedRequest.requestId);
+            AbilityRuntime::StartSpecifiedParam specifiedParam;
+            BuildStartSpecifiedParam(request, specifiedRequest.requestId, specifiedParam);
             DelayedSingleton<AppScheduler>::GetInstance()->StartSpecifiedAbility(request.want,
                 request.abilityInfo, specifiedParam);
         }

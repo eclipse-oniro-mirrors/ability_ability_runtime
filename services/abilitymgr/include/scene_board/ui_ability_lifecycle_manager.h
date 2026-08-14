@@ -25,12 +25,14 @@
 #include "ability_manager_constants.h"
 #include "ffrt.h"
 #include "isession_handler_interface.h"
-#include "param.h"
 #include "ui_ability_record.h"
 
 namespace OHOS {
 namespace Rosen {
 struct PendingSessionActivationConfig;
+}
+namespace AbilityRuntime {
+struct StartSpecifiedParam;
 }
 namespace AAFwk {
 class SessionInfo;
@@ -651,10 +653,10 @@ private:
      * @brief Build StartSpecifiedParam from an ability request.
      * @param request The ability request carrying customProcess / processOptions
      * @param requestId The specified-ability request id (caller-supplied)
-     * @return Populated StartSpecifiedParam
+     * @param param Output parameter populated with the result
      */
-    static AbilityRuntime::StartSpecifiedParam BuildStartSpecifiedParam(
-        const AbilityRequest &request, int32_t requestId);
+    static void BuildStartSpecifiedParam(
+        const AbilityRequest &request, int32_t requestId, AbilityRuntime::StartSpecifiedParam &param);
 
     /**
      * @brief Update ability record launch reason

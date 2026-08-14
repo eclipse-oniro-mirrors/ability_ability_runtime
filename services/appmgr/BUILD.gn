@@ -22,6 +22,7 @@ config("appmgr_config") {
     "${ability_runtime_services_path}/common/include",
     "${ability_runtime_path}/tools/aa/include",
     "${ability_runtime_path}/utils/global/time/include",
+    "${ability_runtime_path}/utils/server/startup/include",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
     "${ability_runtime_utils_path}/global/constant",
   ]

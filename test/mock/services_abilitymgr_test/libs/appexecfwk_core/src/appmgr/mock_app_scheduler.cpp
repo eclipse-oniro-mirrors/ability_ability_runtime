@@ -14,7 +14,6 @@
  */
 
 #include "app_scheduler.h"
-#include "param.h"
 
 #include "hilog_tag_wrapper.h"
 #include "ability_util.h"
