@@ -135,6 +135,7 @@ class EventHub {
       throw new BusinessError(ERROR_CODE_INVALID_PARAM);
       return;
     }
+    console.log('AbilityKit eventHub off event: ' + event);
     if (this.eventMap[event]) {
       if (callback) {
         let cbArray = this.eventMap[event];
