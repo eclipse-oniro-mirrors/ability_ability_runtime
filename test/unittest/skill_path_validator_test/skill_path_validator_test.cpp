@@ -16,7 +16,7 @@
 #include <gtest/gtest.h>
 #include <string>
 
-#include "skill_path_validator.h"
+#include "skill/skill_path_validator.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -89,6 +89,35 @@ HWTEST_F(SkillPathValidatorTest, IsSafeSkillPath_Traversal_0100, TestSize.Level0
     EXPECT_FALSE(IsSafeSkillPath("foo/..bar"));
 }
 
+/**
+ * @tc.number: IsSafeSkillPath_Traversal_0200
+ * @tc.name: IsSafeSkillPath
+ * @tc.desc: Multi-level traversal prefixes (../../, ../../../) are rejected.
+ */
+HWTEST_F(SkillPathValidatorTest, IsSafeSkillPath_Traversal_0200, TestSize.Level0)
+{
+    EXPECT_FALSE(IsSafeSkillPath("../../etc/passwd"));
+    EXPECT_FALSE(IsSafeSkillPath("../../../etc/passwd"));
+    EXPECT_FALSE(IsSafeSkillPath("../../../../data/secret"));
+    EXPECT_FALSE(IsSafeSkillPath("./../../etc"));
+    EXPECT_FALSE(IsSafeSkillPath("module/../../etc"));
+    EXPECT_FALSE(IsSafeSkillPath("a/b/../../../c"));
+    EXPECT_FALSE(IsSafeSkillPath("ets/../../shared/secret"));
+}
+
+/**
+ * @tc.number: IsSafeSkillPath_Traversal_0300
+ * @tc.name: IsSafeSkillPath
+ * @tc.desc: Trailing ".." and ".." inside the path are rejected.
+ */
+HWTEST_F(SkillPathValidatorTest, IsSafeSkillPath_Traversal_0300, TestSize.Level0)
+{
+    EXPECT_FALSE(IsSafeSkillPath("foo/.."));
+    EXPECT_FALSE(IsSafeSkillPath("a/b/.."));
+    EXPECT_FALSE(IsSafeSkillPath(".."));
+    EXPECT_FALSE(IsSafeSkillPath("../"));
+}
+
 HWTEST_F(SkillPathValidatorTest, IsSafeSkillPath_NullByte_0100, TestSize.Level0)
 {
     EXPECT_FALSE(IsSafeSkillPath(StringWithNull()));
@@ -139,6 +168,11 @@ HWTEST_F(SkillPathValidatorTest, IsSafeHapPath_Traversal_0100, TestSize.Level0)
 {
     EXPECT_FALSE(IsSafeHapPath("/data/app/../../etc/passwd"));
     EXPECT_FALSE(IsSafeHapPath("/../secret"));
+    EXPECT_FALSE(IsSafeHapPath("/data/app/../../../etc/passwd"));
+    EXPECT_FALSE(IsSafeHapPath("/data/../.././etc"));
+    EXPECT_FALSE(IsSafeHapPath("/../.."));
+    EXPECT_FALSE(IsSafeHapPath("/data/app/foo/.."));
+    EXPECT_FALSE(IsSafeHapPath("/data/app/../etc"));
 }
 
 HWTEST_F(SkillPathValidatorTest, IsSafeHapPath_NullByte_0100, TestSize.Level0)

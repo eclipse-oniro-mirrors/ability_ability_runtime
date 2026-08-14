@@ -658,8 +658,8 @@ bool JsServiceExtension::TryLoadSkillEntry(const std::string &srcEntry,
         TAG_LOGW(AAFwkTag::SERVICE_EXT, "param is null");
         return false;
     }
-    if (!IsSafeSkillPath(param->moduleName_) || !IsSafeSkillPath(srcEntry)) {
-        TAG_LOGW(AAFwkTag::SERVICE_EXT, "invalid moduleName or srcEntry");
+    if (!IsSafeSkillPath(param->moduleName_)) {
+        TAG_LOGW(AAFwkTag::SERVICE_EXT, "invalid moduleName");
         return false;
     }
     if (!param->hapPath_.empty() && !IsSafeHapPath(param->hapPath_)) {

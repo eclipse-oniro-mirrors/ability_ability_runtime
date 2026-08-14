@@ -2159,6 +2159,9 @@ int AbilityManagerStub::GetWantSenderInner(MessageParcel &data, MessageParcel &r
         TAG_LOGE(AAFwkTag::WANTAGENT, "wantSenderInfo null");
         return ERR_INVALID_VALUE;
     }
+    for (auto &wantsInfo : wantSenderInfo->allWants) {
+        SanitizeWantParams(wantsInfo.want);
+    }
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
         callerToken = data.ReadRemoteObject();
@@ -2185,6 +2188,7 @@ int AbilityManagerStub::SendWantSenderInner(MessageParcel &data, MessageParcel &
         TAG_LOGE(AAFwkTag::WANTAGENT, "senderInfo null");
         return ERR_INVALID_VALUE;
     }
+    SanitizeWantParams(senderInfo->want);
     int32_t result = SendWantSender(wantSender, *senderInfo);
     if (!reply.WriteParcelable(senderInfo.get())) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "completedData write fail");
@@ -2201,6 +2205,7 @@ int AbilityManagerStub::SendLocalWantSenderInner(MessageParcel &data, MessagePar
         TAG_LOGE(AAFwkTag::ABILITYMGR, "senderInfo null");
         return ERR_INVALID_VALUE;
     }
+    SanitizeWantParams(senderInfo->want);
     int32_t result = SendLocalWantSender(*senderInfo);
     reply.WriteInt32(result);
     senderInfo->want.CloseAllFd();

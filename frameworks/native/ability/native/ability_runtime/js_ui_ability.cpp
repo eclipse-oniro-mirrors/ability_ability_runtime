@@ -2695,8 +2695,8 @@ bool JsUIAbility::TryLoadSkillEntry(const std::string &srcEntry,
         TAG_LOGW(AAFwkTag::UIABILITY, "param is null");
         return false;
     }
-    if (!IsSafeSkillPath(param->moduleName_) || !IsSafeSkillPath(srcEntry)) {
-        TAG_LOGW(AAFwkTag::UIABILITY, "invalid moduleName or srcEntry");
+    if (!IsSafeSkillPath(param->moduleName_)) {
+        TAG_LOGW(AAFwkTag::UIABILITY, "invalid moduleName");
         return false;
     }
     if (!param->hapPath_.empty() && !IsSafeHapPath(param->hapPath_)) {
