@@ -135,6 +135,7 @@ public:
     bool CheckPreloadUIExtension(const std::string& message, const std::string& bundleName, int32_t pid,
         const std::string& eventName);
     bool CheckProcessExit(const std::string& processName, const std::string& eventName, bool foreground);
+    bool IsValidFreezeTypeName(const std::string& freezeTypeName);
 
 private:
     struct PeerBinderInfo {
