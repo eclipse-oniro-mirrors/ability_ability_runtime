@@ -555,6 +555,7 @@ group("unittest") {
       "ui_extension_utils_test:unittest",
       "ui_extension_ability_manager_test:unittest",
       "ui_extension_ability_manager_second_test:unittest",
+      "ui_extension_ability_manager_third_test:unittest",
       "update_caller_info_util_test:unittest",
       "uri_utils_second_test",
       "uri_utils_test:unittest",
