@@ -294,6 +294,15 @@ public:
         uint32_t specifyTokenId, int32_t userId, int requestCode));
 public:
     std::string powerState_;
+
+    // Capture the Want handed to the 4-arg StartAbility so unit tests can assert on its params.
+    static const Want& GetCapturedWant();
+    static bool HasCapturedWant();
+    static void ResetCapturedWant();
+
+private:
+    static Want capturedWant_;
+    static bool captured_;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -48,6 +48,7 @@ constexpr int EXTRA_ARGUMENTS_FOR_KEY_VALUE_PAIR = 1;
 constexpr int EXTRA_ARGUMENTS_FOR_NULL_STRING = 0;
 constexpr int OPTION_PARAMETER_VALUE_OFFSET = 1;
 constexpr int SHORT_OPTION_INDEX = 1;
+constexpr const char* PERF_CMD_KEY = "perfCmd";
 
 constexpr int OPTION_PARAMETER_INTEGER = 257;
 constexpr int OPTION_PARAMETER_STRING = 258;
@@ -1322,6 +1323,28 @@ bool AbilityManagerShellCommand::CheckPerfCmdString(
     return true;
 }
 
+ErrCode AbilityManagerShellCommand::CheckReservedPerfCmd(
+    ParametersString& parametersString, std::string& perfCmd)
+{
+    auto it = parametersString.find(PERF_CMD_KEY);
+    if (it == parametersString.end()) {
+        return OHOS::ERR_OK;
+    }
+    // The perfCmd key is reserved for the -p option; --ps must not inject it unchecked.
+    // Validate it with the same CheckPerfCmdString rule as -p and route it through the
+    // same application path (want.SetParam("perfCmd", perfCmd)).
+    std::string value = it->second;
+    parametersString.erase(it);
+    std::string validated;
+    if (!CheckPerfCmdString(value.c_str(), PARAM_LENGTH, validated)) {
+        TAG_LOGE(AAFwkTag::AA_TOOL, "input perfCmd invalid via --ps %{public}s", value.c_str());
+        resultReceiver_.append("invalid perfCmd for option --ps\n");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    perfCmd = validated;
+    return OHOS::ERR_OK;
+}
+
 bool AbilityManagerShellCommand::IsLongStartOption(const std::string &argv)
 {
     if (argv.find("--") != 0) {
@@ -2148,7 +2171,11 @@ ErrCode AbilityManagerShellCommand::MakeWantFromCmd(Want& want, std::string& win
 
                 // save module name
                 if (!CheckPerfCmdString(optarg, PARAM_LENGTH, perfCmd)) {
-                    TAG_LOGE(AAFwkTag::AA_TOOL, "input perfCmd invalid %{public}s", perfCmd.c_str());
+                    TAG_LOGE(AAFwkTag::AA_TOOL, "input perfCmd invalid %{public}s", optarg);
+                    // CheckPerfCmdString may leave the invalid string in perfCmd; clear it so a
+                    // later --ps/--pi/--pb that resets the result cannot apply an unvalidated
+                    // perfCmd via want.SetParam("perfCmd", perfCmd).
+                    perfCmd.clear();
                     result = OHOS::ERR_INVALID_VALUE;
                 }
                 break;
@@ -2176,6 +2203,11 @@ ErrCode AbilityManagerShellCommand::MakeWantFromCmd(Want& want, std::string& win
 
                 // parse option arguments into a key-value map
                 result = ParseParam(parametersString);
+                // --ps must not bypass the perfCmd validation enforced by -p:
+                // a reserved perfCmd key is routed through the same CheckPerfCmdString rule.
+                if (result == OHOS::ERR_OK) {
+                    result = CheckReservedPerfCmd(parametersString, perfCmd);
+                }
 
                 break;
             }

@@ -298,6 +298,11 @@ private:
     ErrCode ParseTestCommandOption(const std::string &opt, int &i, std::map<std::string, std::string> &params);
     bool MatchOrderString(const std::regex &r, const std::string &orderCmd);
     bool CheckPerfCmdString(const char* optarg, const size_t paramLength, std::string &perfCmd);
+    // The perfCmd want parameter is reserved for the -p option. --ps must not inject it
+    // unchecked; this routes a perfCmd key set via --ps through the same
+    // CheckPerfCmdString rule and the same application path as -p. (--psn only sets an
+    // empty value, which is harmless and therefore not validated.)
+    ErrCode CheckReservedPerfCmd(ParametersString& parametersString, std::string& perfCmd);
     void ParseBundleName(std::string &bundleName);
     ErrCode StartAbilityWithWait(Want& want, int32_t userId = DEFAULT_INVAL_VALUE);
     void FormatOutputForWithWait(const Want &want, const AbilityStartWithWaitObserverData& data);
