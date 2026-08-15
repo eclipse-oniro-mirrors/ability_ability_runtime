@@ -623,7 +623,7 @@ static void OnFreezeCallback()
         return;
     }
     napi_value global = nullptr;
-    if (napi_get_global(freezeObserver.env, &global) != napi_ok) {
+    if (napi_get_global(freezeObserver.env, &global) != napi_ok || global == nullptr) {
         TAG_LOGI(AAFwkTag::JSNAPI, "Get Global Failed");
         napi_close_handle_scope(freezeObserver.env, scope_);
         return;
@@ -633,7 +633,8 @@ static void OnFreezeCallback()
     napi_value args[] = {};
 
     napi_value function = nullptr;
-    if (napi_get_reference_value(freezeObserver.env, freezeObserver.ref, &function) != napi_ok) {
+    if (napi_get_reference_value(freezeObserver.env, freezeObserver.ref, &function) != napi_ok ||
+        function == nullptr) {
         TAG_LOGI(AAFwkTag::JSNAPI, "Get Callback Failed");
         napi_close_handle_scope(freezeObserver.env, scope_);
         return;
@@ -873,7 +874,7 @@ static bool LeakObserverFunc(const AppExecFwk::LeakObject &obj)
     }
  
     napi_value global = nullptr;
-    if (napi_get_global(g_defaultLeakObserver.env, &global) != napi_ok) {
+    if (napi_get_global(g_defaultLeakObserver.env, &global) != napi_ok || global == nullptr) {
         TAG_LOGI(AAFwkTag::JSNAPI, "Get Global Failed");
         return false;
     }
@@ -892,7 +893,8 @@ static bool LeakObserverFunc(const AppExecFwk::LeakObject &obj)
     }
 
     napi_value function = nullptr;
-    if (napi_get_reference_value(g_defaultLeakObserver.env, g_defaultLeakObserver.ref, &function) != napi_ok) {
+    if (napi_get_reference_value(g_defaultLeakObserver.env, g_defaultLeakObserver.ref, &function) != napi_ok ||
+        function == nullptr) {
         TAG_LOGI(AAFwkTag::JSNAPI, "Get Callback Failed");
         return false;
     }
