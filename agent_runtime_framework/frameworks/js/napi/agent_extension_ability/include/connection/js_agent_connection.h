@@ -187,7 +187,11 @@ public:
      */
     void SetNapiAsyncTask(std::shared_ptr<AbilityRuntime::NapiAsyncTask> &task);
 
-    void SetDisconnectAsyncTask(const std::shared_ptr<AbilityRuntime::NapiAsyncTask> &task);
+    // Returns false without overwriting if a pending task exists (prevents re-entrant orphaning).
+    bool SetDisconnectAsyncTask(const std::shared_ptr<AbilityRuntime::NapiAsyncTask> &task);
+
+    // Take ownership; first settler wins. Both guarded by stateLock_.
+    std::shared_ptr<AbilityRuntime::NapiAsyncTask> TakeDisconnectAsyncTask();
 
     /**
      * Add a duplicated pending task.
@@ -211,8 +215,9 @@ public:
 
     // Reject primary/duplicated/staged low-code tasks, clear primary async task, remove connection.
     // Public: DoConnectAgentExtensionAbility (js_agent_manager.cpp) rejects staged reuse on AgentManagerService
-    // connect failure.
-    void RejectConnectAndCleanup(napi_env env, napi_value error, bool hasPrimaryTask);
+    // connect failure. Idempotent: takes ownership of napiAsyncTask_ so the first settler wins; callers must not
+    // pass a stale snapshot flag.
+    void RejectConnectAndCleanup(napi_env env, napi_value error);
 
     void AdoptDuplicatedPendingTasks(std::vector<std::unique_ptr<AbilityRuntime::NapiAsyncTask>> &&tasks);
 
@@ -373,10 +378,9 @@ private:
     void HandleOnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int resultCode);
 
     // Returns true when the connect flow must abort (no pending task, or result failure).
-    bool AbortOnConnectError(napi_env env, int resultCode, bool hasPrimaryTask, bool hasDuplicatedPendingTask);
+    bool AbortOnConnectError(napi_env env, int resultCode, bool hasDuplicatedPendingTask);
     // Build the JS receiver proxy for the just-connected host; nullptr (after cleanup) on failure.
-    napi_value BuildAgentReceiverProxy(napi_env env, const sptr<IRemoteObject> &remoteObject,
-        bool hasPrimaryTask);
+    napi_value BuildAgentReceiverProxy(napi_env env, const sptr<IRemoteObject> &remoteObject);
 
 protected:
     napi_env env_;

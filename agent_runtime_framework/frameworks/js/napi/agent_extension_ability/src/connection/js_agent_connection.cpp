@@ -268,22 +268,23 @@ void JSAgentConnection::OnAbilityConnectDone(const AppExecFwk::ElementName &elem
 }
 
 // Reject primary + duplicated + staged low-code tasks with error; remove connection from registry.
-void JSAgentConnection::RejectConnectAndCleanup(napi_env env, napi_value error, bool hasPrimaryTask)
+void JSAgentConnection::RejectConnectAndCleanup(napi_env env, napi_value error)
 {
-    if (hasPrimaryTask) {
-        napiAsyncTask_->Reject(env, error);
+    // Take ownership so the first settler wins. No lock: all settlers are JS-thread-serialized.
+    // Do NOT hold stateLock_ — sub-calls re-acquire it (non-recursive mutex).
+    auto primary = std::move(napiAsyncTask_);
+    if (primary != nullptr) {
+        primary->Reject(env, error);
     }
     RejectDuplicatedPendingTask(env, error);
     RejectPendingLowCodeReuseTasks(env, error);
-    napiAsyncTask_ = nullptr;
     AgentConnectionUtils::RemoveAgentConnection(connectionId_);
 }
 
 // True when connect must abort: no pending task, or result-code failure (after reject+cleanup).
-bool JSAgentConnection::AbortOnConnectError(napi_env env, int resultCode, bool hasPrimaryTask,
-    bool hasDuplicatedPendingTask)
+bool JSAgentConnection::AbortOnConnectError(napi_env env, int resultCode, bool hasDuplicatedPendingTask)
 {
-    if (!hasPrimaryTask && !hasDuplicatedPendingTask) {
+    if (napiAsyncTask_ == nullptr && !hasDuplicatedPendingTask) {
         TAG_LOGD(AAFwkTag::SER_ROUTER, "No pending connect task");
         return true;
     }
@@ -292,13 +293,13 @@ bool JSAgentConnection::AbortOnConnectError(napi_env env, int resultCode, bool h
     }
     napi_value error = CreateJsErrorByNativeErr(env, resultCode, "",
         AbilityRuntime::GetInnerErrorMsg(AbilityRuntime::AbilityInnerErrorMsg::CONNECT_AGENT_EXTENSION_FAILED));
-    RejectConnectAndCleanup(env, error, hasPrimaryTask);
+    RejectConnectAndCleanup(env, error);
     return true;
 }
 
 // Build the JS receiver proxy for the connected host; nullptr (after reject+cleanup) on creation failure.
 napi_value JSAgentConnection::BuildAgentReceiverProxy(napi_env env,
-    const sptr<IRemoteObject> &remoteObject, bool hasPrimaryTask)
+    const sptr<IRemoteObject> &remoteObject)
 {
     sptr<JsAgentConnectorStubImpl> hostStub = GetServiceHostStub();
     sptr<IRemoteObject> hostProxy = nullptr;
@@ -313,7 +314,7 @@ napi_value JSAgentConnection::BuildAgentReceiverProxy(napi_env env,
     napi_value error = CreateJsErrorByNativeErr(env,
         static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER), "",
         AbilityRuntime::GetInnerErrorMsg(AbilityRuntime::AbilityInnerErrorMsg::OPERATION_FAILED));
-    RejectConnectAndCleanup(env, error, hasPrimaryTask);
+    RejectConnectAndCleanup(env, error);
     return nullptr;
 }
 
@@ -321,18 +322,17 @@ void JSAgentConnection::HandleOnAbilityConnectDone(const AppExecFwk::ElementName
     const sptr<IRemoteObject> &remoteObject, int resultCode)
 {
     TAG_LOGI(AAFwkTag::SER_ROUTER, "HandleOnAbilityConnectDone, resultCode: %{public}d", resultCode);
-    bool hasPrimaryTask = napiAsyncTask_ != nullptr;
     bool hasDuplicatedPendingTask = !duplicatedPendingTaskList_.empty();
-    if (AbortOnConnectError(env_, resultCode, hasPrimaryTask, hasDuplicatedPendingTask)) {
+    if (AbortOnConnectError(env_, resultCode, hasDuplicatedPendingTask)) {
         return;
     }
 
-    napi_value proxy = BuildAgentReceiverProxy(env_, remoteObject, hasPrimaryTask);
+    napi_value proxy = BuildAgentReceiverProxy(env_, remoteObject);
     if (proxy == nullptr) {
         return;
     }
     SetProxyObject(proxy);
-    if (hasPrimaryTask) {
+    if (napiAsyncTask_ != nullptr) {
         napiAsyncTask_->ResolveWithNoError(env_, proxy);
     }
     ResolveDuplicatedPendingTask(env_, proxy);
@@ -391,13 +391,14 @@ void JSAgentConnection::HandleOnAbilityDisconnectDone(const AppExecFwk::ElementN
     if (disconnectCompleteHandler_ != nullptr) {
         disconnectCompleteHandler_(wptr<JSAgentConnection>(this));
     }
-    if (disconnectAsyncTask_ != nullptr) {
+    // Take ownership: first settler wins, the other finds nullptr.
+    auto disconnectTask = TakeDisconnectAsyncTask();
+    if (disconnectTask != nullptr) {
         if (resultCode == static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_OK)) {
-            disconnectAsyncTask_->ResolveWithNoError(env_, CreateJsUndefined(env_));
+            disconnectTask->ResolveWithNoError(env_, CreateJsUndefined(env_));
         } else {
-            disconnectAsyncTask_->Reject(env_, CreateJsErrorByNativeErr(env_, resultCode));
+            disconnectTask->Reject(env_, CreateJsErrorByNativeErr(env_, resultCode));
         }
-        disconnectAsyncTask_ = nullptr;
     }
 
     // release connect
@@ -429,9 +430,20 @@ void JSAgentConnection::SetNapiAsyncTask(std::shared_ptr<AbilityRuntime::NapiAsy
     napiAsyncTask_ = task;
 }
 
-void JSAgentConnection::SetDisconnectAsyncTask(const std::shared_ptr<AbilityRuntime::NapiAsyncTask> &task)
+bool JSAgentConnection::SetDisconnectAsyncTask(const std::shared_ptr<AbilityRuntime::NapiAsyncTask> &task)
 {
+    std::lock_guard<std::mutex> lock(stateLock_);
+    if (disconnectAsyncTask_ != nullptr) {
+        return false;  // re-entrant disconnect would orphan the pending promise
+    }
     disconnectAsyncTask_ = task;
+    return true;
+}
+
+std::shared_ptr<AbilityRuntime::NapiAsyncTask> JSAgentConnection::TakeDisconnectAsyncTask()
+{
+    std::lock_guard<std::mutex> lock(stateLock_);
+    return std::move(disconnectAsyncTask_);
 }
 
 void JSAgentConnection::AddDuplicatedPendingTask(std::unique_ptr<AbilityRuntime::NapiAsyncTask> &task)
