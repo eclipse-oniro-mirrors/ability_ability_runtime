@@ -124,6 +124,10 @@ public:
      */
     void OnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int resultCode) override;
 
+    // Thread-safe accessor: readers on a different lock than agentMutex_ must take it to avoid a
+    // data race with SetRemoteObject(nullptr) in OnAbilityDisconnectDone.
+    sptr<IRemoteObject> GetRemoteObjectLocked();
+
 private:
     std::mutex agentMutex_;
 };
@@ -236,7 +240,8 @@ private:
     AgentConnectionList::iterator FindConnectionLocked(const std::string &agentId, const AAFwk::Want &want);
     ErrCode HandleExistingConnectionLocked(AgentConnectionList::iterator connectionIter,
         const AAFwk::Want &want, const sptr<AbilityRuntime::AbilityConnectCallback> &connectCallback,
-        bool &handled);
+        bool &handled, bool &replayConnect, sptr<IRemoteObject> &replayRemote, int &replayCode,
+        AppExecFwk::ElementName &replayElement);
     sptr<AgentConnection> FindLowCodeReuseConnectionLocked(const AAFwk::Want &want,
         const sptr<AbilityRuntime::AbilityConnectCallback> &connectCallback);
     ErrCode ValidateAgentConnectRequest(const AAFwk::Want &want,
@@ -250,6 +255,13 @@ private:
      */
     ErrCode CreateConnection(const AAFwk::Want &want,
         const sptr<AbilityRuntime::AbilityConnectCallback> &connectCallback);
+    // Reserve a CONNECTING placeholder under the caller's connectionsLock_ (closes the
+    // find-then-create TOCTOU); caller issues the IPC lock-free via DoConnectAgentExtension.
+    sptr<AgentConnection> CreateConnectionLocked(const AAFwk::Want &want,
+        const sptr<AbilityRuntime::AbilityConnectCallback> &connectCallback);
+    // Issue ConnectAgentExtensionAbility lock-free (caller must NOT hold connectionsLock_; it is a
+    // synchronous IPC). Erases the placeholder on failure.
+    ErrCode DoConnectAgentExtension(const AAFwk::Want &want, const sptr<AgentConnection> &agentConnection);
     /**
      * @brief Check if a connection has timed out during connecting state.
      *
@@ -268,7 +280,10 @@ private:
         const sptr<AbilityRuntime::AbilityConnectCallback> &connectCallback);
 
 private:
-    std::mutex connectionsLock_;
+    // recursive_mutex: the disconnect path fires OnAbilityDisconnectDone under the lock; ETS
+    // onDisconnect runs synchronously and may re-enter this manager same-thread. The connect path
+    // keeps its (synchronous) IPC out of the lock.
+    std::recursive_mutex connectionsLock_;
     AgentConnectionList agentConnections_;
 };
 } // namespace AgentRuntime
