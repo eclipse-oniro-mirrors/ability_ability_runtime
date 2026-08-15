@@ -28,6 +28,7 @@
 #include "hitrace_meter.h"
 #include "hilog_tag_wrapper.h"
 #include "insight_intent_execute_param.h"
+#include "skill/skill_path_validator.h"
 #include "insight_intent_execute_result.h"
 #include "insight_intent_executor_info.h"
 #include "insight_intent_executor_mgr.h"
@@ -618,6 +619,10 @@ napi_value JsServiceExtension::LoadSkillFunction(
     napi_value method = nullptr;
 
     if (!param->scriptPath_.empty()) {
+        if (!IsSafeSkillPath(param->scriptPath_)) {
+            TAG_LOGW(AAFwkTag::SERVICE_EXT, "invalid scriptPath");
+            return nullptr;
+        }
         auto scriptBase = ExtractBaseName(param->scriptPath_);
         for (const auto &srcEntry : param->srcEntries_) {
             if (ExtractBaseName(srcEntry) != scriptBase) {
@@ -649,6 +654,18 @@ bool JsServiceExtension::TryLoadSkillEntry(const std::string &srcEntry,
     const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param,
     napi_env env, napi_value &outJsObj, napi_value &method)
 {
+    if (param == nullptr) {
+        TAG_LOGW(AAFwkTag::SERVICE_EXT, "param is null");
+        return false;
+    }
+    if (!IsSafeSkillPath(param->moduleName_)) {
+        TAG_LOGW(AAFwkTag::SERVICE_EXT, "invalid moduleName");
+        return false;
+    }
+    if (!param->hapPath_.empty() && !IsSafeHapPath(param->hapPath_)) {
+        TAG_LOGW(AAFwkTag::SERVICE_EXT, "invalid hapPath");
+        return false;
+    }
     if (IsBlockedSkillKeyName(param->functionName_)) {
         TAG_LOGW(AAFwkTag::SERVICE_EXT, "blocked skill function name:%{public}s",
             param->functionName_.c_str());
