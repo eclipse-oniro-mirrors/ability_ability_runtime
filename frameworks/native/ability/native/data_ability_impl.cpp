@@ -440,7 +440,8 @@ bool DataAbilityImpl::CheckOpenFilePermission(const std::string &mode) const
             TAG_LOGW(AAFwkTag::DATA_ABILITY, "no read permission");
             return false;
         }
-    } else if (mode.find(WRITE) != string::npos) {
+    }
+    if (mode.find(WRITE) != string::npos) {
         if (!CheckReadAndWritePermission(WRITE)) {
             TAG_LOGW(AAFwkTag::DATA_ABILITY, "no write permission");
             return false;
