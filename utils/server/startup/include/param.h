@@ -49,7 +49,6 @@ struct LoadParam : public Parcelable {
     bool isKeepAlive = false;
     bool isMainElementRunning = false;
     bool isKeepAliveAppService = false;
-    bool isCallerSetProcess = false;
     bool isGamePrelaunch = false;
     std::string customProcessFlag = "";
     uint32_t extensionProcessMode = 0;
@@ -64,6 +63,19 @@ struct LoadParam : public Parcelable {
     int32_t loadTimeout = 0;
     int32_t byCallStatus = 0;
     pid_t reusePid = -1;
+    int32_t processMode = 0;
+    int32_t requestId = 0;
+};
+
+struct StartSpecifiedParam : public Parcelable {
+    virtual bool Marshalling(Parcel &parcel) const override;
+    static StartSpecifiedParam *Unmarshalling(Parcel &parcel);
+    bool ReadFromParcel(Parcel &parcel);
+
+    int32_t requestId = 0;
+    std::string customProcess;
+    int32_t processMode = 0;
+    bool isPreloadStart = false;
 };
 }  // namespace AbilityRuntime
 }  // namespace OHOS

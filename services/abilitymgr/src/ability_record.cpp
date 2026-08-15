@@ -344,8 +344,7 @@ int AbilityRecord::LoadAbility(bool isShellCall, bool isStartupHide, pid_t calli
     loadParam.token = token_;
     loadParam.preToken = callerToken;
     loadParam.instanceKey = instanceKey_;
-    loadParam.isCallerSetProcess = IsCallerSetProcess();
-    loadParam.customProcessFlag = customProcessFlag_;
+    loadParam.customProcessFlag = GetCustomProcessFlag();
     loadParam.isStartupHide = isStartupHide;
     loadParam.callingPid = callingPid;
     loadParam.loadAbilityCallbackId = loadAbilityCallbackId;
@@ -354,6 +353,7 @@ int AbilityRecord::LoadAbility(bool isShellCall, bool isStartupHide, pid_t calli
     loadParam.selfPid = selfPid;
     loadParam.byCallStatus = GetByCallStatus();
     loadParam.isGamePrelaunch = IsGameSAPreLaunch();
+    FillProcessInfoFromSession(loadParam);
     auto userId = abilityInfo_.uid / BASE_USER_RANGE;
     bool isMainUIAbility =
         MainElementUtils::IsMainUIAbility(abilityInfo_.bundleName, abilityInfo_.name, userId);
@@ -2483,6 +2483,15 @@ sptr<SessionInfo> AbilityRecord::GetSessionInfo() const
     return sessionInfo_;
 }
 
+void AbilityRecord::FillProcessInfoFromSession(AbilityRuntime::LoadParam &loadParam) const
+{
+    auto sessionInfo = GetSessionInfo();
+    if (sessionInfo != nullptr && sessionInfo->processOptions != nullptr) {
+        loadParam.processMode = static_cast<int32_t>(sessionInfo->processOptions->processMode);
+        loadParam.requestId = sessionInfo->requestId;
+    }
+}
+
 void AbilityRecord::UpdateSessionInfo(sptr<IRemoteObject> sessionToken)
 {
     {
@@ -2611,16 +2620,6 @@ bool AbilityRecord::IsStartToForeground() const
 void AbilityRecord::SetStartToForeground(const bool flag)
 {
     isStartToForeground_ = flag;
-}
-
-bool AbilityRecord::IsCallerSetProcess() const
-{
-    return isCallerSetProcess_.load();
-}
-
-void AbilityRecord::SetCallerSetProcess(const bool flag)
-{
-    isCallerSetProcess_.store(flag);
 }
 
 void AbilityRecord::PostStartAbilityByCallTimeoutTask(bool isHalf)

@@ -26,6 +26,7 @@
 #include "mock_app_debug_listener_stub.h"
 #include "mock_native_token.h"
 #include "mock_sa_call.h"
+#include "param.h"
 #undef protected
 #undef private
 
@@ -565,13 +566,14 @@ HWTEST_F(AppMgrClientTest, AppMgrClient_StartSpecifiedAbility_001, TestSize.Leve
 {
     AAFwk::Want want;
     AppExecFwk::AbilityInfo abilityInfo;
+    AbilityRuntime::StartSpecifiedParam param;
     auto appMgrClient = std::make_unique<AppMgrClient>();
     EXPECT_NE(appMgrClient, nullptr);
 
     auto result = appMgrClient->ConnectAppMgrService();
     EXPECT_EQ(result, AppMgrResultCode::RESULT_OK);
 
-    appMgrClient->StartSpecifiedAbility(want, abilityInfo);
+    appMgrClient->StartSpecifiedAbility(want, abilityInfo, param);
 }
 
 /**

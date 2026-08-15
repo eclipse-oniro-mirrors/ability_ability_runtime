@@ -1901,7 +1901,8 @@ HWTEST_F(AmsAppRunningRecordTest, StartSpecifiedAbility_001, TestSize.Level1)
 
     Want want;
     want.SetElementName("DemoDeviceIdB", "DemoBundleNameB", "DemoAbilityNameB");
-    service_->StartSpecifiedAbility(want, *abilityInfo);
+    AbilityRuntime::StartSpecifiedParam specifiedParam;
+    service_->StartSpecifiedAbility(want, *abilityInfo, specifiedParam);
 }
 
 /*
@@ -1937,7 +1938,8 @@ HWTEST_F(AmsAppRunningRecordTest, StartSpecifiedAbility_002, TestSize.Level1)
     abilityInfo1->name = "test_ability_name_2";
     Want want;
     want.SetElementName("DemoDeviceId", "DemoBundleName", "DemoAbilityName");
-    service_->StartSpecifiedAbility(want, *abilityInfo1);
+    AbilityRuntime::StartSpecifiedParam specifiedParam;
+    service_->StartSpecifiedAbility(want, *abilityInfo1, specifiedParam);
 }
 
 /*

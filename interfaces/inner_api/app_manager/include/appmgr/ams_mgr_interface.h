@@ -32,6 +32,7 @@
 namespace OHOS {
 namespace AbilityRuntime {
 struct LoadParam;
+struct StartSpecifiedParam;
 }
 namespace AppExecFwk {
 class IAmsMgr : public IRemoteBroker {
@@ -286,7 +287,7 @@ public:
      * @param requestId request id to callback
      */
     virtual void StartSpecifiedAbility(const AAFwk::Want &want, const AppExecFwk::AbilityInfo &abilityInfo,
-        int32_t requestId = 0, const std::string &customProcess = "", bool isWindowStagePreload = false) = 0;
+        const AbilityRuntime::StartSpecifiedParam &param) = 0;
 
     /**
      * Register response of start specified ability.

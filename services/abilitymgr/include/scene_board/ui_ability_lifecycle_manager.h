@@ -31,6 +31,9 @@ namespace OHOS {
 namespace Rosen {
 struct PendingSessionActivationConfig;
 }
+namespace AbilityRuntime {
+struct StartSpecifiedParam;
+}
 namespace AAFwk {
 class SessionInfo;
 class StatusBarDelegateManager;
@@ -57,7 +60,6 @@ struct SpecifiedRequest {
     uint32_t callingTokenId = 0;
     SpecifiedProcessState specifiedProcessState = SpecifiedProcessState::STATE_NONE;
     bool isCold = false;
-    bool preCreateProcessName = false;
 
     SpecifiedRequest(int32_t requestId, const AbilityRequest &request)
         : requestId(requestId), abilityRequest(request) {}
@@ -648,24 +650,13 @@ private:
     int32_t GetReusedCollaboratorPersistentId(const AbilityRequest &abilityRequest, bool &reuse) const;
 
     /**
-     * @brief Generate process name for new process mode
-     * @param abilityInfo The ability info to generate name for
-     * @return The generated process name
+     * @brief Build StartSpecifiedParam from an ability request.
+     * @param request The ability request carrying customProcess / processOptions
+     * @param requestId The specified-ability request id (caller-supplied)
+     * @param param Output parameter populated with the result
      */
-    std::string GenerateProcessNameForNewProcessMode(const AppExecFwk::AbilityInfo& abilityInfo);
-
-    /**
-     * @brief Pre-create process name in ability request
-     * @param abilityRequest The ability request to modify
-     */
-    void PreCreateProcessName(AbilityRequest &abilityRequest);
-
-    /**
-     * @brief Update process name in ability record
-     * @param abilityRequest The ability request containing new name
-     * @param abilityRecord The ability record to update
-     */
-    void UpdateProcessName(const AbilityRequest &abilityRequest, UIAbilityRecordPtr &abilityRecord);
+    static void BuildStartSpecifiedParam(
+        const AbilityRequest &request, int32_t requestId, AbilityRuntime::StartSpecifiedParam &param);
 
     /**
      * @brief Update ability record launch reason

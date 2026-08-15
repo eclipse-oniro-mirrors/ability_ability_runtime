@@ -450,11 +450,10 @@ void AppScheduler::StartupResidentProcess(const std::vector<AppExecFwk::BundleIn
 }
 
 void AppScheduler::StartSpecifiedAbility(const AAFwk::Want &want, const AppExecFwk::AbilityInfo &abilityInfo,
-    int32_t requestId, const std::string &customProcess, bool isWindowStagePreload)
+    const AbilityRuntime::StartSpecifiedParam &param)
 {
     CHECK_POINTER(appMgrClient_);
-    IN_PROCESS_CALL_WITHOUT_RET(appMgrClient_->StartSpecifiedAbility(want, abilityInfo, requestId,
-        customProcess, isWindowStagePreload));
+    IN_PROCESS_CALL_WITHOUT_RET(appMgrClient_->StartSpecifiedAbility(want, abilityInfo, param));
 }
 
 void StartSpecifiedAbilityResponse::OnAcceptWantResponse(

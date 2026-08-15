@@ -224,8 +224,8 @@ bool AppScheduler::IsMemorySizeSufficient() const
     return true;
 }
 
-void AppScheduler::StartSpecifiedAbility(const AAFwk::Want&, const AppExecFwk::AbilityInfo&, int32_t,
-    const std::string&, bool) {}
+void AppScheduler::StartSpecifiedAbility(const AAFwk::Want&, const AppExecFwk::AbilityInfo&,
+    const AbilityRuntime::StartSpecifiedParam&) {}
 
 int AppScheduler::StartUserTest(
     const Want& want, const sptr<IRemoteObject>& observer, const AppExecFwk::BundleInfo& bundleInfo, int32_t userId)

@@ -33,6 +33,7 @@
 #include "mock_my_flag.h"
 #include "mock_permission_verification.h"
 #include "parameters.h"
+#include "param.h"
 #include "process_options.h"
 #include "sa_mgr_client.h"
 #include "system_ability_definition.h"
@@ -3536,6 +3537,66 @@ HWTEST_F(AbilityRecordTest, GetByCallStatus_004, TestSize.Level1)
     abilityRecord_->want_.SetParam(Want::PARAM_RESV_CALL_TO_FOREGROUND, false);
     EXPECT_EQ(abilityRecord_->GetByCallStatus(), 1); // CALL_TO_BACKGROUND
     GTEST_LOG_(INFO) << "GetByCallStatus_004 end";
+}
+
+/**
+ * @tc.name: AaFwk_AbilityMS_FillProcessInfoFromSession_001
+ * @tc.desc: FillProcessInfoFromSession with null sessionInfo keeps LoadParam defaults
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_FillProcessInfoFromSession_001, TestSize.Level1)
+{
+    auto abilityRecord = GetAbilityRecord();
+    abilityRecord->sessionInfo_ = nullptr;
+
+    AbilityRuntime::LoadParam loadParam;
+    abilityRecord->FillProcessInfoFromSession(loadParam);
+
+    EXPECT_EQ(loadParam.processMode, 0);
+    EXPECT_EQ(loadParam.requestId, 0);
+    GTEST_LOG_(INFO) << "FillProcessInfoFromSession_001 end";
+}
+
+/**
+ * @tc.name: AaFwk_AbilityMS_FillProcessInfoFromSession_002
+ * @tc.desc: FillProcessInfoFromSession with non-null sessionInfo but null processOptions keeps defaults
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_FillProcessInfoFromSession_002, TestSize.Level1)
+{
+    auto abilityRecord = GetAbilityRecord();
+    sptr<SessionInfo> sessionInfo = sptr<SessionInfo>::MakeSptr();
+    sessionInfo->processOptions = nullptr;
+    abilityRecord->sessionInfo_ = sessionInfo;
+
+    AbilityRuntime::LoadParam loadParam;
+    abilityRecord->FillProcessInfoFromSession(loadParam);
+
+    EXPECT_EQ(loadParam.processMode, 0);
+    EXPECT_EQ(loadParam.requestId, 0);
+    GTEST_LOG_(INFO) << "FillProcessInfoFromSession_002 end";
+}
+
+/**
+ * @tc.name: AaFwk_AbilityMS_FillProcessInfoFromSession_003
+ * @tc.desc: FillProcessInfoFromSession propagates processMode and requestId when processOptions present
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_FillProcessInfoFromSession_003, TestSize.Level1)
+{
+    auto abilityRecord = GetAbilityRecord();
+    sptr<SessionInfo> sessionInfo = sptr<SessionInfo>::MakeSptr();
+    sessionInfo->processOptions = std::make_shared<ProcessOptions>();
+    sessionInfo->processOptions->processMode = ProcessMode::NEW_PROCESS_ATTACH_TO_PARENT;
+    sessionInfo->requestId = 12345;
+    abilityRecord->sessionInfo_ = sessionInfo;
+
+    AbilityRuntime::LoadParam loadParam;
+    abilityRecord->FillProcessInfoFromSession(loadParam);
+
+    EXPECT_EQ(loadParam.processMode, static_cast<int32_t>(ProcessMode::NEW_PROCESS_ATTACH_TO_PARENT));
+    EXPECT_EQ(loadParam.requestId, 12345);
+    GTEST_LOG_(INFO) << "FillProcessInfoFromSession_003 end";
 }
 }  // namespace AAFwk
 }  // namespace OHOS

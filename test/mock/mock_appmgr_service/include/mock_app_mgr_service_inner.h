@@ -107,7 +107,8 @@ public:
     MOCK_METHOD1(UnregisterImageProcessStateObserver, int32_t(const sptr<IImageProcessStateObserver> &observer));
     MOCK_METHOD2(GetAllAbilityInfos, int32_t(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos));
 
-    void StartSpecifiedAbility(const AAFwk::Want&, const AppExecFwk::AbilityInfo&, int32_t, const std::string&, bool)
+    void StartSpecifiedAbility(const AAFwk::Want&, const AppExecFwk::AbilityInfo&,
+        const AbilityRuntime::StartSpecifiedParam&)
     {}
 
     void Post()

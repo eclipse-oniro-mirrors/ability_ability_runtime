@@ -922,7 +922,7 @@ int AppMgrClient::FinishUserTest(const std::string &msg, const int64_t &resultCo
 }
 
 void AppMgrClient::StartSpecifiedAbility(const AAFwk::Want &want, const AppExecFwk::AbilityInfo &abilityInfo,
-    int32_t requestId, const std::string &customProcess, bool isWindowStagePreload)
+    const AbilityRuntime::StartSpecifiedParam &param)
 {
     sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
     if (service == nullptr) {
@@ -932,7 +932,7 @@ void AppMgrClient::StartSpecifiedAbility(const AAFwk::Want &want, const AppExecF
     if (amsService == nullptr) {
         return;
     }
-    amsService->StartSpecifiedAbility(want, abilityInfo, requestId, customProcess, isWindowStagePreload);
+    amsService->StartSpecifiedAbility(want, abilityInfo, param);
 }
 
 void AppMgrClient::PrepareTerminateApp(const pid_t pid, const std::string &moduleName)

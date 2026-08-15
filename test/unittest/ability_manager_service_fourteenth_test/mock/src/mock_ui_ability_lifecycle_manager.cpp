@@ -191,15 +191,6 @@ std::string UIAbilityLifecycleManager::GenerateProcessNameForNewProcessMode(cons
     return "";
 }
 
-void UIAbilityLifecycleManager::PreCreateProcessName(AbilityRequest &abilityRequest)
-{
-}
-
-void UIAbilityLifecycleManager::UpdateProcessName(const AbilityRequest &abilityRequest,
-    std::shared_ptr<AbilityRecord> &abilityRecord)
-{
-}
-
 void UIAbilityLifecycleManager::UpdateAbilityRecordLaunchReason(
     const AbilityRequest &abilityRequest, std::shared_ptr<AbilityRecord> &abilityRecord) const
 {

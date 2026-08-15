@@ -50,6 +50,7 @@
 namespace OHOS {
 namespace AbilityRuntime {
 struct LoadParam;
+struct StartSpecifiedParam;
 }
 namespace AppExecFwk {
 class AppServiceManager;
@@ -565,7 +566,7 @@ public:
      * @param requestId request id to callback
      */
     virtual void StartSpecifiedAbility(const AAFwk::Want &want, const AppExecFwk::AbilityInfo &abilityInfo,
-        int32_t requestId = 0, const std::string &customProcess = "", bool isWindowStagePreload = false);
+        const AbilityRuntime::StartSpecifiedParam &param);
 
     /**
      * Register response of start specified ability.

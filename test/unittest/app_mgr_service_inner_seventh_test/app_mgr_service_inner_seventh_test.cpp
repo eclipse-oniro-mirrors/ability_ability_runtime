@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 #define private public
 #include "app_mgr_service_inner.h"
+#include "param.h"
 #include "app_running_record.h"
 #include "app_spawn_client.h"
 #include "app_utils.h"
@@ -1588,7 +1589,9 @@ HWTEST_F(AppMgrServiceInnerSeventhTest, StartSpecifiedAbility_001, TestSize.Leve
     AAFwk::Want want;
     AppExecFwk::AbilityInfo abilityInfo;
     int32_t requestId = 0;
-    appMgrServiceInner->StartSpecifiedAbility(want, abilityInfo, requestId);
+    AbilityRuntime::StartSpecifiedParam specifiedParam;
+    specifiedParam.requestId = requestId;
+    appMgrServiceInner->StartSpecifiedAbility(want, abilityInfo, specifiedParam);
     EXPECT_EQ(AAFwk::MyStatus::GetInstance().checkAppRunningCall_, 0);
     TAG_LOGI(AAFwkTag::TEST, "StartSpecifiedAbility_001 end");
 }
@@ -1614,7 +1617,9 @@ HWTEST_F(AppMgrServiceInnerSeventhTest, StartSpecifiedAbility_002, TestSize.Leve
     AAFwk::Want want;
     AppExecFwk::AbilityInfo abilityInfo;
     int32_t requestId = 0;
-    appMgrServiceInner->StartSpecifiedAbility(want, abilityInfo, requestId);
+    AbilityRuntime::StartSpecifiedParam specifiedParam;
+    specifiedParam.requestId = requestId;
+    appMgrServiceInner->StartSpecifiedAbility(want, abilityInfo, specifiedParam);
     EXPECT_EQ(AAFwk::MyStatus::GetInstance().scheduleAcceptCall_, 1);
     TAG_LOGI(AAFwkTag::TEST, "StartSpecifiedAbility_002 end");
 }
@@ -1640,7 +1645,9 @@ HWTEST_F(AppMgrServiceInnerSeventhTest, StartSpecifiedAbility_003, TestSize.Leve
     AAFwk::Want want;
     AppExecFwk::AbilityInfo abilityInfo;
     int32_t requestId = 0;
-    appMgrServiceInner->StartSpecifiedAbility(want, abilityInfo, requestId);
+    AbilityRuntime::StartSpecifiedParam specifiedParam;
+    specifiedParam.requestId = requestId;
+    appMgrServiceInner->StartSpecifiedAbility(want, abilityInfo, specifiedParam);
     EXPECT_EQ(AAFwk::MyStatus::GetInstance().addModulesCall_, 1);
     TAG_LOGI(AAFwkTag::TEST, "StartSpecifiedAbility_003 end");
 }
@@ -1668,7 +1675,9 @@ HWTEST_F(AppMgrServiceInnerSeventhTest, StartSpecifiedAbility_004, TestSize.Leve
     want.SetParam("debugApp", true);
     AppExecFwk::AbilityInfo abilityInfo;
     int32_t requestId = 0;
-    appMgrServiceInner->StartSpecifiedAbility(want, abilityInfo, requestId);
+    AbilityRuntime::StartSpecifiedParam specifiedParam;
+    specifiedParam.requestId = requestId;
+    appMgrServiceInner->StartSpecifiedAbility(want, abilityInfo, specifiedParam);
     EXPECT_EQ(AAFwk::MyStatus::GetInstance().addModulesCall_, 1);
     TAG_LOGI(AAFwkTag::TEST, "StartSpecifiedAbility_004 end");
 }
@@ -1696,7 +1705,9 @@ HWTEST_F(AppMgrServiceInnerSeventhTest, StartSpecifiedAbility_005, TestSize.Leve
     want.SetParam("debugApp", true);
     AppExecFwk::AbilityInfo abilityInfo;
     int32_t requestId = 0;
-    appMgrServiceInner->StartSpecifiedAbility(want, abilityInfo, requestId);
+    AbilityRuntime::StartSpecifiedParam specifiedParam;
+    specifiedParam.requestId = requestId;
+    appMgrServiceInner->StartSpecifiedAbility(want, abilityInfo, specifiedParam);
     EXPECT_EQ(AAFwk::MyStatus::GetInstance().isAppExistCall_, 1);
     TAG_LOGI(AAFwkTag::TEST, "StartSpecifiedAbility_005 end");
 }
@@ -1724,7 +1735,9 @@ HWTEST_F(AppMgrServiceInnerSeventhTest, StartSpecifiedAbility_006, TestSize.Leve
     want.SetParam("debugApp", true);
     AppExecFwk::AbilityInfo abilityInfo;
     int32_t requestId = 0;
-    appMgrServiceInner->StartSpecifiedAbility(want, abilityInfo, requestId);
+    AbilityRuntime::StartSpecifiedParam specifiedParam;
+    specifiedParam.requestId = requestId;
+    appMgrServiceInner->StartSpecifiedAbility(want, abilityInfo, specifiedParam);
     EXPECT_EQ(AAFwk::MyStatus::GetInstance().addModulesCall_, 1);
     TAG_LOGI(AAFwkTag::TEST, "StartSpecifiedAbility_006 end");
 }
@@ -1752,7 +1765,9 @@ HWTEST_F(AppMgrServiceInnerSeventhTest, StartSpecifiedAbility_007, TestSize.Leve
     want.SetParam("debugApp", true);
     AppExecFwk::AbilityInfo abilityInfo;
     int32_t requestId = 0;
-    appMgrServiceInner->StartSpecifiedAbility(want, abilityInfo, requestId);
+    AbilityRuntime::StartSpecifiedParam specifiedParam;
+    specifiedParam.requestId = requestId;
+    appMgrServiceInner->StartSpecifiedAbility(want, abilityInfo, specifiedParam);
     EXPECT_EQ(AAFwk::MyStatus::GetInstance().addModulesCall_, 1);
     TAG_LOGI(AAFwkTag::TEST, "StartSpecifiedAbility_007 end");
 }

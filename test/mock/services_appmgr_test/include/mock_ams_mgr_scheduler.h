@@ -22,6 +22,7 @@
 namespace OHOS {
 namespace AbilityRuntime {
 struct LoadParam;
+struct StartSpecifiedParam;
 }
 namespace AppExecFwk {
 class MockAmsMgrScheduler : public AmsMgrStub {
@@ -52,8 +53,8 @@ public:
     MOCK_METHOD2(GetRunningProcessInfoByToken,
         void(const sptr<IRemoteObject>& token, OHOS::AppExecFwk::RunningProcessInfo& info));
     MOCK_METHOD1(SetAbilityForegroundingFlagToAppRecord, void(const pid_t pid));
-    MOCK_METHOD5(StartSpecifiedAbility, void(const AAFwk::Want&, const AppExecFwk::AbilityInfo&, int32_t,
-        const std::string&, bool));
+    MOCK_METHOD3(StartSpecifiedAbility, void(const AAFwk::Want&, const AppExecFwk::AbilityInfo&,
+        const AbilityRuntime::StartSpecifiedParam&));
     MOCK_METHOD4(StartSpecifiedProcess, void(const AAFwk::Want&, const AppExecFwk::AbilityInfo&, int32_t,
         const std::string&));
     MOCK_METHOD1(RegisterStartSpecifiedAbilityResponse, void(const sptr<IStartSpecifiedAbilityResponse>& response));

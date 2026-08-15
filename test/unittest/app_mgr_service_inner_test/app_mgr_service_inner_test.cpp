@@ -872,10 +872,10 @@ HWTEST_F(AppMgrServiceInnerTest, MakeProcessName_001, TestSize.Level0)
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
     std::string processName = "test_processName";
-    appMgrServiceInner->MakeProcessName(nullptr, nullptr, hapModuleInfo, 1, "", processName, false);
-    appMgrServiceInner->MakeProcessName(nullptr, applicationInfo_, hapModuleInfo, 1, "", processName, false);
-    appMgrServiceInner->MakeProcessName(abilityInfo_, nullptr, hapModuleInfo, 1, "", processName, false);
-    appMgrServiceInner->MakeProcessName(abilityInfo_, applicationInfo_, hapModuleInfo, 1, "", processName, false);
+    appMgrServiceInner->MakeProcessName(nullptr, nullptr, hapModuleInfo, 1, "", processName);
+    appMgrServiceInner->MakeProcessName(nullptr, applicationInfo_, hapModuleInfo, 1, "", processName);
+    appMgrServiceInner->MakeProcessName(abilityInfo_, nullptr, hapModuleInfo, 1, "", processName);
+    appMgrServiceInner->MakeProcessName(abilityInfo_, applicationInfo_, hapModuleInfo, 1, "", processName);
 
     EXPECT_NE(appMgrServiceInner, nullptr);
     TAG_LOGI(AAFwkTag::TEST, "MakeProcessName_001 end");
@@ -3091,18 +3091,19 @@ HWTEST_F(AppMgrServiceInnerTest, StartSpecifiedAbility_001, TestSize.Level2)
 
     AAFwk::Want want;
     AbilityInfo abilityInfo;
-    appMgrServiceInner->StartSpecifiedAbility(want, abilityInfo);
+    AbilityRuntime::StartSpecifiedParam specifiedParam;
+    appMgrServiceInner->StartSpecifiedAbility(want, abilityInfo, specifiedParam);
 
-    appMgrServiceInner->StartSpecifiedAbility(want, *abilityInfo_);
+    appMgrServiceInner->StartSpecifiedAbility(want, *abilityInfo_, specifiedParam);
 
     abilityInfo_->applicationInfo = *applicationInfo_;
-    appMgrServiceInner->StartSpecifiedAbility(want, *abilityInfo_);
+    appMgrServiceInner->StartSpecifiedAbility(want, *abilityInfo_, specifiedParam);
 
     appMgrServiceInner->remoteClientManager_->SetBundleManagerHelper(nullptr);
-    appMgrServiceInner->StartSpecifiedAbility(want, *abilityInfo_);
+    appMgrServiceInner->StartSpecifiedAbility(want, *abilityInfo_, specifiedParam);
 
     appMgrServiceInner->remoteClientManager_ = nullptr;
-    appMgrServiceInner->StartSpecifiedAbility(want, *abilityInfo_);
+    appMgrServiceInner->StartSpecifiedAbility(want, *abilityInfo_, specifiedParam);
 
     TAG_LOGI(AAFwkTag::TEST, "StartSpecifiedAbility_001 end");
 }
