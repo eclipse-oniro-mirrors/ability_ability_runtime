@@ -117,6 +117,9 @@ ohos_shared_library("js_agent_extension") {
 
   defines = [ "AMS_LOG_TAG = \"Agent\"" ]
   defines += [ "AMS_LOG_DOMAIN = 0xD001353" ]
+  if (ability_runtime_graphics) {
+    defines += [ "SUPPORT_GRAPHICS" ]
+  }
   include_dirs = [
     "include",
     "include/connection",
@@ -161,13 +164,24 @@ ohos_shared_library("js_agent_extension") {
     "ability_base:configuration",
     "ability_base:want",
     "c_utils:utils",
+    "eventhandler:libeventhandler",
     "hilog:libhilog",
+    "hitrace:hitrace_meter",
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
     "libuv:uv",
     "node:node_header_notice",
+    "samgr:samgr_proxy",
   ]
+
+  if (ability_runtime_graphics) {
+    external_deps += [
+      "window_manager:libdm",
+      "window_manager:libwm",
+      "window_manager:libwsutils",
+    ]
+  }
 
   subsystem_name = "ability"
   part_name = "ability_runtime"
