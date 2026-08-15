@@ -157,6 +157,7 @@ private:
     std::shared_ptr<AbilityHandler> handler_ = nullptr;
     sptr<EtsAgentExtensionStubImpl> extensionStub_;
     std::map<AgentRemoteObjectKey, ani_ref> hostProxyMap_;
+    std::mutex hostProxyMapMutex_;
     ani_vm *etsVm_ = nullptr;
 
     #ifdef SUPPORT_GRAPHICS

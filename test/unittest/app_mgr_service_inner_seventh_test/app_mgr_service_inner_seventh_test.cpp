@@ -150,6 +150,26 @@ HWTEST_F(AppMgrServiceInnerSeventhTest, GetBundleAndHapInfo_002, TestSize.Level1
 }
 
 /**
+ * @tc.name: GetBundleAndHapInfo_003
+ * @tc.desc: test GetBundleAndHapInfo when appInfo is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerSeventhTest, GetBundleAndHapInfo_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetBundleAndHapInfo_003 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().getBundleManagerHelper_ = std::make_shared<BundleMgrHelper>();
+    AbilityInfo abilityInfo;
+    std::shared_ptr<ApplicationInfo> appInfo = nullptr;
+    BundleInfo bundleInfo;
+    HapModuleInfo hapModuleInfo;
+    int32_t appIndex = 0;
+    bool ret = appMgrServiceInner->GetBundleAndHapInfo(abilityInfo, appInfo, bundleInfo, hapModuleInfo, appIndex);
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "GetBundleAndHapInfo_003 end");
+}
+
+/**
  * @tc.name: UpdateApplicationInfoInstalled_001
  * @tc.desc: test UpdateApplicationInfoInstalled_001
  * @tc.type: FUNC
