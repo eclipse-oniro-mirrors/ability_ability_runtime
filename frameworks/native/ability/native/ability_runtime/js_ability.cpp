@@ -718,7 +718,7 @@ bool JsAbility::InitWindowScene(const Want &want)
         TAG_LOGE(AAFwkTag::ABILITY, "null abilityContext_ or sceneListener_");
         return false;
     }
-    scene_ = std::make_shared<Rosen::WindowScene>();
+    auto scene = std::make_shared<Rosen::WindowScene>();
     int32_t displayId = AAFwk::DisplayUtil::GetDefaultDisplayId();
     if (setting_ != nullptr) {
         std::string strDisplayId =
@@ -743,14 +743,15 @@ bool JsAbility::InitWindowScene(const Want &want)
             return false;
         }
         abilityContext_->SetWeakSessionToken(sessionToken);
-        ret = scene_->Init(displayId, abilityContext_, sceneListener_, option, sessionToken);
+        ret = scene->Init(displayId, abilityContext_, sceneListener_, option, sessionToken);
     } else {
-        ret = scene_->Init(displayId, abilityContext_, sceneListener_, option);
+        ret = scene->Init(displayId, abilityContext_, sceneListener_, option);
     }
     if (ret != Rosen::WMError::WM_OK) {
         TAG_LOGE(AAFwkTag::ABILITY, "init window scene");
         return false;
     }
+    scene_ = scene;
     return true;
 }
 
