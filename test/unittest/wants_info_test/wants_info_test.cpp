@@ -13,7 +13,9 @@
  * limitations under the License.
  */
 
+#include <cstdlib>
 #include <gtest/gtest.h>
+
 #include "parcel.h"
 #define private public
 #define protected public
@@ -28,8 +30,38 @@ using OHOS::AppExecFwk::ElementName;
 
 namespace OHOS {
 namespace AAFwk {
-#define SLEEP(milli) std::this_thread::sleep_for(std::chrono::seconds(milli))
-namespace {}  // namespace
+namespace {
+class LimitedAllocator final : public Allocator {
+public:
+    explicit LimitedAllocator(size_t maxAllocationSize) : maxAllocationSize_(maxAllocationSize) {}
+
+    ~LimitedAllocator() override = default;
+
+    void *Realloc(void *data, size_t newSize) override
+    {
+        if (newSize > maxAllocationSize_) {
+            return nullptr;
+        }
+        return std::realloc(data, newSize);
+    }
+
+    void *Alloc(size_t size) override
+    {
+        if (size > maxAllocationSize_) {
+            return nullptr;
+        }
+        return std::malloc(size);
+    }
+
+    void Dealloc(void *data) override
+    {
+        std::free(data);
+    }
+
+private:
+    size_t maxAllocationSize_;
+};
+}  // namespace
 class WantsInfoTest : public testing::Test {
 public:
     static void SetUpTestCase();
@@ -66,12 +98,49 @@ HWTEST_F(WantsInfoTest, WantsInfoTest_0100, TestSize.Level1)
     info.want = want;
     info.resolvedTypes = "nihao";
     Parcel parcel;
-    info.Marshalling(parcel);
+    ASSERT_TRUE(info.Marshalling(parcel));
     auto unInfo = WantsInfo::Unmarshalling(parcel);
+    ASSERT_NE(unInfo, nullptr);
     EXPECT_EQ(unInfo->want.GetElement().GetBundleName(), "com.ix.hiMusic");
     EXPECT_EQ(unInfo->want.GetElement().GetAbilityName(), "MusicSAbility");
     EXPECT_EQ(unInfo->resolvedTypes, "nihao");
     delete unInfo;
+}
+
+/*
+ * @tc.number    : WantsInfoTest_0200
+ * @tc.name      : Marshalling want failure
+ * @tc.desc      : Marshalling returns false when the Want cannot be written.
+ */
+HWTEST_F(WantsInfoTest, WantsInfoTest_0200, TestSize.Level1)
+{
+    WantsInfo info;
+    Parcel parcel(new LimitedAllocator(0));
+
+    EXPECT_FALSE(info.Marshalling(parcel));
+}
+
+/*
+ * @tc.number    : WantsInfoTest_0300
+ * @tc.name      : Marshalling resolvedTypes failure
+ * @tc.desc      : Marshalling returns false when resolvedTypes cannot be written after the Want.
+ */
+HWTEST_F(WantsInfoTest, WantsInfoTest_0300, TestSize.Level1)
+{
+    WantsInfo info;
+    Want want;
+    ElementName element("device", "com.ix.hiMusic", "MusicSAbility");
+    want.SetElement(element);
+    info.want = want;
+
+    Parcel wantParcel;
+    ASSERT_TRUE(wantParcel.WriteParcelable(&info.want));
+    const size_t wantParcelCapacity = wantParcel.GetDataCapacity();
+    ASSERT_GT(wantParcelCapacity, 0);
+    info.resolvedTypes.assign(wantParcelCapacity, 'a');
+    Parcel parcel(new LimitedAllocator(wantParcelCapacity));
+
+    EXPECT_FALSE(info.Marshalling(parcel));
 }
 }  // namespace AAFwk
 }  // namespace OHOS

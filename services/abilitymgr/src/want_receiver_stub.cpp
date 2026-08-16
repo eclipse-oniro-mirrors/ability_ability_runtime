@@ -52,7 +52,7 @@ int WantReceiverStub::SendInner(MessageParcel &data, MessageParcel &reply)
 
 int WantReceiverStub::PerformReceiveInner(MessageParcel &data, MessageParcel &reply)
 {
-    Want *want = data.ReadParcelable<Want>();
+    std::unique_ptr<Want> want(data.ReadParcelable<Want>());
     if (want == nullptr) {
         TAG_LOGE(AAFwkTag::WANTAGENT, "null want");
         return ERR_INVALID_VALUE;
@@ -61,10 +61,9 @@ int WantReceiverStub::PerformReceiveInner(MessageParcel &data, MessageParcel &re
     int resultCode = data.ReadInt32();
     std::string bundleName = Str16ToStr8(data.ReadString16());
 
-    WantParams *wantParams = data.ReadParcelable<WantParams>();
+    std::unique_ptr<WantParams> wantParams(data.ReadParcelable<WantParams>());
     if (wantParams == nullptr) {
         TAG_LOGE(AAFwkTag::WANTAGENT, "null wantParams");
-        delete want;
         return ERR_INVALID_VALUE;
     }
 
@@ -72,8 +71,6 @@ int WantReceiverStub::PerformReceiveInner(MessageParcel &data, MessageParcel &re
     bool sticky = data.ReadBool();
     int sendingUser = data.ReadInt32();
     PerformReceive(*want, resultCode, bundleName, *wantParams, serialized, sticky, sendingUser);
-    delete want;
-    delete wantParams;
     return NO_ERROR;
 }
 }  // namespace AAFwk

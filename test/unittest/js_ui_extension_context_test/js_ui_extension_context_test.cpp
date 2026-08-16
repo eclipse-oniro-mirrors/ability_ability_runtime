@@ -13,7 +13,9 @@
  * limitations under the License.
  */
 
+#include <atomic>
 #include <gtest/gtest.h>
+#include <limits>
 #include <singleton.h>
 #include <uv.h>
 #include "ability_context.h"
@@ -33,6 +35,10 @@
 #include "native_engine/native_engine.h"
 #include "js_runtime_lite.h"
 #include "napi_common_want.h"
+#include "js_preload_ui_extension_callback_client.h"
+#include "js_ui_service_proxy.h"
+#include "ui_extension_servicehost_stub_impl.h"
+#include "js_uiservice_uiext_connection.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -66,6 +72,7 @@ class MockDeferred : public NativeDeferred {
 public:
     void Resolve(napi_value data) override
     {
+        settled_ = true;
         resolved_ = true;
         if (nref_ != nullptr) {
             napi_delete_reference(env_, nref_);
@@ -78,10 +85,12 @@ public:
 
     void Reject(napi_value reason) override
     {
+        settled_ = true;
         resolved_ = false;
     }
 
 public:
+    static bool IsSettled() { return settled_; }
     static bool GetLastResolveStatus() { return resolved_; }
     static napi_ref GetLastResolveValue() { return nref_; }
     static void Clear()
@@ -90,10 +99,14 @@ public:
             delete (reinterpret_cast<NativeReference*>(nref_));
             nref_ = nullptr;
         }
+        settled_ = false;
+        resolved_ = false;
     }
+    static bool settled_;
     static bool resolved_;
     static napi_ref nref_;
 };
+bool MockDeferred::settled_ = false;
 bool MockDeferred::resolved_ = false;
 napi_ref MockDeferred::nref_ = nullptr;
 
@@ -122,7 +135,14 @@ public:
     virtual ErrCode DisconnectAbility(const AAFwk::Want &want,
         const sptr<AbilityConnectCallback> &connectCallback) const override
     {
+        disconnectAbilityCount_++;
         return ERR_OK;
+    }
+
+    ErrCode ReportDrawnCompleted() override
+    {
+        reportDrawnCompletedCount_++;
+        return reportDrawnCompletedResult_;
     }
 public:
     static void DoneConnect(int status)
@@ -139,9 +159,14 @@ public:
         callback_->OnAbilityDisconnectDone(element, 0);
     }
     void SetConnectResult(ErrCode code) { connectRet_ = code; }
+    int32_t GetDisconnectAbilityCount() const { return disconnectAbilityCount_.load(); }
+    int32_t GetReportDrawnCompletedCount() const { return reportDrawnCompletedCount_.load(); }
 protected:
     static sptr<AbilityConnectCallback> callback_;
     ErrCode connectRet_ = ERR_OK;
+    ErrCode reportDrawnCompletedResult_ = ERR_OK;
+    mutable std::atomic<int32_t> disconnectAbilityCount_ = 0;
+    std::atomic<int32_t> reportDrawnCompletedCount_ = 0;
 };
 
 sptr<AbilityConnectCallback> MockAbilityContextImpl::callback_;
@@ -160,6 +185,7 @@ public:
     }
     void Connect(napi_value* argv, int32_t argc);
     void Disconnect(napi_value* argv, int32_t argc);
+    void ReportDrawnCompleted(napi_value* argv, int32_t argc);
 public:
     std::shared_ptr<JsUIExtensionContext> jsUIExtensionContext_;
     std::shared_ptr<MockAbilityContextImpl> abilityContextImpl_;
@@ -261,6 +287,27 @@ void UIExtensionContextTest::Disconnect(napi_value* argv, int32_t argc)
     napi_status status = napi_call_function(env_, recv, funcValue, argc, argv, &funcResultValue);
     if (status != napi_ok) {
         TAG_LOGE(AAFwkTag::UI_EXT, "call js func failed %{public}d", status);
+    }
+}
+
+void UIExtensionContextTest::ReportDrawnCompleted(napi_value* argv, int32_t argc)
+{
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::ReportDrawnCompleted(env, info);
+    };
+    HandleScope handleScope(env_);
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "reportDrawnCompleted", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_status status = napi_call_function(env_, recv, funcValue, argc, argv, &funcResultValue);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "call reportDrawnCompleted failed %{public}d", status);
     }
 }
 
@@ -389,6 +436,95 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_0105, TestSiz
         engine->lastException_.Empty();
     }
     GTEST_LOG_(INFO) << "AbilityRuntime_UIExtensionContext_0105 end";
+}
+
+/**
+ * @tc.name: AbilityRuntime_UIExtensionContext_DisconnectMissingConnection_0100
+ * @tc.desc: A missing connection is rejected without calling the native disconnect API.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_DisconnectMissingConnection_0100, TestSize.Level1)
+{
+    HandleScope handleScope(env_);
+    TryCatch tryCatch(env_);
+    constexpr int64_t missingConnectionId = std::numeric_limits<int64_t>::max();
+    UIServiceConnection::RemoveUIServiceExtensionConnection(missingConnectionId);
+    sptr<IRemoteObject> remoteObject = nullptr;
+    napi_value proxy = AAFwk::JsUIServiceProxy::CreateJsUIServiceProxy(
+        env_, remoteObject, missingConnectionId, remoteObject);
+    ASSERT_NE(proxy, nullptr);
+    napi_value argv[] = { proxy };
+
+    Disconnect(argv, ARGC_ONE);
+    ArkNativeEngine* engine = reinterpret_cast<ArkNativeEngine*>(env_);
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+    RunNowait(loop);
+
+    EXPECT_FALSE(tryCatch.HasCaught());
+    EXPECT_EQ(abilityContextImpl_->GetDisconnectAbilityCount(), 0);
+    EXPECT_TRUE(MockDeferred::IsSettled());
+    EXPECT_FALSE(MockDeferred::GetLastResolveStatus());
+}
+
+/**
+ * @tc.name: AbilityRuntime_UIExtensionContext_ReportDrawnCompleted_0100
+ * @tc.desc: Calling reportDrawnCompleted without a callback reports too few parameters.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_ReportDrawnCompleted_0100, TestSize.Level1)
+{
+    HandleScope handleScope(env_);
+    TryCatch tryCatch(env_);
+
+    ReportDrawnCompleted(nullptr, ARGC_ZERO);
+
+    EXPECT_TRUE(tryCatch.HasCaught());
+    EXPECT_EQ(abilityContextImpl_->GetReportDrawnCompletedCount(), 0);
+    tryCatch.ClearException();
+    ArkNativeEngine* engine = reinterpret_cast<ArkNativeEngine*>(env_);
+    if (!engine->lastException_.IsEmpty()) {
+        engine->lastException_.Empty();
+    }
+}
+
+/**
+ * @tc.name: AbilityRuntime_UIExtensionContext_ReportDrawnCompleted_0200
+ * @tc.desc: A valid callback invokes the native reportDrawnCompleted API and completes asynchronously.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_ReportDrawnCompleted_0200, TestSize.Level1)
+{
+    HandleScope handleScope(env_);
+    bool callbackInvoked = false;
+    napi_value callback = nullptr;
+    ASSERT_EQ(napi_create_function(env_, "reportDrawnCallback", NAPI_AUTO_LENGTH,
+        MarkCallbackInvoked, &callbackInvoked, &callback), napi_ok);
+    napi_value argv[] = { callback };
+
+    ReportDrawnCompleted(argv, ARGC_ONE);
+    ArkNativeEngine* engine = reinterpret_cast<ArkNativeEngine*>(env_);
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+    RunNowait(loop);
+
+    EXPECT_EQ(abilityContextImpl_->GetReportDrawnCompletedCount(), 1);
+    EXPECT_TRUE(callbackInvoked);
+}
+
+/**
+ * @tc.name: AbilityRuntime_PreloadUIExtensionCallback_NullEnv_0100
+ * @tc.desc: Calling the preload callback client with a null NAPI environment does not crash.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_PreloadUIExtensionCallback_NullEnv_0100, TestSize.Level1)
+{
+    auto callbackClient = std::make_shared<JsPreloadUIExtensionCallbackClient>(nullptr, nullptr);
+    ASSERT_NE(callbackClient, nullptr);
+
+    callbackClient->CallJsPreloadedUIExtensionAbility(1);
+
+    SUCCEED();
 }
 
 HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_0106, TestSize.Level1)
