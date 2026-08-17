@@ -86,7 +86,7 @@ int32_t AppExitReasonHelper::RecordAppWithReasonInner(const ExitReasonCompabilit
 
     int32_t ret = DelayedSingleton<AppScheduler>::GetInstance()->NotifyAppMgrRecordExitReasonCompability(
         processInfo.pid_, exitReasonCompability.killId, exitReasonCompability.killMsg,
-        exitReasonCompability.innerMsg);
+        exitReasonCompability.innerMsg, exitReasonCompability.reason);
     if (ret != ERR_OK) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "notify failed: %{public}d", ret);
     }
@@ -305,7 +305,8 @@ int32_t AppExitReasonHelper::RecordProcessExitReason(const int32_t pid, const st
     if (exitReason.killId != DEFAULT_KILL_ID) {
         ExitReasonCompability exitReasonCompability(exitReason);
         int32_t ret = DelayedSingleton<AppScheduler>::GetInstance()->NotifyAppMgrRecordExitReasonCompability(
-            pid, exitReasonCompability.killId, exitReasonCompability.killMsg, exitReasonCompability.innerMsg);
+            pid, exitReasonCompability.killId, exitReasonCompability.killMsg,
+            exitReasonCompability.innerMsg, exitReasonCompability.reason);
         if (ret != ERR_OK) {
             TAG_LOGW(AAFwkTag::ABILITYMGR, "notify compability failed: %{public}d", ret);
         }
@@ -528,7 +529,8 @@ int32_t AppExitReasonHelper::RecordUIAbilityExitReason(const pid_t pid, const st
 
     ExitReasonCompability exitReasonCompability(exitReason);
     ret = DelayedSingleton<AppScheduler>::GetInstance()->NotifyAppMgrRecordExitReasonCompability(
-        pid, exitReasonCompability.killId, exitReasonCompability.killMsg, exitReasonCompability.innerMsg);
+        pid, exitReasonCompability.killId, exitReasonCompability.killMsg,
+        exitReasonCompability.innerMsg, exitReasonCompability.reason);
     if (ret != ERR_OK) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "notify failed: %{public}d", ret);
     }
@@ -591,7 +593,7 @@ int32_t AppExitReasonHelper::AddProcessExitReason(const RecordExitReasonParams &
     }
     ExitReasonCompability exitReason = params.exitReason;
     auto ret = DelayedSingleton<AppScheduler>::GetInstance()->NotifyAppMgrRecordExitReasonCompability(
-        params.pid, exitReason.killId, exitReason.killMsg, exitReason.innerMsg);
+        params.pid, exitReason.killId, exitReason.killMsg, exitReason.innerMsg, exitReason.reason);
     if (ret != ERR_OK) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "notify failed:%{public}d", ret);
     }
@@ -615,7 +617,7 @@ void AppExitReasonHelper::RecordInvalidKillId(int32_t pid, const ExitReasonCompa
         pid = processInfo.pid_;
     }
     DelayedSingleton<AppScheduler>::GetInstance()->NotifyAppMgrRecordExitReasonCompability(
-        pid, INVALID_KILLID, params.killMsg, params.innerMsg);
+        pid, INVALID_KILLID, params.killMsg, params.innerMsg, params.reason);
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS
