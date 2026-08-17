@@ -313,6 +313,7 @@ void FuzzGetProcessKillReason(FuzzedDataProvider &fdp,
     std::string killMsg = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
     size_t killChoice = fdp.ConsumeIntegralInRange<size_t>(0, KILL_ID_MAX - 1);
     int32_t killId = 0;
+    bool foreground = true;
     switch (killChoice) {
         case KILL_ID_INVALID:
             killId = INVALID_KILL_ID_VALUE;
@@ -329,7 +330,7 @@ void FuzzGetProcessKillReason(FuzzedDataProvider &fdp,
             killId = fdp.ConsumeIntegral<int32_t>();
             break;
     }
-    mgr->GetProcessKillReason(killId, pid, killMsg);
+    mgr->GetProcessKillReason(killId, pid, killMsg, foreground);
 }
 
 void FuzzGetFreezeExitReason(FuzzedDataProvider &fdp,

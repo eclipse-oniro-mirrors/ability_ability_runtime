@@ -1362,12 +1362,13 @@ bool AppfreezeManager::IsSkipDetect(int32_t pid, int32_t uid, const std::string&
 }
 
 AppfreezeManager::ProcessKillInfo AppfreezeManager::GetProcessKillReason(
-    int32_t killId, int32_t pid, const std::string& killMsg)
+    int32_t killId, int32_t pid, const std::string& killMsg, bool foreground)
 {
     AppfreezeManager::ProcessKillInfo killInfo = {
         .killReason = "",
         .killMsg = "",
         .adj = 0,
+        .foreground = foreground,
         .timestamp = 0,
         .killId = killId,
         .eventParamFirst = 0,
@@ -1411,6 +1412,7 @@ void AppfreezeManager::GetExitKernelReason(int32_t pid, ProcessKillInfo& killInf
     if (res == 0) {
         killId = static_cast<int>(info.data.id);
         killInfo.adj = static_cast<int>(info.data.adj);
+        killInfo.foreground = static_cast<int>(info.data.foreground);
         killInfo.timestamp = static_cast<int64_t>(info.data.timestamp);
         killInfo.killReason = HiviewDFX::ProcessKillReason::GetKillReason(killId);
         killInfo.killId = killId;
@@ -1422,14 +1424,14 @@ void AppfreezeManager::GetExitKernelReason(int32_t pid, ProcessKillInfo& killInf
         killInfo.eventParamSixth = static_cast<int64_t>(info.data.eventParamSixth);
         killInfo.eventParamSeventh = static_cast<int64_t>(info.data.eventParamSeventh);
         int kernelPid = static_cast<int>(info.data.pid);
-        TAG_LOGI(AAFwkTag::APPDFR, "Get killReason success, killId:%{public}d, adj:%{public}d, "
+        TAG_LOGI(AAFwkTag::APPDFR, "Get killReason success, killId:%{public}d, adj:%{public}d, foreground:%{public}d, "
             "timestamp:%{public}" PRId64 ", killReason:%{public}s, ioctlPid:%{public}d, pid:%{public}d "
             "paramFirst:%{public}" PRId64 ", paramSecond:%{public}" PRId64 ", paramThird:%{public}" PRId64 ", "
             "paramFourth:%{public}" PRId64 ", paramFifth:%{public}" PRId64 ", paramSixth:%{public}" PRId64 ", "
             "paramSeventh:%{public}" PRId64,
-            killId, killInfo.adj, killInfo.timestamp, killInfo.killReason.c_str(), kernelPid, pid,
-            killInfo.eventParamFirst, killInfo.eventParamSecond, killInfo.eventParamThird, killInfo.eventParamFourth,
-            killInfo.eventParamFifth, killInfo.eventParamSixth, killInfo.eventParamSeventh);
+            killId, killInfo.adj, killInfo.foreground, killInfo.timestamp, killInfo.killReason.c_str(),
+            kernelPid, pid, killInfo.eventParamFirst, killInfo.eventParamSecond, killInfo.eventParamThird,
+            killInfo.eventParamFourth, killInfo.eventParamFifth, killInfo.eventParamSixth, killInfo.eventParamSeventh);
     } else {
         killInfo.killReason = INVALID_KILL_REASON;
         TAG_LOGW(AAFwkTag::APPDFR, "Get killReason ioctl failed, errno:%{public}d", errno);
