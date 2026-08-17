@@ -1279,6 +1279,7 @@ ohos_unittest("startup_manager_mock_test") {
     "${ability_runtime_path}/interfaces/kits/native/ability/native/insight_intent_executor",
     "${ability_runtime_innerkits_path}/insight_intent/insight_intent_context",
     "${ability_runtime_innerkits_path}/ability_manager/include/insight_intent",
+    "${ability_runtime_services_path}/abilitymgr/include/insight_intent",
     "mock/include",
   ]
   module_out_path = module_output_path
@@ -1304,7 +1305,10 @@ ohos_unittest("startup_manager_mock_test") {
     "startup_manager_mock_test.cpp",
   ]
 
-  configs = [ ":module_context_config" ]
+  configs = [
+    ":module_context_config",
+    "//build/config/compiler:exceptions",
+  ]
 
   deps = [
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
