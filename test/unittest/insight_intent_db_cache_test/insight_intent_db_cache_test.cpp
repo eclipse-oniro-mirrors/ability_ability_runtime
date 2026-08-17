@@ -301,5 +301,78 @@ HWTEST_F(InsightIntentDbCacheTest, InsightIntentDbCacheTest_006, TestSize.Level0
     initialized = DelayedSingleton<InsightIntentDbCache>::GetInstance()->IsCacheInitialized(999);
     EXPECT_EQ(initialized, false);
 }
+
+/**
+ * @tc.name: InsightIntentDbCacheTest_007
+ * @tc.desc: Test uncached GetInsightIntentGenericInfo/GetInsightIntentInfo forward the data
+ *           returned by InsightRdbStorageMgr::LoadInsightIntentInfo to the caller
+ *           (downstream boundary of LoadInsightIntentInfo)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentDbCacheTest, InsightIntentDbCacheTest_007, TestSize.Level0)
+{
+    int32_t cachedUserId = 0;
+    int32_t otherUserId = 100;
+    std::string bundleName = "mock.bundle";
+    std::string moduleName = "mockModule";
+    std::string intentName = "mockIntent";
+
+    MockLoadInsightIntentInfos(true);
+    DelayedSingleton<InsightIntentDbCache>::GetInstance()->InitInsightIntentCache(cachedUserId);
+
+    MockLoadInsightIntentInfo(true);
+    ExtractInsightIntentGenericInfo genericInfo;
+    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentGenericInfo(
+        bundleName, moduleName, intentName, otherUserId, genericInfo);
+    EXPECT_EQ(genericInfo.bundleName, bundleName);
+    EXPECT_EQ(genericInfo.moduleName, moduleName);
+    EXPECT_EQ(genericInfo.intentName, intentName);
+
+    ExtractInsightIntentInfo info;
+    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentInfo(
+        bundleName, moduleName, intentName, otherUserId, info);
+    EXPECT_EQ(info.genericInfo.bundleName, bundleName);
+    EXPECT_EQ(info.genericInfo.moduleName, moduleName);
+    EXPECT_EQ(info.genericInfo.intentName, intentName);
+
+    MockLoadInsightIntentInfo(false);
+    ExtractInsightIntentGenericInfo genericInfoEmpty;
+    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentGenericInfo(
+        bundleName, moduleName, intentName, otherUserId, genericInfoEmpty);
+    EXPECT_TRUE(genericInfoEmpty.intentName.empty());
+}
+
+/**
+ * @tc.name: InsightIntentDbCacheTest_008
+ * @tc.desc: Test uncached GetConfigInsightIntentInfo forward the data
+ *           returned by InsightRdbStorageMgr::LoadConfigInsightIntentInfo to the caller
+ *           (downstream boundary of LoadConfigInsightIntentInfo)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentDbCacheTest, InsightIntentDbCacheTest_008, TestSize.Level0)
+{
+    int32_t cachedUserId = 0;
+    int32_t otherUserId = 100;
+    std::string bundleName = "mock.bundle";
+    std::string moduleName = "mockModule";
+    std::string intentName = "mockConfigIntent";
+
+    MockLoadInsightIntentInfos(true);
+    DelayedSingleton<InsightIntentDbCache>::GetInstance()->InitInsightIntentCache(cachedUserId);
+
+    MockLoadConfigInsightIntentInfo(true);
+    InsightIntentInfo info;
+    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetConfigInsightIntentInfo(
+        bundleName, moduleName, intentName, otherUserId, info);
+    EXPECT_EQ(info.bundleName, bundleName);
+    EXPECT_EQ(info.moduleName, moduleName);
+    EXPECT_EQ(info.intentName, intentName);
+
+    MockLoadConfigInsightIntentInfo(false);
+    InsightIntentInfo infoEmpty;
+    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetConfigInsightIntentInfo(
+        bundleName, moduleName, intentName, otherUserId, infoEmpty);
+    EXPECT_TRUE(infoEmpty.intentName.empty());
+}
 }
 }
