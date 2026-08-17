@@ -19,6 +19,7 @@
 #include "ability_manager_service.h"
 #include "ability_util.h"
 #include "hitrace_meter.h"
+#include "utils/update_caller_info_util.h"
 #include "int_wrapper.h"
 #include "modal_system_ui_extension.h"
 #include "query_erms_manager.h"
@@ -246,6 +247,9 @@ void DialogSessionManager::GenerateDialogCallerInfo(AbilityRequest &abilityReque
     dialogCallerInfo->needGrantUriPermission = needGrantUriPermission;
     dialogCallerInfo->callerAccessTokenId = abilityRequest.callerAccessTokenId;
     dialogCallerInfo->requestCallback = abilityRequest.requestCallback;
+    if (abilityRequest.IsCallType(AbilityCallType::START_OPTIONS_TYPE)) {
+        dialogCallerInfo->startOptions = std::make_shared<StartOptions>(abilityRequest.startOptions);
+    }
 }
 
 void DialogSessionManager::NotifyAbilityRequestFailure(const std::string &dialogSessionId, const Want &want)
@@ -322,6 +326,12 @@ int DialogSessionManager::SendDialogResult(const Want &want, const std::string &
     if (atomicServiceShortLink == 1) {
         ret = abilityMgr->OpenLink(targetWant, callerToken, dialogCallerInfo->userId,
             dialogCallerInfo->requestCode, false);
+    } else if (dialogCallerInfo->startOptions != nullptr) {
+        AAFwk::Want newWant = targetWant;
+        UpdateCallerInfoUtil::GetInstance().UpdateAsCallerSourceInfo(newWant, callerToken, callerToken);
+        ret = abilityMgr->StartAbilityForOptionInner(newWant, *dialogCallerInfo->startOptions, callerToken,
+            false, dialogCallerInfo->userId, dialogCallerInfo->requestCode, true, dialogCallerInfo->callerAccessTokenId,
+            false);
     } else {
         ret = abilityMgr->StartAbilityAsCallerDetails(targetWant, callerToken, callerToken, dialogCallerInfo->userId,
             dialogCallerInfo->requestCode, false, dialogCallerInfo->type == SelectorType::APP_CLONE_SELECTOR,

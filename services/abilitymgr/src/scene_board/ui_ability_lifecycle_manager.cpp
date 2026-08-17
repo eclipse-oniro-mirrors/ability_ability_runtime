@@ -51,6 +51,7 @@
 #include "timeout_state_utils.h"
 #include "ui_extension_wrapper.h"
 #include "utils/state_utils.h"
+#include "utils/window_options_utils.h"
 #ifdef SUPPORT_GRAPHICS
 #include "ability_first_frame_state_observer_manager.h"
 #endif
@@ -3889,6 +3890,19 @@ int UIAbilityLifecycleManager::MoveMissionToFront(int32_t sessionId, std::shared
         (sessionInfo->want).SetParam(Want::PARAM_RESV_WINDOW_MODE, startOptions->GetWindowMode());
         if (startOptions->GetDisplayID() == 0) {
             (sessionInfo->want).SetParam(Want::PARAM_RESV_DISPLAY_ID, DisplayUtil::GetDefaultDisplayId());
+        }
+        WindowOptionsUtils::SetWindowPositionAndSize(sessionInfo->want, nullptr, *startOptions);
+        sessionInfo->splitRatioPreference = startOptions->GetSplitRatioPreference();
+        sessionInfo->windowCreateParams = startOptions->windowCreateParams_;
+        sessionInfo->supportWindowModes = startOptions->supportWindowModes_;
+        if (PermissionVerification::GetInstance()->IsSystemAppCall()) {
+            bool focused = (sessionInfo->want).GetBoolParam(Want::PARAM_RESV_WINDOW_FOCUSED, true);
+            if (focused) {
+                (sessionInfo->want).SetParam(Want::PARAM_RESV_WINDOW_FOCUSED,
+                    startOptions->GetWindowFocused());
+            }
+        } else {
+            (sessionInfo->want).RemoveParam(Want::PARAM_RESV_WINDOW_FOCUSED);
         }
     } else {
         (sessionInfo->want).SetParam(Want::PARAM_RESV_DISPLAY_ID, -1);

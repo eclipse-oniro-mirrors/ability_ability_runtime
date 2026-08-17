@@ -216,6 +216,7 @@ FreeInstallInfo FreeInstallManager::BuildFreeInstallInfo(const Want &want, int32
     FreeInstallInfo info = {
         .isOpenAtomicServiceShortUrl = param->isOpenAtomicServiceShortUrl,
         .specifyTokenId = param->specifyTokenId,
+        .accessTokenId = param->accessTokenId,
         .userId = userId,
         .requestCode = requestCode,
         .callerToken = callerToken,

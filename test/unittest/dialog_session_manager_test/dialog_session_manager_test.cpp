@@ -209,6 +209,28 @@ HWTEST_F(DialogSessionManagerTest, SendDialogResultTest_0400, TestSize.Level1)
 }
 
 /**
+ * @tc.name: SendDialogResultTest_0500
+ * @tc.desc: Test SendDialogResult with startOptions in dialogCallerInfo
+ * @tc.type: FUNC
+ */
+HWTEST_F(DialogSessionManagerTest, SendDialogResultTest_0500, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SendDialogResultTest_0500 start";
+    DialogSessionManager dialogSessionManager;
+    Want want;
+    bool isAllowed = true;
+    sptr<DialogSessionInfo> dilogSessionInfo = nullptr;
+    std::shared_ptr<DialogCallerInfo> dialogCallerInfo = std::make_shared<DialogCallerInfo>();
+    dialogCallerInfo->startOptions = std::make_shared<StartOptions>();
+    dialogCallerInfo->type = SelectorType::WITHOUT_SELECTOR;
+
+    dialogSessionManager.SetDialogSessionInfo(TEST_DIALOG_SESSION_ID, dilogSessionInfo, dialogCallerInfo);
+    int32_t ret = dialogSessionManager.SendDialogResult(want, TEST_DIALOG_SESSION_ID, isAllowed);
+    EXPECT_NE(ret, ERR_OK);
+    GTEST_LOG_(INFO) << "SendDialogResultTest_0500 end";
+}
+
+/**
  * @tc.name: NotifySCBToRecoveryAfterInterceptionTest_0100
  * @tc.desc: Test NotifySCBToRecoveryAfterInterception
  * @tc.type: FUNC
@@ -945,6 +967,42 @@ HWTEST_F(DialogSessionManagerTest, HandleErmsResult_001, TestSize.Level1)
     int result = dialogSessionManager.HandleErmsResult(abilityRequest, 0, replaceWant);
     EXPECT_NE(result, ERR_INVALID_VALUE);
     GTEST_LOG_(INFO) << "HandleErmsResult_001 end";
+}
+
+/**
+ * @tc.name: GenerateDialogCallerInfo_0100
+ * @tc.desc: Test GenerateDialogCallerInfo with START_OPTIONS_TYPE
+ * @tc.type: FUNC
+ */
+HWTEST_F(DialogSessionManagerTest, GenerateDialogCallerInfo_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GenerateDialogCallerInfo_0100 start";
+    DialogSessionManager dialogSessionManager;
+    AbilityRequest abilityRequest;
+    abilityRequest.callType = AbilityCallType::START_OPTIONS_TYPE;
+    auto dialogCallerInfo = std::make_shared<DialogCallerInfo>();
+    dialogSessionManager.GenerateDialogCallerInfo(abilityRequest, TEST_USER_ID, dialogCallerInfo,
+        SelectorType::WITHOUT_SELECTOR, false);
+    EXPECT_NE(dialogCallerInfo->startOptions, nullptr);
+    GTEST_LOG_(INFO) << "GenerateDialogCallerInfo_0100 end";
+}
+
+/**
+ * @tc.name: GenerateDialogCallerInfo_0200
+ * @tc.desc: Test GenerateDialogCallerInfo without START_OPTIONS_TYPE
+ * @tc.type: FUNC
+ */
+HWTEST_F(DialogSessionManagerTest, GenerateDialogCallerInfo_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GenerateDialogCallerInfo_0200 start";
+    DialogSessionManager dialogSessionManager;
+    AbilityRequest abilityRequest;
+    abilityRequest.callType = AbilityCallType::INVALID_TYPE;
+    auto dialogCallerInfo = std::make_shared<DialogCallerInfo>();
+    dialogSessionManager.GenerateDialogCallerInfo(abilityRequest, TEST_USER_ID, dialogCallerInfo,
+        SelectorType::WITHOUT_SELECTOR, false);
+    EXPECT_EQ(dialogCallerInfo->startOptions, nullptr);
+    GTEST_LOG_(INFO) << "GenerateDialogCallerInfo_0200 end";
 }
 
 /**
