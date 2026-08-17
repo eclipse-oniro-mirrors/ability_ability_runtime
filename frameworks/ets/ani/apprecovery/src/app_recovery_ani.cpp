@@ -30,6 +30,7 @@ namespace {
 constexpr int RESTART_FLAG_INDEX = 0; // 0:RestartFlag
 constexpr int OCCASION_FLAG_INDEX = 1; // 1:SaveOccasionFlag
 constexpr int MODE_FLAG_INDEX = 2; // 2:SaveModeFlag
+constexpr int FLAG_SIZE = 3;
 constexpr int RESTART_APP_ID = 3;
 constexpr const char *const  RESTART_APP_REASON = "RestartApp";
 constexpr const char *const  RESTART_REASON = "Restart";
@@ -50,21 +51,25 @@ bool IsNull(ani_env *env, ani_ref ref)
     return isNull;
 }
 
-bool CheckParamsValid(const uint16_t params[])
+bool CheckParamsValid(const uint16_t params[], size_t paramsSize)
 {
-    uint16_t restartFlag = params[0];
+    if (params == nullptr || paramsSize < FLAG_SIZE) {
+        TAG_LOGE(AAFwkTag::RECOVERY, "params is null or invalid paramsSize: %{public}zu", paramsSize);
+        return false;
+    }
+    uint16_t restartFlag = params[RESTART_FLAG_INDEX];
     constexpr uint16_t restartMaxVal = 0x0003;
     if (restartFlag > restartMaxVal && restartFlag != RestartFlag::NO_RESTART) {
         TAG_LOGE(AAFwkTag::RECOVERY, "invalid restartFlag: %{public}d", restartFlag);
         return false;
     }
-    uint16_t saveFlag = params[1];
+    uint16_t saveFlag = params[OCCASION_FLAG_INDEX];
     constexpr uint16_t saveMaxVal = 0x0003;
     if (saveFlag < SaveOccasionFlag::SAVE_WHEN_ERROR || saveFlag > saveMaxVal) {
         TAG_LOGE(AAFwkTag::RECOVERY, "invalid saveOccasionFlag: %{public}d", saveFlag);
         return false;
     }
-    uint16_t saveModeFlag = params[2];
+    uint16_t saveModeFlag = params[MODE_FLAG_INDEX];
     if (saveModeFlag < SaveModeFlag::SAVE_WITH_FILE || saveModeFlag > SaveModeFlag::SAVE_WITH_SHARED_MEMORY) {
         TAG_LOGE(AAFwkTag::RECOVERY, "invalid saveModeFlag: %{public}d", saveModeFlag);
         return false;
@@ -103,7 +108,7 @@ static ani_object EnableAppRecovery(ani_env *env, ani_enum_item restart, ani_enu
         return resultsObj;
     }
 
-    if (!CheckParamsValid(flags)) {
+    if (!CheckParamsValid(flags, sizeof(flags) / sizeof(flags[0]))) {
         return resultsObj;
     }
 
