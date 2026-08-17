@@ -116,6 +116,10 @@ std::string GetFailureReason(int32_t errorCode)
             return REASON_SESSION_LIMIT_EXCEEDED;
         case ERR_NO_INIT:
             return REASON_PROCESS_CREATE_FAILED;
+        case ERR_NOT_HAP:
+            return REASON_CALLER_NOT_HAP;
+        case ERR_NOT_SYSTEM_APP:
+            return REASON_CALLER_NOT_SYSTEM_APP;
         case ERR_INVALID_PARAM:
         case ERR_INNER_PARAM_INVALID:
             return REASON_INVALID_PARAM;
