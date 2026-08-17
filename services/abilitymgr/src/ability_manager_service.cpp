@@ -6739,11 +6739,13 @@ int AbilityManagerService::ContinueMission(AAFwk::ContinueMissionInfo continueMi
     return dmsClient.ContinueMission(continueMissionInfo, callback);
 }
 
-int AbilityManagerService::ContinueAbility(const std::string &deviceId, int32_t missionId, uint32_t versionCode)
+int AbilityManagerService::ContinueAbility(const std::string &deviceId, int32_t missionId,
+    uint32_t versionCode, int32_t userId)
 {
     XCOLLIE_TIMER_LESS(__PRETTY_FUNCTION__);
     TAG_LOGI(AAFwkTag::ABILITYMGR,
-        "ContinueAbility missionId = %{public}d, version = %{public}u.", missionId, versionCode);
+        "ContinueAbility missionId = %{public}d, version = %{public}u, userId = %{public}d.",
+        missionId, versionCode, userId);
     if (!CheckCallerIsDmsProcess()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "check processName failed");
         return ERR_INVALID_VALUE;
@@ -6751,7 +6753,8 @@ int AbilityManagerService::ContinueAbility(const std::string &deviceId, int32_t 
 
     std::shared_ptr<AbilityRecord> abilityRecord = nullptr;
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto uiAbilityManager = GetCurrentUIAbilityManager();
+        auto uiAbilityManager = (userId >= 0) ? GetUIAbilityManagerByUserId(userId)
+            : GetCurrentUIAbilityManager();
         CHECK_POINTER_AND_RETURN(uiAbilityManager, ERR_INVALID_VALUE);
         abilityRecord = uiAbilityManager->GetAbilityRecordsById(missionId);
     } else {

@@ -881,6 +881,24 @@ HWTEST_F(AbilityManagerServiceSecondTest, ContinueAbility_001, TestSize.Level1)
 
 /*
  * Feature: AbilityManagerService
+ * Function: ContinueAbility
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService ContinueAbility with userId
+ */
+HWTEST_F(AbilityManagerServiceSecondTest, ContinueAbility_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSecondTest ContinueAbility_002 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    abilityMs_->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    abilityMs_->subManagersHelper_->currentUIAbilityManager_ = std::make_shared<UIAbilityLifecycleManager>();
+    std::string deviceId = "test";
+    int32_t userId = 100;
+    EXPECT_EQ(abilityMs_->ContinueAbility(deviceId, 1, 1, userId), ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSecondTest ContinueAbility_002 end");
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: StartContinuation
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService StartContinuation

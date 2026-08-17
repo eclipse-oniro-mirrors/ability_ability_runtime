@@ -2073,6 +2073,30 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_ContinueAbilityInner_001, Te
 
 /*
  * Feature: AbilityManagerService
+ * Function: ContinueAbilityInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService ContinueAbilityInner with userId
+ * EnvConditions: NA
+ * CaseDescription: Verify the function ContinueAbilityInner with userId parameter.
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_ContinueAbilityInner_002, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    std::string deviceId = "test_device";
+    int32_t missionId = 1;
+    uint32_t versionCode = 1;
+    int32_t userId = 100;
+    data.WriteString(deviceId);
+    data.WriteInt32(missionId);
+    data.WriteUint32(versionCode);
+    data.WriteInt32(userId);
+    auto res = stub_->ContinueAbilityInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: StartContinuationInner
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService StartContinuationInner

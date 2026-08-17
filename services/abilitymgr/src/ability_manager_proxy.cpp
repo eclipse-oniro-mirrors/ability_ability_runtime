@@ -2902,7 +2902,8 @@ int AbilityManagerProxy::ContinueMission(AAFwk::ContinueMissionInfo continueMiss
     return reply.ReadInt32();
 }
 
-int AbilityManagerProxy::ContinueAbility(const std::string &deviceId, int32_t missionId, uint32_t versionCode)
+int AbilityManagerProxy::ContinueAbility(const std::string &deviceId, int32_t missionId,
+    uint32_t versionCode, int32_t userId)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -2920,6 +2921,10 @@ int AbilityManagerProxy::ContinueAbility(const std::string &deviceId, int32_t mi
     }
     if (!data.WriteUint32(versionCode)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "versionCode write fail");
+        return INNER_ERR;
+    }
+    if (!data.WriteInt32(userId)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "userId write fail");
         return INNER_ERR;
     }
 

@@ -2524,6 +2524,23 @@ HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_ContinueAbility_01
 }
 
 /**
+ * @tc.name: AbilityManagerClient_ContinueAbility_0200
+ * @tc.desc: ContinueAbility with userId
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_ContinueAbility_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ContinueAbility_0200 start";
+    std::string deviceId = "123";
+    int32_t missionId = 1;
+    uint32_t versionCode = 1;
+    int32_t userId = 100;
+    auto result = client_->ContinueAbility(deviceId, missionId, versionCode, userId);
+    EXPECT_EQ(ERR_OK, result);
+    GTEST_LOG_(INFO) << "ContinueAbility_0200 end";
+}
+
+/**
  * @tc.name: AbilityManagerClient_StopServiceAbility_0100
  * @tc.desc: StopServiceAbility
  * @tc.type: FUNC

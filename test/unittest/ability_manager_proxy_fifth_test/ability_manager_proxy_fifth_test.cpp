@@ -438,6 +438,22 @@ HWTEST_F(AbilityManagerProxyFifthTest, ContinueAbility_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: ContinueAbility_0200
+ * @tc.desc: Test the ContinueAbility with userId
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxyFifthTest, ContinueAbility_0200, TestSize.Level1)
+{
+    std::string deviceId = "001";
+    int32_t missionId = 2;
+    uint32_t versionCode = 3;
+    int32_t userId = 100;
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _)).WillOnce(Return(NO_ERROR));
+    auto res = proxy_->ContinueAbility(deviceId, missionId, versionCode, userId);
+    EXPECT_EQ(res, ZERO);
+}
+
+/**
  * @tc.name: StartContinuation_0100
  * @tc.desc: Test the StartContinuation
  * @tc.type: FUNC
