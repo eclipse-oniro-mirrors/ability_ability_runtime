@@ -51,6 +51,8 @@ constexpr const char* REASON_TOOL_NOT_FOUND = "TOOL_NOT_FOUND";
 constexpr const char* REASON_SESSION_LIMIT_EXCEEDED = "SESSION_LIMIT_EXCEEDED";
 constexpr const char* REASON_PROCESS_CREATE_FAILED = "PROCESS_CREATE_FAILED";
 constexpr const char* REASON_INVALID_PARAM = "INVALID_PARAM";
+constexpr const char* REASON_CALLER_NOT_SYSTEM_APP = "CALLER_NOT_SYSTEM_APP";
+constexpr const char* REASON_CALLER_NOT_HAP = "CALLER_NOT_HAP";
 
 // Detail codes for TOOL_NOT_FOUND
 constexpr const char* DETAIL_TOOL_NOT_FOUND = "tool_not_found";
