@@ -104,7 +104,7 @@ void CliToolManagerService::HandleProcessTimeout(const std::string &sessionId)
     record->SetTerminalResult(0, 0);
 
     int64_t durationMs = record->GetEndTimeMs() - record->startTime;
-    ReportCliTimeout(record->callerBundleName, record->toolName, std::to_string(durationMs));
+    ReportCliTimeout(record->callerBundleName, record->toolName, durationMs);
 
     auto oldBackground = record->SetBackground(true);
     TAG_LOGI(AAFwkTag::CLI_TOOL, "HandleProcessTimeout: sessionId=%{public}s, background=%{public}d",
@@ -1152,7 +1152,7 @@ void CliToolManagerService::WaitPid(pid_t pid, int32_t status, int32_t sig)
             termSignal = WTERMSIG(status);
             TAG_LOGI(AAFwkTag::CLI_TOOL, "WaitPid: process killed by signal=%{public}d", termSignal);
             if (termSignal != 0 && termSignal != SIGTERM && termSignal != SIGHUP && termSignal != SIGCHLD) {
-                ReportCliSignal(record->toolName, std::to_string(termSignal));
+                ReportCliSignal(record->toolName, termSignal);
             }
         }
 

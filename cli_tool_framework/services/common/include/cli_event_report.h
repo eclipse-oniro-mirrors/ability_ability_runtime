@@ -82,14 +82,14 @@ void ReportCliExecuteFailed(const std::string& bundleName, const std::string& cl
  * @param durationMs Timeout duration in milliseconds
  */
 void ReportCliTimeout(const std::string& bundleName, const std::string& cliName,
-    const std::string& durationMs);
+    int64_t durationMs);
 
 /**
  * @brief Report CLI signal event (TYPE=SIGNAL)
  * @param cliName CLI tool name
  * @param signalNum Signal number
  */
-void ReportCliSignal(const std::string& cliName, const std::string& signalNum);
+void ReportCliSignal(const std::string& cliName, int32_t signalNum);
 
 /**
  * @brief Get effective CLI name with placeholder handling
