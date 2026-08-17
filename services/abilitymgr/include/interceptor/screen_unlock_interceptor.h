@@ -25,10 +25,6 @@ public:
     ScreenUnlockInterceptor() = default;
     ~ScreenUnlockInterceptor() = default;
     ErrCode DoProcess(const AbilityInterceptorParam &param) override;
-    virtual void SetTaskHandler(std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler) override
-    {
-        return;
-    };
 private:
     bool GetTargetAbilityInfo(const AbilityInterceptorParam &param, AppExecFwk::AbilityInfo &targetAbilityInfo);
     bool QueryTargetAbilityInfoByUri(const AbilityInterceptorParam &param, AppExecFwk::AbilityInfo &targetAbilityInfo);

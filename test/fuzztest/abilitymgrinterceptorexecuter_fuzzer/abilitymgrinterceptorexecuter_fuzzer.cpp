@@ -77,8 +77,6 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     auto shouldBlockFunc = []() { return false; };
     AbilityInterceptorParam param(want, requestCode, userId, boolParam, callerToken, shouldBlockFunc);
     executer->DoProcess(param);
-    std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler;
-    executer->SetTaskHandler(taskHandler);
     executer->GetInterceptorMapCopy();
     return true;
 }

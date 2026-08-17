@@ -37,10 +37,6 @@ public:
     ~EcologicalRuleInterceptor() = default;
     ErrCode DoProcess(const AbilityInterceptorParam &param) override;
     bool DoProcess(Want &want, int32_t userId);
-    virtual void SetTaskHandler(std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler) override
-    {
-        return;
-    };
     ErrCode QueryAtomicServiceStartupRule(Want &want, sptr<IRemoteObject> callerToken,
         int32_t userId, AtomicServiceStartupRule &rule, sptr<Want> &replaceWant);
 

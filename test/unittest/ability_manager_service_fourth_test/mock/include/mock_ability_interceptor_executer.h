@@ -46,8 +46,6 @@ public:
      * Excute the DoProcess of the interceptors.
      */
     ErrCode DoProcess(const AbilityInterceptorParam &param);
-
-    void SetTaskHandler(std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler);
 private:
     InterceptorMap GetInterceptorMapCopy();
 private:

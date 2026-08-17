@@ -36,10 +36,6 @@ public:
 
     ErrCode Execute();
     ErrCode Execute(AbilityRequest& abilityRequest, int32_t validUserId);
-    virtual void SetTaskHandler(std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler) override
-    {
-        return;
-    };
 
 private:
     std::function<bool()> shouldBlockFunc_;

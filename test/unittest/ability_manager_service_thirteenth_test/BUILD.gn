@@ -155,7 +155,6 @@ ohos_unittest("ability_manager_service_thirteenth_test") {
     "${ability_runtime_services_path}/abilitymgr/src/interceptor/disposed_rule_interceptor.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/interceptor/extension_control_interceptor.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/interceptor/screen_unlock_interceptor.cpp",
-    "${ability_runtime_services_path}/abilitymgr/src/interceptor/start_other_app_interceptor.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/keep_alive/ability_keep_alive_data_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/keep_alive/ability_keep_alive_service.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/keep_alive/keep_alive_process_manager.cpp",

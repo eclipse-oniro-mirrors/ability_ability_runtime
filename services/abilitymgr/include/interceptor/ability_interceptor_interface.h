@@ -19,7 +19,6 @@
 #include "ability_info.h"
 #include "ability_manager_errors.h"
 #include "start_options.h"
-#include "task_handler_wrap.h"
 #include "want.h"
 
 namespace OHOS {
@@ -61,11 +60,6 @@ public:
      * Excute interception processing.
      */
     virtual ErrCode DoProcess(const AbilityInterceptorParam &param) = 0;
-
-    /**
-     * Set handler for async task executing.
-     */
-    virtual void SetTaskHandler(std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler) {};
 };
 } // namespace AAFwk
 } // namespace OHOS

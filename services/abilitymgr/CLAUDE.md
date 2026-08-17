@@ -163,7 +163,6 @@ Provides pluggable behavior for ability starts:
 
 | Interceptor | Purpose |
 |-------------|---------|
-| `StartOtherAppInterceptor` | Control starting other applications |
 | `EcologicalRuleInterceptor` | Enforce ecosystem rules |
 | `KioskInterceptor` | Kiosk mode enforcement |
 | `ScreenUnlockInterceptor` | Screen lock state checks |

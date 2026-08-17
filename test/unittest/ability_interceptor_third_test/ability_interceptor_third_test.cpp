@@ -67,21 +67,5 @@ HWTEST_F(AbilityInterceptorThirdTest, RemoveInterceptor_001, TestSize.Level1)
     EXPECT_EQ(resMap2.size(), 0);
 }
 
-/**
- * @tc.name: AbilityInterceptorThirdTest_SetTaskHandler_001
- * @tc.desc: SetTaskHandler
- * @tc.type: FUNC
- * @tc.require: No
- */
-HWTEST_F(AbilityInterceptorThirdTest, SetTaskHandler_001, TestSize.Level1)
-{
-    std::shared_ptr<AbilityInterceptorExecuter> executer = std::make_shared<AbilityInterceptorExecuter>();
-    std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler =  AAFwk::TaskHandlerWrap::CreateQueueHandler("SetTaskHandler");
-    executer->AddInterceptor("CrowdTest", std::make_shared<CrowdTestInterceptor>());
-    executer->SetTaskHandler(taskHandler);
-    auto resMap2 = executer->GetInterceptorMapCopy();
-    EXPECT_EQ(resMap2.size(), 1);
-}
-
 } // namespace AAFwk
 } // namespace OHOS

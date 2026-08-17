@@ -22,7 +22,7 @@
 namespace OHOS {
 namespace AAFwk {
 namespace {
-constexpr const char* INTERCEPT_PARAMETERS = "intercept_parammeters";
+constexpr const char* INTERCEPT_PARAMETERS = "intercept_parameters";
 constexpr const char* INTERCEPT_BUNDLE_NAME = "intercept_bundleName";
 constexpr const char* INTERCEPT_ABILITY_NAME = "intercept_abilityName";
 constexpr const char* INTERCEPT_MODULE_NAME = "intercept_moduleName";
@@ -87,9 +87,6 @@ bool ControlInterceptor::CheckControl(const Want &want, int32_t userId,
 
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, "GetAppRunningControlRule");
     std::string identity = IPCSkeleton::ResetCallingIdentity();
-    if (identity == "") {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "getId fail");
-    }
     auto ret = appControlMgr->GetAppRunningControlRule(bundleName, userId, controlRule);
     if (ret == ERR_BUNDLE_MANAGER_PERMISSION_DENIED) {
         IPCSkeleton::SetCallingIdentity(identity, true);

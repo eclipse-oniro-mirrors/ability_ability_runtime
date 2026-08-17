@@ -529,7 +529,6 @@ group("unittest") {
       "start_options_impl_test:unittest",
       "start_options_test:unittest",
       "start_options_utils_test:unittest",
-      "start_other_app_interceptor_test:unittest",
       "start_params_by_SCB_test:unittest",
       "startup_util_test:unittest",
       "state_utils_test:unittest",
