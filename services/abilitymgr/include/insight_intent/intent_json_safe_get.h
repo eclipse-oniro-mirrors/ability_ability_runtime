@@ -27,6 +27,9 @@ namespace AbilityRuntime {
 
 constexpr size_t DUMP_TOKEN_MAX_LEN = 50;   // single short token; longest ExecuteMode value is 26 chars
 constexpr size_t DUMP_LOG_MAX_LEN = 1000;   // full JSON debug dump, bounded for hilog readability
+// dump() recurses on nested values; super-deep input SIGSEGVs (uncatchable by try/catch).
+// 100 is far above any legitimate intent payload depth.
+constexpr size_t JSON_DUMP_MAX_DEPTH = 100;
 
 template<typename T>
 bool SafeJsonGet(const nlohmann::json &jsonObject, T &out, const char *tag)
@@ -46,25 +49,17 @@ bool SafeJsonGet(const nlohmann::json &jsonObject, T &out, const char *tag)
     }
 }
 
-inline std::string SafeDump(const nlohmann::json &jsonObject, size_t maxLen = 0)
-{
-    try {
-        auto s = jsonObject.dump();
-        return (maxLen > 0 && s.size() > maxLen) ? s.substr(0, maxLen) + "..." : s;
-    } catch (...) {
-        return "<dump_failed>";
-    }
-}
+// Defined in intent_json_safe_get.cpp, compiled only into the ability_manager innerkit;
+// abilityms and test targets resolve the symbols via the innerkit. Do NOT add the cpp to
+// the abilityms sources: libabilityms.map hides non-whitelisted symbols.
 
-inline bool SafeDumpTo(const nlohmann::json &jsonObject, std::string &out)
-{
-    try {
-        out = jsonObject.dump();
-    } catch (...) {
-        return false;
-    }
-    return true;
-}
+// Iterative (explicit stack) so the check itself cannot stack-overflow.
+bool IsJsonDepthOk(const nlohmann::json &jsonObject, size_t maxDepth);
+
+std::string SafeDump(const nlohmann::json &jsonObject, size_t maxLen = 0);
+
+bool SafeDumpTo(const nlohmann::json &jsonObject, std::string &out);
+
 } // namespace AbilityRuntime
 } // namespace OHOS
 #endif // OHOS_ABILITY_RUNTIME_INTENT_JSON_SAFE_GET_H

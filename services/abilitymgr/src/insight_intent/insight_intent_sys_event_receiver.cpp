@@ -84,6 +84,18 @@ bool InsightIntentSysEventReceiver::SaveInsightIntentInfos(const std::string &bu
             continue;
         }
 
+        // force BMS bundleName/moduleName over the profile values so the function
+        // namespace matches the name UnregisterInsightIntentFunctions uses and the
+        // db cache erase-by-moduleName hits stale entries
+        for (auto &item : configIntentInfos) {
+            item.bundleName = bundleName;
+            item.moduleName = moduleNameLocal;
+        }
+        for (auto &item : infos.insightIntents) {
+            item.bundleName = bundleName;
+            item.moduleName = moduleNameLocal;
+        }
+
         // save database
         ret = DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->SaveInsightIntentTotalInfo(
             bundleName, moduleNameLocal, userId, versionCode, infos, configIntentInfos);

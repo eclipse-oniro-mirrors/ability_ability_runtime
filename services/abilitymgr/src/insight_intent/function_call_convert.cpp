@@ -23,6 +23,7 @@
 #include "cli_tool_mgr_client.h"
 #include "hilog_tag_wrapper.h"
 #include "insight_intent_execute_param.h"
+#include "intent_json_safe_get.h"
 
 namespace OHOS {
 namespace CliTool {
@@ -58,6 +59,10 @@ void AddInsightIntentOptions(FunctionInfo &func, const IntentOptionDefaults &def
     if (!schema.is_object()) {
         schema = nlohmann::json();
     }
+    if (!AbilityRuntime::IsJsonDepthOk(schema, AbilityRuntime::JSON_DUMP_MAX_DEPTH)) {
+        TAG_LOGW(AAFwkTag::INTENT, "inputSchema depth exceeds limit, reset to empty");
+        schema = nlohmann::json();
+    }
     if (!schema.contains("type") || schema["type"] != "object") {
         schema["type"] = "object";
     }
@@ -65,7 +70,9 @@ void AddInsightIntentOptions(FunctionInfo &func, const IntentOptionDefaults &def
         schema["properties"] = nlohmann::json();
     }
     BuildOptionsSchema(schema, defaults);
-    func.inputSchema = schema.dump();
+    if (!AbilityRuntime::SafeDumpTo(schema, func.inputSchema)) {
+        func.inputSchema.clear();
+    }
 }
 
 struct RegisterSortKey {
@@ -186,7 +193,9 @@ bool ConvertFromConfigIntent(const std::vector<AbilityRuntime::InsightIntentInfo
                 properties[param] = {{"type", "string"}};
             }
             inputSchema["properties"] = properties;
-            func.inputSchema = inputSchema.dump();
+            if (!AbilityRuntime::SafeDumpTo(inputSchema, func.inputSchema)) {
+                func.inputSchema.clear();
+            }
         }
 
         if (!info.outputParams.empty()) {
@@ -197,7 +206,9 @@ bool ConvertFromConfigIntent(const std::vector<AbilityRuntime::InsightIntentInfo
                 properties[param] = {{"type", "string"}};
             }
             outputSchema["properties"] = properties;
-            func.outputSchema = outputSchema.dump();
+            if (!AbilityRuntime::SafeDumpTo(outputSchema, func.outputSchema)) {
+                func.outputSchema.clear();
+            }
         }
 
         IntentOptionDefaults defaults;

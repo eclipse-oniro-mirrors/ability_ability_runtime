@@ -112,11 +112,16 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
                 continue;
             }
 
-            // backfill moduleName before save, so both RDB and KVStore see the correct value
+            // force BMS bundleName/moduleName over the profile values so the function
+            // namespace matches the name UnregisterInsightIntentFunctions uses and the
+            // db cache erase-by-moduleName hits stale entries
             for (auto &item : configIntentInfos) {
-                if (item.moduleName.empty()) {
-                    item.moduleName = moduleNameLocal;
-                }
+                item.bundleName = bundleName;
+                item.moduleName = moduleNameLocal;
+            }
+            for (auto &item : infos.insightIntents) {
+                item.bundleName = bundleName;
+                item.moduleName = moduleNameLocal;
             }
             // save database
             DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->SaveInsightIntentTotalInfo(
