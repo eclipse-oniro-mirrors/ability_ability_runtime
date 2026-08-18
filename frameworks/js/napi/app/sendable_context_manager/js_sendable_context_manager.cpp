@@ -138,11 +138,12 @@ napi_value CreateSendableContextObject(napi_env env, std::shared_ptr<Context> co
         return nullptr;
     }
 
-    status = napi_wrap_sendable(env, objValue, jsContext.release(), JsContext::Finalizer, nullptr);
+    status = napi_wrap_sendable(env, objValue, jsContext.get(), JsContext::Finalizer, nullptr);
     if (status != napi_ok) {
         TAG_LOGE(AAFwkTag::CONTEXT, "wrap failed:%{public}d", status);
         return nullptr;
     }
+    jsContext.release();
 
     return handleEscape.Escape(objValue);
 }
@@ -184,16 +185,7 @@ napi_value CreateJsBaseContextFromSendable(napi_env env, void* wrapped)
     }
 
     auto workContext = new (std::nothrow) std::weak_ptr<Context>(contextPtr);
-    auto status = napi_coerce_to_native_binding_object(env, object, DetachNewBaseContext, AttachBaseContext,
-        workContext, nullptr);
-    napi_add_detached_finalizer(env, object, DetachFinalizeBaseContext, nullptr);
-    if (status != napi_ok) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "coerce context failed: %{public}d", status);
-        delete workContext;
-        return nullptr;
-    }
-
-    status = napi_wrap(env, object, workContext,
+    auto status = napi_wrap(env, object, workContext,
         [](napi_env, void *data, void *) {
             TAG_LOGD(AAFwkTag::CONTEXT, "finalizer for weak_ptr context");
             delete static_cast<std::weak_ptr<Context> *>(data);
@@ -201,6 +193,14 @@ napi_value CreateJsBaseContextFromSendable(napi_env env, void* wrapped)
     if (status != napi_ok) {
         TAG_LOGE(AAFwkTag::CONTEXT, "wrap failed: %{public}d", status);
         delete workContext;
+        return nullptr;
+    }
+
+    status = napi_coerce_to_native_binding_object(env, object, DetachNewBaseContext, AttachBaseContext,
+        workContext, nullptr);
+    napi_add_detached_finalizer(env, object, DetachFinalizeBaseContext, nullptr);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "coerce context failed: %{public}d", status);
         return nullptr;
     }
 
@@ -244,16 +244,7 @@ napi_value CreateJsApplicationContextFromSendable(napi_env env, void* wrapped)
     }
 
     auto workContext = new (std::nothrow) std::weak_ptr<ApplicationContext>(applicationContext);
-    auto status = napi_coerce_to_native_binding_object(
-        env, object, DetachNewApplicationContext, AttachApplicationContext, workContext, nullptr);
-    napi_add_detached_finalizer(env, object, DetachFinalizeApplicationContext, nullptr);
-    if (status != napi_ok) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "coerce application context failed: %{public}d", status);
-        delete workContext;
-        return nullptr;
-    }
-
-    status = napi_wrap(env, object, workContext,
+    auto status = napi_wrap(env, object, workContext,
         [](napi_env, void *data, void *) {
             TAG_LOGD(AAFwkTag::CONTEXT, "finalizer for weak_ptr application context");
             delete static_cast<std::weak_ptr<ApplicationContext> *>(data);
@@ -261,6 +252,14 @@ napi_value CreateJsApplicationContextFromSendable(napi_env env, void* wrapped)
     if (status != napi_ok) {
         TAG_LOGE(AAFwkTag::CONTEXT, "wrap failed: %{public}d", status);
         delete workContext;
+        return nullptr;
+    }
+
+    status = napi_coerce_to_native_binding_object(
+        env, object, DetachNewApplicationContext, AttachApplicationContext, workContext, nullptr);
+    napi_add_detached_finalizer(env, object, DetachFinalizeApplicationContext, nullptr);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "coerce application context failed: %{public}d", status);
         return nullptr;
     }
 
@@ -304,16 +303,7 @@ napi_value CreateJsAbilityStageContextFromSendable(napi_env env, void* wrapped)
     }
 
     auto workContext = new (std::nothrow) std::weak_ptr<AbilityStageContext>(abilitystageContext);
-    auto status = napi_coerce_to_native_binding_object(
-        env, object, DetachNewAbilityStageContext, AttachAbilityStageContext, workContext, nullptr);
-    napi_add_detached_finalizer(env, object, DetachFinalizeAbilityStageContext, nullptr);
-    if (status != napi_ok) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "coerce ability stage context failed: %{public}d", status);
-        delete workContext;
-        return nullptr;
-    }
-
-    status = napi_wrap(env, object, workContext,
+    auto status = napi_wrap(env, object, workContext,
         [](napi_env, void *data, void *) {
             TAG_LOGD(AAFwkTag::CONTEXT, "finalizer for weak_ptr ability stage context");
             delete static_cast<std::weak_ptr<AbilityStageContext> *>(data);
@@ -321,6 +311,14 @@ napi_value CreateJsAbilityStageContextFromSendable(napi_env env, void* wrapped)
     if (status != napi_ok) {
         TAG_LOGE(AAFwkTag::CONTEXT, "wrap failed: %{public}d", status);
         delete workContext;
+        return nullptr;
+    }
+
+    status = napi_coerce_to_native_binding_object(
+        env, object, DetachNewAbilityStageContext, AttachAbilityStageContext, workContext, nullptr);
+    napi_add_detached_finalizer(env, object, DetachFinalizeAbilityStageContext, nullptr);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "coerce ability stage context failed: %{public}d", status);
         return nullptr;
     }
 
@@ -364,16 +362,7 @@ napi_value CreateJsUIAbilityContextFromSendable(napi_env env, void* wrapped)
     }
 
     auto workContext = new (std::nothrow) std::weak_ptr<AbilityContext>(uiAbilityContext);
-    auto status = napi_coerce_to_native_binding_object(env, object, DetachNewAbilityContext, AttachJsUIAbilityContext,
-        workContext, nullptr);
-    napi_add_detached_finalizer(env, object, DetachFinalizeAbilityContext, nullptr);
-    if (status != napi_ok) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "coerce ui ability context failed: %{public}d", status);
-        delete workContext;
-        return nullptr;
-    }
-
-    status = napi_wrap(env, object, workContext,
+    auto status = napi_wrap(env, object, workContext,
         [](napi_env, void *data, void *) {
             TAG_LOGD(AAFwkTag::CONTEXT, "finalizer for weak_ptr ui ability context");
             delete static_cast<std::weak_ptr<AbilityContext> *>(data);
@@ -381,6 +370,14 @@ napi_value CreateJsUIAbilityContextFromSendable(napi_env env, void* wrapped)
     if (status != napi_ok) {
         TAG_LOGE(AAFwkTag::CONTEXT, "wrap failed: %{public}d", status);
         delete workContext;
+        return nullptr;
+    }
+
+    status = napi_coerce_to_native_binding_object(env, object, DetachNewAbilityContext, AttachJsUIAbilityContext,
+        workContext, nullptr);
+    napi_add_detached_finalizer(env, object, DetachFinalizeAbilityContext, nullptr);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "coerce ui ability context failed: %{public}d", status);
         return nullptr;
     }
 
@@ -597,11 +594,12 @@ napi_value CreateJsSendableContextManager(napi_env env, napi_value exportObj)
 
     napi_status status = napi_ok;
     std::unique_ptr<JsSendableContextManager> sendableMgr = std::make_unique<JsSendableContextManager>();
-    status = napi_wrap(env, exportObj, sendableMgr.release(), JsSendableContextManager::Finalizer, nullptr, nullptr);
+    status = napi_wrap(env, exportObj, sendableMgr.get(), JsSendableContextManager::Finalizer, nullptr, nullptr);
     if (status != napi_ok) {
         TAG_LOGE(AAFwkTag::CONTEXT, "wrap failed:%{public}d", status);
         return nullptr;
     }
+    sendableMgr.release();
 
     napi_property_descriptor properties[] = {
         DECLARE_NAPI_FUNCTION("convertFromContext", JsSendableContextManager::ConvertFromContext),
