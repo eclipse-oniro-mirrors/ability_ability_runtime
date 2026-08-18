@@ -33,7 +33,6 @@ namespace OHOS {
 namespace AbilityRuntime {
 using AbilityManagerClient = AAFwk::AbilityManagerClient;
 namespace {
-constexpr size_t ARGC_ZERO = 0;
 constexpr size_t ARGC_ONE = 1;
 constexpr size_t INDEX_ZERO = 0;
 
@@ -42,7 +41,6 @@ public:
     JsKioskManager() = default;
     ~JsKioskManager() = default;
 
-    static napi_value UpdateKioskApplicationList(napi_env env, napi_callback_info info);
     static napi_value EnterKioskMode(napi_env env, napi_callback_info info);
     static napi_value ExitKioskMode(napi_env env, napi_callback_info info);
     static napi_value GetKioskStatus(napi_env env, napi_callback_info info);
@@ -55,7 +53,6 @@ public:
 private:
     static napi_value CreateJsKioskStatus(napi_env env,
                                           std::shared_ptr<AAFwk::KioskStatus> kioskStatus);
-    napi_value OnUpdateKioskApplicationList(napi_env env, NapiCallbackInfo &info);
     napi_value OnEnterKioskMode(napi_env env, NapiCallbackInfo &info);
     napi_value OnExitKioskMode(napi_env env, NapiCallbackInfo &info);
     napi_value OnGetKioskStatus(napi_env env, NapiCallbackInfo &info);
@@ -82,53 +79,6 @@ napi_value JsKioskManager::CreateJsKioskStatus(napi_env env,
                             CreateJsValue(env, kioskStatus->kioskBundleName_));
     napi_set_named_property(env, objValue, "kioskBundleUid", CreateJsValue(env, kioskStatus->kioskBundleUid_));
     return handleEscape.Escape(objValue);
-}
-
-napi_value JsKioskManager::UpdateKioskApplicationList(napi_env env, napi_callback_info info)
-{
-    GET_NAPI_INFO_AND_CALL(env, info, JsKioskManager, OnUpdateKioskApplicationList);
-}
-
-napi_value JsKioskManager::OnUpdateKioskApplicationList(napi_env env, NapiCallbackInfo &info)
-{
-    TAG_LOGD(AAFwkTag::APPKIT, "On Update Kiosk AppList");
-    HandleEscape handleEscape(env);
-    if (info.argc < ARGC_ONE) {
-        TAG_LOGE(AAFwkTag::APPKIT, "too few params");
-        ThrowTooFewParametersError(env);
-        return CreateJsUndefined(env);
-    }
-    auto innerErrCode = std::make_shared<ErrCode>(ERR_OK);
-
-    std::vector<std::string> appList;
-    if (!OHOS::AppExecFwk::UnwrapArrayStringFromJS(env, info.argv[ARGC_ZERO], appList)) {
-        TAG_LOGE(AAFwkTag::APPKIT, "app list is invalid");
-        ThrowInvalidParamError(env, "Failed to parse application list. Application list must be an Array<string>.");
-        return CreateJsUndefined(env);
-    }
-    NapiAsyncTask::ExecuteCallback execute = [innerErrCode, appList]() {
-        auto amsClient = AbilityManagerClient::GetInstance();
-        if (amsClient == nullptr) {
-            TAG_LOGE(AAFwkTag::APPKIT, "null amsClient");
-            *innerErrCode = static_cast<int32_t>(AAFwk::INNER_ERR);
-            return;
-        }
-        *innerErrCode = amsClient->UpdateKioskApplicationList(appList);
-    };
-
-    auto complete = [innerErrCode](napi_env env, NapiAsyncTask &task, int32_t status) {
-        if (*innerErrCode != ERR_OK) {
-            TAG_LOGE(AAFwkTag::APPKIT, "innerErrCode=%{public}d", *innerErrCode);
-            task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrCode));
-            return;
-        }
-        task.ResolveWithNoError(env, CreateJsUndefined(env));
-    };
-    napi_value result = nullptr;
-    NapiAsyncTask::Schedule("JsKioskManager::OnUpdateKioskApplicationList", env,
-                            CreateAsyncTaskWithLastParam(env, nullptr, std::move(execute),
-                                                         std::move(complete), &result));
-    return handleEscape.Escape(result);
 }
 
 napi_value JsKioskManager::EnterKioskMode(napi_env env, napi_callback_info info)
@@ -289,8 +239,6 @@ napi_value JsKioskManagerInit(napi_env env, napi_value exportObj)
 
     const char *moduleName = "JsKioskManager";
 
-    BindNativeFunction(env, exportObj, "updateKioskAppList", moduleName,
-                       JsKioskManager::UpdateKioskApplicationList);
     BindNativeFunction(env, exportObj, "enterKioskMode", moduleName, JsKioskManager::EnterKioskMode);
     BindNativeFunction(env, exportObj, "exitKioskMode", moduleName, JsKioskManager::ExitKioskMode);
     BindNativeFunction(env, exportObj, "getKioskStatus", moduleName, JsKioskManager::GetKioskStatus);
