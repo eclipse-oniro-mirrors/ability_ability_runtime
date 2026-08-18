@@ -1444,6 +1444,7 @@ void EtsAppManager::OnOffAbilityFirstFrameState(ani_env *env, ani_string type, a
         return;
     }
     if (isUndefined) {
+        TAG_LOGI(AAFwkTag::APPMGR, "SubEvent op=off_all kit=AbilityKit event=abilityFirstFrameState");
         ETSAbilityFirstFrameStateObserverManager::GetInstance()->RemoveAllEtsObserverObjects(abilityManager);
     } else {
         ETSAbilityFirstFrameStateObserverManager::GetInstance()->RemoveEtsObserverObject(abilityManager, aniObserver);
@@ -1486,6 +1487,7 @@ void EtsAppManager::OnOffAppForegroundState(ani_env *env, ani_string type, ani_o
         return;
     }
     if (isUndefined) {
+        TAG_LOGI(AAFwkTag::APPMGR, "SubEvent op=off_all kit=AbilityKit event=appForegroundState");
         observerForeground_->RemoveAllEtsObserverObjects();
     } else {
         observerForeground_->RemoveEtsObserverObject(observer);
