@@ -2088,11 +2088,15 @@ int32_t AppMgrService::CreateNativeChildProcess(const std::string &libName,
 {
     XCOLLIE_TIMER_LESS(__PRETTY_FUNCTION__);
     TAG_LOGI(AAFwkTag::APPMGR, "call");
+    std::vector<FdGuard> fds;
+    for (const auto &[name, fd] : request.args.fds) {
+        fds.emplace_back(fd);
+    }
     if (!IsReady()) {
         TAG_LOGE(AAFwkTag::APPMGR, "not ready");
         return ERR_INVALID_OPERATION;
     }
-    
+
     return appMgrServiceInner_->CreateNativeChildProcess(
         IPCSkeleton::GetCallingPid(), libName, callback, request);
 }
