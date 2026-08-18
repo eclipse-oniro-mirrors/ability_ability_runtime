@@ -19,6 +19,7 @@
 #include "ability_interceptor_interface.h"
 
 #include "disposed_observer.h"
+#include "task_handler_wrap.h"
 #include "task_utils_wrap.h"
 
 namespace OHOS {
@@ -29,15 +30,11 @@ namespace AAFwk {
 class DisposedRuleInterceptor : public IAbilityInterceptor,
                                 public std::enable_shared_from_this<DisposedRuleInterceptor> {
 public:
-    DisposedRuleInterceptor() = default;
+    explicit DisposedRuleInterceptor(std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler = nullptr);
     ~DisposedRuleInterceptor() = default;
     static std::string GenerateTimeoutTaskName(int32_t uid);
     static std::string GenerateEventTaskName(int32_t uid);
     ErrCode DoProcess(const AbilityInterceptorParam &param) override;
-    void SetTaskHandler(std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler) override
-    {
-        taskHandler_ = taskHandler;
-    };
     void UnregisterObserver(int32_t uid);
 private:
     bool ValidateNonBlockRule(const Want &want, const AppExecFwk::DisposedRule &disposedRule);

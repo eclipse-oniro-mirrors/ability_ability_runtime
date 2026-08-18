@@ -72,7 +72,6 @@ abilityms_files = [
   "src/interceptor/ecological_rule_interceptor.cpp",
   "src/interceptor/extension_control_interceptor.cpp",
   "src/interceptor/screen_unlock_interceptor.cpp",
-  "src/interceptor/start_other_app_interceptor.cpp",
   "src/interceptor/kiosk_interceptor.cpp",
   "src/window_focus_changed_listener.cpp",
   "src/window_visibility_changed_listener.cpp",

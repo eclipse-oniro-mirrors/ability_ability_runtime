@@ -527,7 +527,6 @@ group("fuzztest") {
     "startabilityutils_fuzzer:fuzztest",
     "startabilityutilsfirst_fuzzer:fuzztest",
     "startcontinuation_fuzzer:fuzztest",
-    "startotherappinterceptor_fuzzer:fuzztest",
     "startrenderprocess_fuzzer:fuzztest",
     "startserviceextensionability_fuzzer:fuzztest",
     "startspecifiedability_fuzzer:fuzztest",

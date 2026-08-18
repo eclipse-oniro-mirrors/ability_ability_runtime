@@ -32,12 +32,15 @@ constexpr const char* UNREGISTER_EVENT_TASK = "unregister event task";
 constexpr const char* UNREGISTER_TIMEOUT_OBSERVER_TASK = "unregister timeout observer task";
 constexpr int UNREGISTER_OBSERVER_MILLI_SECONDS = 5000;
 constexpr const char* UIEXTENSION_MODAL_TYPE = "ability.want.params.modalType";
-constexpr const char* INTERCEPT_PARAMETERS = "intercept_parammeters";
+constexpr const char* INTERCEPT_PARAMETERS = "intercept_parameters";
 constexpr const char* INTERCEPT_BUNDLE_NAME = "intercept_bundleName";
 constexpr const char* INTERCEPT_ABILITY_NAME = "intercept_abilityName";
 constexpr const char* INTERCEPT_MODULE_NAME = "intercept_moduleName";
 constexpr const char* IS_FROM_PARENTCONTROL = "ohos.ability.isFromParentControl";
 }
+
+DisposedRuleInterceptor::DisposedRuleInterceptor(std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler)
+    : taskHandler_(taskHandler) {}
 
 std::string DisposedRuleInterceptor::GenerateTimeoutTaskName(int32_t uid)
 {

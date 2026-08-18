@@ -25,10 +25,6 @@ public:
     CrowdTestInterceptor() = default;
     ~CrowdTestInterceptor() = default;
     ErrCode DoProcess(const AbilityInterceptorParam &param) override;
-    virtual void SetTaskHandler(std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler) override
-    {
-        return;
-    };
 private:
     bool CheckCrowdtest(const Want &want, int32_t userId);
 };

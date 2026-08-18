@@ -75,11 +75,11 @@ ErrCode BlockAllAppStartInterceptor::Execute(AbilityRequest& abilityRequest, int
 ErrCode BlockAllAppStartInterceptor::DoProcess(const AbilityInterceptorParam &param)
 {
     if (param.shouldBlockAllAppStartFunc_ == nullptr) {
-        TAG_LOGE(AAFwkTag::ECOLOGICAL_RULE, "shouldBlockAllAppStartFunc_ is nullptr");
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "shouldBlockAllAppStartFunc_ is nullptr");
         return ERR_INVALID_VALUE;
     }
     if (param.shouldBlockAllAppStartFunc_()) {
-        TAG_LOGE(AAFwkTag::ECOLOGICAL_RULE, "blocking app start due to low memory");
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "blocking app start due to low memory");
         return ERR_ALL_APP_START_BLOCKED;
     }
     return ERR_OK;
