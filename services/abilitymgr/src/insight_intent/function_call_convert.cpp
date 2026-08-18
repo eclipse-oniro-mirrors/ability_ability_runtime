@@ -66,7 +66,7 @@ void AddInsightIntentOptions(FunctionInfo &func, const IntentOptionDefaults &def
     if (!schema.contains("type") || schema["type"] != "object") {
         schema["type"] = "object";
     }
-    if (!schema.contains("properties")) {
+    if (!schema.contains("properties") || !schema["properties"].is_object()) {
         schema["properties"] = nlohmann::json();
     }
     BuildOptionsSchema(schema, defaults);
