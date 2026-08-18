@@ -46,6 +46,7 @@ public:
     bool isCliToolToken_ = false;
     std::shared_ptr<AppExecFwk::AppRunningRecord> getAppRunningRecordByPid_ = nullptr;
     std::string getNameForUid_ = "";
+    ErrCode getNameAndIndexForUidRet_ = ERR_OK;
     // mock app running manager
     std::list<pid_t> getPidsByBundleName_;
     bool getPidsByBundleNameRet_;

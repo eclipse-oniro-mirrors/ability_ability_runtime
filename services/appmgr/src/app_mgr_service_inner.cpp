@@ -3315,10 +3315,17 @@ int32_t AppMgrServiceInner::UpdateApplicationInfoInstalled(
         appInfo.name = bundleName;
         appInfo.bundleType = BundleType::APP_PLUGIN;
     } else {
-        bool bundleMgrResult = bundleMgrHelper->GetApplicationInfo(bundleName,
-            ApplicationFlag::GET_BASIC_APPLICATION_INFO, userId, appInfo);
+        int32_t appIndex = -1;
+        std::string resolveBundleName;
+        auto errCode = bundleMgrHelper->GetNameAndIndexForUid(uid, resolveBundleName, appIndex);
+        if (errCode != ERR_OK) {
+            TAG_LOGE(AAFwkTag::APPMGR, "get bundleName and appIndex for uid fail");
+            return ERR_INVALID_OPERATION;
+        }
+        bool bundleMgrResult = bundleMgrHelper->GetApplicationInfoWithAppIndex(
+            resolveBundleName, appIndex, userId, appInfo);
         if (!bundleMgrResult) {
-            TAG_LOGE(AAFwkTag::APPMGR, "get applicationInfo fail");
+            TAG_LOGE(AAFwkTag::APPMGR, "get applicationInfo with appIndex fail");
             return ERR_INVALID_OPERATION;
         }
     }
