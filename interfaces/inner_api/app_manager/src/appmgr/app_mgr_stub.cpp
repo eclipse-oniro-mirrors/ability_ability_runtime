@@ -640,18 +640,8 @@ int32_t AppMgrStub::HandleGetHyperSnapLastError(MessageParcel &data, MessageParc
         return ERR_APPEXECFWK_PARCEL_ERROR;
     }
 
-    if (!reply.WriteInt32(static_cast<int32_t>(record.code))) {
-        TAG_LOGE(AAFwkTag::APPMGR, "Write code failed.");
-        return ERR_APPEXECFWK_PARCEL_ERROR;
-    }
-
-    if (!reply.WriteString(record.msg)) {
-        TAG_LOGE(AAFwkTag::APPMGR, "Write msg failed.");
-        return ERR_APPEXECFWK_PARCEL_ERROR;
-    }
-
-    if (!reply.WriteString(record.occurTimeStamp)) {
-        TAG_LOGE(AAFwkTag::APPMGR, "Write occurTimeStamp failed.");
+    if (!reply.WriteParcelable(&record)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write record failed.");
         return ERR_APPEXECFWK_PARCEL_ERROR;
     }
 

@@ -19,13 +19,11 @@
 
 #include "ability_business_error.h"
 #include "ani_common_util.h"
-#include "app_mgr_interface.h"
+#include "app_mgr_client.h"
 #include "errors.h"
 #include "ets_error_utils.h"
 #include "hilog_tag_wrapper.h"
-#include "if_system_ability_manager.h"
-#include "iservice_registry.h"
-#include "system_ability_definition.h"
+#include "singleton.h"
 #ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
 #include "res_sched_client.h"
 #include "res_type.h"
@@ -38,17 +36,6 @@ constexpr const char *HYPER_SNAP_MANAGER_SPACE_NAME = "@ohos.app.ability.hyperSn
 constexpr const char *HYPER_SNAP_ERROR_INFO_IMPL_CLASS_NAME =
     "@ohos.app.ability.hyperSnapManager.hyperSnapManager.HyperSnapErrorInfoImpl";
 } // namespace
-
-static sptr<AppExecFwk::IAppMgr> GetAppMgrInstance()
-{
-    auto systemAbilityManager = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
-    if (systemAbilityManager == nullptr) {
-        TAG_LOGE(AAFwkTag::APPKIT, "GetAppMgrInstance: system ability manager is null");
-        return nullptr;
-    }
-    auto appObject = systemAbilityManager->GetSystemAbility(APP_MGR_SERVICE_ID);
-    return iface_cast<AppExecFwk::IAppMgr>(appObject);
-}
 
 static ani_object BuildHyperSnapErrorInfo(ani_env *env, const AppExecFwk::HyperSnapErrorRecord &record)
 {
@@ -174,9 +161,9 @@ void EtsHyperSnapManager::NativeGetLastError(ani_env *env, ani_int errType, ani_
         return;
     }
 
-    auto appMgr = GetAppMgrInstance();
-    if (appMgr == nullptr) {
-        TAG_LOGE(AAFwkTag::APPKIT, "NativeGetLastError: failed to get AppMgrService proxy");
+    auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+    if (appMgrClient == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "NativeGetLastError: null appMgrClient");
         ani_object error = AbilityRuntime::EtsErrorUtil::CreateError(env,
             AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);
         AsyncCallback(env, call, error, nullptr);
@@ -184,7 +171,7 @@ void EtsHyperSnapManager::NativeGetLastError(ani_env *env, ani_int errType, ani_
     }
 
     AppExecFwk::HyperSnapErrorRecord record;
-    int32_t result = appMgr->GetHyperSnapLastError(typeValue, record);
+    int32_t result = appMgrClient->GetHyperSnapLastError(typeValue, record);
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::APPKIT, "NativeGetLastError: IPC failed, result %{public}d", result);
         ani_object error = AbilityRuntime::EtsErrorUtil::CreateError(env,

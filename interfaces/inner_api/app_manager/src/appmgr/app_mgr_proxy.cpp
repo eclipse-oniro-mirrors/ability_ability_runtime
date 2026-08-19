@@ -162,23 +162,15 @@ int32_t AppMgrProxy::GetHyperSnapLastError(int32_t errType, HyperSnapErrorRecord
         return result;
     }
 
-    // Read error code
-    int32_t code = reply.ReadInt32();
-    record.code = static_cast<HyperSnapErrorCode>(code);
-
-    // Read error message
-    if (!reply.ReadString(record.msg)) {
-        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError Read msg failed.");
+    std::unique_ptr<HyperSnapErrorRecord> recordReply(reply.ReadParcelable<HyperSnapErrorRecord>());
+    if (recordReply == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError ReadParcelable failed.");
         return IPC_PROXY_ERR;
     }
+    record = *recordReply;
 
-    // Read timestamp
-    if (!reply.ReadString(record.occurTimeStamp)) {
-        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError Read occurTimeStamp failed.");
-        return IPC_PROXY_ERR;
-    }
-
-    TAG_LOGD(AAFwkTag::APPMGR, "GetHyperSnapLastError success, code: %{public}d", code);
+    TAG_LOGD(AAFwkTag::APPMGR, "GetHyperSnapLastError success, code: %{public}d",
+        static_cast<int32_t>(record.code));
     return ERR_OK;
 }
 
