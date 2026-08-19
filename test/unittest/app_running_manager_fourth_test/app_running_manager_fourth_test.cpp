@@ -693,6 +693,36 @@ HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_IsAppRunningByBundleName
 }
 
 /**
+ * @tc.name: AppRunningManager_IsAppRunningByBundleName_0200
+ * @tc.desc: verify wildcard matching is removed for negative appCloneIndex/userId
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_IsAppRunningByBundleName_0200, TestSize.Level1)
+{
+    int32_t userId = ONE;
+    bool isRunning = false;
+    BundleInfo bundleInfo;
+    std::shared_ptr<AppRunningRecord> record =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->SetRestartAppFlag(false);
+    record->SetUid(TEST_BASE_USER_RANGE);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    auto ret = appRunningManager_->IsAppRunningByBundleName(BUNDLE_NAME, 0, userId, isRunning);
+    EXPECT_TRUE(isRunning);
+
+    isRunning = false;
+    ret = appRunningManager_->IsAppRunningByBundleName(BUNDLE_NAME, -1, userId, isRunning);
+    EXPECT_FALSE(isRunning);
+
+    isRunning = false;
+    ret = appRunningManager_->IsAppRunningByBundleName(BUNDLE_NAME, 0, -1, isRunning);
+    EXPECT_FALSE(isRunning);
+}
+
+/**
  * @tc.name: AppRunningManager_ProcessUpdateApplicationInfoInstalled_0100
  * @tc.desc: NA
  * @tc.type: FUNC
