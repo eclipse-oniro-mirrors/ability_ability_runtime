@@ -47,7 +47,8 @@ ErrCode BundleMgrHelper::GetNameForUid(const int32_t uid, std::string& name)
 
 ErrCode BundleMgrHelper::GetNameAndIndexForUid(const int32_t uid, std::string& bundleName, int32_t& appIndex)
 {
-    return ERR_OK;
+    bundleName = AAFwk::MyStatus::GetInstance().getNameForUid_;
+    return AAFwk::MyStatus::GetInstance().getNameAndIndexForUidRet_;
 }
 
 bool BundleMgrHelper::GetBundleInfo(const std::string& bundleName,
