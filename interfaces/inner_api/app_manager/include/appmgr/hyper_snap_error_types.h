@@ -21,29 +21,26 @@
 namespace OHOS {
 namespace AppExecFwk {
 
-// HyperSnap error code enumeration (for external use)
 enum class HyperSnapErrorCode {
-    ERR_OK = 0,                              // Success
-    ERR_SYSTEM_INNER = 1,                    // System internal error
-    ERR_SNAPSHOT_EXIST = 2,                  // Snapshot already exists
-    ERR_PROCESS_IS_RUNNING = 3,              // Process is already running when preparing snapshot
-    ERR_SNAPSHOT_PROCESS_IS_DIED = 4,        // Snapshot process died during snapshot creation
-    ERR_SNAPSHOT_IS_INTERRUPTED = 5,         // Snapshot creation interrupted by user starting app
-    ERR_EXISTS_ILLEGAL_BINDER = 6,           // Illegal binder exists
-    ERR_LAST_PROCESS_NOT_FULLY_EXITED = 7,   // Last process not fully exited
+    ERR_OK = 0,
+    ERR_SYSTEM_INNER = 1,
+    ERR_SNAPSHOT_EXIST = 2,
+    ERR_PROCESS_IS_RUNNING = 3,
+    ERR_SNAPSHOT_PROCESS_IS_DIED = 4,
+    ERR_SNAPSHOT_IS_INTERRUPTED = 5,
+    ERR_EXISTS_ILLEGAL_BINDER = 6,
+    ERR_LAST_PROCESS_NOT_FULLY_EXITED = 7,
 };
 
-// Error type enumeration
 enum class ErrorType {
-    CREATE_SNAPSHOT = 0,      // Snapshot creation failed
-    FORK_FROM_SNAPSHOT = 1,   // Fork from snapshot failed
+    CREATE_SNAPSHOT = 0,
+    FORK_FROM_SNAPSHOT = 1,
 };
 
-// HyperSnap error record structure
 struct HyperSnapErrorRecord {
-    HyperSnapErrorCode code;           // Error code
-    std::string msg;                   // Error message
-    std::string occurTimeStamp;        // Timestamp (milliseconds as string)
+    HyperSnapErrorCode code;
+    std::string msg;
+    std::string occurTimeStamp;
 };
 
 } // namespace AppExecFwk

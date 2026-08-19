@@ -40,8 +40,6 @@ constexpr int32_t INDEX_ZERO = 0;
 constexpr size_t ARGC_ONE = 1;
 const std::string RES_SCHED_CLIENT_SO = "libressched_client.z.so";
 
-// Obtain the AppMgrService proxy via SystemAbilityManager. The client side casts the SA
-// remote object to IAppMgr; it never constructs AppMgrProxy directly.
 sptr<AppExecFwk::IAppMgr> GetAppMgrInstance()
 {
     auto systemAbilityManager = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
@@ -53,19 +51,16 @@ sptr<AppExecFwk::IAppMgr> GetAppMgrInstance()
     return iface_cast<AppExecFwk::IAppMgr>(appObject);
 }
 
-// Async context for getLastError (Promise-based). Created in OnGetLastError, filled in
-// GetLastErrorExecute, consumed and deleted in GetLastErrorComplete.
 struct GetLastErrorContext {
     napi_async_work work = nullptr;
     napi_deferred deferred = nullptr;
-    int32_t errType = 0;        // ErrorType: CREATE_SNAPSHOT(0) / FORK_FROM_SNAPSHOT(1)
-    int32_t ipcResult = 0;      // IPC return code (ERR_OK on success)
-    int32_t code = 0;           // HyperSnapErrorCode carried back to JS
-    std::string msg;            // Error message carried back to JS
-    std::string occurTimeStamp; // Timestamp (ms since boot, as string) carried back to JS
+    int32_t errType = 0;
+    int32_t ipcResult = 0;
+    int32_t code = 0;
+    std::string msg;
+    std::string occurTimeStamp;
 };
 
-// Runs in the worker thread. No napi calls except logging.
 void GetLastErrorExecute(napi_env env, void *data)
 {
     auto *context = static_cast<GetLastErrorContext *>(data);
@@ -97,9 +92,6 @@ void GetLastErrorExecute(napi_env env, void *data)
     }
 }
 
-// Runs in the main thread. Per spec: on IPC success the promise resolves with
-// HyperSnapErrorInfo (code may be 0 or a non-zero snapshot error code); it is only rejected
-// for system/IPC failures. Parameter errors (401) are handled in OnGetLastError.
 void GetLastErrorComplete(napi_env env, napi_status status, void *data)
 {
     auto *context = static_cast<GetLastErrorContext *>(data);
@@ -207,7 +199,6 @@ private:
         return CreateJsUndefined(env);
     }
 
-    // getLastError(errType): Promise<HyperSnapErrorInfo>.
     napi_value OnGetLastError(napi_env env, const size_t argc, napi_value* argv)
     {
         TAG_LOGD(AAFwkTag::APPKIT, "OnGetLastError");
@@ -216,7 +207,6 @@ private:
         napi_value promise = nullptr;
         napi_create_promise(env, &deferred, &promise);
 
-        // Validate errType: must be CREATE_SNAPSHOT(0) or FORK_FROM_SNAPSHOT(1).
         int32_t errType = 0;
         bool paramValid = (argc >= ARGC_ONE) &&
             (napi_get_value_int32(env, argv[INDEX_ZERO], &errType) == napi_ok) &&
@@ -289,5 +279,5 @@ napi_value JsHyperSnapManagerInit(napi_env env, napi_value exportObj)
     TAG_LOGD(AAFwkTag::APPKIT, "JsHyperSnapManager end");
     return CreateJsUndefined(env);
 }
-}  //namespace AbilityRuntime
-}  //namespace OHOS
+}  // namespace AbilityRuntime
+}  // namespace OHOS

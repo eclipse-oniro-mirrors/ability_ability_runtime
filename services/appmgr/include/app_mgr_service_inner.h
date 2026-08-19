@@ -2646,11 +2646,8 @@ private:
     std::mutex imageInfoLock_;
     std::unordered_map<MakeImageRequest, std::shared_ptr<ForkImageInfo>, MakeImageRequest::Hash> imageInfoMap_;
 
-    // CREATE_SNAPSHOT error storage: key is uid
     std::map<int32_t, HyperSnapErrorRecord> createSnapshotErrorMap_;
-    // FORK_FROM_SNAPSHOT error storage: key is uid
     std::map<int32_t, HyperSnapErrorRecord> forkFromSnapshotErrorMap_;
-    // Error storage mutex
     std::mutex hyperSnapErrorMutex_;
 
     std::mutex imageSerialLock_;
