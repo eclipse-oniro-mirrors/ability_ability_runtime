@@ -919,9 +919,8 @@ int32_t CliToolManagerService::SetupAndStartSession(const ExecToolParam &param, 
         return ERR_NO_INIT;
     }
 
-    auto fatherSessionRecords = GetSessionRecords();
     auto createRet = ProcessManager::GetInstance().CreateChildProcess(
-        param, sandboxConfig, toolInfo, record, fatherSessionRecords);
+        param, sandboxConfig, toolInfo, record);
     if (createRet != ERR_OK) {
         return createRet;
     }
@@ -1076,7 +1075,6 @@ int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::str
     record->SetState(SessionState::RUNNING);
     record->SetBackground(param.options.background);
     record->eventId = eventId;
-    auto fatherSessionRecords = GetSessionRecords();
     AddSessionRecord(record);
     auto subscribeRet = SubscribeSession(record->sessionId, subscriptionId, scheduler);
     if (subscribeRet != ERR_OK) {
@@ -1084,7 +1082,7 @@ int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::str
         return subscribeRet;
     }
     auto createRet = ProcessManager::GetInstance().CreateShellProcess(param,
-        sandboxConfig, record, fatherSessionRecords);
+        sandboxConfig, record);
     if (createRet != ERR_OK) {
         RemoveSessionRecord(record->sessionId);
         return createRet;
