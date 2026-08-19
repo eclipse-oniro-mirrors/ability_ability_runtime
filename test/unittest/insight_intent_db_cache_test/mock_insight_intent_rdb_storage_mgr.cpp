@@ -132,7 +132,10 @@ int32_t  InsightRdbStorageMgr::LoadInsightIntentInfoByName(const std::string &bu
 int32_t  InsightRdbStorageMgr::LoadConfigInsightIntentInfo(const std::string &bundleName, const std::string &moduleName,
     const std::string &intentName, const int32_t userId, InsightIntentInfo &totalInfo)
 {
-    if (g_mockLoadInsightIntentInfoRet) {
+    if (g_mockLoadConfigInsightIntentInfoRet) {
+        totalInfo.bundleName = bundleName;
+        totalInfo.moduleName = moduleName;
+        totalInfo.intentName = intentName;
         return ERR_OK;
     }
     return ERR_INVALID_VALUE;
@@ -142,6 +145,9 @@ int32_t  InsightRdbStorageMgr::LoadInsightIntentInfo(const std::string &bundleNa
     const std::string &intentName, const int32_t userId, ExtractInsightIntentInfo &totalInfo)
 {
     if (g_mockLoadInsightIntentInfoRet) {
+        totalInfo.genericInfo.bundleName = bundleName;
+        totalInfo.genericInfo.moduleName = moduleName;
+        totalInfo.genericInfo.intentName = intentName;
         return ERR_OK;
     }
     return ERR_INVALID_VALUE;
