@@ -47,6 +47,7 @@ constexpr int32_t APP_DEBUG_INFO_PID = 0;
 constexpr int32_t APP_DEBUG_INFO_UID = 0;
 constexpr int32_t ROOT_UID = 0;
 constexpr int32_t FUN_TEST_PID = 2;
+constexpr int32_t TEST_UID = 10001;
 constexpr const char* PERMISSION_PROTECT_SCREEN_LOCK_DATA_TEST = "ohos.permission.PROTECT_SCREEN_LOCK_DATA";
 constexpr const char* COLD_START = "coldStart";
 }
@@ -1042,7 +1043,7 @@ HWTEST_F(AppMgrServiceInnerFourthTest, NotifyImageOperationFailed_ShouldReturn_1
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     EXPECT_NE(appMgrServiceInner, nullptr);
     ImageError errCode = ImageError::ERR_KILL_IMAGE_PROCESS_FAILED;
-    EXPECT_EQ(appMgrServiceInner->NotifyImageOperationFailed(nullptr, errCode), -1);
+    EXPECT_EQ(appMgrServiceInner->NotifyImageOperationFailed(TEST_UID, nullptr, errCode), -1);
     TAG_LOGI(AAFwkTag::TEST, "NotifyImageOperationFailed_ShouldReturn_1WhenErrorHandleIsNullptr end");
 }
 
@@ -1060,7 +1061,7 @@ HWTEST_F(AppMgrServiceInnerFourthTest, NotifyImageOperationFailed_ShouldReturnEr
     sptr<MockImageErrorHandlerStub> errHandler = new (std::nothrow) MockImageErrorHandlerStub();
     ImageError errCode = ImageError::ERR_KILL_IMAGE_PROCESS_FAILED;
     EXPECT_CALL(*errHandler, OnError(_)).Times(1);
-    EXPECT_EQ(appMgrServiceInner->NotifyImageOperationFailed(errHandler, errCode), ERR_OK);
+    EXPECT_EQ(appMgrServiceInner->NotifyImageOperationFailed(TEST_UID, errHandler, errCode), ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "NotifyImageOperationFailed_ShouldReturnErrOkWhenErrorHandleIsNullptr end");
 }
 

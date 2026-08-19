@@ -463,13 +463,14 @@ public:
     virtual void NotifyUninstallOrUpgradeAppEnd(int32_t uid);
 
     /**
-     * Save error information (internally gets caller uid via IPCSkeleton::GetCallingUid()).
+     * Save error information for the specified app uid. Error message is generated
+     * internally from the error code.
      *
+     * @param uid The target app uid the error belongs to.
      * @param errType Error type.
      * @param code Error code.
-     * @param msg Error message.
      */
-    void SaveHyperSnapError(ErrorType errType, HyperSnapErrorCode code, const std::string& msg);
+    void SaveHyperSnapError(int32_t uid, ErrorType errType, HyperSnapErrorCode code);
 
     /**
      * Get error information (internally gets caller uid via IPCSkeleton::GetCallingUid()).
@@ -481,16 +482,12 @@ public:
     bool GetHyperSnapLastError(ErrorType errType, HyperSnapErrorRecord& record);
 
     /**
-     * Clear error information by type (internally gets caller uid via IPCSkeleton::GetCallingUid()).
+     * Clear error information by type for the specified app uid.
      *
+     * @param uid The target app uid whose error record should be cleared.
      * @param errType Error type to clear.
      */
-    void ClearHyperSnapError(ErrorType errType);
-
-    /**
-     * Clear all error information (internally gets caller uid via IPCSkeleton::GetCallingUid()).
-     */
-    void ClearHyperSnapError();
+    void ClearHyperSnapError(int32_t uid, ErrorType errType);
 
     /**
      * Clear all error information for the specified uid. Used for system-initiated clears
@@ -2534,7 +2531,7 @@ private:
         ApplicationState state);
 
     int32_t GetValidUserId(int32_t userId);
-    int32_t NotifyImageOperationFailed(sptr<IImageErrorHandler> errorHandler, ImageError errorCode);
+    int32_t NotifyImageOperationFailed(int32_t uid, sptr<IImageErrorHandler> errorHandler, ImageError errorCode);
     int32_t KillImageProcess(uint64_t checkpointId);
 
     int32_t PreAddImageInfo(const std::string& bundleName, int32_t userId, int32_t appIndex,
