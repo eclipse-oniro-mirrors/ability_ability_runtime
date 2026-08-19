@@ -2979,7 +2979,7 @@ private:
     int StartUIAbilityBySCBDefault(sptr<SessionInfo> sessionInfo, AbilityRuntime::StartParamsBySCB &params,
         bool &isColdStart);
     int HandleSandboxCloneLaunch(sptr<SessionInfo> sessionInfo, std::shared_ptr<SandboxCloneParams> &sandboxCloneParams,
-        int32_t currentUserId, std::shared_ptr<EventInfo> eventInfo);
+        int32_t currentUserId, std::shared_ptr<EventInfo> eventInfo, const AbilitySessionInfo &abilitySessionInfo);
     int StartUIAbilityByPreInstallInner(sptr<SessionInfo> sessionInfo, uint32_t specifyTokenId,
         AbilityRuntime::StartParamsBySCB &params, bool &isColdStart);
     int32_t PreStartInner(const FreeInstallInfo& taskInfo);
@@ -3092,7 +3092,7 @@ private:
     int32_t GetUidByCloneBundleInfo(std::string &bundleName, int32_t callerUid, int32_t userId,
         int32_t &appIndex) const;
 
-    std::string GetCreatorBundleNameForSandboxClone(const Want &want,
+    std::string GetCreatorBundleNameForSandboxClone(const std::string &inputCreatorBundleName,
         const std::string &callerBundleName, uint32_t callerTokenId, int32_t &errCode);
 
     int32_t ProcessSandboxCloneLaunch(Want &want, const std::shared_ptr<SandboxCloneParams> &sandboxCloneParams,

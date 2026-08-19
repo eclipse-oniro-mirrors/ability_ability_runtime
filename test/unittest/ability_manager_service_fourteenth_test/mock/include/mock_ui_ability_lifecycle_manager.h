@@ -52,6 +52,14 @@ struct SpecifiedRequest {
     SpecifiedRequest(int32_t requestId, AbilityRequest request) : requestId(requestId), abilityRequest(request) {}
 };
 
+struct AbilitySessionInfo {
+    std::string callerBundleName;
+    uint32_t callerTokenId = 0;
+    bool isWebSandBoxClone = false;
+    int32_t sandBoxCloneIndex = 0;
+    std::string creatorBundleName;
+};
+
 class UIAbilityLifecycleManager : public std::enable_shared_from_this<UIAbilityLifecycleManager> {
 public:
     UIAbilityLifecycleManager() = default;
@@ -59,6 +67,7 @@ public:
     virtual ~UIAbilityLifecycleManager() = default;
 
     void SignRestartAppFlag(int32_t uid, const std::string &instanceKey, bool isAppRecovery = false);
+    void SignRestartProcess(int32_t pid);
 
     /**
      * StartUIAbility with request.
@@ -194,6 +203,28 @@ public:
         sptr<SessionInfo> &sessionInfo);
 
     int32_t NotifySCBToRecoveryAfterInterception(const AbilityRequest &abilityRequest);
+
+    /**
+     * @brief Store sandbox clone info (callerBundleName, callerTokenId, isWebSandBoxClone) into
+     *        the internal map keyed by requestId, so that it is not exposed in the Want object.
+     * @param requestId The request ID used as the map key.
+     * @param info The sandbox clone info to store.
+     */
+    void StoreAbilitySessionInfo(int32_t requestId, const AbilitySessionInfo &info);
+
+    /**
+     * @brief Retrieve sandbox clone info from the internal map by requestId.
+     * @param requestId The request ID used as the map key.
+     * @param info Output parameter for the sandbox clone info.
+     * @return true if found, false otherwise.
+     */
+    bool GetAbilitySessionInfo(int32_t requestId, AbilitySessionInfo &info) const;
+
+    /**
+     * @brief Remove sandbox clone info from the internal map by requestId.
+     * @param requestId The request ID used as the map key.
+     */
+    void RemoveAbilitySessionInfo(int32_t requestId);
 
     /**
      * @brief handle time out event
@@ -589,6 +620,9 @@ private:
 
     std::mutex startingPidsMutex_;
     std::vector<pid_t> startingPids_;
+
+    mutable ffrt::mutex abilitySessionInfoMapLock_;
+    std::unordered_map<int32_t, AbilitySessionInfo> abilitySessionInfoMap_;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

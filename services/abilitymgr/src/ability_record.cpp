@@ -251,9 +251,13 @@ void AbilityRecord::InitSandboxCloneParams(const AbilityRequest &abilityRequest)
     auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
     sandboxCloneParams->callerBundleName = abilityRequest.sandboxCloneParams->callerBundleName;
     sandboxCloneParams->callerTokenId = abilityRequest.sandboxCloneParams->callerTokenId;
+    sandboxCloneParams->sandBoxCloneIndex = abilityRequest.sandboxCloneParams->sandBoxCloneIndex;
+    sandboxCloneParams->creatorBundleName = abilityRequest.sandboxCloneParams->creatorBundleName;
     SetSandboxCloneParams(sandboxCloneParams);
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "InitSandboxCloneParams, callerBundleName = %{public}s, callerTokenId = %{public}d",
- 	    sandboxCloneParams->callerBundleName.c_str(), sandboxCloneParams->callerTokenId);
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "InitSandboxCloneParams, callerBundleName = %{public}s, callerTokenId = %{public}d, "
+        "sandBoxCloneIndex = %{public}d, creatorBundleName = %{public}s", sandboxCloneParams->callerBundleName.c_str(),
+        sandboxCloneParams->callerTokenId, sandboxCloneParams->sandBoxCloneIndex,
+        sandboxCloneParams->creatorBundleName.c_str());
 }
 
 AbilityRecordType AbilityRecord::GetAbilityRecordType()

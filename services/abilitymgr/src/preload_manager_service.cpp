@@ -99,7 +99,7 @@ int32_t PreloadManagerService::LaunchGameCustomized(const std::string &bundleNam
     bool isDebugApp = abilityInfo.applicationInfo.appProvisionType == AppExecFwk::Constants::APP_PROVISION_TYPE_DEBUG;
     if (!(isGameSACall || (isShellCall && isDevelopMode && isDebugApp))) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Permission check failed: callingUid: %{public}d, isGameSACall = %{public}d, "
-            "isShellCall = %{public}d, isDevelopMode = %{public}d, isDebugApp = %{public}d",
+            "isShellCall = %{private}d, isDevelopMode = %{private}d, isDebugApp = %{private}d",
             IPCSkeleton::GetCallingUid(), isGameSACall, isShellCall, isDevelopMode, isDebugApp);
         return CHECK_PERMISSION_FAILED;
     }
