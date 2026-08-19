@@ -873,6 +873,11 @@ bool BlackListFilter(const std::string &strProName, const std::string &proNameNo
     if (strProName == Want::PARAM_RESV_DISPLAY_ID) {
         return true;
     }
+    // Reserved for non-standard scheme uri pass-through.
+    // Third-party JS apps are not allowed to set this key.
+    if (strProName == Want::PARAM_SET_URI_WITH_ORIGIN_STRING) {
+        return true;
+    }
     return false;
 }
 
