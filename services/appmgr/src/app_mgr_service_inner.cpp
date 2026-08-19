@@ -13525,6 +13525,10 @@ void AppMgrServiceInner::SaveHyperSnapError(ErrorType errType, HyperSnapErrorCod
         return;
     }
 
+    // TODO: remove debug log after testing
+    TAG_LOGD(AAFwkTag::APPMGR, "SaveHyperSnapError uid: %{public}d, type: %{public}d, code: %{public}d, msg: %{public}s",
+        uid, static_cast<int32_t>(errType), static_cast<int32_t>(code), msg.c_str());
+
     int64_t timeStamp = SystemTimeMillisecond();
 
     struct HyperSnapErrorRecord record {
@@ -13564,6 +13568,10 @@ bool AppMgrServiceInner::GetHyperSnapLastError(ErrorType errType, HyperSnapError
         return false;
     }
 
+    // TODO: remove debug log after testing
+    TAG_LOGD(AAFwkTag::APPMGR, "GetHyperSnapLastError uid: %{public}d, type: %{public}d",
+        uid, static_cast<int32_t>(errType));
+
     std::lock_guard<std::mutex> lock(hyperSnapErrorMutex_);
     auto& map = (errType == ErrorType::CREATE_SNAPSHOT)
         ? createSnapshotErrorMap_
@@ -13601,6 +13609,10 @@ void AppMgrServiceInner::ClearHyperSnapError(ErrorType errType)
         return;
     }
 
+    // TODO: remove debug log after testing
+    TAG_LOGD(AAFwkTag::APPMGR, "ClearHyperSnapError uid: %{public}d, type: %{public}d",
+        uid, static_cast<int32_t>(errType));
+
     std::lock_guard<std::mutex> lock(hyperSnapErrorMutex_);
     switch (errType) {
         case ErrorType::CREATE_SNAPSHOT:
@@ -13623,6 +13635,9 @@ void AppMgrServiceInner::ClearHyperSnapError()
         TAG_LOGW(AAFwkTag::APPMGR, "ClearHyperSnapError invalid uid: %{public}d", uid);
         return;
     }
+
+    // TODO: remove debug log after testing
+    TAG_LOGD(AAFwkTag::APPMGR, "ClearHyperSnapError uid: %{public}d", uid);
 
     std::lock_guard<std::mutex> lock(hyperSnapErrorMutex_);
 
@@ -13647,6 +13662,9 @@ void AppMgrServiceInner::ClearHyperSnapError(int32_t uid)
         TAG_LOGW(AAFwkTag::APPMGR, "ClearHyperSnapError invalid uid: %{public}d", uid);
         return;
     }
+
+    // TODO: remove debug log after testing
+    TAG_LOGD(AAFwkTag::APPMGR, "ClearHyperSnapError uid: %{public}d", uid);
 
     std::lock_guard<std::mutex> lock(hyperSnapErrorMutex_);
 
