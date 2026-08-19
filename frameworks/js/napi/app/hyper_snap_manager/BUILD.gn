@@ -43,6 +43,7 @@ ohos_shared_library("hypersnapmanager_napi") {
   ]
 
   external_deps = [
+    "c_utils:utils",
     "hilog:libhilog",
     "napi:ace_napi",
     "resource_schedule_service:ressched_client",

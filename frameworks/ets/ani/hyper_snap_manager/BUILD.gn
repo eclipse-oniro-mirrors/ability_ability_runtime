@@ -50,6 +50,7 @@ ohos_shared_library("hyper_snap_manager_ani") {
   ]
 
   external_deps = [
+    "c_utils:utils",
     "hilog:libhilog",
     "napi:ace_napi",
     "runtime_core:ani",
