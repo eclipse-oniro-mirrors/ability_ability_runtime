@@ -39,6 +39,7 @@ ohos_unittest("c_modular_object_connection_callback_test") {
   deps = []
 
   external_deps = [
+    "bounds_checking_function:libsec_shared",
     "c_utils:utils",
     "googletest:gtest_main",
     "hilog:libhilog",

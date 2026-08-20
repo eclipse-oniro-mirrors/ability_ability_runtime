@@ -66,6 +66,7 @@ ohos_shared_library("cj_environment") {
   if (current_os == "ohos") {
     sources += [ "src/dynamic_loader_ohos.cpp" ]
     external_deps += [
+      "bounds_checking_function:libsec_shared",
       "c_utils:utils",
       "eventhandler:libeventhandler"
     ]
