@@ -245,9 +245,11 @@ int32_t ProcessManager::CreateShellProcess(const ExecCmdParam &param, const std:
         return ERR_NO_INIT;
     }
     if (pid == 0) {
-        // ---- CHILD: only async-signal-safe calls (open/ioctl/close/dup2/execvp/_exit/write). ----
-        // Apply parent-HAP token: open/ioctl/close are POSIX async-signal-safe; no HiLog on
-        // error (HiLog mutex may be held by a vanished thread at fork -> deadlock).
+        // ---- CHILD: only async-signal-safe calls (open/close/dup2/execvp/_exit/write). ----
+        // Apply parent-HAP token: open/close are POSIX async-signal-safe; ioctl is not
+        // strictly POSIX-listed but is safe for this device driver on OpenHarmony (no
+        // malloc/locale/HiLog locks). No HiLog on error (HiLog mutex may be held by a
+        // vanished thread at fork -> deadlock).
         int32_t tfd = open("/dev/access_token_id", O_RDWR | O_CLOEXEC);
         if (tfd >= 0) {
             (void)ioctl(tfd, ACCESS_TOKENID_SET_HAP_PTOKENID, &atmTokenId);
