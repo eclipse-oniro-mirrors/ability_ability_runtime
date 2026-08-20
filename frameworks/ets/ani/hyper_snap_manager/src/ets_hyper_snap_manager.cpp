@@ -166,7 +166,7 @@ void EtsHyperSnapManager::NativeGetLastError(ani_env *env, ani_int errType, ani_
         TAG_LOGE(AAFwkTag::APPKIT, "NativeGetLastError: null appMgrClient");
         ani_object error = AbilityRuntime::EtsErrorUtil::CreateError(env,
             AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);
-        AsyncCallback(env, call, error, nullptr);
+        AppExecFwk::AsyncCallback(env, call, error, nullptr);
         return;
     }
 
@@ -176,7 +176,7 @@ void EtsHyperSnapManager::NativeGetLastError(ani_env *env, ani_int errType, ani_
         TAG_LOGE(AAFwkTag::APPKIT, "NativeGetLastError: IPC failed, result %{public}d", result);
         ani_object error = AbilityRuntime::EtsErrorUtil::CreateError(env,
             AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);
-        AsyncCallback(env, call, error, nullptr);
+        AppExecFwk::AsyncCallback(env, call, error, nullptr);
         return;
     }
 
@@ -184,7 +184,7 @@ void EtsHyperSnapManager::NativeGetLastError(ani_env *env, ani_int errType, ani_
         typeValue, static_cast<int32_t>(record.code));
     ani_object error = AbilityRuntime::EtsErrorUtil::CreateError(env, AbilityRuntime::AbilityErrorCode::ERROR_OK);
     ani_object info = BuildHyperSnapErrorInfo(env, record);
-    AsyncCallback(env, call, error, info);
+    AppExecFwk::AsyncCallback(env, call, error, info);
 }
 
 void EtsHyperSnapManagerRegisterInit(ani_env *env)
