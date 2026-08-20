@@ -13515,7 +13515,8 @@ void AppMgrServiceInner::SaveHyperSnapError(int32_t uid, ErrorType errType, Hype
         return;
     }
 
-    int64_t timeStamp = SystemTimeMillisecond();
+    int64_t timeStamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::
+        system_clock::now().time_since_epoch()).count();
 
     std::lock_guard<std::mutex> lock(hyperSnapErrorMutex_);
     switch (errType) {

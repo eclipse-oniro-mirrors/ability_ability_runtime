@@ -20,7 +20,6 @@
 #include <string>
 
 #include "parcel.h"
-#include "parcel_macro_base.h"
 #include "string_ex.h"
 
 namespace OHOS {
@@ -55,7 +54,9 @@ struct HyperSnapErrorRecord : public Parcelable {
 inline bool HyperSnapErrorRecord::ReadFromParcel(Parcel &parcel)
 {
     int32_t codeValue = 0;
-    READ_PARCEL_AND_RETURN_FALSE_IF_FAIL(Int32, parcel, codeValue);
+    if (!parcel.ReadInt32(codeValue)) {
+        return false;
+    }
     code = static_cast<HyperSnapErrorCode>(codeValue);
     msg = Str16ToStr8(parcel.ReadString16());
     occurTimeStamp = Str16ToStr8(parcel.ReadString16());
@@ -64,9 +65,11 @@ inline bool HyperSnapErrorRecord::ReadFromParcel(Parcel &parcel)
 
 inline bool HyperSnapErrorRecord::Marshalling(Parcel &parcel) const
 {
-    WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(Int32, parcel, static_cast<int32_t>(code));
-    WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(String16, parcel, Str8ToStr16(msg));
-    WRITE_PARCEL_AND_RETURN_FALSE_IF_FAIL(String16, parcel, Str8ToStr16(occurTimeStamp));
+    if (!parcel.WriteInt32(static_cast<int32_t>(code)) ||
+        !parcel.WriteString16(Str8ToStr16(msg)) ||
+        !parcel.WriteString16(Str8ToStr16(occurTimeStamp))) {
+        return false;
+    }
     return true;
 }
 
