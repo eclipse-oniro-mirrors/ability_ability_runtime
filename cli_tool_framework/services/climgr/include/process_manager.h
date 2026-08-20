@@ -54,7 +54,6 @@ private:
     bool CreatePipes(SessionRecord &record) const;
     void CloseAllPipes(SessionRecord &record) const;
     void CloseNonStdFds() const;
-    bool SetParentHapTokenId(uint32_t tokenId) const;
 };
 
 } // namespace CliTool

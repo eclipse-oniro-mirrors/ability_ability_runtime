@@ -692,25 +692,73 @@ HWTEST_F(ProcessManagerTest, CreateShellProcess_0900, TestSize.Level1)
     GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_0900 end";
 }
 
-// ==================== SetParentHapTokenId Tests ====================
+// ==================== Child Lifecycle (async-signal-safe exit) Tests ====================
+// These verify the post-fork child block reaches execvp/_exit without hanging. Before
+// Patch B the child called malloc/HiLog between fork and execvp, risking deadlock when
+// another thread held the lock at fork time. The child block is now async-signal-safe;
+// these waitpid-based tests guard against regressions that could make the child hang.
 
 /**
- * @tc.name: ProcessManager_SetParentHapTokenId_0100
- * @tc.desc: Test SetParentHapTokenId returns false when access_token_id device is available
+ * @tc.name: ProcessManager_CreateChildProcess_ChildExitsOnExecvpFailure_0100
+ * @tc.desc: CreateChildProcess child reaches execvp and _exit(EXIT_FAILURE) without hanging
  * @tc.type: FUNC
  */
-HWTEST_F(ProcessManagerTest, SetParentHapTokenId_0100, TestSize.Level1)
+HWTEST_F(ProcessManagerTest, CreateChildProcess_ChildExitsOnExecvpFailure_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ProcessManager_SetParentHapTokenId_0100 start";
+    GTEST_LOG_(INFO) << "ProcessManager_CreateChildProcess_ChildExitsOnExecvpFailure_0100 start";
 
-    const auto& manager = ProcessManager::GetInstance();
+    auto& manager = ProcessManager::GetInstance();
+    ExecToolParam param = CreateTestParam("exit_test");
+    std::string sandboxConfig = "/etc/claw/test_config.json";
+    ToolInfo toolInfo = CreateTestToolInfo("exit_test");
 
-    // In test environment /dev/access_token_id does not exist, open fails and returns false.
-    // On a real OpenHarmony device with the access_token_id driver, this may return true.
-    bool result = manager.SetParentHapTokenId(12345);
-    EXPECT_TRUE(result);
+    auto record = std::make_shared<SessionRecord>();
+    ASSERT_NE(record, nullptr);
+    record->sessionId = "exit_test";
+    record->toolName = "exit_test";
 
-    GTEST_LOG_(INFO) << "ProcessManager_SetParentHapTokenId_0100 end";
+    ASSERT_EQ(manager.CreateChildProcess(param, sandboxConfig, toolInfo, record), ERR_OK);
+    ASSERT_GT(record->processId, 0);
+
+    // claw_sandbox is absent in the test env, so the child's execvp fails and it must
+    // reach _exit(EXIT_FAILURE) via the async-signal-safe path (write + _exit). waitpid
+    // succeeding + WIFEXITED proves the child block did not hang.
+    int status = 0;
+    ASSERT_EQ(waitpid(record->processId, &status, 0), record->processId);
+    EXPECT_TRUE(WIFEXITED(status)) << "child did not exit cleanly (hung or signaled)";
+    EXPECT_EQ(WEXITSTATUS(status), EXIT_FAILURE);
+
+    GTEST_LOG_(INFO) << "ProcessManager_CreateChildProcess_ChildExitsOnExecvpFailure_0100 end";
+}
+
+/**
+ * @tc.name: ProcessManager_CreateShellProcess_ChildExitsOnExecvpFailure_0100
+ * @tc.desc: CreateShellProcess child reaches execvp and _exit(EXIT_FAILURE) without hanging
+ * @tc.type: FUNC
+ */
+HWTEST_F(ProcessManagerTest, CreateShellProcess_ChildExitsOnExecvpFailure_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_ChildExitsOnExecvpFailure_0100 start";
+
+    auto& manager = ProcessManager::GetInstance();
+    ExecCmdParam param = CreateTestCmdParam("echo hi");
+    std::string sandboxConfig = "/etc/claw/test_config.json";
+
+    auto record = std::make_shared<SessionRecord>();
+    ASSERT_NE(record, nullptr);
+    record->sessionId = "shell_exit_test";
+
+    ASSERT_EQ(manager.CreateShellProcess(param, sandboxConfig, record), ERR_OK);
+    ASSERT_GT(record->processId, 0);
+
+    // The child first opens /dev/access_token_id (absent in test env -> open fails,
+    // skipped), then reaches execvp which fails (no claw_sandbox) -> _exit(EXIT_FAILURE).
+    int status = 0;
+    ASSERT_EQ(waitpid(record->processId, &status, 0), record->processId);
+    EXPECT_TRUE(WIFEXITED(status)) << "child did not exit cleanly (hung or signaled)";
+    EXPECT_EQ(WEXITSTATUS(status), EXIT_FAILURE);
+
+    GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_ChildExitsOnExecvpFailure_0100 end";
 }
 
 // ==================== CloseNonStdFds Tests ====================
