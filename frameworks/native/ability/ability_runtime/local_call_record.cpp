@@ -36,43 +36,27 @@ LocalCallRecord::~LocalCallRecord()
 
 void LocalCallRecord::ClearData()
 {
-    if (remoteObject_ == nullptr) {
-        return;
+    sptr<IRemoteObject> remote;
+    sptr<IRemoteObject::DeathRecipient> recipient;
+    {
+        std::lock_guard lock(remoteMutex_);
+        if (remoteObject_ == nullptr) {
+            return;
+        }
+        remote = remoteObject_;
+        recipient = callRecipient_;
+        remoteObject_ = nullptr;
+        callRecipient_ = nullptr;
     }
 
-    if (callRecipient_) {
-        remoteObject_->RemoveDeathRecipient(callRecipient_);
-        callRecipient_ = nullptr;
+    if (recipient != nullptr) {
+        remote->RemoveDeathRecipient(recipient);
     }
 
     {
         std::lock_guard lock(callersMutex_);
         callers_.clear();
     }
-    remoteObject_ = nullptr;
-}
-
-void LocalCallRecord::SetRemoteObject(const sptr<IRemoteObject>& call)
-{
-    if (call == nullptr) {
-        TAG_LOGE(AAFwkTag::LOCAL_CALL, "null call");
-        return;
-    }
-
-    remoteObject_ = call;
-    if (callRecipient_ == nullptr) {
-        auto self(weak_from_this());
-        auto diedTask = [self](const wptr<IRemoteObject>& remote) {
-            auto record = self.lock();
-            if (record == nullptr) {
-                TAG_LOGE(AAFwkTag::LOCAL_CALL, "null record");
-                return;
-            }
-            record->OnCallStubDied();
-        };
-        callRecipient_ = sptr<CallRecipient>::MakeSptr(diedTask);
-    }
-    remoteObject_->AddDeathRecipient(callRecipient_);
 }
 
 void LocalCallRecord::SetRemoteObject(const sptr<IRemoteObject>& call,
@@ -83,10 +67,15 @@ void LocalCallRecord::SetRemoteObject(const sptr<IRemoteObject>& call,
         return;
     }
 
-    remoteObject_ = call;
-    callRecipient_ = callRecipient;
+    {
+        std::lock_guard lock(remoteMutex_);
+        remoteObject_ = call;
+        callRecipient_ = callRecipient;
+    }
 
-    remoteObject_->AddDeathRecipient(callRecipient_);
+    if (callRecipient != nullptr) {
+        call->AddDeathRecipient(callRecipient);
+    }
 }
 
 void LocalCallRecord::AddCaller(const std::shared_ptr<CallerCallBack>& callback)
@@ -105,28 +94,38 @@ void LocalCallRecord::AddCaller(const std::shared_ptr<CallerCallBack>& callback)
 
 bool LocalCallRecord::RemoveCaller(const std::shared_ptr<CallerCallBack>& callback)
 {
-    std::lock_guard lock(callersMutex_);
-    if (callers_.empty()) {
-        TAG_LOGE(AAFwkTag::LOCAL_CALL, "empty callers_");
-        return false;
+    bool found = false;
+    {
+        std::lock_guard lock(callersMutex_);
+        if (callers_.empty()) {
+            TAG_LOGE(AAFwkTag::LOCAL_CALL, "empty callers_");
+            return false;
+        }
+
+        auto iter = std::find(callers_.begin(), callers_.end(), callback);
+        if (iter != callers_.end()) {
+            callers_.erase(iter);
+            found = true;
+        } else {
+            TAG_LOGE(AAFwkTag::LOCAL_CALL, "callback not find");
+        }
     }
 
-    auto iter = std::find(callers_.begin(), callers_.end(), callback);
-    if (iter != callers_.end()) {
+    if (found && callback != nullptr) {
         callback->InvokeOnRelease(ON_RELEASE);
-        callers_.erase(iter);
-        return true;
     }
-
-    TAG_LOGE(AAFwkTag::LOCAL_CALL, "callback not find");
-    return false;
+    return found;
 }
 
 void LocalCallRecord::OnCallStubDied()
 {
     TAG_LOGI(AAFwkTag::LOCAL_CALL, "OnCallStubDied");
-    std::lock_guard lock(callersMutex_);
-    for (auto& callBack : callers_) {
+    std::vector<std::shared_ptr<CallerCallBack>> callersCopy;
+    {
+        std::lock_guard lock(callersMutex_);
+        callersCopy = callers_;
+    }
+    for (const auto& callBack : callersCopy) {
         if (callBack != nullptr) {
             TAG_LOGI(AAFwkTag::LOCAL_CALL, "Notify caller released");
             callBack->InvokeOnRelease(ON_DIED);
@@ -136,25 +135,26 @@ void LocalCallRecord::OnCallStubDied()
 
 void LocalCallRecord::InvokeCallBack() const
 {
-    if (remoteObject_ == nullptr) {
+    auto remoteObject = GetRemoteObject();
+    if (remoteObject == nullptr) {
         TAG_LOGE(AAFwkTag::LOCAL_CALL, "null object");
         return;
     }
 
-    std::lock_guard lock(callersMutex_);
-    for (auto& callBack : callers_) {
+    std::vector<std::shared_ptr<CallerCallBack>> callersCopy;
+    {
+        std::lock_guard lock(callersMutex_);
+        callersCopy = callers_;
+    }
+    for (const auto& callBack : callersCopy) {
         if (callBack != nullptr && !callBack->IsCallBack()) {
-            callBack->InvokeCallBack(remoteObject_);
+            callBack->InvokeCallBack(remoteObject);
         }
     }
 }
 
 void LocalCallRecord::NotifyRemoteStateChanged(int32_t abilityState)
 {
-    if (remoteObject_ == nullptr) {
-        TAG_LOGE(AAFwkTag::LOCAL_CALL, "null object");
-        return;
-    }
     std::string state = "";
     if (abilityState == FOREGROUND) {
         state = "foreground";
@@ -162,8 +162,12 @@ void LocalCallRecord::NotifyRemoteStateChanged(int32_t abilityState)
         state = "background";
     }
 
-    std::lock_guard lock(callersMutex_);
-    for (auto& callBack : callers_) {
+    std::vector<std::shared_ptr<CallerCallBack>> callersCopy;
+    {
+        std::lock_guard lock(callersMutex_);
+        callersCopy = callers_;
+    }
+    for (const auto& callBack : callersCopy) {
         if (callBack != nullptr && callBack->IsCallBack()) {
             TAG_LOGI(AAFwkTag::LOCAL_CALL, "not null callback and is callback ");
             callBack->InvokeOnNotify(state);
@@ -173,6 +177,7 @@ void LocalCallRecord::NotifyRemoteStateChanged(int32_t abilityState)
 
 sptr<IRemoteObject> LocalCallRecord::GetRemoteObject() const
 {
+    std::lock_guard lock(remoteMutex_);
     return remoteObject_;
 }
 
@@ -205,6 +210,7 @@ bool LocalCallRecord::IsSameObject(const sptr<IRemoteObject>& remote) const
         return false;
     }
 
+    std::lock_guard lock(remoteMutex_);
     bool retVal = (remoteObject_ == remote);
     TAG_LOGD(AAFwkTag::LOCAL_CALL, "remoteObject_ matches remote: %{public}s", retVal ? "true" : "false");
     return retVal;
