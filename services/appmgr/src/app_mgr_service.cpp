@@ -325,7 +325,7 @@ int32_t AppMgrService::GetHyperSnapLastError(int32_t errType, HyperSnapErrorReco
         return ERR_INVALID_OPERATION;
     }
 
-    ErrorType errorType = static_cast<ErrorType>(errType);
+    HyperSnapErrorType errorType = static_cast<HyperSnapErrorType>(errType);
 
     bool success = appMgrServiceInner_->GetHyperSnapLastError(errorType, record);
     if (!success) {

@@ -19,7 +19,7 @@ import AsyncCallbackWrapper from './utils/AbilityUtils';
 export default namespace hyperSnapManager {
 loadLibraryWithPermissionCheck("hyper_snap_manager_ani.z", "@ohos.app.ability.hyperSnapManager")
 
-export enum ErrorType {
+export enum HyperSnapErrorType {
     CREATE_SNAPSHOT = 0,
     FORK_FROM_SNAPSHOT = 1
 }
@@ -57,8 +57,9 @@ export function requestRebuildHyperSnap(): void {
     hyperSnapManager.nativeRequestRebuildHyperSnap();
 }
 
-export native function nativeGetLastError(errType: ErrorType, callback: AsyncCallbackWrapper<HyperSnapErrorInfo>): void;
-export function getLastError(errType: ErrorType): Promise<HyperSnapErrorInfo> {
+export native function nativeGetLastError(errType: HyperSnapErrorType,
+    callback: AsyncCallbackWrapper<HyperSnapErrorInfo>): void;
+export function getLastError(errType: HyperSnapErrorType): Promise<HyperSnapErrorInfo> {
     return new Promise<HyperSnapErrorInfo>((resolve, reject) => {
         let call = new AsyncCallbackWrapper<HyperSnapErrorInfo>((err: BusinessError | null,
             data: HyperSnapErrorInfo | undefined) => {

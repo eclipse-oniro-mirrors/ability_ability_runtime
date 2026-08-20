@@ -36,7 +36,7 @@ enum class HyperSnapErrorCode {
     ERR_LAST_PROCESS_NOT_FULLY_EXITED = 7,
 };
 
-enum class ErrorType {
+enum class HyperSnapErrorType {
     CREATE_SNAPSHOT = 0,
     FORK_FROM_SNAPSHOT = 1,
 };

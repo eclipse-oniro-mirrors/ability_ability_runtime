@@ -1059,7 +1059,7 @@ public:
     /**
      * Get the last hyper snap error of the caller for the given error type.
      *
-     * @param errType The error type, see ErrorType.
+     * @param errType The error type, see HyperSnapErrorType.
      * @param record Output parameter, the last error record.
      * @return Returns ERR_OK on success, others on failure.
      */

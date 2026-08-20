@@ -153,11 +153,11 @@ void EtsHyperSnapManager::NativeGetLastError(ani_env *env, ani_int errType, ani_
     }
 
     int32_t typeValue = static_cast<int32_t>(errType);
-    bool paramValid = (typeValue == static_cast<int32_t>(AppExecFwk::ErrorType::CREATE_SNAPSHOT)) ||
-        (typeValue == static_cast<int32_t>(AppExecFwk::ErrorType::FORK_FROM_SNAPSHOT));
+    bool paramValid = (typeValue == static_cast<int32_t>(AppExecFwk::HyperSnapErrorType::CREATE_SNAPSHOT)) ||
+        (typeValue == static_cast<int32_t>(AppExecFwk::HyperSnapErrorType::FORK_FROM_SNAPSHOT));
     if (!paramValid) {
         TAG_LOGE(AAFwkTag::APPKIT, "NativeGetLastError: invalid errType %{public}d", typeValue);
-        AbilityRuntime::EtsErrorUtil::ThrowInvalidParamError(env, "errType must be a valid ErrorType.");
+        AbilityRuntime::EtsErrorUtil::ThrowInvalidParamError(env, "errType must be a valid HyperSnapErrorType.");
         return;
     }
 

@@ -55,6 +55,60 @@ napi_value CreateJsHyperSnapErrorInfo(napi_env env, const AppExecFwk::HyperSnapE
     return object;
 }
 
+bool SetEnumItem(napi_env env, napi_value object, const char *name, int32_t value)
+{
+    napi_value itemName = nullptr;
+    napi_value itemValue = nullptr;
+    if (napi_create_string_utf8(env, name, NAPI_AUTO_LENGTH, &itemName) != napi_ok ||
+        napi_create_int32(env, value, &itemValue) != napi_ok ||
+        napi_set_property(env, object, itemName, itemValue) != napi_ok ||
+        napi_set_property(env, object, itemValue, itemName) != napi_ok) {
+        TAG_LOGE(AAFwkTag::APPKIT, "SetEnumItem failed, name:%{public}s", name);
+        return false;
+    }
+    return true;
+}
+
+// Enums declared in the d.ts are runtime values; for ArkTS dynamic apps the module
+// object comes from this native Init, so each enum must be attached to exports.
+napi_value InitHyperSnapErrorTypeEnum(napi_env env)
+{
+    napi_value object = nullptr;
+    napi_create_object(env, &object);
+    if (!SetEnumItem(env, object, "CREATE_SNAPSHOT",
+        static_cast<int32_t>(AppExecFwk::HyperSnapErrorType::CREATE_SNAPSHOT)) ||
+        !SetEnumItem(env, object, "FORK_FROM_SNAPSHOT",
+        static_cast<int32_t>(AppExecFwk::HyperSnapErrorType::FORK_FROM_SNAPSHOT))) {
+        return nullptr;
+    }
+    return object;
+}
+
+napi_value InitHyperSnapErrorCodeEnum(napi_env env)
+{
+    napi_value object = nullptr;
+    napi_create_object(env, &object);
+    if (!SetEnumItem(env, object, "ERR_OK",
+        static_cast<int32_t>(AppExecFwk::HyperSnapErrorCode::ERR_OK)) ||
+        !SetEnumItem(env, object, "ERR_SYSTEM_INNER",
+        static_cast<int32_t>(AppExecFwk::HyperSnapErrorCode::ERR_SYSTEM_INNER)) ||
+        !SetEnumItem(env, object, "ERR_SNAPSHOT_EXIST",
+        static_cast<int32_t>(AppExecFwk::HyperSnapErrorCode::ERR_SNAPSHOT_EXIST)) ||
+        !SetEnumItem(env, object, "ERR_PROCESS_IS_RUNNING",
+        static_cast<int32_t>(AppExecFwk::HyperSnapErrorCode::ERR_PROCESS_IS_RUNNING)) ||
+        !SetEnumItem(env, object, "ERR_SNAPSHOT_PROCESS_IS_DIED",
+        static_cast<int32_t>(AppExecFwk::HyperSnapErrorCode::ERR_SNAPSHOT_PROCESS_IS_DIED)) ||
+        !SetEnumItem(env, object, "ERR_SNAPSHOT_IS_INTERRUPTED",
+        static_cast<int32_t>(AppExecFwk::HyperSnapErrorCode::ERR_SNAPSHOT_IS_INTERRUPTED)) ||
+        !SetEnumItem(env, object, "ERR_EXISTS_ILLEGAL_BINDER",
+        static_cast<int32_t>(AppExecFwk::HyperSnapErrorCode::ERR_EXISTS_ILLEGAL_BINDER)) ||
+        !SetEnumItem(env, object, "ERR_LAST_PROCESS_NOT_FULLY_EXITED",
+        static_cast<int32_t>(AppExecFwk::HyperSnapErrorCode::ERR_LAST_PROCESS_NOT_FULLY_EXITED))) {
+        return nullptr;
+    }
+    return object;
+}
+
 class JsHyperSnapManager final {
 public:
     JsHyperSnapManager()
@@ -139,10 +193,10 @@ private:
         }
         int32_t errType = 0;
         if (!ConvertFromJsValue(env, argv[INDEX_ZERO], errType) ||
-            (errType != static_cast<int32_t>(AppExecFwk::ErrorType::CREATE_SNAPSHOT) &&
-            errType != static_cast<int32_t>(AppExecFwk::ErrorType::FORK_FROM_SNAPSHOT))) {
+            (errType != static_cast<int32_t>(AppExecFwk::HyperSnapErrorType::CREATE_SNAPSHOT) &&
+            errType != static_cast<int32_t>(AppExecFwk::HyperSnapErrorType::FORK_FROM_SNAPSHOT))) {
             TAG_LOGE(AAFwkTag::APPKIT, "get errType failed");
-            ThrowInvalidParamError(env, "Parse param errType failed, must be a valid ErrorType.");
+            ThrowInvalidParamError(env, "Parse param errType failed, must be a valid HyperSnapErrorType.");
             return CreateJsUndefined(env);
         }
 
@@ -189,6 +243,20 @@ napi_value JsHyperSnapManagerInit(napi_env env, napi_value exportObj)
         std::make_unique<JsHyperSnapManager>();
     napi_wrap(env, exportObj, jsHyperSnapManager.release(),
         JsHyperSnapManager::Finalizer, nullptr, nullptr);
+
+    napi_value hyperSnapErrorType = InitHyperSnapErrorTypeEnum(env);
+    if (hyperSnapErrorType == nullptr || napi_set_named_property(env, exportObj,
+        "HyperSnapErrorType", hyperSnapErrorType) != napi_ok) {
+        TAG_LOGE(AAFwkTag::APPKIT, "failed to export HyperSnapErrorType");
+        return nullptr;
+    }
+
+    napi_value hyperSnapErrorCode = InitHyperSnapErrorCodeEnum(env);
+    if (hyperSnapErrorCode == nullptr || napi_set_named_property(env, exportObj,
+        "HyperSnapErrorCode", hyperSnapErrorCode) != napi_ok) {
+        TAG_LOGE(AAFwkTag::APPKIT, "failed to export HyperSnapErrorCode");
+        return nullptr;
+    }
 
     const char *moduleName = "JsHyperSnapManager";
     BindNativeFunction(env, exportObj, "setHyperSnapEnabled", moduleName,
