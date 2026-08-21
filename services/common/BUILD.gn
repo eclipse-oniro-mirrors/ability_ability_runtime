@@ -263,6 +263,7 @@ ohos_shared_library("hisysevent_report") {
 
   external_deps = [
     "hilog:libhilog",
+    "bounds_checking_function:libsec_shared",
     "c_utils:utils",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
@@ -291,6 +292,7 @@ ohos_static_library("hisysevent_report_static") {
 
   external_deps = [
     "hilog:libhilog",
+    "bounds_checking_function:libsec_shared",
     "c_utils:utils",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
@@ -331,6 +333,7 @@ ohos_shared_library("app_util") {
 
   external_deps = [
     "bundle_framework:appexecfwk_base",
+    "bounds_checking_function:libsec_shared",
     "c_utils:utils",
     "config_policy:configpolicy_util",
     "hicollie:libhicollie",
@@ -399,6 +402,7 @@ ohos_static_library("app_util_static") {
 
   external_deps = [
     "bundle_framework:appexecfwk_base",
+    "bounds_checking_function:libsec_shared",
     "c_utils:utils",
     "config_policy:configpolicy_util",
     "hicollie:libhicollie",

@@ -36,6 +36,7 @@ ohos_unittest("modular_object_extension_test") {
   ]
   cflags = [ "-Dprivate=public" ]
   external_deps = [
+    "bounds_checking_function:libsec_shared",
     "c_utils:utils",
     "eventhandler:libeventhandler",
     "googletest:gtest_main",
