@@ -17,6 +17,7 @@
 
 #include <dfx_signal_handler.h>
 #include <malloc.h>
+#include <pthread.h>
 #include <sys/statvfs.h>
 #include <sys/stat.h>
 #include <sys/xattr.h>
@@ -402,6 +403,9 @@ void DumpRuntimeHelper::DumpMem(const OHOS::AppExecFwk::MemDumpInfo &info, sptr<
     if (info.dumpType == MemDumpType::ARKWEB_JS) {
         DumpArkwebJsHeap(info);
     }
+    if (info.dumpType == MemDumpType::ARKTS_HEAP) {
+        DumpArktsHeapSize(info, dumpResult);
+    }
     if (client != nullptr && callback != nullptr) {
         client->ReportDumpMemResult(callback, dumpResult);
     }
@@ -581,6 +585,46 @@ void DumpRuntimeHelper::DumpArkwebJsHeap(const OHOS::AppExecFwk::MemDumpInfo &in
     DumpArkWebHelper::DumpArkWebJSHeap(static_cast<int32_t>(info.pid), static_cast<int32_t>(info.renderPid),
         info.needDump, info.needGc, info.needRaw);
 #endif
+}
+
+void DumpRuntimeHelper::DumpArktsHeapSize(const OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
+{
+    if (application_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null application");
+        return;
+    }
+    auto &runtime = application_->GetRuntime();
+    if (runtime == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null runtime");
+        return;
+    }
+    auto language = runtime->GetLanguage();
+    if (language != AbilityRuntime::Runtime::Language::JS &&
+        language != AbilityRuntime::Runtime::Language::ETS) {
+        TAG_LOGE(AAFwkTag::APPKIT, "runtime language is not JS or ETS");
+        return;
+    }
+    AbilityRuntime::JsRuntime* jsRuntime = nullptr;
+    if (language == AbilityRuntime::Runtime::Language::JS) {
+        jsRuntime = static_cast<AbilityRuntime::JsRuntime*>(runtime.get());
+    } else {
+        auto &etsRuntime = static_cast<AbilityRuntime::ETSRuntime&>(*runtime);
+        auto &jsRuntimePtr = etsRuntime.GetJsRuntime();
+        if (jsRuntimePtr == nullptr) {
+            TAG_LOGE(AAFwkTag::APPKIT, "null jsRuntime in ets");
+            return;
+        }
+        jsRuntime = static_cast<AbilityRuntime::JsRuntime*>(jsRuntimePtr.get());
+    }
+    if (jsRuntime == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null jsRuntime");
+        return;
+    }
+    size_t heapSize = jsRuntime->GetHeapTotalSize();
+    char threadName[16] = {0};
+    pthread_getname_np(pthread_self(), threadName, sizeof(threadName));
+    dumpResult = std::to_string(heapSize) + "|" + threadName;
+    TAG_LOGI(AAFwkTag::APPKIT, "arkts heap size: %{public}zu bytes, thread: %{public}s", heapSize, threadName);
 }
 
 void DumpRuntimeHelper::GetCheckList(const std::unique_ptr<AbilityRuntime::Runtime> &runtime, std::string &checkList)

@@ -27,6 +27,7 @@ enum class MemDumpType : uint32_t {
     JSVM = 2,
     KMP_KOTLIN = 3,
     ARKWEB_JS = 4,
+    ARKTS_HEAP = 5,
 };
 
 struct MemDumpInfo : public Parcelable {
