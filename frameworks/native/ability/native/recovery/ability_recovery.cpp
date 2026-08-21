@@ -225,6 +225,7 @@ bool AbilityRecovery::SerializeDataToFile(int32_t savedStateId, WantParams& para
         return false;
     }
     Parcel parcel;
+    parcel.SetMaxCapacity(DEFAULT_RECOVERY_MAX_RESTORE_SIZE);
     if (!params.Marshalling(parcel)) {
         TAG_LOGE(AAFwkTag::RECOVERY, "Marshalling want param failed");
         return false;
