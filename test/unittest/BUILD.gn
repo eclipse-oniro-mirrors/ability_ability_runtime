@@ -263,6 +263,7 @@ group("unittest") {
       "app_mgr_stub_test:unittest",
       "app_mgr_util_test:unittest",
       "app_native_spawn_manager_test:unittest",
+      "app_pidfd_manager_test:unittest",
       "app_preloader_test:unittest",
       "app_recovery_test:unittest",
       "app_running_manager_fourth_test:unittest",
