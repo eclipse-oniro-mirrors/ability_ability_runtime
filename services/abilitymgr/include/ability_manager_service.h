@@ -3669,7 +3669,8 @@ private:
     int32_t KillProcessWithReasonInner(int32_t pid, const ExitReason &reason, bool isKillPrecedeStart);
 
     int32_t ProcessUdmfKey(
-        const Want &want, uint32_t callerTokenId, uint32_t targetTokenId, AppExecFwk::ExtensionAbilityType extensionType);
+        const Want &want, uint32_t callerTokenId, uint32_t targetTokenId,
+        AppExecFwk::ExtensionAbilityType extensionType);
 
     bool IsAllowAttachOrDetachAppDebug(AppExecFwk::ApplicationInfo &appInfo);
     bool IsExitReasonValid(const ExitReasonCompability &reason);
