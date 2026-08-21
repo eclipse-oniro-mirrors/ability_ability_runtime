@@ -69,6 +69,10 @@ void LocalCallRecord::SetRemoteObject(const sptr<IRemoteObject>& call,
 
     {
         std::lock_guard lock(remoteMutex_);
+        if (remoteObject_ != nullptr) {
+            TAG_LOGE(AAFwkTag::LOCAL_CALL, "remoteObject already set");
+            return;
+        }
         remoteObject_ = call;
         callRecipient_ = callRecipient;
     }

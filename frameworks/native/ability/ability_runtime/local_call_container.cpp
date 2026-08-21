@@ -422,9 +422,15 @@ void CallerConnection::OnAbilityConnectDone(
     const bool isSingleton = (code == static_cast<int32_t>(AppExecFwk::LaunchMode::SINGLETON));
     localCallRecord->SetIsSingleton(isSingleton);
 
-    auto callRecipient = new (std::nothrow) CallRecipient([container](const wptr<IRemoteObject> &arg) {
-        container->OnCallStubDied(arg);
-    });
+    auto callRecipient = sptr<CallRecipient>::MakeSptr(
+        [weakContainer = std::weak_ptr<LocalCallContainer>(container)](const wptr<IRemoteObject> &arg) {
+            auto cont = weakContainer.lock();
+            if (cont == nullptr) {
+                TAG_LOGE(AAFwkTag::LOCAL_CALL, "null container");
+                return;
+            }
+            cont->OnCallStubDied(arg);
+        });
     localCallRecord->SetRemoteObject(remoteObject, callRecipient);
 
     if (isSingleton) {
