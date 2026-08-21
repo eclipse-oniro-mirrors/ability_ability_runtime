@@ -2548,9 +2548,8 @@ int32_t AppMgrStub::HandleGetAllAbilityInfos(MessageParcel &data, MessageParcel 
 
 int32_t AppMgrStub::HandleEnableDelayedProcessExit(MessageParcel &data, MessageParcel &reply)
 {
-    pid_t pid = data.ReadInt32();
     bool enabled = data.ReadBool();
-    auto result = EnableDelayedProcessExit(pid, enabled);
+    auto result = EnableDelayedProcessExit(enabled);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::APPMGR, "write result fail");
         return AAFwk::ERR_WRITE_RESULT_CODE_FAILED;

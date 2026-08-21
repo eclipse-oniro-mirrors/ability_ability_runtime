@@ -1185,7 +1185,7 @@ private:
      */
     void SetTerminateTimeOutFlag(const sptr<IRemoteObject> token) override;
 
-    int32_t EnableDelayedProcessExit(int32_t pid, bool enabled) override;
+    int32_t EnableDelayedProcessExit(bool enabled) override;
 
     void CancelDelayedExitTask(int32_t pid) override;
 

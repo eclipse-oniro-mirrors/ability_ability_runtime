@@ -1245,7 +1245,7 @@ public:
         return 0;
     }
 
-    virtual int32_t EnableDelayedProcessExit(int32_t pid, bool enabled)
+    virtual int32_t EnableDelayedProcessExit(bool enabled)
     {
         return ERR_OK;
     }

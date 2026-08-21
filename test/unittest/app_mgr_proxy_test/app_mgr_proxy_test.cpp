@@ -1617,7 +1617,7 @@ HWTEST_F(AppMgrProxyTest, EnableDelayedProcessExit_0100, TestSize.Level1)
             return NO_ERROR;
         });
 
-    auto ret = appMgrProxy_->EnableDelayedProcessExit(1234, true);
+    auto ret = appMgrProxy_->EnableDelayedProcessExit(true);
     EXPECT_EQ(ret, ERR_OK);
 }
 
@@ -1635,7 +1635,7 @@ HWTEST_F(AppMgrProxyTest, EnableDelayedProcessExit_0200, TestSize.Level1)
             return NO_ERROR;
         });
 
-    auto ret = appMgrProxy_->EnableDelayedProcessExit(1234, false);
+    auto ret = appMgrProxy_->EnableDelayedProcessExit(false);
     EXPECT_EQ(ret, ERR_OK);
 }
 
@@ -1653,7 +1653,7 @@ HWTEST_F(AppMgrProxyTest, EnableDelayedProcessExit_0300, TestSize.Level1)
             return NO_ERROR;
         });
 
-    auto ret = appMgrProxy_->EnableDelayedProcessExit(-1, true);
+    auto ret = appMgrProxy_->EnableDelayedProcessExit(true);
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
 }
 
