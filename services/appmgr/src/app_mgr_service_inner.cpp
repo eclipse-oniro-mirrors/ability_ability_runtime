@@ -9451,6 +9451,15 @@ int32_t AppMgrServiceInner::SubmitDfxFaultTask(const FaultData &faultData, const
     return ERR_OK;
 }
 
+bool AppMgrServiceInner::IsAsanEnabled(const std::shared_ptr<AppRunningRecord> &record)
+{
+    const auto &applicationInfo = record->GetApplicationInfo();
+    if (applicationInfo == nullptr) {
+        return false;
+    }
+    return applicationInfo->asanEnabled || applicationInfo->hwasanEnabled || applicationInfo->tsanEnabled;
+}
+
 int32_t AppMgrServiceInner::NotifyAppFault(const FaultData &faultData)
 {
     TAG_LOGI(AAFwkTag::APPMGR, "call");
@@ -9476,6 +9485,11 @@ int32_t AppMgrServiceInner::NotifyAppFault(const FaultData &faultData)
     TAG_LOGW(AAFwkTag::APPDFR, "called, eventName:%{public}s, pid:%{public}d, bundleName:%{public}s, "
         "currentTime:%{public}s", eventName.c_str(), pid, bundleName.c_str(),
         AbilityRuntime::TimeUtil::DefaultCurrentTimeStr().c_str());
+    if (IsAsanEnabled(appRecord)) {
+        TAG_LOGI(AAFwkTag::APPMGR, "no freeze detect cause asan enable, bundleName:%{public}s, pid:%{public}d",
+            bundleName.c_str(), pid);
+        return ERR_OK;
+    }
     if (AppExecFwk::AppfreezeManager::GetInstance()->IsSkipDetect(pid, uid, bundleName,
         eventName) || AppExecFwk::AppfreezeManager::GetInstance()->IsFreezeExcludedPid(pid)) {
         return ERR_OK;
@@ -9510,11 +9524,6 @@ int32_t AppMgrServiceInner::NotifyAppFault(const FaultData &faultData)
 
     if (SubmitDfxFaultTask(nonConstFaultData, bundleName, appRecord, pid) != ERR_OK) {
         return ERR_INVALID_VALUE;
-    }
-
-    if (appRecord->GetApplicationInfo()->asanEnabled) {
-        TAG_LOGI(AAFwkTag::APPMGR, "asan enable, bundleName:%{public}s, pid:%{public}d", bundleName.c_str(), pid);
-        return ERR_OK;
     }
 
 #ifdef APP_NO_RESPONSE_DIALOG
@@ -9618,56 +9627,64 @@ void AppMgrServiceInner::TimeoutNotifyApp(int32_t pid, int32_t uid,
     }
 }
 
+struct AppFaultCtx {
+    int32_t pid;
+    int32_t uid;
+    int32_t recordId;
+    std::string bundleName;
+    std::string processName;
+    std::string eventName;
+};
+
 int32_t AppMgrServiceInner::TransformedNotifyAppFault(const AppFaultDataBySA &faultData)
 {
-    int32_t pid = faultData.pid;
-    auto record = GetAppRunningRecordByPid(pid);
+    auto record = GetAppRunningRecordByPid(faultData.pid);
     if (record == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "no such AppRunningRecord");
         return ERR_INVALID_VALUE;
     }
-
     FaultData transformedFaultData = ConvertDataTypes(faultData);
-    std::string eventName = transformedFaultData.errorObject.name;
-    transformedFaultData.isInForeground = UpdateForeground(record, eventName);
-    int32_t uid = record->GetUid();
-    int32_t recordId = record->GetRecordId();
-    std::string bundleName = record->GetBundleName();
-    std::string processName = record->GetProcessName();
-    if (AppExecFwk::AppfreezeManager::GetInstance()->IsSkipDetect(pid, uid, bundleName, eventName) ||
-        AppExecFwk::AppfreezeManager::GetInstance()->IsFreezeExcludedPid(pid)) {
+    AppFaultCtx ctx = {faultData.pid, record->GetUid(), record->GetRecordId(), record->GetBundleName(),
+        record->GetProcessName(), transformedFaultData.errorObject.name};
+    transformedFaultData.isInForeground = UpdateForeground(record, ctx.eventName);
+    if (IsAsanEnabled(record)) {
+        TAG_LOGI(AAFwkTag::APPMGR, "no freeze detect cause asan enable, bundleName:%{public}s, pid:%{public}d",
+            ctx.bundleName.c_str(), ctx.pid);
         return ERR_OK;
     }
-    if (eventName == "appRecovery") {
-        AppRecoveryNotifyApp(pid, bundleName, faultData.faultType, "appRecovery", recordId);
+    if (AppExecFwk::AppfreezeManager::GetInstance()->IsSkipDetect(ctx.pid, ctx.uid, ctx.bundleName, ctx.eventName) ||
+        AppExecFwk::AppfreezeManager::GetInstance()->IsFreezeExcludedPid(ctx.pid)) {
         return ERR_OK;
     }
-
+    if (ctx.eventName == "appRecovery") {
+        AppRecoveryNotifyApp(ctx.pid, ctx.bundleName, faultData.faultType, "appRecovery", ctx.recordId);
+        return ERR_OK;
+    }
     if (transformedFaultData.timeoutMarkers.empty()) {
-        transformedFaultData.timeoutMarkers = "notifyFault:" + eventName +
-            std::to_string(pid) + "-" + std::to_string(SystemTimeMillisecond());
+        transformedFaultData.timeoutMarkers = "notifyFault:" + ctx.eventName +
+            std::to_string(ctx.pid) + "-" + std::to_string(SystemTimeMillisecond());
     }
     const int64_t timeout = 3000; // ipc timeout 3000ms
     if (faultData.faultType == FaultDataType::APP_FREEZE) {
-        if (!AppExecFwk::AppfreezeManager::GetInstance()->IsHandleAppfreeze(bundleName) || record->IsDebugging()) {
+        if (!AppExecFwk::AppfreezeManager::GetInstance()->IsHandleAppfreeze(ctx.bundleName) || record->IsDebugging()) {
             return ERR_OK;
         }
-        auto timeoutNotifyApp = [this, pid, uid, bundleName, processName, transformedFaultData, recordId, eventName]() {
-            std::string key = std::to_string(pid) + "_" + std::to_string(uid) + "_" + bundleName;
+        auto timeoutNotifyApp = [this, ctx, transformedFaultData]() {
+            std::string key = std::to_string(ctx.pid) + "_" + std::to_string(ctx.uid) + "_" + ctx.bundleName;
             std::string message = transformedFaultData.errorObject.message;
-            if (AppExecFwk::AppfreezeManager::GetInstance()->CheckPreloadUIExtension(message, bundleName, pid,
-                eventName) || AppExecFwk::AppfreezeManager::GetInstance()->CheckAppfreezeHappend(key, eventName)) {
+            if (AppExecFwk::AppfreezeManager::GetInstance()->CheckPreloadUIExtension(message, ctx.bundleName, ctx.pid,
+                ctx.eventName) || AppExecFwk::AppfreezeManager::GetInstance()->CheckAppfreezeHappend(key, ctx.eventName)) {
                 return;
             }
-            this->TimeoutNotifyApp(pid, uid, bundleName, processName, transformedFaultData, recordId);
+            this->TimeoutNotifyApp(ctx.pid, ctx.uid, ctx.bundleName, ctx.processName, transformedFaultData, ctx.recordId);
         };
         dfxTaskHandler_->SubmitTask(timeoutNotifyApp, transformedFaultData.timeoutMarkers, timeout);
     }
     record->NotifyAppFault(transformedFaultData);
     TAG_LOGW(AAFwkTag::APPMGR, "FaultDataBySA is: name: %{public}s, faultType: %{public}s, uid: %{public}d,"
         "pid: %{public}d, bundleName: %{public}s, eventId: %{public}d, foreground: %{public}d",
-        eventName.c_str(), FaultTypeToString(faultData.faultType).c_str(), uid, pid,
-        bundleName.c_str(), faultData.eventId, transformedFaultData.isInForeground);
+        ctx.eventName.c_str(), FaultTypeToString(faultData.faultType).c_str(), ctx.uid, ctx.pid,
+        ctx.bundleName.c_str(), faultData.eventId, transformedFaultData.isInForeground);
     return ERR_OK;
 }
 

@@ -185,6 +185,28 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner_AppfreezeHandle_002, TestSize.Level1
 }
 
 /**
+ * @tc.number: AppfreezeInner_AppfreezeHandle_003
+ * @tc.name: AppfreezeHandle
+ * @tc.desc: Verify IsAsanEnabled branch in AppfreezeHandle returns ERR_OK.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_AppfreezeHandle_003, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppfreezeInner_AppfreezeHandle_003 start";
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    EXPECT_NE(applicationInfo, nullptr);
+    applicationInfo->asanEnabled = true;
+    applicationInfo->hwasanEnabled = false;
+    applicationInfo->tsanEnabled = false;
+    appfreezeInner->SetApplicationInfo(applicationInfo);
+    FaultData faultData;
+    faultData.errorObject.name = AppFreezeType::THREAD_BLOCK_6S;
+    faultData.faultType = FaultDataType::APP_FREEZE;
+    int ret = appfreezeInner->AppfreezeHandle(faultData, true);
+    EXPECT_EQ(ret, ERR_OK);
+    GTEST_LOG_(INFO) << "AppfreezeInner_AppfreezeHandle_003 end";
+}
+
+/**
  * @tc.number: AppfreezeInner__AcquireStack_001
  * @tc.name: AcquireStack
  * @tc.desc: Verify that function AcquireStack.
@@ -281,6 +303,28 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner_AppfreezeHandleOverReportCount_001, 
     isSixSecondEvent = true;
     appfreezeInner->AppfreezeHandleOverReportCount(isSixSecondEvent);
     OHOS::system::SetParameter("hiviewdfx.appfreeze.filter_bundle_name", "");
+}
+
+/**
+ * @tc.number: AppfreezeInner_AppfreezeHandleOverReportCount_002
+ * @tc.name: AppfreezeHandleOverReportCount
+ * @tc.desc: Verify IsAsanEnabled branch in AppfreezeHandle returns ERR_OK.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_AppfreezeHandleOverReportCount_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppfreezeInner_AppfreezeHandleOverReportCount_002 start";
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    EXPECT_NE(applicationInfo, nullptr);
+    applicationInfo->asanEnabled = true;
+    applicationInfo->hwasanEnabled = false;
+    applicationInfo->tsanEnabled = false;
+    EXPECT_NE(appfreezeInner, nullptr);
+    appfreezeInner->SetApplicationInfo(applicationInfo);
+    bool isSixSecondEvent = false;
+    appfreezeInner->AppfreezeHandleOverReportCount(isSixSecondEvent);
+    isSixSecondEvent = true;
+    appfreezeInner->AppfreezeHandleOverReportCount(isSixSecondEvent);
+    GTEST_LOG_(INFO) << "AppfreezeInner_AppfreezeHandleOverReportCount_002 end";
 }
 
 /**
@@ -1052,6 +1096,38 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner_SetAppfreezeApplication_001, TestSiz
     EXPECT_TRUE(appfreezeInner->application_ == application);
 
     appfreezeInner->application_ = nullptr;
+}
+
+/**
+ * @tc.number: AppfreezeInner_IsAsanEnabled_001
+ * @tc.name: IsAsanEnabled
+ * @tc.desc: Verify that IsAsanEnabled returns false when applicationInfo is nullptr.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_IsAsanEnabled_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppfreezeInner_IsAsanEnabled_001 start";
+    appfreezeInner->applicationInfo_.reset();
+    bool ret = appfreezeInner->IsAsanEnabled();
+    EXPECT_EQ(ret, false);
+    GTEST_LOG_(INFO) << "AppfreezeInner_IsAsanEnabled_001 end";
+}
+
+/**
+ * @tc.number: AppfreezeInner_IsAsanEnabled_002
+ * @tc.name: IsAsanEnabled
+ * @tc.desc: Verify that IsAsanEnabled returns true when asanEnabled is true.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_IsAsanEnabled_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppfreezeInner_IsAsanEnabled_002 start";
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    applicationInfo->asanEnabled = true;
+    applicationInfo->hwasanEnabled = false;
+    applicationInfo->tsanEnabled = false;
+    appfreezeInner->SetApplicationInfo(applicationInfo);
+    bool ret = appfreezeInner->IsAsanEnabled();
+    EXPECT_EQ(ret, true);
+    GTEST_LOG_(INFO) << "AppfreezeInner_IsAsanEnabled_002 end";
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS
