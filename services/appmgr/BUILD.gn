@@ -221,4 +221,5 @@ ohos_shared_library("libappms") {
   version_script = "libappms.map"
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs += [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }

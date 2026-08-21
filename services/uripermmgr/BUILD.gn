@@ -107,6 +107,7 @@ ohos_shared_library("libupms") {
 
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs += [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 # Note: Just for test

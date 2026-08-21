@@ -106,4 +106,5 @@ ohos_shared_library("cj_ability_ffi") {
 
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }

@@ -48,4 +48,5 @@ ohos_shared_library("callee_napi") {
   relative_install_dir = "module/application"
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }

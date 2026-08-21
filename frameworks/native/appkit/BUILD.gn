@@ -872,6 +872,7 @@ ohos_shared_library("application_context_manager") {
 
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 config("image_observer_manager_public_config") {
@@ -916,6 +917,7 @@ ohos_shared_library("application_image_observer_manager") {
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 # Build appkit_child.so - child process thread library
