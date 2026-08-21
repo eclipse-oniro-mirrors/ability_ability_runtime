@@ -21,6 +21,7 @@
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
 #include "in_process_call_wrapper.h"
+#include "singleton.h"
 #include "udmf_client.h"
 
 namespace OHOS {
