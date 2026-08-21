@@ -463,7 +463,15 @@ uint64_t AppfreezeCpuFreqManager::ClockTicksToMs(uint64_t cpuTime)
         TAG_LOGE(AAFwkTag::APPDFR, "Get _SC_CLK_TCK fail. errno %{public}d", errno);
         clockTicks = DEFAULT_CLOCK_TICKS;
     }
-    auto result = cpuTime * static_cast<uint64_t>(AppfreezeUtil::SEC_TO_MILLISEC / clockTicks);
+
+    uint64_t multiplier = AppfreezeUtil::SEC_TO_MILLISEC / clockTicks;
+    if (multiplier == 0 || cpuTime > UINT64_MAX / multiplier) {
+        TAG_LOGE(AAFwkTag::APPDFR, "mul overflow, cpuTime=%{public}" PRIu64 ", multiplier=%{public}" PRIu64
+            ", clockTicks=%{public}ld", cpuTime, multiplier, clockTicks);
+        return 0;
+    }
+
+    auto result = cpuTime * multiplier;
     return result;
 }
 
