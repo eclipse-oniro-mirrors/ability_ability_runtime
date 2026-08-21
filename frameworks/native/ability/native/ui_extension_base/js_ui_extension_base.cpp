@@ -779,6 +779,7 @@ sptr<Rosen::WindowOption> JsUIExtensionBase::CreateWindowOption(const sptr<AAFwk
         option->SetIsBlockSubwindow(true);
     }
     option->SetStartModalExtensionTimeStamp(launchTimestamp);
+    option->SetCallerPid(want.GetIntParam(AAFwk::Want::PARAM_RESV_CALLER_PID, -1));
     return option;
 }
 
