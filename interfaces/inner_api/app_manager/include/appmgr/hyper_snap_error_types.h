@@ -44,7 +44,7 @@ enum class HyperSnapErrorType {
 struct HyperSnapErrorRecord : public Parcelable {
     HyperSnapErrorCode code = HyperSnapErrorCode::ERR_OK;
     std::string msg;
-    std::string occurTimeStamp;
+    int64_t occurTimeStamp = 0;  // UNIX timestamp in milliseconds
 
     bool ReadFromParcel(Parcel &parcel);
     virtual bool Marshalling(Parcel &parcel) const override;
@@ -59,7 +59,9 @@ inline bool HyperSnapErrorRecord::ReadFromParcel(Parcel &parcel)
     }
     code = static_cast<HyperSnapErrorCode>(codeValue);
     msg = Str16ToStr8(parcel.ReadString16());
-    occurTimeStamp = Str16ToStr8(parcel.ReadString16());
+    if (!parcel.ReadInt64(occurTimeStamp)) {
+        return false;
+    }
     return true;
 }
 
@@ -67,7 +69,7 @@ inline bool HyperSnapErrorRecord::Marshalling(Parcel &parcel) const
 {
     if (!parcel.WriteInt32(static_cast<int32_t>(code)) ||
         !parcel.WriteString16(Str8ToStr16(msg)) ||
-        !parcel.WriteString16(Str8ToStr16(occurTimeStamp))) {
+        !parcel.WriteInt64(occurTimeStamp)) {
         return false;
     }
     return true;

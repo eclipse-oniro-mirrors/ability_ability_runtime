@@ -13562,13 +13562,13 @@ bool AppMgrServiceInner::GetHyperSnapLastError(HyperSnapErrorType errType, Hyper
     if (it != map.end()) {
         record.code = it->second.code;
         record.msg = GetHyperSnapErrorMessage(it->second.code);
-        record.occurTimeStamp = std::to_string(it->second.occurTimeStamp);
+        record.occurTimeStamp = it->second.occurTimeStamp;
         TAG_LOGD(AAFwkTag::APPMGR, "Found error record, uid: %{public}d, code: %{public}d",
             uid, static_cast<int32_t>(record.code));
     } else {
         record.code = HyperSnapErrorCode::ERR_OK;
         record.msg = GetHyperSnapErrorMessage(HyperSnapErrorCode::ERR_OK);
-        record.occurTimeStamp = "0";
+        record.occurTimeStamp = 0;
         TAG_LOGD(AAFwkTag::APPMGR, "No error record found, uid: %{public}d", uid);
     }
 

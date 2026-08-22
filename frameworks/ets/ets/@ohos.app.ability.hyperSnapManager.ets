@@ -38,13 +38,13 @@ export enum HyperSnapErrorCode {
 export interface HyperSnapErrorInfo {
     code: HyperSnapErrorCode;
     msg: string;
-    occurTimeStamp: string;
+    occurTimeStamp: number;
 }
 
 class HyperSnapErrorInfoImpl implements HyperSnapErrorInfo {
     code: HyperSnapErrorCode = HyperSnapErrorCode.ERR_OK;
     msg: string = '';
-    occurTimeStamp: string = '';
+    occurTimeStamp: number = 0;
 }
 
 export native function nativeSetHyperSnapEnabled(enableFlag: boolean): void;

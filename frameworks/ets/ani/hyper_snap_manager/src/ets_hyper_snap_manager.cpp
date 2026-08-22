@@ -77,8 +77,8 @@ static ani_object BuildHyperSnapErrorInfo(ani_env *env, const AppExecFwk::HyperS
         return nullptr;
     }
 
-    status = env->Object_SetPropertyByName_Ref(object, "occurTimeStamp",
-        AppExecFwk::GetAniString(env, record.occurTimeStamp));
+    status = env->Object_SetPropertyByName_Long(object, "occurTimeStamp",
+        static_cast<ani_long>(record.occurTimeStamp));
     if (status != ANI_OK) {
         TAG_LOGE(AAFwkTag::APPKIT, "BuildHyperSnapErrorInfo: set occurTimeStamp failed, status:%{public}d", status);
         return nullptr;

@@ -50,7 +50,7 @@ napi_value CreateJsHyperSnapErrorInfo(napi_env env, const AppExecFwk::HyperSnapE
     napi_set_named_property(env, object, "msg", msgValue);
 
     napi_value timeStampValue = nullptr;
-    napi_create_string_utf8(env, record.occurTimeStamp.c_str(), NAPI_AUTO_LENGTH, &timeStampValue);
+    napi_create_int64(env, record.occurTimeStamp, &timeStampValue);
     napi_set_named_property(env, object, "occurTimeStamp", timeStampValue);
     return object;
 }
