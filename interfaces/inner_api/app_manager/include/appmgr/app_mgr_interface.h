@@ -257,6 +257,18 @@ public:
     virtual int GetAllChildrenProcesses(std::vector<ChildProcessInfo> &info) = 0;
 
     /**
+     * GetSelfChildrenProcesses, call GetSelfChildrenProcesses() through proxy project.
+     * Obtains information about children processes that are running for the calling application.
+     *
+     * @param info, child process info.
+     * @return ERR_OK, return back success, others fail.
+     */
+    virtual int GetSelfChildrenProcesses(std::vector<ChildProcessInfo> &info)
+    {
+        return 0;
+    }
+
+    /**
      * JudgeSandboxByPid, call JudgeSandboxByPid() through proxy project.
      * Obtains information about application processes that are running on the device.
      *
@@ -1096,6 +1108,17 @@ public:
         return 0;
     };
 #endif // SUPPORT_CHILD_PROCESS
+
+    /**
+     * Get all UIAbility child processes of the calling application (aggregated across all
+     * processes sharing the caller's accessTokenId).
+     * @param infos Output vector of child process info.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t GetSelfUIAbilityChildProcesses(std::vector<ChildProcessInfo> &infos)
+    {
+        return 0;
+    }
 
      /**
      * Register native child exit callback to notify.

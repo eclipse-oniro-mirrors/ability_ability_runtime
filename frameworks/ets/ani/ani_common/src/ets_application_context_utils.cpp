@@ -20,6 +20,7 @@
 #include "ability_runtime_error_util.h"
 #include "ani_enum_convert.h"
 #include "application_context_manager.h"
+#include "child_process_info.h"
 #include "ets_context_utils.h"
 #include "ets_error_utils.h"
 #include "ets_interop_ability_lifecycle_callback.h"
@@ -807,6 +808,42 @@ void EtsApplicationContextUtils::OnGetRunningProcessInformation(ani_env *env, an
     }
 }
 
+void EtsApplicationContextUtils::OnGetUIAbilityChildProcessInfos(ani_env *env, ani_object aniObj,
+    ani_object callback)
+{
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null env");
+        return;
+    }
+    ani_object emptyArray = AppExecFwk::CreateEmptyArray(env);
+    auto applicationContext = applicationContext_.lock();
+    if (applicationContext == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "nativeContext is null");
+        AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateError(env,
+            (ani_int)AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT,
+            "applicationContext if already released."), emptyArray);
+        return;
+    }
+    std::vector<AppExecFwk::ChildProcessInfo> infos;
+    ErrCode innerErrCode = applicationContext->GetUIAbilityChildProcessInfos(infos);
+    if (innerErrCode == ERR_OK) {
+        ani_object aniInfosRef = AppExecFwk::CreateChildProcessInfoArray(env, infos);
+        if (aniInfosRef == nullptr) {
+            TAG_LOGE(AAFwkTag::APPKIT, "null array");
+            AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateError(env,
+                (ani_int)AbilityErrorCode::ERROR_CODE_INNER,
+                GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_PROCESS_INFO_ARRAY_FAILED)), emptyArray);
+        } else {
+            AppExecFwk::AsyncCallback(env, callback,
+                EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_OK), aniInfosRef);
+        }
+    } else {
+        AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateError(env,
+            (ani_int)AbilityErrorCode::ERROR_CODE_INNER,
+            GetInnerErrorMsg(AbilityInnerErrorMsg::GET_PROCESS_INFO_FAILED)), emptyArray);
+    }
+}
+
 void EtsApplicationContextUtils::OnkillAllProcesses(ani_env *env, ani_object aniObj,
     ani_boolean clearPageStack, ani_object callback)
 {
@@ -991,6 +1028,18 @@ void EtsApplicationContextUtils::GetRunningProcessInformation(ani_env *env, ani_
         return;
     }
     etsContext->OnGetRunningProcessInformation(env, aniObj, callback);
+}
+
+void EtsApplicationContextUtils::GetUIAbilityChildProcessInfos(ani_env *env, ani_object aniObj,
+    ani_object callback)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "GetUIAbilityChildProcessInfos Call");
+    auto etsContext = GeApplicationContext(env, aniObj);
+    if (etsContext == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null etsContext");
+        return;
+    }
+    etsContext->OnGetUIAbilityChildProcessInfos(env, aniObj, callback);
 }
 
 ani_int EtsApplicationContextUtils::NativeOnLifecycleCallbackSync(ani_env *env,
@@ -1407,6 +1456,9 @@ void EtsApplicationContextUtils::BindApplicationContextFunc(ani_env *aniEnv)
             ani_native_function {"nativegetRunningProcessInformation",
                 "C{utils.AbilityUtils.AsyncCallbackWrapper}:",
                 reinterpret_cast<void *>(EtsApplicationContextUtils::GetRunningProcessInformation)},
+            ani_native_function {"nativegetUIAbilityChildProcessInfos",
+                "C{utils.AbilityUtils.AsyncCallbackWrapper}:",
+                reinterpret_cast<void *>(EtsApplicationContextUtils::GetUIAbilityChildProcessInfos)},
             ani_native_function {"nativeclearUpApplicationData",
                 "C{utils.AbilityUtils.AsyncCallbackWrapper}:",
                 reinterpret_cast<void *>(EtsApplicationContextUtils::ClearUpApplicationData)},

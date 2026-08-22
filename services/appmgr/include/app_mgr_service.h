@@ -225,6 +225,15 @@ public:
     virtual int GetAllChildrenProcesses(std::vector<ChildProcessInfo> &info) override;
 
     /**
+     * GetSelfChildrenProcesses, call GetSelfChildrenProcesses() through proxy project.
+     * Obtains information about children processes that are running for the calling application.
+     *
+     * @param info, child process info.
+     * @return ERR_OK, return back success, others fail.
+     */
+    virtual int GetSelfChildrenProcesses(std::vector<ChildProcessInfo> &info) override;
+
+    /**
      * IsTerminatingByPid, call IsTerminatingByPid() through proxy project.
      * Obtains information about application processes that are running on the device.
      *
@@ -930,6 +939,13 @@ public:
     int32_t CreateNativeChildProcess(const std::string &libName,
         const sptr<IRemoteObject> &callback, const ChildProcessRequest &request) override;
 #endif // SUPPORT_CHILD_PROCESS
+
+    /**
+     * Get all UIAbility child processes of the calling application.
+     * @param infos Output vector of child process info.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t GetSelfUIAbilityChildProcesses(std::vector<ChildProcessInfo> &infos) override;
 
     /**
      * Register callback to notify native child exit.

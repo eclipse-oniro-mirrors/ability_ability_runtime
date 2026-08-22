@@ -14,6 +14,7 @@
  */
 
 #include "native_child_process.h"
+#include "child_process_info_internal.h"
 #include <map>
 #include <mutex>
 #include <regex>
@@ -371,4 +372,23 @@ bool OH_Ability_IsNativeChildProcessSupported()
     bool result = ChildProcessManager::GetInstance().IsNativeChildProcessSupported();
     TAG_LOGD(AAFwkTag::PROCESSMGR, "IsNativeChildProcessSupported: %{public}d", result);
     return result;
+}
+
+Ability_NativeChildProcess_ErrCode OH_Ability_AcquireChildProcessInfos(
+    OH_AbilityRuntime_ChildProcessInfosHandle* infos, uint32_t* count)
+{
+    if (infos == nullptr || count == nullptr) {
+        TAG_LOGE(AAFwkTag::PROCESSMGR, "invalid params");
+        return NCP_ERR_INVALID_PARAM;
+    }
+    std::vector<AppExecFwk::ChildProcessInfo> childInfos;
+    auto cpmErr = ChildProcessManager::GetInstance().AcquireChildProcesses(childInfos);
+    if (cpmErr != ChildProcessManagerErrorCode::ERR_OK) {
+        TAG_LOGE(AAFwkTag::PROCESSMGR, "AcquireChildProcesses failed, err=%{public}d", static_cast<int>(cpmErr));
+        return NCP_ERR_INTERNAL;
+    }
+    if (!CreateAndFillChildProcessInfos(childInfos, infos, count)) {
+        return NCP_ERR_INTERNAL;
+    }
+    return NCP_NO_ERROR;
 }

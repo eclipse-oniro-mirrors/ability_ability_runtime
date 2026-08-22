@@ -302,6 +302,10 @@ class ApplicationContext {
     return this.__context_impl__.getProcessRunningInformation(callback);
   }
 
+  getUIAbilityChildProcessInfos() {
+    return this.__context_impl__.getUIAbilityChildProcessInfos();
+  }
+
   setColorMode(colorMode) {
     return this.__context_impl__.setColorMode(colorMode);
   }

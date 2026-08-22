@@ -17,6 +17,7 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 config("child_process_manager_config") {
   visibility = [ ":*" ]
   include_dirs = [
+    "${ability_runtime_ndk_path}",
     "${ability_runtime_ndk_path}/ability/ability_runtime/child_process",
     "include",
   ]

@@ -57,6 +57,8 @@ public:
         std::vector<RunningProcessInfo>& info));
     MOCK_METHOD1(GetAllRenderProcesses, int(std::vector<RenderProcessInfo>& info));
     MOCK_METHOD1(GetAllChildrenProcesses, int(std::vector<ChildProcessInfo>&));
+    MOCK_METHOD1(GetSelfChildrenProcesses, int(std::vector<ChildProcessInfo>&));
+    MOCK_METHOD1(GetSelfUIAbilityChildProcesses, int32_t(std::vector<ChildProcessInfo>&));
     MOCK_METHOD0(GetAmsMgr, sptr<IAmsMgr>());
     MOCK_METHOD1(GetAppFreezingTime, void(int& time));
     MOCK_METHOD1(SetAppFreezingTime, void(int time));

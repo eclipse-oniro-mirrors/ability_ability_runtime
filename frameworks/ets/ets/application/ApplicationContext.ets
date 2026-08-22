@@ -21,6 +21,7 @@ import AsyncCallbackWrapper from '../utils/AbilityUtils';
 import Want from '@ohos.app.ability.Want';
 import window from '@ohos.window';
 import { ProcessInformation } from 'application.ProcessInformation';
+import { ChildProcessInformation } from 'application.ChildProcessInformation';
 import ConfigurationConstant from '@ohos.app.ability.ConfigurationConstant';
 import EnvironmentCallback from '@ohos.app.ability.EnvironmentCallback';
 import type ApplicationStateChangeCallback from '@ohos.app.ability.ApplicationStateChangeCallback';
@@ -77,6 +78,7 @@ export default class ApplicationContext extends Context {
   public native nativepreloadUIExtensionAbilitySync(want: Want, callback: AsyncCallbackWrapper<void>): void;
   public native setSupportedProcessCacheSync(isSupported : boolean):void;
   public native nativegetRunningProcessInformation(callback: AsyncCallbackWrapper<Array<ProcessInformation>>): void;
+  public native nativegetUIAbilityChildProcessInfos(callback: AsyncCallbackWrapper<Array<ChildProcessInformation>>): void;
   public native nativeclearUpApplicationData(callback: AsyncCallbackWrapper<void>): void;
   public native nativesetLanguage(language: string): void;
   public native nativesetFontSizeScale(fontSizeScale: double): void;
@@ -183,6 +185,24 @@ export default class ApplicationContext extends Context {
       });
       taskpool.execute((): void => {
         this.nativegetRunningProcessInformation(myCall);
+      });
+    });
+    return p;
+  }
+
+  getUIAbilityChildProcessInfos(): Promise<Array<ChildProcessInformation>> {
+    let p = new Promise<Array<ChildProcessInformation>>((resolve: (data: Array<ChildProcessInformation>) => void,
+      reject: (err: BusinessError) => void): void => {
+      let myCall = new AsyncCallbackWrapper<Array<ChildProcessInformation>>((err: BusinessError | null,
+        data: Array<ChildProcessInformation> | undefined) => {
+        if (err == null || err.code == 0) {
+          resolve(data as Array<ChildProcessInformation>);
+        } else {
+          reject(err);
+        }
+      });
+      taskpool.execute((): void => {
+        this.nativegetUIAbilityChildProcessInfos(myCall);
       });
     });
     return p;

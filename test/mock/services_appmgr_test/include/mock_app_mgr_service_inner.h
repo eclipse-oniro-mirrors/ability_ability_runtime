@@ -57,6 +57,8 @@ public:
     MOCK_METHOD1(GetAllRenderProcesses, int32_t(std::vector<RenderProcessInfo>&));
 #ifdef SUPPORT_CHILD_PROCESS
     MOCK_METHOD1(GetAllChildrenProcesses, int(std::vector<ChildProcessInfo>&));
+    MOCK_METHOD1(GetSelfChildrenProcesses, int(std::vector<ChildProcessInfo>&));
+    MOCK_METHOD1(GetSelfUIAbilityChildProcesses, int32_t(std::vector<ChildProcessInfo>&));
 #endif // SUPPORT_CHILD_PROCESS
     MOCK_METHOD1(RegisterAppStateCallback, void(const sptr<IAppStateCallback>& callback));
     MOCK_METHOD0(StopAllProcess, void());

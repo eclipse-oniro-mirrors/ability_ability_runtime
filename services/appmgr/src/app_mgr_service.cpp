@@ -628,6 +628,17 @@ int AppMgrService::GetAllChildrenProcesses(std::vector<ChildProcessInfo> &info)
     return ERR_INVALID_OPERATION;
 }
 
+int AppMgrService::GetSelfChildrenProcesses(std::vector<ChildProcessInfo> &info)
+{
+#ifdef SUPPORT_CHILD_PROCESS
+    if (!IsReady()) {
+        return ERR_INVALID_OPERATION;
+    }
+    return appMgrServiceInner_->GetSelfChildrenProcesses(info);
+#endif // SUPPORT_CHILD_PROCESS
+    return ERR_INVALID_OPERATION;
+}
+
 int32_t AppMgrService::IsTerminatingByPid(pid_t pid, bool &isTerminating)
 {
     if (!IsReady()) {
@@ -2092,11 +2103,22 @@ int32_t AppMgrService::CreateNativeChildProcess(const std::string &libName,
         TAG_LOGE(AAFwkTag::APPMGR, "not ready");
         return ERR_INVALID_OPERATION;
     }
-    
+
     return appMgrServiceInner_->CreateNativeChildProcess(
         IPCSkeleton::GetCallingPid(), libName, callback, request);
 }
 #endif // SUPPORT_CHILD_PROCESS
+
+int32_t AppMgrService::GetSelfUIAbilityChildProcesses(std::vector<ChildProcessInfo> &infos)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "call");
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "not ready");
+        return ERR_INVALID_OPERATION;
+    }
+
+    return appMgrServiceInner_->GetSelfUIAbilityChildProcesses(infos);
+}
 
 int32_t AppMgrService::CheckCallingIsUserTestMode(const pid_t pid, bool &isUserTest)
 {

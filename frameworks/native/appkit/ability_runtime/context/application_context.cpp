@@ -1128,6 +1128,11 @@ int32_t ApplicationContext::GetProcessRunningInformation(AppExecFwk::RunningProc
     return (contextImpl_ != nullptr) ? contextImpl_->GetProcessRunningInformation(info) : -1;
 }
 
+int32_t ApplicationContext::GetUIAbilityChildProcessInfos(std::vector<AppExecFwk::ChildProcessInfo> &infos)
+{
+    return (contextImpl_ != nullptr) ? contextImpl_->GetUIAbilityChildProcessInfos(infos) : -1;
+}
+
 #ifdef SUPPORT_SCREEN
 void ApplicationContext::GetAllUIAbilities(std::vector<std::shared_ptr<UIAbility>> &uiAbility)
 {

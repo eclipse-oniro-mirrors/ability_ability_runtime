@@ -637,6 +637,25 @@ AppMgrResultCode AppMgrClient::GetAllChildrenProcesses(std::vector<ChildProcessI
     return AppMgrResultCode::RESULT_OK;
 }
 
+AppMgrResultCode AppMgrClient::GetSelfChildrenProcesses(std::vector<ChildProcessInfo> &info)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    auto result = AppMgrResultCode::RESULT_OK;
+#ifdef SUPPORT_CHILD_PROCESS
+    if (mgrHolder_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "mgrHolder_ is nullptr.");
+        return AppMgrResultCode::ERROR_SERVICE_NOT_READY;
+    }
+    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
+    if (service == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Service is nullptr.");
+        return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
+    }
+    result = AppMgrResultCode(service->GetSelfChildrenProcesses(info));
+#endif // SUPPORT_CHILD_PROCESS
+    return result;
+}
+
 AppMgrResultCode AppMgrClient::NotifyMemoryLevel(MemoryLevel level)
 {
     sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
@@ -1716,6 +1735,21 @@ int32_t AppMgrClient::IsChildProcessSupported(bool isNative, bool &isSupported)
         return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
     }
     return service->IsChildProcessSupported(isNative, isSupported);
+}
+
+int32_t AppMgrClient::GetSelfUIAbilityChildProcesses(std::vector<ChildProcessInfo> &infos)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    if (mgrHolder_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "mgrHolder_ is nullptr.");
+        return AppMgrResultCode::ERROR_SERVICE_NOT_READY;
+    }
+    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
+    if (service == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Service is nullptr.");
+        return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
+    }
+    return service->GetSelfUIAbilityChildProcesses(infos);
 }
 
 int32_t AppMgrClient::SetProcessCacheEnable(int32_t pid, bool enable)
