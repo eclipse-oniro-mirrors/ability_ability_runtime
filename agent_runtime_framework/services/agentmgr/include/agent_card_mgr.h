@@ -38,10 +38,9 @@ public:
 
     int32_t HandleBundleRemove(const std::string &bundleName, int32_t userId);
 
-    // Backfills AgentCards for pre-installed apps (isPreInstallApp == true) whose install events
-    // fired before AgentManagerService started listening. Called once BMS is ready (from
-    // OnAddSystemAbility(BUNDLE_MGR_SERVICE_SYS_ABILITY_ID)); BMS finishes its bundle scan/load
-    // before registering, so pre-installed apps are queryable. Offloaded to ffrt; idempotent.
+    // Backfills AgentCards for pre-installed apps whose install events fired before
+    // AgentManagerService started listening. Enumerates all created OS accounts, then fans
+    // out one ffrt task per user. Caller guarantees BMS and accountmgr are online; idempotent.
     static void BackfillPreInstallCards();
 
     int32_t HandlePreInstallBackfill(int32_t userId);

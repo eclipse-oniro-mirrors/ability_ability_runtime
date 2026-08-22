@@ -110,12 +110,22 @@ void AgentManagerService::OnStart() noexcept
     if (!addBundleMgr) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "addBundleMgr failed");
     }
+    // Backfill needs both BMS and accountmgr online; subscribe to both since startup order varies.
+    bool addAccountMgr = AddSystemAbilityListener(SUBSYS_ACCOUNT_SYS_ABILITY_ID_BEGIN);
+    if (!addAccountMgr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "addAccountMgr failed");
+    }
 }
 
 void AgentManagerService::OnStop() noexcept
 {
     TAG_LOGI(AAFwkTag::SER_ROUTER, "agentmgr stop");
     AgentConnectManager::GetInstance().Clear();
+    // Service is stopping: reset the one-shot backfill state so a restart re-listens and re-backfills.
+    std::lock_guard<std::mutex> lock(backfillState_.mutex);
+    backfillState_.bmsReady = false;
+    backfillState_.accountReady = false;
+    backfillState_.triggered = false;
 }
 
 void AgentManagerService::OnAddSystemAbility(int32_t systemAbilityId, const std::string &deviceId) noexcept
@@ -125,18 +135,43 @@ void AgentManagerService::OnAddSystemAbility(int32_t systemAbilityId, const std:
         std::string identity = IPCSkeleton::ResetCallingIdentity();
         RegisterBundleEventCallback();
         IPCSkeleton::SetCallingIdentity(identity);
-        // BMS just became ready. BMS completes its bundle scan/load (OnBmsStarting) before it
-        // registers as a SA (AfterBmsStart::RegisterService), so pre-installed apps are already
-        // queryable now. Backfill AgentCards for pre-installed apps whose install events fired
-        // before RegisterBundleEventCallback was registered. Idempotent; offloaded to ffrt so the
-        // samgr listener thread is not blocked by per-bundle BMS + DB work.
-        AgentCardMgr::BackfillPreInstallCards();
+        // BMS completes its bundle scan/load before registering as a SA, so pre-installed apps
+        // are queryable now. Backfill covers pre-installed apps whose install events fired before
+        // RegisterBundleEventCallback was registered.
+        {
+            std::lock_guard<std::mutex> lock(backfillState_.mutex);
+            backfillState_.bmsReady = true;
+        }
+        TryBackfillPreInstallCards();
+    } else if (systemAbilityId == SUBSYS_ACCOUNT_SYS_ABILITY_ID_BEGIN) {
+        // accountmgr ready; backfill runs once both SAs are online.
+        {
+            std::lock_guard<std::mutex> lock(backfillState_.mutex);
+            backfillState_.accountReady = true;
+        }
+        TryBackfillPreInstallCards();
     }
 }
 
 void AgentManagerService::OnRemoveSystemAbility(int32_t systemAbilityId, const std::string &deviceId) noexcept
 {
     TAG_LOGI(AAFwkTag::SER_ROUTER, "remove sysAbilityId %{public}d", systemAbilityId);
+}
+
+void AgentManagerService::TryBackfillPreInstallCards()
+{
+    // Fire once, after both BMS and accountmgr report ready.
+    bool shouldTrigger = false;
+    {
+        std::lock_guard<std::mutex> lock(backfillState_.mutex);
+        if (backfillState_.bmsReady && backfillState_.accountReady && !backfillState_.triggered) {
+            backfillState_.triggered = true;
+            shouldTrigger = true;
+        }
+    }
+    if (shouldTrigger) {
+        AgentCardMgr::BackfillPreInstallCards();
+    }
 }
 
 void AgentManagerService::RegisterBundleEventCallback()
