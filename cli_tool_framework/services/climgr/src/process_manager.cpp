@@ -51,6 +51,8 @@ namespace {
 constexpr rlim_t MAX_FD_SWEEP_LIMIT = 65536;
 }
 
+const char *ProcessManager::clawSandboxPath_ = "/system/bin/claw_sandbox";
+
 ProcessManager &ProcessManager::GetInstance()
 {
     static ProcessManager instance;
@@ -137,6 +139,25 @@ void ProcessManager::CloseNonStdFds() const
     }
 }
 
+void ProcessManager::SetupChildPipesAndExec(const SessionRecord &record,
+    std::vector<char *> &execArgs) const
+{
+    close(record.stdinPipe[1]);
+    close(record.stdoutPipe[0]);
+    close(record.stderrPipe[0]);
+    dup2(record.stdinPipe[0], STDIN_FILENO);
+    dup2(record.stdoutPipe[1], STDOUT_FILENO);
+    dup2(record.stderrPipe[1], STDERR_FILENO);
+    close(record.stdinPipe[0]);
+    close(record.stdoutPipe[1]);
+    close(record.stderrPipe[1]);
+    CloseNonStdFds();
+    execvp(execArgs[0], execArgs.data());
+    static const char msg[] = "claw_sandbox execvp failed\n";
+    (void)write(STDERR_FILENO, msg, sizeof(msg) - 1);
+    _exit(EXIT_FAILURE);
+}
+
 int32_t ProcessManager::CreateChildProcess(const ExecToolParam &param, const std::string &sandboxConfig,
     const ToolInfo &toolInfo, std::shared_ptr<SessionRecord> record) const
 {
@@ -145,20 +166,17 @@ int32_t ProcessManager::CreateChildProcess(const ExecToolParam &param, const std
         ReportCliExecuteFailed(record->callerBundleName, param.toolName, REASON_PROCESS_CREATE_FAILED);
         return ERR_NO_INIT;
     }
-    // ---- PARENT (pre-fork): all heap allocation happens here, never in child. ----
-    // vector growth + TransferToCmdParam's string concat are malloc-heavy; doing them
-    // before fork means the child only reads the already-allocated buffer (.data() is a
-    // pointer deref, malloc-free, async-signal-safe).
+    // PARENT (pre-fork): all heap allocation happens here, never in child.
     std::vector<std::string> tmpExecArgs;
     ToolUtil::TransferToCmdParam(param.args, tmpExecArgs);
 
-    std::vector<char*> execArgs;
-    execArgs.reserve(8 + tmpExecArgs.size());  // pre-size, no growth in child
-    execArgs.push_back(const_cast<char *>("/system/bin/claw_sandbox"));  // literal in .rodata, no heap
-    execArgs.push_back(const_cast<char *>("--config"));
-    execArgs.push_back(const_cast<char *>(sandboxConfig.c_str()));
-    execArgs.push_back(const_cast<char *>("--cmd"));
-    execArgs.push_back(const_cast<char *>(toolInfo.executablePath.c_str()));
+    std::vector<char *> execArgs = {
+        const_cast<char *>(clawSandboxPath_),
+        const_cast<char *>("--config"),
+        const_cast<char *>(sandboxConfig.c_str()),
+        const_cast<char *>("--cmd"),
+        const_cast<char *>(toolInfo.executablePath.c_str()),
+    };
     if (!param.subcommand.empty()) {
         execArgs.push_back(const_cast<char *>(param.subcommand.c_str()));
     }
@@ -180,31 +198,13 @@ int32_t ProcessManager::CreateChildProcess(const ExecToolParam &param, const std
         ReportCliExecuteFailed(record->callerBundleName, param.toolName, REASON_PROCESS_CREATE_FAILED);
         return ERR_NO_INIT;
     }
-
     if (pid == 0) {
-        // ---- CHILD: only async-signal-safe calls below (close/dup2/execvp/_exit/write).
-        // No std::string ctor, no vector push_back, no HiLog, no malloc. ----
-        close(record->stdinPipe[1]);
-        close(record->stdoutPipe[0]);
-        close(record->stderrPipe[0]);
-        dup2(record->stdinPipe[0], STDIN_FILENO);
-        dup2(record->stdoutPipe[1], STDOUT_FILENO);
-        dup2(record->stderrPipe[1], STDERR_FILENO);
-        close(record->stdinPipe[0]);
-        close(record->stdoutPipe[1]);
-        close(record->stderrPipe[1]);
-        CloseNonStdFds();  // now TAG-free, safe to call from child
-        execvp(execArgs[0], execArgs.data());
-        // execvp only returns on failure; tell parent via stderr pipe (write is async-signal-safe).
-        static const char msg[] = "claw_sandbox execvp failed\n";
-        (void)write(STDERR_FILENO, msg, sizeof(msg) - 1);
-        _exit(EXIT_FAILURE);
+        SetupChildPipesAndExec(*record, execArgs);
     }
 
     // Parent process: close write ends of pipes
     close(record->stdoutPipe[1]);
     close(record->stderrPipe[1]);
-
     // close read
     close(record->stdinPipe[0]);
     record->processId = pid;
@@ -219,22 +219,20 @@ int32_t ProcessManager::CreateShellProcess(const ExecCmdParam &param, const std:
         return ERR_NO_INIT;
     }
     auto tokenId = IPCSkeleton::GetCallingTokenID();
-    // ---- PARENT (pre-fork): compute token flag here. AddCliBinaryInvokerTokenFlag is
-    // pure bitwise OR on the happy path, but its invalid-token branch calls LOGE (HiLog,
-    // not async-signal-safe); computing before fork eliminates even that edge case. ----
+    // PARENT (pre-fork): compute token flag here to keep child async-signal-safe.
     auto atmTokenId = AccessToken::TokenIdKit::AddCliBinaryInvokerTokenFlag(tokenId);
 
-    // ---- PARENT (pre-fork): build argv with heap allocation here, not in child. ----
-    std::vector<char*> execArgs;
-    execArgs.reserve(8);
-    execArgs.push_back(const_cast<char *>("/system/bin/claw_sandbox"));
-    execArgs.push_back(const_cast<char *>("--config"));
-    execArgs.push_back(const_cast<char *>(sandboxConfig.c_str()));
-    execArgs.push_back(const_cast<char *>("--cmd"));
-    execArgs.push_back(const_cast<char *>("/bin/sh"));
-    execArgs.push_back(const_cast<char *>("-c"));
-    execArgs.push_back(const_cast<char *>(param.cmd.c_str()));
-    execArgs.push_back(nullptr);
+    // PARENT (pre-fork): build argv with heap allocation here, not in child.
+    std::vector<char *> execArgs = {
+        const_cast<char *>(clawSandboxPath_),
+        const_cast<char *>("--config"),
+        const_cast<char *>(sandboxConfig.c_str()),
+        const_cast<char *>("--cmd"),
+        const_cast<char *>("/bin/sh"),
+        const_cast<char *>("-c"),
+        const_cast<char *>(param.cmd.c_str()),
+        nullptr,
+    };
     TAG_LOGI(AAFwkTag::CLI_TOOL, "Before fork");
     TAG_LOGD(AAFwkTag::CLI_TOOL, "sandboxConfig: %{public}s", sandboxConfig.c_str());
 
@@ -245,7 +243,7 @@ int32_t ProcessManager::CreateShellProcess(const ExecCmdParam &param, const std:
         return ERR_NO_INIT;
     }
     if (pid == 0) {
-        // ---- CHILD: only async-signal-safe calls (open/close/dup2/execvp/_exit/write). ----
+         // ---- CHILD: only async-signal-safe calls (open/close/dup2/execvp/_exit/write). ----
         // Apply parent-HAP token: open/close are POSIX async-signal-safe; ioctl is not
         // strictly POSIX-listed but is safe for this device driver on OpenHarmony (no
         // malloc/locale/HiLog locks). No HiLog on error (HiLog mutex may be held by a
@@ -255,21 +253,7 @@ int32_t ProcessManager::CreateShellProcess(const ExecCmdParam &param, const std:
             (void)ioctl(tfd, ACCESS_TOKENID_SET_HAP_PTOKENID, &atmTokenId);
             (void)close(tfd);
         }
-
-        close(record->stdinPipe[1]);
-        close(record->stdoutPipe[0]);
-        close(record->stderrPipe[0]);
-        dup2(record->stdinPipe[0], STDIN_FILENO);
-        dup2(record->stdoutPipe[1], STDOUT_FILENO);
-        dup2(record->stderrPipe[1], STDERR_FILENO);
-        close(record->stdinPipe[0]);
-        close(record->stdoutPipe[1]);
-        close(record->stderrPipe[1]);
-        CloseNonStdFds();
-        execvp(execArgs[0], execArgs.data());
-        static const char msg[] = "claw_sandbox execvp failed\n";
-        (void)write(STDERR_FILENO, msg, sizeof(msg) - 1);
-        _exit(EXIT_FAILURE);
+        SetupChildPipesAndExec(*record, execArgs);
     }
     // Parent process: close write ends of pipes
     close(record->stdoutPipe[1]);

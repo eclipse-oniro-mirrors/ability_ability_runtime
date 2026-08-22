@@ -47,6 +47,9 @@ public:
     ExecToolParam CreateTestParam(const std::string &toolName, const std::string &subcommand = "");
     ExecCmdParam CreateTestCmdParam(const std::string &cmd);
     ToolInfo CreateTestToolInfo(const std::string &toolName);
+
+private:
+    const char *savedSandboxPath_ = nullptr;
 };
 
 void ProcessManagerTest::SetUpTestCase(void)
@@ -61,12 +64,17 @@ void ProcessManagerTest::TearDownTestCase(void)
 
 void ProcessManagerTest::SetUp()
 {
-    // Reset state before each test
+    // Override sandbox path to a non-existent binary so execvp fails and the child
+    // reaches _exit(EXIT_FAILURE). On a real device /system/bin/claw_sandbox exists
+    // (built by sandbox_manager), which would make execvp succeed and the child exit
+    // with claw_sandbox's own code instead of EXIT_FAILURE.
+    savedSandboxPath_ = ProcessManager::clawSandboxPath_;
+    ProcessManager::clawSandboxPath_ = "/nonexistent/binary_for_unit_test";
 }
 
 void ProcessManagerTest::TearDown()
 {
-    // Cleanup after each test
+    ProcessManager::clawSandboxPath_ = savedSandboxPath_;
 }
 
 ExecToolParam ProcessManagerTest::CreateTestParam(const std::string &toolName, const std::string &subcommand)
@@ -720,9 +728,9 @@ HWTEST_F(ProcessManagerTest, CreateChildProcess_ChildExitsOnExecvpFailure_0100, 
     ASSERT_EQ(manager.CreateChildProcess(param, sandboxConfig, toolInfo, record), ERR_OK);
     ASSERT_GT(record->processId, 0);
 
-    // claw_sandbox is absent in the test env, so the child's execvp fails and it must
-    // reach _exit(EXIT_FAILURE) via the async-signal-safe path (write + _exit). waitpid
-    // succeeding + WIFEXITED proves the child block did not hang.
+    // SetUp overrides clawSandboxPath_ to a non-existent binary, so the child's execvp
+    // fails and it must reach _exit(EXIT_FAILURE) via the async-signal-safe path
+    // (write + _exit). waitpid succeeding + WIFEXITED proves the child block did not hang.
     int status = 0;
     ASSERT_EQ(waitpid(record->processId, &status, 0), record->processId);
     EXPECT_TRUE(WIFEXITED(status)) << "child did not exit cleanly (hung or signaled)";
@@ -751,8 +759,9 @@ HWTEST_F(ProcessManagerTest, CreateShellProcess_ChildExitsOnExecvpFailure_0100, 
     ASSERT_EQ(manager.CreateShellProcess(param, sandboxConfig, record), ERR_OK);
     ASSERT_GT(record->processId, 0);
 
-    // The child first opens /dev/access_token_id (absent in test env -> open fails,
-    // skipped), then reaches execvp which fails (no claw_sandbox) -> _exit(EXIT_FAILURE).
+    // SetUp overrides clawSandboxPath_ to a non-existent binary. The child first opens
+    // /dev/access_token_id (absent in test env -> open fails, skipped), then reaches
+    // execvp which fails (non-existent path) -> _exit(EXIT_FAILURE).
     int status = 0;
     ASSERT_EQ(waitpid(record->processId, &status, 0), record->processId);
     EXPECT_TRUE(WIFEXITED(status)) << "child did not exit cleanly (hung or signaled)";
