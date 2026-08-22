@@ -39,6 +39,7 @@ bool BlackListFilter(const std::string &strProName, const std::string &proNameNo
 napi_value WrapWant(napi_env env, const AAFwk::Want &want);
 bool UnwrapWant(napi_env env, napi_value param, AAFwk::Want &want);
 bool UnwrapWant(napi_env env, napi_value param, AAFwk::Want &want, const std::string &proNameNotFilter);
+void SetUriWithPassThroughFlag(const std::string &uriString, AAFwk::Want &want);
 
 napi_value WrapWantParamsFD(napi_env env, const AAFwk::WantParams &wantParams);
 

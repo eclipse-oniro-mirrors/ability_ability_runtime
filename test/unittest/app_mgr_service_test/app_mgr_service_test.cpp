@@ -15,6 +15,9 @@
 
 #include <gtest/gtest.h>
 
+#include <fcntl.h>
+#include <unistd.h>
+
 #define private public
 #include "app_mgr_service.h"
 #include "app_utils.h"
@@ -2122,6 +2125,78 @@ HWTEST_F(AppMgrServiceTest, CreateNativeChildProcess_0200, TestSize.Level1)
     request.options = options;
     int32_t res = appMgrService->CreateNativeChildProcess("test.so", callback, request);
     EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.name: CreateNativeChildProcess_0300
+ * @tc.desc: Start native child process with fds, verify fds are closed after the call.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, CreateNativeChildProcess_0300, TestSize.Level1)
+{
+    TAG_LOGD(AAFwkTag::TEST, "CreateNativeChildProcess_0300 called.");
+    sptr<AppMgrService> appMgrService = new (std::nothrow) AppMgrService();
+    ASSERT_NE(appMgrService, nullptr);
+
+    appMgrService->SetInnerService(mockAppMgrServiceInner_);
+    appMgrService->taskHandler_ = taskHandler_;
+    appMgrService->eventHandler_ = eventHandler_;
+
+    EXPECT_CALL(*mockAppMgrServiceInner_, CreateNativeChildProcess(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(ERR_OK));
+
+    int32_t testFd = open("/dev/null", O_RDONLY);
+    ASSERT_GE(testFd, 0);
+
+    sptr<IRemoteObject> callback;
+    ChildProcessOptions options;
+    options.isolationMode = false;
+    options.customProcessName = "";
+    options.isolationUid = false;
+    ChildProcessRequest request;
+    request.childProcessType = CHILD_PROCESS_TYPE_NATIVE;
+    request.childProcessCount = 1;
+    request.options = options;
+    request.args.fds.emplace("testFd", testFd);
+
+    int32_t res = appMgrService->CreateNativeChildProcess("test.so", callback, request);
+    EXPECT_EQ(res, ERR_OK);
+
+    int32_t fdFlags = fcntl(testFd, F_GETFD);
+    EXPECT_EQ(fdFlags, -1);
+}
+
+/**
+ * @tc.name: CreateNativeChildProcess_0400
+ * @tc.desc: Start native child process with fds when service not ready, fds must be closed.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, CreateNativeChildProcess_0400, TestSize.Level1)
+{
+    TAG_LOGD(AAFwkTag::TEST, "CreateNativeChildProcess_0400 called.");
+    sptr<AppMgrService> appMgrService = new (std::nothrow) AppMgrService();
+    ASSERT_NE(appMgrService, nullptr);
+
+    int32_t testFd = open("/dev/null", O_RDONLY);
+    ASSERT_GE(testFd, 0);
+
+    sptr<IRemoteObject> callback;
+    ChildProcessOptions options;
+    options.isolationMode = false;
+    options.customProcessName = "";
+    options.isolationUid = false;
+    ChildProcessRequest request;
+    request.childProcessType = CHILD_PROCESS_TYPE_NATIVE;
+    request.childProcessCount = 1;
+    request.options = options;
+    request.args.fds.emplace("testFd", testFd);
+
+    int32_t res = appMgrService->CreateNativeChildProcess("test.so", callback, request);
+    EXPECT_EQ(res, ERR_INVALID_OPERATION);
+
+    int32_t fdFlags = fcntl(testFd, F_GETFD);
+    EXPECT_EQ(fdFlags, -1);
 }
 #endif // SUPPORT_CHILD_PROCESS
 
