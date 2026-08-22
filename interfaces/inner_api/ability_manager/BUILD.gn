@@ -278,6 +278,7 @@ ohos_shared_library("ability_start_options") {
   ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 ohos_shared_library("mission_info") {
@@ -317,6 +318,7 @@ ohos_shared_library("mission_info") {
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 ohos_shared_library("ability_manager_c") {
@@ -337,6 +339,7 @@ ohos_shared_library("ability_manager_c") {
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 ohos_shared_library("ability_start_setting") {
@@ -368,6 +371,7 @@ ohos_shared_library("ability_start_setting") {
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 ohos_shared_library("process_options") {
@@ -400,6 +404,7 @@ ohos_shared_library("process_options") {
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 ohos_shared_library("start_window_option") {
@@ -443,6 +448,7 @@ ohos_shared_library("start_window_option") {
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 ohos_shared_library("ability_connect_callback_stub") {

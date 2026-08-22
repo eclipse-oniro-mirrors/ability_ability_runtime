@@ -74,8 +74,37 @@ config("optimize_config") {
   ]
   ldflags = [
     "-flto=full",
-    "-Wl,--gc-sections",
   ]
+  if (current_os != "mac") {
+    # --gc-sections is an ELF linker flag; Apple ld (darwin SDK host build) rejects it
+    ldflags += [ "-Wl,--gc-sections" ]
+  }
+}
+
+# Size-oriented optimization WITHOUT explicit -flto. The toolchain already
+# forces ThinLTO globally (build/config/compiler), and targets must not
+# override the LTO mode themselves; this config only adds -Oz plus
+# function/data sections and --gc-sections so dead code is dropped at link
+# time while the global ThinLTO mode is preserved.
+config("size_optimize_config") {
+  cflags = [
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-fstack-protector-strong",
+    "-D_FORTIFY_SOURCE=2",
+    "-Oz",
+  ]
+  cflags_cc = [
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-fstack-protector-strong",
+    "-D_FORTIFY_SOURCE=2",
+    "-Oz",
+  ]
+  if (current_os != "mac") {
+    # --gc-sections is an ELF linker flag; Apple ld (darwin SDK host build) rejects it
+    ldflags = [ "-Wl,--gc-sections" ]
+  }
 }
 
 # Config for TDD static libraries - no Bsymbolic flag
@@ -145,6 +174,7 @@ ohos_shared_library("perm_verification") {
   subsystem_name = "ability"
   innerapi_tags = [ "platformsdk_indirect" ]
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 ohos_static_library("perm_verification_static") {
@@ -271,6 +301,7 @@ ohos_shared_library("hisysevent_report") {
 
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 ohos_static_library("hisysevent_report_static") {
@@ -489,6 +520,7 @@ ohos_shared_library("user_controller") {
   innerapi_tags = [ "platformsdk_indirect" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 ohos_static_library("user_controller_static") {

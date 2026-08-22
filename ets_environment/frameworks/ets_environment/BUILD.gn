@@ -78,4 +78,5 @@ ohos_shared_library("ets_environment") {
   subsystem_name = "ability"
   innerapi_tags = [ "platformsdk" ]
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }

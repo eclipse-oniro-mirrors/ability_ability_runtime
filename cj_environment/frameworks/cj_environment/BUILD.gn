@@ -82,4 +82,5 @@ ohos_shared_library("cj_environment") {
   innerapi_tags = [ "platformsdk" ]
   part_name = "ability_runtime"
   subsystem_name = "ability"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }

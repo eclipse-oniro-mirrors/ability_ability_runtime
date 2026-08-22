@@ -45,4 +45,5 @@ ohos_shared_library("napi_base_context") {
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs += [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
