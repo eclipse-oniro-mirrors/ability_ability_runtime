@@ -507,6 +507,11 @@ int32_t GetUserLockedBundleList(int32_t userId, std::unordered_set<std::string> 
         const std::string &));
     MOCK_METHOD4(QuerySkillType, int32_t(const std::string &, const std::string &,
         const std::string &, int32_t &));
+
+    void SanitizeWantParamsForTest(Want &want)
+    {
+        SanitizeWantParams(want);
+    }
 };
 }  // namespace AAFwk
 }  // namespace OHOS

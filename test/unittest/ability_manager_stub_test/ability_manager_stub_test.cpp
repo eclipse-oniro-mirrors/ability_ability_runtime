@@ -16,13 +16,17 @@
 #include <gtest/gtest.h>
 #include "ability_manager_stub_impl_mock.h"
 #include "ability_scheduler.h"
+#include "access_token.h"
+#include "accesstoken_kit.h"
 #include "app_debug_listener_stub_mock.h"
 #include "hilog_tag_wrapper.h"
 #include "iremote_proxy.h"
 #include "mock_ability_connect_callback.h"
 #include "mock_ability_token.h"
 #include "mock_sa_interceptor_stub.h"
+#include "nativetoken_kit.h"
 #include "sandbox_clone_params.h"
+#include "token_setproc.h"
 
 using namespace testing::ext;
 using namespace testing;
@@ -5721,6 +5725,120 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_NotifySkillFunctionInvoked_0
     int res = stub_->OnRemoteRequest(
         static_cast<uint32_t>(AbilityManagerInterfaceCode::NOTIFY_SKILL_FUNCTION_INVOKED), data, reply, option);
     EXPECT_EQ(res, ERR_INVALID_VALUE);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: SanitizeWantParams
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub SanitizeWantParams
+ * EnvConditions: want has no pass-through flag
+ * CaseDescription: Verify insightIntent and skill params are stripped, uri untouched
+ */
+HWTEST_F(AbilityManagerStubTest, SanitizeWantParams_NoPassThroughFlag, TestSize.Level1)
+{
+    Want want;
+    want.SetUri("https://www.example.com/path");
+    want.SetAction("ohos.want.action.viewData");
+
+    stub_->SanitizeWantParamsForTest(want);
+
+    EXPECT_EQ(want.GetUriString(), "https://www.example.com/path");
+    EXPECT_EQ(want.GetAction(), "ohos.want.action.viewData");
+    EXPECT_FALSE(want.GetBoolParam(Want::PARAM_SET_URI_WITH_ORIGIN_STRING, false));
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: SanitizeWantParams
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub SanitizeWantParams
+ * EnvConditions: third-party caller sets pass-through flag
+ * CaseDescription: Verify third-party flag is stripped
+ */
+HWTEST_F(AbilityManagerStubTest, SanitizeWantParams_ThirdParty_StripsFlag, TestSize.Level1)
+{
+    uint64_t originalToken = GetSelfTokenID();
+    SetSelfTokenID(0);
+
+    Want want;
+    want.SetParam(Want::PARAM_SET_URI_WITH_ORIGIN_STRING, true);
+    want.SetUri("https://www.example.com/path");
+
+    stub_->SanitizeWantParamsForTest(want);
+
+    EXPECT_FALSE(want.GetBoolParam(Want::PARAM_SET_URI_WITH_ORIGIN_STRING, false));
+    EXPECT_FALSE(want.HasParameter(Want::PARAM_SET_URI_WITH_ORIGIN_STRING));
+
+    SetSelfTokenID(originalToken);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: SanitizeWantParams
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub SanitizeWantParams
+ * EnvConditions: SA caller sets pass-through flag
+ * CaseDescription: Verify SA caller keeps the pass-through flag and raw uri
+ */
+HWTEST_F(AbilityManagerStubTest, SanitizeWantParams_SA_KeepsFlag, TestSize.Level1)
+{
+    uint64_t originalToken = GetSelfTokenID();
+    const char *perms[] = { "ohos.permission.INTERACT_ACROSS_LOCAL_ACCOUNTS" };
+    NativeTokenInfoParams infoInstance = {
+        .dcapsNum = 0,
+        .permsNum = 1,
+        .aclsNum = 0,
+        .dcaps = nullptr,
+        .perms = perms,
+        .acls = nullptr,
+        .aplStr = "system_core",
+    };
+    infoInstance.processName = "ability_manager_stub_test";
+    uint64_t nativeToken = GetAccessTokenId(&infoInstance);
+    SetSelfTokenID(nativeToken);
+    Security::AccessToken::AccessTokenKit::ReloadNativeTokenInfo();
+
+    Want want;
+    want.SetParam(Want::PARAM_SET_URI_WITH_ORIGIN_STRING, true);
+    want.SetUri("https://www.example.com/path");
+
+    stub_->SanitizeWantParamsForTest(want);
+
+    EXPECT_TRUE(want.GetBoolParam(Want::PARAM_SET_URI_WITH_ORIGIN_STRING, false));
+
+    SetSelfTokenID(originalToken);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: SanitizeWantParams
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub SanitizeWantParams
+ * EnvConditions: system app caller sets pass-through flag
+ * CaseDescription: Verify system app caller keeps the pass-through flag
+ */
+HWTEST_F(AbilityManagerStubTest, SanitizeWantParams_SystemApp_KeepsFlag, TestSize.Level1)
+{
+    uint64_t originalToken = GetSelfTokenID();
+
+    uint64_t systemAppMask = (static_cast<uint64_t>(1) << 32);
+    uint32_t tokenID = Security::AccessToken::DEFAULT_TOKEN_VERSION;
+    Security::AccessToken::AccessTokenIDInner *idInner =
+        reinterpret_cast<Security::AccessToken::AccessTokenIDInner *>(&tokenID);
+    idInner->type = Security::AccessToken::TOKEN_HAP;
+    uint64_t fullTokenId = systemAppMask | tokenID;
+    SetSelfTokenID(fullTokenId);
+
+    Want want;
+    want.SetParam(Want::PARAM_SET_URI_WITH_ORIGIN_STRING, true);
+    want.SetUri("https://www.example.com/path");
+
+    stub_->SanitizeWantParamsForTest(want);
+
+    EXPECT_TRUE(want.GetBoolParam(Want::PARAM_SET_URI_WITH_ORIGIN_STRING, false));
+
+    SetSelfTokenID(originalToken);
 }
 } // namespace AAFwk
 } // namespace OHOS

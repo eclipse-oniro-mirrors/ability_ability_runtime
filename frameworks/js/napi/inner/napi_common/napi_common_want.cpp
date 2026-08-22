@@ -873,11 +873,6 @@ bool BlackListFilter(const std::string &strProName, const std::string &proNameNo
     if (strProName == Want::PARAM_RESV_DISPLAY_ID) {
         return true;
     }
-    // Reserved for non-standard scheme uri pass-through.
-    // Third-party JS apps are not allowed to set this key.
-    if (strProName == Want::PARAM_SET_URI_WITH_ORIGIN_STRING) {
-        return true;
-    }
     return false;
 }
 
@@ -1214,6 +1209,24 @@ bool UnwrapWant(napi_env env, napi_value param, Want &want)
     return UnwrapWant(env, param, want, "");
 }
 
+void SetUriWithPassThroughFlag(const std::string &uriString, Want &want)
+{
+    if (!want.GetBoolParam(Want::PARAM_SET_URI_WITH_ORIGIN_STRING, false)) {
+        want.SetUri(uriString);
+        return;
+    }
+    auto selfToken = IPCSkeleton::GetSelfTokenID();
+    if (Security::AccessToken::TokenIdKit::IsSystemAppByFullTokenID(selfToken)) {
+        // Restore the raw uri when the pass-through flag is set, so that the
+        // non-standard scheme uri survives re-marshalling.
+        Uri uri(uriString);
+        uri.SetUriWithOriginString(uriString);
+        want.SetUri(uri);
+    } else {
+        want.SetUri(uriString);
+    }
+}
+
 bool UnwrapWant(napi_env env, napi_value param, Want &want, const std::string &proNameNotFilter)
 {
     AbilityRuntime::HandleScope handleScope(env);
@@ -1244,7 +1257,7 @@ bool UnwrapWant(napi_env env, napi_value param, Want &want, const std::string &p
 
     natValueString = "";
     if (UnwrapStringByPropertyName(env, param, "uri", natValueString)) {
-        want.SetUri(natValueString);
+        SetUriWithPassThroughFlag(natValueString, want);
     }
 
     int32_t flags = 0;
