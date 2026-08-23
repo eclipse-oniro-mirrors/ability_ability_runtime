@@ -290,6 +290,11 @@ napi_value JsUIExtensionContext::OnStartAbility(napi_env env, NapiCallbackInfo& 
 #ifdef SUPPORT_SCREEN
     (unwrapArgc == INDEX_ONE) ? InitDisplayId(want) : InitDisplayId(want, startOptions, env, info);
 #endif
+    if ((want.GetFlags() & Want::FLAG_INSTALL_ON_DEMAND) == Want::FLAG_INSTALL_ON_DEMAND) {
+        std::string startTime = std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::
+            system_clock::now().time_since_epoch()).count());
+        want.SetParam(Want::PARAM_RESV_START_TIME, startTime);
+    }
     auto innerErrCode = std::make_shared<ErrCode>(ERR_OK);
     NapiAsyncTask::ExecuteCallback execute = [weak = context_, want, startOptions, unwrapArgc, innerErrCode]() {
         auto context = weak.lock();
@@ -539,6 +544,11 @@ napi_value JsUIExtensionContext::OnStartAbilityForResult(napi_env env, NapiCallb
 #ifdef SUPPORT_SCREEN
     (unwrapArgc == INDEX_ONE) ? InitDisplayId(want) : InitDisplayId(want, startOptions, env, info);
 #endif
+    if ((want.GetFlags() & Want::FLAG_INSTALL_ON_DEMAND) == Want::FLAG_INSTALL_ON_DEMAND) {
+        std::string startTime = std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::
+            system_clock::now().time_since_epoch()).count());
+        want.SetParam(Want::PARAM_RESV_START_TIME, startTime);
+    }
     napi_value lastParam = info.argc > unwrapArgc ? info.argv[unwrapArgc] : nullptr;
     napi_value result = nullptr;
     std::unique_ptr<NapiAsyncTask> uasyncTask = CreateAsyncTaskWithLastParam(env, lastParam, nullptr, nullptr, &result);
@@ -731,6 +741,11 @@ napi_value JsUIExtensionContext::OnStartAbilityForResultAsCaller(napi_env env, N
 #ifdef SUPPORT_SCREEN
     (unwrapArgc == INDEX_ONE) ? InitDisplayId(want) : InitDisplayId(want, startOptions, env, info);
 #endif
+    if ((want.GetFlags() & Want::FLAG_INSTALL_ON_DEMAND) == Want::FLAG_INSTALL_ON_DEMAND) {
+        std::string startTime = std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::
+            system_clock::now().time_since_epoch()).count());
+        want.SetParam(Want::PARAM_RESV_START_TIME, startTime);
+    }
     napi_value result = nullptr;
     std::unique_ptr<NapiAsyncTask> uasyncTask = CreateAsyncTaskWithLastParam(env, nullptr, nullptr, nullptr, &result);
     std::shared_ptr<NapiAsyncTask> asyncTask = std::move(uasyncTask);
