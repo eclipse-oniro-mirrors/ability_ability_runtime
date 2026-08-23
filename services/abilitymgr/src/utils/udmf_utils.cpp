@@ -75,8 +75,15 @@ bool UdmfUtils::IsUdKeyCreateByCaller(uint32_t callerTokenId, const std::string 
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto keyAuthority = IN_PROCESS_CALL(UDMF::UdmfClient::GetInstance().GetBundleNameByUdKey(key));
+    if (keyAuthority.empty()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "keyAuthority is empty");
+        return false;
+    }
     std::string callerAuthority;
-    GetAlterableBundleNameByTokenId(callerTokenId, callerAuthority);
+    if (!GetAlterableBundleNameByTokenId(callerTokenId, callerAuthority)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "GetAlterableBundleNameByTokenId failed");
+        return false;
+    }
     if (callerAuthority != keyAuthority) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Authority: %{public}s-%{public}s", keyAuthority.c_str(),
             callerAuthority.c_str());
