@@ -931,8 +931,9 @@ void EtsAgentManager::ConnectAgentExtensionAbility(ani_env *env, ani_object aniW
         return;
     }
 
-    TAG_LOGI(AAFwkTag::SER_ROUTER, "Connecting to: %{public}s.%{public}s",
-        want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str());
+    TAG_LOGI(AAFwkTag::SER_ROUTER, "Connecting to: %{public}s.%{public}s, agentId:%{public}s",
+        want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(),
+        agentId.c_str());
 
     want.SetParam(AGENTID_KEY, agentId);
     int32_t currentType = static_cast<int32_t>(AgentCardType::APP);

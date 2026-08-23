@@ -81,6 +81,7 @@ ErrCode BundleMgrHelper::GetBundleInfoV9(const std::string &bundleName, int32_t 
 
 ErrCode BundleMgrHelper::GetBundleInfosV9(int32_t flags, std::vector<BundleInfo> &bundleInfos, int32_t userId)
 {
+    AgentRuntime::MyFlag::lastGetBundleInfosUserId = userId;
     if (!AgentRuntime::MyFlag::retGetBundleInfos) {
         return ERR_INVALID_VALUE;
     }

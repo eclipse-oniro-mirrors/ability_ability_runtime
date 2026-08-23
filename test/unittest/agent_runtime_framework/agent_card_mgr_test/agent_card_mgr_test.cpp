@@ -127,6 +127,7 @@ void AgentCardMgrTest::SetUp(void)
     MyFlag::retGetBundleInfos = false;
     MyFlag::mockBundleInfos.clear();
     MyFlag::getBundleInfoV9CallNames.clear();
+    MyFlag::lastGetBundleInfosUserId = 0;
     MyFlag::insertDataCallNames.clear();
 }
 
@@ -1755,6 +1756,26 @@ HWTEST_F(AgentCardMgrTest, HandlePreInstallBackfill_008, TestSize.Level1)
     EXPECT_EQ(agentCardMgr.HandlePreInstallBackfill(100), ERR_OK);
     ASSERT_EQ(MyFlag::insertDataCallNames.size(), 1);
     EXPECT_EQ(MyFlag::insertDataCallNames[0], "keep.bundle");
+}
+
+/**
+ * @tc.name: HandlePreInstallBackfill_009
+ * @tc.desc: HandlePreInstallBackfill forwards the target userId to GetBundleInfosV9 (not ALL_USERID)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardMgrTest, HandlePreInstallBackfill_009, TestSize.Level1)
+{
+    AgentCardMgr agentCardMgr;
+    MyFlag::mockBundleInfos = { BuildPreInstallBundleInfo("pre.bundle") };
+    MyFlag::retGetBundleInfos = true;
+
+    constexpr int32_t ALL_USERID = -3;
+    EXPECT_EQ(agentCardMgr.HandlePreInstallBackfill(100), ERR_OK);
+    EXPECT_EQ(MyFlag::lastGetBundleInfosUserId, 100);
+    EXPECT_NE(MyFlag::lastGetBundleInfosUserId, ALL_USERID);
+
+    EXPECT_EQ(agentCardMgr.HandlePreInstallBackfill(101), ERR_OK);
+    EXPECT_EQ(MyFlag::lastGetBundleInfosUserId, 101);
 }
 } // namespace AgentRuntime
 } // namespace OHOS

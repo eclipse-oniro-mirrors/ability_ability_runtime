@@ -64,6 +64,14 @@ public:
     static ErrCode IsOsAccountExists(const int id, bool &isOsAccountExists);
 
     /**
+     * @brief Gets the local IDs of all created OS accounts.
+     *
+     * @param ids The local IDs of all created OS accounts.
+     * @return error code, ERR_OK on success, others on failure.
+     */
+    static ErrCode QueryAllCreatedOsAccounts(std::vector<int32_t> &ids);
+
+    /**
      * @brief Creates an OS account using the local name and account type.
      *
      * @param name The name of the OS account to create.

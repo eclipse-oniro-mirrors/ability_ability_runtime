@@ -96,6 +96,10 @@ private:
     void Init();
     void RegisterBundleEventCallback();
     /**
+     * @brief Triggers the pre-install AgentCard backfill once both BMS and accountmgr are ready.
+     */
+    void TryBackfillPreInstallCards();
+    /**
      * @brief Validates caller permission and foreground state before classifying the agent connect request.
      */
     int32_t ValidateConnectAgentRequest(const sptr<AAFwk::IAbilityConnection> &connection, int32_t &callerUid);
@@ -174,11 +178,19 @@ private:
     void HandleAgentHostDisconnectDone(const AgentHostDisconnectDoneRequest &request);
     DISALLOW_COPY_AND_MOVE(AgentManagerService);
 
+    struct BackfillState {
+        bool bmsReady = false;
+        bool accountReady = false;
+        bool triggered = false;
+        std::mutex mutex;
+    };
+
 private:
     static sptr<AgentManagerService> instance_;
     std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler_;
     std::shared_ptr<AgentEventHandler> eventHandler_;
     sptr<AgentBundleEventCallback> bundleEventCallback_;
+    BackfillState backfillState_;
 };
 }  // namespace AgentRuntime
 }  // namespace OHOS

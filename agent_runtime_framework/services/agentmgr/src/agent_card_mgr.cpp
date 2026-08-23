@@ -28,6 +28,7 @@
 #include "in_process_call_wrapper.h"
 #include "ipc_skeleton.h"
 #include "json_utils.h"
+#include "os_account_manager_wrapper.h"
 #include "sem_ver.h"
 
 namespace OHOS {
@@ -37,7 +38,6 @@ using json = nlohmann::json;
 namespace {
 constexpr const char* AGENT_CONFIG = "ohos.extension.agent";
 constexpr int32_t BASE_USER_RANGE = 200000;
-constexpr int32_t MAIN_USER_ID = 100; // pre-installed apps live under the main user
 constexpr int32_t MAX_AGENT_CARD_SIZE = 1000;
 constexpr uint32_t GET_AGENT_EXTENSION_BUNDLE_INFO_FLAGS =
     static_cast<uint32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_EXTENSION_ABILITY) |
@@ -211,11 +211,26 @@ int32_t AgentCardMgr::HandleBundleRemove(const std::string &bundleName, int32_t 
     return AgentCardDbMgr::GetInstance().DeleteData(bundleName, userId);
 }
 
+// Backfills pre-installed AgentCards for all created OS accounts. Caller guarantees BMS and
+// accountmgr are online. Enumerates accounts on the caller thread, then fans out one ffrt task
+// per user for the heavy per-bundle BMS + DB work. Idempotent per user.
 void AgentCardMgr::BackfillPreInstallCards()
 {
-    ffrt::submit([] {
-        AgentCardMgr::GetInstance().HandlePreInstallBackfill(MAIN_USER_ID);
-    });
+    std::vector<int32_t> userIds;
+    ErrCode ret = OHOS::AppExecFwk::OsAccountManagerWrapper::QueryAllCreatedOsAccounts(userIds);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "QueryAllCreatedOsAccounts failed: %{public}d, skip backfill", ret);
+        return;
+    }
+    if (userIds.empty()) {
+        TAG_LOGW(AAFwkTag::SER_ROUTER, "no created OS account, skip backfill");
+        return;
+    }
+    for (int32_t userId : userIds) {
+        ffrt::submit([userId] {
+            AgentCardMgr::GetInstance().HandlePreInstallBackfill(userId);
+        });
+    }
 }
 
 int32_t AgentCardMgr::HandlePreInstallBackfill(int32_t userId)
@@ -225,11 +240,12 @@ int32_t AgentCardMgr::HandlePreInstallBackfill(int32_t userId)
         TAG_LOGE(AAFwkTag::SER_ROUTER, "bundleMgrHelper is null");
         return AAFwk::INNER_ERR;
     }
+    // Query per-user instead of ALL_USERID to avoid pulling every user's bundles each iteration.
     uint32_t flags = GET_AGENT_EXTENSION_BUNDLE_INFO_FLAGS |
         static_cast<uint32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_EXCLUDE_CLONE);
     std::vector<BundleInfo> bundleInfos;
     ErrCode result = IN_PROCESS_CALL(bundleMgrHelper->GetBundleInfosV9(static_cast<int32_t>(flags),
-        bundleInfos, Constants::ALL_USERID));
+        bundleInfos, userId));
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "GetBundleInfosV9 failed: %{public}d", result);
         return result;

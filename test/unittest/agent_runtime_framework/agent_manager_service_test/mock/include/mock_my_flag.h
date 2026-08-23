@@ -39,6 +39,7 @@ public:
     static bool retGetResConfigFile;
     static bool isRegisterBundleEventCallbackCalled;
     static bool isAddSystemAbilityListenerCalled;
+    static int32_t backfillPreInstallCardsCallCount;
     static bool retVerifyCallingPermission;
     static bool retVerifyConnectAgentPermission;
     static bool retVerifyGetAgentCardPermission;

@@ -106,7 +106,7 @@ int32_t AgentCardMgr::HandlePreInstallBackfill(int32_t userId)
 
 void AgentCardMgr::BackfillPreInstallCards()
 {
-    // No-op in the service test; the backfill path is covered by agent_card_mgr_test.
+    MyFlag::backfillPreInstallCardsCallCount++;
 }
 }  // namespace AgentRuntime
 }  // namespace OHOS

@@ -999,10 +999,6 @@ bool JsAgentManager::ValidateConnectParameters(napi_env env, size_t argc, napi_v
         return false;
     }
 
-    TAG_LOGI(AAFwkTag::SER_ROUTER, "Connecting to: %{public}s.%{public}s",
-        want.GetElement().GetBundleName().c_str(),
-        want.GetElement().GetAbilityName().c_str());
-
     // Extract agentId
     if (!ConvertFromJsValue(env, argv[ARG_INDEX_1], agentId)) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "agentId not string");
@@ -1015,7 +1011,9 @@ bool JsAgentManager::ValidateConnectParameters(napi_env env, size_t argc, napi_v
         return false;
     }
 
-    TAG_LOGD(AAFwkTag::SER_ROUTER, "agentId: %{public}s", agentId.c_str());
+    TAG_LOGI(AAFwkTag::SER_ROUTER, "Connecting to: %{public}s.%{public}s, agentId:%{public}s",
+        want.GetElement().GetBundleName().c_str(),
+        want.GetElement().GetAbilityName().c_str(), agentId.c_str());
 
     // Validate callback object
     callbackObject = argv[ARG_INDEX_2];

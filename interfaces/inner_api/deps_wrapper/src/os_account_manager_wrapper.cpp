@@ -78,6 +78,28 @@ ErrCode OsAccountManagerWrapper::IsOsAccountExists(const int id, bool &isOsAccou
 #endif // OS_ACCOUNT_PART_ENABLED
 }
 
+ErrCode OsAccountManagerWrapper::QueryAllCreatedOsAccounts(std::vector<int32_t> &ids)
+{
+#ifndef OS_ACCOUNT_PART_ENABLED
+    TAG_LOGD(AAFwkTag::DEFAULT, "Without os account subsystem");
+    return ERR_OK;
+#else // OS_ACCOUNT_PART_ENABLED
+    TAG_LOGD(AAFwkTag::DEFAULT, "os account subsystem");
+    std::vector<AccountSA::OsAccountInfo> osAccountInfos;
+    ErrCode result = AccountSA::OsAccountManager::QueryAllCreatedOsAccounts(osAccountInfos);
+    if (result != ERR_OK) {
+        TAG_LOGE(AAFwkTag::DEFAULT, "QueryAllCreatedOsAccounts failed: %{public}d", result);
+        return result;
+    }
+    ids.clear();
+    ids.reserve(osAccountInfos.size());
+    for (const auto &info : osAccountInfos) {
+        ids.push_back(info.GetLocalId());
+    }
+    return ERR_OK;
+#endif // OS_ACCOUNT_PART_ENABLED
+}
+
 ErrCode OsAccountManagerWrapper::CreateOsAccount(const std::string &name, int32_t &osAccountUserId)
 {
 #ifndef OS_ACCOUNT_PART_ENABLED
