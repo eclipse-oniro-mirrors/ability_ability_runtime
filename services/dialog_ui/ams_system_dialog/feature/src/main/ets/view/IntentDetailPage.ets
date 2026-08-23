@@ -356,16 +356,30 @@ export struct IntentDetailPage {
     const executeParam = format(this.formData);
     let validate: boolean = true;
     this.required?.forEach((key: string) => {
-      if (executeParam[key] === undefined || executeParam[key] === null) {
+      if (executeParam[key] === undefined || executeParam[key] === null ||
+        executeParam[key] === '' || Number.isNaN(executeParam[key] as number)) {
         if (validate) {
           validate = false;
           hilog.error(DOMAIN, TAG, `submitForm validation failed: required field '${key}' is missing`);
         }
       }
     })
-    if (validate) {
-      this.executeLinkIntent(executeParam as Record<string, Object>);
+    if (!validate) {
+      this.getUIContext().showAlertDialog({
+        message: $r('app.string.tips_qsbtzd'),
+        autoCancel: true,
+        alignment: DialogAlignment.Center,
+        offset: { dx: 0, dy: -20 },
+        gridCount: 3,
+        confirm: {
+          value: $r('app.string.Btn_qr'),
+          action: () => {
+          }
+        }
+      });
+      return;
     }
+    this.executeLinkIntent(executeParam as Record<string, Object>);
   }
 
   @Builder
