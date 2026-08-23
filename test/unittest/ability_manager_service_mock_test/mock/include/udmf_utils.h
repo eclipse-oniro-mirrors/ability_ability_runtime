@@ -24,7 +24,7 @@ namespace AbilityRuntime {
 
 class UdmfUtils final {
 public:
-    static int32_t ProcessUdmfKey(const std::string &key, uint32_t targetTokenId);
+    static int32_t ProcessUdmfKey(const std::string &key, uint32_t callerTokenId, uint32_t targetTokenId);
 private:
     static int32_t AddPrivilege(const std::string &key, uint32_t tokenId, const std::string &readPermission);
 };
