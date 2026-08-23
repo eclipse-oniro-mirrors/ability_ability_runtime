@@ -20,6 +20,7 @@ ohos_unittest("napi_common_want_test") {
 
   include_dirs = [
     "${ability_runtime_path}/frameworks/js/napi/inner/napi_common",
+    "${ability_runtime_path}/interfaces/inner_api/runtime/include",
   ]
 
   sources = [
@@ -30,6 +31,7 @@ ohos_unittest("napi_common_want_test") {
     "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_napi_path}/inner/napi_common:napi_common",
     "${ability_runtime_innerkits_path}/wantagent:wantagent_innerkits",
+    "${ability_runtime_path}/js_environment/frameworks/js_environment:js_environment",
   ]
 
   external_deps = [
