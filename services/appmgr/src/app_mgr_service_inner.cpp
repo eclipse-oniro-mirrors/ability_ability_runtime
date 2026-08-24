@@ -9509,7 +9509,7 @@ bool AppMgrServiceInner::IsAsanEnabled(const std::shared_ptr<AppRunningRecord> &
 {
     if (record == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "no such AppRunningRecord");
-        return ERR_INVALID_VALUE;
+        return false;
     }
     const auto &applicationInfo = record->GetApplicationInfo();
     if (applicationInfo == nullptr) {
