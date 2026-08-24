@@ -4345,21 +4345,30 @@ int32_t AppMgrServiceInner::GetAllRenderProcesses(std::vector<RenderProcessInfo>
 int AppMgrServiceInner::GetAllChildrenProcesses(std::vector<ChildProcessInfo> &info)
 {
     auto isPerm = AAFwk::PermissionVerification::GetInstance()->VerifyRunningInfoPerm();
-    // check permission
+    if (isPerm) {
+        for (const auto &item : appRunningManager_->GetAppRunningRecordMap()) {
+            GetChildrenProcesses(item.second, info);
+        }
+    } else {
+        GetSelfChildrenProcesses(info);
+    }
+    return ERR_OK;
+}
+
+int AppMgrServiceInner::GetSelfChildrenProcesses(std::vector<ChildProcessInfo> &info)
+{
+    auto callingTokenId = IPCSkeleton::GetCallingTokenID();
     for (const auto &item : appRunningManager_->GetAppRunningRecordMap()) {
         const auto &appRecord = item.second;
-        if (isPerm) {
+        if (!appRecord) {
+            continue;
+        }
+        auto applicationInfo = appRecord->GetApplicationInfo();
+        if (!applicationInfo) {
+            continue;
+        }
+        if (callingTokenId == applicationInfo->accessTokenId) {
             GetChildrenProcesses(appRecord, info);
-        } else {
-            auto applicationInfo = appRecord->GetApplicationInfo();
-            if (!applicationInfo) {
-                continue;
-            }
-            auto callingTokenId = IPCSkeleton::GetCallingTokenID();
-            auto tokenId = applicationInfo->accessTokenId;
-            if (callingTokenId == tokenId) {
-                GetChildrenProcesses(appRecord, info);
-            }
         }
     }
     return ERR_OK;
@@ -4607,6 +4616,51 @@ void AppMgrServiceInner::GetChildrenProcesses(const std::shared_ptr<AppRunningRe
     }
 }
 #endif // SUPPORT_CHILD_PROCESS
+
+int32_t AppMgrServiceInner::GetSelfUIAbilityChildProcesses(std::vector<ChildProcessInfo> &infos)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
+    if (!appRunningManager_) {
+        TAG_LOGE(AAFwkTag::APPMGR, "appRunningManager_ null");
+        return ERR_NO_INIT;
+    }
+    auto callingTokenId = IPCSkeleton::GetCallingTokenID();
+    for (const auto &item : appRunningManager_->GetAppRunningRecordMap()) {
+        const auto &appRecord = item.second;
+        if (!appRecord) {
+            continue;
+        }
+        auto applicationInfo = appRecord->GetApplicationInfo();
+        if (!applicationInfo) {
+            continue;
+        }
+        if (callingTokenId == applicationInfo->accessTokenId) {
+            GetUIAbilityChildProcesses(appRecord, infos);
+        }
+    }
+    return ERR_OK;
+}
+
+void AppMgrServiceInner::GetUIAbilityChildProcesses(const std::shared_ptr<AppRunningRecord> &appRecord,
+    std::vector<ChildProcessInfo> &info)
+{
+    if (!appRecord) {
+        return;
+    }
+    auto childAppRecordMap = appRecord->GetChildAppRecordMap();
+    for (const auto &iter : childAppRecordMap) {
+        auto childAppRecord = iter.second.lock();
+        if (childAppRecord == nullptr) {
+            continue;
+        }
+        ChildProcessInfo childProcessInfo;
+        childProcessInfo.pid = childAppRecord->GetPid();
+        childProcessInfo.hostPid = appRecord->GetPid();
+        childProcessInfo.processName = childAppRecord->GetProcessName();
+        info.emplace_back(childProcessInfo);
+    }
+}
 
 int32_t AppMgrServiceInner::KillProcessByPid(const pid_t pid, const std::string& reason, bool isKillPrecedeStart,
     int32_t recordId)

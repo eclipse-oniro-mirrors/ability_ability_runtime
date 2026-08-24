@@ -20,6 +20,7 @@
 #include "hilog_tag_wrapper.h"
 #include "ipc_skeleton.h"
 #include "running_process_info.h"
+#include "child_process_info.h"
 #include "securec.h"
 #include "tokenid_kit.h"
 #include "hitrace_meter.h"
@@ -35,6 +36,8 @@ constexpr const char* CLASSNAME_INT = "std.core.Int";
 constexpr const char* CLASSNAME_ASYNC_CALLBACK_WRAPPER = "utils.AbilityUtils.AsyncCallbackWrapper";
 constexpr const char* SET_OBJECT_VOID_SIGNATURE = "iY:";
 constexpr const char* CLASSNAME_INNER = "application.ProcessInformation.ProcessInformationInner";
+constexpr const char* CLASSNAME_CHILD_PROCESS_INNER =
+    "application.ChildProcessInformation.ChildProcessInformationInner";
 constexpr const char* ENUMNAME_PROCESS = "@ohos.app.ability.appManager.appManager.ProcessState";
 constexpr const char* ENUMNAME_BUNDLE = "@ohos.bundle.bundleManager.bundleManager.BundleType";
 std::mutex g_aniCreatorsMutex;
@@ -989,6 +992,113 @@ ani_object CreateRunningProcessInfoArray(ani_env *env, std::vector<AppExecFwk::R
     ani_size index = 0;
     for (auto &processInfo : infos) {
         ani_object aniInfo = WrapProcessInformation(env, processInfo);
+        if (aniInfo == nullptr) {
+            TAG_LOGW(AAFwkTag::ANI, "null aniInfo");
+            break;
+        }
+        status = env->Object_CallMethodByName_Void(arrayObj, "$_set", "iY:", index, aniInfo);
+        if (status != ANI_OK) {
+            TAG_LOGW(AAFwkTag::ANI, "Object_CallMethodByName_Void failed status: %{public}d", status);
+            break;
+        }
+        index++;
+    }
+    return arrayObj;
+}
+
+bool SetChildProcessInfo(ani_env *env, ani_object object, const AppExecFwk::ChildProcessInfo &childInfo)
+{
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "null env");
+        return false;
+    }
+    ani_status status = ANI_OK;
+    if ((status = env->Object_SetPropertyByName_Int(object, "pid", childInfo.pid)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "pid failed status:%{public}d", status);
+        return false;
+    }
+    if ((status = env->Object_SetPropertyByName_Int(object, "parentPid", childInfo.hostPid)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "parentPid failed status:%{public}d", status);
+        return false;
+    }
+    status = env->Object_SetPropertyByName_Ref(object, "processName",
+        AppExecFwk::GetAniString(env, childInfo.processName));
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "processName failed status:%{public}d", status);
+        return false;
+    }
+    return true;
+}
+
+ani_object WrapChildProcessInfo(ani_env *env, const AppExecFwk::ChildProcessInfo &childInfo)
+{
+    ani_class cls = nullptr;
+    ani_status status = ANI_ERROR;
+    ani_method method {};
+    ani_object object = nullptr;
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "null env");
+        return nullptr;
+    }
+    if ((status = env->FindClass(CLASSNAME_CHILD_PROCESS_INNER, &cls)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "FindClass failed status: %{public}d", status);
+        return nullptr;
+    }
+    if (cls == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "null cls");
+        return nullptr;
+    }
+    if ((status = env->Class_FindMethod(cls, "<ctor>", ":", &method)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "find ctor failed status: %{public}d", status);
+        return nullptr;
+    }
+    if ((status = env->Object_New(cls, method, &object)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "Object_New ChildProcessInformationInner failed status: %{public}d", status);
+        return nullptr;
+    }
+    if (object == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "null object");
+        return nullptr;
+    }
+    if (!SetChildProcessInfo(env, object, childInfo)) {
+        TAG_LOGE(AAFwkTag::ANI, "SetChildProcessInfo failed");
+        return nullptr;
+    }
+    return object;
+}
+
+ani_object CreateChildProcessInfoArray(ani_env *env, std::vector<AppExecFwk::ChildProcessInfo> infos)
+{
+    ani_class arrayCls = nullptr;
+    ani_status status = ANI_OK;
+
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "null env");
+        return nullptr;
+    }
+
+    status = env->FindClass(CLASSNAME_ARRAY, &arrayCls);
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "FindClass failed status: %{public}d", status);
+        return nullptr;
+    }
+
+    ani_method arrayCtor;
+    status = env->Class_FindMethod(arrayCls, "<ctor>", "i:", &arrayCtor);
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "find ctor failed status: %{public}d", status);
+        return nullptr;
+    }
+
+    ani_object arrayObj;
+    status = env->Object_New(arrayCls, arrayCtor, &arrayObj, infos.size());
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "Object_New array status: %{public}d", status);
+        return arrayObj;
+    }
+    ani_size index = 0;
+    for (auto &childInfo : infos) {
+        ani_object aniInfo = WrapChildProcessInfo(env, childInfo);
         if (aniInfo == nullptr) {
             TAG_LOGW(AAFwkTag::ANI, "null aniInfo");
             break;

@@ -443,6 +443,28 @@ int AppMgrProxy::GetAllChildrenProcesses(std::vector<ChildProcessInfo> &info)
     return result;
 }
 
+int AppMgrProxy::GetSelfChildrenProcesses(std::vector<ChildProcessInfo> &info)
+{
+    MessageParcel data;
+    MessageParcel reply;
+#ifdef SUPPORT_CHILD_PROCESS
+    MessageOption option(MessageOption::TF_SYNC);
+    if (!WriteInterfaceToken(data)) {
+        return ERR_FLATTEN_OBJECT;
+    }
+    if (!SendTransactCmd(AppMgrInterfaceCode::GET_SELF_CHILDREN_PROCESSES, data, reply)) {
+        return ERR_NULL_OBJECT;
+    }
+    auto error = GetParcelableInfos<ChildProcessInfo>(reply, info);
+    if (error != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetParcelableInfos fail, error: %{public}d", error);
+        return error;
+    }
+#endif // SUPPORT_CHILD_PROCESS
+    int result = reply.ReadInt32();
+    return result;
+}
+
 int32_t AppMgrProxy::IsTerminatingByPid(pid_t pid, bool &isTerminating)
 {
     MessageParcel data;
@@ -2596,6 +2618,27 @@ int32_t AppMgrProxy::CreateNativeChildProcess(const std::string &libName,
     return reply.ReadInt32();
 }
 #endif // SUPPORT_CHILD_PROCESS
+
+int32_t AppMgrProxy::GetSelfUIAbilityChildProcesses(std::vector<ChildProcessInfo> &infos)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    if (!WriteInterfaceToken(data)) {
+        return ERR_FLATTEN_OBJECT;
+    }
+    if (!SendTransactCmd(AppMgrInterfaceCode::GET_SELF_UIABILITY_CHILD_PROCESSES, data, reply)) {
+        return ERR_NULL_OBJECT;
+    }
+    auto error = GetParcelableInfos<ChildProcessInfo>(reply, infos);
+    if (error != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetParcelableInfos fail, error: %{public}d", error);
+        return error;
+    }
+    int result = reply.ReadInt32();
+    return result;
+}
 
 int AppMgrProxy::RegisterNativeChildExitNotify(const sptr<INativeChildNotify> notify)
 {

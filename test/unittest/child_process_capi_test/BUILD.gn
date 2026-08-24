@@ -37,6 +37,8 @@ ohos_unittest("child_process_capi_test") {
     "include",
     "${ability_runtime_test_path}/mock/services_appmgr_test/include",
     "${ability_runtime_native_path}/child_process/include",
+    "${ability_runtime_path}/interfaces/kits/c",
+    "${ability_runtime_path}/interfaces/kits/c/ability_runtime",
   ]
 
   sources = [
@@ -44,6 +46,7 @@ ohos_unittest("child_process_capi_test") {
     "${ability_runtime_native_path}/child_process/src/child_callback_manager.cpp",
     "${ability_runtime_native_path}/child_process/src/native_child_callback.cpp",
     "${ability_runtime_native_path}/child_process/src/native_child_process.cpp",
+    "${ability_runtime_native_path}/child_process/src/child_process_info_internal.cpp",
   ]
 
   deps = [

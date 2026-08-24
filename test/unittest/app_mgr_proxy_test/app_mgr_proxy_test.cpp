@@ -203,7 +203,41 @@ HWTEST_F(AppMgrProxyTest, AppMgrProxy_GetAllChildrenProcesses_0100, TestSize.Lev
 
     GTEST_LOG_(INFO) << "AppMgrProxy_GetAllChildrenProcesses_0100 end";
 }
+
+HWTEST_F(AppMgrProxyTest, AppMgrProxy_GetSelfChildrenProcesses_0100, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "AppMgrProxy_GetSelfChildrenProcesses_0100 start";
+
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mockAppMgrService_.GetRefPtr(), &MockAppMgrService::InvokeSendRequest));
+
+    std::vector<ChildProcessInfo> info;
+    appMgrProxy_->GetSelfChildrenProcesses(info);
+
+    EXPECT_EQ(
+        mockAppMgrService_->code_, static_cast<uint32_t>(AppMgrInterfaceCode::GET_SELF_CHILDREN_PROCESSES));
+
+    GTEST_LOG_(INFO) << "AppMgrProxy_GetSelfChildrenProcesses_0100 end";
+}
 #endif // SUPPORT_CHILD_PROCESS
+
+HWTEST_F(AppMgrProxyTest, AppMgrProxy_GetSelfUIAbilityChildProcesses_0100, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "AppMgrProxy_GetSelfUIAbilityChildProcesses_0100 start";
+
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mockAppMgrService_.GetRefPtr(), &MockAppMgrService::InvokeSendRequest));
+
+    std::vector<ChildProcessInfo> info;
+    appMgrProxy_->GetSelfUIAbilityChildProcesses(info);
+
+    EXPECT_EQ(
+        mockAppMgrService_->code_, static_cast<uint32_t>(AppMgrInterfaceCode::GET_SELF_UIABILITY_CHILD_PROCESSES));
+
+    GTEST_LOG_(INFO) << "AppMgrProxy_GetSelfUIAbilityChildProcesses_0100 end";
+}
 
 /**
  * @tc.name: GetAppRunningStateByBundleName_0100

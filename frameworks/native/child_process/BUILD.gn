@@ -15,8 +15,10 @@ import("//build/ohos.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 config("child_process_ndk_config") {
-  include_dirs =
-      [ "${ability_runtime_ndk_path}/ability/ability_runtime/child_process" ]
+  include_dirs = [
+    "${ability_runtime_ndk_path}/ability/ability_runtime/child_process",
+    "${ability_runtime_ndk_path}/ability_runtime",
+  ]
 
   if (target_cpu == "arm") {
     cflags = [ "-DBINDER_IPC_32BIT" ]
@@ -37,7 +39,10 @@ ohos_shared_library("child_process") {
   }
   branch_protector_ret = "pac_ret"
 
-  include_dirs = [ "include" ]
+  include_dirs = [
+    "include",
+    "${ability_runtime_ndk_path}/ability_runtime",
+  ]
 
   configs = [
     "${ability_runtime_services_path}/common:common_config",
@@ -45,7 +50,10 @@ ohos_shared_library("child_process") {
   ]
   public_configs = [ ":child_process_ndk_config" ]
 
-  sources = [ "${ability_runtime_native_path}/child_process/src/child_callback_manager.cpp" ]
+  sources = [
+    "${ability_runtime_native_path}/child_process/src/child_callback_manager.cpp",
+    "${ability_runtime_native_path}/child_process/src/child_process_info_internal.cpp",
+  ]
 
   deps = [
     "${ability_runtime_innerkits_path}/app_manager:app_manager",

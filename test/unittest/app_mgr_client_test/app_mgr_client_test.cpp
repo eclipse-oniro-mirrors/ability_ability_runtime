@@ -327,7 +327,31 @@ HWTEST_F(AppMgrClientTest, AppMgrClient_GetAllChildrenProcesses_001, TestSize.Le
     EXPECT_EQ(result, AppMgrResultCode::RESULT_OK);
     TAG_LOGI(AAFwkTag::TEST, "GetAllChildrenProcesses_001 end");
 }
+
+HWTEST_F(AppMgrClientTest, AppMgrClient_GetSelfChildrenProcesses_001, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetSelfChildrenProcesses_001 start");
+    auto appMgrClient = std::make_unique<AppMgrClient>();
+    EXPECT_NE(appMgrClient, nullptr);
+
+    std::vector<ChildProcessInfo> info;
+    auto result = appMgrClient->GetSelfChildrenProcesses(info);
+    EXPECT_EQ(result, AppMgrResultCode::RESULT_OK);
+    TAG_LOGI(AAFwkTag::TEST, "GetSelfChildrenProcesses_001 end");
+}
 #endif // SUPPORT_CHILD_PROCESS
+
+HWTEST_F(AppMgrClientTest, AppMgrClient_GetSelfUIAbilityChildProcesses_001, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetSelfUIAbilityChildProcesses_001 start");
+    auto appMgrClient = std::make_unique<AppMgrClient>();
+    EXPECT_NE(appMgrClient, nullptr);
+
+    std::vector<ChildProcessInfo> info;
+    auto result = appMgrClient->GetSelfUIAbilityChildProcesses(info);
+    EXPECT_EQ(result, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "GetSelfUIAbilityChildProcesses_001 end");
+}
 
 /**
  * @tc.name: AppMgrClient_GetRenderProcessTerminationStatus_001

@@ -618,6 +618,15 @@ public:
      * @return ERR_OK, return back success, others fail.
      */
     virtual int GetAllChildrenProcesses(std::vector<ChildProcessInfo> &info);
+
+    /**
+     * GetSelfChildrenProcesses, call GetSelfChildrenProcesses() through proxy project.
+     * Obtains information about children processes that are running for the calling application.
+     *
+     * @param info, child process info.
+     * @return ERR_OK, return back success, others fail.
+     */
+    virtual int GetSelfChildrenProcesses(std::vector<ChildProcessInfo> &info);
 #endif // SUPPORT_CHILD_PROCESS
 
     /**
@@ -1535,6 +1544,11 @@ public:
     virtual int32_t CreateNativeChildProcess(const pid_t hostPid, const std::string &libName,
         const sptr<IRemoteObject> &callback, const ChildProcessRequest &request);
 #endif // SUPPORT_CHILD_PROCESS
+
+    virtual int32_t GetSelfUIAbilityChildProcesses(std::vector<ChildProcessInfo> &infos);
+
+    virtual void GetUIAbilityChildProcesses(const std::shared_ptr<AppRunningRecord> &appRecord,
+        std::vector<ChildProcessInfo> &info);
 
     virtual int32_t RegisterNativeChildExitNotify(const sptr<INativeChildNotify> &callback);
 

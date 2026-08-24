@@ -358,6 +358,15 @@ public:
     virtual AppMgrResultCode GetAllChildrenProcesses(std::vector<ChildProcessInfo> &info);
 
     /**
+     * GetSelfChildrenProcesses, call GetSelfChildrenProcesses() through proxy project.
+     * Obtains information about children processes that are running for the calling application.
+     *
+     * @param info, child process info.
+     * @return ERR_OK, return back success, others fail.
+     */
+    virtual AppMgrResultCode GetSelfChildrenProcesses(std::vector<ChildProcessInfo> &info);
+
+    /**
      * NotifyMemoryLevel, call NotifyMemoryLevel() through proxy project.
      * Notify abilities background the current memory level.
      *
@@ -1045,6 +1054,8 @@ public:
     int32_t IsProcessCacheSupported(int32_t pid, bool &isSupported);
 
     int32_t IsChildProcessSupported(bool isNative, bool &isSupported);
+
+    int32_t GetSelfUIAbilityChildProcesses(std::vector<ChildProcessInfo> &infos);
 
     int32_t SetProcessCacheEnable(int32_t pid, bool enable);
 
