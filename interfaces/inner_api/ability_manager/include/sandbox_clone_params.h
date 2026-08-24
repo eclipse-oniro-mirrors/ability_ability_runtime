@@ -30,6 +30,8 @@ struct SandboxCloneParams : public Parcelable {
     std::string callerBundleName;
     int32_t callerUid = -1;
     uint32_t callerTokenId = 0;
+    int32_t sandBoxCloneIndex = 0;
+    std::string creatorBundleName;
 
     /**
      * @brief Constructor

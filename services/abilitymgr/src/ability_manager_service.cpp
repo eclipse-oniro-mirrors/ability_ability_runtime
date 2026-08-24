@@ -15,7 +15,6 @@
 
 #include "ability_manager_service.h"
 
-#include <charconv>
 #include <dlfcn.h>
 #include <sys/epoll.h>
 #include <unordered_map>
@@ -1430,9 +1429,11 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
     int32_t validUserId = oriValidUserId;
     StartAbilityUtils::ResolveTargetAppCloneIndex(param.want, param.callerToken, validUserId);
     auto sandboxCloneParams = param.sandboxCloneParams;
-    if (param.callerToken != nullptr) {
-        auto callerRecord = Token::GetAbilityRecordByToken(param.callerToken);
-        if (callerRecord) {
+    auto callerRecord = (param.callerToken != nullptr) ? Token::GetAbilityRecordByToken(param.callerToken) : nullptr;
+    if (callerRecord && !param.want.HasParameter(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY)) {
+        int32_t appIndex = callerRecord->GetApplicationInfo().appIndex;
+        if (AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(appIndex) &&
+            callerRecord->GetAbilityInfo().bundleName == param.want.GetBundleNameRef()) {
             sandboxCloneParams = callerRecord->GetSandboxCloneParams();
             TAG_LOGD(AAFwkTag::ABILITYMGR, "get sandboxCloneParams from callerRecord");
         }
@@ -1466,7 +1467,6 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
 
     // Cache the queried abilityInfo to avoid redundant BMS query
     if (!sandboxAbilityInfo.bundleName.empty()) {
-        TAG_LOGD(AAFwkTag::ABILITYMGR, "Caching sandbox clone abilityInfo for reuse");
         if (StartAbilityUtils::startAbilityInfo == nullptr) {
             StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
         }
@@ -1607,13 +1607,10 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
         return result;
     }
 
-    // Store sandbox clone params in abilityRequest.want for later use in StartUIAbilityBySCB
+    // Store sandbox clone params directly in abilityRequest.
     if (!sandboxAbilityInfo.bundleName.empty() && param.sandboxCloneParams != nullptr) {
-        abilityRequest.want.SetParam(AbilityRuntime::GlobalConstant::CLI_CALLER_BUNDLE_NAME,
-            param.sandboxCloneParams->callerBundleName);
-        abilityRequest.want.SetParam(AbilityRuntime::GlobalConstant::CLI_CALLER_TOKEN_ID,
-            std::to_string(param.sandboxCloneParams->callerTokenId));
-        TAG_LOGD(AAFwkTag::ABILITYMGR, "Stored sandbox clone params in want: bundle = %{public}s, "
+        abilityRequest.sandboxCloneParams = param.sandboxCloneParams;
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "Stored sandbox clone params: bundle = %{public}s, "
             "tokenId = %{public}u", param.sandboxCloneParams->callerBundleName.c_str(),
             param.sandboxCloneParams->callerTokenId);
     }
@@ -3462,11 +3459,20 @@ int AbilityManagerService::StartUIAbilityBySCBDefault(sptr<SessionInfo> sessionI
     auto requestCode = sessionInfo->requestCode;
     int32_t appIndex = 0;
     auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
-    if (sessionInfo->want.HasParameter(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX)) {
+    AbilitySessionInfo abilitySessionInfo;
+    auto uiAbilityManager = GetUIAbilityManagerByUserId(currentUserId);
+    // Retrieve sandbox clone info from the map (stored before SCB notification).
+    if (uiAbilityManager != nullptr) {
+        uiAbilityManager->GetAbilitySessionInfo(sessionInfo->requestId, abilitySessionInfo);
+        uiAbilityManager->RemoveAbilitySessionInfo(sessionInfo->requestId);
+    }
+    if (abilitySessionInfo.isWebSandBoxClone) {
         sessionInfo->want.RemoveParam(AbilityRuntime::ServerConstant::DLP_INDEX);
-        appIndex = sessionInfo->want.GetIntParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, 0);
-        auto cloneRet = HandleSandboxCloneLaunch(sessionInfo, sandboxCloneParams, currentUserId, eventInfo);
+        appIndex = abilitySessionInfo.sandBoxCloneIndex;
+        auto cloneRet = HandleSandboxCloneLaunch(sessionInfo, sandboxCloneParams, currentUserId, eventInfo,
+            abilitySessionInfo);
         if (cloneRet != ERR_OK) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "HandleSandboxCloneLaunch failed: %{public}d", cloneRet);
             return cloneRet;
         }
     } else if (!StartAbilityUtils::GetAppIndex(sessionInfo->want, sessionInfo->callerToken, appIndex)) {
@@ -3491,12 +3497,7 @@ int AbilityManagerService::StartUIAbilityBySCBDefault(sptr<SessionInfo> sessionI
         AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result, "blockAllAppStart error");
         return result;
     }
-    abilityRequest.isWebSandBoxClone = sessionInfo->want.GetBoolParam(
-        AbilityRuntime::GlobalConstant::IS_WEB_SANDBOX_CLONE, false);
-    sessionInfo->want.RemoveParam(AbilityRuntime::GlobalConstant::IS_WEB_SANDBOX_CLONE);
-    sessionInfo->want.RemoveParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX);
-    sessionInfo->want.RemoveParam(AbilityRuntime::GlobalConstant::CLI_CALLER_BUNDLE_NAME);
-    sessionInfo->want.RemoveParam(AbilityRuntime::GlobalConstant::CLI_CALLER_TOKEN_ID);
+    abilityRequest.isWebSandBoxClone = abilitySessionInfo.isWebSandBoxClone;
     if (!HandleExecuteSAInterceptor(sessionInfo->want, sessionInfo->callerToken, abilityRequest, result)) {
         return result;
     }
@@ -3596,9 +3597,12 @@ int32_t AbilityManagerService::StartUIAbilityBySCBDefaultCommon(AbilityRequest &
 }
 
 int AbilityManagerService::HandleSandboxCloneLaunch(sptr<SessionInfo> sessionInfo,
-    std::shared_ptr<SandboxCloneParams> &sandboxCloneParams, int32_t currentUserId, std::shared_ptr<EventInfo> eventInfo)
+    std::shared_ptr<SandboxCloneParams> &sandboxCloneParams, int32_t currentUserId,
+    std::shared_ptr<EventInfo> eventInfo, const AbilitySessionInfo &abilitySessionInfo)
 {
     AppExecFwk::AbilityInfo sandboxAbilityInfo;
+    sandboxCloneParams->sandBoxCloneIndex = abilitySessionInfo.sandBoxCloneIndex;
+    sandboxCloneParams->creatorBundleName = abilitySessionInfo.creatorBundleName;
     if (sessionInfo->callerToken != nullptr) {
         auto callerRecord = Token::GetAbilityRecordByToken(sessionInfo->callerToken);
         if (callerRecord && callerRecord->GetAbilityInfo().bundleName == sessionInfo->want.GetBundleNameRef()) {
@@ -3611,21 +3615,11 @@ int AbilityManagerService::HandleSandboxCloneLaunch(sptr<SessionInfo> sessionInf
             }
         }
     } else {
-        sandboxCloneParams->callerBundleName = sessionInfo->want.GetStringParam(
-            AbilityRuntime::GlobalConstant::CLI_CALLER_BUNDLE_NAME);
-        std::string callerTokenIdStr = sessionInfo->want.GetStringParam(
-            AbilityRuntime::GlobalConstant::CLI_CALLER_TOKEN_ID);
-        if (!callerTokenIdStr.empty()) {
-            auto res = std::from_chars(callerTokenIdStr.data(), callerTokenIdStr.data() + callerTokenIdStr.size(),
-                sandboxCloneParams->callerTokenId);
-            if (res.ec != std::errc()) {
-                TAG_LOGE(AAFwkTag::ABILITYMGR, "Failed to parse callerTokenId: %{public}s", callerTokenIdStr.c_str());
-                sandboxCloneParams->callerTokenId = 0;
-            }
-        } else {
-            TAG_LOGW(AAFwkTag::ABILITYMGR, "callerTokenId string is empty, using default value 0");
-            sandboxCloneParams->callerTokenId = 0;
-        }
+        // Retrieve caller info from the map (map stored before SCB notification).
+        sandboxCloneParams->callerBundleName = abilitySessionInfo.callerBundleName;
+        sandboxCloneParams->callerTokenId = abilitySessionInfo.callerTokenId;
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "get scb sandboxCloneParams from map: bundle = %{public}s, tokenId = %{public}u",
+            sandboxCloneParams->callerBundleName.c_str(), sandboxCloneParams->callerTokenId);
     }
     auto cloneRet = ProcessSandboxCloneLaunch(sessionInfo->want, sandboxCloneParams, currentUserId,
         sandboxAbilityInfo);
@@ -7038,11 +7032,10 @@ int32_t AbilityManagerService::GetUidByCloneBundleInfo(
     return bundleInfo.uid;
 }
 
-std::string AbilityManagerService::GetCreatorBundleNameForSandboxClone(const Want &want,
+std::string AbilityManagerService::GetCreatorBundleNameForSandboxClone(const std::string &inputCreatorBundleName,
     const std::string &callerBundleName, uint32_t callerTokenId, int32_t &errCode)
 {
     errCode = ERR_OK;
-    std::string inputCreatorBundleName = want.GetStringParam(AbilityRuntime::GlobalConstant::CREATOR_BUNDLE_NAME);
     bool hasManageSandboxPermission = Security::AccessToken::AccessTokenKit::VerifyAccessToken(
         callerTokenId, PERMISSION_CLI_MANAGE_WEB_SANDBOX, false) ==
         Security::AccessToken::PermissionState::PERMISSION_GRANTED;
@@ -7065,21 +7058,19 @@ int32_t AbilityManagerService::ProcessSandboxCloneLaunch(Want &want,
     const std::shared_ptr<SandboxCloneParams> &sandboxCloneParams, int32_t userId,
     AppExecFwk::AbilityInfo &abilityInfo)
 {
-    // Check if this is a sandbox clone launch (sandboxCloneParams is not null or has sandBoxCloneIndex parameter)
-    if (!sandboxCloneParams || !want.HasParameter(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX)) {
+    if (!sandboxCloneParams) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "Not a sandbox clone launch");
         return ERR_OK;
     }
-
-    int32_t sandBoxCloneIndex = want.GetIntParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, 0);
+    int32_t sandBoxCloneIndex = sandboxCloneParams->sandBoxCloneIndex;
     if (!AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(sandBoxCloneIndex)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Invalid sandBoxCloneIndex= %{public}d", sandBoxCloneIndex);
         return ERR_SANDBOX_CLONE_INDEX_INVALID;
     }
     // Step 1: Get creator bundle name based on permission check, and get elementName.
     int32_t errCode = ERR_OK;
-    std::string creatorBundleName = GetCreatorBundleNameForSandboxClone(want, sandboxCloneParams->callerBundleName,
-        sandboxCloneParams->callerTokenId, errCode);
+    std::string creatorBundleName = GetCreatorBundleNameForSandboxClone(sandboxCloneParams->creatorBundleName,
+        sandboxCloneParams->callerBundleName, sandboxCloneParams->callerTokenId, errCode);
     if (errCode != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "GetCreatorBundleNameForSandboxClone failed: %{public}d", errCode);
         return errCode;
@@ -19338,8 +19329,9 @@ int32_t AbilityManagerService::StartSandboxCloneAbility(const Want &want, const 
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "StartSandboxCloneAbility called with callerBundleName = %{public}s, "
-        "callerUid = %{public}d, callerTokenId = %{public}u", params.callerBundleName.c_str(), params.callerUid,
-        params.callerTokenId);
+        "callerUid = %{public}d, callerTokenId = %{public}u, sandBoxCloneIndex = %{public}d, "
+        "creatorBundleName = %{public}s", params.callerBundleName.c_str(), params.callerUid,
+        params.callerTokenId, params.sandBoxCloneIndex, params.creatorBundleName.c_str());
 
     auto tokenId = IPCSkeleton::GetCallingTokenID();
     if (!Security::AccessToken::AccessTokenKit::IsCliToolToken(tokenId)) {
@@ -19347,14 +19339,8 @@ int32_t AbilityManagerService::StartSandboxCloneAbility(const Want &want, const 
         return ERR_PERMISSION_DENIED;
     }
 
-    if (!want.HasParameter(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX)) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "SANDBOX_CLONE_INDEX parameter not found in Want");
-        return ERR_INVALID_VALUE;
-    }
-
-    int32_t sandBoxCloneIndex = want.GetIntParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, 0);
-    if (!AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(sandBoxCloneIndex)) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "Invalid sandBoxCloneIndex: %{public}d", sandBoxCloneIndex);
+    if (!AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(params.sandBoxCloneIndex)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "Invalid sandBoxCloneIndex: %{public}d", params.sandBoxCloneIndex);
         return ERR_SANDBOX_CLONE_INDEX_INVALID;
     }
 

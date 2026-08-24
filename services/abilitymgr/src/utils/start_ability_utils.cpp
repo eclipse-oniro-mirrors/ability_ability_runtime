@@ -449,8 +449,6 @@ void StartAbilityUtils::SetTargetCloneIndexInSameBundle(const Want &want, sptr<I
     int32_t appIndex = callerRecord->GetApplicationInfo().appIndex;
     if (appIndex >= 0 && appIndex < AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
         (const_cast<Want &>(want)).SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, appIndex);
-    } else if (AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(appIndex)) {
-        (const_cast<Want &>(want)).SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, appIndex);
     }
 }
 

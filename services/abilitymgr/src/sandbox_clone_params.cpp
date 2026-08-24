@@ -28,6 +28,12 @@ bool SandboxCloneParams::ReadFromParcel(Parcel &parcel)
     if (!parcel.ReadUint32(callerTokenId)) {
         return false;
     }
+    if (!parcel.ReadInt32(sandBoxCloneIndex)) {
+        return false;
+    }
+    if (!parcel.ReadString(creatorBundleName)) {
+        return false;
+    }
     return true;
 }
 
@@ -54,6 +60,12 @@ bool SandboxCloneParams::Marshalling(Parcel &parcel) const
         return false;
     }
     if (!parcel.WriteUint32(callerTokenId)) {
+        return false;
+    }
+    if (!parcel.WriteInt32(sandBoxCloneIndex)) {
+        return false;
+    }
+    if (!parcel.WriteString(creatorBundleName)) {
         return false;
     }
     return true;
