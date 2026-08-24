@@ -333,26 +333,7 @@ constexpr const char* REASON_APPRECOVERY_NOTIFYAPP_OVER_LIMIT = "AppRecoveryNoti
 #define CHECKPOINT_MONITOR_IOCTL_MARK_TEMPLATE   _IOR(0xE0, 0x7, struct HMCheckpointMarkS)
 #define CHECKPOINT_MONITOR_IOCTL_UNMARK_TEMPLATE _IOR(0xE0, 0x8, struct HMCheckpointUnMarkS)
 
-#define CHECKPOINT_ERRMSG_MSG_LEN 256
 #define CHECKPOINT_IOCTL_GET_LAST_ERROR          _IOWR(0xE0, 0xC, struct HmCheckpointErrMsgS)
-
-enum CheckpointErrorType : int32_t {
-    CHECKPOINT_ERR_NOERROR = 0,
-    CHECKPOINT_ERR_BINDER,
-    CHECKPOINT_ERR_FS,
-    CHECKPOINT_ERR_NETWORK,
-    CHECKPOINT_ERR_DRIVER,
-    CHECKPOINT_ERR_PROCESS,
-    CHECKPOINT_ERR_UNKNOWN,
-    CHECKPOINT_ERR_MAX
-};
-
-struct HmCheckpointErrMsgS {
-    pid_t pid;
-    uint64_t checkpointId;
-    int32_t errNo;
-    char msg[CHECKPOINT_ERRMSG_MSG_LEN];
-};
 
 constexpr int32_t ROOT_UID = 0;
 constexpr int32_t FOUNDATION_UID = 5523;
@@ -801,8 +782,9 @@ int32_t AppMgrServiceInner::GetValidUserId(int32_t userId)
 int32_t AppMgrServiceInner::NotifyImageOperationFailed(int32_t uid,
     sptr<IImageErrorHandler> errorHandler, ImageError errorCode)
 {
-    HyperSnapErrorCode hyperSnapCode = ConvertImageErrorToHyperSnapCode(errorCode);
-    SaveHyperSnapError(uid, HyperSnapErrorType::CREATE_SNAPSHOT, hyperSnapCode);
+    if (errCode != ImageError::ERR_FORKALL_BUSY && errCode != ImageError::ERR_FORKALL_FAILED) {
+        SaveHyperSnapError(uid, HyperSnapErrorType::CREATE_SNAPSHOT, ConvertImageErrorToHyperSnapCode(errorCode));
+    }
 
     if (errorHandler == nullptr) {
         return -1;
@@ -972,6 +954,27 @@ struct HMCheckpointUnMarkS {
     int32_t pid = -1;
 };
 
+#define CHECKPOINT_ERRMSG_MSG_LEN 256
+
+enum CheckpointErrorType : int32_t {
+    CHECKPOINT_ERR_NOERROR = 0,
+    CHECKPOINT_ERR_BINDER,
+    CHECKPOINT_ERR_FS,
+    CHECKPOINT_ERR_NETWORK,
+    CHECKPOINT_ERR_DRIVER,
+    CHECKPOINT_ERR_PROCESS,
+    CHECKPOINT_ERR_UNKNOWN,
+    CHECKPOINT_ERR_MAX
+};
+
+struct HmCheckpointErrMsgS {
+    pid_t pid;
+    int32_t type;
+    char checkpointName[CHECKPOINT_NAME_LEN];
+    uint32_t errNo;
+    char msg[CHECKPOINT_ERRMSG_MSG_LEN];
+};
+
 int32_t AppMgrServiceInner::KillImageProcess(uint64_t checkpointId)
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
@@ -1079,7 +1082,15 @@ ImageError AppMgrServiceInner::HandleForkAllInner(std::shared_ptr<AppRunningReco
         return ImageError::ERR_FORKALL_BUSY;
     }
     if (errCode != ERR_OK || imagePid <= 0) {
-        return GetCheckpointRestoreError(pid, true);
+        auto imageError = GetCheckpointRestoreError(pid, imageInfo->imageName);
+        SaveHyperSnapError(appRecord->GetUid(), HyperSnapErrorType::CREATE_SNAPSHOT, 
+            ConvertImageErrorToHyperSnapCode(imageError));
+
+        if (errCode == EBUSY) {
+            return ImageError::ERR_FORKALL_BUSY;
+        } else {
+            return ImageError::ERR_FORKALL_FAILED;
+        }  
     }
     appRecord->SetMakeImageState(MakeImageState::MAKE_IMAGE_FINISH);
     UpdateImageInfo(imagePid, checkpointId, appRecord);
@@ -1597,7 +1608,7 @@ int32_t AppMgrServiceInner::TryToUseImageInfo(std::shared_ptr<AbilityInfo> abili
         appRecord = nullptr;
         SnapshotErrorReport(-1, appInfo->bundleName, appInfo->versionName, errCode, "forkall failed");
 
-        auto imageError = GetCheckpointRestoreError(imageInfo->imagePid, false);
+        auto imageError = GetCheckpointRestoreError(imageInfo->imagePid, imageInfo->imageName);
         SaveHyperSnapError(appInfo->uid, HyperSnapErrorType::FORK_FROM_SNAPSHOT, ConvertImageErrorToHyperSnapCode(imageError));
 
         return ERR_OK;
@@ -13453,7 +13464,7 @@ std::string AppMgrServiceInner::GetHyperSnapErrorMessage(HyperSnapErrorCode code
     }
 }
 
-ImageError AppMgrServiceInner::GetCheckpointRestoreError(pid_t pid, bool forkAll)
+ImageError AppMgrServiceInner::GetCheckpointRestoreError(pid_t pid, const std::string &checkpointName)
 {
     if (pid < 0) {
         TAG_LOGW(AAFwkTag::APPMGR, "GetCheckpointRestoreError invalid pid: %{public}d", pid);
@@ -13468,8 +13479,12 @@ ImageError AppMgrServiceInner::GetCheckpointRestoreError(pid_t pid, bool forkAll
 
     struct HmCheckpointErrMsgS errMsg {
         .pid = pid,
-        .checkpointId = -1
+        .type = CHECKPOINT_MONITOR_APP_TYPE
     };
+    int32_t beginIndex = static_cast<int32_t>(checkpointName.size() - (CHECKPOINT_NAME_LEN - 1));
+    beginIndex = beginIndex > 0 ? beginIndex : 0;
+    std::size_t length = checkpointName.copy(errMsg.checkpointName, CHECKPOINT_NAME_LEN - 1, beginIndex);
+    errMsg.checkpointName[length] = '\0';
 
     int ret = ioctl(fd, CHECKPOINT_IOCTL_GET_LAST_ERROR, &errMsg);
     if (ret < 0) {
@@ -13493,11 +13508,6 @@ ImageError AppMgrServiceInner::GetCheckpointRestoreError(pid_t pid, bool forkAll
     }
     TAG_LOGE(AAFwkTag::APPMGR, "Kernel checkpoint error, pid:%{public}d, error:%{public}d, msg:%{public}s",
         pid, static_cast<int32_t>(imageError), errMsg.msg);
-
-    if (forkAll && imageError == ImageError::ERR_INNER) {
-        TAG_LOGE(AAFwkTag::APPMGR, "HandleForkAllInner StartImageProcess failed");
-        imageError = ImageError::ERR_FORKALL_FAILED;
-    }
 
     return imageError;
 }

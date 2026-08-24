@@ -1951,7 +1951,7 @@ private:
      * @param forkAll Whether HandleForkAllInner was called.
      * @return Kernel error as ImageError, ERR_OK when no kernel error is available.
      */
-    static ImageError GetCheckpointRestoreError(pid_t pid, bool forkAll);
+    static ImageError GetCheckpointRestoreError(pid_t pid, const std::string &checkpointName);
 
     /**
      * Get error message (fixed message based on error code enum).
