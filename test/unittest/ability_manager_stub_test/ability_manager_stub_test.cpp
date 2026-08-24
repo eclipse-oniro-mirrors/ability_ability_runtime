@@ -5848,7 +5848,6 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartAbilityForOptionsInner_
     auto capture = static_cast<CapturingStub*>(stub.GetRefPtr());
     MessageParcel data;
     MessageParcel reply;
-    ASSERT_TRUE(data.WriteInterfaceToken(AbilityManagerStub::GetDescriptor()));
     Want want;
     ASSERT_TRUE(data.WriteParcelable(&want));
     StartOptions startOptions;
@@ -5869,7 +5868,6 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartAbilityForResultAsCalle
     auto capture = static_cast<CapturingStub*>(stub.GetRefPtr());
     MessageParcel data;
     MessageParcel reply;
-    ASSERT_TRUE(data.WriteInterfaceToken(AbilityManagerStub::GetDescriptor()));
     Want want;
     ASSERT_TRUE(data.WriteParcelable(&want));
     StartOptions startOptions;
@@ -5889,7 +5887,6 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_OpenAtomicService_Sanitize_0
     auto capture = static_cast<CapturingStub*>(stub.GetRefPtr());
     MessageParcel data;
     MessageParcel reply;
-    ASSERT_TRUE(data.WriteInterfaceToken(AbilityManagerStub::GetDescriptor()));
     Want want;
     ASSERT_TRUE(data.WriteParcelable(&want));
     StartOptions startOptions;
@@ -5910,7 +5907,6 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSelfUIAbilityWithStartO
     auto capture = static_cast<CapturingStub*>(stub.GetRefPtr());
     MessageParcel data;
     MessageParcel reply;
-    ASSERT_TRUE(data.WriteInterfaceToken(AbilityManagerStub::GetDescriptor()));
     Want want;
     ASSERT_TRUE(data.WriteParcelable(&want));
     StartOptions startOptions;
@@ -5928,7 +5924,6 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSelfUIAbilityWithStartO
     auto capture = static_cast<CapturingStub*>(stub.GetRefPtr());
     MessageParcel data;
     MessageParcel reply;
-    ASSERT_TRUE(data.WriteInterfaceToken(AbilityManagerStub::GetDescriptor()));
     Want want;
     ASSERT_TRUE(data.WriteParcelable(&want));
     StartOptions startOptions;
@@ -5947,7 +5942,6 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSelfUIAbilityWithPidRes
     auto capture = static_cast<CapturingStub*>(stub.GetRefPtr());
     MessageParcel data;
     MessageParcel reply;
-    ASSERT_TRUE(data.WriteInterfaceToken(AbilityManagerStub::GetDescriptor()));
     Want want;
     ASSERT_TRUE(data.WriteParcelable(&want));
     StartOptions startOptions;
@@ -5966,7 +5960,6 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSelfUIAbilityInCurrentP
     auto capture = static_cast<CapturingStub*>(stub.GetRefPtr());
     MessageParcel data;
     MessageParcel reply;
-    ASSERT_TRUE(data.WriteInterfaceToken(AbilityManagerStub::GetDescriptor()));
     Want want;
     ASSERT_TRUE(data.WriteParcelable(&want));
     ASSERT_TRUE(data.WriteString("specified_flag"));
@@ -6100,7 +6093,6 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_SendWantSenderInner_Sanitize
     auto capture = static_cast<CapturingStub*>(stub.GetRefPtr());
     MessageParcel data;
     MessageParcel reply;
-    ASSERT_TRUE(data.WriteInterfaceToken(AbilityManagerStub::GetDescriptor()));
     sptr<MockWantSender> wantSender = new (std::nothrow) MockWantSender();
     ASSERT_TRUE(data.WriteRemoteObject(wantSender));
     SenderInfo senderInfo;
@@ -6118,7 +6110,6 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_SendLocalWantSenderInner_San
     auto capture = static_cast<CapturingStub*>(stub.GetRefPtr());
     MessageParcel data;
     MessageParcel reply;
-    ASSERT_TRUE(data.WriteInterfaceToken(AbilityManagerStub::GetDescriptor()));
     SenderInfo senderInfo;
     senderInfo.startOptions = new (std::nothrow) StartOptions();
     senderInfo.startOptions->processOptions = MakeMaliciousProcessOptions();

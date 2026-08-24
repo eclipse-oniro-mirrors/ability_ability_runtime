@@ -2206,7 +2206,9 @@ int AbilityManagerStub::SendWantSenderInner(MessageParcel &data, MessageParcel &
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(senderInfo->want);
-    ProcessOptions::SanitizeSystemFields(senderInfo->startOptions->processOptions);
+    if (senderInfo->startOptions) {
+        ProcessOptions::SanitizeSystemFields(senderInfo->startOptions->processOptions);
+    }
     int32_t result = SendWantSender(wantSender, *senderInfo);
     if (!reply.WriteParcelable(senderInfo.get())) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "completedData write fail");
@@ -2224,7 +2226,9 @@ int AbilityManagerStub::SendLocalWantSenderInner(MessageParcel &data, MessagePar
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(senderInfo->want);
-    ProcessOptions::SanitizeSystemFields(senderInfo->startOptions->processOptions);
+    if (senderInfo->startOptions) {
+        ProcessOptions::SanitizeSystemFields(senderInfo->startOptions->processOptions);
+    }
     int32_t result = SendLocalWantSender(*senderInfo);
     reply.WriteInt32(result);
     senderInfo->want.CloseAllFd();
