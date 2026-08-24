@@ -841,6 +841,7 @@ ImageError AppMgrServiceInner::DestroyImageByCheckpointId(uint64_t checkpointId)
     auto imageInfo = GetImageInfoByCheckPointId(checkpointId);
     if (imageInfo == nullptr) {
         TAG_LOGW(AAFwkTag::APPMGR, "image not exist");
+        return ImageError::ERR_IMAGE_INFO_NOT_EXIST;
     }
     RemoveImageInfoByCheckpointId(checkpointId);
     auto ret = KillImageProcess(checkpointId);
@@ -1909,6 +1910,9 @@ bool AppMgrServiceInner::CheckAppRecordExistByPreloadRequest(const PreloadReques
 void AppMgrServiceInner::reportpreLoadTask(const std::shared_ptr<AppRunningRecord> appRecord)
 {
     auto reportLoadTask = [appRecord]() {
+        if (appRecord == nullptr) {
+            return;
+        }
         auto priorityObj = appRecord->GetPriorityObject();
         if (priorityObj) {
             AAFwk::ResSchedUtil::GetInstance().ReportLoadingEventToRss(AAFwk::LoadingStage::PRELOAD_BEGIN,
@@ -6704,6 +6708,10 @@ void AppMgrServiceInner::HandleTimeOut(const AAFwk::EventWrap &event)
             innerService->HandleTimeOutInner(event);
         }
     };
+    if (taskHandler_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "taskHandler_ null");
+        return;
+    }
     taskHandler_->SubmitTask(task, AAFwk::TaskAttribute{
         .taskName_ = "HandleTimeOutTask",
         .taskQos_ = AAFwk::TaskQoS::USER_INTERACTIVE
@@ -9456,6 +9464,10 @@ bool AppMgrServiceInner::UpdateForeground(const std::shared_ptr<AppRunningRecord
 int32_t AppMgrServiceInner::SubmitDfxFaultTask(const FaultData &faultData, const std::string &bundleName,
     const std::shared_ptr<AppRunningRecord> &appRecord, const int32_t pid)
 {
+    if (appRecord == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "appRecord null");
+        return ERR_INVALID_VALUE;
+    }
     if (AppExecFwk::AppfreezeManager::GetInstance()->CheckPreloadUIExtension(faultData.errorObject.message,
         bundleName, pid, faultData.errorObject.name)) {
         return ERR_OK;
@@ -9490,7 +9502,6 @@ int32_t AppMgrServiceInner::SubmitDfxFaultTask(const FaultData &faultData, const
     };
     AppExecFwk::AppfreezeManager::GetInstance()->InitWarningCpuInfo(faultData, info);
     dfxTaskHandler_->SubmitTask(notifyAppTask, "NotifyAppFaultTask");
-    dfxTaskHandler_->SubmitTask(notifyAppTask, "NotifyAppFaultTask");
     TAG_LOGW(AAFwkTag::APPDFR, "submit NotifyAppFaultTask, eventName:%{public}s, bundleName:%{public}s, "
         "endTime:%{public}s, interval:%{public}" PRId64 " ms", faultData.errorObject.name.c_str(),
         bundleName.c_str(), AbilityRuntime::TimeUtil::DefaultCurrentTimeStr().c_str(),
@@ -9507,6 +9518,10 @@ int32_t AppMgrServiceInner::SubmitDfxFaultTask(const FaultData &faultData, const
 
 bool AppMgrServiceInner::IsAsanEnabled(const std::shared_ptr<AppRunningRecord> &record)
 {
+    if (record == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "record null");
+        return false;
+    }
     const auto &applicationInfo = record->GetApplicationInfo();
     if (applicationInfo == nullptr) {
         return false;
@@ -9732,6 +9747,10 @@ int32_t AppMgrServiceInner::TransformedNotifyAppFault(const AppFaultDataBySA &fa
             }
             this->TimeoutNotifyApp(ctx.pid, ctx.uid, ctx.bundleName, ctx.processName, transformedFaultData, ctx.recordId);
         };
+        if (dfxTaskHandler_ == nullptr) {
+            TAG_LOGE(AAFwkTag::APPMGR, "dfxTaskHandler_ null");
+            return ERR_NO_INIT;
+        }
         dfxTaskHandler_->SubmitTask(timeoutNotifyApp, transformedFaultData.timeoutMarkers, timeout);
     }
     record->NotifyAppFault(transformedFaultData);
