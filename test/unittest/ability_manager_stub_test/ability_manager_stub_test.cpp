@@ -5833,6 +5833,15 @@ public:
 };
 } // namespace
 
+HWTEST_F(AbilityManagerStubTest, ProcessOptions_SanitizeSystemFields_0100, TestSize.Level1)
+{
+    ProcessOptions::SanitizeSystemFields(nullptr);
+    auto opts = MakeMaliciousProcessOptions();
+    ProcessOptions::SanitizeSystemFields(opts);
+    ExpectSystemFieldsSanitized(opts);
+    EXPECT_EQ(opts->selfPid, -1);
+}
+
 HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartAbilityForOptionsInner_Sanitize_0100, TestSize.Level1)
 {
     auto stub = sptr<AbilityManagerStubImplMock>(new CapturingStub());

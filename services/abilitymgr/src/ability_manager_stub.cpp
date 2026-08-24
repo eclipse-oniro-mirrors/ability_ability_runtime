@@ -2139,9 +2139,7 @@ int AbilityManagerStub::StartAbilityForOptionsInner(MessageParcel &data, Message
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startOptions null");
         return ERR_INVALID_VALUE;
     }
-    if (startOptions->processOptions != nullptr) {
-        startOptions->processOptions->SanitizeSystemFields();
-    }
+    ProcessOptions::SanitizeSystemFields(startOptions->processOptions);
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
         callerToken = data.ReadRemoteObject();
@@ -2208,9 +2206,7 @@ int AbilityManagerStub::SendWantSenderInner(MessageParcel &data, MessageParcel &
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(senderInfo->want);
-    if (senderInfo->startOptions != nullptr && senderInfo->startOptions->processOptions != nullptr) {
-        senderInfo->startOptions->processOptions->SanitizeSystemFields();
-    }
+    ProcessOptions::SanitizeSystemFields(senderInfo->startOptions->processOptions);
     int32_t result = SendWantSender(wantSender, *senderInfo);
     if (!reply.WriteParcelable(senderInfo.get())) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "completedData write fail");
@@ -2228,9 +2224,7 @@ int AbilityManagerStub::SendLocalWantSenderInner(MessageParcel &data, MessagePar
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(senderInfo->want);
-    if (senderInfo->startOptions != nullptr && senderInfo->startOptions->processOptions != nullptr) {
-        senderInfo->startOptions->processOptions->SanitizeSystemFields();
-    }
+    ProcessOptions::SanitizeSystemFields(senderInfo->startOptions->processOptions);
     int32_t result = SendLocalWantSender(*senderInfo);
     reply.WriteInt32(result);
     senderInfo->want.CloseAllFd();
@@ -4560,9 +4554,7 @@ int AbilityManagerStub::StartAbilityForResultAsCallerForOptionsInner(MessageParc
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startOptions null");
         return ERR_INVALID_VALUE;
     }
-    if (startOptions->processOptions != nullptr) {
-        startOptions->processOptions->SanitizeSystemFields();
-    }
+    ProcessOptions::SanitizeSystemFields(startOptions->processOptions);
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
         callerToken = data.ReadRemoteObject();
@@ -4892,9 +4884,7 @@ int32_t AbilityManagerStub::OpenAtomicServiceInner(MessageParcel &data, MessageP
         TAG_LOGE(AAFwkTag::ABILITYMGR, "options null");
         return ERR_INVALID_VALUE;
     }
-    if (options->processOptions != nullptr) {
-        options->processOptions->SanitizeSystemFields();
-    }
+    ProcessOptions::SanitizeSystemFields(options->processOptions);
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
         callerToken = data.ReadRemoteObject();
@@ -5252,9 +5242,7 @@ int32_t AbilityManagerStub::StartSelfUIAbilityWithStartOptionsInner(MessageParce
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startOptions null");
         return ERR_READ_START_OPTIONS;
     }
-    if (options->processOptions != nullptr) {
-        options->processOptions->SanitizeSystemFields();
-    }
+    ProcessOptions::SanitizeSystemFields(options->processOptions);
     int32_t result = StartSelfUIAbilityWithStartOptions(*want, *options);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write StartSelfUIAbilityWithStartOptions result fail");
@@ -5298,9 +5286,7 @@ int32_t AbilityManagerStub::StartSelfUIAbilityWithStartOptionsAndTokenInner(Mess
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startOptions null");
         return ERR_READ_START_OPTIONS;
     }
-    if (options->processOptions != nullptr) {
-        options->processOptions->SanitizeSystemFields();
-    }
+    ProcessOptions::SanitizeSystemFields(options->processOptions);
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
         callerToken = data.ReadRemoteObject();
@@ -5327,9 +5313,7 @@ int32_t AbilityManagerStub::StartSelfUIAbilityWithPidResultInner(MessageParcel &
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startOptions null");
         return ERR_READ_START_OPTIONS;
     }
-    if (options->processOptions != nullptr) {
-        options->processOptions->SanitizeSystemFields();
-    }
+    ProcessOptions::SanitizeSystemFields(options->processOptions);
     auto callbackId = data.ReadUint64();
     int32_t result = StartSelfUIAbilityWithPidResult(*want, *options, callbackId);
     if (!reply.WriteInt32(result)) {
@@ -5776,9 +5760,7 @@ int AbilityManagerStub::StartSelfUIAbilityInCurrentProcessInner(MessageParcel &d
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startOptions null");
         return ERR_INVALID_VALUE;
     }
-    if (startOptions->processOptions != nullptr) {
-        startOptions->processOptions->SanitizeSystemFields();
-    }
+    ProcessOptions::SanitizeSystemFields(startOptions->processOptions);
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
         callerToken = data.ReadRemoteObject();

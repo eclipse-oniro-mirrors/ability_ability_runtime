@@ -136,18 +136,22 @@ bool ProcessOptions::IsNewHiddenProcessMode(ProcessMode value)
     return (value == ProcessMode::NEW_HIDDEN_PROCESS);
 }
 
-void ProcessOptions::SanitizeSystemFields()
+void ProcessOptions::SanitizeSystemFields(std::shared_ptr<ProcessOptions> options)
 {
+    if (options == nullptr) {
+        return;
+    }
     TAG_LOGW(AAFwkTag::ABILITYMGR, "Sanitize system-only fields: isRestartKeepAlive=%{public}d, "
         "isStartFromNDK=%{public}d, isPreloadStart=%{public}d, loadAbilityCallbackId=%{public}" PRIu64 ", "
         "callingPid=%{public}d, selfPid=%{public}d",
-        isRestartKeepAlive, isStartFromNDK, isPreloadStart, loadAbilityCallbackId, callingPid, selfPid);
-    isRestartKeepAlive = false;
-    isStartFromNDK = false;
-    isPreloadStart = false;
-    loadAbilityCallbackId = 0;
-    callingPid = -1;
-    selfPid = -1;
+        options->isRestartKeepAlive, options->isStartFromNDK, options->isPreloadStart,
+        options->loadAbilityCallbackId, options->callingPid, options->selfPid);
+    options->isRestartKeepAlive = false;
+    options->isStartFromNDK = false;
+    options->isPreloadStart = false;
+    options->loadAbilityCallbackId = 0;
+    options->callingPid = -1;
+    options->selfPid = -1;
 }
 }  // namespace AAFwk
 }  // namespace OHOS
