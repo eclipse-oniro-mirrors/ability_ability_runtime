@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include <cinttypes>
+
 #include "process_options.h"
 
 #include "hilog_tag_wrapper.h"
@@ -136,6 +138,10 @@ bool ProcessOptions::IsNewHiddenProcessMode(ProcessMode value)
 
 void ProcessOptions::SanitizeSystemFields()
 {
+    TAG_LOGW(AAFwkTag::ABILITYMGR, "Sanitize system-only fields: isRestartKeepAlive=%{public}d, "
+        "isStartFromNDK=%{public}d, isPreloadStart=%{public}d, loadAbilityCallbackId=%{public}" PRIu64 ", "
+        "callingPid=%{public}d, selfPid=%{public}d",
+        isRestartKeepAlive, isStartFromNDK, isPreloadStart, loadAbilityCallbackId, callingPid, selfPid);
     isRestartKeepAlive = false;
     isStartFromNDK = false;
     isPreloadStart = false;

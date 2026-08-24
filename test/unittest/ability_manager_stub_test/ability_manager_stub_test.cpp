@@ -5737,9 +5737,9 @@ std::shared_ptr<ProcessOptions> MakeMaliciousProcessOptions()
     opts->isRestartKeepAlive = true;
     opts->isStartFromNDK = true;
     opts->isPreloadStart = true;
-    opts->loadAbilityCallbackId = 9527ULL;
-    opts->callingPid = 9999;
-    opts->selfPid = 8888;
+    opts->loadAbilityCallbackId = 1;
+    opts->callingPid = 1;
+    opts->selfPid = 1;
     return opts;
 }
 
@@ -5752,6 +5752,8 @@ void ExpectSystemFieldsSanitized(const std::shared_ptr<ProcessOptions>& opts)
     EXPECT_EQ(opts->loadAbilityCallbackId, 0ULL);
     EXPECT_EQ(opts->callingPid, -1);
     EXPECT_EQ(opts->selfPid, -1);
+    EXPECT_EQ(opts->processMode, ProcessMode::NEW_PROCESS_ATTACH_TO_PARENT);
+    EXPECT_EQ(opts->startupVisibility, StartupVisibility::STARTUP_HIDE);
 }
 
 class CapturingStub : public AbilityManagerStubImplMock {
@@ -5804,15 +5806,32 @@ public:
         capturedOpts = startOptions.processOptions;
         return ERR_OK;
     }
+
+    int SendWantSender(sptr<IWantSender> target, SenderInfo& senderInfo) override
+    {
+        if (senderInfo.startOptions != nullptr) {
+            capturedOpts = senderInfo.startOptions->processOptions;
+        }
+        return 0;
+    }
+
+    int SendLocalWantSender(const SenderInfo& senderInfo) override
+    {
+        if (senderInfo.startOptions != nullptr) {
+            capturedOpts = senderInfo.startOptions->processOptions;
+        }
+        return 0;
+    }
+};
+
+class MockWantSender : public IRemoteStub<IWantSender> {
+public:
+    int OnRemoteRequest(uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) override
+    {
+        return ERR_NONE;
+    }
 };
 } // namespace
-
-HWTEST_F(AbilityManagerStubTest, ProcessOptions_SanitizeSystemFields_0100, TestSize.Level1)
-{
-    auto opts = MakeMaliciousProcessOptions();
-    opts->SanitizeSystemFields();
-    ExpectSystemFieldsSanitized(opts);
-}
 
 HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartAbilityForOptionsInner_Sanitize_0100, TestSize.Level1)
 {
@@ -6064,6 +6083,40 @@ HWTEST_F(AbilityManagerStubTest, SanitizeWantParams_SystemApp_KeepsFlag, TestSiz
     EXPECT_TRUE(want.GetBoolParam(Want::PARAM_SET_URI_WITH_ORIGIN_STRING, false));
 
     SetSelfTokenID(originalToken);
+}
+
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_SendWantSenderInner_Sanitize_0100, TestSize.Level1)
+{
+    auto stub = sptr<AbilityManagerStubImplMock>(new CapturingStub());
+    auto capture = static_cast<CapturingStub*>(stub.GetRefPtr());
+    MessageParcel data;
+    MessageParcel reply;
+    ASSERT_TRUE(data.WriteInterfaceToken(AbilityManagerStub::GetDescriptor()));
+    sptr<MockWantSender> wantSender = new (std::nothrow) MockWantSender();
+    ASSERT_TRUE(data.WriteRemoteObject(wantSender));
+    SenderInfo senderInfo;
+    senderInfo.startOptions = new (std::nothrow) StartOptions();
+    senderInfo.startOptions->processOptions = MakeMaliciousProcessOptions();
+    ASSERT_TRUE(data.WriteParcelable(&senderInfo));
+    auto res = stub->SendWantSenderInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+    ExpectSystemFieldsSanitized(capture->capturedOpts);
+}
+
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_SendLocalWantSenderInner_Sanitize_0100, TestSize.Level1)
+{
+    auto stub = sptr<AbilityManagerStubImplMock>(new CapturingStub());
+    auto capture = static_cast<CapturingStub*>(stub.GetRefPtr());
+    MessageParcel data;
+    MessageParcel reply;
+    ASSERT_TRUE(data.WriteInterfaceToken(AbilityManagerStub::GetDescriptor()));
+    SenderInfo senderInfo;
+    senderInfo.startOptions = new (std::nothrow) StartOptions();
+    senderInfo.startOptions->processOptions = MakeMaliciousProcessOptions();
+    ASSERT_TRUE(data.WriteParcelable(&senderInfo));
+    auto res = stub->SendLocalWantSenderInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+    ExpectSystemFieldsSanitized(capture->capturedOpts);
 }
 } // namespace AAFwk
 } // namespace OHOS
