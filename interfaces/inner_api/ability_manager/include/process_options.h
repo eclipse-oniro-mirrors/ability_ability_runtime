@@ -55,6 +55,8 @@ public:
     static bool IsAttachToStatusBarItemMode(ProcessMode value);
     static bool IsNewHiddenProcessMode(ProcessMode value);
 
+    void SanitizeSystemFields();
+
     bool isRestartKeepAlive = false;
     bool isStartFromNDK = false;
     bool isPreloadStart = false;

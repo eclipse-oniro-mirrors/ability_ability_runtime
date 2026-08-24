@@ -35,6 +35,7 @@ ohos_unittest("ability_manager_stub_test") {
   sources = [
     # add mock file
     "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/appexecfwk_core/src/appmgr/mock_app_scheduler.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/process_options.cpp",
     "ability_manager_stub_test.cpp",
   ]
 

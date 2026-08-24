@@ -133,5 +133,15 @@ bool ProcessOptions::IsNewHiddenProcessMode(ProcessMode value)
 {
     return (value == ProcessMode::NEW_HIDDEN_PROCESS);
 }
+
+void ProcessOptions::SanitizeSystemFields()
+{
+    isRestartKeepAlive = false;
+    isStartFromNDK = false;
+    isPreloadStart = false;
+    loadAbilityCallbackId = 0;
+    callingPid = -1;
+    selfPid = -1;
+}
 }  // namespace AAFwk
 }  // namespace OHOS
