@@ -144,6 +144,29 @@ public:
     ErrCode GetAllFunctions(std::vector<FunctionInfo> &functions);
 
     /**
+     * @brief Batch register functions (one-way, fire-and-forget, no successCount)
+     * @param functions Vector of FunctionInfo to register
+     * @return ErrCode ERR_OK if the request was sent; service-side result is not reported
+     */
+    ErrCode BatchRegisterFunctionsAsync(const std::vector<FunctionInfo> &functions);
+
+    /**
+     * @brief Batch unregister intentFunctions by namespace (one-way, fire-and-forget)
+     * @param functionNamespace Namespace to delete all functions from
+     * @return ErrCode ERR_OK if the request was sent; service-side result is not reported
+     */
+    ErrCode UnregisterIntentFunctionsByNamespaceAsync(const std::string &functionNamespace);
+
+    /**
+     * @brief Reset all functions by namespace (one-way, fire-and-forget, no successCount)
+     * @param functionNamespace Namespace to reset functions for
+     * @param functions New function list to replace existing ones
+     * @return ErrCode ERR_OK if the request was sent; service-side result is not reported
+     */
+    ErrCode ResetNamespaceFunctionsAsync(const std::string &functionNamespace,
+        const std::vector<FunctionInfo> &functions);
+
+    /**
      * @brief Execute a CLI tool with key-value pairs (convenience method).
      * @param param The CLI tool param.
      * @param callback reply callback.

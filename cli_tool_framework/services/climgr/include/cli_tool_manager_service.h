@@ -159,6 +159,29 @@ public:
      */
     int32_t GetAllFunctions(FunctionsRawData &functions) override;
 
+    /**
+     * @brief Batch register functions (one-way, result not reported to caller)
+     * @param functions FunctionsRawData to register
+     * @return int32_t ERR_OK on success, error code otherwise (local result only, not sent back)
+     */
+    int32_t BatchRegisterFunctionsAsync(const FunctionsRawData &functions) override;
+
+    /**
+     * @brief Batch unregister intentFunctions by namespace (one-way, result not reported to caller)
+     * @param functionNamespace Namespace to delete all functions from
+     * @return int32_t ERR_OK on success, error code otherwise (local result only, not sent back)
+     */
+    int32_t UnregisterIntentFunctionsByNamespaceAsync(const std::string &functionNamespace) override;
+
+    /**
+     * @brief Reset all functions by namespace (one-way, result not reported to caller)
+     * @param functionNamespace Namespace to reset functions for
+     * @param functions New function list to replace existing ones
+     * @return int32_t ERR_OK on success, error code otherwise (local result only, not sent back)
+     */
+    int32_t ResetNamespaceFunctionsAsync(const std::string &functionNamespace,
+        const FunctionsRawData &functions) override;
+
 protected:
     void OnStart() override;
     void OnStop() override;

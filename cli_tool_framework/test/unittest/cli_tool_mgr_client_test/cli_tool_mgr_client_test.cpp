@@ -779,5 +779,97 @@ HWTEST_F(CliToolMGRClientTest, ResetNamespaceFunctions_0400, TestSize.Level1)
     EXPECT_EQ(successCount, 0);
 }
 
+/**
+ * @tc.name: BatchRegisterFunctionsAsync_0100
+ * @tc.desc: Test BatchRegisterFunctionsAsync success path
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, BatchRegisterFunctionsAsync_0100, TestSize.Level1)
+{
+    SetMockService();
+    CliToolMgrClientFlag::retBatchRegisterFunctions = ERR_OK;
+
+    std::vector<FunctionInfo> functions;
+    functions.push_back(BuildFunctionInfo("async_ns", "func1"));
+    functions.push_back(BuildFunctionInfo("async_ns", "func2"));
+
+    EXPECT_EQ(CliToolMGRClient::GetInstance().BatchRegisterFunctionsAsync(functions), ERR_OK);
+}
+
+/**
+ * @tc.name: BatchRegisterFunctionsAsync_0200
+ * @tc.desc: Test BatchRegisterFunctionsAsync with null proxy
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, BatchRegisterFunctionsAsync_0200, TestSize.Level1)
+{
+    CliToolMgrClientFlag::nullSystemAbility = true;
+
+    std::vector<FunctionInfo> functions;
+    functions.push_back(BuildFunctionInfo("null_ns", "func1"));
+
+    EXPECT_EQ(CliToolMGRClient::GetInstance().BatchRegisterFunctionsAsync(functions),
+        GET_CLI_TOOL_MGR_SERVICE_FAILED);
+}
+
+/**
+ * @tc.name: UnregisterIntentFunctionsByNamespaceAsync_0100
+ * @tc.desc: Test UnregisterIntentFunctionsByNamespaceAsync success path
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, UnregisterIntentFunctionsByNamespaceAsync_0100, TestSize.Level1)
+{
+    SetMockService();
+    CliToolMgrClientFlag::retUnregisterFunction = ERR_OK;
+
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterIntentFunctionsByNamespaceAsync("async_ns"), ERR_OK);
+}
+
+/**
+ * @tc.name: UnregisterIntentFunctionsByNamespaceAsync_0200
+ * @tc.desc: Test UnregisterIntentFunctionsByNamespaceAsync with null proxy
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, UnregisterIntentFunctionsByNamespaceAsync_0200, TestSize.Level1)
+{
+    CliToolMgrClientFlag::nullSystemAbility = true;
+
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterIntentFunctionsByNamespaceAsync("null_ns"),
+        GET_CLI_TOOL_MGR_SERVICE_FAILED);
+}
+
+/**
+ * @tc.name: ResetNamespaceFunctionsAsync_0100
+ * @tc.desc: Test ResetNamespaceFunctionsAsync success path
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, ResetNamespaceFunctionsAsync_0100, TestSize.Level1)
+{
+    SetMockService();
+    CliToolMgrClientFlag::retResetNamespaceFunctions = ERR_OK;
+
+    std::vector<FunctionInfo> functions;
+    functions.push_back(BuildFunctionInfo("async_ns", "func1"));
+    functions.push_back(BuildFunctionInfo("async_ns", "func2"));
+
+    EXPECT_EQ(CliToolMGRClient::GetInstance().ResetNamespaceFunctionsAsync("async_ns", functions), ERR_OK);
+}
+
+/**
+ * @tc.name: ResetNamespaceFunctionsAsync_0200
+ * @tc.desc: Test ResetNamespaceFunctionsAsync with null proxy
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, ResetNamespaceFunctionsAsync_0200, TestSize.Level1)
+{
+    CliToolMgrClientFlag::nullSystemAbility = true;
+
+    std::vector<FunctionInfo> functions;
+    functions.push_back(BuildFunctionInfo("null_ns", "func1"));
+
+    EXPECT_EQ(CliToolMGRClient::GetInstance().ResetNamespaceFunctionsAsync("null_ns", functions),
+        GET_CLI_TOOL_MGR_SERVICE_FAILED);
+}
+
 } // namespace CliTool
 } // namespace OHOS
