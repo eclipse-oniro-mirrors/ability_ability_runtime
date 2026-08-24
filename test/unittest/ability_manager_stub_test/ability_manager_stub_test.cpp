@@ -25,6 +25,7 @@
 #include "mock_ability_token.h"
 #include "mock_sa_interceptor_stub.h"
 #include "nativetoken_kit.h"
+#include "process_options.h"
 #include "sandbox_clone_params.h"
 #include "token_setproc.h"
 
@@ -5727,6 +5728,251 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_NotifySkillFunctionInvoked_0
     EXPECT_EQ(res, ERR_INVALID_VALUE);
 }
 
+namespace {
+std::shared_ptr<ProcessOptions> MakeMaliciousProcessOptions()
+{
+    auto opts = std::make_shared<ProcessOptions>();
+    opts->processMode = ProcessMode::NEW_PROCESS_ATTACH_TO_PARENT;
+    opts->startupVisibility = StartupVisibility::STARTUP_HIDE;
+    opts->isRestartKeepAlive = true;
+    opts->isStartFromNDK = true;
+    opts->isPreloadStart = true;
+    opts->loadAbilityCallbackId = 1;
+    opts->callingPid = 1;
+    opts->selfPid = 1;
+    return opts;
+}
+
+void ExpectSystemFieldsSanitized(const std::shared_ptr<ProcessOptions>& opts)
+{
+    ASSERT_NE(opts, nullptr);
+    EXPECT_FALSE(opts->isRestartKeepAlive);
+    EXPECT_FALSE(opts->isStartFromNDK);
+    EXPECT_FALSE(opts->isPreloadStart);
+    EXPECT_EQ(opts->loadAbilityCallbackId, 0ULL);
+    EXPECT_EQ(opts->callingPid, -1);
+    EXPECT_EQ(opts->selfPid, -1);
+    EXPECT_EQ(opts->processMode, ProcessMode::NEW_PROCESS_ATTACH_TO_PARENT);
+    EXPECT_EQ(opts->startupVisibility, StartupVisibility::STARTUP_HIDE);
+}
+
+class CapturingStub : public AbilityManagerStubImplMock {
+public:
+    std::shared_ptr<ProcessOptions> capturedOpts;
+
+    int StartAbility(const Want& want, const StartOptions& startOptions,
+        const sptr<IRemoteObject>& callerToken, int32_t userId, int requestCode) override
+    {
+        capturedOpts = startOptions.processOptions;
+        return 0;
+    }
+
+    int StartAbilityForResultAsCaller(const Want& want, const StartOptions& startOptions,
+        const sptr<IRemoteObject>& callerToken, int requestCode, int32_t userId) override
+    {
+        capturedOpts = startOptions.processOptions;
+        return 0;
+    }
+
+    int32_t OpenAtomicService(Want& want, const StartOptions& options, sptr<IRemoteObject> callerToken,
+        int32_t requestCode, int32_t userId) override
+    {
+        capturedOpts = options.processOptions;
+        return 0;
+    }
+
+    int StartSelfUIAbilityWithStartOptions(const Want& want, const StartOptions& options) override
+    {
+        capturedOpts = options.processOptions;
+        return 0;
+    }
+
+    int StartSelfUIAbilityWithStartOptionsAndToken(const Want& want,
+        const StartOptions& options, sptr<IRemoteObject> callerToken) override
+    {
+        capturedOpts = options.processOptions;
+        return 0;
+    }
+
+    int StartSelfUIAbilityWithPidResult(const Want& want, StartOptions& options, uint64_t callbackId) override
+    {
+        capturedOpts = options.processOptions;
+        return 0;
+    }
+
+    ErrCode StartSelfUIAbilityInCurrentProcess(const Want& want, const std::string& specifiedFlag,
+        const AAFwk::StartOptions& startOptions, bool hasOptions, sptr<IRemoteObject> callerToken) override
+    {
+        capturedOpts = startOptions.processOptions;
+        return ERR_OK;
+    }
+
+    int SendWantSender(sptr<IWantSender> target, SenderInfo& senderInfo) override
+    {
+        if (senderInfo.startOptions != nullptr) {
+            capturedOpts = senderInfo.startOptions->processOptions;
+        }
+        return 0;
+    }
+
+    int SendLocalWantSender(const SenderInfo& senderInfo) override
+    {
+        if (senderInfo.startOptions != nullptr) {
+            capturedOpts = senderInfo.startOptions->processOptions;
+        }
+        return 0;
+    }
+};
+
+class MockWantSender : public IRemoteStub<IWantSender> {
+public:
+    int OnRemoteRequest(uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) override
+    {
+        return ERR_NONE;
+    }
+};
+} // namespace
+
+HWTEST_F(AbilityManagerStubTest, ProcessOptions_SanitizeSystemFields_0100, TestSize.Level1)
+{
+    ProcessOptions::SanitizeSystemFields(nullptr);
+    auto opts = MakeMaliciousProcessOptions();
+    ProcessOptions::SanitizeSystemFields(opts);
+    ExpectSystemFieldsSanitized(opts);
+    EXPECT_EQ(opts->selfPid, -1);
+}
+
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartAbilityForOptionsInner_Sanitize_0100, TestSize.Level1)
+{
+    auto stub = sptr<AbilityManagerStubImplMock>(new CapturingStub());
+    auto capture = static_cast<CapturingStub*>(stub.GetRefPtr());
+    MessageParcel data;
+    MessageParcel reply;
+    Want want;
+    ASSERT_TRUE(data.WriteParcelable(&want));
+    StartOptions startOptions;
+    startOptions.processOptions = MakeMaliciousProcessOptions();
+    ASSERT_TRUE(data.WriteParcelable(&startOptions));
+    ASSERT_TRUE(data.WriteBool(false));
+    ASSERT_TRUE(data.WriteInt32(USER_ID));
+    ASSERT_TRUE(data.WriteInt32(0));
+    auto res = stub->StartAbilityForOptionsInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+    ExpectSystemFieldsSanitized(capture->capturedOpts);
+}
+
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartAbilityForResultAsCallerForOptions_Sanitize_0100,
+    TestSize.Level1)
+{
+    auto stub = sptr<AbilityManagerStubImplMock>(new CapturingStub());
+    auto capture = static_cast<CapturingStub*>(stub.GetRefPtr());
+    MessageParcel data;
+    MessageParcel reply;
+    Want want;
+    ASSERT_TRUE(data.WriteParcelable(&want));
+    StartOptions startOptions;
+    startOptions.processOptions = MakeMaliciousProcessOptions();
+    ASSERT_TRUE(data.WriteParcelable(&startOptions));
+    ASSERT_TRUE(data.WriteBool(false));
+    ASSERT_TRUE(data.WriteInt32(0));
+    ASSERT_TRUE(data.WriteInt32(USER_ID));
+    auto res = stub->StartAbilityForResultAsCallerForOptionsInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+    ExpectSystemFieldsSanitized(capture->capturedOpts);
+}
+
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_OpenAtomicService_Sanitize_0100, TestSize.Level1)
+{
+    auto stub = sptr<AbilityManagerStubImplMock>(new CapturingStub());
+    auto capture = static_cast<CapturingStub*>(stub.GetRefPtr());
+    MessageParcel data;
+    MessageParcel reply;
+    Want want;
+    ASSERT_TRUE(data.WriteParcelable(&want));
+    StartOptions startOptions;
+    startOptions.processOptions = MakeMaliciousProcessOptions();
+    ASSERT_TRUE(data.WriteParcelable(&startOptions));
+    ASSERT_TRUE(data.WriteBool(false));
+    ASSERT_TRUE(data.WriteInt32(0));
+    ASSERT_TRUE(data.WriteInt32(USER_ID));
+    auto res = stub->OpenAtomicServiceInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+    ExpectSystemFieldsSanitized(capture->capturedOpts);
+}
+
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSelfUIAbilityWithStartOptions_Sanitize_0100,
+    TestSize.Level1)
+{
+    auto stub = sptr<AbilityManagerStubImplMock>(new CapturingStub());
+    auto capture = static_cast<CapturingStub*>(stub.GetRefPtr());
+    MessageParcel data;
+    MessageParcel reply;
+    Want want;
+    ASSERT_TRUE(data.WriteParcelable(&want));
+    StartOptions startOptions;
+    startOptions.processOptions = MakeMaliciousProcessOptions();
+    ASSERT_TRUE(data.WriteParcelable(&startOptions));
+    auto res = stub->StartSelfUIAbilityWithStartOptionsInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+    ExpectSystemFieldsSanitized(capture->capturedOpts);
+}
+
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSelfUIAbilityWithStartOptionsAndToken_Sanitize_0100,
+    TestSize.Level1)
+{
+    auto stub = sptr<AbilityManagerStubImplMock>(new CapturingStub());
+    auto capture = static_cast<CapturingStub*>(stub.GetRefPtr());
+    MessageParcel data;
+    MessageParcel reply;
+    Want want;
+    ASSERT_TRUE(data.WriteParcelable(&want));
+    StartOptions startOptions;
+    startOptions.processOptions = MakeMaliciousProcessOptions();
+    ASSERT_TRUE(data.WriteParcelable(&startOptions));
+    ASSERT_TRUE(data.WriteBool(false));
+    auto res = stub->StartSelfUIAbilityWithStartOptionsAndTokenInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+    ExpectSystemFieldsSanitized(capture->capturedOpts);
+}
+
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSelfUIAbilityWithPidResult_Sanitize_0100,
+    TestSize.Level1)
+{
+    auto stub = sptr<AbilityManagerStubImplMock>(new CapturingStub());
+    auto capture = static_cast<CapturingStub*>(stub.GetRefPtr());
+    MessageParcel data;
+    MessageParcel reply;
+    Want want;
+    ASSERT_TRUE(data.WriteParcelable(&want));
+    StartOptions startOptions;
+    startOptions.processOptions = MakeMaliciousProcessOptions();
+    ASSERT_TRUE(data.WriteParcelable(&startOptions));
+    ASSERT_TRUE(data.WriteUint64(1234));
+    auto res = stub->StartSelfUIAbilityWithPidResultInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+    ExpectSystemFieldsSanitized(capture->capturedOpts);
+}
+
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartSelfUIAbilityInCurrentProcess_Sanitize_0100,
+    TestSize.Level1)
+{
+    auto stub = sptr<AbilityManagerStubImplMock>(new CapturingStub());
+    auto capture = static_cast<CapturingStub*>(stub.GetRefPtr());
+    MessageParcel data;
+    MessageParcel reply;
+    Want want;
+    ASSERT_TRUE(data.WriteParcelable(&want));
+    ASSERT_TRUE(data.WriteString("specified_flag"));
+    StartOptions startOptions;
+    startOptions.processOptions = MakeMaliciousProcessOptions();
+    ASSERT_TRUE(data.WriteParcelable(&startOptions));
+    ASSERT_TRUE(data.WriteBool(true));
+    ASSERT_TRUE(data.WriteBool(false));
+    auto res = stub->StartSelfUIAbilityInCurrentProcessInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+    ExpectSystemFieldsSanitized(capture->capturedOpts);
+}
+
 /*
  * Feature: AbilityManagerService
  * Function: SanitizeWantParams
@@ -5839,6 +6085,38 @@ HWTEST_F(AbilityManagerStubTest, SanitizeWantParams_SystemApp_KeepsFlag, TestSiz
     EXPECT_TRUE(want.GetBoolParam(Want::PARAM_SET_URI_WITH_ORIGIN_STRING, false));
 
     SetSelfTokenID(originalToken);
+}
+
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_SendWantSenderInner_Sanitize_0100, TestSize.Level1)
+{
+    auto stub = sptr<AbilityManagerStubImplMock>(new CapturingStub());
+    auto capture = static_cast<CapturingStub*>(stub.GetRefPtr());
+    MessageParcel data;
+    MessageParcel reply;
+    sptr<MockWantSender> wantSender = new (std::nothrow) MockWantSender();
+    ASSERT_TRUE(data.WriteRemoteObject(wantSender));
+    SenderInfo senderInfo;
+    senderInfo.startOptions = new (std::nothrow) StartOptions();
+    senderInfo.startOptions->processOptions = MakeMaliciousProcessOptions();
+    ASSERT_TRUE(data.WriteParcelable(&senderInfo));
+    auto res = stub->SendWantSenderInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+    ExpectSystemFieldsSanitized(capture->capturedOpts);
+}
+
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_SendLocalWantSenderInner_Sanitize_0100, TestSize.Level1)
+{
+    auto stub = sptr<AbilityManagerStubImplMock>(new CapturingStub());
+    auto capture = static_cast<CapturingStub*>(stub.GetRefPtr());
+    MessageParcel data;
+    MessageParcel reply;
+    SenderInfo senderInfo;
+    senderInfo.startOptions = new (std::nothrow) StartOptions();
+    senderInfo.startOptions->processOptions = MakeMaliciousProcessOptions();
+    ASSERT_TRUE(data.WriteParcelable(&senderInfo));
+    auto res = stub->SendLocalWantSenderInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+    ExpectSystemFieldsSanitized(capture->capturedOpts);
 }
 } // namespace AAFwk
 } // namespace OHOS

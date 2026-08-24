@@ -18,6 +18,8 @@
 
 #include "parcel.h"
 
+#include <memory>
+
 namespace OHOS {
 namespace AAFwk {
 enum class ProcessMode {
@@ -54,6 +56,8 @@ public:
     static bool IsNoAttachmentMode(ProcessMode value);
     static bool IsAttachToStatusBarItemMode(ProcessMode value);
     static bool IsNewHiddenProcessMode(ProcessMode value);
+
+    static void SanitizeSystemFields(std::shared_ptr<ProcessOptions> options);
 
     bool isRestartKeepAlive = false;
     bool isStartFromNDK = false;
