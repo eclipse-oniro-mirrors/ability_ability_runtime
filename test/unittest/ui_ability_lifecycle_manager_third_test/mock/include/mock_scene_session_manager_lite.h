@@ -145,6 +145,7 @@ public:
         (std::vector<sptr<FocusChangeInfo>> &)), (override));
     MOCK_METHOD(WMError, GetAppWindowShowingInfosByBundleName, (const ApplicationInfo& appInfo,
         std::vector<AppWindowShowingInfo>& windowInfos), (override));
+    MOCK_METHOD(WMError, UpdateRogWindowConfig, (const RogWindowConfig& windowConfig), (override));
 };
 } // namespace OHOS::Rosen
 #endif // MOCK_SCENE_SESSION_MANAGER_LITE_H
