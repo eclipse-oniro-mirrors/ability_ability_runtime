@@ -158,11 +158,9 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
         intentFilter.FilterConfig(allConfigInfos);
         TAG_LOGI(AAFwkTag::INTENT, "after filter, generic:%{public}zu config:%{public}zu, bundle:%{public}s",
             genericInfos.size(), allConfigInfos.size(), bundleName.c_str());
-        int32_t successCount = 0;
         CliTool::BatchUpdateInsightIntentFunctions(
-            genericInfos, allConfigInfos, bundleName, bundleInfo.versionCode, successCount);
-        TAG_LOGI(AAFwkTag::INTENT, "batch update done, success: %{public}d, bundle:%{public}s",
-            successCount, bundleName.c_str());
+            genericInfos, allConfigInfos, bundleName, bundleInfo.versionCode);
+        TAG_LOGI(AAFwkTag::INTENT, "batch update request done, bundle:%{public}s", bundleName.c_str());
         DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
     });
 }

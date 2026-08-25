@@ -41,26 +41,29 @@ bool RegisterInsightIntentFunctions(
 
 bool UnregisterInsightIntentFunctions(const std::string &bundleName);
 
-// 批量注册（开关机场景）：跨 bundle 收集 FunctionInfo 一次性写入 KVStore，
-// 减少开机阶段 IPC 次数。bundleVersionMap 提供 functionNamespace(bundleName) → versionCode 映射。
-// successCount 返回服务端实际写入条数。依赖 CliToolMGRClient::BatchRegisterFunctions。
+// Batch register (boot/shutdown scenario): collect FunctionInfo across bundles and
+// dispatch to the KVStore in one shot to cut IPC calls during boot. bundleVersionMap
+// provides the functionNamespace(bundleName) -> versionCode mapping.
+// Relies on CliToolMGRClient::BatchRegisterFunctionsAsync (one-way; the return value
+// only indicates whether the request was sent, the server-side write result is not
+// reported back).
 bool BatchRegisterInsightIntentFunctions(
     const std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos,
     const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
-    const std::unordered_map<std::string, uint32_t> &bundleVersionMap,
-    int32_t &successCount);
+    const std::unordered_map<std::string, uint32_t> &bundleVersionMap);
 
 bool BatchUpdateInsightIntentFunctions(
     const std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos,
     const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
     const std::string &bundleName,
-    uint32_t versionCode,
-    int32_t &successCount);
+    uint32_t versionCode);
 
-// 工具类：调用方在调 RegisterInsightIntentFunctions 之前预处理意图列表。
-// 规则 1：丢弃非"后台 UIAbility / ServiceExtension"的意图。
-// 规则 2：同 intentName 跨多个 moduleName 时，按 moduleName 字典序首。
-// 规则 3：同 moduleName + intentName 多 ability 时，UIAbility 优先，否则 abilityName 字典序首。
+// Utility class: pre-processes the intent list before RegisterInsightIntentFunctions.
+// Rule 1: drop intents that are not "background UIAbility / ServiceExtension".
+// Rule 2: for the same intentName across multiple moduleNames, keep the
+// lexicographically first moduleName.
+// Rule 3: for the same moduleName + intentName with multiple abilities, UIAbility
+// wins; otherwise keep the lexicographically first abilityName.
 class IntentFilterUtil {
 public:
     IntentFilterUtil() = default;

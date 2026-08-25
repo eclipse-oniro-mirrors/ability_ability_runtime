@@ -127,10 +127,9 @@ void InsightIntentSysEventReceiver::RegisterAllFunctions(
     for (const auto &entry : newBundles) {
         bundleVersionMap[entry.first] = entry.second;
     }
-    int32_t successCount = 0;
     CliTool::BatchRegisterInsightIntentFunctions(
-        allIntentInfos, allConfigInfos, bundleVersionMap, successCount);
-    TAG_LOGI(AAFwkTag::INTENT, "register all functions done, success: %{public}d", successCount);
+        allIntentInfos, allConfigInfos, bundleVersionMap);
+    TAG_LOGI(AAFwkTag::INTENT, "register all functions request done");
 }
 
 void InsightIntentSysEventReceiver::DeleteInsightIntent(const std::string &bundleName,
