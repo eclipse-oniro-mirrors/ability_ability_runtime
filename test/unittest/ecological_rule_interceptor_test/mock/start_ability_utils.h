@@ -44,7 +44,6 @@ struct StartAbilityUtils {
     static std::shared_ptr<StartAbilityInfo> startAbilityInfo;
     static std::shared_ptr<StartAbilityInfo> callerAbilityInfo;
     static bool skipCrowTest;
-    static bool skipStartOther;
     static bool skipErms;
     static int32_t ermsResultCode;
     static bool isWantWithAppCloneIndex;

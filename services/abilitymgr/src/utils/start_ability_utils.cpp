@@ -45,7 +45,6 @@ bool HasAppInstanceSelector(const Want &want)
 thread_local std::shared_ptr<StartAbilityInfo> StartAbilityUtils::startAbilityInfo;
 thread_local std::shared_ptr<StartAbilityInfo> StartAbilityUtils::callerAbilityInfo;
 thread_local bool StartAbilityUtils::skipCrowTest = false;
-thread_local bool StartAbilityUtils::skipStartOther = false;
 thread_local bool StartAbilityUtils::skipErms = false;
 thread_local int32_t StartAbilityUtils::ermsResultCode = ERMS_ISALLOW_RESULTCODE;
 thread_local bool StartAbilityUtils::isWantWithAppCloneIndex = false;
@@ -171,7 +170,6 @@ StartAbilityInfoWrap::StartAbilityInfoWrap(const Want &want, int32_t validUserId
     if (StartAbilityUtils::startAbilityInfo != nullptr &&
         StartAbilityUtils::startAbilityInfo->abilityInfo.type == AppExecFwk::AbilityType::EXTENSION) {
         StartAbilityUtils::skipCrowTest = true;
-        StartAbilityUtils::skipStartOther = true;
     }
 
     if (StartAbilityUtils::callerAbilityInfo != nullptr) {
@@ -192,7 +190,6 @@ StartAbilityInfoWrap::StartAbilityInfoWrap()
     StartAbilityUtils::startAbilityInfo.reset();
     StartAbilityUtils::callerAbilityInfo.reset();
     StartAbilityUtils::skipCrowTest = false;
-    StartAbilityUtils::skipStartOther = false;
     StartAbilityUtils::skipErms = false;
     StartAbilityUtils::ermsResultCode = ERMS_ISALLOW_RESULTCODE;
     StartAbilityUtils::isWantWithAppCloneIndex = false;
@@ -205,7 +202,6 @@ StartAbilityInfoWrap::~StartAbilityInfoWrap()
     StartAbilityUtils::startAbilityInfo.reset();
     StartAbilityUtils::callerAbilityInfo.reset();
     StartAbilityUtils::skipCrowTest = false;
-    StartAbilityUtils::skipStartOther = false;
     StartAbilityUtils::skipErms = false;
     StartAbilityUtils::ermsResultCode = ERMS_ISALLOW_RESULTCODE;
     StartAbilityUtils::isWantWithAppCloneIndex = false;
