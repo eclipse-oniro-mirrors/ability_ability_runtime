@@ -317,40 +317,45 @@ void ConnectServerManager::RemoveInstance(int32_t instanceId)
         return;
     }
 
-    std::lock_guard<std::mutex> lock(g_loadsoMutex);
-    if (handlerConnectServerSo_ == nullptr) {
-        handlerConnectServerSo_ = dlopen("libark_connect_inspector.z.so", RTLD_LAZY);
+    WaitForConnection waitForConnection = nullptr;
+    RemoveMessage removeMessage = nullptr;
+    OHOS::AbilityRuntime::SendMessage sendMessage = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(g_loadsoMutex);
         if (handlerConnectServerSo_ == nullptr) {
-            TAG_LOGE(AAFwkTag::JSRUNTIME, "null handlerConnectServerSo_");
+            handlerConnectServerSo_ = dlopen("libark_connect_inspector.z.so", RTLD_LAZY);
+            if (handlerConnectServerSo_ == nullptr) {
+                TAG_LOGE(AAFwkTag::JSRUNTIME, "null handlerConnectServerSo_");
+                return;
+            }
+        }
+        waitForConnection = reinterpret_cast<WaitForConnection>(dlsym(handlerConnectServerSo_, "WaitForConnection"));
+        if (waitForConnection == nullptr) {
+            TAG_LOGE(AAFwkTag::JSRUNTIME, "null WaitForConnection");
             return;
         }
-    }
-    auto waitForConnection = reinterpret_cast<WaitForConnection>(dlsym(handlerConnectServerSo_, "WaitForConnection"));
-    if (waitForConnection == nullptr) {
-        TAG_LOGE(AAFwkTag::JSRUNTIME, "null WaitForConnection");
-        return;
+        removeMessage = reinterpret_cast<RemoveMessage>(dlsym(handlerConnectServerSo_, "RemoveMessage"));
+        if (removeMessage == nullptr) {
+            TAG_LOGE(AAFwkTag::JSRUNTIME, "null RemoveMessage");
+            return;
+        }
+        sendMessage = reinterpret_cast<OHOS::AbilityRuntime::SendMessage>(
+            dlsym(handlerConnectServerSo_, "SendMessage"));
+        if (sendMessage == nullptr) {
+            TAG_LOGE(AAFwkTag::JSRUNTIME, "null sendMessage");
+            return;
+        }
     }
 
     // Get the message including information of deleted instance, which will be send to IDE.
     std::string message = GetInstanceMapMessage("destroyInstance", instanceId, instanceName, tid);
 
-    auto removeMessage = reinterpret_cast<RemoveMessage>(dlsym(handlerConnectServerSo_, "RemoveMessage"));
-    if (removeMessage == nullptr) {
-        TAG_LOGE(AAFwkTag::JSRUNTIME, "null RemoveMessage");
-        return;
-    }
     removeMessage(instanceId);
 
     if (waitForConnection()) {
         return;
     }
 
-    auto sendMessage =
-        reinterpret_cast<OHOS::AbilityRuntime::SendMessage>(dlsym(handlerConnectServerSo_, "SendMessage"));
-    if (sendMessage == nullptr) {
-        TAG_LOGE(AAFwkTag::JSRUNTIME, "null sendMessage");
-        return;
-    }
     sendMessage(message);
 }
 
