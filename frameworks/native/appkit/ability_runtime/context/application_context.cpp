@@ -1594,10 +1594,6 @@ std::string ApplicationContext::GetDataDir()
     std::lock_guard<std::mutex> lock(dataDirMutex_);
     if (dataDir_.empty()) {
         auto bundleManagerHelper = AAFwk::AbilityUtil::GetBundleManagerHelper();
-        if (bundleManagerHelper == nullptr) {
-            TAG_LOGE(AAFwkTag::APPKIT, "null bundleManagerHelper");
-            return "";
-        }
         dataDir_ = bundleManagerHelper->GetDataDir(GetBundleName(), appIndex_);
         if (dataDir_.empty()) {
             TAG_LOGE(AAFwkTag::APPKIT, "dataDir is empty");
