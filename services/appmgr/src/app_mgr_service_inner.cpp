@@ -9897,7 +9897,8 @@ int32_t AppMgrServiceInner::IsApplicationRunning(const std::string &bundleName, 
 int32_t AppMgrServiceInner::IsAppRunning(const std::string &bundleName, int32_t appCloneIndex,
     bool &isRunning)
 {
-    TAG_LOGD(AAFwkTag::APPMGR, "Called, bundleName: %{public}s", bundleName.c_str());
+    TAG_LOGD(AAFwkTag::APPMGR,
+        "Called, bundleName: %{public}s, appCloneIndex: %{public}d ", bundleName.c_str(), appCloneIndex);
     if (!CheckGetRunningInfoPermission()) {
         TAG_LOGE(AAFwkTag::APPMGR, "permission verification fail");
         return ERR_PERMISSION_DENIED;
@@ -9937,7 +9938,8 @@ int32_t AppMgrServiceInner::IsAppRunning(const std::string &bundleName, int32_t 
 
 int32_t AppMgrServiceInner::IsAppRunning(const std::string &bundleName, int32_t appCloneIndex, int32_t userId, bool &isRunning)
 {
-    TAG_LOGD(AAFwkTag::APPMGR, "Called, bundleName: %{public}s", bundleName.c_str());
+    TAG_LOGD(AAFwkTag::APPMGR,"Called, bundleName: %{public}s, appCloneIndex: %{public}d, userId: %{public}d",
+        bundleName.c_str(), appCloneIndex, userId);
     if (IPCSkeleton::GetCallingUid() != FOUNDATION_UID) {
         TAG_LOGE(AAFwkTag::APPMGR, "not foundation call");
         return ERR_PERMISSION_DENIED;
@@ -9947,11 +9949,14 @@ int32_t AppMgrServiceInner::IsAppRunning(const std::string &bundleName, int32_t 
         return ERR_PERMISSION_DENIED;
     }
     if (appCloneIndex < 0 || appCloneIndex > AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
-        TAG_LOGI(AAFwkTag::APPMGR, "appCloneIndex invalid");
-        appCloneIndex = -1;
+        TAG_LOGE(AAFwkTag::APPMGR, "appCloneIndex invalid, bundleName: %{public}s, appCloneIndex: %{public}d",
+            bundleName.c_str(), appCloneIndex);
+        return AAFwk::ERR_APP_CLONE_INDEX_INVALID;
     }
     if (userId < 0) {
-        TAG_LOGI(AAFwkTag::APPMGR, "userId invalid");
+        TAG_LOGE(AAFwkTag::APPMGR,
+            "userId invalid, bundleName: %{public}s, userId: %{public}d", bundleName.c_str(), userId);
+        return AAFwk::INVALID_PARAMETERS_ERR;
     }
 
     return appRunningManager_->IsAppRunningByBundleName(bundleName, appCloneIndex, userId, isRunning);

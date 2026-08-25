@@ -412,8 +412,7 @@ int32_t AppRunningManager::IsAppRunningByBundleName(const std::string &bundleNam
     for (const auto &item : appRunningRecordMap_) {
         const auto &appRecord = item.second;
         if (appRecord && appRecord->GetBundleName() == bundleName && !(appRecord->GetRestartAppFlag()) &&
-            (appCloneIndex < 0 || appRecord->GetAppIndex() == appCloneIndex) &&
-            (userId < 0 || appRecord->GetUserId() == userId)) {
+            appRecord->GetAppIndex() == appCloneIndex && appRecord->GetUserId() == userId) {
             isRunning = true;
             break;
         }
