@@ -27,6 +27,10 @@ public:
     int32_t ResetNamespaceFunctions(const std::string &functionNamespace,
         const FunctionsRawData &functions, int32_t &successCount) override;
     int32_t GetAllFunctions(FunctionsRawData &functions) override;
+    int32_t BatchRegisterFunctionsAsync(const FunctionsRawData &functions) override;
+    int32_t UnregisterIntentFunctionsByNamespaceAsync(const std::string &functionNamespace) override;
+    int32_t ResetNamespaceFunctionsAsync(const std::string &functionNamespace,
+        const FunctionsRawData &functions) override;
     int32_t ExecTool(const ExecToolParam &param, const std::string &eventId,
         const sptr<ICliToolManagerScheduler> &scheduler) override;
     int32_t ExecCmd(const ExecCmdParam &param, const std::string &eventId,

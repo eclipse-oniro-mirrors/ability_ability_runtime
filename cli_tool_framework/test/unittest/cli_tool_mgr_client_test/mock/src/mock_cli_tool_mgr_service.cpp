@@ -160,6 +160,32 @@ int32_t MockCliToolMgrService::GetAllFunctions(FunctionsRawData &functions)
     return CliToolMgrClientFlag::retGetAllFunctions;
 }
 
+int32_t MockCliToolMgrService::BatchRegisterFunctionsAsync(const FunctionsRawData &functions)
+{
+    std::vector<FunctionInfo> functionList;
+    FunctionsRawData::ToFunctionInfoVec(functions, functionList);
+    for (const auto &function : functionList) {
+        CliToolMgrClientFlag::functionInfos.push_back(function);
+    }
+    return CliToolMgrClientFlag::retBatchRegisterFunctions;
+}
+
+int32_t MockCliToolMgrService::UnregisterIntentFunctionsByNamespaceAsync(const std::string &)
+{
+    return CliToolMgrClientFlag::retUnregisterFunction;
+}
+
+int32_t MockCliToolMgrService::ResetNamespaceFunctionsAsync(const std::string &,
+    const FunctionsRawData &functions)
+{
+    std::vector<FunctionInfo> functionList;
+    FunctionsRawData::ToFunctionInfoVec(functions, functionList);
+    for (const auto &function : functionList) {
+        CliToolMgrClientFlag::functionInfos.push_back(function);
+    }
+    return CliToolMgrClientFlag::retResetNamespaceFunctions;
+}
+
 int32_t MockCliToolMgrService::ExecTool(const ExecToolParam &, const std::string &eventId,
     const sptr<ICliToolManagerScheduler> &)
 {

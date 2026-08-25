@@ -46,4 +46,7 @@ interface ICliToolManager {
     void UnregisterIntentFunctionsByNamespace([in] String functionNamespace);
     void ResetNamespaceFunctions([in] String functionNamespace, [in] FunctionsRawData functions, [out] int successCount);
     void GetAllFunctions([out] FunctionsRawData functions);
+    [oneway] void BatchRegisterFunctionsAsync([in] FunctionsRawData functions);
+    [oneway] void UnregisterIntentFunctionsByNamespaceAsync([in] String functionNamespace);
+    [oneway] void ResetNamespaceFunctionsAsync([in] String functionNamespace, [in] FunctionsRawData functions);
 }
