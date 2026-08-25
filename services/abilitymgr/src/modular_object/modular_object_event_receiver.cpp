@@ -105,6 +105,7 @@ void ModularObjectEventReceiver::HandleEventUserSwitched(const EventFwk::CommonE
     int32_t userId = data.GetCode();
     if (userId < 0) {
         TAG_LOGE(AAFwkTag::EXT, "invalid switched userId: %{public}d", userId);
+        return;
     }
 
     std::lock_guard<std::mutex> lock(userIdMutex_);
