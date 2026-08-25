@@ -1262,9 +1262,10 @@ void EtsAbilityContext::OnStartServiceExtensionAbility(ani_env *env, ani_object 
     }
     AAFwk::Want want;
     if (!AppExecFwk::UnwrapWant(env, wantObj, want)) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "UnwrapWant filed");
-        errorObject = EtsErrorUtil::CreateInvalidParamError(env, "UnwrapWant filed");
+        TAG_LOGE(AAFwkTag::CONTEXT, "UnwrapWant failed");
+        errorObject = EtsErrorUtil::CreateInvalidParamError(env, "UnwrapWant failed");
         AppExecFwk::AsyncCallback(env, callbackobj, errorObject, nullptr);
+        return;
     }
     ret = context->StartExtensionAbilityWithExtensionType(want, extensionType);
     if (ret == ERR_OK) {

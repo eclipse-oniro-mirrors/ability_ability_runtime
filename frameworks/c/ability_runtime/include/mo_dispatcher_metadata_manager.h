@@ -88,6 +88,10 @@ private:
     static AbilityRuntime_ErrorCode ParseTypeInfoFromJson(const nlohmann::json& typeInfoObj,
         std::shared_ptr<MoTypeInfo>& result);
 
+    // Internal recursive implementation with depth guard
+    static AbilityRuntime_ErrorCode ParseTypeInfoFromJsonImpl(const nlohmann::json& typeInfoObj,
+        std::shared_ptr<MoTypeInfo>& result, uint32_t depth);
+
     // Validate that idl_type references a declared type in the tlb
     bool IsIdlTypeDeclared(const std::string& idlType) const;
 

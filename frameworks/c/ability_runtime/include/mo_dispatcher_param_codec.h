@@ -40,6 +40,10 @@ private:
     static AbilityRuntime_ErrorCode WriteRawValueImpl(MessageParcel& parcel,
         const std::shared_ptr<MoTypeInfo>& typeInfo, const OH_AbilityRuntime_ModObjDispatcher_Variant* value,
         std::unordered_set<const void*>& visited);
+
+    static AbilityRuntime_ErrorCode ReadRawValueImpl(MessageParcel& parcel,
+        const std::shared_ptr<MoTypeInfo>& typeInfo, OH_AbilityRuntime_ModObjDispatcher_Variant* value,
+        uint32_t depth);
 };
 } // namespace OHOS::AbilityRuntime
 

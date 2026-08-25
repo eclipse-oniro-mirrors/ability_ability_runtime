@@ -17,6 +17,9 @@
 
 namespace OHOS::AbilityRuntime {
 namespace {
+constexpr uint32_t MAX_READ_DEPTH = 64;
+constexpr int32_t MAX_IPC_CONTAINER_SIZE = 100000;
+
 AbilityRuntime_ErrorCode CheckWrite(bool success)
 {
     return success ? ABILITY_RUNTIME_ERROR_CODE_NO_ERROR : ABILITY_RUNTIME_ERROR_CODE_SEND_REQUEST_FAILED;
@@ -344,9 +347,20 @@ AbilityRuntime_ErrorCode ModObjDispatcherParamCodec::WriteRawValue(MessageParcel
 AbilityRuntime_ErrorCode ModObjDispatcherParamCodec::ReadRawValue(MessageParcel& parcel,
     const std::shared_ptr<MoTypeInfo>& typeInfo, OH_AbilityRuntime_ModObjDispatcher_Variant* value)
 {
+    return ReadRawValueImpl(parcel, typeInfo, value, 0);
+}
+
+AbilityRuntime_ErrorCode ModObjDispatcherParamCodec::ReadRawValueImpl(MessageParcel& parcel,
+    const std::shared_ptr<MoTypeInfo>& typeInfo, OH_AbilityRuntime_ModObjDispatcher_Variant* value,
+    uint32_t depth)
+{
     if (typeInfo == nullptr || value == nullptr) {
         TAG_LOGE(AAFwkTag::EXT, "ReadRawValue: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    if (depth > MAX_READ_DEPTH) {
+        TAG_LOGE(AAFwkTag::EXT, "ReadRawValue: max recursion depth exceeded, depth=%{public}u", depth);
+        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     value->vt = typeInfo->vt;
     switch (typeInfo->vt) {
@@ -425,6 +439,10 @@ AbilityRuntime_ErrorCode ModObjDispatcherParamCodec::ReadRawValue(MessageParcel&
             TAG_LOGE(AAFwkTag::EXT, "ReadRawValue: array size is negative, size=%{public}d", size);
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
+        if (size > MAX_IPC_CONTAINER_SIZE) {
+            TAG_LOGE(AAFwkTag::EXT, "ReadRawValue: array size too large, size=%{public}d", size);
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         TAG_LOGI(AAFwkTag::EXT, "arraySize=%{public}d", size);
         OH_AbilityRuntime_ModObjDispatcher_TypeInfo elemTypeInfo;
         (void)memset_s(&elemTypeInfo, sizeof(elemTypeInfo), 0, sizeof(elemTypeInfo));
@@ -435,16 +453,21 @@ AbilityRuntime_ErrorCode ModObjDispatcherParamCodec::ReadRawValue(MessageParcel&
         auto ret = ModObjDispatcherComplexTypeManager::ArrayCreate(&elemTypeInfo,
             static_cast<uint32_t>(size), &array);
         if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+            MoTypeInfo::ClearCTypeInfo(&elemTypeInfo);
             return ret;
         }
         for (uint32_t i = 0; i < static_cast<uint32_t>(size); i++) {
             OH_AbilityRuntime_ModObjDispatcher_Variant elem;
-            ret = ReadRawValue(parcel, typeInfo->pElementType, &elem);
+            ret = ReadRawValueImpl(parcel, typeInfo->pElementType, &elem, depth + 1);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                ModObjDispatcherComplexTypeManager::ArrayRelease(&array);
+                MoTypeInfo::ClearCTypeInfo(&elemTypeInfo);
                 return ret;
             }
             ret = ModObjDispatcherComplexTypeManager::ArraySet(array, i, &elem);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                ModObjDispatcherComplexTypeManager::ArrayRelease(&array);
+                MoTypeInfo::ClearCTypeInfo(&elemTypeInfo);
                 return ret;
             }
         }
@@ -458,6 +481,10 @@ AbilityRuntime_ErrorCode ModObjDispatcherParamCodec::ReadRawValue(MessageParcel&
             TAG_LOGE(AAFwkTag::EXT, "ReadRawValue: vector size is negative, size=%{public}d", size);
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
+        if (size > MAX_IPC_CONTAINER_SIZE) {
+            TAG_LOGE(AAFwkTag::EXT, "ReadRawValue: vector size too large, size=%{public}d", size);
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         TAG_LOGI(AAFwkTag::EXT, "vectorSize=%{public}d", size);
         OH_AbilityRuntime_ModObjDispatcher_TypeInfo elemTypeInfo;
         (void)memset_s(&elemTypeInfo, sizeof(elemTypeInfo), 0, sizeof(elemTypeInfo));
@@ -467,16 +494,21 @@ AbilityRuntime_ErrorCode ModObjDispatcherParamCodec::ReadRawValue(MessageParcel&
         OH_AbilityRuntime_ModObjDispatcher_VectorHandle vector = nullptr;
         auto ret = ModObjDispatcherComplexTypeManager::VectorCreate(&elemTypeInfo, &vector);
         if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+            MoTypeInfo::ClearCTypeInfo(&elemTypeInfo);
             return ret;
         }
         for (uint32_t i = 0; i < static_cast<uint32_t>(size); i++) {
             OH_AbilityRuntime_ModObjDispatcher_Variant elem;
-            ret = ReadRawValue(parcel, typeInfo->pElementType, &elem);
+            ret = ReadRawValueImpl(parcel, typeInfo->pElementType, &elem, depth + 1);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                ModObjDispatcherComplexTypeManager::VectorRelease(&vector);
+                MoTypeInfo::ClearCTypeInfo(&elemTypeInfo);
                 return ret;
             }
             ret = ModObjDispatcherComplexTypeManager::VectorAdd(vector, &elem);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                ModObjDispatcherComplexTypeManager::VectorRelease(&vector);
+                MoTypeInfo::ClearCTypeInfo(&elemTypeInfo);
                 return ret;
             }
         }
@@ -490,6 +522,10 @@ AbilityRuntime_ErrorCode ModObjDispatcherParamCodec::ReadRawValue(MessageParcel&
             TAG_LOGE(AAFwkTag::EXT, "ReadRawValue: set size is negative, size=%{public}d", size);
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
+        if (size > MAX_IPC_CONTAINER_SIZE) {
+            TAG_LOGE(AAFwkTag::EXT, "ReadRawValue: set size too large, size=%{public}d", size);
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         TAG_LOGI(AAFwkTag::EXT, "setSize=%{public}d", size);
         OH_AbilityRuntime_ModObjDispatcher_TypeInfo elemTypeInfo;
         (void)memset_s(&elemTypeInfo, sizeof(elemTypeInfo), 0, sizeof(elemTypeInfo));
@@ -499,16 +535,19 @@ AbilityRuntime_ErrorCode ModObjDispatcherParamCodec::ReadRawValue(MessageParcel&
         OH_AbilityRuntime_ModObjDispatcher_SetHandle setHandle = nullptr;
         auto ret = ModObjDispatcherComplexTypeManager::SetCreate(&elemTypeInfo, &setHandle);
         if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+            MoTypeInfo::ClearCTypeInfo(&elemTypeInfo);
             return ret;
         }
         for (uint32_t i = 0; i < static_cast<uint32_t>(size); i++) {
             OH_AbilityRuntime_ModObjDispatcher_Variant elem;
-            ret = ReadRawValue(parcel, typeInfo->pElementType, &elem);
+            ret = ReadRawValueImpl(parcel, typeInfo->pElementType, &elem, depth + 1);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
                 return ret;
             }
             ret = ModObjDispatcherComplexTypeManager::SetAdd(setHandle, &elem);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                ModObjDispatcherComplexTypeManager::SetRelease(&setHandle);
+                MoTypeInfo::ClearCTypeInfo(&elemTypeInfo);
                 return ret;
             }
         }
@@ -522,6 +561,10 @@ AbilityRuntime_ErrorCode ModObjDispatcherParamCodec::ReadRawValue(MessageParcel&
             TAG_LOGE(AAFwkTag::EXT, "ReadRawValue: map size is negative, size=%{public}d", size);
             return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
         }
+        if (size > MAX_IPC_CONTAINER_SIZE) {
+            TAG_LOGE(AAFwkTag::EXT, "ReadRawValue: map size too large, size=%{public}d", size);
+            return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
+        }
         TAG_LOGI(AAFwkTag::EXT, "mapSize=%{public}d", size);
         OH_AbilityRuntime_ModObjDispatcher_TypeInfo valueTypeInfo;
         (void)memset_s(&valueTypeInfo, sizeof(valueTypeInfo), 0, sizeof(valueTypeInfo));
@@ -531,6 +574,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherParamCodec::ReadRawValue(MessageParcel&
         OH_AbilityRuntime_ModObjDispatcher_MapHandle map = nullptr;
         auto ret = ModObjDispatcherComplexTypeManager::MapCreate(typeInfo->mapKeyType, &valueTypeInfo, &map);
         if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+            MoTypeInfo::ClearCTypeInfo(&valueTypeInfo);
             return ret;
         }
         auto keyTypeInfo = std::make_shared<MoTypeInfo>();
@@ -538,16 +582,22 @@ AbilityRuntime_ErrorCode ModObjDispatcherParamCodec::ReadRawValue(MessageParcel&
         for (uint32_t i = 0; i < static_cast<uint32_t>(size); i++) {
             OH_AbilityRuntime_ModObjDispatcher_Variant k;
             OH_AbilityRuntime_ModObjDispatcher_Variant v;
-            ret = ReadRawValue(parcel, keyTypeInfo, &k);
+            ret = ReadRawValueImpl(parcel, keyTypeInfo, &k, depth + 1);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                ModObjDispatcherComplexTypeManager::MapRelease(&map);
+                MoTypeInfo::ClearCTypeInfo(&valueTypeInfo);
                 return ret;
             }
-            ret = ReadRawValue(parcel, typeInfo->pMapValueType, &v);
+            ret = ReadRawValueImpl(parcel, typeInfo->pMapValueType, &v, depth + 1);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                ModObjDispatcherComplexTypeManager::MapRelease(&map);
+                MoTypeInfo::ClearCTypeInfo(&valueTypeInfo);
                 return ret;
             }
             ret = ModObjDispatcherComplexTypeManager::MapPut(map, &k, &v);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
+                ModObjDispatcherComplexTypeManager::MapRelease(&map);
+                MoTypeInfo::ClearCTypeInfo(&valueTypeInfo);
                 return ret;
             }
         }
@@ -572,7 +622,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherParamCodec::ReadRawValue(MessageParcel&
             ModObjDispatcherComplexTypeManager::GetStructFieldType(typeInfo->idlType, fieldName, &fieldType);
             OH_AbilityRuntime_ModObjDispatcher_Variant fieldVal;
             (void)memset_s(&fieldVal, sizeof(fieldVal), 0, sizeof(fieldVal));
-            ret = ReadRawValue(parcel, fieldType, &fieldVal);
+            ret = ReadRawValueImpl(parcel, fieldType, &fieldVal, depth + 1);
             if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
                 ModObjDispatcherComplexTypeManager::StructRelease(&structObj);
                 return ret;
