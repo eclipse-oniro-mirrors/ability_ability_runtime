@@ -286,6 +286,10 @@ void JsModuleReader::GetHapPathList(const std::string &bundleName, std::vector<s
         return;
     }
     auto bundleMgrProxy = iface_cast<IBundleMgr>(remoteObject);
+    if (bundleMgrProxy == nullptr) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "null bundleMgrProxy");
+        return;
+    }
     AppExecFwk::BundleInfo bundleInfo;
     auto getInfoResult = bundleMgrProxy->GetBundleInfoForSelf(static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::
         GET_BUNDLE_INFO_WITH_HAP_MODULE), bundleInfo);

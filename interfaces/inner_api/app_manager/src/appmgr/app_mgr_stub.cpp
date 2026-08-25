@@ -498,6 +498,7 @@ int32_t AppMgrStub::HandleAttachApplication(MessageParcel &data, MessageParcel &
     sptr<IRemoteObject> client = data.ReadRemoteObject();
     if (client == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "remote object null");
+        return ERR_INVALID_VALUE;
     }
     AttachApplication(client);
     return NO_ERROR;
