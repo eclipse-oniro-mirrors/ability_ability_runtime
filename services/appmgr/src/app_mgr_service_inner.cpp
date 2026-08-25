@@ -781,7 +781,7 @@ int32_t AppMgrServiceInner::GetValidUserId(int32_t userId)
 int32_t AppMgrServiceInner::NotifyImageOperationFailed(int32_t uid,
     sptr<IImageErrorHandler> errorHandler, ImageError errorCode)
 {
-    if (errCode != ImageError::ERR_FORKALL_BUSY && errCode != ImageError::ERR_FORKALL_FAILED) {
+    if (errorCode != ImageError::ERR_FORKALL_BUSY && errorCode != ImageError::ERR_FORKALL_FAILED) {
         SaveHyperSnapError(uid, HyperSnapErrorType::CREATE_SNAPSHOT, ConvertImageErrorToHyperSnapCode(errorCode));
     }
 
@@ -1077,9 +1077,6 @@ ImageError AppMgrServiceInner::HandleForkAllInner(std::shared_ptr<AppRunningReco
     auto errCode = remoteClientManager_->GetSpawnClient()->StartImageProcess(startMsg, imagePid, checkpointId);
     TAG_LOGI(AAFwkTag::APPMGR, "forkall after preload, name:%{public}s, errCode:%{public}d,"
         " pid:%{public}d, imagePid:%{public}d", appRecord->GetProcessName().c_str(), errCode, pid, imagePid);
-    if (errCode == EBUSY) {
-        return ImageError::ERR_FORKALL_BUSY;
-    }
     if (errCode != ERR_OK || imagePid <= 0) {
         auto imageError = GetCheckpointRestoreError(pid, imageInfo->imageName);
         SaveHyperSnapError(appRecord->GetUid(), HyperSnapErrorType::CREATE_SNAPSHOT, 
