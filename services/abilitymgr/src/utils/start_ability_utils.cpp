@@ -20,6 +20,7 @@
 #include "ability_util.h"
 #include "app_scheduler.h"
 #include "app_utils.h"
+#include "extension_query_event_util.h"
 #include "global_constant.h"
 #include "hitrace_meter.h"
 #include "ipc_skeleton.h"
@@ -301,6 +302,7 @@ std::shared_ptr<StartAbilityInfo> StartAbilityInfo::CreateStartAbilityInfo(const
             IN_PROCESS_CALL_WITHOUT_RET(bms->GetSandboxExtAbilityInfos(want, appIndex,
                 abilityInfoFlag, userId, extensionInfos));
         }
+        ExtensionQueryEventUtil::ReportExtensionQueryMultiResult(extensionInfos, appIndex != 0);
         if (extensionInfos.size() <= 0) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "extensionInfo empty");
             request->status = RESOLVE_ABILITY_ERR;
@@ -348,6 +350,7 @@ std::shared_ptr<StartAbilityInfo> StartAbilityInfo::CreateStartExtensionInfo(con
         IN_PROCESS_CALL_WITHOUT_RET(bms->GetSandboxExtAbilityInfos(want, appIndex,
             abilityInfoFlag, userId, extensionInfos));
     }
+    ExtensionQueryEventUtil::ReportExtensionQueryMultiResult(extensionInfos, appIndex != 0);
     if (extensionInfos.size() <= 0) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "extensionInfo empty");
         abilityInfo->status = RESOLVE_ABILITY_ERR;

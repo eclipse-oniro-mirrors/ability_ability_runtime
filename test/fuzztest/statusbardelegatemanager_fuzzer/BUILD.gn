@@ -42,6 +42,7 @@ ohos_fuzztest("StatusBarDelegateManagerFuzzTest") {
   ]
   sources = [
     "${ability_runtime_services_path}/abilitymgr/src/app_scheduler.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/extension_query_event_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/process_options.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/scene_board/status_bar_delegate_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/start_window_option.cpp",
@@ -74,6 +75,7 @@ ohos_fuzztest("StatusBarDelegateManagerFuzzTest") {
     "common_event_service:cesfwk_innerkits",
     "ffrt:libffrt",
     "hilog:libhilog",
+    "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
     "ipc:ipc_core",
     "napi:ace_napi",

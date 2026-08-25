@@ -20,6 +20,9 @@
 #include "app_utils.h"
 #include "dialog_session_manager.h"
 #include "ecological_rule/ability_ecological_rule_mgr_service.h"
+#include "event_report.h"
+#include "in_process_call_wrapper.h"
+#include "ipc_skeleton.h"
 #include "global_constant.h"
 #include "hitrace_meter.h"
 #include "start_ability_utils.h"
@@ -81,6 +84,23 @@ bool ImplicitStartProcessor::IsImplicitStartAction(const Want &want)
 {
     auto element = want.GetElement();
     if (!element.GetAbilityName().empty()) {
+        if (element.GetBundleName().empty()) {
+            int32_t callingUid = IPCSkeleton::GetCallingUid();
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "ImplicitStart with no bundleName, %{public}s, callingUid:%{public}d",
+                element.GetAbilityName().c_str(), callingUid);
+            std::string callerBundleName;
+            auto bms = AbilityUtil::GetBundleManagerHelper();
+            if (bms != nullptr) {
+                IN_PROCESS_CALL_WITHOUT_RET(bms->GetNameForUid(callingUid, callerBundleName));
+            }
+            EventInfo eventInfo;
+            eventInfo.moduleName = "ImplicitStart";
+            eventInfo.abilityName = element.GetAbilityName();
+            eventInfo.callerBundleName =
+                callerBundleName.empty() ? std::to_string(callingUid) : callerBundleName;
+            EventReport::SendStartAbilityOtherExtensionEvent(
+                EventName::START_ABILITY_OTHER_EXTENSION, eventInfo);
+        }
         return false;
     }
 
