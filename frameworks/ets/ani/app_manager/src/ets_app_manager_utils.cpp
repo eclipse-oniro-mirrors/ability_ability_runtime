@@ -899,11 +899,11 @@ ani_object CreateKeepAliveInfoArray(ani_env *env, const std::vector<AbilityRunti
         return nullptr;
     }
 
-    ani_object arrayObj;
+    ani_object arrayObj = nullptr;
     status = env->Object_New(arrayCls, arrayCtor, &arrayObj, infos.size());
     if (status != ANI_OK) {
         TAG_LOGE(AAFwkTag::APPMGR, "Object_New array status : %{public}d", status);
-        return arrayObj;
+        return nullptr;
     }
     ani_size index = 0;
     for (auto &info : infos) {

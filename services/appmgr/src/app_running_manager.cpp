@@ -1014,7 +1014,13 @@ void AppRunningManager::TerminateAbility(const sptr<IRemoteObject> &token, bool 
         appRecord->TerminateAbility(token, false);
     }
 #endif //SUPPORT_SCREEN
-    auto isLauncherApp = appRecord->GetApplicationInfo()->isLauncherApp;
+    auto appInfo = appRecord->GetApplicationInfo();
+    if (appInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null applicationInfo, bundle:%{public}s recordId:%{public}d",
+            appRecord->GetBundleName().c_str(), appRecord->GetRecordId());
+        return;
+    }
+    auto isLauncherApp = appInfo->isLauncherApp;
     auto isKeepAliveApp = appRecord->IsKeepAliveApp();
     TAG_LOGI(AAFwkTag::PROCESSMGR, "term isLast:%{public}d,%{public}d alive:%{public}d",
         isLastAbility, isLastAgentAbility, isKeepAliveApp);
