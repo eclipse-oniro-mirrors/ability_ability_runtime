@@ -532,7 +532,6 @@ bool JsAutoFillExtension::HandleAutoFillCreate(const AAFwk::Want &want, const sp
             TAG_LOGD(AAFwkTag::AUTOFILL_EXT, "isNotAllow: %{public}d", isNotAllow);
             option->SetConstrainedModal(isNotAllow);
         }
-        option->SetCallerPid(want.GetIntParam(AAFwk::Want::PARAM_RESV_CALLER_PID, -1));
         sptr<Rosen::Window> uiWindow;
         {
             HITRACE_METER_NAME(HITRACE_TAG_APP, "Rosen::Window::Create");
