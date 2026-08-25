@@ -4731,7 +4731,7 @@ HWTEST_F(AppMgrServiceInnerTest, NotifyUnLoadRepairPatch_001, TestSize.Level2)
 
 /**
  * @tc.name: GetProcessMemoryByPid_001
- * @tc.desc: Get memorySize by pid.
+ * @tc.desc: Get memorySize by self pid, verify normal path returns ERR_OK and non-negative memorySize.
  * @tc.type: FUNC
  * @tc.require: issueI76JBF
  */
@@ -4741,10 +4741,11 @@ HWTEST_F(AppMgrServiceInnerTest, GetProcessMemoryByPid_001, TestSize.Level2)
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     EXPECT_NE(appMgrServiceInner, nullptr);
 
-    int32_t pid = 0;
-    int32_t memorySize = 0;
+    int32_t pid = getpid();
+    int32_t memorySize = -1;
     int32_t ret = appMgrServiceInner->GetProcessMemoryByPid(pid, memorySize);
     EXPECT_EQ(ret, ERR_OK);
+    EXPECT_GE(memorySize, 0);
 
     TAG_LOGI(AAFwkTag::TEST, "GetProcessMemoryByPid_001 end");
 }

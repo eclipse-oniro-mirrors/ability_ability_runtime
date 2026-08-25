@@ -1250,7 +1250,12 @@ private:
             }
             int32_t memSize = 0;
             int32_t ret = appManager->GetProcessMemoryByPid(pid, memSize);
-            if (ret == 0) {
+            if (ret == 0 && memSize == -1) {
+                TAG_LOGE(AAFwkTag::APPMGR, "memory size overflow, pid:%{public}d", pid);
+                task->Reject(env, CreateJsError(env,
+                    static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    "Memory size overflow."));
+            } else if (ret == 0) {
                 task->ResolveWithNoError(env, CreateJsValue(env, memSize));
             } else {
                 task->Reject(env, CreateJsErrorByNativeErr(env, ret));

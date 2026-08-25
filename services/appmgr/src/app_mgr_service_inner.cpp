@@ -8132,6 +8132,10 @@ void AppMgrServiceInner::KillApplicationByRecord(const std::shared_ptr<AppRunnin
     }
 
     auto pid = appRecord->GetPid();
+    if (pid < 0) {
+        TAG_LOGW(AAFwkTag::APPMGR, "invalid pid");
+        return;
+    }
     appRecord->SetTerminating();
     appRecord->ScheduleProcessSecurityExit();
 
@@ -10210,7 +10214,12 @@ int32_t AppMgrServiceInner::GetProcessMemoryByPid(const int32_t pid, int32_t &me
 {
     CHECK_CALLER_IS_SYSTEM_APP;
     uint64_t memSize = OHOS::MemInfo::GetPssByPid(pid);
-    memorySize = static_cast<int32_t>(memSize);
+    if (memSize > static_cast<uint64_t>(INT32_MAX)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "pss overflow: %{public}" PRIu64 " KB, pid:%{public}d", memSize, pid);
+        memorySize = -1;
+    } else {
+        memorySize = static_cast<int32_t>(memSize);
+    }
     return ERR_OK;
 }
 

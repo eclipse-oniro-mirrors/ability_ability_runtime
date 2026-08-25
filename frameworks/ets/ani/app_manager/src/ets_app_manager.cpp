@@ -952,8 +952,13 @@ void EtsAppManager::NativeGetProcessMemoryByPid(ani_env *env, ani_int aniPid, an
     int32_t memSize = 0;
     int32_t ret = appMgr->GetProcessMemoryByPid(aniPid, memSize);
     TAG_LOGD(AAFwkTag::APPMGR, "NativeGetProcessMemoryByPid memSize: %{public}d, ret:%{public}d", memSize, ret);
+    int32_t errCode = ret;
+    if (ret == 0 && memSize == -1) {
+        TAG_LOGE(AAFwkTag::APPMGR, "memory size overflow, pid:%{public}d", aniPid);
+        errCode = static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);
+    }
     AppExecFwk::AsyncCallback(env, callback,
-        AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(ret)),
+        AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env, errCode),
         AppExecFwk::CreateInt(env, memSize));
     TAG_LOGD(AAFwkTag::APPMGR, "NativeGetProcessMemoryByPid end");
 }
