@@ -59,9 +59,13 @@ public:
     bool HasInsightIntentByName(uint32_t versionCode, const std::string &bundleName, const int32_t userId);
     bool HasBundleCache(const std::string &bundleName);
     bool IsCacheInitialized(int32_t userId);
+    // True only when the cache is loaded for this user and holds no entry for the
+    // bundle, so callers may safely skip the delete work.
+    bool CanSkipDelete(const std::string &bundleName, int32_t userId);
     void BackupRdb();
 private:
     int32_t userId_ = -1;
+    bool cacheLoadFailed_ = false;
     mutable std::mutex genericInfosMutex_;
     std::map<std::string, std::vector<ExtractInsightIntentGenericInfo>> intentGenericInfos_;
     std::map<std::string, std::string> bundleVersionMap_;

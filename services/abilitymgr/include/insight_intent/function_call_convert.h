@@ -41,12 +41,7 @@ bool RegisterInsightIntentFunctions(
 
 bool UnregisterInsightIntentFunctions(const std::string &bundleName);
 
-// Batch register (boot/shutdown scenario): collect FunctionInfo across bundles and
-// dispatch to the KVStore in one shot to cut IPC calls during boot. bundleVersionMap
-// provides the functionNamespace(bundleName) -> versionCode mapping.
-// Relies on CliToolMGRClient::BatchRegisterFunctionsAsync (one-way; the return value
-// only indicates whether the request was sent, the server-side write result is not
-// reported back).
+// One-shot batch register across bundles via one-way IPC; server-side result is not reported.
 bool BatchRegisterInsightIntentFunctions(
     const std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos,
     const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
@@ -58,12 +53,7 @@ bool BatchUpdateInsightIntentFunctions(
     const std::string &bundleName,
     uint32_t versionCode);
 
-// Utility class: pre-processes the intent list before RegisterInsightIntentFunctions.
-// Rule 1: drop intents that are not "background UIAbility / ServiceExtension".
-// Rule 2: for the same intentName across multiple moduleNames, keep the
-// lexicographically first moduleName.
-// Rule 3: for the same moduleName + intentName with multiple abilities, UIAbility
-// wins; otherwise keep the lexicographically first abilityName.
+// Pre-filters intents before registration: keeps BG UIAbility/SE only, dedupes by module/ability name.
 class IntentFilterUtil {
 public:
     IntentFilterUtil() = default;

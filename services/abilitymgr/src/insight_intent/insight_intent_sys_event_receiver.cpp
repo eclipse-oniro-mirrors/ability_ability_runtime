@@ -64,9 +64,7 @@ bool InsightIntentSysEventReceiver::SaveInsightIntentInfos(const std::string &bu
             moduleNameLocal, profile, userId));
         if (ret != ERR_OK) {
             TAG_LOGW(AAFwkTag::INTENT, "GetJsonProfile failed, code: %{public}d", ret);
-            if (DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(bundleName)) {
-                DeleteInsightIntent(bundleName, moduleNameLocal, userId);
-            }
+            DeleteInsightIntent(bundleName, moduleNameLocal, userId);
             continue;
         }
 
@@ -135,6 +133,12 @@ void InsightIntentSysEventReceiver::RegisterAllFunctions(
 void InsightIntentSysEventReceiver::DeleteInsightIntent(const std::string &bundleName,
     const std::string &moduleName, int32_t userId)
 {
+    if (DelayedSingleton<InsightIntentDbCache>::GetInstance()->CanSkipDelete(bundleName, userId)) {
+        TAG_LOGI(AAFwkTag::INTENT, "no intent cache, skip delete, bundleName: %{public}s, "
+            "moduleName: %{public}s, userId: %{public}d",
+            bundleName.c_str(), moduleName.c_str(), userId);
+        return;
+    }
     std::vector<ExtractInsightIntentInfo> intentInfos;
     std::vector<InsightIntentInfo> configIntentInfos;
     DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentInfoByName(

@@ -87,8 +87,7 @@ struct RegisterSortKey {
     }
 };
 
-// Check whether the Entry decorator's executeMode contains a BG UIAbility or SE.
-// Fills outAbility and returns true when qualified.
+// Returns true when the Entry executeMode contains a BG UIAbility or SE, filling outAbility.
 bool IsQualifiedEntry(const AbilityRuntime::ExtractInsightIntentGenericInfo &generic, std::string &outAbility)
 {
     if (generic.currentType != AbilityRuntime::InfoType::Entry) {
