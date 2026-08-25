@@ -35,6 +35,7 @@ namespace AbilityRuntime {
 namespace {
 constexpr int32_t INDEX_ZERO = 0;
 constexpr size_t ARGC_ONE = 1;
+const std::string RES_SCHED_CLIENT_SO = "libressched_client.z.so";
 
 napi_value CreateJsHyperSnapErrorInfo(napi_env env, const AppExecFwk::HyperSnapErrorRecord &record)
 {
