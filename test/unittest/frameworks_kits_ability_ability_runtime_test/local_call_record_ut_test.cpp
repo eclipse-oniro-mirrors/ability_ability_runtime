@@ -65,38 +65,6 @@ void LocalCallRecordTest::TearDown(void)
 {}
 
 /**
- * @tc.number: Local_Call_Record_SetRemoteObject_0100
- * @tc.name: SetRemoteObject
- * @tc.desc: LocalCallRecord to process SetRemoteObject success.
- */
-HWTEST_F(LocalCallRecordTest, Local_Call_Record_SetRemoteObject_0100, Function | MediumTest | Level1)
-{
-    AppExecFwk::ElementName elementName("DemoDeviceId", "DemoBundleName", "DemoAbilityName");
-    LocalCallRecord localCallRecord(elementName);
-    EXPECT_TRUE(localCallRecord.callRecipient_ == nullptr);
-    sptr<IRemoteObject> call = new (std::nothrow) MockServiceAbilityManagerService();
-    EXPECT_TRUE(call != nullptr);
-    localCallRecord.SetRemoteObject(call);
-    EXPECT_TRUE(localCallRecord.callRecipient_ != nullptr);
-    EXPECT_TRUE(localCallRecord.remoteObject_ != nullptr);
-}
-
-/**
- * @tc.number: Local_Call_Record_SetRemoteObject_0200
- * @tc.name: SetRemoteObject
- * @tc.desc: LocalCallRecord to process SetRemoteObject fail because call back is null.
- */
-HWTEST_F(LocalCallRecordTest, Local_Call_Record_SetRemoteObject_0200, Function | MediumTest | Level1)
-{
-    AppExecFwk::ElementName elementName("DemoDeviceId", "DemoBundleName", "DemoAbilityName");
-    LocalCallRecord localCallRecord(elementName);
-    EXPECT_TRUE(localCallRecord.callRecipient_ == nullptr);
-    localCallRecord.SetRemoteObject(nullptr);
-    EXPECT_TRUE(localCallRecord.callRecipient_ == nullptr);
-    EXPECT_TRUE(localCallRecord.remoteObject_ == nullptr);
-}
-
-/**
  * @tc.number: Local_Call_Record_AddCaller_0100
  * @tc.name: AddCaller
  * @tc.desc: LocalCallRecord to process AddCaller success.
@@ -506,6 +474,148 @@ HWTEST_F(LocalCallRecordTest, Local_Call_Record_SetUserId_0100, Function | Mediu
     LocalCallRecord localCallRecord(elementName);
     localCallRecord.SetUserId(USER_ID_U100);
     EXPECT_EQ(USER_ID_U100, localCallRecord.GetUserId());
+}
+
+/**
+ * @tc.number: Local_Call_Record_RemoveCaller_0400
+ * @tc.name: RemoveCaller
+ * @tc.desc: RemoveCaller with onRelease callback set, verify InvokeOnRelease(ON_RELEASE) fires.
+ */
+HWTEST_F(LocalCallRecordTest, Local_Call_Record_RemoveCaller_0400, Function | MediumTest | Level1)
+{
+    AppExecFwk::ElementName elementName("DemoDeviceId", "DemoBundleName", "DemoAbilityName");
+    LocalCallRecord localCallRecord(elementName);
+    bool isOnReleaseCalled = false;
+    std::string receivedKey;
+    std::shared_ptr<CallerCallBack> callback = std::make_shared<CallerCallBack>();
+    callback->SetOnRelease([&isOnReleaseCalled, &receivedKey](const std::string& key) {
+        isOnReleaseCalled = true;
+        receivedKey = key;
+    });
+    localCallRecord.callers_.emplace_back(callback);
+    bool ret = localCallRecord.RemoveCaller(callback);
+    EXPECT_EQ(ret, true);
+    EXPECT_TRUE(isOnReleaseCalled);
+    EXPECT_EQ(receivedKey, ON_RELEASE);
+    EXPECT_TRUE(localCallRecord.callers_.empty());
+}
+
+/**
+ * @tc.number: Local_Call_Record_ClearData_0100
+ * @tc.name: ClearData
+ * @tc.desc: ClearData removes death recipient and clears callers.
+ */
+HWTEST_F(LocalCallRecordTest, Local_Call_Record_ClearData_0100, Function | MediumTest | Level1)
+{
+    AppExecFwk::ElementName elementName("DemoDeviceId", "DemoBundleName", "DemoAbilityName");
+    LocalCallRecord localCallRecord(elementName);
+    sptr<IRemoteObject> remote = new (std::nothrow) MockServiceAbilityManagerService();
+    localCallRecord.remoteObject_ = remote;
+    localCallRecord.callRecipient_ = sptr<CallRecipient>::MakeSptr([](const wptr<IRemoteObject>&) {});
+    std::shared_ptr<CallerCallBack> callback = std::make_shared<CallerCallBack>();
+    localCallRecord.callers_.emplace_back(callback);
+    localCallRecord.ClearData();
+    EXPECT_EQ(localCallRecord.remoteObject_, nullptr);
+    EXPECT_EQ(localCallRecord.callRecipient_, nullptr);
+    EXPECT_TRUE(localCallRecord.callers_.empty());
+}
+
+/**
+ * @tc.number: Local_Call_Record_ClearData_0200
+ * @tc.name: ClearData
+ * @tc.desc: ClearData when remoteObject_ is already null, does nothing.
+ */
+HWTEST_F(LocalCallRecordTest, Local_Call_Record_ClearData_0200, Function | MediumTest | Level1)
+{
+    AppExecFwk::ElementName elementName("DemoDeviceId", "DemoBundleName", "DemoAbilityName");
+    LocalCallRecord localCallRecord(elementName);
+    localCallRecord.ClearData();
+    EXPECT_EQ(localCallRecord.remoteObject_, nullptr);
+}
+
+/**
+ * @tc.number: Local_Call_Record_SetRemoteObject_0300
+ * @tc.name: SetRemoteObject
+ * @tc.desc: SetRemoteObject two-arg version with custom death recipient.
+ */
+HWTEST_F(LocalCallRecordTest, Local_Call_Record_SetRemoteObject_0300, Function | MediumTest | Level1)
+{
+    AppExecFwk::ElementName elementName("DemoDeviceId", "DemoBundleName", "DemoAbilityName");
+    LocalCallRecord localCallRecord(elementName);
+    sptr<IRemoteObject> call = new (std::nothrow) MockServiceAbilityManagerService();
+    bool diedCalled = false;
+    auto recipient = sptr<CallRecipient>::MakeSptr([&diedCalled](const wptr<IRemoteObject>&) {
+        diedCalled = true;
+    });
+    localCallRecord.SetRemoteObject(call, recipient);
+    EXPECT_EQ(localCallRecord.remoteObject_, call);
+    EXPECT_TRUE(localCallRecord.callRecipient_ != nullptr);
+}
+
+/**
+ * @tc.number: Local_Call_Record_SetRemoteObject_0400
+ * @tc.name: SetRemoteObject
+ * @tc.desc: SetRemoteObject two-arg version with null call, does nothing.
+ */
+HWTEST_F(LocalCallRecordTest, Local_Call_Record_SetRemoteObject_0400, Function | MediumTest | Level1)
+{
+    AppExecFwk::ElementName elementName("DemoDeviceId", "DemoBundleName", "DemoAbilityName");
+    LocalCallRecord localCallRecord(elementName);
+    auto recipient = sptr<CallRecipient>::MakeSptr([](const wptr<IRemoteObject>&) {});
+    localCallRecord.SetRemoteObject(nullptr, recipient);
+    EXPECT_EQ(localCallRecord.remoteObject_, nullptr);
+}
+
+/**
+ * @tc.number: Local_Call_Record_SetRemoteObject_0500
+ * @tc.name: SetRemoteObject
+ * @tc.desc: SetRemoteObject does not overwrite when remoteObject_ already set (re-entrancy guard).
+ */
+HWTEST_F(LocalCallRecordTest, Local_Call_Record_SetRemoteObject_0500, Function | MediumTest | Level1)
+{
+    AppExecFwk::ElementName elementName("DemoDeviceId", "DemoBundleName", "DemoAbilityName");
+    LocalCallRecord localCallRecord(elementName);
+    sptr<IRemoteObject> callA = new (std::nothrow) MockServiceAbilityManagerService();
+    sptr<IRemoteObject> callB = new (std::nothrow) MockServiceAbilityManagerService();
+    sptr<IRemoteObject::DeathRecipient> recipientA = sptr<CallRecipient>::MakeSptr([](const wptr<IRemoteObject>&) {});
+    sptr<IRemoteObject::DeathRecipient> recipientB = sptr<CallRecipient>::MakeSptr([](const wptr<IRemoteObject>&) {});
+
+    localCallRecord.SetRemoteObject(callA, recipientA);
+    EXPECT_EQ(localCallRecord.remoteObject_, callA);
+    EXPECT_EQ(localCallRecord.callRecipient_, recipientA);
+
+    // Second call must not overwrite the already-set remote/recipient.
+    localCallRecord.SetRemoteObject(callB, recipientB);
+    EXPECT_EQ(localCallRecord.remoteObject_, callA);
+    EXPECT_EQ(localCallRecord.callRecipient_, recipientA);
+    EXPECT_NE(localCallRecord.remoteObject_, callB);
+    EXPECT_NE(localCallRecord.callRecipient_, recipientB);
+}
+
+/**
+ * @tc.number: Local_Call_Record_SetRemoteObject_0600
+ * @tc.name: SetRemoteObject
+ * @tc.desc: After ClearData resets remoteObject_, SetRemoteObject can set again.
+ */
+HWTEST_F(LocalCallRecordTest, Local_Call_Record_SetRemoteObject_0600, Function | MediumTest | Level1)
+{
+    AppExecFwk::ElementName elementName("DemoDeviceId", "DemoBundleName", "DemoAbilityName");
+    LocalCallRecord localCallRecord(elementName);
+    sptr<IRemoteObject> callA = new (std::nothrow) MockServiceAbilityManagerService();
+    sptr<IRemoteObject::DeathRecipient> recipientA = sptr<CallRecipient>::MakeSptr([](const wptr<IRemoteObject>&) {});
+    localCallRecord.SetRemoteObject(callA, recipientA);
+    EXPECT_EQ(localCallRecord.remoteObject_, callA);
+
+    localCallRecord.ClearData();
+    EXPECT_EQ(localCallRecord.remoteObject_, nullptr);
+    EXPECT_EQ(localCallRecord.callRecipient_, nullptr);
+
+    // After ClearData, remoteObject_ is null; SetRemoteObject should succeed again.
+    sptr<IRemoteObject> callB = new (std::nothrow) MockServiceAbilityManagerService();
+    sptr<IRemoteObject::DeathRecipient> recipientB = sptr<CallRecipient>::MakeSptr([](const wptr<IRemoteObject>&) {});
+    localCallRecord.SetRemoteObject(callB, recipientB);
+    EXPECT_EQ(localCallRecord.remoteObject_, callB);
+    EXPECT_EQ(localCallRecord.callRecipient_, recipientB);
 }
 } // namespace AppExecFwk
 } // namespace OHOS
