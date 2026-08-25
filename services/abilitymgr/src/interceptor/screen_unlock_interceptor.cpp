@@ -19,6 +19,7 @@
 #include "ability_util.h"
 #include "bundle_mgr_helper.h"
 #include "extension_config.h"
+#include "extension_query_event_util.h"
 #include "event_report.h"
 #include "parameters.h"
 #include "start_ability_utils.h"
@@ -275,6 +276,7 @@ void ScreenUnlockInterceptor::QueryTargetAbilityInfo(const AbilityInterceptorPar
     std::vector<AppExecFwk::ExtensionAbilityInfo> extensionInfos;
     IN_PROCESS_CALL(bundleMgrHelper->QueryExtensionAbilityInfos(param.want,
         AppExecFwk::AbilityInfoFlag::GET_ABILITY_INFO_WITH_APPLICATION, param.userId, extensionInfos));
+    ExtensionQueryEventUtil::ReportExtensionQueryMultiResult(extensionInfos, false);
     if (extensionInfos.size() <= 0) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "extensionInfo empty");
         return;

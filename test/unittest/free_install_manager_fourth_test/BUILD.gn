@@ -27,6 +27,7 @@ ohos_unittest("free_install_manager_fourth_test") {
   ]
 
   sources = [
+    "${ability_runtime_services_path}/abilitymgr/src/extension_query_event_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/free_install_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/agent_ability_util.cpp",
     "../free_install_manager_test/mock/src/mock_permission_verification.cpp",
@@ -54,6 +55,7 @@ ohos_unittest("free_install_manager_fourth_test") {
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
+    "${ability_runtime_services_path}/common:app_util",
     "${ability_runtime_services_path}/common:perm_verification",
   ]
 

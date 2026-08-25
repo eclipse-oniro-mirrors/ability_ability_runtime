@@ -33,6 +33,7 @@ ohos_unittest("start_ability_utils_test") {
   ]
 
   sources = [
+    "${ability_runtime_services_path}/abilitymgr/src/extension_query_event_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/start_ability_utils.cpp",
     "mock/src/mock_app_scheduler.cpp",
     "mock/src/mock_bundle_mgr_helper.cpp",

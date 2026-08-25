@@ -36,6 +36,7 @@ ohos_fuzztest("StartAbilityUtilsFirstFuzzTest") {
   ]
 
   sources = [
+    "${ability_runtime_services_path}/abilitymgr/src/extension_query_event_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/start_ability_utils.cpp",
     "startabilityutilsfirst_fuzzer.cpp",
   ]
@@ -72,6 +73,7 @@ ohos_fuzztest("StartAbilityUtilsFirstFuzzTest") {
     "common_event_service:cesfwk_innerkits",
     "ffrt:libffrt",
     "hilog:libhilog",
+    "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
     "hitrace:libhitracechain",
     "input:libmmi-client",
