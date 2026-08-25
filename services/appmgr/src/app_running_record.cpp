@@ -1204,6 +1204,10 @@ void AppRunningRecord::AbilityTerminated(const sptr<IRemoteObject> &token)
     }
     auto state = static_cast<int>(GetSupportProcessCacheState());
     auto appInfo = appRecord->GetApplicationInfo();
+    if (appInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "appInfo nullptr");
+        return;
+    }
     auto hisyseventReport = std::make_shared<AAFwk::HisyseventReport>(4);
     hisyseventReport->InsertParam(EVENT_KEY_VERSION_CODE, appInfo->versionCode);
     hisyseventReport->InsertParam(EVENT_KEY_VERSION_NAME, appInfo->versionName);

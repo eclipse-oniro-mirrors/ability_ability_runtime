@@ -1528,7 +1528,8 @@ bool AppMgrService::JudgeAppSelfCalled(int32_t recordId)
 
     auto callingTokenId = IPCSkeleton::GetCallingTokenID();
     std::shared_ptr<AppRunningRecord> appRecord = appMgrServiceInner_->GetAppRunningRecordByAppRecordId(recordId);
-    if (appRecord == nullptr || ((appRecord->GetApplicationInfo())->accessTokenId) != callingTokenId) {
+    if (appRecord == nullptr || appRecord->GetApplicationInfo() == nullptr ||
+        ((appRecord->GetApplicationInfo())->accessTokenId) != callingTokenId) {
         TAG_LOGE(AAFwkTag::APPMGR, "not enabled");
         return false;
     }

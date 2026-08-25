@@ -137,6 +137,10 @@ bool CacheProcessManager::CheckAndCacheProcess(const std::shared_ptr<AppRunningR
         appRecord->ScheduleCacheProcess();
     }
     auto appInfo = appRecord->GetApplicationInfo();
+    if (appInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "appInfo nullptr");
+        return;
+    }
     std::string eventState = "processEnterCache";
     auto hisyseventReport = std::make_shared<AAFwk::HisyseventReport>(4);
     hisyseventReport->InsertParam(EVENT_KEY_VERSION_CODE, appInfo->versionCode);
@@ -232,6 +236,10 @@ void CacheProcessManager::OnProcessKilled(const std::shared_ptr<AppRunningRecord
     }
     RemoveCacheRecord(appRecord);
     auto appInfo = appRecord->GetApplicationInfo();
+    if (appInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "appInfo nullptr");
+        return;
+    }
     auto hisyseventReport = std::make_shared<AAFwk::HisyseventReport>(4);
     std::string eventState = "destroyedByExternal";
     hisyseventReport->InsertParam(EVENT_KEY_VERSION_CODE, appInfo->versionCode);
@@ -254,6 +262,10 @@ bool CacheProcessManager::ReuseCachedProcess(const std::shared_ptr<AppRunningRec
         return false;
     }
     auto appInfo = appRecord->GetApplicationInfo();
+    if (appInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "appInfo nullptr");
+        return false;
+    }
     if (!IsCachedProcess(appRecord)) {
         return false;
     }
@@ -492,6 +504,11 @@ void CacheProcessManager::ShrinkAndKillCache()
     }
     for (auto& tmpAppRecord : cleanList) {
         auto appInfo = tmpAppRecord->GetApplicationInfo();
+        if (appInfo == nullptr) {
+            TAG_LOGE(AAFwkTag::APPMGR, "appInfo nullptr");
+            KillProcessByRecord(tmpAppRecord);
+            continue;
+        }
         std::string eventState = "killForOverload";
         auto hisyseventReport = std::make_shared<AAFwk::HisyseventReport>(4);
         hisyseventReport->InsertParam(EVENT_KEY_VERSION_CODE, appInfo->versionCode);
