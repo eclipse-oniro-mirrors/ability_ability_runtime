@@ -92,6 +92,10 @@ napi_status JsRuntimeCommon::StartDebugMode(NativeEngine* nativeEngine, const st
     };
     panda::JSNApi::DebugOption debugOption = {ARK_DEBUGGER_LIB_PATH, isAddInstance};
     auto vm = const_cast<EcmaVM*>(arkNativeEngine->GetEcmaVm());
+    if (vm == nullptr) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "null vm");
+        return napi_status::napi_generic_failure;
+    }
     ConnectServerManager::Get().StoreDebuggerInfo(
         instanceId, reinterpret_cast<void*>(vm), debugOption, postTask, IsDebugApp());
     panda::JSNApi::NotifyDebugMode(instanceId, vm, debugOption, instanceId, postTask, IsDebugApp());

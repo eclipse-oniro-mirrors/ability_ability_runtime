@@ -260,6 +260,7 @@ void JsRuntime::DebuggerConnectionHandler(bool isDebugApp, bool isStartWithDebug
     ConnectServerManager::Get().StoreInstanceMessage(getproctid(), instanceId_);
     EcmaVM* vm = GetEcmaVm();
     CHECK_POINTER(jsEnv_);
+    CHECK_POINTER(vm);
     auto dTask = jsEnv_->GetDebuggerPostTask();
     panda::JSNApi::DebugOption option = {ARK_DEBUGGER_LIB_PATH, isDebugApp ? isStartWithDebug : false};
     ConnectServerManager::Get().StoreDebuggerInfo(getproctid(), reinterpret_cast<void*>(vm), option, dTask, isDebugApp);
@@ -410,6 +411,7 @@ void JsRuntime::DebuggerConnectionManager(bool isDebugApp, bool isStartWithDebug
     }
     EcmaVM* vm = GetEcmaVm();
     CHECK_POINTER(jsEnv_);
+    CHECK_POINTER(vm);
     auto dTask = jsEnv_->GetDebuggerPostTask();
     panda::JSNApi::DebugOption option = {ARK_DEBUGGER_LIB_PATH, isDebugApp ? isStartWithDebug : false};
     ConnectServerManager::Get().StoreDebuggerInfo(getproctid(), reinterpret_cast<void*>(vm), option, dTask, isDebugApp);

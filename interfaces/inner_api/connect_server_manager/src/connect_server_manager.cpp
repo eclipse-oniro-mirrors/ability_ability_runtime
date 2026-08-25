@@ -153,6 +153,10 @@ bool ConnectServerManager::StoreInstanceMessage(int32_t tid, int32_t instanceId,
 void ConnectServerManager::StoreDebuggerInfo(int32_t tid, void* vm, const panda::JSNApi::DebugOption& debugOption,
     const DebuggerPostTask& debuggerPostTask, bool isDebugApp)
 {
+    if (vm == nullptr) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "null vm, tid=%{public}d", tid);
+        return;
+    }
     std::lock_guard<std::mutex> lock(g_debuggerMutex);
     if (g_debuggerInfo.find(tid) == g_debuggerInfo.end()) {
         g_debuggerInfo.emplace(tid, std::make_pair(vm, debuggerPostTask));
