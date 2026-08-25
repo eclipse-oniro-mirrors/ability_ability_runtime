@@ -332,7 +332,6 @@ constexpr const char* REASON_APPRECOVERY_NOTIFYAPP_OVER_LIMIT = "AppRecoveryNoti
 #define CHECKPOINT_IOCTL_KILL_ALL                _IOR(0xE0, 0x4, int)
 #define CHECKPOINT_MONITOR_IOCTL_MARK_TEMPLATE   _IOR(0xE0, 0x7, struct HMCheckpointMarkS)
 #define CHECKPOINT_MONITOR_IOCTL_UNMARK_TEMPLATE _IOR(0xE0, 0x8, struct HMCheckpointUnMarkS)
-
 #define CHECKPOINT_IOCTL_GET_LAST_ERROR          _IOWR(0xE0, 0xC, struct HmCheckpointErrMsgS)
 
 constexpr int32_t ROOT_UID = 0;
