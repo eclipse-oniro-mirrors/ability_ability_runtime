@@ -724,7 +724,6 @@ sptr<Rosen::Window> JsUIExtension::CreateUIWindow(const std::shared_ptr<UIExtens
         launchTimestamp = static_cast<int64_t>(temp);
     }
     option->SetStartModalExtensionTimeStamp(launchTimestamp);
-    option->SetCallerPid(want.GetIntParam(AAFwk::Want::PARAM_RESV_CALLER_PID, -1));
     HITRACE_METER_NAME(HITRACE_TAG_APP, "Rosen::Window::Create");
     return Rosen::Window::Create(option, GetContext(), sessionInfo->sessionToken);
 }
