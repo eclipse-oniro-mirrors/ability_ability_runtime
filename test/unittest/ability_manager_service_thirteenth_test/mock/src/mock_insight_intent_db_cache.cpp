@@ -24,7 +24,7 @@ InsightIntentDbCache::InsightIntentDbCache()
 int32_t InsightIntentDbCache::InitInsightIntentCache(const int32_t userId)
 {
     std::lock_guard<std::mutex> lock(genericInfosMutex_);
-    if (userId_ == userId) {
+    if (userId_ == userId && !cacheLoadFailed_) {
         TAG_LOGD(AAFwkTag::INTENT, "no need init, userId %{public}d.", userId_);
         return ERR_INVALID_VALUE;
     }
@@ -37,6 +37,7 @@ int32_t InsightIntentDbCache::InitInsightIntentCache(const int32_t userId)
     if (DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadInsightIntentInfos(
         userId, bundleVersionMap, totalInfos, configInfos) != ERR_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "Load All IntentData failed");
+        cacheLoadFailed_ = true;
         return ERR_INVALID_VALUE;
     }
     if (totalInfos.size() == 0) {
@@ -47,8 +48,13 @@ int32_t InsightIntentDbCache::InitInsightIntentCache(const int32_t userId)
         ExtractInsightIntentInfo info = totalInfos.at(i);
         std::string bundleName = info.genericInfo.bundleName;
         intentGenericInfos_[bundleName].push_back(info.genericInfo);
+        auto versionIt = bundleVersionMap.find(bundleName);
+        if (versionIt != bundleVersionMap.end()) {
+            bundleVersionMap_[bundleName] = versionIt->second;
+        }
     }
     userId_ = userId;
+    cacheLoadFailed_ = false;
     return ERR_OK;
 }
 
@@ -122,6 +128,13 @@ bool InsightIntentDbCache::IsCacheInitialized(int32_t userId)
 {
     std::lock_guard<std::mutex> lock(genericInfosMutex_);
     return userId_ == userId;
+}
+
+bool InsightIntentDbCache::CanSkipDelete(const std::string &bundleName, int32_t userId)
+{
+    std::lock_guard<std::mutex> lock(genericInfosMutex_);
+    return userId_ == userId && !cacheLoadFailed_ &&
+        bundleVersionMap_.find(bundleName) == bundleVersionMap_.end();
 }
 
 int32_t InsightIntentDbCache::DeleteInsightIntentTotalInfo(const std::string &bundleName,

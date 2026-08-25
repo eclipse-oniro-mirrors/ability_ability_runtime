@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "extract_insight_intent_profile.h"
@@ -152,9 +153,20 @@ HWTEST_F(FunctionCallConvertTest, BatchUpdateInsightIntentFunctions_EmptyBundleN
 {
     std::vector<ExtractInsightIntentInfo> intentInfos;
     std::vector<InsightIntentInfo> configInfos;
-    int32_t successCount = -1;
-    EXPECT_FALSE(BatchUpdateInsightIntentFunctions(intentInfos, configInfos, "", 0, successCount));
-    EXPECT_EQ(successCount, 0);
+    EXPECT_FALSE(BatchUpdateInsightIntentFunctions(intentInfos, configInfos, "", 0));
+}
+
+HWTEST_F(FunctionCallConvertTest, UnregisterInsightIntentFunctions_EmptyBundleName_ReturnsFalse, TestSize.Level1)
+{
+    EXPECT_FALSE(UnregisterInsightIntentFunctions(""));
+}
+
+HWTEST_F(FunctionCallConvertTest, BatchRegisterInsightIntentFunctions_EmptyFunctions_ReturnsTrue, TestSize.Level1)
+{
+    std::vector<ExtractInsightIntentInfo> intentInfos;
+    std::vector<InsightIntentInfo> configInfos;
+    std::unordered_map<std::string, uint32_t> bundleVersionMap;
+    EXPECT_TRUE(BatchRegisterInsightIntentFunctions(intentInfos, configInfos, bundleVersionMap));
 }
 
 HWTEST_F(FunctionCallConvertTest, ConvertFromExtractIntentInfo_PropertiesIsString_NoCrash, TestSize.Level1)
