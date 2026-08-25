@@ -139,7 +139,7 @@ bool CacheProcessManager::CheckAndCacheProcess(const std::shared_ptr<AppRunningR
     auto appInfo = appRecord->GetApplicationInfo();
     if (appInfo == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "appInfo nullptr");
-        return;
+        return false;
     }
     std::string eventState = "processEnterCache";
     auto hisyseventReport = std::make_shared<AAFwk::HisyseventReport>(4);
