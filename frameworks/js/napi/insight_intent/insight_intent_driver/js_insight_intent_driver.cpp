@@ -621,6 +621,18 @@ static napi_value InitIntentDevelopTypeObject(napi_env env)
     return handleEscape.Escape(napiObject);
 }
 
+static napi_value InitExecuteModeForConfigurationObject(napi_env env)
+{
+    HandleEscape handleEscape(env);
+    napi_value napiObject;
+    NAPI_CALL(env, napi_create_object(env, &napiObject));
+
+    NAPI_CALL(env, SetEnumItem(env, napiObject, "FOREGROUND", 0));
+    NAPI_CALL(env, SetEnumItem(env, napiObject, "BACKGROUND", 1));
+
+    return handleEscape.Escape(napiObject);
+}
+
 napi_value JsInsightIntentDriverInit(napi_env env, napi_value exportObj)
 {
     TAG_LOGD(AAFwkTag::INTENT, "called");
@@ -651,11 +663,15 @@ napi_value JsInsightIntentDriverInit(napi_env env, napi_value exportObj)
     NAPI_ASSERT(env, insightIntentType != nullptr, "failed to create insightIntent type flag object");
     napi_value intentDevelopType = InitIntentDevelopTypeObject(env);
     NAPI_ASSERT(env, intentDevelopType != nullptr, "failed to create develop type object");
+    napi_value executeModeForConfiguration = InitExecuteModeForConfigurationObject(env);
+    NAPI_ASSERT(env, executeModeForConfiguration != nullptr,
+        "failed to create execute mode for configuration object");
 
     napi_property_descriptor exportObjs[] = {
         DECLARE_NAPI_PROPERTY("GetInsightIntentFlag", getInsightIntentFlag),
         DECLARE_NAPI_PROPERTY("InsightIntentType", insightIntentType),
         DECLARE_NAPI_PROPERTY("DevelopType", intentDevelopType),
+        DECLARE_NAPI_PROPERTY("ExecuteModeForConfiguration", executeModeForConfiguration),
     };
     napi_status status = napi_define_properties(env, exportObj, sizeof(exportObjs) / sizeof(exportObjs[0]), exportObjs);
     NAPI_ASSERT(env, status == napi_ok, "failed to define properties for exportObj");
