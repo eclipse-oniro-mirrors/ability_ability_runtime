@@ -29,6 +29,7 @@ persist.sys.abilityms.use_multi_render_process = foundation:foundation:0755
 persist.sys.abilityms.limit_maximum_of_render_process = foundation:foundation:0755
 persist.sys.abilityms.grant_persist_uri_permission = foundation:foundation:0755
 persist.sys.abilityms.start_options_with_animation = foundation:foundation:0755
+persist.sys.abilityms.support_block_all_app_start = foundation:foundation:0755
 persist.sys.abilityms.multi_process_model = foundation:foundation:0755
 persist.sys.abilityms.start_options_with_process_option = foundation:foundation:0755
 persist.sys.abilityms.move_ui_ability_to_background_api_enable = foundation:foundation:0755

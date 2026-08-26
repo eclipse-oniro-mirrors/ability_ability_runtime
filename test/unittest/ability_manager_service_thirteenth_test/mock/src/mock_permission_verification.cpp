@@ -87,6 +87,10 @@ bool PermissionVerification::VerifyGetBundleInfoPrivilegedPermission() const
 {
     return !!(MyStatus::GetInstance().permPermission_);
 }
+bool PermissionVerification::VerifyBlockAllAppStartPermission() const
+{
+    return MyStatus::GetInstance().permVerifyBlockAllAppStartPermission_;
+}
 int PermissionVerification::CheckCallDataAbilityPermission(const VerificationInfo &verificationInfo, bool isShell) const
 {
     return MyStatus::GetInstance().permPermission_;

@@ -52,6 +52,7 @@ public:
     uint32_t ipcGetCallingTokenID_ = 1;
     uint32_t ipcGetSelfTokenID_ = 1;
     int permPermission_ = 1;
+    bool permVerifyBlockAllAppStartPermission_ = false;
     bool perJudgeCallerIsAllowedToUseSystemAPI_ = true;
     bool paramGetBoolParameter_ = true;
     std::shared_ptr<BaseExtensionRecord> acmGetUIExtensionBySessionInfo_ = nullptr;
@@ -65,6 +66,7 @@ public:
     std::string fimConnectLocalDeviceId_;
     int32_t softbusGetLocalNodeDeviceInfo_ = ERR_OK;
     bool auIsSupportDelayedProcessExit_ = false;
+    bool auIsSupportBlockAllAppStart_ = true;
     int32_t oeuValidateCallerResult_ = ERR_OK;
     int32_t oeuValidateCallerUserId_ = 0;
     std::string oeuValidateCallerHostBundleName_;

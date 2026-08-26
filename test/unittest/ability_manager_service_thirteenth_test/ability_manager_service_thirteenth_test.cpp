@@ -4771,5 +4771,137 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_01
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest StartAbilityForAppCloneSelector_011 end");
 }
 
+/*
+ * Feature: AbilityManagerService
+ * Name: BlockAllAppStart_001
+ * Function: BlockAllAppStart
+ * SubFunction: NA
+ * FunctionPoints: BlockAllAppStart succeeds when supported and permission granted.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, BlockAllAppStart_001, TestSize.Level1)
+{
+    auto &status = MyStatus::GetInstance();
+    status.auIsSupportBlockAllAppStart_ = true;
+    status.permVerifyBlockAllAppStartPermission_ = true;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    abilityMs->shouldBlockAllAppStart_ = false;
+    EXPECT_EQ(abilityMs->BlockAllAppStart(true), ERR_OK);
+    EXPECT_EQ(abilityMs->shouldBlockAllAppStart_, true);
+    status.auIsSupportBlockAllAppStart_ = true;
+    status.permVerifyBlockAllAppStartPermission_ = false;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: BlockAllAppStart_002
+ * Function: BlockAllAppStart
+ * SubFunction: NA
+ * FunctionPoints: BlockAllAppStart returns ERR_PERMISSION_DENIED when not supported.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, BlockAllAppStart_002, TestSize.Level1)
+{
+    auto &status = MyStatus::GetInstance();
+    status.auIsSupportBlockAllAppStart_ = false;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    abilityMs->shouldBlockAllAppStart_ = false;
+    EXPECT_EQ(abilityMs->BlockAllAppStart(true), ERR_PERMISSION_DENIED);
+    EXPECT_EQ(abilityMs->shouldBlockAllAppStart_, false);
+    status.auIsSupportBlockAllAppStart_ = true;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: BlockAllAppStart_003
+ * Function: BlockAllAppStart
+ * SubFunction: NA
+ * FunctionPoints: BlockAllAppStart returns ERR_PERMISSION_DENIED when permission denied.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, BlockAllAppStart_003, TestSize.Level1)
+{
+    auto &status = MyStatus::GetInstance();
+    status.auIsSupportBlockAllAppStart_ = true;
+    status.permVerifyBlockAllAppStartPermission_ = false;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    abilityMs->shouldBlockAllAppStart_ = false;
+    EXPECT_EQ(abilityMs->BlockAllAppStart(true), ERR_PERMISSION_DENIED);
+    EXPECT_EQ(abilityMs->shouldBlockAllAppStart_, false);
+    status.auIsSupportBlockAllAppStart_ = true;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: ShouldBlockAllAppStart_001
+ * Function: ShouldBlockAllAppStart
+ * SubFunction: NA
+ * FunctionPoints: ShouldBlockAllAppStart returns the flag when supported.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, ShouldBlockAllAppStart_001, TestSize.Level1)
+{
+    auto &status = MyStatus::GetInstance();
+    status.auIsSupportBlockAllAppStart_ = true;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    abilityMs->shouldBlockAllAppStart_ = true;
+    EXPECT_EQ(abilityMs->ShouldBlockAllAppStart(), true);
+    status.auIsSupportBlockAllAppStart_ = true;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: ShouldBlockAllAppStart_002
+ * Function: ShouldBlockAllAppStart
+ * SubFunction: NA
+ * FunctionPoints: ShouldBlockAllAppStart returns false when not supported.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, ShouldBlockAllAppStart_002, TestSize.Level1)
+{
+    auto &status = MyStatus::GetInstance();
+    status.auIsSupportBlockAllAppStart_ = false;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    abilityMs->shouldBlockAllAppStart_ = true;
+    EXPECT_EQ(abilityMs->ShouldBlockAllAppStart(), false);
+    status.auIsSupportBlockAllAppStart_ = true;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: InitInterceptor_BlockAllAppStart_001
+ * Function: InitInterceptor
+ * SubFunction: NA
+ * FunctionPoints: InitInterceptor creates BlockAllAppStartInterceptor when supported.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, InitInterceptor_BlockAllAppStart_001, TestSize.Level1)
+{
+    auto &status = MyStatus::GetInstance();
+    status.auIsSupportBlockAllAppStart_ = true;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    abilityMs->InitInterceptor();
+    EXPECT_NE(abilityMs->blockAllAppStartInterceptor_, nullptr);
+    status.auIsSupportBlockAllAppStart_ = true;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: InitInterceptor_BlockAllAppStart_002
+ * Function: InitInterceptor
+ * SubFunction: NA
+ * FunctionPoints: InitInterceptor does not create BlockAllAppStartInterceptor when not supported.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, InitInterceptor_BlockAllAppStart_002, TestSize.Level1)
+{
+    auto &status = MyStatus::GetInstance();
+    status.auIsSupportBlockAllAppStart_ = false;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    abilityMs->InitInterceptor();
+    EXPECT_EQ(abilityMs->blockAllAppStartInterceptor_, nullptr);
+    status.auIsSupportBlockAllAppStart_ = true;
+}
+
 } // namespace AAFwk
 } // namespace OHOS
