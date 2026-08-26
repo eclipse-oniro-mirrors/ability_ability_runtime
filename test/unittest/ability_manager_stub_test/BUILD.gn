@@ -76,6 +76,7 @@ ohos_unittest("ability_manager_stub_test") {
     "ipc:ipc_core",
     "napi:ace_napi",
     "samgr:samgr_proxy",
+    "selinux_adapter:librestorecon",
   ]
 
   if (background_task_mgr_continuous_task_enable) {
