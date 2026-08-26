@@ -863,13 +863,17 @@ void AppMgrServiceInner::DestroyImage(uint64_t checkpointId, sptr<IImageErrorHan
 }
 
 ImageError AppMgrServiceInner::DestroyImageByCheckpointId(uint64_t checkpointId)
-{fix by advice
+{
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     std::lock_guard guard(imageSerialLock_);
     auto imageInfo = GetImageInfoByCheckPointId(checkpointId);
     if (imageInfo == nullptr) {
         TAG_LOGW(AAFwkTag::APPMGR, "image not exist");
+<<<<<<< HEAD
         //There must be no return;
+=======
+        // There must be no return.
+>>>>>>> badf7dc7f4 (fix/build_bug)
     }
     RemoveImageInfoByCheckpointId(checkpointId);
     auto ret = KillImageProcess(checkpointId);
