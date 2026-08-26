@@ -869,7 +869,7 @@ ImageError AppMgrServiceInner::DestroyImageByCheckpointId(uint64_t checkpointId)
     auto imageInfo = GetImageInfoByCheckPointId(checkpointId);
     if (imageInfo == nullptr) {
         TAG_LOGW(AAFwkTag::APPMGR, "image not exist");
-        return ImageError::ERR_IMAGE_INFO_NOT_EXIST;
+        //There must be no return;
     }
     RemoveImageInfoByCheckpointId(checkpointId);
     auto ret = KillImageProcess(checkpointId);
