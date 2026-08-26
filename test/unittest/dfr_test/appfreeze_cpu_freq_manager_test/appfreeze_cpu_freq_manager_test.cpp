@@ -421,6 +421,9 @@ HWTEST_F(AppfreezeCpuFreqManagerTest, ClockTicksToMsTest_001, TestSize.Level0)
     cpuTime = 10000;
     ret = AppfreezeCpuFreqManager::GetInstance().ClockTicksToMs(cpuTime);
     EXPECT_TRUE(ret >= 0);
+    cpuTime = 100000;
+    ret = AppfreezeCpuFreqManager::GetInstance().ClockTicksToMs(cpuTime);
+    EXPECT_TRUE(ret >= 0);
     cpuTime = 1000000;
     ret = AppfreezeCpuFreqManager::GetInstance().ClockTicksToMs(cpuTime);
     EXPECT_TRUE(ret >= 0);
