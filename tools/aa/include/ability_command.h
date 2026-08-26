@@ -258,6 +258,8 @@ private:
     ErrCode RunAsStopService();
     ErrCode RunAsDumpsysCommand();
     ErrCode RunAsForceStop();
+    ErrCode RunAsMakeImageCommand();
+    ErrCode RunAsTemplateFreezeCommand();
     bool SwitchOptionForAppDebug(int32_t option, std::string &bundleName, bool &isPersist, bool &isCancel, bool &isGet);
     bool ParseAppDebugParameter(std::string &bundleName, bool &isPersist, bool &isCancel, bool &isGet);
     ErrCode RunAsAppDebugDebugCommand();
