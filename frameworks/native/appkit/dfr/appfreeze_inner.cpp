@@ -358,7 +358,7 @@ void AppfreezeInner::GetApplicationInfo(FaultData& faultData)
         return;
     }
 
-    std::shared_ptr<OHOSApplication> application;
+    std::shared_ptr<OHOSApplication> application; 
     {
         std::lock_guard<std::mutex> lock(applicationMutex_);
         application = application_;
