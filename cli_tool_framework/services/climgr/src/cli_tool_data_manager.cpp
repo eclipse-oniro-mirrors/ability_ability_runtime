@@ -24,6 +24,7 @@
 
 #include "cli_error_code.h"
 #include "hilog_tag_wrapper.h"
+#include "parameters.h"
 
 namespace OHOS {
 namespace CliTool {
@@ -36,6 +37,19 @@ constexpr const char* KV_STORE_APP_ID = "cli_tools_db";
 constexpr const char* KV_STORE_STORE_ID = "cli_tools_store";
 constexpr const char* CLI_TOOLS_STORAGE_DIR = "/data/service/el1/public/database/aimgr/cli_tool";
 constexpr const char* ALL_CLI_TOOL_NAMES_KEY = "AllCliToolNames";
+
+constexpr const char* CLI_TOOLS_FINGERPRINT_KEY = "CliToolSystemFingerprint";
+constexpr const char* FINGERPRINT_SEPARATOR = ":";
+
+const std::vector<std::string> SYSTEM_FINGERPRINT_PARAMS = {
+    "const.product.software.version",
+    "const.product.build.type",
+    "const.product.brand",
+    "const.product.name",
+    "const.product.devicetype",
+    "const.product.incremental.version",
+    "const.comp.hl.product_base_version.real"
+};
 
 const DistributedKv::AppId APP_ID { KV_STORE_APP_ID };
 const DistributedKv::StoreId STORE_ID { KV_STORE_STORE_ID };
@@ -114,13 +128,86 @@ int32_t CliToolDataManager::EnsureToolsLoaded()
         return ERR_KVSTORE_NOT_READY;
     }
 
+    std::string currentFingerprint = GetSystemFingerprint();
+    if (IsSystemFingerprintMatched(currentFingerprint)) {
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "System fingerprint unchanged, skip reloading tools");
+        toolsLoaded_ = true;
+        return ERR_OK;
+    }
+
     int32_t ret = LoadToolsFromDir(DEFAULT_CONFIG_DIR);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to load tools from config dir: %{public}d", ret);
         return ret;
     }
 
+    int32_t fingerprintRet = SaveSystemFingerprint(currentFingerprint);
+    if (fingerprintRet != ERR_OK) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "Failed to save system fingerprint: %{public}d", fingerprintRet);
+    }
+
     toolsLoaded_ = true;
+    return ERR_OK;
+}
+
+std::string CliToolDataManager::GetSystemFingerprint()
+{
+    std::string fingerprint;
+    for (const auto &param : SYSTEM_FINGERPRINT_PARAMS) {
+        std::string value = system::GetParameter(param, "");
+        if (value.empty()) {
+            continue;
+        }
+        if (!fingerprint.empty()) {
+            fingerprint.append(FINGERPRINT_SEPARATOR);
+        }
+        fingerprint.append(value);
+    }
+    return fingerprint;
+}
+
+bool CliToolDataManager::IsSystemFingerprintMatched(const std::string &currentFingerprint)
+{
+    if (currentFingerprint.empty()) {
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "Current fingerprint is empty, need reload");
+        return false;
+    }
+    std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
+    if (!CheckKvStore()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "KVStore not ready for fingerprint check");
+        return false;
+    }
+
+    DistributedKv::Key fingerprintKey(CLI_TOOLS_FINGERPRINT_KEY);
+    DistributedKv::Value savedValue;
+    DistributedKv::Status status = kvStorePtr_->Get(fingerprintKey, savedValue);
+    if (status != DistributedKv::Status::SUCCESS) {
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "No saved fingerprint, need reload: %{public}d",
+            static_cast<int>(status));
+        return false;
+    }
+    return savedValue.ToString() == currentFingerprint;
+}
+
+int32_t CliToolDataManager::SaveSystemFingerprint(const std::string &fingerprint)
+{
+    if (fingerprint.empty()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "Fingerprint is empty, skip saving");
+        return -1;
+    }
+    std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
+    if (!CheckKvStore()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "KVStore not ready for saving fingerprint");
+        return ERR_KVSTORE_NOT_READY;
+    }
+
+    DistributedKv::Key fingerprintKey(CLI_TOOLS_FINGERPRINT_KEY);
+    DistributedKv::Value fingerprintValue(fingerprint);
+    DistributedKv::Status status = kvStorePtr_->Put(fingerprintKey, fingerprintValue);
+    if (status != DistributedKv::Status::SUCCESS) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "Failed to save system fingerprint: %{public}d", static_cast<int>(status));
+        return -1;
+    }
     return ERR_OK;
 }
 
