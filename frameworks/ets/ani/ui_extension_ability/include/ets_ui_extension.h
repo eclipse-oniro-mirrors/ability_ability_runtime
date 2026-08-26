@@ -161,7 +161,7 @@ private:
     std::unique_ptr<AppExecFwk::ETSNativeReference> CreateAppWindowStage(sptr<Rosen::Window> uiWindow,
         sptr<AAFwk::SessionInfo> sessionInfo);
     sptr<Rosen::Window> CreateUIWindow(const std::shared_ptr<UIExtensionContext> context,
-        const sptr<AAFwk::SessionInfo> &sessionInfo);
+        const sptr<AAFwk::SessionInfo> &sessionInfo, const AAFwk::Want &want);
     bool IsEmbeddableStart(int32_t screenMode);
     void ExecuteInsightIntentDone(uint64_t intentId, const InsightIntentExecuteResult &result);
     bool BindNativeMethods();
