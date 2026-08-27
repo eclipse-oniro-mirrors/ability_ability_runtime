@@ -2104,8 +2104,6 @@ private:
 
     void HandleAddAbilityStageTimeOut(std::shared_ptr<AppRunningRecord> appRecord);
 
-    void ClipStringContent(const std::regex &re, const std::string &source, std::string &afterCutStr);
-
     bool GetBundleAndHapInfo(const AbilityInfo &abilityInfo, const std::shared_ptr<ApplicationInfo> &appInfo,
         BundleInfo &bundleInfo, HapModuleInfo &hapModuleInfo, int32_t appIndex = 0) const;
     AppProcessData WrapAppProcessData(const std::shared_ptr<AppRunningRecord> &appRecord,

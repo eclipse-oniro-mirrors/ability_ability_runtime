@@ -2252,10 +2252,16 @@ void AppMgrServiceInner::LoadAbility(std::shared_ptr<AbilityInfo> abilityInfo, s
             auto hostBundleName = want->GetStringParam(UIEXTENSION_HOST_BUNDLENAME);
             auto userId = want->GetIntParam(UIEXTENSION_HOST_UID, -1) / BASE_USER_RANGE;
             appInfo->bundleName = hostBundleName;
-            std::regex pattern(
-                std::string(ABS_CODE_PATH) + std::string(FILE_SEPARATOR) + hostBundleName);
-            abilityInfo->hapPath = std::regex_replace(abilityInfo->hapPath, pattern, LOCAL_CODE_PATH);
-            abilityInfo->resourcePath = std::regex_replace(abilityInfo->resourcePath, pattern, LOCAL_CODE_PATH);
+            std::string absPrefix = std::string(ABS_CODE_PATH) + std::string(FILE_SEPARATOR) + hostBundleName;
+            if (!hostBundleName.empty()) {
+                auto replaceAbsPrefix = [&absPrefix](std::string &path) {
+                    if (path.find(absPrefix) == 0) {
+                        path.replace(0, absPrefix.length(), LOCAL_CODE_PATH);
+                    }
+                };
+                replaceAbsPrefix(abilityInfo->hapPath);
+                replaceAbsPrefix(abilityInfo->resourcePath);
+            }
             GetBundleAndHapInfo(*abilityInfo, appInfo, bundleInfo, hapModuleInfo, appIndex);
             appInfo = std::make_shared<ApplicationInfo>(bundleInfo.applicationInfo);
             auto pluginRet = DelayedSingleton<BundleMgrHelper>::GetInstance()->GetPluginHapModuleInfo(
