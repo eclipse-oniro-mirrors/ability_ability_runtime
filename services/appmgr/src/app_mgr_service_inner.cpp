@@ -806,8 +806,13 @@ void AppMgrServiceInner::MakeImage(const AAFwk::Want &want, int32_t userId,
         auto bundleMgrHelper = remoteClientManager_ ? remoteClientManager_->GetBundleManagerHelper() : nullptr;
         int32_t uid = -1;
         if (bundleMgrHelper != nullptr) {
-            uid = IN_PROCESS_CALL(bundleMgrHelper->GetUidByBundleName(
-                want.GetBundle(), GetValidUserId(userId), appIndex));
+            BundleInfo bundleInfo;
+            if (!IN_PROCESS_CALL(bundleMgrHelper->GetBundleInfo(want.GetBundle(),
+                BundleFlag::GET_BUNDLE_WITH_REQUESTED_PERMISSION, bundleInfo, GetValidUserId(userId)))) {
+                TAG_LOGE(AAFwkTag::APPMGR, "getBundleInfo fail");
+            } else {
+                uid = bundleInfo.uid;
+            }
         } else {
             TAG_LOGE(AAFwkTag::APPMGR, "bundleMgrHelper null");
         }
