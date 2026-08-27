@@ -72,6 +72,10 @@ bool UnwrapResultOfDecoratorExecuteResult(napi_env env, napi_value param, Insigh
         return false;
     }
     executeResult.result = wp;
+    if (!UnwrapInteractionInfoOfExecuteResult(env, param, executeResult)) {
+        TAG_LOGE(AAFwkTag::JSNAPI, "decorator unwrap interactionInfo fail");
+        return false;
+    }
     return true;
 }
 

@@ -25,6 +25,9 @@ namespace AbilityRuntime {
 bool UnwrapExecuteResult(
     napi_env env, napi_value param, AppExecFwk::InsightIntentExecuteResult &executeResult, bool isDecorator = false);
 
+bool UnwrapInteractionInfoOfExecuteResult(
+    napi_env env, napi_value param, AppExecFwk::InsightIntentExecuteResult &executeResult);
+
 }  // namespace AbilityRuntime
 }  // namespace OHOS
 #endif  // OHOS_ABILITY_RUNTIME_NAPI_EXECUTE_RESULT_H

@@ -822,7 +822,8 @@ HWTEST_F(InsightIntentExecuteResultTest, FromJsonString_NoInteractionInfo_Succee
 
 /**
  * @tc.name: Unmarshalling_InvalidInteractionInfo_Rejected_2400
- * @tc.desc: WHEN parcel has invalid interactionInfo THEN Unmarshalling returns nullptr.
+ * @tc.desc: WHEN parcel has invalid interactionInfo THEN Marshalling logs and writes it,
+ *           ReadFromParcel rejects and Unmarshalling returns nullptr.
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -837,6 +838,51 @@ HWTEST_F(InsightIntentExecuteResultTest, Unmarshalling_InvalidInteractionInfo_Re
     EXPECT_TRUE(entity.Marshalling(parcel));
     auto *restored = InsightIntentExecuteResult::Unmarshalling(parcel);
     EXPECT_EQ(restored, nullptr);
+}
+
+/**
+ * @tc.name: BuildFunctionResult_InvalidInteractionInfoDropped_1200
+ * @tc.desc: WHEN interactionInfo has empty bundleName THEN BuildFunctionResult omits the key.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, BuildFunctionResult_InvalidInteractionInfoDropped_1200, TestSize.Level1)
+{
+    auto modal = std::make_shared<AppExecFwk::InteractionModalUIExtension>();
+    modal->interactionUIType = "MODAL_UIEXTENSION";
+    modal->bundleName = "";
+    modal->moduleName = "entry";
+    modal->abilityName = "EntryAbility";
+    modal->uiExtensionType = "testUIExt";
+    modal->uri = "test://uri";
+    InsightIntentExecuteResult entity;
+    entity.interactionInfo = std::make_shared<AppExecFwk::InteractionInfo>();
+    entity.interactionInfo->interactionUI = modal;
+    auto out = entity.BuildFunctionResult();
+    ASSERT_NE(out, nullptr);
+    EXPECT_FALSE(out->HasParam(KEY_INTERACTION_INFO));
+}
+
+/**
+ * @tc.name: ToJsonString_InvalidInteractionInfoDropped_2300
+ * @tc.desc: WHEN interactionInfo has empty bundleName THEN ToJsonString omits the key.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, ToJsonString_InvalidInteractionInfoDropped_2300, TestSize.Level1)
+{
+    auto modal = std::make_shared<AppExecFwk::InteractionModalUIExtension>();
+    modal->interactionUIType = "MODAL_UIEXTENSION";
+    modal->bundleName = "";
+    modal->moduleName = "entry";
+    modal->abilityName = "EntryAbility";
+    modal->uiExtensionType = "testUIExt";
+    modal->uri = "test://uri";
+    InsightIntentExecuteResult entity;
+    entity.interactionInfo = std::make_shared<AppExecFwk::InteractionInfo>();
+    entity.interactionInfo->interactionUI = modal;
+    std::string json = entity.ToJsonString();
+    EXPECT_EQ(json.find(KEY_INTERACTION_INFO), std::string::npos);
 }
 
 } // namespace AAFwk

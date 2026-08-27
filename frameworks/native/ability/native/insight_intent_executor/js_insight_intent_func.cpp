@@ -188,6 +188,10 @@ std::shared_ptr<AppExecFwk::InsightIntentExecuteResult> JsInsightIntentFunc::Get
     wantParams->SetParam("methodResult", AAFwk::String::Box(resultStr));
     resultCpp->result = wantParams;
     resultCpp->code = InsightIntentInnerErr::INSIGHT_INTENT_ERR_OK;
+    if (!UnwrapInteractionInfoOfExecuteResult(env, resultJs, *resultCpp)) {
+        TAG_LOGE(AAFwkTag::INTENT, "func unwrap interactionInfo fail");
+        return nullptr;
+    }
     return resultCpp;
 }
 

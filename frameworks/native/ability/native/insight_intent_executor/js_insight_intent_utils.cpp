@@ -100,6 +100,11 @@ napi_value JsInsightIntentUtils::ResolveExecuteResultWithDelay(napi_env env, nap
     }
 
     auto resultCpp = JsInsightIntentUtils::GetResultFromJs(env, resultJs);
+    if (resultCpp == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "null resultCpp");
+        JsInsightIntentUtils::ReplyFailed(callback);
+        return nullptr;
+    }
     resultCpp->isNeedDelayResult = true;
     JsInsightIntentUtils::ReplySucceeded(callback, resultCpp);
     return nullptr;

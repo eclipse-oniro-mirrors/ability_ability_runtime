@@ -19,6 +19,7 @@
 #include <initializer_list>
 
 #include "ability_transaction_callback_info.h"
+#include "ani_common_execute_result.h"
 #include "ani_common_want.h"
 #include "hilog_tag_wrapper.h"
 #include "insight_intent_delay_result_callback_mgr.h"
@@ -568,6 +569,11 @@ bool EtsInsightIntentFunc::HandleResultReturnedFromEtsFunc(ani_env *env, ani_ref
     auto resultCpp = std::make_shared<AppExecFwk::InsightIntentExecuteResult>();
     resultCpp->result = methodResult;
     resultCpp->code = InsightIntentInnerErr::INSIGHT_INTENT_ERR_OK;
+    ani_object resultObj = static_cast<ani_object>(result);
+    if (!UnwrapInteractionInfoOfExecuteResult(env, resultObj, *resultCpp)) {
+        TAG_LOGE(AAFwkTag::INTENT, "func unwrap interactionInfo fail");
+        STATE_PATTERN_NAIVE_STATE_SET_AND_RETURN(State::INVALID, false);
+    }
 
     if (isAsync) {
         EtsInsightIntentUtils::ReplySucceeded(callback_.release(), resultCpp);
