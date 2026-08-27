@@ -260,18 +260,19 @@ HWTEST_F(AppMgrServiceInnerTest, GenerateNewProcessName_001, TestSize.Level2)
     abilityInfo.moduleName = "moduleA";
     abilityInfo.name = "AbilityA";
 
+    std::string expected = abilityInfo.bundleName + abilityInfo.bundleName + ":" +
+        abilityInfo.moduleName + ":" + abilityInfo.name + ":" + std::to_string(100);
     std::string name1 = appMgrServiceInner->GenerateNewProcessName(abilityInfo, 100);
     EXPECT_FALSE(name1.empty());
-    EXPECT_NE(name1.find("com.test.bundle"), std::string::npos);
-    EXPECT_NE(name1.find("moduleA"), std::string::npos);
-    EXPECT_NE(name1.find("AbilityA"), std::string::npos);
-    EXPECT_NE(name1.find("100"), std::string::npos);
+    EXPECT_EQ(name1, expected);
 
     std::string name2 = appMgrServiceInner->GenerateNewProcessName(abilityInfo, 100);
     EXPECT_EQ(name1, name2);
 
     std::string name3 = appMgrServiceInner->GenerateNewProcessName(abilityInfo, 200);
     EXPECT_NE(name1, name3);
+    EXPECT_EQ(name3, abilityInfo.bundleName + abilityInfo.bundleName + ":" +
+        abilityInfo.moduleName + ":" + abilityInfo.name + ":" + std::to_string(200));
 }
 
 /**
@@ -291,11 +292,10 @@ HWTEST_F(AppMgrServiceInnerTest, ResolveProcessName_001, TestSize.Level2)
     std::string processName;
     appMgrServiceInner->ResolveProcessName(abilityInfo, appInfo, hapModuleInfo, 0, "",
         static_cast<int32_t>(AAFwk::ProcessMode::NEW_PROCESS_ATTACH_TO_STATUS_BAR_ITEM), 100, processName);
+    std::string expected = abilityInfo->bundleName + abilityInfo->bundleName + ":" +
+        abilityInfo->moduleName + ":" + abilityInfo->name + ":" + std::to_string(100);
     EXPECT_FALSE(processName.empty());
-    EXPECT_NE(processName.find("com.test.bundle"), std::string::npos);
-    EXPECT_NE(processName.find("moduleA"), std::string::npos);
-    EXPECT_NE(processName.find("AbilityB"), std::string::npos);
-    EXPECT_NE(processName.find("100"), std::string::npos);
+    EXPECT_EQ(processName, expected);
 }
 
 /**
