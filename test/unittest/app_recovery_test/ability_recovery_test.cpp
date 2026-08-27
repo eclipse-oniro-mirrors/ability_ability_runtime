@@ -644,9 +644,9 @@ HWTEST_F(AbilityRecoveryUnitTest, ScheduleRestoreAbilityState_005, TestSize.Leve
 
 /**
  * @tc.name: ScheduleRestoreAbilityState_006
- * @tc.desc: Test ScheduleRestoreAbilityState success path with nullptr abilityInfo, verify
- *           APP_RECOVERY reporting null-check early-return does not crash and the success path
- *           still returns true (report is best-effort).
+ * @tc.desc: Test ScheduleRestoreAbilityState with nullptr abilityInfo, verify
+ *           LoadSavedState returns false and ScheduleRestoreAbilityState returns false
+ *           (report is best-effort, does not crash).
  * @tc.type: FUNC
  */
 HWTEST_F(AbilityRecoveryUnitTest, ScheduleRestoreAbilityState_006, TestSize.Level1)
@@ -661,7 +661,7 @@ HWTEST_F(AbilityRecoveryUnitTest, ScheduleRestoreAbilityState_006, TestSize.Leve
     abilityRecovery_->hasTryLoad_ = true;
     abilityRecovery_->hasLoaded_ = true;
     abilityRecovery_->abilityInfo_.reset();
-    EXPECT_TRUE(abilityRecovery_->ScheduleRestoreAbilityState(StateReason::CPP_CRASH, want_));
+    EXPECT_FALSE(abilityRecovery_->ScheduleRestoreAbilityState(StateReason::CPP_CRASH, want_));
 }
 
 /**
