@@ -108,7 +108,6 @@
       *WantReceiverStub*;
       *WantReceiverProxy*;
       *WantSenderProxy*;
-      *WantSenderStub*;
       *WantUtils*;
       *WindowOptionsUtils*;
     };

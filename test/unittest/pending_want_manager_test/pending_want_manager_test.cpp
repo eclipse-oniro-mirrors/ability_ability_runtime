@@ -35,7 +35,6 @@
 #include "system_ability_definition.h"
 #include "wants_info.h"
 #include "want_receiver_stub.h"
-#include "want_sender_stub.h"
 
 using namespace testing;
 using namespace testing::ext;

@@ -42,7 +42,6 @@
 #undef protected
 #include "want_params.h"
 #include "want_receiver_stub.h"
-#include "want_sender_stub.h"
 #include "bool_wrapper.h"
 
 using namespace testing::ext;

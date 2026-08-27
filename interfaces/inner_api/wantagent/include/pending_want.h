@@ -28,7 +28,7 @@
 #include "want_params.h"
 #include "want_receiver_stub.h"
 #include "want_sender_info.h"
-#include "want_sender_stub.h"
+#include "want_sender_interface.h"
 
 namespace OHOS::AbilityRuntime::WantAgent {
 class PendingWant final : public std::enable_shared_from_this<PendingWant>, public Parcelable {

@@ -42,7 +42,6 @@
 #include "want_agent_client.h"
 #include "want_agent_helper.h"
 #include "want_sender_info.h"
-#include "want_sender_stub.h"
 #include "bool_wrapper.h"
 #include "zchar_wrapper.h"
 #include "byte_wrapper.h"
