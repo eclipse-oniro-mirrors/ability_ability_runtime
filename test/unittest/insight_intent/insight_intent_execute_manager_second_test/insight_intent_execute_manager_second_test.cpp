@@ -195,25 +195,23 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckAndUpdateParam_0500, TestSi
     AppExecFwk::InsightIntentExecuteParam param;
     param.bundleName_ = "test.bundleName";
     param.moduleName_ = "test.entry";
-    param.abilityName_ = ""; // 空abilityName，但ignoreAbilityName为true
+    param.abilityName_ = ""; // 空abilityName
     param.insightIntentName_ = "PlayMusic";
     param.insightIntentParam_ = std::make_shared<WantParams>();
-    param.isServiceMatch_ = true; // 跳过权限和callerToken检查
     auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
-    sptr<IRemoteObject> callerToken = nullptr; // 空callerToken但isServiceMatch_为true
+    sptr<IRemoteObject> callerToken = nullptr;
     uint64_t key = 1;
     std::string callerBundleName = "com.bundlename.test";
-    
-    // 调用带ignoreAbilityName参数的重载版本
+
     std::shared_ptr<InsightIntentExecuteManager> manager = std::make_shared<InsightIntentExecuteManager>();
     auto ret = manager->CheckAndUpdateParam(key, callerToken, paramPtr, callerBundleName, true);
-    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
 
 /**
  * @tc.name: CheckAndUpdateParam_0600
- * @tc.desc: Test CheckAndUpdateParam with permission denied but service match
+ * @tc.desc: Test CheckAndUpdateParam with valid param and callerToken
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -226,12 +224,11 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckAndUpdateParam_0600, TestSi
     param.abilityName_ = "test.abilityName";
     param.insightIntentName_ = "PlayMusic";
     param.insightIntentParam_ = std::make_shared<WantParams>();
-    param.isServiceMatch_ = true; // 即使权限检查失败也能通过
     auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
     sptr<IRemoteObject> callerToken = new AppExecFwk::MockAbilityToken();
     uint64_t key = 1;
     std::string callerBundleName = "com.bundlename.test";
-    
+
     auto ret = DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->CheckAndUpdateParam(
         key, callerToken, paramPtr, callerBundleName);
     EXPECT_EQ(ret, ERR_OK);
