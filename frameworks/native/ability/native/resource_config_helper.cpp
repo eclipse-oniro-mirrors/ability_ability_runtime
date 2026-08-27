@@ -17,6 +17,7 @@
 #include "configuration_convertor.h"
 #include "hitrace_meter.h"
 #include "application_configuration_manager.h"
+#include <charconv>
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -187,9 +188,8 @@ void ResourceConfigHelper::UpdateResConfig(std::unique_ptr<Global::Resource::Res
 
 bool ResourceConfigHelper::ConvertStringToUint32(std::string source, uint32_t &result)
 {
-    try {
-        result = static_cast<uint32_t>(std::stoi(source));
-    } catch (...) {
+    auto res = std::from_chars(source.data(), source.data() + source.size(), result);
+    if (res.ec != std::errc() || res.ptr != source.data() + source.size()) {
         TAG_LOGW(AAFwkTag::ABILITY, "invalid source:%{public}s", source.c_str());
         return false;
     }
