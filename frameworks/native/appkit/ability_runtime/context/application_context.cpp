@@ -1599,7 +1599,7 @@ std::string ApplicationContext::GetDataDir()
             return "";
         }
         auto bundleName = GetBundleName();
-        if (bundle_Name.empty()) {
+        if (bundleName.empty()) {
             TAG_LOGD(AAFwkTag::APPKIT, "bundleName is invalid");
             return "";
         }
