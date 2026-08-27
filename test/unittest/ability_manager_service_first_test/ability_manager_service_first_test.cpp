@@ -3487,6 +3487,118 @@ HWTEST_F(AbilityManagerServiceFirstTest, ResolveUnknownCallerBackgroundCall_005,
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ResolveUnknownCallerBackgroundCall_005 end");
 }
 
+/*
+ * Feature: AbilityManagerService
+ * Name: BlockAllAppStart_NotSupported_001
+ * Function: BlockAllAppStart
+ * FunctionPoints: BlockAllAppStart returns ERR_PERMISSION_DENIED when not supported.
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, BlockAllAppStart_NotSupported_001, TestSize.Level1)
+{
+    auto &cfg = AppUtils::GetInstance().isSupportBlockAllAppStart_;
+    cfg.value = false;
+    cfg.isLoaded = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    EXPECT_EQ(abilityMs_->BlockAllAppStart(true), ERR_PERMISSION_DENIED);
+    cfg.value = false;
+    cfg.isLoaded = false;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: BlockAllAppStart_Supported_001
+ * Function: BlockAllAppStart
+ * FunctionPoints: BlockAllAppStart succeeds when supported and permission granted.
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, BlockAllAppStart_Supported_001, TestSize.Level1)
+{
+    auto &cfg = AppUtils::GetInstance().isSupportBlockAllAppStart_;
+    cfg.value = true;
+    cfg.isLoaded = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    abilityMs_->shouldBlockAllAppStart_ = false;
+    EXPECT_EQ(abilityMs_->BlockAllAppStart(true), ERR_OK);
+    EXPECT_EQ(abilityMs_->shouldBlockAllAppStart_, true);
+    cfg.value = false;
+    cfg.isLoaded = false;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: ShouldBlockAllAppStart_NotSupported_001
+ * Function: ShouldBlockAllAppStart
+ * FunctionPoints: ShouldBlockAllAppStart returns false when not supported.
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ShouldBlockAllAppStart_NotSupported_001, TestSize.Level1)
+{
+    auto &cfg = AppUtils::GetInstance().isSupportBlockAllAppStart_;
+    cfg.value = false;
+    cfg.isLoaded = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    EXPECT_EQ(abilityMs_->ShouldBlockAllAppStart(), false);
+    cfg.value = false;
+    cfg.isLoaded = false;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: ShouldBlockAllAppStart_Supported_001
+ * Function: ShouldBlockAllAppStart
+ * FunctionPoints: ShouldBlockAllAppStart returns the flag when supported.
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ShouldBlockAllAppStart_Supported_001, TestSize.Level1)
+{
+    auto &cfg = AppUtils::GetInstance().isSupportBlockAllAppStart_;
+    cfg.value = true;
+    cfg.isLoaded = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    abilityMs_->shouldBlockAllAppStart_ = true;
+    EXPECT_EQ(abilityMs_->ShouldBlockAllAppStart(), true);
+    cfg.value = false;
+    cfg.isLoaded = false;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: InitInterceptor_BlockAllAppStart_NotSupported_001
+ * Function: InitInterceptor
+ * FunctionPoints: InitInterceptor does not create BlockAllAppStartInterceptor when not supported.
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, InitInterceptor_BlockAllAppStart_NotSupported_001, TestSize.Level1)
+{
+    auto &cfg = AppUtils::GetInstance().isSupportBlockAllAppStart_;
+    cfg.value = false;
+    cfg.isLoaded = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    abilityMs_->InitInterceptor();
+    EXPECT_EQ(abilityMs_->blockAllAppStartInterceptor_, nullptr);
+    cfg.value = false;
+    cfg.isLoaded = false;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: InitInterceptor_BlockAllAppStart_Supported_001
+ * Function: InitInterceptor
+ * FunctionPoints: InitInterceptor creates BlockAllAppStartInterceptor when supported.
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, InitInterceptor_BlockAllAppStart_Supported_001, TestSize.Level1)
+{
+    auto &cfg = AppUtils::GetInstance().isSupportBlockAllAppStart_;
+    cfg.value = true;
+    cfg.isLoaded = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    abilityMs_->InitInterceptor();
+    EXPECT_NE(abilityMs_->blockAllAppStartInterceptor_, nullptr);
+    cfg.value = false;
+    cfg.isLoaded = false;
+}
 
 } // namespace AAFwk
 } // namespace OHOS

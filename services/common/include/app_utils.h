@@ -142,6 +142,13 @@ public:
     bool IsStartOptionsWithAnimation();
 
     /**
+     * IsSupportBlockAllAppStart, check whether the BlockAllAppStart interceptor is supported.
+     *
+     * @return Whether the BlockAllAppStart interceptor is supported.
+     */
+    bool IsSupportBlockAllAppStart();
+
+    /**
      * IsSupportStartAbilities, check whether the StartUIAbilities API is supported.
      *
      * @return Whether the StartUIAbilities API is supported.
@@ -452,6 +459,7 @@ private:
     volatile DeviceConfiguration<bool> isLimitMaximumOfRenderProcess_ = {false, true};
     volatile DeviceConfiguration<bool> isGrantPersistUriPermission_ = {false, false};
     volatile DeviceConfiguration<bool> isStartOptionsWithAnimation_ = {false, false};
+    volatile DeviceConfiguration<bool> isSupportBlockAllAppStart_ = {false, false};
     volatile DeviceConfiguration<bool> isMultiProcessModel_ = {false, false};
     volatile DeviceConfiguration<bool> allowChildProcessInMultiProcessFeatureApp_ = {false, false};
     volatile DeviceConfiguration<bool> isStartOptionsWithProcessOptions_ = {false, false};

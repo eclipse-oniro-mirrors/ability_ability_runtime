@@ -29,6 +29,7 @@ persist.sys.abilityms.use_multi_render_process = true
 persist.sys.abilityms.limit_maximum_of_render_process = true
 persist.sys.abilityms.grant_persist_uri_permission = false
 persist.sys.abilityms.start_options_with_animation = false
+persist.sys.abilityms.support_block_all_app_start = false
 persist.sys.abilityms.multi_process_model = false
 persist.sys.abilityms.start_options_with_process_option = false
 persist.sys.abilityms.move_ui_ability_to_background_api_enable = true
