@@ -19,6 +19,7 @@
 
 #include "ability_business_error.h"
 #include "ani_common_util.h"
+#include "ani_enum_convert.h"
 #include "app_mgr_client.h"
 #include "errors.h"
 #include "ets_error_utils.h"
@@ -93,7 +94,7 @@ public:
 
     static void RequestRebuildHyperSnap(ani_env *env);
 
-    static void NativeGetLastError(ani_env *env, ani_int errType, ani_object call);
+    static void NativeGetLastError(ani_env *env, ani_enum_item errType, ani_object call);
 };
 
 void EtsHyperSnapManager::SetHyperSnapEnabled(ani_env *env, ani_boolean enabledFlag)
@@ -144,7 +145,7 @@ void EtsHyperSnapManager::RequestRebuildHyperSnap(ani_env *env)
 #endif
 }
 
-void EtsHyperSnapManager::NativeGetLastError(ani_env *env, ani_int errType, ani_object call)
+void EtsHyperSnapManager::NativeGetLastError(ani_env *env, ani_enum_item errType, ani_object call)
 {
     TAG_LOGD(AAFwkTag::APPKIT, "NativeGetLastError called");
     if (env == nullptr) {
@@ -152,11 +153,9 @@ void EtsHyperSnapManager::NativeGetLastError(ani_env *env, ani_int errType, ani_
         return;
     }
 
-    int32_t typeValue = static_cast<int32_t>(errType);
-    bool paramValid = (typeValue == static_cast<int32_t>(AppExecFwk::HyperSnapErrorType::CREATE_SNAPSHOT)) ||
-        (typeValue == static_cast<int32_t>(AppExecFwk::HyperSnapErrorType::FORK_FROM_SNAPSHOT));
-    if (!paramValid) {
-        TAG_LOGE(AAFwkTag::APPKIT, "NativeGetLastError: invalid errType %{public}d", typeValue);
+    int32_t typeValue = 0;
+    if (!AAFwk::AniEnumConvertUtil::EnumConvert_EtsToNative(env, errType, typeValue)) {
+        TAG_LOGE(AAFwkTag::APPKIT, "NativeGetLastError: parse errType failed");
         AbilityRuntime::EtsErrorUtil::ThrowInvalidParamError(env, "errType must be a valid HyperSnapErrorType.");
         return;
     }
