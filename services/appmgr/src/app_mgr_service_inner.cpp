@@ -781,10 +781,14 @@ int32_t AppMgrServiceInner::GetValidUserId(int32_t userId)
 int32_t AppMgrServiceInner::NotifyImageOperationFailed(int32_t uid,
     sptr<IImageErrorHandler> errorHandler, ImageError errorCode)
 {
-    if (errorCode != ImageError::ERR_FORKALL_BUSY && errorCode != ImageError::ERR_FORKALL_FAILED) {
-        SaveHyperSnapError(uid, HyperSnapErrorType::CREATE_SNAPSHOT, ConvertImageErrorToHyperSnapCode(errorCode));
+    if (uid < 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "NotifyImageOperationFailed invalid uid:%{public}d", uid);
+    } else {
+        if (errorCode != ImageError::ERR_FORKALL_BUSY && errorCode != ImageError::ERR_FORKALL_FAILED) {
+            SaveHyperSnapError(uid, HyperSnapErrorType::CREATE_SNAPSHOT, ConvertImageErrorToHyperSnapCode(errorCode));
+        }
     }
-
+    
     if (errorHandler == nullptr) {
         return -1;
     }
@@ -804,6 +808,8 @@ void AppMgrServiceInner::MakeImage(const AAFwk::Want &want, int32_t userId,
         if (bundleMgrHelper != nullptr) {
             uid = IN_PROCESS_CALL(bundleMgrHelper->GetUidByBundleName(
                 want.GetBundle(), GetValidUserId(userId), appIndex));
+        } else {
+            TAG_LOGE(AAFwkTag::APPMGR, "bundleMgrHelper null");
         }
         NotifyImageOperationFailed(uid, errorHandler, ret);
     }
@@ -13463,7 +13469,7 @@ std::string AppMgrServiceInner::GetHyperSnapErrorMessage(HyperSnapErrorCode code
 ImageError AppMgrServiceInner::GetCheckpointRestoreError(pid_t pid, const std::string &checkpointName)
 {
     if (pid < 0) {
-        TAG_LOGW(AAFwkTag::APPMGR, "GetCheckpointRestoreError invalid pid: %{public}d", pid);
+        TAG_LOGE(AAFwkTag::APPMGR, "GetCheckpointRestoreError invalid pid: %{public}d", pid);
         return ImageError::ERR_INNER;
     }
 
@@ -13511,13 +13517,13 @@ ImageError AppMgrServiceInner::GetCheckpointRestoreError(pid_t pid, const std::s
 void AppMgrServiceInner::SaveHyperSnapError(int32_t uid, HyperSnapErrorType errType, HyperSnapErrorCode code)
 {
     if (errType != HyperSnapErrorType::CREATE_SNAPSHOT && errType != HyperSnapErrorType::FORK_FROM_SNAPSHOT) {
-        TAG_LOGW(AAFwkTag::APPMGR, "SaveHyperSnapError invalid error type: %{public}d",
+        TAG_LOGE(AAFwkTag::APPMGR, "SaveHyperSnapError invalid error type: %{public}d",
             static_cast<int32_t>(errType));
         return;
     }
 
     if (uid < 0) {
-        TAG_LOGW(AAFwkTag::APPMGR, "SaveHyperSnapError invalid uid: %{public}d", uid);
+        TAG_LOGE(AAFwkTag::APPMGR, "SaveHyperSnapError invalid uid: %{public}d", uid);
         return;
     }
 
@@ -13544,14 +13550,14 @@ void AppMgrServiceInner::SaveHyperSnapError(int32_t uid, HyperSnapErrorType errT
 bool AppMgrServiceInner::GetHyperSnapLastError(HyperSnapErrorType errType, HyperSnapErrorRecord& record)
 {
     if (errType != HyperSnapErrorType::CREATE_SNAPSHOT && errType != HyperSnapErrorType::FORK_FROM_SNAPSHOT) {
-        TAG_LOGW(AAFwkTag::APPMGR, "GetHyperSnapLastError invalid error type: %{public}d",
+        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError invalid error type: %{public}d",
             static_cast<int32_t>(errType));
         return false;
     }
 
     auto uid = IPCSkeleton::GetCallingUid();
     if (uid < 0) {
-        TAG_LOGW(AAFwkTag::APPMGR, "GetHyperSnapLastError invalid uid: %{public}d", uid);
+        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError invalid uid: %{public}d", uid);
         return false;
     }
 
@@ -13584,13 +13590,13 @@ bool AppMgrServiceInner::GetHyperSnapLastError(HyperSnapErrorType errType, Hyper
 void AppMgrServiceInner::ClearHyperSnapError(int32_t uid, HyperSnapErrorType errType)
 {
     if (errType != HyperSnapErrorType::CREATE_SNAPSHOT && errType != HyperSnapErrorType::FORK_FROM_SNAPSHOT) {
-        TAG_LOGW(AAFwkTag::APPMGR, "ClearHyperSnapError invalid error type: %{public}d",
+        TAG_LOGE(AAFwkTag::APPMGR, "ClearHyperSnapError invalid error type: %{public}d",
             static_cast<int32_t>(errType));
         return;
     }
 
     if (uid < 0) {
-        TAG_LOGW(AAFwkTag::APPMGR, "ClearHyperSnapError invalid uid: %{public}d", uid);
+        TAG_LOGE(AAFwkTag::APPMGR, "ClearHyperSnapError invalid uid: %{public}d", uid);
         return;
     }
 
@@ -13612,7 +13618,7 @@ void AppMgrServiceInner::ClearHyperSnapError(int32_t uid, HyperSnapErrorType err
 void AppMgrServiceInner::ClearHyperSnapError(int32_t uid)
 {
     if (uid < 0) {
-        TAG_LOGW(AAFwkTag::APPMGR, "ClearHyperSnapError invalid uid: %{public}d", uid);
+        TAG_LOGE(AAFwkTag::APPMGR, "ClearHyperSnapError invalid uid: %{public}d", uid);
         return;
     }
 
