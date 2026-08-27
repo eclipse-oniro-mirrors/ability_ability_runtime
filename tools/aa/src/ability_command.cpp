@@ -836,14 +836,11 @@ ErrCode AbilityManagerShellCommand::RunAsForceStop()
 }
 
 // Debug tool for hyper snap: directly call MakeImage from shell, bypassing RSS.
-// Default preloadMode is PRELOAD_MODULE; a non-default mode or a non-zero appIndex
-// deliberately triggers the parameter-error paths (ERR_INVALID_PRELOAD_TYPE / ERR_INNER).
 ErrCode AbilityManagerShellCommand::RunAsMakeImageCommand()
 {
     TAG_LOGI(AAFwkTag::AA_TOOL, "enter");
     if (argList_.empty()) {
-        resultReceiver_.append("usage: aa make-image <bundle> [-a <abilityName>] [-u <userId>]");
-        resultReceiver_.append(" [-m <preloadMode>] [-i <appIndex>]\n");
+        resultReceiver_.append(HELP_MSG_MAKE_IMAGE);
         return OHOS::ERR_INVALID_VALUE;
     }
     std::string bundleName = argList_[0];
@@ -877,7 +874,6 @@ ErrCode AbilityManagerShellCommand::RunAsMakeImageCommand()
     }
     TAG_LOGI(AAFwkTag::AA_TOOL, "make-image bundle:%{public}s ability:%{public}s userId:%{public}d "
         "mode:%{public}d appIndex:%{public}d", bundleName.c_str(), abilityName.c_str(), userId, preloadMode, appIndex);
-
     Want want;
     want.SetBundle(bundleName);
     if (!abilityName.empty()) {
@@ -885,22 +881,17 @@ ErrCode AbilityManagerShellCommand::RunAsMakeImageCommand()
     }
     int32_t result = DelayedSingleton<AppMgrClient>::GetInstance()->MakeImage(want, userId,
         static_cast<AppExecFwk::PreloadMode>(preloadMode), appIndex, nullptr);
-    if (result == ERR_OK) {
-        resultReceiver_ = "make-image: success\n";
-    } else {
-        resultReceiver_ = "make-image: failed, ret=" + std::to_string(result) + "\n";
-    }
+    resultReceiver_ = (result == ERR_OK) ? "make-image: success\n"
+        : "make-image: failed, ret=" + std::to_string(result) + "\n";
     return OHOS::ERR_OK;
 }
 
 // Debug tool for hyper snap: manually trigger stage 2 of image making
-// (HandleForkAll, fork the image process from the template process).
-// Normally this IPC is issued by RSS when the template process is deep frozen.
 ErrCode AbilityManagerShellCommand::RunAsTemplateFreezeCommand()
 {
     TAG_LOGI(AAFwkTag::AA_TOOL, "enter");
     if (argList_.empty()) {
-        resultReceiver_.append("usage: aa template-freeze <templatePid>\n");
+        resultReceiver_.append(HELP_MSG_TEMPLATE_FREEZE);
         return OHOS::ERR_INVALID_VALUE;
     }
     std::string inputPid = argList_[0];
@@ -911,11 +902,8 @@ ErrCode AbilityManagerShellCommand::RunAsTemplateFreezeCommand()
     }
     TAG_LOGI(AAFwkTag::AA_TOOL, "template-freeze pid:%{public}d", pid);
     int32_t result = DelayedSingleton<AppMgrClient>::GetInstance()->NotifyTemplateProcessDeepFrozen(pid);
-    if (result == ERR_OK) {
-        resultReceiver_ = "template-freeze: request accepted, fork result see hilog (HandleForkAll)\n";
-    } else {
-        resultReceiver_ = "template-freeze: failed, ret=" + std::to_string(result) + "\n";
-    }
+    resultReceiver_ = (result == ERR_OK) ? "template-freeze: request accepted, fork result see hilog (HandleForkAll)\n"
+        : "template-freeze: failed, ret=" + std::to_string(result) + "\n";
     return OHOS::ERR_OK;
 }
 

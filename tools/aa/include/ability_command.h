@@ -182,6 +182,11 @@ const std::string HELP_MSG_FORCE_TIMEOUT_CLEAN = "clean";
 const std::string HELP_MSG_NO_ABILITY_NAME_OPTION = "error: -a <ability-name> is expected";
 const std::string HELP_MSG_NO_BUNDLE_NAME_OPTION = "error: -b <bundle-name> is expected";
 
+const std::string HELP_MSG_MAKE_IMAGE = 
+    "usage: aa make-image <bundle-name> [-a <ability-name>] [-u <user-id>] [-m <preload-mode>] [-i <app-index>]\n";
+const std::string HELP_MSG_TEMPLATE_FREEZE = 
+    "usage: aa template-freeze -p <pid>\n";
+
 const std::string STRING_START_ABILITY_OK = "start ability successfully.";
 const std::string STRING_START_ABILITY_NG = "error: failed to start ability.";
 
