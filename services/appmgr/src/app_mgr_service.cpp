@@ -886,7 +886,9 @@ int AppMgrService::StartUserTestProcess(const AAFwk::Want &want, const sptr<IRem
         TAG_LOGE(AAFwkTag::APPMGR, "not ready");
         return ERR_INVALID_OPERATION;
     }
-    if (!AAFwk::PermissionVerification::GetInstance()->IsShellCall()) {
+    if (!AAFwk::PermissionVerification::GetInstance()->IsShellCall() &&
+        !AAFwk::PermissionVerification::GetInstance()->IsAllowLocalDebugOtherApps(
+            want.GetBoolParam("ohos.param.debugFrom", false))) {
         TAG_LOGE(AAFwkTag::APPMGR, "StartUserTestProcess is not shell call");
         return ERR_INVALID_OPERATION;
     }

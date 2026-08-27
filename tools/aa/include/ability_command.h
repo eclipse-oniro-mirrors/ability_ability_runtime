@@ -65,7 +65,7 @@ const std::string HELP_MSG_START =
     "options list:\n"
     "  -h, --help                                                   list available commands\n"
     "  [-d <device-id>] [-a <ability-name> -b <bundle-name>] [-m <module-name>] [-p <perf-cmd>] "
-    "  [-C] [-D] [-E] [-S] [-N] "
+    "  [-C] [-D] [-E] [-S] [-N] [-l] "
     "  [-R] [-c] [--ps <key> <string-value>] "
     "  [--pi <key> <integer-value>] "
     "  [--pb <key> <boolean-value>] "
@@ -133,7 +133,7 @@ const std::string HELP_MSG_TEST =
     "                  [-s <any-key> <any-value>]\n"
     "                  [-w <wait-time>]\n"
     "                  [-u <userId>]                          user id for running test\n"
-    "                  [-D]\n";
+    "                  [-D] [-l]\n";
 
 const std::string HELP_MSG_SEND_MEMORY_LEVEL =
     "Usage: aa send-memory-level -p <PID> -l <LEVEL>\n"
@@ -156,12 +156,14 @@ const std::string HELP_MSG_ATTACH_APP_DEBUG =
     "usage: aa attach <options>\n"
     "options list:\n"
     "  -h, --help                                             list available commands\n"
-    "  -b <bundle-name>                                       let application enter debug mode by bundle name\n";
+    "  -b <bundle-name>                                       let application enter debug mode by bundle name\n"
+    "  [-l]                                                   local debug mode\n";
 const std::string HELP_MSG_DETACH_APP_DEBUG =
     "usage: aa detach <options>\n"
     "options list:\n"
     "  -h, --help                                             list available commands\n"
-    "  -b <bundle-name>                                       let application exit debug mode by bundle name\n";
+    "  -b <bundle-name>                                       let application exit debug mode by bundle name\n"
+    "  [-l]                                                   local debug mode\n";
 
 const std::string HELP_MSG_APPDEBUG_APP_DEBUG =
     "usage: aa appdebug <options>\n"
@@ -226,6 +228,8 @@ const int NUMBER_TWO = 2;
 const int NUMBER_ONE = 1;
 
 const std::string DEBUG_VALUE = "true";
+
+const std::string DEBUG_FROM = "ohos.param.debugFrom";
 
 const std::string PERFCMD_FIRST_PROFILE = "profile";
 const std::string PERFCMD_FIRST_DUMPHEAP = "dumpheap";
@@ -294,6 +298,7 @@ private:
     ErrCode MakeWantFromCmdForStopService(Want& want);
     ErrCode MakeWantForProcess(Want& want);
     ErrCode RunAsTestCommand();
+    void BuildUserTestWant(Want& want, const std::map<std::string, std::string>& params);
     ErrCode TestCommandError(const std::string& info);
     ErrCode ParseTestCommandOption(const std::string &opt, int &i, std::map<std::string, std::string> &params);
     bool MatchOrderString(const std::regex &r, const std::string &orderCmd);
@@ -303,7 +308,7 @@ private:
     // CheckPerfCmdString rule and the same application path as -p. (--psn only sets an
     // empty value, which is harmless and therefore not validated.)
     ErrCode CheckReservedPerfCmd(ParametersString& parametersString, std::string& perfCmd);
-    void ParseBundleName(std::string &bundleName);
+    void ParseBundleName(std::string &bundleName, bool &isDebugFromLocal);
     ErrCode StartAbilityWithWait(Want& want, int32_t userId = DEFAULT_INVAL_VALUE);
     void FormatOutputForWithWait(const Want &want, const AbilityStartWithWaitObserverData& data);
     bool IsImplicitStartAction(const Want &want);
