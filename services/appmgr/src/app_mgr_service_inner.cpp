@@ -13566,7 +13566,6 @@ bool AppMgrServiceInner::GetHyperSnapLastError(HyperSnapErrorType errType, Hyper
         return false;
     }
 
-    // TODO: remove debug log after testing
     TAG_LOGD(AAFwkTag::APPMGR, "GetHyperSnapLastError uid: %{public}d, type: %{public}d",
         uid, static_cast<int32_t>(errType));
 
@@ -13627,24 +13626,11 @@ void AppMgrServiceInner::ClearHyperSnapError(int32_t uid)
         return;
     }
 
-    // TODO: remove debug log after testing
     TAG_LOGD(AAFwkTag::APPMGR, "ClearHyperSnapError uid: %{public}d", uid);
 
     std::lock_guard<std::mutex> lock(hyperSnapErrorMutex_);
-
-    bool cleared = false;
-    if (createSnapshotErrorMap_.erase(uid) > 0) {
-        TAG_LOGD(AAFwkTag::APPMGR, "Cleared CREATE_SNAPSHOT error, uid: %{public}d", uid);
-        cleared = true;
-    }
-    if (forkFromSnapshotErrorMap_.erase(uid) > 0) {
-        TAG_LOGD(AAFwkTag::APPMGR, "Cleared FORK_FROM_SNAPSHOT error, uid: %{public}d", uid);
-        cleared = true;
-    }
-
-    if (!cleared) {
-        TAG_LOGD(AAFwkTag::APPMGR, "No error to clear for uid: %{public}d", uid);
-    }
+    createSnapshotErrorMap_.erase(uid);
+    forkFromSnapshotErrorMap_.erase(uid);
 }
 } // namespace AppExecFwk
 }  // namespace OHOS
