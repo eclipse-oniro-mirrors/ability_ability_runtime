@@ -66,6 +66,7 @@ ohos_unittest("aa_command_ability_first_test") {
 
   deps = [
     "${ability_runtime_path}/tools/aa:tools_aa_source_set",
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
   ]
 

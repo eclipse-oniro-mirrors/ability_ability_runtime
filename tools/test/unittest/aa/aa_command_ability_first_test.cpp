@@ -1190,3 +1190,133 @@ HWTEST_F(AaCommandFirstTest, ParseAppDebugParameter_0500, TestSize.Level1)
     std::string bundleName = STRING_BUNDLE_NAME;
     EXPECT_EQ(cmd.ParseAppDebugParameter(bundleName, isPersist, isCancel, isGet), false);
 }
+
+/**
+ * @tc.number: Aa_Command_Make_Image_0100
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify the "aa make-image" command without bundle prints usage.
+ */
+HWTEST_F(AaCommandFirstTest, MakeImage_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "Aa_Command_Make_Image_0100 start";
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)"make-image",
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    EXPECT_EQ(cmd.ExecCommand(), HELP_MSG_MAKE_IMAGE);
+    GTEST_LOG_(INFO) << "Aa_Command_Make_Image_0100 end";
+}
+
+/**
+ * @tc.number: Aa_Command_Make_Image_0200
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify the "aa make-image <bundle>" command reports IPC result without service.
+ */
+HWTEST_F(AaCommandFirstTest, MakeImage_0200, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "Aa_Command_Make_Image_0200 start";
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)"make-image",
+        (char*)STRING_BUNDLE_NAME.c_str(),
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    // Without AppMgrService reachable the MakeImage call fails, the command still
+    // returns normally with a "make-image: failed, ret=" message.
+    EXPECT_NE(cmd.ExecCommand().find("make-image: failed, ret="), std::string::npos);
+    GTEST_LOG_(INFO) << "Aa_Command_Make_Image_0200 end";
+}
+
+/**
+ * @tc.number: Aa_Command_Make_Image_0300
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify the "aa make-image <bundle> -a <ability>" command parses the ability option.
+ */
+HWTEST_F(AaCommandFirstTest, MakeImage_0300, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "Aa_Command_Make_Image_0300 start";
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)"make-image",
+        (char*)STRING_BUNDLE_NAME.c_str(),
+        (char*)"-a",
+        (char*)"EntryAbility",
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    EXPECT_NE(cmd.ExecCommand().find("make-image: "), std::string::npos);
+    GTEST_LOG_(INFO) << "Aa_Command_Make_Image_0300 end";
+}
+
+/**
+ * @tc.number: Aa_Command_Template_Freeze_0100
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify the "aa template-freeze" command without pid prints usage.
+ */
+HWTEST_F(AaCommandFirstTest, TemplateFreeze_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "Aa_Command_Template_Freeze_0100 start";
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)"template-freeze",
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    EXPECT_EQ(cmd.ExecCommand(), HELP_MSG_TEMPLATE_FREEZE);
+    GTEST_LOG_(INFO) << "Aa_Command_Template_Freeze_0100 end";
+}
+
+/**
+ * @tc.number: Aa_Command_Template_Freeze_0200
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify the "aa template-freeze <invalid-pid>" command rejects invalid pid.
+ */
+HWTEST_F(AaCommandFirstTest, TemplateFreeze_0200, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "Aa_Command_Template_Freeze_0200 start";
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)"template-freeze",
+        (char*)"-1",
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    EXPECT_NE(cmd.ExecCommand().find("error: invalid pid"), std::string::npos);
+    GTEST_LOG_(INFO) << "Aa_Command_Template_Freeze_0200 end";
+}
+
+/**
+ * @tc.number: Aa_Command_Template_Freeze_0300
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify the "aa template-freeze <pid>" command reports IPC result without service.
+ */
+HWTEST_F(AaCommandFirstTest, TemplateFreeze_0300, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "Aa_Command_Template_Freeze_0300 start";
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)"template-freeze",
+        (char*)"1234",
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    // Without AppMgrService reachable the notify call fails, the command still
+    // returns normally with a "template-freeze: failed, ret=" message.
+    EXPECT_NE(cmd.ExecCommand().find("template-freeze: failed, ret="), std::string::npos);
+    GTEST_LOG_(INFO) << "Aa_Command_Template_Freeze_0300 end";
+}

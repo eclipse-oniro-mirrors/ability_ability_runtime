@@ -1776,5 +1776,47 @@ HWTEST_F(AppMgrProxyTest, AppMgrProxy_ReportDumpMemResult_002, TestSize.Level1)
     EXPECT_EQ(mockAppMgrService_->code_, static_cast<uint32_t>(AppMgrInterfaceCode::REPORT_DUMP_MEM_RESULT));
 }
 
+/**
+ * @tc.name: AppMgrProxy_GetHyperSnapLastError_0100
+ * @tc.desc: GetHyperSnapLastError sends the correct interface code with errType.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, AppMgrProxy_GetHyperSnapLastError_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppMgrProxy_GetHyperSnapLastError_0100 start";
+
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mockAppMgrService_.GetRefPtr(), &MockAppMgrService::InvokeSendRequest));
+
+    HyperSnapErrorRecord record;
+    appMgrProxy_->GetHyperSnapLastError(static_cast<int32_t>(HyperSnapErrorType::CREATE_SNAPSHOT), record);
+
+    EXPECT_EQ(mockAppMgrService_->code_, static_cast<uint32_t>(AppMgrInterfaceCode::GET_HYPER_SNAP_LAST_ERROR));
+
+    GTEST_LOG_(INFO) << "AppMgrProxy_GetHyperSnapLastError_0100 end";
+}
+
+/**
+ * @tc.name: AppMgrProxy_GetHyperSnapLastError_0200
+ * @tc.desc: GetHyperSnapLastError tolerates an empty reply from the service side.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, AppMgrProxy_GetHyperSnapLastError_0200, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "AppMgrProxy_GetHyperSnapLastError_0200 start";
+
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mockAppMgrService_.GetRefPtr(), &MockAppMgrService::InvokeSendRequest));
+
+    HyperSnapErrorRecord record;
+    int32_t result = appMgrProxy_->GetHyperSnapLastError(static_cast<int32_t>(HyperSnapErrorType::FORK_FROM_SNAPSHOT),
+        record);
+    EXPECT_NE(result, ERR_OK);
+
+    GTEST_LOG_(INFO) << "AppMgrProxy_GetHyperSnapLastError_0200 end";
+}
+
 } // namespace AppExecFwk
 } // namespace OHOS
