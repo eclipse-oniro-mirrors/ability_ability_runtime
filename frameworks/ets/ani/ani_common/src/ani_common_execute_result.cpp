@@ -88,6 +88,10 @@ bool UnwrapResultOfDecoratorExecuteResult(ani_env *env, ani_object &param, Insig
     }
     executeResult.result = wantParams;
     executeResult.code = wantParams->GetIntParam("code", 0);
+    if (!UnwrapInteractionInfoOfExecuteResult(env, param, executeResult)) {
+        TAG_LOGE(AAFwkTag::INTENT, "decorator unwrap interactionInfo fail");
+        return false;
+    }
     return true;
 }
 
