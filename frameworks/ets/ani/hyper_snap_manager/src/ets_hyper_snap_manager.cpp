@@ -36,6 +36,8 @@ namespace {
 constexpr const char *HYPER_SNAP_MANAGER_SPACE_NAME = "@ohos.app.ability.hyperSnapManager.hyperSnapManager";
 constexpr const char *HYPER_SNAP_ERROR_INFO_IMPL_CLASS_NAME =
     "@ohos.app.ability.hyperSnapManager.hyperSnapManager.HyperSnapErrorInfoImpl";
+constexpr const char *HYPER_SNAP_ERROR_CODE_ENUM_NAME =
+    "@ohos.app.ability.hyperSnapManager.hyperSnapManager.HyperSnapErrorCode";
 } // namespace
 
 static ani_object BuildHyperSnapErrorInfo(ani_env *env, const AppExecFwk::HyperSnapErrorRecord &record)
@@ -66,7 +68,13 @@ static ani_object BuildHyperSnapErrorInfo(ani_env *env, const AppExecFwk::HyperS
         return nullptr;
     }
 
-    status = env->Object_SetPropertyByName_Int(object, "code", static_cast<ani_int>(record.code));
+    ani_enum_item codeItem = nullptr;
+    if (!AAFwk::AniEnumConvertUtil::EnumConvert_NativeToEts(env, HYPER_SNAP_ERROR_CODE_ENUM_NAME,
+        record.code, codeItem)) {
+        TAG_LOGE(AAFwkTag::APPKIT, "BuildHyperSnapErrorInfo: convert code to enum item failed");
+        return nullptr;
+    }
+    status = env->Object_SetPropertyByName_Ref(object, "code", codeItem);
     if (status != ANI_OK) {
         TAG_LOGE(AAFwkTag::APPKIT, "BuildHyperSnapErrorInfo: set code failed, status:%{public}d", status);
         return nullptr;
