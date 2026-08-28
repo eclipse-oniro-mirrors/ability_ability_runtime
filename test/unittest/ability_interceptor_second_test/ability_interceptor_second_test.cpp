@@ -226,8 +226,8 @@ HWTEST_F(AbilityInterceptorSecondTest, DisposedRuleInterceptor_007, TestSize.Lev
     int32_t userId = 10;
     DisposedRule disposedRule;
     int32_t appIndex = 0;
-    bool result = executer->CheckControl(want, userId, disposedRule, appIndex);
-    EXPECT_EQ(result, false);
+    auto result = executer->CheckControl(want, userId, disposedRule, appIndex);
+    EXPECT_EQ(result, DisposedRuleResult::QUERY_FAILED);
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
 }
 
@@ -252,8 +252,8 @@ HWTEST_F(AbilityInterceptorSecondTest, DisposedRuleInterceptor_008, TestSize.Lev
     std::vector<AppExecFwk::DisposedRule> rules = { disposedRule };
     bool result = executer->FindBlockDisposedRule(want, rules, disposedRule);
     EXPECT_TRUE(result);
-    result = executer->CheckControl(want, userId, disposedRule, appIndex);
-    EXPECT_FALSE(result);
+    auto controlResult = executer->CheckControl(want, userId, disposedRule, appIndex);
+    EXPECT_EQ(controlResult, DisposedRuleResult::QUERY_FAILED);
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
 }
 

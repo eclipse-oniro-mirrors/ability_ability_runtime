@@ -26,6 +26,13 @@ namespace AppExecFwk {
 struct DisposedRule;
 }
 namespace AAFwk {
+enum class DisposedRuleResult {
+    NO_RULE = 0,
+    BLOCK_RULE,
+    NON_BLOCK_RULE,
+    QUERY_FAILED,
+};
+
 class DisposedRuleInterceptor : public IAbilityInterceptor,
                                 public std::enable_shared_from_this<DisposedRuleInterceptor> {
 public:
@@ -40,11 +47,14 @@ public:
     };
     void UnregisterObserver(int32_t uid);
 private:
+    ErrCode HandleBlockRule(const AbilityInterceptorParam &param, AppExecFwk::DisposedRule &disposedRule);
+    ErrCode HandleNonBlockRule(const AbilityInterceptorParam &param, AppExecFwk::DisposedRule &disposedRule);
     bool ValidateNonBlockRule(const Want &want, const AppExecFwk::DisposedRule &disposedRule);
-    bool CheckControl(const Want &want, int32_t userId, AppExecFwk::DisposedRule &disposedRule, int32_t appIndex);
+    DisposedRuleResult CheckControl(const Want &want, int32_t userId, AppExecFwk::DisposedRule &disposedRule,
+        int32_t appIndex);
     bool FindBlockDisposedRule(const Want &want, const std::vector<AppExecFwk::DisposedRule> &disposedRuleList,
         AppExecFwk::DisposedRule &disposedRule);
-    void FindNonBlockDisposedRule(const std::vector<AppExecFwk::DisposedRule> &disposedRuleList,
+    bool FindNonBlockDisposedRule(const std::vector<AppExecFwk::DisposedRule> &disposedRuleList,
         AppExecFwk::DisposedRule &disposedRule);
     ErrCode StartNonBlockRule(const Want &want, AppExecFwk::DisposedRule &disposedRule,
         const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo);
