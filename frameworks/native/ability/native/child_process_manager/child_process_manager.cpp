@@ -675,7 +675,7 @@ ChildProcessManagerErrorCode ChildProcessManager::AcquireChildProcesses(
     auto ret = client->GetSelfChildrenProcesses(infos);
     if (ret != AppExecFwk::AppMgrResultCode::RESULT_OK) {
         TAG_LOGE(AAFwkTag::PROCESSMGR, "GetSelfChildrenProcesses failed, ret=%{public}d", ret);
-        return ChildProcessManagerErrorCode::ERR_APP_MGR_FAILED_INNER;
+        return ChildProcessManagerErrorUtil::GetChildProcessManagerErrorCode(ret);
     }
     return ChildProcessManagerErrorCode::ERR_OK;
 }

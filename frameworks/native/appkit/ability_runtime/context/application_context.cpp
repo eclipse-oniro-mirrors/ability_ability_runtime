@@ -1130,7 +1130,7 @@ int32_t ApplicationContext::GetProcessRunningInformation(AppExecFwk::RunningProc
 
 int32_t ApplicationContext::GetUIAbilityChildProcessInfos(std::vector<AppExecFwk::ChildProcessInfo> &infos)
 {
-    return (contextImpl_ != nullptr) ? contextImpl_->GetUIAbilityChildProcessInfos(infos) : -1;
+    return (contextImpl_ != nullptr) ? contextImpl_->GetUIAbilityChildProcessInfos(infos) : ERR_INVALID_VALUE;
 }
 
 #ifdef SUPPORT_SCREEN

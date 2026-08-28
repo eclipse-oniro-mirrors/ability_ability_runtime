@@ -129,9 +129,8 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ChildProcessInfo_GetProcessName(
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     if (info->processName == nullptr) {
-        *requiredSize = 1;
-        processName[0] = '\0';
-        return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
+        *requiredSize = 0;
+        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     uint32_t nameLen = static_cast<uint32_t>(strlen(info->processName));
     *requiredSize = nameLen + 1;
@@ -142,8 +141,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ChildProcessInfo_GetProcessName(
     errno_t rc = strncpy_s(processName, processNameSize, info->processName, nameLen);
     if (rc != EOK) {
         TAG_LOGE(AAFwkTag::PROCESSMGR, "strncpy_s failed, rc=%{public}d", rc);
-        processName[0] = '\0';
-        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
