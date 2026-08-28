@@ -13,45 +13,16 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_ABILITY_RUNTIME_HYPER_SNAP_ERROR_TYPES_H
-#define OHOS_ABILITY_RUNTIME_HYPER_SNAP_ERROR_TYPES_H
+#include "hyper_snap_error_record.h"
 
 #include <new>
-#include <string>
 
-#include "parcel.h"
 #include "string_ex.h"
 
 namespace OHOS {
 namespace AppExecFwk {
 
-enum class HyperSnapErrorCode {
-    ERR_OK = 0,
-    ERR_SYSTEM_INNER = 1,
-    ERR_SNAPSHOT_EXIST = 2,
-    ERR_PROCESS_IS_RUNNING = 3,
-    ERR_SNAPSHOT_PROCESS_IS_DIED = 4,
-    ERR_SNAPSHOT_IS_INTERRUPTED = 5,
-    ERR_EXISTS_ILLEGAL_BINDER = 6,
-    ERR_LAST_PROCESS_NOT_FULLY_EXITED = 7,
-};
-
-enum class HyperSnapErrorType {
-    CREATE_SNAPSHOT = 0,
-    FORK_FROM_SNAPSHOT = 1,
-};
-
-struct HyperSnapErrorRecord : public Parcelable {
-    HyperSnapErrorCode code = HyperSnapErrorCode::ERR_OK;
-    std::string msg;
-    int64_t occurTimeStamp = 0;  // UNIX timestamp in milliseconds
-
-    bool ReadFromParcel(Parcel &parcel);
-    virtual bool Marshalling(Parcel &parcel) const override;
-    static HyperSnapErrorRecord *Unmarshalling(Parcel &parcel);
-};
-
-inline bool HyperSnapErrorRecord::ReadFromParcel(Parcel &parcel)
+bool HyperSnapErrorRecord::ReadFromParcel(Parcel &parcel)
 {
     int32_t codeValue = 0;
     if (!parcel.ReadInt32(codeValue)) {
@@ -65,7 +36,7 @@ inline bool HyperSnapErrorRecord::ReadFromParcel(Parcel &parcel)
     return true;
 }
 
-inline bool HyperSnapErrorRecord::Marshalling(Parcel &parcel) const
+bool HyperSnapErrorRecord::Marshalling(Parcel &parcel) const
 {
     if (!parcel.WriteInt32(static_cast<int32_t>(code)) ||
         !parcel.WriteString16(Str8ToStr16(msg)) ||
@@ -75,7 +46,7 @@ inline bool HyperSnapErrorRecord::Marshalling(Parcel &parcel) const
     return true;
 }
 
-inline HyperSnapErrorRecord *HyperSnapErrorRecord::Unmarshalling(Parcel &parcel)
+HyperSnapErrorRecord *HyperSnapErrorRecord::Unmarshalling(Parcel &parcel)
 {
     auto *record = new (std::nothrow) HyperSnapErrorRecord();
     if (record != nullptr && !record->ReadFromParcel(parcel)) {
@@ -87,5 +58,3 @@ inline HyperSnapErrorRecord *HyperSnapErrorRecord::Unmarshalling(Parcel &parcel)
 
 } // namespace AppExecFwk
 } // namespace OHOS
-
-#endif // OHOS_ABILITY_RUNTIME_HYPER_SNAP_ERROR_TYPES_H

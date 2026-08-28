@@ -57,7 +57,7 @@
 #include "app_cjheap_mem_info.h"
 #include "running_multi_info.h"
 #include "native_child_notify_interface.h"
-#include "hyper_snap_error_types.h"
+#include "hyper_snap_error_record.h"
 
 namespace OHOS {
 namespace AppExecFwk {

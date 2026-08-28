@@ -36,7 +36,7 @@
 #include "app_malloc_info.h"
 #include "app_mgr_constants.h"
 #include "app_mgr_event.h"
-#include "hyper_snap_error_types.h"
+#include "hyper_snap_error_record.h"
 #include "app_preloader.h"
 #include "app_record_id.h"
 #include "app_refresh_recipient.h"
@@ -2533,7 +2533,8 @@ private:
         ApplicationState state);
 
     int32_t GetValidUserId(int32_t userId);
-    int32_t NotifyImageOperationFailed(int32_t uid, sptr<IImageErrorHandler> errorHandler, ImageError errorCode);
+    int32_t NotifyImageOperationFailed(sptr<IImageErrorHandler> errorHandler, ImageError errorCode);
+    int32_t NotifyMakeImageFailed(int32_t uid, sptr<IImageErrorHandler> errorHandler, ImageError errorCode);
     int32_t KillImageProcess(uint64_t checkpointId);
 
     int32_t PreAddImageInfo(const std::string& bundleName, int32_t userId, int32_t appIndex,

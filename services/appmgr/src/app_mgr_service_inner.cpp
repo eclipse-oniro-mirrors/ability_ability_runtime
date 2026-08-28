@@ -778,17 +778,26 @@ int32_t AppMgrServiceInner::GetValidUserId(int32_t userId)
     return userId;
 }
 
-int32_t AppMgrServiceInner::NotifyImageOperationFailed(int32_t uid,
+int32_t AppMgrServiceInner::NotifyImageOperationFailed(sptr<IImageErrorHandler> errorHandler, ImageError errorCode)
+{
+    if (errorHandler == nullptr) {
+        return -1;
+    }
+    errorHandler->OnError(static_cast<int32_t>(errorCode));
+    return ERR_OK;
+}
+
+int32_t AppMgrServiceInner::NotifyMakeImageFailed(int32_t uid,
     sptr<IImageErrorHandler> errorHandler, ImageError errorCode)
 {
     if (uid < 0) {
-        TAG_LOGE(AAFwkTag::APPMGR, "NotifyImageOperationFailed invalid uid:%{public}d", uid);
+        TAG_LOGE(AAFwkTag::APPMGR, "NotifyMakeImageFailed invalid uid:%{public}d", uid);
     } else {
         if (errorCode != ImageError::ERR_FORKALL_BUSY && errorCode != ImageError::ERR_FORKALL_FAILED) {
             SaveHyperSnapError(uid, HyperSnapErrorType::CREATE_SNAPSHOT, ConvertImageErrorToHyperSnapCode(errorCode));
         }
     }
-    
+
     if (errorHandler == nullptr) {
         return -1;
     }
@@ -806,17 +815,12 @@ void AppMgrServiceInner::MakeImage(const AAFwk::Want &want, int32_t userId,
         auto bundleMgrHelper = remoteClientManager_ ? remoteClientManager_->GetBundleManagerHelper() : nullptr;
         int32_t uid = -1;
         if (bundleMgrHelper != nullptr) {
-            BundleInfo bundleInfo;
-            if (!IN_PROCESS_CALL(bundleMgrHelper->GetBundleInfo(want.GetBundle(),
-                BundleFlag::GET_BUNDLE_WITH_REQUESTED_PERMISSION, bundleInfo, GetValidUserId(userId)))) {
-                TAG_LOGE(AAFwkTag::APPMGR, "getBundleInfo fail");
-            } else {
-                uid = bundleInfo.uid;
-            }
+            uid = IN_PROCESS_CALL(bundleMgrHelper->GetUidByBundleName(
+                want.GetBundle(), GetValidUserId(userId), appIndex));
         } else {
             TAG_LOGE(AAFwkTag::APPMGR, "bundleMgrHelper null");
         }
-        NotifyImageOperationFailed(uid, errorHandler, ret);
+        NotifyMakeImageFailed(uid, errorHandler, ret);
     }
 }
 
@@ -852,14 +856,9 @@ void AppMgrServiceInner::DestroyImage(uint64_t checkpointId, sptr<IImageErrorHan
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     TAG_LOGI(AAFwkTag::APPMGR, "destroy image, checkpointId:%{public}" PRIu64"", checkpointId);
-    int32_t uid = -1;
-    auto imageInfo = GetImageInfoByCheckPointId(checkpointId);
-    if (imageInfo != nullptr) {
-        uid = imageInfo->bundleInfo.uid;
-    }
     auto ret = DestroyImageByCheckpointId(checkpointId);
     if (ret != ImageError::ERR_OK) {
-        NotifyImageOperationFailed(uid, errorHandler, ret);
+        NotifyImageOperationFailed(errorHandler, ret);
     }
 }
 
@@ -1189,7 +1188,7 @@ void AppMgrServiceInner::HandleMakeImageFailed(const std::string& bundleName, co
     }
     UnMarkTemplateProcess(imageInfo->templatePid);
     RemoveImageInfo(bundleName, abilityName, userId, appIndex);
-    NotifyImageOperationFailed(imageInfo->bundleInfo.uid, imageInfo->errorHandler, err);
+    NotifyMakeImageFailed(imageInfo->bundleInfo.uid, imageInfo->errorHandler, err);
 }
 
 int32_t AppMgrServiceInner::PreAddImageInfo(const std::string& bundleName, int32_t userId, int32_t appIndex,
@@ -13554,6 +13553,7 @@ void AppMgrServiceInner::SaveHyperSnapError(int32_t uid, HyperSnapErrorType errT
 
 bool AppMgrServiceInner::GetHyperSnapLastError(HyperSnapErrorType errType, HyperSnapErrorRecord& record)
 {
+    HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     if (errType != HyperSnapErrorType::CREATE_SNAPSHOT && errType != HyperSnapErrorType::FORK_FROM_SNAPSHOT) {
         TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError invalid error type: %{public}d",
             static_cast<int32_t>(errType));

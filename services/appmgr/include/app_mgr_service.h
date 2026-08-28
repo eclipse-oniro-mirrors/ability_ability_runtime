@@ -27,7 +27,7 @@
 #include "app_mgr_constants.h"
 #include "app_mgr_service_event_handler.h"
 #include "app_mgr_service_inner.h"
-#include "hyper_snap_error_types.h"
+#include "hyper_snap_error_record.h"
 #include "app_mgr_stub.h"
 #include "app_record_id.h"
 #include "app_running_record.h"

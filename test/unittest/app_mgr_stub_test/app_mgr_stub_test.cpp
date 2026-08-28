@@ -29,7 +29,7 @@
 #include "hilog_tag_wrapper.h"
 #include "ipc_types.h"
 #include "errors.h"
-#include "hyper_snap_error_types.h"
+#include "hyper_snap_error_record.h"
 #include "mem_dump_callback_interface.h"
 #include "mem_dump_callback_stub.h"
 #include "mem_dump_callback_proxy.h"

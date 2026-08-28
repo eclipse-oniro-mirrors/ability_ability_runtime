@@ -33,7 +33,7 @@
 #include "mock_permission_verification.h"
 #include "param.h"
 #include "parameters.h"
-#include "hyper_snap_error_types.h"
+#include "hyper_snap_error_record.h"
 #include "remote_client_manager.h"
 #include "render_state_observer_stub.h"
 
@@ -1044,7 +1044,7 @@ HWTEST_F(AppMgrServiceInnerFourthTest, NotifyImageOperationFailed_ShouldReturn_1
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     EXPECT_NE(appMgrServiceInner, nullptr);
     ImageError errCode = ImageError::ERR_KILL_IMAGE_PROCESS_FAILED;
-    EXPECT_EQ(appMgrServiceInner->NotifyImageOperationFailed(TEST_UID, nullptr, errCode), -1);
+    EXPECT_EQ(appMgrServiceInner->NotifyImageOperationFailed(nullptr, errCode), -1);
     TAG_LOGI(AAFwkTag::TEST, "NotifyImageOperationFailed_ShouldReturn_1WhenErrorHandleIsNullptr end");
 }
 
@@ -1062,7 +1062,7 @@ HWTEST_F(AppMgrServiceInnerFourthTest, NotifyImageOperationFailed_ShouldReturnEr
     sptr<MockImageErrorHandlerStub> errHandler = new (std::nothrow) MockImageErrorHandlerStub();
     ImageError errCode = ImageError::ERR_KILL_IMAGE_PROCESS_FAILED;
     EXPECT_CALL(*errHandler, OnError(_)).Times(1);
-    EXPECT_EQ(appMgrServiceInner->NotifyImageOperationFailed(TEST_UID, errHandler, errCode), ERR_OK);
+    EXPECT_EQ(appMgrServiceInner->NotifyImageOperationFailed(errHandler, errCode), ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "NotifyImageOperationFailed_ShouldReturnErrOkWhenErrorHandleIsNullptr end");
 }
 
@@ -1815,72 +1815,72 @@ HWTEST_F(AppMgrServiceInnerFourthTest, GetCheckpointRestoreError_0100, TestSize.
 }
 
 /**
- * @tc.name: NotifyImageOperationFailed_0100
+ * @tc.name: NotifyMakeImageFailed_0100
  * @tc.desc: test negative uid skips saving but still notifies the error handler
  * @tc.type: FUNC
  */
-HWTEST_F(AppMgrServiceInnerFourthTest, NotifyImageOperationFailed_0100, TestSize.Level2)
+HWTEST_F(AppMgrServiceInnerFourthTest, NotifyMakeImageFailed_0100, TestSize.Level2)
 {
-    TAG_LOGI(AAFwkTag::TEST, "NotifyImageOperationFailed_0100 start");
+    TAG_LOGI(AAFwkTag::TEST, "NotifyMakeImageFailed_0100 start");
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     ASSERT_NE(appMgrServiceInner, nullptr);
     IPCSkeleton::SetCallingUid(TEST_UID);
     sptr<MockImageErrorHandlerStub> errHandler = new (std::nothrow) MockImageErrorHandlerStub();
     EXPECT_CALL(*errHandler, OnError(_)).Times(1);
     ImageError errCode = ImageError::ERR_KILL_IMAGE_PROCESS_FAILED;
-    EXPECT_EQ(appMgrServiceInner->NotifyImageOperationFailed(-1, errHandler, errCode), ERR_OK);
+    EXPECT_EQ(appMgrServiceInner->NotifyMakeImageFailed(-1, errHandler, errCode), ERR_OK);
     HyperSnapErrorRecord record;
     EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record));
     EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_OK);
     IPCSkeleton::SetCallingUid(0);
-    TAG_LOGI(AAFwkTag::TEST, "NotifyImageOperationFailed_0100 end");
+    TAG_LOGI(AAFwkTag::TEST, "NotifyMakeImageFailed_0100 end");
 }
 
 /**
- * @tc.name: NotifyImageOperationFailed_0200
+ * @tc.name: NotifyMakeImageFailed_0200
  * @tc.desc: test FORKALL errors are excluded from saving but handler is notified
  * @tc.type: FUNC
  */
-HWTEST_F(AppMgrServiceInnerFourthTest, NotifyImageOperationFailed_0200, TestSize.Level2)
+HWTEST_F(AppMgrServiceInnerFourthTest, NotifyMakeImageFailed_0200, TestSize.Level2)
 {
-    TAG_LOGI(AAFwkTag::TEST, "NotifyImageOperationFailed_0200 start");
+    TAG_LOGI(AAFwkTag::TEST, "NotifyMakeImageFailed_0200 start");
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     ASSERT_NE(appMgrServiceInner, nullptr);
     IPCSkeleton::SetCallingUid(TEST_UID);
     sptr<MockImageErrorHandlerStub> errHandler = new (std::nothrow) MockImageErrorHandlerStub();
     EXPECT_CALL(*errHandler, OnError(_)).Times(2);
-    EXPECT_EQ(appMgrServiceInner->NotifyImageOperationFailed(TEST_UID, errHandler, ImageError::ERR_FORKALL_BUSY),
+    EXPECT_EQ(appMgrServiceInner->NotifyMakeImageFailed(TEST_UID, errHandler, ImageError::ERR_FORKALL_BUSY),
         ERR_OK);
-    EXPECT_EQ(appMgrServiceInner->NotifyImageOperationFailed(TEST_UID, errHandler, ImageError::ERR_FORKALL_FAILED),
+    EXPECT_EQ(appMgrServiceInner->NotifyMakeImageFailed(TEST_UID, errHandler, ImageError::ERR_FORKALL_FAILED),
         ERR_OK);
     HyperSnapErrorRecord record;
     EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record));
     EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_OK);
     IPCSkeleton::SetCallingUid(0);
-    TAG_LOGI(AAFwkTag::TEST, "NotifyImageOperationFailed_0200 end");
+    TAG_LOGI(AAFwkTag::TEST, "NotifyMakeImageFailed_0200 end");
 }
 
 /**
- * @tc.name: NotifyImageOperationFailed_0300
+ * @tc.name: NotifyMakeImageFailed_0300
  * @tc.desc: test normal error is saved as CREATE_SNAPSHOT and handler is notified
  * @tc.type: FUNC
  */
-HWTEST_F(AppMgrServiceInnerFourthTest, NotifyImageOperationFailed_0300, TestSize.Level1)
+HWTEST_F(AppMgrServiceInnerFourthTest, NotifyMakeImageFailed_0300, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "NotifyImageOperationFailed_0300 start");
+    TAG_LOGI(AAFwkTag::TEST, "NotifyMakeImageFailed_0300 start");
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     ASSERT_NE(appMgrServiceInner, nullptr);
     IPCSkeleton::SetCallingUid(TEST_UID);
     sptr<MockImageErrorHandlerStub> errHandler = new (std::nothrow) MockImageErrorHandlerStub();
     EXPECT_CALL(*errHandler, OnError(_)).Times(1);
     ImageError errCode = ImageError::ERR_TEMPLATE_DIED;
-    EXPECT_EQ(appMgrServiceInner->NotifyImageOperationFailed(TEST_UID, errHandler, errCode), ERR_OK);
+    EXPECT_EQ(appMgrServiceInner->NotifyMakeImageFailed(TEST_UID, errHandler, errCode), ERR_OK);
     HyperSnapErrorRecord record;
     EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record));
     EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_SNAPSHOT_PROCESS_IS_DIED);
     EXPECT_EQ(record.msg, "Snapshot process died");
     IPCSkeleton::SetCallingUid(0);
-    TAG_LOGI(AAFwkTag::TEST, "NotifyImageOperationFailed_0300 end");
+    TAG_LOGI(AAFwkTag::TEST, "NotifyMakeImageFailed_0300 end");
 }
 
 /**
@@ -1944,7 +1944,7 @@ HWTEST_F(AppMgrServiceInnerFourthTest, MakeImage_0100, TestSize.Level2)
 
 /**
  * @tc.name: MakeImage_0200
- * @tc.desc: test MakeImage failure path with GetBundleInfo failed saves nothing
+ * @tc.desc: test MakeImage failure path with GetUidByBundleName failed saves nothing
  * @tc.type: FUNC
  */
 HWTEST_F(AppMgrServiceInnerFourthTest, MakeImage_0200, TestSize.Level2)
@@ -1953,7 +1953,7 @@ HWTEST_F(AppMgrServiceInnerFourthTest, MakeImage_0200, TestSize.Level2)
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     ASSERT_NE(appMgrServiceInner, nullptr);
     auto bundleMgrHelper = std::make_shared<BundleMgrHelper>();
-    BundleMgrHelper::getBundleInfoResult_ = false;
+    BundleMgrHelper::mockUid_ = -1;
     appMgrServiceInner->remoteClientManager_->SetBundleManagerHelper(bundleMgrHelper);
     IPCSkeleton::SetCallingUid(TEST_UID);
     Want want;
@@ -1961,14 +1961,14 @@ HWTEST_F(AppMgrServiceInnerFourthTest, MakeImage_0200, TestSize.Level2)
     HyperSnapErrorRecord record;
     EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record));
     EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_OK);
-    BundleMgrHelper::getBundleInfoResult_ = true;
+    BundleMgrHelper::mockUid_ = 0;
     IPCSkeleton::SetCallingUid(0);
     TAG_LOGI(AAFwkTag::TEST, "MakeImage_0200 end");
 }
 
 /**
  * @tc.name: MakeImage_0300
- * @tc.desc: test MakeImage failure path resolves uid from bundle info and saves the error
+ * @tc.desc: test MakeImage failure path resolves uid by bundle name and saves the error
  * @tc.type: FUNC
  */
 HWTEST_F(AppMgrServiceInnerFourthTest, MakeImage_0300, TestSize.Level1)
@@ -1977,8 +1977,7 @@ HWTEST_F(AppMgrServiceInnerFourthTest, MakeImage_0300, TestSize.Level1)
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     ASSERT_NE(appMgrServiceInner, nullptr);
     auto bundleMgrHelper = std::make_shared<BundleMgrHelper>();
-    BundleMgrHelper::getBundleInfoResult_ = true;
-    BundleMgrHelper::mockBundleUid_ = TEST_UID;
+    BundleMgrHelper::mockUid_ = TEST_UID;
     appMgrServiceInner->remoteClientManager_->SetBundleManagerHelper(bundleMgrHelper);
     IPCSkeleton::SetCallingUid(TEST_UID);
     // empty bundle fails with ERR_PRELOAD_FAILED, mapped to ERR_SYSTEM_INNER
@@ -1987,7 +1986,7 @@ HWTEST_F(AppMgrServiceInnerFourthTest, MakeImage_0300, TestSize.Level1)
     HyperSnapErrorRecord record;
     EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record));
     EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_SYSTEM_INNER);
-    BundleMgrHelper::mockBundleUid_ = 0;
+    BundleMgrHelper::mockUid_ = 0;
     IPCSkeleton::SetCallingUid(0);
     TAG_LOGI(AAFwkTag::TEST, "MakeImage_0300 end");
 }

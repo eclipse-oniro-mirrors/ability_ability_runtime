@@ -26,13 +26,11 @@ ErrCode BundleMgrHelper::GetBundleInfoV9(
     return getBundleInfoV9Result_;
 }
 
-bool BundleMgrHelper::GetBundleInfo(
-    const std::string &bundleName, const BundleFlag flag, BundleInfo &bundleInfo, int32_t userId)
+ErrCode BundleMgrHelper::GetUidByBundleName(
+    const std::string &bundleName, int32_t userId, int32_t appCloneIndex)
 {
-    if (getBundleInfoResult_) {
-        bundleInfo.uid = mockBundleUid_;
-    }
-    return getBundleInfoResult_;
+    // Mirrors the real helper: the ErrCode return actually carries the uid resolved by bms.
+    return mockUid_;
 }
 
 bool BundleMgrHelper::GetHapModuleInfo(const AbilityInfo &abilityInfo, int32_t userId, HapModuleInfo &hapModuleInfo)
@@ -66,8 +64,7 @@ bool BundleMgrHelper::QueryDataGroupInfos(const std::string &bundleName,
 bool BundleMgrHelper::hapModuleInfo_ = false;
 bool BundleMgrHelper::dataGroupInfos_ = false;
 ErrCode BundleMgrHelper::getBundleInfoV9Result_ = ERR_OK;
-bool BundleMgrHelper::getBundleInfoResult_ = true;
-int32_t BundleMgrHelper::mockBundleUid_ = 0;
+int32_t BundleMgrHelper::mockUid_ = 0;
 std::string BundleMgrHelper::bundleVersionName_ = "";
 } // namespace AppExecFwk
 } // namespace OHOS

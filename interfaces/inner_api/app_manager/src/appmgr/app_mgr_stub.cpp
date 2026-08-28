@@ -16,7 +16,7 @@
 #include "app_mgr_stub.h"
 
 #include "ability_info.h"
-#include "hyper_snap_error_types.h"
+#include "hyper_snap_error_record.h"
 #include "ability_manager_errors.h"
 #include "app_jsheap_mem_info.h"
 #include "app_cjheap_mem_info.h"
@@ -626,18 +626,14 @@ int32_t AppMgrStub::HandleGetHyperSnapLastError(MessageParcel &data, MessageParc
 
     HyperSnapErrorRecord record;
     auto result = GetHyperSnapLastError(errType, record);
-    if (result != ERR_OK) {
-        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError failed with result: %{public}d", result);
-        if (!reply.WriteInt32(result)) {
-            TAG_LOGE(AAFwkTag::APPMGR, "Write result failed.");
-            return ERR_APPEXECFWK_PARCEL_ERROR;
-        }
-        return NO_ERROR;
-    }
-
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::APPMGR, "Write result failed.");
         return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    
+    if (result != ERR_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError failed with result: %{public}d", result);
+        return NO_ERROR;
     }
 
     if (!reply.WriteParcelable(&record)) {
