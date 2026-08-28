@@ -1918,5 +1918,108 @@ HWTEST_F(AppMgrServiceInnerFourthTest, HyperSnapErrorRecord_0200, TestSize.Level
     EXPECT_EQ(HyperSnapErrorRecord::Unmarshalling(parcel), nullptr);
     TAG_LOGI(AAFwkTag::TEST, "HyperSnapErrorRecord_0200 end");
 }
+
+/**
+ * @tc.name: MakeImage_0100
+ * @tc.desc: test MakeImage failure path with null remoteClientManager saves nothing (uid stays -1)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, MakeImage_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "MakeImage_0100 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    appMgrServiceInner->remoteClientManager_ = nullptr;
+    IPCSkeleton::SetCallingUid(TEST_UID);
+    // empty bundle makes MakeImageInner fail (preload pre-check), outer path resolves uid via
+    // bundleMgrHelper which is unreachable with a null remoteClientManager
+    Want want;
+    appMgrServiceInner->MakeImage(want, 0, AppExecFwk::PreloadMode::PRELOAD_MODULE, 0, nullptr);
+    HyperSnapErrorRecord record;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record));
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_OK);
+    IPCSkeleton::SetCallingUid(0);
+    TAG_LOGI(AAFwkTag::TEST, "MakeImage_0100 end");
+}
+
+/**
+ * @tc.name: MakeImage_0200
+ * @tc.desc: test MakeImage failure path with GetBundleInfo failed saves nothing
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, MakeImage_0200, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "MakeImage_0200 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    auto bundleMgrHelper = std::make_shared<BundleMgrHelper>();
+    BundleMgrHelper::getBundleInfoResult_ = false;
+    appMgrServiceInner->remoteClientManager_->SetBundleManagerHelper(bundleMgrHelper);
+    IPCSkeleton::SetCallingUid(TEST_UID);
+    Want want;
+    appMgrServiceInner->MakeImage(want, 0, AppExecFwk::PreloadMode::PRELOAD_MODULE, 0, nullptr);
+    HyperSnapErrorRecord record;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record));
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_OK);
+    BundleMgrHelper::getBundleInfoResult_ = true;
+    IPCSkeleton::SetCallingUid(0);
+    TAG_LOGI(AAFwkTag::TEST, "MakeImage_0200 end");
+}
+
+/**
+ * @tc.name: MakeImage_0300
+ * @tc.desc: test MakeImage failure path resolves uid from bundle info and saves the error
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, MakeImage_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "MakeImage_0300 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    auto bundleMgrHelper = std::make_shared<BundleMgrHelper>();
+    BundleMgrHelper::getBundleInfoResult_ = true;
+    BundleMgrHelper::mockBundleUid_ = TEST_UID;
+    appMgrServiceInner->remoteClientManager_->SetBundleManagerHelper(bundleMgrHelper);
+    IPCSkeleton::SetCallingUid(TEST_UID);
+    // empty bundle fails with ERR_PRELOAD_FAILED, mapped to ERR_SYSTEM_INNER
+    Want want;
+    appMgrServiceInner->MakeImage(want, 0, AppExecFwk::PreloadMode::PRELOAD_MODULE, 0, nullptr);
+    HyperSnapErrorRecord record;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record));
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_SYSTEM_INNER);
+    BundleMgrHelper::mockBundleUid_ = 0;
+    IPCSkeleton::SetCallingUid(0);
+    TAG_LOGI(AAFwkTag::TEST, "MakeImage_0300 end");
+}
+
+/**
+ * @tc.name: TryToUseImageInfo_0100
+ * @tc.desc: test TryToUseImageInfo saves FORK_FROM_SNAPSHOT error when record creation from image fails
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, TryToUseImageInfo_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "TryToUseImageInfo_0100 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    applicationInfo_->uid = TEST_UID; // uid / BASE_USER_RANGE = 0, matches PreAddImageInfo below
+    PreloadRequest preloadRequest;
+    preloadRequest.abilityName = abilityInfo_->name;
+    appMgrServiceInner->PreAddImageInfo(applicationInfo_->bundleName, 0, 0, nullptr, preloadRequest);
+    auto imageInfo = appMgrServiceInner->GetImageInfo(applicationInfo_->bundleName, abilityInfo_->name, 0, 0);
+    ASSERT_NE(imageInfo, nullptr);
+    imageInfo->imagePid = 4321;
+    imageInfo->baseAppRecord = std::make_shared<AppRunningRecord>(applicationInfo_, TEST_UID, "PROCESS_NAME");
+    IPCSkeleton::SetCallingUid(TEST_UID);
+    std::shared_ptr<AppRunningRecord> appRecord;
+    int32_t result = appMgrServiceInner->TryToUseImageInfo(abilityInfo_, applicationInfo_, nullptr, "", 0,
+        "PROCESS_NAME", "", "", "", appRecord);
+    EXPECT_EQ(result, ERR_OK);
+    HyperSnapErrorRecord record;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::FORK_FROM_SNAPSHOT, record));
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_SYSTEM_INNER);
+    IPCSkeleton::SetCallingUid(0);
+    TAG_LOGI(AAFwkTag::TEST, "TryToUseImageInfo_0100 end");
+}
 } // namespace AppExecFwk
 } // namespace OHOS

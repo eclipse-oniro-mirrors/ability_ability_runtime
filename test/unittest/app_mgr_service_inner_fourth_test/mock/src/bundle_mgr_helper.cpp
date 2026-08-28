@@ -26,6 +26,15 @@ ErrCode BundleMgrHelper::GetBundleInfoV9(
     return getBundleInfoV9Result_;
 }
 
+bool BundleMgrHelper::GetBundleInfo(
+    const std::string &bundleName, const BundleFlag flag, BundleInfo &bundleInfo, int32_t userId)
+{
+    if (getBundleInfoResult_) {
+        bundleInfo.uid = mockBundleUid_;
+    }
+    return getBundleInfoResult_;
+}
+
 bool BundleMgrHelper::GetHapModuleInfo(const AbilityInfo &abilityInfo, int32_t userId, HapModuleInfo &hapModuleInfo)
 {
     return hapModuleInfo_;
@@ -57,6 +66,8 @@ bool BundleMgrHelper::QueryDataGroupInfos(const std::string &bundleName,
 bool BundleMgrHelper::hapModuleInfo_ = false;
 bool BundleMgrHelper::dataGroupInfos_ = false;
 ErrCode BundleMgrHelper::getBundleInfoV9Result_ = ERR_OK;
+bool BundleMgrHelper::getBundleInfoResult_ = true;
+int32_t BundleMgrHelper::mockBundleUid_ = 0;
 std::string BundleMgrHelper::bundleVersionName_ = "";
 } // namespace AppExecFwk
 } // namespace OHOS
