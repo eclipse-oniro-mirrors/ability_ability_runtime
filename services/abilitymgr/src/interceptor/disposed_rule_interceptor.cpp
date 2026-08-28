@@ -56,53 +56,71 @@ ErrCode DisposedRuleInterceptor::DoProcess(const AbilityInterceptorParam &param)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Call");
     AppExecFwk::DisposedRule disposedRule;
-    if (CheckControl(param.want, param.userId, disposedRule, param.appIndex)) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "disposedType: %{public}d, controlType: %{public}d, componentType: %{public}d",
-            disposedRule.disposedType, disposedRule.controlType, disposedRule.componentType);
+    DisposedRuleResult result = CheckControl(param.want, param.userId, disposedRule, param.appIndex);
+    switch (result) {
+        case DisposedRuleResult::BLOCK_RULE:
+            return HandleBlockRule(param, disposedRule);
+        case DisposedRuleResult::NON_BLOCK_RULE:
+            return HandleNonBlockRule(param, disposedRule);
+        case DisposedRuleResult::NO_RULE:
+            return ERR_OK;
+        case DisposedRuleResult::QUERY_FAILED:
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "query disposed rule failed.");
+            return ERR_QUERY_DISPOSED_RULE_FAILED;
+    }
+    return ERR_OK;
+}
+
+ErrCode DisposedRuleInterceptor::HandleBlockRule(
+    const AbilityInterceptorParam &param, AppExecFwk::DisposedRule &disposedRule)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR,
+        "disposedType: %{public}d, controlType: %{public}d, componentType: %{public}d",
+        disposedRule.disposedType, disposedRule.controlType, disposedRule.componentType);
 #ifdef SUPPORT_GRAPHICS
-        if (!param.isWithUI || disposedRule.want == nullptr
-            || disposedRule.disposedType == AppExecFwk::DisposedType::NON_BLOCK) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "no dispose want");
-            return AbilityUtil::EdmErrorType(disposedRule.isEdm);
-        }
-        if (IsSkipDisposeRule(disposedRule.pageJump, param)) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "skip dispose rule");
-            return AbilityUtil::EdmErrorType(disposedRule.isEdm);
-        }
-        if (disposedRule.want->GetBundle() == param.want.GetBundleNameRef()) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "no dispose want, with same bundleName");
-            return AbilityUtil::EdmErrorType(disposedRule.isEdm);
-        }
-        SetInterceptInfo(param.want, disposedRule);
-        if (disposedRule.componentType == AppExecFwk::ComponentType::UI_ABILITY) {
-            int ret = IN_PROCESS_CALL(AbilityManagerClient::GetInstance()->StartAbility(*disposedRule.want,
-                param.requestCode, param.userId));
-            if (ret != ERR_OK) {
-                TAG_LOGE(AAFwkTag::ABILITYMGR, "disposedRuleInterceptor failed");
-                return ret;
-            }
-        }
-        if (disposedRule.componentType == AppExecFwk::ComponentType::UI_EXTENSION) {
-            int ret = CreateModalUIExtension(*disposedRule.want, param.callerToken);
-            if (ret != ERR_OK) {
-                TAG_LOGE(AAFwkTag::ABILITYMGR, "dispose UIExtension failed");
-                return ret;
-            }
-        }
-#endif
+    if (!param.isWithUI || disposedRule.want == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "no dispose want");
         return AbilityUtil::EdmErrorType(disposedRule.isEdm);
     }
-    if (disposedRule.disposedType != AppExecFwk::DisposedType::NON_BLOCK) {
-        return ERR_OK;
+    if (IsSkipDisposeRule(disposedRule.pageJump, param)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "skip dispose rule");
+        return AbilityUtil::EdmErrorType(disposedRule.isEdm);
     }
+    if (disposedRule.want->GetBundle() == param.want.GetBundleNameRef()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "no dispose want, with same bundleName");
+        return AbilityUtil::EdmErrorType(disposedRule.isEdm);
+    }
+    SetInterceptInfo(param.want, disposedRule);
+    if (disposedRule.componentType == AppExecFwk::ComponentType::UI_ABILITY) {
+        int32_t ret = IN_PROCESS_CALL(AbilityManagerClient::GetInstance()->StartAbility(*disposedRule.want,
+            param.requestCode, param.userId));
+        if (ret != ERR_OK) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "disposedRuleInterceptor failed");
+            return ret;
+        }
+    }
+    if (disposedRule.componentType == AppExecFwk::ComponentType::UI_EXTENSION) {
+        int32_t ret = CreateModalUIExtension(*disposedRule.want, param.callerToken);
+        if (ret != ERR_OK) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "dispose UIExtension failed");
+            return ret;
+        }
+    }
+#endif
+    return AbilityUtil::EdmErrorType(disposedRule.isEdm);
+}
+
+ErrCode DisposedRuleInterceptor::HandleNonBlockRule(
+    const AbilityInterceptorParam &param, AppExecFwk::DisposedRule &disposedRule)
+{
     if (param.abilityInfo == nullptr) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "disposed abilityInfo is nullptr");
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "disposed abilityInfo is nullptr.");
         return RESOLVE_ABILITY_ERR;
     }
     return StartNonBlockRule(param.want, disposedRule, param.abilityInfo);
 }
 
-bool DisposedRuleInterceptor::CheckControl(const Want &want, int32_t userId,
+DisposedRuleResult DisposedRuleInterceptor::CheckControl(const Want &want, int32_t userId,
     AppExecFwk::DisposedRule &disposedRule, int32_t appIndex)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
@@ -110,7 +128,7 @@ bool DisposedRuleInterceptor::CheckControl(const Want &want, int32_t userId,
     auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
     if (bundleMgrHelper == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null bundleMgrHelper");
-        return false;
+        return DisposedRuleResult::QUERY_FAILED;
     }
 
     // get disposed status
@@ -118,7 +136,7 @@ bool DisposedRuleInterceptor::CheckControl(const Want &want, int32_t userId,
     auto appControlMgr = bundleMgrHelper->GetAppControlProxy();
     if (appControlMgr == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null appControlMgr");
-        return false;
+        return DisposedRuleResult::QUERY_FAILED;
     }
     std::vector<AppExecFwk::DisposedRule> disposedRuleList;
     {
@@ -131,17 +149,23 @@ bool DisposedRuleInterceptor::CheckControl(const Want &want, int32_t userId,
             ret = IN_PROCESS_CALL(appControlMgr->GetAbilityRunningControlRule(bundleName,
                 userId, disposedRuleList, 0));
         }
-        if (ret != ERR_OK || disposedRuleList.empty()) {
+        if (ret != ERR_OK) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "GetAbilityRunningControlRule failed, err:%{public}d", ret);
+            return DisposedRuleResult::QUERY_FAILED;
+        }
+        if (disposedRuleList.empty()) {
             TAG_LOGD(AAFwkTag::ABILITYMGR, "Get No DisposedRule");
-            return false;
+            return DisposedRuleResult::NO_RULE;
         }
     }
 
     if (FindBlockDisposedRule(want, disposedRuleList, disposedRule)) {
-        return true;
+        return DisposedRuleResult::BLOCK_RULE;
     }
-    FindNonBlockDisposedRule(disposedRuleList, disposedRule);
-    return false;
+    if (FindNonBlockDisposedRule(disposedRuleList, disposedRule)) {
+        return DisposedRuleResult::NON_BLOCK_RULE;
+    }
+    return DisposedRuleResult::NO_RULE;
 }
 
 bool DisposedRuleInterceptor::FindBlockDisposedRule(const Want &want,
@@ -174,10 +198,11 @@ bool DisposedRuleInterceptor::FindBlockDisposedRule(const Want &want,
     return priority >= 0;
 }
 
-void DisposedRuleInterceptor::FindNonBlockDisposedRule(const std::vector<AppExecFwk::DisposedRule> &disposedRuleList,
+bool DisposedRuleInterceptor::FindNonBlockDisposedRule(const std::vector<AppExecFwk::DisposedRule> &disposedRuleList,
     AppExecFwk::DisposedRule &disposedRule)
 {
     int priority = -1;
+    bool found = false;
     for (const auto &rule : disposedRuleList) {
         if (rule.disposedType != AppExecFwk::DisposedType::NON_BLOCK) {
             continue;
@@ -185,8 +210,10 @@ void DisposedRuleInterceptor::FindNonBlockDisposedRule(const std::vector<AppExec
         if (rule.priority > priority) {
             priority = rule.priority;
             disposedRule = rule;
+            found = true;
         }
     }
+    return found;
 }
 
 ErrCode DisposedRuleInterceptor::StartNonBlockRule(const Want &want, AppExecFwk::DisposedRule &disposedRule,
