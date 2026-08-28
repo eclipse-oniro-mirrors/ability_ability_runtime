@@ -2021,5 +2021,31 @@ HWTEST_F(AppMgrServiceInnerFourthTest, TryToUseImageInfo_0100, TestSize.Level2)
     IPCSkeleton::SetCallingUid(0);
     TAG_LOGI(AAFwkTag::TEST, "TryToUseImageInfo_0100 end");
 }
+
+/**
+ * @tc.name: HandleMakeImageFailed_0100
+ * @tc.desc: test HandleMakeImageFailed notifies with imageInfo uid and saves the mapped error
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, HandleMakeImageFailed_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleMakeImageFailed_0100 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    IPCSkeleton::SetCallingUid(TEST_UID);
+    PreloadRequest preloadRequest;
+    preloadRequest.abilityName = abilityInfo_->name;
+    preloadRequest.bundleInfo.uid = TEST_UID;
+    sptr<MockImageErrorHandlerStub> errHandler = new MockImageErrorHandlerStub();
+    appMgrServiceInner->PreAddImageInfo(applicationInfo_->bundleName, 0, 0, errHandler, preloadRequest);
+    EXPECT_CALL(*errHandler, OnError(static_cast<int32_t>(ImageError::ERR_TEMPLATE_DIED))).Times(1);
+    appMgrServiceInner->HandleMakeImageFailed(applicationInfo_->bundleName, abilityInfo_->name, 0, 0,
+        ImageError::ERR_TEMPLATE_DIED);
+    HyperSnapErrorRecord record;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record));
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_SNAPSHOT_PROCESS_IS_DIED);
+    IPCSkeleton::SetCallingUid(0);
+    TAG_LOGI(AAFwkTag::TEST, "HandleMakeImageFailed_0100 end");
+}
 } // namespace AppExecFwk
 } // namespace OHOS

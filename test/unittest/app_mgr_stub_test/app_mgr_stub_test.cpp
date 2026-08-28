@@ -15,6 +15,8 @@
 
 #include <gtest/gtest.h>
 
+#include <memory>
+
 #define private public
 #define protected public
 #include "app_foreground_state_observer_stub.h"
@@ -26,6 +28,8 @@
 
 #include "hilog_tag_wrapper.h"
 #include "ipc_types.h"
+#include "errors.h"
+#include "hyper_snap_error_types.h"
 #include "mem_dump_callback_interface.h"
 #include "mem_dump_callback_stub.h"
 #include "mem_dump_callback_proxy.h"
@@ -250,6 +254,65 @@ HWTEST_F(AppMgrStubTest, HandleNotifyHotReloadPage_0100, TestSize.Level1)
     data.WriteString(bundleName);
     mockAppMgrService_->HandleNotifyHotReloadPage(data, reply);
     EXPECT_TRUE(mockAppMgrService_ != nullptr);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: HandleGetHyperSnapLastError_0100
+ * @tc.desc: HandleGetHyperSnapLastError writes only the result when service returns failure.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleGetHyperSnapLastError_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    data.WriteInt32(static_cast<int32_t>(HyperSnapErrorType::CREATE_SNAPSHOT));
+    EXPECT_CALL(*mockAppMgrService_, GetHyperSnapLastError(_, _))
+        .Times(1)
+        .WillOnce(Return(ERR_INVALID_VALUE));
+    int32_t ret = mockAppMgrService_->HandleGetHyperSnapLastError(data, reply);
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_INVALID_VALUE);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: HandleGetHyperSnapLastError_0200
+ * @tc.desc: HandleGetHyperSnapLastError writes result and record when service succeeds.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleGetHyperSnapLastError_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    data.WriteInt32(static_cast<int32_t>(HyperSnapErrorType::FORK_FROM_SNAPSHOT));
+    HyperSnapErrorRecord record;
+    record.code = HyperSnapErrorCode::ERR_SNAPSHOT_EXIST;
+    record.msg = "test msg";
+    record.occurTimeStamp = 12345;
+    EXPECT_CALL(*mockAppMgrService_, GetHyperSnapLastError(_, _))
+        .Times(1)
+        .WillOnce(DoAll(SetArgReferee<1>(record), Return(ERR_OK)));
+    int32_t ret = mockAppMgrService_->HandleGetHyperSnapLastError(data, reply);
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+    std::unique_ptr<HyperSnapErrorRecord> recordReply(reply.ReadParcelable<HyperSnapErrorRecord>());
+    ASSERT_NE(recordReply, nullptr);
+    EXPECT_EQ(recordReply->code, HyperSnapErrorCode::ERR_SNAPSHOT_EXIST);
+    EXPECT_EQ(recordReply->msg, "test msg");
+    EXPECT_EQ(recordReply->occurTimeStamp, 12345);
 
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
 }

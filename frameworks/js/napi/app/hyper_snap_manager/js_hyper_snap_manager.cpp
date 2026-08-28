@@ -16,6 +16,7 @@
 #include "js_hyper_snap_manager.h"
 
 #include <cstdint>
+#include <dlfcn.h>
 #include <memory>
 #include <unordered_map>
 
