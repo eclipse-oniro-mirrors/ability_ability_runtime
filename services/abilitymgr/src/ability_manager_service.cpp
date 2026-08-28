@@ -9943,21 +9943,41 @@ void AbilityManagerService::StartKeepAliveApps(int32_t userId)
     KeepAliveProcessManager::GetInstance().StartKeepAliveProcessWithMainElement(bundleInfos, userId);
 }
 
-void AbilityManagerService::StartAutoStartupApps(int32_t userId, bool isManualStart)
+bool AbilityManagerService::IsAutoStartupAllowed(int32_t userId, bool isEDMStart)
 {
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "StartAutoStartupApps called");
-    bool isAutoStartupReady = system::GetBoolParameter(AUTO_STARTUP_READY, true);
-    bool hasScreenUnlockInterceptor = false;
-    if (interceptorExecuter_ != nullptr) {
-        hasScreenUnlockInterceptor = interceptorExecuter_->HasInterceptor("ScreenUnlock");
+    if (userId == DEFAULT_INVAL_VALUE) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "invalid userId");
+        return false;
     }
-    if (!isAutoStartupReady || hasScreenUnlockInterceptor) {
-        TAG_LOGW(AAFwkTag::ABILITYMGR, "isReady %{public}d, hasInterceptor %{public}d",
-            isAutoStartupReady, hasScreenUnlockInterceptor);
-        return;
+    bool isAutoStartupReady = system::GetBoolParameter(AUTO_STARTUP_READY, true);
+    if (!isAutoStartupReady) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "isReady %{public}d, userId %{public}d", isAutoStartupReady, userId);
+        return false;
     }
     if (abilityAutoStartupService_ == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "abilityAutoStartupService_ null");
+        return false;
+    }
+    if (isEDMStart) {
+        // EDM start is an explicit command guarded by its own permission check,
+        // it skips the unlock chain and dedup checks.
+        return true;
+    }
+    if (!AbilityRuntime::AbilityEventMapManager::GetInstance().IsPendingUser(userId)) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "userId %{public}d is not pending", userId);
+        return false;
+    }
+    if (abilityAutoStartupService_->FindHandledAutoStartupUsers(userId)) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "auto startup already handled, userId:%{public}d", userId);
+        return false;
+    }
+    return true;
+}
+
+void AbilityManagerService::StartAutoStartupApps(int32_t userId, bool isEDMStart)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "StartAutoStartupApps called");
+    if (!IsAutoStartupAllowed(userId, isEDMStart)) {
         return;
     }
     std::vector<AutoStartupInfo> infoList;
@@ -9978,9 +9998,13 @@ void AbilityManagerService::StartAutoStartupApps(int32_t userId, bool isManualSt
     }
     TAG_LOGI(AAFwkTag::ABILITYMGR, "StartAutoStartupApps userId:%{public}d", userId);
     StartAutoStartupApps(infoQueue, userId);
-    if (!isManualStart) {
-        abilityAutoStartupService_->AddHandledAutoStartupUsers(userId);
+    if (isEDMStart) {
+        return;
     }
+    // The auto startup trigger is done regardless of the launch results, consume the
+    // pending user so this unlock chain no longer authorizes further triggers.
+    AbilityRuntime::AbilityEventMapManager::GetInstance().RemovePendingUserId(userId);
+    abilityAutoStartupService_->AddHandledAutoStartupUsers(userId);
     auto removeParameterWatcherTask = []() {
         int32_t ret = RemoveParameterWatcher(
             AUTO_STARTUP_READY, AbilityManagerService::HandleAutoStartupReadyCallback, nullptr);
@@ -10145,6 +10169,12 @@ std::function<void(int32_t)> AbilityManagerService::GetUserScreenUnlockCallback(
 void AbilityManagerService::UnSubscribeScreenUnlockedEvent()
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "UnSubscribeScreenUnlockedEvent called");
+    // Other users may still be waiting for their screen unlock event to complete the double
+    // unlock chain, keep the subscriber alive so each of them gets its own response.
+    if (AbilityRuntime::AbilityEventMapManager::GetInstance().GetUserCount() != 0) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "users still waiting unlock, keep screen unlocked subscriber");
+        return;
+    }
     std::lock_guard<std::mutex> lock(subscribedMutex_);
     bool subResult = EventFwk::CommonEventManager::UnSubscribeCommonEvent(screenSubscriber_);
     if (subResult) {
@@ -10733,6 +10763,9 @@ int AbilityManagerService::StartUser(int userId, uint64_t displayId, sptr<IUserC
     if (AppUtils::GetInstance().IsProductAppbootSettingEnabled() && abilityAutoStartupService_ &&
         !abilityAutoStartupService_->FindHandledAutoStartupUsers(userId)) {
         SubscribeScreenUnlockedEvent();
+        RemoveParameterWatcher(
+            AUTO_STARTUP_READY, AbilityManagerService::HandleAutoStartupReadyCallback, nullptr);
+        AddWatchParameters();
     }
 
     DelayedSingleton<AppScheduler>::GetInstance()->SetEnableStartProcessFlagByUserId(userId, true);
@@ -10789,21 +10822,22 @@ int AbilityManagerService::StopUser(int userId, const sptr<IUserCallback> &callb
         return checkRet;
     }
 
-    // clear userInfo for autoStartup
-    if (AppUtils::GetInstance().IsProductAppbootSettingEnabled() && abilityAutoStartupService_) {
-        abilityAutoStartupService_->RemoveHandledAutoStartupUsers(userId);
-    }
-    AbilityRuntime::AbilityEventMapManager::GetInstance().RemoveUser(userId);
-
-    AAFwk::ExitReasonCompability exitReasonCompability(
-        HiviewDFX::ProcessKillReason::KillEventId::REASON_USER_STOP);
-    IN_PROCESS_CALL(RecordAppWithReasonByUserId(userId, exitReasonCompability));
-
     if (AbilityRuntime::UserController::GetInstance().IsForegroundUser(userId)) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "user current:%{public}d", userId);
         callback->OnUserCmdDone(userId, ERR_OK);
         return ERR_OK;
     }
+
+    if (AppUtils::GetInstance().IsProductAppbootSettingEnabled() && abilityAutoStartupService_) {
+        abilityAutoStartupService_->RemoveHandledAutoStartupUsers(userId);
+    }
+    AbilityRuntime::AbilityEventMapManager::GetInstance().RemoveUser(userId);
+    AbilityRuntime::AbilityEventMapManager::GetInstance().RemovePendingUserId(userId);
+
+    AAFwk::ExitReasonCompability exitReasonCompability(
+        HiviewDFX::ProcessKillReason::KillEventId::REASON_USER_STOP);
+    IN_PROCESS_CALL(RecordAppWithReasonByUserId(userId, exitReasonCompability));
+
     DelayedSingleton<AppScheduler>::GetInstance()->SetEnableStartProcessFlagByUserId(userId, false);
     DelayedSingleton<AppScheduler>::GetInstance()->KillProcessesByUserId(userId,
         system::GetBoolParameter(DEVELOPER_MODE_STATE, false), callback);
@@ -10866,6 +10900,7 @@ int AbilityManagerService::LogoutUser(int32_t userId, sptr<IUserCallback> callba
         abilityAutoStartupService_->RemoveHandledAutoStartupUsers(userId);
     }
     AbilityRuntime::AbilityEventMapManager::GetInstance().RemoveUser(userId);
+    AbilityRuntime::AbilityEventMapManager::GetInstance().RemovePendingUserId(userId);
 
     AAFwk::ExitReasonCompability exitReasonCompability(
         HiviewDFX::ProcessKillReason::KillEventId::REASON_USER_LOGOUT);

@@ -17,6 +17,7 @@
 #define OHOS_ABILITY_RUNTIME_ABILITY_MANAGER_EVENT_SUBSCRIBER_H
 
 #include <mutex>
+#include <set>
 
 #include "common_event_data.h"
 #include "common_event_subscribe_info.h"
@@ -37,11 +38,16 @@ public:
     void RemoveUser(int32_t userId);
     bool CheckAllUnlocked(int32_t userId);
     bool CheckUserUnlocked(int32_t userId);
+    size_t GetUserCount();
+    void AddPendingUserId(int32_t userId);
+    bool IsPendingUser(int32_t userId);
+    void RemovePendingUserId(int32_t userId);
 
 private:
     AbilityEventMapManager();
     ~AbilityEventMapManager();
     std::unordered_map<int32_t, LockEventData> eventMap_;
+    std::set<int32_t> pendingUserIds_;
     std::mutex mutex_;
 
     DISALLOW_COPY_AND_MOVE(AbilityEventMapManager);
