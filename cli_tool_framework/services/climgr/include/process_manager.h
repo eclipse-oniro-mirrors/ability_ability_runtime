@@ -54,7 +54,10 @@ private:
     bool CreatePipes(SessionRecord &record) const;
     void CloseAllPipes(SessionRecord &record) const;
     void CloseNonStdFds() const;
-    bool SetParentHapTokenId(uint32_t tokenId) const;
+    void SetupChildPipesAndExec(const SessionRecord &record,
+        std::vector<char *> &execArgs) const;
+
+    static const char *clawSandboxPath_;
 };
 
 } // namespace CliTool

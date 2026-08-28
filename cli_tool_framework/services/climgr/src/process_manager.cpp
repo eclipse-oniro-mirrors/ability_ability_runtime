@@ -51,6 +51,8 @@ namespace {
 constexpr rlim_t MAX_FD_SWEEP_LIMIT = 65536;
 }
 
+const char *ProcessManager::clawSandboxPath_ = "/system/bin/claw_sandbox";
+
 ProcessManager &ProcessManager::GetInstance()
 {
     static ProcessManager instance;
@@ -122,7 +124,8 @@ void ProcessManager::CloseNonStdFds() const
     // Fallback (ENOSYS on kernels < 5.9, or any other failure): sweep the soft NOFILE range.
     // RLIMIT_NOFILE is "the smallest fd value that cannot be opened", so every open fd is
     // strictly below rl.rlim_cur; sweeping [STDERR_FILENO+1, rl.rlim_cur) is exhaustive.
-    TAG_LOGW(AAFwkTag::CLI_TOOL, "Fallback to sweeping pipes");
+    // No TAG_LOGW here: CloseNonStdFds runs in the post-fork child where HiLog's internal
+    // mutex may be held by a vanished thread -> deadlock. Sweep silently.
     struct rlimit rl;
     if (getrlimit(RLIMIT_NOFILE, &rl) != 0) {
         return;
@@ -136,6 +139,25 @@ void ProcessManager::CloseNonStdFds() const
     }
 }
 
+void ProcessManager::SetupChildPipesAndExec(const SessionRecord &record,
+    std::vector<char *> &execArgs) const
+{
+    close(record.stdinPipe[1]);
+    close(record.stdoutPipe[0]);
+    close(record.stderrPipe[0]);
+    dup2(record.stdinPipe[0], STDIN_FILENO);
+    dup2(record.stdoutPipe[1], STDOUT_FILENO);
+    dup2(record.stderrPipe[1], STDERR_FILENO);
+    close(record.stdinPipe[0]);
+    close(record.stdoutPipe[1]);
+    close(record.stderrPipe[1]);
+    CloseNonStdFds();
+    execvp(execArgs[0], execArgs.data());
+    static const char msg[] = "claw_sandbox execvp failed\n";
+    (void)write(STDERR_FILENO, msg, sizeof(msg) - 1);
+    _exit(EXIT_FAILURE);
+}
+
 int32_t ProcessManager::CreateChildProcess(const ExecToolParam &param, const std::string &sandboxConfig,
     const ToolInfo &toolInfo, std::shared_ptr<SessionRecord> record) const
 {
@@ -144,6 +166,31 @@ int32_t ProcessManager::CreateChildProcess(const ExecToolParam &param, const std
         ReportCliExecuteFailed(record->callerBundleName, param.toolName, REASON_PROCESS_CREATE_FAILED);
         return ERR_NO_INIT;
     }
+    // PARENT (pre-fork): all heap allocation happens here, never in child.
+    std::vector<std::string> tmpExecArgs;
+    ToolUtil::TransferToCmdParam(param.args, tmpExecArgs);
+
+    std::vector<char *> execArgs = {
+        const_cast<char *>(clawSandboxPath_),
+        const_cast<char *>("--config"),
+        const_cast<char *>(sandboxConfig.c_str()),
+        const_cast<char *>("--cmd"),
+        const_cast<char *>(toolInfo.executablePath.c_str()),
+    };
+    if (!param.subcommand.empty()) {
+        execArgs.push_back(const_cast<char *>(param.subcommand.c_str()));
+    }
+    for (const auto &element : tmpExecArgs) {
+        execArgs.push_back(const_cast<char *>(element.c_str()));
+    }
+    execArgs.push_back(nullptr);
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "args:");
+    for (const auto &element : tmpExecArgs) {
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "%{public}s", element.c_str());
+    }
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Before fork");
+
     pid_t pid = fork();
     if (pid < 0) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to fork: %{public}d", errno);
@@ -151,49 +198,13 @@ int32_t ProcessManager::CreateChildProcess(const ExecToolParam &param, const std
         ReportCliExecuteFailed(record->callerBundleName, param.toolName, REASON_PROCESS_CREATE_FAILED);
         return ERR_NO_INIT;
     }
-
     if (pid == 0) {
-        close(record->stdinPipe[1]);
-        close(record->stdoutPipe[0]);
-        close(record->stderrPipe[0]);
-        dup2(record->stdinPipe[0], STDIN_FILENO);
-        dup2(record->stdoutPipe[1], STDOUT_FILENO);
-        dup2(record->stderrPipe[1], STDERR_FILENO);
-        close(record->stdinPipe[0]);
-        close(record->stdoutPipe[1]);
-        close(record->stderrPipe[1]);
-
-        std::string clawSandbox = "/system/bin/claw_sandbox";
-        std::string configPrompt = "--config";
-        std::string cmdPrompt = "--cmd";
-        std::vector<char*> execArgs;
-        execArgs.push_back(const_cast<char *>(clawSandbox.c_str()));
-        execArgs.push_back(const_cast<char *>(configPrompt.c_str()));
-        execArgs.push_back(const_cast<char *>(sandboxConfig.c_str()));
-        execArgs.push_back(const_cast<char *>(cmdPrompt.c_str()));
-        execArgs.push_back(const_cast<char *>(toolInfo.executablePath.c_str()));
-        if (!param.subcommand.empty()) {
-            execArgs.push_back(const_cast<char *>(param.subcommand.c_str()));
-        }
-        std::vector<std::string> tmpExecArgs;
-        ToolUtil::TransferToCmdParam(param.args, tmpExecArgs);
-        TAG_LOGI(AAFwkTag::CLI_TOOL, "args:");
-        for (auto &element : tmpExecArgs) {
-            TAG_LOGI(AAFwkTag::CLI_TOOL, "%{public}s", element.c_str());
-            execArgs.push_back(const_cast<char *>(element.c_str()));
-        }
-        execArgs.push_back(nullptr);
-        TAG_LOGI(AAFwkTag::CLI_TOOL, "Before execvp");
-        CloseNonStdFds();
-        execvp(execArgs[0], execArgs.data());
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "execvp failed:%{public}d", errno);
-        _exit(EXIT_FAILURE);
+        SetupChildPipesAndExec(*record, execArgs);
     }
 
     // Parent process: close write ends of pipes
     close(record->stdoutPipe[1]);
     close(record->stderrPipe[1]);
-
     // close read
     close(record->stdinPipe[0]);
     record->processId = pid;
@@ -208,6 +219,23 @@ int32_t ProcessManager::CreateShellProcess(const ExecCmdParam &param, const std:
         return ERR_NO_INIT;
     }
     auto tokenId = IPCSkeleton::GetCallingTokenID();
+    // PARENT (pre-fork): compute token flag here to keep child async-signal-safe.
+    auto atmTokenId = AccessToken::TokenIdKit::AddCliBinaryInvokerTokenFlag(tokenId);
+
+    // PARENT (pre-fork): build argv with heap allocation here, not in child.
+    std::vector<char *> execArgs = {
+        const_cast<char *>(clawSandboxPath_),
+        const_cast<char *>("--config"),
+        const_cast<char *>(sandboxConfig.c_str()),
+        const_cast<char *>("--cmd"),
+        const_cast<char *>("/bin/sh"),
+        const_cast<char *>("-c"),
+        const_cast<char *>(param.cmd.c_str()),
+        nullptr,
+    };
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Before fork");
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "sandboxConfig: %{public}s", sandboxConfig.c_str());
+
     pid_t pid = fork();
     if (pid < 0) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to fork: %{public}d", errno);
@@ -215,37 +243,17 @@ int32_t ProcessManager::CreateShellProcess(const ExecCmdParam &param, const std:
         return ERR_NO_INIT;
     }
     if (pid == 0) {
-        SetParentHapTokenId(tokenId);
-
-        close(record->stdinPipe[1]);
-        close(record->stdoutPipe[0]);
-        close(record->stderrPipe[0]);
-        dup2(record->stdinPipe[0], STDIN_FILENO);
-        dup2(record->stdoutPipe[1], STDOUT_FILENO);
-        dup2(record->stderrPipe[1], STDERR_FILENO);
-        close(record->stdinPipe[0]);
-        close(record->stdoutPipe[1]);
-        close(record->stderrPipe[1]);
-        std::string clawSandbox = "/system/bin/claw_sandbox";
-        std::string configPrompt = "--config";
-        std::string cmdPrompt = "--cmd";
-        std::string cmdShell = "/bin/sh";
-        std::string cmdShellOption = "-c";
-        std::vector<char*> execArgs;
-        execArgs.push_back(const_cast<char *>(clawSandbox.c_str()));
-        execArgs.push_back(const_cast<char *>(configPrompt.c_str()));
-        execArgs.push_back(const_cast<char *>(sandboxConfig.c_str()));
-        execArgs.push_back(const_cast<char *>(cmdPrompt.c_str()));
-        execArgs.push_back(const_cast<char *>(cmdShell.c_str()));
-        execArgs.push_back(const_cast<char *>(cmdShellOption.c_str()));
-        execArgs.push_back(const_cast<char *>(param.cmd.c_str()));
-        execArgs.push_back(nullptr);
-        TAG_LOGI(AAFwkTag::CLI_TOOL, "Before execvp");
-        TAG_LOGD(AAFwkTag::CLI_TOOL, "sandboxConfig: %{public}s", sandboxConfig.c_str());
-        CloseNonStdFds();
-        execvp(execArgs[0], execArgs.data());
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "execvp failed:%{public}d", errno);
-        _exit(EXIT_FAILURE);
+         // ---- CHILD: only async-signal-safe calls (open/close/dup2/execvp/_exit/write). ----
+        // Apply parent-HAP token: open/close are POSIX async-signal-safe; ioctl is not
+        // strictly POSIX-listed but is safe for this device driver on OpenHarmony (no
+        // malloc/locale/HiLog locks). No HiLog on error (HiLog mutex may be held by a
+        // vanished thread at fork -> deadlock).
+        int32_t tfd = open("/dev/access_token_id", O_RDWR | O_CLOEXEC);
+        if (tfd >= 0) {
+            (void)ioctl(tfd, ACCESS_TOKENID_SET_HAP_PTOKENID, &atmTokenId);
+            (void)close(tfd);
+        }
+        SetupChildPipesAndExec(*record, execArgs);
     }
     // Parent process: close write ends of pipes
     close(record->stdoutPipe[1]);
@@ -267,24 +275,6 @@ bool ProcessManager::Killpg(pid_t pid) const
         TAG_LOGW(AAFwkTag::CLI_TOOL, "killpg result:%{public}d", killRet);
         return false;
     }
-    return true;
-}
-
-bool ProcessManager::SetParentHapTokenId(uint32_t tokenId) const
-{
-    auto atmTokenId = AccessToken::TokenIdKit::AddCliBinaryInvokerTokenFlag(tokenId);
-    std::string path = "/dev/access_token_id";
-    // O_CLOEXEC so the token-device fd never survives execvp into claw_sandbox.
-    int32_t fd = open(path.c_str(), O_RDWR | O_CLOEXEC);
-    if (fd < 0) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "open error, %{public}s", strerror(errno));
-        return false;
-    }
-    int32_t err = ioctl(fd, ACCESS_TOKENID_SET_HAP_PTOKENID, &atmTokenId);
-    if (err < 0) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "ioctl error, %{public}s", strerror(errno));
-    }
-    close(fd);
     return true;
 }
 
