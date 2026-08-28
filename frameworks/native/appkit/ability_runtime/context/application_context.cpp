@@ -1207,7 +1207,7 @@ int32_t ApplicationContext::EnableDelayedProcessExit()
     if (appMgrClient == nullptr) {
         return ERR_INVALID_VALUE;
     }
-    auto ret = appMgrClient->EnableDelayedProcessExit(getpid(), true);
+    auto ret = appMgrClient->EnableDelayedProcessExit(true);
     if (ret == ERR_OK) {
         std::lock_guard<std::mutex> lock(delayedProcessExitStateLock_);
         delayedProcessExitEnabled_ = true;
@@ -1222,7 +1222,7 @@ int32_t ApplicationContext::DisableDelayedProcessExit()
         return ERR_INVALID_VALUE;
     }
 
-    auto ret = appMgrClient->EnableDelayedProcessExit(getpid(), false);
+    auto ret = appMgrClient->EnableDelayedProcessExit(false);
     if (ret == ERR_OK) {
         std::lock_guard<std::mutex> lock(delayedProcessExitStateLock_);
         delayedProcessExitEnabled_ = false;

@@ -1003,11 +1003,10 @@ public:
     /**
      * Enable delayed process exit.
      *
-     * @param pid Process id.
      * @param enabled Whether enable delayed process exit.
      * @return Returns ERR_OK on success, others on failure.
      */
-    int32_t EnableDelayedProcessExit(int32_t pid, bool enabled) override;
+    int32_t EnableDelayedProcessExit(bool enabled) override;
     void CancelDelayedExitTask(int32_t pid) override;
 private:
     bool SendTransactCmd(AppMgrInterfaceCode code, MessageParcel &data, MessageParcel &reply);
