@@ -2650,8 +2650,8 @@ void AppMgrServiceInner::MakeProcessName(
 std::string AppMgrServiceInner::GenerateNewProcessName(const AppExecFwk::AbilityInfo &abilityInfo,
     int32_t requestId)
 {
-    std::string processName = abilityInfo.bundleName + ":" + abilityInfo.moduleName + ":" +
-        abilityInfo.name + ":" + std::to_string(requestId);
+    std::string processName = abilityInfo.bundleName + abilityInfo.bundleName + ":" +
+        abilityInfo.moduleName + ":" + abilityInfo.name + ":" + std::to_string(requestId);
     TAG_LOGI(AAFwkTag::APPMGR, "NewProcessMode processName: %{public}s", processName.c_str());
     return processName;
 }
