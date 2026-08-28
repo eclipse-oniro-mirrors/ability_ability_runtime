@@ -274,8 +274,6 @@ ErrCode AbilityManagerShellCommand::CreateCommandMap()
         {"stop-service", [this]() { return this->RunAsStopService(); }},
         {"dump", [this]() { return this->RunAsDumpsysCommand(); }},
         {"force-stop", [this]() { return this->RunAsForceStop(); }},
-        {"make-image", [this]() { return this->RunAsMakeImageCommand(); }},
-        {"template-freeze", [this]() { return this->RunAsTemplateFreezeCommand(); }},
         {"test", [this]() { return this->RunAsTestCommand(); }},
         {"process", [this]() { return this->RunAsProcessCommand(); }},
         {"attach", [this]() { return this->RunAsAttachDebugCommand(); }},
@@ -833,78 +831,6 @@ ErrCode AbilityManagerShellCommand::RunAsForceStop()
         resultReceiver_.append(GetMessageFromCode(result));
     }
     return result;
-}
-
-// Debug tool for hyper snap: directly call MakeImage from shell, bypassing RSS.
-ErrCode AbilityManagerShellCommand::RunAsMakeImageCommand()
-{
-    TAG_LOGI(AAFwkTag::AA_TOOL, "enter");
-    if (argList_.empty()) {
-        resultReceiver_.append(HELP_MSG_MAKE_IMAGE);
-        return OHOS::ERR_INVALID_VALUE;
-    }
-    std::string bundleName = argList_[0];
-    std::string abilityName;
-    int32_t userId = 0;
-    int32_t preloadMode = static_cast<int32_t>(AppExecFwk::PreloadMode::PRELOAD_MODULE);
-    int32_t appIndex = 0;
-    for (auto index = INDEX_OFFSET; index < argc_; ++index) {
-        std::string opt = argv_[index];
-        if (opt == "-a") {
-            index++;
-            if (index < argc_) {
-                abilityName = argv_[index];
-            }
-        } else if (opt == "-u") {
-            index++;
-            if (index < argc_) {
-                userId = std::strtol(argv_[index], nullptr, 10);
-            }
-        } else if (opt == "-m") {
-            index++;
-            if (index < argc_) {
-                preloadMode = std::strtol(argv_[index], nullptr, 10);
-            }
-        } else if (opt == "-i") {
-            index++;
-            if (index < argc_) {
-                appIndex = std::strtol(argv_[index], nullptr, 10);
-            }
-        }
-    }
-    TAG_LOGI(AAFwkTag::AA_TOOL, "make-image bundle:%{public}s ability:%{public}s userId:%{public}d "
-        "mode:%{public}d appIndex:%{public}d", bundleName.c_str(), abilityName.c_str(), userId, preloadMode, appIndex);
-    Want want;
-    want.SetBundle(bundleName);
-    if (!abilityName.empty()) {
-        want.SetElementName("", abilityName);
-    }
-    int32_t result = DelayedSingleton<AppMgrClient>::GetInstance()->MakeImage(want, userId,
-        static_cast<AppExecFwk::PreloadMode>(preloadMode), appIndex, nullptr);
-    resultReceiver_ = (result == ERR_OK) ? "make-image: success\n"
-        : "make-image: failed, ret=" + std::to_string(result) + "\n";
-    return OHOS::ERR_OK;
-}
-
-// Debug tool for hyper snap: manually trigger stage 2 of image making
-ErrCode AbilityManagerShellCommand::RunAsTemplateFreezeCommand()
-{
-    TAG_LOGI(AAFwkTag::AA_TOOL, "enter");
-    if (argList_.empty()) {
-        resultReceiver_.append(HELP_MSG_TEMPLATE_FREEZE);
-        return OHOS::ERR_INVALID_VALUE;
-    }
-    std::string inputPid = argList_[0];
-    pid_t pid = ConvertPid(inputPid);
-    if (pid <= 0) {
-        resultReceiver_.append("error: invalid pid\n");
-        return OHOS::ERR_INVALID_VALUE;
-    }
-    TAG_LOGI(AAFwkTag::AA_TOOL, "template-freeze pid:%{public}d", pid);
-    int32_t result = DelayedSingleton<AppMgrClient>::GetInstance()->NotifyTemplateProcessDeepFrozen(pid);
-    resultReceiver_ = (result == ERR_OK) ? "template-freeze: request accepted, fork result see hilog (HandleForkAll)\n"
-        : "template-freeze: failed, ret=" + std::to_string(result) + "\n";
-    return OHOS::ERR_OK;
 }
 
 pid_t AbilityManagerShellCommand::ConvertPid(std::string& inputPid)
