@@ -133,25 +133,12 @@ void InsightIntentSysEventReceiver::RegisterAllFunctions(
 void InsightIntentSysEventReceiver::DeleteInsightIntent(const std::string &bundleName,
     const std::string &moduleName, int32_t userId)
 {
-    if (DelayedSingleton<InsightIntentDbCache>::GetInstance()->CanSkipDelete(bundleName, userId)) {
-        TAG_LOGI(AAFwkTag::INTENT, "no intent cache, skip delete, bundleName: %{public}s, "
-            "moduleName: %{public}s, userId: %{public}d",
-            bundleName.c_str(), moduleName.c_str(), userId);
+    if (!DelayedSingleton<InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(
+        bundleName, moduleName, userId)) {
         return;
     }
-    std::vector<ExtractInsightIntentInfo> intentInfos;
-    std::vector<InsightIntentInfo> configIntentInfos;
-    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentInfoByName(
-        bundleName, userId, intentInfos);
-    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetConfigInsightIntentInfoByName(
-        bundleName, userId, configIntentInfos);
-    if (!intentInfos.empty() || !configIntentInfos.empty()) {
-        TAG_LOGI(AAFwkTag::INTENT, "update bundleName: %{public}s to no insight intent",
-            bundleName.c_str());
-        DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(
-            bundleName, moduleName, userId);
-        CliTool::UnregisterInsightIntentFunctions(bundleName);
-    }
+    TAG_LOGI(AAFwkTag::INTENT, "update bundleName: %{public}s to no insight intent", bundleName.c_str());
+    CliTool::UnregisterInsightIntentFunctions(bundleName);
 }
 
 int32_t InsightIntentSysEventReceiver::ResolveLoadUserId(int32_t userId)
