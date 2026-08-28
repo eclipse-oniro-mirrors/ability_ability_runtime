@@ -14,11 +14,14 @@
  */
 
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 #define private public
 #include "app_mgr_service_inner.h"
 #include "app_running_record.h"
 #include "app_spawn_client.h"
 #include "app_utils.h"
+#include "hyper_snap_error_record.h"
+#include "image_error_handler_stub.h"
 #include "render_record.h"
 #include "child_process_record.h"
 #include "cache_process_manager.h"
@@ -39,6 +42,7 @@ constexpr int32_t QUICKFIX_UID = 5524;
 constexpr int32_t SHADER_CACHE_GROUPID = 3099;
 constexpr int32_t RESOURCE_MANAGER_UID = 1096;
 constexpr int32_t DEFAULT_USER_ID = 0;
+constexpr int32_t TEST_UID = 10001;
 static int g_scheduleLoadChildCall = 0;
 
 namespace OHOS {
@@ -4029,6 +4033,694 @@ HWTEST_F(AppMgrServiceInnerEighthTest, TryToUseImageInfo_NotifyAppRunningStatusE
         "instanceKey", "", "", appRecord);
     
     TAG_LOGI(AAFwkTag::TEST, "TryToUseImageInfo_NotifyAppRunningStatusEvent_001 end");
+}
+
+class MockImageErrorHandlerStub : public ImageErrorHandlerStub {
+public:
+    MockImageErrorHandlerStub() = default;
+    virtual ~MockImageErrorHandlerStub() = default;
+
+    MOCK_METHOD1(OnError, void(int32_t errCode));
+};
+
+/**
+ * @tc.name: NotifyImageOperationFailed_ShouldReturn_1WhenErrorHandleIsNullptr
+ * @tc.desc: Test NotifyImageOperationFailed
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, NotifyImageOperationFailed_ShouldReturn_1WhenErrorHandleIsNullptr,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyImageOperationFailed_ShouldReturn_1WhenErrorHandleIsNullptr start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    ImageError errCode = ImageError::ERR_KILL_IMAGE_PROCESS_FAILED;
+    EXPECT_EQ(appMgrServiceInner->NotifyImageOperationFailed(nullptr, errCode), -1);
+    TAG_LOGI(AAFwkTag::TEST, "NotifyImageOperationFailed_ShouldReturn_1WhenErrorHandleIsNullptr end");
+}
+
+/**
+ * @tc.name: NotifyImageOperationFailed_ShouldReturnErrOkWhenErrorHandleIsNullptr
+ * @tc.desc: Test NotifyImageOperationFailed
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, NotifyImageOperationFailed_ShouldReturnErrOkWhenErrorHandleIsNullptr,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyImageOperationFailed_ShouldReturnErrOkWhenErrorHandleIsNullptr start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    sptr<MockImageErrorHandlerStub> errHandler = new (std::nothrow) MockImageErrorHandlerStub();
+    ImageError errCode = ImageError::ERR_KILL_IMAGE_PROCESS_FAILED;
+    EXPECT_CALL(*errHandler, OnError(_)).Times(1);
+    EXPECT_EQ(appMgrServiceInner->NotifyImageOperationFailed(errHandler, errCode), ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "NotifyImageOperationFailed_ShouldReturnErrOkWhenErrorHandleIsNullptr end");
+}
+
+/**
+ * @tc.name: ConvertImageErrorToHyperSnapCode_0100
+ * @tc.desc: test explicit ImageError to HyperSnapErrorCode mappings
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, ConvertImageErrorToHyperSnapCode_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ConvertImageErrorToHyperSnapCode_0100 start");
+    EXPECT_EQ(AppMgrServiceInner::ConvertImageErrorToHyperSnapCode(ImageError::ERR_OK), HyperSnapErrorCode::ERR_OK);
+    EXPECT_EQ(AppMgrServiceInner::ConvertImageErrorToHyperSnapCode(ImageError::ERR_TEMPLATE_HAS_BEEN_USED),
+        HyperSnapErrorCode::ERR_SNAPSHOT_IS_INTERRUPTED);
+    EXPECT_EQ(AppMgrServiceInner::ConvertImageErrorToHyperSnapCode(ImageError::ERR_IMAGE_INFO_EXIST),
+        HyperSnapErrorCode::ERR_SNAPSHOT_EXIST);
+    EXPECT_EQ(AppMgrServiceInner::ConvertImageErrorToHyperSnapCode(ImageError::ERR_TEMPLATE_DIED),
+        HyperSnapErrorCode::ERR_SNAPSHOT_PROCESS_IS_DIED);
+    EXPECT_EQ(AppMgrServiceInner::ConvertImageErrorToHyperSnapCode(ImageError::ERR_APP_RECORD_EXIST),
+        HyperSnapErrorCode::ERR_PROCESS_IS_RUNNING);
+    EXPECT_EQ(AppMgrServiceInner::ConvertImageErrorToHyperSnapCode(ImageError::ERR_EXISTS_ILLEGAL_BINDER),
+        HyperSnapErrorCode::ERR_EXISTS_ILLEGAL_BINDER);
+    EXPECT_EQ(AppMgrServiceInner::ConvertImageErrorToHyperSnapCode(ImageError::ERR_LAST_PROCESS_NOT_FULLY_EXITED),
+        HyperSnapErrorCode::ERR_LAST_PROCESS_NOT_FULLY_EXITED);
+    TAG_LOGI(AAFwkTag::TEST, "ConvertImageErrorToHyperSnapCode_0100 end");
+}
+
+/**
+ * @tc.name: ConvertImageErrorToHyperSnapCode_0200
+ * @tc.desc: test default ImageError values fall into ERR_SYSTEM_INNER bucket
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, ConvertImageErrorToHyperSnapCode_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ConvertImageErrorToHyperSnapCode_0200 start");
+    EXPECT_EQ(AppMgrServiceInner::ConvertImageErrorToHyperSnapCode(ImageError::ERR_TIMEOUT),
+        HyperSnapErrorCode::ERR_SYSTEM_INNER);
+    EXPECT_EQ(AppMgrServiceInner::ConvertImageErrorToHyperSnapCode(ImageError::ERR_FORKALL_FAILED),
+        HyperSnapErrorCode::ERR_SYSTEM_INNER);
+    EXPECT_EQ(AppMgrServiceInner::ConvertImageErrorToHyperSnapCode(ImageError::ERR_INVALID_PRELOAD_TYPE),
+        HyperSnapErrorCode::ERR_SYSTEM_INNER);
+    EXPECT_EQ(AppMgrServiceInner::ConvertImageErrorToHyperSnapCode(ImageError::ERR_PRELOAD_FAILED),
+        HyperSnapErrorCode::ERR_SYSTEM_INNER);
+    EXPECT_EQ(AppMgrServiceInner::ConvertImageErrorToHyperSnapCode(ImageError::ERR_IMAGE_INFO_NOT_EXIST),
+        HyperSnapErrorCode::ERR_SYSTEM_INNER);
+    EXPECT_EQ(AppMgrServiceInner::ConvertImageErrorToHyperSnapCode(ImageError::ERR_IMAGE_INFO_NOT_READY),
+        HyperSnapErrorCode::ERR_SYSTEM_INNER);
+    EXPECT_EQ(AppMgrServiceInner::ConvertImageErrorToHyperSnapCode(ImageError::ERR_KILL_IMAGE_PROCESS_FAILED),
+        HyperSnapErrorCode::ERR_SYSTEM_INNER);
+    EXPECT_EQ(AppMgrServiceInner::ConvertImageErrorToHyperSnapCode(ImageError::ERR_INNER),
+        HyperSnapErrorCode::ERR_SYSTEM_INNER);
+    EXPECT_EQ(AppMgrServiceInner::ConvertImageErrorToHyperSnapCode(ImageError::ERR_FORKALL_BUSY),
+        HyperSnapErrorCode::ERR_SYSTEM_INNER);
+    TAG_LOGI(AAFwkTag::TEST, "ConvertImageErrorToHyperSnapCode_0200 end");
+}
+
+/**
+ * @tc.name: GetHyperSnapErrorMessage_0100
+ * @tc.desc: test fixed messages for all HyperSnapErrorCode values
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, GetHyperSnapErrorMessage_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapErrorMessage_0100 start");
+    EXPECT_EQ(AppMgrServiceInner::GetHyperSnapErrorMessage(HyperSnapErrorCode::ERR_OK), "No error");
+    EXPECT_EQ(AppMgrServiceInner::GetHyperSnapErrorMessage(HyperSnapErrorCode::ERR_SYSTEM_INNER),
+        "System internal error");
+    EXPECT_EQ(AppMgrServiceInner::GetHyperSnapErrorMessage(HyperSnapErrorCode::ERR_SNAPSHOT_EXIST),
+        "Snapshot already exists");
+    EXPECT_EQ(AppMgrServiceInner::GetHyperSnapErrorMessage(HyperSnapErrorCode::ERR_PROCESS_IS_RUNNING),
+        "Process is running");
+    EXPECT_EQ(AppMgrServiceInner::GetHyperSnapErrorMessage(HyperSnapErrorCode::ERR_SNAPSHOT_PROCESS_IS_DIED),
+        "Snapshot process died");
+    EXPECT_EQ(AppMgrServiceInner::GetHyperSnapErrorMessage(HyperSnapErrorCode::ERR_SNAPSHOT_IS_INTERRUPTED),
+        "Snapshot interrupted");
+    EXPECT_EQ(AppMgrServiceInner::GetHyperSnapErrorMessage(HyperSnapErrorCode::ERR_EXISTS_ILLEGAL_BINDER),
+        "Illegal binder exists");
+    EXPECT_EQ(AppMgrServiceInner::GetHyperSnapErrorMessage(HyperSnapErrorCode::ERR_LAST_PROCESS_NOT_FULLY_EXITED),
+        "Last process not fully exited");
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapErrorMessage_0100 end");
+}
+
+/**
+ * @tc.name: GetHyperSnapErrorMessage_0200
+ * @tc.desc: test unknown code returns "Unknown error"
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, GetHyperSnapErrorMessage_0200, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapErrorMessage_0200 start");
+    auto invalidCode = static_cast<HyperSnapErrorCode>(99);
+    EXPECT_EQ(AppMgrServiceInner::GetHyperSnapErrorMessage(invalidCode), "Unknown error");
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapErrorMessage_0200 end");
+}
+
+/**
+ * @tc.name: SaveHyperSnapError_0100
+ * @tc.desc: test save CREATE_SNAPSHOT error and query it back via GetHyperSnapLastError
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, SaveHyperSnapError_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SaveHyperSnapError_0100 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = TEST_UID;
+    appMgrServiceInner->SaveHyperSnapError(TEST_UID, HyperSnapErrorType::CREATE_SNAPSHOT,
+        HyperSnapErrorCode::ERR_SNAPSHOT_PROCESS_IS_DIED);
+    HyperSnapErrorRecord record;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record));
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_SNAPSHOT_PROCESS_IS_DIED);
+    EXPECT_EQ(record.msg, "Snapshot process died");
+    EXPECT_GT(record.occurTimeStamp, 0);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "SaveHyperSnapError_0100 end");
+}
+
+/**
+ * @tc.name: SaveHyperSnapError_0200
+ * @tc.desc: test negative uid is rejected and nothing is saved
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, SaveHyperSnapError_0200, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SaveHyperSnapError_0200 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = TEST_UID;
+    appMgrServiceInner->SaveHyperSnapError(-1, HyperSnapErrorType::CREATE_SNAPSHOT,
+        HyperSnapErrorCode::ERR_SNAPSHOT_EXIST);
+    HyperSnapErrorRecord record;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record));
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_OK);
+    EXPECT_EQ(record.occurTimeStamp, 0);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "SaveHyperSnapError_0200 end");
+}
+
+/**
+ * @tc.name: SaveHyperSnapError_0300
+ * @tc.desc: test invalid error type is rejected and nothing is saved
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, SaveHyperSnapError_0300, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SaveHyperSnapError_0300 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = TEST_UID;
+    auto invalidType = static_cast<HyperSnapErrorType>(100);
+    appMgrServiceInner->SaveHyperSnapError(TEST_UID, invalidType, HyperSnapErrorCode::ERR_SYSTEM_INNER);
+    HyperSnapErrorRecord createRecord;
+    HyperSnapErrorRecord forkRecord;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, createRecord));
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::FORK_FROM_SNAPSHOT, forkRecord));
+    EXPECT_EQ(createRecord.code, HyperSnapErrorCode::ERR_OK);
+    EXPECT_EQ(forkRecord.code, HyperSnapErrorCode::ERR_OK);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "SaveHyperSnapError_0300 end");
+}
+
+/**
+ * @tc.name: SaveHyperSnapError_0400
+ * @tc.desc: test save FORK_FROM_SNAPSHOT error and query it back
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, SaveHyperSnapError_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SaveHyperSnapError_0400 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = TEST_UID;
+    appMgrServiceInner->SaveHyperSnapError(TEST_UID, HyperSnapErrorType::FORK_FROM_SNAPSHOT,
+        HyperSnapErrorCode::ERR_PROCESS_IS_RUNNING);
+    HyperSnapErrorRecord record;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::FORK_FROM_SNAPSHOT, record));
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_PROCESS_IS_RUNNING);
+    EXPECT_EQ(record.msg, "Process is running");
+    EXPECT_GT(record.occurTimeStamp, 0);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "SaveHyperSnapError_0400 end");
+}
+
+/**
+ * @tc.name: GetHyperSnapLastError_0100
+ * @tc.desc: test query with no saved error returns defaults
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, GetHyperSnapLastError_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0100 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = TEST_UID;
+    HyperSnapErrorRecord record;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::FORK_FROM_SNAPSHOT, record));
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_OK);
+    EXPECT_EQ(record.msg, "No error");
+    EXPECT_EQ(record.occurTimeStamp, 0);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0100 end");
+}
+
+/**
+ * @tc.name: GetHyperSnapLastError_0200
+ * @tc.desc: test saved FORK_FROM_SNAPSHOT error is queried back with derived msg
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, GetHyperSnapLastError_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0200 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = TEST_UID;
+    appMgrServiceInner->SaveHyperSnapError(TEST_UID, HyperSnapErrorType::FORK_FROM_SNAPSHOT,
+        HyperSnapErrorCode::ERR_LAST_PROCESS_NOT_FULLY_EXITED);
+    HyperSnapErrorRecord record;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::FORK_FROM_SNAPSHOT, record));
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_LAST_PROCESS_NOT_FULLY_EXITED);
+    EXPECT_EQ(record.msg, "Last process not fully exited");
+    EXPECT_GT(record.occurTimeStamp, 0);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0200 end");
+}
+
+/**
+ * @tc.name: GetHyperSnapLastError_0300
+ * @tc.desc: test invalid error type returns false
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, GetHyperSnapLastError_0300, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0300 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    HyperSnapErrorRecord record;
+    auto invalidType = static_cast<HyperSnapErrorType>(-1);
+    EXPECT_FALSE(appMgrServiceInner->GetHyperSnapLastError(invalidType, record));
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0300 end");
+}
+
+/**
+ * @tc.name: GetHyperSnapLastError_0400
+ * @tc.desc: test negative calling uid returns false
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, GetHyperSnapLastError_0400, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0400 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = -1;
+    HyperSnapErrorRecord record;
+    EXPECT_FALSE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record));
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0400 end");
+}
+
+/**
+ * @tc.name: GetHyperSnapLastError_0500
+ * @tc.desc: test CREATE_SNAPSHOT error does not affect FORK_FROM_SNAPSHOT query
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, GetHyperSnapLastError_0500, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0500 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = TEST_UID;
+    appMgrServiceInner->SaveHyperSnapError(TEST_UID, HyperSnapErrorType::CREATE_SNAPSHOT,
+        HyperSnapErrorCode::ERR_SNAPSHOT_EXIST);
+    HyperSnapErrorRecord record;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::FORK_FROM_SNAPSHOT, record));
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_OK);
+    EXPECT_EQ(record.msg, "No error");
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0500 end");
+}
+
+/**
+ * @tc.name: ClearHyperSnapError_0100
+ * @tc.desc: test clearing one error type keeps the other type intact
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, ClearHyperSnapError_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ClearHyperSnapError_0100 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = TEST_UID;
+    appMgrServiceInner->SaveHyperSnapError(TEST_UID, HyperSnapErrorType::CREATE_SNAPSHOT,
+        HyperSnapErrorCode::ERR_SNAPSHOT_EXIST);
+    appMgrServiceInner->SaveHyperSnapError(TEST_UID, HyperSnapErrorType::FORK_FROM_SNAPSHOT,
+        HyperSnapErrorCode::ERR_SYSTEM_INNER);
+    appMgrServiceInner->ClearHyperSnapError(TEST_UID, HyperSnapErrorType::CREATE_SNAPSHOT);
+    HyperSnapErrorRecord createRecord;
+    HyperSnapErrorRecord forkRecord;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, createRecord));
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::FORK_FROM_SNAPSHOT, forkRecord));
+    EXPECT_EQ(createRecord.code, HyperSnapErrorCode::ERR_OK);
+    EXPECT_EQ(forkRecord.code, HyperSnapErrorCode::ERR_SYSTEM_INNER);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "ClearHyperSnapError_0100 end");
+}
+
+/**
+ * @tc.name: ClearHyperSnapError_0200
+ * @tc.desc: test clearing all error types for the uid
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, ClearHyperSnapError_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ClearHyperSnapError_0200 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = TEST_UID;
+    appMgrServiceInner->SaveHyperSnapError(TEST_UID, HyperSnapErrorType::CREATE_SNAPSHOT,
+        HyperSnapErrorCode::ERR_SNAPSHOT_EXIST);
+    appMgrServiceInner->SaveHyperSnapError(TEST_UID, HyperSnapErrorType::FORK_FROM_SNAPSHOT,
+        HyperSnapErrorCode::ERR_SYSTEM_INNER);
+    appMgrServiceInner->ClearHyperSnapError(TEST_UID);
+    HyperSnapErrorRecord createRecord;
+    HyperSnapErrorRecord forkRecord;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, createRecord));
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::FORK_FROM_SNAPSHOT, forkRecord));
+    EXPECT_EQ(createRecord.code, HyperSnapErrorCode::ERR_OK);
+    EXPECT_EQ(forkRecord.code, HyperSnapErrorCode::ERR_OK);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "ClearHyperSnapError_0200 end");
+}
+
+/**
+ * @tc.name: ClearHyperSnapError_0300
+ * @tc.desc: test clearing with invalid uid/type does not crash and keeps saved records
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, ClearHyperSnapError_0300, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ClearHyperSnapError_0300 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = TEST_UID;
+    appMgrServiceInner->SaveHyperSnapError(TEST_UID, HyperSnapErrorType::CREATE_SNAPSHOT,
+        HyperSnapErrorCode::ERR_SNAPSHOT_EXIST);
+    appMgrServiceInner->ClearHyperSnapError(-1);
+    auto invalidType = static_cast<HyperSnapErrorType>(100);
+    appMgrServiceInner->ClearHyperSnapError(TEST_UID, invalidType);
+    HyperSnapErrorRecord record;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record));
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_SNAPSHOT_EXIST);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "ClearHyperSnapError_0300 end");
+}
+
+/**
+ * @tc.name: ClearHyperSnapError_0400
+ * @tc.desc: test double-param clear with negative uid keeps saved records
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, ClearHyperSnapError_0400, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ClearHyperSnapError_0400 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = TEST_UID;
+    appMgrServiceInner->SaveHyperSnapError(TEST_UID, HyperSnapErrorType::CREATE_SNAPSHOT,
+        HyperSnapErrorCode::ERR_SNAPSHOT_EXIST);
+    appMgrServiceInner->SaveHyperSnapError(TEST_UID, HyperSnapErrorType::FORK_FROM_SNAPSHOT,
+        HyperSnapErrorCode::ERR_SYSTEM_INNER);
+    appMgrServiceInner->ClearHyperSnapError(-1, HyperSnapErrorType::CREATE_SNAPSHOT);
+    appMgrServiceInner->ClearHyperSnapError(-1, HyperSnapErrorType::FORK_FROM_SNAPSHOT);
+    HyperSnapErrorRecord createRecord;
+    HyperSnapErrorRecord forkRecord;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, createRecord));
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::FORK_FROM_SNAPSHOT, forkRecord));
+    EXPECT_EQ(createRecord.code, HyperSnapErrorCode::ERR_SNAPSHOT_EXIST);
+    EXPECT_EQ(forkRecord.code, HyperSnapErrorCode::ERR_SYSTEM_INNER);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "ClearHyperSnapError_0400 end");
+}
+
+/**
+ * @tc.name: ClearHyperSnapError_0500
+ * @tc.desc: test double-param clear of FORK_FROM_SNAPSHOT keeps CREATE_SNAPSHOT intact
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, ClearHyperSnapError_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ClearHyperSnapError_0500 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = TEST_UID;
+    appMgrServiceInner->SaveHyperSnapError(TEST_UID, HyperSnapErrorType::CREATE_SNAPSHOT,
+        HyperSnapErrorCode::ERR_SNAPSHOT_EXIST);
+    appMgrServiceInner->SaveHyperSnapError(TEST_UID, HyperSnapErrorType::FORK_FROM_SNAPSHOT,
+        HyperSnapErrorCode::ERR_SYSTEM_INNER);
+    appMgrServiceInner->ClearHyperSnapError(TEST_UID, HyperSnapErrorType::FORK_FROM_SNAPSHOT);
+    HyperSnapErrorRecord createRecord;
+    HyperSnapErrorRecord forkRecord;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, createRecord));
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::FORK_FROM_SNAPSHOT, forkRecord));
+    EXPECT_EQ(createRecord.code, HyperSnapErrorCode::ERR_SNAPSHOT_EXIST);
+    EXPECT_EQ(forkRecord.code, HyperSnapErrorCode::ERR_OK);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "ClearHyperSnapError_0500 end");
+}
+
+/**
+ * @tc.name: GetCheckpointRestoreError_0100
+ * @tc.desc: test negative pid returns ERR_INNER without touching the kernel node
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, GetCheckpointRestoreError_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetCheckpointRestoreError_0100 start");
+    EXPECT_EQ(AppMgrServiceInner::GetCheckpointRestoreError(-1, "test"), ImageError::ERR_INNER);
+    TAG_LOGI(AAFwkTag::TEST, "GetCheckpointRestoreError_0100 end");
+}
+
+/**
+ * @tc.name: NotifyMakeImageFailed_0100
+ * @tc.desc: test negative uid skips saving but still notifies the error handler
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, NotifyMakeImageFailed_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyMakeImageFailed_0100 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = TEST_UID;
+    sptr<MockImageErrorHandlerStub> errHandler = new (std::nothrow) MockImageErrorHandlerStub();
+    EXPECT_CALL(*errHandler, OnError(_)).Times(1);
+    ImageError errCode = ImageError::ERR_KILL_IMAGE_PROCESS_FAILED;
+    EXPECT_EQ(appMgrServiceInner->NotifyMakeImageFailed(-1, errHandler, errCode), ERR_OK);
+    HyperSnapErrorRecord record;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record));
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_OK);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "NotifyMakeImageFailed_0100 end");
+}
+
+/**
+ * @tc.name: NotifyMakeImageFailed_0200
+ * @tc.desc: test FORKALL errors are excluded from saving but handler is notified
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, NotifyMakeImageFailed_0200, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyMakeImageFailed_0200 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = TEST_UID;
+    sptr<MockImageErrorHandlerStub> errHandler = new (std::nothrow) MockImageErrorHandlerStub();
+    EXPECT_CALL(*errHandler, OnError(_)).Times(2);
+    EXPECT_EQ(appMgrServiceInner->NotifyMakeImageFailed(TEST_UID, errHandler, ImageError::ERR_FORKALL_BUSY),
+        ERR_OK);
+    EXPECT_EQ(appMgrServiceInner->NotifyMakeImageFailed(TEST_UID, errHandler, ImageError::ERR_FORKALL_FAILED),
+        ERR_OK);
+    HyperSnapErrorRecord record;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record));
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_OK);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "NotifyMakeImageFailed_0200 end");
+}
+
+/**
+ * @tc.name: NotifyMakeImageFailed_0300
+ * @tc.desc: test normal error is saved as CREATE_SNAPSHOT and handler is notified
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, NotifyMakeImageFailed_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyMakeImageFailed_0300 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = TEST_UID;
+    sptr<MockImageErrorHandlerStub> errHandler = new (std::nothrow) MockImageErrorHandlerStub();
+    EXPECT_CALL(*errHandler, OnError(_)).Times(1);
+    ImageError errCode = ImageError::ERR_TEMPLATE_DIED;
+    EXPECT_EQ(appMgrServiceInner->NotifyMakeImageFailed(TEST_UID, errHandler, errCode), ERR_OK);
+    HyperSnapErrorRecord record;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record));
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_SNAPSHOT_PROCESS_IS_DIED);
+    EXPECT_EQ(record.msg, "Snapshot process died");
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "NotifyMakeImageFailed_0300 end");
+}
+
+/**
+ * @tc.name: NotifyMakeImageFailed_0400
+ * @tc.desc: test valid uid with null handler returns -1 but still saves the error
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, NotifyMakeImageFailed_0400, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyMakeImageFailed_0400 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = TEST_UID;
+    ImageError errCode = ImageError::ERR_KILL_IMAGE_PROCESS_FAILED;
+    EXPECT_EQ(appMgrServiceInner->NotifyMakeImageFailed(TEST_UID, nullptr, errCode), -1);
+    HyperSnapErrorRecord record;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record));
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_SYSTEM_INNER);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "NotifyMakeImageFailed_0400 end");
+}
+
+/**
+ * @tc.name: MakeImage_0100
+ * @tc.desc: test MakeImage failure path with null remoteClientManager saves nothing (uid stays -1)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, MakeImage_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "MakeImage_0100 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    appMgrServiceInner->remoteClientManager_ = nullptr;
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = TEST_UID;
+    // empty bundle makes MakeImageInner fail (preload pre-check), outer path resolves uid via
+    // bundleMgrHelper which is unreachable with a null remoteClientManager
+    Want want;
+    appMgrServiceInner->MakeImage(want, 0, AppExecFwk::PreloadMode::PRELOAD_MODULE, 0, nullptr);
+    HyperSnapErrorRecord record;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record));
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_OK);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "MakeImage_0100 end");
+}
+
+/**
+ * @tc.name: MakeImage_0300
+ * @tc.desc: test MakeImage failure path resolves uid by bundle name and saves the error
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, MakeImage_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "MakeImage_0300 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    auto bundleMgrHelper = std::make_shared<BundleMgrHelper>();
+    AAFwk::MyStatus::GetInstance().getBundleManagerHelper_ = bundleMgrHelper;
+    // mock GetUidByBundleName returns ERR_OK(0), so calling uid must be 0 too to read back
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    // empty bundle fails with ERR_PRELOAD_FAILED, mapped to ERR_SYSTEM_INNER
+    Want want;
+    appMgrServiceInner->MakeImage(want, 0, AppExecFwk::PreloadMode::PRELOAD_MODULE, 0, nullptr);
+    HyperSnapErrorRecord record;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record));
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_SYSTEM_INNER);
+    AAFwk::MyStatus::GetInstance().getBundleManagerHelper_ = nullptr;
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "MakeImage_0300 end");
+}
+
+/**
+ * @tc.name: MakeImage_0400
+ * @tc.desc: test MakeImage failure path with null bundleMgrHelper notifies handler without saving
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, MakeImage_0400, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "MakeImage_0400 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    // Null remoteClientManager makes GetBundleManagerHelper unreachable, so bundleMgrHelper
+    // stays nullptr and uid keeps -1.
+    appMgrServiceInner->remoteClientManager_ = nullptr;
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = TEST_UID;
+    sptr<MockImageErrorHandlerStub> errHandler = new (std::nothrow) MockImageErrorHandlerStub();
+    EXPECT_CALL(*errHandler, OnError(_)).Times(1);
+    Want want;
+    appMgrServiceInner->MakeImage(want, 0, AppExecFwk::PreloadMode::PRELOAD_MODULE, 0, errHandler);
+    HyperSnapErrorRecord record;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record));
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_OK);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "MakeImage_0400 end");
+}
+
+/**
+ * @tc.name: TryToUseImageInfo_0100
+ * @tc.desc: test TryToUseImageInfo saves FORK_FROM_SNAPSHOT error when record creation from image fails
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, TryToUseImageInfo_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "TryToUseImageInfo_0100 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    auto abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->name = "ServiceAbility";
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->bundleName = "com.ix.hiservcie";
+    appInfo->uid = TEST_UID; // uid / BASE_USER_RANGE = 0, matches PreAddImageInfo below
+    PreloadRequest preloadRequest;
+    preloadRequest.abilityName = abilityInfo->name;
+    appMgrServiceInner->PreAddImageInfo(appInfo->bundleName, 0, 0, nullptr, preloadRequest);
+    auto imageInfo = appMgrServiceInner->GetImageInfo(appInfo->bundleName, abilityInfo->name, 0, 0);
+    ASSERT_NE(imageInfo, nullptr);
+    imageInfo->imagePid = 4321;
+    imageInfo->baseAppRecord = std::make_shared<AppRunningRecord>(appInfo, TEST_UID, "PROCESS_NAME");
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = TEST_UID;
+    AAFwk::MyStatus::GetInstance().checkAppRunningByUid_ = false;
+    // guard: if record creation succeeds, fork path calls GetSpawnClient()->StartProcess
+    AAFwk::MyStatus::GetInstance().getSpawnClient_ = std::make_shared<AppSpawnClient>();
+    std::shared_ptr<AppRunningRecord> appRecord;
+    int32_t result = appMgrServiceInner->TryToUseImageInfo(abilityInfo, appInfo, nullptr, "", 0,
+        "PROCESS_NAME", "", "", "", appRecord);
+    EXPECT_EQ(result, ERR_OK);
+    HyperSnapErrorRecord record;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::FORK_FROM_SNAPSHOT, record));
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_SYSTEM_INNER);
+    AAFwk::MyStatus::GetInstance().getSpawnClient_ = nullptr;
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "TryToUseImageInfo_0100 end");
+}
+
+/**
+ * @tc.name: HandleMakeImageFailed_0100
+ * @tc.desc: test HandleMakeImageFailed notifies with imageInfo uid and saves the mapped error
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, HandleMakeImageFailed_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleMakeImageFailed_0100 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    auto abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->name = "ServiceAbility";
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->bundleName = "com.ix.hiservcie";
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = TEST_UID;
+    PreloadRequest preloadRequest;
+    preloadRequest.abilityName = abilityInfo->name;
+    preloadRequest.bundleInfo.uid = TEST_UID;
+    sptr<MockImageErrorHandlerStub> errHandler = new MockImageErrorHandlerStub();
+    appMgrServiceInner->PreAddImageInfo(appInfo->bundleName, 0, 0, errHandler, preloadRequest);
+    EXPECT_CALL(*errHandler, OnError(static_cast<int32_t>(ImageError::ERR_TEMPLATE_DIED))).Times(1);
+    appMgrServiceInner->HandleMakeImageFailed(appInfo->bundleName, abilityInfo->name, 0, 0,
+        ImageError::ERR_TEMPLATE_DIED);
+    HyperSnapErrorRecord record;
+    EXPECT_TRUE(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record));
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_SNAPSHOT_PROCESS_IS_DIED);
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "HandleMakeImageFailed_0100 end");
 }
 } // namespace AppExecFwk
 } // namespace OHOS
