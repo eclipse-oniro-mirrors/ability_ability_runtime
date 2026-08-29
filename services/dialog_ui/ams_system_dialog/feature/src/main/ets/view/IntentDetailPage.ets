@@ -142,7 +142,9 @@ export struct IntentDetailPage {
 
   onBackPress() {
     let context = AppStorage.get('context') as common.UIAbilityContext;
-    context.terminateSelf();
+    if (context) {
+      context.terminateSelf();
+    }
   }
 
   @Provide InputTypeData: Record<string, InputType> = {
@@ -165,7 +167,7 @@ export struct IntentDetailPage {
       bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_HAP_MODULE |
       bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_EXTENSION_ABILITY
     );
-    hilog.info(DOMAIN, TAG, `getBundleInfo success: bundleName=${bundleInfo.name}`);
+    hilog.info(DOMAIN, TAG, 'getBundleInfo success: bundleName=%{public}s', bundleInfo.name);
     const hapModulesInfo = bundleInfo.hapModulesInfo;
     if (!hapModulesInfo) {
       const errorMsg = `getUIExtensionType failed: hapModulesInfo is null for bundleName=${bundleName}`;

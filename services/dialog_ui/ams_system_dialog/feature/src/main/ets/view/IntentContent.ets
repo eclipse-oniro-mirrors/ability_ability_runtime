@@ -50,9 +50,43 @@ export struct IntentContent {
   @State groupMaterial: Record<string, IntentInfo[]> = {};
   context = this.getUIContext().getHostContext();
   @State pixelMap: image.PixelMap | ResourceStr | DrawableDescriptor | undefined = undefined;
+  private isCompActive: boolean = true;
+  private createdPixelMaps: image.PixelMap[] = [];
 
   aboutToAppear() {
     this.getInfos();
+  }
+
+  aboutToDisappear() {
+    this.isCompActive = false;
+    this.releasePixelMaps();
+  }
+
+  private async releasePixelMaps(): Promise<void> {
+    for (const pm of this.createdPixelMaps) {
+      try {
+        await pm.release();
+      } catch (err) {
+        hilog.error(DOMAIN, TAG, 'release pixelMap failed: %{public}s', JSON.stringify(err));
+      }
+    }
+    this.createdPixelMaps = [];
+  }
+
+  private async trackPixelMap(pm: image.PixelMap | null | undefined): Promise<image.PixelMap | undefined> {
+    if (!pm) {
+      return undefined;
+    }
+    if (!this.isCompActive) {
+      try {
+        await pm.release();
+      } catch (err) {
+        hilog.error(DOMAIN, TAG, 'release pixelMap failed: %{public}s', JSON.stringify(err));
+      }
+      return undefined;
+    }
+    this.createdPixelMaps.push(pm);
+    return pm;
   }
 
   onBackPress() {
@@ -62,7 +96,9 @@ export struct IntentContent {
   terminateSelf() {
     try {
       let context = this.getUIContext().getHostContext() as common.UIAbilityContext;
-      context.terminateSelf();
+      if (context) {
+        context.terminateSelf();
+      }
     } catch (err) {
       hilog.error(DOMAIN, TAG, 'Failed to context.terminateSelf. Cause: %{public}s', JSON.stringify(err));
     }
@@ -72,6 +108,10 @@ export struct IntentContent {
     try {
       insightIntentDriver.getAllInsightIntentInfo(insightIntentDriver.GetInsightIntentFlag.GET_FULL_INSIGHT_INTENT)
         .then((data) => {
+          if (!this.isCompActive) {
+            hilog.info(DOMAIN, TAG, 'component destroyed, skip getInfos result');
+            return;
+          }
           hilog.info(DOMAIN, TAG, `getAllInsightIntentInfo success: found ${data.length} total intents`);
           this.listMaterial = data as IntentInfo[];
           this.intermediateGroupMaterial = this.listMaterial
@@ -93,6 +133,9 @@ export struct IntentContent {
                 const materialItems = this.intermediateGroupMaterial[bundleName];
                 for (const key of Object.keys(materialItems)) {
                   const iconImg = await this.getAllIntentIcon(materialItems[key].icon, bundleName);
+                  if (!this.isCompActive) {
+                    return null;
+                  }
                   materialItems[key].iconImg = iconImg;
                   const appName = await this.setAppName(materialItems[0]);
                   materialItems[key].bundleNameCN = appName;
@@ -106,6 +149,9 @@ export struct IntentContent {
             return null;
           });
           Promise.all(promises).then((results: Array<MaterialResult | null>) => {
+            if (!this.isCompActive) {
+              return;
+            }
             results.forEach((result: MaterialResult | null) => {
               if (result && result.bundleName && result.materialItems) {
                 this.groupMaterial[result.bundleName] = result.materialItems;
@@ -220,7 +266,7 @@ export struct IntentContent {
           hilog.error(DOMAIN, TAG, 'callback getMediaByName failed. Cause: %{public}s', JSON.stringify(error));
         })
         const value: Uint8Array = await valuePromise;
-        pixelMap = await this.uint8ArrayToImage(value) ?? undefined;
+        pixelMap = await this.trackPixelMap(await this.uint8ArrayToImage(value));
 
       } catch (err) {
         hilog.error(DOMAIN, TAG, 'Failed to getAllIntentIcon', JSON.stringify(err));
