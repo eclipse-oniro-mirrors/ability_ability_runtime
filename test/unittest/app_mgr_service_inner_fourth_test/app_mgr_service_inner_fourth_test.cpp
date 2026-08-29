@@ -26,13 +26,13 @@
 #include "bundle_mgr_helper.h"
 #include "event_handler.h"
 #include "hilog_tag_wrapper.h"
-#include "image_error_handler_stub.h"
 #include "mock_ability_token.h"
 #include "mock_ipc_skeleton.h"
 #include "mock_my_flag.h"
 #include "mock_permission_verification.h"
 #include "param.h"
 #include "parameters.h"
+#include "hyper_snap_error_record.h"
 #include "remote_client_manager.h"
 #include "render_state_observer_stub.h"
 
@@ -71,14 +71,6 @@ public:
     virtual ~RenderStateObserverMock() = default;
     void OnRenderStateChanged(const RenderStateData &renderStateData) override
     {}
-};
-
-class MockImageErrorHandlerStub : public ImageErrorHandlerStub {
-public:
-    MockImageErrorHandlerStub() = default;
-    virtual ~MockImageErrorHandlerStub() = default;
-
-    MOCK_METHOD1(OnError, void(int32_t errCode));
 };
 
 void AppMgrServiceInnerFourthTest::InitAppInfo(const std::string& deviceName,
@@ -1031,40 +1023,6 @@ HWTEST_F(AppMgrServiceInnerFourthTest, MakeImage_ShouldReturnNotOkWhenImageInfoN
 }
 
 /**
- * @tc.name: NotifyImageOperationFailed_ShouldReturn_1WhenErrorHandleIsNullptr
- * @tc.desc: Test NotifyImageOperationFailed
- * @tc.type: FUNC
- */
-HWTEST_F(AppMgrServiceInnerFourthTest, NotifyImageOperationFailed_ShouldReturn_1WhenErrorHandleIsNullptr,
-    TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "NotifyImageOperationFailed_ShouldReturn_1WhenErrorHandleIsNullptr start");
-    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
-    EXPECT_NE(appMgrServiceInner, nullptr);
-    ImageError errCode = ImageError::ERR_KILL_IMAGE_PROCESS_FAILED;
-    EXPECT_EQ(appMgrServiceInner->NotifyImageOperationFailed(nullptr, errCode), -1);
-    TAG_LOGI(AAFwkTag::TEST, "NotifyImageOperationFailed_ShouldReturn_1WhenErrorHandleIsNullptr end");
-}
-
-/**
- * @tc.name: NotifyImageOperationFailed_ShouldReturnErrOkWhenErrorHandleIsNullptr
- * @tc.desc: Test NotifyImageOperationFailed
- * @tc.type: FUNC
- */
-HWTEST_F(AppMgrServiceInnerFourthTest, NotifyImageOperationFailed_ShouldReturnErrOkWhenErrorHandleIsNullptr,
-    TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "NotifyImageOperationFailed_ShouldReturnErrOkWhenErrorHandleIsNullptr start");
-    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
-    EXPECT_NE(appMgrServiceInner, nullptr);
-    sptr<MockImageErrorHandlerStub> errHandler = new (std::nothrow) MockImageErrorHandlerStub();
-    ImageError errCode = ImageError::ERR_KILL_IMAGE_PROCESS_FAILED;
-    EXPECT_CALL(*errHandler, OnError(_)).Times(1);
-    EXPECT_EQ(appMgrServiceInner->NotifyImageOperationFailed(errHandler, errCode), ERR_OK);
-    TAG_LOGI(AAFwkTag::TEST, "NotifyImageOperationFailed_ShouldReturnErrOkWhenErrorHandleIsNullptr end");
-}
-
-/**
  * @tc.name: FindImageInfo_ShouldReturnNullptrWhenImageInfoNotExist
  * @tc.desc: Test FindImageInfo
  * @tc.type: FUNC
@@ -1468,5 +1426,42 @@ HWTEST_F(AppMgrServiceInnerFourthTest, GetImageInfoByBundleAndAbility_ShouldRetu
     EXPECT_NE(imageInfo, nullptr);
     TAG_LOGI(AAFwkTag::TEST, "GetImageInfoByBundleAndAbility_ShouldReturnImageInfoWhenExist end");
 }
+
+/**
+ * @tc.name: HyperSnapErrorRecord_0100
+ * @tc.desc: test HyperSnapErrorRecord parcel marshalling/unmarshalling roundtrip
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, HyperSnapErrorRecord_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HyperSnapErrorRecord_0100 start");
+    HyperSnapErrorRecord record;
+    record.code = HyperSnapErrorCode::ERR_SNAPSHOT_PROCESS_IS_DIED;
+    record.msg = "Snapshot process died";
+    record.occurTimeStamp = 1755612345000; // unix ms, checks int64 precision
+    Parcel parcel;
+    ASSERT_TRUE(record.Marshalling(parcel));
+    auto *decoded = HyperSnapErrorRecord::Unmarshalling(parcel);
+    ASSERT_NE(decoded, nullptr);
+    EXPECT_EQ(decoded->code, HyperSnapErrorCode::ERR_SNAPSHOT_PROCESS_IS_DIED);
+    EXPECT_EQ(decoded->msg, "Snapshot process died");
+    EXPECT_EQ(decoded->occurTimeStamp, 1755612345000);
+    delete decoded;
+    TAG_LOGI(AAFwkTag::TEST, "HyperSnapErrorRecord_0100 end");
+}
+
+/**
+ * @tc.name: HyperSnapErrorRecord_0200
+ * @tc.desc: test Unmarshalling on an empty parcel returns nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, HyperSnapErrorRecord_0200, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HyperSnapErrorRecord_0200 start");
+    Parcel parcel;
+    EXPECT_EQ(HyperSnapErrorRecord::Unmarshalling(parcel), nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "HyperSnapErrorRecord_0200 end");
+}
+
 } // namespace AppExecFwk
 } // namespace OHOS

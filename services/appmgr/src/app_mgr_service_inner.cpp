@@ -332,6 +332,7 @@ constexpr const char* REASON_APPRECOVERY_NOTIFYAPP_OVER_LIMIT = "AppRecoveryNoti
 #define CHECKPOINT_IOCTL_KILL_ALL                _IOR(0xE0, 0x4, int)
 #define CHECKPOINT_MONITOR_IOCTL_MARK_TEMPLATE   _IOR(0xE0, 0x7, struct HMCheckpointMarkS)
 #define CHECKPOINT_MONITOR_IOCTL_UNMARK_TEMPLATE _IOR(0xE0, 0x8, struct HMCheckpointUnMarkS)
+#define CHECKPOINT_IOCTL_GET_LAST_ERROR          _IOWR(0xE0, 0xC, struct HmCheckpointErrMsgS)
 
 constexpr int32_t ROOT_UID = 0;
 constexpr int32_t FOUNDATION_UID = 5523;
@@ -786,13 +787,40 @@ int32_t AppMgrServiceInner::NotifyImageOperationFailed(sptr<IImageErrorHandler> 
     return ERR_OK;
 }
 
+int32_t AppMgrServiceInner::NotifyMakeImageFailed(int32_t uid,
+    sptr<IImageErrorHandler> errorHandler, ImageError errorCode)
+{
+    if (uid < 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "NotifyMakeImageFailed invalid uid:%{public}d", uid);
+    } else {
+        if (errorCode != ImageError::ERR_FORKALL_BUSY && errorCode != ImageError::ERR_FORKALL_FAILED) {
+            SaveHyperSnapError(uid, HyperSnapErrorType::CREATE_SNAPSHOT, ConvertImageErrorToHyperSnapCode(errorCode));
+        }
+    }
+
+    if (errorHandler == nullptr) {
+        return -1;
+    }
+
+    errorHandler->OnError(static_cast<int32_t>(errorCode));
+    return ERR_OK;
+}
+
 void AppMgrServiceInner::MakeImage(const AAFwk::Want &want, int32_t userId,
     AppExecFwk::PreloadMode preloadMode, int32_t appIndex, sptr<IImageErrorHandler> errorHandler)
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     auto ret = MakeImageInner(want, userId, preloadMode, appIndex, errorHandler);
     if (ret != ImageError::ERR_OK) {
-        NotifyImageOperationFailed(errorHandler, ret);
+        auto bundleMgrHelper = remoteClientManager_ ? remoteClientManager_->GetBundleManagerHelper() : nullptr;
+        int32_t uid = -1;
+        if (bundleMgrHelper != nullptr) {
+            uid = IN_PROCESS_CALL(bundleMgrHelper->GetUidByBundleName(
+                want.GetBundle(), GetValidUserId(userId), appIndex));
+        } else {
+            TAG_LOGE(AAFwkTag::APPMGR, "bundleMgrHelper null");
+        }
+        NotifyMakeImageFailed(uid, errorHandler, ret);
     }
 }
 
@@ -936,6 +964,27 @@ struct HMCheckpointUnMarkS {
     int32_t pid = -1;
 };
 
+#define CHECKPOINT_ERRMSG_MSG_LEN 256
+
+enum CheckpointErrorType : int32_t {
+    CHECKPOINT_ERR_NOERROR = 0,
+    CHECKPOINT_ERR_BINDER,
+    CHECKPOINT_ERR_FS,
+    CHECKPOINT_ERR_NETWORK,
+    CHECKPOINT_ERR_DRIVER,
+    CHECKPOINT_ERR_PROCESS,
+    CHECKPOINT_ERR_UNKNOWN,
+    CHECKPOINT_ERR_MAX
+};
+
+struct HmCheckpointErrMsgS {
+    pid_t pid;
+    int32_t type;
+    char checkpointName[CHECKPOINT_NAME_LEN];
+    uint32_t errNo;
+    char msg[CHECKPOINT_ERRMSG_MSG_LEN];
+};
+
 int32_t AppMgrServiceInner::KillImageProcess(uint64_t checkpointId)
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
@@ -1039,14 +1088,22 @@ ImageError AppMgrServiceInner::HandleForkAllInner(std::shared_ptr<AppRunningReco
     auto errCode = remoteClientManager_->GetSpawnClient()->StartImageProcess(startMsg, imagePid, checkpointId);
     TAG_LOGI(AAFwkTag::APPMGR, "forkall after preload, name:%{public}s, errCode:%{public}d,"
         " pid:%{public}d, imagePid:%{public}d", appRecord->GetProcessName().c_str(), errCode, pid, imagePid);
-    if (errCode == EBUSY) {
-        return ImageError::ERR_FORKALL_BUSY;
-    }
     if (errCode != ERR_OK || imagePid <= 0) {
-        return ImageError::ERR_FORKALL_FAILED;
+        auto imageError = GetCheckpointRestoreError(pid, imageInfo->imageName);
+        SaveHyperSnapError(appRecord->GetUid(), HyperSnapErrorType::CREATE_SNAPSHOT, 
+            ConvertImageErrorToHyperSnapCode(imageError));
+
+        if (errCode == EBUSY) {
+            return ImageError::ERR_FORKALL_BUSY;
+        } else {
+            return ImageError::ERR_FORKALL_FAILED;
+        }  
     }
     appRecord->SetMakeImageState(MakeImageState::MAKE_IMAGE_FINISH);
     UpdateImageInfo(imagePid, checkpointId, appRecord);
+
+    ClearHyperSnapError(appRecord->GetUid(), HyperSnapErrorType::CREATE_SNAPSHOT);
+
     std::string taskName = std::string(MAKE_IMAGE_TIMEOUT_EVENT) + std::to_string(imageInfo->imageInfoId);
     TAG_LOGI(AAFwkTag::APPMGR, "cancel task:%{public}s", taskName.c_str());
     AAFwk::TaskHandlerWrap::GetFfrtHandler()->CancelTask(taskName);
@@ -1132,7 +1189,7 @@ void AppMgrServiceInner::HandleMakeImageFailed(const std::string& bundleName, co
     }
     UnMarkTemplateProcess(imageInfo->templatePid);
     RemoveImageInfo(bundleName, abilityName, userId, appIndex);
-    NotifyImageOperationFailed(imageInfo->errorHandler, err);
+    NotifyMakeImageFailed(imageInfo->bundleInfo.uid, imageInfo->errorHandler, err);
 }
 
 int32_t AppMgrServiceInner::PreAddImageInfo(const std::string& bundleName, int32_t userId, int32_t appIndex,
@@ -1527,6 +1584,10 @@ int32_t AppMgrServiceInner::TryToUseImageInfo(std::shared_ptr<AbilityInfo> abili
     appRecord = CreateAppRunningRecordFromImageInfo(imageInfo);
     if (appRecord == nullptr) {
         SnapshotErrorReport(appInfo->uid, appInfo->bundleName, appInfo->versionName, -1, "appRecord not exist");
+
+        SaveHyperSnapError(appInfo->uid, HyperSnapErrorType::FORK_FROM_SNAPSHOT, HyperSnapErrorCode::ERR_SYSTEM_INNER);
+        TAG_LOGE(AAFwkTag::APPMGR, "Saved FORK_FROM_SNAPSHOT error: CreateAppRunningRecordFromImageInfo failed");
+
         return ERR_OK;
     }
     int32_t workPid = -1;
@@ -1553,10 +1614,17 @@ int32_t AppMgrServiceInner::TryToUseImageInfo(std::shared_ptr<AbilityInfo> abili
         appRunningManager_->RemoveAppRunningRecordById(appRecord->GetRecordId());
         appRecord = nullptr;
         SnapshotErrorReport(-1, appInfo->bundleName, appInfo->versionName, errCode, "forkall failed");
+
+        auto imageError = GetCheckpointRestoreError(imageInfo->imagePid, imageInfo->imageName);
+        SaveHyperSnapError(appInfo->uid, HyperSnapErrorType::FORK_FROM_SNAPSHOT, ConvertImageErrorToHyperSnapCode(imageError));
+
         return ERR_OK;
     }
     TAG_LOGI(AAFwkTag::APPMGR, "fork from image success, imagePid:%{public}d, workpid:%{public}d", imageInfo->imagePid,
         workPid);
+
+    ClearHyperSnapError(appInfo->uid, HyperSnapErrorType::FORK_FROM_SNAPSHOT);
+
     std::string key = std::to_string(workPid) + ":" + std::to_string(appRecord->GetUid());
     KillingProcessManager::GetInstance().RemoveKillingCallerKey(key);
     OnAppStateChanged(appRecord, ApplicationState::APP_STATE_CREATE, false, false, false);
@@ -3635,6 +3703,7 @@ int32_t AppMgrServiceInner::NotifyUninstallOrUpgradeApp(const std::string &bundl
     InsertUninstallOrUpgradeUidSet(uid);
     auto ret = KillApplicationByUid(bundleName, uid, killReason);
     DestroyImageForUninstallOrUpgrade(uid);
+    ClearHyperSnapError(uid);
     return ret;
 }
 
@@ -13387,6 +13456,215 @@ void AppMgrServiceInner::CancelDelayedExitTask(int32_t pid)
             taskHandler_->CancelTask("DELAY_EXIT_UI_PROCESS_" + std::to_string(appRecord->GetRecordId()));
         }
     }
+}
+
+HyperSnapErrorCode AppMgrServiceInner::ConvertImageErrorToHyperSnapCode(ImageError imageError)
+{
+    switch (imageError) {
+        case ImageError::ERR_OK:
+            return HyperSnapErrorCode::ERR_OK;
+        case ImageError::ERR_TEMPLATE_HAS_BEEN_USED:
+            return HyperSnapErrorCode::ERR_SNAPSHOT_IS_INTERRUPTED;
+        case ImageError::ERR_IMAGE_INFO_EXIST:
+            return HyperSnapErrorCode::ERR_SNAPSHOT_EXIST;
+        case ImageError::ERR_TEMPLATE_DIED:
+            return HyperSnapErrorCode::ERR_SNAPSHOT_PROCESS_IS_DIED;
+        case ImageError::ERR_APP_RECORD_EXIST:
+            return HyperSnapErrorCode::ERR_PROCESS_IS_RUNNING;
+        case ImageError::ERR_EXISTS_ILLEGAL_BINDER:
+            return HyperSnapErrorCode::ERR_EXISTS_ILLEGAL_BINDER;
+        case ImageError::ERR_LAST_PROCESS_NOT_FULLY_EXITED:
+            return HyperSnapErrorCode::ERR_LAST_PROCESS_NOT_FULLY_EXITED;
+        default:
+            return HyperSnapErrorCode::ERR_SYSTEM_INNER;
+    }
+}
+
+std::string AppMgrServiceInner::GetHyperSnapErrorMessage(HyperSnapErrorCode code)
+{
+    switch (code) {
+        case HyperSnapErrorCode::ERR_OK:
+            return "No error";
+        case HyperSnapErrorCode::ERR_SYSTEM_INNER:
+            return "System internal error";
+        case HyperSnapErrorCode::ERR_SNAPSHOT_EXIST:
+            return "Snapshot already exists";
+        case HyperSnapErrorCode::ERR_PROCESS_IS_RUNNING:
+            return "Process is running";
+        case HyperSnapErrorCode::ERR_SNAPSHOT_PROCESS_IS_DIED:
+            return "Snapshot process died";
+        case HyperSnapErrorCode::ERR_SNAPSHOT_IS_INTERRUPTED:
+            return "Snapshot interrupted";
+        case HyperSnapErrorCode::ERR_EXISTS_ILLEGAL_BINDER:
+            return "Illegal binder exists";
+        case HyperSnapErrorCode::ERR_LAST_PROCESS_NOT_FULLY_EXITED:
+            return "Last process not fully exited";
+        default:
+            return "Unknown error";
+    }
+}
+
+ImageError AppMgrServiceInner::GetCheckpointRestoreError(pid_t pid, const std::string &checkpointName)
+{
+    if (pid < 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetCheckpointRestoreError invalid pid: %{public}d", pid);
+        return ImageError::ERR_INNER;
+    }
+
+    int fd = open(TEMPLATE_MONITOR_PATH, O_RDWR, 0);
+    if (fd < 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetCheckpointRestoreError open file fail: %{public}s", strerror(errno));
+        return ImageError::ERR_INNER;
+    }
+
+    struct HmCheckpointErrMsgS errMsg {
+        .pid = pid,
+        .type = CHECKPOINT_MONITOR_APP_TYPE
+    };
+    int32_t beginIndex = static_cast<int32_t>(checkpointName.size() - (CHECKPOINT_NAME_LEN - 1));
+    beginIndex = beginIndex > 0 ? beginIndex : 0;
+    std::size_t length = checkpointName.copy(errMsg.checkpointName, CHECKPOINT_NAME_LEN - 1, beginIndex);
+    errMsg.checkpointName[length] = '\0';
+
+    int ret = ioctl(fd, CHECKPOINT_IOCTL_GET_LAST_ERROR, &errMsg);
+    if (ret < 0) {
+        close(fd);
+        TAG_LOGE(AAFwkTag::APPMGR, "GetCheckpointRestoreError ioctl error: %{public}s", strerror(errno));
+        return ImageError::ERR_INNER;
+    }
+    close(fd);
+
+    ImageError imageError = ImageError::ERR_INNER;
+    switch (errMsg.errNo) {
+        case CheckpointErrorType::CHECKPOINT_ERR_BINDER:
+            imageError = ImageError::ERR_EXISTS_ILLEGAL_BINDER;
+            break;
+        case CheckpointErrorType::CHECKPOINT_ERR_PROCESS:
+            imageError = ImageError::ERR_LAST_PROCESS_NOT_FULLY_EXITED;
+            break;
+        default:
+            imageError = ImageError::ERR_INNER;
+            break;
+    }
+    TAG_LOGE(AAFwkTag::APPMGR, "Kernel checkpoint error, pid:%{public}d, error:%{public}d, msg:%{public}s",
+        pid, static_cast<int32_t>(imageError), errMsg.msg);
+
+    return imageError;
+}
+
+void AppMgrServiceInner::SaveHyperSnapError(int32_t uid, HyperSnapErrorType errType, HyperSnapErrorCode code)
+{
+    if (errType != HyperSnapErrorType::CREATE_SNAPSHOT && errType != HyperSnapErrorType::FORK_FROM_SNAPSHOT) {
+        TAG_LOGE(AAFwkTag::APPMGR, "SaveHyperSnapError invalid error type: %{public}d",
+            static_cast<int32_t>(errType));
+        return;
+    }
+
+    if (uid < 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "SaveHyperSnapError invalid uid: %{public}d", uid);
+        return;
+    }
+
+    int64_t timeStamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::
+        system_clock::now().time_since_epoch()).count();
+
+    std::lock_guard<std::mutex> lock(hyperSnapErrorMutex_);
+    switch (errType) {
+        case HyperSnapErrorType::CREATE_SNAPSHOT:
+            createSnapshotErrorMap_[uid] = { code, timeStamp };
+            TAG_LOGD(AAFwkTag::APPMGR, "Saved CREATE_SNAPSHOT error, uid: %{public}d, code: %{public}d",
+                uid, static_cast<int32_t>(code));
+            break;
+        case HyperSnapErrorType::FORK_FROM_SNAPSHOT:
+            forkFromSnapshotErrorMap_[uid] = { code, timeStamp };
+            TAG_LOGD(AAFwkTag::APPMGR, "Saved FORK_FROM_SNAPSHOT error, uid: %{public}d, code: %{public}d",
+                uid, static_cast<int32_t>(code));
+            break;
+        default:
+            break;
+    }
+}
+
+bool AppMgrServiceInner::GetHyperSnapLastError(HyperSnapErrorType errType, HyperSnapErrorRecord& record)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
+    if (errType != HyperSnapErrorType::CREATE_SNAPSHOT && errType != HyperSnapErrorType::FORK_FROM_SNAPSHOT) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError invalid error type: %{public}d",
+            static_cast<int32_t>(errType));
+        return false;
+    }
+
+    auto uid = IPCSkeleton::GetCallingUid();
+    if (uid < 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError invalid uid: %{public}d", uid);
+        return false;
+    }
+
+    TAG_LOGD(AAFwkTag::APPMGR, "GetHyperSnapLastError uid: %{public}d, type: %{public}d",
+        uid, static_cast<int32_t>(errType));
+
+    std::lock_guard<std::mutex> lock(hyperSnapErrorMutex_);
+    auto& map = (errType == HyperSnapErrorType::CREATE_SNAPSHOT)
+        ? createSnapshotErrorMap_
+        : forkFromSnapshotErrorMap_;
+    auto it = map.find(uid);
+
+    if (it != map.end()) {
+        record.code = it->second.code;
+        record.msg = GetHyperSnapErrorMessage(it->second.code);
+        record.occurTimeStamp = it->second.occurTimeStamp;
+        TAG_LOGD(AAFwkTag::APPMGR, "Found error record, uid: %{public}d, code: %{public}d",
+            uid, static_cast<int32_t>(record.code));
+    } else {
+        record.code = HyperSnapErrorCode::ERR_OK;
+        record.msg = GetHyperSnapErrorMessage(HyperSnapErrorCode::ERR_OK);
+        record.occurTimeStamp = 0;
+        TAG_LOGD(AAFwkTag::APPMGR, "No error record found, uid: %{public}d", uid);
+    }
+
+    return true;
+}
+
+void AppMgrServiceInner::ClearHyperSnapError(int32_t uid, HyperSnapErrorType errType)
+{
+    if (errType != HyperSnapErrorType::CREATE_SNAPSHOT && errType != HyperSnapErrorType::FORK_FROM_SNAPSHOT) {
+        TAG_LOGE(AAFwkTag::APPMGR, "ClearHyperSnapError invalid error type: %{public}d",
+            static_cast<int32_t>(errType));
+        return;
+    }
+
+    if (uid < 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "ClearHyperSnapError invalid uid: %{public}d", uid);
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(hyperSnapErrorMutex_);
+    switch (errType) {
+        case HyperSnapErrorType::CREATE_SNAPSHOT:
+            createSnapshotErrorMap_.erase(uid);
+            TAG_LOGD(AAFwkTag::APPMGR, "Cleared CREATE_SNAPSHOT error, uid: %{public}d", uid);
+            break;
+        case HyperSnapErrorType::FORK_FROM_SNAPSHOT:
+            forkFromSnapshotErrorMap_.erase(uid);
+            TAG_LOGD(AAFwkTag::APPMGR, "Cleared FORK_FROM_SNAPSHOT error, uid: %{public}d", uid);
+            break;
+        default:
+            break;
+    }
+}
+
+void AppMgrServiceInner::ClearHyperSnapError(int32_t uid)
+{
+    if (uid < 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "ClearHyperSnapError invalid uid: %{public}d", uid);
+        return;
+    }
+
+    TAG_LOGD(AAFwkTag::APPMGR, "ClearHyperSnapError uid: %{public}d", uid);
+
+    std::lock_guard<std::mutex> lock(hyperSnapErrorMutex_);
+    createSnapshotErrorMap_.erase(uid);
+    forkFromSnapshotErrorMap_.erase(uid);
 }
 } // namespace AppExecFwk
 }  // namespace OHOS

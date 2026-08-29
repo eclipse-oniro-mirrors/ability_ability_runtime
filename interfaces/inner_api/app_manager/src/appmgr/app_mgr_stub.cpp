@@ -16,6 +16,7 @@
 #include "app_mgr_stub.h"
 
 #include "ability_info.h"
+#include "hyper_snap_error_record.h"
 #include "ability_manager_errors.h"
 #include "app_jsheap_mem_info.h"
 #include "app_cjheap_mem_info.h"
@@ -463,6 +464,8 @@ int32_t AppMgrStub::OnRemoteRequestInnerEighth(uint32_t code, MessageParcel &dat
             return HandlePreTemplateProcessDeepFrozen(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::NOTIFY_TEMPLATE_PROCESS_READY_DONE):
             return HandleNotifyTemplateProcessReadyDone(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::GET_HYPER_SNAP_LAST_ERROR):
+            return HandleGetHyperSnapLastError(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_IMAGE_PROCESS_STATE_OBSERVER):
             return HandleRegisterImageProcessStateObserver(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::IS_CHILD_PROCESS_SUPPORTED):
@@ -612,6 +615,33 @@ int32_t AppMgrStub::HandleNotifyTemplateProcessReadyDone(MessageParcel &data, Me
         TAG_LOGE(AAFwkTag::APPMGR, "Write result failed.");
         return ERR_APPEXECFWK_PARCEL_ERROR;
     }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleGetHyperSnapLastError(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    int32_t errType = data.ReadInt32();
+
+    HyperSnapErrorRecord record;
+    auto result = GetHyperSnapLastError(errType, record);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write result failed.");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    
+    if (result != ERR_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError failed with result: %{public}d", result);
+        return NO_ERROR;
+    }
+
+    if (!reply.WriteParcelable(&record)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write record failed.");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    TAG_LOGD(AAFwkTag::APPMGR, "GetHyperSnapLastError success, code: %{public}d", static_cast<int32_t>(record.code));
     return NO_ERROR;
 }
 

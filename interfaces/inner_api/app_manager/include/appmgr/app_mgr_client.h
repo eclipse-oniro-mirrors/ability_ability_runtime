@@ -1056,6 +1056,14 @@ public:
     int32_t IsChildProcessSupported(bool isNative, bool &isSupported);
 
     int32_t GetSelfUIAbilityChildProcesses(std::vector<ChildProcessInfo> &infos);
+    /**
+     * Get the last hyper snap error of the caller for the given error type.
+     *
+     * @param errType The error type, see HyperSnapErrorType.
+     * @param record Output parameter, the last error record.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t GetHyperSnapLastError(int32_t errType, HyperSnapErrorRecord &record);
 
     int32_t SetProcessCacheEnable(int32_t pid, bool enable);
 

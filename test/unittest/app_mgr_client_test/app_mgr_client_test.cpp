@@ -2028,5 +2028,44 @@ HWTEST_F(AppMgrClientTest, CancelDelayedExitTask_002, TestSize.Level2)
     int32_t pid = 1234;
     appMgrClient->CancelDelayedExitTask(pid);
 }
+
+/**
+ * @tc.name: GetHyperSnapLastError_0100
+ * @tc.desc: get last hyper snap error without connecting service returns not connected.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrClientTest, GetHyperSnapLastError_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0100 start");
+    AAFwk::IsMockSaCall::IsMockSpecificSystemAbilityAccessPermission();
+    auto appMgrClient = std::make_unique<AppMgrClient>();
+    ASSERT_NE(appMgrClient, nullptr);
+
+    HyperSnapErrorRecord record;
+    record.code = HyperSnapErrorCode::ERR_OK;
+    int32_t result = appMgrClient->GetHyperSnapLastError(
+        static_cast<int32_t>(HyperSnapErrorType::CREATE_SNAPSHOT), record);
+    EXPECT_EQ(result, AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED);
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0100 end");
+}
+
+/**
+ * @tc.name: GetHyperSnapLastError_0200
+ * @tc.desc: client passes errType through without local validation when service is unreachable.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrClientTest, GetHyperSnapLastError_0200, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0200 start");
+    AAFwk::IsMockSaCall::IsMockSpecificSystemAbilityAccessPermission();
+    auto appMgrClient = std::make_unique<AppMgrClient>();
+    ASSERT_NE(appMgrClient, nullptr);
+
+    HyperSnapErrorRecord record;
+    int32_t result = appMgrClient->GetHyperSnapLastError(99, record);
+    EXPECT_EQ(result, AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED);
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0200 end");
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

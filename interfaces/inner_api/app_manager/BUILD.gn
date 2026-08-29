@@ -118,6 +118,7 @@ ohos_shared_library("app_manager") {
     "src/appmgr/configuration_observer_stub.cpp",
     "src/appmgr/configuration_policy.cpp",
     "src/appmgr/fault_data.cpp",
+    "src/appmgr/hyper_snap_error_record.cpp",
     "src/appmgr/image_process_state_data.cpp",
     "src/appmgr/image_error_handler_proxy.cpp",
     "src/appmgr/image_error_handler_stub.cpp",

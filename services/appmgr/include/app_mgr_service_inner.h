@@ -36,6 +36,7 @@
 #include "app_malloc_info.h"
 #include "app_mgr_constants.h"
 #include "app_mgr_event.h"
+#include "hyper_snap_error_record.h"
 #include "app_preloader.h"
 #include "app_record_id.h"
 #include "app_refresh_recipient.h"
@@ -460,6 +461,15 @@ public:
     virtual int32_t NotifyUninstallOrUpgradeApp(const std::string &bundleName, int32_t uid, bool isUpgrade);
     
     virtual void NotifyUninstallOrUpgradeAppEnd(int32_t uid);
+
+    /**
+     * Get error information (internally gets caller uid via IPCSkeleton::GetCallingUid()).
+     *
+     * @param errType Error type.
+     * @param record Error record output.
+     * @return true if call succeeded (whether error exists or not), false if parameter error.
+     */
+    bool GetHyperSnapLastError(HyperSnapErrorType errType, HyperSnapErrorRecord& record);
 
     /**
      * KillApplicationSelf, this allows app to terminate itself.
@@ -1898,6 +1908,59 @@ private:
      */
     void RestartKeepAliveProcess(std::shared_ptr<AppRunningRecord> appRecord);
 
+    /**
+     * Save error information for the specified app uid. Error message is generated
+     * internally from the error code.
+     *
+     * @param uid The target app uid the error belongs to.
+     * @param errType Error type.
+     * @param code Error code.
+     */
+    void SaveHyperSnapError(int32_t uid, HyperSnapErrorType errType, HyperSnapErrorCode code);
+
+    /**
+     * Clear error information by type for the specified app uid.
+     *
+     * @param uid The target app uid whose error record should be cleared.
+     * @param errType Error type to clear.
+     */
+    void ClearHyperSnapError(int32_t uid, HyperSnapErrorType errType);
+
+    /**
+     * Clear all error information for the specified uid. Used for system-initiated clears
+     * (e.g. app uninstall/upgrade) where the affected app is not the IPC caller.
+     *
+     * @param uid The target app uid whose error records should be cleared.
+     */
+    void ClearHyperSnapError(int32_t uid);
+
+    /**
+     * Error code mapping: ImageError -> HyperSnapErrorCode
+     *
+     * @param imageError Image error code.
+     * @return Mapped HyperSnapErrorCode.
+     */
+    static HyperSnapErrorCode ConvertImageErrorToHyperSnapCode(ImageError imageError);
+
+    /**
+     * Query the kernel checkpoint/restore error of the given process and log the
+     * kernel error message. checkpointId is a reserved kernel extension and is
+     * not needed for now.
+     *
+     * @param pid Process ID.
+     * @param forkAll Whether HandleForkAllInner was called.
+     * @return Kernel error as ImageError, ERR_OK when no kernel error is available.
+     */
+    static ImageError GetCheckpointRestoreError(pid_t pid, const std::string &checkpointName);
+
+    /**
+     * Get error message (fixed message based on error code enum).
+     *
+     * @param code Error code.
+     * @return Error message string.
+     */
+    static std::string GetHyperSnapErrorMessage(HyperSnapErrorCode code);
+
     bool CheckLoadAbilityConditions(const sptr<IRemoteObject> &token,
         const std::shared_ptr<AbilityInfo> &abilityInfo, const std::shared_ptr<ApplicationInfo> &appInfo);
 
@@ -2471,6 +2534,7 @@ private:
 
     int32_t GetValidUserId(int32_t userId);
     int32_t NotifyImageOperationFailed(sptr<IImageErrorHandler> errorHandler, ImageError errorCode);
+    int32_t NotifyMakeImageFailed(int32_t uid, sptr<IImageErrorHandler> errorHandler, ImageError errorCode);
     int32_t KillImageProcess(uint64_t checkpointId);
 
     int32_t PreAddImageInfo(const std::string& bundleName, int32_t userId, int32_t appIndex,
@@ -2584,6 +2648,16 @@ private:
 
     std::mutex imageInfoLock_;
     std::unordered_map<MakeImageRequest, std::shared_ptr<ForkImageInfo>, MakeImageRequest::Hash> imageInfoMap_;
+
+    // Minimal in-memory error state: only what cannot be derived later.
+    // Error message is generated from the code at query time to save memory.
+    struct HyperSnapStoredError {
+        HyperSnapErrorCode code = HyperSnapErrorCode::ERR_OK;
+        int64_t occurTimeStamp = 0;
+    };
+    std::map<int32_t, HyperSnapStoredError> createSnapshotErrorMap_;
+    std::map<int32_t, HyperSnapStoredError> forkFromSnapshotErrorMap_;
+    std::mutex hyperSnapErrorMutex_;
 
     std::mutex imageSerialLock_;
 

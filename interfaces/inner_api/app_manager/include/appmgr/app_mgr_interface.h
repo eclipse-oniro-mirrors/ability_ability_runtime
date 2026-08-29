@@ -57,6 +57,7 @@
 #include "app_cjheap_mem_info.h"
 #include "running_multi_info.h"
 #include "native_child_notify_interface.h"
+#include "hyper_snap_error_record.h"
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -104,6 +105,18 @@ public:
     }
 
     virtual int32_t DestroyImage(uint64_t checkpointId, sptr<IImageErrorHandler> errorHandler = nullptr)
+    {
+        return 0;
+    }
+
+    /**
+     * Get last HyperSnap error information.
+     *
+     * @param errType Error type (0: CREATE_SNAPSHOT, 1: FORK_FROM_SNAPSHOT)
+     * @param record Output parameter for error record
+     * @return ERR_OK on success, ERR_INVALID_VALUE on parameter error
+     */
+    virtual int32_t GetHyperSnapLastError(int32_t errType, HyperSnapErrorRecord &record)
     {
         return 0;
     }

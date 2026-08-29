@@ -142,6 +142,38 @@ int32_t AppMgrProxy::DestroyImage(uint64_t checkpointId, sptr<IImageErrorHandler
     return reply.ReadInt32();
 }
 
+int32_t AppMgrProxy::GetHyperSnapLastError(int32_t errType, HyperSnapErrorRecord &record)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError Write interface token failed.");
+        return IPC_PROXY_ERR;
+    }
+    PARCEL_UTIL_WRITE_RET_INT(data, Int32, errType);
+
+    PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::GET_HYPER_SNAP_LAST_ERROR, data, reply, option);
+
+    int32_t result = reply.ReadInt32();
+    if (result != ERR_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError failed with result: %{public}d", result);
+        return result;
+    }
+
+    std::unique_ptr<HyperSnapErrorRecord> recordReply(reply.ReadParcelable<HyperSnapErrorRecord>());
+    if (recordReply == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError ReadParcelable failed.");
+        return IPC_PROXY_ERR;
+    }
+    record = *recordReply;
+
+    TAG_LOGD(AAFwkTag::APPMGR, "GetHyperSnapLastError success, code: %{public}d",
+        static_cast<int32_t>(record.code));
+    return ERR_OK;
+}
+
 int32_t AppMgrProxy::NotifyTemplateProcessDeepFrozen(int32_t pid)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");
