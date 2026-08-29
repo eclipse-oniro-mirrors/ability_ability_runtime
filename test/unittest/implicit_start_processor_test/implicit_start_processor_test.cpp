@@ -1515,5 +1515,186 @@ HWTEST_F(ImplicitStartProcessorTest, RemoveIdentity_002, TestSize.Level1)
     EXPECT_EQ(processor->identityList_.size(), IDENTITY_LIST_MAX_SIZE);
     EXPECT_EQ(processor->identityList_.front().tokenId, 100);
 }
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: FilterCloneByDefaultApp
+ * SubFunction: NA
+ * FunctionPoints: ImplicitStartProcessor FilterCloneByDefaultApp
+ * EnvConditions: NA
+ * CaseDescription: Verify FilterCloneByDefaultApp filters to the matching default clone.
+ */
+HWTEST_F(ImplicitStartProcessorTest, FilterCloneByDefaultApp_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FilterCloneByDefaultApp_001 start");
+    auto processor = std::make_shared<ImplicitStartProcessor>();
+    std::vector<DialogAppInfo> dialogAppInfos;
+    DialogAppInfo info1;
+    info1.bundleName = BUNDLE_NAME;
+    info1.abilityName = NAME;
+    info1.appIndex = 1;
+    DialogAppInfo info2;
+    info2.bundleName = BUNDLE_NAME;
+    info2.abilityName = NAME;
+    info2.appIndex = 2;
+    DialogAppInfo info3;
+    info3.bundleName = BUNDLE_NAME;
+    info3.abilityName = NAME;
+    info3.appIndex = 3;
+    dialogAppInfos.emplace_back(info1);
+    dialogAppInfos.emplace_back(info2);
+    dialogAppInfos.emplace_back(info3);
+
+    processor->FilterCloneByDefaultApp(dialogAppInfos, BUNDLE_NAME, 2);
+    EXPECT_EQ(dialogAppInfos.size(), 1);
+    EXPECT_EQ(dialogAppInfos.front().appIndex, 2);
+    TAG_LOGI(AAFwkTag::TEST, "FilterCloneByDefaultApp_001 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: FilterCloneByDefaultApp
+ * SubFunction: NA
+ * FunctionPoints: ImplicitStartProcessor FilterCloneByDefaultApp
+ * EnvConditions: NA
+ * CaseDescription: Verify FilterCloneByDefaultApp does not filter when no appIndex match.
+ */
+HWTEST_F(ImplicitStartProcessorTest, FilterCloneByDefaultApp_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FilterCloneByDefaultApp_002 start");
+    auto processor = std::make_shared<ImplicitStartProcessor>();
+    std::vector<DialogAppInfo> dialogAppInfos;
+    DialogAppInfo info1;
+    info1.bundleName = BUNDLE_NAME;
+    info1.abilityName = NAME;
+    info1.appIndex = 1;
+    DialogAppInfo info2;
+    info2.bundleName = BUNDLE_NAME;
+    info2.abilityName = NAME;
+    info2.appIndex = 2;
+    dialogAppInfos.emplace_back(info1);
+    dialogAppInfos.emplace_back(info2);
+
+    processor->FilterCloneByDefaultApp(dialogAppInfos, BUNDLE_NAME, 99);
+    EXPECT_EQ(dialogAppInfos.size(), 2);
+    TAG_LOGI(AAFwkTag::TEST, "FilterCloneByDefaultApp_002 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: FilterCloneByDefaultApp
+ * SubFunction: NA
+ * FunctionPoints: ImplicitStartProcessor FilterCloneByDefaultApp
+ * EnvConditions: NA
+ * CaseDescription: Verify FilterCloneByDefaultApp does not filter when bundleName mismatches.
+ */
+HWTEST_F(ImplicitStartProcessorTest, FilterCloneByDefaultApp_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FilterCloneByDefaultApp_003 start");
+    auto processor = std::make_shared<ImplicitStartProcessor>();
+    std::vector<DialogAppInfo> dialogAppInfos;
+    DialogAppInfo info1;
+    info1.bundleName = BUNDLE_NAME;
+    info1.abilityName = NAME;
+    info1.appIndex = 1;
+    dialogAppInfos.emplace_back(info1);
+
+    processor->FilterCloneByDefaultApp(dialogAppInfos, "other_bundle", 1);
+    EXPECT_EQ(dialogAppInfos.size(), 1);
+    TAG_LOGI(AAFwkTag::TEST, "FilterCloneByDefaultApp_003 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: FilterCloneByDefaultApp
+ * SubFunction: NA
+ * FunctionPoints: ImplicitStartProcessor FilterCloneByDefaultApp
+ * EnvConditions: NA
+ * CaseDescription: Verify FilterCloneByDefaultApp with empty dialogAppInfos.
+ */
+HWTEST_F(ImplicitStartProcessorTest, FilterCloneByDefaultApp_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FilterCloneByDefaultApp_004 start");
+    auto processor = std::make_shared<ImplicitStartProcessor>();
+    std::vector<DialogAppInfo> dialogAppInfos;
+
+    processor->FilterCloneByDefaultApp(dialogAppInfos, BUNDLE_NAME, 1);
+    EXPECT_EQ(dialogAppInfos.size(), 0);
+    TAG_LOGI(AAFwkTag::TEST, "FilterCloneByDefaultApp_004 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: IsExistDefaultApp
+ * SubFunction: NA
+ * FunctionPoints: ImplicitStartProcessor IsExistDefaultApp
+ * EnvConditions: NA
+ * CaseDescription: Verify IsExistDefaultApp returns false when no default app proxy available.
+ */
+HWTEST_F(ImplicitStartProcessorTest, IsExistDefaultApp_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsExistDefaultApp_001 start");
+    auto processor = std::make_shared<ImplicitStartProcessor>();
+    std::string defaultBundleName;
+    int32_t defaultAppIndex = 0;
+    bool result = processor->IsExistDefaultApp(0, ".pdf", defaultBundleName, defaultAppIndex);
+    EXPECT_FALSE(result);
+    EXPECT_TRUE(defaultBundleName.empty());
+    EXPECT_EQ(defaultAppIndex, 0);
+    TAG_LOGI(AAFwkTag::TEST, "IsExistDefaultApp_001 end");
+}
+
+HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_001 start");
+    auto processor = std::make_shared<ImplicitStartProcessor>();
+    std::vector<DialogAppInfo> dialogAppInfos;
+    DialogAppInfo info1;
+    info1.bundleName = "bundleA";
+    info1.appIndex = 1;
+    DialogAppInfo info2;
+    info2.bundleName = "bundleA";
+    info2.appIndex = 2;
+    DialogAppInfo info3;
+    info3.bundleName = "bundleB";
+    info3.appIndex = 1;
+    DialogAppInfo info4;
+    info4.bundleName = "bundleB";
+    info4.appIndex = 2;
+    dialogAppInfos.emplace_back(info1);
+    dialogAppInfos.emplace_back(info2);
+    dialogAppInfos.emplace_back(info3);
+    dialogAppInfos.emplace_back(info4);
+
+    processor->FilterClonesByPreferredIndex(dialogAppInfos, 0);
+    EXPECT_EQ(dialogAppInfos.size(), 4);
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_001 end");
+}
+
+HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_002 start");
+    auto processor = std::make_shared<ImplicitStartProcessor>();
+    std::vector<DialogAppInfo> dialogAppInfos;
+    DialogAppInfo info1;
+    info1.bundleName = BUNDLE_NAME;
+    info1.appIndex = 1;
+    dialogAppInfos.emplace_back(info1);
+
+    processor->FilterClonesByPreferredIndex(dialogAppInfos, 0);
+    EXPECT_EQ(dialogAppInfos.size(), 1);
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_002 end");
+}
+
+HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_003 start");
+    auto processor = std::make_shared<ImplicitStartProcessor>();
+    std::vector<DialogAppInfo> dialogAppInfos;
+
+    processor->FilterClonesByPreferredIndex(dialogAppInfos, 0);
+    EXPECT_EQ(dialogAppInfos.size(), 0);
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_003 end");
+}
 }  // namespace AAFwk
 }  // namespace OHOS
