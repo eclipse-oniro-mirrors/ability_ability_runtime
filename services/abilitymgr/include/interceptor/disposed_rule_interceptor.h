@@ -55,7 +55,7 @@ private:
         AppExecFwk::DisposedRule &disposedRule);
     ErrCode StartNonBlockRule(const Want &want, AppExecFwk::DisposedRule &disposedRule,
         const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo);
-    ErrCode CreateModalUIExtension(const Want &want, const sptr<IRemoteObject> &callerToken);
+    ErrCode CreateModalUIExtension(Want &want, const sptr<IRemoteObject> &callerToken);
     void SetInterceptInfo(const Want &want, AppExecFwk::DisposedRule &disposedRule);
     bool IsSkipDisposeRule(AppExecFwk::PageJumpMode mode, const AbilityInterceptorParam &param);
 private:
