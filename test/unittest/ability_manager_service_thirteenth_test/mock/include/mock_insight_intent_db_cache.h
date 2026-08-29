@@ -54,13 +54,12 @@ public:
     int32_t SaveInsightIntentTotalInfo(const std::string &bundleName, const std::string &moduleName,
         const int32_t userId, uint32_t versionCode, ExtractInsightIntentProfileInfoVec profileInfos,
         std::vector<InsightIntentInfo> configInfos);
-    int32_t DeleteInsightIntentTotalInfo(const std::string &bundleName,
+    bool DeleteInsightIntentTotalInfo(const std::string &bundleName,
         const std::string &moduleName, const int32_t userId);
     int32_t DeleteInsightIntentByUserId(const int32_t userId);
     bool HasInsightIntentByName(uint32_t versionCode, const std::string &bundleName, const int32_t userId);
-    bool HasBundleCache(const std::string &bundleName);
     bool IsCacheInitialized(int32_t userId);
-    bool CanSkipDelete(const std::string &bundleName, int32_t userId);
+    bool HasBundleCache(const std::string &bundleName, int32_t userId);
     void BackupRdb();
 private:
     int32_t userId_ = -1;
