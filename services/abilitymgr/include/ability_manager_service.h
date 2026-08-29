@@ -2891,6 +2891,18 @@ private:
     int GetTopAbilityInner(sptr<IRemoteObject> &token, uint64_t displayId = 0);
 
     /**
+     * Run the post-check interceptors for a prelaunch request and report a fault event on failure.
+     * Extracted so the failure/redirect paths are unit-testable without bundle resolution.
+     *
+     * @param abilityRequest the resolved prelaunch request (want may be mutated by ERMS redirect).
+     * @param userId the validated target user id.
+     * @param eventInfo fault attribution context (may be null).
+     * @return ERR_OK to proceed, otherwise the interceptor error to abort the prelaunch.
+     */
+    int32_t ExecutePrelaunchAfterCheck(AbilityRequest &abilityRequest, int32_t userId,
+        const std::shared_ptr<EventInfo> &eventInfo);
+
+    /**
      * @brief Get the top ability token for specified user.
      * @param token Output parameter for the top ability token.
      * @param userId The target user ID.
