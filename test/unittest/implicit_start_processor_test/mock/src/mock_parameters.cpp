@@ -15,11 +15,18 @@
 
 #include "parameters.h"
 #include <iostream>
+#include <unordered_map>
 
 namespace OHOS {
 namespace system {
 
 bool g_returnFlag{false};
+
+static std::unordered_map<std::string, std::string>& GetParamsMap()
+{
+    static std::unordered_map<std::string, std::string> paramsMap;
+    return paramsMap;
+}
 
 void SetBoolParameter(const std::string& key, bool def)
 {
@@ -29,6 +36,22 @@ void SetBoolParameter(const std::string& key, bool def)
 bool GetBoolParameter(const std::string& key, bool def)
 {
     return g_returnFlag;
+}
+
+bool SetParameter(const std::string& key, const std::string& value)
+{
+    GetParamsMap()[key] = value;
+    return true;
+}
+
+std::string GetParameter(const std::string& key, const std::string& def)
+{
+    auto& paramsMap = GetParamsMap();
+    auto it = paramsMap.find(key);
+    if (it != paramsMap.end()) {
+        return it->second;
+    }
+    return def;
 }
 } // namespace system
 } // namespace OHOS

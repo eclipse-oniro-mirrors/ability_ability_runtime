@@ -1260,7 +1260,16 @@ void ImplicitStartProcessor::FilterClonesByPreferredIndex(
         }
         int32_t preferredAppIndex = 0;
         if (MultiAppUtils::GetPreferredAppCloneIndex(item.first, userId, preferredAppIndex)) {
-            preferredMap[item.first] = preferredAppIndex;
+            bool found = false;
+            for (const auto &info : dialogAppInfos) {
+                if (info.bundleName == item.first && info.appIndex == preferredAppIndex) {
+                    found = true;
+                    break;
+                }
+            }
+            if (found) {
+                preferredMap[item.first] = preferredAppIndex;
+            }
         }
     }
     if (preferredMap.empty()) {
