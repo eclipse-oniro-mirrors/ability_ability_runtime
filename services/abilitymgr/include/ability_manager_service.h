@@ -3674,6 +3674,10 @@ private:
         AppExecFwk::ExtensionAbilityType extensionType);
 
     bool IsAllowAttachOrDetachAppDebug(AppExecFwk::ApplicationInfo &appInfo);
+    bool IsAllowLocalDebugOtherApps(bool isDebugFromLocal);
+    ErrCode CheckLocalDebugPermission(bool isDebugApp, bool isDebugFromLocal);
+    ErrCode GetBundleInfoForUserTest(const std::string &bundleName,
+        int32_t userId, AppExecFwk::BundleInfo &bundleInfo);
     bool IsExitReasonValid(const ExitReasonCompability &reason);
     void RecordAppRestartExitReason(bool isAppRecovery, int32_t callerPid, int32_t callerUid);
     void SetAppDeathRecipient(const sptr<IRemoteObject>& abilityToken);

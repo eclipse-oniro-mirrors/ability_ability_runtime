@@ -129,6 +129,10 @@ struct VerificationInfo {
 
     bool VerifyStartLocalDebug(int32_t tokenId) const;
 
+    bool VerifyLocalDebugOtherApps() const;
+
+    bool IsAllowLocalDebugOtherApps(bool isDebugFromLocal) const;
+
     bool VerifyStartSelfUIAbility(int tokenId) const;
 
     bool VerifyFusionAccessPermission() const;

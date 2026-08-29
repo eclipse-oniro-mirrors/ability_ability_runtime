@@ -761,7 +761,8 @@ int AbilityManagerService::StartAbility(const Want &want, int32_t userId, int re
     bool checkDeveloperModeFlag = (isDebugApp || hasWindowOptions || isNativeDebugApp || isDebugFromLocal);
     if (checkDeveloperModeFlag) {
         if (isDebugFromLocal &&
-            !AAFwk::PermissionVerification::GetInstance()->VerifyStartLocalDebug(IPCSkeleton::GetCallingTokenID())) {
+            !AAFwk::PermissionVerification::GetInstance()->VerifyStartLocalDebug(IPCSkeleton::GetCallingTokenID()) &&
+            !IsAllowLocalDebugOtherApps(isDebugFromLocal)) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "local debugging, permission denied");
             return CHECK_PERMISSION_FAILED;
         } else if (!isDebugFromLocal && !system::GetBoolParameter(DEVELOPER_MODE_STATE, false)) {
@@ -11746,13 +11747,11 @@ int AbilityManagerService::StartUserTest(const Want &want, const sptr<IRemoteObj
         TAG_LOGE(AAFwkTag::ABILITYMGR, "observer null");
         return ERR_INVALID_VALUE;
     }
-
     std::string bundleName = want.GetStringParam("-b");
     if (bundleName.empty()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid bundle name");
         return ERR_INVALID_VALUE;
     }
-
     auto checkResult = AbilityUtil::CheckInstanceKey(want);
     if (checkResult != ERR_OK) {
         return checkResult;
@@ -11772,23 +11771,19 @@ int AbilityManagerService::StartUserTest(const Want &want, const sptr<IRemoteObj
     if (ret != ERR_OK) {
         return ret;
     }
-
-    auto bms = AbilityUtil::GetBundleManagerHelper();
-    CHECK_POINTER_AND_RETURN(bms, START_USER_TEST_FAIL);
-    AppExecFwk::BundleInfo bundleInfo;
-    if (!IN_PROCESS_CALL(
-        bms->GetBundleInfo(bundleName, AppExecFwk::BundleFlag::GET_BUNDLE_DEFAULT, bundleInfo, U0_USER_ID))) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "failed get bundleInfo by U0_USER_ID %{public}d", U0_USER_ID);
-        TAG_LOGD(AAFwkTag::ABILITYMGR, "bundleName: %{public}s, userId: %{public}d", bundleName.c_str(), userId);
-        if (!IN_PROCESS_CALL(
-            bms->GetBundleInfo(bundleName, AppExecFwk::BundleFlag::GET_BUNDLE_DEFAULT, bundleInfo, userId))) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "failed get bundleInfo by userId %{public}d", userId);
-            return GET_BUNDLE_INFO_FAILED;
-        }
-    }
-
     bool isDebugApp = want.GetBoolParam(AbilityConfig::DEBUG_APP, false);
-    if (isDebugApp && bundleInfo.applicationInfo.appProvisionType != AppExecFwk::Constants::APP_PROVISION_TYPE_DEBUG) {
+    bool isDebugFromLocal = want.GetBoolParam(DEBUG_FROM, false);
+    auto permErr = CheckLocalDebugPermission(isDebugApp, isDebugFromLocal);
+    if (permErr != ERR_OK) {
+        return permErr;
+    }
+    AppExecFwk::BundleInfo bundleInfo;
+    auto infoErr = GetBundleInfoForUserTest(bundleName, userId, bundleInfo);
+    if (infoErr != ERR_OK) {
+        return infoErr;
+    }
+    if (isDebugApp && bundleInfo.applicationInfo.appProvisionType !=
+        AppExecFwk::Constants::APP_PROVISION_TYPE_DEBUG) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "release app not support debug");
         return ERR_NOT_IN_APP_PROVISION_MODE;
     }
@@ -14683,7 +14678,8 @@ int32_t AbilityManagerService::AttachAppDebug(const std::string &bundleName, boo
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "called");
     if (isDebugFromLocal &&
-        !AAFwk::PermissionVerification::GetInstance()->VerifyStartLocalDebug(IPCSkeleton::GetCallingTokenID())) {
+        !AAFwk::PermissionVerification::GetInstance()->VerifyStartLocalDebug(IPCSkeleton::GetCallingTokenID()) &&
+        !IsAllowLocalDebugOtherApps(isDebugFromLocal)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "local debugging, permission denied");
         return CHECK_PERMISSION_FAILED;
     } else if (!isDebugFromLocal && !system::GetBoolParameter(DEVELOPER_MODE_STATE, false)) {
@@ -14692,7 +14688,8 @@ int32_t AbilityManagerService::AttachAppDebug(const std::string &bundleName, boo
     }
 
     if (!AAFwk::PermissionVerification::GetInstance()->IsSACall() &&
-        !AAFwk::PermissionVerification::GetInstance()->IsShellCall()) {
+        !AAFwk::PermissionVerification::GetInstance()->IsShellCall() &&
+        !IsAllowLocalDebugOtherApps(isDebugFromLocal)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "permission verification failed");
         return CHECK_PERMISSION_FAILED;
     }
@@ -14718,7 +14715,8 @@ int32_t AbilityManagerService::DetachAppDebug(const std::string &bundleName, boo
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "called");
     if (isDebugFromLocal &&
-        !AAFwk::PermissionVerification::GetInstance()->VerifyStartLocalDebug(IPCSkeleton::GetCallingTokenID())) {
+        !AAFwk::PermissionVerification::GetInstance()->VerifyStartLocalDebug(IPCSkeleton::GetCallingTokenID()) &&
+        !IsAllowLocalDebugOtherApps(isDebugFromLocal)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "local debugging, permission denied");
         return CHECK_PERMISSION_FAILED;
     } else if (!isDebugFromLocal && !system::GetBoolParameter(DEVELOPER_MODE_STATE, false)) {
@@ -14727,7 +14725,8 @@ int32_t AbilityManagerService::DetachAppDebug(const std::string &bundleName, boo
     }
 
     if (!AAFwk::PermissionVerification::GetInstance()->IsSACall() &&
-        !AAFwk::PermissionVerification::GetInstance()->IsShellCall()) {
+        !AAFwk::PermissionVerification::GetInstance()->IsShellCall() &&
+        !IsAllowLocalDebugOtherApps(isDebugFromLocal)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "permission verification failed");
         return CHECK_PERMISSION_FAILED;
     }
@@ -14759,6 +14758,49 @@ bool AbilityManagerService::IsAllowAttachOrDetachAppDebug(AppExecFwk::Applicatio
         return true;
     }
     return false;
+}
+
+bool AbilityManagerService::IsAllowLocalDebugOtherApps(bool isDebugFromLocal)
+{
+    return AAFwk::PermissionVerification::GetInstance()->IsAllowLocalDebugOtherApps(isDebugFromLocal);
+}
+
+ErrCode AbilityManagerService::CheckLocalDebugPermission(bool isDebugApp, bool isDebugFromLocal)
+{
+    if (!isDebugApp && !isDebugFromLocal) {
+        return ERR_OK;
+    }
+    if (isDebugFromLocal &&
+        !AAFwk::PermissionVerification::GetInstance()->VerifyStartLocalDebug(
+            IPCSkeleton::GetCallingTokenID()) &&
+        !IsAllowLocalDebugOtherApps(isDebugFromLocal)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "local debugging, permission denied");
+        return CHECK_PERMISSION_FAILED;
+    }
+    if (!isDebugFromLocal && !system::GetBoolParameter(DEVELOPER_MODE_STATE, false)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "not developer Mode");
+        return ERR_NOT_DEVELOPER_MODE;
+    }
+    return ERR_OK;
+}
+
+ErrCode AbilityManagerService::GetBundleInfoForUserTest(const std::string &bundleName,
+    int32_t userId, AppExecFwk::BundleInfo &bundleInfo)
+{
+    auto bms = AbilityUtil::GetBundleManagerHelper();
+    CHECK_POINTER_AND_RETURN(bms, START_USER_TEST_FAIL);
+    if (IN_PROCESS_CALL(
+        bms->GetBundleInfo(bundleName, AppExecFwk::BundleFlag::GET_BUNDLE_DEFAULT, bundleInfo, U0_USER_ID))) {
+        return ERR_OK;
+    }
+    TAG_LOGE(AAFwkTag::ABILITYMGR, "failed get bundleInfo by U0_USER_ID %{public}d", U0_USER_ID);
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "bundleName: %{public}s, userId: %{public}d", bundleName.c_str(), userId);
+    if (IN_PROCESS_CALL(
+        bms->GetBundleInfo(bundleName, AppExecFwk::BundleFlag::GET_BUNDLE_DEFAULT, bundleInfo, userId))) {
+        return ERR_OK;
+    }
+    TAG_LOGE(AAFwkTag::ABILITYMGR, "failed get bundleInfo by userId %{public}d", userId);
+    return GET_BUNDLE_INFO_FAILED;
 }
 
 std::string AbilityManagerService::InsightIntentGetcallerBundleName()

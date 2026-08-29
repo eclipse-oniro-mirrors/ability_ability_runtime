@@ -75,7 +75,8 @@ HWTEST_F(AaCommandAttachTest, ParseBundleName_0100, TestSize.Level1)
 
     AbilityManagerShellCommand cmd(argc, argv);
     std::string bundleName = "";
-    cmd.ParseBundleName(bundleName);
+    bool isDebugFromLocal = false;
+    cmd.ParseBundleName(bundleName, isDebugFromLocal);
     EXPECT_EQ(bundleName, STRING_BUNDLE_NAME);
 }
 
@@ -99,7 +100,8 @@ HWTEST_F(AaCommandAttachTest, ParseBundleName_0200, TestSize.Level1)
 
     AbilityManagerShellCommand cmd(argc, argv);
     std::string bundleName = STRING_BUNDLE_NAME;
-    cmd.ParseBundleName(bundleName);
+    bool isDebugFromLocal = false;
+    cmd.ParseBundleName(bundleName, isDebugFromLocal);
     EXPECT_EQ(bundleName, EMPTY_BUNDLE_NAME);
 }
 
