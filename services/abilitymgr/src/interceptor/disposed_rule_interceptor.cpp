@@ -320,13 +320,13 @@ void DisposedRuleInterceptor::UnregisterObserver(int32_t uid)
     taskHandler_->SubmitTask(unregisterTask, GenerateEventTaskName(uid));
 }
 
-ErrCode DisposedRuleInterceptor::CreateModalUIExtension(const Want &want, const sptr<IRemoteObject> &callerToken)
+ErrCode DisposedRuleInterceptor::CreateModalUIExtension(Want &want, const sptr<IRemoteObject> &callerToken)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto abilityRecord = Token::GetAbilityRecordByToken(callerToken);
     if (abilityRecord == nullptr || abilityRecord->GetAbilityInfo().type != AppExecFwk::AbilityType::PAGE) {
         auto systemUIExtension = std::make_shared<OHOS::Rosen::ModalSystemUiExtension>();
-        (const_cast<Want &>(want)).SetParam(UIEXTENSION_MODAL_TYPE, 1);
+        want.SetParam(UIEXTENSION_MODAL_TYPE, 1);
         return IN_PROCESS_CALL(systemUIExtension->CreateModalUIExtension(want)) ? ERR_OK : INNER_ERR;
     } else {
         return abilityRecord->CreateModalUIExtension(want);
