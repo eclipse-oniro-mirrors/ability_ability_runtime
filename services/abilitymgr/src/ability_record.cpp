@@ -2675,6 +2675,13 @@ void AbilityRecord::PostStartAbilityByCallTimeoutTask(bool isHalf)
 void AbilityRecord::CallRequest()
 {
     CHECK_POINTER(scheduler_);
+    // Suppress the spurious prelaunch call request only when no real caller is waiting,
+    // otherwise a pending StartAbilityByCall would hang with no by_call timeout.
+    if (isPrelaunch_ && !IsNeedToCallRequest()) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "prelaunch, no call request, bundle:%{public}s, ability:%{public}s, "
+            "recordId:%{public}d", GetInfoBundleName().c_str(), GetInfoAbilityName().c_str(), GetRecordId());
+        return;
+    }
     // Async call request
     std::string entry = "AbilityRecord::CallRequest Begin";
     FreezeUtil::GetInstance().AddLifecycleEvent(token_, entry);

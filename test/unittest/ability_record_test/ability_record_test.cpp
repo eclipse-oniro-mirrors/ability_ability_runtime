@@ -26,6 +26,7 @@
 #include "ability_manager_service.h"
 #include "ability_scheduler.h"
 #include "ability_util.h"
+#include "freeze_util.h"
 #include "connection_record.h"
 #include "constants.h"
 #include "mock_ability_connect_callback.h"
@@ -1261,6 +1262,184 @@ HWTEST_F(AbilityRecordTest, AbilityRecord_CallRequestDone_001, TestSize.Level1)
     sptr<IRemoteObject> callStub = abilityRecord->GetToken();
     bool res2 = abilityRecord->CallRequestDone(callStub);
     EXPECT_TRUE(res2);
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: CallRequest
+ * SubFunction: CallRequest
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify a prelaunch CallRequest with no caller waiting is suppressed
+ */
+HWTEST_F(AbilityRecordTest, AbilityRecord_CallRequest_001, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->Init(AbilityRequest());
+    abilityRecord->scheduler_ = new AbilityScheduler();
+    abilityRecord->isPrelaunch_ = true;
+    sptr<IRemoteObject> token = abilityRecord->GetToken();
+    ASSERT_NE(token, nullptr);
+    OHOS::AbilityRuntime::FreezeUtil::GetInstance().DeleteLifecycleEvent(token);
+    // no caller waiting: guard suppresses the spurious prelaunch call request
+    abilityRecord->CallRequest();
+    EXPECT_TRUE(OHOS::AbilityRuntime::FreezeUtil::GetInstance().GetLifecycleEvent(token).empty());
+    OHOS::AbilityRuntime::FreezeUtil::GetInstance().DeleteLifecycleEvent(token);
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: CallRequest
+ * SubFunction: CallRequest
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify suppression keys on IsNeedToCallRequest()
+ *              not on container-null (non-null container, all CallRecords REQUESTED)
+ */
+HWTEST_F(AbilityRecordTest, AbilityRecord_CallRequest_002, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->Init(AbilityRequest());
+    abilityRecord->scheduler_ = new AbilityScheduler();
+    abilityRecord->isPrelaunch_ = true;
+    // non-null container, but the only CallRecord is already REQUESTED (served) -> no caller waiting
+    abilityRecord->callContainer_ = std::make_shared<CallContainer>();
+    sptr<IAbilityConnection> callback = new AbilityConnectCallback();
+    ASSERT_NE(callback, nullptr);
+    ASSERT_NE(callback->AsObject(), nullptr);
+    auto callRecord = CallRecord::CreateCallRecord(0, abilityRecord, callback, nullptr);
+    ASSERT_NE(callRecord, nullptr);
+    callRecord->SetCallState(CallState::REQUESTED);
+    abilityRecord->callContainer_->callRecordMap_[callback->AsObject()] = callRecord;
+    sptr<IRemoteObject> token = abilityRecord->GetToken();
+    ASSERT_NE(token, nullptr);
+    OHOS::AbilityRuntime::FreezeUtil::GetInstance().DeleteLifecycleEvent(token);
+    // IsNeedToCallRequest()==false (no caller waiting): guard suppresses
+    abilityRecord->CallRequest();
+    EXPECT_TRUE(OHOS::AbilityRuntime::FreezeUtil::GetInstance().GetLifecycleEvent(token).empty());
+    OHOS::AbilityRuntime::FreezeUtil::GetInstance().DeleteLifecycleEvent(token);
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: CallRequest
+ * SubFunction: CallRequest
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify CallRequest proceeds when isPrelaunch_ is false
+ */
+HWTEST_F(AbilityRecordTest, AbilityRecord_CallRequest_003, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->Init(AbilityRequest());
+    abilityRecord->scheduler_ = new AbilityScheduler();
+    abilityRecord->isPrelaunch_ = false;
+    sptr<IRemoteObject> token = abilityRecord->GetToken();
+    ASSERT_NE(token, nullptr);
+    OHOS::AbilityRuntime::FreezeUtil::GetInstance().DeleteLifecycleEvent(token);
+    abilityRecord->CallRequest();
+    EXPECT_FALSE(OHOS::AbilityRuntime::FreezeUtil::GetInstance().GetLifecycleEvent(token).empty());
+    OHOS::AbilityRuntime::FreezeUtil::GetInstance().DeleteLifecycleEvent(token);
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: CallRequest
+ * SubFunction: CallRequest
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify a prelaunch CallRequest is NOT suppressed
+ *                  when a real caller is waiting (REQUESTING CallRecord)
+ */
+HWTEST_F(AbilityRecordTest, AbilityRecord_CallRequest_004, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->Init(AbilityRequest());
+    abilityRecord->scheduler_ = new AbilityScheduler();
+    abilityRecord->isPrelaunch_ = true;
+    // simulate a real caller with a pending REQUESTING CallRecord (caller blocked on onConnect)
+    abilityRecord->callContainer_ = std::make_shared<CallContainer>();
+    sptr<IAbilityConnection> callback = new AbilityConnectCallback();
+    ASSERT_NE(callback, nullptr);
+    ASSERT_NE(callback->AsObject(), nullptr);
+    auto callRecord = CallRecord::CreateCallRecord(0, abilityRecord, callback, nullptr);
+    ASSERT_NE(callRecord, nullptr);
+    callRecord->SetCallState(CallState::REQUESTING);
+    abilityRecord->callContainer_->callRecordMap_[callback->AsObject()] = callRecord;
+    sptr<IRemoteObject> token = abilityRecord->GetToken();
+    ASSERT_NE(token, nullptr);
+    OHOS::AbilityRuntime::FreezeUtil::GetInstance().DeleteLifecycleEvent(token);
+    // a real caller is waiting (IsNeedToCallRequest()==true): guard must NOT suppress
+    abilityRecord->CallRequest();
+    EXPECT_FALSE(OHOS::AbilityRuntime::FreezeUtil::GetInstance().GetLifecycleEvent(token).empty());
+    OHOS::AbilityRuntime::FreezeUtil::GetInstance().DeleteLifecycleEvent(token);
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: CallRequest
+ * SubFunction: CallRequest
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify two consecutive prelaunch CallRequests with no caller are both suppressed
+ */
+HWTEST_F(AbilityRecordTest, AbilityRecord_CallRequest_005, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->Init(AbilityRequest());
+    abilityRecord->scheduler_ = new AbilityScheduler();
+    abilityRecord->isPrelaunch_ = true;
+    sptr<IRemoteObject> token = abilityRecord->GetToken();
+    ASSERT_NE(token, nullptr);
+    OHOS::AbilityRuntime::FreezeUtil::GetInstance().DeleteLifecycleEvent(token);
+    // every no-caller prelaunch CallRequest is suppressed (no once-only latch)
+    abilityRecord->CallRequest();
+    EXPECT_TRUE(OHOS::AbilityRuntime::FreezeUtil::GetInstance().GetLifecycleEvent(token).empty());
+    OHOS::AbilityRuntime::FreezeUtil::GetInstance().DeleteLifecycleEvent(token);
+    abilityRecord->CallRequest();
+    EXPECT_TRUE(OHOS::AbilityRuntime::FreezeUtil::GetInstance().GetLifecycleEvent(token).empty());
+    OHOS::AbilityRuntime::FreezeUtil::GetInstance().DeleteLifecycleEvent(token);
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: CallRequest
+ * SubFunction: CallRequest
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify a no-caller prelaunch CallRequest is suppressed, then proceeds once a real caller arrives
+ */
+HWTEST_F(AbilityRecordTest, AbilityRecord_CallRequest_006, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->Init(AbilityRequest());
+    abilityRecord->scheduler_ = new AbilityScheduler();
+    abilityRecord->isPrelaunch_ = true;
+    sptr<IRemoteObject> token = abilityRecord->GetToken();
+    ASSERT_NE(token, nullptr);
+    OHOS::AbilityRuntime::FreezeUtil::GetInstance().DeleteLifecycleEvent(token);
+    // 1) no caller yet: suppressed
+    abilityRecord->CallRequest();
+    EXPECT_TRUE(OHOS::AbilityRuntime::FreezeUtil::GetInstance().GetLifecycleEvent(token).empty());
+    OHOS::AbilityRuntime::FreezeUtil::GetInstance().DeleteLifecycleEvent(token);
+    // 2) a real caller arrives (REQUESTING CallRecord): guard does not fire, normal path serves it
+    abilityRecord->callContainer_ = std::make_shared<CallContainer>();
+    sptr<IAbilityConnection> callback = new AbilityConnectCallback();
+    ASSERT_NE(callback, nullptr);
+    ASSERT_NE(callback->AsObject(), nullptr);
+    auto callRecord = CallRecord::CreateCallRecord(0, abilityRecord, callback, nullptr);
+    ASSERT_NE(callRecord, nullptr);
+    callRecord->SetCallState(CallState::REQUESTING);
+    abilityRecord->callContainer_->callRecordMap_[callback->AsObject()] = callRecord;
+    abilityRecord->CallRequest();
+    EXPECT_FALSE(OHOS::AbilityRuntime::FreezeUtil::GetInstance().GetLifecycleEvent(token).empty());
+    OHOS::AbilityRuntime::FreezeUtil::GetInstance().DeleteLifecycleEvent(token);
 }
 
 /*
