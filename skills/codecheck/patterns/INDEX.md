@@ -9,7 +9,7 @@
 > 3. 写 grep 线索（一个或多个搜索命令）
 > 4. 按类别找到 `patterns/` 下对应 `.md` 文件，追加条目
 > 5. 在本 INDEX 注册编号
-> 6. 如果是高发模式（需要完整案例叙事），在 `known-defect-patterns/` 新建 `G16_xxx.md`
+> 6. 如果是高发模式（需要完整案例叙事），在 `known-defect-patterns/` 新建 `G17_xxx.md`
 > 7. 引用该 pattern 文件的 scanner 下次执行时自动加载
 
 ---
@@ -159,4 +159,5 @@
 | G13 | 机制设计缺陷 | [G13_design_defect.md](known-defect-patterns/G13_design_defect.md) |
 | G14 | 返回值与异常分支处理 | [G14_return_value_exception.md](known-defect-patterns/G14_return_value_exception.md) |
 | G15 | UIExtension / 窗口组件暴露面 | [G15_uiextension_exposure.md](known-defect-patterns/G15_uiextension_exposure.md) |
+| G16 | BundleEventCallback 预置应用 OTA 盲区 | [G16_bundle_event_callback_ota_blind_spot.md](known-defect-patterns/G16_bundle_event_callback_ota_blind_spot.md) |
 | — | 历史复发热点模块清单 | [hotspot-modules.md](known-defect-patterns/hotspot-modules.md) |
