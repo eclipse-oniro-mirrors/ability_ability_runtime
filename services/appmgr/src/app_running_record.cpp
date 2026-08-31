@@ -1204,16 +1204,16 @@ void AppRunningRecord::AbilityTerminated(const sptr<IRemoteObject> &token)
     }
     auto state = static_cast<int>(GetSupportProcessCacheState());
     auto appInfo = appRecord->GetApplicationInfo();
-    if (appInfo == nullptr) {
+    if (appInfo != nullptr) {
+        auto hisyseventReport = std::make_shared<AAFwk::HisyseventReport>(4);
+        hisyseventReport->InsertParam(EVENT_KEY_VERSION_CODE, appInfo->versionCode);
+        hisyseventReport->InsertParam(EVENT_KEY_VERSION_NAME, appInfo->versionName);
+        hisyseventReport->InsertParam(EVENT_KEY_BUNDLE_NAME, appInfo->bundleName);
+        hisyseventReport->InsertParam(EVENT_KEY_SUPPORT_STATE, state);
+        hisyseventReport->Report("AAFWK", "CACHE_SUPPORT_STATE", HISYSEVENT_BEHAVIOR);
+    } else {
         TAG_LOGE(AAFwkTag::APPMGR, "appInfo nullptr");
-        return;
     }
-    auto hisyseventReport = std::make_shared<AAFwk::HisyseventReport>(4);
-    hisyseventReport->InsertParam(EVENT_KEY_VERSION_CODE, appInfo->versionCode);
-    hisyseventReport->InsertParam(EVENT_KEY_VERSION_NAME, appInfo->versionName);
-    hisyseventReport->InsertParam(EVENT_KEY_BUNDLE_NAME, appInfo->bundleName);
-    hisyseventReport->InsertParam(EVENT_KEY_SUPPORT_STATE, state);
-    hisyseventReport->Report("AAFWK", "CACHE_SUPPORT_STATE", HISYSEVENT_BEHAVIOR);
     if (moduleRecord->GetAbilities().empty() && (!IsKeepAliveApp()
         || AAFwk::UIExtensionWrapper::IsUIExtension(GetExtensionType())
         || !ExitResidentProcessManager::GetInstance().IsMemorySizeSufficient()) && !needCache) {

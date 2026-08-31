@@ -4634,11 +4634,11 @@ void AppMgrServiceInner::GetRunningProcess(const std::shared_ptr<AppRunningRecor
     info.extensionType_ = appRecord->GetExtensionType();
     info.preloadMode_ = appRecord->GetPreloadMode();
     auto appInfoForDebug = appRecord->GetApplicationInfo();
-    if (appInfoForDebug == nullptr) {
+    if (appInfoForDebug != nullptr) {
+        info.isDebugApp  = appInfoForDebug->debug;
+    } else {
         TAG_LOGE(AAFwkTag::APPMGR, "appInfo nullptr");
-        return;
     }
-    info.isDebugApp  = appInfoForDebug->debug;
     info.isExiting = appRecord->IsTerminating() || appRecord->IsKilling()
         || appRecord->GetRestartAppFlag() || appRecord->IsUserRequestCleaning();
     info.isPreForeground  = appRecord->IsPreForeground();
