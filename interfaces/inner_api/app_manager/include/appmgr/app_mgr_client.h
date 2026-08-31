@@ -58,1177 +58,1770 @@ class Configuration;
 class AppMgrRemoteHolder;
 class AppMgrClient {
 public:
+    /**
+     * Default constructor. Creates the service manager holder used to lazily
+     * obtain the AppMgrService remote object. No IPC is performed here; the
+     * connection is established on the first interface call.
+     */
     AppMgrClient();
+
+    /**
+     * Destructor. Removes the death recipient registered on the AppMgrService
+     * remote object, if any.
+     */
     virtual ~AppMgrClient();
 
     /**
-     * Load ability.
+     * Load an ability: ask AppMgrService to launch (or reuse) the hosting process
+     * and load the ability code. Internal use: invoked by the AbilityManagerService
+     * start-up chain, not by external subsystems.
      *
-     * @param abilityInfo Ability information.
-     * @param appInfo Application information.
-     * @param want Want.
-     * @param loadParam load ability param.
-     * @return Returns RESULT_OK on success, others on failure.
+     * @param abilityInfo Ability information of the ability to load.
+     * @param appInfo Application information of the target application.
+     * @param want Want that triggered the loading.
+     * @param loadParam Load parameters (calling identity, session info, etc.).
+     * @return RESULT_OK if the request was dispatched to the service;
+     *         ERROR_SERVICE_NOT_CONNECTED if AppMgrService is unavailable.
+     *         Note: the call is one-way; actual load failure is reported via the
+     *         ability scheduler callbacks, not by this return value.
      */
     virtual AppMgrResultCode LoadAbility(const AbilityInfo &abilityInfo, const ApplicationInfo &appInfo,
         const AAFwk::Want &want, AbilityRuntime::LoadParam loadParam);
 
     /**
-     * notify load ability finished.
+     * Notify the service that a pending LoadAbility has finished. Internal use,
+     * called by the ability runtime after the target ability is loaded.
      *
-     * @param callingPid, the pid of the caller.
-     * @param targetPid, the pid of the target ability.
-     * @param callbackId, the id of the callback.
+     * @param callingPid Pid of the original caller of LoadAbility.
+     * @param targetPid Pid of the process hosting the loaded ability.
+     * @param callbackId Id of the load-ability callback to complete.
      */
     virtual void NotifyLoadAbilityFinished(pid_t callingPid, pid_t targetPid, uint64_t callbackId);
 
     /**
-     * Terminate ability.
+     * Terminate the ability identified by token and remove its record from the
+     * hosting process. Internal use (ability lifecycle chain).
      *
-     * @param token Ability identify.
-     * @param clearMissionFlag, indicates whether terminate the ability when clearMission.
-     * @return Returns RESULT_OK on success, others on failure.
+     * @param token Unique identification of the ability.
+     * @param clearMissionFlag True if terminating due to clearMission, so the
+     *        mission stack is cleaned accordingly.
+     * @return RESULT_OK if dispatched; ERROR_SERVICE_NOT_CONNECTED if the
+     *         service is unavailable. Server-side result is not reflected.
      */
     virtual AppMgrResultCode TerminateAbility(const sptr<IRemoteObject> &token, bool clearMissionFlag);
 
     /**
-     * Update ability state.
+     * Update the running state (FOREGROUND/BACKGROUND/...) of the ability
+     * identified by token. Internal use: called by the app runtime scheduler.
      *
-     * @param token Ability identify.
-     * @param state Ability running state.
-     * @param isFromScreenOffBackground Whether from screen off background.
-     * @return Returns RESULT_OK on success, others on failure.
+     * @param token Unique identification of the ability.
+     * @param state New ability state, see AbilityState.
+     * @param isFromScreenOffBackground True when the change is caused by screen-off
+     *        background, default false.
+     * @return RESULT_OK if dispatched, otherwise ERROR_SERVICE_NOT_CONNECTED.
      */
     virtual AppMgrResultCode UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state,
         bool isFromScreenOffBackground = false);
 
     /**
-     * UpdateExtensionState, call UpdateExtensionState() through the proxy object, update the extension status.
+     * Update the running state of an extension ability identified by token.
+     * Internal use.
      *
-     * @param token, the unique identification to update the extension.
-     * @param state, extension status that needs to be updated.
-     * @return
+     * @param token Unique identification of the extension.
+     * @param state New extension state, see ExtensionState.
+     * @return RESULT_OK if dispatched, otherwise ERROR_SERVICE_NOT_CONNECTED.
      */
     virtual AppMgrResultCode UpdateExtensionState(const sptr<IRemoteObject> &token, const ExtensionState state);
 
     /**
-     * Register Application state callback.
+     * Register the app-state callback used by the ability runtime to receive
+     * app termination / ability cleanup requests from AppMgrService.
+     * Internal use: each app process registers its scheduler at attach time.
      *
-     * @param callback IAppStateCallback
-     * @return Returns RESULT_OK on success, others on failure.
+     * @param callback IAppStateCallback to register, must not be null.
+     * @return RESULT_OK if dispatched, otherwise ERROR_SERVICE_NOT_CONNECTED.
      */
     virtual AppMgrResultCode RegisterAppStateCallback(const sptr<IAppStateCallback> &callback);
 
     /**
-     * Connect service.
+     * Explicitly connect to the AppMgrService system ability. Usually not needed:
+     * every interface call performs a lazy connect. Provided for callers that
+     * want to fail fast during startup.
      *
-     * @return Returns RESULT_OK on success, others on failure.
+     * @return RESULT_OK on success; ERROR_SERVICE_NOT_READY if the SA manager or
+     *         the remote object is not available; ERROR_SERVICE_NOT_CONNECTED is
+     *         never returned here.
      */
     virtual AppMgrResultCode ConnectAppMgrService();
 
     /**
-     * KillProcessByAbilityToken, call KillProcessByAbilityToken() through proxy object,
-     * kill the process by ability token.
+     * Kill the process hosting the ability identified by token.
      *
-     * @param token, the unique identification to the ability.
-     * @return Returns RESULT_OK on success, others on failure.
+     * @param token Unique identification of the ability.
+     * @return RESULT_OK if dispatched, otherwise ERROR_SERVICE_NOT_CONNECTED.
+     *         Note: server-side kill failure is not reflected in the return value.
      */
     virtual AppMgrResultCode KillProcessByAbilityToken(const sptr<IRemoteObject> &token);
 
     /**
-     * SetGameSAPrelaunch, set game SA prelaunch flag through proxy object.
+     * Set the game-SA prelaunch flag on the app record that owns the token.
+     * Used by the game prelaunch framework.
      *
-     * @param token, the unique identification to the ability.
-     * @param isGameSAPrelaunch, the game SA prelaunch flag to set.
-     * @return Returns ERR_OK on success, others on failure.
+     * @param token Unique identification of the ability.
+     * @param isGameSAPrelaunch True to mark the app as game-SA prelaunched.
+     * @return RESULT_OK on success; ERROR_SERVICE_NOT_READY when the server
+     *         rejects the request; ERROR_SERVICE_NOT_CONNECTED when the service
+     *         is unavailable.
      */
     virtual AppMgrResultCode SetGameSAPrelaunch(const sptr<IRemoteObject> &token, bool isGameSAPrelaunch);
 
     /**
-     * KillProcessesByUserId, call KillProcessesByUserId() through proxy object,
-     * kill the processes by user id.
-     * Send appSpawn uninstall debug hap message.
+     * Kill all application processes of the given user. Typically invoked when a
+     * user is removed or stopped.
      *
-     * @param userId, the user id.
-     * @param isNeedSendAppSpawnMsg, true send appSpawn message otherwise not send.
-     * @return Returns RESULT_OK on success, others on failure.
+     * @param userId Target user id.
+     * @param isNeedSendAppSpawnMsg Default false; true to additionally notify
+     *        appspawn to clear the user's debug-hap uninstall state.
+     * @param callback Default nullptr; optional IUserCallback that receives
+     *        OnUserCmdDone(userId, result) when the command completes.
+     * @return RESULT_OK if dispatched, otherwise ERROR_SERVICE_NOT_CONNECTED.
+     *         When the service is unavailable and a callback was given, the
+     *         callback is invoked with ERROR_SERVICE_NOT_CONNECTED.
      */
     virtual AppMgrResultCode KillProcessesByUserId(int32_t userId, bool isNeedSendAppSpawnMsg = false,
         sptr<AAFwk::IUserCallback> callback = nullptr);
 
     /**
-     * KillProcessesByPids, only in process call is allowed,
-     * kill the processes by pid list given.
+     * Kill processes by pid list. In-process (same-device) callers only.
      *
-     * @param pids, the pid list of processes are going to be killed.
-     * @param reason, the reason to kill the processes.
-     * @param subProcess, kill SubProcess or not.
+     * @param pids List of process ids to kill; unknown pids are skipped when
+     *        subProcess is false.
+     * @param reason Kill reason recorded in the app record, default
+     *        "KillProcessesByPids".
+     * @param subProcess Default false; true to also kill child/sub processes
+     *        matching the pids.
+     * @param isKillPrecedeStart Default false; true when the kill is known to
+     *        race with a process start, so record cleanup is ordered accordingly.
+     * @return RESULT_OK when the server returned ERR_OK;
+     *         ERROR_KILL_PROCESSES_BY_PIDS on server failure;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode KillProcessesByPids(const std::vector<int32_t> &pids,
         const std::string &reason = "KillProcessesByPids", bool subProcess = false, bool isKillPrecedeStart = false);
 
     /**
-     * Set child and parent relationship
-     * @param token child process
-     * @param callerToken parent process
+     * Establish the parent-child relationship between two ability processes.
+     * Internal use (multi-process/child-process framework). If the caller token
+     * cannot be resolved on the server, the child process is killed.
+     *
+     * @param token Token of the child ability process.
+     * @param callerToken Token of the parent ability process.
+     * @return RESULT_OK if dispatched, otherwise ERROR_SERVICE_NOT_CONNECTED.
      */
     virtual AppMgrResultCode AttachPidToParent(const sptr<IRemoteObject> &token,
         const sptr<IRemoteObject> &callerToken);
 
     /**
-     * UpdateApplicationInfoInstalled, call UpdateApplicationInfoInstalled() through proxy object,
-     * update the application info after new module installed.
+     * Update the in-memory ApplicationInfo of a running application after a new
+     * HAP/module was installed (bundle manager flow).
      *
-     * @param bundleName, bundle name in Application record.
-     * @param  uid, uid.
-     * @return Returns RESULT_OK on success, others on failure.
+     * @param bundleName Bundle name of the running application record.
+     * @param uid Target uid of the application.
+     * @param moduleName Name of the newly installed module.
+     * @param isPlugin True when the module is a plugin package.
+     * @return RESULT_OK on server ERR_OK; ERROR_SERVICE_NOT_READY on server
+     *         failure; ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode UpdateApplicationInfoInstalled(const std::string &bundleName, const int uid,
         const std::string &moduleName, bool isPlugin);
 
     /**
-     * KillApplication, call KillApplication() through proxy object, kill the application.
+     * Kill all processes of the application identified by bundleName (+appIndex).
      *
-     * @param  bundleName, bundle name in Application record.
-     * @return ERR_OK, return back success, others fail.
+     * Permission: the server verifies kill-process permission, i.e.
+     * ohos.permission.KILL_APP_PROCESSES, or the caller is a SA/shell call, or
+     * the calling app is system_basic/system_core APL; otherwise
+     * ERR_PERMISSION_DENIED is returned.
+     *
+     * @param bundleName Bundle name of the application to kill.
+     * @param clearPageStack Default false; true to also clear the mission/page
+     *        stack of the killed app (cooperates with sceneboard).
+     * @param appIndex Default 0 meaning the main (non-clone) app; >0 targets an
+     *        app-clone instance.
+     * @param reason Kill reason for the record, default "KillApplication".
+     * @return RESULT_OK on success; ERROR_SERVICE_NOT_READY when the server
+     *         rejects (e.g. permission denied or app record missing);
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode KillApplication(const std::string &bundleName, bool clearPageStack = false,
         int32_t appIndex = 0, const std::string &reason = "KillApplication");
 
     /**
-     * ForceKillApplication, call ForceKillApplication() through proxy object, force kill the application.
+     * Force kill the application. Restricted: the server only accepts calls from
+     * the sceneboard process; any other caller gets CHECK_PERMISSION_FAILED.
      *
-     * @param  bundleName, bundle name in Application record.
-     * @param  userId, userId.
-     * @param  appIndex, appIndex.
-     * @return ERR_OK, return back success, others fail.
+     * @param bundleName Bundle name of the application.
+     * @param userId Default -1 meaning the caller's current user; otherwise the
+     *        target user id.
+     * @param appIndex Default 0 meaning the main (non-clone) app.
+     * @return RESULT_OK on success; ERROR_SERVICE_NOT_READY when rejected
+     *         (non-sceneboard caller or server failure);
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode ForceKillApplication(const std::string &bundleName, const int userId = -1,
         const int appIndex = 0);
 
     /**
-     * KillApplicationWithUserId, call KillApplicationWithUserId() through proxy object, kill the application.
+     * Kill the application for the specified user. Same permission policy as
+     * KillApplication (ohos.permission.KILL_APP_PROCESSES / SA / shell /
+     * system_basic+ APL).
      *
-     * @param  bundleName, bundle name in Application record.
-     * @param  userId, userId.
-     * @param  appIndex, appIndex.
-     * @return ERR_OK, return back success, others fail.
+     * @param bundleName Bundle name of the application.
+     * @param userId Default -1 meaning the caller's current user.
+     * @param appIndex Default 0 meaning the main (non-clone) app.
+     * @return RESULT_OK on success; ERROR_SERVICE_NOT_READY when rejected;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     *         Note: killing an app that is not running is treated as success.
      */
     virtual AppMgrResultCode KillApplicationWithUserId(const std::string &bundleName, const int userId = -1,
         const int appIndex = 0);
 
     /**
-     * KillProcessesByAccessTokenId, call KillProcessesByAccessTokenId() through proxy object,
-     * force kill the application.
+     * Kill all processes whose access token id equals accessTokenId.
      *
-     * @param  accessTokenId, accessTokenId.
-     * @return ERR_OK, return back success, others fail.
+     * @param accessTokenId Access token id of the target application(s).
+     * @return RESULT_OK on success; ERROR_SERVICE_NOT_READY on server failure;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode KillProcessesByAccessTokenId(const uint32_t accessTokenId);
 
     /**
-     * KillApplication, call KillApplication() through proxy object, kill the application.
+     * Kill the application identified by bundleName and uid.
      *
-     * @param  bundleName, bundle name in Application record.
-     * @param  uid, uid.
-     * @param  reason, caller function name.
-     * @return ERR_OK, return back success, others fail.
+     * @param bundleName Bundle name of the application.
+     * @param uid Target uid (encodes userId + appId).
+     * @param reason Kill reason, default "KillApplicationByUid".
+     * @return RESULT_OK on success; ERROR_SERVICE_NOT_READY on server failure
+     *         (including permission denial);
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode KillApplicationByUid(const std::string &bundleName, const int uid,
         const std::string& reason = "KillApplicationByUid");
-    
+
+    /**
+     * Notify AppMgrService that an app is being uninstalled or upgraded, so the
+     * running processes are prepared/killed accordingly. Internal use (bundle
+     * manager flow).
+     *
+     * @param bundleName Bundle name of the app being uninstalled/upgraded.
+     * @param uid Uid of the app.
+     * @param isUpgrade True for upgrade, false for uninstall.
+     * @return RESULT_OK on server ERR_OK; ERROR_SERVICE_NOT_READY on failure;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
     virtual AppMgrResultCode NotifyUninstallOrUpgradeApp(const std::string &bundleName, int32_t uid, bool isUpgrade);
 
+    /**
+     * Notify AppMgrService that the uninstall/upgrade flow for the uid finished.
+     * Internal use; must be paired with NotifyUninstallOrUpgradeApp.
+     *
+     * @param uid Uid of the app whose uninstall/upgrade finished.
+     */
     virtual void NotifyUninstallOrUpgradeAppEnd(int32_t uid);
 
     /**
-     * Kill the application self.
+     * Kill the calling application itself. Intended for an app process that wants
+     * to exit completely; the server resolves the target from the caller pid.
      *
-     * @return Returns ERR_OK on success, others on failure.
+     * @param clearPageStack Default false; true to clear the mission/page stack.
+     * @param reason Kill reason, default "KillApplicationSelf".
+     * @return RESULT_OK on success; ERROR_KILL_APPLICATION when the server
+     *         rejects; ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode KillApplicationSelf(const bool clearPageStack = false,
         const std::string& reason = "KillApplicationSelf");
 
     /**
-     * update process rss and pss value.
+     * Update the rss/pss memory state of app processes. Used by the memory
+     * management subsystem (memmgr) to feed measured values into appmgr records.
      *
-     * @param procMemStates, the memory states of all apps.
-     * @return ERR_OK, return back success, others fail.
+     * @param procMemState List of per-process memory states (pid, rss, pss...).
+     * @return ERR_OK(0) on success, server-side error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual int32_t UpdateProcessMemoryState(const std::vector<ProcessMemoryState> &procMemState);
 
     /**
-     * ClearUpApplicationData, call ClearUpApplicationData() through proxy project,
-     * clear the application data.
+     * Clear all user data of the application: user-granted permissions, bundle
+     * data files, distributed data, uri permissions; the target app is also
+     * killed and a PACKAGE_DATA_CLEARED common event is sent.
      *
-     * @param bundleName, bundle name in Application record.
-     * @param appCloneIndex the app clone id.
-     * @param userId, the user id.
-     * @return
+     * @param bundleName Bundle name of the target application.
+     * @param appCloneIndex App-clone index; 0 means the main (non-clone) app.
+     *        An invalid index yields ERR_APP_CLONE_INDEX_INVALID.
+     * @param userId Default -1 meaning the caller's current (foreground) user;
+     *        otherwise the target user id.
+     * @return RESULT_OK on success; ERROR_SERVICE_NOT_READY when the server
+     *         fails (permission clear / data clean / kill failure);
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode ClearUpApplicationData(const std::string &bundleName, int32_t appCloneIndex,
         int32_t userId = -1);
 
     /**
-     * ClearUpApplicationDataBySelf, call ClearUpApplicationDataBySelf() through proxy project,
-     * clear the application data.
+     * Clear the data of the calling application itself. Only valid when called
+     * from a process attached to AppMgrService (its app record must exist);
+     * the app-clone index is taken from the caller's own record.
      *
-     * @param userId, the user id.
-     * @return
+     * @param userId Default -1 meaning the caller's current user.
+     * @return RESULT_OK on success; ERROR_SERVICE_NOT_READY on failure (no
+     *         app record -> server ERR_INVALID_VALUE mapped here);
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode ClearUpApplicationDataBySelf(int32_t userId = -1);
 
     /**
-     * GetAllRunningProcesses, call GetAllRunningProcesses() through proxy project.
-     * Obtains information about application processes that are running on the device.
+     * Obtain running process information of applications.
      *
-     * @param info, app name in Application record.
-     * @return ERR_OK ,return back success，others fail.
+     * Permission: callers holding ohos.permission.GET_RUNNING_INFO (verified by
+     * VerifyRunningInfoPerm) get ALL processes; callers without it only get
+     * processes whose access token id equals their own.
+     *
+     * @param info Output; running process information list.
+     * @return RESULT_OK on success; ERROR_SERVICE_NOT_READY on server failure;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode GetAllRunningProcesses(std::vector<RunningProcessInfo> &info);
 
-     /**
-     * GetProcessRunningInfosByUserId, call GetProcessRunningInfosByUserId() through proxy project.
-     * Obtains information about application processes that are running on the device.
+    /**
+     * Obtain running process information filtered by user id.
      *
-     * @param info, app name in Application record.
-     * @param userId, user Id in Application record.
-     * @return ERR_OK ,return back success，others fail.
+     * @param info Output; running process information list of the user.
+     * @param userId Target user id; no default, must be a valid user.
+     * @return RESULT_OK on success; ERROR_SERVICE_NOT_READY on server failure;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode GetProcessRunningInfosByUserId(std::vector<RunningProcessInfo> &info, int32_t userId);
 
-     /**
-     * GetProcessRunningInfosByAccessTokenId, call GetProcessRunningInfosByAccessTokenId()
-     * through proxy project. Obtains information about application processes that are
-     * running on the device by accessTokenId.
+    /**
+     * Obtain running process information of the application(s) identified by the
+     * given access token id.
      *
-     * @param accessTokenId, accessTokenId.
-     * @param info, Running process information list.
-     * @return ERR_OK ,return back success，others fail.
+     * @param accessTokenId Access token id to query.
+     * @param info Output; running process information list.
+     * @return RESULT_OK on success; ERROR_SERVICE_NOT_READY on server failure;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode GetProcessRunningInfosByAccessTokenId(uint32_t accessTokenId,
         std::vector<RunningProcessInfo> &info);
 
-     /**
-     * GetProcessRunningInformation, call GetProcessRunningInformation() through proxy project.
-     * Obtains information about current application processes which is running on the device.
+    /**
+     * Obtain the running process information of the calling application itself.
      *
-     * @param info, app name in Application record.
-     * @return ERR_OK ,return back success，others fail.
+     * @param info Output; the caller's own RunningProcessInfo.
+     * @return RESULT_OK on success; ERROR_SERVICE_NOT_READY on server failure;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode GetProcessRunningInformation(RunningProcessInfo &info);
 
     /**
-     * GetAllRunningInstanceKeysBySelf, call GetAllRunningInstanceKeysBySelf() through proxy project.
-     * Obtains running instance keys of multi-instance app that are running on the device.
+     * Obtain the running instance keys of the calling (multi-instance) app.
      *
-     * @param instanceKeys, output instance keys of the multi-instance app.
-     * @return ERR_OK ,return back success，others fail.
+     * @param instanceKeys Output; instance keys of the caller's running instances.
+     * @return RESULT_OK on success; ERROR_SERVICE_NOT_READY on server failure;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode GetAllRunningInstanceKeysBySelf(std::vector<std::string> &instanceKeys);
 
     /**
-     * GetAllRunningInstanceKeysByBundleName, call GetAllRunningInstanceKeysByBundleName() through proxy project.
-     * Obtains running instance keys of multi-instance app that are running on the device.
+     * Obtain running instance keys of a multi-instance app by bundle name.
      *
-     * @param bundlename, bundle name in Application record.
-     * @param instanceKeys, output instance keys of the multi-instance app.
-     * @param userId, user id.
-     * @return ERR_OK ,return back success，others fail.
+     * @param bundleName Bundle name of the multi-instance app.
+     * @param instanceKeys Output; running instance keys.
+     * @param userId Default -1 meaning the caller's current user; otherwise the
+     *        target user id.
+     * @return RESULT_OK on success; ERROR_SERVICE_NOT_READY on server failure;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode GetAllRunningInstanceKeysByBundleName(const std::string &bundleName,
         std::vector<std::string> &instanceKeys, int32_t userId = -1);
 
     /**
-     * GetAllRenderProcesses, call GetAllRenderProcesses() through proxy project.
-     * Obtains information about render processes that are running on the device.
+     * Obtain information of all running render (web) processes.
      *
-     * @param info, render process info.
-     * @return ERR_OK, return back success, others fail.
+     * @param info Output; render process information list.
+     * @return RESULT_OK on success; ERROR_SERVICE_NOT_READY on server failure;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode GetAllRenderProcesses(std::vector<RenderProcessInfo> &info);
 
     /**
-     * GetAllChildrenProcesses, call GetAllChildrenProcesses() through proxy project.
-     * Obtains information about children processes that are running on the device.
+     * Obtain information of all running child processes of the calling app.
+     * Only compiled when the child-process feature flag SUPPORT_CHILD_PROCESS is
+     * enabled; otherwise the call is a no-op returning RESULT_OK.
      *
-     * @param info, child process info.
-     * @return ERR_OK, return back success, others fail.
+     * @param info Output; child process information list.
+     * @return RESULT_OK on success (or when the feature is disabled);
+     *         ERROR_SERVICE_NOT_READY on server failure;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode GetAllChildrenProcesses(std::vector<ChildProcessInfo> &info);
 
     /**
-     * GetSelfChildrenProcesses, call GetSelfChildrenProcesses() through proxy project.
-     * Obtains information about children processes that are running for the calling application.
+     * Obtain information of all running child processes of the calling app.
+     * Only compiled when the child-process feature flag SUPPORT_CHILD_PROCESS is
+     * enabled; otherwise the call is a no-op returning RESULT_OK.
      *
-     * @param info, child process info.
-     * @return ERR_OK, return back success, others fail.
+     * @param info Output; child process information list.
+     * @return RESULT_OK on success (or when the feature is disabled);
+     *         ERROR_SERVICE_NOT_READY/ERROR_SERVICE_NOT_CONNECTED on client
+     *         failures; server-side result code otherwise.
      */
     virtual AppMgrResultCode GetSelfChildrenProcesses(std::vector<ChildProcessInfo> &info);
 
     /**
-     * NotifyMemoryLevel, call NotifyMemoryLevel() through proxy project.
-     * Notify abilities background the current memory level.
+     * Notify all running applications of a new system memory level so they can
+     * release memory in onMemoryLevel. Used by the memory management subsystem.
      *
-     * @param level, the current memory level
-     * @return ERR_OK ,return back success，others fail.
+     * @param level Current memory level (MEMORY_LEVEL_MODERATE/LOW/CITICAL).
+     * @return Server result code cast to AppMgrResultCode: RESULT_OK on success,
+     *         server error otherwise; ERROR_SERVICE_NOT_CONNECTED when the
+     *         service is unavailable.
      */
     virtual AppMgrResultCode NotifyMemoryLevel(MemoryLevel level);
 
     /**
-     * NotifyProcMemoryLevel, call NotifyMemoryLevel() through proxy project.
-     * Notify abilities the current memory level.
+     * Notify specific processes (by pid) of their memory level.
      *
-     * @param procLevelMap ,<pid, level> map;
-     * @return ERR_OK ,return back success, others fail.
+     * @param procLevelMap Map of <pid, memory level> to deliver.
+     * @return Server result code cast to AppMgrResultCode;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode NotifyProcMemoryLevel(const std::map<pid_t, MemoryLevel> &procLevelMap) const;
 
     /**
-     * DumpHeapMemory, call DumpHeapMemory() through proxy project.
-     * Get the application's memory allocation info.
+     * Dump native heap (malloc) allocation info of the target app process.
      *
-     * @param pid, pid input.
-     * @param mallocInfo, dynamic storage information output.
-     * @return ERR_OK ,return back success，others fail.
+     * Permission: the server requires ohos.permission.DUMP.
+     *
+     * @param pid Pid of the target app process.
+     * @param mallocInfo Output; malloc allocation information.
+     * @return Server result code cast to AppMgrResultCode (permission denial is
+     *         reflected); ERROR_SERVICE_NOT_CONNECTED when the service is
+     *         unavailable.
      */
     virtual AppMgrResultCode DumpHeapMemory(const int32_t pid, OHOS::AppExecFwk::MallocInfo &mallocInfo);
 
     /**
-     * DumpJsHeapMemory, call DumpJsHeapMemory() through proxy project.
-     * triggerGC and dump the application's jsheap memory info.
+     * Trigger GC (optional) and dump the JS heap memory info of an app process.
      *
-     * @param info, pid tid needGc needSnapshot
-     * @return ERR_OK ,return back success, others fail.
+     * Permission: the server requires ohos.permission.DUMP.
+     *
+     * @param info In/out; contains pid, tid, needGc, needSnapshot; receives the
+     *        dump result.
+     * @return Server result code cast to AppMgrResultCode;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info);
 
     /**
-     * DumpJsHandleMap, call DumpJsHandleMap() through proxy project.
-     * dump the application's jshandle map info.
+     * Dump the JS handle map info of an app process.
      *
-     * @param info, pid tid
-     * @return ERR_OK ,return back success, others fail.
+     * Permission: the server requires ohos.permission.DUMP.
+     *
+     * @param info In/out; contains pid, tid; receives the handle map.
+     * @return Server result code cast to AppMgrResultCode;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode DumpJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info);
 
     /**
-     * DumpCjHeapMemory, call DumpCjHeapMemory() through proxy project.
-     * triggerGC and dump the application's cjheap memory info.
+     * Trigger GC (optional) and dump the CJ heap memory info of an app process.
      *
-     * @param info, pid needGc needSnapshot
-     * @return ERR_OK ,return back success, others fail.
+     * Permission: the server requires ohos.permission.DUMP.
+     *
+     * @param info In/out; contains pid, needGc, needSnapshot.
+     * @return AppMgrResultCode mirrored from the server result;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode DumpCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info);
 
-/**
-     * DumpMem, call DumpMem() through proxy project.
-     * triggerGC and dump application's memory info.
+    /**
+     * Request a full memory dump of an app process. The result is delivered
+     * asynchronously through the callback (the app process reports it back via
+     * ReportDumpMemResult).
      *
-     * @param info, pid tid needGc needSnapshot
-     * @param callback The callback to receive dump result
-     * @return ERR_OK ,return back success, others fail.
+     * Permission: the server requires ohos.permission.DUMP.
+     *
+     * @param info Dump parameters (pid, tid, needGc, needSnapshot...).
+     * @param callback Callback that receives the dump result string.
+     * @return Server result code cast to AppMgrResultCode;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback);
 
     /**
-     * ReportDumpMemResult, called by app process to report dump result to appmgr.
-     * appmgr will forward the result to hidumper via callback.
+     * Report a memory dump result from the app process back to appmgr, which
+     * forwards it to hidumper through the callback obtained from DumpMem.
+     * Internal use (app runtime side of the dump flow).
      *
-     * @param callback The callback received from ScheduleMem
-     * @param resultCode The result code of dump operation
-     * @param dumpResult The dump result string
-     * @return ERR_OK ,return back success, others fail.
+     * @param callback The callback received via ScheduleMem in the app process.
+     * @param dumpResult The dump result string.
+     * @return Server result code cast to AppMgrResultCode;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode ReportDumpMemResult(sptr<IMemDumpCallback> callback,
         const std::string &dumpResult);
 
     /**
-     * GetConfiguration
+     * Get the current system Configuration kept by AppMgrService.
      *
-     * @param info to retrieve configuration data.
-     * @return ERR_OK ,return back success，others fail.
+     * @param config Output; receives the configuration data.
+     * @return RESULT_OK on success; ERROR_SERVICE_NOT_READY on server failure;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode GetConfiguration(Configuration& config);
 
     /**
-     * GetConfiguration
+     * Get the system Configuration for a specific user.
      *
-     * @param config to retrieve configuration data.
-     * @param userId valid user id.
-     * @return ERR_OK ,return back success, others fail.
+     * @param config Output; receives the configuration data.
+     * @param userId Target user id; must be a valid user.
+     * @return RESULT_OK on success; ERROR_SERVICE_NOT_READY on server failure;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode GetConfiguration(Configuration& config, int32_t userId);
 
     /**
-     * Ability attach timeout. If start ability encounter failure, attach timeout to terminate.
+     * Called when ability attach times out: the pending ability is terminated.
+     * Internal use (ability manager timeout handling).
      *
-     * @param token Ability identify.
+     * @param token Unique identification of the ability that failed to attach.
      */
     virtual void AbilityAttachTimeOut(const sptr<IRemoteObject> &token);
 
     /**
-     * Prepare terminate.
+     * Prepare to terminate the ability: the app is asked to save its data/state
+     * before the actual termination. Internal use.
      *
-     * @param token Ability identify.
-     * @param clearMissionFlag Clear mission flag.
+     * @param token Unique identification of the ability.
+     * @param clearMissionFlag Default false; true when terminating due to
+     *        clearMission.
      */
     virtual void PrepareTerminate(const sptr<IRemoteObject> &token, bool clearMissionFlag = false);
 
     /**
-     * Get running process information by ability token.
+     * Get the running process information that hosts the ability token.
      *
-     * @param token Ability identify.
-     * @param info Running process info.
+     * @param token Ability token.
+     * @param info Output; process info; left untouched when the token cannot be
+     *        resolved or the service is unavailable (void return).
      */
     virtual void GetRunningProcessInfoByToken(const sptr<IRemoteObject> &token, AppExecFwk::RunningProcessInfo &info);
 
     /**
      * Get running process information by pid.
      *
-     * @param pid process id.
-     * @param info Output parameters, return runningProcessInfo.
-     * @return Returns ERR_OK on success, others on failure.
+     * @param pid Target process id.
+     * @param info Output; process info of the pid.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual int32_t GetRunningProcessInfoByPid(const pid_t pid, OHOS::AppExecFwk::RunningProcessInfo &info) const;
 
     /**
-     * Get running process information by child process pid.
+     * Get running process information of a child process by its pid.
      *
-     * @param childPid child process id.
-     * @param info Output parameters, return runningProcessInfo.
-     * @return Returns ERR_OK on success, others on failure.
+     * @param childPid Target child process id.
+     * @param info Output; process info of the child process.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual int32_t GetRunningProcessInfoByChildProcessPid(const pid_t childPid,
         OHOS::AppExecFwk::RunningProcessInfo &info) const;
 
     /**
-     * Notify that the ability stage has been updated
-     * @param recordId, the app record.
+     * Notify the service that the ability stage of the app record has been
+     * created (end of the AddAbilityStage flow). Internal use (app runtime).
+     *
+     * @param recordId Id of the application record.
      */
     virtual void AddAbilityStageDone(const int32_t recordId);
 
     /**
-     * Start a resident process
+     * Start resident (keep-alive) processes for the given bundle list.
+     * Internal use: invoked during service startup to boot resident apps.
+     *
+     * @param bundleInfos Bundle infos of resident applications to start.
      */
     virtual void StartupResidentProcess(const std::vector<AppExecFwk::BundleInfo> &bundleInfos);
 
-     /**
-     *  ANotify application update system environment changes.
+    /**
+     * Update the system configuration and notify all running apps and registered
+     * observers of the change.
      *
-     * @param config System environment change parameters.
-     * @return Returns ERR_OK on success, others on failure.
+     * Permission: system-app caller and update-configuration permission verified
+     * on the server (VerifyUpdateConfigurationPerm); non-system callers are
+     * rejected with ERR_PERMISSION_DENIED/ERR_NOT_SYSTEM_APP.
+     *
+     * @param config New configuration items.
+     * @param userId Default -1 meaning all users are notified; otherwise the
+     *        configuration is applied to the given user only.
+     * @return RESULT_OK when the request was dispatched (server-side rejection
+     *         is NOT reflected here -- check logs / server result if in doubt);
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode UpdateConfiguration(const Configuration &config, const int32_t userId = -1);
-    
+
+    /**
+     * Update the configuration for multiple users at once. Batch variant of
+     * UpdateConfiguration; same server-side permission requirements
+     * (system app + update-configuration permission).
+     *
+     * @param config New configuration items.
+     * @param userIds Default {} meaning an empty list (no user is notified);
+     *        otherwise the target user id list.
+     * @return RESULT_OK when dispatched (server result not reflected);
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
     virtual AppMgrResultCode UpdateConfigurationByUserIds(
         const Configuration &config, const std::vector<int32_t> userIds = {});
 
     /**
-     *  Update config by bundle name.
+     * Update the configuration of the running application identified by bundle
+     * name (only that app is notified).
      *
-     * @param config Application environment change parameters.
-     * @param name Application bundle name.
-     * @return Returns ERR_OK on success, others on failure.
+     * @param config New configuration items.
+     * @param name Bundle name of the target application.
+     * @param appIndex Default 0 meaning the main (non-clone) app.
+     * @return RESULT_OK when dispatched (server result not reflected);
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode UpdateConfigurationByBundleName(const Configuration &config, const std::string &name,
         int32_t appIndex = 0);
 
     /**
-     * Register configuration observer.
+     * Register an observer to receive OnConfigurationUpdated callbacks.
      *
-     * @param observer Configuration observer. When configuration changed, observer will be called.
-     * @param userId The userId provided by caller.
-     * @return Returns RESULT_OK on success, others on failure.
+     * @param observer Configuration observer; must not be null.
+     * @param userId Default -1 meaning the observer receives updates for all
+     *        users; otherwise only for the given user.
+     * @return RESULT_OK on success; ERROR_SERVICE_NOT_READY on server failure;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
-    virtual AppMgrResultCode RegisterConfigurationObserver(const sptr<IConfigurationObserver> &observer,
-        const int32_t userId = -1);
-    /**
-     * Unregister configuration observer.
+     virtual AppMgrResultCode RegisterConfigurationObserver(const sptr<IConfigurationObserver> &observer,
+         const int32_t userId = -1);
+
+     /**
+      * Unregister a previously registered configuration observer.
      *
-     * @param observer Configuration observer.
-     * @return Returns RESULT_OK on success, others on failure.
+     * @param observer The observer to remove.
+     * @return RESULT_OK on success; ERROR_SERVICE_NOT_READY on server failure;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode UnregisterConfigurationObserver(const sptr<IConfigurationObserver> &observer);
 
     /**
-     * Start a user test
+     * Start a user-test (XTS) process for the specified bundle. Used by the test
+     * framework to run test abilities.
+     *
+     * @param want Want describing the test ability to start.
+     * @param observer Observer that receives the test-finish notification.
+     * @param bundleInfo Bundle info of the application under test.
+     * @param userId User id to run the test process under.
+     * @return ERR_OK on success, server error code (e.g. permission denied,
+     *         invalid parameters) otherwise; ERROR_SERVICE_NOT_READY when the
+     *         service is unavailable.
      */
     virtual int StartUserTestProcess(
         const AAFwk::Want &want, const sptr<IRemoteObject> &observer, const BundleInfo &bundleInfo, int32_t userId);
 
     /**
-     * @brief Finish user test.
-     * @param msg user test message.
-     * @param resultCode user test result Code.
-     * @param bundleName user test bundleName.
+     * Finish a user-test session: report the test result and clean up the test
+     * process of the bundle. Called by the test ability itself.
      *
-     * @return Returns ERR_OK on success, others on failure.
+     * @param msg User test message (result description).
+     * @param resultCode User test result code.
+     * @param bundleName Bundle name of the tested application.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_READY when the service is unavailable.
      */
     virtual int FinishUserTest(const std::string &msg, const int64_t &resultCode, const std::string &bundleName);
 
     /**
-     * Start specified ability.
+     * Start a specified ability (music/service specified-process ability).
+     * Asynchronous: the decision result is delivered through the
+     * IStartSpecifiedAbilityResponse registered via
+     * RegisterStartSpecifiedAbilityResponse (ScheduleAcceptWantDone completes it).
+     * Internal use (ability manager specified-ability flow).
      *
-     * @param want Want contains information of the ability to start.
+     * @param want Want containing information of the ability to start.
      * @param abilityInfo Ability information.
-     * @param requestId request id to callback
+     * @param param Start specified ability parameters (requestId etc.).
      */
     virtual void StartSpecifiedAbility(const AAFwk::Want &want, const AppExecFwk::AbilityInfo &abilityInfo,
         const AbilityRuntime::StartSpecifiedParam &param);
 
     /**
-     * Register response of start specified ability.
+     * Register the response callback for StartSpecifiedAbility. Internal use;
+     * registered once by the ability manager service side.
      *
-     * @param response Response of start specified ability.
+     * @param response Callback invoked when the app returns its accept-want
+     *        decision.
      */
     virtual void RegisterStartSpecifiedAbilityResponse(const sptr<IStartSpecifiedAbilityResponse> &response);
 
     /**
-     * Prepare terminate application
+     * Prepare to terminate the application process. Internal use: called before
+     * the app process is asked to exit so it can flush module data.
      *
-     * @param pid Process ID
-     * @param moduleName Module name
+     * @param pid Process id of the app to terminate.
+     * @param moduleName Name of the module being terminated.
      */
     virtual void PrepareTerminateApp(const pid_t pid, const std::string &moduleName);
 
     /**
-     * Start specified process.
+     * Start a specified (custom-named) process. Asynchronous: the result is
+     * reported through ScheduleNewProcessRequestDone using the requestId.
+     * Internal use.
      *
-     * @param want Want contains information wish to start.
+     * @param want Want containing information wish to start.
      * @param abilityInfo Ability information.
-     * @param requestId for callback
+     * @param requestId Default 0; id used to match the completion callback.
+     * @param customProcess Default ""; custom process name, empty means the
+     *        process name derived from the ability info.
      */
     virtual void StartSpecifiedProcess(const AAFwk::Want &want, const AppExecFwk::AbilityInfo &abilityInfo,
         int32_t requestId = 0, const std::string &customProcess = "");
 
     /**
-     * Schedule accept want done.
+     * Report the app's OnAcceptWant decision back to the service, completing a
+     * pending StartSpecifiedAbility. Internal use (app runtime side).
      *
-     * @param recordId Application record.
-     * @param want Want.
-     * @param flag flag get from OnAcceptWant.
+     * @param recordId Application record id of the pending request.
+     * @param want The want of the pending request.
+     * @param flag Flag obtained from OnAcceptWant.
      */
     virtual void ScheduleAcceptWantDone(const int32_t recordId, const AAFwk::Want &want, const std::string &flag);
 
     /**
-     *  Get the token of ability records by process ID.
+     * Get the ability tokens of all ability records hosted in the process.
      *
      * @param pid The process id.
-     * @param tokens The token of ability records.
-     * @return Returns true on success, others on failure.
+     * @param tokens Output; ability tokens of the process.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual int GetAbilityRecordsByProcessID(const int pid, std::vector<sptr<IRemoteObject>> &tokens);
 
     /**
-     * Prestart nwebspawn process.
+     * Pre-start an nwebspawn process so the subsequent render process creation is
+     * faster. Called by the nweb host (web framework).
      *
-     * @return Returns ERR_OK on success, others on failure.
+     * @return ERR_OK on success; ERR_INVALID_VALUE when the spawn client is not
+     *         ready or parameters are invalid; ERR_INVALID_OPERATION when the
+     *         caller user is logged out;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual int PreStartNWebSpawnProcess();
 
     /**
-     * Start nweb render process, called by nweb host.
+     * Start a web render process. Called by the nweb host process only; the fds
+     * must be created by the caller and are consumed by the render process.
      *
-     * @param renderParam, params passed to renderProcess.
-     * @param ipcFd, ipc file descriptor for web browser and render process.
-     * @param sharedFd, shared memory file descriptor.
-     * @param crashFd, crash signal file descriptor.
-     * @param renderPid, created render pid.
-     * @return Returns ERR_OK on success, others on failure.
+     * @param renderParam Parameters passed to the render process.
+     * @param ipcFd Ipc file descriptor shared between browser and render process.
+     * @param sharedFd Shared memory file descriptor.
+     * @param crashFd Crash signal file descriptor.
+     * @param renderPid Output; pid of the created render process.
+     * @param isGPU Default false; true to create a GPU render process.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual int StartRenderProcess(const std::string &renderParam,
                                    int32_t ipcFd, int32_t sharedFd,
                                    int32_t crashFd, pid_t &renderPid, bool isGPU = false);
 
     /**
-     * Render process call this to attach to app manager service.
+     * Attach a newly started render process to AppMgrService. Called from the
+     * render process itself; a null scheduler is ignored.
      *
-     * @param renderScheduler, scheduler of render process.
+     * @param renderScheduler Scheduler of the render process, must not be null.
      */
     virtual void AttachRenderProcess(const sptr<IRenderScheduler> &renderScheduler);
 
     /**
-     * Get render process termination status, called by nweb host.
+     * Get the termination status of a render process. Called by the nweb host to
+     * learn how a render process exited.
      *
-     * @param renderPid, target render pid.
-     * @param status, termination status of the render process.
-     * @return Returns ERR_OK on success, others on failure.
+     * @param renderPid Target render pid.
+     * @param status Output; termination status of the render process.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual int GetRenderProcessTerminationStatus(pid_t renderPid, int &status);
 
     /**
-     * Get application info by process id.
+     * Get the ApplicationInfo of the app running in the given process.
      *
-     * @param pid Process id.
-     * @param application Application information got.
-     * @param debug Whether IsDebugApp.
-     * @return Returns ERR_OK on success, others on failure.
+     * @param pid Process id to query.
+     * @param application Output; application information of the process.
+     * @param debug Output; whether the app is a debug app.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int GetApplicationInfoByProcessID(const int pid, AppExecFwk::ApplicationInfo &application, bool &debug);
 
     /**
-     * start native process for debugger.
+     * Start a native process for debugging (hidumper/debugger toolchain).
      *
-     * @param want param to start a process.
+     * @param want Want carrying the debug target parameters.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t StartNativeProcessForDebugger(const AAFwk::Want &want);
 
     /**
-     * Set enable start process flag by userId
-     * @param userId the user id.
-     * @param enableStartProcess enable start process.
-     * @return
+     * Enable/disable starting new processes for a user (e.g. while the user is
+     * being stopped/removed). Internal use (user controller flow).
+     *
+     * @param userId The target user id.
+     * @param enableStartProcess True to allow, false to forbid process starting.
      */
     void SetEnableStartProcessFlagByUserId(int32_t userId, bool enableStartProcess);
 
     /**
-     * Get bundleName by pid.
+     * Resolve a pid to its bundle name and uid.
      *
-     * @param pid process id.
-     * @param bundleName Output parameters, return bundleName.
-     * @param uid Output parameters, return userId.
-     * @return Returns ERR_OK on success, others on failure.
+     * @param pid Process id to query.
+     * @param bundleName Output; bundle name of the process.
+     * @param uid Output; uid of the process.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t GetBundleNameByPid(const int pid, std::string &bundleName, int32_t &uid);
 
     /**
-     * Notify Fault Data
+     * Report application fault data from the app process itself to appmgr, which
+     * forwards it to hiappevent/watchdog.
      *
-     * @param faultData the fault data.
-     * @return Returns ERR_OK on success, others on failure.
+     * @param faultData The fault data (fault type, module name, ...).
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t NotifyAppFault(const FaultData &faultData);
 
     /**
-     * Notify App Fault Data By SA
+     * Report application fault data on behalf of an app, by a system ability.
      *
-     * @param faultData the fault data notified by SA.
-     * @return Returns ERR_OK on success, others on failure.
+     * @param faultData The fault data notified by the SA (includes pid/uid of the
+     *        faulty app).
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t NotifyAppFaultBySA(const AppFaultDataBySA &faultData);
 
     /**
-     * Set Appfreeze Detect Filter
+     * Add a pid to the app-freeze detection filter so freezes of this process are
+     * not reported. Used by the fault detection subsystem for known-frozen pids.
      *
-     * @param pid the process pid.
-     * @return Returns true on success, others on failure.
+     * @param pid The process pid to filter.
+     * @return true on success; false on server failure or when the service is
+     *         unavailable.
      */
     bool SetAppFreezeFilter(int32_t pid);
 
     /**
-     * @brief Update freeze excluded pid set.
-     * @param isAdd true to add pid, false to remove pid.
-     * @param targetPid The target process id to be added or removed.
+     * Add or remove a pid from the freeze-excluded set. Used by the profiling
+     * subsystem: a process being profiled (whose freezes are caused by the
+     * profiler) is excluded from freeze reporting.
+     *
+     * @param isAdd true to add the pid, false to remove it.
+     * @param targetPid The process id to add/remove.
      * @param profilerPid The profiler process id.
      */
     void UpdateFreezeExcludedPid(bool isAdd, int32_t targetPid, int32_t profilerPid);
 
     /**
-     * Set AbilityForegroundingFlag of an app-record to true.
+     * Mark the app record of the pid as "ability foregrounding", so subsequent
+     * scheduling (e.g. timeout handling) treats it accordingly. Internal use.
      *
-     * @param pid, pid.
-     *
+     * @param pid Pid of the app process.
      */
     void SetAbilityForegroundingFlagToAppRecord(const pid_t pid) const;
 
     /**
-     * @brief Notify NativeEngine GC of status change.
+     * Notify the service that the NativeEngine GC state of an app changed (used
+     * to correlate freezes with GC pauses).
      *
-     * @param state GC state
-     * @param pid pid
-     * @return Is the status change completed..
+     * @param pid Pid of the app process.
+     * @param state GC state value.
+     * @param tid Default 0 meaning the main thread; otherwise the thread id
+     *        performing GC.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t ChangeAppGcState(pid_t pid, int32_t state, uint64_t tid = 0);
 
-     /**
-     * @brief Register app debug listener.
+    /**
+     * Register a listener receiving app debug attach/detach notifications.
+     * Used by the debug toolchain (devEco/hdc).
+     *
      * @param listener App debug listener.
-     * @return Returns ERR_OK on success, others on failure.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t RegisterAppDebugListener(const sptr<IAppDebugListener> &listener);
 
     /**
-     * @brief Unregister app debug listener.
-     * @param listener App debug listener.
-     * @return Returns ERR_OK on success, others on failure.
+     * Unregister an app debug listener.
+     *
+     * @param listener The listener to remove.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t UnregisterAppDebugListener(const sptr<IAppDebugListener> &listener);
 
     /**
-     * @brief Attach app debug.
+     * Put the application into attach-debug mode: the app is started/waiting in
+     * debug mode so a debugger can attach.
+     *
      * @param bundleName The application bundle name.
-     * @return Returns ERR_OK on success, others on failure.
+     * @param isDebugFromLocal True when the debug request originates from the
+     *        local device (as opposed to a remote/IDE request).
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t AttachAppDebug(const std::string &bundleName, bool isDebugFromLocal);
 
     /**
-     * @brief Detach app debug.
+     * Remove the application from attach-debug mode.
+     *
      * @param bundleName The application bundle name.
-     * @return Returns ERR_OK on success, others on failure.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t DetachAppDebug(const std::string &bundleName);
 
     /**
-     * @brief Set app waiting debug mode.
+     * Mark the app as waiting-debug: its start-up is suspended until a debugger
+     * attaches.
+     *
      * @param bundleName The application bundle name.
-     * @param isPersist The persist flag.
-     * @return Returns ERR_OK on success, others on failure.
+     * @param isPersist True to keep the waiting-debug flag across restarts
+     *        (until cancelled), false for one-shot.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t SetAppWaitingDebug(const std::string &bundleName, bool isPersist);
 
     /**
-     * @brief Cancel app waiting debug mode.
-     * @return Returns ERR_OK on success, others on failure.
+     * Cancel all waiting-debug settings; suspended apps continue to start.
+     *
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t CancelAppWaitingDebug();
 
     /**
-     * @brief Get waiting debug mode application.
-     * @param debugInfoList The debug bundle info list, including bundle name and persist flag.
-     * @return Returns ERR_OK on success, others on failure.
+     * Query the list of apps currently in waiting-debug mode.
+     *
+     * @param debugInfoList Output; bundle names (with persist flag info) of
+     *        waiting-debug apps.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t GetWaitingDebugApp(std::vector<std::string> &debugInfoList);
 
     /**
-     * @brief Determine whether it is a waiting debug application based on the bundle name.
-     * @return Returns true if it is a waiting debug application, otherwise it returns false.
+     * Check whether the given app is in waiting-debug mode.
+     *
+     * @param bundleName The application bundle name.
+     * @return true if it is a waiting-debug application; false otherwise or when
+     *         the service is unavailable.
      */
     bool IsWaitingDebugApp(const std::string &bundleName);
 
     /**
-     * @brief Clear non persist waiting debug flag.
+     * Clear all non-persistent waiting-debug flags (one-shot flags are dropped
+     * after use).
      */
     void ClearNonPersistWaitingDebugFlag();
 
     /**
-     * @brief Registering ability Debug Mode response.
-     * @param abilityResponse Response of ability debug object.
-     * @return Returns ERR_OK on success, others on failure.
+     * Register the ability debug-mode response used to notify the app side of
+     * debug-mode transitions. Internal use (app runtime).
+     *
+     * @param abilityResponse Response of the ability debug object.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t RegisterAbilityDebugResponse(const sptr<IAbilityDebugResponse> &response);
 
     /**
-     * @brief Determine whether it is an attachment debug application based on the bundle name.
+     * Check whether the given app is in attach-debug mode.
+     *
      * @param bundleName The application bundle name.
-     * @return Returns true if it is an attach debug application, otherwise it returns false.
+     * @return true if it is an attach-debug application; false otherwise or when
+     *         the service is unavailable.
      */
     bool IsAttachDebug(const std::string &bundleName);
 
     /**
-     * @brief Query whether the main process of the app (identified by uid) is in debug mode.
+     * Query whether the main process of the app identified by uid is in debug
+     * mode (waiting-debug or attach-debug).
+     *
      * @param uid The application uid.
-     * @return Returns true if the main process is in debug mode, false otherwise.
+     * @return true if the main process is in debug mode; false otherwise or when
+     *         the service is unavailable.
      */
     bool IsMainProcessDebug(int32_t uid);
 
     /**
-     * @brief Query whether the corresponding process of the app (identified by abilityInfo) is in attach debug mode.
-     * @param abilityInfo The ability info used to locate the corresponding process.
-     * @return Returns true if the corresponding process is in attach debug mode, false otherwise.
+     * Query whether the process that would host this ability (considering
+     * process configuration / isolation) is in attach-debug mode.
+     *
+     * @param abilityInfo The ability info used to locate the corresponding
+     *        process.
+     * @return true if the corresponding process is in attach-debug mode; false
+     *         otherwise or when the service is unavailable.
      */
     bool IsCorrespondingProcessAttachDebug(const AbilityInfo &abilityInfo);
 
     /**
-     * @brief Set resident process enable status.
+     * Enable/disable the resident (keep-alive) state of an installed app.
+     * Internal use (device-management / power flows).
+     *
      * @param bundleName The application bundle name.
-     * @param enable The current updated enable status.
-     * @param uid indicates user, 0 for all users
+     * @param enable The updated enable status.
+     * @param uid Indicates the user: 0 for all users, otherwise a specific uid.
      */
     void SetKeepAliveEnableState(const std::string &bundleName, bool enable, int32_t uid);
 
     /**
-     * @brief Set non-resident keep-alive process status.
+     * Set the non-resident keep-alive (dkv) state of an app.
+     *
      * @param bundleName The application bundle name.
-     * @param enable The current updated enable status.
-     * @param uid indicates user, 0 for all users
+     * @param enable The updated enable status.
+     * @param uid Indicates the user: 0 for all users, otherwise a specific uid.
      */
     void SetKeepAliveDkv(const std::string &bundleName, bool enable, int32_t uid);
 
     /**
-     * @brief Set non-resident keep-alive app service extension status.
+     * Set the non-resident keep-alive app-service-extension state of an app.
+     *
      * @param bundleName The application bundle name.
-     * @param enable The current updated enable status.
-     * @param uid indicates user.
+     * @param enable The updated enable status.
+     * @param uid Indicates the user: 0 for all users, otherwise a specific uid.
      */
     void SetKeepAliveAppService(const std::string &bundleName, bool enable, int32_t uid);
 
     /**
-     * Register application or process state observer.
-     * @param observer, ability token.
-     * @param bundleNameList, the list of bundle names.
-     * @return Returns ERR_OK on success, others on failure.
+     * Register an observer for application/process state changes.
+     *
+     * @param observer State observer; must not be null.
+     * @param bundleNameList Default {} meaning all applications are observed;
+     *        otherwise only the listed bundles.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t RegisterApplicationStateObserver(const sptr<IApplicationStateObserver> &observer,
         const std::vector<std::string> &bundleNameList = {});
 
     /**
-     * Unregister application or process state observer.
-     * @param observer, ability token.
-     * @return Returns ERR_OK on success, others on failure.
+     * Unregister an application state observer.
+     *
+     * @param observer The observer to remove.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t UnregisterApplicationStateObserver(const sptr<IApplicationStateObserver> &observer);
 
+    /**
+     * Register an observer for image (template/work) process state changes.
+     *
+     * @param observer Image process state observer.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
     int32_t RegisterImageProcessStateObserver(const sptr<IImageProcessStateObserver> &observer);
 
+    /**
+     * Unregister an image process state observer.
+     *
+     * @param observer The observer to remove.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
     int32_t UnregisterImageProcessStateObserver(const sptr<IImageProcessStateObserver> &observer);
 
     /**
-     * Register native child exit notify.
-     * @param notify, callback to notify.
-     * @return Returns ERR_OK on success, others on failure.
+     * Register a callback to be notified when native child processes exit.
+     *
+     * @param notify Callback to notify; must not be null.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t RegisterNativeChildExitNotify(sptr<INativeChildNotify> notify);
 
     /**
-     * Unregister native child exit notify.
-     * @param notify, callback to notify.
-     * @return Returns ERR_OK on success, others on failure.
+     * Unregister a native child exit notify callback.
+     *
+     * @param notify Callback to remove.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t UnregisterNativeChildExitNotify(sptr<INativeChildNotify> notify);
 
     /**
-     * @brief Notify AbilityManagerService the page show.
+     * Notify the service that a page of the ability became visible. Internal use
+     * (page state tracking for sceneboard).
+     *
      * @param token Ability identify.
-     * @param pageStateData The data of ability's page state.
-     * @return Returns ERR_OK on success, others on failure.
+     * @param pageStateData Data of the ability's page state (page url etc.).
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t NotifyPageShow(const sptr<IRemoteObject> &token, const PageStateData &pageStateData);
 
     /**
-     * @brief Notify AbilityManagerService the page hide.
+     * Notify the service that a page of the ability became invisible. Internal
+     * use.
+     *
      * @param token Ability identify.
-     * @param pageStateData The data of ability's page state.
-     * @return Returns ERR_OK on success, others on failure.
+     * @param pageStateData Data of the ability's page state.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t NotifyPageHide(const sptr<IRemoteObject> &token, const PageStateData &pageStateData);
 
     /**
-     * Register appRunning status listener.
+     * Register a listener for app running status (start/stop) notifications.
      *
-     * @param listener Running status listener.
-     * @return Returns ERR_OK on success, others on failure.
+     * @param listener Running status listener remote object; null is rejected
+     *        locally with ERR_INVALID_DATA.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t RegisterAppRunningStatusListener(const sptr<IRemoteObject> &listener);
 
     /**
-     * Unregister appRunning status listener.
+     * Unregister an app running status listener.
      *
-     * @param listener Running status listener.
-     * @return Returns ERR_OK on success, others on failure.
+     * @param listener The listener to remove; null is rejected locally with
+     *        ERR_INVALID_DATA.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t UnregisterAppRunningStatusListener(const sptr<IRemoteObject> &listener);
 
     /**
-     * To clear the process by ability token.
+     * Clean up the process hosting the ability token (records and process).
+     * Internal use (ability cleanup after abnormal exit).
      *
-     * @param token the unique identification to the ability.
+     * @param token The unique identification of the ability.
      */
     void ClearProcessByToken(sptr<IRemoteObject> token) const;
 
     /**
-     * Whether the current application process is the last surviving process.
+     * Check whether the calling application process is the last surviving
+     * process of the app.
      *
-     * @return Returns true is final application process, others return false.
+     * @return true if it is the final application process; false otherwise or
+     *         when the service is unavailable.
      */
     bool IsFinalAppProcess();
 
     /**
-     * Register render state observer.
+     * Register an observer for render process state changes.
+     *
      * @param observer Render process state observer.
-     * @return Returns ERR_OK on success, others on failure.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t RegisterRenderStateObserver(const sptr<IRenderStateObserver> &observer);
 
     /**
-     * Unregister render state observer.
-     * @param observer Render process state observer.
-     * @return Returns ERR_OK on success, others on failure.
+     * Unregister a render state observer.
+     *
+     * @param observer The observer to remove.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t UnregisterRenderStateObserver(const sptr<IRenderStateObserver> &observer);
 
     /**
-     * Update render state.
-     * @param renderPid Render pid.
-     * @param state foreground or background state.
-     * @return Returns ERR_OK on success, others on failure.
+     * Update the foreground/background state of a render process; registered
+     * observers are notified.
+     *
+     * @param renderPid Render process pid.
+     * @param state Foreground or background state value.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t UpdateRenderState(pid_t renderPid, int32_t state);
 
     /**
-     * Get appRunningUniqueId by pid.
-     * @param pid pid.
-     * @param appRunningUniqueId appRunningUniqueId.
-     * @return Returns ERR_OK on success, others on failure.
+     * Get the unique run-time id of the app running record that owns the pid.
+     *
+     * @param pid Process pid.
+     * @param appRunningUniqueId Output; the unique id string.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t GetAppRunningUniqueIdByPid(pid_t pid, std::string &appRunningUniqueId);
 
     /**
-     * Get all uiextension root host process id, need apply permission ohos.permission.GET_RUNNING_INFO.
-     * If specified pid mismatch UIExtensionAbility type, return empty vector.
-     * @param pid Process id.
-     * @param hostPids All host process id.
-     * @return Returns 0 on success, others on failure.
+     * Get the root host process pids of all UIExtension instances hosted by the
+     * given process.
+     *
+     * Permission: requires ohos.permission.GET_RUNNING_INFO. If the specified
+     * pid does not correspond to a UIExtensionAbility type, an empty vector is
+     * returned.
+     *
+     * @param pid Process id hosting UIExtensionAbilities.
+     * @param hostPids Output; all root host process ids.
+     * @return ERR_OK(0) on success, error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t GetAllUIExtensionRootHostPid(pid_t pid, std::vector<pid_t> &hostPids);
 
     /**
-     * Get all uiextension provider process id, need apply permission ohos.permission.GET_RUNNING_INFO.
-     * If specified hostPid didn't start any UIExtensionAbility, return empty vector.
+     * Get the provider process pids of all UIExtension instances started by the
+     * given host process.
+     *
+     * Permission: requires ohos.permission.GET_RUNNING_INFO. If the hostPid
+     * didn't start any UIExtensionAbility, an empty vector is returned.
+     *
      * @param hostPid Host process id.
-     * @param providerPids All provider process id started by specified hostPid.
-     * @return Returns 0 on success, others on failure.
+     * @param providerPids Output; all provider process ids started by hostPid.
+     * @return ERR_OK(0) on success, error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t GetAllUIExtensionProviderPid(pid_t hostPid, std::vector<pid_t> &providerPids);
 
     /**
-     * @brief Notify memory size state changed: LOW_MEMORY, MEMORY_RECOVERY, REQUIRE_BIG_MEMORY, NO_REQUIRE_BIG_MEMORY.
-     * @param memorySizeState Indicates the memory size state.
-     * @return Returns ERR_OK on success, others on failure.
+     * Notify apps of a memory-size state change: LOW_MEMORY, MEMORY_RECOVERY,
+     * REQUIRE_BIG_MEMORY, NO_REQUIRE_BIG_MEMORY.
+     *
+     * @param memorySizeState The new memory size state.
+     * @return ERR_OK on success, error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t NotifyMemorySizeStateChanged(int32_t memorySizeState);
 
     /**
-     * whether memory size is sufficient.
-     * @return Returns true is sufficient memory size, others return false.
+     * Check whether the current memory size is sufficient for app starting.
+     *
+     * @return true if memory size is sufficient; note that on service-unavailable
+     *         the client also returns true (fail-open).
      */
     bool IsMemorySizeSufficient() const;
 
     /**
-     * whether or not require a big memory
-     * @return Return true if no big memory required, otherwise return false.
+     * Check whether no big-memory requirement is currently active.
+     *
+     * @return true if no big memory is required; the client also returns true on
+     *         service-unavailable (fail-open).
      */
     bool IsNoRequireBigMemory() const;
 
     /**
-     * Record process exit reason to appRunningRecord
-     * @param pid pid
-     * @param reason reason enum
-     * @param exitMsg exitMsg
-     * @return Returns ERR_OK on success, others on failure.
+     * Record the exit reason of a process into its app running record.
+     *
+     * @param pid Pid of the exiting process.
+     * @param reason Exit reason enum value.
+     * @param exitMsg Human-readable exit message.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual int32_t NotifyAppMgrRecordExitReason(int32_t pid, int32_t reason, const std::string &exitMsg);
 
     /**
-     * Record process exit reason to appRunningRecord.
-     * @param pid Pid.
+     * Record the exit reason of a process with compatibility fields for the
+     * fault-logging pipeline.
+     *
+     * @param pid Pid of the exiting process.
      * @param killId Kill reason enum.
      * @param killMsg Kill message.
-     * @param innerMsg Inner message.
-     * @param reason reason enum
-     * @return Returns ERR_OK on success, others on failure.
+     * @param innerMsg Inner (framework) message.
+     * @param reason Exit reason enum value.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual int32_t NotifyAppMgrRecordExitReasonCompability(
         int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg, int32_t reason);
 
     /**
-     * Preload application.
+     * Preload an application (press-down / pre-make / preload-module /
+     * pre-launch / game-prelaunch modes) to accelerate later startup.
+     *
+     * Permission: system-app caller required (CHECK_CALLER_IS_SYSTEM_APP) and
+     * preload permission verified (VerifyPreloadApplicationPermission);
+     * otherwise ERR_PERMISSION_DENIED. Clone apps are NOT supported: appIndex
+     * != 0 returns ERR_INVALID_VALUE. Preloading may be rejected by RSS
+     * pre-check (ERR_NOT_ALLOW_PRELOAD_BY_RSS).
      *
      * @param bundleName The bundle name of the application to preload.
-     * @param userId Indicates the user identification.
-     * @param preloadMode Preload application mode.
-     * @param appIndex The index of application clone.
-     * @return Returns ERR_OK on success, others on failure.
+     * @param userId Target user id; -1 (DEFAULT_INVAL_VALUE) is resolved to the
+     *        caller's current/foreground user on the server.
+     * @param preloadMode Preload mode, see PreloadMode enum.
+     * @param appIndex Default 0; must be 0 - clone app preload is not supported.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual int32_t PreloadApplication(const std::string &bundleName, int32_t userId,
         AppExecFwk::PreloadMode preloadMode, int32_t appIndex = 0);
 
+    /**
+     * Create an application image (process snapshot) for fast cold start: the
+     * app is preloaded and a checkpoint image is produced. The want must carry
+     * the bundle name (and ability name for extension images). Isolated-process
+     * abilities are not supported.
+     *
+     * Permission: same as PreloadApplication (system app + preload permission).
+     *
+     * @param want Want with bundleName (+abilityName for extension targets).
+     * @param userId Target user id; -1 is resolved to the current user.
+     * @param preloadMode Preload mode used while making the image.
+     * @param appIndex Default 0 meaning the main (non-clone) app.
+     * @param errorHandler Default nullptr; optional handler receiving image
+     *        process errors.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
     int32_t MakeImage(const AAFwk::Want &want, int32_t userId,
         AppExecFwk::PreloadMode preloadMode, int32_t appIndex = 0, sptr<IImageErrorHandler> errorHandler = nullptr);
 
+    /**
+     * Destroy a previously created application image identified by its checkpoint
+     * id (see MakeImage flow).
+     *
+     * @param checkpointId The checkpoint id returned by the image-making flow.
+     * @param errorHandler Default nullptr; optional handler receiving errors.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
     int32_t DestroyImage(uint64_t checkpointId, sptr<IImageErrorHandler> errorHandler = nullptr);
 
+    /**
+     * Notify the service that the template process with the pid has been deep
+     * frozen (used by the image/template-process framework).
+     *
+     * @param pid Pid of the template process.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
     int32_t NotifyTemplateProcessDeepFrozen(int32_t pid);
 
+    /**
+     * Pre-notification before a template process is deep frozen, letting the
+     * service record the state change.
+     *
+     * @param pid Pid of the template process.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
     int32_t PreTemplateProcessDeepFrozen(int32_t pid);
 
+    /**
+     * Notify the service that the template-process ready flow has completed.
+     *
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
     int32_t NotifyTemplateProcessReadyDone();
 
     /**
-     * @brief set support process cache by self
+     * Declare whether the calling app supports process cache: cached processes
+     * are kept alive briefly after going to background for faster warm start.
+     * Called by the app itself.
+     *
+     * @param isSupport true if the app supports being cached.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t SetSupportedProcessCacheSelf(bool isSupport);
 
+    /**
+     * Set the process-cache support flag of the process identified by pid.
+     *
+     * @param pid Target process id.
+     * @param isSupport true if the process supports being cached.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
     int32_t SetSupportedProcessCache(int32_t pid, bool isSupport);
 
+    /**
+     * Query whether the process identified by pid supports process cache.
+     *
+     * @param pid Target process id.
+     * @param isSupported Output; true when process cache is supported.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_READY/ERROR_SERVICE_NOT_CONNECTED on client
+     *         failures.
+     */
     int32_t IsProcessCacheSupported(int32_t pid, bool &isSupported);
 
+    /**
+     * Query whether child processes are supported for the current device/app
+     * context.
+     *
+     * @param isNative true to query native (C-API) child process support, false
+     *        for ArkTS child process support.
+     * @param isSupported Output; true when supported.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_READY/ERROR_SERVICE_NOT_CONNECTED on client
+     *         failures.
+     */
     int32_t IsChildProcessSupported(bool isNative, bool &isSupported);
 
+     /**
+      * Obtain information of the UIAbility child processes of the calling app.
+      *
+      * @param infos Output; UIAbility child process information list.
+      * @return ERR_OK on success, server error code otherwise;
+      *         ERROR_SERVICE_NOT_READY/ERROR_SERVICE_NOT_CONNECTED on client
+      *         failures.
+      */
     int32_t GetSelfUIAbilityChildProcesses(std::vector<ChildProcessInfo> &infos);
-    /**
-     * Get the last hyper snap error of the caller for the given error type.
+
+     /**
+      * Get the last hyper snap error of the caller for the given error type.
      *
      * @param errType The error type, see HyperSnapErrorType.
      * @param record Output parameter, the last error record.
-     * @return Returns ERR_OK on success, others on failure.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_READY/ERROR_SERVICE_NOT_CONNECTED on client
+     *         failures.
      */
     int32_t GetHyperSnapLastError(int32_t errType, HyperSnapErrorRecord &record);
 
+    /**
+     * Enable or disable the process-cache feature for the process identified by
+     * pid (runtime switch, independent of the support flag).
+     *
+     * @param pid Target process id.
+     * @param enable true to enable caching of the process.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_READY/ERROR_SERVICE_NOT_CONNECTED on client
+     *         failures.
+     */
     int32_t SetProcessCacheEnable(int32_t pid, bool enable);
 
+    /**
+     * Lock or unlock the cached state of a process: a locked cached process is
+     * not reclaimed by normal cache eviction.
+     *
+     * @param pid Target process id.
+     * @param isLock true to lock the process in cache, false to unlock.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_READY/ERROR_SERVICE_NOT_CONNECTED on client
+     *         failures.
+     */
     int32_t LockProcessCache(int32_t pid, bool isLock);
 
     /**
-     * set browser channel for caller
+     * Save the browser (web) channel remote object for the caller, used by the
+     * web framework to keep a communication channel to appmgr.
+     *
+     * @param browser The browser channel remote object.
      */
     void SaveBrowserChannel(sptr<IRemoteObject> browser);
 
     /**
-     * Check caller is test ability
+     * Check whether the process with the given pid is running in user-test mode.
      *
-     * @param pid, the pid of ability.
-     * @return Returns ERR_OK is test ability, others is not test ability.
+     * @param pid Pid of the ability process to check.
+     * @param isUserTest Output; true when the process is a user-test process.
+     * @return ERR_OK on success (the check itself succeeded);
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t CheckCallingIsUserTestMode(const pid_t pid, bool &isUserTest);
 
     /**
-     * Notifies that one ability is attached to status bar.
+     * Notify the service that one ability is attached to the status bar, so its
+     * process is treated accordingly (not killed by background policies).
      *
-     * @param token the token of the abilityRecord that is attached to status bar.
-     * @return Returns RESULT_OK on success, others on failure.
+     * @param token The token of the abilityRecord attached to the status bar.
+     * @return RESULT_OK if dispatched, otherwise ERROR_SERVICE_NOT_CONNECTED.
      */
     virtual AppMgrResultCode AttachedToStatusBar(const sptr<IRemoteObject> &token);
 
     /**
-     * Notify that the process depends on web by itself.
+     * Declare that the calling process depends on web: when the web bundle is
+     * upgraded, such processes are killed and restarted. Called by the app
+     * process itself.
+     *
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t NotifyProcessDependedOnWeb();
 
     /**
-     * Kill process depended on web by sa.
+     * Kill all processes that declared dependency on web. Invoked by a system
+     * ability after a web bundle upgrade.
      */
     void KillProcessDependedOnWeb();
 
     /**
-     * Temporarily block the process cache feature.
+     * Temporarily block the process-cache feature for the given processes (e.g.
+     * while a backup/restore or debug session is active).
      *
-     * @param pids the pids of the processes that should be blocked.
+     * @param pids The pids of the processes whose caching should be blocked.
+     * @return RESULT_OK if dispatched, otherwise ERROR_SERVICE_NOT_CONNECTED.
      */
     virtual AppMgrResultCode BlockProcessCacheByPids(const std::vector<int32_t> &pids);
 
     /**
-     * whether killed for upgrade web.
+     * Check whether the app was killed because of a web upgrade (so it should be
+     * restarted after the upgrade finishes).
      *
-     * @param bundleName the bundle name is killed for upgrade web.
-     * @return Returns true is killed for upgrade web, others return false.
+     * @param bundleName The bundle name to check.
+     * @return true if it was killed for web upgrade; false otherwise or when the
+     *         service is unavailable.
      */
     bool IsKilledForUpgradeWeb(const std::string &bundleName);
 
     /**
-     * Request to clean uiability from user.
+     * Request to clean up the uiability identified by token on user request
+     * (e.g. user swipes away a mission).
      *
-     * @param token the token of ability.
-     * @return Returns true if clean success, others return false.
+     * @param token The token of the ability.
+     * @return true if the clean request succeeded; false on failure or when the
+     *         service is unavailable.
      */
     bool CleanAbilityByUserRequest(const sptr<IRemoteObject> &token);
 
     /**
-     * whether the abilities of process specified by pid type only UIAbility.
-     * @return Returns true is only UIAbility, otherwise return false
+     * Check whether the abilities hosted in the process with the given pid are
+     * only UIAbilities (no other ability types).
+     *
+     * @param pid The process id to check.
+     * @return true if the process contains only UIAbility; false otherwise or
+     *         when the service is unavailable.
      */
     bool IsProcessContainsOnlyUIAbility(const pid_t pid);
 
     /**
-     * Whether a process is attached, refer to AttachApplication
+     * Check whether the process hosting the ability token has attached to
+     * AppMgrService (see the AttachApplication flow).
+     *
+     * @param token Ability token of the process to check.
+     * @return true if the process is attached; false otherwise or when the
+     *         service is unavailable.
      */
     bool IsProcessAttached(sptr<IRemoteObject> token) const;
 
+    /**
+     * Check whether a kill operation is currently in progress for the given
+     * caller key (used to serialize kill operations against the same target).
+     *
+     * @param callerKey The key identifying the kill target/caller.
+     * @return true if a kill is in progress for the key; false otherwise or when
+     *         the service is unavailable.
+     */
     bool IsCallerKilling(const std::string& callerKey) const;
 
+    /**
+     * Preload an application up to a specific phase (process created / ability
+     * stage created / window stage created), enabling finer-grained warm-up.
+     *
+     * @param bundleName The bundle name to preload.
+     * @param userId Target user id; -1 is resolved to the current user.
+     * @param appIndex App-clone index; 0 means the main app.
+     * @param preloadPhase Target preload phase, see PreloadPhase enum.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
     int32_t PreloadApplicationByPhase(const std::string &bundleName, int32_t userId, int32_t appIndex,
         AppExecFwk::PreloadPhase preloadPhase);
 
+    /**
+     * Notify that the pre-foreground state of a preloaded ability changed
+     * (transitioning toward foreground). Internal use (preload framework).
+     *
+     * @param token Token of the preloaded ability.
+     * @param isPreForeground true when entering pre-foreground state.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
     int32_t NotifyPreloadAbilityStateChanged(sptr<IRemoteObject> token, bool isPreForeground);
 
+    /**
+     * Check whether a preload app record already exists for the bundle/user/
+     * clone-index combination (to avoid duplicate preloads).
+     *
+     * @param bundleName Bundle name to check.
+     * @param userId Target user id.
+     * @param appIndex App-clone index; 0 means the main app.
+     * @param isExist Output; true when a preload record exists.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
     int32_t CheckPreloadAppRecordExist(const std::string &bundleName, int32_t userId, int32_t appIndex,
         bool &isExist);
 
     /**
-     * Check whether the process of the application under the specified user exists.
+     * Check whether any process of the application (bundleName + userId) is
+     * currently running.
      *
-     * @param bundleName Indicates the bundle name of the bundle.
-     * @param userId the userId of the bundle.
-     * @param isRunning Obtain the running status of the application, the result is true if running, false otherwise.
-     * @return Return ERR_OK if success, others fail.
+     * @param bundleName Bundle name of the bundle.
+     * @param userId The userId of the bundle.
+     * @param isRunning Output; true if running, false otherwise.
+     * @return RESULT_OK(server ERR_OK) on success, server error code cast to
+     *         AppMgrResultCode otherwise; ERROR_SERVICE_NOT_CONNECTED when the
+     *         service is unavailable.
      */
     virtual AppMgrResultCode IsAppRunningByBundleNameAndUserId(const std::string &bundleName, int32_t userId,
         bool &isRunning);
 
     /**
-     * Check whether the bundle is running.
+     * Check whether the bundle (including a specific clone index) is running.
      *
-     * @param bundleName Indicates the bundle name of the bundle.
-     * @param appCloneIndex the appindex of the bundle.
-     * @param userId the userId of the bundle.
-     * @param isRunning Obtain the running status of the application, the result is true if running, false otherwise.
-     * @return Return ERR_OK if success, others fail.
+     * @param bundleName Bundle name of the bundle.
+     * @param appCloneIndex The app-clone index; 0 means the main app.
+     * @param userId The userId of the bundle.
+     * @param isRunning Output; true if running, false otherwise.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t IsAppRunning(const std::string &bundleName, int32_t appCloneIndex,
         int32_t userId, bool &isRunning);
 
     /**
-     * Elevate the current process to be a candidate master process.
+     * Elevate the calling process to be a candidate master process (multi-
+     * process master-election framework).
      *
-     * @param isInsertToHead Whether insert current process to the head of candidate master process list.
-     * @return Return ERR_OK if success, others fail.
+     * @param isInsertToHead Whether to insert the current process at the head of
+     *        the candidate list (highest priority).
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t PromoteCurrentToCandidateMasterProcess(bool isInsertToHead);
-    
+
     /**
-     * Revoke current process as a candidate master process.
+     * Revoke the calling process's candidate master process role.
      *
-     * @return Return ERR_OK if success, others fail.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t DemoteCurrentFromCandidateMasterProcess();
 
     /**
-     * Exit from the master process role of the current process.
+     * Make the calling process exit from the master-process role (another
+     * candidate takes over).
      *
-     * @return Return ERR_OK if success, others fail.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t ExitMasterProcessRole();
 
+    /**
+     * Query the shared bundles (bundle name -> version code) currently loaded by
+     * the process with the given pid.
+     *
+     * @param pid Pid of the process to query.
+     * @param sharedBundles Output; map of shared bundle name to version code.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
     int32_t QueryRunningSharedBundles(pid_t pid, std::map<std::string, uint32_t> &sharedBundles);
 
-    int32_t VerifyKillProcessPermission(const std::string &bundleName) const;
-    
     /**
-     * Register application, process or ability state observer.
-     * @param observer, bundleNameList, appStateFilter.
-     * @return Returns ERR_OK on success, others on failure.
+     * Verify (without killing) that the caller is allowed to kill the process of
+     * bundleName: ohos.permission.KILL_APP_PROCESSES, or SA/shell caller, or
+     * system_basic/system_core APL app.
+     *
+     * @param bundleName Bundle name of the app to be killed.
+     * @return ERR_OK when permitted; ERR_PERMISSION_DENIED otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
+    int32_t VerifyKillProcessPermission(const std::string &bundleName) const;
+
+    /**
+     * Register an application/process/ability state observer with an optional
+     * state filter (e.g. only foreground/background transitions).
+     *
+     * @param observer The observer to register.
+     * @param bundleNameList Default {} meaning observe all applications.
+     * @param appStateFilter Default empty filter (no filtering).
+     * @param isUsingFilter Default false; must be true for appStateFilter to
+     *        take effect.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t RegisterApplicationStateObserverWithFilter(sptr<IApplicationStateObserver> observer,
         const std::vector<std::string> &bundleNameList = {}, const AppStateFilter &appStateFilter = AppStateFilter(),
         bool isUsingFilter = false);
 
+    /**
+     * Bind a requestId to an app record for the specified-process start flow
+     * (matches ScheduleNewProcessRequestDone callbacks). Internal use.
+     *
+     * @param recordId The application record id.
+     * @param requestId The request id to set.
+     */
     void SetSpecifiedProcessRequestId(int32_t recordId, int32_t requestId);
 
+    /**
+     * Allow the sceneboard process to move to background (lift the temporary
+     * foreground lock). Internal use (sceneboard lifecycle coordination).
+     */
     void AllowScbProcessMoveToBackground();
 
+    /**
+     * Kill the child process identified by pid.
+     *
+     * @param pid Pid of the child process to kill.
+     * @return ERR_OK on success, server error code (e.g. record not found)
+     *         otherwise; ERROR_SERVICE_NOT_CONNECTED when the service is
+     *         unavailable.
+     */
     int32_t KillChildProcessByPid(int32_t pid);
 
     /**
-     * Preload extension process.
+     * Preload an extension process: the want must contain bundleName and
+     * abilityName of the target extension.
      *
-     * @param want contains bundleName + abilityName.
-     * @param appIndex The index of application clone.
-     * @param userId Indicates the user identification.
-     * @return Returns ERR_OK on success, others on failure.
+     * @param want Want containing bundleName + abilityName of the extension.
+     * @param appIndex App-clone index; 0 means the main app.
+     * @param userId Target user id.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t PreloadExtension(const AAFwk::Want &want, int32_t appIndex, int32_t userId);
 
     /**
-     * Get all ability infos
+     * Get the state data of ability records (all abilities, or the abilities of
+     * one process).
      *
-     * @param pid if pid is -1, query all ability infos, otherwise query ability infos for this pid
-     * @param infos ability infos
-     * @return Returns ERR_OK on success, others on failure.
+     * @param pid If pid is -1, query ability infos of all processes; otherwise
+     *        only the ability infos of this pid.
+     * @param infos Output; the ability state data list.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t GetAllAbilityInfos(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos);
 
+    /**
+     * Enable/disable delayed exit for the calling process: when enabled, the
+     * process is kept briefly after its last ability terminates (process-cache
+     * cooperation).
+     *
+     * @param enabled true to enable delayed exit.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
     virtual int32_t EnableDelayedProcessExit(bool enabled) const;
 
+    /**
+     * Cancel a pending delayed-exit task of the process so it exits
+     * immediately.
+     *
+     * @param pid Pid of the process whose delayed-exit task should be cancelled.
+     */
     virtual void CancelDelayedExitTask(int32_t pid) const;
 private:
     void SetServiceManager(std::unique_ptr<AppServiceManager> serviceMgr);
