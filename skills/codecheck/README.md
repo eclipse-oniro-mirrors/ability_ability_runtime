@@ -28,8 +28,8 @@ skills/codecheck/
 │   ├── error-handling.md                  #   错误处理（ERR-001~009）
 │   ├── logic-correctness.md               #   逻辑正确性（LOG-001~012）
 │   ├── api-consistency.md                 #   API 一致性反模式（API-001~013）
-│   └── known-defect-patterns/             #   G01–G15 历史缺陷模式库
-│       ├── G01_xxx.md ... G15_xxx.md       #   每模式一文件：信号特征 + grep 线索 + 历史案例 + 检查点
+│   └── known-defect-patterns/             #   G01–G16 历史缺陷模式库
+│       ├── G01_xxx.md ... G16_xxx.md       #   每模式一文件：信号特征 + grep 线索 + 历史案例 + 检查点
 │       └── hotspot-modules.md             #   热区模块清单
 │
 ├── scanners/                              # 第二层：检视扫描器（4 个薄层）
@@ -92,7 +92,7 @@ skills/codecheck/
              resource-lifecycle,
              ipc-serialization,
              privilege-auth,
-             known-defect-patterns/G01-G15)
+             known-defect-patterns/G01-G16)
 ```
 
 > - `orchestrator` 是**唯一编排器**，自动探测路径特征（IPC/持久化/API 信号）后选择 scanner 组合，并行调度，Refute 验证，合并统一报告。通用"检视代码"/"深度扫描"的默认入口。
