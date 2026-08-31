@@ -307,7 +307,7 @@ public:
      */
     virtual AppMgrResultCode KillApplicationByUid(const std::string &bundleName, const int uid,
         const std::string& reason = "KillApplicationByUid");
-    
+
     /**
      * Notify AppMgrService that an app is being uninstalled or upgraded, so the
      * running processes are prepared/killed accordingly. Internal use (bundle
@@ -468,11 +468,14 @@ public:
     virtual AppMgrResultCode GetAllChildrenProcesses(std::vector<ChildProcessInfo> &info);
 
     /**
-     * GetSelfChildrenProcesses, call GetSelfChildrenProcesses() through proxy project.
-     * Obtains information about children processes that are running for the calling application.
+     * Obtain information of all running child processes of the calling app.
+     * Only compiled when the child-process feature flag SUPPORT_CHILD_PROCESS is
+     * enabled; otherwise the call is a no-op returning RESULT_OK.
      *
-     * @param info, child process info.
-     * @return ERR_OK, return back success, others fail.
+     * @param info Output; child process information list.
+     * @return RESULT_OK on success (or when the feature is disabled);
+     *         ERROR_SERVICE_NOT_READY/ERROR_SERVICE_NOT_CONNECTED on client
+     *         failures; server-side result code otherwise.
      */
     virtual AppMgrResultCode GetSelfChildrenProcesses(std::vector<ChildProcessInfo> &info);
 
@@ -664,9 +667,9 @@ public:
      * @param config New configuration items.
      * @param userId Default -1 meaning all users are notified; otherwise the
      *        configuration is applied to the given user only.
-     * @return RESULT_OK when the request was dispatched (the client always
-     *         returns RESULT_OK; server-side rejection is NOT reflected here --
-     *         check logs / server result if in doubt).
+     * @return RESULT_OK when the request was dispatched (server-side rejection
+     *         is NOT reflected here -- check logs / server result if in doubt);
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode UpdateConfiguration(const Configuration &config, const int32_t userId = -1);
 
@@ -706,10 +709,11 @@ public:
      * @return RESULT_OK on success; ERROR_SERVICE_NOT_READY on server failure;
      *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
-    virtual AppMgrResultCode RegisterConfigurationObserver(const sptr<IConfigurationObserver> &observer,
-        const int32_t userId = -1);
-    /**
-     * Unregister a previously registered configuration observer.
+     virtual AppMgrResultCode RegisterConfigurationObserver(const sptr<IConfigurationObserver> &observer,
+         const int32_t userId = -1);
+
+     /**
+      * Unregister a previously registered configuration observer.
      *
      * @param observer The observer to remove.
      * @return RESULT_OK on success; ERROR_SERVICE_NOT_READY on server failure;
@@ -1108,9 +1112,9 @@ public:
      *
      * @param bundleName The application bundle name.
      * @param enable The updated enable status.
-     * @param uid Indicates the user (specific uid).
+     * @param uid Indicates the user: 0 for all users, otherwise a specific uid.
      */
-    void SetKeepAliveAppService(const std::string &bundleName, bool enable, int32_t uid);
+     void SetKeepAliveAppService(const std::string &bundleName, bool enable, int32_t uid);
 
     /**
      * Register an observer for application/process state changes.
@@ -1468,19 +1472,31 @@ public:
      *        for ArkTS child process support.
      * @param isSupported Output; true when supported.
      * @return ERR_OK on success, server error code otherwise;
-     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     *         ERROR_SERVICE_NOT_READY/ERROR_SERVICE_NOT_CONNECTED on client
+     *         failures.
      */
-    int32_t IsChildProcessSupported(bool isNative, bool &isSupported);
+     int32_t IsChildProcessSupported(bool isNative, bool &isSupported);
 
-    int32_t GetSelfUIAbilityChildProcesses(std::vector<ChildProcessInfo> &infos);
-    /**
-     * Get the last hyper snap error of the caller for the given error type.
+     /**
+      * Obtain information of the UIAbility child processes of the calling app.
+      *
+      * @param infos Output; UIAbility child process information list.
+      * @return ERR_OK on success, server error code otherwise;
+      *         ERROR_SERVICE_NOT_READY/ERROR_SERVICE_NOT_CONNECTED on client
+      *         failures.
+      */
+     int32_t GetSelfUIAbilityChildProcesses(std::vector<ChildProcessInfo> &infos);
+
+     /**
+      * Get the last hyper snap error of the caller for the given error type.
      *
      * @param errType The error type, see HyperSnapErrorType.
      * @param record Output parameter, the last error record.
-     * @return Returns ERR_OK on success, others on failure.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_READY/ERROR_SERVICE_NOT_CONNECTED on client
+     *         failures.
      */
-    int32_t GetHyperSnapLastError(int32_t errType, HyperSnapErrorRecord &record);
+     int32_t GetHyperSnapLastError(int32_t errType, HyperSnapErrorRecord &record);
 
     /**
      * Enable or disable the process-cache feature for the process identified by
@@ -1489,9 +1505,10 @@ public:
      * @param pid Target process id.
      * @param enable true to enable caching of the process.
      * @return ERR_OK on success, server error code otherwise;
-     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     *         ERROR_SERVICE_NOT_READY/ERROR_SERVICE_NOT_CONNECTED on client
+     *         failures.
      */
-    int32_t SetProcessCacheEnable(int32_t pid, bool enable);
+     int32_t SetProcessCacheEnable(int32_t pid, bool enable);
 
     /**
      * Lock or unlock the cached state of a process: a locked cached process is
@@ -1500,9 +1517,10 @@ public:
      * @param pid Target process id.
      * @param isLock true to lock the process in cache, false to unlock.
      * @return ERR_OK on success, server error code otherwise;
-     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     *         ERROR_SERVICE_NOT_READY/ERROR_SERVICE_NOT_CONNECTED on client
+     *         failures.
      */
-    int32_t LockProcessCache(int32_t pid, bool isLock);
+     int32_t LockProcessCache(int32_t pid, bool isLock);
 
     /**
      * Save the browser (web) channel remote object for the caller, used by the
@@ -1682,7 +1700,7 @@ public:
      *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t PromoteCurrentToCandidateMasterProcess(bool isInsertToHead);
-    
+
     /**
      * Revoke the calling process's candidate master process role.
      *
@@ -1721,7 +1739,7 @@ public:
      *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t VerifyKillProcessPermission(const std::string &bundleName) const;
-    
+
     /**
      * Register an application/process/ability state observer with an optional
      * state filter (e.g. only foreground/background transitions).

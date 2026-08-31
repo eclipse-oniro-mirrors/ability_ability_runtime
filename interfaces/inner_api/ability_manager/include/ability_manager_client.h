@@ -1133,31 +1133,34 @@ public:
 
     /**
      * Dump ability stack state (user id, mission stacks, mission records, ability info) for
-     * debugging (aa dump / hidumper). The call is one-way on the client: the client always
-     * returns ERR_OK; the result arrives in state. Diagnostic use only — no permission contract
-     * is offered to normal apps; intended for hidumper/aa tooling.
+     * debugging (aa dump / hidumper). The call is one-way on the client: the client returns
+     * ERR_OK once the proxy is available; the result arrives in state. Diagnostic use only — no
+     * permission contract is offered to normal apps; intended for hidumper/aa tooling.
      *
      * @param args Dump arguments string (e.g. "-a").
      * @param state Output vector receiving the dump lines.
-     * @return ERR_OK (client-side always; check state for the payload).
+     * @return ERR_OK once dispatched; ABILITY_SERVICE_NOT_CONNECTED when the AMS proxy is
+     *         unavailable. The server-side dump result is not reflected here — check state.
      */
     ErrCode DumpState(const std::string &args, std::vector<std::string> &state);
 
     /**
      * Dump extended system state (mission list, pending wants, processes, screen) with filters.
-     * As with DumpState, the client always returns ERR_OK; the payload arrives in state.
+     * As with DumpState, the client returns ERR_OK once the proxy is available; the payload
+     * arrives in state.
      *
      * @param args Dump arguments string.
      * @param state Output vector receiving the dump lines.
      * @param isClient Whether to dump from the client side.
      * @param isUserID Whether the UserID filter applies.
      * @param UserID User id filter when isUserID is true.
-     * @return ERR_OK (client-side always).
+     * @return ERR_OK once dispatched; ABILITY_SERVICE_NOT_CONNECTED when the AMS proxy is
+     *         unavailable.
      */
     ErrCode DumpSysState(
         const std::string& args, std::vector<std::string>& state, bool isClient, bool isUserID, int UserID);
     /**
-     * Explicitly connect to the ability manager system ability (SA id 1801) and register a death
+     * Explicitly connect to the ability manager system ability (SA id 180) and register a death
      * recipient. Normally NOT needed — every public method auto-connects lazily. Useful to
      * pre-warm the proxy or check service availability.
      *
@@ -1506,8 +1509,9 @@ public:
      *
      * @param token The ability token to query.
      * @param missionId Output mission id (> 0 on success).
-     * @return ERR_OK on success; MISSION_NOT_FOUND when no mission matches the token;
-     *         ERR_INVALID_VALUE for invalid input.
+     * @return ERR_OK on success; MISSION_NOT_FOUND when no mission matches the token
+     *         (including a null/invalid token); ABILITY_SERVICE_NOT_CONNECTED when the AMS
+     *         proxy is unavailable.
      */
     ErrCode GetMissionIdByToken(sptr<IRemoteObject> token, int32_t &missionId);
 
@@ -1867,8 +1871,10 @@ public:
      * @brief Report the pre-launch completion time (ms) of a game.
      * Internal: only game SA (GAME_SA_UID) may call.
      * @param userId User id.
-     * @param completeTime Complete time in milliseconds.
-     * @return Returns ERR_OK on success; CHECK_PERMISSION_FAILED for others.
+     * @param completeTime Complete time in milliseconds, must be >= 0.
+     * @return Returns ERR_OK on success; ERR_INVALID_VALUE for negative completeTime;
+     *         CHECK_PERMISSION_FAILED for non-game-SA callers; ABILITY_SERVICE_NOT_CONNECTED
+     *         when the AMS proxy is unavailable.
      */
     ErrCode SetGamePreLaunchCompleteTime(int32_t userId, int64_t completeTime);
 
@@ -1885,10 +1891,11 @@ public:
      * @brief Set mission continuation state (active/inactive) of the caller's own
      * ability. Only the ability's own application (calling accessTokenId must
      * equal the record's accessTokenId) may set; also notifies DMS for distributed
-     * continuation. Note: the sessionToken parameter is not forwarded over IPC.
+     * continuation.
      * @param token Ability token.
      * @param state Continue state, see AAFwk::ContinueState.
-     * @param sessionToken Reserved, not used by the service.
+     * @param sessionToken On SceneBoard-enabled products, forwarded to the scene session
+     *                     manager to address the target session; ignored on the non-SCB path.
      * @return Returns ERR_OK on success, others on failure.
      */
     ErrCode SetMissionContinueState(sptr<IRemoteObject> token, const AAFwk::ContinueState &state,
@@ -2652,7 +2659,9 @@ public:
      * @param sessionInfo The session info of the ability to clean.
      * @param isUserRequestedExit True when the user requested the exit (default false).
      * @param sceneFlag Termination scene flag, default 0.
-     * @return Returns ERR_OK on success; ERR_WRONG_INTERFACE_CALL if not SCB.
+     * @return Returns ERR_OK on success; ERR_WRONG_INTERFACE_CALL if not SCB;
+     *         ERR_INVALID_VALUE for null sessionInfo; ABILITY_SERVICE_NOT_CONNECTED when
+     *         the AMS proxy is unavailable.
      */
     ErrCode CleanUIAbilityBySCB(sptr<SessionInfo> sessionInfo,
         bool isUserRequestedExit = false, uint32_t sceneFlag = 0);

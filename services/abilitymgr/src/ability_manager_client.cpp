@@ -2266,7 +2266,7 @@ int32_t AbilityManagerClient::OpenFile(const Uri& uri, uint32_t flag)
     auto abms = GetAbilityManager();
     if (abms == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null abms");
-        return true;
+        return ERR_INVALID_VALUE;
     }
     return abms->OpenFile(uri, flag);
 }
