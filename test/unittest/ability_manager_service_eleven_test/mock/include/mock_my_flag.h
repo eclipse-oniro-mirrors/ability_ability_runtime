@@ -23,6 +23,7 @@ public:
         IS_SA_CALL = 1,
         IS_SHELL_CALL,
         IS_SA_AND_SHELL_CALL,
+        IS_NOT_SYSTEM_APP_CALL,
     };
     static int flag_;
 };
