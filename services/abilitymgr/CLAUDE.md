@@ -294,6 +294,22 @@ interceptorExecuter_->AddInterceptor("MyInterceptor",
     std::make_shared<MyInterceptor>());
 ```
 
+### Interceptor Merge — Design Decisions / Exemptions
+
+The merged interceptor chain is ONE `AbilityInterceptorExecuter` holding ONE `std::vector` of all six interceptors, run at the post-check point (the former `afterCheckExecuter_` was removed). The decisions below are load-bearing; do not reverse them without re-evaluating.
+
+- **EXEMPTION — free-install (P1-1):** `StartAbilityInner` runs `IsStartFreeInstall` → `StartFreeInstall` and returns early before the merged `DoProcess`. This is intentional: for an on-demand-install target the resolve/install path defers interceptor enforcement to the **post-install launch re-entry** (`free_install_manager.cpp:407/450/491` clears `FLAG_INSTALL_ON_DEMAND`, then re-enters `StartAbilityInner`, where `IsStartFreeInstall` is now false and the merged `DoProcess` runs all six). Do not move `DoProcess` before the free-install early-return — the pre-check ScreenUnlock/CrowdTest were no-ops for unresolved targets anyway, and the re-entry guarantees enforcement at launch.
+
+- **DESIGN — remote dispatch runs the chain first (P2-1, fixed):** remote targets must pass the merged interceptor chain BEFORE dispatching — both `StartAbilityInner` (remote block) and `StartAbilityByCallWithErrMsg` run `interceptorExecuter_->DoProcess(...)` immediately before `StartRemoteAbility`/`StartRemoteAbilityByCall`. This keeps the merge invariant "all start paths run the chain before dispatch" and restores master's local policy gate (Control/EDM, which keys off the want's bundleName and needs no local resolution). The param at these sites carries `RemoteDispatchCtx` (marker context, no local `abilityInfo`); the post-check trio — DisposedRule / ExtensionControl / EcologicalRule — no-op on that context and defer to the remote device's own enforcement (they require a locally-resolved target; without the guard ExtensionControl would misblock on empty target info and DisposedRule would launch a local replacement for a remote start). ScreenUnlock / CrowdTest / Control still run, mirroring master's pre-check behavior for remote targets. Do NOT move the dispatch after the resolve: remote targets cannot be resolved locally (`GenerateAbilityRequest` has no remote handling) and would fail with `RESOLVE_ABILITY_ERR`.
+
+- **EXEMPTION — prelaunch WithUI=false (P3-3):** `ExecutePrelaunchInterceptors` builds the interceptor param with `WithUI(false)`. `isWithUI` is the side-effect flag (whether to surface UI / send dialog results); a prelaunch has no UI surface, so `false` is correct. `isVisible` is a separate field (replacement-eligibility for ERMS redirect) with a disjoint reader set — do not conflate the two.
+
+- **BENIGN — ScreenUnlock re-add drift (P2-1, not-a-finding):** `InitInterceptorForScreenUnlock` re-adds ScreenUnlock on a `StartUser` lock event; if it was previously removed (screen-unlock callback at `ams.cpp:10077/10114`), the re-add appends it to the chain end. This drift is benign: ScreenUnlock's block/pass decision is position-independent (`GetTargetAbilityInfo`, `IsScreenLocked()`, `isSystemApp`/extension do not depend on chain order), and no upstream interceptor mutates `param.want` while returning `ERR_OK` (EcologicalRule mutates then returns `ERR_ECOLOGICAL_CONTROL_STATUS`, breaking the chain). So no target that ScreenUnlock-at-front would block is let through at the end. Do not add a front/position mechanism for ScreenUnlock — it is unnecessary and conflicts with the push_back-only vector design.
+
+- **`DoProcess` is non-const ref:** `IAbilityInterceptor::DoProcess(AbilityInterceptorParam& param)` (non-const). EcologicalRule mutates `param.want` in place (the read-back is load-bearing: the production caller reads `interceptorParam.want` after `DoProcess`). New interceptors must match this signature. Do not re-add `const` or `const_cast`.
+
+- **`InterceptorParamBuilder` is move-only:** copy ctor/assign are deleted; `Build()` is `[[nodiscard]]`. Chain setters on temporaries only.
+
 ### Adding a New Manager
 
 1. Create header in `include/my_manager.h`
@@ -313,8 +329,8 @@ interceptorExecuter_->AddInterceptor("MyInterceptor",
 
 Example from `AbilityInterceptorExecuter`:
 ```cpp
-std::recursive_mutex interceptorMapLock_;
-std::unordered_map<std::string, std::shared_ptr<IAbilityInterceptor>> interceptorMap_;
+std::recursive_mutex interceptorListLock_;
+InterceptorList interceptorList_; // std::vector<std::pair<std::string, std::shared_ptr<IAbilityInterceptor>>>
 ```
 
 ## Utility Files

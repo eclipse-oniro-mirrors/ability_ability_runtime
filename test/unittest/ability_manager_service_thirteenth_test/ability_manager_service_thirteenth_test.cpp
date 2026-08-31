@@ -3095,7 +3095,7 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, RequestDialogServiceInner_003, Tes
     abilityMs_->subManagersHelper_ = mockSubManagersHelper;
     sptr<IRemoteObject> token = MockToken(AbilityType::PAGE);
     uint32_t flag = 0;
-    EXPECT_EQ(abilityMs_->RequestDialogServiceInner(want, token, 0, 0), ERR_INVALID_VALUE);
+    EXPECT_EQ(abilityMs_->RequestDialogServiceInner(want, token, 0, 0), RESOLVE_ABILITY_ERR);
 
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest RequestDialogServiceInner_003 end");
 }
@@ -4123,17 +4123,17 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, ProcessLaunchReasonAndController_0
 
 /*
  * Feature: AbilityManagerService
- * Name: ExecuteAfterCheckInterceptors_001
- * Function: ExecuteAfterCheckInterceptors
+ * Name: ExecuteInterceptors_001
+ * Function: ExecuteInterceptors
  * SubFunction: NA
- * FunctionPoints: ExecuteAfterCheckInterceptors returns ERR_NULL_AFTER_CHECK_EXECUTER when afterCheckExecuter_ is null
+ * FunctionPoints: ExecuteInterceptors returns ERR_NULL_INTERCEPTOR_EXECUTER when interceptorExecuter_ is null
  */
-HWTEST_F(AbilityManagerServiceThirteenthTest, ExecuteAfterCheckInterceptors_001, TestSize.Level1)
+HWTEST_F(AbilityManagerServiceThirteenthTest, ExecuteInterceptors_001, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest ExecuteAfterCheckInterceptors_001 start");
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest ExecuteInterceptors_001 start");
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
-    abilityMs_->afterCheckExecuter_ = nullptr; // Ensure it's null
+    abilityMs_->interceptorExecuter_ = nullptr; // Ensure it's null
 
     Want want;
     want.SetElementName("com.ohos.test", "MainAbility");
@@ -4155,9 +4155,9 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, ExecuteAfterCheckInterceptors_001,
     AppExecFwk::AbilityInfo abilityInfo;
     auto eventInfo = abilityMs_->BuildEventInfo(want, DEFAULT_INVAL_VALUE);
 
-    int result = abilityMs_->ExecuteAfterCheckInterceptors(param, abilityRequest, abilityInfo, 0, eventInfo);
-    EXPECT_EQ(result, ERR_NULL_AFTER_CHECK_EXECUTER);
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest ExecuteAfterCheckInterceptors_001 end");
+    int result = abilityMs_->ExecuteInterceptors(param, abilityRequest, abilityInfo, 0, eventInfo);
+    EXPECT_EQ(result, ERR_NULL_INTERCEPTOR_EXECUTER);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest ExecuteInterceptors_001 end");
 }
 
 /*
@@ -4307,7 +4307,7 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_00
  * Name: StartAbilityForAppCloneSelector_003
  * Function: StartAbilityForAppCloneSelector
  * SubFunction: NA
- * FunctionPoints: StartAbilityForAppCloneSelector returns ERR_NULL_AFTER_CHECK_EXECUTER when afterCheckExecuter is null
+ * FunctionPoints: StartAbilityForAppCloneSelector returns ERR_NULL_INTERCEPTOR_EXECUTER when afterCheckExecuter is null
  */
 HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_003, TestSize.Level1)
 {
@@ -4317,7 +4317,7 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_00
 
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
-    abilityMs_->afterCheckExecuter_ = nullptr; // Ensure it's null
+    abilityMs_->interceptorExecuter_ = nullptr; // Ensure it's null
 
     Want want;
     want.SetElementName("com.ohos.test", "MainAbility");
@@ -4361,7 +4361,7 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_00
 
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
-    abilityMs_->afterCheckExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
 
     Want want;
     want.SetElementName("com.ohos.test.blocked", "MainAbility"); // Use blocked bundle name
@@ -4412,7 +4412,7 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_00
 
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
-    abilityMs_->afterCheckExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
     abilityMs_->appExitReasonHelper_ = std::make_shared<AppExitReasonHelper>(nullptr);
 
     Want want;
@@ -4464,7 +4464,7 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_00
 
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
-    abilityMs_->afterCheckExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
     abilityMs_->appExitReasonHelper_ = std::make_shared<AppExitReasonHelper>(nullptr);
 
     Want want;
@@ -4512,7 +4512,7 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_00
 
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
-    abilityMs_->afterCheckExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
     abilityMs_->appExitReasonHelper_ = std::make_shared<AppExitReasonHelper>(nullptr);
 
     // Create mock missionListManager for non-SceneBoard path
@@ -4568,7 +4568,7 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_00
 
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
-    abilityMs_->afterCheckExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
     abilityMs_->appExitReasonHelper_ = std::make_shared<AppExitReasonHelper>(nullptr);
 
     // Create mock missionListManager for non-SceneBoard path
@@ -4623,7 +4623,7 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_00
 
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
-    abilityMs_->afterCheckExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
     abilityMs_->appExitReasonHelper_ = std::make_shared<AppExitReasonHelper>(nullptr);
 
     // Create mock missionListManager for non-SceneBoard path
@@ -4678,7 +4678,7 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_01
 
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
-    abilityMs_->afterCheckExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
     abilityMs_->appExitReasonHelper_ = std::make_shared<AppExitReasonHelper>(nullptr);
 
     // Create mock missionListManager for non-SceneBoard path
@@ -4731,7 +4731,7 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_01
 
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
-    abilityMs_->afterCheckExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
     abilityMs_->appExitReasonHelper_ = std::make_shared<AppExitReasonHelper>(nullptr);
 
     // Create mock missionListManager for non-SceneBoard path

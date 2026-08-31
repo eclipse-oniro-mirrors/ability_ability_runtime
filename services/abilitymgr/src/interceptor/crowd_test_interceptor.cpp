@@ -29,7 +29,7 @@ constexpr const char* MARKET_CROWD_TEST_UIEXTENSION_ABILITY_NAME = "TestAppUseEn
 constexpr const char* APP_BUNDLE_NAME = "appBundleName";
 const std::string UIEXTENSION_SYS_COMMON_UI = "sys/commonUI";
 }
-ErrCode CrowdTestInterceptor::DoProcess(const AbilityInterceptorParam &param)
+ErrCode CrowdTestInterceptor::DoProcess(AbilityInterceptorParam &param)
 {
     if (StartAbilityUtils::skipCrowTest) {
         StartAbilityUtils::skipCrowTest = false;

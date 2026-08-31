@@ -1309,7 +1309,7 @@ HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityInnerFreeInstall_001, TestS
     StartAbilityWrapParam param = { want };
     auto result = abilityMs_->StartAbilityInner(param);
     MyFlag::flag_ = 0;
-    EXPECT_EQ(ERR_NULL_INTERCEPTOR_EXECUTER, result);
+    EXPECT_EQ(RESOLVE_ABILITY_ERR, result);
     abilityMs_->OnStop();
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityInnerFreeInstall_001 end");
 }

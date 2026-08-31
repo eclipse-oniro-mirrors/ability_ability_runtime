@@ -54,7 +54,7 @@ std::string ScreenUnlockInterceptor::GetAppIdentifier(const std::string &bundleN
     return signatureInfo.appIdentifier;
 }
 
-ErrCode ScreenUnlockInterceptor::DoProcess(const AbilityInterceptorParam &param)
+ErrCode ScreenUnlockInterceptor::DoProcess(AbilityInterceptorParam &param)
 {
     AppExecFwk::AbilityInfo targetAbilityInfo;
     if (!GetTargetAbilityInfo(param, targetAbilityInfo)) {
@@ -84,7 +84,9 @@ bool ScreenUnlockInterceptor::GetTargetAbilityInfo(const AbilityInterceptorParam
         return true;
     }
 
-    if (param.fromConnect) {
+    const auto *suCtx = param.GetContext<AbilityInterceptorParam::ScreenUnlockCtx>();
+    bool fromConnect = suCtx && suCtx->fromConnect;
+    if (fromConnect) {
         std::string uri = param.want.GetUriRef().ToString();
         bool isFileUri = (param.want.GetUri().GetScheme() == "file");
         if (!uri.empty() && !isFileUri) {

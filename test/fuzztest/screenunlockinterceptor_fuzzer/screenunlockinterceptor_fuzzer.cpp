@@ -63,9 +63,8 @@ sptr<Token> CreateFuzzAbilityToken()
 
 AbilityInterceptorParam BuildInterceptorParam(Want &want, sptr<IRemoteObject> &token)
 {
-    auto shouldBlockFunc = []() { return false; };
-    return AbilityInterceptorParam(
-        want, REQUEST_CODE_DEFAULT, USER_ID_DEFAULT, false, token, shouldBlockFunc);
+    return
+        InterceptorParamBuilder(want, REQUEST_CODE_DEFAULT, USER_ID_DEFAULT).WithUI(false).CallerToken(token).Build();
 }
 
 void FuzzDoProcess(FuzzedDataProvider &fdp)
@@ -102,8 +101,8 @@ void FuzzQueryTargetAbilityInfo(FuzzedDataProvider &fdp)
     std::string abilityName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
     want.SetElementName(bundleName, abilityName);
     int32_t userId = fdp.ConsumeIntegral<int32_t>();
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param(want, REQUEST_CODE_DEFAULT, userId, false, token, shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, REQUEST_CODE_DEFAULT, userId).WithUI(false).CallerToken(token).Build();
     AbilityInfo targetAbilityInfo;
     interceptor->QueryTargetAbilityInfo(param, targetAbilityInfo);
 }

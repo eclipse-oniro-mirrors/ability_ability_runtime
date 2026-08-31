@@ -142,7 +142,6 @@ std::shared_ptr<AbilityManagerService> AbilityManagerServiceSixthTest::MockAbili
     auto eventHandler = std::make_shared<AbilityEventHandler>(taskHandler, abilityMs);
     abilityMs->taskHandler_ = taskHandler;
     abilityMs->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
-    abilityMs->afterCheckExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
     abilityMs->subManagersHelper_ = std::make_shared<SubManagersHelper>(taskHandler, eventHandler);
     return abilityMs;
 }
@@ -345,7 +344,6 @@ HWTEST_F(AbilityManagerServiceSixthTest, StartAbilityInner_002, TestSize.Level1)
 
     abilityMs->taskHandler_ = MockTaskHandlerWrap::CreateQueueHandler("StartAbilityInner_002");
     abilityMs->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
-    abilityMs->afterCheckExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
     Want want;
     want.SetFlags(Want::FLAG_ABILITY_PREPARE_CONTINUATION);
     StartAbilityWrapParam param = {
@@ -877,16 +875,24 @@ HWTEST_F(AbilityManagerServiceSixthTest, ConnectAbilityCommon_001, TestSize.Leve
     EXPECT_EQ(ret, ERR_WRONG_INTERFACE_CALL);
     want.RemoveParam(UISERVICEHOSTPROXY_KEY);
     MyFlag::systemAppFlag_ = 1;
-    // expect interceptorExecuter_ nullptr return ERR_INVALID_VALUE
+    // refactor deleted early interceptorExecuter_ null-check; DLP check now fires first (flag_=0)
     ret = abilityMs->ConnectAbilityCommon(want, impl, token, ExtensionAbilityType::SERVICE,
         INT_MAX, false);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    // userId=INT_MAX => ConnectLocalAbility => CheckCrossUser(INT_MAX)=false => ERR_CROSS_USER
+    EXPECT_EQ(ret, ERR_CROSS_USER);
+    // userId=-1: IsCrossUserCall(-1)=false (INVALID_USER_ID) so the system-app check is skipped;
+    // VerifyAccountPermission(-1)=ERR_OK (userId<0 branch) so DLP passes; GetValidUserId(-1)=0;
+    // CheckCrossUser(0, SERVICE)=true (JudgeMultiUserConcurrency(0)=true); the empty want cannot be
+    // resolved by BMS in GenerateAbilityRequest -> RESOLVE_ABILITY_ERR.
     ret = abilityMs->ConnectAbilityCommon(want, impl, token, ExtensionAbilityType::SERVICE,
         -1, false);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(ret, RESOLVE_ABILITY_ERR);
+    // UI_SERVICE && INT_MAX: the SERVICE-only system-app check is skipped; DLP passes; UI_SERVICE is
+    // neither DATASHARE nor SERVICE and JudgeMultiUserConcurrency(INT_MAX)=false, so CheckCrossUser
+    // returns false -> ERR_CROSS_USER.
     ret = abilityMs->ConnectAbilityCommon(want, impl, token, AppExecFwk::ExtensionAbilityType::UI_SERVICE,
         INT_MAX, false);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(ret, ERR_CROSS_USER);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest ConnectAbilityCommon_001 end");
 }
 
@@ -967,7 +973,9 @@ HWTEST_F(AbilityManagerServiceSixthTest, ConnectUIExtensionAbility_001, TestSize
     EXPECT_EQ(ret, ERR_INVALID_CALLER);
     sessionInfo->callerToken = nullptr;
     ret = abilityMs->ConnectUIExtensionAbility(want, impl, sessionInfo, -1, connectInfo);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    // refactor deleted early interceptor null-check; ConnectLocalAbility => GenerateExtensionAbilityRequest
+    // => null bundleMgr proxy => RESOLVE_ABILITY_ERR (fires before post interceptor null-check)
+    EXPECT_EQ(ret, RESOLVE_ABILITY_ERR);
     abilityMs->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
     want.SetUri("file://kia-file-uri");
     auto mockBundleMgr = sptr<MockBundleManagerProxy>::MakeSptr(nullptr);
@@ -1770,7 +1778,7 @@ HWTEST_F(AbilityManagerServiceSixthTest, StartUIAbilityByPreInstall_001, TestSiz
     EXPECT_EQ(ret, ATOMIC_SERVICE_MINIMIZED);
     sessionInfo->isMinimizedDuringFreeInstall = false;
     ret = abilityMs->StartUIAbilityByPreInstall(taskInfo);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(ret, RESOLVE_ABILITY_ERR);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest StartUIAbilityByPreInstall_001 end");
 }
 
@@ -1789,7 +1797,7 @@ HWTEST_F(AbilityManagerServiceSixthTest, StartUIAbilityByPreInstallInner_001, Te
     AbilityRuntime::StartParamsBySCB params;
     bool isColdStart = true;
     int32_t ret = abilityMs->StartUIAbilityByPreInstallInner(sessionInfo, -1, params, isColdStart);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(ret, RESOLVE_ABILITY_ERR);
 
     Want want;
     AppExecFwk::AbilityInfo abilityInfo;
@@ -1802,7 +1810,7 @@ HWTEST_F(AbilityManagerServiceSixthTest, StartUIAbilityByPreInstallInner_001, Te
     EXPECT_EQ(ret, ERR_INVALID_CALLER);
     MyFlag::flag_ = 1;
     ret = abilityMs->StartUIAbilityByPreInstallInner(sessionInfo, -1, params, isColdStart);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(ret, RESOLVE_ABILITY_ERR);
     abilityMs->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
     abilityMs->StartUIAbilityByPreInstallInner(sessionInfo, -1, params, isColdStart);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest StartUIAbilityByPreInstallInner_001 end");
@@ -1819,6 +1827,8 @@ HWTEST_F(AbilityManagerServiceSixthTest, StartUIAbilityByPreInstallInner_002, Te
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest StartUIAbilityByPreInstallInner_002 start");
     auto abilityMs = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs, nullptr);
+    // Pin the leaked PermissionVerification flag so the CheckCallPermission mock result is deterministic.
+    MyFlag::flag_ = 1;
     auto sessionInfo = sptr<SessionInfo>::MakeSptr();
     bool isColdStart = true;
     AbilityInfo abilityInfo1;
@@ -1847,16 +1857,21 @@ HWTEST_F(AbilityManagerServiceSixthTest, StartUIAbilityByPreInstallInner_002, Te
     abilityInfo2.applicationInfo.bundleName = "testBundleName";
     EXPECT_CALL(*mockBundleMgr, QueryAbilityInfo(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(DoAll(SetArgReferee<3>(abilityInfo2), Return(true)));
+    // After the refactor CheckCallPermission runs before the interceptorExecuter_ null-check.
+    // CheckStaticCfgPermission is short-circuited to PERMISSION_GRANTED (IsSACall() via flag_=1), then
+    // CheckCallPermission -> CheckCallAbilityPermission returns the mock value flag_=1, which
+    // ConvertToOriginErrorCode passes through as 1 and is returned before the interceptorExecuter_
+    // ternary that previously yielded ERR_INVALID_VALUE.
     ret = abilityMs->StartUIAbilityByPreInstallInner(sessionInfo, -1, params, isColdStart);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(ret, 1);
 
     ret = abilityMs->StartUIAbilityByPreInstallInner(sessionInfo, 1, params, isColdStart);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
-    abilityMs->afterCheckExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    EXPECT_EQ(ret, 1);
+    abilityMs->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
     ret = abilityMs->StartUIAbilityByPreInstallInner(sessionInfo, 1, params, isColdStart);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(ret, 1);
     ret = abilityMs->StartUIAbilityByPreInstallInner(sessionInfo, -1, params, isColdStart);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(ret, 1);
     Mock::VerifyAndClear(mockBundleMgr);
     bundleMgrHelper_->bundleMgr_ = nullptr;
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest StartUIAbilityByPreInstallInner_002 end");
@@ -1942,7 +1957,8 @@ HWTEST_F(AbilityManagerServiceSixthTest, ConnectAbilityCommon_003, TestSize.Leve
     MyFlag::systemAppFlag_ = 1;
     auto ret = abilityMs->ConnectAbilityCommon(want, impl, token, ExtensionAbilityType::UI_SERVICE,
         INT_MAX, false);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    // userId=INT_MAX => ConnectLocalAbility => CheckCrossUser(INT_MAX, UI_SERVICE)=false => ERR_CROSS_USER
+    EXPECT_EQ(ret, ERR_CROSS_USER);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest ConnectAbilityCommon_003 end");
 }
 
@@ -2132,12 +2148,17 @@ HWTEST_F(AbilityManagerServiceSixthTest, StartExtensionAbilityInner_001, TestSiz
     want.SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, appIndex);
     auto result = abilityMs->StartExtensionAbilityInner(want, callerToken, userId, extensionType, checkSystemCaller,
         isImplicit, isDlp);
+    // With leaked flag_=1, IsSACall()=true so CheckDlpForExtension passes (it does NOT return
+    // CHECK_PERMISSION_FAILED). GetAppIndex then runs: appIndex=-1 is not a valid clone index
+    // (IsAppCloneIndex(-1)=false) -> ERR_APP_CLONE_INDEX_INVALID.
     EXPECT_EQ(result, ERR_APP_CLONE_INDEX_INVALID);
     appIndex = 0;
     want.SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, appIndex);
     result = abilityMs->StartExtensionAbilityInner(want, callerToken, userId, extensionType, checkSystemCaller,
         isImplicit, isDlp);
-    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    // appIndex=0 is a valid clone index (IsAppCloneIndex(0)=true); userId=0 so JudgeMultiUserConcurrency(0)=true;
+    // empty want => IsImplicitStartAction => implicitStartProcessor_ null => ERR_IMPLICIT_START_ABILITY_FAIL
+    EXPECT_EQ(result, ERR_IMPLICIT_START_ABILITY_FAIL);
     abilityMs->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
     abilityMs->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
     abilityMs->implicitStartProcessor_ = nullptr;
@@ -2663,10 +2684,12 @@ HWTEST_F(AbilityManagerServiceSixthTest, StartAbilityInner_001, TestSize.Level1)
     want.SetParam("isSelector", true);
     StartAbilityWrapParam param = {
         .want = want,
-        .userId = 100,
+        .userId = 0,
     };
     auto ret = abilityMs->StartAbilityInner(param);
-    EXPECT_EQ(ret, ERR_NULL_INTERCEPTOR_EXECUTER);
+    // refactor deleted early interceptorExecuter_ null-check; with leaked flag_=1 DLP passes,
+    // JudgeMultiUserConcurrency(0)=true; empty want => IsImplicitStartAction => ERR_IMPLICIT_START_ABILITY_FAIL
+    EXPECT_EQ(ret, ERR_IMPLICIT_START_ABILITY_FAIL);
     TAG_LOGI(AAFwkTag::TEST, "StartAbilityInner_001 end");
 }
 
@@ -2683,14 +2706,16 @@ HWTEST_F(AbilityManagerServiceSixthTest, StartAbilityInner_003, TestSize.Level1)
     Want want;
     StartAbilityWrapParam param = {
         .want = want,
-        .userId = 100,
+        .userId = 0,
     };
     auto ret = abilityMs->StartAbilityInner(param);
-    EXPECT_EQ(ret, ERR_NULL_INTERCEPTOR_EXECUTER);
+    // refactor deleted early interceptorExecuter_ null-check; IsDominateScreen(empty)=false,
+    // DLP passes (flag_=1), userId=0 so JudgeMultiUserConcurrency(0)=true, IsImplicitStartAction => ERR_IMPLICIT
+    EXPECT_EQ(ret, ERR_IMPLICIT_START_ABILITY_FAIL);
     std::string dialogSessionId = "dialogSessionIdTest";
     param.want.SetParam("dialogSessionId", dialogSessionId);
     ret = abilityMs->StartAbilityInner(param);
-    EXPECT_EQ(ret, ERR_NULL_INTERCEPTOR_EXECUTER);
+    EXPECT_EQ(ret, ERR_IMPLICIT_START_ABILITY_FAIL);
     TAG_LOGI(AAFwkTag::TEST, "StartAbilityInner_003 end");
 }
 

@@ -70,13 +70,34 @@ HWTEST_F(ExtensionControlInterceptorTest, DoProcess_001, TestSize.Level1)
     int32_t userId = 100;
     bool isWithUI = false;
     sptr<IRemoteObject> token = GetAbilityToken();
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, isWithUI, token,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(token).Build();
     extensionControlInterceptor->DoProcess(param);
-    AbilityInterceptorParam param2 = AbilityInterceptorParam(want, requestCode, userId, isWithUI, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param2 =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     EXPECT_EQ(extensionControlInterceptor->DoProcess(param2), ERR_OK);
+}
+
+/*
+ * Feature: ExtensionControlInterceptorTest
+ * Function: DoProcess
+ * TestPoint: DoProcess with RemoteDispatchCtx defers to the remote device (no-op)
+ */
+HWTEST_F(ExtensionControlInterceptorTest, DoProcess_RemoteDispatch_001, TestSize.Level1)
+{
+    std::shared_ptr<ExtensionControlInterceptor> extensionControlInterceptor =
+        std::make_shared<ExtensionControlInterceptor>();
+    Want want;
+    ElementName element("", "com.example.test", "TestAbility");
+    want.SetElement(element);
+    int requestCode = 1;
+    int32_t userId = 100;
+    bool isWithUI = false;
+    sptr<IRemoteObject> token = GetAbilityToken();
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(token)
+        .Context<AbilityInterceptorParam::RemoteDispatchCtx>({}).Build();
+    EXPECT_EQ(extensionControlInterceptor->DoProcess(param), ERR_OK);
 }
 
 /*
@@ -95,12 +116,11 @@ HWTEST_F(ExtensionControlInterceptorTest, DoProcess_002, TestSize.Level1)
     int32_t userId = 100;
     bool isWithUI = false;
     sptr<IRemoteObject> token = GetAbilityToken();
-    auto shouldBlockFunc = []() { return false; };
     auto callerInfo = std::make_shared<StartAbilityInfo>();
     callerInfo->abilityInfo.type = AppExecFwk::AbilityType::PAGE;
     StartAbilityUtils::callerAbilityInfo = callerInfo;
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, isWithUI, token,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(token).Build();
     EXPECT_EQ(extensionControlInterceptor->DoProcess(param), ERR_OK);
     StartAbilityUtils::callerAbilityInfo.reset();
 }
@@ -121,7 +141,6 @@ HWTEST_F(ExtensionControlInterceptorTest, DoProcess_003, TestSize.Level1)
     int32_t userId = 100;
     bool isWithUI = false;
     sptr<IRemoteObject> token = GetAbilityToken();
-    auto shouldBlockFunc = []() { return false; };
     auto callerInfo = std::make_shared<StartAbilityInfo>();
     callerInfo->abilityInfo.type = AppExecFwk::AbilityType::EXTENSION;
     callerInfo->abilityInfo.bundleName = "com.example.different";
@@ -135,8 +154,8 @@ HWTEST_F(ExtensionControlInterceptorTest, DoProcess_003, TestSize.Level1)
     StartAbilityUtils::startAbilityInfo = targetInfo;
     StatusSingleton::GetInstance().SetHasDefaultAccessFlag(true);
     StatusSingleton::GetInstance().SetExtensionStartDefaultEnable(true);
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, isWithUI, token,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(token).Build();
     EXPECT_EQ(extensionControlInterceptor->DoProcess(param), ERR_OK);
     StartAbilityUtils::callerAbilityInfo.reset();
     StartAbilityUtils::startAbilityInfo.reset();
@@ -156,9 +175,8 @@ HWTEST_F(ExtensionControlInterceptorTest, ProcessInterceptOld_001, TestSize.Leve
     int requestCode = 1;
     int32_t userId = 100;
     bool isWithUI = false;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, isWithUI, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     AppExecFwk::AbilityInfo targetAbilityInfo;
     targetAbilityInfo.applicationInfo.isSystemApp = false;
     targetAbilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::FORM;
@@ -186,9 +204,8 @@ HWTEST_F(ExtensionControlInterceptorTest, ProcessInterceptOld_002, TestSize.Leve
     int requestCode = 1;
     int32_t userId = 100;
     bool isWithUI = false;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, isWithUI, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     AppExecFwk::AbilityInfo targetAbilityInfo;
     targetAbilityInfo.applicationInfo.isSystemApp = true;
     targetAbilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::SERVICE;
@@ -216,9 +233,8 @@ HWTEST_F(ExtensionControlInterceptorTest, ProcessInterceptOld_003, TestSize.Leve
     int requestCode = 1;
     int32_t userId = 100;
     bool isWithUI = false;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, isWithUI, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     AppExecFwk::AbilityInfo targetAbilityInfo;
     targetAbilityInfo.applicationInfo.isSystemApp = true;
     targetAbilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::DATASHARE;
@@ -251,9 +267,8 @@ HWTEST_F(ExtensionControlInterceptorTest, ProcessInterceptNew_001, TestSize.Leve
     int requestCode = 1;
     int32_t userId = 100;
     bool isWithUI = false;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, isWithUI, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     AppExecFwk::AbilityInfo targetAbilityInfo;
     targetAbilityInfo.applicationInfo.isSystemApp = false;
     AppExecFwk::AbilityInfo callerAbilityInfo;
@@ -283,9 +298,8 @@ HWTEST_F(ExtensionControlInterceptorTest, ProcessInterceptNew_002, TestSize.Leve
     int requestCode = 1;
     int32_t userId = 100;
     bool isWithUI = false;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, isWithUI, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     AppExecFwk::AbilityInfo targetAbilityInfo;
     targetAbilityInfo.applicationInfo.isSystemApp = false;
     AppExecFwk::AbilityInfo callerAbilityInfo;
@@ -315,9 +329,8 @@ HWTEST_F(ExtensionControlInterceptorTest, ProcessInterceptNew_003, TestSize.Leve
     int requestCode = 1;
     int32_t userId = 100;
     bool isWithUI = false;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, isWithUI, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     AppExecFwk::AbilityInfo targetAbilityInfo;
     targetAbilityInfo.applicationInfo.isSystemApp = true;
     targetAbilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::SERVICE;
@@ -349,9 +362,8 @@ HWTEST_F(ExtensionControlInterceptorTest, ProcessInterceptNew_004, TestSize.Leve
     int requestCode = 1;
     int32_t userId = 100;
     bool isWithUI = false;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, isWithUI, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     AppExecFwk::AbilityInfo targetAbilityInfo;
     targetAbilityInfo.applicationInfo.isSystemApp = true;
     targetAbilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::SERVICE;
@@ -383,9 +395,8 @@ HWTEST_F(ExtensionControlInterceptorTest, ProcessInterceptNew_005, TestSize.Leve
     int requestCode = 1;
     int32_t userId = 100;
     bool isWithUI = false;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, isWithUI, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     AppExecFwk::AbilityInfo targetAbilityInfo;
     targetAbilityInfo.applicationInfo.isSystemApp = true;
     targetAbilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::DATASHARE;
@@ -416,9 +427,8 @@ HWTEST_F(ExtensionControlInterceptorTest, ProcessInterceptNew_006, TestSize.Leve
     int requestCode = 1;
     int32_t userId = 100;
     bool isWithUI = false;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, isWithUI, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     AppExecFwk::AbilityInfo targetAbilityInfo;
     targetAbilityInfo.applicationInfo.isSystemApp = true;
     targetAbilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::FORM;
@@ -450,9 +460,8 @@ HWTEST_F(ExtensionControlInterceptorTest, ProcessInterceptNew_007, TestSize.Leve
     int requestCode = 1;
     int32_t userId = 100;
     bool isWithUI = false;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, isWithUI, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     AppExecFwk::AbilityInfo targetAbilityInfo;
     targetAbilityInfo.applicationInfo.isSystemApp = true;
     targetAbilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::FORM;
@@ -484,9 +493,8 @@ HWTEST_F(ExtensionControlInterceptorTest, ProcessInterceptNew_008, TestSize.Leve
     int requestCode = 1;
     int32_t userId = 100;
     bool isWithUI = false;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, isWithUI, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     AppExecFwk::AbilityInfo targetAbilityInfo;
     targetAbilityInfo.applicationInfo.isSystemApp = true;
     targetAbilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::FORM;
@@ -515,13 +523,12 @@ HWTEST_F(ExtensionControlInterceptorTest, GetCallerAbilityInfo_001, TestSize.Lev
     int requestCode = 1;
     int32_t userId = 100;
     bool isWithUI = false;
-    auto shouldBlockFunc = []() { return false; };
     sptr<IRemoteObject> token = GetAbilityToken();
     auto callerInfo = std::make_shared<StartAbilityInfo>();
     callerInfo->abilityInfo.type = AppExecFwk::AbilityType::PAGE;
     StartAbilityUtils::callerAbilityInfo = callerInfo;
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, isWithUI, token,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(token).Build();
     AppExecFwk::AbilityInfo callerAbilityInfo;
     bool result = interceptor->GetCallerAbilityInfo(param, callerAbilityInfo);
     StartAbilityUtils::callerAbilityInfo.reset();
@@ -542,15 +549,14 @@ HWTEST_F(ExtensionControlInterceptorTest, GetCallerAbilityInfo_002, TestSize.Lev
     int requestCode = 1;
     int32_t userId = 100;
     bool isWithUI = false;
-    auto shouldBlockFunc = []() { return false; };
     sptr<IRemoteObject> token = GetAbilityToken();
     auto callerInfo = std::make_shared<StartAbilityInfo>();
     callerInfo->abilityInfo.type = AppExecFwk::AbilityType::EXTENSION;
     callerInfo->abilityInfo.bundleName = "com.example.fuzzTest";
     StartAbilityUtils::callerAbilityInfo = callerInfo;
     
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, isWithUI, token,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(token).Build();
     AppExecFwk::AbilityInfo callerAbilityInfo;
     bool result = interceptor->GetCallerAbilityInfo(param, callerAbilityInfo);
     StartAbilityUtils::callerAbilityInfo.reset();
@@ -571,10 +577,9 @@ HWTEST_F(ExtensionControlInterceptorTest, GetCallerAbilityInfo_003, TestSize.Lev
     int requestCode = 1;
     int32_t userId = 100;
     bool isWithUI = false;
-    auto shouldBlockFunc = []() { return false; };
     sptr<IRemoteObject> token = nullptr;
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, isWithUI, token,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(token).Build();
     AppExecFwk::AbilityInfo callerAbilityInfo;
     bool result = interceptor->GetCallerAbilityInfo(param, callerAbilityInfo);
     EXPECT_FALSE(result);
@@ -594,9 +599,8 @@ HWTEST_F(ExtensionControlInterceptorTest, GetTargetAbilityInfo_001, TestSize.Lev
     int requestCode = 1;
     int32_t userId = 100;
     bool isWithUI = false;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, isWithUI, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     auto startAbilityInfo = std::make_shared<StartAbilityInfo>();
     startAbilityInfo->abilityInfo.bundleName = "com.example.target";
     startAbilityInfo->abilityInfo.name = "TargetAbility";
@@ -623,9 +627,8 @@ HWTEST_F(ExtensionControlInterceptorTest, GetTargetAbilityInfo_002, TestSize.Lev
     int requestCode = 1;
     int32_t userId = 100;
     bool isWithUI = false;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, isWithUI, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     StartAbilityUtils::startAbilityInfo.reset();
     AppExecFwk::AbilityInfo targetAbilityInfo;
     bool result = interceptor->GetTargetAbilityInfo(param, targetAbilityInfo);

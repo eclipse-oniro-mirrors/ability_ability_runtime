@@ -2899,7 +2899,7 @@ private:
      * @param eventInfo fault attribution context (may be null).
      * @return ERR_OK to proceed, otherwise the interceptor error to abort the prelaunch.
      */
-    int32_t ExecutePrelaunchAfterCheck(AbilityRequest &abilityRequest, int32_t userId,
+    int32_t ExecutePrelaunchInterceptors(AbilityRequest &abilityRequest, int32_t userId,
         const std::shared_ptr<EventInfo> &eventInfo);
 
     /**
@@ -3009,7 +3009,8 @@ private:
         sptr<UIExtensionAbilityConnectInfo> connectInfo = nullptr,
         uint64_t specifiedFullTokenId = 0,
         int32_t loadTimeout = 0,
-        std::shared_ptr<IndirectCallerInfo> indirectCallerInfo = nullptr);
+        std::shared_ptr<IndirectCallerInfo> indirectCallerInfo = nullptr,
+        bool fromConnect = false);
 
     int DisconnectLocalAbility(const sptr<IAbilityConnection> &connect);
     int32_t HandleExtensionConnectionByUserId(sptr<IAbilityConnection> connect, int32_t userId,
@@ -3025,7 +3026,7 @@ private:
     int32_t ProcessLaunchReasonAndController(const StartAbilityWrapParam &param,
         const std::shared_ptr<EventInfo> eventInfo, const AppExecFwk::AbilityInfo &abilityInfo,
         AbilityRequest &abilityRequest);
-    int32_t ExecuteAfterCheckInterceptors(const StartAbilityWrapParam &param, const AbilityRequest &abilityRequest,
+    int32_t ExecuteInterceptors(const StartAbilityWrapParam &param, const AbilityRequest &abilityRequest,
        const AppExecFwk::AbilityInfo &abilityInfo, int32_t appCloneIndex, const std::shared_ptr<EventInfo> eventInfo);
     void PreprocessRequestParams(const StartAbilityWrapParam &param, AbilityRequest &abilityRequest);
     int32_t ExecuteAbilityStart(const AppExecFwk::AbilityInfo &abilityInfo, int32_t validUserId, bool isGamePrelaunch,
@@ -3732,7 +3733,6 @@ private:
     sptr<IWindowManagerServiceHandler> wmsHandler_;
 #endif
     std::shared_ptr<AbilityInterceptorExecuter> interceptorExecuter_;
-    std::shared_ptr<AbilityInterceptorExecuter> afterCheckExecuter_;
     std::shared_ptr<BlockAllAppStartInterceptor> blockAllAppStartInterceptor_;
 
     AbilityRuntime::InsightIntentParamParser paramParser_;

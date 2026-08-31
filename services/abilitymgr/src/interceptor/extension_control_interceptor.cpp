@@ -24,9 +24,13 @@
 namespace OHOS {
 namespace AAFwk {
 
-ErrCode ExtensionControlInterceptor::DoProcess(const AbilityInterceptorParam &param)
+ErrCode ExtensionControlInterceptor::DoProcess(AbilityInterceptorParam &param)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "call.");
+    if (param.GetContext<AbilityInterceptorParam::RemoteDispatchCtx>() != nullptr) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "remote dispatch, defer to remote device");
+        return ERR_OK;
+    }
     if (param.callerToken == nullptr) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "callerToken is nullptr.");
         return ERR_OK;

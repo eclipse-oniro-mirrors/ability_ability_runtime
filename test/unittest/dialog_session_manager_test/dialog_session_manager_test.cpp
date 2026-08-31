@@ -153,11 +153,11 @@ HWTEST_F(DialogSessionManagerTest, SendDialogResultTest_0200, TestSize.Level1)
 
     dialogSessionManager.SetDialogSessionInfo(TEST_DIALOG_SESSION_ID, dilogSessionInfo, dialogCallerInfo);
     int32_t ret = dialogSessionManager.SendDialogResult(want, TEST_DIALOG_SESSION_ID, isAllowed);
-    EXPECT_EQ(ret, ERR_NULL_INTERCEPTOR_EXECUTER);
+    EXPECT_EQ(ret, ERR_IMPLICIT_START_ABILITY_FAIL);
 
     want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 0);
     ret = dialogSessionManager.SendDialogResult(want, TEST_DIALOG_SESSION_ID, isAllowed);
-    EXPECT_EQ(ret, ERR_NULL_INTERCEPTOR_EXECUTER);
+    EXPECT_EQ(ret, ERR_IMPLICIT_START_ABILITY_FAIL);
     GTEST_LOG_(INFO) << "SendDialogResultTest_0200 end";
 }
 

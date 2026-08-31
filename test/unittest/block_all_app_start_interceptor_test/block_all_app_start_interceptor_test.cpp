@@ -55,109 +55,46 @@ void BlockAllAppStartInterceptorTest::TearDown()
 {}
 
 /**
- * @tc.name: BlockAllAppStartInterceptorTest_DoProcess_001
- * @tc.desc: DoProcess
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(BlockAllAppStartInterceptorTest, DoProcess_001, TestSize.Level1)
-{
-    BlockAllAppStartInterceptor blockAllAppStartInterceptor;
-    Want want;
-    int requestCode = 123;
-    int32_t userId = 1001;
-    bool isWithUI = true;
-    sptr<IRemoteObject> callerToken = nullptr;
-    std::function<bool(void)> shouldBlockAllAppStartFunc = nullptr;
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, callerToken, shouldBlockAllAppStartFunc);
-    auto ret = blockAllAppStartInterceptor.DoProcess(param);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
-}
-
-/**
- * @tc.name: BlockAllAppStartInterceptorTest_DoProcess_002
- * @tc.desc: DoProcess
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(BlockAllAppStartInterceptorTest, DoProcess_002, TestSize.Level1)
-{
-    BlockAllAppStartInterceptor blockAllAppStartInterceptor;
-    Want want;
-    int requestCode = 123;
-    int32_t userId = 1001;
-    bool isWithUI = true;
-    sptr<IRemoteObject> callerToken = nullptr;
-    std::function<bool(void)> shouldBlockAllAppStartFunc = []() -> bool {
-        return true;
-    };
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, callerToken, shouldBlockAllAppStartFunc);
-    auto ret = blockAllAppStartInterceptor.DoProcess(param);
-    EXPECT_EQ(ret, ERR_ALL_APP_START_BLOCKED);
-}
-
-/**
- * @tc.name: BlockAllAppStartInterceptorTest_DoProcess_003
- * @tc.desc: DoProcess
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(BlockAllAppStartInterceptorTest, DoProcess_003, TestSize.Level1)
-{
-    BlockAllAppStartInterceptor blockAllAppStartInterceptor;
-    Want want;
-    int requestCode = 123;
-    int32_t userId = 1001;
-    bool isWithUI = true;
-    sptr<IRemoteObject> callerToken = nullptr;
-    std::function<bool(void)> shouldBlockAllAppStartFunc = []() -> bool {
-        return false;
-    };
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, callerToken, shouldBlockAllAppStartFunc);
-    auto ret = blockAllAppStartInterceptor.DoProcess(param);
-    EXPECT_EQ(ret, ERR_OK);
-}
-
-/**
  * @tc.name: BlockAllAppStartInterceptorTest_Execute_001
- * @tc.desc: Execute without shouldBlockFunc
+ * @tc.desc: Execute with no shouldBlockFunc set (nullptr) returns ERR_INVALID_VALUE
  * @tc.type: FUNC
  * @tc.require:
  */
 HWTEST_F(BlockAllAppStartInterceptorTest, Execute_001, TestSize.Level1)
 {
-    BlockAllAppStartInterceptor interceptor;
-    auto ret = interceptor.Execute();
+    BlockAllAppStartInterceptor blockAllAppStartInterceptor;
+    auto ret = blockAllAppStartInterceptor.Execute();
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
 }
 
 /**
  * @tc.name: BlockAllAppStartInterceptorTest_Execute_002
- * @tc.desc: Execute with shouldBlockFunc returning false
+ * @tc.desc: Execute returns ERR_ALL_APP_START_BLOCKED when shouldBlockFunc returns true
  * @tc.type: FUNC
  * @tc.require:
  */
 HWTEST_F(BlockAllAppStartInterceptorTest, Execute_002, TestSize.Level1)
 {
-    BlockAllAppStartInterceptor interceptor;
-    interceptor.SetShouldBlockFunc([]() { return false; });
-    auto ret = interceptor.Execute();
-    EXPECT_EQ(ret, ERR_OK);
+    BlockAllAppStartInterceptor blockAllAppStartInterceptor;
+    blockAllAppStartInterceptor.SetShouldBlockFunc([]() -> bool { return true; });
+    auto ret = blockAllAppStartInterceptor.Execute();
+    EXPECT_EQ(ret, ERR_ALL_APP_START_BLOCKED);
 }
 
 /**
  * @tc.name: BlockAllAppStartInterceptorTest_Execute_003
- * @tc.desc: Execute with shouldBlockFunc returning true
+ * @tc.desc: Execute returns ERR_OK when shouldBlockFunc returns false
  * @tc.type: FUNC
  * @tc.require:
  */
 HWTEST_F(BlockAllAppStartInterceptorTest, Execute_003, TestSize.Level1)
 {
-    BlockAllAppStartInterceptor interceptor;
-    interceptor.SetShouldBlockFunc([]() { return true; });
-    auto ret = interceptor.Execute();
-    EXPECT_EQ(ret, ERR_ALL_APP_START_BLOCKED);
+    BlockAllAppStartInterceptor blockAllAppStartInterceptor;
+    blockAllAppStartInterceptor.SetShouldBlockFunc([]() -> bool { return false; });
+    auto ret = blockAllAppStartInterceptor.Execute();
+    EXPECT_EQ(ret, ERR_OK);
 }
+
 
 /**
  * @tc.name: BlockAllAppStartInterceptorTest_ExecuteWithRequest_001
@@ -260,49 +197,6 @@ HWTEST_F(BlockAllAppStartInterceptorTest, ExecuteWithRequest_005, TestSize.Level
     int32_t userId = 100;
     auto ret = interceptor.Execute(request, userId);
     EXPECT_EQ(ret, ERR_ALL_APP_START_BLOCKED);
-}
-
-/**
- * @tc.name: BlockAllAppStartInterceptorTest_TwoPathConsistency_001
- * @tc.desc: Execute() and DoProcess() paths return identical verdicts under the same predicate
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(BlockAllAppStartInterceptorTest, TwoPathConsistency_001, TestSize.Level1)
-{
-    BlockAllAppStartInterceptor interceptor;
-    auto blockFlag = std::make_shared<std::atomic<bool>>(false);
-    auto evalCount = std::make_shared<std::atomic<int32_t>>(0);
-    std::function<bool()> shouldBlock = [blockFlag, evalCount]() {
-        evalCount->fetch_add(1);
-        return blockFlag->load();
-    };
-    interceptor.SetShouldBlockFunc(shouldBlock);
-
-    Want want;
-    int requestCode = 123;
-    int32_t userId = 100;
-    bool isWithUI = true;
-    sptr<IRemoteObject> callerToken = nullptr;
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, callerToken, shouldBlock);
-
-    // scenario 1: no block, both paths allow
-    blockFlag->store(false);
-    EXPECT_EQ(interceptor.Execute(), ERR_OK);
-    EXPECT_EQ(interceptor.DoProcess(param), ERR_OK);
-
-    // scenario 2: block, both paths reject
-    blockFlag->store(true);
-    EXPECT_EQ(interceptor.Execute(), ERR_ALL_APP_START_BLOCKED);
-    EXPECT_EQ(interceptor.DoProcess(param), ERR_ALL_APP_START_BLOCKED);
-
-    // scenario 3: flip back to no block, both paths recover
-    blockFlag->store(false);
-    EXPECT_EQ(interceptor.Execute(), ERR_OK);
-    EXPECT_EQ(interceptor.DoProcess(param), ERR_OK);
-
-    // the shared predicate is really consulted on every evaluation
-    EXPECT_GE(evalCount->load(), 6);
 }
 
 /**

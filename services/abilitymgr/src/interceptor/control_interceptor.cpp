@@ -28,7 +28,7 @@ constexpr const char* INTERCEPT_MODULE_NAME = "intercept_moduleName";
 constexpr const char* IS_FROM_PARENTCONTROL = "ohos.ability.isFromParentControl";
 }
 
-ErrCode ControlInterceptor::DoProcess(const AbilityInterceptorParam &param)
+ErrCode ControlInterceptor::DoProcess(AbilityInterceptorParam &param)
 {
     AppExecFwk::AppRunningControlRuleResult controlRule;
     if (CheckControl(param.want, param.userId, controlRule)) {
