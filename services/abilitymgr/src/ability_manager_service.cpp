@@ -7455,6 +7455,11 @@ void AbilityManagerService::RegisterCancelListener(const sptr<IWantSender> &send
     const sptr<IWantReceiver> &receiver)
 {
     TAG_LOGI(AAFwkTag::WANTAGENT, "register cancel listener");
+    if (!PermissionVerification::GetInstance()->IsSACall() &&
+        !PermissionVerification::GetInstance()->IsSystemAppCall()) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "not sa call or system app");
+        return;
+    }
     auto pendingWantManager = GetCurrentPendingWantManager();
     CHECK_POINTER(pendingWantManager);
     CHECK_POINTER(sender);
@@ -7466,6 +7471,11 @@ void AbilityManagerService::UnregisterCancelListener(
     const sptr<IWantSender> &sender, const sptr<IWantReceiver> &receiver)
 {
     TAG_LOGI(AAFwkTag::WANTAGENT, "unregister cancel listener");
+    if (!PermissionVerification::GetInstance()->IsSACall() &&
+        !PermissionVerification::GetInstance()->IsSystemAppCall()) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "not sa call or system app");
+        return;
+    }
     auto pendingWantManager = GetCurrentPendingWantManager();
     CHECK_POINTER(pendingWantManager);
     CHECK_POINTER(sender);
