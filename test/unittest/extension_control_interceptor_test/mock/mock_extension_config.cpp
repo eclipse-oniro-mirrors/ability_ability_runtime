@@ -69,7 +69,8 @@ bool ExtensionConfig::IsExtensionStartThirdPartyAppEnable(const std::string &ext
     return StatusSingleton::GetInstance().isExtensionStartThirdPartyAppEnable_;
 }
 
-bool ExtensionConfig::IsExtensionStartServiceEnable(const std::string &extensionTypeName, const std::string &targetUri)
+bool ExtensionConfig::IsExtensionStartServiceEnable(const std::string &extensionTypeName,
+    const AppExecFwk::ElementName &targetElement)
 {
     return StatusSingleton::GetInstance().isExtensionStartServiceEnable_;
 }
@@ -154,25 +155,25 @@ std::optional<bool> ExtensionConfig::GetSingleAccessFlag(const std::string &exte
 }
 
 bool ExtensionConfig::IsExtensionStartThirdPartyAppEnableNew(const std::string &extensionTypeName,
-    const std::string &targetUri)
+    const AppExecFwk::ElementName &targetElement)
 {
     return StatusSingleton::GetInstance().isExtensionStartThirdPartyAppEnableNew_;
 }
 
 bool ExtensionConfig::IsExtensionStartServiceEnableNew(const std::string &extensionTypeName,
-    const std::string &targetUri)
+    const AppExecFwk::ElementName &targetElement)
 {
     return StatusSingleton::GetInstance().isExtensionStartServiceEnableNew_;
 }
 
 bool ExtensionConfig::IsExtensionStartDefaultEnable(const std::string &extensionTypeName,
-    const std::string &targetUri)
+    const AppExecFwk::ElementName &targetElement)
 {
     return StatusSingleton::GetInstance().isExtensionStartDefaultEnable_;
 }
 
 bool ExtensionConfig::IsExtensionAbilityAccessEnable(const std::string &extensionTypeName,
-    const std::string &targetUri,
+    const AppExecFwk::ElementName &targetElement,
     std::function<std::optional<bool>(const AbilityAccessItem&)> getAccessFlag)
 {
     return true;
