@@ -150,8 +150,8 @@ DisposedRuleResult DisposedRuleInterceptor::CheckControl(const Want &want, int32
                 userId, disposedRuleList, 0));
         }
         if (ret != ERR_OK) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "GetAbilityRunningControlRule failed, err:%{public}d", ret);
-            return DisposedRuleResult::QUERY_FAILED;
+            TAG_LOGW(AAFwkTag::ABILITYMGR, "GetAbilityRunningControlRule failed, err:%{public}d", ret);
+            return DisposedRuleResult::NO_RULE;
         }
         if (disposedRuleList.empty()) {
             TAG_LOGD(AAFwkTag::ABILITYMGR, "Get No DisposedRule");

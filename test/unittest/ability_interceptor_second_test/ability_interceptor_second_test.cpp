@@ -212,7 +212,7 @@ HWTEST_F(AbilityInterceptorSecondTest, DisposedRuleInterceptor_006, TestSize.Lev
 
 /**
  * @tc.name: AbilityInterceptorSecondTest_DisposedRuleInterceptor_007
- * @tc.desc: DisposedRuleInterceptor
+ * @tc.desc: DisposedRuleInterceptor CheckControl with GetAbilityRunningControlRule failed, returns NO_RULE
  * @tc.type: FUNC
  * @tc.require: No
  */
@@ -227,13 +227,13 @@ HWTEST_F(AbilityInterceptorSecondTest, DisposedRuleInterceptor_007, TestSize.Lev
     DisposedRule disposedRule;
     int32_t appIndex = 0;
     auto result = executer->CheckControl(want, userId, disposedRule, appIndex);
-    EXPECT_EQ(result, DisposedRuleResult::QUERY_FAILED);
+    EXPECT_EQ(result, DisposedRuleResult::NO_RULE);
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
 }
 
 /**
  * @tc.name: AbilityInterceptorSecondTest_DisposedRuleInterceptor_008
- * @tc.desc: DisposedRuleInterceptor
+ * @tc.desc: DisposedRuleInterceptor CheckControl with GetAbilityRunningControlRule failed, returns NO_RULE
  * @tc.type: FUNC
  * @tc.require: No
  */
@@ -253,7 +253,7 @@ HWTEST_F(AbilityInterceptorSecondTest, DisposedRuleInterceptor_008, TestSize.Lev
     bool result = executer->FindBlockDisposedRule(want, rules, disposedRule);
     EXPECT_TRUE(result);
     auto controlResult = executer->CheckControl(want, userId, disposedRule, appIndex);
-    EXPECT_EQ(controlResult, DisposedRuleResult::QUERY_FAILED);
+    EXPECT_EQ(controlResult, DisposedRuleResult::NO_RULE);
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
 }
 

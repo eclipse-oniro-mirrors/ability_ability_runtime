@@ -518,7 +518,7 @@ HWTEST_F(DisposedRuleInterceptorTest, CheckControl_002, TestSize.Level1)
 
 /**
  * @tc.name: DisposedRuleInterceptorTest_CheckControl_003
- * @tc.desc: CheckControl
+ * @tc.desc: CheckControl with GetAbilityRunningControlRule failed (cloned app), returns NO_RULE
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -536,13 +536,13 @@ HWTEST_F(DisposedRuleInterceptorTest, CheckControl_003, TestSize.Level1)
     int32_t appCloneIndex = 1;
     AppExecFwk::DisposedRule rule;
     auto ret = interceptor.CheckControl(want, userId, rule, appCloneIndex);
-    EXPECT_EQ(ret, DisposedRuleResult::QUERY_FAILED);
+    EXPECT_EQ(ret, DisposedRuleResult::NO_RULE);
     TAG_LOGI(AAFwkTag::TEST, "CheckControl_003 end");
 }
 
 /**
  * @tc.name: DisposedRuleInterceptorTest_CheckControl_004
- * @tc.desc: CheckControl
+ * @tc.desc: CheckControl with GetAbilityRunningControlRule failed (normal app), returns NO_RULE
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -560,7 +560,7 @@ HWTEST_F(DisposedRuleInterceptorTest, CheckControl_004, TestSize.Level1)
     int32_t appCloneIndex = 0;
     AppExecFwk::DisposedRule rule;
     auto ret = interceptor.CheckControl(want, userId, rule, appCloneIndex);
-    EXPECT_EQ(ret, DisposedRuleResult::QUERY_FAILED);
+    EXPECT_EQ(ret, DisposedRuleResult::NO_RULE);
     TAG_LOGI(AAFwkTag::TEST, "CheckControl_004 end");
 }
 
@@ -1454,7 +1454,7 @@ HWTEST_F(DisposedRuleInterceptorTest, DoProcess_011, TestSize.Level1)
 
 /**
  * @tc.name: DisposedRuleInterceptorTest_DoProcess_012
- * @tc.desc: DoProcess with GetAbilityRunningControlRule IPC failed, CheckControl returns QUERY_FAILED
+ * @tc.desc: DoProcess with GetAbilityRunningControlRule failed, CheckControl returns NO_RULE
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -1475,7 +1475,7 @@ HWTEST_F(DisposedRuleInterceptorTest, DoProcess_012, TestSize.Level1)
     std::function<bool(void)> shouldDisposedRuleFunc = nullptr;
     AbilityInterceptorParam param(want, requestCode, userId, isWithUI, callerToken, shouldDisposedRuleFunc);
     auto ret = interceptor.DoProcess(param);
-    EXPECT_EQ(ret, ERR_QUERY_DISPOSED_RULE_FAILED);
+    EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_012 end");
 }
 
