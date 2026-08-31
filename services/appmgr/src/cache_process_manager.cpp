@@ -137,17 +137,17 @@ bool CacheProcessManager::CheckAndCacheProcess(const std::shared_ptr<AppRunningR
         appRecord->ScheduleCacheProcess();
     }
     auto appInfo = appRecord->GetApplicationInfo();
-    if (appInfo == nullptr) {
+    if (appInfo != nullptr) {
+        std::string eventState = "processEnterCache";
+        auto hisyseventReport = std::make_shared<AAFwk::HisyseventReport>(4);
+        hisyseventReport->InsertParam(EVENT_KEY_VERSION_CODE, appInfo->versionCode);
+        hisyseventReport->InsertParam(EVENT_KEY_VERSION_NAME, appInfo->versionName);
+        hisyseventReport->InsertParam(EVENT_KEY_BUNDLE_NAME, appInfo->bundleName);
+        hisyseventReport->InsertParam(EVENT_KEY_CACHE_STATE, eventState);
+        hisyseventReport->Report("AAFWK", "CACHE_START_APP", HISYSEVENT_BEHAVIOR);
+    } else {
         TAG_LOGE(AAFwkTag::APPMGR, "appInfo nullptr");
-        return false;
     }
-    std::string eventState = "processEnterCache";
-    auto hisyseventReport = std::make_shared<AAFwk::HisyseventReport>(4);
-    hisyseventReport->InsertParam(EVENT_KEY_VERSION_CODE, appInfo->versionCode);
-    hisyseventReport->InsertParam(EVENT_KEY_VERSION_NAME, appInfo->versionName);
-    hisyseventReport->InsertParam(EVENT_KEY_BUNDLE_NAME, appInfo->bundleName);
-    hisyseventReport->InsertParam(EVENT_KEY_CACHE_STATE, eventState);
-    hisyseventReport->Report("AAFWK", "CACHE_START_APP", HISYSEVENT_BEHAVIOR);
     auto notifyCached = [appRecord]() {
         DelayedSingleton<CacheProcessManager>::GetInstance()->CheckAndNotifyCachedState(appRecord);
     };
