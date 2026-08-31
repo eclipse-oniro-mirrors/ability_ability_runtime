@@ -7,6 +7,7 @@
 #include "ability_record.h"
 #include "start_options.h"
 #include "ability_start_setting.h"
+#include "ability_manager_errors.h"
 #include "utils/start_ability_utils.h"
 #include "parameters.h"
 #include "kiosk_manager.h"
@@ -44,21 +45,21 @@ public:
     int ImplicitStartAbility(const Want &want, const StartOptions &startOptions,
         const sptr<IRemoteObject> &callerToken, int32_t userId, int requestCode)
     {
-        return ERR_OK;
+        return RESOLVE_ABILITY_ERR;
     }
     int ImplicitStartAbility(const Want &want, const AbilityStartSetting &startSetting,
         const sptr<IRemoteObject> &callerToken, int32_t userId, int requestCode)
     {
-        return ERR_OK;
+        return RESOLVE_ABILITY_ERR;
     }
     int ImplicitStartExtensionAbility(const Want &want, const sptr<IRemoteObject> &callerToken,
         int32_t userId, ExtensionAbilityType extensionType)
     {
-        return ERR_OK;
+        return RESOLVE_ABILITY_ERR;
     }
     int StartAbilityInner(const StartAbilityWrapParam &param)
     {
-        return ERR_OK;
+        return RESOLVE_ABILITY_ERR;
     }
     void OnStart() {}
     void OnStop() {}

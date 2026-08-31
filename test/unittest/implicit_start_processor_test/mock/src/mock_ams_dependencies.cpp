@@ -7,9 +7,17 @@
 #include "ability_record.h"
 #include "bundle_mgr_helper.h"
 #include "ability_ecological_rule_mgr_service_param.h"
+#include "mock_multi_app_utils_status.h"
 
 namespace OHOS {
 namespace AAFwk {
+
+std::map<std::string, int32_t> MockMultiAppUtilsStatus::preferredIndexMap_ = {};
+
+void MockMultiAppUtilsStatus::Reset()
+{
+    preferredIndexMap_.clear();
+}
 
 AbilityManagerService::AbilityManagerService() = default;
 AbilityManagerService::~AbilityManagerService() = default;
@@ -52,6 +60,11 @@ Want SystemDialogScheduler::GetTipsDialogWant(const sptr<IRemoteObject> &callerT
 
 bool MultiAppUtils::GetPreferredAppCloneIndex(const std::string &bundleName, int32_t userId, int32_t &appIndex)
 {
+    auto it = MockMultiAppUtilsStatus::preferredIndexMap_.find(bundleName);
+    if (it != MockMultiAppUtilsStatus::preferredIndexMap_.end()) {
+        appIndex = it->second;
+        return true;
+    }
     return false;
 }
 }  // namespace AAFwk

@@ -21,9 +21,9 @@ struct AbilityCallerInfo {
     static constexpr int32_t TYPE_INVALID = 0;
     static constexpr int32_t TYPE_ATOM_SERVICE = 1;
     static constexpr int32_t TYPE_HARMONY_APP = 2;
-    static constexpr int32_t LINK_TYPE_DEEP_LINK = 1;
-    static constexpr int32_t LINK_TYPE_WEB_LINK = 2;
-    static constexpr int32_t LINK_TYPE_UNIVERSAL_LINK = 3;
+    static constexpr int32_t LINK_TYPE_UNIVERSAL_LINK = 1;
+    static constexpr int32_t LINK_TYPE_DEEP_LINK = 2;
+    static constexpr int32_t LINK_TYPE_WEB_LINK = 3;
 };
 
 class AbilityEcologicalRuleMgrServiceClient : public RefBase {
