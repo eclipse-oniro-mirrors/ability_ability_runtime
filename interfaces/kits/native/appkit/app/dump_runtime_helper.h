@@ -71,6 +71,9 @@ private:
     static bool CheckOomdumpSwitch();
     static bool Check2CQuota();
     static bool Check2DQuota(bool needDecreaseQuota);
+    static bool CheckRandomTelemetryQuota();
+    static bool IsInFilterList();
+    static bool CheckDumpQuota(const std::string &eventConfig, bool needDecreaseQuota);
     static bool SafeStoll(const std::string &str, long long &value);
     static GetMemLeakStringFunc LoadMemLeakFunc(void **handle);
     static bool GetDumpResult(std::string &dumpResult);
