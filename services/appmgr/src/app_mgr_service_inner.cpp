@@ -13551,19 +13551,19 @@ void AppMgrServiceInner::SaveHyperSnapError(int32_t uid, HyperSnapErrorType errT
     }
 }
 
-bool AppMgrServiceInner::GetHyperSnapLastError(HyperSnapErrorType errType, HyperSnapErrorRecord& record)
+int32_t AppMgrServiceInner::GetHyperSnapLastError(HyperSnapErrorType errType, HyperSnapErrorRecord& record)
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     if (errType != HyperSnapErrorType::CREATE_SNAPSHOT && errType != HyperSnapErrorType::FORK_FROM_SNAPSHOT) {
         TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError invalid error type: %{public}d",
             static_cast<int32_t>(errType));
-        return false;
+        return ERR_INVALID_VALUE;
     }
 
     auto uid = IPCSkeleton::GetCallingUid();
     if (uid < 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError invalid uid: %{public}d", uid);
-        return false;
+        return ERR_INVALID_VALUE;
     }
 
     TAG_LOGD(AAFwkTag::APPMGR, "GetHyperSnapLastError uid: %{public}d, type: %{public}d",
@@ -13588,7 +13588,7 @@ bool AppMgrServiceInner::GetHyperSnapLastError(HyperSnapErrorType errType, Hyper
         TAG_LOGD(AAFwkTag::APPMGR, "No error record found, uid: %{public}d", uid);
     }
 
-    return true;
+    return ERR_OK;
 }
 
 void AppMgrServiceInner::ClearHyperSnapError(int32_t uid, HyperSnapErrorType errType)

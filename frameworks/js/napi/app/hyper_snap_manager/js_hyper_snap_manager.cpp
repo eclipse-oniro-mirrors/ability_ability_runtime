@@ -234,6 +234,12 @@ private:
                     return;
                 }
                 TAG_LOGE(AAFwkTag::APPKIT, "GetHyperSnapLastError failed:%{public}d", *innerErrorCode);
+                if (*innerErrorCode == ERR_INVALID_VALUE) {
+                    task.Reject(env, CreateJsError(env,
+                        static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_PARAM),
+                        "GetLastError failed, errType must be a valid HyperSnapErrorType."));
+                    return;
+                }
                 task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrorCode));
             };
         napi_value lastParam = nullptr;
