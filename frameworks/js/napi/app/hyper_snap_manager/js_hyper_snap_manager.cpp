@@ -203,10 +203,6 @@ private:
         auto record = std::make_shared<AppExecFwk::HyperSnapErrorRecord>();
         auto innerErrorCode = std::make_shared<int32_t>(ERR_OK);
         NapiAsyncTask::ExecuteCallback execute = [errType, innerErrorCode, record]() {
-            if (innerErrorCode == nullptr || record == nullptr) {
-                TAG_LOGE(AAFwkTag::APPKIT, "innerErrorCode or record null");
-                return;
-            }
             auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
             *innerErrorCode = appMgrClient == nullptr
                 ? static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER)
