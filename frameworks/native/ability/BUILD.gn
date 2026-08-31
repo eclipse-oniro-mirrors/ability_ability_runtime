@@ -45,6 +45,7 @@ config("ability_context_public_config") {
 
 ohos_shared_library("ability_context_native") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
 
@@ -189,4 +190,5 @@ ohos_shared_library("cj_ability_context_native") {
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }

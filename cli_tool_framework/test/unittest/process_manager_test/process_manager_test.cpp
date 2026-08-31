@@ -16,6 +16,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <fcntl.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
 #include "cli_error_code.h"
 #include "exec_cmd_param.h"
 #include "exec_tool_param.h"
@@ -43,6 +47,9 @@ public:
     ExecToolParam CreateTestParam(const std::string &toolName, const std::string &subcommand = "");
     ExecCmdParam CreateTestCmdParam(const std::string &cmd);
     ToolInfo CreateTestToolInfo(const std::string &toolName);
+
+private:
+    const char *savedSandboxPath_ = nullptr;
 };
 
 void ProcessManagerTest::SetUpTestCase(void)
@@ -57,12 +64,17 @@ void ProcessManagerTest::TearDownTestCase(void)
 
 void ProcessManagerTest::SetUp()
 {
-    // Reset state before each test
+    // Override sandbox path to a non-existent binary so execvp fails and the child
+    // reaches _exit(EXIT_FAILURE). On a real device /system/bin/claw_sandbox exists
+    // (built by sandbox_manager), which would make execvp succeed and the child exit
+    // with claw_sandbox's own code instead of EXIT_FAILURE.
+    savedSandboxPath_ = ProcessManager::clawSandboxPath_;
+    ProcessManager::clawSandboxPath_ = "/nonexistent/binary_for_unit_test";
 }
 
 void ProcessManagerTest::TearDown()
 {
-    // Cleanup after each test
+    ProcessManager::clawSandboxPath_ = savedSandboxPath_;
 }
 
 ExecToolParam ProcessManagerTest::CreateTestParam(const std::string &toolName, const std::string &subcommand)
@@ -396,7 +408,7 @@ HWTEST_F(ProcessManagerTest, ConstCorrectness_0100, TestSize.Level1)
 
 /**
  * @tc.name: ProcessManager_CreatePipes_0100
- * @tc.desc: Test private pipe creation and cleanup helpers
+ * @tc.desc: Test pipe creation, FD_CLOEXEC enforcement and cleanup helpers
  * @tc.type: FUNC
  */
 HWTEST_F(ProcessManagerTest, CreatePipes_0100, TestSize.Level1)
@@ -412,6 +424,19 @@ HWTEST_F(ProcessManagerTest, CreatePipes_0100, TestSize.Level1)
     EXPECT_NE(record.stderrPipe[0], -1);
     EXPECT_NE(record.stderrPipe[1], -1);
 
+    // Every pipe fd must carry FD_CLOEXEC so it cannot survive execvp into claw_sandbox.
+    auto expectCloexec = [](int fd) {
+        int flags = fcntl(fd, F_GETFD);
+        EXPECT_GE(flags, 0) << "fcntl(F_GETFD) failed fd=" << fd;
+        EXPECT_NE(flags & FD_CLOEXEC, 0) << "fd=" << fd << " missing FD_CLOEXEC";
+    };
+    expectCloexec(record.stdinPipe[0]);
+    expectCloexec(record.stdinPipe[1]);
+    expectCloexec(record.stdoutPipe[0]);
+    expectCloexec(record.stdoutPipe[1]);
+    expectCloexec(record.stderrPipe[0]);
+    expectCloexec(record.stderrPipe[1]);
+
     manager.CloseAllPipes(record);
     EXPECT_EQ(record.stdinPipe[0], -1);
     EXPECT_EQ(record.stdinPipe[1], -1);
@@ -419,28 +444,6 @@ HWTEST_F(ProcessManagerTest, CreatePipes_0100, TestSize.Level1)
     EXPECT_EQ(record.stdoutPipe[1], -1);
     EXPECT_EQ(record.stderrPipe[0], -1);
     EXPECT_EQ(record.stderrPipe[1], -1);
-}
-
-/**
- * @tc.name: ProcessManager_CloseFatherSessionPipes_0100
- * @tc.desc: Test inherited father session pipe cleanup helper
- * @tc.type: FUNC
- */
-HWTEST_F(ProcessManagerTest, CloseFatherSessionPipes_0100, TestSize.Level1)
-{
-    auto& manager = ProcessManager::GetInstance();
-    auto fatherRecord = std::make_shared<SessionRecord>();
-    ASSERT_NE(fatherRecord, nullptr);
-    ASSERT_TRUE(manager.CreatePipes(*fatherRecord));
-
-    manager.CloseFatherSessionPipes({fatherRecord});
-
-    EXPECT_EQ(fatherRecord->stdinPipe[0], -1);
-    EXPECT_EQ(fatherRecord->stdinPipe[1], -1);
-    EXPECT_EQ(fatherRecord->stdoutPipe[0], -1);
-    EXPECT_EQ(fatherRecord->stdoutPipe[1], -1);
-    EXPECT_EQ(fatherRecord->stderrPipe[0], -1);
-    EXPECT_EQ(fatherRecord->stderrPipe[1], -1);
 }
 
 /**
@@ -609,7 +612,8 @@ HWTEST_F(ProcessManagerTest, CreateShellProcess_0500, TestSize.Level1)
 
 /**
  * @tc.name: ProcessManager_CreateShellProcess_0700
- * @tc.desc: Test CreateShellProcess with father session records closes father pipes
+ * @tc.desc: CreateShellProcess tolerates another session's open pipes lingering in the process;
+ *           fd hygiene now relies on O_CLOEXEC + CloseNonStdFds, not a father-session list
  * @tc.type: FUNC
  */
 HWTEST_F(ProcessManagerTest, CreateShellProcess_0700, TestSize.Level1)
@@ -618,7 +622,9 @@ HWTEST_F(ProcessManagerTest, CreateShellProcess_0700, TestSize.Level1)
 
     auto& manager = ProcessManager::GetInstance();
 
-    // Create a father session with open pipes
+    // Another session's pipes stay open in this process (simulating a concurrent session B).
+    // Their fds are CLOEXEC and will be swept by CloseNonStdFds before execvp, so they must
+    // not need to be passed in any father-session list.
     auto fatherRecord = std::make_shared<SessionRecord>();
     ASSERT_NE(fatherRecord, nullptr);
     fatherRecord->sessionId = "father_shell_session";
@@ -633,9 +639,10 @@ HWTEST_F(ProcessManagerTest, CreateShellProcess_0700, TestSize.Level1)
     record->sessionId = "shell_father_session";
     record->toolName = "shell";
 
-    int32_t result = manager.CreateShellProcess(param, sandboxConfig, record, {fatherRecord});
+    int32_t result = manager.CreateShellProcess(param, sandboxConfig, record);
 
     EXPECT_EQ(result, ERR_OK);
+    manager.CloseAllPipes(*fatherRecord);
 
     GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_0700 end";
 }
@@ -693,25 +700,151 @@ HWTEST_F(ProcessManagerTest, CreateShellProcess_0900, TestSize.Level1)
     GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_0900 end";
 }
 
-// ==================== SetParentHapTokenId Tests ====================
+// ==================== Child Lifecycle (async-signal-safe exit) Tests ====================
+// These verify the post-fork child block reaches execvp/_exit without hanging. Before
+// Patch B the child called malloc/HiLog between fork and execvp, risking deadlock when
+// another thread held the lock at fork time. The child block is now async-signal-safe;
+// these waitpid-based tests guard against regressions that could make the child hang.
 
 /**
- * @tc.name: ProcessManager_SetParentHapTokenId_0100
- * @tc.desc: Test SetParentHapTokenId returns false when access_token_id device is available
+ * @tc.name: ProcessManager_CreateChildProcess_ChildExitsOnExecvpFailure_0100
+ * @tc.desc: CreateChildProcess child reaches execvp and _exit(EXIT_FAILURE) without hanging
  * @tc.type: FUNC
  */
-HWTEST_F(ProcessManagerTest, SetParentHapTokenId_0100, TestSize.Level1)
+HWTEST_F(ProcessManagerTest, CreateChildProcess_ChildExitsOnExecvpFailure_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "ProcessManager_SetParentHapTokenId_0100 start";
+    GTEST_LOG_(INFO) << "ProcessManager_CreateChildProcess_ChildExitsOnExecvpFailure_0100 start";
 
-    const auto& manager = ProcessManager::GetInstance();
+    auto& manager = ProcessManager::GetInstance();
+    ExecToolParam param = CreateTestParam("exit_test");
+    std::string sandboxConfig = "/etc/claw/test_config.json";
+    ToolInfo toolInfo = CreateTestToolInfo("exit_test");
 
-    // In test environment /dev/access_token_id does not exist, open fails and returns false.
-    // On a real OpenHarmony device with the access_token_id driver, this may return true.
-    bool result = manager.SetParentHapTokenId(12345);
-    EXPECT_TRUE(result);
+    auto record = std::make_shared<SessionRecord>();
+    ASSERT_NE(record, nullptr);
+    record->sessionId = "exit_test";
+    record->toolName = "exit_test";
 
-    GTEST_LOG_(INFO) << "ProcessManager_SetParentHapTokenId_0100 end";
+    ASSERT_EQ(manager.CreateChildProcess(param, sandboxConfig, toolInfo, record), ERR_OK);
+    ASSERT_GT(record->processId, 0);
+
+    // SetUp overrides clawSandboxPath_ to a non-existent binary, so the child's execvp
+    // fails and it must reach _exit(EXIT_FAILURE) via the async-signal-safe path
+    // (write + _exit). waitpid succeeding + WIFEXITED proves the child block did not hang.
+    int status = 0;
+    ASSERT_EQ(waitpid(record->processId, &status, 0), record->processId);
+    EXPECT_TRUE(WIFEXITED(status)) << "child did not exit cleanly (hung or signaled)";
+    EXPECT_EQ(WEXITSTATUS(status), EXIT_FAILURE);
+
+    GTEST_LOG_(INFO) << "ProcessManager_CreateChildProcess_ChildExitsOnExecvpFailure_0100 end";
+}
+
+/**
+ * @tc.name: ProcessManager_CreateShellProcess_ChildExitsOnExecvpFailure_0100
+ * @tc.desc: CreateShellProcess child reaches execvp and _exit(EXIT_FAILURE) without hanging
+ * @tc.type: FUNC
+ */
+HWTEST_F(ProcessManagerTest, CreateShellProcess_ChildExitsOnExecvpFailure_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_ChildExitsOnExecvpFailure_0100 start";
+
+    auto& manager = ProcessManager::GetInstance();
+    ExecCmdParam param = CreateTestCmdParam("echo hi");
+    std::string sandboxConfig = "/etc/claw/test_config.json";
+
+    auto record = std::make_shared<SessionRecord>();
+    ASSERT_NE(record, nullptr);
+    record->sessionId = "shell_exit_test";
+
+    ASSERT_EQ(manager.CreateShellProcess(param, sandboxConfig, record), ERR_OK);
+    ASSERT_GT(record->processId, 0);
+
+    // SetUp overrides clawSandboxPath_ to a non-existent binary. The child first opens
+    // /dev/access_token_id (absent in test env -> open fails, skipped), then reaches
+    // execvp which fails (non-existent path) -> _exit(EXIT_FAILURE).
+    int status = 0;
+    ASSERT_EQ(waitpid(record->processId, &status, 0), record->processId);
+    EXPECT_TRUE(WIFEXITED(status)) << "child did not exit cleanly (hung or signaled)";
+    EXPECT_EQ(WEXITSTATUS(status), EXIT_FAILURE);
+
+    GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_ChildExitsOnExecvpFailure_0100 end";
+}
+
+// ==================== CloseNonStdFds Tests ====================
+
+/**
+ * @tc.name: ProcessManager_CloseNonStdFds_ClosesInheritedFd_0100
+ * @tc.desc: CloseNonStdFds closes an inherited non-CLOEXEC fd in the forked child
+ * @tc.type: FUNC
+ */
+HWTEST_F(ProcessManagerTest, CloseNonStdFds_ClosesInheritedFd_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ProcessManager_CloseNonStdFds_ClosesInheritedFd_0100 start";
+
+    // Open a non-CLOEXEC fd that the child will inherit; the sweep must close it.
+    int dummy = open("/dev/null", O_RDWR);
+    ASSERT_GE(dummy, 0);
+    ASSERT_EQ(fcntl(dummy, F_GETFD) & FD_CLOEXEC, 0) << "precondition: dummy fd must be non-CLOEXEC";
+
+    pid_t pid = fork();
+    ASSERT_GE(pid, 0) << "fork failed: " << errno;
+    if (pid == 0) {
+        // CloseNonStdFds should close the inherited dummy fd. The child only uses
+        // async-signal-safe calls (getrlimit/close/fcntl/_exit) afterwards.
+        ProcessManager::GetInstance().CloseNonStdFds();
+        int rc = fcntl(dummy, F_GETFD); // -1 with EBADF means closed
+        _exit(rc == -1 ? 0 : 1);        // 0 = closed (pass), 1 = still open (fail)
+    }
+
+    int status = 0;
+    ASSERT_EQ(waitpid(pid, &status, 0), pid);
+    ASSERT_TRUE(WIFEXITED(status));
+    EXPECT_EQ(WEXITSTATUS(status), 0) << "dummy fd was not closed by CloseNonStdFds";
+    close(dummy);
+
+    GTEST_LOG_(INFO) << "ProcessManager_CloseNonStdFds_ClosesInheritedFd_0100 end";
+}
+
+/**
+ * @tc.name: ProcessManager_CloseNonStdFds_PreservesStdio_0100
+ * @tc.desc: CloseNonStdFds preserves stdin/stdout/stderr so the sandbox keeps its three streams
+ * @tc.type: FUNC
+ */
+HWTEST_F(ProcessManagerTest, CloseNonStdFds_PreservesStdio_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ProcessManager_CloseNonStdFds_PreservesStdio_0100 start";
+
+    int pipefd[2] = {-1, -1};
+    ASSERT_EQ(pipe(pipefd), 0) << "pipe failed: " << errno;
+
+    pid_t pid = fork();
+    ASSERT_GE(pid, 0) << "fork failed: " << errno;
+    if (pid == 0) {
+        close(pipefd[0]); // child does not read
+        // Redirect stdout onto the pipe write end so the child can still report after the sweep.
+        dup2(pipefd[1], STDOUT_FILENO);
+        close(pipefd[1]);
+        // The sweep must NOT close stdin/stdout/stderr (0/1/2).
+        ProcessManager::GetInstance().CloseNonStdFds();
+        // If stdout (fd 1) survived, this write reaches the parent; otherwise EBADF.
+        const char msg[] = "ok";
+        ssize_t n = write(STDOUT_FILENO, msg, sizeof(msg) - 1);
+        _exit(n == static_cast<ssize_t>(sizeof(msg) - 1) ? 0 : 1);
+    }
+
+    close(pipefd[1]); // parent does not write
+    char buf[8] = {0};
+    ssize_t n = read(pipefd[0], buf, sizeof(buf) - 1);
+    close(pipefd[0]);
+    ASSERT_GE(n, 0) << "parent read failed: " << errno;
+    EXPECT_STREQ(buf, "ok") << "stdout (fd 1) did not survive CloseNonStdFds";
+
+    int status = 0;
+    ASSERT_EQ(waitpid(pid, &status, 0), pid);
+    ASSERT_TRUE(WIFEXITED(status));
+    EXPECT_EQ(WEXITSTATUS(status), 0);
+
+    GTEST_LOG_(INFO) << "ProcessManager_CloseNonStdFds_PreservesStdio_0100 end";
 }
 
 } // namespace CliTool

@@ -32,6 +32,7 @@
 namespace OHOS {
 namespace AbilityRuntime {
 struct LoadParam;
+struct StartSpecifiedParam;
 }
 namespace AppExecFwk {
 class IAmsMgr : public IRemoteBroker {
@@ -286,7 +287,7 @@ public:
      * @param requestId request id to callback
      */
     virtual void StartSpecifiedAbility(const AAFwk::Want &want, const AppExecFwk::AbilityInfo &abilityInfo,
-        int32_t requestId = 0, const std::string &customProcess = "", bool isWindowStagePreload = false) = 0;
+        const AbilityRuntime::StartSpecifiedParam &param) = 0;
 
     /**
      * Register response of start specified ability.
@@ -338,10 +339,11 @@ public:
      * @param killId Kill reason enum.
      * @param killMsg Kill message.
      * @param innerMsg Inner message.
+     * @param reason reason enum
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int32_t NotifyAppMgrRecordExitReasonCompability(
-        int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg) = 0;
+        int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg, int32_t reason) = 0;
 
     /**
      * Set enable start process flag by userId

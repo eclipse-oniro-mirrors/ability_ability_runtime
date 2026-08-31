@@ -466,6 +466,7 @@ public:
         if (env == nullptr || object == nullptr) {
             return;
         }
+        std::lock_guard<std::recursive_mutex> lock(etsObjectLock_);
         ani_status status = env->GlobalReference_Create(object, &etsConnectionObject_);
         if (status != ANI_OK) {
             TAG_LOGE(AAFwkTag::SER_ROUTER, "GlobalReference_Create failed: %{public}d", status);
@@ -482,10 +483,7 @@ public:
     {
         bool isAttachThread = false;
         ani_env *env = AttachEnv(isAttachThread);
-        if (env == nullptr || etsConnectionObject_ == nullptr) {
-            if (env != nullptr) {
-                AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);
-            }
+        if (env == nullptr) {
             return;
         }
         HandleOnAbilityConnectDone(env, element, remoteObject, resultCode);
@@ -508,29 +506,27 @@ public:
     {
         bool isAttachThread = false;
         ani_env *env = AttachEnv(isAttachThread);
-        if (env == nullptr || etsConnectionObject_ == nullptr) {
-            if (env != nullptr) {
-                AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);
-            }
+        if (env == nullptr) {
             RemoveConnectionObject();
             return;
         }
-        ani_object object = reinterpret_cast<ani_object>(etsConnectionObject_);
-        if (object == nullptr) {
-            AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);
-            RemoveConnectionObject();
-            return;
-        }
-        ani_status status = ANI_ERROR;
-        ani_ref funRef = nullptr;
-        if ((status = env->Object_GetPropertyByName_Ref(object, "onFailed", &funRef)) == ANI_OK &&
-            AppExecFwk::IsValidProperty(env, funRef)) {
-            ani_object errorCodeObj = AppExecFwk::CreateInt(env, static_cast<ani_int>(errorCode));
-            ani_ref result = nullptr;
-            std::vector<ani_ref> argv = { errorCodeObj };
-            if ((status = env->FunctionalObject_Call(reinterpret_cast<ani_fn_object>(funRef), ARGC_ONE, argv.data(),
-                &result)) != ANI_OK) {
-                TAG_LOGE(AAFwkTag::SER_ROUTER, "Failed to call onFailed, status: %{public}d", status);
+        // Lock only across snapshot + use; tear down after release (no nested map-lock).
+        {
+            std::lock_guard<std::recursive_mutex> lock(etsObjectLock_);
+            ani_object object = reinterpret_cast<ani_object>(etsConnectionObject_);
+            if (object != nullptr) {
+                ani_status status = ANI_ERROR;
+                ani_ref funRef = nullptr;
+                if ((status = env->Object_GetPropertyByName_Ref(object, "onFailed", &funRef)) == ANI_OK &&
+                    AppExecFwk::IsValidProperty(env, funRef)) {
+                    ani_object errorCodeObj = AppExecFwk::CreateInt(env, static_cast<ani_int>(errorCode));
+                    ani_ref result = nullptr;
+                    std::vector<ani_ref> argv = { errorCodeObj };
+                    if ((status = env->FunctionalObject_Call(reinterpret_cast<ani_fn_object>(funRef), ARGC_ONE,
+                        argv.data(), &result)) != ANI_OK) {
+                        TAG_LOGE(AAFwkTag::SER_ROUTER, "Failed to call onFailed, status: %{public}d", status);
+                    }
+                }
             }
         }
         AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);
@@ -549,6 +545,8 @@ private:
     void HandleOnAbilityConnectDone(ani_env *env, const AppExecFwk::ElementName &element,
         const sptr<IRemoteObject> &remoteObject, int resultCode)
     {
+        // Lock across snapshot + onConnect call so the handle can't be deleted mid-use.
+        std::lock_guard<std::recursive_mutex> lock(etsObjectLock_);
         ani_object object = reinterpret_cast<ani_object>(etsConnectionObject_);
         if (object == nullptr) {
             return;
@@ -571,26 +569,23 @@ private:
 
     void HandleOnAbilityDisconnectDone(ani_env *env, const AppExecFwk::ElementName &element, int resultCode)
     {
-        if (etsConnectionObject_ == nullptr) {
-            RemoveConnectionObject();
-            return;
-        }
-        ani_object object = reinterpret_cast<ani_object>(etsConnectionObject_);
-        if (object == nullptr) {
-            TAG_LOGE(AAFwkTag::SER_ROUTER, "null etsConnectionObject_");
-            RemoveConnectionObject();
-            return;
-        }
-        ani_status status = ANI_ERROR;
-        ani_ref funRef = nullptr;
-        if ((status = env->Object_GetPropertyByName_Ref(object, "onDisconnect",
-            &funRef)) == ANI_OK && AppExecFwk::IsValidProperty(env, funRef)) {
-            ani_ref refElement = AppExecFwk::WrapElementName(env, element);
-            ani_ref result = nullptr;
-            std::vector<ani_ref> argv = { refElement };
-            if ((status = env->FunctionalObject_Call(reinterpret_cast<ani_fn_object>(funRef), ARGC_ONE,
-                argv.data(), &result)) != ANI_OK) {
-                TAG_LOGE(AAFwkTag::SER_ROUTER, "Failed to call onDisconnect, status: %{public}d", status);
+        // Lock only across snapshot + use; tear down after release (no nested map-lock).
+        {
+            std::lock_guard<std::recursive_mutex> lock(etsObjectLock_);
+            ani_object object = reinterpret_cast<ani_object>(etsConnectionObject_);
+            if (object != nullptr) {
+                ani_status status = ANI_ERROR;
+                ani_ref funRef = nullptr;
+                if ((status = env->Object_GetPropertyByName_Ref(object, "onDisconnect",
+                    &funRef)) == ANI_OK && AppExecFwk::IsValidProperty(env, funRef)) {
+                    ani_ref refElement = AppExecFwk::WrapElementName(env, element);
+                    ani_ref result = nullptr;
+                    std::vector<ani_ref> argv = { refElement };
+                    if ((status = env->FunctionalObject_Call(reinterpret_cast<ani_fn_object>(funRef), ARGC_ONE,
+                        argv.data(), &result)) != ANI_OK) {
+                        TAG_LOGE(AAFwkTag::SER_ROUTER, "Failed to call onDisconnect, status: %{public}d", status);
+                    }
+                }
             }
         }
         RemoveConnectionObject();
@@ -598,12 +593,16 @@ private:
 
     void RemoveConnectionObject()
     {
+        // Map erase + connectionId_ reset under g_serviceConnectionsLock;
+        // handle delete under etsObjectLock_ (no nesting).
         {
-            std::lock_guard<std::mutex> lock(g_serviceConnectionsLock);
+            std::lock_guard<std::mutex> mapLock(g_serviceConnectionsLock);
             if (connectionId_ != INVALID_CONNECT_ID) {
                 g_serviceConnections.erase(connectionId_);
+                connectionId_ = INVALID_CONNECT_ID;
             }
         }
+        std::lock_guard<std::recursive_mutex> lock(etsObjectLock_);
         bool isAttachThread = false;
         ani_env *env = AttachEnv(isAttachThread);
         if (env != nullptr && etsConnectionObject_ != nullptr) {
@@ -613,12 +612,12 @@ private:
         if (env != nullptr) {
             AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);
         }
-        connectionId_ = INVALID_CONNECT_ID;
     }
 
     ani_vm *etsVm_ = nullptr;
     ani_ref etsConnectionObject_ = nullptr;
     int64_t connectionId_ = INVALID_CONNECT_ID;
+    std::recursive_mutex etsObjectLock_; // serializes etsConnectionObject_ set/use/delete
 };
 
 int64_t InsertServiceConnection(const sptr<EtsAgentServiceConnection> &connection)
@@ -700,12 +699,26 @@ void EtsAgentManager::GetAllAgentCards(ani_env *env, ani_object asyncCallback)
     }
     if (cards.empty()) {
         TAG_LOGW(AAFwkTag::SER_ROUTER, "empty cards");
+        ani_object emptyArray = CreateEmptyArray(env);
+        if (emptyArray == nullptr) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "CreateEmptyArray failed");
+            AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
+                EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER), nullptr);
+            return;
+        }
         AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
-            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_OK), CreateEmptyArray(env));
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_OK), emptyArray);
+        return;
+    }
+    ani_object cardArray = CreateEtsAgentCardArray(env, cards);
+    if (cardArray == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "CreateEtsAgentCardArray failed");
+        AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER), nullptr);
         return;
     }
     AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
-        EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_OK), CreateEtsAgentCardArray(env, cards));
+        EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_OK), cardArray);
 }
 
 void EtsAgentManager::GetAgentCardsByBundleName(ani_env *env, ani_string aniBundleName, ani_object asyncCallback)
@@ -735,12 +748,26 @@ void EtsAgentManager::GetAgentCardsByBundleName(ani_env *env, ani_string aniBund
     }
     if (cards.empty()) {
         TAG_LOGW(AAFwkTag::SER_ROUTER, "empty cards");
+        ani_object emptyArray = CreateEmptyArray(env);
+        if (emptyArray == nullptr) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "CreateEmptyArray failed");
+            AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
+                EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER), nullptr);
+            return;
+        }
         AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
-            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_OK), CreateEmptyArray(env));
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_OK), emptyArray);
+        return;
+    }
+    ani_object cardArray = CreateEtsAgentCardArray(env, cards);
+    if (cardArray == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "CreateEtsAgentCardArray failed");
+        AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER), nullptr);
         return;
     }
     AsyncCallback(env, SIGNATURE_AGENT_ASYNC_CALLBACK_WRAPPER, asyncCallback,
-        EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_OK), CreateEtsAgentCardArray(env, cards));
+        EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_OK), cardArray);
 }
 
 void EtsAgentManager::GetAgentCardByAgentId(ani_env *env, ani_string aniBundleName, ani_string aniAgentId,
@@ -904,8 +931,9 @@ void EtsAgentManager::ConnectAgentExtensionAbility(ani_env *env, ani_object aniW
         return;
     }
 
-    TAG_LOGI(AAFwkTag::SER_ROUTER, "Connecting to: %{public}s.%{public}s",
-        want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str());
+    TAG_LOGI(AAFwkTag::SER_ROUTER, "Connecting to: %{public}s.%{public}s, agentId:%{public}s",
+        want.GetElement().GetBundleName().c_str(), want.GetElement().GetAbilityName().c_str(),
+        agentId.c_str());
 
     want.SetParam(AGENTID_KEY, agentId);
     int32_t currentType = static_cast<int32_t>(AgentCardType::APP);

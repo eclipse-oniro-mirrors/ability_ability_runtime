@@ -27,6 +27,14 @@ ohos_unittest("insight_intent_rdb_storage_mgr_test") {
   }
   module_out_path = module_output_path
 
+  cflags = [
+    "-Dprivate=public",
+    "-Dprotected=public",
+  ]
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
+
   include_dirs = [
     "${ability_runtime_abilitymgr_path}/include",
     "${ability_runtime_abilitymgr_path}/src",

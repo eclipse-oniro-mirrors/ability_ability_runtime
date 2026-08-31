@@ -386,6 +386,403 @@ HWTEST_F(FilePermissionManagerTest, CheckDocsUriPermission_AgentFileAccess_006, 
 }
 
 /*
+ * Feature: CheckUriPersistentPermission
+ * Function: CheckUriPersistentPermission
+ * SubFunction: NA
+ * FunctionPoints: Desktop dir itself shareable with RW_DESKTOP permission
+ */
+HWTEST_F(FilePermissionManagerTest, CheckFileManagerUriPermission_DesktopDirItself_001, TestSize.Level1)
+{
+    std::vector<Uri> uriVec;
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Desktop"));
+    uint32_t callerTokenId = 1002;
+    uint32_t flag = 1;
+    MyFlag::permissionReadWriteDesktop_ = true;
+    std::vector<PolicyInfo> pathPolicies;
+    auto ret = FilePermissionManager::CheckUriPersistentPermission(uriVec, callerTokenId, flag, "", pathPolicies);
+    ASSERT_EQ(ret.size(), uriVec.size());
+    EXPECT_TRUE(ret[0]);
+}
+
+/*
+ * Feature: CheckUriPersistentPermission
+ * Function: CheckUriPersistentPermission
+ * SubFunction: NA
+ * FunctionPoints: Desktop child path shareable with RW_DESKTOP permission
+ */
+HWTEST_F(FilePermissionManagerTest, CheckFileManagerUriPermission_DesktopChild_001, TestSize.Level1)
+{
+    std::vector<Uri> uriVec;
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Desktop/test.txt"));
+    uint32_t callerTokenId = 1002;
+    uint32_t flag = 1;
+    MyFlag::permissionReadWriteDesktop_ = true;
+    std::vector<PolicyInfo> pathPolicies;
+    auto ret = FilePermissionManager::CheckUriPersistentPermission(uriVec, callerTokenId, flag, "", pathPolicies);
+    ASSERT_EQ(ret.size(), uriVec.size());
+    EXPECT_TRUE(ret[0]);
+}
+
+/*
+ * Feature: CheckUriPersistentPermission
+ * Function: CheckUriPersistentPermission
+ * SubFunction: NA
+ * FunctionPoints: sibling dir with Desktop prefix (Desktop2) denied even with RW_DESKTOP
+ */
+HWTEST_F(FilePermissionManagerTest, CheckFileManagerUriPermission_DesktopSibling_001, TestSize.Level1)
+{
+    std::vector<Uri> uriVec;
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Desktop2/test.txt"));
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Deskto/test.txt"));
+    uint32_t callerTokenId = 1002;
+    uint32_t flag = 1;
+    MyFlag::permissionReadWriteDesktop_ = true;
+    std::vector<PolicyInfo> pathPolicies;
+    auto ret = FilePermissionManager::CheckUriPersistentPermission(uriVec, callerTokenId, flag, "", pathPolicies);
+    ASSERT_EQ(ret.size(), uriVec.size());
+    EXPECT_FALSE(ret[0]);
+    EXPECT_FALSE(ret[1]);
+}
+
+/*
+ * Feature: CheckUriPersistentPermission
+ * Function: CheckUriPersistentPermission
+ * SubFunction: NA
+ * FunctionPoints: sibling dir with Documents prefix (DocumentsX) denied even with RW_DOCUMENTS
+ */
+HWTEST_F(FilePermissionManagerTest, CheckFileManagerUriPermission_DocumentsSibling_001, TestSize.Level1)
+{
+    std::vector<Uri> uriVec;
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/DocumentsX/test.txt"));
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Documents/test.txt"));
+    uint32_t callerTokenId = 1002;
+    uint32_t flag = 1;
+    MyFlag::permissionReadWriteDocuments_ = true;
+    std::vector<PolicyInfo> pathPolicies;
+    auto ret = FilePermissionManager::CheckUriPersistentPermission(uriVec, callerTokenId, flag, "", pathPolicies);
+    ASSERT_EQ(ret.size(), uriVec.size());
+    EXPECT_FALSE(ret[0]);
+    EXPECT_TRUE(ret[1]);
+}
+
+/*
+ * Feature: CheckUriPersistentPermission
+ * Function: CheckUriPersistentPermission
+ * SubFunction: NA
+ * FunctionPoints: sibling dir with Download prefix (Downloader) denied even with RW_DOWNLOAD
+ */
+HWTEST_F(FilePermissionManagerTest, CheckFileManagerUriPermission_DownloadSibling_001, TestSize.Level1)
+{
+    std::vector<Uri> uriVec;
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Downloader/test.txt"));
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Download/test.txt"));
+    uint32_t callerTokenId = 1002;
+    uint32_t flag = 1;
+    MyFlag::permissionReadWriteDownload_ = true;
+    std::vector<PolicyInfo> pathPolicies;
+    auto ret = FilePermissionManager::CheckUriPersistentPermission(uriVec, callerTokenId, flag, "", pathPolicies);
+    ASSERT_EQ(ret.size(), uriVec.size());
+    EXPECT_FALSE(ret[0]);
+    EXPECT_TRUE(ret[1]);
+}
+
+/*
+ * Feature: CheckUriPersistentPermission
+ * Function: CheckUriPersistentPermission
+ * SubFunction: NA
+ * FunctionPoints: Download dir itself shareable with RW_DOWNLOAD permission
+ */
+HWTEST_F(FilePermissionManagerTest, CheckFileManagerUriPermission_DownloadDirItself_001, TestSize.Level1)
+{
+    std::vector<Uri> uriVec;
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Download"));
+    uint32_t callerTokenId = 1002;
+    uint32_t flag = 1;
+    MyFlag::permissionReadWriteDownload_ = true;
+    std::vector<PolicyInfo> pathPolicies;
+    auto ret = FilePermissionManager::CheckUriPersistentPermission(uriVec, callerTokenId, flag, "com.example.test",
+        pathPolicies);
+    ASSERT_EQ(ret.size(), uriVec.size());
+    EXPECT_TRUE(ret[0]);
+}
+
+/*
+ * Feature: CheckUriPersistentPermission
+ * Function: CheckUriPersistentPermission
+ * SubFunction: NA
+ * FunctionPoints: Download dir itself denied without RW_DOWNLOAD and not own bundle
+ */
+HWTEST_F(FilePermissionManagerTest, CheckFileManagerUriPermission_DownloadDirItself_NoPermission_001, TestSize.Level1)
+{
+    std::vector<Uri> uriVec;
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Download"));
+    uint32_t callerTokenId = 1002;
+    uint32_t flag = 1;
+    std::vector<PolicyInfo> pathPolicies;
+    auto ret = FilePermissionManager::CheckUriPersistentPermission(uriVec, callerTokenId, flag, "com.example.test",
+        pathPolicies);
+    ASSERT_EQ(ret.size(), uriVec.size());
+    EXPECT_FALSE(ret[0]);
+}
+
+/*
+ * Feature: CheckUriPersistentPermission
+ * Function: CheckUriPersistentPermission
+ * SubFunction: NA
+ * FunctionPoints: Download dir itself with empty bundleName denied without RW_DOWNLOAD (no cold-start bypass)
+ */
+HWTEST_F(FilePermissionManagerTest, CheckFileManagerUriPermission_DownloadDirItself_EmptyBundle_NoPermission_001,
+    TestSize.Level1)
+{
+    std::vector<Uri> uriVec;
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Download"));
+    uint32_t callerTokenId = 1002;
+    uint32_t flag = 1;
+    std::vector<PolicyInfo> pathPolicies;
+    auto ret = FilePermissionManager::CheckUriPersistentPermission(uriVec, callerTokenId, flag, "", pathPolicies);
+    ASSERT_EQ(ret.size(), uriVec.size());
+    EXPECT_FALSE(ret[0]);
+}
+
+/*
+ * Feature: CheckUriPersistentPermission
+ * Function: CheckUriPersistentPermission
+ * SubFunction: NA
+ * FunctionPoints: Download dir with trailing slash and empty bundleName denied without RW_DOWNLOAD
+ */
+HWTEST_F(FilePermissionManagerTest, CheckFileManagerUriPermission_DownloadDirTrailingSlash_EmptyBundle_NoPermission_001,
+    TestSize.Level1)
+{
+    std::vector<Uri> uriVec;
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Download/"));
+    uint32_t callerTokenId = 1002;
+    uint32_t flag = 1;
+    std::vector<PolicyInfo> pathPolicies;
+    auto ret = FilePermissionManager::CheckUriPersistentPermission(uriVec, callerTokenId, flag, "", pathPolicies);
+    ASSERT_EQ(ret.size(), uriVec.size());
+    EXPECT_FALSE(ret[0]);
+}
+
+/*
+ * Feature: CheckUriPersistentPermission
+ * Function: CheckUriPersistentPermission
+ * SubFunction: NA
+ * FunctionPoints: Download dir itself with empty bundleName still shareable with RW_DOWNLOAD
+ */
+HWTEST_F(FilePermissionManagerTest, CheckFileManagerUriPermission_DownloadDirItself_EmptyBundle_WithPermission_001,
+    TestSize.Level1)
+{
+    std::vector<Uri> uriVec;
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Download"));
+    uint32_t callerTokenId = 1002;
+    uint32_t flag = 1;
+    MyFlag::permissionReadWriteDownload_ = true;
+    std::vector<PolicyInfo> pathPolicies;
+    auto ret = FilePermissionManager::CheckUriPersistentPermission(uriVec, callerTokenId, flag, "", pathPolicies);
+    ASSERT_EQ(ret.size(), uriVec.size());
+    EXPECT_TRUE(ret[0]);
+}
+
+/*
+ * Feature: CheckUriPersistentPermission
+ * Function: CheckUriPersistentPermission
+ * SubFunction: NA
+ * FunctionPoints: Download dir with trailing slash shareable with RW_DOWNLOAD
+ */
+HWTEST_F(FilePermissionManagerTest, CheckFileManagerUriPermission_DownloadDirTrailingSlash_001, TestSize.Level1)
+{
+    std::vector<Uri> uriVec;
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Download/"));
+    uint32_t callerTokenId = 1002;
+    uint32_t flag = 1;
+    MyFlag::permissionReadWriteDownload_ = true;
+    std::vector<PolicyInfo> pathPolicies;
+    auto ret = FilePermissionManager::CheckUriPersistentPermission(uriVec, callerTokenId, flag, "com.example.test",
+        pathPolicies);
+    ASSERT_EQ(ret.size(), uriVec.size());
+    EXPECT_TRUE(ret[0]);
+}
+
+/*
+ * Feature: CheckUriPersistentPermission
+ * Function: CheckUriPersistentPermission
+ * SubFunction: NA
+ * FunctionPoints: own bundle file under Download shareable without permission (cold start)
+ */
+HWTEST_F(FilePermissionManagerTest, CheckFileManagerUriPermission_DownloadOwnBundle_001, TestSize.Level1)
+{
+    std::vector<Uri> uriVec;
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Download/com.example.test/file.txt"));
+    uint32_t callerTokenId = 1002;
+    uint32_t flag = 1;
+    std::vector<PolicyInfo> pathPolicies;
+    auto ret = FilePermissionManager::CheckUriPersistentPermission(uriVec, callerTokenId, flag, "com.example.test",
+        pathPolicies);
+    ASSERT_EQ(ret.size(), uriVec.size());
+    EXPECT_TRUE(ret[0]);
+}
+
+/*
+ * Feature: CheckUriPersistentPermission
+ * Function: CheckUriPersistentPermission
+ * SubFunction: NA
+ * FunctionPoints: own bundle nested file under Download shareable without permission
+ */
+HWTEST_F(FilePermissionManagerTest, CheckFileManagerUriPermission_DownloadOwnBundleNested_001, TestSize.Level1)
+{
+    std::vector<Uri> uriVec;
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Download/com.example.test/dir1/dir2/a.txt"));
+    uint32_t callerTokenId = 1002;
+    uint32_t flag = 1;
+    std::vector<PolicyInfo> pathPolicies;
+    auto ret = FilePermissionManager::CheckUriPersistentPermission(uriVec, callerTokenId, flag, "com.example.test",
+        pathPolicies);
+    ASSERT_EQ(ret.size(), uriVec.size());
+    EXPECT_TRUE(ret[0]);
+}
+
+/*
+ * Feature: CheckUriPersistentPermission
+ * Function: CheckUriPersistentPermission
+ * SubFunction: NA
+ * FunctionPoints: own bundle dir itself under Download shareable without permission
+ */
+HWTEST_F(FilePermissionManagerTest, CheckFileManagerUriPermission_DownloadOwnBundleDir_001, TestSize.Level1)
+{
+    std::vector<Uri> uriVec;
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Download/com.example.test"));
+    uint32_t callerTokenId = 1002;
+    uint32_t flag = 1;
+    std::vector<PolicyInfo> pathPolicies;
+    auto ret = FilePermissionManager::CheckUriPersistentPermission(uriVec, callerTokenId, flag, "com.example.test",
+        pathPolicies);
+    ASSERT_EQ(ret.size(), uriVec.size());
+    EXPECT_TRUE(ret[0]);
+}
+
+/*
+ * Feature: CheckUriPersistentPermission
+ * Function: CheckUriPersistentPermission
+ * SubFunction: NA
+ * FunctionPoints: own bundle dir with trailing slash under Download shareable without permission
+ */
+HWTEST_F(FilePermissionManagerTest, CheckFileManagerUriPermission_DownloadOwnBundleDirTrailingSlash_001,
+    TestSize.Level1)
+{
+    std::vector<Uri> uriVec;
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Download/com.example.test/"));
+    uint32_t callerTokenId = 1002;
+    uint32_t flag = 1;
+    std::vector<PolicyInfo> pathPolicies;
+    auto ret = FilePermissionManager::CheckUriPersistentPermission(uriVec, callerTokenId, flag, "com.example.test",
+        pathPolicies);
+    ASSERT_EQ(ret.size(), uriVec.size());
+    EXPECT_TRUE(ret[0]);
+}
+
+/*
+ * Feature: CheckUriPersistentPermission
+ * Function: CheckUriPersistentPermission
+ * SubFunction: NA
+ * FunctionPoints: other bundle file under Download denied without RW_DOWNLOAD
+ */
+HWTEST_F(FilePermissionManagerTest, CheckFileManagerUriPermission_DownloadOtherBundle_NoPermission_001,
+    TestSize.Level1)
+{
+    std::vector<Uri> uriVec;
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Download/com.example.other/data.txt"));
+    uint32_t callerTokenId = 1002;
+    uint32_t flag = 1;
+    std::vector<PolicyInfo> pathPolicies;
+    auto ret = FilePermissionManager::CheckUriPersistentPermission(uriVec, callerTokenId, flag, "com.example.test",
+        pathPolicies);
+    ASSERT_EQ(ret.size(), uriVec.size());
+    EXPECT_FALSE(ret[0]);
+}
+
+/*
+ * Feature: CheckUriPersistentPermission
+ * Function: CheckUriPersistentPermission
+ * SubFunction: NA
+ * FunctionPoints: other bundle file under Download shareable with RW_DOWNLOAD
+ */
+HWTEST_F(FilePermissionManagerTest, CheckFileManagerUriPermission_DownloadOtherBundle_WithPermission_001,
+    TestSize.Level1)
+{
+    std::vector<Uri> uriVec;
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Download/com.example.other/data.txt"));
+    uint32_t callerTokenId = 1002;
+    uint32_t flag = 1;
+    MyFlag::permissionReadWriteDownload_ = true;
+    std::vector<PolicyInfo> pathPolicies;
+    auto ret = FilePermissionManager::CheckUriPersistentPermission(uriVec, callerTokenId, flag, "com.example.test",
+        pathPolicies);
+    ASSERT_EQ(ret.size(), uriVec.size());
+    EXPECT_TRUE(ret[0]);
+}
+
+/*
+ * Feature: CheckUriPersistentPermission
+ * Function: CheckUriPersistentPermission
+ * SubFunction: NA
+ * FunctionPoints: direct file under Download denied without RW_DOWNLOAD
+ */
+HWTEST_F(FilePermissionManagerTest, CheckFileManagerUriPermission_DownloadDirectFile_NoPermission_001,
+    TestSize.Level1)
+{
+    std::vector<Uri> uriVec;
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Download/single.txt"));
+    uint32_t callerTokenId = 1002;
+    uint32_t flag = 1;
+    std::vector<PolicyInfo> pathPolicies;
+    auto ret = FilePermissionManager::CheckUriPersistentPermission(uriVec, callerTokenId, flag, "com.example.test",
+        pathPolicies);
+    ASSERT_EQ(ret.size(), uriVec.size());
+    EXPECT_FALSE(ret[0]);
+}
+
+/*
+ * Feature: CheckUriPersistentPermission
+ * Function: CheckUriPersistentPermission
+ * SubFunction: NA
+ * FunctionPoints: direct file under Download shareable with RW_DOWNLOAD
+ */
+HWTEST_F(FilePermissionManagerTest, CheckFileManagerUriPermission_DownloadDirectFile_WithPermission_001,
+    TestSize.Level1)
+{
+    std::vector<Uri> uriVec;
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Download/single.txt"));
+    uint32_t callerTokenId = 1002;
+    uint32_t flag = 1;
+    MyFlag::permissionReadWriteDownload_ = true;
+    std::vector<PolicyInfo> pathPolicies;
+    auto ret = FilePermissionManager::CheckUriPersistentPermission(uriVec, callerTokenId, flag, "com.example.test",
+        pathPolicies);
+    ASSERT_EQ(ret.size(), uriVec.size());
+    EXPECT_TRUE(ret[0]);
+}
+
+/*
+ * Feature: CheckUriPersistentPermission
+ * Function: CheckUriPersistentPermission
+ * SubFunction: NA
+ * FunctionPoints: Desktop/Documents dir itself denied without RW permission
+ */
+HWTEST_F(FilePermissionManagerTest, CheckFileManagerUriPermission_NoPermission_001, TestSize.Level1)
+{
+    std::vector<Uri> uriVec;
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Desktop"));
+    uriVec.emplace_back(Uri("file://docs/storage/Users/currentUser/Documents"));
+    uint32_t callerTokenId = 1002;
+    uint32_t flag = 1;
+    std::vector<PolicyInfo> pathPolicies;
+    auto ret = FilePermissionManager::CheckUriPersistentPermission(uriVec, callerTokenId, flag, "", pathPolicies);
+    ASSERT_EQ(ret.size(), uriVec.size());
+    EXPECT_FALSE(ret[0]);
+    EXPECT_FALSE(ret[1]);
+}
+
+/*
  * Feature: InitDlSymbol
  * Function: InitDlSymbol
  * SubFunction: NA

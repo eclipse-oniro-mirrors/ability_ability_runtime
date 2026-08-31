@@ -535,7 +535,7 @@ void DoConnectAgentExtensionAbility(napi_env env,
             GetAgentManagerErrorMsg(innerErrCode, AgentManagerErrorOperation::CONNECT_AGENT_EXTENSION));
         // Sync connect failure: reject primary + staged low-code tasks (pendingLowCodeReuseTasks_) + remove
         // the connection, else Mechanism-A tasks hang (host never connects -> drain never runs).
-        connection->RejectConnectAndCleanup(env, error, /*hasPrimaryTask=*/true);
+        connection->RejectConnectAndCleanup(env, error);
     }
 }
 
@@ -999,10 +999,6 @@ bool JsAgentManager::ValidateConnectParameters(napi_env env, size_t argc, napi_v
         return false;
     }
 
-    TAG_LOGI(AAFwkTag::SER_ROUTER, "Connecting to: %{public}s.%{public}s",
-        want.GetElement().GetBundleName().c_str(),
-        want.GetElement().GetAbilityName().c_str());
-
     // Extract agentId
     if (!ConvertFromJsValue(env, argv[ARG_INDEX_1], agentId)) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "agentId not string");
@@ -1015,7 +1011,9 @@ bool JsAgentManager::ValidateConnectParameters(napi_env env, size_t argc, napi_v
         return false;
     }
 
-    TAG_LOGD(AAFwkTag::SER_ROUTER, "agentId: %{public}s", agentId.c_str());
+    TAG_LOGI(AAFwkTag::SER_ROUTER, "Connecting to: %{public}s.%{public}s, agentId:%{public}s",
+        want.GetElement().GetBundleName().c_str(),
+        want.GetElement().GetAbilityName().c_str(), agentId.c_str());
 
     // Validate callback object
     callbackObject = argv[ARG_INDEX_2];
@@ -1129,28 +1127,38 @@ napi_value JsAgentManager::OnDisconnectAgentExtensionAbility(napi_env env, size_
     }
 
     connection->SetDisconnecting(true);
-    connection->SetDisconnectAsyncTask(disconnectTaskShared);
+    if (!connection->SetDisconnectAsyncTask(disconnectTaskShared)) {
+        // A disconnect is already pending; resolve as duplicate to avoid orphaning it.
+        TAG_LOGI(AAFwkTag::SER_ROUTER, "Disconnect already pending, resolve as duplicate");
+        disconnectTaskShared->ResolveWithNoError(env, CreateJsUndefined(env));
+        return result;
+    }
     auto innerErrCode = std::make_shared<int32_t>(ERR_OK);
     auto execute = std::make_unique<NapiAsyncTask::ExecuteCallback>(
         [connection, innerErrCode]() {
             TAG_LOGD(AAFwkTag::SER_ROUTER, "Execute disconnect, connectionId: %{public}s",
                 std::to_string(connection->GetConnectionId()).c_str());
             *innerErrCode = AgentConnectionManager::GetInstance().DisconnectAgentExtensionAbility(connection);
-            if (*innerErrCode != ERR_OK) {
-                connection->SetDisconnecting(false);
-                connection->SetDisconnectAsyncTask(nullptr);
-            }
+            // Keep IsDisconnecting true until the JS-thread complete settles (prevents re-entrant overwrite);
+            // do not null disconnectAsyncTask_ here — it is settled via TakeDisconnectAsyncTask().
         });
 
     auto complete = std::make_unique<NapiAsyncTask::CompleteCallback>(
-        [innerErrCode, disconnectTaskShared, connection](napi_env env, NapiAsyncTask &task, int32_t status) {
+        [innerErrCode, connection](napi_env env, NapiAsyncTask &task, int32_t status) {
             if (*innerErrCode == ERR_OK) {
                 return;
             }
             TAG_LOGE(AAFwkTag::SER_ROUTER, "Disconnect failed: %{public}d", *innerErrCode);
-            disconnectTaskShared->Reject(env,
-                CreateJsError(env, static_cast<int32_t>(GetJsErrorCodeByNativeError(*innerErrCode)),
-                    GetAgentManagerErrorMsg(*innerErrCode, AgentManagerErrorOperation::DISCONNECT_AGENT_EXTENSION)));
+            // Take ownership: if already settled by HandleOnAbilityDisconnectDone, Take returns nullptr
+            // and we skip — no double-settle.
+            if (auto pending = connection->TakeDisconnectAsyncTask(); pending != nullptr) {
+                pending->Reject(env,
+                    CreateJsError(env, static_cast<int32_t>(GetJsErrorCodeByNativeError(*innerErrCode)),
+                        GetAgentManagerErrorMsg(
+                            *innerErrCode, AgentManagerErrorOperation::DISCONNECT_AGENT_EXTENSION)));
+            }
+            // Reset on the JS thread after settling to keep IsDisconnecting true during the settle window.
+            connection->SetDisconnecting(false);
             DrainReconnectPendingTasksToExistingConnection(env, connection);
         });
 

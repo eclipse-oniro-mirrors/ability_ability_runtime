@@ -86,6 +86,7 @@ private:
     void EnableFreezeSample(FaultData& newFaultData);
     void ReportAppfreezeTask(const FaultData& faultData, bool onlyMainThread);
     std::string LogFormatHeapSize(size_t totalSize, size_t objectSize, size_t sharedSize);
+    bool IsAsanEnabled();
     void GetApplicationInfo(FaultData& faultData);
     bool GetProcessStartTime(pid_t tid, unsigned long long &startTime);
     bool ReadFdToString(int fd, std::string& content);

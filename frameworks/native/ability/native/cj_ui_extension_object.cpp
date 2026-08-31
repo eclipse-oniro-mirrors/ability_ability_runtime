@@ -138,7 +138,7 @@ CJLastExitDetailInfo CreateCJLastExitDetailInfo(const AAFwk::LastExitDetailInfo&
     detailInfo.processState = lastExitDetailInfo.processState;
     if (!lastExitDetailInfo.killReason.empty()) {
         detailInfo.killReason = CreateCStringFromString(lastExitDetailInfo.killReason);
-        detailInfo.hasKillReason = true;
+        detailInfo.hasKillReason = (detailInfo.killReason != nullptr);
     } else {
         detailInfo.killReason = nullptr;
         detailInfo.hasKillReason = false;
@@ -311,6 +311,10 @@ CJ_EXPORT void FFIRegisterCJExtAbilityFuncs(void (*registerFunc)(CJExtAbilityFun
 CJ_EXPORT void FFIRegisterCJExtAbilityFuncsV2(void (*registerFunc)(CJExtAbilityFuncsV2*))
 {
     TAG_LOGD(AAFwkTag::UI_EXT, "FFIRegisterCJExtAbilityFuncsV2 start");
+    if (g_cjFuncsV2.cjExtAbilityOnCreateV3 != nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "Repeated registration for cj functions V2 of CJExtAbility");
+        return;
+    }
     if (registerFunc == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "FFIRegisterCJExtAbilityFuncsV2 failed, registerFunc is nullptr");
         return;

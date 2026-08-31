@@ -806,7 +806,8 @@ HWTEST_F(AmsMgrSchedulerSecondTest, AmsMgrSchedulerSecondTest_StartSpecifiedAbil
      */
     const AAFwk::Want want;
     const AppExecFwk::AbilityInfo abilityInfo;
-    amsMgrScheduler->StartSpecifiedAbility(want, abilityInfo, 0);
+    AbilityRuntime::StartSpecifiedParam param;
+    amsMgrScheduler->StartSpecifiedAbility(want, abilityInfo, param);
     EXPECT_TRUE(amsMgrScheduler != nullptr);
     TAG_LOGI(AAFwkTag::TEST, "AmsMgrSchedulerSecondTest_StartSpecifiedAbility_001 end");
 }
@@ -831,7 +832,8 @@ HWTEST_F(AmsMgrSchedulerSecondTest, AmsMgrSchedulerSecondTest_StartSpecifiedAbil
     IPCSkeleton::SetCallingUid(-1);
     const AAFwk::Want want;
     const AppExecFwk::AbilityInfo abilityInfo;
-    amsMgrScheduler->StartSpecifiedAbility(want, abilityInfo, 0);
+    AbilityRuntime::StartSpecifiedParam param;
+    amsMgrScheduler->StartSpecifiedAbility(want, abilityInfo, param);
     EXPECT_TRUE(amsMgrScheduler != nullptr);
     TAG_LOGI(AAFwkTag::TEST, "AmsMgrSchedulerSecondTest_StartSpecifiedAbility_002 end");
 }
@@ -856,7 +858,8 @@ HWTEST_F(AmsMgrSchedulerSecondTest, AmsMgrSchedulerSecondTest_StartSpecifiedAbil
     IPCSkeleton::SetCallingUid(Constants::FOUNDATION_UID);
     const AAFwk::Want want;
     const AppExecFwk::AbilityInfo abilityInfo;
-    amsMgrScheduler->StartSpecifiedAbility(want, abilityInfo, 0);
+    AbilityRuntime::StartSpecifiedParam param;
+    amsMgrScheduler->StartSpecifiedAbility(want, abilityInfo, param);
     EXPECT_TRUE(amsMgrScheduler != nullptr);
     TAG_LOGI(AAFwkTag::TEST, "AmsMgrSchedulerSecondTest_StartSpecifiedAbility_003 end");
 }

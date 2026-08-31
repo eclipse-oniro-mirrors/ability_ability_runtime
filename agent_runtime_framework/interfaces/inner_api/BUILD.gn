@@ -17,6 +17,7 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 ohos_shared_library("agent_fwk") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   sanitize = {
     cfi = true
@@ -41,6 +42,7 @@ ohos_shared_library("agent_fwk") {
   deps = []
 
   external_deps = [
+    "bounds_checking_function:libsec_shared",
     "c_utils:utils",
     "hilog:libhilog",
     "json:nlohmann_json_static",

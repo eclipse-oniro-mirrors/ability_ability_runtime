@@ -80,6 +80,42 @@ bool AbilityEventMapManager::CheckUserUnlocked(int32_t userId)
     return false;
 }
 
+size_t AbilityEventMapManager::GetUserCount()
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return eventMap_.size();
+}
+
+void AbilityEventMapManager::AddPendingUserId(int32_t userId)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (pendingUserIds_.count(userId) > 0) {
+        // One unlock chain authorizes one trigger, a duplicate record means the chain
+        // passed twice without consumption in between.
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "AddPendingUserId duplicate: %{public}d.", userId);
+        return;
+    }
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "AddPendingUserId: %{public}d.", userId);
+    pendingUserIds_.insert(userId);
+}
+
+bool AbilityEventMapManager::IsPendingUser(int32_t userId)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return pendingUserIds_.find(userId) != pendingUserIds_.end();
+}
+
+void AbilityEventMapManager::RemovePendingUserId(int32_t userId)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (pendingUserIds_.erase(userId) == 0) {
+        // The caller expected the user to be pending, but the record is already gone.
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "RemovePendingUserId not found: %{public}d.", userId);
+        return;
+    }
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "RemovePendingUserId: %{public}d.", userId);
+}
+
 AbilityScreenUnlockEventSubscriber::AbilityScreenUnlockEventSubscriber(
     const EventFwk::CommonEventSubscribeInfo &subscribeInfo, const std::function<void(int32_t)> &screenUnlockCallback)
     : EventFwk::CommonEventSubscriber(subscribeInfo), screenUnlockCallback_(screenUnlockCallback)
@@ -104,8 +140,13 @@ void AbilityScreenUnlockEventSubscriber::OnReceiveEvent(const EventFwk::CommonEv
     }
     AbilityEventMapManager::GetInstance().AddEvent(userId, action);
     if (AbilityEventMapManager::GetInstance().CheckAllUnlocked(userId)) {
-        screenUnlockCallback_(userId);
+        // Remove the finished user before notifying, otherwise it is still counted by
+        // UnSubscribeScreenUnlockedEvent as a pending user and the subscriber never goes away.
         AbilityEventMapManager::GetInstance().RemoveUser(userId);
+        // Record the passed user for the auto startup trigger, consumed after the
+        // trigger is done no matter whether the launches succeed.
+        AbilityEventMapManager::GetInstance().AddPendingUserId(userId);
+        screenUnlockCallback_(userId);
     }
 }
 
@@ -132,8 +173,9 @@ void AbilityUserUnlockEventSubscriber::OnReceiveEvent(const EventFwk::CommonEven
     AbilityEventMapManager::GetInstance().AddEvent(userId, action);
     UserController::GetInstance().SetUserLockStatus(userId, UserController::UserLockStatus::USER_UNLOCKED);
     if (AbilityEventMapManager::GetInstance().CheckAllUnlocked(userId)) {
-        screenUnlockCallback_(userId);
         AbilityEventMapManager::GetInstance().RemoveUser(userId);
+        AbilityEventMapManager::GetInstance().AddPendingUserId(userId);
+        screenUnlockCallback_(userId);
         return;
     }
     userScreenUnlockCallback_(userId);

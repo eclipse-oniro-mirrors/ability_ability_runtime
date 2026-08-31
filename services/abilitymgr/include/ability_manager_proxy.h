@@ -816,7 +816,8 @@ public:
     virtual int ContinueMission(AAFwk::ContinueMissionInfo continueMissionInfo,
         const sptr<IRemoteObject> &callback) override;
 
-    virtual int ContinueAbility(const std::string &deviceId, int32_t missionId, uint32_t versionCode) override;
+    virtual int ContinueAbility(const std::string &deviceId, int32_t missionId, uint32_t versionCode,
+        int32_t userId = -1) override;
 
     virtual int StartContinuation(const Want &want, const sptr<IRemoteObject> &abilityToken, int32_t status) override;
 

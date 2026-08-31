@@ -127,12 +127,12 @@ void AbilityConnection::SetRemoteObject(const sptr<IRemoteObject>& remoteObject)
 
 void AbilityConnection::SetResultCode(int resultCode)
 {
-    resultCode_ = resultCode;
+    resultCode_.store(resultCode, std::memory_order_relaxed);
 }
 
 void AbilityConnection::SetConnectionState(int connectionState)
 {
-    connectionState_ = connectionState;
+    connectionState_.store(connectionState, std::memory_order_relaxed);
 }
 
 sptr<IRemoteObject> AbilityConnection::GetRemoteObject() const
@@ -142,12 +142,12 @@ sptr<IRemoteObject> AbilityConnection::GetRemoteObject() const
 
 int AbilityConnection::GetResultCode() const
 {
-    return resultCode_;
+    return resultCode_.load(std::memory_order_relaxed);
 }
 
 int AbilityConnection::GetConnectionState() const
 {
-    return connectionState_;
+    return connectionState_.load(std::memory_order_relaxed);
 }
 
 std::vector<sptr<AbilityConnectCallback>> AbilityConnection::GetCallbackList()

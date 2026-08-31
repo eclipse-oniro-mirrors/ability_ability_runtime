@@ -29,6 +29,7 @@ namespace OHOS {
 namespace AbilityDelegatorArgsCJ {
 
 class CJAbilityDelegatorArgs : public FFI::FFIData {
+    DECL_TYPE(CJAbilityDelegatorArgs, OHOS::FFI::FFIData)
 public:
     explicit CJAbilityDelegatorArgs(const std::shared_ptr<AppExecFwk::AbilityDelegatorArgs>& abilityDelegatorArgs)
         : delegatorArgs_(abilityDelegatorArgs) {};

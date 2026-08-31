@@ -225,6 +225,12 @@ typedef enum {
      * @since 26.0.0
      */
     ABILITY_RUNTIME_ERROR_CODE_METADATA_INVALID = 16000178,
+    /**
+     * The buffer is too small.
+     *
+     * @since 26.1.0
+     */
+    ABILITY_RUNTIME_ERROR_CODE_BUFFER_TOO_SMALL = 16000179,
 } AbilityRuntime_ErrorCode;
 
 #ifdef __cplusplus

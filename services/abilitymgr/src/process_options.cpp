@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include <cinttypes>
+
 #include "process_options.h"
 
 #include "hilog_tag_wrapper.h"
@@ -21,9 +23,8 @@ namespace OHOS {
 namespace AAFwk {
 bool ProcessOptions::ReadFromParcel(Parcel &parcel)
 {
-    processMode = static_cast<ProcessMode>(parcel.ReadInt32());
-    startupVisibility = static_cast<StartupVisibility>(parcel.ReadInt32());
-    processName = parcel.ReadString();
+    processMode = ConvertInt32ToProcessMode(parcel.ReadInt32());
+    startupVisibility = ConvertInt32ToStartupVisibility(parcel.ReadInt32());
     isRestartKeepAlive = parcel.ReadBool();
     isStartFromNDK = parcel.ReadBool();
     isPreloadStart = parcel.ReadBool();
@@ -56,10 +57,6 @@ bool ProcessOptions::Marshalling(Parcel &parcel) const
     }
     if (!parcel.WriteInt32(static_cast<int32_t>(startupVisibility))) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "StartupVisibility write failed");
-        return false;
-    }
-    if (!parcel.WriteString(processName)) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "ProcessName write failed");
         return false;
     }
     if (!parcel.WriteBool(isRestartKeepAlive)) {
@@ -137,6 +134,24 @@ bool ProcessOptions::IsAttachToStatusBarItemMode(ProcessMode value)
 bool ProcessOptions::IsNewHiddenProcessMode(ProcessMode value)
 {
     return (value == ProcessMode::NEW_HIDDEN_PROCESS);
+}
+
+void ProcessOptions::SanitizeSystemFields(std::shared_ptr<ProcessOptions> options)
+{
+    if (options == nullptr) {
+        return;
+    }
+    TAG_LOGW(AAFwkTag::ABILITYMGR, "Sanitize system-only fields: isRestartKeepAlive=%{public}d, "
+        "isStartFromNDK=%{public}d, isPreloadStart=%{public}d, loadAbilityCallbackId=%{public}" PRIu64 ", "
+        "callingPid=%{public}d, selfPid=%{public}d",
+        options->isRestartKeepAlive, options->isStartFromNDK, options->isPreloadStart,
+        options->loadAbilityCallbackId, options->callingPid, options->selfPid);
+    options->isRestartKeepAlive = false;
+    options->isStartFromNDK = false;
+    options->isPreloadStart = false;
+    options->loadAbilityCallbackId = 0;
+    options->callingPid = -1;
+    options->selfPid = -1;
 }
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -40,6 +40,16 @@ bool StartsWithIgnoreCase(const std::string &path, const std::string &prefix)
     return path.size() >= prefix.size() &&
         strncasecmp(path.c_str(), prefix.c_str(), prefix.size()) == 0;
 }
+
+// path must be the dir itself or a path under dir (starts with "dir/"),
+// otherwise a sibling dir with same prefix (e.g. Desktop2) would be matched.
+bool IsPathInDir(const std::string &path, const std::string &dir)
+{
+    if (path.compare(0, dir.size(), dir) != 0) {
+        return false;
+    }
+    return path.size() == dir.size() || path[dir.size()] == '/';
+}
 }
 const std::string FILE_MANAGER_AUTHORITY = "docs";
 const std::string STORAGE_URI = "/storage";
@@ -126,9 +136,8 @@ static bool CheckFileManagerUriPermission(TokenIdPermission &tokenPermission,
                                           const std::string &filePath,
                                           const std::string &bundleName)
 {
-    std::string path = filePath;
-    if (path.find(DOWNLOAD_PATH) == 0) {
-        path = path.substr(DOWNLOAD_PATH.size());
+    if (IsPathInDir(filePath, DOWNLOAD_PATH)) {
+        std::string path = filePath.substr(DOWNLOAD_PATH.size());
         if (path.find(BACKFLASH) == 0) {
             path = path.substr(1);
         }
@@ -139,15 +148,15 @@ static bool CheckFileManagerUriPermission(TokenIdPermission &tokenPermission,
         } else {
             dirname = path;
         }
-        if (dirname == bundleName) {
+        if (!dirname.empty() && !bundleName.empty() && dirname == bundleName) {
             return true;
         }
         return tokenPermission.VerifyRWDownloadPermission();
     }
-    if (path.find(DESKTOP_PATH) == 0) {
+    if (IsPathInDir(filePath, DESKTOP_PATH)) {
         return tokenPermission.VerifyRWDeskTopPermission();
     }
-    if (path.find(DOCUMENTS_PATH) == 0) {
+    if (IsPathInDir(filePath, DOCUMENTS_PATH)) {
         return tokenPermission.VerifyRWDocumentsPermission();
     }
     return false;

@@ -213,8 +213,8 @@ int32_t AppScheduler::VerifyKillProcessPermission(const std::string &bundleName)
     return ERR_OK;
 }
 
-void AppScheduler::StartSpecifiedAbility(const AAFwk::Want&, const AppExecFwk::AbilityInfo&, int32_t,
-    const std::string&, bool) {}
+void AppScheduler::StartSpecifiedAbility(const AAFwk::Want&, const AppExecFwk::AbilityInfo&,
+    const AbilityRuntime::StartSpecifiedParam&) {}
 
 int AppScheduler::StartUserTest(
     const Want& want, const sptr<IRemoteObject>& observer, const AppExecFwk::BundleInfo& bundleInfo, int32_t userId)
@@ -241,7 +241,7 @@ int32_t AppScheduler::NotifyAppMgrRecordExitReason(int32_t pid, int32_t reason, 
 }
 
 int32_t AppScheduler::NotifyAppMgrRecordExitReasonCompability(
-    int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg)
+    int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg, int32_t reason)
 {
     return 0;
 }

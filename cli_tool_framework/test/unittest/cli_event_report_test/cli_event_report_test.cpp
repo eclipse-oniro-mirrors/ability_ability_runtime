@@ -102,7 +102,7 @@ HWTEST_F(CliEventReportTest, ReportCliTimeout_0100, TestSize.Level1)
     EXPECT_EQ(effectiveCliName, TEST_CLI_NAME);
 
     // Should not crash when reporting CLI timeout event
-    ReportCliTimeout(TEST_BUNDLE_NAME, TEST_CLI_NAME, "5000");
+    ReportCliTimeout(TEST_BUNDLE_NAME, TEST_CLI_NAME, 5000);
     SUCCEED();
 }
 
@@ -118,7 +118,7 @@ HWTEST_F(CliEventReportTest, ReportCliTimeout_0200, TestSize.Level1)
     EXPECT_EQ(effectiveCliName, "<empty>");
 
     // Should not crash when reporting CLI timeout event with empty cliName
-    ReportCliTimeout(TEST_BUNDLE_NAME, "", "5000");
+    ReportCliTimeout(TEST_BUNDLE_NAME, "", 5000);
     SUCCEED();
 }
 
@@ -134,7 +134,7 @@ HWTEST_F(CliEventReportTest, ReportCliTimeout_0300, TestSize.Level1)
     EXPECT_EQ(effectiveCliName, "<empty>");
 
     // Should not crash when reporting CLI timeout event with "undefined" cliName
-    ReportCliTimeout(TEST_BUNDLE_NAME, "undefined", "3000");
+    ReportCliTimeout(TEST_BUNDLE_NAME, "undefined", 3000);
     SUCCEED();
 }
 
@@ -150,7 +150,7 @@ HWTEST_F(CliEventReportTest, ReportCliSignal_0100, TestSize.Level1)
     EXPECT_EQ(effectiveCliName, TEST_CLI_NAME);
 
     // Should not crash when reporting CLI signal event
-    ReportCliSignal(TEST_CLI_NAME, "9");
+    ReportCliSignal(TEST_CLI_NAME, 9);
     SUCCEED();
 }
 
@@ -166,7 +166,7 @@ HWTEST_F(CliEventReportTest, ReportCliSignal_0200, TestSize.Level1)
     EXPECT_EQ(effectiveCliName, "<empty>");
 
     // Should not crash when reporting CLI signal event with empty cliName
-    ReportCliSignal("", "11");
+    ReportCliSignal("", 11);
     SUCCEED();
 }
 
@@ -182,7 +182,7 @@ HWTEST_F(CliEventReportTest, ReportCliSignal_0300, TestSize.Level1)
     EXPECT_EQ(effectiveCliName, "<empty>");
 
     // Should not crash when reporting CLI signal event with "undefined" cliName
-    ReportCliSignal("undefined", "6");
+    ReportCliSignal("undefined", 6);
     SUCCEED();
 }
 
@@ -197,6 +197,8 @@ HWTEST_F(CliEventReportTest, GetFailureReason_0100, TestSize.Level1)
     EXPECT_EQ(GetFailureReason(ERR_TOOL_NOT_EXIST), REASON_TOOL_NOT_FOUND);
     EXPECT_EQ(GetFailureReason(ERR_SESSION_LIMIT_EXCEEDED), REASON_SESSION_LIMIT_EXCEEDED);
     EXPECT_EQ(GetFailureReason(ERR_NO_INIT), REASON_PROCESS_CREATE_FAILED);
+    EXPECT_EQ(GetFailureReason(ERR_NOT_HAP), REASON_CALLER_NOT_HAP);
+    EXPECT_EQ(GetFailureReason(ERR_NOT_SYSTEM_APP), REASON_CALLER_NOT_SYSTEM_APP);
     EXPECT_EQ(GetFailureReason(ERR_INVALID_PARAM), REASON_INVALID_PARAM);
     EXPECT_EQ(GetFailureReason(ERR_INNER_PARAM_INVALID), REASON_INVALID_PARAM);
 }

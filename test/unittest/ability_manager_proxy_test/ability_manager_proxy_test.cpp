@@ -1489,6 +1489,28 @@ HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_ContinueAbility_001, TestS
 
 /*
  * Feature: AbilityManagerService
+ * Function: ContinueAbility
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService ContinueAbility with userId
+ * EnvConditions: NA
+ * CaseDescription: Verify the normal process of ContinueAbility with userId
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_ContinueAbility_002, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
+    std::string deviceId = "";
+    int32_t missionId = 1;
+    uint32_t versionCode = 1;
+    int32_t userId = 100;
+    auto res = proxy_->ContinueAbility(deviceId, missionId, versionCode, userId);
+    EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::CONTINUE_ABILITY), mock_->code_);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: NotifyCompleteContinuation
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService NotifyCompleteContinuation

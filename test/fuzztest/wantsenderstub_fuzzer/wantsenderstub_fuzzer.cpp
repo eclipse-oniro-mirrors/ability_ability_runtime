@@ -42,8 +42,6 @@ public:
     WantSenderStubFuzzTest() = default;
     virtual ~WantSenderStubFuzzTest()
     {}
-    void Send(SenderInfo& senderInfo) override
-    {}
 };
 
 uint32_t GetU32Data(const char* ptr)

@@ -493,6 +493,7 @@ private:
         }
 
         if (argc == ARGC_ONE || (argc == ARGC_TWO && IsParasNullOrUndefined(env, argv[INDEX_ONE]))) {
+            TAG_LOGI(AAFwkTag::APPMGR, "SubEvent op=off_all kit=AbilityKit event=abilityFirstFrameState");
             JSAbilityFirstFrameStateObserverManager::GetInstance()->RemoveAllJsObserverObjects(abilityManager_);
         } else if (argc == ARGC_TWO) {
             JSAbilityFirstFrameStateObserverManager::GetInstance()->RemoveJsObserverObject(abilityManager_,
@@ -586,6 +587,7 @@ private:
             return CreateJsUndefined(env);
         }
         if (argc == ARGC_ONE) {
+            TAG_LOGI(AAFwkTag::APPMGR, "SubEvent op=off_all kit=AbilityKit event=appForegroundState");
             observerForeground_->RemoveAllJsObserverObjects();
         } else if (argc == ARGC_TWO) {
             if (!AppExecFwk::IsTypeForNapiValue(env, argv[INDEX_ONE], napi_object)) {
@@ -1248,7 +1250,12 @@ private:
             }
             int32_t memSize = 0;
             int32_t ret = appManager->GetProcessMemoryByPid(pid, memSize);
-            if (ret == 0) {
+            if (ret == 0 && memSize == -1) {
+                TAG_LOGE(AAFwkTag::APPMGR, "memory size overflow, pid:%{public}d", pid);
+                task->Reject(env, CreateJsError(env,
+                    static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    "Memory size overflow."));
+            } else if (ret == 0) {
                 task->ResolveWithNoError(env, CreateJsValue(env, memSize));
             } else {
                 task->Reject(env, CreateJsErrorByNativeErr(env, ret));

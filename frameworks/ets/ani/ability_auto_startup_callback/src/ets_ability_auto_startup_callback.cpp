@@ -84,6 +84,10 @@ void EtsAbilityAutoStartupCallback::Register(ani_object value)
         TAG_LOGE(AAFwkTag::AUTO_STARTUP, "null env");
         return;
     }
+    if (value == nullptr) {
+        TAG_LOGE(AAFwkTag::AUTO_STARTUP, "null value");
+        return;
+    }
     if ((status = env->GlobalReference_Create(value, &ref)) != ANI_OK || ref == nullptr) {
         TAG_LOGE(AAFwkTag::AUTO_STARTUP, "status : %{public}d or null ref", status);
         return;
@@ -103,8 +107,17 @@ void EtsAbilityAutoStartupCallback::Unregister(ani_object value)
         TAG_LOGE(AAFwkTag::AUTO_STARTUP, "null env");
         return;
     }
-    if (env->Reference_IsUndefined(value, &isUndefined) != ANI_OK || isUndefined) {
-        TAG_LOGD(AAFwkTag::AUTO_STARTUP, "invalid callback, clear all callback");
+    if (value == nullptr) {
+        TAG_LOGE(AAFwkTag::AUTO_STARTUP, "null value");
+        return;
+    }
+    ani_status status = env->Reference_IsUndefined(value, &isUndefined);
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::AUTO_STARTUP, "Reference_IsUndefined failed: %{public}d", status);
+        return;
+    }
+    if (isUndefined) {
+        TAG_LOGD(AAFwkTag::AUTO_STARTUP, "undefined callback, clear all callback");
         for (auto &callback : callbacks_) {
             env->GlobalReference_Delete(callback);
         }

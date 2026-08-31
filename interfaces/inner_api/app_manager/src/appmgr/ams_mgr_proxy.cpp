@@ -891,7 +891,7 @@ void AmsMgrProxy::PrepareTerminateApp(const pid_t pid, const std::string &module
 }
 
 void AmsMgrProxy::StartSpecifiedAbility(const AAFwk::Want &want, const AppExecFwk::AbilityInfo &abilityInfo,
-    int32_t requestId, const std::string &customProcess, bool isWindowStagePreload)
+    const AbilityRuntime::StartSpecifiedParam &param)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -901,8 +901,7 @@ void AmsMgrProxy::StartSpecifiedAbility(const AAFwk::Want &want, const AppExecFw
     }
 
     if (!data.WriteParcelable(&want) || !data.WriteParcelable(&abilityInfo) ||
-        !data.WriteInt32(requestId) || !data.WriteString(customProcess) ||
-        !data.WriteBool(isWindowStagePreload)) {
+        !data.WriteParcelable(&param)) {
         TAG_LOGE(AAFwkTag::APPMGR, "Write data failed.");
         return;
     }
@@ -1037,7 +1036,7 @@ int32_t AmsMgrProxy::NotifyAppMgrRecordExitReason(int32_t pid, int32_t reason, c
 }
 
 int32_t AmsMgrProxy::NotifyAppMgrRecordExitReasonCompability(
-    int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg)
+    int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg, int32_t reason)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");
     MessageParcel data;
@@ -1051,6 +1050,7 @@ int32_t AmsMgrProxy::NotifyAppMgrRecordExitReasonCompability(
     PARCEL_UTIL_WRITE_RET_INT(data, Int32, killId);
     PARCEL_UTIL_WRITE_RET_INT(data, String, killMsg);
     PARCEL_UTIL_WRITE_RET_INT(data, String, innerMsg);
+    PARCEL_UTIL_WRITE_RET_INT(data, Int32, reason);
     int32_t ret = SendTransactCmd(
         static_cast<uint32_t>(IAmsMgr::Message::NOTIFY_APP_MGR_RECORD_EXIT_REASON_COMPABILITY), data, reply, option);
     if (ret != NO_ERROR) {

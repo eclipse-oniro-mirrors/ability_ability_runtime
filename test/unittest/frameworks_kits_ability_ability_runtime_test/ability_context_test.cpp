@@ -26,6 +26,9 @@ using namespace OHOS::AbilityRuntime;
 
 class MockAbilityContext : public AbilityContext {
 public:
+    using AbilityContext::StartAbilityForResult;
+    using AbilityContext::StartAbilityForResultWithAccount;
+    using AbilityContext::OpenAtomicService;
     virtual void RegisterAbilityConfigUpdateCallback(AbilityConfigUpdateCallback abilityConfigUpdateCallback)
     {
         return;
@@ -669,6 +672,95 @@ HWTEST_F(AbilityContextTest, AbilityContext_ChangeAbilityVisibility_0100, Functi
 {
     MockAbilityContext  mockAbilityContext;
     EXPECT_EQ(mockAbilityContext.ChangeAbilityVisibility(true), 0);
+}
+
+/**
+ * @tc.name: AbilityContextTest_StartAbilityForResult_0100
+ * @tc.desc: StartAbilityForResult without requestCode returns ERR_OK.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityContext_StartAbilityForResult_0100, Function | MediumTest | Level1)
+{
+    MockAbilityContext mockAbilityContext;
+    AAFwk::Want want;
+    RuntimeTask task = [](int32_t count, const AAFwk::Want &resultWant, bool isInner) {};
+    auto ret = mockAbilityContext.StartAbilityForResult(want, std::move(task));
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: AbilityContextTest_StartAbilityForResult_0200
+ * @tc.desc: StartAbilityForResult with StartOptions without requestCode returns ERR_OK.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityContext_StartAbilityForResult_0200, Function | MediumTest | Level1)
+{
+    MockAbilityContext mockAbilityContext;
+    AAFwk::Want want;
+    AAFwk::StartOptions startOptions;
+    RuntimeTask task = [](int32_t count, const AAFwk::Want &resultWant, bool isInner) {};
+    auto ret = mockAbilityContext.StartAbilityForResult(want, startOptions, std::move(task));
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: AbilityContextTest_StartAbilityForResultWithAccount_0100
+ * @tc.desc: StartAbilityForResultWithAccount without requestCode returns ERR_OK.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityContext_StartAbilityForResultWithAccount_0100, Function | MediumTest | Level1)
+{
+    MockAbilityContext mockAbilityContext;
+    AAFwk::Want want;
+    int32_t accountId = 0;
+    RuntimeTask task = [](int32_t count, const AAFwk::Want &resultWant, bool isInner) {};
+    auto ret = mockAbilityContext.StartAbilityForResultWithAccount(want, accountId, std::move(task));
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: AbilityContextTest_StartAbilityForResultWithAccount_0200
+ * @tc.desc: StartAbilityForResultWithAccount with StartOptions without requestCode returns ERR_OK.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityContext_StartAbilityForResultWithAccount_0200, Function | MediumTest | Level1)
+{
+    MockAbilityContext mockAbilityContext;
+    AAFwk::Want want;
+    int32_t accountId = 0;
+    AAFwk::StartOptions startOptions;
+    RuntimeTask task = [](int32_t count, const AAFwk::Want &resultWant, bool isInner) {};
+    auto ret = mockAbilityContext.StartAbilityForResultWithAccount(
+        want, accountId, startOptions, std::move(task));
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: AbilityContextTest_OpenAtomicService_0100
+ * @tc.desc: OpenAtomicService without requestCode returns ERR_OK.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityContext_OpenAtomicService_0100, Function | MediumTest | Level1)
+{
+    MockAbilityContext mockAbilityContext;
+    AAFwk::Want want;
+    AAFwk::StartOptions startOptions;
+    RuntimeTask task = [](int32_t count, const AAFwk::Want &resultWant, bool isInner) {};
+    auto ret = mockAbilityContext.OpenAtomicService(want, startOptions, std::move(task));
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: AbilityContextTest_RegisterResultCallback_0100
+ * @tc.desc: RegisterResultCallback returns the mock requestCode.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityContext_RegisterResultCallback_0100, Function | MediumTest | Level1)
+{
+    MockAbilityContext mockAbilityContext;
+    RuntimeTask task = [](int32_t count, const AAFwk::Want &resultWant, bool isInner) {};
+    auto requestCode = mockAbilityContext.RegisterResultCallback(std::move(task));
+    EXPECT_EQ(requestCode, 0);
 }
 } // namespace AppExecFwk
 } // namespace OHOS

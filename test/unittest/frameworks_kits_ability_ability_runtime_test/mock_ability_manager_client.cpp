@@ -392,7 +392,8 @@ void AbilityManagerClient::NotifyCompleteContinuation(const std::string &deviceI
     int32_t sessionId, bool isSuccess)
 {}
 
-ErrCode AbilityManagerClient::ContinueAbility(const std::string &deviceId, int32_t missionId, uint32_t versionCode)
+ErrCode AbilityManagerClient::ContinueAbility(const std::string &deviceId, int32_t missionId,
+    uint32_t versionCode, int32_t userId)
 {
     return ERR_OK;
 }

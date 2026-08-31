@@ -25,6 +25,31 @@ namespace AppExecFwk {
 using WantParams = OHOS::AAFwk::WantParams;
 constexpr char INSIGHT_INTENT_EXECUTE_RESULT_CODE[] = "ohos.insightIntent.executeResultCode";
 constexpr char INSIGHT_INTENT_EXECUTE_RESULT[] = "ohos.insightIntent.executeResult";
+constexpr char INTERACTION_UI_TYPE_MODAL_UIEXTENSION[] = "MODAL_UIEXTENSION";
+
+struct InteractionUI {
+    std::string interactionUIType;
+    virtual ~InteractionUI() = default;
+    bool Marshalling(Parcel &parcel) const;
+    static std::shared_ptr<InteractionUI> Unmarshalling(Parcel &parcel);
+};
+
+struct InteractionModalUIExtension : public InteractionUI {
+    std::string bundleName;
+    std::string abilityName;
+    std::string moduleName;
+    std::string uiExtensionType;
+    std::string uri;
+    std::shared_ptr<WantParams> parameters = nullptr;
+    bool Marshalling(Parcel &parcel) const;
+    static std::shared_ptr<InteractionModalUIExtension> UnmarshallingModal(Parcel &parcel);
+};
+
+struct InteractionInfo {
+    std::shared_ptr<InteractionUI> interactionUI = nullptr;
+    bool Marshalling(Parcel &parcel) const;
+    bool ReadFromParcel(Parcel &parcel);
+};
 
 /**
  * @struct InsightIntentExecuteResult
@@ -41,15 +66,15 @@ public:
     bool isNeedDelayResult = false;
     bool isQueryEntity = false;
     std::vector<std::shared_ptr<WantParams>> queryResults;
+    std::shared_ptr<InteractionInfo> interactionInfo = nullptr;
 
     bool ReadFromParcel(Parcel &parcel);
     bool Marshalling(Parcel &parcel) const override;
     static InsightIntentExecuteResult *Unmarshalling(Parcel &parcel);
-    void FromJsonString(const std::string &jsonStr);
+    bool FromJsonString(const std::string &jsonStr);
     std::string ToJsonString() const;
-    // Check result returned by intent executor
     static bool CheckResult(std::shared_ptr<const WantParams> result);
-
+    static bool CheckInteractionInfo(const InteractionInfo &intent);
     std::shared_ptr<WantParams> BuildFunctionResult() const;
 };
 } // namespace AppExecFwk

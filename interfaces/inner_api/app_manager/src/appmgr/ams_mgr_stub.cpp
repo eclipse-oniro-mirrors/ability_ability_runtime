@@ -598,21 +598,24 @@ int32_t AmsMgrStub::HandlePrepareTerminateApp(MessageParcel &data, MessageParcel
 
 int32_t AmsMgrStub::HandleStartSpecifiedAbility(MessageParcel &data, MessageParcel &reply)
 {
-    AAFwk::Want *want = data.ReadParcelable<AAFwk::Want>();
+    std::unique_ptr<AAFwk::Want> want(data.ReadParcelable<AAFwk::Want>());
     if (want == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "want is nullptr");
         return ERR_INVALID_VALUE;
     }
 
-    AbilityInfo *abilityInfo = data.ReadParcelable<AbilityInfo>();
+    std::unique_ptr<AbilityInfo> abilityInfo(data.ReadParcelable<AbilityInfo>());
     if (abilityInfo == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "abilityInfo is nullptr.");
-        delete want;
         return ERR_INVALID_VALUE;
     }
-    StartSpecifiedAbility(*want, *abilityInfo, data.ReadInt32(), data.ReadString(), data.ReadBool());
-    delete want;
-    delete abilityInfo;
+    std::unique_ptr<AbilityRuntime::StartSpecifiedParam> param(
+        data.ReadParcelable<AbilityRuntime::StartSpecifiedParam>());
+    if (param == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "ReadParcelable StartSpecifiedParam failed");
+        return ERR_INVALID_VALUE;
+    }
+    StartSpecifiedAbility(*want, *abilityInfo, *param);
     return NO_ERROR;
 }
 
@@ -667,7 +670,8 @@ int32_t AmsMgrStub::HandleNotifyAppMgrRecordExitReasonCompability(MessageParcel 
     int32_t killId = data.ReadInt32();
     std::string killMsg = data.ReadString();
     std::string innerMsg = data.ReadString();
-    int32_t result = NotifyAppMgrRecordExitReasonCompability(pid, killId, killMsg, innerMsg);
+    int32_t reason = data.ReadInt32();
+    int32_t result = NotifyAppMgrRecordExitReasonCompability(pid, killId, killMsg, innerMsg, reason);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::APPMGR, "Write result failed.");
         return IPC_PROXY_ERR;

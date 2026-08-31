@@ -42,6 +42,7 @@ ohos_fuzztest("OpenLinkOptionsFuzzTest") {
   ]
   sources = [
     "${ability_runtime_services_path}/abilitymgr/src/app_scheduler.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/extension_query_event_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/start_ability_utils.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/state_utils.cpp",
     "openlinkoptions_fuzzer.cpp",
@@ -71,6 +72,7 @@ ohos_fuzztest("OpenLinkOptionsFuzzTest") {
     "common_event_service:cesfwk_innerkits",
     "ffrt:libffrt",
     "hilog:libhilog",
+    "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
     "ipc:ipc_core",
     "napi:ace_napi",

@@ -121,7 +121,7 @@ int32_t InsightRdbStorageMgr::LoadInsightIntentInfo(const std::string &bundleNam
     TAG_LOGD(AAFwkTag::INTENT, "InsightRdbStorageMgr load intent total info");
     std::unordered_map<std::string, std::string> value;
     std::string key = std::to_string(userId).append("/").append(bundleName).append("/")
-        .append(moduleName).append("/").append(intentName);
+        .append(moduleName).append("/").append(intentName).append("/");
     bool result = DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance()->QueryDataBeginWithKey(key, value);
     if (!result) {
         TAG_LOGW(AAFwkTag::INTENT, "get entries error");
@@ -149,7 +149,7 @@ int32_t InsightRdbStorageMgr::LoadConfigInsightIntentInfo(const std::string &bun
     TAG_LOGD(AAFwkTag::INTENT, "InsightRdbStorageMgr load intent total info");
     std::unordered_map<std::string, std::string> value;
     std::string key = std::to_string(userId).append("/").append(bundleName).append("/")
-        .append(moduleName).append("/").append(intentName);
+        .append(moduleName).append("/").append(intentName).append("/");
     bool result = DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance()->QueryDataBeginWithKey(key, value);
     if (!result) {
         TAG_LOGW(AAFwkTag::INTENT, "get entries error");

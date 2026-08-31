@@ -57,6 +57,8 @@ public:
     MOCK_METHOD1(GetAllRenderProcesses, int32_t(std::vector<RenderProcessInfo>&));
 #ifdef SUPPORT_CHILD_PROCESS
     MOCK_METHOD1(GetAllChildrenProcesses, int(std::vector<ChildProcessInfo>&));
+    MOCK_METHOD1(GetSelfChildrenProcesses, int(std::vector<ChildProcessInfo>&));
+    MOCK_METHOD1(GetSelfUIAbilityChildProcesses, int32_t(std::vector<ChildProcessInfo>&));
 #endif // SUPPORT_CHILD_PROCESS
     MOCK_METHOD1(RegisterAppStateCallback, void(const sptr<IAppStateCallback>& callback));
     MOCK_METHOD0(StopAllProcess, void());
@@ -91,7 +93,8 @@ public:
     MOCK_METHOD2(QueryRunningSharedBundles, int32_t(pid_t pid, std::map<std::string, uint32_t> &sharedBundles));
     MOCK_METHOD2(GetAllAbilityInfos, int32_t(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos));
 
-    void StartSpecifiedAbility(const AAFwk::Want&, const AppExecFwk::AbilityInfo&, int32_t, const std::string&, bool)
+    void StartSpecifiedAbility(const AAFwk::Want&, const AppExecFwk::AbilityInfo&,
+        const AbilityRuntime::StartSpecifiedParam&)
     {}
 
     void Post()

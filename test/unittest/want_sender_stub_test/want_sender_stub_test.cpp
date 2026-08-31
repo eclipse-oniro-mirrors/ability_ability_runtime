@@ -74,18 +74,27 @@ HWTEST_F(WantSenderStubTest, WantSenderStubTest_OnRemoteRequest_001, TestSize.Le
  * Function: OnRemoteRequest
  * SubFunction: NA
  * FunctionPoints: WantSenderStub OnRemoteRequest
- * EnvConditions: Description abnormal
- * CaseDescription: Verify that on remote request is abnormal
+ * EnvConditions: code = 0 (legacy WANT_SENDER_SEND, removed)
+ * CaseDescription: Regression lock-in. code 0 was the legacy WANT_SENDER_SEND
+ *                 trans code that allowed bypassing
+ *                 PendingWantManager::CheckCallerPermission via direct
+ *                 IWantSender::Send IPC. The trans code enum was deleted along
+ *                 with WantSenderStub::OnRemoteRequest override, so code 0 now
+ *                 falls through to IPCObjectStub which returns
+ *                 IPC_STUB_UNKNOW_TRANS_ERR. This test prevents reintroduction
+ *                 of WANT_SENDER_SEND handling without an explicit security
+ *                 review.
  */
-HWTEST_F(WantSenderStubTest, WantSenderStubTest_OnRemoteRequest_002, TestSize.Level1)
+HWTEST_F(WantSenderStubTest, WantSenderStubTest_OnRemoteRequest_Code0_Rejected_0100, TestSize.Level1)
 {
     MessageParcel data;
     MessageParcel reply;
     MessageOption option;
 
-    int res = stub_->OnRemoteRequest(IWantSender::WANT_SENDER_SEND, data, reply, option);
+    WriteInterfaceToken(data);
+    int res = stub_->OnRemoteRequest(0, data, reply, option);
 
-    EXPECT_EQ(res, ERR_INVALID_STATE);
+    EXPECT_EQ(res, IPC_STUB_UNKNOW_TRANS_ERR);
 }
 
 /*
@@ -93,62 +102,25 @@ HWTEST_F(WantSenderStubTest, WantSenderStubTest_OnRemoteRequest_002, TestSize.Le
  * Function: OnRemoteRequest
  * SubFunction: NA
  * FunctionPoints: WantSenderStub OnRemoteRequest
- * EnvConditions: Code is WANT_SENDER_SEND
- * CaseDescription: Verify that on remote request is normal
+ * EnvConditions: code = 0, valid interface token + valid SenderInfo payload
+ * CaseDescription: Verify code 0 is rejected even when a valid-looking
+ *                 SenderInfo payload is attached. Guards against partial
+ *                 reintroduction (e.g., re-adding SendInner dispatch on code 0
+ *                 based on payload shape rather than trans code definition).
  */
-HWTEST_F(WantSenderStubTest, WantSenderStubTest_OnRemoteRequest_003, TestSize.Level1)
+HWTEST_F(WantSenderStubTest, WantSenderStubTest_OnRemoteRequest_Code0_WithPayload_Rejected_0100, TestSize.Level1)
 {
     MessageParcel data;
     MessageParcel reply;
     MessageOption option;
 
-    SenderInfo info;
     WriteInterfaceToken(data);
-    data.WriteParcelable(&info);
-
-    int res = stub_->OnRemoteRequest(IWantSender::WANT_SENDER_SEND, data, reply, option);
-
-    EXPECT_EQ(res, NO_ERROR);
-}
-
-/*
- * Feature: WantSenderStub
- * Function: SendInner
- * SubFunction: NA
- * FunctionPoints: WantSenderStub SendInner
- * EnvConditions: Invalid parameter
- * CaseDescription: Verify the function SendInner request is abnormal.
- */
-HWTEST_F(WantSenderStubTest, WantSenderStubTest_SendInner_001, TestSize.Level1)
-{
-    MessageParcel data;
-    MessageParcel reply;
-
-    int res = stub_->SendInner(data, reply);
-
-    EXPECT_EQ(res, ERR_INVALID_VALUE);
-}
-
-/*
- * Feature: WantSenderStub
- * Function: OnRemoteRequest
- * SubFunction: NA
- * FunctionPoints: WantSenderStub SendInner
- * EnvConditions: Valid parameter
- * CaseDescription: Verify the function SendInner request is normal.
- */
-HWTEST_F(WantSenderStubTest, WantSenderStubTest_SendInner_002, TestSize.Level1)
-{
-    MessageParcel data;
-    MessageParcel reply;
-    MessageOption option;
-
     SenderInfo info;
     data.WriteParcelable(&info);
 
-    int res = stub_->SendInner(data, reply);
+    int res = stub_->OnRemoteRequest(0, data, reply, option);
 
-    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(res, IPC_STUB_UNKNOW_TRANS_ERR);
 }
 }  // namespace AAFwk
 }  // namespace OHOS

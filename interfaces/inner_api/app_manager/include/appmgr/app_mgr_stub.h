@@ -85,8 +85,10 @@ private:
     int32_t HandleNotifyTemplateProcessDeepFrozen(MessageParcel &data, MessageParcel &reply);
     int32_t HandlePreTemplateProcessDeepFrozen(MessageParcel &data, MessageParcel &reply);
     int32_t HandleNotifyTemplateProcessReadyDone(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleGetHyperSnapLastError(MessageParcel &data, MessageParcel &reply);
 #ifdef SUPPORT_CHILD_PROCESS
     int32_t HandleGetAllChildrenProcesses(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleGetSelfChildrenProcesses(MessageParcel &data, MessageParcel &reply);
 #endif  // SUPPORT_CHILD_PROCESS
     int32_t HandleRegisterNativeChildExitNotify(MessageParcel &data, MessageParcel &reply);
     int32_t HandleUnregisterNativeChildExitNotify(MessageParcel &data, MessageParcel &reply);
@@ -190,6 +192,7 @@ private:
 #ifdef SUPPORT_CHILD_PROCESS
     int32_t HandleCreateNativeChildProcess(MessageParcel &data, MessageParcel &reply);
 #endif // SUPPORT_CHILD_PROCESS
+    int32_t HandleGetSelfUIAbilityChildProcesses(MessageParcel &data, MessageParcel &reply);
     int32_t HandleNotifyProcessDependedOnWeb(MessageParcel &data, MessageParcel &reply);
     int32_t HandleKillProcessDependedOnWeb(MessageParcel &data, MessageParcel &reply);
     int32_t HandleRestartResidentProcessDependedOnWeb(MessageParcel &data, MessageParcel &reply);

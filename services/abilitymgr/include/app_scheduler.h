@@ -42,6 +42,7 @@ class Configuration;
 }
 namespace AbilityRuntime {
 struct LoadParam;
+struct StartSpecifiedParam;
 }
 namespace AAFwk {
 /**
@@ -477,7 +478,7 @@ public:
      * @param requestId request id to callback
      */
     void StartSpecifiedAbility(const AAFwk::Want &want, const AppExecFwk::AbilityInfo &abilityInfo,
-        int32_t requestId = 0, const std::string &customProcess = "", bool isWindowStagePreload = false);
+        const AbilityRuntime::StartSpecifiedParam &param);
 
     /**
      * @brief Get running process information.
@@ -590,7 +591,7 @@ public:
     virtual int32_t NotifyAppMgrRecordExitReason(int32_t pid, int32_t reason, const std::string &exitMsg);
 
     virtual int32_t NotifyAppMgrRecordExitReasonCompability(
-        int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg);
+        int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg, int32_t reason);
 
     /**
      * Set enable start process flag by userId

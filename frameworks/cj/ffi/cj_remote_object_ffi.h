@@ -22,6 +22,7 @@
 namespace OHOS {
 namespace AppExecFwk {
 class CJRemoteObject : public FFI::FFIData {
+    DECL_TYPE(CJRemoteObject, OHOS::FFI::FFIData)
 public:
     explicit CJRemoteObject(const sptr<IRemoteObject>& remoteObject) : remoteObject_(remoteObject) {}
 

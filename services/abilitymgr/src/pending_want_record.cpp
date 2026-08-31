@@ -57,11 +57,6 @@ PendingWantRecord::PendingWantRecord(const std::shared_ptr<PendingWantManager> &
 PendingWantRecord::~PendingWantRecord()
 {}
 
-void PendingWantRecord::Send(SenderInfo &senderInfo)
-{
-    SenderInner(senderInfo);
-}
-
 void PendingWantRecord::RegisterCancelListener(const sptr<IWantReceiver> &receiver)
 {
     std::lock_guard guard(mCancelCallbacksMutex_);
@@ -217,16 +212,19 @@ void PendingWantRecord::BuildSendWant(SenderInfo &senderInfo, Want &want)
         ((flags & static_cast<uint32_t>(Flags::ALLOW_CANCEL_FLAG)) != 0)) {
         immutable = true;
     }
+    bool constant = (flags & static_cast<uint32_t>(Flags::CONSTANT_FLAG)) != 0;
     senderInfo.resolvedType = key_->GetRequestResolvedType();
     if (!immutable) {
         want.AddFlags(key_->GetFlags());
     }
     WantParams wantParams = want.GetParams();
-    const auto &sendInfoWantParams = senderInfo.want.GetParams().GetParams();
-    for (auto mapIter = sendInfoWantParams.begin(); mapIter != sendInfoWantParams.end(); mapIter++) {
-        std::string sendInfoWantParamKey = mapIter->first;
-        if (want.GetParams().GetParam(sendInfoWantParamKey) == nullptr) {
-            wantParams.SetParam(sendInfoWantParamKey, mapIter->second);
+    if (!constant) {
+        const auto &sendInfoWantParams = senderInfo.want.GetParams().GetParams();
+        for (auto mapIter = sendInfoWantParams.begin(); mapIter != sendInfoWantParams.end(); mapIter++) {
+            std::string sendInfoWantParamKey = mapIter->first;
+            if (want.GetParams().GetParam(sendInfoWantParamKey) == nullptr) {
+                wantParams.SetParam(sendInfoWantParamKey, mapIter->second);
+            }
         }
     }
 

@@ -75,6 +75,7 @@ export default class EventHub {
   }
 
   off(event: string, callback: Function): void {
+    console.log('AbilityKit eventHub off event: ' + event);
     this.offByNativeContext(event, callback);
     if (!this.dynamicContextEventHub) {
       this.dynamicContextEventHub = this.getDynamicContextEventHub();
@@ -119,7 +120,7 @@ export default class EventHub {
   }
   
   emit(event: string, ...args: (Object|null|undefined)[]): void {
-    let fixedArgs: FixedArray<(Object|null|undefined)> = new FixedArray<FixedArgs>(args.length);
+    let fixedArgs: FixedArray<(Object|null|undefined)> = new FixedArray<FixedArgs>(args.length, undefined);
     for (let i = 0; i < args.length; i++) {
       fixedArgs[i] = args[i];
     }
@@ -129,7 +130,7 @@ export default class EventHub {
     }
     const eventHub = this.dynamicContextEventHub?.getProperty("eventHub");
     if (eventHub && !eventHub.isUndefined()) {
-      let params: FixedArray<ESValueArgs> = new FixedArray<ESValueArgs>(args.length + 1);
+      let params: FixedArray<ESValueArgs> = new FixedArray<ESValueArgs>(args.length + 1, undefined);
       params[0] = ESValue.wrap(event);
       for (let i = 0; i < args.length; i++) {
         params[i + 1] = ESValue.wrap(args[i]);

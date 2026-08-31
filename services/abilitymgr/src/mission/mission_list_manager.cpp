@@ -36,6 +36,7 @@
 #include "res_sched_util.h"
 #include "server_constant.h"
 #include "startup_util.h"
+#include "param.h"
 #include "ui_extension_wrapper.h"
 #ifdef SUPPORT_GRAPHICS
 #include "ability_first_frame_state_observer_manager.h"
@@ -220,8 +221,9 @@ int MissionListManager::StartAbility(const std::shared_ptr<AbilityRecord> &curre
         TAG_LOGD(AAFwkTag::ABILITYMGR, "ability launch mode:%{public}d",
             static_cast<int32_t>(abilityRequest.abilityInfo.launchMode));
         EnqueueWaitingAbilityToFront(abilityRequest);
+        AbilityRuntime::StartSpecifiedParam specifiedParam;
         DelayedSingleton<AppScheduler>::GetInstance()->StartSpecifiedAbility(
-            abilityRequest.want, abilityRequest.abilityInfo);
+            abilityRequest.want, abilityRequest.abilityInfo, specifiedParam);
         return 0;
     }
 

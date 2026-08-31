@@ -142,6 +142,38 @@ int32_t AppMgrProxy::DestroyImage(uint64_t checkpointId, sptr<IImageErrorHandler
     return reply.ReadInt32();
 }
 
+int32_t AppMgrProxy::GetHyperSnapLastError(int32_t errType, HyperSnapErrorRecord &record)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError Write interface token failed.");
+        return IPC_PROXY_ERR;
+    }
+    PARCEL_UTIL_WRITE_RET_INT(data, Int32, errType);
+
+    PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::GET_HYPER_SNAP_LAST_ERROR, data, reply, option);
+
+    int32_t result = reply.ReadInt32();
+    if (result != ERR_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError failed with result: %{public}d", result);
+        return result;
+    }
+
+    std::unique_ptr<HyperSnapErrorRecord> recordReply(reply.ReadParcelable<HyperSnapErrorRecord>());
+    if (recordReply == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError ReadParcelable failed.");
+        return IPC_PROXY_ERR;
+    }
+    record = *recordReply;
+
+    TAG_LOGD(AAFwkTag::APPMGR, "GetHyperSnapLastError success, code: %{public}d",
+        static_cast<int32_t>(record.code));
+    return ERR_OK;
+}
+
 int32_t AppMgrProxy::NotifyTemplateProcessDeepFrozen(int32_t pid)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");
@@ -431,6 +463,28 @@ int AppMgrProxy::GetAllChildrenProcesses(std::vector<ChildProcessInfo> &info)
         return ERR_FLATTEN_OBJECT;
     }
     if (!SendTransactCmd(AppMgrInterfaceCode::GET_ALL_CHILDREN_PROCESSES, data, reply)) {
+        return ERR_NULL_OBJECT;
+    }
+    auto error = GetParcelableInfos<ChildProcessInfo>(reply, info);
+    if (error != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetParcelableInfos fail, error: %{public}d", error);
+        return error;
+    }
+#endif // SUPPORT_CHILD_PROCESS
+    int result = reply.ReadInt32();
+    return result;
+}
+
+int AppMgrProxy::GetSelfChildrenProcesses(std::vector<ChildProcessInfo> &info)
+{
+    MessageParcel data;
+    MessageParcel reply;
+#ifdef SUPPORT_CHILD_PROCESS
+    MessageOption option(MessageOption::TF_SYNC);
+    if (!WriteInterfaceToken(data)) {
+        return ERR_FLATTEN_OBJECT;
+    }
+    if (!SendTransactCmd(AppMgrInterfaceCode::GET_SELF_CHILDREN_PROCESSES, data, reply)) {
         return ERR_NULL_OBJECT;
     }
     auto error = GetParcelableInfos<ChildProcessInfo>(reply, info);
@@ -2597,6 +2651,27 @@ int32_t AppMgrProxy::CreateNativeChildProcess(const std::string &libName,
 }
 #endif // SUPPORT_CHILD_PROCESS
 
+int32_t AppMgrProxy::GetSelfUIAbilityChildProcesses(std::vector<ChildProcessInfo> &infos)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    if (!WriteInterfaceToken(data)) {
+        return ERR_FLATTEN_OBJECT;
+    }
+    if (!SendTransactCmd(AppMgrInterfaceCode::GET_SELF_UIABILITY_CHILD_PROCESSES, data, reply)) {
+        return ERR_NULL_OBJECT;
+    }
+    auto error = GetParcelableInfos<ChildProcessInfo>(reply, infos);
+    if (error != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetParcelableInfos fail, error: %{public}d", error);
+        return error;
+    }
+    int result = reply.ReadInt32();
+    return result;
+}
+
 int AppMgrProxy::RegisterNativeChildExitNotify(const sptr<INativeChildNotify> notify)
 {
     if (!notify) {
@@ -3143,7 +3218,7 @@ int32_t AppMgrProxy::GetAllAbilityInfos(const int32_t pid, std::vector<AppExecFw
     return ret;
 }
 
-int32_t AppMgrProxy::EnableDelayedProcessExit(int32_t pid, bool enabled)
+int32_t AppMgrProxy::EnableDelayedProcessExit(bool enabled)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -3154,7 +3229,6 @@ int32_t AppMgrProxy::EnableDelayedProcessExit(int32_t pid, bool enabled)
         return IPC_PROXY_ERR;
     }
 
-    PARCEL_UTIL_WRITE_RET_INT(data, Int32, pid);
     PARCEL_UTIL_WRITE_RET_INT(data, Bool, enabled);
     PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::ENABLE_DELAYED_PROCESS_EXIT, data, reply, option);
     return reply.ReadInt32();

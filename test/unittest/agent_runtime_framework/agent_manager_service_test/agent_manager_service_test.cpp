@@ -63,6 +63,7 @@ static_assert(!std::is_base_of<std::enable_shared_from_this<AgentManagerService>
 }
 
 const int BUNDLE_MGR_SERVICE_SYS_ABILITY_ID = 401;
+const int SUBSYS_ACCOUNT_SYS_ABILITY_ID_BEGIN = 200;
 
 AgentCard BuildServiceTestAgentCard(const std::string &agentId)
 {
@@ -206,6 +207,9 @@ void AgentManagerServiceTest::SetUp(void)
 {
     MyFlag::isAddSystemAbilityListenerCalled = false;
     MyFlag::isRegisterBundleEventCallbackCalled = false;
+    MyFlag::backfillPreInstallCardsCallCount = 0;
+    // OnStop resets the singleton's one-shot backfill state for test isolation.
+    AgentManagerService::GetInstance()->OnStop();
     MyFlag::retVerifyCallingPermission = true;
     MyFlag::retVerifyConnectAgentPermission = true;
     MyFlag::retVerifyGetAgentCardPermission = true;
@@ -419,6 +423,44 @@ HWTEST_F(AgentManagerServiceTest, OnAddSystemAbility_002, TestSize.Level1)
     AgentManagerService::GetInstance()->bundleEventCallback_ = nullptr;
     AgentManagerService::GetInstance()->OnAddSystemAbility(systemAbilityId, "123");
     EXPECT_TRUE(MyFlag::isRegisterBundleEventCallbackCalled);
+}
+
+/**
+* @tc.name  : OnAddSystemAbility_BackfillNotTriggeredWhenOnlyBmsReady
+* @tc.number: OnAddSystemAbility_003
+* @tc.desc  : Backfill is not triggered until both BMS and accountmgr are ready.
+*/
+HWTEST_F(AgentManagerServiceTest, OnAddSystemAbility_003, TestSize.Level1)
+{
+    AgentManagerService::GetInstance()->OnAddSystemAbility(BUNDLE_MGR_SERVICE_SYS_ABILITY_ID, "123");
+    EXPECT_EQ(MyFlag::backfillPreInstallCardsCallCount, 0);
+}
+
+/**
+* @tc.name  : OnAddSystemAbility_BackfillNotTriggeredWhenOnlyAccountReady
+* @tc.number: OnAddSystemAbility_004
+* @tc.desc  : Backfill is not triggered until both BMS and accountmgr are ready.
+*/
+HWTEST_F(AgentManagerServiceTest, OnAddSystemAbility_004, TestSize.Level1)
+{
+    AgentManagerService::GetInstance()->OnAddSystemAbility(SUBSYS_ACCOUNT_SYS_ABILITY_ID_BEGIN, "123");
+    EXPECT_EQ(MyFlag::backfillPreInstallCardsCallCount, 0);
+}
+
+/**
+* @tc.name  : OnAddSystemAbility_BackfillTriggeredOnceWhenBothReady
+* @tc.number: OnAddSystemAbility_005
+* @tc.desc  : Backfill is triggered exactly once once both SAs report ready.
+*/
+HWTEST_F(AgentManagerServiceTest, OnAddSystemAbility_005, TestSize.Level1)
+{
+    AgentManagerService::GetInstance()->OnAddSystemAbility(BUNDLE_MGR_SERVICE_SYS_ABILITY_ID, "123");
+    AgentManagerService::GetInstance()->OnAddSystemAbility(SUBSYS_ACCOUNT_SYS_ABILITY_ID_BEGIN, "123");
+    EXPECT_EQ(MyFlag::backfillPreInstallCardsCallCount, 1);
+    // Repeated ready signals must not re-trigger.
+    AgentManagerService::GetInstance()->OnAddSystemAbility(BUNDLE_MGR_SERVICE_SYS_ABILITY_ID, "123");
+    AgentManagerService::GetInstance()->OnAddSystemAbility(SUBSYS_ACCOUNT_SYS_ABILITY_ID_BEGIN, "123");
+    EXPECT_EQ(MyFlag::backfillPreInstallCardsCallCount, 1);
 }
 
 /**

@@ -457,6 +457,10 @@ bool EtsAutoFillExtension::CreateSessionAndReference(sptr<AAFwk::SessionInfo> se
 bool EtsAutoFillExtension::CreateNewWindow(sptr<AAFwk::SessionInfo> sessionInfo, sptr<IRemoteObject> obj,
     std::shared_ptr<AAFwk::Want> sharedWant)
 {
+    if (sharedWant == nullptr) {
+        TAG_LOGE(AAFwkTag::AUTOFILL_EXT, "null sharedWant");
+        return false;
+    }
     sptr<Rosen::WindowOption> option = new Rosen::WindowOption();
     auto context = GetContext();
     if (context == nullptr || context->GetAbilityInfo() == nullptr) {
@@ -478,6 +482,7 @@ bool EtsAutoFillExtension::CreateNewWindow(sptr<AAFwk::SessionInfo> sessionInfo,
         TAG_LOGD(AAFwkTag::AUTOFILL_EXT, "isNotAllow: %{public}d", isNotAllow);
         option->SetConstrainedModal(isNotAllow);
     }
+    option->SetCallerPid(sharedWant->GetIntParam(AAFwk::Want::PARAM_RESV_CALLER_PID, -1));
     sptr<Rosen::Window> uiWindow;
     {
         HITRACE_METER_NAME(HITRACE_TAG_APP, "Rosen::Window::Create");

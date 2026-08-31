@@ -32,6 +32,10 @@ namespace OHOS {
 namespace CliTool {
 namespace {
 constexpr int64_t MAX_TIMEOUT = 30 * 60; // 30 m
+
+// Forward declarations
+napi_value ConvertJsonToNapiValue(napi_env env, const nlohmann::json &value);
+
 napi_value ParseJsonStringToJsObject(napi_env env, const std::string &jsonStr)
 {
     napi_value jsObj = nullptr;
@@ -50,36 +54,19 @@ napi_value ParseJsonStringToJsObject(napi_env env, const std::string &jsonStr)
     if (jsonObj.is_object()) {
         napi_create_object(env, &jsValue);
         for (auto it = jsonObj.begin(); it != jsonObj.end(); ++it) {
-            napi_value jsItem = nullptr;
-            if (it.value().is_string()) {
-                jsItem = AppExecFwk::WrapStringToJS(env, it.value().get<std::string>());
-            } else if (it.value().is_number_integer()) {
-                jsItem = AppExecFwk::WrapInt32ToJS(env, it.value().get<int32_t>());
-            } else if (it.value().is_boolean()) {
-                jsItem = AppExecFwk::WrapBoolToJS(env, it.value().get<bool>());
-            } else if (it.value().is_object() || it.value().is_array()) {
-                jsItem = ParseJsonStringToJsObject(env, it.value().dump());
-            } else {
-                napi_get_undefined(env, &jsItem);
-            }
+            napi_value jsItem = ConvertJsonToNapiValue(env, it.value());
             napi_set_named_property(env, jsValue, it.key().c_str(), jsItem);
         }
     } else if (jsonObj.is_array()) {
-        napi_create_array(env, &jsValue);
+        napi_status status = napi_create_array(env, &jsValue);
+        if (status != napi_ok) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "napi_create_array failed, %{public}d", status);
+            napi_create_object(env, &jsValue);
+            return jsValue;
+        }
         size_t index = 0;
         for (auto &item : jsonObj) {
-            napi_value jsItem = nullptr;
-            if (item.is_string()) {
-                jsItem = AppExecFwk::WrapStringToJS(env, item.get<std::string>());
-            } else if (item.is_number_integer()) {
-                jsItem = AppExecFwk::WrapInt32ToJS(env, item.get<int32_t>());
-            } else if (item.is_boolean()) {
-                jsItem = AppExecFwk::WrapBoolToJS(env, item.get<bool>());
-            } else if (item.is_object() || item.is_array()) {
-                jsItem = ParseJsonStringToJsObject(env, item.dump());
-            } else {
-                napi_get_undefined(env, &jsItem);
-            }
+            napi_value jsItem = ConvertJsonToNapiValue(env, item);
             napi_set_element(env, jsValue, index++, jsItem);
         }
     } else {
@@ -87,6 +74,23 @@ napi_value ParseJsonStringToJsObject(napi_env env, const std::string &jsonStr)
     }
 
     return jsValue;
+}
+
+// Helper: Convert single JSON value to N-API value
+napi_value ConvertJsonToNapiValue(napi_env env, const nlohmann::json &value)
+{
+    if (value.is_string()) {
+        return AppExecFwk::WrapStringToJS(env, value.get<std::string>());
+    } else if (value.is_number_integer()) {
+        return AppExecFwk::WrapInt32ToJS(env, value.get<int32_t>());
+    } else if (value.is_boolean()) {
+        return AppExecFwk::WrapBoolToJS(env, value.get<bool>());
+    } else if (value.is_object() || value.is_array()) {
+        return ParseJsonStringToJsObject(env, value.dump());
+    }
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+    return undefined;
 }
 }
 bool UnwrapStringMap(napi_env env, napi_value obj,

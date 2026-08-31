@@ -36,21 +36,12 @@ namespace AbilityRuntime {
 void InsightIntentEventMgr::DeleteInsightIntent(const std::string &bundleName, const std::string &moduleName,
     int32_t userId)
 {
-    std::vector<ExtractInsightIntentInfo> intentInfos;
-    std::vector<InsightIntentInfo> configIntentInfos;
-    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentInfoByName(
-        bundleName, userId, intentInfos);
-    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetConfigInsightIntentInfoByName(
-        bundleName, userId, configIntentInfos);
-    if (!intentInfos.empty() || !configIntentInfos.empty()) {
-        TAG_LOGI(AAFwkTag::INTENT, "update bundleName: %{public}s to no insight intent", bundleName.c_str());
-        DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(
-            bundleName, moduleName, userId);
-        DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
-        CliTool::UnregisterInsightIntentFunctions(bundleName);
+    if (!DelayedSingleton<InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(
+        bundleName, moduleName, userId)) {
+        return;
     }
-
-    return;
+    TAG_LOGI(AAFwkTag::INTENT, "update bundleName: %{public}s to no insight intent", bundleName.c_str());
+    DelayedSingleton<InsightIntentDbCache>::GetInstance()->BackupRdb();
 }
 
 void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementName &elementName, int32_t userId)
@@ -113,11 +104,16 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
                 continue;
             }
 
-            // backfill moduleName before save, so both RDB and KVStore see the correct value
+            // force BMS bundleName/moduleName over the profile values so the function
+            // namespace matches the name UnregisterInsightIntentFunctions uses and the
+            // db cache erase-by-moduleName hits stale entries
             for (auto &item : configIntentInfos) {
-                if (item.moduleName.empty()) {
-                    item.moduleName = moduleNameLocal;
-                }
+                item.bundleName = bundleName;
+                item.moduleName = moduleNameLocal;
+            }
+            for (auto &item : infos.insightIntents) {
+                item.bundleName = bundleName;
+                item.moduleName = moduleNameLocal;
             }
             // save database
             DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->SaveInsightIntentTotalInfo(
@@ -129,14 +125,16 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
                 allConfigInfos.push_back(item);
             }
         }
-        // bundle 更新可能删除部分意图,先清空 KVStore 中该 bundle 的全部 function,
-        // 避免 BatchRegisterInsightIntentFunctions 增量写入后旧 function 残留
         if (allInfos.insightIntents.empty() && allConfigInfos.empty()) {
-            TAG_LOGI(AAFwkTag::INTENT, "no intent in new version, cleared stale functions, bundle:%{public}s",
+            TAG_LOGI(AAFwkTag::INTENT, "no intent in new version, clear stale functions, bundle:%{public}s",
                 bundleName.c_str());
+            bool unregistered = CliTool::UnregisterInsightIntentFunctions(bundleName);
+            TAG_LOGI(AAFwkTag::INTENT, "unregister done, bundle:%{public}s, success:%{public}d",
+                bundleName.c_str(), unregistered);
+            DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
             return;
         }
-        TAG_LOGI(AAFwkTag::INTENT, "collected intents for register, profile:%{public}zu config:%{public}zu, "
+        TAG_LOGI(AAFwkTag::INTENT, "collected intents for batch update, profile:%{public}zu config:%{public}zu, "
             "bundle:%{public}s", allInfos.insightIntents.size(), allConfigInfos.size(), bundleName.c_str());
         std::vector<AbilityRuntime::ExtractInsightIntentInfo> genericInfos;
         for (const auto &profileInfo : allInfos.insightIntents) {
@@ -152,13 +150,9 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
         intentFilter.FilterConfig(allConfigInfos);
         TAG_LOGI(AAFwkTag::INTENT, "after filter, generic:%{public}zu config:%{public}zu, bundle:%{public}s",
             genericInfos.size(), allConfigInfos.size(), bundleName.c_str());
-        std::unordered_map<std::string, uint32_t> bundleVersionMap;
-        bundleVersionMap[bundleName] = bundleInfo.versionCode;
-        int32_t successCount = 0;
-        CliTool::BatchRegisterInsightIntentFunctions(
-            genericInfos, allConfigInfos, bundleVersionMap, successCount);
-        TAG_LOGI(AAFwkTag::INTENT, "batch register done, success: %{public}d, bundle:%{public}s",
-            successCount, bundleName.c_str());
+        CliTool::BatchUpdateInsightIntentFunctions(
+            genericInfos, allConfigInfos, bundleName, bundleInfo.versionCode);
+        TAG_LOGI(AAFwkTag::INTENT, "batch update request done, bundle:%{public}s", bundleName.c_str());
         DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
     });
 }
@@ -166,7 +160,6 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
 void InsightIntentEventMgr::DeleteInsightIntentEvent(const AppExecFwk::ElementName &elementName, int32_t userId,
     int32_t appIndex)
 {
-    ErrCode ret;
     auto bundleName = elementName.GetBundleName();
     auto moduleName = elementName.GetModuleNameRef();
     if (bundleName.empty()) {
@@ -191,17 +184,17 @@ void InsightIntentEventMgr::DeleteInsightIntentEvent(const AppExecFwk::ElementNa
         return;
     }
 
-    ret = DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(
-        bundleName, moduleName, userId);
-    if (ret != ERR_OK) {
-        TAG_LOGW(AAFwkTag::INTENT, "delete intent info failed, bundleName: %{public}s, "
-            "moduleName: %{public}s, userId: %{public}d", bundleName.c_str(), moduleName.c_str(), userId);
-        return;
-    }
-    DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
-    CliTool::UnregisterInsightIntentFunctions(bundleName);
-    TAG_LOGI(AAFwkTag::INTENT, "delete intent info success, bundleName: %{public}s, "
-        "moduleName: %{public}s, userId: %{public}d", bundleName.c_str(), moduleName.c_str(), userId);
+    ffrt::submit([bundleName, moduleName, userId]() {
+        auto dbCache = DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance();
+        if (!dbCache->DeleteInsightIntentTotalInfo(bundleName, moduleName, userId)) {
+            return;
+        }
+        dbCache->BackupRdb();
+        bool unregistered = CliTool::UnregisterInsightIntentFunctions(bundleName);
+        TAG_LOGI(AAFwkTag::INTENT, "delete done, bundleName: %{public}s, moduleName: %{public}s, "
+            "userId: %{public}d, unregistered: %{public}d",
+            bundleName.c_str(), moduleName.c_str(), userId, unregistered);
+    });
 }
 
 void InsightIntentEventMgr::SubscribeSysEventReceiver()

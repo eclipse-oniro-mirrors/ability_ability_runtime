@@ -99,7 +99,8 @@ public:
     MOCK_METHOD2(NotifyContinuationResult, int(int32_t missionId, int32_t result));
     MOCK_METHOD5(ContinueMission, int(const std::string& srcDeviceId, const std::string& dstDeviceId,
         int32_t missionId, const sptr<IRemoteObject>& callBack, AAFwk::WantParams& wantParams));
-    MOCK_METHOD3(ContinueAbility, int(const std::string& deviceId, int32_t missionId, uint32_t versionCode));
+    MOCK_METHOD4(ContinueAbility, int(const std::string& deviceId, int32_t missionId,
+        uint32_t versionCode, int32_t userId));
     MOCK_METHOD3(NotifyCompleteContinuation, void(const std::string& deviceId, int32_t sessionId, bool isSuccess));
 
     MOCK_METHOD1(LockMissionForCleanup, int(int32_t missionId));
@@ -294,6 +295,15 @@ public:
         uint32_t specifyTokenId, int32_t userId, int requestCode));
 public:
     std::string powerState_;
+
+    // Capture the Want handed to the 4-arg StartAbility so unit tests can assert on its params.
+    static const Want& GetCapturedWant();
+    static bool HasCapturedWant();
+    static void ResetCapturedWant();
+
+private:
+    static Want capturedWant_;
+    static bool captured_;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

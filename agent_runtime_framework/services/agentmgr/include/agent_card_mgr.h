@@ -24,6 +24,9 @@
 #include "bundle_mgr_client.h"
 
 namespace OHOS {
+namespace AppExecFwk {
+struct BundleInfo;
+} // namespace AppExecFwk
 namespace AgentRuntime {
 class AgentCardMgr {
 public:
@@ -34,6 +37,13 @@ public:
     int32_t HandleBundleUpdate(const std::string &bundleName, int32_t userId);
 
     int32_t HandleBundleRemove(const std::string &bundleName, int32_t userId);
+
+    // Backfills AgentCards for pre-installed apps whose install events fired before
+    // AgentManagerService started listening. Enumerates all created OS accounts, then fans
+    // out one ffrt task per user. Caller guarantees BMS and accountmgr are online; idempotent.
+    static void BackfillPreInstallCards();
+
+    int32_t HandlePreInstallBackfill(int32_t userId);
 
     int32_t GetAllAgentCards(AgentCardsRawData &cards);
 
@@ -48,6 +58,11 @@ public:
     int32_t DeleteAgentCard(const std::string &bundleName, const std::string &agentId);
 
 private:
+    // Merge + persist core; caller supplies the BundleInfo so the pre-install backfill can reuse
+    // the already-fetched (EXCLUDE_CLONE) list instead of re-fetching per bundle by name.
+    int32_t HandleBundleInstall(const std::string &bundleName, const AppExecFwk::BundleInfo &bundleInfo,
+        int32_t userId);
+
     OHOS::AppExecFwk::BundleMgrClient bundleMgrClient_;
     mutable std::mutex cardDataMutex_;
     AgentCardMgr();

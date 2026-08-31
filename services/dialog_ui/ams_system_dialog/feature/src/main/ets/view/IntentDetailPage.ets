@@ -142,7 +142,9 @@ export struct IntentDetailPage {
 
   onBackPress() {
     let context = AppStorage.get('context') as common.UIAbilityContext;
-    context.terminateSelf();
+    if (context) {
+      context.terminateSelf();
+    }
   }
 
   @Provide InputTypeData: Record<string, InputType> = {
@@ -165,7 +167,7 @@ export struct IntentDetailPage {
       bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_HAP_MODULE |
       bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_EXTENSION_ABILITY
     );
-    hilog.info(DOMAIN, TAG, `getBundleInfo success: bundleName=${bundleInfo.name}`);
+    hilog.info(DOMAIN, TAG, 'getBundleInfo success: bundleName=%{public}s', bundleInfo.name);
     const hapModulesInfo = bundleInfo.hapModulesInfo;
     if (!hapModulesInfo) {
       const errorMsg = `getUIExtensionType failed: hapModulesInfo is null for bundleName=${bundleName}`;
@@ -356,16 +358,30 @@ export struct IntentDetailPage {
     const executeParam = format(this.formData);
     let validate: boolean = true;
     this.required?.forEach((key: string) => {
-      if (executeParam[key] === undefined || executeParam[key] === null) {
+      if (executeParam[key] === undefined || executeParam[key] === null ||
+        executeParam[key] === '' || Number.isNaN(executeParam[key] as number)) {
         if (validate) {
           validate = false;
           hilog.error(DOMAIN, TAG, `submitForm validation failed: required field '${key}' is missing`);
         }
       }
     })
-    if (validate) {
-      this.executeLinkIntent(executeParam as Record<string, Object>);
+    if (!validate) {
+      this.getUIContext().showAlertDialog({
+        message: $r('app.string.tips_qsbtzd'),
+        autoCancel: true,
+        alignment: DialogAlignment.Center,
+        offset: { dx: 0, dy: -20 },
+        gridCount: 3,
+        confirm: {
+          value: $r('app.string.Btn_qr'),
+          action: () => {
+          }
+        }
+      });
+      return;
     }
+    this.executeLinkIntent(executeParam as Record<string, Object>);
   }
 
   @Builder

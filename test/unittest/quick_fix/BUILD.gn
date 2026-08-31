@@ -20,9 +20,11 @@ group("unittest") {
     "quick_fix_callback_with_record_test:unittest",
     "quick_fix_error_utils_test:unittest",
     "quick_fix_info_test:unittest",
+    "quick_fix_load_callback_test:unittest",
     "quick_fix_manager_client_test:unittest",
     "quick_fix_manager_service_ability_test:unittest",
     "quick_fix_manager_service_test:unittest",
     "quick_fix_manager_service_second_test:unittest",
+    "quick_fix_utils_test:unittest",
   ]
 }

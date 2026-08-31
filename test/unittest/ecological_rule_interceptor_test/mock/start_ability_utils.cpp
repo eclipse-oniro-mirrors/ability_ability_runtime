@@ -23,7 +23,6 @@ constexpr int32_t ERMS_ISALLOW_RESULTCODE = 10;
 std::shared_ptr<StartAbilityInfo> StartAbilityUtils::startAbilityInfo;
 std::shared_ptr<StartAbilityInfo> StartAbilityUtils::callerAbilityInfo;
 bool StartAbilityUtils::skipCrowTest = false;
-bool StartAbilityUtils::skipStartOther = false;
 bool StartAbilityUtils::skipErms = false;
 int32_t StartAbilityUtils::ermsResultCode = ERMS_ISALLOW_RESULTCODE;
 bool StartAbilityUtils::isWantWithAppCloneIndex = false;

@@ -17,6 +17,7 @@ group("unittest") {
   testonly = true
 
   deps = [
+    "main_thread_frist_test:unittest",
     "ohos_application_first_test:unittest",
     "ohos_application_test:unittest",
   ]

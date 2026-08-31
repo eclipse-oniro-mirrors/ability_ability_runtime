@@ -70,6 +70,8 @@ public:
 
     bool VerifyGetBundleInfoPrivilegedPermission() const;
 
+    bool VerifyBlockAllAppStartPermission() const;
+
     int CheckCallDataAbilityPermission(const VerificationInfo &verificationInfo, bool isShell) const;
 
     int CheckCallServiceAbilityPermission(const VerificationInfo &verificationInfo) const;

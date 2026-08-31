@@ -734,7 +734,7 @@ HWTEST_F(LocalCallContainerTest, Local_Call_Container_OnCallStubDied_0200, Funct
     sptr<IRemoteObject> remoteObject = new (std::nothrow) MockServiceAbilityManagerService();
     wptr<IRemoteObject> remote(remoteObject);
     const std::string strKey = elementName.GetURI();
-    localCallRecord->SetRemoteObject(remoteObject);
+    localCallRecord->remoteObject_ = remoteObject;
     localCallContainer.SetCallLocalRecord(localCallRecord);
     localCallContainer.OnCallStubDied(remote);
     EXPECT_TRUE(localCallContainer.callProxyRecords_.empty());
@@ -756,7 +756,7 @@ HWTEST_F(LocalCallContainerTest, Local_Call_Container_OnCallStubDied_0300, Funct
     localCallContainer.SetMultipleCallLocalRecord(localCallRecordSec);
     sptr<IRemoteObject> remoteObject = new (std::nothrow) MockServiceAbilityManagerService();
     wptr<IRemoteObject> remote(remoteObject);
-    localCallRecordSec->SetRemoteObject(remoteObject);
+    localCallRecordSec->remoteObject_ = remoteObject;
     localCallContainer.OnCallStubDied(remote);
     EXPECT_FALSE(localCallContainer.multipleCallProxyRecords_.empty());
 }
@@ -776,7 +776,7 @@ HWTEST_F(LocalCallContainerTest, Local_Call_Container_OnCallStubDied_0400, Funct
     localCallContainer.SetMultipleCallLocalRecord(localCallRecordSec);
     sptr<IRemoteObject> remoteObject = new (std::nothrow) MockServiceAbilityManagerService();
     wptr<IRemoteObject> remote(remoteObject);
-    localCallRecordSec->SetRemoteObject(remoteObject);
+    localCallRecordSec->remoteObject_ = remoteObject;
     localCallContainer.OnCallStubDied(remote);
     EXPECT_FALSE(localCallContainer.multipleCallProxyRecords_.empty());
 }
@@ -1022,6 +1022,110 @@ HWTEST_F(LocalCallContainerTest, Local_Call_Container_OnAbilityDisconnectDone_08
     EXPECT_FALSE(isOnReleaseCalled);
     EXPECT_NE(connect->localCallRecord_, nullptr);
     EXPECT_EQ(localCallContainer->connections_.size(), 1u);
+}
+
+/**
+ * @tc.number: Local_Call_Container_OnCallStubDied_0500
+ * @tc.name: OnCallStubDied
+ * @tc.desc: OnCallStubDied notifies matching singleton record with ON_DIED callback.
+ */
+HWTEST_F(LocalCallContainerTest, Local_Call_Container_OnCallStubDied_0500, Function | MediumTest | Level1)
+{
+    LocalCallContainer localCallContainer;
+    AppExecFwk::ElementName elementName("DemoDeviceId", "DemoBundleName", "DemoAbilityName");
+    std::shared_ptr<LocalCallRecord> localCallRecord = std::make_shared<LocalCallRecord>(elementName);
+
+    bool isOnReleaseCalled = false;
+    std::string receivedKey;
+    std::shared_ptr<CallerCallBack> callback = std::make_shared<CallerCallBack>();
+    callback->SetOnRelease([&isOnReleaseCalled, &receivedKey](const std::string& key) {
+        isOnReleaseCalled = true;
+        receivedKey = key;
+    });
+    localCallRecord->AddCaller(callback);
+
+    sptr<IRemoteObject> remoteObject = new (std::nothrow) MockServiceAbilityManagerService();
+    localCallRecord->remoteObject_ = remoteObject;
+    localCallContainer.SetCallLocalRecord(localCallRecord);
+
+    wptr<IRemoteObject> remote(remoteObject);
+    localCallContainer.OnCallStubDied(remote);
+
+    EXPECT_TRUE(isOnReleaseCalled);
+    EXPECT_EQ(receivedKey, "died");
+    EXPECT_TRUE(localCallContainer.callProxyRecords_.empty());
+}
+
+/**
+ * @tc.number: Local_Call_Container_OnCallStubDied_0600
+ * @tc.name: OnCallStubDied
+ * @tc.desc: OnCallStubDied notifies matching multiple record with ON_DIED callback.
+ */
+HWTEST_F(LocalCallContainerTest, Local_Call_Container_OnCallStubDied_0600, Function | MediumTest | Level1)
+{
+    LocalCallContainer localCallContainer;
+    AppExecFwk::ElementName elementName("DemoDeviceId", "DemoBundleName", "DemoAbilityName");
+    std::shared_ptr<LocalCallRecord> localCallRecord = std::make_shared<LocalCallRecord>(elementName);
+
+    bool isOnReleaseCalled = false;
+    std::shared_ptr<CallerCallBack> callback = std::make_shared<CallerCallBack>();
+    callback->SetOnRelease([&isOnReleaseCalled](const std::string& key) {
+        isOnReleaseCalled = true;
+        EXPECT_EQ(key, "died");
+    });
+    localCallRecord->AddCaller(callback);
+
+    sptr<IRemoteObject> remoteObject = new (std::nothrow) MockServiceAbilityManagerService();
+    localCallRecord->remoteObject_ = remoteObject;
+    localCallContainer.SetMultipleCallLocalRecord(localCallRecord);
+
+    wptr<IRemoteObject> remote(remoteObject);
+    localCallContainer.OnCallStubDied(remote);
+
+    EXPECT_TRUE(isOnReleaseCalled);
+}
+
+/**
+ * @tc.number: Local_Call_Container_OnAbilityDisconnectDone_0900
+ * @tc.name: OnAbilityDisconnectDone
+ * @tc.desc: OnAbilityDisconnectDone with re-entrant release in onRelease callback.
+ *           The onRelease callback calls release(), which resets localCallRecord_.
+ *           Verify the null re-check prevents crash and returns early.
+ */
+HWTEST_F(LocalCallContainerTest, Local_Call_Container_OnAbilityDisconnectDone_0900, Function | MediumTest | Level1)
+{
+    auto localCallContainer = std::make_shared<LocalCallContainer>();
+    AppExecFwk::ElementName elementName("DemoDeviceId", "DemoBundleName", "DemoAbilityName");
+    std::shared_ptr<LocalCallRecord> localCallRecord = std::make_shared<LocalCallRecord>(elementName);
+    localCallRecord->SetIsSingleton(true);
+
+    sptr<CallerConnection> connect = sptr<CallerConnection>::MakeSptr();
+    connect->SetRecordAndContainer(localCallRecord, localCallContainer);
+    localCallContainer->connections_.emplace(connect);
+    localCallContainer->SetCallLocalRecord(localCallRecord);
+
+    sptr<IRemoteObject> remoteObject = new (std::nothrow) MockServiceAbilityManagerService();
+    localCallRecord->remoteObject_ = remoteObject;
+
+    // Set up onRelease callback that simulates user calling release() inside the callback.
+    // This triggers the re-entrant path: ClearCallRecord() resets localCallRecord_ under lock.
+    // After OnCallStubDied() returns, the local shared_ptr copy keeps the record alive
+    // so subsequent operations (RemoveSingletonCallLocalRecord, ClearData, etc.) are safe.
+    std::shared_ptr<CallerCallBack> callback = std::make_shared<CallerCallBack>();
+    callback->SetOnRelease([&connect](const std::string& key) {
+        if (key == "died") {
+            // Simulate user calling release() in onRelease("died") callback.
+            // Use the proper locked method instead of directly resetting the member.
+            connect->ClearCallRecord();
+        }
+    });
+    localCallRecord->AddCaller(callback);
+
+    constexpr int32_t code = 1; // REASON_CALLEE_TERMINATE
+    connect->OnAbilityDisconnectDone(elementName, code);
+
+    // Should not crash; localCallRecord_ should be nullptr (reset by re-entrant callback)
+    EXPECT_EQ(connect->localCallRecord_, nullptr);
 }
 } // namespace AppExecFwk
 } // namespace OHOS

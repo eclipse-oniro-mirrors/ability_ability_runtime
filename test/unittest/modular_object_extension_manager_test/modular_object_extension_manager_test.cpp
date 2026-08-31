@@ -260,7 +260,7 @@ HWTEST_F(AbilityRuntimeModularObjectExtensionManagerTest,
     ret = OH_AbilityRuntime_AcquireSelfModularObjectExtensionInfos(&allExtensionInfos);
     EXPECT_NE(ret, ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
     ret = OH_AbilityRuntime_ReleaseAllExtensionInfos(&allExtensionInfos);
-    ASSERT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
+    ASSERT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
 
     std::unique_ptr<OH_AbilityRuntime_AllModularObjectExtensionInfos> infos =
         std::make_unique<OH_AbilityRuntime_AllModularObjectExtensionInfos>();

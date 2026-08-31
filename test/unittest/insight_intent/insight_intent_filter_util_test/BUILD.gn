@@ -26,7 +26,10 @@ ohos_unittest("insight_intent_filter_util_test") {
     "insight_intent_filter_util_test.cpp",
   ]
 
-  configs = [ "${ability_runtime_services_path}/abilitymgr:abilityms_config" ]
+  configs = [
+    "${ability_runtime_services_path}/abilitymgr:abilityms_config",
+    "//build/config/compiler:exceptions",
+  ]
 
   cflags = []
   if (target_cpu == "arm") {
@@ -52,7 +55,7 @@ ohos_unittest("insight_intent_filter_util_test") {
     "googletest:gtest_main",
     "hilog:libhilog",
     "ipc:ipc_core",
-    "nlohmann_json:nlohmann_json",
+    "json:nlohmann_json_static",
   ]
 }
 

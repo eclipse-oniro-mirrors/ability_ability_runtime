@@ -19,6 +19,7 @@
 #include "ability_interceptor_interface.h"
 
 #include "disposed_observer.h"
+#include "task_handler_wrap.h"
 #include "task_utils_wrap.h"
 
 namespace OHOS {
@@ -26,29 +27,35 @@ namespace AppExecFwk {
 struct DisposedRule;
 }
 namespace AAFwk {
+enum class DisposedRuleResult {
+    NO_RULE = 0,
+    BLOCK_RULE,
+    NON_BLOCK_RULE,
+    QUERY_FAILED,
+};
+
 class DisposedRuleInterceptor : public IAbilityInterceptor,
                                 public std::enable_shared_from_this<DisposedRuleInterceptor> {
 public:
-    DisposedRuleInterceptor() = default;
+    explicit DisposedRuleInterceptor(std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler = nullptr);
     ~DisposedRuleInterceptor() = default;
     static std::string GenerateTimeoutTaskName(int32_t uid);
     static std::string GenerateEventTaskName(int32_t uid);
     ErrCode DoProcess(const AbilityInterceptorParam &param) override;
-    void SetTaskHandler(std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler) override
-    {
-        taskHandler_ = taskHandler;
-    };
     void UnregisterObserver(int32_t uid);
 private:
+    ErrCode HandleBlockRule(const AbilityInterceptorParam &param, AppExecFwk::DisposedRule &disposedRule);
+    ErrCode HandleNonBlockRule(const AbilityInterceptorParam &param, AppExecFwk::DisposedRule &disposedRule);
     bool ValidateNonBlockRule(const Want &want, const AppExecFwk::DisposedRule &disposedRule);
-    bool CheckControl(const Want &want, int32_t userId, AppExecFwk::DisposedRule &disposedRule, int32_t appIndex);
+    DisposedRuleResult CheckControl(const Want &want, int32_t userId, AppExecFwk::DisposedRule &disposedRule,
+        int32_t appIndex);
     bool FindBlockDisposedRule(const Want &want, const std::vector<AppExecFwk::DisposedRule> &disposedRuleList,
         AppExecFwk::DisposedRule &disposedRule);
-    void FindNonBlockDisposedRule(const std::vector<AppExecFwk::DisposedRule> &disposedRuleList,
+    bool FindNonBlockDisposedRule(const std::vector<AppExecFwk::DisposedRule> &disposedRuleList,
         AppExecFwk::DisposedRule &disposedRule);
     ErrCode StartNonBlockRule(const Want &want, AppExecFwk::DisposedRule &disposedRule,
         const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo);
-    ErrCode CreateModalUIExtension(const Want &want, const sptr<IRemoteObject> &callerToken);
+    ErrCode CreateModalUIExtension(Want &want, const sptr<IRemoteObject> &callerToken);
     void SetInterceptInfo(const Want &want, AppExecFwk::DisposedRule &disposedRule);
     bool IsSkipDisposeRule(AppExecFwk::PageJumpMode mode, const AbilityInterceptorParam &param);
 private:

@@ -256,6 +256,10 @@ CJ_EXPORT void FFIRegisterCJFormExtAbilityFuncs(void (*registerFunc)(CJFormExtAb
 CJ_EXPORT void FFIRegisterCJFormExtAbilityFuncsV2(void (*registerFunc)(CJFormExtAbilityFuncsV2*))
 {
     TAG_LOGD(AAFwkTag::FORM_EXT, "FFIRegisterCJFormExtAbilityFuncsV2 start");
+    if (g_cjFuncsV2.cjFormExtAbilityOnConfigurationUpdateV2 != nullptr) {
+        TAG_LOGE(AAFwkTag::FORM_EXT, "Repeated registration for cj functions V2 of CJFormExtAbility");
+        return;
+    }
     if (registerFunc == nullptr) {
         TAG_LOGE(AAFwkTag::FORM_EXT, "FFIRegisterCJFormExtAbilityFuncsV2 failed, registerFunc is nullptr");
         return;

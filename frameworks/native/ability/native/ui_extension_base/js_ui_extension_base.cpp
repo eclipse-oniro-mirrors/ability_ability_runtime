@@ -547,7 +547,7 @@ bool JsUIExtensionBase::ForegroundWindowWithInsightIntent(const AAFwk::Want &wan
             }
             InsightIntentExecuteParam executeParam;
             InsightIntentExecuteParam::GenerateFromWant(want, executeParam);
-            if (result.uris.size() > 0) {
+            if (result.uris.size() > 0 || result.interactionInfo != nullptr) {
                 extension->ExecuteInsightIntentDone(executeParam.insightIntentId_, result);
             }
             extension->PostInsightIntentExecuted(sessionInfo, result, needForeground);
@@ -585,7 +585,10 @@ void JsUIExtensionBase::PostInsightIntentExecuted(const sptr<AAFwk::SessionInfo>
         CallObjectMethod("onForeground");
     }
 
-    OnInsightIntentExecuteDone(sessionInfo, result);
+    auto filtered = result;
+    filtered.interactionInfo = nullptr;
+    TAG_LOGW(AAFwkTag::UI_EXT, "filter interactionInfo in window path");
+    OnInsightIntentExecuteDone(sessionInfo, filtered);
 
     if (needForeground) {
         // If need foreground, that means triggered by onForeground.
@@ -642,24 +645,9 @@ void JsUIExtensionBase::OnInsightIntentExecuteDone(const sptr<AAFwk::SessionInfo
             params.SetParam(INSIGHT_INTENT_EXECUTE_RESULT, pWantParams);
             ret = res->second->TransferExtensionData(params);
         } else {
-            WantParams resultParams;
-            resultParams.SetParam("code", Integer::Box(result.code));
-            if (result.result != nullptr) {
-                sptr<AAFwk::IWantParams> pWantParams = WantParamWrapper::Box(*result.result);
-                resultParams.SetParam("result", pWantParams);
-            }
-            auto size = result.uris.size();
-            sptr<IArray> uriArray = new (std::nothrow) Array(size, g_IID_IString);
-            if (uriArray == nullptr) {
-                TAG_LOGE(AAFwkTag::UI_EXT, "new uriArray failed");
-                return;
-            }
-            for (std::size_t i = 0; i < size; i++) {
-                uriArray->Set(i, String::Box(result.uris[i]));
-            }
-            resultParams.SetParam("uris", uriArray);
-            resultParams.SetParam("flags", Integer::Box(result.flags));
-            sptr<AAFwk::IWantParams> pWantParams = WantParamWrapper::Box(resultParams);
+            auto resultParams = result.BuildFunctionResult();
+            resultParams->SetParam("code", Integer::Box(result.code));
+            sptr<AAFwk::IWantParams> pWantParams = WantParamWrapper::Box(*resultParams);
             params.SetParam(INSIGHT_INTENT_EXECUTE_RESULT, pWantParams);
 
             ret = res->second->TransferExtensionData(params);
@@ -791,6 +779,7 @@ sptr<Rosen::WindowOption> JsUIExtensionBase::CreateWindowOption(const sptr<AAFwk
         option->SetIsBlockSubwindow(true);
     }
     option->SetStartModalExtensionTimeStamp(launchTimestamp);
+    option->SetCallerPid(want.GetIntParam(AAFwk::Want::PARAM_RESV_CALLER_PID, -1));
     return option;
 }
 

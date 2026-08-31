@@ -28,8 +28,8 @@ skills/codecheck/
 │   ├── error-handling.md                  #   错误处理（ERR-001~009）
 │   ├── logic-correctness.md               #   逻辑正确性（LOG-001~012）
 │   ├── api-consistency.md                 #   API 一致性反模式（API-001~013）
-│   └── known-defect-patterns/             #   G01–G15 历史缺陷模式库
-│       ├── G01_xxx.md ... G15_xxx.md       #   每模式一文件：信号特征 + grep 线索 + 历史案例 + 检查点
+│   └── known-defect-patterns/             #   G01–G16 历史缺陷模式库
+│       ├── G01_xxx.md ... G16_xxx.md       #   每模式一文件：信号特征 + grep 线索 + 历史案例 + 检查点
 │       └── hotspot-modules.md             #   热区模块清单
 │
 ├── scanners/                              # 第二层：检视扫描器（4 个薄层）
@@ -92,7 +92,7 @@ skills/codecheck/
              resource-lifecycle,
              ipc-serialization,
              privilege-auth,
-             known-defect-patterns/G01-G15)
+             known-defect-patterns/G01-G16)
 ```
 
 > - `orchestrator` 是**唯一编排器**，自动探测路径特征（IPC/持久化/API 信号）后选择 scanner 组合，并行调度，Refute 验证，合并统一报告。通用"检视代码"/"深度扫描"的默认入口。
@@ -143,12 +143,12 @@ orchestrator 对每条发现执行三层质疑：
 基于 `refute_log.md` 过滤后的发现列表，按 [`codecheck_report_TEMPLATE.md`](codecheck_report_TEMPLATE.md) 生成 `codecheck_report_<scope>_<YYYYMMDD>.md`。
 
 > 📄 **权威模板：** [`codecheck_report_TEMPLATE.md`](codecheck_report_TEMPLATE.md)
-> 模板固定了章节顺序（基本信息 → 总体评价 → 问题统计 → 高优先级发现 → 分维度明细 → 待跟进 → 附录）、头部机器可读的 YAML 报告元数据块，以及文末"附录 A"的**评分公式与门禁决策矩阵**。所有 codecheck 报告（含 orchestrator 合并、单 scanner 直接产出）格式保持一致，便于门禁脚本解析与历史对比。
+> 模板固定了章节顺序（门禁结论 → 扣分原因 → 必须立即处理 → 建议跟进 → 分维度速览 → 关键发现详情）与头部机器可读的 YAML 报告元数据块；评分公式与门禁决策矩阵为通用规则，见 [`conventions.md`](conventions.md) §9，不在输出报告中呈现。所有 codecheck 报告（含 orchestrator 合并、单 scanner 直接产出）格式保持一致，便于门禁脚本解析与历史对比。
 
 生成要求（门禁校验项）：
-1. 头部 YAML 报告元数据块字段名/取值域固定，`score`/`risk_level`/`gate_decision` 必须按附录 A 的公式与决策矩阵计算，不得自创分值。
+1. 头部 YAML 报告元数据块字段名/取值域固定，`score`/`risk_level`/`gate_decision` 必须按 [`conventions.md`](conventions.md) §9 的公式与决策矩阵计算，不得自创分值。
 2. 严重等级统一归一化为 P0–P3（各 scanner 的 critical/high/medium/low、致命/严重/一般/提示 一律映射后汇总，映射表见 [`conventions.md`](conventions.md)）。
-3. 跨维度去重：同一 `file:line` 被多个 scanner 命中时在"高优先级发现"合并为一条，标注维度来源列表。不同 `file:line` 但同根因由 refuter 合并。
+3. 跨维度去重：同一 `file:line` 被多个 scanner 命中时在"必须立即处理"节合并为一条，标注维度来源列表。不同 `file:line` 但同根因由 refuter 合并。
 4. 必检维度缺失时，门禁决策为 `insufficient`（无法评估），需补齐扫描后重出报告。
 
 ### Step 6：交付
@@ -164,4 +164,4 @@ orchestrator 对每条发现执行三层质疑：
 - **证据要求**：每条发现必须可追溯到 `file:line` + 触发路径，不收"代码气味"级别的无证据项。
 - **不动代码**：检视阶段只产出报告与建议，不直接改源码；修复由用户确认后另起任务。
 - **去重规则**：跨 scanner 去重以 `file:line` 为第一键；同位置多 scanner 命中合并为一条，标注维度来源；不同 `file:line` 但同根因由 refuter 合并。
-- **Refute 公约**：只质疑不发现，质疑必须有代码证据，被推翻发现保留在附录，P0 推翻需"确认不可达"级证据。
+- **Refute 公约**：只质疑不发现，质疑必须有代码证据，被推翻发现保留在 refute_log.md（不进入报告正文），P0 推翻需"确认不可达"级证据。

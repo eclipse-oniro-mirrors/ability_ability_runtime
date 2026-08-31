@@ -36,7 +36,7 @@ ohos_shared_library("uri_permission_manager_ani_kit") {
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_runtime/ability_delegator/include",
     "${ability_runtime_services_path}/common/include",
   ]
-  configs = []
+  configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
 
   public_configs = []
 

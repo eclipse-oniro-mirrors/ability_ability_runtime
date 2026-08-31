@@ -24,21 +24,42 @@ namespace AppExecFwk {
 namespace {
 void PopulateBundleInfo(BundleInfo &bundleInfo)
 {
-    bundleInfo.extensionInfos = AgentRuntime::MyFlag::mockExtensionInfos;
-    bundleInfo.hapModuleInfos = AgentRuntime::MyFlag::mockHapModuleInfos;
-    std::unordered_map<std::string, size_t> moduleIndexMap;
-    for (size_t i = 0; i < bundleInfo.hapModuleInfos.size(); ++i) {
-        moduleIndexMap.emplace(bundleInfo.hapModuleInfos[i].moduleName, i);
+    const auto &mockExtensionInfos = AgentRuntime::MyFlag::mockExtensionInfos;
+    const auto &mockHapModuleInfos = AgentRuntime::MyFlag::mockHapModuleInfos;
+    bundleInfo.extensionInfos = mockExtensionInfos;
+
+    // Build modules into a local with every vector reserved up front, then move the finished
+    // vectors wholesale into bundleInfo. This avoids std::vector reallocation, which would move
+    // the RefBase-derived HapModuleInfo/ExtensionAbilityInfo elements (RefBase's move steals the
+    // RefCounter without rebinding its callback `this`); that reallocation-move is the occasional
+    // double-free trigger on RegisterAgentCard -> ValidateBundleAbility -> GetBundleInfoV9.
+    std::unordered_map<std::string, size_t> extCountByModule;
+    for (const auto &extensionInfo : mockExtensionInfos) {
+        ++extCountByModule[extensionInfo.moduleName];
     }
-    for (const auto &extensionInfo : AgentRuntime::MyFlag::mockExtensionInfos) {
-        auto [it, inserted] = moduleIndexMap.emplace(extensionInfo.moduleName, bundleInfo.hapModuleInfos.size());
-        if (inserted) {
+
+    std::vector<HapModuleInfo> modules;
+    std::unordered_map<std::string, size_t> moduleIndexMap;
+    modules.reserve(mockHapModuleInfos.size() + mockExtensionInfos.size());
+    for (const auto &hapModuleInfo : mockHapModuleInfos) {
+        moduleIndexMap.emplace(hapModuleInfo.moduleName, modules.size());
+        modules.push_back(hapModuleInfo);
+        modules.back().extensionInfos.reserve(modules.back().extensionInfos.size() +
+            extCountByModule[hapModuleInfo.moduleName]);
+    }
+    for (const auto &extensionInfo : mockExtensionInfos) {
+        auto it = moduleIndexMap.find(extensionInfo.moduleName);
+        if (it == moduleIndexMap.end()) {
             HapModuleInfo hapModuleInfo;
             hapModuleInfo.moduleName = extensionInfo.moduleName;
-            bundleInfo.hapModuleInfos.push_back(hapModuleInfo);
+            hapModuleInfo.extensionInfos.reserve(extCountByModule[extensionInfo.moduleName]);
+            moduleIndexMap.emplace(extensionInfo.moduleName, modules.size());
+            modules.push_back(std::move(hapModuleInfo));
+            it = moduleIndexMap.find(extensionInfo.moduleName);
         }
-        bundleInfo.hapModuleInfos[it->second].extensionInfos.push_back(extensionInfo);
+        modules[it->second].extensionInfos.push_back(extensionInfo);
     }
+    bundleInfo.hapModuleInfos = std::move(modules);
     bundleInfo.applicationInfo.isSystemApp = AgentRuntime::MyFlag::mockApplicationInfoIsSystemApp;
 }
 } // namespace
@@ -50,10 +71,21 @@ BundleMgrHelper::~BundleMgrHelper() {}
 ErrCode BundleMgrHelper::GetBundleInfoV9(const std::string &bundleName, int32_t flags, BundleInfo &bundleInfo,
     int32_t userId)
 {
+    AgentRuntime::MyFlag::getBundleInfoV9CallNames.push_back(bundleName);
     if (!AgentRuntime::MyFlag::retGetBundleInfo) {
         return ERR_INVALID_VALUE;
     }
     PopulateBundleInfo(bundleInfo);
+    return ERR_OK;
+}
+
+ErrCode BundleMgrHelper::GetBundleInfosV9(int32_t flags, std::vector<BundleInfo> &bundleInfos, int32_t userId)
+{
+    AgentRuntime::MyFlag::lastGetBundleInfosUserId = userId;
+    if (!AgentRuntime::MyFlag::retGetBundleInfos) {
+        return ERR_INVALID_VALUE;
+    }
+    bundleInfos = AgentRuntime::MyFlag::mockBundleInfos;
     return ERR_OK;
 }
 }  // namespace AppExecFwk

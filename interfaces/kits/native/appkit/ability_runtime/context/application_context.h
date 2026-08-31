@@ -188,6 +188,7 @@ public:
     Global::Resource::DeviceType GetDeviceType() const override;
     void KillProcessBySelf(const bool clearPageStack = false);
     int32_t GetProcessRunningInformation(AppExecFwk::RunningProcessInfo &info);
+    int32_t GetUIAbilityChildProcessInfos(std::vector<AppExecFwk::ChildProcessInfo> &infos);
     int32_t RestartApp(const AAFwk::Want& want);
     int32_t EnableDelayedProcessExit();
     int32_t DisableDelayedProcessExit();

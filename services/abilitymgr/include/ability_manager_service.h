@@ -815,7 +815,8 @@ public:
      * @param versionCode, target bundle version.
      * @return Returns ERR_OK on success, others on failure.
      */
-    virtual int ContinueAbility(const std::string &deviceId, int32_t missionId, uint32_t versionCode) override;
+    virtual int ContinueAbility(const std::string &deviceId, int32_t missionId, uint32_t versionCode,
+        int32_t userId = -1) override;
 
     /**
      * StartContinuation, continue ability to remote.
@@ -1434,7 +1435,7 @@ public:
      * @param param The start ability wrap parameters containing want, caller token, user id, etc.
      * @return Returns ERR_OK on success, others on failure.
      */
-    int32_t StartAbilityForAppCloneSelector(StartAbilityWrapParam &param);
+    int32_t StartAbilityForAppCloneSelector(const StartAbilityWrapParam &param);
 
     int32_t StartExtensionAbilityInner(
         const Want &want,
@@ -2890,6 +2891,18 @@ private:
     int GetTopAbilityInner(sptr<IRemoteObject> &token, uint64_t displayId = 0);
 
     /**
+     * Run the post-check interceptors for a prelaunch request and report a fault event on failure.
+     * Extracted so the failure/redirect paths are unit-testable without bundle resolution.
+     *
+     * @param abilityRequest the resolved prelaunch request (want may be mutated by ERMS redirect).
+     * @param userId the validated target user id.
+     * @param eventInfo fault attribution context (may be null).
+     * @return ERR_OK to proceed, otherwise the interceptor error to abort the prelaunch.
+     */
+    int32_t ExecutePrelaunchAfterCheck(AbilityRequest &abilityRequest, int32_t userId,
+        const std::shared_ptr<EventInfo> &eventInfo);
+
+    /**
      * @brief Get the top ability token for specified user.
      * @param token Output parameter for the top ability token.
      * @param userId The target user ID.
@@ -2978,10 +2991,11 @@ private:
     int StartUIAbilityBySCBDefault(sptr<SessionInfo> sessionInfo, AbilityRuntime::StartParamsBySCB &params,
         bool &isColdStart);
     int HandleSandboxCloneLaunch(sptr<SessionInfo> sessionInfo, std::shared_ptr<SandboxCloneParams> &sandboxCloneParams,
-        int32_t currentUserId, std::shared_ptr<EventInfo> eventInfo);
+        int32_t currentUserId, std::shared_ptr<EventInfo> eventInfo, const AbilitySessionInfo &abilitySessionInfo);
     int StartUIAbilityByPreInstallInner(sptr<SessionInfo> sessionInfo, uint32_t specifyTokenId,
         AbilityRuntime::StartParamsBySCB &params, bool &isColdStart);
     int32_t PreStartInner(const FreeInstallInfo& taskInfo);
+    void ProcessPreStartOptions(AbilityRequest &abilityRequest, const FreeInstallInfo& taskInfo);
     void RemovePreStartSession(const std::string& sessionId);
 
     int32_t ConnectLocalAbility(
@@ -3006,16 +3020,16 @@ private:
     void PreLoadAppDataAbilitiesTask(const std::string &bundleName, const int32_t userId);
 
     // Helper methods for StartAbilityForAppCloneSelector refactoring
-    int32_t ValidateAppCloneIndex(Want &want, int32_t &appCloneIndex, std::shared_ptr<EventInfo> eventInfo);
-    int32_t InitializeAppCloneRequest(StartAbilityWrapParam &param, int32_t appCloneIndex,
-        AbilityRequest &abilityRequest, AppExecFwk::AbilityInfo &abilityInfo, int32_t validUserId);
-    int32_t ProcessLaunchReasonAndController(StartAbilityWrapParam &param, AbilityRequest &abilityRequest,
-        AppExecFwk::AbilityInfo &abilityInfo, std::shared_ptr<EventInfo> eventInfo);
-    int32_t ExecuteAfterCheckInterceptors(StartAbilityWrapParam &param, AbilityRequest &abilityRequest,
-        AppExecFwk::AbilityInfo &abilityInfo, int32_t appCloneIndex, std::shared_ptr<EventInfo> eventInfo);
-    void PreprocessRequestParams(StartAbilityWrapParam &param, AbilityRequest &abilityRequest);
-    int32_t ExecuteAbilityStart(AbilityRequest &abilityRequest, AppExecFwk::AbilityInfo &abilityInfo,
-        int32_t validUserId, bool isGamePrelaunch, std::shared_ptr<EventInfo> eventInfo);
+    int32_t InitializeAppCloneRequest(const StartAbilityWrapParam &param, int32_t appCloneIndex,
+        int32_t validUserId, AbilityRequest &abilityRequest, AppExecFwk::AbilityInfo &abilityInfo);
+    int32_t ProcessLaunchReasonAndController(const StartAbilityWrapParam &param,
+        const std::shared_ptr<EventInfo> eventInfo, const AppExecFwk::AbilityInfo &abilityInfo,
+        AbilityRequest &abilityRequest);
+    int32_t ExecuteAfterCheckInterceptors(const StartAbilityWrapParam &param, const AbilityRequest &abilityRequest,
+       const AppExecFwk::AbilityInfo &abilityInfo, int32_t appCloneIndex, const std::shared_ptr<EventInfo> eventInfo);
+    void PreprocessRequestParams(const StartAbilityWrapParam &param, AbilityRequest &abilityRequest);
+    int32_t ExecuteAbilityStart(const AppExecFwk::AbilityInfo &abilityInfo, int32_t validUserId, bool isGamePrelaunch,
+        const std::shared_ptr<EventInfo> eventInfo, AbilityRequest &abilityRequest);
     void InitWindowVisibilityChangedListener();
     void FreeWindowVisibilityChangedListener();
     bool CheckProcessIsBackground(int32_t pid, AbilityState currentState);
@@ -3090,7 +3104,7 @@ private:
     int32_t GetUidByCloneBundleInfo(std::string &bundleName, int32_t callerUid, int32_t userId,
         int32_t &appIndex) const;
 
-    std::string GetCreatorBundleNameForSandboxClone(const Want &want,
+    std::string GetCreatorBundleNameForSandboxClone(const std::string &inputCreatorBundleName,
         const std::string &callerBundleName, uint32_t callerTokenId, int32_t &errCode);
 
     int32_t ProcessSandboxCloneLaunch(Want &want, const std::shared_ptr<SandboxCloneParams> &sandboxCloneParams,
@@ -3146,8 +3160,9 @@ private:
 
     void StartKeepAliveApps(int32_t userId);
 
-    void StartAutoStartupApps(int32_t userId, bool isManualStart = false);
+    void StartAutoStartupApps(int32_t userId, bool isEDMStart = false);
     void StartAutoStartupApps(std::queue<AutoStartupInfo> infoList, int32_t userId);
+    bool IsAutoStartupAllowed(int32_t userId, bool isEDMStart);
     void SubscribeUserUnlockedEvent();
     void SubscribeScreenUnlockedEvent();
     std::function<void(int32_t)> GetScreenUnlockCallback();
@@ -3667,9 +3682,14 @@ private:
     int32_t KillProcessWithReasonInner(int32_t pid, const ExitReason &reason, bool isKillPrecedeStart);
 
     int32_t ProcessUdmfKey(
-        const Want &want, uint32_t targetTokenId, AppExecFwk::ExtensionAbilityType extensionType);
+        const Want &want, uint32_t callerTokenId, uint32_t targetTokenId,
+        AppExecFwk::ExtensionAbilityType extensionType);
 
     bool IsAllowAttachOrDetachAppDebug(AppExecFwk::ApplicationInfo &appInfo);
+    bool IsAllowLocalDebugOtherApps(bool isDebugFromLocal);
+    ErrCode CheckLocalDebugPermission(bool isDebugApp, bool isDebugFromLocal);
+    ErrCode GetBundleInfoForUserTest(const std::string &bundleName,
+        int32_t userId, AppExecFwk::BundleInfo &bundleInfo);
     bool IsExitReasonValid(const ExitReasonCompability &reason);
     void RecordAppRestartExitReason(bool isAppRecovery, int32_t callerPid, int32_t callerUid);
     void SetAppDeathRecipient(const sptr<IRemoteObject>& abilityToken);

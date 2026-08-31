@@ -146,6 +146,33 @@ ohos_unittest("ability_test") {
   }
 }
 
+ohos_unittest("resource_config_helper_test") {
+  module_out_path = module_output_path
+  sources = [ "resource_config_helper_test.cpp" ]
+
+  configs = [ ":module_private_config" ]
+
+  deps = [
+    "${ability_runtime_native_path}/ability/native:configuration_helper",
+  ]
+
+  external_deps = [
+    "ability_base:configuration",
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+    "resource_management:global_resmgr",
+  ]
+
+  if (ability_runtime_graphics) {
+    external_deps += [
+      "image_framework:image_native",
+      "window_manager:libdm",
+    ]
+  }
+}
+
 ohos_unittest("ability_lifecycle_test") {
   module_out_path = module_output_path
   sources = [
@@ -3538,6 +3565,7 @@ group("unittest") {
     ":reverse_continuation_scheduler_replica_proxy_test",
     ":reverse_continuation_scheduler_replica_test",
     ":reverse_continuation_scheduler_replica_stub_test",
+    ":resource_config_helper_test",
     ":service_ability_impl_test",
     ":service_extension_module_loader_test",
     ":task_handler_client_test",

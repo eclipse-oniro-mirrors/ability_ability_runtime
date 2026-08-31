@@ -830,8 +830,8 @@ ETSEnvFuncs *ETSEnvironment::RegisterFuncs()
         .StartDebuggerForSocketPair = [](std::string &option, int32_t socketFd) {
             return ETSEnvironment::GetInstance()->StartDebuggerForSocketPair(option, socketFd);
         },
-        .NotifyDebugMode = [](uint32_t tid, uint32_t instanceId, bool isStartWithDebug, void *jsVm) {
-            return ETSEnvironment::GetInstance()->NotifyDebugMode(tid, instanceId, isStartWithDebug, jsVm);
+        .NotifyDebugMode = [](uint32_t tid, uint32_t instanceId, bool isStartWithDebug, void *jsVm, bool isDebugApp) {
+            return ETSEnvironment::GetInstance()->NotifyDebugMode(tid, instanceId, isStartWithDebug, jsVm, isDebugApp);
         },
         .BroadcastAndConnect = [](const std::string& bundleName, int socketFd) {
             return ETSEnvironment::GetInstance()->BroadcastAndConnect(bundleName, socketFd);
@@ -840,12 +840,13 @@ ETSEnvFuncs *ETSEnvironment::RegisterFuncs()
     return &funcs;
 }
 
-void ETSEnvironment::NotifyDebugMode(uint32_t tid, uint32_t instanceId, bool isStartWithDebug, void *jsVm)
+void ETSEnvironment::NotifyDebugMode(uint32_t tid, uint32_t instanceId, bool isStartWithDebug, void *jsVm,
+    bool isDebugApp)
 {
     TAG_LOGD(AAFwkTag::ETSRUNTIME, "Start");
     AbilityRuntime::ConnectServerManager::Get().StoreInstanceMessage(getproctid(), instanceId, "Debugger");
     auto task = GetDebuggerPostTask();
-    ark::ArkDebugNativeAPI::NotifyDebugMode(tid, instanceId, isStartWithDebug, jsVm, task);
+    ark::ArkDebugNativeAPI::NotifyDebugMode(tid, instanceId, isStartWithDebug, jsVm, task, isDebugApp);
 }
 
 void ETSEnvironment::RemoveInstance(uint32_t instanceId)

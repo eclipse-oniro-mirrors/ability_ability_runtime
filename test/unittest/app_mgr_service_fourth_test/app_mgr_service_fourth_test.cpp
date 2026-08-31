@@ -359,5 +359,51 @@ HWTEST_F(AppMgrServiceFourthTest, GetAllAbilityInfos_002, TestSize.Level1)
     EXPECT_EQ(result, ERR_PERMISSION_DENIED);
     TAG_LOGI(AAFwkTag::TEST, "GetAllAbilityInfos_002 end");
 }
+
+/**
+ * @tc.name: GetHyperSnapLastError_0100
+ * @tc.desc: test GetHyperSnapLastError returns ERR_INVALID_OPERATION when service is not ready
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceFourthTest, GetHyperSnapLastError_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0100 start");
+    appMgrService_->eventHandler_ = nullptr;
+    HyperSnapErrorRecord record;
+    EXPECT_EQ(appMgrService_->GetHyperSnapLastError(
+        static_cast<int32_t>(HyperSnapErrorType::CREATE_SNAPSHOT), record), ERR_INVALID_OPERATION);
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0100 end");
+}
+
+/**
+ * @tc.name: GetHyperSnapLastError_0200
+ * @tc.desc: test GetHyperSnapLastError returns ERR_INVALID_VALUE on invalid error type
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceFourthTest, GetHyperSnapLastError_0200, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0200 start");
+    HyperSnapErrorRecord record;
+    EXPECT_EQ(appMgrService_->GetHyperSnapLastError(99, record), ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0200 end");
+}
+
+/**
+ * @tc.name: GetHyperSnapLastError_0300
+ * @tc.desc: test GetHyperSnapLastError returns ERR_OK and fills defaults when no error saved
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceFourthTest, GetHyperSnapLastError_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0300 start");
+    IPCSkeleton::SetCallingUid(UID);
+    HyperSnapErrorRecord record;
+    EXPECT_EQ(appMgrService_->GetHyperSnapLastError(
+        static_cast<int32_t>(HyperSnapErrorType::FORK_FROM_SNAPSHOT), record), ERR_OK);
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_OK);
+    EXPECT_EQ(record.msg, "No error");
+    IPCSkeleton::SetCallingUid(0);
+    TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0300 end");
+}
 } // namespace AppExecFwk
 } // namespace OHOS

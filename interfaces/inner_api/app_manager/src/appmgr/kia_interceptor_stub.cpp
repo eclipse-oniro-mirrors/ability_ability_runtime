@@ -43,6 +43,10 @@ int KiaInterceptorStub::OnRemoteRequest(uint32_t code, MessageParcel &data, Mess
 int KiaInterceptorStub::OnInterceptInner(MessageParcel &data, MessageParcel &reply)
 {
     sptr<AAFwk::Want> want = data.ReadParcelable<AAFwk::Want>();
+    if (want == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null want.");
+        return ERR_INVALID_VALUE;
+    }
     int resultCode = OnIntercept(*want);
     if (!reply.WriteInt32(resultCode)) {
         TAG_LOGE(AAFwkTag::APPMGR, "write resultCode failed.");

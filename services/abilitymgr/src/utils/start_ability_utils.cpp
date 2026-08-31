@@ -20,6 +20,7 @@
 #include "ability_util.h"
 #include "app_scheduler.h"
 #include "app_utils.h"
+#include "extension_query_event_util.h"
 #include "global_constant.h"
 #include "hitrace_meter.h"
 #include "ipc_skeleton.h"
@@ -45,7 +46,6 @@ bool HasAppInstanceSelector(const Want &want)
 thread_local std::shared_ptr<StartAbilityInfo> StartAbilityUtils::startAbilityInfo;
 thread_local std::shared_ptr<StartAbilityInfo> StartAbilityUtils::callerAbilityInfo;
 thread_local bool StartAbilityUtils::skipCrowTest = false;
-thread_local bool StartAbilityUtils::skipStartOther = false;
 thread_local bool StartAbilityUtils::skipErms = false;
 thread_local int32_t StartAbilityUtils::ermsResultCode = ERMS_ISALLOW_RESULTCODE;
 thread_local bool StartAbilityUtils::isWantWithAppCloneIndex = false;
@@ -171,7 +171,6 @@ StartAbilityInfoWrap::StartAbilityInfoWrap(const Want &want, int32_t validUserId
     if (StartAbilityUtils::startAbilityInfo != nullptr &&
         StartAbilityUtils::startAbilityInfo->abilityInfo.type == AppExecFwk::AbilityType::EXTENSION) {
         StartAbilityUtils::skipCrowTest = true;
-        StartAbilityUtils::skipStartOther = true;
     }
 
     if (StartAbilityUtils::callerAbilityInfo != nullptr) {
@@ -192,7 +191,6 @@ StartAbilityInfoWrap::StartAbilityInfoWrap()
     StartAbilityUtils::startAbilityInfo.reset();
     StartAbilityUtils::callerAbilityInfo.reset();
     StartAbilityUtils::skipCrowTest = false;
-    StartAbilityUtils::skipStartOther = false;
     StartAbilityUtils::skipErms = false;
     StartAbilityUtils::ermsResultCode = ERMS_ISALLOW_RESULTCODE;
     StartAbilityUtils::isWantWithAppCloneIndex = false;
@@ -205,7 +203,6 @@ StartAbilityInfoWrap::~StartAbilityInfoWrap()
     StartAbilityUtils::startAbilityInfo.reset();
     StartAbilityUtils::callerAbilityInfo.reset();
     StartAbilityUtils::skipCrowTest = false;
-    StartAbilityUtils::skipStartOther = false;
     StartAbilityUtils::skipErms = false;
     StartAbilityUtils::ermsResultCode = ERMS_ISALLOW_RESULTCODE;
     StartAbilityUtils::isWantWithAppCloneIndex = false;
@@ -305,6 +302,7 @@ std::shared_ptr<StartAbilityInfo> StartAbilityInfo::CreateStartAbilityInfo(const
             IN_PROCESS_CALL_WITHOUT_RET(bms->GetSandboxExtAbilityInfos(want, appIndex,
                 abilityInfoFlag, userId, extensionInfos));
         }
+        ExtensionQueryEventUtil::ReportExtensionQueryMultiResult(extensionInfos, appIndex != 0);
         if (extensionInfos.size() <= 0) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "extensionInfo empty");
             request->status = RESOLVE_ABILITY_ERR;
@@ -352,6 +350,7 @@ std::shared_ptr<StartAbilityInfo> StartAbilityInfo::CreateStartExtensionInfo(con
         IN_PROCESS_CALL_WITHOUT_RET(bms->GetSandboxExtAbilityInfos(want, appIndex,
             abilityInfoFlag, userId, extensionInfos));
     }
+    ExtensionQueryEventUtil::ReportExtensionQueryMultiResult(extensionInfos, appIndex != 0);
     if (extensionInfos.size() <= 0) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "extensionInfo empty");
         abilityInfo->status = RESOLVE_ABILITY_ERR;
@@ -449,8 +448,6 @@ void StartAbilityUtils::SetTargetCloneIndexInSameBundle(const Want &want, sptr<I
     int32_t appIndex = callerRecord->GetApplicationInfo().appIndex;
     if (appIndex >= 0 && appIndex < AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
         (const_cast<Want &>(want)).SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, appIndex);
-    } else if (AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(appIndex)) {
-        (const_cast<Want &>(want)).SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, appIndex);
     }
 }
 

@@ -40,12 +40,10 @@ public:
     ProcessManager &operator=(ProcessManager &&) = delete;
 
     int32_t CreateChildProcess(const ExecToolParam &param, const std::string &sandboxConfig,
-        const ToolInfo &toolInfo, std::shared_ptr<SessionRecord> record,
-        const std::vector<std::shared_ptr<SessionRecord>> &fatherSessionRecords = {}) const;
+        const ToolInfo &toolInfo, std::shared_ptr<SessionRecord> record) const;
 
     int32_t CreateShellProcess(const ExecCmdParam &param, const std::string &sandboxConfig,
-        std::shared_ptr<SessionRecord> record,
-        const std::vector<std::shared_ptr<SessionRecord>> &fatherSessionRecords = {}) const;
+        std::shared_ptr<SessionRecord> record) const;
 
     bool Killpg(pid_t pid) const;
 
@@ -55,8 +53,11 @@ private:
 
     bool CreatePipes(SessionRecord &record) const;
     void CloseAllPipes(SessionRecord &record) const;
-    void CloseFatherSessionPipes(const std::vector<std::shared_ptr<SessionRecord>> &fatherSessionRecords) const;
-    bool SetParentHapTokenId(uint32_t tokenId) const;
+    void CloseNonStdFds() const;
+    void SetupChildPipesAndExec(const SessionRecord &record,
+        std::vector<char *> &execArgs) const;
+
+    static const char *clawSandboxPath_;
 };
 
 } // namespace CliTool

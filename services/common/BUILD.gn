@@ -74,8 +74,37 @@ config("optimize_config") {
   ]
   ldflags = [
     "-flto=full",
-    "-Wl",
   ]
+  if (current_os != "mac") {
+    # --gc-sections is an ELF linker flag; Apple ld (darwin SDK host build) rejects it
+    ldflags += [ "-Wl,--gc-sections" ]
+  }
+}
+
+# Size-oriented optimization WITHOUT explicit -flto. The toolchain already
+# forces ThinLTO globally (build/config/compiler), and targets must not
+# override the LTO mode themselves; this config only adds -Oz plus
+# function/data sections and --gc-sections so dead code is dropped at link
+# time while the global ThinLTO mode is preserved.
+config("size_optimize_config") {
+  cflags = [
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-fstack-protector-strong",
+    "-D_FORTIFY_SOURCE=2",
+    "-Oz",
+  ]
+  cflags_cc = [
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-fstack-protector-strong",
+    "-D_FORTIFY_SOURCE=2",
+    "-Oz",
+  ]
+  if (current_os != "mac") {
+    # --gc-sections is an ELF linker flag; Apple ld (darwin SDK host build) rejects it
+    ldflags = [ "-Wl,--gc-sections" ]
+  }
 }
 
 # Config for TDD static libraries - no Bsymbolic flag
@@ -100,13 +129,14 @@ config("tdd_config") {
   # NOTE: No Bsymbolic flag here to allow symbol mocking
   ldflags = [
     "-flto=full",
-    "-Wl",
+    "-Wl,--gc-sections",
   ]
 }
 
 #build so
 ohos_shared_library("perm_verification") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -144,6 +174,7 @@ ohos_shared_library("perm_verification") {
   subsystem_name = "ability"
   innerapi_tags = [ "platformsdk_indirect" ]
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 ohos_static_library("perm_verification_static") {
@@ -244,6 +275,7 @@ ohos_static_library("task_handler_wrap_static") {
 
 ohos_shared_library("hisysevent_report") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
   sanitize = {
     integer_overflow = true
     ubsan = true
@@ -261,6 +293,7 @@ ohos_shared_library("hisysevent_report") {
 
   external_deps = [
     "hilog:libhilog",
+    "bounds_checking_function:libsec_shared",
     "c_utils:utils",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
@@ -268,6 +301,7 @@ ohos_shared_library("hisysevent_report") {
 
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 ohos_static_library("hisysevent_report_static") {
@@ -289,6 +323,7 @@ ohos_static_library("hisysevent_report_static") {
 
   external_deps = [
     "hilog:libhilog",
+    "bounds_checking_function:libsec_shared",
     "c_utils:utils",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
@@ -329,6 +364,7 @@ ohos_shared_library("app_util") {
 
   external_deps = [
     "bundle_framework:appexecfwk_base",
+    "bounds_checking_function:libsec_shared",
     "c_utils:utils",
     "config_policy:configpolicy_util",
     "hicollie:libhicollie",
@@ -397,6 +433,7 @@ ohos_static_library("app_util_static") {
 
   external_deps = [
     "bundle_framework:appexecfwk_base",
+    "bounds_checking_function:libsec_shared",
     "c_utils:utils",
     "config_policy:configpolicy_util",
     "hicollie:libhicollie",
@@ -445,6 +482,7 @@ ohos_shared_library("user_controller") {
     debug = false
   }
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   include_dirs = [
     "include/user_controller",
@@ -482,6 +520,7 @@ ohos_shared_library("user_controller") {
   innerapi_tags = [ "platformsdk_indirect" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 ohos_static_library("user_controller_static") {

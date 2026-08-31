@@ -26,6 +26,7 @@ config("madvise_public_config") {
 
 ohos_shared_library("ability_madvise") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   sanitize = {
     cfi = true
@@ -62,6 +63,7 @@ ohos_shared_library("ability_madvise") {
     "ability_base:want",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
+    "bounds_checking_function:libsec_shared",
     "c_utils:utils",
     "config_policy:configpolicy_util",
     "hilog:libhilog",

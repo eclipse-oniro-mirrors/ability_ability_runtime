@@ -109,7 +109,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ReleaseAllExtensionInfos(
 {
     if (!allExtensionInfos || !*allExtensionInfos) {
         TAG_LOGD(AAFwkTag::EXT, "null parameter");
-        return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     delete *allExtensionInfos;
     *allExtensionInfos = nullptr;
@@ -160,31 +160,13 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_GetModularObjectExtensionInfoElementN
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto info = reinterpret_cast<OHOS::AAFwk::ModularObjectExtensionInfo*>(extensionInfo);
-
-    char* newBundleName = strdup(info->bundleName.c_str());
-    if (!newBundleName) {
-        TAG_LOGE(AAFwkTag::EXT, "strdup bundleName failed");
+    if (info == nullptr) {
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
 
-    char* newModuleName = strdup(info->moduleName.c_str());
-    if (!newModuleName) {
-        free(newBundleName);
-        TAG_LOGE(AAFwkTag::EXT, "strdup moduleName failed");
-        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
-    }
-
-    char* newAbilityName = strdup(info->abilityName.c_str());
-    if (!newAbilityName) {
-        free(newBundleName);
-        free(newModuleName);
-        TAG_LOGE(AAFwkTag::EXT, "strdup abilityName failed");
-        return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
-    }
-
-    element->bundleName = newBundleName;
-    element->moduleName = newModuleName;
-    element->abilityName = newAbilityName;
+    element->bundleName = const_cast<char*>(info->bundleName.c_str());
+    element->moduleName = const_cast<char*>(info->moduleName.c_str());
+    element->abilityName = const_cast<char*>(info->abilityName.c_str());
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
 

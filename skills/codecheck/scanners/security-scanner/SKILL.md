@@ -3,7 +3,7 @@ name: security-scanner
 description: >
   合并版 security scanner：高影响缺陷审计 + 商用前安全审查。
   按最终结果影响（崩溃/挂死/OOM/UAF/死锁/数据损坏/权限绕过/敏感数据泄漏）优先级排序，
-  并对命中历史缺陷模式（G1-G15）做全库同类横扫。
+  并对命中历史缺陷模式（G1-G16）做全库同类横扫。
   Use when asked to find, review, scan, investigate, or prioritize P0/P1 risks
   (crashes, hangs, deadlocks, OOM, illegal memory access, data corruption,
   destructive side effects, resource leaks, state pollution, permission bypass,
@@ -26,7 +26,7 @@ description: >
 - [`patterns/ipc-serialization.md`](../../patterns/ipc-serialization.md) — IPC-001~010
 - [`patterns/privilege-auth.md`](../../patterns/privilege-auth.md) — AUTH-001~008
 - [`patterns/error-handling.md`](../../patterns/error-handling.md) — ERR-001~009
-- [`patterns/known-defect-patterns/`](../../patterns/known-defect-patterns/) — G01~G15 + hotspot-modules
+- [`patterns/known-defect-patterns/`](../../patterns/known-defect-patterns/) — G01~G16 + hotspot-modules
 
 ---
 
@@ -100,7 +100,7 @@ description: >
 
 **security 视角**：
 - 所属审计维度：A（内存/执行）/ B（输入校验）/ C（敏感信息）/ D（系统框架）/ E（类与对象）/ F（IPC 鉴权）
-- G 类编号（如命中 G01-G15）
+- G 类编号（如命中 G01-G16）
 - 同类清单（全库 grep 结果）
 
 > 一个发现可以同时是高优先级崩溃风险和安全攻击面。
@@ -168,7 +168,7 @@ security 视角：
 
 ### 统一报告（直接被调用时）
 
-直接被调用时，按 [`conventions.md`](../../conventions.md) §5–§13 生成符合 `codecheck_report_TEMPLATE.md` 的统一报告，不再使用本 scanner 自有"安全审计报告"骨架。五档严重度（9-10/7-8/5-6/3-4/1-2）按 §7.2 归一化到 P0–P3 后进入统一报告。本节"发现模板"与"Excel 输出"作为原始发现清单保留，归档到统一报告附录 §7.3。
+直接被调用时，按 [`conventions.md`](../../conventions.md) §5–§13 生成符合 `codecheck_report_TEMPLATE.md` 的统一报告，不再使用本 scanner 自有"安全审计报告"骨架。五档严重度（9-10/7-8/5-6/3-4/1-2）按 §7.2 归一化到 P0–P3 后进入统一报告。本节"发现模板"与"Excel 输出"作为原始发现清单单独交付（见 [`orchestrator/SKILL.md`](../../orchestrator/SKILL.md) Step 7 交付项），不归档入统一报告正文。
 
 ---
 

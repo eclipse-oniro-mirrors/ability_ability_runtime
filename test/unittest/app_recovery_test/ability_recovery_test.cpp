@@ -621,6 +621,50 @@ HWTEST_F(AbilityRecoveryUnitTest, IsOnForeground_001, TestSize.Level1)
 }
 
 /**
+ * @tc.name: ScheduleRestoreAbilityState_005
+ * @tc.desc: Test ScheduleRestoreAbilityState success path with populated abilityInfo, verify
+ *           APP_RECOVERY hisysevent reporting path (6 fields: APP_UID/VERSION_CODE/VERSION_NAME/
+ *           BUNDLE_NAME/ABILITY_NAME/RECOVERY_RESULT) does not crash. RECOVERY_RESULT is
+ *           prefixed "SCHEDULE_RESTORE_*" to stay separable from system-side APP_RECOVERY reports.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityRecoveryUnitTest, ScheduleRestoreAbilityState_005, TestSize.Level1)
+{
+    abilityInfo_->bundleName = "com.test.recovery";
+    abilityInfo_->name = "MainAbility";
+    abilityInfo_->applicationInfo.uid = 10000;
+    abilityInfo_->applicationInfo.versionCode = 1;
+    abilityInfo_->applicationInfo.versionName = "1.0.0";
+    abilityRecovery_->EnableAbilityRecovery(true, RestartFlag::ALWAYS_RESTART, SaveOccasionFlag::SAVE_WHEN_ERROR,
+        SaveModeFlag::SAVE_WITH_SHARED_MEMORY);
+    abilityRecovery_->hasTryLoad_ = true;
+    abilityRecovery_->hasLoaded_ = true;
+    EXPECT_TRUE(abilityRecovery_->ScheduleRestoreAbilityState(StateReason::CPP_CRASH, want_));
+}
+
+/**
+ * @tc.name: ScheduleRestoreAbilityState_006
+ * @tc.desc: Test ScheduleRestoreAbilityState with nullptr abilityInfo, verify
+ *           LoadSavedState returns false and ScheduleRestoreAbilityState returns false
+ *           (report is best-effort, does not crash).
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityRecoveryUnitTest, ScheduleRestoreAbilityState_006, TestSize.Level1)
+{
+    abilityInfo_->bundleName = "com.test.recovery";
+    abilityInfo_->name = "MainAbility";
+    abilityInfo_->applicationInfo.uid = 10000;
+    abilityInfo_->applicationInfo.versionCode = 1;
+    abilityInfo_->applicationInfo.versionName = "1.0.0";
+    abilityRecovery_->EnableAbilityRecovery(true, RestartFlag::ALWAYS_RESTART, SaveOccasionFlag::SAVE_WHEN_ERROR,
+        SaveModeFlag::SAVE_WITH_SHARED_MEMORY);
+    abilityRecovery_->hasTryLoad_ = true;
+    abilityRecovery_->hasLoaded_ = true;
+    abilityRecovery_->abilityInfo_.reset();
+    EXPECT_FALSE(abilityRecovery_->ScheduleRestoreAbilityState(StateReason::CPP_CRASH, want_));
+}
+
+/**
  * @tc.name: SaveStateCallback_001
  * @tc.desc: Test SaveStateCallback when enableFlag is false.
  * @tc.type: FUNC

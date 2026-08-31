@@ -67,6 +67,8 @@ public:
 
     virtual int32_t DestroyImage(uint64_t checkpointId, sptr<IImageErrorHandler> errorHandler = nullptr) override;
 
+    virtual int32_t GetHyperSnapLastError(int32_t errType, HyperSnapErrorRecord &record) override;
+
     virtual int32_t NotifyTemplateProcessDeepFrozen(int32_t pid) override;
 
     virtual int32_t PreTemplateProcessDeepFrozen(int32_t pid) override;
@@ -204,6 +206,15 @@ public:
      * @return ERR_OK, return back success, others fail.
      */
     virtual int GetAllChildrenProcesses(std::vector<ChildProcessInfo> &info) override;
+
+    /**
+     * GetSelfChildrenProcesses, call GetSelfChildrenProcesses() through proxy project.
+     * Obtains information about children processes that are running for the calling application.
+     *
+     * @param info, child process info.
+     * @return ERR_OK, return back success, others fail.
+     */
+    virtual int GetSelfChildrenProcesses(std::vector<ChildProcessInfo> &info) override;
 
     /**
      * IsTerminatingByPid, call IsTerminatingByPid() through proxy project.
@@ -889,6 +900,8 @@ public:
         const sptr<IRemoteObject> &callback, const ChildProcessRequest &request) override;
 #endif // SUPPORT_CHILD_PROCESS
 
+    int32_t GetSelfUIAbilityChildProcesses(std::vector<ChildProcessInfo> &infos) override;
+
     /**
      * Notify that the process depends on web by itself.
      */
@@ -1014,11 +1027,10 @@ public:
     /**
      * Enable delayed process exit.
      *
-     * @param pid Process id.
      * @param enabled Whether enable delayed process exit.
      * @return Returns ERR_OK on success, others on failure.
      */
-    int32_t EnableDelayedProcessExit(int32_t pid, bool enabled) override;
+    int32_t EnableDelayedProcessExit(bool enabled) override;
     void CancelDelayedExitTask(int32_t pid) override;
 private:
     bool SendTransactCmd(AppMgrInterfaceCode code, MessageParcel &data, MessageParcel &reply);

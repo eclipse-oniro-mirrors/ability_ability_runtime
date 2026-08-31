@@ -1612,5 +1612,155 @@ HWTEST_F(AgentConnectionManagerTest, ConnectAbilityInner_NullAgentConnection_001
     auto result = AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want, callback2);
     EXPECT_EQ(result, AAFwk::ERR_INVALID_CALLER);
 }
+
+/**
+ * @tc.name  : CreateConnectionLocked_ShouldEmplaceConnectingPlaceholder_WhenCalledUnderLock
+ * @tc.number: CreateConnectionLocked_001
+ * @tc.desc  : CreateConnectionLocked (E7) emplaces a CONNECTING placeholder with agentExtProxy and
+ *             connectingTime set, atomically with the caller's find (caller holds connectionsLock_).
+ */
+HWTEST_F(AgentConnectionManagerTest, CreateConnectionLocked_ShouldEmplaceConnectingPlaceholder_WhenCalledUnderLock,
+    TestSize.Level1)
+{
+    sptr<IRemoteObject> hostProxy = sptr<MockIRemoteObject>::MakeSptr();
+    Want want = BuildAgentConnectionWant("lockPlaceholderAgent", hostProxy, "test.module");
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+
+    sptr<AgentConnection> agentConnection;
+    {
+        std::lock_guard<std::recursive_mutex> lock(AgentConnectionManager::GetInstance().connectionsLock_);
+        agentConnection = AgentConnectionManager::GetInstance().CreateConnectionLocked(want, callback);
+    }
+    ASSERT_NE(agentConnection, nullptr);
+    ASSERT_EQ(AgentConnectionManager::GetInstance().agentConnections_.size(), static_cast<size_t>(1));
+    auto &entry = AgentConnectionManager::GetInstance().agentConnections_.begin()->first;
+    EXPECT_EQ(entry.agentConnection, agentConnection);
+    EXPECT_EQ(entry.agentConnection->GetConnectionState(), CONNECTION_STATE_CONNECTING);
+    EXPECT_NE(entry.agentExtProxy, nullptr);
+    EXPECT_NE(entry.connectingTime, 0);
+}
+
+/**
+ * @tc.name  : DoConnectAgentExtension_ShouldErasePlaceholder_WhenConnectIpcFails
+ * @tc.number: DoConnectAgentExtension_001
+ * @tc.desc  : DoConnectAgentExtension (E7) issues the connect IPC OUTSIDE the lock and, on failure,
+ *             re-acquires connectionsLock_ and erases the placeholder CreateConnectionLocked reserved.
+ */
+HWTEST_F(AgentConnectionManagerTest, DoConnectAgentExtension_ShouldErasePlaceholder_WhenConnectIpcFails,
+    TestSize.Level1)
+{
+    sptr<IRemoteObject> hostProxy = sptr<MockIRemoteObject>::MakeSptr();
+    Want want = BuildAgentConnectionWant("doConnFailAgent", hostProxy, "test.module");
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+
+    sptr<AgentConnection> agentConnection;
+    {
+        std::lock_guard<std::recursive_mutex> lock(AgentConnectionManager::GetInstance().connectionsLock_);
+        agentConnection = AgentConnectionManager::GetInstance().CreateConnectionLocked(want, callback);
+    }
+    ASSERT_NE(agentConnection, nullptr);
+    ASSERT_EQ(AgentConnectionManager::GetInstance().agentConnections_.size(), static_cast<size_t>(1));
+
+    MyFlag::retConnectAgentExtensionAbility = ERR_INVALID_VALUE;
+    auto result = AgentConnectionManager::GetInstance().DoConnectAgentExtension(want, agentConnection);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    EXPECT_TRUE(AgentConnectionManager::GetInstance().agentConnections_.empty());
+}
+
+/**
+ * @tc.name  : DoConnectAgentExtension_ShouldKeepPlaceholder_WhenConnectIpcSucceeds
+ * @tc.number: DoConnectAgentExtension_002
+ * @tc.desc  : DoConnectAgentExtension (E7) leaves the placeholder in place when the connect IPC succeeds
+ *             (it only erases on failure); the entry stays CONNECTING until AMS fires OnAbilityConnectDone.
+ */
+HWTEST_F(AgentConnectionManagerTest, DoConnectAgentExtension_ShouldKeepPlaceholder_WhenConnectIpcSucceeds,
+    TestSize.Level1)
+{
+    sptr<IRemoteObject> hostProxy = sptr<MockIRemoteObject>::MakeSptr();
+    Want want = BuildAgentConnectionWant("doConnOkAgent", hostProxy, "test.module");
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+
+    sptr<AgentConnection> agentConnection;
+    {
+        std::lock_guard<std::recursive_mutex> lock(AgentConnectionManager::GetInstance().connectionsLock_);
+        agentConnection = AgentConnectionManager::GetInstance().CreateConnectionLocked(want, callback);
+    }
+    ASSERT_NE(agentConnection, nullptr);
+
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+    auto result = AgentConnectionManager::GetInstance().DoConnectAgentExtension(want, agentConnection);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(AgentConnectionManager::GetInstance().agentConnections_.size(), static_cast<size_t>(1));
+}
+
+/**
+ * @tc.name  : ConnectAbilityInner_ShouldFireReplayConnectDone_WhenExistingConnected
+ * @tc.number: ConnectAbilityInner_ReplayOutsideLock_001
+ * @tc.desc  : E7: for an existing CONNECTED entry, ConnectAbilityInner snapshots the remote under the
+ *             lock and fires OnAbilityConnectDone OUTSIDE connectionsLock_ (closing the previously
+ *             unasserted replay path); no new connection is created.
+ */
+HWTEST_F(AgentConnectionManagerTest, ConnectAbilityInner_ShouldFireReplayConnectDone_WhenExistingConnected,
+    TestSize.Level1)
+{
+    sptr<IRemoteObject> hostProxy = sptr<MockIRemoteObject>::MakeSptr();
+    Want want = BuildAgentConnectionWant("replayOutsideLockAgent", hostProxy, "test.module");
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+    sptr<MockAbilityConnectCallback> callback1 = new MockAbilityConnectCallback();
+    ASSERT_EQ(AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want, callback1), ERR_OK);
+    ASSERT_EQ(AgentConnectionManager::GetInstance().agentConnections_.size(), static_cast<size_t>(1));
+
+    // Promote to CONNECTED so a duplicate connect replays OnAbilityConnectDone outside the lock.
+    auto &entry = AgentConnectionManager::GetInstance().agentConnections_.begin()->first;
+    entry.agentConnection->SetConnectionState(CONNECTION_STATE_CONNECTED);
+    entry.agentConnection->SetResultCode(ERR_OK);
+
+    MyFlag::isOnAbilityConnectDoneCalled = false;
+    MyFlag::onAbilityConnectDoneCount = 0;
+    sptr<MockAbilityConnectCallback> callback2 = new MockAbilityConnectCallback();
+    auto result = AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want, callback2);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_TRUE(MyFlag::isOnAbilityConnectDoneCalled);
+    EXPECT_EQ(MyFlag::onAbilityConnectDoneCount, 1);
+    EXPECT_EQ(AgentConnectionManager::GetInstance().agentConnections_.size(), static_cast<size_t>(1));
+}
+
+/**
+ * @tc.name  : ConnectAbilityInner_ShouldErasePlaceholder_WhenConnectIpcFails
+ * @tc.number: ConnectAbilityInner_EraseOnFail_001
+ * @tc.desc  : E7: find-miss -> CreateConnectionLocked (emplace under lock) -> DoConnectAgentExtension
+ *             (IPC outside lock) fails -> placeholder erased -> map empty.
+ */
+HWTEST_F(AgentConnectionManagerTest, ConnectAbilityInner_ShouldErasePlaceholder_WhenConnectIpcFails, TestSize.Level1)
+{
+    sptr<IRemoteObject> hostProxy = sptr<MockIRemoteObject>::MakeSptr();
+    Want want = BuildAgentConnectionWant("eraseOnFailAgent", hostProxy, "test.module");
+    MyFlag::retConnectAgentExtensionAbility = ERR_INVALID_VALUE;
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+    auto result = AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want, callback);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    EXPECT_TRUE(AgentConnectionManager::GetInstance().agentConnections_.empty());
+}
+
+/**
+ * @tc.name  : ConnectAbilityInner_ShouldCoalesceDuplicateConnects_ToSingleEntry
+ * @tc.number: ConnectAbilityInner_Coalesce_001
+ * @tc.desc  : E7 TOCTOU closure: a duplicate CONNECTING connect finds the existing entry and attaches
+ *             its callback instead of creating a second connection (single entry, two callbacks).
+ */
+HWTEST_F(AgentConnectionManagerTest, ConnectAbilityInner_ShouldCoalesceDuplicateConnects_ToSingleEntry, TestSize.Level1)
+{
+    sptr<IRemoteObject> hostProxy = sptr<MockIRemoteObject>::MakeSptr();
+    Want want = BuildAgentConnectionWant("coalesceAgent", hostProxy, "test.module");
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+    sptr<MockAbilityConnectCallback> callback1 = new MockAbilityConnectCallback();
+    sptr<MockAbilityConnectCallback> callback2 = new MockAbilityConnectCallback();
+    ASSERT_EQ(AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want, callback1), ERR_OK);
+    auto result = AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want, callback2);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(AgentConnectionManager::GetInstance().agentConnections_.size(), static_cast<size_t>(1));
+    EXPECT_EQ(AgentConnectionManager::GetInstance().agentConnections_.begin()->second.size(),
+        static_cast<size_t>(2));
+}
 } // namespace AgentRuntime
 } // namespace OHOS

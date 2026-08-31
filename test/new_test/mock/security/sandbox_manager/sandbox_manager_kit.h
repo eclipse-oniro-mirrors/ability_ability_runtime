@@ -33,7 +33,7 @@ public:
     static int32_t PersistPolicy(uint32_t tokenid, const std::vector<PolicyInfo> &policys,
         std::vector<uint32_t> &results);
     static int32_t UnSetPolicy(uint32_t tokenid, const PolicyInfo &policy);
-    static int32_t UnSetAllPolicyByToken(uint32_t tokenId, uint64_t timestamp);
+    static int32_t UnSetAllPolicyByTokenAsync(uint32_t tokenId, uint64_t timestamp);
     static int32_t StartAccessingPolicy(const std::vector<PolicyInfo> &policy, std::vector<uint32_t> &result,
         bool useCallerToken, uint32_t tokenId, uint64_t timestamp);
     static void Init();
@@ -44,7 +44,7 @@ public:
     static int32_t persistPolicyRet_;
     static int32_t unSetPolicyRet_;
     static int32_t startAccessingPolicyRet_;
-    static int32_t unSetAllPolicyByTokenRet_;
+    static int32_t unSetAllPolicyByTokenAsyncRet_;
     static std::vector<uint32_t> setPolicyResult_;
     static std::vector<bool> checkPolicyResult_;
     static std::vector<bool> checkPersistPolicyResult_;

@@ -215,7 +215,12 @@ napi_value JSFunctionManager::OnQueryFunctions(napi_env env, size_t argc, napi_v
         }
 
         napi_value jsArray = nullptr;
-        napi_create_array(env, &jsArray);
+        napi_status napiStatus = napi_create_array(env, &jsArray);
+        if (napiStatus != napi_ok) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "napi_create_array failed, %{public}d", napiStatus);
+            task.Reject(env, CreateCliJsErrorByNativeErr(env, ERR_INNER_PARAM_INVALID));
+            return;
+        }
         for (size_t i = 0; i < functions->size(); i++) {
             napi_value jsFunction = CreateJsFunctionInfo(env, (*functions)[i]);
             if (jsFunction != nullptr) {
@@ -296,7 +301,13 @@ napi_value JSFunctionManagerInit(napi_env env, napi_value exportObj)
     }
 
     std::unique_ptr<JSFunctionManager> jsFunctionManager = std::make_unique<JSFunctionManager>();
-    napi_wrap(env, exportObj, jsFunctionManager.release(), JSFunctionManager::Finalizer, nullptr, nullptr);
+    napi_status status = napi_wrap(env, exportObj, jsFunctionManager.get(),
+        JSFunctionManager::Finalizer, nullptr, nullptr);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "napi_wrap failed: %{public}d", status);
+        return nullptr;
+    }
+    jsFunctionManager.release();
 
     const char *moduleName = "FunctionManager";
     BindNativeFunction(env, exportObj, "queryFunctions", moduleName, JSFunctionManager::QueryFunctions);

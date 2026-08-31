@@ -26,6 +26,7 @@
 #include "app_mgr_constants.h"
 #include "app_utils.h"
 #include "hilog_tag_wrapper.h"
+#include "param.h"
 #include "perf_profile.h"
 #include "permission_constants.h"
 #include "permission_verification.h"
@@ -515,7 +516,7 @@ void AmsMgrScheduler::SetAbilityForegroundingFlagToAppRecord(const pid_t pid)
 }
 
 void AmsMgrScheduler::StartSpecifiedAbility(const AAFwk::Want &want, const AppExecFwk::AbilityInfo &abilityInfo,
-    int32_t requestId, const std::string &customProcess, bool isWindowStagePreload)
+    const AbilityRuntime::StartSpecifiedParam &param)
 {
     if (!IsReady()) {
         return;
@@ -526,7 +527,7 @@ void AmsMgrScheduler::StartSpecifiedAbility(const AAFwk::Want &want, const AppEx
         return;
     }
     auto task = [=]() {
-        amsMgrServiceInner_->StartSpecifiedAbility(want, abilityInfo, requestId, customProcess, isWindowStagePreload);
+        amsMgrServiceInner_->StartSpecifiedAbility(want, abilityInfo, param);
     };
     amsHandler_->SubmitTask(task, {
         .taskName_ = "StartSpecifiedAbility",
@@ -593,13 +594,13 @@ int32_t AmsMgrScheduler::NotifyAppMgrRecordExitReason(int32_t pid, int32_t reaso
 }
 
 int32_t AmsMgrScheduler::NotifyAppMgrRecordExitReasonCompability(
-    int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg)
+    int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg, int32_t reason)
 {
     if (!IsReady()) {
         TAG_LOGE(AAFwkTag::APPMGR, "not ready");
         return ERR_INVALID_OPERATION;
     }
-    return amsMgrServiceInner_->NotifyAppMgrRecordExitReasonCompability(pid, killId, killMsg, innerMsg);
+    return amsMgrServiceInner_->NotifyAppMgrRecordExitReasonCompability(pid, killId, killMsg, innerMsg, reason);
 }
 
 void AmsMgrScheduler::SetEnableStartProcessFlagByUserId(int32_t userId, bool enableStartProcess)

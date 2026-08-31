@@ -72,7 +72,7 @@ public:
     void RemoveInstance(uint32_t instanceId);
     void StopDebugMode(void *jsVm);
     void StartDebuggerForSocketPair(std::string &option, int32_t socketFd);
-    void NotifyDebugMode(uint32_t tid, uint32_t instanceId, bool isStartWithDebug, void *jsVm);
+    void NotifyDebugMode(uint32_t tid, uint32_t instanceId, bool isStartWithDebug, void *jsVm, bool isDebugApp);
     void PostTask(const std::function<void()> &task, const std::string &name, int64_t delayTime);
     void BroadcastAndConnect(const std::string& bundleName, int socketFd);
 

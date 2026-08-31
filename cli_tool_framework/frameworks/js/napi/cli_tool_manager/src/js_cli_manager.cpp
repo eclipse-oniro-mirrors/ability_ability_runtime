@@ -460,7 +460,12 @@ napi_value JSCliManager::OnQueryToolSummaries(napi_env env, size_t argc, napi_va
         }
 
         napi_value jsArray = nullptr;
-        napi_create_array(env, &jsArray);
+        napi_status napiStatus = napi_create_array(env, &jsArray);
+        if (napiStatus != napi_ok) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "napi_create_array failed, %{public}d", napiStatus);
+            task.Reject(env, CreateCliJsErrorByNativeErr(env, ERR_INNER_PARAM_INVALID));
+            return;
+        }
         for (size_t i = 0; i < summaries->size(); i++) {
             napi_value jsSummary = CreateJsToolSummary(env, (*summaries)[i]);
             if (jsSummary != nullptr) {
@@ -498,7 +503,12 @@ napi_value JSCliManager::OnQueryTools(napi_env env, size_t argc, napi_value *arg
         }
 
         napi_value jsArray = nullptr;
-        napi_create_array(env, &jsArray);
+        napi_status napiStatus = napi_create_array(env, &jsArray);
+        if (napiStatus != napi_ok) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "napi_create_array failed, %{public}d", napiStatus);
+            task.Reject(env, CreateCliJsErrorByNativeErr(env, ERR_INNER_PARAM_INVALID));
+            return;
+        }
         for (size_t i = 0; i < tools->size(); i++) {
             napi_value jsTool = CreateJsToolInfo(env, (*tools)[i]);
             if (jsTool != nullptr) {

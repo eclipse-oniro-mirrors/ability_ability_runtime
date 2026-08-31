@@ -19,6 +19,7 @@
 #include "accesstoken_kit.h"
 #include "event_report.h"
 #include "hilog_tag_wrapper.h"
+#include "parameters.h"
 #include "permission_constants.h"
 #include "server_constant.h"
 #include "support_system_ability_permission.h"
@@ -39,6 +40,7 @@ const std::set<std::string> OBSERVER_NATIVE_CALLER = {
     "memmgrservice",
     "resource_schedule_service",
 };
+const std::string DEVELOPER_MODE_STATE = "const.security.developermode.state";
 }
 bool PermissionVerification::VerifyPermissionByTokenId(const int &tokenId, const std::string &permissionName) const
 {
@@ -656,6 +658,22 @@ bool PermissionVerification::VerifyStartLocalDebug(int32_t tokenId) const
     }
     TAG_LOGE(AAFwkTag::DEFAULT, "Permission denied");
     return false;
+}
+
+bool PermissionVerification::VerifyLocalDebugOtherApps() const
+{
+    return VerifyCallingPermission(PermissionConstants::PERMISSION_LOCAL_DEBUG_OTHER_APPS);
+}
+
+bool PermissionVerification::IsAllowLocalDebugOtherApps(bool isDebugFromLocal) const
+{
+    if (!isDebugFromLocal) {
+        return false;
+    }
+    if (!system::GetBoolParameter(DEVELOPER_MODE_STATE, false)) {
+        return false;
+    }
+    return VerifyLocalDebugOtherApps();
 }
 
 bool PermissionVerification::VerifyStartSelfUIAbility(int tokenId) const

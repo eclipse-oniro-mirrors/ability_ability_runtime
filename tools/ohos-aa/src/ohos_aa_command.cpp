@@ -335,8 +335,18 @@ ErrCode ClawAaShellCommand::RunAsStartAbility()
             }
             if (const char* envCallerBundleName = std::getenv("ohos_cli_callerBundleName"))
                 params.callerBundleName = envCallerBundleName;
+            if (want.HasParameter(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX)) {
+                params.sandBoxCloneIndex = want.GetIntParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, 0);
+                want.RemoveParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX);
+            }
+            if (want.HasParameter(AbilityRuntime::GlobalConstant::CREATOR_BUNDLE_NAME)) {
+                params.creatorBundleName = want.GetStringParam(AbilityRuntime::GlobalConstant::CREATOR_BUNDLE_NAME);
+                want.RemoveParam(AbilityRuntime::GlobalConstant::CREATOR_BUNDLE_NAME);
+            }
             TAG_LOGI(AAFwkTag::AA_TOOL, "StartSandboxCloneAbility with callerUid=%{public}d, callerTokenId=%{public}u, "
-                "callerBundleName=%{public}s", params.callerUid, params.callerTokenId, params.callerBundleName.c_str());
+                "callerBundleName=%{public}s, sandBoxCloneIndex=%{public}d, creatorBundleName=%{public}s",
+                params.callerUid, params.callerTokenId, params.callerBundleName.c_str(),
+                params.sandBoxCloneIndex, params.creatorBundleName.c_str());
             result = AbilityManagerClient::GetInstance()->StartSandboxCloneAbility(want, params);
         } else {
             result = AbilityManagerClient::GetInstance()->StartAbility(want);

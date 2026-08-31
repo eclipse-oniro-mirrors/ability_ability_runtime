@@ -332,7 +332,6 @@ int AbilityRecord::LoadAbility(bool isShellCall, bool isStartupHide, pid_t calli
     loadParam.token = token_;
     loadParam.preToken = callerToken;
     loadParam.instanceKey = instanceKey_;
-    loadParam.isCallerSetProcess = IsCallerSetProcess();
     loadParam.customProcessFlag = customProcessFlag_;
     loadParam.isStartupHide = isStartupHide;
     want_.RemoveParam(Want::PARAM_APP_KEEP_ALIVE_ENABLED);
@@ -1160,6 +1159,11 @@ void AbilityRecord::RemoveWindowMode()
 
 void AbilityRecord::UpdateRecoveryInfo(bool hasRecoverInfo)
 {
+    hasRecoverInfo_ = hasRecoverInfo;
+    if (hasRecoverInfo) {
+        std::lock_guard guard(wantLock_);
+        want_.SetParam(Want::PARAM_ABILITY_RECOVERY_RESTART, true);
+    }
 }
 
 bool AbilityRecord::GetRecoveryInfo()
@@ -1167,6 +1171,8 @@ bool AbilityRecord::GetRecoveryInfo()
     std::lock_guard guard(wantLock_);
     return want_.GetBoolParam(Want::PARAM_ABILITY_RECOVERY_RESTART, false);
 }
+
+void AbilityRecord::EvaluateRecoveryLaunchReason() {}
 
 void AbilityRecord::SetStartSetting(const std::shared_ptr<AbilityStartSetting> &setting)
 {
@@ -1403,16 +1409,6 @@ bool AbilityRecord::IsStartToForeground() const
 void AbilityRecord::SetStartToForeground(const bool flag)
 {
     isStartToForeground_ = flag;
-}
-
-bool AbilityRecord::IsCallerSetProcess() const
-{
-    return isCallerSetProcess_.load();
-}
-
-void AbilityRecord::SetCallerSetProcess(const bool flag)
-{
-    isCallerSetProcess_.store(flag);
 }
 
 void AbilityRecord::CallRequest()

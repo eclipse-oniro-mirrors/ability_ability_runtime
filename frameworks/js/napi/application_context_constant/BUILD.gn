@@ -16,6 +16,7 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 ohos_shared_library("contextconstant_napi") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   include_dirs = []
 
@@ -33,4 +34,5 @@ ohos_shared_library("contextconstant_napi") {
   relative_install_dir = "module/app/ability"
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }

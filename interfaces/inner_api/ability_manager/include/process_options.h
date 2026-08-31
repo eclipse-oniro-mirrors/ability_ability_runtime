@@ -18,6 +18,8 @@
 
 #include "parcel.h"
 
+#include <memory>
+
 namespace OHOS {
 namespace AAFwk {
 enum class ProcessMode {
@@ -55,12 +57,13 @@ public:
     static bool IsAttachToStatusBarItemMode(ProcessMode value);
     static bool IsNewHiddenProcessMode(ProcessMode value);
 
+    static void SanitizeSystemFields(std::shared_ptr<ProcessOptions> options);
+
     bool isRestartKeepAlive = false;
     bool isStartFromNDK = false;
     bool isPreloadStart = false;
     ProcessMode processMode = ProcessMode::UNSPECIFIED;
     StartupVisibility startupVisibility = StartupVisibility::UNSPECIFIED;
-    std::string processName;
     uint64_t loadAbilityCallbackId = 0;
     pid_t callingPid = -1;
     pid_t selfPid = -1;

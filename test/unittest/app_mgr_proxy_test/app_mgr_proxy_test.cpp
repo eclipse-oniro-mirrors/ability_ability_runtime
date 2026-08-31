@@ -203,7 +203,41 @@ HWTEST_F(AppMgrProxyTest, AppMgrProxy_GetAllChildrenProcesses_0100, TestSize.Lev
 
     GTEST_LOG_(INFO) << "AppMgrProxy_GetAllChildrenProcesses_0100 end";
 }
+
+HWTEST_F(AppMgrProxyTest, AppMgrProxy_GetSelfChildrenProcesses_0100, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "AppMgrProxy_GetSelfChildrenProcesses_0100 start";
+
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mockAppMgrService_.GetRefPtr(), &MockAppMgrService::InvokeSendRequest));
+
+    std::vector<ChildProcessInfo> info;
+    appMgrProxy_->GetSelfChildrenProcesses(info);
+
+    EXPECT_EQ(
+        mockAppMgrService_->code_, static_cast<uint32_t>(AppMgrInterfaceCode::GET_SELF_CHILDREN_PROCESSES));
+
+    GTEST_LOG_(INFO) << "AppMgrProxy_GetSelfChildrenProcesses_0100 end";
+}
 #endif // SUPPORT_CHILD_PROCESS
+
+HWTEST_F(AppMgrProxyTest, AppMgrProxy_GetSelfUIAbilityChildProcesses_0100, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "AppMgrProxy_GetSelfUIAbilityChildProcesses_0100 start";
+
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mockAppMgrService_.GetRefPtr(), &MockAppMgrService::InvokeSendRequest));
+
+    std::vector<ChildProcessInfo> info;
+    appMgrProxy_->GetSelfUIAbilityChildProcesses(info);
+
+    EXPECT_EQ(
+        mockAppMgrService_->code_, static_cast<uint32_t>(AppMgrInterfaceCode::GET_SELF_UIABILITY_CHILD_PROCESSES));
+
+    GTEST_LOG_(INFO) << "AppMgrProxy_GetSelfUIAbilityChildProcesses_0100 end";
+}
 
 /**
  * @tc.name: GetAppRunningStateByBundleName_0100
@@ -1617,7 +1651,7 @@ HWTEST_F(AppMgrProxyTest, EnableDelayedProcessExit_0100, TestSize.Level1)
             return NO_ERROR;
         });
 
-    auto ret = appMgrProxy_->EnableDelayedProcessExit(1234, true);
+    auto ret = appMgrProxy_->EnableDelayedProcessExit(true);
     EXPECT_EQ(ret, ERR_OK);
 }
 
@@ -1635,7 +1669,7 @@ HWTEST_F(AppMgrProxyTest, EnableDelayedProcessExit_0200, TestSize.Level1)
             return NO_ERROR;
         });
 
-    auto ret = appMgrProxy_->EnableDelayedProcessExit(1234, false);
+    auto ret = appMgrProxy_->EnableDelayedProcessExit(false);
     EXPECT_EQ(ret, ERR_OK);
 }
 
@@ -1653,7 +1687,7 @@ HWTEST_F(AppMgrProxyTest, EnableDelayedProcessExit_0300, TestSize.Level1)
             return NO_ERROR;
         });
 
-    auto ret = appMgrProxy_->EnableDelayedProcessExit(-1, true);
+    auto ret = appMgrProxy_->EnableDelayedProcessExit(true);
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
 }
 
@@ -1740,6 +1774,100 @@ HWTEST_F(AppMgrProxyTest, AppMgrProxy_ReportDumpMemResult_002, TestSize.Level1)
     std::string dumpResult = "test result";
     appMgrProxy_->ReportDumpMemResult(callback, dumpResult);
     EXPECT_EQ(mockAppMgrService_->code_, static_cast<uint32_t>(AppMgrInterfaceCode::REPORT_DUMP_MEM_RESULT));
+}
+
+/**
+ * @tc.name: AppMgrProxy_GetHyperSnapLastError_0100
+ * @tc.desc: GetHyperSnapLastError sends the correct interface code with errType.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, AppMgrProxy_GetHyperSnapLastError_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppMgrProxy_GetHyperSnapLastError_0100 start";
+
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mockAppMgrService_.GetRefPtr(), &MockAppMgrService::InvokeSendRequest));
+
+    HyperSnapErrorRecord record;
+    appMgrProxy_->GetHyperSnapLastError(static_cast<int32_t>(HyperSnapErrorType::CREATE_SNAPSHOT), record);
+
+    EXPECT_EQ(mockAppMgrService_->code_, static_cast<uint32_t>(AppMgrInterfaceCode::GET_HYPER_SNAP_LAST_ERROR));
+
+    GTEST_LOG_(INFO) << "AppMgrProxy_GetHyperSnapLastError_0100 end";
+}
+
+/**
+ * @tc.name: AppMgrProxy_GetHyperSnapLastError_0200
+ * @tc.desc: GetHyperSnapLastError tolerates an empty reply from the service side.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, AppMgrProxy_GetHyperSnapLastError_0200, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "AppMgrProxy_GetHyperSnapLastError_0200 start";
+
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mockAppMgrService_.GetRefPtr(), &MockAppMgrService::InvokeSendRequest));
+
+    HyperSnapErrorRecord record;
+    int32_t result = appMgrProxy_->GetHyperSnapLastError(static_cast<int32_t>(HyperSnapErrorType::FORK_FROM_SNAPSHOT),
+        record);
+    EXPECT_NE(result, ERR_OK);
+
+    GTEST_LOG_(INFO) << "AppMgrProxy_GetHyperSnapLastError_0200 end";
+}
+
+/**
+ * @tc.name: AppMgrProxy_GetHyperSnapLastError_0300
+ * @tc.desc: GetHyperSnapLastError goes through the real stub handler and returns a default record.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, AppMgrProxy_GetHyperSnapLastError_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppMgrProxy_GetHyperSnapLastError_0300 start";
+
+    // Dispatch the proxy request to the real stub: data already carries the interface token,
+    // HandleGetHyperSnapLastError falls back to the stub default (ERR_OK, default record).
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mockAppMgrService_.GetRefPtr(), &AppMgrStub::OnRemoteRequest));
+
+    HyperSnapErrorRecord record;
+    int32_t result = appMgrProxy_->GetHyperSnapLastError(static_cast<int32_t>(HyperSnapErrorType::CREATE_SNAPSHOT),
+        record);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_OK);
+    EXPECT_EQ(mockAppMgrService_->code_, static_cast<uint32_t>(AppMgrInterfaceCode::GET_HYPER_SNAP_LAST_ERROR));
+
+    GTEST_LOG_(INFO) << "AppMgrProxy_GetHyperSnapLastError_0300 end";
+}
+
+/**
+ * @tc.name: AppMgrProxy_GetHyperSnapLastError_0400
+ * @tc.desc: GetHyperSnapLastError returns early when the service replies a failure result.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, AppMgrProxy_GetHyperSnapLastError_0400, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "AppMgrProxy_GetHyperSnapLastError_0400 start";
+
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke([](uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) {
+            (void)code;
+            (void)data;
+            (void)option;
+            (void)reply.WriteInt32(ERR_INVALID_VALUE);
+            return 0;
+        }));
+
+    HyperSnapErrorRecord record;
+    int32_t result = appMgrProxy_->GetHyperSnapLastError(static_cast<int32_t>(HyperSnapErrorType::FORK_FROM_SNAPSHOT),
+        record);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+
+    GTEST_LOG_(INFO) << "AppMgrProxy_GetHyperSnapLastError_0400 end";
 }
 
 } // namespace AppExecFwk

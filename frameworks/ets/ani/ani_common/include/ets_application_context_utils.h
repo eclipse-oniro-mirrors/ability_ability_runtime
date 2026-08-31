@@ -46,6 +46,7 @@ public:
     static void SetFontSizeScale(ani_env *env, ani_object aniObj, ani_double fontSizeScale);
     static void ClearUpApplicationData(ani_env *env, ani_object aniObj, ani_object callback);
     static void GetRunningProcessInformation(ani_env *env, ani_object aniObj, ani_object callback);
+    static void GetUIAbilityChildProcessInfos(ani_env *env, ani_object aniObj, ani_object callback);
     static void killAllProcesses(ani_env *env, ani_object aniObj, ani_boolean clearPageStack, ani_object callback);
     static void PreloadUIExtensionAbility(ani_env *env, ani_object aniObj, ani_object wantObj, ani_object callback);
     static void SetSupportedProcessCacheSync(ani_env *env, ani_object aniObj, ani_boolean value);
@@ -91,6 +92,7 @@ private:
     void OnSetFontSizeScale(ani_env *env, ani_object aniObj, ani_double fontSizeScale);
     void OnClearUpApplicationData(ani_env *env, ani_object aniObj, ani_object callback);
     void OnGetRunningProcessInformation(ani_env *env, ani_object aniObj, ani_object callback);
+    void OnGetUIAbilityChildProcessInfos(ani_env *env, ani_object aniObj, ani_object callback);
     void OnkillAllProcesses(ani_env *env, ani_object aniObj, ani_boolean clearPageStack, ani_object callback);
     void OnPreloadUIExtensionAbility(ani_env *env, ani_object aniObj, ani_object wantObj, ani_object callback);
     void OnSetSupportedProcessCacheSync(ani_env *env, ani_object aniObj, ani_boolean value);

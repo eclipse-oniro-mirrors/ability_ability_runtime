@@ -22,6 +22,7 @@ bool AgentRuntime::MyFlag::retAddSystemAbilityListener = false;
 sptr<IRemoteObject> AgentRuntime::MyFlag::systemAbility = nullptr;
 bool AgentRuntime::MyFlag::retPublish = false;
 bool AgentRuntime::MyFlag::isAddSystemAbilityListenerCalled = false;
+int32_t AgentRuntime::MyFlag::backfillPreInstallCardsCallCount = 0;
 
 bool SystemAbility::AddSystemAbilityListener(int32_t systemAbilityId)
 {

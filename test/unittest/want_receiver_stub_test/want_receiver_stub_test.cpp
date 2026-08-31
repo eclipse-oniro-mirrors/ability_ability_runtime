@@ -83,7 +83,7 @@ HWTEST_F(WantReceiverStubTest, WantReceiverStubTest_OnRemoteRequest_002, TestSiz
     MessageParcel reply;
     MessageOption option;
 
-    int res = stub_->OnRemoteRequest(IWantSender::WANT_SENDER_SEND, data, reply, option);
+    int res = stub_->OnRemoteRequest(IWantReceiver::WANT_RECEIVER_SEND, data, reply, option);
 
     EXPECT_EQ(res, ERR_INVALID_STATE);
 }
@@ -93,7 +93,7 @@ HWTEST_F(WantReceiverStubTest, WantReceiverStubTest_OnRemoteRequest_002, TestSiz
  * Function: OnRemoteRequest
  * SubFunction: NA
  * FunctionPoints: WantReceiverStub OnRemoteRequest
- * EnvConditions: Code is WANT_SENDER_SEND
+ * EnvConditions: Code is WANT_RECEIVER_SEND
  * CaseDescription: Verify that on remote request is normal
  */
 HWTEST_F(WantReceiverStubTest, WantReceiverStubTest_OnRemoteRequest_003, TestSize.Level1)
@@ -106,7 +106,7 @@ HWTEST_F(WantReceiverStubTest, WantReceiverStubTest_OnRemoteRequest_003, TestSiz
     WriteInterfaceToken(data);
     data.WriteParcelable(&info);
 
-    int res = stub_->OnRemoteRequest(IWantSender::WANT_SENDER_SEND, data, reply, option);
+    int res = stub_->OnRemoteRequest(IWantReceiver::WANT_RECEIVER_SEND, data, reply, option);
 
     EXPECT_EQ(res, NO_ERROR);
 }

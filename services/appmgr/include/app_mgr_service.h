@@ -27,6 +27,7 @@
 #include "app_mgr_constants.h"
 #include "app_mgr_service_event_handler.h"
 #include "app_mgr_service_inner.h"
+#include "hyper_snap_error_record.h"
 #include "app_mgr_stub.h"
 #include "app_record_id.h"
 #include "app_running_record.h"
@@ -91,6 +92,8 @@ public:
         sptr<IImageErrorHandler> errorHandler = nullptr) override;
 
     virtual int32_t DestroyImage(uint64_t checkpointId, sptr<IImageErrorHandler> errorHandler = nullptr) override;
+
+    virtual int32_t GetHyperSnapLastError(int32_t errType, HyperSnapErrorRecord &record) override;
 
     virtual int32_t NotifyTemplateProcessDeepFrozen(int32_t pid) override;
 
@@ -223,6 +226,15 @@ public:
      * @return ERR_OK, return back success, others fail.
      */
     virtual int GetAllChildrenProcesses(std::vector<ChildProcessInfo> &info) override;
+
+    /**
+     * GetSelfChildrenProcesses, call GetSelfChildrenProcesses() through proxy project.
+     * Obtains information about children processes that are running for the calling application.
+     *
+     * @param info, child process info.
+     * @return ERR_OK, return back success, others fail.
+     */
+    virtual int GetSelfChildrenProcesses(std::vector<ChildProcessInfo> &info) override;
 
     /**
      * IsTerminatingByPid, call IsTerminatingByPid() through proxy project.
@@ -932,6 +944,13 @@ public:
 #endif // SUPPORT_CHILD_PROCESS
 
     /**
+     * Get all UIAbility child processes of the calling application.
+     * @param infos Output vector of child process info.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t GetSelfUIAbilityChildProcesses(std::vector<ChildProcessInfo> &infos) override;
+
+    /**
      * Register callback to notify native child exit.
      * @param notify, callback to notify
      * @return Returns ERR_OK on success, others on failure.
@@ -1196,7 +1215,7 @@ private:
      */
     void SetTerminateTimeOutFlag(const sptr<IRemoteObject> token) override;
 
-    int32_t EnableDelayedProcessExit(int32_t pid, bool enabled) override;
+    int32_t EnableDelayedProcessExit(bool enabled) override;
 
     void CancelDelayedExitTask(int32_t pid) override;
 

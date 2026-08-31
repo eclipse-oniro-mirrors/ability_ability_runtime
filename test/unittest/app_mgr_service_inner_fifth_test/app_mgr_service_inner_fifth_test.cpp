@@ -208,15 +208,14 @@ HWTEST_F(AppMgrServiceInnerTest, MakeProcessName_003, TestSize.Level2)
     int32_t appIndex = 1;
     std::string specifiedProcessFlag {};
     std::string processName {};
-    bool isCallerSetProcess = true;
 
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     appMgrServiceInner->MakeProcessName(abilityInfo, appInfo,
-        hapModuleInfo, appIndex, specifiedProcessFlag, processName, isCallerSetProcess);
+        hapModuleInfo, appIndex, specifiedProcessFlag, processName);
 
     abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
     appMgrServiceInner->MakeProcessName(abilityInfo, appInfo,
-        hapModuleInfo, appIndex, specifiedProcessFlag, processName, isCallerSetProcess);
+        hapModuleInfo, appIndex, specifiedProcessFlag, processName);
     appInfo = std::make_shared<AppExecFwk::ApplicationInfo>();
 
     abilityInfo->process = "abilityInfoProcess";
@@ -224,13 +223,13 @@ HWTEST_F(AppMgrServiceInnerTest, MakeProcessName_003, TestSize.Level2)
     abilityInfo->process = "abilityInfoProcess";
 
     appMgrServiceInner->MakeProcessName(abilityInfo, appInfo,
-        hapModuleInfo, appIndex, specifiedProcessFlag, processName, isCallerSetProcess);
+        hapModuleInfo, appIndex, specifiedProcessFlag, processName);
     EXPECT_EQ(processName, abilityInfo->process + ":" + std::to_string(appIndex));
 
     abilityInfo->type = AppExecFwk::AbilityType::PAGE;
     abilityInfo->isStageBasedModel = true;
     appMgrServiceInner->MakeProcessName(abilityInfo, appInfo,
-        hapModuleInfo, appIndex, specifiedProcessFlag, processName, isCallerSetProcess);
+        hapModuleInfo, appIndex, specifiedProcessFlag, processName);
     EXPECT_EQ(processName, appInfo->bundleName +
         abilityInfo->process + ":" + std::to_string(appIndex));
 
@@ -238,14 +237,119 @@ HWTEST_F(AppMgrServiceInnerTest, MakeProcessName_003, TestSize.Level2)
     hapModuleInfo.process = "hapModuleInfoProcess";
     hapModuleInfo.isStageBasedModel = true;
     appMgrServiceInner->MakeProcessName(abilityInfo, appInfo,
-        hapModuleInfo, appIndex, specifiedProcessFlag, processName, isCallerSetProcess);
+        hapModuleInfo, appIndex, specifiedProcessFlag, processName);
     EXPECT_EQ(processName, hapModuleInfo.process + std::to_string(appIndex));
 
     specifiedProcessFlag = "specifiedProcessFlag";
     appMgrServiceInner->MakeProcessName(abilityInfo, appInfo,
-        hapModuleInfo, appIndex, specifiedProcessFlag, processName, isCallerSetProcess);
+        hapModuleInfo, appIndex, specifiedProcessFlag, processName);
     EXPECT_EQ(processName, hapModuleInfo.process +
         std::to_string(appIndex) + ":" + specifiedProcessFlag);
+}
+
+/**
+ * @tc.name: GenerateNewProcessName_001
+ * @tc.desc: GenerateNewProcessName format and deterministic by requestId
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, GenerateNewProcessName_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AppExecFwk::AbilityInfo abilityInfo;
+    abilityInfo.bundleName = "com.test.bundle";
+    abilityInfo.moduleName = "moduleA";
+    abilityInfo.name = "AbilityA";
+
+    std::string expected = abilityInfo.bundleName + abilityInfo.bundleName + ":" +
+        abilityInfo.moduleName + ":" + abilityInfo.name + ":" + std::to_string(100);
+    std::string name1 = appMgrServiceInner->GenerateNewProcessName(abilityInfo, 100);
+    EXPECT_FALSE(name1.empty());
+    EXPECT_EQ(name1, expected);
+
+    std::string name2 = appMgrServiceInner->GenerateNewProcessName(abilityInfo, 100);
+    EXPECT_EQ(name1, name2);
+
+    std::string name3 = appMgrServiceInner->GenerateNewProcessName(abilityInfo, 200);
+    EXPECT_NE(name1, name3);
+    EXPECT_EQ(name3, abilityInfo.bundleName + abilityInfo.bundleName + ":" +
+        abilityInfo.moduleName + ":" + abilityInfo.name + ":" + std::to_string(200));
+}
+
+/**
+ * @tc.name: ResolveProcessName_001
+ * @tc.desc: NewProcessMode, should generate new process name
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, ResolveProcessName_001, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    auto appInfo = std::make_shared<AppExecFwk::ApplicationInfo>();
+    AppExecFwk::HapModuleInfo hapModuleInfo;
+    abilityInfo->bundleName = "com.test.bundle";
+    abilityInfo->moduleName = "moduleA";
+    abilityInfo->name = "AbilityB";
+    std::string processName;
+    appMgrServiceInner->ResolveProcessName(abilityInfo, appInfo, hapModuleInfo, 0, "",
+        static_cast<int32_t>(AAFwk::ProcessMode::NEW_PROCESS_ATTACH_TO_STATUS_BAR_ITEM), 100, processName);
+    std::string expected = abilityInfo->bundleName + abilityInfo->bundleName + ":" +
+        abilityInfo->moduleName + ":" + abilityInfo->name + ":" + std::to_string(100);
+    EXPECT_FALSE(processName.empty());
+    EXPECT_EQ(processName, expected);
+}
+
+/**
+ * @tc.name: ResolveProcessName_002
+ * @tc.desc: Non-NewProcessMode with empty flag, should call MakeProcessName
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, ResolveProcessName_002, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    auto appInfo = std::make_shared<AppExecFwk::ApplicationInfo>();
+    AppExecFwk::HapModuleInfo hapModuleInfo;
+    appInfo->bundleName = "com.test.bundle";
+    abilityInfo->process = "";
+    std::string processName;
+    appMgrServiceInner->ResolveProcessName(abilityInfo, appInfo, hapModuleInfo, 0, "",
+        static_cast<int32_t>(AAFwk::ProcessMode::UNSPECIFIED), -1, processName);
+    EXPECT_EQ(processName, "com.test.bundle");
+}
+
+/**
+ * @tc.name: ResolveProcessName_003
+ * @tc.desc: Non-NewProcessMode with non-empty flag, should call MakeProcessName with flag
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, ResolveProcessName_003, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    auto appInfo = std::make_shared<AppExecFwk::ApplicationInfo>();
+    AppExecFwk::HapModuleInfo hapModuleInfo;
+    appInfo->bundleName = "com.test.bundle";
+    abilityInfo->process = "";
+    std::string processName;
+    appMgrServiceInner->ResolveProcessName(abilityInfo, appInfo, hapModuleInfo, 0,
+        std::string("specifiedFlag"), static_cast<int32_t>(AAFwk::ProcessMode::UNSPECIFIED), -1, processName);
+    EXPECT_EQ(processName, "com.test.bundle:specifiedFlag");
+}
+
+/**
+ * @tc.name: ResolveProcessName_004
+ * @tc.desc: Null abilityInfo in NewProcessMode branch should return early without crash
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, ResolveProcessName_004, TestSize.Level2)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto appInfo = std::make_shared<AppExecFwk::ApplicationInfo>();
+    AppExecFwk::HapModuleInfo hapModuleInfo;
+    std::string processName = "unchanged";
+    appMgrServiceInner->ResolveProcessName(nullptr, appInfo, hapModuleInfo, 0, "",
+        static_cast<int32_t>(AAFwk::ProcessMode::NEW_PROCESS_ATTACH_TO_PARENT), -1, processName);
+    EXPECT_EQ(processName, "unchanged");
 }
 
 /**

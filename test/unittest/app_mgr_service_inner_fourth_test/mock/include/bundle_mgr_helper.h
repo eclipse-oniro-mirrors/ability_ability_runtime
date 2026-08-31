@@ -37,6 +37,7 @@ public:
         GetDependentBundleInfoFlag flag = GetDependentBundleInfoFlag::GET_APP_CROSS_HSP_BUNDLE_INFO);
     ErrCode GetBundleInfoV9(
         const std::string &bundleName, int32_t flags, BundleInfo &bundleInfo, int32_t userId);
+    ErrCode GetUidByBundleName(const std::string &bundleName, int32_t userId, int32_t appCloneIndex);
     bool QueryDataGroupInfos(const std::string &bundleName, int32_t userId, std::vector<DataGroupInfo> &infos);
     bool RegisterBundleEventCallback(const sptr<IBundleEventCallback> &bundleEventCallback);
     bool GetBundleInfos(
@@ -45,6 +46,9 @@ public:
 
     static bool hapModuleInfo_;
     static bool dataGroupInfos_;
+    static ErrCode getBundleInfoV9Result_;
+    static int32_t mockUid_;
+    static std::string bundleVersionName_;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

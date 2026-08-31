@@ -726,7 +726,11 @@ bool InsightIntentInfoForQuery::Marshalling(Parcel &parcel) const
         return false;
     }
     nlohmann::json jsonObject = *this;
-    std::string str = jsonObject.dump();
+    std::string str;
+    if (!SafeDumpTo(jsonObject, str)) {
+        TAG_LOGE(AAFwkTag::INTENT, "SafeDumpTo failed");
+        return false;
+    }
     if (str.size() + 1 > MAX_IPC_REWDATA_SIZE) {
         TAG_LOGE(AAFwkTag::INTENT, "Data size is too large");
         return false;
@@ -770,7 +774,11 @@ bool InsightIntentInfoForQuery::MarshallingVector(
         nlohmann::json item = info;
         jsonArray.push_back(item);
     }
-    std::string str = jsonArray.dump();
+    std::string str;
+    if (!SafeDumpTo(jsonArray, str)) {
+        TAG_LOGE(AAFwkTag::INTENT, "SafeDumpTo failed");
+        return false;
+    }
     TAG_LOGD(AAFwkTag::INTENT, "MarshallingVector size: %{public}zu", str.size());
     if (str.size() + 1 > MAX_IPC_REWDATA_SIZE) {
         TAG_LOGE(AAFwkTag::INTENT, "Data size is too large");

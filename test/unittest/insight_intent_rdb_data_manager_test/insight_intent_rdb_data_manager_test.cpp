@@ -12,8 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define private public
-
 #include <gtest/gtest.h>
 #include <vector>
 
@@ -112,22 +110,22 @@ HWTEST_F(InsightIntentRdbDataManagerTest, InsightIntentRdbDataManager_0200, Func
 {
     IntentRdbConfig intentRdbConfig;
     auto rdbDataCallBack = std::make_shared<IntentRdbOpenCallback>(intentRdbConfig);
-    auto result = rdbDataCallBack->
-        OnCreate(*(DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance()->rdbStore_.get()));
+    auto rdbMgr = DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance();
+    // The store is loaded by an earlier case (0100); guard the dereference so a missing
+    // load fails the test instead of crashing on a null pointer.
+    ASSERT_NE(rdbMgr->rdbStore_, nullptr);
+    auto result = rdbDataCallBack->OnCreate(*(rdbMgr->rdbStore_.get()));
     EXPECT_EQ(result, NativeRdb::E_OK);
 
-    result = rdbDataCallBack->
-        OnOpen(*(DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance()->rdbStore_.get()));
+    result = rdbDataCallBack->OnOpen(*(rdbMgr->rdbStore_.get()));
     EXPECT_EQ(result, NativeRdb::E_OK);
 
     int currentVersion = 1;
     int targetVersion = 2;
-    result = rdbDataCallBack->OnUpgrade(*(DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance()->rdbStore_.get()),
-        currentVersion, targetVersion);
+    result = rdbDataCallBack->OnUpgrade(*(rdbMgr->rdbStore_.get()), currentVersion, targetVersion);
     EXPECT_EQ(result, NativeRdb::E_OK);
 
-    result = rdbDataCallBack->OnDowngrade(*(DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance()->rdbStore_.get()),
-        targetVersion, currentVersion);
+    result = rdbDataCallBack->OnDowngrade(*(rdbMgr->rdbStore_.get()), targetVersion, currentVersion);
     EXPECT_EQ(result, NativeRdb::E_OK);
 
     std::string data = "testKey";
@@ -198,5 +196,175 @@ HWTEST_F(InsightIntentRdbDataManagerTest, InsightIntentRdbDataManager_0600, Func
     EXPECT_FALSE(rdbMgr->IsIntentRdbLoaded());
     rdbMgr->BackupRdb();
     rdbMgr->intentRdbConfig_.tableName = originalTable;
+}
+
+/**
+ * @tc.number: InsightIntentRdbDataManager_0700
+ * @tc.desc: Cover GetRdbStore direct invocation (access-check + RdbHelper::GetRdbStore path).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentRdbDataManagerTest, InsightIntentRdbDataManager_0700, Function | SmallTest | Level1)
+{
+    auto rdbMgr = DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance();
+    auto store = rdbMgr->GetRdbStore();
+    EXPECT_NE(store, nullptr);
+    EXPECT_NE(rdbMgr->rdbStore_, nullptr);
+}
+
+/**
+ * @tc.number: InsightIntentRdbDataManager_0800
+ * @tc.desc: Cover InsertWithRetry direct invocation with a normal values bucket (success path).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentRdbDataManagerTest, InsightIntentRdbDataManager_0800, Function | SmallTest | Level1)
+{
+    auto rdbMgr = DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance();
+    ASSERT_TRUE(rdbMgr->IsIntentRdbLoaded());
+    NativeRdb::ValuesBucket valuesBucket;
+    valuesBucket.PutString("INTENT_KEY", "RETRY_KEY");
+    valuesBucket.PutString("INTENT_VALUE", "RETRY_VALUE");
+    int64_t rowId = -1;
+    int32_t ret = rdbMgr->InsertWithRetry(rdbMgr->rdbStore_, rowId, valuesBucket);
+    EXPECT_EQ(ret, NativeRdb::E_OK);
+}
+
+/**
+ * @tc.number: InsightIntentRdbDataManager_0900
+ * @tc.desc: Cover UpdateData corruption-restore branch is skipped on normal update (happy path).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentRdbDataManagerTest, InsightIntentRdbDataManager_0900, Function | SmallTest | Level1)
+{
+    auto rdbMgr = DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance();
+    ASSERT_TRUE(rdbMgr->InsertData("UPDATE_KEY", "ORIG"));
+    EXPECT_TRUE(rdbMgr->UpdateData("UPDATE_KEY", "NEW"));
+    std::string value;
+    EXPECT_TRUE(rdbMgr->QueryData("UPDATE_KEY", value));
+    EXPECT_EQ(value, "NEW");
+    EXPECT_TRUE(rdbMgr->DeleteData("UPDATE_KEY"));
+}
+
+/**
+ * @tc.number: InsightIntentRdbDataManager_1000
+ * @tc.desc: Cover IsRetryErrCode returns false for a non-retry error code.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentRdbDataManagerTest, InsightIntentRdbDataManager_1000, Function | SmallTest | Level1)
+{
+    auto rdbMgr = DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance();
+    EXPECT_FALSE(rdbMgr->IsRetryErrCode(NativeRdb::E_INVALID_ARGS));
+    EXPECT_FALSE(rdbMgr->IsRetryErrCode(-1));
+}
+
+/**
+ * @tc.number: InsightIntentRdbDataManager_1100
+ * @tc.desc: QueryData for a non-existent key returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentRdbDataManagerTest, InsightIntentRdbDataManager_1100, Function | SmallTest | Level1)
+{
+    auto rdbMgr = DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance();
+    std::string value;
+    bool res = rdbMgr->QueryData("NON_EXISTENT_KEY_1100", value);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: InsightIntentRdbDataManager_1200
+ * @tc.desc: DeleteData for a non-existent key succeeds (DELETE on empty row set is valid).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentRdbDataManagerTest, InsightIntentRdbDataManager_1200, Function | SmallTest | Level1)
+{
+    auto rdbMgr = DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance();
+    bool res = rdbMgr->DeleteData("NON_EXISTENT_KEY_1200");
+    EXPECT_TRUE(res);
+}
+
+/**
+ * @tc.number: InsightIntentRdbDataManager_1300
+ * @tc.desc: QueryDataBeginWithKey with a non-existent prefix returns true with empty map.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentRdbDataManagerTest, InsightIntentRdbDataManager_1300, Function | SmallTest | Level1)
+{
+    auto rdbMgr = DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance();
+    std::unordered_map<std::string, std::string> datas;
+    bool res = rdbMgr->QueryDataBeginWithKey("NON_EXISTENT_PREFIX_1300", datas);
+    EXPECT_TRUE(res);
+    EXPECT_TRUE(datas.empty());
+}
+
+/**
+ * @tc.number: InsightIntentRdbDataManager_1400
+ * @tc.desc: Multiple insert + query round-trip to verify data integrity.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentRdbDataManagerTest, InsightIntentRdbDataManager_1400, Function | SmallTest | Level1)
+{
+    auto rdbMgr = DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance();
+    EXPECT_TRUE(rdbMgr->InsertData("RT_KEY_A", "RT_VAL_A"));
+    EXPECT_TRUE(rdbMgr->InsertData("RT_KEY_B", "RT_VAL_B"));
+    EXPECT_TRUE(rdbMgr->InsertData("RT_KEY_C", "RT_VAL_C"));
+
+    std::string valueA;
+    EXPECT_TRUE(rdbMgr->QueryData("RT_KEY_A", valueA));
+    EXPECT_EQ(valueA, "RT_VAL_A");
+
+    std::string valueB;
+    EXPECT_TRUE(rdbMgr->QueryData("RT_KEY_B", valueB));
+    EXPECT_EQ(valueB, "RT_VAL_B");
+
+    std::unordered_map<std::string, std::string> datas;
+    EXPECT_TRUE(rdbMgr->QueryDataBeginWithKey("RT_KEY_", datas));
+    EXPECT_EQ(datas.size(), static_cast<size_t>(3));
+
+    EXPECT_TRUE(rdbMgr->DeleteData("RT_KEY_A"));
+    EXPECT_TRUE(rdbMgr->DeleteData("RT_KEY_B"));
+    EXPECT_TRUE(rdbMgr->DeleteData("RT_KEY_C"));
+}
+
+/**
+ * @tc.number: InsightIntentRdbDataManager_1500
+ * @tc.desc: DeleteData followed by QueryData returns false (key no longer exists).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentRdbDataManagerTest, InsightIntentRdbDataManager_1500, Function | SmallTest | Level1)
+{
+    auto rdbMgr = DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance();
+    EXPECT_TRUE(rdbMgr->InsertData("DEL_KEY_1500", "DEL_VAL_1500"));
+    EXPECT_TRUE(rdbMgr->DeleteData("DEL_KEY_1500"));
+    std::string value;
+    EXPECT_FALSE(rdbMgr->QueryData("DEL_KEY_1500", value));
+}
+
+/**
+ * @tc.number: InsightIntentRdbDataManager_1600
+ * @tc.desc: InsertData overwrites existing key via ON_CONFLICT_REPLACE then query returns new value.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentRdbDataManagerTest, InsightIntentRdbDataManager_1600, Function | SmallTest | Level1)
+{
+    auto rdbMgr = DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance();
+    EXPECT_TRUE(rdbMgr->InsertData("OW_KEY_1600", "OW_VAL_ORIG"));
+    EXPECT_TRUE(rdbMgr->InsertData("OW_KEY_1600", "OW_VAL_NEW"));
+    std::string value;
+    EXPECT_TRUE(rdbMgr->QueryData("OW_KEY_1600", value));
+    EXPECT_EQ(value, "OW_VAL_NEW");
+    EXPECT_TRUE(rdbMgr->DeleteData("OW_KEY_1600"));
+}
+
+/**
+ * @tc.number: InsightIntentRdbDataManager_1700
+ * @tc.desc: QueryAllData on empty table (after deleting all entries) returns true with empty map.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentRdbDataManagerTest, InsightIntentRdbDataManager_1700, Function | SmallTest | Level1)
+{
+    auto rdbMgr = DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance();
+    EXPECT_TRUE(rdbMgr->InsertData("TMP_KEY_1700", "TMP_VAL_1700"));
+    EXPECT_TRUE(rdbMgr->DeleteDataBeginWithKey("TMP_KEY_1700"));
+    std::unordered_map<std::string, std::string> datas;
+    EXPECT_TRUE(rdbMgr->QueryAllData(datas));
 }
 }  // namespace

@@ -1097,9 +1097,18 @@ napi_value WrapWant(napi_env env, const Want &want)
     napi_value jsObject = nullptr;
     napi_value jsValue = nullptr;
 
+    // PARAM_SET_URI_WITH_ORIGIN_STRING is an internal system parameter used to
+    // pass through an origin uri that bypasses scheme validation. It must not be
+    // exposed to third-party apps, so it is stripped here for non-system apps.
+    Want wrapWant = want;
+    auto selfToken = IPCSkeleton::GetSelfTokenID();
+    if (!Security::AccessToken::TokenIdKit::IsSystemAppByFullTokenID(selfToken)) {
+        wrapWant.RemoveParam(Want::PARAM_SET_URI_WITH_ORIGIN_STRING);
+    }
+
     NAPI_CALL(env, napi_create_object(env, &jsObject));
 
-    napi_value jsElementName = WrapElementName(env, want.GetElement());
+    napi_value jsElementName = WrapElementName(env, wrapWant.GetElement());
     if (jsElementName == nullptr) {
         TAG_LOGI(AAFwkTag::JSNAPI, "null jsElementName");
         return nullptr;
@@ -1121,31 +1130,31 @@ napi_value WrapWant(napi_env env, const Want &want)
     SetPropertyValueByPropertyName(env, jsObject, "moduleName", jsValue);
 
     jsValue = nullptr;
-    jsValue = WrapStringToJS(env, want.GetUriString());
+    jsValue = WrapStringToJS(env, wrapWant.GetUriString());
     SetPropertyValueByPropertyName(env, jsObject, "uri", jsValue);
 
     jsValue = nullptr;
-    jsValue = WrapStringToJS(env, want.GetType());
+    jsValue = WrapStringToJS(env, wrapWant.GetType());
     SetPropertyValueByPropertyName(env, jsObject, "type", jsValue);
 
     jsValue = nullptr;
-    jsValue = WrapInt32ToJS(env, want.GetFlags());
+    jsValue = WrapInt32ToJS(env, wrapWant.GetFlags());
     SetPropertyValueByPropertyName(env, jsObject, "flags", jsValue);
 
     jsValue = nullptr;
-    jsValue = WrapStringToJS(env, want.GetAction());
+    jsValue = WrapStringToJS(env, wrapWant.GetAction());
     SetPropertyValueByPropertyName(env, jsObject, "action", jsValue);
 
     jsValue = nullptr;
-    jsValue = WrapWantParams(env, want.GetParams());
+    jsValue = WrapWantParams(env, wrapWant.GetParams());
     SetPropertyValueByPropertyName(env, jsObject, "parameters", jsValue);
 
     jsValue = nullptr;
-    jsValue = WrapWantParamsFD(env, want.GetParams());
+    jsValue = WrapWantParamsFD(env, wrapWant.GetParams());
     SetPropertyValueByPropertyName(env, jsObject, "fds", jsValue);
 
     jsValue = nullptr;
-    jsValue = WrapArrayStringToJS(env, want.GetEntities());
+    jsValue = WrapArrayStringToJS(env, wrapWant.GetEntities());
     SetPropertyValueByPropertyName(env, jsObject, "entities", jsValue);
 
     return handleEscape.Escape(jsObject);
@@ -1209,6 +1218,24 @@ bool UnwrapWant(napi_env env, napi_value param, Want &want)
     return UnwrapWant(env, param, want, "");
 }
 
+void SetUriWithPassThroughFlag(const std::string &uriString, Want &want)
+{
+    if (!want.GetBoolParam(Want::PARAM_SET_URI_WITH_ORIGIN_STRING, false)) {
+        want.SetUri(uriString);
+        return;
+    }
+    auto selfToken = IPCSkeleton::GetSelfTokenID();
+    if (Security::AccessToken::TokenIdKit::IsSystemAppByFullTokenID(selfToken)) {
+        // Restore the raw uri when the pass-through flag is set, so that the
+        // non-standard scheme uri survives re-marshalling.
+        Uri uri(uriString);
+        uri.SetUriWithOriginString(uriString);
+        want.SetUri(uri);
+    } else {
+        want.SetUri(uriString);
+    }
+}
+
 bool UnwrapWant(napi_env env, napi_value param, Want &want, const std::string &proNameNotFilter)
 {
     AbilityRuntime::HandleScope handleScope(env);
@@ -1239,7 +1266,7 @@ bool UnwrapWant(napi_env env, napi_value param, Want &want, const std::string &p
 
     natValueString = "";
     if (UnwrapStringByPropertyName(env, param, "uri", natValueString)) {
-        want.SetUri(natValueString);
+        SetUriWithPassThroughFlag(natValueString, want);
     }
 
     int32_t flags = 0;

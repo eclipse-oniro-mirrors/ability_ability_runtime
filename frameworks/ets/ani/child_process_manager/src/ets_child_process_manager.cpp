@@ -118,6 +118,11 @@ public:
         return GetInstance().OnIsNativeChildProcessSupported(env);
     }
 
+    static void GetChildProcessInfos(ani_env *env, ani_object callback)
+    {
+        GetInstance().OnGetChildProcessInfos(env, callback);
+    }
+
 private:
     void OnStartChildProcess(ani_env *env, ani_string etsSrcEntry, ani_enum_item etsStartMode, ani_object callback)
     {
@@ -374,6 +379,27 @@ private:
             AbilityRuntime::AbilityErrorCode::ERROR_OK), AppExecFwk::CreateInt(env, static_cast<ani_int>(pid)));
     }
 
+    void OnGetChildProcessInfos(ani_env *env, ani_object callback)
+    {
+        TAG_LOGD(AAFwkTag::PROCESSMGR, "called");
+        if (env == nullptr) {
+            TAG_LOGE(AAFwkTag::PROCESSMGR, "env is null");
+            return;
+        }
+        std::vector<AppExecFwk::ChildProcessInfo> childInfos;
+        AbilityRuntime::ChildProcessManagerErrorCode errorCode =
+            AbilityRuntime::ChildProcessManager::GetInstance().AcquireChildProcesses(childInfos);
+        if (errorCode != AbilityRuntime::ChildProcessManagerErrorCode::ERR_OK) {
+            TAG_LOGE(AAFwkTag::PROCESSMGR, "AcquireChildProcesses failed, errorCode: %{public}d", errorCode);
+            AppExecFwk::AsyncCallback(env, callback, AbilityRuntime::EtsErrorUtil::CreateError(env,
+                AbilityRuntime::ChildProcessManagerErrorUtil::GetAbilityErrorCode(errorCode)), nullptr);
+            return;
+        }
+        AppExecFwk::AsyncCallback(env, callback, AbilityRuntime::EtsErrorUtil::CreateError(env,
+            AbilityRuntime::AbilityErrorCode::ERROR_OK),
+            AppExecFwk::CreateChildProcessInfoArray(env, childInfos));
+    }
+
     void OnStartChildProcessCheck(ani_env *env, ani_string etsSrcEntry, ani_enum_item etsStartMode)
     {
         TAG_LOGD(AAFwkTag::PROCESSMGR, "called");
@@ -583,7 +609,10 @@ void EtsChildProcessManagerInit(ani_env *env)
             reinterpret_cast<void *>(EtsChildProcessManager::IsArkChildProcessSupported)},
         ani_native_function {"isNativeChildProcessSupported",
             ":z",
-            reinterpret_cast<void *>(EtsChildProcessManager::IsNativeChildProcessSupported)}
+            reinterpret_cast<void *>(EtsChildProcessManager::IsNativeChildProcessSupported)},
+        ani_native_function {"nativeGetChildProcessInfos",
+            "C{utils.AbilityUtils.AsyncCallbackWrapper}:",
+            reinterpret_cast<void *>(EtsChildProcessManager::GetChildProcessInfos)}
     };
     status = env->Namespace_BindNativeFunctions(ns, kitFunctions.data(), kitFunctions.size());
     if (status != ANI_OK) {

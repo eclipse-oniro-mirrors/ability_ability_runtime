@@ -28,6 +28,7 @@
 #include "hitrace_meter.h"
 #include "hilog_tag_wrapper.h"
 #include "insight_intent_execute_param.h"
+#include "skill/skill_path_validator.h"
 #include "insight_intent_execute_result.h"
 #include "insight_intent_executor_info.h"
 #include "insight_intent_executor_mgr.h"
@@ -46,12 +47,15 @@
 #include "skill/skill_execute_result.h"
 #include "string_wrapper.h"
 #include "want_params.h"
+#include "extractor.h"
 #ifdef SUPPORT_GRAPHICS
 #include "iservice_registry.h"
 #include "system_ability_definition.h"
 #include "window_scene.h"
 #endif
 
+using Extractor = OHOS::AbilityBase::Extractor;
+using ExtractorUtil = OHOS::AbilityBase::ExtractorUtil;
 namespace OHOS {
 namespace AbilityRuntime {
 namespace {
@@ -618,6 +622,10 @@ napi_value JsServiceExtension::LoadSkillFunction(
     napi_value method = nullptr;
 
     if (!param->scriptPath_.empty()) {
+        if (!IsSafeSkillPath(param->scriptPath_)) {
+            TAG_LOGW(AAFwkTag::SERVICE_EXT, "invalid scriptPath");
+            return nullptr;
+        }
         auto scriptBase = ExtractBaseName(param->scriptPath_);
         for (const auto &srcEntry : param->srcEntries_) {
             if (ExtractBaseName(srcEntry) != scriptBase) {
@@ -649,6 +657,18 @@ bool JsServiceExtension::TryLoadSkillEntry(const std::string &srcEntry,
     const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param,
     napi_env env, napi_value &outJsObj, napi_value &method)
 {
+    if (param == nullptr) {
+        TAG_LOGW(AAFwkTag::SERVICE_EXT, "param is null");
+        return false;
+    }
+    if (!IsSafeSkillPath(param->moduleName_)) {
+        TAG_LOGW(AAFwkTag::SERVICE_EXT, "invalid moduleName");
+        return false;
+    }
+    if (!param->hapPath_.empty() && !IsSafeHapPath(param->hapPath_)) {
+        TAG_LOGW(AAFwkTag::SERVICE_EXT, "invalid hapPath");
+        return false;
+    }
     if (IsBlockedSkillKeyName(param->functionName_)) {
         TAG_LOGW(AAFwkTag::SERVICE_EXT, "blocked skill function name:%{public}s",
             param->functionName_.c_str());
@@ -659,6 +679,28 @@ bool JsServiceExtension::TryLoadSkillEntry(const std::string &srcEntry,
     if (pos != std::string::npos) {
         srcPath.erase(pos);
         srcPath.append(".abc");
+    }
+    if (Extension::abilityInfo_ == nullptr || !Extension::abilityInfo_->isStageBasedModel) {
+        TAG_LOGW(AAFwkTag::SERVICE_EXT,
+            "skill load requires stage model, srcEntry:%{public}s", srcEntry.c_str());
+        return false;
+    }
+    if (!param->hapPath_.empty()) {
+        bool newCreate = false;
+        std::string loadPath = ExtractorUtil::GetLoadFilePath(param->hapPath_);
+        std::shared_ptr<Extractor> extractor = ExtractorUtil::GetExtractor(loadPath, newCreate);
+        if (extractor == nullptr) {
+            TAG_LOGW(AAFwkTag::SERVICE_EXT, "get extractor failed, hapPath:%{private}s", param->hapPath_.c_str());
+            return false;
+        }
+        auto slashPos = srcPath.find('/');
+        std::string abcPath = (slashPos != std::string::npos) ? srcPath.substr(slashPos + 1) : srcPath;
+        bool isHapCompressed = extractor->IsHapCompress(abcPath);
+        if (isHapCompressed) {
+            TAG_LOGW(AAFwkTag::SERVICE_EXT,
+                "abc is compressed, not allowed, abcPath:%{public}s", abcPath.c_str());
+            return false;
+        }
     }
     skillModuleRef_ = jsRuntime_.LoadModule(param->moduleName_, srcPath, param->hapPath_, true, false, srcEntry);
     if (skillModuleRef_ == nullptr) {

@@ -62,15 +62,17 @@ ohos_shared_library("cj_ability_ffi") {
 
   external_deps = [
     "ability_base:want",
+    "bounds_checking_function:libsec_shared",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "eventhandler:libeventhandler",
     "hilog:libhilog",
     "ipc:ipc_core",
+    "libuv:uv",
     "napi:ace_napi",
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
-    "bounds_checking_function:libsec_shared",
+    "node:node_header_notice",
   ]
 
   sources = [
@@ -104,4 +106,5 @@ ohos_shared_library("cj_ability_ffi") {
 
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }

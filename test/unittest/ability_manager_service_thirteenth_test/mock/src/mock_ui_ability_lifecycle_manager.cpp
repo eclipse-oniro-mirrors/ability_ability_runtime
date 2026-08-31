@@ -200,15 +200,6 @@ std::string UIAbilityLifecycleManager::GenerateProcessNameForNewProcessMode(cons
     return "";
 }
 
-void UIAbilityLifecycleManager::PreCreateProcessName(AbilityRequest &abilityRequest)
-{
-}
-
-void UIAbilityLifecycleManager::UpdateProcessName(const AbilityRequest &abilityRequest,
-    UIAbilityRecordPtr &abilityRecord)
-{
-}
-
 void UIAbilityLifecycleManager::UpdateAbilityRecordLaunchReason(
     const AbilityRequest &abilityRequest, UIAbilityRecordPtr &abilityRecord) const
 {
@@ -683,6 +674,10 @@ void UIAbilityLifecycleManager::SignRestartAppFlag(int32_t uid, const std::strin
 {
 }
 
+void UIAbilityLifecycleManager::SignRestartProcess(int32_t pid)
+{
+}
+
 void UIAbilityLifecycleManager::CompleteFirstFrameDrawing(int32_t sessionId) const
 {
 }
@@ -806,6 +801,32 @@ ErrCode UIAbilityLifecycleManager::QueryCallerTokenIdForAnco(const std::string &
 int32_t UIAbilityLifecycleManager::StartSelf(const UIAbilityRecordPtr &abilityRecord)
 {
     return ERR_OK;
+}
+
+void UIAbilityLifecycleManager::StoreAbilitySessionInfo(int32_t requestId, const AbilitySessionInfo &info)
+{
+    std::lock_guard<ffrt::mutex> guard(abilitySessionInfoMapLock_);
+    abilitySessionInfoMap_[requestId] = info;
+}
+
+bool UIAbilityLifecycleManager::GetAbilitySessionInfo(int32_t requestId, AbilitySessionInfo &info) const
+{
+    std::lock_guard<ffrt::mutex> guard(abilitySessionInfoMapLock_);
+    auto it = abilitySessionInfoMap_.find(requestId);
+    if (it == abilitySessionInfoMap_.end()) {
+        return false;
+    }
+    info = it->second;
+    return true;
+}
+
+void UIAbilityLifecycleManager::RemoveAbilitySessionInfo(int32_t requestId)
+{
+    std::lock_guard<ffrt::mutex> guard(abilitySessionInfoMapLock_);
+    auto it = abilitySessionInfoMap_.find(requestId);
+    if (it != abilitySessionInfoMap_.end()) {
+        abilitySessionInfoMap_.erase(it);
+    }
 }
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -37,11 +37,13 @@ ohos_shared_library("hypersnapmanager_napi") {
   configs = [ "${ability_runtime_services_path}/common:common_config" ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_native_path}/ability/native:ability_business_error",
   ]
 
   external_deps = [
+    "c_utils:utils",
     "hilog:libhilog",
     "napi:ace_napi",
     "resource_schedule_service:ressched_client",
@@ -53,4 +55,5 @@ ohos_shared_library("hypersnapmanager_napi") {
 
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs += [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }

@@ -62,7 +62,7 @@ struct ETSEnvFuncs {
     void (*StopDebugMode)(void *jsVm) = nullptr;
     void (*StartDebuggerForSocketPair)(std::string &option, int32_t socketFd) = nullptr;
     void (*NotifyDebugMode)(uint32_t tid, uint32_t instanceId, bool isStartWithDebug,
-        void *jsVm) = nullptr;
+        void *jsVm, bool isDebugApp) = nullptr;
     void (*BroadcastAndConnect)(const std::string& bundleName, int socketFd) = nullptr;
 };
 }

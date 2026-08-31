@@ -31,6 +31,9 @@ namespace OHOS {
 namespace Rosen {
 struct PendingSessionActivationConfig;
 }
+namespace AbilityRuntime {
+struct StartSpecifiedParam;
+}
 namespace AAFwk {
 class SessionInfo;
 class StatusBarDelegateManager;
@@ -57,7 +60,6 @@ struct SpecifiedRequest {
     uint32_t callingTokenId = 0;
     SpecifiedProcessState specifiedProcessState = SpecifiedProcessState::STATE_NONE;
     bool isCold = false;
-    bool preCreateProcessName = false;
 
     SpecifiedRequest(int32_t requestId, const AbilityRequest &request)
         : requestId(requestId), abilityRequest(request) {}
@@ -69,6 +71,14 @@ struct AbilitiesRequest {
     sptr<IRemoteObject> callerToken;
     int32_t requestListId = -1;
     uint32_t doneCount = 0;
+};
+
+struct AbilitySessionInfo {
+    std::string callerBundleName;
+    uint32_t callerTokenId = 0;
+    bool isWebSandBoxClone = false;
+    int32_t sandBoxCloneIndex = 0;
+    std::string creatorBundleName;
 };
 
 class UIAbilityLifecycleManager : public std::enable_shared_from_this<UIAbilityLifecycleManager> {
@@ -198,6 +208,27 @@ public:
         sptr<SessionInfo> &sessionInfo);
 
     int32_t NotifySCBToRecoveryAfterInterception(const AbilityRequest &abilityRequest);
+
+    /**
+     * @brief When communicating with SCB, cache the information required.
+     * @param requestId The request ID used as the map key.
+     * @param info The sandbox clone info to store.
+     */
+    void StoreAbilitySessionInfo(int32_t requestId, const AbilitySessionInfo &info);
+
+    /**
+     * @brief Retrieve AbilitySessionInfo from the internal map by requestId.
+     * @param requestId The request ID used as the map key.
+     * @param info Output parameter for the sandbox clone info.
+     * @return true if found, false otherwise.
+     */
+    bool GetAbilitySessionInfo(int32_t requestId, AbilitySessionInfo &info) const;
+
+    /**
+     * @brief Remove AbilitySessionInfo from the internal map by requestId.
+     * @param requestId The request ID used as the map key.
+     */
+    void RemoveAbilitySessionInfo(int32_t requestId);
 
     /**
      * @brief handle time out event
@@ -648,24 +679,13 @@ private:
     int32_t GetReusedCollaboratorPersistentId(const AbilityRequest &abilityRequest, bool &reuse) const;
 
     /**
-     * @brief Generate process name for new process mode
-     * @param abilityInfo The ability info to generate name for
-     * @return The generated process name
+     * @brief Build StartSpecifiedParam from an ability request.
+     * @param request The ability request carrying customProcess / processOptions
+     * @param requestId The specified-ability request id (caller-supplied)
+     * @param param Output parameter populated with the result
      */
-    std::string GenerateProcessNameForNewProcessMode(const AppExecFwk::AbilityInfo& abilityInfo);
-
-    /**
-     * @brief Pre-create process name in ability request
-     * @param abilityRequest The ability request to modify
-     */
-    void PreCreateProcessName(AbilityRequest &abilityRequest);
-
-    /**
-     * @brief Update process name in ability record
-     * @param abilityRequest The ability request containing new name
-     * @param abilityRecord The ability record to update
-     */
-    void UpdateProcessName(const AbilityRequest &abilityRequest, UIAbilityRecordPtr &abilityRecord);
+    static void BuildStartSpecifiedParam(
+        const AbilityRequest &request, int32_t requestId, AbilityRuntime::StartSpecifiedParam &param);
 
     /**
      * @brief Update ability record launch reason
@@ -847,6 +867,14 @@ private:
      * @return ERR_OK if successful, error code otherwise
      */
     int CallAbilityLocked(const AbilityRequest &abilityRequest, std::string &errMsg);
+
+    /**
+     * @brief Handle hook module start if applicable.
+     * @param abilityRequest The ability request
+     * @param ret Output parameter for the result code if hook was handled
+     * @return true if hook was handled (caller should return ret), false otherwise (caller should continue)
+     */
+    bool HandleHookModule(AbilityRequest &abilityRequest, int32_t &ret);
 
     /**
      * @brief Create session info for ability
@@ -1370,6 +1398,9 @@ private:
 
     std::mutex exitReasonTaskMutex_;
     std::unordered_map<int32_t, ffrt::task_handle> exitReasonTasks_; // for sync querying exit-reason task
+
+    mutable ffrt::mutex abilitySessionInfoMapLock_;
+    std::unordered_map<int32_t, AbilitySessionInfo> abilitySessionInfoMap_;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

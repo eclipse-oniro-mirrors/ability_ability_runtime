@@ -22,7 +22,6 @@
 #include "ability_config.h"
 #include "ability_manager_client.h"
 #include "ability_manager_errors.h"
-#include "app_jump_control_rule.h"
 #include "bundle_mgr_helper.h"
 #include "hilog_tag_wrapper.h"
 #include "in_process_call_wrapper.h"
@@ -50,7 +49,6 @@ constexpr const char* DLP_PARAMS_ABILITY_NAME = "ohos.dlp.params.abilityName";
 constexpr const char* MARKET_BUNDLE_NAME = "com.hmsapp.appgallery";
 constexpr const char* MARKET_CROWD_TEST_BUNDLE_PARAM = "crowd_test_bundle_name";
 constexpr const char* BUNDLE_NAME_SELECTOR_DIALOG = "com.ohos.amsdialog";
-constexpr const char* JUMP_INTERCEPTOR_DIALOG_CALLER_PKG = "interceptor_callerPkg";
 
 #define CHECK_POINTER_CONTINUE(object)                         \
     if (!object) {                                             \
@@ -192,49 +190,6 @@ static constexpr int64_t MICROSECONDS = 1000000;    // MICROSECONDS mean 10^6 mi
     return DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
 }
 
-[[maybe_unused]] static bool ParseJumpInterceptorWant(Want &targetWant, const std::string callerPkg)
-{
-    if (callerPkg.empty()) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "empty callerPkg");
-        return false;
-    }
-    targetWant.SetParam(JUMP_INTERCEPTOR_DIALOG_CALLER_PKG, callerPkg);
-    return true;
-}
-
-[[maybe_unused]] static bool CheckJumpInterceptorWant(const Want &targetWant, std::string &callerPkg,
-    std::string &targetPkg)
-{
-    if (!targetWant.HasParameter(JUMP_INTERCEPTOR_DIALOG_CALLER_PKG)) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid interceptor param");
-        return false;
-    }
-    callerPkg = targetWant.GetStringParam(JUMP_INTERCEPTOR_DIALOG_CALLER_PKG);
-    targetPkg = targetWant.GetBundle();
-    return !callerPkg.empty() && !targetPkg.empty();
-}
-
-[[maybe_unused]] static bool AddAbilityJumpRuleToBms(const std::string &callerPkg, const std::string &targetPkg,
-    int32_t userId)
-{
-    if (callerPkg.empty() || targetPkg.empty()) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid inputs");
-        return false;
-    }
-    auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
-    if (bundleMgrHelper == nullptr) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "GetBundleManagerHelper failed");
-        return false;
-    }
-    auto appControlMgr = bundleMgrHelper->GetAppControlProxy();
-    if (appControlMgr == nullptr) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "Get appControlMgr failed");
-        return false;
-    }
-    int ret = IN_PROCESS_CALL(appControlMgr->ConfirmAppJumpControlRule(callerPkg, targetPkg, userId));
-    return ret == ERR_OK;
-}
-
 [[maybe_unused]] static bool HandleDlpApp(Want &want)
 {
 #ifdef WITH_DLP
@@ -255,48 +210,6 @@ static constexpr int64_t MICROSECONDS = 1000000;    // MICROSECONDS mean 10^6 mi
         return true;
     }
 #endif // WITH_DLP
-    return false;
-}
-
-[[maybe_unused]] static bool IsStartIncludeAtomicService(const Want &want, const int32_t userId)
-{
-    auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
-    if (bundleMgrHelper == nullptr) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "GetBundleManagerHelper failed");
-        return false;
-    }
-
-    std::string targetBundleName = want.GetBundle();
-    AppExecFwk::ApplicationInfo targetAppInfo;
-    bool getTargetResult = IN_PROCESS_CALL(bundleMgrHelper->GetApplicationInfo(targetBundleName,
-        AppExecFwk::ApplicationFlag::GET_BASIC_APPLICATION_INFO, userId, targetAppInfo));
-    if (!getTargetResult) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "Get targetAppInfo failed");
-        return false;
-    }
-    if (targetAppInfo.bundleType == AppExecFwk::BundleType::ATOMIC_SERVICE) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "target is atomic service");
-        return true;
-    }
-
-    int callerUid = IPCSkeleton::GetCallingUid();
-    std::string callerBundleName;
-    ErrCode err = IN_PROCESS_CALL(bundleMgrHelper->GetNameForUid(callerUid, callerBundleName));
-    if (err != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "Get bms failed");
-        return false;
-    }
-    AppExecFwk::ApplicationInfo callerAppInfo;
-    bool getCallerResult = IN_PROCESS_CALL(bundleMgrHelper->GetApplicationInfo(callerBundleName,
-        AppExecFwk::ApplicationFlag::GET_BASIC_APPLICATION_INFO, userId, callerAppInfo));
-    if (!getCallerResult) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "Get callerAppInfo failed");
-        return false;
-    }
-    if (callerAppInfo.bundleType == AppExecFwk::BundleType::ATOMIC_SERVICE) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "caller is atomic service");
-        return true;
-    }
     return false;
 }
 

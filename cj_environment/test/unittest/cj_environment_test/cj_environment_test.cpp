@@ -440,7 +440,6 @@ HWTEST_F(CjEnvironmentTest, CJEnvironment_RegisterExceptionOnCreated, TestSize.L
     CJEnvironment cJEnvironment(CJEnvironment::NSMode::APP);
     cJEnvironment.SetLazyApis(nullptr);
     cJEnvironment.RegisterExceptionOnCreated([] {
-        EXPECT_TRUE(true);
     });
 
     EXPECT_EQ(cJEnvironment.lazyApis_, nullptr);

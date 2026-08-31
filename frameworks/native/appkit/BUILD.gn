@@ -76,6 +76,7 @@ config("appkit_public_config") {
 # build so
 ohos_shared_library("appkit_native") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   include_dirs = [
     "native",
@@ -356,6 +357,7 @@ ohos_shared_library("appkit_native") {
 
 ohos_shared_library("ability_stage_ani") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   sanitize = {
     cfi = true
@@ -467,6 +469,7 @@ ohos_shared_library("ability_stage_ani") {
 # build so
 ohos_shared_library("app_context") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   include_dirs = [
     "${ability_runtime_path}/ets_environment/interfaces/inner_api",
@@ -622,6 +625,7 @@ ohos_shared_library("app_context_utils") {
 # build so
 ohos_shared_library("appkit_delegator") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   include_dirs = [
     "native",
@@ -787,6 +791,7 @@ config("application_context_manager_config") {
 
 ohos_shared_library("appkit_manager_helper") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   sanitize = {
     cfi = true
@@ -842,6 +847,7 @@ ohos_shared_library("appkit_manager_helper") {
 
 ohos_shared_library("application_context_manager") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   include_dirs = [
     "${ability_runtime_path}/interfaces/inner_api/runtime/include",
@@ -866,6 +872,7 @@ ohos_shared_library("application_context_manager") {
 
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 config("image_observer_manager_public_config") {
@@ -879,6 +886,7 @@ config("image_observer_manager_public_config") {
 
 ohos_shared_library("application_image_observer_manager") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   sanitize = {
     cfi = true
@@ -909,6 +917,7 @@ ohos_shared_library("application_image_observer_manager") {
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 # Build appkit_child.so - child process thread library

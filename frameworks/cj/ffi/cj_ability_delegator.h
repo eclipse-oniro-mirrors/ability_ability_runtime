@@ -30,6 +30,7 @@ namespace OHOS {
 namespace AbilityDelegatorCJ {
 
 class CJAbilityDelegator : public FFI::FFIData {
+    DECL_TYPE(CJAbilityDelegator, OHOS::FFI::FFIData)
 public:
     explicit CJAbilityDelegator(const std::shared_ptr<AppExecFwk::CJAbilityDelegatorImpl>& abilityDelegator);
 
@@ -62,6 +63,7 @@ private:
 };
 
 class CJShellCmdResult : public FFI::FFIData {
+    DECL_TYPE(CJShellCmdResult, OHOS::FFI::FFIData)
 public:
     explicit CJShellCmdResult(std::shared_ptr<AppExecFwk::ShellCmdResult> shellCmdResult)
         : shellCmdResultr_(shellCmdResult) {};

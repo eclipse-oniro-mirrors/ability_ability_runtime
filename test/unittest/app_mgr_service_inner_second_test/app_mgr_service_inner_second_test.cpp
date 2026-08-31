@@ -572,7 +572,82 @@ HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_GetAllChildr
     }
     TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_GetAllChildrenProcesses_0200 end");
 }
+
+HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_GetSelfChildrenProcesses_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_GetSelfChildrenProcesses_0100 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    BundleInfo bundleInfo;
+    HapModuleInfo hapModuleInfo;
+    auto loadParam = std::make_shared<AbilityRuntime::LoadParam>();
+    loadParam->token = token_;
+    loadParam->preToken = preToken_;
+    auto appRecord = appMgrServiceInner->CreateAppRunningRecord(loadParam, applicationInfo_, abilityInfo_,
+        TEST_PROCESS_NAME, bundleInfo, hapModuleInfo, want_, false);
+    ChildProcessRequest request;
+    auto record1 = std::make_shared<ChildProcessRecord>(IPCSkeleton::GetCallingPid(), request, appRecord);
+    appRecord->AddChildProcessRecord(1, record1);
+    MyFlag::flag_ = MyFlag::IS_SA_CALL;
+
+    std::vector<ChildProcessInfo> info;
+    auto ret = appMgrServiceInner->GetSelfChildrenProcesses(info);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(info.empty());
+    TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_GetSelfChildrenProcesses_0100 end");
+}
+
+HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_GetSelfChildrenProcesses_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_GetSelfChildrenProcesses_0200 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    BundleInfo bundleInfo;
+    HapModuleInfo hapModuleInfo;
+    const int32_t accessTokenId = 123;
+    applicationInfo_->accessTokenId = accessTokenId;
+    auto loadParam = std::make_shared<AbilityRuntime::LoadParam>();
+    loadParam->token = token_;
+    loadParam->preToken = preToken_;
+    auto appRecord = appMgrServiceInner->CreateAppRunningRecord(loadParam, applicationInfo_, abilityInfo_,
+        TEST_PROCESS_NAME, bundleInfo, hapModuleInfo, want_, false);
+    ChildProcessRequest request;
+    auto record1 = std::make_shared<ChildProcessRecord>(IPCSkeleton::GetCallingPid(), request, appRecord);
+    appRecord->AddChildProcessRecord(1, record1);
+    MyFlag::flag_ = 0;
+
+    IPCSkeleton::SetCallingTokenID(accessTokenId);
+    std::vector<ChildProcessInfo> info;
+    auto ret = appMgrServiceInner->GetSelfChildrenProcesses(info);
+    EXPECT_EQ(ret, ERR_OK);
+    if (!info.empty()) {
+        EXPECT_EQ(info.size(), 1);
+    }
+    TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_GetSelfChildrenProcesses_0200 end");
+}
 #endif // SUPPORT_CHILD_PROCESS
+
+HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_GetSelfUIAbilityChildProcesses_0100,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_GetSelfUIAbilityChildProcesses_0100 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    BundleInfo bundleInfo;
+    HapModuleInfo hapModuleInfo;
+    const int32_t accessTokenId = 123;
+    applicationInfo_->accessTokenId = accessTokenId;
+    auto loadParam = std::make_shared<AbilityRuntime::LoadParam>();
+    loadParam->token = token_;
+    loadParam->preToken = preToken_;
+    appMgrServiceInner->CreateAppRunningRecord(loadParam, applicationInfo_, abilityInfo_,
+        TEST_PROCESS_NAME, bundleInfo, hapModuleInfo, want_, false);
+    MyFlag::flag_ = 0;
+
+    IPCSkeleton::SetCallingTokenID(accessTokenId);
+    std::vector<ChildProcessInfo> info;
+    auto ret = appMgrServiceInner->GetSelfUIAbilityChildProcesses(info);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(info.empty());
+    TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_GetSelfUIAbilityChildProcesses_0100 end");
+}
 
 /**
  * @tc.name: AppMgrServiceInnerSecondTest_NotifyMemoryLevel_0100
@@ -684,6 +759,20 @@ HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_NotifyAppFau
 
     FaultData faultData;
     auto ret = appMgrServiceInner->NotifyAppFault(faultData);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+
+    appRecord->SetState(ApplicationState::APP_STATE_END);
+    ret = appMgrServiceInner->NotifyAppFault(faultData);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+
+    appRecord->SetState(ApplicationState::APP_STATE_FOREGROUND);
+    // expect in appfreezeManager return OK
+    AppfreezeManager::GetInstance()->CancelAppFreezeDetect(1, TEST_BUNDLE_NAME);
+    ret = appMgrServiceInner->NotifyAppFault(faultData);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+
+    faultData.errorObject.name = AppFreezeType::LIFECYCLE_HALF_TIMEOUT;
+    ret = appMgrServiceInner->NotifyAppFault(faultData);
     EXPECT_EQ(ret, ERR_OK);
 
     appRecord->SetState(ApplicationState::APP_STATE_END);
@@ -955,20 +1044,20 @@ HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_MakeProcessN
     std::string specifiedProcessFlag = "akeProcessName";
     std::string processName = "akeProcessName";
     appMgrServiceInner->MakeProcessName(abilityInfo_, applicationInfo_, hapModuleInfo,
-                                        appIndex, specifiedProcessFlag, processName, false);
+                                        appIndex, specifiedProcessFlag, processName);
     abilityInfo_->process = "akeProcessName";
     appMgrServiceInner->MakeProcessName(abilityInfo_, applicationInfo_, hapModuleInfo,
-                                        appIndex, specifiedProcessFlag, processName, false);
+                                        appIndex, specifiedProcessFlag, processName);
     abilityInfo_->process = "";
     appIndex = 1;
     appMgrServiceInner->MakeProcessName(abilityInfo_, applicationInfo_, hapModuleInfo,
-                                        appIndex, specifiedProcessFlag, processName, false);
+                                        appIndex, specifiedProcessFlag, processName);
     abilityInfo_ = nullptr;
     appMgrServiceInner->MakeProcessName(abilityInfo_, applicationInfo_, hapModuleInfo,
-                                        appIndex, specifiedProcessFlag, processName, false);
+                                        appIndex, specifiedProcessFlag, processName);
     applicationInfo_ = nullptr;
     appMgrServiceInner->MakeProcessName(abilityInfo_, applicationInfo_, hapModuleInfo,
-                                        appIndex, specifiedProcessFlag, processName, false);
+                                        appIndex, specifiedProcessFlag, processName);
     TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_MakeProcessName_0100 end");
 }
 

@@ -229,6 +229,8 @@ public:
 
     bool GetRecoveryInfo();
 
+    void EvaluateRecoveryLaunchReason();
+
 #ifdef SUPPORT_SCREEN
     inline bool IsStartingWindow() const
     {
@@ -608,10 +610,9 @@ public:
     void SetStartToBackground(const bool flag);
     bool IsStartToForeground() const;
     void SetStartToForeground(const bool flag);
-    bool IsCallerSetProcess() const;
-    void SetCallerSetProcess(const bool flag);
     void SetSessionInfo(sptr<SessionInfo> sessionInfo);
     void UpdateSessionInfo(sptr<IRemoteObject> sessionToken);
+    void FillProcessInfoFromSession(AbilityRuntime::LoadParam &loadParam) const;
     void SetMinimizeReason(bool fromUser);
     void SetSceneFlag(uint32_t sceneFlag);
     void SetIsFromScreenOffBackground(bool isFromScreenOffBackground);
@@ -922,7 +923,6 @@ protected:
         int32_t byCallCallerSaPid = -1;
     };
     static std::atomic<int64_t> abilityRecordId;
-    std::atomic_bool isCallerSetProcess_ = false;       // new version
     std::atomic_bool backgroundAbilityWindowDelayed_ = false;
     bool isReady_ = false;                            // is ability thread attached?
     bool isWindowStarted_ = false;                     // is window hotstart or coldstart?
@@ -1044,6 +1044,7 @@ protected:
     bool isKillForPermissionUpdate_ = false;
     mutable bool isDumpTimeout_ = false;
     bool isPrepareTerminate_ = false;
+    bool hasRecoverInfo_ = false;
 
 #ifdef SUPPORT_SCREEN
     bool isStartingWindow_ = false;

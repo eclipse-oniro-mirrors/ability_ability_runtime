@@ -1078,6 +1078,69 @@ napi_value JsApplicationContextUtils::OnGetRunningProcessInformation(napi_env en
     return result;
 }
 
+napi_value JsApplicationContextUtils::GetUIAbilityChildProcessInfos(napi_env env, napi_callback_info info)
+{
+    GET_NAPI_INFO_WITH_NAME_AND_CALL(env, info, JsApplicationContextUtils,
+        OnGetUIAbilityChildProcessInfos, APPLICATION_CONTEXT_NAME);
+}
+
+napi_value JsApplicationContextUtils::OnGetUIAbilityChildProcessInfos(napi_env env, NapiCallbackInfo& info)
+{
+    // only support 0 or 1 params
+    if (info.argc != ARGC_ZERO && info.argc != ARGC_ONE) {
+        TAG_LOGE(AAFwkTag::APPKIT, "Not enough params");
+        ThrowInvalidParamError(env, "Not enough params.");
+        return CreateJsUndefined(env);
+    }
+    TAG_LOGD(AAFwkTag::APPKIT, "Get UIAbility child process infos");
+    auto innerErrCode = std::make_shared<ErrCode>(ERR_OK);
+    auto childInfos = std::make_shared<std::vector<AppExecFwk::ChildProcessInfo>>();
+    NapiAsyncTask::ExecuteCallback execute = [applicationContext = applicationContext_, innerErrCode, childInfos]() {
+        auto context = applicationContext.lock();
+        if (!context) {
+            TAG_LOGE(AAFwkTag::APPKIT, "null context");
+            *innerErrCode = ERR_ABILITY_RUNTIME_EXTERNAL_CONTEXT_NOT_EXIST;
+            return;
+        }
+        *innerErrCode = context->GetUIAbilityChildProcessInfos(*childInfos);
+    };
+    auto complete = [innerErrCode, childInfos](napi_env env, NapiAsyncTask& task, int32_t status) {
+        HandleScope handleScope(env);
+        if (*innerErrCode == ERR_ABILITY_RUNTIME_EXTERNAL_CONTEXT_NOT_EXIST) {
+            task.Reject(env, CreateJsError(env, *innerErrCode, "applicationContext if already released."));
+            return;
+        }
+        if (*innerErrCode == ERR_OK) {
+            napi_value array = nullptr;
+            napi_create_array_with_length(env, childInfos->size(), &array);
+            if (array == nullptr) {
+                TAG_LOGE(AAFwkTag::APPKIT, "null array");
+                task.Reject(env, CreateJsError(env, ERR_ABILITY_RUNTIME_EXTERNAL_INTERNAL_ERROR,
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_PROCESS_INFO_ARRAY_FAILED)));
+                return;
+            }
+            uint32_t index = 0;
+            for (const auto &childInfo : *childInfos) {
+                napi_value object = nullptr;
+                napi_create_object(env, &object);
+                napi_set_named_property(env, object, "pid", CreateJsValue(env, childInfo.pid));
+                napi_set_named_property(env, object, "parentPid", CreateJsValue(env, childInfo.hostPid));
+                napi_set_named_property(env, object, "processName", CreateJsValue(env, childInfo.processName));
+                napi_set_element(env, array, index++, object);
+            }
+            task.ResolveWithNoError(env, array);
+        } else {
+            task.Reject(env, CreateJsError(env, ERR_ABILITY_RUNTIME_EXTERNAL_INTERNAL_ERROR,
+                GetInnerErrorMsg(AbilityInnerErrorMsg::GET_PROCESS_INFO_FAILED)));
+        }
+    };
+    napi_value lastParam = (info.argc == ARGC_ONE) ? info.argv[INDEX_ZERO] : nullptr;
+    napi_value result = nullptr;
+    NapiAsyncTask::Schedule("JsApplicationContextUtils::OnGetUIAbilityChildProcessInfos",
+        env, CreateAsyncTaskWithLastParam(env, lastParam, std::move(execute), std::move(complete), &result));
+    return result;
+}
+
 napi_value JsApplicationContextUtils::GetAllWindowStages(napi_env env, napi_callback_info info)
 {
     GET_NAPI_INFO_WITH_NAME_AND_CALL(env, info, JsApplicationContextUtils,
@@ -1772,7 +1835,7 @@ napi_value JsApplicationContextUtils::OnOffAbilityLifecycle(
                     "callback is nullptr"));
                 return;
             }
-
+            TAG_LOGI(AAFwkTag::APPKIT, "off abilityLifecycle event");
             if (!callback->UnRegister(callbackId, false)) {
                 TAG_LOGE(AAFwkTag::APPKIT, "call UnRegister failed");
                 task.Reject(env, CreateJsError(env, ERR_ABILITY_RUNTIME_EXTERNAL_INVALID_PARAMETER,
@@ -1852,7 +1915,7 @@ napi_value JsApplicationContextUtils::OnOffInteropAbilityLifecycle(
 napi_value JsApplicationContextUtils::OnOffAbilityLifecycleEventSync(
     napi_env env, NapiCallbackInfo& info, int32_t callbackId)
 {
-    TAG_LOGD(AAFwkTag::APPKIT, "called");
+    TAG_LOGI(AAFwkTag::APPKIT, "off abilityLifecycleEvent sync");
 
     auto applicationContext = applicationContext_.lock();
     if (applicationContext == nullptr) {
@@ -1920,7 +1983,7 @@ napi_value JsApplicationContextUtils::OnOffEnvironment(
                 return;
             }
 
-            TAG_LOGD(AAFwkTag::APPKIT, "OnOffEnvironment begin");
+            TAG_LOGI(AAFwkTag::APPKIT, "off environment");
             if (!env_callback->UnRegister(callbackId, false)) {
                 TAG_LOGE(AAFwkTag::APPKIT, "call UnRegister failed");
                 task.Reject(env, CreateJsError(env, ERR_ABILITY_RUNTIME_EXTERNAL_INVALID_PARAMETER,
@@ -1940,7 +2003,7 @@ napi_value JsApplicationContextUtils::OnOffEnvironment(
 napi_value JsApplicationContextUtils::OnOffEnvironmentEventSync(
     napi_env env, NapiCallbackInfo& info, int32_t callbackId)
 {
-    TAG_LOGD(AAFwkTag::APPKIT, "called");
+    TAG_LOGI(AAFwkTag::APPKIT, "off environmentEvent sync");
 
     auto applicationContext = applicationContext_.lock();
     if (applicationContext == nullptr) {
@@ -1987,7 +2050,7 @@ napi_value JsApplicationContextUtils::OnOnApplicationStateChange(
 napi_value JsApplicationContextUtils::OnOffApplicationStateChange(
     napi_env env, NapiCallbackInfo& info)
 {
-    TAG_LOGD(AAFwkTag::APPKIT, "called");
+    TAG_LOGI(AAFwkTag::APPKIT, "off applicationStateChange");
     auto applicationContext = applicationContext_.lock();
     if (applicationContext == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "null applicationContext");
@@ -2276,6 +2339,8 @@ void JsApplicationContextUtils::BindNativeApplicationContextTwo(napi_env env, na
         JsApplicationContextUtils::GetRunningProcessInformation);
     BindNativeFunction(env, object, "getRunningProcessInformation", MD_NAME,
         JsApplicationContextUtils::GetRunningProcessInformation);
+    BindNativeFunction(env, object, "getUIAbilityChildProcessInfos", MD_NAME,
+        JsApplicationContextUtils::GetUIAbilityChildProcessInfos);
     BindNativeFunction(env, object, "getCurrentAppCloneIndex", MD_NAME,
         JsApplicationContextUtils::GetCurrentAppCloneIndex);
     BindNativeFunction(env, object, "getCurrentInstanceKey", MD_NAME,

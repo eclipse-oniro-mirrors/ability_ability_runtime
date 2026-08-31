@@ -163,14 +163,12 @@ Provides pluggable behavior for ability starts:
 
 | Interceptor | Purpose |
 |-------------|---------|
-| `StartOtherAppInterceptor` | Control starting other applications |
 | `EcologicalRuleInterceptor` | Enforce ecosystem rules |
 | `KioskInterceptor` | Kiosk mode enforcement |
 | `ScreenUnlockInterceptor` | Screen lock state checks |
 | `ControlInterceptor` | System-level controls |
 | `DisposedRuleInterceptor` | Rule-based disposal |
 | `BlockAllAppStartInterceptor` | Emergency blocking |
-| `AbilityJumpInterceptor` - Jump-related interception |
 | `ExtensionControlInterceptor` | Extension-specific controls |
 | `CrowdTestInterceptor` | Testing mode control |
 

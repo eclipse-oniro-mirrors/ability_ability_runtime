@@ -251,9 +251,13 @@ void AbilityRecord::InitSandboxCloneParams(const AbilityRequest &abilityRequest)
     auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
     sandboxCloneParams->callerBundleName = abilityRequest.sandboxCloneParams->callerBundleName;
     sandboxCloneParams->callerTokenId = abilityRequest.sandboxCloneParams->callerTokenId;
+    sandboxCloneParams->sandBoxCloneIndex = abilityRequest.sandboxCloneParams->sandBoxCloneIndex;
+    sandboxCloneParams->creatorBundleName = abilityRequest.sandboxCloneParams->creatorBundleName;
     SetSandboxCloneParams(sandboxCloneParams);
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "InitSandboxCloneParams, callerBundleName = %{public}s, callerTokenId = %{public}d",
- 	    sandboxCloneParams->callerBundleName.c_str(), sandboxCloneParams->callerTokenId);
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "InitSandboxCloneParams, callerBundleName = %{public}s, callerTokenId = %{public}d, "
+        "sandBoxCloneIndex = %{public}d, creatorBundleName = %{public}s", sandboxCloneParams->callerBundleName.c_str(),
+        sandboxCloneParams->callerTokenId, sandboxCloneParams->sandBoxCloneIndex,
+        sandboxCloneParams->creatorBundleName.c_str());
 }
 
 AbilityRecordType AbilityRecord::GetAbilityRecordType()
@@ -344,8 +348,7 @@ int AbilityRecord::LoadAbility(bool isShellCall, bool isStartupHide, pid_t calli
     loadParam.token = token_;
     loadParam.preToken = callerToken;
     loadParam.instanceKey = instanceKey_;
-    loadParam.isCallerSetProcess = IsCallerSetProcess();
-    loadParam.customProcessFlag = customProcessFlag_;
+    loadParam.customProcessFlag = GetCustomProcessFlag();
     loadParam.isStartupHide = isStartupHide;
     loadParam.callingPid = callingPid;
     loadParam.loadAbilityCallbackId = loadAbilityCallbackId;
@@ -354,6 +357,7 @@ int AbilityRecord::LoadAbility(bool isShellCall, bool isStartupHide, pid_t calli
     loadParam.selfPid = selfPid;
     loadParam.byCallStatus = GetByCallStatus();
     loadParam.isGamePrelaunch = IsGameSAPreLaunch();
+    FillProcessInfoFromSession(loadParam);
     auto userId = abilityInfo_.uid / BASE_USER_RANGE;
     bool isMainUIAbility =
         MainElementUtils::IsMainUIAbility(abilityInfo_.bundleName, abilityInfo_.name, userId);
@@ -2241,10 +2245,10 @@ void AbilityRecord::RemoveWindowMode()
 
 void AbilityRecord::UpdateRecoveryInfo(bool hasRecoverInfo)
 {
+    hasRecoverInfo_ = hasRecoverInfo;
     if (hasRecoverInfo) {
         std::lock_guard guard(wantLock_);
         want_.SetParam(Want::PARAM_ABILITY_RECOVERY_RESTART, true);
-        SetLaunchReason(LaunchReason::LAUNCHREASON_APP_RECOVERY);
     }
 }
 
@@ -2252,6 +2256,34 @@ bool AbilityRecord::GetRecoveryInfo()
 {
     std::lock_guard guard(wantLock_);
     return want_.GetBoolParam(Want::PARAM_ABILITY_RECOVERY_RESTART, false);
+}
+
+void AbilityRecord::EvaluateRecoveryLaunchReason()
+{
+    if (!hasRecoverInfo_) {
+        return;
+    }
+    if (lifeCycleStateInfo_.launchParam.launchReason == LaunchReason::LAUNCHREASON_APP_RECOVERY) {
+        hasRecoverInfo_ = false;
+        return;
+    }
+    auto setting = GetStartSetting();
+    bool isStartByScb = setting != nullptr &&
+        setting->GetProperty(AbilityStartSetting::IS_START_BY_SCB_KEY) == "true";
+    auto lastExitReason = lifeCycleStateInfo_.launchParam.lastExitReason;
+    bool isEligible = isStartByScb &&
+        (lastExitReason == LastExitReason::LASTEXITREASON_PERFORMANCE_CONTROL ||
+        lastExitReason == LastExitReason::LASTEXITREASON_RESOURCE_CONTROL);
+    if (isEligible) {
+        SetLaunchReason(LaunchReason::LAUNCHREASON_APP_RECOVERY);
+    } else {
+        TAG_LOGI(AAFwkTag::ABILITYMGR,
+            "recovery gate failed, isStartByScb=%{public}d, lastExitReason=%{public}d",
+            isStartByScb, static_cast<int32_t>(lastExitReason));
+        std::lock_guard guard(wantLock_);
+        want_.SetParam(Want::PARAM_ABILITY_RECOVERY_RESTART, false);
+    }
+    hasRecoverInfo_ = false;
 }
 
 void AbilityRecord::SetStartSetting(const std::shared_ptr<AbilityStartSetting> &setting)
@@ -2455,6 +2487,15 @@ sptr<SessionInfo> AbilityRecord::GetSessionInfo() const
     return sessionInfo_;
 }
 
+void AbilityRecord::FillProcessInfoFromSession(AbilityRuntime::LoadParam &loadParam) const
+{
+    auto sessionInfo = GetSessionInfo();
+    if (sessionInfo != nullptr && sessionInfo->processOptions != nullptr) {
+        loadParam.processMode = static_cast<int32_t>(sessionInfo->processOptions->processMode);
+        loadParam.requestId = sessionInfo->requestId;
+    }
+}
+
 void AbilityRecord::UpdateSessionInfo(sptr<IRemoteObject> sessionToken)
 {
     {
@@ -2585,16 +2626,6 @@ void AbilityRecord::SetStartToForeground(const bool flag)
     isStartToForeground_ = flag;
 }
 
-bool AbilityRecord::IsCallerSetProcess() const
-{
-    return isCallerSetProcess_.load();
-}
-
-void AbilityRecord::SetCallerSetProcess(const bool flag)
-{
-    isCallerSetProcess_.store(flag);
-}
-
 void AbilityRecord::PostStartAbilityByCallTimeoutTask(bool isHalf)
 {
     auto handler = DelayedSingleton<AbilityManagerService>::GetInstance()->GetTaskHandler();
@@ -2644,6 +2675,13 @@ void AbilityRecord::PostStartAbilityByCallTimeoutTask(bool isHalf)
 void AbilityRecord::CallRequest()
 {
     CHECK_POINTER(scheduler_);
+    // Suppress the spurious prelaunch call request only when no real caller is waiting,
+    // otherwise a pending StartAbilityByCall would hang with no by_call timeout.
+    if (isPrelaunch_ && !IsNeedToCallRequest()) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "prelaunch, no call request, bundle:%{public}s, ability:%{public}s, "
+            "recordId:%{public}d", GetInfoBundleName().c_str(), GetInfoAbilityName().c_str(), GetRecordId());
+        return;
+    }
     // Async call request
     std::string entry = "AbilityRecord::CallRequest Begin";
     FreezeUtil::GetInstance().AddLifecycleEvent(token_, entry);

@@ -29,7 +29,10 @@ ohos_shared_library("dialogrequest_napi") {
 
   public_configs = [ ":dialog_request_external_config" ]
 
-  configs = [ "${ability_runtime_services_path}/common:common_config" ]
+  configs = [
+    "${ability_runtime_services_path}/common:common_config",
+    "${ability_runtime_services_path}/common:optimize_config",
+  ]
 
   deps = [
     "${ability_runtime_innerkits_path}/runtime:runtime",

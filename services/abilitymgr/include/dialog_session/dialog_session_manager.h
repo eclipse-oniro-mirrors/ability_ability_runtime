@@ -48,6 +48,7 @@ struct DialogCallerInfo {
     bool needGrantUriPermission = false;
     sptr<IRemoteObject> sessionToken = nullptr;
     sptr<IRequestStartAbilityCallback> requestCallback = nullptr;
+    std::shared_ptr<StartOptions> startOptions = nullptr;
 };
 
 struct StartupSessionInfo {

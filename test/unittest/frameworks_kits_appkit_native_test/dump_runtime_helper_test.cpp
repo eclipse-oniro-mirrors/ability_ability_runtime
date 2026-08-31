@@ -206,6 +206,25 @@ HWTEST_F(DumpRuntimeHelperTest, DumpMem_0400, Function | MediumTest | Level1)
 }
 
 /**
+ * @tc.number: DumpMem_0500
+ * @tc.name: DumpMem
+ * @tc.desc: Test DumpMem with ARKTS_HEAP type does not crash when runtime is null.
+ */
+HWTEST_F(DumpRuntimeHelperTest, DumpMem_0500, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpMem_0500 start";
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    EXPECT_NE(application, nullptr);
+    OHOS::AppExecFwk::MemDumpInfo info;
+    info.pid = 1;
+    info.needLeakobj = false;
+    info.dumpType = MemDumpType::ARKTS_HEAP;
+    auto helper = std::make_shared<DumpRuntimeHelper>(application);
+    helper->DumpMem(info, nullptr);
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpMem_0500 end";
+}
+
+/**
  * @tc.number: CheckOomdumpSwitch_0100
  * @tc.name: CheckOomdumpSwitch
  * @tc.desc: Test the function of CheckOomdumpSwitch.

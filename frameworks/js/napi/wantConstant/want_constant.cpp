@@ -33,10 +33,14 @@ napi_value WantConstantInit(napi_env env, napi_value exports)
     napi_value entity = nullptr;
     napi_value Flags = nullptr;
     napi_value showMode = nullptr;
-    napi_create_object(env, &action);
-    napi_create_object(env, &entity);
-    napi_create_object(env, &Flags);
-    napi_create_object(env, &showMode);
+    napi_status actionStatus = napi_create_object(env, &action);
+    napi_status entityStatus = napi_create_object(env, &entity);
+    napi_status flagsStatus = napi_create_object(env, &Flags);
+    napi_status showModeStatus = napi_create_object(env, &showMode);
+    if (actionStatus != napi_ok || entityStatus != napi_ok || flagsStatus != napi_ok || showModeStatus != napi_ok) {
+        TAG_LOGE(AAFwkTag::WANT, "Failed to create JS object");
+        return nullptr;
+    }
 
     SetNamedProperty(env, action, "ohos.want.action.home", "ACTION_HOME");
     SetNamedProperty(env, action, "ohos.want.action.dial", "ACTION_DIAL");
@@ -100,7 +104,10 @@ napi_value WantConstantInit(napi_env env, napi_value exports)
 
 #ifdef ENABLE_ERRCODE
     napi_value params = nullptr;
-    napi_create_object(env, &params);
+    if (napi_create_object(env, &params) != napi_ok) {
+        TAG_LOGE(AAFwkTag::WANT, "Failed to create params JS object");
+        return nullptr;
+    }
 #ifdef WITH_DLP
     SetNamedProperty(env, params, "ohos.dlp.params.sandbox", "DLP_PARAMS_SANDBOX");
     SetNamedProperty(env, params, "ohos.dlp.params.bundleName", "DLP_PARAMS_BUNDLE_NAME");
@@ -147,6 +154,7 @@ napi_value WantConstantInit(napi_env env, napi_value exports)
         DECLARE_NAPI_PROPERTY("Action", action),
         DECLARE_NAPI_PROPERTY("Entity", entity),
         DECLARE_NAPI_PROPERTY("Flags", Flags),
+        DECLARE_NAPI_PROPERTY("ShowMode", showMode),
     };
 #endif // ENABLE_ERRCODE
     napi_define_properties(env, exports, sizeof(exportFuncs) / sizeof(*exportFuncs), exportFuncs);

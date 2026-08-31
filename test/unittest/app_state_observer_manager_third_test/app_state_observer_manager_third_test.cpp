@@ -267,10 +267,11 @@ HWTEST_F(AppStateObserverManagerThirdTest,
     bool isFromWindowFocusChanged = true;
     ImageProcessType type = ImageProcessType::WORK;
     appRecord->SetImageProcessType(type);
-    ProcessData processData = manager->WrapProcessData(appRecord, isFromWindowFocusChanged);
-    EXPECT_EQ(processData.isFromWindowFocusChanged, isFromWindowFocusChanged);
-    EXPECT_EQ(processData.isFromScreenOffBackground, false);
-    EXPECT_EQ(processData.imageProcessType, static_cast<int32_t>(type));
+    auto processData = manager->WrapProcessData(appRecord, isFromWindowFocusChanged);
+    EXPECT_NE(processData, nullptr);
+    EXPECT_EQ(processData->isFromWindowFocusChanged, isFromWindowFocusChanged);
+    EXPECT_EQ(processData->isFromScreenOffBackground, false);
+    EXPECT_EQ(processData->imageProcessType, static_cast<int32_t>(type));
 }
 
 /*

@@ -48,6 +48,7 @@ ohos_shared_library("page_config_manager") {
     debug = false
   }
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   sources = [ "src/page_config_manager.cpp" ]
 
@@ -68,4 +69,5 @@ ohos_shared_library("page_config_manager") {
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs += [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }

@@ -209,7 +209,8 @@ protected:
     std::shared_ptr<AbilityHandler> handler_ = nullptr;
     std::shared_ptr<EtsUIExtensionContentSession> etsUiExtContentSession_;
 private:
-    sptr<Rosen::WindowOption> CreateWindowOption(const sptr<AAFwk::SessionInfo> &sessionInfo);
+    sptr<Rosen::WindowOption> CreateWindowOption(const sptr<AAFwk::SessionInfo> &sessionInfo,
+        const AAFwk::Want &want);
 
 #ifdef SUPPORT_GRAPHICS
 private:

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -37,7 +37,7 @@ void PreloadManagerServiceTest::SetUpTestCase() {}
 
 void PreloadManagerServiceTest::TearDownTestCase() {}
 
-void PreloadManagerServiceTest::SetUp() {}
+void PreloadManagerServiceTest::SetUp() { MyStatus::GetInstance().Reset(); }
 
 void PreloadManagerServiceTest::TearDown() {}
 
@@ -347,6 +347,37 @@ HWTEST_F(PreloadManagerServiceTest, PreloadApplication_011, TestSize.Level1)
     EXPECT_EQ(result, ERR_CAPABILITY_NOT_SUPPORT);
 
     TAG_LOGI(AAFwkTag::TEST, "PreloadManagerServiceTest PreloadApplication_011 end");
+}
+
+/*
+ * Feature: PreloadManagerService
+ * Name: PreloadApplication_012
+ * Function: PreloadApplication
+ * SubFunction: NA
+ * FunctionPoints: PreloadManagerService PreloadApplication native ability not supported
+ */
+HWTEST_F(PreloadManagerServiceTest, PreloadApplication_012, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "PreloadManagerServiceTest PreloadApplication_012 start");
+    
+    MyStatus::GetInstance().isPreloadApplicationEnabled_ = true;
+    MyStatus::GetInstance().retVerifyPreloadApplicationPermission_ = true;
+    MyStatus::GetInstance().isMultiUserConcurrency_ = true;
+    MyStatus::GetInstance().retCheckPreloadAppRecordExist_ = ERR_OK;
+    MyStatus::GetInstance().isPreloadApplicationRecordExist_ = false;
+    MyStatus::GetInstance().bundleMgrHelper_ = DelayedSingleton<BundleMgrHelper>::GetInstance();
+    MyStatus::GetInstance().retGetLaunchWantForBundle_ = 0;
+    MyStatus::GetInstance().retQueryAbilityInfo_ = true;
+    MyStatus::GetInstance().queryAbilityInfo_.applicationInfo.appPreloadPhase =
+        AppExecFwk::AppPreloadPhase::ABILITY_STAGE_CREATED;
+    MyStatus::GetInstance().retIsWithNative_ = true;
+    std::string bundleName = "bundleName";
+    int32_t userId = -1;
+    int32_t appIndex = 0;
+    auto result = PreloadManagerService::GetInstance().PreloadApplication(bundleName, userId, appIndex);
+    EXPECT_EQ(result, ERR_CAPABILITY_NOT_SUPPORT);
+
+    TAG_LOGI(AAFwkTag::TEST, "PreloadManagerServiceTest PreloadApplication_012 end");
 }
 
 /*

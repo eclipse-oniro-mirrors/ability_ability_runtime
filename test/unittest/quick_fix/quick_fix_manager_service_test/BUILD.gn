@@ -93,6 +93,7 @@ ohos_unittest("quick_fix_manager_apply_task_test") {
     "${ability_runtime_test_path}/mock/services_appmgr_test/src/mock_bundle_manager.cpp",
     "${ability_runtime_test_path}/mock/services_appmgr_test/src/mock_overlay_manager.cpp",
     "${ability_runtime_test_path}/unittest/quick_fix/mock/src/mock_quick_fix_util.cpp",
+    "quick_fix_manager_apply_task_more_test.cpp",
     "quick_fix_manager_apply_task_test.cpp",
   ]
 

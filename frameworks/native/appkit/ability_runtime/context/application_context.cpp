@@ -1128,6 +1128,11 @@ int32_t ApplicationContext::GetProcessRunningInformation(AppExecFwk::RunningProc
     return (contextImpl_ != nullptr) ? contextImpl_->GetProcessRunningInformation(info) : -1;
 }
 
+int32_t ApplicationContext::GetUIAbilityChildProcessInfos(std::vector<AppExecFwk::ChildProcessInfo> &infos)
+{
+    return (contextImpl_ != nullptr) ? contextImpl_->GetUIAbilityChildProcessInfos(infos) : -1;
+}
+
 #ifdef SUPPORT_SCREEN
 void ApplicationContext::GetAllUIAbilities(std::vector<std::shared_ptr<UIAbility>> &uiAbility)
 {
@@ -1207,7 +1212,7 @@ int32_t ApplicationContext::EnableDelayedProcessExit()
     if (appMgrClient == nullptr) {
         return ERR_INVALID_VALUE;
     }
-    auto ret = appMgrClient->EnableDelayedProcessExit(getpid(), true);
+    auto ret = appMgrClient->EnableDelayedProcessExit(true);
     if (ret == ERR_OK) {
         std::lock_guard<std::mutex> lock(delayedProcessExitStateLock_);
         delayedProcessExitEnabled_ = true;
@@ -1222,7 +1227,7 @@ int32_t ApplicationContext::DisableDelayedProcessExit()
         return ERR_INVALID_VALUE;
     }
 
-    auto ret = appMgrClient->EnableDelayedProcessExit(getpid(), false);
+    auto ret = appMgrClient->EnableDelayedProcessExit(false);
     if (ret == ERR_OK) {
         std::lock_guard<std::mutex> lock(delayedProcessExitStateLock_);
         delayedProcessExitEnabled_ = false;

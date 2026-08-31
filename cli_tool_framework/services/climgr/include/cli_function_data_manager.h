@@ -18,6 +18,7 @@
 
 #include <mutex>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "function_info.h"
@@ -76,6 +77,16 @@ public:
     int32_t UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace);
 
     /**
+     * @brief Reset all functions by namespace (delete all existing and add new ones)
+     * @param functionNamespace Namespace to reset functions for
+     * @param functions New function list to replace existing ones
+     * @param successCount Output count of successfully reset functions
+     * @return int32_t ERR_OK on success, error code otherwise
+     */
+    int32_t ResetNamespaceFunctions(const std::string &functionNamespace,
+        const std::vector<FunctionInfo> &functions, int32_t &successCount);
+
+    /**
      * @brief Get all functions from database
      * @param functions Output vector of FunctionInfo
      * @return int32_t ERR_OK on success, error code otherwise
@@ -106,18 +117,27 @@ private:
     bool CheckKvStore();
 
     /**
-     * @brief Store a single function in KVStore (internal use, caller must hold lock)
+     * @brief Store a single function in KVStore without acquiring lock (internal use)
      * @param function FunctionInfo to store
      * @return int32_t ERR_OK on success, error code otherwise
+     * @note Caller must hold kvStorePtrMutex_ lock before calling this method
      */
-    int32_t StoreFunction(const FunctionInfo &function);
+    int32_t StoreFunctionNoLock(const FunctionInfo &function);
+
+    /**
+     * @brief Delete all intent functions for a namespace without acquiring lock (internal use)
+     * @param functionNamespace Namespace to delete functions from
+     * @param deletedCount Output count of deleted functions
+     * @return int32_t ERR_OK on success, error code otherwise
+     * @note Caller must hold kvStorePtrMutex_ lock before calling this method
+     */
+    int32_t DeleteIntentFunctionsByNamespaceNoLock(const std::string &functionNamespace, int32_t &deletedCount);
 
     /**
      * @brief Restore KVStore if corrupted
      * @param status The status code from KVStore operation
-     * @return DistributedKv::Status The final status after restoration
      */
-    DistributedKv::Status RestoreKvStore(DistributedKv::Status status);
+    void RestoreKvStore(DistributedKv::Status status);
 
     /**
      * @brief Generate KVStore key from namespace and functionName
@@ -128,13 +148,58 @@ private:
     static std::string GenerateFunctionKey(const std::string &functionNamespace, const std::string &functionName);
 
     /**
-     * @brief Check if a KVStore entry matches the given namespace
-     * @param entryValue The KVStore entry value (JSON string)
+     * @brief Extract namespace from KVStore key string
+     * @param keyStr Key string in format {namespace}/{functionName}
+     * @return std::string Extracted namespace, empty string if invalid format
+     */
+    static std::string ExtractNamespaceFromKey(const std::string &keyStr);
+
+    /**
+     * @brief Check if a KVStore entry key matches the given namespace
+     * @param entryKey The KVStore entry key string
      * @param functionNamespace The namespace to match against
      * @return bool true if the entry's namespace matches
      */
-    static bool MatchesIntentFunctionNamespace(const DistributedKv::Value &entryValue,
-        const std::string &functionNamespace);
+    static bool KeyMatchesNamespace(const std::string &entryKey, const std::string &functionNamespace);
+
+    /**
+     * @brief Check if a KVStore entry value is an INTENT_FUNCTION
+     * @param entryValue The KVStore entry value (JSON string)
+     * @return bool true if the entry is an INTENT_FUNCTION
+     */
+    static bool IsIntentFunction(const DistributedKv::Value &entryValue);
+
+    /**
+     * @brief Get existing intent function keys for a namespace (internal use)
+     * @param functionNamespace Namespace to query
+     * @param existingKeys Output set of existing function keys
+     * @return int32_t ERR_OK on success, error code otherwise
+     * @note Caller must hold kvStorePtrMutex_ lock before calling this method
+     */
+    int32_t GetExistingIntentFunctions(const std::string &functionNamespace,
+        std::unordered_set<std::string> &existingKeys);
+
+    /**
+     * @brief Add new functions and track their keys (internal use)
+     * @param functions Vector of FunctionInfo to add
+     * @param newKeys Output set of added function keys
+     * @param successCount Output count of successfully added functions
+     * @return int32_t ERR_OK on success, error code otherwise
+     * @note Caller must hold kvStorePtrMutex_ lock before calling this method
+     */
+    int32_t AddNewFunctions(const std::vector<FunctionInfo> &functions,
+        std::unordered_set<std::string> &newKeys, int32_t &successCount);
+
+    /**
+     * @brief Delete obsolete functions (diff set) (internal use)
+     * @param existingKeys Set of existing function keys
+     * @param newKeys Set of new function keys
+     * @param deletedCount Output count of deleted functions
+     * @return int32_t ERR_OK on success, error code otherwise
+     * @note Caller must hold kvStorePtrMutex_ lock before calling this method
+     */
+    int32_t DeleteObsoleteFunctions(const std::unordered_set<std::string> &existingKeys,
+        const std::unordered_set<std::string> &newKeys, int32_t &deletedCount);
 
     DistributedKv::DistributedKvDataManager dataManager_;
     std::shared_ptr<DistributedKv::SingleKvStore> kvStorePtr_;

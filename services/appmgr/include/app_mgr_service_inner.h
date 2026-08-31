@@ -36,6 +36,7 @@
 #include "app_malloc_info.h"
 #include "app_mgr_constants.h"
 #include "app_mgr_event.h"
+#include "hyper_snap_error_record.h"
 #include "app_preloader.h"
 #include "app_record_id.h"
 #include "app_refresh_recipient.h"
@@ -73,6 +74,7 @@
 #include "kia_interceptor_interface.h"
 #include "kill_process_config.h"
 #include "process_memory_state.h"
+#include "process_options.h"
 #include "process_util.h"
 #include "record_query_result.h"
 #include "refbase.h"
@@ -94,6 +96,7 @@
 namespace OHOS {
 namespace AbilityRuntime {
 struct LoadParam;
+struct StartSpecifiedParam;
 }
 namespace Rosen {
 class WindowVisibilityInfo;
@@ -460,6 +463,15 @@ public:
     virtual void NotifyUninstallOrUpgradeAppEnd(int32_t uid);
 
     /**
+     * Get error information (internally gets caller uid via IPCSkeleton::GetCallingUid()).
+     *
+     * @param errType Error type.
+     * @param record Error record output.
+     * @return true if call succeeded (whether error exists or not), false if parameter error.
+     */
+    bool GetHyperSnapLastError(HyperSnapErrorType errType, HyperSnapErrorRecord& record);
+
+    /**
      * KillApplicationSelf, this allows app to terminate itself.
      *
      * @param clearPageStack, the flag indicates if ClearPageStack lifecycle should be scheduled.
@@ -616,6 +628,15 @@ public:
      * @return ERR_OK, return back success, others fail.
      */
     virtual int GetAllChildrenProcesses(std::vector<ChildProcessInfo> &info);
+
+    /**
+     * GetSelfChildrenProcesses, call GetSelfChildrenProcesses() through proxy project.
+     * Obtains information about children processes that are running for the calling application.
+     *
+     * @param info, child process info.
+     * @return ERR_OK, return back success, others fail.
+     */
+    virtual int GetSelfChildrenProcesses(std::vector<ChildProcessInfo> &info);
 #endif // SUPPORT_CHILD_PROCESS
 
     /**
@@ -1058,7 +1079,7 @@ public:
      * @param requestId request id to callback
      */
     void StartSpecifiedAbility(const AAFwk::Want &want, const AppExecFwk::AbilityInfo &abilityInfo,
-        int32_t requestId = 0, const std::string &customProcess = "", bool isWindowStagePreload = false);
+        const AbilityRuntime::StartSpecifiedParam &param);
 
     /**
      * Start specified process.
@@ -1142,7 +1163,7 @@ public:
     int32_t NotifyAppMgrRecordExitReason(int32_t pid, int32_t reason, const std::string &exitMsg);
 
     int32_t NotifyAppMgrRecordExitReasonCompability(
-        int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg);
+        int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg, int32_t reason);
 #ifdef APP_MGR_KILL_REASON_TAG
     void RecordAppWithReasonByUserId(int32_t userId, int32_t killId);
 #endif
@@ -1534,6 +1555,11 @@ public:
         const sptr<IRemoteObject> &callback, const ChildProcessRequest &request);
 #endif // SUPPORT_CHILD_PROCESS
 
+    virtual int32_t GetSelfUIAbilityChildProcesses(std::vector<ChildProcessInfo> &infos);
+
+    virtual void GetUIAbilityChildProcesses(const std::shared_ptr<AppRunningRecord> &appRecord,
+        std::vector<ChildProcessInfo> &info);
+
     virtual int32_t RegisterNativeChildExitNotify(const sptr<INativeChildNotify> &callback);
 
     virtual int32_t UnregisterNativeChildExitNotify(const sptr<INativeChildNotify> &callback);
@@ -1882,6 +1908,59 @@ private:
      */
     void RestartKeepAliveProcess(std::shared_ptr<AppRunningRecord> appRecord);
 
+    /**
+     * Save error information for the specified app uid. Error message is generated
+     * internally from the error code.
+     *
+     * @param uid The target app uid the error belongs to.
+     * @param errType Error type.
+     * @param code Error code.
+     */
+    void SaveHyperSnapError(int32_t uid, HyperSnapErrorType errType, HyperSnapErrorCode code);
+
+    /**
+     * Clear error information by type for the specified app uid.
+     *
+     * @param uid The target app uid whose error record should be cleared.
+     * @param errType Error type to clear.
+     */
+    void ClearHyperSnapError(int32_t uid, HyperSnapErrorType errType);
+
+    /**
+     * Clear all error information for the specified uid. Used for system-initiated clears
+     * (e.g. app uninstall/upgrade) where the affected app is not the IPC caller.
+     *
+     * @param uid The target app uid whose error records should be cleared.
+     */
+    void ClearHyperSnapError(int32_t uid);
+
+    /**
+     * Error code mapping: ImageError -> HyperSnapErrorCode
+     *
+     * @param imageError Image error code.
+     * @return Mapped HyperSnapErrorCode.
+     */
+    static HyperSnapErrorCode ConvertImageErrorToHyperSnapCode(ImageError imageError);
+
+    /**
+     * Query the kernel checkpoint/restore error of the given process and log the
+     * kernel error message. checkpointId is a reserved kernel extension and is
+     * not needed for now.
+     *
+     * @param pid Process ID.
+     * @param forkAll Whether HandleForkAllInner was called.
+     * @return Kernel error as ImageError, ERR_OK when no kernel error is available.
+     */
+    static ImageError GetCheckpointRestoreError(pid_t pid, const std::string &checkpointName);
+
+    /**
+     * Get error message (fixed message based on error code enum).
+     *
+     * @param code Error code.
+     * @return Error message string.
+     */
+    static std::string GetHyperSnapErrorMessage(HyperSnapErrorCode code);
+
     bool CheckLoadAbilityConditions(const sptr<IRemoteObject> &token,
         const std::shared_ptr<AbilityInfo> &abilityInfo, const std::shared_ptr<ApplicationInfo> &appInfo);
 
@@ -1908,13 +1987,21 @@ private:
      */
     void MakeProcessName(const std::shared_ptr<AbilityInfo> &abilityInfo,
         const std::shared_ptr<ApplicationInfo> &appInfo, const HapModuleInfo &hapModuleInfo, int32_t appIndex,
-        const std::string &specifiedProcessFlag, std::string &processName, bool isCallerSetProcess) const;
+        const std::string &specifiedProcessFlag, std::string &processName) const;
+
+    void ResolveProcessName(
+        std::shared_ptr<AbilityInfo> abilityInfo,
+        std::shared_ptr<ApplicationInfo> appInfo, const HapModuleInfo &hapModuleInfo,
+        int32_t appIndex, const std::string &specifiedProcessFlag,
+        int32_t processMode, int32_t requestId, std::string &processName);
 
     /**
      * Build a process's name based on the info given
      */
     void MakeProcessName(const std::shared_ptr<ApplicationInfo> &appInfo, const HapModuleInfo &hapModuleInfo,
         std::string &processName) const;
+
+    std::string GenerateNewProcessName(const AppExecFwk::AbilityInfo &abilityInfo, int32_t requestId);
 
     bool CheckIsolationMode(const HapModuleInfo &hapModuleInfo) const;
 
@@ -2397,6 +2484,7 @@ private:
     void UnSubscribeScreenOffEvent();
     int32_t RestartExitKeepAliveProcess(const std::vector<ExitResidentProcessInfo> &exitProcessInfos);
     bool IsNeedRestartKeepAliveProcess(const std::string &bundleName, int32_t uid);
+    bool IsAsanEnabled(const std::shared_ptr<AppRunningRecord> &record);
     int32_t GetAllRunningInstanceKeysByBundleNameInner(const std::string &bundleName,
         std::vector<std::string> &instanceKeys, int32_t userId);
     int32_t KillProcessByPidInner(const pid_t pid, const std::string& reason,
@@ -2446,6 +2534,7 @@ private:
 
     int32_t GetValidUserId(int32_t userId);
     int32_t NotifyImageOperationFailed(sptr<IImageErrorHandler> errorHandler, ImageError errorCode);
+    int32_t NotifyMakeImageFailed(int32_t uid, sptr<IImageErrorHandler> errorHandler, ImageError errorCode);
     int32_t KillImageProcess(uint64_t checkpointId);
 
     int32_t PreAddImageInfo(const std::string& bundleName, int32_t userId, int32_t appIndex,
@@ -2559,6 +2648,16 @@ private:
 
     std::mutex imageInfoLock_;
     std::unordered_map<MakeImageRequest, std::shared_ptr<ForkImageInfo>, MakeImageRequest::Hash> imageInfoMap_;
+
+    // Minimal in-memory error state: only what cannot be derived later.
+    // Error message is generated from the code at query time to save memory.
+    struct HyperSnapStoredError {
+        HyperSnapErrorCode code = HyperSnapErrorCode::ERR_OK;
+        int64_t occurTimeStamp = 0;
+    };
+    std::map<int32_t, HyperSnapStoredError> createSnapshotErrorMap_;
+    std::map<int32_t, HyperSnapStoredError> forkFromSnapshotErrorMap_;
+    std::mutex hyperSnapErrorMutex_;
 
     std::mutex imageSerialLock_;
 

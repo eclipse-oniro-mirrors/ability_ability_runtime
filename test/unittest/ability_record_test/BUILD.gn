@@ -25,6 +25,7 @@ ohos_unittest("ability_record_test") {
     "${ability_runtime_services_path}/abilitymgr/include/utils",
     "${ability_runtime_path}/services/common/include",
     "${ability_runtime_path}/utils/server/startup/include",
+    "${ability_runtime_path}/utils/global/freeze/include",
     "mock/include",
   ]
 
@@ -56,6 +57,7 @@ ohos_unittest("ability_record_test") {
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_native_path}/ability/native:auto_startup_callback",
     "${ability_runtime_path}/utils/global/common:runtime_utils",
+    "${ability_runtime_path}/utils/global/freeze:freeze_util",
     "${ability_runtime_path}/utils/server/startup:startup_util",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
     "${ability_runtime_services_path}/abilitymgr:mission_list",

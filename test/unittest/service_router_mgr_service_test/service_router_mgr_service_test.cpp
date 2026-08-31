@@ -37,7 +37,6 @@ namespace OHOS {
 namespace AbilityRuntime {
 namespace {
 const int RESULT_CODE = 8521225;
-const int32_t CYCLE_LIMIT = 1000;
 const int64_t SHORT_WAIT_MS = 150;
 }
 class ServiceRouterMgrServiceTest : public testing::Test {
@@ -221,23 +220,5 @@ HWTEST_F(ServiceRouterMgrServiceTest, SubscribeCommonEvent_001, Function | Small
     TAG_LOGI(AAFwkTag::TEST, "SubscribeCommonEvent_001 end");
 }
 
-/**
- * @tc.name: test QueryBusinessAbilityInfos_002
- * @tc.desc: cover VerifySystemApp/VerifyCallingPermission and funcResult branches
- */
-HWTEST_F(ServiceRouterMgrServiceTest, QueryBusinessAbilityInfos_002, Function | SmallTest | Level0)
-{
-    TAG_LOGI(AAFwkTag::TEST, "QueryBusinessAbilityInfos_002 start");
-    BusinessAbilityFilter filter;
-    std::vector<BusinessAbilityInfo> abilityInfos;
-
-    int32_t funcResult = CYCLE_LIMIT + 1;
-    serviceRouterMgrService_->QueryBusinessAbilityInfos(filter, abilityInfos, funcResult);
-
-    funcResult = 0;
-    serviceRouterMgrService_->QueryBusinessAbilityInfos(filter, abilityInfos, funcResult);
-    EXPECT_TRUE(true);
-    TAG_LOGI(AAFwkTag::TEST, "QueryBusinessAbilityInfos_002 end");
-}
 }
 }

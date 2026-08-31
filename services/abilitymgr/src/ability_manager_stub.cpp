@@ -23,6 +23,9 @@
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
 #include "insight_intent_execute_param.h"
+#include "insight_intent_execute_manager.h"
+#include "permission_verification.h"
+#include "process_options.h"
 #include "skill_execute_param.h"
 #include "status_bar_delegate_interface.h"
 #include <iterator>
@@ -43,6 +46,7 @@ constexpr int32_t INDEX_ONE = 1;
 constexpr int32_t MAX_KILL_PROCESS_PID_COUNT = 100;
 constexpr int32_t MAX_UPDATE_CONFIG_SIZE = 100;
 constexpr int32_t MAX_WANT_LIST_SIZE = 4;
+constexpr int32_t INVALID_USER_ID = -1;
 } // namespace
 AbilityManagerStub::AbilityManagerStub()
 {}
@@ -54,6 +58,19 @@ void AbilityManagerStub::SanitizeWantParams(Want &want)
 {
     AppExecFwk::InsightIntentExecuteParam::RemoveInsightIntent(want);
     AppExecFwk::SkillExecuteParam::RemoveSkillParam(want);
+    // Pass-through of non-standard scheme uri is only allowed for system apps
+    // and native processes. Third-party apps cannot set this flag, so the raw
+    // uri is cleared here as the final interception point on the server side.
+    if (want.GetBoolParam(Want::PARAM_SET_URI_WITH_ORIGIN_STRING, false)) {
+        if (!PermissionVerification::GetInstance()->IsSACall() &&
+            !PermissionVerification::GetInstance()->IsSystemAppCall()) {
+            want.RemoveParam(Want::PARAM_SET_URI_WITH_ORIGIN_STRING);
+            // Re-set the uri so that the Uri constructor re-runs scheme validation:
+            // non-standard scheme uri is cleared, valid uri is kept.
+            want.SetUri(want.GetUriString());
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "third-party want uri pass-through blocked");
+        }
+    }
 }
 
 int AbilityManagerStub::OnRemoteRequestInnerFirst(uint32_t code, MessageParcel &data,
@@ -2122,6 +2139,7 @@ int AbilityManagerStub::StartAbilityForOptionsInner(MessageParcel &data, Message
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startOptions null");
         return ERR_INVALID_VALUE;
     }
+    ProcessOptions::SanitizeSystemFields(startOptions->processOptions);
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
         callerToken = data.ReadRemoteObject();
@@ -2158,6 +2176,9 @@ int AbilityManagerStub::GetWantSenderInner(MessageParcel &data, MessageParcel &r
         TAG_LOGE(AAFwkTag::WANTAGENT, "wantSenderInfo null");
         return ERR_INVALID_VALUE;
     }
+    for (auto &wantsInfo : wantSenderInfo->allWants) {
+        SanitizeWantParams(wantsInfo.want);
+    }
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
         callerToken = data.ReadRemoteObject();
@@ -2184,6 +2205,10 @@ int AbilityManagerStub::SendWantSenderInner(MessageParcel &data, MessageParcel &
         TAG_LOGE(AAFwkTag::WANTAGENT, "senderInfo null");
         return ERR_INVALID_VALUE;
     }
+    SanitizeWantParams(senderInfo->want);
+    if (senderInfo->startOptions) {
+        ProcessOptions::SanitizeSystemFields(senderInfo->startOptions->processOptions);
+    }
     int32_t result = SendWantSender(wantSender, *senderInfo);
     if (!reply.WriteParcelable(senderInfo.get())) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "completedData write fail");
@@ -2199,6 +2224,10 @@ int AbilityManagerStub::SendLocalWantSenderInner(MessageParcel &data, MessagePar
     if (senderInfo == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "senderInfo null");
         return ERR_INVALID_VALUE;
+    }
+    SanitizeWantParams(senderInfo->want);
+    if (senderInfo->startOptions) {
+        ProcessOptions::SanitizeSystemFields(senderInfo->startOptions->processOptions);
     }
     int32_t result = SendLocalWantSender(*senderInfo);
     reply.WriteInt32(result);
@@ -2462,8 +2491,12 @@ int AbilityManagerStub::ContinueAbilityInner(MessageParcel &data, MessageParcel 
     std::string deviceId = data.ReadString();
     int32_t missionId = data.ReadInt32();
     uint32_t versionCode = data.ReadUint32();
+    int32_t userId = INVALID_USER_ID;
+    if (!data.ReadInt32(userId)) {
+        userId = INVALID_USER_ID;
+    }
     AAFWK::ContinueRadar::GetInstance().SaveDataContinue("ContinueAbility");
-    int32_t result = ContinueAbility(deviceId, missionId, versionCode);
+    int32_t result = ContinueAbility(deviceId, missionId, versionCode, userId);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "result=%{public}d", result);
     return result;
 }
@@ -4525,6 +4558,7 @@ int AbilityManagerStub::StartAbilityForResultAsCallerForOptionsInner(MessageParc
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startOptions null");
         return ERR_INVALID_VALUE;
     }
+    ProcessOptions::SanitizeSystemFields(startOptions->processOptions);
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
         callerToken = data.ReadRemoteObject();
@@ -4623,6 +4657,10 @@ int32_t AbilityManagerStub::ExecuteInsightIntentDoneInner(MessageParcel &data, M
     std::unique_ptr<InsightIntentExecuteResult> executeResult(data.ReadParcelable<InsightIntentExecuteResult>());
     if (!executeResult) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "executeResult null");
+        InsightIntentExecuteResult errorResult;
+        errorResult.innerErr = AbilityRuntime::InsightIntentInnerErr::INSIGHT_INTENT_EXECUTE_REPLY_FAILED;
+        DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->ExecuteIntentDone(
+            intentId, errorResult.innerErr, errorResult);
         return ERR_INVALID_VALUE;
     }
 
@@ -4850,6 +4888,7 @@ int32_t AbilityManagerStub::OpenAtomicServiceInner(MessageParcel &data, MessageP
         TAG_LOGE(AAFwkTag::ABILITYMGR, "options null");
         return ERR_INVALID_VALUE;
     }
+    ProcessOptions::SanitizeSystemFields(options->processOptions);
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
         callerToken = data.ReadRemoteObject();
@@ -5207,6 +5246,7 @@ int32_t AbilityManagerStub::StartSelfUIAbilityWithStartOptionsInner(MessageParce
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startOptions null");
         return ERR_READ_START_OPTIONS;
     }
+    ProcessOptions::SanitizeSystemFields(options->processOptions);
     int32_t result = StartSelfUIAbilityWithStartOptions(*want, *options);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write StartSelfUIAbilityWithStartOptions result fail");
@@ -5250,6 +5290,7 @@ int32_t AbilityManagerStub::StartSelfUIAbilityWithStartOptionsAndTokenInner(Mess
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startOptions null");
         return ERR_READ_START_OPTIONS;
     }
+    ProcessOptions::SanitizeSystemFields(options->processOptions);
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
         callerToken = data.ReadRemoteObject();
@@ -5276,6 +5317,7 @@ int32_t AbilityManagerStub::StartSelfUIAbilityWithPidResultInner(MessageParcel &
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startOptions null");
         return ERR_READ_START_OPTIONS;
     }
+    ProcessOptions::SanitizeSystemFields(options->processOptions);
     auto callbackId = data.ReadUint64();
     int32_t result = StartSelfUIAbilityWithPidResult(*want, *options, callbackId);
     if (!reply.WriteInt32(result)) {
@@ -5722,6 +5764,7 @@ int AbilityManagerStub::StartSelfUIAbilityInCurrentProcessInner(MessageParcel &d
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startOptions null");
         return ERR_INVALID_VALUE;
     }
+    ProcessOptions::SanitizeSystemFields(startOptions->processOptions);
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
         callerToken = data.ReadRemoteObject();

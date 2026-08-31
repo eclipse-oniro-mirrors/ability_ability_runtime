@@ -3046,15 +3046,14 @@ HWTEST_F(AbilityManagerServiceFirstTest, GetCreatorBundleNameForSandboxClone_010
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     ASSERT_NE(abilityMs_, nullptr);
 
-    Want want;
-    want.SetParam(AbilityRuntime::GlobalConstant::CREATOR_BUNDLE_NAME, std::string("com.creator.bundle"));
+    std::string inputCreatorBundleName = "com.creator.bundle";
     std::string callerBundleName = "com.caller.bundle";
     uint32_t callerTokenId = 1;
     int32_t errCode = ERR_OK;
 
     // Mock permission check - assuming no permission by default
     std::string result = abilityMs_->GetCreatorBundleNameForSandboxClone(
-        want, callerBundleName, callerTokenId, errCode);
+        inputCreatorBundleName, callerBundleName, callerTokenId, errCode);
 
     // Without permission, should use caller bundle name
     EXPECT_EQ(result, callerBundleName);
@@ -3071,13 +3070,13 @@ HWTEST_F(AbilityManagerServiceFirstTest, GetCreatorBundleNameForSandboxClone_020
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     ASSERT_NE(abilityMs_, nullptr);
 
-    Want want;
+    std::string inputCreatorBundleName;
     std::string callerBundleName = "com.caller.bundle";
     uint32_t callerTokenId = 1;
     int32_t errCode = ERR_OK;
 
     std::string result = abilityMs_->GetCreatorBundleNameForSandboxClone(
-        want, callerBundleName, callerTokenId, errCode);
+        inputCreatorBundleName, callerBundleName, callerTokenId, errCode);
 
     EXPECT_EQ(result, callerBundleName);
     EXPECT_EQ(errCode, ERR_OK);
@@ -3093,13 +3092,13 @@ HWTEST_F(AbilityManagerServiceFirstTest, GetCreatorBundleNameForSandboxClone_030
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     ASSERT_NE(abilityMs_, nullptr);
 
-    Want want;
+    std::string inputCreatorBundleName;
     std::string callerBundleName = "";
     uint32_t callerTokenId = 1;
     int32_t errCode = ERR_OK;
 
     std::string result = abilityMs_->GetCreatorBundleNameForSandboxClone(
-        want, callerBundleName, callerTokenId, errCode);
+        inputCreatorBundleName, callerBundleName, callerTokenId, errCode);
 
     EXPECT_TRUE(result.empty());
     EXPECT_EQ(errCode, ERR_INVALID_VALUE);
@@ -3115,14 +3114,13 @@ HWTEST_F(AbilityManagerServiceFirstTest, GetCreatorBundleNameForSandboxClone_040
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     ASSERT_NE(abilityMs_, nullptr);
 
-    Want want;
-    want.SetParam(AbilityRuntime::GlobalConstant::CREATOR_BUNDLE_NAME, std::string("com.creator.bundle"));
+    std::string inputCreatorBundleName = "com.creator.bundle";
     std::string callerBundleName = "com.caller.bundle";
     uint32_t callerTokenId = 1;
     int32_t errCode = ERR_OK;
 
     std::string result = abilityMs_->GetCreatorBundleNameForSandboxClone(
-        want, callerBundleName, callerTokenId, errCode);
+        inputCreatorBundleName, callerBundleName, callerTokenId, errCode);
 
     // Without permission, should use caller bundle name, not the input creator bundle name
     EXPECT_EQ(result, callerBundleName);
@@ -3172,8 +3170,8 @@ HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_0200, TestSiz
     int32_t result = abilityMs_->ProcessSandboxCloneLaunch(
         want, sandboxCloneParams, userId, abilityInfo);
 
-    EXPECT_EQ(result, ERR_OK);
-    EXPECT_TRUE(abilityInfo.bundleName.empty());
+    // sandBoxCloneIndex defaults to 0 (not in [2000,3000]) → invalid.
+    EXPECT_EQ(result, ERR_SANDBOX_CLONE_INDEX_INVALID);
 }
 
 /**
@@ -3187,11 +3185,11 @@ HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_0300, TestSiz
     ASSERT_NE(abilityMs_, nullptr);
 
     Want want;
-    want.SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, 1999);
     auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
     sandboxCloneParams->callerBundleName = "com.caller.bundle";
     sandboxCloneParams->callerUid = 1000;
     sandboxCloneParams->callerTokenId = 1;
+    sandboxCloneParams->sandBoxCloneIndex = 1999;
     int32_t userId = 100;
     AppExecFwk::AbilityInfo abilityInfo;
 
@@ -3212,11 +3210,11 @@ HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_0400, TestSiz
     ASSERT_NE(abilityMs_, nullptr);
 
     Want want;
-    want.SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, 3001);
     auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
     sandboxCloneParams->callerBundleName = "com.caller.bundle";
     sandboxCloneParams->callerUid = 1000;
     sandboxCloneParams->callerTokenId = 1;
+    sandboxCloneParams->sandBoxCloneIndex = 3001;
     int32_t userId = 100;
     AppExecFwk::AbilityInfo abilityInfo;
 
@@ -3238,11 +3236,11 @@ HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_0500, TestSiz
 
     Want want;
     want.SetElementName("com.target.bundle", "TestAbility", "entry");
-    want.SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, 2000);
     auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
     sandboxCloneParams->callerBundleName = "";
     sandboxCloneParams->callerUid = 1000;
     sandboxCloneParams->callerTokenId = 1;
+    sandboxCloneParams->sandBoxCloneIndex = 2000;
     int32_t userId = 100;
     AppExecFwk::AbilityInfo abilityInfo;
 
@@ -3264,11 +3262,11 @@ HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_0600, TestSiz
     ASSERT_NE(abilityMs_, nullptr);
 
     Want want;
-    want.SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, -1);
     auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
     sandboxCloneParams->callerBundleName = "com.caller.bundle";
     sandboxCloneParams->callerUid = 1000;
     sandboxCloneParams->callerTokenId = 1;
+    sandboxCloneParams->sandBoxCloneIndex = -1;
     int32_t userId = 100;
     AppExecFwk::AbilityInfo abilityInfo;
 
@@ -3279,27 +3277,28 @@ HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_0600, TestSiz
 }
 
 /**
- * @tc.name: ProcessSandboxCloneLaunch_1000
+ * @tc.name: ProcessSandboxCloneLaunch_0700
  * @tc.desc: Test ProcessSandboxCloneLaunch with sandboxCloneIndex = 0
  * @tc.type: FUNC
  */
-HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_1000, TestSize.Level1)
+HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_0700, TestSize.Level1)
 {
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     ASSERT_NE(abilityMs_, nullptr);
 
     Want want;
-    want.SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, 0);
     auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
     sandboxCloneParams->callerBundleName = "com.caller.bundle";
     sandboxCloneParams->callerUid = 1000;
     sandboxCloneParams->callerTokenId = 1;
+    sandboxCloneParams->sandBoxCloneIndex = 0;
     int32_t userId = 100;
     AppExecFwk::AbilityInfo abilityInfo;
 
     int32_t result = abilityMs_->ProcessSandboxCloneLaunch(
         want, sandboxCloneParams, userId, abilityInfo);
 
+    // sandBoxCloneIndex = 0 (not in [2000,3000]) → invalid.
     EXPECT_EQ(result, ERR_SANDBOX_CLONE_INDEX_INVALID);
 }
 
@@ -3314,11 +3313,11 @@ HWTEST_F(AbilityManagerServiceFirstTest, StartSandboxCloneAbility_0100, TestSize
     ASSERT_NE(abilityMs_, nullptr);
 
     Want want;
-    want.SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, 2000);
     SandboxCloneParams params;
     params.callerBundleName = "com.caller.bundle";
     params.callerUid = 1000;
     params.callerTokenId = 1;
+    params.sandBoxCloneIndex = 2000;
 
     int32_t result = abilityMs_->StartSandboxCloneAbility(want, params);
 
@@ -3328,7 +3327,7 @@ HWTEST_F(AbilityManagerServiceFirstTest, StartSandboxCloneAbility_0100, TestSize
 
 /**
  * @tc.name: StartSandboxCloneAbility_0200
- * @tc.desc: Test StartSandboxCloneAbility without SANDBOX_CLONE_INDEX parameter
+ * @tc.desc: Test StartSandboxCloneAbility without sandBoxCloneIndex in params
  * @tc.type: FUNC
  */
 HWTEST_F(AbilityManagerServiceFirstTest, StartSandboxCloneAbility_0200, TestSize.Level1)
@@ -3344,7 +3343,7 @@ HWTEST_F(AbilityManagerServiceFirstTest, StartSandboxCloneAbility_0200, TestSize
 
     int32_t result = abilityMs_->StartSandboxCloneAbility(want, params);
 
-    // Should fail due to missing SANDBOX_CLONE_INDEX parameter
+    // Should fail due to no CLI tool token
     EXPECT_EQ(result, ERR_PERMISSION_DENIED);
 }
 
@@ -3359,11 +3358,11 @@ HWTEST_F(AbilityManagerServiceFirstTest, StartSandboxCloneAbility_0300, TestSize
     ASSERT_NE(abilityMs_, nullptr);
 
     Want want;
-    want.SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, 1999);
     SandboxCloneParams params;
     params.callerBundleName = "com.caller.bundle";
     params.callerUid = 1000;
     params.callerTokenId = 1;
+    params.sandBoxCloneIndex = 1999;
 
     int32_t result = abilityMs_->StartSandboxCloneAbility(want, params);
 
@@ -3488,6 +3487,118 @@ HWTEST_F(AbilityManagerServiceFirstTest, ResolveUnknownCallerBackgroundCall_005,
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ResolveUnknownCallerBackgroundCall_005 end");
 }
 
+/*
+ * Feature: AbilityManagerService
+ * Name: BlockAllAppStart_NotSupported_001
+ * Function: BlockAllAppStart
+ * FunctionPoints: BlockAllAppStart returns ERR_PERMISSION_DENIED when not supported.
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, BlockAllAppStart_NotSupported_001, TestSize.Level1)
+{
+    auto &cfg = AppUtils::GetInstance().isSupportBlockAllAppStart_;
+    cfg.value = false;
+    cfg.isLoaded = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    EXPECT_EQ(abilityMs_->BlockAllAppStart(true), ERR_PERMISSION_DENIED);
+    cfg.value = false;
+    cfg.isLoaded = false;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: BlockAllAppStart_Supported_001
+ * Function: BlockAllAppStart
+ * FunctionPoints: BlockAllAppStart succeeds when supported and permission granted.
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, BlockAllAppStart_Supported_001, TestSize.Level1)
+{
+    auto &cfg = AppUtils::GetInstance().isSupportBlockAllAppStart_;
+    cfg.value = true;
+    cfg.isLoaded = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    abilityMs_->shouldBlockAllAppStart_ = false;
+    EXPECT_EQ(abilityMs_->BlockAllAppStart(true), ERR_OK);
+    EXPECT_EQ(abilityMs_->shouldBlockAllAppStart_, true);
+    cfg.value = false;
+    cfg.isLoaded = false;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: ShouldBlockAllAppStart_NotSupported_001
+ * Function: ShouldBlockAllAppStart
+ * FunctionPoints: ShouldBlockAllAppStart returns false when not supported.
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ShouldBlockAllAppStart_NotSupported_001, TestSize.Level1)
+{
+    auto &cfg = AppUtils::GetInstance().isSupportBlockAllAppStart_;
+    cfg.value = false;
+    cfg.isLoaded = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    EXPECT_EQ(abilityMs_->ShouldBlockAllAppStart(), false);
+    cfg.value = false;
+    cfg.isLoaded = false;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: ShouldBlockAllAppStart_Supported_001
+ * Function: ShouldBlockAllAppStart
+ * FunctionPoints: ShouldBlockAllAppStart returns the flag when supported.
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ShouldBlockAllAppStart_Supported_001, TestSize.Level1)
+{
+    auto &cfg = AppUtils::GetInstance().isSupportBlockAllAppStart_;
+    cfg.value = true;
+    cfg.isLoaded = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    abilityMs_->shouldBlockAllAppStart_ = true;
+    EXPECT_EQ(abilityMs_->ShouldBlockAllAppStart(), true);
+    cfg.value = false;
+    cfg.isLoaded = false;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: InitInterceptor_BlockAllAppStart_NotSupported_001
+ * Function: InitInterceptor
+ * FunctionPoints: InitInterceptor does not create BlockAllAppStartInterceptor when not supported.
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, InitInterceptor_BlockAllAppStart_NotSupported_001, TestSize.Level1)
+{
+    auto &cfg = AppUtils::GetInstance().isSupportBlockAllAppStart_;
+    cfg.value = false;
+    cfg.isLoaded = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    abilityMs_->InitInterceptor();
+    EXPECT_EQ(abilityMs_->blockAllAppStartInterceptor_, nullptr);
+    cfg.value = false;
+    cfg.isLoaded = false;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: InitInterceptor_BlockAllAppStart_Supported_001
+ * Function: InitInterceptor
+ * FunctionPoints: InitInterceptor creates BlockAllAppStartInterceptor when supported.
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, InitInterceptor_BlockAllAppStart_Supported_001, TestSize.Level1)
+{
+    auto &cfg = AppUtils::GetInstance().isSupportBlockAllAppStart_;
+    cfg.value = true;
+    cfg.isLoaded = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    abilityMs_->InitInterceptor();
+    EXPECT_NE(abilityMs_->blockAllAppStartInterceptor_, nullptr);
+    cfg.value = false;
+    cfg.isLoaded = false;
+}
 
 } // namespace AAFwk
 } // namespace OHOS

@@ -930,11 +930,12 @@ void AbilityManagerClient::NotifyCompleteContinuation(const std::string &deviceI
     abms->NotifyCompleteContinuation(deviceId, sessionId, isSuccess);
 }
 
-ErrCode AbilityManagerClient::ContinueAbility(const std::string &deviceId, int32_t missionId, uint32_t versionCode)
+ErrCode AbilityManagerClient::ContinueAbility(const std::string &deviceId, int32_t missionId,
+    uint32_t versionCode, int32_t userId)
 {
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
-    return abms->ContinueAbility(deviceId, missionId, versionCode);
+    return abms->ContinueAbility(deviceId, missionId, versionCode, userId);
 }
 
 ErrCode AbilityManagerClient::NotifyContinuationResult(int32_t missionId, int32_t result)
@@ -2265,7 +2266,7 @@ int32_t AbilityManagerClient::OpenFile(const Uri& uri, uint32_t flag)
     auto abms = GetAbilityManager();
     if (abms == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null abms");
-        return true;
+        return ERR_INVALID_VALUE;
     }
     return abms->OpenFile(uri, flag);
 }

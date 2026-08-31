@@ -15,6 +15,8 @@
 #ifndef MOCK_SINGLE_KV_STORE_H
 #define MOCK_SINGLE_KV_STORE_H
 
+#include <functional>
+
 #define private public
 #define protected public
 #include "distributed_kv_data_manager.h"
@@ -49,11 +51,16 @@ public:
             return GetEntries_;
         }
         entries.clear();
+        std::string prefixStr = prefix.ToString();
         for (const auto &item : mockData_) {
-            DistributedKv::Entry entry;
-            entry.key = DistributedKv::Key(item.first);
-            entry.value = item.second;
-            entries.push_back(entry);
+            // If prefix is empty (nullptr case), return all entries
+            // Otherwise, filter by prefix
+            if (prefixStr.empty() || item.first.find(prefixStr) == 0) {
+                DistributedKv::Entry entry;
+                entry.key = DistributedKv::Key(item.first);
+                entry.value = item.second;
+                entries.push_back(entry);
+            }
         }
         return GetEntries_;
     };
@@ -177,6 +184,12 @@ public:
 
     DistributedKv::Status Put(const DistributedKv::Key &key, const DistributedKv::Value &value) override
     {
+        if (PutCallback) {
+            DistributedKv::Status status = PutCallback(key, value);
+            if (status != DistributedKv::Status::SUCCESS) {
+                return status;
+            }
+        }
         if (Put_ != DistributedKv::Status::SUCCESS) {
             return Put_;
         }
@@ -260,6 +273,9 @@ public:
     DistributedKv::Status Delete_ = DistributedKv::Status::SUCCESS;
     DistributedKv::Status Put_ = DistributedKv::Status::SUCCESS;
     DistributedKv::Status Get_ = DistributedKv::Status::SUCCESS;
+
+    // Callback for dynamic Put behavior (e.g., simulate failure after N calls)
+    std::function<DistributedKv::Status(const DistributedKv::Key&, const DistributedKv::Value&)> PutCallback;
 
 private:
     std::map<std::string, DistributedKv::Value> mockData_;

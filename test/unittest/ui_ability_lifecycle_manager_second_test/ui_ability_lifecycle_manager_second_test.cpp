@@ -29,6 +29,7 @@
 #include "app_utils.h"
 #include "app_mgr_client.h"
 #include "mock_ability_info_callback_stub.h"
+#include "param.h"
 #include "process_options.h"
 #include "session/host/include/session.h"
 #include "session_info.h"
@@ -660,47 +661,6 @@ HWTEST_F(UIAbilityLifecycleManagerSecondTest, DispatchBackground_001, TestSize.L
 }
 
 /**
- * @tc.name: UIAbilityLifecycleManager_PreCreateProcessName_0100
- * @tc.desc: PreCreateProcessName
- * @tc.type: FUNC
- */
-HWTEST_F(UIAbilityLifecycleManagerSecondTest, PreCreateProcessName_001, TestSize.Level1)
-{
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
-    AbilityRequest abilityRequest;
-    abilityRequest.processOptions = std::make_shared<ProcessOptions>();
-    abilityRequest.processOptions->processMode = ProcessMode::UNSPECIFIED;
-    abilityRequest.processOptions->processName = "fffAAABBBCCCggg";
-
-    mgr->PreCreateProcessName(abilityRequest);
-
-    EXPECT_EQ(abilityRequest.processOptions->processName, "fffAAABBBCCCggg");
-}
-
-/**
- * @tc.name: UIAbilityLifecycleManager_PreCreateProcessName_0200
- * @tc.desc: PreCreateProcessName
- * @tc.type: FUNC
- */
-HWTEST_F(UIAbilityLifecycleManagerSecondTest, PreCreateProcessName_002, TestSize.Level1)
-{
-    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
-    AbilityRequest abilityRequest;
-    abilityRequest.processOptions = std::make_shared<ProcessOptions>();
-    abilityRequest.processOptions->processMode = ProcessMode::NEW_PROCESS_ATTACH_TO_PARENT;
-    abilityRequest.processOptions->processName = "fffAAABBBCCCggg";
-    abilityRequest.abilityInfo.bundleName = "BHi";
-    abilityRequest.abilityInfo.moduleName = "MHi";
-    abilityRequest.abilityInfo.name = "NHi";
-
-    mgr->PreCreateProcessName(abilityRequest);
-
-    auto processName = abilityRequest.processOptions->processName;
-    auto processNameSub = processName.substr(0, processName.find_last_of(':'));
-    EXPECT_EQ(processNameSub, "BHi:MHi:NHi");
-}
-
-/**
  * @tc.name: UIAbilityLifecycleManager_BackToCallerAbilityWithResult_0700
  * @tc.desc: BackToCallerAbilityWithResult
  * @tc.type: FUNC
@@ -1255,17 +1215,16 @@ HWTEST_F(UIAbilityLifecycleManagerSecondTest, SetSandboxCloneParamsForSession_00
 
     mgr->SetSandboxCloneParamsForSession(sessionInfo, abilityRequest);
 
-    EXPECT_FALSE(sessionInfo->want.GetBoolParam(
-        AbilityRuntime::GlobalConstant::IS_WEB_SANDBOX_CLONE, false));
     EXPECT_EQ(sessionInfo->want.GetIntParam(
         AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, -1), -1);
-    EXPECT_TRUE(sessionInfo->want.GetStringParam(
-        AbilityRuntime::GlobalConstant::CLI_CALLER_BUNDLE_NAME).empty());
+    AbilitySessionInfo info;
+    EXPECT_FALSE(mgr->GetAbilitySessionInfo(sessionInfo->requestId, info));
 }
 
 /**
  * @tc.name: UIAbilityLifecycleManager_SetSandboxCloneParamsForSession_0300
- * @tc.desc: SetSandboxCloneParamsForSession with isWebSandBoxClone true stores all params into sessionInfo->want.
+ * @tc.desc: SetSandboxCloneParamsForSession with isWebSandBoxClone true stores caller info in the map,
+ *           not in sessionInfo->want.
  * @tc.type: FUNC
  */
 HWTEST_F(UIAbilityLifecycleManagerSecondTest, SetSandboxCloneParamsForSession_003, TestSize.Level1)
@@ -1273,25 +1232,29 @@ HWTEST_F(UIAbilityLifecycleManagerSecondTest, SetSandboxCloneParamsForSession_00
     auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     sptr<SessionInfo> sessionInfo(new SessionInfo());
     ASSERT_NE(sessionInfo, nullptr);
+    sessionInfo->requestId = 12345;
     AbilityRequest abilityRequest;
     abilityRequest.isWebSandBoxClone = true;
     abilityRequest.abilityInfo.applicationInfo.appIndex = 2000;
     const std::string callerBundleName = "com.test.cli.caller";
-    const std::string callerTokenId = "537919265";
-    abilityRequest.want.SetParam(AbilityRuntime::GlobalConstant::CLI_CALLER_BUNDLE_NAME, callerBundleName);
-    abilityRequest.want.SetParam(AbilityRuntime::GlobalConstant::CLI_CALLER_TOKEN_ID, callerTokenId);
+    const uint32_t callerTokenId = 537919265;
+    abilityRequest.sandboxCloneParams = std::make_shared<SandboxCloneParams>();
+    abilityRequest.sandboxCloneParams->callerBundleName = callerBundleName;
+    abilityRequest.sandboxCloneParams->callerTokenId = callerTokenId;
 
     mgr->SetSandboxCloneParamsForSession(sessionInfo, abilityRequest);
 
-    EXPECT_TRUE(sessionInfo->want.GetBoolParam(
-        AbilityRuntime::GlobalConstant::IS_WEB_SANDBOX_CLONE, false));
+    // SANDBOX_CLONE_INDEX must NOT be stored in want.
     EXPECT_EQ(sessionInfo->want.GetIntParam(
-        AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, -1),
-        abilityRequest.abilityInfo.applicationInfo.appIndex);
-    EXPECT_EQ(sessionInfo->want.GetStringParam(
-        AbilityRuntime::GlobalConstant::CLI_CALLER_BUNDLE_NAME), callerBundleName);
-    EXPECT_EQ(sessionInfo->want.GetStringParam(
-        AbilityRuntime::GlobalConstant::CLI_CALLER_TOKEN_ID), callerTokenId);
+        AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, -1), -1);
+    // Caller info must be stored in the internal map.
+    AbilitySessionInfo info;
+    EXPECT_TRUE(mgr->GetAbilitySessionInfo(sessionInfo->requestId, info));
+    EXPECT_EQ(info.callerBundleName, callerBundleName);
+    EXPECT_EQ(info.callerTokenId, callerTokenId);
+    EXPECT_TRUE(info.isWebSandBoxClone);
+    EXPECT_EQ(info.sandBoxCloneIndex, abilityRequest.abilityInfo.applicationInfo.appIndex);
+    mgr->RemoveAbilitySessionInfo(sessionInfo->requestId);
 }
 
 /**
@@ -1806,6 +1769,341 @@ HWTEST_F(UIAbilityLifecycleManagerSecondTest, ExactSpecified_001, TestSize.Level
     abilityRequest.want.SetParam(AAFwk::Want::DESTINATION_PLUGIN_ABILITY, false);
     abilityRequest.abilityInfo.launchMode = AppExecFwk::LaunchMode::SINGLETON;
     EXPECT_FALSE(mgr->ExactSpecified(abilityRequest));
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_GetAbilitySessionInfo_001
+ * @tc.desc: GetAbilitySessionInfo returns false when the map is empty.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, GetAbilitySessionInfo_001, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(mgr, nullptr);
+
+    AbilitySessionInfo info;
+    int32_t requestId = 100;
+    EXPECT_FALSE(mgr->GetAbilitySessionInfo(requestId, info));
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_GetAbilitySessionInfo_002
+ * @tc.desc: GetAbilitySessionInfo returns false for a requestId that was never stored.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, GetAbilitySessionInfo_002, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(mgr, nullptr);
+
+    AbilitySessionInfo storeInfo;
+    storeInfo.callerBundleName = "com.example.caller";
+    storeInfo.callerTokenId = TEST_UID;
+    storeInfo.isWebSandBoxClone = true;
+    storeInfo.sandBoxCloneIndex = 1;
+    mgr->StoreAbilitySessionInfo(1, storeInfo);
+
+    AbilitySessionInfo info;
+    EXPECT_FALSE(mgr->GetAbilitySessionInfo(999, info));
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_GetAbilitySessionInfo_003
+ * @tc.desc: GetAbilitySessionInfo returns true and correct data after StoreAbilitySessionInfo.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, GetAbilitySessionInfo_003, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(mgr, nullptr);
+
+    AbilitySessionInfo storeInfo;
+    storeInfo.callerBundleName = "com.example.caller";
+    storeInfo.callerTokenId = TEST_UID;
+    storeInfo.isWebSandBoxClone = true;
+    storeInfo.sandBoxCloneIndex = 2;
+    storeInfo.creatorBundleName = "com.example.creator";
+    int32_t requestId = 200;
+    mgr->StoreAbilitySessionInfo(requestId, storeInfo);
+
+    AbilitySessionInfo info;
+    EXPECT_TRUE(mgr->GetAbilitySessionInfo(requestId, info));
+    EXPECT_EQ(info.callerBundleName, storeInfo.callerBundleName);
+    EXPECT_EQ(info.callerTokenId, storeInfo.callerTokenId);
+    EXPECT_EQ(info.isWebSandBoxClone, storeInfo.isWebSandBoxClone);
+    EXPECT_EQ(info.sandBoxCloneIndex, storeInfo.sandBoxCloneIndex);
+    EXPECT_EQ(info.creatorBundleName, storeInfo.creatorBundleName);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_GetAbilitySessionInfo_004
+ * @tc.desc: GetAbilitySessionInfo retrieves the correct entry among multiple stored entries.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, GetAbilitySessionInfo_004, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(mgr, nullptr);
+
+    AbilitySessionInfo info1;
+    info1.callerBundleName = "com.example.first";
+    info1.callerTokenId = 1001;
+    info1.isWebSandBoxClone = false;
+    mgr->StoreAbilitySessionInfo(10, info1);
+
+    AbilitySessionInfo info2;
+    info2.callerBundleName = "com.example.second";
+    info2.callerTokenId = 2002;
+    info2.isWebSandBoxClone = true;
+    info2.sandBoxCloneIndex = 3;
+    mgr->StoreAbilitySessionInfo(20, info2);
+
+    AbilitySessionInfo result1;
+    EXPECT_TRUE(mgr->GetAbilitySessionInfo(10, result1));
+    EXPECT_EQ(result1.callerBundleName, "com.example.first");
+    EXPECT_EQ(result1.callerTokenId, 1001);
+    EXPECT_FALSE(result1.isWebSandBoxClone);
+
+    AbilitySessionInfo result2;
+    EXPECT_TRUE(mgr->GetAbilitySessionInfo(20, result2));
+    EXPECT_EQ(result2.callerBundleName, "com.example.second");
+    EXPECT_EQ(result2.callerTokenId, 2002);
+    EXPECT_TRUE(result2.isWebSandBoxClone);
+    EXPECT_EQ(result2.sandBoxCloneIndex, 3);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_StoreAbilitySessionInfo_001
+ * @tc.desc: StoreAbilitySessionInfo overwrites an existing entry for the same requestId.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, StoreAbilitySessionInfo_001, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(mgr, nullptr);
+
+    int32_t requestId = 300;
+    AbilitySessionInfo info1;
+    info1.callerBundleName = "com.example.original";
+    info1.callerTokenId = 3001;
+    info1.isWebSandBoxClone = false;
+    mgr->StoreAbilitySessionInfo(requestId, info1);
+
+    AbilitySessionInfo info2;
+    info2.callerBundleName = "com.example.updated";
+    info2.callerTokenId = 3002;
+    info2.isWebSandBoxClone = true;
+    info2.sandBoxCloneIndex = 5;
+    mgr->StoreAbilitySessionInfo(requestId, info2);
+
+    AbilitySessionInfo result;
+    EXPECT_TRUE(mgr->GetAbilitySessionInfo(requestId, result));
+    EXPECT_EQ(result.callerBundleName, "com.example.updated");
+    EXPECT_EQ(result.callerTokenId, 3002);
+    EXPECT_TRUE(result.isWebSandBoxClone);
+    EXPECT_EQ(result.sandBoxCloneIndex, 5);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_StoreAbilitySessionInfo_002
+ * @tc.desc: StoreAbilitySessionInfo stores default-constructed info and retrieves it correctly.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, StoreAbilitySessionInfo_002, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(mgr, nullptr);
+
+    AbilitySessionInfo info;
+    int32_t requestId = 400;
+    mgr->StoreAbilitySessionInfo(requestId, info);
+
+    AbilitySessionInfo result;
+    EXPECT_TRUE(mgr->GetAbilitySessionInfo(requestId, result));
+    EXPECT_TRUE(result.callerBundleName.empty());
+    EXPECT_EQ(result.callerTokenId, 0u);
+    EXPECT_FALSE(result.isWebSandBoxClone);
+    EXPECT_EQ(result.sandBoxCloneIndex, 0);
+    EXPECT_TRUE(result.creatorBundleName.empty());
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_RemoveAbilitySessionInfo_001
+ * @tc.desc: RemoveAbilitySessionInfo removes a previously stored entry.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, RemoveAbilitySessionInfo_001, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(mgr, nullptr);
+
+    int32_t requestId = 500;
+    AbilitySessionInfo info;
+    info.callerBundleName = "com.example.remove";
+    info.callerTokenId = 5001;
+    mgr->StoreAbilitySessionInfo(requestId, info);
+
+    AbilitySessionInfo result;
+    EXPECT_TRUE(mgr->GetAbilitySessionInfo(requestId, result));
+
+    mgr->RemoveAbilitySessionInfo(requestId);
+    EXPECT_FALSE(mgr->GetAbilitySessionInfo(requestId, result));
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_RemoveAbilitySessionInfo_002
+ * @tc.desc: RemoveAbilitySessionInfo on a non-existent requestId does not crash and leaves other entries intact.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, RemoveAbilitySessionInfo_002, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(mgr, nullptr);
+
+    AbilitySessionInfo info;
+    info.callerBundleName = "com.example.keep";
+    info.callerTokenId = 6001;
+    mgr->StoreAbilitySessionInfo(600, info);
+
+    mgr->RemoveAbilitySessionInfo(999);
+
+    AbilitySessionInfo result;
+    EXPECT_TRUE(mgr->GetAbilitySessionInfo(600, result));
+    EXPECT_EQ(result.callerBundleName, "com.example.keep");
+    EXPECT_EQ(result.callerTokenId, 6001);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_RemoveAbilitySessionInfo_003
+ * @tc.desc: RemoveAbilitySessionInfo only removes the targeted entry among multiple entries.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, RemoveAbilitySessionInfo_003, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(mgr, nullptr);
+
+    AbilitySessionInfo info1;
+    info1.callerBundleName = "com.example.first";
+    mgr->StoreAbilitySessionInfo(700, info1);
+
+    AbilitySessionInfo info2;
+    info2.callerBundleName = "com.example.second";
+    mgr->StoreAbilitySessionInfo(701, info2);
+
+    AbilitySessionInfo info3;
+    info3.callerBundleName = "com.example.third";
+    mgr->StoreAbilitySessionInfo(702, info3);
+
+    mgr->RemoveAbilitySessionInfo(701);
+
+    AbilitySessionInfo result1;
+    EXPECT_TRUE(mgr->GetAbilitySessionInfo(700, result1));
+    EXPECT_EQ(result1.callerBundleName, "com.example.first");
+
+    AbilitySessionInfo result2;
+    EXPECT_FALSE(mgr->GetAbilitySessionInfo(701, result2));
+
+    AbilitySessionInfo result3;
+    EXPECT_TRUE(mgr->GetAbilitySessionInfo(702, result3));
+    EXPECT_EQ(result3.callerBundleName, "com.example.third");
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_StoreGetRemoveAbilitySessionInfo_001
+ * @tc.desc: Store, get, remove, then get again to verify the full lifecycle.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, StoreGetRemoveAbilitySessionInfo_001, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(mgr, nullptr);
+
+    int32_t requestId = 800;
+    AbilitySessionInfo info;
+    info.callerBundleName = "com.example.lifecycle";
+    info.callerTokenId = TEST_UID;
+    info.isWebSandBoxClone = true;
+    info.sandBoxCloneIndex = 8;
+    info.creatorBundleName = "com.example.creator";
+
+    mgr->StoreAbilitySessionInfo(requestId, info);
+    EXPECT_EQ(mgr->abilitySessionInfoMap_.size(), 1u);
+
+    AbilitySessionInfo getResult;
+    EXPECT_TRUE(mgr->GetAbilitySessionInfo(requestId, getResult));
+    EXPECT_EQ(getResult.callerBundleName, info.callerBundleName);
+    EXPECT_EQ(getResult.callerTokenId, info.callerTokenId);
+    EXPECT_EQ(getResult.isWebSandBoxClone, info.isWebSandBoxClone);
+    EXPECT_EQ(getResult.sandBoxCloneIndex, info.sandBoxCloneIndex);
+    EXPECT_EQ(getResult.creatorBundleName, info.creatorBundleName);
+
+    mgr->RemoveAbilitySessionInfo(requestId);
+    EXPECT_EQ(mgr->abilitySessionInfoMap_.size(), 0u);
+
+    EXPECT_FALSE(mgr->GetAbilitySessionInfo(requestId, getResult));
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_BuildStartSpecifiedParam_001
+ * @tc.desc: BuildStartSpecifiedParam with null processOptions keeps defaults
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, BuildStartSpecifiedParam_001, TestSize.Level1)
+{
+    AbilityRequest request;
+    request.customProcess = "com.test.custom";
+    request.processOptions = nullptr;
+
+    AbilityRuntime::StartSpecifiedParam param;
+    UIAbilityLifecycleManager::BuildStartSpecifiedParam(request, 1001, param);
+
+    EXPECT_EQ(param.requestId, 1001);
+    EXPECT_EQ(param.customProcess, "com.test.custom");
+    EXPECT_EQ(param.processMode, 0);
+    EXPECT_FALSE(param.isPreloadStart);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_BuildStartSpecifiedParam_002
+ * @tc.desc: BuildStartSpecifiedParam propagates processMode and isPreloadStart
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, BuildStartSpecifiedParam_002, TestSize.Level1)
+{
+    AbilityRequest request;
+    request.customProcess = "";
+    request.processOptions = std::make_shared<ProcessOptions>();
+    request.processOptions->processMode = ProcessMode::NEW_PROCESS_ATTACH_TO_PARENT;
+    request.processOptions->isPreloadStart = true;
+
+    AbilityRuntime::StartSpecifiedParam param;
+    UIAbilityLifecycleManager::BuildStartSpecifiedParam(request, 2002, param);
+
+    EXPECT_EQ(param.requestId, 2002);
+    EXPECT_EQ(param.processMode, static_cast<int32_t>(ProcessMode::NEW_PROCESS_ATTACH_TO_PARENT));
+    EXPECT_TRUE(param.isPreloadStart);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_BuildStartSpecifiedParam_003
+ * @tc.desc: BuildStartSpecifiedParam propagates customProcess
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, BuildStartSpecifiedParam_003, TestSize.Level1)
+{
+    AbilityRequest request;
+    request.customProcess = "com.example.proc";
+    request.processOptions = std::make_shared<ProcessOptions>();
+    request.processOptions->processMode = ProcessMode::UNSPECIFIED;
+    request.processOptions->isPreloadStart = false;
+
+    AbilityRuntime::StartSpecifiedParam param;
+    UIAbilityLifecycleManager::BuildStartSpecifiedParam(request, 0, param);
+
+    EXPECT_EQ(param.customProcess, "com.example.proc");
+    EXPECT_EQ(param.processMode, static_cast<int32_t>(ProcessMode::UNSPECIFIED));
+    EXPECT_FALSE(param.isPreloadStart);
 }
 }  // namespace AAFwk
 }  // namespace OHOS

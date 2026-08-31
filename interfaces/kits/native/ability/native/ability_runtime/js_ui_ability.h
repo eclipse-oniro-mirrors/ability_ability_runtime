@@ -471,6 +471,8 @@ private:
     bool reusingWindow_ = false;
     bool isGamePreLaunch_  = false;
     int32_t goResumeCalledFlag_ = 0;
+    bool isPrelaunch_ = false;
+    int32_t frameNum_ = 0;
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

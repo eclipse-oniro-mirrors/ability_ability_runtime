@@ -580,15 +580,28 @@ int32_t UIExtensionAbilityManager::RegisterPreloadUIExtensionHostClient(const sp
 
     {
         std::lock_guard lock(preloadUIExtRecipientMapMutex_);
+        auto it = preloadUIExtensionHostClientDeathRecipients_.find(callerPid);
+        if (it != preloadUIExtensionHostClientDeathRecipients_.end()) {
+            TAG_LOGW(AAFwkTag::UI_EXT, "recipient added before, callerPid: %{public}d", callerPid);
+            return ERR_OK;
+        }
+        if (!callerToken->AddDeathRecipient(deathRecipient)) {
+            TAG_LOGE(AAFwkTag::UI_EXT, "AddDeathRecipient fail");
+            return INNER_ERR;
+        }
         preloadUIExtensionHostClientDeathRecipients_[callerPid] = deathRecipient;
     }
 
-    callerToken->AddDeathRecipient(deathRecipient);
     try {
         uiExtensionAbilityRecordMgr_->RegisterPreloadUIExtensionHostClient(callerToken);
     } catch (std::exception &e) {
         TAG_LOGE(AAFwkTag::UI_EXT, "RegisterPreloadUIExtensionHostClient failed, exception = %{public}s", e.what());
         callerToken->RemoveDeathRecipient(deathRecipient);
+        {
+            std::lock_guard lock(preloadUIExtRecipientMapMutex_);
+            preloadUIExtensionHostClientDeathRecipients_.erase(callerPid);
+        }
+        return INNER_ERR;
     }
     return ERR_OK;
 }
@@ -1550,7 +1563,6 @@ void UIExtensionAbilityManager::CompleteBackground(const std::shared_ptr<BaseExt
         return;
     }
     abilityRecord->SetAbilityState(AbilityState::BACKGROUND);
-    CHECK_POINTER(abilityRecord);
     auto sessionInfo = abilityRecord->GetSessionInfo();
     CHECK_POINTER(sessionInfo);
     TAG_LOGI(AAFwkTag::UI_EXT,

@@ -67,6 +67,8 @@ constexpr const int BASE_TEN = 10;
 constexpr const char SIGN_TERMINAL = '\0';
 constexpr int32_t DEFAULT_CONCURRENT_NUMBER = 1;
 constexpr int32_t HIPROFILER_UID = 3063;
+constexpr int32_t REPORT_TEMPLATE_PROCESS_READY_DELAY_TIME = 2000;
+
 namespace {
 #define CHECK_CALLER_IS_SYSTEM_APP                                                             \
     if (!AAFwk::PermissionVerification::GetInstance()->JudgeCallerIsAllowedToUseSystemAPI()) { \
@@ -315,6 +317,26 @@ int32_t AppMgrService::DestroyImage(uint64_t checkpointId, sptr<IImageErrorHandl
     return ERR_OK;
 }
 
+int32_t AppMgrService::GetHyperSnapLastError(int32_t errType, HyperSnapErrorRecord &record)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "GetHyperSnapLastError called, errType: %{public}d", errType);
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError failed: service not ready");
+        return ERR_INVALID_OPERATION;
+    }
+
+    HyperSnapErrorType errorType = static_cast<HyperSnapErrorType>(errType);
+
+    bool success = appMgrServiceInner_->GetHyperSnapLastError(errorType, record);
+    if (!success) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError failed: invalid parameter");
+        return ERR_INVALID_VALUE;
+    }
+
+    TAG_LOGD(AAFwkTag::APPMGR, "GetHyperSnapLastError success, code: %{public}d", static_cast<int32_t>(record.code));
+    return ERR_OK;
+}
+
 int32_t AppMgrService::NotifyTemplateProcessDeepFrozen(int32_t pid)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");
@@ -363,7 +385,14 @@ int32_t AppMgrService::NotifyTemplateProcessReadyDone()
         return ERR_INVALID_OPERATION;
     }
     pid_t callingPid = IPCSkeleton::GetCallingPid();
-    appMgrServiceInner_->HandleNotifyTemplateProcessReadyDone(callingPid);
+    auto task = [appMgrServiceInner = appMgrServiceInner_, callingPid]() {
+        appMgrServiceInner->HandleNotifyTemplateProcessReadyDone(callingPid);
+    };
+    AAFwk::TaskHandlerWrap::GetFfrtHandler()->SubmitTask(task, AAFwk::TaskAttribute{
+        .taskName_ = TASK_NOTIFY_TEMPLATE_PROCESS_READY_DONE,
+        .delayMillis_ = REPORT_TEMPLATE_PROCESS_READY_DELAY_TIME,
+        .taskQos_ = AAFwk::TaskQoS::USER_INTERACTIVE
+    });
     return ERR_OK;
 }
 
@@ -619,6 +648,17 @@ int AppMgrService::GetAllChildrenProcesses(std::vector<ChildProcessInfo> &info)
     return ERR_INVALID_OPERATION;
 }
 
+int AppMgrService::GetSelfChildrenProcesses(std::vector<ChildProcessInfo> &info)
+{
+#ifdef SUPPORT_CHILD_PROCESS
+    if (!IsReady()) {
+        return ERR_INVALID_OPERATION;
+    }
+    return appMgrServiceInner_->GetSelfChildrenProcesses(info);
+#endif // SUPPORT_CHILD_PROCESS
+    return ERR_INVALID_OPERATION;
+}
+
 int32_t AppMgrService::IsTerminatingByPid(pid_t pid, bool &isTerminating)
 {
     if (!IsReady()) {
@@ -866,7 +906,9 @@ int AppMgrService::StartUserTestProcess(const AAFwk::Want &want, const sptr<IRem
         TAG_LOGE(AAFwkTag::APPMGR, "not ready");
         return ERR_INVALID_OPERATION;
     }
-    if (!AAFwk::PermissionVerification::GetInstance()->IsShellCall()) {
+    if (!AAFwk::PermissionVerification::GetInstance()->IsShellCall() &&
+        !AAFwk::PermissionVerification::GetInstance()->IsAllowLocalDebugOtherApps(
+            want.GetBoolParam("ohos.param.debugFrom", false))) {
         TAG_LOGE(AAFwkTag::APPMGR, "StartUserTestProcess is not shell call");
         return ERR_INVALID_OPERATION;
     }
@@ -2079,15 +2121,30 @@ int32_t AppMgrService::CreateNativeChildProcess(const std::string &libName,
 {
     XCOLLIE_TIMER_LESS(__PRETTY_FUNCTION__);
     TAG_LOGI(AAFwkTag::APPMGR, "call");
+    std::vector<FdGuard> fds;
+    for (const auto &[name, fd] : request.args.fds) {
+        fds.emplace_back(fd);
+    }
     if (!IsReady()) {
         TAG_LOGE(AAFwkTag::APPMGR, "not ready");
         return ERR_INVALID_OPERATION;
     }
-    
+
     return appMgrServiceInner_->CreateNativeChildProcess(
         IPCSkeleton::GetCallingPid(), libName, callback, request);
 }
 #endif // SUPPORT_CHILD_PROCESS
+
+int32_t AppMgrService::GetSelfUIAbilityChildProcesses(std::vector<ChildProcessInfo> &infos)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "call");
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "not ready");
+        return ERR_INVALID_OPERATION;
+    }
+
+    return appMgrServiceInner_->GetSelfUIAbilityChildProcesses(infos);
+}
 
 int32_t AppMgrService::CheckCallingIsUserTestMode(const pid_t pid, bool &isUserTest)
 {
@@ -2406,14 +2463,15 @@ int32_t AppMgrService::GetAllAbilityInfos(const int32_t pid, std::vector<AppExec
     return appMgrServiceInner_->GetAllAbilityInfos(pid, infos);
 }
 
-int32_t AppMgrService::EnableDelayedProcessExit(int32_t pid, bool enabled)
+int32_t AppMgrService::EnableDelayedProcessExit(bool enabled)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (!IsReady()) {
         TAG_LOGE(AAFwkTag::APPMGR, "Service not ready");
         return ERR_INVALID_OPERATION;
     }
-    return appMgrServiceInner_->EnableDelayedProcessExit(pid, enabled);
+    pid_t callingPid = IPCSkeleton::GetCallingPid();
+    return appMgrServiceInner_->EnableDelayedProcessExit(static_cast<int32_t>(callingPid), enabled);
 }
 
 void AppMgrService::CancelDelayedExitTask(int32_t pid)
@@ -2421,6 +2479,10 @@ void AppMgrService::CancelDelayedExitTask(int32_t pid)
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (!IsReady()) {
         TAG_LOGE(AAFwkTag::APPMGR, "Service not ready");
+        return;
+    }
+    if (!appMgrServiceInner_->IsFoundationCall()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Not foundation call.");
         return;
     }
     appMgrServiceInner_->CancelDelayedExitTask(pid);

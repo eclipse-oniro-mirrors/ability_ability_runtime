@@ -15,6 +15,7 @@ group("unittest") {
   testonly = true
 
   deps = [
+    "function_call_convert_test:unittest",
     "insight_intent_execute_callback_stub_test:unittest",
     "insight_intent_execute_manager_second_test:unittest",
     "insight_intent_execute_manager_test:unittest",

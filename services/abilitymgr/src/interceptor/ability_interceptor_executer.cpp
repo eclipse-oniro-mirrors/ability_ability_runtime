@@ -66,19 +66,6 @@ ErrCode AbilityInterceptorExecuter::DoProcess(const AbilityInterceptorParam &par
     return result;
 }
 
-void AbilityInterceptorExecuter::SetTaskHandler(std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler)
-{
-    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    
-    std::lock_guard lock(interceptorMapLock_);
-    for (auto &item : interceptorMap_) {
-        if (item.second == nullptr) {
-            continue;
-        }
-        (item.second)->SetTaskHandler(taskHandler);
-    }
-}
-
 InterceptorMap AbilityInterceptorExecuter::GetInterceptorMapCopy()
 {
     std::lock_guard lock(interceptorMapLock_);

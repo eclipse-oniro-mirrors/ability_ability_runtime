@@ -667,6 +667,9 @@ void JSUIServiceExtensionConnection::HandleOnAbilityDisconnectDone(const AppExec
             });
         if (item != g_connects.end()) {
             // match bundlename && abilityname
+            if (item->second) {
+                item->second->RemoveConnectionObject();
+            }
             g_connects.erase(item);
             TAG_LOGD(
                 AAFwkTag::UISERVC_EXT, "OnAbilityDisconnectDone erase g_connects.size:%{public}zu", g_connects.size());

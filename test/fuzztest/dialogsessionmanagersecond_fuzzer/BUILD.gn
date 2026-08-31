@@ -37,6 +37,7 @@ ohos_fuzztest("DialogSessionManagerSecondFuzzTest") {
   ]
   sources = [
     "${ability_runtime_path}/services/abilitymgr/src/dialog_session/dialog_session_manager.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/extension_query_event_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/query_erms_manager.cpp",
     "${ability_runtime_path}/services/abilitymgr/src/query_erms_observer_manager.cpp",
     "${ability_runtime_path}/services/common/src/task_handler_wrap.cpp",

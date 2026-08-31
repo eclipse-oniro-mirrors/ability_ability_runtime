@@ -54,7 +54,10 @@ int32_t ModularObjectExtensionRdbStorageMgr::QueryData(const std::string& key,
     std::vector<AAFwk::ModularObjectExtensionInfo> &infos)
 {
     std::string jsonString;
-    DelayedSingleton<ModularObjectExtensionRdbDataMgr>::GetInstance()->QueryData(key, jsonString);
+    auto ret = DelayedSingleton<ModularObjectExtensionRdbDataMgr>::GetInstance()->QueryData(key, jsonString);
+    if (ret != NativeRdb::E_OK) {
+        return ret;
+    }
     FromJsonString(jsonString, infos);
     return NativeRdb::E_OK;
 }

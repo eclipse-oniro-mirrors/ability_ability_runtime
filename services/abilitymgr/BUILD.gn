@@ -137,6 +137,7 @@ ohos_shared_library("abilityms") {
     debug = false
   }
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
   shlib_type = "sa"
   sources = abilityms_files
   cflags_cc = []
@@ -556,7 +557,6 @@ ohos_shared_library("wantagent_manager") {
     "${ability_runtime_services_path}/abilitymgr/src/want_receiver_stub.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/want_sender_info.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/want_sender_proxy.cpp",
-    "${ability_runtime_services_path}/abilitymgr/src/want_sender_stub.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/wants_info.cpp",
   ]
   deps = [
@@ -593,6 +593,7 @@ ohos_shared_library("modular_object") {
     debug = false
   }
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
   include_dirs = [
     "${ability_runtime_innerkits_path}/ability_manager/include",

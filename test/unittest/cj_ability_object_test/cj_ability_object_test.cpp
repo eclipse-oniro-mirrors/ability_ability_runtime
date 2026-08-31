@@ -91,9 +91,59 @@ bool ProxyCall()
     return true;
 }
 
+static CJAbilityFuncs* g_funcV1 = nullptr;
+static CJAbilityFuncsV3* g_funcV3 = nullptr;
+static CJExtAbilityFuncs* g_extFuncsV1 = nullptr;
+static CJExtAbilityFuncsV2* g_extFuncsV2 = nullptr;
+
+static void ResetCJAbilityFuncs()
+{
+    if (g_funcV1 != nullptr) {
+        g_funcV1->cjAbilityCreate = nullptr;
+        g_funcV1 = nullptr;
+    }
+    if (g_funcV3 != nullptr) {
+        g_funcV3->cjAbilityOnStartV3 = nullptr;
+        g_funcV3->cjAbilityOnNewWantV3 = nullptr;
+        g_funcV3->cjAbilityOnConfigurationUpdateV3 = nullptr;
+        g_funcV3 = nullptr;
+    }
+    if (g_extFuncsV1 != nullptr) {
+        g_extFuncsV1->createCjExtAbility = nullptr;
+        g_extFuncsV1 = nullptr;
+    }
+    if (g_extFuncsV2 != nullptr) {
+        g_extFuncsV2->cjExtAbilityOnCreateV3 = nullptr;
+        g_extFuncsV2->cjExtAbilityOnConfigurationUpdateV2 = nullptr;
+        g_extFuncsV2 = nullptr;
+    }
+}
+
+static void RegisterCommonExtAbilityFuncs()
+{
+    auto registerFunc = [](CJExtAbilityFuncs* funcs) {
+        g_extFuncsV1 = funcs;
+        funcs->createCjExtAbility = [](const char* name, int32_t type) -> int64_t { return 1; };
+        funcs->releaseCjExtAbility = [](int64_t id, int32_t type) {};
+        funcs->cjExtAbilityInit = [](int64_t id, int32_t type, ExtAbilityHandle extAbility) {};
+        funcs->cjExtAbilityOnCreate = [](int64_t id, int32_t type, WantHandle want, ::CJLaunchParam param) {};
+        funcs->cjExtAbilityOnDestroy = [](int64_t id, int32_t type) {};
+        funcs->cjExtAbilityOnSessionCreate = [](int64_t id, int32_t type, WantHandle want, int64_t sessionId) {};
+        funcs->cjExtAbilityOnSessionDestroy = [](int64_t id, int32_t type, int64_t sessionId) {};
+        funcs->cjExtAbilityOnForeground = [](int64_t id, int32_t type) {};
+        funcs->cjExtAbilityOnBackground = [](int64_t id, int32_t type) {};
+        funcs->cjExtAbilityOnConfigurationUpdate = [](int64_t id, int32_t type, CConfiguration cfg) {};
+        funcs->cjExtAbilityOnMemoryLevel = [](int64_t id, int32_t type, int32_t level) {};
+        funcs->cjExtAbilityOnStartContentEditing =
+            [](int64_t id, int32_t type, const char* imageUri, WantHandle want, int64_t sessionId) {};
+    };
+    FFIRegisterCJExtAbilityFuncs(registerFunc);
+}
+
 static void RegisterCommonCJAbilityFuncs()
 {
     auto registerFunc = [](CJAbilityFuncs* funcs) {
+        g_funcV1 = funcs;
         funcs->cjAbilityCreate = [](const char* name) -> int64_t { return 1; };
         funcs->cjAbilityRelease = [](int64_t id) {};
         funcs->cjAbilityOnStart = [](int64_t id, WantHandle want, ::CJLaunchParam launchParam) {};
@@ -121,6 +171,7 @@ HWTEST_F(CjAbilityObjectTest, CJAbilityObject001, TestSize.Level1)
 HWTEST_F(CjAbilityObjectTest, CJAbilityObject002, TestSize.Level1)
 {
     auto registerFunc = [](CJAbilityFuncs* funcs) {
+        g_funcV1 = funcs;
         funcs->cjAbilityCreate = [](const char* name) -> int64_t { return name[0] == '0' ? 0 : 1; };
         funcs->cjAbilityRelease = [](int64_t id) {};
         funcs->cjAbilityOnStart = [](int64_t id, WantHandle want, ::CJLaunchParam launchParam) {};
@@ -138,8 +189,8 @@ HWTEST_F(CjAbilityObjectTest, CJAbilityObject002, TestSize.Level1)
     };
     RegisterCJAbilityFuncs(registerFunc);
     ProxyCall();
-    RegisterCJAbilityFuncs(nullptr);
-    EXPECT_NE(registerFunc, nullptr);
+    EXPECT_NE(g_funcV1, nullptr);
+    ResetCJAbilityFuncs();
 }
 
 /**
@@ -152,15 +203,20 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_RegisterCJAbilityFuncsV3_001, 
     RegisterCJAbilityFuncsV3(nullptr);
 
     auto registerFunc = [](CJAbilityFuncsV3* funcs) {
+        g_funcV3 = funcs;
         funcs->cjAbilityOnStartV3 = [](int64_t id, WantHandle want, ::CJLaunchParamV3 launchParam) {};
         funcs->cjAbilityOnNewWantV3 = [](int64_t id, WantHandle want, ::CJLaunchParamV3 launchParam) {};
         funcs->cjAbilityOnConfigurationUpdateV3 = [](int64_t id,
             OHOS::AbilityRuntime::CConfigurationV2 configuration) {};
     };
     RegisterCJAbilityFuncsV3(registerFunc);
-    EXPECT_NE(registerFunc, nullptr);
+    EXPECT_NE(g_funcV3, nullptr);
+    EXPECT_NE(g_funcV3->cjAbilityOnStartV3, nullptr);
+    EXPECT_NE(g_funcV3->cjAbilityOnNewWantV3, nullptr);
+    EXPECT_NE(g_funcV3->cjAbilityOnConfigurationUpdateV3, nullptr);
 
     RegisterCJAbilityFuncsV3(registerFunc);
+    ResetCJAbilityFuncs();
 }
 
 /**
@@ -173,6 +229,7 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnConfigurationUpdatedV3_001, 
     static bool v3Called = false;
     v3Called = false;
     auto registerFunc = [](CJAbilityFuncs* funcs) {
+        g_funcV1 = funcs;
         funcs->cjAbilityCreate = [](const char* name) -> int64_t { return name[0] == '0' ? 0 : 1; };
         funcs->cjAbilityRelease = [](int64_t id) {};
         funcs->cjAbilityOnStart = [](int64_t id, WantHandle want, ::CJLaunchParam launchParam) {};
@@ -191,6 +248,7 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnConfigurationUpdatedV3_001, 
     RegisterCJAbilityFuncs(registerFunc);
 
     auto registerFuncV3 = [](CJAbilityFuncsV3* funcs) {
+        g_funcV3 = funcs;
         funcs->cjAbilityOnStartV3 = [](int64_t id, WantHandle want, ::CJLaunchParamV3 launchParam) {};
         funcs->cjAbilityOnNewWantV3 = [](int64_t id, WantHandle want, ::CJLaunchParamV3 launchParam) {};
         funcs->cjAbilityOnConfigurationUpdateV3 =
@@ -204,6 +262,7 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnConfigurationUpdatedV3_001, 
     proxy.OnConfigurationUpdated(config);
 
     EXPECT_TRUE(v3Called);
+    ResetCJAbilityFuncs();
 }
 
 /**
@@ -221,6 +280,7 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnStartV3_WithLastExitDetailIn
     RegisterCommonCJAbilityFuncs();
 
     auto registerFuncV3 = [](CJAbilityFuncsV3* funcs) {
+        g_funcV3 = funcs;
         funcs->cjAbilityOnStartV3 =
             [](int64_t id, WantHandle want, ::CJLaunchParamV3 launchParam) {
                 v3StartCalled = true;
@@ -251,6 +311,7 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnStartV3_WithLastExitDetailIn
     EXPECT_EQ(capturedParam.lastExitReason, 2);
     EXPECT_TRUE(capturedParam.lastExitDetailInfo.pid == 100);
     EXPECT_TRUE(capturedParam.lastExitDetailInfo.hasKillReason);
+    ResetCJAbilityFuncs();
 }
 
 /**
@@ -268,6 +329,7 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnStartV3_WithoutKillReason_00
     RegisterCommonCJAbilityFuncs();
 
     auto registerFuncV3 = [](CJAbilityFuncsV3* funcs) {
+        g_funcV3 = funcs;
         funcs->cjAbilityOnStartV3 =
             [](int64_t id, WantHandle want, ::CJLaunchParamV3 launchParam) {
                 v3StartCalled = true;
@@ -295,6 +357,7 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnStartV3_WithoutKillReason_00
     EXPECT_TRUE(v3StartCalled);
     EXPECT_FALSE(capturedParam.lastExitDetailInfo.hasKillReason);
     EXPECT_EQ(capturedParam.lastExitDetailInfo.killReason, nullptr);
+    ResetCJAbilityFuncs();
 }
 
 class CjUIExtensionObjectTest : public testing::Test {};
@@ -307,17 +370,7 @@ class CjUIExtensionObjectTest : public testing::Test {};
 HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_FFIRegisterCJExtAbilityFuncsV2_001, TestSize.Level1)
 {
     FFIRegisterCJExtAbilityFuncsV2(nullptr);
-
-    static bool v2ConfigCalled = false;
-    v2ConfigCalled = false;
-    auto registerFuncV2 = [](CJExtAbilityFuncsV2* funcs) {
-        funcs->cjExtAbilityOnCreateV3 =
-            [](int64_t id, int32_t type, WantHandle want, ::CJLaunchParamV3 launchParam) {};
-        funcs->cjExtAbilityOnConfigurationUpdateV2 =
-            [](int64_t id, int32_t type, CConfigurationV2 configuration) { v2ConfigCalled = true; };
-    };
-    FFIRegisterCJExtAbilityFuncsV2(registerFuncV2);
-    EXPECT_NE(registerFuncV2, nullptr);
+    EXPECT_EQ(g_extFuncsV2, nullptr);
 }
 
 /**
@@ -329,24 +382,10 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnCreateV3_001, TestSi
 {
     static bool v3CreateCalled = false;
     v3CreateCalled = false;
-    auto registerFunc = [](CJExtAbilityFuncs* funcs) {
-        funcs->createCjExtAbility = [](const char* name, int32_t type) -> int64_t { return 1; };
-        funcs->releaseCjExtAbility = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityInit = [](int64_t id, int32_t type, ExtAbilityHandle extAbility) {};
-        funcs->cjExtAbilityOnCreate = [](int64_t id, int32_t type, WantHandle want, ::CJLaunchParam param) {};
-        funcs->cjExtAbilityOnDestroy = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityOnSessionCreate = [](int64_t id, int32_t type, WantHandle want, int64_t sessionId) {};
-        funcs->cjExtAbilityOnSessionDestroy = [](int64_t id, int32_t type, int64_t sessionId) {};
-        funcs->cjExtAbilityOnForeground = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityOnBackground = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityOnConfigurationUpdate = [](int64_t id, int32_t type, CConfiguration cfg) {};
-        funcs->cjExtAbilityOnMemoryLevel = [](int64_t id, int32_t type, int32_t level) {};
-        funcs->cjExtAbilityOnStartContentEditing =
-            [](int64_t id, int32_t type, const char* imageUri, WantHandle want, int64_t sessionId) {};
-    };
-    FFIRegisterCJExtAbilityFuncs(registerFunc);
+    RegisterCommonExtAbilityFuncs();
 
     auto registerFuncV2 = [](CJExtAbilityFuncsV2* funcs) {
+        g_extFuncsV2 = funcs;
         funcs->cjExtAbilityOnCreateV3 =
             [](int64_t id, int32_t type, WantHandle want, ::CJLaunchParamV3 launchParam) {
                 v3CreateCalled = true;
@@ -372,6 +411,7 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnCreateV3_001, TestSi
     extObj.OnCreate(want, launchParam);
 
     EXPECT_TRUE(v3CreateCalled);
+    ResetCJAbilityFuncs();
 }
 
 /**
@@ -382,6 +422,7 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnCreateV3_001, TestSi
 HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnCreateV1_001, TestSize.Level1)
 {
     auto resetV2 = [](CJExtAbilityFuncsV2* funcs) {
+        g_extFuncsV2 = funcs;
         funcs->cjExtAbilityOnCreateV3 = nullptr;
         funcs->cjExtAbilityOnConfigurationUpdateV2 = nullptr;
     };
@@ -391,26 +432,12 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnCreateV1_001, TestSi
     static ::CJLaunchParam capturedParam = {};
     v1CreateCalled = false;
     capturedParam = {};
-    auto registerFunc = [](CJExtAbilityFuncs* funcs) {
-        funcs->createCjExtAbility = [](const char* name, int32_t type) -> int64_t { return 1; };
-        funcs->releaseCjExtAbility = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityInit = [](int64_t id, int32_t type, ExtAbilityHandle extAbility) {};
-        funcs->cjExtAbilityOnCreate =
-            [](int64_t id, int32_t type, WantHandle want, ::CJLaunchParam param) {
-                v1CreateCalled = true;
-                capturedParam = param;
-            };
-        funcs->cjExtAbilityOnDestroy = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityOnSessionCreate = [](int64_t id, int32_t type, WantHandle want, int64_t sessionId) {};
-        funcs->cjExtAbilityOnSessionDestroy = [](int64_t id, int32_t type, int64_t sessionId) {};
-        funcs->cjExtAbilityOnForeground = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityOnBackground = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityOnConfigurationUpdate = [](int64_t id, int32_t type, CConfiguration cfg) {};
-        funcs->cjExtAbilityOnMemoryLevel = [](int64_t id, int32_t type, int32_t level) {};
-        funcs->cjExtAbilityOnStartContentEditing =
-            [](int64_t id, int32_t type, const char* imageUri, WantHandle want, int64_t sessionId) {};
-    };
-    FFIRegisterCJExtAbilityFuncs(registerFunc);
+    RegisterCommonExtAbilityFuncs();
+    g_extFuncsV1->cjExtAbilityOnCreate =
+        [](int64_t id, int32_t type, WantHandle want, ::CJLaunchParam param) {
+            v1CreateCalled = true;
+            capturedParam = param;
+        };
 
     CJUIExtensionObject extObj;
     extObj.Init("test", CJExtensionAbilityType::ACTION, nullptr);
@@ -422,9 +449,10 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnCreateV1_001, TestSi
     launchParam.lastExitMessage = "v1_exit_msg";
     extObj.OnCreate(want, launchParam);
 
-    EXPECT_FALSE(v1CreateCalled);
-    EXPECT_EQ(capturedParam.launchReason, 0);
-    EXPECT_EQ(capturedParam.lastExitReason, 0);
+    EXPECT_TRUE(v1CreateCalled);
+    EXPECT_EQ(capturedParam.launchReason, 3);
+    EXPECT_EQ(capturedParam.lastExitReason, 4);
+    ResetCJAbilityFuncs();
 }
 
 /**
@@ -434,28 +462,17 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnCreateV1_001, TestSi
  */
 HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnCreateV1Null_001, TestSize.Level1)
 {
+    static bool v1CreateCalled = false;
+    v1CreateCalled = false;
     auto resetV2 = [](CJExtAbilityFuncsV2* funcs) {
+        g_extFuncsV2 = funcs;
         funcs->cjExtAbilityOnCreateV3 = nullptr;
         funcs->cjExtAbilityOnConfigurationUpdateV2 = nullptr;
     };
     FFIRegisterCJExtAbilityFuncsV2(resetV2);
 
-    auto registerFuncNoCreate = [](CJExtAbilityFuncs* funcs) {
-        funcs->createCjExtAbility = [](const char* name, int32_t type) -> int64_t { return 1; };
-        funcs->releaseCjExtAbility = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityInit = [](int64_t id, int32_t type, ExtAbilityHandle extAbility) {};
-        funcs->cjExtAbilityOnCreate = nullptr;
-        funcs->cjExtAbilityOnDestroy = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityOnSessionCreate = [](int64_t id, int32_t type, WantHandle want, int64_t sessionId) {};
-        funcs->cjExtAbilityOnSessionDestroy = [](int64_t id, int32_t type, int64_t sessionId) {};
-        funcs->cjExtAbilityOnForeground = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityOnBackground = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityOnConfigurationUpdate = [](int64_t id, int32_t type, CConfiguration cfg) {};
-        funcs->cjExtAbilityOnMemoryLevel = [](int64_t id, int32_t type, int32_t level) {};
-        funcs->cjExtAbilityOnStartContentEditing =
-            [](int64_t id, int32_t type, const char* imageUri, WantHandle want, int64_t sessionId) {};
-    };
-    FFIRegisterCJExtAbilityFuncs(registerFuncNoCreate);
+    RegisterCommonExtAbilityFuncs();
+    g_extFuncsV1->cjExtAbilityOnCreate = nullptr;
 
     CJUIExtensionObject noCreateObj;
     noCreateObj.Init("test", CJExtensionAbilityType::ACTION, nullptr);
@@ -464,7 +481,8 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnCreateV1Null_001, Te
     AAFwk::LaunchParam launchParam;
     noCreateObj.OnCreate(want, launchParam);
 
-    EXPECT_TRUE(true);
+    EXPECT_FALSE(v1CreateCalled);
+    ResetCJAbilityFuncs();
 }
 
 /**
@@ -476,24 +494,10 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnConfigurationUpdateV
 {
     static bool v2ConfigCalled = false;
     v2ConfigCalled = false;
-    auto registerFunc = [](CJExtAbilityFuncs* funcs) {
-        funcs->createCjExtAbility = [](const char* name, int32_t type) -> int64_t { return 1; };
-        funcs->releaseCjExtAbility = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityInit = [](int64_t id, int32_t type, ExtAbilityHandle extAbility) {};
-        funcs->cjExtAbilityOnCreate = [](int64_t id, int32_t type, WantHandle want, ::CJLaunchParam param) {};
-        funcs->cjExtAbilityOnDestroy = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityOnSessionCreate = [](int64_t id, int32_t type, WantHandle want, int64_t sessionId) {};
-        funcs->cjExtAbilityOnSessionDestroy = [](int64_t id, int32_t type, int64_t sessionId) {};
-        funcs->cjExtAbilityOnForeground = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityOnBackground = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityOnConfigurationUpdate = [](int64_t id, int32_t type, CConfiguration cfg) {};
-        funcs->cjExtAbilityOnMemoryLevel = [](int64_t id, int32_t type, int32_t level) {};
-        funcs->cjExtAbilityOnStartContentEditing =
-            [](int64_t id, int32_t type, const char* imageUri, WantHandle want, int64_t sessionId) {};
-    };
-    FFIRegisterCJExtAbilityFuncs(registerFunc);
+    RegisterCommonExtAbilityFuncs();
 
     auto registerFuncV2 = [](CJExtAbilityFuncsV2* funcs) {
+        g_extFuncsV2 = funcs;
         funcs->cjExtAbilityOnCreateV3 =
             [](int64_t id, int32_t type, WantHandle want, ::CJLaunchParamV3 launchParam) {};
         funcs->cjExtAbilityOnConfigurationUpdateV2 =
@@ -509,6 +513,7 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnConfigurationUpdateV
     extObj.OnConfigurationUpdate(config);
 
     EXPECT_TRUE(v2ConfigCalled);
+    ResetCJAbilityFuncs();
 }
 
 /**
@@ -520,23 +525,16 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnConfigurationUpdateV
 {
     static bool v1ConfigCalled = false;
     v1ConfigCalled = false;
-    auto registerFunc = [](CJExtAbilityFuncs* funcs) {
-        funcs->createCjExtAbility = [](const char* name, int32_t type) -> int64_t { return 1; };
-        funcs->releaseCjExtAbility = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityInit = [](int64_t id, int32_t type, ExtAbilityHandle extAbility) {};
-        funcs->cjExtAbilityOnCreate = [](int64_t id, int32_t type, WantHandle want, ::CJLaunchParam param) {};
-        funcs->cjExtAbilityOnDestroy = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityOnSessionCreate = [](int64_t id, int32_t type, WantHandle want, int64_t sessionId) {};
-        funcs->cjExtAbilityOnSessionDestroy = [](int64_t id, int32_t type, int64_t sessionId) {};
-        funcs->cjExtAbilityOnForeground = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityOnBackground = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityOnConfigurationUpdate =
-            [](int64_t id, int32_t type, CConfiguration cfg) { v1ConfigCalled = true; };
-        funcs->cjExtAbilityOnMemoryLevel = [](int64_t id, int32_t type, int32_t level) {};
-        funcs->cjExtAbilityOnStartContentEditing =
-            [](int64_t id, int32_t type, const char* imageUri, WantHandle want, int64_t sessionId) {};
+    RegisterCommonExtAbilityFuncs();
+    g_extFuncsV1->cjExtAbilityOnConfigurationUpdate =
+        [](int64_t id, int32_t type, CConfiguration cfg) { v1ConfigCalled = true; };
+
+    auto resetV2 = [](CJExtAbilityFuncsV2* funcs) {
+        g_extFuncsV2 = funcs;
+        funcs->cjExtAbilityOnCreateV3 = nullptr;
+        funcs->cjExtAbilityOnConfigurationUpdateV2 = nullptr;
     };
-    FFIRegisterCJExtAbilityFuncs(registerFunc);
+    FFIRegisterCJExtAbilityFuncsV2(resetV2);
 
     CJUIExtensionObject extObj;
     extObj.Init("test", CJExtensionAbilityType::ACTION, nullptr);
@@ -545,10 +543,11 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnConfigurationUpdateV
     config->AddItem(OHOS::AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE, "en_US");
     extObj.OnConfigurationUpdate(config);
 
-    EXPECT_FALSE(v1ConfigCalled);
+    EXPECT_TRUE(v1ConfigCalled);
 
     CJUIExtensionObject noFuncObj;
     noFuncObj.OnConfigurationUpdate(config);
+    ResetCJAbilityFuncs();
 }
 
 /**
@@ -560,26 +559,12 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnConfigurationUpdateV
 {
     static bool v1ConfigCalled = false;
     v1ConfigCalled = false;
-
-    auto registerFunc = [](CJExtAbilityFuncs* funcs) {
-        funcs->createCjExtAbility = [](const char* name, int32_t type) -> int64_t { return 1; };
-        funcs->releaseCjExtAbility = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityInit = [](int64_t id, int32_t type, ExtAbilityHandle extAbility) {};
-        funcs->cjExtAbilityOnCreate = [](int64_t id, int32_t type, WantHandle want, ::CJLaunchParam param) {};
-        funcs->cjExtAbilityOnDestroy = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityOnSessionCreate = [](int64_t id, int32_t type, WantHandle want, int64_t sessionId) {};
-        funcs->cjExtAbilityOnSessionDestroy = [](int64_t id, int32_t type, int64_t sessionId) {};
-        funcs->cjExtAbilityOnForeground = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityOnBackground = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityOnConfigurationUpdate =
-            [](int64_t id, int32_t type, CConfiguration cfg) { v1ConfigCalled = true; };
-        funcs->cjExtAbilityOnMemoryLevel = [](int64_t id, int32_t type, int32_t level) {};
-        funcs->cjExtAbilityOnStartContentEditing =
-            [](int64_t id, int32_t type, const char* imageUri, WantHandle want, int64_t sessionId) {};
-    };
-    FFIRegisterCJExtAbilityFuncs(registerFunc);
+    RegisterCommonExtAbilityFuncs();
+    g_extFuncsV1->cjExtAbilityOnConfigurationUpdate =
+        [](int64_t id, int32_t type, CConfiguration cfg) { v1ConfigCalled = true; };
 
     auto registerFuncV2 = [](CJExtAbilityFuncsV2* funcs) {
+        g_extFuncsV2 = funcs;
         funcs->cjExtAbilityOnCreateV3 = nullptr;
         funcs->cjExtAbilityOnConfigurationUpdateV2 = nullptr;
     };
@@ -592,7 +577,8 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnConfigurationUpdateV
     config->AddItem(OHOS::AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE, "en_US");
     extObj.OnConfigurationUpdate(config);
 
-    EXPECT_FALSE(v1ConfigCalled);
+    EXPECT_TRUE(v1ConfigCalled);
+    ResetCJAbilityFuncs();
 }
 
 /**
@@ -603,24 +589,14 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnConfigurationUpdateV
  */
 HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnConfigurationUpdate_NullFuncs_001, TestSize.Level1)
 {
-    auto registerFunc = [](CJExtAbilityFuncs* funcs) {
-        funcs->createCjExtAbility = [](const char* name, int32_t type) -> int64_t { return 1; };
-        funcs->releaseCjExtAbility = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityInit = [](int64_t id, int32_t type, ExtAbilityHandle extAbility) {};
-        funcs->cjExtAbilityOnCreate = [](int64_t id, int32_t type, WantHandle want, ::CJLaunchParam param) {};
-        funcs->cjExtAbilityOnDestroy = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityOnSessionCreate = [](int64_t id, int32_t type, WantHandle want, int64_t sessionId) {};
-        funcs->cjExtAbilityOnSessionDestroy = [](int64_t id, int32_t type, int64_t sessionId) {};
-        funcs->cjExtAbilityOnForeground = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityOnBackground = [](int64_t id, int32_t type) {};
-        funcs->cjExtAbilityOnConfigurationUpdate = nullptr;
-        funcs->cjExtAbilityOnMemoryLevel = [](int64_t id, int32_t type, int32_t level) {};
-        funcs->cjExtAbilityOnStartContentEditing =
-            [](int64_t id, int32_t type, const char* imageUri, WantHandle want, int64_t sessionId) {};
-    };
-    FFIRegisterCJExtAbilityFuncs(registerFunc);
+    static bool configCalled = false;
+    configCalled = false;
+    RegisterCommonExtAbilityFuncs();
+    // Override after registration: set V1 func to a tracker, then null it
+    g_extFuncsV1->cjExtAbilityOnConfigurationUpdate = nullptr;
 
     auto registerFuncV2 = [](CJExtAbilityFuncsV2* funcs) {
+        g_extFuncsV2 = funcs;
         funcs->cjExtAbilityOnCreateV3 = nullptr;
         funcs->cjExtAbilityOnConfigurationUpdateV2 = nullptr;
     };
@@ -631,8 +607,8 @@ HWTEST_F(CjUIExtensionObjectTest, CjUIExtensionObjectTest_OnConfigurationUpdate_
 
     auto config = std::make_shared<AppExecFwk::Configuration>();
     extObj.OnConfigurationUpdate(config);
-
-    EXPECT_TRUE(true);
+    EXPECT_FALSE(configCalled);
+    ResetCJAbilityFuncs();
 }
 
 /**
@@ -651,6 +627,7 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnNewWantV3_001, TestSize.Leve
     RegisterCommonCJAbilityFuncs();
 
     auto registerFuncV3 = [](CJAbilityFuncsV3* funcs) {
+        g_funcV3 = funcs;
         funcs->cjAbilityOnStartV3 = [](int64_t id, WantHandle want, ::CJLaunchParamV3 launchParam) {};
         funcs->cjAbilityOnNewWantV3 =
             [](int64_t id, WantHandle want, ::CJLaunchParamV3 launchParam) {
@@ -682,6 +659,7 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnNewWantV3_001, TestSize.Leve
     EXPECT_EQ(capturedParam.lastExitReason, 2);
     EXPECT_TRUE(capturedParam.lastExitDetailInfo.pid == 100);
     EXPECT_TRUE(capturedParam.lastExitDetailInfo.hasKillReason);
+    ResetCJAbilityFuncs();
 }
 
 /**
@@ -700,6 +678,7 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnNewWantV3_EmptyFields_001, T
     RegisterCommonCJAbilityFuncs();
 
     auto registerFuncV3 = [](CJAbilityFuncsV3* funcs) {
+        g_funcV3 = funcs;
         funcs->cjAbilityOnStartV3 = [](int64_t id, WantHandle want, ::CJLaunchParamV3 launchParam) {};
         funcs->cjAbilityOnNewWantV3 =
             [](int64_t id, WantHandle want, ::CJLaunchParamV3 launchParam) {
@@ -730,6 +709,7 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnNewWantV3_EmptyFields_001, T
     EXPECT_EQ(capturedParam.lastExitDetailInfo.exitMsg, nullptr);
     EXPECT_EQ(capturedParam.lastExitDetailInfo.killReason, nullptr);
     EXPECT_FALSE(capturedParam.lastExitDetailInfo.hasKillReason);
+    ResetCJAbilityFuncs();
 }
 
 /**
@@ -739,25 +719,13 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnNewWantV3_EmptyFields_001, T
  */
 HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnConfigurationUpdated_NullFuncs_001, TestSize.Level1)
 {
-    auto registerFunc = [](CJAbilityFuncs* funcs) {
-        funcs->cjAbilityCreate = [](const char* name) -> int64_t { return 1; };
-        funcs->cjAbilityRelease = [](int64_t id) {};
-        funcs->cjAbilityOnStart = [](int64_t id, WantHandle want, ::CJLaunchParam launchParam) {};
-        funcs->cjAbilityOnStop = [](int64_t id) {};
-        funcs->cjAbilityOnSceneCreated = [](int64_t id, WindowStagePtr cjWindowStage) {};
-        funcs->cjAbilityOnSceneRestored = [](int64_t id, WindowStagePtr cjWindowStage) {};
-        funcs->cjAbilityOnSceneDestroyed = [](int64_t id) {};
-        funcs->cjAbilityOnForeground = [](int64_t id, WantHandle want) {};
-        funcs->cjAbilityOnBackground = [](int64_t id) {};
-        funcs->cjAbilityOnConfigurationUpdated = nullptr;
-        funcs->cjAbilityOnNewWant = [](int64_t id, WantHandle want, ::CJLaunchParam launchParam) {};
-        funcs->cjAbilityDump = [](int64_t id, VectorStringHandle params) { return VectorStringHandle(); };
-        funcs->cjAbilityOnContinue = [](int64_t id, const char* params) { return 0; };
-        funcs->cjAbilityInit = [](int64_t id, void* ability) {};
-    };
-    RegisterCJAbilityFuncs(registerFunc);
+    static bool configCalled = false;
+    configCalled = false;
+    RegisterCommonCJAbilityFuncs();
+    g_funcV1->cjAbilityOnConfigurationUpdated = nullptr;
 
     auto registerFuncV3 = [](CJAbilityFuncsV3* funcs) {
+        g_funcV3 = funcs;
         funcs->cjAbilityOnStartV3 = nullptr;
         funcs->cjAbilityOnNewWantV3 = nullptr;
         funcs->cjAbilityOnConfigurationUpdateV3 = nullptr;
@@ -768,8 +736,8 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnConfigurationUpdated_NullFun
     proxy.Init(nullptr);
     auto config = std::make_shared<AppExecFwk::Configuration>();
     proxy.OnConfigurationUpdated(config);
-
-    EXPECT_TRUE(true);
+    EXPECT_FALSE(configCalled);
+    ResetCJAbilityFuncs();
 }
 
 /**
@@ -779,25 +747,13 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnConfigurationUpdated_NullFun
  */
 HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnNewWant_NullFuncs_001, TestSize.Level1)
 {
-    auto registerFunc = [](CJAbilityFuncs* funcs) {
-        funcs->cjAbilityCreate = [](const char* name) -> int64_t { return 1; };
-        funcs->cjAbilityRelease = [](int64_t id) {};
-        funcs->cjAbilityOnStart = [](int64_t id, WantHandle want, ::CJLaunchParam launchParam) {};
-        funcs->cjAbilityOnStop = [](int64_t id) {};
-        funcs->cjAbilityOnSceneCreated = [](int64_t id, WindowStagePtr cjWindowStage) {};
-        funcs->cjAbilityOnSceneRestored = [](int64_t id, WindowStagePtr cjWindowStage) {};
-        funcs->cjAbilityOnSceneDestroyed = [](int64_t id) {};
-        funcs->cjAbilityOnForeground = [](int64_t id, WantHandle want) {};
-        funcs->cjAbilityOnBackground = [](int64_t id) {};
-        funcs->cjAbilityOnConfigurationUpdated = [](int64_t id, ::CJConfiguration configuration) {};
-        funcs->cjAbilityOnNewWant = nullptr;
-        funcs->cjAbilityDump = [](int64_t id, VectorStringHandle params) { return VectorStringHandle(); };
-        funcs->cjAbilityOnContinue = [](int64_t id, const char* params) { return 0; };
-        funcs->cjAbilityInit = [](int64_t id, void* ability) {};
-    };
-    RegisterCJAbilityFuncs(registerFunc);
+    static bool newWantCalled = false;
+    newWantCalled = false;
+    RegisterCommonCJAbilityFuncs();
+    g_funcV1->cjAbilityOnNewWant = nullptr;
 
     auto registerFuncV3 = [](CJAbilityFuncsV3* funcs) {
+        g_funcV3 = funcs;
         funcs->cjAbilityOnStartV3 = nullptr;
         funcs->cjAbilityOnNewWantV3 = nullptr;
         funcs->cjAbilityOnConfigurationUpdateV3 = nullptr;
@@ -809,6 +765,6 @@ HWTEST_F(CjAbilityObjectTest, CjAbilityObjectTest_OnNewWant_NullFuncs_001, TestS
     AAFwk::Want want;
     AAFwk::LaunchParam launchParam;
     proxy.OnNewWant(want, launchParam);
-
-    EXPECT_TRUE(true);
+    EXPECT_FALSE(newWantCalled);
+    ResetCJAbilityFuncs();
 }

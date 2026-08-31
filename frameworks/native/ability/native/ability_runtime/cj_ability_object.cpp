@@ -58,6 +58,10 @@ void RegisterCJAbilityFuncs(void (*registerFunc)(CJAbilityFuncs*))
 void RegisterCJAbilityFuncsV3(void (*registerFunc)(CJAbilityFuncsV3*))
 {
     TAG_LOGD(AAFwkTag::UIABILITY, "called");
+    if (g_cjAbilityFuncsV3.cjAbilityOnStartV3 != nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "repeated registration");
+        return;
+    }
     if (registerFunc == nullptr) {
         TAG_LOGE(AAFwkTag::UIABILITY, "null registerFunc");
         return;
@@ -118,7 +122,7 @@ CJLastExitDetailInfo CreateCJLastExitDetailInfo(const AAFwk::LastExitDetailInfo&
     detailInfo.processState = lastExitDetailInfo.processState;
     if (!lastExitDetailInfo.killReason.empty()) {
         detailInfo.killReason = CreateCStringFromString(lastExitDetailInfo.killReason);
-        detailInfo.hasKillReason = true;
+        detailInfo.hasKillReason = (detailInfo.killReason != nullptr);
     } else {
         detailInfo.killReason = nullptr;
         detailInfo.hasKillReason = false;

@@ -16,7 +16,6 @@
 #include "cli_event_report.h"
 
 #include "bool_wrapper.h"
-#include "charconv"
 #include "cli_error_code.h"
 #include "hilog_tag_wrapper.h"
 #include "hisysevent_report.h"
@@ -26,20 +25,6 @@
 
 namespace OHOS {
 namespace CliTool {
-
-namespace {
-    // Safe string to integer conversion using std::from_chars
-    template<typename T>
-    T ParseInt(const std::string& str)
-    {
-        if (str.empty()) {
-            return 0;
-        }
-        T value = 0;
-        auto result = std::from_chars(str.data(), str.data() + str.size(), value);
-        return (result.ec == std::errc()) ? value : 0;
-    }
-}
 
 std::string GetEffectiveCliName(const std::string& cliName)
 {
@@ -70,7 +55,7 @@ void ReportCliExecuteFailed(const std::string& bundleName, const std::string& cl
 }
 
 void ReportCliTimeout(const std::string& bundleName, const std::string& cliName,
-    const std::string& durationMs)
+    int64_t durationMs)
 {
     constexpr int32_t PARAM_COUNT = 4;
     AAFwk::HisyseventReport report(PARAM_COUNT);
@@ -80,15 +65,15 @@ void ReportCliTimeout(const std::string& bundleName, const std::string& cliName,
     report.InsertParam(PARAM_TYPE, TYPE_TIMEOUT);
     report.InsertParam(PARAM_BUNDLE_NAME, bundleName);
     report.InsertParam(PARAM_CLI_NAME, effectiveCliName);
-    report.InsertParam(PARAM_DURATION_MS, ParseInt<int64_t>(durationMs));
+    report.InsertParam(PARAM_DURATION_MS, durationMs);
 
     int32_t ret = report.Report(DOMAIN_CLI_TOOL, EVENT_CLI_EXECUTE_FAILED, HISYSEVENT_FAULT);
     TAG_LOGD(AAFwkTag::CLI_TOOL, "Report CLI_TIMEOUT: type=%{public}d, bundle=%{public}s, cli=%{public}s, "
-        "duration=%{public}s, ret=%{public}d",
-        TYPE_TIMEOUT, bundleName.c_str(), effectiveCliName.c_str(), durationMs.c_str(), ret);
+        "duration=%{public}lld, ret=%{public}d",
+        TYPE_TIMEOUT, bundleName.c_str(), effectiveCliName.c_str(), static_cast<long long>(durationMs), ret);
 }
 
-void ReportCliSignal(const std::string& cliName, const std::string& signalNum)
+void ReportCliSignal(const std::string& cliName, int32_t signalNum)
 {
     constexpr int32_t PARAM_COUNT = 3;
     AAFwk::HisyseventReport report(PARAM_COUNT);
@@ -97,12 +82,12 @@ void ReportCliSignal(const std::string& cliName, const std::string& signalNum)
 
     report.InsertParam(PARAM_TYPE, TYPE_SIGNAL);
     report.InsertParam(PARAM_CLI_NAME, effectiveCliName);
-    report.InsertParam(PARAM_SIGNAL_NUM, ParseInt<int32_t>(signalNum));
+    report.InsertParam(PARAM_SIGNAL_NUM, signalNum);
 
     int32_t ret = report.Report(DOMAIN_CLI_TOOL, EVENT_CLI_EXECUTE_FAILED, HISYSEVENT_FAULT);
     TAG_LOGD(AAFwkTag::CLI_TOOL,
-        "Report CLI_SIGNAL: type=%{public}d, cli=%{public}s, signal=%{public}s, ret=%{public}d",
-        TYPE_SIGNAL, effectiveCliName.c_str(), signalNum.c_str(), ret);
+        "Report CLI_SIGNAL: type=%{public}d, cli=%{public}s, signal=%{public}d, ret=%{public}d",
+        TYPE_SIGNAL, effectiveCliName.c_str(), signalNum, ret);
 }
 
 std::string GetFailureReason(int32_t errorCode)
@@ -116,6 +101,10 @@ std::string GetFailureReason(int32_t errorCode)
             return REASON_SESSION_LIMIT_EXCEEDED;
         case ERR_NO_INIT:
             return REASON_PROCESS_CREATE_FAILED;
+        case ERR_NOT_HAP:
+            return REASON_CALLER_NOT_HAP;
+        case ERR_NOT_SYSTEM_APP:
+            return REASON_CALLER_NOT_SYSTEM_APP;
         case ERR_INVALID_PARAM:
         case ERR_INNER_PARAM_INVALID:
             return REASON_INVALID_PARAM;

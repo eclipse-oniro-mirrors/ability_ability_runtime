@@ -23,6 +23,7 @@
 namespace OHOS {
 namespace AppExecFwk {
 struct RunningProcessInfo;
+struct ChildProcessInfo;
 bool GetFieldDoubleByName(ani_env *env, ani_object object, const char *name, double &value);
 bool SetFieldDoubleByName(ani_env *env, ani_class cls, ani_object object, const char *name, double value);
 
@@ -66,6 +67,7 @@ bool IsExistsField(ani_env *env, ani_object param, const char *name);
 bool WrapArrayString(ani_env *env, ani_object &arrayObj, const std::vector<std::string> &values);
 bool UnwrapArrayString(ani_env *env, const ani_object &arrayObj, std::vector<std::string> &stringList);
 ani_object CreateRunningProcessInfoArray(ani_env *env, std::vector<AppExecFwk::RunningProcessInfo> infos);
+ani_object CreateChildProcessInfoArray(ani_env *env, std::vector<AppExecFwk::ChildProcessInfo> infos);
 ani_object CreateEmptyArray(ani_env *env);
 
 bool IsExistsProperty(ani_env *env, ani_object param, const char *name);

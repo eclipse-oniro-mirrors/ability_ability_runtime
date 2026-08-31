@@ -23,6 +23,7 @@ config("public_ets_environment_config") {
 
 ohos_shared_library("ets_environment") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   public_configs = [ ":public_ets_environment_config" ]
 
@@ -77,4 +78,5 @@ ohos_shared_library("ets_environment") {
   subsystem_name = "ability"
   innerapi_tags = [ "platformsdk" ]
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }

@@ -1,224 +1,102 @@
-# 代码检视报告 — <scope>（Round <N> / 最新提交）
+# 代码检视报告 — {scope}（Round {round} / 最新提交）
 
 > 统一报告由 codecheck 工作台生成，**用于门禁管控**。所有 codecheck 报告（含 orchestrator 合并出的统一报告、单 scanner 直接产出的统一报告）必须遵循本模板：章节顺序、字段名、报告元数据块、评分与门禁规则均为**固定格式**，跨报告保持一致，便于门禁脚本解析与历史对比。
 > 生成入口：[`README.md`](README.md) → Step 5；合并逻辑见 [`orchestrator/SKILL.md`](orchestrator/SKILL.md)。
-> 权威评分与门禁规则见文末 **附录 A**，生成时必须按其计算，不得自创分值。
+> 权威评分与门禁规则为**通用规则**，不在输出报告中呈现；生成时必须按 [`conventions.md`](conventions.md) §7（等级归一化）/ §8（必检维度）/ §9（评分与决策矩阵）计算，不得自创分值。
 
 ---
 
 ## 报告元数据
 
-> **门禁脚本只读取本 YAML 块**。字段名与取值域为固定合约，禁止改名、增删或自定义取值。人工阅读部分从「1. 基本信息」开始。
+> **门禁脚本只读取本 YAML 块**。字段名与取值域为固定合约，禁止改名、增删或自定义取值。人工阅读部分从「1. 门禁结论」开始。
 
+<!-- codecheck-report-metadata:start -->
 ```yaml
 codecheck_report:
   schema_version: "1.0"
-  scope: "<路径简写或 Kit 名，与标题一致>"
-  round: <检视轮次，正整数>
-  commit_id: "<40 位完整 SHA>"
-  change_id: "<Change-Id，I 开头 40 位十六进制>"
-  commit_subject: "<commit message 第一行>"
-  date: "<YYYY-MM-DD>"
-  dimensions_required: ["<必检维度，缺失则门禁判定为 insufficient>"]
-  dimensions_executed: ["<实际执行的维度>"]
-  waived_dimensions: ["<经用户确认豁免的必检维度>"]
-  findings_total: <发现总数>
-  findings_by_severity: {P0: <n>, P1: <n>, P2: <n>, P3: <n>}
-  score: <0-100，按附录 A 公式计算>
-  risk_level: "<low|medium|high|unknown>"
-  gate_decision: "<approve|conditional|block|insufficient>"
-  gate_blockers: ["<阻塞上库的 P0 项 ID / 缺失的必检维度>"]
-  must_fix: ["<条件上库时要求下次重检前必须处理的 P1 项 ID>"]
-  followups: ["<P2/P3 待跟进项 ID，允许为空>"]
+  scope: "{scope}"
+  round: {round}
+  commit_id: "{commit_id}"
+  change_id: "{change_id}"
+  report_id: "{change_id}-R{round}"
+  date: "{date}"
+  gate_decision: "{gate_decision}"
+  risk_level: "{risk_level}"
+  score: {score}
+  dimensions_required: {dimensions_required}
+  dimensions_executed: {dimensions_executed}
+  findings_total: {findings_total}
+  findings_by_severity: {findings_by_severity}
+  gate_blockers: {gate_blockers}
+  must_fix: {must_fix}
+  followups: {followups}
 ```
+<!-- codecheck-report-metadata:end -->
 
-**取值域（唯一合法值）**：`risk_level ∈ {low, medium, high, unknown}`；`gate_decision ∈ {approve, conditional, block, insufficient}`。四项决策映射表见附录 A 第 2 节。
-
----
-
-## 1. 基本信息
-
-| 项目 | 值 |
-|------|-----|
-| 检视范围 | <路径简写或 Kit 名> |
-| commit-id | `<40 位完整 SHA>` |
-| Change-Id | `<Change-Id>` |
-| commit message | `<第一行 subject>` |
-| 检视日期 | `<YYYY-MM-DD>` |
-| 检视轮次 | Round <N> |
-| 检视维度 | `<实际执行的 skill 列表，用 + 连接>` |
-
-### 提交内容核对（目标为提交时必填）
-
-| 校验项 | 结果 |
-|--------|------|
-| 提交范围 | <n 文件（+/− 行数），与检视内容一致性说明> |
-| 主要变更内容 | <一句话概括主要变更> |
-| 提交完整性 | ✅/⚠️/❌ <Change-Id / Signed-off-by / 遗漏文件检查结果> |
 
 ---
 
-## 2. 总体评价
+## 1. 门禁结论
 
-### 2.1 上库质量评估结论
+| 项目 | 结论 |
+|---|---|
+| 决策 | **{gate_decision}** |
+| 风险等级 | {risk_level_emoji} {risk_level} |
+| 评分 | **{score}/100** |
+| 阻塞项 | {gate_blockers_summary} |
+| 必须修复（P0/P1） | {must_fix_count} 项 |
+| 建议跟进（P2/P3） | {followups_count} 项 |
 
-| 指标 | 结论 |
-|------|------|
-| **整体评分** | **<n>/100**（计算过程见附录 A，扣分明细见 2.3） |
-| **风险等级** | 🟢 低风险 / 🟡 中风险 / 🔴 高风险 / ⚪ 无法评估 |
-| **上库决策** | ✅ **可以上库** / ⚠️ **有条件上库** / 🚫 **阻塞上库** / ⚪ **无法评估** |
-
-**决策依据**（逐条列出，门禁脚本比对 YAML 块复核）：
-- 依据 1：<如 "存在 1 项 P0（F-01），命中附录 A 决策矩阵第 1 行 → block">
-- 依据 2：<如 "必检维度 input-scanner 未执行且未豁免 → insufficient">
-- 依据 3：<评分项、P1 处置要求、待跟进项数量>
-
-**阻塞项（Gate Blocker）**：
-- <P0 项 ID + 位置，或"无">
-
-**上库条件（condition = 放行时必须满足，为空表示无条件）**：
-- <如 "修复 F-02（P1）后重检；P2/P3 项登记跟进">，无则写"无"。
-
-### 2.2 各维度通过率
-
-| 维度 | 通过率 | 等级 | 评价 |
-|------|--------|------|------|
-| <维度名> | <n/m> | 🟢/🟡/🔴 | <一句话评价> |
-| …… | | | |
-
-### 2.3 评分扣分明细
-
-| 严重等级 | 权重 | 数量 | 扣分 |
-|---------|------|------|------|
-| P0 致命 | −30 | <n> | −<n×30> |
-| P1 严重 | −12 | <n> | −<n×12> |
-| P2 一般 | −5 | <n> | −<n×5> |
-| P3 提示 | −2 | <n> | −<n×2> |
-| **合计** | | **<total>** | **−<total>** → 评分 **<100−total>** |
-
-> 公式：`评分 = max(0, 100 − (30×P0 + 12×P1 + 5×P2 + 2×P3))`；≥1 项 P0 时决策为 block（评分不再单独决定上库）。详见附录 A。
+**一句话结论**：{one_line_conclusion}
 
 ---
 
-## 3. 问题统计
+## 2. 扣分原因（仅 gate_decision=block 时呈现；approve/conditional/insufficient 时本节省略）
 
-> 严重等级已按附录 A 第 1 节**统一归一化**为 P0/P1/P2/P3（各 skill 的 critical/high/medium/low、致命/严重/一般/提示 一律映射到统一等级），跨 skill 可直接汇总。
+> 共扣 **{total_deduction} 分**，由 {p2_count} 个 P2 和 {p3_count} 个 P3 组成。
 
-| 维度 | 总数 | P0 致命 | P1 严重 | P2 一般 | P3 提示 |
-|------|------|---------|---------|---------|---------|
-| <维度 1> | <n> | <n> | <n> | <n> | <n> |
-| …… | | | | | |
-| **总计** | **<n>** | **<n>** | **<n>** | **<n>** | **<n>** |
+| 扣分项 | 扣分数 | 问题 | 位置 |
+|---|---|---|---|
+{deduction_table_rows}
 
----
-
-## 4. 高优先级发现（P0/P1，跨维度去重后）
-
-> 同一 `file:line` 被多个 skill 命中时合并为一条，标注全部维度来源。每条发现必须包含以下字段（缺失视为格式违规）：
-
-| ID | 维度来源 | 位置 | 严重等级 | 概述 | 影响 | 触发路径 | 建议 | 状态 |
-|----|---------|------|---------|------|------|---------|------|------|
-| F-01 | <skill 名> | `path/file.cpp:123` | P0 | <一句话> | <影响面> | <外部输入/调用链> | <修复方向> | <待修复/已修复/已确认/观察> |
-
-**无。** <无 P0/P1 项时的固定写法>
+**如果想快速提分**：优先修复 **{top_deduction_id}（−{top_deduction_score} 分）**，再顺手补低优先级项即可。
 
 ---
 
-## 5. 分维度明细
+## 3. 必须立即处理（P0/P1）
 
-> 保留各 skill 原始结论（可精简字段，不可改判等级）。编号固定：5.1/5.2/… 对应实际执行维度；未执行的维度删除小节或标注"未执行（原因）"。
+| ID | 优先级 | Scanner | 问题 | file:line | 触发路径 | 影响 |
+|---|---|---|---|---|---|---|
+{p0p1_table_rows}
 
-### 5.1 <维度名，如 Security & Bug（经 security-scanner）>
-
-| ID | 位置 | 类型 | 概述 | 等级 |
-|----|------|------|------|------|
-| F-01 | `path/file.cpp:123` | <问题类型> | <一句话> | P0 |
-
-### 5.2 <维度名，如 Logic（经 logic-scanner）>
-
-……
+> 无 P0/P1 项时固定写法：**无。**　详情见第 6 节。
 
 ---
 
-## 6. 待跟进（P2/P3 + Suspicious）
+## 4. 建议本轮或下一补档处理（P2/P3）
 
-| # | ID | 发现 | 等级 | 需要行动 | 负责人/排期 |
-|---|----|------|------|---------|------------|
-| 1 | F-0x | <一句话> | P2/P3 | <后续 PR 处理 / 按需加固 / 人工确认> | <可留空> |
-
----
-
-## 7. 附录
-
-### 7.1 变更文件清单（或检视对象文件清单）
-
-| 文件 | 状态 |
-|------|------|
-| `path/file.cpp` | ✏️ 修改 / ➕ 新增 / 🗑 删除 |
-
-### 7.2 检视轨迹（多轮重检时记录）
-
-| 轮次 | 范围 | 评分 | 风险等级 | 上库决策 | 结论 |
-|------|------|------|---------|---------|------|
-| Round <N−1> | <范围> | <n> | <等级> | <决策> | <结论> |
-| Round <N> | <范围> | <n> | <等级> | <决策> | <结论> |
-
-### 7.3 各 skill 原始产出
-
-| skill | 产出文件 | 发现数 |
-|-------|---------|--------|
-| <skill 名> | <路径或"无独立产出"> | <n> |
+| ID | 优先级 | 问题 | 建议行动 | 排期 |
+|---|---|---|---|---|
+{followup_table_rows}
 
 ---
 
-## 附录 A：评分与门禁规则（权威定义，勿改）
+## 5. 分维度速览
 
-### A.1 严重等级统一归一化
+| 维度 | 结果 | 关键说明 |
+|---|---|---|
+{dimension_table_rows}
 
-| 统一等级 | 含义 | 各 skill 别名 | 门禁含义 |
-|---------|------|--------------|---------|
-| **P0 致命** | 崩溃/UAF/OOM/死锁/权限绕过/数据损坏/敏感数据泄漏等必现或易触发 | `critical` / `致命` / Confirmed P0 | **阻断上库** |
-| **P1 严重** | 影响正确性/安全边界，低概率触发或需组合条件 | `high` / `严重` / Confirmed P1、Likely P0 | 需修复或人工裁决 |
-| **P2 一般** | 逻辑缺陷/资源小泄漏/健壮性问题 | `medium` / `一般` / Likely P1、P2 | 建议修复，登记跟进 |
-| **P3 提示** | 风格/潜在风险/观察项，当前不可达 | `low` / `提示` / Suspicious | 不阻塞，登记跟进 |
+---
 
-归一化映射以**问题实际影响**为准，不以 skill 内部措辞为准；同一问题被多 skill 标注不同等级时，取最高等级。
+## 6. 关键发现详情
 
-### A.2 评分公式与决策矩阵（确定性，可复现）
+> P0/P1 必出全量卡片；P2/P3 按需精选或全出。每条 finding 按以下固定卡片格式呈现：
 
-```
-评分 = max(0, 100 − (30×P0 + 12×P1 + 5×P2 + 2×P3))
-```
+### [{finding_id}] {finding_title} ({severity}, scanner={scanner_name})
 
-决策矩阵（自上而下判定，命中即止）：
-
-| 序 | 条件 | risk_level | gate_decision |
-|----|------|-----------|---------------|
-| 0 | 必检维度（dimensions_required）未执行且未豁免 | `unknown` | `insufficient` |
-| 1 | 存在 ≥1 项 P0 | `high` | `block` |
-| 2 | 存在 ≥1 项 P1（无 P0） | `medium` | `conditional` |
-| 3 | 评分 ≥ 90 | `low` | `approve` |
-| 4 | 评分 ≥ 70 | `medium` | `conditional` |
-| 5 | 评分 < 70 | `high` | `block` |
-
-**决策语义**：
-- `approve`：可以上库，P2/P3 项登记进 followups 跟踪。
-- `conditional`：可上库但附条件——必须处理所有 `must_fix`（P1 项）或在门禁复核人书面裁决后放行；P2/P3 登记跟进。
-- `block`：禁止上库，必须修复 `gate_blockers`（P0 项）后进入下一轮重检。
-- `insufficient`：无法评估——必检维度缺失，补齐扫描后重出报告；`waived_dimensions` 中记录的用户豁免项除外。
-
-### A.3 必检维度
-
-| 目标特征 | 必检维度（缺失即 insufficient） |
-|---------|-------------------------------|
-| 通用路径/提交 | `security-scanner` + `logic-scanner`（security-scanner 内含 bug+security 双视角，覆盖崩溃/挂死/OOM/UAF/死锁/权限绕过/敏感数据泄漏等高影响缺陷与安全审查） |
-| `services/` 下、IPC/DB/文件/配置密集区 | `security-scanner` + `logic-scanner` + `input-scanner` |
-| `interfaces/kits/`、NAPI/ANI/C 绑定、指定 Kit | `api-scanner` + 实现侧 `security-scanner` + `logic-scanner` |
-
-### A.4 格式一致性要求（门禁校验项）
-
-1. 章节编号与顺序固定（1 基本信息 → 2 总体评价 → 3 问题统计 → 4 高优先级发现 → 5 分维度明细 → 6 待跟进 → 7 附录 → 附录 A）。
-2. YAML 报告元数据块字段名、取值域必须合法；`score`/`risk_level`/`gate_decision` 三者与 2.1 表格一致。
-3. 每条发现可追溯到 `file:line` + 触发路径；无证据项不得计入 P0/P1。
-4. 严重等级只允许 P0–P3，跨 skill 统一归一化后汇总。
-5. 多轮重检保留 7.2 检视轨迹，展示分数与决策演进，作为门禁复核依据。
+- **位置**：`{file}:{line}`
+- **触发路径**：{trigger_path}
+- **影响**：{impact}
+- **证据**：{evidence}
+- **建议**：{recommendation}

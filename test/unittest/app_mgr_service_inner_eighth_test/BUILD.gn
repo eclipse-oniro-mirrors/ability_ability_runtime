@@ -98,6 +98,7 @@ ohos_unittest("app_mgr_service_inner_eighth_test") {
   configs = []
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:process_options",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",

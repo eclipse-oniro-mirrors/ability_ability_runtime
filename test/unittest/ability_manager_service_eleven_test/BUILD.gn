@@ -36,6 +36,7 @@ ohos_unittest("ability_manager_service_eleven_test") {
     "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/aakit/include",
     "${ability_runtime_test_path}/unittest/app_debug_listener_stub_test",
     "${ability_runtime_test_path}/unittest/multi_app_utils_test/include",
+    "${ability_runtime_test_path}/unittest/want_receiver_stub_test",
     "${ability_runtime_services_path}/abilitymgr/include/mission",
     "${ability_runtime_services_path}/abilitymgr/include/scene_board",
     "mock/include",

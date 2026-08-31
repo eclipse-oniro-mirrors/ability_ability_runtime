@@ -3101,29 +3101,6 @@ HWTEST_F(UIAbilityLifecycleManagerTest, GetAbilityStateByPersistentId_002, TestS
 }
 
 /**
- * @tc.name: UIAbilityLifecycleManager_UpdateProcessName_0100
- * @tc.desc: UpdateProcessName
- * @tc.type: FUNC
- */
-HWTEST_F(UIAbilityLifecycleManagerTest, UpdateProcessName_001, TestSize.Level1)
-{
-    auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
-    EXPECT_NE(uiAbilityLifecycleManager, nullptr);
-    sptr<SessionInfo> sessionInfo = new (std::nothrow) SessionInfo();
-    sessionInfo->processOptions = std::make_shared<ProcessOptions>();
-    EXPECT_NE(sessionInfo->processOptions, nullptr);
-    sessionInfo->processOptions->processMode = ProcessMode::NEW_PROCESS_ATTACH_TO_PARENT;
-    AbilityRequest abilityRequest;
-    abilityRequest.sessionInfo = sessionInfo;
-    abilityRequest.abilityInfo.bundleName = "com.example.unittest";
-    abilityRequest.abilityInfo.moduleName = "entry";
-    abilityRequest.abilityInfo.name = "MainAbility";
-    UIAbilityRecordPtr abilityRecord = InitAbilityRecord();
-    uiAbilityLifecycleManager->UpdateProcessName(abilityRequest, abilityRecord);
-    EXPECT_EQ("com.example.unittest:entry:MainAbility:0", abilityRecord->GetProcessName());
-}
-
-/**
  * @tc.name: UIAbilityLifecycleManager_ChangeAbilityVisibility_0100
  * @tc.desc: ChangeAbilityVisibility
  * @tc.type: FUNC
@@ -4562,6 +4539,34 @@ HWTEST_F(UIAbilityLifecycleManagerTest, MoveMissionToFront_004, TestSize.Level1)
     auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
     uiAbilityLifecycleManager->sessionAbilityMap_.emplace(sessionId, abilityRecord);
     EXPECT_EQ(uiAbilityLifecycleManager->MoveMissionToFront(sessionId, startOptions), ERR_OK);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_MoveMissionToFront_0500
+ * @tc.desc: MoveMissionToFront with non-null startOptions
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, MoveMissionToFront_005, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_unique<UIAbilityLifecycleManager>();
+    ASSERT_NE(uiAbilityLifecycleManager, nullptr);
+    int32_t sessionId = 100;
+    auto startOptions = std::make_shared<StartOptions>();
+    ASSERT_NE(startOptions, nullptr);
+    startOptions->SetDisplayID(1);
+    startOptions->SetWindowMode(100);
+    startOptions->SetSplitRatioPreference(1);
+    Rosen::SessionInfo info;
+    uiAbilityLifecycleManager->rootSceneSession_ = new Rosen::Session(info);
+    AbilityRequest abilityRequest;
+    sptr<SessionInfo> sessionInfo = (new SessionInfo());
+    abilityRequest.sessionInfo = sessionInfo;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    uiAbilityLifecycleManager->sessionAbilityMap_.emplace(sessionId, abilityRecord);
+    auto ret = uiAbilityLifecycleManager->MoveMissionToFront(sessionId, startOptions);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(sessionInfo->want.GetIntParam(Want::PARAM_RESV_DISPLAY_ID, -1), 1);
+    EXPECT_EQ(sessionInfo->want.GetIntParam(Want::PARAM_RESV_WINDOW_MODE, -1), 100);
 }
 
 /**
@@ -6847,31 +6852,6 @@ HWTEST_F(UIAbilityLifecycleManagerTest, CompleteForegroundSuccess_IsNewWant_0001
 }
 
 /**
- * @tc.name: UpdateProcessName_0001
- * @tc.desc: processName
- */
-HWTEST_F(UIAbilityLifecycleManagerTest, UpdateProcessName_0001, TestSize.Level1)
-{
-    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
-    AbilityRequest request;
-    request.abilityInfo.bundleName = "com.example.bundle";
-    request.abilityInfo.name = "AbilityA";
-    request.abilityInfo.moduleName = "moduleA";
-    request.abilityInfo.isStageBasedModel = true;
-    request.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
-    request.sessionInfo = new SessionInfo();
-    request.sessionInfo->processOptions = std::make_shared<ProcessOptions>();
-    request.sessionInfo->processOptions->processMode = ProcessMode::NEW_PROCESS_ATTACH_TO_PARENT;
-    request.sessionInfo->processOptions->processName = "custom.process.name";
-    auto record = UIAbilityRecord::CreateAbilityRecord(request);
-
-    mgr->UpdateProcessName(request, record);
-
-    EXPECT_EQ(record->GetProcessName(), "custom.process.name");
-    EXPECT_TRUE(record->IsCallerSetProcess());
-}
-
-/**
  * @tc.name: UpdateAbilityRecordLaunchReason_0001
  * @tc.desc: want
  */
@@ -6889,36 +6869,6 @@ HWTEST_F(UIAbilityLifecycleManagerTest, UpdateAbilityRecordLaunchReason_0001, Te
     auto record = UIAbilityRecord::CreateAbilityRecord(request);
     mgr->UpdateAbilityRecordLaunchReason(request, record);
     EXPECT_NE(record, nullptr);
-}
-
-/**
- * @tc.name: PreCreateProcessName_0001
- * @tc.desc: PreCreateProcessName
- */
-HWTEST_F(UIAbilityLifecycleManagerTest, PreCreateProcessName_0001, TestSize.Level1)
-{
-    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
-    AbilityRequest request1;
-    request1.processOptions = nullptr;
-    mgr->PreCreateProcessName(request1);
-    EXPECT_TRUE(request1.abilityInfo.process.empty());
-
-    AbilityRequest request2;
-    request2.processOptions = std::make_shared<ProcessOptions>();
-    request2.processOptions->processMode = ProcessMode::UNSPECIFIED;
-    mgr->PreCreateProcessName(request2);
-    EXPECT_TRUE(request2.abilityInfo.process.empty());
-    AbilityRequest request3;
-    request3.abilityInfo.bundleName = "com.example.bundle";
-    request3.abilityInfo.name = "AbilityA";
-    request3.abilityInfo.moduleName = "moduleA";
-    request3.abilityInfo.isStageBasedModel = true;
-    request3.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
-    request3.processOptions = std::make_shared<ProcessOptions>();
-    request3.processOptions->processMode = ProcessMode::NEW_PROCESS_ATTACH_TO_PARENT;
-    mgr->PreCreateProcessName(request3);
-    EXPECT_FALSE(request3.abilityInfo.process.empty());
-    EXPECT_EQ(request3.abilityInfo.process, request3.processOptions->processName);
 }
 
 /**

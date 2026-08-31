@@ -45,13 +45,16 @@ ohos_unittest("agent_card_mgr_test") {
     "${agent_runtime_framework_path}/services/common/include",
   ]
 
-  deps = []
+  deps = [
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
+  ]
 
   external_deps = [
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "bundle_framework:libappexecfwk_common",
     "c_utils:utils",
+    "ffrt:libffrt",
     "googletest:gmock_main",
     "googletest:gtest_main",
     "hilog:libhilog",
