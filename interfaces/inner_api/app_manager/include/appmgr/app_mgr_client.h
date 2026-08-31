@@ -1114,7 +1114,7 @@ public:
      * @param enable The updated enable status.
      * @param uid Indicates the user: 0 for all users, otherwise a specific uid.
      */
-     void SetKeepAliveAppService(const std::string &bundleName, bool enable, int32_t uid);
+    void SetKeepAliveAppService(const std::string &bundleName, bool enable, int32_t uid);
 
     /**
      * Register an observer for application/process state changes.
@@ -1475,7 +1475,7 @@ public:
      *         ERROR_SERVICE_NOT_READY/ERROR_SERVICE_NOT_CONNECTED on client
      *         failures.
      */
-     int32_t IsChildProcessSupported(bool isNative, bool &isSupported);
+    int32_t IsChildProcessSupported(bool isNative, bool &isSupported);
 
      /**
       * Obtain information of the UIAbility child processes of the calling app.
