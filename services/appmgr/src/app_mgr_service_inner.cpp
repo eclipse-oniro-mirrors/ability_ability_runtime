@@ -338,6 +338,7 @@ constexpr int32_t FOUNDATION_UID = 5523;
 constexpr int32_t QUICKFIX_UID = 5524;
 constexpr int32_t DEFAULT_USER_ID = 0;
 constexpr int32_t RESOURCE_MANAGER_UID = 1096;
+constexpr int32_t FILE_SYSTEM_SERVICE_UID = 7100;
 
 constexpr int32_t BLUETOOTH_GROUPID = 1002;
 
@@ -9822,8 +9823,9 @@ int32_t AppMgrServiceInner::IsAppRunning(const std::string &bundleName, int32_t 
 int32_t AppMgrServiceInner::IsAppRunning(const std::string &bundleName, int32_t appCloneIndex, int32_t userId, bool &isRunning)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "Called, bundleName: %{public}s", bundleName.c_str());
-    if (IPCSkeleton::GetCallingUid() != FOUNDATION_UID) {
-        TAG_LOGE(AAFwkTag::APPMGR, "not foundation call");
+    int32_t callingUid = IPCSkeleton::GetCallingUid();
+    if (callingUid != FOUNDATION_UID && callingUid != FILE_SYSTEM_SERVICE_UID) {
+        TAG_LOGE(AAFwkTag::APPMGR, "not foundation or file system service call");
         return ERR_PERMISSION_DENIED;
     }
     if (!CheckGetRunningInfoPermission()) {
