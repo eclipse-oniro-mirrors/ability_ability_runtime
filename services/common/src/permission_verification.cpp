@@ -36,11 +36,11 @@ const int32_t SHELL_START_EXTENSION_FLOOR = 0; // FORM
 const int32_t SHELL_START_EXTENSION_CEIL = 21; // EMBEDDED_UI
 const int32_t TOKEN_ID_BIT_SIZE = 32;
 const std::string FOUNDATION_PROCESS_NAME = "foundation";
+const std::string DEVELOPER_MODE_STATE = "const.security.developermode.state";
 const std::set<std::string> OBSERVER_NATIVE_CALLER = {
     "memmgrservice",
     "resource_schedule_service",
 };
-const std::string DEVELOPER_MODE_STATE = "const.security.developermode.state";
 }
 bool PermissionVerification::VerifyPermissionByTokenId(const int &tokenId, const std::string &permissionName) const
 {
@@ -660,6 +660,7 @@ bool PermissionVerification::VerifyStartLocalDebug(int32_t tokenId) const
     return false;
 }
 
+
 bool PermissionVerification::VerifyLocalDebugOtherApps() const
 {
     return VerifyCallingPermission(PermissionConstants::PERMISSION_LOCAL_DEBUG_OTHER_APPS);
@@ -674,6 +675,21 @@ bool PermissionVerification::IsAllowLocalDebugOtherApps(bool isDebugFromLocal) c
         return false;
     }
     return VerifyLocalDebugOtherApps();
+}
+
+bool PermissionVerification::IsLocalDebugOtherAppsCall() const
+{
+    if (!system::GetBoolParameter(DEVELOPER_MODE_STATE, false)) {
+        TAG_LOGD(AAFwkTag::DEFAULT, "not developer mode");
+        return false;
+    }
+    auto callerToken = GetCallingTokenID();
+    if (VerifyPermissionByTokenId(callerToken, PermissionConstants::PERMISSION_LOCAL_DEBUG_OTHER_APPS)) {
+        TAG_LOGD(AAFwkTag::DEFAULT, "Permission granted");
+        return true;
+    }
+    TAG_LOGE(AAFwkTag::DEFAULT, "Permission denied");
+    return false;
 }
 
 bool PermissionVerification::VerifyStartSelfUIAbility(int tokenId) const

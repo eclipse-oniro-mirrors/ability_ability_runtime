@@ -94,6 +94,7 @@ public:
     bool JudgeCallerIsAllowedToUseSystemAPI() const;
     bool JudgeCallerIsAllowedToUseSystemAPIByTokenId(uint64_t specifiedFullTokenId) const;
     bool IsSystemAppCall() const;
+    bool IsLocalDebugOtherAppsCall() const;
 };
 } // namespace AAFwk
 } // namespace OHOS

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -12,25 +12,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "mock_my_status.h"
 
-#ifndef MOCK_MY_FLAG_H
-#define MOCK_MY_FLAG_H
 namespace OHOS {
 namespace AAFwk {
-class MyFlag {
-public:
-    enum FLAG {
-        IS_SA_CALL = 1,
-        IS_SHELL_CALL,
-        IS_SA_AND_SHELL_CALL,
-    };
-    static int flag_;
-    static int systemAppFlag_;
-    static int systemCallFlag_;
-    static int abilityCallFlag_;
-    static int verifyStartLocalDebugFlag_;
-    static int localDebugOtherAppsCallFlag_;
-};
+MyStatus& MyStatus::GetInstance()
+{
+    static MyStatus instance;
+    return instance;
+}
 }  // namespace AAFwk
 }  // namespace OHOS
-#endif // MOCK_MY_FLAG_H

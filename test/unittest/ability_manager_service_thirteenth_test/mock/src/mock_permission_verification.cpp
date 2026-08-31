@@ -144,5 +144,9 @@ bool PermissionVerification::IsSystemAppCall() const
 {
     return MyStatus::GetInstance().isSystemAppCall_;
 }
+bool PermissionVerification::IsLocalDebugOtherAppsCall() const
+{
+    return false;
+}
 } // namespace AAFwk
 } // namespace OHOS
