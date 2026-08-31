@@ -187,7 +187,6 @@ private:
     napi_value OnGetLastError(napi_env env, size_t argc, napi_value* argv)
     {
         TAG_LOGD(AAFwkTag::APPKIT, "OnGetLastError");
-        // only support 1 params
         if (argc < ARGC_ONE) {
             TAG_LOGE(AAFwkTag::APPKIT, "invalid argc");
             ThrowTooFewParametersError(env);
@@ -201,51 +200,40 @@ private:
             ThrowInvalidParamError(env, "Parse param errType failed, must be a valid HyperSnapErrorType.");
             return CreateJsUndefined(env);
         }
-
-        // The service fills `record` regardless of whether an error exists (code == ERR_OK means
-        // no error recorded); only an IPC/system failure makes the call itself fail.
         auto record = std::make_shared<AppExecFwk::HyperSnapErrorRecord>();
         auto innerErrorCode = std::make_shared<int32_t>(ERR_OK);
-        NapiAsyncTask::ExecuteCallback execute =
-            [errType, innerErrorCode, record]() {
-                if (innerErrorCode == nullptr || record == nullptr) {
-                    TAG_LOGE(AAFwkTag::APPKIT, "innerErrorCode or record null");
-                    return;
-                }
-                auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
-                if (appMgrClient == nullptr) {
-                    TAG_LOGW(AAFwkTag::APPKIT, "null appMgrClient");
-                    *innerErrorCode = static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER);
-                    return;
-                }
-                *innerErrorCode = appMgrClient->GetHyperSnapLastError(errType, *record);
-            };
-        NapiAsyncTask::CompleteCallback complete =
-            [innerErrorCode, record](napi_env env, NapiAsyncTask &task, int32_t status) {
-                if (innerErrorCode == nullptr || record == nullptr) {
-                    TAG_LOGE(AAFwkTag::APPKIT, "innerErrorCode or record null");
-                    task.Reject(env, CreateJsErrorByNativeErr(env,
-                        static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER)));
-                    return;
-                }
-                if (*innerErrorCode == ERR_OK) {
-                    TAG_LOGI(AAFwkTag::APPKIT, "GetHyperSnapLastError succeeded.");
-                    task.ResolveWithNoError(env, CreateJsHyperSnapErrorInfo(env, *record));
-                    return;
-                }
-                TAG_LOGE(AAFwkTag::APPKIT, "GetHyperSnapLastError failed:%{public}d", *innerErrorCode);
-                if (*innerErrorCode == ERR_INVALID_VALUE) {
-                    task.Reject(env, CreateJsError(env,
-                        static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_PARAM),
-                        "GetLastError failed, errType must be a valid HyperSnapErrorType."));
-                    return;
-                }
-                task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrorCode));
-            };
-        napi_value lastParam = nullptr;
+        NapiAsyncTask::ExecuteCallback execute = [errType, innerErrorCode, record]() {
+            if (innerErrorCode == nullptr || record == nullptr) {
+                TAG_LOGE(AAFwkTag::APPKIT, "innerErrorCode or record null");
+                return;
+            }
+            auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+            *innerErrorCode = appMgrClient == nullptr
+                ? static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER)
+                : appMgrClient->GetHyperSnapLastError(errType, *record);
+        };
+        NapiAsyncTask::CompleteCallback complete = [innerErrorCode, record](
+            napi_env env, NapiAsyncTask &task, int32_t status) {
+            if (innerErrorCode == nullptr || record == nullptr) {
+                TAG_LOGE(AAFwkTag::APPKIT, "innerErrorCode or record null");
+                task.Reject(env, CreateJsErrorByNativeErr(env,
+                    static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER)));
+                return;
+            }
+            if (*innerErrorCode == ERR_OK) {
+                TAG_LOGI(AAFwkTag::APPKIT, "GetHyperSnapLastError succeeded.");
+                task.ResolveWithNoError(env, CreateJsHyperSnapErrorInfo(env, *record));
+                return;
+            }
+            TAG_LOGE(AAFwkTag::APPKIT, "GetHyperSnapLastError failed:%{public}d", *innerErrorCode);
+            task.Reject(env, (*innerErrorCode == ERR_INVALID_VALUE)
+                ? CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_PARAM),
+                    "GetLastError failed, invalid errType.")
+                : CreateJsErrorByNativeErr(env, *innerErrorCode));
+        };
         napi_value result = nullptr;
-        NapiAsyncTask::ScheduleHighQos("JsHyperSnapManager::OnGetLastError",
-            env, CreateAsyncTaskWithLastParam(env, lastParam, std::move(execute), std::move(complete), &result));
+        NapiAsyncTask::ScheduleHighQos("JsHyperSnapManager::OnGetLastError", env,
+            CreateAsyncTaskWithLastParam(env, nullptr, std::move(execute), std::move(complete), &result));
         return result;
     }
 };
