@@ -57,7 +57,7 @@ public:
     {
         return RESOLVE_ABILITY_ERR;
     }
-    int StartAbilityInner(const StartAbilityWrapParam &param)
+    int StartAbilityInner(StartAbilityWrapParam &param)
     {
         return RESOLVE_ABILITY_ERR;
     }

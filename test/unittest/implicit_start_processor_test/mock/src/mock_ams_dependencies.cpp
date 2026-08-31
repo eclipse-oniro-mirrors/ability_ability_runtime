@@ -68,11 +68,4 @@ bool MultiAppUtils::GetPreferredAppCloneIndex(const std::string &bundleName, int
     return false;
 }
 }  // namespace AAFwk
-
-namespace AppExecFwk {
-bool BundleMgrHelper::QueryAbilityInfo(const AAFwk::Want &want, int32_t flags, int32_t userId, AbilityInfo &abilityInfo)
-{
-    return false;
-}
-}  // namespace AppExecFwk
 }  // namespace OHOS

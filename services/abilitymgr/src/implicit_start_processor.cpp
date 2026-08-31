@@ -352,7 +352,7 @@ std::string ImplicitStartProcessor::MatchTypeAndUri(const AAFwk::Want &want)
     return type;
 }
 
-static void ProcessLinkType(std::vector<AppExecFwk::AbilityInfo> &abilityInfos)
+void ImplicitStartProcessor::ProcessLinkType(std::vector<AppExecFwk::AbilityInfo> &abilityInfos)
 {
     bool appLinkingExist = false;
     bool defaultAppExist = false;
@@ -1067,7 +1067,7 @@ bool ImplicitStartProcessor::IsExistDefaultApp(int32_t userId, const std::string
         return true;
     } else if (bundleInfo.extensionInfos.size() == 1) {
         defaultBundleName = bundleInfo.extensionInfos.front().bundleName;
-        defaultAppIndex = bundleInfo.extensionInfos.front().applicationInfo.appIndex;
+        defaultAppIndex = bundleInfo.extensionInfos.front().appIndex;
         TAG_LOGI(AAFwkTag::ABILITYMGR, "find default extension, bundle: %{public}s, appIndex: %{public}d",
             defaultBundleName.c_str(), defaultAppIndex);
         return true;
@@ -1249,7 +1249,7 @@ void ImplicitStartProcessor::FilterClonesByPreferredIndex(
     if (dialogAppInfos.size() <= 1) {
         return;
     }
-    std::map<std::string, int> cloneCount;
+    std::map<std::string, int32_t> cloneCount;
     for (const auto &info : dialogAppInfos) {
         cloneCount[info.bundleName]++;
     }
@@ -1259,17 +1259,9 @@ void ImplicitStartProcessor::FilterClonesByPreferredIndex(
             continue;
         }
         int32_t preferredAppIndex = 0;
-        if (MultiAppUtils::GetPreferredAppCloneIndex(item.first, userId, preferredAppIndex)) {
-            bool found = false;
-            for (const auto &info : dialogAppInfos) {
-                if (info.bundleName == item.first && info.appIndex == preferredAppIndex) {
-                    found = true;
-                    break;
-                }
-            }
-            if (found) {
-                preferredMap[item.first] = preferredAppIndex;
-            }
+        if (MultiAppUtils::GetPreferredAppCloneIndex(item.first, userId, preferredAppIndex) &&
+            IsPreferredCloneExist(dialogAppInfos, item.first, preferredAppIndex)) {
+            preferredMap[item.first] = preferredAppIndex;
         }
     }
     if (preferredMap.empty()) {
@@ -1289,6 +1281,17 @@ void ImplicitStartProcessor::FilterClonesByPreferredIndex(
     if (result.size() < dialogAppInfos.size()) {
         dialogAppInfos = std::move(result);
     }
+}
+
+bool ImplicitStartProcessor::IsPreferredCloneExist(const std::vector<DialogAppInfo> &dialogAppInfos,
+    const std::string &bundleName, int32_t preferredAppIndex)
+{
+    for (const auto &info : dialogAppInfos) {
+        if (info.bundleName == bundleName && info.appIndex == preferredAppIndex) {
+            return true;
+        }
+    }
+    return false;
 }
 }  // namespace AAFwk
 }  // namespace OHOS

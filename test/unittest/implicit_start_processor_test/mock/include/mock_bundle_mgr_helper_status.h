@@ -53,6 +53,10 @@ struct MockBundleMgrHelperStatus {
     // QueryCloneExtensionAbilityInfoWithAppIndex
     static ErrCode queryCloneExtensionRet_;
     static AppExecFwk::ExtensionAbilityInfo cloneExtensionInfo_;
+
+    // QueryAbilityInfo
+    static bool queryAbilityInfoRet_;
+    static AppExecFwk::AbilityInfo queryAbilityInfo_;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

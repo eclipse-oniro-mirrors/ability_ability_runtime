@@ -34,6 +34,9 @@ AppExecFwk::AbilityInfo MockBundleMgrHelperStatus::cloneAbilityInfo_ = {};
 ErrCode MockBundleMgrHelperStatus::queryCloneExtensionRet_ = ERR_OK;
 AppExecFwk::ExtensionAbilityInfo MockBundleMgrHelperStatus::cloneExtensionInfo_ = {};
 
+bool MockBundleMgrHelperStatus::queryAbilityInfoRet_ = false;
+AppExecFwk::AbilityInfo MockBundleMgrHelperStatus::queryAbilityInfo_ = {};
+
 void MockBundleMgrHelperStatus::Reset()
 {
     getAppClonePreferenceRet_ = ERR_OK;
@@ -64,6 +67,9 @@ void MockBundleMgrHelperStatus::Reset()
 
     queryCloneExtensionRet_ = ERR_OK;
     cloneExtensionInfo_ = {};
+
+    queryAbilityInfoRet_ = false;
+    queryAbilityInfo_ = {};
 }
 }  // namespace AAFwk
 
@@ -116,6 +122,9 @@ ErrCode BundleMgrHelper::QueryCloneExtensionAbilityInfoWithAppIndex(const Elemen
     return AAFwk::MockBundleMgrHelperStatus::queryCloneExtensionRet_;
 }
 
+// Dual-path mock: if bundleName is in bundleAppIdentifierMap_, returns true and sets
+// appIdentifier (used by TrustlistIntersectionProcess tests); otherwise falls back to
+// bundleInfo_ and getBundleInfoRet_ (used by general BundleInfo query tests).
 bool BundleMgrHelper::GetBundleInfo(const std::string &bundleName, const BundleFlag flag,
     BundleInfo &bundleInfo, int32_t userId)
 {
@@ -145,6 +154,12 @@ ErrCode BundleMgrHelper::GetCloneAppIndexes(const std::string &bundleName,
     std::vector<int32_t> &appIndexes, int32_t userId)
 {
     return ERR_OK;
+}
+
+bool BundleMgrHelper::QueryAbilityInfo(const AAFwk::Want &want, int32_t flags, int32_t userId, AbilityInfo &abilityInfo)
+{
+    abilityInfo = AAFwk::MockBundleMgrHelperStatus::queryAbilityInfo_;
+    return AAFwk::MockBundleMgrHelperStatus::queryAbilityInfoRet_;
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

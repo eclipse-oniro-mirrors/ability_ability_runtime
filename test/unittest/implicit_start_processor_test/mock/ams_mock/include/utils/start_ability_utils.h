@@ -46,7 +46,15 @@ public:
     {
         return ERR_OK;
     }
-    static std::vector<int32_t> GetCloneAppIndexes(const std::string &bundleName, int32_t userId) { return {}; }
+    static std::vector<int32_t>& CloneAppIndexesResult()
+    {
+        static std::vector<int32_t> result;
+        return result;
+    }
+    static std::vector<int32_t> GetCloneAppIndexes(const std::string &bundleName, int32_t userId)
+    {
+        return CloneAppIndexesResult();
+    }
 };
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -27,6 +27,7 @@
 #include "mock_parameters.h"
 #include "mock_bundle_mgr_helper_status.h"
 #include "mock_multi_app_utils_status.h"
+#include "utils/start_ability_utils.h"
 
 using namespace OHOS;
 using namespace testing;
@@ -62,6 +63,8 @@ void ImplicitStartProcessorTest::SetUp()
 {
     MockBundleMgrHelperStatus::Reset();
     MockMultiAppUtilsStatus::Reset();
+    OHOS::system::ResetParameters();
+    StartAbilityUtils::CloneAppIndexesResult().clear();
 }
 void ImplicitStartProcessorTest::TearDown()
 {}
@@ -1902,6 +1905,256 @@ HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_006, TestSize.
     EXPECT_TRUE(preferredKept);
     EXPECT_TRUE(singleBundleKept);
     TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_006 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: IsExistDefaultApp
+ * CaseDescription: Verify IsExistDefaultApp returns true and outputs correct ability info.
+ */
+HWTEST_F(ImplicitStartProcessorTest, IsExistDefaultApp_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsExistDefaultApp_002 start");
+    auto processor = std::make_shared<ImplicitStartProcessor>();
+    MockBundleMgrHelperStatus::returnNullDefaultApp_ = false;
+    MockBundleMgrHelperStatus::getDefaultAppRet_ = ERR_OK;
+    AbilityInfo abilityInfo;
+    abilityInfo.bundleName = BUNDLE_NAME;
+    abilityInfo.appIndex = 2;
+    MockBundleMgrHelperStatus::defaultBundleInfo_.abilityInfos.push_back(abilityInfo);
+
+    std::string defaultBundleName;
+    int32_t defaultAppIndex = 0;
+    bool result = processor->IsExistDefaultApp(0, ".pdf", defaultBundleName, defaultAppIndex);
+    EXPECT_TRUE(result);
+    EXPECT_EQ(defaultBundleName, BUNDLE_NAME);
+    EXPECT_EQ(defaultAppIndex, 2);
+    TAG_LOGI(AAFwkTag::TEST, "IsExistDefaultApp_002 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: IsExistDefaultApp
+ * CaseDescription: Verify IsExistDefaultApp returns true and outputs correct extension info.
+ */
+HWTEST_F(ImplicitStartProcessorTest, IsExistDefaultApp_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsExistDefaultApp_003 start");
+    auto processor = std::make_shared<ImplicitStartProcessor>();
+    MockBundleMgrHelperStatus::returnNullDefaultApp_ = false;
+    MockBundleMgrHelperStatus::getDefaultAppRet_ = ERR_OK;
+    ExtensionAbilityInfo extensionInfo;
+    extensionInfo.bundleName = BUNDLE_NAME;
+    extensionInfo.appIndex = 3;
+    MockBundleMgrHelperStatus::defaultBundleInfo_.extensionInfos.push_back(extensionInfo);
+
+    std::string defaultBundleName;
+    int32_t defaultAppIndex = 0;
+    bool result = processor->IsExistDefaultApp(0, ".pdf", defaultBundleName, defaultAppIndex);
+    EXPECT_TRUE(result);
+    EXPECT_EQ(defaultBundleName, BUNDLE_NAME);
+    EXPECT_EQ(defaultAppIndex, 3);
+    TAG_LOGI(AAFwkTag::TEST, "IsExistDefaultApp_003 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: FilterCloneByDefaultApp + FilterClonesByPreferredIndex
+ * CaseDescription: Default app hits → size=1 → FilterClonesByPreferredIndex skipped.
+ */
+HWTEST_F(ImplicitStartProcessorTest, FilterSequence_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FilterSequence_001 start");
+    auto processor = std::make_shared<ImplicitStartProcessor>();
+    std::vector<DialogAppInfo> dialogAppInfos;
+    for (int i = 1; i <= 3; ++i) {
+        DialogAppInfo info;
+        info.bundleName = BUNDLE_NAME;
+        info.appIndex = i;
+        dialogAppInfos.emplace_back(info);
+    }
+    processor->FilterCloneByDefaultApp(dialogAppInfos, BUNDLE_NAME, 2);
+    ASSERT_EQ(dialogAppInfos.size(), 1);
+    EXPECT_EQ(dialogAppInfos.front().appIndex, 2);
+
+    MockMultiAppUtilsStatus::preferredIndexMap_[BUNDLE_NAME] = 1;
+    processor->FilterClonesByPreferredIndex(dialogAppInfos, 0);
+    EXPECT_EQ(dialogAppInfos.size(), 1);
+    TAG_LOGI(AAFwkTag::TEST, "FilterSequence_001 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: FilterCloneByDefaultApp + FilterClonesByPreferredIndex
+ * CaseDescription: Default app misses → size unchanged → FilterClonesByPreferredIndex executes.
+ */
+HWTEST_F(ImplicitStartProcessorTest, FilterSequence_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FilterSequence_002 start");
+    auto processor = std::make_shared<ImplicitStartProcessor>();
+    std::vector<DialogAppInfo> dialogAppInfos;
+    for (int i = 1; i <= 3; ++i) {
+        DialogAppInfo info;
+        info.bundleName = BUNDLE_NAME;
+        info.appIndex = i;
+        dialogAppInfos.emplace_back(info);
+    }
+    processor->FilterCloneByDefaultApp(dialogAppInfos, "other_bundle", 1);
+    EXPECT_EQ(dialogAppInfos.size(), 3);
+
+    MockMultiAppUtilsStatus::preferredIndexMap_[BUNDLE_NAME] = 2;
+    processor->FilterClonesByPreferredIndex(dialogAppInfos, 0);
+    ASSERT_EQ(dialogAppInfos.size(), 1);
+    EXPECT_EQ(dialogAppInfos.front().appIndex, 2);
+    TAG_LOGI(AAFwkTag::TEST, "FilterSequence_002 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: FilterClonesByPreferredIndex
+ * CaseDescription: No default app → only FilterClonesByPreferredIndex executes.
+ */
+HWTEST_F(ImplicitStartProcessorTest, FilterSequence_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FilterSequence_003 start");
+    auto processor = std::make_shared<ImplicitStartProcessor>();
+    std::vector<DialogAppInfo> dialogAppInfos;
+    for (int i = 1; i <= 3; ++i) {
+        DialogAppInfo info;
+        info.bundleName = BUNDLE_NAME;
+        info.appIndex = i;
+        dialogAppInfos.emplace_back(info);
+    }
+    std::string emptyBundle;
+    if (!emptyBundle.empty()) {
+        processor->FilterCloneByDefaultApp(dialogAppInfos, emptyBundle, 0);
+    }
+    EXPECT_EQ(dialogAppInfos.size(), 3);
+
+    MockMultiAppUtilsStatus::preferredIndexMap_[BUNDLE_NAME] = 3;
+    processor->FilterClonesByPreferredIndex(dialogAppInfos, 0);
+    ASSERT_EQ(dialogAppInfos.size(), 1);
+    EXPECT_EQ(dialogAppInfos.front().appIndex, 3);
+    TAG_LOGI(AAFwkTag::TEST, "FilterSequence_003 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: GenerateAbilityRequestByAppIndexes
+ * CaseDescription: Clone app indexes with preferred index → non-preferred clones filtered.
+ */
+HWTEST_F(ImplicitStartProcessorTest, GenerateAbilityRequestByAppIndexes_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GenerateAbilityRequestByAppIndexes_001 start");
+    auto processor = std::make_shared<ImplicitStartProcessor>();
+    StartAbilityUtils::CloneAppIndexesResult() = {1};
+
+    AbilityInfo cloneInfo;
+    cloneInfo.bundleName = BUNDLE_NAME;
+    cloneInfo.name = NAME;
+    cloneInfo.applicationInfo.appIndex = 1;
+    MockBundleMgrHelperStatus::cloneAbilityInfo_ = cloneInfo;
+
+    MockMultiAppUtilsStatus::preferredIndexMap_[BUNDLE_NAME] = 1;
+
+    AbilityRequest request;
+    request.want.SetElementName(BUNDLE_NAME, NAME);
+    request.abilityInfo.bundleName = BUNDLE_NAME;
+    request.abilityInfo.name = NAME;
+    request.abilityInfo.applicationInfo.appIndex = 0;
+
+    std::vector<DialogAppInfo> dialogAppInfos;
+    int32_t ret = processor->GenerateAbilityRequestByAppIndexes(0, request, dialogAppInfos);
+    EXPECT_EQ(ret, ERR_OK);
+    ASSERT_EQ(dialogAppInfos.size(), 1);
+    EXPECT_EQ(dialogAppInfos.front().appIndex, 1);
+    TAG_LOGI(AAFwkTag::TEST, "GenerateAbilityRequestByAppIndexes_001 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: ProcessLinkType
+ * CaseDescription: APP_LINK + DEEP_LINK → DEEP_LINK removed, APP_LINK kept.
+ */
+HWTEST_F(ImplicitStartProcessorTest, ProcessLinkType_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ProcessLinkType_001 start");
+    std::vector<AbilityInfo> abilityInfos;
+    AbilityInfo info1;
+    info1.name = "app_link_ability";
+    info1.linkType = AppExecFwk::LinkType::APP_LINK;
+    AbilityInfo info2;
+    info2.name = "deep_link_ability";
+    info2.linkType = AppExecFwk::LinkType::DEEP_LINK;
+    abilityInfos.push_back(info1);
+    abilityInfos.push_back(info2);
+
+    ImplicitStartProcessor::ProcessLinkType(abilityInfos);
+    ASSERT_EQ(abilityInfos.size(), 1);
+    EXPECT_EQ(abilityInfos.front().linkType, AppExecFwk::LinkType::APP_LINK);
+    TAG_LOGI(AAFwkTag::TEST, "ProcessLinkType_001 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: ProcessLinkType
+ * CaseDescription: APP_LINK + DEFAULT_APP → DEFAULT_APP removed, APP_LINK kept.
+ */
+HWTEST_F(ImplicitStartProcessorTest, ProcessLinkType_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ProcessLinkType_002 start");
+    std::vector<AbilityInfo> abilityInfos;
+    AbilityInfo info1;
+    info1.name = "app_link_ability";
+    info1.linkType = AppExecFwk::LinkType::APP_LINK;
+    AbilityInfo info2;
+    info2.name = "default_app_ability";
+    info2.linkType = AppExecFwk::LinkType::DEFAULT_APP;
+    abilityInfos.push_back(info1);
+    abilityInfos.push_back(info2);
+
+    ImplicitStartProcessor::ProcessLinkType(abilityInfos);
+    ASSERT_EQ(abilityInfos.size(), 1);
+    EXPECT_EQ(abilityInfos.front().linkType, AppExecFwk::LinkType::APP_LINK);
+    TAG_LOGI(AAFwkTag::TEST, "ProcessLinkType_002 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: ProcessLinkType
+ * CaseDescription: Only DEFAULT_APP (no APP_LINK) → DEFAULT_APP kept (not deleted).
+ */
+HWTEST_F(ImplicitStartProcessorTest, ProcessLinkType_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ProcessLinkType_003 start");
+    std::vector<AbilityInfo> abilityInfos;
+    AbilityInfo info1;
+    info1.name = "default_app_ability";
+    info1.linkType = AppExecFwk::LinkType::DEFAULT_APP;
+    AbilityInfo info2;
+    info2.name = "deep_link_ability";
+    info2.linkType = AppExecFwk::LinkType::DEEP_LINK;
+    abilityInfos.push_back(info1);
+    abilityInfos.push_back(info2);
+
+    ImplicitStartProcessor::ProcessLinkType(abilityInfos);
+    ASSERT_EQ(abilityInfos.size(), 1);
+    EXPECT_EQ(abilityInfos.front().linkType, AppExecFwk::LinkType::DEFAULT_APP);
+    TAG_LOGI(AAFwkTag::TEST, "ProcessLinkType_003 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: ProcessLinkType
+ * CaseDescription: Empty input → no-op.
+ */
+HWTEST_F(ImplicitStartProcessorTest, ProcessLinkType_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ProcessLinkType_004 start");
+    std::vector<AbilityInfo> abilityInfos;
+    ImplicitStartProcessor::ProcessLinkType(abilityInfos);
+    EXPECT_EQ(abilityInfos.size(), 0);
+    TAG_LOGI(AAFwkTag::TEST, "ProcessLinkType_004 end");
 }
 }  // namespace AAFwk
 }  // namespace OHOS

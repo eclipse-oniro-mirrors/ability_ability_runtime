@@ -38,6 +38,12 @@ bool GetBoolParameter(const std::string& key, bool def)
     return g_returnFlag;
 }
 
+void ResetParameters()
+{
+    g_returnFlag = false;
+    GetParamsMap().clear();
+}
+
 bool SetParameter(const std::string& key, const std::string& value)
 {
     GetParamsMap()[key] = value;
