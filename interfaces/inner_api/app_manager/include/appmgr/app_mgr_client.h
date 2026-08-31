@@ -1485,7 +1485,7 @@ public:
       *         ERROR_SERVICE_NOT_READY/ERROR_SERVICE_NOT_CONNECTED on client
       *         failures.
       */
-     int32_t GetSelfUIAbilityChildProcesses(std::vector<ChildProcessInfo> &infos);
+    int32_t GetSelfUIAbilityChildProcesses(std::vector<ChildProcessInfo> &infos);
 
      /**
       * Get the last hyper snap error of the caller for the given error type.
@@ -1496,7 +1496,7 @@ public:
      *         ERROR_SERVICE_NOT_READY/ERROR_SERVICE_NOT_CONNECTED on client
      *         failures.
      */
-     int32_t GetHyperSnapLastError(int32_t errType, HyperSnapErrorRecord &record);
+    int32_t GetHyperSnapLastError(int32_t errType, HyperSnapErrorRecord &record);
 
     /**
      * Enable or disable the process-cache feature for the process identified by
@@ -1508,7 +1508,7 @@ public:
      *         ERROR_SERVICE_NOT_READY/ERROR_SERVICE_NOT_CONNECTED on client
      *         failures.
      */
-     int32_t SetProcessCacheEnable(int32_t pid, bool enable);
+    int32_t SetProcessCacheEnable(int32_t pid, bool enable);
 
     /**
      * Lock or unlock the cached state of a process: a locked cached process is
@@ -1520,7 +1520,7 @@ public:
      *         ERROR_SERVICE_NOT_READY/ERROR_SERVICE_NOT_CONNECTED on client
      *         failures.
      */
-     int32_t LockProcessCache(int32_t pid, bool isLock);
+    int32_t LockProcessCache(int32_t pid, bool isLock);
 
     /**
      * Save the browser (web) channel remote object for the caller, used by the
