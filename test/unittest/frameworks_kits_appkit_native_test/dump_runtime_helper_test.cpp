@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <cstdlib>
 #include <gtest/gtest.h>
 #define private public
 #include "dump_runtime_helper.h"
@@ -238,6 +239,120 @@ HWTEST_F(DumpRuntimeHelperTest, CheckOomdumpSwitch_0100, Function | MediumTest |
     OHOS::system::SetParameter("hiview.oomdump.switch", "unknown");
     EXPECT_TRUE(DumpRuntimeHelper::CheckOomdumpSwitch());
     GTEST_LOG_(INFO) << "DumpRuntimeHelperTest CheckOomdumpSwitch_0100 end";
+}
+
+/**
+ * @tc.number: Set2DQuota_0100
+ * @tc.name: Set2DQuota
+ * @tc.desc: Test Set2DQuota returns false when newQuota is negative.
+ */
+HWTEST_F(DumpRuntimeHelperTest, Set2DQuota_0100, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest Set2DQuota_0100 start";
+    EXPECT_FALSE(DumpRuntimeHelper::Set2DQuota("/data/local/tmp/dump_runtime_helper_test", 0, -1));
+    EXPECT_FALSE(DumpRuntimeHelper::Set2DQuota("/data/local/tmp/dump_runtime_helper_test", 100, -100));
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest Set2DQuota_0100 end";
+}
+
+/**
+ * @tc.number: Set2DQuota_0200
+ * @tc.name: Set2DQuota
+ * @tc.desc: Test Set2DQuota returns false when path does not exist.
+ */
+HWTEST_F(DumpRuntimeHelperTest, Set2DQuota_0200, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest Set2DQuota_0200 start";
+    std::string invalidPath = "/data/local/tmp/dump_runtime_helper_nonexistent_12345";
+    ASSERT_FALSE(DumpRuntimeHelper::IsFileExists(invalidPath));
+    EXPECT_FALSE(DumpRuntimeHelper::Set2DQuota(invalidPath, 100, 5));
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest Set2DQuota_0200 end";
+}
+
+/**
+ * @tc.number: Set2DQuota_0300
+ * @tc.name: Set2DQuota
+ * @tc.desc: Test Set2DQuota succeeds on a valid path and Get2DQuota reads back correctly.
+ */
+HWTEST_F(DumpRuntimeHelperTest, Set2DQuota_0300, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest Set2DQuota_0300 start";
+    std::string testDir = "/data/local/tmp/dump_runtime_helper_test_set2dquota";
+    if (DumpRuntimeHelper::IsFileExists(testDir)) {
+        rmdir(testDir.c_str());
+    }
+    ASSERT_TRUE(DumpRuntimeHelper::CreateDir(testDir));
+    uint64_t timestamp = 1234567890;
+    int quota = 5;
+    EXPECT_TRUE(DumpRuntimeHelper::Set2DQuota(testDir, timestamp, quota));
+    uint64_t readTime = 0;
+    int readQuota = 0;
+    EXPECT_TRUE(DumpRuntimeHelper::Get2DQuota(testDir, "user.oomdump.quota", readTime, readQuota));
+    EXPECT_EQ(readTime, timestamp);
+    EXPECT_EQ(readQuota, quota);
+    rmdir(testDir.c_str());
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest Set2DQuota_0300 end";
+}
+
+/**
+ * @tc.number: Check2DQuota_0100
+ * @tc.name: Check2DQuota
+ * @tc.desc: Test Check2DQuota returns false when DFX_RESOURCE_OVERLIMIT_OPTIONS not set.
+ */
+HWTEST_F(DumpRuntimeHelperTest, Check2DQuota_0100, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest Check2DQuota_0100 start";
+    unsetenv("DFX_RESOURCE_OVERLIMIT_OPTIONS");
+    EXPECT_FALSE(DumpRuntimeHelper::Check2DQuota(true));
+    EXPECT_FALSE(DumpRuntimeHelper::Check2DQuota(false));
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest Check2DQuota_0100 end";
+}
+
+/**
+ * @tc.number: Check2DQuota_0200
+ * @tc.name: Check2DQuota
+ * @tc.desc: Test Check2DQuota returns false when env var does not contain oomdump:enable.
+ */
+HWTEST_F(DumpRuntimeHelperTest, Check2DQuota_0200, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest Check2DQuota_0200 start";
+    setenv("DFX_RESOURCE_OVERLIMIT_OPTIONS", "other:enable", 1);
+    EXPECT_FALSE(DumpRuntimeHelper::Check2DQuota(true));
+    unsetenv("DFX_RESOURCE_OVERLIMIT_OPTIONS");
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest Check2DQuota_0200 end";
+}
+
+/**
+ * @tc.number: Check2DQuota_0300
+ * @tc.name: Check2DQuota
+ * @tc.desc: Test Check2DQuota returns false when process maxcount is negative.
+ */
+HWTEST_F(DumpRuntimeHelperTest, Check2DQuota_0300, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest Check2DQuota_0300 start";
+    setenv("DFX_RESOURCE_OVERLIMIT_OPTIONS", "oomdump:enable", 1);
+    OHOS::system::SetParameter("persist.hiview.oomdump.process.maxcount", "-1");
+    EXPECT_FALSE(DumpRuntimeHelper::Check2DQuota(true));
+    OHOS::system::SetParameter("persist.hiview.oomdump.process.maxcount", "");
+    unsetenv("DFX_RESOURCE_OVERLIMIT_OPTIONS");
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest Check2DQuota_0300 end";
+}
+
+/**
+ * @tc.number: Check2DQuota_0400
+ * @tc.name: Check2DQuota
+ * @tc.desc: Test Check2DQuota returns false when oomdump maxcount is negative.
+ */
+HWTEST_F(DumpRuntimeHelperTest, Check2DQuota_0400, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest Check2DQuota_0400 start";
+    setenv("DFX_RESOURCE_OVERLIMIT_OPTIONS", "oomdump:enable", 1);
+    OHOS::system::SetParameter("persist.hiview.oomdump.process.maxcount", "5");
+    OHOS::system::SetParameter("persist.hiview.oomdump.maxcount", "-1");
+    EXPECT_FALSE(DumpRuntimeHelper::Check2DQuota(true));
+    OHOS::system::SetParameter("persist.hiview.oomdump.process.maxcount", "");
+    OHOS::system::SetParameter("persist.hiview.oomdump.maxcount", "");
+    unsetenv("DFX_RESOURCE_OVERLIMIT_OPTIONS");
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest Check2DQuota_0400 end";
 }
 
 class CreateDirTest : public ::testing::Test {
