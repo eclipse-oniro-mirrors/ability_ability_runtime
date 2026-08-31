@@ -372,6 +372,7 @@ HWTEST_F(AppMgrServiceFourthTest, GetHyperSnapLastError_0100, TestSize.Level2)
     HyperSnapErrorRecord record;
     EXPECT_EQ(appMgrService_->GetHyperSnapLastError(
         static_cast<int32_t>(HyperSnapErrorType::CREATE_SNAPSHOT), record), ERR_INVALID_OPERATION);
+    appMgrService_->eventHandler_ = eventHandler_;
     TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0100 end");
 }
 

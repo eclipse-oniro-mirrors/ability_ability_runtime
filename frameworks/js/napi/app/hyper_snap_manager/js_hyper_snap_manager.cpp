@@ -208,6 +208,10 @@ private:
         auto innerErrorCode = std::make_shared<int32_t>(ERR_OK);
         NapiAsyncTask::ExecuteCallback execute =
             [errType, innerErrorCode, record]() {
+                if (innerErrorCode == nullptr || record == nullptr) {
+                    TAG_LOGE(AAFwkTag::APPKIT, "innerErrorCode or record null");
+                    return;
+                }
                 auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
                 if (appMgrClient == nullptr) {
                     TAG_LOGW(AAFwkTag::APPKIT, "null appMgrClient");
@@ -218,11 +222,19 @@ private:
             };
         NapiAsyncTask::CompleteCallback complete =
             [innerErrorCode, record](napi_env env, NapiAsyncTask &task, int32_t status) {
-                if (*innerErrorCode == ERR_OK) {
-                    task.ResolveWithNoError(env, CreateJsHyperSnapErrorInfo(env, *record));
-                } else {
-                    task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrorCode));
+                if (innerErrorCode == nullptr || record == nullptr) {
+                    TAG_LOGE(AAFwkTag::APPKIT, "innerErrorCode or record null");
+                    task.Reject(env, CreateJsErrorByNativeErr(env,
+                        static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER)));
+                    return;
                 }
+                if (*innerErrorCode == ERR_OK) {
+                    TAG_LOGI(AAFwkTag::APPKIT, "GetHyperSnapLastError succeeded.");
+                    task.ResolveWithNoError(env, CreateJsHyperSnapErrorInfo(env, *record));
+                    return;
+                }
+                TAG_LOGE(AAFwkTag::APPKIT, "GetHyperSnapLastError failed:%{public}d", *innerErrorCode);
+                task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrorCode));
             };
         napi_value lastParam = nullptr;
         napi_value result = nullptr;

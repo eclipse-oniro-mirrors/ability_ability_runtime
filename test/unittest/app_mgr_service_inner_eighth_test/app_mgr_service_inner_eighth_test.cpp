@@ -4672,6 +4672,11 @@ HWTEST_F(AppMgrServiceInnerEighthTest, TryToUseImageInfo_0100, TestSize.Level2)
     appInfo->uid = TEST_UID; // uid / BASE_USER_RANGE = 0, matches PreAddImageInfo below
     PreloadRequest preloadRequest;
     preloadRequest.abilityName = abilityInfo->name;
+    // A debug-app want paired with a release-type ApplicationInfo makes CreateAppRunningRecord
+    // return nullptr, which is the "record creation from image fails" path under test.
+    auto want = std::make_shared<Want>();
+    want->SetParam("debugApp", true);
+    preloadRequest.want = want;
     appMgrServiceInner->PreAddImageInfo(appInfo->bundleName, 0, 0, nullptr, preloadRequest);
     auto imageInfo = appMgrServiceInner->GetImageInfo(appInfo->bundleName, abilityInfo->name, 0, 0);
     ASSERT_NE(imageInfo, nullptr);
