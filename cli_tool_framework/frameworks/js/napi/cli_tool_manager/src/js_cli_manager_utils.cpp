@@ -662,5 +662,21 @@ napi_value CreateJsToolSummary(napi_env env, const ToolSummary &summary)
     return jsObj;
 }
 
+napi_value CreateJsSessionStatus(napi_env env)
+{
+    napi_value objValue = nullptr;
+    napi_status createStatus = napi_create_object(env, &objValue);
+    if (createStatus != napi_ok || objValue == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "napi_create_object failed, %{public}d", createStatus);
+        return nullptr;
+    }
+ 
+    napi_set_named_property(env, objValue, "RUNNING", CreateJsValue(env, std::string("running")));
+    napi_set_named_property(env, objValue, "COMPLETED", CreateJsValue(env, std::string("completed")));
+    napi_set_named_property(env, objValue, "FAILED", CreateJsValue(env, std::string("failed")));
+ 
+    return objValue;
+}
+
 } // namespace CliTool
 } // namespace OHOS
