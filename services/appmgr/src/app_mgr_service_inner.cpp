@@ -869,7 +869,7 @@ ImageError AppMgrServiceInner::DestroyImageByCheckpointId(uint64_t checkpointId)
     auto imageInfo = GetImageInfoByCheckPointId(checkpointId);
     if (imageInfo == nullptr) {
         TAG_LOGW(AAFwkTag::APPMGR, "image not exist");
-        return ImageError::ERR_IMAGE_INFO_NOT_EXIST;
+        //There must be no return;
     }
     RemoveImageInfoByCheckpointId(checkpointId);
     auto ret = KillImageProcess(checkpointId);
@@ -1085,7 +1085,12 @@ ImageError AppMgrServiceInner::HandleForkAllInner(std::shared_ptr<AppRunningReco
     startMsg.templatePid = pid;
     startMsg.flags |= (START_FLAG_BASE << AppFlagsIndex::APP_FLAGS_SPAWN_IMAGE_PROCESS);
     startMsg.imageName = imageInfo->imageName;
-    auto errCode = remoteClientManager_->GetSpawnClient()->StartImageProcess(startMsg, imagePid, checkpointId);
+    auto spawnClient = remoteClientManager_->GetSpawnClient();
+    if (spawnClient == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "spawn client null");
+        return ImageError::ERR_INNER;
+    }
+    auto errCode = spawnClient->StartImageProcess(startMsg, imagePid, checkpointId);
     TAG_LOGI(AAFwkTag::APPMGR, "forkall after preload, name:%{public}s, errCode:%{public}d,"
         " pid:%{public}d, imagePid:%{public}d", appRecord->GetProcessName().c_str(), errCode, pid, imagePid);
     if (errCode != ERR_OK || imagePid <= 0) {
@@ -1584,10 +1589,8 @@ int32_t AppMgrServiceInner::TryToUseImageInfo(std::shared_ptr<AbilityInfo> abili
     appRecord = CreateAppRunningRecordFromImageInfo(imageInfo);
     if (appRecord == nullptr) {
         SnapshotErrorReport(appInfo->uid, appInfo->bundleName, appInfo->versionName, -1, "appRecord not exist");
-
         SaveHyperSnapError(appInfo->uid, HyperSnapErrorType::FORK_FROM_SNAPSHOT, HyperSnapErrorCode::ERR_SYSTEM_INNER);
         TAG_LOGE(AAFwkTag::APPMGR, "Saved FORK_FROM_SNAPSHOT error: CreateAppRunningRecordFromImageInfo failed");
-
         return ERR_OK;
     }
     int32_t workPid = -1;
@@ -1600,7 +1603,12 @@ int32_t AppMgrServiceInner::TryToUseImageInfo(std::shared_ptr<AbilityInfo> abili
     startMsg.checkpointId = imageInfo->checkpointId;
     startMsg.imageName = imageInfo->imageName;
     TAG_LOGI(AAFwkTag::APPMGR, "StartProcess");
-    auto errCode = remoteClientManager_->GetSpawnClient()->StartProcess(startMsg, workPid);
+    auto spawnClient = remoteClientManager_->GetSpawnClient();
+    if (spawnClient == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "spawn client null");
+        return ERR_NO_INIT;
+    }
+    auto errCode = spawnClient->StartProcess(startMsg, workPid);
     AAFwk::ResSchedUtil::GetInstance().ReportForkAllEventToRSS(imageInfo->imagePid, appRecord->GetPid(),
         imageInfo->abilityInfo, FORK_ALL_LIVING_END);
     if (errCode == ERR_OK && workPid != appRecord->GetPid()) {
@@ -4624,7 +4632,12 @@ void AppMgrServiceInner::GetRunningProcess(const std::shared_ptr<AppRunningRecor
     info.processType_ = appRecord->GetProcessType();
     info.extensionType_ = appRecord->GetExtensionType();
     info.preloadMode_ = appRecord->GetPreloadMode();
-    info.isDebugApp  = appRecord->GetApplicationInfo()->debug;
+    auto appInfoForDebug = appRecord->GetApplicationInfo();
+    if (appInfoForDebug != nullptr) {
+        info.isDebugApp  = appInfoForDebug->debug;
+    } else {
+        TAG_LOGE(AAFwkTag::APPMGR, "appInfo nullptr");
+    }
     info.isExiting = appRecord->IsTerminating() || appRecord->IsKilling()
         || appRecord->GetRestartAppFlag() || appRecord->IsUserRequestCleaning();
     info.isPreForeground  = appRecord->IsPreForeground();
@@ -7234,6 +7247,10 @@ void AppMgrServiceInner::RestartResidentProcess(std::shared_ptr<AppRunningRecord
     }
 
     auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
+    if (bundleMgrHelper == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "bundleMgrHelper null");
+        return;
+    }
     BundleInfo bundleInfo;
     auto userId = GetUserIdByUid(appRecord->GetUid());
     if (!IN_PROCESS_CALL(bundleMgrHelper->GetBundleInfo(

@@ -1460,13 +1460,14 @@ UIAbilityRecordPtr UIAbilityLifecycleManager::GetAbilityRecordByToken(const sptr
     }
 
     for (auto ability : terminateAbilityList_) {
-        if (ability && token == ability->GetToken()->AsObject()) {
+        if (ability && ability->GetToken() && token == ability->GetToken()->AsObject()) {
             return ability;
         }
     }
 
     for (auto iter = sessionAbilityMap_.begin(); iter != sessionAbilityMap_.end(); iter++) {
-        if (iter->second != nullptr && iter->second->GetToken()->AsObject() == token) {
+        if (iter->second != nullptr && iter->second->GetToken() &&
+            iter->second->GetToken()->AsObject() == token) {
             return iter->second;
         }
     }
@@ -1510,7 +1511,8 @@ bool UIAbilityLifecycleManager::IsContainsAbility(const sptr<IRemoteObject> &tok
 bool UIAbilityLifecycleManager::IsContainsAbilityInner(const sptr<IRemoteObject> &token) const
 {
     for (auto iter = sessionAbilityMap_.begin(); iter != sessionAbilityMap_.end(); iter++) {
-        if (iter->second != nullptr && iter->second->GetToken()->AsObject() == token) {
+        if (iter->second != nullptr && iter->second->GetToken() &&
+            iter->second->GetToken()->AsObject() == token) {
             return true;
         }
     }
@@ -1530,13 +1532,15 @@ void UIAbilityLifecycleManager::EraseAbilityRecord(const UIAbilityRecordPtr &abi
     }
 
     for (auto iter = sessionAbilityMap_.begin(); iter != sessionAbilityMap_.end(); iter++) {
-        if (iter->second != nullptr && iter->second->GetToken()->AsObject() == abilityRecord->GetToken()->AsObject()) {
+        if (iter->second != nullptr && iter->second->GetToken() && abilityRecord->GetToken() &&
+            iter->second->GetToken()->AsObject() == abilityRecord->GetToken()->AsObject()) {
             sessionAbilityMap_.erase(iter);
             break;
         }
     }
     for (auto iter = lowMemKillAbilityMap_.begin(); iter != lowMemKillAbilityMap_.end(); iter++) {
-        if (iter->second != nullptr && iter->second->GetToken()->AsObject() == abilityRecord->GetToken()->AsObject()) {
+        if (iter->second != nullptr && iter->second->GetToken() && abilityRecord->GetToken() &&
+            iter->second->GetToken()->AsObject() == abilityRecord->GetToken()->AsObject()) {
             lowMemKillAbilityMap_.erase(iter);
             break;
         }
@@ -3447,6 +3451,9 @@ std::vector<UIAbilityRecordPtr> UIAbilityLifecycleManager::GetAbilityRecordsByNa
 {
     std::vector<UIAbilityRecordPtr> records;
     for (const auto& [first, second] : sessionAbilityMap_) {
+        if (second == nullptr) {
+            continue;
+        }
         auto &abilityInfo = second->GetAbilityInfo();
         AppExecFwk::ElementName localElement(abilityInfo.deviceId, abilityInfo.bundleName,
             abilityInfo.name, abilityInfo.moduleName);
@@ -3467,7 +3474,7 @@ int32_t UIAbilityLifecycleManager::GetSessionIdByAbilityToken(const sptr<IRemote
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     std::lock_guard<ffrt::mutex> guard(sessionLock_);
     for (const auto& [first, second] : sessionAbilityMap_) {
-        if (second && second->GetToken()->AsObject() == token) {
+        if (second && second->GetToken() && second->GetToken()->AsObject() == token) {
             return first;
         }
     }

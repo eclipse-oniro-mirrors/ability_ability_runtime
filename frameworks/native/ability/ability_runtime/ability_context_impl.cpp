@@ -419,6 +419,10 @@ ErrCode AbilityContextImpl::TerminateAbilityWithResult(const AAFwk::Want& want, 
         info->want = want;
         info->resultCode = resultCode;
         auto ifaceSessionToken = iface_cast<Rosen::ISession>(sessionToken);
+        if (ifaceSessionToken == nullptr) {
+            TAG_LOGE(AAFwkTag::CONTEXT, "null ifaceSessionToken");
+            return ERR_INVALID_VALUE;
+        }
         TAG_LOGI(AAFwkTag::CONTEXT, "scb call, TerminateAbilityWithResult");
         ErrCode ret = static_cast<int32_t>(ifaceSessionToken->TerminateSession(info));
         if (ret != ERR_OK) {
@@ -757,6 +761,10 @@ ErrCode AbilityContextImpl::TerminateSelf()
         info->want = resultWant;
         info->resultCode = -1;
         auto ifaceSessionToken = iface_cast<Rosen::ISession>(sessionToken);
+        if (ifaceSessionToken == nullptr) {
+            TAG_LOGE(AAFwkTag::CONTEXT, "null ifaceSessionToken");
+            return ERR_INVALID_VALUE;
+        }
         ErrCode ret = static_cast<int32_t>(ifaceSessionToken->TerminateSession(info));
         if (ret != ERR_OK) {
             TAG_LOGE(AAFwkTag::CONTEXT, "scb call, TerminateSelf err: %{public}d", ret);
