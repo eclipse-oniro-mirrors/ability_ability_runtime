@@ -13,26 +13,19 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_ABILITY_RUNTIME_SKILL_PATH_VALIDATOR_H
-#define OHOS_ABILITY_RUNTIME_SKILL_PATH_VALIDATOR_H
+#ifndef OHOS_ABILITY_RUNTIME_PATH_UTILS_H
+#define OHOS_ABILITY_RUNTIME_PATH_UTILS_H
 
 #include <string>
 
 namespace OHOS {
 namespace AbilityRuntime {
 
-// Validate a relative path component coming from SkillExecuteParam (moduleName,
-// srcEntry, scriptPath). Rejects empty, absolute paths (covers /proc/self/fd and
-// /dev/fd FD-loading vectors), embedded NUL, ".." traversal, and any char outside
-// [A-Za-z0-9_\-./].
-bool IsSafeSkillPath(const std::string &s);
-
-// Validate hapPath: must be absolute, must not traverse (..), must not target
-// procfs / devfs (FD loading attacks), must not contain embedded NUL or
-// non-whitelisted chars.
-bool IsSafeHapPath(const std::string &s);
+// Checks path validity: rejects empty, "..", traversal combinations ("../",
+// "/.."), backslash, embedded NUL and control chars. Direction (absolute or
+// relative) is not part of validity; consumers fail safely on both.
+bool IsPathValid(const std::string &path);
 
 }  // namespace AbilityRuntime
 }  // namespace OHOS
-
-#endif  // OHOS_ABILITY_RUNTIME_SKILL_PATH_VALIDATOR_H
+#endif  // OHOS_ABILITY_RUNTIME_PATH_UTILS_H
