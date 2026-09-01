@@ -46,7 +46,7 @@ struct UriPermissionParam {
     std::string uriStr;
     int32_t flag = 0;
     std::string bundleName;
-    int32_t appIndex = 0;
+    int32_t appIndex = -1;
     bool hasAppIndex = false;
     std::string key;
     int32_t callerTokenId = 0;

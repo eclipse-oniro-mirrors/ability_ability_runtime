@@ -844,7 +844,7 @@ private:
         if (argc > ARGC_ONE && ConvertFromJsValue(env, argv[INDEX_ONE], clearPageStack)) {
             hasClearPageStack = true;
         }
-        int32_t appIndex = 0;
+        int32_t appIndex = -1;
         if (hasClearPageStack && argc == ARGC_THREE && !ConvertFromJsValue(env, argv[INDEX_TWO], appIndex)) {
             TAG_LOGE(AAFwkTag::APPMGR, "get appIndex failed");
             ThrowInvalidParamError(env, "Parse param appIndex failed, must be a number.");
@@ -1087,7 +1087,7 @@ private:
         if (argc > ARGC_TWO && ConvertFromJsValue(env, argv[INDEX_TWO], clearPageStack)) {
             hasClearPageStack = true;
         }
-        int32_t appIndex = 0;
+        int32_t appIndex = -1;
         if (hasClearPageStack && argc == ARGC_FOUR && !ConvertFromJsValue(env, argv[INDEX_THREE], appIndex)) {
             ThrowInvalidParamError(env, "Parse param appIndex failed, must be a number.");
             return CreateJsUndefined(env);

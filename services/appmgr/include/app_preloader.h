@@ -26,7 +26,7 @@
 namespace OHOS {
 namespace AppExecFwk {
 struct PreloadRequest {
-    int32_t appIndex = 0; // not used
+    int32_t appIndex = -1; // not used
     AppExecFwk::PreloadMode preloadMode;
     std::shared_ptr<AbilityInfo> abilityInfo = nullptr;
     std::shared_ptr<ApplicationInfo> appInfo = nullptr;

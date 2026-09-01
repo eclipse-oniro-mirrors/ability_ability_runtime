@@ -88,7 +88,7 @@ public:
         AppExecFwk::PreloadMode preloadMode, int32_t appIndex) override;
 
     virtual int32_t MakeImage(const AAFwk::Want &want, int32_t userId,
-        AppExecFwk::PreloadMode preloadMode, int32_t appIndex = 0,
+        AppExecFwk::PreloadMode preloadMode, int32_t appIndex = -1,
         sptr<IImageErrorHandler> errorHandler = nullptr) override;
 
     virtual int32_t DestroyImage(uint64_t checkpointId, sptr<IImageErrorHandler> errorHandler = nullptr) override;
@@ -531,7 +531,7 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int32_t UpdateConfigurationByBundleName(const Configuration &config, const std::string &name,
-        int32_t appIndex = 0) override;
+        int32_t appIndex = -1) override;
 
     /**
      * @brief register a configuration observer which will receive notifies when updated.
