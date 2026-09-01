@@ -608,7 +608,7 @@ int ImplicitStartProcessor::GenerateAbilityRequestByAction(int32_t userId, Abili
     }
 
     std::string defaultBundleName;
-    int32_t defaultAppIndex = 0;
+    int32_t defaultAppIndex = -1;
     {
         HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, "for (const auto &info : abilityInfos)");
         bool isExistDefaultApp = IsExistDefaultApp(userId, typeName, defaultBundleName, defaultAppIndex);
@@ -650,9 +650,7 @@ int ImplicitStartProcessor::GenerateAbilityRequestByAction(int32_t userId, Abili
     if (!defaultBundleName.empty()) {
         FilterCloneByDefaultApp(dialogAppInfos, defaultBundleName, defaultAppIndex);
     }
-    if (dialogAppInfos.size() > 1) {
-        FilterClonesByPreferredIndex(dialogAppInfos, userId);
-    }
+    FilterClonesByPreferredIndex(dialogAppInfos, userId);
 
     return ERR_OK;
 }
@@ -704,9 +702,7 @@ int ImplicitStartProcessor::GenerateAbilityRequestByAppIndexes(int32_t userId, A
         dialogAppInfo.installSource = info.applicationInfo.installSource;
         dialogAppInfos.emplace_back(dialogAppInfo);
     }
-    if (dialogAppInfos.size() > 1) {
-        FilterClonesByPreferredIndex(dialogAppInfos, userId);
-    }
+    FilterClonesByPreferredIndex(dialogAppInfos, userId);
     return ERR_OK;
 }
 
