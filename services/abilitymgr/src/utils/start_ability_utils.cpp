@@ -64,8 +64,8 @@ bool StartAbilityUtils::GetAppIndex(const Want &want, sptr<IRemoteObject> caller
     }
     TAG_LOGI(AAFwkTag::ABILITYMGR, "appIndex:%{public}d", want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1));
     
-    if (want.HasParameter(ServerConstant::DLP_INDEX)) {
-        appIndex = want.GetIntParam(ServerConstant::DLP_INDEX, 0);
+    if (want.HasParameter(AbilityRuntime::ServerConstant::DLP_INDEX)) {
+        appIndex = want.GetIntParam(AbilityRuntime::ServerConstant::DLP_INDEX, 0);
         return AbilityRuntime::GlobalConstant::IsDlpIndex(appIndex);
     }
     if (want.HasParameter(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY)) {
@@ -74,12 +74,12 @@ bool StartAbilityUtils::GetAppIndex(const Want &want, sptr<IRemoteObject> caller
     }
     
     AppExecFwk::BundleInfoDualMode bundleinfo;
-    auto bms = AbilityUtil::GetBundleManagerHelper();
-    auto ret = IN_PROCESS_CALL(bms->GetDualModeBundleInfo(want.GetBundleNameRef(), userId, bundleinfo));
+    auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
+    auto ret = IN_PROCESS_CALL(bundleMgrHelper->GetDualModeBundleInfo(want.GetBundleNameRef(), userId, bundleinfo));
     if (ret != ERR_OK) {
         appIndex = -1;
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "GetDualModeBundleInfo faild, bundleName: %{public}s",
-                 want.GetBundleNameRef().c_str());
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "GetDualModeBundleInfo failed, bundleName: %{public}s",
+            want.GetBundleNameRef().c_str());
         return false;
     }
     appIndex = bundleinfo.appIndex;
