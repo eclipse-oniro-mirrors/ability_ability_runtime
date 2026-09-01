@@ -16,16 +16,13 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 module_output_path = "ability_runtime/ability_runtime/abilitymgr"
 
-ohos_unittest("skill_path_validator_test") {
+ohos_unittest("path_valid_test") {
   module_out_path = module_output_path
 
-  include_dirs = [
-    "${ability_runtime_native_path}/ability/native",
-  ]
+  sources = [ "path_valid_test.cpp" ]
 
-  sources = [
-    "skill_path_validator_test.cpp",
-    "${ability_runtime_native_path}/ability/native/skill/skill_path_validator.cpp",
+  deps = [
+    "${ability_runtime_path}/utils/global/common:runtime_utils",
   ]
 
   external_deps = [
@@ -38,5 +35,5 @@ ohos_unittest("skill_path_validator_test") {
 group("unittest") {
   testonly = true
 
-  deps = [ ":skill_path_validator_test" ]
+  deps = [ ":path_valid_test" ]
 }

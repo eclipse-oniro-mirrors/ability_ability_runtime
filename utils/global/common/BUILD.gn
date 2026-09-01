@@ -36,6 +36,7 @@ ohos_shared_library("runtime_utils") {
 
   sources = [
     "src/ui_extension_wrapper.cpp",
+    "src/path_utils.cpp",
   ]
 
   public_configs = [

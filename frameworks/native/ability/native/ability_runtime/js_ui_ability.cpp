@@ -38,13 +38,13 @@
 #include "insight_intent_executor_info.h"
 #include "insight_intent_executor_mgr.h"
 #include "insight_intent_execute_param.h"
-#include "skill/skill_path_validator.h"
 #include "interop_object_instance.h"
 #include "js_ability_context.h"
 #include "js_ability_lifecycle_callback.h"
 #include "js_data_struct_converter.h"
 #include "js_insight_intent_page.h"
 #include "js_runtime.h"
+#include "path_utils.h"
 #include "js_runtime_utils.h"
 #include "js_utils.h"
 #ifdef SUPPORT_SCREEN
@@ -2660,7 +2660,7 @@ napi_value JsUIAbility::LoadSkillFunction(
     napi_value method = nullptr;
 
     if (!param->scriptPath_.empty()) {
-        if (!IsSafeSkillPath(param->scriptPath_)) {
+        if (!IsPathValid(param->scriptPath_)) {
             TAG_LOGW(AAFwkTag::UIABILITY, "invalid scriptPath");
             return nullptr;
         }
@@ -2699,11 +2699,11 @@ bool JsUIAbility::TryLoadSkillEntry(const std::string &srcEntry,
         TAG_LOGW(AAFwkTag::UIABILITY, "param is null");
         return false;
     }
-    if (!IsSafeSkillPath(param->moduleName_)) {
+    if (!IsPathValid(param->moduleName_)) {
         TAG_LOGW(AAFwkTag::UIABILITY, "invalid moduleName");
         return false;
     }
-    if (!param->hapPath_.empty() && !IsSafeHapPath(param->hapPath_)) {
+    if (!param->hapPath_.empty() && !IsPathValid(param->hapPath_)) {
         TAG_LOGW(AAFwkTag::UIABILITY, "invalid hapPath");
         return false;
     }
