@@ -2796,7 +2796,7 @@ int32_t AbilityManagerService::CheckWantForSplitMode(const AAFwk::Want &secondar
     if (ret != ERR_OK) {
         return ret;
     }
-    ret = StartAbilityUtils::StartUIAbilitiesProcessAppIndex(const_cast<Want &>(secondaryWant), callerToken, appIndex);
+    ret = StartAbilityUtils::StartUIAbilitiesProcessAppIndex(const_cast<Want &>(secondaryWant), callerToken, appIndex, validUserId);
     if (ret != ERR_OK) {
         return ret;
     }
@@ -3017,7 +3017,7 @@ int32_t AbilityManagerService::StartUIAbilitiesHandleWant(const Want &want, sptr
     }
 
     int32_t appIndex = -1;
-    ret = StartAbilityUtils::StartUIAbilitiesProcessAppIndex(const_cast<Want &>(want), callerToken, appIndex);
+    ret = StartAbilityUtils::StartUIAbilitiesProcessAppIndex(const_cast<Want &>(want), callerToken, appIndex, validUserId);
     if (ret != ERR_OK) {
         return ret;
     }
