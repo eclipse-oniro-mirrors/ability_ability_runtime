@@ -503,7 +503,7 @@ UIAbilityRecordPtr UIAbilityLifecycleManager::GenerateAbilityRecord(AbilityReque
 UIAbilityRecordPtr UIAbilityLifecycleManager::FindRecordFromTmpMap(
     const AbilityRequest &abilityRequest)
 {
-    int32_t appIndex = 0;
+    int32_t appIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
     if (abilityRequest.want.HasParameter(ServerConstant::DLP_INDEX)) {
         appIndex = abilityRequest.want.GetIntParam(ServerConstant::DLP_INDEX, 0);
     } else {
@@ -2688,12 +2688,7 @@ bool UIAbilityLifecycleManager::CheckProperties(const UIAbilityRecordPtr &abilit
 {
     CHECK_POINTER_RETURN_BOOL(abilityRecord);
     const auto& abilityInfo = abilityRecord->GetAbilityInfo();
-    int32_t appIndex = 0;
-    if (abilityRequest.isWebSandBoxClone) {
-        appIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
-    } else {
-        (void)AbilityRuntime::StartupUtil::GetAppIndex(abilityRequest.want, appIndex);
-    }
+    int32_t appIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
     auto instanceKey = abilityRequest.want.GetStringParam(Want::APP_INSTANCE_KEY);
     return abilityInfo.launchMode == launchMode && abilityRequest.abilityInfo.name == abilityInfo.name &&
         abilityRequest.abilityInfo.bundleName == abilityInfo.bundleName &&
@@ -4527,12 +4522,7 @@ void UIAbilityLifecycleManager::EnableListForSCBRecovery()
 UIAbilityRecordPtr UIAbilityLifecycleManager::FindRecordFromSessionMap(
     const AbilityRequest &abilityRequest)
 {
-    int32_t appIndex = 0;
-    if (abilityRequest.want.HasParameter(ServerConstant::DLP_INDEX)) {
-        appIndex = abilityRequest.want.GetIntParam(ServerConstant::DLP_INDEX, 0);
-    } else {
-        appIndex = abilityRequest.abilityInfo.appIndex;
-    }
+    int32_t appIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
     auto instanceKey = abilityRequest.want.GetStringParam(Want::APP_INSTANCE_KEY);
     for (const auto &[sessionId, abilityRecord] : sessionAbilityMap_) {
         if (abilityRecord) {

@@ -134,8 +134,8 @@ void StartAbilityUtilsFuzztest1(bool boolParam, std::string &stringParam, int32_
     sptr<Token> nullToken = nullptr;
     
     int32_t appIndex = 0;
-    StartAbilityUtils::GetAppIndex(want, callerToken, appIndex);
-    StartAbilityUtils::GetAppIndex(want, nullToken, appIndex);
+    StartAbilityUtils::GetAppIndex(want, callerToken, appIndex, userId);
+    StartAbilityUtils::GetAppIndex(want, nullToken, appIndex, userId);
     
     AppExecFwk::ApplicationInfo appInfo;
 

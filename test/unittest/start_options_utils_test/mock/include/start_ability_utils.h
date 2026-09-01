@@ -23,7 +23,7 @@
 namespace OHOS {
 namespace AAFwk {
 struct StartAbilityUtils {
-    static bool GetAppIndex(const Want &want, sptr<IRemoteObject> callerToken, int32_t &appIndex);
+    static bool GetAppIndex(const Want &want, sptr<IRemoteObject> callerToken, int32_t &appIndex, int userId);
     static void SetTargetCloneIndexInSameBundle(const Want &want, sptr<IRemoteObject> callerToken);
     static void ResolveTargetAppCloneIndex(const Want &want, sptr<IRemoteObject> callerToken, int32_t userId);
 };

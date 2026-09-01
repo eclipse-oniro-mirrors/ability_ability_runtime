@@ -63,17 +63,15 @@ bool MultiAppUtils::GetPreferredAppCloneIndex(const std::string &bundleName, int
         TAG_LOGD(AAFwkTag::ABILITYMGR, "GetAppClonePreference failed, ret:%{public}d", ret);
         return false;
     }
-    if (preference.mode == AppExecFwk::AppClonePreferenceMode::MAIN_APP) {
-        appIndex = 0;
-        return true;
-    }
-    if (preference.mode != AppExecFwk::AppClonePreferenceMode::CLONE_APP) {
+    if (preference.mode == AppExecFwk::AppClonePreferenceMode::ALWAYS_ASK) {
         return false;
     }
-    if (preference.appIndex <= 0 || preference.appIndex > AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
+
+    if (!AbilityRuntime::GlobalConstant::IsAppCloneIndex(preference.appIndex)) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "invalid default clone index:%{public}d", preference.appIndex);
         return false;
     }
+    
     appIndex = preference.appIndex;
     return true;
 }

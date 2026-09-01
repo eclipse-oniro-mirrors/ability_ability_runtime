@@ -152,7 +152,7 @@ public:
 
 public:
     sptr<IWantSender> GetWantSender(int32_t callingUid, int32_t uid, const bool isSystemApp,
-        const WantSenderInfo &wantSenderInfo, const sptr<IRemoteObject> &callerToken, int32_t appIndex = 0,
+        const WantSenderInfo &wantSenderInfo, const sptr<IRemoteObject> &callerToken, int32_t appIndex = -1,
         int32_t publisherUid = 0);
     int32_t SendWantSender(sptr<IWantSender> target, SenderInfo &senderInfo);
     int32_t SendLocalWantSender(const SenderInfo &senderInfo);
@@ -190,7 +190,7 @@ public:
 
 private:
     sptr<IWantSender> GetWantSenderLocked(const int32_t callingUid, const int32_t uid, const int32_t userId,
-        WantSenderInfo &wantSenderInfo, const sptr<IRemoteObject> &callerToken, int32_t appIndex = 0,
+        WantSenderInfo &wantSenderInfo, const sptr<IRemoteObject> &callerToken, int32_t appIndex = -1,
         int32_t publisherUid = 0);
     void MakeWantSenderCanceledLocked(PendingWantRecord &record);
 

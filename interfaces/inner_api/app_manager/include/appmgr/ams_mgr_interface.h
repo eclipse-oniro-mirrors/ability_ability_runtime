@@ -157,7 +157,7 @@ public:
      * @return ERR_OK, return back success, others fail.
      */
     virtual int KillProcessWithAccount(const std::string &bundleName, const int accountId,
-        const bool clearPageStack = false, int32_t appIndex = 0) = 0;
+        const bool clearPageStack = false, int32_t appIndex = -1) = 0;
 
     /**
      * KillProcessesInBatch, kill processes in batch, call KillProcessesInBatch() through proxy object;
@@ -185,7 +185,7 @@ public:
      * @param  bundleName, bundle name in Application record.
      * @return ERR_OK, return back success, others fail.
      */
-    virtual int KillApplication(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = 0,
+    virtual int KillApplication(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = -1,
         const std::string &reason = "KillApplication") = 0;
 
     /**
@@ -196,7 +196,7 @@ public:
      * @param  appIndex, appIndex.
      * @return ERR_OK, return back success, others fail.
      */
-    virtual int ForceKillApplication(const std::string &bundleName, const int userId = -1, const int appIndex = 0) = 0;
+    virtual int ForceKillApplication(const std::string &bundleName, const int userId = -1, const int appIndex = -1) = 0;
 
     /**
      * KillApplicationWithUserId, call KillApplicationWithUserId() through proxy object, kill the application.
@@ -207,7 +207,7 @@ public:
      * @return ERR_OK, return back success, others fail.
      */
     virtual int KillApplicationWithUserId(const std::string &bundleName,
-        const int userId = -1, const int appIndex = 0) = 0;
+        const int userId = -1, const int appIndex = -1) = 0;
 
     /**
      * KillProcessesByAccessTokenId, call KillProcessesByAccessTokenId() through proxy object,

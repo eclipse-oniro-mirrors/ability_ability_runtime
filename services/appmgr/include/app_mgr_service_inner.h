@@ -414,7 +414,7 @@ public:
      *
      * @return ERR_OK, return back success, others fail.
      */
-    virtual int32_t KillApplication(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = 0,
+    virtual int32_t KillApplication(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = -1,
         const std::string &reason = "KillApplication");
 
     /**
@@ -426,7 +426,7 @@ public:
      * @return ERR_OK, return back success, others fail.
      */
     virtual int32_t ForceKillApplication(const std::string &bundleName, const int userId = -1,
-        const int appIndex = 0);
+        const int appIndex = -1);
 
     /**
      * KillApplicationWithUserId, force kill the application.
@@ -437,7 +437,7 @@ public:
      * @return ERR_OK, return back success, others fail.
      */
     virtual int32_t KillApplicationWithUserId(const std::string &bundleName, const int userId = -1,
-        const int appIndex = 0);
+        const int appIndex = -1);
 
     /**
      * KillProcessesByAccessTokenId.
@@ -1883,10 +1883,10 @@ public:
 
 private:
     int32_t ForceKillApplicationInner(const std::string &bundleName, const int userId = -1,
-        const int appIndex = 0);
+        const int appIndex = -1);
     
     int32_t KillApplicationWithUserIdInner(const std::string &bundleName, const int userId = -1,
-        const int appIndex = 0);
+        const int appIndex = -1);
 
     std::string FaultTypeToString(FaultDataType type);
 
@@ -2107,7 +2107,7 @@ private:
     void ClipStringContent(const std::regex &re, const std::string &source, std::string &afterCutStr);
 
     bool GetBundleAndHapInfo(const AbilityInfo &abilityInfo, const std::shared_ptr<ApplicationInfo> &appInfo,
-        BundleInfo &bundleInfo, HapModuleInfo &hapModuleInfo, int32_t appIndex = 0) const;
+        BundleInfo &bundleInfo, HapModuleInfo &hapModuleInfo, int32_t appIndex = -1) const;
     AppProcessData WrapAppProcessData(const std::shared_ptr<AppRunningRecord> &appRecord,
         const ApplicationState state, bool isFromWindowFocusChanged = false);
 
