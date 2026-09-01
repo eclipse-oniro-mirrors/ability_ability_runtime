@@ -47,6 +47,11 @@ public:
     bool Init();
 
     /**
+     * @brief Stop service, clear pending apply tasks.
+     */
+    void Stop();
+
+    /**
      * @brief Apply quick fix.
      *
      * @param quickFixFiles Quick fix files need to apply, this value should include file path and file name.

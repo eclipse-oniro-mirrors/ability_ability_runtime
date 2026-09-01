@@ -59,6 +59,16 @@ bool QuickFixManagerService::Init()
     return true;
 }
 
+void QuickFixManagerService::Stop()
+{
+    TAG_LOGI(AAFwkTag::QUICKFIX, "Stop begin, clear pending apply tasks");
+    {
+        std::lock_guard<std::mutex> lock(taskMutex_);
+        applyTasks_.clear();
+    }
+    TAG_LOGI(AAFwkTag::QUICKFIX, "Stop end");
+}
+
 int32_t QuickFixManagerService::ApplyQuickFix(const std::vector<std::string> &quickFixFiles, bool isDebug,
     bool isReplace)
 {
