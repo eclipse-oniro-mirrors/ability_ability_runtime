@@ -121,7 +121,6 @@ void ConnectServerManager::StartConnectServer(const std::string& bundleName, int
 void ConnectServerManager::StopConnectServer(bool isCloseSo)
 {
     TAG_LOGD(AAFwkTag::JSRUNTIME, "called");
-    std::lock_guard<std::mutex> lock(g_loadsoMutex);
     if (handlerConnectServerSo_ == nullptr) {
         TAG_LOGE(AAFwkTag::JSRUNTIME, "null handlerConnectServerSo_");
         return;
@@ -317,14 +316,7 @@ void ConnectServerManager::RemoveInstance(int32_t instanceId)
         return;
     }
 
-    std::lock_guard<std::mutex> lock(g_loadsoMutex);
-    if (handlerConnectServerSo_ == nullptr) {
-        handlerConnectServerSo_ = dlopen("libark_connect_inspector.z.so", RTLD_LAZY);
-        if (handlerConnectServerSo_ == nullptr) {
-            TAG_LOGE(AAFwkTag::JSRUNTIME, "null handlerConnectServerSo_");
-            return;
-        }
-    }
+    LoadConnectServerDebuggerSo();
     auto waitForConnection = reinterpret_cast<WaitForConnection>(dlsym(handlerConnectServerSo_, "WaitForConnection"));
     if (waitForConnection == nullptr) {
         TAG_LOGE(AAFwkTag::JSRUNTIME, "null WaitForConnection");
