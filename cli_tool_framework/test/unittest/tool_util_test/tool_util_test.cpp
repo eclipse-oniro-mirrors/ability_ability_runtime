@@ -35,6 +35,9 @@
 #include "double_wrapper.h"
 #include "exec_cmd_param.h"
 #include "exec_tool_param.h"
+#include "ipc_skeleton.h"          // mock (mock/include shadows real ipc_core)
+#include "bundle_mgr_helper.h"     // mock
+#include "accesstoken_kit_mock.h"  // mock state for AccessTokenKit overrides
 #include "float_wrapper.h"
 #include "int_wrapper.h"
 #include "long_wrapper.h"
@@ -100,11 +103,17 @@ void ToolUtilTest::TearDownTestCase(void)
 void ToolUtilTest::SetUp()
 {
     // Reset state before each test
+    IPCSkeleton::Reset();
+    AppExecFwk::BundleMgrHelper::Reset();
+    CliToolTest::AccessTokenKitMock::Reset();
 }
 
 void ToolUtilTest::TearDown()
 {
     // Cleanup after each test
+    IPCSkeleton::Reset();
+    AppExecFwk::BundleMgrHelper::Reset();
+    CliToolTest::AccessTokenKitMock::Reset();
 }
 
 /**
@@ -1958,6 +1967,158 @@ HWTEST_F(ToolUtilTest, GenerateCmdSandboxConfig_0400, TestSize.Level1)
     EXPECT_FALSE(result);
 
     GTEST_LOG_(INFO) << "ToolUtil_GenerateCmdSandboxConfig_0400 end";
+}
+
+// ---- GenerateSandboxConfig: ForCli callerIdentity env injection (issue-16055) ----
+// The callerIdentity env branch lives in GenerateSandboxConfig (type="cli"), distinct from
+// GenerateCmdSandboxConfig (type="shell"). These cover the success path (env injection) + the
+// three early-return failure branches, so the newly-added branch is exercised.
+
+/**
+ * @tc.name: ToolUtil_GenerateSandboxConfig_InjectsCallerIdentityEnv_0100
+ * @tc.desc: GenerateSandboxConfig injects ohos_cli_callerIdentity + the caller env block into the
+ *           sandbox config env (the ForCli callerIdentity propagation branch in tool_util.cpp).
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, GenerateSandboxConfig_InjectsCallerIdentityEnv_0100, TestSize.Level1)
+{
+    using json = nlohmann::json;
+    CliToolTest::AccessTokenKitMock::getTokenTypeFlagIsHap = true;
+    CliToolTest::AccessTokenKitMock::getHapTokenInfoRet = 0;
+    CliToolTest::AccessTokenKitMock::hapBundleName = "com.test.agent";
+    CliToolTest::AccessTokenKitMock::hapInstIndex = 0;
+    CliToolTest::AccessTokenKitMock::hapUserID = 100;
+    AppExecFwk::BundleMgrHelper::getBundleInfoResult = 0;  // ERR_OK
+    AppExecFwk::BundleMgrHelper::gid = 2000;
+    AppExecFwk::BundleMgrHelper::appId = "app-id-xxx";
+    AppExecFwk::BundleMgrHelper::bundleName = "com.test.agent";
+    IPCSkeleton::callingIdentity = "caller-id-str";
+    IPCSkeleton::callingUid = 12345;
+    IPCSkeleton::callingPid = 1000;
+    IPCSkeleton::callingTokenId = 999;
+    IPCSkeleton::callingFullTokenId = 88888;
+
+    ExecToolParam param;
+    param.toolName = "ohos-agent";
+    param.subcommand = "connect";
+    param.challenge = "challenge-abc";
+
+    std::string sandboxConfig;
+    std::string outBundleName;
+    AccessToken::AccessTokenID tokenId = 12345;
+    EXPECT_TRUE(ToolUtil::GenerateSandboxConfig(param, tokenId, sandboxConfig, outBundleName));
+
+    auto cfg = json::parse(sandboxConfig, nullptr, false);
+    ASSERT_FALSE(cfg.is_discarded());
+    // KEY new branch: callerIdentity propagated end-to-end into the sandbox env.
+    EXPECT_EQ(cfg["env"]["ohos_cli_callerIdentity"].get<std::string>(), "caller-id-str");
+    EXPECT_EQ(cfg["env"]["ohos_cli_callerBundleName"].get<std::string>(), "com.test.agent");
+    EXPECT_EQ(cfg["env"]["ohos_cli_callerUid"].get<std::string>(), "12345");
+    EXPECT_EQ(cfg["env"]["ohos_cli_callerTokenId"].get<std::string>(), "999");
+    // top-level caller identity fields (restored app A identity).
+    EXPECT_EQ(cfg["callerTokenId"].get<uint64_t>(), 88888ULL);
+    EXPECT_EQ(cfg["uid"].get<int32_t>(), 12345);
+    EXPECT_EQ(cfg["callerPid"].get<int32_t>(), 1000);
+    // bundle + cli metadata.
+    EXPECT_EQ(cfg["bundleName"].get<std::string>(), "com.test.agent");
+    EXPECT_EQ(cfg["cliName"].get<std::string>(), "ohos-agent");
+    EXPECT_EQ(cfg["subCliName"].get<std::string>(), "connect");
+    EXPECT_EQ(cfg["challenge"].get<std::string>(), "challenge-abc");
+    EXPECT_EQ(cfg["gid"].get<int32_t>(), 2000);
+    EXPECT_EQ(cfg["appId"].get<std::string>(), "app-id-xxx");
+    EXPECT_EQ(cfg["type"].get<std::string>(), "cli");
+    EXPECT_EQ(outBundleName, "com.test.agent");
+}
+
+/**
+ * @tc.name: ToolUtil_GenerateSandboxConfig_NotHapToken_ReturnsFalse_0200
+ * @tc.desc: GenerateSandboxConfig returns false when the caller token is not a HAP token
+ *           (GetTokenTypeFlag != TOKEN_HAP); the callerIdentity env branch is never reached.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, GenerateSandboxConfig_NotHapToken_ReturnsFalse_0200, TestSize.Level1)
+{
+    // SetUp leaves getTokenTypeFlagIsHap = false (non-HAP).
+    ExecToolParam param;
+    param.toolName = "ohos-agent";
+    param.subcommand = "connect";
+    std::string sandboxConfig;
+    std::string outBundleName;
+    AccessToken::AccessTokenID tokenId = 1;
+    EXPECT_FALSE(ToolUtil::GenerateSandboxConfig(param, tokenId, sandboxConfig, outBundleName));
+    EXPECT_TRUE(sandboxConfig.empty());
+    EXPECT_TRUE(outBundleName.empty());
+}
+
+/**
+ * @tc.name: ToolUtil_GenerateSandboxConfig_GetHapTokenInfoFails_ReturnsFalse_0300
+ * @tc.desc: GenerateSandboxConfig returns false when GetHapTokenInfo fails (non-zero ret); the
+ *           callerIdentity env branch is never reached.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, GenerateSandboxConfig_GetHapTokenInfoFails_ReturnsFalse_0300, TestSize.Level1)
+{
+    CliToolTest::AccessTokenKitMock::getTokenTypeFlagIsHap = true;
+    CliToolTest::AccessTokenKitMock::getHapTokenInfoRet = 1;  // failure
+    ExecToolParam param;
+    param.toolName = "ohos-agent";
+    param.subcommand = "connect";
+    std::string sandboxConfig;
+    std::string outBundleName;
+    AccessToken::AccessTokenID tokenId = 2;
+    EXPECT_FALSE(ToolUtil::GenerateSandboxConfig(param, tokenId, sandboxConfig, outBundleName));
+    EXPECT_TRUE(sandboxConfig.empty());
+}
+
+/**
+ * @tc.name: ToolUtil_GenerateSandboxConfig_GetBundleInfoFails_ReturnsFalse_0400
+ * @tc.desc: GenerateSandboxConfig returns false when BundleMgrHelper::GetBundleInfoV9 fails
+ *           (non-ERR_OK) after token validation succeeds; the callerIdentity env branch is never
+ *           reached.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, GenerateSandboxConfig_GetBundleInfoFails_ReturnsFalse_0400, TestSize.Level1)
+{
+    CliToolTest::AccessTokenKitMock::getTokenTypeFlagIsHap = true;
+    CliToolTest::AccessTokenKitMock::getHapTokenInfoRet = 0;
+    CliToolTest::AccessTokenKitMock::hapBundleName = "com.test.agent";
+    CliToolTest::AccessTokenKitMock::hapInstIndex = 0;
+    CliToolTest::AccessTokenKitMock::hapUserID = 100;
+    AppExecFwk::BundleMgrHelper::getBundleInfoResult = 1;  // non-ERR_OK -> GetBundleInfoV9 fails
+    ExecToolParam param;
+    param.toolName = "ohos-agent";
+    param.subcommand = "connect";
+    std::string sandboxConfig;
+    std::string outBundleName;
+    AccessToken::AccessTokenID tokenId = 3;
+    EXPECT_FALSE(ToolUtil::GenerateSandboxConfig(param, tokenId, sandboxConfig, outBundleName));
+    EXPECT_TRUE(sandboxConfig.empty());
+}
+
+/**
+ * @tc.name: ToolUtil_GenerateSandboxConfig_SetCallingIdentityFails_ReturnsFalse_0500
+ * @tc.desc: GenerateSandboxConfig returns false when restoring the caller identity via
+ *           SetCallingIdentity fails (malformed identity string); fails closed before env build.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, GenerateSandboxConfig_SetCallingIdentityFails_ReturnsFalse_0500, TestSize.Level1)
+{
+    CliToolTest::AccessTokenKitMock::getTokenTypeFlagIsHap = true;
+    CliToolTest::AccessTokenKitMock::getHapTokenInfoRet = 0;
+    CliToolTest::AccessTokenKitMock::hapBundleName = "com.test.agent";
+    CliToolTest::AccessTokenKitMock::hapInstIndex = 0;
+    CliToolTest::AccessTokenKitMock::hapUserID = 100;
+    AppExecFwk::BundleMgrHelper::getBundleInfoResult = 0;
+    IPCSkeleton::setCallingIdentityRet = false;  // SetCallingIdentity fails
+    ExecToolParam param;
+    param.toolName = "ohos-agent";
+    param.subcommand = "connect";
+    std::string sandboxConfig;
+    std::string outBundleName;
+    AccessToken::AccessTokenID tokenId = 12345;
+    EXPECT_FALSE(ToolUtil::GenerateSandboxConfig(param, tokenId, sandboxConfig, outBundleName));
+    EXPECT_TRUE(sandboxConfig.empty());
+    IPCSkeleton::setCallingIdentityRet = true;
 }
 
 } // namespace CliTool

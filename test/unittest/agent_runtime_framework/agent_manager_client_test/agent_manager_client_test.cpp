@@ -70,6 +70,8 @@ void AgentManagerClientTest::SetUp(void)
     MyFlag::retNotifyLowCodeAgentComplete = ERR_OK;
     MyFlag::retVerifyAgentConnectRequest = ERR_OK;
     MyFlag::retVerifyAgentDisconnectRequests = ERR_OK;
+    MyFlag::retConnectAgentExtensionAbilityForCli = ERR_OK;
+    MyFlag::retDisconnectAgentExtensionAbilityForCli = ERR_OK;
     MyFlag::nullSystemAbility = false;
     MyFlag::retRegisterAgentCard = ERR_OK;
     MyFlag::retUpdateAgentCard = ERR_OK;
@@ -82,6 +84,9 @@ void AgentManagerClientTest::SetUp(void)
     MyFlag::lastVerifyAgentConnectConnection = nullptr;
     MyFlag::lastVerifyAgentDisconnectConnection = nullptr;
     MyFlag::verifyCallerIdentity.clear();
+    MyFlag::lastForCliConnectWant = AAFwk::Want();
+    MyFlag::lastForCliConnection = nullptr;
+    MyFlag::lastForCliCallerIdentity.clear();
     MyFlag::resolvedAgentCardType = static_cast<int32_t>(AgentCardType::APP);
     MyFlag::resolvedPreflightNonce = 1000000001L;
 }
@@ -1235,6 +1240,99 @@ HWTEST_F(AgentManagerClientTest, NotifyLowCodeAgentComplete_003, TestSize.Level1
 
     int32_t result = client.NotifyLowCodeAgentComplete("agentA");
     EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+* @tc.name  : ConnectAgentExtensionAbilityForCli_ShouldReturnError_WhenProxyIsNull
+* @tc.number: ConnectAgentExtensionAbilityForCli_001
+* @tc.desc  : ForCli connect returns ERR_NULL_AGENT_MGR_PROXY when the service proxy is null.
+*/
+HWTEST_F(AgentManagerClientTest, ConnectAgentExtensionAbilityForCli_001, TestSize.Level1)
+{
+    AgentManagerClient client;
+    MyFlag::nullSystemAbility = true;
+    AAFwk::Want want;
+    auto result = client.ConnectAgentExtensionAbilityForCli(want, nullptr, "callerA");
+    EXPECT_EQ(result, ERR_NULL_AGENT_MGR_PROXY);
+}
+
+/**
+* @tc.name  : ConnectAgentExtensionAbilityForCli_ShouldReturnOk_AndForwardArgs_WhenProxyValid
+* @tc.number: ConnectAgentExtensionAbilityForCli_002
+* @tc.desc  : ForCli connect returns ERR_OK and forwards callerIdentity/connection to the service proxy.
+*/
+HWTEST_F(AgentManagerClientTest, ConnectAgentExtensionAbilityForCli_002, TestSize.Level1)
+{
+    AgentManagerClient client;
+    auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
+    client.agentMgr_ = mockAgentMgr;
+    MyFlag::retConnectAgentExtensionAbilityForCli = ERR_OK;
+    AAFwk::Want want;
+    auto result = client.ConnectAgentExtensionAbilityForCli(want, nullptr, "callerA");
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(MyFlag::lastForCliCallerIdentity, "callerA");
+    EXPECT_EQ(MyFlag::lastForCliConnection, nullptr);
+}
+
+/**
+* @tc.name  : ConnectAgentExtensionAbilityForCli_ShouldReturnServiceError_OnDelegateFailure
+* @tc.number: ConnectAgentExtensionAbilityForCli_003
+* @tc.desc  : ForCli connect returns the service error code (pass-through) when the service rejects.
+*/
+HWTEST_F(AgentManagerClientTest, ConnectAgentExtensionAbilityForCli_003, TestSize.Level1)
+{
+    AgentManagerClient client;
+    auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
+    client.agentMgr_ = mockAgentMgr;
+    MyFlag::retConnectAgentExtensionAbilityForCli = 201;  // ERR_PERMISSION_DENIED
+    AAFwk::Want want;
+    auto result = client.ConnectAgentExtensionAbilityForCli(want, nullptr, "callerA");
+    EXPECT_EQ(result, 201);
+}
+
+/**
+* @tc.name  : DisconnectAgentExtensionAbilityForCli_ShouldReturnError_WhenProxyIsNull
+* @tc.number: DisconnectAgentExtensionAbilityForCli_001
+* @tc.desc  : ForCli disconnect returns ERR_NULL_AGENT_MGR_PROXY when the service proxy is null.
+*/
+HWTEST_F(AgentManagerClientTest, DisconnectAgentExtensionAbilityForCli_001, TestSize.Level1)
+{
+    AgentManagerClient client;
+    MyFlag::nullSystemAbility = true;
+    auto result = client.DisconnectAgentExtensionAbilityForCli(nullptr, "callerA");
+    EXPECT_EQ(result, ERR_NULL_AGENT_MGR_PROXY);
+}
+
+/**
+* @tc.name  : DisconnectAgentExtensionAbilityForCli_ShouldReturnOk_AndForwardArgs_WhenProxyValid
+* @tc.number: DisconnectAgentExtensionAbilityForCli_002
+* @tc.desc  : ForCli disconnect returns ERR_OK and forwards callerIdentity/connection to the service proxy.
+*/
+HWTEST_F(AgentManagerClientTest, DisconnectAgentExtensionAbilityForCli_002, TestSize.Level1)
+{
+    AgentManagerClient client;
+    auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
+    client.agentMgr_ = mockAgentMgr;
+    MyFlag::retDisconnectAgentExtensionAbilityForCli = ERR_OK;
+    auto result = client.DisconnectAgentExtensionAbilityForCli(nullptr, "callerA");
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(MyFlag::lastForCliCallerIdentity, "callerA");
+    EXPECT_EQ(MyFlag::lastForCliConnection, nullptr);
+}
+
+/**
+* @tc.name  : DisconnectAgentExtensionAbilityForCli_ShouldReturnServiceError_OnDelegateFailure
+* @tc.number: DisconnectAgentExtensionAbilityForCli_003
+* @tc.desc  : ForCli disconnect returns the service error code (pass-through) when the service rejects.
+*/
+HWTEST_F(AgentManagerClientTest, DisconnectAgentExtensionAbilityForCli_003, TestSize.Level1)
+{
+    AgentManagerClient client;
+    auto mockAgentMgr = sptr<MockAgentManagerService>::MakeSptr();
+    client.agentMgr_ = mockAgentMgr;
+    MyFlag::retDisconnectAgentExtensionAbilityForCli = 201;
+    auto result = client.DisconnectAgentExtensionAbilityForCli(nullptr, "callerA");
+    EXPECT_EQ(result, 201);
 }
 } // namespace AgentRuntime
 } // namespace OHOS

@@ -79,6 +79,20 @@ public:
     static sptr<AAFwk::IAbilityConnection> lastDisconnectAbilityConnection;
     static int32_t connectAbilityWithExtensionTypeCallCount;
     static int32_t disconnectAbilityCallCount;
+    // ForCli (CLI agent connect, issue-16055) test seams.
+    static bool retGetBoolParameterCliEnabled;  // system::GetBoolParameter(CCM flag) -> this
+    static bool retIsCliToolToken;              // AccessTokenKit::IsCliToolToken -> this
+    static int32_t retGetHapTokenInfo;         // AccessTokenKit::GetHapTokenInfo return code (0 = ok)
+    static int32_t hapTokenInfoUid;             // uid returned by the mocked GetHapTokenInfo
+    // ForCli anti-spoof test seams (issue-16055 fix): IPCSkeleton::GetCallingUid() returns different
+    // values before vs after SetCallingIdentity — cliToolUid (real process uid, captured before
+    // SetCallingIdentity) vs identityUid (uid parsed from the callerIdentity string). When
+    // overrideCallingUid is false GetCallingUid() falls back to getuid() (preserves prior behavior).
+    static bool overrideCallingUid;             // when true, GetCallingUid() uses the seam values
+    static bool setIdentityActive;              // toggled by SetCallingIdentity/ResetCallingIdentity
+    static int32_t cliToolUid;                  // GetCallingUid() before SetCallingIdentity
+    static int32_t identityUid;                 // GetCallingUid() after SetCallingIdentity
+    static bool retSetCallingIdentity;          // IPCSkeleton::SetCallingIdentity -> this
 };
 }  // namespace AgentRuntime
 }  // namespace OHOS

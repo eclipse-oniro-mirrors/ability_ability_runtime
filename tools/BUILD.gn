@@ -19,6 +19,7 @@ group("tools_target") {
   deps = [
     "aa:tools_aa",
     "ohos-aa:tools_ohos_aa",
+    "ohos-agent:tools_ohos_agent",
     "ohos-arktsScript:ohos-arkTSScript"
   ]
 }

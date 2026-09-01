@@ -61,6 +61,12 @@ public:
 
     virtual int32_t VerifyAgentDisconnectRequests(const std::vector<AAFwk::Want> &wants,
         const sptr<AAFwk::IAbilityConnection> &connection, std::string &callerIdentity) override;
+
+    virtual int32_t ConnectAgentExtensionAbilityForCli(const AAFwk::Want &want,
+        const sptr<AAFwk::IAbilityConnection> &connection, const std::string &callerIdentity) override;
+
+    virtual int32_t DisconnectAgentExtensionAbilityForCli(const sptr<AAFwk::IAbilityConnection> &connection,
+        const std::string &callerIdentity) override;
 };
 }  // namespace AgentRuntime
 }  // namespace OHOS
