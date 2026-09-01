@@ -4684,6 +4684,9 @@ HWTEST_F(AppMgrServiceInnerEighthTest, TryToUseImageInfo_0100, TestSize.Level2)
     imageInfo->baseAppRecord = std::make_shared<AppRunningRecord>(appInfo, TEST_UID, "PROCESS_NAME");
     AAFwk::MyStatus::GetInstance().getCallingUid_ = TEST_UID;
     AAFwk::MyStatus::GetInstance().checkAppRunningByUid_ = false;
+    // IsImageInfoMatched relies on the mocked CheckAppProcessNameIsSame; enable it so the
+    // flow reaches CreateAppRunningRecordFromImageInfo (whose failure path is under test).
+    AAFwk::MyStatus::GetInstance().checkAppProcessNameIsSame_ = true;
     // guard: if record creation succeeds, fork path calls GetSpawnClient()->StartProcess
     AAFwk::MyStatus::GetInstance().getSpawnClient_ = std::make_shared<AppSpawnClient>();
     std::shared_ptr<AppRunningRecord> appRecord;
@@ -4694,6 +4697,7 @@ HWTEST_F(AppMgrServiceInnerEighthTest, TryToUseImageInfo_0100, TestSize.Level2)
     EXPECT_EQ(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::FORK_FROM_SNAPSHOT, record), ERR_OK);
     EXPECT_EQ(record.code, HyperSnapErrorCode::ERR_SYSTEM_INNER);
     AAFwk::MyStatus::GetInstance().getSpawnClient_ = nullptr;
+    AAFwk::MyStatus::GetInstance().checkAppProcessNameIsSame_ = false;
     AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
     TAG_LOGI(AAFwkTag::TEST, "TryToUseImageInfo_0100 end");
 }
