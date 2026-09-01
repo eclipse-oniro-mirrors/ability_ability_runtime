@@ -4431,6 +4431,7 @@ int AppMgrServiceInner::GetAllChildrenProcesses(std::vector<ChildProcessInfo> &i
 
 int AppMgrServiceInner::GetSelfChildrenProcesses(std::vector<ChildProcessInfo> &info)
 {
+    HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     auto callingTokenId = IPCSkeleton::GetCallingTokenID();
     for (const auto &item : appRunningManager_->GetAppRunningRecordMap()) {
         const auto &appRecord = item.second;
