@@ -9412,8 +9412,7 @@ int32_t AbilityManagerService::UninstallAppInner(const std::string &bundleName, 
     if(appIndex == -1) {
         AppExecFwk::BundleInfoDualMode bundleInfo;
         auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
-        auto appRecord = bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, bundleInfo);
-        if (appRecord == ERR_OK) {
+        if (bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, bundleInfo) == ERR_OK) {
             appIndex = bundleInfo.appIndex;
         }
     }

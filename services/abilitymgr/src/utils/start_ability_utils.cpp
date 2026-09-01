@@ -76,7 +76,7 @@ bool StartAbilityUtils::GetAppIndex(const Want &want, sptr<IRemoteObject> caller
     AppExecFwk::BundleInfoDualMode bundleinfo;
     auto bms = AbilityUtil::GetBundleManagerHelper();
     auto ret = IN_PROCESS_CALL(bms->GetDualModeBundleInfo(want.GetBundleNameRef(), userId, bundleinfo));
-    if(ret != ERR_OK) {
+    if (ret != ERR_OK) {
         appIndex = -1;
         TAG_LOGE(AAFwkTag::ABILITYMGR, "GetDualModeBundleInfo faild, bundleName: %{public}s",
                  want.GetBundleNameRef().c_str());

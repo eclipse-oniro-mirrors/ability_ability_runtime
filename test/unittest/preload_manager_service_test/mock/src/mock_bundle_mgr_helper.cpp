@@ -44,7 +44,8 @@ bool BundleMgrHelper::QueryAbilityInfo(const AAFwk::Want& want, int32_t flags, i
     return AAFwk::MyStatus::GetInstance().retQueryAbilityInfo_;
 }
 
-int32_t BundleMgrHelper::GetDualModeBundleInfo(const std::string& bundleName, int32_t userId, BundleInfoDualMode &preference)
+int32_t BundleMgrHelper::GetDualModeBundleInfo(const std::string& bundleName, int32_t userId,
+                                               BundleInfoDualMode &preference)
 {
     preference.appIndex = 0;
     return 0;
