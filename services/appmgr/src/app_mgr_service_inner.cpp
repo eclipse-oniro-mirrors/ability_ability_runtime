@@ -4488,8 +4488,9 @@ int32_t AppMgrServiceInner::NotifyProcMemoryLevel(const std::map<pid_t, MemoryLe
     bool isMemmgrCall = AAFwk::PermissionVerification::GetInstance()->CheckSpecificSystemAbilityAccessPermission(
         MEMMGR_PROC_NAME);
     auto isShellCall = AAFwk::PermissionVerification::GetInstance()->IsShellCall();
+    auto isLocalDebugOtherAppsCall = AAFwk::PermissionVerification::GetInstance()->IsLocalDebugOtherAppsCall();
     bool isDevelopMode = system::GetBoolParameter(DEVELOPER_MODE_STATE, false);
-    if (!(isMemmgrCall || (isShellCall && isDevelopMode))) {
+    if (!(isMemmgrCall || (isShellCall && isDevelopMode) || isLocalDebugOtherAppsCall)) {
         TAG_LOGE(AAFwkTag::APPMGR, "Permission check failed: callerToken is not %{public}s, isMemmgrCall=%{public}d, "
         "isShellCall=%{public}d, isDevelopMode=%{public}d", MEMMGR_PROC_NAME, isMemmgrCall, isShellCall, isDevelopMode);
         return ERR_INVALID_VALUE;
@@ -4498,8 +4499,9 @@ int32_t AppMgrServiceInner::NotifyProcMemoryLevel(const std::map<pid_t, MemoryLe
         TAG_LOGE(AAFwkTag::APPMGR, "appRunningManager null");
         return ERR_INVALID_VALUE;
     }
+    bool isShellOrLocalDebug = isShellCall || isLocalDebugOtherAppsCall;
     TAG_LOGD(AAFwkTag::APPMGR, "isShellCall %{public}d", isShellCall);
-    return appRunningManager_->NotifyProcMemoryLevel(procLevelMap, isShellCall);
+    return appRunningManager_->NotifyProcMemoryLevel(procLevelMap, isShellOrLocalDebug);
 }
 
 int32_t AppMgrServiceInner::DumpHeapMemory(const int32_t pid, OHOS::AppExecFwk::MallocInfo &mallocInfo)
@@ -8543,6 +8545,10 @@ int32_t AppMgrServiceInner::VerifyKillProcessPermissionCommon() const
         return ERR_OK;
     }
 
+    if (AAFwk::PermissionVerification::GetInstance()->IsLocalDebugOtherAppsCall()) {
+        return ERR_OK;
+    }
+
     if (VerifyAPL()) {
         return ERR_OK;
     }
@@ -11835,8 +11841,9 @@ int32_t AppMgrServiceInner::GetAppRunningUniqueIdByPid(pid_t pid, std::string &a
     bool isCallingPermission = AAFwk::PermissionVerification::GetInstance()->IsSACall() &&
         AAFwk::PermissionVerification::GetInstance()->VerifyRunningInfoPerm();
     auto isShellCall = AAFwk::PermissionVerification::GetInstance()->IsShellCall();
+    auto isLocalDebugOtherAppsCall = AAFwk::PermissionVerification::GetInstance()->IsLocalDebugOtherAppsCall();
     bool isDevelopMode = system::GetBoolParameter(DEVELOPER_MODE_STATE, false);
-    if (!isCallingPermission && !(isShellCall && isDevelopMode)) {
+    if (!isCallingPermission && !(isShellCall && isDevelopMode) && !isLocalDebugOtherAppsCall) {
         TAG_LOGE(AAFwkTag::APPMGR, "GetAppRunningUniqueIdByPid not SA call or verification failed");
         return ERR_PERMISSION_DENIED;
     }

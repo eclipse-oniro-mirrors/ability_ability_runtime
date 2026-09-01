@@ -1554,7 +1554,8 @@ int32_t AppMgrService::StartNativeProcessForDebugger(const AAFwk::Want &want)
     bool isShellCall = AAFwk::PermissionVerification::GetInstance()->IsShellCall();
     auto callingTokenId = IPCSkeleton::GetCallingTokenID();
     bool isLocalDebugCall = AAFwk::PermissionVerification::GetInstance()->VerifyStartLocalDebug(callingTokenId);
-    if (!isShellCall && !isLocalDebugCall) {
+    if (!isShellCall && !isLocalDebugCall &&
+        !AAFwk::PermissionVerification::GetInstance()->IsLocalDebugOtherAppsCall()) {
         TAG_LOGE(AAFwkTag::APPMGR, "permission denied");
         return ERR_INVALID_OPERATION;
     }

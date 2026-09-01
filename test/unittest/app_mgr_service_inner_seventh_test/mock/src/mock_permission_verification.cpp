@@ -33,6 +33,10 @@ bool PermissionVerification::IsShellCall() const
 {
     return AAFwk::MyStatus::GetInstance().isShellCall_;
 }
+bool PermissionVerification::IsLocalDebugOtherAppsCall() const
+{
+    return AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_;
+}
 bool PermissionVerification::CheckSpecificSystemAbilityAccessPermission(const std::string &processName) const
 {
     return AAFwk::MyStatus::GetInstance().checkSpecific_;

@@ -24,12 +24,15 @@
 #include "ability_start_with_wait_observer.h"
 #include "ability_start_with_wait_observer_utils.h"
 #include "ability_tool_convert_util.h"
+#include "accesstoken_kit.h"
 #include "app_mgr_client.h"
+#include "token_setproc.h"
 #include "hilog_tag_wrapper.h"
 #include "iservice_registry.h"
 #include "mission_snapshot.h"
 #include "bool_wrapper.h"
 #include "parameters.h"
+#include "permission_constants.h"
 #include "sa_mgr_client.h"
 #include "system_ability_definition.h"
 #include "test_observer.h"
@@ -462,8 +465,33 @@ ErrCode AbilityManagerShellCommand::init()
     return AbilityManagerClient::GetInstance()->Connect();
 }
 
+bool AbilityManagerShellCommand::IsShellCall() const
+{
+    auto selfTokenId = GetSelfTokenID();
+    auto tokenType = Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(
+        static_cast<Security::AccessToken::AccessTokenID>(selfTokenId));
+    return tokenType == Security::AccessToken::ATokenTypeEnum::TOKEN_SHELL;
+}
+
+bool AbilityManagerShellCommand::IsLocalDebugOtherAppsCall() const
+{
+    if (!system::GetBoolParameter(DEVELOPERMODE_STATE, false)) {
+        return false;
+    }
+    auto selfTokenId = GetSelfTokenID();
+    return Security::AccessToken::AccessTokenKit::VerifyAccessToken(
+        static_cast<Security::AccessToken::AccessTokenID>(selfTokenId),
+        AAFwk::PermissionConstants::PERMISSION_LOCAL_DEBUG_OTHER_APPS) ==
+        Security::AccessToken::PermissionState::PERMISSION_GRANTED;
+}
+
 ErrCode AbilityManagerShellCommand::RunAsHelpCommand()
 {
+    if (!IsShellCall() && !IsLocalDebugOtherAppsCall()) {
+        resultReceiver_.append("error: permission denied. aa help requires shell identity or "
+            "developer mode with LOCAL_DEBUG_OTHER_APPS permission.\n");
+        return OHOS::ERR_PERMISSION_DENIED;
+    }
     resultReceiver_.append(HELP_MSG);
 
     return OHOS::ERR_OK;

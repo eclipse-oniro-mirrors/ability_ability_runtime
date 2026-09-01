@@ -27,5 +27,10 @@ bool PermissionVerification::IsShellCall() const
 {
     return true;
 }
+
+bool PermissionVerification::IsLocalDebugOtherAppsCall() const
+{
+    return false;
+}
 } // namespace AAFwk
 } // namespace OHOS
