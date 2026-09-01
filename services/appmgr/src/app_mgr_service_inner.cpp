@@ -1943,8 +1943,8 @@ bool AppMgrServiceInner::CheckPreloadAppRecordExist(const std::string &bundleNam
     if (appIndex == -1) {
         AppExecFwk::BundleInfoDualMode bundleinfo;
         auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
-        auto appRecord = bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, bundleinfo);
-        if (appRecord == ERR_OK) {
+        auto ret = bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, bundleinfo);
+        if (ret == ERR_OK) {
             appIndex = bundleinfo.appIndex;
         }
     }
