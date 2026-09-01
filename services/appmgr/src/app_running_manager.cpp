@@ -2311,8 +2311,6 @@ int32_t AppRunningManager::UpdateConfigurationDelayed(const std::shared_ptr<AppR
         auto delayConfig = appRecord->GetDelayConfiguration();
         if (delayConfig == nullptr) {
             appRecord->ResetDelayConfiguration();
-            TAG_LOGE(AAFwkTag::APPKIT, "delayConfig null");
-            return ERR_INVALID_VALUE;
         }
         TAG_LOGI(AAFwkTag::APPKIT, "delayConfig: %{public}s", delayConfig->GetName().c_str());
         result = appRecord->UpdateConfiguration(*delayConfig);
