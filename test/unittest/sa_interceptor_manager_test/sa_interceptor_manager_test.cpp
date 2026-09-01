@@ -13,7 +13,11 @@
  * limitations under the License.
  */
 
+#include <atomic>
 #include <gtest/gtest.h>
+#include <map>
+#include <thread>
+#include <vector>
 
 #define private public
 #include "ability_manager_service.h"
@@ -27,6 +31,29 @@ using namespace testing::ext;
 using namespace OHOS::AAFwk;
 namespace OHOS {
 namespace AbilityRuntime {
+// Mock SA interceptor bound to a distinct remote object, used for multi-interceptor scenarios
+class MockSAInterceptorWithObj : public ISAInterceptor {
+public:
+    explicit MockSAInterceptorWithObj(int32_t id) : id_(id), remote_(sptr<MockIRemoteObject>::MakeSptr()) {}
+    ~MockSAInterceptorWithObj() = default;
+    DECLARE_INTERFACE_DESCRIPTOR(u"ohos.AbiilityRuntime.ISAInterceptor");
+    int32_t OnCheckStarting(const std::string &params, Rule &rule) override
+    {
+        checkCount_.fetch_add(1, std::memory_order_relaxed);
+        rule.type = allow_ ? RuleType::ALLOW : RuleType::NOT_ALLOW;
+        return ERR_OK;
+    }
+    sptr<IRemoteObject> AsObject() override
+    {
+        return remote_;
+    }
+
+    int32_t id_ = 0;
+    bool allow_ = true;
+    std::atomic<int32_t> checkCount_ { 0 };
+    sptr<MockIRemoteObject> remote_;
+};
+
 class SAInterceptorManagerTest : public testing::Test {
 public:
     static void SetUpTestCase();
@@ -107,7 +134,7 @@ HWTEST_F(SAInterceptorManagerTest, RemoveSAInterceptor_0100, TestSize.Level1)
 HWTEST_F(SAInterceptorManagerTest, ExecuteSAInterceptor_0100, TestSize.Level1)
 {
     std::string params = "";
-    OHOS::AAFwk::Rule rule;
+    Rule rule;
     int32_t result = SAInterceptorManager::GetInstance().ExecuteSAInterceptor(params, rule);
     EXPECT_EQ(result, ERR_OK);
     sptr<ISAInterceptor> interceptor = new MockSAInterceptorRetFalse();
@@ -179,6 +206,140 @@ HWTEST_F(SAInterceptorManagerTest, OnObserverDied_0100, TestSize.Level1)
     EXPECT_NE(SAInterceptorManager::GetInstance().saInterceptors_.size(), 0);
     SAInterceptorManager::GetInstance().OnObserverDied(remote);
     EXPECT_NE(&SAInterceptorManager::GetInstance(), nullptr);
+}
+
+/*
+ * @tc.number: ExecuteSAInterceptor_0200
+ * @tc.name: ExecuteSAInterceptor
+ * @tc.desc: Verify multiple interceptors with distinct remote objects are all registered,
+ *           executed in order, and the execution is short-circuited once a rule is violated
+ */
+HWTEST_F(SAInterceptorManagerTest, ExecuteSAInterceptor_0200, TestSize.Level1)
+{
+    SAInterceptorManager::GetInstance().saInterceptors_.clear();
+    auto first = sptr<MockSAInterceptorWithObj>::MakeSptr(1);
+    auto blocker = sptr<MockSAInterceptorWithObj>::MakeSptr(2);
+    blocker->allow_ = false;
+    auto last = sptr<MockSAInterceptorWithObj>::MakeSptr(3);
+
+    EXPECT_EQ(SAInterceptorManager::GetInstance().AddSAInterceptor(first), ERR_OK);
+    EXPECT_EQ(SAInterceptorManager::GetInstance().AddSAInterceptor(blocker), ERR_OK);
+    EXPECT_EQ(SAInterceptorManager::GetInstance().AddSAInterceptor(last), ERR_OK);
+    // interceptors with distinct remote objects are all kept, no dedup miss
+    EXPECT_EQ(SAInterceptorManager::GetInstance().saInterceptors_.size(), 3);
+
+    std::string params = "{}";
+    Rule rule;
+    int32_t result = SAInterceptorManager::GetInstance().ExecuteSAInterceptor(params, rule);
+    EXPECT_EQ(result, ERR_OK);
+    // interceptors before and including the violated one are executed
+    EXPECT_GT(first->checkCount_.load(), 0);
+    EXPECT_GT(blocker->checkCount_.load(), 0);
+    // interceptors after the violated one are short-circuited
+    EXPECT_EQ(last->checkCount_.load(), 0);
+    EXPECT_EQ(rule.type, RuleType::NOT_ALLOW);
+
+    EXPECT_EQ(SAInterceptorManager::GetInstance().RemoveSAInterceptor(first->AsObject()), ERR_OK);
+    EXPECT_EQ(SAInterceptorManager::GetInstance().RemoveSAInterceptor(blocker->AsObject()), ERR_OK);
+    EXPECT_EQ(SAInterceptorManager::GetInstance().RemoveSAInterceptor(last->AsObject()), ERR_OK);
+    EXPECT_TRUE(SAInterceptorManager::GetInstance().SAInterceptorListIsEmpty());
+}
+
+/*
+ * @tc.number: SAInterceptorMultiThreadRace_0100
+ * @tc.name: SAInterceptorMultiThreadRace
+ * @tc.desc: Verify add/remove/execute of multiple SA interceptors from concurrent threads
+ *           keeps the interceptor list consistent: no duplicated interceptor, no crash,
+ *           and the manager stays functional after the race
+ */
+HWTEST_F(SAInterceptorManagerTest, SAInterceptorMultiThreadRace_0100, TestSize.Level1)
+{
+    SAInterceptorManager::GetInstance().saInterceptors_.clear();
+    constexpr int32_t INTERCEPTOR_NUM = 8;
+    constexpr int32_t ADDER_THREAD_NUM = 4;
+    constexpr int32_t LOOP_TIMES = 200;
+    std::vector<sptr<MockSAInterceptorWithObj>> interceptors;
+    for (int32_t i = 0; i < INTERCEPTOR_NUM; i++) {
+        interceptors.push_back(sptr<MockSAInterceptorWithObj>::MakeSptr(i));
+    }
+
+    std::atomic<bool> startFlag(false);
+    std::atomic<int32_t> executeFailCount(0);
+    // each interceptor is only added by its owner thread, removers and executors race with it
+    auto addWorker = [&interceptors, &startFlag](int32_t from, int32_t to) {
+        while (!startFlag.load()) {
+            std::this_thread::yield();
+        }
+        for (int32_t loop = 0; loop < LOOP_TIMES; loop++) {
+            for (int32_t i = from; i < to; i++) {
+                SAInterceptorManager::GetInstance().AddSAInterceptor(interceptors[i]);
+            }
+        }
+    };
+    auto removeWorker = [&interceptors, &startFlag]() {
+        while (!startFlag.load()) {
+            std::this_thread::yield();
+        }
+        for (int32_t loop = 0; loop < LOOP_TIMES; loop++) {
+            for (int32_t i = 0; i < INTERCEPTOR_NUM; i++) {
+                SAInterceptorManager::GetInstance().RemoveSAInterceptor(interceptors[i]->AsObject());
+            }
+        }
+    };
+    auto executeWorker = [&startFlag, &executeFailCount]() {
+        while (!startFlag.load()) {
+            std::this_thread::yield();
+        }
+        std::string params = "{}";
+        for (int32_t loop = 0; loop < LOOP_TIMES; loop++) {
+            Rule rule;
+            if (SAInterceptorManager::GetInstance().ExecuteSAInterceptor(params, rule) != ERR_OK) {
+                executeFailCount.fetch_add(1);
+            }
+        }
+    };
+
+    std::vector<std::thread> threads;
+    for (int32_t t = 0; t < ADDER_THREAD_NUM; t++) {
+        int32_t from = t * INTERCEPTOR_NUM / ADDER_THREAD_NUM;
+        int32_t to = (t + 1) * INTERCEPTOR_NUM / ADDER_THREAD_NUM;
+        threads.emplace_back(addWorker, from, to);
+    }
+    threads.emplace_back(removeWorker);
+    threads.emplace_back(removeWorker);
+    threads.emplace_back(executeWorker);
+    threads.emplace_back(executeWorker);
+
+    startFlag.store(true);
+    for (auto &threadItem : threads) {
+        threadItem.join();
+    }
+
+    // consistency check: each interceptor appears at most once after the race
+    std::map<const IRemoteObject *, int32_t> counter;
+    {
+        std::lock_guard<std::mutex> lock(SAInterceptorManager::GetInstance().saInterceptorLock_);
+        EXPECT_LE(SAInterceptorManager::GetInstance().saInterceptors_.size(),
+            static_cast<size_t>(INTERCEPTOR_NUM));
+        for (auto &item : SAInterceptorManager::GetInstance().saInterceptors_) {
+            counter[item->AsObject().GetRefPtr()]++;
+        }
+    }
+    for (auto &entry : counter) {
+        EXPECT_EQ(entry.second, 1);
+    }
+    EXPECT_EQ(executeFailCount.load(), 0);
+
+    // manager stays functional after the race: remove remaining, then add/execute/remove again
+    for (auto &item : interceptors) {
+        SAInterceptorManager::GetInstance().RemoveSAInterceptor(item->AsObject());
+    }
+    EXPECT_TRUE(SAInterceptorManager::GetInstance().SAInterceptorListIsEmpty());
+    EXPECT_EQ(SAInterceptorManager::GetInstance().AddSAInterceptor(interceptors[0]), ERR_OK);
+    Rule rule;
+    EXPECT_EQ(SAInterceptorManager::GetInstance().ExecuteSAInterceptor(std::string("{}"), rule), ERR_OK);
+    EXPECT_EQ(SAInterceptorManager::GetInstance().RemoveSAInterceptor(interceptors[0]->AsObject()), ERR_OK);
+    EXPECT_TRUE(SAInterceptorManager::GetInstance().SAInterceptorListIsEmpty());
 }
 } // namespace AbilityRuntime
 } // namespace OHOS
