@@ -31,6 +31,8 @@
 namespace OHOS {
 namespace AAFwk {
 const std::string DLP_PARAMS_SECURITY_FLAG = "ohos.dlp.params.securityFlag";
+const std::string DLP_PARAMS_CUSTOM_FLAG = "ohos.dlp.params.customFlag";
+
 namespace {
 const int32_t SHELL_START_EXTENSION_FLOOR = 0; // FORM
 const int32_t SHELL_START_EXTENSION_CEIL = 21; // EMBEDDED_UI
@@ -181,6 +183,7 @@ bool PermissionVerification::VerifyDlpPermission(Want &want) const
 {
     if (want.GetIntParam(AbilityRuntime::ServerConstant::DLP_INDEX, 0) == 0) {
         want.RemoveParam(DLP_PARAMS_SECURITY_FLAG);
+        want.RemoveParam(DLP_PARAMS_CUSTOM_FLAG);
         return true;
     }
 
