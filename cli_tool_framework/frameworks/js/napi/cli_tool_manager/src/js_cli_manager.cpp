@@ -547,7 +547,14 @@ napi_value JSCliManagerInit(napi_env env, napi_value exportObj)
     BindNativeFunction(env, exportObj, "queryToolSummaries", moduleName, JSCliManager::QueryToolSummaries);
     BindNativeFunction(env, exportObj, "queryTools", moduleName, JSCliManager::QueryTools);
 
-    napi_set_named_property(env, exportObj, "SessionStatus", CreateJsSessionStatus(env));
+    napi_value sessionStatus = CreateJsSessionStatus(env);
+    if (sessionStatus == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "CreateJsSessionStatus failed");
+        return CreateJsUndefined(env);
+    }
+    if (napi_set_named_property(env, exportObj, "SessionStatus", sessionStatus) != napi_ok) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "napi_set_named_property SessionStatus failed");
+    }
 
     TAG_LOGD(AAFwkTag::CLI_TOOL, "JSCliManagerInit end");
     return CreateJsUndefined(env);

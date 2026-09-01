@@ -670,11 +670,30 @@ napi_value CreateJsSessionStatus(napi_env env)
         TAG_LOGE(AAFwkTag::CLI_TOOL, "napi_create_object failed, %{public}d", createStatus);
         return nullptr;
     }
- 
-    napi_set_named_property(env, objValue, "RUNNING", CreateJsValue(env, std::string("running")));
-    napi_set_named_property(env, objValue, "COMPLETED", CreateJsValue(env, std::string("completed")));
-    napi_set_named_property(env, objValue, "FAILED", CreateJsValue(env, std::string("failed")));
- 
+
+    napi_value runningVal = CreateJsValue(env, std::string("running"));
+    napi_value completedVal = CreateJsValue(env, std::string("completed"));
+    napi_value failedVal = CreateJsValue(env, std::string("failed"));
+    if (runningVal == nullptr || completedVal == nullptr || failedVal == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "CreateJsValue failed");
+        return nullptr;
+    }
+    napi_status setStatus = napi_set_named_property(env, objValue, "RUNNING", runningVal);
+    if (setStatus != napi_ok) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "napi_set_named_property RUNNING failed");
+        return nullptr;
+    }
+    setStatus = napi_set_named_property(env, objValue, "COMPLETED", completedVal);
+    if (setStatus != napi_ok) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "napi_set_named_property COMPLETED failed");
+        return nullptr;
+    }
+    setStatus = napi_set_named_property(env, objValue, "FAILED", failedVal);
+    if (setStatus != napi_ok) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "napi_set_named_property FAILED failed");
+        return nullptr;
+    }
+
     return objValue;
 }
 
