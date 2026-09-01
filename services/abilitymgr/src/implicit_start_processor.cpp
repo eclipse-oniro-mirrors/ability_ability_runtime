@@ -12,6 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <map>
+
 #include "implicit_start_processor.h"
 
 #include "ability_manager_service.h"
@@ -25,6 +27,7 @@
 #include "ipc_skeleton.h"
 #include "global_constant.h"
 #include "hitrace_meter.h"
+#include "multi_app_utils.h"
 #include "start_ability_utils.h"
 #include "startup_util.h"
 #ifdef WITH_DLP
@@ -349,7 +352,7 @@ std::string ImplicitStartProcessor::MatchTypeAndUri(const AAFwk::Want &want)
     return type;
 }
 
-static void ProcessLinkType(std::vector<AppExecFwk::AbilityInfo> &abilityInfos)
+void ImplicitStartProcessor::ProcessLinkType(std::vector<AppExecFwk::AbilityInfo> &abilityInfos)
 {
     bool appLinkingExist = false;
     bool defaultAppExist = false;
@@ -604,9 +607,11 @@ int ImplicitStartProcessor::GenerateAbilityRequestByAction(int32_t userId, Abili
         }
     }
 
+    std::string defaultBundleName;
+    int32_t defaultAppIndex = -1;
     {
         HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, "for (const auto &info : abilityInfos)");
-        bool isExistDefaultApp = IsExistDefaultApp(userId, typeName);
+        bool isExistDefaultApp = IsExistDefaultApp(userId, typeName, defaultBundleName, defaultAppIndex);
         for (const auto &info : abilityInfos) {
             AddInfoParam param = {
                 .isExtension = isExtension,
@@ -641,6 +646,11 @@ int ImplicitStartProcessor::GenerateAbilityRequestByAction(int32_t userId, Abili
         dialogAppInfos.emplace_back(dialogAppInfo);
     }
     KioskManager::GetInstance().FilterDialogAppInfos(dialogAppInfos);
+
+    if (!defaultBundleName.empty()) {
+        FilterCloneByDefaultApp(dialogAppInfos, defaultBundleName, defaultAppIndex);
+    }
+    FilterClonesByPreferredIndex(dialogAppInfos, userId);
 
     return ERR_OK;
 }
@@ -692,6 +702,7 @@ int ImplicitStartProcessor::GenerateAbilityRequestByAppIndexes(int32_t userId, A
         dialogAppInfo.installSource = info.applicationInfo.installSource;
         dialogAppInfos.emplace_back(dialogAppInfo);
     }
+    FilterClonesByPreferredIndex(dialogAppInfos, userId);
     return ERR_OK;
 }
 
@@ -1031,7 +1042,8 @@ void ImplicitStartProcessor::AddAbilityInfoToDialogInfos(const AddInfoParam &par
     dialogAppInfos.emplace_back(dialogAppInfo);
 }
 
-bool ImplicitStartProcessor::IsExistDefaultApp(int32_t userId, const std::string &typeName)
+bool ImplicitStartProcessor::IsExistDefaultApp(int32_t userId, const std::string &typeName,
+    std::string &defaultBundleName, int32_t &defaultAppIndex)
 {
     auto defaultMgr = GetDefaultAppProxy();
     CHECK_POINTER_AND_RETURN_LOG(defaultMgr, false, "defaultMgr null");
@@ -1044,10 +1056,16 @@ bool ImplicitStartProcessor::IsExistDefaultApp(int32_t userId, const std::string
     }
 
     if (bundleInfo.abilityInfos.size() == 1) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "find default ability");
+        defaultBundleName = bundleInfo.abilityInfos.front().bundleName;
+        defaultAppIndex = bundleInfo.abilityInfos.front().appIndex;
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "find default ability, bundle: %{public}s, appIndex: %{public}d",
+            defaultBundleName.c_str(), defaultAppIndex);
         return true;
     } else if (bundleInfo.extensionInfos.size() == 1) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "find default extension");
+        defaultBundleName = bundleInfo.extensionInfos.front().bundleName;
+        defaultAppIndex = bundleInfo.extensionInfos.front().appIndex;
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "find default extension, bundle: %{public}s, appIndex: %{public}d",
+            defaultBundleName.c_str(), defaultAppIndex);
         return true;
     } else {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "getDefaultApplication failed");
@@ -1205,6 +1223,71 @@ bool ImplicitStartProcessor::FindExtensionAppClone(std::vector<AppExecFwk::Exten
         }
     }
     return true;
+}
+
+void ImplicitStartProcessor::FilterCloneByDefaultApp(std::vector<DialogAppInfo> &dialogAppInfos,
+    const std::string &defaultBundleName, int32_t defaultAppIndex)
+{
+    for (auto it = dialogAppInfos.begin(); it != dialogAppInfos.end(); ++it) {
+        if (it->bundleName == defaultBundleName && it->appIndex == defaultAppIndex) {
+            TAG_LOGI(AAFwkTag::ABILITYMGR,
+                "default clone matched, bundle: %{public}s, appIndex: %{public}d, skip selector",
+                defaultBundleName.c_str(), defaultAppIndex);
+            dialogAppInfos = { *it };
+            return;
+        }
+    }
+}
+
+void ImplicitStartProcessor::FilterClonesByPreferredIndex(
+    std::vector<DialogAppInfo> &dialogAppInfos, int32_t userId)
+{
+    if (dialogAppInfos.size() <= 1) {
+        return;
+    }
+    std::map<std::string, int32_t> cloneCount;
+    for (const auto &info : dialogAppInfos) {
+        cloneCount[info.bundleName]++;
+    }
+    std::map<std::string, int32_t> preferredMap;
+    for (const auto &item : cloneCount) {
+        if (item.second <= 1) {
+            continue;
+        }
+        int32_t preferredAppIndex = 0;
+        if (MultiAppUtils::GetPreferredAppCloneIndex(item.first, userId, preferredAppIndex) &&
+            IsPreferredCloneExist(dialogAppInfos, item.first, preferredAppIndex)) {
+            preferredMap[item.first] = preferredAppIndex;
+        }
+    }
+    if (preferredMap.empty()) {
+        return;
+    }
+    std::vector<DialogAppInfo> result;
+    for (const auto &info : dialogAppInfos) {
+        auto it = preferredMap.find(info.bundleName);
+        if (it != preferredMap.end() && info.appIndex != it->second) {
+            TAG_LOGI(AAFwkTag::ABILITYMGR,
+                "filter clone, bundle: %{public}s, appIndex: %{public}d, preferred: %{public}d",
+                info.bundleName.c_str(), info.appIndex, it->second);
+            continue;
+        }
+        result.push_back(info);
+    }
+    if (result.size() < dialogAppInfos.size()) {
+        dialogAppInfos = std::move(result);
+    }
+}
+
+bool ImplicitStartProcessor::IsPreferredCloneExist(const std::vector<DialogAppInfo> &dialogAppInfos,
+    const std::string &bundleName, int32_t preferredAppIndex)
+{
+    for (const auto &info : dialogAppInfos) {
+        if (info.bundleName == bundleName && info.appIndex == preferredAppIndex) {
+            return true;
+        }
+    }
+    return false;
 }
 }  // namespace AAFwk
 }  // namespace OHOS
