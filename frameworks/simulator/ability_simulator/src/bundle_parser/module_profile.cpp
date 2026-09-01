@@ -109,7 +109,8 @@ const std::map<std::string, uint32_t> BACKGROUND_MODES_MAP = {
     {ProfileReader::KEY_SCREEN_FETCH, ProfileReader::VALUE_SCREEN_FETCH},
     {ProfileReader::KEY_AV_PLAYBACK_AND_RECORD, ProfileReader::VALUE_AV_PLAYBACK_AND_RECORD},
     {ProfileReader::KEY_SPECIAL_SCENARIO_PROCESSING, ProfileReader::VALUE_SPECIAL_SCENARIO_PROCESSING},
-    {ProfileReader::KEY_NEARLINK, ProfileReader::VALUE_NEARLINK}
+    {ProfileReader::KEY_NEARLINK, ProfileReader::VALUE_NEARLINK},
+    {ProfileReader::KEY_USB, ProfileReader::VALUE_USB}
 };
 
 const std::set<std::string> GRANT_MODE_SET = {
