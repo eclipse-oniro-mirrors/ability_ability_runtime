@@ -75,23 +75,26 @@ ConnectServerManager& ConnectServerManager::Get()
     return connectServerManager;
 }
 
-void ConnectServerManager::LoadConnectServerDebuggerSo()
+bool ConnectServerManager::LoadConnectServerDebuggerSo()
 {
     std::lock_guard<std::mutex> lock(g_loadsoMutex);
     if (handlerConnectServerSo_ == nullptr) {
         handlerConnectServerSo_ = dlopen("libark_connect_inspector.z.so", RTLD_LAZY);
         if (handlerConnectServerSo_ == nullptr) {
             TAG_LOGE(AAFwkTag::JSRUNTIME, "null handlerConnectServerSo_");
-            return;
+            return false;
         }
     }
+    return true;
 }
 
 void ConnectServerManager::StartConnectServer(const std::string& bundleName, int socketFd, bool isLocalAbstract)
 {
     TAG_LOGD(AAFwkTag::JSRUNTIME, "called");
 
-    LoadConnectServerDebuggerSo();
+    if (!LoadConnectServerDebuggerSo()) {
+        return;
+    }
     bundleName_ = bundleName;
     if (isLocalAbstract) {
         auto startServer = reinterpret_cast<StartServer>(dlsym(handlerConnectServerSo_, "StartServer"));
@@ -193,7 +196,9 @@ void ConnectServerManager::SendDebuggerInfo(bool needBreakPoint, bool isDebugApp
 
 void ConnectServerManager::SetConnectedCallback()
 {
-    LoadConnectServerDebuggerSo();
+    if (!LoadConnectServerDebuggerSo()) {
+        return;
+    }
 
     auto setConnectCallBack = reinterpret_cast<SetConnectCallback>(
         dlsym(handlerConnectServerSo_, "SetConnectCallback"));
@@ -209,7 +214,9 @@ void ConnectServerManager::SetConnectedCallback()
 
 void ConnectServerManager::SetSwitchCallback(const std::function<void(int32_t)> &createLayoutInfo, int32_t instanceId)
 {
-    LoadConnectServerDebuggerSo();
+    if (!LoadConnectServerDebuggerSo()) {
+        return;
+    }
     auto setSwitchCallBack = reinterpret_cast<SetSwitchCallBack>(
         dlsym(handlerConnectServerSo_, "SetSwitchCallBack"));
     if (setSwitchCallBack == nullptr) {
@@ -221,7 +228,9 @@ void ConnectServerManager::SetSwitchCallback(const std::function<void(int32_t)> 
 
 void ConnectServerManager::SetProfilerCallBack(const std::function<void(bool)> &setStateProfilerStatus)
 {
-    LoadConnectServerDebuggerSo();
+    if (!LoadConnectServerDebuggerSo()) {
+        return;
+    }
     auto setProfilerCallback = reinterpret_cast<SetProfilerCallback>(
         dlsym(handlerConnectServerSo_, "SetProfilerCallback"));
     if (setProfilerCallback == nullptr) {
@@ -236,7 +245,9 @@ bool ConnectServerManager::SendInstanceMessage(int32_t tid, int32_t instanceId, 
     TAG_LOGI(AAFwkTag::JSRUNTIME, "called");
     ConnectServerManager::Get().SendInstanceMessageCallback(instanceId);
     std::string message = GetInstanceMapMessage("addInstance", instanceId, instanceName, tid);
-    LoadConnectServerDebuggerSo();
+    if (!LoadConnectServerDebuggerSo()) {
+        return false;
+    }
     auto storeMessage = reinterpret_cast<StoreMessage>(dlsym(handlerConnectServerSo_, "StoreMessage"));
     if (storeMessage == nullptr) {
         TAG_LOGE(AAFwkTag::JSRUNTIME, "null storeMessage");
@@ -265,7 +276,9 @@ bool ConnectServerManager::AddInstance(int32_t tid, int32_t instanceId, const st
     TAG_LOGD(AAFwkTag::JSRUNTIME, "called");
 
     ConnectServerManager::Get().AddInstanceCallback(instanceId);
-    LoadConnectServerDebuggerSo();
+    if (!LoadConnectServerDebuggerSo()) {
+        return false;
+    }
     // Get the message including information of new instance, which will be send to IDE.
     std::string message = GetInstanceMapMessage("addInstance", instanceId, instanceName, tid);
 
@@ -316,7 +329,9 @@ void ConnectServerManager::RemoveInstance(int32_t instanceId)
         return;
     }
 
-    LoadConnectServerDebuggerSo();
+    if (!LoadConnectServerDebuggerSo()) {
+        return;
+    }
     auto waitForConnection = reinterpret_cast<WaitForConnection>(dlsym(handlerConnectServerSo_, "WaitForConnection"));
     if (waitForConnection == nullptr) {
         TAG_LOGE(AAFwkTag::JSRUNTIME, "null WaitForConnection");
