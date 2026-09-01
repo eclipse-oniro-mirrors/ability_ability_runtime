@@ -4327,7 +4327,8 @@ HWTEST_F(AppMgrServiceInnerEighthTest, GetHyperSnapLastError_0400, TestSize.Leve
     ASSERT_NE(appMgrServiceInner, nullptr);
     AAFwk::MyStatus::GetInstance().getCallingUid_ = -1;
     HyperSnapErrorRecord record;
-    EXPECT_EQ(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record), ERR_INVALID_VALUE);
+    EXPECT_EQ(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::CREATE_SNAPSHOT, record),
+        ERR_INVALID_VALUE);
     AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
     TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0400 end");
 }
