@@ -1278,6 +1278,8 @@ HWTEST_F(ImplicitStartProcessorTest, FindAppClone_001, TestSize.Level1)
     EXPECT_EQ(res, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "FindAppClone_001 end");
 }
+
+#ifdef APP_DOMAIN_VERIFY_ENABLED
 /*
  * Feature: ImplicitStartProcessor
  * Function: ImplicitStartAG
@@ -1417,6 +1419,7 @@ HWTEST_F(ImplicitStartProcessorTest, NeedQueryFromAG_006, TestSize.Level1)
     auto res = processor->NeedQueryFromAG(request, applinkExist);
     EXPECT_TRUE(res);
 }
+#endif // APP_DOMAIN_VERIFY_ENABLED
 
 /*
  * Feature: ImplicitStartProcessor
