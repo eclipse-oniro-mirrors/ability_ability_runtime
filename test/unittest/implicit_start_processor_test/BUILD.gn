@@ -26,7 +26,7 @@ ohos_unittest("implicit_start_processor_test") {
     debug = false
   }
   branch_protector_ret = "pac_ret"
-  defines = [ "APP_DOMAIN_VERIFY_ENABLED" ]
+  defines = []
   include_dirs = [
     "mock/ams_mock/include",
     "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/system_ability_mock",
@@ -40,7 +40,6 @@ ohos_unittest("implicit_start_processor_test") {
     "implicit_start_processor_test.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/implicit_start_processor.cpp",
     "mock/src/mock_ams_dependencies.cpp",
-    "mock/src/mock_app_domain_verify_mgr_client.cpp",
     "mock/src/mock_bundle_mgr_helper.cpp",
     "mock/src/mock_parameters.cpp",
   ]
@@ -65,7 +64,6 @@ ohos_unittest("implicit_start_processor_test") {
     "ability_base:zuri",
     "ability_base:session_info",
     "ability_base:configuration",
-    "app_domain_verify:app_domain_verify_mgr_client",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
@@ -77,6 +75,12 @@ ohos_unittest("implicit_start_processor_test") {
     "init:libbeget_proxy",
     "ipc:ipc_core",
   ]
+
+  if (include_app_domain_verify) {
+    sources += [ "mock/src/mock_app_domain_verify_mgr_client.cpp" ]
+    external_deps += [ "app_domain_verify:app_domain_verify_mgr_client" ]
+    defines += [ "APP_DOMAIN_VERIFY_ENABLED" ]
+  }
 }
 
 group("unittest") {
