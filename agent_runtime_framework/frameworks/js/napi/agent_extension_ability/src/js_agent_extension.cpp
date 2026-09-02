@@ -90,13 +90,17 @@ napi_value AttachAgentExtensionContext(napi_env env, void *value, void *)
         env, contextObj, DetachCallbackFunc, AttachAgentExtensionContext, value, nullptr);
     SetJsAgentExtensionContext(env, contextObj, ptr);
     auto workContext = new (std::nothrow) std::weak_ptr<Context>(context);
+    if (workContext == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null workContext");
+        return nullptr;
+    }
     auto res = napi_wrap(env, contextObj, workContext,
         [](napi_env, void *data, void *) {
             TAG_LOGD(AAFwkTag::SER_ROUTER, "Finalizer for weak_ptr app service extension context is called");
             delete static_cast<std::weak_ptr<Context> *>(data);
         },
         nullptr, nullptr);
-    if (res != napi_ok && workContext != nullptr) {
+    if (res != napi_ok) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "napi_wrap failed:%{public}d", res);
         delete workContext;
         return nullptr;
@@ -201,6 +205,10 @@ void JsAgentExtension::OnStart(const AAFwk::Want &want)
         JsExtensionContext::ConfigurationUpdated(env, shellContextRef_, context->GetConfiguration());
     }
     napi_value napiWant = WrapWant(env, want);
+    if (napiWant == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null napiWant");
+        return;
+    }
     napi_value argv[] = {napiWant};
     CallObjectMethod("onCreate", argv, ARGC_ONE);
 }
@@ -273,10 +281,16 @@ sptr<IRemoteObject> JsAgentExtension::OnConnect(const AAFwk::Want &want,
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null hostProxyNref");
         return nullptr;
     }
-    napi_value jsHostProxy = reinterpret_cast<NativeReference*>(hostProxyNref)->GetNapiValue();
+    auto hostProxyRef = std::unique_ptr<NativeReference>(reinterpret_cast<NativeReference*>(hostProxyNref));
+    napi_value jsHostProxy = hostProxyRef->GetNapiValue();
+    if (jsHostProxy == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null jsHostProxy");
+        ReleaseHostProxyReference(hostProxyRef);
+        return nullptr;
+    }
     napi_value argv[] = {napiWant, jsHostProxy};
     CallObjectMethod("onConnect", argv, ARGC_TWO);
-    hostProxyMap_[hostProxyKey] = std::unique_ptr<NativeReference>(reinterpret_cast<NativeReference*>(hostProxyNref));
+    hostProxyMap_[hostProxyKey] = std::move(hostProxyRef);
     return stubObject;
 }
 
@@ -298,15 +312,18 @@ void JsAgentExtension::OnDisconnect(const AAFwk::Want &want,
         return;
     }
     napi_value jsHostProxy = nullptr;
+    std::unique_ptr<NativeReference> hostProxyNref;
     auto iter = hostProxyMap_.find(BuildAgentRemoteObjectKey(hostProxy));
     if (iter != hostProxyMap_.end()) {
-        auto &hostProxyNref = iter->second;
+        hostProxyNref = std::move(iter->second);
+        hostProxyMap_.erase(iter);
         if (hostProxyNref != nullptr) {
             jsHostProxy = hostProxyNref->GetNapiValue();
         }
     }
     if (jsHostProxy == nullptr) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null jsHostProxy");
+        ReleaseHostProxyReference(hostProxyNref);
         return;
     }
     void *nativeProxy = nullptr;
@@ -315,8 +332,7 @@ void JsAgentExtension::OnDisconnect(const AAFwk::Want &want,
     }
     napi_value argv[] = { napiWant, jsHostProxy };
     CallObjectMethod("onDisconnect", argv, ARGC_TWO);
-    ReleaseHostProxyReference(iter->second);
-    hostProxyMap_.erase(iter);
+    ReleaseHostProxyReference(hostProxyNref);
 }
 
 int32_t JsAgentExtension::OnSendData(const sptr<IRemoteObject> &hostProxy, const std::string &data)
@@ -396,6 +412,7 @@ int32_t JsAgentExtension::OnAgentInvoked(const std::string &agentId)
 
 void JsAgentExtension::HandleSendData(sptr<IRemoteObject> hostProxy, const std::string &data)
 {
+    HandleScope handleScope(jsRuntime_);
     if (hostProxy == nullptr) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null hostProxy");
         return;
@@ -420,6 +437,7 @@ void JsAgentExtension::HandleSendData(sptr<IRemoteObject> hostProxy, const std::
 
 void JsAgentExtension::HandleAuthorize(sptr<IRemoteObject> hostProxy, const std::string &data)
 {
+    HandleScope handleScope(jsRuntime_);
     if (hostProxy == nullptr) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null hostProxy");
         return;
@@ -444,6 +462,7 @@ void JsAgentExtension::HandleAuthorize(sptr<IRemoteObject> hostProxy, const std:
 
 void JsAgentExtension::HandleAgentInvoked(const std::string &agentId)
 {
+    HandleScope handleScope(jsRuntime_);
     napi_env env = jsRuntime_.GetNapiEnv();
     napi_value argv[] = { AbilityRuntime::CreateJsValue(env, agentId) };
     CallObjectMethod("onAgentInvoked", argv, ARGC_ONE);
@@ -507,8 +526,14 @@ void JsAgentExtension::ReleaseHostProxyReference(std::unique_ptr<NativeReference
     if (hostProxyRef == nullptr) {
         return;
     }
+    napi_env env = jsRuntime_.GetNapiEnv();
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null napi env");
+        jsRuntime_.FreeNativeReference(std::move(hostProxyRef));
+        return;
+    }
     napi_ref ref = reinterpret_cast<napi_ref>(hostProxyRef.get());
-    napi_status status = napi_delete_reference(jsRuntime_.GetNapiEnv(), ref);
+    napi_status status = napi_delete_reference(env, ref);
     if (status != napi_ok) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "napi_delete_reference failed %{public}d", status);
         jsRuntime_.FreeNativeReference(std::move(hostProxyRef));
@@ -550,12 +575,16 @@ void JsAgentExtension::BindContext(napi_env env, napi_value obj, std::shared_ptr
         return;
     }
     auto workContext = new (std::nothrow) std::weak_ptr<Context>(std::static_pointer_cast<Context>(context));
+    if (workContext == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null workContext");
+        return;
+    }
     auto res = napi_wrap(env, contextObj, workContext,
         [](napi_env, void* data, void*) {
             delete static_cast<std::weak_ptr<Context>*>(data);
         },
         nullptr, nullptr);
-    if (res != napi_ok && workContext != nullptr) {
+    if (res != napi_ok) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "napi_wrap failed:%{public}d", res);
         delete workContext;
         return;

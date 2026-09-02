@@ -309,7 +309,13 @@ private:
         std::vector<std::string> bundleNameList;
         // unwarp observer
         if (observer_ == nullptr) {
-            observer_ = new JSAppStateObserver(env);
+            observer_ = new (std::nothrow) JSAppStateObserver(env);
+        }
+        if (observer_ == nullptr) {
+            TAG_LOGE(AAFwkTag::APPMGR, "null observer_");
+            ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                GetInnerErrorMsg(AbilityInnerErrorMsg::MEMORY_ALLOC_FAILED));
+            return CreateJsUndefined(env);
         }
         OHOS::AppExecFwk::AppStateFilter appStateFilter = OHOS::AppExecFwk::AppStateFilter();
         bool isUsingFilter = false;
@@ -503,7 +509,7 @@ private:
     }
 #endif
     static void OnOffOldInner(sptr<OHOS::AppExecFwk::IAppMgr> appManager, sptr<JSAppStateObserver> observer,
-        int64_t observerId, napi_env env, NapiAsyncTask *task)
+        int32_t observerId, napi_env env, NapiAsyncTask *task)
     {
         HandleScope handleScope(env);
         if (observer == nullptr || appManager == nullptr) {
@@ -541,19 +547,19 @@ private:
             return CreateJsUndefined(env);
         }
 
-        int64_t observerId = -1;
-        napi_get_value_int64(env, argv[INDEX_ONE], &observerId);
+        int32_t observerId = -1;
+        napi_get_value_int32(env, argv[INDEX_ONE], &observerId);
         if (observer_ == nullptr) {
             TAG_LOGE(AAFwkTag::APPMGR, "null observer_");
             ThrowInvalidParamError(env, "observer is nullptr, please register first.");
             return CreateJsUndefined(env);
         }
         if (!observer_->FindObserverByObserverId(observerId)) {
-            TAG_LOGE(AAFwkTag::APPMGR, "not find observer:%{public}d", static_cast<int32_t>(observerId));
+            TAG_LOGE(AAFwkTag::APPMGR, "not find observer:%{public}d", observerId);
             ThrowInvalidParamError(env, "not find observerId.");
             return CreateJsUndefined(env);
         }
-        TAG_LOGD(AAFwkTag::APPMGR, "find observer exist:%{public}d", static_cast<int32_t>(observerId));
+        TAG_LOGD(AAFwkTag::APPMGR, "find observer exist:%{public}d", observerId);
         napi_value lastParam = (argc > ARGC_TWO) ? argv[INDEX_TWO] : nullptr;
         napi_value result = nullptr;
         std::unique_ptr<NapiAsyncTask> napiAsyncTask = CreateEmptyAsyncTask(env, lastParam, &result);
