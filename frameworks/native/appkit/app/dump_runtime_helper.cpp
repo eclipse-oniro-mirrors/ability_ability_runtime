@@ -56,6 +56,7 @@ static constexpr const char* const EVENT_XATTR_NAME = "user.appevent";
 static constexpr const char* const OOM_QUOTA_XATTR_NAME = "user.oomdump.quota";
 static constexpr const char* const RUNNING_ID_NAME = "user.runningId";
 static constexpr const char* const PROPERTY2C = "user.oomdumptelemetry.quota";
+static constexpr const char* const TELEMETRY_ENABLE_PROPERTY = "user.oomdumptelemetry.enable";
 static constexpr const char* const HIAPPEVENT_PATH = "/data/storage/el2/base/cache/hiappevent";
 static constexpr const char* const OOM_QUOTA_PATH = "/data/storage/el2/base/cache/rawheap";
 static constexpr const char* const JS_HEAP_LOGTYPE = "user.event_config.js_heap_logtype";
@@ -138,24 +139,11 @@ void DumpRuntimeHelper::SetAppFreezeFilterCallback()
             TAG_LOGE(AAFwkTag::APPKIT, "failed to check oomdump switch");
             return false;
         }
-        if (g_betaVersion || g_developMode || !needDecreaseQuota) {
-            TAG_LOGI(AAFwkTag::APPKIT, "no need to check quota, just dump."
-                " beta: %{public}d, develop: %{public}d, hidumper: %{public}d",
-                g_betaVersion, g_developMode, !needDecreaseQuota);
+        if (CheckDumpQuota(eventConfig, needDecreaseQuota)) {
             client->SetAppFreezeFilter(pid);
             return true;
         }
-        bool ret2custom = (eventConfig == EVENT_RAWHEAP);
-        bool ret2D = Check2DQuota(needDecreaseQuota);
-        bool ret2C = Check2CQuota();
-        if (!ret2custom && !ret2D && !ret2C) {
-            TAG_LOGI(AAFwkTag::APPKIT, "check custom|2C|2D quota both failed, no dump.");
-            return false;
-        }
-        TAG_LOGI(AAFwkTag::APPKIT, "check success, will dump. custom: %{public}d 2C: %{public}d, 2D: %{public}d",
-                 ret2custom, ret2C, ret2D);
-        client->SetAppFreezeFilter(pid);
-        return true;
+        return false;
     };
     auto vm = (static_cast<AbilityRuntime::JsRuntime&>(*runtime)).GetEcmaVm();
     panda::DFXJSNApi::SetAppFreezeFilterCallback(vm, appfreezeFilterCallback);
@@ -1035,6 +1023,122 @@ std::string DumpRuntimeHelper::GetEventConfig(const std::string &key)
 
     TAG_LOGI(AAFwkTag::APPKIT, "succeed to getEventConfig, value: %{public}s", value.c_str());
     return value;
+}
+
+bool DumpRuntimeHelper::IsInFilterList()
+{
+    std::string value;
+    if (GetDirXattr(OOM_QUOTA_PATH, TELEMETRY_ENABLE_PROPERTY, value) && value == "disable") {
+        TAG_LOGI(AAFwkTag::APPKIT, "app is in filter list, xattr value: %{public}s", value.c_str());
+        return true;
+    }
+    return false;
+}
+
+bool DumpRuntimeHelper::CheckRandomTelemetryQuota()
+{
+    // 1. Check if random telemetry is enabled (system property exists)
+    std::string value = OHOS::system::GetParameter("persist.hiview.oomdump.random.telemetry", "");
+    if (value.empty()) {
+        TAG_LOGE(AAFwkTag::APPKIT, "no random telemetry property");
+        return false;
+    }
+
+    // 2. Check if current app is in filter list
+    if (IsInFilterList()) {
+        return false;
+    }
+
+    // 3. Parse property values
+    std::vector<int64_t> quotaValues;
+    std::stringstream ss(value);
+    std::string segment;
+    while (std::getline(ss, segment, ',')) {
+        long long tmp;
+        if (!SafeStoll(segment, tmp)) {
+            TAG_LOGE(AAFwkTag::APPKIT, "failed to SafeStoll segment: %{public}s", segment.c_str());
+            return false;
+        }
+        quotaValues.push_back(static_cast<int64_t>(tmp));
+    }
+
+    if (quotaValues.size() != PROPERTY2C_SIZE) {
+        TAG_LOGE(AAFwkTag::APPKIT, "invalid random telemetry property size: %zu", quotaValues.size());
+        return false;
+    }
+
+    int compressQuota = GetCompressQuota(quotaValues);
+    int appQuota = static_cast<int>(quotaValues[INDEX_APP_QUOTA]);
+    int leftQuota = MIN(compressQuota, appQuota) - static_cast<int>(quotaValues[INDEX_HAS_SENT]);
+    if (leftQuota <= 0) {
+        TAG_LOGE(AAFwkTag::APPKIT, "compress: %{public}d, app: %{public}d, sent: %{public}" PRId64,
+                 compressQuota, appQuota, quotaValues[INDEX_HAS_SENT]);
+        return false;
+    }
+
+    uint64_t now = GetCurrentTimestamp();
+    if (quotaValues[INDEX_DELIVERY_TS] < 0) {
+        TAG_LOGE(AAFwkTag::APPKIT, "invalid deliveryTs");
+        return false;
+    }
+    uint64_t deliveryTs = static_cast<uint64_t>(quotaValues[INDEX_DELIVERY_TS]);
+    if (now < deliveryTs || now - deliveryTs > OOM_DUMP_INTERVAL) {
+        TAG_LOGE(AAFwkTag::APPKIT, "random telemetry deliveryTs expired, deliveryTs: %{public}" PRIu64, deliveryTs);
+        return false;
+    }
+
+    uint64_t spaceQuota = static_cast<uint64_t>(quotaValues[INDEX_ROM_RSV_SIZE]) * KB_PER_MB;
+    if (!CheckOOMFreeSpace(spaceQuota)) {
+        TAG_LOGE(AAFwkTag::APPKIT, "random telemetry rom space insufficient, spaceQuota: %{public}" PRIu64, spaceQuota);
+        return false;
+    }
+
+    TAG_LOGI(AAFwkTag::APPKIT, "random telemetry check success");
+    return true;
+}
+
+bool DumpRuntimeHelper::CheckDumpQuota(const std::string &eventConfig, bool needDecreaseQuota)
+{
+    // Step 1: 2custom — highest priority
+    if (eventConfig == EVENT_RAWHEAP) {
+        TAG_LOGI(AAFwkTag::APPKIT, "2custom matched, must dump.");
+        return true;
+    }
+
+    // Step 2: DFX_ARKTS_SNAPSHOT env check
+    char* snapshotEnv = getenv("DFX_ARKTS_SNAPSHOT");
+    if (snapshotEnv != nullptr && (strcmp(snapshotEnv, "disable") == 0 || strcmp(snapshotEnv, "false") == 0)) {
+        TAG_LOGI(AAFwkTag::APPKIT, "DFX_ARKTS_SNAPSHOT is %{public}s, no dump.", snapshotEnv);
+        return false;
+    }
+
+    // Step 3: beta / developer mode
+    if (g_betaVersion || g_developMode || !needDecreaseQuota) {
+        TAG_LOGI(AAFwkTag::APPKIT, "beta or developMode, dump directly."
+            " beta: %{public}d, develop: %{public}d, hidumper: %{public}d",
+            g_betaVersion, g_developMode, !needDecreaseQuota);
+        return true;
+    }
+
+    // Step 4: 2C / 2D / random telemetry
+    if (Check2CQuota()) {
+        TAG_LOGI(AAFwkTag::APPKIT, "2C quota check passed, will dump.");
+        return true;
+    }
+
+    if (Check2DQuota(needDecreaseQuota)) {
+        TAG_LOGI(AAFwkTag::APPKIT, "2D quota check passed, will dump.");
+        return true;
+    }
+
+    if (CheckRandomTelemetryQuota()) {
+        TAG_LOGI(AAFwkTag::APPKIT, "random telemetry check passed, will dump.");
+        return true;
+    }
+
+    // Step 5: all checks failed
+    TAG_LOGI(AAFwkTag::APPKIT, "all quota checks failed, no dump.");
+    return false;
 }
 } // namespace AppExecFwk
 } // namespace OHOS
