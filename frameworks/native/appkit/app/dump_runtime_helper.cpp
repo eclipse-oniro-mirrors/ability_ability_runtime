@@ -250,7 +250,10 @@ bool DumpRuntimeHelper::Check2DQuota(bool needDecreaseQuota)
         TAG_LOGE(AAFwkTag::APPKIT, "Check2DOOMDumpQuota failed");
         return false;
     }
-    Set2DQuota(OOM_QUOTA_PATH, GetCurrentTimestamp(), g_oomDumpProcessQuota - 1);
+    if (!Set2DQuota(OOM_QUOTA_PATH, GetCurrentTimestamp(), g_oomDumpProcessQuota - 1)) {
+        TAG_LOGE(AAFwkTag::APPKIT, "failed to Set2DQuota");
+        return false;
+    }
 
     TAG_LOGI(AAFwkTag::APPKIT, "succeed to Check2DQuota");
     return true;
