@@ -940,6 +940,165 @@ HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_CreateAbilityTransitionInfo_005, Tes
  * SubFunction: CreateAbilityTransitionInfo
  * FunctionPoints: NA
  * EnvConditions: NA
+ * CaseDescription: Verify CreateAbilityTransitionInfo with valid numeric windowMode and displayId
+ */
+HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_CreateAbilityTransitionInfo_007, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    EXPECT_NE(abilityRecord, nullptr);
+    AbilityRequest abilityRequest;
+    std::shared_ptr<AbilityStartSetting> startSetting = std::make_shared<AbilityStartSetting>();
+    startSetting->AddProperty(AbilityStartSetting::WINDOW_MODE_KEY, "1024");
+    startSetting->AddProperty(AbilityStartSetting::WINDOW_DISPLAY_ID_KEY, "2");
+    abilityRequest.startSetting = startSetting;
+    auto info = abilityRecord->CreateAbilityTransitionInfo(abilityRequest);
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->mode_, 1024u);
+    EXPECT_EQ(info->displayId_, 2u);
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: CreateAbilityTransitionInfo
+ * SubFunction: CreateAbilityTransitionInfo
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify CreateAbilityTransitionInfo with non-numeric values keeps defaults
+ */
+HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_CreateAbilityTransitionInfo_008, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    EXPECT_NE(abilityRecord, nullptr);
+    AbilityRequest abilityRequest;
+    std::shared_ptr<AbilityStartSetting> startSetting = std::make_shared<AbilityStartSetting>();
+    startSetting->AddProperty(AbilityStartSetting::WINDOW_MODE_KEY, "windowMode");
+    startSetting->AddProperty(AbilityStartSetting::WINDOW_DISPLAY_ID_KEY, "displayId");
+    abilityRequest.startSetting = startSetting;
+    auto info = abilityRecord->CreateAbilityTransitionInfo(abilityRequest);
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->mode_, 0u);
+    EXPECT_EQ(info->displayId_, 0u);
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: CreateAbilityTransitionInfo
+ * SubFunction: CreateAbilityTransitionInfo
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify CreateAbilityTransitionInfo with partially invalid values
+ */
+HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_CreateAbilityTransitionInfo_009, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    EXPECT_NE(abilityRecord, nullptr);
+    AbilityRequest abilityRequest;
+    std::shared_ptr<AbilityStartSetting> startSetting = std::make_shared<AbilityStartSetting>();
+    startSetting->AddProperty(AbilityStartSetting::WINDOW_MODE_KEY, "100");
+    startSetting->AddProperty(AbilityStartSetting::WINDOW_DISPLAY_ID_KEY, "abc");
+    abilityRequest.startSetting = startSetting;
+    auto info = abilityRecord->CreateAbilityTransitionInfo(abilityRequest);
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->mode_, 100u);
+    EXPECT_EQ(info->displayId_, 0u);
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: CreateAbilityTransitionInfo
+ * SubFunction: CreateAbilityTransitionInfo
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify CreateAbilityTransitionInfo without properties keeps defaults
+ */
+HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_CreateAbilityTransitionInfo_010, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    EXPECT_NE(abilityRecord, nullptr);
+    AbilityRequest abilityRequest;
+    std::shared_ptr<AbilityStartSetting> startSetting = std::make_shared<AbilityStartSetting>();
+    abilityRequest.startSetting = startSetting;
+    auto info = abilityRecord->CreateAbilityTransitionInfo(abilityRequest);
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->mode_, 0u);
+    EXPECT_EQ(info->displayId_, 0u);
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: CreateAbilityTransitionInfo
+ * SubFunction: CreateAbilityTransitionInfo
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify CreateAbilityTransitionInfo with overflow values keeps defaults
+ */
+HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_CreateAbilityTransitionInfo_011, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    EXPECT_NE(abilityRecord, nullptr);
+    AbilityRequest abilityRequest;
+    std::shared_ptr<AbilityStartSetting> startSetting = std::make_shared<AbilityStartSetting>();
+    startSetting->AddProperty(AbilityStartSetting::WINDOW_MODE_KEY, "2147483648");
+    startSetting->AddProperty(AbilityStartSetting::WINDOW_DISPLAY_ID_KEY, "99999999999");
+    abilityRequest.startSetting = startSetting;
+    auto info = abilityRecord->CreateAbilityTransitionInfo(abilityRequest);
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->mode_, 0u);
+    EXPECT_EQ(info->displayId_, 0u);
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: CreateAbilityTransitionInfo
+ * SubFunction: CreateAbilityTransitionInfo
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify CreateAbilityTransitionInfo with negative values
+ */
+HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_CreateAbilityTransitionInfo_012, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    EXPECT_NE(abilityRecord, nullptr);
+    AbilityRequest abilityRequest;
+    std::shared_ptr<AbilityStartSetting> startSetting = std::make_shared<AbilityStartSetting>();
+    startSetting->AddProperty(AbilityStartSetting::WINDOW_MODE_KEY, "-1");
+    startSetting->AddProperty(AbilityStartSetting::WINDOW_DISPLAY_ID_KEY, "-2");
+    abilityRequest.startSetting = startSetting;
+    auto info = abilityRecord->CreateAbilityTransitionInfo(abilityRequest);
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->mode_, 0u);
+    EXPECT_EQ(info->displayId_, 0u);
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: CreateAbilityTransitionInfo
+ * SubFunction: CreateAbilityTransitionInfo
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify CreateAbilityTransitionInfo with trailing garbage keeps defaults
+ */
+HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_CreateAbilityTransitionInfo_013, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    EXPECT_NE(abilityRecord, nullptr);
+    AbilityRequest abilityRequest;
+    std::shared_ptr<AbilityStartSetting> startSetting = std::make_shared<AbilityStartSetting>();
+    startSetting->AddProperty(AbilityStartSetting::WINDOW_MODE_KEY, "10abc");
+    startSetting->AddProperty(AbilityStartSetting::WINDOW_DISPLAY_ID_KEY, " 3");
+    abilityRequest.startSetting = startSetting;
+    auto info = abilityRecord->CreateAbilityTransitionInfo(abilityRequest);
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->mode_, 0u);
+    EXPECT_EQ(info->displayId_, 0u);
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: CreateAbilityTransitionInfo
+ * SubFunction: CreateAbilityTransitionInfo
+ * FunctionPoints: NA
+ * EnvConditions: NA
  * CaseDescription: Verify AbilityRecord CreateAbilityTransitionInfo
  */
 HWTEST_F(AbilityRecordTest, AaFwk_AbilityMS_CreateAbilityTransitionInfo_006, TestSize.Level1)
