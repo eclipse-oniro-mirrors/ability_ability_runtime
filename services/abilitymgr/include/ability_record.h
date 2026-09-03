@@ -570,6 +570,7 @@ public:
     int32_t GetAppIndex() const;
     void SetWantAppIndex(const int32_t appIndex);
     int32_t GetWantAppIndex() const;
+    void SetWantParam(const std::string &key, int32_t value);
     bool IsRestarting() const;
     void SetAppState(const AppState &state);
     AppState GetAppState() const;

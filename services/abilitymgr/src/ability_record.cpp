@@ -2555,6 +2555,12 @@ int32_t AbilityRecord::GetWantAppIndex() const
     return want_.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, 0);
 }
 
+void AbilityRecord::SetWantParam(const std::string &key, int32_t value)
+{
+    std::lock_guard guard(wantLock_);
+    want_.SetParam(key, value);
+}
+
 bool AbilityRecord::IsMinimizeFromUser() const
 {
     return minimizeReason_;
