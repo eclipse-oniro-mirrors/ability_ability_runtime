@@ -32,6 +32,7 @@ constexpr const char *BUNDLE_NAME = "bundleName";
 constexpr const char *KEEP_ALIVE = "keepAlive";
 constexpr const char *KEEP_ALIVE_ENABLE = "keepAliveEnable";
 constexpr const char *KEEP_ALIVE_CONFIGURED_LIST = "keepAliveConfiguredList";
+constexpr const char *KEEP_ALIVE_SA_UID_LIST = "keepAliveSaUidList";
 
 } // namespace
 ParserUtil &ParserUtil::GetInstance()
@@ -40,7 +41,8 @@ ParserUtil &ParserUtil::GetInstance()
     return instance;
 }
 
-void ParserUtil::GetResidentProcessRawData(std::vector<std::tuple<std::string, std::string, std::string>> &list)
+void ParserUtil::GetResidentProcessRawData(
+    std::vector<std::tuple<std::string, std::string, std::string, std::string>> &list)
 {
     std::vector<std::string> rootDirList;
     GetPreInstallRootDirList(rootDirList);
@@ -52,8 +54,8 @@ void ParserUtil::GetResidentProcessRawData(std::vector<std::tuple<std::string, s
     }
 }
 
-void ParserUtil::ParsePreInstallAbilityConfig(
-    const std::string &filePath, std::vector<std::tuple<std::string, std::string, std::string>> &list)
+void ParserUtil::ParsePreInstallAbilityConfig(const std::string &filePath,
+    std::vector<std::tuple<std::string, std::string, std::string, std::string>> &list)
 {
     nlohmann::json jsonBuf;
     if (!ReadFileIntoJson(filePath, jsonBuf)) {
@@ -67,8 +69,8 @@ void ParserUtil::ParsePreInstallAbilityConfig(
     FilterInfoFromJson(jsonBuf, list);
 }
 
-bool ParserUtil::FilterInfoFromJson(
-    nlohmann::json &jsonBuf, std::vector<std::tuple<std::string, std::string, std::string>> &list)
+bool ParserUtil::FilterInfoFromJson(nlohmann::json &jsonBuf,
+    std::vector<std::tuple<std::string, std::string, std::string, std::string>> &list)
 {
     if (jsonBuf.is_discarded()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "format error");
@@ -89,6 +91,7 @@ bool ParserUtil::FilterInfoFromJson(
     std::string bundleName;
     std::string KeepAliveEnable = "1";
     std::string KeepAliveConfiguredList;
+    std::string KeepAliveSaUidList;
     for (const auto &array : arrays) {
         if (!array.is_object()) {
             continue;
@@ -116,10 +119,16 @@ bool ParserUtil::FilterInfoFromJson(
             KeepAliveConfiguredList = array.at(KEEP_ALIVE_CONFIGURED_LIST).dump();
         }
 
-        list.emplace_back(std::make_tuple(bundleName, KeepAliveEnable, KeepAliveConfiguredList));
+        if (array.find(KEEP_ALIVE_SA_UID_LIST) != array.end() && array.at(KEEP_ALIVE_SA_UID_LIST).is_array()) {
+            // Save directly in the form of an array and parse it when in use
+            KeepAliveSaUidList = array.at(KEEP_ALIVE_SA_UID_LIST).dump();
+        }
+
+        list.emplace_back(std::make_tuple(bundleName, KeepAliveEnable, KeepAliveConfiguredList, KeepAliveSaUidList));
         bundleName.clear();
         KeepAliveEnable = "1";
         KeepAliveConfiguredList.clear();
+        KeepAliveSaUidList.clear();
     }
 
     return true;

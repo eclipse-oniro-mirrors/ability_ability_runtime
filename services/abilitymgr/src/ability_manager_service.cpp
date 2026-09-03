@@ -16173,6 +16173,13 @@ void AbilityManagerService::CloseAssertDialog(const std::string &assertSessionId
 int32_t AbilityManagerService::SetResidentProcessEnabled(const std::string &bundleName, bool enable)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "called");
+    if (AAFwk::PermissionVerification::GetInstance()->IsSACall()) {
+        auto residentProcessManager = DelayedSingleton<ResidentProcessManager>::GetInstance();
+        CHECK_POINTER_AND_RETURN(residentProcessManager, INNER_ERR);
+        return residentProcessManager->SetResidentProcessEnabledForSA(bundleName,
+            static_cast<int32_t>(IPCSkeleton::GetCallingUid()), enable);
+    }
+
     if (!AAFwk::PermissionVerification::GetInstance()->IsSystemAppCall()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "permission verification failed");
         return ERR_NOT_SYSTEM_APP;
