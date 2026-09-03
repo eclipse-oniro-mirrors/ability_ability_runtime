@@ -222,10 +222,7 @@ private:
                 return;
             }
             TAG_LOGE(AAFwkTag::APPKIT, "GetHyperSnapLastError failed:%{public}d", *innerErrorCode);
-            task.Reject(env, (*innerErrorCode == ERR_INVALID_VALUE)
-                ? CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_PARAM),
-                    "GetLastError failed, invalid errType.")
-                : CreateJsErrorByNativeErr(env, *innerErrorCode));
+            task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrorCode));
         };
         napi_value result = nullptr;
         NapiAsyncTask::ScheduleHighQos("JsHyperSnapManager::OnGetLastError", env,

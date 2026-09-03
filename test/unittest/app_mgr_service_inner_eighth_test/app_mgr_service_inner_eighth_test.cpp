@@ -4301,7 +4301,7 @@ HWTEST_F(AppMgrServiceInnerEighthTest, GetHyperSnapLastError_0200, TestSize.Leve
 
 /**
  * @tc.name: GetHyperSnapLastError_0300
- * @tc.desc: test invalid error type returns ERR_INVALID_VALUE
+ * @tc.desc: test invalid error type returns AAFwk::INVALID_PARAMETERS_ERR
  * @tc.type: FUNC
  */
 HWTEST_F(AppMgrServiceInnerEighthTest, GetHyperSnapLastError_0300, TestSize.Level2)
@@ -4311,7 +4311,7 @@ HWTEST_F(AppMgrServiceInnerEighthTest, GetHyperSnapLastError_0300, TestSize.Leve
     ASSERT_NE(appMgrServiceInner, nullptr);
     HyperSnapErrorRecord record;
     auto invalidType = static_cast<HyperSnapErrorType>(-1);
-    EXPECT_EQ(appMgrServiceInner->GetHyperSnapLastError(invalidType, record), ERR_INVALID_VALUE);
+    EXPECT_EQ(appMgrServiceInner->GetHyperSnapLastError(invalidType, record), AAFwk::INVALID_PARAMETERS_ERR);
     TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0300 end");
 }
 

@@ -181,10 +181,7 @@ void EtsHyperSnapManager::NativeGetLastError(ani_env *env, ani_enum_item errType
     int32_t result = appMgrClient->GetHyperSnapLastError(typeValue, record);
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::APPKIT, "NativeGetLastError: failed, result %{public}d", result);
-        ani_object error = (result == ERR_INVALID_VALUE)
-            ? AbilityRuntime::EtsErrorUtil::CreateError(env,
-                AbilityRuntime::AbilityErrorCode::ERROR_CODE_INVALID_PARAM)
-            : AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env, result);
+        ani_object error = AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env, result);
         AppExecFwk::AsyncCallback(env, call, error, nullptr);
         return;
     }

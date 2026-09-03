@@ -378,14 +378,14 @@ HWTEST_F(AppMgrServiceFourthTest, GetHyperSnapLastError_0100, TestSize.Level2)
 
 /**
  * @tc.name: GetHyperSnapLastError_0200
- * @tc.desc: test GetHyperSnapLastError returns ERR_INVALID_VALUE on invalid error type
+ * @tc.desc: test GetHyperSnapLastError returns AAFwk::INVALID_PARAMETERS_ERR on invalid error type
  * @tc.type: FUNC
  */
 HWTEST_F(AppMgrServiceFourthTest, GetHyperSnapLastError_0200, TestSize.Level2)
 {
     TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0200 start");
     HyperSnapErrorRecord record;
-    EXPECT_EQ(appMgrService_->GetHyperSnapLastError(99, record), ERR_INVALID_VALUE);
+    EXPECT_EQ(appMgrService_->GetHyperSnapLastError(99, record), AAFwk::INVALID_PARAMETERS_ERR);
     TAG_LOGI(AAFwkTag::TEST, "GetHyperSnapLastError_0200 end");
 }
 

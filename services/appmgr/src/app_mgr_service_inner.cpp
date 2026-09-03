@@ -13557,7 +13557,7 @@ int32_t AppMgrServiceInner::GetHyperSnapLastError(HyperSnapErrorType errType, Hy
     if (errType != HyperSnapErrorType::CREATE_SNAPSHOT && errType != HyperSnapErrorType::FORK_FROM_SNAPSHOT) {
         TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError invalid error type: %{public}d",
             static_cast<int32_t>(errType));
-        return ERR_INVALID_VALUE;
+        return AAFwk::INVALID_PARAMETERS_ERR;
     }
 
     auto uid = IPCSkeleton::GetCallingUid();
