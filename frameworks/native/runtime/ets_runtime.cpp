@@ -472,6 +472,19 @@ void ETSRuntime::DumpHeapSnapshot(uint32_t tid, const OHOS::AbilityRuntime::Runt
     }
 }
 
+void ETSRuntime::NotifyApplicationState(bool isBackground)
+{
+    TAG_LOGI(AAFwkTag::ETSRUNTIME, "ETSRuntime delegates NotifyApplicationState");
+    if (jsRuntime_ != nullptr) {
+        // Native engine is a responsible component for the event loop, application state notification, etc
+        // for dynamic (js) and static (ets) ArkTS runtimes,
+        // so ETSRuntime delegates to JSRuntime foreground/background application state notifications
+        jsRuntime_->NotifyApplicationState(isBackground);
+    } else {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "ETSRuntime::NotifyApplicationState jsRuntime_ is null");
+    }
+}
+
 void ETSRuntime::ForceFullGC(uint32_t tid)
 {
     auto env = GetAniEnv();
