@@ -25,7 +25,9 @@
 #undef protected
 
 #include "ability_manager_errors.h"
+#include "app_scheduler.h"
 #include "errors.h"
+#include "extension_record.h"
 #include "ipc_skeleton.h"
 #include "iremote_object.h"
 #include "message_option.h"
@@ -35,6 +37,10 @@ using namespace testing::ext;
 
 namespace OHOS {
 namespace AAFwk {
+namespace {
+const std::string UIEXTENSION_LAUNCH_TIMESTAMP_HIGH = "ohos.ability.params.uiExtensionLaunchTimestampHigh";
+}
+
 class MockPreloadHostClient final : public IRemoteObject {
 public:
     explicit MockPreloadHostClient(bool addDeathRecipientResult)
@@ -105,6 +111,68 @@ public:
 };
 
 class UIExtensionAbilityManagerThirdTest : public testing::Test {};
+
+/*
+ * Feature: UIExtensionAbilityManager
+ * Function: OnAbilityRequestDone
+ * CaseDescription: Verify a foregrounding UIExtension retains its modal launch timestamp
+ */
+HWTEST_F(UIExtensionAbilityManagerThirdTest, OnAbilityRequestDone_001, TestSize.Level1)
+{
+    auto connectManager = std::make_shared<UIExtensionAbilityManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::SYS_COMMON_UI;
+    abilityRequest.abilityInfo.bundleName = "com.test.uiextension";
+    abilityRequest.abilityInfo.name = "TestUIExtension";
+    auto abilityRecord = BaseExtensionRecord::CreateBaseExtensionRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->SetAbilityState(AbilityState::FOREGROUNDING);
+    auto sessionInfo = sptr<SessionInfo>::MakeSptr();
+    ASSERT_NE(sessionInfo, nullptr);
+    sessionInfo->persistentId = 1;
+    sessionInfo->uiExtensionUsage = AppExecFwk::UIExtensionUsage::MODAL;
+    abilityRecord->SetSessionInfo(sessionInfo);
+    abilityRecord->AddUIExtensionLaunchTimestamp();
+    EXPECT_NE(abilityRecord->GetWant().GetIntParam(UIEXTENSION_LAUNCH_TIMESTAMP_HIGH, -1), -1);
+    connectManager->CallAddToServiceMap("uiextension", abilityRecord);
+
+    connectManager->OnAbilityRequestDone(abilityRecord->GetToken(),
+        static_cast<int32_t>(AppAbilityState::ABILITY_STATE_FOREGROUND));
+    EXPECT_NE(abilityRecord->GetWant().GetIntParam(UIEXTENSION_LAUNCH_TIMESTAMP_HIGH, -1), -1);
+}
+
+/*
+ * Feature: UIExtensionAbilityManager
+ * Function: OnAbilityRequestDone
+ * CaseDescription: Verify an already foreground UIExtension skips foreground and retains timestamp
+ */
+HWTEST_F(UIExtensionAbilityManagerThirdTest, OnAbilityRequestDone_002, TestSize.Level1)
+{
+    auto connectManager = std::make_shared<UIExtensionAbilityManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::SYS_COMMON_UI;
+    abilityRequest.abilityInfo.bundleName = "com.test.uiextension";
+    abilityRequest.abilityInfo.name = "TestUIExtension";
+    auto abilityRecord = BaseExtensionRecord::CreateBaseExtensionRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->SetAbilityState(AbilityState::FOREGROUND);
+    auto sessionInfo = sptr<SessionInfo>::MakeSptr();
+    ASSERT_NE(sessionInfo, nullptr);
+    sessionInfo->persistentId = 1;
+    sessionInfo->uiExtensionUsage = AppExecFwk::UIExtensionUsage::MODAL;
+    abilityRecord->SetSessionInfo(sessionInfo);
+    abilityRecord->AddUIExtensionLaunchTimestamp();
+    EXPECT_NE(abilityRecord->GetWant().GetIntParam(UIEXTENSION_LAUNCH_TIMESTAMP_HIGH, -1), -1);
+    connectManager->CallAddToServiceMap("uiextension", abilityRecord);
+
+    connectManager->OnAbilityRequestDone(abilityRecord->GetToken(),
+        static_cast<int32_t>(AppAbilityState::ABILITY_STATE_FOREGROUND));
+    EXPECT_NE(abilityRecord->GetWant().GetIntParam(UIEXTENSION_LAUNCH_TIMESTAMP_HIGH, -1), -1);
+}
 
 /*
  * Feature: UIExtensionAbilityManager
