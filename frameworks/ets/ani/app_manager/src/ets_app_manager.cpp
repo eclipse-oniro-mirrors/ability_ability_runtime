@@ -904,7 +904,7 @@ void EtsAppManager::KillProcessesByBundleNameInner(ani_env *env, ani_object call
         return;
     }
     std::string bundleName;
-    if (!AppExecFwk::GetStdString(env, etsBundleName, bundleName) || bundleName.empty()) {
+    if (!AppExecFwk::GetStdString(env, etsBundleName, bundleName)) {
         TAG_LOGE(AAFwkTag::APPMGR, "GetStdString Failed");
         AppExecFwk::AsyncCallback(env, callback,
             AbilityRuntime::EtsErrorUtil::CreateInvalidParamError(
@@ -986,7 +986,7 @@ void EtsAppManager::KillProcessWithAccountInner(ani_env *env, ani_object callbac
         return;
     }
     std::string bundleName;
-    if (!AppExecFwk::GetStdString(env, aniBundleName, bundleName) || bundleName.empty()) {
+    if (!AppExecFwk::GetStdString(env, aniBundleName, bundleName)) {
         TAG_LOGE(AAFwkTag::APPMGR, "GetStdString Failed");
         AppExecFwk::AsyncCallback(env, callback,
             AbilityRuntime::EtsErrorUtil::CreateInvalidParamError(
@@ -1875,7 +1875,7 @@ void EtsAppManager::IsApplicationRunning(ani_env *env, ani_string aniBundleName,
         return;
     }
     std::string bundleName;
-    if (!AppExecFwk::GetStdString(env, aniBundleName, bundleName) || bundleName.empty()) {
+    if (!AppExecFwk::GetStdString(env, aniBundleName, bundleName)) {
         TAG_LOGE(AAFwkTag::APPMGR, "get bundleName failed");
         AppExecFwk::AsyncCallback(env, callback,
             AbilityRuntime::EtsErrorUtil::CreateInvalidParamError(
