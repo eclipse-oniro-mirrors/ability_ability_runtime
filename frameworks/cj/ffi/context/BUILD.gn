@@ -79,6 +79,8 @@ ohos_shared_library("cj_context_ffi") {
 
   cflags_cc = cflags
 
+  version_script = "libcj_context_ffi.map"
+
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"

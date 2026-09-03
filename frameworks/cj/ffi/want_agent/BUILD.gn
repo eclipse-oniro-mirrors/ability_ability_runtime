@@ -37,7 +37,7 @@ config("cj_want_agent_public_config") {
   ]
 }
 
-ohos_shared_library("cj_want_agent_ffi") {
+ohos_source_set("cj_want_agent_ffi_source") {
   defines = [
     "AMS_LOG_TAG = \"CJ_ABILITY_FFI\"",
     "AMS_LOG_DOMAIN = 0xD001150",
@@ -91,6 +91,29 @@ ohos_shared_library("cj_want_agent_ffi") {
   ]
 
   cflags_cc = cflags
+
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
+}
+
+ohos_shared_library("cj_want_agent_ffi") {
+  branch_protector_ret = "pac_ret"
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    cfi_policy = "adaptive"
+    debug = false
+  }
+
+  public_configs = [ ":cj_want_agent_public_config" ]
+
+  deps = [ ":cj_want_agent_ffi_source" ]
+
+  external_deps = [ "hilog:libhilog" ]
+
+  version_script = "libcj_want_agent_ffi.map"
 
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"

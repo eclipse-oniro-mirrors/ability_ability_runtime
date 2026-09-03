@@ -27,10 +27,7 @@ ohos_unittest("cj_ability_delegator_test") {
     "${ability_runtime_path}/cj_environment/interfaces/inner_api",
   ]
 
-  sources = [
-    "${ability_runtime_path}/frameworks/cj/ffi/cj_ability_delegator.cpp",
-    "cj_ability_delegator_test.cpp",
-  ]
+  sources = [ "cj_ability_delegator_test.cpp" ]
 
   if (cj_frontend) {
     defines = [ "CJ_FRONTEND" ]
@@ -55,7 +52,7 @@ ohos_unittest("cj_ability_delegator_test") {
     "${ability_runtime_native_path}/appkit:appkit_delegator",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_native_path}/appkit:appkit_native",
-    "${ability_runtime_path}/frameworks/cj/ffi:cj_ability_ffi",
+    "${ability_runtime_path}/frameworks/cj/ffi:cj_ability_ffi_source",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
   ]
 

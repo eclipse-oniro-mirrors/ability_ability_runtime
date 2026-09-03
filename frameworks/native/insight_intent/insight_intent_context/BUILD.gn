@@ -107,6 +107,7 @@ ohos_shared_library("cj_insightintentcontext") {
     "napi:cj_bind_native",
   ]
   innerapi_tags = [ "platformsdk" ]
+  version_script = "libcj_insightintentcontext.map"
   subsystem_name = "ability"
   part_name = "ability_runtime"
 }

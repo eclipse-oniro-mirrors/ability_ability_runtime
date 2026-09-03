@@ -62,6 +62,8 @@ ohos_shared_library("cj_app_manager_ffi") {
 
   sources = [ "cj_app_manager.cpp" ]
 
+  version_script = "libcj_app_manager_ffi.map"
+
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
