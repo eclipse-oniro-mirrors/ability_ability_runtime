@@ -15443,11 +15443,7 @@ int32_t AbilityManagerService::ExecuteInsightIntentDone(const sptr<IRemoteObject
 
     FreezeUtil::GetInstance().AddLifecycleEvent(token, "ExecuteInsightIntentDone Start");
 
-    Want want = abilityRecord->GetWant();
-    if (InsightIntentExecuteParam::IsInsightIntentExecute(want)) {
-        InsightIntentExecuteParam::RemoveInsightIntent(want);
-        abilityRecord->SetWant(want);
-    }
+    abilityRecord->RemoveInsightIntent();
     // check send by same bundleName.
     std::string bundleNameStored = "";
     auto ret = DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->GetBundleName(intentId, bundleNameStored);
@@ -15671,11 +15667,7 @@ int32_t AbilityManagerService::ExecuteSkillDone(const sptr<IRemoteObject> &token
         TAG_LOGE(AAFwkTag::ABILITYMGR, "not self called");
         return CHECK_PERMISSION_FAILED;
     }
-    Want want = abilityRecord->GetWant();
-    if (SkillExecuteParam::IsSkillExecute(want)) {
-        SkillExecuteParam::RemoveSkillParam(want);
-        abilityRecord->SetWant(want);
-    }
+    abilityRecord->RemoveSkillParam();
     std::string bundleName = abilityRecord->GetAbilityInfo().bundleName;
     auto ret = DelayedSingleton<SkillExecuteManager>::GetInstance()->ExecuteSkillDone(
         requestCode, resultCode, result, bundleName);

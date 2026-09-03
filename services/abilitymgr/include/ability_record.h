@@ -571,6 +571,8 @@ public:
     void SetWantAppIndex(const int32_t appIndex);
     int32_t GetWantAppIndex() const;
     void SetWantParam(const std::string &key, int32_t value);
+    void RemoveInsightIntent();
+    void RemoveSkillParam();
     bool IsRestarting() const;
     void SetAppState(const AppState &state);
     AppState GetAppState() const;
