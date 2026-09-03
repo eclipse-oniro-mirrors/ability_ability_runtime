@@ -45,6 +45,7 @@
 #include "ui_service_extension_connection_constants.h"
 #include "res_sched_util.h"
 #include "scene_board_judgement.h"
+#include "skill_execute_param.h"
 #include "startup_util.h"
 #include "system_ability_token_callback.h"
 #include "ui_extension_wrapper.h"
@@ -2553,6 +2554,24 @@ int32_t AbilityRecord::GetWantAppIndex() const
 {
     std::lock_guard guard(wantLock_);
     return want_.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, 0);
+}
+
+void AbilityRecord::SetWantParam(const std::string &key, int32_t value)
+{
+    std::lock_guard guard(wantLock_);
+    want_.SetParam(key, value);
+}
+
+void AbilityRecord::RemoveInsightIntent()
+{
+    std::lock_guard guard(wantLock_);
+    InsightIntentExecuteParam::RemoveInsightIntent(want_);
+}
+
+void AbilityRecord::RemoveSkillParam()
+{
+    std::lock_guard guard(wantLock_);
+    SkillExecuteParam::RemoveSkillParam(want_);
 }
 
 bool AbilityRecord::IsMinimizeFromUser() const

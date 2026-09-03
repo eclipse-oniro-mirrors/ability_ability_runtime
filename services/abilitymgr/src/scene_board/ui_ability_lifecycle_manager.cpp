@@ -421,19 +421,13 @@ UIAbilityRecordPtr UIAbilityLifecycleManager::HandleAbilityRecordReused(
     abilityRequest.want.RemoveParam(Want::PARAMS_REAL_CALLER_KEY);
 
     if (sessionInfo.requestId != 0 || sessionInfo.scbRequestId != 0) {
-        AAFwk::Want updatedWant = uiAbilityRecord->GetWant();
         if (sessionInfo.requestId != 0) {
-            updatedWant.SetParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, sessionInfo.requestId);
-        }
-        if (sessionInfo.scbRequestId != 0) {
-            updatedWant.SetParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, sessionInfo.scbRequestId);
-        }
-        uiAbilityRecord->SetWant(updatedWant);
-        if (sessionInfo.requestId != 0) {
+            uiAbilityRecord->SetWantParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, sessionInfo.requestId);
             uiAbilityRecord->GetSessionInfo()->want.SetParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID,
                 sessionInfo.requestId);
         }
         if (sessionInfo.scbRequestId != 0) {
+            uiAbilityRecord->SetWantParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, sessionInfo.scbRequestId);
             uiAbilityRecord->GetSessionInfo()->want.SetParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID,
                 sessionInfo.scbRequestId);
         }
