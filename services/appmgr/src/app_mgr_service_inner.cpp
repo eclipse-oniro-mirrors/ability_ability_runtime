@@ -10382,8 +10382,10 @@ int32_t AppMgrServiceInner::ChangeAppGcState(pid_t pid, int32_t state, uint64_t 
 {
     auto callerUid = IPCSkeleton::GetCallingUid();
     TAG_LOGD(AAFwkTag::APPMGR, "called, pid:%{public}d, state:%{public}d, uid:%{public}d.", pid, state, callerUid);
-    if (callerUid != RESOURCE_MANAGER_UID) { // The current UID for resource management is 1096
-        TAG_LOGE(AAFwkTag::APPMGR, "caller is not resource manager");
+    bool isMemmgrCall = AAFwk::PermissionVerification::GetInstance()->CheckSpecificSystemAbilityAccessPermission(
+        MEMMGR_PROC_NAME);
+    if (callerUid != RESOURCE_MANAGER_UID && !isMemmgrCall) { // The current UID for resource management is 1096
+        TAG_LOGE(AAFwkTag::APPMGR, "caller is not resource manager or memmgr");
         return ERR_INVALID_VALUE;
     }
     auto appRecord = GetAppRunningRecordByPid(pid);
