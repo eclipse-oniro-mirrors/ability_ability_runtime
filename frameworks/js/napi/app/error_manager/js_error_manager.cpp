@@ -1437,6 +1437,8 @@ private:
         auto res = CreateJsUndefined(env);
         if (function == nullptr) {
             ClearGlobalObserverReference(env);
+            TAG_LOGI(AAFwkTag::JSNAPI, "SubEvent op = off_all, kit = AbilityKit, "
+                "event=globalErrorOccurred");
             return res;
         }
         if (!ValidateFunction(env, function)) {
@@ -1455,6 +1457,8 @@ private:
             if (equals) {
                 NAPI_CALL(env, napi_delete_reference(env, iter.ref));
                 globalObserverList.erase(iter);
+                TAG_LOGI(AAFwkTag::JSNAPI, "SubEvent op = off_all, kit = AbilityKit, "
+                    "event=globalErrorOccurred");
                 return res;
             }
         }
@@ -1480,6 +1484,7 @@ private:
                 freezeCallbackRegistered = false;
                 TAG_LOGI(AAFwkTag::JSNAPI, "Freeze callback unregistered from AppRecovery successfully");
             }
+            TAG_LOGI(AAFwkTag::JSNAPI, "SubEvent op = off_all, kit = AbilityKit, event=freeze");
             return res;
         }
         if (CheckTypeForNapiValue(env, function, napi_null)) {
@@ -1499,6 +1504,7 @@ private:
                 freezeCallbackRegistered = false;
                 TAG_LOGI(AAFwkTag::JSNAPI, "Freeze callback unregistered from AppRecovery successfully");
             }
+            TAG_LOGI(AAFwkTag::JSNAPI, "SubEvent op = off_all, kit = AbilityKit, event=freeze");
             return res;
         }
         TAG_LOGI(AAFwkTag::JSNAPI, "remove observer failed");
@@ -1511,6 +1517,8 @@ private:
         auto res = CreateJsUndefined(env);
         if (function == nullptr) {
             ClearGlobalPromiseReference(env);
+            TAG_LOGI(AAFwkTag::JSNAPI, "SubEvent op = off_all, kit = AbilityKit, "
+                "event=globalUnhandledRejectionDetected");
             return res;
         }
         if (!ValidateFunction(env, function)) {
@@ -1528,6 +1536,8 @@ private:
             if (equals) {
                 NAPI_CALL(env, napi_delete_reference(env, iter.ref));
                 globalPromiseList.erase(iter);
+                TAG_LOGI(AAFwkTag::JSNAPI, "SubEvent op = off_all, kit = AbilityKit, "
+                    "event=globalUnhandledRejectionDetected");
                 return res;
             }
         }
@@ -1581,6 +1591,7 @@ private:
         napi_value result = nullptr;
         NapiAsyncTask::Schedule("JSErrorManager::OnUnregisterErrorObserver",
             env, CreateAsyncTaskWithLastParam(env, lastParam, nullptr, std::move(complete), &result));
+        TAG_LOGI(AAFwkTag::JSNAPI, "SubEvent op = off_all, kit = AbilityKit, event=error");
         return result;
     }
 
@@ -1598,6 +1609,8 @@ private:
     {
         auto res = CreateJsUndefined(env);
         if (argc == ARGC_ONE) {
+            TAG_LOGI(AAFwkTag::JSNAPI, "SubEvent op = off_all, kit = AbilityKit, "
+                "event=unhandledRejection");
             return DeleteUnhandledRejectionObservers(env);
         }
         napi_value function = argv[INDEX_ONE];
@@ -1618,6 +1631,8 @@ private:
             if (equals) {
                 NAPI_CALL(env, napi_delete_reference(env, iter));
                 unhandledRejectionObservers.erase(iter);
+                TAG_LOGI(AAFwkTag::JSNAPI, "SubEvent op = off_all, kit = AbilityKit, "
+                    "event=unhandledRejection");
                 return res;
             }
         }
@@ -1655,6 +1670,8 @@ private:
             AppExecFwk::ApplicationDataManager::GetInstance().RemoveErrorObserver();
             observer_ = nullptr;
         }
+        TAG_LOGI(AAFwkTag::JSNAPI, "SubEvent op = off_all, kit = AbilityKit, "
+            "event=errorEvent");
         return CreateJsUndefined(env);
     }
 
@@ -1757,6 +1774,8 @@ private:
         } else {
             TAG_LOGI(AAFwkTag::JSNAPI, "called");
         }
+        TAG_LOGI(AAFwkTag::JSNAPI, "SubEvent op = off_all, kit = AbilityKit, "
+            "event=loopObserver");
         return nullptr;
     }
 
