@@ -95,6 +95,15 @@ public:
         return DistributedKv::Status::SUCCESS;
     }
 
+    DistributedKv::Status DeleteBatch(const std::vector<DistributedKv::Key> &keys) override
+    {
+        for (const auto &key : keys) {
+            deletedKeys.push_back(key.ToString());
+            kvData.erase(key.ToString());
+        }
+        return DistributedKv::Status::SUCCESS;
+    }
+
     std::map<std::string, std::string> kvData;
     std::vector<std::string> deletedKeys;
 };

@@ -556,22 +556,28 @@ int32_t AppExitReasonDataManager::DeleteAllRecoverInfo()
         return ERR_INVALID_OPERATION;
     }
 
+    std::vector<DistributedKv::Key> recoverInfoKeys;
     for (const auto &item : allEntries) {
         const std::string keyStr = item.key.ToString();
-        if (keyStr.compare(0, KEY_RECOVER_INFO_PREFIX.size(), KEY_RECOVER_INFO_PREFIX) != 0) {
-            continue;
-        }
-        {
-            std::lock_guard lock(kvStorePtrMutex_);
-            status = kvStorePtr_->Delete(DistributedKv::Key(keyStr));
-        }
-        if (status != DistributedKv::Status::SUCCESS) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "delete recover info %{public}s error: %{public}d",
-                keyStr.c_str(), status);
-            return ERR_INVALID_OPERATION;
+        if (keyStr.compare(0, KEY_RECOVER_INFO_PREFIX.size(), KEY_RECOVER_INFO_PREFIX) == 0) {
+            recoverInfoKeys.push_back(item.key);
         }
     }
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "delete all recover info done");
+    if (recoverInfoKeys.empty()) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "no recover info to delete");
+        return ERR_OK;
+    }
+
+    {
+        std::lock_guard lock(kvStorePtrMutex_);
+        status = kvStorePtr_->DeleteBatch(recoverInfoKeys);
+    }
+    if (status != DistributedKv::Status::SUCCESS) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "delete %{public}zu recover info error: %{public}d",
+            recoverInfoKeys.size(), status);
+        return ERR_INVALID_OPERATION;
+    }
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "delete %{public}zu recover info done", recoverInfoKeys.size());
     return ERR_OK;
 }
 
