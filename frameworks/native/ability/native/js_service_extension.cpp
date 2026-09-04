@@ -167,6 +167,7 @@ JsServiceExtension::~JsServiceExtension()
         context->Unbind();
     }
 
+    SetExtensionCommon(nullptr);
     jsRuntime_.FreeNativeReference(std::move(jsObj_));
     jsRuntime_.FreeNativeReference(std::move(shellContextRef_));
 }
