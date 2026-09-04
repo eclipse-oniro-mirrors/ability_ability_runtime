@@ -213,6 +213,16 @@ void PendingWantRecord::BuildSendWant(SenderInfo &senderInfo, Want &want)
         immutable = true;
     }
     bool constant = (flags & static_cast<uint32_t>(Flags::CONSTANT_FLAG)) != 0;
+    if (constant) {
+        auto isSACall = AAFwk::PermissionVerification::GetInstance()->IsSACallByTokenId(
+            static_cast<uint32_t>(callerTokenId_));
+        auto isSystemAppCall = AAFwk::PermissionVerification::GetInstance()->IsSystemAppCallByTokenId(
+            static_cast<uint32_t>(callerTokenId_));
+        if (isSACall || isSystemAppCall) {
+            constant = false;
+            TAG_LOGI(AAFwkTag::WANTAGENT, "constant flag bypassed, tokenId: %{public}d", callerTokenId_);
+        }
+    }
     senderInfo.resolvedType = key_->GetRequestResolvedType();
     if (!immutable) {
         want.AddFlags(key_->GetFlags());
