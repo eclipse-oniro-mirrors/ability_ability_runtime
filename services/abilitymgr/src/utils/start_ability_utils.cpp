@@ -497,7 +497,7 @@ int32_t StartAbilityUtils::StartUIAbilitiesProcessAppIndex(Want &want,
 {
     SetTargetCloneIndexInSameBundle(want, callerToken);
     want.SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, 0);
-    if (!StartAbilityUtils::GetAppIndex(want, callerToken,userId,  appIndex)) {
+    if (!StartAbilityUtils::GetAppIndex(want, callerToken, userId, appIndex)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "StartUIAbilities GetAppIndex failed.");
         return ERR_APP_CLONE_INDEX_INVALID;
     }
