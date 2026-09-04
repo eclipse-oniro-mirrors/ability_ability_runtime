@@ -64,7 +64,7 @@ int32_t ExtensionControlInterceptor::ProcessInterceptOld(const AbilityIntercepto
     if ((targetAbilityInfo.extensionAbilityType == AppExecFwk::ExtensionAbilityType::SERVICE ||
         targetAbilityInfo.extensionAbilityType == AppExecFwk::ExtensionAbilityType::DATASHARE) &&
         !DelayedSingleton<ExtensionConfig>::GetInstance()->IsExtensionStartServiceEnable(
-            callerAbilityInfo.extensionTypeName, param.want.GetElement().GetURI())) {
+            callerAbilityInfo.extensionTypeName, param.want.GetElement())) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "service list block extension call, bundleName: %{public}s",
             callerAbilityInfo.bundleName.c_str());
         return EXTENSION_BLOCKED_BY_SERVICE_LIST;
@@ -83,10 +83,11 @@ int32_t ExtensionControlInterceptor::ProcessInterceptNew(const AbilityIntercepto
         return ERR_OK;
     }
 
-    auto targetUri = param.want.GetElement().GetURI();
+    auto targetElement = param.want.GetElement();
     if (!targetAbilityInfo.applicationInfo.isSystemApp &&
         extensionConfig->HasThridPartyAppAccessFlag(callerAbilityInfo.extensionTypeName)) {
-        if (!extensionConfig->IsExtensionStartThirdPartyAppEnableNew(callerAbilityInfo.extensionTypeName, targetUri)) {
+        if (!extensionConfig->IsExtensionStartThirdPartyAppEnableNew(
+            callerAbilityInfo.extensionTypeName, targetElement)) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "start third party app controlled by extension, bundleName: %{public}s",
                 callerAbilityInfo.bundleName.c_str());
             return EXTENSION_BLOCKED_BY_THIRD_PARTY_APP_FLAG;
@@ -97,7 +98,7 @@ int32_t ExtensionControlInterceptor::ProcessInterceptNew(const AbilityIntercepto
     auto isServiceOrDataShare = targetAbilityInfo.extensionAbilityType == AppExecFwk::ExtensionAbilityType::SERVICE ||
         targetAbilityInfo.extensionAbilityType == AppExecFwk::ExtensionAbilityType::DATASHARE;
     if (isServiceOrDataShare && extensionConfig->HasServiceAccessFlag(callerAbilityInfo.extensionTypeName)) {
-        if (!extensionConfig->IsExtensionStartServiceEnableNew(callerAbilityInfo.extensionTypeName, targetUri)) {
+        if (!extensionConfig->IsExtensionStartServiceEnableNew(callerAbilityInfo.extensionTypeName, targetElement)) {
             TAG_LOGE(AAFwkTag::ABILITYMGR,
                 "start service or datashare controlled by extension, bundleName: %{public}s",
                 callerAbilityInfo.bundleName.c_str());
@@ -107,7 +108,7 @@ int32_t ExtensionControlInterceptor::ProcessInterceptNew(const AbilityIntercepto
     }
 
     if (extensionConfig->HasDefaultAccessFlag(callerAbilityInfo.extensionTypeName)) {
-        if (!extensionConfig->IsExtensionStartDefaultEnable(callerAbilityInfo.extensionTypeName, targetUri)) {
+        if (!extensionConfig->IsExtensionStartDefaultEnable(callerAbilityInfo.extensionTypeName, targetElement)) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "start ability controlled by extension, bundleName: %{public}s",
                 callerAbilityInfo.bundleName.c_str());
             return ERR_EXTENSION_START_ABILITY_CONTROLEED;
