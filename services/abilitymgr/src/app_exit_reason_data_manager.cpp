@@ -613,6 +613,7 @@ int32_t AppExitReasonDataManager::ResetRecoverInfoOnOtaUpgrade()
         TAG_LOGE(AAFwkTag::ABILITYMGR, "save version marker error: %{public}d", status);
         return ERR_INVALID_OPERATION;
     }
+    dbWriteCounter_.UpdateWriteCount(APP_EXIT_REASON_STORAGE_DIR);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "save version marker success");
     return ERR_OK;
 }

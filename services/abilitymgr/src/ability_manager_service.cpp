@@ -477,6 +477,7 @@ bool AbilityManagerService::Init()
 
     AmsConfigurationParameter::GetInstance().Parse();
     TAG_LOGI(AAFwkTag::ABILITYMGR, "config parse");
+    // Ignore the result: if cleanup fails, it will be retried on next startup.
     DelayedSingleton<AppExitReasonDataManager>::GetInstance()->ResetRecoverInfoOnOtaUpgrade();
     subManagersHelper_ = std::make_shared<SubManagersHelper>(taskHandler_, eventHandler_);
     subManagersHelper_->InitSubManagers(MAIN_USER_ID, true);

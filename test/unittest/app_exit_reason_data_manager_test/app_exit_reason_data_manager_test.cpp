@@ -99,6 +99,15 @@ public:
     std::vector<std::string> deletedKeys;
 };
 
+struct KvStorePtrGuard {
+    std::shared_ptr<DistributedKv::SingleKvStore> saved;
+    explicit KvStorePtrGuard(std::shared_ptr<DistributedKv::SingleKvStore> kv) : saved(kv) {}
+    ~KvStorePtrGuard()
+    {
+        DelayedSingleton<AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = saved;
+    }
+};
+
 /**
  * @tc.name: AppExitReasonDataManager_AddAbilityRecoverInfo_001
  * @tc.desc: AddAbilityRecoverInfo
@@ -324,7 +333,7 @@ HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_DeleteAllRecover
 HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_ResetRecoverInfoOnOtaUpgrade_001, TestSize.Level1)
 {
     auto instance = DelayedSingleton<AppExitReasonDataManager>::GetInstance();
-    auto tempKv = instance->kvStorePtr_;
+    KvStorePtrGuard kvGuard(instance->kvStorePtr_);
     auto mockKv = std::make_shared<MockKvStoreForOta>();
     mockKv->kvData[KEY_RECOVER_INFO_PREFIX + "123"] = "{}";
     mockKv->kvData[KEY_RECOVER_INFO_PREFIX + "111"] = "{}";
@@ -354,8 +363,6 @@ HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_ResetRecoverInfo
         "123") == mockKv->deletedKeys.end());
     std::string currentVersion = OHOS::system::GetParameter(PRODUCT_SOFTWARE_VERSION_PARAM, "");
     EXPECT_EQ(mockKv->kvData[KEY_OTA_VERSION], currentVersion);
-
-    instance->kvStorePtr_ = tempKv;
 }
 
 /**
@@ -366,18 +373,17 @@ HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_ResetRecoverInfo
 HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_ResetRecoverInfoOnOtaUpgrade_002, TestSize.Level1)
 {
     auto instance = DelayedSingleton<AppExitReasonDataManager>::GetInstance();
-    auto tempKv = instance->kvStorePtr_;
+    KvStorePtrGuard kvGuard(instance->kvStorePtr_);
     auto mockKv = std::make_shared<MockKvStoreForOta>();
     mockKv->kvData[KEY_OTA_VERSION] = OHOS::system::GetParameter(PRODUCT_SOFTWARE_VERSION_PARAM, "");
     mockKv->kvData[KEY_RECOVER_INFO_PREFIX + "123"] = "{}";
     instance->kvStorePtr_ = mockKv;
+    EXPECT_CALL(*mockKv, GetEntries(_, _)).Times(0);
 
     auto result = instance->ResetRecoverInfoOnOtaUpgrade();
     EXPECT_EQ(result, ERR_OK);
     EXPECT_TRUE(mockKv->deletedKeys.empty());
     EXPECT_NE(mockKv->kvData.find(KEY_RECOVER_INFO_PREFIX + "123"), mockKv->kvData.end());
-
-    instance->kvStorePtr_ = tempKv;
 }
 
 /**
@@ -388,7 +394,7 @@ HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_ResetRecoverInfo
 HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_ResetRecoverInfoOnOtaUpgrade_003, TestSize.Level1)
 {
     auto instance = DelayedSingleton<AppExitReasonDataManager>::GetInstance();
-    auto tempKv = instance->kvStorePtr_;
+    KvStorePtrGuard kvGuard(instance->kvStorePtr_);
     auto mockKv = std::make_shared<MockKvStoreForOta>();
     mockKv->kvData[KEY_OTA_VERSION] = "old_version";
     mockKv->kvData[KEY_RECOVER_INFO_PREFIX + "123"] = "{}";
@@ -408,8 +414,6 @@ HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_ResetRecoverInfo
     EXPECT_EQ(mockKv->deletedKeys[0], KEY_RECOVER_INFO_PREFIX + "123");
     std::string currentVersion = OHOS::system::GetParameter(PRODUCT_SOFTWARE_VERSION_PARAM, "");
     EXPECT_EQ(mockKv->kvData[KEY_OTA_VERSION], currentVersion);
-
-    instance->kvStorePtr_ = tempKv;
 }
 }  // namespace AbilityRuntime
 }  // namespace OHOS
