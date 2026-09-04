@@ -53,8 +53,8 @@ thread_local bool StartAbilityUtils::ermsSupportBackToCallerFlag = false;
 thread_local bool StartAbilityUtils::startSpecifiedBySCB = false;
 thread_local bool StartAbilityUtils::isSandBoxClone = false;
 
-bool StartAbilityUtils::GetAppIndex(const Want &want, sptr<IRemoteObject> callerToken, int32_t &appIndex,
-                                    int32_t userId)
+bool StartAbilityUtils::GetAppIndex(const Want &want, sptr<IRemoteObject> callerToken, int32_t userId,
+                                    int32_t &appIndex)
 {
     auto abilityRecord = Token::GetAbilityRecordByToken(callerToken);
     if (abilityRecord && abilityRecord->GetApplicationInfo().bundleName == want.GetBundleNameRef() &&
@@ -73,7 +73,7 @@ bool StartAbilityUtils::GetAppIndex(const Want &want, sptr<IRemoteObject> caller
         return AbilityRuntime::GlobalConstant::IsAppCloneIndex(appIndex);
     }
     
-    AppExecFwk::BundleInfoDualMode bundleinfo;
+    AppExecFwk::DualModeBundleInfo bundleinfo;
     auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
     auto ret = IN_PROCESS_CALL(bundleMgrHelper->GetDualModeBundleInfo(want.GetBundleNameRef(), userId, bundleinfo));
     if (ret != ERR_OK) {
@@ -493,11 +493,11 @@ void StartAbilityUtils::ResolveTargetAppCloneIndex(const Want &want, sptr<IRemot
 }
 
 int32_t StartAbilityUtils::StartUIAbilitiesProcessAppIndex(Want &want,
-    sptr<IRemoteObject> callerToken, int32_t &appIndex, int userId)
+    sptr<IRemoteObject> callerToken, int userId, int32_t &appIndex)
 {
     SetTargetCloneIndexInSameBundle(want, callerToken);
     want.SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, 0);
-    if (!StartAbilityUtils::GetAppIndex(want, callerToken, appIndex, userId)) {
+    if (!StartAbilityUtils::GetAppIndex(want, callerToken,userId,  appIndex)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "StartUIAbilities GetAppIndex failed.");
         return ERR_APP_CLONE_INDEX_INVALID;
     }

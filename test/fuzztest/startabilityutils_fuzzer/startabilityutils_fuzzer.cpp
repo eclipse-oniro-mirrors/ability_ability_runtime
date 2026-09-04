@@ -68,7 +68,7 @@ void StartAbilityUtilsFuzztest1(bool boolParam, std::string &stringParam, int32_
 {
     Want want;
     sptr<Token> callerToken = GetFuzzAbilityToken();
-    StartAbilityUtils::GetAppIndex(want, callerToken, int32Param, userId);
+    StartAbilityUtils::GetAppIndex(want, callerToken, userId, int32Param);
     AppExecFwk::ApplicationInfo appInfo;
     StartAbilityUtils::GetApplicationInfo(stringParam, int32Param, appInfo);
     AppExecFwk::AbilityInfo abilityInfo;

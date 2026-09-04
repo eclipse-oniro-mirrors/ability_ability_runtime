@@ -82,7 +82,7 @@ public:
         return 0;
     }
 
-    int32_t GetDualModeBundleInfo(const std::string &bundleName, int32_t userId, BundleInfoDualMode &preference);
+    int32_t GetDualModeBundleInfo(const std::string &bundleName, int32_t userId, DualModeBundleInfo &preference);
 
 public:
     static int32_t retGetLaunchWantForBundle;

@@ -403,7 +403,7 @@ ErrCode BundleMgrHelper::GetPluginExtensionInfo(const std::string &hostBundleNam
 }
 
 ErrCode BundleMgrHelper::GetDualModeBundleInfo(const std::string& bundleName, int32_t userId,
-                                               BundleInfoDualMode &preference)
+                                               DualModeBundleInfo &preference)
 {
     preference.appIndex = 0;
     return ERR_OK;

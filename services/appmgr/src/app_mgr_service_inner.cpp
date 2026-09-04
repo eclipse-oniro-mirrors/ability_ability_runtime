@@ -1941,7 +1941,7 @@ bool AppMgrServiceInner::CheckPreloadAppRecordExist(const std::string &bundleNam
         return false;
     }
     if (appIndex == -1) {
-        AppExecFwk::BundleInfoDualMode bundleinfo;
+        AppExecFwk::DualModeBundleInfo bundleinfo;
         auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
         auto ret = bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, bundleinfo);
         if (ret == ERR_OK) {
@@ -12799,7 +12799,7 @@ bool AppMgrServiceInner::IsSpecifiedModuleLoaded(const AAFwk::Want &want, const 
         return false;
     }
     auto appInfo = std::make_shared<ApplicationInfo>(abilityInfo.applicationInfo);
-    int32_t appIndex = -1;
+    int32_t appIndex = abilityInfo.applicationInfo.appIndex;
     BundleInfo bundleInfo;
     HapModuleInfo hapModuleInfo;
     if (!GetBundleAndHapInfo(abilityInfo, appInfo, bundleInfo, hapModuleInfo, appIndex)) {

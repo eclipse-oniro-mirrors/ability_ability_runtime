@@ -1063,7 +1063,7 @@ ErrCode BundleMgrHelper::GetAppClonePreference(const std::string &bundleName, in
 }
 
 ErrCode BundleMgrHelper::GetDualModeBundleInfo(const std::string &bundleName, int32_t userId,
-    BundleInfoDualMode &preference)
+    DualModeBundleInfo &preference)
 {
     auto bundleMgr = Connect();
     if (bundleMgr == nullptr) {
@@ -1071,7 +1071,7 @@ ErrCode BundleMgrHelper::GetDualModeBundleInfo(const std::string &bundleName, in
         return ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR;
     }
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    return bundleMgr->GetBundleInfoDualMode(bundleName, userId, preference);
+    return bundleMgr->GetDualModeBundleInfo(bundleName, userId, preference);
 }
 
 ErrCode BundleMgrHelper::GetSignatureInfoByBundleName(const std::string &bundleName, SignatureInfo &signatureInfo)

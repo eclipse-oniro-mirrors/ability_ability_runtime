@@ -66,7 +66,7 @@ struct StartAbilityInfo {
 };
 
 struct StartAbilityUtils {
-    static bool GetAppIndex(const Want &want, sptr<IRemoteObject> callerToken, int32_t &appIndex, int userId);
+    static bool GetAppIndex(const Want &want, sptr<IRemoteObject> callerToken, int userId, int32_t &appIndex);
     static bool GetApplicationInfo(const std::string &bundleName, int32_t userId,
         AppExecFwk::ApplicationInfo &appInfo);
     /**
@@ -99,7 +99,7 @@ struct StartAbilityUtils {
      * Process the app clone index for a UI ability start.
      */
     static int32_t StartUIAbilitiesProcessAppIndex(Want &want,
-        sptr<IRemoteObject> callerToken, int32_t &appIndex, int userId);
+        sptr<IRemoteObject> callerToken, int userId, int32_t &appIndex);
     static int32_t HandleSelfRedirection(bool isFromOpenLink,
         const std::vector<AppExecFwk::AbilityInfo> &abilityInfos);
     /**

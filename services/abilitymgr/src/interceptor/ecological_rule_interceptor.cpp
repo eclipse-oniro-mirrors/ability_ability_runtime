@@ -125,7 +125,7 @@ bool EcologicalRuleInterceptor::DoProcess(Want &want, int32_t userId)
     want.SetElement(launchWant.GetElement());
 
     int32_t appIndex = -1;
-    AppExecFwk::BundleInfoDualMode bundleInfo;
+    AppExecFwk::DualModeBundleInfo bundleInfo;
     auto appRecord = bundleMgrHelper->GetDualModeBundleInfo(want.GetBundleNameRef(), userId, bundleInfo);
     if (appRecord == ERR_OK) {
         appIndex = bundleInfo.appIndex;
@@ -169,7 +169,7 @@ ErrCode EcologicalRuleInterceptor::QueryAtomicServiceStartupRule(Want &want, spt
     want.SetElement(launchWant.GetElement());
 
     int32_t appIndex = -1;
-    AppExecFwk::BundleInfoDualMode bundleInfo;
+    AppExecFwk::DualModeBundleInfo bundleInfo;
     auto appRecord = bundleMgrHelper->GetDualModeBundleInfo(want.GetBundleNameRef(), userId, bundleInfo);
     if (appRecord == ERR_OK) {
         appIndex = bundleInfo.appIndex;
