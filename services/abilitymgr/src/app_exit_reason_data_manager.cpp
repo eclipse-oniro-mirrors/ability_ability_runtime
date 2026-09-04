@@ -24,6 +24,7 @@
 #include "ffrt.h"
 #include "hitrace_meter.h"
 #include "os_account_manager_wrapper.h"
+#include "parameters.h"
 #include "record_cost_time_util.h"
 
 namespace OHOS {
@@ -53,6 +54,8 @@ const std::string JSON_KEY_RSS_VALUE = "rss_value";
 const std::string JSON_KEY_PROSESS_STATE = "process_state";
 constexpr const char* PUT_TASK_NAME = "kvStorePtr_->Put";
 const std::string JSON_KEY_KILL_ID = "kill_id";
+const std::string KEY_OTA_VERSION = "ota_software_version";
+constexpr const char *PRODUCT_SOFTWARE_VERSION_PARAM = "const.product.software.version";
 } // namespace
 AppExitReasonDataManager::AppExitReasonDataManager() {}
 
@@ -528,6 +531,89 @@ int32_t AppExitReasonDataManager::DeleteAllRecoverInfoByTokenId(uint32_t tokenId
     }
 
     InnerDeleteAbilityRecoverInfo(tokenId);
+    return ERR_OK;
+}
+
+int32_t AppExitReasonDataManager::DeleteAllRecoverInfo()
+{
+    AAFwk::RecordCostTimeUtil timeRecord("DeleteAllRecoverInfo");
+    {
+        std::lock_guard lock(kvStorePtrMutex_);
+        if (!CheckKvStore()) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "null kvStore");
+            return ERR_NO_INIT;
+        }
+    }
+
+    std::vector<DistributedKv::Entry> allEntries;
+    DistributedKv::Status status;
+    {
+        std::lock_guard lock(kvStorePtrMutex_);
+        status = kvStorePtr_->GetEntries(nullptr, allEntries);
+    }
+    if (status != DistributedKv::Status::SUCCESS) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "get entries error: %{public}d", status);
+        return ERR_INVALID_OPERATION;
+    }
+
+    for (const auto &item : allEntries) {
+        const std::string keyStr = item.key.ToString();
+        if (keyStr.compare(0, KEY_RECOVER_INFO_PREFIX.size(), KEY_RECOVER_INFO_PREFIX) != 0) {
+            continue;
+        }
+        {
+            std::lock_guard lock(kvStorePtrMutex_);
+            status = kvStorePtr_->Delete(DistributedKv::Key(keyStr));
+        }
+        if (status != DistributedKv::Status::SUCCESS) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "delete recover info %{public}s error: %{public}d",
+                keyStr.c_str(), status);
+            return ERR_INVALID_OPERATION;
+        }
+    }
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "delete all recover info done");
+    return ERR_OK;
+}
+
+int32_t AppExitReasonDataManager::ResetRecoverInfoOnOtaUpgrade()
+{
+    AAFwk::RecordCostTimeUtil timeRecord("ResetRecoverInfoOnOtaUpgrade");
+    {
+        std::lock_guard lock(kvStorePtrMutex_);
+        if (!CheckKvStore()) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "null kvStore");
+            return ERR_NO_INIT;
+        }
+    }
+
+    std::string currentVersion = OHOS::system::GetParameter(PRODUCT_SOFTWARE_VERSION_PARAM, "");
+    DistributedKv::Key markerKey(KEY_OTA_VERSION);
+    DistributedKv::Value markerValue;
+    DistributedKv::Status status;
+    {
+        std::lock_guard lock(kvStorePtrMutex_);
+        status = kvStorePtr_->Get(markerKey, markerValue);
+    }
+    if (status == DistributedKv::Status::SUCCESS && markerValue.ToString() == currentVersion) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "software version not changed");
+        return ERR_OK;
+    }
+
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "software version changed, clear all recover info");
+    int32_t ret = DeleteAllRecoverInfo();
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
+    {
+        std::lock_guard lock(kvStorePtrMutex_);
+        status = kvStorePtr_->Put(markerKey, DistributedKv::Value(currentVersion));
+    }
+    if (status != DistributedKv::Status::SUCCESS) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "save version marker error: %{public}d", status);
+        return ERR_INVALID_OPERATION;
+    }
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "save version marker success");
     return ERR_OK;
 }
 

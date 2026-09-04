@@ -57,6 +57,16 @@ public:
 
     int32_t DeleteAbilityRecoverInfoBySessionId(const int32_t sessionId);
 
+    /**
+     * @brief Clear all ability recover info after an OTA upgrade. The current software version is
+     *        compared with the version marker stored in the kv store. If the version changed (or
+     *        the marker does not exist), all entries with the recover info prefix are deleted so
+     *        apps will not be restored from the stale backup on next launch, and a new marker is
+     *        written after the cleanup.
+     * @return Returns ERR_OK if the check is done; returns error code otherwise.
+     */
+    int32_t ResetRecoverInfoOnOtaUpgrade();
+
     int32_t GetAbilityRecoverInfo(uint32_t accessTokenId,
         const std::string &moduleName, const std::string &abilityName, bool &hasRecoverInfo);
 
@@ -81,6 +91,7 @@ public:
 private:
     DistributedKv::Status GetKvStore();
     bool CheckKvStore();
+    int32_t DeleteAllRecoverInfo();
     DistributedKv::Value ConvertAppExitReasonInfoToValue(
         const std::vector<std::string> &abilityList, const AAFwk::ExitReason &exitReason,
         const AppExecFwk::RunningProcessInfo &processInfo, bool withKillMsg);
