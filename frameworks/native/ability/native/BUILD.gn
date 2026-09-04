@@ -1158,7 +1158,6 @@ ohos_shared_library("uiabilitykit_native") {
   sources = [
     "${ability_runtime_native_path}/ability/native/ability_runtime/ets_ui_ability_instance.cpp",
     "${ability_runtime_native_path}/ability/native/ability_runtime/js_ui_ability.cpp",
-    "${ability_runtime_native_path}/ability/native/skill/skill_path_validator.cpp",
     "${ability_runtime_native_path}/ability/native/continuation/distributed/continuation_handler_stage.cpp",
     "${ability_runtime_native_path}/ability/native/continuation/distributed/continuation_manager_stage.cpp",
     "${ability_runtime_native_path}/ability/native/continuation/distributed/reverse_continuation_scheduler_primary_stage.cpp",
@@ -1662,7 +1661,6 @@ ohos_shared_library("service_extension") {
     "${ability_runtime_native_path}/ability/native/js_service_extension.cpp",
     "${ability_runtime_native_path}/ability/native/js_service_extension_context.cpp",
     "${ability_runtime_native_path}/ability/native/service_extension.cpp",
-    "${ability_runtime_native_path}/ability/native/skill/skill_path_validator.cpp",
     "${ability_runtime_native_path}/appkit/ability_runtime/service_extension_context.cpp",
     "${ability_runtime_path}/frameworks/ets/ani/service_extension_ability/src/ets_service_extension_instance.cpp",
   ]
@@ -1681,6 +1679,7 @@ ohos_shared_library("service_extension") {
     "${ability_runtime_native_path}/ability/native:insight_intent_executor",
     "${ability_runtime_native_path}/appkit:app_context",
     "${ability_runtime_native_path}/insight_intent/insight_intent_context:insightintentcontext",
+    "${ability_runtime_path}/utils/global/common:runtime_utils",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
   ]
 

@@ -1566,5 +1566,195 @@ HWTEST_F(EcologicalRuleInterceptorTest, GetEcologicalTargetInfo_010, TestSize.Le
     EXPECT_EQ(callerInfo.callerAppType, ErmsCallerInfo::TYPE_APP_SERVICE);
     EXPECT_NE(callerInfo.packageName, BUNDLE_NAME_SCENEBOARD);
 }
+
+/**
+ * @tc.name: DoProcess_021
+ * @tc.desc: Tests replaceWant follow-up flow: after erms returns a replaceWant with a
+ *           non-allow result, the original want is replaced (not merged), the query flag
+ *           is appended and the erms result flags are propagated to StartAbilityUtils
+ * @tc.type: FUNC
+ * @tc.require: No
+ */
+HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_021, TestSize.Level1)
+{
+    std::shared_ptr<EcologicalRuleInterceptor> interceptor = std::make_shared<EcologicalRuleInterceptor>();
+    Want want;
+    std::string targetBundleName = "com.example.target";
+    std::string callerBundleName = "com.example.caller";
+    ElementName element("", targetBundleName, "MainAbility");
+    want.SetElement(element);
+    want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, callerBundleName);
+    want.SetParam("originalKey", std::string("originalValue"));
+    int requestCode = 0;
+    StartAbilityUtils::skipErms = false;
+    int userId = 100;
+    auto shouldBlockFunc = []() { return false; };
+    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, true, nullptr,
+        shouldBlockFunc);
+    AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = 0;
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = -1;
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.embedResultCode = 1;
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.isBackSkuExempt = true;
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.replaceWant = sptr<Want>::MakeSptr();
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.replaceWant->SetElementName(
+        "replace.bundle", "ReplaceAbility");
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.replaceWant->SetParam(
+        "replaceKey", std::string("replaceValue"));
+    OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "true");
+    ErrCode result = interceptor->DoProcess(param);
+    EXPECT_EQ(result, ERR_ECOLOGICAL_CONTROL_STATUS);
+    // follow-up: erms result flags are propagated for subsequent start flow
+    EXPECT_EQ(StartAbilityUtils::ermsResultCode, -1);
+    EXPECT_EQ(StartAbilityUtils::ermsSupportBackToCallerFlag, true);
+#ifdef SUPPORT_GRAPHICS
+    // follow-up: original want is replaced by erms replaceWant with the query flag appended
+    EXPECT_EQ(want.GetElement().GetBundleName(), "replace.bundle");
+    EXPECT_EQ(want.GetElement().GetAbilityName(), "ReplaceAbility");
+    EXPECT_EQ(want.GetBoolParam("queryWantFromErms", false), true);
+    EXPECT_EQ(want.GetStringParam("replaceKey"), "replaceValue");
+    // replacement overwrites params of the original want instead of merging them
+    EXPECT_TRUE(want.GetStringParam("originalKey").empty());
+#endif
+    OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "false");
+}
+
+/**
+ * @tc.name: DoProcess_022
+ * @tc.desc: Tests replaceWant follow-up flow: when the start is not with UI, the replaceWant
+ *           is not applied to the original want, but the interception result and the erms
+ *           result flags are still delivered
+ * @tc.type: FUNC
+ * @tc.require: No
+ */
+HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_022, TestSize.Level1)
+{
+    std::shared_ptr<EcologicalRuleInterceptor> interceptor = std::make_shared<EcologicalRuleInterceptor>();
+    Want want;
+    std::string targetBundleName = "com.example.target";
+    std::string callerBundleName = "com.example.caller";
+    ElementName element("", targetBundleName, "MainAbility");
+    want.SetElement(element);
+    want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, callerBundleName);
+    int requestCode = 0;
+    StartAbilityUtils::skipErms = false;
+    int userId = 100;
+    auto shouldBlockFunc = []() { return false; };
+    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, false, nullptr,
+        shouldBlockFunc);
+    AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = 0;
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = -1;
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.isBackSkuExempt = true;
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.replaceWant = sptr<Want>::MakeSptr();
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.replaceWant->SetElementName(
+        "replace.bundle", "ReplaceAbility");
+    OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "true");
+    ErrCode result = interceptor->DoProcess(param);
+    // non-UI start still reports the ecological control status
+    EXPECT_EQ(result, ERR_ECOLOGICAL_CONTROL_STATUS);
+    EXPECT_EQ(StartAbilityUtils::ermsResultCode, -1);
+    EXPECT_EQ(StartAbilityUtils::ermsSupportBackToCallerFlag, true);
+    // but the replaceWant is not applied to the original want
+    EXPECT_EQ(want.GetElement().GetBundleName(), targetBundleName);
+    EXPECT_EQ(want.GetElement().GetAbilityName(), "MainAbility");
+    EXPECT_EQ(want.GetBoolParam("queryWantFromErms", false), false);
+    OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "false");
+}
+
+/**
+ * @tc.name: QueryAtomicServiceStartupRule_011
+ * @tc.desc: Tests replaceWant follow-up flow of QueryAtomicServiceStartupRule: when open is
+ *           not allowed and erms provides a replaceWant, the out replaceWant carries the
+ *           query flag, the startup rule maps embedResultCode and the erms flags are propagated
+ * @tc.type: FUNC
+ * @tc.require: No
+ */
+HWTEST_F(EcologicalRuleInterceptorTest, QueryAtomicServiceStartupRule_011, TestSize.Level1)
+{
+    std::shared_ptr<EcologicalRuleInterceptor> interceptor = std::make_shared<EcologicalRuleInterceptor>();
+    Want want;
+    std::string targetBundleName = "com.example.target";
+    std::string callerBundleName = "com.example.caller";
+    ElementName element("", targetBundleName, "MainAbility");
+    want.SetElement(element);
+    want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, callerBundleName);
+    sptr<IRemoteObject> callerToken = nullptr;
+    AtomicServiceStartupRule rule;
+    sptr<Want> replaceWant = nullptr;
+    OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "true");
+    BundleMgrHelper::isBundleManagerHelperNull = false;
+    BundleMgrHelper::retGetLaunchWantForBundle = 0;
+    BundleMgrHelper::launchWant.SetElementName("bundleName", "abilityName");
+    StartAbilityInfo::createStartAbilityInfo = std::make_shared<StartAbilityInfo>();
+    StartAbilityInfo::createStartAbilityInfo->status = 0;
+    AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = 0;
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = -1;
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.embedResultCode = 1;
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.isBackSkuExempt = true;
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.replaceWant = sptr<Want>::MakeSptr();
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.replaceWant->SetElementName(
+        "replace.bundle", "ReplaceAbility");
+    int userId = 100;
+    ErrCode result = interceptor->QueryAtomicServiceStartupRule(want, callerToken, userId, rule, replaceWant);
+    // follow-up: rule mapping and erms flag propagation happen before the replaceWant branch
+    EXPECT_EQ(rule.isOpenAllowed, false);
+    EXPECT_EQ(rule.isEmbeddedAllowed, true);
+    EXPECT_EQ(StartAbilityUtils::ermsResultCode, -1);
+    EXPECT_EQ(StartAbilityUtils::ermsSupportBackToCallerFlag, true);
+#ifdef SUPPORT_GRAPHICS
+    EXPECT_EQ(result, ERR_ECOLOGICAL_CONTROL_STATUS);
+    ASSERT_NE(replaceWant, nullptr);
+    EXPECT_EQ(replaceWant->GetElement().GetBundleName(), "replace.bundle");
+    EXPECT_EQ(replaceWant->GetElement().GetAbilityName(), "ReplaceAbility");
+    EXPECT_EQ(replaceWant->GetBoolParam("queryWantFromErms", false), true);
+#else
+    EXPECT_EQ(result, ERR_OK);
+#endif
+    OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "false");
+}
+
+/**
+ * @tc.name: QueryAtomicServiceStartupRule_012
+ * @tc.desc: Tests replaceWant follow-up flow of QueryAtomicServiceStartupRule: when open is
+ *           allowed, the replaceWant is not delivered and embedResultCode is mapped to
+ *           isEmbeddedAllowed correctly
+ * @tc.type: FUNC
+ * @tc.require: No
+ */
+HWTEST_F(EcologicalRuleInterceptorTest, QueryAtomicServiceStartupRule_012, TestSize.Level1)
+{
+    std::shared_ptr<EcologicalRuleInterceptor> interceptor = std::make_shared<EcologicalRuleInterceptor>();
+    Want want;
+    std::string targetBundleName = "com.example.target";
+    std::string callerBundleName = "com.example.caller";
+    ElementName element("", targetBundleName, "MainAbility");
+    want.SetElement(element);
+    want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, callerBundleName);
+    sptr<IRemoteObject> callerToken = nullptr;
+    AtomicServiceStartupRule rule;
+    sptr<Want> replaceWant = nullptr;
+    OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "true");
+    BundleMgrHelper::isBundleManagerHelperNull = false;
+    BundleMgrHelper::retGetLaunchWantForBundle = 0;
+    BundleMgrHelper::launchWant.SetElementName("bundleName", "abilityName");
+    StartAbilityInfo::createStartAbilityInfo = std::make_shared<StartAbilityInfo>();
+    StartAbilityInfo::createStartAbilityInfo->status = 0;
+    AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = 0;
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = ERMS_ISALLOW_RESULTCODE;
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.embedResultCode = 0;
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.isBackSkuExempt = false;
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.replaceWant = sptr<Want>::MakeSptr();
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.replaceWant->SetElementName(
+        "replace.bundle", "ReplaceAbility");
+    int userId = 100;
+    ErrCode result = interceptor->QueryAtomicServiceStartupRule(want, callerToken, userId, rule, replaceWant);
+    // allowed open: no interception, no replaceWant delivered, embed not allowed
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(rule.isOpenAllowed, true);
+    EXPECT_EQ(rule.isEmbeddedAllowed, false);
+    EXPECT_EQ(replaceWant, nullptr);
+    EXPECT_EQ(StartAbilityUtils::ermsResultCode, ERMS_ISALLOW_RESULTCODE);
+    EXPECT_EQ(StartAbilityUtils::ermsSupportBackToCallerFlag, false);
+    OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "false");
+}
 } // namespace AAFwk
 } // namespace OHOS

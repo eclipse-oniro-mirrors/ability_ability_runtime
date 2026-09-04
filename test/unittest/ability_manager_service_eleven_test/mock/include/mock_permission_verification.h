@@ -97,6 +97,7 @@ public:
     bool VerifyPrepareTerminatePermission() const;
 
     bool VerifySetProcessCachePermission() const;
+    bool IsLocalDebugOtherAppsCall() const;
 };
 } // namespace AAFwk
 } // namespace OHOS

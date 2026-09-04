@@ -58,7 +58,11 @@ void QuickFixManagerServiceAbility::OnStart()
 
 void QuickFixManagerServiceAbility::OnStop()
 {
-    service_ = nullptr;
+    TAG_LOGI(AAFwkTag::QUICKFIX, "called");
+    if (service_ != nullptr) {
+        service_->Stop();
+        service_ = nullptr;
+    }
 }
 }  // namespace AAFwk
 }  // namespace OHOS

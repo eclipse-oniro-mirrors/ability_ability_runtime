@@ -45,6 +45,7 @@
 #include "ui_service_extension_connection_constants.h"
 #include "res_sched_util.h"
 #include "scene_board_judgement.h"
+#include "skill_execute_param.h"
 #include "startup_util.h"
 #include "system_ability_token_callback.h"
 #include "ui_extension_wrapper.h"
@@ -102,6 +103,7 @@ constexpr const char* PARAM_SEND_RESULT_CALLER_BUNDLENAME = "ohos.anco.param.sen
 constexpr const char* PARAM_SEND_RESULT_CALLER_TOKENID = "ohos.anco.param.sendResultCallerTokenId";
 constexpr const char* PARAM_RESV_ANCO_IS_NEED_UPDATE_NAME = "ohos.anco.param.isNeedUpdateName";
 constexpr const char* DLP_PARAMS_SECURITY_FLAG = "ohos.dlp.params.securityFlag";
+constexpr const char* DLP_PARAMS_CUSTOM_FLAG = "ohos.dlp.params.customFlag";
 constexpr const char* SPECIFIED_ABILITY_FLAG = "ohos.ability.params.specifiedAbilityFlag";
 constexpr const char* UIEXTENSION_LAUNCH_TIMESTAMP_HIGH = "ohos.ability.params.uiExtensionLaunchTimestampHigh";
 constexpr const char* UIEXTENSION_LAUNCH_TIMESTAMP_LOW = "ohos.ability.params.uiExtensionLaunchTimestampLow";
@@ -201,6 +203,7 @@ void AbilityRecord::Init(const AbilityRequest &abilityRequest)
     }
     SetAppIndex(appIndex);
     SetSecurityFlag(abilityRequest.want.GetBoolParam(DLP_PARAMS_SECURITY_FLAG, false));
+    SetDlpCustomFlag(abilityRequest.want.GetIntParam(DLP_PARAMS_CUSTOM_FLAG, 0));
     SetCallerAccessTokenId(abilityRequest.callerAccessTokenId);
     if (abilityRequest.processOptions != nullptr) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "isPreloadStart:%{public}d", abilityRequest.processOptions->isPreloadStart);
@@ -434,6 +437,7 @@ void AbilityRecord::ForegroundAbility(uint32_t sceneFlag)
 #endif // SUPPORT_SCREEN
     lifeCycleStateInfo_.sceneFlag = sceneFlag;
     auto want = GetWant();
+    want.RemoveParam(DLP_PARAMS_CUSTOM_FLAG);
     UpdateDmsCallerInfo(want);
     AbilityRuntime::ErrorMsgGuard errorMsgGuard(token_ ? token_->AsObject() : nullptr,
         reinterpret_cast<uintptr_t>(GetScheduler().GetRefPtr()), "ScheduleAbilityTransaction");
@@ -2550,6 +2554,24 @@ int32_t AbilityRecord::GetWantAppIndex() const
 {
     std::lock_guard guard(wantLock_);
     return want_.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, 0);
+}
+
+void AbilityRecord::SetWantParam(const std::string &key, int32_t value)
+{
+    std::lock_guard guard(wantLock_);
+    want_.SetParam(key, value);
+}
+
+void AbilityRecord::RemoveInsightIntent()
+{
+    std::lock_guard guard(wantLock_);
+    InsightIntentExecuteParam::RemoveInsightIntent(want_);
+}
+
+void AbilityRecord::RemoveSkillParam()
+{
+    std::lock_guard guard(wantLock_);
+    SkillExecuteParam::RemoveSkillParam(want_);
 }
 
 bool AbilityRecord::IsMinimizeFromUser() const

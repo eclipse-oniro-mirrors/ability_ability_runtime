@@ -1266,6 +1266,8 @@ HWTEST_F(ExtensionAbilityThreadTest, ExtensionAbilityThread_HandleNativeExtensio
     ExtensionAbilityThread thread;
     thread.HandleNativeExtensionAttach(abilityRecord, abilityName);
     EXPECT_NE(thread.contentEmbedEventRunner_, nullptr);
+    EXPECT_NE(thread.runner_, nullptr);
+    EXPECT_NE(thread.abilityHandler_, nullptr);
 }
 
 /**

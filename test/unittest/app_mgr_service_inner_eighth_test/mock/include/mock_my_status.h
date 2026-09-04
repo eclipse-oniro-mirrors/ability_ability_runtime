@@ -58,6 +58,7 @@ public:
     bool processExit_ = false;
     std::shared_ptr<AppExecFwk::AppRunningRecord> checkAppRunning_ = nullptr;
     bool checkAppRunningByUid_ = false;
+    bool checkAppProcessNameIsSame_ = false;
     int checkAppRunningCall_ = 0;
     int isAppExistCall_ = 0;
     std::shared_ptr<AppExecFwk::AppRunningRecord> createAppRunning_ = nullptr;

@@ -281,6 +281,7 @@ constexpr char PRODUCT_ASSERT_FAULT_DIALOG_ENABLED[] = "persisit.sys.abilityms.s
 constexpr const char* ABILITYMS_ENABLE_UISERVICE = "const.abilityms.enable_uiservice";
 
 constexpr const char* DLP_PARAMS_SECURITY_FLAG = "ohos.dlp.params.securityFlag";
+constexpr const char* DLP_PARAMS_CUSTOM_FLAG = "ohos.dlp.params.customFlag";
 
 constexpr char PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED[] = "const.product.enterprisefeature.setting.enabled";
 
@@ -8478,7 +8479,8 @@ void AbilityManagerService::DumpState(const std::string &args, std::vector<std::
 {
     auto isShellCall = AAFwk::PermissionVerification::GetInstance()->IsShellCall();
     auto isHidumperServiceCall = (IPCSkeleton::GetCallingUid() == HIDUMPER_SERVICE_UID);
-    if (!isShellCall && !isHidumperServiceCall) {
+    if (!isShellCall && !isHidumperServiceCall &&
+        !AAFwk::PermissionVerification::GetInstance()->IsLocalDebugOtherAppsCall()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "permission deny");
         return;
     }
@@ -8522,7 +8524,8 @@ void AbilityManagerService::DumpSysState(
     TAG_LOGD(AAFwkTag::ABILITYMGR, "%{public}s begin", __func__);
     auto isShellCall = AAFwk::PermissionVerification::GetInstance()->IsShellCall();
     auto isHidumperServiceCall = (IPCSkeleton::GetCallingUid() == HIDUMPER_SERVICE_UID);
-    if (!isShellCall && !isHidumperServiceCall) {
+    if (!isShellCall && !isHidumperServiceCall &&
+        !AAFwk::PermissionVerification::GetInstance()->IsLocalDebugOtherAppsCall()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "permission deny");
         return;
     }
@@ -8964,6 +8967,7 @@ int AbilityManagerService::GenerateAbilityRequest(const Want &want, int requestC
         abilityRecord->GetApplicationInfo().bundleName == want.GetBundleNameRef()) {
         (const_cast<Want &>(want)).SetParam(AbilityRuntime::ServerConstant::DLP_INDEX, abilityRecord->GetAppIndex());
         (const_cast<Want &>(want)).SetParam(DLP_PARAMS_SECURITY_FLAG, abilityRecord->GetSecurityFlag());
+        (const_cast<Want &>(want)).SetParam(DLP_PARAMS_CUSTOM_FLAG, abilityRecord->GetDlpCustomFlag());
     }
 
     if (abilityRecord != nullptr &&
@@ -9105,6 +9109,7 @@ int AbilityManagerService::GenerateExtensionAbilityRequest(const Want &want, Abi
         abilityRecord->GetApplicationInfo().bundleName == want.GetBundleNameRef()) {
         (const_cast<Want &>(want)).SetParam(AbilityRuntime::ServerConstant::DLP_INDEX, abilityRecord->GetAppIndex());
         (const_cast<Want &>(want)).SetParam(DLP_PARAMS_SECURITY_FLAG, abilityRecord->GetSecurityFlag());
+        (const_cast<Want &>(want)).SetParam(DLP_PARAMS_CUSTOM_FLAG, abilityRecord->GetDlpCustomFlag());
     }
     request.want = want;
     request.callerToken = callerToken;
@@ -15453,11 +15458,7 @@ int32_t AbilityManagerService::ExecuteInsightIntentDone(const sptr<IRemoteObject
 
     FreezeUtil::GetInstance().AddLifecycleEvent(token, "ExecuteInsightIntentDone Start");
 
-    Want want = abilityRecord->GetWant();
-    if (InsightIntentExecuteParam::IsInsightIntentExecute(want)) {
-        InsightIntentExecuteParam::RemoveInsightIntent(want);
-        abilityRecord->SetWant(want);
-    }
+    abilityRecord->RemoveInsightIntent();
     // check send by same bundleName.
     std::string bundleNameStored = "";
     auto ret = DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->GetBundleName(intentId, bundleNameStored);
@@ -15681,11 +15682,7 @@ int32_t AbilityManagerService::ExecuteSkillDone(const sptr<IRemoteObject> &token
         TAG_LOGE(AAFwkTag::ABILITYMGR, "not self called");
         return CHECK_PERMISSION_FAILED;
     }
-    Want want = abilityRecord->GetWant();
-    if (SkillExecuteParam::IsSkillExecute(want)) {
-        SkillExecuteParam::RemoveSkillParam(want);
-        abilityRecord->SetWant(want);
-    }
+    abilityRecord->RemoveSkillParam();
     std::string bundleName = abilityRecord->GetAbilityInfo().bundleName;
     auto ret = DelayedSingleton<SkillExecuteManager>::GetInstance()->ExecuteSkillDone(
         requestCode, resultCode, result, bundleName);
@@ -18435,7 +18432,8 @@ int32_t AbilityManagerService::StartAbilityWithWait(Want &want, sptr<IAbilitySta
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::ABILITYMGR, "AbilityManagerService::StartAbilityWithWait called");
     auto isShellCall = AAFwk::PermissionVerification::GetInstance()->IsShellCall();
-    if (!isShellCall) {
+    if (!isShellCall &&
+        !AAFwk::PermissionVerification::GetInstance()->IsLocalDebugOtherAppsCall()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "not shell call");
         return ERR_PERMISSION_DENIED;
     }

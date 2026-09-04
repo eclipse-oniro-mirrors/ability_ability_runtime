@@ -2416,6 +2416,75 @@ HWTEST_F(AppMgrServiceInnerSeventhTest, VerifyKillProcessPermissionCommon_007, T
 }
 
 /**
+* @tc.name: VerifyKillProcessPermissionCommon_008
+* @tc.desc: test VerifyKillProcessPermissionCommon_008 when caller is treated as shell by
+*     LOCAL_DEBUG_OTHER_APPS permission in developer mode
+* @tc.type: FUNC
+*/
+HWTEST_F(AppMgrServiceInnerSeventhTest, VerifyKillProcessPermissionCommon_008, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "VerifyKillProcessPermissionCommon_008 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().verifyCallingPermission_ = false;
+    AAFwk::MyStatus::GetInstance().isSACall_ = false;
+    AAFwk::MyStatus::GetInstance().isShellCall_ = false;
+    AAFwk::MyStatus::GetInstance().isCliToolToken_ = false;
+    AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = true;
+
+    auto ret = appMgrServiceInner->VerifyKillProcessPermissionCommon();
+    EXPECT_EQ(ret, ERR_OK);
+    AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = false;
+    TAG_LOGI(AAFwkTag::TEST, "VerifyKillProcessPermissionCommon_008 end");
+}
+
+/**
+* @tc.name: NotifyProcMemoryLevel_002
+* @tc.desc: test NotifyProcMemoryLevel_002 when caller is treated as shell by
+*     LOCAL_DEBUG_OTHER_APPS permission in developer mode
+* @tc.type: FUNC
+*/
+HWTEST_F(AppMgrServiceInnerSeventhTest, NotifyProcMemoryLevel_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyProcMemoryLevel_002 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().checkSpecific_ = false;
+    AAFwk::MyStatus::GetInstance().isShellCall_ = false;
+    AAFwk::MyStatus::GetInstance().getBoolParameter_ = true;
+    AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = true;
+    AAFwk::MyStatus::GetInstance().notifyProcMemory_ = ERR_OK;
+    AAFwk::MyStatus::GetInstance().notifyProcMemoryShellCall_ = 0;
+
+    const std::map<pid_t, MemoryLevel> procLevelMap;
+    int32_t ret = appMgrServiceInner->NotifyProcMemoryLevel(procLevelMap);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(AAFwk::MyStatus::GetInstance().notifyProcMemoryShellCall_, 1);
+    AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = false;
+    AAFwk::MyStatus::GetInstance().getBoolParameter_ = false;
+    TAG_LOGI(AAFwkTag::TEST, "NotifyProcMemoryLevel_002 end");
+}
+
+/**
+* @tc.name: NotifyProcMemoryLevel_003
+* @tc.desc: test NotifyProcMemoryLevel_003 when caller is not memmgr, not shell call, not developer mode
+*     and has no LOCAL_DEBUG_OTHER_APPS permission
+* @tc.type: FUNC
+*/
+HWTEST_F(AppMgrServiceInnerSeventhTest, NotifyProcMemoryLevel_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyProcMemoryLevel_003 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().checkSpecific_ = false;
+    AAFwk::MyStatus::GetInstance().isShellCall_ = false;
+    AAFwk::MyStatus::GetInstance().getBoolParameter_ = false;
+    AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = false;
+
+    const std::map<pid_t, MemoryLevel> procLevelMap;
+    int32_t ret = appMgrServiceInner->NotifyProcMemoryLevel(procLevelMap);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "NotifyProcMemoryLevel_003 end");
+}
+
+/**
 * @tc.name: VerifyAPL_001
 * @tc.desc: test VerifyAPL_001
 * @tc.type: FUNC

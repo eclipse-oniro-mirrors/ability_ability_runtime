@@ -28,13 +28,13 @@
 #include "hitrace_meter.h"
 #include "hilog_tag_wrapper.h"
 #include "insight_intent_execute_param.h"
-#include "skill/skill_path_validator.h"
 #include "insight_intent_execute_result.h"
 #include "insight_intent_executor_info.h"
 #include "insight_intent_executor_mgr.h"
 #include "js_extension_common.h"
 #include "js_extension_context.h"
 #include "js_runtime.h"
+#include "path_utils.h"
 #include "js_runtime_utils.h"
 #include "js_service_extension_context.h"
 #include "napi/native_api.h"
@@ -622,7 +622,7 @@ napi_value JsServiceExtension::LoadSkillFunction(
     napi_value method = nullptr;
 
     if (!param->scriptPath_.empty()) {
-        if (!IsSafeSkillPath(param->scriptPath_)) {
+        if (!IsPathValid(param->scriptPath_)) {
             TAG_LOGW(AAFwkTag::SERVICE_EXT, "invalid scriptPath");
             return nullptr;
         }
@@ -661,11 +661,11 @@ bool JsServiceExtension::TryLoadSkillEntry(const std::string &srcEntry,
         TAG_LOGW(AAFwkTag::SERVICE_EXT, "param is null");
         return false;
     }
-    if (!IsSafeSkillPath(param->moduleName_)) {
+    if (!IsPathValid(param->moduleName_)) {
         TAG_LOGW(AAFwkTag::SERVICE_EXT, "invalid moduleName");
         return false;
     }
-    if (!param->hapPath_.empty() && !IsSafeHapPath(param->hapPath_)) {
+    if (!param->hapPath_.empty() && !IsPathValid(param->hapPath_)) {
         TAG_LOGW(AAFwkTag::SERVICE_EXT, "invalid hapPath");
         return false;
     }

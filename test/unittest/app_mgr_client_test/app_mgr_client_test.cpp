@@ -19,6 +19,7 @@
 #define protected public
 #include "app_scheduler.h"
 #include "app_mgr_client.h"
+#include "app_service_manager.h"
 #include "ability_record.h"
 #include "app_mgr_constants.h"
 #include "hilog_tag_wrapper.h"
@@ -2040,6 +2041,7 @@ HWTEST_F(AppMgrClientTest, GetHyperSnapLastError_0100, TestSize.Level2)
     AAFwk::IsMockSaCall::IsMockSpecificSystemAbilityAccessPermission();
     auto appMgrClient = std::make_unique<AppMgrClient>();
     ASSERT_NE(appMgrClient, nullptr);
+    appMgrClient->SetServiceManager(nullptr);
 
     HyperSnapErrorRecord record;
     record.code = HyperSnapErrorCode::ERR_OK;
@@ -2061,6 +2063,7 @@ HWTEST_F(AppMgrClientTest, GetHyperSnapLastError_0200, TestSize.Level2)
     AAFwk::IsMockSaCall::IsMockSpecificSystemAbilityAccessPermission();
     auto appMgrClient = std::make_unique<AppMgrClient>();
     ASSERT_NE(appMgrClient, nullptr);
+    appMgrClient->SetServiceManager(nullptr);
 
     HyperSnapErrorRecord record;
     int32_t result = appMgrClient->GetHyperSnapLastError(99, record);

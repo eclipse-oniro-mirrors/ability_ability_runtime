@@ -20,6 +20,7 @@
 #include "app_spawn_client.h"
 #include "global_constant.h"
 #include "hitrace_meter.h"
+#include "hilog_tag_wrapper.h"
 #include "want.h"
 
 namespace OHOS {
@@ -35,6 +36,7 @@ constexpr const char*
 constexpr const char*
     JIT_PERMISSION_DISABLE_GOTPLT_RO_PROTECTION = "ohos.permission.kernel.DISABLE_GOTPLT_RO_PROTECTION";
 constexpr const char* DLP_PARAMS_SECURITY_FLAG = "ohos.dlp.params.securityFlag";
+constexpr const char* DLP_PARAMS_CUSTOM_FLAG = "ohos.dlp.params.customFlag";
 
 static uint64_t BuildStartFlags(const AAFwk::Want &want, const ApplicationInfo &applicationInfo)
 {
@@ -44,10 +46,19 @@ static uint64_t BuildStartFlags(const AAFwk::Want &want, const ApplicationInfo &
     }
 #ifdef WITH_DLP
     if (want.GetIntParam(DLP_PARAMS_INDEX, 0) != 0) {
-        if (want.GetBoolParam(DLP_PARAMS_SECURITY_FLAG, false)) {
-            startFlags = startFlags | (START_FLAG_BASE << StartFlags::DLP_MANAGER_READ_ONLY);
+        if (want.HasParameter(DLP_PARAMS_CUSTOM_FLAG)) {
+            int32_t dlpShift = want.GetIntParam(DLP_PARAMS_CUSTOM_FLAG, -1);
+            if (dlpShift == StartFlags::DLP_MANAGER_READ_ONLY || dlpShift == StartFlags::DLP_MANAGER_FULL_CONTROL) {
+                startFlags |= (START_FLAG_BASE << dlpShift);
+            } else {
+                TAG_LOGW(AAFwkTag::APPMGR, "invalid dlpCustomFlag: %{public}d", dlpShift);
+            }
         } else {
-            startFlags = startFlags | (START_FLAG_BASE << StartFlags::DLP_MANAGER_FULL_CONTROL);
+            if (want.GetBoolParam(DLP_PARAMS_SECURITY_FLAG, false)) {
+                startFlags = startFlags | (START_FLAG_BASE << StartFlags::DLP_MANAGER_READ_ONLY);
+            } else {
+                startFlags = startFlags | (START_FLAG_BASE << StartFlags::DLP_MANAGER_FULL_CONTROL);
+            }
         }
     }
 #endif // WITH_DLP

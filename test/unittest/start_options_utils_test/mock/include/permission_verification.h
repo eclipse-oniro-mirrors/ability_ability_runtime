@@ -30,6 +30,7 @@ public:
     ~PermissionVerification() = default;
 
     bool CheckSpecificSystemAbilityAccessPermission(const std::string &processName) const;
+    bool IsLocalDebugOtherAppsCall() const;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -1829,9 +1829,15 @@ HWTEST_F(AppMgrProxyTest, AppMgrProxy_GetHyperSnapLastError_0300, TestSize.Level
 
     // Dispatch the proxy request to the real stub: data already carries the interface token,
     // HandleGetHyperSnapLastError falls back to the stub default (ERR_OK, default record).
+    // Record the code before dispatching: InvokeSendRequest is bypassed here, so code_ stays
+    // untouched unless the action sets it explicitly.
     EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
         .Times(1)
-        .WillOnce(Invoke(mockAppMgrService_.GetRefPtr(), &AppMgrStub::OnRemoteRequest));
+        .WillOnce(Invoke([this](uint32_t code, MessageParcel& data, MessageParcel& reply,
+            MessageOption& option) {
+            mockAppMgrService_->code_ = code;
+            return mockAppMgrService_->OnRemoteRequest(code, data, reply, option);
+        }));
 
     HyperSnapErrorRecord record;
     int32_t result = appMgrProxy_->GetHyperSnapLastError(static_cast<int32_t>(HyperSnapErrorType::CREATE_SNAPSHOT),

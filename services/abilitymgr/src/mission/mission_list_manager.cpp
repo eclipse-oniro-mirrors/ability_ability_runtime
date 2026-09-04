@@ -1162,7 +1162,7 @@ MissionAbilityRecordPtr MissionListManager::GetAbilityRecordByTokenInner(
     }
     // first find in terminating list
     for (auto ability : terminateAbilityList_) {
-        if (ability && token == ability->GetToken()->AsObject()) {
+        if (ability && ability->GetToken() && token == ability->GetToken()->AsObject()) {
             return MissionAbilityRecord::FromBaseRecord(ability);
         }
     }

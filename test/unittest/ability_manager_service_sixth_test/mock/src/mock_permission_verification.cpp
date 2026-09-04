@@ -293,7 +293,13 @@ bool PermissionVerification::VerifySuperviseKiaServicePermission() const
 bool PermissionVerification::VerifyStartLocalDebug(int32_t tokenId) const
 {
     TAG_LOGI(AAFwkTag::TEST, "%{public}s enter", __func__);
-    return true;
+    return !!(MyFlag::verifyStartLocalDebugFlag_);
+}
+
+bool PermissionVerification::IsLocalDebugOtherAppsCall() const
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s enter", __func__);
+    return !!(MyFlag::localDebugOtherAppsCallFlag_);
 }
 
 bool PermissionVerification::VerifyLocalDebugOtherApps() const

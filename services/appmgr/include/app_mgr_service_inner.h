@@ -467,9 +467,9 @@ public:
      *
      * @param errType Error type.
      * @param record Error record output.
-     * @return true if call succeeded (whether error exists or not), false if parameter error.
+     * @return ERR_OK if call succeeded (whether error exists or not), ERR_INVALID_VALUE on parameter error.
      */
-    bool GetHyperSnapLastError(HyperSnapErrorType errType, HyperSnapErrorRecord& record);
+    int32_t GetHyperSnapLastError(HyperSnapErrorType errType, HyperSnapErrorRecord& record);
 
     /**
      * KillApplicationSelf, this allows app to terminate itself.
@@ -2103,8 +2103,6 @@ private:
     void HandleTerminateApplicationTimeOut(std::shared_ptr<AppRunningRecord> appRecord);
 
     void HandleAddAbilityStageTimeOut(std::shared_ptr<AppRunningRecord> appRecord);
-
-    void ClipStringContent(const std::regex &re, const std::string &source, std::string &afterCutStr);
 
     bool GetBundleAndHapInfo(const AbilityInfo &abilityInfo, const std::shared_ptr<ApplicationInfo> &appInfo,
         BundleInfo &bundleInfo, HapModuleInfo &hapModuleInfo, int32_t appIndex = -1) const;

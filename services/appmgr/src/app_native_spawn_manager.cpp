@@ -54,6 +54,10 @@ int32_t AppNativeSpawnManager::RegisterNativeChildExitNotify(const sptr<INativeC
         return ERR_INVALID_VALUE;
     }
     int32_t callingPid = IPCSkeleton::GetCallingPid();
+    if (!appRunningManager_) {
+        TAG_LOGE(AAFwkTag::APPMGR, "appRunningManager_ is null");
+        return ERR_INVALID_VALUE;
+    }
     auto appRecord = appRunningManager_->GetAppRunningRecordByPid(callingPid);
     if (!appRecord) {
         TAG_LOGE(AAFwkTag::APPMGR, "no appRecord, parentPid:%{public}d", callingPid);

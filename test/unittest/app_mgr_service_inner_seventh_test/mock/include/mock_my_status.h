@@ -44,15 +44,16 @@ public:
     bool isSACall_ = false;
     bool isShellCall_ = false;
     bool isCliToolToken_ = false;
+    bool isLocalDebugOtherAppsCall_ = false;
     std::shared_ptr<AppExecFwk::AppRunningRecord> getAppRunningRecordByPid_ = nullptr;
     std::string getNameForUid_ = "";
     ErrCode getNameAndIndexForUidRet_ = ERR_OK;
-    // mock app running manager
     std::list<pid_t> getPidsByBundleName_;
     bool getPidsByBundleNameRet_;
     std::map<const int32_t, const std::shared_ptr<AppExecFwk::AppRunningRecord>> getAppRunningRecordMap_;
     int notifyProcMemoryCall_ = 0;
     int notifyProcMemory_ = 0;
+    int notifyProcMemoryShellCall_ = 0;
     int dumpHeapMemory_ = 0;
     int dumpJsHeapMemory_ = 0;
     bool processExit_ = false;

@@ -570,6 +570,9 @@ public:
     int32_t GetAppIndex() const;
     void SetWantAppIndex(const int32_t appIndex);
     int32_t GetWantAppIndex() const;
+    void SetWantParam(const std::string &key, int32_t value);
+    void RemoveInsightIntent();
+    void RemoveSkillParam();
     bool IsRestarting() const;
     void SetAppState(const AppState &state);
     AppState GetAppState() const;
@@ -741,6 +744,16 @@ public:
     bool GetSecurityFlag() const
     {
         return securityFlag_;
+    }
+
+    void SetDlpCustomFlag(int32_t dlpCustomFlag)
+    {
+        dlpCustomFlag_ = dlpCustomFlag;
+    }
+
+    int32_t GetDlpCustomFlag() const
+    {
+        return dlpCustomFlag_;
     }
 
     bool IsPluginAbility() const
@@ -956,6 +969,7 @@ protected:
     bool isRestartApp_ = false; // Only app calling RestartApp can be set to true
     bool isLaunching_ = true;
     bool securityFlag_ = false;
+    int32_t dlpCustomFlag_ = 0;
     bool isHook_ = false;
     bool isPluginAbility_ = false;
     bool isPrelaunch_ = false;

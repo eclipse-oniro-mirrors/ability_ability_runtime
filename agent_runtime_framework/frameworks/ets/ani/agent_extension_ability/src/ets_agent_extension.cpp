@@ -473,6 +473,10 @@ void EtsAgentExtension::CallObjectMethod(const char *name, const char *signature
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null env");
         return;
     }
+    if (etsObj_ == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null etsObj_");
+        return;
+    }
     if ((status = env->Class_FindMethod(etsObj_->aniCls, name, signature, &method)) != ANI_OK) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "Class_FindMethod failed for %{public}s, status: %{public}d", name, status);
         return;
@@ -613,6 +617,10 @@ void EtsAgentExtension::ConfigurationUpdated()
     }
 
     ani_status status = ANI_ERROR;
+    if (etsObj_ == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null etsObj_");
+        return;
+    }
     ani_object aniConfiguration = OHOS::AppExecFwk::WrapConfiguration(env, *fullConfig);
     status = env->Object_CallMethodByName_Void(
         etsObj_->aniObj, "onConfigurationUpdate", ON_CONFIGURATION_UPDATE_SIGNATURE, aniConfiguration);

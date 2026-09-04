@@ -916,6 +916,10 @@ bool OHOSApplication::AddAbilityStage(
     }
 
     auto moduleInfo = stageContext->GetHapModuleInfo();
+    if (moduleInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null moduleInfo");
+        return false;
+    }
     auto &runtime = GetSpecifiedRuntime(moduleInfo->arkTSMode);
     auto abilityStage = AbilityRuntime::AbilityStage::Create(runtime, *moduleInfo);
     if (abilityStage == nullptr) {

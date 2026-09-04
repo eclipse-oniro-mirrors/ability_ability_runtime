@@ -58,6 +58,9 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::CreateAppRunningRecord(
 bool AppRunningManager::CheckAppProcessNameIsSame(const std::shared_ptr<AppRunningRecord> &appRecord,
     const std::string &processName, bool isFromPreload)
 {
+    if (AAFwk::MyStatus::GetInstance().checkAppProcessNameIsSame_) {
+        return true;
+    }
     return false;
 }
 

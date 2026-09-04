@@ -132,6 +132,7 @@ struct VerificationInfo {
     bool VerifyLocalDebugOtherApps() const;
 
     bool IsAllowLocalDebugOtherApps(bool isDebugFromLocal) const;
+    bool IsLocalDebugOtherAppsCall() const;
 
     bool VerifyStartSelfUIAbility(int tokenId) const;
 

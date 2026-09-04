@@ -325,12 +325,11 @@ int32_t AppMgrService::GetHyperSnapLastError(int32_t errType, HyperSnapErrorReco
         return ERR_INVALID_OPERATION;
     }
 
-    HyperSnapErrorType errorType = static_cast<HyperSnapErrorType>(errType);
-
-    bool success = appMgrServiceInner_->GetHyperSnapLastError(errorType, record);
-    if (!success) {
-        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError failed: invalid parameter");
-        return ERR_INVALID_VALUE;
+    int32_t result = appMgrServiceInner_->GetHyperSnapLastError(
+        static_cast<HyperSnapErrorType>(errType), record);
+    if (result != ERR_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError failed, result: %{public}d", result);
+        return result;
     }
 
     TAG_LOGD(AAFwkTag::APPMGR, "GetHyperSnapLastError success, code: %{public}d", static_cast<int32_t>(record.code));
@@ -1528,7 +1527,8 @@ bool AppMgrService::JudgeAppSelfCalled(int32_t recordId)
 
     auto callingTokenId = IPCSkeleton::GetCallingTokenID();
     std::shared_ptr<AppRunningRecord> appRecord = appMgrServiceInner_->GetAppRunningRecordByAppRecordId(recordId);
-    if (appRecord == nullptr || ((appRecord->GetApplicationInfo())->accessTokenId) != callingTokenId) {
+    if (appRecord == nullptr || appRecord->GetApplicationInfo() == nullptr ||
+        ((appRecord->GetApplicationInfo())->accessTokenId) != callingTokenId) {
         TAG_LOGE(AAFwkTag::APPMGR, "not enabled");
         return false;
     }
@@ -1553,7 +1553,8 @@ int32_t AppMgrService::StartNativeProcessForDebugger(const AAFwk::Want &want)
     bool isShellCall = AAFwk::PermissionVerification::GetInstance()->IsShellCall();
     auto callingTokenId = IPCSkeleton::GetCallingTokenID();
     bool isLocalDebugCall = AAFwk::PermissionVerification::GetInstance()->VerifyStartLocalDebug(callingTokenId);
-    if (!isShellCall && !isLocalDebugCall) {
+    if (!isShellCall && !isLocalDebugCall &&
+        !AAFwk::PermissionVerification::GetInstance()->IsLocalDebugOtherAppsCall()) {
         TAG_LOGE(AAFwkTag::APPMGR, "permission denied");
         return ERR_INVALID_OPERATION;
     }

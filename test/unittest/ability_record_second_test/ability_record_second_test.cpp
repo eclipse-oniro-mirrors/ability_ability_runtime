@@ -29,6 +29,7 @@
 #include "mock_scene_board_judgement.h"
 #include "ability_scheduler_mock.h"
 #include "ability_util.h"
+#include "skill_execute_param.h"
 
 using namespace testing::ext;
 using namespace OHOS::AppExecFwk;
@@ -1168,6 +1169,57 @@ HWTEST_F(AbilityRecordSecondTest, AbilityRecord_SetWant_013, TestSize.Level1)
     // Want should be updated for PAGE ability when isLaunching is false
     EXPECT_FALSE(abilityRecord->want_.HasParameter("oldParam"));
     EXPECT_TRUE(abilityRecord->want_.HasParameter("newParam"));
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: SetWantParam
+ * SubFunction: SetWantParam
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify AbilityRecord SetWantParam sets int32_t parameter under lock
+ */
+HWTEST_F(AbilityRecordSecondTest, AbilityRecord_SetWantParam_001, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    std::string key = "test.param.int";
+    int32_t value = 1;
+    abilityRecord->SetWantParam(key, value);
+    EXPECT_EQ(abilityRecord->want_.GetIntParam(key, 0), value);
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: RemoveSkillParam
+ * SubFunction: RemoveSkillParam
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify AbilityRecord RemoveSkillParam removes skill params from want_
+ */
+HWTEST_F(AbilityRecordSecondTest, AbilityRecord_RemoveSkillParam_001, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    abilityRecord->want_.SetParam(SKILL_EXECUTE_PARAM_SKILL_NAME, std::string("testSkill"));
+    EXPECT_TRUE(abilityRecord->want_.HasParameter(SKILL_EXECUTE_PARAM_SKILL_NAME));
+    abilityRecord->RemoveSkillParam();
+    EXPECT_FALSE(abilityRecord->want_.HasParameter(SKILL_EXECUTE_PARAM_SKILL_NAME));
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: RemoveSkillParam
+ * SubFunction: RemoveSkillParam
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify RemoveSkillParam is safe when no skill params exist
+ */
+HWTEST_F(AbilityRecordSecondTest, AbilityRecord_RemoveSkillParam_002, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    abilityRecord->want_.SetParam("unrelated.param", std::string("keep"));
+    abilityRecord->RemoveSkillParam();
+    EXPECT_FALSE(abilityRecord->want_.HasParameter(SKILL_EXECUTE_PARAM_SKILL_NAME));
+    EXPECT_TRUE(abilityRecord->want_.HasParameter("unrelated.param"));
 }
 }  // namespace AAFwk
 }  // namespace OHOS

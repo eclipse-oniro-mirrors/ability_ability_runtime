@@ -141,5 +141,9 @@ bool PermissionVerification::VerifySuperviseKiaServicePermission() const
 {
     return AAFwk::MyStatus::GetInstance().verifySuperviseKiaServicePermission_;
 }
+bool PermissionVerification::IsLocalDebugOtherAppsCall() const
+{
+    return false;
+}
 }  // namespace AAFwk
 }  // namespace OHOS
