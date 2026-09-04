@@ -149,8 +149,12 @@ napi_value JsMemoryOptimizerInit(napi_env env, napi_value exportObj)
     }
 
     auto jsMemoryOptimizer = std::make_unique<JsMemoryOptimizer>();
-    napi_wrap(env, exportObj, jsMemoryOptimizer.release(),
+    napi_status status = napi_wrap(env, exportObj, jsMemoryOptimizer.release(),
         JsMemoryOptimizer::Finalizer, nullptr, nullptr);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::ABILITY, "napi_wrap failed: %{public}d", status);
+        return nullptr;
+    }
 
     BindNativeFunction(env, exportObj, "evictFilePages", MODULE_NAME, JsMemoryOptimizer::EvictFilePages);
     BindNativeFunction(env, exportObj, "evictModuleFilePages", MODULE_NAME, JsMemoryOptimizer::EvictModuleFilePages);
