@@ -11826,8 +11826,8 @@ int AbilityManagerService::StartUserTest(const Want &want, const sptr<IRemoteObj
         GetValidUserId(DEFAULT_INVAL_VALUE)), RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
 #endif
     int32_t appIndex = -1;
-    if (!StartAbilityUtils::GetAppIndex(want, nullptr, userId, appIndex) || appIndex != 0 ||
-        appIndex != AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) {
+    if (!StartAbilityUtils::GetAppIndex(want, nullptr, userId, appIndex) || (appIndex != 0 &&
+        appIndex != AbilityRuntime::GlobalConstant::PC_TABLET_INDEX)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Not support app clone");
         return ERR_NOT_SUPPORT_APP_CLONE;
     }
