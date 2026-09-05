@@ -316,6 +316,10 @@ constexpr const char* VPN_PERMISSION_IF = "libnet_vpn_permission_if.z.so";
 constexpr const char* INTENT_USER_ID = "ohos.insightIntent.userId";
 constexpr const char* START_SELF_UI_ABILITY_IN_CHILD_PROCESS_FLAG = "startSelfUIAbilityInChildProcessFlag";
 constexpr const char* DMS_CALLER_APP_ID = "ohos.dms.param.sourceCallerAppId";
+constexpr const char* WINDOW_PARAMS_SUGGESTION_SOURCE = "suggestionSource";
+constexpr const char* WINDOW_PARAMS_APP_LABEL = "appLabel";
+constexpr const char* WINDOW_PARAMS_SOURCE_BUNDLENAME = "sourceBundleName";
+constexpr const char* WINDOW_PARAMS_SOURCE_ABILITYNAME = "sourceAbilityName";
 
 using RequestVpnPermission = int32_t (*)(int32_t, const std::string &, const std::string &, bool &);
 
@@ -1363,6 +1367,12 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (!param.isStartAsCaller || param.isImplicit) {
         param.want.RemoveParam("ability.params.picker.erms.policy");
+    }
+    if (!AAFwk::PermissionVerification::GetInstance()->JudgeCallerIsAllowedToUseSystemAPI()) {
+        param.want.RemoveParam(WINDOW_PARAMS_SUGGESTION_SOURCE);
+        param.want.RemoveParam(WINDOW_PARAMS_APP_LABEL);
+        param.want.RemoveParam(WINDOW_PARAMS_SOURCE_BUNDLENAME);
+        param.want.RemoveParam(WINDOW_PARAMS_SOURCE_ABILITYNAME);
     }
     int32_t oriValidUserId = GetValidUserId(param.userId);
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
@@ -15047,6 +15057,25 @@ int32_t AbilityManagerService::ExecuteIntentCommon(const sptr<IRemoteObject> &ca
         TAG_LOGE(AAFwkTag::INTENT, "GenerateWant failed: %{public}d", ret);
         DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->RemoveExecuteIntent(param->insightIntentId_);
         return ret;
+    }
+    if (param->insightIntentParam_ != nullptr &&
+        AAFwk::PermissionVerification::GetInstance()->JudgeCallerIsAllowedToUseSystemAPI()) {
+        if (param->insightIntentParam_->HasParam(WINDOW_PARAMS_SUGGESTION_SOURCE)) {
+            want.SetParam(WINDOW_PARAMS_SUGGESTION_SOURCE,
+                param->insightIntentParam_->GetIntParam(WINDOW_PARAMS_SUGGESTION_SOURCE, 0));
+        }
+        if (param->insightIntentParam_->HasParam(WINDOW_PARAMS_APP_LABEL)) {
+            want.SetParam(WINDOW_PARAMS_APP_LABEL,
+                param->insightIntentParam_->GetStringParam(WINDOW_PARAMS_APP_LABEL));
+        }
+        if (param->insightIntentParam_->HasParam(WINDOW_PARAMS_SOURCE_BUNDLENAME)) {
+            want.SetParam(WINDOW_PARAMS_SOURCE_BUNDLENAME,
+                param->insightIntentParam_->GetStringParam(WINDOW_PARAMS_SOURCE_BUNDLENAME));
+        }
+        if (param->insightIntentParam_->HasParam(WINDOW_PARAMS_SOURCE_ABILITYNAME)) {
+            want.SetParam(WINDOW_PARAMS_SOURCE_ABILITYNAME,
+                param->insightIntentParam_->GetStringParam(WINDOW_PARAMS_SOURCE_ABILITYNAME));
+        }
     }
 
     int32_t callerUserId = AbilityRuntime::UserController::GetInstance().GetCallerUserId();
