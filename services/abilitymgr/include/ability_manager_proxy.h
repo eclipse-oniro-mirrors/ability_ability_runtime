@@ -732,7 +732,7 @@ public:
      * @param bundleName.
      * @return Returns ERR_OK on success, others on failure.
      */
-    virtual int KillProcess(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = 0,
+    virtual int KillProcess(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = -1,
         const std::string& reason = "Abilityms::KillProcess") override;
 
     #ifdef ABILITY_COMMAND_FOR_TEST
@@ -775,7 +775,7 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int32_t UpgradeApp(const std::string &bundleName, const int32_t uid, const std::string &exitMsg,
-        int32_t appIndex = 0) override;
+        int32_t appIndex = -1) override;
 
     virtual sptr<IWantSender> GetWantSender(
         const WantSenderInfo &wantSenderInfo, const sptr<IRemoteObject> &callerToken, int32_t uid = -1) override;
@@ -1477,7 +1477,7 @@ public:
      * @param appIndex app clone index. Currently, only appIndex = 0 is supported.
      * @return Returns ERR_OK on success, others on failure.
      */
-    virtual int32_t LaunchGameCustomized(const std::string &bundleName, int32_t userId, int32_t appIndex = 0) override;
+    virtual int32_t LaunchGameCustomized(const std::string &bundleName, int32_t userId, int32_t appIndex = -1) override;
 
     /**
      * PrepareTerminateAbilityBySCB, prepare to terminate ability by scb.

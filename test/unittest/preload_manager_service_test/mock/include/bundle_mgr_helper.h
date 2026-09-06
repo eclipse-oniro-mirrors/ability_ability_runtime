@@ -20,7 +20,7 @@
 
 #include "ability_info.h"
 #include "want.h"
-
+#include "bundle_info.h"
 namespace OHOS {
 
 namespace AppExecFwk {
@@ -35,6 +35,8 @@ public:
     int32_t GetLaunchWantForBundle(const std::string &bundleName, AAFwk::Want &want, int32_t userId);
 
     bool QueryAbilityInfo(const AAFwk::Want &want, int32_t flags, int32_t userId, AbilityInfo &abilityInfo);
+
+    int32_t GetDualModeBundleInfo(const std::string &bundleName, int32_t userId, DualModeBundleInfo &preference);
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

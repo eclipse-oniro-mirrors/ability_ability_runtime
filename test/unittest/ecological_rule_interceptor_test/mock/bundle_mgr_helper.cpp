@@ -60,5 +60,13 @@ bool BundleMgrHelper::GetApplicationInfo(
     appInfo = applicationInfo;
     return retGetApplicationInfo;
 }
+
+int32_t BundleMgrHelper::GetDualModeBundleInfo(const std::string& bundleName, int32_t userId,
+                                               DualModeBundleInfo &preference)
+{
+    preference.appIndex = 0;
+    return 0;
+}
+
 }  // namespace AppExecFwk
 }  // namespace OHOS

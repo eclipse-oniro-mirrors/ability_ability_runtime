@@ -15,7 +15,7 @@
 
 #include "bundle_mgr_helper.h"
 #include "mock_my_status.h"
-
+#include "bundle_info.h"
 namespace OHOS {
 namespace AppExecFwk {
 
@@ -399,6 +399,13 @@ ErrCode BundleMgrHelper::GetPluginHapModuleInfo(const std::string &hostBundleNam
 ErrCode BundleMgrHelper::GetPluginExtensionInfo(const std::string &hostBundleName, const Want &want,
     int32_t userId, ExtensionAbilityInfo &pluginExtensionInfo)
 {
+    return ERR_OK;
+}
+
+ErrCode BundleMgrHelper::GetDualModeBundleInfo(const std::string& bundleName, int32_t userId,
+                                               DualModeBundleInfo &preference)
+{
+    preference.appIndex = 0;
     return ERR_OK;
 }
 } // namespace AppExecFwk

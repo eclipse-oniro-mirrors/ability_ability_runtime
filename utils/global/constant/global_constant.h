@@ -22,15 +22,25 @@ constexpr int32_t MAX_APP_CLONE_INDEX = 1000;
 constexpr int32_t MIN_SANDBOX_CLONE_INDEX = 2000;
 constexpr int32_t MAX_SANDBOX_CLONE_INDEX = 3000;
 
+constexpr int32_t PC_TABLET_INDEX = 10000;
+constexpr int32_t MIN_PC_TABLET_CLONE_INDEX = 10001;
+constexpr int32_t MAX_PC_TABLET_CLONE_INDEX = 11000;
+constexpr int32_t MIN_PC_TABLET_DLP_INDEX = 11001;
+constexpr int32_t MAX_PC_TABLET_DLP_INDEX = 11999;
+constexpr int32_t MIN_PC_TABLET_AI_AGENT_INDEX = 12000;
+constexpr int32_t MAX_PC_TABLET_AI_AGENT_INDEX = 13000;
+
 // Helper functions to determine index type
 constexpr bool IsAppCloneIndex(int32_t index)
 {
-    return index >= 0 && index <= MAX_APP_CLONE_INDEX;
+    return (index >= 0 && index <= MAX_APP_CLONE_INDEX) ||
+           (index >= PC_TABLET_INDEX && index <= MAX_PC_TABLET_CLONE_INDEX);
 }
 
 constexpr bool IsSandboxCloneIndex(int32_t index)
 {
-    return index >= MIN_SANDBOX_CLONE_INDEX && index <= MAX_SANDBOX_CLONE_INDEX;
+    return (index >= MIN_SANDBOX_CLONE_INDEX && index <= MAX_SANDBOX_CLONE_INDEX) ||
+           (index >= MIN_PC_TABLET_AI_AGENT_INDEX && index <= MAX_PC_TABLET_AI_AGENT_INDEX);
 }
 
 constexpr bool IsDlpIndex(int32_t index)

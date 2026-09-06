@@ -79,8 +79,8 @@ int32_t StartOptionsUtils::CheckProcessOptionsInner(const Want &want, const Star
     }
 
     StartAbilityUtils::ResolveTargetAppCloneIndex(want, callerToken, userId);
-    int32_t appIndex = 0;
-    appIndex = !StartAbilityUtils::GetAppIndex(want, callerToken, appIndex) ? 0 : appIndex;
+    int32_t appIndex = -1;
+    appIndex = !StartAbilityUtils::GetAppIndex(want, callerToken, userId, appIndex) ? 0 : appIndex;
     CHECK_TRUE_RETURN_RET(!DelayedSingleton<AbilityManagerService>::GetInstance()->CheckCallingTokenId(
         element.GetBundleName(), userId, appIndex), ERR_NOT_SELF_APPLICATION, "not self application");
 

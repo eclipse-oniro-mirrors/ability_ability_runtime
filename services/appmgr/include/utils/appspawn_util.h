@@ -84,7 +84,8 @@ static uint64_t BuildStartFlags(const AAFwk::Want &want, const ApplicationInfo &
         startFlags = startFlags | (START_FLAG_BASE << StartFlags::EXTENSION_CONTROLLED);
     }
     if ((applicationInfo.multiAppMode.multiAppModeType == MultiAppModeType::APP_CLONE && applicationInfo.appIndex > 0 &&
-        applicationInfo.appIndex <= AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) ||
+        applicationInfo.appIndex != AbilityRuntime::GlobalConstant::PC_TABLET_INDEX &&
+        AbilityRuntime::GlobalConstant::IsAppCloneIndex(applicationInfo.appIndex)) ||
         AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(applicationInfo.appIndex)) {
         startFlags = startFlags | (START_FLAG_BASE << APP_FLAGS_CLONE_ENABLE);
     }

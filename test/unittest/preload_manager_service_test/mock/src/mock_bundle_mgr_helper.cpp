@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include "bundle_mgr_helper.h"
-#include "mock_my_status.h"
 
+#include "mock_my_status.h"
+#include "bundle_mgr_helper.h"
 namespace OHOS {
 namespace AppExecFwk {
 
@@ -43,5 +43,13 @@ bool BundleMgrHelper::QueryAbilityInfo(const AAFwk::Want& want, int32_t flags, i
     abilityInfo = AAFwk::MyStatus::GetInstance().queryAbilityInfo_;
     return AAFwk::MyStatus::GetInstance().retQueryAbilityInfo_;
 }
+
+int32_t BundleMgrHelper::GetDualModeBundleInfo(const std::string& bundleName, int32_t userId,
+                                               DualModeBundleInfo &preference)
+{
+    preference.appIndex = 0;
+    return 0;
+}
+
 } // namespace AppExecFwk
 } // namespace OHOS
