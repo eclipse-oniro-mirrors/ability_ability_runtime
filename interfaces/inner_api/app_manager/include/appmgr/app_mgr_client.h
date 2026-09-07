@@ -254,7 +254,7 @@ public:
      *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode KillApplication(const std::string &bundleName, bool clearPageStack = false,
-        int32_t appIndex = -1, const std::string &reason = "KillApplication");
+        int32_t appIndex = 0, const std::string &reason = "KillApplication");
 
     /**
      * Force kill the application. Restricted: the server only accepts calls from
@@ -269,7 +269,7 @@ public:
      *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode ForceKillApplication(const std::string &bundleName, const int userId = -1,
-        const int appIndex = -1);
+        const int appIndex = 0);
 
     /**
      * Kill the application for the specified user. Same permission policy as
@@ -284,7 +284,7 @@ public:
      *         Note: killing an app that is not running is treated as success.
      */
     virtual AppMgrResultCode KillApplicationWithUserId(const std::string &bundleName, const int userId = -1,
-        const int appIndex = -1);
+        const int appIndex = 0);
 
     /**
      * Kill all processes whose access token id equals accessTokenId.
@@ -698,7 +698,7 @@ public:
      *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode UpdateConfigurationByBundleName(const Configuration &config, const std::string &name,
-        int32_t appIndex = -1);
+        int32_t appIndex = 0);
 
     /**
      * Register an observer to receive OnConfigurationUpdated callbacks.
@@ -1371,7 +1371,7 @@ public:
      *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual int32_t PreloadApplication(const std::string &bundleName, int32_t userId,
-        AppExecFwk::PreloadMode preloadMode, int32_t appIndex = -1);
+        AppExecFwk::PreloadMode preloadMode, int32_t appIndex = 0);
 
     /**
      * Create an application image (process snapshot) for fast cold start: the
@@ -1391,7 +1391,7 @@ public:
      *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t MakeImage(const AAFwk::Want &want, int32_t userId,
-        AppExecFwk::PreloadMode preloadMode, int32_t appIndex = -1, sptr<IImageErrorHandler> errorHandler = nullptr);
+        AppExecFwk::PreloadMode preloadMode, int32_t appIndex = 0, sptr<IImageErrorHandler> errorHandler = nullptr);
 
     /**
      * Destroy a previously created application image identified by its checkpoint

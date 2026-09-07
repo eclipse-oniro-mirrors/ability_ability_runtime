@@ -124,12 +124,7 @@ bool EcologicalRuleInterceptor::DoProcess(Want &want, int32_t userId)
     }
     want.SetElement(launchWant.GetElement());
 
-    int32_t appIndex = -1;
-    AppExecFwk::DualModeBundleInfo bundleInfo;
-    auto appRecord = bundleMgrHelper->GetDualModeBundleInfo(want.GetBundleNameRef(), userId, bundleInfo);
-    if (appRecord == ERR_OK) {
-        appIndex = bundleInfo.appIndex;
-    }
+    int32_t appIndex = 0;
     auto startAbilityInfo = StartAbilityInfo::CreateStartAbilityInfo(want,
         userId, appIndex, nullptr);
     if (startAbilityInfo == nullptr || startAbilityInfo->status != ERR_OK) {
@@ -168,12 +163,7 @@ ErrCode EcologicalRuleInterceptor::QueryAtomicServiceStartupRule(Want &want, spt
     CHECK_RET_RETURN_RET(errCode, "GetLaunchWantForBundle failed");
     want.SetElement(launchWant.GetElement());
 
-    int32_t appIndex = -1;
-    AppExecFwk::DualModeBundleInfo bundleInfo;
-    auto appRecord = bundleMgrHelper->GetDualModeBundleInfo(want.GetBundleNameRef(), userId, bundleInfo);
-    if (appRecord == ERR_OK) {
-        appIndex = bundleInfo.appIndex;
-    }
+    int32_t appIndex = 0;
     auto startAbilityInfo = StartAbilityInfo::CreateStartAbilityInfo(want, userId, appIndex, nullptr);
     CHECK_POINTER_AND_RETURN_LOG(startAbilityInfo, INNER_ERR, "null startAbilityInfo");
     CHECK_RET_RETURN_RET(startAbilityInfo->status, "Get targetApplicationInfo failed");
