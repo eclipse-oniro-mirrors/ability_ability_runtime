@@ -13242,6 +13242,9 @@ int AbilityManagerService::CheckCallOtherExtensionPermission(const AbilityReques
         return CheckCallAutoFillExtensionPermission(abilityRequest);
     }
 #endif // SUPPORT_AUTO_FILL
+    if (extensionType == AppExecFwk::ExtensionAbilityType::UKEY_AUTH) {
+        return CheckUkeyAuthExtensionPermission(abilityRequest);
+    }
     if (AAFwk::UIExtensionWrapper::IsUIExtension(extensionType)) {
         return CheckUIExtensionPermission(abilityRequest, validUserId);
     }
@@ -13268,6 +13271,19 @@ int AbilityManagerService::CheckCallerInfoQueryExtensionPermission(const Ability
         PermissionConstants::PERMISSION_GET_TELEPHONY_STATE, specifyTokenId);
     if (!ret) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "permission deny for callerInfoQueryExtension");
+        return CHECK_PERMISSION_FAILED;
+    }
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "check permission success");
+    return ERR_OK;
+}
+
+int AbilityManagerService::CheckUkeyAuthExtensionPermission(const AbilityRequest &abilityRequest)
+{
+    uint32_t specifyTokenId = static_cast<uint32_t>(abilityRequest.specifiedFullTokenId);
+    auto ret = AAFwk::PermissionVerification::GetInstance()->VerifyCallingPermission(
+        PermissionConstants::PERMISSION_CONNECT_UKEY_AUTH_EXTENSION, specifyTokenId);
+    if (!ret) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "permission deny for ukeyAuthExtension");
         return CHECK_PERMISSION_FAILED;
     }
     TAG_LOGI(AAFwkTag::ABILITYMGR, "check permission success");

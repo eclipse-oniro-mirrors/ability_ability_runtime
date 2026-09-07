@@ -563,6 +563,66 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, CheckCallerInfoQueryExtensionPermi
 
 /*
  * Feature: AbilityManagerService
+ * Name: CheckUkeyAuthExtensionPermission_001
+ * Function: CheckUkeyAuthExtensionPermission
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService CheckUkeyAuthExtensionPermission
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, CheckUkeyAuthExtensionPermission_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest CheckUkeyAuthExtensionPermission_001 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs_, nullptr);
+    MyStatus::GetInstance().permPermission_ = 0;
+    AbilityRequest abilityRequest;
+    int result = abilityMs_->CheckUkeyAuthExtensionPermission(abilityRequest);
+    EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest CheckUkeyAuthExtensionPermission_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: CheckUkeyAuthExtensionPermission_002
+ * Function: CheckUkeyAuthExtensionPermission
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService CheckUkeyAuthExtensionPermission
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, CheckUkeyAuthExtensionPermission_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest CheckUkeyAuthExtensionPermission_002 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs_, nullptr);
+    MyStatus::GetInstance().permPermission_ = 1;
+    AbilityRequest abilityRequest;
+    int result = abilityMs_->CheckUkeyAuthExtensionPermission(abilityRequest);
+    EXPECT_EQ(result, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest CheckUkeyAuthExtensionPermission_002 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: CheckCallOtherExtensionPermission_UkeyAuth_001
+ * Function: CheckCallOtherExtensionPermission
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService CheckCallOtherExtensionPermission with ukeyAuth extension
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, CheckCallOtherExtensionPermission_UkeyAuth_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest CheckCallOtherExtensionPermission_UkeyAuth_001 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs_, nullptr);
+    MyStatus::GetInstance().permPermission_ = 0;
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.visible = true;
+    abilityRequest.abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::UKEY_AUTH;
+    abilityRequest.appInfo.isSystemApp = false;
+    abilityRequest.appInfo.bundleName = "test.bundleName";
+    EXPECT_EQ(abilityMs_->CheckCallOtherExtensionPermission(abilityRequest), CHECK_PERMISSION_FAILED);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest CheckCallOtherExtensionPermission_UkeyAuth_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
  * Name: CheckUIExtensionCallerIsForeground_001
  * Function: CheckUIExtensionCallerIsForeground
  * SubFunction: NA
