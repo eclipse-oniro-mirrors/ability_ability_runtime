@@ -1739,7 +1739,6 @@ void UIExtensionAbilityManager::CompleteBackground(const std::shared_ptr<BaseExt
         AddStartingRecord(abilityRecord->GetUid(), abilityRecord->GetPid(),
             abilityRecord->GetAbilityRecordId(), GetForegroundTimeoutMultiple(abilityRecord));
         abilityRecord->PostUIExtensionAbilityTimeoutTask(AbilityManagerService::FOREGROUND_TIMEOUT_MSG);
-        abilityRecord->SetAbilityState(AbilityState::FOREGROUNDING);
         DelayedSingleton<AppScheduler>::GetInstance()->MoveToForeground(abilityRecord->GetToken());
     } else if (abilityRecord->GetPendingState() == AbilityState::BACKGROUND) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "not continuous startup.");
