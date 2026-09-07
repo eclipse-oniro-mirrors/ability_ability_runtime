@@ -27,18 +27,30 @@ ohos_unittest("agent_bundle_event_callback_test") {
 
   sources = [
     "agent_bundle_event_callback_test.cpp",
+    "${agent_runtime_framework_path}/services/agentmgr/src/agent_bundle_event_callback.cpp",
+    "${agent_runtime_framework_path}/services/agentmgr/src/agent_card_mgr.cpp",
+    "${agent_runtime_framework_path}/services/agentmgr/src/agent_card_db_mgr.cpp",
+    "${agent_runtime_framework_path}/services/common/src/agent_card_utils.cpp",
+    "${agent_runtime_framework_path}/services/common/src/sem_ver.cpp",
   ]
 
   include_dirs = [
     "mock/include",
     "${ability_runtime_services_path}/common/include",
     "${ability_runtime_path}/utils/global/constant",
+    "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
+    "${ability_runtime_innerkits_path}/ability_manager/include",
+    "${ability_runtime_innerkits_path}/deps_wrapper/include",
     "${agent_runtime_framework_path}/interfaces/inner_api/include",
     "${agent_runtime_framework_path}/services/agentmgr/include",
+    "${agent_runtime_framework_path}/services/common/include",
   ]
 
   deps = [
-    "${agent_runtime_framework_path}/services/agentmgr:agentmgr",
+    "${agent_runtime_framework_path}/interfaces/inner_api:agent_fwk",
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
+    "${ability_runtime_native_path}/appkit:appkit_manager_helper",
   ]
 
   external_deps = [
@@ -48,10 +60,12 @@ ohos_unittest("agent_bundle_event_callback_test") {
     "bundle_framework:appexecfwk_core",
     "bundle_framework:libappexecfwk_common",
     "c_utils:utils",
+    "ffrt:libffrt",
     "googletest:gmock_main",
     "googletest:gtest_main",
     "hilog:libhilog",
     "ipc:ipc_core",
+    "kv_store:distributeddata_inner",
   ]
 
   cflags_cc = []
