@@ -107,6 +107,13 @@ napi_value CreateJsToolInfo(napi_env env, const ToolInfo &tool);
  */
 napi_value CreateJsToolSummary(napi_env env, const ToolSummary &summary);
 
+/**
+ * @brief Create JavaScript SessionStatus enum object.
+ * @param env The N-API environment.
+ * @return Returns the JavaScript object representing SessionStatus enum.
+ */
+napi_value CreateJsSessionStatus(napi_env env);
+
 } // namespace CliTool
 } // namespace OHOS
 
