@@ -475,6 +475,13 @@
             }
         },
         {
+            "extension_type_name": "ukeyAuth",
+            "need_create_sandbox": true,
+            "screen_unlock_access": {
+                "defaultInterception": false
+            }
+        },
+        {
             "extension_type_name": "modularObject",
             "screen_unlock_access": {
                 "defaultInterception": false
