@@ -1575,6 +1575,46 @@ HWTEST_F(AbilityManagerServiceSecondTest, SetResidentProcessEnable_001, TestSize
 
 /*
  * Feature: AbilityManagerService
+ * Function: SetResidentProcessEnabled
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService SetResidentProcessEnabled
+ * EnvConditions: NA
+ * CaseDescription: Verify SetResidentProcessEnabled with SA caller
+ */
+HWTEST_F(AbilityManagerServiceSecondTest, SetResidentProcessEnable_002, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    std::string bundleName = "ability.manager.service.test";
+    bool enable = true;
+    int oldPerm = MyStatus::GetInstance().permPermission_;
+    MyStatus::GetInstance().permPermission_ = 1; // IS_SA_CALL
+    // SA call: the sa uid is not in any configured list in ut, so both verify paths fail.
+    EXPECT_EQ(abilityMs_->SetResidentProcessEnabled(bundleName, enable), ERR_NO_RESIDENT_PERMISSION);
+    MyStatus::GetInstance().permPermission_ = oldPerm;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: SetResidentProcessEnabled
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService SetResidentProcessEnabled
+ * EnvConditions: NA
+ * CaseDescription: Verify SetResidentProcessEnabled with non-SA caller
+ */
+HWTEST_F(AbilityManagerServiceSecondTest, SetResidentProcessEnable_003, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    std::string bundleName = "ability.manager.service.test";
+    bool enable = false;
+    int oldPerm = MyStatus::GetInstance().permPermission_;
+    MyStatus::GetInstance().permPermission_ = 0; // not SA call
+    // Non-SA system app call fails to obtain the caller bundle name in ut.
+    EXPECT_EQ(abilityMs_->SetResidentProcessEnabled(bundleName, enable), INNER_ERR);
+    MyStatus::GetInstance().permPermission_ = oldPerm;
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: DumpMissionInner
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService DumpMissionInner

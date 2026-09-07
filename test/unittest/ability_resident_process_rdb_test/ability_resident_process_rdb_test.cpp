@@ -147,5 +147,48 @@ HWTEST_F(AbilityResidentProcessRdbTest, RemoveData_002, TestSize.Level1) {
     int32_t result = amsRdb.RemoveData(emptyBundleName);
     EXPECT_EQ(result, Rdb_Parameter_Err);
 }
+
+/*
+ * Feature: AbilityResidentProcessRdb
+ * Function: VerifySaConfigurationPermissions
+ * SubFunction: NA
+ * FunctionPoints: AbilityResidentProcessRdb VerifySaConfigurationPermissions_001
+ */
+HWTEST_F(AbilityResidentProcessRdbTest, VerifySaConfigurationPermissions_001, TestSize.Level1) {
+    EXPECT_EQ(AmsResidentProcessRdb::GetInstance().VerifySaConfigurationPermissions("", 1234), Rdb_Parameter_Err);
+    EXPECT_EQ(AmsResidentProcessRdb::GetInstance().VerifySaConfigurationPermissions("test.com", -1),
+        Rdb_Parameter_Err);
+    // no record for the bundle in the empty table
+    EXPECT_EQ(AmsResidentProcessRdb::GetInstance().VerifySaConfigurationPermissions(
+        "com.target.bundle", 1234), Rdb_Search_Record_Err);
+}
+
+/*
+ * Feature: AbilityResidentProcessRdb
+ * Function: VerifySaConfigurationPermissions
+ * SubFunction: NA
+ * FunctionPoints: AbilityResidentProcessRdb VerifySaConfigurationPermissions_002
+ */
+HWTEST_F(AbilityResidentProcessRdbTest, VerifySaConfigurationPermissions_002, TestSize.Level1) {
+    AmsResidentProcessRdb amsRdb;
+    std::string bundleName = "test.com";
+    int32_t result = amsRdb.VerifySaConfigurationPermissions(bundleName, 1234);
+    EXPECT_EQ(result, Rdb_Parameter_Err);
+}
+
+/*
+ * Feature: AbilityResidentProcessRdb
+ * Function: GetSaResidentProcessRawData
+ * SubFunction: NA
+ * FunctionPoints: AbilityResidentProcessRdb GetSaResidentProcessRawData_001
+ */
+HWTEST_F(AbilityResidentProcessRdbTest, GetSaResidentProcessRawData_001, TestSize.Level1) {
+    EXPECT_EQ(AmsResidentProcessRdb::GetInstance().GetSaResidentProcessRawData("", 1234), Rdb_Parameter_Err);
+    EXPECT_EQ(AmsResidentProcessRdb::GetInstance().GetSaResidentProcessRawData("test.com", -1),
+        Rdb_Parameter_Err);
+    // the capability config file is absent in ut, so the raw data list is empty
+    EXPECT_EQ(AmsResidentProcessRdb::GetInstance().GetSaResidentProcessRawData(
+        "com.target.bundle", 1234), Rdb_Parameter_Err);
+}
 } // namespace AAFwk
 } // namespace OHOS

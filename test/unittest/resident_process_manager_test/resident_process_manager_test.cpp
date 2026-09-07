@@ -117,6 +117,70 @@ HWTEST_F(ResidentProcessManagerTest, SetResidentProcessEnable_002, TestSize.Leve
 
 /*
  * Feature: ResidentProcessManager
+ * Function: SetResidentProcessEnabledForSA
+ * SubFunction: NA
+ * FunctionPoints:ResidentProcessManager SetResidentProcessEnabledForSA
+ * EnvConditions: NA
+ * CaseDescription: Verify SetResidentProcessEnabledForSA with invalid input
+ */
+HWTEST_F(ResidentProcessManagerTest, SetResidentProcessEnableForSA_001, TestSize.Level1)
+{
+    auto manager = std::make_shared<ResidentProcessManager>();
+    ASSERT_NE(manager, nullptr);
+    std::string bundleName = "com.example.resident.process";
+    EXPECT_EQ(manager->SetResidentProcessEnabledForSA("", 1234, false), INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(manager->SetResidentProcessEnabledForSA(bundleName, -1, false), INVALID_PARAMETERS_ERR);
+}
+
+/*
+ * Feature: ResidentProcessManager
+ * Function: SetResidentProcessEnabledForSA
+ * SubFunction: NA
+ * FunctionPoints:ResidentProcessManager SetResidentProcessEnabledForSA
+ * EnvConditions: NA
+ * CaseDescription: Verify SetResidentProcessEnabledForSA rejected when sa uid is not configured
+ */
+HWTEST_F(ResidentProcessManagerTest, SetResidentProcessEnableForSA_002, TestSize.Level1)
+{
+    auto manager = std::make_shared<ResidentProcessManager>();
+    ASSERT_NE(manager, nullptr);
+    std::string bundleName = "com.example.resident.process";
+    EXPECT_CALL(AmsResidentProcessRdb::GetInstance(), VerifySaConfigurationPermissions(bundleName, 1234))
+        .Times(1)
+        .WillOnce(Return(RdbResult::Rdb_Permissions_Err));
+    EXPECT_CALL(AmsResidentProcessRdb::GetInstance(), GetSaResidentProcessRawData(bundleName, 1234))
+        .Times(1)
+        .WillOnce(Return(RdbResult::Rdb_Parameter_Err));
+    EXPECT_EQ(manager->SetResidentProcessEnabledForSA(bundleName, 1234, false), ERR_NO_RESIDENT_PERMISSION);
+}
+
+/*
+ * Feature: ResidentProcessManager
+ * Function: SetResidentProcessEnabledForSA
+ * SubFunction: NA
+ * FunctionPoints:ResidentProcessManager SetResidentProcessEnabledForSA
+ * EnvConditions: NA
+ * CaseDescription: Verify SetResidentProcessEnabledForSA with sa permission and rdb error
+ */
+HWTEST_F(ResidentProcessManagerTest, SetResidentProcessEnableForSA_003, TestSize.Level1)
+{
+    auto manager = std::make_shared<ResidentProcessManager>();
+    ASSERT_NE(manager, nullptr);
+    std::string bundleName = "com.example.resident.process";
+    EXPECT_CALL(AmsResidentProcessRdb::GetInstance(), VerifySaConfigurationPermissions(bundleName, 1234))
+        .Times(1)
+        .WillOnce(Return(RdbResult::Rdb_OK));
+    EXPECT_CALL(AmsResidentProcessRdb::GetInstance(), GetSaResidentProcessRawData(bundleName, 1234))
+        .Times(1)
+        .WillOnce(Return(RdbResult::Rdb_OK));
+    EXPECT_CALL(AmsResidentProcessRdb::GetInstance(), GetResidentProcessEnable(bundleName, _))
+        .Times(1)
+        .WillOnce(Return(RdbResult::Rdb_Parameter_Err));
+    EXPECT_EQ(manager->SetResidentProcessEnabledForSA(bundleName, 1234, false), INNER_ERR);
+}
+
+/*
+ * Feature: ResidentProcessManager
  * Function: PutResidentAbility
  * SubFunction: NA
  * FunctionPoints:ResidentProcessManager PutResidentAbility
