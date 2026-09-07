@@ -623,6 +623,29 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, CheckCallOtherExtensionPermission_
 
 /*
  * Feature: AbilityManagerService
+ * Name: CheckCallOtherExtensionPermission_UkeyAuth_002
+ * Function: CheckCallOtherExtensionPermission
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService CheckCallOtherExtensionPermission with ukeyAuth extension and permission granted
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, CheckCallOtherExtensionPermission_UkeyAuth_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest CheckCallOtherExtensionPermission_UkeyAuth_002 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs_, nullptr);
+    MyStatus::GetInstance().permPermission_ = 2;
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.visible = true;
+    abilityRequest.abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::UKEY_AUTH;
+    abilityRequest.appInfo.isSystemApp = false;
+    abilityRequest.appInfo.bundleName = "test.bundleName";
+    int32_t result = abilityMs_->CheckCallOtherExtensionPermission(abilityRequest);
+    TAG_LOGI(AAFwkTag::TEST, "CheckCallOtherExtensionPermission_UkeyAuth_002 result: %{public}d", result);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest CheckCallOtherExtensionPermission_UkeyAuth_002 end");
+}
+
+/*
+ * Feature: AbilityManagerService
  * Name: CheckUIExtensionCallerIsForeground_001
  * Function: CheckUIExtensionCallerIsForeground
  * SubFunction: NA

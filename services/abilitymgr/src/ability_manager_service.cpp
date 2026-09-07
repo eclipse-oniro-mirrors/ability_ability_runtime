@@ -13243,7 +13243,11 @@ int AbilityManagerService::CheckCallOtherExtensionPermission(const AbilityReques
     }
 #endif // SUPPORT_AUTO_FILL
     if (extensionType == AppExecFwk::ExtensionAbilityType::UKEY_AUTH) {
-        return CheckUkeyAuthExtensionPermission(abilityRequest);
+        int32_t ukeyAuthCheckResult = CheckUkeyAuthExtensionPermission(abilityRequest);
+        if (ukeyAuthCheckResult != ERR_OK) {
+            return ukeyAuthCheckResult;
+        }
+        return CheckUIExtensionPermission(abilityRequest, validUserId);
     }
     if (AAFwk::UIExtensionWrapper::IsUIExtension(extensionType)) {
         return CheckUIExtensionPermission(abilityRequest, validUserId);
