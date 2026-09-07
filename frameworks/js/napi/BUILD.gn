@@ -102,6 +102,7 @@ group("napi_packages") {
     "${ability_runtime_napi_path}/ui_service_extension_ability:uiserviceextensionability",
     "${ability_runtime_napi_path}/ui_service_extension_ability:uiserviceextensionability_napi",
     "${ability_runtime_napi_path}/ui_service_extension_context:uiserviceextensioncontext_napi",
+    "${ability_runtime_napi_path}/ukey_auth_ui_extension_ability:ukeyauthuiextensionability_napi",
     "${ability_runtime_napi_path}/wantConstant:wantconstant",
     "${ability_runtime_napi_path}/wantConstant:wantconstant_napi",
     "${ability_runtime_napi_path}/wantagent:napi_wantAgent",
