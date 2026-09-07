@@ -15,6 +15,7 @@
 
 #include "ohos_js_env_logger.h"
 
+#include <mutex>
 #include <string>
 #include "hilog/log.h"
 #include "js_env_logger.h"
@@ -67,7 +68,10 @@ void JsEnvLogger(JsEnv::JsEnvLogLevel level, const char* fileName, const char* f
 
 void OHOSJsEnvLogger::RegisterJsEnvLogger()
 {
-    JsEnv::JsEnvLogger::logger = JsEnvLogger;
+    static std::once_flag registerFlag;
+    std::call_once(registerFlag, []() {
+        JsEnv::JsEnvLogger::logger = JsEnvLogger;
+    });
 }
 } // namespace AbilityRuntime
 } // namespace OHOS
