@@ -90,17 +90,17 @@ HWTEST_F(AbilityContextImplSecondTest, SetAbilityInstanceInfo_0100, Function | M
 {
     std::shared_ptr<OHOS::Media::PixelMap> icon = nullptr;
     EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled()).Times(1).WillOnce(Return(false));
-    ErrCode ret = context_->SetAbilityInstanceInfo(g_testLabel, icon);
+    ErrCode ret = context_->SetAbilityInstanceInfo(g_testLabel, icon, "");
     EXPECT_TRUE(ret == ERR_CAPABILITY_NOT_SUPPORT);
 
     EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled()).Times(1).WillOnce(Return(true));
-    ret = context_->SetAbilityInstanceInfo(g_testLabel, icon);
+    ret = context_->SetAbilityInstanceInfo(g_testLabel, icon, "");
     EXPECT_TRUE(ret == ERR_INVALID_VALUE);
 
     EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled()).Times(1).WillOnce(Return(true));
     Rosen::SessionInfo info;
     context_->sessionToken_ = wptr<IRemoteObject> (new Rosen::Session(info));
-    ret = context_->SetAbilityInstanceInfo(g_testLabel, icon);
+    ret = context_->SetAbilityInstanceInfo(g_testLabel, icon, "");
     EXPECT_FALSE(ret == ERR_INVALID_VALUE);
 }
 
