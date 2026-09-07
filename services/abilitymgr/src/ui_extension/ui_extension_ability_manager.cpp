@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <ctime>
 #include "ability_manager_service.h"
 #include "ability_manager_constants.h"
 #include "ability_permission_util.h"
@@ -74,6 +75,7 @@ const int COMMAND_TIMEOUT_MULTIPLE_NEW = 21;
 const int COMMAND_WINDOW_TIMEOUT_MULTIPLE = 5;
 #endif
 constexpr int32_t HALF_TIMEOUT = 2;
+constexpr const char *UI_EXTENSION_FOREGROUND_REQUEST_TIMEOUT_TASK = "ui_extension_foreground_request_timeout:";
 
 int32_t GetForegroundTimeoutMultiple(const std::shared_ptr<BaseExtensionRecord> &abilityRecord)
 {
@@ -81,6 +83,26 @@ int32_t GetForegroundTimeoutMultiple(const std::shared_ptr<BaseExtensionRecord> 
         return OHOS::AbilityRuntime::GlobalConstant::INSIGHT_INTENT_TIMEOUT_MULTIPLE;
     }
     return OHOS::AbilityRuntime::GlobalConstant::FOREGROUND_TIMEOUT_MULTIPLE;
+}
+
+bool GetMonotonicTime(struct timespec &timestamp)
+{
+    if (clock_gettime(CLOCK_MONOTONIC, &timestamp) == 0) {
+        return true;
+    }
+    TAG_LOGE(AAFwkTag::UI_EXT, "failed to get monotonic time");
+    return false;
+}
+
+int32_t CompareMonotonicTime(const struct timespec &first, const struct timespec &second)
+{
+    if (first.tv_sec != second.tv_sec) {
+        return first.tv_sec < second.tv_sec ? -1 : 1;
+    }
+    if (first.tv_nsec != second.tv_nsec) {
+        return first.tv_nsec < second.tv_nsec ? -1 : 1;
+    }
+    return 0;
 }
 }
 
@@ -824,7 +846,124 @@ void UIExtensionAbilityManager::DoForegroundUIExtension(std::shared_ptr<BaseExte
             return;
         }
     }
-    CallEnqueueStartServiceReq(abilityRequest, abilityRecord->GetURI());
+    EnqueueStartServiceReq(abilityRequest, abilityRecord->GetURI());
+}
+
+void UIExtensionAbilityManager::EnqueueStartServiceReq(const AbilityRequest &abilityRequest,
+    const std::string &serviceUri)
+{
+    std::lock_guard guard(uiExtensionForegroundRequestMapLock_);
+    const std::string abilityUri = serviceUri.empty() ? abilityRequest.want.GetElement().GetURI() : serviceUri;
+    struct timespec enqueueTime = { 0, 0 };
+    if (!GetMonotonicTime(enqueueTime)) {
+        // A zero timestamp makes the lifecycle cancellation win if ordering is unavailable.
+        TAG_LOGW(AAFwkTag::UI_EXT, "failed to timestamp foreground request, use conservative enqueue, uri: %{public}s",
+            abilityUri.c_str());
+    }
+
+    auto requestIt = uiExtensionForegroundRequestMap_.find(abilityUri);
+    if (requestIt != uiExtensionForegroundRequestMap_.end()) {
+        requestIt->second->requests.emplace_back(UIExtensionForegroundRequest { abilityRequest, enqueueTime });
+        return;
+    }
+
+    auto requestQueue = std::make_shared<UIExtensionForegroundRequestQueue>();
+    requestQueue->requests.emplace_back(UIExtensionForegroundRequest { abilityRequest, enqueueTime });
+    uiExtensionForegroundRequestMap_.emplace(abilityUri, requestQueue);
+    CHECK_POINTER(taskHandler_);
+    auto callback = [serviceUri = abilityUri,
+        requestQueueWeak = std::weak_ptr<UIExtensionForegroundRequestQueue>(requestQueue),
+        managerWeak = weak_from_this()]() {
+        auto connectManager = managerWeak.lock();
+        auto requestQueue = requestQueueWeak.lock();
+        auto uiExtensionManager = std::static_pointer_cast<UIExtensionAbilityManager>(connectManager);
+        if (uiExtensionManager == nullptr || requestQueue == nullptr) {
+            return;
+        }
+        std::lock_guard guard(uiExtensionManager->uiExtensionForegroundRequestMapLock_);
+        auto it = uiExtensionManager->uiExtensionForegroundRequestMap_.find(serviceUri);
+        if (it == uiExtensionManager->uiExtensionForegroundRequestMap_.end() || it->second != requestQueue) {
+            return;
+        }
+        auto requestCount = requestQueue->requests.size();
+        uiExtensionManager->uiExtensionForegroundRequestMap_.erase(it);
+        TAG_LOGE(AAFwkTag::UI_EXT, "UI extension %{public}s foreground request timeout, count: %{public}zu",
+            serviceUri.c_str(), requestCount);
+    };
+    int connectTimeout =
+        AmsConfigurationParameter::GetInstance().GetAppStartTimeoutTime() * CONNECT_TIMEOUT_MULTIPLE;
+    taskHandler_->SubmitTask(callback, std::string(UI_EXTENSION_FOREGROUND_REQUEST_TIMEOUT_TASK) + abilityUri,
+        connectTimeout);
+}
+
+void UIExtensionAbilityManager::CompleteStartServiceReq(const std::string &serviceUri)
+{
+    std::shared_ptr<UIExtensionForegroundRequestQueue> requestQueue;
+    {
+        std::lock_guard guard(uiExtensionForegroundRequestMapLock_);
+        auto it = uiExtensionForegroundRequestMap_.find(serviceUri);
+        if (it != uiExtensionForegroundRequestMap_.end()) {
+            requestQueue = it->second;
+            uiExtensionForegroundRequestMap_.erase(it);
+            if (taskHandler_) {
+                taskHandler_->CancelTask(std::string(UI_EXTENSION_FOREGROUND_REQUEST_TIMEOUT_TASK) + serviceUri);
+            }
+        }
+    }
+
+    if (requestQueue) {
+        TAG_LOGI(AAFwkTag::UI_EXT, "complete UI extension foreground requests: %{public}zu, uri: %{public}s",
+            requestQueue->requests.size(), serviceUri.c_str());
+        for (const auto &request : requestQueue->requests) {
+            auto ret = StartAbilityLocked(request.abilityRequest);
+            if (ret != ERR_OK) {
+                TAG_LOGW(AAFwkTag::UI_EXT, "StartAbilityLocked failed: %{public}d, uri: %{public}s",
+                    ret, serviceUri.c_str());
+            }
+        }
+    }
+}
+
+void UIExtensionAbilityManager::RemoveUIExtensionForegroundRequest(const std::string &serviceUri,
+    const struct timespec &cutoffTime, bool hasCutoffTime)
+{
+    std::lock_guard guard(uiExtensionForegroundRequestMapLock_);
+    auto it = uiExtensionForegroundRequestMap_.find(serviceUri);
+    if (it == uiExtensionForegroundRequestMap_.end()) {
+        TAG_LOGD(AAFwkTag::UI_EXT, "no queued UI extension foreground request to remove, uri: %{public}s",
+            serviceUri.c_str());
+        return;
+    }
+
+    auto requestQueue = it->second;
+    CHECK_POINTER(requestQueue);
+    size_t requestCount = 0;
+    for (auto requestIt = requestQueue->requests.begin(); requestIt != requestQueue->requests.end();) {
+        if (!hasCutoffTime || CompareMonotonicTime(requestIt->enqueueTime, cutoffTime) <= 0) {
+            requestIt = requestQueue->requests.erase(requestIt);
+            ++requestCount;
+            continue;
+        }
+        ++requestIt;
+    }
+    if (!requestQueue->requests.empty()) {
+        TAG_LOGI(AAFwkTag::UI_EXT,
+            "keep queued UI extension foreground requests after lifecycle IPC, uri: %{public}s, removed: %{public}zu, "
+            "remained: %{public}zu",
+            serviceUri.c_str(), requestCount, requestQueue->requests.size());
+        return;
+    }
+
+    uiExtensionForegroundRequestMap_.erase(it);
+    bool timeoutTaskCanceled = false;
+    if (taskHandler_) {
+        timeoutTaskCanceled = taskHandler_->CancelTask(
+            std::string(UI_EXTENSION_FOREGROUND_REQUEST_TIMEOUT_TASK) + serviceUri);
+    }
+    TAG_LOGI(AAFwkTag::UI_EXT,
+        "remove queued UI extension foreground requests, uri: %{public}s, count: %{public}zu, "
+        "timeoutTaskCanceled: %{public}d",
+        serviceUri.c_str(), requestCount, static_cast<int32_t>(timeoutTaskCanceled));
 }
 
 void UIExtensionAbilityManager::AddUIExtWindowDeathRecipient(const sptr<IRemoteObject> &session)
@@ -1158,6 +1297,12 @@ void UIExtensionAbilityManager::BackgroundAbilityWindowLocked(const std::shared_
     const sptr<SessionInfo> &sessionInfo)
 {
     std::lock_guard guard(serialMutex_);
+    CHECK_POINTER(abilityRecord);
+    CHECK_POINTER(sessionInfo);
+    struct timespec cutoffTime = { 0, 0 };
+    const bool hasCutoffTime = GetMonotonicTime(cutoffTime);
+    // Only remove requests queued before this background IPC acquires serialMutex_.
+    RemoveUIExtensionForegroundRequest(abilityRecord->GetURI(), cutoffTime, hasCutoffTime);
     DoBackgroundAbilityWindow(abilityRecord, sessionInfo);
 }
 
@@ -1188,7 +1333,11 @@ int UIExtensionAbilityManager::TerminateAbilityInner(const sptr<IRemoteObject> &
         if (!abilityRecord->IsConnectListEmpty()) {
             TAG_LOGD(AAFwkTag::EXT, "exist connection, don't terminate");
             return ERR_OK;
-        } else if (abilityRecord->IsAbilityState(AbilityState::FOREGROUND) ||
+        }
+        struct timespec cutoffTime = { 0, 0 };
+        const bool hasCutoffTime = GetMonotonicTime(cutoffTime);
+        RemoveUIExtensionForegroundRequest(abilityRecord->GetURI(), cutoffTime, hasCutoffTime);
+        if (abilityRecord->IsAbilityState(AbilityState::FOREGROUND) ||
             abilityRecord->IsAbilityState(AbilityState::FOREGROUNDING) ||
             abilityRecord->IsAbilityState(AbilityState::BACKGROUNDING)) {
             TAG_LOGD(AAFwkTag::EXT, "current ability is active");
