@@ -549,7 +549,7 @@ int32_t AppExitReasonDataManager::DeleteAllRecoverInfo()
     DistributedKv::Status status;
     {
         std::lock_guard lock(kvStorePtrMutex_);
-        status = kvStorePtr_->GetEntries(nullptr, allEntries);
+        status = kvStorePtr_->GetEntries(DistributedKv::Key(KEY_RECOVER_INFO_PREFIX), allEntries);
     }
     if (status != DistributedKv::Status::SUCCESS) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "get entries error: %{public}d", status);
