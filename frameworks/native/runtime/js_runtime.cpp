@@ -62,7 +62,6 @@
 #include "extractor.h"
 #include "replace_intl_module.h"
 #include "system_ability_definition.h"
-#include "dfx_jsnapi.h"
 #include "worker_info.h"
 #include "ffrt.h"
 
@@ -1011,17 +1010,25 @@ void JsRuntime::InitSourceMap(const std::string bundleName)
     CHECK_POINTER(jsEnv_);
 
     auto init = [bundleName]() {
-        DFXJSNApi::SourceMapSetInitStatus(false);
+        DFXJSNApi::SourceMapSetInitStatus(panda::ecmascript::InitStatus::IN_EXECUTED);
         std::vector<std::string> hapList;
         JsModuleReader::GetHapPathList(bundleName, hapList);
+        bool hasSourceMap = false;
         for (auto &hapInfo : hapList) {
-            if (!hapInfo.empty()) {
-                std::string sourceMapData;
-                JsRuntime::ReadSourceMapData(hapInfo, MERGE_SOURCE_MAP_PATH, sourceMapData);
-                DFXJSNApi::SourceMapSplitSourceMap(sourceMapData);
+            if (hapInfo.empty()) {
+                continue;
             }
+            std::string sourceMapData;
+            if (JsRuntime::ReadSourceMapData(hapInfo, MERGE_SOURCE_MAP_PATH, sourceMapData)) {
+                hasSourceMap = true;
+            }
+            DFXJSNApi::SourceMapSplitSourceMap(sourceMapData);
         }
-        DFXJSNApi::SourceMapSetInitStatus(true);
+        if (hasSourceMap) {
+            DFXJSNApi::SourceMapSetInitStatus(panda::ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+        } else {
+            DFXJSNApi::SourceMapSetInitStatus(panda::ecmascript::InitStatus::NO_SOURCEMAP);
+        }
     };
 
     ffrt::submit(init, {}, {}, ffrt::task_attr().qos(ffrt::qos_user_initiated));
