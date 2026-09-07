@@ -72,7 +72,8 @@ inline std::unordered_set<AppExecFwk::ExtensionAbilityType> GetUiExtensionSet()
         AppExecFwk::ExtensionAbilityType::AWC_WEBPAGE,
         AppExecFwk::ExtensionAbilityType::AWC_NEWSFEED,
         AppExecFwk::ExtensionAbilityType::LIVE_FORM,
-        AppExecFwk::ExtensionAbilityType::EMBEDDED_CASHIER
+        AppExecFwk::ExtensionAbilityType::EMBEDDED_CASHIER,
+        AppExecFwk::ExtensionAbilityType::UKEY_AUTH
     };
 }
 

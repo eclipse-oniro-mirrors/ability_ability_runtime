@@ -55,7 +55,8 @@ const std::unordered_map<std::string, ExtensionAbilityType> EXTENSION_TYPE_MAP =
     { "sysDialog/atomicServicePanel", ExtensionAbilityType::SYSDIALOG_ATOMICSERVICEPANEL },
     { "sysPicker/share", ExtensionAbilityType::SYSPICKER_SHARE },
     { "hms/account", ExtensionAbilityType::HMS_ACCOUNT },
-    { "distributed", ExtensionAbilityType::DISTRIBUTED }
+    { "distributed", ExtensionAbilityType::DISTRIBUTED },
+    { "ukeyAuth", ExtensionAbilityType::UKEY_AUTH }
 };
 
 ExtensionAbilityType ConvertToExtensionAbilityType(const std::string &type)

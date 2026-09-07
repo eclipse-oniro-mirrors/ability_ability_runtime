@@ -1010,6 +1010,27 @@ HWTEST_F(
 }
 
 /**
+ * @tc.number: ExtensionAbilityThread_CreateAbilityName_0200
+ * @tc.name: CreateAbilityName
+ * @tc.desc: Test CreateAbilityName when extensionAbilityType is UKEY_AUTH
+ */
+HWTEST_F(ExtensionAbilityThreadTest, ExtensionAbilityThread_CreateAbilityName_0200, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "ExtensionAbilityThread_CreateAbilityName_0200 start";
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    std::shared_ptr<AbilityInfo> abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->name = "ExtensionAbility";
+    abilityInfo->type = AbilityType::EXTENSION;
+    abilityInfo->extensionAbilityType = AppExecFwk::ExtensionAbilityType::UKEY_AUTH;
+    sptr<IRemoteObject> token = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    auto abilityRecord = std::make_shared<AbilityLocalRecord>(abilityInfo, token, nullptr, 0);
+    ExtensionAbilityThread thread;
+    std::string abilityName = thread.CreateAbilityName(abilityRecord, application);
+    EXPECT_EQ(abilityName, "UkeyAuthUIExtensionAbility");
+    GTEST_LOG_(INFO) << "ExtensionAbilityThread_CreateAbilityName_0200 end";
+}
+
+/**
  * @tc.number: ExtensionAbilityThread_HandleDisconnectExtension_0100
  * @tc.name: HandleDisconnectExtension
  * @tc.desc: Test HandleDisconnectExtension function when abilityImpl_ is not
