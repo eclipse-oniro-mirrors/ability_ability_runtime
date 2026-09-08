@@ -134,7 +134,7 @@ int32_t AppExitReasonHelper::RecordAppExitReason(const ExitReason &exitReason)
     }
     auto uid = IPCSkeleton::GetCallingUid();
     std::string bundleName;
-    int32_t appIndex = -1;
+    int32_t appIndex = 0;
     auto ret = IN_PROCESS_CALL(AbilityUtil::GetBundleManagerHelper()->GetNameAndIndexForUid(uid, bundleName, appIndex));
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "GetNameAndIndexForUid failed, ret: %{public}d", ret);

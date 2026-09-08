@@ -54,7 +54,7 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int32_t PreloadApplication(const std::string &bundleName, int32_t userId,
-        AppExecFwk::PreloadMode preloadMode, int32_t appIndex = -1) override;
+        AppExecFwk::PreloadMode preloadMode, int32_t appIndex = 0) override;
 
     /**
      * Launch Application Finished
@@ -63,7 +63,7 @@ public:
     virtual void PreloadModuleFinished(const int32_t recordId) override;
 
     virtual int32_t MakeImage(const AAFwk::Want &want, int32_t userId, AppExecFwk::PreloadMode preloadMode,
-        int32_t appIndex = -1, sptr<IImageErrorHandler> errorHandler = nullptr) override;
+        int32_t appIndex = 0, sptr<IImageErrorHandler> errorHandler = nullptr) override;
 
     virtual int32_t DestroyImage(uint64_t checkpointId, sptr<IImageErrorHandler> errorHandler = nullptr) override;
 
@@ -518,7 +518,7 @@ public:
         const AppExecFwk::ConfigurationPolicy &policy, const int32_t userId = -1) override;
 
     virtual int32_t UpdateConfigurationByBundleName(const Configuration &config, const std::string &name,
-        int32_t appIndex = -1) override;
+        int32_t appIndex = 0) override;
 
     virtual int32_t RegisterConfigurationObserver(const sptr<IConfigurationObserver> &observer,
         const int32_t userId = -1) override;

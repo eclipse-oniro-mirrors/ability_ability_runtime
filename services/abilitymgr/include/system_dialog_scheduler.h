@@ -63,7 +63,7 @@ struct DialogAppInfo {
     bool visible = true;
     bool isAppLink = false;
     AppExecFwk::MultiAppModeData multiAppMode;
-    int32_t appIndex = -1;
+    int32_t appIndex = 0;
 };
 /**
  * @class SystemDialogScheduler
