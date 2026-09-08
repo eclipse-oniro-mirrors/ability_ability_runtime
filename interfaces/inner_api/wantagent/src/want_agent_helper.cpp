@@ -545,6 +545,12 @@ std::shared_ptr<WantAgent> WantAgentHelper::FromString(const std::string &jsonSt
 
 std::string WantAgentHelper::ToStringWithEnvelope(const std::shared_ptr<WantAgent> &agent)
 {
+    return ToStringWithEnvelope(agent, AAFwk::WantParamWrapperJson::UnsupportedTypePolicy::SKIP);
+}
+
+std::string WantAgentHelper::ToStringWithEnvelope(const std::shared_ptr<WantAgent> &agent,
+    AAFwk::WantParamWrapperJson::UnsupportedTypePolicy policy)
+{
     if (agent == nullptr) {
         TAG_LOGE(AAFwkTag::WANTAGENT, "invalid param");
         return "";
@@ -577,7 +583,8 @@ std::string WantAgentHelper::ToStringWithEnvelope(const std::shared_ptr<WantAgen
     if ((*info.get()).allWants.size() > 0) {
         nlohmann::json paramsObj;
         std::string paramsString;
-        if (!AAFwk::WantParamWrapperJson::Serialize((*info.get()).allWants[0].want.GetParams(), paramsString)) {
+        if (!AAFwk::WantParamWrapperJson::Serialize(
+            (*info.get()).allWants[0].want.GetParams(), paramsString, policy)) {
             TAG_LOGE(AAFwkTag::WANTAGENT, "serialize want params json failed");
         }
         paramsObj["extraInfoValue"] = paramsString;
@@ -589,6 +596,13 @@ std::string WantAgentHelper::ToStringWithEnvelope(const std::shared_ptr<WantAgen
 
 std::shared_ptr<WantAgent> WantAgentHelper::FromStringWithEnvelope(
     const std::string &jsonString, int32_t uid)
+{
+    return FromStringWithEnvelope(
+        jsonString, uid, AAFwk::WantParamWrapperJson::UnsupportedTypePolicy::SKIP);
+}
+
+std::shared_ptr<WantAgent> WantAgentHelper::FromStringWithEnvelope(const std::string &jsonString, int32_t uid,
+    AAFwk::WantParamWrapperJson::UnsupportedTypePolicy policy)
 {
     if (jsonString.empty()) {
         return nullptr;
@@ -607,7 +621,7 @@ std::shared_ptr<WantAgent> WantAgentHelper::FromStringWithEnvelope(
 
     std::vector<WantAgentConstant::Flags> flagsVec = ParseFlags(jsonObject);
     auto wants = ParseWantsFromJson(jsonObject);
-    auto extraInfo = ParseExtraInfoEnvelopeFromJson(jsonObject);
+    auto extraInfo = ParseExtraInfoEnvelopeFromJson(jsonObject, policy);
 
     WantAgentInfo info(requestCode, appIndex, operationType, flagsVec, wants, extraInfo);
     return GetWantAgent(info, userId, uid);
@@ -684,7 +698,8 @@ std::shared_ptr<AAFwk::WantParams> WantAgentHelper::ParseExtraInfoFromJson(const
     return std::make_shared<AAFwk::WantParams>(params);
 }
 
-std::shared_ptr<AAFwk::WantParams> WantAgentHelper::ParseExtraInfoEnvelopeFromJson(const nlohmann::json &jsonObject)
+std::shared_ptr<AAFwk::WantParams> WantAgentHelper::ParseExtraInfoEnvelopeFromJson(
+    const nlohmann::json &jsonObject, AAFwk::WantParamWrapperJson::UnsupportedTypePolicy policy)
 {
     if (!jsonObject.contains("extraInfo") || !jsonObject["extraInfo"].is_object()) {
         return nullptr;
@@ -694,7 +709,8 @@ std::shared_ptr<AAFwk::WantParams> WantAgentHelper::ParseExtraInfoEnvelopeFromJs
         return nullptr;
     }
     AAFwk::WantParams params;
-    if (!AAFwk::WantParamWrapperJson::Parse(extraInfoObj.at("extraInfoValue").get<std::string>(), params)) {
+    if (!AAFwk::WantParamWrapperJson::Parse(
+        extraInfoObj.at("extraInfoValue").get<std::string>(), params, policy)) {
         TAG_LOGE(AAFwkTag::WANTAGENT, "parse want params json failed");
     }
     return std::make_shared<AAFwk::WantParams>(params);
