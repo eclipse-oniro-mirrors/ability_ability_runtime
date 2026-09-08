@@ -1606,13 +1606,13 @@ HWTEST_F(AppMgrServiceInnerTest, UpdateForeground_001, TestSize.Level1)
     EXPECT_NE(appRecord, nullptr);
     appRecord->SetState(ApplicationState::APP_STATE_FOREGROUND);
     std::string eventName = AppFreezeType::THREAD_BLOCK_3S;
-    bool ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
+    bool ret = appMgrServiceInner->UpdateForeground(appRecord, eventName, false, true);
     EXPECT_TRUE(ret);
     appRecord->SetState(ApplicationState::APP_STATE_FOCUS);
-    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
+    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName, false, true);
     EXPECT_TRUE(ret);
     appRecord->SetState(ApplicationState::APP_STATE_BACKGROUND);
-    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
+    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName, false, false);
     EXPECT_TRUE(!ret);
     TAG_LOGI(AAFwkTag::TEST, "UpdateForeground_001 end");
 }
@@ -1638,15 +1638,15 @@ HWTEST_F(AppMgrServiceInnerTest, UpdateForeground_002, TestSize.Level1)
     EXPECT_NE(appRecord, nullptr);
     appRecord->SetState(ApplicationState::APP_STATE_FOREGROUND);
     std::string eventName = AppFreezeType::BUSSINESS_THREAD_BLOCK_3S;
-    bool ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
+    bool ret = appMgrServiceInner->UpdateForeground(appRecord, eventName, false, true);
     EXPECT_TRUE(ret);
     appRecord->SetState(ApplicationState::APP_STATE_FOCUS);
     eventName = AppFreezeType::BUSSINESS_THREAD_BLOCK_6S;
-    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
+    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName, false, true);
     EXPECT_TRUE(ret);
     eventName = AppFreezeType::THREAD_BLOCK_6S;
     appRecord->SetState(ApplicationState::APP_STATE_BACKGROUND);
-    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
+    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName, false, false);
     EXPECT_TRUE(!ret);
     TAG_LOGI(AAFwkTag::TEST, "UpdateForeground_002 end");
 }
@@ -1701,9 +1701,16 @@ HWTEST_F(AppMgrServiceInnerTest, UpdateForeground_004, TestSize.Level1)
     std::string eventName = AppFreezeType::LIFECYCLE_TIMEOUT;
     bool ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
     EXPECT_TRUE(ret);
+    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName, true);
+    EXPECT_TRUE(!ret);
     appRecord->SetApplicationPendingState(ApplicationPendingState::BACKGROUNDING);
     ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
     EXPECT_TRUE(!ret);
+    std::string blockEventName = AppFreezeType::THREAD_BLOCK_6S;
+    ret = appMgrServiceInner->UpdateForeground(appRecord, blockEventName, false, true);
+    EXPECT_TRUE(ret);
+    ret = appMgrServiceInner->UpdateForeground(appRecord, blockEventName, false, false);
+    EXPECT_FALSE(ret);
     TAG_LOGI(AAFwkTag::TEST, "UpdateForeground_004 end");
 }
 

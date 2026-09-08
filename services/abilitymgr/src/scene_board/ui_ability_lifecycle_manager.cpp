@@ -2263,6 +2263,7 @@ void UIAbilityLifecycleManager::PrintTimeOutLog(UIAbilityRecordPtr ability, uint
         .pid = processInfo.pid_,
         .eventName = eventName,
         .bundleName = ability->GetAbilityInfo().bundleName,
+        .abilityPendingBackground = ability->GetPendingState() == AbilityState::BACKGROUND,
     };
     FreezeUtil::TimeoutState state = TimeoutStateUtils::MsgId2FreezeTimeOutState(msgId);
     FreezeUtil::LifecycleFlow flow;

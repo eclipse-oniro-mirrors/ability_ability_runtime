@@ -2494,7 +2494,8 @@ private:
         const std::string &processName, const bool isOccurException = false);
     int GetExceptionTimerId(const FaultData &faultData, const std::string &bundleName,
         const std::shared_ptr<AppRunningRecord> &appRecord, const int32_t pid, const int32_t callerUid);
-    bool UpdateForeground(const std::shared_ptr<AppRunningRecord> &appRecord, const std::string &eventName);
+    bool UpdateForeground(const std::shared_ptr<AppRunningRecord> &appRecord, const std::string &eventName,
+        bool abilityPendingBackground = false, bool isInForeground = false);
     int32_t SubmitDfxFaultTask(const FaultData &faultData, const std::string &bundleName,
         const std::shared_ptr<AppRunningRecord> &appRecord, const int32_t pid);
     void AddAbilityStageForSpecified(std::shared_ptr<AppRunningRecord> appRecord);
