@@ -179,7 +179,7 @@ int ImplicitStartProcessor::ImplicitStartAbility(AbilityRequest &request, int32_
     request.callerAccessTokenId = IPCSkeleton::GetCallingTokenID();
 
     auto identity = IPCSkeleton::ResetCallingIdentity();
-    auto startAbilityTask = [imp = shared_from_this(), request, userId, identity]
+    auto startAbilityTask = [imp = shared_from_this(), request, userId, identity, isAppCloneSelector]
         (const std::string& bundle, const std::string& abilityName, int32_t appIndex) mutable {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "callback");
 
@@ -189,7 +189,7 @@ int ImplicitStartProcessor::ImplicitStartAbility(AbilityRequest &request, int32_
         AAFwk::Want targetWant = request.want;
         targetWant.SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, appIndex);
         targetWant.SetElementName(bundle, abilityName);
-        return imp->CallStartAbilityInner(userId, targetWant, request, request.callType);
+        return imp->CallStartAbilityInner(userId, targetWant, request, request.callType, isAppCloneSelector);
     };
 
     int32_t tokenId = request.want.GetIntParam(Want::PARAM_RESV_CALLER_TOKEN, request.callerAccessTokenId);
@@ -806,7 +806,7 @@ bool ImplicitStartProcessor::CheckImplicitStartExtensionIsValid(const AbilityReq
 }
 
 int32_t ImplicitStartProcessor::ImplicitStartAbilityInner(const Want &targetWant,
-    const AbilityRequest &request, int32_t userId)
+    const AbilityRequest &request, int32_t userId, bool isAppCloneSelector)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto abilityMgr = DelayedSingleton<AbilityManagerService>::GetInstance();
@@ -846,6 +846,7 @@ int32_t ImplicitStartProcessor::ImplicitStartAbilityInner(const Want &targetWant
                 .specifyTokenId = 0,
                 .isForegroundToRestartApp = false,
                 .isImplicit = true,
+                .isAppCloneSelector = isAppCloneSelector,
                 .requestCallback = request.requestCallback,
             };
             result = abilityMgr->StartAbilityInner(startAbilityWrapParam);
@@ -856,7 +857,7 @@ int32_t ImplicitStartProcessor::ImplicitStartAbilityInner(const Want &targetWant
 }
 
 int ImplicitStartProcessor::CallStartAbilityInner(int32_t userId,
-    const Want &want, const AbilityRequest &request, const AbilityCallType &callType)
+    const Want &want, const AbilityRequest &request, const AbilityCallType &callType, bool isAppCloneSelector)
 {
     EventInfo eventInfo;
     eventInfo.userId = userId;
@@ -873,7 +874,7 @@ int ImplicitStartProcessor::CallStartAbilityInner(int32_t userId,
     TAG_LOGI(AAFwkTag::ABILITYMGR, "ability:%{public}s, bundle:%{public}s", eventInfo.abilityName.c_str(),
         eventInfo.bundleName.c_str());
 
-    auto ret = ImplicitStartAbilityInner(want, request, userId);
+    auto ret = ImplicitStartAbilityInner(want, request, userId, isAppCloneSelector);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "CallStartAbilityInner failed: %{public}d", ret);
         if (callType == AbilityCallType::INVALID_TYPE) {
