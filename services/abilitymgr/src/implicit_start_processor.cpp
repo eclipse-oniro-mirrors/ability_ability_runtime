@@ -179,7 +179,7 @@ int ImplicitStartProcessor::ImplicitStartAbility(AbilityRequest &request, int32_
     request.callerAccessTokenId = IPCSkeleton::GetCallingTokenID();
 
     auto identity = IPCSkeleton::ResetCallingIdentity();
-    auto startAbilityTask = [imp = shared_from_this(), request, userId, identity, isAppCloneSelector]
+    auto startAbilityTask = [imp = shared_from_this(), request, userId, identity]
         (const std::string& bundle, const std::string& abilityName, int32_t appIndex) mutable {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "callback");
 
@@ -189,7 +189,7 @@ int ImplicitStartProcessor::ImplicitStartAbility(AbilityRequest &request, int32_
         AAFwk::Want targetWant = request.want;
         targetWant.SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, appIndex);
         targetWant.SetElementName(bundle, abilityName);
-        return imp->CallStartAbilityInner(userId, targetWant, request, request.callType, isAppCloneSelector);
+        return imp->CallStartAbilityInner(userId, targetWant, request, request.callType, true);
     };
 
     int32_t tokenId = request.want.GetIntParam(Want::PARAM_RESV_CALLER_TOKEN, request.callerAccessTokenId);
