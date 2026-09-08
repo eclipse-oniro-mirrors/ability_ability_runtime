@@ -58,11 +58,10 @@ public:
     int32_t DeleteAbilityRecoverInfoBySessionId(const int32_t sessionId);
 
     /**
-     * @brief Clear all ability recover info after an OTA upgrade. The current software version is
-     *        compared with the version marker stored in the kv store. If the version changed (or
-     *        the marker does not exist), all entries with the recover info prefix are deleted so
-     *        apps will not be restored from the stale backup on next launch, and a new marker is
-     *        written after the cleanup.
+     * @brief Clear all ability recover info after an OTA upgrade. Compares the current system
+     *        fingerprint (multiple const.product.* params) with the marker in the kv store.
+     *        Mirrors BMSEventHandler::IsSystemFingerprintChanged. persist.bms.test-upgrade
+     *        forces the cleanup path for testing.
      * @return Returns ERR_OK if the check is done; returns error code otherwise.
      */
     int32_t ResetRecoverInfoOnOtaUpgrade();
@@ -120,6 +119,9 @@ private:
     DistributedKv::Value ConvertAccessTokenIdToValue(uint32_t accessTokenId);
     DistributedKv::Status RestoreKvStore(DistributedKv::Status status);
     static void PutAsync(const DistributedKv::Key &key, const DistributedKv::Value &value);
+
+    std::string GetCurSystemFingerprint() const;
+    bool IsTestUpgrade() const;
 
     const DistributedKv::AppId appId_ { "app_exit_reason_storage" };
     const DistributedKv::StoreId storeId_ { "app_exit_reason_infos" };

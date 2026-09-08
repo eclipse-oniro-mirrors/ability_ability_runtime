@@ -54,8 +54,20 @@ const std::string JSON_KEY_RSS_VALUE = "rss_value";
 const std::string JSON_KEY_PROSESS_STATE = "process_state";
 constexpr const char* PUT_TASK_NAME = "kvStorePtr_->Put";
 const std::string JSON_KEY_KILL_ID = "kill_id";
-const std::string KEY_OTA_VERSION = "ota_software_version";
-constexpr const char *PRODUCT_SOFTWARE_VERSION_PARAM = "const.product.software.version";
+const std::string KEY_OTA_FINGERPRINT = "ota_system_fingerprint";
+constexpr const char *TEST_UPGRADE_PARAM = "persist.bms.test-upgrade";
+constexpr const char *FINGERPRINT_SEPARATOR = "/";
+constexpr const char *VALUE_TRUE = "true";
+// keep in sync with BMSEventHandler::FINGERPRINTS
+const std::vector<std::string> FINGERPRINT_PARAMS = {
+    "const.product.software.version",
+    "const.product.build.type",
+    "const.product.brand",
+    "const.product.name",
+    "const.product.devicetype",
+    "const.product.incremental.version",
+    "const.comp.hl.product_base_version.real"
+};
 } // namespace
 AppExitReasonDataManager::AppExitReasonDataManager() {}
 
@@ -592,36 +604,61 @@ int32_t AppExitReasonDataManager::ResetRecoverInfoOnOtaUpgrade()
         }
     }
 
-    std::string currentVersion = OHOS::system::GetParameter(PRODUCT_SOFTWARE_VERSION_PARAM, "");
-    DistributedKv::Key markerKey(KEY_OTA_VERSION);
+    std::string curFingerprint = GetCurSystemFingerprint();
+    DistributedKv::Key markerKey(KEY_OTA_FINGERPRINT);
     DistributedKv::Value markerValue;
-    DistributedKv::Status status;
-    {
-        std::lock_guard lock(kvStorePtrMutex_);
-        status = kvStorePtr_->Get(markerKey, markerValue);
+    bool isOta = IsTestUpgrade();
+    if (!isOta) {
+        DistributedKv::Status status;
+        {
+            std::lock_guard lock(kvStorePtrMutex_);
+            status = kvStorePtr_->Get(markerKey, markerValue);
+        }
+        isOta = (status != DistributedKv::Status::SUCCESS) ||
+            (markerValue.ToString() != curFingerprint);
     }
-    if (status == DistributedKv::Status::SUCCESS && markerValue.ToString() == currentVersion) {
-        TAG_LOGD(AAFwkTag::ABILITYMGR, "software version not changed");
+    if (!isOta) {
         return ERR_OK;
     }
 
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "software version changed, clear all recover info");
     int32_t ret = DeleteAllRecoverInfo();
     if (ret != ERR_OK) {
         return ret;
     }
 
+    DistributedKv::Status status;
     {
         std::lock_guard lock(kvStorePtrMutex_);
-        status = kvStorePtr_->Put(markerKey, DistributedKv::Value(currentVersion));
+        status = kvStorePtr_->Put(markerKey, DistributedKv::Value(curFingerprint));
     }
     if (status != DistributedKv::Status::SUCCESS) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "save version marker error: %{public}d", status);
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "save fingerprint marker error: %{public}d", status);
         return ERR_INVALID_OPERATION;
     }
     dbWriteCounter_.UpdateWriteCount(APP_EXIT_REASON_STORAGE_DIR);
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "save version marker success");
     return ERR_OK;
+}
+
+std::string AppExitReasonDataManager::GetCurSystemFingerprint() const
+{
+    std::string fingerprint;
+    for (const auto &param : FINGERPRINT_PARAMS) {
+        std::string value = OHOS::system::GetParameter(param, "");
+        if (value.empty()) {
+            continue;
+        }
+        if (!fingerprint.empty()) {
+            fingerprint.append(FINGERPRINT_SEPARATOR);
+        }
+        fingerprint.append(value);
+    }
+    return fingerprint;
+}
+
+bool AppExitReasonDataManager::IsTestUpgrade() const
+{
+    std::string value = OHOS::system::GetParameter(TEST_UPGRADE_PARAM, "");
+    return value == VALUE_TRUE;
 }
 
 int32_t AppExitReasonDataManager::DeleteAbilityRecoverInfoBySessionId(const int32_t sessionId)

@@ -43,8 +43,9 @@ const std::string BUNDLE_NAME = "bundle_name";
 constexpr uint32_t ACCESS_TOKEN_ID = 123;
 const int SESSION_ID = 111;
 const std::string KEY_RECOVER_INFO_PREFIX = "recover_info";
-const std::string KEY_OTA_VERSION = "ota_software_version";
-const std::string PRODUCT_SOFTWARE_VERSION_PARAM = "const.product.software.version";
+const std::string KEY_OTA_FINGERPRINT = "ota_system_fingerprint";
+constexpr const char *TEST_UPGRADE_PARAM = "persist.bms.test-upgrade";
+constexpr const char *VALUE_TRUE = "true";
 }  // namespace
 
 class AppExitReasonDataManagerTest : public testing::Test {
@@ -335,8 +336,7 @@ HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_DeleteAllRecover
 
 /**
  * @tc.name: AppExitReasonDataManager_ResetRecoverInfoOnOtaUpgrade_001
- * @tc.desc: no version marker (first boot with feature), wipe all recover info keys,
- *           keep non-recover keys and write new marker
+ * @tc.desc: no fingerprint marker, wipe all recover info and write new marker
  * @tc.type: FUNC
  */
 HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_ResetRecoverInfoOnOtaUpgrade_001, TestSize.Level1)
@@ -370,13 +370,12 @@ HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_ResetRecoverInfo
         KEY_RECOVER_INFO_PREFIX + "111") != mockKv->deletedKeys.end());
     EXPECT_TRUE(std::find(mockKv->deletedKeys.begin(), mockKv->deletedKeys.end(),
         "123") == mockKv->deletedKeys.end());
-    std::string currentVersion = OHOS::system::GetParameter(PRODUCT_SOFTWARE_VERSION_PARAM, "");
-    EXPECT_EQ(mockKv->kvData[KEY_OTA_VERSION], currentVersion);
+    EXPECT_EQ(mockKv->kvData[KEY_OTA_FINGERPRINT], instance->GetCurSystemFingerprint());
 }
 
 /**
  * @tc.name: AppExitReasonDataManager_ResetRecoverInfoOnOtaUpgrade_002
- * @tc.desc: saved version matches current version, recover info kept untouched
+ * @tc.desc: fingerprint matches, recover info kept untouched
  * @tc.type: FUNC
  */
 HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_ResetRecoverInfoOnOtaUpgrade_002, TestSize.Level1)
@@ -384,7 +383,7 @@ HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_ResetRecoverInfo
     auto instance = DelayedSingleton<AppExitReasonDataManager>::GetInstance();
     KvStorePtrGuard kvGuard(instance->kvStorePtr_);
     auto mockKv = std::make_shared<MockKvStoreForOta>();
-    mockKv->kvData[KEY_OTA_VERSION] = OHOS::system::GetParameter(PRODUCT_SOFTWARE_VERSION_PARAM, "");
+    mockKv->kvData[KEY_OTA_FINGERPRINT] = instance->GetCurSystemFingerprint();
     mockKv->kvData[KEY_RECOVER_INFO_PREFIX + "123"] = "{}";
     instance->kvStorePtr_ = mockKv;
     EXPECT_CALL(*mockKv, GetEntries(_, _)).Times(0);
@@ -397,7 +396,7 @@ HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_ResetRecoverInfo
 
 /**
  * @tc.name: AppExitReasonDataManager_ResetRecoverInfoOnOtaUpgrade_003
- * @tc.desc: saved version differs from current version, wipe and rewrite marker
+ * @tc.desc: fingerprint differs, wipe and rewrite marker
  * @tc.type: FUNC
  */
 HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_ResetRecoverInfoOnOtaUpgrade_003, TestSize.Level1)
@@ -405,7 +404,7 @@ HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_ResetRecoverInfo
     auto instance = DelayedSingleton<AppExitReasonDataManager>::GetInstance();
     KvStorePtrGuard kvGuard(instance->kvStorePtr_);
     auto mockKv = std::make_shared<MockKvStoreForOta>();
-    mockKv->kvData[KEY_OTA_VERSION] = "old_version";
+    mockKv->kvData[KEY_OTA_FINGERPRINT] = "old_fingerprint";
     mockKv->kvData[KEY_RECOVER_INFO_PREFIX + "123"] = "{}";
     instance->kvStorePtr_ = mockKv;
 
@@ -421,8 +420,44 @@ HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_ResetRecoverInfo
     EXPECT_EQ(result, ERR_OK);
     EXPECT_EQ(mockKv->deletedKeys.size(), static_cast<size_t>(1));
     EXPECT_EQ(mockKv->deletedKeys[0], KEY_RECOVER_INFO_PREFIX + "123");
-    std::string currentVersion = OHOS::system::GetParameter(PRODUCT_SOFTWARE_VERSION_PARAM, "");
-    EXPECT_EQ(mockKv->kvData[KEY_OTA_VERSION], currentVersion);
+    EXPECT_EQ(mockKv->kvData[KEY_OTA_FINGERPRINT], instance->GetCurSystemFingerprint());
+}
+
+/**
+ * @tc.name: AppExitReasonDataManager_ResetRecoverInfoOnOtaUpgrade_004
+ * @tc.desc: persist.bms.test-upgrade forces cleanup even when fingerprint matches
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_ResetRecoverInfoOnOtaUpgrade_004, TestSize.Level1)
+{
+    auto instance = DelayedSingleton<AppExitReasonDataManager>::GetInstance();
+    KvStorePtrGuard kvGuard(instance->kvStorePtr_);
+    auto mockKv = std::make_shared<MockKvStoreForOta>();
+    // Marker matches current fingerprint: without the test hook this would be a no-op.
+    mockKv->kvData[KEY_OTA_FINGERPRINT] = instance->GetCurSystemFingerprint();
+    mockKv->kvData[KEY_RECOVER_INFO_PREFIX + "123"] = "{}";
+    instance->kvStorePtr_ = mockKv;
+
+    std::vector<DistributedKv::Entry> entries;
+    DistributedKv::Entry entry;
+    entry.key = DistributedKv::Key(KEY_RECOVER_INFO_PREFIX + "123");
+    entry.value = DistributedKv::Value("{}");
+    entries.push_back(entry);
+    EXPECT_CALL(*mockKv, GetEntries(_, _))
+        .WillRepeatedly(DoAll(SetArgReferee<1>(entries), Return(DistributedKv::Status::SUCCESS)));
+
+    OHOS::system::SetParameter(TEST_UPGRADE_PARAM, VALUE_TRUE);
+    bool hookActive = (OHOS::system::GetParameter(TEST_UPGRADE_PARAM, "") == VALUE_TRUE);
+    auto result = instance->ResetRecoverInfoOnOtaUpgrade();
+    EXPECT_EQ(result, ERR_OK);
+    OHOS::system::SetParameter(TEST_UPGRADE_PARAM, "");
+
+    if (hookActive) {
+        EXPECT_FALSE(mockKv->deletedKeys.empty());
+    } else {
+        EXPECT_TRUE(mockKv->deletedKeys.empty());
+    }
+    EXPECT_EQ(mockKv->kvData[KEY_OTA_FINGERPRINT], instance->GetCurSystemFingerprint());
 }
 }  // namespace AbilityRuntime
 }  // namespace OHOS
