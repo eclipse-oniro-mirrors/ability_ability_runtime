@@ -106,6 +106,7 @@ napi_value CreateJsToolInfo(napi_env env, const ToolInfo &tool);
  * @return Returns the JavaScript object.
  */
 napi_value CreateJsToolSummary(napi_env env, const ToolSummary &summary);
+
 } // namespace CliTool
 } // namespace OHOS
 
