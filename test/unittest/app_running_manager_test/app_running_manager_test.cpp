@@ -1127,5 +1127,34 @@ HWTEST_F(AppRunningManagerTest, GetAllAbilityInfos_0400, TestSize.Level1)
     auto ret = appRunningManager->GetAllAbilityInfos(-1, infos);
     EXPECT_EQ(ret, ERR_OK);
 }
+
+/**
+ * @tc.name: AppRunningManager_IsAppInfoMatch_0100
+ * @tc.desc: Test IsAppInfoMatch with nullptr appInfo returns false
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerTest, AppRunningManager_IsAppInfoMatch_0100, TestSize.Level1)
+{
+    auto placeholder = std::make_shared<ApplicationInfo>();
+    auto appRecord = std::make_shared<AppRunningRecord>(placeholder, AppRecordId::Create(), "processName");
+    EXPECT_FALSE(AppRunningManager::IsAppInfoMatch(nullptr, "com.test.app", 1000, appRecord));
+}
+
+/**
+ * @tc.name: AppRunningManager_IsAppInfoMatch_0200
+ * @tc.desc: Test IsAppInfoMatch returns true when appName and uid both match
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerTest, AppRunningManager_IsAppInfoMatch_0200, TestSize.Level1)
+{
+    std::string appName = "com.test.app";
+    int uid = 1000;
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->name = appName;
+    appInfo->uid = uid;
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, AppRecordId::Create(), "processName");
+    EXPECT_TRUE(AppRunningManager::IsAppInfoMatch(appInfo, appName, uid, appRecord));
+}
+
 } // namespace AppExecFwk
 } // namespace OHOS

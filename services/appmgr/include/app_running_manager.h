@@ -143,6 +143,18 @@ public:
         const std::string &processName, bool isFromPreload = false);
 
     /**
+     * IsAppInfoMatch, check whether the appInfo matches the appName and uid.
+     *
+     * @param appInfo, the app info to be checked.
+     * @param appName, the application name.
+     * @param uid, the process uid.
+     * @param appRecord, the ptr of the AppRunningRecord.
+     * @return, Return true if matches.
+     */
+    static bool IsAppInfoMatch(const std::shared_ptr<ApplicationInfo> &appInfo, const std::string &appName,
+        int uid, const std::shared_ptr<AppRunningRecord> &appRecord);
+
+    /**
      * CheckAppRunningRecordIsExistByUid, check app exist when concurrent.
      *
      * @param uid, the process uid.
