@@ -62,6 +62,8 @@ ohos_shared_library("auto_fill_manager") {
     defines = [ "SUPPORT_GRAPHICS" ]
   }
 
+  version_script = "libauto_fill_manager.map"
+
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"

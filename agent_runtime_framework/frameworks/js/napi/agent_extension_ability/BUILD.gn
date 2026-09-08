@@ -184,6 +184,8 @@ ohos_shared_library("js_agent_extension") {
     ]
   }
 
+  version_script = "libjs_agent_extension.map"
+
   subsystem_name = "ability"
   part_name = "ability_runtime"
 }

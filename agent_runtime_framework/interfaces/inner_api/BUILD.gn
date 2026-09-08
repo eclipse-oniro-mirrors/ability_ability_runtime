@@ -48,6 +48,8 @@ ohos_shared_library("agent_fwk") {
     "json:nlohmann_json_static",
   ]
 
+  version_script = "libagent_fwk.map"
+
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
@@ -88,6 +90,8 @@ ohos_shared_library("agent_connection_manager") {
     "hilog:libhilog",
     "ipc:ipc_core",
   ]
+
+  version_script = "libagent_connection_manager.map"
 
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"

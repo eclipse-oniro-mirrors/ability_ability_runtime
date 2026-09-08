@@ -77,6 +77,8 @@ ohos_shared_library("uri_permission_mgr") {
     defines = [ "ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER" ]
   }
 
+  version_script = "liburi_permission_mgr.map"
+
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"

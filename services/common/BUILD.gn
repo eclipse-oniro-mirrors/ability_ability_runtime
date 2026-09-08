@@ -241,6 +241,8 @@ ohos_shared_library("task_handler_wrap") {
     "hilog:libhilog",
   ]
 
+  version_script = "libtask_handler_wrap.map"
+
   subsystem_name = "ability"
   part_name = "ability_runtime"
 }
