@@ -190,5 +190,21 @@ HWTEST_F(AbilityResidentProcessRdbTest, GetSaResidentProcessRawData_001, TestSiz
     EXPECT_EQ(AmsResidentProcessRdb::GetInstance().GetSaResidentProcessRawData(
         "com.target.bundle", 1234), Rdb_Parameter_Err);
 }
+
+/*
+ * Feature: AbilityResidentProcessRdb
+ * Function: OnUpgrade
+ * SubFunction: NA
+ * FunctionPoints: AbilityResidentProcessRdb OnUpgrade_001
+ */
+HWTEST_F(AbilityResidentProcessRdbTest, OnUpgrade_001, TestSize.Level1) {
+    EXPECT_EQ(AmsResidentProcessRdb::GetInstance().Init(), Rdb_OK);
+    AmsRdbConfig config;
+    config.tableName = "resident_process_list";
+    AmsResidentProcessRdbCallBack callback(config);
+    // the store is created by OnCreate with the sa uid list column, so the upgrade is idempotent
+    EXPECT_EQ(callback.OnUpgrade(*(AmsResidentProcessRdb::GetInstance().rdbMgr_->rdbStore_.get()), 1, 2),
+        NativeRdb::E_OK);
+}
 } // namespace AAFwk
 } // namespace OHOS

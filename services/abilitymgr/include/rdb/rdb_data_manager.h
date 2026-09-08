@@ -29,7 +29,7 @@ namespace AbilityRuntime {
 namespace {
 constexpr static const char *ABILITY_RDB_NAME = "/ability_manager_service.db";
 constexpr static const char *ABILITY_RDB_PATH = "/data/service/el1/public/database/ability_manager_service";
-constexpr static int32_t ABILITY_RDB_VERSION = 1;
+constexpr static int32_t ABILITY_RDB_VERSION = 2;
 } // namespace
 
 struct AmsRdbConfig {
