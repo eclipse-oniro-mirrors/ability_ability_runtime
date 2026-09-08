@@ -92,6 +92,7 @@ ohos_static_library("ohos_aa_cli_source_set") {
 
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "${ability_runtime_services_path}/common:size_optimize_config" ]
 }
 
 ohos_cli_executable("ohos-aa") {
@@ -133,6 +134,7 @@ ohos_cli_executable("ohos-aa") {
   cli_config_file = "ohos-aa.json"
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "${ability_runtime_services_path}/common:size_optimize_config" ]
 }
 
 group("tools_ohos_aa") {
