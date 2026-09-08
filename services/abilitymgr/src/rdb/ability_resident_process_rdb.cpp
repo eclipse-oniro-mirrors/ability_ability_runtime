@@ -81,28 +81,29 @@ int32_t AmsResidentProcessRdbCallBack::OnUpgrade(NativeRdb::RdbStore &rdbStore, 
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "onUpgrade current:%{plubic}d, target:%{plubic}d", currentVersion,
         targetVersion);
-    if (currentVersion < VERSION_SA_UID_LIST && targetVersion >= VERSION_SA_UID_LIST) {
-        auto resultSet = rdbStore.QuerySql("PRAGMA table_info(" + rdbConfig_.tableName + ")");
-        if (resultSet != nullptr) {
-            ScopeGuard stateGuard([resultSet] { resultSet->Close(); });
-            int columnIndex = -1;
-            resultSet->GetColumnIndex("name", columnIndex);
-            std::string columnName;
-            while (resultSet->GoToNextRow() == NativeRdb::E_OK &&
-                resultSet->GetString(columnIndex, columnName) == NativeRdb::E_OK) {
-                if (columnName == KEY_KEEP_ALIVE_SA_UID_LIST) {
-                    TAG_LOGI(AAFwkTag::ABILITYMGR, "sa uid list column already exists");
-                    return NativeRdb::E_OK;
-                }
+    if (currentVersion >= VERSION_SA_UID_LIST || targetVersion < VERSION_SA_UID_LIST) {
+        return NativeRdb::E_OK;
+    }
+    auto resultSet = rdbStore.QuerySql("PRAGMA table_info(" + rdbConfig_.tableName + ")");
+    if (resultSet != nullptr) {
+        ScopeGuard stateGuard([resultSet] { resultSet->Close(); });
+        int columnIndex = -1;
+        resultSet->GetColumnIndex("name", columnIndex);
+        std::string columnName;
+        while (resultSet->GoToNextRow() == NativeRdb::E_OK &&
+            resultSet->GetString(columnIndex, columnName) == NativeRdb::E_OK) {
+            if (columnName == KEY_KEEP_ALIVE_SA_UID_LIST) {
+                TAG_LOGI(AAFwkTag::ABILITYMGR, "sa uid list column already exists");
+                return NativeRdb::E_OK;
             }
         }
-        std::string alterSql = "ALTER TABLE " + rdbConfig_.tableName + " ADD COLUMN " + KEY_KEEP_ALIVE_SA_UID_LIST +
-            " TEXT NOT NULL DEFAULT ''";
-        auto result = rdbStore.ExecuteSql(alterSql);
-        if (result != NativeRdb::E_OK) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "add sa uid list column error[%{public}d]", result);
-            return result;
-        }
+    }
+    std::string alterSql = "ALTER TABLE " + rdbConfig_.tableName + " ADD COLUMN " + KEY_KEEP_ALIVE_SA_UID_LIST +
+        " TEXT NOT NULL DEFAULT ''";
+    auto result = rdbStore.ExecuteSql(alterSql);
+    if (result != NativeRdb::E_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "add sa uid list column error[%{public}d]", result);
+        return result;
     }
     return NativeRdb::E_OK;
 }
