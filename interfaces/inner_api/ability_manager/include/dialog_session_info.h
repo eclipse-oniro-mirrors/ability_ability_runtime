@@ -33,7 +33,7 @@ struct DialogAbilityInfo {
     int32_t bundleLabelId = 0;
     int32_t abilityIconId = 0;
     int32_t abilityLabelId = 0;
-    int32_t appIndex = -1;
+    int32_t appIndex = 0;
     std::string bundleName;
     std::string moduleName;
     std::string abilityName;

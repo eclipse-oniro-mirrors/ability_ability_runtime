@@ -85,7 +85,7 @@ public:
      * @note Temporary authorization: the grant is revoked automatically when the target
      *       application exits (ClearPermissionTokenByMap). Sandbox applications cannot call.
      */
-    int GrantUriPermission(const Uri &uri, uint32_t flag, const std::string targetBundleName, int32_t appIndex = -1,
+    int GrantUriPermission(const Uri &uri, uint32_t flag, const std::string targetBundleName, int32_t appIndex = 0,
         uint32_t initiatorTokenId = 0);
 
     /**
@@ -116,7 +116,7 @@ public:
      *       granted. Temporary authorization, auto-revoked on target application exit.
      */
     int GrantUriPermission(const std::vector<Uri> &uriVec, uint32_t flag, const std::string targetBundleName,
-        int32_t appIndex = -1, uint32_t initiatorTokenId = 0);
+        int32_t appIndex = 0, uint32_t initiatorTokenId = 0);
 
     /**
      * @brief Privileged batch grant of URI permission, skipping the caller's own permission
@@ -156,7 +156,7 @@ public:
      *       the target application exits. Sandbox applications cannot call.
      */
     int32_t GrantUriPermissionPrivileged(const std::vector<Uri> &uriVec, uint32_t flag,
-        const std::string &targetBundleName, int32_t appIndex = -1, uint32_t initiatorTokenId = 0,
+        const std::string &targetBundleName, int32_t appIndex = 0, uint32_t initiatorTokenId = 0,
         int32_t hideSensitiveType = DEFAULT_HIDE_SENSITIVE_TYPE);
     
     /**
@@ -257,7 +257,7 @@ public:
      * @note Permission required: caller must be a system application (or the pasteboard
      *       broker uid).
      */
-    int RevokeUriPermissionManually(const Uri &uri, const std::string bundleName, int32_t appIndex = -1);
+    int RevokeUriPermissionManually(const Uri &uri, const std::string bundleName, int32_t appIndex = 0);
 
     /**
      * @brief Verify whether a token ID holds the read/write permission on a URI, including

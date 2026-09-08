@@ -53,7 +53,7 @@ struct AppProcessData : public Parcelable {
     static AppProcessData *Unmarshalling(Parcel &parcel);
 
     bool isFocused = false;
-    int32_t appIndex = -1;
+    int32_t appIndex = 0;
     ApplicationState appState = ApplicationState::APP_STATE_CREATE;
     pid_t pid = 0;
     std::vector<AppData> appDatas;

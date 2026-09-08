@@ -547,7 +547,12 @@ void AppMgrServiceInner::StartSpecifiedProcess(const AAFwk::Want &want, const Ap
     HapModuleInfo hapModuleInfo;
     auto appInfo = std::make_shared<ApplicationInfo>(abilityInfo.applicationInfo);
 
-    int32_t appIndex = abilityInfo.applicationInfo.appIndex;
+    int32_t appIndex = 0;
+    if (want.HasParameter(DLP_INDEX)) {
+        appIndex = want.GetIntParam(DLP_INDEX, 0);
+    } else {
+        appIndex = abilityInfo.appIndex;
+    }
     if (!GetBundleAndHapInfo(abilityInfo, appInfo, bundleInfo, hapModuleInfo, appIndex)) {
         return;
     }
@@ -1949,15 +1954,6 @@ bool AppMgrServiceInner::CheckPreloadAppRecordExist(const std::string &bundleNam
         TAG_LOGE(AAFwkTag::APPMGR, "null appPreloader");
         return false;
     }
-    if (appIndex == -1) {
-        AppExecFwk::DualModeBundleInfo bundleinfo;
-        auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
-        auto ret = bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, bundleinfo);
-        if (ret == ERR_OK) {
-            appIndex = bundleinfo.appIndex;
-        }
-    }
-
     PreloadRequest request;
     auto ret = appPreloader_->GeneratePreloadRequest(bundleName, userId, appIndex, request);
     if (ret != ERR_OK) {
@@ -2173,7 +2169,7 @@ void AppMgrServiceInner::LoadAbility(std::shared_ptr<AbilityInfo> abilityInfo, s
     BundleInfo bundleInfo;
     bool isProcCache = false;
     HapModuleInfo hapModuleInfo;
-    int32_t appIndex = appInfo->appIndex;
+    int32_t appIndex = 0;
     if (loadParam->selfPid > 0) {
         if (!GetBundleAndHapInfo(*abilityInfo, appInfo, bundleInfo, hapModuleInfo, appIndex)) {
             TAG_LOGE(AAFwkTag::APPMGR, "getBundleAndHapInfo fail");
@@ -4993,9 +4989,13 @@ std::shared_ptr<AppRunningRecord> AppMgrServiceInner::CreateAppRunningRecord(
         appRecord->SetPerfCmd(want->GetStringParam(PERF_CMD));
         appRecord->SetErrorInfoEnhance(want->GetBoolParam(ERROR_INFO_ENHANCE, false));
         appRecord->SetMultiThread(want->GetBoolParam(MULTI_THREAD, false));
-        int32_t appIndex = abilityInfo->applicationInfo.appIndex;
+        int32_t appIndex = 0;
+        if (want->HasParameter(DLP_INDEX)) {
+            appIndex = want->GetIntParam(DLP_INDEX, 0);
+        } else {
+            appIndex = abilityInfo->appIndex;
+        }
         appRecord->SetAppIndex(appIndex);
-        
         if (loadParam->isGamePrelaunch) {
             appRecord->SetPreloadMode(AppExecFwk::PreloadMode::GAME_PRELAUNCH);
         }
@@ -7534,7 +7534,12 @@ int AppMgrServiceInner::StartEmptyProcess(const AAFwk::Want &want, const sptr<IR
     testRecord->userId = userId;
     appRecord->SetUserTestInfo(testRecord);
 
-    int32_t appIndex = info.applicationInfo.appIndex;
+    int32_t appIndex = 0;
+    if (want.HasParameter(DLP_INDEX)) {
+        appIndex = want.GetIntParam(DLP_INDEX, 0);
+    } else {
+        appIndex = appInfo->appIndex;
+    }
     uint64_t startFlags = AppspawnUtil::BuildStartFlags(want, info.applicationInfo);
     StartProcess(appInfo->name, processName, startFlags, appRecord, appInfo->uid, info, appInfo->bundleName,
         appIndex, appExistFlag);
@@ -7638,7 +7643,12 @@ void AppMgrServiceInner::StartSpecifiedAbility(const AAFwk::Want &want, const Ap
     HapModuleInfo hapModuleInfo;
     auto appInfo = std::make_shared<ApplicationInfo>(abilityInfo.applicationInfo);
 
-    int32_t appIndex = abilityInfo.applicationInfo.appIndex;
+    int32_t appIndex = 0;
+    if (want.HasParameter(DLP_INDEX)) {
+        appIndex = want.GetIntParam(DLP_INDEX, 0);
+    } else {
+        appIndex = abilityInfo.appIndex;
+    }
     if (!GetBundleAndHapInfo(abilityInfo, appInfo, bundleInfo, hapModuleInfo, appIndex)) {
         return;
     }
@@ -12831,7 +12841,12 @@ bool AppMgrServiceInner::IsSpecifiedModuleLoaded(const AAFwk::Want &want, const 
         return false;
     }
     auto appInfo = std::make_shared<ApplicationInfo>(abilityInfo.applicationInfo);
-    int32_t appIndex = abilityInfo.applicationInfo.appIndex;
+    int32_t appIndex = 0;
+    if (want.HasParameter(DLP_INDEX)) {
+        appIndex = want.GetIntParam(DLP_INDEX, 0);
+    } else {
+        appIndex = abilityInfo.appIndex;
+    }
     BundleInfo bundleInfo;
     HapModuleInfo hapModuleInfo;
     if (!GetBundleAndHapInfo(abilityInfo, appInfo, bundleInfo, hapModuleInfo, appIndex)) {
@@ -13174,7 +13189,7 @@ bool AppMgrServiceInner::IsBlockedByDisposeRules(const std::string &bundleName, 
     {
         HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, "GetAbilityRunningControlRule");
         int32_t ret = ERR_OK;
-        if (appIndex > 0 && AbilityRuntime::GlobalConstant::IsAppCloneIndex(appIndex)) {
+        if (appIndex > 0 && appIndex <= AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
             ret = IN_PROCESS_CALL(appControlMgr->GetAbilityRunningControlRule(bundleName,
                 userId, disposedRuleList, appIndex));
         } else {

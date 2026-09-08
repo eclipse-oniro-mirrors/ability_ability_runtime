@@ -46,7 +46,7 @@ public:
      */
     int32_t PreloadApplication(const std::string &bundleName, int32_t userId, int32_t appIndex);
 
-    int32_t LaunchGameCustomized(const std::string &bundleName, int32_t userId, int32_t appIndex = -1);
+    int32_t LaunchGameCustomized(const std::string &bundleName, int32_t userId, int32_t appIndex = 0);
 
     int32_t PreloadApplicationVerification(const std::string &bundleName, int32_t userId, int32_t appIndex, Want &want,
         AppExecFwk::AbilityInfo &abilityInfo);

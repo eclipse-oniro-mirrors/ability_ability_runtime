@@ -135,8 +135,7 @@ int32_t AbilityPermissionUtil::CheckMultiInstanceAndAppClone(Want &want, int32_t
         }
         if (appInfo.multiAppMode.multiAppModeType == AppExecFwk::MultiAppModeType::UNSPECIFIED) {
             if (!instanceKey.empty() || isCreating ||
-                (appIndex != 0 && appIndex != AbilityRuntime::GlobalConstant::PC_TABLET_INDEX &&
-                AbilityRuntime::GlobalConstant::IsAppCloneIndex(appIndex))) {
+                (appIndex != 0 && appIndex <= AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX)) {
                 TAG_LOGE(AAFwkTag::ABILITYMGR, "Not support multi-instance or appClone");
                 return ERR_MULTI_APP_NOT_SUPPORTED;
             }

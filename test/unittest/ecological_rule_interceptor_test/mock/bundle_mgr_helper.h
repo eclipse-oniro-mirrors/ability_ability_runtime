@@ -17,7 +17,6 @@
 #define OHOS_ABILITY_RUNTIME_BUNDLE_MGR_HELPER_H
 
 #include "bundle_mgr_interface.h"
-#include "bundle_info.h"
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -81,8 +80,6 @@ public:
     {
         return 0;
     }
-
-    int32_t GetDualModeBundleInfo(const std::string &bundleName, int32_t userId, DualModeBundleInfo &preference);
 
 public:
     static int32_t retGetLaunchWantForBundle;
