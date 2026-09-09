@@ -24,6 +24,7 @@ bool KioskStatus::ReadFromParcel(Parcel &parcel)
     isKioskMode_ = parcel.ReadBool();
     kioskBundleName_ = Str16ToStr8(parcel.ReadString16());
     kioskBundleUid_ = parcel.ReadInt32();
+    kioskType_ = parcel.ReadInt32();
     return true;
 }
 
@@ -54,6 +55,11 @@ bool KioskStatus::Marshalling(Parcel &parcel) const
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write kioskBundleUid_ failed");
         return false;
     }
+
+    if (!parcel.WriteInt32(kioskType_)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write kioskType_ failed");
+        return false;
+    }
     return true;
 }
 
@@ -63,6 +69,9 @@ void KioskStatus::Clear()
     kioskBundleUid_ = 0;
     kioskBundleName_.clear();
     kioskToken_ = nullptr;
+    kioskType_ = 0; // Rosen::KioskType::DEFAULT
+    kioskCallerUid_ = 0;
+    isProxyEnter_ = false;
 }
 } // namespace AAFwk
 } // namespace OHOS

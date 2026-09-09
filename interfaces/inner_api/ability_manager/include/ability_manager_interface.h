@@ -2649,6 +2649,27 @@ public:
     }
 
     /**
+     * Set the kiosk application list isolated by caller uid.
+     * @param appList List of bundle names allowed in kiosk mode.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t AddKioskApplicationList(const std::vector<std::string> &appList)
+    {
+        return 0;
+    }
+
+    /**
+     * Delete caller's own kiosk application list entries.
+     * Empty appList clears the caller's whole list.
+     * @param appList List of bundle names to delete from caller's own whitelist.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t DeleteKioskApplicationList(const std::vector<std::string> &appList)
+    {
+        return 0;
+    }
+
+    /**
      * Get keep-alive app service extensions.
      * @param list List of Keep-alive information.
      * @return Returns ERR_OK on success, others on failure.
@@ -2658,11 +2679,22 @@ public:
         return 0;
     }
 
-    virtual int32_t EnterKioskMode(sptr<IRemoteObject> callerToken)
+    /**
+     * Enter kiosk mode. The target app is identified by callerToken (self or proxied app).
+     * @param callerToken Token of the target application.
+     * @param kioskType Kiosk type, transparently passed to WMS and common events.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t EnterKioskMode(sptr<IRemoteObject> callerToken, int32_t kioskType = 0)
     {
         return 0;
     }
 
+    /**
+     * Exit kiosk mode. The target app is identified by callerToken.
+     * @param callerToken Token of the target application.
+     * @return Returns ERR_OK on success, others on failure.
+     */
     virtual int32_t ExitKioskMode(sptr<IRemoteObject> callerToken)
     {
         return 0;

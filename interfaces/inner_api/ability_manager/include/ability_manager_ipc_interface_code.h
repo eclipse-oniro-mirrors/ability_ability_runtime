@@ -782,6 +782,12 @@ enum class AbilityManagerInterfaceCode {
 
     // unregister sa interceptor
     UNREGISTER_SA_INTERCEPTOR = 6178,
+
+    // set the list of applications allowed in kiosk mode with caller uid isolation
+    ADD_KIOSK_APP_LIST = 6179,
+
+    // delete caller's own kiosk application list entries
+    DELETE_KIOSK_APP_FROM_LIST = 6180,
 };
 }  // namespace AAFwk
 }  // namespace OHOS

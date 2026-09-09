@@ -1355,6 +1355,7 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, HandleExtensionAbility_001, TestSize.
  * FunctionPoints: AbilityManagerService EnterKioskMode
  */
 HWTEST_F(AbilityManagerServiceTwelfthTest, EnterKioskMode_003, TestSize.Level1) {
+    system::SetBoolParameter(KIOSK_MODE_ENABLED, true);
     IPCSkeleton::SetCallingUid(BASE_USER_RANGE);
     IPCSkeleton::SetCallingTokenID(ONE);
     MyFlag::flag_ = true;
@@ -1364,7 +1365,8 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, EnterKioskMode_003, TestSize.Level1) 
     auto callerToken = MockToken(AbilityType::PAGE, tokenId);
     ASSERT_NE(callerToken, nullptr);
     auto result = abilityManagerService->EnterKioskMode(callerToken);
-    EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
+    EXPECT_EQ(result, ERR_KIOSK_MODE_NOT_IN_WHITELIST);
+    system::SetBoolParameter(KIOSK_MODE_ENABLED, false);
 }
 
 /*
@@ -1374,6 +1376,7 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, EnterKioskMode_003, TestSize.Level1) 
  * FunctionPoints: AbilityManagerService ExitKioskMode
  */
 HWTEST_F(AbilityManagerServiceTwelfthTest, ExitKioskMode_003, TestSize.Level1) {
+    system::SetBoolParameter(KIOSK_MODE_ENABLED, true);
     IPCSkeleton::SetCallingUid(BASE_USER_RANGE);
     IPCSkeleton::SetCallingTokenID(ONE);
     MyFlag::flag_ = true;
@@ -1383,7 +1386,8 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, ExitKioskMode_003, TestSize.Level1) {
     auto callerToken = MockToken(AbilityType::PAGE, tokenId);
     ASSERT_NE(callerToken, nullptr);
     auto result = abilityManagerService->ExitKioskMode(callerToken);
-    EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
+    EXPECT_EQ(result, ERR_KIOSK_MODE_NOT_IN_WHITELIST);
+    system::SetBoolParameter(KIOSK_MODE_ENABLED, false);
 }
 
 /*

@@ -386,7 +386,9 @@ public:
         const int32_t &resultCode, const int32_t &uniqueId, WantParams &wantParam));
     MOCK_METHOD1(MoveUIAbilityToBackground, int(const sptr<IRemoteObject> token));
     MOCK_METHOD1(UpdateKioskApplicationList, int(const std::vector<std::string> &appList));
-    MOCK_METHOD1(EnterKioskMode, int(sptr<IRemoteObject>));
+    MOCK_METHOD1(AddKioskApplicationList, int(const std::vector<std::string> &appList));
+    MOCK_METHOD1(DeleteKioskApplicationList, int(const std::vector<std::string> &appList));
+    MOCK_METHOD2(EnterKioskMode, int(sptr<IRemoteObject>, int32_t));
     MOCK_METHOD1(ExitKioskMode, int(sptr<IRemoteObject>));
     MOCK_METHOD1(GetKioskStatus, int(AAFwk::KioskStatus &kioskInf));
     int StartUserTest(const Want& want, const sptr<IRemoteObject>& observer) override
