@@ -41,12 +41,12 @@ UkeyAuthUIExtension *UkeyAuthUIExtension::Create(const std::unique_ptr<Runtime> 
 
 void UkeyAuthUIExtension::OnForeground(const AAFwk::Want &want, sptr<AAFwk::SessionInfo> sessionInfo)
 {
-    Extension::OnForeground(want, sessionInfo);
+    UIExtensionBase<UIExtensionContext>::OnForeground(want, sessionInfo);
 }
 
 void UkeyAuthUIExtension::OnBackground()
 {
-    Extension::OnBackground();
+    UIExtensionBase<UIExtensionContext>::OnBackground();
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

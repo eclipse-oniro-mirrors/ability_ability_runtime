@@ -41,12 +41,12 @@ public:
     static UkeyAuthUIExtension *Create(const std::unique_ptr<Runtime> &runtime);
 
     /**
-     * @brief UkeyAuthUIExtensionAbility has no onForeground lifecycle, only keep base state handling.
+     * @brief Keep base UIExtensionBase behavior (window/session dispatch chain).
      */
     void OnForeground(const AAFwk::Want &want, sptr<AAFwk::SessionInfo> sessionInfo) override;
 
     /**
-     * @brief UkeyAuthUIExtensionAbility has no onBackground lifecycle, only keep base state handling.
+     * @brief Keep base UIExtensionBase behavior (window/session dispatch chain).
      */
     void OnBackground() override;
 };
