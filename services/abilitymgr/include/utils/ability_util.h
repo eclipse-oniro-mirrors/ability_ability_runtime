@@ -47,7 +47,6 @@ constexpr const char* DLP_PARAMS_MODULE_NAME = "ohos.dlp.params.moduleName";
 constexpr const char* DLP_PARAMS_ABILITY_NAME = "ohos.dlp.params.abilityName";
 #endif // WITH_DLP
 constexpr const char* MARKET_BUNDLE_NAME = "com.hmsapp.appgallery";
-constexpr const char* MARKET_CROWD_TEST_BUNDLE_PARAM = "crowd_test_bundle_name";
 constexpr const char* BUNDLE_NAME_SELECTOR_DIALOG = "com.ohos.amsdialog";
 
 #define CHECK_POINTER_CONTINUE(object)                         \
@@ -279,25 +278,6 @@ static constexpr int64_t MICROSECONDS = 1000000;    // MICROSECONDS mean 10^6 mi
     } else {
         RemoveWindowModeKey(want);
     }
-}
-
-[[maybe_unused]] static int StartAppgallery(const std::string &bundleName, const int requestCode, const int32_t userId,
-    const std::string &action)
-{
-    std::string appGalleryBundleName;
-    auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
-    if (bundleMgrHelper == nullptr || !bundleMgrHelper->QueryAppGalleryBundleName(appGalleryBundleName)) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "GetBundleManagerHelper or QueryAppGalleryBundleName failed");
-        appGalleryBundleName = MARKET_BUNDLE_NAME;
-    }
-
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "appGalleryBundleName:%{public}s", appGalleryBundleName.c_str());
-
-    Want want;
-    want.SetElementName(appGalleryBundleName, "");
-    want.SetAction(action);
-    want.SetParam(MARKET_CROWD_TEST_BUNDLE_PARAM, bundleName);
-    return AbilityManagerClient::GetInstance()->StartAbility(want, requestCode, userId);
 }
 
 [[maybe_unused]] static std::time_t GetTimeStamp()

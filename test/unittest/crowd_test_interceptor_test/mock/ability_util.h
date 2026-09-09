@@ -24,14 +24,7 @@
 namespace OHOS {
 namespace AAFwk {
 namespace AbilityUtil {
-int retStartAppgallery = 0;
 constexpr const char* MARKET_BUNDLE_NAME = "com.huawei.hmsapp.appgallery";
-constexpr const char* MARKET_CROWD_TEST_BUNDLE_PARAM = "crowd_test_bundle_name";
-int StartAppgallery(const std::string &bundleName, const int requestCode, const int32_t userId,
-    const std::string &action)
-{
-    return retStartAppgallery;
-}
 
 std::shared_ptr<AppExecFwk::BundleMgrHelper> GetBundleManagerHelper()
 {
