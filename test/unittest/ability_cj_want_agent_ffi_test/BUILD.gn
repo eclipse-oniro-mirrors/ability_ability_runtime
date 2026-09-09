@@ -21,6 +21,7 @@ ohos_unittest("ability_cj_want_agent_ffi_test") {
   include_dirs = [
     "${ability_runtime_path}/interfaces/kits/native/ability/native",
     "${ability_runtime_path}/frameworks/cj/ffi",
+    "${ability_runtime_path}/frameworks/cj/ffi/application_context/include",
     "${ability_runtime_path}/frameworks/cj/ffi/want_agent/include",
     "${ability_runtime_services_path}/common/include",
   ]
@@ -38,15 +39,19 @@ ohos_unittest("ability_cj_want_agent_ffi_test") {
     "${ability_runtime_innerkits_path}/wantagent:wantagent_innerkits",
     "${ability_runtime_native_path}/appkit:app_context",
     "${ability_runtime_path}/frameworks/cj/ffi:cj_ability_ffi",
-    "${ability_runtime_path}/frameworks/cj/ffi/want_agent:cj_want_agent_ffi",
+    "${ability_runtime_path}/frameworks/cj/ffi/want_agent:cj_want_agent_ffi_source",
   ]
 
   external_deps = [
     "ability_base:want",
     "c_utils:utils",
+    "eventhandler:libeventhandler",
     "hilog:libhilog",
+    "ipc:ipc_single",
+    "napi:ace_napi",
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
+    "node:node_header_notice",
   ]
 }
 
