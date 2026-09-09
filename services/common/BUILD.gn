@@ -400,6 +400,7 @@ ohos_shared_library("app_util") {
 
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  version_script = "libapp_util.map"
 }
 
 ohos_static_library("app_util_static") {
