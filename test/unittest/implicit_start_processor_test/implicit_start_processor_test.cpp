@@ -624,7 +624,7 @@ HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbilityInner_001, TestSize.Lev
     AbilityRequest request;
     int32_t userId = 0;
     request.callType = AbilityCallType::START_OPTIONS_TYPE;
-    bool res = processor->ImplicitStartAbilityInner(want, request, userId);
+    bool res = processor->ImplicitStartAbilityInner(want, request, userId, false);
     EXPECT_NE(res, ERR_OK);
 }
 
@@ -643,7 +643,7 @@ HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbilityInner_002, TestSize.Lev
     AbilityRequest request;
     int32_t userId = 0;
     request.callType = AbilityCallType::START_SETTINGS_TYPE;
-    bool res = processor->ImplicitStartAbilityInner(want, request, userId);
+    bool res = processor->ImplicitStartAbilityInner(want, request, userId, false);
     EXPECT_NE(res, ERR_OK);
 }
 
@@ -662,7 +662,7 @@ HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbilityInner_003, TestSize.Lev
     AbilityRequest request;
     int32_t userId = 0;
     request.callType = AbilityCallType::START_EXTENSION_TYPE;
-    bool res = processor->ImplicitStartAbilityInner(want, request, userId);
+    bool res = processor->ImplicitStartAbilityInner(want, request, userId, false);
     EXPECT_NE(res, ERR_OK);
 }
 
@@ -681,7 +681,7 @@ HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbilityInner_004, TestSize.Lev
     AbilityRequest request;
     int32_t userId = 0;
     request.callType = AbilityCallType::CALL_REQUEST_TYPE;
-    bool res = processor->ImplicitStartAbilityInner(want, request, userId);
+    bool res = processor->ImplicitStartAbilityInner(want, request, userId, false);
     EXPECT_NE(res, ERR_OK);
 }
 
@@ -700,7 +700,7 @@ HWTEST_F(ImplicitStartProcessorTest, CallStartAbilityInner_001, TestSize.Level1)
     Want want;
     AbilityRequest request;
     AbilityCallType callType = AbilityCallType::INVALID_TYPE;
-    bool res = processor->CallStartAbilityInner(userId, want, request, callType);
+    bool res = processor->CallStartAbilityInner(userId, want, request, callType, false);
     EXPECT_NE(res, ERR_OK);
 }
 
@@ -719,7 +719,7 @@ HWTEST_F(ImplicitStartProcessorTest, CallStartAbilityInner_002, TestSize.Level1)
     Want want;
     AbilityRequest request;
     AbilityCallType callType = AbilityCallType::CALL_REQUEST_TYPE;
-    bool res = processor->CallStartAbilityInner(userId, want, request, callType);
+    bool res = processor->CallStartAbilityInner(userId, want, request, callType, false);
     EXPECT_NE(res, ERR_OK);
 }
 
