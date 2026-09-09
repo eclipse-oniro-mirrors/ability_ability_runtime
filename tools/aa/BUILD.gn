@@ -87,6 +87,7 @@ ohos_static_library("tools_aa_source_set") {
 
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "${ability_runtime_services_path}/common:size_optimize_config" ]
 }
 
 ohos_executable("aa") {
@@ -117,6 +118,7 @@ ohos_executable("aa") {
 
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "${ability_runtime_services_path}/common:size_optimize_config" ]
 }
 
 ohos_prebuilt_etc("shell_command_executor_config.json") {
