@@ -476,7 +476,7 @@
         },
         {
             "extension_type_name": "ukeyAuth",
-            "need_create_sandbox": true,
+            "need_create_sandbox": false,
             "screen_unlock_access": {
                 "defaultInterception": false
             }
