@@ -348,6 +348,24 @@ ohos_prebuilt_etc("ability_runtime_embedded_uiextension_ability_abc_etc") {
   deps = [ ":ability_runtime_embedded_uiextension_ability_abc" ]
 }
 
+generate_static_abc("ability_runtime_ukey_auth_uiextension_ability_abc") {
+  base_url = "./"
+  files = [ "./@ohos.app.ability.UkeyAuthUIExtensionAbility.ets" ]
+
+  is_boot_abc = "True"
+  device_dst_file =
+      "/system/framework/ability_runtime_ukey_auth_uiextension_ability_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_ukey_auth_uiextension_ability_abc_etc") {
+  source =
+      "$target_out_dir/ability_runtime_ukey_auth_uiextension_ability_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_ukey_auth_uiextension_ability_abc" ]
+}
+
 generate_static_abc("ability_runtime_data_uri_utils_abc") {
   base_url = "./"
   files = [ "./@ohos.app.ability.dataUriUtils.ets" ]
@@ -2225,6 +2243,7 @@ group("ets_packages") {
     ":ability_runtime_data_uri_utils_abc_etc",
     ":ability_runtime_dialog_session_abc_etc",
     ":ability_runtime_embedded_uiextension_ability_abc_etc",
+    ":ability_runtime_ukey_auth_uiextension_ability_abc_etc",
     ":ability_runtime_environment_callback_abc_etc",
     ":ability_runtime_error_code_abc_etc",
     ":ability_runtime_event_hub_abc_etc",
