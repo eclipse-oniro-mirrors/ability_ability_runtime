@@ -14,6 +14,7 @@
  */
 
 #include <gtest/gtest.h>
+#include "array_wrapper.h"
 #include "ability_context.h"
 #include "ability_runtime_error_util.h"
 #include <algorithm>
@@ -1679,5 +1680,124 @@ HWTEST_F(WantAgentHelperTest, WantAgentHelper_6740, Function | MediumTest | Leve
     EXPECT_FALSE(WantAgentHelper::HasWantParamsEnvelope(R"({"extraInfo":"bad"})"));
     EXPECT_FALSE(WantAgentHelper::HasWantParamsEnvelope(R"({"extraInfo":{"extraInfoValue":100}})"));
     EXPECT_FALSE(WantAgentHelper::HasWantParamsEnvelope(R"({"wants":[]})"));
+}
+
+/*
+ * @tc.number    : WantAgentHelper_6750
+ * @tc.name      : WantAgentHelper ToStringWithEnvelope unsupported type policy
+ * @tc.desc      : Test ToStringWithEnvelope forwards the unsupported-type policy to WantParamWrapperJson.
+ *                  Unsupported types cannot survive the IPC round-trip because
+ *                  WantParams::WriteArrayToParcel silently drops arrays whose element
+ *                  type is not one of the recognised scalar or container types.
+ *                  Policy behaviour is therefore tested directly on Serialize, and
+ *                  ToStringWithEnvelope forwarding is verified with supported types only.
+ */
+HWTEST_F(WantAgentHelperTest, WantAgentHelper_6750, Function | MediumTest | Level1)
+{
+    // Part 1: Verify WantParamWrapperJson::Serialize applies the policy to unsupported types.
+    // Array with g_IID_IObject element type is unsupported by the JSON codec.
+    WantParams params;
+    params.SetParam("keep", Boolean::Box(true));
+    sptr<IArray> unsupportedArray = sptr<Array>::MakeSptr(0, g_IID_IObject);
+    ASSERT_NE(unsupportedArray, nullptr);
+    params.SetParam("drop", unsupportedArray);
+
+    std::string strictOut = "unchanged";
+    EXPECT_FALSE(WantParamWrapperJson::Serialize(
+        params, strictOut, WantParamWrapperJson::UnsupportedTypePolicy::FAIL));
+    EXPECT_EQ(strictOut, "unchanged");
+
+    std::string skipOut;
+    ASSERT_TRUE(WantParamWrapperJson::Serialize(
+        params, skipOut, WantParamWrapperJson::UnsupportedTypePolicy::SKIP));
+    EXPECT_NE(skipOut.find("ohos.want.paramsStringEnvelope"), std::string::npos);
+    EXPECT_EQ(skipOut.find("\"drop\""), std::string::npos);
+
+    WantParams parsed;
+    ASSERT_TRUE(WantParamWrapperJson::Parse(skipOut, parsed));
+    auto keep = IBoolean::Query(parsed.GetParam("keep"));
+    ASSERT_NE(keep, nullptr);
+    EXPECT_TRUE(Boolean::Unbox(keep));
+    EXPECT_EQ(parsed.GetParam("drop"), nullptr);
+    EXPECT_EQ(parsed.Size(), 1);
+
+    // Part 2: Verify ToStringWithEnvelope forwards the policy through the IPC round-trip.
+    // Only supported types are used to avoid Parcel marshalling limitations.
+    std::shared_ptr<Want> want = std::make_shared<Want>();
+    ElementName element("device", "bundleName", "abilityNameToJsonPolicy");
+    want->SetElement(element);
+    WantAgentInfo wantAgentInfo;
+    wantAgentInfo.wants_.emplace_back(want);
+    wantAgentInfo.operationType_ = WantAgentConstant::OperationType::START_ABILITY;
+    std::shared_ptr<WantParams> wParams = std::make_shared<WantParams>();
+    wParams->SetParam("key", Boolean::Box(true));
+    wantAgentInfo.extraInfo_ = wParams;
+    auto wantAgent = WantAgentHelper::GetWantAgent(wantAgentInfo);
+    ASSERT_NE(wantAgent, nullptr);
+
+    auto failString = WantAgentHelper::ToStringWithEnvelope(
+        wantAgent, WantParamWrapperJson::UnsupportedTypePolicy::FAIL);
+    auto failObject = nlohmann::json::parse(failString, nullptr, false);
+    ASSERT_FALSE(failObject.is_discarded());
+    EXPECT_NE(failObject.at("extraInfo").at("extraInfoValue").get<std::string>().find(
+        "ohos.want.paramsStringEnvelope"), std::string::npos);
+
+    auto defaultString = WantAgentHelper::ToStringWithEnvelope(wantAgent);
+    auto defaultObject = nlohmann::json::parse(defaultString, nullptr, false);
+    ASSERT_FALSE(defaultObject.is_discarded());
+    WantParams parsedDefault;
+    ASSERT_TRUE(WantParamWrapperJson::Parse(
+        defaultObject.at("extraInfo").at("extraInfoValue").get<std::string>(), parsedDefault));
+    auto keepDefault = IBoolean::Query(parsedDefault.GetParam("key"));
+    ASSERT_NE(keepDefault, nullptr);
+    EXPECT_TRUE(Boolean::Unbox(keepDefault));
+}
+
+/*
+ * @tc.number    : WantAgentHelper_6760
+ * @tc.name      : WantAgentHelper FromStringWithEnvelope unsupported type policy
+ * @tc.desc      : Test FromStringWithEnvelope forwards the unsupported-type policy to WantParamWrapperJson.
+ *                  The IPC round-trip via GetWantAgent/GetWant does not reliably preserve WantParams
+ *                  across PendingWant updates (FLAG_UPDATE_CURRENT). Policy behaviour is therefore
+ *                  tested directly on Parse and ParseExtraInfoEnvelopeFromJson.
+ */
+HWTEST_F(WantAgentHelperTest, WantAgentHelper_6760, Function | MediumTest | Level1)
+{
+    const std::string extraInfoValue = "{\"ohos.want.paramsStringEnvelope\":{"
+        "\"keep\":{\"1\":\"true\"},\"drop\":{\"10\":\"ignored\"}}}";
+
+    // Part 1: Verify WantParamWrapperJson::Parse applies the policy to unsupported typeIds.
+    // typeId "10" (CharSequence) is not supported by the JSON codec.
+    WantParams strictParams;
+    EXPECT_FALSE(WantParamWrapperJson::Parse(
+        extraInfoValue, strictParams, WantParamWrapperJson::UnsupportedTypePolicy::FAIL));
+    EXPECT_EQ(strictParams.Size(), 0);
+
+    WantParams skipParams;
+    ASSERT_TRUE(WantParamWrapperJson::Parse(
+        extraInfoValue, skipParams, WantParamWrapperJson::UnsupportedTypePolicy::SKIP));
+    auto keep = IBoolean::Query(skipParams.GetParam("keep"));
+    ASSERT_NE(keep, nullptr);
+    EXPECT_TRUE(Boolean::Unbox(keep));
+    EXPECT_EQ(skipParams.GetParam("drop"), nullptr);
+    EXPECT_EQ(skipParams.Size(), 1);
+
+    // Part 2: Verify FromStringWithEnvelope forwards the policy via ParseExtraInfoEnvelopeFromJson.
+    nlohmann::json jsonObject;
+    jsonObject["extraInfo"] = { { "extraInfoValue", extraInfoValue } };
+
+    auto strictExtra = WantAgentHelper::ParseExtraInfoEnvelopeFromJson(
+        jsonObject, WantParamWrapperJson::UnsupportedTypePolicy::FAIL);
+    ASSERT_NE(strictExtra, nullptr);
+    EXPECT_EQ(strictExtra->Size(), 0);
+
+    auto skipExtra = WantAgentHelper::ParseExtraInfoEnvelopeFromJson(
+        jsonObject, WantParamWrapperJson::UnsupportedTypePolicy::SKIP);
+    ASSERT_NE(skipExtra, nullptr);
+    auto keepExtra = IBoolean::Query(skipExtra->GetParam("keep"));
+    ASSERT_NE(keepExtra, nullptr);
+    EXPECT_TRUE(Boolean::Unbox(keepExtra));
+    EXPECT_EQ(skipExtra->GetParam("drop"), nullptr);
+    EXPECT_EQ(skipExtra->Size(), 1);
 }
 }  // namespace OHOS::AbilityRuntime::WantAgent
