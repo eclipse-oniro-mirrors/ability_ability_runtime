@@ -1103,14 +1103,15 @@ int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::str
     if (!EventDispatcher::GetInstance().SetScheduler(callerPid, callerUid, scheduler)) {
         return ERR_NO_INIT;
     }
-    if (auto ret = ValidateSessionLimit(); ret != ERR_OK) {
-        return ret;
-    }
     auto tokenId = IPCSkeleton::GetCallingTokenID();
     std::string bundleName;
     AppExecFwk::BundleInfo bundleInfo;
     if (ToolUtil::GetBundleInfoByTokenId(tokenId, bundleInfo)) {
         bundleName = bundleInfo.name;
+    }
+    if (auto ret = ValidateSessionLimit(); ret != ERR_OK) {
+        ReportCliExecuteFailed(bundleName, "", GetFailureReason(ret));
+        return ret;
     }
 
     // Tool command mode
@@ -1179,7 +1180,8 @@ int32_t CliToolManagerService::ExecCmdToolMode(const ExecCmdParam &param, CmdSes
     std::string toolName = ExecCmdParam::ExtractToolName(param.cmd);
     if (toolName.empty() || !std::all_of(toolName.begin(), toolName.end(),
         [](char c) { return std::isalnum(static_cast<unsigned char>(c)) || c == '-' || c == '_'; })) {
-        ReportCliExecuteFailed(context.bundleName, toolName, "invalid_tool_name");
+        ReportCliExecuteFailed(context.bundleName, toolName,
+            GetFailureReason(ERR_INVALID_PARAM), "invalid_tool_name");
         return ERR_INVALID_PARAM;
     }
 
