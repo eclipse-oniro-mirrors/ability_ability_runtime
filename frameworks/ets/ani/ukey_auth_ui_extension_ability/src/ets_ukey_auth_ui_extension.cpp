@@ -17,7 +17,7 @@
 
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
-#include "ets_ui_extension_base.h"
+#include "ets_ukey_auth_ui_extension_base.h"
 
 #ifdef WINDOWS_PLATFORM
 #define ETS_EXPORT __declspec(dllexport)
@@ -34,7 +34,7 @@ EtsUkeyAuthUIExtension *EtsUkeyAuthUIExtension::Create(const std::unique_ptr<Run
 
 EtsUkeyAuthUIExtension::EtsUkeyAuthUIExtension(const std::unique_ptr<Runtime> &runtime)
 {
-    std::shared_ptr<UIExtensionBaseImpl> uiExtensionBaseImpl = std::make_shared<EtsUIExtensionBase>(runtime);
+    std::shared_ptr<UIExtensionBaseImpl> uiExtensionBaseImpl = std::make_shared<EtsUkeyAuthUIExtensionBase>(runtime);
     SetUIExtensionBaseImpl(uiExtensionBaseImpl);
 }
 
