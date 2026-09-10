@@ -35,6 +35,7 @@ public:
     void BindContext() override;
     void OnCommandWindow(const AAFwk::Want &want, const sptr<AAFwk::SessionInfo> &sessionInfo,
         AAFwk::WindowCommand winCmd) override;
+    void OnForeground(const AAFwk::Want &want, sptr<AAFwk::SessionInfo> sessionInfo) override;
 
 private:
     void RegisterUkeyContextConfigUpdateCallback();

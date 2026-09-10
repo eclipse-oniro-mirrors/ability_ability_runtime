@@ -78,6 +78,8 @@ void JsUkeyAuthUIExtensionBase::BindContext()
 void JsUkeyAuthUIExtensionBase::OnCommandWindow(const AAFwk::Want &want,
     const sptr<AAFwk::SessionInfo> &sessionInfo, AAFwk::WindowCommand winCmd)
 {
+    TAG_LOGI(AAFwkTag::UI_EXT, "ukey OnCommandWindow: winCmd=%{public}d, session=%{public}d, ctx=%{public}d",
+        static_cast<int32_t>(winCmd), sessionInfo == nullptr ? 0 : 1, ukeyContext_ == nullptr ? 0 : 1);
     JsUIExtensionBase::OnCommandWindow(want, sessionInfo, winCmd);
     if (winCmd != AAFwk::WIN_CMD_FOREGROUND || sessionInfo == nullptr || ukeyContext_ == nullptr) {
         return;
@@ -86,6 +88,30 @@ void JsUkeyAuthUIExtensionBase::OnCommandWindow(const AAFwk::Want &want,
     if (it != uiWindowMap_.end() && it->second != nullptr) {
         ukeyContext_->SetWindow(it->second);
         ukeyContext_->SetSessionInfo(sessionInfo);
+    } else {
+        TAG_LOGE(AAFwkTag::UI_EXT, "ukey OnCommandWindow: window not found, componentId=%{public}llu,"
+            " mapSize=%{public}zu", static_cast<unsigned long long>(sessionInfo->uiExtensionComponentId),
+            uiWindowMap_.size());
+    }
+}
+
+void JsUkeyAuthUIExtensionBase::OnForeground(const AAFwk::Want &want,
+    sptr<AAFwk::SessionInfo> sessionInfo)
+{
+    JsUIExtensionBase::OnForeground(want, sessionInfo);
+    if (sessionInfo == nullptr || ukeyContext_ == nullptr) {
+        return;
+    }
+    auto it = uiWindowMap_.find(sessionInfo->uiExtensionComponentId);
+    if (it != uiWindowMap_.end() && it->second != nullptr) {
+        ukeyContext_->SetWindow(it->second);
+        ukeyContext_->SetSessionInfo(sessionInfo);
+        TAG_LOGI(AAFwkTag::UI_EXT, "ukey OnForeground: window and session injected, componentId=%{public}llu",
+            static_cast<unsigned long long>(sessionInfo->uiExtensionComponentId));
+    } else {
+        TAG_LOGE(AAFwkTag::UI_EXT, "ukey OnForeground: window not found, componentId=%{public}llu,"
+            " mapSize=%{public}zu", static_cast<unsigned long long>(sessionInfo->uiExtensionComponentId),
+            uiWindowMap_.size());
     }
 }
 

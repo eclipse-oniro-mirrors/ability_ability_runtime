@@ -79,6 +79,21 @@ void EtsUkeyAuthUIExtensionBase::OnCommandWindow(const AAFwk::Want &want,
     }
 }
 
+void EtsUkeyAuthUIExtensionBase::OnForeground(const AAFwk::Want &want,
+    sptr<AAFwk::SessionInfo> sessionInfo)
+{
+    EtsUIExtensionBase::OnForeground(want, sessionInfo);
+    if (sessionInfo == nullptr || ukeyContext_ == nullptr) {
+        return;
+    }
+    auto it = uiWindowMap_.find(sessionInfo->uiExtensionComponentId);
+    if (it != uiWindowMap_.end() && it->second != nullptr) {
+        ukeyContext_->SetWindow(it->second);
+        ukeyContext_->SetSessionInfo(sessionInfo);
+        TAG_LOGI(AAFwkTag::UI_EXT, "ukey ets OnForeground: window and session injected");
+    }
+}
+
 void EtsUkeyAuthUIExtensionBase::RegisterUkeyContextConfigUpdateCallback()
 {
     if (ukeyContext_ == nullptr || abilityInfo_ == nullptr) {
