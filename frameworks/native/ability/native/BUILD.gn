@@ -3793,6 +3793,8 @@ ohos_shared_library("auto_fill_extension_ani") {
     external_deps += [ "window_manager:libwm" ]
   }
 
+  version_script = "libauto_fill_extension_ani.map"
+
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
