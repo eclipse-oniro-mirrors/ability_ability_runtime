@@ -821,6 +821,9 @@ int UIAbilityLifecycleManager::NotifySCBToStartUIAbility(AbilityRequest &ability
         return ERR_FREQ_START_ABILITY;
     }
     abilityRequest.want.SetParam(IS_SHELL_CALL, AAFwk::PermissionVerification::GetInstance()->IsShellCall());
+    if (AAFwk::PermissionVerification::GetInstance()->IsAllowLocalDebugOtherApps(true)) {
+        abilityRequest.want.SetParam(IS_SHELL_CALL, true);
+    }
     std::string callerKey = std::to_string(IPCSkeleton::GetCallingPid()) + ":" +
         std::to_string(IPCSkeleton::GetCallingUid());
     bool isCallerKilling = IN_PROCESS_CALL(DelayedSingleton<AppScheduler>::GetInstance()->IsCallerKilling(callerKey));

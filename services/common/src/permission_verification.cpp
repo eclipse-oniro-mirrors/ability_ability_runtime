@@ -677,7 +677,10 @@ bool PermissionVerification::IsAllowLocalDebugOtherApps(bool isDebugFromLocal) c
     if (!system::GetBoolParameter(DEVELOPER_MODE_STATE, false)) {
         return false;
     }
-    return VerifyLocalDebugOtherApps();
+    if (VerifyLocalDebugOtherApps()) {
+        return true;
+    }
+    return VerifyCallingPermission(PermissionConstants::PERMISSION_CUSTOM_SANDBOX);
 }
 
 bool PermissionVerification::IsLocalDebugOtherAppsCall() const
