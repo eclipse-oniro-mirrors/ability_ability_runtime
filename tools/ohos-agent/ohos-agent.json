@@ -1,0 +1,136 @@
+{
+    "name": "ohos-agent",
+    "version": "1.0.0",
+    "description": "ohos-agent CLI for AgentExtensionAbility: connect/sendData/authorize/disconnect.",
+    "executablePath": "/system/bin/cli_tool/executable/ohos-agent",
+    "requirePermissions": [],
+    "inputSchema": {
+        "type": "object",
+        "description": "Sub-options of the ohos-agent command.",
+        "properties": {
+            "help": {
+                "type": "boolean",
+                "default": false
+            }
+        }
+    },
+    "outputSchema": {
+        "type": "object",
+        "description": "Execution result of the ohos-agent command.",
+        "properties": {
+            "type": { "type": "string", "enum": ["result"] },
+            "status": { "type": "string", "enum": ["success", "failed"] },
+            "data": {
+                "type": "object",
+                "properties": { "message": { "type": "string" } }
+            },
+            "errCode": { "type": "string" },
+            "errMsg": { "type": "string" },
+            "suggestion": { "type": "string" }
+        }
+    },
+    "hasSubCommand": true,
+    "subcommands": {
+        "connect": {
+            "description": "Connect an AgentExtensionAbility (APP type) and enter a long-lived command loop.",
+            "requirePermissions": ["ohos.permission.CONNECT_AGENT"],
+            "inputSchema": {
+                "type": "object",
+                "description": "Sub-options of the ohos-agent connect command.",
+                "properties": {
+                    "help": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "bundlename": {
+                        "type": "string",
+                        "description": "bundleName of the target AgentExtensionAbility host"
+                    },
+                    "abilityname": {
+                        "type": "string",
+                        "description": "abilityName of the target AgentExtensionAbility"
+                    },
+                    "modulename": {
+                        "type": "string",
+                        "description": "moduleName of the target AgentExtensionAbility"
+                    },
+                    "agentid": {
+                        "type": "string",
+                        "description": "agentId (must be pre-registered as AgentCardType::APP)"
+                    }
+                },
+                "required": [
+                    "bundlename",
+                    "abilityname",
+                    "agentid"
+                ]
+            },
+            "outputSchema": {
+                "type": "object",
+                "description": "Execution result of the ohos-agent connect command.",
+                "properties": {
+                    "type": { "type": "string", "enum": ["result"] },
+                    "status": { "type": "string", "enum": ["success", "failed"] },
+                    "data": {
+                        "type": "object",
+                        "properties": { "message": { "type": "string" } }
+                    },
+                    "errCode": { "type": "string" },
+                    "errMsg": { "type": "string" },
+                    "suggestion": { "type": "string" }
+                }
+            },
+            "eventTypes": ["connect-done", "OnData", "OnAuthorize", "disconnect-done", "error"],
+            "eventSchemas": {
+                "connect-done": {
+                    "type": "object",
+                    "properties": {
+                        "type": { "const": "connect-done" },
+                        "status": { "type": "string", "enum": ["ok", "fail"] },
+                        "agentId": { "type": "string" },
+                        "errCode": { "type": "string" },
+                        "errMsg": { "type": "string" }
+                    }
+                },
+                "OnData": {
+                    "type": "object",
+                    "properties": {
+                        "type": { "const": "OnData" },
+                        "data": { "type": "string" }
+                    }
+                },
+                "OnAuthorize": {
+                    "type": "object",
+                    "properties": {
+                        "type": { "const": "OnAuthorize" },
+                        "data": { "type": "string" }
+                    }
+                },
+                "disconnect-done": {
+                    "type": "object",
+                    "properties": {
+                        "type": { "const": "disconnect-done" },
+                        "reason": { "type": "string", "enum": ["user", "peer", "timeout", "error"] }
+                    }
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "type": { "const": "error" },
+                        "errCode": {
+                            "type": "string",
+                            "enum": [
+                                "bad-json", "unknown-op", "bad-data", "no-receiver", "send-failed",
+                                "authorize-failed", "disconnect-failed", "connect-timeout",
+                                "wakeup-pipe-failed", "poll-error", "stdin-read-error"
+                            ]
+                        },
+                        "errMsg": { "type": "string" },
+                        "fatal": { "type": "boolean" }
+                    }
+                }
+            }
+        }
+    },
+    "eventSchemas": {}
+}

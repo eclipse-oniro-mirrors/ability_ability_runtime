@@ -72,6 +72,12 @@ public:
 
     int32_t DisconnectAgentExtensionAbility(const sptr<AAFwk::IAbilityConnection> &connection) override;
 
+    int32_t ConnectAgentExtensionAbilityForCli(const AAFwk::Want &want,
+        const sptr<AAFwk::IAbilityConnection> &connection, const std::string &callerIdentity) override;
+
+    int32_t DisconnectAgentExtensionAbilityForCli(const sptr<AAFwk::IAbilityConnection> &connection,
+        const std::string &callerIdentity) override;
+
     int32_t ConnectServiceExtensionAbility(const sptr<IRemoteObject> &callerToken, const AAFwk::Want &want,
         const sptr<AAFwk::IAbilityConnection> &connection) override;
 

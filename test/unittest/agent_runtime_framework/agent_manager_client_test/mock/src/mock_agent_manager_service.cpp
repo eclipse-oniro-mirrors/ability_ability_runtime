@@ -36,6 +36,8 @@ int MyFlag::retDisconnectServiceExtensionAbility = 0;
 int MyFlag::retNotifyLowCodeAgentComplete = 0;
 int MyFlag::retVerifyAgentConnectRequest = 0;
 int MyFlag::retVerifyAgentDisconnectRequests = 0;
+int MyFlag::retConnectAgentExtensionAbilityForCli = 0;
+int MyFlag::retDisconnectAgentExtensionAbilityForCli = 0;
 AgentCard MyFlag::lastRegisterCard;
 AgentCard MyFlag::lastUpdateCard;
 AAFwk::Want MyFlag::lastVerifyAgentConnectWant;
@@ -44,6 +46,9 @@ AAFwk::Want MyFlag::lastGetAgentCardTypeWant;
 sptr<AAFwk::IAbilityConnection> MyFlag::lastVerifyAgentConnectConnection = nullptr;
 sptr<AAFwk::IAbilityConnection> MyFlag::lastVerifyAgentDisconnectConnection = nullptr;
 std::string MyFlag::verifyCallerIdentity;
+AAFwk::Want MyFlag::lastForCliConnectWant;
+sptr<AAFwk::IAbilityConnection> MyFlag::lastForCliConnection = nullptr;
+std::string MyFlag::lastForCliCallerIdentity;
 int MyFlag::resolvedAgentCardType = 0;
 int64_t MyFlag::resolvedPreflightNonce = 0;
 
@@ -147,6 +152,23 @@ int32_t MockAgentManagerService::VerifyAgentDisconnectRequests(const std::vector
     MyFlag::lastVerifyAgentDisconnectConnection = connection;
     callerIdentity = MyFlag::verifyCallerIdentity;
     return MyFlag::retVerifyAgentDisconnectRequests;
+}
+
+int32_t MockAgentManagerService::ConnectAgentExtensionAbilityForCli(const AAFwk::Want &want,
+    const sptr<AAFwk::IAbilityConnection> &connection, const std::string &callerIdentity)
+{
+    MyFlag::lastForCliConnectWant = want;
+    MyFlag::lastForCliConnection = connection;
+    MyFlag::lastForCliCallerIdentity = callerIdentity;
+    return MyFlag::retConnectAgentExtensionAbilityForCli;
+}
+
+int32_t MockAgentManagerService::DisconnectAgentExtensionAbilityForCli(
+    const sptr<AAFwk::IAbilityConnection> &connection, const std::string &callerIdentity)
+{
+    MyFlag::lastForCliConnection = connection;
+    MyFlag::lastForCliCallerIdentity = callerIdentity;
+    return MyFlag::retDisconnectAgentExtensionAbilityForCli;
 }
 }  // namespace AgentRuntime
 }  // namespace OHOS

@@ -1,0 +1,145 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//build/ohos/cli/ohos_cli_executable.gni")
+import("//foundation/ability/ability_runtime/ability_runtime.gni")
+
+config("ohos_agent_command_config") {
+  include_dirs = [
+    "include",
+    "${ability_runtime_path}/tools/aa/include",
+    "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
+    "${agent_runtime_framework_path}/interfaces/inner_api/include",
+  ]
+}
+
+config("ohos_agent_command_exception_config") {
+  cflags_cc = [ "-fexceptions" ]
+}
+
+ohos_static_library("ohos_agent_cli_source_set") {
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "src/cli_agent_connection.cpp",
+    "src/ohos_agent_command.cpp",
+    "src/session_protocol.cpp",
+    "${ability_runtime_path}/tools/aa/src/shell_command.cpp",
+    "${ability_runtime_path}/tools/aa/src/shell_command_config_loader.cpp",
+    "${ability_runtime_path}/tools/aa/src/shell_command_executor.cpp",
+    "${ability_runtime_path}/tools/aa/src/shell_command_result.cpp",
+  ]
+
+  sanitize = {
+    integer_overflow = true
+    ubsan = true
+    boundary_sanitize = true
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  public_configs = [
+    ":ohos_agent_command_config",
+    ":ohos_agent_command_exception_config",
+    "${ability_runtime_services_path}/abilitymgr:abilityms_config",
+    "${ability_runtime_services_path}/common:common_config",
+  ]
+
+  cflags = []
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
+
+  # TASK-2: connect logic depends on AgentManagerClient (inner_api :agent_manager) + the
+  # agent extension connection kit (:agent_extension_connection).
+  deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/ability_manager:ability_connect_callback_stub",
+    "${ability_runtime_innerkits_path}/ability_manager:ability_start_options",
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${agent_runtime_framework_path}/interfaces/inner_api:agent_manager",
+    "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection:agent_extension_connection",
+  ]
+
+  external_deps = [
+    "ability_base:base",
+    "ability_base:want",
+    "bundle_framework:appexecfwk_core",
+    # snprintf_s (EscapeJsonString) comes from securec.
+    "bounds_checking_function:libsec_shared",
+    "c_utils:utils",
+    "eventhandler:libeventhandler",
+    "hicollie:libhicollie",
+    "hilog:libhilog",
+    "init:libbegetutil",
+    "ipc:ipc_core",
+    "json:nlohmann_json_static",
+  ]
+  external_deps += [
+    "ability_base:session_info",
+    "bundle_framework:appexecfwk_base",
+    "samgr:samgr_proxy",
+  ]
+
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
+ohos_cli_executable("ohos-agent") {
+  sources = [ "src/main.cpp" ]
+
+  sanitize = {
+    integer_overflow = true
+    ubsan = true
+    boundary_sanitize = true
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  cflags = []
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
+
+  deps = [ ":ohos_agent_cli_source_set" ]
+
+  external_deps = [
+    "ability_base:base",
+    "ability_base:configuration",
+    "ability_base:session_info",
+    "c_utils:utils",
+    "hicollie:libhicollie",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+    "json:nlohmann_json_static",
+    "ability_base:want",
+    "bundle_framework:appexecfwk_base",
+  ]
+
+  defines = []
+
+  install_enable = true
+  install_images = [ "system" ]
+  cli_config_file = "ohos-agent.json"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
+group("tools_ohos_agent") {
+  deps = [
+    ":ohos-agent",
+  ]
+}

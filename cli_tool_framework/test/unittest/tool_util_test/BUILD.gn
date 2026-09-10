@@ -20,6 +20,7 @@ ohos_unittest("tool_util_test") {
   module_out_path = module_output_path
 
   include_dirs = [
+    "mock/include",
     "${ability_runtime_path}/cli_tool_framework/interfaces/cli_tool/include",
     "${ability_runtime_path}/cli_tool_framework/services/climgr/include",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
@@ -29,6 +30,9 @@ ohos_unittest("tool_util_test") {
 
   sources = [
     "tool_util_test.cpp",
+    "mock/src/ipc_skeleton.cpp",
+    "mock/src/bundle_mgr_helper.cpp",
+    "mock/src/mock_accesstoken_kit.cpp",
     "${cli_tool_framework_path}/services/climgr/src/tool_util.cpp",
     "${cli_tool_framework_path}/services/common/src/permission_util.cpp",
   ]

@@ -15,37 +15,29 @@ import("//build/ohos.gni")
 import("//build/test.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
-ohos_unittest("agent_manager_client_test") {
-  module_out_path = "ability_runtime/ability_runtime/agent_runtime/agent_manager_client_test"
-
-  sanitize = {
-    cfi = true
-    cfi_cross_dso = true
-    debug = false
-    blocklist = "../../../cfi_blocklist.txt"
-  }
+# Unit tests for the ohos-agent CLI tool (issue-16055). Compiles cli_agent_connection.cpp +
+# session_protocol.cpp directly so the public entry RunCommandLoop (and thus the file-local
+# DispatchLine) is exercised, alongside the pure-logic helpers (EscapeJsonString, event builders),
+# the CliAgentConnectorStub host callbacks, the OnAbilityConnectDone CR-1 proxy-null guard, and the
+# disconnect 防重入 state machine (TASK-5).
+ohos_unittest("ohos_agent_test") {
+  module_out_path = "ability_runtime/ability_runtime/tools/ohos_agent_test"
 
   sources = [
-    "agent_manager_client_test.cpp",
-    "mock/src/mock_agent_card.cpp",
-    "mock/src/mock_agent_manager_service.cpp",
-    "mock/src/mock_system_ability_client.cpp",
-    "mock/src/mock_system_ability_manager.cpp",
-    "${agent_runtime_framework_path}/interfaces/inner_api/src/agent_load_callback.cpp",
-    "${agent_runtime_framework_path}/interfaces/inner_api/src/agent_manager_client.cpp",
+    "ohos_agent_test.cpp",
+    "../src/cli_agent_connection.cpp",
+    "../src/session_protocol.cpp",
   ]
 
   include_dirs = [
-    "mock/include",
-    "${ability_runtime_innerkits_path}/ability_manager/include",
-    "${ability_runtime_services_path}/common/include",
-    "${agent_runtime_framework_path}/interfaces/inner_api/include",
+    "../include",
     "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
+    "${agent_runtime_framework_path}/interfaces/inner_api/include",
+    "${ability_runtime_services_path}/common/include",
   ]
 
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_connect_callback_stub",
-    "${agent_runtime_framework_path}/interfaces/inner_api:agent_fwk",
     "${agent_runtime_framework_path}/interfaces/inner_api:agent_manager",
     "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection:agent_extension_connection",
   ]
@@ -53,22 +45,21 @@ ohos_unittest("agent_manager_client_test") {
   external_deps = [
     "ability_base:base",
     "ability_base:want",
+    # snprintf_s (EscapeJsonString) comes from securec.
+    "bounds_checking_function:libsec_shared",
+    "bundle_framework:appexecfwk_base",
     "c_utils:utils",
-    "googletest:gmock_main",
     "googletest:gtest_main",
     "hilog:libhilog",
-    "hitrace:hitrace_meter",
+    "init:libbegetutil",
     "ipc:ipc_core",
     "json:nlohmann_json_static",
-    "samgr:samgr_proxy",
   ]
 
   cflags_cc = []
-
-  configs = []
 }
 
 group("unittest") {
   testonly = true
-  deps = [ ":agent_manager_client_test" ]
+  deps = [ ":ohos_agent_test" ]
 }

@@ -145,6 +145,28 @@ int32_t AgentManagerClient::DisconnectAgentExtensionAbility(const sptr<AAFwk::IA
     return agentMgr->DisconnectAgentExtensionAbility(connection);
 }
 
+int32_t AgentManagerClient::ConnectAgentExtensionAbilityForCli(const AAFwk::Want &want,
+    const sptr<AAFwk::IAbilityConnection> &connection, const std::string &callerIdentity)
+{
+    auto agentMgr = GetAgentMgrProxy();
+    if (agentMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null agentmgr");
+        return ERR_NULL_AGENT_MGR_PROXY;
+    }
+    return agentMgr->ConnectAgentExtensionAbilityForCli(want, connection, callerIdentity);
+}
+
+int32_t AgentManagerClient::DisconnectAgentExtensionAbilityForCli(
+    const sptr<AAFwk::IAbilityConnection> &connection, const std::string &callerIdentity)
+{
+    auto agentMgr = GetAgentMgrProxy();
+    if (agentMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null agentmgr");
+        return ERR_NULL_AGENT_MGR_PROXY;
+    }
+    return agentMgr->DisconnectAgentExtensionAbilityForCli(connection, callerIdentity);
+}
+
 int32_t AgentManagerClient::ConnectServiceExtensionAbility(const sptr<IRemoteObject> &callerToken,
     const AAFwk::Want &want,
     const sptr<AAFwk::IAbilityConnection> &connection)

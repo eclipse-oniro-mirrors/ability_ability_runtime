@@ -241,6 +241,18 @@ void AgentManagerServiceTest::SetUp(void)
     MyFlag::agentCardAbilityName = "TestAbility";
     MyFlag::shouldCreateAgentCardAppInfo = true;
     MyFlag::agentCardType = static_cast<int32_t>(AgentCardType::APP);
+    // ForCli (CLI agent connect, issue-16055) test seams — reset to the happy-path defaults so each
+    // test starts from a known-good baseline (CCM on, CLI tool token, valid HAP, uid = calling uid).
+    MyFlag::retGetBoolParameterCliEnabled = true;
+    MyFlag::retIsCliToolToken = true;
+    MyFlag::retGetHapTokenInfo = 0;
+    MyFlag::hapTokenInfoUid = IPCSkeleton::GetCallingUid();
+    // anti-spoof seams: default off so GetCallingUid() behaves as getuid() for non-ForCli tests.
+    MyFlag::overrideCallingUid = false;
+    MyFlag::setIdentityActive = false;
+    MyFlag::retSetCallingIdentity = true;
+    MyFlag::cliToolUid = IPCSkeleton::GetCallingUid();
+    MyFlag::identityUid = IPCSkeleton::GetCallingUid();
     MyFlag::lastConnectAbilityWant = Want();
     MyFlag::shouldFillExtensionAbilityInfos = true;
     MyFlag::retGetApplicationInfo = false;
@@ -2140,7 +2152,8 @@ HWTEST_F(AgentManagerServiceTest, DisconnectAgentExtensionAbility_010, TestSize.
     EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 2);
     ASSERT_EQ(AgentConnectManager::GetInstance().agentHostSessions_.size(), 1);
     EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents.count("agentA") > 0);
-    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second->agents["agentA"].isDisconnecting);
+    EXPECT_TRUE(AgentConnectManager::GetInstance().agentHostSessions_.begin()->second
+        ->agents["agentA"].isDisconnecting);
 
     auto hostConnectionRemoteA = AgentConnectManager::GetInstance()
         .agentHostSessions_[hostKey]->agents["agentA"].hostConnection->AsObject();
@@ -4800,7 +4813,7 @@ HWTEST_F(AgentManagerServiceTest, PrepareLowCodeDisconnectLocked_001, TestSize.L
 /**
 * @tc.name  : PrepareLowCodeDisconnectLocked_002
 * @tc.number: PrepareLowCodeDisconnectLocked_002
-* @tc.desc  : Test PrepareLowCodeDisconnectLocked reports alreadyDisconnecting when the tracked connection is mid-disconnect.
+* @tc.desc  : PrepareLowCodeDisconnectLocked reports alreadyDisconnecting when the connection is mid-disconnect.
 */
 HWTEST_F(AgentManagerServiceTest, PrepareLowCodeDisconnectLocked_002, TestSize.Level1)
 {
@@ -4841,7 +4854,7 @@ HWTEST_F(AgentManagerServiceTest, PrepareLowCodeDisconnectLocked_003, TestSize.L
 /**
 * @tc.name  : PrepareAgentDisconnectRequest_LowCodeMarksBatchImmediately
 * @tc.number: PrepareAgentDisconnectRequest_004
-* @tc.desc  : Test low-code disconnect preparation marks the tracked record and AgentId batch in one manager transaction.
+* @tc.desc  : Low-code disconnect preparation marks the tracked record and AgentId batch in one transaction.
 */
 HWTEST_F(AgentManagerServiceTest, PrepareAgentDisconnectRequest_004, TestSize.Level1)
 {
@@ -5387,5 +5400,282 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_035, TestSize.Lev
     // Pre-existing 100 agents remain; the second caller added none.
     EXPECT_EQ(AgentConnectManager::GetInstance().agentOwners_.size(), LOW_CODE_HOST_LIMIT_PROBE_COUNT);
 }
+// ---- TASK-6: ForCli interface UT coverage (issue-16055) ----
+// ConnectAgentExtensionAbilityForCli / DisconnectAgentExtensionAbilityForCli — security-critical
+// branch coverage: CCM gate, IsCliToolToken gate, anti-spoof (callerIdentity uid, obtained via
+// GetCallingUid after SetCallingIdentity, == the CLI tool's real process uid captured before
+// SetCallingIdentity), APP-type enforcement, app-A CONNECT_AGENT / system-app / foreground
+// enforcement, success. Legit-path tests rely on the default overrideCallingUid=false, so
+// GetCallingUid() returns getuid() both before and after SetCallingIdentity and the anti-spoof
+// passes; the spoof tests set overrideCallingUid=true with a mismatched identityUid.
+// All error codes are asserted against the exact values the production ForCli code returns so the
+// test guards against a silent relaxation of any branch.
+static Want BuildForCliConnectWant()
+{
+    Want want;
+    want.SetParam(AGENTID_KEY, std::string("testAgent"));
+    want.SetElementName("", "test.bundle", "TestAbility");
+    return want;
+}
+
+/**
+* @tc.name  : ConnectForCli_CcmOff_ReturnsPermissionDenied
+* @tc.number: ConnectForCli_CcmOff_ReturnsPermissionDenied
+* @tc.desc  : ConnectAgentExtensionAbilityForCli returns ERR_PERMISSION_DENIED when the CCM system param is off.
+*/
+HWTEST_F(AgentManagerServiceTest, ConnectForCli_CcmOff_ReturnsPermissionDenied, TestSize.Level1)
+{
+    MyFlag::retGetBoolParameterCliEnabled = false;
+    auto connection = sptr<MockAbilityConnection>::MakeSptr();
+    EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbilityForCli(
+        BuildForCliConnectWant(), connection, std::string("callerIdentity")), ERR_PERMISSION_DENIED);
+    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 0);
+}
+
+/**
+* @tc.name  : ConnectForCli_NotCliTool_ReturnsPermissionDenied
+* @tc.number: ConnectForCli_NotCliTool_ReturnsPermissionDenied
+* @tc.desc  : Returns ERR_PERMISSION_DENIED when CCM is on but the caller is not a CLI tool token.
+*/
+HWTEST_F(AgentManagerServiceTest, ConnectForCli_NotCliTool_ReturnsPermissionDenied, TestSize.Level1)
+{
+    MyFlag::retGetBoolParameterCliEnabled = true;
+    MyFlag::retIsCliToolToken = false;
+    auto connection = sptr<MockAbilityConnection>::MakeSptr();
+    EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbilityForCli(
+        BuildForCliConnectWant(), connection, std::string("callerIdentity")), ERR_PERMISSION_DENIED);
+    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 0);
+}
+
+/**
+* @tc.name  : ConnectForCli_NullConnection_ReturnsInvalidValue
+* @tc.number: ConnectForCli_NullConnection_ReturnsInvalidValue
+* @tc.desc  : ConnectAgentExtensionAbilityForCli returns ERR_INVALID_VALUE for a null connection.
+*/
+HWTEST_F(AgentManagerServiceTest, ConnectForCli_NullConnection_ReturnsInvalidValue, TestSize.Level1)
+{
+    MyFlag::retGetBoolParameterCliEnabled = true;
+    MyFlag::retIsCliToolToken = true;
+    EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbilityForCli(
+        BuildForCliConnectWant(), nullptr, std::string("callerIdentity")), ERR_INVALID_VALUE);
+}
+
+/**
+* @tc.name  : ConnectForCli_UidSpoof_ReturnsPermissionDenied
+* @tc.number: ConnectForCli_UidSpoof_ReturnsPermissionDenied
+* @tc.desc  : Returns ERR_PERMISSION_DENIED when the callerIdentity uid (GetCallingUid after
+*             SetCallingIdentity) differs from the CLI tool's real process uid (anti-spoof, fix).
+*/
+HWTEST_F(AgentManagerServiceTest, ConnectForCli_UidSpoof_ReturnsPermissionDenied, TestSize.Level1)
+{
+    MyFlag::retGetBoolParameterCliEnabled = true;
+    MyFlag::retIsCliToolToken = true;
+    // anti-spoof (fix): GetCallingUid before SetCallingIdentity (cliToolUid) != after (identityUid).
+    MyFlag::overrideCallingUid = true;
+    MyFlag::cliToolUid = IPCSkeleton::GetCallingUid();
+    MyFlag::identityUid = MyFlag::cliToolUid + 1;  // forged identity uid != real CLI tool uid
+    auto connection = sptr<MockAbilityConnection>::MakeSptr();
+    EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbilityForCli(
+        BuildForCliConnectWant(), connection, std::string("callerIdentity")), ERR_PERMISSION_DENIED);
+    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 0);
+}
+
+/**
+* @tc.name  : ConnectForCli_NonAppType_ReturnsWrongInterfaceCall
+* @tc.number: ConnectForCli_NonAppType_ReturnsWrongInterfaceCall
+* @tc.desc  : Returns ERR_WRONG_INTERFACE_CALL when the agent card type is not APP (CLI enforces inline).
+*/
+HWTEST_F(AgentManagerServiceTest, ConnectForCli_NonAppType_ReturnsWrongInterfaceCall, TestSize.Level1)
+{
+    MyFlag::retGetBoolParameterCliEnabled = true;
+    MyFlag::retIsCliToolToken = true;
+    MyFlag::retGetHapTokenInfo = 0;
+    MyFlag::hapTokenInfoUid = IPCSkeleton::GetCallingUid();
+    MyFlag::agentCardType = static_cast<int32_t>(AgentCardType::ATOMIC_SERVICE);
+    auto connection = sptr<MockAbilityConnection>::MakeSptr();
+    EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbilityForCli(
+        BuildForCliConnectWant(), connection, std::string("callerIdentity")), AAFwk::ERR_WRONG_INTERFACE_CALL);
+    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 0);
+}
+
+/**
+* @tc.name  : ConnectForCli_NoConnectAgentPerm_ReturnsPermissionDenied
+* @tc.number: ConnectForCli_NoConnectAgentPerm_ReturnsPermissionDenied
+* @tc.desc  : Returns ERR_PERMISSION_DENIED when app A lacks ohos.permission.CONNECT_AGENT (no bypass).
+*/
+HWTEST_F(AgentManagerServiceTest, ConnectForCli_NoConnectAgentPerm_ReturnsPermissionDenied, TestSize.Level1)
+{
+    MyFlag::retGetBoolParameterCliEnabled = true;
+    MyFlag::retIsCliToolToken = true;
+    MyFlag::retGetHapTokenInfo = 0;
+    MyFlag::hapTokenInfoUid = IPCSkeleton::GetCallingUid();
+    MyFlag::retVerifyConnectAgentPermission = false;
+    auto connection = sptr<MockAbilityConnection>::MakeSptr();
+    EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbilityForCli(
+        BuildForCliConnectWant(), connection, std::string("callerIdentity")), ERR_PERMISSION_DENIED);
+    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 0);
+}
+
+/**
+* @tc.name  : ConnectForCli_NotSystemApp_ReturnsNotSystemApp
+* @tc.number: ConnectForCli_NotSystemApp_ReturnsNotSystemApp
+* @tc.desc  : ConnectAgentExtensionAbilityForCli returns ERR_NOT_SYSTEM_APP when app A is not a system app (no bypass).
+*/
+HWTEST_F(AgentManagerServiceTest, ConnectForCli_NotSystemApp_ReturnsNotSystemApp, TestSize.Level1)
+{
+    MyFlag::retGetBoolParameterCliEnabled = true;
+    MyFlag::retIsCliToolToken = true;
+    MyFlag::retGetHapTokenInfo = 0;
+    MyFlag::hapTokenInfoUid = IPCSkeleton::GetCallingUid();
+    MyFlag::retJudgeCallerIsAllowedToUseSystemAPI = false;
+    auto connection = sptr<MockAbilityConnection>::MakeSptr();
+    EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbilityForCli(
+        BuildForCliConnectWant(), connection, std::string("callerIdentity")), AAFwk::ERR_NOT_SYSTEM_APP);
+    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 0);
+}
+
+/**
+* @tc.name  : ConnectForCli_NotForeground_ReturnsNotTopAbility
+* @tc.number: ConnectForCli_NotForeground_ReturnsNotTopAbility
+* @tc.desc  : Returns NOT_TOP_ABILITY when app A is not foreground (O-13: callerIdentity propagates app A pid).
+*/
+HWTEST_F(AgentManagerServiceTest, ConnectForCli_NotForeground_ReturnsNotTopAbility, TestSize.Level1)
+{
+    MyFlag::retGetBoolParameterCliEnabled = true;
+    MyFlag::retIsCliToolToken = true;
+    MyFlag::retGetHapTokenInfo = 0;
+    MyFlag::hapTokenInfoUid = IPCSkeleton::GetCallingUid();
+    MyFlag::processState = AppExecFwk::AppProcessState::APP_STATE_BACKGROUND;
+    auto connection = sptr<MockAbilityConnection>::MakeSptr();
+    EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbilityForCli(
+        BuildForCliConnectWant(), connection, std::string("callerIdentity")), AAFwk::NOT_TOP_ABILITY);
+    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 0);
+}
+
+/**
+* @tc.name  : ConnectForCli_AllOk_ReturnsOk
+* @tc.number: ConnectForCli_AllOk_ReturnsOk
+* @tc.desc  : Delegates to ConnectStandardAgentExtensionAbility and returns ERR_OK when all checks pass.
+*/
+HWTEST_F(AgentManagerServiceTest, ConnectForCli_AllOk_ReturnsOk, TestSize.Level1)
+{
+    MyFlag::retGetBoolParameterCliEnabled = true;
+    MyFlag::retIsCliToolToken = true;
+    MyFlag::retGetHapTokenInfo = 0;
+    MyFlag::hapTokenInfoUid = IPCSkeleton::GetCallingUid();
+    MyFlag::retConnectAbilityWithExtensionType = ERR_OK;
+    auto connection = sptr<MockAbilityConnection>::MakeSptr();
+    EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbilityForCli(
+        BuildForCliConnectWant(), connection, std::string("callerIdentity")), ERR_OK);
+    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 1);
+}
+
+/**
+* @tc.name  : ConnectForCli_SetCallingIdentityFails_ReturnsPermissionDenied
+* @tc.number: ConnectForCli_SetCallingIdentityFails_ReturnsPermissionDenied
+* @tc.desc  : Returns ERR_PERMISSION_DENIED when SetCallingIdentity(callerIdentity) fails (malformed
+*             identity string); fails closed before any connect work.
+*/
+HWTEST_F(AgentManagerServiceTest, ConnectForCli_SetCallingIdentityFails_ReturnsPermissionDenied, TestSize.Level1)
+{
+    MyFlag::retGetBoolParameterCliEnabled = true;
+    MyFlag::retIsCliToolToken = true;
+    MyFlag::retSetCallingIdentity = false;
+    auto connection = sptr<MockAbilityConnection>::MakeSptr();
+    EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbilityForCli(
+        BuildForCliConnectWant(), connection, std::string("callerIdentity")), ERR_PERMISSION_DENIED);
+    EXPECT_EQ(MyFlag::connectAbilityWithExtensionTypeCallCount, 0);
+}
+
+/**
+* @tc.name  : DisconnectForCli_SetCallingIdentityFails_ReturnsPermissionDenied
+* @tc.number: DisconnectForCli_SetCallingIdentityFails_ReturnsPermissionDenied
+* @tc.desc  : Returns ERR_PERMISSION_DENIED when SetCallingIdentity(callerIdentity) fails (malformed
+*             identity string); fails closed before any disconnect work.
+*/
+HWTEST_F(AgentManagerServiceTest, DisconnectForCli_SetCallingIdentityFails_ReturnsPermissionDenied, TestSize.Level1)
+{
+    MyFlag::retGetBoolParameterCliEnabled = true;
+    MyFlag::retIsCliToolToken = true;
+    MyFlag::retSetCallingIdentity = false;
+    auto connection = sptr<MockAbilityConnection>::MakeSptr();
+    EXPECT_EQ(AgentManagerService::GetInstance()->DisconnectAgentExtensionAbilityForCli(
+        connection, std::string("callerIdentity")), ERR_PERMISSION_DENIED);
+    EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 0);
+}
+
+/**
+* @tc.name  : DisconnectForCli_CcmOff_ReturnsPermissionDenied
+* @tc.number: DisconnectForCli_CcmOff_ReturnsPermissionDenied
+* @tc.desc  : DisconnectAgentExtensionAbilityForCli returns ERR_PERMISSION_DENIED when the CCM system param is off.
+*/
+HWTEST_F(AgentManagerServiceTest, DisconnectForCli_CcmOff_ReturnsPermissionDenied, TestSize.Level1)
+{
+    MyFlag::retGetBoolParameterCliEnabled = false;
+    auto connection = sptr<MockAbilityConnection>::MakeSptr();
+    EXPECT_EQ(AgentManagerService::GetInstance()->DisconnectAgentExtensionAbilityForCli(
+        connection, std::string("callerIdentity")), ERR_PERMISSION_DENIED);
+    EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 0);
+}
+
+/**
+* @tc.name  : DisconnectForCli_NullConnection_ReturnsInvalidValue
+* @tc.number: DisconnectForCli_NullConnection_ReturnsInvalidValue
+* @tc.desc  : DisconnectAgentExtensionAbilityForCli returns ERR_INVALID_VALUE for a null connection.
+*/
+HWTEST_F(AgentManagerServiceTest, DisconnectForCli_NullConnection_ReturnsInvalidValue, TestSize.Level1)
+{
+    MyFlag::retGetBoolParameterCliEnabled = true;
+    MyFlag::retIsCliToolToken = true;
+    EXPECT_EQ(AgentManagerService::GetInstance()->DisconnectAgentExtensionAbilityForCli(
+        nullptr, std::string("callerIdentity")), ERR_INVALID_VALUE);
+}
+
+/**
+* @tc.name  : DisconnectForCli_Spoof_ReturnsPermissionDenied
+* @tc.number: DisconnectForCli_Spoof_ReturnsPermissionDenied
+* @tc.desc  : Returns ERR_PERMISSION_DENIED when callerIdentity uid differs from the CLI tool uid.
+*/
+HWTEST_F(AgentManagerServiceTest, DisconnectForCli_Spoof_ReturnsPermissionDenied, TestSize.Level1)
+{
+    MyFlag::retGetBoolParameterCliEnabled = true;
+    MyFlag::retIsCliToolToken = true;
+    // anti-spoof (fix): GetCallingUid before SetCallingIdentity (cliToolUid) != after (identityUid).
+    MyFlag::overrideCallingUid = true;
+    MyFlag::cliToolUid = IPCSkeleton::GetCallingUid();
+    MyFlag::identityUid = MyFlag::cliToolUid + 1;  // forged identity uid != real CLI tool uid
+    auto connection = sptr<MockAbilityConnection>::MakeSptr();
+    EXPECT_EQ(AgentManagerService::GetInstance()->DisconnectAgentExtensionAbilityForCli(
+        connection, std::string("callerIdentity")), ERR_PERMISSION_DENIED);
+    EXPECT_EQ(MyFlag::disconnectAbilityCallCount, 0);
+}
+
+/**
+* @tc.name  : DisconnectForCli_AllOk_DelegatesAndReturnsOk
+* @tc.number: DisconnectForCli_AllOk_DelegatesAndReturnsOk
+* @tc.desc  : Delegates to DisconnectAgentExtensionAbility and returns ERR_OK when all checks pass.
+*/
+HWTEST_F(AgentManagerServiceTest, DisconnectForCli_AllOk_DelegatesAndReturnsOk, TestSize.Level1)
+{
+    MyFlag::retGetBoolParameterCliEnabled = true;
+    MyFlag::retIsCliToolToken = true;
+    MyFlag::retGetHapTokenInfo = 0;
+    MyFlag::hapTokenInfoUid = IPCSkeleton::GetCallingUid();
+    MyFlag::retDisconnectAbility = ERR_OK;
+    auto connection = sptr<MockAbilityConnection>::MakeSptr();
+    // ForCli delegates to DisconnectAgentExtensionAbility -> PrepareAgentDisconnectRequest, which
+    // looks up a standard (non-low-code) tracked record keyed by connection->AsObject() (via
+    // GetConnectionIdentityRemote) and returns ERR_INVALID_VALUE when none is tracked. Emplace one
+    // (callerUid = the calling uid the delegate passes to PrepareAgentDisconnectRequest;
+    // serviceConnection stays null -> the mocked DisconnectAbility receives nullptr, which it
+    // tolerates) so the lookup succeeds and the chain reaches the mocked DisconnectAbility(ERR_OK).
+    // Mirrors the tracked-record emplace in OnStop_001 (line 398).
+    TrackedConnectionRecord record;
+    record.callerUid = IPCSkeleton::GetCallingUid();
+    AgentConnectManager::GetInstance().trackedConnections_.emplace(connection->AsObject(), record);
+    EXPECT_EQ(AgentManagerService::GetInstance()->DisconnectAgentExtensionAbilityForCli(
+        connection, std::string("callerIdentity")), ERR_OK);
+}
+
 } // namespace AgentRuntime
 } // namespace OHOS
