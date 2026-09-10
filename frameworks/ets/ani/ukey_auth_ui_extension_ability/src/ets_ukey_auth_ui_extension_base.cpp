@@ -91,6 +91,10 @@ void EtsUkeyAuthUIExtensionBase::OnForeground(const AAFwk::Want &want,
         ukeyContext_->SetWindow(it->second);
         ukeyContext_->SetSessionInfo(sessionInfo);
         TAG_LOGI(AAFwkTag::UI_EXT, "ukey ets OnForeground: window and session injected");
+    } else {
+        TAG_LOGE(AAFwkTag::UI_EXT, "ukey ets OnForeground: window not found, componentId=%{public}llu,"
+            " mapSize=%{public}zu", static_cast<unsigned long long>(sessionInfo->uiExtensionComponentId),
+            uiWindowMap_.size());
     }
 }
 
@@ -100,9 +104,16 @@ void EtsUkeyAuthUIExtensionBase::RegisterUkeyContextConfigUpdateCallback()
         TAG_LOGE(AAFwkTag::UI_EXT, "null ukeyContext_ or abilityInfo_");
         return;
     }
+    auto ukeyExtensionAbility = std::static_pointer_cast<EtsUkeyAuthUIExtensionBase>(shared_from_this());
+    std::weak_ptr<EtsUkeyAuthUIExtensionBase> abilityWptr = ukeyExtensionAbility;
     std::weak_ptr<UkeyAuthUIExtensionContext> ukeyContextWptr = ukeyContext_;
     ukeyContext_->RegisterAbilityConfigUpdateCallback(
-        [ukeyContextWptr](AppExecFwk::Configuration &config) {
+        [abilityWptr, ukeyContextWptr](AppExecFwk::Configuration &config) {
+        std::shared_ptr<EtsUkeyAuthUIExtensionBase> abilitySptr = abilityWptr.lock();
+        if (abilitySptr == nullptr) {
+            TAG_LOGE(AAFwkTag::UI_EXT, "null abilitySptr");
+            return;
+        }
         auto ukeyContext = ukeyContextWptr.lock();
         if (ukeyContext == nullptr || ukeyContext->GetAbilityInfo() == nullptr) {
             TAG_LOGE(AAFwkTag::UI_EXT, "null ukeyContext or null GetAbilityInfo");
@@ -119,8 +130,27 @@ void EtsUkeyAuthUIExtensionBase::RegisterUkeyContextConfigUpdateCallback()
             ukeyContext->SetAbilityResourceManager(abilityResourceMgr);
             AbilityRuntime::ApplicationConfigurationManager::GetInstance().
                 AddIgnoreContext(ukeyContext, abilityResourceMgr);
+            TAG_LOGD(AAFwkTag::UI_EXT, "%{public}zu",
+                AbilityRuntime::ApplicationConfigurationManager::GetInstance().GetIgnoreContext().size());
         }
         ukeyContext->SetAbilityConfiguration(config);
+        if (config.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE).
+            compare(AppExecFwk::ConfigurationInner::COLOR_MODE_AUTO) == 0) {
+            config.AddItem(AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE,
+                ApplicationConfigurationManager::GetInstance().GetColorMode());
+
+            if (AbilityRuntime::ApplicationConfigurationManager::GetInstance().
+                GetColorModeSetLevel() > AbilityRuntime::SetLevel::System) {
+                config.AddItem(AAFwk::GlobalConfigurationKey::COLORMODE_IS_SET_BY_APP,
+                    AppExecFwk::ConfigurationInner::IS_SET_BY_APP);
+            }
+            ukeyContext->GetAbilityConfiguration()->
+                RemoveItem(AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE);
+            ukeyContext->GetAbilityConfiguration()->
+                RemoveItem(AAFwk::GlobalConfigurationKey::COLORMODE_IS_SET_BY_APP);
+        }
+
+        abilitySptr->OnAbilityConfigurationUpdated(config);
     });
 }
 } // namespace AbilityRuntime

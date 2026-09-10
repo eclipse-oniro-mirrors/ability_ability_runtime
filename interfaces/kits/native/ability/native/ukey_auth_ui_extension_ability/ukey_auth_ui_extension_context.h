@@ -25,9 +25,6 @@
 #include "want.h"
 
 namespace OHOS {
-namespace AAFwk {
-class SessionInfo;
-}
 namespace Rosen {
 class Window;
 }

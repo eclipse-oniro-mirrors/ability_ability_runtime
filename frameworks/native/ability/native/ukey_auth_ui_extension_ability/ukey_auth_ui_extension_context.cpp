@@ -75,6 +75,7 @@ ErrCode UkeyAuthUIExtensionContext::TerminateSelfWithResult(int32_t resultCode, 
         GetToken(), resultCode, want);
     if (err != ERR_OK) {
         TAG_LOGE(AAFwkTag::UI_EXT, "TransferAbilityResultForExtension failed, err = %{public}d", err);
+        // UkeyAuth terminates only when the result is delivered; a failed transfer surfaces the error to the caller.
         return err;
     }
 #ifdef SUPPORT_SCREEN
