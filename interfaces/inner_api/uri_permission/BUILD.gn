@@ -52,6 +52,8 @@ ohos_shared_library("uri_permission_mgr") {
   ]
   public_configs = [ ":uripermkit_public_config" ]
 
+  include_dirs = [ "${ability_runtime_services_path}/uripermmgr/include" ]
+
   sources = [
     "src/uri_permission_load_callback.cpp",
     "src/uri_permission_manager_client.cpp",

@@ -1003,8 +1003,6 @@ config("uiability_config") {
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_extension_base",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_runtime/app",
     "${ability_runtime_path}/interfaces/kits/native/appkit/app",
-    "${ability_runtime_services_path}/abilitymgr/include/utils",
-    "${ability_runtime_services_path}/abilitymgr/include",
   ]
 
   if (ability_runtime_graphics) {
@@ -1040,6 +1038,8 @@ ohos_shared_library("ui_ability_ani") {
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_delegator",
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_service_extension_ability/connection",
     "${ability_runtime_path}/utils/global/time/include",
+    "${ability_runtime_services_path}/abilitymgr/include/utils",
+    "${ability_runtime_services_path}/abilitymgr/include",
   ]
 
   sources = [
@@ -1154,6 +1154,8 @@ ohos_shared_library("uiabilitykit_native") {
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_extension_ability",
     "${ability_runtime_path}/utils/global/time/include",
     "${ability_runtime_services_path}/common/include",
+    "${ability_runtime_services_path}/abilitymgr/include/utils",
+    "${ability_runtime_services_path}/abilitymgr/include",
     "${ability_runtime_utils_path}/global/constant",
   ]
 
