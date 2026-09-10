@@ -1599,42 +1599,5 @@ HWTEST_F(AbilityManagerClientBranchThirdTest, NotifySkillFunctionInvoked_0100, T
     EXPECT_EQ(ret, ABILITY_SERVICE_NOT_CONNECTED);
 }
 
-/**
- * @tc.name: ExecuteIntentWithResult_0100
- * @tc.desc: Test ExecuteIntentWithResult with proxy not connected
- * @tc.type: FUNC
- */
-HWTEST_F(AbilityManagerClientBranchThirdTest, ExecuteIntentWithResult_0100, TestSize.Level1)
-{
-    client_->proxy_ = nullptr;
-    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
-        .WillRepeatedly(testing::Return(false));
-    EXPECT_CALL(*mockSystemAbility_, GetSystemAbility(testing::_)).WillRepeatedly(Return(nullptr));
-    SystemAbilityManagerClient::GetInstance().systemAbilityManager_ = mockSystemAbility_;
-
-    InsightIntentExecuteParam param;
-    InsightIntentExecuteResult result;
-    auto ret = client_->ExecuteIntentWithResult(param, result, 1000);
-    EXPECT_EQ(ret, ABILITY_SERVICE_NOT_CONNECTED);
-}
-
-/**
- * @tc.name: ExecuteIntentWithResult_0200
- * @tc.desc: Test ExecuteIntentWithResult with ExecuteIntent returning error
- * @tc.type: FUNC
- */
-HWTEST_F(AbilityManagerClientBranchThirdTest, ExecuteIntentWithResult_0200, TestSize.Level1)
-{
-    client_->proxy_ = mock_;
-    EXPECT_CALL(*mock_, ExecuteIntent(_, _, _))
-        .Times(1)
-        .WillOnce(Return(ERR_INVALID_VALUE));
-
-    InsightIntentExecuteParam param;
-    InsightIntentExecuteResult result;
-    auto ret = client_->ExecuteIntentWithResult(param, result, 1000);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
-}
-
 }  // namespace AAFwk
 }  // namespace OHOS
