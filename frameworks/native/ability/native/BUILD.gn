@@ -3689,12 +3689,15 @@ ohos_shared_library("ukey_auth_ui_extension") {
     "${ability_runtime_native_path}/ability/native/ukey_auth_ui_extension_ability/ukey_auth_ui_extension.cpp",
     "${ability_runtime_native_path}/ability/native/ukey_auth_ui_extension_ability/ukey_auth_ui_extension_context.cpp",
     "${ability_runtime_native_path}/ability/native/ukey_auth_ui_extension_ability/js_ukey_auth_ui_extension.cpp",
+    "${ability_runtime_native_path}/ability/native/ukey_auth_ui_extension_ability/js_ukey_auth_ui_extension_base.cpp",
+    "${ability_runtime_native_path}/ability/native/ukey_auth_ui_extension_ability/js_ukey_auth_ui_extension_context.cpp",
     "${ability_runtime_path}/frameworks/ets/ani/ukey_auth_ui_extension_ability/src/ets_ukey_auth_ui_extension_instance.cpp",
   ]
 
   deps = [
     ":abilitykit_native",
     ":abilitykit_utils",
+    ":configuration_helper",
     ":extensionkit_native",
     ":ui_extension",
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
