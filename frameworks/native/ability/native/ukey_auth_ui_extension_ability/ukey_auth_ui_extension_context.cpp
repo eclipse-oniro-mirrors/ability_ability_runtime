@@ -1,0 +1,148 @@
+/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "ukey_auth_ui_extension_context.h"
+
+#include "ability_manager_client.h"
+#include "configuration_convertor.h"
+#include "hilog_tag_wrapper.h"
+#ifdef SUPPORT_SCREEN
+#include "window.h"
+#endif // SUPPORT_SCREEN
+
+namespace OHOS {
+namespace AbilityRuntime {
+namespace {
+// TODO(ukey-auth): replace with certManager innerApi SA proxy when available
+void ReportToCertManager(const sptr<IRemoteObject> &token, const sptr<AAFwk::SessionInfo> &sessionInfo,
+    int32_t resultCode, const AAFwk::Want *want)
+{
+    TAG_LOGI(AAFwkTag::UI_EXT, "ReportToCertManager placeholder: resultCode=%{public}d, hasWant=%{public}d, "
+        "hasSession=%{public}d, hasToken=%{public}d", resultCode, want != nullptr, sessionInfo != nullptr,
+        token != nullptr);
+}
+} // namespace
+
+void UkeyAuthUIExtensionContext::SetWindow(const sptr<Rosen::Window> &window)
+{
+#ifdef SUPPORT_SCREEN
+    uiWindow_ = window;
+#endif // SUPPORT_SCREEN
+}
+
+sptr<Rosen::Window> UkeyAuthUIExtensionContext::GetWindow() const
+{
+#ifdef SUPPORT_SCREEN
+    return uiWindow_;
+#else
+    return nullptr;
+#endif // SUPPORT_SCREEN
+}
+
+void UkeyAuthUIExtensionContext::SetSessionInfo(const sptr<AAFwk::SessionInfo> &sessionInfo)
+{
+    sessionInfo_ = sessionInfo;
+}
+
+ErrCode UkeyAuthUIExtensionContext::TerminateSelf()
+{
+    TAG_LOGD(AAFwkTag::UI_EXT, "begin");
+    ReportToCertManager(GetToken(), sessionInfo_, 0, nullptr);
+    ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->TerminateAbility(GetToken(), -1, nullptr);
+    if (err != ERR_OK) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "ret = %{public}d", err);
+    }
+    return err;
+}
+
+ErrCode UkeyAuthUIExtensionContext::TerminateSelfWithResult(int32_t resultCode, const AAFwk::Want &want)
+{
+    TAG_LOGD(AAFwkTag::UI_EXT, "begin");
+    ReportToCertManager(GetToken(), sessionInfo_, resultCode, &want);
+    ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->TransferAbilityResultForExtension(
+        GetToken(), resultCode, want);
+    if (err != ERR_OK) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "TransferAbilityResultForExtension failed, err = %{public}d", err);
+        return err;
+    }
+#ifdef SUPPORT_SCREEN
+    if (uiWindow_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null uiWindow");
+        return AAFwk::INVALID_PARAMETERS_ERR;
+    }
+    auto ret = uiWindow_->TransferAbilityResult(resultCode, want);
+    if (ret != Rosen::WMError::WM_OK) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "TransferAbilityResult to window failed, ret = %{public}d", ret);
+        return AAFwk::INVALID_PARAMETERS_ERR;
+    }
+#endif // SUPPORT_SCREEN
+    err = AAFwk::AbilityManagerClient::GetInstance()->TerminateUIExtensionAbility(sessionInfo_);
+    if (err != ERR_OK) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "TerminateUIExtensionAbility failed, err = %{public}d", err);
+    }
+    return err;
+}
+
+ErrCode UkeyAuthUIExtensionContext::ReportDrawnCompleted()
+{
+    TAG_LOGD(AAFwkTag::UI_EXT, "begin");
+    ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->ReportDrawnCompleted(GetToken());
+    if (err != ERR_OK) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "ret=%{public}d", err);
+    }
+    return err;
+}
+
+void UkeyAuthUIExtensionContext::SetAbilityColorMode(int32_t colorMode)
+{
+    TAG_LOGI(AAFwkTag::UI_EXT, "SetAbilityColorMode colorMode: %{public}d", colorMode);
+    if (colorMode < -1 || colorMode > 1) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "colorMode error");
+        return;
+    }
+    AppExecFwk::Configuration config;
+
+    config.AddItem(AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE, AppExecFwk::GetColorModeStr(colorMode));
+    config.AddItem(AAFwk::GlobalConfigurationKey::COLORMODE_IS_SET_BY_APP,
+        AppExecFwk::ConfigurationInner::IS_SET_BY_APP);
+    if (!abilityConfigUpdateCallback_) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "abilityConfigUpdateCallback_ nullptr");
+        return;
+    }
+    abilityConfigUpdateCallback_(config);
+}
+
+void UkeyAuthUIExtensionContext::RegisterAbilityConfigUpdateCallback(AbilityConfigUpdateCallback &&callback)
+{
+    abilityConfigUpdateCallback_ = std::move(callback);
+}
+
+std::shared_ptr<AppExecFwk::Configuration> UkeyAuthUIExtensionContext::GetAbilityConfiguration() const
+{
+    return abilityConfiguration_;
+}
+
+void UkeyAuthUIExtensionContext::SetAbilityConfiguration(const AppExecFwk::Configuration &config)
+{
+    abilityConfiguration_ = std::make_shared<AppExecFwk::Configuration>(config);
+}
+
+void UkeyAuthUIExtensionContext::SetAbilityResourceManager(
+    std::shared_ptr<Global::Resource::ResourceManager> abilityResourceMgr)
+{
+    abilityResourceMgr_ = abilityResourceMgr;
+}
+} // namespace AbilityRuntime
+} // namespace OHOS
