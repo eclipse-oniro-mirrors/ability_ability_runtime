@@ -350,7 +350,10 @@ ohos_prebuilt_etc("ability_runtime_embedded_uiextension_ability_abc_etc") {
 
 generate_static_abc("ability_runtime_ukey_auth_uiextension_ability_abc") {
   base_url = "./"
-  files = [ "./@ohos.app.ability.UkeyAuthUIExtensionAbility.ets" ]
+  files = [
+    "./@ohos.app.ability.UkeyAuthUIExtensionAbility.ets",
+    "./application/UkeyAuthUIExtensionContext.ets",
+  ]
 
   is_boot_abc = "True"
   device_dst_file =
