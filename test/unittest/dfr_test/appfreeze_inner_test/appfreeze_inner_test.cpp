@@ -416,21 +416,11 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetProcessLifeCycle_001, TestSize.Le
     ret = appfreezeInner->GetProcessLifeCycle();
     printf("%s\n", ret.c_str());
     EXPECT_TRUE(appfreezeInner);
-}
-
-/**
- * @tc.number: AppfreezeInner_GetProcessStartTime_001
- * @tc.name: GetProcessStartTime
- */
-HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetProcessStartTime_001, TestSize.Level1)
-{
-    unsigned long long startTime = 0;
-    bool ret = appfreezeInner->GetProcessStartTime(gettid(), startTime);
-    printf("%d\n", ret);
-    startTime = 123456;
-    ret = appfreezeInner->GetProcessStartTime(gettid(), startTime);
-    printf("%d\n", ret);
-    EXPECT_TRUE(appfreezeInner);
+    ret = appfreezeInner->GetProcessLifeCycle();
+    if (!ret.empty()) {
+        EXPECT_NE(ret.find("PROCESS_LIFETIME:"), std::string::npos);
+        EXPECT_EQ(ret.back(), 's');
+    }
 }
 
 /**
@@ -662,35 +652,6 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInnerTest_GetMainHandlerDump_001, TestSize
 /**
  * @tc.number: AppfreezeInnerTest
  * @tc.name: add test
- * @tc.desc: Verify that function GetProcessStartTime.
- */
-HWTEST_F(AppfreezeInnerTest, AppfreezeInnerTest_GetProcessStartTime_001, TestSize.Level1)
-{
-    pid_t tid = 0;
-    unsigned long long startTime = 0;
-    bool ret = appfreezeInner->GetProcessStartTime(tid, startTime);
-    EXPECT_TRUE(!ret);
-    tid = gettid();
-    startTime = 0;
-    ret = appfreezeInner->GetProcessStartTime(tid, startTime);
-    EXPECT_TRUE(ret);
-    tid = gettid();
-    startTime = 1234;
-    ret = appfreezeInner->GetProcessStartTime(tid, startTime);
-    EXPECT_TRUE(ret);
-    tid = -1234;
-    startTime = 0;
-    ret = appfreezeInner->GetProcessStartTime(tid, startTime);
-    EXPECT_TRUE(!ret);
-    tid = -1234;
-    startTime = 1234;
-    ret = appfreezeInner->GetProcessStartTime(tid, startTime);
-    EXPECT_TRUE(!ret);
-}
-
-/**
- * @tc.number: AppfreezeInnerTest
- * @tc.name: add test
  * @tc.desc: Verify that function LogFormatHeapSize.
  */
 HWTEST_F(AppfreezeInnerTest, AppfreezeInnerTest_LogFormat_001, TestSize.Level1)
@@ -856,6 +817,36 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner_ParseIOValue_004, TestSize.Level1)
     std::string ioStr = "\n\nread_bytes: 1234\n\nwrite_bytes: 5678\n";
     std::string ret = appfreezeInner->ParseIOValue(ioStr);
     EXPECT_TRUE(!ret.empty());
+}
+
+/**
+ * @tc.number: AppfreezeInner_GetProcessIOStr_001
+ * @tc.name: GetProcessIOStr
+ * @tc.desc: Verify that GetProcessIOStr returns non-empty parsed io info from /proc/self/io.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetProcessIOStr_001, TestSize.Level1)
+{
+    std::string ret = appfreezeInner->GetProcessIOStr();
+    EXPECT_TRUE(appfreezeInner);
+    if (!ret.empty()) {
+        EXPECT_NE(ret.find(":"), std::string::npos);
+    }
+}
+
+/**
+ * @tc.number: AppfreezeInner_GetProcessIOStr_002
+ * @tc.name: GetProcessIOStr repeated
+ * @tc.desc: Verify repeated calls do not leak fd or trigger fdsan abort.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetProcessIOStr_002, TestSize.Level1)
+{
+    EXPECT_TRUE(appfreezeInner);
+    for (int i = 0; i < 10; i++) {
+        std::string ret = appfreezeInner->GetProcessIOStr();
+        if (!ret.empty()) {
+            EXPECT_NE(ret.find(":"), std::string::npos);
+        }
+    }
 }
 
 /**

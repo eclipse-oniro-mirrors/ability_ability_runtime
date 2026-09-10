@@ -88,7 +88,6 @@ private:
     std::string LogFormatHeapSize(size_t totalSize, size_t objectSize, size_t sharedSize);
     bool IsAsanEnabled();
     void GetApplicationInfo(FaultData& faultData);
-    bool GetProcessStartTime(pid_t tid, unsigned long long &startTime);
     bool ReadFdToString(int fd, std::string& content);
     int TransformHicollieFaultNumber(const std::string& faultName);
     std::string GetMainStackDump(int32_t pid);

@@ -33,10 +33,10 @@
 #include "xcollie/watchdog.h"
 #include "time_util.h"
 #include "parameters.h"
-#include "unique_fd.h"
 #include "input_manager.h"
 #include "exit_reason.h"
 #include "dfx_jsnapi.h"
+#include "procinfo.h"
 
 namespace OHOS {
 using AbilityRuntime::FreezeUtil;
@@ -190,73 +190,18 @@ bool AppfreezeInner::ReadFdToString(int fd, std::string& content)
     return (n == 0);
 }
 
-bool AppfreezeInner::GetProcessStartTime(pid_t tid, unsigned long long &startTime)
-{
-    std::string path = "/proc/" +std::to_string(tid);
-    UniqueFd dirFd(open(path.c_str(), O_DIRECTORY | O_RDONLY));
-    if (dirFd == -1) {
-        TAG_LOGE(AAFwkTag::APPDFR, "GetProcessInfo open %{public}s fail. errno %{public}d", path.c_str(), errno);
-        return false;
-    }
-
-    UniqueFd statFd(openat(dirFd.Get(), "stat", O_RDONLY | O_CLOEXEC));
-    if (statFd == -1) {
-        TAG_LOGE(AAFwkTag::APPDFR, "GetProcessInfo open %{public}s/stat fail. errno %{public}d", path.c_str(), errno);
-        return false;
-    }
-
-    std::string statStr;
-    if (!ReadFdToString(statFd.Get(), statStr)) {
-        TAG_LOGE(AAFwkTag::APPDFR, "GetProcessInfo read string fail.");
-        return false;
-    }
-
-    auto lastParenPos = statStr.find_last_of(")");
-    if (lastParenPos == std::string::npos) {
-        return false;
-    }
-    std::string eoc = statStr.substr(lastParenPos);
-    std::istringstream is(eoc);
-    constexpr int startTimePos = 21;
-    constexpr int base = 10;
-    int pos = 0;
-    std::string tmp;
-    while (is >> tmp && pos <= startTimePos) {
-        pos++;
-        if (pos == startTimePos) {
-            startTime = strtoull(tmp.c_str(), nullptr, base);
-            return true;
-        }
-    }
-    TAG_LOGE(AAFwkTag::APPDFR, "GetProcessInfo Get process info fail.");
-    return false;
-}
-
 std::string AppfreezeInner::GetProcessLifeCycle()
 {
-    struct timespec ts;
-    (void)clock_gettime(CLOCK_BOOTTIME, &ts);
-    uint64_t sysUpTime = static_cast<uint64_t>(ts.tv_sec + static_cast<time_t>(ts.tv_nsec != 0 ? 1L : 0L));
-
-    unsigned long long startTime = 0;
-    if (GetProcessStartTime(getpid(), startTime)) {
-        auto clkTck = sysconf(_SC_CLK_TCK);
-        if (clkTck == -1) {
-            TAG_LOGE(AAFwkTag::APPDFR, "Get _SC_CLK_TCK fail. errno %{public}d", errno);
-            return "";
-        }
-        uint64_t procUpTime = sysUpTime - startTime / static_cast<uint32_t>(clkTck);
-        constexpr uint64_t invalidTimeLimit = 10 * 365 * 24 * 3600; // 10 year
-        if (procUpTime > invalidTimeLimit) {
-            TAG_LOGE(AAFwkTag::APPDFR, "invalid system upTime %{public}" PRIu64"  proc upTime: %{public}" PRIu64 ",  "
-                "startTime: %{public}llu.", sysUpTime, procUpTime, startTime);
-            return "";
-        }
-        std::ostringstream oss;
-        oss << PROCESS_LIFETIME << COLON_SEPARATOR << std::to_string(procUpTime) << SECOND;
-        return oss.str();
+    uint64_t lifeTimeSeconds = 0;
+    pid_t pid = getpid();
+    int errCode = OHOS::HiviewDFX::GetProcessLifeCycle(pid, lifeTimeSeconds);
+    if (errCode != 0) {
+        TAG_LOGE(AAFwkTag::APPDFR, "Get process lifeCycle fail, errCode: %{public}d", errCode);
+        return "";
     }
-    return "";
+    std::ostringstream oss;
+    oss << PROCESS_LIFETIME << COLON_SEPARATOR << std::to_string(lifeTimeSeconds) << SECOND;
+    return oss.str();
 }
 
 std::string AppfreezeInner::LogFormatHeapSize(size_t totalSize, size_t objectSize, size_t sharedSize)
@@ -325,17 +270,20 @@ std::string AppfreezeInner::GetProcessIOStr()
         TAG_LOGE(AAFwkTag::APPDFR, "realpath error, errno: %{public}d, path: %{public}s", errno, PROC_SELF_IO);
         return "";
     }
-    UniqueFd ioFd(open(realPath, O_RDONLY | O_CLOEXEC));
+    int ioFd = open(realPath, O_RDONLY | O_CLOEXEC);
     if (ioFd < 0) {
         TAG_LOGE(AAFwkTag::APPDFR, "open %{public}s fail. errno %{public}d", realPath, errno);
         return "";
     }
+    fdsan_exchange_owner_tag(ioFd, 0, static_cast<uint32_t>(AAFwkTag::APPDFR));
 
     std::string ioStr;
-    if (!ReadFdToString(ioFd.Get(), ioStr)) {
+    if (!ReadFdToString(ioFd, ioStr)) {
         TAG_LOGE(AAFwkTag::APPDFR, "read string fail, path: %{public}s", realPath);
+        fdsan_close_with_tag(ioFd, static_cast<uint32_t>(AAFwkTag::APPDFR));
         return "";
     }
+    fdsan_close_with_tag(ioFd, static_cast<uint32_t>(AAFwkTag::APPDFR));
 
     return ParseIOValue(ioStr);
 }
