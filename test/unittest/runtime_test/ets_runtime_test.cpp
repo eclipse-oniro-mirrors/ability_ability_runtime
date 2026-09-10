@@ -1075,5 +1075,112 @@ HWTEST_F(EtsRuntimeTest, PopPreloadObj_0300, TestSize.Level1)
     EXPECT_FALSE(ret2);
     EXPECT_EQ(obj2, nullptr);
 }
+
+/**
+ * @tc.name: JsperfProfilerCommandParse_001
+ * @tc.desc: parse "profile jsperf 5000" returns 5000.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, JsperfProfilerCommandParse_001, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    int32_t result = etsRuntime->JsperfProfilerCommandParse("profile jsperf 5000", 500);
+    EXPECT_EQ(result, 5000);
+}
+
+/**
+ * @tc.name: JsperfProfilerCommandParse_002
+ * @tc.desc: command without jsperf returns 0.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, JsperfProfilerCommandParse_002, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    int32_t result = etsRuntime->JsperfProfilerCommandParse("profile nativeperf", 500);
+    EXPECT_EQ(result, 0);
+}
+
+/**
+ * @tc.name: JsperfProfilerCommandParse_003
+ * @tc.desc: jsperf without number returns defaultValue.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, JsperfProfilerCommandParse_003, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    int32_t result = etsRuntime->JsperfProfilerCommandParse("profile jsperf", 500);
+    EXPECT_EQ(result, 500);
+}
+
+/**
+ * @tc.name: JsperfProfilerCommandParse_004
+ * @tc.desc: jsperf with nativeperf suffix ignores nativeperf.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, JsperfProfilerCommandParse_004, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    int32_t result = etsRuntime->JsperfProfilerCommandParse("profile jsperf 5000 nativeperf", 500);
+    EXPECT_EQ(result, 5000);
+}
+
+/**
+ * @tc.name: JsperfProfilerCommandParse_005
+ * @tc.desc: empty command returns 0.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, JsperfProfilerCommandParse_005, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    int32_t result = etsRuntime->JsperfProfilerCommandParse("", 500);
+    EXPECT_EQ(result, 0);
+}
+
+/**
+ * @tc.name: StartProfilerTask_001
+ * @tc.desc: baseLineProfile perfCmd does not start profiler.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, StartProfilerTask_001, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    Runtime::DebugOption dOption;
+    dOption.perfCmd = "baseLineProfile";
+    etsRuntime->StartProfilerTask(dOption);
+}
+
+/**
+ * @tc.name: StartProfilerTask_002
+ * @tc.desc: profile perfCmd with null jsRuntime_ returns safely.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, StartProfilerTask_002, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    Runtime::DebugOption dOption;
+    dOption.perfCmd = "profile jsperf 5000";
+    etsRuntime->StartProfilerTask(dOption);
+}
+
+/**
+ * @tc.name: StartProfilerTask_003
+ * @tc.desc: dumpheap perfCmd with null jsRuntime_ returns safely.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, StartProfilerTask_003, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    Runtime::DebugOption dOption;
+    dOption.perfCmd = "dumpheap";
+    etsRuntime->StartProfilerTask(dOption);
+}
 } // namespace AbilityRuntime
 } // namespace OHOS

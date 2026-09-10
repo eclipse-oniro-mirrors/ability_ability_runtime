@@ -115,6 +115,8 @@ private:
     std::string HandleOhmUrlSrcEntry(const std::string &srcEntry);
     void HandleOhmUrlFileName(std::string &fileName);
     static void PreloadLibrary();
+    int32_t JsperfProfilerCommandParse(const std::string &command, int32_t defaultValue);
+    void StartProfilerTask(const DebugOption &dOption);
     int32_t apiTargetVersion_ = 0;
     std::string codePath_;
     std::string moduleName_;

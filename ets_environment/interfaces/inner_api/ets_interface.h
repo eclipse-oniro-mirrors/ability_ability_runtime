@@ -33,6 +33,11 @@ namespace AbilityRuntime {
 }
 
 extern "C" {
+enum EtsProfilerType {
+    ETS_PROFILERTYPE_CPU = 0,
+    ETS_PROFILERTYPE_HEAP = 1
+};
+
 struct ETSEnvFuncs {
     void (*InitETSSDKNS)(const std::string &path) = nullptr;
     void (*InitETSSysNS)(const std::string &path) = nullptr;
@@ -64,6 +69,8 @@ struct ETSEnvFuncs {
     void (*NotifyDebugMode)(uint32_t tid, uint32_t instanceId, bool isStartWithDebug,
         void *jsVm, bool isDebugApp) = nullptr;
     void (*BroadcastAndConnect)(const std::string& bundleName, int socketFd) = nullptr;
+    bool (*StartProfiler)(int tid, int32_t instanceId, bool debugApp, void *jsVm,
+        EtsProfilerType profiler, uint32_t interval) = nullptr;
 };
 }
 #endif // OHOS_ABILITY_RUNTIME_ETS_INTERFACE_H
