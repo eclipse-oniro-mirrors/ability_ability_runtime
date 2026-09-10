@@ -16,7 +16,10 @@
 #include "tool_util.h"
 
 #include <algorithm>
+#include <cerrno>
 #include <climits>
+#include <cstdlib>
+#include <cstdint>
 #include <nlohmann/json.hpp>
 #include <random>
 #include <set>
@@ -25,10 +28,12 @@
 #include <vector>
 
 #include "accesstoken_kit.h"
+#include "array_wrapper.h"
 #include "bundle_info.h"
 #include "bundle_mgr_helper.h"
 #include "cli_error_code.h"
 #include "cli_event_report.h"
+#include "double_wrapper.h"
 #include "exec_cmd_param.h"
 #include "exec_tool_param.h"
 #include "hilog_tag_wrapper.h"
@@ -43,7 +48,6 @@
 #include "want_params_wrapper.h"
 #include "bool_wrapper.h"
 #include "int_wrapper.h"
-#include "string_wrapper.h"
 
 namespace OHOS {
 namespace CliTool {
@@ -309,6 +313,328 @@ void ToolUtil::TransferToCmdParam(const AAFwk::WantParams &args, std::vector<std
             execArgs.push_back(strValue);
         }
     }
+}
+
+// ============================================================================
+// ParseToolCommand: parse a concatenated tool command string (tool command mode)
+// Supported syntax (long-flag only):
+//   <toolName> [subcommand] [--key=value | --key value | --flag | --flag false]...
+// Single-quoted values are kept as one token and the quotes are stripped.
+// Repeated flags of the same key are collected into an array.
+// ============================================================================
+
+namespace {
+constexpr char FLAG_PREFIX[] = "--";
+constexpr size_t FLAG_PREFIX_LEN = 2;
+constexpr char HELP_KEY[] = "help";
+// Argument start index: tokens[0] is always toolName.
+constexpr size_t ARG_START_TOOLNAME_ONLY = 1;       // no subcommand
+constexpr size_t ARG_START_WITH_SUBCOMMAND = 2;     // tokens[1] is subcommand
+// Tokens consumed by "--key value": the flag token plus its value token at i + 1.
+// "--key=value", boolean "--key" and "--help" consume only the flag token.
+constexpr size_t FLAG_WITH_VALUE_TOKEN_COUNT = 2;
+
+struct ParsedCommandArgs {
+    std::map<std::string, std::vector<std::string>> values;
+};
+
+struct SubCommandResult {
+    std::string inputSchema;
+    size_t argStart = ARG_START_TOOLNAME_ONLY;
+    std::string subcommand;
+};
+
+// Only single-quote is supported. Double quotes and backslash escapes are not.
+bool TokenizeCommand(const std::string &cmd, std::vector<std::string> &tokens)
+{
+    std::string current;
+    bool inQuote = false;
+    for (char c : cmd) {
+        if (c == '\'') {
+            inQuote = !inQuote;
+            continue;
+        }
+        if ((c == ' ' || c == '\t') && !inQuote) {
+            if (!current.empty()) {
+                tokens.push_back(current);
+                current.clear();
+            }
+            continue;
+        }
+        current.push_back(c);
+    }
+    if (inQuote) {
+        return false;
+    }
+    if (!current.empty()) {
+        tokens.push_back(current);
+    }
+    return true;
+}
+
+bool IsFlagToken(const std::string &token)
+{
+    return token.size() >= FLAG_PREFIX_LEN && token.compare(0, FLAG_PREFIX_LEN, FLAG_PREFIX) == 0;
+}
+
+bool IsBooleanSchema(const nlohmann::json &properties, const std::string &key)
+{
+    auto it = properties.find(key);
+    if (it == properties.end() || !it->contains("type") || !it->at("type").is_string()) {
+        return false;
+    }
+    return it->at("type").get<std::string>() == "boolean";
+}
+
+int32_t ParseArgTokens(const std::vector<std::string> &tokens, size_t start,
+    const nlohmann::json &properties, ParsedCommandArgs &parsed, std::string &detail)
+{
+    size_t i = start;
+    while (i < tokens.size()) {
+        const std::string &token = tokens[i];
+        if (!IsFlagToken(token)) {
+            // Bare token without "--" prefix (short flags / custom prefix) is not supported.
+            detail = DETAIL_PARAM_NOT_FOUND;
+            return ERR_INVALID_PARAM;
+        }
+        std::string flagText = token.substr(FLAG_PREFIX_LEN);
+        auto eqPos = flagText.find('=');
+        std::string key = (eqPos == std::string::npos) ? flagText : flagText.substr(0, eqPos);
+        if (key.empty()) {
+            detail = DETAIL_PARAM_NOT_FOUND;
+            return ERR_INVALID_PARAM;
+        }
+        // "help" is always allowed, matching ValidateInputSchemaProperties.
+        if (key == HELP_KEY) {
+            parsed.values[key].push_back("true");
+            ++i;
+            continue;
+        }
+        if (!properties.contains(key)) {
+            detail = DETAIL_PARAM_NOT_FOUND;
+            return ERR_INVALID_PARAM;
+        }
+        // --key=value
+        if (eqPos != std::string::npos) {
+            parsed.values[key].push_back(flagText.substr(eqPos + 1));
+            ++i;
+            continue;
+        }
+        // --key with no inline value: decide whether it takes a value or is a boolean flag.
+        bool isBool = IsBooleanSchema(properties, key);
+        if (i + 1 >= tokens.size() || IsFlagToken(tokens[i + 1])) {
+            if (!isBool) {
+                detail = DETAIL_PARAM_TYPE_MISMATCH;
+                return ERR_INVALID_PARAM;
+            }
+            parsed.values[key].push_back("true");
+            ++i;
+            continue;
+        }
+        // --key value: the value is taken from the next token, so an explicit "false"
+        // needs no special case here (ConvertRawValue turns it into Boolean(false)).
+        parsed.values[key].push_back(tokens[i + 1]);
+        i += FLAG_WITH_VALUE_TOKEN_COUNT;
+    }
+    return ERR_OK;
+}
+
+bool ConvertRawValue(const std::string &raw, const std::string &type, sptr<AAFwk::IInterface> &value)
+{
+    if (type == "boolean") {
+        if (raw == "true") {
+            value = AAFwk::Boolean::Box(true);
+            return true;
+        }
+        if (raw == "false") {
+            value = AAFwk::Boolean::Box(false);
+            return true;
+        }
+        return false;
+    }
+    if (type == "integer") {
+        errno = 0;
+        char *end = nullptr;
+        long long intVal = std::strtoll(raw.c_str(), &end, 10);
+        if (errno != 0 || end == raw.c_str() || *end != '\0' ||
+            intVal < INT32_MIN || intVal > INT32_MAX) {
+            return false;
+        }
+        value = AAFwk::Integer::Box(static_cast<int32_t>(intVal));
+        return true;
+    }
+    if (type == "number") {
+        errno = 0;
+        char *end = nullptr;
+        double dblVal = std::strtod(raw.c_str(), &end);
+        if (errno != 0 || end == raw.c_str() || *end != '\0') {
+            return false;
+        }
+        value = AAFwk::Double::Box(dblVal);
+        return true;
+    }
+    // string and other unknown types are kept as string (compatible with
+    // ValidateBasicType which allows unknown types).
+    value = AAFwk::String::Box(raw);
+    return true;
+}
+
+AAFwk::InterfaceID GetArrayTypeId(const std::string &type)
+{
+    if (type == "boolean") {
+        return AAFwk::g_IID_IBoolean;
+    }
+    if (type == "integer") {
+        return AAFwk::g_IID_IInteger;
+    }
+    if (type == "number") {
+        return AAFwk::g_IID_IDouble;
+    }
+    return AAFwk::g_IID_IString;
+}
+
+int32_t ConvertArrayArg(const nlohmann::json &prop, const std::vector<std::string> &values,
+    AAFwk::WantParams &args, const std::string &key, std::string &detail)
+{
+    std::string itemType = "string";
+    if (prop.contains("items") && prop["items"].is_object() &&
+        prop["items"].contains("type") && prop["items"]["type"].is_string()) {
+        itemType = prop["items"]["type"].get<std::string>();
+    }
+    sptr<AAFwk::IArray> array = new (std::nothrow) AAFwk::Array(
+        static_cast<long>(values.size()), GetArrayTypeId(itemType));
+    if (array == nullptr) {
+        detail = DETAIL_PARAM_TYPE_MISMATCH;
+        return ERR_INVALID_PARAM;
+    }
+    for (size_t i = 0; i < values.size(); ++i) {
+        sptr<AAFwk::IInterface> element;
+        if (!ConvertRawValue(values[i], itemType, element)) {
+            detail = DETAIL_PARAM_TYPE_MISMATCH;
+            return ERR_INVALID_PARAM;
+        }
+        array->Set(static_cast<long>(i), element);
+    }
+    args.SetParam(key, array);
+    return ERR_OK;
+}
+
+int32_t ConvertParsedArgs(const ParsedCommandArgs &parsed, const nlohmann::json &properties,
+    AAFwk::WantParams &args, std::string &detail)
+{
+    for (const auto &[key, values] : parsed.values) {
+        if (key == HELP_KEY) {
+            args.SetParam(key, AAFwk::Boolean::Box(true));
+            continue;
+        }
+        auto propIt = properties.find(key);
+        if (propIt == properties.end()) {
+            continue;
+        }
+        const nlohmann::json &prop = propIt.value();
+        std::string type = "string";
+        if (prop.contains("type") && prop["type"].is_string()) {
+            type = prop["type"].get<std::string>();
+        }
+        if (type == "array") {
+            if (ConvertArrayArg(prop, values, args, key, detail) != ERR_OK) {
+                return ERR_INVALID_PARAM;
+            }
+            continue;
+        }
+        // Non-array parameter must not be repeated.
+        if (values.size() > 1) {
+            detail = DETAIL_PARAM_TYPE_MISMATCH;
+            return ERR_INVALID_PARAM;
+        }
+        sptr<AAFwk::IInterface> value;
+        if (!ConvertRawValue(values[0], type, value)) {
+            detail = DETAIL_PARAM_TYPE_MISMATCH;
+            return ERR_INVALID_PARAM;
+        }
+        args.SetParam(key, value);
+    }
+    return ERR_OK;
+}
+
+int32_t ResolveSubCommand(const std::vector<std::string> &tokens, const ToolInfo &toolInfo,
+    SubCommandResult &result, std::string &detail)
+{
+    result.inputSchema = toolInfo.inputSchema;
+    result.argStart = ARG_START_TOOLNAME_ONLY;
+    if (tokens.size() <= 1 || IsFlagToken(tokens[1])) {
+        return ERR_OK;
+    }
+    if (!toolInfo.hasSubCommand) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "tool has no subcommand");
+        detail = DETAIL_SUBCOMMAND_NOT_FOUND;
+        return ERR_TOOL_NOT_EXIST;
+    }
+    auto it = toolInfo.subcommands.find(tokens[1]);
+    if (it == toolInfo.subcommands.end()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "subcommand not found: %{public}s", tokens[1].c_str());
+        detail = DETAIL_SUBCOMMAND_NOT_FOUND;
+        return ERR_TOOL_NOT_EXIST;
+    }
+    result.subcommand = tokens[1];
+    result.inputSchema = it->second.inputSchema;
+    result.argStart = ARG_START_WITH_SUBCOMMAND;
+    return ERR_OK;
+}
+} // namespace
+
+int32_t ToolUtil::ParseToolCommand(const std::string &cmd, const ToolInfo &toolInfo,
+    ExecToolParam &param, std::string &detail)
+{
+    // Stage 0: tokenize.
+    std::vector<std::string> tokens;
+    if (!TokenizeCommand(cmd, tokens) || tokens.empty()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "invalid tool command string");
+        detail = DETAIL_PARAM_NOT_FOUND;
+        return ERR_INVALID_PARAM;
+    }
+
+    // Stage 1: validate toolName.
+    const std::string &toolName = tokens[0];
+    if (toolName.empty() || toolName[0] == '/') {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "invalid toolName");
+        detail = DETAIL_PARAM_NOT_FOUND;
+        return ERR_INVALID_PARAM;
+    }
+    if (!toolInfo.name.empty() && toolInfo.name != toolName) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "tool not found: %{public}s", toolName.c_str());
+        detail = DETAIL_TOOL_NOT_FOUND;
+        return ERR_TOOL_NOT_EXIST;
+    }
+    param.toolName = toolName;
+
+    // Stage 2: resolve subcommand.
+    SubCommandResult subResult;
+    if (auto ret = ResolveSubCommand(tokens, toolInfo, subResult, detail); ret != ERR_OK) {
+        return ret;
+    }
+    param.subcommand = std::move(subResult.subcommand);
+    const std::string &inputSchema = subResult.inputSchema;
+    size_t argStart = subResult.argStart;
+
+    // Load properties from schema.
+    nlohmann::json properties = nlohmann::json::object();
+    if (!inputSchema.empty()) {
+        nlohmann::json schema = nlohmann::json::parse(inputSchema, nullptr, false);
+        if (!schema.is_discarded() && schema.contains("properties") && schema["properties"].is_object()) {
+            properties = schema["properties"];
+        }
+    }
+
+    // Stage 3: parse arguments.
+    ParsedCommandArgs parsed;
+    auto res = ParseArgTokens(tokens, argStart, properties, parsed, detail);
+    if (res != ERR_OK) {
+        return res;
+    }
+
+    // Stage 4: type recovery.
+    return ConvertParsedArgs(parsed, properties, param.args, detail);
 }
 
 void ToolUtil::ProcessBooleanParam(const std::string &key, const sptr<AAFwk::IInterface> &value,

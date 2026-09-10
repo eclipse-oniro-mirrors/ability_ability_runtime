@@ -29,6 +29,7 @@ group("unittest") {
     "cli_session_info_test:cli_session_info_test",
     "cli_session_subscription_manager_test:cli_session_subscription_manager_test",
     "event_dispatcher_test:event_dispatcher_test",
+    "exec_cmd_param_test:exec_cmd_param_test",
     "exec_options_test:exec_options_test",
     "exec_result_test:exec_result_test",
     "exec_tool_param_test:exec_tool_param_test",

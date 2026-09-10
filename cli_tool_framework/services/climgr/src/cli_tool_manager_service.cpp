@@ -15,6 +15,8 @@
 
 #include "cli_tool_manager_service.h"
 
+#include <algorithm>
+#include <cctype>
 #include <cerrno>
 #include <csignal>
 #include <cstring>
@@ -1087,9 +1089,14 @@ int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::str
     const sptr<ICliToolManagerScheduler> &scheduler, const std::string &subscriptionId)
 {
     InterfaceCallCounter counter(interfaceCalledCount_);
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "ExecCmd called: cmd=%{public}s", param.cmd.c_str());
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "ExecCmd called: cmd=%{private}s", param.cmd.c_str());
     if (auto ret = ValidateExecToolPermissions(); ret != ERR_OK) {
         return ret;
+    }
+    if (param.cmd.length() > MAX_CMD_LENGTH) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "cmd length %{public}zu exceeds limit %{public}u",
+            param.cmd.length(), MAX_CMD_LENGTH);
+        return ERR_INVALID_PARAM;
     }
     int32_t callerPid = IPCSkeleton::GetCallingPid();
     int32_t callerUid = IPCSkeleton::GetCallingUid();
@@ -1100,8 +1107,27 @@ int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::str
         return ret;
     }
     auto tokenId = IPCSkeleton::GetCallingTokenID();
-    std::string sandboxConfig;
     std::string bundleName;
+    AppExecFwk::BundleInfo bundleInfo;
+    if (ToolUtil::GetBundleInfoByTokenId(tokenId, bundleInfo)) {
+        bundleName = bundleInfo.name;
+    }
+
+    // Tool command mode
+    if (!param.isShellCommand) {
+        CmdSessionContext context;
+        context.eventId = eventId;
+        context.subscriptionId = subscriptionId;
+        context.scheduler = scheduler;
+        context.callerPid = callerPid;
+        context.callerUid = callerUid;
+        context.tokenId = tokenId;
+        context.bundleName = bundleName;
+        return ExecCmdToolMode(param, std::move(context));
+    }
+
+    // Shell path (original logic)
+    std::string sandboxConfig;
     if (auto ret = ValidateAndPrepareCmd(param, tokenId, sandboxConfig, bundleName); ret != ERR_OK) {
         return ret;
     }
@@ -1140,6 +1166,97 @@ int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::str
     if (param.options.background) {
         HandleBackgroundSessionReply(record, eventId);
     }
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::ExecCmdToolMode(const ExecCmdParam &param, CmdSessionContext context)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL,
+        "ExecCmdToolMode: cmd=%{private}s, callerPid=%{public}d, callerUid=%{public}d",
+        param.cmd.c_str(), context.callerPid, context.callerUid);
+
+    // Step 1: Extract toolName, look up tool.
+    std::string toolName = ExecCmdParam::ExtractToolName(param.cmd);
+    if (toolName.empty() || !std::all_of(toolName.begin(), toolName.end(),
+        [](char c) { return std::isalnum(static_cast<unsigned char>(c)) || c == '-' || c == '_'; })) {
+        ReportCliExecuteFailed(context.bundleName, toolName, "invalid_tool_name");
+        return ERR_INVALID_PARAM;
+    }
+
+    ToolInfo toolInfo;
+    if (CliToolDataManager::GetInstance().GetToolByName(toolName, toolInfo) != ERR_OK) {
+        ReportCliExecuteFailed(context.bundleName, toolName, GetFailureReason(ERR_TOOL_NOT_EXIST));
+        return ERR_TOOL_NOT_EXIST;
+    }
+
+    // Step 2: Parse command string.
+    ExecToolParam toolParam;
+    std::string detail;
+    auto parseRet = ToolUtil::ParseToolCommand(param.cmd, toolInfo, toolParam, detail);
+    if (parseRet != ERR_OK) {
+        ReportCliExecuteFailed(context.bundleName, toolName, GetFailureReason(parseRet), detail);
+        return parseRet;
+    }
+
+    toolParam.options = param.options;
+    toolParam.challenge = param.challenge;
+
+    // Step 3: Validate and prepare sandbox. GenerateSandboxConfig may overwrite context.bundleName.
+    std::string sandboxConfig;
+    if (auto ret = ValidateAndPrepareTool(toolParam, context.tokenId, toolInfo, sandboxConfig,
+        context.bundleName, detail); ret != ERR_OK) {
+        ReportCliExecuteFailed(context.bundleName, toolName, GetFailureReason(ret), detail);
+        return ret;
+    }
+
+    // Step 4: Subscribe before process creation (aligned with shell path).
+    return SetupCmdSession(toolParam, toolInfo, sandboxConfig, toolName, context);
+}
+
+int32_t CliToolManagerService::SetupCmdSession(const ExecToolParam &toolParam, const ToolInfo &toolInfo,
+    const std::string &sandboxConfig, const std::string &toolName, const CmdSessionContext &context)
+{
+    auto record = CreateSessionRecord(toolParam, context.eventId);
+    if (record == nullptr) {
+        ReportCliExecuteFailed(context.bundleName, toolName, GetFailureReason(ERR_NO_INIT));
+        return ERR_NO_INIT;
+    }
+    AddSessionRecord(record);
+
+    auto subscribeRet = SubscribeSession(record->sessionId, context.subscriptionId, context.scheduler);
+    if (subscribeRet != ERR_OK) {
+        RemoveSessionRecord(record->sessionId);
+        ReportCliExecuteFailed(context.bundleName, toolName, GetFailureReason(subscribeRet));
+        return subscribeRet;
+    }
+
+    auto createRet = ProcessManager::GetInstance().CreateChildProcess(
+        toolParam, sandboxConfig, toolInfo, record);
+    if (createRet != ERR_OK) {
+        EventDispatcher::GetInstance().UnregisterSubscriber(
+            record->sessionId, context.subscriptionId, context.callerPid, context.callerUid);
+        RemoveSessionRecord(record->sessionId);
+        ReportCliExecuteFailed(context.bundleName, toolName, GetFailureReason(createRet));
+        return createRet;
+    }
+
+    if (!RegisterSessionWithMonitors(record, toolParam.options)) {
+        ProcessManager::GetInstance().Killpg(record->processId);
+        EventDispatcher::GetInstance().UnregisterSubscriber(
+            record->sessionId, context.subscriptionId, context.callerPid, context.callerUid);
+        RemoveSessionRecord(record->sessionId);
+        ReportCliExecuteFailed(context.bundleName, toolName, GetFailureReason(ERR_NO_INIT));
+        return ERR_NO_INIT;
+    }
+
+    if (!context.bundleName.empty()) {
+        RegisterAppStateObserver(context.bundleName, record->callerPid);
+    }
+
+    if (toolParam.options.background) {
+        HandleBackgroundSessionReply(record, context.eventId);
+    }
+
     return ERR_OK;
 }
 

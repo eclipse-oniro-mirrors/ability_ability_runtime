@@ -85,7 +85,19 @@ ErrCode CliToolMGRClient::ExecCmd(const ExecCmdParam &param,
         return GET_CLI_TOOL_MGR_SERVICE_FAILED;
     }
 
-    std::string eventId = CliEventReplyManager::GetInstance().AddEventReplyCallback("shell",
+    if (param.cmd.length() > MAX_CMD_LENGTH) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "cmd length %{public}zu exceeds limit %{public}u",
+            param.cmd.length(), MAX_CMD_LENGTH);
+        return ERR_INVALID_PARAM;
+    }
+
+    if (!param.isShellCommand && param.cmd.find_first_not_of(" \t") == std::string::npos) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "cmd is empty in tool command mode");
+        return ERR_INVALID_PARAM;
+    }
+
+    std::string eventKey = param.isShellCommand ? "shell" : ExecCmdParam::ExtractToolName(param.cmd);
+    std::string eventId = CliEventReplyManager::GetInstance().AddEventReplyCallback(eventKey,
         [cb = std::move(callback)](const CliEventReplyResult &result) {
             if (cb) {
                 CliSessionInfo sessionInfo;
@@ -96,7 +108,7 @@ ErrCode CliToolMGRClient::ExecCmd(const ExecCmdParam &param,
             }
         });
     
-    std::string subscriptionId = CliSessionSubscriptionManager::GetInstance().AddProvisionalSubscription("shell",
+    std::string subscriptionId = CliSessionSubscriptionManager::GetInstance().AddProvisionalSubscription(eventKey,
         [sessionEventCallback](const std::string &sessionId,
             const std::string &subscriptionId, const CliToolEvent &event) {
             if (sessionEventCallback) {

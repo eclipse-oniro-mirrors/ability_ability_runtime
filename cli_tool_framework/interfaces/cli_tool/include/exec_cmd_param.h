@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_EXEC_CMD_PARAM_H
 #define OHOS_ABILITY_RUNTIME_EXEC_CMD_PARAM_H
 
+#include <cstdint>
 #include <string>
 
 #include "exec_options.h"
@@ -23,6 +24,15 @@
 
 namespace OHOS {
 namespace CliTool {
+/**
+ * @brief Maximum allowed length of the command string, in bytes.
+ *
+ * Applies to both shell mode and tool command mode. Enforced at the NAPI entry,
+ * the client entry and the service entry so that an oversized command is rejected
+ * before it reaches IPC or process creation.
+ */
+constexpr uint32_t MAX_CMD_LENGTH = 8 * 1024;
+
 /**
  * @brief Parameters for executing a raw shell command.
  */
@@ -33,9 +43,13 @@ public:
     std::string env;
     std::string policy;
     ExecOptions options;
+    bool isShellCommand = true;
+    std::string challenge;
 
     bool Marshalling(Parcel &parcel) const;
     static ExecCmdParam *Unmarshalling(Parcel &parcel);
+    // Extract the first whitespace-delimited token (toolName) from cmd.
+    static std::string ExtractToolName(const std::string &cmd);
 };
 } // namespace CliTool
 } // namespace OHOS

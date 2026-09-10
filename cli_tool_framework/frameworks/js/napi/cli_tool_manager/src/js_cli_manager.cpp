@@ -203,6 +203,12 @@ napi_value JSCliManager::OnExecCmd(napi_env env, size_t argc, napi_value *argv)
         ThrowInvalidParamError(env, "cmd is required");
         return CreateJsUndefined(env);
     }
+    if (param.cmd.length() > MAX_CMD_LENGTH) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "cmd length %{public}zu exceeds limit %{public}u",
+            param.cmd.length(), MAX_CMD_LENGTH);
+        ThrowInvalidParamError(env, "cmd exceeds maximum length");
+        return CreateJsUndefined(env);
+    }
 
     // Parse optional execCmdOptions (argv[1])
     std::shared_ptr<JsCliSessionEventCallbackImpl> callback = nullptr;

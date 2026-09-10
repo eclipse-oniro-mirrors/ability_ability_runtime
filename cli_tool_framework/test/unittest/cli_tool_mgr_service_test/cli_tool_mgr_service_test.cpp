@@ -42,6 +42,7 @@
 #include "cli_tool_manager_scheduler_stub.h"
 #include "cli_tool_data_manager_mock.h"
 #include "event_dispatcher.h"
+#include "exec_cmd_param.h"
 #include "exec_options.h"
 #include "function_info.h"
 #include "ipc_skeleton.h"
@@ -3366,6 +3367,192 @@ HWTEST_F(CliToolManagerServiceTest, ResetNamespaceFunctionsAsync_0200, TestSize.
     IPCSkeleton::Reset();
 
     TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ResetNamespaceFunctionsAsync_0200 end");
+}
+
+// ==================== ExecCmd Tool Command Mode Tests ====================
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_ToolMode_InvalidToolName_0100
+ * @tc.desc: Test ExecCmd tool mode rejects toolName with path separator (path injection)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_ToolMode_InvalidToolName_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_ToolMode_InvalidToolName_0100 start");
+
+    ExecCmdParam param;
+    param.cmd = "/system/bin/ohos-aa start --bundleName=com.x";
+    param.isShellCommand = false;
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecCmd(param, "event_path_inject", scheduler, "sub_path_inject");
+    EXPECT_TRUE(result == ERR_INVALID_PARAM || IsPermissionGateResult(result));
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_ToolMode_InvalidToolName_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_ToolMode_InvalidToolName_0200
+ * @tc.desc: Test ExecCmd tool mode rejects toolName with dot or special chars
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_ToolMode_InvalidToolName_0200, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_ToolMode_InvalidToolName_0200 start");
+
+    ExecCmdParam param;
+    param.isShellCommand = false;
+    sptr<TestScheduler> scheduler = new TestScheduler();
+
+    param.cmd = "../ohos-aa start";
+    int32_t result = service_->ExecCmd(param, "event_dot", scheduler, "sub_dot");
+    EXPECT_TRUE(result == ERR_INVALID_PARAM || IsPermissionGateResult(result));
+
+    param.cmd = "ohos-aa;rm start";
+    result = service_->ExecCmd(param, "event_semicolon", scheduler, "sub_semicolon");
+    EXPECT_TRUE(result == ERR_INVALID_PARAM || IsPermissionGateResult(result));
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_ToolMode_InvalidToolName_0200 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_ToolMode_EmptyToolName_0100
+ * @tc.desc: Test ExecCmd tool mode rejects whitespace-only cmd yielding empty toolName
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_ToolMode_EmptyToolName_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_ToolMode_EmptyToolName_0100 start");
+
+    ExecCmdParam param;
+    param.cmd = "   ";
+    param.isShellCommand = false;
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecCmd(param, "event_empty", scheduler, "sub_empty");
+    EXPECT_TRUE(result == ERR_INVALID_PARAM || IsPermissionGateResult(result));
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_ToolMode_EmptyToolName_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_ToolMode_ToolNotExist_0100
+ * @tc.desc: Test ExecCmd tool mode returns not-exist for unregistered toolName
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_ToolMode_ToolNotExist_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_ToolMode_ToolNotExist_0100 start");
+
+    CliToolDataManagerMock::Reset();
+    ExecCmdParam param;
+    param.cmd = "ohos-nonexistent-tool start --flag=true";
+    param.isShellCommand = false;
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecCmd(param, "event_missing", scheduler, "sub_missing");
+    EXPECT_TRUE(result == ERR_TOOL_NOT_EXIST || IsPermissionGateResult(result));
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_ToolMode_ToolNotExist_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_ToolMode_SessionLimit_0100
+ * @tc.desc: Test ExecCmd tool mode returns session-limit when sessions are full
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_ToolMode_SessionLimit_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_ToolMode_SessionLimit_0100 start");
+
+    auto cliQuantity = CcmUtil::GetInstance().GetCliConcurrencyLimit();
+    for (int32_t i = 0; i < cliQuantity; ++i) {
+        auto record = std::make_shared<SessionRecord>();
+        record->sessionId = "exec_cmd_limit_session_" + std::to_string(i);
+        service_->AddSessionRecord(record);
+    }
+
+    ExecCmdParam param;
+    param.cmd = "ohos-aa start --bundleName=com.x";
+    param.isShellCommand = false;
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecCmd(param, "event_limit", scheduler, "sub_limit");
+    EXPECT_TRUE(result == ERR_SESSION_LIMIT_EXCEEDED || IsPermissionGateResult(result));
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_ToolMode_SessionLimit_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_DefaultShellDispatch_0100
+ * @tc.desc: Test ExecCmd with default isShellCommand=true does not enter tool-mode whitelist path
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_DefaultShellDispatch_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_DefaultShellDispatch_0100 start");
+
+    ExecCmdParam param;
+    param.cmd = "/bin/echo hello";
+    EXPECT_TRUE(param.isShellCommand);
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecCmd(param, "event_shell_default", scheduler, "sub_shell_default");
+    EXPECT_NE(result, ERR_INVALID_PARAM);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_DefaultShellDispatch_0100 end");
+}
+
+// ==================== ExecCmd Cmd Length Limit Tests ====================
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_CmdTooLong_0100
+ * @tc.desc: Test ExecCmd rejects oversized cmd in shell mode before scheduler registration
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_CmdTooLong_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_CmdTooLong_0100 start");
+
+    ExecCmdParam param;
+    param.cmd = std::string(MAX_CMD_LENGTH + 1, 'a');
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecCmd(param, "event_cmd_too_long", scheduler, "sub_cmd_too_long");
+    EXPECT_TRUE(result == ERR_INVALID_PARAM || IsPermissionGateResult(result));
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_CmdTooLong_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_CmdTooLong_0200
+ * @tc.desc: Test ExecCmd rejects oversized cmd in tool command mode before tool lookup
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_CmdTooLong_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_CmdTooLong_0200 start");
+
+    ExecCmdParam param;
+    param.cmd = "ohos-aa start --bundleName=" + std::string(MAX_CMD_LENGTH, 'x');
+    param.isShellCommand = false;
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecCmd(param, "event_cmd_too_long_tool", scheduler, "sub_cmd_too_long_tool");
+    EXPECT_TRUE(result == ERR_INVALID_PARAM || IsPermissionGateResult(result));
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_CmdTooLong_0200 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_CmdMaxLength_0300
+ * @tc.desc: Test ExecCmd accepts cmd whose length equals MAX_CMD_LENGTH (boundary value)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_CmdMaxLength_0300, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_CmdMaxLength_0300 start");
+
+    ExecCmdParam param;
+    param.cmd = std::string(MAX_CMD_LENGTH, 'a');
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecCmd(param, "event_cmd_max_length", scheduler, "sub_cmd_max_length");
+    EXPECT_NE(result, ERR_INVALID_PARAM);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_CmdMaxLength_0300 end");
 }
 } // namespace CliTool
 } // namespace OHOS
