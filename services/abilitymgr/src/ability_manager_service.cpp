@@ -13285,7 +13285,7 @@ int AbilityManagerService::CheckUkeyAuthExtensionPermission(const AbilityRequest
 {
     uint32_t specifyTokenId = static_cast<uint32_t>(abilityRequest.specifiedFullTokenId);
     auto ret = AAFwk::PermissionVerification::GetInstance()->VerifyCallingPermission(
-        PermissionConstants::PERMISSION_CONNECT_UKEY_AUTH_EXTENSION, specifyTokenId);
+        PermissionConstants::PERMISSION_START_SYSTEM_DIALOG, specifyTokenId);
     if (!ret) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "permission deny for ukeyAuthExtension");
         return CHECK_PERMISSION_FAILED;
