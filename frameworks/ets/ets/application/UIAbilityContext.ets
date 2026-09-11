@@ -173,7 +173,8 @@ export default class UIAbilityContext extends Context {
   private native nativeRequestDialogService(want: Want,
     result: AsyncCallbackWrapper<dialogRequest.RequestResult>): void;
 
-  private native nativeSetAbilityInstanceInfo(label: string, icon: image.PixelMap, callback: AsyncCallbackWrapper<void>): void;
+  private native nativeSetAbilityInstanceInfo(label: string, icon: image.PixelMap, groupId: string,
+    callback: AsyncCallbackWrapper<void>): void;
 
   private native nativeOpenAtomicService(appId: string, callback: AsyncCallbackWrapper<AbilityResult>, options?: AtomicServiceOptions): void;
 
@@ -235,7 +236,7 @@ export default class UIAbilityContext extends Context {
 
   private native nativeOpenAtomicServiceCheck(): void;
 
-  private native nativeSetAbilityInstanceInfoCheck(label: string, icon: image.PixelMap): void;
+  private native nativeSetAbilityInstanceInfoCheck(label: string, icon: image.PixelMap, groupId: string): void;
 
   private native nativeSetMissionIconCheck(icon: image.PixelMap): void;
 
@@ -777,7 +778,7 @@ hideAbility(): Promise<void> {
   }
 
   setAbilityInstanceInfo(label: string, icon: image.PixelMap): Promise<void> {
-    this.nativeSetAbilityInstanceInfoCheck(label, icon);
+    this.nativeSetAbilityInstanceInfoCheck(label, icon, '');
     let p:Promise<void> = new Promise<void>((resolve: (data:undefined)=>void, reject: (err: BusinessError)=>void):void => {
       let syncCall = new AsyncCallbackWrapper<void>((err: BusinessError | null)=>{
         if (err == null || err.code == 0) {
@@ -787,7 +788,24 @@ hideAbility(): Promise<void> {
         }
       });
       taskpool.execute((): void => {
-        this.nativeSetAbilityInstanceInfo(label, icon, syncCall);
+        this.nativeSetAbilityInstanceInfo(label, icon, '', syncCall);
+      });
+    });
+    return p;
+  }
+
+  setAbilityInstanceInfo(label: string, icon: image.PixelMap, groupId: string): Promise<void> {
+    this.nativeSetAbilityInstanceInfoCheck(label, icon, groupId);
+    let p:Promise<void> = new Promise<void>((resolve: (data:undefined)=>void, reject: (err: BusinessError)=>void):void => {
+      let syncCall = new AsyncCallbackWrapper<void>((err: BusinessError | null)=>{
+        if (err == null || err.code == 0) {
+          resolve(undefined);
+        } else {
+          reject(err);
+        }
+      });
+      taskpool.execute((): void => {
+        this.nativeSetAbilityInstanceInfo(label, icon, groupId, syncCall);
       });
     });
     return p;

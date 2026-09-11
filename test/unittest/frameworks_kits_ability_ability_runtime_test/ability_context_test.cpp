@@ -490,7 +490,7 @@ public:
         return ERR_OK;
     }
     virtual ErrCode SetAbilityInstanceInfo(const std::string& label,
-        std::shared_ptr<OHOS::Media::PixelMap> icon)
+        std::shared_ptr<OHOS::Media::PixelMap> icon, const std::string& groupId)
     {
         return ERR_OK;
     }

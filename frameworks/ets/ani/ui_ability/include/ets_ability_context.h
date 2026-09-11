@@ -163,10 +163,10 @@ public:
 #ifdef SUPPORT_GRAPHICS
 public:
     static void SetAbilityInstanceInfo(ani_env *env, ani_object aniObj, ani_string labelObj, ani_object iconObj,
-        ani_object callback);
+        ani_string groupIdObj, ani_object callback);
     static void SetMissionIcon(ani_env *env, ani_object aniObj, ani_object pixelMapObj, ani_object callbackObj);
     static void SetAbilityInstanceInfoCheck(ani_env *env, ani_object aniObj, ani_string labelObj,
-        ani_object iconObj);
+        ani_object iconObj, ani_string groupIdObj);
     static void SetMissionIconCheck(ani_env *env, ani_object aniObj, ani_object pixelMapObj);
     static void SetMissionWindowIcon(ani_env *env, ani_object aniObj, ani_object pixelMapObj,
         ani_object callbackobj);
@@ -174,9 +174,10 @@ public:
 
 private:
     void OnSetAbilityInstanceInfo(ani_env *env, ani_object aniObj, ani_string labelObj, ani_object iconObj,
-        ani_object callback);
+        ani_string groupIdObj, ani_object callback);
     void OnSetAbilityInstanceInfoInner(ani_env *env, std::string& label,
-        std::shared_ptr<OHOS::Media::PixelMap> icon, ani_object callback, ani_vm *etsVm, ani_ref callbackRef);
+        std::shared_ptr<OHOS::Media::PixelMap> icon, std::string& groupId, ani_object callback, ani_vm *etsVm,
+        ani_ref callbackRef);
     void OnSetMissionIcon(ani_env *env, ani_object aniObj, ani_object pixelMapObj, ani_object callbackObj);
     void OnSetMissionContinueState(ani_env *env, ani_object aniObj, ani_object stateObj, ani_object callbackObj);
 #endif

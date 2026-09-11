@@ -1155,7 +1155,7 @@ ErrCode AbilityContextImpl::SetMissionWindowIcon(std::shared_ptr<OHOS::Media::Pi
 }
 
 ErrCode AbilityContextImpl::SetAbilityInstanceInfo(const std::string& label,
-    std::shared_ptr<OHOS::Media::PixelMap> icon)
+    std::shared_ptr<OHOS::Media::PixelMap> icon, const std::string& groupId)
 {
     TAG_LOGD(AAFwkTag::CONTEXT, "SetAbilityInstanceInfo");
     if (!Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
@@ -1169,7 +1169,7 @@ ErrCode AbilityContextImpl::SetAbilityInstanceInfo(const std::string& label,
     }
 
     TAG_LOGI(AAFwkTag::CONTEXT, "SetSessionLabelAndIcon");
-    auto errCode = ifaceSession->SetSessionLabelAndIcon(label, icon);
+    auto errCode = ifaceSession->SetSessionLabelAndIcon(label, icon, groupId);
     auto ret = TransferSetAbilityInstanceInfoErr(errCode);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::CONTEXT, "SetSessionLabelAndIcon err: %{public}d", ret);

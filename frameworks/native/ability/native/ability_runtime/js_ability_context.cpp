@@ -85,6 +85,7 @@ std::atomic<bool> g_hasSetContinueState = false;
 constexpr int64_t MAX_REQUEST_CODE = 562949953421311;
 constexpr size_t MAX_REQUEST_CODE_LENGTH = 15;
 constexpr int32_t BASE_REQUEST_CODE_NUM = 10;
+constexpr size_t MAX_ABILITY_INSTANCE_GROUP_ID_LENGTH = 64;
 constexpr const char* FUNC_NAME_ON_REQUEST_SUCCESS = "onRequestSuccess";
 constexpr const char* FUNC_NAME_ON_REQUEST_FAILURE = "onRequestFailure";
 
@@ -3071,8 +3072,18 @@ napi_value JsAbilityContext::OnSetAbilityInstanceInfo(napi_env env, NapiCallback
         ThrowInvalidParamError(env, "Parse icon failed.");
         return CreateJsUndefined(env);
     }
+    std::string groupId = "";
+    if (info.argc > ARGC_TWO && CheckTypeForNapiValue(env, info.argv[INDEX_TWO], napi_string)) {
+        TAG_LOGD(AAFwkTag::CONTEXT, "groupId is used.");
+        if (!ConvertFromJsValue(env, info.argv[INDEX_TWO], groupId) ||
+            groupId.length() > MAX_ABILITY_INSTANCE_GROUP_ID_LENGTH) {
+            TAG_LOGE(AAFwkTag::CONTEXT, "parse groupId failed");
+            ThrowInvalidParamError(env, "Invalid groupId.");
+            return CreateJsUndefined(env);
+        }
+    }
     NapiAsyncTask::CompleteCallback complete =
-        [weak = context_, label, icon](napi_env env, NapiAsyncTask& task, int32_t status) {
+        [weak = context_, label, icon, groupId](napi_env env, NapiAsyncTask& task, int32_t status) {
             HandleScope handleScope(env);
             auto context = weak.lock();
             if (!context) {
@@ -3080,7 +3091,7 @@ napi_value JsAbilityContext::OnSetAbilityInstanceInfo(napi_env env, NapiCallback
                 task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT));
                 return;
             }
-            auto errCode = context->SetAbilityInstanceInfo(label, icon);
+            auto errCode = context->SetAbilityInstanceInfo(label, icon, groupId);
             if (errCode == ERR_OK) {
                 task.Resolve(env, CreateJsUndefined(env));
             } else {
