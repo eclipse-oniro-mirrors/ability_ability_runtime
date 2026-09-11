@@ -20,6 +20,10 @@
 #define protected public
 #include "app_exit_reason_data_manager.h"
 #include "mock_single_kv_store.h"
+#include <algorithm>
+#include <map>
+#include <vector>
+#include "parameters.h"
 #undef private
 #undef protected
 
@@ -38,6 +42,10 @@ const std::string ABILITY_NAME = "ability_name";
 const std::string BUNDLE_NAME = "bundle_name";
 constexpr uint32_t ACCESS_TOKEN_ID = 123;
 const int SESSION_ID = 111;
+const std::string KEY_RECOVER_INFO_PREFIX = "recover_info";
+const std::string KEY_OTA_FINGERPRINT = "ota_system_fingerprint";
+constexpr const char *TEST_UPGRADE_PARAM = "persist.bms.test-upgrade";
+constexpr const char *VALUE_TRUE = "true";
 }  // namespace
 
 class AppExitReasonDataManagerTest : public testing::Test {
@@ -62,6 +70,53 @@ void AppExitReasonDataManagerTest::SetUp()
 
 void AppExitReasonDataManagerTest::TearDown()
 {}
+
+class MockKvStoreForOta : public MockSingleKvStore {
+public:
+    DistributedKv::Status Get(const DistributedKv::Key &key, DistributedKv::Value &value) override
+    {
+        auto it = kvData.find(key.ToString());
+        if (it == kvData.end()) {
+            return DistributedKv::Status::KEY_NOT_FOUND;
+        }
+        value = DistributedKv::Value(it->second);
+        return DistributedKv::Status::SUCCESS;
+    }
+
+    DistributedKv::Status Put(const DistributedKv::Key &key, const DistributedKv::Value &value) override
+    {
+        kvData[key.ToString()] = value.ToString();
+        return DistributedKv::Status::SUCCESS;
+    }
+
+    DistributedKv::Status Delete(const DistributedKv::Key &key) override
+    {
+        deletedKeys.push_back(key.ToString());
+        kvData.erase(key.ToString());
+        return DistributedKv::Status::SUCCESS;
+    }
+
+    DistributedKv::Status DeleteBatch(const std::vector<DistributedKv::Key> &keys) override
+    {
+        for (const auto &key : keys) {
+            deletedKeys.push_back(key.ToString());
+            kvData.erase(key.ToString());
+        }
+        return DistributedKv::Status::SUCCESS;
+    }
+
+    std::map<std::string, std::string> kvData;
+    std::vector<std::string> deletedKeys;
+};
+
+struct KvStorePtrGuard {
+    std::shared_ptr<DistributedKv::SingleKvStore> saved;
+    explicit KvStorePtrGuard(std::shared_ptr<DistributedKv::SingleKvStore> kv) : saved(kv) {}
+    ~KvStorePtrGuard()
+    {
+        DelayedSingleton<AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = saved;
+    }
+};
 
 /**
  * @tc.name: AppExitReasonDataManager_AddAbilityRecoverInfo_001
@@ -277,6 +332,132 @@ HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_DeleteAllRecover
     result = DelayedSingleton<AppExitReasonDataManager>::GetInstance()->
         DeleteAllRecoverInfoByTokenId(ACCESS_TOKEN_ID);
     EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+ * @tc.name: AppExitReasonDataManager_ResetRecoverInfoOnOtaUpgrade_001
+ * @tc.desc: no fingerprint marker, wipe all recover info and write new marker
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_ResetRecoverInfoOnOtaUpgrade_001, TestSize.Level1)
+{
+    auto instance = DelayedSingleton<AppExitReasonDataManager>::GetInstance();
+    KvStorePtrGuard kvGuard(instance->kvStorePtr_);
+    auto mockKv = std::make_shared<MockKvStoreForOta>();
+    mockKv->kvData[KEY_RECOVER_INFO_PREFIX + "123"] = "{}";
+    mockKv->kvData[KEY_RECOVER_INFO_PREFIX + "111"] = "{}";
+    mockKv->kvData["123"] = "{}";
+    instance->kvStorePtr_ = mockKv;
+
+    std::vector<DistributedKv::Entry> entries;
+    DistributedKv::Entry entry;
+    entry.key = DistributedKv::Key(KEY_RECOVER_INFO_PREFIX + "123");
+    entry.value = DistributedKv::Value("{}");
+    entries.push_back(entry);
+    entry.key = DistributedKv::Key(KEY_RECOVER_INFO_PREFIX + "111");
+    entries.push_back(entry);
+    entry.key = DistributedKv::Key("123");
+    entries.push_back(entry);
+    EXPECT_CALL(*mockKv, GetEntries(_, _)).WillOnce(DoAll(SetArgReferee<1>(entries),
+        Return(DistributedKv::Status::SUCCESS)));
+
+    auto result = instance->ResetRecoverInfoOnOtaUpgrade();
+    EXPECT_EQ(result, ERR_OK);
+
+    EXPECT_TRUE(std::find(mockKv->deletedKeys.begin(), mockKv->deletedKeys.end(),
+        KEY_RECOVER_INFO_PREFIX + "123") != mockKv->deletedKeys.end());
+    EXPECT_TRUE(std::find(mockKv->deletedKeys.begin(), mockKv->deletedKeys.end(),
+        KEY_RECOVER_INFO_PREFIX + "111") != mockKv->deletedKeys.end());
+    EXPECT_TRUE(std::find(mockKv->deletedKeys.begin(), mockKv->deletedKeys.end(),
+        "123") == mockKv->deletedKeys.end());
+    EXPECT_EQ(mockKv->kvData[KEY_OTA_FINGERPRINT], instance->GetCurSystemFingerprint());
+}
+
+/**
+ * @tc.name: AppExitReasonDataManager_ResetRecoverInfoOnOtaUpgrade_002
+ * @tc.desc: fingerprint matches, recover info kept untouched
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_ResetRecoverInfoOnOtaUpgrade_002, TestSize.Level1)
+{
+    auto instance = DelayedSingleton<AppExitReasonDataManager>::GetInstance();
+    KvStorePtrGuard kvGuard(instance->kvStorePtr_);
+    auto mockKv = std::make_shared<MockKvStoreForOta>();
+    mockKv->kvData[KEY_OTA_FINGERPRINT] = instance->GetCurSystemFingerprint();
+    mockKv->kvData[KEY_RECOVER_INFO_PREFIX + "123"] = "{}";
+    instance->kvStorePtr_ = mockKv;
+    EXPECT_CALL(*mockKv, GetEntries(_, _)).Times(0);
+
+    auto result = instance->ResetRecoverInfoOnOtaUpgrade();
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_TRUE(mockKv->deletedKeys.empty());
+    EXPECT_NE(mockKv->kvData.find(KEY_RECOVER_INFO_PREFIX + "123"), mockKv->kvData.end());
+}
+
+/**
+ * @tc.name: AppExitReasonDataManager_ResetRecoverInfoOnOtaUpgrade_003
+ * @tc.desc: fingerprint differs, wipe and rewrite marker
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_ResetRecoverInfoOnOtaUpgrade_003, TestSize.Level1)
+{
+    auto instance = DelayedSingleton<AppExitReasonDataManager>::GetInstance();
+    KvStorePtrGuard kvGuard(instance->kvStorePtr_);
+    auto mockKv = std::make_shared<MockKvStoreForOta>();
+    mockKv->kvData[KEY_OTA_FINGERPRINT] = "old_fingerprint";
+    mockKv->kvData[KEY_RECOVER_INFO_PREFIX + "123"] = "{}";
+    instance->kvStorePtr_ = mockKv;
+
+    std::vector<DistributedKv::Entry> entries;
+    DistributedKv::Entry entry;
+    entry.key = DistributedKv::Key(KEY_RECOVER_INFO_PREFIX + "123");
+    entry.value = DistributedKv::Value("{}");
+    entries.push_back(entry);
+    EXPECT_CALL(*mockKv, GetEntries(_, _)).WillOnce(DoAll(SetArgReferee<1>(entries),
+        Return(DistributedKv::Status::SUCCESS)));
+
+    auto result = instance->ResetRecoverInfoOnOtaUpgrade();
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(mockKv->deletedKeys.size(), static_cast<size_t>(1));
+    EXPECT_EQ(mockKv->deletedKeys[0], KEY_RECOVER_INFO_PREFIX + "123");
+    EXPECT_EQ(mockKv->kvData[KEY_OTA_FINGERPRINT], instance->GetCurSystemFingerprint());
+}
+
+/**
+ * @tc.name: AppExitReasonDataManager_ResetRecoverInfoOnOtaUpgrade_004
+ * @tc.desc: persist.bms.test-upgrade forces cleanup even when fingerprint matches
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_ResetRecoverInfoOnOtaUpgrade_004, TestSize.Level1)
+{
+    auto instance = DelayedSingleton<AppExitReasonDataManager>::GetInstance();
+    KvStorePtrGuard kvGuard(instance->kvStorePtr_);
+    auto mockKv = std::make_shared<MockKvStoreForOta>();
+    // Marker matches current fingerprint: without the test hook this would be a no-op.
+    mockKv->kvData[KEY_OTA_FINGERPRINT] = instance->GetCurSystemFingerprint();
+    mockKv->kvData[KEY_RECOVER_INFO_PREFIX + "123"] = "{}";
+    instance->kvStorePtr_ = mockKv;
+
+    std::vector<DistributedKv::Entry> entries;
+    DistributedKv::Entry entry;
+    entry.key = DistributedKv::Key(KEY_RECOVER_INFO_PREFIX + "123");
+    entry.value = DistributedKv::Value("{}");
+    entries.push_back(entry);
+    EXPECT_CALL(*mockKv, GetEntries(_, _))
+        .WillRepeatedly(DoAll(SetArgReferee<1>(entries), Return(DistributedKv::Status::SUCCESS)));
+
+    OHOS::system::SetParameter(TEST_UPGRADE_PARAM, VALUE_TRUE);
+    bool hookActive = (OHOS::system::GetParameter(TEST_UPGRADE_PARAM, "") == VALUE_TRUE);
+    auto result = instance->ResetRecoverInfoOnOtaUpgrade();
+    EXPECT_EQ(result, ERR_OK);
+    OHOS::system::SetParameter(TEST_UPGRADE_PARAM, "");
+
+    if (hookActive) {
+        EXPECT_FALSE(mockKv->deletedKeys.empty());
+    } else {
+        EXPECT_TRUE(mockKv->deletedKeys.empty());
+    }
+    EXPECT_EQ(mockKv->kvData[KEY_OTA_FINGERPRINT], instance->GetCurSystemFingerprint());
 }
 }  // namespace AbilityRuntime
 }  // namespace OHOS

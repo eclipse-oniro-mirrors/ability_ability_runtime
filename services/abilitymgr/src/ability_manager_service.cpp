@@ -4120,6 +4120,15 @@ void AbilityManagerService::OnAddSystemAbility(int32_t systemAbilityId, const st
                 bundleMgrHelper->SetBmsReady(true);
             }
             SubscribeBundleEventCallback();
+            // Ignore the result: on failure it retries on next startup.
+            if (taskHandler_) {
+                taskHandler_->SubmitTask(
+                    []() {
+                        DelayedSingleton<AppExitReasonDataManager>::GetInstance()
+                            ->ResetRecoverInfoOnOtaUpgrade();
+                    },
+                    "ResetRecoverInfoOnOtaUpgrade");
+            }
             break;
         }
 #ifdef SUPPORT_SCREEN
