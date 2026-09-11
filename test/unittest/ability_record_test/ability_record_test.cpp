@@ -3284,8 +3284,8 @@ HWTEST_F(AbilityRecordTest, PromotePriority_001, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "PromotePriority_001 start";
     EXPECT_NE(abilityRecord_, nullptr);
-    abilityRecord_->isStartedByCall_ = true;
-    EXPECT_TRUE(abilityRecord_->IsStartedByCall());
+    abilityRecord_->isStartedByCall_ = false;
+    EXPECT_FALSE(abilityRecord_->IsStartedByCall());
 
     abilityRecord_->uiAbilityProperty_ = std::make_shared<AbilityRecord::UIAbilityProperty>();
     abilityRecord_->uiAbilityProperty_->promotePriority = true;
@@ -3312,10 +3312,13 @@ HWTEST_F(AbilityRecordTest, PromotePriority_002, TestSize.Level1)
     EXPECT_NE(abilityRecord_, nullptr);
     abilityRecord_->isStartedByCall_ = false;
     EXPECT_FALSE(abilityRecord_->IsStartedByCall());
-    EXPECT_FALSE(abilityRecord_->PromotePriority());
+    abilityRecord_->uiAbilityProperty_ = std::make_shared<AbilityRecord::UIAbilityProperty>();
+    abilityRecord_->uiAbilityProperty_->promotePriority = true;
+    abilityRecord_->uiAbilityProperty_->byCallCallerSaUid = 300000;
+    abilityRecord_->uiAbilityProperty_->byCallCallerSaPid = 1000;
+    abilityRecord_->pid_ = 1000;
+    EXPECT_TRUE(abilityRecord_->PromotePriority());
 
-    abilityRecord_->isStartedByCall_ = true;
-    EXPECT_TRUE(abilityRecord_->IsStartedByCall());
     abilityRecord_->uiAbilityProperty_.reset();
     EXPECT_FALSE(abilityRecord_->PromotePriority());
 
