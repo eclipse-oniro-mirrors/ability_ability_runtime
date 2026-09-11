@@ -100,6 +100,7 @@
             "netmanager_base",
             "node",
             "os_account",
+            "openssl",
             "power_manager",
             "preferences",
             "previewer",

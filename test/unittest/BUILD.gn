@@ -121,6 +121,7 @@ group("unittest") {
       "ability_business_error_test:unittest",
       "ability_cache_manager_test:unittest",
       "ability_cj_want_agent_ffi_test:unittest",
+      "ability_cloud_push_test:unittest",
       "ability_connect_callback_proxy_test:unittest",
       "ability_connect_callback_stub_test:unittest",
       "ability_connect_manager_first_test:unittest",

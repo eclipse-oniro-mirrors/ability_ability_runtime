@@ -14,6 +14,7 @@
 {
   global:
     extern "C++" {
+      *AbilityCloudPushManager*;
       *AbilityHitraceChain*;
       *AbilityManagerXCollie*;
       *AppUtils*;

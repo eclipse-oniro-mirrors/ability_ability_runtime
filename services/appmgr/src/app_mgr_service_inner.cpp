@@ -43,6 +43,9 @@
 #include "app_state_observer_manager.h"
 #include "app_utils.h"
 #include "appfreeze_manager.h"
+#ifdef ABILITY_CLOUD_PUSH_ENABLE
+#include "param_update/ability_cloud_push_manager.h"
+#endif
 #include "application_state_filter.h"
 #include "application_state_observer_stub.h"
 #include "hisysevent.h"
@@ -531,6 +534,13 @@ void AppMgrServiceInner::Init()
     AppNativeSpawnManager::GetInstance().InitNativeSpawnMsgPipe(appRunningManager_);
     AppHybridSpawnManager::GetInstance().InitHybridSpawnMsgPipe(weak_from_this());
     AppPidFdManager::GetInstance().Init(weak_from_this(), taskHandler_);
+#ifdef ABILITY_CLOUD_PUSH_ENABLE
+    ffrt::submit([]() {
+        AAFwk::AbilityCloudPushManager::GetInstance().InitParam();
+        AAFwk::AbilityCloudPushManager::GetInstance().SubscribeEvent();
+    }, ffrt::task_attr().name("InitAbilityCloudPushTask")
+        .timeout(AbilityRuntime::GlobalConstant::DEFAULT_FFRT_TASK_TIMEOUT));
+#endif
 }
 
 AppMgrServiceInner::~AppMgrServiceInner()

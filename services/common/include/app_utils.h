@@ -222,6 +222,12 @@ public:
     bool IsAllowNativeChildProcess(const std::string &appIdentifier);
 
     /**
+     * ReloadAllowNativeChildProcessApps, reload allow native child process apps from the local param path,
+     * falling back to CCM if the local param is absent. Thread-safe.
+     */
+    void ReloadAllowNativeChildProcessApps();
+
+    /**
      * GetLimitMaximumExtensionsPerProc, get limit max extensions per proc.
      *
      * @return Limit max extensions per proc.
@@ -400,6 +406,21 @@ private:
      *
      */
     void LoadAllowNativeChildProcessApps();
+
+    /**
+     * LoadAllowNativeChildProcessAppsLocal, load allow native child process apps from the local param path,
+     * falling back to LoadAllowNativeChildProcessApps (CCM) if local is absent. Caller must hold lock.
+     */
+    void LoadAllowNativeChildProcessAppsLocal();
+
+    /**
+     * ParseAllowAppsJsonFromPath, parse allow native child process app identifiers from a direct file path.
+     *
+     * @param path The direct file path.
+     * @param out The parsed identifiers, only modified on success.
+     * @return Whether parsing succeeded.
+     */
+    static bool ParseAllowAppsJsonFromPath(const std::string &path, std::vector<std::string> &out);
 
     /**
      * IsCacheAbilityEnabled, check cache ability parameter switch.
