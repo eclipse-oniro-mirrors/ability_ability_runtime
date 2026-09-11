@@ -79,7 +79,7 @@ int32_t AmsResidentProcessRdbCallBack::OnCreate(NativeRdb::RdbStore &rdbStore)
 
 int32_t AmsResidentProcessRdbCallBack::OnUpgrade(NativeRdb::RdbStore &rdbStore, int currentVersion, int targetVersion)
 {
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "onUpgrade current:%{plubic}d, target:%{plubic}d", currentVersion,
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "onUpgrade current:%{public}d, target:%{public}d", currentVersion,
         targetVersion);
     if (currentVersion >= VERSION_SA_UID_LIST || targetVersion < VERSION_SA_UID_LIST) {
         return NativeRdb::E_OK;
@@ -110,7 +110,7 @@ int32_t AmsResidentProcessRdbCallBack::OnUpgrade(NativeRdb::RdbStore &rdbStore, 
 
 int32_t AmsResidentProcessRdbCallBack::OnDowngrade(NativeRdb::RdbStore &rdbStore, int currentVersion, int targetVersion)
 {
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "onDowngrade current:%{plubic}d, target:%{plubic}d", currentVersion,
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "onDowngrade current:%{public}d, target:%{public}d", currentVersion,
         targetVersion);
     return NativeRdb::E_OK;
 }
