@@ -53,6 +53,11 @@ config("common_config") {
   if (target_cpu == "arm") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
+  if (target_platform == "phone") {
+    defines = [ "ABILITY_CLOUD_PUSH_SUBTYPE_PHONE", "ABILITY_CLOUD_PUSH_ENABLE" ]
+  } else if (target_platform == "tv") {
+    defines = [ "ABILITY_CLOUD_PUSH_SUBTYPE_TV", "ABILITY_CLOUD_PUSH_ENABLE" ]
+  }
 }
 
 config("optimize_config") {
@@ -354,6 +359,9 @@ ohos_shared_library("app_util") {
     "src/event_report.cpp",
     "src/hitrace_chain_utils.cpp",
     "src/json_utils.cpp",
+    "src/param_update/ability_cloud_push_manager.cpp",
+    "src/param_update/ability_cloud_push_reader.cpp",
+    "src/param_update/ability_cloud_push_sign_tools.cpp",
     "src/rate_limiter.cpp",
     "src/record_cost_time_util.cpp",
     "src/res_sched_util.cpp",
@@ -380,6 +388,9 @@ ohos_shared_library("app_util") {
     "ipc:ipc_single",
     "json:nlohmann_json_static",
     "samgr:samgr_proxy",
+    "ability_base:want",
+    "common_event_service:cesfwk_innerkits",
+    "openssl:libcrypto_shared",
   ]
 
   if (ability_runtime_graphics) {
@@ -424,6 +435,9 @@ ohos_static_library("app_util_static") {
     "src/event_report.cpp",
     "src/hitrace_chain_utils.cpp",
     "src/json_utils.cpp",
+    "src/param_update/ability_cloud_push_manager.cpp",
+    "src/param_update/ability_cloud_push_reader.cpp",
+    "src/param_update/ability_cloud_push_sign_tools.cpp",
     "src/rate_limiter.cpp",
     "src/record_cost_time_util.cpp",
     "src/res_sched_util.cpp",
@@ -450,6 +464,9 @@ ohos_static_library("app_util_static") {
     "ipc:ipc_single",
     "json:nlohmann_json_static",
     "samgr:samgr_proxy",
+    "ability_base:want",
+    "common_event_service:cesfwk_innerkits",
+    "openssl:libcrypto_shared",
   ]
 
   if (ability_runtime_graphics) {

@@ -14,8 +14,12 @@
  */
 
 #include "app_utils.h"
+#include <climits>
+#include <fstream>
+#include <iterator>
 #include <unordered_set>
 #include "json_utils.h"
+#include "param_update/ability_cloud_push_reader.h"
 #include "hilog_tag_wrapper.h"
 #include "nlohmann/json.hpp"
 #include "parameter.h"
@@ -103,6 +107,27 @@ constexpr const char* ON_NEW_PROCESS_ENABLE_LIST_PATH = "etc/ability_runtime/on_
 constexpr const char* ON_NEW_PROCESS_ENABLE_LIST = "onNewProcessEnableList";
 constexpr const char* HYBRIDSPAWN_UNIFIED = "persist.appspawn.hybridspawn.unified";
 constexpr int32_t RESCUE_MODE_TIMEOUT_RATIO = 5;
+
+bool ParseAllowAppsFromJson(const nlohmann::json &object, std::vector<std::string> &out)
+{
+    if (!object.is_object() || !object.contains(KEY_ALLOW_NATIVE_CHILD_PROCESS_APPS) ||
+        !object.at(KEY_ALLOW_NATIVE_CHILD_PROCESS_APPS).is_array()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid allow native child process apps config");
+        return false;
+    }
+    std::vector<std::string> tmp;
+    for (auto &item : object.at(KEY_ALLOW_NATIVE_CHILD_PROCESS_APPS).items()) {
+        const nlohmann::json &jsonObject = item.value();
+        if (!jsonObject.is_object() || !jsonObject.contains(KEY_IDENTIFIER) ||
+            !jsonObject.at(KEY_IDENTIFIER).is_string()) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "parse identifier failed, skip this entry");
+            continue;
+        }
+        tmp.emplace_back(jsonObject.at(KEY_IDENTIFIER).get<std::string>());
+    }
+    out = std::move(tmp);
+    return true;
+}
 }
 
 AppUtils::~AppUtils() {}
@@ -491,7 +516,11 @@ bool AppUtils::IsAllowNativeChildProcess(const std::string &appIdentifier)
     TAG_LOGD(AAFwkTag::DEFAULT, "appId:%{private}s", appIdentifier.c_str());
     std::lock_guard lock(allowStartNativeProcessAppsMutex_);
     if (!allowStartNativeProcessApps_.isLoaded) {
+#ifdef ABILITY_CLOUD_PUSH_ENABLE
+        LoadAllowNativeChildProcessAppsLocal();
+#else
         LoadAllowNativeChildProcessApps();
+#endif
         allowStartNativeProcessApps_.isLoaded = true;
     }
     auto &apps = allowStartNativeProcessApps_.value;
@@ -501,26 +530,59 @@ bool AppUtils::IsAllowNativeChildProcess(const std::string &appIdentifier)
 
 void AppUtils::LoadAllowNativeChildProcessApps()
 {
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "LoadAllowNativeChildProcessApps called");
     nlohmann::json object;
     if (!JsonUtils::GetInstance().LoadConfiguration(ALLOW_NATIVE_CHILD_PROCESS_APPS_CONFIG_PATH, object)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "load child process config failed");
         return;
     }
-    if (!object.contains(KEY_ALLOW_NATIVE_CHILD_PROCESS_APPS) ||
-        !object.at(KEY_ALLOW_NATIVE_CHILD_PROCESS_APPS).is_array()) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "get key invalid");
+    if (!ParseAllowAppsFromJson(object, allowStartNativeProcessApps_.value)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "parse allow native child process apps failed");
+    }
+}
+
+void AppUtils::LoadAllowNativeChildProcessAppsLocal()
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "LoadAllowNativeChildProcessAppsLocal called");
+    std::string localPath = AbilityCloudPushPaths::LOCAL_PARAM_DIR + "/" + AbilityCloudPushPaths::CONFIG_FILE_NAME;
+    if (ParseAllowAppsJsonFromPath(localPath, allowStartNativeProcessApps_.value)) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "load allow native child process from local param, size=%{public}zu",
+            allowStartNativeProcessApps_.value.size());
         return;
     }
+    LoadAllowNativeChildProcessApps();
+}
 
-    for (auto &item : object.at(KEY_ALLOW_NATIVE_CHILD_PROCESS_APPS).items()) {
-        const nlohmann::json& jsonObject = item.value();
-        if (!jsonObject.contains(KEY_IDENTIFIER) || !jsonObject.at(KEY_IDENTIFIER).is_string()) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "load identifier failed");
-            return;
-        }
-        std::string identifier = jsonObject.at(KEY_IDENTIFIER).get<std::string>();
-        allowStartNativeProcessApps_.value.emplace_back(identifier);
+void AppUtils::ReloadAllowNativeChildProcessApps()
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "ReloadAllowNativeChildProcessApps called");
+    std::lock_guard lock(allowStartNativeProcessAppsMutex_);
+#ifdef ABILITY_CLOUD_PUSH_ENABLE
+    LoadAllowNativeChildProcessAppsLocal();
+#else
+    LoadAllowNativeChildProcessApps();
+#endif
+    allowStartNativeProcessApps_.isLoaded = true;
+}
+
+bool AppUtils::ParseAllowAppsJsonFromPath(const std::string &path, std::vector<std::string> &out)
+{
+    char realPath[PATH_MAX] = {0};
+    if (realpath(path.c_str(), realPath) == nullptr) {
+        return false;
     }
+    std::ifstream file(realPath);
+    if (!file.is_open()) {
+        return false;
+    }
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    file.close();
+    nlohmann::json object = nlohmann::json::parse(content, nullptr, false);
+    if (object.is_discarded()) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "ParseAllowAppsJsonFromPath json parse discarded");
+        return false;
+    }
+    return ParseAllowAppsFromJson(object, out);
 }
 
 int32_t AppUtils::GetLimitMaximumExtensionsPerProc()

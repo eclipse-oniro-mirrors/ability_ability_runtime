@@ -14,6 +14,10 @@
  */
 
 #include <gtest/gtest.h>
+#include <cstdio>
+#include <fstream>
+#include <string>
+#include <vector>
 
 #define private public
 #include "app_utils.h"
@@ -1147,6 +1151,85 @@ HWTEST_F(AppUtilsTest, IsBopdOrRescueMode_0200, TestSize.Level2)
     appUtils.isBopdOrRescueMode_.isLoaded = true;
     appUtils.isBopdOrRescueMode_.value = false;
     EXPECT_FALSE(appUtils.IsBopdOrRescueMode());
+}
+
+/**
+ * @tc.number: AppUtilsTest_4200
+ * @tc.desc: Test ReloadAllowNativeChildProcessApps marks the list loaded
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppUtilsTest, AppUtilsTest_4200, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppUtilsTest_4200 called.");
+    auto &appUtils = AAFwk::AppUtils::GetInstance();
+    appUtils.allowStartNativeProcessApps_.isLoaded = false;
+    appUtils.allowStartNativeProcessApps_.value.clear();
+    appUtils.ReloadAllowNativeChildProcessApps();
+    EXPECT_TRUE(appUtils.allowStartNativeProcessApps_.isLoaded);
+}
+
+/**
+ * @tc.number: AppUtilsTest_4300
+ * @tc.desc: Test ParseAllowAppsJsonFromPath parses identifiers from a valid file
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppUtilsTest, AppUtilsTest_4300, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppUtilsTest_4300 called.");
+    const std::string tmpPath = "/data/local/tmp/app_utils_allow_apps_4300.json";
+    std::ofstream ofs(tmpPath, std::ios::binary);
+    ASSERT_TRUE(ofs.is_open());
+    ofs << R"({"allowNativeChildProcessApps":[)" <<
+        R"({"identifier":"com.test.app1"},)" <<
+        R"({"identifier":"com.test.app2"}]})";
+    ofs.close();
+    std::vector<std::string> out;
+    bool ret = AAFwk::AppUtils::ParseAllowAppsJsonFromPath(tmpPath, out);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(out.size(), 2u);
+    if (out.size() == 2) {
+        EXPECT_EQ(out[0], "com.test.app1");
+        EXPECT_EQ(out[1], "com.test.app2");
+    }
+    std::remove(tmpPath.c_str());
+}
+
+/**
+ * @tc.number: AppUtilsTest_4400
+ * @tc.desc: Test ParseAllowAppsJsonFromPath returns false for non-existent path
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppUtilsTest, AppUtilsTest_4400, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppUtilsTest_4400 called.");
+    std::vector<std::string> out;
+    out.emplace_back("stale");
+    bool ret = AAFwk::AppUtils::ParseAllowAppsJsonFromPath(
+        "/data/local/tmp/app_utils_not_exist_4400.json", out);
+    EXPECT_FALSE(ret);
+    EXPECT_FALSE(out.empty());
+    EXPECT_EQ(out.size(), 1u);
+    EXPECT_EQ(out[0], "stale");
+}
+
+/**
+ * @tc.number: AppUtilsTest_4500
+ * @tc.desc: Test ParseAllowAppsJsonFromPath returns false for invalid json content
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppUtilsTest, AppUtilsTest_4500, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppUtilsTest_4500 called.");
+    const std::string tmpPath = "/data/local/tmp/app_utils_allow_apps_4500.json";
+    std::ofstream ofs(tmpPath, std::ios::binary);
+    ASSERT_TRUE(ofs.is_open());
+    ofs << "not a json";
+    ofs.close();
+    std::vector<std::string> out;
+    bool ret = AAFwk::AppUtils::ParseAllowAppsJsonFromPath(tmpPath, out);
+    EXPECT_FALSE(ret);
+    EXPECT_TRUE(out.empty());
+    std::remove(tmpPath.c_str());
 }
 }  // namespace AbilityRuntime
 }  // namespace OHOS
