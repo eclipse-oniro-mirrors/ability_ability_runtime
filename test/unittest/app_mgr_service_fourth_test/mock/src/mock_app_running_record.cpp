@@ -65,6 +65,33 @@ void AppRunningRecord::SetCallerTokenId(int32_t tokenId)
 {
 }
 
+std::string AppRunningRecord::GetCallerBundleName() const
+{
+    return "";
+}
+
+void AppRunningRecord::SetCallerBundleName(const std::string &name)
+{
+}
+
+int32_t AppRunningRecord::GetLastUIAbilityCallerUid() const
+{
+    return -1;
+}
+
+void AppRunningRecord::SetLastUIAbilityCallerUid(int32_t uid)
+{
+}
+
+std::string AppRunningRecord::GetLastUIAbilityCallerName() const
+{
+    return "";
+}
+
+void AppRunningRecord::SetLastUIAbilityCallerName(const std::string &name)
+{
+}
+
 bool AppRunningRecord::IsLauncherApp() const
 {
     return false;
@@ -335,11 +362,12 @@ bool AppRunningRecord::UpdateAbilityFocusState(const sptr<IRemoteObject> &token,
 }
 
 void AppRunningRecord::UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state,
-    bool isFromScreenOffBackground)
+    bool isFromScreenOffBackground, const UiAbilityLastCallerInfo &callerInfo)
 {
 }
 
-void AppRunningRecord::AbilityForeground(const std::shared_ptr<AbilityRunningRecord> &ability)
+void AppRunningRecord::AbilityForeground(const std::shared_ptr<AbilityRunningRecord> &ability,
+    const UiAbilityLastCallerInfo &callerInfo)
 {
 }
 

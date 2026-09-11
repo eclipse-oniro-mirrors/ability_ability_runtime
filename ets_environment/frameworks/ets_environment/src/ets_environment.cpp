@@ -835,6 +835,11 @@ ETSEnvFuncs *ETSEnvironment::RegisterFuncs()
         },
         .BroadcastAndConnect = [](const std::string& bundleName, int socketFd) {
             return ETSEnvironment::GetInstance()->BroadcastAndConnect(bundleName, socketFd);
+        },
+        .StartProfiler = [](int tid, int32_t instanceId, bool debugApp, void *jsVm,
+            EtsProfilerType profiler, uint32_t interval) {
+            return ETSEnvironment::GetInstance()->StartProfiler(
+                tid, instanceId, debugApp, jsVm, profiler, interval);
         }
     };
     return &funcs;
@@ -847,6 +852,24 @@ void ETSEnvironment::NotifyDebugMode(uint32_t tid, uint32_t instanceId, bool isS
     AbilityRuntime::ConnectServerManager::Get().StoreInstanceMessage(getproctid(), instanceId, "Debugger");
     auto task = GetDebuggerPostTask();
     ark::ArkDebugNativeAPI::NotifyDebugMode(tid, instanceId, isStartWithDebug, jsVm, task, isDebugApp);
+}
+
+bool ETSEnvironment::StartProfiler(int tid, int32_t instanceId, bool debugApp, void *jsVm,
+    EtsProfilerType profiler, uint32_t interval)
+{
+    TAG_LOGD(AAFwkTag::ETSRUNTIME, "Start");
+    if (jsVm == nullptr) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "null jsVm");
+        return false;
+    }
+    ark::ProfilerOption option;
+    option.profilerType = (profiler == ETS_PROFILERTYPE_CPU)
+        ? ark::ProfilerType::CPU_PROFILER : ark::ProfilerType::HEAP_PROFILER;
+    option.interval = interval;
+    option.tid = tid;
+    option.instanceId = instanceId;
+    auto task = GetDebuggerPostTask();
+    return ark::ArkDebugNativeAPI::StartProfiler(jsVm, option, task, debugApp);
 }
 
 void ETSEnvironment::RemoveInstance(uint32_t instanceId)

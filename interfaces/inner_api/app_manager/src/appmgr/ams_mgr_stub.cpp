@@ -301,7 +301,11 @@ ErrCode AmsMgrStub::HandleUpdateAbilityState(MessageParcel &data, MessageParcel 
     sptr<IRemoteObject> token = data.ReadRemoteObject();
     int32_t state = data.ReadInt32();
     bool isFromScreenOffBackground = data.ReadBool();
-    UpdateAbilityState(token, static_cast<AbilityState>(state), isFromScreenOffBackground);
+    UiAbilityLastCallerInfo callerInfo;
+    callerInfo.callerUid = data.ReadInt32();
+    callerInfo.callerBundleName = data.ReadString();
+    callerInfo.isCallBySCB = data.ReadBool();
+    UpdateAbilityState(token, static_cast<AbilityState>(state), isFromScreenOffBackground, callerInfo);
     return NO_ERROR;
 }
 

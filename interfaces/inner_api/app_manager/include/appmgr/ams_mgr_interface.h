@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_AMS_MGR_INTERFACE_H
 #define OHOS_ABILITY_RUNTIME_AMS_MGR_INTERFACE_H
 
+#include "ui_ability_last_caller_info.h"
 #include "ability_debug_response_interface.h"
 #include "ability_info.h"
 #include "app_debug_listener_interface.h"
@@ -76,10 +77,11 @@ public:
      * @param token, the unique identification to update the ability.
      * @param state, ability status that needs to be updated.
      * @param isFromScreenOffBackground Whether from screen off background.
+     * @param callerInfo The caller info including uid, bundle name and isCallBySCB.
      * @return
      */
     virtual void UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state,
-        bool isFromScreenOffBackground = false) = 0;
+        bool isFromScreenOffBackground = false, const UiAbilityLastCallerInfo &callerInfo = {}) = 0;
 
     /**
      * UpdateExtensionState, call UpdateExtensionState() through the proxy object, update the extension status.

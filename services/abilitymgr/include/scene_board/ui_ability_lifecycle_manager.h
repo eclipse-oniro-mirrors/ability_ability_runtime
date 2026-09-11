@@ -22,6 +22,7 @@
 #include <queue>
 #include <unordered_map>
 
+#include "ui_ability_last_caller_info.h"
 #include "ability_manager_constants.h"
 #include "ffrt.h"
 #include "isession_handler_interface.h"
@@ -626,6 +627,16 @@ public:
      * @return Returns ERR_OK on success, others on failure
      */
     int32_t StartSelf(const UIAbilityRecordPtr &abilityRecord);
+
+    /**
+     * @brief Handle foreground or background when ability is started by call.
+     * @param abilityRecord The ability record.
+     * @param token The ability token.
+     * @param callerInfo The caller info including uid, bundle name and isCallBySCB.
+     * @return ERR_OK if handled, ERR_INVALID_VALUE if not started by call.
+     */
+    int HandleStartedByCall(const UIAbilityRecordPtr &abilityRecord, const sptr<IRemoteObject> &token,
+        const AppExecFwk::UiAbilityLastCallerInfo &callerInfo);
 
 private:
     /**

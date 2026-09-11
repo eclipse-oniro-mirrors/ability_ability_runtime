@@ -115,6 +115,8 @@ private:
     void HandleOnAppStopped(const std::shared_ptr<AppRunningRecord> &appRecord);
     void HandleStateChangedNotifyObserver(const AbilityStateData abilityStateData, bool isAbility,
         bool isFromWindowFocusChanged, BundleType bundleType = BundleType::APP);
+    void NotifyAppStateObservers(const AbilityStateData &abilityStateData, bool isAbility,
+        const AppStateFilter &appStateFilter);
     void HandleOnAppProcessCreated(const std::shared_ptr<ProcessData> &data, BundleType bundleType);
     void HandleOnRenderProcessCreated(const std::shared_ptr<RenderRecord> &renderRecord, const bool isPreload);
 #ifdef SUPPORT_CHILD_PROCESS

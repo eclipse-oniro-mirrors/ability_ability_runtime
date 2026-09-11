@@ -27,6 +27,7 @@
 #include "cpp/mutex.h"
 #include "iremote_object.h"
 #include "irender_scheduler.h"
+#include "ui_ability_last_caller_info.h"
 #include "ability_running_record.h"
 #include "render_record.h"
 #include "ability_state_data.h"
@@ -115,6 +116,20 @@ public:
     void SetCallerUid(int32_t uid);
 
     /**
+     * @brief Obtains the app record CallerBundleName.
+     *
+     * @return Returns app record CallerBundleName.
+     */
+    std::string GetCallerBundleName() const;
+
+    /**
+     * @brief Setting the CallerBundleName.
+     *
+     * @param name, the caller bundle name.
+     */
+    void SetCallerBundleName(const std::string &name);
+
+    /**
      * @brief Obtains the app record CallerTokenId.
      *
      * @return Returns app record CallerTokenId.
@@ -127,6 +142,34 @@ public:
      * @param CallerToken, the Caller tokenId.
      */
     void SetCallerTokenId(int32_t tokenId);
+
+    /**
+     * @brief Obtains the app record lastUIAbilityCallerUid.
+     *
+     * @return Returns app record lastUIAbilityCallerUid.
+     */
+    int32_t GetLastUIAbilityCallerUid() const;
+
+    /**
+     * @brief Setting the lastUIAbilityCallerUid.
+     *
+     * @param uid the lastUIAbilityCallerUid.
+     */
+    void SetLastUIAbilityCallerUid(int32_t uid);
+
+    /**
+     * @brief Obtains the app record lastUIAbilityCallerName.
+     *
+     * @return Returns app record lastUIAbilityCallerName.
+     */
+    std::string GetLastUIAbilityCallerName() const;
+
+    /**
+     * @brief Setting the lastUIAbilityCallerName.
+     *
+     * @param name the lastUIAbilityCallerName.
+     */
+    void SetLastUIAbilityCallerName(const std::string &name);
 
     /**
      * @brief Obtains the app record isLauncherApp flag.
@@ -535,11 +578,13 @@ public:
      *
      * @param token, the unique identification to update the ability.
      * @param state, ability status that needs to be updated.
+     * @param isFromScreenOffBackground Whether from screen off background.
+     * @param callerInfo The caller info including uid, bundle name and isCallBySCB.
      *
      * @return
      */
     void UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state,
-        bool isFromScreenOffBackground = false);
+        bool isFromScreenOffBackground = false, const UiAbilityLastCallerInfo &callerInfo = {});
 
     /**
      * PopForegroundingAbilityTokens, Extract the token record from the foreground tokens list.
@@ -740,6 +785,9 @@ public:
         int32_t state,
         bool isAbility,
         bool isFromWindowFocusChanged);
+    AbilityStateData BuildAbilityStateData(
+        const std::shared_ptr<AbilityRunningRecord> &ability,
+        int32_t state, bool isAbility);
 
     void insertAbilityStageInfo(std::vector<HapModuleInfo> moduleInfos);
 
@@ -1347,10 +1395,28 @@ private:
      * AbilityForeground, Handling the ability process when switching to the foreground.
      *
      * @param ability, the ability info.
+     * @param callerInfo The caller info including uid, bundle name and isCallBySCB.
      *
      * @return
      */
-    void AbilityForeground(const std::shared_ptr<AbilityRunningRecord> &ability);
+    void AbilityForeground(const std::shared_ptr<AbilityRunningRecord> &ability,
+        const UiAbilityLastCallerInfo &callerInfo = {});
+
+    /**
+     * Update last UIAbility caller info, record caller or SCB(launcher) as last caller.
+     *
+     * @param callerInfo The caller info including uid, bundle name and isCallBySCB.
+     */
+    void UpdateLastCallerInfo(const UiAbilityLastCallerInfo &callerInfo);
+
+    /**
+     * Handle foreground state change when application is already foregrounded,
+     * just switch the ability to foreground and notify observers.
+     *
+     * @param ability the ability info.
+     * @return whether handled.
+     */
+    bool HandleForegroundStateChange(const std::shared_ptr<AbilityRunningRecord> &ability);
 
     /**
      * AbilityBackground, Handling the ability process when switching to the background.
@@ -1476,6 +1542,13 @@ private:
     int32_t callerPid_ = -1;
     int32_t callerTokenId_ = -1;
     int32_t callerUid_ = -1;
+    std::string callerBundleName_;
+    mutable ffrt::mutex callerBundleNameLock_;
+    int32_t lastUIAbilityCallerUid_ = -1;
+    std::string lastUIAbilityCallerName_;
+    mutable ffrt::mutex lastUIAbilityCallerLock_;
+    int32_t scbUid_ = -1;
+    mutable ffrt::mutex scbUidLock_;
     int32_t exitReason_ = 0;
     std::atomic_int32_t pssValue_ = 0;
     std::atomic<bool> isUIExtensionPreload_ = false;

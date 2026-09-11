@@ -37,7 +37,7 @@ bool ProcessData::Marshalling(Parcel &parcel) const
         parcel.WriteString(killReason) && parcel.WriteBool(isFromWindowFocusChanged) &&
         parcel.WriteInt32(preloadMode) && parcel.WriteInt32(imageProcessType) &&
         parcel.WriteBool(isPreloadUIExtension) && parcel.WriteBool(isFromScreenOffBackground) &&
-        parcel.WriteInt32(byCallStatus);
+        parcel.WriteInt32(byCallStatus) && parcel.WriteString(callerBundleName);
 }
 
 bool ProcessData::ReadFromParcel(Parcel &parcel)
@@ -73,6 +73,7 @@ bool ProcessData::ReadFromParcel(Parcel &parcel)
     isPreloadUIExtension = parcel.ReadBool();
     isFromScreenOffBackground = parcel.ReadBool();
     byCallStatus = parcel.ReadInt32();
+    callerBundleName = parcel.ReadString();
     return true;
 }
 

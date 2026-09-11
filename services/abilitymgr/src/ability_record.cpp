@@ -485,7 +485,8 @@ void AbilityRecord::ForegroundUIExtensionAbility(uint32_t sceneFlag)
     }
 }
 
-void AbilityRecord::ProcessForegroundAbility(uint32_t tokenId, const ForegroundOptions &options)
+void AbilityRecord::ProcessForegroundAbility(uint32_t tokenId, const ForegroundOptions &options,
+    bool isCallBySCB)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::ABILITYMGR, "ability record: %{public}s/%{public}s", GetInfoBundleName().c_str(),
@@ -534,6 +535,11 @@ void AbilityRecord::ProcessForegroundAbility(uint32_t tokenId, const ForegroundO
         return;
     }
     // background to active state
+    HandleBackgroundToForeground(options, isCallBySCB);
+}
+
+void AbilityRecord::HandleBackgroundToForeground(const ForegroundOptions &options, bool isCallBySCB)
+{
     TAG_LOGD(AAFwkTag::ABILITYMGR, "MoveToForeground, %{public}s/%{public}s", GetInfoBundleName().c_str(),
         GetInfoAbilityName().c_str());
     lifeCycleStateInfo_.sceneFlagBak = options.sceneFlag;
@@ -546,7 +552,10 @@ void AbilityRecord::ProcessForegroundAbility(uint32_t tokenId, const ForegroundO
         SendAppStartupTypeEvent(AppExecFwk::AppStartType::HOT);
     }
     SetAbilityStateInner(AbilityState::FOREGROUNDING);
-    DelayedSingleton<AppScheduler>::GetInstance()->MoveToForeground(token_);
+    int32_t callerUid = GetWant().GetIntParam(Want::PARAM_RESV_CALLER_UID, -1);
+    std::string callerBundleName = GetWant().GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME);
+    DelayedSingleton<AppScheduler>::GetInstance()->MoveToForeground(token_,
+        {callerUid, callerBundleName, isCallBySCB});
 }
 
 void AbilityRecord::PostForegroundTimeoutTask()

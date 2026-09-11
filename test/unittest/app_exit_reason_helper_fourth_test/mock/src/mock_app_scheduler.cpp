@@ -56,7 +56,8 @@ int AppScheduler::TerminateAbility(const sptr<IRemoteObject>& token, bool isClea
     return ERR_OK;
 }
 
-void AppScheduler::MoveToForeground(const sptr<IRemoteObject>& token)
+void AppScheduler::MoveToForeground(const sptr<IRemoteObject>& token,
+    const AppExecFwk::UiAbilityLastCallerInfo& callerInfo)
 {
     TAG_LOGI(AAFwkTag::TEST, "Test AppScheduler::MoveToForeground()");
 }

@@ -19,6 +19,7 @@
 #include <memory>
 #include <unordered_set>
 
+#include "ui_ability_last_caller_info.h"
 #include "ability_debug_response_interface.h"
 #include "ability_info.h"
 #include "ability_manager_client.h"
@@ -267,8 +268,9 @@ public:
      * move ability to foreground.
      *
      * @param token, the token of ability.
+     * @param callerInfo, the caller info including uid, bundle name and isCallBySCB.
      */
-    void MoveToForeground(const sptr<IRemoteObject> &token);
+    void MoveToForeground(const sptr<IRemoteObject> &token, const AppExecFwk::UiAbilityLastCallerInfo &callerInfo = {});
 
     /**
      * move ability to background.
