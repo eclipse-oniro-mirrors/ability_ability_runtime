@@ -2856,7 +2856,7 @@ HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_UpdateKioskApplica
 HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_EnterKioskMode, TestSize.Level1)
 {
     sptr<IRemoteObject> callerToken = new AbilityManagerStubTestMock();
-    EXPECT_EQ(client_->EnterKioskMode(callerToken), ERR_OK);
+    EXPECT_EQ(client_->EnterKioskMode(callerToken, 0), ERR_OK);
 }
 
 /**

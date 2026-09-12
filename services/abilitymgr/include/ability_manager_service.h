@@ -2643,7 +2643,11 @@ public:
 
     int32_t UpdateKioskApplicationList(const std::vector<std::string> &appList) override;
 
-    int32_t EnterKioskMode(sptr<IRemoteObject> callerToken) override;
+    int32_t AddKioskApplicationList(const std::vector<std::string> &appList) override;
+
+    int32_t DeleteKioskApplicationList(const std::vector<std::string> &appList) override;
+
+    int32_t EnterKioskMode(sptr<IRemoteObject> callerToken, int32_t kioskType = 0) override;
 
     int32_t ExitKioskMode(sptr<IRemoteObject> callerToken) override;
 

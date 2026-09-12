@@ -35,6 +35,7 @@
 #ifdef SUPPORT_SCREEN
 #include "pixel_map_bridge.h"
 #endif //SUPPORT_SCREEN
+#include "ws_common.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -953,6 +954,12 @@ int AbilityManagerStub::OnRemoteRequestInnerTwentyFirst(uint32_t code, MessagePa
     AbilityManagerInterfaceCode interfaceCode = static_cast<AbilityManagerInterfaceCode>(code);
     if (interfaceCode == AbilityManagerInterfaceCode::UPDATE_KIOSK_APP_LIST) {
         return UpdateKioskApplicationListInner(data, reply);
+    }
+    if (interfaceCode == AbilityManagerInterfaceCode::ADD_KIOSK_APP_LIST) {
+        return AddKioskApplicationListInner(data, reply);
+    }
+    if (interfaceCode == AbilityManagerInterfaceCode::DELETE_KIOSK_APP_FROM_LIST) {
+        return DeleteKioskApplicationListInner(data, reply);
     }
     if (interfaceCode == AbilityManagerInterfaceCode::ENTER_KIOSK_MODE) {
         return EnterKioskModeInner(data, reply);
@@ -5605,10 +5612,38 @@ int32_t AbilityManagerStub::UpdateKioskApplicationListInner(MessageParcel &data,
     return NO_ERROR;
 }
 
+int32_t AbilityManagerStub::AddKioskApplicationListInner(MessageParcel &data, MessageParcel &reply)
+{
+    std::vector<std::string> appList;
+    data.ReadStringVector(&appList);
+
+    auto result = AddKioskApplicationList(appList);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write result fail");
+        return ERR_WRITE_RESULT_CODE_FAILED;
+    }
+    return NO_ERROR;
+}
+
+int32_t AbilityManagerStub::DeleteKioskApplicationListInner(MessageParcel &data, MessageParcel &reply)
+{
+    std::vector<std::string> appList;
+    data.ReadStringVector(&appList);
+
+    auto result = DeleteKioskApplicationList(appList);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write result fail");
+        return ERR_WRITE_RESULT_CODE_FAILED;
+    }
+    return NO_ERROR;
+}
+
 int32_t AbilityManagerStub::EnterKioskModeInner(MessageParcel &data, MessageParcel &reply)
 {
     sptr<IRemoteObject> token = data.ReadRemoteObject();
-    auto result = EnterKioskMode(token);
+    int32_t kioskType = static_cast<int32_t>(Rosen::KioskType::DEFAULT);
+    data.ReadInt32(kioskType);
+    auto result = EnterKioskMode(token, kioskType);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write result fail");
         return ERR_WRITE_RESULT_CODE_FAILED;

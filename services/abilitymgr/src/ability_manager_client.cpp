@@ -2582,12 +2582,28 @@ ErrCode AbilityManagerClient::UpdateKioskApplicationList(const std::vector<std::
     return abms->UpdateKioskApplicationList(appList);
 }
 
-ErrCode AbilityManagerClient::EnterKioskMode(sptr<IRemoteObject> callerToken)
+ErrCode AbilityManagerClient::AddKioskApplicationList(const std::vector<std::string> &appList)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "set KIOSK App list");
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    return abms->AddKioskApplicationList(appList);
+}
+
+ErrCode AbilityManagerClient::DeleteKioskApplicationList(const std::vector<std::string> &appList)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "delete KIOSK App list");
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    return abms->DeleteKioskApplicationList(appList);
+}
+
+ErrCode AbilityManagerClient::EnterKioskMode(sptr<IRemoteObject> callerToken, int32_t kioskType)
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "enter Kiosk mode");
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
-    return abms->EnterKioskMode(callerToken);
+    return abms->EnterKioskMode(callerToken, kioskType);
 }
 
 ErrCode AbilityManagerClient::ExitKioskMode(sptr<IRemoteObject> callerToken)

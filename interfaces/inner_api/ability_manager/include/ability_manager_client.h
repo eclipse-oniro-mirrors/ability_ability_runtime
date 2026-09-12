@@ -2885,9 +2885,14 @@ public:
      * @brief Enter kiosk mode. The caller must be the ability owning the token
      * (self only).
      * @param callerToken Caller ability token.
+     * @param kioskType Distinguish between regular kiosk mode and exam mode.
      * @return Returns ERR_OK on success; CHECK_PERMISSION_FAILED if not self.
      */
-    ErrCode EnterKioskMode(sptr<IRemoteObject> callerToken);
+    ErrCode EnterKioskMode(sptr<IRemoteObject> callerToken, int32_t kioskType = 0);
+
+    ErrCode AddKioskApplicationList(const std::vector<std::string> &appList);
+
+    ErrCode DeleteKioskApplicationList(const std::vector<std::string> &appList);
 
     /**
      * @brief Exit kiosk mode. Self only (same as EnterKioskMode).

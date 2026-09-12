@@ -18863,34 +18863,28 @@ int32_t AbilityManagerService::UpdateKioskApplicationList(const std::vector<std:
     return KioskManager::GetInstance().UpdateKioskApplicationList(appList);
 }
 
-int32_t AbilityManagerService::EnterKioskMode(sptr<IRemoteObject> callerToken)
+int32_t AbilityManagerService::EnterKioskMode(sptr<IRemoteObject> callerToken, int32_t kioskType)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "request EnterKioskMode");
-    auto record = Token::GetAbilityRecordByToken(callerToken);
-    if (!record) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "record null");
-        return INVALID_PARAMETERS_ERR;
-    }
-    if (!JudgeSelfCalled(record)) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "not self call");
-        return CHECK_PERMISSION_FAILED;
-    }
-    return KioskManager::GetInstance().EnterKioskMode(callerToken);
+    return KioskManager::GetInstance().EnterKioskMode(callerToken, kioskType);
 }
 
 int32_t AbilityManagerService::ExitKioskMode(sptr<IRemoteObject> callerToken)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "request ExitKioskMode");
-    auto record = Token::GetAbilityRecordByToken(callerToken);
-    if (!record) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "record null");
-        return INVALID_PARAMETERS_ERR;
-    }
-    if (!JudgeSelfCalled(record)) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "not self call");
-        return CHECK_PERMISSION_FAILED;
-    }
     return KioskManager::GetInstance().ExitKioskMode(callerToken, false);
+}
+
+int32_t AbilityManagerService::AddKioskApplicationList(const std::vector<std::string> &appList)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "request AddKioskApplicationList");
+    return KioskManager::GetInstance().AddKioskApplicationList(appList);
+}
+
+int32_t AbilityManagerService::DeleteKioskApplicationList(const std::vector<std::string> &appList)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "request DeleteKioskApplicationList");
+    return KioskManager::GetInstance().DeleteKioskApplicationList(appList);
 }
 
 int32_t AbilityManagerService::GetKioskStatus(KioskStatus &kioskStatus)
