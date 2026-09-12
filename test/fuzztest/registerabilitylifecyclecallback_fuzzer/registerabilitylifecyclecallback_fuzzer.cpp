@@ -21,6 +21,7 @@
 #include "ability_lifecycle_callback.h"
 #include "application_context.h"
 #include "securec.h"
+#include <fuzzer/FuzzedDataProvider.h>
 
 using namespace OHOS::AAFwk;
 using namespace OHOS::AppExecFwk;
@@ -59,12 +60,17 @@ public:
 };
 bool DoSomethingInterestingWithMyAPI(const char *data, size_t size)
 {
-    (void)data;
+    
     auto context = ApplicationContext::GetInstance();
     if (!context) {
         return false;
     }
     std::shared_ptr<AbilityLifecycleCallbackFuzz> callback;
+    FuzzedDataProvider fdp(data, size);
+    auto fuzzStr = fdp.ConsumeRandomLengthString(64);
+    auto fuzzInt = fdp.ConsumeIntegral<int32_t>();
+    auto fuzzBool = fdp.ConsumeBool();
+    auto fuzzBuf = fdp.ConsumeRemainingBytesAsString();
     context->RegisterAbilityLifecycleCallback(callback);
     return true;
 }

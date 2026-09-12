@@ -50,12 +50,17 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     std::vector<NativeRdb::ValuesBucket> valuesBuckets;
     for (int i = 0; i < listSize; i++) {
         NativeRdb::ValuesBucket valuesBucket;
-        valuesBucket.PutString(KEY_BUNDLE_NAME, fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH));
-        valuesBucket.PutString(KEY_KEEP_ALIVE_ENABLE, fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH));
-        valuesBucket.PutString(KEY_KEEP_ALIVE_CONFIGURED_LIST, fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH));
+        valuesBucket.PutString(KEY_BUNDLE_NAME, fdp.ConsumeRandomLengthString(256));
+        valuesBucket.PutString(KEY_KEEP_ALIVE_ENABLE, fdp.ConsumeRandomLengthString(256));
+        valuesBucket.PutString(KEY_KEEP_ALIVE_CONFIGURED_LIST, fdp.ConsumeRandomLengthString(128));
         valuesBuckets.emplace_back(valuesBucket);
     }
     rdbMgr->BatchInsert(outNumber, valuesBuckets);
+    // Merged APIs
+    rdbMgr->InsertData(valuesBucket);
+    absRdbPredicates.EqualTo(INTENT_KEY, fdp.ConsumeRandomLengthString(64));
+    rdbMgr->QueryData(absRdbPredicates);
+
     return true;
 }
 }

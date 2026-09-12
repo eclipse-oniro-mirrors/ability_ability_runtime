@@ -81,9 +81,9 @@ public:
 class ForegroundAppConnectionFuzz : public IForegroundAppConnection {
 public:
     void OnForegroundAppConnected(const ForegroundAppConnectionData &data) override {}
-    
+
     void OnForegroundAppDisconnected(const ForegroundAppConnectionData &data) override {}
-    
+
     void OnForegroundAppCallerStarted(int32_t callerPid, int32_t callerUid, const std::string &bundleName) override {}
 
     int OnRemoteRequest(

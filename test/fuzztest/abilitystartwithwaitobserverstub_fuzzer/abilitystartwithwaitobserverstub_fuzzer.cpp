@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -23,9 +23,9 @@
 #define protected public
 #include "ability_start_with_wait_observer_stub.h"
 #undef protected
-#undef private
-#include "securec.h"
+
 #include "ability_record.h"
+#include "securec.h"
 
 using namespace OHOS::AAFwk;
 using namespace OHOS::AppExecFwk;
@@ -42,7 +42,6 @@ constexpr size_t OFFSET_ONE = 16;
 constexpr size_t OFFSET_TWO = 8;
 constexpr uint8_t ENABLE = 2;
 }
-const std::u16string AMSMGR_INTERFACE_TOKEN = u"ohos.ability.IAbilityStartWithWaitObserver";
 uint32_t GetU32Data(const char* ptr)
 {
     // convert fuzz input data to an integer
@@ -55,10 +54,10 @@ class AbilityStartWithWaitObserverStubFUZZ : public AbilityStartWithWaitObserver
         virtual ~ AbilityStartWithWaitObserverStubFUZZ() {};
         int32_t NotifyAATerminateWait(const AbilityStartWithWaitObserverData &abilityStartWithWaitData) override
         {
-            return 0; 
+            return 0;
         };
 };
-    
+
 sptr<Token> GetFuzzAbilityToken()
 {
     sptr<Token> token = nullptr;

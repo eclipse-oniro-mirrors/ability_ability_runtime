@@ -33,10 +33,21 @@ using namespace OHOS::AppExecFwk;
 namespace OHOS {
 bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
 {
-    KeepAliveAbilityInfo info;
     FuzzedDataProvider fdp(data, size);
+    KeepAliveAbilityInfo info;
     AbilityFuzzUtil::GetRandomKeepAliveAbilityInfo(fdp, info);
+    BundleInfo bundleInfo;
+    AbilityFuzzUtil::GetRandomBundleInfo(fdp, bundleInfo);
+    std::string bundleName = fdp.ConsumeRandomLengthString(64);
+    int32_t uid = fdp.ConsumeIntegral<int32_t>();
+    bool shouldCancel = fdp.ConsumeBool();
+    uint32_t accessTokenId = fdp.ConsumeIntegral<uint32_t>();
+    std::vector<BundleInfo> bundleInfos = {bundleInfo};
     KeepAliveProcessManager::GetInstance().StartKeepAliveMainAbility(info);
+    KeepAliveProcessManager::GetInstance().SaveAppServiceRestartAfterUpgrade(bundleName, uid);
+    KeepAliveProcessManager::GetInstance().RemoveCheckStatusBarTask(uid, shouldCancel);
+    KeepAliveProcessManager::GetInstance().AfterStartKeepAliveApp(bundleName, accessTokenId, uid);
+    KeepAliveProcessManager::GetInstance().FilterNeedRestartKeepAliveBundleInfos(bundleInfos);
     return true;
 }
 }

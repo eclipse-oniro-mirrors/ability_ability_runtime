@@ -24,7 +24,6 @@
 #include "insight_intent_rdb_storage_mgr.h"
 #include "insight_intent_db_cache.h"
 #undef private
-#include "ability_fuzz_util.h"
 
 using namespace OHOS::AAFwk;
 using namespace OHOS::AbilityRuntime;

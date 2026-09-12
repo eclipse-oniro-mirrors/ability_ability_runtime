@@ -53,6 +53,7 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     int32_t abilityType = static_cast<int32_t>(GetU32Data(data));
     int32_t extensionType = static_cast<int32_t>(GetU32Data(data));
     AppMgrEventUtil::UpdateStartupType(abilityInfo, abilityType, extensionType);
+    AppMgrEventUtil::SendProcessStartFailedEvent(callerAppRecord, appRecord, eventInfo);
     return true;
 }
 }

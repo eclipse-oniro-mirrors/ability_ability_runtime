@@ -168,6 +168,12 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     int32_t int32Param = static_cast<int32_t>(GetU32Data(data));
     BundleMgrHelperFuzztest1(boolParam, stringParam, int32Param);
     BundleMgrHelperFuzztest2(boolParam, stringParam, int32Param);
+    // Merged APIs
+    bmHelper->GetTestRunnerTypeAndPath(bundleName, moduleName, testRunner);
+    // Merged APIs
+    bmHelper->GetPluginInfoForTarget(hostBundleName, pluginBundleName,
+
+
     return true;
 }
 
@@ -192,11 +198,11 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     sptr<IBundleEventCallback> pluginEventCallback;
     std::vector<PluginBundleInfo> pluginBundleInfos;
     FuzzedDataProvider fdp(data, size);
-    bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
-    hostBundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
-    pluginBundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
-    moduleName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
-    pluginModuleName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
+    bundleName = fdp.ConsumeRandomLengthString(256);
+    hostBundleName = fdp.ConsumeRandomLengthString(256);
+    pluginBundleName = fdp.ConsumeRandomLengthString(128);
+    moduleName = fdp.ConsumeRandomLengthString(128);
+    pluginModuleName = fdp.ConsumeRandomLengthString(64);
     userId = fdp.ConsumeIntegral<int32_t>();
     flags = fdp.ConsumeIntegral<int32_t>();
     resId = fdp.ConsumeIntegral<int32_t>();

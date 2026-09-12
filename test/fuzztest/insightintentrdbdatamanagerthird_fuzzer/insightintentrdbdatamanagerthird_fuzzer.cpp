@@ -23,11 +23,8 @@
 #define private public
 #include "insight_intent_rdb_data_mgr.h"
 #undef private
-#include "ability_fuzz_util.h"
 
-using namespace OHOS::AAFwk;
 using namespace OHOS::AbilityRuntime;
-using namespace OHOS::AppExecFwk;
 
 namespace OHOS {
 namespace {
@@ -38,8 +35,8 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     FuzzedDataProvider fdp(data, size);
     auto rdbDataMgr = DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance();
 
-    std::string key = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
-    std::string value = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
+    std::string key = fdp.ConsumeRandomLengthString(256);
+    std::string value = fdp.ConsumeRandomLengthString(256);
 
     if (fdp.ConsumeBool()) {
         rdbDataMgr->InsertData(key, value);
@@ -75,9 +72,13 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     if (fdp.ConsumeBool()) {
         rdbDataMgr->BackupRdb();
     }
+    // Merged APIs
+    DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance()->IsRetryErrCode(errCode);
+
 
     return true;
 }
+} // namespace OHOS
 
 /* Fuzzer entry point */
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
@@ -86,4 +87,3 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     OHOS::DoSomethingInterestingWithMyAPI(data, size);
     return 0;
 }
-} // namespace OHOS

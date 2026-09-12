@@ -16,6 +16,7 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 config("intent_client_config") {
   visibility = [ ":*" ]
+  visibility += [ "${ability_runtime_test_path}/fuzztest/*" ]
   include_dirs = [
     "include",
     "${ability_runtime_innerkits_path}/ability_manager/include",

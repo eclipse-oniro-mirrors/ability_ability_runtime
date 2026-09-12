@@ -26,7 +26,6 @@
 #undef protected
 #undef private
 
-#include "ability_fuzz_util.h"
 #include "ability_record.h"
 #include "continuous_task_callback_info.h"
 #include "connection_observer.h"
@@ -119,6 +118,11 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
         }
         deathRecipient->OnRemoteDied(remote);
     }
+    // Merged APIs
+    AbilityFuzzUtil::GetRandomDlpConnectionInfo(fdp, info);
+    connectionObserverClientImpl->GetDlpConnectionInfos(infos);
+    connectionObserverClientImpl->GetConnectionData(connectionData);
+
 
     return true;
 }

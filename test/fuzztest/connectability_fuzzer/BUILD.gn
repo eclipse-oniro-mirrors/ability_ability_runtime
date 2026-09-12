@@ -41,7 +41,7 @@ ohos_fuzztest("ConnectAbilityFuzzTest") {
   public_configs = [
     "${ability_runtime_native_path}/ability/native:ability_public_config",
     "${ability_runtime_native_path}/ability:ability_context_public_config",
-    "${ability_runtime_innerkits_path}/wantagent:wantagent_innerkits_public_config",
+    "${ability_runtime_innerkits_path}/wantagent:wantagent_innerkits_public_config"
   ]
 
   deps = [

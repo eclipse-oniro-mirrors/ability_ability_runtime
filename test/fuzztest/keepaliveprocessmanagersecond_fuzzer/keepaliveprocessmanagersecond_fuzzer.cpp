@@ -36,12 +36,29 @@ using namespace OHOS::AppExecFwk;
 namespace OHOS {
 bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
 {
-    BundleInfo info;
-    int32_t userId;
     FuzzedDataProvider fdp(data, size);
+    BundleInfo info;
     AbilityFuzzUtil::GetRandomBundleInfo(fdp, info);
-    userId = fdp.ConsumeIntegral<int32_t>();
+    int32_t userId = fdp.ConsumeIntegral<int32_t>();
+    int32_t appType = fdp.ConsumeIntegral<int32_t>();
+    bool isByEDM = fdp.ConsumeBool();
+    std::string bundleName = fdp.ConsumeRandomLengthString(64);
+    int32_t uid = fdp.ConsumeIntegral<int32_t>();
+    KeepAliveInfo keepAliveInfo;
+    AbilityFuzzUtil::GetRandomKeepAliveInfo(fdp, keepAliveInfo);
+    AppInfo appInfo;
+    AbilityFuzzUtil::GetRandomKeepAliveAppInfo(fdp, appInfo);
+    std::vector<KeepAliveInfo> infoList = {keepAliveInfo};
+    std::vector<BundleInfo> bundleInfos = {info};
     KeepAliveProcessManager::GetInstance().StartKeepAliveProcessWithMainElementPerBundle(info, userId);
+    KeepAliveProcessManager::GetInstance().OnAppStateChanged(info);
+    KeepAliveProcessManager::GetInstance().QueryKeepAliveApplications(appType, userId, infoList, isByEDM);
+    KeepAliveProcessManager::GetInstance().IsKeepAliveBundle(bundleName, userId);
+    KeepAliveProcessManager::GetInstance().IsRunningAppInStatusBar(info);
+    KeepAliveProcessManager::GetInstance().GetKeepAliveBundleInfosForUser(bundleInfos, userId);
+    KeepAliveProcessManager::GetInstance().QueryKeepAliveAppServiceExtensions(infoList, isByEDM);
+    KeepAliveProcessManager::GetInstance().CheckNeedRestartAfterUpgrade(uid);
+    KeepAliveProcessManager::GetInstance().AddNeedRestartKeepAliveUid(uid);
     return true;
 }
 }

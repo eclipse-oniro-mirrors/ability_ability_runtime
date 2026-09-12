@@ -32,10 +32,17 @@ using namespace OHOS::AppExecFwk;
 namespace OHOS {
 bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
 {
-    (void)data;
+    
     FaultData faultData;
     OHOS::AppExecFwk::AppfreezeManager::AppInfo appInfo;
     AppfreezeManager::ParamInfo info;
+    FuzzedDataProvider fdp(data, size);
+    appInfo.pid = fdp.ConsumeIntegral<int32_t>();
+    appInfo.uid = fdp.ConsumeIntegral<int32_t>();
+    appInfo.bundleName = fdp.ConsumeRandomLengthString(256);
+    appInfo.processName = fdp.ConsumeRandomLengthString(256);
+    info.timeout = fdp.ConsumeIntegral<int64_t>();
+    info.isKeepAlive = fdp.ConsumeBool();
     auto freeze = AppfreezeManager::GetInstance();
     if (!freeze) {
         return false;
@@ -44,6 +51,7 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     freeze->AppfreezeHandleWithStack(faultData, appInfo);
     freeze->LifecycleTimeoutHandle(info);
     freeze->InitWarningCpuInfo(faultData, appInfo);
+
     return true;
 }
 }

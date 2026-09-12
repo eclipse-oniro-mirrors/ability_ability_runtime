@@ -41,6 +41,7 @@ ohos_fuzztest("AssertFaultProxyFuzzTest") {
     "${ability_runtime_services_path}/common/src/queue_task_handler_wrap.cpp",
     "${ability_runtime_services_path}/common/src/task_handler_wrap.cpp",
     "assertfaultproxy_fuzzer.cpp",
+      "${ability_runtime_services_path}/abilitymgr/src/ability_connect_callback_stub.cpp",
   ]
 
   configs = [ "${ability_runtime_innerkits_path}/ability_manager:ability_manager_public_config" ]

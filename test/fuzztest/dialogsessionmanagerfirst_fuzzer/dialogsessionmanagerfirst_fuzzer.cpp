@@ -55,7 +55,7 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t *data, size_t size)
     FuzzedDataProvider fdp(data, size);
     bool isSCBCall = fdp.ConsumeBool();
     int32_t userId = fdp.ConsumeIntegral<int32_t>();
-    dialogSessionId = fdp.ConsumeRandomLengthString();
+    dialogSessionId = fdp.ConsumeRandomLengthString(256);
     bool needGrantUriPermission = fdp.ConsumeBool();
     type = static_cast<SelectorType>(fdp.ConsumeIntegralInRange<int32_t>(0, CODE_TWO));
     AbilityFuzzUtil::GetRandomAbilityRequestInfo(fdp, info);
@@ -66,6 +66,12 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t *data, size_t size)
     dialogSessionManager->SetQueryERMSInfo(dialogSessionId, info);
     dialogSessionManager->UpdateExtensionWantWithDialogCallerInfo(info, callerToken, isSCBCall);
     dialogSessionManager->OnlySetDialogCallerInfo(info, userId, type, dialogSessionId, needGrantUriPermission);
+    // Merged APIs
+    dialogSessionManager->SetDialogSessionInfo(dialogSessionId, dilogSessionInfo, dialogCallerInfo);
+    dialogSessionManager->NotifyAbilityRequestFailure(dialogSessionId, want);
+    dialogSessionManager->SendDialogResult(want, dialogSessionId, isAllowed);
+    dialogSessionManager->GenerateJumpTargetAbilityInfos(info, targetAbilityInfos);
+
     return true;
 }
 } // namespace OHOS

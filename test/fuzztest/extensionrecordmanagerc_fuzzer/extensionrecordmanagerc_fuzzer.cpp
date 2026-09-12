@@ -23,18 +23,22 @@
 #include <list>
 #include <string>
 
-#include "base_extension_record.h"
-#include "extension_record_factory.h"
-#include "ui_extension_record.h"
+#include "nlohmann/json.hpp"
 #define private public
+#define protected public
 #define inline
-#include "extension_record.h"
 #include "extension_record_manager.h"
-#define inline
+#undef inline
+#undef protected
 #undef private
+
 #include "ability_fuzz_util.h"
-#include "ipc_skeleton.h"
 #include "ability_record.h"
+#include "base_extension_record.h"
+#include "extension_record.h"
+#include "extension_record_factory.h"
+#include "ipc_skeleton.h"
+#include "ui_extension_record.h"
 
 using namespace OHOS::AAFwk;
 using namespace OHOS::AbilityRuntime;

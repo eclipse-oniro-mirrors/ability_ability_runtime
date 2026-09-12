@@ -23,7 +23,6 @@
 #include "exit_info_data_manager.h"
 #undef private
 
-#include "ability_fuzz_util.h"
 #include "ability_record.h"
 #include "securec.h"
 
@@ -41,10 +40,13 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     FuzzedDataProvider fdp(data, size);
     auto accessTokenId = fdp.ConsumeIntegral<uint32_t>();
     ExitCacheInfo cacheInfo = {};
-    cacheInfo.bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
-    cacheInfo.abilityNames.emplace_back(fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH));
-    cacheInfo.uiExtensionNames.emplace_back(fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH));
+    cacheInfo.bundleName = fdp.ConsumeRandomLengthString(256);
+    cacheInfo.abilityNames.emplace_back(fdp.ConsumeRandomLengthString(256));
+    cacheInfo.uiExtensionNames.emplace_back(fdp.ConsumeRandomLengthString(256));
     ExitInfoDataManager::GetInstance().GetExitInfo(accessTokenId, cacheInfo);
+    // Merged APIs
+    ExitInfoDataManager::GetInstance().DeleteExitInfo(accessTokenId);
+
     return true;
 }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -44,7 +44,7 @@ sptr<Token> GetFuzzAbilityToken(FuzzedDataProvider *fdp)
 
 bool DoSomethingInterestingWithMyAPI(FuzzedDataProvider *fdp)
 {
-    AppMgrClient* appMgrClient = new AppMgrClient();
+    std::shared_ptr<AppMgrClient> appMgrClient = std::make_shared<AppMgrClient>();
     if (!appMgrClient) {
         return false;
     }
@@ -59,11 +59,6 @@ bool DoSomethingInterestingWithMyAPI(FuzzedDataProvider *fdp)
     if (appMgrClient->UpdateAbilityState(token, state) != AppMgrResultCode::RESULT_OK) {
         return false;
     }
-    if (appMgrClient) {
-        delete appMgrClient;
-        appMgrClient = nullptr;
-    }
-
     return true;
 }
 }

@@ -48,11 +48,26 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     FuzzedDataProvider fdp(data, size);
     appInfo.pid = fdp.ConsumeIntegralInRange<int32_t>(0, U32_AT_SIZE);
     appInfo.uid = fdp.ConsumeIntegralInRange<int32_t>(0, U32_AT_SIZE);
-    appInfo.bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
-    appInfo.processName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
-    binderInfo = fdp.ConsumeRandomLengthString();
-    memoryContent = fdp.ConsumeRandomLengthString();
+    appInfo.bundleName = fdp.ConsumeRandomLengthString(256);
+    appInfo.processName = fdp.ConsumeRandomLengthString(256);
+    binderInfo = fdp.ConsumeRandomLengthString(64);
+    memoryContent = fdp.ConsumeRandomLengthString(64);
+    int32_t pid2 = fdp.ConsumeIntegral<int32_t>();
+    std::string bundleName2 = fdp.ConsumeRandomLengthString(128);
+    std::string processName2 = fdp.ConsumeRandomLengthString(64);
+    std::string key2 = fdp.ConsumeRandomLengthString(64);
+    std::string errorName2 = fdp.ConsumeRandomLengthString(64);
     freeze->NotifyANR(faultData, appInfo, binderInfo, memoryContent);
+    freeze->FindStackByPid(ret, pid);
+    freeze->CatcherStacktrace(pid);
+    freeze->CatchJsonStacktrace(pid, faultType);
+    freeze->ResetAppfreezeState(pid2, bundleName2);
+    freeze->IsProcessDebug(pid2, processName2);
+    freeze->IsHandleAppfreeze(bundleName2);
+    freeze->IsValidFreezeFilter(pid2, bundleName2);
+    freeze->CancelAppFreezeDetect(pid2, bundleName2);
+    freeze->IsNeedIgnoreFreezeEvent(key2, errorName2);
+
     return true;
 }
 }
