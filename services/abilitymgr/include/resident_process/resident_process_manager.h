@@ -68,6 +68,16 @@ public:
     int32_t SetResidentProcessEnabled(const std::string &bundleName, const std::string &callerName, bool updateEnable);
 
     /**
+     * Set the enable flag for resident processes by sa caller.
+     *
+     * @param bundleName, The bundle name of the resident process.
+     * @param callerUid, The uid of the sa caller, which must be in the sa uid list of the bundle.
+     * @param updateEnable, Set value, if true, start the resident process, If false, stop the resident process
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t SetResidentProcessEnabledForSA(const std::string &bundleName, int32_t callerUid, bool updateEnable);
+
+    /**
      * start empty resident processes.
      *
      * @param bundleInfos bundles of resident processes.
@@ -96,6 +106,7 @@ public:
     bool GetResidentBundleInfosForUser(std::vector<AppExecFwk::BundleInfo> &bundleInfos, int32_t userId);
     void StartFailedResidentAbilities();
 private:
+    int32_t SetResidentProcessEnabledInner(const std::string &bundleName, bool updateEnable);
     void UpdateResidentProcessesStatus(const std::string &bundleName, bool localEnable, bool updateEnable);
     void AddFailedResidentAbility(const std::string &bundleName, const std::string &abilityName, int32_t userId);
     void StartResidentProcessWithMainElementPerBundle(const AppExecFwk::BundleInfo &bundleInfo,

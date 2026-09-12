@@ -154,7 +154,32 @@ public:
      * @return An integer indicating the result of the operation (e.g., success or error code).
      */
     int32_t GetResidentProcessRawData(const std::string &bundleName, const std::string &callerName);
+
+    /**
+     * @brief Verifies the sa configuration permissions for the specified bundle.
+     * @param bundleName The name of the bundle to verify.
+     * @param callerUid The uid of the sa caller making the verification request.
+     * @return Returns 0 on success, non-zero on failure.
+     */
+    int32_t VerifySaConfigurationPermissions(const std::string &bundleName, int32_t callerUid);
+
+    /**
+     * @brief Retrieves raw data of sa configuration permissions for a resident process.
+     *
+     * @param bundleName The name of the bundle associated with the resident process.
+     * @param callerUid The uid of the sa caller requesting the resident process data.
+     * @return An integer indicating the result of the operation (e.g., success or error code).
+     */
+    int32_t GetSaResidentProcessRawData(const std::string &bundleName, int32_t callerUid);
 private:
+    /*
+     * Verify callerUid against the sa uid list which is stored as a JSON array text.
+     * Elements are compared exactly one by one; substring match is forbidden
+     * ("305" must not match "3057"). A legacy db without the column reports a read
+     * failure and is treated as an empty list (deny).
+     */
+    bool VerifyUidInJsonArray(const std::string &jsonArrayText, int32_t callerUid);
+
     // Pointer to the RDB data manager, responsible for managing RDB operations.
     std::unique_ptr<RdbDataManager> rdbMgr_ = nullptr;
 };

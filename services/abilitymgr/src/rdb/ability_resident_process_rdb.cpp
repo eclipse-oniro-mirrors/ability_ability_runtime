@@ -27,10 +27,13 @@ const std::string ABILITY_RDB_TABLE_NAME = "resident_process_list";
 const std::string KEY_BUNDLE_NAME = "KEY_BUNDLE_NAME";
 const std::string KEY_KEEP_ALIVE_ENABLE = "KEEP_ALIVE_ENABLE";
 const std::string KEY_KEEP_ALIVE_CONFIGURED_LIST = "KEEP_ALIVE_CONFIGURED_LIST";
+const std::string KEY_KEEP_ALIVE_SA_UID_LIST = "KEEP_ALIVE_SA_UID_LIST";
 
 const int32_t INDEX_BUNDLE_NAME = 0;
 const int32_t INDEX_KEEP_ALIVE_ENABLE = 1;
 const int32_t INDEX_KEEP_ALIVE_CONFIGURED_LIST = 2;
+const int32_t INDEX_KEEP_ALIVE_SA_UID_LIST = 3;
+const int32_t VERSION_SA_UID_LIST = 2;
 } // namespace
 
 AmsResidentProcessRdbCallBack::AmsResidentProcessRdbCallBack(const AmsRdbConfig &rdbConfig) : rdbConfig_(rdbConfig) {}
@@ -41,7 +44,8 @@ int32_t AmsResidentProcessRdbCallBack::OnCreate(NativeRdb::RdbStore &rdbStore)
 
     std::string createTableSql = "CREATE TABLE IF NOT EXISTS " + rdbConfig_.tableName +
                                  " (KEY_BUNDLE_NAME TEXT NOT NULL PRIMARY KEY," +
-                                 "KEEP_ALIVE_ENABLE TEXT NOT NULL, KEEP_ALIVE_CONFIGURED_LIST TEXT NOT NULL);";
+                                 "KEEP_ALIVE_ENABLE TEXT NOT NULL, KEEP_ALIVE_CONFIGURED_LIST TEXT NOT NULL," +
+                                 "KEEP_ALIVE_SA_UID_LIST TEXT NOT NULL);";
     auto sqlResult = rdbStore.ExecuteSql(createTableSql);
     if (sqlResult != NativeRdb::E_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "execute sql error");
@@ -49,7 +53,7 @@ int32_t AmsResidentProcessRdbCallBack::OnCreate(NativeRdb::RdbStore &rdbStore)
     }
 
     auto &parser = ParserUtil::GetInstance();
-    std::vector<std::tuple<std::string, std::string, std::string>> initList;
+    std::vector<std::tuple<std::string, std::string, std::string, std::string>> initList;
     parser.GetResidentProcessRawData(initList);
 
     std::vector<NativeRdb::ValuesBucket> valuesBuckets;
@@ -58,6 +62,7 @@ int32_t AmsResidentProcessRdbCallBack::OnCreate(NativeRdb::RdbStore &rdbStore)
         valuesBucket.PutString(KEY_BUNDLE_NAME, std::get<INDEX_BUNDLE_NAME>(item));
         valuesBucket.PutString(KEY_KEEP_ALIVE_ENABLE, std::get<INDEX_KEEP_ALIVE_ENABLE>(item));
         valuesBucket.PutString(KEY_KEEP_ALIVE_CONFIGURED_LIST, std::get<INDEX_KEEP_ALIVE_CONFIGURED_LIST>(item));
+        valuesBucket.PutString(KEY_KEEP_ALIVE_SA_UID_LIST, std::get<INDEX_KEEP_ALIVE_SA_UID_LIST>(item));
 
         valuesBuckets.emplace_back(valuesBucket);
     }
@@ -74,14 +79,38 @@ int32_t AmsResidentProcessRdbCallBack::OnCreate(NativeRdb::RdbStore &rdbStore)
 
 int32_t AmsResidentProcessRdbCallBack::OnUpgrade(NativeRdb::RdbStore &rdbStore, int currentVersion, int targetVersion)
 {
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "onUpgrade current:%{plubic}d, target:%{plubic}d", currentVersion,
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "onUpgrade current:%{public}d, target:%{public}d", currentVersion,
         targetVersion);
+    if (currentVersion >= VERSION_SA_UID_LIST || targetVersion < VERSION_SA_UID_LIST) {
+        return NativeRdb::E_OK;
+    }
+    auto resultSet = rdbStore.QuerySql("PRAGMA table_info(" + rdbConfig_.tableName + ")");
+    if (resultSet != nullptr) {
+        ScopeGuard stateGuard([resultSet] { resultSet->Close(); });
+        int columnIndex = -1;
+        resultSet->GetColumnIndex("name", columnIndex);
+        std::string columnName;
+        while (resultSet->GoToNextRow() == NativeRdb::E_OK &&
+            resultSet->GetString(columnIndex, columnName) == NativeRdb::E_OK) {
+            if (columnName == KEY_KEEP_ALIVE_SA_UID_LIST) {
+                TAG_LOGI(AAFwkTag::ABILITYMGR, "sa uid list column already exists");
+                return NativeRdb::E_OK;
+            }
+        }
+    }
+    std::string alterSql = "ALTER TABLE " + rdbConfig_.tableName + " ADD COLUMN " + KEY_KEEP_ALIVE_SA_UID_LIST +
+        " TEXT NOT NULL DEFAULT ''";
+    auto result = rdbStore.ExecuteSql(alterSql);
+    if (result != NativeRdb::E_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "add sa uid list column error[%{public}d]", result);
+        return result;
+    }
     return NativeRdb::E_OK;
 }
 
 int32_t AmsResidentProcessRdbCallBack::OnDowngrade(NativeRdb::RdbStore &rdbStore, int currentVersion, int targetVersion)
 {
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "onDowngrade current:%{plubic}d, target:%{plubic}d", currentVersion,
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "onDowngrade current:%{public}d, target:%{public}d", currentVersion,
         targetVersion);
     return NativeRdb::E_OK;
 }
@@ -260,7 +289,7 @@ int32_t AmsResidentProcessRdb::RemoveData(const std::string &bundleName)
 
 int32_t AmsResidentProcessRdb::GetResidentProcessRawData(const std::string &bundleName, const std::string &callerName)
 {
-    std::vector<std::tuple<std::string, std::string, std::string>> initList;
+    std::vector<std::tuple<std::string, std::string, std::string, std::string>> initList;
     ParserUtil::GetInstance().GetResidentProcessRawData(initList);
 
     if (initList.empty() || bundleName.empty() || callerName.empty()) {
@@ -278,12 +307,105 @@ int32_t AmsResidentProcessRdb::GetResidentProcessRawData(const std::string &bund
             // we need to update the database
             NativeRdb::ValuesBucket valuesBucket;
             valuesBucket.PutString(KEY_KEEP_ALIVE_CONFIGURED_LIST, configList);
+            valuesBucket.PutString(KEY_KEEP_ALIVE_SA_UID_LIST, std::get<INDEX_KEEP_ALIVE_SA_UID_LIST>(item));
             NativeRdb::AbsRdbPredicates absRdbPredicates(ABILITY_RDB_TABLE_NAME);
             absRdbPredicates.EqualTo(KEY_BUNDLE_NAME, bundleName);
             if (rdbMgr_ != nullptr) {
                 rdbMgr_->UpdateData(valuesBucket, absRdbPredicates);
             }
             if (configList.find(callerName) != std::string::npos) {
+                return Rdb_OK;
+            }
+        }
+    }
+
+    return Rdb_Parameter_Err;
+}
+
+bool AmsResidentProcessRdb::VerifyUidInJsonArray(const std::string &jsonArrayText, int32_t callerUid)
+{
+    if (jsonArrayText.empty()) {
+        return false;
+    }
+    auto jsonList = nlohmann::json::parse(jsonArrayText, nullptr, false);
+    if (jsonList.is_discarded() || !jsonList.is_array()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "parse sa uid list fail");
+        return false;
+    }
+    for (const auto &item : jsonList) {
+        if (item.is_number_integer() && item.get<int64_t>() == static_cast<int64_t>(callerUid)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+int32_t AmsResidentProcessRdb::VerifySaConfigurationPermissions(const std::string &bundleName, int32_t callerUid)
+{
+    if (bundleName.empty() || callerUid < 0) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "null bundle name or invalid uid");
+        return Rdb_Parameter_Err;
+    }
+
+    if (rdbMgr_ == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "rdb mgr error");
+        return Rdb_Parameter_Err;
+    }
+
+    NativeRdb::AbsRdbPredicates absRdbPredicates(ABILITY_RDB_TABLE_NAME);
+    absRdbPredicates.EqualTo(KEY_BUNDLE_NAME, bundleName);
+    auto absSharedResultSet = rdbMgr_->QueryData(absRdbPredicates);
+    if (absSharedResultSet == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "null absSharedResultSet");
+        return Rdb_Permissions_Err;
+    }
+
+    ScopeGuard stateGuard([absSharedResultSet] { absSharedResultSet->Close(); });
+    auto ret = absSharedResultSet->GoToFirstRow();
+    if (ret != NativeRdb::E_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "fail, ret:%{public}d", ret);
+        return Rdb_Search_Record_Err;
+    }
+
+    std::string saUidList;
+    ret = absSharedResultSet->GetString(INDEX_KEEP_ALIVE_SA_UID_LIST, saUidList);
+    if (ret != NativeRdb::E_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "fail, ret: %{public}d", ret);
+        return Rdb_Search_Record_Err;
+    }
+
+    if (VerifyUidInJsonArray(saUidList, callerUid)) {
+        return Rdb_OK;
+    }
+
+    return Rdb_Permissions_Err;
+}
+
+int32_t AmsResidentProcessRdb::GetSaResidentProcessRawData(const std::string &bundleName, int32_t callerUid)
+{
+    std::vector<std::tuple<std::string, std::string, std::string, std::string>> initList;
+    ParserUtil::GetInstance().GetResidentProcessRawData(initList);
+
+    if (initList.empty() || bundleName.empty() || callerUid < 0) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "initList size : %{public}d bundleName : %{public}s uid : %{public}d",
+            static_cast<int>(initList.size()), bundleName.c_str(), callerUid);
+        return Rdb_Parameter_Err;
+    }
+
+    for (auto const &item : initList) {
+        if (std::get<INDEX_BUNDLE_NAME>(item) == bundleName) {
+            std::string saUidList = std::get<INDEX_KEEP_ALIVE_SA_UID_LIST>(item);
+            TAG_LOGD(AAFwkTag::ABILITYMGR, "match bundle : %{public}s  sa uid list : %{public}s", bundleName.c_str(),
+                saUidList.c_str());
+            NativeRdb::ValuesBucket valuesBucket;
+            valuesBucket.PutString(KEY_KEEP_ALIVE_CONFIGURED_LIST, std::get<INDEX_KEEP_ALIVE_CONFIGURED_LIST>(item));
+            valuesBucket.PutString(KEY_KEEP_ALIVE_SA_UID_LIST, saUidList);
+            NativeRdb::AbsRdbPredicates absRdbPredicates(ABILITY_RDB_TABLE_NAME);
+            absRdbPredicates.EqualTo(KEY_BUNDLE_NAME, bundleName);
+            if (rdbMgr_ != nullptr) {
+                rdbMgr_->UpdateData(valuesBucket, absRdbPredicates);
+            }
+            if (VerifyUidInJsonArray(saUidList, callerUid)) {
                 return Rdb_OK;
             }
         }

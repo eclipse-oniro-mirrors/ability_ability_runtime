@@ -166,8 +166,35 @@ int32_t ResidentProcessManager::SetResidentProcessEnabled(
         return ERR_NO_RESIDENT_PERMISSION;
     }
 
+    return SetResidentProcessEnabledInner(bundleName, updateEnable);
+}
+
+int32_t ResidentProcessManager::SetResidentProcessEnabledForSA(
+    const std::string &bundleName, int32_t callerUid, bool updateEnable)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "SetResidentProcessEnabledForSA,bundle:%{public}s,uid:%{public}d,enable:%{public}d",
+        bundleName.c_str(), callerUid, updateEnable);
+    if (bundleName.empty() || callerUid < 0) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "input parameter error");
+        return INVALID_PARAMETERS_ERR;
+    }
+    auto &rdb = AmsResidentProcessRdb::GetInstance();
+    auto rdbResult = rdb.VerifySaConfigurationPermissions(bundleName, callerUid);
+    auto configResult = rdb.GetSaResidentProcessRawData(bundleName, callerUid);
+    if (rdbResult != Rdb_OK && configResult != Rdb_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "obtain sa permissions failed. result: %{public}d, configResult: %{public}d",
+            rdbResult, configResult);
+        return ERR_NO_RESIDENT_PERMISSION;
+    }
+
+    return SetResidentProcessEnabledInner(bundleName, updateEnable);
+}
+
+int32_t ResidentProcessManager::SetResidentProcessEnabledInner(const std::string &bundleName, bool updateEnable)
+{
+    auto &rdb = AmsResidentProcessRdb::GetInstance();
     bool localEnable = false;
-    rdbResult = rdb.GetResidentProcessEnable(bundleName, localEnable);
+    auto rdbResult = rdb.GetResidentProcessEnable(bundleName, localEnable);
     if (rdbResult != Rdb_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "GetResidentProcess failed:%{public}d", rdbResult);
         return INNER_ERR;
