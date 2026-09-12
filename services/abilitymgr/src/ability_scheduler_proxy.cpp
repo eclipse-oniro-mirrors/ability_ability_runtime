@@ -1159,7 +1159,10 @@ void AbilitySchedulerProxy::ExecuteSkill(const Want &want)
     if (!WriteInterfaceToken(data)) {
         return;
     }
-    data.WriteParcelable(&want);
+    if (!data.WriteParcelable(&want)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "Write wants fail");
+        return;
+    }
     int32_t err = SendTransactCmd(IAbilityScheduler::SCHEDULE_EXECUTE_SKILL, data, reply, option);
     if (err != NO_ERROR) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "fail, err: %{public}d", err);
