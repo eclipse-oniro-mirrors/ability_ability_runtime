@@ -16,6 +16,8 @@
 #include <gtest/gtest.h>
 #define private public
 #include "ability.h"
+#include "event_runner.h"
+#include "main_thread.h"
 #include "ability_local_record.h"
 #include "ability_record_mgr.h"
 #include "application_context.h"
@@ -2644,5 +2646,46 @@ HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_AddAbilityStage_Pre
 
     GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_PreloadScenario_0100 end.";
 }
+
+/*
+* @tc.number: ChangeAppGcState_0100
+* @tc.name: ChangeAppGcState with runtime null, return ERR_INVALID_VALUE
+* @tc.desc: FUNC
+*/
+HWTEST_F(OHOSApplicationTest, ChangeAppGcState_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ChangeAppGcState_0100 start.";
+    auto runner = EventRunner::GetMainEventRunner();
+    ASSERT_NE(runner, nullptr);
+    sptr<MainThread> mainThread = sptr<MainThread>(new MainThread());
+    ASSERT_NE(mainThread, nullptr);
+    mainThread->Init(runner);
+    mainThread->application_ = std::make_shared<OHOSApplication>();
+    auto ret = mainThread->ChangeAppGcState(0);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    GTEST_LOG_(INFO) << "ChangeAppGcState_0100 end.";
+}
+
+/*
+* @tc.number: ChangeAppGcState_0200
+* @tc.name: ChangeAppGcState with runtime null, return ERR_INVALID_VALUE
+* @tc.desc: FUNC
+*/
+HWTEST_F(OHOSApplicationTest, ChangeAppGcState_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ChangeAppGcState_0200 start.";
+    constexpr int32_t APP_UNVISIBLE_STATE = 4;
+    auto runner = EventRunner::GetMainEventRunner();
+    ASSERT_NE(runner, nullptr);
+    sptr<MainThread> mainThread = sptr<MainThread>(new MainThread());
+    ASSERT_NE(mainThread, nullptr);
+    mainThread->Init(runner);
+    mainThread->application_ = std::make_shared<OHOSApplication>();
+    mainThread->application_->SetRuntime(std::make_unique<AbilityRuntime::MockRuntime>());
+    auto ret = mainThread->ChangeAppGcState(APP_UNVISIBLE_STATE);
+    EXPECT_EQ(ret, NO_ERROR);
+    GTEST_LOG_(INFO) << "ChangeAppGcState_0200 end.";
+}
+
 }  // namespace AppExecFwk
 }  // namespace OHOS

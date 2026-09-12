@@ -155,6 +155,7 @@ constexpr int32_t DISTRIBUTE_TIME = 100;
 constexpr int32_t START_HIGH_SENSITIVE = 1;
 constexpr int32_t EXIT_HIGH_SENSITIVE = 2;
 constexpr int32_t UNSPECIFIED_USERID = -2;
+constexpr int32_t APP_UNVISIBLE_STATE = 4;
 constexpr int32_t JS_ERROR_EXIT = -2;
 constexpr int32_t TIME_OUT = 120;
 constexpr int32_t DEFAULT_SLEEP_TIME = 100000;
@@ -4195,6 +4196,11 @@ int32_t MainThread::ChangeAppGcState(int32_t state, uint64_t tid)
         return ERR_INVALID_VALUE;
     }
     if (runtime->GetLanguage() == AbilityRuntime::Runtime::Language::CJ) {
+        return NO_ERROR;
+    }
+    if (state == APP_UNVISIBLE_STATE) {
+        TAG_LOGI(AAFwkTag::APPKIT, "notify application unvisible state for GC");
+        runtime->NotifyApplicationState(true);
         return NO_ERROR;
     }
 
