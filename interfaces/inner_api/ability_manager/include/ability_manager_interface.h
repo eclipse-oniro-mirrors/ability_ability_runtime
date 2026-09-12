@@ -40,6 +40,7 @@
 #include "iability_manager_collaborator.h"
 #include "iacquire_share_data_callback_interface.h"
 #include "insight_intent/insight_intent_execute_param.h"
+#include "insight_intent/insight_intent_execute_lite_param.h"
 #include "insight_intent/insight_intent_execute_result.h"
 #include "skill/skill_execute_param.h"
 #include "skill/skill_execute_result.h"
@@ -96,6 +97,7 @@ struct MissionSnapshot;
 using KeepAliveInfo = AbilityRuntime::KeepAliveInfo;
 using AutoStartupInfo = AbilityRuntime::AutoStartupInfo;
 using InsightIntentExecuteParam = AppExecFwk::InsightIntentExecuteParam;
+using InsightIntentExecuteLiteParam = AppExecFwk::InsightIntentExecuteLiteParam;
 using InsightIntentExecuteResult = AppExecFwk::InsightIntentExecuteResult;
 using InsightIntentQueryParam = AppExecFwk::InsightIntentQueryParam;
 using SkillExecuteParam = AppExecFwk::SkillExecuteParam;
@@ -2049,6 +2051,21 @@ public:
         const std::string &bundleName, const std::string &intentName, const WantParams &wantParam)
     {
         return 0;
+    }
+
+    /**
+     * @brief Execute UIAbility foreground intent with specified token id.
+     * @param want The info of the target ability and custom parameters.
+     * @param callerAbilityToken The caller ability token.
+     * @param param The lightweight intent execute param.
+     * @param specifiedFullTokenId The specified access token id for permission checking.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t ExecuteUIAbilityForegroundIntentWithSpecifyTokenId(const Want &want,
+        const sptr<IRemoteObject> &callerAbilityToken, const InsightIntentExecuteLiteParam &param,
+        uint64_t specifiedFullTokenId)
+    {
+        return ERR_OK;
     }
 
     /**

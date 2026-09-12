@@ -61,6 +61,7 @@
 #include "extension_running_timeout_monitor.h"
 #include "background_user_extension_monitor.h"
 #include "insight_intent_execute_manager.h"
+#include "insight_intent_execute_lite_param.h"
 #include "insight_intent_db_cache.h"
 #include "skill/skill_execute_manager.h"
 #include "insight_intent_utils.h"
@@ -15039,6 +15040,82 @@ int32_t AbilityManagerService::ExecuteIntentByFunctionCall(uint64_t key,
     return ExecuteIntentCommon(callerToken, param, callerBundleName, options);
 }
 
+int32_t AbilityManagerService::ExecuteUIAbilityForegroundIntentWithSpecifyTokenId(const Want &want,
+    const sptr<IRemoteObject> &callerAbilityToken, const InsightIntentExecuteLiteParam &param,
+    uint64_t specifiedFullTokenId)
+{
+    if (IPCSkeleton::GetCallingUid() != FOUNDATION_UID) {
+        TAG_LOGE(AAFwkTag::INTENT, "not foundation process, reject");
+        return CHECK_PERMISSION_FAILED;
+    }
+
+    TAG_LOGI(AAFwkTag::INTENT, "called, bundleName: %{public}s, intentName: %{public}s, "
+        "specifiedFullTokenId: %{public}" PRIu64 "", want.GetElement().GetBundleName().c_str(),
+        param.insightIntentName.c_str(), specifiedFullTokenId);
+
+    // caller is foundation (FMS), which has no bundle name; pass empty string.
+    std::string callerBundlename;
+
+    auto executeParam = BuildExecuteParamFromWant(want, param);
+    executeParam->executeMode_ = AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND;
+
+    AbilityRuntime::ExtractInsightIntentGenericInfo infos = GetInsightIntentGenericInfo(*executeParam);
+
+    Want localWant = want;
+    int32_t ret = PrepareAndGenerateForegroundIntent(executeParam, infos, callerBundlename,
+        param.key, param.insightIntentHostClient, false, specifiedFullTokenId, localWant);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::INTENT, "PrepareAndGenerateForegroundIntent failed: %{public}d", ret);
+        return ret;
+    }
+
+    ret = StartAbilityWithInsightIntent(
+        localWant, executeParam->userId_, DEFAULT_INVAL_VALUE, specifiedFullTokenId, callerAbilityToken);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::INTENT, "StartAbilityWithInsightIntent failed: %{public}d", ret);
+        DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->RemoveExecuteIntent(
+            executeParam->insightIntentId_);
+    }
+    return ret;
+}
+
+int32_t AbilityManagerService::PrepareAndGenerateForegroundIntent(
+    const std::shared_ptr<InsightIntentExecuteParam> &executeParam,
+    const AbilityRuntime::ExtractInsightIntentGenericInfo &infos, const std::string &callerBundlename,
+    uint64_t key, const sptr<IRemoteObject> &hostClient, bool ignoreAbilityName,
+    uint64_t specifiedFullTokenId, Want &localWant)
+{
+    int32_t ret = DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->CheckAndUpdateParam(
+        key, hostClient, executeParam, callerBundlename,
+        ignoreAbilityName, false, "", 0, specifiedFullTokenId);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::INTENT, "CheckAndUpdateParam failed: %{public}d", ret);
+        return ret;
+    }
+
+    ret = InsightIntentExecuteManager::GenerateWant(executeParam, infos, localWant);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::INTENT, "GenerateWant failed: %{public}d", ret);
+        DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->RemoveExecuteIntent(
+            executeParam->insightIntentId_);
+        return ret;
+    }
+    return ERR_OK;
+}
+
+std::shared_ptr<InsightIntentExecuteParam> AbilityManagerService::BuildExecuteParamFromWant(
+    const Want &want, const InsightIntentExecuteLiteParam &param)
+{
+    auto executeParam = std::make_shared<InsightIntentExecuteParam>();
+    executeParam->bundleName_ = want.GetElement().GetBundleName();
+    executeParam->moduleName_ = want.GetElement().GetModuleName();
+    executeParam->abilityName_ = want.GetElement().GetAbilityName();
+    executeParam->insightIntentName_ = param.insightIntentName;
+    executeParam->insightIntentParam_ = std::make_shared<WantParams>(param.insightIntentParam);
+    executeParam->deviceId_ = want.GetElement().GetDeviceID();
+    return executeParam;
+}
+
 int32_t AbilityManagerService::ExecuteIntentCommon(const sptr<IRemoteObject> &callerToken,
     const std::shared_ptr<InsightIntentExecuteParam> &param, const std::string &callerBundleName,
     const AbilityRuntime::ExecuteIntentCommonOptions &options)
@@ -15379,7 +15456,7 @@ int32_t AbilityManagerService::OnExecuteIntent(AbilityRequest &abilityRequest,
 }
 
 int32_t AbilityManagerService::StartAbilityWithInsightIntent(const Want &want, int32_t userId, int requestCode,
-    uint64_t specifiedFullTokenId)
+    uint64_t specifiedFullTokenId, const sptr<IRemoteObject> &callerToken)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     bool startWithAccount = want.GetBoolParam(START_ABILITY_TYPE, false);
@@ -15394,6 +15471,7 @@ int32_t AbilityManagerService::StartAbilityWithInsightIntent(const Want &want, i
     SendAbilityEvent(EventName::START_ABILITY, HISYSEVENT_BEHAVIOR, eventInfo);
     StartAbilityWrapParam startAbilityWrapParam = {
         .want = want,
+        .callerToken = callerToken,
         .requestCode = requestCode,
         .userId = userId,
         .specifiedFullTokenId = specifiedFullTokenId,

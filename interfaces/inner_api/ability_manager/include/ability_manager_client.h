@@ -2446,6 +2446,17 @@ public:
         uint64_t requestCode, uint64_t specifiedFullTokenId = 0);
 
     /**
+     * @brief Execute UIAbility foreground intent with specified token id.
+     * @param want The info of the target ability and custom parameters.
+     * @param callerAbilityToken The caller ability token.
+     * @param param The lightweight intent execute param.
+     * @param specifiedFullTokenId The specified access token id for permission checking.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode ExecuteUIAbilityForegroundIntentWithSpecifyTokenId(const Want &want, sptr<IRemoteObject> callerAbilityToken,
+        const InsightIntentExecuteLiteParam &param, uint64_t specifiedFullTokenId = 0);
+
+    /**
      * @brief Query entity info of a target app via insight intent (background
      * call to its entity provider). Cross-user requires account permission and
      * multi-user concurrency. Result is returned asynchronously via the intent

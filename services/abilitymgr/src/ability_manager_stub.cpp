@@ -23,6 +23,7 @@
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
 #include "insight_intent_execute_param.h"
+#include "insight_intent_execute_lite_param.h"
 #include "insight_intent_execute_manager.h"
 #include "permission_verification.h"
 #include "process_options.h"
@@ -422,6 +423,9 @@ int AbilityManagerStub::OnRemoteRequestInnerEighth(uint32_t code, MessageParcel 
     }
     if (interfaceCode == AbilityManagerInterfaceCode::EXECUTE_INTENT_BY_FUNCTION_CALL) {
         return ExecuteIntentByFunctionCallInner(data, reply);
+    }
+    if (interfaceCode == AbilityManagerInterfaceCode::EXECUTE_INTENT_WITH_SPECIFY_TOKEN_ID) {
+        return ExecuteUIAbilityForegroundIntentWithSpecifyTokenIdInner(data, reply);
     }
     if (interfaceCode == AbilityManagerInterfaceCode::UNREGISTER_SA_INTERCEPTOR) {
         return UnregisterSAInterceptorInner(data, reply);
@@ -4456,6 +4460,30 @@ int32_t AbilityManagerStub::ExecuteIntentByFunctionCallInner(MessageParcel &data
         return ERR_INVALID_VALUE;
     }
     auto result = ExecuteIntentByFunctionCall(key, callerToken, bundleName, intentName, *wantParam);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write result fail");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int32_t AbilityManagerStub::ExecuteUIAbilityForegroundIntentWithSpecifyTokenIdInner(
+    MessageParcel &data, MessageParcel &reply)
+{
+    std::unique_ptr<Want> want(data.ReadParcelable<Want>());
+    if (want == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "null want");
+        return ERR_INVALID_VALUE;
+    }
+    sptr<IRemoteObject> callerAbilityToken = data.ReadRemoteObject();
+    std::unique_ptr<InsightIntentExecuteLiteParam> param(data.ReadParcelable<InsightIntentExecuteLiteParam>());
+    if (param == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "param null");
+        return ERR_INVALID_VALUE;
+    }
+    uint64_t specifiedFullTokenId = data.ReadUint64();
+    auto result = ExecuteUIAbilityForegroundIntentWithSpecifyTokenId(
+        *want, callerAbilityToken, *param, specifiedFullTokenId);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write result fail");
         return ERR_INVALID_VALUE;
