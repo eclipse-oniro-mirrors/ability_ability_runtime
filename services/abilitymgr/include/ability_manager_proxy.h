@@ -1559,6 +1559,18 @@ public:
         const std::string &bundleName, const std::string &intentName, const WantParams &wantParam) override;
 
     /**
+     * @brief Execute intent with specified token id.
+     * @param want The want carrying the card params and intent execution info.
+     * @param callerAbilityToken The caller ability token.
+     * @param param The Intent execute param.
+     * @param specifiedFullTokenId The specified access token id for permission checking.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t ExecuteUIAbilityForegroundIntentWithSpecifyTokenId(const Want &want,
+        const sptr<IRemoteObject> &callerAbilityToken, const InsightIntentExecuteLiteParam &param,
+        uint64_t specifiedFullTokenId) override;
+
+    /**
      * @brief Query entity.
      * @param key The key of intent executing client.
      * @param callerToken Caller ability token.

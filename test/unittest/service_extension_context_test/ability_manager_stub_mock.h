@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -409,6 +409,9 @@ public:
     MOCK_METHOD2(DetachAppDebug, int32_t(const std::string &bundleName, bool isDebugFromLocal));
     MOCK_METHOD3(ExecuteIntent, int32_t(uint64_t key, const sptr<IRemoteObject> &callerToken,
         const InsightIntentExecuteParam &param));
+    MOCK_METHOD4(ExecuteUIAbilityForegroundIntentWithSpecifyTokenId,
+    int32_t(const Want &want, const sptr<IRemoteObject> &callerAbilityToken,
+        const InsightIntentExecuteLiteParam &param, uint64_t specifiedFullTokenId));
     MOCK_METHOD3(ExecuteInsightIntentDone, int32_t(const sptr<IRemoteObject> &token, uint64_t intentId,
         const InsightIntentExecuteResult &result));
     MOCK_METHOD5(StartAbilityWithSpecifyTokenId, int(const Want& want, const sptr<IRemoteObject>& callerToken,

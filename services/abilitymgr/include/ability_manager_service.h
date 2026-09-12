@@ -2199,7 +2199,8 @@ public:
     int32_t OnExecuteIntent(AbilityRequest &abilityRequest, std::shared_ptr<AbilityRecord> &targetRecord);
 
     int32_t StartAbilityWithInsightIntent(const Want &want, int32_t userId = DEFAULT_INVAL_VALUE,
-        int requestCode = DEFAULT_INVAL_VALUE, uint64_t specifiedFullTokenId = 0);
+        int requestCode = DEFAULT_INVAL_VALUE, uint64_t specifiedFullTokenId = 0,
+        const sptr<IRemoteObject> &callerToken = nullptr);
 
     int32_t StartAbilityByCallWithInsightIntent(const Want &want,
         const sptr<IRemoteObject> &callerToken, const InsightIntentExecuteParam &param,
@@ -2208,6 +2209,25 @@ public:
         uint64_t requestCode, uint64_t specifiedFullTokenId = 0) override;
     int32_t ExecuteIntentByFunctionCall(uint64_t key, const sptr<IRemoteObject> &callerToken,
         const std::string &bundleName, const std::string &intentName, const WantParams &wantParam) override;
+
+    /**
+     * @brief Execute UIAbility foreground intent with specified token id.
+     * @param want The info of the target ability and custom parameters.
+     * @param callerAbilityToken The caller ability token.
+     * @param param The lightweight intent execute param.
+     * @param specifiedFullTokenId The specified access token id for permission checking.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t ExecuteUIAbilityForegroundIntentWithSpecifyTokenId(const Want &want,
+        const sptr<IRemoteObject> &callerAbilityToken, const InsightIntentExecuteLiteParam &param,
+        uint64_t specifiedFullTokenId) override;
+    std::shared_ptr<InsightIntentExecuteParam> BuildExecuteParamFromWant(
+        const Want &want, const InsightIntentExecuteLiteParam &param);
+    int32_t PrepareAndGenerateForegroundIntent(
+        const std::shared_ptr<InsightIntentExecuteParam> &executeParam,
+        const AbilityRuntime::ExtractInsightIntentGenericInfo &infos, const std::string &callerBundlename,
+        uint64_t key, const sptr<IRemoteObject> &hostClient, bool ignoreAbilityName,
+        uint64_t specifiedFullTokenId, Want &localWant);
     void RemoveIntentTimeout(uint64_t insightIntentId);
     void RemoveIntentTask(uint64_t insightIntentId);
 

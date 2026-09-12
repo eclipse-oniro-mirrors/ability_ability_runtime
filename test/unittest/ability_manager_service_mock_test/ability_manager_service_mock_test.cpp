@@ -24,10 +24,12 @@
 #include "session_info.h"
 #include "sub_managers_helper.h"
 #include "insight_intent_query_param.h"
+#include "insight_intent_execute_lite_param.h"
 #undef private
 #undef protected
 #include "ability_manager_errors.h"
 #include "start_ability_utils.h"
+#include "message_parcel.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -665,6 +667,165 @@ HWTEST_F(AbilityManagerServiceMockTest, QueryEntityInfo_0500, TestSize.Level1)
 
     auto ret = abilityMs->QueryEntityInfo(key, callerToken, param);
     EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: ExecuteUIAbilityForegroundIntentWithSpecifyTokenId_0100
+ * @tc.desc: Test UID guard rejects non-foundation caller.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceMockTest,
+    ExecuteUIAbilityForegroundIntentWithSpecifyTokenId_0100, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    Want want;
+    AppExecFwk::InsightIntentExecuteLiteParam param;
+    param.insightIntentName = "test.intent";
+    auto ret = abilityMs->ExecuteUIAbilityForegroundIntentWithSpecifyTokenId(
+        want, nullptr, param, 0);
+    EXPECT_EQ(ret, CHECK_PERMISSION_FAILED);
+}
+
+/**
+ * @tc.name: InsightIntentExecuteLiteParam_0100
+ * @tc.desc: Test LiteParam marshalling roundtrip.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceMockTest, InsightIntentExecuteLiteParam_0100, TestSize.Level1)
+{
+    AppExecFwk::InsightIntentExecuteLiteParam param1;
+    param1.key = 42;
+    param1.insightIntentName = "test.intent";
+
+    MessageParcel parcel;
+    EXPECT_TRUE(param1.Marshalling(parcel));
+
+    auto param2 = AppExecFwk::InsightIntentExecuteLiteParam::Unmarshalling(parcel);
+    ASSERT_NE(param2, nullptr);
+    EXPECT_EQ(param2->key, 42U);
+    EXPECT_EQ(param2->insightIntentName, "test.intent");
+    delete param2;
+}
+
+/**
+ * @tc.name: InsightIntentExecuteLiteParam_0200
+ * @tc.desc: Test LiteParam default values.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceMockTest, InsightIntentExecuteLiteParam_0200, TestSize.Level1)
+{
+    AppExecFwk::InsightIntentExecuteLiteParam param;
+    EXPECT_EQ(param.key, 0U);
+    EXPECT_TRUE(param.insightIntentName.empty());
+    EXPECT_EQ(param.insightIntentParam.Size(), 0);
+    EXPECT_EQ(param.insightIntentHostClient, nullptr);
+}
+
+/**
+ * @tc.name: BuildExecuteParamFromWant_0100
+ * @tc.desc: Test BuildExecuteParamFromWant maps want element correctly.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceMockTest, BuildExecuteParamFromWant_0100, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    Want want;
+    want.SetElementName("", "com.test.bundle", "MainAbility", "com.test.module");
+    AppExecFwk::InsightIntentExecuteLiteParam liteParam;
+    liteParam.insightIntentName = "test.intent";
+
+    auto result = abilityMs->BuildExecuteParamFromWant(want, liteParam);
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(result->bundleName_, "com.test.bundle");
+    EXPECT_EQ(result->abilityName_, "MainAbility");
+    EXPECT_EQ(result->moduleName_, "com.test.module");
+    EXPECT_EQ(result->insightIntentName_, "test.intent");
+}
+
+/**
+ * @tc.name: BuildExecuteParamFromWant_0200
+ * @tc.desc: Test BuildExecuteParamFromWant with empty want element.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceMockTest, BuildExecuteParamFromWant_0200, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    Want want;
+    AppExecFwk::InsightIntentExecuteLiteParam liteParam;
+    auto result = abilityMs->BuildExecuteParamFromWant(want, liteParam);
+    ASSERT_NE(result, nullptr);
+    EXPECT_TRUE(result->bundleName_.empty());
+    EXPECT_TRUE(result->moduleName_.empty());
+    EXPECT_TRUE(result->abilityName_.empty());
+    EXPECT_TRUE(result->insightIntentName_.empty());
+}
+
+/**
+ * @tc.name: ExecuteUIAbilityForegroundIntentWithSpecifyTokenId_0200
+ * @tc.desc: Test with empty intent name.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceMockTest,
+    ExecuteUIAbilityForegroundIntentWithSpecifyTokenId_0200, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    Want want;
+    AppExecFwk::InsightIntentExecuteLiteParam param;
+    auto ret = abilityMs->ExecuteUIAbilityForegroundIntentWithSpecifyTokenId(
+        want, nullptr, param, 0);
+    EXPECT_EQ(ret, CHECK_PERMISSION_FAILED);
+}
+
+/**
+ * @tc.name: InsightIntentExecuteLiteParam_0300
+ * @tc.desc: Test LiteParam marshalling with insightIntentParam content.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceMockTest, InsightIntentExecuteLiteParam_0300, TestSize.Level1)
+{
+    AppExecFwk::InsightIntentExecuteLiteParam param1;
+    param1.key = 100;
+    param1.insightIntentName = "intent.with.params";
+    WantParams innerParams;
+    param1.insightIntentParam = innerParams;
+
+    MessageParcel parcel;
+    EXPECT_TRUE(param1.Marshalling(parcel));
+
+    auto param2 = AppExecFwk::InsightIntentExecuteLiteParam::Unmarshalling(parcel);
+    ASSERT_NE(param2, nullptr);
+    EXPECT_EQ(param2->key, 100U);
+    EXPECT_EQ(param2->insightIntentName, "intent.with.params");
+    delete param2;
+}
+
+/**
+ * @tc.name: InsightIntentExecuteLiteParam_0400
+ * @tc.desc: Test LiteParam marshalling with null hostClient.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceMockTest, InsightIntentExecuteLiteParam_0400, TestSize.Level1)
+{
+    AppExecFwk::InsightIntentExecuteLiteParam param1;
+    param1.key = 0;
+    param1.insightIntentHostClient = nullptr;
+
+    MessageParcel parcel;
+    EXPECT_TRUE(param1.Marshalling(parcel));
+
+    auto param2 = AppExecFwk::InsightIntentExecuteLiteParam::Unmarshalling(parcel);
+    ASSERT_NE(param2, nullptr);
+    EXPECT_EQ(param2->key, 0U);
+    EXPECT_EQ(param2->insightIntentHostClient, nullptr);
+    delete param2;
 }
 }
 }
