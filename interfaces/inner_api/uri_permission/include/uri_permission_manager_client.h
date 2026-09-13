@@ -158,7 +158,38 @@ public:
     int32_t GrantUriPermissionPrivileged(const std::vector<Uri> &uriVec, uint32_t flag,
         const std::string &targetBundleName, int32_t appIndex = 0, uint32_t initiatorTokenId = 0,
         int32_t hideSensitiveType = DEFAULT_HIDE_SENSITIVE_TYPE);
-    
+
+    /**
+     * @brief Privileged batch grant of URI permission to a target application
+     * identified by token ID, skipping the caller's own permission check on the
+     * URIs. Only for SA/system-app callers holding the
+     * PERMISSION_GRANT_URI_PERMISSION_PRIVILEGED permission.
+     *
+     * Unlike the bundle-name based overload, the target is identified directly by
+     * token ID and must be a HAP-type application token; native SA tokens are
+     * rejected with ERR_UPMS_INVALID_TARGET_TOKENID.
+     *
+     * @param uriVec The file URI list, size must be in range (0, 200000]. URI type
+     *               restrictions are the same as GrantUriPermissionPrivileged.
+     * @param flag Must be Want::FLAG_AUTH_READ_URI_PERMISSION or
+     *             Want::FLAG_AUTH_WRITE_URI_PERMISSION (or both). Granting write
+     *             also implies read.
+     * @param targetTokenId Token ID of the application that receives the
+     *                      permission. Must be non-zero and belong to a HAP-type
+     *                      application.
+     * @return Returns ERR_OK if at least one URI is granted successfully; returns
+     *         CHECK_PERMISSION_FAILED without the privileged permission,
+     *         ERR_URI_LIST_OUT_OF_RANGE for empty/oversized list,
+     *         ERR_CODE_INVALID_URI_FLAG for an invalid flag,
+     *         ERR_UPMS_INVALID_TARGET_TOKENID for a zero, non-existent or
+     *         non-HAP target token ID, ERR_CODE_INVALID_URI_TYPE if all URIs
+     *         are invalid, INNER_ERR on IPC/service errors.
+     * @note The IPC caller itself is treated as the URI sharer (no initiator
+     *       token forwarding). Temporary authorization, auto-revoked on target
+     *       application exit. Sandbox applications cannot call.
+     */
+    int32_t GrantUriPermissionPrivileged(const std::vector<Uri> &uriVec, uint32_t flag, uint32_t targetTokenId);
+
     /**
      * @brief Privileged batch grant with an explicit policy type per URI. Only for
      * foundation-process callers (calling uid must be the foundation uid); other callers
