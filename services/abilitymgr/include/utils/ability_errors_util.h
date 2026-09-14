@@ -25,6 +25,9 @@ namespace AbilityErrorUtil {
 static int32_t ConvertToOriginErrorCode(int32_t errCode)
 {
     if (errCode >= ERR_REFINEMENT_INVALID_VALUE_BEGIN && errCode <= ERR_REFINEMENT_INVALID_VALUE_END) {
+        if (errCode == ERR_FREQ_START_ABILITY) {
+            return errCode;
+        }
         return ERR_INVALID_VALUE;
     }
     if (errCode >= ERR_REFINEMENT_INNER_ERROR_BEGIN && errCode <= ERR_REFINEMENT_INNER_ERROR_END) {
