@@ -1010,14 +1010,13 @@ int32_t AppMgrServiceInner::KillImageProcess(uint64_t checkpointId)
         TAG_LOGE(AAFwkTag::APPMGR, "open error, %{public}s", strerror(errno));
         return -1;
     }
+    FdGuard fdGuard(fd);
     TAG_LOGI(AAFwkTag::APPMGR, "ioctl, %{public}d", fd);
     int32_t err = ioctl(fd, CHECKPOINT_IOCTL_KILL_ALL, &checkpointId);
     if (err < 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "ioctl error, %{public}s", strerror(errno));
-        close(fd);
         return -1;
     }
-    close(fd);
     TAG_LOGI(AAFwkTag::APPMGR, "end");
     return ERR_OK;
 }
@@ -1742,6 +1741,7 @@ void AppMgrServiceInner::MarkTemplateProcess(const std::shared_ptr<AppRunningRec
         TAG_LOGE(AAFwkTag::APPMGR, "MarkTemplateProcess template openfile fail: %{public}s", strerror(errno));
         return;
     }
+    FdGuard fdGuard(fd);
     int32_t templatePid = appRecord->GetPid();
     struct HMCheckpointMarkS mark {
         .pid = templatePid,
@@ -1760,11 +1760,9 @@ void AppMgrServiceInner::MarkTemplateProcess(const std::shared_ptr<AppRunningRec
     }
     int ret = ioctl(fd, CHECKPOINT_MONITOR_IOCTL_MARK_TEMPLATE, &mark);
     if (ret < 0) {
-        close(fd);
         TAG_LOGE(AAFwkTag::APPMGR, "MarkTemplateProcess template monitor error: %{public}s", strerror(errno));
         return;
     }
-    close(fd);
     TAG_LOGI(AAFwkTag::APPMGR, "MarkTemplateProcess %{public}d ret: %{public}d", templatePid, ret);
     return;
 }
@@ -1780,17 +1778,16 @@ void AppMgrServiceInner::UnMarkTemplateProcess(int32_t templatePid)
         TAG_LOGE(AAFwkTag::APPMGR, "UnMarkTemplateProcess template openfile fail: %{public}s", strerror(errno));
         return;
     }
+    FdGuard fdGuard(fd);
     struct HMCheckpointUnMarkS unMark {
         .pid = templatePid
     };
     int ret = ioctl(fd, CHECKPOINT_MONITOR_IOCTL_UNMARK_TEMPLATE, &unMark);
     if (ret < 0) {
-        close(fd);
         TAG_LOGE(AAFwkTag::APPMGR, "UnMarkTemplateProcess template monitor error: %{public}s", strerror(errno));
         return;
     }
     TAG_LOGI(AAFwkTag::APPMGR, "UnMarkTemplateProcess %{public}d ret: %{public}d", templatePid, ret);
-    close(fd);
     return;
 }
 
@@ -13561,6 +13558,7 @@ ImageError AppMgrServiceInner::GetCheckpointRestoreError(pid_t pid, const std::s
         TAG_LOGE(AAFwkTag::APPMGR, "GetCheckpointRestoreError open file fail: %{public}s", strerror(errno));
         return ImageError::ERR_INNER;
     }
+    FdGuard fdGuard(fd);
 
     struct HmCheckpointErrMsgS errMsg {
         .pid = pid,
@@ -13573,11 +13571,9 @@ ImageError AppMgrServiceInner::GetCheckpointRestoreError(pid_t pid, const std::s
 
     int ret = ioctl(fd, CHECKPOINT_IOCTL_GET_LAST_ERROR, &errMsg);
     if (ret < 0) {
-        close(fd);
         TAG_LOGE(AAFwkTag::APPMGR, "GetCheckpointRestoreError ioctl error: %{public}s", strerror(errno));
         return ImageError::ERR_INNER;
     }
-    close(fd);
 
     ImageError imageError = ImageError::ERR_INNER;
     switch (errMsg.errNo) {
