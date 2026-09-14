@@ -276,6 +276,13 @@ int32_t InsightIntentExecuteManager::AddRecord(uint64_t key, const sptr<IRemoteO
     records_[intentId] = record;
     if (intentId > INSIGHT_INTENT_EXECUTE_RECORDS_MAX_SIZE) {
         // save the latest INSIGHT_INTENT_EXECUTE_RECORDS_MAX_SIZE records
+        auto oldIt = records_.find(intentId - INSIGHT_INTENT_EXECUTE_RECORDS_MAX_SIZE);
+        if (oldIt != records_.end() && oldIt->second != nullptr) {
+            auto &oldRecord = oldIt->second;
+            if (oldRecord->callerToken != nullptr && oldRecord->deathRecipient != nullptr) {
+                oldRecord->callerToken->RemoveDeathRecipient(oldRecord->deathRecipient);
+            }
+        }
         records_.erase(intentId - INSIGHT_INTENT_EXECUTE_RECORDS_MAX_SIZE);
     }
     return ERR_OK;

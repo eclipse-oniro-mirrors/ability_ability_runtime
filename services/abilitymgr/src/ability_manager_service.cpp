@@ -15580,7 +15580,11 @@ int32_t AbilityManagerService::ExecuteInsightIntentDone(const sptr<IRemoteObject
     }
 
     std::string callerBundleName;
-    DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->GetCallerBundleName(intentId, callerBundleName);
+    ret = DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->GetCallerBundleName(intentId, callerBundleName);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::INTENT, "GetCallerBundleName failed, intentId:%{public}" PRIu64"", intentId);
+        return ERR_INVALID_VALUE;
+    }
     uint32_t initiatorTokenId = abilityRecord->GetApplicationInfo().accessTokenId;
 #ifdef SUPPORT_UPMS
     if (!callerBundleName.empty()) {

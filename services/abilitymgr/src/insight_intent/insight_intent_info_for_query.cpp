@@ -28,6 +28,7 @@ namespace {
 int32_t g_parseResult = ERR_OK;
 constexpr size_t MAX_IPC_REWDATA_SIZE = 100 * 1024 * 1024;      // max ipc size 100MB
 std::mutex g_extraMutex;
+constexpr int32_t MAX_INTENT_SIZE = 10000;
 
 const std::map<AppExecFwk::ExecuteMode, std::string> EXECUTE_MODE_STRING_MAP = {
     {AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND, "UI_ABILITY_FOREGROUND"},
@@ -692,11 +693,11 @@ bool InsightIntentInfoForQuery::ReadFromParcel(Parcel &parcel)
         return false;
     }
     const char *data = reinterpret_cast<const char *>(messageParcel->ReadRawData(length));
-    TAG_LOGD(AAFwkTag::INTENT, "ReadFromParcel data: %{public}s", data);
     if (!data) {
         TAG_LOGE(AAFwkTag::INTENT, "Fail read raw length = %{public}d", length);
         return false;
     }
+    TAG_LOGD(AAFwkTag::INTENT, "ReadFromParcel data: %{public}s", data);
     nlohmann::json jsonObject = nlohmann::json::parse(data, nullptr, false);
     if (jsonObject.is_discarded()) {
         TAG_LOGE(AAFwkTag::INTENT, "failed to parse BundleInfo");
@@ -818,7 +819,7 @@ bool InsightIntentInfoForQuery::UnmarshallingVector(
         return false;
     }
     nlohmann::json jsonArray = nlohmann::json::parse(data, nullptr, false);
-    if (jsonArray.is_discarded() || !jsonArray.is_array()) {
+    if (jsonArray.is_discarded() || !jsonArray.is_array() || jsonArray.size() >= MAX_INTENT_SIZE) {
         TAG_LOGE(AAFwkTag::INTENT, "Failed to parse JSON array");
         return false;
     }
