@@ -15,9 +15,10 @@
 
 #include "ukey_auth_ui_extension_context.h"
 
-#include <dlfcn.h>
+#include <cstdio>
 
 #include "ability_manager_client.h"
+#include "cert_manager_api.h"
 #include "configuration_convertor.h"
 #include "hilog_tag_wrapper.h"
 #ifdef SUPPORT_SCREEN
@@ -27,39 +28,36 @@
 namespace OHOS {
 namespace AbilityRuntime {
 namespace {
-constexpr const char *CERT_MANAGER_SDK_LIB = "libcert_manager_sdk.z.so";
-constexpr const char *CM_REPORT_UKEY_AUTH_RESULT_FUNC = "CmReportUkeyAuthResult";
+constexpr const char *REPORT_TRACE_FILE = "/data/local/tmp/ukey_report_trace.log";
 
-struct CmBlob {
-    uint32_t size;
-    uint8_t *data;
-};
-using CmReportUkeyAuthResultFunc = int32_t (*)(const CmBlob *requestId, int32_t resultCode);
+void TraceToFile(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+void TraceToFile(const char *fmt, ...)
+{
+    FILE *fp = fopen(REPORT_TRACE_FILE, "a");
+    if (fp == nullptr) {
+        return;
+    }
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(fp, fmt, args);
+    va_end(args);
+    fprintf(fp, "\n");
+    fclose(fp);
+}
 
 void ReportToCertManager(const std::string &requestId, int32_t resultCode)
 {
+    TraceToFile("ReportToCertManager enter: requestId=%s resultCode=%d", requestId.c_str(), resultCode);
     if (requestId.empty()) {
         TAG_LOGE(AAFwkTag::UI_EXT, "requestId is empty, skip report");
+        TraceToFile("requestId is empty, skip report");
         return;
     }
-    void *handle = dlopen(CERT_MANAGER_SDK_LIB, RTLD_LAZY);
-    if (handle == nullptr) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "dlopen %{public}s failed, %{public}s", CERT_MANAGER_SDK_LIB, dlerror());
-        return;
-    }
-    auto reportFunc = reinterpret_cast<CmReportUkeyAuthResultFunc>(
-        dlsym(handle, CM_REPORT_UKEY_AUTH_RESULT_FUNC));
-    if (reportFunc == nullptr) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "dlsym %{public}s failed, %{public}s", CM_REPORT_UKEY_AUTH_RESULT_FUNC,
-            dlerror());
-        dlclose(handle);
-        return;
-    }
-    CmBlob requestIdBlob = { static_cast<uint32_t>(requestId.size()),
+    struct CmBlob requestIdBlob = { static_cast<uint32_t>(requestId.size()),
         const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(requestId.c_str())) };
-    int32_t ret = reportFunc(&requestIdBlob, resultCode);
+    int32_t ret = CmReportUkeyAuthResult(&requestIdBlob, resultCode);
     TAG_LOGI(AAFwkTag::UI_EXT, "CmReportUkeyAuthResult resultCode=%{public}d, ret=%{public}d", resultCode, ret);
-    dlclose(handle);
+    TraceToFile("CmReportUkeyAuthResult resultCode=%d ret=%d", resultCode, ret);
 }
 } // namespace
 
@@ -131,10 +129,10 @@ ErrCode UkeyAuthUIExtensionContext::TerminateSelfWithResult(int32_t resultCode, 
 
 ErrCode UkeyAuthUIExtensionContext::ReportDrawnCompleted()
 {
-    TAG_LOGD(AAFwkTag::UI_EXT, "begin");
+    TAG_LOGD(AAFwkTag::EXT, "begin");
     ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->ReportDrawnCompleted(GetToken());
     if (err != ERR_OK) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "ret=%{public}d", err);
+        TAG_LOGE(AAFwkTag::EXT, "ret=%{public}d", err);
     }
     return err;
 }
