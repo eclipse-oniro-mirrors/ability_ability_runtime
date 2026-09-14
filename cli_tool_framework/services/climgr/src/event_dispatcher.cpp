@@ -16,6 +16,7 @@
 #include "event_dispatcher.h"
 
 #include <chrono>
+#include <nlohmann/json.hpp>
 #include <vector>
 
 #include "hilog_tag_wrapper.h"
@@ -227,8 +228,10 @@ void EventDispatcher::DispatchExitEvent(const std::string &sessionId, int32_t ex
 {
     CliToolEvent event;
     event.type = "exit";
-    event.eventData = "";
     event.exitCode = exitCode;
+    nlohmann::json exitData;
+    exitData["exitCode"] = exitCode;
+    event.eventData = exitData.dump();
     event.timestamp = GetCurrentTimeMs();
     DispatchEvent(sessionId, event);
 }

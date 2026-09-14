@@ -287,6 +287,7 @@ HWTEST_F(EventDispatcherTest, EventDispatcher_Dispatch_0100, TestSize.Level1)
     EXPECT_EQ(scheduler->sessionEventCount, 3);
     EXPECT_EQ(scheduler->lastEventType, "exit");
     EXPECT_EQ(scheduler->lastExitCode, TEST_EXIT_CODE);
+    EXPECT_EQ(scheduler->lastEventData, R"({"exitCode":3})");
 
     EXPECT_TRUE(dispatcher.DispatchInputReplyEvent(
         TEST_CALLER_PID, TEST_CALLER_UID, "input-event", TEST_REPLY_RESULT));
