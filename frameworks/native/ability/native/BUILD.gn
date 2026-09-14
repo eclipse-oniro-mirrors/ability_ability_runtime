@@ -3711,6 +3711,7 @@ ohos_shared_library("ukey_auth_ui_extension") {
 
   external_deps = [
     "ability_base:want",
+    "certificate_manager:cert_manager_sdk",
     "c_utils:utils",
     "eventhandler:libeventhandler",
     "hilog:libhilog",

@@ -15,8 +15,6 @@
 
 #include "ukey_auth_ui_extension_context.h"
 
-#include <cstdio>
-
 #include "ability_manager_client.h"
 #include "cert_manager_api.h"
 #include "configuration_convertor.h"
@@ -28,36 +26,17 @@
 namespace OHOS {
 namespace AbilityRuntime {
 namespace {
-constexpr const char *REPORT_TRACE_FILE = "/data/local/tmp/ukey_report_trace.log";
-
-void TraceToFile(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
-void TraceToFile(const char *fmt, ...)
-{
-    FILE *fp = fopen(REPORT_TRACE_FILE, "a");
-    if (fp == nullptr) {
-        return;
-    }
-    va_list args;
-    va_start(args, fmt);
-    vfprintf(fp, fmt, args);
-    va_end(args);
-    fprintf(fp, "\n");
-    fclose(fp);
-}
 
 void ReportToCertManager(const std::string &requestId, int32_t resultCode)
 {
-    TraceToFile("ReportToCertManager enter: requestId=%s resultCode=%d", requestId.c_str(), resultCode);
     if (requestId.empty()) {
         TAG_LOGE(AAFwkTag::UI_EXT, "requestId is empty, skip report");
-        TraceToFile("requestId is empty, skip report");
         return;
     }
     struct CmBlob requestIdBlob = { static_cast<uint32_t>(requestId.size()),
         const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(requestId.c_str())) };
     int32_t ret = CmReportUkeyAuthResult(&requestIdBlob, resultCode);
     TAG_LOGI(AAFwkTag::UI_EXT, "CmReportUkeyAuthResult resultCode=%{public}d, ret=%{public}d", resultCode, ret);
-    TraceToFile("CmReportUkeyAuthResult resultCode=%d ret=%d", resultCode, ret);
 }
 } // namespace
 
