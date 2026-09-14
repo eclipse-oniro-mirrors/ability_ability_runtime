@@ -48,6 +48,7 @@ std::string CliToolMgrClientFlag::lastInvokeFunctionNamespace;
 std::string CliToolMgrClientFlag::lastInvokeFunctionName;
 bool CliToolMgrClientFlag::nullSystemAbility = false;
 bool CliToolMgrClientFlag::shouldCallback = true;
+bool CliToolMgrClientFlag::devModeEnabled = false;
 sptr<IRemoteObject> CliToolMgrClientFlag::cliToolMgr = nullptr;
 std::string CliToolMgrClientFlag::lastEventId;
 std::string CliToolMgrClientFlag::lastSubscriptionId;
@@ -96,6 +97,7 @@ void CliToolMgrClientFlag::Reset()
     lastInvokeFunctionName.clear();
     nullSystemAbility = false;
     shouldCallback = true;
+    devModeEnabled = false;
     cliToolMgr = nullptr;
     lastEventId.clear();
     lastSubscriptionId.clear();

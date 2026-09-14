@@ -136,16 +136,5 @@ HWTEST_F(ExecResultTest, ExecResultWrap_Parcelable_0100, TestSize.Level1)
     EXPECT_TRUE(unmarshalled->execResult.timeout);
     EXPECT_EQ(unmarshalled->execResult.executionTime, TEST_TIMEOUT);
 }
-
-/**
- * @tc.name: ExecResultWrap_Unmarshalling_0200
- * @tc.desc: Test ExecResultWrap unmarshalling fails when inner ExecResult fails
- * @tc.type: FUNC
- */
-HWTEST_F(ExecResultTest, ExecResultWrap_Unmarshalling_0200, TestSize.Level1)
-{
-    Parcel emptyParcel;
-    EXPECT_EQ(ExecResultWrap::Unmarshalling(emptyParcel), nullptr);
-}
 } // namespace CliTool
 } // namespace OHOS

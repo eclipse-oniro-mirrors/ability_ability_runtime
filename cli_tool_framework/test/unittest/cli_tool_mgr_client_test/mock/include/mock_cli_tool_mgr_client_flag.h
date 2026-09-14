@@ -59,6 +59,7 @@ public:
     static std::string lastInvokeFunctionName;
     static bool nullSystemAbility;
     static bool shouldCallback;
+    static bool devModeEnabled;
     static sptr<IRemoteObject> cliToolMgr;
     static std::string lastEventId;
     static std::string lastSubscriptionId;

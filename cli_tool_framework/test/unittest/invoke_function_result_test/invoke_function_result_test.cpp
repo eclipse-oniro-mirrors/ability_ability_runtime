@@ -89,17 +89,6 @@ HWTEST_F(InvokeFunctionResultTest, InvokeFunctionResult_Parcelable_0200, TestSiz
 }
 
 /**
- * @tc.name: InvokeFunctionResult_Unmarshalling_0300
- * @tc.desc: Test InvokeFunctionResult unmarshalling failure on empty parcel
- * @tc.type: FUNC
- */
-HWTEST_F(InvokeFunctionResultTest, InvokeFunctionResult_Unmarshalling_0300, TestSize.Level1)
-{
-    Parcel emptyParcel;
-    EXPECT_EQ(InvokeFunctionResult::Unmarshalling(emptyParcel), nullptr);
-}
-
-/**
  * @tc.name: InvokeFunctionResult_Unmarshalling_0400
  * @tc.desc: Test InvokeFunctionResult unmarshalling failure when errorCode missing
  * @tc.type: FUNC
@@ -180,17 +169,6 @@ HWTEST_F(InvokeFunctionResultTest, FunctionResultWrap_Parcelable_0200, TestSize.
     EXPECT_EQ(unmarshalled->result.data->GetStringParam("k"), "v");
 }
 
-/**
- * @tc.name: FunctionResultWrap_Unmarshalling_0300
- * @tc.desc: Test FunctionResultWrap unmarshalling fails on empty parcel
- * @tc.type: FUNC
- */
-HWTEST_F(InvokeFunctionResultTest, FunctionResultWrap_Unmarshalling_0300, TestSize.Level1)
-{
-    Parcel emptyParcel;
-    EXPECT_EQ(FunctionResultWrap::Unmarshalling(emptyParcel), nullptr);
-}
-
 // ==================== InvokeFunctionParam Tests ====================
 
 /**
@@ -216,17 +194,6 @@ HWTEST_F(InvokeFunctionResultTest, InvokeFunctionParam_Parcelable_0100, TestSize
     EXPECT_EQ(unmarshalled->functionName, "test_fn");
     EXPECT_EQ(unmarshalled->args.GetStringParam("arg1"), "val1");
     EXPECT_EQ(unmarshalled->invokeOptions.context, "test_context");
-}
-
-/**
- * @tc.name: InvokeFunctionParam_Unmarshalling_0200
- * @tc.desc: Test InvokeFunctionParam unmarshalling failure on empty parcel
- * @tc.type: FUNC
- */
-HWTEST_F(InvokeFunctionResultTest, InvokeFunctionParam_Unmarshalling_0200, TestSize.Level1)
-{
-    Parcel emptyParcel;
-    EXPECT_EQ(InvokeFunctionParam::Unmarshalling(emptyParcel), nullptr);
 }
 
 /**

@@ -3597,6 +3597,10 @@ public:
     ErrCode AfterCallCmd(ExecResultWrap& execResultWrap) override
     {
         afterCallCmdCount++;
+        if (modifyResult) {
+            execResultWrap.execResult.exitCode = 1;
+            execResultWrap.execResult.outputText = "modified_output";
+        }
         return ERR_OK;
     }
 
@@ -3657,7 +3661,7 @@ public:
 
 static void SetDeveloperMode(bool enabled)
 {
-    system::SetParameter("const.security.developermode.state", enabled ? "true" : "false");
+    system::SetBoolParameter("const.security.developermode.state", enabled);
 }
 
 static CliSessionInfo MakeSessionWithResult(int32_t exitCode, const std::string& output)
@@ -3884,7 +3888,7 @@ HWTEST_F(CliToolManagerServiceTest, InvokeAfterCallCmd_WriteBack_0100, TestSize.
     hook->modifyResult = true;
     service_->RegisterCliHook(hook, 0x0F);
 
-    CliSessionInfo session = MakeSessionWithResult(1, "cmd_original");
+    CliSessionInfo session = MakeSessionWithResult(0, "cmd_original");
     service_->InvokeAfterCallTool(session, SessionType::CLI_CMD);
 
     EXPECT_EQ(hook->afterCallCmdCount, 1);

@@ -8,8 +8,6 @@
 #include <string>
 #include <vector>
 
-#include "parameters.h"
-
 #define private public
 #include "cli_event_reply_manager.h"
 #include "cli_session_subscription_manager.h"
@@ -951,7 +949,7 @@ public:
 
 static void SetDevMode(bool enabled)
 {
-    system::SetParameter("const.security.developermode.state", enabled ? "true" : "false");
+    CliToolMgrClientFlag::devModeEnabled = enabled;
 }
 
 /**

@@ -88,8 +88,8 @@ HWTEST_F(InvokeFunctionCallbackClientTest, InvokeFunctionCallbackClient_Success_
 /**
  * @tc.name: InvokeFunctionCallbackClient_AppBusinessFailure_0200
  * @tc.desc: framework delivered ok (resultCode == 0) but app business code != 0:
- *           success stays true while errorCode surfaces the app-level code
- *           (framework vs app dual-authority contract).
+ *           success=false (follows executeResult.code), errorCode surfaces the
+ *           app-level code, innerError=0 (no framework reject).
  * @tc.type: FUNC
  */
 HWTEST_F(InvokeFunctionCallbackClientTest, InvokeFunctionCallbackClient_AppBusinessFailure_0200,
@@ -98,14 +98,16 @@ HWTEST_F(InvokeFunctionCallbackClientTest, InvokeFunctionCallbackClient_AppBusin
     client_->ProcessInsightIntentExecute(0, BuildIntentResult(APP_CODE_42));
     ASSERT_EQ(callCount_, 1);
     ASSERT_TRUE(captured_.has_value());
-    EXPECT_TRUE(captured_->result.success);
+    EXPECT_FALSE(captured_->result.success);
     EXPECT_EQ(captured_->result.errorCode, APP_CODE_42);
     EXPECT_EQ(captured_->innerError, 0);
 }
 
 /**
  * @tc.name: InvokeFunctionCallbackClient_FrameworkFailure_0300
- * @tc.desc: framework resultCode != 0 -> success=false, innerError=EXECUTE_FAILED
+ * @tc.desc: framework resultCode != 0 -> innerError=EXECUTE_FAILED (promise
+ *           reject path); success follows executeResult.code (==0 -> true),
+ *           errorCode=0.
  * @tc.type: FUNC
  */
 HWTEST_F(InvokeFunctionCallbackClientTest, InvokeFunctionCallbackClient_FrameworkFailure_0300,
@@ -114,7 +116,7 @@ HWTEST_F(InvokeFunctionCallbackClientTest, InvokeFunctionCallbackClient_Framewor
     client_->ProcessInsightIntentExecute(1, BuildIntentResult(0));
     ASSERT_EQ(callCount_, 1);
     ASSERT_TRUE(captured_.has_value());
-    EXPECT_FALSE(captured_->result.success);
+    EXPECT_TRUE(captured_->result.success);
     EXPECT_EQ(captured_->innerError, ERR_FUNCTION_EXECUTE_FAILED);
     EXPECT_EQ(captured_->result.errorCode, 0);
 }

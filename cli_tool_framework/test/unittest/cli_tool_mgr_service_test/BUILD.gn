@@ -51,6 +51,7 @@ ohos_unittest("cli_tool_mgr_service_test") {
     "${cli_tool_framework_path}/services/common/src/ccm_util.cpp",
     "mock/src/accesstoken_kit.cpp",
     "mock/src/ipc_skeleton.cpp",
+    "mock/src/mock_parameters.cpp",
     "permission_util_mock.cpp",
     "${cli_tool_framework_path}/test/unittest/common_mock/climgr_data/src/cli_tool_data_manager_mock.cpp",
   ]
@@ -82,7 +83,6 @@ ohos_unittest("cli_tool_mgr_service_test") {
     "googletest:gtest_main",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
-    "init:libbegetutil",
     "ipc:ipc_core",
     "json:nlohmann_json_static",
     "kv_store:distributeddata_inner",
