@@ -90,6 +90,7 @@ void EtsUkeyAuthUIExtensionBase::OnForeground(const AAFwk::Want &want,
     if (it != uiWindowMap_.end() && it->second != nullptr) {
         ukeyContext_->SetWindow(it->second);
         ukeyContext_->SetSessionInfo(sessionInfo);
+        ukeyContext_->SetRequestId(want.GetStringParam("requestId"));
         TAG_LOGI(AAFwkTag::UI_EXT, "ukey ets OnForeground: window and session injected");
     } else {
         TAG_LOGE(AAFwkTag::UI_EXT, "ukey ets OnForeground: window not found, componentId=%{public}llu,"

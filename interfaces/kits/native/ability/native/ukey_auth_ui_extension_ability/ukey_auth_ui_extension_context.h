@@ -43,9 +43,10 @@ public:
     void SetWindow(const sptr<Rosen::Window> &window);
     sptr<Rosen::Window> GetWindow() const;
     void SetSessionInfo(const sptr<AAFwk::SessionInfo> &sessionInfo);
+    void SetRequestId(const std::string &requestId);
 
     /**
-     * @brief Destroys the current ukeyAuth extension ability, after reporting to certManager (placeholder).
+     * @brief Destroys the current ukeyAuth extension ability, after reporting to certManager.
      */
     ErrCode TerminateSelf();
 
@@ -74,6 +75,7 @@ private:
     sptr<Rosen::Window> uiWindow_ = nullptr;
 #endif // SUPPORT_SCREEN
     sptr<AAFwk::SessionInfo> sessionInfo_ = nullptr;
+    std::string requestId_;
     AbilityConfigUpdateCallback abilityConfigUpdateCallback_ = nullptr;
     std::shared_ptr<AppExecFwk::Configuration> abilityConfiguration_ = nullptr;
     std::shared_ptr<Global::Resource::ResourceManager> abilityResourceMgr_ = nullptr;

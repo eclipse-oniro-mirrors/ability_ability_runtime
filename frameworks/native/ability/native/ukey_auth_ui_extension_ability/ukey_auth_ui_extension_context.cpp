@@ -15,6 +15,8 @@
 
 #include "ukey_auth_ui_extension_context.h"
 
+#include <dlfcn.h>
+
 #include "ability_manager_client.h"
 #include "configuration_convertor.h"
 #include "hilog_tag_wrapper.h"
@@ -25,13 +27,39 @@
 namespace OHOS {
 namespace AbilityRuntime {
 namespace {
-// TODO(ukey-auth): replace with certManager innerApi SA proxy when available
-void ReportToCertManager(const sptr<IRemoteObject> &token, const sptr<AAFwk::SessionInfo> &sessionInfo,
-    int32_t resultCode, const AAFwk::Want *want)
+constexpr const char *CERT_MANAGER_SDK_LIB = "libcert_manager_sdk.z.so";
+constexpr const char *CM_REPORT_UKEY_AUTH_RESULT_FUNC = "CmReportUkeyAuthResult";
+
+struct CmBlob {
+    uint32_t size;
+    uint8_t *data;
+};
+using CmReportUkeyAuthResultFunc = int32_t (*)(const CmBlob *requestId, int32_t resultCode);
+
+void ReportToCertManager(const std::string &requestId, int32_t resultCode)
 {
-    TAG_LOGI(AAFwkTag::UI_EXT, "ReportToCertManager placeholder: resultCode=%{public}d, hasWant=%{public}d, "
-        "hasSession=%{public}d, hasToken=%{public}d", resultCode, want != nullptr, sessionInfo != nullptr,
-        token != nullptr);
+    if (requestId.empty()) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "requestId is empty, skip report");
+        return;
+    }
+    void *handle = dlopen(CERT_MANAGER_SDK_LIB, RTLD_LAZY);
+    if (handle == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "dlopen %{public}s failed, %{public}s", CERT_MANAGER_SDK_LIB, dlerror());
+        return;
+    }
+    auto reportFunc = reinterpret_cast<CmReportUkeyAuthResultFunc>(
+        dlsym(handle, CM_REPORT_UKEY_AUTH_RESULT_FUNC));
+    if (reportFunc == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "dlsym %{public}s failed, %{public}s", CM_REPORT_UKEY_AUTH_RESULT_FUNC,
+            dlerror());
+        dlclose(handle);
+        return;
+    }
+    CmBlob requestIdBlob = { static_cast<uint32_t>(requestId.size()),
+        const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(requestId.c_str())) };
+    int32_t ret = reportFunc(&requestIdBlob, resultCode);
+    TAG_LOGI(AAFwkTag::UI_EXT, "CmReportUkeyAuthResult resultCode=%{public}d, ret=%{public}d", resultCode, ret);
+    dlclose(handle);
 }
 } // namespace
 
@@ -56,10 +84,15 @@ void UkeyAuthUIExtensionContext::SetSessionInfo(const sptr<AAFwk::SessionInfo> &
     sessionInfo_ = sessionInfo;
 }
 
+void UkeyAuthUIExtensionContext::SetRequestId(const std::string &requestId)
+{
+    requestId_ = requestId;
+}
+
 ErrCode UkeyAuthUIExtensionContext::TerminateSelf()
 {
     TAG_LOGD(AAFwkTag::UI_EXT, "begin");
-    ReportToCertManager(GetToken(), sessionInfo_, 0, nullptr);
+    ReportToCertManager(requestId_, 0);
     ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->TerminateAbility(GetToken(), -1, nullptr);
     if (err != ERR_OK) {
         TAG_LOGE(AAFwkTag::UI_EXT, "ret = %{public}d", err);
@@ -70,7 +103,7 @@ ErrCode UkeyAuthUIExtensionContext::TerminateSelf()
 ErrCode UkeyAuthUIExtensionContext::TerminateSelfWithResult(int32_t resultCode, const AAFwk::Want &want)
 {
     TAG_LOGD(AAFwkTag::UI_EXT, "begin");
-    ReportToCertManager(GetToken(), sessionInfo_, resultCode, &want);
+    ReportToCertManager(requestId_, resultCode);
     ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->TransferAbilityResultForExtension(
         GetToken(), resultCode, want);
     if (err != ERR_OK) {

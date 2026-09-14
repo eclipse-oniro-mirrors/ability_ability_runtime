@@ -104,6 +104,7 @@ void JsUkeyAuthUIExtensionBase::OnForeground(const AAFwk::Want &want,
     if (it != uiWindowMap_.end() && it->second != nullptr) {
         ukeyContext_->SetWindow(it->second);
         ukeyContext_->SetSessionInfo(sessionInfo);
+        ukeyContext_->SetRequestId(want.GetStringParam("requestId"));
         TAG_LOGI(AAFwkTag::UI_EXT, "ukey OnForeground: window and session injected, componentId=%{public}llu",
             static_cast<unsigned long long>(sessionInfo->uiExtensionComponentId));
     } else {
