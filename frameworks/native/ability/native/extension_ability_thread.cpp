@@ -45,7 +45,7 @@ constexpr static char AGENT_UI_EXTENSION[] = "AgentUIExtensionAbility";
 constexpr static char AUTO_FILL_EXTENSION[] = "AutoFillExtensionAbility";
 #endif  // SUPPORT_AUTO_FILL
 constexpr static char EMBEDDED_UI_EXTENSION[] = "EmbeddedUIExtensionAbility";
-constexpr static char UKEY_AUTH_EXTENSION[] = "UkeyAuthUIExtensionAbility";
+constexpr static char UKEY_AUTH_EXTENSION[] = "UkeyAuthExtensionAbility";
 constexpr static char PHOTO_EDITOR_EXTENSION[] = "PhotoEditorExtensionAbility";
 constexpr static char VPN_EXTENSION[] = "VpnExtension";
 #endif

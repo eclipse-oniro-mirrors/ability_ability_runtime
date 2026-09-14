@@ -1026,7 +1026,7 @@ HWTEST_F(ExtensionAbilityThreadTest, ExtensionAbilityThread_CreateAbilityName_02
     auto abilityRecord = std::make_shared<AbilityLocalRecord>(abilityInfo, token, nullptr, 0);
     ExtensionAbilityThread thread;
     std::string abilityName = thread.CreateAbilityName(abilityRecord, application);
-    EXPECT_EQ(abilityName, "UkeyAuthUIExtensionAbility");
+    EXPECT_EQ(abilityName, "UkeyAuthExtensionAbility");
     GTEST_LOG_(INFO) << "ExtensionAbilityThread_CreateAbilityName_0200 end";
 }
 

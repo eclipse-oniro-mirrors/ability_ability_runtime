@@ -49,7 +49,7 @@ group("ani_packages") {
     "${ability_runtime_path}/frameworks/ets/ani/child_process_manager:ability_child_process_manager_ani_kit",
     "${ability_runtime_path}/frameworks/ets/ani/dialog_session:dialog_session_ani_kit",
     "${ability_runtime_path}/frameworks/ets/ani/embedded_ui_extension_ability:embedded_ui_extension_ani",
-    "${ability_runtime_path}/frameworks/ets/ani/ukey_auth_ui_extension_ability:ukey_auth_ui_extension_ani",
+    "${ability_runtime_path}/frameworks/ets/ani/ukey_auth_extension_ability:ukey_auth_extension_ani",
     "${ability_runtime_path}/frameworks/ets/ani/ets_dialog_request:dialogrequest_ani_kit",
     "${ability_runtime_path}/frameworks/ets/ani/event_hub:event_hub_ani_kit",
     "${ability_runtime_path}/frameworks/ets/ani/featureAbility:featureability_ani",

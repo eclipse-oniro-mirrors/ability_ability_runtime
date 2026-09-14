@@ -2592,7 +2592,7 @@ group("extension_module") {
     ":service_extension_module",
     ":ui_extension_module",
     ":modular_object_extension_module",
-    ":ukey_auth_ui_extension_module",
+    ":ukey_auth_extension_module",
   ]
   if (ability_runtime_action_extension) {
     deps += [ ":action_extension_module" ]
@@ -3422,17 +3422,17 @@ config("embedded_ui_extension_config") {
   ]
 }
 
-config("ukey_auth_ui_extension_config") {
+config("ukey_auth_extension_config") {
   visibility = [ ":*" ]
   include_dirs = [
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ability_runtime",
-    "${ability_runtime_path}/interfaces/kits/native/ability/native/ukey_auth_ui_extension_ability",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native/ukey_auth_extension_ability",
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_extension_base",
     "${ability_runtime_path}/interfaces/kits/native/ability/ability_runtime",
     "${ability_runtime_path}/interfaces/kits/native/ability/native",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_runtime",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_runtime/context",
-    "${ability_runtime_path}/frameworks/ets/ani/ukey_auth_ui_extension_ability/include",
+    "${ability_runtime_path}/frameworks/ets/ani/ukey_auth_extension_ability/include",
   ]
 }
 
@@ -3666,7 +3666,7 @@ ohos_shared_library("embedded_ui_extension_module") {
   configs += [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
-ohos_shared_library("ukey_auth_ui_extension") {
+ohos_shared_library("ukey_auth_extension") {
   sanitize = {
     integer_overflow = true
     ubsan = true
@@ -3681,17 +3681,17 @@ ohos_shared_library("ukey_auth_ui_extension") {
   branch_protector_frt = "bti"
 
   configs = [
-    ":ukey_auth_ui_extension_config",
+    ":ukey_auth_extension_config",
     "${ability_runtime_services_path}/common:optimize_config",
   ]
 
   sources = [
-    "${ability_runtime_native_path}/ability/native/ukey_auth_ui_extension_ability/ukey_auth_ui_extension.cpp",
-    "${ability_runtime_native_path}/ability/native/ukey_auth_ui_extension_ability/ukey_auth_ui_extension_context.cpp",
-    "${ability_runtime_native_path}/ability/native/ukey_auth_ui_extension_ability/js_ukey_auth_ui_extension.cpp",
-    "${ability_runtime_native_path}/ability/native/ukey_auth_ui_extension_ability/js_ukey_auth_ui_extension_base.cpp",
-    "${ability_runtime_native_path}/ability/native/ukey_auth_ui_extension_ability/js_ukey_auth_ui_extension_context.cpp",
-    "${ability_runtime_path}/frameworks/ets/ani/ukey_auth_ui_extension_ability/src/ets_ukey_auth_ui_extension_instance.cpp",
+    "${ability_runtime_native_path}/ability/native/ukey_auth_extension_ability/ukey_auth_extension.cpp",
+    "${ability_runtime_native_path}/ability/native/ukey_auth_extension_ability/ukey_auth_extension_context.cpp",
+    "${ability_runtime_native_path}/ability/native/ukey_auth_extension_ability/js_ukey_auth_extension.cpp",
+    "${ability_runtime_native_path}/ability/native/ukey_auth_extension_ability/js_ukey_auth_extension_base.cpp",
+    "${ability_runtime_native_path}/ability/native/ukey_auth_extension_ability/js_ukey_auth_extension_context.cpp",
+    "${ability_runtime_path}/frameworks/ets/ani/ukey_auth_extension_ability/src/ets_ukey_auth_extension_instance.cpp",
   ]
 
   deps = [
@@ -3731,7 +3731,7 @@ ohos_shared_library("ukey_auth_ui_extension") {
   part_name = "ability_runtime"
 }
 
-ohos_shared_library("ukey_auth_ui_extension_module") {
+ohos_shared_library("ukey_auth_extension_module") {
   sanitize = {
     integer_overflow = true
     ubsan = true
@@ -3745,15 +3745,15 @@ ohos_shared_library("ukey_auth_ui_extension_module") {
   branch_protector_ret = "pac_ret"
   branch_protector_frt = "bti"
 
-  sources = [ "${ability_runtime_native_path}/ability/native/ukey_auth_ui_extension_ability/ukey_auth_ui_extension_module_loader.cpp" ]
+  sources = [ "${ability_runtime_native_path}/ability/native/ukey_auth_extension_ability/ukey_auth_extension_module_loader.cpp" ]
 
   configs = [
-    ":ukey_auth_ui_extension_config",
+    ":ukey_auth_extension_config",
     ":embedded_ui_extension_module_config",
   ]
 
   deps = [
-    ":ukey_auth_ui_extension",
+    ":ukey_auth_extension",
     "${ability_runtime_innerkits_path}/runtime:runtime",
   ]
 
