@@ -58,6 +58,8 @@ ohos_fuzztest("AbilityManagerStubPendingFuzzTest") {
     "ability_base:zuri",
     "c_utils:utils",
     "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "safwk:api_cache_manager",
     "ipc:ipc_core",
     "samgr:samgr_proxy",
   ]

@@ -19,11 +19,13 @@
 #include <cstdint>
 #include <fuzzer/FuzzedDataProvider.h>
 
-#include "ability_fuzz_util.h"
+#define private public
 #include "ability_keep_alive_service.h"
+#include "keep_alive_process_manager.h"
+#undef private
+#include "ability_fuzz_util.h"
 #include "ability_util.h"
 #include "app_mgr_client.h"
-#include "keep_alive_process_manager.h"
 #include "parameters.h"
 #include "permission_verification.h"
 
@@ -42,11 +44,14 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     int32_t uid = fdp.ConsumeIntegral<int32_t>();
     bool shouldCancel = fdp.ConsumeBool();
     uint32_t accessTokenId = fdp.ConsumeIntegral<uint32_t>();
+    int32_t userId = fdp.ConsumeIntegral<int32_t>();
+    bool isMultiInstance = fdp.ConsumeBool();
     std::vector<BundleInfo> bundleInfos = {bundleInfo};
     KeepAliveProcessManager::GetInstance().StartKeepAliveMainAbility(info);
     KeepAliveProcessManager::GetInstance().SaveAppServiceRestartAfterUpgrade(bundleName, uid);
     KeepAliveProcessManager::GetInstance().RemoveCheckStatusBarTask(uid, shouldCancel);
-    KeepAliveProcessManager::GetInstance().AfterStartKeepAliveApp(bundleName, accessTokenId, uid);
+    KeepAliveProcessManager::GetInstance().AfterStartKeepAliveApp(bundleName, accessTokenId, uid, userId,
+        isMultiInstance);
     KeepAliveProcessManager::GetInstance().FilterNeedRestartKeepAliveBundleInfos(bundleInfos);
     return true;
 }

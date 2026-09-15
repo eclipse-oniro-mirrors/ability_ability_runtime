@@ -72,6 +72,8 @@ ohos_fuzztest("AbilityAppMgrRenderStateObserverManagerFuzzTest") {
     "common_event_service:cesfwk_innerkits",
     "ffrt:libffrt",
     "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "safwk:api_cache_manager",
     "hitrace:hitrace_meter",
     "init:libbegetutil",
     "ipc:ipc_core",

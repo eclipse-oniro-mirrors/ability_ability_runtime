@@ -19,11 +19,13 @@
 #include <cstdint>
 #include <fuzzer/FuzzedDataProvider.h>
 
-#include "ability_fuzz_util.h"
+#define private public
 #include "ability_keep_alive_service.h"
+#include "keep_alive_process_manager.h"
+#undef private
+#include "ability_fuzz_util.h"
 #include "ability_util.h"
 #include "app_mgr_client.h"
-#include "keep_alive_process_manager.h"
 #include "parameters.h"
 #include "permission_verification.h"
 
@@ -44,16 +46,17 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     bool updateEnable = fdp.ConsumeBool();
     bool isByEDM = fdp.ConsumeBool();
     bool isInner = fdp.ConsumeBool();
+    KeepAliveAbilityInfo abilityInfo;
     std::vector<BundleInfo> bundleInfos = {info};
     KeepAliveProcessManager::GetInstance().StartKeepAliveProcessWithMainElement(bundleInfos, userId);
     KeepAliveProcessManager::GetInstance().StartKeepAliveAppServiceExtensionPerBundle(info);
     KeepAliveProcessManager::GetInstance().StartKeepAliveAppServiceExtension(bundleInfos);
-    KeepAliveProcessManager::GetInstance().StartKeepAliveAppServiceExtensionInner(info);
+    KeepAliveProcessManager::GetInstance().StartKeepAliveAppServiceExtensionInner(abilityInfo);
     KeepAliveProcessManager::GetInstance().ClearKeepAliveAppServiceExtension(userId);
     KeepAliveProcessManager::GetInstance().CheckPermission();
     KeepAliveProcessManager::GetInstance().CheckPermissionForEDM();
     KeepAliveProcessManager::GetInstance().SetApplicationKeepAlive(bundleName, userId, updateEnable, isByEDM, isInner);
-    KeepAliveProcessManager::GetInstance().SetAppServiceExtensionKeepAlive(bundleName, updateEnable, isByEDM);
+    KeepAliveProcessManager::GetInstance().SetAppServiceExtensionKeepAlive(bundleName, updateEnable, isByEDM, isByEDM);
     return true;
 }
 }

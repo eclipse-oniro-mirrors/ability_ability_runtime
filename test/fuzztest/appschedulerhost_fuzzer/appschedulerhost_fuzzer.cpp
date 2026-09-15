@@ -89,7 +89,6 @@ public:
     void OnLoadAbilityFinished(uint64_t callbackId, int32_t pid) override {}
     void ScheduleUpdateWorkProcessInfo(std::shared_ptr<AppUpdateInfo> updateInfo) override {}
     int32_t SchedulePreTemplateProcessDeepFrozen() override { return 0; }
-    int32_t ScheduleNotifyMakeImageFailed() override { return 0; }
 };
 
 void DoFuzzCases(uint32_t code, MessageParcel &parcel, FuzzedDataProvider &fdp, uint32_t &actualCode)

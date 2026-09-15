@@ -56,9 +56,11 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
         valuesBuckets.emplace_back(valuesBucket);
     }
     rdbMgr->BatchInsert(outNumber, valuesBuckets);
-    // Merged APIs
-    rdbMgr->InsertData(valuesBucket);
-    absRdbPredicates.EqualTo(INTENT_KEY, fdp.ConsumeRandomLengthString(64));
+    NativeRdb::ValuesBucket insertBucket;
+    insertBucket.PutString(KEY_BUNDLE_NAME, fdp.ConsumeRandomLengthString(64));
+    rdbMgr->InsertData(insertBucket);
+    NativeRdb::AbsRdbPredicates absRdbPredicates("intent_table");
+    absRdbPredicates.EqualTo("intent_key", fdp.ConsumeRandomLengthString(64));
     rdbMgr->QueryData(absRdbPredicates);
 
     return true;

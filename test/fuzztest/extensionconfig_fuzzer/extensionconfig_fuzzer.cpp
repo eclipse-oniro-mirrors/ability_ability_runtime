@@ -68,7 +68,7 @@ bool DoSomethingInterestingWithMyAPI(const char *ch, size_t size, const uint8_t 
     extensionConfig->IsExtensionStartDefaultEnable(strParam, targetElement);
     nlohmann::json object;
     extensionConfig->LoadExtensionConfig(object);
-    FuzzedDataProvider fdp(data, size);
+    FuzzedDataProvider fdp(reinterpret_cast<const uint8_t*>(data), size);
     std::string extensionTypeName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
     bool isSystemApp = fdp.ConsumeBool();
     std::string bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);

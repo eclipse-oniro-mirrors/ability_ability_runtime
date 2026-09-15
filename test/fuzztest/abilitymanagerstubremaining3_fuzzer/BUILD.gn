@@ -67,6 +67,8 @@ ohos_fuzztest("AbilityManagerStubRemaining3FuzzTest") {
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "safwk:api_cache_manager",
     "ipc:ipc_core",
     "samgr:samgr_proxy",
   ]

@@ -168,11 +168,6 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     int32_t int32Param = static_cast<int32_t>(GetU32Data(data));
     BundleMgrHelperFuzztest1(boolParam, stringParam, int32Param);
     BundleMgrHelperFuzztest2(boolParam, stringParam, int32Param);
-    // Merged APIs
-    bmHelper->GetTestRunnerTypeAndPath(bundleName, moduleName, testRunner);
-    // Merged APIs
-    bmHelper->GetPluginInfoForTarget(hostBundleName, pluginBundleName,
-
 
     return true;
 }
@@ -197,7 +192,7 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     int32_t appIndex;
     sptr<IBundleEventCallback> pluginEventCallback;
     std::vector<PluginBundleInfo> pluginBundleInfos;
-    FuzzedDataProvider fdp(data, size);
+    FuzzedDataProvider fdp(reinterpret_cast<const uint8_t*>(data), size);
     bundleName = fdp.ConsumeRandomLengthString(256);
     hostBundleName = fdp.ConsumeRandomLengthString(256);
     pluginBundleName = fdp.ConsumeRandomLengthString(128);
@@ -223,6 +218,10 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     bmHelper->GetPluginInfosForSelf(pluginBundleInfos);
     bmHelper->RegisterPluginEventCallback(pluginEventCallback);
     bmHelper->UnregisterPluginEventCallback(pluginEventCallback);
+    ModuleTestRunner testRunner;
+    bmHelper->GetTestRunnerTypeAndPath(bundleName, moduleName, testRunner);
+    PluginBundleInfo pluginBundleInfo;
+    bmHelper->GetPluginInfoForTarget(hostBundleName, pluginBundleName, userId, pluginBundleInfo);
     return true;
 }
 }

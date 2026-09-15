@@ -66,11 +66,6 @@ bool DoSomethingInterestingWithMyAPI(const char *data, size_t size)
         return false;
     }
     std::shared_ptr<AbilityLifecycleCallbackFuzz> callback;
-    FuzzedDataProvider fdp(data, size);
-    auto fuzzStr = fdp.ConsumeRandomLengthString(64);
-    auto fuzzInt = fdp.ConsumeIntegral<int32_t>();
-    auto fuzzBool = fdp.ConsumeBool();
-    auto fuzzBuf = fdp.ConsumeRemainingBytesAsString();
     context->RegisterAbilityLifecycleCallback(callback);
     return true;
 }

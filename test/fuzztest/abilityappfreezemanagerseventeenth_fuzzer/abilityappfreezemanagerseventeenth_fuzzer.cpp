@@ -41,8 +41,12 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     appInfo.uid = fdp.ConsumeIntegral<int32_t>();
     appInfo.bundleName = fdp.ConsumeRandomLengthString(256);
     appInfo.processName = fdp.ConsumeRandomLengthString(256);
-    info.timeout = fdp.ConsumeIntegral<int64_t>();
-    info.isKeepAlive = fdp.ConsumeBool();
+    info.needKillProcess = fdp.ConsumeBool();
+    info.typeId = fdp.ConsumeIntegral<int32_t>();
+    info.pid = fdp.ConsumeIntegral<int32_t>();
+    info.eventName = fdp.ConsumeRandomLengthString(64);
+    info.bundleName = fdp.ConsumeRandomLengthString(64);
+    info.msg = fdp.ConsumeRandomLengthString(64);
     auto freeze = AppfreezeManager::GetInstance();
     if (!freeze) {
         return false;

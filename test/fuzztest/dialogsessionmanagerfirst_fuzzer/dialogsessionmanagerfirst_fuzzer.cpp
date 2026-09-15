@@ -59,6 +59,11 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t *data, size_t size)
     bool needGrantUriPermission = fdp.ConsumeBool();
     type = static_cast<SelectorType>(fdp.ConsumeIntegralInRange<int32_t>(0, CODE_TWO));
     AbilityFuzzUtil::GetRandomAbilityRequestInfo(fdp, info);
+    sptr<DialogSessionInfo> dilogSessionInfo(new DialogSessionInfo());
+    std::shared_ptr<DialogCallerInfo> dialogCallerInfo = std::make_shared<DialogCallerInfo>();
+    Want want;
+    bool isAllowed = fdp.ConsumeBool();
+    std::vector<DialogAbilityInfo> targetAbilityInfos;
     std::shared_ptr<DialogSessionManager> dialogSessionManager = std::make_shared<DialogSessionManager>();
     if (dialogSessionManager == nullptr) {
         return false;
@@ -66,7 +71,6 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t *data, size_t size)
     dialogSessionManager->SetQueryERMSInfo(dialogSessionId, info);
     dialogSessionManager->UpdateExtensionWantWithDialogCallerInfo(info, callerToken, isSCBCall);
     dialogSessionManager->OnlySetDialogCallerInfo(info, userId, type, dialogSessionId, needGrantUriPermission);
-    // Merged APIs
     dialogSessionManager->SetDialogSessionInfo(dialogSessionId, dilogSessionInfo, dialogCallerInfo);
     dialogSessionManager->NotifyAbilityRequestFailure(dialogSessionId, want);
     dialogSessionManager->SendDialogResult(want, dialogSessionId, isAllowed);

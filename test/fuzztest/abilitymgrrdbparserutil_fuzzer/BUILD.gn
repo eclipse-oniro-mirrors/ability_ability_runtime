@@ -70,6 +70,8 @@ ohos_fuzztest("AbilityMgrRdbParserUtilFuzzTest") {
     "config_policy:configpolicy_util",
     "ffrt:libffrt",
     "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "safwk:api_cache_manager",
     "hitrace:hitrace_meter",
     "ipc:ipc_core",
     "json:nlohmann_json_static",

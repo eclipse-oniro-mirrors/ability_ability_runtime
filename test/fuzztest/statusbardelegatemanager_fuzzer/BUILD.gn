@@ -28,8 +28,6 @@ ohos_fuzztest("StatusBarDelegateManagerFuzzTest") {
     "${ability_runtime_services_path}/common/include",
     "${ability_runtime_utils_path}/global/freeze/include",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
-    "${distributedschedule_path}/samgr/interfaces/innerkits/samgr_proxy/include",
-    "${distributedschedule_path}/samgr/adapter/interfaces/innerkits/include/",
     "${ability_runtime_innerkits_path}/app_manager/include/appmgr",
     "${ability_runtime_services_path}/abilitymgr/include/utils",
     "${ability_runtime_services_path}/abilitymgr/include",
@@ -65,7 +63,6 @@ ohos_fuzztest("StatusBarDelegateManagerFuzzTest") {
     "${ability_runtime_services_path}/abilitymgr:abilityms",
     "${ability_runtime_services_path}/common:app_util",
     "${ability_runtime_services_path}/common:perm_verification",
-    "//third_party/libjpeg-turbo:turbojpeg_static",
   ]
 
   external_deps = [
@@ -76,8 +73,10 @@ ohos_fuzztest("StatusBarDelegateManagerFuzzTest") {
     "ffrt:libffrt",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
+    "safwk:api_cache_manager",
     "hitrace:hitrace_meter",
     "ipc:ipc_core",
+    "libjpeg-turbo:turbojpeg",
     "napi:ace_napi",
   ]
 

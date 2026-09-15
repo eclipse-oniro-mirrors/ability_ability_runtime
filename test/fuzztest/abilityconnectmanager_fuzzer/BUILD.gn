@@ -56,6 +56,7 @@ ohos_fuzztest("AbilityConnectManagerFuzzTest") {
     "ffrt:libffrt",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
+    "safwk:api_cache_manager",
     "ipc:ipc_core",
     "napi:ace_napi",
     "relational_store:native_dataability",

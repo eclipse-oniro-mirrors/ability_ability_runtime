@@ -51,7 +51,7 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     std::vector<KeepAliveInfo> infoList = {keepAliveInfo};
     std::vector<BundleInfo> bundleInfos = {info};
     KeepAliveProcessManager::GetInstance().StartKeepAliveProcessWithMainElementPerBundle(info, userId);
-    KeepAliveProcessManager::GetInstance().OnAppStateChanged(info);
+    KeepAliveProcessManager::GetInstance().OnAppStateChanged(appInfo);
     KeepAliveProcessManager::GetInstance().QueryKeepAliveApplications(appType, userId, infoList, isByEDM);
     KeepAliveProcessManager::GetInstance().IsKeepAliveBundle(bundleName, userId);
     KeepAliveProcessManager::GetInstance().IsRunningAppInStatusBar(info);
