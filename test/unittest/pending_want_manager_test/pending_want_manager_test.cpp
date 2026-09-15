@@ -1430,7 +1430,7 @@ HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_6200, TestSize.Level1)
     EXPECT_NE(pendingManager_, nullptr);
 
     std::shared_ptr<PendingWantKey> key = MakeWantKey(wantSenderInfo);
-    pendingManager_->HandleAddWantAgentNumber(key);
+    pendingManager_->HandleAddWantAgentNumber(key, 100);
 
     auto it = pendingManager_->wantAgentCount_.find(key->GetBundleName());
     EXPECT_EQ(it->second.currentNumber, 1);
@@ -1440,7 +1440,7 @@ HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_6200, TestSize.Level1)
     ElementName element2("device", bundleName, "abilityName2");
     WantSenderInfo wantSenderInfo2 = MakeWantSenderInfo(want, static_cast<int32_t>(Flags::NO_BUILD_FLAG), 0);
     std::shared_ptr<PendingWantKey> key2 = MakeWantKey(wantSenderInfo2);
-    pendingManager_->HandleAddWantAgentNumber(key2);
+    pendingManager_->HandleAddWantAgentNumber(key2, 100);
 
     auto it2 = pendingManager_->wantAgentCount_.find(key2->GetBundleName());
     EXPECT_EQ(it->second.currentNumber, 290);
@@ -1463,7 +1463,7 @@ HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_6300, TestSize.Level1)
     EXPECT_NE(pendingManager_, nullptr);
 
     std::shared_ptr<PendingWantKey> key = MakeWantKey(wantSenderInfo);
-    pendingManager_->HandleAddWantAgentNumber(key);
+    pendingManager_->HandleAddWantAgentNumber(key, 100);
 
     auto it = pendingManager_->wantAgentCount_.find(key->GetBundleName());
     EXPECT_EQ(it->second.currentNumber, 1);
