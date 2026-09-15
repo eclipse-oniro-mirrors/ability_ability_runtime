@@ -166,7 +166,7 @@ void AmsMgrProxy::TerminateAbility(const sptr<IRemoteObject> &token, bool clearM
 }
 
 void AmsMgrProxy::UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state,
-    bool isFromScreenOffBackground)
+    bool isFromScreenOffBackground, const UiAbilityLastCallerInfo &callerInfo)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "start");
     MessageParcel data;
@@ -188,12 +188,16 @@ void AmsMgrProxy::UpdateAbilityState(const sptr<IRemoteObject> &token, const Abi
         TAG_LOGE(AAFwkTag::APPMGR, "Failed to write isFromScreenOffBackground");
         return;
     }
+    if (!data.WriteInt32(callerInfo.callerUid) || !data.WriteString(callerInfo.callerBundleName) ||
+        !data.WriteBool(callerInfo.isCallBySCB)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Failed to write caller info");
+        return;
+    }
     int32_t ret =
         SendTransactCmd(static_cast<uint32_t>(IAmsMgr::Message::UPDATE_ABILITY_STATE), data, reply, option);
     if (ret != NO_ERROR) {
         TAG_LOGW(AAFwkTag::APPMGR, "SendRequest err: %{public}d", ret);
     }
-    TAG_LOGD(AAFwkTag::APPMGR, "end");
 }
 
 void AmsMgrProxy::UpdateExtensionState(const sptr<IRemoteObject> &token, const ExtensionState state)

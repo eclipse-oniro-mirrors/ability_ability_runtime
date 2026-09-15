@@ -78,6 +78,7 @@ struct ProcessData : public Parcelable {
     bool isPreloadUIExtension = false;
     bool isFromScreenOffBackground = false;
     int32_t byCallStatus = 0;
+    std::string callerBundleName;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

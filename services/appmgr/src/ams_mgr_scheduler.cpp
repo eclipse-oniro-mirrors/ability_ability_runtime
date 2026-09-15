@@ -150,7 +150,7 @@ void AmsMgrScheduler::NotifyLoadAbilityFinished(pid_t callingPid, pid_t targetPi
 }
 
 void AmsMgrScheduler::UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state,
-    bool isFromScreenOffBackground)
+    bool isFromScreenOffBackground, const UiAbilityLastCallerInfo &callerInfo)
 {
     if (!IsReady()) {
         return;
@@ -161,8 +161,8 @@ void AmsMgrScheduler::UpdateAbilityState(const sptr<IRemoteObject> &token, const
         return;
     }
     std::function<void()> updateAbilityStateFunc = [amsMgrServiceInner = amsMgrServiceInner_, token, state,
-        isFromScreenOffBackground] () {
-        amsMgrServiceInner->UpdateAbilityState(token, state, isFromScreenOffBackground);
+        isFromScreenOffBackground, callerInfo] () {
+        amsMgrServiceInner->UpdateAbilityState(token, state, isFromScreenOffBackground, callerInfo);
     };
     amsHandler_->SubmitTask(updateAbilityStateFunc, AAFwk::TaskAttribute{
         .taskName_ = TASK_UPDATE_ABILITY_STATE,

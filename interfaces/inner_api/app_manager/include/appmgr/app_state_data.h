@@ -75,6 +75,8 @@ struct AppStateData : public Parcelable {
     std::string callerBundleName;
     bool isFromWindowFocusChanged = false;
     int32_t byCallStatus = 0;
+    int32_t lastUIAbilityCallerUid = -1;
+    std::string lastUIAbilityCallerName;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS
