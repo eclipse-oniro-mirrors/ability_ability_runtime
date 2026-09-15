@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <climits>
 #include <gtest/gtest.h>
 #include <vector>
 #define private public
@@ -250,6 +251,233 @@ HWTEST_F(DataUriUtilsTest, DataUriUtilsTest_0500, Level1)
     EXPECT_EQ(dataUriUtils.UpdateId(uri, THOUSAND).ToString(), uri.ToString());
 
     GTEST_LOG_(INFO) << "DataUriUtilsTest_0500 end";
+}
+
+/**
+ * @tc.number: AaFwk_DataUriUtils_AttachId_0100
+ * @tc.name: AttachId
+ * @tc.desc: Test AttachId with zero id boundary value.
+ */
+HWTEST_F(DataUriUtilsTest, AaFwk_DataUriUtils_AttachId_0100, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_0100 start";
+
+    Uri uri("scheme://authority/path1/path2/path3?id=1&name=mingming#fragment");
+    Uri uriRet = DataUriUtils::AttachId(uri, 0);
+
+    long long ret = DataUriUtils::GetId(uriRet);
+    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(uriRet.ToString(), "scheme://authority/path1/path2/path3/0?id=1&name=mingming#fragment");
+
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_0100 end";
+}
+
+/**
+ * @tc.number: AaFwk_DataUriUtils_AttachId_0200
+ * @tc.name: AttachId
+ * @tc.desc: Test AttachId with LLONG_MAX boundary value.
+ */
+HWTEST_F(DataUriUtilsTest, AaFwk_DataUriUtils_AttachId_0200, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_0200 start";
+
+    Uri uri("scheme://authority/path1/path2/path3?id=1&name=mingming#fragment");
+    Uri uriRet = DataUriUtils::AttachId(uri, LLONG_MAX);
+
+    long long ret = DataUriUtils::GetId(uriRet);
+    EXPECT_EQ(ret, LLONG_MAX);
+
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_0200 end";
+}
+
+/**
+ * @tc.number: AaFwk_DataUriUtils_AttachId_0300
+ * @tc.name: AttachId
+ * @tc.desc: Test AttachId with LLONG_MIN boundary value.
+ */
+HWTEST_F(DataUriUtilsTest, AaFwk_DataUriUtils_AttachId_0300, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_0300 start";
+
+    Uri uri("scheme://authority/path1/path2/path3?id=1&name=mingming#fragment");
+    Uri uriRet = DataUriUtils::AttachId(uri, LLONG_MIN);
+
+    long long ret = DataUriUtils::GetId(uriRet);
+    EXPECT_EQ(ret, LLONG_MIN);
+
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_0300 end";
+}
+
+/**
+ * @tc.number: AaFwk_DataUriUtils_AttachId_0400
+ * @tc.name: AttachId
+ * @tc.desc: Test AttachId with a URI containing a single path segment.
+ */
+HWTEST_F(DataUriUtilsTest, AaFwk_DataUriUtils_AttachId_0400, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_0400 start";
+
+    Uri uri("scheme://authority/path1");
+    Uri uriRet = DataUriUtils::AttachId(uri, 100);
+
+    long long ret = DataUriUtils::GetId(uriRet);
+    EXPECT_EQ(ret, 100);
+    EXPECT_EQ(uriRet.ToString(), "scheme://authority/path1/100");
+
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_0400 end";
+}
+
+/**
+ * @tc.number: AaFwk_DataUriUtils_AttachId_0500
+ * @tc.name: AttachId
+ * @tc.desc: Test AttachId with a URI that has query but no fragment and verify exact result string.
+ */
+HWTEST_F(DataUriUtilsTest, AaFwk_DataUriUtils_AttachId_0500, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_0500 start";
+
+    Uri uri("scheme://authority/path1/path2?query=value");
+    Uri uriRet = DataUriUtils::AttachId(uri, 500);
+
+    long long ret = DataUriUtils::GetId(uriRet);
+    EXPECT_EQ(ret, 500);
+    EXPECT_EQ(uriRet.ToString(), "scheme://authority/path1/path2/500?query=value");
+
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_0500 end";
+}
+
+/**
+ * @tc.number: AaFwk_DataUriUtils_AttachId_0600
+ * @tc.name: AttachId
+ * @tc.desc: Test AttachId with a URI that has fragment but no query and verify exact result string.
+ */
+HWTEST_F(DataUriUtilsTest, AaFwk_DataUriUtils_AttachId_0600, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_0600 start";
+
+    Uri uri("scheme://authority/path1/path2#fragment");
+    Uri uriRet = DataUriUtils::AttachId(uri, 600);
+
+    long long ret = DataUriUtils::GetId(uriRet);
+    EXPECT_EQ(ret, 600);
+    EXPECT_EQ(uriRet.ToString(), "scheme://authority/path1/path2/600#fragment");
+
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_0600 end";
+}
+
+/**
+ * @tc.number: AaFwk_DataUriUtils_AttachId_0700
+ * @tc.name: AttachId
+ * @tc.desc: Test AttachId with a URI that has neither query nor fragment.
+ */
+HWTEST_F(DataUriUtilsTest, AaFwk_DataUriUtils_AttachId_0700, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_0700 start";
+
+    Uri uri("scheme://authority/path1/path2/path3");
+    Uri uriRet = DataUriUtils::AttachId(uri, 700);
+
+    long long ret = DataUriUtils::GetId(uriRet);
+    EXPECT_EQ(ret, 700);
+    EXPECT_EQ(uriRet.ToString(), "scheme://authority/path1/path2/path3/700");
+
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_0700 end";
+}
+
+/**
+ * @tc.number: AaFwk_DataUriUtils_AttachId_0800
+ * @tc.name: AttachId
+ * @tc.desc: Test AttachId with negative id and verify exact result string via GetId.
+ */
+HWTEST_F(DataUriUtilsTest, AaFwk_DataUriUtils_AttachId_0800, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_0800 start";
+
+    Uri uri("scheme://authority/path1/path2");
+    Uri uriRet = DataUriUtils::AttachId(uri, -200);
+
+    long long ret = DataUriUtils::GetId(uriRet);
+    EXPECT_EQ(ret, -200);
+    EXPECT_EQ(uriRet.ToString(), "scheme://authority/path1/path2/-200");
+
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_0800 end";
+}
+
+/**
+ * @tc.number: AaFwk_DataUriUtils_AttachId_0900
+ * @tc.name: AttachId
+ * @tc.desc: Test AttachId called twice on the same URI (double attach).
+ */
+HWTEST_F(DataUriUtilsTest, AaFwk_DataUriUtils_AttachId_0900, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_0900 start";
+
+    Uri uri("scheme://authority/path1/path2/path3?id=1#fragment");
+    Uri uriRet1 = DataUriUtils::AttachId(uri, 100);
+    Uri uriRet2 = DataUriUtils::AttachId(uriRet1, 200);
+
+    long long ret = DataUriUtils::GetId(uriRet2);
+    EXPECT_EQ(ret, 200);
+    EXPECT_EQ(uriRet2.ToString(), "scheme://authority/path1/path2/path3/100/200?id=1#fragment");
+
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_0900 end";
+}
+
+/**
+ * @tc.number: AaFwk_DataUriUtils_AttachId_1000
+ * @tc.name: AttachId
+ * @tc.desc: Test AttachId when the last path segment is already numeric.
+ */
+HWTEST_F(DataUriUtilsTest, AaFwk_DataUriUtils_AttachId_1000, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_1000 start";
+
+    Uri uri("scheme://authority/path1/100");
+    Uri uriRet = DataUriUtils::AttachId(uri, 200);
+
+    long long ret = DataUriUtils::GetId(uriRet);
+    EXPECT_EQ(ret, 200);
+    EXPECT_EQ(uriRet.ToString(), "scheme://authority/path1/100/200");
+
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_1000 end";
+}
+
+/**
+ * @tc.number: AaFwk_DataUriUtils_AttachId_1100
+ * @tc.name: AttachId
+ * @tc.desc: Test AttachId with minimal positive id value (1).
+ */
+HWTEST_F(DataUriUtilsTest, AaFwk_DataUriUtils_AttachId_1100, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_1100 start";
+
+    Uri uri("scheme://authority/path1/path2");
+    Uri uriRet = DataUriUtils::AttachId(uri, 1);
+
+    long long ret = DataUriUtils::GetId(uriRet);
+    EXPECT_EQ(ret, 1);
+    EXPECT_EQ(uriRet.ToString(), "scheme://authority/path1/path2/1");
+
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_1100 end";
+}
+
+/**
+ * @tc.number: AaFwk_DataUriUtils_AttachId_1200
+ * @tc.name: AttachId
+ * @tc.desc: Test AttachId with a URI containing a port in the authority.
+ */
+HWTEST_F(DataUriUtilsTest, AaFwk_DataUriUtils_AttachId_1200, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_1200 start";
+
+    Uri uri("scheme://authority:8080/path1/path2?id=1#fragment");
+    Uri uriRet = DataUriUtils::AttachId(uri, 300);
+
+    long long ret = DataUriUtils::GetId(uriRet);
+    EXPECT_EQ(ret, 300);
+    EXPECT_EQ(uriRet.ToString(), "scheme://authority:8080/path1/path2/300?id=1#fragment");
+
+    GTEST_LOG_(INFO) << "AaFwk_DataUriUtils_AttachId_1200 end";
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS
