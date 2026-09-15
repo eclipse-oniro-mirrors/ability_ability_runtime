@@ -41,6 +41,11 @@ bool ChangeInfo::Marshalling(const ChangeInfo &input, MessageParcel &parcel)
         }
     }
 
+    if (input.size_ > ChangeInfo::MAX_DATA_SIZE) {
+        LOG_ERROR("Data size exceeds MAX_DATA_SIZE, size: %{public}u", input.size_);
+        return false;
+    }
+
     if (!parcel.WriteUint32(input.size_)) {
         return false;
     }
