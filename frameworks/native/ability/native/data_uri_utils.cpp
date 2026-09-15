@@ -80,6 +80,9 @@ Uri DataUriUtils::AttachId(const Uri &dataUri, long long id)
     // find "/+lastPath"
     string tempLastPath = string(SEPARATOR) + lastPath;
     auto lastPathPos = uriString.rfind(tempLastPath);
+    if (lastPathPos == std::string::npos) {
+        return dataUri;
+    }
 
     uriString.replace(lastPathPos + 1, tempLastPath.size() - 1, newLastPath.c_str());
     return Uri(uriString);
