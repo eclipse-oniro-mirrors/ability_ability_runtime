@@ -2313,6 +2313,7 @@ int32_t AbilityManagerClient::StartShortcut(const Want &want, const StartOptions
     TAG_LOGD(AAFwkTag::ABILITYMGR, "start short cut.");
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_INVALID_VALUE(abms);
+    HandleDlpApp(const_cast<Want &>(want));
     return abms->StartShortcut(want, startOptions);
 }
 
