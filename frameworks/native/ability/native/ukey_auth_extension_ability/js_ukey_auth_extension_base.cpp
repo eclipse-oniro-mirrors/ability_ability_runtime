@@ -16,7 +16,6 @@
 #include "js_ukey_auth_extension_base.h"
 
 #include "ability_info.h"
-#include "application_configuration_manager.h"
 #include "hilog_tag_wrapper.h"
 #include "js_runtime.h"
 #include "js_runtime_utils.h"
@@ -49,7 +48,6 @@ void JsUkeyAuthExtensionBase::BindContext()
         ukeyContext_ = std::make_shared<UkeyAuthExtensionContext>();
         ukeyContext_->SetToken(context_ == nullptr ? nullptr : context_->GetToken());
         ukeyContext_->SetAbilityInfo(abilityInfo_);
-        RegisterUkeyContextConfigUpdateCallback();
     }
     napi_value obj = jsObj_->GetNapiValue();
     if (!CheckTypeForNapiValue(env, obj, napi_object)) {
@@ -114,60 +112,5 @@ void JsUkeyAuthExtensionBase::OnForeground(const AAFwk::Want &want,
     }
 }
 
-void JsUkeyAuthExtensionBase::RegisterUkeyContextConfigUpdateCallback()
-{
-    if (ukeyContext_ == nullptr || abilityInfo_ == nullptr) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "null ukeyContext_ or abilityInfo_");
-        return;
-    }
-    auto ukeyExtensionAbility = std::static_pointer_cast<JsUkeyAuthExtensionBase>(shared_from_this());
-    std::weak_ptr<JsUkeyAuthExtensionBase> abilityWptr = ukeyExtensionAbility;
-    std::weak_ptr<UkeyAuthExtensionContext> ukeyContextWptr = ukeyContext_;
-    ukeyContext_->RegisterAbilityConfigUpdateCallback(
-        [abilityWptr, ukeyContextWptr](AppExecFwk::Configuration &config) {
-        std::shared_ptr<JsUkeyAuthExtensionBase> abilitySptr = abilityWptr.lock();
-        if (abilitySptr == nullptr) {
-            TAG_LOGE(AAFwkTag::UI_EXT, "null abilitySptr");
-            return;
-        }
-        auto ukeyContext = ukeyContextWptr.lock();
-        if (ukeyContext == nullptr || ukeyContext->GetAbilityInfo() == nullptr) {
-            TAG_LOGE(AAFwkTag::UI_EXT, "null ukeyContext or null GetAbilityInfo");
-            return;
-        }
-        if (ukeyContext->GetAbilityConfiguration() == nullptr) {
-            auto abilityModuleContext = ukeyContext->CreateModuleContext(
-                ukeyContext->GetAbilityInfo()->moduleName);
-            if (abilityModuleContext == nullptr) {
-                TAG_LOGE(AAFwkTag::UI_EXT, "null abilityModuleContext");
-                return;
-            }
-            auto abilityResourceMgr = abilityModuleContext->GetResourceManager();
-            ukeyContext->SetAbilityResourceManager(abilityResourceMgr);
-            AbilityRuntime::ApplicationConfigurationManager::GetInstance().
-                AddIgnoreContext(ukeyContext, abilityResourceMgr);
-            TAG_LOGD(AAFwkTag::UI_EXT, "%{public}zu",
-                AbilityRuntime::ApplicationConfigurationManager::GetInstance().GetIgnoreContext().size());
-        }
-        ukeyContext->SetAbilityConfiguration(config);
-        if (config.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE).
-            compare(AppExecFwk::ConfigurationInner::COLOR_MODE_AUTO) == 0) {
-            config.AddItem(AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE,
-                ApplicationConfigurationManager::GetInstance().GetColorMode());
-
-            if (AbilityRuntime::ApplicationConfigurationManager::GetInstance().
-                GetColorModeSetLevel() > AbilityRuntime::SetLevel::System) {
-                config.AddItem(AAFwk::GlobalConfigurationKey::COLORMODE_IS_SET_BY_APP,
-                    AppExecFwk::ConfigurationInner::IS_SET_BY_APP);
-            }
-            ukeyContext->GetAbilityConfiguration()->
-                RemoveItem(AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE);
-            ukeyContext->GetAbilityConfiguration()->
-                RemoveItem(AAFwk::GlobalConfigurationKey::COLORMODE_IS_SET_BY_APP);
-        }
-
-        abilitySptr->OnAbilityConfigurationUpdated(config);
-    });
-}
 } // namespace AbilityRuntime
 } // namespace OHOS

@@ -16,10 +16,6 @@
 #ifndef OHOS_ABILITY_RUNTIME_UKEY_AUTH_UI_EXTENSION_CONTEXT_H
 #define OHOS_ABILITY_RUNTIME_UKEY_AUTH_UI_EXTENSION_CONTEXT_H
 
-#include <functional>
-#include <memory>
-
-#include "configuration.h"
 #include "extension_context.h"
 #include "session_info.h"
 #include "want.h"
@@ -31,12 +27,10 @@ class Window;
 namespace AbilityRuntime {
 
 /**
- * @brief context supply for ukeyAuth UIExtension, with only terminate/report/colorMode capabilities.
+ * @brief context supply for ukeyAuth UIExtension, with only terminate capabilities.
  */
 class UkeyAuthExtensionContext : public ExtensionContext {
 public:
-    using AbilityConfigUpdateCallback = std::function<void(AppExecFwk::Configuration &config)>;
-
     UkeyAuthExtensionContext() = default;
     ~UkeyAuthExtensionContext() override = default;
 
@@ -55,30 +49,12 @@ public:
      */
     ErrCode TerminateSelfWithResult(int32_t resultCode, const AAFwk::Want &want);
 
-    /**
-     * @brief Reports drawn completed of the extension ability.
-     */
-    ErrCode ReportDrawnCompleted();
-
-    /**
-     * @brief Sets color mode of the extension ability.
-     */
-    void SetAbilityColorMode(int32_t colorMode);
-
-    void RegisterAbilityConfigUpdateCallback(AbilityConfigUpdateCallback &&callback);
-    std::shared_ptr<AppExecFwk::Configuration> GetAbilityConfiguration() const;
-    void SetAbilityConfiguration(const AppExecFwk::Configuration &config);
-    void SetAbilityResourceManager(std::shared_ptr<Global::Resource::ResourceManager> abilityResourceMgr);
-
 private:
 #ifdef SUPPORT_SCREEN
     sptr<Rosen::Window> uiWindow_ = nullptr;
 #endif // SUPPORT_SCREEN
     sptr<AAFwk::SessionInfo> sessionInfo_ = nullptr;
     std::string requestId_;
-    AbilityConfigUpdateCallback abilityConfigUpdateCallback_ = nullptr;
-    std::shared_ptr<AppExecFwk::Configuration> abilityConfiguration_ = nullptr;
-    std::shared_ptr<Global::Resource::ResourceManager> abilityResourceMgr_ = nullptr;
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

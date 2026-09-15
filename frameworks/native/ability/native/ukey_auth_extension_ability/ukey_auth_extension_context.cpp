@@ -17,7 +17,6 @@
 
 #include "ability_manager_client.h"
 #include "cert_manager_api.h"
-#include "configuration_convertor.h"
 #include "hilog_tag_wrapper.h"
 #ifdef SUPPORT_SCREEN
 #include "window.h"
@@ -104,56 +103,6 @@ ErrCode UkeyAuthExtensionContext::TerminateSelfWithResult(int32_t resultCode, co
         TAG_LOGE(AAFwkTag::UI_EXT, "TerminateUIExtensionAbility failed, err = %{public}d", err);
     }
     return err;
-}
-
-ErrCode UkeyAuthExtensionContext::ReportDrawnCompleted()
-{
-    TAG_LOGD(AAFwkTag::EXT, "begin");
-    ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->ReportDrawnCompleted(GetToken());
-    if (err != ERR_OK) {
-        TAG_LOGE(AAFwkTag::EXT, "ret=%{public}d", err);
-    }
-    return err;
-}
-
-void UkeyAuthExtensionContext::SetAbilityColorMode(int32_t colorMode)
-{
-    TAG_LOGI(AAFwkTag::UI_EXT, "SetAbilityColorMode colorMode: %{public}d", colorMode);
-    if (colorMode < -1 || colorMode > 1) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "colorMode error");
-        return;
-    }
-    AppExecFwk::Configuration config;
-
-    config.AddItem(AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE, AppExecFwk::GetColorModeStr(colorMode));
-    config.AddItem(AAFwk::GlobalConfigurationKey::COLORMODE_IS_SET_BY_APP,
-        AppExecFwk::ConfigurationInner::IS_SET_BY_APP);
-    if (!abilityConfigUpdateCallback_) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "abilityConfigUpdateCallback_ nullptr");
-        return;
-    }
-    abilityConfigUpdateCallback_(config);
-}
-
-void UkeyAuthExtensionContext::RegisterAbilityConfigUpdateCallback(AbilityConfigUpdateCallback &&callback)
-{
-    abilityConfigUpdateCallback_ = std::move(callback);
-}
-
-std::shared_ptr<AppExecFwk::Configuration> UkeyAuthExtensionContext::GetAbilityConfiguration() const
-{
-    return abilityConfiguration_;
-}
-
-void UkeyAuthExtensionContext::SetAbilityConfiguration(const AppExecFwk::Configuration &config)
-{
-    abilityConfiguration_ = std::make_shared<AppExecFwk::Configuration>(config);
-}
-
-void UkeyAuthExtensionContext::SetAbilityResourceManager(
-    std::shared_ptr<Global::Resource::ResourceManager> abilityResourceMgr)
-{
-    abilityResourceMgr_ = abilityResourceMgr;
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

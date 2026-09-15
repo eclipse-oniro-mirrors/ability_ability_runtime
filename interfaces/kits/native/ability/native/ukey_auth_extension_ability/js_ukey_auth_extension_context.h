@@ -37,16 +37,12 @@ public:
     static void Finalizer(napi_env env, void *data, void *hint);
     static napi_value TerminateSelf(napi_env env, napi_callback_info info);
     static napi_value TerminateSelfWithResult(napi_env env, napi_callback_info info);
-    static napi_value ReportDrawnCompleted(napi_env env, napi_callback_info info);
-    static napi_value SetColorMode(napi_env env, napi_callback_info info);
     static napi_value CreateJsUkeyAuthExtensionContext(napi_env env,
         std::shared_ptr<UkeyAuthExtensionContext> context);
 
 protected:
     napi_value OnTerminateSelf(napi_env env, NapiCallbackInfo &info);
     napi_value OnTerminateSelfWithResult(napi_env env, NapiCallbackInfo &info);
-    napi_value OnReportDrawnCompleted(napi_env env, NapiCallbackInfo &info);
-    napi_value OnSetColorMode(napi_env env, NapiCallbackInfo &info);
 
 protected:
     std::weak_ptr<UkeyAuthExtensionContext> context_;

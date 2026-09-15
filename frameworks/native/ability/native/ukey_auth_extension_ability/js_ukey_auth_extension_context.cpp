@@ -54,16 +54,6 @@ napi_value JsUkeyAuthExtensionContext::TerminateSelfWithResult(napi_env env, nap
     GET_NAPI_INFO_AND_CALL(env, info, JsUkeyAuthExtensionContext, OnTerminateSelfWithResult);
 }
 
-napi_value JsUkeyAuthExtensionContext::ReportDrawnCompleted(napi_env env, napi_callback_info info)
-{
-    GET_NAPI_INFO_AND_CALL(env, info, JsUkeyAuthExtensionContext, OnReportDrawnCompleted);
-}
-
-napi_value JsUkeyAuthExtensionContext::SetColorMode(napi_env env, napi_callback_info info)
-{
-    GET_NAPI_INFO_AND_CALL(env, info, JsUkeyAuthExtensionContext, OnSetColorMode);
-}
-
 napi_value JsUkeyAuthExtensionContext::CreateJsUkeyAuthExtensionContext(napi_env env,
     std::shared_ptr<UkeyAuthExtensionContext> context)
 {
@@ -81,8 +71,6 @@ napi_value JsUkeyAuthExtensionContext::CreateJsUkeyAuthExtensionContext(napi_env
     const char *moduleName = "JsUkeyAuthExtensionContext";
     BindNativeFunction(env, objValue, "terminateSelf", moduleName, TerminateSelf);
     BindNativeFunction(env, objValue, "terminateSelfWithResult", moduleName, TerminateSelfWithResult);
-    BindNativeFunction(env, objValue, "reportDrawnCompleted", moduleName, ReportDrawnCompleted);
-    BindNativeFunction(env, objValue, "setColorMode", moduleName, SetColorMode);
 
     std::string type = "UkeyAuthExtensionContext";
     napi_set_named_property(env, objValue, "contextType", CreateJsValue(env, type));
@@ -156,62 +144,6 @@ napi_value JsUkeyAuthExtensionContext::OnTerminateSelfWithResult(napi_env env, N
     NapiAsyncTask::ScheduleHighQos("JsUkeyAuthExtensionContext::OnTerminateSelfWithResult",
         env, CreateAsyncTaskWithLastParam(env, lastParam, std::move(execute), std::move(complete), &result));
     return result;
-}
-
-napi_value JsUkeyAuthExtensionContext::OnReportDrawnCompleted(napi_env env, NapiCallbackInfo &info)
-{
-    if (info.argc < ARGC_ONE) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "invalid argc");
-        ThrowTooFewParametersError(env);
-        return CreateJsUndefined(env);
-    }
-    TAG_LOGD(AAFwkTag::UI_EXT, "called");
-    auto innerErrorCode = std::make_shared<int32_t>(ERR_OK);
-    NapiAsyncTask::ExecuteCallback execute = [weak = context_, innerErrorCode]() {
-        auto context = weak.lock();
-        if (!context) {
-            TAG_LOGW(AAFwkTag::UI_EXT, "null context");
-            *innerErrorCode = static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT);
-            return;
-        }
-        *innerErrorCode = context->ReportDrawnCompleted();
-    };
-    NapiAsyncTask::CompleteCallback complete = [innerErrorCode](napi_env env, NapiAsyncTask &task, int32_t status) {
-        if (*innerErrorCode == ERR_OK) {
-            task.Resolve(env, CreateJsUndefined(env));
-        } else {
-            task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrorCode));
-        }
-    };
-    napi_value lastParam = info.argv[INDEX_ZERO];
-    napi_value result = nullptr;
-    NapiAsyncTask::ScheduleHighQos("JsUkeyAuthExtensionContext::OnReportDrawnCompleted",
-        env, CreateAsyncTaskWithLastParam(env, lastParam, std::move(execute), std::move(complete), &result));
-    return result;
-}
-
-napi_value JsUkeyAuthExtensionContext::OnSetColorMode(napi_env env, NapiCallbackInfo &info)
-{
-    TAG_LOGD(AAFwkTag::UI_EXT, "called");
-    if (info.argc == ARGC_ZERO) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "Not enough params");
-        ThrowInvalidParamError(env, "Not enough params.");
-        return CreateJsUndefined(env);
-    }
-    auto context = context_.lock();
-    if (context == nullptr) {
-        TAG_LOGW(AAFwkTag::UI_EXT, "context is already released");
-        ThrowError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT);
-        return CreateJsUndefined(env);
-    }
-    int32_t colorMode = 0;
-    if (!ConvertFromJsValue(env, info.argv[INDEX_ZERO], colorMode)) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "Parse colorMode failed");
-        ThrowInvalidParamError(env, "Parse param colorMode failed, colorMode must be number.");
-        return CreateJsUndefined(env);
-    }
-    context->SetAbilityColorMode(colorMode);
-    return CreateJsUndefined(env);
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

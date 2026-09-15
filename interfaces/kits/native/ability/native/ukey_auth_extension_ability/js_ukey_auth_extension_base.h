@@ -38,7 +38,6 @@ public:
     void OnForeground(const AAFwk::Want &want, sptr<AAFwk::SessionInfo> sessionInfo) override;
 
 private:
-    void RegisterUkeyContextConfigUpdateCallback();
     std::shared_ptr<UkeyAuthExtensionContext> ukeyContext_ = nullptr;
 };
 } // namespace AbilityRuntime

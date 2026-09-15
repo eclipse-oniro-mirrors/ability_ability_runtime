@@ -19,7 +19,6 @@ import { BusinessError } from '@ohos.base';
 import AsyncCallbackWrapper from './utils/AbilityUtils';
 import ExtensionContext from 'application.ExtensionContext';
 import Want from '@ohos.app.ability.Want';
-import ConfigurationConstant from '@ohos.app.ability.ConfigurationConstant';
 
 class Cleaner {
   static callback(cleaner: Cleaner): void {
@@ -57,8 +56,6 @@ export default class UkeyAuthExtensionContext extends ExtensionContext {
 
   native terminateSelfSync(callback: AsyncCallbackWrapper<void>): void;
   native terminateSelfWithResultSync(parameter: AbilityResult, callback: AsyncCallbackWrapper<void>): void;
-  native setColorMode(colorMode: ConfigurationConstant.ColorMode): void;
-  native nativeReportDrawnCompleted(callback: AsyncCallbackWrapper<void>): void;
 
   terminateSelf(callback: AsyncCallback<void>): void {
     let myCall = new AsyncCallbackWrapper<void>(callback);
@@ -104,12 +101,5 @@ export default class UkeyAuthExtensionContext extends ExtensionContext {
       });
     });
     return p;
-  }
-
-  reportDrawnCompleted(callback: AsyncCallback<void>): void {
-    let myCall = new AsyncCallbackWrapper<void>(callback);
-    taskpool.execute((): void => {
-      this.nativeReportDrawnCompleted(myCall);
-    });
   }
 }

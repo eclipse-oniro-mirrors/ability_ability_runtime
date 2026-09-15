@@ -33,14 +33,6 @@ class UkeyAuthExtensionContext extends ExtensionContext {
     hilog.sLogI(domainID, TAG, 'terminateSelfWithResult');
     return this.__context_impl__.terminateSelfWithResult(abilityResult, callback);
   }
-
-  reportDrawnCompleted(callback) {
-    return this.__context_impl__.reportDrawnCompleted(callback);
-  }
-
-  setColorMode(colorMode) {
-    this.__context_impl__.setColorMode(colorMode);
-  };
 }
 
 export default UkeyAuthExtensionContext;

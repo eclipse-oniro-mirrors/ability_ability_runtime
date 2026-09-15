@@ -90,36 +90,6 @@ void EtsUkeyAuthExtensionContext::TerminateSelfWithResultSync(
     etsContext->OnTerminateSelfWithResult(env, obj, abilityResult, callback);
 }
 
-void EtsUkeyAuthExtensionContext::SetColorMode(ani_env *env, ani_object aniObj, ani_enum_item aniColorMode)
-{
-    TAG_LOGD(AAFwkTag::UI_EXT, "SetColorMode called");
-    if (env == nullptr) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "null env");
-        return;
-    }
-    auto etsContext = GetEtsUkeyAuthExtensionContext(env, aniObj);
-    if (etsContext == nullptr) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "null etsContext");
-        return;
-    }
-    etsContext->OnSetColorMode(env, aniObj, aniColorMode);
-}
-
-void EtsUkeyAuthExtensionContext::ReportDrawnCompleted(ani_env *env, ani_object aniObj, ani_object callback)
-{
-    TAG_LOGD(AAFwkTag::UI_EXT, "ReportDrawnCompleted called");
-    if (env == nullptr) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "null env");
-        return;
-    }
-    auto etsContext = GetEtsUkeyAuthExtensionContext(env, aniObj);
-    if (etsContext == nullptr) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "null etsContext");
-        return;
-    }
-    etsContext->OnReportDrawnCompleted(env, aniObj, callback);
-}
-
 void EtsUkeyAuthExtensionContext::OnTerminateSelf(ani_env *env, ani_object obj, ani_object callback)
 {
     auto context = context_.lock();
@@ -152,39 +122,6 @@ void EtsUkeyAuthExtensionContext::OnTerminateSelfWithResult(
     auto ret = context->TerminateSelfWithResult(resultCode, want);
     AppExecFwk::AsyncCallback(env, callback,
         AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(ret)), nullptr);
-}
-
-void EtsUkeyAuthExtensionContext::OnSetColorMode(ani_env *env, ani_object aniObj, ani_enum_item aniColorMode)
-{
-    auto context = context_.lock();
-    if (context == nullptr) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "null context");
-        AbilityRuntime::EtsErrorUtil::ThrowError(env,
-            static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT));
-        return;
-    }
-    ani_int colorMode = 0;
-    if (!AAFwk::AniEnumConvertUtil::EnumConvert_EtsToNative(env, aniColorMode, colorMode)) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "param aniColorMode err");
-        AbilityRuntime::EtsErrorUtil::ThrowInvalidParamError(env,
-            "Parse param colorMode failed, colorMode must be number.");
-        return;
-    }
-    context->SetAbilityColorMode(colorMode);
-}
-
-void EtsUkeyAuthExtensionContext::OnReportDrawnCompleted(ani_env *env, ani_object aniObj, ani_object callback)
-{
-    auto context = context_.lock();
-    if (context == nullptr) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "null context");
-        AppExecFwk::AsyncCallback(env, callback, AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env,
-            static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT)), nullptr);
-        return;
-    }
-    int32_t innerErrorCode = context->ReportDrawnCompleted();
-    AppExecFwk::AsyncCallback(env, callback, AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env,
-        static_cast<int32_t>(innerErrorCode)), nullptr);
 }
 
 bool EtsUkeyAuthExtensionContext::BindNativePtrCleaner(ani_env *env)
@@ -251,12 +188,6 @@ ani_object CreateEtsUkeyAuthExtensionContext(ani_env *env,
             reinterpret_cast<ani_int *>(EtsUkeyAuthExtensionContext::TerminateSelfSync) },
         ani_native_function { "terminateSelfWithResultSync", nullptr,
             reinterpret_cast<ani_int *>(EtsUkeyAuthExtensionContext::TerminateSelfWithResultSync) },
-        ani_native_function { "setColorMode",
-            "C{@ohos.app.ability.ConfigurationConstant.ConfigurationConstant.ColorMode}:",
-            reinterpret_cast<void *>(EtsUkeyAuthExtensionContext::SetColorMode) },
-        ani_native_function { "nativeReportDrawnCompleted",
-            "C{utils.AbilityUtils.AsyncCallbackWrapper}:",
-            reinterpret_cast<void *>(EtsUkeyAuthExtensionContext::ReportDrawnCompleted) },
     };
     if ((status = env->Class_BindNativeMethods(cls, functions.data(), functions.size())) != ANI_OK
         && status != ANI_ALREADY_BINDED) {
