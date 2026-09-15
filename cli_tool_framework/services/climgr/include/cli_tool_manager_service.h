@@ -210,6 +210,22 @@ private:
     enum class ServiceRunningState { STATE_NOT_START, STATE_RUNNING };
 
     /**
+     * @brief Caller identity and event-routing context for tool command mode.
+     *
+     * Groups the per-call plumbing arguments shared by ExecCmdToolMode/SetupCmdSession
+     * so their signatures stay within the 5-parameter limit.
+     */
+    struct CmdSessionContext {
+        std::string eventId;
+        std::string subscriptionId;
+        sptr<ICliToolManagerScheduler> scheduler;
+        int32_t callerPid = 0;
+        int32_t callerUid = 0;
+        uint32_t tokenId = 0;
+        std::string bundleName;
+    };
+
+    /**
      * @brief Initialize service-side signal handling and I/O callbacks.
      *
      * Installs a minimal async-signal-safe SIGCHLD handler that only writes one wake byte to a non-blocking
@@ -243,6 +259,9 @@ private:
 
     int32_t ValidateAndPrepareCmd(const ExecCmdParam &param, uint32_t tokenId,
         std::string &sandboxConfig, std::string &bundleName);
+    int32_t ExecCmdToolMode(const ExecCmdParam &param, CmdSessionContext context);
+    int32_t SetupCmdSession(const ExecToolParam &toolParam, const ToolInfo &toolInfo,
+        const std::string &sandboxConfig, const std::string &toolName, const CmdSessionContext &context);
     int32_t SetupAndStartSession(const ExecToolParam &param, const std::string &eventId,
         const ToolInfo &toolInfo, const std::string &sandboxConfig, const std::string &bundleName);
 
