@@ -96,10 +96,9 @@ private:
     int QueryBmsAppInfos(AbilityRequest &request, int32_t userId, std::vector<DialogAppInfo> &dialogAppInfos);
 
     int CallStartAbilityInner(int32_t userId, const Want &want, const AbilityRequest &request,
-        const AbilityCallType &callType, bool isAppCloneSelector);
+        const AbilityCallType &callType);
 
-    int32_t ImplicitStartAbilityInner(const Want &targetWant, const AbilityRequest &request, int32_t userId,
-        bool isAppCloneSelector);
+    int32_t ImplicitStartAbilityInner(const Want &targetWant, const AbilityRequest &request, int32_t userId);
 
     bool CheckImplicitStartExtensionIsValid(const AbilityRequest &request,
         const AppExecFwk::ExtensionAbilityInfo &extensionInfo);
