@@ -7,7 +7,9 @@
 #define OHOS_ABILITY_RUNTIME_MOCK_CLI_TOOL_MGR_SERVICE_H
 
 #include "function_info.h"
+#include "function_result_wrap.h"
 #include "icli_tool_manager.h"
+#include "invoke_function_param.h"
 #include "iremote_stub.h"
 
 namespace OHOS {
@@ -44,6 +46,12 @@ public:
         const std::string &eventId, const sptr<ICliToolManagerScheduler> &scheduler) override;
     int32_t BatchQueryPermissionBySubCommand(
         const std::vector<Command> &cmds, std::vector<CommandPermission> &cmdPermissions) override;
+    int32_t RegisterCliHook(const sptr<ICliHookInterface> &hook, int32_t activeMethods) override;
+    int32_t UnregisterCliHook(const sptr<ICliHookInterface> &hook) override;
+    int32_t RegisterFunctionHook(const sptr<IFunctionHookInterface> &hook, int32_t activeMethods) override;
+    int32_t UnregisterFunctionHook(const sptr<IFunctionHookInterface> &hook) override;
+    int32_t BeforeInvokeFunction(InvokeFunctionParam &param) override;
+    int32_t AfterInvokeFunction(FunctionResultWrap &functionResultWrap) override;
 };
 } // namespace CliTool
 } // namespace OHOS

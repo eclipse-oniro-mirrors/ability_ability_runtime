@@ -78,8 +78,7 @@ napi_value CreateJsFunctionInfo(napi_env env, const FunctionInfo& function)
     return jsObj;
 }
 
-napi_value CreateJsInvokeResult(napi_env env, int32_t resultCode,
-    const std::shared_ptr<AAFwk::WantParams>& result, const std::string& message)
+napi_value CreateJsInvokeResult(napi_env env, const InvokeFunctionResult &result)
 {
     napi_value jsObj = nullptr;
     napi_status status = napi_create_object(env, &jsObj);
@@ -88,22 +87,22 @@ napi_value CreateJsInvokeResult(napi_env env, int32_t resultCode,
         return nullptr;
     }
 
-    napi_value jsSuccess = AppExecFwk::WrapBoolToJS(env, resultCode == 0);
+    napi_value jsSuccess = AppExecFwk::WrapBoolToJS(env, result.success);
     if (!SetProperty(env, jsObj, "success", jsSuccess)) {
         return nullptr;
     }
 
-    if (result != nullptr) {
-        napi_value jsData = AppExecFwk::CreateJsWantParams(env, *result);
+    if (result.data != nullptr) {
+        napi_value jsData = AppExecFwk::CreateJsWantParams(env, *result.data);
         if (jsData != nullptr && !SetProperty(env, jsObj, "data", jsData)) {
             return nullptr;
         }
     }
 
-    napi_value jsErrorCode = AppExecFwk::WrapInt32ToJS(env, resultCode);
-    napi_value jsMessage = AppExecFwk::WrapStringToJS(env, message);
+    napi_value jsErrorCode = AppExecFwk::WrapInt32ToJS(env, result.errorCode);
+    napi_value jsErrorMsg = AppExecFwk::WrapStringToJS(env, result.errorMsg);
     if (!SetProperty(env, jsObj, "errorCode", jsErrorCode) ||
-        !SetProperty(env, jsObj, "message", jsMessage)) {
+        !SetProperty(env, jsObj, "errorMsg", jsErrorMsg)) {
         return nullptr;
     }
 

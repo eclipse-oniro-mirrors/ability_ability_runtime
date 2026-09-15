@@ -15,6 +15,7 @@
 
 #include "js_cli_manager.h"
 
+#include <mutex>
 #include <string>
 
 #include "cli_error_code.h"
@@ -25,6 +26,7 @@
 #include "exec_result.h"
 #include "hilog_tag_wrapper.h"
 #include "js_cli_event_handler_manager.h"
+#include "js_cli_hook.h"
 #include "js_cli_manager_utils.h"
 #include "js_cli_session_event_callback.h"
 #include "js_error_utils.h"
@@ -530,6 +532,136 @@ napi_value JSCliManager::OnQueryTools(napi_env env, size_t argc, napi_value *arg
     return handleEscape.Escape(asyncResult);
 }
 
+napi_value JSCliManager::RegisterCliHook(napi_env env, napi_callback_info info)
+{
+    GET_CB_INFO_AND_CALL(env, info, JSCliManager, OnRegisterCliHook);
+}
+
+napi_value JSCliManager::UnregisterCliHook(napi_env env, napi_callback_info info)
+{
+    GET_CB_INFO_AND_CALL(env, info, JSCliManager, OnUnregisterCliHook);
+}
+
+namespace {
+sptr<JsCliHook> g_cliHookStub = nullptr;
+std::mutex g_cliHookMutex;
+
+bool ValidateCliHookObject(napi_env env, napi_value obj, uint32_t &activeMethods)
+{
+    activeMethods = 0;
+    napi_valuetype type = napi_undefined;
+    napi_typeof(env, obj, &type);
+    if (type != napi_object) {
+        return false;
+    }
+    static const struct {
+        const char* name;
+        uint32_t bit;
+    } methodBits[] = {
+        {"onBeforeCallTool",  0x01},
+        {"onAfterCallTool",   0x02},
+        {"onBeforeCallCmd",   0x04},
+        {"onAfterCallCmd",    0x08},
+    };
+    for (auto& m : methodBits) {
+        napi_value fn = nullptr;
+        napi_get_named_property(env, obj, m.name, &fn);
+        napi_typeof(env, fn, &type);
+        if (type == napi_function) {
+            activeMethods |= m.bit;
+        }
+    }
+    return activeMethods != 0; // 0 means no valid methods found — reject at NAPI layer
+}
+} // namespace
+
+napi_value JSCliManager::OnRegisterCliHook(napi_env env, size_t argc, napi_value *argv)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "JSCliManager::OnRegisterCliHook called");
+    HandleEscape handleEscape(env);
+    napi_deferred deferred = nullptr;
+    napi_value promise = nullptr;
+    napi_create_promise(env, &deferred, &promise);
+
+    if (argc < INDEX_ONE) {
+        napi_reject_deferred(env, deferred, CreateCliJsErrorByNativeErr(env, ERR_INVALID_PARAM));
+        return handleEscape.Escape(promise);
+    }
+
+    uint32_t activeMethods = 0;
+    if (!ValidateCliHookObject(env, argv[0], activeMethods)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "OnRegisterCliHook: invalid hook object");
+        napi_reject_deferred(env, deferred, CreateCliJsErrorByNativeErr(env, ERR_INVALID_PARAM));
+        return handleEscape.Escape(promise);
+    }
+
+    std::lock_guard<std::mutex> lock(g_cliHookMutex);
+    if (g_cliHookStub != nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "OnRegisterCliHook: cliHook stub already exists");
+        napi_reject_deferred(env, deferred, CreateCliJsErrorByNativeErr(env, ERR_HOOK_ALREADY_REGISTERED));
+        return handleEscape.Escape(promise);
+    }
+
+    auto stub = sptr<JsCliHook>(new JsCliHook(env, argv[0]));
+    if (!stub->IsValid()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "OnRegisterCliHook: JsCliHook init failed");
+        napi_reject_deferred(env, deferred, CreateCliJsErrorByNativeErr(env, ERR_NO_INIT));
+        return handleEscape.Escape(promise);
+    }
+    ErrCode ret = CliToolMGRClient::GetInstance().RegisterCliHook(stub, static_cast<int32_t>(activeMethods));
+    if (ret == ERR_OK) {
+        g_cliHookStub = stub;
+        napi_resolve_deferred(env, deferred, CreateJsUndefined(env));
+    } else {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "RegisterCliHook failed: %{public}d", ret);
+        napi_reject_deferred(env, deferred, CreateCliJsErrorByNativeErr(env, ret));
+    }
+    return handleEscape.Escape(promise);
+}
+
+napi_value JSCliManager::OnUnregisterCliHook(napi_env env, size_t argc, napi_value *argv)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "JSCliManager::OnUnregisterCliHook called");
+    HandleEscape handleEscape(env);
+
+    napi_deferred deferred = nullptr;
+    napi_value promise = nullptr;
+    napi_create_promise(env, &deferred, &promise);
+
+    if (argc < INDEX_ONE) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "OnUnregisterCliHook: missing hook argument");
+        napi_reject_deferred(env, deferred, CreateCliJsErrorByNativeErr(env, ERR_INVALID_PARAM));
+        return handleEscape.Escape(promise);
+    }
+
+    std::lock_guard<std::mutex> lock(g_cliHookMutex);
+    if (g_cliHookStub == nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "OnUnregisterCliHook: no cliHook stub registered");
+        napi_reject_deferred(env, deferred, CreateCliJsErrorByNativeErr(env, ERR_HOOK_NOT_REGISTERED));
+        return handleEscape.Escape(promise);
+    }
+
+    napi_value storedObj = nullptr;
+    napi_get_reference_value(env, g_cliHookStub->GetCallbackRef(), &storedObj);
+    bool same = false;
+    napi_strict_equals(env, argv[0], storedObj, &same);
+    if (!same) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "OnUnregisterCliHook: hook object does not match registered one");
+        napi_reject_deferred(env, deferred, CreateCliJsErrorByNativeErr(env, ERR_INVALID_PARAM));
+        return handleEscape.Escape(promise);
+    }
+
+    auto stub = g_cliHookStub;
+    ErrCode ret = CliToolMGRClient::GetInstance().UnregisterCliHook(stub);
+    if (ret == ERR_OK) {
+        g_cliHookStub = nullptr;
+        napi_resolve_deferred(env, deferred, CreateJsUndefined(env));
+    } else {
+        napi_reject_deferred(env, deferred, CreateCliJsErrorByNativeErr(env, ret));
+    }
+    return handleEscape.Escape(promise);
+}
+
 napi_value JSCliManagerInit(napi_env env, napi_value exportObj)
 {
     TAG_LOGD(AAFwkTag::CLI_TOOL, "Init JSCliManager");
@@ -552,6 +684,8 @@ napi_value JSCliManagerInit(napi_env env, napi_value exportObj)
     BindNativeFunction(env, exportObj, "getToolInfoByName", moduleName, JSCliManager::GetToolInfoByName);
     BindNativeFunction(env, exportObj, "queryToolSummaries", moduleName, JSCliManager::QueryToolSummaries);
     BindNativeFunction(env, exportObj, "queryTools", moduleName, JSCliManager::QueryTools);
+    BindNativeFunction(env, exportObj, "registerCliHook", moduleName, JSCliManager::RegisterCliHook);
+    BindNativeFunction(env, exportObj, "unregisterCliHook", moduleName, JSCliManager::UnregisterCliHook);
 
     napi_value sessionStatus = CreateJsSessionStatus(env);
     if (sessionStatus == nullptr) {

@@ -23,6 +23,7 @@
 #include "cli_error_code.h"
 #include "insight_intent_execute_result.h"
 #include "invoke_function_callback_client.h"
+#include "invoke_function_executor.h"
 #include "string_wrapper.h"
 
 using namespace testing::ext;
@@ -41,13 +42,12 @@ protected:
         callCount_ = 0;
         captured_.reset();
         client_ = std::make_shared<InvokeFunctionCallbackClient>(completed_,
-            [this](const InvokeFunctionResult &result) {
-                captured_ = result;
+            [this](const FunctionResultHolder &holder) {
+                captured_ = holder;
                 ++callCount_;
             });
     }
 
-    // Build an execute result carrying the given app-level code and optional data.
     AppExecFwk::InsightIntentExecuteResult BuildIntentResult(int32_t code,
         std::shared_ptr<AAFwk::WantParams> wantParam = nullptr)
     {
@@ -60,7 +60,7 @@ protected:
     std::shared_ptr<std::atomic<bool>> completed_;
     std::shared_ptr<InvokeFunctionCallbackClient> client_;
     int32_t callCount_ = 0;
-    std::optional<InvokeFunctionResult> captured_;
+    std::optional<FunctionResultHolder> captured_;
 };
 
 /**
@@ -75,20 +75,20 @@ HWTEST_F(InvokeFunctionCallbackClientTest, InvokeFunctionCallbackClient_Success_
     client_->ProcessInsightIntentExecute(0, BuildIntentResult(0));
     ASSERT_EQ(callCount_, 1);
     ASSERT_TRUE(captured_.has_value());
-    EXPECT_TRUE(captured_->invokeSuccess);
-    EXPECT_EQ(captured_->errorCode, 0);
-    EXPECT_EQ(captured_->resultCode, 0);
-    ASSERT_NE(captured_->result, nullptr);
-    EXPECT_TRUE(captured_->result->HasParam("flags"));
-    EXPECT_EQ(captured_->result->GetIntParam("flags", -1), 0);
-    EXPECT_FALSE(captured_->result->HasParam("uris"));
-    EXPECT_FALSE(captured_->result->HasParam("result"));
+    EXPECT_TRUE(captured_->result.success);
+    EXPECT_EQ(captured_->result.errorCode, 0);
+    EXPECT_EQ(captured_->innerError, 0);
+    ASSERT_NE(captured_->result.data, nullptr);
+    EXPECT_TRUE(captured_->result.data->HasParam("flags"));
+    EXPECT_EQ(captured_->result.data->GetIntParam("flags", -1), 0);
+    EXPECT_FALSE(captured_->result.data->HasParam("uris"));
+    EXPECT_FALSE(captured_->result.data->HasParam("result"));
 }
 
 /**
  * @tc.name: InvokeFunctionCallbackClient_AppBusinessFailure_0200
  * @tc.desc: framework delivered ok (resultCode == 0) but app business code != 0:
- *           success stays true while resultCode surfaces the app-level code
+ *           success stays true while errorCode surfaces the app-level code
  *           (framework vs app dual-authority contract).
  * @tc.type: FUNC
  */
@@ -98,14 +98,14 @@ HWTEST_F(InvokeFunctionCallbackClientTest, InvokeFunctionCallbackClient_AppBusin
     client_->ProcessInsightIntentExecute(0, BuildIntentResult(APP_CODE_42));
     ASSERT_EQ(callCount_, 1);
     ASSERT_TRUE(captured_.has_value());
-    EXPECT_TRUE(captured_->invokeSuccess);                  // framework delivery succeeded
-    EXPECT_EQ(captured_->errorCode, 0);
-    EXPECT_EQ(captured_->resultCode, APP_CODE_42);    // app business-level code passes through
+    EXPECT_TRUE(captured_->result.success);
+    EXPECT_EQ(captured_->result.errorCode, APP_CODE_42);
+    EXPECT_EQ(captured_->innerError, 0);
 }
 
 /**
  * @tc.name: InvokeFunctionCallbackClient_FrameworkFailure_0300
- * @tc.desc: framework resultCode != 0 -> success=false, errorCode=EXECUTE_FAILED
+ * @tc.desc: framework resultCode != 0 -> success=false, innerError=EXECUTE_FAILED
  * @tc.type: FUNC
  */
 HWTEST_F(InvokeFunctionCallbackClientTest, InvokeFunctionCallbackClient_FrameworkFailure_0300,
@@ -114,9 +114,9 @@ HWTEST_F(InvokeFunctionCallbackClientTest, InvokeFunctionCallbackClient_Framewor
     client_->ProcessInsightIntentExecute(1, BuildIntentResult(0));
     ASSERT_EQ(callCount_, 1);
     ASSERT_TRUE(captured_.has_value());
-    EXPECT_FALSE(captured_->invokeSuccess);
-    EXPECT_EQ(captured_->errorCode, ERR_FUNCTION_EXECUTE_FAILED);
-    EXPECT_EQ(captured_->resultCode, 0);  // app code untouched on the framework-failure path
+    EXPECT_FALSE(captured_->result.success);
+    EXPECT_EQ(captured_->innerError, ERR_FUNCTION_EXECUTE_FAILED);
+    EXPECT_EQ(captured_->result.errorCode, 0);
 }
 
 /**
@@ -134,12 +134,12 @@ HWTEST_F(InvokeFunctionCallbackClientTest, InvokeFunctionCallbackClient_ResultPa
     client_->ProcessInsightIntentExecute(0, BuildIntentResult(0, want));
     ASSERT_EQ(callCount_, 1);
     ASSERT_TRUE(captured_.has_value());
-    ASSERT_NE(captured_->result, nullptr);
-    EXPECT_NE(captured_->result.get(), want.get());  // wrapped, not the same pointer
-    EXPECT_TRUE(captured_->result->HasParam("flags"));
-    EXPECT_TRUE(captured_->result->HasParam("result"));
-    EXPECT_TRUE(captured_->result->GetWantParams("result") == *want);
-    EXPECT_EQ(captured_->result->GetWantParams("result").GetStringParam("k"), "v");
+    ASSERT_NE(captured_->result.data, nullptr);
+    EXPECT_NE(captured_->result.data.get(), want.get());
+    EXPECT_TRUE(captured_->result.data->HasParam("flags"));
+    EXPECT_TRUE(captured_->result.data->HasParam("result"));
+    EXPECT_TRUE(captured_->result.data->GetWantParams("result") == *want);
+    EXPECT_EQ(captured_->result.data->GetWantParams("result").GetStringParam("k"), "v");
 }
 
 /**
@@ -151,7 +151,7 @@ HWTEST_F(InvokeFunctionCallbackClientTest, InvokeFunctionCallbackClient_ResultPa
 HWTEST_F(InvokeFunctionCallbackClientTest, InvokeFunctionCallbackClient_AlreadyCompleted_0500,
     TestSize.Level1)
 {
-    completed_->store(true);  // simulate timeout/failure settling first
+    completed_->store(true); // simulate timeout/failure settling first
     client_->ProcessInsightIntentExecute(0, BuildIntentResult(0));
     EXPECT_EQ(callCount_, 0);
 }
@@ -167,7 +167,7 @@ HWTEST_F(InvokeFunctionCallbackClientTest, InvokeFunctionCallbackClient_OnlyOnce
     client_->ProcessInsightIntentExecute(1, BuildIntentResult(0));
     EXPECT_EQ(callCount_, 1);
     ASSERT_TRUE(captured_.has_value());
-    EXPECT_TRUE(captured_->invokeSuccess);  // first winner's result is retained
+    EXPECT_TRUE(captured_->result.success); // first winner's result is retained
 }
 
 /**
@@ -179,8 +179,8 @@ HWTEST_F(InvokeFunctionCallbackClientTest, InvokeFunctionCallbackClient_NullComp
     TestSize.Level1)
 {
     auto client = std::make_shared<InvokeFunctionCallbackClient>(nullptr,
-        [](const InvokeFunctionResult &) { FAIL(); });
-    client->ProcessInsightIntentExecute(0, BuildIntentResult(0));  // no crash, no callback
+        [](const FunctionResultHolder &) { FAIL(); });
+    client->ProcessInsightIntentExecute(0, BuildIntentResult(0)); // no crash, no callback
     SUCCEED();
 }
 
@@ -202,12 +202,11 @@ HWTEST_F(InvokeFunctionCallbackClientTest, InvokeFunctionCallbackClient_ResultWr
     client_->ProcessInsightIntentExecute(0, intentResult);
     ASSERT_EQ(callCount_, 1);
     ASSERT_TRUE(captured_.has_value());
-    ASSERT_NE(captured_->result, nullptr);
-    EXPECT_EQ(captured_->result->GetIntParam("flags", -1), 7);
-    EXPECT_TRUE(captured_->result->HasParam("result"));
-    EXPECT_TRUE(captured_->result->GetWantParams("result") == *want);
-    // uris packed as a 2-element string array
-    sptr<AAFwk::IInterface> urisVal = captured_->result->GetParam("uris");
+    ASSERT_NE(captured_->result.data, nullptr);
+    EXPECT_EQ(captured_->result.data->GetIntParam("flags", -1), 7);
+    EXPECT_TRUE(captured_->result.data->HasParam("result"));
+    EXPECT_TRUE(captured_->result.data->GetWantParams("result") == *want);
+    sptr<AAFwk::IInterface> urisVal = captured_->result.data->GetParam("uris");
     ASSERT_NE(urisVal, nullptr);
     auto *urisArr = AAFwk::IArray::Query(urisVal);
     ASSERT_NE(urisArr, nullptr);

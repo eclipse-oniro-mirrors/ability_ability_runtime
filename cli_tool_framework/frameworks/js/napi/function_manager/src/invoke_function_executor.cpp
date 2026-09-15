@@ -20,9 +20,11 @@
 #include "cli_tool_mgr_client.h"
 #include "ffrt.h"
 #include "function_info.h"
+#include "function_result_wrap.h"
 #include "hilog_tag_wrapper.h"
 #include "intent_client.h"
 #include "invoke_function_callback_client.h"
+#include "invoke_function_param.h"
 
 namespace OHOS {
 namespace CliTool {
@@ -35,14 +37,13 @@ std::shared_ptr<InvokeFunctionExecutor> InvokeFunctionExecutor::Create()
     return std::make_shared<InvokeFunctionExecutor>();
 }
 
-void InvokeFunctionExecutor::Execute(const std::string &funcNamespace, const std::string &functionName,
-    const AAFwk::WantParams &wantParams, InvokeResultCallback callback)
+void InvokeFunctionExecutor::Execute(const InvokeFunctionParam &param, InvokeResultCallback callback)
 {
     callback_ = std::move(callback);
     auto self = shared_from_this();
     SetupTimeout();
-    ffrt::submit([self, funcNamespace, functionName, wantParams]() {
-        self->DoExecute(funcNamespace, functionName, wantParams);
+    ffrt::submit([self, param]() {
+        self->DoExecute(param);
     });
 }
 
@@ -60,29 +61,24 @@ void InvokeFunctionExecutor::ReportError(int32_t errorCode)
     if (completed_ == nullptr || !completed_->compare_exchange_strong(expected, true)) {
         return;  // already settled by the normal callback or another failure
     }
-    InvokeFunctionResult out;
-    out.invokeSuccess = false;
-    out.errorCode = errorCode;
+    FunctionResultHolder holder;
+    holder.innerError = errorCode;
     if (callback_) {
-        callback_(out);
+        callback_(holder);
     }
 }
 
-void InvokeFunctionExecutor::DoExecute(const std::string &funcNamespace, const std::string &functionName,
-    const AAFwk::WantParams &wantParams)
+void InvokeFunctionExecutor::DoExecute(const InvokeFunctionParam &param)
 {
-    // Step 1: Query function info
     FunctionInfo functionInfo;
-    ErrCode queryErr = CliToolMGRClient::GetInstance().GetFunctionInfo(funcNamespace, functionName, functionInfo);
+    ErrCode queryErr = CliToolMGRClient::GetInstance().GetFunctionInfo(
+        param.functionNamespace, param.functionName, functionInfo);
     if (queryErr != ERR_OK) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "GetFunctionInfo failed: %{public}d", queryErr);
-        // Preserve specific error semantics (permission / not-exist / not-system-app);
-        // other errors fall through as inner errors.
         ReportError(queryErr);
         return;
     }
 
-    // Step 2: Validate function type
     if (functionInfo.functionType != FunctionType::INTENT_FUNCTION) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Function type not supported: %{public}d",
             static_cast<int32_t>(functionInfo.functionType));
@@ -90,16 +86,31 @@ void InvokeFunctionExecutor::DoExecute(const std::string &funcNamespace, const s
         return;
     }
 
-    // Step 3: Execute
-    auto client = std::make_shared<InvokeFunctionCallbackClient>(completed_, callback_);
+    InvokeFunctionParam hookParam = param;
+    CliToolMGRClient::GetInstance().BeforeInvokeFunction(hookParam);
 
-    AAFwk::ExecuteIntentParam param;
-    param.bundleName = funcNamespace;
-    param.intentName = functionName;
-    param.wantParam = wantParams;
-    param.callback = client;
+    AAFwk::WantParams hookParams = hookParam.args;
+    auto self = shared_from_this();
+    InvokeResultCallback wrappedCallback = [self](
+        const FunctionResultHolder &holder) {
+        FunctionResultWrap functionResultWrap;
+        functionResultWrap.result = holder.result;
+        CliToolMGRClient::GetInstance().AfterInvokeFunction(functionResultWrap);
+        FunctionResultHolder out = holder;
+        out.result = functionResultWrap.result;
+        if (self->callback_) {
+            self->callback_(out);
+        }
+    };
+    auto client = std::make_shared<InvokeFunctionCallbackClient>(completed_, std::move(wrappedCallback));
 
-    auto err = AAFwk::IntentClient::GetInstance().ExecuteIntentByFunctionCall(param);
+    AAFwk::ExecuteIntentParam execParam;
+    execParam.bundleName = hookParam.functionNamespace;
+    execParam.intentName = hookParam.functionName;
+    execParam.wantParam = hookParams;
+    execParam.callback = client;
+
+    auto err = AAFwk::IntentClient::GetInstance().ExecuteIntentByFunctionCall(execParam);
     if (err != ERR_OK) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "ExecuteIntentByFunctionCall failed: %{public}d", err);
         int32_t reportErr = ERR_FUNCTION_EXECUTE_FAILED;
@@ -108,7 +119,6 @@ void InvokeFunctionExecutor::DoExecute(const std::string &funcNamespace, const s
         }
         ReportError(reportErr);
     }
-    // Success: result will come via InvokeFunctionCallbackClient::ProcessInsightIntentExecute
 }
 
 } // namespace CliTool

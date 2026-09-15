@@ -120,6 +120,21 @@ enum {
      * Result (35700020): Function execute timeout.
      */
     ERR_FUNCTION_EXECUTE_TIMEOUT = 35700020,
+
+    /*
+     * Result (35700021): Not in developer mode. Hook registration is not allowed.
+     */
+    ERR_NOT_DEVELOPER_MODE = 35700021,
+
+    /*
+     * Result (35700022): Hook already registered. Must unregister first.
+     */
+    ERR_HOOK_ALREADY_REGISTERED = 35700022,
+
+    /*
+     * Result (35700023): Hook not registered. Nothing to unregister.
+     */
+    ERR_HOOK_NOT_REGISTERED = 35700023,
 };
 
 } // namespace CliTool

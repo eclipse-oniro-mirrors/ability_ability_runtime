@@ -23,6 +23,7 @@
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
 #include "if_system_ability_manager.h"
+#include "syspara/parameters.h"
 #include "iservice_registry.h"
 #include "system_ability_definition.h"
 
@@ -336,6 +337,85 @@ ErrCode CliToolMGRClient::ResetNamespaceFunctionsAsync(const std::string &functi
         return ret;
     }
     return proxy->ResetNamespaceFunctionsAsync(functionNamespace, rawData);
+}
+
+ErrCode CliToolMGRClient::RegisterCliHook(const sptr<ICliHookInterface> &hook, int32_t activeMethods)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "RegisterCliHook");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto proxy = GetCliToolMgrProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
+        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
+    }
+    return proxy->RegisterCliHook(hook, activeMethods);
+}
+
+ErrCode CliToolMGRClient::UnregisterCliHook(const sptr<ICliHookInterface> &hook)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterCliHook");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto proxy = GetCliToolMgrProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
+        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
+    }
+    return proxy->UnregisterCliHook(hook);
+}
+
+ErrCode CliToolMGRClient::RegisterFunctionHook(const sptr<IFunctionHookInterface> &hook, int32_t activeMethods)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "RegisterFunctionHook");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto proxy = GetCliToolMgrProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
+        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
+    }
+    return proxy->RegisterFunctionHook(hook, activeMethods);
+}
+
+ErrCode CliToolMGRClient::UnregisterFunctionHook(const sptr<IFunctionHookInterface> &hook)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterFunctionHook");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto proxy = GetCliToolMgrProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
+        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
+    }
+    return proxy->UnregisterFunctionHook(hook);
+}
+
+ErrCode CliToolMGRClient::BeforeInvokeFunction(InvokeFunctionParam &param)
+{
+    if (!system::GetBoolParameter("const.security.developermode.state", false)) {
+        return ERR_OK;
+    }
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "BeforeInvokeFunction: ns=%{public}s, name=%{public}s",
+        param.functionNamespace.c_str(), param.functionName.c_str());
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto proxy = GetCliToolMgrProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
+        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
+    }
+    return proxy->BeforeInvokeFunction(param);
+}
+
+ErrCode CliToolMGRClient::AfterInvokeFunction(FunctionResultWrap &functionResultWrap)
+{
+    if (!system::GetBoolParameter("const.security.developermode.state", false)) {
+        return ERR_OK;
+    }
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "AfterInvokeFunction");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto proxy = GetCliToolMgrProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
+        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
+    }
+    return proxy->AfterInvokeFunction(functionResultWrap);
 }
 
 int32_t CliToolMGRClient::BatchQueryPermissionBySubCommand(

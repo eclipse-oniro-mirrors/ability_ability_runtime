@@ -19,6 +19,8 @@ idl_gen_interface("cli_tool_manager_interface") {
   sources = [
     "ICliToolManager.idl",
     "ICliToolManagerScheduler.idl",
+    "ICliHookInterface.idl",
+    "IFunctionHookInterface.idl",
   ]
 
   sources_common = [ "ICliToolData.idl" ]
@@ -63,7 +65,11 @@ ohos_shared_library("cli_tool_client") {
     "src/exec_cmd_param.cpp",
     "src/exec_options.cpp",
     "src/exec_result.cpp",
+    "src/exec_result_wrap.cpp",
     "src/exec_tool_param.cpp",
+    "src/function_result_wrap.cpp",
+    "src/invoke_function_param.cpp",
+    "src/invoke_function_result.cpp",
     "src/sub_command_info.cpp",
     "src/tool_info.cpp",
     "src/tool_summary.cpp",
@@ -83,6 +89,7 @@ ohos_shared_library("cli_tool_client") {
     "c_utils:utils",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
+    "init:libbegetutil",
     "ipc:ipc_single",
     "json:nlohmann_json_static",
     "safwk:system_ability_fwk",
