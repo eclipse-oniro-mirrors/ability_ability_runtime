@@ -27,8 +27,6 @@ config("cj_want_agent_public_config") {
   include_dirs += [
     "${ability_runtime_innerkits_path}/ability_manager/include",
     "${ability_runtime_innerkits_path}/wantagent/include",
-    "${ability_runtime_services_path}/abilitymgr/include/utils",
-    "${ability_runtime_services_path}/abilitymgr/include",
     "${ability_runtime_innerkits_path}/app_manager/include/appmgr",
     "${ability_runtime_path}/interfaces/kits/native/appkit/app",
     "${ability_runtime_path}/interfaces/kits/native/appkit",
@@ -57,6 +55,8 @@ ohos_source_set("cj_want_agent_ffi_source") {
     "${ability_runtime_path}/frameworks/cj/ffi",
     "${ability_runtime_path}/frameworks/cj/ffi/want_agent",
     "${ability_runtime_services_path}/common/include",
+    "${ability_runtime_services_path}/abilitymgr/include/utils",
+    "${ability_runtime_services_path}/abilitymgr/include",
   ]
 
   public_configs = [ ":cj_want_agent_public_config" ]

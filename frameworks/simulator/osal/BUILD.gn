@@ -15,16 +15,15 @@ import("//build/ohos.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 config("simulator_osal_public_config") {
-  include_dirs = [
-    "include",
-    "${ability_runtime_services_path}/common/include",
-  ]
+  include_dirs = [ "include" ]
 }
 
 ohos_source_set("simulator_osal") {
   branch_protector_ret = "pac_ret"
 
   sources = []
+
+  include_dirs = [ "${ability_runtime_services_path}/common/include" ]
 
   public_configs = [ ":simulator_osal_public_config" ]
 }
