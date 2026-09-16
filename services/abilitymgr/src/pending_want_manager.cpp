@@ -77,19 +77,18 @@ sptr<IWantSender> PendingWantManager::GetWantSender(int32_t callingUid, int32_t 
     return GetWantSenderLocked(callingUid, uid, wantSenderInfo.userId, info, callerToken, appIndex, publisherUid);
 }
 
-void SendWantAgentNumberEvent(std::shared_ptr<PendingWantKey> pendingKey, int32_t wantAgentNumber)
+void SendWantAgentNumberEvent(std::shared_ptr<PendingWantKey> pendingKey, int32_t wantAgentNumber, int32_t callerUid)
 {
     std::string bundleName = pendingKey->GetBundleName();
-    std::int32_t appIndex = pendingKey->GetAppIndex();
 
     EventInfo eventInfo;
     eventInfo.callerBundleName = bundleName;
-    eventInfo.callerUid = appIndex;
+    eventInfo.callerUid = callerUid;
     eventInfo.wantAgentNumber = wantAgentNumber;
     EventReport::SendWantAgentEvent(EventName::WANTAGENT_NUMBER, HISYSEVENT_STATISTIC, eventInfo);
 }
 
-void PendingWantManager::HandleAddWantAgentNumber(std::shared_ptr<PendingWantKey> pendingKey)
+void PendingWantManager::HandleAddWantAgentNumber(std::shared_ptr<PendingWantKey> pendingKey, int32_t callerUid)
 {
     if (pendingKey == nullptr) {
         return;
@@ -110,18 +109,18 @@ void PendingWantManager::HandleAddWantAgentNumber(std::shared_ptr<PendingWantKey
         if ((it->second.currentNumber > WANTAGENT_NUMBER_THRESHOLD) &&
             (it->second.currentNumber - it->second.latestMinNumber > WANTAGENT_FLOAT_THRESHOLD)) {
             if (it->second.currentNumber % DFX_INTERVAL == 0) {
-                SendWantAgentNumberEvent(pendingKey, it->second.currentNumber);
+                SendWantAgentNumberEvent(pendingKey, it->second.currentNumber, callerUid);
             }
         }
     } else { // First DFX
         if (it->second.currentNumber > WANTAGENT_NUMBER_THRESHOLD) {
-            SendWantAgentNumberEvent(pendingKey, it->second.currentNumber);
+            SendWantAgentNumberEvent(pendingKey, it->second.currentNumber, callerUid);
             it->second.DFXFlag = true;
         }
     }
 }
 
-void PendingWantManager::AddWantAgentNumber(std::shared_ptr<PendingWantKey> pendingKey)
+void PendingWantManager::AddWantAgentNumber(std::shared_ptr<PendingWantKey> pendingKey, int32_t callerUid)
 {
     // check is third-party hap
     if (PermissionVerification::GetInstance()->IsSystemAppCall() ||
@@ -129,7 +128,7 @@ void PendingWantManager::AddWantAgentNumber(std::shared_ptr<PendingWantKey> pend
         TAG_LOGD(AAFwkTag::WANTAGENT, "systemCall");
         return;
     }
-    HandleAddWantAgentNumber(pendingKey);
+    HandleAddWantAgentNumber(pendingKey, callerUid);
 }
 
 void PendingWantManager::HandleReduceWantAgentNumber(std::shared_ptr<PendingWantKey> pendingKey)
@@ -222,7 +221,7 @@ sptr<IWantSender> PendingWantManager::GetWantSenderLocked(const int32_t callingU
         rec->SetCallerUid(callingUid);
         rec->SetPublisherUid(publisherUid);
         pendingKey->SetCode(PendingRecordIdCreate());
-        AddWantAgentNumber(pendingKey);
+        AddWantAgentNumber(pendingKey, callingUid);
         wantRecords_.insert(std::make_pair(pendingKey, rec));
         TAG_LOGI(AAFwkTag::WANTAGENT,
             "wantRecords_ size %{public}zu, bundleName=%{public}s, flags=%{public}d, type=%{public}d, code=%{public}d",

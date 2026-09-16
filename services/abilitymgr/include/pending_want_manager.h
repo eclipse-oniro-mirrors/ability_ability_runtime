@@ -194,9 +194,9 @@ private:
         int32_t publisherUid = 0);
     void MakeWantSenderCanceledLocked(PendingWantRecord &record);
 
-    void HandleAddWantAgentNumber(std::shared_ptr<PendingWantKey> pendingKey);
+    void HandleAddWantAgentNumber(std::shared_ptr<PendingWantKey> pendingKey, int32_t callerUid);
     void HandleReduceWantAgentNumber(std::shared_ptr<PendingWantKey> pendingKey);
-    void AddWantAgentNumber(std::shared_ptr<PendingWantKey> pendingKey);
+    void AddWantAgentNumber(std::shared_ptr<PendingWantKey> pendingKey, int32_t callerUid);
     void ReduceWantAgentNumber(std::shared_ptr<PendingWantKey> pendingKey);
 
     sptr<PendingWantRecord> GetPendingWantRecordByKey(const std::shared_ptr<PendingWantKey> &key);

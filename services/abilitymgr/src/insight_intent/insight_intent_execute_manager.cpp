@@ -735,7 +735,6 @@ int32_t InsightIntentExecuteManager::CheckCallerPermission(uint64_t specifiedFul
 {
     TAG_LOGI(AAFwkTag::INTENT, "specifiedFullTokenId: %{public}" PRIu64, specifiedFullTokenId);
     bool isSystemAppCall = false;
-
     if (specifiedFullTokenId != 0) {
         isSystemAppCall = PermissionVerification::GetInstance()->JudgeCallerIsAllowedToUseSystemAPIByTokenId(
             specifiedFullTokenId);
